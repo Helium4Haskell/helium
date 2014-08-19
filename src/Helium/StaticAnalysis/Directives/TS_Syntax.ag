@@ -11,7 +11,7 @@
 -----------------------------------------------------------------------------
 
 imports {
-import Syntax.UHA_Syntax
+import Helium.Syntax.UHA_Syntax
 }
 
 TYPE TypingStrategies = [TypingStrategy] 

@@ -9,9 +9,9 @@
 	At each node, extra information (attributes) can be stored.
 -}
 
-module StaticAnalysis.Miscellaneous.DoublyLinkedTree where
+module Helium.StaticAnalysis.Miscellaneous.DoublyLinkedTree where
 
-import Utils.Utils (internalError)
+import Helium.Utils.Utils (internalError)
 
 data DoublyLinkedTree attributes = 
      DoublyLinkedTree { parent    :: Maybe (DoublyLinkedTree attributes)

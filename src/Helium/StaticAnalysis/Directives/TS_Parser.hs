@@ -10,28 +10,23 @@
 	(directives based on "Scripting the Type Inference Process", ICFP 2003) 
 -}
 
-module StaticAnalysis.Directives.TS_Parser where
+module Helium.StaticAnalysis.Directives.TS_Parser where
  
 -- UHA
-import Syntax.UHA_Syntax
-import Syntax.UHA_Utils (nameFromString)
-import qualified Syntax.UHA_Pretty as PP
+import Helium.Syntax.UHA_Syntax
+import Helium.Syntax.UHA_Utils (nameFromString)
+import qualified Helium.Syntax.UHA_Pretty as PP
 -- Typing strategies
-import StaticAnalysis.Directives.TS_Syntax
---import TS_CoreSyntax
---import qualified TS_ToCore
--- Parser/Lexer
-import Parser.Lexer (Token, Lexeme)
-import Parser.ParseLibrary hiding (satisfy)
-import Parser.Parser (exp0, type_, atype)
-import qualified Parser.ResolveOperators as ResolveOperators
+import SHelium.taticAnalysis.Directives.TS_Syntax
+import Helium.Parser.Lexer (Token, Lexeme)
+import Helium.Parser.ParseLibrary hiding (satisfy)
+import Helium.Parser.Parser (exp0, type_, atype)
+import qualified Helium.Parser.ResolveOperators as ResolveOperators
 import Text.ParserCombinators.Parsec
--- Rest
+
 import Data.List (intersperse, intercalate)
---import Data.IORef
---import Data.Char
-import Parser.OperatorTable
-import Utils.Utils (internalError)
+import Helium.Parser.OperatorTable
+import Helium.Utils.Utils (internalError)
 
 parseTypingStrategies :: OperatorTable -> String -> [Token] -> Either ParseError TypingStrategies
 parseTypingStrategies operatorTable filename toks = 

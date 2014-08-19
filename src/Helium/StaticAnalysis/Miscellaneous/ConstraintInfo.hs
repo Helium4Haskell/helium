@@ -11,24 +11,24 @@
 	during type inference.
 -}
 
-module StaticAnalysis.Miscellaneous.ConstraintInfo where
+module Helium.StaticAnalysis.Miscellaneous.ConstraintInfo where
 
-import Main.Args (Option(..))
+import Helium.Main.Args (Option(..))
 import Top.Types
 import Top.Ordering.Tree
-import Syntax.UHA_Syntax
-import StaticAnalysis.Miscellaneous.UHA_Source
-import Syntax.UHA_Range
-import StaticAnalysis.Messages.TypeErrors
-import StaticAnalysis.Messages.Messages
-import StaticAnalysis.Miscellaneous.DoublyLinkedTree
-import StaticAnalysis.Miscellaneous.TypeConstraints
+import Helium.Syntax.UHA_Syntax
+import Helium.StaticAnalysis.Miscellaneous.UHA_Source
+import Helium.Syntax.UHA_Range
+import Helium.StaticAnalysis.Messages.TypeErrors
+import Helium.StaticAnalysis.Messages.Messages
+import Helium.StaticAnalysis.Miscellaneous.DoublyLinkedTree
+import Helium.StaticAnalysis.Miscellaneous.TypeConstraints
 import Top.Constraint.Information
 import Top.Implementation.Overloading
 import Top.Interface.Basic (ErrorLabel)
 import Top.Interface.Substitution (unificationErrorLabel)
 import Top.Interface.TypeInference
-import Utils.Utils (internalError)
+import Helium.Utils.Utils (internalError)
 import Data.Maybe
 -- import Data.Char
 import Data.List

@@ -8,7 +8,7 @@
     Functions to align and show types.
 -}
 
-module StaticAnalysis.Miscellaneous.TypesToAlignedDocs (qualifiedTypesToAlignedDocs, typesToAlignedDocs) where
+module Helium.StaticAnalysis.Miscellaneous.TypesToAlignedDocs (qualifiedTypesToAlignedDocs, typesToAlignedDocs) where
 
 import Data.List     ( transpose )
 import Top.Types

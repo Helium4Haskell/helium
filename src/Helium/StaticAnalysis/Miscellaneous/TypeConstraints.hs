@@ -11,7 +11,7 @@
 	are lifted to work on finite maps as well.
 -}
 
-module StaticAnalysis.Miscellaneous.TypeConstraints where
+module Helium.StaticAnalysis.Miscellaneous.TypeConstraints where
 
 import Top.Constraint
 import Top.Constraint.Equality hiding ((.==.))

@@ -1,12 +1,12 @@
-module StaticAnalysis.Messages.Information where
+module Helium.StaticAnalysis.Messages.Information where
 
 import Top.Types
-import Main.CompileUtils
-import Parser.OperatorTable
-import StaticAnalysis.Messages.Messages hiding (Constructor)
-import Syntax.UHA_Syntax hiding (Fixity)
-import Syntax.UHA_Utils
-import Syntax.UHA_Range
+import Helium.Main.CompileUtils
+import Helium.Parser.OperatorTable
+import Helium.StaticAnalysis.Messages.Messages hiding (Constructor)
+import Helium.Syntax.UHA_Syntax hiding (Fixity)
+import Helium.Syntax.UHA_Utils
+import Helium.Syntax.UHA_Range
 import qualified Data.Map as M
 
 type Fixity = (Int, Assoc)

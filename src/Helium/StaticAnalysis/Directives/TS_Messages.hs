@@ -11,15 +11,15 @@
 	(directives based on "Scripting the Type Inference Process", ICFP 2003)
 -}
 
-module StaticAnalysis.Directives.TS_Messages where
+module Helium.StaticAnalysis.Directives.TS_Messages where
 
-import StaticAnalysis.Messages.Messages
-import StaticAnalysis.Messages.TypeErrors
-import StaticAnalysis.Miscellaneous.ConstraintInfo
-import StaticAnalysis.Messages.HeliumMessages () -- instance Show MessageLines
+import Helium.StaticAnalysis.Messages.Messages
+import Helium.StaticAnalysis.Messages.TypeErrors
+import Helium.StaticAnalysis.Miscellaneous.ConstraintInfo
+import Helium.StaticAnalysis.Messages.HeliumMessages () -- instance Show MessageLines
 import Top.Types
-import Utils.Utils (commaList)
-import Syntax.UHA_Syntax
+import Helium.Utils.Utils (commaList)
+import Helium.Syntax.UHA_Syntax
 
 type TS_Errors = [TS_Error]
 data TS_Error 

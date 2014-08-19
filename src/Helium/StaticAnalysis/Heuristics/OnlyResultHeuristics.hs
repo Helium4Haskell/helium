@@ -9,12 +9,12 @@
 	reported as incorrect if only the result type is reponsible for non-unifiability.
 -}
 
-module StaticAnalysis.Heuristics.OnlyResultHeuristics where
+module Helium.StaticAnalysis.Heuristics.OnlyResultHeuristics where
 
 import Top.Implementation.TypeGraph.Heuristic
 import Top.Interface.TypeInference
 import Top.Types
-import StaticAnalysis.Miscellaneous.UHA_Source
+import Helium.StaticAnalysis.Miscellaneous.UHA_Source
       
 -----------------------------------------------------------------------------
 

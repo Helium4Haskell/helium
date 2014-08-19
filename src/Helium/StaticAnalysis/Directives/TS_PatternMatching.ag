@@ -16,10 +16,10 @@
 imports {
 
 import Data.List
-import StaticAnalysis.Directives.Matchers
-import StaticAnalysis.Directives.TS_Apply (applyTypingStrategy, matchInformation)
-import StaticAnalysis.Directives.TS_CoreSyntax
-import StaticAnalysis.Directives.TS_Attributes
+import Helium.StaticAnalysis.Directives.Matchers
+import Helium.StaticAnalysis.Directives.TS_Apply (applyTypingStrategy, matchInformation)
+import Helium.StaticAnalysis.Directives.TS_CoreSyntax
+import Helium.StaticAnalysis.Directives.TS_Attributes
 
 }
 

@@ -1,4 +1,4 @@
-module StaticAnalysis.Heuristics.RepairSystem (repairSystem) where
+module Helium.StaticAnalysis.Heuristics.RepairSystem (repairSystem) where
 
 import Top.Types
 import Top.States.BasicState (printMessage)
@@ -8,11 +8,11 @@ import Top.TypeGraph.TypeGraphState
 import Top.Repair.Repair (repair)
 import Top.Repair.AExpr
 import Data.Maybe
-import ConstraintInfo
-import DoublyLinkedTree
-import UHA_Syntax
-import UHA_Source
-import Utils (internalError)
+import Helium.StaticAnalysis.Miscellaneous.ConstraintInfo
+import Helium.StaticAnalysis.Miscellaneous.DoublyLinkedTree
+import Helium.UHA_Syntax
+import Helium.UHA_Source
+import Helium.Utils (internalError)
 
 type HeliumRepairInfo = (Maybe Tp, Maybe UHA_Source)
 

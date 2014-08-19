@@ -11,21 +11,21 @@
 	each type constraint
 -}
 
-module StaticAnalysis.Heuristics.HeuristicsInfo where
+module Helium.StaticAnalysis.Heuristics.HeuristicsInfo where
 
-import StaticAnalysis.Miscellaneous.ConstraintInfo
-import StaticAnalysis.Heuristics.RepairHeuristics
-import StaticAnalysis.Heuristics.TieBreakerHeuristics
-import StaticAnalysis.Heuristics.OnlyResultHeuristics
-import StaticAnalysis.Heuristics.UnifierHeuristics
-import StaticAnalysis.Miscellaneous.DoublyLinkedTree
-import Utils.OneLiner
-import StaticAnalysis.Miscellaneous.UHA_Source
-import Syntax.UHA_Syntax
-import StaticAnalysis.Messages.Messages
-import StaticAnalysis.Messages.HeliumMessages ()
-import StaticAnalysis.Messages.TypeErrors
-import Utils.Utils (internalError)
+import Helium.StaticAnalysis.Miscellaneous.ConstraintInfo
+import Helium.StaticAnalysis.Heuristics.RepairHeuristics
+import Helium.StaticAnalysis.Heuristics.TieBreakerHeuristics
+import Helium.StaticAnalysis.Heuristics.OnlyResultHeuristics
+import Helium.StaticAnalysis.Heuristics.UnifierHeuristics
+import Helium.StaticAnalysis.Miscellaneous.DoublyLinkedTree
+import Helium.Utils.OneLiner
+import Helium.StaticAnalysis.Miscellaneous.UHA_Source
+import Helium.Syntax.UHA_Syntax
+import Helium.StaticAnalysis.Messages.Messages
+import Helium.StaticAnalysis.Messages.HeliumMessages ()
+import Helium.StaticAnalysis.Messages.TypeErrors
+import Helium.Utils.Utils (internalError)
 import Top.Types
 import Top.Implementation.TypeGraph.Heuristic
 import Data.Maybe

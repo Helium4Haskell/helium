@@ -10,16 +10,16 @@
         (For instance, one could define another layout, or produce XML-like output).
 -}
 
-module StaticAnalysis.Messages.HeliumMessages where
+module Helium.StaticAnalysis.Messages.HeliumMessages where
 
 
-import StaticAnalysis.Messages.Messages 
+import Helium.StaticAnalysis.Messages.Messages 
 import Top.Types
 import qualified Text.PrettyPrint.Leijen as PPrint
-import qualified Utils.OneLiner as OneLiner
+import qualified Helium.Utils.OneLiner as OneLiner
 import Data.List
-import StaticAnalysis.Miscellaneous.TypesToAlignedDocs  (qualifiedTypesToAlignedDocs)
-import Syntax.UHA_Range           (isImportRange, showRanges)
+import Helium.StaticAnalysis.Miscellaneous.TypesToAlignedDocs  (qualifiedTypesToAlignedDocs)
+import Helium.Syntax.UHA_Range           (isImportRange, showRanges)
 import Data.Char                (isSpace)
 
 ----------------------------------------------------------

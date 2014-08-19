@@ -8,16 +8,16 @@
     Error messages repoted by kind inference.
 -}
 
-module StaticAnalysis.Messages.KindErrors where
+module Helium.StaticAnalysis.Messages.KindErrors where
 
 import Top.Types
 import Top.Constraint.Information(TypeConstraintInfo(..),PolyTypeConstraintInfo(..))
 
-import Syntax.UHA_Syntax (Range, Type)
+import Helium.Syntax.UHA_Syntax (Range, Type)
 import Text.PrettyPrint.Leijen (Doc)
-import StaticAnalysis.Messages.Messages
+import Helium.StaticAnalysis.Messages.Messages
 import Data.List (union)
-import qualified Syntax.UHA_Pretty as PP
+import qualified Helium.Syntax.UHA_Pretty as PP
 -- import qualified Text.PrettyPrint.Leijen as PPrint
 
 type KindErrors = [KindError]

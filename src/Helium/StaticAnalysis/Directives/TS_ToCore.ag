@@ -23,21 +23,21 @@ INCLUDE "TS_Collect.ag"
 INCLUDE "UHA_Syntax.ag"
 
 imports {
-import StaticAnalysis.Directives.TS_Syntax
-import StaticAnalysis.Directives.TS_CoreSyntax
-import ModuleSystem.ImportEnvironment
-import StaticAnalysis.Messages.Messages
+import Helium.StaticAnalysis.Directives.TS_Syntax
+import Helium.StaticAnalysis.Directives.TS_CoreSyntax
+import Helium.ModuleSystem.ImportEnvironment
+import Helium.StaticAnalysis.Messages.Messages
 import Top.Types
 
-import StaticAnalysis.Miscellaneous.ConstraintInfo
-import Syntax.UHA_Utils (getNameName, nameFromString)
-import qualified Syntax.UHA_OneLine as UHA_OneLine
-import StaticAnalysis.Miscellaneous.TypeConversion
-import Utils.Utils (internalError)
+import Helium.StaticAnalysis.Miscellaneous.ConstraintInfo
+import Helium.Syntax.UHA_Utils (getNameName, nameFromString)
+import qualified Helium.Syntax.UHA_OneLine as UHA_OneLine
+import Helium.StaticAnalysis.Miscellaneous.TypeConversion
+import Helium.Utils.Utils (internalError)
 import Data.List
-import Utils.OneLiner
-import StaticAnalysis.Directives.TS_Attributes
-import StaticAnalysis.Miscellaneous.TypeConstraints
+import Helium.Utils.OneLiner
+import Helium.StaticAnalysis.Directives.TS_Attributes
+import Helium.StaticAnalysis.Miscellaneous.TypeConstraints
 
 }
 ATTR TypingStrategies TypingStrategy [ importEnvironment : ImportEnvironment | | ]

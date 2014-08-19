@@ -8,15 +8,15 @@
     Errors that are constructed during type inferece.
 -}
 
-module StaticAnalysis.Messages.TypeErrors where
+module Helium.StaticAnalysis.Messages.TypeErrors where
 
-import StaticAnalysis.Messages.Messages
+import Helium.StaticAnalysis.Messages.Messages
 import Top.Types
 
 import Data.List       (union, partition)
-import Syntax.UHA_Syntax (Range, Name)
-import Syntax.UHA_Range  (getNameRange)
-import StaticAnalysis.Miscellaneous.UHA_Source
+import Helium.Syntax.UHA_Syntax (Range, Name)
+import Helium.Syntax.UHA_Range  (getNameRange)
+import Helium.StaticAnalysis.Miscellaneous.UHA_Source
 
 import Data.Maybe
 

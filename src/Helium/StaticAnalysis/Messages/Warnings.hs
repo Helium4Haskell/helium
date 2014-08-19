@@ -9,15 +9,15 @@
         (the phase before type inference, as well as during type inference)
 -}
 
-module StaticAnalysis.Messages.Warnings where
+module Helium.StaticAnalysis.Messages.Warnings where
 
-import Syntax.UHA_Range    (getNameRange, showRange, sortRanges)
-import Syntax.UHA_Syntax
-import Syntax.UHA_Utils
+import Helium.Syntax.UHA_Range    (getNameRange, showRange, sortRanges)
+import Helium.Syntax.UHA_Syntax
+import Helium.Syntax.UHA_Utils
 import Top.Types
-import StaticAnalysis.Messages.Messages
+import Helium.StaticAnalysis.Messages.Messages
 import Data.List    (intercalate)
-import qualified Syntax.UHA_Pretty as PP (sem_Pattern, wrap_Pattern, Inh_Pattern (..), Syn_Pattern (..), sem_LeftHandSide, wrap_LeftHandSide, Inh_LeftHandSide (..), Syn_LeftHandSide (..), sem_Expression, wrap_Expression, Inh_Expression (..), Syn_Expression (..))
+import qualified Helium.Syntax.UHA_Pretty as PP (sem_Pattern, wrap_Pattern, Inh_Pattern (..), Syn_Pattern (..), sem_LeftHandSide, wrap_LeftHandSide, Inh_LeftHandSide (..), Syn_LeftHandSide (..), sem_Expression, wrap_Expression, Inh_Expression (..), Syn_Expression (..))
 import qualified Text.PrettyPrint.Leijen as PPrint
 
 -------------------------------------------------------------

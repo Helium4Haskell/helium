@@ -10,17 +10,16 @@
 
 -- To do: clean up this module. Also see BGA for kind inferencing
 
-module StaticAnalysis.Inferencers.BindingGroupAnalysis where
+module Helium.StaticAnalysis.Inferencers.BindingGroupAnalysis where
 
 import qualified Data.Graph as G
 import qualified Data.Tree as G
-import Syntax.UHA_Syntax
-import StaticAnalysis.Miscellaneous.TypeConstraints
-import StaticAnalysis.Miscellaneous.ConstraintInfo
+import Helium.Syntax.UHA_Syntax
+import Helium.StaticAnalysis.Miscellaneous.TypeConstraints
+import Helium.StaticAnalysis.Miscellaneous.ConstraintInfo
 import Top.Types
 import Top.Ordering.Tree
 import qualified Data.Map as M
--- import Data.List
 
 type Assumptions        = M.Map Name [(Name,Tp)]
 type PatternAssumptions = M.Map Name Tp

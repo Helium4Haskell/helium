@@ -9,13 +9,13 @@
     syntax (UHA),  including expressions and patterns.
 -}
 
-module StaticAnalysis.Miscellaneous.UHA_Source where
+module Helium.StaticAnalysis.Miscellaneous.UHA_Source where
 
-import Utils.OneLiner
-import Syntax.UHA_Range
-import Syntax.UHA_Syntax
-import Syntax.UHA_Utils
-import qualified Syntax.UHA_OneLine as PP
+import Helium.Utils.OneLiner
+import Helium.Syntax.UHA_Range
+import Helium.Syntax.UHA_Syntax
+import Helium.Syntax.UHA_Utils
+import qualified Helium.Syntax.UHA_OneLine as PP
 
 data UHA_Source =
      UHA_Expr   Expression              

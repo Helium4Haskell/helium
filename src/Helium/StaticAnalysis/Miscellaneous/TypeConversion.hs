@@ -8,15 +8,15 @@
     The conversion from UHA types to Tp (a simpler representation), and vice versa.
 -}
 
-module StaticAnalysis.Miscellaneous.TypeConversion where
+module Helium.StaticAnalysis.Miscellaneous.TypeConversion where
 
 
-import Syntax.UHA_Utils (getNameName, nameFromString)
-import Syntax.UHA_Range (noRange)
-import Utils.Utils (internalError)
+import Helium.Syntax.UHA_Utils (getNameName, nameFromString)
+import Helium.Syntax.UHA_Range (noRange)
+import Helium.Utils.Utils (internalError)
 import Data.List (union)
 import Data.Maybe
-import Syntax.UHA_Syntax
+import Helium.Syntax.UHA_Syntax
 
 import Top.Types
 

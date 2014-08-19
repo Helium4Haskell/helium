@@ -10,16 +10,16 @@
 	(directives based on "Scripting the Type Inference Process", ICFP 2003)
 -}
 
-module StaticAnalysis.Directives.TS_Attributes where
+module Helium.StaticAnalysis.Directives.TS_Attributes where
 
-import StaticAnalysis.Inferencers.BindingGroupAnalysis (Assumptions)
-import StaticAnalysis.Miscellaneous.ConstraintInfo (ConstraintSet, LocalInfo, assignedType, self)
-import StaticAnalysis.Messages.Messages             (MessageBlock(..))
+import Helium.StaticAnalysis.Inferencers.BindingGroupAnalysis (Assumptions)
+import Helium.StaticAnalysis.Miscellaneous.ConstraintInfo (ConstraintSet, LocalInfo, assignedType, self)
+import Helium.StaticAnalysis.Messages.Messages             (MessageBlock(..))
 import Top.Types            (Tp, toTpScheme)
-import Utils.OneLiner       (OneLineTree)
-import Syntax.UHA_Syntax    (Range) 
-import StaticAnalysis.Miscellaneous.UHA_Source (rangeOfSource, oneLinerSource)
-import Utils.Utils          (internalError)
+import Helium.Utils.OneLiner       (OneLineTree)
+import Helium.Syntax.UHA_Syntax    (Range) 
+import Helium.StaticAnalysis.Miscellaneous.UHA_Source (rangeOfSource, oneLinerSource)
+import Helium.Utils.Utils          (internalError)
 import Data.Char            (isAlphaNum)
 
 type MetaVariableTable = [(String, MetaVariableInfo)]

@@ -10,16 +10,16 @@
     reported in the error messages such as types, ranges and code fragments.
 -}
 
-module StaticAnalysis.Messages.Messages where
+module Helium.StaticAnalysis.Messages.Messages where
 
-import Syntax.UHA_Syntax
-import Syntax.UHA_Range
-import Syntax.UHA_Utils ()
+import Helium.Syntax.UHA_Syntax
+import Helium.Syntax.UHA_Range
+import Helium.Syntax.UHA_Utils ()
 import Top.Types 
 
-import Utils.OneLiner
-import Utils.Similarity (similar)
-import Utils.Utils      (internalError)
+import Helium.Utils.OneLiner
+import Helium.Utils.Similarity (similar)
+import Helium.Utils.Utils      (internalError)
 import Data.List       (sortBy, partition)
 import Data.Char       (toUpper)
 

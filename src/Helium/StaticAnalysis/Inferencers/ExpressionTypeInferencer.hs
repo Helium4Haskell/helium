@@ -8,18 +8,18 @@
     Infer the type of an expression, and return the type errors that are encountered.
 -}
 
-module StaticAnalysis.Inferencers.ExpressionTypeInferencer (expressionTypeInferencer) where
+module Helium.StaticAnalysis.Inferencers.ExpressionTypeInferencer (expressionTypeInferencer) where
 
-import StaticAnalysis.Inferencers.TypeInferencing (sem_Module, wrap_Module, Inh_Module (..), Syn_Module (..))
-import ModuleSystem.ImportEnvironment
-import StaticAnalysis.Inferencers.BindingGroupAnalysis (Assumptions)
-import StaticAnalysis.Messages.TypeErrors
+import Helium.StaticAnalysis.Inferencers.TypeInferencing (sem_Module, wrap_Module, Inh_Module (..), Syn_Module (..))
+import Helium.ModuleSystem.ImportEnvironment
+import Helium.StaticAnalysis.Inferencers.BindingGroupAnalysis (Assumptions)
+import Helium.StaticAnalysis.Messages.TypeErrors
 import Top.Types
 import qualified Data.Map as M
-import Syntax.UHA_Utils (nameFromString)
-import Syntax.UHA_Range (noRange)
-import Utils.Utils (internalError)
-import Syntax.UHA_Syntax
+import Helium.Syntax.UHA_Utils (nameFromString)
+import Helium.Syntax.UHA_Range (noRange)
+import Helium.Utils.Utils (internalError)
+import Helium.Syntax.UHA_Syntax
 
 expressionTypeInferencer :: ImportEnvironment -> Expression -> (TpScheme, Assumptions, TypeErrors)
 expressionTypeInferencer importEnvironment expression = 

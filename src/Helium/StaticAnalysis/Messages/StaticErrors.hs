@@ -8,15 +8,15 @@
     Collection of static error messages.
 -}
 
-module StaticAnalysis.Messages.StaticErrors where
+module Helium.StaticAnalysis.Messages.StaticErrors where
 
 
-import Syntax.UHA_Syntax
-import Syntax.UHA_Range
-import StaticAnalysis.Messages.Messages
+import Helium.Syntax.UHA_Syntax
+import Helium.Syntax.UHA_Range
+import Helium.StaticAnalysis.Messages.Messages
 import Data.List        (nub, intersperse, sort, partition)
 import Data.Maybe       (fromJust)
-import Utils.Utils       (commaList, internalError, maxInt)
+import Helium.Utils.Utils       (commaList, internalError, maxInt)
 
 import Top.Types
 
