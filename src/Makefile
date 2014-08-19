@@ -57,7 +57,7 @@ Helium/Parser/ResolveOperators.hs : \
 Helium/Syntax/UHA_Pretty.hs : \
 		Helium/Syntax/UHA_Pretty.ag Helium/Syntax/UHA_Syntax.ag
 	# AG UHA_Pretty
-	$(AG) $(AG_OPTS) --module=Syntax.UHA_Pretty Syntax/UHA_Pretty.ag
+	$(AG) $(AG_OPTS) --module=Helium.Syntax.UHA_Pretty Helium/Syntax/UHA_Pretty.ag
 
 Helium/Syntax/UHA_OneLine.hs : \
 		Helium/Syntax/UHA_OneLine.ag Helium/Syntax/UHA_Syntax.ag

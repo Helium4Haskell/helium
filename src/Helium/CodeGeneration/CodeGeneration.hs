@@ -3,28 +3,28 @@
 
 module Helium.CodeGeneration.CodeGeneration where
 
-import Syntax.UHA_Syntax
-import Syntax.UHA_Utils
-import Syntax.UHA_Range 
-import ModuleSystem.ImportEnvironment
-import ModuleSystem.DictionaryEnvironment
+import Helium.Syntax.UHA_Syntax
+import Helium.Syntax.UHA_Utils
+import Helium.Syntax.UHA_Range 
+import Helium.ModuleSystem.ImportEnvironment
+import Helium.ModuleSystem.DictionaryEnvironment
 import qualified Data.Map as M
-import StaticAnalysis.Miscellaneous.TypeConversion
+import Helium.StaticAnalysis.Miscellaneous.TypeConversion
 import Data.Char (ord)
 
 
 import Lvm.Common.Id
 import Lvm.Common.IdSet 
-import Utils.Utils(internalError)
+import Helium.Utils.Utils(internalError)
 
 import Top.Types
 
-import CodeGeneration.PatternMatch
-import qualified CodeGeneration.DerivingShow as DerivingShow
-import qualified CodeGeneration.DerivingEq as DerivingEq
+import Helium.CodeGeneration.PatternMatch
+import qualified Helium.CodeGeneration.DerivingShow as DerivingShow
+import qualified Helium.CodeGeneration.DerivingEq as DerivingEq
 
 -- Semi-Daan
-import CodeGeneration.CoreUtils
+import Helium.CodeGeneration.CoreUtils
 
 -- Daan
 import qualified Lvm.Core.Expr as Core

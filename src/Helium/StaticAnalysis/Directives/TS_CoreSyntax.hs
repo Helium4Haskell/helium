@@ -1,7 +1,7 @@
 
 
--- UUAGC 0.9.42.2 (StaticAnalysis/Directives/TS_CoreSyntax.ag)
-module StaticAnalysis.Directives.TS_CoreSyntax where
+-- UUAGC 0.9.42.2 (Helium/StaticAnalysis/Directives/TS_CoreSyntax.ag)
+module Helium.StaticAnalysis.Directives.TS_CoreSyntax where
 
 import Top.Types
 

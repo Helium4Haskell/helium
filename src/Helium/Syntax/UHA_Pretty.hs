@@ -1,7 +1,7 @@
 {-# LANGUAGE Rank2Types, GADTs #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 
-module Syntax.UHA_Pretty where
+module Helium.Syntax.UHA_Pretty where
 
 -- Below two imports are to avoid clashes of "list" as used by the AG system.
 -- Effectively, only list from the imported library needs to be qualified.
@@ -10,8 +10,8 @@ import qualified Text.PrettyPrint.Leijen as PPrint
 import Data.Char
 import Top.Types (isTupleConstructor)
 
-import Syntax.UHA_Syntax
-import Utils.Utils (internalError, hole)
+import Helium.Syntax.UHA_Syntax
+import Helium.Utils.Utils (internalError, hole)
 
 import Control.Monad.Identity (Identity)
 import qualified Control.Monad.Identity

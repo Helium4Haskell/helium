@@ -1,7 +1,7 @@
 
 
--- UUAGC 0.9.42.2 (Syntax/UHA_Syntax.ag)
-module Syntax.UHA_Syntax where
+-- UUAGC 0.9.42.2 (Helium/Syntax/UHA_Syntax.ag)
+module Helium.Syntax.UHA_Syntax where
 -- Alternative -------------------------------------------------
 data Alternative = Alternative_Hole (Range) (Integer)
                  | Alternative_Feedback (Range) (String) (Alternative)

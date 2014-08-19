@@ -1,27 +1,27 @@
 {-# LANGUAGE Rank2Types, GADTs #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 
-module StaticAnalysis.StaticChecks.StaticChecks where
+module Helium.StaticAnalysis.StaticChecks.StaticChecks where
 
-import Utils.Similarity ( similar )
-import Main.Args
-import Syntax.UHA_Syntax
-import Syntax.UHA_Utils
-import Syntax.UHA_Range
+import Helium.Utils.Similarity ( similar )
+import Helium.Main.Args
+import Helium.Syntax.UHA_Syntax
+import Helium.Syntax.UHA_Utils
+import Helium.Syntax.UHA_Range
 import Top.Types
 
-import StaticAnalysis.Messages.StaticErrors
-import StaticAnalysis.Messages.Warnings
-import StaticAnalysis.Messages.Messages
+import Helium.StaticAnalysis.Messages.StaticErrors
+import Helium.StaticAnalysis.Messages.Warnings
+import Helium.StaticAnalysis.Messages.Messages
 import Data.List
-import Utils.Utils ( internalError, minInt, maxInt )
-import StaticAnalysis.Miscellaneous.TypeConversion
-import CodeGeneration.DerivingShow
+import Helium.Utils.Utils ( internalError, minInt, maxInt )
+import Helium.StaticAnalysis.Miscellaneous.TypeConversion
+import Helium.CodeGeneration.DerivingShow
 
 import qualified Data.Map as M
 
-import ModuleSystem.ImportEnvironment
-import Parser.OperatorTable
+import Helium.ModuleSystem.ImportEnvironment
+import Helium.Parser.OperatorTable
 import Data.Char ( isUpper )
 
 import Control.Monad.Identity (Identity)

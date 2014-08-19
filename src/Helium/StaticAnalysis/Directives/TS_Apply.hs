@@ -1,28 +1,27 @@
 
 
--- UUAGC 0.9.42.2 (StaticAnalysis/Directives/TS_Apply.ag)
-module StaticAnalysis.Directives.TS_Apply where
+-- UUAGC 0.9.42.2 (Helium/StaticAnalysis/Directives/TS_Apply.ag)
+module Helium.StaticAnalysis.Directives.TS_Apply where
 
 
-import Syntax.UHA_Syntax
-import StaticAnalysis.Miscellaneous.TypeConstraints
-import StaticAnalysis.Miscellaneous.ConstraintInfo
---import Top.Types
+import Helium.Syntax.UHA_Syntax
+import Helium.StaticAnalysis.Miscellaneous.TypeConstraints
+import Helium.StaticAnalysis.Miscellaneous.ConstraintInfo
 import Data.List
-import Utils.Utils (internalError)
-import StaticAnalysis.Messages.Messages
-import StaticAnalysis.Messages.TypeErrors
-import ModuleSystem.ImportEnvironment
-import StaticAnalysis.Inferencers.BindingGroupAnalysis (Assumptions, combine, noAssumptions)
-import Parser.OperatorTable (OperatorTable)
-import Parser.Parser (exp_)
-import Parser.Lexer (strategiesLexer)
-import Parser.ParseLibrary (runHParser)
-import qualified Parser.ResolveOperators as ResolveOperators
+import Helium.Utils.Utils (internalError)
+import Helium.StaticAnalysis.Messages.Messages
+import Helium.StaticAnalysis.Messages.TypeErrors
+import Helium.ModuleSystem.ImportEnvironment
+import Helium.StaticAnalysis.Inferencers.BindingGroupAnalysis (Assumptions, combine, noAssumptions)
+import Helium.Parser.OperatorTable (OperatorTable)
+import Helium.Parser.Parser (exp_)
+import Helium.Parser.Lexer (strategiesLexer)
+import Helium.Parser.ParseLibrary (runHParser)
+import qualified Helium.Parser.ResolveOperators as ResolveOperators
 
 import qualified Data.Map as M
-import StaticAnalysis.Directives.TS_Attributes
-import StaticAnalysis.Directives.TS_CoreSyntax
+import Helium.StaticAnalysis.Directives.TS_Attributes
+import Helium.StaticAnalysis.Directives.TS_CoreSyntax
 import Top.Ordering.Tree
 
 

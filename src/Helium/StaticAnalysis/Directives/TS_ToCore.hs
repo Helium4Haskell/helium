@@ -1,30 +1,30 @@
 
 
--- UUAGC 0.9.42.2 (StaticAnalysis/Directives/TS_ToCore.ag)
-module StaticAnalysis.Directives.TS_ToCore where
+-- UUAGC 0.9.42.2 (Helium/StaticAnalysis/Directives/TS_ToCore.ag)
+module Helium.StaticAnalysis.Directives.TS_ToCore where
 
-import StaticAnalysis.Directives.TS_Syntax
-import StaticAnalysis.Directives.TS_CoreSyntax
-import ModuleSystem.ImportEnvironment
-import StaticAnalysis.Messages.Messages
+import Helium.StaticAnalysis.Directives.TS_Syntax
+import Helium.StaticAnalysis.Directives.TS_CoreSyntax
+import Helium.ModuleSystem.ImportEnvironment
+import Helium.StaticAnalysis.Messages.Messages
 import Top.Types
 
-import StaticAnalysis.Miscellaneous.ConstraintInfo
-import Syntax.UHA_Utils (getNameName, nameFromString)
-import qualified Syntax.UHA_OneLine as UHA_OneLine
-import StaticAnalysis.Miscellaneous.TypeConversion
-import Utils.Utils (internalError)
+import Helium.StaticAnalysis.Miscellaneous.ConstraintInfo
+import Helium.Syntax.UHA_Utils (getNameName, nameFromString)
+import qualified Helium.Syntax.UHA_OneLine as UHA_OneLine
+import Helium.StaticAnalysis.Miscellaneous.TypeConversion
+import Helium.Utils.Utils (internalError)
 import Data.List
-import Utils.OneLiner
-import StaticAnalysis.Directives.TS_Attributes
-import StaticAnalysis.Miscellaneous.TypeConstraints
+import Helium.Utils.OneLiner
+import Helium.StaticAnalysis.Directives.TS_Attributes
+import Helium.StaticAnalysis.Miscellaneous.TypeConstraints
 
 
 
-import Syntax.UHA_Syntax
+import Helium.Syntax.UHA_Syntax
 
 
-import StaticAnalysis.Inferencers.ExpressionTypeInferencer (expressionTypeInferencer)
+import Helium.StaticAnalysis.Inferencers.ExpressionTypeInferencer (expressionTypeInferencer)
 import qualified Data.Map as M
 
 typingStrategyToCore :: ImportEnvironment -> TypingStrategy -> Core_TypingStrategy

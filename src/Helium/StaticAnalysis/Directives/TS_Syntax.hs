@@ -1,9 +1,9 @@
 
 
--- UUAGC 0.9.42.2 (StaticAnalysis/Directives/TS_Syntax.ag)
-module StaticAnalysis.Directives.TS_Syntax where
+-- UUAGC 0.9.42.2 (Helium/StaticAnalysis/Directives/TS_Syntax.ag)
+module Helium.StaticAnalysis.Directives.TS_Syntax where
 
-import Syntax.UHA_Syntax
+import Helium.Syntax.UHA_Syntax
 -- Judgement ---------------------------------------------------
 data Judgement = Judgement_Judgement (Expression) (Type)
 -- SimpleJudgement ---------------------------------------------

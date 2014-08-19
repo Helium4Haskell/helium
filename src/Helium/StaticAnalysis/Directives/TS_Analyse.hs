@@ -1,30 +1,30 @@
 {-# LANGUAGE Rank2Types, GADTs #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 
-module StaticAnalysis.Directives.TS_Analyse where
+module Helium.StaticAnalysis.Directives.TS_Analyse where
 
 import Top.Types
 import Top.Solver.Greedy
 import Top.Solver
 
-import StaticAnalysis.Miscellaneous.TypeConstraints
-import StaticAnalysis.Miscellaneous.ConstraintInfo
-import StaticAnalysis.Directives.TS_Syntax
-import StaticAnalysis.Miscellaneous.TypeConversion
+import Helium.StaticAnalysis.Miscellaneous.TypeConstraints
+import Helium.StaticAnalysis.Miscellaneous.ConstraintInfo
+import Helium.StaticAnalysis.Directives.TS_Syntax
+import Helium.StaticAnalysis.Miscellaneous.TypeConversion
 import Data.List
-import Syntax.UHA_Utils (nameFromString)
-import Syntax.UHA_Range (noRange)
-import StaticAnalysis.Messages.Messages
-import StaticAnalysis.Directives.TS_Messages
-import ModuleSystem.ImportEnvironment hiding (setTypeSynonyms)
-import Utils.Utils (internalError)
-import qualified Syntax.UHA_Pretty as PP
+import Helium.Syntax.UHA_Utils (nameFromString)
+import Helium.Syntax.UHA_Range (noRange)
+import Helium.StaticAnalysis.Messages.Messages
+import Helium.StaticAnalysis.Directives.TS_Messages
+import Helium.ModuleSystem.ImportEnvironment hiding (setTypeSynonyms)
+import Helium.Utils.Utils (internalError)
+import qualified Helium.Syntax.UHA_Pretty as PP
 
 
-import Syntax.UHA_Syntax
+import Helium.Syntax.UHA_Syntax
 
 
-import StaticAnalysis.Inferencers.ExpressionTypeInferencer (expressionTypeInferencer)
+import Helium.StaticAnalysis.Inferencers.ExpressionTypeInferencer (expressionTypeInferencer)
 import qualified Data.Map as M
 import Control.Monad.Identity (Identity)
 import qualified Control.Monad.Identity

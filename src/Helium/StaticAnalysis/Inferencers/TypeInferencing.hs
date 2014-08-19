@@ -1,7 +1,7 @@
 {-# LANGUAGE Rank2Types, GADTs #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 
-module StaticAnalysis.Inferencers.TypeInferencing where
+module Helium.StaticAnalysis.Inferencers.TypeInferencing where
 
 
 -- types
@@ -46,14 +46,14 @@ import Data.Maybe
 
 
 import Data.List
-import StaticAnalysis.Directives.Matchers
-import StaticAnalysis.Directives.TS_Apply (applyTypingStrategy, matchInformation)
-import StaticAnalysis.Directives.TS_CoreSyntax
-import StaticAnalysis.Directives.TS_Attributes
+import Helium.StaticAnalysis.Directives.Matchers
+import Helium.StaticAnalysis.Directives.TS_Apply (applyTypingStrategy, matchInformation)
+import Helium.StaticAnalysis.Directives.TS_CoreSyntax
+import Helium.StaticAnalysis.Directives.TS_Attributes
 
 
 
-import Syntax.UHA_Utils
+import Helium.Syntax.UHA_Utils
 import Control.Monad.Identity (Identity)
 import qualified Control.Monad.Identity
 

@@ -3,12 +3,12 @@
 
 module Helium.ModuleSystem.ExtractImportDecls where
 
-import Syntax.UHA_Syntax
-import Syntax.UHA_Utils
+import Helium.Syntax.UHA_Syntax
+import Helium.Syntax.UHA_Utils
 import Lvm.Common.Id
 import qualified Lvm.Core.Expr as Core
 import qualified Lvm.Core.Module as Core
-import Utils.Utils (internalError)
+import Helium.Utils.Utils (internalError)
 import Control.Monad.Identity (Identity)
 import qualified Control.Monad.Identity
 -- Alternative -------------------------------------------------

@@ -1,15 +1,15 @@
 {-# LANGUAGE Rank2Types, GADTs #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 
-module Syntax.UHA_OneLine where
+module Helium.Syntax.UHA_OneLine where
 
-import Utils.OneLiner
+import Helium.Utils.OneLiner
 import Data.Char
-import Syntax.UHA_Utils (showNameAsOperator)
-import StaticAnalysis.Miscellaneous.TypeConversion
-import Syntax.UHA_Syntax
+import Helium.Syntax.UHA_Utils (showNameAsOperator)
+import Helium.StaticAnalysis.Miscellaneous.TypeConversion
+import Helium.Syntax.UHA_Syntax
 import Data.List
-import Utils.Utils (internalError, hole)
+import Helium.Utils.Utils (internalError, hole)
 import Control.Monad.Identity (Identity)
 import qualified Control.Monad.Identity
 
