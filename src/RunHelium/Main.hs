@@ -13,16 +13,16 @@ module Main where
 
 import Data.Maybe(fromJust)
 import Data.List(intercalate)
-
 import System.Environment(getArgs)
 import System.Process(system)
 import System.Exit(ExitCode(..))
 import System.Directory(findExecutable)
 import System.Exit(exitWith, ExitCode(..))
-import Utils.OSSpecific(slash)
+
+import Helium.Utils.OSSpecific(slash)
+import Helium.Main.Args
 import TextHint.ConfigFile(readConfig, extractOptions, configFilename, 
                            temppathKey)
-import Main.Args
 import Paths_helium
 
 data State = 

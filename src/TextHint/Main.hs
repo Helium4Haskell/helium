@@ -15,19 +15,18 @@ import Data.Char
 import Data.List(isInfixOf, isPrefixOf, isSuffixOf)
 import Control.Monad
 import System.IO(stdout, hFlush)
-
 import Data.IORef       ( IORef, readIORef, newIORef, writeIORef )
 import System.IO.Unsafe ( unsafePerformIO )
-
 import System.Environment(getArgs)
 import System.Process(system)
 import System.Exit(exitWith, ExitCode(..))
-import Utils.OSSpecific(slash)
 import System.Directory
 import qualified Control.Exception as CE (catch, IOException)
+
+import Helium.Utils.OSSpecific(slash)
+import Helium.Main.Args
 import TextHint.ConfigFile(readConfig, extractOptions, configFilename, 
                            temppathKey, trim)
-import Main.Args
 import Paths_helium
 
 data State = 

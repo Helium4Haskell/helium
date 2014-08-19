@@ -1,7 +1,7 @@
 {-# LANGUAGE Rank2Types, GADTs #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 
-module ModuleSystem.ExtractImportDecls where
+module Helium.ModuleSystem.ExtractImportDecls where
 
 import Syntax.UHA_Syntax
 import Syntax.UHA_Utils

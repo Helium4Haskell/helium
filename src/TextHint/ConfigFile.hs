@@ -10,12 +10,10 @@ module TextHint.ConfigFile (
 
 
 import Data.Char
-
--- import qualified Data.Map as Map
-import Text.ParserCombinators.Parsec
---import Data.Either
 import Data.Maybe
-import Main.Args
+import Text.ParserCombinators.Parsec
+
+import Helium.Main.Args
 
 type Config = [(String,String)]
 

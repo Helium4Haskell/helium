@@ -1,7 +1,7 @@
 {-# LANGUAGE Rank2Types, GADTs #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 
-module Parser.ResolveOperators where
+module Helium.Parser.ResolveOperators where
 
 
 import Syntax.UHA_Utils
