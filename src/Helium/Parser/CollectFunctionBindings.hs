@@ -6,12 +6,12 @@
     Portability :  portable
 -}
 
-module Parser.CollectFunctionBindings where
+module Helium.Parser.CollectFunctionBindings where
 
-import Syntax.UHA_Syntax
-import Syntax.UHA_Utils ()
-import Syntax.UHA_Range
-import Utils.Utils
+import Helium.Syntax.UHA_Syntax
+import Helium.Syntax.UHA_Utils ()
+import Helium.Syntax.UHA_Range
+import Helium.Utils.Utils
 
 -- Assumption: each FunctionBindings contains exactly one FunctionBinding
 

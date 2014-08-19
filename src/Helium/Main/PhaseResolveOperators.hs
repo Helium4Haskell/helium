@@ -6,11 +6,11 @@
     Portability :  portable
 -}
 
-module Main.PhaseResolveOperators(phaseResolveOperators) where
+module Helium.Main.PhaseResolveOperators(phaseResolveOperators) where
 
-import Main.CompileUtils
-import Parser.ResolveOperators(resolveOperators, operatorsFromModule, ResolveError)
-import qualified Syntax.UHA_Pretty as PP(sem_Module,wrap_Module,Inh_Module(..),text_Syn_Module)
+import Helium.Main.CompileUtils
+import Helium.Parser.ResolveOperators(resolveOperators, operatorsFromModule, ResolveError)
+import qualified Helium.Syntax.UHA_Pretty as PP(sem_Module,wrap_Module,Inh_Module(..),text_Syn_Module)
 import qualified Data.Map as M
 
 phaseResolveOperators :: 

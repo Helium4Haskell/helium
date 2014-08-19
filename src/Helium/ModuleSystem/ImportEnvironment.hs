@@ -7,17 +7,17 @@
     Portability :  portable
 -}
 
-module ModuleSystem.ImportEnvironment where
+module Helium.ModuleSystem.ImportEnvironment where
 
 import qualified Data.Map as M
-import Utils.Utils (internalError)
-import Syntax.UHA_Syntax -- (Name)
-import Syntax.UHA_Utils
+import Helium.Utils.Utils (internalError)
+import Helium.Syntax.UHA_Syntax -- (Name)
+import Helium.Syntax.UHA_Utils
 import Top.Types
-import Parser.OperatorTable
-import StaticAnalysis.Messages.Messages () -- instance Show Name
-import StaticAnalysis.Heuristics.RepairHeuristics (Siblings)
-import StaticAnalysis.Directives.TS_CoreSyntax
+import Helium.Parser.OperatorTable
+import Helium.StaticAnalysis.Messages.Messages () -- instance Show Name
+import Helium.StaticAnalysis.Heuristics.RepairHeuristics (Siblings)
+import Helium.StaticAnalysis.Directives.TS_CoreSyntax
 import Data.List 
 import Data.Maybe (catMaybes)
 import Data.Function (on)

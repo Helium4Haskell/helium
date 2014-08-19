@@ -6,15 +6,15 @@
     Portability :  portable
 -}
 
-module Main.PhaseTypeInferencer (phaseTypeInferencer) where
+module Helium.Main.PhaseTypeInferencer (phaseTypeInferencer) where
 
-import Main.CompileUtils
-import StaticAnalysis.Messages.Warnings(Warning)
-import StaticAnalysis.Inferencers.TypeInferencing(typeInferencing)
-import ModuleSystem.DictionaryEnvironment (DictionaryEnvironment)
+import Helium.Main.CompileUtils
+import Helium.StaticAnalysis.Messages.Warnings(Warning)
+import Helium.StaticAnalysis.Inferencers.TypeInferencing(typeInferencing)
+import Helium.ModuleSystem.DictionaryEnvironment (DictionaryEnvironment)
 --import UHA_Syntax
-import StaticAnalysis.Messages.TypeErrors
-import StaticAnalysis.Messages.Information (showInformation)
+import Helium.StaticAnalysis.Messages.TypeErrors
+import Helium.StaticAnalysis.Messages.Information (showInformation)
 import System.FilePath.Posix
 
 phaseTypeInferencer :: 

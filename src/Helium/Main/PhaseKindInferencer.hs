@@ -6,14 +6,14 @@
     Portability :  portable
 -}
 
-module Main.PhaseKindInferencer (phaseKindInferencer) where
+module Helium.Main.PhaseKindInferencer (phaseKindInferencer) where
 
-import Main.CompileUtils
-import StaticAnalysis.Inferencers.KindInferencing as KI
+import Helium.Main.CompileUtils
+import Helium.StaticAnalysis.Inferencers.KindInferencing as KI
 -- import ImportEnvironment
 import qualified Data.Map as M
 import Top.Types
-import StaticAnalysis.Messages.KindErrors
+import Helium.StaticAnalysis.Messages.KindErrors
 
 phaseKindInferencer :: ImportEnvironment -> Module -> [Option] -> Phase KindError ()
 phaseKindInferencer importEnvironment module_ options =

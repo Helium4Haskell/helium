@@ -6,7 +6,7 @@
     Portability :  portable
 -}
 
-module Utils.OSSpecific where
+module Helium.Utils.OSSpecific where
 
 import System.FilePath
 

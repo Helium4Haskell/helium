@@ -7,11 +7,11 @@
     Portability :  portable
 -}
 
-module Parser.ParseMessage() where
+module Helium.Parser.ParseMessage() where
 
-import StaticAnalysis.Messages.Messages hiding (Message)
-import Syntax.UHA_Syntax(Range(..), Position(..))
-import qualified Utils.Texts as Texts
+import Helium.StaticAnalysis.Messages.Messages hiding (Message)
+import Helium.Syntax.UHA_Syntax(Range(..), Position(..))
+import qualified Helium.Utils.Texts as Texts
 
 import Text.ParserCombinators.Parsec.Error
 import Text.ParserCombinators.Parsec.Pos

@@ -6,11 +6,11 @@
     Portability :  portable
 -}
 
-module Main.PhaseLexer(phaseLexer) where
+module Helium.Main.PhaseLexer(phaseLexer) where
 
-import Main.CompileUtils
-import Parser.Lexer
-import Parser.LayoutRule(layout)
+import Helium.Main.CompileUtils
+import Helium.Parser.Lexer
+import Helium.Parser.LayoutRule(layout)
 
 phaseLexer :: 
    String -> String -> [Option] -> 

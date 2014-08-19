@@ -6,23 +6,23 @@
     Portability :  portable
 -}
 
-module ModuleSystem.CoreToImportEnv(getImportEnvironment) where
+module Helium.ModuleSystem.CoreToImportEnv(getImportEnvironment) where
 
 import Lvm.Core.Expr
 import Lvm.Core.Utils
-import Utils.Utils
-import StaticAnalysis.Miscellaneous.TypeConversion
-import Parser.ParseLibrary
-import Parser.Lexer(lexer)
-import Parser.Parser(type_, contextAndType)
-import ModuleSystem.ImportEnvironment
-import Syntax.UHA_Utils
+import Helium.Utils.Utils
+import Helium.StaticAnalysis.Miscellaneous.TypeConversion
+import Helium.Parser.ParseLibrary
+import Helium.Parser.Lexer(lexer)
+import Helium.Parser.Parser(type_, contextAndType)
+import Helium.ModuleSystem.ImportEnvironment
+import Helium.Syntax.UHA_Utils
 import Lvm.Common.Id
-import Syntax.UHA_Syntax
-import Parser.OperatorTable
+import Helium.Syntax.UHA_Syntax
+import Helium.Parser.OperatorTable
 import Top.Types
 import Lvm.Common.Byte(stringFromBytes)
-import Syntax.UHA_Range(makeImportRange, setNameRange)
+import Helium.Syntax.UHA_Range(makeImportRange, setNameRange)
 
 typeFromCustoms :: String -> [Custom] -> TpScheme
 typeFromCustoms n [] =

@@ -6,19 +6,19 @@
     Portability :  portable
 -}
 
-module Main.PhaseImport(phaseImport) where
+module Helium.Main.PhaseImport(phaseImport) where
 
-import Main.CompileUtils
+import Helium.Main.CompileUtils
 import qualified Lvm.Core.Expr as Core
 import qualified Lvm.Core.Utils as Core
 import Lvm.Common.Id(Id, stringFromId)
-import Syntax.UHA_Syntax
-import Syntax.UHA_Utils
-import Syntax.UHA_Range(noRange)
+import Helium.Syntax.UHA_Syntax
+import Helium.Syntax.UHA_Utils
+import Helium.Syntax.UHA_Range(noRange)
 import Lvm.Path(searchPath)
 import Lvm.Import(lvmImportDecls)
-import ModuleSystem.CoreToImportEnv(getImportEnvironment)
-import qualified ModuleSystem.ExtractImportDecls as EID
+import Helium.ModuleSystem.CoreToImportEnv(getImportEnvironment)
+import qualified Helium.ModuleSystem.ExtractImportDecls as EID
 import Data.List(isPrefixOf)
 
 phaseImport :: String -> Module -> [String] -> [Option] -> 

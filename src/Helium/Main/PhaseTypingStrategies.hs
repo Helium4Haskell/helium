@@ -6,13 +6,13 @@
     Portability :  portable
 -}
 
-module Main.PhaseTypingStrategies(phaseTypingStrategies) where
+module Helium.Main.PhaseTypingStrategies(phaseTypingStrategies) where
 
-import Main.CompileUtils
+import Helium.Main.CompileUtils
 import Lvm.Core.Expr (CoreDecl)
-import StaticAnalysis.Directives.TS_Compile (readTypingStrategiesFromFile)
+import Helium.StaticAnalysis.Directives.TS_Compile (readTypingStrategiesFromFile)
 import qualified Data.Map as M
-import Syntax.UHA_Syntax (Name)
+import Helium.Syntax.UHA_Syntax (Name)
 import Top.Types (TpScheme)
 
 phaseTypingStrategies :: String -> ImportEnvironment -> [(Name, TpScheme)] -> [Option] ->

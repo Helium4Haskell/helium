@@ -6,12 +6,12 @@
     Portability :  portable
 -}
 
-module Main.PhaseParser(phaseParser) where
+module Helium.Main.PhaseParser(phaseParser) where
 
-import Main.CompileUtils
-import Parser.LexerToken(Token)
-import Parser.Parser (module_)
-import Parser.ParseLibrary(runHParser)
+import Helium.Main.CompileUtils
+import Helium.Parser.LexerToken(Token)
+import Helium.Parser.Parser (module_)
+import Helium.Parser.ParseLibrary(runHParser)
 import Text.ParserCombinators.Parsec.Error (ParseError)
 
 phaseParser :: 

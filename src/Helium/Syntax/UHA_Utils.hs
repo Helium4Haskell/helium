@@ -9,18 +9,18 @@
     Utilities to extract data from the syntax tree
 -}
 
-module Syntax.UHA_Utils where
+module Helium.Syntax.UHA_Utils where
 
---import UHA_Range(noRange, getNameRange)
+--import Helium.UHA_Range(noRange, getNameRange)
 
-import Syntax.UHA_Range  --altered for Holmes
+import Helium.Syntax.UHA_Range  --altered for Holmes
 import Data.Maybe     --added for Holmes
-import Syntax.UHA_Syntax --added for Holmes
+import Helium.Syntax.UHA_Syntax --added for Holmes
 import Lvm.Common.Id(Id, idFromString, stringFromId)
 import Data.Char
 
 import Top.Types(isTupleConstructor)
-import Utils.Utils(internalError)
+import Helium.Utils.Utils(internalError)
 
 
 instance Eq Name where

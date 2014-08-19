@@ -6,7 +6,7 @@
     Portability :  portable
 -}
 
-module Parser.Parser
+module Helium.Parser.Parser
     ( module_, exp_, exp0, type_, atype, contextAndType
     , parseOnlyImports
     ) where
@@ -35,20 +35,20 @@ Simplified:
 
 import Control.Monad
 import qualified Control.Exception as CE (catch, IOException)
-import Parser.ParseLibrary hiding (satisfy)
+import Helium.Parser.ParseLibrary hiding (satisfy)
 import Data.Functor.Identity (Identity)
 import Text.ParserCombinators.Parsec
 import Text.Parsec.Prim (ParsecT)
-import Parser.Lexer
-import Parser.LayoutRule
-import qualified Utils.Texts as Texts
+import Helium.Parser.Lexer
+import Helium.Parser.LayoutRule
+import qualified Helium.Utils.Texts as Texts
 
-import Syntax.UHA_Syntax
-import Syntax.UHA_Utils
-import Syntax.UHA_Range
+import Helium.Syntax.UHA_Syntax
+import Helium.Syntax.UHA_Utils
+import Helium.Syntax.UHA_Range
 
-import qualified Parser.CollectFunctionBindings as CollectFunctionBindings
-import Utils.Utils
+import qualified Helium.Parser.CollectFunctionBindings as CollectFunctionBindings
+import Helium.Utils.Utils
 
 parseOnlyImports :: String -> IO [String]
 parseOnlyImports fullName = do

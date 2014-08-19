@@ -6,7 +6,7 @@
     Portability :  portable
 -}
 
-module Parser.LexerMonad
+module Helium.Parser.LexerMonad
     ( LexerMonad
     , getPos, incPos, nextPos, addPos
     , openBracket, closeBracket, checkBracketsAtEOF
@@ -15,8 +15,8 @@ module Parser.LexerMonad
     , getOpts
     ) where
 
-import Main.Args
-import Parser.LexerMessage
+import Helium.Main.Args
+import Helium.Parser.LexerMessage
 import Text.ParserCombinators.Parsec.Pos
 
 type Bracket = (SourcePos, Char)

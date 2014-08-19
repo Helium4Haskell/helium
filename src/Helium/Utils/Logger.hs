@@ -6,7 +6,7 @@
     Portability :  portable
 -}
 
-module Utils.Logger ( logger, logInternalError ) where
+module Helium.Utils.Logger ( logger, logInternalError ) where
 
 import Network
 import Control.Concurrent
@@ -15,9 +15,9 @@ import Control.Monad
 import System.Environment
 import Data.Char
 import Data.Maybe
-import Main.Args
+import Helium.Main.Args
 import System.IO
-import Main.Version
+import Helium.Main.Version
 import qualified Control.Exception as CE (catch, IOException)
 
 {-# NOTINLINE logger #-}

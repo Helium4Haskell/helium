@@ -6,11 +6,11 @@
     Portability :  portable
 -}
 
-module Main.PhaseCodeGenerator(phaseCodeGenerator) where
+module Helium.Main.PhaseCodeGenerator(phaseCodeGenerator) where
 
 import Lvm.Core.Expr(CoreModule)
-import Main.CompileUtils
-import CodeGeneration.CoreToLvm(coreToLvm)
+import Helium.Main.CompileUtils
+import Helium.CodeGeneration.CoreToLvm(coreToLvm)
 import qualified Control.Exception as CE (catch, IOException)
 
 phaseCodeGenerator :: String -> CoreModule -> [Option] -> IO ()

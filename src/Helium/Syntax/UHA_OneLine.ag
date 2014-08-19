@@ -1,13 +1,13 @@
 INCLUDE "UHA_Syntax.ag"
 
 imports{
-import Utils.OneLiner
+import Helium.Utils.OneLiner
 import Data.Char
-import Syntax.UHA_Utils (showNameAsOperator)
-import StaticAnalysis.Miscellaneous.TypeConversion
-import Syntax.UHA_Syntax
+import Helium.Syntax.UHA_Utils (showNameAsOperator)
+import Helium.StaticAnalysis.Miscellaneous.TypeConversion
+import Helium.Syntax.UHA_Syntax
 import Data.List
-import Utils.Utils (internalError, hole)
+import Helium.Utils.Utils (internalError, hole)
 }
 
 {

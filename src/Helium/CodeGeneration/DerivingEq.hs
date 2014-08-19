@@ -6,15 +6,15 @@
     Portability :  portable
 -}
 
-module CodeGeneration.DerivingEq(dataDictionary) where
+module Helium.CodeGeneration.DerivingEq(dataDictionary) where
 
-import qualified Syntax.UHA_Syntax as UHA
-import Syntax.UHA_Utils
-import CodeGeneration.CoreUtils
+import qualified Helium.Syntax.UHA_Syntax as UHA
+import Helium.Syntax.UHA_Utils
+import Helium.CodeGeneration.CoreUtils
 import Lvm.Core.Expr
 import Lvm.Core.Utils
 import Lvm.Common.Id
-import Utils.Utils
+import Helium.Utils.Utils
 
 -- Eq Dictionary for a data type declaration
 dataDictionary :: UHA.Declaration -> CoreDecl

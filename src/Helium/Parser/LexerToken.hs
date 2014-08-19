@@ -6,10 +6,10 @@
     Portability :  portable
 -}
 
-module Parser.LexerToken where
+module Helium.Parser.LexerToken where
 
 import Text.ParserCombinators.Parsec.Pos(SourcePos)
-import qualified Utils.Texts as Texts
+import qualified Helium.Utils.Texts as Texts
 
 type Token      = (SourcePos,Lexeme)
 

@@ -12,11 +12,11 @@
 	- two characters are swapped (filtre and filter)
 -}
 
-module Utils.Similarity(similar) where
+module Helium.Utils.Similarity(similar) where
 
 
 import Data.Char
-import Utils.Utils(internalError)
+import Helium.Utils.Utils(internalError)
 
 
 similar :: String -> String -> Bool

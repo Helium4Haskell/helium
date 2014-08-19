@@ -5,18 +5,18 @@
     Stability   :  experimental
     Portability :  portable
 -}
-module Main where
+module Helium.Main where
 
-import Main.Compile(compile)
-import Parser.Parser(parseOnlyImports)
+import Helium.Main.Compile(compile)
+import Helium.Parser.Parser(parseOnlyImports)
 import Control.Monad
 import System.FilePath(joinPath)
 import Data.List(nub, elemIndex, isSuffixOf, intercalate)
 import Data.Maybe(fromJust)
 import Lvm.Path(getLvmPath, splitPath)
 import System.Directory(doesFileExist, getModificationTime)
-import Main.Args
-import Main.CompileUtils
+import Helium.Main.Args
+import Helium.Main.CompileUtils
 import Data.IORef
 import Paths_helium
         

@@ -6,7 +6,7 @@
     Portability :  portable
 -}
 
-module CodeGeneration.CoreUtils
+module Helium.CodeGeneration.CoreUtils
     (   custom, customStrategy
     ,   stringToCore, coreList
     ,   let_, if_, app_, letrec_

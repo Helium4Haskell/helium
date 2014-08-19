@@ -6,15 +6,15 @@
     Portability :  portable
 -}
 
-module Main.PhaseStaticChecks(phaseStaticChecks) where
+module Helium.Main.PhaseStaticChecks(phaseStaticChecks) where
 
-import Main.CompileUtils
-import StaticAnalysis.Messages.Warnings(Warning)
-import qualified StaticAnalysis.StaticChecks.StaticChecks as SC
-import Syntax.UHA_Syntax (Name)
+import Helium.Main.CompileUtils
+import Helium.StaticAnalysis.Messages.Warnings(Warning)
+import qualified Helium.StaticAnalysis.StaticChecks.StaticChecks as SC
+import Helium.Syntax.UHA_Syntax (Name)
 import Top.Types (TpScheme)
-import StaticAnalysis.Messages.StaticErrors
-import StaticAnalysis.Messages.Information (showInformation)
+import Helium.StaticAnalysis.Messages.StaticErrors
+import Helium.StaticAnalysis.Messages.Information (showInformation)
 
 phaseStaticChecks :: 
    String -> Module -> [ImportEnvironment] -> [Option] -> 

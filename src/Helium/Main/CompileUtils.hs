@@ -6,26 +6,26 @@
     Portability :  portable
 -}
 
-module Main.CompileUtils
-    ( module Main.CompileUtils
+module Helium.Main.CompileUtils
+    ( module Helium.Main.CompileUtils
     , Option(..)
     , splitFilePath, combinePathAndFile
     , when, unless
     , exitWith, ExitCode(..), getArgs
-    , module ModuleSystem.ImportEnvironment
+    , module Helium.ModuleSystem.ImportEnvironment
     , Module(..)
     ) where
 
-import Main.Args(Option(..))
-import StaticAnalysis.Messages.Messages(HasMessage)
-import StaticAnalysis.Messages.HeliumMessages(sortAndShowMessages)
+import Helium.Main.Args(Option(..))
+import Helium.StaticAnalysis.Messages.Messages(HasMessage)
+import Helium.StaticAnalysis.Messages.HeliumMessages(sortAndShowMessages)
 import Control.Monad(when, unless)
-import Utils.Utils(splitFilePath, combinePathAndFile)
+import Helium.Utils.Utils(splitFilePath, combinePathAndFile)
 import System.Exit(exitWith, ExitCode(..))
 import System.Environment(getArgs)
-import Utils.Logger
-import ModuleSystem.ImportEnvironment
-import Syntax.UHA_Syntax(Module(..))
+import Helium.Utils.Logger
+import Helium.ModuleSystem.ImportEnvironment
+import Helium.Syntax.UHA_Syntax(Module(..))
 import Data.Maybe
 import Lvm.Path(searchPathMaybe)
 import System.Process(system)

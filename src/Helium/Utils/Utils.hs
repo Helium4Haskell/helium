@@ -8,14 +8,14 @@
 	Some Prelude-like functions
 -}
 
-module Utils.Utils where
+module Helium.Utils.Utils where
 
 import Data.IORef
 
 import GHC.IO (unsafePerformIO)
 import Data.List (group, groupBy, sort, elemIndex)
 import qualified Control.Exception as CE (catch, IOException)
-import Utils.Logger
+import Helium.Utils.Logger
 
 
 -- | Concrete representation of holes

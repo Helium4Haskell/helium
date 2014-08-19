@@ -6,23 +6,23 @@
     Portability :  portable
 -}
 
-module Main.Compile where
+module Helium.Main.Compile where
 
-import Main.PhaseLexer
-import Main.PhaseParser
-import Main.PhaseImport
-import Main.PhaseResolveOperators
-import Main.PhaseStaticChecks
-import Main.PhaseKindInferencer
-import Main.PhaseTypingStrategies
-import Main.PhaseTypeInferencer
-import Main.PhaseDesugarer
-import Main.PhaseCodeGenerator
-import Main.CompileUtils
-import Utils.Utils
+import Helium.Main.PhaseLexer
+import Helium.Main.PhaseParser
+import Helium.Main.PhaseImport
+import Helium.Main.PhaseResolveOperators
+import Helium.Main.PhaseStaticChecks
+import Helium.Main.PhaseKindInferencer
+import Helium.Main.PhaseTypingStrategies
+import Helium.Main.PhaseTypeInferencer
+import Helium.Main.PhaseDesugarer
+import Helium.Main.PhaseCodeGenerator
+import Helium.Main.CompileUtils
+import Helium.Utils.Utils
 import qualified Control.Exception as CE (catch, IOException)
 import Data.IORef
-import StaticAnalysis.Messages.StaticErrors(errorsLogCode)
+import Helium.StaticAnalysis.Messages.StaticErrors(errorsLogCode)
 
 compile :: String -> String -> [Option] -> [String] -> [String] -> IO ()
 compile basedir fullName options lvmPath doneModules =

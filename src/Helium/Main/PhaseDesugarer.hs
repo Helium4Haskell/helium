@@ -6,17 +6,17 @@
     Portability :  portable
 -}
 
-module Main.PhaseDesugarer(phaseDesugarer) where
+module Helium.Main.PhaseDesugarer(phaseDesugarer) where
 
-import Main.CompileUtils
+import Helium.Main.CompileUtils
 import Text.PrettyPrint.Leijen
 import Lvm.Core.Expr(CoreModule, CoreDecl)
 import Lvm.Core.RemoveDead( coreRemoveDead ) -- remove dead (import) declarations
-import Syntax.UHA_Syntax(Name(..), MaybeName(..))
-import Syntax.UHA_Range(noRange)
-import ModuleSystem.ImportEnvironment()
-import ModuleSystem.DictionaryEnvironment (DictionaryEnvironment)
-import qualified CodeGeneration.CodeGeneration as CodeGeneration
+import Helium.Syntax.UHA_Syntax(Name(..), MaybeName(..))
+import Helium.Syntax.UHA_Range(noRange)
+import Helium.ModuleSystem.ImportEnvironment()
+import Helium.ModuleSystem.DictionaryEnvironment (DictionaryEnvironment)
+import qualified Helium.CodeGeneration.CodeGeneration as CodeGeneration
 
 phaseDesugarer :: DictionaryEnvironment -> 
                   String -> Module -> [CoreDecl] -> 

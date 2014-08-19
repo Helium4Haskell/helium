@@ -6,16 +6,16 @@
     Portability :  portable
 -}
 
-module Parser.ParseLibrary where 
+module Helium.Parser.ParseLibrary where 
 
 import Text.ParserCombinators.Parsec hiding (satisfy)
 import Text.ParserCombinators.Parsec.Pos(newPos)
 import Data.Functor.Identity (Identity)
 import Text.Parsec.Prim (ParsecT)
-import Parser.Lexer
-import Utils.Utils (hole)
-import Syntax.UHA_Syntax(Name(..), Range(..), Position(..))
-import qualified Utils.Texts as Texts
+import Helium.Parser.Lexer
+import Helium.Utils.Utils (hole)
+import Helium.Syntax.UHA_Syntax(Name(..), Range(..), Position(..))
+import qualified Helium.Utils.Texts as Texts
 
 
 type HParser a = GenParser Token SourcePos a

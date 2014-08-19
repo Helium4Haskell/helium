@@ -7,7 +7,7 @@
 
 -}
 
-module Main.Args
+module Helium.Main.Args
     ( Option(..)
     , processHeliumArgs
     , processRunHeliumArgs
@@ -24,7 +24,7 @@ module Main.Args
     ) where
 
 import System.Exit
-import Main.Version
+import Helium.Main.Version
 import Data.Maybe
 import Control.Monad(when)
 import System.Console.GetOpt

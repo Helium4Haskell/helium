@@ -6,7 +6,7 @@
     Portability :  portable
 -}
 
-module CodeGeneration.CoreToLvm ( coreToLvm ) where
+module Helium.CodeGeneration.CoreToLvm ( coreToLvm ) where
 
 import Lvm.Core.Expr  (CoreModule)
 import Lvm.Common.Id  (newNameSupply)
