@@ -11,9 +11,10 @@
 
 module Main where
 
-import Data.Maybe(fromJust)
+import Data.Maybe(fromMaybe)
 import Data.List(intercalate)
 import System.Environment(getArgs)
+import System.FilePath(joinPath)
 import System.Process(system)
 import System.Exit(ExitCode(..))
 import System.Directory(findExecutable,getTemporaryDirectory)
@@ -63,7 +64,9 @@ main = do
     args <- getArgs
     
     -- Delete empty option strings since they screw things up
-    (options, lvmFilename) <- processRunHeliumArgs ((filter (/= "") configOptions) ++ args) -- args take precedence over config file
+    (options, srcFilename) <- processRunHeliumArgs ((filter (/= "") configOptions) ++ args) -- args take precedence over config file
+    let (fpath,filename,_) =  splitFilePath (fromMaybe "" srcFilename)
+    let lvmFilename = joinPath [fpath, filename ++ ".lvm"]
     
     -- We can now assume the options are correct, and if maybeFileName is a Just, then we load this as file.
     -- This might fail as an ordinary load might. 
@@ -76,23 +79,33 @@ main = do
          State { tempDir = slashify tempDirFromEnv
                , maybeModName = Nothing
                , maybeFileName = Nothing        
-               , compOptions = ["-P"++baseLibs] -- Only -P is needed for lvmrun
+               , compOptions = ["-P" ++ baseLibs] -- Only -P is needed for lvmrun
                }                     
 
     -- Enter read-eval-print loop
-    executeModule (fromJust lvmFilename) initialState
+    executeModule lvmFilename initialState
 
     return ()
 
 executeModule :: String -> State -> IO ()
 executeModule fileName state = do
-    let invocation = "\"" ++ "lvmrun\" " ++ (intercalate " " (compOptions state)) ++ " \""++ fileName ++ "\""
+    let invocation = "\"" ++ "lvmrun\" " ++ (intercalate " " (compOptions state)) ++ " "++ fileName
     _ <- sys invocation
     return ()
+
+-- Split file name
+-- e.g. /docs/haskell/Hello.hs =>
+--   filePath = /docs/haskell  baseName = Hello  ext = hs
+splitFilePath :: String -> (String, String, String)
+splitFilePath filePath = 
+    let slashes = "\\/"
+        (revFileName, revPath) = span (`notElem` slashes) (reverse filePath)
+        (baseName, ext)  = span (/= '.') (reverse revFileName)
+    in (reverse revPath, baseName, dropWhile (== '.') ext)
 
 -- Local sys in case we want to impose additional side effects
 sys :: String -> IO ExitCode
 sys s = do
-    -- putStrLn ("System:" ++ s)
+    putStrLn ("System:" ++ s)
     system s
 

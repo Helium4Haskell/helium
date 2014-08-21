@@ -125,9 +125,10 @@ basicProcessArgs defaults args =
         else
             do
               let simpleOptions = simplifyOptions (defaults ++ options)
-              when (Verbose `elem` simpleOptions) $
+                  argument = if null arguments then Nothing else Just (head arguments)
+              when (Verbose `elem` simpleOptions) $ do
                 mapM_ putStrLn ("Options after simplification: " : (map show simpleOptions))
-              let argument = if null arguments then Nothing else Just (head arguments)
+                putStrLn ("Argument: " ++ show argument)
               return (simpleOptions, argument)
 
 optionDescription :: Bool -> Bool -> [OptDescr Option]
