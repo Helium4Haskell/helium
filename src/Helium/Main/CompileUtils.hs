@@ -28,6 +28,7 @@ import Helium.ModuleSystem.ImportEnvironment
 import Helium.Syntax.UHA_Syntax(Module(..))
 import Data.Maybe
 import Lvm.Path(searchPathMaybe)
+import System.FilePath (joinPath)
 import System.Process(system)
 
 type Phase err a = IO (Either [err] a)
@@ -85,7 +86,7 @@ makeCoreLib basepath name =
         Nothing -> do
                      maybeCoreName <- searchPathMaybe bps ".core" name
                      case maybeCoreName of
-                       Just _ -> sys ("cd " ++ basepath ++" && coreasm " ++ name)
+                       Just _  -> sys ("coreasm " ++ joinPath [basepath, name])
                        Nothing -> do 
                                     putStr
                                       (  "Cannot find "
