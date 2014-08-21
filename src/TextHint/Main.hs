@@ -338,7 +338,7 @@ compileModule fileName options state = do
     let outputFilePath = tempDir state ++ outputFileName
     -- putStrLn (fileName ++ "." ++ options ++ "." ++ unwords (compOptions state))
     -- mapM putStrLn (compOptions state)
-    let heliumInvocation = "\"" ++ "helium\" " ++ " " ++ unwords (compOptions state) 
+    let heliumInvocation = "helium " ++ unwords (compOptions state) 
                                 ++ " " ++ options ++ " " ++ fileName
     setPreviousInvocation heliumInvocation outputFilePath
     execCompileModule heliumInvocation outputFilePath
@@ -371,7 +371,7 @@ lvmOptionsFilter opts =
 
 executeModule :: String -> State -> IO ()
 executeModule fileName state = do
-    let invocation = "\"" ++ lvmrun ++ "\" " ++ lvmOptionsFilter (compOptions state) ++ " \""++ fileName ++ "\""
+    let invocation = lvmrun ++ " " ++ lvmOptionsFilter (compOptions state) ++ " "++ fileName
     _ <- sys invocation
     return ()
 

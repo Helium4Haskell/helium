@@ -24,6 +24,7 @@ module Helium.Main.Args
     ) where
 
 import System.Exit
+import System.FilePath
 import Helium.Main.Version
 import Data.Maybe
 import Control.Monad(when)
@@ -57,7 +58,7 @@ simplifyOptions ops =
           where
             -- Assumes the options are in reverse order, and also reverses them.
             -- Collects several LvmPath options into one
-            collectPaths [] paths newops       = LvmPath (unwordsBy ":" paths) : newops
+            collectPaths [] paths newops       = LvmPath (unwordsBy [searchPathSeparator] paths) : newops
             collectPaths (LvmPath path : rest) paths newops
                                                = collectPaths rest (path : paths) newops
             collectPaths (opt : rest) paths newops
