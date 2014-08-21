@@ -97,8 +97,8 @@ main = do
     -- This might fail as an ordinary load might. 
 
     baseLibs <- if overloadingFromOptions options 
-                then getDataFileName "lib/" 
-                else getDataFileName "lib/simple/" -- Where the base libs are.
+                then getDataFileName (slashify "lib") 
+                else getDataFileName ((slashify "lib") ++ (slashify "simple")) -- Where the base libs are.
 
     let initialState = 
          State { tempDir = slashify tempDirFromEnv
@@ -121,13 +121,6 @@ main = do
     _ <- loop stateAfterLoad
 
     return ()
-
-addSlashIfNeeded :: String -> String
-addSlashIfNeeded dir = 
-    case reverse dir of
-        '/' : _ -> dir
-        '\\' : _ -> dir
-        _ -> dir ++ [slash] -- "\\" for Windows, "/" for UNIX
 
 loop :: State -> IO State
 loop state = do

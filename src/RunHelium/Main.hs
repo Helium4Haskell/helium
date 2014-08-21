@@ -68,9 +68,9 @@ main = do
     -- We can now assume the options are correct, and if maybeFileName is a Just, then we load this as file.
     -- This might fail as an ordinary load might. 
 
-    baseLibs <- if overloadingFromOptions options 
-                then getDataFileName "lib/" 
-                else getDataFileName "lib/simple/" -- Where the base libs are.
+    baseLibs <- if overloadingFromOptions options
+                then getDataFileName (slashify "lib")
+                else getDataFileName ((slashify "lib") ++ (slashify "simple")) -- Where the base libs are.
 
     let initialState = 
          State { tempDir = slashify tempDirFromEnv
