@@ -106,6 +106,6 @@ splitFilePath filePath =
 -- Local sys in case we want to impose additional side effects
 sys :: String -> IO ExitCode
 sys s = do
-    putStrLn ("System:" ++ s)
+    -- putStrLn ("System:" ++ s)
     system s
 
