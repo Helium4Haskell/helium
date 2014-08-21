@@ -13,7 +13,7 @@ import Control.Monad
 import System.FilePath(joinPath)
 import Data.List(nub, elemIndex, isSuffixOf, intercalate)
 import Data.Maybe(fromJust)
-import Lvm.Path(getLvmPath, splitPath)
+import Lvm.Path(explodePath,getLvmPath)
 import System.Directory(doesFileExist, getModificationTime)
 import Helium.Main.Args
 import Helium.Main.CompileUtils
@@ -35,7 +35,7 @@ main = do
     
     lvmPathFromOptionsOrEnv <- case lvmPathFromOptions options of 
         Nothing -> getLvmPath
-        Just s  -> return (splitPath s)
+        Just s  -> return (explodePath s)
     
     -- Choose the right libraries to use based on whether overloading is turned off or on
     baseLibs <- if overloadingFromOptions options then getDataFileName "lib" else getDataFileName (joinPath ["lib","simple"])

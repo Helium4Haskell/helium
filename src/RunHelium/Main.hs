@@ -16,7 +16,7 @@ import Data.List(intercalate)
 import System.Environment(getArgs)
 import System.Process(system)
 import System.Exit(ExitCode(..))
-import System.Directory(findExecutable)
+import System.Directory(findExecutable,getTemporaryDirectory)
 import System.Exit(exitWith)
 
 import Helium.Utils.OSSpecific(slash)
@@ -53,9 +53,9 @@ main = do
     configFullname <- getDataFileName configFilename
     configInfo <-
         readConfig configFullname
-    let tempDirFromEnv = case lookup temppathKey configInfo of
-                           Nothing -> "."
-                           Just xs -> xs
+    tempDirFromEnv <- case lookup temppathKey configInfo of
+                           Nothing -> getTemporaryDirectory
+                           Just xs -> return xs
     let configOptions  = extractOptions configInfo
     
     -- Load command-line parameter module

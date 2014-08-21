@@ -81,9 +81,11 @@ main = do
     configFullname <- getDataFileName configFilename
     configInfo <-
         readConfig configFullname
-    let tempDirFromEnv = case lookup temppathKey configInfo of
-                           Nothing -> "."
-                           Just xs -> xs
+        
+    tempDirFromEnv <- case lookup temppathKey configInfo of
+                           Nothing -> getTemporaryDirectory
+                           Just xs -> return xs
+                           
     let configOptions  = extractOptions configInfo
     
     -- Load command-line parameter module
