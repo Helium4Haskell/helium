@@ -19,11 +19,10 @@ import Data.IORef       ( IORef, readIORef, newIORef, writeIORef )
 import System.IO.Unsafe ( unsafePerformIO )
 import System.Environment(getArgs)
 import System.Process(system)
+import System.FilePath
 import System.Exit(exitWith, ExitCode(..))
 import System.Directory
 import qualified Control.Exception as CE (catch, IOException)
-
-import Helium.Utils.OSSpecific(slash)
 import Helium.Main.Args
 import TextHint.ConfigFile(readConfig, extractOptions, configFilename, 
                            temppathKey, trim)
@@ -63,7 +62,7 @@ header = unlines
 
 
 slashify :: String -> String
-slashify xs = if last xs == slash then xs else xs ++ [slash]
+slashify xs = if last xs == pathSeparator then xs else xs ++ [pathSeparator]
 
 lvmrun :: String
 lvmrun = "lvmrun"

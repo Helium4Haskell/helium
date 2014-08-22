@@ -166,7 +166,6 @@ Library
     Helium.Syntax.UHA_Syntax
     Helium.Syntax.UHA_Utils
     Helium.Utils.Logger
-    Helium.Utils.OSSpecific
     Helium.Utils.OneLiner
     Helium.Utils.Similarity
     Helium.Utils.Texts

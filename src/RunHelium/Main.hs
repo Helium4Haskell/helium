@@ -14,13 +14,11 @@ module Main where
 import Data.Maybe(fromMaybe)
 import Data.List(intercalate)
 import System.Environment(getArgs)
-import System.FilePath(joinPath)
+import System.FilePath(joinPath, pathSeparator)
 import System.Process(system)
 import System.Exit(ExitCode(..))
 import System.Directory(findExecutable,getTemporaryDirectory)
 import System.Exit(exitWith)
-
-import Helium.Utils.OSSpecific(slash)
 import Helium.Main.Args
 import TextHint.ConfigFile(readConfig, extractOptions, configFilename, 
                            temppathKey)
@@ -39,7 +37,7 @@ lvmrun :: String
 lvmrun = "lvmrun"
 
 slashify :: String -> String
-slashify xs = if last xs == slash then xs else xs ++ [slash]
+slashify xs = if last xs == pathSeparator then xs else xs ++ [pathSeparator]
 
 main :: IO ()
 main = do
