@@ -15,8 +15,8 @@ import Data.IORef
 import GHC.IO (unsafePerformIO)
 import Data.List (group, groupBy, sort, elemIndex)
 import qualified Control.Exception as CE (catch, IOException)
+import System.FilePath
 import Helium.Utils.Logger
-
 
 -- | Concrete representation of holes
 hole :: String
@@ -91,7 +91,7 @@ combinePathAndFile :: String -> String -> String
 combinePathAndFile path file =
     case path of 
         "" -> file
-        _  -> path ++ "/" ++ file
+        _  -> path ++ [pathSeparator] ++ file
         
 -- Split file name
 -- e.g. /docs/haskell/Hello.hs =>
