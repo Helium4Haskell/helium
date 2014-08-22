@@ -38,7 +38,10 @@ main = do
         Just s  -> return (explodePath s)
     
     -- Choose the right libraries to use based on whether overloading is turned off or on
-    baseLibs <- if overloadingFromOptions options then getDataFileName "lib" else getDataFileName (joinPath ["lib","simple"])
+    baseLibs <- getDataFileName $ 
+       if overloadingFromOptions options 
+       then "lib" 
+       else joinPath ["lib","simple"]
     
     let (filePath, moduleName, _) = splitFilePath fullName
         filePath' = if null filePath then "." else filePath
@@ -133,7 +136,7 @@ make basedir fullName lvmPath chain options doneRef =
             upToDate <- upToDateCheck (combinePathAndFile filePath moduleName)
             newDone <- readIORef doneRef
             isRecompiled <- 
-                if  any (==True) compileResults || 
+                if or compileResults || 
                     BuildAll `elem` options || 
                     (BuildOne `elem` options && moduleName == head chain) ||
                     not upToDate 

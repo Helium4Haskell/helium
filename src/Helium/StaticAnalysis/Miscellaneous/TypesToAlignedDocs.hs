@@ -83,11 +83,11 @@ rec_ :: (Int -> Bool) -> Tps -> [PPrint.Doc]
 rec_ predicate tps = 
    let docs  = typesToAlignedDocs tps     
        bools = map (predicate . priorityOfType) tps
-       maybeParenthesize (b, doc) 
+       maybeParenthesize b doc
           | b         = PPrint.parens doc
           | or bools  = doc <> PPrint.text "  "
           | otherwise = doc
-   in map maybeParenthesize (zip bools docs)
+   in zipWith maybeParenthesize bools docs
 
 --showTwoTypesSpecial (t1,t2) = 
 --   let [d1,d2] = typesToAlignedDocs [t1,t2]

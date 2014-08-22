@@ -15,7 +15,7 @@ import Helium.Syntax.UHA_Syntax
 import Helium.Syntax.UHA_Range
 import Helium.StaticAnalysis.Messages.Messages
 import Data.List        (nub, intersperse, sort, partition)
-import Data.Maybe       (fromJust)
+import Data.Maybe
 import Helium.Utils.Utils       (commaList, internalError, maxInt)
 
 import Top.Types
@@ -185,17 +185,17 @@ showError anError = case anError of
       )
       
    OverloadingDisabled _ ->
-      ( MessageString ("Cannot handle contexts when overloading is disabled")
+      ( MessageString "Cannot handle contexts when overloading is disabled"
       , []
       )
 
    WrongOverloadingFlag False ->
-      ( MessageString ("Using overloaded Prelude while overloading is not enabled")
+      ( MessageString "Using overloaded Prelude while overloading is not enabled"
       , [MessageString "Compile with --overloading, or use the simple Prelude"]
       )
 
    WrongOverloadingFlag True ->
-      ( MessageString ("Using simple Prelude while overloading is enabled")
+      ( MessageString "Using simple Prelude while overloading is enabled"
       , [MessageString "Compile without --overloading, or use the overloaded Prelude"]
       )
       
@@ -221,7 +221,7 @@ showError anError = case anError of
         in [ MessageCompose
             [ MessageString "There "
             , MessageString ( if length tps == 1 then "is " else "are ")
-            , MessageString ("no " ++ (show name) ++ " instance")
+            , MessageString ("no " ++ show name ++ " instance")
             , MessageString ( if length tps == 1 then " " else "s ")
             , MessageString "for "
             , msg
@@ -289,7 +289,7 @@ errorLogCode anError = case anError of
           NonDerivableClass _     -> "nd"
           CannotDerive _ _        -> "cd"
           TupleTooBig _           -> "tt"
-   where code entity = maybe "??" id
+   where code entity = fromMaybe "??"
                      . lookup entity 
                      $ [ (TypeSignature    ,"ts"), (TypeVariable         ,"tv"), (TypeConstructor,"tc")
                        , (Definition       ,"de"), (Constructor          ,"co"), (Variable       ,"va") 

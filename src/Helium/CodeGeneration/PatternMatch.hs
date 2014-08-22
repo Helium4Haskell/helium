@@ -78,8 +78,7 @@ patternToCore' (name, pat) continue nr =
                     (idFromName n) (Core.Var name) 
                     expr
 
-        Pattern_Wildcard _ -> withNr nr $
-            continue
+        Pattern_Wildcard _ -> withNr nr continue
                 
         -- case _u1 of 42 -> ...
         --             _  -> _next        

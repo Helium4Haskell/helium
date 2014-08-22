@@ -20,9 +20,9 @@ decls = decls' . mergeFeedback
 
 mergeFeedback :: Declarations -> Declarations
 mergeFeedback [] = []
-mergeFeedback ((Declaration_FunctionBindings _ [FunctionBinding_Feedback rfb fb _]):ds) =
+mergeFeedback (Declaration_FunctionBindings _ [FunctionBinding_Feedback rfb fb _]:ds) =
     case mergeFeedback ds of
-      ((Declaration_FunctionBindings rdcls (funb : fbs)) : mds) ->
+      Declaration_FunctionBindings rdcls (funb : fbs) : mds ->
           Declaration_FunctionBindings
             (mergeRanges rfb rdcls)
             (FunctionBinding_Feedback (mergeRanges rfb $ rangeOfFunctionBinding funb) fb funb : fbs) : mds

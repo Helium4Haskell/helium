@@ -118,7 +118,7 @@ showConstructor c ts -- name of constructor and paramater types
     | otherwise =
         Ap (Var (idFromString "$primConcat")) $ coreList 
             (  (if null ts then [] else [stringToCore "("])
-            ++ ((if isConOp then parens else id) [stringToCore name])
+            ++ (if isConOp then parens else id) [stringToCore name]
             ++ concat
                    [ [stringToCore " ", Ap (showFunctionOfType False t) (Var (idFromNumber i))]
                    | (t, i) <- zip ts [1..] 
@@ -135,7 +135,7 @@ showConstructor c ts -- name of constructor and paramater types
 -- using showPolymorphic. Otherwise, a show function for the type variable
 -- should be available
 showFunctionOfType :: Bool -> UHA.Type -> Expr
-showFunctionOfType isMainType ty = sFOT ty
+showFunctionOfType isMainType = sFOT
   where
     sFOT t = 
       case t of

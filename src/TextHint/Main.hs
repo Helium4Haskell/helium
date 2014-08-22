@@ -20,12 +20,11 @@ import System.IO.Unsafe ( unsafePerformIO )
 import System.Environment(getArgs)
 import System.Process(system)
 import System.FilePath
-import System.Exit(exitWith, ExitCode(..))
+import System.Exit
 import System.Directory
 import qualified Control.Exception as CE (catch, IOException)
 import Helium.Main.Args
-import TextHint.ConfigFile(readConfig, extractOptions, configFilename, 
-                           temppathKey, trim)
+import TextHint.ConfigFile
 import Paths_helium
 
 data State = 
@@ -92,20 +91,21 @@ main = do
     args <- getArgs
     
     -- Delete empty option strings since they screw things up
-    (options, maybeFilename) <- processTexthintArgs ((filter (/= "") configOptions) ++ args) -- args take precedence over config file
+    (options, maybeFilename) <- processTexthintArgs (filter (/= "") configOptions ++ args) -- args take precedence over config file
     
     -- We can now assume the options are correct, and if maybeFileName is a Just, then we load this as file.
     -- This might fail as an ordinary load might. 
 
-    baseLibs <- if overloadingFromOptions options 
-                then getDataFileName (slashify "lib") 
-                else getDataFileName ((slashify "lib") ++ (slashify "simple")) -- Where the base libs are.
+    baseLibs <- getDataFileName $ 
+       if overloadingFromOptions options 
+       then slashify "lib"
+       else slashify "lib" ++ slashify "simple" -- Where the base libs are.
 
     let initialState = 
          State { tempDir = slashify tempDirFromEnv
                , maybeModName = Nothing
                , maybeFileName = Nothing        
-               , compOptions = ("-P"++baseLibs):(map show options) -- -P is needed for lvmrun
+               , compOptions = ("-P"++baseLibs): map show options -- -P is needed for lvmrun
                }                     
 
     stateAfterLoad <-
@@ -135,7 +135,7 @@ loop state = do
         (':':_) -> do
             putStrLn "Expecting command after colon. Type :? for help"
             return state
-        expression -> do
+        expression ->
             if null expression 
               then return state
               else processExpression expression state
@@ -157,7 +157,7 @@ processCommand cmd rest state =
         'h' -> cmdHelp              state
         '?' -> cmdHelp              state
         'q' -> do   putStrLn "[Leaving texthint]"
-                    exitWith ExitSuccess
+                    exitSuccess
         _   -> do   putStrLn "Command not recognised.  Type :? for help"
                     return state
 
@@ -390,9 +390,7 @@ expressionModule expression state =
     )
     
 sys :: String  -> IO ExitCode
-sys s = do
-    -- putStrLn ("System:" ++ s)
-    system s
+sys = system
        
 ------------------------
 -- Remove evidence 
@@ -485,9 +483,9 @@ alertESCAPABLES = ['"', escapeChar]
 escape :: [Char] -> String -> String
 escape _          []     = []
 escape escapables (x:xs) = 
-    if (x `elem` escapables) 
+    if x `elem` escapables
       then escapeChar : rest 
       else rest
     where 
-      rest = x:(escape escapables xs)
+      rest = x : escape escapables xs
 

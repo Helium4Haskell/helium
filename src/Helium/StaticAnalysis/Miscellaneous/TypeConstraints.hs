@@ -95,8 +95,7 @@ infix 3 .==., .===., .::., .:::., !::!, !:::!, .<=., .<==., !<=!, !<==!
 
 lift :: Ord k => (a1 -> t1 -> t2 -> a) -> M.Map k a1
                  -> M.Map k [(t, t1)] -> (t -> t2) -> ([a], M.Map k [(t, t1)])
-lift combinator = 
-    \as bs cf -> 
+lift combinator as bs cf =
        let constraints = concat (M.elems (M.intersectionWith f as bs))
            rest        = bs M.\\ as
            f a list    = [ (a `combinator` b) (cf name) | (name,b) <- list ]
@@ -139,11 +138,11 @@ tp .::. ts = tp .<=. SigmaScheme ts
 (!<=!) ms t1 t2 info = TC3 (Implicit t1 (ms, t2) info)
 
 (!<==!) :: (Show info, Ord key) => Tps -> M.Map key Tp -> M.Map key [(key,Tp)] -> (key -> info) -> ([TypeConstraint info], M.Map key [(key,Tp)])
-(!<==!) ms = lift (flip ((!<=!) ms)) 
+(!<==!) ms = lift (ms !<=!)
 
 genConstraints :: Tps -> (key -> info) -> [(Int, (key, Tp))] -> TypeConstraints info
 genConstraints monos infoF =
-   let f (sv, (key, tp)) = TC3 (Generalize sv (monos, tp) (infoF key)) 
+   let f (sv, (key, tp)) = TC3 (Generalize sv (monos, tp) (infoF key))
    in map f
 
 predicate :: Predicate -> info -> TypeConstraint info

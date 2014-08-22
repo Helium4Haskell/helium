@@ -1091,7 +1091,7 @@ type_ = addRange (
         left <- btype
         option (\_ -> left) $
             do
-                (_, rangeArrow) <- withRange (lexRARROW)
+                (_, rangeArrow) <- withRange lexRARROW
                 right <- type_
                 return (\r -> Type_Application r False
                         (Type_Constructor rangeArrow (Name_Special rangeArrow [] "->")) [left, right]) -- !!!Name

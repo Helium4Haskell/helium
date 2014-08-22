@@ -257,7 +257,7 @@ braces = between lexLBRACE lexRBRACE
 
 lexeme :: Lexeme -> HParser ()
 lexeme theLexeme
-  = satisfy (\lex' -> if (theLexeme == lex') then Just () else Nothing) <?> show theLexeme
+  = satisfy (\lex' -> if theLexeme == lex' then Just () else Nothing) <?> show theLexeme
 
 
 lexChar :: HParser String

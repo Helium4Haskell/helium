@@ -106,7 +106,7 @@ constraintFromUser path =
          case [ tuple | tuple@(EdgeId _ _ cNR, _) <- edges, Just cNR == bestEdge ] of
             [] -> return Nothing
             (edgeID, info):_ -> 
-               let (groupID, number) = maybe (0, 0) id (maybeUserConstraint info)
+               let (groupID, number) = fromMaybe (0, 0) (maybeUserConstraint info)
                    otherEdges = let p info' =
                                        case maybeUserConstraint info' of
                                           Just (a, b) -> a == groupID && b > number

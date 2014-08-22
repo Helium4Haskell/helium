@@ -12,16 +12,13 @@
 module Main where
 
 import Data.Maybe(fromMaybe)
-import Data.List(intercalate)
 import System.Environment(getArgs)
 import System.FilePath(joinPath, pathSeparator)
 import System.Process(system)
-import System.Exit(ExitCode(..))
+import System.Exit
 import System.Directory(findExecutable,getTemporaryDirectory)
-import System.Exit(exitWith)
 import Helium.Main.Args
-import TextHint.ConfigFile(readConfig, extractOptions, configFilename, 
-                           temppathKey)
+import TextHint.ConfigFile
 import Paths_helium
 
 data State = 
@@ -62,16 +59,17 @@ main = do
     args <- getArgs
     
     -- Delete empty option strings since they screw things up
-    (options, srcFilename) <- processRunHeliumArgs ((filter (/= "") configOptions) ++ args) -- args take precedence over config file
+    (options, srcFilename) <- processRunHeliumArgs (filter (/= "") configOptions ++ args) -- args take precedence over config file
     let (fpath,filename,_) =  splitFilePath (fromMaybe "" srcFilename)
     let lvmFilename = joinPath [fpath, filename ++ ".lvm"]
     
     -- We can now assume the options are correct, and if maybeFileName is a Just, then we load this as file.
     -- This might fail as an ordinary load might. 
 
-    baseLibs <- if overloadingFromOptions options
-                then getDataFileName (slashify "lib")
-                else getDataFileName ((slashify "lib") ++ (slashify "simple")) -- Where the base libs are.
+    baseLibs <- getDataFileName $ 
+       if overloadingFromOptions options
+       then slashify "lib"
+       else slashify "lib" ++ slashify "simple" -- Where the base libs are.
 
     let initialState = 
          State { tempDir = slashify tempDirFromEnv
@@ -87,7 +85,7 @@ main = do
 
 executeModule :: String -> State -> IO ()
 executeModule fileName state = do
-    let invocation = "\"" ++ "lvmrun\" " ++ (intercalate " " (compOptions state)) ++ " "++ fileName
+    let invocation = "\"" ++ "lvmrun\" " ++ unwords (compOptions state) ++ " "++ fileName
     _ <- sys invocation
     return ()
 
@@ -103,7 +101,5 @@ splitFilePath filePath =
 
 -- Local sys in case we want to impose additional side effects
 sys :: String -> IO ExitCode
-sys s = do
-    -- putStrLn ("System:" ++ s)
-    system s
+sys = system
 

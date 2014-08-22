@@ -30,7 +30,7 @@ import Top.Interface.Substitution (unificationErrorLabel)
 import Top.Interface.TypeInference
 import Helium.Utils.Utils (internalError)
 import Data.Maybe
--- import Data.Char
+import Data.Function
 import Data.List
 
 data ConstraintInfo =
@@ -96,7 +96,7 @@ maybeHead []    = Nothing
 maybeHead (a:_) = Just a
 
 headWithDefault :: a -> [a] -> a
-headWithDefault a = maybe a id . maybeHead
+headWithDefault a = fromMaybe a . maybeHead
 
 maybeReductionErrorPredicate :: HasProperties a => a -> Maybe Predicate
 maybeReductionErrorPredicate a = 
@@ -192,7 +192,7 @@ variableConstraint :: String -> UHA_Source -> Properties -> ConstraintInfo
 variableConstraint theLocation theSource theProperties =
   CInfo_ { location   = theLocation
          , sources    = (theSource, Nothing)
-         , localInfo  = root (LocalInfo { self = theSource, assignedType = Nothing {- ?? -}, monos = [] }) []
+         , localInfo  = root LocalInfo { self = theSource, assignedType = Nothing {- ?? -}, monos = [] } []
          , properties = theProperties
          , errorMessage = Nothing
          }               
@@ -294,16 +294,16 @@ makeTypeErrors options classEnv synonyms sub errors =
        --   | l1 `elem` tooGeneralLabels && l2 `elem` tooGeneralLabels = EQ
        --   | otherwise = l1 `compare` l2
    
-       list  = groupBy (\x y -> snd x == snd y) 
-             $ sortBy  (\x y -> snd x `compare` snd y)
+       list  = groupBy ((==) `on` snd) 
+             $ sortBy  (compare `on` snd)
              $ (if NoOverloadingTypeCheck `elem` options 
                 then filter ((/= ambiguousLabel) . snd) 
                 else id)
-             $ errors
-       final = groupBy (\x y -> fst x == fst y) 
-             $ sortBy  (\x y -> fst x `compare` fst y) 
+               errors
+       final = groupBy ((==) `on` fst) 
+             $ sortBy  (compare `on` fst) 
              $ filter (not . null . snd)
-             $ [ make label (info : map fst rest) | (info, label):rest <- list ]
+               [ make label (info : map fst rest) | (info, label):rest <- list ]
    in case final of
          []   -> []
          hd:_ -> concatMap snd hd
@@ -331,8 +331,8 @@ makeTypeErrors options classEnv synonyms sub errors =
       -- missing class predicate in declared type (hence, declared type is too general)
       | label == missingInSignatureLabel =
            let f info =
-                  let (p, infoArising) = maybe err id (maybePredicateArisingFrom info)
-                      range   = maybe err id (maybeTypeSignatureLocation info)
+                  let (p, infoArising) = fromMaybe err (maybePredicateArisingFrom info)
+                      range   = fromMaybe err (maybeTypeSignatureLocation info)
                       mSource = if isExprTyped info then Nothing else Just (fst $ sources info)
                       scheme  = maybe err snd (maybeSkolemizedTypeScheme info)
                       t1      = freezeVariablesInType (unqualify (unquantify scheme))
@@ -351,10 +351,10 @@ makeTypeErrors options classEnv synonyms sub errors =
       | label `elem` tooGeneralLabels =
            let f info = 
                   let monoset = sub |-> ms
-                      range   = maybe err id (maybeTypeSignatureLocation info)
+                      range   = fromMaybe err (maybeTypeSignatureLocation info)
                       scheme1 = generalize monoset ([] .=>. sub |->  snd (typepair info))
-                      (ms, scheme2) = maybe err id (maybeSkolemizedTypeScheme info)
-                      source  = maybe (fst $ sources info) id (snd $ sources info)
+                      (ms, scheme2) = fromMaybe err (maybeSkolemizedTypeScheme info)
+                      source  = uncurry fromMaybe (sources info)
                       err     = internalError "ConstraintInfo" "makeTypeErrors" "unknown original type scheme"
                   in special info (makeNotGeneralEnoughTypeError (isExprTyped info) range source scheme1 scheme2)
            in (if label == escapingSkolemLabel then 3 else 2, map f infos)
@@ -367,17 +367,17 @@ makeTypeErrors options classEnv synonyms sub errors =
                                   Just scheme -> -- overloaded function
                                      Left (scheme, snd $ typepair info)
                                   Nothing -> --overloaded language construct
-                                     Right (location info, sub |-> (assignedType $ attribute $ localInfo info))
+                                     Right (location info, sub |-> assignedType (attribute (localInfo info)))
                       pred' = let err = internalError "ConstraintInfo" "makeTypeErrors" 
                                                        "unknown predicate which resulted in a reduction error"
-                               in maybe err id $ maybeReductionErrorPredicate info
-                  in special info (sub |-> (makeReductionError source extra classEnv pred'))
+                               in fromMaybe err $ maybeReductionErrorPredicate info
+                  in special info (sub |-> makeReductionError source extra classEnv pred')
            in (4, map f infos)     
   
       -- ambiguous class predicates
       | label == ambiguousLabel =
            let f info = 
-                  let scheme1   = maybe err id (maybeInstantiatedTypeScheme info)
+                  let scheme1   = fromMaybe err (maybeInstantiatedTypeScheme info)
                       scheme2   = generalizeAll ([] .=>. sub |->  fst (typepair info))
                       className = maybe err (\(Predicate x _) -> x) (maybeReductionErrorPredicate info)
                       err       = internalError "ConstraintInfo" "makeTypeErrors" "unknown original type scheme"
@@ -393,7 +393,7 @@ makeUnificationTypeError info =
        range    = maybe (rangeOfSource source) rangeOfSource term
        oneliner = MessageOneLiner (MessageString ("Type error in " ++ location info))
        (t1, t2) = typepair info 
-       msgtp1   = maybe (toTpScheme t1) id  (maybeInstantiatedTypeScheme info)
+       msgtp1   = fromMaybe (toTpScheme t1) (maybeInstantiatedTypeScheme info)
        msgtp2   = maybe (toTpScheme t2) snd (maybeSkolemizedTypeScheme info)
        (reason1, reason2)   
           | isJust (maybeSkolemizedTypeScheme info) = ("inferred type", "declared type")
@@ -428,7 +428,7 @@ defaultConstraintInfo sourceTuple@(s1, s2) =
           , errorMessage = Nothing
           }
  where myLocal   = LocalInfo {self = theSource, assignedType = Nothing, monos = []}
-       theSource = maybe s1 id s2
+       theSource = fromMaybe s1 s2
 
 standardConstraintInfo :: ConstraintInfo
 standardConstraintInfo =

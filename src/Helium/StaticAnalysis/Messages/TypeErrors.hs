@@ -94,7 +94,7 @@ makeReductionError source extra classEnvironment (Predicate className predicateT
                         , "used as"  >:> MessageType (toTpScheme tp)
                         ]
                      Right (_, mtp) -> -- overloaded language construct
-                        [ descriptionOfSource source <:> MessageOneLineTree (oneLinerSource source) ] ++
+                        (descriptionOfSource source <:> MessageOneLineTree (oneLinerSource source)) :
                         maybe [] (\tp -> ["type" >:> MessageType (toTpScheme tp)]) mtp
        tab2     = [ "problem"  <:> MessageCompose [ MessageType (toTpScheme predicateTp)
                                                   , MessageString (" is not an instance of class "++className)

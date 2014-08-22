@@ -20,7 +20,7 @@ phaseParser ::
 phaseParser fullName tokens options = do
     enterNewPhase "Parsing" options
     case runHParser module_ fullName tokens True of
-        Left parseError -> do
+        Left parseError ->
             return (Left [parseError])
         Right m ->
             return (Right m)

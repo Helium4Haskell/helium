@@ -22,6 +22,7 @@ import Helium.Utils.Similarity (similar)
 import Helium.Utils.Utils      (internalError)
 import Data.List       (sortBy, partition)
 import Data.Char       (toUpper)
+import Data.Function
 
 type Message       = [MessageLine] 
 
@@ -112,7 +113,7 @@ sortNamesByRange :: Names -> Names
 sortNamesByRange names =
    let tupleList = [ (name, getNameRange name) | name <- names ]
        (xs,ys)   = partition (isImportRange . snd) tupleList
-   in map fst (sortBy (\a b -> snd a `compare` snd b) ys ++ xs)
+   in map fst (sortBy (compare `on` snd ) ys ++ xs)
 
 -- The first argument indicates whether numbers up to ten should be
 -- printed "verbose"

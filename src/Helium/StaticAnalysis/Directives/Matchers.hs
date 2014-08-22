@@ -72,22 +72,22 @@ match_Expression_Let expr =
       Expression_Let _ ds e -> Just (ds,e)
       _                     -> Nothing 
 
-match_Expression_Do :: Expression -> Maybe (Statements)
+match_Expression_Do :: Expression -> Maybe Statements
 match_Expression_Do expr = 
    case expr of
-      Expression_Do _ ss -> Just (ss)
+      Expression_Do _ ss -> Just ss
       _                  -> Nothing 
 
-match_Expression_List :: Expression -> Maybe (Expressions)
+match_Expression_List :: Expression -> Maybe Expressions
 match_Expression_List expr = 
    case expr of
-      Expression_List _ es -> Just (es)
+      Expression_List _ es -> Just es
       _                    -> Nothing 
 
-match_Expression_Tuple :: Expression -> Maybe (Expressions)
+match_Expression_Tuple :: Expression -> Maybe Expressions
 match_Expression_Tuple expr = 
    case expr of
-      Expression_Tuple _ es -> Just (es)
+      Expression_Tuple _ es -> Just es
       _                     -> Nothing 
 
 match_Expression_Comprehension :: Expression -> Maybe (Expression,Qualifiers)
@@ -108,16 +108,16 @@ match_Expression_Enum expr =
       Expression_Enum _ e me1 me2 -> Just (e,me1,me2)
       _                           -> Nothing 
 
-match_Expression_Negate :: Expression -> Maybe (Expression)
+match_Expression_Negate :: Expression -> Maybe Expression
 match_Expression_Negate expr = 
    case expr of
-      Expression_Negate _ e -> Just (e)
+      Expression_Negate _ e -> Just e
       _                     -> Nothing 
 
-match_Expression_NegateFloat :: Expression -> Maybe (Expression)
+match_Expression_NegateFloat :: Expression -> Maybe Expression
 match_Expression_NegateFloat expr = 
    case expr of
-      Expression_NegateFloat _ e -> Just (e)
+      Expression_NegateFloat _ e -> Just e
       _                          -> Nothing 
 
 -------------------------------------------------------------
@@ -138,7 +138,7 @@ match_Expressions_Nil exprs =
 -------------------------------------------------------------
 -- MaybeExpression
 
-match_MaybeExpression_Just :: MaybeExpression -> Maybe (Expression)
+match_MaybeExpression_Just :: MaybeExpression -> Maybe Expression
 match_MaybeExpression_Just mexpr =
    case mexpr of
       MaybeExpression_Just e -> Just e

@@ -200,7 +200,7 @@ specialUnifierTypeError (t1, t2) (info1, info2) =
        (_   ,_         , descr2) = snd (fromJust (isUnifier info2))
        source = self localInfo'
        (source1, source2) = 
-          let f (src, msrc) = maybeAddLocation (maybe src id msrc)
+          let f (src, msrc) = maybeAddLocation (fromMaybe src msrc)
           in (f (sources info1), f (sources info2))
        hints = [] -- [("because", MessageString "these two types cannot be unified")]
    in setTypeError typeError (setTypePair (t1,t2 ) info1)

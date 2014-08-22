@@ -115,25 +115,24 @@ refToCurrentImported :: IORef [String]
 refToCurrentImported = unsafePerformIO (newIORef [])
    
 internalError :: String -> String -> String -> a
-internalError moduleName functionName message 
-  = 
-  let
-    handler :: CE.IOException -> IO () 
-    handler _ = return ()
-  in
-   unsafePerformIO 
-   $ do (do -- internal errors are automatically logged
-            curFileName <- readIORef refToCurrentFileName
-            curImports  <- readIORef refToCurrentImported       
-            logInternalError (Just (curImports,curFileName)) {- no debugging, we can't get to the command-line option DebugLogger here -}
-            `CE.catch` handler)
-        return . error . unlines $
+internalError moduleName functionName message = unsafePerformIO $ do
+   action `CE.catch` handler
+   return . error . unlines $
            [ ""
            , "INTERNAL ERROR - " ++ message
            , "** Module   : " ++ moduleName
            , "** Function : " ++ functionName
            ]
-    
+ where
+   handler :: CE.IOException -> IO () 
+   handler _ = return ()
+
+   action :: IO ()
+   action = do -- internal errors are automatically logged
+      curFileName <- readIORef refToCurrentFileName
+      curImports  <- readIORef refToCurrentImported       
+      logInternalError (Just (curImports,curFileName)) {- no debugging, we can't get to the command-line option DebugLogger here -}
+
 maxInt, minInt :: Integer
 maxInt = 1073741823
 minInt = -1073741823

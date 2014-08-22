@@ -20,6 +20,7 @@ import Helium.Syntax.UHA_Utils (nameFromString)
 import Helium.Syntax.UHA_Range (noRange)
 import Helium.Utils.Utils (internalError)
 import Helium.Syntax.UHA_Syntax
+import Data.Maybe
 
 expressionTypeInferencer :: ImportEnvironment -> Expression -> (TpScheme, Assumptions, TypeErrors)
 expressionTypeInferencer importEnvironment expression = 
@@ -37,6 +38,6 @@ expressionTypeInferencer importEnvironment expression =
 		 options_Inh_Module           = [] }
 
        inferredType = let err = internalError "ExpressionTypeInferencer.hs" "expressionTypeInferencer" "cannot find inferred type"
-                      in maybe err id (M.lookup functionName $ toplevelTypes_Syn_Module res)
+                      in fromMaybe err (M.lookup functionName $ toplevelTypes_Syn_Module res)
                                 
    in (inferredType, assumptions_Syn_Module res, typeErrors_Syn_Module res)

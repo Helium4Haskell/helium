@@ -9,6 +9,7 @@ module TextHint.ConfigFile (
         trim) where
 
 
+import Control.Monad
 import Data.Char
 import Data.Maybe
 import Text.ParserCombinators.Parsec
@@ -60,7 +61,7 @@ item = do key <- ident
 
 line :: Parser (Maybe (String, String))
 line = do skipMany space
-          try (comment >> return Nothing) <|> (item >>= return . Just)
+          try (comment >> return Nothing) <|> liftM Just item
           
 file :: Parser [(String, String)]
 file = do ls <- many line
@@ -68,7 +69,7 @@ file = do ls <- many line
 
 readConfig :: SourceName -> IO Config
 readConfig name = do{ result <- parseFromFile file name
-                    ; case (result) of
+                    ; case result of
                        Left err  -> do{ print err
                                       ; putStrLn "Error"
                                       ; return []
@@ -86,19 +87,19 @@ extractOptions ((k,v):xs) =
    where
      rest = extractOptions xs
      tfm x = case x of 
-               "overloadingon" -> if v == "false" then
-                                    show NoOverloading
-                                  else
-                                    show Overloading
-               "loggingon"     -> if v == "false" then
-                                    show DisableLogging
-                                  else
-                                    show EnableLogging
-               "host"          -> show (Host v)
-               "port"          -> show (Port (read v))
-               "lvmpaths"      -> if trim v == "" then "" else show (LvmPath v)
+               "overloadingon"
+                  | v == "false" -> show NoOverloading
+                  | otherwise    -> show Overloading
+               "loggingon"
+                  | v == "false" -> show DisableLogging
+                  | otherwise    -> show EnableLogging
+               "host"            -> show (Host v)
+               "port"            -> show (Port (read v))
+               "lvmpaths"
+                  | trim v == "" -> ""  
+                  | otherwise    -> show (LvmPath v)
                "additionalheliumparameters" -> v
-               _               -> error "Internal error in RunHelium/Main.hs"
+               _ -> error "Internal error in RunHelium/Main.hs"
 
 
 trim :: String -> String

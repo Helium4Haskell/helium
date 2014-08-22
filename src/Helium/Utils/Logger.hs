@@ -106,8 +106,7 @@ logger logcode maybeSources options =
      handlerTerm :: CE.IOException -> IO String
      handlerTerm _ = return loggerTERMINATOR
    in
-     if reallyLog then
-       do
+     when reallyLog $ do
          debug (hostName ++ ":" ++ show portNumber) debugLogger
          username     <- getEnv loggerUSERNAME `CE.catch` handlerDef
          optionString <- getArgs
@@ -135,8 +134,6 @@ logger logcode maybeSources options =
                         "\n" ++sources
                        ) 
                        debugLogger
-     else                  
-       return ()
 
 toTypeFile :: String -> String
 toTypeFile fullName = fullNameNoExt ++ ".type"
@@ -217,7 +214,7 @@ sendToAndFlush handle msg loggerDEBUGMODE = do
   debug ("Received a handshake: " ++ show handshake) loggerDEBUGMODE
 --  hClose handle
   where    
-    getRetriedLine i = hGetLine handle `CE.catch` (handler i) 
+    getRetriedLine i = hGetLine handle `CE.catch` handler i
     handler :: Int -> CE.IOException -> IO String 
     handler j _ =  
           if j+1 >= loggerTRIES 

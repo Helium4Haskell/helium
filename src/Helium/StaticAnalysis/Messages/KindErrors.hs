@@ -58,7 +58,7 @@ instance HasMessage KindError where
             ] 
             
          KindApplication _ d1 d2 k1 k2 -> 
-            [ MessageOneLiner (MessageString $ "Illegal type in type application")
+            [ MessageOneLiner (MessageString "Illegal type in type application")
             , MessageTable
                  [ "type"             <:> MessageString (show d1)
                  , "type constructor" <:> MessageString (show d2)

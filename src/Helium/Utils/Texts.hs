@@ -1,24 +1,20 @@
 module Helium.Utils.Texts where
 
-import Data.IORef
-import System.IO.Unsafe
+import Data.Maybe
 
 data Language = English | Dutch deriving Eq
 
-language :: IORef Language
-language = unsafePerformIO (newIORef English)
+language :: Language
+language = English
 
 data Arrow a b = a :-> b
 
 infix 0 :->
 
-select :: IORef Language -> [Arrow Language msg] -> msg
-select languageRef table = 
-    let currentLanguage = unsafePerformIO (readIORef languageRef)
-        convert (a :-> b) = (a, b)
-    in case lookup currentLanguage (map convert table) of
-        Nothing -> error "Texts.select: unknown language"
-        Just msg -> msg
+select :: Language -> [Arrow Language msg] -> msg
+select lan table = fromMaybe (error "Texts.select: unknown language") $
+    let convert (a :-> b) = (a, b)
+    in lookup lan (map convert table)
 
 warning :: String
 warning = select language

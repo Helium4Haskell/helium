@@ -165,7 +165,7 @@ lexMaybeExponent prefix lexemeFun input =
             lexExponent (prefix ++ "e") rest
         ('E':rest) ->
             lexExponent (prefix ++ "E") rest
-        _ -> do
+        _ ->
             returnToken (lexemeFun prefix) (length prefix) mainLexer input
 
 lexExponent :: String -> Lexer
@@ -204,7 +204,7 @@ lexChar input = do
         ('\'':cs) -> -- if there is a name between single quotes, we give a hint that backquotes might be meant 
             let (ds, es) = span (/= '\'') cs
                 ws = words ds
-            in if length es > 0 && head es == '\'' && length ws == 1 && isName (head ws) then
+            in if not (null es) && head es == '\'' && length ws == 1 && isName (head ws) then
                     lexerError (NonTerminatedChar (Just (head ws))) pos
                else 
                     lexerError (NonTerminatedChar Nothing) pos
@@ -224,7 +224,7 @@ lexStringChar revSoFar input = do
         [] -> 
             lexerError EOFInString startPos
         '\\':c:cs ->
-            if c `elem` escapeChars then do
+            if c `elem` escapeChars then
                 lexStringChar (c:'\\':revSoFar) cs
             else
                 lexerError IllegalEscapeInString curPos
@@ -291,7 +291,7 @@ lexMultiLineComment starts level input =
 lexFeedbackComment :: String -> SourcePos -> Lexer
 lexFeedbackComment feedback start input =
     case input of 
-        '#':'-':'}':cs -> do
+        '#':'-':'}':cs ->
            returnToken (LexFeedback (reverse feedback)) 
                        (length feedback + 6) mainLexer cs
         c:cs -> do
@@ -303,9 +303,9 @@ lexFeedbackComment feedback start input =
 lexCaseFeedbackComment :: String -> SourcePos -> Lexer
 lexCaseFeedbackComment feedback start input =
     case input of 
-        '#':'-':'}':cs -> do
+        '#':'-':'}':cs ->
             returnToken (LexCaseFeedback (reverse feedback)) 0 mainLexer cs
-        c:cs -> do
+        c:cs ->
             -- nextPos c            
             lexCaseFeedbackComment (c:feedback) start cs
         [] -> 
@@ -315,7 +315,7 @@ lexCaseFeedbackComment feedback start input =
 -----------------------------------------------------------
 
 isSymbol :: Char -> Bool
-isSymbol c = elem c symbols
+isSymbol = (`elem` symbols)
                                   
 isLetter :: Char -> Bool
 isLetter '\'' = True
@@ -373,14 +373,13 @@ specialsWithoutBrackets =
     ",`;" 
 
 reserveStrategyNames :: [Token] -> [Token]
-reserveStrategyNames tokens = 
+reserveStrategyNames = 
   map (\token@(pos, lexeme) -> case lexeme of 
                    LexVar s    | s `elem` strategiesKeywords -> (pos, LexKeyword s)
                    LexVarSym s | s == "=="                   -> (pos, LexResVarSym s)
                    LexConSym s | s == ":"                    -> (pos, LexResConSym s)
                    _ -> token
-      ) 
-      tokens
+      )
 
 strategiesKeywords :: [String]
 strategiesKeywords = [ "phase", "constraints", "siblings" ]

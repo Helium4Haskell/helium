@@ -19,8 +19,9 @@ import Top.Implementation.TypeGraph.ClassMonadic
 import Top.Implementation.TypeGraph.Heuristic
 import Helium.StaticAnalysis.Heuristics.RepairHeuristics
 import Helium.StaticAnalysis.Miscellaneous.ConstraintInfo
+import Data.Function
 import Data.List (partition, sortBy)
-import Data.Maybe (isNothing, fromJust)
+import Data.Maybe
 
 class IsUnifier a where
    typeErrorForUnifier :: (Tp, Tp) -> (a, a) -> a
@@ -46,14 +47,14 @@ unifierVertex =
 
                  -- sort this list by the ordering in which the type variables were assigned
                  -- to prevent undeterministic type error messages.
-                 unifiers = sortBy (\x y -> fst x `compare` fst y) unifiersUnsorted
+                 unifiers = sortBy (compare `on` fst) unifiersUnsorted
 
              doWithoutEdges neighbours $ 
              
                 do synonyms      <- getTypeSynonyms
 
-                   unifierMTypes <- mapM substituteTypeSafe (map (TVar . fst) unifiers) 
-                   contextMTypes <- mapM substituteTypeSafe (map (TVar . fst) contexts)
+                   unifierMTypes <- mapM (substituteTypeSafe . TVar . fst) unifiers 
+                   contextMTypes <- mapM (substituteTypeSafe . TVar . fst) contexts
                    if any isNothing (unifierMTypes ++ contextMTypes) then return Nothing else 
 
                       do let unifierTypes = map fromJust unifierMTypes 

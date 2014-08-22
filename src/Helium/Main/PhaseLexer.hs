@@ -24,7 +24,7 @@ phaseLexer fullName contents options = do
            return (Left [lexError])
         Right (tokens, lexerWarnings) -> do
             let tokensWithLayout = layout tokens
-            when (DumpTokens `elem` options) $ do
+            when (DumpTokens `elem` options) $
                 print tokensWithLayout
             let warnings = filterLooksLikeFloatWarnings lexerWarnings tokensWithLayout
             return (Right (warnings, tokensWithLayout))

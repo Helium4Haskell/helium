@@ -64,12 +64,12 @@ simplifyOptions ops =
             collectPaths (opt : rest) paths newops
                                                = collectPaths rest paths (opt : newops)
             keepFirst _        []              = []
-            keepFirst fromList (opt : rest)    = if (opt `elem` fromList) then
+            keepFirst fromList (opt : rest)    = if opt `elem` fromList then
                                                    opt : optionFilter fromList rest
                                                  else
                                                    opt : keepFirst fromList rest
             optionFilter _        []           = []
-            optionFilter fromList (opt : rest) = if (opt `elem` fromList) then
+            optionFilter fromList (opt : rest) = if opt `elem` fromList then
                                                    optionFilter fromList rest
                                                  else
                                                    opt : optionFilter fromList rest
@@ -117,18 +117,18 @@ argsToOptions args =
 basicProcessArgs :: [Option] -> [String] ->  IO ([Option], Maybe String)
 basicProcessArgs defaults args =
     let (options, arguments, errors) = getOpt Permute (optionDescription True True) args
-    in if not (null errors) then do
+    in if not (null errors) then
           terminateWithMessage options "Error in invocation: list of parameters is erroneous.\nProblem(s):"
                                (map ("  " ++) errors)
     else        
-        if (length arguments > 1) then
-            terminateWithMessage options ("Error in invocation: only one non-option parameter expected, but found instead:\n" ++ (unlines (map ("  "++) arguments))) []
+        if length arguments > 1 then
+            terminateWithMessage options ("Error in invocation: only one non-option parameter expected, but found instead:\n" ++ unlines (map ("  "++) arguments)) []
         else
             do
               let simpleOptions = simplifyOptions (defaults ++ options)
                   argument = if null arguments then Nothing else Just (head arguments)
               when (Verbose `elem` simpleOptions) $ do
-                mapM_ putStrLn ("Options after simplification: " : (map show simpleOptions))
+                mapM_ putStrLn ("Options after simplification: " : map show simpleOptions)
                 putStrLn ("Argument: " ++ show argument)
               return (simpleOptions, argument)
 
@@ -247,7 +247,7 @@ instance Show Option where
  show DumpCoreToFile                     = "--save-core"
  show DebugLogger                        = "--debug-logger"
  show (Host host)                        = "--host=" ++ host
- show (Port port)                        = "--port=" ++ (show port)
+ show (Port port)                        = "--port=" ++ show port
  show DumpTypeDebug                      = "--type-debug"
  show AlgorithmW                         = "--algorithm-w"
  show AlgorithmM                         = "--algorithm-m"
@@ -270,7 +270,7 @@ instance Show Option where
  show SolverCombination                  = "--solver-combination"
  show SolverChunks                       = "--solver-chunks"
  show UnifierHeuristics                  = "--unifier-heuristics"
- show (SelectConstraintNumber cnr)       = "--select-cnr=" ++ (show cnr)
+ show (SelectConstraintNumber cnr)       = "--select-cnr=" ++ show cnr
  show HFullQualification                 = "--H-fullqualification"
  show NoOverloadingTypeCheck             = "--no-overloading-typecheck"
  show NoPrelude                          = "--no-prelude"

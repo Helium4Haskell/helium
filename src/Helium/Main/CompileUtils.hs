@@ -11,7 +11,7 @@ module Helium.Main.CompileUtils
     , Option(..)
     , splitFilePath, combinePathAndFile
     , when, unless
-    , exitWith, ExitCode(..), getArgs
+    , exitWith, ExitCode(..), exitSuccess, getArgs
     , module Helium.ModuleSystem.ImportEnvironment
     , Module(..)
     ) where
@@ -19,9 +19,9 @@ module Helium.Main.CompileUtils
 import Helium.Main.Args(Option(..))
 import Helium.StaticAnalysis.Messages.Messages(HasMessage)
 import Helium.StaticAnalysis.Messages.HeliumMessages(sortAndShowMessages)
-import Control.Monad(when, unless)
+import Control.Monad
 import Helium.Utils.Utils(splitFilePath, combinePathAndFile)
-import System.Exit(exitWith, ExitCode(..))
+import System.Exit
 import System.Environment(getArgs)
 import Helium.Utils.Logger
 import Helium.ModuleSystem.ImportEnvironment
@@ -37,7 +37,7 @@ type CompileOptions = ([Option], String, [String])
 (===>) :: Phase err1 a -> (a -> Phase err2 b) -> Phase (Either err1 err2) b
 p ===> f = 
    p >>= either (return . Left . map Left) 
-                (\a -> f a >>= return . either (Left . map Right) Right)
+                (f >=> return . either (Left . map Right) Right)
 
 doPhaseWithExit :: HasMessage err => Int -> ([err] -> String) -> CompileOptions -> Phase err a -> IO a
 doPhaseWithExit nrOfMsgs code (options, fullName, doneModules) phase =
@@ -50,10 +50,8 @@ doPhaseWithExit nrOfMsgs code (options, fullName, doneModules) phase =
             return a
 
 sendLog :: String -> String -> [String] -> [Option] -> IO ()
-sendLog code fullName modules options =
-    logger code (Just (modules,fullName)) options
-           -- (DisableLogger `elem` options) 
-           -- (DebugLogger `elem` options) (LogSpecial `elem` options)
+sendLog code fullName modules =
+    logger code (Just (modules,fullName))
     
 enterNewPhase :: String -> [Option] -> IO ()
 enterNewPhase phase options =
