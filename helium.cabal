@@ -1,5 +1,5 @@
 name:                   helium
-version:                1.8
+version:                1.8.1
 synopsis:               The Helium Compiler.
 homepage:               http://www.cs.uu.nl/wiki/bin/view/Helium/WebHome
 description:
@@ -11,13 +11,52 @@ description:
   to define new type classes and instances.
 
 category:               Compiler
-copyright:              (c) 2014
+copyright:              (c) 2014-2015
 license:                GPL
 license-file:           LICENSE.txt
 author:                 Bastiaan Heeren, Jurriaan Hage
 maintainer:             helium@cs.uu.nl
 stability:              provisional
-extra-source-files:     CREDITS.txt
+extra-source-files:
+  CREDITS.txt
+  src/Makefile
+  src/Helium/CodeGeneration/CodeGeneration.ag
+  src/Helium/CodeGeneration/ToCoreDecl.ag
+  src/Helium/CodeGeneration/ToCoreExpr.ag
+  src/Helium/CodeGeneration/ToCoreModule.ag
+  src/Helium/CodeGeneration/ToCoreName.ag
+  src/Helium/CodeGeneration/ToCorePat.ag
+  src/Helium/ModuleSystem/ExtractImportDecls.ag
+  src/Helium/Parser/ResolveOperators.ag
+  src/Helium/StaticAnalysis/Directives/TS_Analyse.ag
+  src/Helium/StaticAnalysis/Directives/TS_Apply.ag
+  src/Helium/StaticAnalysis/Directives/TS_Collect.ag
+  src/Helium/StaticAnalysis/Directives/TS_CoreSyntax.ag
+  src/Helium/StaticAnalysis/Directives/TS_PatternMatching.ag
+  src/Helium/StaticAnalysis/Directives/TS_Syntax.ag
+  src/Helium/StaticAnalysis/Directives/TS_ToCore.ag
+  src/Helium/StaticAnalysis/Inferencers/GlobalInfo.ag
+  src/Helium/StaticAnalysis/Inferencers/KindInferencing.ag
+  src/Helium/StaticAnalysis/Inferencers/LocalInfo.ag
+  src/Helium/StaticAnalysis/Inferencers/PatternMatchWarnings.ag
+  src/Helium/StaticAnalysis/Inferencers/TypeInferenceCollect.ag
+  src/Helium/StaticAnalysis/Inferencers/TypeInferenceInfo.ag
+  src/Helium/StaticAnalysis/Inferencers/TypeInferenceOverloading.ag
+  src/Helium/StaticAnalysis/Inferencers/TypeInferenceRules.ag
+  src/Helium/StaticAnalysis/Inferencers/TypeInferencing.ag
+  src/Helium/StaticAnalysis/StaticChecks/Collect.ag
+  src/Helium/StaticAnalysis/StaticChecks/ExportErrors.ag
+  src/Helium/StaticAnalysis/StaticChecks/HeliumPartialSyntax.ag
+  src/Helium/StaticAnalysis/StaticChecks/KindChecking.ag
+  src/Helium/StaticAnalysis/StaticChecks/MiscErrors.ag
+  src/Helium/StaticAnalysis/StaticChecks/Scope.ag
+  src/Helium/StaticAnalysis/StaticChecks/ScopeErrors.ag
+  src/Helium/StaticAnalysis/StaticChecks/StaticChecks.ag
+  src/Helium/StaticAnalysis/StaticChecks/TopLevelErrors.ag
+  src/Helium/StaticAnalysis/StaticChecks/Warnings.ag
+  src/Helium/Syntax/UHA_OneLine.ag
+  src/Helium/Syntax/UHA_Pretty.ag
+  src/Helium/Syntax/UHA_Syntax.ag
 build-type:             Simple
 cabal-version:          >= 1.10.1.0
 tested-with:            GHC == 7.6.3
@@ -48,7 +87,7 @@ data-files:
 
 source-repository head
   type:     svn
-  location: https://subversion.cs.uu.nl/repos/staff.jur.Top/trunk
+  location: https://svn.science.uu.nl/repos/sci.hage0101.helium
   
 --------------------------------------------------------------------------------
 
@@ -68,8 +107,8 @@ Executable texthint
   default-language:  Haskell98
   hs-source-dirs:    src
   Main-is:           TextHint/Main.hs
-  other-modules:     Paths_helium
-  
+  other-modules:     Paths_helium, TextHint.ConfigFile                
+
 --------------------------------------------------------------------------------
 
 Executable runhelium
@@ -82,6 +121,16 @@ Executable runhelium
 
 --------------------------------------------------------------------------------
 
+Executable heliumpath
+  Build-Depends:     base >= 3 && < 5
+  ghc-options:       -Wall
+  default-language:  Haskell98
+  hs-source-dirs:    src
+  Main-is:           HeliumPath/Main.hs
+  other-modules:     Paths_helium                
+  
+--------------------------------------------------------------------------------
+  
 Library
   Build-Depends:     base >= 3 && < 5, containers, mtl, parsec, network, process, transformers, filepath, directory, wl-pprint, Top >= 1.7, lvmlib >= 1.1
   ghc-options:       -Wall
@@ -170,6 +219,7 @@ Library
     Helium.Utils.Similarity
     Helium.Utils.Texts
     Helium.Utils.Utils
-
+  Other-modules:
+    
 
  

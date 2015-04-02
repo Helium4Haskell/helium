@@ -1,0 +1,38 @@
+
+
+This document describes the various releases of the Helium compiler that were
+publised on Hackage since 2014. Pre-Hackage and pre-Cabal versions of Helium
+are not documented. For information on these, please contact the authors
+of Helium. More information on the compiler and the ideas underlying it can
+be found on the Helium website, located at 
+
+   http://foswiki.cs.uu.nl/foswiki/Helium/WebHome
+   
+ABOUT VERSION 1.8
+
+This is the first version of Helium to be deployed through Cabal and Hackage.
+The main changes with respect to earlier versions of Helium is how the compiler
+is invoked, the parameters it supports, the use of a configuration file that
+govern its behaviour, and of course the platform independence achieved through
+the use of Cabal. The package offers three executables: ``texthint'' (the
+text-based command-line interpreter, i.e., our version of ghci), ``runhelium''
+(a wrapper for executing lvm object code files), and of course ``helium'', the
+compiler itself. 
+
+
+ABOUT VERSION 1.8.1
+
+Version 1.8 of Helium does not work with the graphical programming environment
+``Hint'' that Arie Middelkoop developed some years ago. Since the release of
+Helium 1.8 on Hackage we found that some people would still like to use Hint. 
+This version of Helium works well with Hint (version 1.8.1 and higher). The
+integration is achieved through a program ``heliumpath'' that exposes the
+necessary path information that Hint needs to locate the libraries and the
+configuration file.
+
+Hint is not available through Hackage. The jar-file for Hint can be downloaded
+from the Helium website. The sources of Hint are publicly
+available from the svn repository that also stores the source code of the Helium
+compiler and all associated tools. Again, see the links on the Helium website.
+
+

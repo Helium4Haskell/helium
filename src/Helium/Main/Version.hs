@@ -1,4 +1,4 @@
 module Helium.Main.Version where 
 
 version :: String
-version = "1.8 (Wed Jul 16 15:26:12 CEST 2014)"
+version = "1.8.1 (Wed ... CEST 2015)"
