@@ -19,6 +19,7 @@ maintainer:             helium@cs.uu.nl
 stability:              provisional
 extra-source-files:
   CREDITS.txt
+  RELEASENOTES.txt
   src/Makefile
   src/Helium/CodeGeneration/CodeGeneration.ag
   src/Helium/CodeGeneration/ToCoreDecl.ag
