@@ -1,3 +1,4 @@
+Prelude is up to date
 Compiling parser/LayoutBad1.hs
 (5,1): Syntax error: 
     unexpected variable 'y'

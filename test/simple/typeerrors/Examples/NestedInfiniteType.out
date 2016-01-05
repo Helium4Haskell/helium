@@ -1,3 +1,4 @@
+Prelude is up to date
 Compiling typeerrors/Examples/NestedInfiniteType.hs
 (5,14): Type error in right-hand side
  expression       : [a]

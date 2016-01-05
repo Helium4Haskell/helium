@@ -1,3 +1,4 @@
+Prelude is up to date
 Compiling staticerrors/FunArity.hs
 (5,1): Arity mismatch in function bindings for "main"
 Compilation failed with 1 error

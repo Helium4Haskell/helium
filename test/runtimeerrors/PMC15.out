@@ -1,3 +1,4 @@
+Prelude is up to date
 Compiling runtimeerrors/PMC15.hs
 (7,1): Warning: Missing pattern in function bindings: 
   not2 False = ...

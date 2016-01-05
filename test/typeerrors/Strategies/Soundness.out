@@ -1,3 +1,4 @@
+Prelude is up to date
 Compiling typeerrors/Strategies/Soundness.hs
 The type rule for "x +++ y" is not correct
   the type according to the type rule is

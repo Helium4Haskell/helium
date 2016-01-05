@@ -1,3 +1,4 @@
+Prelude is up to date
 Compiling typeerrors/Examples/PatListResult.hs
 (4,4): Warning: Variable "a" is not used
 (4,3): Type error in pattern of function binding

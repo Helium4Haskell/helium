@@ -1,3 +1,4 @@
+Prelude is up to date
 Compiling typeerrors/Examples/AltLeft.hs
 (3,10): Type error in scrutinee of case expression
  expression       : case "paard" of {True -> "veulen"}

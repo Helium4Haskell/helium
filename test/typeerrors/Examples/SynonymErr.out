@@ -1,3 +1,4 @@
+Prelude is up to date
 Compiling typeerrors/Examples/SynonymErr.hs
 (6,1): Type signature is too general
  function         : g

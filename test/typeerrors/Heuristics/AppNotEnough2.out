@@ -1,3 +1,4 @@
+Prelude is up to date
 Compiling typeerrors/Heuristics/AppNotEnough2.hs
 (3,28): Type error in application
  expression       : (==) i

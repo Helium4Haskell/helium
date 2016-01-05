@@ -1,3 +1,4 @@
+Prelude is up to date
 Compiling staticerrors/DupMaybeYouMeant.hs
 (1,2), (4,2), (7,2): Duplicated type signature "+!!"
 (2,2), (5,2), (8,2): Duplicated definition "+!!"

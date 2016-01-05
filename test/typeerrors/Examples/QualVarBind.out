@@ -1,3 +1,4 @@
+Prelude is up to date
 Compiling typeerrors/Examples/QualVarBind.hs
 (3,27): Type error in else branch of conditional
  expression       : if x then 1 else x

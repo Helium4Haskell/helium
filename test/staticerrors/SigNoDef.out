@@ -1,3 +1,4 @@
+Prelude is up to date
 Compiling staticerrors/SigNoDef.hs
 (3,1): Type signature for "main" without a definition 
 Compilation failed with 1 error

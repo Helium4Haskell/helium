@@ -2,7 +2,7 @@
 
 echo $1
 /bin/sh compileAndRun $* > result.txt 2>&1
-diff -b result.txt $1.out | grep -v "is up to date"
+diff -b result.txt $1.out
 X=$?
 rm result.txt
 exit $X

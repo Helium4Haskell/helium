@@ -1,3 +1,4 @@
+Prelude is up to date
 Compiling staticerrors/DirectRecTypeSyn.hs
 (3,6): Recursive type synonym "MyList"
   Hint: Use "data" to write a recursive data type

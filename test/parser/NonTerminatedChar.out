@@ -1,3 +1,4 @@
+Prelude is up to date
 Compiling parser/NonTerminatedChar.hs
 (1,8): Non-terminated character literal
   Hint: Correct examples of Chars: 'a' '\n' '&'

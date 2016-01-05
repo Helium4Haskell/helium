@@ -1,3 +1,4 @@
+Prelude is up to date
 Compiling typeerrors/Heuristics/UnaryMinus1.hs
 (1,12): Type error in infix application
  expression       : abs - 4

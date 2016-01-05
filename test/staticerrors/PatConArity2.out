@@ -1,3 +1,4 @@
+Prelude is up to date
 Compiling staticerrors/PatConArity2.hs
 (9,14): Constructor ":+" should have 1 parameter, but has 2
 (10,12): Constructor "Leaf" should have 1 parameter, but has 2

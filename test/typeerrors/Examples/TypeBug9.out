@@ -1,3 +1,4 @@
+Prelude is up to date
 Compiling typeerrors/Examples/TypeBug9.hs
 (18,45): Type error in infix application
  expression       : h <$> many (j <$> pe <*> po) <*> pe

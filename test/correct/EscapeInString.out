@@ -1,3 +1,4 @@
+Prelude is up to date
 Compiling correct/EscapeInString.hs
 (1,1): Warning: Missing type signature: main :: Int
 (3,1): Warning: Missing type signature: f :: String -> Int

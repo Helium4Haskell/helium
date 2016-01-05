@@ -1,3 +1,4 @@
+Prelude is up to date
 Compiling typeerrors/Examples/TooGenTypeSig.hs
 (3,14): Type signature is too general
  function         : f

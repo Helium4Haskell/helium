@@ -1,3 +1,4 @@
+Prelude is up to date
 Compiling staticwarnings/Shadow.hs
 (9,6): Warning: Variable "x" shadows the one at (6,1)
 Compilation successful with 1 warning

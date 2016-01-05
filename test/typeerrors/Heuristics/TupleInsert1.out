@@ -1,3 +1,4 @@
+Prelude is up to date
 Compiling typeerrors/Heuristics/TupleInsert1.hs
 (7,19): Type error in tuple
  expression       : (5, 3)

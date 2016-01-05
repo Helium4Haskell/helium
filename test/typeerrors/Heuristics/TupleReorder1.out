@@ -1,3 +1,4 @@
+Prelude is up to date
 Compiling typeerrors/Heuristics/TupleReorder1.hs
 (7,10): Type error in tuple
  expression       : (True, 5)

@@ -1,3 +1,4 @@
+Prelude is up to date
 Compiling typeerrors/Heuristics/AppTooManyArguments2.hs
 (4,8): Type error in application
  expression       : filter even [0, 2 .. ] [1, 3 .. ]

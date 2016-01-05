@@ -1,3 +1,4 @@
+Prelude is up to date
 Compiling thompson/Thompson15.hs
 (1,17): Type error in infix application
  expression       : x + abs - 2

@@ -1,3 +1,4 @@
+Prelude is up to date
 Compiling staticwarnings/Binding3.hs
 (3,1): Warning: Missing pattern in pattern binding: 
   Nothing = ...

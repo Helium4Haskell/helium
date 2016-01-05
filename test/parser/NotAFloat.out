@@ -1,3 +1,4 @@
+Prelude is up to date
 Compiling parser/NotAFloat.hs
 (1,14): Warning: Integer immediately followed by function composition (.)
   Hint: If a Float was meant, write "20.0"

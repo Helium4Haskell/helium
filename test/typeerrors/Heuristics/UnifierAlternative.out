@@ -1,3 +1,4 @@
+Prelude is up to date
 Compiling typeerrors/Heuristics/UnifierAlternative.hs
 (2,33): Type error in application
  expression       : a "hello"

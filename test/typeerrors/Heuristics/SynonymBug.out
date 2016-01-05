@@ -1,3 +1,4 @@
+Prelude is up to date
 Compiling typeerrors/Heuristics/SynonymBug.hs
 (8,11): Type error in application
  expression       : foo [3]

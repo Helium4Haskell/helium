@@ -1,3 +1,4 @@
+Prelude is up to date
 Compiling typeerrors/Heuristics/AppReorder1.hs
 (4,8): Type error in application
  expression       : map [1 .. 10] fac

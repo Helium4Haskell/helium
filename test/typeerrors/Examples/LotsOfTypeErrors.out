@@ -1,3 +1,4 @@
+Prelude is up to date
 Compiling typeerrors/Examples/LotsOfTypeErrors.hs
 (3,14): Type error in element of list
  expression       : [True, 1, 2, 3, 4, "hello world!"]

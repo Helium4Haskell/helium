@@ -1,3 +1,4 @@
+Prelude is up to date
 Compiling typeerrors/Examples/PatLiteral.hs
 (4,3): Type error in pattern of function binding
  pattern          : 1

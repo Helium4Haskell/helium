@@ -1,3 +1,4 @@
+Prelude is up to date
 Compiling typeerrors/Examples/Verzahne.hs
 (6,11): Type error in infix application
  expression       : x `le` y

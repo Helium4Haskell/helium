@@ -1,3 +1,4 @@
+Prelude is up to date
 Compiling typeerrors/Examples/ExprListElem.hs
 (3,21): Type error in element of list
  expression       : ["neushoorn", 47]

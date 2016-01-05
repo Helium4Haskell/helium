@@ -1,3 +1,4 @@
+Prelude is up to date
 Compiling runtimeerrors/PatBind3.hs
 (7,1): Warning: Missing patterns in pattern binding: 
   _ : _ = ...

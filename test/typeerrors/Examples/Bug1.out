@@ -1,3 +1,4 @@
+Prelude is up to date
 Compiling typeerrors/Examples/Bug1.hs
 (4,30): Type error in right-hand side
  expression       : (!! x) : (take x tabel) : (drop (x - 1) tabel)

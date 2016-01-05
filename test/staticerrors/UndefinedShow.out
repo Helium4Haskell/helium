@@ -1,3 +1,4 @@
+Prelude is up to date
 Compiling staticerrors/UndefinedShow.hs
 (6,8): Undefined variable "showTreee"
   Hint: Did you mean "showTree" ?

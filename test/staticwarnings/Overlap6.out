@@ -1,3 +1,4 @@
+Prelude is up to date
 Compiling staticwarnings/Overlap6.hs
 (5,1): Warning: Unreachable pattern: main [_,_,_]
 Compilation successful with 1 warning

@@ -1,3 +1,4 @@
+Prelude is up to date
 Compiling typeerrors/Examples/FbVarBind.hs
 (3,24): Type error in else branch of conditional
  expression       : if x then 1 else x

@@ -37,12 +37,15 @@ main = do
         Nothing -> getLvmPath
         Just s  -> return (explodePath s)
     
-    -- Choose the right libraries to use based on whether overloading is turned off or on
-    baseLibs <- getDataFileName $ 
-       if overloadingFromOptions options 
-       then "lib" 
-       else joinPath ["lib","simple"]
-    
+    baseLibs <- case basePathFromOptions options of 
+        Nothing -> getDataFileName $ 
+                     if overloadingFromOptions options 
+                     then "lib" 
+                     else joinPath ["lib","simple"]
+        Just path -> if overloadingFromOptions options
+                     then return path
+                     else return $ joinPath [path,"simple"] -- The lib will be part of path already.
+
     let (filePath, moduleName, _) = splitFilePath fullName
         filePath' = if null filePath then "." else filePath
         lvmPath   = filter (not.null) . nub
@@ -63,6 +66,7 @@ main = do
 
     -- Ensure .core libs are compiled to .lvm
     mapM_ (makeCoreLib baseLibs) coreLibs    
+    
     -- And now deal with Prelude
     preludeRef <- newIORef []
     _ <- make filePath' (joinPath [baseLibs,prelude]) lvmPath [prelude] options preludeRef
@@ -83,7 +87,7 @@ main = do
 make :: String -> String -> [String] -> [String] -> [Option] -> IORef [(String, Bool)] -> IO Bool
 make basedir fullName lvmPath chain options doneRef =
     do
-        -- If we already compiled this module, return the result we already now
+        -- If we already compiled this module, return the result we already know
         done <- readIORef doneRef
         
         case lookup fullName done of 

@@ -1,3 +1,4 @@
+Prelude is up to date
 Compiling typeerrors/Examples/NestedInfiniteType.hs
 (5,1): Type error in explicitly typed binding
  definition       : f

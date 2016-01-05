@@ -1,3 +1,4 @@
+Prelude is up to date
 Compiling staticerrors/TypeUndefTycon.hs
 (5,9): Undefined type constructor "Ink"
   Hint: Did you mean "Int" ?

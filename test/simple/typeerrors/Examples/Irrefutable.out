@@ -1,3 +1,4 @@
+Prelude is up to date
 Compiling typeerrors/Examples/Irrefutable.hs
 (6,22): Warning: Variable "y" is not used
 (6,15): Type error in pattern of function binding

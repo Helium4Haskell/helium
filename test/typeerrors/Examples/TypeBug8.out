@@ -1,3 +1,4 @@
+Prelude is up to date
 Compiling typeerrors/Examples/TypeBug8.hs
 (23,19): Type error in application
  expression       : foldr ($) fs x

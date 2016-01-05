@@ -1,3 +1,4 @@
+Prelude is up to date
 Compiling parser/LayoutOk3.hs
 (3,1): Warning: Missing type signature: x :: Int
 (3,5): Warning: Missing pattern in case expression: 

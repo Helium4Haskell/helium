@@ -1,3 +1,4 @@
+Prelude is up to date
 Compiling typeerrors/Examples/RestrictedAndOverloaded.hs
 (2,2): Illegal overloaded type inferred for x
  variable         : x

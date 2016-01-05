@@ -1,3 +1,4 @@
+Prelude is up to date
 Compiling staticerrors/DataDupCon.hs
 (3,10), (3,14): Duplicated constructor "A"
 Compilation failed with 1 error

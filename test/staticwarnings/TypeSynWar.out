@@ -1,3 +1,4 @@
+Prelude is up to date
 Compiling staticwarnings/TypeSynWar.hs
 (3,12): Warning: Type variable "c" is not used
 Compilation successful with 1 warning

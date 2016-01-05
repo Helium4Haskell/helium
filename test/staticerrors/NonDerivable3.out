@@ -1,3 +1,4 @@
+Prelude is up to date
 Compiling staticerrors/NonDerivable3.hs
 (2,13): Cannot derive instance for class "Show"
   Hint: There is no Show instance for a -> b

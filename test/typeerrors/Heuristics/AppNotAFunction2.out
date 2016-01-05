@@ -1,3 +1,4 @@
+Prelude is up to date
 Compiling typeerrors/Heuristics/AppNotAFunction2.hs
 (5,17): Type error in application
  expression       : x 3

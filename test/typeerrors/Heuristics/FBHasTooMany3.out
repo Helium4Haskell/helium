@@ -1,3 +1,4 @@
+Prelude is up to date
 Compiling typeerrors/Heuristics/FBHasTooMany3.hs
 (4,1): Type error in explicitly typed binding
  definition       : max3

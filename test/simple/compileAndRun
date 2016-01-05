@@ -1,3 +1,3 @@
-../../dist/build/Helium/helium -b --disable-logging --no-overloading --basepath=../../lib $1 && lvmrun -P../../lib/simple -h7m $1
+../../dist/build/Helium/helium -b --disable-logging --no-overloading --basepath=../../lib $1 && lvmrun -P../../lib/simple -P${1%/*} -h7m $1
 rm -f ${1%/*}/*.lvm
 

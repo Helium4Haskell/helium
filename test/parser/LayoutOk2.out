@@ -1,3 +1,4 @@
+Prelude is up to date
 Compiling parser/LayoutOk2.hs
 (3,9): Warning: Definition "y" is not used
 (3,1): Warning: Missing type signature: x :: Int

@@ -1,3 +1,4 @@
+Prelude is up to date
 Compiling correct/GeneralizeBoth.hs
 (4,1): Warning: Missing type signature: main :: String
 (6,1): Warning: Missing type signature: f :: a -> String

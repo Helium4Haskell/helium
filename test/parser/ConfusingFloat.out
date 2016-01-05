@@ -1,3 +1,4 @@
+Prelude is up to date
 Compiling parser/ConfusingFloat.hs
 (1,12): Warning: Integer immediately followed by function composition (.)
   Hint: If a Float was meant, write "2.0"

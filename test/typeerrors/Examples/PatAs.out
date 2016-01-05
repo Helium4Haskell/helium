@@ -1,3 +1,4 @@
+Prelude is up to date
 Compiling typeerrors/Examples/PatAs.hs
 (4,2): Type error in as pattern
  pattern          : a@[y]

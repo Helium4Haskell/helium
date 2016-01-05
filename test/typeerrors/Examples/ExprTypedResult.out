@@ -1,3 +1,4 @@
+Prelude is up to date
 Compiling typeerrors/Examples/ExprTypedResult.hs
 (4,6): Type error in right-hand side
  expression       : 3 :: Int

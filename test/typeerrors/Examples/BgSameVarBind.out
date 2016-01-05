@@ -1,3 +1,4 @@
+Prelude is up to date
 Compiling typeerrors/Examples/BgSameVarBind.hs
 (4,15): Type error in then branch of conditional
  expression       : if f then 3 else f

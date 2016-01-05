@@ -1,3 +1,4 @@
+Prelude is up to date
 Compiling staticwarnings/Missing4.hs
 (3,1): Warning: Missing patterns in function bindings: 
   main (False : _) = ...

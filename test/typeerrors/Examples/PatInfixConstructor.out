@@ -1,3 +1,4 @@
+Prelude is up to date
 Compiling typeerrors/Examples/PatInfixConstructor.hs
 (4,4): Warning: Variable "x" is not used
 (4,8): Warning: Variable "xs" is not used

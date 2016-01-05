@@ -1,3 +1,4 @@
+Prelude is up to date
 Compiling typeerrors/Heuristics/AppInsert1.hs
 (4,8): Type error in application
  expression       : filter [1 .. ]

@@ -1,3 +1,4 @@
+Prelude is up to date
 Compiling staticerrors/Context.hs
 (1,9): Type variable "a" appears in the context but not in the type
 Compilation failed with 1 error

@@ -1,3 +1,4 @@
+Prelude is up to date
 Compiling typeerrors/Examples/RightSection.hs
 (4,8): Type error in application
  expression       : filter (False ==) [1 .. 10]

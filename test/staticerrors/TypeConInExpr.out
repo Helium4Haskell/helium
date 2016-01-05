@@ -1,3 +1,4 @@
+Prelude is up to date
 Compiling staticerrors/TypeConInExpr.hs
 (6,11): Undefined constructor "Bool"
   Hint: Type constructor "Bool" cannot be used in an expression

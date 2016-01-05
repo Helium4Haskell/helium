@@ -1,3 +1,4 @@
+Prelude is up to date
 Compiling parser/LayoutOk5.hs
 (3,3): Warning: Missing type signature: x :: Int
 (5,3): Warning: Missing type signature: y :: Int

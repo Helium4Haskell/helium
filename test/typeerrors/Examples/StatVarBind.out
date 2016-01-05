@@ -1,3 +1,4 @@
+Prelude is up to date
 Compiling typeerrors/Examples/StatVarBind.hs
 (4,27): Type error in else branch of conditional
  expression       : if x then m else x

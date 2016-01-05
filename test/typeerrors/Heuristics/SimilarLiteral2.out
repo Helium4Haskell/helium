@@ -1,3 +1,4 @@
+Prelude is up to date
 Compiling typeerrors/Heuristics/SimilarLiteral2.hs
 (3,5): Warning: Variable "x" is not used
 (3,9): Type error in literal

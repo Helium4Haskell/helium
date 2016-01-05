@@ -1,3 +1,4 @@
+Prelude is up to date
 Compiling staticerrors/CapitalFunctionErrors.hs
 (1,1): Left hand side pattern defines no variables
 (1,1): Undefined constructor "X"

@@ -1,3 +1,4 @@
+Prelude is up to date
 Compiling runtimeerrors/ExprDoPat2.hs
 (6,9): Warning: Missing patterns in generator: 
   _ : (_ : _) <- ...

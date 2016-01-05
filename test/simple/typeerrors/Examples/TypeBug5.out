@@ -1,3 +1,4 @@
+Prelude is up to date
 Compiling typeerrors/Examples/TypeBug5.hs
 (4,17): Type error in application
  expression       : filter (not (eqString unwords (concat x xs))) xs

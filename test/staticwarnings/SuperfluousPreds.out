@@ -1,3 +1,4 @@
+Prelude is up to date
 Compiling staticwarnings/SuperfluousPreds.hs
 (1,10): Warning: The context (Eq aap, Ord aap) has superfluous predicates.
   Hint: You may change it into (Ord aap).

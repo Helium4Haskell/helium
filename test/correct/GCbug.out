@@ -1,3 +1,4 @@
+Prelude is up to date
 Compiling correct/GCbug.hs
 (3,1): Warning: Missing type signature: main :: [Char]
 Compilation successful with 1 warning

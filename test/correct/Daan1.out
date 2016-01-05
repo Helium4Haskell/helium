@@ -1,3 +1,4 @@
+Prelude is up to date
 Compiling correct/Daan1.hs
 (7,9): Warning: Missing pattern in case expression: 
   False -> ...

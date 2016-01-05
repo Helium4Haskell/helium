@@ -53,6 +53,7 @@ main = do
                            Nothing -> getTemporaryDirectory
                            Just xs -> return xs
     let configOptions  = extractOptions configInfo
+
     
     -- Load command-line parameter module
     -- If the final parameter happens to refer to a source name, then that file is loaded.
@@ -62,7 +63,7 @@ main = do
     (options, srcFilename) <- processRunHeliumArgs (filter (/= "") configOptions ++ args) -- args take precedence over config file
     let (fpath,filename,_) =  splitFilePath (fromMaybe "" srcFilename)
     let lvmFilename = joinPath [fpath, filename ++ ".lvm"]
-    
+     
     -- We can now assume the options are correct, and if maybeFileName is a Just, then we load this as file.
     -- This might fail as an ordinary load might. 
 
@@ -75,9 +76,15 @@ main = do
          State { tempDir = slashify tempDirFromEnv
                , maybeModName = Nothing
                , maybeFileName = Nothing        
-               , compOptions = ["-P" ++ baseLibs] -- Only -P is needed for lvmrun
+               , compOptions = explicitLvmpath ++ ["-P" ++ baseLibs]
+                 -- We pass the explicit lvmpaths (from config file and command line)
+                 -- and the correct base path
                }                     
-
+         where 
+           explicitLvmpath = case lvmPathFromOptions options of -- In order to propagate the lvmpath to lvmrun
+                       Nothing -> []
+                       Just s  -> ["-P"++s]
+                       
     -- Enter read-eval-print loop
     executeModule lvmFilename initialState
 
@@ -86,6 +93,7 @@ main = do
 executeModule :: String -> State -> IO ()
 executeModule fileName state = do
     let invocation = "\"" ++ "lvmrun\" " ++ unwords (compOptions state) ++ " "++ fileName
+    putStrLn invocation
     _ <- sys invocation
     return ()
 

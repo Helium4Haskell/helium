@@ -1,3 +1,4 @@
+Prelude is up to date
 Compiling parser/IncorrectModuleName.hs
 (1,11): Syntax error: 
     unexpected operator '.'

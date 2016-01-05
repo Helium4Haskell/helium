@@ -1,3 +1,4 @@
+Prelude is up to date
 Compiling typeerrors/Examples/TypeBug6.hs
 (4,4): Warning: Variable "x" is not used
 (5,49): Type error in application

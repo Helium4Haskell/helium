@@ -1,3 +1,4 @@
+Prelude is up to date
 Compiling parser/ForgetClose5.hs
 (1,8), (1,9), (2,1): The following brackets are never closed: '[', '(' and '{'
 Compilation failed with 1 error

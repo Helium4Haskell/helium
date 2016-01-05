@@ -1,3 +1,4 @@
+Prelude is up to date
 Compiling staticerrors/TypeSynErr.hs
 (3,8), (3,10): Duplicated type variable "a"
 (3,34): Undefined type variable "c"

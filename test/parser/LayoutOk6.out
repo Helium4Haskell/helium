@@ -1,3 +1,4 @@
+Prelude is up to date
 Compiling parser/LayoutOk6.hs
 (3,9): Warning: Definition "x" is not used
 (3,1): Warning: Missing type signature: f :: Int

@@ -1,3 +1,4 @@
+Prelude is up to date
 Compiling parser/BackQuoteMessage.hs
 (1,13): Syntax error: 
     unexpected variable 'y'

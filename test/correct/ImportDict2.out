@@ -1,3 +1,4 @@
+Prelude is up to date
 Compiling correct/ImportDict2.hs
 (5,1): Warning: Missing type signature: y :: Int
 (6,1): Warning: Missing type signature: x :: Int

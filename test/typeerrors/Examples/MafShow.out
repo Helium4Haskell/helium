@@ -1,3 +1,4 @@
+Prelude is up to date
 Compiling typeerrors/Examples/MafShow.hs
 (4,8): Warning: Definition "i" is not used
 (4,8): Warning: Missing type signature: i :: Show a => a -> String

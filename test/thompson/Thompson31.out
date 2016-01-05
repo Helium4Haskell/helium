@@ -1,3 +1,4 @@
+Prelude is up to date
 Compiling thompson/Thompson31.hs
 (1,6): Recursive type synonym "Fred"
   Hint: Use "data" to write a recursive data type

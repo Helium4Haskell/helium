@@ -1,3 +1,4 @@
+Prelude is up to date
 Compiling staticerrors/SynUndefTyvar.hs
 (3,12): Undefined type variable "b"
   Hint: Did you mean "a" ?

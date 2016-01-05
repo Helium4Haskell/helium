@@ -1,3 +1,4 @@
+Prelude is up to date
 Compiling staticwarnings/Lambda2.hs
 (3,8): Warning: Missing patterns in lambda expression: 
   \ False _ -> ...

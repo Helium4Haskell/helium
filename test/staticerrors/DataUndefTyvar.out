@@ -1,3 +1,4 @@
+Prelude is up to date
 Compiling staticerrors/DataUndefTyvar.hs
 (3,12): Undefined type variable "a"
 Compilation failed with 1 error

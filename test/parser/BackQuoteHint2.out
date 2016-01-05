@@ -1,3 +1,4 @@
+Prelude is up to date
 Compiling parser/BackQuoteHint2.hs
 (1,10): Non-terminated character literal
   Hint: Correct examples of Chars: 'a' '\n' '&'

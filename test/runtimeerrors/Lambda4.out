@@ -1,3 +1,4 @@
+Prelude is up to date
 Compiling runtimeerrors/Lambda4.hs
 (4,15): Warning: Variable "xs" is not used
 (4,9): Warning: Missing pattern in lambda expression: 

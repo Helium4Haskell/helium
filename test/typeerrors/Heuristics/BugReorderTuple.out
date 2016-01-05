@@ -1,3 +1,4 @@
+Prelude is up to date
 Compiling typeerrors/Heuristics/BugReorderTuple.hs
 (5,5): Type error in pattern of function binding
  pattern          : (hs2, (_, xss2))

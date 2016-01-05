@@ -1,3 +1,4 @@
+Prelude is up to date
 Compiling typeerrors/Examples/PatNegateResult.hs
 (4,4): Type error in pattern of function binding
  pattern          : -3

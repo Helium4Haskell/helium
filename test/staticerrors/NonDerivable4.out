@@ -1,3 +1,4 @@
+Prelude is up to date
 Compiling staticerrors/NonDerivable4.hs
 (2,13): Unknown class "Sho" (Helium only supports Eq, Ord, Num, Show, Enum)
 Compilation failed with 1 error

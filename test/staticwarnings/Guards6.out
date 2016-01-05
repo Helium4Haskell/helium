@@ -1,3 +1,4 @@
+Prelude is up to date
 Compiling staticwarnings/Guards6.hs
 (4,1): Warning: Unreachable pattern: main True
 Compilation successful with 1 warning

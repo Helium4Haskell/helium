@@ -1,3 +1,4 @@
+Prelude is up to date
 Compiling staticerrors/FixNoDef.hs
 (3,10): Infix declaration for "+:-" without a definition 
 Compilation failed with 1 error

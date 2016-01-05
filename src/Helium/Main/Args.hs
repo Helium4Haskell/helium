@@ -13,6 +13,7 @@ module Helium.Main.Args
     , processRunHeliumArgs
     , processTexthintArgs
     , lvmPathFromOptions
+    , basePathFromOptions
     , loggerDEFAULTHOST
     , simplifyOptions
     , argsToOptions
@@ -149,7 +150,6 @@ optionDescription moreOptions experimentalOptions =
       , Option "w" [flag NoWarnings]                    (NoArg NoWarnings) "do notflag warnings"
       , Option "X" [flag MoreOptions]                   (NoArg MoreOptions) "show more compiler options"
       , Option ""  [flag (Information "")]             (ReqArg Information "NAME") "display information about NAME"
-
       ]
       ++
       -- More options
@@ -171,6 +171,7 @@ optionDescription moreOptions experimentalOptions =
       , Option ""  [flag DisableDirectives]             (NoArg DisableDirectives) "disable type inference directives"
       , Option ""  [flag NoRepairHeuristics]            (NoArg NoRepairHeuristics) "don't suggest program fixes"
       , Option ""  [flag HFullQualification]             (NoArg HFullQualification) "to determine fully qualified names for Holmes"
+      , Option ""  [flag (BasePath "")]                 (ReqArg BasePath "PATH") "use PATH as base path instead"
       ]
       ++
       -- Experimental options
@@ -202,7 +203,7 @@ data Option
    -- Main options
    = BuildOne | BuildAll | DumpInformationForThisModule | DumpInformationForAllModules
    | DisableLogging | EnableLogging | Alert String | Overloading | NoOverloading | LvmPath String | Verbose | NoWarnings | MoreOptions
-   | Information String
+   | Information String | BasePath String
    -- More options
    | StopAfterParser | StopAfterStaticAnalysis | StopAfterTypeInferencing | StopAfterDesugar
    | DumpTokens | DumpUHA | DumpCore | DumpCoreToFile
@@ -233,6 +234,7 @@ instance Show Option where
  show Overloading                        = "--overloading"
  show NoOverloading                      = "--no-overloading"
  show (LvmPath str)                      = "--lvmpath=\"" ++ str ++ "\"" -- May contain spaces
+ show (BasePath str)                      = "--basepath=\"" ++ str ++ "\"" -- May contain spaces
  show Verbose                            = "--verbose"
  show NoWarnings                         = "--no-warnings"
  show MoreOptions                        = "--moreoptions"
@@ -276,6 +278,11 @@ instance Show Option where
  show NoPrelude                          = "--no-prelude"
  show UseTutor                           = "--use-tutor"
 
+
+basePathFromOptions :: [Option] -> Maybe String
+basePathFromOptions [] = Nothing
+basePathFromOptions (BasePath s : _) = Just s
+basePathFromOptions (_ : rest) = basePathFromOptions rest
 
 lvmPathFromOptions :: [Option] -> Maybe String
 lvmPathFromOptions [] = Nothing

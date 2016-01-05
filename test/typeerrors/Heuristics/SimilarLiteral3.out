@@ -1,3 +1,4 @@
+Prelude is up to date
 Compiling typeerrors/Heuristics/SimilarLiteral3.hs
 (6,19): Type error in literal pattern
  pattern          : "A"

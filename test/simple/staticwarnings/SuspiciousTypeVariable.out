@@ -1,3 +1,4 @@
+Prelude is up to date
 Compiling staticwarnings/SuspiciousTypeVariable.hs
 (1,6): Warning: Suspicious type variable "int"
   Hint: Did you mean the type constructor "Int" ?

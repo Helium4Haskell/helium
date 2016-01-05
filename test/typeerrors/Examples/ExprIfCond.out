@@ -1,3 +1,4 @@
+Prelude is up to date
 Compiling typeerrors/Examples/ExprIfCond.hs
 (3,8): Type error in conditional
  expression       : if 3 then 4 else 5

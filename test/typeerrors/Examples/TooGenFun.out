@@ -1,3 +1,4 @@
+Prelude is up to date
 Compiling typeerrors/Examples/TooGenFun.hs
 (3,1): Type signature is too general
  function         : test

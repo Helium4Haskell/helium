@@ -1,3 +1,4 @@
+Prelude is up to date
 Compiling typeerrors/Heuristics/AppInsert2.hs
 (4,14): Type error in variable
  expression       : foldr

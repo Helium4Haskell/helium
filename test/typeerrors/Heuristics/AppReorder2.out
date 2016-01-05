@@ -1,3 +1,4 @@
+Prelude is up to date
 Compiling typeerrors/Heuristics/AppReorder2.hs
 (4,11): Type error in application
  expression       : foldr 0 (+)

@@ -1,3 +1,4 @@
+Prelude is up to date
 Compiling typeerrors/Heuristics/UnifierGuards2.hs
 (3,23): Type error in guarded expression
  expression       : 13

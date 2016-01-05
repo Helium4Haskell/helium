@@ -1,3 +1,4 @@
+Prelude is up to date
 Compiling typeerrors/Examples/PatInfixConstructorApply.hs
 (5,10): Type error in infix pattern application
  pattern          : 3 `A` True

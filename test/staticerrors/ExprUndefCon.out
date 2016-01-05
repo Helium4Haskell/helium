@@ -1,3 +1,4 @@
+Prelude is up to date
 Compiling staticerrors/ExprUndefCon.hs
 (3,8): Undefined constructor "Int"
   Hint: Type constructor "Int" cannot be used in an expression

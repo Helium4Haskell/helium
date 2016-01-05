@@ -1,3 +1,4 @@
+Prelude is up to date
 Compiling parser/PositionInsertedBrace2.hs
 (2,8): Syntax error: 
     unexpected next in block (based on layout)

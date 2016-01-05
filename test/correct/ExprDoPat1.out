@@ -1,3 +1,4 @@
+Prelude is up to date
 Compiling correct/ExprDoPat1.hs
 (6,9): Warning: Missing pattern in generator: 
   [] <- ...

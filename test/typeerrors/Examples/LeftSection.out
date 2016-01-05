@@ -1,3 +1,4 @@
+Prelude is up to date
 Compiling typeerrors/Examples/LeftSection.hs
 (4,8): Type error in right-hand side
  expression       : map (+ 3)

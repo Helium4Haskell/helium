@@ -1,3 +1,4 @@
+Prelude is up to date
 Compiling parser/Exponent.hs
 (1,1): Warning: Missing type signature: main :: (Float, Float, Float, Float, Float, Float, Float)
 Compilation successful with 1 warning

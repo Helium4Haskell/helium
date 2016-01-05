@@ -1,3 +1,4 @@
+Prelude is up to date
 Compiling typeerrors/Examples/BgExplicitTypedBinding.hs
 (4,1): Type error in explicitly typed binding
  definition       : f

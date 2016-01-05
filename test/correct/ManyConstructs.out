@@ -1,3 +1,4 @@
+Prelude is up to date
 Compiling correct/ManyConstructs.hs
 (16,9): Warning: Missing pattern in case expression: 
   [] -> ...

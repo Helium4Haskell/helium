@@ -1,3 +1,4 @@
+Prelude is up to date
 Compiling correct/PhantomSynonym.hs
 (1,14): Warning: Type variable "a" is not used
 (9,1): Warning: Missing type signature: main :: Bool

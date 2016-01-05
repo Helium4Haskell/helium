@@ -1,3 +1,4 @@
+Prelude is up to date
 Compiling typeerrors/Edinburgh/Ex16.hs
 (3,15): Type error in application
  expression       : (x + 1) (if x then x + 1 else x - 2.2)

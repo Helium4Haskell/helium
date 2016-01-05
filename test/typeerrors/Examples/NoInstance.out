@@ -1,3 +1,4 @@
+Prelude is up to date
 Compiling typeerrors/Examples/NoInstance.hs
 (3,8): Type error in overloaded function
  function         : show

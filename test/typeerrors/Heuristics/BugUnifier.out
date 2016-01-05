@@ -1,3 +1,4 @@
+Prelude is up to date
 Compiling typeerrors/Heuristics/BugUnifier.hs
 (2,13): Type error in infix application
  expression       : x ++ replicate (length x) ' '

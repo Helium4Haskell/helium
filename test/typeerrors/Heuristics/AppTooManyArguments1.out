@@ -1,3 +1,4 @@
+Prelude is up to date
 Compiling typeerrors/Heuristics/AppTooManyArguments1.hs
 (5,14): Type error in application
  expression       : fac n 1

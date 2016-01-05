@@ -1,3 +1,4 @@
+Prelude is up to date
 Compiling correct/PMC13.hs
 (7,1): Warning: Missing patterns in function bindings: 
   a (_ : _) = ...

@@ -1,3 +1,4 @@
+Prelude is up to date
 Compiling staticerrors/ExprDoLastNotExpr.hs
 (5,13): Last generator in do {...} must be an expression 
 Compilation failed with 1 error

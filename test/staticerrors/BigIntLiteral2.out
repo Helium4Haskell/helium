@@ -1,3 +1,4 @@
+Prelude is up to date
 Compiling staticerrors/BigIntLiteral2.hs
 (1,9): Integer literal (12345678901) too big
   Hint: Maximum is 1073741823

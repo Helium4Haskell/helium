@@ -1,3 +1,4 @@
+Prelude is up to date
 Compiling typeerrors/Heuristics/TupleSize3.hs
 (3,12): Type error in application
  expression       : fst (1, 2, "hello", "world")

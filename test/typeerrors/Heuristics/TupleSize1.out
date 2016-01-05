@@ -1,3 +1,4 @@
+Prelude is up to date
 Compiling typeerrors/Heuristics/TupleSize1.hs
 (6,10): Type error in tuple
  expression       : (a + b, a, b)

@@ -1,3 +1,4 @@
+Prelude is up to date
 Compiling staticerrors/NoPrimHint.hs
 (1,8): Undefined variable "primPutChar"
 Compilation failed with 1 error

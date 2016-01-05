@@ -1,3 +1,4 @@
+Prelude is up to date
 Compiling staticwarnings/Generator4.hs
 (3,14): Warning: Missing pattern in generator: 
   False <- ...

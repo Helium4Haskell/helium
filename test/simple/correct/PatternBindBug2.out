@@ -1,3 +1,4 @@
+Prelude is up to date
 Compiling correct/PatternBindBug1.hs
 (1,2): Warning: Missing type signature: a :: Int
 (1,5): Warning: Missing type signature: b :: Int

@@ -1,3 +1,4 @@
+Prelude is up to date
 Compiling typeerrors/Examples/KeepTyVarNames.hs
 (7,5): Type error in variable
  expression       : f

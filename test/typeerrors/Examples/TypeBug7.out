@@ -1,3 +1,4 @@
+Prelude is up to date
 Compiling typeerrors/Examples/TypeBug7.hs
 (3,7): Warning: Variable "x" is not used
 (3,9): Warning: Variable "y" is not used

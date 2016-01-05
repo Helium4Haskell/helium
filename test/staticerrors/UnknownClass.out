@@ -1,3 +1,4 @@
+Prelude is up to date
 Compiling staticerrors/UnknownClass.hs
 (1,6): Unknown class "Strange" (Helium only supports Eq, Ord, Num, Show, Enum)
 Compilation failed with 1 error

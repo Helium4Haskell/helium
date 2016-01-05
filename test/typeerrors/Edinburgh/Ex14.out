@@ -1,3 +1,4 @@
+Prelude is up to date
 Compiling typeerrors/Edinburgh/Ex14.hs
 (3,42): Type error in application
  expression       : fac (n == 1)

@@ -1,3 +1,4 @@
+Prelude is up to date
 Compiling typeerrors/Edinburgh/Ex12.hs
 (3,19): Type error in infix application
  expression       : p +# p

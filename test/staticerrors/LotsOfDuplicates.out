@@ -1,3 +1,4 @@
+Prelude is up to date
 Compiling staticerrors/LotsOfDuplicates.hs
 (3,10), (4,10), (5,10): Duplicated infix declaration "+++"
 (7,6), (8,6): Duplicated type constructor "A"

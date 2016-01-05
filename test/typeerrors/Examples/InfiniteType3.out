@@ -1,3 +1,4 @@
+Prelude is up to date
 Compiling typeerrors/Examples/InfiniteType3.hs
 (4,8): Warning: Variable "f" is not used
 (6,37): Type error in application

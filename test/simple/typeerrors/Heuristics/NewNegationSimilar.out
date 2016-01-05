@@ -1,3 +1,4 @@
+Prelude is up to date
 Compiling typeerrors/Heuristics/NewNegationSimilar.hs
 (2,9): Type error in negation
  expression       : -3.0

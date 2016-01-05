@@ -1,3 +1,4 @@
+Prelude is up to date
 Compiling correct/ShowSpecials.hs
 (4,1): Warning: Missing type signature: main :: (String, String)
 Compilation successful with 1 warning

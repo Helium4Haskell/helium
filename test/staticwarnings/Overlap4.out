@@ -1,3 +1,4 @@
+Prelude is up to date
 Compiling staticwarnings/Overlap4.hs
 (5,1): Warning: Unreachable pattern: main 1
 (7,1): Warning: Unreachable pattern: main 3

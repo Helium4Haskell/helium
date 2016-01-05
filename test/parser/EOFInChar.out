@@ -1,3 +1,4 @@
+Prelude is up to date
 Compiling parser/EOFInChar.hs
 (1,8): End of file in character literal
   Hint: Correct examples of Chars: 'a' '\n' '&'

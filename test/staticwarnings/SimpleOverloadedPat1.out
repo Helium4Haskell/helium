@@ -1,3 +1,4 @@
+Prelude is up to date
 Compiling staticwarnings/SimpleOverloadedPat1.hs
 (2,1): Warning: Missing type signature: eq :: Eq a => a -> a -> Bool
   Hint: Because eq has an overloaded type, computations may be repeated. Insert

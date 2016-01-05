@@ -1,3 +1,4 @@
+Prelude is up to date
 Compiling parser/CommentOrOperator2.hs
 (2,10): Warning: Syntax colouring usually can not handle names containing --
   Hint: If you wanted to start a comment, write spaces around --

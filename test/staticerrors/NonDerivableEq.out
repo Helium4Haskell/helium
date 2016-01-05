@@ -1,3 +1,4 @@
+Prelude is up to date
 Compiling staticerrors/NonDerivableEq.hs
 (1,35): Cannot derive instance for class "Eq"
   Hint: There is no Eq instance for Int -> Int

@@ -1,3 +1,4 @@
+Prelude is up to date
 Compiling typeerrors/Heuristics/UnifierIf.hs
 (2,28): Type error in else branch of conditional
  expression       : if True then 3 else "hello"

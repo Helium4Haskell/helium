@@ -1,3 +1,4 @@
+Prelude is up to date
 Compiling correct/PatBind1.hs
 (8,1): Warning: Missing pattern in pattern binding: 
   [] = ...

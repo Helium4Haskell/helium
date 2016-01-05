@@ -1,3 +1,4 @@
+Prelude is up to date
 Compiling runtimeerrors/ShadowNegate.hs
 (4,13): Warning: Definition "negate" is not used
 (4,13): Warning: Variable "negate" shadows the one at Prelude

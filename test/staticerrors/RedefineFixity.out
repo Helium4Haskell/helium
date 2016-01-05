@@ -1,3 +1,4 @@
+Prelude is up to date
 Compiling staticerrors/RedefineFixity.hs
 (3,10): Infix declaration for "+" without a definition 
   Hint: Did you mean ":" ?

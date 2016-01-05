@@ -1,3 +1,4 @@
+Prelude is up to date
 Compiling typeerrors/Examples/PatListElem.hs
 (3,12): Type error in element of pattern list
  pattern          : ["vis", 49]

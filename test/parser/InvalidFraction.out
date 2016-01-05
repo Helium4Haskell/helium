@@ -1,3 +1,4 @@
+Prelude is up to date
 Compiling parser/InvalidFraction.hs
 (1,8): Warning: Integer immediately followed by function composition (.)
   Hint: If a Float was meant, write "1.0"

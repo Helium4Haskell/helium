@@ -1,3 +1,4 @@
+Prelude is up to date
 Compiling typeerrors/Heuristics/AppSubterm2.hs
 (7,15): Type error in application
  expression       : f 0 (x == 1) x

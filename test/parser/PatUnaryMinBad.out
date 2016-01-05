@@ -1,3 +1,4 @@
+Prelude is up to date
 Compiling parser/PatUnaryMinBad.hs
 (1,5): Syntax error: 
     unexpected variable 'x'

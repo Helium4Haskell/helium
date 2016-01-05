@@ -1,3 +1,4 @@
+Prelude is up to date
 Compiling staticwarnings/SuspiciousFBs.hs
 (7,12): Warning: Definition "suspiciuos" is not used
 (7,12), (8,12): Warning: Suspicious adjacent functions "suspiciuos" and "suspicious"

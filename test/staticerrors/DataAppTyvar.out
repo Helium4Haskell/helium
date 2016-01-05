@@ -1,3 +1,4 @@
+Prelude is up to date
 Compiling staticerrors/DataAppTyvar.hs
 (5,15): Type variable "a" cannot be applied to another type
 Compilation failed with 1 error

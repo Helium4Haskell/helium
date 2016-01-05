@@ -1,3 +1,4 @@
+Prelude is up to date
 Compiling typeerrors/Examples/Shadow.hs
 (2,3): Warning: Variable "id" shadows the one at Prelude
 (2,12): Type error in application

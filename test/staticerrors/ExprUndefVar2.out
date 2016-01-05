@@ -1,3 +1,4 @@
+Prelude is up to date
 Compiling staticerrors/ExprUndefVar2.hs
 (3,8): Undefined variable "mian"
   Hint: Did you mean "main" or "min" ?

@@ -1,3 +1,4 @@
+Prelude is up to date
 Compiling typeerrors/Examples/ExprEnumFrom.hs
 (3,7): Type error in enumeration
  expression       : ["aap" .. ]

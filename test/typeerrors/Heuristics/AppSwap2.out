@@ -1,3 +1,4 @@
+Prelude is up to date
 Compiling typeerrors/Heuristics/AppSwap2.hs
 (6,24): Type error in infix application
  expression       : dictionary ? 0

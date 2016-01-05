@@ -1,3 +1,4 @@
+Prelude is up to date
 Compiling staticwarnings/Missing5.hs
 (3,1): Warning: Missing patterns in function bindings: 
   main (_ : (_ : (_ : _))) = ...

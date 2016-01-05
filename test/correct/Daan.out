@@ -1,3 +1,4 @@
+Prelude is up to date
 Compiling correct/Daan.hs
 Compilation successful
 KNOWN BUG: lvmrun does not cleanly detect out of memory here.

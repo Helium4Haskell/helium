@@ -1,3 +1,4 @@
+Prelude is up to date
 Compiling typeerrors/Examples/TypeBug3.hs
 (3,1): Warning: Missing type signature: f :: [[Char]]
 Compilation successful with 1 warning

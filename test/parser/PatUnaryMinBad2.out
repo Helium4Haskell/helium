@@ -1,3 +1,4 @@
+Prelude is up to date
 Compiling parser/PatUnaryMinBad2.hs
 (1,6): Syntax error: 
     unexpected constructor 'Nil'

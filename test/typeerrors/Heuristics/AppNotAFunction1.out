@@ -1,3 +1,4 @@
+Prelude is up to date
 Compiling typeerrors/Heuristics/AppNotAFunction1.hs
 (3,22): Type error in application
  expression       : "hello" "world"

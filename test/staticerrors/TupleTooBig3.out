@@ -1,3 +1,4 @@
+Prelude is up to date
 Compiling staticerrors/TupleTooBig3.hs
 (1,9): Tuples can have up to 10 elements
 Compilation failed with 1 error
