@@ -103,10 +103,10 @@ make basedir fullName lvmPath chain options doneRef =
                       exitWith (ExitFailure 1)
                 Nothing -> 
                     return ()
-                 
+                        
             -- Find all imports in the search path
             resolvedImports <- mapM (resolve lvmPath) imports
-                        
+            
             -- For each of the imports...
             compileResults <- forM (zip imports resolvedImports) 
               $ \(importModuleName, maybeImportFullName) -> do

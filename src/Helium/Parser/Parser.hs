@@ -34,7 +34,6 @@ Simplified:
 -}
 
 import Control.Monad
-import qualified Control.Exception as CE (catch, IOException)
 import Helium.Parser.ParseLibrary hiding (satisfy)
 import Data.Functor.Identity (Identity)
 import Text.ParserCombinators.Parsec
@@ -52,19 +51,13 @@ import Helium.Utils.Utils
 
 parseOnlyImports :: String -> IO [String]
 parseOnlyImports fullName = do
-    contents <- CE.catch (readFile fullName)
-        (\ioErr -> 
-            let message = "Unable to read file " ++ show fullName 
-                       ++ " (" ++ show (ioErr :: CE.IOException) ++ ")"
-            in throw message)
-    
+    contents <- readSourceFile fullName    
     return $ case lexer [] fullName contents of
-        Left _ -> []
-        Right (toks, _) ->
-            case runHParser onlyImports fullName (layout toks) False {- no EOF -} of
-                Left _ -> []
-                Right imports -> 
-                    map stringFromImportDeclaration imports
+               Left _ -> []
+               Right (toks, _) ->
+                 case runHParser onlyImports fullName (layout toks) False {- no EOF -} of
+                   Left _ -> []
+                   Right imports -> map stringFromImportDeclaration imports
 
 {-
 module  

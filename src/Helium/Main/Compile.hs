@@ -20,7 +20,6 @@ import Helium.Main.PhaseDesugarer
 import Helium.Main.PhaseCodeGenerator
 import Helium.Main.CompileUtils
 import Helium.Utils.Utils
-import qualified Control.Exception as CE (catch, IOException)
 import Data.IORef
 import Helium.StaticAnalysis.Messages.StaticErrors(errorsLogCode)
 
@@ -35,7 +34,7 @@ compile basedir fullName options lvmPath doneModules =
         writeIORef refToCurrentFileName fullName
         writeIORef refToCurrentImported doneModules
 
-        contents <- safeReadFile fullName
+        contents <- readSourceFile fullName
 
         -- Phase 1: Lexing
         (lexerWarnings, tokens) <- 
@@ -112,15 +111,6 @@ compile basedir fullName options lvmPath doneModules =
                       if number == 0 || (NoWarnings `elem` options)
                         then ""
                         else " with " ++ show number ++ " warning" ++ if number == 1 then "" else "s"
-
-safeReadFile :: String -> IO String
-safeReadFile fullName = 
-    CE.catch 
-        (readFile fullName)
-        (\ioErr -> 
-            let message = "Unable to read file " ++ show fullName 
-                       ++ " (" ++ show (ioErr :: CE.IOException) ++ ")"
-            in throw message)
 
 stopCompilingIf :: Bool -> IO ()
 stopCompilingIf bool = when bool (exitWith (ExitFailure 1))

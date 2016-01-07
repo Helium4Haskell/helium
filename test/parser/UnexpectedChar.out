@@ -1,4 +1,4 @@
 Prelude is up to date
 Compiling parser/UnexpectedChar.hs
-(1,1): Unexpected character 'แ'
+(1,1): Unexpected character 'รก'
 Compilation failed with 1 error

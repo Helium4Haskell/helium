@@ -18,7 +18,7 @@ module Helium.Main.CompileUtils
 
 import Helium.Main.Args(Option(..))
 import Helium.StaticAnalysis.Messages.Messages(HasMessage)
-import Helium.StaticAnalysis.Messages.HeliumMessages(sortAndShowMessages)
+import Helium.StaticAnalysis.Messages.HeliumMessages(sortAndShowMessages,sortMessages)
 import Control.Monad
 import Helium.Utils.Utils(splitFilePath, combinePathAndFile)
 import System.Exit
@@ -60,7 +60,7 @@ enterNewPhase phase options =
 
 showErrorsAndExit :: HasMessage a => [a] -> Int -> IO b
 showErrorsAndExit errors maximumNumber = do
-    let someErrors = take maximumNumber errors
+    let someErrors = take maximumNumber (sortMessages errors)
     showMessages someErrors
     when (number > maximumNumber) $ 
         putStrLn "(...)\n"

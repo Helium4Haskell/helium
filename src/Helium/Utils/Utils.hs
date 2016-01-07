@@ -13,8 +13,9 @@ module Helium.Utils.Utils where
 import Data.IORef
 
 import GHC.IO (unsafePerformIO)
+import System.IO (withFile, hGetContents, IOMode(..), char8, hSetEncoding)
 import Data.List (group, groupBy, sort, elemIndex)
-import qualified Control.Exception as CE (catch, IOException)
+import qualified Control.Exception as CE (catch, IOException, evaluate)
 import System.FilePath
 import Helium.Utils.Logger
 
@@ -133,6 +134,19 @@ internalError moduleName functionName message = unsafePerformIO $ do
       curImports  <- readIORef refToCurrentImported       
       logInternalError (Just (curImports,curFileName)) {- no debugging, we can't get to the command-line option DebugLogger here -}
 
+readSourceFile :: String -> IO String
+readSourceFile fullName = 
+    CE.catch (
+    withFile fullName ReadMode $ \h1 -> do               
+         hSetEncoding h1 char8
+         txt <- hGetContents h1
+         contents <- CE.evaluate txt        
+         return contents)
+    (\ioErr -> 
+         let message = "Unable to read file " ++ show fullName 
+                    ++ " (" ++ show (ioErr :: CE.IOException) ++ ")"
+         in throw message)
+         
 maxInt, minInt :: Integer
 maxInt = 1073741823
 minInt = -1073741823

@@ -12,11 +12,11 @@ Compiling typeerrors/Examples/TypeBug4.hs
    does not match : ([a] -> Int) -> [b] -> (c -> Int -> Int) -> Int
  because          : too many arguments are given
 
-(4,58): Type error in infix application
- expression       : k : sp k : " "
- constructor      : :
-   type           : a   -> [a   ] -> [a]
-   does not match : [b] -> [Char] -> [b]
+(4,39): Type error in application
+ expression       : map (length l)
+ term             : map
+   type           : (a -> b) -> [a] -> [b]
+   does not match : Int      -> c   -> Int
 
 (...)
 
