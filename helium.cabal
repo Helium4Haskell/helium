@@ -1,5 +1,5 @@
 name:                   helium
-version:                1.8.1
+version:                1.8.2
 synopsis:               The Helium Compiler.
 homepage:               http://www.cs.uu.nl/wiki/bin/view/Helium/WebHome
 description:
@@ -11,7 +11,7 @@ description:
   to define new type classes and instances.
 
 category:               Compiler
-copyright:              (c) 2014-2015
+copyright:              (c) 2014-2016
 license:                GPL
 license-file:           LICENSE.txt
 author:                 Bastiaan Heeren, Jurriaan Hage

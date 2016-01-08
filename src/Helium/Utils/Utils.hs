@@ -13,7 +13,7 @@ module Helium.Utils.Utils where
 import Data.IORef
 
 import GHC.IO (unsafePerformIO)
-import System.IO (withFile, hGetContents, IOMode(..), char8, hSetEncoding)
+import System.IO (withFile, hGetContents, IOMode(..), hSetBinaryMode)
 import Data.List (group, groupBy, sort, elemIndex)
 import qualified Control.Exception as CE (catch, IOException, evaluate)
 import System.FilePath
@@ -138,10 +138,12 @@ readSourceFile :: String -> IO String
 readSourceFile fullName = 
     CE.catch (
     withFile fullName ReadMode $ \h1 -> do               
-         hSetEncoding h1 char8
-         txt <- hGetContents h1
-         contents <- CE.evaluate txt        
-         return contents)
+         hSetBinaryMode h1 True
+         contents <- hGetContents h1
+         -- Without evaluate everything breaks down.
+         src <- CE.evaluate contents
+         _ <- CE.evaluate (length src) -- For some reason I need to put this here too. Don't know why.
+         return src)
     (\ioErr -> 
          let message = "Unable to read file " ++ show fullName 
                     ++ " (" ++ show (ioErr :: CE.IOException) ++ ")"

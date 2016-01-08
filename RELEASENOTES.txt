@@ -35,4 +35,12 @@ from the Helium website. The sources of Hint are publicly available from the svn
 repository that also stores the source code of the Helium compiler and all
 associated tools. Again, see the links on the Helium website.
 
+ABOUT VERSION 1.8.2
+
+The Helium system tests now run again, and revealed a few small bugs. These 
+have been fixed.
+
+ABOUT VERSION 2.0
+
+<watch this space>
 
