@@ -3,6 +3,9 @@
 
 module Helium.Syntax.UHA_Pretty where
 
+-- To avoid clash with PrettyPrint.Leijen 
+import Prelude hiding ((<$>))
+
 -- Below two imports are to avoid clashes of "list" as used by the AG system.
 -- Effectively, only list from the imported library needs to be qualified.
 import Text.PrettyPrint.Leijen hiding (list)

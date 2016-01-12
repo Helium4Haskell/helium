@@ -1,3 +1,5 @@
+{-# LANGUAGE FlexibleContexts #-}
+
 {-| Module      :  UnifierHeuristics
     License     :  GPL
 

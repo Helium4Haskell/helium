@@ -45,9 +45,16 @@ bindLM (LM f) g =
 returnLM :: a -> LexerMonad a
 returnLM x = LM (\_ pos brackets -> Right (x, [], pos, brackets))
 
+instance Functor LexerMonad where
+    fmap f m = m >>= pure . f
+    
+instance Applicative LexerMonad where
+    pure      = returnLM
+    f1 <*> f2 = f1 >>= \v1 -> f2 >>= (pure . v1)
+    
 instance Monad LexerMonad where
+    return = pure
     (>>=) = bindLM
-    return = returnLM
 
 runLexerMonad :: [Option] -> String -> LexerMonad a -> Either LexerError (a, [LexerWarning])
 runLexerMonad opts fileName (LM f) = 

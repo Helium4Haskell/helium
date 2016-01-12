@@ -1,3 +1,5 @@
+{-# LANGUAGE FlexibleContexts #-}
+
 {-| Module      :  RepairHeuristics
     License     :  GPL
 

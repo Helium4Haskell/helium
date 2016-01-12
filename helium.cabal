@@ -93,7 +93,7 @@ source-repository head
 --------------------------------------------------------------------------------
 
 Executable helium
-  Build-Depends:     base >= 3 && < 5, containers, mtl, parsec, network, process, transformers, filepath, directory, wl-pprint, Top >= 1.7, lvmlib >= 1.1
+  Build-Depends:     base >= 3 && < 5, containers, mtl, parsec, network, process, transformers, filepath, directory, wl-pprint, Top >= 1.8, lvmlib >= 1.2
   ghc-options:       -Wall
   default-language:  Haskell98
   hs-source-dirs:    src

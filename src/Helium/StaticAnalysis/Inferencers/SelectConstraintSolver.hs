@@ -1,4 +1,4 @@
-{-# LANGUAGE UndecidableInstances, OverlappingInstances #-}
+{-# LANGUAGE UndecidableInstances #-}
 
 {-| Module      :  SelectConstraintSolver
     License     :  GPL

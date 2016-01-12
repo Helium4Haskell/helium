@@ -1,3 +1,5 @@
+{-# LANGUAGE FlexibleContexts #-}
+
 {-| Module      :  TieBreakerHeuristics
     License     :  GPL
 

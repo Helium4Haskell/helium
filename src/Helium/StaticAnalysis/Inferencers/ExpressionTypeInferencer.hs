@@ -34,8 +34,8 @@ expressionTypeInferencer importEnvironment expression =
        rhs_    = RightHandSide_Expression noRange expression MaybeDeclarations_Nothing
 
        res = wrap_Module (sem_Module module_) Inh_Module {
-       	         importEnvironment_Inh_Module = importEnvironment,
-		 options_Inh_Module           = [] }
+                 importEnvironment_Inh_Module = importEnvironment,
+                 options_Inh_Module           = [] }
 
        inferredType = let err = internalError "ExpressionTypeInferencer.hs" "expressionTypeInferencer" "cannot find inferred type"
                       in fromMaybe err (M.lookup functionName $ toplevelTypes_Syn_Module res)
