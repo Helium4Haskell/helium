@@ -1,0 +1,7 @@
+#!/bin/sh
+
+ERRORS=0
+for f in typeClassesParse/*.hs          ; do /bin/sh testOne ${f%.hs}; ERRORS=$[$ERRORS+$?] ; done
+for f in typeClassesStatic/*.hs         ; do /bin/sh testOne ${f%.hs}; ERRORS=$[$ERRORS+$?] ; done
+for f in typeClassesWarnings/*.hs         ; do /bin/sh testOne ${f%.hs}; ERRORS=$[$ERRORS+$?] ; done
+exit $ERRORS

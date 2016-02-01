@@ -1,0 +1,3 @@
+Compiling typeClassesStatic/UndefinedClass.hs
+(1,10): Trying to instantiate unknown class SomeClass.
+Compilation failed with 1 error

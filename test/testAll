@@ -14,8 +14,9 @@ echo OVERLOADING TEST SET
 /bin/sh testC  ; X6=$?
 /bin/sh testSW ; X7=$?
 /bin/sh testR  ; X8=$?
+/bin/sh testTC ; X9=$?
 
-TOTAL=$[$X0 + $X1 + $X2 + $X3 + $X4 + $X5 + $X6 + $X7 + $X8]
+TOTAL=$[$X0 + $X1 + $X2 + $X3 + $X4 + $X5 + $X6 + $X7 + $X8 + $X9]
 echo "Test failures: $TOTAL"
 
 if [ "$TOTAL" = "0" ];

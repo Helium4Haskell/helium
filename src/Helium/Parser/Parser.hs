@@ -14,7 +14,6 @@ module Helium.Parser.Parser
 {-
 Absent:
 - records
-- classes (class, instance, default...)
 - "newtype"
 - strictness annotations
 - n+k patterns
@@ -131,6 +130,10 @@ importsThenTopdecls explicit =
     topdeclCombinator = if explicit then semiSepTerm else semiOrInsertedSemiSepTerm
 
         
+-- JW: Need to add to topdecl '| "class" [scontext =>] tycls tyvar [where cdecls] '
+-- First try " class tycon tyvar [where cdecls]" as class constraints do not yet exist
+-- in a later phase add them then also data has to be changed to deal with typeclass constraints
+-- please note that in ghc already this has some strange behaviour, read semantics carefully...
     
 {-
 topdecl  
@@ -177,6 +180,35 @@ topdecl = addRange (
         lexASG
         t <- type_
         return $ \r -> Declaration_Type r st t
+    <|>
+-- Declaration_Class (Range) (ContextItems) (SimpleType) (MaybeDeclarations)
+{-
+cdecls :: HParser Declarations
+cdecls =
+    do
+     ds <- withLayout cdecl
+     return (CollectFunctionBindings.cdecls ds)
+-}
+    do
+        lexCLASS
+        ct <- option [] (try $ do {c <- scontext ; lexDARROW ; return c} )
+        st <- simpleType
+        ds <- option MaybeDeclarations_Nothing (try $ do lexWHERE
+                                                         d <-  cdecls
+                                                         
+                                                         return (MaybeDeclarations_Just d))
+        return $ \r -> Declaration_Class r ct st ds
+    <|>
+-- Declaration_Instance (Range) (ContextItems) (Name) (Types) (MaybeDeclarations)
+    do
+        lexINSTANCE
+        ct <- option [] (try $ do {c <- scontext; lexDARROW ; return c} )
+        n  <- tycls
+        ts <- iType
+        ds <- option MaybeDeclarations_Nothing (try $ do lexWHERE
+                                                         d <- idecls
+                                                         return (MaybeDeclarations_Just d))
+        return $ \r -> Declaration_Instance r ct n [ts] ds
     <|>
     infixdecl
     ) 
@@ -305,7 +337,82 @@ import_ = addRange $
     do
         n <- var
         return $ \r -> Import_Variable r n
+
+{-
+cdecls -> " {" decl1 ";" .... ";" decln "}"    (n>=0)
+-}
+
+{-
+cdecl -> vars "::" type  (type signature)
+      | (funlhs | var) rhs
+-}
+
+cdecls :: HParser Declarations
+cdecls =
+    do
+     ds <- withLayout cdecl
+     return (CollectFunctionBindings.decls ds)
+     
+cdecl :: HParser Declaration
+cdecl = addRange (
+    try (do
+         nr <- withRange var
+         cdecl1 nr)
+    <|>
+    do
+       l <- funlhs
+       b <- normalRhs
+       return $ \r -> Declaration_FunctionBindings r
+           [FunctionBinding_FunctionBinding r l b]
+      ) <?> Texts.parserDeclaration
+     
     
+cdecl1 :: (Name, Range) -> HParser (Range -> Declaration)
+cdecl1 (n, _) =
+    do
+        lexCOMMA
+        ns <- vars
+        lexCOLCOL
+        t <- contextAndType
+        return $ \r -> Declaration_TypeSignature r (n:ns) t
+    <|>
+    do
+        lexCOLCOL
+        t <- contextAndType
+        return $ \r -> Declaration_TypeSignature r [n] t
+    <|>
+    do
+        b <- normalRhs
+        return $ \r -> Declaration_FunctionBindings r
+            [FunctionBinding_FunctionBinding r (LeftHandSide_Function r n []) b]
+
+{-
+idecl -> (funlhs | var) rhs
+        |                       (empty)
+-}
+
+idecls :: HParser Declarations
+idecls =
+    do
+     ds <- withLayout idecl
+     return ds -- (CollectFunctionBindings.decls ds)
+     
+idecl :: HParser Declaration
+idecl = addRange (
+    try (do
+          (n, _) <- try (withRange var)
+          b <- normalRhs
+          return $ \r -> Declaration_FunctionBindings r
+             [FunctionBinding_FunctionBinding r (LeftHandSide_Function r n []) b])
+    <|>
+    do
+       l <- funlhs
+       b <- normalRhs
+       return $ \r -> Declaration_FunctionBindings r
+           [FunctionBinding_FunctionBinding r l b]
+       
+      ) <?> Texts.parserDeclaration
+                  
 {-
 decls   ->  "{" decl1 ";" ... ";" decln "}"    (n>=0)  
 -}
@@ -1102,6 +1209,35 @@ btype = addRange (
             [t] -> t
             (t:ts') -> Type_Application r True t ts'
             []  -> error "Pattern match failure in Parser.Parser.btype"
+    ) <?> Texts.parserType
+
+{- iType -> tycon
+         |  "(" ")"  (unit type)
+         |  "(" type1 "," ... "," typek ")"  (tuple type, k>=2)  
+         |  "(" type ")"  (parenthesized constructor)
+         |  "[" type "]"  (list type)
+-}
+iType :: HParser Type
+iType = addRange (
+    do
+        c <- tycon
+        return (\r -> Type_Constructor r c)
+    <|>
+    do
+        ts <- parens (commas type_)
+        return (\r -> case ts of
+            [] -> Type_Constructor r (Name_Special r [] "()") -- !!!Name
+            [t] -> Type_Parenthesized r t
+            _ -> let n = Name_Special r []  -- !!!Name
+                            ( "(" ++ replicate (length ts - 1) ',' ++ ")" )
+                 in Type_Application r False (Type_Constructor r n) ts
+         )
+    <|>
+    do
+        t <- brackets type_
+        return $ \r ->
+            let n = Name_Special r [] "[]" -- !!!Name
+            in Type_Application r False (Type_Constructor r n) [t]
     ) <?> Texts.parserType
 
 {-

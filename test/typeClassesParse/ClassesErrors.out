@@ -1,0 +1,5 @@
+Compiling typeClassesParse/ClassesErrors.hs
+(1,19): Syntax error: 
+    unexpected keyword 'where'
+    expecting type variable, declaration, end of block (based on layout), next in block (based on layout) or ';'
+Compilation failed with 1 error

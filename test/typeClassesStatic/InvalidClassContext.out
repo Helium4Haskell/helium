@@ -1,0 +1,4 @@
+Compiling typeClassesStatic/InvalidClassContext.hs
+(1,25): Context of type class "RandomClass" refers to variables other variables then the one declared in the type class
+  Hint: You use: "b" or "c" .
+Compilation failed with 1 error

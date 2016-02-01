@@ -86,8 +86,8 @@ wrap_Alternative :: T_Alternative  -> Inh_Alternative  -> (Syn_Alternative )
 wrap_Alternative (T_Alternative act) (Inh_Alternative _lhsIbindingGroups _lhsIkappaUnique) =
    Control.Monad.Identity.runIdentity (
      do sem <- act
-        let arg = T_Alternative_vIn1 _lhsIbindingGroups _lhsIkappaUnique
-        (T_Alternative_vOut1 _lhsObindingGroups _lhsOkappaUnique _lhsOself) <- return (inv_Alternative_s2 sem arg)
+        let arg1 = T_Alternative_vIn1 _lhsIbindingGroups _lhsIkappaUnique
+        (T_Alternative_vOut1 _lhsObindingGroups _lhsOkappaUnique _lhsOself) <- return (inv_Alternative_s2 sem arg1)
         return (Syn_Alternative _lhsObindingGroups _lhsOkappaUnique _lhsOself)
    )
 
@@ -266,8 +266,8 @@ wrap_Alternatives :: T_Alternatives  -> Inh_Alternatives  -> (Syn_Alternatives )
 wrap_Alternatives (T_Alternatives act) (Inh_Alternatives _lhsIbindingGroups _lhsIkappaUnique) =
    Control.Monad.Identity.runIdentity (
      do sem <- act
-        let arg = T_Alternatives_vIn4 _lhsIbindingGroups _lhsIkappaUnique
-        (T_Alternatives_vOut4 _lhsObindingGroups _lhsOkappaUnique _lhsOself) <- return (inv_Alternatives_s5 sem arg)
+        let arg4 = T_Alternatives_vIn4 _lhsIbindingGroups _lhsIkappaUnique
+        (T_Alternatives_vOut4 _lhsObindingGroups _lhsOkappaUnique _lhsOself) <- return (inv_Alternatives_s5 sem arg4)
         return (Syn_Alternatives _lhsObindingGroups _lhsOkappaUnique _lhsOself)
    )
 
@@ -375,8 +375,8 @@ wrap_AnnotatedType :: T_AnnotatedType  -> Inh_AnnotatedType  -> (Syn_AnnotatedTy
 wrap_AnnotatedType (T_AnnotatedType act) (Inh_AnnotatedType _lhsIconstraints _lhsIkappaUnique) =
    Control.Monad.Identity.runIdentity (
      do sem <- act
-        let arg = T_AnnotatedType_vIn7 _lhsIconstraints _lhsIkappaUnique
-        (T_AnnotatedType_vOut7 _lhsOassumptions _lhsOconstraints _lhsOkappa _lhsOkappaUnique _lhsOself) <- return (inv_AnnotatedType_s8 sem arg)
+        let arg7 = T_AnnotatedType_vIn7 _lhsIconstraints _lhsIkappaUnique
+        (T_AnnotatedType_vOut7 _lhsOassumptions _lhsOconstraints _lhsOkappa _lhsOkappaUnique _lhsOself) <- return (inv_AnnotatedType_s8 sem arg7)
         return (Syn_AnnotatedType _lhsOassumptions _lhsOconstraints _lhsOkappa _lhsOkappaUnique _lhsOself)
    )
 
@@ -461,8 +461,8 @@ wrap_AnnotatedTypes :: T_AnnotatedTypes  -> Inh_AnnotatedTypes  -> (Syn_Annotate
 wrap_AnnotatedTypes (T_AnnotatedTypes act) (Inh_AnnotatedTypes _lhsIconstraints _lhsIkappaUnique) =
    Control.Monad.Identity.runIdentity (
      do sem <- act
-        let arg = T_AnnotatedTypes_vIn10 _lhsIconstraints _lhsIkappaUnique
-        (T_AnnotatedTypes_vOut10 _lhsOassumptions _lhsOconstraints _lhsOkappaUnique _lhsOkappas _lhsOself) <- return (inv_AnnotatedTypes_s11 sem arg)
+        let arg10 = T_AnnotatedTypes_vIn10 _lhsIconstraints _lhsIkappaUnique
+        (T_AnnotatedTypes_vOut10 _lhsOassumptions _lhsOconstraints _lhsOkappaUnique _lhsOkappas _lhsOself) <- return (inv_AnnotatedTypes_s11 sem arg10)
         return (Syn_AnnotatedTypes _lhsOassumptions _lhsOconstraints _lhsOkappaUnique _lhsOkappas _lhsOself)
    )
 
@@ -590,8 +590,8 @@ wrap_Body :: T_Body  -> Inh_Body  -> (Syn_Body )
 wrap_Body (T_Body act) (Inh_Body _lhsIimportEnvironment _lhsIkappaUnique) =
    Control.Monad.Identity.runIdentity (
      do sem <- act
-        let arg = T_Body_vIn13 _lhsIimportEnvironment _lhsIkappaUnique
-        (T_Body_vOut13 _lhsOconstraints _lhsOenvironment _lhsOkappaUnique _lhsOself) <- return (inv_Body_s14 sem arg)
+        let arg13 = T_Body_vIn13 _lhsIimportEnvironment _lhsIkappaUnique
+        (T_Body_vOut13 _lhsOconstraints _lhsOenvironment _lhsOkappaUnique _lhsOself) <- return (inv_Body_s14 sem arg13)
         return (Syn_Body _lhsOconstraints _lhsOenvironment _lhsOkappaUnique _lhsOself)
    )
 
@@ -718,8 +718,8 @@ wrap_Constructor :: T_Constructor  -> Inh_Constructor  -> (Syn_Constructor )
 wrap_Constructor (T_Constructor act) (Inh_Constructor _lhsIconstraints _lhsIkappaUnique) =
    Control.Monad.Identity.runIdentity (
      do sem <- act
-        let arg = T_Constructor_vIn16 _lhsIconstraints _lhsIkappaUnique
-        (T_Constructor_vOut16 _lhsOassumptions _lhsOconstraints _lhsOkappaUnique _lhsOself) <- return (inv_Constructor_s17 sem arg)
+        let arg16 = T_Constructor_vIn16 _lhsIconstraints _lhsIkappaUnique
+        (T_Constructor_vOut16 _lhsOassumptions _lhsOconstraints _lhsOkappaUnique _lhsOself) <- return (inv_Constructor_s17 sem arg16)
         return (Syn_Constructor _lhsOassumptions _lhsOconstraints _lhsOkappaUnique _lhsOself)
    )
 
@@ -901,8 +901,8 @@ wrap_Constructors :: T_Constructors  -> Inh_Constructors  -> (Syn_Constructors )
 wrap_Constructors (T_Constructors act) (Inh_Constructors _lhsIconstraints _lhsIkappaUnique) =
    Control.Monad.Identity.runIdentity (
      do sem <- act
-        let arg = T_Constructors_vIn19 _lhsIconstraints _lhsIkappaUnique
-        (T_Constructors_vOut19 _lhsOassumptions _lhsOconstraints _lhsOkappaUnique _lhsOself) <- return (inv_Constructors_s20 sem arg)
+        let arg19 = T_Constructors_vIn19 _lhsIconstraints _lhsIkappaUnique
+        (T_Constructors_vOut19 _lhsOassumptions _lhsOconstraints _lhsOkappaUnique _lhsOself) <- return (inv_Constructors_s20 sem arg19)
         return (Syn_Constructors _lhsOassumptions _lhsOconstraints _lhsOkappaUnique _lhsOself)
    )
 
@@ -1020,8 +1020,8 @@ wrap_ContextItem :: T_ContextItem  -> Inh_ContextItem  -> (Syn_ContextItem )
 wrap_ContextItem (T_ContextItem act) (Inh_ContextItem _lhsIkappaUnique) =
    Control.Monad.Identity.runIdentity (
      do sem <- act
-        let arg = T_ContextItem_vIn22 _lhsIkappaUnique
-        (T_ContextItem_vOut22 _lhsOkappaUnique _lhsOself) <- return (inv_ContextItem_s23 sem arg)
+        let arg22 = T_ContextItem_vIn22 _lhsIkappaUnique
+        (T_ContextItem_vOut22 _lhsOkappaUnique _lhsOself) <- return (inv_ContextItem_s23 sem arg22)
         return (Syn_ContextItem _lhsOkappaUnique _lhsOself)
    )
 
@@ -1093,8 +1093,8 @@ wrap_ContextItems :: T_ContextItems  -> Inh_ContextItems  -> (Syn_ContextItems )
 wrap_ContextItems (T_ContextItems act) (Inh_ContextItems _lhsIkappaUnique) =
    Control.Monad.Identity.runIdentity (
      do sem <- act
-        let arg = T_ContextItems_vIn25 _lhsIkappaUnique
-        (T_ContextItems_vOut25 _lhsOkappaUnique _lhsOself) <- return (inv_ContextItems_s26 sem arg)
+        let arg25 = T_ContextItems_vIn25 _lhsIkappaUnique
+        (T_ContextItems_vOut25 _lhsOkappaUnique _lhsOself) <- return (inv_ContextItems_s26 sem arg25)
         return (Syn_ContextItems _lhsOkappaUnique _lhsOself)
    )
 
@@ -1184,8 +1184,8 @@ wrap_Declaration :: T_Declaration  -> Inh_Declaration  -> (Syn_Declaration )
 wrap_Declaration (T_Declaration act) (Inh_Declaration _lhsIbindingGroups _lhsIkappaUnique) =
    Control.Monad.Identity.runIdentity (
      do sem <- act
-        let arg = T_Declaration_vIn28 _lhsIbindingGroups _lhsIkappaUnique
-        (T_Declaration_vOut28 _lhsObindingGroups _lhsOkappaUnique _lhsOself) <- return (inv_Declaration_s29 sem arg)
+        let arg28 = T_Declaration_vIn28 _lhsIbindingGroups _lhsIkappaUnique
+        (T_Declaration_vOut28 _lhsObindingGroups _lhsOkappaUnique _lhsOself) <- return (inv_Declaration_s29 sem arg28)
         return (Syn_Declaration _lhsObindingGroups _lhsOkappaUnique _lhsOself)
    )
 
@@ -1842,8 +1842,8 @@ wrap_Declarations :: T_Declarations  -> Inh_Declarations  -> (Syn_Declarations )
 wrap_Declarations (T_Declarations act) (Inh_Declarations _lhsIbindingGroups _lhsIkappaUnique) =
    Control.Monad.Identity.runIdentity (
      do sem <- act
-        let arg = T_Declarations_vIn31 _lhsIbindingGroups _lhsIkappaUnique
-        (T_Declarations_vOut31 _lhsObindingGroups _lhsOkappaUnique _lhsOself) <- return (inv_Declarations_s32 sem arg)
+        let arg31 = T_Declarations_vIn31 _lhsIbindingGroups _lhsIkappaUnique
+        (T_Declarations_vOut31 _lhsObindingGroups _lhsOkappaUnique _lhsOself) <- return (inv_Declarations_s32 sem arg31)
         return (Syn_Declarations _lhsObindingGroups _lhsOkappaUnique _lhsOself)
    )
 
@@ -1951,8 +1951,8 @@ wrap_Export :: T_Export  -> Inh_Export  -> (Syn_Export )
 wrap_Export (T_Export act) (Inh_Export ) =
    Control.Monad.Identity.runIdentity (
      do sem <- act
-        let arg = T_Export_vIn34 
-        (T_Export_vOut34 _lhsOself) <- return (inv_Export_s35 sem arg)
+        let arg34 = T_Export_vIn34 
+        (T_Export_vOut34 _lhsOself) <- return (inv_Export_s35 sem arg34)
         return (Syn_Export _lhsOself)
    )
 
@@ -2079,8 +2079,8 @@ wrap_Exports :: T_Exports  -> Inh_Exports  -> (Syn_Exports )
 wrap_Exports (T_Exports act) (Inh_Exports ) =
    Control.Monad.Identity.runIdentity (
      do sem <- act
-        let arg = T_Exports_vIn37 
-        (T_Exports_vOut37 _lhsOself) <- return (inv_Exports_s38 sem arg)
+        let arg37 = T_Exports_vIn37 
+        (T_Exports_vOut37 _lhsOself) <- return (inv_Exports_s38 sem arg37)
         return (Syn_Exports _lhsOself)
    )
 
@@ -2152,8 +2152,8 @@ wrap_Expression :: T_Expression  -> Inh_Expression  -> (Syn_Expression )
 wrap_Expression (T_Expression act) (Inh_Expression _lhsIbindingGroups _lhsIkappaUnique) =
    Control.Monad.Identity.runIdentity (
      do sem <- act
-        let arg = T_Expression_vIn40 _lhsIbindingGroups _lhsIkappaUnique
-        (T_Expression_vOut40 _lhsObindingGroups _lhsOkappaUnique _lhsOself) <- return (inv_Expression_s41 sem arg)
+        let arg40 = T_Expression_vIn40 _lhsIbindingGroups _lhsIkappaUnique
+        (T_Expression_vOut40 _lhsObindingGroups _lhsOkappaUnique _lhsOself) <- return (inv_Expression_s41 sem arg40)
         return (Syn_Expression _lhsObindingGroups _lhsOkappaUnique _lhsOself)
    )
 
@@ -3254,8 +3254,8 @@ wrap_Expressions :: T_Expressions  -> Inh_Expressions  -> (Syn_Expressions )
 wrap_Expressions (T_Expressions act) (Inh_Expressions _lhsIbindingGroups _lhsIkappaUnique) =
    Control.Monad.Identity.runIdentity (
      do sem <- act
-        let arg = T_Expressions_vIn43 _lhsIbindingGroups _lhsIkappaUnique
-        (T_Expressions_vOut43 _lhsObindingGroups _lhsOkappaUnique _lhsOself) <- return (inv_Expressions_s44 sem arg)
+        let arg43 = T_Expressions_vIn43 _lhsIbindingGroups _lhsIkappaUnique
+        (T_Expressions_vOut43 _lhsObindingGroups _lhsOkappaUnique _lhsOself) <- return (inv_Expressions_s44 sem arg43)
         return (Syn_Expressions _lhsObindingGroups _lhsOkappaUnique _lhsOself)
    )
 
@@ -3363,8 +3363,8 @@ wrap_FieldDeclaration :: T_FieldDeclaration  -> Inh_FieldDeclaration  -> (Syn_Fi
 wrap_FieldDeclaration (T_FieldDeclaration act) (Inh_FieldDeclaration _lhsIkappaUnique) =
    Control.Monad.Identity.runIdentity (
      do sem <- act
-        let arg = T_FieldDeclaration_vIn46 _lhsIkappaUnique
-        (T_FieldDeclaration_vOut46 _lhsOkappaUnique _lhsOself) <- return (inv_FieldDeclaration_s47 sem arg)
+        let arg46 = T_FieldDeclaration_vIn46 _lhsIkappaUnique
+        (T_FieldDeclaration_vOut46 _lhsOkappaUnique _lhsOself) <- return (inv_FieldDeclaration_s47 sem arg46)
         return (Syn_FieldDeclaration _lhsOkappaUnique _lhsOself)
    )
 
@@ -3436,8 +3436,8 @@ wrap_FieldDeclarations :: T_FieldDeclarations  -> Inh_FieldDeclarations  -> (Syn
 wrap_FieldDeclarations (T_FieldDeclarations act) (Inh_FieldDeclarations _lhsIkappaUnique) =
    Control.Monad.Identity.runIdentity (
      do sem <- act
-        let arg = T_FieldDeclarations_vIn49 _lhsIkappaUnique
-        (T_FieldDeclarations_vOut49 _lhsOkappaUnique _lhsOself) <- return (inv_FieldDeclarations_s50 sem arg)
+        let arg49 = T_FieldDeclarations_vIn49 _lhsIkappaUnique
+        (T_FieldDeclarations_vOut49 _lhsOkappaUnique _lhsOself) <- return (inv_FieldDeclarations_s50 sem arg49)
         return (Syn_FieldDeclarations _lhsOkappaUnique _lhsOself)
    )
 
@@ -3527,8 +3527,8 @@ wrap_Fixity :: T_Fixity  -> Inh_Fixity  -> (Syn_Fixity )
 wrap_Fixity (T_Fixity act) (Inh_Fixity ) =
    Control.Monad.Identity.runIdentity (
      do sem <- act
-        let arg = T_Fixity_vIn52 
-        (T_Fixity_vOut52 _lhsOself) <- return (inv_Fixity_s53 sem arg)
+        let arg52 = T_Fixity_vIn52 
+        (T_Fixity_vOut52 _lhsOself) <- return (inv_Fixity_s53 sem arg52)
         return (Syn_Fixity _lhsOself)
    )
 
@@ -3623,8 +3623,8 @@ wrap_FunctionBinding :: T_FunctionBinding  -> Inh_FunctionBinding  -> (Syn_Funct
 wrap_FunctionBinding (T_FunctionBinding act) (Inh_FunctionBinding _lhsIbindingGroups _lhsIkappaUnique) =
    Control.Monad.Identity.runIdentity (
      do sem <- act
-        let arg = T_FunctionBinding_vIn55 _lhsIbindingGroups _lhsIkappaUnique
-        (T_FunctionBinding_vOut55 _lhsObindingGroups _lhsOkappaUnique _lhsOself) <- return (inv_FunctionBinding_s56 sem arg)
+        let arg55 = T_FunctionBinding_vIn55 _lhsIbindingGroups _lhsIkappaUnique
+        (T_FunctionBinding_vOut55 _lhsObindingGroups _lhsOkappaUnique _lhsOself) <- return (inv_FunctionBinding_s56 sem arg55)
         return (Syn_FunctionBinding _lhsObindingGroups _lhsOkappaUnique _lhsOself)
    )
 
@@ -3771,8 +3771,8 @@ wrap_FunctionBindings :: T_FunctionBindings  -> Inh_FunctionBindings  -> (Syn_Fu
 wrap_FunctionBindings (T_FunctionBindings act) (Inh_FunctionBindings _lhsIbindingGroups _lhsIkappaUnique) =
    Control.Monad.Identity.runIdentity (
      do sem <- act
-        let arg = T_FunctionBindings_vIn58 _lhsIbindingGroups _lhsIkappaUnique
-        (T_FunctionBindings_vOut58 _lhsObindingGroups _lhsOkappaUnique _lhsOself) <- return (inv_FunctionBindings_s59 sem arg)
+        let arg58 = T_FunctionBindings_vIn58 _lhsIbindingGroups _lhsIkappaUnique
+        (T_FunctionBindings_vOut58 _lhsObindingGroups _lhsOkappaUnique _lhsOself) <- return (inv_FunctionBindings_s59 sem arg58)
         return (Syn_FunctionBindings _lhsObindingGroups _lhsOkappaUnique _lhsOself)
    )
 
@@ -3880,8 +3880,8 @@ wrap_GuardedExpression :: T_GuardedExpression  -> Inh_GuardedExpression  -> (Syn
 wrap_GuardedExpression (T_GuardedExpression act) (Inh_GuardedExpression _lhsIbindingGroups _lhsIkappaUnique) =
    Control.Monad.Identity.runIdentity (
      do sem <- act
-        let arg = T_GuardedExpression_vIn61 _lhsIbindingGroups _lhsIkappaUnique
-        (T_GuardedExpression_vOut61 _lhsObindingGroups _lhsOkappaUnique _lhsOself) <- return (inv_GuardedExpression_s62 sem arg)
+        let arg61 = T_GuardedExpression_vIn61 _lhsIbindingGroups _lhsIkappaUnique
+        (T_GuardedExpression_vOut61 _lhsObindingGroups _lhsOkappaUnique _lhsOself) <- return (inv_GuardedExpression_s62 sem arg61)
         return (Syn_GuardedExpression _lhsObindingGroups _lhsOkappaUnique _lhsOself)
    )
 
@@ -3962,8 +3962,8 @@ wrap_GuardedExpressions :: T_GuardedExpressions  -> Inh_GuardedExpressions  -> (
 wrap_GuardedExpressions (T_GuardedExpressions act) (Inh_GuardedExpressions _lhsIbindingGroups _lhsIkappaUnique) =
    Control.Monad.Identity.runIdentity (
      do sem <- act
-        let arg = T_GuardedExpressions_vIn64 _lhsIbindingGroups _lhsIkappaUnique
-        (T_GuardedExpressions_vOut64 _lhsObindingGroups _lhsOkappaUnique _lhsOself) <- return (inv_GuardedExpressions_s65 sem arg)
+        let arg64 = T_GuardedExpressions_vIn64 _lhsIbindingGroups _lhsIkappaUnique
+        (T_GuardedExpressions_vOut64 _lhsObindingGroups _lhsOkappaUnique _lhsOself) <- return (inv_GuardedExpressions_s65 sem arg64)
         return (Syn_GuardedExpressions _lhsObindingGroups _lhsOkappaUnique _lhsOself)
    )
 
@@ -4071,8 +4071,8 @@ wrap_Import :: T_Import  -> Inh_Import  -> (Syn_Import )
 wrap_Import (T_Import act) (Inh_Import ) =
    Control.Monad.Identity.runIdentity (
      do sem <- act
-        let arg = T_Import_vIn67 
-        (T_Import_vOut67 _lhsOself) <- return (inv_Import_s68 sem arg)
+        let arg67 = T_Import_vIn67 
+        (T_Import_vOut67 _lhsOself) <- return (inv_Import_s68 sem arg67)
         return (Syn_Import _lhsOself)
    )
 
@@ -4175,8 +4175,8 @@ wrap_ImportDeclaration :: T_ImportDeclaration  -> Inh_ImportDeclaration  -> (Syn
 wrap_ImportDeclaration (T_ImportDeclaration act) (Inh_ImportDeclaration ) =
    Control.Monad.Identity.runIdentity (
      do sem <- act
-        let arg = T_ImportDeclaration_vIn70 
-        (T_ImportDeclaration_vOut70 _lhsOself) <- return (inv_ImportDeclaration_s71 sem arg)
+        let arg70 = T_ImportDeclaration_vIn70 
+        (T_ImportDeclaration_vOut70 _lhsOself) <- return (inv_ImportDeclaration_s71 sem arg70)
         return (Syn_ImportDeclaration _lhsOself)
    )
 
@@ -4255,8 +4255,8 @@ wrap_ImportDeclarations :: T_ImportDeclarations  -> Inh_ImportDeclarations  -> (
 wrap_ImportDeclarations (T_ImportDeclarations act) (Inh_ImportDeclarations ) =
    Control.Monad.Identity.runIdentity (
      do sem <- act
-        let arg = T_ImportDeclarations_vIn73 
-        (T_ImportDeclarations_vOut73 _lhsOself) <- return (inv_ImportDeclarations_s74 sem arg)
+        let arg73 = T_ImportDeclarations_vIn73 
+        (T_ImportDeclarations_vOut73 _lhsOself) <- return (inv_ImportDeclarations_s74 sem arg73)
         return (Syn_ImportDeclarations _lhsOself)
    )
 
@@ -4328,8 +4328,8 @@ wrap_ImportSpecification :: T_ImportSpecification  -> Inh_ImportSpecification  -
 wrap_ImportSpecification (T_ImportSpecification act) (Inh_ImportSpecification ) =
    Control.Monad.Identity.runIdentity (
      do sem <- act
-        let arg = T_ImportSpecification_vIn76 
-        (T_ImportSpecification_vOut76 _lhsOself) <- return (inv_ImportSpecification_s77 sem arg)
+        let arg76 = T_ImportSpecification_vIn76 
+        (T_ImportSpecification_vOut76 _lhsOself) <- return (inv_ImportSpecification_s77 sem arg76)
         return (Syn_ImportSpecification _lhsOself)
    )
 
@@ -4382,8 +4382,8 @@ wrap_Imports :: T_Imports  -> Inh_Imports  -> (Syn_Imports )
 wrap_Imports (T_Imports act) (Inh_Imports ) =
    Control.Monad.Identity.runIdentity (
      do sem <- act
-        let arg = T_Imports_vIn79 
-        (T_Imports_vOut79 _lhsOself) <- return (inv_Imports_s80 sem arg)
+        let arg79 = T_Imports_vIn79 
+        (T_Imports_vOut79 _lhsOself) <- return (inv_Imports_s80 sem arg79)
         return (Syn_Imports _lhsOself)
    )
 
@@ -4455,8 +4455,8 @@ wrap_LeftHandSide :: T_LeftHandSide  -> Inh_LeftHandSide  -> (Syn_LeftHandSide )
 wrap_LeftHandSide (T_LeftHandSide act) (Inh_LeftHandSide ) =
    Control.Monad.Identity.runIdentity (
      do sem <- act
-        let arg = T_LeftHandSide_vIn82 
-        (T_LeftHandSide_vOut82 _lhsOself) <- return (inv_LeftHandSide_s83 sem arg)
+        let arg82 = T_LeftHandSide_vIn82 
+        (T_LeftHandSide_vOut82 _lhsOself) <- return (inv_LeftHandSide_s83 sem arg82)
         return (Syn_LeftHandSide _lhsOself)
    )
 
@@ -4565,8 +4565,8 @@ wrap_Literal :: T_Literal  -> Inh_Literal  -> (Syn_Literal )
 wrap_Literal (T_Literal act) (Inh_Literal ) =
    Control.Monad.Identity.runIdentity (
      do sem <- act
-        let arg = T_Literal_vIn85 
-        (T_Literal_vOut85 _lhsOself) <- return (inv_Literal_s86 sem arg)
+        let arg85 = T_Literal_vIn85 
+        (T_Literal_vOut85 _lhsOself) <- return (inv_Literal_s86 sem arg85)
         return (Syn_Literal _lhsOself)
    )
 
@@ -4683,8 +4683,8 @@ wrap_MaybeDeclarations :: T_MaybeDeclarations  -> Inh_MaybeDeclarations  -> (Syn
 wrap_MaybeDeclarations (T_MaybeDeclarations act) (Inh_MaybeDeclarations _lhsIbindingGroups _lhsIkappaUnique) =
    Control.Monad.Identity.runIdentity (
      do sem <- act
-        let arg = T_MaybeDeclarations_vIn88 _lhsIbindingGroups _lhsIkappaUnique
-        (T_MaybeDeclarations_vOut88 _lhsObindingGroups _lhsOkappaUnique _lhsOself) <- return (inv_MaybeDeclarations_s89 sem arg)
+        let arg88 = T_MaybeDeclarations_vIn88 _lhsIbindingGroups _lhsIkappaUnique
+        (T_MaybeDeclarations_vOut88 _lhsObindingGroups _lhsOkappaUnique _lhsOself) <- return (inv_MaybeDeclarations_s89 sem arg88)
         return (Syn_MaybeDeclarations _lhsObindingGroups _lhsOkappaUnique _lhsOself)
    )
 
@@ -4783,8 +4783,8 @@ wrap_MaybeExports :: T_MaybeExports  -> Inh_MaybeExports  -> (Syn_MaybeExports )
 wrap_MaybeExports (T_MaybeExports act) (Inh_MaybeExports ) =
    Control.Monad.Identity.runIdentity (
      do sem <- act
-        let arg = T_MaybeExports_vIn91 
-        (T_MaybeExports_vOut91 _lhsOself) <- return (inv_MaybeExports_s92 sem arg)
+        let arg91 = T_MaybeExports_vIn91 
+        (T_MaybeExports_vOut91 _lhsOself) <- return (inv_MaybeExports_s92 sem arg91)
         return (Syn_MaybeExports _lhsOself)
    )
 
@@ -4855,8 +4855,8 @@ wrap_MaybeExpression :: T_MaybeExpression  -> Inh_MaybeExpression  -> (Syn_Maybe
 wrap_MaybeExpression (T_MaybeExpression act) (Inh_MaybeExpression _lhsIbindingGroups _lhsIkappaUnique) =
    Control.Monad.Identity.runIdentity (
      do sem <- act
-        let arg = T_MaybeExpression_vIn94 _lhsIbindingGroups _lhsIkappaUnique
-        (T_MaybeExpression_vOut94 _lhsObindingGroups _lhsOkappaUnique _lhsOself) <- return (inv_MaybeExpression_s95 sem arg)
+        let arg94 = T_MaybeExpression_vIn94 _lhsIbindingGroups _lhsIkappaUnique
+        (T_MaybeExpression_vOut94 _lhsObindingGroups _lhsOkappaUnique _lhsOself) <- return (inv_MaybeExpression_s95 sem arg94)
         return (Syn_MaybeExpression _lhsObindingGroups _lhsOkappaUnique _lhsOself)
    )
 
@@ -4955,8 +4955,8 @@ wrap_MaybeImportSpecification :: T_MaybeImportSpecification  -> Inh_MaybeImportS
 wrap_MaybeImportSpecification (T_MaybeImportSpecification act) (Inh_MaybeImportSpecification ) =
    Control.Monad.Identity.runIdentity (
      do sem <- act
-        let arg = T_MaybeImportSpecification_vIn97 
-        (T_MaybeImportSpecification_vOut97 _lhsOself) <- return (inv_MaybeImportSpecification_s98 sem arg)
+        let arg97 = T_MaybeImportSpecification_vIn97 
+        (T_MaybeImportSpecification_vOut97 _lhsOself) <- return (inv_MaybeImportSpecification_s98 sem arg97)
         return (Syn_MaybeImportSpecification _lhsOself)
    )
 
@@ -5027,8 +5027,8 @@ wrap_MaybeInt :: T_MaybeInt  -> Inh_MaybeInt  -> (Syn_MaybeInt )
 wrap_MaybeInt (T_MaybeInt act) (Inh_MaybeInt ) =
    Control.Monad.Identity.runIdentity (
      do sem <- act
-        let arg = T_MaybeInt_vIn100 
-        (T_MaybeInt_vOut100 _lhsOself) <- return (inv_MaybeInt_s101 sem arg)
+        let arg100 = T_MaybeInt_vIn100 
+        (T_MaybeInt_vOut100 _lhsOself) <- return (inv_MaybeInt_s101 sem arg100)
         return (Syn_MaybeInt _lhsOself)
    )
 
@@ -5097,8 +5097,8 @@ wrap_MaybeName :: T_MaybeName  -> Inh_MaybeName  -> (Syn_MaybeName )
 wrap_MaybeName (T_MaybeName act) (Inh_MaybeName ) =
    Control.Monad.Identity.runIdentity (
      do sem <- act
-        let arg = T_MaybeName_vIn103 
-        (T_MaybeName_vOut103 _lhsOself) <- return (inv_MaybeName_s104 sem arg)
+        let arg103 = T_MaybeName_vIn103 
+        (T_MaybeName_vOut103 _lhsOself) <- return (inv_MaybeName_s104 sem arg103)
         return (Syn_MaybeName _lhsOself)
    )
 
@@ -5169,8 +5169,8 @@ wrap_MaybeNames :: T_MaybeNames  -> Inh_MaybeNames  -> (Syn_MaybeNames )
 wrap_MaybeNames (T_MaybeNames act) (Inh_MaybeNames ) =
    Control.Monad.Identity.runIdentity (
      do sem <- act
-        let arg = T_MaybeNames_vIn106 
-        (T_MaybeNames_vOut106 _lhsOself) <- return (inv_MaybeNames_s107 sem arg)
+        let arg106 = T_MaybeNames_vIn106 
+        (T_MaybeNames_vOut106 _lhsOself) <- return (inv_MaybeNames_s107 sem arg106)
         return (Syn_MaybeNames _lhsOself)
    )
 
@@ -5241,8 +5241,8 @@ wrap_Module :: T_Module  -> Inh_Module  -> (Syn_Module )
 wrap_Module (T_Module act) (Inh_Module _lhsIimportEnvironment _lhsIoptions) =
    Control.Monad.Identity.runIdentity (
      do sem <- act
-        let arg = T_Module_vIn109 _lhsIimportEnvironment _lhsIoptions
-        (T_Module_vOut109 _lhsOdebugIO _lhsOkindEnvironment _lhsOkindErrors _lhsOself) <- return (inv_Module_s110 sem arg)
+        let arg109 = T_Module_vIn109 _lhsIimportEnvironment _lhsIoptions
+        (T_Module_vOut109 _lhsOdebugIO _lhsOkindEnvironment _lhsOkindErrors _lhsOself) <- return (inv_Module_s110 sem arg109)
         return (Syn_Module _lhsOdebugIO _lhsOkindEnvironment _lhsOkindErrors _lhsOself)
    )
 
@@ -5331,8 +5331,8 @@ wrap_Name :: T_Name  -> Inh_Name  -> (Syn_Name )
 wrap_Name (T_Name act) (Inh_Name ) =
    Control.Monad.Identity.runIdentity (
      do sem <- act
-        let arg = T_Name_vIn112 
-        (T_Name_vOut112 _lhsOself) <- return (inv_Name_s113 sem arg)
+        let arg112 = T_Name_vIn112 
+        (T_Name_vOut112 _lhsOself) <- return (inv_Name_s113 sem arg112)
         return (Syn_Name _lhsOself)
    )
 
@@ -5433,8 +5433,8 @@ wrap_Names :: T_Names  -> Inh_Names  -> (Syn_Names )
 wrap_Names (T_Names act) (Inh_Names ) =
    Control.Monad.Identity.runIdentity (
      do sem <- act
-        let arg = T_Names_vIn115 
-        (T_Names_vOut115 _lhsOself) <- return (inv_Names_s116 sem arg)
+        let arg115 = T_Names_vIn115 
+        (T_Names_vOut115 _lhsOself) <- return (inv_Names_s116 sem arg115)
         return (Syn_Names _lhsOself)
    )
 
@@ -5506,8 +5506,8 @@ wrap_Pattern :: T_Pattern  -> Inh_Pattern  -> (Syn_Pattern )
 wrap_Pattern (T_Pattern act) (Inh_Pattern ) =
    Control.Monad.Identity.runIdentity (
      do sem <- act
-        let arg = T_Pattern_vIn118 
-        (T_Pattern_vOut118 _lhsOself) <- return (inv_Pattern_s119 sem arg)
+        let arg118 = T_Pattern_vIn118 
+        (T_Pattern_vOut118 _lhsOself) <- return (inv_Pattern_s119 sem arg118)
         return (Syn_Pattern _lhsOself)
    )
 
@@ -5904,8 +5904,8 @@ wrap_Patterns :: T_Patterns  -> Inh_Patterns  -> (Syn_Patterns )
 wrap_Patterns (T_Patterns act) (Inh_Patterns ) =
    Control.Monad.Identity.runIdentity (
      do sem <- act
-        let arg = T_Patterns_vIn121 
-        (T_Patterns_vOut121 _lhsOself) <- return (inv_Patterns_s122 sem arg)
+        let arg121 = T_Patterns_vIn121 
+        (T_Patterns_vOut121 _lhsOself) <- return (inv_Patterns_s122 sem arg121)
         return (Syn_Patterns _lhsOself)
    )
 
@@ -5977,8 +5977,8 @@ wrap_Position :: T_Position  -> Inh_Position  -> (Syn_Position )
 wrap_Position (T_Position act) (Inh_Position ) =
    Control.Monad.Identity.runIdentity (
      do sem <- act
-        let arg = T_Position_vIn124 
-        (T_Position_vOut124 _lhsOself) <- return (inv_Position_s125 sem arg)
+        let arg124 = T_Position_vIn124 
+        (T_Position_vOut124 _lhsOself) <- return (inv_Position_s125 sem arg124)
         return (Syn_Position _lhsOself)
    )
 
@@ -6047,8 +6047,8 @@ wrap_Qualifier :: T_Qualifier  -> Inh_Qualifier  -> (Syn_Qualifier )
 wrap_Qualifier (T_Qualifier act) (Inh_Qualifier _lhsIbindingGroups _lhsIkappaUnique) =
    Control.Monad.Identity.runIdentity (
      do sem <- act
-        let arg = T_Qualifier_vIn127 _lhsIbindingGroups _lhsIkappaUnique
-        (T_Qualifier_vOut127 _lhsObindingGroups _lhsOkappaUnique _lhsOself) <- return (inv_Qualifier_s128 sem arg)
+        let arg127 = T_Qualifier_vIn127 _lhsIbindingGroups _lhsIkappaUnique
+        (T_Qualifier_vOut127 _lhsObindingGroups _lhsOkappaUnique _lhsOself) <- return (inv_Qualifier_s128 sem arg127)
         return (Syn_Qualifier _lhsObindingGroups _lhsOkappaUnique _lhsOself)
    )
 
@@ -6237,8 +6237,8 @@ wrap_Qualifiers :: T_Qualifiers  -> Inh_Qualifiers  -> (Syn_Qualifiers )
 wrap_Qualifiers (T_Qualifiers act) (Inh_Qualifiers _lhsIbindingGroups _lhsIkappaUnique) =
    Control.Monad.Identity.runIdentity (
      do sem <- act
-        let arg = T_Qualifiers_vIn130 _lhsIbindingGroups _lhsIkappaUnique
-        (T_Qualifiers_vOut130 _lhsObindingGroups _lhsOkappaUnique _lhsOself) <- return (inv_Qualifiers_s131 sem arg)
+        let arg130 = T_Qualifiers_vIn130 _lhsIbindingGroups _lhsIkappaUnique
+        (T_Qualifiers_vOut130 _lhsObindingGroups _lhsOkappaUnique _lhsOself) <- return (inv_Qualifiers_s131 sem arg130)
         return (Syn_Qualifiers _lhsObindingGroups _lhsOkappaUnique _lhsOself)
    )
 
@@ -6346,8 +6346,8 @@ wrap_Range :: T_Range  -> Inh_Range  -> (Syn_Range )
 wrap_Range (T_Range act) (Inh_Range ) =
    Control.Monad.Identity.runIdentity (
      do sem <- act
-        let arg = T_Range_vIn133 
-        (T_Range_vOut133 _lhsOself) <- return (inv_Range_s134 sem arg)
+        let arg133 = T_Range_vIn133 
+        (T_Range_vOut133 _lhsOself) <- return (inv_Range_s134 sem arg133)
         return (Syn_Range _lhsOself)
    )
 
@@ -6400,8 +6400,8 @@ wrap_RecordExpressionBinding :: T_RecordExpressionBinding  -> Inh_RecordExpressi
 wrap_RecordExpressionBinding (T_RecordExpressionBinding act) (Inh_RecordExpressionBinding _lhsIbindingGroups _lhsIkappaUnique) =
    Control.Monad.Identity.runIdentity (
      do sem <- act
-        let arg = T_RecordExpressionBinding_vIn136 _lhsIbindingGroups _lhsIkappaUnique
-        (T_RecordExpressionBinding_vOut136 _lhsObindingGroups _lhsOkappaUnique _lhsOself) <- return (inv_RecordExpressionBinding_s137 sem arg)
+        let arg136 = T_RecordExpressionBinding_vIn136 _lhsIbindingGroups _lhsIkappaUnique
+        (T_RecordExpressionBinding_vOut136 _lhsObindingGroups _lhsOkappaUnique _lhsOself) <- return (inv_RecordExpressionBinding_s137 sem arg136)
         return (Syn_RecordExpressionBinding _lhsObindingGroups _lhsOkappaUnique _lhsOself)
    )
 
@@ -6474,8 +6474,8 @@ wrap_RecordExpressionBindings :: T_RecordExpressionBindings  -> Inh_RecordExpres
 wrap_RecordExpressionBindings (T_RecordExpressionBindings act) (Inh_RecordExpressionBindings _lhsIbindingGroups _lhsIkappaUnique) =
    Control.Monad.Identity.runIdentity (
      do sem <- act
-        let arg = T_RecordExpressionBindings_vIn139 _lhsIbindingGroups _lhsIkappaUnique
-        (T_RecordExpressionBindings_vOut139 _lhsObindingGroups _lhsOkappaUnique _lhsOself) <- return (inv_RecordExpressionBindings_s140 sem arg)
+        let arg139 = T_RecordExpressionBindings_vIn139 _lhsIbindingGroups _lhsIkappaUnique
+        (T_RecordExpressionBindings_vOut139 _lhsObindingGroups _lhsOkappaUnique _lhsOself) <- return (inv_RecordExpressionBindings_s140 sem arg139)
         return (Syn_RecordExpressionBindings _lhsObindingGroups _lhsOkappaUnique _lhsOself)
    )
 
@@ -6583,8 +6583,8 @@ wrap_RecordPatternBinding :: T_RecordPatternBinding  -> Inh_RecordPatternBinding
 wrap_RecordPatternBinding (T_RecordPatternBinding act) (Inh_RecordPatternBinding ) =
    Control.Monad.Identity.runIdentity (
      do sem <- act
-        let arg = T_RecordPatternBinding_vIn142 
-        (T_RecordPatternBinding_vOut142 _lhsOself) <- return (inv_RecordPatternBinding_s143 sem arg)
+        let arg142 = T_RecordPatternBinding_vIn142 
+        (T_RecordPatternBinding_vOut142 _lhsOself) <- return (inv_RecordPatternBinding_s143 sem arg142)
         return (Syn_RecordPatternBinding _lhsOself)
    )
 
@@ -6639,8 +6639,8 @@ wrap_RecordPatternBindings :: T_RecordPatternBindings  -> Inh_RecordPatternBindi
 wrap_RecordPatternBindings (T_RecordPatternBindings act) (Inh_RecordPatternBindings ) =
    Control.Monad.Identity.runIdentity (
      do sem <- act
-        let arg = T_RecordPatternBindings_vIn145 
-        (T_RecordPatternBindings_vOut145 _lhsOself) <- return (inv_RecordPatternBindings_s146 sem arg)
+        let arg145 = T_RecordPatternBindings_vIn145 
+        (T_RecordPatternBindings_vOut145 _lhsOself) <- return (inv_RecordPatternBindings_s146 sem arg145)
         return (Syn_RecordPatternBindings _lhsOself)
    )
 
@@ -6712,8 +6712,8 @@ wrap_RightHandSide :: T_RightHandSide  -> Inh_RightHandSide  -> (Syn_RightHandSi
 wrap_RightHandSide (T_RightHandSide act) (Inh_RightHandSide _lhsIbindingGroups _lhsIkappaUnique) =
    Control.Monad.Identity.runIdentity (
      do sem <- act
-        let arg = T_RightHandSide_vIn148 _lhsIbindingGroups _lhsIkappaUnique
-        (T_RightHandSide_vOut148 _lhsObindingGroups _lhsOkappaUnique _lhsOself) <- return (inv_RightHandSide_s149 sem arg)
+        let arg148 = T_RightHandSide_vIn148 _lhsIbindingGroups _lhsIkappaUnique
+        (T_RightHandSide_vOut148 _lhsObindingGroups _lhsOkappaUnique _lhsOself) <- return (inv_RightHandSide_s149 sem arg148)
         return (Syn_RightHandSide _lhsObindingGroups _lhsOkappaUnique _lhsOself)
    )
 
@@ -6846,8 +6846,8 @@ wrap_SimpleType :: T_SimpleType  -> Inh_SimpleType  -> (Syn_SimpleType )
 wrap_SimpleType (T_SimpleType act) (Inh_SimpleType _lhsIconstraints _lhsIkappaOfRHS _lhsIkappaUnique) =
    Control.Monad.Identity.runIdentity (
      do sem <- act
-        let arg = T_SimpleType_vIn151 _lhsIconstraints _lhsIkappaOfRHS _lhsIkappaUnique
-        (T_SimpleType_vOut151 _lhsOconstraints _lhsOdeclared _lhsOenvironment _lhsOkappaUnique _lhsOself) <- return (inv_SimpleType_s152 sem arg)
+        let arg151 = T_SimpleType_vIn151 _lhsIconstraints _lhsIkappaOfRHS _lhsIkappaUnique
+        (T_SimpleType_vOut151 _lhsOconstraints _lhsOdeclared _lhsOenvironment _lhsOkappaUnique _lhsOself) <- return (inv_SimpleType_s152 sem arg151)
         return (Syn_SimpleType _lhsOconstraints _lhsOdeclared _lhsOenvironment _lhsOkappaUnique _lhsOself)
    )
 
@@ -6934,8 +6934,8 @@ wrap_Statement :: T_Statement  -> Inh_Statement  -> (Syn_Statement )
 wrap_Statement (T_Statement act) (Inh_Statement _lhsIbindingGroups _lhsIkappaUnique) =
    Control.Monad.Identity.runIdentity (
      do sem <- act
-        let arg = T_Statement_vIn154 _lhsIbindingGroups _lhsIkappaUnique
-        (T_Statement_vOut154 _lhsObindingGroups _lhsOkappaUnique _lhsOself) <- return (inv_Statement_s155 sem arg)
+        let arg154 = T_Statement_vIn154 _lhsIbindingGroups _lhsIkappaUnique
+        (T_Statement_vOut154 _lhsObindingGroups _lhsOkappaUnique _lhsOself) <- return (inv_Statement_s155 sem arg154)
         return (Syn_Statement _lhsObindingGroups _lhsOkappaUnique _lhsOself)
    )
 
@@ -7124,8 +7124,8 @@ wrap_Statements :: T_Statements  -> Inh_Statements  -> (Syn_Statements )
 wrap_Statements (T_Statements act) (Inh_Statements _lhsIbindingGroups _lhsIkappaUnique) =
    Control.Monad.Identity.runIdentity (
      do sem <- act
-        let arg = T_Statements_vIn157 _lhsIbindingGroups _lhsIkappaUnique
-        (T_Statements_vOut157 _lhsObindingGroups _lhsOkappaUnique _lhsOself) <- return (inv_Statements_s158 sem arg)
+        let arg157 = T_Statements_vIn157 _lhsIbindingGroups _lhsIkappaUnique
+        (T_Statements_vOut157 _lhsObindingGroups _lhsOkappaUnique _lhsOself) <- return (inv_Statements_s158 sem arg157)
         return (Syn_Statements _lhsObindingGroups _lhsOkappaUnique _lhsOself)
    )
 
@@ -7233,8 +7233,8 @@ wrap_Strings :: T_Strings  -> Inh_Strings  -> (Syn_Strings )
 wrap_Strings (T_Strings act) (Inh_Strings ) =
    Control.Monad.Identity.runIdentity (
      do sem <- act
-        let arg = T_Strings_vIn160 
-        (T_Strings_vOut160 _lhsOself) <- return (inv_Strings_s161 sem arg)
+        let arg160 = T_Strings_vIn160 
+        (T_Strings_vOut160 _lhsOself) <- return (inv_Strings_s161 sem arg160)
         return (Syn_Strings _lhsOself)
    )
 
@@ -7304,8 +7304,8 @@ wrap_Type :: T_Type  -> Inh_Type  -> (Syn_Type )
 wrap_Type (T_Type act) (Inh_Type _lhsIconstraints _lhsIkappaUnique) =
    Control.Monad.Identity.runIdentity (
      do sem <- act
-        let arg = T_Type_vIn163 _lhsIconstraints _lhsIkappaUnique
-        (T_Type_vOut163 _lhsOassumptions _lhsOconstraints _lhsOkappa _lhsOkappaUnique _lhsOself) <- return (inv_Type_s164 sem arg)
+        let arg163 = T_Type_vIn163 _lhsIconstraints _lhsIkappaUnique
+        (T_Type_vOut163 _lhsOassumptions _lhsOconstraints _lhsOkappa _lhsOkappaUnique _lhsOself) <- return (inv_Type_s164 sem arg163)
         return (Syn_Type _lhsOassumptions _lhsOconstraints _lhsOkappa _lhsOkappaUnique _lhsOself)
    )
 
@@ -7730,8 +7730,8 @@ wrap_Types :: T_Types  -> Inh_Types  -> (Syn_Types )
 wrap_Types (T_Types act) (Inh_Types _lhsIconstraints _lhsIkappaUnique) =
    Control.Monad.Identity.runIdentity (
      do sem <- act
-        let arg = T_Types_vIn166 _lhsIconstraints _lhsIkappaUnique
-        (T_Types_vOut166 _lhsOassumptions _lhsOconstraints _lhsOkappaUnique _lhsOkappas _lhsOself) <- return (inv_Types_s167 sem arg)
+        let arg166 = T_Types_vIn166 _lhsIconstraints _lhsIkappaUnique
+        (T_Types_vOut166 _lhsOassumptions _lhsOconstraints _lhsOkappaUnique _lhsOkappas _lhsOself) <- return (inv_Types_s167 sem arg166)
         return (Syn_Types _lhsOassumptions _lhsOconstraints _lhsOkappaUnique _lhsOkappas _lhsOself)
    )
 

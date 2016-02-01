@@ -1,6 +1,6 @@
 
 
--- UUAGC 0.9.42.2 (Helium/Syntax/UHA_Syntax.ag)
+-- UUAGC 0.9.52.1 (Helium/Syntax/UHA_Syntax.ag)
 module Helium.Syntax.UHA_Syntax where
 -- Alternative -------------------------------------------------
 data Alternative = Alternative_Hole (Range) (Integer)

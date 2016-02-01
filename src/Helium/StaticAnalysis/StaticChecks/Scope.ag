@@ -95,6 +95,10 @@ SEM RightHandSide
                  guardedexpressions . namesInScope = @where.namesInScope 
                  where              . unboundNames = @guardedexpressions.unboundNames
 
+SEM Declaration 
+  | Class    where . unboundNames = []  
+  | Instance where . unboundNames = []
+  
 -- correct scope for Statements/Qualifiers
 
 ATTR Statements Statement Qualifier Qualifiers [ | counter : Int namesInScope : Names unboundNames : Names | ]
@@ -148,11 +152,16 @@ SEM Pattern
 SEM Expression 
   | Variable   lhs . unboundNames = [ @name.self ]    
 
-ATTR Body Declaration Declarations [ | | declVarNames USE {++} {[]} : Names ]
+ATTR Body Declaration Declarations MaybeDeclarations [ | | declVarNames USE {++} {[]} : Names ]
+
+SEM MaybeDeclarations | Just    lhs          . declVarNames = @declarations.declVarNames
+                      | Nothing lhs          . declVarNames = []
 
 SEM Declaration 
   | FunctionBindings  lhs . declVarNames = [@bindings.name]
   | PatternBinding    lhs . declVarNames = @pattern.patVarNames
+  | Class             lhs . declVarNames = [] -- @where.declVarNames  
+  | Instance          lhs . declVarNames = [] -- @where.declVarNames
 
 -- utility function
 {                  

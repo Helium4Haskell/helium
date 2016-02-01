@@ -1,7 +1,10 @@
 
 
--- UUAGC 0.9.42.2 (Helium/StaticAnalysis/Directives/TS_Apply.ag)
+-- UUAGC 0.9.52.1 (Helium/StaticAnalysis/Directives/TS_Apply.ag)
 module Helium.StaticAnalysis.Directives.TS_Apply where
+
+import Top.Types
+
 
 
 import Helium.Syntax.UHA_Syntax
@@ -24,8 +27,8 @@ import Helium.StaticAnalysis.Directives.TS_Attributes
 import Helium.StaticAnalysis.Directives.TS_CoreSyntax
 import Top.Ordering.Tree
 
+type Core_TypingStrategies = [Core_TypingStrategy]
 
-import Top.Types
 
 applyTypingStrategy :: Core_TypingStrategy -> MetaVariableInfo -> MetaVariableTable -> Int 
                           -> (Assumptions, ConstraintSet, IO (), Int)
@@ -64,9 +67,6 @@ exactlyOnce :: Eq a => [a] -> [a]
 exactlyOnce []     = []
 exactlyOnce (x:xs) | x `elem` xs = exactlyOnce . filter (/= x) $ xs
                    | otherwise   = x : exactlyOnce xs
-
-
-type Core_TypingStrategies = [Core_TypingStrategy]
 -- Core_Judgement ----------------------------------------------
 -- cata
 sem_Core_Judgement :: Core_Judgement ->

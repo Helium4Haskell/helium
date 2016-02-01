@@ -16,6 +16,9 @@
 --    5) value constructors
 --    6) type constructors
 --    7) type synonyms
+
+-- Collect the following information:
+--    8) type classes and their declarations
 -------------------------------------------------------------------------------
 
 SEM Module
@@ -24,7 +27,8 @@ SEM Module
                                         . setTypeSynonyms      (M.fromList @body.collectTypeSynonyms)          
                                         . setOperatorTable     (M.fromList @body.operatorFixities)
                                         . addToTypeEnvironment (M.fromList @derivedFunctions)
-                                        -- . setClassEnvironment  @derivedInstances
+                                        . setClassEnvironment  @body.classEnv
+                                        . setClassMemberEnvironment @body.collectClassMemberEnv
                                         $ emptyEnvironment 
                                         -- the type environment will be added after type inferencing.
                  . derivedFunctions = let f (n,i) = ( nameOfShowFunction n
@@ -216,11 +220,74 @@ uniqueKeys = let comp (x,_) (y,_) = compare x y
               . sortBy comp
 }
 
+
+-- Collecting the Classes
+{
+
+
+-- The following haskell code is used for building a temporary dictionairy in order to complete static checks
+type ClassDef = (Name, ClassMembers)
+type ClassMembers = [(Name, Bool)]
+
+--In declarations we find both type signatures and function declarations
+filterType :: Declarations -> (Declarations, Declarations) -> (Declarations, Declarations)
+filterType (d@(Declaration_TypeSignature _ _ _):ds) (t, dec) = filterType ds (d:t, dec)
+filterType (d:ds) (t, dec)                                   = filterType ds (t, d:dec)
+filterType []     res                                        = res
+
+--A type can be declared for multiple function names
+createClassDef1 :: Declaration -> ClassMembers
+createClassDef1 (Declaration_TypeSignature r names _) = [(n, False) | n <- names]
+createClassDef1 _                                      = error "Error createClassDef1, filtering failed..."
+
+--A function declaration should be associated with a type in the class definition
+createClassDef2 :: Declarations -> ClassMembers -> ClassMembers
+createClassDef2 (d:ds) m = createClassDef2 ds $ createClassDef2' (nameOfDeclaration d) d m
+createClassDef2 []     m = m
+createClassDef2' (n:ns) d m = createClassDef2' ns d $ createClassDef2'' n d m
+createClassDef2' []     _ m = m
+createClassDef2'' n d (m@(n2, _):ms) | n == n2   = (n2, True):ms
+                                         | otherwise = m:(createClassDef2'' n d ms)
+createClassDef2'' _ _ []                             = [] -- Should not happen but if it happens the error is reported by another check
+
+createClassDef :: Name -> MaybeDeclarations -> ClassMemberEnvironment
+createClassDef n MaybeDeclarations_Nothing      = M.singleton n []
+createClassDef n (MaybeDeclarations_Just decls) = M.singleton n (createClassDef2 fdecl $ concatMap createClassDef1 types)
+               where (types, fdecl) = filterType decls ([], [])
+
+
+}
+
+ATTR Declarations Declaration [ | | collectTypeClasses  USE { ++ } { [] } : { [(Name, [(Name, TpScheme)])] } ]
+ATTR Body Declarations Declaration [ | | collectClassMemberEnv USE { `M.union` } { M.empty } : {ClassMemberEnvironment} ]
+ATTR Body Declaration Declarations Expression Expressions 
+     GuardedExpression GuardedExpressions MaybeDeclarations
+     MaybeExpression Qualifier Qualifiers RecordExpressionBinding
+     RightHandSide Alternative Alternatives FunctionBinding
+     FunctionBindings Statement RecordExpressionBindings
+     Statements 
+               [ classMemberEnv : {ClassMemberEnvironment} | | ]
+SEM Module
+    | Module body . classMemberEnv = foldr exclusiveUnion @body.collectClassMemberEnv (map classMemberEnvironment @lhs.importEnvironments)
+
+SEM Declaration
+    | Class lhs . collectTypeClasses = [(@simpletype.name, @where.typeSignatures)]
+            lhs . collectClassMemberEnv = createClassDef @simpletype.name @where.self
+
+SEM Declarations
+    | Cons     lhs . collectTypeClasses = @hd.collectTypeClasses  ++ @tl.collectTypeClasses
+
+-- Collect the type variables in the context
+ATTR ContextItems ContextItem [ || typeVariables USE {++} {[]} : Types ]
+
+SEM ContextItem
+     | ContextItem lhs . typeVariables = @types.self
+
 -------------------------------------------
 -- Collecting Type Signatures
 
 ATTR Declaration Declarations [ | typeSignatures:{[(Name,TpScheme)]} | ]
-ATTR Body                     [ | | typeSignatures:{[(Name,TpScheme)]} ]
+ATTR Body MaybeDeclarations   [ | | typeSignatures:{[(Name,TpScheme)]} ]
 
 SEM Body              
   | Hole lhs . typeSignatures = []
@@ -234,3 +301,48 @@ SEM Declaration
   | TypeSignature
       lhs . typeSignatures = [ (name, @typeScheme) | name <- @names.self ] ++ @lhs.typeSignatures
       loc . (typeScheme, intMap) = makeTpSchemeFromType' @type.self
+  | Class
+      lhs . typeSignatures = @lhs.typeSignatures -- just shortcut it
+  | Instance
+      lhs . typeSignatures = @lhs.typeSignatures -- And we apply the same trick again
+      
+-------
+-- Building a Class Environment
+
+ATTR Body [ importedClassEnv : {ClassEnvironment}| | ]
+
+SEM Module
+  | Module body . importedClassEnv = classEnvironment $ combineImportEnvironmentList @lhs.importEnvironments
+
+ATTR Body Declaration Declarations [ | | classEnv USE {`M.union`} {M.empty} : {ClassEnvironment} ]
+
+SEM Declaration
+  | Class
+     lhs . classEnv = M.singleton (getClassName @simpletype.self) (getSuperClasses @context.self, [])
+
+{
+getClassName :: SimpleType -> String
+getClassName (SimpleType_SimpleType _ n _) = getNameName n
+
+getSuperClasses ::  ContextItems -> [String]
+getSuperClasses = map (\(ContextItem_ContextItem _ n _) -> getNameName n)
+
+}
+
+ATTR Body Declaration Declarations [ | | instances USE {++} {[]} : {[(Range, Instance)]} ]
+
+SEM Declaration
+  | Instance
+     lhs . instances = [createInstance @range.self @name.self (head @types.self) @context.self]
+     
+{
+
+createInstance :: Range -> Name -> Type -> ContextItems -> (Range, Instance)
+createInstance r n ty ctx = (r, (makePredicate n ty , map (\(ContextItem_ContextItem _ n2 tys) -> makePredicate n2 (head tys)) ctx))
+   where nameMap = makeNameMap (namesInTypes $ ty : (map (\(ContextItem_ContextItem _ _ tys) -> head tys) ctx))
+         makePredicate :: Name -> Type -> Predicate
+         makePredicate n ty = Predicate (getNameName n) (makeTpFromType nameMap ty)
+
+}
+     
+     

@@ -41,7 +41,7 @@ import Helium.Syntax.UHA_Utils (nameFromString)
 import Helium.Syntax.UHA_Range (noRange)
 import Helium.StaticAnalysis.Messages.Messages
 import Helium.StaticAnalysis.Directives.TS_Messages
-import Helium.ModuleSystem.ImportEnvironment hiding (setTypeSynonyms)
+import Helium.ModuleSystem.ImportEnvironment hiding (setTypeSynonyms, classEnvironment)
 import Helium.Utils.Utils (internalError)
 import qualified Helium.Syntax.UHA_Pretty as PP
 }

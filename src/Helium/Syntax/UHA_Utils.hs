@@ -147,4 +147,31 @@ patternVars p = case p of
     Pattern_Irrefutable _ pat           -> patternVars pat
     Pattern_NegateFloat _ _             -> []
     _ -> internalError "UHA_Utils" "patternVars" "unsupported kind of pattern"
+
+--Extract the name(s) of a declaration
+nameOfDeclaration :: Declaration -> Names
+nameOfDeclaration d = case d of
+    Declaration_Class            _ _ (SimpleType_SimpleType _ n _) _   -> [n]
+    Declaration_Data             _ _ (SimpleType_SimpleType _ n _) _ _ -> [n]
+    Declaration_Default          _ _                                   -> [] --What does the Default do, it is not created by the parser...
+    Declaration_Empty            _                                     -> []
+    Declaration_Fixity           _ _ _ ns                              -> ns
+    Declaration_FunctionBindings _ fb                                  -> [head $ concatMap nameOfFunctionBinding fb]
+    Declaration_Instance         _ _ n _ _                             -> [n]
+    Declaration_Newtype          _ _ (SimpleType_SimpleType _ n _) _ _ -> [n]
+    Declaration_PatternBinding   _ _ _                                 -> [] --Not entirely sure whether this is correct or not (a directly declared pattern is a binding to the names in the pattern...)
+    Declaration_Type             _ (SimpleType_SimpleType _ n _) _     -> [n]
+    Declaration_TypeSignature    _ ns _                                -> ns
+    Declaration_Hole             _ _                                   -> []
+    
+nameOfFunctionBinding :: FunctionBinding -> Names
+nameOfFunctionBinding (FunctionBinding_FunctionBinding _ lhs _) = nameOfLeftHandSide lhs
+nameOfFunctionBinding (FunctionBinding_Hole _ _)                = []
+nameOfFunctionBinding (FunctionBinding_Feedback _ _ fb)         = nameOfFunctionBinding fb -- Check: Bastiaan
+            
+nameOfLeftHandSide :: LeftHandSide -> Names
+nameOfLeftHandSide lhs = case lhs of
+    LeftHandSide_Function _ n _      -> [n]
+    LeftHandSide_Infix _ _ n _       -> [n]
+    LeftHandSide_Parenthesized _ l _ -> nameOfLeftHandSide l
     

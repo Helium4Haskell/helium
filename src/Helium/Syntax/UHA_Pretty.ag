@@ -1,8 +1,10 @@
+
 INCLUDE "UHA_Syntax.ag"
 
 imports{
 -- Below two imports are to avoid clashes of "list" as used by the AG system.
 -- Effectively, only list from the imported library needs to be qualified.
+import Prelude hiding ((<$>))
 import Text.PrettyPrint.Leijen hiding (list)
 import qualified Text.PrettyPrint.Leijen as PPrint
 import Data.Char

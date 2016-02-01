@@ -36,6 +36,7 @@ data Warning  = NoTypeDef Name TpScheme Bool{- toplevel? -} Bool{- simple pat an
               | UnreachableGuard Range Expression
               | FallThrough Range
               | SignatureTooSpecific Name TpScheme TpScheme 
+              | MissingClassMember Name Name
               
 instance HasMessage Warning where
    getMessage x = let (oneliner, hints) = showWarning x
@@ -49,13 +50,14 @@ instance HasMessage Warning where
       SuspiciousTypeVariable name _ -> [getNameRange name]
       ReduceContext rng _ _         -> [rng]
       MissingPatterns rng _ _ _ _ _ -> [rng]
-      UnreachablePatternCase rng _  -> [rng]
-      UnreachableGuard  rng _       -> [rng]
-      FallThrough rng               -> [rng]
       UnreachablePatternLHS (LeftHandSide_Function      rng _ _  ) -> [rng]
       UnreachablePatternLHS (LeftHandSide_Infix         rng _ _ _) -> [rng]
       UnreachablePatternLHS (LeftHandSide_Parenthesized rng _ _  ) -> [rng]
+      UnreachablePatternCase rng _  -> [rng]
+      UnreachableGuard  rng _       -> [rng]
+      FallThrough rng               -> [rng]
       SignatureTooSpecific name _ _ -> [getNameRange name]
+      MissingClassMember name _     -> [getNameRange name]
 
 showWarning :: Warning -> (MessageBlock {- oneliner -}, MessageBlocks {- hints -})
 showWarning warning = case warning of
@@ -145,6 +147,11 @@ showWarning warning = case warning of
            ]
       , []
       )
+   MissingClassMember instanceName member ->
+      ( MessageString ("The function: " ++ show member ++ " for an instance of: " ++ show instanceName ++ " is not defined and doesn't have a default.")
+      , []
+      )
+--   _ -> internalError "Warnings" "showWarning" "unknown type of Warning"
 
 plural :: [a] -> String -> String
 plural [_] = id

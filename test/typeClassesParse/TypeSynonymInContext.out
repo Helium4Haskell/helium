@@ -1,0 +1,5 @@
+Compiling typeClassesParse/TypeSynonymInContext.hs
+(5,28): Syntax error: 
+    unexpected '=>'
+    expecting keyword 'where', next in block (based on layout), ';' or end of block (based on layout)
+Compilation failed with 1 error

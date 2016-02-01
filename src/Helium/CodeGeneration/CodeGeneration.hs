@@ -3,6 +3,9 @@
 
 module Helium.CodeGeneration.CodeGeneration where
 
+import Lvm.Common.Byte(bytesFromString)
+
+
 import Helium.Syntax.UHA_Syntax
 import Helium.Syntax.UHA_Utils
 import Helium.Syntax.UHA_Range 
@@ -31,14 +34,96 @@ import qualified Lvm.Core.Expr as Core
 import qualified Lvm.Core.Module as Core
 import qualified Lvm.Core.Module as Module
 import qualified Lvm.Common.Byte as Byte
-
-
-import Lvm.Common.Byte(bytesFromString)
 import Control.Monad.Identity (Identity)
 import qualified Control.Monad.Identity
 
 
-type CoreDecl = Core.Decl Core.Expr
+patternAlwaysSucceeds :: Pattern -> Bool
+patternAlwaysSucceeds p = 
+    case p of
+        Pattern_Variable _ _ -> True
+        Pattern_Wildcard _ -> True
+        Pattern_As _ _ pat -> patternAlwaysSucceeds pat
+        Pattern_Parenthesized _ pat -> patternAlwaysSucceeds pat
+        _ -> False
+
+patternMatchFail :: String -> Range -> Core.Expr
+patternMatchFail nodeDescription range =
+    var "$primPatternFailPacked"
+        `app_` packedString (
+                    nodeDescription ++ " ranging from " ++ 
+                    showPosition start ++ " to " ++ 
+                    showPosition (getRangeEnd range) ++ " in module " ++
+                    moduleFromPosition start
+               )
+    where
+        start = getRangeStart range
+
+
+
+-- Function "bind" is used in the translation of do-expressions
+bind :: Core.Expr -> Core.Expr -> Core.Expr
+bind ma f = Core.Var primBindIOId `app_` ma `app_` f
+
+primBindIOId, caseExprId, okId, parameterId :: Id
+( primBindIOId :  caseExprId :  okId :  parameterId : []) = map idFromString $
+ "$primBindIO"  : "caseExpr$" : "ok$" : "parameter$" : []
+
+-- Function "chainCode" is used in the translation of do-expressions
+chainCode :: [Maybe Core.Expr -> Core.Expr] -> Core.Expr
+chainCode theCores =
+    case theCores of
+        [core] -> core Nothing
+        (core:cores) -> core (Just (chainCode cores))
+        [] -> error "pattern match failure in CodeGeneration.ToCoreExpr.chainCode"
+
+
+predicateToId :: Predicate -> Id
+predicateToId (Predicate class_ tp) =
+    idFromString $ "$dict" ++ class_ ++ show tp
+    
+dictionaryTreeToCore :: DictionaryTree -> Core.Expr
+dictionaryTreeToCore theTree = 
+   case theTree of
+      ByPredicate predicate -> 
+         Core.Var (predicateToId predicate)
+      ByInstance className instanceName trees ->
+         foldl Core.Ap
+               (Core.Var (idFromString ("$dict"++className++instanceName)))
+               (map dictionaryTreeToCore trees)
+      BySuperClass subClass superClass tree -> 
+         Core.Ap (Core.Var (idFromString ("$get" ++ superClass ++ "From" ++ subClass)))          
+                 (dictionaryTreeToCore tree)
+
+insertDictionaries :: Name -> DictionaryEnvironment -> Core.Expr
+insertDictionaries name dictionaryEnv = 
+   foldl Core.Ap
+         (Core.Var (idFromName name))
+         (map dictionaryTreeToCore (getDictionaryTrees name dictionaryEnv))
+
+
+toplevelType :: Name -> ImportEnvironment -> Bool -> [Core.Custom]
+toplevelType name ie isTopLevel
+    | isTopLevel = [custom "type" typeString]
+    | otherwise  = []
+    where
+        typeString = maybe
+            (internalError "ToCoreDecl" "Declaration" ("no type found for " ++ getNameName name))
+            show
+            (M.lookup name (typeEnvironment ie))
+
+constructorCustoms :: Name -> Name -> ValueConstructorEnvironment -> [Core.Custom]
+constructorCustoms dataTypeName name env =
+    maybe 
+        (internalError "ToCoreDecl" "Constructor" ("no type found for " ++ show name))
+        (\tpScheme -> 
+            [ custom "type" (show tpScheme)
+            , Core.CustomLink 
+                    (idFromName dataTypeName) 
+                    (Core.DeclKindCustom (idFromString "data"))
+            ]
+        )
+        (M.lookup name env)
 
 
 makeCoreModule :: Maybe Id -> [Module.Decl v] -> Module.Module v
@@ -111,93 +196,8 @@ everythingPublicButPrelude theModule = theModule { Core.moduleDecls = map setPub
                   (Core.declAccess declaration){ Core.accessPublic = public } }
 
 
-predicateToId :: Predicate -> Id
-predicateToId (Predicate class_ tp) =
-    idFromString $ "$dict" ++ class_ ++ show tp
-    
-dictionaryTreeToCore :: DictionaryTree -> Core.Expr
-dictionaryTreeToCore theTree = 
-   case theTree of
-      ByPredicate predicate -> 
-         Core.Var (predicateToId predicate)
-      ByInstance className instanceName trees ->
-         foldl Core.Ap
-               (Core.Var (idFromString ("$dict"++className++instanceName)))
-               (map dictionaryTreeToCore trees)
-      BySuperClass subClass superClass tree -> 
-         Core.Ap (Core.Var (idFromString ("$get" ++ superClass ++ "From" ++ subClass)))          
-                 (dictionaryTreeToCore tree)
 
-insertDictionaries :: Name -> DictionaryEnvironment -> Core.Expr
-insertDictionaries name dictionaryEnv = 
-   foldl Core.Ap
-         (Core.Var (idFromName name))
-         (map dictionaryTreeToCore (getDictionaryTrees name dictionaryEnv))
-
-
-toplevelType :: Name -> ImportEnvironment -> Bool -> [Core.Custom]
-toplevelType name ie isTopLevel
-    | isTopLevel = [custom "type" typeString]
-    | otherwise  = []
-    where
-        typeString = maybe
-            (internalError "ToCoreDecl" "Declaration" ("no type found for " ++ getNameName name))
-            show
-            (M.lookup name (typeEnvironment ie))
-
-constructorCustoms :: Name -> Name -> ValueConstructorEnvironment -> [Core.Custom]
-constructorCustoms dataTypeName name env =
-    maybe 
-        (internalError "ToCoreDecl" "Constructor" ("no type found for " ++ show name))
-        (\tpScheme -> 
-            [ custom "type" (show tpScheme)
-            , Core.CustomLink 
-                    (idFromName dataTypeName) 
-                    (Core.DeclKindCustom (idFromString "data"))
-            ]
-        )
-        (M.lookup name env)
-
-
-
--- Function "bind" is used in the translation of do-expressions
-bind :: Core.Expr -> Core.Expr -> Core.Expr
-bind ma f = Core.Var primBindIOId `app_` ma `app_` f
-
-primBindIOId, caseExprId, okId, parameterId :: Id
-( primBindIOId :  caseExprId :  okId :  parameterId : []) = map idFromString $
- "$primBindIO"  : "caseExpr$" : "ok$" : "parameter$" : []
-
--- Function "chainCode" is used in the translation of do-expressions
-chainCode :: [Maybe Core.Expr -> Core.Expr] -> Core.Expr
-chainCode theCores =
-    case theCores of
-        [core] -> core Nothing
-        (core:cores) -> core (Just (chainCode cores))
-        [] -> error "pattern match failure in CodeGeneration.ToCoreExpr.chainCode"
-
-
-
-patternAlwaysSucceeds :: Pattern -> Bool
-patternAlwaysSucceeds p = 
-    case p of
-        Pattern_Variable _ _ -> True
-        Pattern_Wildcard _ -> True
-        Pattern_As _ _ pat -> patternAlwaysSucceeds pat
-        Pattern_Parenthesized _ pat -> patternAlwaysSucceeds pat
-        _ -> False
-
-patternMatchFail :: String -> Range -> Core.Expr
-patternMatchFail nodeDescription range =
-    var "$primPatternFailPacked"
-        `app_` packedString (
-                    nodeDescription ++ " ranging from " ++ 
-                    showPosition start ++ " to " ++ 
-                    showPosition (getRangeEnd range) ++ " in module " ++
-                    moduleFromPosition start
-               )
-    where
-        start = getRangeStart range
+type CoreDecl = Core.Decl Core.Expr
 -- Alternative -------------------------------------------------
 -- wrapper
 data Inh_Alternative  = Inh_Alternative { dictionaryEnv_Inh_Alternative :: (DictionaryEnvironment) }
@@ -207,8 +207,8 @@ wrap_Alternative :: T_Alternative  -> Inh_Alternative  -> (Syn_Alternative )
 wrap_Alternative (T_Alternative act) (Inh_Alternative _lhsIdictionaryEnv) =
    Control.Monad.Identity.runIdentity (
      do sem <- act
-        let arg = T_Alternative_vIn1 _lhsIdictionaryEnv
-        (T_Alternative_vOut1 _lhsOcore _lhsOself) <- return (inv_Alternative_s2 sem arg)
+        let arg1 = T_Alternative_vIn1 _lhsIdictionaryEnv
+        (T_Alternative_vOut1 _lhsOcore _lhsOself) <- return (inv_Alternative_s2 sem arg1)
         return (Syn_Alternative _lhsOcore _lhsOself)
    )
 
@@ -365,8 +365,8 @@ wrap_Alternatives :: T_Alternatives  -> Inh_Alternatives  -> (Syn_Alternatives )
 wrap_Alternatives (T_Alternatives act) (Inh_Alternatives _lhsIcaseRange _lhsIdictionaryEnv) =
    Control.Monad.Identity.runIdentity (
      do sem <- act
-        let arg = T_Alternatives_vIn4 _lhsIcaseRange _lhsIdictionaryEnv
-        (T_Alternatives_vOut4 _lhsOcore _lhsOself) <- return (inv_Alternatives_s5 sem arg)
+        let arg4 = T_Alternatives_vIn4 _lhsIcaseRange _lhsIdictionaryEnv
+        (T_Alternatives_vOut4 _lhsOcore _lhsOself) <- return (inv_Alternatives_s5 sem arg4)
         return (Syn_Alternatives _lhsOcore _lhsOself)
    )
 
@@ -460,8 +460,8 @@ wrap_AnnotatedType :: T_AnnotatedType  -> Inh_AnnotatedType  -> (Syn_AnnotatedTy
 wrap_AnnotatedType (T_AnnotatedType act) (Inh_AnnotatedType ) =
    Control.Monad.Identity.runIdentity (
      do sem <- act
-        let arg = T_AnnotatedType_vIn7 
-        (T_AnnotatedType_vOut7 _lhsOself) <- return (inv_AnnotatedType_s8 sem arg)
+        let arg7 = T_AnnotatedType_vIn7 
+        (T_AnnotatedType_vOut7 _lhsOself) <- return (inv_AnnotatedType_s8 sem arg7)
         return (Syn_AnnotatedType _lhsOself)
    )
 
@@ -514,8 +514,8 @@ wrap_AnnotatedTypes :: T_AnnotatedTypes  -> Inh_AnnotatedTypes  -> (Syn_Annotate
 wrap_AnnotatedTypes (T_AnnotatedTypes act) (Inh_AnnotatedTypes ) =
    Control.Monad.Identity.runIdentity (
      do sem <- act
-        let arg = T_AnnotatedTypes_vIn10 
-        (T_AnnotatedTypes_vOut10 _lhsOlength _lhsOself) <- return (inv_AnnotatedTypes_s11 sem arg)
+        let arg10 = T_AnnotatedTypes_vIn10 
+        (T_AnnotatedTypes_vOut10 _lhsOlength _lhsOself) <- return (inv_AnnotatedTypes_s11 sem arg10)
         return (Syn_AnnotatedTypes _lhsOlength _lhsOself)
    )
 
@@ -597,8 +597,8 @@ wrap_Body :: T_Body  -> Inh_Body  -> (Syn_Body )
 wrap_Body (T_Body act) (Inh_Body _lhsIdictionaryEnv _lhsIimportEnv) =
    Control.Monad.Identity.runIdentity (
      do sem <- act
-        let arg = T_Body_vIn13 _lhsIdictionaryEnv _lhsIimportEnv
-        (T_Body_vOut13 _lhsOdecls _lhsOself) <- return (inv_Body_s14 sem arg)
+        let arg13 = T_Body_vIn13 _lhsIdictionaryEnv _lhsIimportEnv
+        (T_Body_vOut13 _lhsOdecls _lhsOself) <- return (inv_Body_s14 sem arg13)
         return (Syn_Body _lhsOdecls _lhsOself)
    )
 
@@ -701,8 +701,8 @@ wrap_Constructor :: T_Constructor  -> Inh_Constructor  -> (Syn_Constructor )
 wrap_Constructor (T_Constructor act) (Inh_Constructor _lhsIdataTypeName _lhsIdictionaryEnv _lhsIimportEnv _lhsItag) =
    Control.Monad.Identity.runIdentity (
      do sem <- act
-        let arg = T_Constructor_vIn16 _lhsIdataTypeName _lhsIdictionaryEnv _lhsIimportEnv _lhsItag
-        (T_Constructor_vOut16 _lhsOcons _lhsOself) <- return (inv_Constructor_s17 sem arg)
+        let arg16 = T_Constructor_vIn16 _lhsIdataTypeName _lhsIdictionaryEnv _lhsIimportEnv _lhsItag
+        (T_Constructor_vOut16 _lhsOcons _lhsOself) <- return (inv_Constructor_s17 sem arg16)
         return (Syn_Constructor _lhsOcons _lhsOself)
    )
 
@@ -848,8 +848,8 @@ wrap_Constructors :: T_Constructors  -> Inh_Constructors  -> (Syn_Constructors )
 wrap_Constructors (T_Constructors act) (Inh_Constructors _lhsIdataTypeName _lhsIdictionaryEnv _lhsIimportEnv _lhsItag) =
    Control.Monad.Identity.runIdentity (
      do sem <- act
-        let arg = T_Constructors_vIn19 _lhsIdataTypeName _lhsIdictionaryEnv _lhsIimportEnv _lhsItag
-        (T_Constructors_vOut19 _lhsOcons _lhsOself) <- return (inv_Constructors_s20 sem arg)
+        let arg19 = T_Constructors_vIn19 _lhsIdataTypeName _lhsIdictionaryEnv _lhsIimportEnv _lhsItag
+        (T_Constructors_vOut19 _lhsOcons _lhsOself) <- return (inv_Constructors_s20 sem arg19)
         return (Syn_Constructors _lhsOcons _lhsOself)
    )
 
@@ -963,8 +963,8 @@ wrap_ContextItem :: T_ContextItem  -> Inh_ContextItem  -> (Syn_ContextItem )
 wrap_ContextItem (T_ContextItem act) (Inh_ContextItem ) =
    Control.Monad.Identity.runIdentity (
      do sem <- act
-        let arg = T_ContextItem_vIn22 
-        (T_ContextItem_vOut22 _lhsOself) <- return (inv_ContextItem_s23 sem arg)
+        let arg22 = T_ContextItem_vIn22 
+        (T_ContextItem_vOut22 _lhsOself) <- return (inv_ContextItem_s23 sem arg22)
         return (Syn_ContextItem _lhsOself)
    )
 
@@ -1019,8 +1019,8 @@ wrap_ContextItems :: T_ContextItems  -> Inh_ContextItems  -> (Syn_ContextItems )
 wrap_ContextItems (T_ContextItems act) (Inh_ContextItems ) =
    Control.Monad.Identity.runIdentity (
      do sem <- act
-        let arg = T_ContextItems_vIn25 
-        (T_ContextItems_vOut25 _lhsOself) <- return (inv_ContextItems_s26 sem arg)
+        let arg25 = T_ContextItems_vIn25 
+        (T_ContextItems_vOut25 _lhsOself) <- return (inv_ContextItems_s26 sem arg25)
         return (Syn_ContextItems _lhsOself)
    )
 
@@ -1092,8 +1092,8 @@ wrap_Declaration :: T_Declaration  -> Inh_Declaration  -> (Syn_Declaration )
 wrap_Declaration (T_Declaration act) (Inh_Declaration _lhsIdictionaryEnv _lhsIimportEnv _lhsIisTopLevel _lhsIpatBindNr) =
    Control.Monad.Identity.runIdentity (
      do sem <- act
-        let arg = T_Declaration_vIn28 _lhsIdictionaryEnv _lhsIimportEnv _lhsIisTopLevel _lhsIpatBindNr
-        (T_Declaration_vOut28 _lhsOdecls _lhsOpatBindNr _lhsOself) <- return (inv_Declaration_s29 sem arg)
+        let arg28 = T_Declaration_vIn28 _lhsIdictionaryEnv _lhsIimportEnv _lhsIisTopLevel _lhsIpatBindNr
+        (T_Declaration_vOut28 _lhsOdecls _lhsOpatBindNr _lhsOself) <- return (inv_Declaration_s29 sem arg28)
         return (Syn_Declaration _lhsOdecls _lhsOpatBindNr _lhsOself)
    )
 
@@ -1747,8 +1747,8 @@ wrap_Declarations :: T_Declarations  -> Inh_Declarations  -> (Syn_Declarations )
 wrap_Declarations (T_Declarations act) (Inh_Declarations _lhsIdictionaryEnv _lhsIimportEnv _lhsIisTopLevel _lhsIpatBindNr) =
    Control.Monad.Identity.runIdentity (
      do sem <- act
-        let arg = T_Declarations_vIn31 _lhsIdictionaryEnv _lhsIimportEnv _lhsIisTopLevel _lhsIpatBindNr
-        (T_Declarations_vOut31 _lhsOdecls _lhsOpatBindNr _lhsOself) <- return (inv_Declarations_s32 sem arg)
+        let arg31 = T_Declarations_vIn31 _lhsIdictionaryEnv _lhsIimportEnv _lhsIisTopLevel _lhsIpatBindNr
+        (T_Declarations_vOut31 _lhsOdecls _lhsOpatBindNr _lhsOself) <- return (inv_Declarations_s32 sem arg31)
         return (Syn_Declarations _lhsOdecls _lhsOpatBindNr _lhsOself)
    )
 
@@ -1872,8 +1872,8 @@ wrap_Export :: T_Export  -> Inh_Export  -> (Syn_Export )
 wrap_Export (T_Export act) (Inh_Export ) =
    Control.Monad.Identity.runIdentity (
      do sem <- act
-        let arg = T_Export_vIn34 
-        (T_Export_vOut34 _lhsOcons _lhsOmods _lhsOself _lhsOtypes _lhsOvalues) <- return (inv_Export_s35 sem arg)
+        let arg34 = T_Export_vIn34 
+        (T_Export_vOut34 _lhsOcons _lhsOmods _lhsOself _lhsOtypes _lhsOvalues) <- return (inv_Export_s35 sem arg34)
         return (Syn_Export _lhsOcons _lhsOmods _lhsOself _lhsOtypes _lhsOvalues)
    )
 
@@ -2080,8 +2080,8 @@ wrap_Exports :: T_Exports  -> Inh_Exports  -> (Syn_Exports )
 wrap_Exports (T_Exports act) (Inh_Exports ) =
    Control.Monad.Identity.runIdentity (
      do sem <- act
-        let arg = T_Exports_vIn37 
-        (T_Exports_vOut37 _lhsOcons _lhsOmods _lhsOself _lhsOtypes _lhsOvalues) <- return (inv_Exports_s38 sem arg)
+        let arg37 = T_Exports_vIn37 
+        (T_Exports_vOut37 _lhsOcons _lhsOmods _lhsOself _lhsOtypes _lhsOvalues) <- return (inv_Exports_s38 sem arg37)
         return (Syn_Exports _lhsOcons _lhsOmods _lhsOself _lhsOtypes _lhsOvalues)
    )
 
@@ -2193,8 +2193,8 @@ wrap_Expression :: T_Expression  -> Inh_Expression  -> (Syn_Expression )
 wrap_Expression (T_Expression act) (Inh_Expression _lhsIdictionaryEnv) =
    Control.Monad.Identity.runIdentity (
      do sem <- act
-        let arg = T_Expression_vIn40 _lhsIdictionaryEnv
-        (T_Expression_vOut40 _lhsOcore _lhsOself) <- return (inv_Expression_s41 sem arg)
+        let arg40 = T_Expression_vIn40 _lhsIdictionaryEnv
+        (T_Expression_vOut40 _lhsOcore _lhsOself) <- return (inv_Expression_s41 sem arg40)
         return (Syn_Expression _lhsOcore _lhsOself)
    )
 
@@ -2671,11 +2671,11 @@ sem_Expression_Let arg_range_ arg_declarations_ arg_expression_ = T_Expression (
          (T_Range_vOut133 _rangeIself) = inv_Range_s134 _rangeX134 (T_Range_vIn133 )
          (T_Declarations_vOut31 _declarationsIdecls _declarationsIpatBindNr _declarationsIself) = inv_Declarations_s32 _declarationsX32 (T_Declarations_vIn31 _declarationsOdictionaryEnv _declarationsOimportEnv _declarationsOisTopLevel _declarationsOpatBindNr)
          (T_Expression_vOut40 _expressionIcore _expressionIself) = inv_Expression_s41 _expressionX41 (T_Expression_vIn40 _expressionOdictionaryEnv)
-         _importEnv = rule238  ()
-         _declarationsOpatBindNr = rule239  ()
-         _declarationsOisTopLevel = rule240  ()
+         _declarationsOpatBindNr = rule238  ()
+         _declarationsOisTopLevel = rule239  ()
          _lhsOcore ::  Core.Expr 
-         _lhsOcore = rule241 _declarationsIdecls _expressionIcore
+         _lhsOcore = rule240 _declarationsIdecls _expressionIcore
+         _importEnv = rule241  ()
          _self = rule242 _declarationsIself _expressionIself _rangeIself
          _lhsOself :: Expression
          _lhsOself = rule243 _self
@@ -2687,16 +2687,16 @@ sem_Expression_Let arg_range_ arg_declarations_ arg_expression_ = T_Expression (
      in C_Expression_s41 v40
    {-# INLINE rule238 #-}
    rule238 = \  (_ :: ()) ->
-                                               internalError "CodeGeneration.ag" "Expression.Let" ""
+                                                    0
    {-# INLINE rule239 #-}
    rule239 = \  (_ :: ()) ->
-                                                    0
-   {-# INLINE rule240 #-}
-   rule240 = \  (_ :: ()) ->
                                                      False
-   {-# INLINE rule241 #-}
-   rule241 = \ ((_declarationsIdecls) ::  [CoreDecl] ) ((_expressionIcore) ::  Core.Expr ) ->
+   {-# INLINE rule240 #-}
+   rule240 = \ ((_declarationsIdecls) ::  [CoreDecl] ) ((_expressionIcore) ::  Core.Expr ) ->
           letrec_ _declarationsIdecls _expressionIcore
+   {-# INLINE rule241 #-}
+   rule241 = \  (_ :: ()) ->
+                                               internalError "CodeGeneration.ag" "Expression.Let" ""
    {-# INLINE rule242 #-}
    rule242 = \ ((_declarationsIself) :: Declarations) ((_expressionIself) :: Expression) ((_rangeIself) :: Range) ->
      Expression_Let _rangeIself _declarationsIself _expressionIself
@@ -3092,8 +3092,8 @@ wrap_Expressions :: T_Expressions  -> Inh_Expressions  -> (Syn_Expressions )
 wrap_Expressions (T_Expressions act) (Inh_Expressions _lhsIdictionaryEnv) =
    Control.Monad.Identity.runIdentity (
      do sem <- act
-        let arg = T_Expressions_vIn43 _lhsIdictionaryEnv
-        (T_Expressions_vOut43 _lhsOcore _lhsOself) <- return (inv_Expressions_s44 sem arg)
+        let arg43 = T_Expressions_vIn43 _lhsIdictionaryEnv
+        (T_Expressions_vOut43 _lhsOcore _lhsOself) <- return (inv_Expressions_s44 sem arg43)
         return (Syn_Expressions _lhsOcore _lhsOself)
    )
 
@@ -3183,8 +3183,8 @@ wrap_FieldDeclaration :: T_FieldDeclaration  -> Inh_FieldDeclaration  -> (Syn_Fi
 wrap_FieldDeclaration (T_FieldDeclaration act) (Inh_FieldDeclaration ) =
    Control.Monad.Identity.runIdentity (
      do sem <- act
-        let arg = T_FieldDeclaration_vIn46 
-        (T_FieldDeclaration_vOut46 _lhsOself) <- return (inv_FieldDeclaration_s47 sem arg)
+        let arg46 = T_FieldDeclaration_vIn46 
+        (T_FieldDeclaration_vOut46 _lhsOself) <- return (inv_FieldDeclaration_s47 sem arg46)
         return (Syn_FieldDeclaration _lhsOself)
    )
 
@@ -3239,8 +3239,8 @@ wrap_FieldDeclarations :: T_FieldDeclarations  -> Inh_FieldDeclarations  -> (Syn
 wrap_FieldDeclarations (T_FieldDeclarations act) (Inh_FieldDeclarations ) =
    Control.Monad.Identity.runIdentity (
      do sem <- act
-        let arg = T_FieldDeclarations_vIn49 
-        (T_FieldDeclarations_vOut49 _lhsOself) <- return (inv_FieldDeclarations_s50 sem arg)
+        let arg49 = T_FieldDeclarations_vIn49 
+        (T_FieldDeclarations_vOut49 _lhsOself) <- return (inv_FieldDeclarations_s50 sem arg49)
         return (Syn_FieldDeclarations _lhsOself)
    )
 
@@ -3312,8 +3312,8 @@ wrap_Fixity :: T_Fixity  -> Inh_Fixity  -> (Syn_Fixity )
 wrap_Fixity (T_Fixity act) (Inh_Fixity ) =
    Control.Monad.Identity.runIdentity (
      do sem <- act
-        let arg = T_Fixity_vIn52 
-        (T_Fixity_vOut52 _lhsOself) <- return (inv_Fixity_s53 sem arg)
+        let arg52 = T_Fixity_vIn52 
+        (T_Fixity_vOut52 _lhsOself) <- return (inv_Fixity_s53 sem arg52)
         return (Syn_Fixity _lhsOself)
    )
 
@@ -3408,8 +3408,8 @@ wrap_FunctionBinding :: T_FunctionBinding  -> Inh_FunctionBinding  -> (Syn_Funct
 wrap_FunctionBinding (T_FunctionBinding act) (Inh_FunctionBinding _lhsIdictionaryEnv _lhsIids) =
    Control.Monad.Identity.runIdentity (
      do sem <- act
-        let arg = T_FunctionBinding_vIn55 _lhsIdictionaryEnv _lhsIids
-        (T_FunctionBinding_vOut55 _lhsOarity _lhsOcore _lhsOname _lhsOself) <- return (inv_FunctionBinding_s56 sem arg)
+        let arg55 = T_FunctionBinding_vIn55 _lhsIdictionaryEnv _lhsIids
+        (T_FunctionBinding_vOut55 _lhsOarity _lhsOcore _lhsOname _lhsOself) <- return (inv_FunctionBinding_s56 sem arg55)
         return (Syn_FunctionBinding _lhsOarity _lhsOcore _lhsOname _lhsOself)
    )
 
@@ -3440,12 +3440,12 @@ sem_FunctionBinding_Hole arg_range_ arg_id_ = T_FunctionBinding (return st56) wh
       v55 = \ (T_FunctionBinding_vIn55 _lhsIdictionaryEnv _lhsIids) -> ( let
          _rangeX134 = Control.Monad.Identity.runIdentity (attach_T_Range (arg_range_))
          (T_Range_vOut133 _rangeIself) = inv_Range_s134 _rangeX134 (T_Range_vIn133 )
-         _lhsOarity :: Int
-         _lhsOarity = rule311  ()
-         _lhsOcore ::  Core.Expr -> Core.Expr 
-         _lhsOcore = rule312  ()
          _lhsOname :: Name
-         _lhsOname = rule313  ()
+         _lhsOname = rule311  ()
+         _lhsOarity :: Int
+         _lhsOarity = rule312  ()
+         _lhsOcore ::  Core.Expr -> Core.Expr 
+         _lhsOcore = rule313  ()
          _self = rule314 _rangeIself arg_id_
          _lhsOself :: FunctionBinding
          _lhsOself = rule315 _self
@@ -3454,13 +3454,13 @@ sem_FunctionBinding_Hole arg_range_ arg_id_ = T_FunctionBinding (return st56) wh
      in C_FunctionBinding_s56 v55
    {-# INLINE rule311 #-}
    rule311 = \  (_ :: ()) ->
-                                     0
+                         internalError "ToCoreName.ag" "n/a" "hole FunctionBindings"
    {-# INLINE rule312 #-}
    rule312 = \  (_ :: ()) ->
-                                     internalError "ToCoreDecl" "FunctionBinding" "holes not supported"
+                                     0
    {-# INLINE rule313 #-}
    rule313 = \  (_ :: ()) ->
-                         internalError "ToCoreName.ag" "n/a" "hole FunctionBindings"
+                                     internalError "ToCoreDecl" "FunctionBinding" "holes not supported"
    {-# INLINE rule314 #-}
    rule314 = \ ((_rangeIself) :: Range) id_ ->
      FunctionBinding_Hole _rangeIself id_
@@ -3578,8 +3578,8 @@ wrap_FunctionBindings :: T_FunctionBindings  -> Inh_FunctionBindings  -> (Syn_Fu
 wrap_FunctionBindings (T_FunctionBindings act) (Inh_FunctionBindings _lhsIdictionaryEnv _lhsIids _lhsIrange) =
    Control.Monad.Identity.runIdentity (
      do sem <- act
-        let arg = T_FunctionBindings_vIn58 _lhsIdictionaryEnv _lhsIids _lhsIrange
-        (T_FunctionBindings_vOut58 _lhsOarity _lhsOcore _lhsOname _lhsOself) <- return (inv_FunctionBindings_s59 sem arg)
+        let arg58 = T_FunctionBindings_vIn58 _lhsIdictionaryEnv _lhsIids _lhsIrange
+        (T_FunctionBindings_vOut58 _lhsOarity _lhsOcore _lhsOname _lhsOself) <- return (inv_FunctionBindings_s59 sem arg58)
         return (Syn_FunctionBindings _lhsOarity _lhsOcore _lhsOname _lhsOself)
    )
 
@@ -3610,12 +3610,12 @@ sem_FunctionBindings_Cons arg_hd_ arg_tl_ = T_FunctionBindings (return st59) whe
          _tlX59 = Control.Monad.Identity.runIdentity (attach_T_FunctionBindings (arg_tl_))
          (T_FunctionBinding_vOut55 _hdIarity _hdIcore _hdIname _hdIself) = inv_FunctionBinding_s56 _hdX56 (T_FunctionBinding_vIn55 _hdOdictionaryEnv _hdOids)
          (T_FunctionBindings_vOut58 _tlIarity _tlIcore _tlIname _tlIself) = inv_FunctionBindings_s59 _tlX59 (T_FunctionBindings_vIn58 _tlOdictionaryEnv _tlOids _tlOrange)
-         _lhsOcore :: Core.Expr
-         _lhsOcore = rule329 _hdIcore _tlIcore
-         _lhsOarity :: Int
-         _lhsOarity = rule330 _hdIarity
          _lhsOname :: Name
-         _lhsOname = rule331 _hdIname
+         _lhsOname = rule329 _hdIname
+         _lhsOcore :: Core.Expr
+         _lhsOcore = rule330 _hdIcore _tlIcore
+         _lhsOarity :: Int
+         _lhsOarity = rule331 _hdIarity
          _self = rule332 _hdIself _tlIself
          _lhsOself :: FunctionBindings
          _lhsOself = rule333 _self
@@ -3628,14 +3628,14 @@ sem_FunctionBindings_Cons arg_hd_ arg_tl_ = T_FunctionBindings (return st59) whe
          in __result_ )
      in C_FunctionBindings_s59 v58
    {-# INLINE rule329 #-}
-   rule329 = \ ((_hdIcore) ::  Core.Expr -> Core.Expr ) ((_tlIcore) :: Core.Expr) ->
-                                     _hdIcore _tlIcore
-   {-# INLINE rule330 #-}
-   rule330 = \ ((_hdIarity) :: Int) ->
-                                     _hdIarity
-   {-# INLINE rule331 #-}
-   rule331 = \ ((_hdIname) :: Name) ->
+   rule329 = \ ((_hdIname) :: Name) ->
                          _hdIname
+   {-# INLINE rule330 #-}
+   rule330 = \ ((_hdIcore) ::  Core.Expr -> Core.Expr ) ((_tlIcore) :: Core.Expr) ->
+                                     _hdIcore _tlIcore
+   {-# INLINE rule331 #-}
+   rule331 = \ ((_hdIarity) :: Int) ->
+                                     _hdIarity
    {-# INLINE rule332 #-}
    rule332 = \ ((_hdIself) :: FunctionBinding) ((_tlIself) :: FunctionBindings) ->
      (:) _hdIself _tlIself
@@ -3664,12 +3664,12 @@ sem_FunctionBindings_Nil  = T_FunctionBindings (return st59) where
    st59 = let
       v58 :: T_FunctionBindings_v58 
       v58 = \ (T_FunctionBindings_vIn58 _lhsIdictionaryEnv _lhsIids _lhsIrange) -> ( let
-         _lhsOcore :: Core.Expr
-         _lhsOcore = rule339 _lhsIrange
-         _lhsOarity :: Int
-         _lhsOarity = rule340  ()
          _lhsOname :: Name
-         _lhsOname = rule341  ()
+         _lhsOname = rule339  ()
+         _lhsOcore :: Core.Expr
+         _lhsOcore = rule340 _lhsIrange
+         _lhsOarity :: Int
+         _lhsOarity = rule341  ()
          _self = rule342  ()
          _lhsOself :: FunctionBindings
          _lhsOself = rule343 _self
@@ -3677,14 +3677,14 @@ sem_FunctionBindings_Nil  = T_FunctionBindings (return st59) where
          in __result_ )
      in C_FunctionBindings_s59 v58
    {-# INLINE rule339 #-}
-   rule339 = \ ((_lhsIrange) :: Range) ->
-                                     patternMatchFail "function bindings" _lhsIrange
+   rule339 = \  (_ :: ()) ->
+                         internalError "ToCoreName.ag" "n/a" "empty FunctionBindings"
    {-# INLINE rule340 #-}
-   rule340 = \  (_ :: ()) ->
-                                     internalError "ToCoreDecl" "FunctionBindings" "arity: empty list of function bindings"
+   rule340 = \ ((_lhsIrange) :: Range) ->
+                                     patternMatchFail "function bindings" _lhsIrange
    {-# INLINE rule341 #-}
    rule341 = \  (_ :: ()) ->
-                         internalError "ToCoreName.ag" "n/a" "empty FunctionBindings"
+                                     internalError "ToCoreDecl" "FunctionBindings" "arity: empty list of function bindings"
    {-# INLINE rule342 #-}
    rule342 = \  (_ :: ()) ->
      []
@@ -3701,8 +3701,8 @@ wrap_GuardedExpression :: T_GuardedExpression  -> Inh_GuardedExpression  -> (Syn
 wrap_GuardedExpression (T_GuardedExpression act) (Inh_GuardedExpression _lhsIdictionaryEnv) =
    Control.Monad.Identity.runIdentity (
      do sem <- act
-        let arg = T_GuardedExpression_vIn61 _lhsIdictionaryEnv
-        (T_GuardedExpression_vOut61 _lhsOcore _lhsOself) <- return (inv_GuardedExpression_s62 sem arg)
+        let arg61 = T_GuardedExpression_vIn61 _lhsIdictionaryEnv
+        (T_GuardedExpression_vOut61 _lhsOcore _lhsOself) <- return (inv_GuardedExpression_s62 sem arg61)
         return (Syn_GuardedExpression _lhsOcore _lhsOself)
    )
 
@@ -3770,8 +3770,8 @@ wrap_GuardedExpressions :: T_GuardedExpressions  -> Inh_GuardedExpressions  -> (
 wrap_GuardedExpressions (T_GuardedExpressions act) (Inh_GuardedExpressions _lhsIdictionaryEnv) =
    Control.Monad.Identity.runIdentity (
      do sem <- act
-        let arg = T_GuardedExpressions_vIn64 _lhsIdictionaryEnv
-        (T_GuardedExpressions_vOut64 _lhsOcore _lhsOself) <- return (inv_GuardedExpressions_s65 sem arg)
+        let arg64 = T_GuardedExpressions_vIn64 _lhsIdictionaryEnv
+        (T_GuardedExpressions_vOut64 _lhsOcore _lhsOself) <- return (inv_GuardedExpressions_s65 sem arg64)
         return (Syn_GuardedExpressions _lhsOcore _lhsOself)
    )
 
@@ -3861,8 +3861,8 @@ wrap_Import :: T_Import  -> Inh_Import  -> (Syn_Import )
 wrap_Import (T_Import act) (Inh_Import ) =
    Control.Monad.Identity.runIdentity (
      do sem <- act
-        let arg = T_Import_vIn67 
-        (T_Import_vOut67 _lhsOself) <- return (inv_Import_s68 sem arg)
+        let arg67 = T_Import_vIn67 
+        (T_Import_vOut67 _lhsOself) <- return (inv_Import_s68 sem arg67)
         return (Syn_Import _lhsOself)
    )
 
@@ -3965,8 +3965,8 @@ wrap_ImportDeclaration :: T_ImportDeclaration  -> Inh_ImportDeclaration  -> (Syn
 wrap_ImportDeclaration (T_ImportDeclaration act) (Inh_ImportDeclaration ) =
    Control.Monad.Identity.runIdentity (
      do sem <- act
-        let arg = T_ImportDeclaration_vIn70 
-        (T_ImportDeclaration_vOut70 _lhsOself) <- return (inv_ImportDeclaration_s71 sem arg)
+        let arg70 = T_ImportDeclaration_vIn70 
+        (T_ImportDeclaration_vOut70 _lhsOself) <- return (inv_ImportDeclaration_s71 sem arg70)
         return (Syn_ImportDeclaration _lhsOself)
    )
 
@@ -4045,8 +4045,8 @@ wrap_ImportDeclarations :: T_ImportDeclarations  -> Inh_ImportDeclarations  -> (
 wrap_ImportDeclarations (T_ImportDeclarations act) (Inh_ImportDeclarations ) =
    Control.Monad.Identity.runIdentity (
      do sem <- act
-        let arg = T_ImportDeclarations_vIn73 
-        (T_ImportDeclarations_vOut73 _lhsOself) <- return (inv_ImportDeclarations_s74 sem arg)
+        let arg73 = T_ImportDeclarations_vIn73 
+        (T_ImportDeclarations_vOut73 _lhsOself) <- return (inv_ImportDeclarations_s74 sem arg73)
         return (Syn_ImportDeclarations _lhsOself)
    )
 
@@ -4118,8 +4118,8 @@ wrap_ImportSpecification :: T_ImportSpecification  -> Inh_ImportSpecification  -
 wrap_ImportSpecification (T_ImportSpecification act) (Inh_ImportSpecification ) =
    Control.Monad.Identity.runIdentity (
      do sem <- act
-        let arg = T_ImportSpecification_vIn76 
-        (T_ImportSpecification_vOut76 _lhsOself) <- return (inv_ImportSpecification_s77 sem arg)
+        let arg76 = T_ImportSpecification_vIn76 
+        (T_ImportSpecification_vOut76 _lhsOself) <- return (inv_ImportSpecification_s77 sem arg76)
         return (Syn_ImportSpecification _lhsOself)
    )
 
@@ -4172,8 +4172,8 @@ wrap_Imports :: T_Imports  -> Inh_Imports  -> (Syn_Imports )
 wrap_Imports (T_Imports act) (Inh_Imports ) =
    Control.Monad.Identity.runIdentity (
      do sem <- act
-        let arg = T_Imports_vIn79 
-        (T_Imports_vOut79 _lhsOself) <- return (inv_Imports_s80 sem arg)
+        let arg79 = T_Imports_vIn79 
+        (T_Imports_vOut79 _lhsOself) <- return (inv_Imports_s80 sem arg79)
         return (Syn_Imports _lhsOself)
    )
 
@@ -4245,8 +4245,8 @@ wrap_LeftHandSide :: T_LeftHandSide  -> Inh_LeftHandSide  -> (Syn_LeftHandSide )
 wrap_LeftHandSide (T_LeftHandSide act) (Inh_LeftHandSide ) =
    Control.Monad.Identity.runIdentity (
      do sem <- act
-        let arg = T_LeftHandSide_vIn82 
-        (T_LeftHandSide_vOut82 _lhsOarity _lhsOname _lhsOpatterns _lhsOself) <- return (inv_LeftHandSide_s83 sem arg)
+        let arg82 = T_LeftHandSide_vIn82 
+        (T_LeftHandSide_vOut82 _lhsOarity _lhsOname _lhsOpatterns _lhsOself) <- return (inv_LeftHandSide_s83 sem arg82)
         return (Syn_LeftHandSide _lhsOarity _lhsOname _lhsOpatterns _lhsOself)
    )
 
@@ -4281,12 +4281,12 @@ sem_LeftHandSide_Function arg_range_ arg_name_ arg_patterns_ = T_LeftHandSide (r
          (T_Range_vOut133 _rangeIself) = inv_Range_s134 _rangeX134 (T_Range_vIn133 )
          (T_Name_vOut112 _nameIself) = inv_Name_s113 _nameX113 (T_Name_vIn112 )
          (T_Patterns_vOut121 _patternsIlength _patternsIself _patternsIvars) = inv_Patterns_s122 _patternsX122 (T_Patterns_vIn121 )
-         _lhsOarity :: Int
-         _lhsOarity = rule377 _patternsIlength
-         _lhsOpatterns :: Patterns
-         _lhsOpatterns = rule378 _patternsIself
          _lhsOname :: Name
-         _lhsOname = rule379 _nameIself
+         _lhsOname = rule377 _nameIself
+         _lhsOarity :: Int
+         _lhsOarity = rule378 _patternsIlength
+         _lhsOpatterns :: Patterns
+         _lhsOpatterns = rule379 _patternsIself
          _self = rule380 _nameIself _patternsIself _rangeIself
          _lhsOself :: LeftHandSide
          _lhsOself = rule381 _self
@@ -4294,14 +4294,14 @@ sem_LeftHandSide_Function arg_range_ arg_name_ arg_patterns_ = T_LeftHandSide (r
          in __result_ )
      in C_LeftHandSide_s83 v82
    {-# INLINE rule377 #-}
-   rule377 = \ ((_patternsIlength) :: Int) ->
-                                     _patternsIlength
-   {-# INLINE rule378 #-}
-   rule378 = \ ((_patternsIself) :: Patterns) ->
-                                        _patternsIself
-   {-# INLINE rule379 #-}
-   rule379 = \ ((_nameIself) :: Name) ->
+   rule377 = \ ((_nameIself) :: Name) ->
                              _nameIself
+   {-# INLINE rule378 #-}
+   rule378 = \ ((_patternsIlength) :: Int) ->
+                                     _patternsIlength
+   {-# INLINE rule379 #-}
+   rule379 = \ ((_patternsIself) :: Patterns) ->
+                                        _patternsIself
    {-# INLINE rule380 #-}
    rule380 = \ ((_nameIself) :: Name) ((_patternsIself) :: Patterns) ((_rangeIself) :: Range) ->
      LeftHandSide_Function _rangeIself _nameIself _patternsIself
@@ -4323,12 +4323,12 @@ sem_LeftHandSide_Infix arg_range_ arg_leftPattern_ arg_operator_ arg_rightPatter
          (T_Pattern_vOut118 _leftPatternIself _leftPatternIvars) = inv_Pattern_s119 _leftPatternX119 (T_Pattern_vIn118 )
          (T_Name_vOut112 _operatorIself) = inv_Name_s113 _operatorX113 (T_Name_vIn112 )
          (T_Pattern_vOut118 _rightPatternIself _rightPatternIvars) = inv_Pattern_s119 _rightPatternX119 (T_Pattern_vIn118 )
-         _lhsOarity :: Int
-         _lhsOarity = rule382  ()
-         _lhsOpatterns :: Patterns
-         _lhsOpatterns = rule383 _leftPatternIself _rightPatternIself
          _lhsOname :: Name
-         _lhsOname = rule384 _operatorIself
+         _lhsOname = rule382 _operatorIself
+         _lhsOarity :: Int
+         _lhsOarity = rule383  ()
+         _lhsOpatterns :: Patterns
+         _lhsOpatterns = rule384 _leftPatternIself _rightPatternIself
          _self = rule385 _leftPatternIself _operatorIself _rangeIself _rightPatternIself
          _lhsOself :: LeftHandSide
          _lhsOself = rule386 _self
@@ -4336,14 +4336,14 @@ sem_LeftHandSide_Infix arg_range_ arg_leftPattern_ arg_operator_ arg_rightPatter
          in __result_ )
      in C_LeftHandSide_s83 v82
    {-# INLINE rule382 #-}
-   rule382 = \  (_ :: ()) ->
-                                     2
-   {-# INLINE rule383 #-}
-   rule383 = \ ((_leftPatternIself) :: Pattern) ((_rightPatternIself) :: Pattern) ->
-                                        [_leftPatternIself, _rightPatternIself ]
-   {-# INLINE rule384 #-}
-   rule384 = \ ((_operatorIself) :: Name) ->
+   rule382 = \ ((_operatorIself) :: Name) ->
                              _operatorIself
+   {-# INLINE rule383 #-}
+   rule383 = \  (_ :: ()) ->
+                                     2
+   {-# INLINE rule384 #-}
+   rule384 = \ ((_leftPatternIself) :: Pattern) ((_rightPatternIself) :: Pattern) ->
+                                        [_leftPatternIself, _rightPatternIself ]
    {-# INLINE rule385 #-}
    rule385 = \ ((_leftPatternIself) :: Pattern) ((_operatorIself) :: Name) ((_rangeIself) :: Range) ((_rightPatternIself) :: Pattern) ->
      LeftHandSide_Infix _rangeIself _leftPatternIself _operatorIself _rightPatternIself
@@ -4400,8 +4400,8 @@ wrap_Literal :: T_Literal  -> Inh_Literal  -> (Syn_Literal )
 wrap_Literal (T_Literal act) (Inh_Literal ) =
    Control.Monad.Identity.runIdentity (
      do sem <- act
-        let arg = T_Literal_vIn85 
-        (T_Literal_vOut85 _lhsOcore _lhsOself) <- return (inv_Literal_s86 sem arg)
+        let arg85 = T_Literal_vIn85 
+        (T_Literal_vOut85 _lhsOcore _lhsOself) <- return (inv_Literal_s86 sem arg85)
         return (Syn_Literal _lhsOcore _lhsOself)
    )
 
@@ -4540,8 +4540,8 @@ wrap_MaybeDeclarations :: T_MaybeDeclarations  -> Inh_MaybeDeclarations  -> (Syn
 wrap_MaybeDeclarations (T_MaybeDeclarations act) (Inh_MaybeDeclarations _lhsIdictionaryEnv) =
    Control.Monad.Identity.runIdentity (
      do sem <- act
-        let arg = T_MaybeDeclarations_vIn88 _lhsIdictionaryEnv
-        (T_MaybeDeclarations_vOut88 _lhsOcore _lhsOself) <- return (inv_MaybeDeclarations_s89 sem arg)
+        let arg88 = T_MaybeDeclarations_vIn88 _lhsIdictionaryEnv
+        (T_MaybeDeclarations_vOut88 _lhsOcore _lhsOself) <- return (inv_MaybeDeclarations_s89 sem arg88)
         return (Syn_MaybeDeclarations _lhsOcore _lhsOself)
    )
 
@@ -4595,11 +4595,11 @@ sem_MaybeDeclarations_Just arg_declarations_ = T_MaybeDeclarations (return st89)
       v88 = \ (T_MaybeDeclarations_vIn88 _lhsIdictionaryEnv) -> ( let
          _declarationsX32 = Control.Monad.Identity.runIdentity (attach_T_Declarations (arg_declarations_))
          (T_Declarations_vOut31 _declarationsIdecls _declarationsIpatBindNr _declarationsIself) = inv_Declarations_s32 _declarationsX32 (T_Declarations_vIn31 _declarationsOdictionaryEnv _declarationsOimportEnv _declarationsOisTopLevel _declarationsOpatBindNr)
-         _importEnv = rule407  ()
-         _declarationsOpatBindNr = rule408  ()
-         _declarationsOisTopLevel = rule409  ()
+         _declarationsOpatBindNr = rule407  ()
+         _declarationsOisTopLevel = rule408  ()
          _lhsOcore ::  Core.Expr -> Core.Expr 
-         _lhsOcore = rule410 _declarationsIdecls
+         _lhsOcore = rule409 _declarationsIdecls
+         _importEnv = rule410  ()
          _self = rule411 _declarationsIself
          _lhsOself :: MaybeDeclarations
          _lhsOself = rule412 _self
@@ -4610,16 +4610,16 @@ sem_MaybeDeclarations_Just arg_declarations_ = T_MaybeDeclarations (return st89)
      in C_MaybeDeclarations_s89 v88
    {-# INLINE rule407 #-}
    rule407 = \  (_ :: ()) ->
-                                               internalError "CodeGeneration.ag" "MaybeDeclarations.Just" ""
+                                             0
    {-# INLINE rule408 #-}
    rule408 = \  (_ :: ()) ->
-                                             0
-   {-# INLINE rule409 #-}
-   rule409 = \  (_ :: ()) ->
                                               False
-   {-# INLINE rule410 #-}
-   rule410 = \ ((_declarationsIdecls) ::  [CoreDecl] ) ->
+   {-# INLINE rule409 #-}
+   rule409 = \ ((_declarationsIdecls) ::  [CoreDecl] ) ->
                                \continue -> letrec_ _declarationsIdecls continue
+   {-# INLINE rule410 #-}
+   rule410 = \  (_ :: ()) ->
+                                               internalError "CodeGeneration.ag" "MaybeDeclarations.Just" ""
    {-# INLINE rule411 #-}
    rule411 = \ ((_declarationsIself) :: Declarations) ->
      MaybeDeclarations_Just _declarationsIself
@@ -4642,8 +4642,8 @@ wrap_MaybeExports :: T_MaybeExports  -> Inh_MaybeExports  -> (Syn_MaybeExports )
 wrap_MaybeExports (T_MaybeExports act) (Inh_MaybeExports ) =
    Control.Monad.Identity.runIdentity (
      do sem <- act
-        let arg = T_MaybeExports_vIn91 
-        (T_MaybeExports_vOut91 _lhsOcons _lhsOmods _lhsOself _lhsOtypes _lhsOvalues) <- return (inv_MaybeExports_s92 sem arg)
+        let arg91 = T_MaybeExports_vIn91 
+        (T_MaybeExports_vOut91 _lhsOcons _lhsOmods _lhsOself _lhsOtypes _lhsOvalues) <- return (inv_MaybeExports_s92 sem arg91)
         return (Syn_MaybeExports _lhsOcons _lhsOmods _lhsOself _lhsOtypes _lhsOvalues)
    )
 
@@ -4754,8 +4754,8 @@ wrap_MaybeExpression :: T_MaybeExpression  -> Inh_MaybeExpression  -> (Syn_Maybe
 wrap_MaybeExpression (T_MaybeExpression act) (Inh_MaybeExpression _lhsIdictionaryEnv) =
    Control.Monad.Identity.runIdentity (
      do sem <- act
-        let arg = T_MaybeExpression_vIn94 _lhsIdictionaryEnv
-        (T_MaybeExpression_vOut94 _lhsOcore _lhsOself) <- return (inv_MaybeExpression_s95 sem arg)
+        let arg94 = T_MaybeExpression_vIn94 _lhsIdictionaryEnv
+        (T_MaybeExpression_vOut94 _lhsOcore _lhsOself) <- return (inv_MaybeExpression_s95 sem arg94)
         return (Syn_MaybeExpression _lhsOcore _lhsOself)
    )
 
@@ -4840,8 +4840,8 @@ wrap_MaybeImportSpecification :: T_MaybeImportSpecification  -> Inh_MaybeImportS
 wrap_MaybeImportSpecification (T_MaybeImportSpecification act) (Inh_MaybeImportSpecification ) =
    Control.Monad.Identity.runIdentity (
      do sem <- act
-        let arg = T_MaybeImportSpecification_vIn97 
-        (T_MaybeImportSpecification_vOut97 _lhsOself) <- return (inv_MaybeImportSpecification_s98 sem arg)
+        let arg97 = T_MaybeImportSpecification_vIn97 
+        (T_MaybeImportSpecification_vOut97 _lhsOself) <- return (inv_MaybeImportSpecification_s98 sem arg97)
         return (Syn_MaybeImportSpecification _lhsOself)
    )
 
@@ -4912,8 +4912,8 @@ wrap_MaybeInt :: T_MaybeInt  -> Inh_MaybeInt  -> (Syn_MaybeInt )
 wrap_MaybeInt (T_MaybeInt act) (Inh_MaybeInt ) =
    Control.Monad.Identity.runIdentity (
      do sem <- act
-        let arg = T_MaybeInt_vIn100 
-        (T_MaybeInt_vOut100 _lhsOself) <- return (inv_MaybeInt_s101 sem arg)
+        let arg100 = T_MaybeInt_vIn100 
+        (T_MaybeInt_vOut100 _lhsOself) <- return (inv_MaybeInt_s101 sem arg100)
         return (Syn_MaybeInt _lhsOself)
    )
 
@@ -4982,8 +4982,8 @@ wrap_MaybeName :: T_MaybeName  -> Inh_MaybeName  -> (Syn_MaybeName )
 wrap_MaybeName (T_MaybeName act) (Inh_MaybeName ) =
    Control.Monad.Identity.runIdentity (
      do sem <- act
-        let arg = T_MaybeName_vIn103 
-        (T_MaybeName_vOut103 _lhsOisNothing _lhsOname _lhsOself) <- return (inv_MaybeName_s104 sem arg)
+        let arg103 = T_MaybeName_vIn103 
+        (T_MaybeName_vOut103 _lhsOisNothing _lhsOname _lhsOself) <- return (inv_MaybeName_s104 sem arg103)
         return (Syn_MaybeName _lhsOisNothing _lhsOname _lhsOself)
    )
 
@@ -5074,8 +5074,8 @@ wrap_MaybeNames :: T_MaybeNames  -> Inh_MaybeNames  -> (Syn_MaybeNames )
 wrap_MaybeNames (T_MaybeNames act) (Inh_MaybeNames ) =
    Control.Monad.Identity.runIdentity (
      do sem <- act
-        let arg = T_MaybeNames_vIn106 
-        (T_MaybeNames_vOut106 _lhsOnames _lhsOself) <- return (inv_MaybeNames_s107 sem arg)
+        let arg106 = T_MaybeNames_vIn106 
+        (T_MaybeNames_vOut106 _lhsOnames _lhsOself) <- return (inv_MaybeNames_s107 sem arg106)
         return (Syn_MaybeNames _lhsOnames _lhsOself)
    )
 
@@ -5156,8 +5156,8 @@ wrap_Module :: T_Module  -> Inh_Module  -> (Syn_Module )
 wrap_Module (T_Module act) (Inh_Module _lhsIdictionaryEnv _lhsIextraDecls _lhsIimportEnv _lhsItoplevelTypes) =
    Control.Monad.Identity.runIdentity (
      do sem <- act
-        let arg = T_Module_vIn109 _lhsIdictionaryEnv _lhsIextraDecls _lhsIimportEnv _lhsItoplevelTypes
-        (T_Module_vOut109 _lhsOcore _lhsOself) <- return (inv_Module_s110 sem arg)
+        let arg109 = T_Module_vIn109 _lhsIdictionaryEnv _lhsIextraDecls _lhsIimportEnv _lhsItoplevelTypes
+        (T_Module_vOut109 _lhsOcore _lhsOself) <- return (inv_Module_s110 sem arg109)
         return (Syn_Module _lhsOcore _lhsOself)
    )
 
@@ -5235,8 +5235,8 @@ wrap_Name :: T_Name  -> Inh_Name  -> (Syn_Name )
 wrap_Name (T_Name act) (Inh_Name ) =
    Control.Monad.Identity.runIdentity (
      do sem <- act
-        let arg = T_Name_vIn112 
-        (T_Name_vOut112 _lhsOself) <- return (inv_Name_s113 sem arg)
+        let arg112 = T_Name_vIn112 
+        (T_Name_vOut112 _lhsOself) <- return (inv_Name_s113 sem arg112)
         return (Syn_Name _lhsOself)
    )
 
@@ -5337,8 +5337,8 @@ wrap_Names :: T_Names  -> Inh_Names  -> (Syn_Names )
 wrap_Names (T_Names act) (Inh_Names ) =
    Control.Monad.Identity.runIdentity (
      do sem <- act
-        let arg = T_Names_vIn115 
-        (T_Names_vOut115 _lhsOnames _lhsOself) <- return (inv_Names_s116 sem arg)
+        let arg115 = T_Names_vIn115 
+        (T_Names_vOut115 _lhsOnames _lhsOself) <- return (inv_Names_s116 sem arg115)
         return (Syn_Names _lhsOnames _lhsOself)
    )
 
@@ -5420,8 +5420,8 @@ wrap_Pattern :: T_Pattern  -> Inh_Pattern  -> (Syn_Pattern )
 wrap_Pattern (T_Pattern act) (Inh_Pattern ) =
    Control.Monad.Identity.runIdentity (
      do sem <- act
-        let arg = T_Pattern_vIn118 
-        (T_Pattern_vOut118 _lhsOself _lhsOvars) <- return (inv_Pattern_s119 sem arg)
+        let arg118 = T_Pattern_vIn118 
+        (T_Pattern_vOut118 _lhsOself _lhsOvars) <- return (inv_Pattern_s119 sem arg118)
         return (Syn_Pattern _lhsOself _lhsOvars)
    )
 
@@ -5893,8 +5893,8 @@ wrap_Patterns :: T_Patterns  -> Inh_Patterns  -> (Syn_Patterns )
 wrap_Patterns (T_Patterns act) (Inh_Patterns ) =
    Control.Monad.Identity.runIdentity (
      do sem <- act
-        let arg = T_Patterns_vIn121 
-        (T_Patterns_vOut121 _lhsOlength _lhsOself _lhsOvars) <- return (inv_Patterns_s122 sem arg)
+        let arg121 = T_Patterns_vIn121 
+        (T_Patterns_vOut121 _lhsOlength _lhsOself _lhsOvars) <- return (inv_Patterns_s122 sem arg121)
         return (Syn_Patterns _lhsOlength _lhsOself _lhsOvars)
    )
 
@@ -5986,8 +5986,8 @@ wrap_Position :: T_Position  -> Inh_Position  -> (Syn_Position )
 wrap_Position (T_Position act) (Inh_Position ) =
    Control.Monad.Identity.runIdentity (
      do sem <- act
-        let arg = T_Position_vIn124 
-        (T_Position_vOut124 _lhsOself) <- return (inv_Position_s125 sem arg)
+        let arg124 = T_Position_vIn124 
+        (T_Position_vOut124 _lhsOself) <- return (inv_Position_s125 sem arg124)
         return (Syn_Position _lhsOself)
    )
 
@@ -6056,8 +6056,8 @@ wrap_Qualifier :: T_Qualifier  -> Inh_Qualifier  -> (Syn_Qualifier )
 wrap_Qualifier (T_Qualifier act) (Inh_Qualifier _lhsIdictionaryEnv) =
    Control.Monad.Identity.runIdentity (
      do sem <- act
-        let arg = T_Qualifier_vIn127 _lhsIdictionaryEnv
-        (T_Qualifier_vOut127 _lhsOcore _lhsOself) <- return (inv_Qualifier_s128 sem arg)
+        let arg127 = T_Qualifier_vIn127 _lhsIdictionaryEnv
+        (T_Qualifier_vOut127 _lhsOcore _lhsOself) <- return (inv_Qualifier_s128 sem arg127)
         return (Syn_Qualifier _lhsOcore _lhsOself)
    )
 
@@ -6123,11 +6123,11 @@ sem_Qualifier_Let arg_range_ arg_declarations_ = T_Qualifier (return st128) wher
          _declarationsX32 = Control.Monad.Identity.runIdentity (attach_T_Declarations (arg_declarations_))
          (T_Range_vOut133 _rangeIself) = inv_Range_s134 _rangeX134 (T_Range_vIn133 )
          (T_Declarations_vOut31 _declarationsIdecls _declarationsIpatBindNr _declarationsIself) = inv_Declarations_s32 _declarationsX32 (T_Declarations_vIn31 _declarationsOdictionaryEnv _declarationsOimportEnv _declarationsOisTopLevel _declarationsOpatBindNr)
-         _importEnv = rule535  ()
-         _declarationsOpatBindNr = rule536  ()
-         _declarationsOisTopLevel = rule537  ()
+         _declarationsOpatBindNr = rule535  ()
+         _declarationsOisTopLevel = rule536  ()
          _lhsOcore ::  Core.Expr -> Core.Expr 
-         _lhsOcore = rule538 _declarationsIdecls
+         _lhsOcore = rule537 _declarationsIdecls
+         _importEnv = rule538  ()
          _self = rule539 _declarationsIself _rangeIself
          _lhsOself :: Qualifier
          _lhsOself = rule540 _self
@@ -6138,16 +6138,16 @@ sem_Qualifier_Let arg_range_ arg_declarations_ = T_Qualifier (return st128) wher
      in C_Qualifier_s128 v127
    {-# INLINE rule535 #-}
    rule535 = \  (_ :: ()) ->
-                                               internalError "CodeGeneration.ag" "Qualifier.Let" ""
+                                                     0
    {-# INLINE rule536 #-}
    rule536 = \  (_ :: ()) ->
-                                                     0
-   {-# INLINE rule537 #-}
-   rule537 = \  (_ :: ()) ->
                                                       False
-   {-# INLINE rule538 #-}
-   rule538 = \ ((_declarationsIdecls) ::  [CoreDecl] ) ->
+   {-# INLINE rule537 #-}
+   rule537 = \ ((_declarationsIdecls) ::  [CoreDecl] ) ->
                                        \continue -> letrec_ _declarationsIdecls continue
+   {-# INLINE rule538 #-}
+   rule538 = \  (_ :: ()) ->
+                                               internalError "CodeGeneration.ag" "Qualifier.Let" ""
    {-# INLINE rule539 #-}
    rule539 = \ ((_declarationsIself) :: Declarations) ((_rangeIself) :: Range) ->
      Qualifier_Let _rangeIself _declarationsIself
@@ -6241,8 +6241,8 @@ wrap_Qualifiers :: T_Qualifiers  -> Inh_Qualifiers  -> (Syn_Qualifiers )
 wrap_Qualifiers (T_Qualifiers act) (Inh_Qualifiers _lhsIdictionaryEnv) =
    Control.Monad.Identity.runIdentity (
      do sem <- act
-        let arg = T_Qualifiers_vIn130 _lhsIdictionaryEnv
-        (T_Qualifiers_vOut130 _lhsOcore _lhsOself) <- return (inv_Qualifiers_s131 sem arg)
+        let arg130 = T_Qualifiers_vIn130 _lhsIdictionaryEnv
+        (T_Qualifiers_vOut130 _lhsOcore _lhsOself) <- return (inv_Qualifiers_s131 sem arg130)
         return (Syn_Qualifiers _lhsOcore _lhsOself)
    )
 
@@ -6332,8 +6332,8 @@ wrap_Range :: T_Range  -> Inh_Range  -> (Syn_Range )
 wrap_Range (T_Range act) (Inh_Range ) =
    Control.Monad.Identity.runIdentity (
      do sem <- act
-        let arg = T_Range_vIn133 
-        (T_Range_vOut133 _lhsOself) <- return (inv_Range_s134 sem arg)
+        let arg133 = T_Range_vIn133 
+        (T_Range_vOut133 _lhsOself) <- return (inv_Range_s134 sem arg133)
         return (Syn_Range _lhsOself)
    )
 
@@ -6386,8 +6386,8 @@ wrap_RecordExpressionBinding :: T_RecordExpressionBinding  -> Inh_RecordExpressi
 wrap_RecordExpressionBinding (T_RecordExpressionBinding act) (Inh_RecordExpressionBinding _lhsIdictionaryEnv) =
    Control.Monad.Identity.runIdentity (
      do sem <- act
-        let arg = T_RecordExpressionBinding_vIn136 _lhsIdictionaryEnv
-        (T_RecordExpressionBinding_vOut136 _lhsOself) <- return (inv_RecordExpressionBinding_s137 sem arg)
+        let arg136 = T_RecordExpressionBinding_vIn136 _lhsIdictionaryEnv
+        (T_RecordExpressionBinding_vOut136 _lhsOself) <- return (inv_RecordExpressionBinding_s137 sem arg136)
         return (Syn_RecordExpressionBinding _lhsOself)
    )
 
@@ -6446,8 +6446,8 @@ wrap_RecordExpressionBindings :: T_RecordExpressionBindings  -> Inh_RecordExpres
 wrap_RecordExpressionBindings (T_RecordExpressionBindings act) (Inh_RecordExpressionBindings _lhsIdictionaryEnv) =
    Control.Monad.Identity.runIdentity (
      do sem <- act
-        let arg = T_RecordExpressionBindings_vIn139 _lhsIdictionaryEnv
-        (T_RecordExpressionBindings_vOut139 _lhsOself) <- return (inv_RecordExpressionBindings_s140 sem arg)
+        let arg139 = T_RecordExpressionBindings_vIn139 _lhsIdictionaryEnv
+        (T_RecordExpressionBindings_vOut139 _lhsOself) <- return (inv_RecordExpressionBindings_s140 sem arg139)
         return (Syn_RecordExpressionBindings _lhsOself)
    )
 
@@ -6527,8 +6527,8 @@ wrap_RecordPatternBinding :: T_RecordPatternBinding  -> Inh_RecordPatternBinding
 wrap_RecordPatternBinding (T_RecordPatternBinding act) (Inh_RecordPatternBinding ) =
    Control.Monad.Identity.runIdentity (
      do sem <- act
-        let arg = T_RecordPatternBinding_vIn142 
-        (T_RecordPatternBinding_vOut142 _lhsOself) <- return (inv_RecordPatternBinding_s143 sem arg)
+        let arg142 = T_RecordPatternBinding_vIn142 
+        (T_RecordPatternBinding_vOut142 _lhsOself) <- return (inv_RecordPatternBinding_s143 sem arg142)
         return (Syn_RecordPatternBinding _lhsOself)
    )
 
@@ -6583,8 +6583,8 @@ wrap_RecordPatternBindings :: T_RecordPatternBindings  -> Inh_RecordPatternBindi
 wrap_RecordPatternBindings (T_RecordPatternBindings act) (Inh_RecordPatternBindings ) =
    Control.Monad.Identity.runIdentity (
      do sem <- act
-        let arg = T_RecordPatternBindings_vIn145 
-        (T_RecordPatternBindings_vOut145 _lhsOself) <- return (inv_RecordPatternBindings_s146 sem arg)
+        let arg145 = T_RecordPatternBindings_vIn145 
+        (T_RecordPatternBindings_vOut145 _lhsOself) <- return (inv_RecordPatternBindings_s146 sem arg145)
         return (Syn_RecordPatternBindings _lhsOself)
    )
 
@@ -6656,8 +6656,8 @@ wrap_RightHandSide :: T_RightHandSide  -> Inh_RightHandSide  -> (Syn_RightHandSi
 wrap_RightHandSide (T_RightHandSide act) (Inh_RightHandSide _lhsIdictionaryEnv) =
    Control.Monad.Identity.runIdentity (
      do sem <- act
-        let arg = T_RightHandSide_vIn148 _lhsIdictionaryEnv
-        (T_RightHandSide_vOut148 _lhsOcore _lhsOisGuarded _lhsOself) <- return (inv_RightHandSide_s149 sem arg)
+        let arg148 = T_RightHandSide_vIn148 _lhsIdictionaryEnv
+        (T_RightHandSide_vOut148 _lhsOcore _lhsOisGuarded _lhsOself) <- return (inv_RightHandSide_s149 sem arg148)
         return (Syn_RightHandSide _lhsOcore _lhsOisGuarded _lhsOself)
    )
 
@@ -6774,8 +6774,8 @@ wrap_SimpleType :: T_SimpleType  -> Inh_SimpleType  -> (Syn_SimpleType )
 wrap_SimpleType (T_SimpleType act) (Inh_SimpleType ) =
    Control.Monad.Identity.runIdentity (
      do sem <- act
-        let arg = T_SimpleType_vIn151 
-        (T_SimpleType_vOut151 _lhsOname _lhsOself _lhsOtypevariables) <- return (inv_SimpleType_s152 sem arg)
+        let arg151 = T_SimpleType_vIn151 
+        (T_SimpleType_vOut151 _lhsOname _lhsOself _lhsOtypevariables) <- return (inv_SimpleType_s152 sem arg151)
         return (Syn_SimpleType _lhsOname _lhsOself _lhsOtypevariables)
    )
 
@@ -6840,8 +6840,8 @@ wrap_Statement :: T_Statement  -> Inh_Statement  -> (Syn_Statement )
 wrap_Statement (T_Statement act) (Inh_Statement _lhsIdictionaryEnv) =
    Control.Monad.Identity.runIdentity (
      do sem <- act
-        let arg = T_Statement_vIn154 _lhsIdictionaryEnv
-        (T_Statement_vOut154 _lhsOcore _lhsOself) <- return (inv_Statement_s155 sem arg)
+        let arg154 = T_Statement_vIn154 _lhsIdictionaryEnv
+        (T_Statement_vOut154 _lhsOcore _lhsOself) <- return (inv_Statement_s155 sem arg154)
         return (Syn_Statement _lhsOcore _lhsOself)
    )
 
@@ -6910,11 +6910,11 @@ sem_Statement_Let arg_range_ arg_declarations_ = T_Statement (return st155) wher
          _declarationsX32 = Control.Monad.Identity.runIdentity (attach_T_Declarations (arg_declarations_))
          (T_Range_vOut133 _rangeIself) = inv_Range_s134 _rangeX134 (T_Range_vIn133 )
          (T_Declarations_vOut31 _declarationsIdecls _declarationsIpatBindNr _declarationsIself) = inv_Declarations_s32 _declarationsX32 (T_Declarations_vIn31 _declarationsOdictionaryEnv _declarationsOimportEnv _declarationsOisTopLevel _declarationsOpatBindNr)
-         _importEnv = rule595  ()
-         _declarationsOpatBindNr = rule596  ()
-         _declarationsOisTopLevel = rule597  ()
+         _declarationsOpatBindNr = rule595  ()
+         _declarationsOisTopLevel = rule596  ()
          _lhsOcore ::  Maybe Core.Expr -> Core.Expr 
-         _lhsOcore = rule598 _declarationsIdecls
+         _lhsOcore = rule597 _declarationsIdecls
+         _importEnv = rule598  ()
          _self = rule599 _declarationsIself _rangeIself
          _lhsOself :: Statement
          _lhsOself = rule600 _self
@@ -6925,19 +6925,19 @@ sem_Statement_Let arg_range_ arg_declarations_ = T_Statement (return st155) wher
      in C_Statement_s155 v154
    {-# INLINE rule595 #-}
    rule595 = \  (_ :: ()) ->
-                                               internalError "CodeGeneration.ag" "Statement.Let" ""
+                                                     0
    {-# INLINE rule596 #-}
    rule596 = \  (_ :: ()) ->
-                                                     0
-   {-# INLINE rule597 #-}
-   rule597 = \  (_ :: ()) ->
                                                       False
-   {-# INLINE rule598 #-}
-   rule598 = \ ((_declarationsIdecls) ::  [CoreDecl] ) ->
+   {-# INLINE rule597 #-}
+   rule597 = \ ((_declarationsIdecls) ::  [CoreDecl] ) ->
               \theRest ->
                   case theRest of
                       Nothing   -> internalError "ToCoreExpr" "Statement" "'let' can't be last in 'do'"
                       Just rest -> letrec_ _declarationsIdecls rest
+   {-# INLINE rule598 #-}
+   rule598 = \  (_ :: ()) ->
+                                               internalError "CodeGeneration.ag" "Statement.Let" ""
    {-# INLINE rule599 #-}
    rule599 = \ ((_declarationsIself) :: Declarations) ((_rangeIself) :: Range) ->
      Statement_Let _rangeIself _declarationsIself
@@ -7033,8 +7033,8 @@ wrap_Statements :: T_Statements  -> Inh_Statements  -> (Syn_Statements )
 wrap_Statements (T_Statements act) (Inh_Statements _lhsIdictionaryEnv) =
    Control.Monad.Identity.runIdentity (
      do sem <- act
-        let arg = T_Statements_vIn157 _lhsIdictionaryEnv
-        (T_Statements_vOut157 _lhsOcore _lhsOself) <- return (inv_Statements_s158 sem arg)
+        let arg157 = T_Statements_vIn157 _lhsIdictionaryEnv
+        (T_Statements_vOut157 _lhsOcore _lhsOself) <- return (inv_Statements_s158 sem arg157)
         return (Syn_Statements _lhsOcore _lhsOself)
    )
 
@@ -7124,8 +7124,8 @@ wrap_Strings :: T_Strings  -> Inh_Strings  -> (Syn_Strings )
 wrap_Strings (T_Strings act) (Inh_Strings ) =
    Control.Monad.Identity.runIdentity (
      do sem <- act
-        let arg = T_Strings_vIn160 
-        (T_Strings_vOut160 _lhsOself) <- return (inv_Strings_s161 sem arg)
+        let arg160 = T_Strings_vIn160 
+        (T_Strings_vOut160 _lhsOself) <- return (inv_Strings_s161 sem arg160)
         return (Syn_Strings _lhsOself)
    )
 
@@ -7195,8 +7195,8 @@ wrap_Type :: T_Type  -> Inh_Type  -> (Syn_Type )
 wrap_Type (T_Type act) (Inh_Type ) =
    Control.Monad.Identity.runIdentity (
      do sem <- act
-        let arg = T_Type_vIn163 
-        (T_Type_vOut163 _lhsOself) <- return (inv_Type_s164 sem arg)
+        let arg163 = T_Type_vIn163 
+        (T_Type_vOut163 _lhsOself) <- return (inv_Type_s164 sem arg163)
         return (Syn_Type _lhsOself)
    )
 
@@ -7401,8 +7401,8 @@ wrap_Types :: T_Types  -> Inh_Types  -> (Syn_Types )
 wrap_Types (T_Types act) (Inh_Types ) =
    Control.Monad.Identity.runIdentity (
      do sem <- act
-        let arg = T_Types_vIn166 
-        (T_Types_vOut166 _lhsOself) <- return (inv_Types_s167 sem arg)
+        let arg166 = T_Types_vIn166 
+        (T_Types_vOut166 _lhsOself) <- return (inv_Types_s167 sem arg166)
         return (Syn_Types _lhsOself)
    )
 

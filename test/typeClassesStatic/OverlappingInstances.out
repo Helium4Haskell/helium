@@ -1,0 +1,5 @@
+Compiling typeClassesStatic/OverlappingInstances.hs
+(1,1): Overlapping instances found for class: "SomeClass" for type constructor: [].
+(5,10): Invalid instance type for: SomeClass.
+  Hint: Type application is only allowed when arguments are type variables
+Compilation failed with 2 errors

@@ -1,7 +1,14 @@
 
 
--- UUAGC 0.9.42.2 (Helium/StaticAnalysis/Directives/TS_ToCore.ag)
+-- UUAGC 0.9.52.1 (Helium/StaticAnalysis/Directives/TS_ToCore.ag)
 module Helium.StaticAnalysis.Directives.TS_ToCore where
+
+import Helium.StaticAnalysis.Inferencers.ExpressionTypeInferencer (expressionTypeInferencer)
+import qualified Data.Map as M
+
+
+import Helium.Syntax.UHA_Syntax
+
 
 import Helium.StaticAnalysis.Directives.TS_Syntax
 import Helium.StaticAnalysis.Directives.TS_CoreSyntax
@@ -19,13 +26,6 @@ import Helium.Utils.OneLiner
 import Helium.StaticAnalysis.Directives.TS_Attributes
 import Helium.StaticAnalysis.Miscellaneous.TypeConstraints
 
-
-
-import Helium.Syntax.UHA_Syntax
-
-
-import Helium.StaticAnalysis.Inferencers.ExpressionTypeInferencer (expressionTypeInferencer)
-import qualified Data.Map as M
 
 typingStrategyToCore :: ImportEnvironment -> TypingStrategy -> Core_TypingStrategy
 typingStrategyToCore importEnv strategy = 
@@ -2055,20 +2055,20 @@ sem_Judgement_Judgement :: T_Expression ->
                            T_Judgement
 sem_Judgement_Judgement expression_ type_ =
     (\ _lhsInameMap ->
-         (let _lhsOcore :: Core_Judgement
-              _lhsOconclusionType :: Tp
+         (let _lhsOconclusionType :: Tp
               _lhsOtheExpression :: Expression
+              _lhsOcore :: Core_Judgement
               _lhsOtypevariables :: Names
               _lhsOself :: Judgement
               _expressionIself :: Expression
               _typeIself :: Type
               _typeItypevariables :: Names
-              _lhsOcore =
-                  Judgement (showOneLine 10000 $ UHA_OneLine.oneLineTree_Syn_Expression $ UHA_OneLine.wrap_Expression (UHA_OneLine.sem_Expression _expressionIself) UHA_OneLine.Inh_Expression) (makeTpFromType _lhsInameMap _typeIself)
               _lhsOconclusionType =
                   makeTpFromType _lhsInameMap _typeIself
               _lhsOtheExpression =
                   _expressionIself
+              _lhsOcore =
+                  Judgement (showOneLine 10000 $ UHA_OneLine.oneLineTree_Syn_Expression $ UHA_OneLine.wrap_Expression (UHA_OneLine.sem_Expression _expressionIself) UHA_OneLine.Inh_Expression) (makeTpFromType _lhsInameMap _typeIself)
               _lhsOtypevariables =
                   _typeItypevariables
               _self =
@@ -3422,19 +3422,19 @@ sem_SimpleJudgement_SimpleJudgement :: T_Name ->
 sem_SimpleJudgement_SimpleJudgement name_ type_ =
     (\ _lhsInameMap
        _lhsIsimpleJudgements ->
-         (let _lhsOcore :: Core_Judgement
-              _lhsOsimpleJudgements :: ([(String,Tp)])
+         (let _lhsOsimpleJudgements :: ([(String,Tp)])
+              _lhsOcore :: Core_Judgement
               _lhsOtypevariables :: Names
               _lhsOself :: SimpleJudgement
               _nameIself :: Name
               _typeIself :: Type
               _typeItypevariables :: Names
-              _lhsOcore =
-                  Judgement (show _nameIself) (makeTpFromType _lhsInameMap _typeIself)
               _lhsOsimpleJudgements =
                   _newJudgement : _lhsIsimpleJudgements
               _newJudgement =
                   (show _nameIself, makeTpFromType _lhsInameMap _typeIself)
+              _lhsOcore =
+                  Judgement (show _nameIself) (makeTpFromType _lhsInameMap _typeIself)
               _lhsOtypevariables =
                   _typeItypevariables
               _self =
@@ -3935,8 +3935,8 @@ sem_TypeRule_TypeRule :: T_SimpleJudgements ->
 sem_TypeRule_TypeRule premises_ conclusion_ =
     (\ _lhsInameMap
        _lhsIsimpleJudgements ->
-         (let _lhsOcore :: Core_TypeRule
-              _lhsOconclusionExpression :: Expression
+         (let _lhsOconclusionExpression :: Expression
+              _lhsOcore :: Core_TypeRule
               _lhsOtypevariables :: Names
               _lhsOself :: TypeRule
               _lhsOconclusionType :: Tp
@@ -3953,10 +3953,10 @@ sem_TypeRule_TypeRule premises_ conclusion_ =
               _conclusionIself :: Judgement
               _conclusionItheExpression :: Expression
               _conclusionItypevariables :: Names
-              _lhsOcore =
-                  TypeRule _premisesIcore _conclusionIcore
               _lhsOconclusionExpression =
                   _conclusionItheExpression
+              _lhsOcore =
+                  TypeRule _premisesIcore _conclusionIcore
               _lhsOtypevariables =
                   _premisesItypevariables  ++  _conclusionItypevariables
               _self =
@@ -4116,11 +4116,11 @@ sem_TypingStrategy_TypingStrategy :: T_TypeRule ->
                                      T_TypingStrategy
 sem_TypingStrategy_TypingStrategy typerule_ statements_ =
     (\ _lhsIimportEnvironment ->
-         (let _lhsOcore :: Core_TypingStrategy
-              _statementsOuserConstraints :: (TypeConstraints ConstraintInfo)
+         (let _statementsOuserConstraints :: (TypeConstraints ConstraintInfo)
               _statementsOuserPredicates :: Predicates
               _typeruleOsimpleJudgements :: ([(String,Tp)])
               _statementsOmetaVariableConstraintNames :: Names
+              _lhsOcore :: Core_TypingStrategy
               _lhsOself :: TypingStrategy
               _typeruleOnameMap :: ([(Name,Tp)])
               _statementsOattributeTable :: ([((String, Maybe String), MessageBlock)])
@@ -4138,6 +4138,24 @@ sem_TypingStrategy_TypingStrategy typerule_ statements_ =
               _statementsItypevariables :: Names
               _statementsIuserConstraints :: (TypeConstraints ConstraintInfo)
               _statementsIuserPredicates :: Predicates
+              _uniqueTypevariables =
+                  nub (_typeruleItypevariables ++ _statementsItypevariables)
+              _statementsOuserConstraints =
+                  []
+              _statementsOuserPredicates =
+                  []
+              _typeruleOsimpleJudgements =
+                  []
+              _statementsOmetaVariableConstraintNames =
+                  []
+              _allMetaVariables =
+                  map fst _typeruleIsimpleJudgements
+              _constraintsNotExplicit =
+                  filter (`notElem` (map show _statementsImetaVariableConstraintNames)) _allMetaVariables
+              _standardConstraintInfo =
+                  standardConstraintInfo
+              _attributeTable =
+                  []
               _lhsOcore =
                   TypingStrategy _typeEnv _typeruleIcore _statementsIcore
               _nameMap =
@@ -4157,24 +4175,6 @@ sem_TypingStrategy_TypingStrategy typerule_ statements_ =
                   in [ (show name, unfreezeVariablesInType (sub |-> tp))
                      | (name, tp) <- concat (M.elems freeVariables)
                      ]
-              _uniqueTypevariables =
-                  nub (_typeruleItypevariables ++ _statementsItypevariables)
-              _statementsOuserConstraints =
-                  []
-              _statementsOuserPredicates =
-                  []
-              _typeruleOsimpleJudgements =
-                  []
-              _statementsOmetaVariableConstraintNames =
-                  []
-              _allMetaVariables =
-                  map fst _typeruleIsimpleJudgements
-              _constraintsNotExplicit =
-                  filter (`notElem` (map show _statementsImetaVariableConstraintNames)) _allMetaVariables
-              _standardConstraintInfo =
-                  standardConstraintInfo
-              _attributeTable =
-                  []
               _self =
                   TypingStrategy_TypingStrategy _typeruleIself _statementsIself
               _lhsOself =
@@ -4231,8 +4231,8 @@ sem_UserStatement_Equal leftType_ rightType_ message_ =
        _lhsIstandardConstraintInfo
        _lhsIuserConstraints
        _lhsIuserPredicates ->
-         (let _lhsOcore :: Core_UserStatement
-              _lhsOuserConstraints :: (TypeConstraints ConstraintInfo)
+         (let _lhsOuserConstraints :: (TypeConstraints ConstraintInfo)
+              _lhsOcore :: Core_UserStatement
               _lhsOtypevariables :: Names
               _lhsOself :: UserStatement
               _lhsOmetaVariableConstraintNames :: Names
@@ -4241,15 +4241,15 @@ sem_UserStatement_Equal leftType_ rightType_ message_ =
               _leftTypeItypevariables :: Names
               _rightTypeIself :: Type
               _rightTypeItypevariables :: Names
+              _lhsOuserConstraints =
+                  _newConstraint : _lhsIuserConstraints
+              _newConstraint =
+                  (makeTpFromType _lhsInameMap _leftTypeIself .==. makeTpFromType _lhsInameMap _rightTypeIself) _lhsIstandardConstraintInfo
               _lhsOcore =
                   Equal
                     (makeTpFromType _lhsInameMap _leftTypeIself)
                     (makeTpFromType _lhsInameMap _rightTypeIself)
                     (changeAttributes (useNameMap _lhsInameMap) message_)
-              _lhsOuserConstraints =
-                  _newConstraint : _lhsIuserConstraints
-              _newConstraint =
-                  (makeTpFromType _lhsInameMap _leftTypeIself .==. makeTpFromType _lhsInameMap _rightTypeIself) _lhsIstandardConstraintInfo
               _lhsOtypevariables =
                   _leftTypeItypevariables  ++  _rightTypeItypevariables
               _self =
@@ -4276,8 +4276,8 @@ sem_UserStatement_Pred predClass_ predType_ message_ =
        _lhsIstandardConstraintInfo
        _lhsIuserConstraints
        _lhsIuserPredicates ->
-         (let _lhsOcore :: Core_UserStatement
-              _lhsOuserPredicates :: Predicates
+         (let _lhsOuserPredicates :: Predicates
+              _lhsOcore :: Core_UserStatement
               _lhsOtypevariables :: Names
               _lhsOself :: UserStatement
               _lhsOmetaVariableConstraintNames :: Names
@@ -4285,15 +4285,15 @@ sem_UserStatement_Pred predClass_ predType_ message_ =
               _predClassIself :: Name
               _predTypeIself :: Type
               _predTypeItypevariables :: Names
+              _lhsOuserPredicates =
+                  _newPredicate : _lhsIuserPredicates
+              _newPredicate =
+                  Predicate (show _predClassIself) (makeTpFromType _lhsInameMap _predTypeIself)
               _lhsOcore =
                   Pred
                     (show _predClassIself)
                     (makeTpFromType _lhsInameMap _predTypeIself)
                     (changeAttributes (useNameMap _lhsInameMap) message_)
-              _lhsOuserPredicates =
-                  _newPredicate : _lhsIuserPredicates
-              _newPredicate =
-                  Predicate (show _predClassIself) (makeTpFromType _lhsInameMap _predTypeIself)
               _lhsOtypevariables =
                   _predTypeItypevariables
               _self =
@@ -4318,17 +4318,17 @@ sem_UserStatement_MetaVariableConstraints name_ =
        _lhsIstandardConstraintInfo
        _lhsIuserConstraints
        _lhsIuserPredicates ->
-         (let _lhsOcore :: Core_UserStatement
-              _lhsOmetaVariableConstraintNames :: Names
+         (let _lhsOmetaVariableConstraintNames :: Names
+              _lhsOcore :: Core_UserStatement
               _lhsOtypevariables :: Names
               _lhsOself :: UserStatement
               _lhsOuserConstraints :: (TypeConstraints ConstraintInfo)
               _lhsOuserPredicates :: Predicates
               _nameIself :: Name
-              _lhsOcore =
-                  MetaVariableConstraints (show _nameIself)
               _lhsOmetaVariableConstraintNames =
                   _nameIself : _lhsImetaVariableConstraintNames
+              _lhsOcore =
+                  MetaVariableConstraints (show _nameIself)
               _lhsOtypevariables =
                   []
               _self =

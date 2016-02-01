@@ -25,7 +25,25 @@ import Top.Types
 
 type Errors = [Error]
 data Error  = NoFunDef Entity Name {-names in scope-}Names
+            | NoTypeDefInClass Entity Name Names
+            | FunctionInMultipleClasses Entity Name Names
+            | MultiParameterTypeClass Entity Name Names
+            | DefNonUniqueInstanceVars Name Names
+            | ClassMethodContextError Entity Name Names ContextItems
+            | ClassVariableNotInMethodSignature Name Name Names -- Class name, class variable, method name
+            | InvalidContext Entity Name Names
             | Undefined Entity Name {-names in scope-}Names {-similar name in wrong name-space hint-}[String] {- hints -}
+            | UndefinedClass Name {-Classes in scope -} Names
+            | InvalidInstanceConstraint Name Name Name
+            | InvalidInstanceType Name
+            | UndefinedFunctionForClass Name Name Names
+            | TypeSignatureInInstance Name Names
+            | TypeClassOverloadRestr Name Names
+            | TypeSynonymInInstance Range Predicate
+            | DuplicateClassName Names
+            | DuplicatedClassImported Name
+            | OverlappingInstance String Tp
+            | MissingSuperClass Range Predicate Predicate 
             | Duplicated Entity Names
             | LastStatementNotExpr Range
             | WrongFileName {-file name-}String {-module name-}String Range {- of module name -}
@@ -47,10 +65,26 @@ data Error  = NoFunDef Entity Name {-names in scope-}Names
 instance HasMessage Error where
    getMessage x = let (oneliner, hints) = showError x
                   in [MessageOneLiner oneliner, MessageHints "Hint" hints]
-   getRanges anError = case anError of
-   
+   getRanges anError = case anError of   
       NoFunDef _ name _           -> [getNameRange name]
+      NoTypeDefInClass _ name _   -> [getNameRange name]
+      FunctionInMultipleClasses _ name _ -> [getNameRange name]
+      MultiParameterTypeClass _ name _ -> [getNameRange name]
+      DefNonUniqueInstanceVars name _ -> [getNameRange name]
+      ClassMethodContextError _ name _ _ -> [getNameRange name]
+      InvalidContext _ name _     -> [getNameRange name]
+      ClassVariableNotInMethodSignature _ _ names -> sortRanges (map getNameRange names)
+      DuplicateClassName names -> sortRanges (map getNameRange names)
+      DuplicatedClassImported name -> [getNameRange name]
+      TypeClassOverloadRestr _ names -> sortRanges (map getNameRange names)
+      TypeSynonymInInstance range _   -> [range]
       Undefined _ name _ _        -> [getNameRange name]
+      UndefinedClass name _       -> [getNameRange name]
+      UndefinedFunctionForClass _ name _ -> [getNameRange name]
+      InvalidInstanceType name -> [getNameRange name]
+      TypeSignatureInInstance _ names -> sortRanges $ map getNameRange names
+      MissingSuperClass range _ _ -> [range]
+      InvalidInstanceConstraint _ name _ -> [getNameRange name]
       Duplicated _ names          -> sortRanges (map getNameRange names)
       LastStatementNotExpr range  -> [range]
       WrongFileName _ _ range     -> [range]
@@ -63,6 +97,7 @@ instance HasMessage Error where
       OverloadingDisabled range   -> [range]
       OverloadedRestrPat name     -> [getNameRange name]
       WrongOverloadingFlag _      -> [emptyRange]
+      OverlappingInstance _ _     -> [emptyRange]
       AmbiguousContext name       -> [getNameRange name]
       UnknownClass name           -> [getNameRange name]
       NonDerivableClass name      -> [getNameRange name]
@@ -96,6 +131,82 @@ showError anError = case anError of
         ]
       )
 
+   NoTypeDefInClass Definition name inScope ->
+      ( MessageString ("Function definition for " ++ show (show name) ++ " without a type signature is not allowed in a Class ")
+      , [ MessageString ("Did you mean "++prettyOrList (map (show . show) xs)++"?")
+        | let xs = sensiblySimilar name inScope, not (null xs)
+        ]
+      )
+
+   DuplicateClassName names ->
+      ( MessageString ("Found multiple definitions for the class: " ++ show (head names) ++ ".")
+      , [ MessageString ("You may only use a class name once.")]
+      )
+
+   DuplicatedClassImported name ->
+      ( MessageString ("Found a definition for the class: " ++ show name ++ ", but this name is already used by an imported class.")
+      , []
+      )
+      
+   FunctionInMultipleClasses Definition name classes ->
+      ( MessageString ("Type declaration for " ++ show (show name) ++ " in multipe classes")
+      , [ MessageString ("You declared it in: "++prettyOrList (map (show . show) classes)++" .")]
+      )
+   
+   MultiParameterTypeClass Definition name vars ->
+      ( MessageString ("Multiparameter typeclasses are not supported, error in class definition: " ++ show (show name) ++ ". ")
+      , [ MessageString ("You used parameters: "++prettyAndList (map (show . show) vars)++" .")]
+      )
+      
+   DefNonUniqueInstanceVars name vars ->
+      ( MessageString ("Not all type variables in instance declaration of class: " ++ show name ++ " are unique. ")
+      , [ MessageString ("Type variable: " ++ show v ++ " occurs more then once.") | v <- vars]
+      )
+      
+   ClassMethodContextError Definition className methods ctxt ->
+      ( MessageString ("Not allowed to put further restictions on typeClass variable in type class: " ++ (show className) ++ ". ")
+      , [ MessageString ("In the type signatures of: "++ prettyAndList (map show methods) ++ " the following context items are not allowed: " ++ 
+                          prettyAndList (map (\(ContextItem_ContextItem _ n _) -> show n) ctxt) ++ ".")]
+      )
+
+   InvalidContext Definition name vars ->
+      ( MessageString ("Context of type class " ++ show (show name) ++ " refers to variables other variables then the one declared in the type class")
+      , [ MessageString ("You use: "++prettyOrList (map (show . show) vars)++" .")]
+      )
+
+   InvalidInstanceConstraint instanceName contextName var ->
+      ( MessageString ("Context item: " ++ show contextName ++ " with variable: " ++ show var ++ " is not valid for instance of: " ++ show instanceName
+                                        ++ ".")
+      , [ MessageString ("You must use the variable from the context in the instance type.") ]
+      )
+
+   ClassVariableNotInMethodSignature className classVariable methods ->
+      ( MessageString ("Class method signature must mention class variable: " ++ show classVariable ++ " in class: " ++ show className ++ ".")
+      , [MessageString ("The type signatures of the methods: " ++ prettyAndList (map show methods)
+                       ++ " must mention type variable: " ++ show classVariable ++ ".")]
+      )
+      
+   TypeClassOverloadRestr className members ->
+      ( MessageString ("Class members may not have names occoring at top level, in class:  " ++ show className ++ ".")
+      , [MessageString ("Name: " ++ show member ++ " also used at top level.")
+        | member <- members]
+      )
+      
+   TypeSynonymInInstance _ inst ->
+      ( MessageString ("Type synonyms are not allowed as types for instances, in : "  ++ show inst ++ ".")
+      , []
+      )
+   
+   OverlappingInstance className tp ->
+      ( MessageString ("Overlapping instances found for class: " ++ show className ++ " for type constructor: " ++ show tp ++ ".")
+      , []
+      )
+     
+   MissingSuperClass _ inst missing ->
+      ( MessageString ("Instance for: "  ++ show missing ++ " is needed for the instance of: " ++ show inst ++ " but was not defined.")
+      ,  []
+      )
+      
    Undefined entity name inScope hints ->
       ( MessageString ("Undefined " ++ show entity ++ " " ++ show (show name))
       , map MessageString hints
@@ -104,7 +215,31 @@ showError anError = case anError of
         | let xs = sensiblySimilar name inScope, not (null xs)
         ]
       )
-                         
+
+   UndefinedClass name inScope ->
+      ( MessageString ("Trying to instantiate unknown class " ++ show name ++ ".")
+      , [ MessageString ("Did you mean " ++ prettyOrList (map (show . show) xs) ++ " ?")
+        | let xs = sensiblySimilar name inScope, not (null xs)
+        ]
+      )
+   
+   UndefinedFunctionForClass instanceName name hints ->
+      ( MessageString ("Function " ++ show name ++ " not defined in class: " ++ show instanceName ++ ".")
+      , [ MessageString ("Did you mean " ++ prettyOrList (map (show . show) xs) ++ "?")
+        | let xs = sensiblySimilar name hints, not (null xs)
+        ]
+      )
+
+   InvalidInstanceType instanceName ->
+      ( MessageString ("Invalid instance type for: " ++ show instanceName ++ ".")
+      , [ MessageString ("Type application is only allowed when arguments are type variables")]
+      )
+   
+   TypeSignatureInInstance instanceName names ->
+      ( MessageString ("Type signature for: " ++ prettyAndList (map (show . show) names) ++ " in instance for: " ++ show instanceName ++ ".")
+      , [ MessageString ("Type signatures for class members should be defined in class definition.")]
+      )
+      
    Duplicated entity names
       | all isImportRange nameRanges ->
            ( MessageString (
@@ -129,7 +264,7 @@ showError anError = case anError of
       | otherwise ->
            ( MessageString ("Duplicated " ++ show entity ++ " " ++ (show . show . head) names), [])
                  
-    where
+       where
 {-        fromRanges = [ if isImportRange range then
                          Range_Range position position
                        else
@@ -230,9 +365,9 @@ showError anError = case anError of
       )      
     
    TupleTooBig _ ->
-    ( MessageString "Tuples can have up to 10 elements"
-    , []
-    )
+      ( MessageString "Tuples can have up to 10 elements"
+      , []
+      )
 
    _ -> internalError "StaticErrors.hs" "showError" "unknown type of Error"
 
@@ -270,25 +405,43 @@ errorsLogCode xs = foldr1 (\x y -> x++","++y) (map errorLogCode xs)
 
 errorLogCode :: Error -> String
 errorLogCode anError = case anError of 
-          NoFunDef entity _ _     -> "nf" ++ code entity
-          Undefined entity _ _ _  -> "un" ++ code entity
-          Duplicated entity _     -> "du" ++ code entity
-          LastStatementNotExpr _  -> "ls"
-          WrongFileName _ _ _     -> "wf"
-          TypeVarApplication _    -> "tv"
-          ArityMismatch _ _ _ _   -> "am"
-          DefArityMismatch _ _ _  -> "da"
-          RecursiveTypeSynonyms _ -> "ts"
-          PatternDefinesNoVars _  -> "nv"
-          IntLiteralTooBig _ _    -> "il"
-          OverloadingDisabled _   -> "od"
-          OverloadedRestrPat _    -> "or"
-          WrongOverloadingFlag _  -> "of"
-          AmbiguousContext _      -> "ac"
-          UnknownClass _          -> "uc"
-          NonDerivableClass _     -> "nd"
-          CannotDerive _ _        -> "cd"
-          TupleTooBig _           -> "tt"
+          NoFunDef entity _ _                     -> "nf" ++ code entity
+          Undefined entity _ _ _                  -> "un" ++ code entity
+          Duplicated entity _                     -> "du" ++ code entity
+          LastStatementNotExpr _                  -> "ls"
+          WrongFileName _ _ _                     -> "wf"
+          TypeVarApplication _                    -> "tv"
+          ArityMismatch _ _ _ _                   -> "am"
+          DefArityMismatch _ _ _                  -> "da"
+          RecursiveTypeSynonyms _                 -> "ts"
+          PatternDefinesNoVars _                  -> "nv"
+          IntLiteralTooBig _ _                    -> "il"
+          OverloadingDisabled _                   -> "od"
+          OverloadedRestrPat _                    -> "or"
+          WrongOverloadingFlag _                  -> "of"
+          AmbiguousContext _                      -> "ac"
+          UnknownClass _                          -> "uc"
+          NonDerivableClass _                     -> "nd"
+          CannotDerive _ _                        -> "cd"
+          TupleTooBig _                           -> "tt"
+          NoTypeDefInClass _ _ _                  -> "tc"
+          FunctionInMultipleClasses _ _ _         -> "fm"
+          MultiParameterTypeClass _ _ _           -> "mt"
+          DefNonUniqueInstanceVars _ _            -> "dn"
+          ClassMethodContextError _ _ _ _         -> "ce"
+          ClassVariableNotInMethodSignature _ _ _ -> "cv"
+          InvalidContext _ _ _                    -> "ic"
+          UndefinedClass _ _                      -> "nc"
+          InvalidInstanceConstraint _ _ _         -> "ii"
+          InvalidInstanceType _                   -> "it"
+          UndefinedFunctionForClass _ _ _         -> "fc"
+          TypeSignatureInInstance _ _             -> "ti"
+          TypeClassOverloadRestr _ _              -> "to"
+          TypeSynonymInInstance _ _               -> "si"          
+          DuplicateClassName _                    -> "dc"
+          DuplicatedClassImported _               -> "di"
+          OverlappingInstance _ _                 -> "oi"
+          MissingSuperClass _ _ _                 -> "ms"     
    where code entity = fromMaybe "??"
                      . lookup entity 
                      $ [ (TypeSignature    ,"ts"), (TypeVariable         ,"tv"), (TypeConstructor,"tc")

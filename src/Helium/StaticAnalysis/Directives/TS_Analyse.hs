@@ -3,6 +3,13 @@
 
 module Helium.StaticAnalysis.Directives.TS_Analyse where
 
+import Helium.StaticAnalysis.Inferencers.ExpressionTypeInferencer (expressionTypeInferencer)
+import qualified Data.Map as M
+
+
+import Helium.Syntax.UHA_Syntax
+
+
 import Top.Types
 import Top.Solver.Greedy
 import Top.Solver
@@ -16,16 +23,9 @@ import Helium.Syntax.UHA_Utils (nameFromString)
 import Helium.Syntax.UHA_Range (noRange)
 import Helium.StaticAnalysis.Messages.Messages
 import Helium.StaticAnalysis.Directives.TS_Messages
-import Helium.ModuleSystem.ImportEnvironment hiding (setTypeSynonyms)
+import Helium.ModuleSystem.ImportEnvironment hiding (setTypeSynonyms, classEnvironment)
 import Helium.Utils.Utils (internalError)
 import qualified Helium.Syntax.UHA_Pretty as PP
-
-
-import Helium.Syntax.UHA_Syntax
-
-
-import Helium.StaticAnalysis.Inferencers.ExpressionTypeInferencer (expressionTypeInferencer)
-import qualified Data.Map as M
 import Control.Monad.Identity (Identity)
 import qualified Control.Monad.Identity
 
@@ -54,8 +54,8 @@ wrap_Alternative :: T_Alternative  -> Inh_Alternative  -> (Syn_Alternative )
 wrap_Alternative (T_Alternative act) (Inh_Alternative ) =
    Control.Monad.Identity.runIdentity (
      do sem <- act
-        let arg = T_Alternative_vIn1 
-        (T_Alternative_vOut1 _lhsOself) <- return (inv_Alternative_s2 sem arg)
+        let arg1 = T_Alternative_vIn1 
+        (T_Alternative_vOut1 _lhsOself) <- return (inv_Alternative_s2 sem arg1)
         return (Syn_Alternative _lhsOself)
    )
 
@@ -178,8 +178,8 @@ wrap_Alternatives :: T_Alternatives  -> Inh_Alternatives  -> (Syn_Alternatives )
 wrap_Alternatives (T_Alternatives act) (Inh_Alternatives ) =
    Control.Monad.Identity.runIdentity (
      do sem <- act
-        let arg = T_Alternatives_vIn4 
-        (T_Alternatives_vOut4 _lhsOself) <- return (inv_Alternatives_s5 sem arg)
+        let arg4 = T_Alternatives_vIn4 
+        (T_Alternatives_vOut4 _lhsOself) <- return (inv_Alternatives_s5 sem arg4)
         return (Syn_Alternatives _lhsOself)
    )
 
@@ -251,8 +251,8 @@ wrap_AnnotatedType :: T_AnnotatedType  -> Inh_AnnotatedType  -> (Syn_AnnotatedTy
 wrap_AnnotatedType (T_AnnotatedType act) (Inh_AnnotatedType ) =
    Control.Monad.Identity.runIdentity (
      do sem <- act
-        let arg = T_AnnotatedType_vIn7 
-        (T_AnnotatedType_vOut7 _lhsOself) <- return (inv_AnnotatedType_s8 sem arg)
+        let arg7 = T_AnnotatedType_vIn7 
+        (T_AnnotatedType_vOut7 _lhsOself) <- return (inv_AnnotatedType_s8 sem arg7)
         return (Syn_AnnotatedType _lhsOself)
    )
 
@@ -305,8 +305,8 @@ wrap_AnnotatedTypes :: T_AnnotatedTypes  -> Inh_AnnotatedTypes  -> (Syn_Annotate
 wrap_AnnotatedTypes (T_AnnotatedTypes act) (Inh_AnnotatedTypes ) =
    Control.Monad.Identity.runIdentity (
      do sem <- act
-        let arg = T_AnnotatedTypes_vIn10 
-        (T_AnnotatedTypes_vOut10 _lhsOself) <- return (inv_AnnotatedTypes_s11 sem arg)
+        let arg10 = T_AnnotatedTypes_vIn10 
+        (T_AnnotatedTypes_vOut10 _lhsOself) <- return (inv_AnnotatedTypes_s11 sem arg10)
         return (Syn_AnnotatedTypes _lhsOself)
    )
 
@@ -378,8 +378,8 @@ wrap_Body :: T_Body  -> Inh_Body  -> (Syn_Body )
 wrap_Body (T_Body act) (Inh_Body ) =
    Control.Monad.Identity.runIdentity (
      do sem <- act
-        let arg = T_Body_vIn13 
-        (T_Body_vOut13 _lhsOself) <- return (inv_Body_s14 sem arg)
+        let arg13 = T_Body_vIn13 
+        (T_Body_vOut13 _lhsOself) <- return (inv_Body_s14 sem arg13)
         return (Syn_Body _lhsOself)
    )
 
@@ -456,8 +456,8 @@ wrap_Constructor :: T_Constructor  -> Inh_Constructor  -> (Syn_Constructor )
 wrap_Constructor (T_Constructor act) (Inh_Constructor ) =
    Control.Monad.Identity.runIdentity (
      do sem <- act
-        let arg = T_Constructor_vIn16 
-        (T_Constructor_vOut16 _lhsOself) <- return (inv_Constructor_s17 sem arg)
+        let arg16 = T_Constructor_vIn16 
+        (T_Constructor_vOut16 _lhsOself) <- return (inv_Constructor_s17 sem arg16)
         return (Syn_Constructor _lhsOself)
    )
 
@@ -566,8 +566,8 @@ wrap_Constructors :: T_Constructors  -> Inh_Constructors  -> (Syn_Constructors )
 wrap_Constructors (T_Constructors act) (Inh_Constructors ) =
    Control.Monad.Identity.runIdentity (
      do sem <- act
-        let arg = T_Constructors_vIn19 
-        (T_Constructors_vOut19 _lhsOself) <- return (inv_Constructors_s20 sem arg)
+        let arg19 = T_Constructors_vIn19 
+        (T_Constructors_vOut19 _lhsOself) <- return (inv_Constructors_s20 sem arg19)
         return (Syn_Constructors _lhsOself)
    )
 
@@ -639,8 +639,8 @@ wrap_ContextItem :: T_ContextItem  -> Inh_ContextItem  -> (Syn_ContextItem )
 wrap_ContextItem (T_ContextItem act) (Inh_ContextItem ) =
    Control.Monad.Identity.runIdentity (
      do sem <- act
-        let arg = T_ContextItem_vIn22 
-        (T_ContextItem_vOut22 _lhsOself) <- return (inv_ContextItem_s23 sem arg)
+        let arg22 = T_ContextItem_vIn22 
+        (T_ContextItem_vOut22 _lhsOself) <- return (inv_ContextItem_s23 sem arg22)
         return (Syn_ContextItem _lhsOself)
    )
 
@@ -695,8 +695,8 @@ wrap_ContextItems :: T_ContextItems  -> Inh_ContextItems  -> (Syn_ContextItems )
 wrap_ContextItems (T_ContextItems act) (Inh_ContextItems ) =
    Control.Monad.Identity.runIdentity (
      do sem <- act
-        let arg = T_ContextItems_vIn25 
-        (T_ContextItems_vOut25 _lhsOself) <- return (inv_ContextItems_s26 sem arg)
+        let arg25 = T_ContextItems_vIn25 
+        (T_ContextItems_vOut25 _lhsOself) <- return (inv_ContextItems_s26 sem arg25)
         return (Syn_ContextItems _lhsOself)
    )
 
@@ -768,8 +768,8 @@ wrap_Declaration :: T_Declaration  -> Inh_Declaration  -> (Syn_Declaration )
 wrap_Declaration (T_Declaration act) (Inh_Declaration ) =
    Control.Monad.Identity.runIdentity (
      do sem <- act
-        let arg = T_Declaration_vIn28 
-        (T_Declaration_vOut28 _lhsOself) <- return (inv_Declaration_s29 sem arg)
+        let arg28 = T_Declaration_vIn28 
+        (T_Declaration_vOut28 _lhsOself) <- return (inv_Declaration_s29 sem arg28)
         return (Syn_Declaration _lhsOself)
    )
 
@@ -1114,8 +1114,8 @@ wrap_Declarations :: T_Declarations  -> Inh_Declarations  -> (Syn_Declarations )
 wrap_Declarations (T_Declarations act) (Inh_Declarations ) =
    Control.Monad.Identity.runIdentity (
      do sem <- act
-        let arg = T_Declarations_vIn31 
-        (T_Declarations_vOut31 _lhsOself) <- return (inv_Declarations_s32 sem arg)
+        let arg31 = T_Declarations_vIn31 
+        (T_Declarations_vOut31 _lhsOself) <- return (inv_Declarations_s32 sem arg31)
         return (Syn_Declarations _lhsOself)
    )
 
@@ -1187,8 +1187,8 @@ wrap_Export :: T_Export  -> Inh_Export  -> (Syn_Export )
 wrap_Export (T_Export act) (Inh_Export ) =
    Control.Monad.Identity.runIdentity (
      do sem <- act
-        let arg = T_Export_vIn34 
-        (T_Export_vOut34 _lhsOself) <- return (inv_Export_s35 sem arg)
+        let arg34 = T_Export_vIn34 
+        (T_Export_vOut34 _lhsOself) <- return (inv_Export_s35 sem arg34)
         return (Syn_Export _lhsOself)
    )
 
@@ -1315,8 +1315,8 @@ wrap_Exports :: T_Exports  -> Inh_Exports  -> (Syn_Exports )
 wrap_Exports (T_Exports act) (Inh_Exports ) =
    Control.Monad.Identity.runIdentity (
      do sem <- act
-        let arg = T_Exports_vIn37 
-        (T_Exports_vOut37 _lhsOself) <- return (inv_Exports_s38 sem arg)
+        let arg37 = T_Exports_vIn37 
+        (T_Exports_vOut37 _lhsOself) <- return (inv_Exports_s38 sem arg37)
         return (Syn_Exports _lhsOself)
    )
 
@@ -1388,8 +1388,8 @@ wrap_Expression :: T_Expression  -> Inh_Expression  -> (Syn_Expression )
 wrap_Expression (T_Expression act) (Inh_Expression ) =
    Control.Monad.Identity.runIdentity (
      do sem <- act
-        let arg = T_Expression_vIn40 
-        (T_Expression_vOut40 _lhsOallVariables _lhsOself) <- return (inv_Expression_s41 sem arg)
+        let arg40 = T_Expression_vIn40 
+        (T_Expression_vOut40 _lhsOallVariables _lhsOself) <- return (inv_Expression_s41 sem arg40)
         return (Syn_Expression _lhsOallVariables _lhsOself)
    )
 
@@ -2111,8 +2111,8 @@ wrap_Expressions :: T_Expressions  -> Inh_Expressions  -> (Syn_Expressions )
 wrap_Expressions (T_Expressions act) (Inh_Expressions ) =
    Control.Monad.Identity.runIdentity (
      do sem <- act
-        let arg = T_Expressions_vIn43 
-        (T_Expressions_vOut43 _lhsOallVariables _lhsOself) <- return (inv_Expressions_s44 sem arg)
+        let arg43 = T_Expressions_vIn43 
+        (T_Expressions_vOut43 _lhsOallVariables _lhsOself) <- return (inv_Expressions_s44 sem arg43)
         return (Syn_Expressions _lhsOallVariables _lhsOself)
    )
 
@@ -2194,8 +2194,8 @@ wrap_FieldDeclaration :: T_FieldDeclaration  -> Inh_FieldDeclaration  -> (Syn_Fi
 wrap_FieldDeclaration (T_FieldDeclaration act) (Inh_FieldDeclaration ) =
    Control.Monad.Identity.runIdentity (
      do sem <- act
-        let arg = T_FieldDeclaration_vIn46 
-        (T_FieldDeclaration_vOut46 _lhsOself) <- return (inv_FieldDeclaration_s47 sem arg)
+        let arg46 = T_FieldDeclaration_vIn46 
+        (T_FieldDeclaration_vOut46 _lhsOself) <- return (inv_FieldDeclaration_s47 sem arg46)
         return (Syn_FieldDeclaration _lhsOself)
    )
 
@@ -2250,8 +2250,8 @@ wrap_FieldDeclarations :: T_FieldDeclarations  -> Inh_FieldDeclarations  -> (Syn
 wrap_FieldDeclarations (T_FieldDeclarations act) (Inh_FieldDeclarations ) =
    Control.Monad.Identity.runIdentity (
      do sem <- act
-        let arg = T_FieldDeclarations_vIn49 
-        (T_FieldDeclarations_vOut49 _lhsOself) <- return (inv_FieldDeclarations_s50 sem arg)
+        let arg49 = T_FieldDeclarations_vIn49 
+        (T_FieldDeclarations_vOut49 _lhsOself) <- return (inv_FieldDeclarations_s50 sem arg49)
         return (Syn_FieldDeclarations _lhsOself)
    )
 
@@ -2323,8 +2323,8 @@ wrap_Fixity :: T_Fixity  -> Inh_Fixity  -> (Syn_Fixity )
 wrap_Fixity (T_Fixity act) (Inh_Fixity ) =
    Control.Monad.Identity.runIdentity (
      do sem <- act
-        let arg = T_Fixity_vIn52 
-        (T_Fixity_vOut52 _lhsOself) <- return (inv_Fixity_s53 sem arg)
+        let arg52 = T_Fixity_vIn52 
+        (T_Fixity_vOut52 _lhsOself) <- return (inv_Fixity_s53 sem arg52)
         return (Syn_Fixity _lhsOself)
    )
 
@@ -2419,8 +2419,8 @@ wrap_FunctionBinding :: T_FunctionBinding  -> Inh_FunctionBinding  -> (Syn_Funct
 wrap_FunctionBinding (T_FunctionBinding act) (Inh_FunctionBinding ) =
    Control.Monad.Identity.runIdentity (
      do sem <- act
-        let arg = T_FunctionBinding_vIn55 
-        (T_FunctionBinding_vOut55 _lhsOself) <- return (inv_FunctionBinding_s56 sem arg)
+        let arg55 = T_FunctionBinding_vIn55 
+        (T_FunctionBinding_vOut55 _lhsOself) <- return (inv_FunctionBinding_s56 sem arg55)
         return (Syn_FunctionBinding _lhsOself)
    )
 
@@ -2521,8 +2521,8 @@ wrap_FunctionBindings :: T_FunctionBindings  -> Inh_FunctionBindings  -> (Syn_Fu
 wrap_FunctionBindings (T_FunctionBindings act) (Inh_FunctionBindings ) =
    Control.Monad.Identity.runIdentity (
      do sem <- act
-        let arg = T_FunctionBindings_vIn58 
-        (T_FunctionBindings_vOut58 _lhsOself) <- return (inv_FunctionBindings_s59 sem arg)
+        let arg58 = T_FunctionBindings_vIn58 
+        (T_FunctionBindings_vOut58 _lhsOself) <- return (inv_FunctionBindings_s59 sem arg58)
         return (Syn_FunctionBindings _lhsOself)
    )
 
@@ -2594,8 +2594,8 @@ wrap_GuardedExpression :: T_GuardedExpression  -> Inh_GuardedExpression  -> (Syn
 wrap_GuardedExpression (T_GuardedExpression act) (Inh_GuardedExpression ) =
    Control.Monad.Identity.runIdentity (
      do sem <- act
-        let arg = T_GuardedExpression_vIn61 
-        (T_GuardedExpression_vOut61 _lhsOself) <- return (inv_GuardedExpression_s62 sem arg)
+        let arg61 = T_GuardedExpression_vIn61 
+        (T_GuardedExpression_vOut61 _lhsOself) <- return (inv_GuardedExpression_s62 sem arg61)
         return (Syn_GuardedExpression _lhsOself)
    )
 
@@ -2650,8 +2650,8 @@ wrap_GuardedExpressions :: T_GuardedExpressions  -> Inh_GuardedExpressions  -> (
 wrap_GuardedExpressions (T_GuardedExpressions act) (Inh_GuardedExpressions ) =
    Control.Monad.Identity.runIdentity (
      do sem <- act
-        let arg = T_GuardedExpressions_vIn64 
-        (T_GuardedExpressions_vOut64 _lhsOself) <- return (inv_GuardedExpressions_s65 sem arg)
+        let arg64 = T_GuardedExpressions_vIn64 
+        (T_GuardedExpressions_vOut64 _lhsOself) <- return (inv_GuardedExpressions_s65 sem arg64)
         return (Syn_GuardedExpressions _lhsOself)
    )
 
@@ -2723,8 +2723,8 @@ wrap_Import :: T_Import  -> Inh_Import  -> (Syn_Import )
 wrap_Import (T_Import act) (Inh_Import ) =
    Control.Monad.Identity.runIdentity (
      do sem <- act
-        let arg = T_Import_vIn67 
-        (T_Import_vOut67 _lhsOself) <- return (inv_Import_s68 sem arg)
+        let arg67 = T_Import_vIn67 
+        (T_Import_vOut67 _lhsOself) <- return (inv_Import_s68 sem arg67)
         return (Syn_Import _lhsOself)
    )
 
@@ -2827,8 +2827,8 @@ wrap_ImportDeclaration :: T_ImportDeclaration  -> Inh_ImportDeclaration  -> (Syn
 wrap_ImportDeclaration (T_ImportDeclaration act) (Inh_ImportDeclaration ) =
    Control.Monad.Identity.runIdentity (
      do sem <- act
-        let arg = T_ImportDeclaration_vIn70 
-        (T_ImportDeclaration_vOut70 _lhsOself) <- return (inv_ImportDeclaration_s71 sem arg)
+        let arg70 = T_ImportDeclaration_vIn70 
+        (T_ImportDeclaration_vOut70 _lhsOself) <- return (inv_ImportDeclaration_s71 sem arg70)
         return (Syn_ImportDeclaration _lhsOself)
    )
 
@@ -2907,8 +2907,8 @@ wrap_ImportDeclarations :: T_ImportDeclarations  -> Inh_ImportDeclarations  -> (
 wrap_ImportDeclarations (T_ImportDeclarations act) (Inh_ImportDeclarations ) =
    Control.Monad.Identity.runIdentity (
      do sem <- act
-        let arg = T_ImportDeclarations_vIn73 
-        (T_ImportDeclarations_vOut73 _lhsOself) <- return (inv_ImportDeclarations_s74 sem arg)
+        let arg73 = T_ImportDeclarations_vIn73 
+        (T_ImportDeclarations_vOut73 _lhsOself) <- return (inv_ImportDeclarations_s74 sem arg73)
         return (Syn_ImportDeclarations _lhsOself)
    )
 
@@ -2980,8 +2980,8 @@ wrap_ImportSpecification :: T_ImportSpecification  -> Inh_ImportSpecification  -
 wrap_ImportSpecification (T_ImportSpecification act) (Inh_ImportSpecification ) =
    Control.Monad.Identity.runIdentity (
      do sem <- act
-        let arg = T_ImportSpecification_vIn76 
-        (T_ImportSpecification_vOut76 _lhsOself) <- return (inv_ImportSpecification_s77 sem arg)
+        let arg76 = T_ImportSpecification_vIn76 
+        (T_ImportSpecification_vOut76 _lhsOself) <- return (inv_ImportSpecification_s77 sem arg76)
         return (Syn_ImportSpecification _lhsOself)
    )
 
@@ -3034,8 +3034,8 @@ wrap_Imports :: T_Imports  -> Inh_Imports  -> (Syn_Imports )
 wrap_Imports (T_Imports act) (Inh_Imports ) =
    Control.Monad.Identity.runIdentity (
      do sem <- act
-        let arg = T_Imports_vIn79 
-        (T_Imports_vOut79 _lhsOself) <- return (inv_Imports_s80 sem arg)
+        let arg79 = T_Imports_vIn79 
+        (T_Imports_vOut79 _lhsOself) <- return (inv_Imports_s80 sem arg79)
         return (Syn_Imports _lhsOself)
    )
 
@@ -3107,8 +3107,8 @@ wrap_Judgement :: T_Judgement  -> Inh_Judgement  -> (Syn_Judgement )
 wrap_Judgement (T_Judgement act) (Inh_Judgement _lhsInameMap) =
    Control.Monad.Identity.runIdentity (
      do sem <- act
-        let arg = T_Judgement_vIn82 _lhsInameMap
-        (T_Judgement_vOut82 _lhsOallVariables _lhsOconclusionType _lhsOself _lhsOtheExpression _lhsOtypevariables) <- return (inv_Judgement_s83 sem arg)
+        let arg82 = T_Judgement_vIn82 _lhsInameMap
+        (T_Judgement_vOut82 _lhsOallVariables _lhsOconclusionType _lhsOself _lhsOtheExpression _lhsOtypevariables) <- return (inv_Judgement_s83 sem arg82)
         return (Syn_Judgement _lhsOallVariables _lhsOconclusionType _lhsOself _lhsOtheExpression _lhsOtypevariables)
    )
 
@@ -3181,8 +3181,8 @@ wrap_LeftHandSide :: T_LeftHandSide  -> Inh_LeftHandSide  -> (Syn_LeftHandSide )
 wrap_LeftHandSide (T_LeftHandSide act) (Inh_LeftHandSide ) =
    Control.Monad.Identity.runIdentity (
      do sem <- act
-        let arg = T_LeftHandSide_vIn85 
-        (T_LeftHandSide_vOut85 _lhsOself) <- return (inv_LeftHandSide_s86 sem arg)
+        let arg85 = T_LeftHandSide_vIn85 
+        (T_LeftHandSide_vOut85 _lhsOself) <- return (inv_LeftHandSide_s86 sem arg85)
         return (Syn_LeftHandSide _lhsOself)
    )
 
@@ -3291,8 +3291,8 @@ wrap_Literal :: T_Literal  -> Inh_Literal  -> (Syn_Literal )
 wrap_Literal (T_Literal act) (Inh_Literal ) =
    Control.Monad.Identity.runIdentity (
      do sem <- act
-        let arg = T_Literal_vIn88 
-        (T_Literal_vOut88 _lhsOself) <- return (inv_Literal_s89 sem arg)
+        let arg88 = T_Literal_vIn88 
+        (T_Literal_vOut88 _lhsOself) <- return (inv_Literal_s89 sem arg88)
         return (Syn_Literal _lhsOself)
    )
 
@@ -3409,8 +3409,8 @@ wrap_MaybeDeclarations :: T_MaybeDeclarations  -> Inh_MaybeDeclarations  -> (Syn
 wrap_MaybeDeclarations (T_MaybeDeclarations act) (Inh_MaybeDeclarations ) =
    Control.Monad.Identity.runIdentity (
      do sem <- act
-        let arg = T_MaybeDeclarations_vIn91 
-        (T_MaybeDeclarations_vOut91 _lhsOself) <- return (inv_MaybeDeclarations_s92 sem arg)
+        let arg91 = T_MaybeDeclarations_vIn91 
+        (T_MaybeDeclarations_vOut91 _lhsOself) <- return (inv_MaybeDeclarations_s92 sem arg91)
         return (Syn_MaybeDeclarations _lhsOself)
    )
 
@@ -3481,8 +3481,8 @@ wrap_MaybeExports :: T_MaybeExports  -> Inh_MaybeExports  -> (Syn_MaybeExports )
 wrap_MaybeExports (T_MaybeExports act) (Inh_MaybeExports ) =
    Control.Monad.Identity.runIdentity (
      do sem <- act
-        let arg = T_MaybeExports_vIn94 
-        (T_MaybeExports_vOut94 _lhsOself) <- return (inv_MaybeExports_s95 sem arg)
+        let arg94 = T_MaybeExports_vIn94 
+        (T_MaybeExports_vOut94 _lhsOself) <- return (inv_MaybeExports_s95 sem arg94)
         return (Syn_MaybeExports _lhsOself)
    )
 
@@ -3553,8 +3553,8 @@ wrap_MaybeExpression :: T_MaybeExpression  -> Inh_MaybeExpression  -> (Syn_Maybe
 wrap_MaybeExpression (T_MaybeExpression act) (Inh_MaybeExpression ) =
    Control.Monad.Identity.runIdentity (
      do sem <- act
-        let arg = T_MaybeExpression_vIn97 
-        (T_MaybeExpression_vOut97 _lhsOallVariables _lhsOself) <- return (inv_MaybeExpression_s98 sem arg)
+        let arg97 = T_MaybeExpression_vIn97 
+        (T_MaybeExpression_vOut97 _lhsOallVariables _lhsOself) <- return (inv_MaybeExpression_s98 sem arg97)
         return (Syn_MaybeExpression _lhsOallVariables _lhsOself)
    )
 
@@ -3635,8 +3635,8 @@ wrap_MaybeImportSpecification :: T_MaybeImportSpecification  -> Inh_MaybeImportS
 wrap_MaybeImportSpecification (T_MaybeImportSpecification act) (Inh_MaybeImportSpecification ) =
    Control.Monad.Identity.runIdentity (
      do sem <- act
-        let arg = T_MaybeImportSpecification_vIn100 
-        (T_MaybeImportSpecification_vOut100 _lhsOself) <- return (inv_MaybeImportSpecification_s101 sem arg)
+        let arg100 = T_MaybeImportSpecification_vIn100 
+        (T_MaybeImportSpecification_vOut100 _lhsOself) <- return (inv_MaybeImportSpecification_s101 sem arg100)
         return (Syn_MaybeImportSpecification _lhsOself)
    )
 
@@ -3707,8 +3707,8 @@ wrap_MaybeInt :: T_MaybeInt  -> Inh_MaybeInt  -> (Syn_MaybeInt )
 wrap_MaybeInt (T_MaybeInt act) (Inh_MaybeInt ) =
    Control.Monad.Identity.runIdentity (
      do sem <- act
-        let arg = T_MaybeInt_vIn103 
-        (T_MaybeInt_vOut103 _lhsOself) <- return (inv_MaybeInt_s104 sem arg)
+        let arg103 = T_MaybeInt_vIn103 
+        (T_MaybeInt_vOut103 _lhsOself) <- return (inv_MaybeInt_s104 sem arg103)
         return (Syn_MaybeInt _lhsOself)
    )
 
@@ -3777,8 +3777,8 @@ wrap_MaybeName :: T_MaybeName  -> Inh_MaybeName  -> (Syn_MaybeName )
 wrap_MaybeName (T_MaybeName act) (Inh_MaybeName ) =
    Control.Monad.Identity.runIdentity (
      do sem <- act
-        let arg = T_MaybeName_vIn106 
-        (T_MaybeName_vOut106 _lhsOself) <- return (inv_MaybeName_s107 sem arg)
+        let arg106 = T_MaybeName_vIn106 
+        (T_MaybeName_vOut106 _lhsOself) <- return (inv_MaybeName_s107 sem arg106)
         return (Syn_MaybeName _lhsOself)
    )
 
@@ -3849,8 +3849,8 @@ wrap_MaybeNames :: T_MaybeNames  -> Inh_MaybeNames  -> (Syn_MaybeNames )
 wrap_MaybeNames (T_MaybeNames act) (Inh_MaybeNames ) =
    Control.Monad.Identity.runIdentity (
      do sem <- act
-        let arg = T_MaybeNames_vIn109 
-        (T_MaybeNames_vOut109 _lhsOself) <- return (inv_MaybeNames_s110 sem arg)
+        let arg109 = T_MaybeNames_vIn109 
+        (T_MaybeNames_vOut109 _lhsOself) <- return (inv_MaybeNames_s110 sem arg109)
         return (Syn_MaybeNames _lhsOself)
    )
 
@@ -3921,8 +3921,8 @@ wrap_Module :: T_Module  -> Inh_Module  -> (Syn_Module )
 wrap_Module (T_Module act) (Inh_Module ) =
    Control.Monad.Identity.runIdentity (
      do sem <- act
-        let arg = T_Module_vIn112 
-        (T_Module_vOut112 _lhsOself) <- return (inv_Module_s113 sem arg)
+        let arg112 = T_Module_vIn112 
+        (T_Module_vOut112 _lhsOself) <- return (inv_Module_s113 sem arg112)
         return (Syn_Module _lhsOself)
    )
 
@@ -3979,8 +3979,8 @@ wrap_Name :: T_Name  -> Inh_Name  -> (Syn_Name )
 wrap_Name (T_Name act) (Inh_Name ) =
    Control.Monad.Identity.runIdentity (
      do sem <- act
-        let arg = T_Name_vIn115 
-        (T_Name_vOut115 _lhsOself) <- return (inv_Name_s116 sem arg)
+        let arg115 = T_Name_vIn115 
+        (T_Name_vOut115 _lhsOself) <- return (inv_Name_s116 sem arg115)
         return (Syn_Name _lhsOself)
    )
 
@@ -4081,8 +4081,8 @@ wrap_Names :: T_Names  -> Inh_Names  -> (Syn_Names )
 wrap_Names (T_Names act) (Inh_Names ) =
    Control.Monad.Identity.runIdentity (
      do sem <- act
-        let arg = T_Names_vIn118 
-        (T_Names_vOut118 _lhsOself) <- return (inv_Names_s119 sem arg)
+        let arg118 = T_Names_vIn118 
+        (T_Names_vOut118 _lhsOself) <- return (inv_Names_s119 sem arg118)
         return (Syn_Names _lhsOself)
    )
 
@@ -4154,8 +4154,8 @@ wrap_Pattern :: T_Pattern  -> Inh_Pattern  -> (Syn_Pattern )
 wrap_Pattern (T_Pattern act) (Inh_Pattern ) =
    Control.Monad.Identity.runIdentity (
      do sem <- act
-        let arg = T_Pattern_vIn121 
-        (T_Pattern_vOut121 _lhsOself) <- return (inv_Pattern_s122 sem arg)
+        let arg121 = T_Pattern_vIn121 
+        (T_Pattern_vOut121 _lhsOself) <- return (inv_Pattern_s122 sem arg121)
         return (Syn_Pattern _lhsOself)
    )
 
@@ -4552,8 +4552,8 @@ wrap_Patterns :: T_Patterns  -> Inh_Patterns  -> (Syn_Patterns )
 wrap_Patterns (T_Patterns act) (Inh_Patterns ) =
    Control.Monad.Identity.runIdentity (
      do sem <- act
-        let arg = T_Patterns_vIn124 
-        (T_Patterns_vOut124 _lhsOself) <- return (inv_Patterns_s125 sem arg)
+        let arg124 = T_Patterns_vIn124 
+        (T_Patterns_vOut124 _lhsOself) <- return (inv_Patterns_s125 sem arg124)
         return (Syn_Patterns _lhsOself)
    )
 
@@ -4625,8 +4625,8 @@ wrap_Position :: T_Position  -> Inh_Position  -> (Syn_Position )
 wrap_Position (T_Position act) (Inh_Position ) =
    Control.Monad.Identity.runIdentity (
      do sem <- act
-        let arg = T_Position_vIn127 
-        (T_Position_vOut127 _lhsOself) <- return (inv_Position_s128 sem arg)
+        let arg127 = T_Position_vIn127 
+        (T_Position_vOut127 _lhsOself) <- return (inv_Position_s128 sem arg127)
         return (Syn_Position _lhsOself)
    )
 
@@ -4695,8 +4695,8 @@ wrap_Qualifier :: T_Qualifier  -> Inh_Qualifier  -> (Syn_Qualifier )
 wrap_Qualifier (T_Qualifier act) (Inh_Qualifier ) =
    Control.Monad.Identity.runIdentity (
      do sem <- act
-        let arg = T_Qualifier_vIn130 
-        (T_Qualifier_vOut130 _lhsOself) <- return (inv_Qualifier_s131 sem arg)
+        let arg130 = T_Qualifier_vIn130 
+        (T_Qualifier_vOut130 _lhsOself) <- return (inv_Qualifier_s131 sem arg130)
         return (Syn_Qualifier _lhsOself)
    )
 
@@ -4821,8 +4821,8 @@ wrap_Qualifiers :: T_Qualifiers  -> Inh_Qualifiers  -> (Syn_Qualifiers )
 wrap_Qualifiers (T_Qualifiers act) (Inh_Qualifiers ) =
    Control.Monad.Identity.runIdentity (
      do sem <- act
-        let arg = T_Qualifiers_vIn133 
-        (T_Qualifiers_vOut133 _lhsOself) <- return (inv_Qualifiers_s134 sem arg)
+        let arg133 = T_Qualifiers_vIn133 
+        (T_Qualifiers_vOut133 _lhsOself) <- return (inv_Qualifiers_s134 sem arg133)
         return (Syn_Qualifiers _lhsOself)
    )
 
@@ -4894,8 +4894,8 @@ wrap_Range :: T_Range  -> Inh_Range  -> (Syn_Range )
 wrap_Range (T_Range act) (Inh_Range ) =
    Control.Monad.Identity.runIdentity (
      do sem <- act
-        let arg = T_Range_vIn136 
-        (T_Range_vOut136 _lhsOself) <- return (inv_Range_s137 sem arg)
+        let arg136 = T_Range_vIn136 
+        (T_Range_vOut136 _lhsOself) <- return (inv_Range_s137 sem arg136)
         return (Syn_Range _lhsOself)
    )
 
@@ -4948,8 +4948,8 @@ wrap_RecordExpressionBinding :: T_RecordExpressionBinding  -> Inh_RecordExpressi
 wrap_RecordExpressionBinding (T_RecordExpressionBinding act) (Inh_RecordExpressionBinding ) =
    Control.Monad.Identity.runIdentity (
      do sem <- act
-        let arg = T_RecordExpressionBinding_vIn139 
-        (T_RecordExpressionBinding_vOut139 _lhsOself) <- return (inv_RecordExpressionBinding_s140 sem arg)
+        let arg139 = T_RecordExpressionBinding_vIn139 
+        (T_RecordExpressionBinding_vOut139 _lhsOself) <- return (inv_RecordExpressionBinding_s140 sem arg139)
         return (Syn_RecordExpressionBinding _lhsOself)
    )
 
@@ -5004,8 +5004,8 @@ wrap_RecordExpressionBindings :: T_RecordExpressionBindings  -> Inh_RecordExpres
 wrap_RecordExpressionBindings (T_RecordExpressionBindings act) (Inh_RecordExpressionBindings ) =
    Control.Monad.Identity.runIdentity (
      do sem <- act
-        let arg = T_RecordExpressionBindings_vIn142 
-        (T_RecordExpressionBindings_vOut142 _lhsOself) <- return (inv_RecordExpressionBindings_s143 sem arg)
+        let arg142 = T_RecordExpressionBindings_vIn142 
+        (T_RecordExpressionBindings_vOut142 _lhsOself) <- return (inv_RecordExpressionBindings_s143 sem arg142)
         return (Syn_RecordExpressionBindings _lhsOself)
    )
 
@@ -5077,8 +5077,8 @@ wrap_RecordPatternBinding :: T_RecordPatternBinding  -> Inh_RecordPatternBinding
 wrap_RecordPatternBinding (T_RecordPatternBinding act) (Inh_RecordPatternBinding ) =
    Control.Monad.Identity.runIdentity (
      do sem <- act
-        let arg = T_RecordPatternBinding_vIn145 
-        (T_RecordPatternBinding_vOut145 _lhsOself) <- return (inv_RecordPatternBinding_s146 sem arg)
+        let arg145 = T_RecordPatternBinding_vIn145 
+        (T_RecordPatternBinding_vOut145 _lhsOself) <- return (inv_RecordPatternBinding_s146 sem arg145)
         return (Syn_RecordPatternBinding _lhsOself)
    )
 
@@ -5133,8 +5133,8 @@ wrap_RecordPatternBindings :: T_RecordPatternBindings  -> Inh_RecordPatternBindi
 wrap_RecordPatternBindings (T_RecordPatternBindings act) (Inh_RecordPatternBindings ) =
    Control.Monad.Identity.runIdentity (
      do sem <- act
-        let arg = T_RecordPatternBindings_vIn148 
-        (T_RecordPatternBindings_vOut148 _lhsOself) <- return (inv_RecordPatternBindings_s149 sem arg)
+        let arg148 = T_RecordPatternBindings_vIn148 
+        (T_RecordPatternBindings_vOut148 _lhsOself) <- return (inv_RecordPatternBindings_s149 sem arg148)
         return (Syn_RecordPatternBindings _lhsOself)
    )
 
@@ -5206,8 +5206,8 @@ wrap_RightHandSide :: T_RightHandSide  -> Inh_RightHandSide  -> (Syn_RightHandSi
 wrap_RightHandSide (T_RightHandSide act) (Inh_RightHandSide ) =
    Control.Monad.Identity.runIdentity (
      do sem <- act
-        let arg = T_RightHandSide_vIn151 
-        (T_RightHandSide_vOut151 _lhsOself) <- return (inv_RightHandSide_s152 sem arg)
+        let arg151 = T_RightHandSide_vIn151 
+        (T_RightHandSide_vOut151 _lhsOself) <- return (inv_RightHandSide_s152 sem arg151)
         return (Syn_RightHandSide _lhsOself)
    )
 
@@ -5288,8 +5288,8 @@ wrap_SimpleJudgement :: T_SimpleJudgement  -> Inh_SimpleJudgement  -> (Syn_Simpl
 wrap_SimpleJudgement (T_SimpleJudgement act) (Inh_SimpleJudgement _lhsInameMap _lhsIsimpleJudgements) =
    Control.Monad.Identity.runIdentity (
      do sem <- act
-        let arg = T_SimpleJudgement_vIn154 _lhsInameMap _lhsIsimpleJudgements
-        (T_SimpleJudgement_vOut154 _lhsOself _lhsOsimpleJudgements _lhsOtypevariables) <- return (inv_SimpleJudgement_s155 sem arg)
+        let arg154 = T_SimpleJudgement_vIn154 _lhsInameMap _lhsIsimpleJudgements
+        (T_SimpleJudgement_vOut154 _lhsOself _lhsOsimpleJudgements _lhsOtypevariables) <- return (inv_SimpleJudgement_s155 sem arg154)
         return (Syn_SimpleJudgement _lhsOself _lhsOsimpleJudgements _lhsOtypevariables)
    )
 
@@ -5356,8 +5356,8 @@ wrap_SimpleJudgements :: T_SimpleJudgements  -> Inh_SimpleJudgements  -> (Syn_Si
 wrap_SimpleJudgements (T_SimpleJudgements act) (Inh_SimpleJudgements _lhsInameMap _lhsIsimpleJudgements) =
    Control.Monad.Identity.runIdentity (
      do sem <- act
-        let arg = T_SimpleJudgements_vIn157 _lhsInameMap _lhsIsimpleJudgements
-        (T_SimpleJudgements_vOut157 _lhsOself _lhsOsimpleJudgements _lhsOtypevariables) <- return (inv_SimpleJudgements_s158 sem arg)
+        let arg157 = T_SimpleJudgements_vIn157 _lhsInameMap _lhsIsimpleJudgements
+        (T_SimpleJudgements_vOut157 _lhsOself _lhsOsimpleJudgements _lhsOtypevariables) <- return (inv_SimpleJudgements_s158 sem arg157)
         return (Syn_SimpleJudgements _lhsOself _lhsOsimpleJudgements _lhsOtypevariables)
    )
 
@@ -5465,8 +5465,8 @@ wrap_SimpleType :: T_SimpleType  -> Inh_SimpleType  -> (Syn_SimpleType )
 wrap_SimpleType (T_SimpleType act) (Inh_SimpleType ) =
    Control.Monad.Identity.runIdentity (
      do sem <- act
-        let arg = T_SimpleType_vIn160 
-        (T_SimpleType_vOut160 _lhsOself) <- return (inv_SimpleType_s161 sem arg)
+        let arg160 = T_SimpleType_vIn160 
+        (T_SimpleType_vOut160 _lhsOself) <- return (inv_SimpleType_s161 sem arg160)
         return (Syn_SimpleType _lhsOself)
    )
 
@@ -5521,8 +5521,8 @@ wrap_Statement :: T_Statement  -> Inh_Statement  -> (Syn_Statement )
 wrap_Statement (T_Statement act) (Inh_Statement ) =
    Control.Monad.Identity.runIdentity (
      do sem <- act
-        let arg = T_Statement_vIn163 
-        (T_Statement_vOut163 _lhsOself) <- return (inv_Statement_s164 sem arg)
+        let arg163 = T_Statement_vIn163 
+        (T_Statement_vOut163 _lhsOself) <- return (inv_Statement_s164 sem arg163)
         return (Syn_Statement _lhsOself)
    )
 
@@ -5647,8 +5647,8 @@ wrap_Statements :: T_Statements  -> Inh_Statements  -> (Syn_Statements )
 wrap_Statements (T_Statements act) (Inh_Statements ) =
    Control.Monad.Identity.runIdentity (
      do sem <- act
-        let arg = T_Statements_vIn166 
-        (T_Statements_vOut166 _lhsOself) <- return (inv_Statements_s167 sem arg)
+        let arg166 = T_Statements_vIn166 
+        (T_Statements_vOut166 _lhsOself) <- return (inv_Statements_s167 sem arg166)
         return (Syn_Statements _lhsOself)
    )
 
@@ -5720,8 +5720,8 @@ wrap_Strings :: T_Strings  -> Inh_Strings  -> (Syn_Strings )
 wrap_Strings (T_Strings act) (Inh_Strings ) =
    Control.Monad.Identity.runIdentity (
      do sem <- act
-        let arg = T_Strings_vIn169 
-        (T_Strings_vOut169 _lhsOself) <- return (inv_Strings_s170 sem arg)
+        let arg169 = T_Strings_vIn169 
+        (T_Strings_vOut169 _lhsOself) <- return (inv_Strings_s170 sem arg169)
         return (Syn_Strings _lhsOself)
    )
 
@@ -5791,8 +5791,8 @@ wrap_Type :: T_Type  -> Inh_Type  -> (Syn_Type )
 wrap_Type (T_Type act) (Inh_Type ) =
    Control.Monad.Identity.runIdentity (
      do sem <- act
-        let arg = T_Type_vIn172 
-        (T_Type_vOut172 _lhsOself _lhsOtypevariables) <- return (inv_Type_s173 sem arg)
+        let arg172 = T_Type_vIn172 
+        (T_Type_vOut172 _lhsOself _lhsOtypevariables) <- return (inv_Type_s173 sem arg172)
         return (Syn_Type _lhsOself _lhsOtypevariables)
    )
 
@@ -6032,8 +6032,8 @@ wrap_TypeRule :: T_TypeRule  -> Inh_TypeRule  -> (Syn_TypeRule )
 wrap_TypeRule (T_TypeRule act) (Inh_TypeRule _lhsInameMap _lhsIsimpleJudgements) =
    Control.Monad.Identity.runIdentity (
      do sem <- act
-        let arg = T_TypeRule_vIn175 _lhsInameMap _lhsIsimpleJudgements
-        (T_TypeRule_vOut175 _lhsOconclusionAllVariables _lhsOconclusionExpression _lhsOconclusionType _lhsOself _lhsOsimpleJudgements _lhsOtypevariables) <- return (inv_TypeRule_s176 sem arg)
+        let arg175 = T_TypeRule_vIn175 _lhsInameMap _lhsIsimpleJudgements
+        (T_TypeRule_vOut175 _lhsOconclusionAllVariables _lhsOconclusionExpression _lhsOconclusionType _lhsOself _lhsOsimpleJudgements _lhsOtypevariables) <- return (inv_TypeRule_s176 sem arg175)
         return (Syn_TypeRule _lhsOconclusionAllVariables _lhsOconclusionExpression _lhsOconclusionType _lhsOself _lhsOsimpleJudgements _lhsOtypevariables)
    )
 
@@ -6064,10 +6064,10 @@ sem_TypeRule_TypeRule arg_premises_ arg_conclusion_ = T_TypeRule (return st176) 
          _conclusionX83 = Control.Monad.Identity.runIdentity (attach_T_Judgement (arg_conclusion_))
          (T_SimpleJudgements_vOut157 _premisesIself _premisesIsimpleJudgements _premisesItypevariables) = inv_SimpleJudgements_s158 _premisesX158 (T_SimpleJudgements_vIn157 _premisesOnameMap _premisesOsimpleJudgements)
          (T_Judgement_vOut82 _conclusionIallVariables _conclusionIconclusionType _conclusionIself _conclusionItheExpression _conclusionItypevariables) = inv_Judgement_s83 _conclusionX83 (T_Judgement_vIn82 _conclusionOnameMap)
-         _lhsOconclusionAllVariables :: [(Name,Entity)]
-         _lhsOconclusionAllVariables = rule387 _conclusionIallVariables
          _lhsOconclusionExpression :: Expression
-         _lhsOconclusionExpression = rule388 _conclusionItheExpression
+         _lhsOconclusionExpression = rule387 _conclusionItheExpression
+         _lhsOconclusionAllVariables :: [(Name,Entity)]
+         _lhsOconclusionAllVariables = rule388 _conclusionIallVariables
          _lhsOtypevariables :: Names
          _lhsOtypevariables = rule389 _conclusionItypevariables _premisesItypevariables
          _self = rule390 _conclusionIself _premisesIself
@@ -6084,11 +6084,11 @@ sem_TypeRule_TypeRule arg_premises_ arg_conclusion_ = T_TypeRule (return st176) 
          in __result_ )
      in C_TypeRule_s176 v175
    {-# INLINE rule387 #-}
-   rule387 = \ ((_conclusionIallVariables) :: [(Name,Entity)]) ->
-                                                         _conclusionIallVariables
-   {-# INLINE rule388 #-}
-   rule388 = \ ((_conclusionItheExpression) :: Expression) ->
+   rule387 = \ ((_conclusionItheExpression) :: Expression) ->
                                                           _conclusionItheExpression
+   {-# INLINE rule388 #-}
+   rule388 = \ ((_conclusionIallVariables) :: [(Name,Entity)]) ->
+                                                         _conclusionIallVariables
    {-# INLINE rule389 #-}
    rule389 = \ ((_conclusionItypevariables) :: Names) ((_premisesItypevariables) :: Names) ->
      _premisesItypevariables  ++  _conclusionItypevariables
@@ -6123,8 +6123,8 @@ wrap_Types :: T_Types  -> Inh_Types  -> (Syn_Types )
 wrap_Types (T_Types act) (Inh_Types ) =
    Control.Monad.Identity.runIdentity (
      do sem <- act
-        let arg = T_Types_vIn178 
-        (T_Types_vOut178 _lhsOself _lhsOtypevariables) <- return (inv_Types_s179 sem arg)
+        let arg178 = T_Types_vIn178 
+        (T_Types_vOut178 _lhsOself _lhsOtypevariables) <- return (inv_Types_s179 sem arg178)
         return (Syn_Types _lhsOself _lhsOtypevariables)
    )
 
@@ -6206,8 +6206,8 @@ wrap_TypingStrategies :: T_TypingStrategies  -> Inh_TypingStrategies  -> (Syn_Ty
 wrap_TypingStrategies (T_TypingStrategies act) (Inh_TypingStrategies ) =
    Control.Monad.Identity.runIdentity (
      do sem <- act
-        let arg = T_TypingStrategies_vIn181 
-        (T_TypingStrategies_vOut181 _lhsOself) <- return (inv_TypingStrategies_s182 sem arg)
+        let arg181 = T_TypingStrategies_vIn181 
+        (T_TypingStrategies_vOut181 _lhsOself) <- return (inv_TypingStrategies_s182 sem arg181)
         return (Syn_TypingStrategies _lhsOself)
    )
 
@@ -6287,8 +6287,8 @@ wrap_TypingStrategy :: T_TypingStrategy  -> Inh_TypingStrategy  -> (Syn_TypingSt
 wrap_TypingStrategy (T_TypingStrategy act) (Inh_TypingStrategy _lhsIimportEnvironment) =
    Control.Monad.Identity.runIdentity (
      do sem <- act
-        let arg = T_TypingStrategy_vIn184 _lhsIimportEnvironment
-        (T_TypingStrategy_vOut184 _lhsOerrors _lhsOself _lhsOwarnings) <- return (inv_TypingStrategy_s185 sem arg)
+        let arg184 = T_TypingStrategy_vIn184 _lhsIimportEnvironment
+        (T_TypingStrategy_vOut184 _lhsOerrors _lhsOself _lhsOwarnings) <- return (inv_TypingStrategy_s185 sem arg184)
         return (Syn_TypingStrategy _lhsOerrors _lhsOself _lhsOwarnings)
    )
 
@@ -6351,26 +6351,26 @@ sem_TypingStrategy_TypingStrategy arg_typerule_ arg_statements_ = T_TypingStrate
          _statementsX191 = Control.Monad.Identity.runIdentity (attach_T_UserStatements (arg_statements_))
          (T_TypeRule_vOut175 _typeruleIconclusionAllVariables _typeruleIconclusionExpression _typeruleIconclusionType _typeruleIself _typeruleIsimpleJudgements _typeruleItypevariables) = inv_TypeRule_s176 _typeruleX176 (T_TypeRule_vIn175 _typeruleOnameMap _typeruleOsimpleJudgements)
          (T_UserStatements_vOut190 _statementsImetaVariableConstraintNames _statementsIself _statementsItypevariables _statementsIuserConstraints _statementsIuserPredicates) = inv_UserStatements_s191 _statementsX191 (T_UserStatements_vIn190 _statementsOattributeTable _statementsOmetaVariableConstraintNames _statementsOnameMap _statementsOstandardConstraintInfo _statementsOuserConstraints _statementsOuserPredicates)
-         _name = rule413 _typeruleIconclusionExpression
-         _nameMap = rule414 _uniqueTypevariables
-         _errors = rule415 _soundnessErrors _staticErrors
-         _staticErrors = rule416 _allImportedVariables _allMetaVariables _name _solveErrors _statementsImetaVariableConstraintNames _typeruleIconclusionAllVariables
-         _warnings = rule417  ()
-         _substitution = rule418 _solveResult
-         _solveErrors = rule419 _solveResult
-         _solveResult = rule420 _classEnv _lhsIimportEnvironment _statementsIuserConstraints _uniqueTypevariables
-         _classEnv = rule421 _lhsIimportEnvironment
-         _soundnessErrors = rule422 _classEnv _lhsIimportEnvironment _name _statementsIuserPredicates _staticErrors _substitution _typeruleIconclusionExpression _typeruleIconclusionType _typeruleIsimpleJudgements
-         _allImportedVariables = rule423 _lhsIimportEnvironment
-         _uniqueTypevariables = rule424 _statementsItypevariables _typeruleItypevariables
-         _statementsOuserConstraints = rule425  ()
-         _statementsOuserPredicates = rule426  ()
-         _typeruleOsimpleJudgements = rule427  ()
-         _statementsOmetaVariableConstraintNames = rule428  ()
-         _allMetaVariables = rule429 _typeruleIsimpleJudgements
-         _constraintsNotExplicit = rule430 _allMetaVariables _statementsImetaVariableConstraintNames
-         _standardConstraintInfo = rule431  ()
-         _attributeTable = rule432  ()
+         _uniqueTypevariables = rule413 _statementsItypevariables _typeruleItypevariables
+         _statementsOuserConstraints = rule414  ()
+         _statementsOuserPredicates = rule415  ()
+         _typeruleOsimpleJudgements = rule416  ()
+         _statementsOmetaVariableConstraintNames = rule417  ()
+         _allMetaVariables = rule418 _typeruleIsimpleJudgements
+         _constraintsNotExplicit = rule419 _allMetaVariables _statementsImetaVariableConstraintNames
+         _standardConstraintInfo = rule420  ()
+         _attributeTable = rule421  ()
+         _name = rule422 _typeruleIconclusionExpression
+         _nameMap = rule423 _uniqueTypevariables
+         _errors = rule424 _soundnessErrors _staticErrors
+         _staticErrors = rule425 _allImportedVariables _allMetaVariables _name _solveErrors _statementsImetaVariableConstraintNames _typeruleIconclusionAllVariables
+         _warnings = rule426  ()
+         _substitution = rule427 _solveResult
+         _solveErrors = rule428 _solveResult
+         _solveResult = rule429 _classEnv _lhsIimportEnvironment _statementsIuserConstraints _uniqueTypevariables
+         _classEnv = rule430 _lhsIimportEnvironment
+         _soundnessErrors = rule431 _classEnv _lhsIimportEnvironment _name _statementsIuserPredicates _staticErrors _substitution _typeruleIconclusionExpression _typeruleIconclusionType _typeruleIsimpleJudgements
+         _allImportedVariables = rule432 _lhsIimportEnvironment
          _self = rule433 _statementsIself _typeruleIself
          _lhsOself :: TypingStrategy
          _lhsOself = rule434 _self
@@ -6386,16 +6386,43 @@ sem_TypingStrategy_TypingStrategy arg_typerule_ arg_statements_ = T_TypingStrate
          in __result_ )
      in C_TypingStrategy_s185 v184
    {-# INLINE rule413 #-}
-   rule413 = \ ((_typeruleIconclusionExpression) :: Expression) ->
-                              show (PP.text_Syn_Expression $ PP.wrap_Expression (PP.sem_Expression _typeruleIconclusionExpression) PP.Inh_Expression)
+   rule413 = \ ((_statementsItypevariables) :: Names) ((_typeruleItypevariables) :: Names) ->
+                                     nub (_typeruleItypevariables ++ _statementsItypevariables)
    {-# INLINE rule414 #-}
-   rule414 = \ _uniqueTypevariables ->
-                              zip _uniqueTypevariables (map TVar [0..])
+   rule414 = \  (_ :: ()) ->
+                                        []
    {-# INLINE rule415 #-}
-   rule415 = \ _soundnessErrors _staticErrors ->
-                              _staticErrors ++ _soundnessErrors
+   rule415 = \  (_ :: ()) ->
+                                        []
    {-# INLINE rule416 #-}
-   rule416 = \ _allImportedVariables _allMetaVariables _name _solveErrors ((_statementsImetaVariableConstraintNames) :: Names) ((_typeruleIconclusionAllVariables) :: [(Name,Entity)]) ->
+   rule416 = \  (_ :: ()) ->
+                                       []
+   {-# INLINE rule417 #-}
+   rule417 = \  (_ :: ()) ->
+                                                    []
+   {-# INLINE rule418 #-}
+   rule418 = \ ((_typeruleIsimpleJudgements) :: [(String,Tp)]) ->
+                                      map fst _typeruleIsimpleJudgements
+   {-# INLINE rule419 #-}
+   rule419 = \ _allMetaVariables ((_statementsImetaVariableConstraintNames) :: Names) ->
+                                        filter (`notElem` (map show _statementsImetaVariableConstraintNames)) _allMetaVariables
+   {-# INLINE rule420 #-}
+   rule420 = \  (_ :: ()) ->
+                                        standardConstraintInfo
+   {-# INLINE rule421 #-}
+   rule421 = \  (_ :: ()) ->
+                                        []
+   {-# INLINE rule422 #-}
+   rule422 = \ ((_typeruleIconclusionExpression) :: Expression) ->
+                              show (PP.text_Syn_Expression $ PP.wrap_Expression (PP.sem_Expression _typeruleIconclusionExpression) PP.Inh_Expression)
+   {-# INLINE rule423 #-}
+   rule423 = \ _uniqueTypevariables ->
+                              zip _uniqueTypevariables (map TVar [0..])
+   {-# INLINE rule424 #-}
+   rule424 = \ _soundnessErrors _staticErrors ->
+                              _staticErrors ++ _soundnessErrors
+   {-# INLINE rule425 #-}
+   rule425 = \ _allImportedVariables _allMetaVariables _name _solveErrors ((_statementsImetaVariableConstraintNames) :: Names) ((_typeruleIconclusionAllVariables) :: [(Name,Entity)]) ->
                               [ InconsistentConstraint _name x | (x, _) <- _solveErrors ] ++
                               [ UndefinedTS _name name entity
                               | (name, entity) <- _typeruleIconclusionAllVariables
@@ -6415,27 +6442,27 @@ sem_TypingStrategy_TypingStrategy arg_typerule_ arg_statements_ = T_TypingStrate
                               [ DuplicatedMetaVariableConstraints _name (show x)
                               | x:_ <- findDuplicates _statementsImetaVariableConstraintNames
                               ]
-   {-# INLINE rule417 #-}
-   rule417 = \  (_ :: ()) ->
+   {-# INLINE rule426 #-}
+   rule426 = \  (_ :: ()) ->
                               []
-   {-# INLINE rule418 #-}
-   rule418 = \ _solveResult ->
+   {-# INLINE rule427 #-}
+   rule427 = \ _solveResult ->
                               substitutionFromResult _solveResult
-   {-# INLINE rule419 #-}
-   rule419 = \ _solveResult ->
+   {-# INLINE rule428 #-}
+   rule428 = \ _solveResult ->
                               errorsFromResult _solveResult
-   {-# INLINE rule420 #-}
-   rule420 = \ _classEnv ((_lhsIimportEnvironment) :: ImportEnvironment) ((_statementsIuserConstraints) :: TypeConstraints ConstraintInfo) _uniqueTypevariables ->
+   {-# INLINE rule429 #-}
+   rule429 = \ _classEnv ((_lhsIimportEnvironment) :: ImportEnvironment) ((_statementsIuserConstraints) :: TypeConstraints ConstraintInfo) _uniqueTypevariables ->
                   let options = solveOptions { uniqueCounter = length _uniqueTypevariables
                                              , Top.Solver.typeSynonyms = getOrderedTypeSynonyms _lhsIimportEnvironment
                                              , classEnvironment = _classEnv
                                              }
                   in fst (solve options (reverse _statementsIuserConstraints) greedyConstraintSolver)
-   {-# INLINE rule421 #-}
-   rule421 = \ ((_lhsIimportEnvironment) :: ImportEnvironment) ->
+   {-# INLINE rule430 #-}
+   rule430 = \ ((_lhsIimportEnvironment) :: ImportEnvironment) ->
                           createClassEnvironment _lhsIimportEnvironment
-   {-# INLINE rule422 #-}
-   rule422 = \ _classEnv ((_lhsIimportEnvironment) :: ImportEnvironment) _name ((_statementsIuserPredicates) :: Predicates) _staticErrors _substitution ((_typeruleIconclusionExpression) :: Expression) ((_typeruleIconclusionType) :: Tp) ((_typeruleIsimpleJudgements) :: [(String,Tp)]) ->
+   {-# INLINE rule431 #-}
+   rule431 = \ _classEnv ((_lhsIimportEnvironment) :: ImportEnvironment) _name ((_statementsIuserPredicates) :: Predicates) _staticErrors _substitution ((_typeruleIconclusionExpression) :: Expression) ((_typeruleIconclusionType) :: Tp) ((_typeruleIsimpleJudgements) :: [(String,Tp)]) ->
                   if not (null _staticErrors)
                     then []
                     else let orderedMetaList =
@@ -6456,37 +6483,10 @@ sem_TypingStrategy_TypingStrategy arg_typerule_ arg_statements_ = T_TypingStrate
                                       genericInstanceOf synonyms _classEnv constraintsTpScheme inferredTpScheme
                                         then []
                                         else [ Soundness _name inferredTpScheme constraintsTpScheme ]
-   {-# INLINE rule423 #-}
-   rule423 = \ ((_lhsIimportEnvironment) :: ImportEnvironment) ->
+   {-# INLINE rule432 #-}
+   rule432 = \ ((_lhsIimportEnvironment) :: ImportEnvironment) ->
             M.keys (typeEnvironment   _lhsIimportEnvironment) ++
             M.keys (valueConstructors _lhsIimportEnvironment)
-   {-# INLINE rule424 #-}
-   rule424 = \ ((_statementsItypevariables) :: Names) ((_typeruleItypevariables) :: Names) ->
-                                     nub (_typeruleItypevariables ++ _statementsItypevariables)
-   {-# INLINE rule425 #-}
-   rule425 = \  (_ :: ()) ->
-                                        []
-   {-# INLINE rule426 #-}
-   rule426 = \  (_ :: ()) ->
-                                        []
-   {-# INLINE rule427 #-}
-   rule427 = \  (_ :: ()) ->
-                                       []
-   {-# INLINE rule428 #-}
-   rule428 = \  (_ :: ()) ->
-                                                    []
-   {-# INLINE rule429 #-}
-   rule429 = \ ((_typeruleIsimpleJudgements) :: [(String,Tp)]) ->
-                                      map fst _typeruleIsimpleJudgements
-   {-# INLINE rule430 #-}
-   rule430 = \ _allMetaVariables ((_statementsImetaVariableConstraintNames) :: Names) ->
-                                        filter (`notElem` (map show _statementsImetaVariableConstraintNames)) _allMetaVariables
-   {-# INLINE rule431 #-}
-   rule431 = \  (_ :: ()) ->
-                                        standardConstraintInfo
-   {-# INLINE rule432 #-}
-   rule432 = \  (_ :: ()) ->
-                                        []
    {-# INLINE rule433 #-}
    rule433 = \ ((_statementsIself) :: UserStatements) ((_typeruleIself) :: TypeRule) ->
      TypingStrategy_TypingStrategy _typeruleIself _statementsIself
@@ -6521,8 +6521,8 @@ wrap_UserStatement :: T_UserStatement  -> Inh_UserStatement  -> (Syn_UserStateme
 wrap_UserStatement (T_UserStatement act) (Inh_UserStatement _lhsIattributeTable _lhsImetaVariableConstraintNames _lhsInameMap _lhsIstandardConstraintInfo _lhsIuserConstraints _lhsIuserPredicates) =
    Control.Monad.Identity.runIdentity (
      do sem <- act
-        let arg = T_UserStatement_vIn187 _lhsIattributeTable _lhsImetaVariableConstraintNames _lhsInameMap _lhsIstandardConstraintInfo _lhsIuserConstraints _lhsIuserPredicates
-        (T_UserStatement_vOut187 _lhsOmetaVariableConstraintNames _lhsOself _lhsOtypevariables _lhsOuserConstraints _lhsOuserPredicates) <- return (inv_UserStatement_s188 sem arg)
+        let arg187 = T_UserStatement_vIn187 _lhsIattributeTable _lhsImetaVariableConstraintNames _lhsInameMap _lhsIstandardConstraintInfo _lhsIuserConstraints _lhsIuserPredicates
+        (T_UserStatement_vOut187 _lhsOmetaVariableConstraintNames _lhsOself _lhsOtypevariables _lhsOuserConstraints _lhsOuserPredicates) <- return (inv_UserStatement_s188 sem arg187)
         return (Syn_UserStatement _lhsOmetaVariableConstraintNames _lhsOself _lhsOtypevariables _lhsOuserConstraints _lhsOuserPredicates)
    )
 
@@ -6729,8 +6729,8 @@ wrap_UserStatements :: T_UserStatements  -> Inh_UserStatements  -> (Syn_UserStat
 wrap_UserStatements (T_UserStatements act) (Inh_UserStatements _lhsIattributeTable _lhsImetaVariableConstraintNames _lhsInameMap _lhsIstandardConstraintInfo _lhsIuserConstraints _lhsIuserPredicates) =
    Control.Monad.Identity.runIdentity (
      do sem <- act
-        let arg = T_UserStatements_vIn190 _lhsIattributeTable _lhsImetaVariableConstraintNames _lhsInameMap _lhsIstandardConstraintInfo _lhsIuserConstraints _lhsIuserPredicates
-        (T_UserStatements_vOut190 _lhsOmetaVariableConstraintNames _lhsOself _lhsOtypevariables _lhsOuserConstraints _lhsOuserPredicates) <- return (inv_UserStatements_s191 sem arg)
+        let arg190 = T_UserStatements_vIn190 _lhsIattributeTable _lhsImetaVariableConstraintNames _lhsInameMap _lhsIstandardConstraintInfo _lhsIuserConstraints _lhsIuserPredicates
+        (T_UserStatements_vOut190 _lhsOmetaVariableConstraintNames _lhsOself _lhsOtypevariables _lhsOuserConstraints _lhsOuserPredicates) <- return (inv_UserStatements_s191 sem arg190)
         return (Syn_UserStatements _lhsOmetaVariableConstraintNames _lhsOself _lhsOtypevariables _lhsOuserConstraints _lhsOuserPredicates)
    )
 
