@@ -1,3 +1,4 @@
+Prelude is up to date
 Compiling typeClassesStatic/UndefinedFunctionForClass.hs
 (4,2): Function same not defined in class: EmptyClass.
 Compilation failed with 1 error

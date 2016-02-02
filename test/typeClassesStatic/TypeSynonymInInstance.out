@@ -1,3 +1,4 @@
+Prelude is up to date
 Compiling typeClassesStatic/TypeSynonymInInstance.hs
 (5,1): Type synonyms are not allowed as types for instances, in : SomeClass Synonym.
 Compilation failed with 1 error

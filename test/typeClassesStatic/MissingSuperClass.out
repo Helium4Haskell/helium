@@ -1,3 +1,4 @@
+Prelude is up to date
 Compiling typeClassesStatic/MissingSuperClass.hs
 (5,1): Instance for: ClassA Int is needed for the instance of: ClassB Int but was not defined.
 Compilation failed with 1 error

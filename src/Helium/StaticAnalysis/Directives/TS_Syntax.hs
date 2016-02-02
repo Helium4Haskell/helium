@@ -1,6 +1,6 @@
 
 
--- UUAGC 0.9.42.2 (Helium/StaticAnalysis/Directives/TS_Syntax.ag)
+-- UUAGC 0.9.52.1 (Helium/StaticAnalysis/Directives/TS_Syntax.ag)
 module Helium.StaticAnalysis.Directives.TS_Syntax where
 
 import Helium.Syntax.UHA_Syntax

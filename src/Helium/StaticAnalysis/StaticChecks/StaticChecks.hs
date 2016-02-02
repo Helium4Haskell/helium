@@ -154,7 +154,7 @@ makeMap (tClass, decl) []                                    = [(decl, [tClass])
 -- Class methods must use the class variable, and may not put further restrictions on the class variable other then the ones defined in the class definition
 
 checkClassMethods :: Declaration -> Errors
-checkClassMethods (Declaration_Class r ctxt (SimpleType_SimpleType _ className vars) mDecls) =
+checkClassMethods (Declaration_Class _ ctxt (SimpleType_SimpleType _ className vars) mDecls) =
                   case mDecls of
                    (MaybeDeclarations_Nothing) -> []
                    (MaybeDeclarations_Just decls) -> let signatures = filter (\x -> case x of
@@ -171,16 +171,17 @@ checkClassMethods (Declaration_Class r ctxt (SimpleType_SimpleType _ className v
                                                        , (head vars) `notElem` (getTypeVariables [ty])
                                                        ]
 
+checkClassMethods _ = []  -- Nothing to check, no errors to return
 
 tooMuchConstraints :: ContextItems -> Names -> Type -> ContextItems
 tooMuchConstraints ctxt classVars (Type_Qualified _ ctxts _) = filter (disAllowedContext ctxt) $ filter (contains_classVar classVars) ctxts
   where
-   contains_classVar [classVar] (ContextItem_ContextItem _ n tys) = not $ classVar `notElem` (getTypeVariables tys)
+   contains_classVar [classVar] (ContextItem_ContextItem _ _ tys) = not $ classVar `notElem` (getTypeVariables tys)
    contains_classVar _          _                                 = error "Niet goed"
-   disAllowedContext ((ContextItem_ContextItem _ n _):ctxts) c@(ContextItem_ContextItem _ n2 _) = if (n == n2)
+   disAllowedContext ((ContextItem_ContextItem _ n _):ctxts') c@(ContextItem_ContextItem _ n2 _) = if (n == n2)
                                                                                                      then False
-                                                                                                     else disAllowedContext ctxts c
-   disAllowedContext []                                        _                                = True
+                                                                                                     else disAllowedContext ctxts' c
+   disAllowedContext []                                        _                                 = True
 tooMuchConstraints _    _         _                          = []
 
 -- Instance constraints must apply to instance type
@@ -242,9 +243,9 @@ isSimplePattern pattern =
 
 --This function inspects whether a type is legal as type  for declaring an instance on
 validInstanceType :: Type -> Bool
-validInstanceType (Type_Constructor r n) = True  -- A simple type is fine
+validInstanceType (Type_Constructor _ _) = True  -- A simple type is fine
 validInstanceType (Type_Parenthesized _ t) = validInstanceType t -- Just look inside
-validInstanceType (Type_Application r b ty tys) = (validApplyType ty tys) && (and $ map validInnerInstanceType tys) -- Some complicated stuff
+validInstanceType (Type_Application _ _ ty tys) = (validApplyType ty tys) && (and $ map validInnerInstanceType tys) -- Some complicated stuff
 validInstanceType _                      = False -- We don't like quantified and unbound types etc...
 
 validInnerInstanceType :: Type -> Bool
@@ -253,8 +254,8 @@ validInnerInstanceType (Type_Variable _ _) = True
 validInnerInstanceType _                   = False
 
 validApplyType :: Type -> Types -> Bool
-validApplyType (Type_Constructor r n) ts        = validInstanceConstrName n ts
-validAppleType _ _ = False
+validApplyType (Type_Constructor _ n) ts = validInstanceConstrName n ts
+validApplyType _                      _  =  False
 
 validInstanceConstrName :: Name -> Types -> Bool
 validInstanceConstrName (Name_Special _ _ s) ts = s == "(" ++ replicate (length ts - 1) ',' ++ ")" || s == "[]"
@@ -272,12 +273,12 @@ nonUniqueTypeVars []     = []
 classExists :: Name -> ClassMemberEnvironment -> (Maybe ClassDef)
 classExists n cm = case (M.lookup n cm) of
                     (Just m) -> Just (n, m)
-                    otherwise -> Nothing
+                    Nothing  -> Nothing
 
 instanceMembers :: MaybeDeclarations -> ClassDef -> Errors
 instanceMembers MaybeDeclarations_Nothing _ = []
 instanceMembers (MaybeDeclarations_Just decls) d = instanceMembers' decls d
- where n = concatMap nameOfDeclaration decls
+  -- where n = concatMap nameOfDeclaration decls
 
 instanceMembers' :: Declarations -> ClassDef -> Errors
 instanceMembers' (d:ds) c@(n, members) = let fn = head $ nameOfDeclaration d
@@ -290,11 +291,13 @@ instanceMembers' []     _       = []
 
 --Check all instance declarations, check if their superclass relations hold, return those predicates that fail to check.
 checkClassEnvironment :: OrderedTypeSynonyms -> ClassEnvironment -> [(Range, Instance)] -> [(Range, Predicate, Predicates)]
-checkClassEnvironment env cEnv instances = map (\(r, (i, ctxt)) -> let
+checkClassEnvironment env cEnv allInstances = map (\(r, (i, ctxt)) -> let
                                                                      proves = bySuperclass cEnv i
-                                                                     classEnv = foldr insertInst cEnv instances
-                                                                     in (r, i, filter  (\p -> not $ (entail env classEnv ctxt p)) proves)) instances
-insertInst (r, inst@((Predicate n _), _)) env = insertInstance n inst env
+                                                                     classEnv = foldr insertInst cEnv allInstances
+                                                                     in (r, i, filter  (\p -> not $ (entail env classEnv ctxt p)) proves)) allInstances
+
+insertInst :: (t, (Predicate, Predicates)) -> ClassEnvironment -> ClassEnvironment                                                                     
+insertInst (_, inst@((Predicate n _), _)) env = insertInstance n inst env
 
 makeClassEnvironmentErrors :: [(Range, Predicate, Predicates)] -> Errors
 makeClassEnvironmentErrors ((r, c, pr):insts) | pr == []  = makeClassEnvironmentErrors insts
@@ -303,14 +306,14 @@ makeClassEnvironmentErrors []                             = []
 
 
 overlappingInstances :: ClassEnvironment -> Errors
-overlappingInstances = M.foldWithKey (\k (_, i) b -> (overlappingInstances k i) ++ b) []
+overlappingInstances = M.foldWithKey (\k (_, i) b -> (overlappingInstances' k i) ++ b) []
    where
-    overlappingInstances :: String -> Instances -> Errors
-    overlappingInstances name insts = [OverlappingInstance name ty | 
+    overlappingInstances' :: String -> Instances -> Errors
+    overlappingInstances' name insts = [OverlappingInstance name ty | 
                             ty <- map head $ filter (\l -> length l > 1) $ group . sort $ map ((\(Predicate _ ty) -> fst $ leftSpine ty) . fst) insts]
 
 noTypeSynonymsInInstance :: OrderedTypeSynonyms -> [(Range, Instance)] -> Errors
-noTypeSynonymsInInstance typeSyn ((r, (p, ps)):insts) = if (typeSynonymInPredicate typeSyn p)
+noTypeSynonymsInInstance typeSyn ((r, (p, _)):insts)  = if (typeSynonymInPredicate typeSyn p)
                                                          then (TypeSynonymInInstance r p) : (noTypeSynonymsInInstance typeSyn insts)
                                                          else noTypeSynonymsInInstance typeSyn insts
 noTypeSynonymsInInstance _      []                    = []  
@@ -352,13 +355,10 @@ simplifyContext synonyms range intMap typescheme =
 
 
 noInstanceOrDefault :: Maybe ClassDef -> MaybeDeclarations -> Names
-noInstanceOrDefault (Just (_, members)) MaybeDeclarations_Nothing      = [ n | (n, d) <- members, case d of
-                                                                                                         (True) -> False
-                                                                                                         otherwise -> True ]
-noInstanceOrDefault (Just (_, members)) (MaybeDeclarations_Just decls) = [ n | (n, d) <- members, case d of
-                                                                                                         (True) -> False
-                                                                                                         otherwise -> True
-                                                                                                    , notElem n (map (head . nameOfDeclaration) decls) ]
+noInstanceOrDefault Nothing             _                              = []
+noInstanceOrDefault (Just (_, members)) MaybeDeclarations_Nothing      = [ n | (n, d) <- members, not d ]
+noInstanceOrDefault (Just (_, members)) (MaybeDeclarations_Just decls) = [ n | (n, d) <- members, not d
+                                                                             , notElem n (map (head . nameOfDeclaration) decls) ]
 
 
 
@@ -472,17 +472,22 @@ filterType []     res                                        = res
 
 --A type can be declared for multiple function names
 createClassDef1 :: Declaration -> ClassMembers
-createClassDef1 (Declaration_TypeSignature r names _) = [(n, False) | n <- names]
+createClassDef1 (Declaration_TypeSignature _ names _) = [(n, False) | n <- names]
 createClassDef1 _                                      = error "Error createClassDef1, filtering failed..."
 
 --A function declaration should be associated with a type in the class definition
 createClassDef2 :: Declarations -> ClassMembers -> ClassMembers
 createClassDef2 (d:ds) m = createClassDef2 ds $ createClassDef2' (nameOfDeclaration d) d m
 createClassDef2 []     m = m
+
+createClassDef2' :: Eq t1 => [t1] -> t -> [(t1, Bool)] -> [(t1, Bool)]
 createClassDef2' (n:ns) d m = createClassDef2' ns d $ createClassDef2'' n d m
 createClassDef2' []     _ m = m
+
+
+createClassDef2'' :: Eq t1 => t1 -> t -> [(t1, Bool)] -> [(t1, Bool)]
 createClassDef2'' n d (m@(n2, _):ms) | n == n2   = (n2, True):ms
-                                         | otherwise = m:(createClassDef2'' n d ms)
+                                     | otherwise = m:(createClassDef2'' n d ms)
 createClassDef2'' _ _ []                             = [] -- Should not happen but if it happens the error is reported by another check
 
 createClassDef :: Name -> MaybeDeclarations -> ClassMemberEnvironment
@@ -506,7 +511,7 @@ createInstance :: Range -> Name -> Type -> ContextItems -> (Range, Instance)
 createInstance r n ty ctx = (r, (makePredicate n ty , map (\(ContextItem_ContextItem _ n2 tys) -> makePredicate n2 (head tys)) ctx))
    where nameMap = makeNameMap (namesInTypes $ ty : (map (\(ContextItem_ContextItem _ _ tys) -> head tys) ctx))
          makePredicate :: Name -> Type -> Predicate
-         makePredicate n ty = Predicate (getNameName n) (makeTpFromType nameMap ty)
+         makePredicate nm typ = Predicate (getNameName nm) (makeTpFromType nameMap typ)
 
 
 
@@ -11687,23 +11692,23 @@ sem_MaybeDeclarations_Nothing  = T_MaybeDeclarations (return st89) where
       v88 = \ (T_MaybeDeclarations_vIn88 _lhsIallTypeConstructors _lhsIallValueConstructors _lhsIclassEnvironment _lhsIclassMemberEnv _lhsIcollectScopeInfos _lhsIcounter _lhsIkindErrors _lhsImiscerrors _lhsInamesInScope _lhsIoptions _lhsIorderedTypeSynonyms _lhsItypeConstructors _lhsIunboundNames _lhsIvalueConstructors _lhsIwarnings) -> ( let
          _lhsOdeclVarNames :: Names
          _lhsOdeclVarNames = rule1986  ()
-         _lhsOcollectInstances :: [(Name, Instance)]
-         _lhsOcollectInstances = rule1987  ()
-         _self = rule1988  ()
-         _lhsOself :: MaybeDeclarations
-         _lhsOself = rule1989 _self
-         _lhsOcollectScopeInfos :: [(ScopeInfo, Entity)]
-         _lhsOcollectScopeInfos = rule1990 _lhsIcollectScopeInfos
-         _lhsOcounter :: Int
-         _lhsOcounter = rule1991 _lhsIcounter
-         _lhsOkindErrors :: [Error]
-         _lhsOkindErrors = rule1992 _lhsIkindErrors
-         _lhsOmiscerrors :: [Error]
-         _lhsOmiscerrors = rule1993 _lhsImiscerrors
-         _lhsOnamesInScope :: Names
-         _lhsOnamesInScope = rule1994 _lhsInamesInScope
          _lhsOtypeSignatures :: [(Name,TpScheme)]
-         _lhsOtypeSignatures = rule1995  ()
+         _lhsOtypeSignatures = rule1987  ()
+         _lhsOcollectInstances :: [(Name, Instance)]
+         _lhsOcollectInstances = rule1988  ()
+         _self = rule1989  ()
+         _lhsOself :: MaybeDeclarations
+         _lhsOself = rule1990 _self
+         _lhsOcollectScopeInfos :: [(ScopeInfo, Entity)]
+         _lhsOcollectScopeInfos = rule1991 _lhsIcollectScopeInfos
+         _lhsOcounter :: Int
+         _lhsOcounter = rule1992 _lhsIcounter
+         _lhsOkindErrors :: [Error]
+         _lhsOkindErrors = rule1993 _lhsIkindErrors
+         _lhsOmiscerrors :: [Error]
+         _lhsOmiscerrors = rule1994 _lhsImiscerrors
+         _lhsOnamesInScope :: Names
+         _lhsOnamesInScope = rule1995 _lhsInamesInScope
          _lhsOunboundNames :: Names
          _lhsOunboundNames = rule1996 _lhsIunboundNames
          _lhsOwarnings :: [Warning]
@@ -11716,31 +11721,31 @@ sem_MaybeDeclarations_Nothing  = T_MaybeDeclarations (return st89) where
                                                                 []
    {-# INLINE rule1987 #-}
    rule1987 = \  (_ :: ()) ->
-     []
+                                                                  []
    {-# INLINE rule1988 #-}
    rule1988 = \  (_ :: ()) ->
-     MaybeDeclarations_Nothing
+     []
    {-# INLINE rule1989 #-}
-   rule1989 = \ _self ->
-     _self
+   rule1989 = \  (_ :: ()) ->
+     MaybeDeclarations_Nothing
    {-# INLINE rule1990 #-}
-   rule1990 = \ ((_lhsIcollectScopeInfos) :: [(ScopeInfo, Entity)]) ->
-     _lhsIcollectScopeInfos
+   rule1990 = \ _self ->
+     _self
    {-# INLINE rule1991 #-}
-   rule1991 = \ ((_lhsIcounter) :: Int) ->
-     _lhsIcounter
+   rule1991 = \ ((_lhsIcollectScopeInfos) :: [(ScopeInfo, Entity)]) ->
+     _lhsIcollectScopeInfos
    {-# INLINE rule1992 #-}
-   rule1992 = \ ((_lhsIkindErrors) :: [Error]) ->
-     _lhsIkindErrors
+   rule1992 = \ ((_lhsIcounter) :: Int) ->
+     _lhsIcounter
    {-# INLINE rule1993 #-}
-   rule1993 = \ ((_lhsImiscerrors) :: [Error]) ->
-     _lhsImiscerrors
+   rule1993 = \ ((_lhsIkindErrors) :: [Error]) ->
+     _lhsIkindErrors
    {-# INLINE rule1994 #-}
-   rule1994 = \ ((_lhsInamesInScope) :: Names) ->
-     _lhsInamesInScope
+   rule1994 = \ ((_lhsImiscerrors) :: [Error]) ->
+     _lhsImiscerrors
    {-# INLINE rule1995 #-}
-   rule1995 = \  (_ :: ()) ->
-     error "missing rule: MaybeDeclarations.Nothing.lhs.typeSignatures"
+   rule1995 = \ ((_lhsInamesInScope) :: Names) ->
+     _lhsInamesInScope
    {-# INLINE rule1996 #-}
    rule1996 = \ ((_lhsIunboundNames) :: Names) ->
      _lhsIunboundNames

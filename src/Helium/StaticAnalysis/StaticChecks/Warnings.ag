@@ -178,12 +178,9 @@ SEM Declaration
 {
 
 noInstanceOrDefault :: Maybe ClassDef -> MaybeDeclarations -> Names
-noInstanceOrDefault (Just (_, members)) MaybeDeclarations_Nothing      = [ n | (n, d) <- members, case d of
-                                                                                                         (True) -> False
-                                                                                                         otherwise -> True ]
-noInstanceOrDefault (Just (_, members)) (MaybeDeclarations_Just decls) = [ n | (n, d) <- members, case d of
-                                                                                                         (True) -> False
-                                                                                                         otherwise -> True
-                                                                                                    , notElem n (map (head . nameOfDeclaration) decls) ]
+noInstanceOrDefault Nothing             _                              = []
+noInstanceOrDefault (Just (_, members)) MaybeDeclarations_Nothing      = [ n | (n, d) <- members, not d ]
+noInstanceOrDefault (Just (_, members)) (MaybeDeclarations_Just decls) = [ n | (n, d) <- members, not d
+                                                                             , notElem n (map (head . nameOfDeclaration) decls) ]
 
 }

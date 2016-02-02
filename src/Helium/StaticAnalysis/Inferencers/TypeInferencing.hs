@@ -582,8 +582,8 @@ typeInferencing :: [Option] -> ImportEnvironment -> Module
                       -> (IO (), DictionaryEnvironment, TypeEnvironment, TypeErrors, Warnings)
 typeInferencing options importEnv module_ =
    let res = wrap_Module (sem_Module module_) Inh_Module {
-       	         importEnvironment_Inh_Module = importEnv,
-		 options_Inh_Module = options }
+                 importEnvironment_Inh_Module = importEnv,
+                 options_Inh_Module = options }
        debugIO = putStrLn (show $ logEntries_Syn_Module res)
    in (debugIO, dictionaryEnvironment_Syn_Module res, toplevelTypes_Syn_Module res, typeErrors_Syn_Module res, warnings_Syn_Module res)
 
@@ -591,8 +591,8 @@ proximaTypeInferencing :: [Option] -> ImportEnvironment -> Module
                       -> (TypeErrors, Warnings, TypeEnvironment, [(Range, TpScheme)])  
 proximaTypeInferencing options importEnv module_ =
    let res = wrap_Module (sem_Module module_) Inh_Module {
-       	         importEnvironment_Inh_Module = importEnv,
-		 options_Inh_Module = options }
+                 importEnvironment_Inh_Module = importEnv,
+                 options_Inh_Module = options }
        localTypeSchemes = typeSchemesInInfoTree (substitutionFromResult $ solveResult_Syn_Module res)
                                                 (qualifiersFromResult $ solveResult_Syn_Module res) 
                                                 (infoTree_Syn_Module res)

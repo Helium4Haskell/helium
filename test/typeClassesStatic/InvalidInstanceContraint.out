@@ -1,3 +1,4 @@
+Prelude is up to date
 Compiling typeClassesStatic/InvalidInstanceContraint.hs
 (3,10): Context item: Eq with variable: b is not valid for instance of: SomeClass.
   Hint: You must use the variable from the context in the instance type.

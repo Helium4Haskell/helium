@@ -306,7 +306,7 @@ makeMap (tClass, decl) []                                    = [(decl, [tClass])
 -- Class methods must use the class variable, and may not put further restrictions on the class variable other then the ones defined in the class definition
 
 checkClassMethods :: Declaration -> Errors
-checkClassMethods (Declaration_Class r ctxt (SimpleType_SimpleType _ className vars) mDecls) =
+checkClassMethods (Declaration_Class _ ctxt (SimpleType_SimpleType _ className vars) mDecls) =
                   case mDecls of
                    (MaybeDeclarations_Nothing) -> []
                    (MaybeDeclarations_Just decls) -> let signatures = filter (\x -> case x of
@@ -323,16 +323,17 @@ checkClassMethods (Declaration_Class r ctxt (SimpleType_SimpleType _ className v
                                                        , (head vars) `notElem` (getTypeVariables [ty])
                                                        ]
 
+checkClassMethods _ = []  -- Nothing to check, no errors to return
 
 tooMuchConstraints :: ContextItems -> Names -> Type -> ContextItems
 tooMuchConstraints ctxt classVars (Type_Qualified _ ctxts _) = filter (disAllowedContext ctxt) $ filter (contains_classVar classVars) ctxts
   where
-   contains_classVar [classVar] (ContextItem_ContextItem _ n tys) = not $ classVar `notElem` (getTypeVariables tys)
+   contains_classVar [classVar] (ContextItem_ContextItem _ _ tys) = not $ classVar `notElem` (getTypeVariables tys)
    contains_classVar _          _                                 = error "Niet goed"
-   disAllowedContext ((ContextItem_ContextItem _ n _):ctxts) c@(ContextItem_ContextItem _ n2 _) = if (n == n2)
+   disAllowedContext ((ContextItem_ContextItem _ n _):ctxts') c@(ContextItem_ContextItem _ n2 _) = if (n == n2)
                                                                                                      then False
-                                                                                                     else disAllowedContext ctxts c
-   disAllowedContext []                                        _                                = True
+                                                                                                     else disAllowedContext ctxts' c
+   disAllowedContext []                                        _                                 = True
 tooMuchConstraints _    _         _                          = []
 
 -- Instance constraints must apply to instance type
@@ -436,9 +437,9 @@ isSimplePattern pattern =
 
 --This function inspects whether a type is legal as type  for declaring an instance on
 validInstanceType :: Type -> Bool
-validInstanceType (Type_Constructor r n) = True  -- A simple type is fine
+validInstanceType (Type_Constructor _ _) = True  -- A simple type is fine
 validInstanceType (Type_Parenthesized _ t) = validInstanceType t -- Just look inside
-validInstanceType (Type_Application r b ty tys) = (validApplyType ty tys) && (and $ map validInnerInstanceType tys) -- Some complicated stuff
+validInstanceType (Type_Application _ _ ty tys) = (validApplyType ty tys) && (and $ map validInnerInstanceType tys) -- Some complicated stuff
 validInstanceType _                      = False -- We don't like quantified and unbound types etc...
 
 validInnerInstanceType :: Type -> Bool
@@ -447,8 +448,8 @@ validInnerInstanceType (Type_Variable _ _) = True
 validInnerInstanceType _                   = False
 
 validApplyType :: Type -> Types -> Bool
-validApplyType (Type_Constructor r n) ts        = validInstanceConstrName n ts
-validAppleType _ _ = False
+validApplyType (Type_Constructor _ n) ts = validInstanceConstrName n ts
+validApplyType _                      _  =  False
 
 validInstanceConstrName :: Name -> Types -> Bool
 validInstanceConstrName (Name_Special _ _ s) ts = s == "(" ++ replicate (length ts - 1) ',' ++ ")" || s == "[]"
@@ -466,12 +467,12 @@ nonUniqueTypeVars []     = []
 classExists :: Name -> ClassMemberEnvironment -> (Maybe ClassDef)
 classExists n cm = case (M.lookup n cm) of
                     (Just m) -> Just (n, m)
-                    otherwise -> Nothing
+                    Nothing  -> Nothing
 
 instanceMembers :: MaybeDeclarations -> ClassDef -> Errors
 instanceMembers MaybeDeclarations_Nothing _ = []
 instanceMembers (MaybeDeclarations_Just decls) d = instanceMembers' decls d
- where n = concatMap nameOfDeclaration decls
+  -- where n = concatMap nameOfDeclaration decls
 
 instanceMembers' :: Declarations -> ClassDef -> Errors
 instanceMembers' (d:ds) c@(n, members) = let fn = head $ nameOfDeclaration d
@@ -484,11 +485,13 @@ instanceMembers' []     _       = []
 
 --Check all instance declarations, check if their superclass relations hold, return those predicates that fail to check.
 checkClassEnvironment :: OrderedTypeSynonyms -> ClassEnvironment -> [(Range, Instance)] -> [(Range, Predicate, Predicates)]
-checkClassEnvironment env cEnv instances = map (\(r, (i, ctxt)) -> let
+checkClassEnvironment env cEnv allInstances = map (\(r, (i, ctxt)) -> let
                                                                      proves = bySuperclass cEnv i
-                                                                     classEnv = foldr insertInst cEnv instances
-                                                                     in (r, i, filter  (\p -> not $ (entail env classEnv ctxt p)) proves)) instances
-insertInst (r, inst@((Predicate n _), _)) env = insertInstance n inst env
+                                                                     classEnv = foldr insertInst cEnv allInstances
+                                                                     in (r, i, filter  (\p -> not $ (entail env classEnv ctxt p)) proves)) allInstances
+
+insertInst :: (t, (Predicate, Predicates)) -> ClassEnvironment -> ClassEnvironment                                                                     
+insertInst (_, inst@((Predicate n _), _)) env = insertInstance n inst env
 
 makeClassEnvironmentErrors :: [(Range, Predicate, Predicates)] -> Errors
 makeClassEnvironmentErrors ((r, c, pr):insts) | pr == []  = makeClassEnvironmentErrors insts
@@ -497,14 +500,14 @@ makeClassEnvironmentErrors []                             = []
 
 
 overlappingInstances :: ClassEnvironment -> Errors
-overlappingInstances = M.foldWithKey (\k (_, i) b -> (overlappingInstances k i) ++ b) []
+overlappingInstances = M.foldWithKey (\k (_, i) b -> (overlappingInstances' k i) ++ b) []
    where
-    overlappingInstances :: String -> Instances -> Errors
-    overlappingInstances name insts = [OverlappingInstance name ty | 
+    overlappingInstances' :: String -> Instances -> Errors
+    overlappingInstances' name insts = [OverlappingInstance name ty | 
                             ty <- map head $ filter (\l -> length l > 1) $ group . sort $ map ((\(Predicate _ ty) -> fst $ leftSpine ty) . fst) insts]
 
 noTypeSynonymsInInstance :: OrderedTypeSynonyms -> [(Range, Instance)] -> Errors
-noTypeSynonymsInInstance typeSyn ((r, (p, ps)):insts) = if (typeSynonymInPredicate typeSyn p)
+noTypeSynonymsInInstance typeSyn ((r, (p, _)):insts)  = if (typeSynonymInPredicate typeSyn p)
                                                          then (TypeSynonymInInstance r p) : (noTypeSynonymsInInstance typeSyn insts)
                                                          else noTypeSynonymsInInstance typeSyn insts
 noTypeSynonymsInInstance _      []                    = []  
@@ -514,3 +517,4 @@ typeSynonymInPredicate typeSyn (Predicate _ ty) = case (expandToplevelTC typeSyn
                                                     Nothing -> False
                                                     _       -> True
 }
+

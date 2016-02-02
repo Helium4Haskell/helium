@@ -19,7 +19,7 @@ ATTR Declarations Declaration Expressions Expression Statements Statement
         | dictionaryEnvironment : DictionaryEnvironment          
         | 
         ]
-	
+
 SEM Module
   | Module
        -- return an empty dictionary environment for the non-overloading setting
@@ -29,7 +29,7 @@ SEM Module
        body . dictionaryEnvironment = emptyDictionaryEnvironment
             . classEnvironment      = @classEnv
             . availablePredicates   = []
-	    
+    
 SEM Declaration   
  
   | FunctionBindings

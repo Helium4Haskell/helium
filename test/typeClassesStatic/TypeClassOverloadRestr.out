@@ -1,3 +1,4 @@
+Prelude is up to date
 Compiling typeClassesStatic/TypeClassOverloadRestr.hs
 (5,3): Class members may not have names occoring at top level, in class:  SomeClass.
   Hint: Name: someFunction also used at top level.

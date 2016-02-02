@@ -1,3 +1,4 @@
+Prelude is up to date
 Compiling typeClassesStatic/ClassVariableNotInMemberType.hs
 (2,2): Class method signature must mention class variable: a in class: ClassA.
   Hint: The type signatures of the methods: function must mention type

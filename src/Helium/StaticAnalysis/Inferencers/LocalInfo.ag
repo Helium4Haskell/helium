@@ -38,7 +38,7 @@ SEM RightHandSide
                                     , assignedType = Nothing
                                     , monos = @lhs.monos
                                     }
-				    
+			    
 ---------------------------------------------------------------------------------------
 -- Declaration
 

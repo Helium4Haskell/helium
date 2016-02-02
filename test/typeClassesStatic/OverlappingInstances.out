@@ -1,3 +1,4 @@
+Prelude is up to date
 Compiling typeClassesStatic/OverlappingInstances.hs
 (1,1): Overlapping instances found for class: "SomeClass" for type constructor: [].
 (5,10): Invalid instance type for: SomeClass.
