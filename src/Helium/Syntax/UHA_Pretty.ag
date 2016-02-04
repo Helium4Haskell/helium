@@ -45,6 +45,12 @@ commas :: [Doc] -> Doc
 commas docs =
     hcat (punctuate (comma <+> empty) docs)
 
+-- Shortcut for printing possibly empty contexts:
+contextPP :: [Doc] -> Doc
+contextPP []  = empty
+contextPP [c] = c <+> text "=>" <+> empty
+contextPP cs  = tupled cs <+> text "=>" <+> empty
+
 utrechtList :: Doc -> Doc -> [Doc] -> Doc
 utrechtList _     _   []     = empty
 utrechtList start end (d:ds) =
@@ -254,10 +260,7 @@ SEM Declaration                                  {- *** -}
                                     ++  [@derivingDoc]
                                     )
                             )
-                        loc.contextDoc   = case @context.text of
-                                            []  -> empty
-                                            [x] -> x <+> text "=>" <+> empty
-                                            xs  -> tupled xs <+> text "=>" <+> empty
+                        loc.contextDoc   = contextPP @context.text
                         loc.derivingDoc =
                             if null @derivings.text then
                                 empty
@@ -280,10 +283,7 @@ SEM Declaration                                  {- *** -}
                                     @constructor.text
                                     <>
                                     @derivingDoc
-                        loc.contextDoc   = case @context.text of
-                                            []  -> empty
-                                            [x] -> x <+> text "=>" <+> empty
-                                            xs  -> tupled xs <+> text "=>" <+> empty
+                        loc.contextDoc   = contextPP @context.text
                         loc.derivingDoc =
                             if null @derivings.text then
                                 empty
@@ -297,12 +297,24 @@ SEM Declaration                                  {- *** -}
     --  simpletype               : SimpleType
     --  constructor              : Constructor  -- has only one field, no strictness
     --  derivings                : Names
-    | Class             loc.text = text "{- !!! class decl -}"
+    | Class             loc.text = (PPrint.empty 
+                                        <$> text "class" <+> contextPP @context.text <+> @simpletype.text
+                                            <>  maybe
+                                                   empty
+                                                   (\ds -> PPrint.empty <$> indent 4 (text "where" <$> indent 4 (vcat ds)))
+                                                   @where.text
+                                   )
     --  range                    : Range
     --  context                  : ContextItems -- is a "simple" context
     --  simpletype               : SimpleType   -- Haskell 98 allows only one variable
     --  where                    : MaybeDeclarations -- cannot have everything
-    | Instance          loc.text = text "{- !!! instance decl -}"
+    | Instance          loc.text = (PPrint.empty 
+                                        <$> text "instance" <+> contextPP @context.text <+> @name.text <+> PPrint.list @types.text
+                                            <>  maybe
+                                                   empty
+                                                   (\ds -> PPrint.empty <$> indent 4 (text "where" <$> indent 4 (vcat ds)))
+                                                   @where.text
+                                   )
     --  range                    : Range
     --  context                  : ContextItems -- is a "simple" context
     --  name                     : Name
@@ -379,9 +391,7 @@ SEM Type                                         {- *** -}
     | Constructor              loc.text = @name.text              {- *** -}
     --  range                    : Range
     --  name                     : Name
-    | Qualified                loc.text = case @context.text of
-                                            [ct] -> ct <+> text "=>" <+> @type.text
-                                            cts -> parens (commas cts) <+> text "=>" <+> @type.text
+    | Qualified                loc.text = contextPP @context.text <+> @type.text
     --  range                    : Range
     --  context                  : ContextItems
     --  type                     : Type

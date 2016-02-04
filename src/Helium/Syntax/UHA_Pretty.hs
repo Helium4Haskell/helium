@@ -46,6 +46,12 @@ commas :: [Doc] -> Doc
 commas docs =
     hcat (punctuate (comma <+> empty) docs)
 
+-- Shortcut for printing possibly empty contexts:
+contextPP :: [Doc] -> Doc
+contextPP []  = empty
+contextPP [c] = c <+> text "=>" <+> empty
+contextPP cs  = tupled cs <+> text "=>" <+> empty
+
 utrechtList :: Doc -> Doc -> [Doc] -> Doc
 utrechtList _     _   []     = empty
 utrechtList start end (d:ds) =
@@ -867,10 +873,7 @@ sem_Declaration_Data arg_range_ arg_context_ arg_simpletype_ arg_constructors_ a
                               )
    {-# INLINE rule34 #-}
    rule34 = \ ((_contextItext) ::  [       Doc ] ) ->
-                                             case _contextItext of
-                                              []  -> empty
-                                              [x] -> x <+> text "=>" <+> empty
-                                              xs  -> tupled xs <+> text "=>" <+> empty
+                                             contextPP _contextItext
    {-# INLINE rule35 #-}
    rule35 = \ ((_derivingsItext) ::  [       Doc ] ) ->
                               if null _derivingsItext then
@@ -921,10 +924,7 @@ sem_Declaration_Newtype arg_range_ arg_context_ arg_simpletype_ arg_constructor_
                                       _derivingDoc
    {-# INLINE rule38 #-}
    rule38 = \ ((_contextItext) ::  [       Doc ] ) ->
-                                             case _contextItext of
-                                              []  -> empty
-                                              [x] -> x <+> text "=>" <+> empty
-                                              xs  -> tupled xs <+> text "=>" <+> empty
+                                             contextPP _contextItext
    {-# INLINE rule39 #-}
    rule39 = \ ((_derivingsItext) ::  [       Doc ] ) ->
                               if null _derivingsItext then
@@ -952,15 +952,21 @@ sem_Declaration_Class arg_range_ arg_context_ arg_simpletype_ arg_where_ = T_Dec
          (T_ContextItems_vOut25 _contextItext) = inv_ContextItems_s26 _contextX26 (T_ContextItems_vIn25 )
          (T_SimpleType_vOut151 _simpletypeItext) = inv_SimpleType_s152 _simpletypeX152 (T_SimpleType_vIn151 )
          (T_MaybeDeclarations_vOut88 _whereItext) = inv_MaybeDeclarations_s89 _whereX89 (T_MaybeDeclarations_vIn88 )
-         _text = rule41  ()
+         _text = rule41 _contextItext _simpletypeItext _whereItext
          _lhsOtext :: Doc
          _lhsOtext = rule42 _text
          __result_ = T_Declaration_vOut28 _lhsOtext
          in __result_ )
      in C_Declaration_s29 v28
    {-# INLINE rule41 #-}
-   rule41 = \  (_ :: ()) ->
-                                     text "{- !!! class decl -}"
+   rule41 = \ ((_contextItext) ::  [       Doc ] ) ((_simpletypeItext) :: Doc) ((_whereItext) ::  Maybe [       Doc ] ) ->
+                                     (PPrint.empty
+                                          <$> text "class" <+> contextPP _contextItext <+> _simpletypeItext
+                                              <>  maybe
+                                                     empty
+                                                     (\ds -> PPrint.empty <$> indent 4 (text "where" <$> indent 4 (vcat ds)))
+                                                     _whereItext
+                                     )
    {-# INLINE rule42 #-}
    rule42 = \ _text ->
      _text
@@ -981,15 +987,21 @@ sem_Declaration_Instance arg_range_ arg_context_ arg_name_ arg_types_ arg_where_
          (T_Name_vOut112 _nameIisIdentifier _nameIisOperator _nameIisSpecial _nameItext) = inv_Name_s113 _nameX113 (T_Name_vIn112 )
          (T_Types_vOut166 _typesItext) = inv_Types_s167 _typesX167 (T_Types_vIn166 )
          (T_MaybeDeclarations_vOut88 _whereItext) = inv_MaybeDeclarations_s89 _whereX89 (T_MaybeDeclarations_vIn88 )
-         _text = rule43  ()
+         _text = rule43 _contextItext _nameItext _typesItext _whereItext
          _lhsOtext :: Doc
          _lhsOtext = rule44 _text
          __result_ = T_Declaration_vOut28 _lhsOtext
          in __result_ )
      in C_Declaration_s29 v28
    {-# INLINE rule43 #-}
-   rule43 = \  (_ :: ()) ->
-                                     text "{- !!! instance decl -}"
+   rule43 = \ ((_contextItext) ::  [       Doc ] ) ((_nameItext) :: Doc) ((_typesItext) ::  [       Doc ] ) ((_whereItext) ::  Maybe [       Doc ] ) ->
+                                     (PPrint.empty
+                                          <$> text "instance" <+> contextPP _contextItext <+> _nameItext <+> PPrint.list _typesItext
+                                              <>  maybe
+                                                     empty
+                                                     (\ds -> PPrint.empty <$> indent 4 (text "where" <$> indent 4 (vcat ds)))
+                                                     _whereItext
+                                     )
    {-# INLINE rule44 #-}
    rule44 = \ _text ->
      _text
@@ -5591,9 +5603,7 @@ sem_Type_Qualified arg_range_ arg_context_ arg_type_ = T_Type (return st164) whe
      in C_Type_s164 v163
    {-# INLINE rule302 #-}
    rule302 = \ ((_contextItext) ::  [       Doc ] ) ((_typeItext) :: Doc) ->
-                                            case _contextItext of
-                                              [ct] -> ct <+> text "=>" <+> _typeItext
-                                              cts -> parens (commas cts) <+> text "=>" <+> _typeItext
+                                            contextPP _contextItext <+> _typeItext
    {-# INLINE rule303 #-}
    rule303 = \ _text ->
      _text

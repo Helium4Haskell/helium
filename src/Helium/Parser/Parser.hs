@@ -193,10 +193,12 @@ cdecls =
         lexCLASS
         ct <- option [] (try $ do {c <- scontext ; lexDARROW ; return c} )
         st <- simpleType
-        ds <- option MaybeDeclarations_Nothing (try $ do lexWHERE
-                                                         d <-  cdecls
-                                                         
-                                                         return (MaybeDeclarations_Just d))
+        ds <- option MaybeDeclarations_Nothing 
+                     (try $ do lexWHERE
+                               d <-  option MaybeDeclarations_Nothing (try $ do  
+                                                                               cds <- cdecls 
+                                                                               return (MaybeDeclarations_Just cds))                                                     
+                               return d)
         return $ \r -> Declaration_Class r ct st ds
     <|>
 -- Declaration_Instance (Range) (ContextItems) (Name) (Types) (MaybeDeclarations)
