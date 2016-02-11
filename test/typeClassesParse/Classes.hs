@@ -2,7 +2,9 @@ class LegeClass a
 
 class IdentityClass a where
      identiteit :: a -> a
-     
+
+class NogEenLegeClass a where
+
 class LegeClass a => MetContext a
 
 class IdentityMetDefault a where

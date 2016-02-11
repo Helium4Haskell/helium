@@ -6,10 +6,31 @@
     Portability :  portable
 -}
 
+{- We need to address the following issue:
+     * all where blocks can be empty
+     * it is empty when the next token is indented less or equally compared to 
+       first token on the line that contains the where
+     * unless the where is where associated with a module
+   The fix: when dealing with the where, check for the next token. If it is indented
+   insufficiently open and close the bracket, otherwise open as usual. This ONLY
+   APPLIES TO WHERE, not to let, do, etc..
+   It may be that the trick of setting the module column position to zero will 
+   then work, in the sense that that is not the problem.
+
+   Verify workings with helium -b -u LegeWhere.hs
+-}
+
 module Helium.Parser.LayoutRule(layout) where
 
+--import Debug.Trace
 import Helium.Parser.LexerToken(Token, Lexeme(..), lexemeLength)
 import Text.ParserCombinators.Parsec.Pos
+
+--trS :: Show a => a -> b -> b
+--trS = traceShow
+
+trc :: String -> a -> a
+trc _ = id
 
 layout :: [Token] -> [Token]
 layout [] = []
@@ -99,12 +120,36 @@ addContext prevToken cs
         if lexeme2 == LexSpecial '{' then
             lay prevToken cs (t2:ts)
         else
+          let 
+            (prevpos, _) = prevToken
+            poscol = sourceColumn pos2
+          in
             (pos2, LexInsertedOpenBrace) :
-            lay prevToken 
-                (CtxLay (sourceColumn pos2) (keyword == "let") : cs) 
-                (t2:ts)
+            (if (keyword == "where" && isEmptyNonModuleWhere cs poscol) then
+              (pos2, LexInsertedCloseBrace) : lay prevToken cs (t2:ts) -- Close an empty where block
+            else
+              lay (trc ("Anchor lexeme: " ++ show lexeme2 ++ "Poscol: " ++ 
+                        show poscol ++ "PrevPos:" ++ show prevpos
+                        ++ "\nCs: " ++ show cs) prevToken)
+                 -- 2nd arg to CtxLay remembers the start location of this line,
+                 -- which FOLLOWS the structuring element. The following lines
+                 -- that are indented with the exact same amount belong to this block.
+                  (CtxLay poscol (keyword == "let") : cs) 
+                 (t2:ts)
+              )           
     | otherwise = 
         lay prevToken cs (t2:ts)
+        -- isEmptyNonModuleWhere decides for the case that when we have a where clause that 
+        -- does not belong to a module scope where, then whatever
+        -- follows and is expected to belong to it, must be indented. 
+        -- The check that we are dealing with a "where" has already been performed
+       where
+          isEmptyNonModuleWhere :: [Context] -> Int -> Bool
+          isEmptyNonModuleWhere []     _      = False
+          isEmptyNonModuleWhere (c:cs') poscol =
+            case c of 
+              CtxBrace     -> isEmptyNonModuleWhere cs' poscol
+              CtxLay col _ -> poscol <= col 
 
 addContext prevToken cs (_:ts) =
     lay prevToken cs ts

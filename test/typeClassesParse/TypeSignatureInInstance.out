@@ -1,6 +1,6 @@
 Prelude is up to date
 Compiling typeClassesParse/TypeSignatureInInstance.hs
-(4,24): Syntax error: 
+(5,7): Syntax error:
     unexpected '::'
-    expecting operator, pattern, '=', '|', next in block (based on layout), ';' or end of block (based on layout)
+    expecting operator, pattern, '=' or '|'
 Compilation failed with 1 error
