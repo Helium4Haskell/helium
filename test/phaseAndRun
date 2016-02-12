@@ -1,0 +1,2 @@
+../dist/build/Helium/helium -b -$2  --disable-logging --overloading --basepath=../lib/ $1 && lvmrun -P../lib/ -P${1%/*} -h7m $1
+rm -f ${1%/*}/*.lvm

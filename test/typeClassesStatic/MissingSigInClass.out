@@ -1,0 +1,4 @@
+Prelude is up to date
+Compiling typeClassesStatic/MissingSigInClass.hs
+(4,4): Function definition for "y" without a type signature is not allowed in a Class 
+Compilation failed with 1 error

@@ -1,0 +1,6 @@
+Prelude is up to date
+Compiling typeClassesParse/ErrIndent.hs
+(8,3): Syntax error: 
+    unexpected keyword 'class'
+    expecting next in block (based on layout), ';' or end of block (based on layout)
+Compilation failed with 1 error

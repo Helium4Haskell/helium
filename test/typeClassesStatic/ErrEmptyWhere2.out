@@ -1,0 +1,4 @@
+Prelude is up to date
+Compiling typeClassesStatic/ErrEmptyWhere2.hs
+(4,1): Type signature for "y" without a definition 
+Compilation failed with 1 error
