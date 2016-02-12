@@ -1,5 +1,0 @@
-Prelude is up to date
-Compiling EmptyWhere.hs
-(1,1): Warning: Missing type signature: g :: Int
-(4,1): Warning: Missing type signature: d :: Int
-Compilation successful with 2 warnings
