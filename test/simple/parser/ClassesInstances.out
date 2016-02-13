@@ -1,0 +1,8 @@
+Prelude is up to date
+Compiling parser/ClassesInstances.hs
+(1,1): Class and instance declarations are not allowed in non-overloading mode
+(3,1): Class and instance declarations are not allowed in non-overloading mode
+(6,1): Class and instance declarations are not allowed in non-overloading mode
+(8,1): Class and instance declarations are not allowed in non-overloading mode
+(10,1): Class and instance declarations are not allowed in non-overloading mode
+(14,1): Class and instance declarations are not allowed in non-overloading mode

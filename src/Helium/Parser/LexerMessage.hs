@@ -12,6 +12,7 @@ module Helium.Parser.LexerMessage
     , LexerWarning(..)
     , LexerWarningInfo(..)
     , keepOneTabWarning
+    , sourcePosToRange
     , isLooksLikeFloatWarningInfo
     ) where
 

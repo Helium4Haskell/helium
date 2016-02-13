@@ -10,6 +10,7 @@ module Helium.Parser.Lexer
     ( lexer, strategiesLexer
     , Token, Lexeme(..)
     , lexemeLength
+    , checkTokenStreamForClassOrInstance
     , module Helium.Parser.LexerMessage
     ) where
 
@@ -18,6 +19,7 @@ import Helium.Main.Args
 import Helium.Parser.LexerMonad
 import Helium.Parser.LexerMessage
 import Helium.Parser.LexerToken
+import Helium.StaticAnalysis.Messages.StaticErrors
 import Text.ParserCombinators.Parsec.Pos
 import Helium.Utils.Utils(internalError, hole)
 
@@ -383,3 +385,11 @@ reserveStrategyNames =
 
 strategiesKeywords :: [String]
 strategiesKeywords = [ "phase", "constraints", "siblings" ]
+
+ 
+checkTokenStreamForClassOrInstance :: [Token] -> Errors          
+checkTokenStreamForClassOrInstance tokens = concatMap f tokens  
+  where f (pos, LexKeyword "class")    = [ClassesAndInstancesNotAllowed (sourcePosToRange pos)] 
+        f (pos, LexKeyword "instance") = [ClassesAndInstancesNotAllowed (sourcePosToRange pos)]
+        f _ = []
+

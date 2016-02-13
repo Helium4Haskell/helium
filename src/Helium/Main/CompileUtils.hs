@@ -118,4 +118,4 @@ resolve path name =
        case maybeFullName of
            Just fullName -> return (Just fullName)
            Nothing       -> searchPathMaybe path ".lvm" name
-           
+

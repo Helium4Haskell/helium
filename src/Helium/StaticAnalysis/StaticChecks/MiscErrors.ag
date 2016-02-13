@@ -41,13 +41,13 @@ SEM Body
 -- Declaration
 
 SEM Declaration
-    | Class              lhs . miscerrors = @lhs.miscerrors ++ (checkClassFunctions @loc.declVarNames @loc.types) ++ @contextErrors
+    | Class              lhs . miscerrors = @lhs.miscerrors ++ @where.miscerrors ++ (checkClassFunctions @loc.declVarNames @loc.types) ++ @contextErrors
                          loc . types = @where.typeSignatures
                          loc . declVarNames = @where.declVarNames
                          loc . typeVars = @simpletype.self
                          loc . contextVars = @context.typeVariables
                          loc . contextErrors = checkClassContext @typeVars @contextVars  ++ checkClassMethods @self
-    | Instance           lhs . miscerrors = @lhs.miscerrors ++ @loc.uniqueTypeVarErrors ++ @loc.undefinedClassErrors ++ @loc.validInstanceType ++ @loc.contextErrors
+    | Instance           lhs . miscerrors = @lhs.miscerrors ++ @where.miscerrors ++ @loc.uniqueTypeVarErrors ++ @loc.undefinedClassErrors ++ @loc.validInstanceType ++ @loc.contextErrors
                          loc . foundClasses =[]
                          loc . uniqueTypeVarErrors = if (length  (nonUniqueTypeVars @types.typevariables) > 0)
                                                        then [ DefNonUniqueInstanceVars @name.self (nonUniqueTypeVars @types.typevariables) ]

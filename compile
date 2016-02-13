@@ -1,0 +1,4 @@
+cd src
+make
+cd ..
+cabal install --disable-documentation

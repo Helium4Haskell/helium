@@ -61,7 +61,8 @@ data Error  = NoFunDef Entity Name {-names in scope-}Names
             | NonDerivableClass Name
             | CannotDerive Name Tps
             | TupleTooBig Range
-
+            | ClassesAndInstancesNotAllowed Range
+            
 instance HasMessage Error where
    getMessage x = let (oneliner, hints) = showError x
                   in [MessageOneLiner oneliner, MessageHints "Hint" hints]
@@ -103,7 +104,8 @@ instance HasMessage Error where
       NonDerivableClass name      -> [getNameRange name]
       CannotDerive name _         -> [getNameRange name]
       TupleTooBig r               -> [r]
-
+      ClassesAndInstancesNotAllowed r -> [r]
+      
 sensiblySimilar :: Name -> Names -> [Name]   
 sensiblySimilar name inScope = 
    let
@@ -368,6 +370,11 @@ showError anError = case anError of
       ( MessageString "Tuples can have up to 10 elements"
       , []
       )
+      
+   ClassesAndInstancesNotAllowed _ ->
+      ( MessageString "Class and instance declarations are not allowed in non-overloading mode"
+      , []
+      )
 
    _ -> internalError "StaticErrors.hs" "showError" "unknown type of Error"
 
@@ -441,7 +448,8 @@ errorLogCode anError = case anError of
           DuplicateClassName _                    -> "dc"
           DuplicatedClassImported _               -> "di"
           OverlappingInstance _ _                 -> "oi"
-          MissingSuperClass _ _ _                 -> "ms"     
+          MissingSuperClass _ _ _                 -> "ms"
+          ClassesAndInstancesNotAllowed _         -> "ci"
    where code entity = fromMaybe "??"
                      . lookup entity 
                      $ [ (TypeSignature    ,"ts"), (TypeVariable         ,"tv"), (TypeConstructor,"tc")

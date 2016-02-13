@@ -3566,7 +3566,7 @@ sem_Declaration_Class arg_range_ arg_context_ arg_simpletype_ arg_where_ = T_Dec
          (T_MaybeDeclarations_vOut88 _whereIcollectInstances _whereIcollectScopeInfos _whereIcounter _whereIdeclVarNames _whereIkindErrors _whereImiscerrors _whereInamesInScope _whereIself _whereItypeSignatures _whereIunboundNames _whereIwarnings) = inv_MaybeDeclarations_s89 _whereX89 (T_MaybeDeclarations_vIn88 _whereOallTypeConstructors _whereOallValueConstructors _whereOclassEnvironment _whereOclassMemberEnv _whereOcollectScopeInfos _whereOcounter _whereOkindErrors _whereOmiscerrors _whereOnamesInScope _whereOoptions _whereOorderedTypeSynonyms _whereOtypeConstructors _whereOunboundNames _whereOvalueConstructors _whereOwarnings)
          (_assumptions,_constraints,_unboundNames) = rule523  ()
          _lhsOmiscerrors :: [Error]
-         _lhsOmiscerrors = rule524 _contextErrors _declVarNames _lhsImiscerrors _types
+         _lhsOmiscerrors = rule524 _contextErrors _declVarNames _lhsImiscerrors _types _whereImiscerrors
          _types = rule525 _whereItypeSignatures
          _declVarNames = rule526 _whereIdeclVarNames
          _typeVars = rule527 _simpletypeIself
@@ -3640,8 +3640,8 @@ sem_Declaration_Class arg_range_ arg_context_ arg_simpletype_ arg_where_ = T_Dec
    rule523 = \  (_ :: ()) ->
                                                                internalError "PartialSyntax.ag" "n/a" "Declaration.Class"
    {-# INLINE rule524 #-}
-   rule524 = \ _contextErrors _declVarNames ((_lhsImiscerrors) :: [Error]) _types ->
-                                              _lhsImiscerrors ++ (checkClassFunctions _declVarNames     _types    ) ++ _contextErrors
+   rule524 = \ _contextErrors _declVarNames ((_lhsImiscerrors) :: [Error]) _types ((_whereImiscerrors) :: [Error]) ->
+                                              _lhsImiscerrors ++ _whereImiscerrors ++ (checkClassFunctions _declVarNames     _types    ) ++ _contextErrors
    {-# INLINE rule525 #-}
    rule525 = \ ((_whereItypeSignatures) :: [(Name,TpScheme)]) ->
                                          _whereItypeSignatures
@@ -3799,7 +3799,7 @@ sem_Declaration_Instance arg_range_ arg_context_ arg_name_ arg_types_ arg_where_
          (T_MaybeDeclarations_vOut88 _whereIcollectInstances _whereIcollectScopeInfos _whereIcounter _whereIdeclVarNames _whereIkindErrors _whereImiscerrors _whereInamesInScope _whereIself _whereItypeSignatures _whereIunboundNames _whereIwarnings) = inv_MaybeDeclarations_s89 _whereX89 (T_MaybeDeclarations_vIn88 _whereOallTypeConstructors _whereOallValueConstructors _whereOclassEnvironment _whereOclassMemberEnv _whereOcollectScopeInfos _whereOcounter _whereOkindErrors _whereOmiscerrors _whereOnamesInScope _whereOoptions _whereOorderedTypeSynonyms _whereOtypeConstructors _whereOunboundNames _whereOvalueConstructors _whereOwarnings)
          (_assumptions,_constraints,_unboundNames) = rule571  ()
          _lhsOmiscerrors :: [Error]
-         _lhsOmiscerrors = rule572 _contextErrors _lhsImiscerrors _undefinedClassErrors _uniqueTypeVarErrors _validInstanceType
+         _lhsOmiscerrors = rule572 _contextErrors _lhsImiscerrors _undefinedClassErrors _uniqueTypeVarErrors _validInstanceType _whereImiscerrors
          _foundClasses = rule573  ()
          _uniqueTypeVarErrors = rule574 _nameIself _typesItypevariables
          _validInstanceType = rule575 _nameIself _typesIself
@@ -3880,8 +3880,8 @@ sem_Declaration_Instance arg_range_ arg_context_ arg_name_ arg_types_ arg_where_
    rule571 = \  (_ :: ()) ->
                                                                internalError "PartialSyntax.ag" "n/a" "Declaration.Instance"
    {-# INLINE rule572 #-}
-   rule572 = \ _contextErrors ((_lhsImiscerrors) :: [Error]) _undefinedClassErrors _uniqueTypeVarErrors _validInstanceType ->
-                                              _lhsImiscerrors ++ _uniqueTypeVarErrors     ++ _undefinedClassErrors     ++ _validInstanceType     ++ _contextErrors
+   rule572 = \ _contextErrors ((_lhsImiscerrors) :: [Error]) _undefinedClassErrors _uniqueTypeVarErrors _validInstanceType ((_whereImiscerrors) :: [Error]) ->
+                                              _lhsImiscerrors ++ _whereImiscerrors ++ _uniqueTypeVarErrors     ++ _undefinedClassErrors     ++ _validInstanceType     ++ _contextErrors
    {-# INLINE rule573 #-}
    rule573 = \  (_ :: ()) ->
                                                []

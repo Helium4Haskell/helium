@@ -29,8 +29,8 @@ import Text.ParserCombinators.Parsec.Pos
 --trS :: Show a => a -> b -> b
 --trS = traceShow
 
-trc :: String -> a -> a
-trc _ = id
+--trc :: String -> a -> a
+--trc _ = id
 
 layout :: [Token] -> [Token]
 layout [] = []
@@ -120,28 +120,25 @@ addContext prevToken cs
         if lexeme2 == LexSpecial '{' then
             lay prevToken cs (t2:ts)
         else
-          let 
-            (prevpos, _) = prevToken
+          let
             poscol = sourceColumn pos2
           in
             (pos2, LexInsertedOpenBrace) :
             (if (keyword == "where" && isEmptyNonModuleWhere cs poscol) then
               (pos2, LexInsertedCloseBrace) : lay prevToken cs (t2:ts) -- Close an empty where block
             else
-              lay (trc ("Anchor lexeme: " ++ show lexeme2 ++ "Poscol: " ++ 
-                        show poscol ++ "PrevPos:" ++ show prevpos
-                        ++ "\nCs: " ++ show cs) prevToken)
+              lay prevToken (CtxLay poscol (keyword == "let") : cs) (t2:ts)
                  -- 2nd arg to CtxLay remembers the start location of this line,
                  -- which FOLLOWS the structuring element. The following lines
                  -- that are indented with the exact same amount belong to this block.
-                  (CtxLay poscol (keyword == "let") : cs) 
-                 (t2:ts)
-              )           
+            )           
     | otherwise = 
         lay prevToken cs (t2:ts)
         -- isEmptyNonModuleWhere decides for the case that when we have a where clause that 
-        -- does not belong to a module scope where, then whatever
+        -- does not belong to a module scope where, that whatever
         -- follows and is expected to belong to it, must be indented. 
+        -- If not, then we are currently observing an empty where clause and have
+        -- to deal accordinaly above.
         -- The check that we are dealing with a "where" has already been performed
        where
           isEmptyNonModuleWhere :: [Context] -> Int -> Bool
@@ -149,7 +146,7 @@ addContext prevToken cs
           isEmptyNonModuleWhere (c:cs') poscol =
             case c of 
               CtxBrace     -> isEmptyNonModuleWhere cs' poscol
-              CtxLay col _ -> poscol <= col 
+              CtxLay col _ -> poscol <= col
 
 addContext prevToken cs (_:ts) =
     lay prevToken cs ts

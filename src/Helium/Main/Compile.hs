@@ -19,6 +19,8 @@ import Helium.Main.PhaseTypeInferencer
 import Helium.Main.PhaseDesugarer
 import Helium.Main.PhaseCodeGenerator
 import Helium.Main.CompileUtils
+import Helium.Parser.Lexer (checkTokenStreamForClassOrInstance)
+import Helium.Main.Args (overloadingFromOptions)
 import Helium.Utils.Utils
 import Data.IORef
 import Helium.StaticAnalysis.Messages.StaticErrors(errorsLogCode)
@@ -44,6 +46,18 @@ compile basedir fullName options lvmPath doneModules =
         unless (NoWarnings `elem` options) $
             showMessages lexerWarnings
 
+        -- If the token stream contains the words class or instance
+        -- and overloading is off, then print error message and bail out:
+        if not (overloadingFromOptions options) then 
+           let classInstanceMessages = checkTokenStreamForClassOrInstance tokens
+           in if not (null classInstanceMessages) 
+               then do 
+                      showMessages classInstanceMessages
+                      stopCompilingIf True
+               else return ()  
+         else 
+            return ()
+        
         -- Phase 2: Parsing
         parsedModule <- 
             doPhaseWithExit 20 (const "P") compileOptions $
