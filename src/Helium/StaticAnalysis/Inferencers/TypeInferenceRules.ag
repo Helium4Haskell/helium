@@ -5,7 +5,7 @@
 -- Stability   :  experimental
 -- Portability :  unknown
 --
--- Contains all the typing rules for the an UHA abstract syntax tree.
+-- Contains all the typing rules for an UHA abstract syntax tree.
 --
 -----------------------------------------------------------------------------
 

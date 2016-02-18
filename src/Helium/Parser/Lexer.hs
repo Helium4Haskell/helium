@@ -359,7 +359,8 @@ keywords =
     [ "let", "in", "do", "where", "case", "of", "if"
     , "then", "else", "data", "type", "module", "import", "hiding"
     , "infix", "infixl", "infixr", "_", "deriving"
-    , "class", "instance", "default", "newtype" -- not supported
+    , "class", "instance", "default"
+    , "newtype" -- not supported
     ]
 
 reservedConSyms :: [String]
