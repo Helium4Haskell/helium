@@ -1,0 +1,6 @@
+Prelude is up to date
+Compiling typeClassesParse/Nonnesting-instance3.hs
+(4,3): Syntax error: 
+    unexpected keyword 'infixr'
+    expecting declaration or end of block (based on layout)
+Compilation failed with 1 error

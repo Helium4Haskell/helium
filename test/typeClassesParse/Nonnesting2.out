@@ -1,0 +1,6 @@
+Prelude is up to date
+Compiling typeClassesParse/Nonnesting2.hs
+(5,3): Syntax error: 
+    unexpected keyword 'instance'
+    expecting declaration, end of block (based on layout), next in block (based on layout) or ';'
+Compilation failed with 1 error
