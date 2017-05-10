@@ -93,30 +93,30 @@ source-repository head
 --------------------------------------------------------------------------------
 
 Executable helium
-  Build-Depends:     base >= 3 && < 5, containers, mtl, parsec, network, process, transformers, filepath, directory, wl-pprint, Top >= 1.8, lvmlib >= 1.2
+  Build-Depends:     base >= 3 && < 5, containers, mtl, parsec, network, process, transformers, filepath, directory, wl-pprint, Top >= 1.8, lvmlib >= 1.2, helium
   ghc-options:       -Wall
   default-language:  Haskell98
-  hs-source-dirs:    src
+  hs-source-dirs:    src/commands/helium
   Main-is:           Helium/Main.hs
   other-modules:     Paths_helium
   
 --------------------------------------------------------------------------------
 
 Executable texthint
-  Build-Depends:     base >= 3 && < 5, containers, mtl, filepath, parsec, directory, process
+  Build-Depends:     base >= 3 && < 5, containers, mtl, filepath, parsec, directory, process, helium
   ghc-options:       -Wall
   default-language:  Haskell98
-  hs-source-dirs:    src
+  hs-source-dirs:    src/commands/texthint
   Main-is:           TextHint/Main.hs
   other-modules:     Paths_helium, TextHint.ConfigFile                
 
 --------------------------------------------------------------------------------
 
 Executable runhelium
-  Build-Depends:     base >= 3 && < 5, containers, filepath, directory, parsec, process
+  Build-Depends:     base >= 3 && < 5, containers, filepath, directory, parsec, process, helium
   ghc-options:       -Wall
   default-language:  Haskell98
-  hs-source-dirs:    src
+  hs-source-dirs:    src/commands/runhelium, src/commands/texthint
   Main-is:           RunHelium/Main.hs
   other-modules:     Paths_helium
 
@@ -126,8 +126,8 @@ Executable heliumpath
   Build-Depends:     base >= 3 && < 5
   ghc-options:       -Wall
   default-language:  Haskell98
-  hs-source-dirs:    src
-  Main-is:           HeliumPath/Main.hs
+  hs-source-dirs:    src/commands/heliumpath
+  Main-is:           Main.hs
   other-modules:     Paths_helium                
   
 --------------------------------------------------------------------------------
