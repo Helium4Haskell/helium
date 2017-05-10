@@ -26,10 +26,25 @@ ATTR Module
 
 INCLUDE "UHA_Syntax.ag"
 
+optpragmas
+{
+  {-# OPTIONS_GHC -fno-warn-unused-binds #-}
+}
+
+MODULE {Helium.StaticAnalysis.Inferencers.KindInferencing}
+{
+  wrap_Module
+  , sem_Module
+  , Inh_Module(..)
+  , debugIO_Syn_Module
+  , kindEnvironment_Syn_Module
+  , kindErrors_Syn_Module
+}
+
 -------------------------------------------------------------------------------
 -- Imports
 
-imports {
+{
 import Top.Types
 import Top.Solver.Greedy
 import Top.Solver
