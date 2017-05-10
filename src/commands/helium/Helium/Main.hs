@@ -11,10 +11,11 @@ import Helium.Main.Compile(compile)
 import Helium.Parser.Parser(parseOnlyImports)
 import Control.Monad
 import System.FilePath(joinPath)
-import Data.List(nub, elemIndex, isSuffixOf, intercalate)
+import Data.List(nub, elemIndex, isSuffixOf, isPrefixOf, intercalate)
 import Data.Maybe(fromJust)
 import Lvm.Path(explodePath,getLvmPath)
-import System.Directory(doesFileExist, getModificationTime)
+import System.Directory(doesFileExist, getModificationTime,
+                        getPermissions, Permissions(writable))
 import Helium.Main.Args
 import Helium.Main.CompileUtils
 import Data.IORef
@@ -175,10 +176,21 @@ circularityCheck [] _ = Nothing
 -- | upToDateCheck returns true if the .lvm is newer than the .hs
 upToDateCheck :: String -> IO Bool
 upToDateCheck basePath = do
-    lvmExists <- doesFileExist (basePath ++ ".lvm")
+    let lvmPath = basePath ++ ".lvm"
+        hsPath = basePath ++ ".hs"
+    lvmExists <- doesFileExist (lvmPath)
     if lvmExists then do
-        t1 <- getModificationTime (basePath ++ ".hs")
-        t2 <- getModificationTime (basePath ++ ".lvm")
-        return (t1 < t2)
+        t1 <- getModificationTime hsPath
+        t2 <- getModificationTime lvmPath
+        if t1 == t2
+          then do -- If the times are equal and the files are not writable,
+                -- we assume that it was installed in a system directory
+                -- and therefore consider it up to date.
+               let isReadOnly file = (not . writable) `fmap` getPermissions file
+               lvmReadOnly <- isReadOnly lvmPath
+               hsReadOnly <- isReadOnly hsPath
+               -- Up to date if both are read only (and of equal mod time)
+               return (lvmReadOnly && hsReadOnly)
+          else return (t1 < t2)
      else
         return False
