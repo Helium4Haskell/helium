@@ -31,7 +31,7 @@ necessary path information that Hint needs to locate the libraries and the
 configuration file.
 
 Hint is not available through Hackage. The jar-file for Hint can be downloaded
-from the Helium website. The sources of Hint are publicly available from the svn 
+from the Helium website. The sources of Hint are publicly available from the git 
 repository that also stores the source code of the Helium compiler and all
 associated tools. Again, see the links on the Helium website.
 

@@ -15,7 +15,7 @@ copyright:              (c) 2014-2016
 license:                GPL
 license-file:           LICENSE.txt
 author:                 Bastiaan Heeren, Jurriaan Hage
-maintainer:             helium@cs.uu.nl
+maintainer:             helium4haskell@gmail.com
 stability:              provisional
 extra-source-files:
   CREDITS.txt
@@ -87,8 +87,8 @@ data-files:
   hint.conf
 
 source-repository head
-  type:     svn
-  location: https://svn.science.uu.nl/repos/sci.hage0101.helium
+  type:     git
+  location: https://github.com/Helium4Haskell/helium.git
   
 --------------------------------------------------------------------------------
 
