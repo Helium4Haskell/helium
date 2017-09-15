@@ -218,6 +218,7 @@ makeInstance className nrOfArgs tp =
    in ( Predicate className (foldl TApp (TCon tp) tps)
       , [ Predicate className x | x <- tps ] 
       )
+      
 -- Add stuff here to print the class Environment
 instance Show ImportEnvironment where
    show (ImportEnvironment tcs tss te vcs ot ce cm _) = 
