@@ -7,7 +7,7 @@ compiler designed especially for teaching. The main developers and
 initiators are Arjan van IJzendoorn, Rijk Jan van Haaften, Bastiaan
 Heeren and Daan Leijen. Currently, Jurriaan Hage, and Bastiaan Heeren
 maintain the compiler and associated tools. For more information about
-Helium contact [us](mailto:helium@cs.uu.nl).
+Helium contact [us](mailto:helium4haskell@gmail.com).
 
 On August 2, 2014, we first uploaded cabal installs for the packages
 that make up the Helium compiler to
