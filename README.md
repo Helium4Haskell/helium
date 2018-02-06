@@ -54,7 +54,7 @@ particular the repositories
 -   [helium](https://github.com/Helium4Haskell/helium)
 -   [hint](https://github.com/Helium4Haskell/hint)
 -   [vm](https://github.com/Helium4Haskell/lvm)
--   [Top](https://github.com/Helium4Haskell/lvm)
+-   [Top](https://github.com/Helium4Haskell/Top)
 
 These source distributions are to be used at your own risk.
 
