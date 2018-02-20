@@ -1,5 +1,8 @@
 ![Helium Logo](http://www.cs.uu.nl/people/jur/Helium_0300pix.jpg)
 
+[Contributors](CONTRIBUTORS.md) | [Helium Manual](HELIUM.md) | [Known Bugs](KNOWNBUGS.md)
+
+
 ### Helium
 
 Helium is a functional programming language (a subset of Haskell) and a

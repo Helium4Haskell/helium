@@ -9,7 +9,7 @@ If you think you can add something to the Helium experience, by all means, [cont
 
    * [Arjan van IJzendoorn](http://www.linkedin.com/pub/5/ba8/480) is the  initiator of the Helium compiler and mainly responsible for the lexer and parser phases, the original website (of which parts have been shamelessly copied and changed by the current team) and the documentation.
    * Rijk-Jan van Haaften was the second involved and worked mainly on the parser and the static checks.
-   * Bastiaan Heeren applied the research results obtained by himself and Jurriaan Hage to obtain the excellent type error messages for which Helium is known. An overview of the innovations can be obtained by looking at papers in the [publication section](Publications). He also refactored large parts of the compiler so that they would use the attribute grammar system. He is also the main developer of the Top constraint solving framework that Helium uses.
+   * Bastiaan Heeren applied the research results obtained by himself and Jurriaan Hage to obtain the excellent type error messages for which Helium is known. An overview of the innovations can be obtained by looking at papers in the [publication section](Publications.md). He also refactored large parts of the compiler so that they would use the attribute grammar system. He is also the main developer of the Top constraint solving framework that Helium uses.
    * [Daan Leijen](http://research.microsoft.com/users/daan/) was responsible for the code generation and LVM runtime system.
 
 ### Former and current contributors
