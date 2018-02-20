@@ -305,4 +305,4 @@ As far as we know, such an option does not exist for `Aquamacs`.
 #### Linux and Windows
 
 
-Send [us](mailto:haskell4helium@gmail.com] your findings. Use the above for inspiration.
+Send [us](mailto:haskell4helium@gmail.com) your findings. Use the above for inspiration.
