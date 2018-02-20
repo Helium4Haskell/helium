@@ -335,7 +335,7 @@ and so on. To be able to observe the difference between using our type graph
 solver and Damas-Milner's algorithm W or the folklore algorithm M, you can
 explicitly tell the compiler to use it (by passing `-W` or `-M`).
 Furthermore, you can instruct the compiler to never suggest a program
-fix `--no-repair-heuristics``, or to ignore
+fix with `--no-repair-heuristics`, or to ignore
 type inference directives.
 
 One of the problems with the logging facility is that it, necessarily,
