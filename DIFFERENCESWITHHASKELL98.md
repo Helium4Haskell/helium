@@ -15,7 +15,7 @@ Here is a list of differences between Helium (with overloading) and Haskell 98.
 
 ### Supported but restricted
 
-   * The layout rule is somewhat simpler. [more details](LayoutRule.md)
+   * The layout rule is somewhat simpler. [more details](LAYOUTRULE.md)
    * There are five built-in type classes with the following instances:
       * `Num`: `Int`, `Float`
       * `Eq`: `Bool`, `Char`, `Either a b`, `Float`, `Int`, `Maybe a`, `[a]` and tuples
