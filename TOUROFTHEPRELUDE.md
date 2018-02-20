@@ -1,7 +1,6 @@
 Below you can find an overview of the functions made available by the Helium Prelude.
 Note that only the non-overloaded Prelude is described. 
 
-<tt>
 *A* [abs](#AbsPrelude), [all](#AllPrelude), [and](#AndPrelude),
 [any](#AnyPrelude) *B* [break](#BreakPrelude) *C*
 [ceiling](#CeilingPrelude), [chr](#ChrPrelude), [concat](#ConcatPrelude),
@@ -58,7 +57,7 @@ Note that only the non-overloaded Prelude is described.
 
 *Other operators* [(!!)](#IndexPrelude), [(:)](#ConsPrelude),
 [(++)](#AppendPrelude), [(.)](#ComposePrelude) 
-</tt>
+
 
 <a name="AbsPrelude"></a>
 | _type:_ | abs :: Int -> Int |
