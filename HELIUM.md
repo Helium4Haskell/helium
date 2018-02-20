@@ -19,7 +19,7 @@ For each of the three ways we have a separate manual. The interpreters can pass 
 to the Helium compiler, so even if you are planning to use only the interpreters, it is best to start off by reading
 The Basics of the Helium compiler manual first.
 
-   * [The compiler user manual](COMPILERMANUAL.md): how to use the Helium compiler.
+   * [The compiler user manual](COMPILERDOCS.md): how to use the Helium compiler.
    * [The texthint user manual](TEXTHINT.md): using the textual interpreter.
    * [The Hint user manual](HINT.md): using the graphical interpreter.
 
