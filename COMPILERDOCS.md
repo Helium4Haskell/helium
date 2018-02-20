@@ -121,10 +121,10 @@ then you obtain:
 Compilation successful with 5 warnings
 </pre>
 
-Note how the compiler implicitly informs us that we mispelled =empty=, because
-it indicates that we forgot a signature for both =empty= and =emty= and
-it says that we omitted the cons pattern case for =empty=.
-It also says that =xs= is never used, but in this case that happened to be our intention.
+Note how the compiler implicitly informs us that we mispelled `empty`, because
+it indicates that we forgot a signature for both `empty` and `emty` and
+it says that we omitted the cons pattern case for `empty`.
+It also says that `xs` is never used, but in this case that happened to be our intention.
 
 Now, if we change the definition of `main` to `main = 2 ++ 4`, then we obtain:
 <pre>Compiling Simple.hs
@@ -217,7 +217,7 @@ from us on demand; it is not part of the standard Helium system.  The idea of lo
 information is sent to the server, to be able to recreate exactly the logged compilation. This amounts to
 sending by means of socket communication, the module, the modules it imports (and so on), a description
 of the version of the compiler, and the parameters that were passed to the compiler. More details can be
-found in the technical report on the Helium logger in the [publications section](Publications). Our purpose
+found in the technical report on the Helium logger in the [publications section]Publications). Our purpose
 in logging Helium programs was to be able, at some point, to validate the work we had done on improving
 type error messages. Since then we have come to the conclusion that loggings can be used for many other
 purposes besides. One of these directly relates to a flag of the compiler as of version 1.7: the `--alert`
