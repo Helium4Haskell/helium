@@ -20,9 +20,64 @@ there are some differences, with `Hint` being the more powerful of the two.
 For example, `texthint` does not allow you to change the configuration settings from
 the program. You should do that by loading the configuration file into an editor and change it yourself. `Hint` on the other hand offers a menu to do the changing.
 
-%INCLUDE{"HintConf"}%
+### The `.hint.conf` file
 
-### Starting =texthint=
+*This is out-dated. Currently config files are installed with Cabal.*
+
+As part of the installation procedure of Helium, a configuration file is created
+and copied to your home directory. Indeed, every version of Helium that you have
+installed may have its own version of the configuration file, like
+`.hint-1.7.conf` and the one to which the `.hint.conf` links is the one that
+contains the settings the interpreters will use.
+
+The following is a typical content for `.hint.conf`:
+<pre>#Hint
+#Fri Jun 27 15:17:21 CEST 2008
+editorcommandlinetemplate=...
+additionalheliumparameters=-v --debug-logger
+port=5010
+overloadingon=true
+loggingon=false
+browsercommandlinetemplate=...
+basepath=/usr/local/helium-1.7
+fontsize=14
+temppath=/tmp
+host=helium.zoo.cs.uu.nl
+lvmpaths=.
+</pre>
+
+We shall now consider all settings except `fontsize`, `editorcommandlinetemplate` and
+`browsercommandlinetemplate`. These are specific to `Hint` and will be discussed only there.
+
+Comment lines start with `#`, that 's easy enough. All other lines consist of a name (or flag) followed by ``` (you may use spaces here or omit them),  and finally the value you want to set the name to.
+
+The `basepath` is the most important setting. It specifies where the active version of
+Helium can be found. This path is used to find the `.lvm` files for
+the `Prelude` and other provided libraries. If you have any additional paths where
+`.lvm` files may be found you can add them to `lvmpaths`. If you have more than one,
+separate them by a `:`. Note that there are defaults for all possible
+settings, but they may not be the same for the different interpreters, so it is wise to set them all
+explicity by means of the configuration file.
+
+On we go. Sometimes the interpreters need a directory to store some intermediate files. This directory is specified by `temppath`. The value given above is typically good enough, but you can change it if you must.
+You can also specify the standard logging behaviour of the interpreters. Use `false` to disable logging, and `true` to enable it. Something similar holds for `overloading`. By changing the setting for `host` and
+`port` you can change where you expect a logging server to be listening for compiles. It is typically
+set to the standard location for the server hosted by the Helium team. When experimenting with a new host and port,
+it is usually a good idea to use the `--debug-logger` setting to see whether logging proceeds correctly.
+
+Any other `helium` compiler parameter can be set by specifying them like so
+
+<pre>additionalheliumparameters=-v -b 
+</pre>
+
+As you can see, flags are separated by spaces. So what if you want to use a space in one of the parameters?
+The solution is to escape it, by preceding with a backslash: `\` . This implies that backslashes also
+need to be escaped and you should write `\\` to obtain a single backslash.
+
+The additional helium parameter settings override any other setting made by the flags discussed above. So if you  enable overloading, but add `--no-overloading` to `additionalheliumparameters`,
+then overloading will be turned off.
+
+### Starting `texthint`
 
 If you have installed `texthint` on your system, then probably all you need to
 do is to type `texthint` in a terminal, or to locate the texthint executable and run it by clicking on it. (Allow for slight differences depending on your operating system.)

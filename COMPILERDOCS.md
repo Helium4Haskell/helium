@@ -65,7 +65,7 @@ like `java`. If you want to run the result of the previous non-overloaded compil
 <pre>runhelium --no-overloading Simple.lvm
 </pre>
 
-This should print `6` in your terminal. If you forget to pass `--no-overloading`` then you
+This should print `6` in your terminal. If you forget to pass `--no-overloading` then you
 probably get no output. Generally, the behaviour of the interpreter is undefined/unknown.
 
 The interpreter `lvmrun` is more flexible than `runhelium`, so there might be situations where

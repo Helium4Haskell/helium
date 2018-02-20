@@ -19,7 +19,7 @@ for `texthint`, you shall notice many similarities. However, `Hint`
 offers a few more facilities. For example, `Hint` allows you to change the configuration
 settings from `Hint` itself.
 
-%INCLUDE{"HintConf"}%
+Before you go on, read the discussion on `hint.conf` over [here](TEXTHINT.md). 
 
 ### Invoking Hint
 
