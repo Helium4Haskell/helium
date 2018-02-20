@@ -21,7 +21,7 @@ settings from `Hint` itself.
 
 %INCLUDE{"HintConf"}%
 
----+++ Invoking Hint
+### Invoking Hint
 
 `Hint` is a Java application. First you need to make sure that `Hint`
 has been compiled. You can do that by locating the source, and running
@@ -43,7 +43,7 @@ or you can write a small wrapper script in a location that is part of your
 path environment (consult `$PATH` and the manual of your terminal/operating system
 for more details).
 
----+++ Using `Hint`: the basics
+### Using `Hint`: the basics
 
 `Hint` and `texthint` have a similar repertoire of commands, although `Hint` is a bit more
 versatile and advanced.
@@ -218,7 +218,7 @@ We take some care that these errors are in fact independent.
 
 If you get fed up with working with `Hint` you can terminate with the `:q` command, or use the corresponding button. If you just want a clean slate, type `:c` to clear the screen.
 
----+++ The configuration dialog
+### The configuration dialog
 
 Many settings can be made from `Hint`, all of which will be stored in the `.hint.conf` configuration
 file for Hint. Note that this configuration file is also used by `texthint`. On the other hand, `texthint`
@@ -270,7 +270,7 @@ known to us. Feel free to tell us about any invocations that you tried and that 
 for editors not yet mentioned below. Please allow for variations in the name of directories.
 Use the information below to more easily determine the exact way of calling your favourite editor.
 
----++++ Mac OSX
+#### Mac OSX
 
 For invoking the editor `open` can only be used if you do not want `Hint` to jump directly
 to locations, because `open` only allows you to pass the file name.
@@ -302,7 +302,7 @@ The following should be noted:
 This is fortunately not the case for the `jEdit` due to the `-reuseview` parameter.\
 As far as we know, such an option does not exist for `Aquamacs`.
 
----++++ Linux and Windows
+#### Linux and Windows
 
 
 Send [us](mailto:haskell4helium@gmail.com] your findings. Use the above for inspiration.
