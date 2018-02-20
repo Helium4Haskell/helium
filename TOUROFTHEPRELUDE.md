@@ -1,5 +1,5 @@
 Below you can find an overview of the functions made available by the Helium Prelude.
-Note that currently, only the non-overloaded form of the Prelude is described. 
+Note that only the non-overloaded Prelude is described. 
 
 <tt>
 *A* [abs](#AbsPrelude), [all](#AllPrelude), [and](#AndPrelude),
