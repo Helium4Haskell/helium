@@ -3,7 +3,7 @@
 In this short manual, we describe how the Helium compiler can be used, and in particular, describe the parameters that can be
 passed to Helium 1.7 (there are some notable differences with earlier versions of Helium).
 
-For purposes of experimentation, start off by creating a file, say =Simple.hs= and enter:
+For purposes of experimentation, start off by creating a file, say `Simple.hs` and enter:
 
 <pre>module Simple where
 
@@ -12,6 +12,7 @@ main  = 2 + 4
 
 When you run =helium= from the prompt without any parameter you obtain a short description of the most
 often used parameters (and it indicates that an error has occurred, because =helium= really expects a module to be compiled; from now on I shall omit this part of the message).
+
 <pre>Error in invocation: the name of the module to be compiled seems to be missing.
 
 Helium compiler 1.8.1 (... CEST 2015)
@@ -208,7 +209,7 @@ obtain some obscure error messages like the following:
 The solution is to force recompilation of your source modules (the criterium =helium= uses is whether
 the =.lvm= file is newer than the source, not that you pass different parameters).
 
----+++ The logging facility and the alert flag
+### The logging facility and the alert flag
 
 One of the more innovative features is that every compile can be logged
 by the _helium_ compiler to a (logging) server. We have such a server, implemented in Java, that can be obtained
@@ -251,7 +252,7 @@ suggestion is made. In the example this results in the following:
 Compilation failed with 1 error
 </pre>
 
----+++ Advanced flags
+### Advanced flags
 
 Although we have not discussed all the flags that are listed when you run =helium=,
 the flags we discussed thus far are likely to be used the most.

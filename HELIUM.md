@@ -19,17 +19,17 @@ For each of the three ways we have a separate manual. The interpreters can pass 
 to the Helium compiler, so even if you are planning to use only the interpreters, it is best to start off by reading
 The Basics of the Helium compiler manual first.
 
-   * [[The compiler user manual]]: how to use the Helium compiler.
-   * [[The texthint user manual]]: using the textual interpreter.
+   * [The compiler user manual](COMPILERMANUAL): how to use the Helium compiler.
+   * [The texthint user manual](TEX: using the textual interpreter.
    * [[The Hint user manual]]: using the graphical interpreter.
 
 In all cases, the above documentation discuss Helium version 1.7 (including pre-releases). Version 1.7 and higher
 differ in quite a few places from versions 1.6 and lower.
 
 Other issues of note:
-   * [[A note on editors]]: some words of advice.
+   * Nice features to have in an editor for Helium are:
+      * Syntax colouring for Helium/Haskell
+      * Command-line parameters for jumping to a column and line
+      * Expand existing and new tab characters to spaces. 
    * [[A tour of the Helium Prelude]]: an overview of almost all of the (non-overloaded) Prelude. Each function is clarified by at least its type, examples of its use and a description.
    * [[Differences with Haskell '98]]
-   * [[http://www.cs.kent.ac.uk/people/staff/sjt/craft2e/][The Craft of Functional Programming]]: this book by Simon Thompson can be used with Helium. If you are aware of other books on Haskell where this is possible, please let [[ContactInformation][us]] know.
-   * The [[HUT.AttributeGrammarSystem][UUAGC]] system was used heavily in the construction of Helium.
-   * Research publications can be found under [[Publications]].

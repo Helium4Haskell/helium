@@ -3,7 +3,7 @@
    * [Jurriaan Hage](http://people.cs.uu.nl/jur/) -- coordinator, webmaintainer, Helium maintainer
    * [Bastiaan Heeren](http://people.cs.uu.nl/bastiaan/) -- Helium maintainer
    
-If you think you can add something to the Helium experience, by all means, [[ContactInformation][contact us]].
+If you think you can add something to the Helium experience, by all means, [contact us](helium4haskell@gmail.com).
 
 ### The original Helium Team
 
