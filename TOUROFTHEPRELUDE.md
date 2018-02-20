@@ -2,62 +2,62 @@ Below you can find an overview of the functions made available by the Helium Pre
 Note that currently, only the non-overloaded form of the Prelude is described. 
 
 <tt>
-*A* [[#AbsPrelude][abs]], [[#AllPrelude][all]], [[#AndPrelude][and]],
-[[#AnyPrelude][any]] *B* [[#BreakPrelude][break]] *C*
-[[#CeilingPrelude][ceiling]], [[#ChrPrelude][chr]], [[#ConcatPrelude][concat]],
-[[#ConcatmapPrelude][concatMap]], [[#ConstPrelude][const]], [[#CosPrelude][cos]]
-*D* [[#DivPrelude][div]], [[#DropPrelude][drop]], [[#DropwhilePrelude][dropWhile]]
-*E* [[#ElembyPrelude][elemBy]], [[#EqboolPrelude][eqBool]],
-[[#EqcharPrelude][eqChar]], [[#EqlistPrelude][eqList]], [[#EqstringPrelude][eqString]],
-[[#ErrorPrelude][error]], [[#EvenPrelude][even]], [[#ExpPrelude][exp]]
-*F* [[#FilterPrelude][filter]], [[#FlipPrelude][flip]],
-[[#FloorPrelude][floor]], [[#FoldlPrelude][foldl]], [[#Foldl1Prelude][foldl1]],
-[[#FoldrPrelude][foldr]], [[#Foldr1Prelude][foldr1]], [[#FromintPrelude][fromInt]],
-[[#FstPrelude][fst]] *G* [[#GcdPrelude][gcd]] *H* [[#HeadPrelude][head]]
-*I* [[#IdPrelude][id]], [[#InitPrelude][init]], [[#IsalphaPrelude][isAlpha]],
-[[#IsdigitPrelude][isDigit]], [[#IslowerPrelude][isLower]],
-[[#IsspacePrelude][isSpace]], [[#IsupperPrelude][isUpper]],
-[[#IteratePrelude][iterate]] *L* [[#LastPrelude][last]],
-[[#LcmPrelude][lcm]], [[#LengthPrelude][length]], [[#LinesPrelude][lines]],
-[[#LogPrelude][log]] *M* [[#MapPrelude][map]], [[#MaxPrelude][max]],
-[[#MaximumPrelude][maximum]], [[#MinPrelude][min]], [[#MinimumPrelude][minimum]],
-[[#ModPrelude][mod]] *N* [[#NotPrelude][not]], [[#NotelembyPrelude][notElemBy]],
-[[#NullPrelude][null]] *O* [[#OddPrelude][odd]], [[#OrPrelude][or]],
-[[#OrdPrelude][ord]], [[#OrdcharPrelude][ordChar]], [[#OrdfloatPrelude][ordFloat]],
-[[#OrdintPrelude][ordInt]], [[#OrdlistPrelude][ordList]],
-[[#OrdstringPrelude][ordString]] *P* [[#PiPrelude][pi]],
-[[#PutstrPrelude][putStr]], [[#ProductPrelude][product]] *Q*
-[[#QuotPrelude][quot]] *R* [[#ReadintPrelude][readInt]],
-[[#RemPrelude][rem]], [[#RepeatPrelude][repeat]], [[#ReplicatePrelude][replicate]],
-[[#ReversePrelude][reverse]], [[#RoundPrelude][round]], *S*
-[[#ShowintPrelude][showInt]],
-[[#SignumPrelude][signum]], [[#SignumfloatPrelude][signumFloat]],
-[[#SinPrelude][sin]], [[#SndPrelude][snd]], [[#SpanPrelude][span]],
-[[#SplitatPrelude][splitAt]], [[#SqrtPrelude][sqrt]], [[#SubtractPrelude][subtract]],
-[[#SumPrelude][sum]] *T* [[#TailPrelude][tail]], [[#TakePrelude][take]],
-[[#TakewhilePrelude][takeWhile]], [[#TanPrelude][tan]], [[#TolowerPrelude][toLower]],
-[[#ToupperPrelude][toUpper]], [[#TruncatePrelude][truncate]] *U*
-[[#UndefinedPrelude][undefined]], [[#UnlinesPrelude][unlines]],
-[[#UntilPrelude][until]], [[#UnwordsPrelude][unwords]] *W*
-[[#WordsPrelude][words]] *Z* [[#ZipPrelude][zip]], [[#ZipwithPrelude][zipWith]]
+*A* [abs](#AbsPrelude), [all](#AllPrelude), [and](#AndPrelude),
+[any](#AnyPrelude) *B* [break](#BreakPrelude) *C*
+[ceiling](#CeilingPrelude), [chr](#ChrPrelude), [concat](#ConcatPrelude),
+[concatMap](#ConcatmapPrelude), [const](#ConstPrelude), [cos](#CosPrelude)
+*D* [div](#DivPrelude), [drop](#DropPrelude), [dropWhile](#DropwhilePrelude)
+*E* [elemBy](#ElembyPrelude), [eqBool](#EqboolPrelude),
+[eqChar](#EqcharPrelude), [eqList](#EqlistPrelude), [eqString](#EqstringPrelude),
+[error](#ErrorPrelude), [even](#EvenPrelude), [exp](#ExpPrelude)
+*F* [filter](#FilterPrelude), [flip](#FlipPrelude),
+[floor](#FloorPrelude), [foldl](#FoldlPrelude), [foldl1](#Foldl1Prelude),
+[foldr](#FoldrPrelude), [foldr1](#Foldr1Prelude), [fromInt](#FromintPrelude),
+[fst](#FstPrelude) *G* [gcd](#GcdPrelude) *H* [head](#HeadPrelude)
+*I* [id](#IdPrelude), [init](#InitPrelude), [isAlpha](#IsalphaPrelude),
+[isDigit](#IsdigitPrelude), [isLower](#IslowerPrelude),
+[isSpace](#IsspacePrelude), [isUpper](#IsupperPrelude),
+[iterate](#IteratePrelude) *L* [last](#LastPrelude),
+[lcm](#LcmPrelude), [length](#LengthPrelude), [lines](#LinesPrelude),
+[log](#LogPrelude) *M* [map](#MapPrelude), [max](#MaxPrelude),
+[maximum](#MaximumPrelude), [min](#MinPrelude), [minimum](#MinimumPrelude),
+[mod](#ModPrelude) *N* [not](#NotPrelude), [notElemBy](#NotelembyPrelude),
+[null](#NullPrelude) *O* [odd](#OddPrelude), [or](#OrPrelude),
+[ord](#OrdPrelude), [ordChar](#OrdcharPrelude), [ordFloat](#OrdfloatPrelude),
+[ordInt](#OrdintPrelude), [ordList](#OrdlistPrelude),
+[ordString](#OrdstringPrelude) *P* [pi](#PiPrelude),
+[putStr](#PutstrPrelude), [product](#ProductPrelude) *Q*
+[quot](#QuotPrelude) *R* [readInt](#ReadintPrelude),
+[rem](#RemPrelude), [repeat](#RepeatPrelude), [replicate](#ReplicatePrelude),
+[reverse](#ReversePrelude), [round](#RoundPrelude), *S*
+[showInt](#ShowintPrelude),
+[signum](#SignumPrelude), [signumFloat](#SignumfloatPrelude),
+[sin](#SinPrelude), [snd](#SndPrelude), [span](#SpanPrelude),
+[splitAt](#SplitatPrelude), [sqrt](#SqrtPrelude), [subtract](#SubtractPrelude),
+[sum](#SumPrelude) *T* [tail](#TailPrelude), [take](#TakePrelude),
+[takeWhile](#TakewhilePrelude), [tan](#TanPrelude), [toLower](#TolowerPrelude),
+[toUpper](#ToupperPrelude), [truncate](#TruncatePrelude) *U*
+[undefined](#UndefinedPrelude), [unlines](#UnlinesPrelude),
+[until](#UntilPrelude), [unwords](#UnwordsPrelude) *W*
+[words](#WordsPrelude) *Z* [zip](#ZipPrelude), [zipWith](#ZipwithPrelude)
 
-*Boolean operators* [[#OpandPrelude][(&&)]],
-[[#OporPrelude][(%VBAR%%VBAR%)]] 
+*Boolean operators* [(&&)](#OpandPrelude),
+[(%VBAR%%VBAR%)](#OporPrelude) 
 
-*Integer operators* [[#MulPrelude][(*)]],
-[[#OpdivPrelude][(/)]], [[#AddPrelude][(+)]], [[#SubPrelude][(-)]],
-[[#HatPrelude][(^)]] [[#NePrelude][(/=)]], [[#EqPrelude][(==)]],
-[[#LtPrelude][(<)]], [[#LePrelude][(<=)]], [[#GtPrelude][(>)]],
-[[#GePrelude][(>=)]] 
+*Integer operators* [(*)](#MulPrelude),
+[(/)](#OpdivPrelude), [(+)](#AddPrelude), [(-)](#SubPrelude),
+[(^)](#HatPrelude) [(/=)](#NePrelude), [(==)](#EqPrelude),
+[(<)](#LtPrelude), [(<=)](#LePrelude), [(>)](#GtPrelude),
+[(>=)](#GePrelude) 
 
-*Floating-point operators* [[#MulfltPrelude][(*.)]],
-[[#OpdivfltPrelude][(/.)]], [[#AddfltPrelude][(+.)]], [[#SubfltPrelude][(-.)]],
-[[#PowfltPrelude][(^.)]] [[#NefltPrelude][(/=.)]], [[#EqfltPrelude][(==.)]],
-[[#LtfltPrelude][(<.)]], [[#LefltPrelude][(<=.)]], [[#GtfltPrelude][(>.)]],
-[[#GefltPrelude][(>=.)]] [[#StarstarPrelude][(**.)]] 
+*Floating-point operators* [(*.)](#MulfltPrelude),
+[(/.)](#OpdivfltPrelude), [(+.)](#AddfltPrelude), [(-.)](#SubfltPrelude),
+[(^.)](#PowfltPrelude) [(/=.)](#NefltPrelude), [(==.)](#EqfltPrelude),
+[(<.)](#LtfltPrelude), [(<=.)](#LefltPrelude), [(>.)](#GtfltPrelude),
+[(>=.)](#GefltPrelude) [(**.)](#StarstarPrelude) 
 
-*Other operators* [[#IndexPrelude][(!!)]], [[#ConsPrelude][(:)]],
-[[#AppendPrelude][(++)]], [[#ComposePrelude][(.)]] 
+*Other operators* [(!!)](#IndexPrelude), [(:)](#ConsPrelude),
+[(++)](#AppendPrelude), [(.)](#ComposePrelude) 
 </tt>
 
 #AbsPrelude
@@ -1298,5 +1298,3 @@ True
 Prelude> 4.0 >=. 5.0
 False</pre> |
 
-
--- Main.JurriaanHage - 09 Apr 2008

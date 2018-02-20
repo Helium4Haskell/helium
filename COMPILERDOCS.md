@@ -47,7 +47,7 @@ Compilation successful with 1 warning
 
 The default use (although it depends on whether the file hint.conf was modified at any time)
 of `helium` allows overloading (ad hoc polymorphism) by means of type classes (like Haskell 98, but in a restricted form,
-see [[Differences With Haskell 98]]), so that you can use the same symbol (``) to compare values of different types.
+read [here](DIFFERENCESWITHHASKELL98.md)), so that you can use the same symbol (``) to compare values of different types.
 Because of the complications that type classes may give when it comes to error messages, novice programmers can
 disallow overloading (pass `--no-overloading` along with the options). To compile the `Simple` module without overloading you  write:
 <pre>helium --no-overloading -B Simple.hs

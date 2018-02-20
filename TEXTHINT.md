@@ -51,7 +51,7 @@ As explained earlier, you can change the settings by editing the configuration. 
 these override the settings in the  `.hint.conf` file (so if you occassionally want
 to use `texthint` differently you do not need to change the configuration file).  
 Note that all but the `-P` parameter override the setting from the configuration
-file: the `-P` parameter, on the other hand, accumulates its parameters. Please consult [[the compiler user manual]] for a description of the parameters that you
+file: the `-P` parameter, on the other hand, accumulates its parameters. Please consult [the compiler user manual](COMPILERDOCS.md) for a description of the parameters that you
 may pass.
 
 ### Using `texthint`
