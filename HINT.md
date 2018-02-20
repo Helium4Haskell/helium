@@ -36,7 +36,7 @@ in `heliumsystem/hint` that contains the `Hint` jar file, e.g.,
 `java -jar Hint-1.7.jar ` or whatever other way your operating system allows you
 to execute Java jar files. Then you should obtain a window like this:
 
-<img align`"middle" alt`"" border`"0" height`"496" src`"http://www.cs.uu.nl/people/jur/HintStartup.png" width`"559" />
+<img align="middle" alt="" border="0" height="496" src="http://www.cs.uu.nl/people/jur/HintStartup.png" width="559" />
 
 If you want, you can move `Hint` to a different, more accessible location,
 or you can write a small wrapper script in a location that is part of your
