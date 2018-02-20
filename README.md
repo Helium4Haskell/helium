@@ -12,6 +12,7 @@ Helium contact [us](mailto:helium4haskell@gmail.com).
 Helium and the runtime lvmrun are on
 [Hackage](https://hackage.haskell.org/package/helium). This means that
 you can install the latest version of Helium by running
+
     cabal install helium
     cabal install lvmrun
 
