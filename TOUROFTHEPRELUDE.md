@@ -60,7 +60,7 @@ Note that only the non-overloaded Prelude is described.
 [(++)](#AppendPrelude), [(.)](#ComposePrelude) 
 </tt>
 
-#AbsPrelude
+<a name="AbsPrelude"></a>
 | _type:_ | abs :: Int -> Int |
 | _description:_ | returns the absolute value of a number. |
 | _definition:_ | <pre>abs x
