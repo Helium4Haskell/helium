@@ -31,5 +31,5 @@ Other issues of note:
       * Syntax colouring for Helium/Haskell
       * Command-line parameters for jumping to a column and line
       * Expand existing and new tab characters to spaces. 
-   * [A tour of the Helium Prelude](TOUROFTHEPRELUDE.md): an overview of almost all of the (non-overloaded) Prelude. Each function is clarified by at least its type, examples of its use and a description.
+   * [A tour of the Helium Prelude](TOUROFTHEPRELUDE.html): an overview of almost all of the (non-overloaded) Prelude. Each function is clarified by at least its type, examples of its use and a description.
    * [Differences with Haskell '98](DIFFERENCESWITHHASKELL98.md)

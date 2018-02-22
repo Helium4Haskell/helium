@@ -1,0 +1,3197 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en_US" lang="en_US"><head>
+<title> A Tour of the Helium Prelude</title>
+<meta http-equiv="Content-Type" content="text/html; charset=windows-1252">
+<link rel="icon" href="http://foswiki.cs.uu.nl/foswiki/pub/System/ProjectLogos/favicon.ico" type="image/x-icon">
+<link rel="shortcut icon" href="http://foswiki.cs.uu.nl/foswiki/pub/System/ProjectLogos/favicon.ico" type="image/x-icon">
+<link rel="alternate" href="http://foswiki.cs.uu.nl/foswiki/bin/edit/Helium/ATourOfTheHeliumPrelude?t=1519284217" type="application/x-wiki" title="edit ATourOfTheHeliumPrelude">
+<meta name="TEXT_NUM_TOPICS" content="Number of topics:">
+<meta name="TEXT_MODIFY_SEARCH" content="Modify search">
+<link rel="alternate" type="application/rss+xml" title="RSS Feed" href="http://foswiki.cs.uu.nl/foswiki/bin/view/Helium/WebRss">
+<!-- base href="http://foswiki.cs.uu.nl/foswiki/bin/view/Helium/ATourOfTheHeliumPrelude" --><!--[if IE]></base><![endif]-->
+
+<style type="text/css" media="all">
+@import url('fosstyle.css');
+</style>
+
+<style type="text/css" media="all">
+	/* Styles that are set using variables */
+	.patternBookView .foswikiTopRow,
+	.patternWebIndicator a img,
+	.patternWebIndicator a:hover img {
+		background-color:#DDDDDD;
+	}
+	#patternTopBarContents { background-image:url(/foswiki/pub/System/PatternSkin/header3.gif); background-repeat:repeat-x;}
+#patternTopBarContents { background-color:#ffffff;}
+.patternBookView {
+	border-color:#DDDDDD;
+}
+.patternPreviewPage #patternMain {
+	/* uncomment to set the preview image */
+	/*background-image:url("/foswiki/pub/System/PreviewBackground/preview2bg.gif");*/
+}
+</style>
+<style type="text/css" media="print">
+	@import url("/foswiki/pub/System/PatternSkin/print.css");
+</style>
+<!--[if IE]><style type="text/css" media="screen">
+pre {
+	height:1%;
+	overflow-x:auto;
+}
+.foswikiAttachments,
+.foswikiForm,
+.foswikiHelp,
+.foswikiPreviewArea,
+.patternPreviewPage .foswikiForm,
+.patternSigLine,
+.patternToolBar,
+.patternTop,
+.patternTopicAction,
+#patternSideBarContents .patternLeftBarPersonal,
+#patternSideBarContents h2,
+#patternSideBarContents li,
+#patternTopBarButtons ul {
+	height:1%;
+}
+#patternSideBarContents .patternLeftBarPersonal {
+	width:100%;
+}
+.foswikiFormStep {
+	height:100%;
+}
+#foswikiLogin,
+.patternShadow {
+	border:10px solid #fff;
+	margin-top:10px;
+	margin-bottom:10px;
+	border:2px solid #ccc;
+}
+</style><![endif]-->
+<!--[if gt IE 8 ]><style type="text/css" media="screen">
+#foswikiLogin,
+.patternShadow {
+	border:10px solid #fff;
+	margin-top:10px;
+	margin-bottom:10px;
+	box-shadow: 0 0 10px #ccc;
+}
+</style><![endif]-->
+<link rel="stylesheet" href="tour_files/jquery-ui.css" type="text/css" media="all"><!--JQUERYPLUGIN::THEME: requires= missing ids: JQUERYPLUGIN::UI-->
+<style type="text/css" media="all">
+.foswikiTable {border-width:1px}
+.foswikiTable .tableSortIcon img {padding-left:.3em; vertical-align:text-bottom}
+.foswikiTable td {border-style:solid none; vertical-align:top}
+.foswikiTable th {border-style:none solid; vertical-align:top; background-color:#d6d3cf; color:#000000}
+.foswikiTable th a:link {color:#000000}
+.foswikiTable th a:visited {color:#000000}
+.foswikiTable th a:hover {color:#000000; background-color:#d6d3cf}
+.foswikiTable th.foswikiSortedCol {background-color:#c4c1ba}
+.foswikiTable tr.foswikiTableRowdataBg0 td {background-color:#ffffff}
+.foswikiTable tr.foswikiTableRowdataBg0 td.foswikiSortedCol {background-color:#f7f7f6}
+.foswikiTable tr.foswikiTableRowdataBg1 td {background-color:#f7f7f6}
+.foswikiTable tr.foswikiTableRowdataBg1 td.foswikiSortedCol {background-color:#f0f0ee}
+</style><!--TABLEPLUGIN_default-->
+<script type="text/javascript" src="tour_files/jquery-1.js"></script><!--JQUERYPLUGIN-->
+<script type="text/javascript" src="tour_files/jquery.js"></script><!--JQUERYPLUGIN::LIVEQUERY-->
+<script type="text/javascript" src="tour_files/jquery_002.js"></script><!--JQUERYPLUGIN::FOSWIKI-->
+<script type="text/javascript" src="tour_files/foswikiPref.js"></script><!--JavascriptFiles/foswikiPref-->
+<script type="text/javascript" src="tour_files/foswikiString.js"></script><!--JavascriptFiles/foswikiString-->
+<script type="text/javascript">
+jQuery.extend(foswiki, {
+ "preferences": {
+    "PUBURL": "http://foswiki.cs.uu.nl/foswiki/pub",
+    "PUBURLPATH": "/foswiki/pub",
+    "SCRIPTSUFFIX": "",
+    "SCRIPTURL": "http://foswiki.cs.uu.nl/foswiki/bin",
+    "SCRIPTURLPATH": "/foswiki/bin",
+    "SERVERTIME": "22 Feb 2018 - 08:23",
+    "SKIN": "pattern",
+    "SYSTEMWEB": "System",
+    "TOPIC": "ATourOfTheHeliumPrelude",
+    "USERNAME": "guest",
+    "USERSWEB": "Main",
+    "WEB": "Helium",
+    "WIKINAME": "WikiGuest",
+    "WIKIUSERNAME": "Main.WikiGuest",
+    "NAMEFILTER": "[\s\*?~^\$@%`\"'&;|<>\[\]#\x00-\x1f]"
+}});
+</script><!--JQUERYPLUGIN::FOSWIKI::PREFERENCES-->
+<script type="text/javascript" src="tour_files/foswikiForm.js"></script><!--JavascriptFiles/foswikiForm-->
+<script type="text/javascript">jQuery.extend(foswiki.preferences, { TWISTYANIMATIONSPEED: 'fast' });</script><!--TWISTYPLUGIN::META-->
+<script type="text/javascript" src="tour_files/pattern.js"></script><!--PatternSkin/pattern-->
+</head>
+<body class="patternViewPage foswikiJs">
+
+<p>
+Below you can find an overview of the functions made available by the Helium Prelude. 
+</p>
+
+<tt>
+<strong>A</strong> <a href="#AbsPrelude" class="foswikiCurrentTopicLink">abs</a>, <a href="#AllPrelude" class="foswikiCurrentTopicLink">all</a>, <a href="#AndPrelude" class="foswikiCurrentTopicLink">and</a>,
+<a href="#AnyPrelude" class="foswikiCurrentTopicLink">any</a> <strong>B</strong> <a href="#BreakPrelude" class="foswikiCurrentTopicLink">break</a> <strong>C</strong>
+<a href="#CeilingPrelude" class="foswikiCurrentTopicLink">ceiling</a>, <a href="#ChrPrelude" class="foswikiCurrentTopicLink">chr</a>, <a href="#ConcatPrelude" class="foswikiCurrentTopicLink">concat</a>,
+<a href="#ConcatmapPrelude" class="foswikiCurrentTopicLink">concatMap</a>, <a href="#ConstPrelude" class="foswikiCurrentTopicLink">const</a>, <a href="#CosPrelude" class="foswikiCurrentTopicLink">cos</a>
+<strong>D</strong> <a href="#DivPrelude" class="foswikiCurrentTopicLink">div</a>, <a href="#DropPrelude" class="foswikiCurrentTopicLink">drop</a>, <a href="#DropwhilePrelude" class="foswikiCurrentTopicLink">dropWhile</a>
+<strong>E</strong> <a href="#ElembyPrelude" class="foswikiCurrentTopicLink">elemBy</a>, <a href="#EqboolPrelude" class="foswikiCurrentTopicLink">eqBool</a>,
+<a href="#EqcharPrelude" class="foswikiCurrentTopicLink">eqChar</a>, <a href="#EqlistPrelude" class="foswikiCurrentTopicLink">eqList</a>, <a href="#EqstringPrelude" class="foswikiCurrentTopicLink">eqString</a>,
+<a href="#ErrorPrelude" class="foswikiCurrentTopicLink">error</a>, <a href="#EvenPrelude" class="foswikiCurrentTopicLink">even</a>, <a href="#ExpPrelude" class="foswikiCurrentTopicLink">exp</a>
+<strong>F</strong> <a href="#FilterPrelude" class="foswikiCurrentTopicLink">filter</a>, <a href="#FlipPrelude" class="foswikiCurrentTopicLink">flip</a>,
+<a href="#FloorPrelude" class="foswikiCurrentTopicLink">floor</a>, <a href="#FoldlPrelude" class="foswikiCurrentTopicLink">foldl</a>, <a href="#Foldl1Prelude" class="foswikiCurrentTopicLink">foldl1</a>,
+<a href="#FoldrPrelude" class="foswikiCurrentTopicLink">foldr</a>, <a href="#Foldr1Prelude" class="foswikiCurrentTopicLink">foldr1</a>, <a href="#FromintPrelude" class="foswikiCurrentTopicLink">fromInt</a>,
+<a href="#FstPrelude" class="foswikiCurrentTopicLink">fst</a> <strong>G</strong> <a href="#GcdPrelude" class="foswikiCurrentTopicLink">gcd</a> <strong>H</strong> <a href="#HeadPrelude" class="foswikiCurrentTopicLink">head</a>
+<strong>I</strong> <a href="#IdPrelude" class="foswikiCurrentTopicLink">id</a>, <a href="#InitPrelude" class="foswikiCurrentTopicLink">init</a>, <a href="#IsalphaPrelude" class="foswikiCurrentTopicLink">isAlpha</a>,
+<a href="#IsdigitPrelude" class="foswikiCurrentTopicLink">isDigit</a>, <a href="#IslowerPrelude" class="foswikiCurrentTopicLink">isLower</a>,
+<a href="#IsspacePrelude" class="foswikiCurrentTopicLink">isSpace</a>, <a href="#IsupperPrelude" class="foswikiCurrentTopicLink">isUpper</a>,
+<a href="#IteratePrelude" class="foswikiCurrentTopicLink">iterate</a> <strong>L</strong> <a href="#LastPrelude" class="foswikiCurrentTopicLink">last</a>,
+<a href="#LcmPrelude" class="foswikiCurrentTopicLink">lcm</a>, <a href="#LengthPrelude" class="foswikiCurrentTopicLink">length</a>, <a href="#LinesPrelude" class="foswikiCurrentTopicLink">lines</a>,
+<a href="#LogPrelude" class="foswikiCurrentTopicLink">log</a> <strong>M</strong> <a href="#MapPrelude" class="foswikiCurrentTopicLink">map</a>, <a href="#MaxPrelude" class="foswikiCurrentTopicLink">max</a>,
+<a href="#MaximumPrelude" class="foswikiCurrentTopicLink">maximum</a>, <a href="#MinPrelude" class="foswikiCurrentTopicLink">min</a>, <a href="#MinimumPrelude" class="foswikiCurrentTopicLink">minimum</a>,
+<a href="#ModPrelude" class="foswikiCurrentTopicLink">mod</a> <strong>N</strong> <a href="#NotPrelude" class="foswikiCurrentTopicLink">not</a>, <a href="#NotelembyPrelude" class="foswikiCurrentTopicLink">notElemBy</a>,
+<a href="#NullPrelude" class="foswikiCurrentTopicLink">null</a> <strong>O</strong> <a href="#OddPrelude" class="foswikiCurrentTopicLink">odd</a>, <a href="#OrPrelude" class="foswikiCurrentTopicLink">or</a>,
+<a href="#OrdPrelude" class="foswikiCurrentTopicLink">ord</a>, <a href="#OrdcharPrelude" class="foswikiCurrentTopicLink">ordChar</a>, <a href="#OrdfloatPrelude" class="foswikiCurrentTopicLink">ordFloat</a>,
+<a href="#OrdintPrelude" class="foswikiCurrentTopicLink">ordInt</a>, <a href="#OrdlistPrelude" class="foswikiCurrentTopicLink">ordList</a>,
+<a href="#OrdstringPrelude" class="foswikiCurrentTopicLink">ordString</a> <strong>P</strong> <a href="#PiPrelude" class="foswikiCurrentTopicLink">pi</a>,
+<a href="#PutstrPrelude" class="foswikiCurrentTopicLink">putStr</a>, <a href="#ProductPrelude" class="foswikiCurrentTopicLink">product</a> <strong>Q</strong>
+<a href="#QuotPrelude" class="foswikiCurrentTopicLink">quot</a> <strong>R</strong> <a href="#ReadintPrelude" class="foswikiCurrentTopicLink">readInt</a>,
+<a href="#RemPrelude" class="foswikiCurrentTopicLink">rem</a>, <a href="#RepeatPrelude" class="foswikiCurrentTopicLink">repeat</a>, <a href="#ReplicatePrelude" class="foswikiCurrentTopicLink">replicate</a>,
+<a href="#ReversePrelude" class="foswikiCurrentTopicLink">reverse</a>, <a href="#RoundPrelude" class="foswikiCurrentTopicLink">round</a>, <strong>S</strong>
+<a href="#ShowintPrelude" class="foswikiCurrentTopicLink">showInt</a>,
+<a href="#SignumPrelude" class="foswikiCurrentTopicLink">signum</a>, <a href="#SignumfloatPrelude" class="foswikiCurrentTopicLink">signumFloat</a>,
+<a href="#SinPrelude" class="foswikiCurrentTopicLink">sin</a>, <a href="#SndPrelude" class="foswikiCurrentTopicLink">snd</a>, <a href="#SpanPrelude" class="foswikiCurrentTopicLink">span</a>,
+<a href="#SplitatPrelude" class="foswikiCurrentTopicLink">splitAt</a>, <a href="#SqrtPrelude" class="foswikiCurrentTopicLink">sqrt</a>, <a href="#SubtractPrelude" class="foswikiCurrentTopicLink">subtract</a>,
+<a href="#SumPrelude" class="foswikiCurrentTopicLink">sum</a> <strong>T</strong> <a href="#TailPrelude" class="foswikiCurrentTopicLink">tail</a>, <a href="#TakePrelude" class="foswikiCurrentTopicLink">take</a>,
+<a href="#TakewhilePrelude" class="foswikiCurrentTopicLink">takeWhile</a>, <a href="#TanPrelude" class="foswikiCurrentTopicLink">tan</a>, <a href="#TolowerPrelude" class="foswikiCurrentTopicLink">toLower</a>,
+<a href="#ToupperPrelude" class="foswikiCurrentTopicLink">toUpper</a>, <a href="#TruncatePrelude" class="foswikiCurrentTopicLink">truncate</a> <strong>U</strong>
+<a href="#UndefinedPrelude" class="foswikiCurrentTopicLink">undefined</a>, <a href="#UnlinesPrelude" class="foswikiCurrentTopicLink">unlines</a>,
+<a href="#UntilPrelude" class="foswikiCurrentTopicLink">until</a>, <a href="#UnwordsPrelude" class="foswikiCurrentTopicLink">unwords</a> <strong>W</strong>
+<a href="#WordsPrelude" class="foswikiCurrentTopicLink">words</a> <strong>Z</strong> <a href="#ZipPrelude" class="foswikiCurrentTopicLink">zip</a>, <a href="#ZipwithPrelude" class="foswikiCurrentTopicLink">zipWith</a>
+<p></p>
+<strong>Boolean operators</strong> <a href="#OpandPrelude" class="foswikiCurrentTopicLink">(&amp;&amp;)</a>,
+<a href="#OporPrelude" class="foswikiCurrentTopicLink">(||)</a> 
+<p></p>
+<strong>Integer operators</strong> <a href="#MulPrelude" class="foswikiCurrentTopicLink">(*)</a>,
+<a href="#OpdivPrelude" class="foswikiCurrentTopicLink">(/)</a>, <a href="#AddPrelude" class="foswikiCurrentTopicLink">(+)</a>, <a href="#SubPrelude" class="foswikiCurrentTopicLink">(-)</a>,
+<a href="#HatPrelude" class="foswikiCurrentTopicLink">(^)</a> <a href="#NePrelude" class="foswikiCurrentTopicLink">(/=)</a>, <a href="#EqPrelude" class="foswikiCurrentTopicLink">(==)</a>,
+<a href="#LtPrelude" class="foswikiCurrentTopicLink">(&lt;)</a>, <a href="#LePrelude" class="foswikiCurrentTopicLink">(&lt;=)</a>, <a href="#GtPrelude" class="foswikiCurrentTopicLink">(&gt;)</a>,
+<a href="#GePrelude" class="foswikiCurrentTopicLink">(&gt;=)</a> 
+<p></p>
+<strong>Floating-point operators</strong> <a href="#MulfltPrelude" class="foswikiCurrentTopicLink">(*.)</a>,
+<a href="#OpdivfltPrelude" class="foswikiCurrentTopicLink">(/.)</a>, <a href="#AddfltPrelude" class="foswikiCurrentTopicLink">(+.)</a>, <a href="#SubfltPrelude" class="foswikiCurrentTopicLink">(-.)</a>,
+<a href="#PowfltPrelude" class="foswikiCurrentTopicLink">(^.)</a> <a href="#NefltPrelude" class="foswikiCurrentTopicLink">(/=.)</a>, <a href="#EqfltPrelude" class="foswikiCurrentTopicLink">(==.)</a>,
+<a href="#LtfltPrelude" class="foswikiCurrentTopicLink">(&lt;.)</a>, <a href="#LefltPrelude" class="foswikiCurrentTopicLink">(&lt;=.)</a>, <a href="#GtfltPrelude" class="foswikiCurrentTopicLink">(&gt;.)</a>,
+<a href="#GefltPrelude" class="foswikiCurrentTopicLink">(&gt;=.)</a> <a href="#StarstarPrelude" class="foswikiCurrentTopicLink">(**.)</a> 
+<p></p>
+<strong>Other operators</strong> <a href="#IndexPrelude" class="foswikiCurrentTopicLink">(!!)</a>, <a href="#ConsPrelude" class="foswikiCurrentTopicLink">(:)</a>,
+<a href="#AppendPrelude" class="foswikiCurrentTopicLink">(++)</a>, <a href="#ComposePrelude" class="foswikiCurrentTopicLink">(.)</a> 
+</tt>
+<p></p>
+<a name="AbsPrelude"></a>
+<table class="foswikiTable" rules="none" border="1">
+	<tbody>
+		<tr class="foswikiTableOdd foswikiTableRowdataBgSorted0 foswikiTableRowdataBg0">
+			<td class="foswikiTableCol0 foswikiFirstCol"> <em>type:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol"> abs :: Int -&gt; Int </td>
+		</tr>
+		<tr class="foswikiTableEven foswikiTableRowdataBgSorted1 foswikiTableRowdataBg1">
+			<td class="foswikiTableCol0 foswikiFirstCol"> <em>description:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol"> returns the absolute value of a number. </td>
+		</tr>
+		<tr class="foswikiTableOdd foswikiTableRowdataBgSorted0 foswikiTableRowdataBg0">
+			<td class="foswikiTableCol0 foswikiFirstCol"> <em>definition:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol"> <pre>abs x
+  | x &gt;= 0 = x
+  | otherwise = -x</pre> </td>
+		</tr>
+		<tr class="foswikiTableEven foswikiTableRowdataBgSorted1 foswikiTableRowdataBg1">
+			<td class="foswikiTableCol0 foswikiFirstCol foswikiLast"> <em>usage:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol foswikiLast"> <pre>Prelude&gt; abs (-3)
+3</pre> </td>
+		</tr>
+	</tbody></table>
+<p></p>
+<a name="AllPrelude"></a>
+<table class="foswikiTable" rules="none" border="1">
+	<tbody>
+		<tr class="foswikiTableOdd foswikiTableRowdataBgSorted0 foswikiTableRowdataBg0">
+			<td class="foswikiTableCol0 foswikiFirstCol"> <em>type:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol"> all          :: (a -&gt; Bool) -&gt; [a] -&gt; Bool </td>
+		</tr>
+		<tr class="foswikiTableEven foswikiTableRowdataBgSorted1 foswikiTableRowdataBg1">
+			<td class="foswikiTableCol0 foswikiFirstCol"> <em>description:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol"> applied to a predicate 
+and a list, returns True if all elements of the list satisfy the 
+predicate, and False otherwise. Similar to the function <a href="#AnyPrelude">any</a>. </td>
+		</tr>
+		<tr class="foswikiTableOdd foswikiTableRowdataBgSorted0 foswikiTableRowdataBg0">
+			<td class="foswikiTableCol0 foswikiFirstCol"> <em>definition:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol"> <pre>all p xs = <a href="#AndPrelude">and</a> (<a href="#MapPrelude">map</a> p xs)</pre> </td>
+		</tr>
+		<tr class="foswikiTableEven foswikiTableRowdataBgSorted1 foswikiTableRowdataBg1">
+			<td class="foswikiTableCol0 foswikiFirstCol foswikiLast"> <em>usage:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol foswikiLast"> <pre>Prelude&gt; all (&lt; 11) [1..10]
+True
+Prelude&gt; all isDigit "123abc"
+False</pre> </td>
+		</tr>
+	</tbody></table>
+<p></p>
+<a name="AndPrelude"></a>
+<table class="foswikiTable" rules="none" border="1">
+	<tbody>
+		<tr class="foswikiTableOdd foswikiTableRowdataBgSorted0 foswikiTableRowdataBg0">
+			<td class="foswikiTableCol0 foswikiFirstCol"> <em>type:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol"> and          :: [Bool] -&gt; Bool </td>
+		</tr>
+		<tr class="foswikiTableEven foswikiTableRowdataBgSorted1 foswikiTableRowdataBg1">
+			<td class="foswikiTableCol0 foswikiFirstCol"> <em>description:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol"> takes the logical conjunction of a list of boolean values (see          also `<a href="#OrPrelude">or</a>'). </td>
+		</tr>
+		<tr class="foswikiTableOdd foswikiTableRowdataBgSorted0 foswikiTableRowdataBg0">
+			<td class="foswikiTableCol0 foswikiFirstCol"> <em>definition:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol"> <pre>and xs = <a href="#FoldrPrelude">foldr</a> (&amp;&amp;) True xs</pre> </td>
+		</tr>
+		<tr class="foswikiTableEven foswikiTableRowdataBgSorted1 foswikiTableRowdataBg1">
+			<td class="foswikiTableCol0 foswikiFirstCol foswikiLast"> <em>usage:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol foswikiLast"> <pre>Prelude&gt; and [True, True, False, True]
+False
+Prelude&gt; and [True, True, True, True]
+True
+Prelude&gt; and []
+True</pre> </td>
+		</tr>
+	</tbody></table>
+<p></p>
+<a name="AnyPrelude"></a>
+<table class="foswikiTable" rules="none" border="1">
+	<tbody>
+		<tr class="foswikiTableOdd foswikiTableRowdataBgSorted0 foswikiTableRowdataBg0">
+			<td class="foswikiTableCol0 foswikiFirstCol"> <em>type:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol"> any :: (a -&gt; Bool) -&gt; [a] -&gt; Bool </td>
+		</tr>
+		<tr class="foswikiTableEven foswikiTableRowdataBgSorted1 foswikiTableRowdataBg1">
+			<td class="foswikiTableCol0 foswikiFirstCol"> <em>description:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol"> applied to a predicate 
+and a list, returns True if any of the          elements of the list 
+satisfy the predicate, and False otherwise.          Similar to the 
+function <a href="#AllPrelude">all</a>. </td>
+		</tr>
+		<tr class="foswikiTableOdd foswikiTableRowdataBgSorted0 foswikiTableRowdataBg0">
+			<td class="foswikiTableCol0 foswikiFirstCol"> <em>definition:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol"> <pre>any p xs = <a href="#OrPrelude">or</a> (<a href="#MapPrelude">map</a> p xs)</pre> </td>
+		</tr>
+		<tr class="foswikiTableEven foswikiTableRowdataBgSorted1 foswikiTableRowdataBg1">
+			<td class="foswikiTableCol0 foswikiFirstCol foswikiLast"> <em>usage:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol foswikiLast"> <pre>Prelude&gt; any (&lt; 11) [1..10]
+True
+Prelude&gt; any isDigit "123abc"
+True
+Prelude&gt; any isDigit "alphabetics"
+False</pre> </td>
+		</tr>
+	</tbody></table>
+<p></p>
+<a name="BreakPrelude"></a>
+<table class="foswikiTable" rules="none" border="1">
+	<tbody>
+		<tr class="foswikiTableOdd foswikiTableRowdataBgSorted0 foswikiTableRowdataBg0">
+			<td class="foswikiTableCol0 foswikiFirstCol"> <em>type:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol"> break :: (a -&gt; Bool) -&gt; [a] -&gt; ([a],[a]) </td>
+		</tr>
+		<tr class="foswikiTableEven foswikiTableRowdataBgSorted1 foswikiTableRowdataBg1">
+			<td class="foswikiTableCol0 foswikiFirstCol"> <em>description:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol"> given a predicate and a 
+list, breaks the list into two lists          (returned as a tuple) at 
+the point where the predicate is first          satisfied. If the 
+predicate is never satisfied then the first          element of the 
+resulting tuple is the entire list and the second          element is 
+the empty list ([]). </td>
+		</tr>
+		<tr class="foswikiTableOdd foswikiTableRowdataBgSorted0 foswikiTableRowdataBg0">
+			<td class="foswikiTableCol0 foswikiFirstCol"> <em>definition:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol"> <pre>break p xs
+  = <a href="#SpanPrelude">span</a> p' xs
+    where
+    p' x = <a href="#NotPrelude">not</a> (p x)</pre> </td>
+		</tr>
+		<tr class="foswikiTableEven foswikiTableRowdataBgSorted1 foswikiTableRowdataBg1">
+			<td class="foswikiTableCol0 foswikiFirstCol foswikiLast"> <em>usage:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol foswikiLast"> <pre>Prelude&gt; break isSpace "hello there fred"
+("hello", " there fred")
+Prelude&gt; break isDigit "no digits here"
+("no digits here","")</pre> </td>
+		</tr>
+	</tbody></table>
+<p></p>
+<a name="CeilingPrelude"></a>
+<table class="foswikiTable" rules="none" border="1">
+	<tbody>
+		<tr class="foswikiTableOdd foswikiTableRowdataBgSorted0 foswikiTableRowdataBg0">
+			<td class="foswikiTableCol0 foswikiFirstCol"> <em>type:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol"> ceiling :: Float -&gt; Int </td>
+		</tr>
+		<tr class="foswikiTableEven foswikiTableRowdataBgSorted1 foswikiTableRowdataBg1">
+			<td class="foswikiTableCol0 foswikiFirstCol"> <em>description:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol"> returns the smallest integer not less than its argument. </td>
+		</tr>
+		<tr class="foswikiTableOdd foswikiTableRowdataBgSorted0 foswikiTableRowdataBg0">
+			<td class="foswikiTableCol0 foswikiFirstCol"> <em>usage:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol"> <pre>Prelude&gt; ceiling 3.8
+4
+Prelude&gt; ceiling (-.3.8)
+-3</pre> </td>
+		</tr>
+		<tr class="foswikiTableEven foswikiTableRowdataBgSorted1 foswikiTableRowdataBg1">
+			<td class="foswikiTableCol0 foswikiFirstCol foswikiLast"> <em>see also:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol foswikiLast"> <a href="#FloorPrelude">floor</a> </td>
+		</tr>
+	</tbody></table>
+<p></p>
+<a name="ChrPrelude"></a>
+<table class="foswikiTable" rules="none" border="1">
+	<tbody>
+		<tr class="foswikiTableOdd foswikiTableRowdataBgSorted0 foswikiTableRowdataBg0">
+			<td class="foswikiTableCol0 foswikiFirstCol"> <em>type:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol"> chr :: Int -&gt; Char </td>
+		</tr>
+		<tr class="foswikiTableEven foswikiTableRowdataBgSorted1 foswikiTableRowdataBg1">
+			<td class="foswikiTableCol0 foswikiFirstCol"> <em>description:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol"> applied to an integer in
+ the range 0 -- 255, returns the          character whose ascii code is 
+that integer. It is the converse of          the function ord. An error 
+will result if chr is applied to an          integer outside the correct
+ range. </td>
+		</tr>
+		<tr class="foswikiTableOdd foswikiTableRowdataBgSorted0 foswikiTableRowdataBg0">
+			<td class="foswikiTableCol0 foswikiFirstCol"> <em>definition:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol"> defined internally. </td>
+		</tr>
+		<tr class="foswikiTableEven foswikiTableRowdataBgSorted1 foswikiTableRowdataBg1">
+			<td class="foswikiTableCol0 foswikiFirstCol"> <em>usage:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol"> <pre>Prelude&gt; chr 65
+'A'
+Prelude&gt; (ord (chr 65)) == 65
+True</pre> </td>
+		</tr>
+		<tr class="foswikiTableOdd foswikiTableRowdataBgSorted0 foswikiTableRowdataBg0">
+			<td class="foswikiTableCol0 foswikiFirstCol foswikiLast"> <em>see also:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol foswikiLast"> <a href="#OrdPrelude">ord</a> </td>
+		</tr>
+	</tbody></table>
+<p></p>
+<a name="ConcatPrelude"></a>
+<table class="foswikiTable" rules="none" border="1">
+	<tbody>
+		<tr class="foswikiTableOdd foswikiTableRowdataBgSorted0 foswikiTableRowdataBg0">
+			<td class="foswikiTableCol0 foswikiFirstCol"> <em>type:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol"> concat :: <a class="foswikiNewLink" href="http://foswiki.cs.uu.nl/foswiki/bin/edit/Helium/A?topicparent=Helium.ATourOfTheHeliumPrelude" rel="nofollow" title="Create this topic">a</a> -&gt; [a] </td>
+		</tr>
+		<tr class="foswikiTableEven foswikiTableRowdataBgSorted1 foswikiTableRowdataBg1">
+			<td class="foswikiTableCol0 foswikiFirstCol"> <em>description:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol"> applied to a list of lists, joins them together using the ++ operator. </td>
+		</tr>
+		<tr class="foswikiTableOdd foswikiTableRowdataBgSorted0 foswikiTableRowdataBg0">
+			<td class="foswikiTableCol0 foswikiFirstCol"> <em>definition:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol"> <pre>concat xs = <a href="#FoldrPrelude">foldr</a> (++) [] xs</pre> </td>
+		</tr>
+		<tr class="foswikiTableEven foswikiTableRowdataBgSorted1 foswikiTableRowdataBg1">
+			<td class="foswikiTableCol0 foswikiFirstCol foswikiLast"> <em>usage:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol foswikiLast"> <pre>Prelude&gt; concat [[1,2,3], [4], [], [5,6,7,8]]
+[1, 2, 3, 4, 5, 6, 7, 8]</pre> </td>
+		</tr>
+	</tbody></table>
+<p></p>
+<a name="ConcatmapPrelude"></a>
+<table class="foswikiTable" rules="none" border="1">
+	<tbody>
+		<tr class="foswikiTableOdd foswikiTableRowdataBgSorted0 foswikiTableRowdataBg0">
+			<td class="foswikiTableCol0 foswikiFirstCol"> <em>type:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol"> concatMap :: (a -&gt; [b]) -&gt; [a] -&gt; [b] </td>
+		</tr>
+		<tr class="foswikiTableEven foswikiTableRowdataBgSorted1 foswikiTableRowdataBg1">
+			<td class="foswikiTableCol0 foswikiFirstCol"> <em>description:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol"> given a function which 
+maps a value to a list, and a list of          elements of the same type
+ as the value, applies the function to          the list and then 
+concatenates the result (thus flattening the          resulting list). </td>
+		</tr>
+		<tr class="foswikiTableOdd foswikiTableRowdataBgSorted0 foswikiTableRowdataBg0">
+			<td class="foswikiTableCol0 foswikiFirstCol"> <em>definition:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol"> <pre>concatMap f = <a href="#ConcatPrelude">concat</a> . <a href="#MapPrelude">map</a> f</pre> </td>
+		</tr>
+		<tr class="foswikiTableEven foswikiTableRowdataBgSorted1 foswikiTableRowdataBg1">
+			<td class="foswikiTableCol0 foswikiFirstCol foswikiLast"> <em>usage:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol foswikiLast"> <pre>Prelude&gt; concatMap showInt [1,2,3,4]
+"1234"</pre> </td>
+		</tr>
+	</tbody></table>
+<p></p>
+<a name="ConstPrelude"></a>
+<table class="foswikiTable" rules="none" border="1">
+	<tbody>
+		<tr class="foswikiTableOdd foswikiTableRowdataBgSorted0 foswikiTableRowdataBg0">
+			<td class="foswikiTableCol0 foswikiFirstCol"> <em>type:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol"> const :: const :: a -&gt; b -&gt; a </td>
+		</tr>
+		<tr class="foswikiTableEven foswikiTableRowdataBgSorted1 foswikiTableRowdataBg1">
+			<td class="foswikiTableCol0 foswikiFirstCol"> <em>description:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol"> creates a constant 
+valued function which always has the value          of its first 
+argument, regardless of the value of its second          argument. </td>
+		</tr>
+		<tr class="foswikiTableOdd foswikiTableRowdataBgSorted0 foswikiTableRowdataBg0">
+			<td class="foswikiTableCol0 foswikiFirstCol"> <em>definition:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol"> <pre>const k _ = k</pre> </td>
+		</tr>
+		<tr class="foswikiTableEven foswikiTableRowdataBgSorted1 foswikiTableRowdataBg1">
+			<td class="foswikiTableCol0 foswikiFirstCol foswikiLast"> <em>usage:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol foswikiLast"> <pre>Prelude&gt; const 12 "lucky"
+12</pre> </td>
+		</tr>
+	</tbody></table>
+<p></p>
+<a name="CosPrelude"></a>
+<table class="foswikiTable" rules="none" border="1">
+	<tbody>
+		<tr class="foswikiTableOdd foswikiTableRowdataBgSorted0 foswikiTableRowdataBg0">
+			<td class="foswikiTableCol0 foswikiFirstCol"> <em>type:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol"> cos :: Float -&gt; Float </td>
+		</tr>
+		<tr class="foswikiTableEven foswikiTableRowdataBgSorted1 foswikiTableRowdataBg1">
+			<td class="foswikiTableCol0 foswikiFirstCol"> <em>description:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol"> the trigonometric cosine function, arguments are interpreted to be in radians. </td>
+		</tr>
+		<tr class="foswikiTableOdd foswikiTableRowdataBgSorted0 foswikiTableRowdataBg0">
+			<td class="foswikiTableCol0 foswikiFirstCol"> <em>definition:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol"> defined internally. </td>
+		</tr>
+		<tr class="foswikiTableEven foswikiTableRowdataBgSorted1 foswikiTableRowdataBg1">
+			<td class="foswikiTableCol0 foswikiFirstCol foswikiLast"> <em>usage:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol foswikiLast"> <pre>Prelude&gt; cos pi
+-1
+Prelude&gt; cos (pi/.2.0)
+6.12303e-017</pre> </td>
+		</tr>
+	</tbody></table>
+<p></p>
+<a name="DivPrelude"></a>
+<table class="foswikiTable" rules="none" border="1">
+	<tbody>
+		<tr class="foswikiTableOdd foswikiTableRowdataBgSorted0 foswikiTableRowdataBg0">
+			<td class="foswikiTableCol0 foswikiFirstCol"> <em>type:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol"> div :: Int -&gt; Int -&gt; Int </td>
+		</tr>
+		<tr class="foswikiTableEven foswikiTableRowdataBgSorted1 foswikiTableRowdataBg1">
+			<td class="foswikiTableCol0 foswikiFirstCol"> <em>description:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol"> computes the integer division of its integral arguments. </td>
+		</tr>
+		<tr class="foswikiTableOdd foswikiTableRowdataBgSorted0 foswikiTableRowdataBg0">
+			<td class="foswikiTableCol0 foswikiFirstCol"> <em>definition:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol"> defined internally. </td>
+		</tr>
+		<tr class="foswikiTableEven foswikiTableRowdataBgSorted1 foswikiTableRowdataBg1">
+			<td class="foswikiTableCol0 foswikiFirstCol"> <em>usage:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol"> <pre>Prelude&gt; 16 `div` 9
+1
+Prelude&gt; (-12) `div` 5
+-3</pre> </td>
+		</tr>
+		<tr class="foswikiTableOdd foswikiTableRowdataBgSorted0 foswikiTableRowdataBg0">
+			<td class="foswikiTableCol0 foswikiFirstCol foswikiLast"> <em>notes:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol foswikiLast"> <tt>`div`</tt> is integer division such that the result is truncated towards negative infinity. </td>
+		</tr>
+	</tbody></table>
+<p></p>
+<a name="DropPrelude"></a>
+<table class="foswikiTable" rules="none" border="1">
+	<tbody>
+		<tr class="foswikiTableOdd foswikiTableRowdataBgSorted0 foswikiTableRowdataBg0">
+			<td class="foswikiTableCol0 foswikiFirstCol"> <em>type:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol"> drop :: Int -&gt; [a] -&gt; [a] </td>
+		</tr>
+		<tr class="foswikiTableEven foswikiTableRowdataBgSorted1 foswikiTableRowdataBg1">
+			<td class="foswikiTableCol0 foswikiFirstCol"> <em>description:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol"> applied to a number and a
+ list, returns the list with the          specified number of elements 
+removed from the front of the list.          If the list has less than 
+the required number of elements then it          returns []. </td>
+		</tr>
+		<tr class="foswikiTableOdd foswikiTableRowdataBgSorted0 foswikiTableRowdataBg0">
+			<td class="foswikiTableCol0 foswikiFirstCol"> <em>definition:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol"> <pre>drop n xs | n &lt;= 0  = xs
+drop _ []           = []
+drop n (_:xs)       = drop (n-1) xs</pre> </td>
+		</tr>
+		<tr class="foswikiTableEven foswikiTableRowdataBgSorted1 foswikiTableRowdataBg1">
+			<td class="foswikiTableCol0 foswikiFirstCol foswikiLast"> <em>usage:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol foswikiLast"> <pre>Prelude&gt; drop 3 [1..10]
+[4, 5, 6, 7, 8, 9, 10]
+Prelude&gt; drop 4 "abc"
+""</pre> </td>
+		</tr>
+	</tbody></table>
+<p></p>
+<a name="DropwhilePrelude"></a>
+<table class="foswikiTable" rules="none" border="1">
+	<tbody>
+		<tr class="foswikiTableOdd foswikiTableRowdataBgSorted0 foswikiTableRowdataBg0">
+			<td class="foswikiTableCol0 foswikiFirstCol"> <em>type:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol"> dropWhile :: (a -&gt; Bool) -&gt; [a] -&gt; [a] </td>
+		</tr>
+		<tr class="foswikiTableEven foswikiTableRowdataBgSorted1 foswikiTableRowdataBg1">
+			<td class="foswikiTableCol0 foswikiFirstCol"> <em>description:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol"> applied to a predicate and a list, removes elements from the          front of the list while the predicate is satisfied. </td>
+		</tr>
+		<tr class="foswikiTableOdd foswikiTableRowdataBgSorted0 foswikiTableRowdataBg0">
+			<td class="foswikiTableCol0 foswikiFirstCol"> <em>definition:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol"> <pre>dropWhile p [] = []
+dropWhile p (x:xs)
+  | p x = dropWhile p xs
+  | otherwise = (x:xs)</pre> </td>
+		</tr>
+		<tr class="foswikiTableEven foswikiTableRowdataBgSorted1 foswikiTableRowdataBg1">
+			<td class="foswikiTableCol0 foswikiFirstCol foswikiLast"> <em>usage:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol foswikiLast"> <pre>Prelude&gt; dropWhile (&lt; 5) [1..10]
+[5, 6, 7, 8, 9, 10]</pre> </td>
+		</tr>
+	</tbody></table>
+<p></p>
+<a name="ElembyPrelude"></a>
+<table class="foswikiTable" rules="none" border="1">
+	<tbody>
+		<tr class="foswikiTableOdd foswikiTableRowdataBgSorted0 foswikiTableRowdataBg0">
+			<td class="foswikiTableCol0 foswikiFirstCol"> <em>type:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol"> elemBy :: (a -&gt; a -&gt; Bool) -&gt; a -&gt; [a] -&gt; Bool </td>
+		</tr>
+		<tr class="foswikiTableEven foswikiTableRowdataBgSorted1 foswikiTableRowdataBg1">
+			<td class="foswikiTableCol0 foswikiFirstCol"> <em>description:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol"> applied to a comparison 
+function, a value and a list returns          True if the value is in 
+the list and False otherwise. The elements          of the list must be 
+of the same type as the value. </td>
+		</tr>
+		<tr class="foswikiTableOdd foswikiTableRowdataBgSorted0 foswikiTableRowdataBg0">
+			<td class="foswikiTableCol0 foswikiFirstCol"> <em>definition:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol"> <pre>elemBy _ _ [] = False
+elemBy eq x (y:ys)
+  | x `eq` y = True
+  | otherwise = elemBy eq x ys</pre> </td>
+		</tr>
+		<tr class="foswikiTableEven foswikiTableRowdataBgSorted1 foswikiTableRowdataBg1">
+			<td class="foswikiTableCol0 foswikiFirstCol foswikiLast"> <em>usage:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol foswikiLast"> <pre>Prelude&gt; elemBy (==) 5 [1..10]
+True
+Prelude&gt; elemBy eqString "rat" ["fat", "cat"]
+False</pre> </td>
+		</tr>
+	</tbody></table>
+<p></p>
+<a name="EqboolPrelude"></a>
+<table class="foswikiTable" rules="none" border="1">
+	<tbody>
+		<tr class="foswikiTableOdd foswikiTableRowdataBgSorted0 foswikiTableRowdataBg0">
+			<td class="foswikiTableCol0 foswikiFirstCol"> <em>type:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol"> eqBool :: Bool -&gt; Bool -&gt; Bool </td>
+		</tr>
+		<tr class="foswikiTableEven foswikiTableRowdataBgSorted1 foswikiTableRowdataBg1">
+			<td class="foswikiTableCol0 foswikiFirstCol"> <em>description:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol"> is <tt>True</tt> if its first argument is equal to its second          argument, and <tt>False</tt> otherwise. </td>
+		</tr>
+		<tr class="foswikiTableOdd foswikiTableRowdataBgSorted0 foswikiTableRowdataBg0">
+			<td class="foswikiTableCol0 foswikiFirstCol"> <em>definition:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol"> <pre>eqBool True True = True
+eqBool False False = True
+eqBool _ _ = False</pre> </td>
+		</tr>
+		<tr class="foswikiTableEven foswikiTableRowdataBgSorted1 foswikiTableRowdataBg1">
+			<td class="foswikiTableCol0 foswikiFirstCol"> <em>usage:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol"> <pre>Prelude&gt; eqBool True False
+False</pre> </td>
+		</tr>
+		<tr class="foswikiTableOdd foswikiTableRowdataBgSorted0 foswikiTableRowdataBg0">
+			<td class="foswikiTableCol0 foswikiFirstCol foswikiLast"> <em>see also:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol foswikiLast"> <a href="#EqboolPrelude">eqBool</a>, <a href="#EqcharPrelude">eqChar</a>,          <a href="#EqlistPrelude">eqList</a>, <a href="#EqstringPrelude">eqString</a>,          <a href="#EqPrelude">(==)</a>, <a href="#EqfltPrelude">(==.)</a> </td>
+		</tr>
+	</tbody></table>
+<p></p>
+<a name="EqcharPrelude"></a>
+<table class="foswikiTable" rules="none" border="1">
+	<tbody>
+		<tr class="foswikiTableOdd foswikiTableRowdataBgSorted0 foswikiTableRowdataBg0">
+			<td class="foswikiTableCol0 foswikiFirstCol"> <em>type:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol"> eqChar :: Char -&gt; Char -&gt; Bool </td>
+		</tr>
+		<tr class="foswikiTableEven foswikiTableRowdataBgSorted1 foswikiTableRowdataBg1">
+			<td class="foswikiTableCol0 foswikiFirstCol"> <em>description:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol"> is <tt>True</tt> if its first argument is equal to its second          argument, and <tt>False</tt> otherwise. </td>
+		</tr>
+		<tr class="foswikiTableOdd foswikiTableRowdataBgSorted0 foswikiTableRowdataBg0">
+			<td class="foswikiTableCol0 foswikiFirstCol"> <em>definition:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol"> <pre>eqChar c1 c2 =
+    case ordChar c1 c2 of
+        EQ -&gt; True
+        _  -&gt; False</pre> </td>
+		</tr>
+		<tr class="foswikiTableEven foswikiTableRowdataBgSorted1 foswikiTableRowdataBg1">
+			<td class="foswikiTableCol0 foswikiFirstCol"> <em>usage:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol"> <pre>Prelude&gt; filter (eqChar 'a') "banana"
+"aaa;"
+Prelude&gt; elemBy eqChar 'x' "yada"
+False</pre> </td>
+		</tr>
+		<tr class="foswikiTableOdd foswikiTableRowdataBgSorted0 foswikiTableRowdataBg0">
+			<td class="foswikiTableCol0 foswikiFirstCol foswikiLast"> <em>see also:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol foswikiLast"> <a href="#EqboolPrelude">eqBool</a>, <a href="#EqcharPrelude">eqChar</a>,          <a href="#EqlistPrelude">eqList</a>, <a href="#EqstringPrelude">eqString</a>,          <a href="#EqPrelude">(==)</a>, <a href="#EqfltPrelude">(==.)</a> </td>
+		</tr>
+	</tbody></table>
+<p></p>
+<a name="EqlistPrelude"></a>
+<table class="foswikiTable" rules="none" border="1">
+	<tbody>
+		<tr class="foswikiTableOdd foswikiTableRowdataBgSorted0 foswikiTableRowdataBg0">
+			<td class="foswikiTableCol0 foswikiFirstCol"> <em>type:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol"> eqList :: (a -&gt; a -&gt; Bool) -&gt; [a] -&gt; [a] -&gt; Bool </td>
+		</tr>
+		<tr class="foswikiTableEven foswikiTableRowdataBgSorted1 foswikiTableRowdataBg1">
+			<td class="foswikiTableCol0 foswikiFirstCol"> <em>description:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol"> is <tt>True</tt> if the first list is equal to the second list,          and <tt>False</tt> otherwise. Elements are compared using the          function passed as first argument. </td>
+		</tr>
+		<tr class="foswikiTableOdd foswikiTableRowdataBgSorted0 foswikiTableRowdataBg0">
+			<td class="foswikiTableCol0 foswikiFirstCol"> <em>definition:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol"> <pre>eqList _      []     []     =  True
+eqList eqElem (x:xs) (y:ys) =
+        x `eqElem` y &amp;&amp; eqList eqElem xs ys
+eqList _      _      _      = False</pre> </td>
+		</tr>
+		<tr class="foswikiTableEven foswikiTableRowdataBgSorted1 foswikiTableRowdataBg1">
+			<td class="foswikiTableCol0 foswikiFirstCol"> <em>usage:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol"> <pre>Prelude&gt; eqList (==) [1,2,3] [1,2,4]
+False
+Prelude&gt; eqList eqChar "abc" "abc"
+True</pre> </td>
+		</tr>
+		<tr class="foswikiTableOdd foswikiTableRowdataBgSorted0 foswikiTableRowdataBg0">
+			<td class="foswikiTableCol0 foswikiFirstCol foswikiLast"> <em>see also:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol foswikiLast"> <a href="#EqboolPrelude">eqBool</a>, <a href="#EqcharPrelude">eqChar</a>,          <a href="#EqlistPrelude">eqList</a>, <a href="#EqstringPrelude">eqString</a>,          <a href="#EqPrelude">(==)</a>, <a href="#EqfltPrelude">(==.)</a> </td>
+		</tr>
+	</tbody></table>
+<p></p>
+<a name="EqstringPrelude"></a>
+<table class="foswikiTable" rules="none" border="1">
+	<tbody>
+		<tr class="foswikiTableOdd foswikiTableRowdataBgSorted0 foswikiTableRowdataBg0">
+			<td class="foswikiTableCol0 foswikiFirstCol"> <em>type:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol"> eqString :: String -&gt; String -&gt; Bool </td>
+		</tr>
+		<tr class="foswikiTableEven foswikiTableRowdataBgSorted1 foswikiTableRowdataBg1">
+			<td class="foswikiTableCol0 foswikiFirstCol"> <em>description:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol"> is <tt>True</tt> if its first argument is equal to its second          argument, and <tt>False</tt> otherwise. </td>
+		</tr>
+		<tr class="foswikiTableOdd foswikiTableRowdataBgSorted0 foswikiTableRowdataBg0">
+			<td class="foswikiTableCol0 foswikiFirstCol"> <em>definition:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol"> <pre>eqString s1 s2 =
+    case ordString s1 s2 of
+        EQ -&gt; True
+        _  -&gt; False</pre> </td>
+		</tr>
+		<tr class="foswikiTableEven foswikiTableRowdataBgSorted1 foswikiTableRowdataBg1">
+			<td class="foswikiTableCol0 foswikiFirstCol"> <em>usage:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol"> <pre>Prelude&gt; eqString "Abc" "abc"
+False
+Prelude&gt; eqString "abc" "abc"
+True</pre> </td>
+		</tr>
+		<tr class="foswikiTableOdd foswikiTableRowdataBgSorted0 foswikiTableRowdataBg0">
+			<td class="foswikiTableCol0 foswikiFirstCol foswikiLast"> <em>see also:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol foswikiLast"> <a href="#EqboolPrelude">eqBool</a>, <a href="#EqcharPrelude">eqChar</a>,          <a href="#EqlistPrelude">eqList</a>, <a href="#EqstringPrelude">eqString</a>,          <a href="#EqPrelude">(==)</a>, <a href="#EqfltPrelude">(==.)</a> </td>
+		</tr>
+	</tbody></table>
+<p></p>
+<a name="ErrorPrelude"></a>
+<table class="foswikiTable" rules="none" border="1">
+	<tbody>
+		<tr class="foswikiTableOdd foswikiTableRowdataBgSorted0 foswikiTableRowdataBg0">
+			<td class="foswikiTableCol0 foswikiFirstCol"> <em>type:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol"> error :: String -&gt; a </td>
+		</tr>
+		<tr class="foswikiTableEven foswikiTableRowdataBgSorted1 foswikiTableRowdataBg1">
+			<td class="foswikiTableCol0 foswikiFirstCol"> <em>description:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol"> applied to a string 
+creates an error value with an associated          message. Error values
+ are equivalent to the undefined value          (undefined), any attempt
+ to access the value causes the program to          terminate and print 
+the string as a diagnostic. </td>
+		</tr>
+		<tr class="foswikiTableOdd foswikiTableRowdataBgSorted0 foswikiTableRowdataBg0">
+			<td class="foswikiTableCol0 foswikiFirstCol"> <em>definition:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol"> defined internally. </td>
+		</tr>
+		<tr class="foswikiTableEven foswikiTableRowdataBgSorted1 foswikiTableRowdataBg1">
+			<td class="foswikiTableCol0 foswikiFirstCol foswikiLast"> <em>usage:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol foswikiLast"> <pre>error "this is an error message"</pre> </td>
+		</tr>
+	</tbody></table>
+<p></p>
+<a name="EvenPrelude"></a>
+<table class="foswikiTable" rules="none" border="1">
+	<tbody>
+		<tr class="foswikiTableOdd foswikiTableRowdataBgSorted0 foswikiTableRowdataBg0">
+			<td class="foswikiTableCol0 foswikiFirstCol"> <em>type:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol"> even :: Int -&gt; Bool </td>
+		</tr>
+		<tr class="foswikiTableEven foswikiTableRowdataBgSorted1 foswikiTableRowdataBg1">
+			<td class="foswikiTableCol0 foswikiFirstCol"> <em>description:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol"> applied to an integral argument, returns True if the argument          is even, and False otherwise. </td>
+		</tr>
+		<tr class="foswikiTableOdd foswikiTableRowdataBgSorted0 foswikiTableRowdataBg0">
+			<td class="foswikiTableCol0 foswikiFirstCol"> <em>definition:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol"> <pre>even n = n `rem` 2 == 0</pre> </td>
+		</tr>
+		<tr class="foswikiTableEven foswikiTableRowdataBgSorted1 foswikiTableRowdataBg1">
+			<td class="foswikiTableCol0 foswikiFirstCol foswikiLast"> <em>usage:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol foswikiLast"> <pre>Prelude&gt; even 2
+True
+Prelude&gt; even (11 * 3)
+False</pre> </td>
+		</tr>
+	</tbody></table>
+<p></p>
+<a name="ExpPrelude"></a>
+<table class="foswikiTable" rules="none" border="1">
+	<tbody>
+		<tr class="foswikiTableOdd foswikiTableRowdataBgSorted0 foswikiTableRowdataBg0">
+			<td class="foswikiTableCol0 foswikiFirstCol"> <em>type:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol"> exp :: Float -&gt; Float </td>
+		</tr>
+		<tr class="foswikiTableEven foswikiTableRowdataBgSorted1 foswikiTableRowdataBg1">
+			<td class="foswikiTableCol0 foswikiFirstCol"> <em>description:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol"> the exponential function (exp n is equivalent to e<sup>n</sup>). </td>
+		</tr>
+		<tr class="foswikiTableOdd foswikiTableRowdataBgSorted0 foswikiTableRowdataBg0">
+			<td class="foswikiTableCol0 foswikiFirstCol"> <em>definition:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol"> defined internally. </td>
+		</tr>
+		<tr class="foswikiTableEven foswikiTableRowdataBgSorted1 foswikiTableRowdataBg1">
+			<td class="foswikiTableCol0 foswikiFirstCol foswikiLast"> <em>usage:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol foswikiLast"> <pre>Prelude&gt; exp 1.0
+2.71828</pre> </td>
+		</tr>
+	</tbody></table>
+<p></p>
+<a name="FilterPrelude"></a>
+<table class="foswikiTable" rules="none" border="1">
+	<tbody>
+		<tr class="foswikiTableOdd foswikiTableRowdataBgSorted0 foswikiTableRowdataBg0">
+			<td class="foswikiTableCol0 foswikiFirstCol"> <em>type:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol"> filter :: (a -&gt; Bool) -&gt; [a] -&gt; [a] </td>
+		</tr>
+		<tr class="foswikiTableEven foswikiTableRowdataBgSorted1 foswikiTableRowdataBg1">
+			<td class="foswikiTableCol0 foswikiFirstCol"> <em>description:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol"> applied to a predicate 
+and a list, returns a list containing          all the elements from the
+ argument list that satisfy the          predicate. </td>
+		</tr>
+		<tr class="foswikiTableOdd foswikiTableRowdataBgSorted0 foswikiTableRowdataBg0">
+			<td class="foswikiTableCol0 foswikiFirstCol"> <em>definition:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol"> <pre>filter p xs = [k | k &lt;- xs, p k]</pre> </td>
+		</tr>
+		<tr class="foswikiTableEven foswikiTableRowdataBgSorted1 foswikiTableRowdataBg1">
+			<td class="foswikiTableCol0 foswikiFirstCol foswikiLast"> <em>usage:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol foswikiLast"> <pre>Prelude&gt; filter isDigit "fat123cat456"
+"123456"</pre> </td>
+		</tr>
+	</tbody></table>
+<p></p>
+<a name="FlipPrelude"></a>
+<table class="foswikiTable" rules="none" border="1">
+	<tbody>
+		<tr class="foswikiTableOdd foswikiTableRowdataBgSorted0 foswikiTableRowdataBg0">
+			<td class="foswikiTableCol0 foswikiFirstCol"> <em>type:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol"> flip :: (a -&gt; b -&gt; c) -&gt; b -&gt; a -&gt; c </td>
+		</tr>
+		<tr class="foswikiTableEven foswikiTableRowdataBgSorted1 foswikiTableRowdataBg1">
+			<td class="foswikiTableCol0 foswikiFirstCol"> <em>description:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol"> applied to a binary function, returns the same function with          the order of the arguments reversed. </td>
+		</tr>
+		<tr class="foswikiTableOdd foswikiTableRowdataBgSorted0 foswikiTableRowdataBg0">
+			<td class="foswikiTableCol0 foswikiFirstCol"> <em>definition:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol"> <pre>flip f x y = f y x</pre> </td>
+		</tr>
+		<tr class="foswikiTableEven foswikiTableRowdataBgSorted1 foswikiTableRowdataBg1">
+			<td class="foswikiTableCol0 foswikiFirstCol foswikiLast"> <em>usage:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol foswikiLast"> <pre>Prelude&gt; flip (<a href="#ElembyPrelude">elemBy</a> (==)) [1..10] 5
+True</pre> </td>
+		</tr>
+	</tbody></table>
+<p></p>
+<a name="FloorPrelude"></a>
+<table class="foswikiTable" rules="none" border="1">
+	<tbody>
+		<tr class="foswikiTableOdd foswikiTableRowdataBgSorted0 foswikiTableRowdataBg0">
+			<td class="foswikiTableCol0 foswikiFirstCol"> <em>type:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol"> floor :: Float -&gt; Int </td>
+		</tr>
+		<tr class="foswikiTableEven foswikiTableRowdataBgSorted1 foswikiTableRowdataBg1">
+			<td class="foswikiTableCol0 foswikiFirstCol"> <em>description:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol"> returns the largest integer not greater than its argument. </td>
+		</tr>
+		<tr class="foswikiTableOdd foswikiTableRowdataBgSorted0 foswikiTableRowdataBg0">
+			<td class="foswikiTableCol0 foswikiFirstCol"> <em>usage:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol"> <pre>Prelude&gt; floor 3.8
+3
+Prelude&gt; floor (-.3.8)
+-4</pre> </td>
+		</tr>
+		<tr class="foswikiTableEven foswikiTableRowdataBgSorted1 foswikiTableRowdataBg1">
+			<td class="foswikiTableCol0 foswikiFirstCol foswikiLast"> <em>see also:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol foswikiLast"> <a href="#CeilingPrelude">ceiling</a> </td>
+		</tr>
+	</tbody></table>
+<p></p>
+<a name="FoldlPrelude"></a>
+<table class="foswikiTable" rules="none" border="1">
+	<tbody>
+		<tr class="foswikiTableOdd foswikiTableRowdataBgSorted0 foswikiTableRowdataBg0">
+			<td class="foswikiTableCol0 foswikiFirstCol"> <em>type:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol"> foldl :: (a -&gt; b -&gt; a) -&gt; a -&gt; [b] -&gt; a </td>
+		</tr>
+		<tr class="foswikiTableEven foswikiTableRowdataBgSorted1 foswikiTableRowdataBg1">
+			<td class="foswikiTableCol0 foswikiFirstCol"> <em>description:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol"> folds up a list, using a
+ given binary operator and a given          start value, in a left 
+associative manner.          foldl op r [a, b, c] &#8594; ((r `op` a) `op` b) 
+`op` c </td>
+		</tr>
+		<tr class="foswikiTableOdd foswikiTableRowdataBgSorted0 foswikiTableRowdataBg0">
+			<td class="foswikiTableCol0 foswikiFirstCol"> <em>definition:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol"> <pre>foldl f z [] = z
+foldl f z (x:xs) = foldl f (f z x) xs</pre> </td>
+		</tr>
+		<tr class="foswikiTableEven foswikiTableRowdataBgSorted1 foswikiTableRowdataBg1">
+			<td class="foswikiTableCol0 foswikiFirstCol foswikiLast"> <em>usage:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol foswikiLast"> <pre>Prelude&gt; foldl (+) 0 [1..10]
+55
+Prelude&gt; foldl (<a href="#FlipPrelude">flip</a> (:)) [] [1..10]
+[10, 9, 8, 7, 6, 5, 4, 3, 2, 1]</pre> </td>
+		</tr>
+	</tbody></table>
+<p></p>
+<a name="Foldl1Prelude"></a>
+<table class="foswikiTable" rules="none" border="1">
+	<tbody>
+		<tr class="foswikiTableOdd foswikiTableRowdataBgSorted0 foswikiTableRowdataBg0">
+			<td class="foswikiTableCol0 foswikiFirstCol"> <em>type:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol"> foldl1 :: (a -&gt; a -&gt; a) -&gt; [a] -&gt; a </td>
+		</tr>
+		<tr class="foswikiTableEven foswikiTableRowdataBgSorted1 foswikiTableRowdataBg1">
+			<td class="foswikiTableCol0 foswikiFirstCol"> <em>description:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol"> folds left over non--empty lists. </td>
+		</tr>
+		<tr class="foswikiTableOdd foswikiTableRowdataBgSorted0 foswikiTableRowdataBg0">
+			<td class="foswikiTableCol0 foswikiFirstCol"> <em>definition:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol"> <pre>foldl1 f (x:xs) = <a href="#FoldlPrelude">foldl</a> f x xs</pre> </td>
+		</tr>
+		<tr class="foswikiTableEven foswikiTableRowdataBgSorted1 foswikiTableRowdataBg1">
+			<td class="foswikiTableCol0 foswikiFirstCol foswikiLast"> <em>usage:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol foswikiLast"> <pre>Prelude&gt; foldl1 max [1, 10, 5, 2, -1]
+10</pre> </td>
+		</tr>
+	</tbody></table>
+<p></p>
+<a name="FoldrPrelude"></a>
+<table class="foswikiTable" rules="none" border="1">
+	<tbody>
+		<tr class="foswikiTableOdd foswikiTableRowdataBgSorted0 foswikiTableRowdataBg0">
+			<td class="foswikiTableCol0 foswikiFirstCol"> <em>type:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol"> foldr :: (a -&gt; b -&gt; b) -&gt; b -&gt; [a] -&gt; b </td>
+		</tr>
+		<tr class="foswikiTableEven foswikiTableRowdataBgSorted1 foswikiTableRowdataBg1">
+			<td class="foswikiTableCol0 foswikiFirstCol"> <em>description:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol"> folds up a list, using a
+ given binary operator and a given          start value, in a right 
+associative manner.          foldr op r [a, b, c] &#8594; a `op` (b `op` (c 
+`op` r)) </td>
+		</tr>
+		<tr class="foswikiTableOdd foswikiTableRowdataBgSorted0 foswikiTableRowdataBg0">
+			<td class="foswikiTableCol0 foswikiFirstCol"> <em>definition:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol"> <pre>foldr f z [] = z
+foldr f z (x:xs) = f x (foldr f z xs)</pre> </td>
+		</tr>
+		<tr class="foswikiTableEven foswikiTableRowdataBgSorted1 foswikiTableRowdataBg1">
+			<td class="foswikiTableCol0 foswikiFirstCol foswikiLast"> <em>usage:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol foswikiLast"> <pre>Prelude&gt; foldr (++) [] ["con", "cat", "en", "ate"]
+"concatenate"</pre> </td>
+		</tr>
+	</tbody></table>
+<p></p>
+<a name="Foldr1Prelude"></a>
+<table class="foswikiTable" rules="none" border="1">
+	<tbody>
+		<tr class="foswikiTableOdd foswikiTableRowdataBgSorted0 foswikiTableRowdataBg0">
+			<td class="foswikiTableCol0 foswikiFirstCol"> <em>type:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol"> foldr1 :: (a -&gt; a -&gt; a) -&gt; [a] -&gt; a </td>
+		</tr>
+		<tr class="foswikiTableEven foswikiTableRowdataBgSorted1 foswikiTableRowdataBg1">
+			<td class="foswikiTableCol0 foswikiFirstCol"> <em>description:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol"> folds right over non--empty lists. </td>
+		</tr>
+		<tr class="foswikiTableOdd foswikiTableRowdataBgSorted0 foswikiTableRowdataBg0">
+			<td class="foswikiTableCol0 foswikiFirstCol"> <em>definition:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol"> <pre>foldr1 f [x] = x
+foldr1 f (x:xs) = f x (foldr1 f xs)</pre> </td>
+		</tr>
+		<tr class="foswikiTableEven foswikiTableRowdataBgSorted1 foswikiTableRowdataBg1">
+			<td class="foswikiTableCol0 foswikiFirstCol foswikiLast"> <em>usage:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol foswikiLast"> <pre>Prelude&gt; foldr1 (*) [1..10]
+3628800</pre> </td>
+		</tr>
+	</tbody></table>
+<p></p>
+<a name="FromintPrelude"></a>
+<table class="foswikiTable" rules="none" border="1">
+	<tbody>
+		<tr class="foswikiTableOdd foswikiTableRowdataBgSorted0 foswikiTableRowdataBg0">
+			<td class="foswikiTableCol0 foswikiFirstCol"> <em>type:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol"> fromInt :: Int -&gt; Float </td>
+		</tr>
+		<tr class="foswikiTableEven foswikiTableRowdataBgSorted1 foswikiTableRowdataBg1">
+			<td class="foswikiTableCol0 foswikiFirstCol"> <em>description:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol"> Converts from an Int to a Float </td>
+		</tr>
+		<tr class="foswikiTableOdd foswikiTableRowdataBgSorted0 foswikiTableRowdataBg0">
+			<td class="foswikiTableCol0 foswikiFirstCol foswikiLast"> <em>usage:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol foswikiLast"> <pre>Prelude&gt; fromInt 3 +. 4.1
+7.1</pre> </td>
+		</tr>
+	</tbody></table>
+<p></p>
+<a name="FstPrelude"></a>
+<table class="foswikiTable" rules="none" border="1">
+	<tbody>
+		<tr class="foswikiTableOdd foswikiTableRowdataBgSorted0 foswikiTableRowdataBg0">
+			<td class="foswikiTableCol0 foswikiFirstCol"> <em>type:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol"> fst :: (a, b) -&gt; a </td>
+		</tr>
+		<tr class="foswikiTableEven foswikiTableRowdataBgSorted1 foswikiTableRowdataBg1">
+			<td class="foswikiTableCol0 foswikiFirstCol"> <em>description:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol"> returns the first element of a two element tuple. </td>
+		</tr>
+		<tr class="foswikiTableOdd foswikiTableRowdataBgSorted0 foswikiTableRowdataBg0">
+			<td class="foswikiTableCol0 foswikiFirstCol"> <em>definition:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol"> <pre>fst (x, _) = x</pre> </td>
+		</tr>
+		<tr class="foswikiTableEven foswikiTableRowdataBgSorted1 foswikiTableRowdataBg1">
+			<td class="foswikiTableCol0 foswikiFirstCol foswikiLast"> <em>usage:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol foswikiLast"> <pre>Prelude&gt; fst ("harry", 3)
+"harry"</pre> </td>
+		</tr>
+	</tbody></table>
+<p></p>
+<a name="GcdPrelude"></a>
+<table class="foswikiTable" rules="none" border="1">
+	<tbody>
+		<tr class="foswikiTableOdd foswikiTableRowdataBgSorted0 foswikiTableRowdataBg0">
+			<td class="foswikiTableCol0 foswikiFirstCol"> <em>type:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol"> gcd :: Int -&gt; Int -&gt; Int </td>
+		</tr>
+		<tr class="foswikiTableEven foswikiTableRowdataBgSorted1 foswikiTableRowdataBg1">
+			<td class="foswikiTableCol0 foswikiFirstCol"> <em>description:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol"> returns the greatest common divisor between its two integral arguments. </td>
+		</tr>
+		<tr class="foswikiTableOdd foswikiTableRowdataBgSorted0 foswikiTableRowdataBg0">
+			<td class="foswikiTableCol0 foswikiFirstCol"> <em>definition:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol"> <pre>gcd 0 0 =
+    error "Prelude.gcd: gcd 0 0 is undefined"
+gcd x y = gcd' (abs x) (abs y)
+          where
+             gcd' x 0 = x
+             gcd' x y = gcd' y (x `rem` y)</pre> </td>
+		</tr>
+		<tr class="foswikiTableEven foswikiTableRowdataBgSorted1 foswikiTableRowdataBg1">
+			<td class="foswikiTableCol0 foswikiFirstCol foswikiLast"> <em>usage:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol foswikiLast"> <pre>Prelude&gt; gcd 2 10
+2
+Prelude&gt; gcd (-7) 13
+1</pre> </td>
+		</tr>
+	</tbody></table>
+<p></p>
+<a name="HeadPrelude"></a>
+<table class="foswikiTable" rules="none" border="1">
+	<tbody>
+		<tr class="foswikiTableOdd foswikiTableRowdataBgSorted0 foswikiTableRowdataBg0">
+			<td class="foswikiTableCol0 foswikiFirstCol"> <em>type:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol"> head :: [a] -&gt; a </td>
+		</tr>
+		<tr class="foswikiTableEven foswikiTableRowdataBgSorted1 foswikiTableRowdataBg1">
+			<td class="foswikiTableCol0 foswikiFirstCol"> <em>description:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol"> returns the first element of a non--empty list. If applied to          an empty list an error results. </td>
+		</tr>
+		<tr class="foswikiTableOdd foswikiTableRowdataBgSorted0 foswikiTableRowdataBg0">
+			<td class="foswikiTableCol0 foswikiFirstCol"> <em>definition:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol"> <pre>head (x:_) = x</pre> </td>
+		</tr>
+		<tr class="foswikiTableEven foswikiTableRowdataBgSorted1 foswikiTableRowdataBg1">
+			<td class="foswikiTableCol0 foswikiFirstCol foswikiLast"> <em>usage:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol foswikiLast"> <pre>Prelude&gt; head [1..10]
+1
+Prelude&gt; head ["this", "and", "that"]
+"this"</pre> </td>
+		</tr>
+	</tbody></table>
+<p></p>
+<a name="IdPrelude"></a>
+<table class="foswikiTable" rules="none" border="1">
+	<tbody>
+		<tr class="foswikiTableOdd foswikiTableRowdataBgSorted0 foswikiTableRowdataBg0">
+			<td class="foswikiTableCol0 foswikiFirstCol"> <em>type:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol"> id :: a -&gt; a </td>
+		</tr>
+		<tr class="foswikiTableEven foswikiTableRowdataBgSorted1 foswikiTableRowdataBg1">
+			<td class="foswikiTableCol0 foswikiFirstCol"> <em>description:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol"> the identity function, returns the value of its argument. </td>
+		</tr>
+		<tr class="foswikiTableOdd foswikiTableRowdataBgSorted0 foswikiTableRowdataBg0">
+			<td class="foswikiTableCol0 foswikiFirstCol"> <em>definition:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol"> <pre>id x = x</pre> </td>
+		</tr>
+		<tr class="foswikiTableEven foswikiTableRowdataBgSorted1 foswikiTableRowdataBg1">
+			<td class="foswikiTableCol0 foswikiFirstCol foswikiLast"> <em>usage:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol foswikiLast"> <pre>Prelude&gt; id 12
+12
+Prelude&gt; id (id "fred")
+"fred"
+Prelude&gt; eqList (==) (<a href="#MapPrelude">map</a> id [1..10]) [1..10]
+True</pre> </td>
+		</tr>
+	</tbody></table>
+<p></p>
+<a name="InitPrelude"></a>
+<table class="foswikiTable" rules="none" border="1">
+	<tbody>
+		<tr class="foswikiTableOdd foswikiTableRowdataBgSorted0 foswikiTableRowdataBg0">
+			<td class="foswikiTableCol0 foswikiFirstCol"> <em>type:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol"> init :: [a] -&gt; [a] </td>
+		</tr>
+		<tr class="foswikiTableEven foswikiTableRowdataBgSorted1 foswikiTableRowdataBg1">
+			<td class="foswikiTableCol0 foswikiFirstCol"> <em>description:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol"> returns all but the last
+ element of its argument list. The          argument list must have at 
+least one element. If init is applied          to an empty list an error
+ occurs. </td>
+		</tr>
+		<tr class="foswikiTableOdd foswikiTableRowdataBgSorted0 foswikiTableRowdataBg0">
+			<td class="foswikiTableCol0 foswikiFirstCol"> <em>definition:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol"> <pre>init [x] = []
+init (x:xs) = x : init xs</pre> </td>
+		</tr>
+		<tr class="foswikiTableEven foswikiTableRowdataBgSorted1 foswikiTableRowdataBg1">
+			<td class="foswikiTableCol0 foswikiFirstCol foswikiLast"> <em>usage:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol foswikiLast"> <pre>Prelude&gt; init [1..10]
+[1, 2, 3, 4, 5, 6, 7, 8, 9]</pre> </td>
+		</tr>
+	</tbody></table>
+<p></p>
+<a name="IsalphaPrelude"></a>
+<table class="foswikiTable" rules="none" border="1">
+	<tbody>
+		<tr class="foswikiTableOdd foswikiTableRowdataBgSorted0 foswikiTableRowdataBg0">
+			<td class="foswikiTableCol0 foswikiFirstCol"> <em>type:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol"> isAlpha :: Char -&gt; Bool </td>
+		</tr>
+		<tr class="foswikiTableEven foswikiTableRowdataBgSorted1 foswikiTableRowdataBg1">
+			<td class="foswikiTableCol0 foswikiFirstCol"> <em>description:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol"> applied to a character argument, returns True if the character          is alphabetic, and False otherwise. </td>
+		</tr>
+		<tr class="foswikiTableOdd foswikiTableRowdataBgSorted0 foswikiTableRowdataBg0">
+			<td class="foswikiTableCol0 foswikiFirstCol"> <em>definition:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol"> <pre>isAlpha c = isUpper c || isLower c</pre> </td>
+		</tr>
+		<tr class="foswikiTableEven foswikiTableRowdataBgSorted1 foswikiTableRowdataBg1">
+			<td class="foswikiTableCol0 foswikiFirstCol foswikiLast"> <em>usage:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol foswikiLast"> <pre>Prelude&gt; isAlpha 'a'
+True
+Prelude&gt; isAlpha '1'
+False</pre> </td>
+		</tr>
+	</tbody></table>
+<p></p>
+<a name="IsdigitPrelude"></a>
+<table class="foswikiTable" rules="none" border="1">
+	<tbody>
+		<tr class="foswikiTableOdd foswikiTableRowdataBgSorted0 foswikiTableRowdataBg0">
+			<td class="foswikiTableCol0 foswikiFirstCol"> <em>type:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol"> isDigit :: Char -&gt; Bool </td>
+		</tr>
+		<tr class="foswikiTableEven foswikiTableRowdataBgSorted1 foswikiTableRowdataBg1">
+			<td class="foswikiTableCol0 foswikiFirstCol"> <em>description:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol"> applied to a character argument, returns True if the character          is a numeral, and False otherwise. </td>
+		</tr>
+		<tr class="foswikiTableOdd foswikiTableRowdataBgSorted0 foswikiTableRowdataBg0">
+			<td class="foswikiTableCol0 foswikiFirstCol"> <em>definition:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol"> <pre>isDigit c = c &gt;= '0' &amp;&amp; c &lt;= '9'</pre> </td>
+		</tr>
+		<tr class="foswikiTableEven foswikiTableRowdataBgSorted1 foswikiTableRowdataBg1">
+			<td class="foswikiTableCol0 foswikiFirstCol foswikiLast"> <em>usage:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol foswikiLast"> <pre>Prelude&gt; isDigit '1'
+True
+Prelude&gt; isDigit 'a'
+False</pre> </td>
+		</tr>
+	</tbody></table>
+<p></p>
+<a name="IslowerPrelude"></a>
+<table class="foswikiTable" rules="none" border="1">
+	<tbody>
+		<tr class="foswikiTableOdd foswikiTableRowdataBgSorted0 foswikiTableRowdataBg0">
+			<td class="foswikiTableCol0 foswikiFirstCol"> <em>type:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol"> isLower :: Char -&gt; Bool </td>
+		</tr>
+		<tr class="foswikiTableEven foswikiTableRowdataBgSorted1 foswikiTableRowdataBg1">
+			<td class="foswikiTableCol0 foswikiFirstCol"> <em>description:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol"> applied to a character argument, returns True if the character          is a lower case alphabetic, and False otherwise. </td>
+		</tr>
+		<tr class="foswikiTableOdd foswikiTableRowdataBgSorted0 foswikiTableRowdataBg0">
+			<td class="foswikiTableCol0 foswikiFirstCol"> <em>definition:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol"> <pre>isLower c = c &gt;= 'a' &amp;&amp; c &lt;= 'z'</pre> </td>
+		</tr>
+		<tr class="foswikiTableEven foswikiTableRowdataBgSorted1 foswikiTableRowdataBg1">
+			<td class="foswikiTableCol0 foswikiFirstCol foswikiLast"> <em>usage:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol foswikiLast"> <pre>Prelude&gt; isLower 'a'
+True
+Prelude&gt; isLower 'A'
+False
+Prelude&gt; isLower '1'
+False</pre> </td>
+		</tr>
+	</tbody></table>
+<p></p>
+<a name="IsspacePrelude"></a>
+<table class="foswikiTable" rules="none" border="1">
+	<tbody>
+		<tr class="foswikiTableOdd foswikiTableRowdataBgSorted0 foswikiTableRowdataBg0">
+			<td class="foswikiTableCol0 foswikiFirstCol"> <em>type:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol"> isSpace :: Char -&gt; Bool </td>
+		</tr>
+		<tr class="foswikiTableEven foswikiTableRowdataBgSorted1 foswikiTableRowdataBg1">
+			<td class="foswikiTableCol0 foswikiFirstCol"> <em>description:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol"> returns True if its character argument is a whitespace          character and False otherwise. </td>
+		</tr>
+		<tr class="foswikiTableOdd foswikiTableRowdataBgSorted0 foswikiTableRowdataBg0">
+			<td class="foswikiTableCol0 foswikiFirstCol"> <em>definition:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol"> <pre>isSpace c  =
+        c == ' '  || c == '\t' || c == '\n' ||
+        c == '\r' || c == '\f' || c == '\v'</pre> </td>
+		</tr>
+		<tr class="foswikiTableEven foswikiTableRowdataBgSorted1 foswikiTableRowdataBg1">
+			<td class="foswikiTableCol0 foswikiFirstCol foswikiLast"> <em>usage:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol foswikiLast"> <pre>Prelude&gt; dropWhile isSpace "   \nhello  \n"
+"hello  \n"</pre> </td>
+		</tr>
+	</tbody></table>
+<p></p>
+<a name="IsupperPrelude"></a>
+<table class="foswikiTable" rules="none" border="1">
+	<tbody>
+		<tr class="foswikiTableOdd foswikiTableRowdataBgSorted0 foswikiTableRowdataBg0">
+			<td class="foswikiTableCol0 foswikiFirstCol"> <em>type:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol"> isUpper :: Char -&gt; Bool </td>
+		</tr>
+		<tr class="foswikiTableEven foswikiTableRowdataBgSorted1 foswikiTableRowdataBg1">
+			<td class="foswikiTableCol0 foswikiFirstCol"> <em>description:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol"> applied to a character argument, returns True if the character          is an upper case alphabetic, and False otherwise. </td>
+		</tr>
+		<tr class="foswikiTableOdd foswikiTableRowdataBgSorted0 foswikiTableRowdataBg0">
+			<td class="foswikiTableCol0 foswikiFirstCol"> <em>definition:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol"> <pre>isUpper c = c &gt;= 'A' &amp;&amp; c &lt;= 'Z'</pre> </td>
+		</tr>
+		<tr class="foswikiTableEven foswikiTableRowdataBgSorted1 foswikiTableRowdataBg1">
+			<td class="foswikiTableCol0 foswikiFirstCol foswikiLast"> <em>usage:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol foswikiLast"> <pre>Prelude&gt; isUpper 'A'
+True
+Prelude&gt; isUpper 'a'
+False
+Prelude&gt; isUpper '1'
+False</pre> </td>
+		</tr>
+	</tbody></table>
+<p></p>
+<a name="IteratePrelude"></a>
+<table class="foswikiTable" rules="none" border="1">
+	<tbody>
+		<tr class="foswikiTableOdd foswikiTableRowdataBgSorted0 foswikiTableRowdataBg0">
+			<td class="foswikiTableCol0 foswikiFirstCol"> <em>type:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol"> iterate :: (a -&gt; a) -&gt; a -&gt; [a] </td>
+		</tr>
+		<tr class="foswikiTableEven foswikiTableRowdataBgSorted1 foswikiTableRowdataBg1">
+			<td class="foswikiTableCol0 foswikiFirstCol"> <em>description:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol"> iterate f x returns the infinite list [x,f x,f (f x),...]. </td>
+		</tr>
+		<tr class="foswikiTableOdd foswikiTableRowdataBgSorted0 foswikiTableRowdataBg0">
+			<td class="foswikiTableCol0 foswikiFirstCol"> <em>definition:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol"> <pre>iterate f x = x : iterate f (f x)</pre> </td>
+		</tr>
+		<tr class="foswikiTableEven foswikiTableRowdataBgSorted1 foswikiTableRowdataBg1">
+			<td class="foswikiTableCol0 foswikiFirstCol foswikiLast"> <em>usage:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol foswikiLast"> <pre>Prelude&gt; iterate (+1) 1
+[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, .....</pre> </td>
+		</tr>
+	</tbody></table>
+<p></p>
+<a name="LastPrelude"></a>
+<table class="foswikiTable" rules="none" border="1">
+	<tbody>
+		<tr class="foswikiTableOdd foswikiTableRowdataBgSorted0 foswikiTableRowdataBg0">
+			<td class="foswikiTableCol0 foswikiFirstCol"> <em>type:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol"> last :: [a] -&gt; a </td>
+		</tr>
+		<tr class="foswikiTableEven foswikiTableRowdataBgSorted1 foswikiTableRowdataBg1">
+			<td class="foswikiTableCol0 foswikiFirstCol"> <em>description:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol"> applied to a non--empty list, returns the last element of the list. </td>
+		</tr>
+		<tr class="foswikiTableOdd foswikiTableRowdataBgSorted0 foswikiTableRowdataBg0">
+			<td class="foswikiTableCol0 foswikiFirstCol"> <em>definition:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol"> <pre>last [x] = x
+last (_:xs) = last xs</pre> </td>
+		</tr>
+		<tr class="foswikiTableEven foswikiTableRowdataBgSorted1 foswikiTableRowdataBg1">
+			<td class="foswikiTableCol0 foswikiFirstCol foswikiLast"> <em>usage:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol foswikiLast"> <pre>Prelude&gt; last [1..10]
+10</pre> </td>
+		</tr>
+	</tbody></table>
+<p></p>
+<a name="LcmPrelude"></a>
+<table class="foswikiTable" rules="none" border="1">
+	<tbody>
+		<tr class="foswikiTableOdd foswikiTableRowdataBgSorted0 foswikiTableRowdataBg0">
+			<td class="foswikiTableCol0 foswikiFirstCol"> <em>type:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol"> lcm :: Int -&gt; Int -&gt; Int </td>
+		</tr>
+		<tr class="foswikiTableEven foswikiTableRowdataBgSorted1 foswikiTableRowdataBg1">
+			<td class="foswikiTableCol0 foswikiFirstCol"> <em>description:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol"> returns the least common multiple of its two integral arguments. </td>
+		</tr>
+		<tr class="foswikiTableOdd foswikiTableRowdataBgSorted0 foswikiTableRowdataBg0">
+			<td class="foswikiTableCol0 foswikiFirstCol"> <em>definition:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol"> <pre>lcm _ 0 = 0
+lcm 0 _ = 0
+lcm x y = abs ((x `quot` gcd x y) * y)</pre> </td>
+		</tr>
+		<tr class="foswikiTableEven foswikiTableRowdataBgSorted1 foswikiTableRowdataBg1">
+			<td class="foswikiTableCol0 foswikiFirstCol foswikiLast"> <em>usage:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol foswikiLast"> <pre>Prelude&gt; lcm 2 10
+10
+Prelude&gt; lcm 2 11
+22</pre> </td>
+		</tr>
+	</tbody></table>
+<p></p>
+<a name="LengthPrelude"></a>
+<table class="foswikiTable" rules="none" border="1">
+	<tbody>
+		<tr class="foswikiTableOdd foswikiTableRowdataBgSorted0 foswikiTableRowdataBg0">
+			<td class="foswikiTableCol0 foswikiFirstCol"> <em>type:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol"> length :: [a] -&gt; Int </td>
+		</tr>
+		<tr class="foswikiTableEven foswikiTableRowdataBgSorted1 foswikiTableRowdataBg1">
+			<td class="foswikiTableCol0 foswikiFirstCol"> <em>description:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol"> returns the number of elements in a finite list. </td>
+		</tr>
+		<tr class="foswikiTableOdd foswikiTableRowdataBgSorted0 foswikiTableRowdataBg0">
+			<td class="foswikiTableCol0 foswikiFirstCol"> <em>definition:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol"> <pre>length [] = 0
+length (x:xs) = 1 + length xs</pre> </td>
+		</tr>
+		<tr class="foswikiTableEven foswikiTableRowdataBgSorted1 foswikiTableRowdataBg1">
+			<td class="foswikiTableCol0 foswikiFirstCol foswikiLast"> <em>usage:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol foswikiLast"> <pre>Prelude&gt; length [1..10]
+10</pre> </td>
+		</tr>
+	</tbody></table>
+<p></p>
+<a name="LinesPrelude"></a>
+<table class="foswikiTable" rules="none" border="1">
+	<tbody>
+		<tr class="foswikiTableOdd foswikiTableRowdataBgSorted0 foswikiTableRowdataBg0">
+			<td class="foswikiTableCol0 foswikiFirstCol"> <em>type:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol"> lines :: String -&gt; [String] </td>
+		</tr>
+		<tr class="foswikiTableEven foswikiTableRowdataBgSorted1 foswikiTableRowdataBg1">
+			<td class="foswikiTableCol0 foswikiFirstCol"> <em>description:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol"> applied to a list of 
+characters containing newlines, returns a          list of lists by 
+breaking the original list into lines using the          newline 
+character as a delimiter. The newline characters are          removed 
+from the result. </td>
+		</tr>
+		<tr class="foswikiTableOdd foswikiTableRowdataBgSorted0 foswikiTableRowdataBg0">
+			<td class="foswikiTableCol0 foswikiFirstCol foswikiLast"> <em>usage:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol foswikiLast"> <pre>Prelude&gt; lines "hello world\nit's me,\neric\n"
+["hello world", "it's me,", "eric"]</pre> </td>
+		</tr>
+	</tbody></table>
+<p></p>
+<a name="LogPrelude"></a>
+<table class="foswikiTable" rules="none" border="1">
+	<tbody>
+		<tr class="foswikiTableOdd foswikiTableRowdataBgSorted0 foswikiTableRowdataBg0">
+			<td class="foswikiTableCol0 foswikiFirstCol"> <em>type:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol"> log :: Float -&gt; Float </td>
+		</tr>
+		<tr class="foswikiTableEven foswikiTableRowdataBgSorted1 foswikiTableRowdataBg1">
+			<td class="foswikiTableCol0 foswikiFirstCol"> <em>description:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol"> returns the natural logarithm of its argument. </td>
+		</tr>
+		<tr class="foswikiTableOdd foswikiTableRowdataBgSorted0 foswikiTableRowdataBg0">
+			<td class="foswikiTableCol0 foswikiFirstCol"> <em>definition:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol"> defined internally. </td>
+		</tr>
+		<tr class="foswikiTableEven foswikiTableRowdataBgSorted1 foswikiTableRowdataBg1">
+			<td class="foswikiTableCol0 foswikiFirstCol foswikiLast"> <em>usage:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol foswikiLast"> <pre>Prelude&gt; log 1.0
+0
+Prelude&gt; log 3.2
+1.16315</pre> </td>
+		</tr>
+	</tbody></table>
+<p></p>
+<a name="MapPrelude"></a>
+<table class="foswikiTable" rules="none" border="1">
+	<tbody>
+		<tr class="foswikiTableOdd foswikiTableRowdataBgSorted0 foswikiTableRowdataBg0">
+			<td class="foswikiTableCol0 foswikiFirstCol"> <em>type:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol"> map :: (a -&gt; b) -&gt; [a] -&gt; [b] </td>
+		</tr>
+		<tr class="foswikiTableEven foswikiTableRowdataBgSorted1 foswikiTableRowdataBg1">
+			<td class="foswikiTableCol0 foswikiFirstCol"> <em>description:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol"> given a function, and a 
+list of any type, returns a list where          each element is the 
+result of applying the function to the          corresponding element in
+ the input list. </td>
+		</tr>
+		<tr class="foswikiTableOdd foswikiTableRowdataBgSorted0 foswikiTableRowdataBg0">
+			<td class="foswikiTableCol0 foswikiFirstCol"> <em>definition:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol"> <pre>map f xs = [f x | x &lt;- xs]</pre> </td>
+		</tr>
+		<tr class="foswikiTableEven foswikiTableRowdataBgSorted1 foswikiTableRowdataBg1">
+			<td class="foswikiTableCol0 foswikiFirstCol foswikiLast"> <em>usage:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol foswikiLast"> <pre>Prelude&gt; map sqrt [1.0,2.0,3.0,4.0,5.0]
+[1,1.41421,1.73205,2,2.23607]</pre> </td>
+		</tr>
+	</tbody></table>
+<p></p>
+<a name="MaxPrelude"></a>
+<table class="foswikiTable" rules="none" border="1">
+	<tbody>
+		<tr class="foswikiTableOdd foswikiTableRowdataBgSorted0 foswikiTableRowdataBg0">
+			<td class="foswikiTableCol0 foswikiFirstCol"> <em>type:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol"> max :: Int -&gt; Int -&gt; Int </td>
+		</tr>
+		<tr class="foswikiTableEven foswikiTableRowdataBgSorted1 foswikiTableRowdataBg1">
+			<td class="foswikiTableCol0 foswikiFirstCol"> <em>description:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol"> applied to two integers, returns the maximum of the two          elements. </td>
+		</tr>
+		<tr class="foswikiTableOdd foswikiTableRowdataBgSorted0 foswikiTableRowdataBg0">
+			<td class="foswikiTableCol0 foswikiFirstCol"> <em>definition:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol"> <pre>max :: Int -&gt; Int -&gt; Int
+max x y = if x &lt; y then y else x</pre> </td>
+		</tr>
+		<tr class="foswikiTableEven foswikiTableRowdataBgSorted1 foswikiTableRowdataBg1">
+			<td class="foswikiTableCol0 foswikiFirstCol foswikiLast"> <em>usage:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol foswikiLast"> <pre>Prelude&gt; max 1 2
+2</pre> </td>
+		</tr>
+	</tbody></table>
+<p></p>
+<a name="MaximumPrelude"></a>
+<table class="foswikiTable" rules="none" border="1">
+	<tbody>
+		<tr class="foswikiTableOdd foswikiTableRowdataBgSorted0 foswikiTableRowdataBg0">
+			<td class="foswikiTableCol0 foswikiFirstCol"> <em>type:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol"> maximum :: [Int] -&gt; Int </td>
+		</tr>
+		<tr class="foswikiTableEven foswikiTableRowdataBgSorted1 foswikiTableRowdataBg1">
+			<td class="foswikiTableCol0 foswikiFirstCol"> <em>description:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol"> applied to a non--empty list of integers, returns the maximum          element of the list. </td>
+		</tr>
+		<tr class="foswikiTableOdd foswikiTableRowdataBgSorted0 foswikiTableRowdataBg0">
+			<td class="foswikiTableCol0 foswikiFirstCol"> <em>definition:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol"> <pre>maximum xs = <a href="#foldl1Prelude">foldl1</a> <a href="#MaxPrelude">max</a> xs</pre> </td>
+		</tr>
+		<tr class="foswikiTableEven foswikiTableRowdataBgSorted1 foswikiTableRowdataBg1">
+			<td class="foswikiTableCol0 foswikiFirstCol foswikiLast"> <em>usage:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol foswikiLast"> <pre>Prelude&gt; maximum [-10, 0 , 5, 22, 13]
+22</pre> </td>
+		</tr>
+	</tbody></table>
+<p></p>
+<a name="MinPrelude"></a>
+<table class="foswikiTable" rules="none" border="1">
+	<tbody>
+		<tr class="foswikiTableOdd foswikiTableRowdataBgSorted0 foswikiTableRowdataBg0">
+			<td class="foswikiTableCol0 foswikiFirstCol"> <em>type:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol"> min :: Int -&gt; Int -&gt; Int </td>
+		</tr>
+		<tr class="foswikiTableEven foswikiTableRowdataBgSorted1 foswikiTableRowdataBg1">
+			<td class="foswikiTableCol0 foswikiFirstCol"> <em>description:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol"> applied to two integers, returns the minimum of the two. </td>
+		</tr>
+		<tr class="foswikiTableOdd foswikiTableRowdataBgSorted0 foswikiTableRowdataBg0">
+			<td class="foswikiTableCol0 foswikiFirstCol"> <em>definition:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol"> <pre>min x y
+  | x &lt;= y = x
+  | otherwise = y</pre> </td>
+		</tr>
+		<tr class="foswikiTableEven foswikiTableRowdataBgSorted1 foswikiTableRowdataBg1">
+			<td class="foswikiTableCol0 foswikiFirstCol foswikiLast"> <em>usage:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol foswikiLast"> <pre>Prelude&gt; min 1 2
+1</pre> </td>
+		</tr>
+	</tbody></table>
+<p></p>
+<a name="MinimumPrelude"></a>
+<table class="foswikiTable" rules="none" border="1">
+	<tbody>
+		<tr class="foswikiTableOdd foswikiTableRowdataBgSorted0 foswikiTableRowdataBg0">
+			<td class="foswikiTableCol0 foswikiFirstCol"> <em>type:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol"> minimum :: [Int] -&gt; Int </td>
+		</tr>
+		<tr class="foswikiTableEven foswikiTableRowdataBgSorted1 foswikiTableRowdataBg1">
+			<td class="foswikiTableCol0 foswikiFirstCol"> <em>description:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol"> applied to a non--empty list of integers, returns the minimum          element of the list. </td>
+		</tr>
+		<tr class="foswikiTableOdd foswikiTableRowdataBgSorted0 foswikiTableRowdataBg0">
+			<td class="foswikiTableCol0 foswikiFirstCol"> <em>definition:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol"> <pre>minimum xs = <a href="#foldl1Prelude">foldl1</a> <a href="#MinPrelude">min</a> xs</pre> </td>
+		</tr>
+		<tr class="foswikiTableEven foswikiTableRowdataBgSorted1 foswikiTableRowdataBg1">
+			<td class="foswikiTableCol0 foswikiFirstCol foswikiLast"> <em>usage:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol foswikiLast"> <pre>Prelude&gt; minimum [-10, 0 , 5, 22, 13]
+-10</pre> </td>
+		</tr>
+	</tbody></table>
+<p></p>
+<a name="ModPrelude"></a>
+<table class="foswikiTable" rules="none" border="1">
+	<tbody>
+		<tr class="foswikiTableOdd foswikiTableRowdataBgSorted0 foswikiTableRowdataBg0">
+			<td class="foswikiTableCol0 foswikiFirstCol"> <em>type:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol"> mod :: Int -&gt; Int -&gt; Int </td>
+		</tr>
+		<tr class="foswikiTableEven foswikiTableRowdataBgSorted1 foswikiTableRowdataBg1">
+			<td class="foswikiTableCol0 foswikiFirstCol"> <em>description:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol"> returns the modulus of its two arguments. </td>
+		</tr>
+		<tr class="foswikiTableOdd foswikiTableRowdataBgSorted0 foswikiTableRowdataBg0">
+			<td class="foswikiTableCol0 foswikiFirstCol"> <em>definition:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol"> defined internally. </td>
+		</tr>
+		<tr class="foswikiTableEven foswikiTableRowdataBgSorted1 foswikiTableRowdataBg1">
+			<td class="foswikiTableCol0 foswikiFirstCol foswikiLast"> <em>usage:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol foswikiLast"> <pre>Prelude&gt; 16 `mod` 9
+7</pre> </td>
+		</tr>
+	</tbody></table>
+<p></p>
+<a name="NotPrelude"></a>
+<table class="foswikiTable" rules="none" border="1">
+	<tbody>
+		<tr class="foswikiTableOdd foswikiTableRowdataBgSorted0 foswikiTableRowdataBg0">
+			<td class="foswikiTableCol0 foswikiFirstCol"> <em>type:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol"> not :: Bool -&gt; Bool </td>
+		</tr>
+		<tr class="foswikiTableEven foswikiTableRowdataBgSorted1 foswikiTableRowdataBg1">
+			<td class="foswikiTableCol0 foswikiFirstCol"> <em>description:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol"> returns the logical negation of its boolean argument. </td>
+		</tr>
+		<tr class="foswikiTableOdd foswikiTableRowdataBgSorted0 foswikiTableRowdataBg0">
+			<td class="foswikiTableCol0 foswikiFirstCol"> <em>definition:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol"> <pre>not True = False
+not False = True</pre> </td>
+		</tr>
+		<tr class="foswikiTableEven foswikiTableRowdataBgSorted1 foswikiTableRowdataBg1">
+			<td class="foswikiTableCol0 foswikiFirstCol foswikiLast"> <em>usage:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol foswikiLast"> <pre>Prelude&gt; not (3 == 4)
+True
+Prelude&gt; not (10 &gt; 2)
+False</pre> </td>
+		</tr>
+	</tbody></table>
+<p></p>
+<a name="NotelembyPrelude"></a>
+<table class="foswikiTable" rules="none" border="1">
+	<tbody>
+		<tr class="foswikiTableOdd foswikiTableRowdataBgSorted0 foswikiTableRowdataBg0">
+			<td class="foswikiTableCol0 foswikiFirstCol"> <em>type:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol"> notElemBy :: (a -&gt; a -&gt; Bool) -&gt; a -&gt; [a] -&gt; Bool </td>
+		</tr>
+		<tr class="foswikiTableEven foswikiTableRowdataBgSorted1 foswikiTableRowdataBg1">
+			<td class="foswikiTableCol0 foswikiFirstCol"> <em>description:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol"> returns <tt>True</tt> if its first argument is <em>not</em> an          element of the list as its second argument. </td>
+		</tr>
+		<tr class="foswikiTableOdd foswikiTableRowdataBgSorted0 foswikiTableRowdataBg0">
+			<td class="foswikiTableCol0 foswikiFirstCol foswikiLast"> <em>usage:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol foswikiLast"> <pre>Prelude&gt; notElemBy (==) 3 [1,2,3]
+False
+Prelude&gt; notElemBy (==) 4 [1,2,3]
+True</pre> </td>
+		</tr>
+	</tbody></table>
+<p></p>
+<a name="NullPrelude"></a>
+<table class="foswikiTable" rules="none" border="1">
+	<tbody>
+		<tr class="foswikiTableOdd foswikiTableRowdataBgSorted0 foswikiTableRowdataBg0">
+			<td class="foswikiTableCol0 foswikiFirstCol"> <em>type:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol"> null :: [a] -&gt; Bool </td>
+		</tr>
+		<tr class="foswikiTableEven foswikiTableRowdataBgSorted1 foswikiTableRowdataBg1">
+			<td class="foswikiTableCol0 foswikiFirstCol"> <em>description:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol"> returns True if its argument is the empty list ([]) and False          otherwise. </td>
+		</tr>
+		<tr class="foswikiTableOdd foswikiTableRowdataBgSorted0 foswikiTableRowdataBg0">
+			<td class="foswikiTableCol0 foswikiFirstCol"> <em>definition:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol"> <pre>null [] = True
+null (_:_) = False</pre> </td>
+		</tr>
+		<tr class="foswikiTableEven foswikiTableRowdataBgSorted1 foswikiTableRowdataBg1">
+			<td class="foswikiTableCol0 foswikiFirstCol foswikiLast"> <em>usage:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol foswikiLast"> <pre>Prelude&gt; null []
+True
+Prelude&gt; null (<a href="#TakePrelude">take</a> 3 [1..10])
+False</pre> </td>
+		</tr>
+	</tbody></table>
+<p></p>
+<a name="OddPrelude"></a>
+<table class="foswikiTable" rules="none" border="1">
+	<tbody>
+		<tr class="foswikiTableOdd foswikiTableRowdataBgSorted0 foswikiTableRowdataBg0">
+			<td class="foswikiTableCol0 foswikiFirstCol"> <em>type:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol"> odd :: Int -&gt; Bool </td>
+		</tr>
+		<tr class="foswikiTableEven foswikiTableRowdataBgSorted1 foswikiTableRowdataBg1">
+			<td class="foswikiTableCol0 foswikiFirstCol"> <em>description:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol"> applied to an integral argument, returns True if the argument          is odd, and False otherwise. </td>
+		</tr>
+		<tr class="foswikiTableOdd foswikiTableRowdataBgSorted0 foswikiTableRowdataBg0">
+			<td class="foswikiTableCol0 foswikiFirstCol"> <em>definition:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol"> <pre>odd = <a href="#NotPrelude">not</a> . <a href="#EvenPrelude">even</a></pre> </td>
+		</tr>
+		<tr class="foswikiTableEven foswikiTableRowdataBgSorted1 foswikiTableRowdataBg1">
+			<td class="foswikiTableCol0 foswikiFirstCol foswikiLast"> <em>usage:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol foswikiLast"> <pre>Prelude&gt; odd 1
+True
+Prelude&gt; odd (2 * 12)
+False</pre> </td>
+		</tr>
+	</tbody></table>
+<p></p>
+<a name="OrPrelude"></a>
+<table class="foswikiTable" rules="none" border="1">
+	<tbody>
+		<tr class="foswikiTableOdd foswikiTableRowdataBgSorted0 foswikiTableRowdataBg0">
+			<td class="foswikiTableCol0 foswikiFirstCol"> <em>type:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol"> or :: [Bool] -&gt; Bool </td>
+		</tr>
+		<tr class="foswikiTableEven foswikiTableRowdataBgSorted1 foswikiTableRowdataBg1">
+			<td class="foswikiTableCol0 foswikiFirstCol"> <em>description:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol"> applied to a list of boolean values, returns their logical          disjunction (see also `<a href="#AndPrelude">and</a>'). </td>
+		</tr>
+		<tr class="foswikiTableOdd foswikiTableRowdataBgSorted0 foswikiTableRowdataBg0">
+			<td class="foswikiTableCol0 foswikiFirstCol"> <em>definition:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol"> <pre>or xs = <a href="#FoldrPrelude">foldr</a> (||) False xs</pre> </td>
+		</tr>
+		<tr class="foswikiTableEven foswikiTableRowdataBgSorted1 foswikiTableRowdataBg1">
+			<td class="foswikiTableCol0 foswikiFirstCol foswikiLast"> <em>usage:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol foswikiLast"> <pre>Prelude&gt; or [False, False, True, False]
+True
+Prelude&gt; or [False, False, False, False]
+False
+Prelude&gt; or []
+False</pre> </td>
+		</tr>
+	</tbody></table>
+<p></p>
+<a name="OrdPrelude"></a>
+<table class="foswikiTable" rules="none" border="1">
+	<tbody>
+		<tr class="foswikiTableOdd foswikiTableRowdataBgSorted0 foswikiTableRowdataBg0">
+			<td class="foswikiTableCol0 foswikiFirstCol"> <em>type:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol"> ord :: Char -&gt; Int </td>
+		</tr>
+		<tr class="foswikiTableEven foswikiTableRowdataBgSorted1 foswikiTableRowdataBg1">
+			<td class="foswikiTableCol0 foswikiFirstCol"> <em>description:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol"> applied to a character, returns its ascii code as an integer. </td>
+		</tr>
+		<tr class="foswikiTableOdd foswikiTableRowdataBgSorted0 foswikiTableRowdataBg0">
+			<td class="foswikiTableCol0 foswikiFirstCol"> <em>definition:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol"> defined internally. </td>
+		</tr>
+		<tr class="foswikiTableEven foswikiTableRowdataBgSorted1 foswikiTableRowdataBg1">
+			<td class="foswikiTableCol0 foswikiFirstCol"> <em>usage:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol"> <pre>Prelude&gt; ord 'A'
+65
+Prelude&gt; (chr (ord 'A')) `eqChar` 'A'
+True</pre> </td>
+		</tr>
+		<tr class="foswikiTableOdd foswikiTableRowdataBgSorted0 foswikiTableRowdataBg0">
+			<td class="foswikiTableCol0 foswikiFirstCol foswikiLast"> <em>see also:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol foswikiLast"> <a href="#ChrPrelude">chr</a> </td>
+		</tr>
+	</tbody></table>
+<p></p>
+<a name="OrdcharPrelude"></a>
+<table class="foswikiTable" rules="none" border="1">
+	<tbody>
+		<tr class="foswikiTableOdd foswikiTableRowdataBgSorted0 foswikiTableRowdataBg0">
+			<td class="foswikiTableCol0 foswikiFirstCol"> <em>type:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol"> ordChar :: Char -&gt; Char -&gt; Ordering </td>
+		</tr>
+		<tr class="foswikiTableEven foswikiTableRowdataBgSorted1 foswikiTableRowdataBg1">
+			<td class="foswikiTableCol0 foswikiFirstCol"> <em>description:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol"> returns LT if the first argument is less than the second          argument, GT if greater, EQ if equal </td>
+		</tr>
+		<tr class="foswikiTableOdd foswikiTableRowdataBgSorted0 foswikiTableRowdataBg0">
+			<td class="foswikiTableCol0 foswikiFirstCol"> <em>definition:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol"> <pre>ordChar c1 c2 = ordInt (ord c1) (ord c2)</pre> </td>
+		</tr>
+		<tr class="foswikiTableEven foswikiTableRowdataBgSorted1 foswikiTableRowdataBg1">
+			<td class="foswikiTableCol0 foswikiFirstCol"> <em>usage:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol"> <pre>Prelude&gt; ordChar 'a' 'b'
+LT
+List&gt; sortBy ordChar "Helium is cool"
+"  Hceiillmoosu"</pre> </td>
+		</tr>
+		<tr class="foswikiTableOdd foswikiTableRowdataBgSorted0 foswikiTableRowdataBg0">
+			<td class="foswikiTableCol0 foswikiFirstCol foswikiLast"> <em>see also:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol foswikiLast"> <a href="#OrdcharPrelude">ordChar</a>, <a href="#OrdlistPrelude">ordList</a>,          <a href="#OrdstringPrelude">ordString</a>, <a href="#OrdintPrelude">ordInt</a>,          <a href="#OrdfloatPrelude">ordFloat</a> </td>
+		</tr>
+	</tbody></table>
+<p></p>
+<a name="OrdfloatPrelude"></a>
+<table class="foswikiTable" rules="none" border="1">
+	<tbody>
+		<tr class="foswikiTableOdd foswikiTableRowdataBgSorted0 foswikiTableRowdataBg0">
+			<td class="foswikiTableCol0 foswikiFirstCol"> <em>type:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol"> ordFloat :: Float -&gt; Float -&gt; Ordering </td>
+		</tr>
+		<tr class="foswikiTableEven foswikiTableRowdataBgSorted1 foswikiTableRowdataBg1">
+			<td class="foswikiTableCol0 foswikiFirstCol"> <em>description:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol"> returns LT if the first argument is less than the second          argument, GT if greater, EQ if equal </td>
+		</tr>
+		<tr class="foswikiTableOdd foswikiTableRowdataBgSorted0 foswikiTableRowdataBg0">
+			<td class="foswikiTableCol0 foswikiFirstCol"> <em>definition:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol"> <pre>ordFloat x y
+    | x &lt;. y    = LT
+    | x ==. y   = EQ
+    | otherwise = GT</pre> </td>
+		</tr>
+		<tr class="foswikiTableEven foswikiTableRowdataBgSorted1 foswikiTableRowdataBg1">
+			<td class="foswikiTableCol0 foswikiFirstCol"> <em>usage:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol"> <pre>Prelude&gt; ordFloat 3.0 2.5
+GT
+List&gt; sortBy ordFloat [10.0, -.2.0, 2.5, 0.0, 2.6]
+[-2,0,2.5,2.6,10]</pre> </td>
+		</tr>
+		<tr class="foswikiTableOdd foswikiTableRowdataBgSorted0 foswikiTableRowdataBg0">
+			<td class="foswikiTableCol0 foswikiFirstCol foswikiLast"> <em>see also:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol foswikiLast"> <a href="#OrdcharPrelude">ordChar</a>, <a href="#OrdlistPrelude">ordList</a>,          <a href="#OrdstringPrelude">ordString</a>, <a href="#OrdintPrelude">ordInt</a>,          <a href="#OrdfloatPrelude">ordFloat</a> </td>
+		</tr>
+	</tbody></table>
+<p></p>
+<a name="OrdintPrelude"></a>
+<table class="foswikiTable" rules="none" border="1">
+	<tbody>
+		<tr class="foswikiTableOdd foswikiTableRowdataBgSorted0 foswikiTableRowdataBg0">
+			<td class="foswikiTableCol0 foswikiFirstCol"> <em>type:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol"> ordInt :: Int -&gt; Int -&gt; Ordering </td>
+		</tr>
+		<tr class="foswikiTableEven foswikiTableRowdataBgSorted1 foswikiTableRowdataBg1">
+			<td class="foswikiTableCol0 foswikiFirstCol"> <em>description:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol"> returns LT if the first argument is less than the second          argument, GT if greater, EQ if equal </td>
+		</tr>
+		<tr class="foswikiTableOdd foswikiTableRowdataBgSorted0 foswikiTableRowdataBg0">
+			<td class="foswikiTableCol0 foswikiFirstCol"> <em>definition:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol"> <pre>ordInt x y
+    | x &lt; y     = LT
+    | x == y    = EQ
+    | otherwise = GT</pre> </td>
+		</tr>
+		<tr class="foswikiTableEven foswikiTableRowdataBgSorted1 foswikiTableRowdataBg1">
+			<td class="foswikiTableCol0 foswikiFirstCol"> <em>usage:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol"> <pre>Prelude&gt; ordInt 3 3
+EQ
+List&gt; sortBy ordInt [10, -2, 3, 0, 4]
+[(-2),0,3,4,10]</pre> </td>
+		</tr>
+		<tr class="foswikiTableOdd foswikiTableRowdataBgSorted0 foswikiTableRowdataBg0">
+			<td class="foswikiTableCol0 foswikiFirstCol foswikiLast"> <em>see also:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol foswikiLast"> <a href="#OrdcharPrelude">ordChar</a>, <a href="#OrdlistPrelude">ordList</a>,          <a href="#OrdstringPrelude">ordString</a>, <a href="#OrdintPrelude">ordInt</a>,          <a href="#OrdfloatPrelude">ordFloat</a> </td>
+		</tr>
+	</tbody></table>
+<p></p>
+<a name="OrdlistPrelude"></a>
+<table class="foswikiTable" rules="none" border="1">
+	<tbody>
+		<tr class="foswikiTableOdd foswikiTableRowdataBgSorted0 foswikiTableRowdataBg0">
+			<td class="foswikiTableCol0 foswikiFirstCol"> <em>type:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol"> ordList :: (a -&gt; a -&gt; Ordering) -&gt; [a] -&gt; [a] -&gt; Ordering </td>
+		</tr>
+		<tr class="foswikiTableEven foswikiTableRowdataBgSorted1 foswikiTableRowdataBg1">
+			<td class="foswikiTableCol0 foswikiFirstCol"> <em>description:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol"> returns LT if the first argument is less than the second          argument, GT if greater, EQ if equal </td>
+		</tr>
+		<tr class="foswikiTableOdd foswikiTableRowdataBgSorted0 foswikiTableRowdataBg0">
+			<td class="foswikiTableCol0 foswikiFirstCol"> <em>definition:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol"> <pre>ordList _ []     (_:_)  = LT
+ordList _ []     []     = EQ
+ordList _ (_:_)  []     = GT
+ordList ordElem (x:xs) (y:ys) =
+    case ordElem x y of
+        GT -&gt; GT
+        LT -&gt; LT
+        EQ -&gt; ordList ordElem xs ys</pre> </td>
+		</tr>
+		<tr class="foswikiTableEven foswikiTableRowdataBgSorted1 foswikiTableRowdataBg1">
+			<td class="foswikiTableCol0 foswikiFirstCol"> <em>usage:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol"> <pre>Prelude&gt; ordList ordInt [1,2,3] [1,2,4]
+LT
+List&gt; sortBy (ordList ordInt) [[1,2],[], [1,0]]
+[[],[1,0],[1,2]]</pre> </td>
+		</tr>
+		<tr class="foswikiTableOdd foswikiTableRowdataBgSorted0 foswikiTableRowdataBg0">
+			<td class="foswikiTableCol0 foswikiFirstCol foswikiLast"> <em>see also:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol foswikiLast"> <a href="#OrdcharPrelude">ordChar</a>, <a href="#OrdlistPrelude">ordList</a>,          <a href="#OrdstringPrelude">ordString</a>, <a href="#OrdintPrelude">ordInt</a>,          <a href="#OrdfloatPrelude">ordFloat</a> </td>
+		</tr>
+	</tbody></table>
+<p></p>
+<a name="OrdstringPrelude"></a>
+<table class="foswikiTable" rules="none" border="1">
+	<tbody>
+		<tr class="foswikiTableOdd foswikiTableRowdataBgSorted0 foswikiTableRowdataBg0">
+			<td class="foswikiTableCol0 foswikiFirstCol"> <em>type:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol"> ordString :: String -&gt; String -&gt; Ordering </td>
+		</tr>
+		<tr class="foswikiTableEven foswikiTableRowdataBgSorted1 foswikiTableRowdataBg1">
+			<td class="foswikiTableCol0 foswikiFirstCol"> <em>description:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol"> returns LT if the first argument is less than the second          argument, GT if greater, EQ if equal </td>
+		</tr>
+		<tr class="foswikiTableOdd foswikiTableRowdataBgSorted0 foswikiTableRowdataBg0">
+			<td class="foswikiTableCol0 foswikiFirstCol"> <em>definition:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol"> <pre>ordString = ordList ordChar</pre> </td>
+		</tr>
+		<tr class="foswikiTableEven foswikiTableRowdataBgSorted1 foswikiTableRowdataBg1">
+			<td class="foswikiTableCol0 foswikiFirstCol"> <em>usage:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol"> <pre>Prelude&gt; ordString "Abc" "abc"
+LT
+List&gt; sortBy ordString ["helium", "is", "cool" ]
+["cool","helium","is"]</pre> </td>
+		</tr>
+		<tr class="foswikiTableOdd foswikiTableRowdataBgSorted0 foswikiTableRowdataBg0">
+			<td class="foswikiTableCol0 foswikiFirstCol foswikiLast"> <em>see also:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol foswikiLast"> <a href="#OrdcharPrelude">ordChar</a>, <a href="#OrdlistPrelude">ordList</a>,          <a href="#OrdstringPrelude">ordString</a>, <a href="#OrdintPrelude">ordInt</a>,          <a href="#OrdfloatPrelude">ordFloat</a> </td>
+		</tr>
+	</tbody></table>
+<p></p>
+<a name="PiPrelude"></a>
+<table class="foswikiTable" rules="none" border="1">
+	<tbody>
+		<tr class="foswikiTableOdd foswikiTableRowdataBgSorted0 foswikiTableRowdataBg0">
+			<td class="foswikiTableCol0 foswikiFirstCol"> <em>type:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol"> pi :: Float </td>
+		</tr>
+		<tr class="foswikiTableEven foswikiTableRowdataBgSorted1 foswikiTableRowdataBg1">
+			<td class="foswikiTableCol0 foswikiFirstCol"> <em>description:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol"> the ratio of the circumference of a circle to its diameter. </td>
+		</tr>
+		<tr class="foswikiTableOdd foswikiTableRowdataBgSorted0 foswikiTableRowdataBg0">
+			<td class="foswikiTableCol0 foswikiFirstCol"> <em>definition:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol"> defined internally. </td>
+		</tr>
+		<tr class="foswikiTableEven foswikiTableRowdataBgSorted1 foswikiTableRowdataBg1">
+			<td class="foswikiTableCol0 foswikiFirstCol foswikiLast"> <em>usage:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol foswikiLast"> <pre>Prelude&gt; pi
+3.14159
+Prelude&gt; cos pi
+-1</pre> </td>
+		</tr>
+	</tbody></table>
+<p></p>
+<a name="PutstrPrelude"></a>
+<table class="foswikiTable" rules="none" border="1">
+	<tbody>
+		<tr class="foswikiTableOdd foswikiTableRowdataBgSorted0 foswikiTableRowdataBg0">
+			<td class="foswikiTableCol0 foswikiFirstCol"> <em>type:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol"> putStr :: String -&gt; IO () </td>
+		</tr>
+		<tr class="foswikiTableEven foswikiTableRowdataBgSorted1 foswikiTableRowdataBg1">
+			<td class="foswikiTableCol0 foswikiFirstCol"> <em>description:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol"> takes a string as an 
+argument and returns an I/O action as a          result. A side-effect 
+of applying putStr is that it causes its          argument string to be 
+printed to the screen. </td>
+		</tr>
+		<tr class="foswikiTableOdd foswikiTableRowdataBgSorted0 foswikiTableRowdataBg0">
+			<td class="foswikiTableCol0 foswikiFirstCol"> <em>definition:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol"> defined internally. </td>
+		</tr>
+		<tr class="foswikiTableEven foswikiTableRowdataBgSorted1 foswikiTableRowdataBg1">
+			<td class="foswikiTableCol0 foswikiFirstCol foswikiLast"> <em>usage:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol foswikiLast"> <pre>Prelude&gt; putStr "Hello World\nI'm here!"
+Hello World
+I'm here!</pre> </td>
+		</tr>
+	</tbody></table>
+<p></p>
+<a name="ProductPrelude"></a>
+<table class="foswikiTable" rules="none" border="1">
+	<tbody>
+		<tr class="foswikiTableOdd foswikiTableRowdataBgSorted0 foswikiTableRowdataBg0">
+			<td class="foswikiTableCol0 foswikiFirstCol"> <em>type:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol"> product :: [Int] -&gt; Int </td>
+		</tr>
+		<tr class="foswikiTableEven foswikiTableRowdataBgSorted1 foswikiTableRowdataBg1">
+			<td class="foswikiTableCol0 foswikiFirstCol"> <em>description:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol"> applied to a list of numbers, returns their product. </td>
+		</tr>
+		<tr class="foswikiTableOdd foswikiTableRowdataBgSorted0 foswikiTableRowdataBg0">
+			<td class="foswikiTableCol0 foswikiFirstCol"> <em>definition:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol"> <pre>product xs = <a href="#FoldlPrelude">foldl</a> (*) 1 xs</pre> </td>
+		</tr>
+		<tr class="foswikiTableEven foswikiTableRowdataBgSorted1 foswikiTableRowdataBg1">
+			<td class="foswikiTableCol0 foswikiFirstCol foswikiLast"> <em>usage:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol foswikiLast"> <pre>Prelude&gt; product [1..10]
+3628800</pre> </td>
+		</tr>
+	</tbody></table>
+<p></p>
+<a name="QuotPrelude"></a>
+<table class="foswikiTable" rules="none" border="1">
+	<tbody>
+		<tr class="foswikiTableOdd foswikiTableRowdataBgSorted0 foswikiTableRowdataBg0">
+			<td class="foswikiTableCol0 foswikiFirstCol"> <em>type:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol"> quot :: Int -&gt; Int -&gt; Int </td>
+		</tr>
+		<tr class="foswikiTableEven foswikiTableRowdataBgSorted1 foswikiTableRowdataBg1">
+			<td class="foswikiTableCol0 foswikiFirstCol"> <em>description:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol"> returns the quotient after dividing the its first integral          argument by its second integral argument. </td>
+		</tr>
+		<tr class="foswikiTableOdd foswikiTableRowdataBgSorted0 foswikiTableRowdataBg0">
+			<td class="foswikiTableCol0 foswikiFirstCol"> <em>definition:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol"> defined internally. </td>
+		</tr>
+		<tr class="foswikiTableEven foswikiTableRowdataBgSorted1 foswikiTableRowdataBg1">
+			<td class="foswikiTableCol0 foswikiFirstCol foswikiLast"> <em>usage:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol foswikiLast"> <pre>Prelude&gt; 16 `quot` 8
+2
+Prelude&gt; quot 16 9
+1</pre> </td>
+		</tr>
+	</tbody></table>
+<p></p>
+<a name="ReadintPrelude"></a>
+<table class="foswikiTable" rules="none" border="1">
+	<tbody>
+		<tr class="foswikiTableOdd foswikiTableRowdataBgSorted0 foswikiTableRowdataBg0">
+			<td class="foswikiTableCol0 foswikiFirstCol"> <em>type:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol"> readInt :: String -&gt; Int </td>
+		</tr>
+		<tr class="foswikiTableEven foswikiTableRowdataBgSorted1 foswikiTableRowdataBg1">
+			<td class="foswikiTableCol0 foswikiFirstCol"> <em>description:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol"> converts a String to an integer </td>
+		</tr>
+		<tr class="foswikiTableOdd foswikiTableRowdataBgSorted0 foswikiTableRowdataBg0">
+			<td class="foswikiTableCol0 foswikiFirstCol foswikiLast"> <em>usage:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol foswikiLast"> <pre>Prelude&gt; readInt "-123" + 3
+(-120)</pre> </td>
+		</tr>
+	</tbody></table>
+<p></p>
+<a name="RemPrelude"></a>
+<table class="foswikiTable" rules="none" border="1">
+	<tbody>
+		<tr class="foswikiTableOdd foswikiTableRowdataBgSorted0 foswikiTableRowdataBg0">
+			<td class="foswikiTableCol0 foswikiFirstCol"> <em>type:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol"> rem :: Int -&gt; Int -&gt; Int </td>
+		</tr>
+		<tr class="foswikiTableEven foswikiTableRowdataBgSorted1 foswikiTableRowdataBg1">
+			<td class="foswikiTableCol0 foswikiFirstCol"> <em>description:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol"> returns the remainder after dividing its first integral          argument by its second integral argument. </td>
+		</tr>
+		<tr class="foswikiTableOdd foswikiTableRowdataBgSorted0 foswikiTableRowdataBg0">
+			<td class="foswikiTableCol0 foswikiFirstCol"> <em>definition:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol"> defined internally. </td>
+		</tr>
+		<tr class="foswikiTableEven foswikiTableRowdataBgSorted1 foswikiTableRowdataBg1">
+			<td class="foswikiTableCol0 foswikiFirstCol"> <em>usage:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol"> <pre>Prelude&gt; 16 `rem` 8
+0
+Prelude&gt; rem 16 9
+7</pre> </td>
+		</tr>
+		<tr class="foswikiTableOdd foswikiTableRowdataBgSorted0 foswikiTableRowdataBg0">
+			<td class="foswikiTableCol0 foswikiFirstCol foswikiLast"> <em>notes:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol foswikiLast"> The following equality holds: <pre>(x `quot` y)*y + (x `rem` y) == x</pre> </td>
+		</tr>
+	</tbody></table>
+<p></p>
+<a name="RepeatPrelude"></a>
+<table class="foswikiTable" rules="none" border="1">
+	<tbody>
+		<tr class="foswikiTableOdd foswikiTableRowdataBgSorted0 foswikiTableRowdataBg0">
+			<td class="foswikiTableCol0 foswikiFirstCol"> <em>type:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol"> repeat :: a -&gt; [a] </td>
+		</tr>
+		<tr class="foswikiTableEven foswikiTableRowdataBgSorted1 foswikiTableRowdataBg1">
+			<td class="foswikiTableCol0 foswikiFirstCol"> <em>description:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol"> given a value, returns an infinite list of elements the same as          the value. </td>
+		</tr>
+		<tr class="foswikiTableOdd foswikiTableRowdataBgSorted0 foswikiTableRowdataBg0">
+			<td class="foswikiTableCol0 foswikiFirstCol"> <em>definition:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol"> <pre>repeat x
+  = xs
+  where xs = x:xs</pre> </td>
+		</tr>
+		<tr class="foswikiTableEven foswikiTableRowdataBgSorted1 foswikiTableRowdataBg1">
+			<td class="foswikiTableCol0 foswikiFirstCol foswikiLast"> <em>usage:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol foswikiLast"> <pre>Prelude&gt; repeat 12
+[12, 12, 12, 12, 12, 12, 12, 12, 12, ...</pre> </td>
+		</tr>
+	</tbody></table>
+<p></p>
+<a name="ReplicatePrelude"></a>
+<table class="foswikiTable" rules="none" border="1">
+	<tbody>
+		<tr class="foswikiTableOdd foswikiTableRowdataBgSorted0 foswikiTableRowdataBg0">
+			<td class="foswikiTableCol0 foswikiFirstCol"> <em>type:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol"> replicate :: Int -&gt; a -&gt; [a] </td>
+		</tr>
+		<tr class="foswikiTableEven foswikiTableRowdataBgSorted1 foswikiTableRowdataBg1">
+			<td class="foswikiTableCol0 foswikiFirstCol"> <em>description:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol"> given an integer 
+(positive or zero) and a value, returns a list          containing the 
+specified number of instances of that value. </td>
+		</tr>
+		<tr class="foswikiTableOdd foswikiTableRowdataBgSorted0 foswikiTableRowdataBg0">
+			<td class="foswikiTableCol0 foswikiFirstCol"> <em>definition:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol"> <pre>replicate n x = <a href="#TakePrelude">take</a> n (<a href="#RepeatPrelude">repeat</a> x)</pre> </td>
+		</tr>
+		<tr class="foswikiTableEven foswikiTableRowdataBgSorted1 foswikiTableRowdataBg1">
+			<td class="foswikiTableCol0 foswikiFirstCol foswikiLast"> <em>usage:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol foswikiLast"> <pre>Prelude&gt; replicate 3 "apples"
+["apples", "apples", "apples"]</pre> </td>
+		</tr>
+	</tbody></table>
+<p></p>
+<a name="ReversePrelude"></a>
+<table class="foswikiTable" rules="none" border="1">
+	<tbody>
+		<tr class="foswikiTableOdd foswikiTableRowdataBgSorted0 foswikiTableRowdataBg0">
+			<td class="foswikiTableCol0 foswikiFirstCol"> <em>type:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol"> reverse :: [a] -&gt; [a] </td>
+		</tr>
+		<tr class="foswikiTableEven foswikiTableRowdataBgSorted1 foswikiTableRowdataBg1">
+			<td class="foswikiTableCol0 foswikiFirstCol"> <em>description:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol"> applied to a finite list of any type, returns a list of the          same elements in reverse order. </td>
+		</tr>
+		<tr class="foswikiTableOdd foswikiTableRowdataBgSorted0 foswikiTableRowdataBg0">
+			<td class="foswikiTableCol0 foswikiFirstCol"> <em>definition:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol"> <pre>reverse = <a href="#FoldlPrelude">foldl</a> (<a href="#FlipPrelude">flip</a> (:)) []</pre> </td>
+		</tr>
+		<tr class="foswikiTableEven foswikiTableRowdataBgSorted1 foswikiTableRowdataBg1">
+			<td class="foswikiTableCol0 foswikiFirstCol foswikiLast"> <em>usage:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol foswikiLast"> <pre>Prelude&gt; reverse [1..10]
+[10, 9, 8, 7, 6, 5, 4, 3, 2, 1]</pre> </td>
+		</tr>
+	</tbody></table>
+<p></p>
+<a name="RoundPrelude"></a>
+<table class="foswikiTable" rules="none" border="1">
+	<tbody>
+		<tr class="foswikiTableOdd foswikiTableRowdataBgSorted0 foswikiTableRowdataBg0">
+			<td class="foswikiTableCol0 foswikiFirstCol"> <em>type:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol"> round :: Float -&gt; Int </td>
+		</tr>
+		<tr class="foswikiTableEven foswikiTableRowdataBgSorted1 foswikiTableRowdataBg1">
+			<td class="foswikiTableCol0 foswikiFirstCol"> <em>description:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol"> rounds its argument to the nearest integer. </td>
+		</tr>
+		<tr class="foswikiTableOdd foswikiTableRowdataBgSorted0 foswikiTableRowdataBg0">
+			<td class="foswikiTableCol0 foswikiFirstCol foswikiLast"> <em>usage:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol foswikiLast"> <pre>Prelude&gt; round 3.2
+3
+Prelude&gt; round 3.5
+4
+Prelude&gt; round (-.3.2)
+-3</pre> </td>
+		</tr>
+	</tbody></table>
+<p></p>
+<a name="ShowintPrelude"></a>
+<table class="foswikiTable" rules="none" border="1">
+	<tbody>
+		<tr class="foswikiTableOdd foswikiTableRowdataBgSorted0 foswikiTableRowdataBg0">
+			<td class="foswikiTableCol0 foswikiFirstCol"> <em>type:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol"> showInt :: Int -&gt; String </td>
+		</tr>
+		<tr class="foswikiTableEven foswikiTableRowdataBgSorted1 foswikiTableRowdataBg1">
+			<td class="foswikiTableCol0 foswikiFirstCol"> <em>description:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol"> returns the textual representation of an integer number </td>
+		</tr>
+		<tr class="foswikiTableOdd foswikiTableRowdataBgSorted0 foswikiTableRowdataBg0">
+			<td class="foswikiTableCol0 foswikiFirstCol foswikiLast"> <em>usage:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol foswikiLast"> <pre>Prelude&gt; showInt 42
+"42"</pre> </td>
+		</tr>
+	</tbody></table>
+<p></p>
+<a name="SignumPrelude"></a>
+<table class="foswikiTable" rules="none" border="1">
+	<tbody>
+		<tr class="foswikiTableOdd foswikiTableRowdataBgSorted0 foswikiTableRowdataBg0">
+			<td class="foswikiTableCol0 foswikiFirstCol"> <em>type:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol"> signum :: Int -&gt; Int </td>
+		</tr>
+		<tr class="foswikiTableEven foswikiTableRowdataBgSorted1 foswikiTableRowdataBg1">
+			<td class="foswikiTableCol0 foswikiFirstCol"> <em>description:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol"> returns the sign (-1, 0 or 1) of a number. </td>
+		</tr>
+		<tr class="foswikiTableOdd foswikiTableRowdataBgSorted0 foswikiTableRowdataBg0">
+			<td class="foswikiTableCol0 foswikiFirstCol foswikiLast"> <em>usage:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol foswikiLast"> <pre> Prelude&gt; signum (-3)
+-1</pre> </td>
+		</tr>
+	</tbody></table>
+<p></p>
+<a name="SignumfloatPrelude"></a>
+<table class="foswikiTable" rules="none" border="1">
+	<tbody>
+		<tr class="foswikiTableOdd foswikiTableRowdataBgSorted0 foswikiTableRowdataBg0">
+			<td class="foswikiTableCol0 foswikiFirstCol"> <em>type:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol"> signumFloat :: Float -&gt; Int </td>
+		</tr>
+		<tr class="foswikiTableEven foswikiTableRowdataBgSorted1 foswikiTableRowdataBg1">
+			<td class="foswikiTableCol0 foswikiFirstCol"> <em>description:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol"> returns the sign (-1, 0 or 1) of a floating-point number. </td>
+		</tr>
+		<tr class="foswikiTableOdd foswikiTableRowdataBgSorted0 foswikiTableRowdataBg0">
+			<td class="foswikiTableCol0 foswikiFirstCol foswikiLast"> <em>usage:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol foswikiLast"> <pre>Prelude&gt; signumFloat 3.14
+1</pre> </td>
+		</tr>
+	</tbody></table>
+<p></p>
+<a name="SinPrelude"></a>
+<table class="foswikiTable" rules="none" border="1">
+	<tbody>
+		<tr class="foswikiTableOdd foswikiTableRowdataBgSorted0 foswikiTableRowdataBg0">
+			<td class="foswikiTableCol0 foswikiFirstCol"> <em>type:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol"> sin :: Float -&gt; Float </td>
+		</tr>
+		<tr class="foswikiTableEven foswikiTableRowdataBgSorted1 foswikiTableRowdataBg1">
+			<td class="foswikiTableCol0 foswikiFirstCol"> <em>description:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol"> the trigonometric sine function, arguments are interpreted to be in radians. </td>
+		</tr>
+		<tr class="foswikiTableOdd foswikiTableRowdataBgSorted0 foswikiTableRowdataBg0">
+			<td class="foswikiTableCol0 foswikiFirstCol"> <em>definition:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol"> defined internally. </td>
+		</tr>
+		<tr class="foswikiTableEven foswikiTableRowdataBgSorted1 foswikiTableRowdataBg1">
+			<td class="foswikiTableCol0 foswikiFirstCol foswikiLast"> <em>usage:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol foswikiLast"> <pre>Prelude&gt; sin (pi/.2.0)
+1
+Prelude&gt; ((sin pi)^.2) +. ((cos pi)^.2)
+1</pre> </td>
+		</tr>
+	</tbody></table>
+<p></p>
+<a name="SndPrelude"></a>
+<table class="foswikiTable" rules="none" border="1">
+	<tbody>
+		<tr class="foswikiTableOdd foswikiTableRowdataBgSorted0 foswikiTableRowdataBg0">
+			<td class="foswikiTableCol0 foswikiFirstCol"> <em>type:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol"> snd :: (a, b) -&gt; b </td>
+		</tr>
+		<tr class="foswikiTableEven foswikiTableRowdataBgSorted1 foswikiTableRowdataBg1">
+			<td class="foswikiTableCol0 foswikiFirstCol"> <em>description:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol"> returns the second element of a two element tuple. </td>
+		</tr>
+		<tr class="foswikiTableOdd foswikiTableRowdataBgSorted0 foswikiTableRowdataBg0">
+			<td class="foswikiTableCol0 foswikiFirstCol"> <em>definition:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol"> <pre>snd (_, y) = y</pre> </td>
+		</tr>
+		<tr class="foswikiTableEven foswikiTableRowdataBgSorted1 foswikiTableRowdataBg1">
+			<td class="foswikiTableCol0 foswikiFirstCol foswikiLast"> <em>usage:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol foswikiLast"> <pre>Prelude&gt; snd ("harry", 3)
+3</pre> </td>
+		</tr>
+	</tbody></table>
+<p></p>
+<a name="SpanPrelude"></a>
+<table class="foswikiTable" rules="none" border="1">
+	<tbody>
+		<tr class="foswikiTableOdd foswikiTableRowdataBgSorted0 foswikiTableRowdataBg0">
+			<td class="foswikiTableCol0 foswikiFirstCol"> <em>type:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol"> span :: (a -&gt; Bool) -&gt; [a] -&gt; ([a],[a]) </td>
+		</tr>
+		<tr class="foswikiTableEven foswikiTableRowdataBgSorted1 foswikiTableRowdataBg1">
+			<td class="foswikiTableCol0 foswikiFirstCol"> <em>description:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol"> given a predicate and a 
+list, splits the list into two lists          (returned as a tuple) such
+ that elements in the first list are          taken from the head of the
+ list while the predicate is satisfied,          and elements in the 
+second list are the remaining elements from          the list once the 
+predicate is not satisfied. </td>
+		</tr>
+		<tr class="foswikiTableOdd foswikiTableRowdataBgSorted0 foswikiTableRowdataBg0">
+			<td class="foswikiTableCol0 foswikiFirstCol"> <em>definition:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol"> <pre>span p [] = ([],[])
+span p xs@(x:xs')
+  | p x = (x:ys, zs)
+  | otherwise = ([],xs)
+    where (ys,zs) = span p xs'</pre> </td>
+		</tr>
+		<tr class="foswikiTableEven foswikiTableRowdataBgSorted1 foswikiTableRowdataBg1">
+			<td class="foswikiTableCol0 foswikiFirstCol foswikiLast"> <em>usage:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol foswikiLast"> <pre>Prelude&gt; span isDigit "123abc456"
+("123", "abc456")</pre> </td>
+		</tr>
+	</tbody></table>
+<p></p>
+<a name="SplitatPrelude"></a>
+<table class="foswikiTable" rules="none" border="1">
+	<tbody>
+		<tr class="foswikiTableOdd foswikiTableRowdataBgSorted0 foswikiTableRowdataBg0">
+			<td class="foswikiTableCol0 foswikiFirstCol"> <em>type:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol"> splitAt :: Int -&gt; [a] -&gt; ([a],[a]) </td>
+		</tr>
+		<tr class="foswikiTableEven foswikiTableRowdataBgSorted1 foswikiTableRowdataBg1">
+			<td class="foswikiTableCol0 foswikiFirstCol"> <em>description:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol"> given an integer 
+(positive or zero) and a list, splits the list          into two lists 
+(returned as a tuple) at the position corresponding          to the 
+given integer. If the integer is greater than the length of          the
+ list, it returns a tuple containing the entire list as its          
+first element and the empty list as its second element. </td>
+		</tr>
+		<tr class="foswikiTableOdd foswikiTableRowdataBgSorted0 foswikiTableRowdataBg0">
+			<td class="foswikiTableCol0 foswikiFirstCol"> <em>definition:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol"> <pre>splitAt n xs | n &lt;= 0 = ([],xs)
+splitAt _ []          = ([],[])
+splitAt n (x:xs)      = (x:xs',xs'')
+        where (xs',xs'') = splitAt (n-1) xs</pre> </td>
+		</tr>
+		<tr class="foswikiTableEven foswikiTableRowdataBgSorted1 foswikiTableRowdataBg1">
+			<td class="foswikiTableCol0 foswikiFirstCol foswikiLast"> <em>usage:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol foswikiLast"> <pre>Prelude&gt; splitAt 3 [1..10]
+([1, 2, 3], [4, 5, 6, 7, 8, 9, 10])
+Prelude&gt; splitAt 5 "abc"
+("abc", "")</pre> </td>
+		</tr>
+	</tbody></table>
+<p></p>
+<a name="SqrtPrelude"></a>
+<table class="foswikiTable" rules="none" border="1">
+	<tbody>
+		<tr class="foswikiTableOdd foswikiTableRowdataBgSorted0 foswikiTableRowdataBg0">
+			<td class="foswikiTableCol0 foswikiFirstCol"> <em>type:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol"> sqrt :: Float -&gt; Float </td>
+		</tr>
+		<tr class="foswikiTableEven foswikiTableRowdataBgSorted1 foswikiTableRowdataBg1">
+			<td class="foswikiTableCol0 foswikiFirstCol"> <em>description:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol"> returns the square root of a number. </td>
+		</tr>
+		<tr class="foswikiTableOdd foswikiTableRowdataBgSorted0 foswikiTableRowdataBg0">
+			<td class="foswikiTableCol0 foswikiFirstCol"> <em>definition:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol"> <pre>sqrt x = x **. 0.5</pre> </td>
+		</tr>
+		<tr class="foswikiTableEven foswikiTableRowdataBgSorted1 foswikiTableRowdataBg1">
+			<td class="foswikiTableCol0 foswikiFirstCol foswikiLast"> <em>usage:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol foswikiLast"> <pre>Prelude&gt; sqrt 16.0
+4</pre> </td>
+		</tr>
+	</tbody></table>
+<p></p>
+<a name="SubtractPrelude"></a>
+<table class="foswikiTable" rules="none" border="1">
+	<tbody>
+		<tr class="foswikiTableOdd foswikiTableRowdataBgSorted0 foswikiTableRowdataBg0">
+			<td class="foswikiTableCol0 foswikiFirstCol"> <em>type:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol"> subtract :: Int -&gt; Int -&gt; Int </td>
+		</tr>
+		<tr class="foswikiTableEven foswikiTableRowdataBgSorted1 foswikiTableRowdataBg1">
+			<td class="foswikiTableCol0 foswikiFirstCol"> <em>description:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol"> subtracts its first argument from its second argument. </td>
+		</tr>
+		<tr class="foswikiTableOdd foswikiTableRowdataBgSorted0 foswikiTableRowdataBg0">
+			<td class="foswikiTableCol0 foswikiFirstCol"> <em>definition:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol"> <pre>subtract = <a href="#FlipPrelude">flip</a> (-)</pre> </td>
+		</tr>
+		<tr class="foswikiTableEven foswikiTableRowdataBgSorted1 foswikiTableRowdataBg1">
+			<td class="foswikiTableCol0 foswikiFirstCol foswikiLast"> <em>usage:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol foswikiLast"> <pre>Prelude&gt; subtract 7 10
+3</pre> </td>
+		</tr>
+	</tbody></table>
+<p></p>
+<a name="SumPrelude"></a>
+<table class="foswikiTable" rules="none" border="1">
+	<tbody>
+		<tr class="foswikiTableOdd foswikiTableRowdataBgSorted0 foswikiTableRowdataBg0">
+			<td class="foswikiTableCol0 foswikiFirstCol"> <em>type:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol"> sum :: [Int] -&gt; Int </td>
+		</tr>
+		<tr class="foswikiTableEven foswikiTableRowdataBgSorted1 foswikiTableRowdataBg1">
+			<td class="foswikiTableCol0 foswikiFirstCol"> <em>description:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol"> computes the sum of a finite list of numbers. </td>
+		</tr>
+		<tr class="foswikiTableOdd foswikiTableRowdataBgSorted0 foswikiTableRowdataBg0">
+			<td class="foswikiTableCol0 foswikiFirstCol"> <em>definition:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol"> <pre>sum xs = <a href="#FoldlPrelude">foldl</a> (+) 0 xs</pre> </td>
+		</tr>
+		<tr class="foswikiTableEven foswikiTableRowdataBgSorted1 foswikiTableRowdataBg1">
+			<td class="foswikiTableCol0 foswikiFirstCol foswikiLast"> <em>usage:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol foswikiLast"> <pre>Prelude&gt; sum [1..10]
+55</pre> </td>
+		</tr>
+	</tbody></table>
+<p></p>
+<a name="TailPrelude"></a>
+<table class="foswikiTable" rules="none" border="1">
+	<tbody>
+		<tr class="foswikiTableOdd foswikiTableRowdataBgSorted0 foswikiTableRowdataBg0">
+			<td class="foswikiTableCol0 foswikiFirstCol"> <em>type:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol"> tail :: [a] -&gt; [a] </td>
+		</tr>
+		<tr class="foswikiTableEven foswikiTableRowdataBgSorted1 foswikiTableRowdataBg1">
+			<td class="foswikiTableCol0 foswikiFirstCol"> <em>description:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol"> applied to a non--empty list, returns the list without its          first element. </td>
+		</tr>
+		<tr class="foswikiTableOdd foswikiTableRowdataBgSorted0 foswikiTableRowdataBg0">
+			<td class="foswikiTableCol0 foswikiFirstCol"> <em>definition:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol"> <pre>tail (_:xs) = xs</pre> </td>
+		</tr>
+		<tr class="foswikiTableEven foswikiTableRowdataBgSorted1 foswikiTableRowdataBg1">
+			<td class="foswikiTableCol0 foswikiFirstCol foswikiLast"> <em>usage:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol foswikiLast"> <pre>Prelude&gt; tail [1,2,3]
+[2,3]
+Prelude&gt; tail "helium"
+"elium"</pre> </td>
+		</tr>
+	</tbody></table>
+<p></p>
+<a name="TakePrelude"></a>
+<table class="foswikiTable" rules="none" border="1">
+	<tbody>
+		<tr class="foswikiTableOdd foswikiTableRowdataBgSorted0 foswikiTableRowdataBg0">
+			<td class="foswikiTableCol0 foswikiFirstCol"> <em>type:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol"> take :: Int -&gt; [a] -&gt; [a] </td>
+		</tr>
+		<tr class="foswikiTableEven foswikiTableRowdataBgSorted1 foswikiTableRowdataBg1">
+			<td class="foswikiTableCol0 foswikiFirstCol"> <em>description:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol"> applied to an integer 
+(positive or zero) and a list, returns          the specified number of 
+elements from the front of the list. If          the list has less than 
+the required number of elements, take          returns the entire list. </td>
+		</tr>
+		<tr class="foswikiTableOdd foswikiTableRowdataBgSorted0 foswikiTableRowdataBg0">
+			<td class="foswikiTableCol0 foswikiFirstCol"> <em>definition:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol"> <pre>take n _  | n &lt;= 0  = []
+take _ []           = []
+take n (x:xs)       = x : take (n-1) xs</pre> </td>
+		</tr>
+		<tr class="foswikiTableEven foswikiTableRowdataBgSorted1 foswikiTableRowdataBg1">
+			<td class="foswikiTableCol0 foswikiFirstCol foswikiLast"> <em>usage:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol foswikiLast"> <pre>Prelude&gt; take 4 "goodbye"
+"good"
+Prelude&gt; take 10 [1,2,3]
+[1,2,3]</pre> </td>
+		</tr>
+	</tbody></table>
+<p></p>
+<a name="TakewhilePrelude"></a>
+<table class="foswikiTable" rules="none" border="1">
+	<tbody>
+		<tr class="foswikiTableOdd foswikiTableRowdataBgSorted0 foswikiTableRowdataBg0">
+			<td class="foswikiTableCol0 foswikiFirstCol"> <em>type:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol"> takeWhile :: (a -&gt; Bool) -&gt; [a] -&gt; [a] </td>
+		</tr>
+		<tr class="foswikiTableEven foswikiTableRowdataBgSorted1 foswikiTableRowdataBg1">
+			<td class="foswikiTableCol0 foswikiFirstCol"> <em>description:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol"> applied to a predicate 
+and a list, returns a list containing          elements from the front 
+of the list while the predicate is          satisfied. </td>
+		</tr>
+		<tr class="foswikiTableOdd foswikiTableRowdataBgSorted0 foswikiTableRowdataBg0">
+			<td class="foswikiTableCol0 foswikiFirstCol"> <em>definition:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol"> <pre>takeWhile p [] = []
+takeWhile p (x:xs)
+  | p x = x : takeWhile p xs
+  | otherwise = []</pre> </td>
+		</tr>
+		<tr class="foswikiTableEven foswikiTableRowdataBgSorted1 foswikiTableRowdataBg1">
+			<td class="foswikiTableCol0 foswikiFirstCol foswikiLast"> <em>usage:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol foswikiLast"> <pre>Prelude&gt; takeWhile (&lt;5) [1, 2, 3, 10, 4, 2]
+[1, 2, 3]</pre> </td>
+		</tr>
+	</tbody></table>
+<p></p>
+<a name="TanPrelude"></a>
+<table class="foswikiTable" rules="none" border="1">
+	<tbody>
+		<tr class="foswikiTableOdd foswikiTableRowdataBgSorted0 foswikiTableRowdataBg0">
+			<td class="foswikiTableCol0 foswikiFirstCol"> <em>type:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol"> tan :: Float -&gt; Float </td>
+		</tr>
+		<tr class="foswikiTableEven foswikiTableRowdataBgSorted1 foswikiTableRowdataBg1">
+			<td class="foswikiTableCol0 foswikiFirstCol"> <em>description:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol"> the trigonometric function tan, arguments are interpreted to be          in radians. </td>
+		</tr>
+		<tr class="foswikiTableOdd foswikiTableRowdataBgSorted0 foswikiTableRowdataBg0">
+			<td class="foswikiTableCol0 foswikiFirstCol"> <em>definition:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol"> defined internally. </td>
+		</tr>
+		<tr class="foswikiTableEven foswikiTableRowdataBgSorted1 foswikiTableRowdataBg1">
+			<td class="foswikiTableCol0 foswikiFirstCol foswikiLast"> <em>usage:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol foswikiLast"> <pre>Prelude&gt; tan (pi/.4.0)
+1.0</pre> </td>
+		</tr>
+	</tbody></table>
+<p></p>
+<a name="TolowerPrelude"></a>
+<table class="foswikiTable" rules="none" border="1">
+	<tbody>
+		<tr class="foswikiTableOdd foswikiTableRowdataBgSorted0 foswikiTableRowdataBg0">
+			<td class="foswikiTableCol0 foswikiFirstCol"> <em>type:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol"> toLower :: Char -&gt; Char </td>
+		</tr>
+		<tr class="foswikiTableEven foswikiTableRowdataBgSorted1 foswikiTableRowdataBg1">
+			<td class="foswikiTableCol0 foswikiFirstCol"> <em>description:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol"> converts an uppercase 
+alphabetic character to a lowercase          alphabetic character. If 
+this function is applied to an argument          which is not uppercase 
+the result will be the same as the argument          unchanged. </td>
+		</tr>
+		<tr class="foswikiTableOdd foswikiTableRowdataBgSorted0 foswikiTableRowdataBg0">
+			<td class="foswikiTableCol0 foswikiFirstCol"> <em>definition:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol"> <pre>toLower c
+    | isUpper c =
+        chr ( ord c - ord 'A' + ord 'a' )
+    | otherwise = c</pre> </td>
+		</tr>
+		<tr class="foswikiTableEven foswikiTableRowdataBgSorted1 foswikiTableRowdataBg1">
+			<td class="foswikiTableCol0 foswikiFirstCol foswikiLast"> <em>usage:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol foswikiLast"> <pre>Prelude&gt; toLower 'A'
+'a'
+Prelude&gt; toLower '3'
+'3'</pre> </td>
+		</tr>
+	</tbody></table>
+<p></p>
+<a name="ToupperPrelude"></a>
+<table class="foswikiTable" rules="none" border="1">
+	<tbody>
+		<tr class="foswikiTableOdd foswikiTableRowdataBgSorted0 foswikiTableRowdataBg0">
+			<td class="foswikiTableCol0 foswikiFirstCol"> <em>type:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol"> toUpper :: Char -&gt; Char </td>
+		</tr>
+		<tr class="foswikiTableEven foswikiTableRowdataBgSorted1 foswikiTableRowdataBg1">
+			<td class="foswikiTableCol0 foswikiFirstCol"> <em>description:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol"> converts a lowercase 
+alphabetic character to an uppercase          alphabetic character. If 
+this function is applied to an argument          which is not lowercase 
+the result will be the same as the argument          unchanged. </td>
+		</tr>
+		<tr class="foswikiTableOdd foswikiTableRowdataBgSorted0 foswikiTableRowdataBg0">
+			<td class="foswikiTableCol0 foswikiFirstCol"> <em>definition:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol"> <pre>toUpper c
+    | isLower c =
+        chr ( ord c - ord 'a' + ord 'A' )
+    | otherwise = c</pre> </td>
+		</tr>
+		<tr class="foswikiTableEven foswikiTableRowdataBgSorted1 foswikiTableRowdataBg1">
+			<td class="foswikiTableCol0 foswikiFirstCol foswikiLast"> <em>usage:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol foswikiLast"> <pre>Prelude&gt; toUpper 'a'
+'A'
+Prelude&gt; toUpper '3'
+'3'</pre> </td>
+		</tr>
+	</tbody></table>
+<p></p>
+<a name="TruncatePrelude"></a>
+<table class="foswikiTable" rules="none" border="1">
+	<tbody>
+		<tr class="foswikiTableOdd foswikiTableRowdataBgSorted0 foswikiTableRowdataBg0">
+			<td class="foswikiTableCol0 foswikiFirstCol"> <em>type:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol"> truncate :: Float -&gt; Int </td>
+		</tr>
+		<tr class="foswikiTableEven foswikiTableRowdataBgSorted1 foswikiTableRowdataBg1">
+			<td class="foswikiTableCol0 foswikiFirstCol"> <em>description:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol"> drops the fractional part of a floating point number, returning          only the integral part. </td>
+		</tr>
+		<tr class="foswikiTableOdd foswikiTableRowdataBgSorted0 foswikiTableRowdataBg0">
+			<td class="foswikiTableCol0 foswikiFirstCol foswikiLast"> <em>usage:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol foswikiLast"> <pre>Prelude&gt; truncate 3.2
+3
+Prelude&gt; truncate (-.3.2)
+(-3)</pre> </td>
+		</tr>
+	</tbody></table>
+<p></p>
+<a name="UndefinedPrelude"></a>
+<table class="foswikiTable" rules="none" border="1">
+	<tbody>
+		<tr class="foswikiTableOdd foswikiTableRowdataBgSorted0 foswikiTableRowdataBg0">
+			<td class="foswikiTableCol0 foswikiFirstCol"> <em>type:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol"> undefined :: a </td>
+		</tr>
+		<tr class="foswikiTableEven foswikiTableRowdataBgSorted1 foswikiTableRowdataBg1">
+			<td class="foswikiTableCol0 foswikiFirstCol"> <em>description:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol"> an undefined value. It is a member of every type. </td>
+		</tr>
+		<tr class="foswikiTableOdd foswikiTableRowdataBgSorted0 foswikiTableRowdataBg0">
+			<td class="foswikiTableCol0 foswikiFirstCol foswikiLast"> <em>definition:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol foswikiLast"> <pre>undefined
+   | False = undefined</pre> </td>
+		</tr>
+	</tbody></table>
+<p></p>
+<a name="UnlinesPrelude"></a>
+<table class="foswikiTable" rules="none" border="1">
+	<tbody>
+		<tr class="foswikiTableOdd foswikiTableRowdataBgSorted0 foswikiTableRowdataBg0">
+			<td class="foswikiTableCol0 foswikiFirstCol"> <em>type:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol"> unlines :: [String] -&gt; String </td>
+		</tr>
+		<tr class="foswikiTableEven foswikiTableRowdataBgSorted1 foswikiTableRowdataBg1">
+			<td class="foswikiTableCol0 foswikiFirstCol"> <em>description:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol"> converts a list of 
+strings into a single string, placing a          newline character 
+between each of them. It is the converse of the          function lines.
+ </td>
+		</tr>
+		<tr class="foswikiTableOdd foswikiTableRowdataBgSorted0 foswikiTableRowdataBg0">
+			<td class="foswikiTableCol0 foswikiFirstCol"> <em>definition:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol"> <pre>unlines [] = []
+unlines (l:ls) = l ++ '\n' : unlines ls</pre> </td>
+		</tr>
+		<tr class="foswikiTableEven foswikiTableRowdataBgSorted1 foswikiTableRowdataBg1">
+			<td class="foswikiTableCol0 foswikiFirstCol foswikiLast"> <em>usage:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol foswikiLast"> <pre>Prelude&gt; unlines ["helium","is","cool"]
+"helium\nis\ncool\n"</pre> </td>
+		</tr>
+	</tbody></table>
+<p></p>
+<a name="UntilPrelude"></a>
+<table class="foswikiTable" rules="none" border="1">
+	<tbody>
+		<tr class="foswikiTableOdd foswikiTableRowdataBgSorted0 foswikiTableRowdataBg0">
+			<td class="foswikiTableCol0 foswikiFirstCol"> <em>type:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol"> until :: (a -&gt; Bool) -&gt; (a -&gt; a) -&gt; a -&gt; a </td>
+		</tr>
+		<tr class="foswikiTableEven foswikiTableRowdataBgSorted1 foswikiTableRowdataBg1">
+			<td class="foswikiTableCol0 foswikiFirstCol"> <em>description:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol"> given a predicate, a 
+unary function and a value, it recursively          re--applies the 
+function to the value until the predicate is          satisfied. If the 
+predicate is never satisfied until will not          terminate. </td>
+		</tr>
+		<tr class="foswikiTableOdd foswikiTableRowdataBgSorted0 foswikiTableRowdataBg0">
+			<td class="foswikiTableCol0 foswikiFirstCol"> <em>definition:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol"> <pre>until p f x
+  | p x = x
+  | otheriwise = until p f (f x)</pre> </td>
+		</tr>
+		<tr class="foswikiTableEven foswikiTableRowdataBgSorted1 foswikiTableRowdataBg1">
+			<td class="foswikiTableCol0 foswikiFirstCol foswikiLast"> <em>usage:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol foswikiLast"> <pre>Prelude&gt; until (&gt; 1000) (*2) 1
+1024</pre> </td>
+		</tr>
+	</tbody></table>
+<p></p>
+<a name="UnwordsPrelude"></a>
+<table class="foswikiTable" rules="none" border="1">
+	<tbody>
+		<tr class="foswikiTableOdd foswikiTableRowdataBgSorted0 foswikiTableRowdataBg0">
+			<td class="foswikiTableCol0 foswikiFirstCol"> <em>type:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol"> unwords :: [String] -&gt; String </td>
+		</tr>
+		<tr class="foswikiTableEven foswikiTableRowdataBgSorted1 foswikiTableRowdataBg1">
+			<td class="foswikiTableCol0 foswikiFirstCol"> <em>description:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol"> concatenates a list of strings into a single string, placing a          single space between each of them. </td>
+		</tr>
+		<tr class="foswikiTableOdd foswikiTableRowdataBgSorted0 foswikiTableRowdataBg0">
+			<td class="foswikiTableCol0 foswikiFirstCol"> <em>definition:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol"> <pre>unwords [] = ""
+unwords [w] = w
+unwords (w:ws) = w ++ ' ' : unwords ws</pre> </td>
+		</tr>
+		<tr class="foswikiTableEven foswikiTableRowdataBgSorted1 foswikiTableRowdataBg1">
+			<td class="foswikiTableCol0 foswikiFirstCol foswikiLast"> <em>usage:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol foswikiLast"> <pre>Prelude&gt; unwords ["the", "quick", "brown", "fox"]
+"the quick brown fox"</pre> </td>
+		</tr>
+	</tbody></table>
+<p></p>
+<a name="WordsPrelude"></a>
+<table class="foswikiTable" rules="none" border="1">
+	<tbody>
+		<tr class="foswikiTableOdd foswikiTableRowdataBgSorted0 foswikiTableRowdataBg0">
+			<td class="foswikiTableCol0 foswikiFirstCol"> <em>type:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol"> words :: String -&gt; [String] </td>
+		</tr>
+		<tr class="foswikiTableEven foswikiTableRowdataBgSorted1 foswikiTableRowdataBg1">
+			<td class="foswikiTableCol0 foswikiFirstCol"> <em>description:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol"> breaks its argument 
+string into a list of words such that each          word is delimited by
+ one or more whitespace characters. </td>
+		</tr>
+		<tr class="foswikiTableOdd foswikiTableRowdataBgSorted0 foswikiTableRowdataBg0">
+			<td class="foswikiTableCol0 foswikiFirstCol"> <em>definition:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol"> <pre>words s =
+    case dropWhile isSpace s of
+        "" -&gt; []
+        s' -&gt; w : words s''
+              where w,s'' :: String
+                    (w,s'') = break isSpace s'</pre> </td>
+		</tr>
+		<tr class="foswikiTableEven foswikiTableRowdataBgSorted1 foswikiTableRowdataBg1">
+			<td class="foswikiTableCol0 foswikiFirstCol foswikiLast"> <em>usage:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol foswikiLast"> <pre>Prelude&gt; words "the quick brown\n\nfox"
+["the", "quick", "brown", "fox"]</pre> </td>
+		</tr>
+	</tbody></table>
+<p></p>
+<a name="ZipPrelude"></a>
+<table class="foswikiTable" rules="none" border="1">
+	<tbody>
+		<tr class="foswikiTableOdd foswikiTableRowdataBgSorted0 foswikiTableRowdataBg0">
+			<td class="foswikiTableCol0 foswikiFirstCol"> <em>type:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol"> zip :: [a] -&gt; [b] -&gt; [(a,b)] </td>
+		</tr>
+		<tr class="foswikiTableEven foswikiTableRowdataBgSorted1 foswikiTableRowdataBg1">
+			<td class="foswikiTableCol0 foswikiFirstCol"> <em>description:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol"> applied to two lists, 
+returns a list of pairs which are formed          by tupling together 
+corresponding elements of the given lists. If          the two lists are
+ of different length, the length of the resulting          list is that 
+of the shortest. </td>
+		</tr>
+		<tr class="foswikiTableOdd foswikiTableRowdataBgSorted0 foswikiTableRowdataBg0">
+			<td class="foswikiTableCol0 foswikiFirstCol"> <em>definition:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol"> <pre>zip xs ys
+  = zipWith pair xs ys
+  where
+  pair x y = (x, y)</pre> </td>
+		</tr>
+		<tr class="foswikiTableEven foswikiTableRowdataBgSorted1 foswikiTableRowdataBg1">
+			<td class="foswikiTableCol0 foswikiFirstCol foswikiLast"> <em>usage:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol foswikiLast"> <pre>Prelude&gt; zip [1..6] "abcd"
+[(1, 'a'), (2, 'b'), (3, 'c'), (4, 'd')]</pre> </td>
+		</tr>
+	</tbody></table>
+<p></p>
+<a name="ZipwithPrelude"></a>
+<table class="foswikiTable" rules="none" border="1">
+	<tbody>
+		<tr class="foswikiTableOdd foswikiTableRowdataBgSorted0 foswikiTableRowdataBg0">
+			<td class="foswikiTableCol0 foswikiFirstCol"> <em>type:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol"> zipWith :: (a -&gt; b -&gt; c) -&gt; [a] -&gt; [b] -&gt; [c] </td>
+		</tr>
+		<tr class="foswikiTableEven foswikiTableRowdataBgSorted1 foswikiTableRowdataBg1">
+			<td class="foswikiTableCol0 foswikiFirstCol"> <em>description:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol"> applied to a binary 
+function and two lists, returns a list          containing elements 
+formed be applying the function to          corresponding elements in 
+the lists. </td>
+		</tr>
+		<tr class="foswikiTableOdd foswikiTableRowdataBgSorted0 foswikiTableRowdataBg0">
+			<td class="foswikiTableCol0 foswikiFirstCol"> <em>definition:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol"> <pre>zipWith z (a:as) (b:bs) = z a b : zipWith z as bs
+zipWith _ _ _ = []</pre> </td>
+		</tr>
+		<tr class="foswikiTableEven foswikiTableRowdataBgSorted1 foswikiTableRowdataBg1">
+			<td class="foswikiTableCol0 foswikiFirstCol foswikiLast"> <em>usage:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol foswikiLast"> <pre>Prelude&gt; zipWith (+) [1..5] [6..10]
+[7, 9, 11, 13, 15]</pre> </td>
+		</tr>
+	</tbody></table>
+<p></p>
+<a name="OpandPrelude"></a>
+<table class="foswikiTable" rules="none" border="1">
+	<tbody>
+		<tr class="foswikiTableOdd foswikiTableRowdataBgSorted0 foswikiTableRowdataBg0">
+			<td class="foswikiTableCol0 foswikiFirstCol"> <em>type:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol"> (&amp;&amp;) :: Bool -&gt; Bool -&gt; Bool </td>
+		</tr>
+		<tr class="foswikiTableEven foswikiTableRowdataBgSorted1 foswikiTableRowdataBg1">
+			<td class="foswikiTableCol0 foswikiFirstCol"> <em>description:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol"> returns the logical conjunction of its two boolean arguments. </td>
+		</tr>
+		<tr class="foswikiTableOdd foswikiTableRowdataBgSorted0 foswikiTableRowdataBg0">
+			<td class="foswikiTableCol0 foswikiFirstCol foswikiLast"> <em>usage:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol foswikiLast"> <pre>Prelude&gt; True &amp;&amp; True
+True
+Prelude&gt; (3 &lt; 4) &amp;&amp; (4 &lt; 5) &amp;&amp; False
+False</pre> </td>
+		</tr>
+	</tbody></table>
+<p></p>
+<a name="OporPrelude"></a>
+<table class="foswikiTable" rules="none" border="1">
+	<tbody>
+		<tr class="foswikiTableOdd foswikiTableRowdataBgSorted0 foswikiTableRowdataBg0">
+			<td class="foswikiTableCol0 foswikiFirstCol"> <em>type:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol"> (||) :: Bool -&gt; Bool -&gt; Bool </td>
+		</tr>
+		<tr class="foswikiTableEven foswikiTableRowdataBgSorted1 foswikiTableRowdataBg1">
+			<td class="foswikiTableCol0 foswikiFirstCol"> <em>description:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol"> returns the logical disjunction of its two boolean arguments. </td>
+		</tr>
+		<tr class="foswikiTableOdd foswikiTableRowdataBgSorted0 foswikiTableRowdataBg0">
+			<td class="foswikiTableCol0 foswikiFirstCol foswikiLast"> <em>usage:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol foswikiLast"> <pre>Prelude&gt; True || False
+True
+Prelude&gt; (3 &lt; 4) || (4 &gt; 5) || False
+True</pre> </td>
+		</tr>
+	</tbody></table>
+<p></p>
+<a name="IndexPrelude"></a>
+<table class="foswikiTable" rules="none" border="1">
+	<tbody>
+		<tr class="foswikiTableOdd foswikiTableRowdataBgSorted0 foswikiTableRowdataBg0">
+			<td class="foswikiTableCol0 foswikiFirstCol"> <em>type:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol"> (!!) :: [a] -&gt; Int -&gt; a </td>
+		</tr>
+		<tr class="foswikiTableEven foswikiTableRowdataBgSorted1 foswikiTableRowdataBg1">
+			<td class="foswikiTableCol0 foswikiFirstCol"> <em>description:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol"> given a list and a number, returns the element of the list          whose position is the same as the number. </td>
+		</tr>
+		<tr class="foswikiTableOdd foswikiTableRowdataBgSorted0 foswikiTableRowdataBg0">
+			<td class="foswikiTableCol0 foswikiFirstCol"> <em>usage:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol"> <pre>Prelude&gt; [1..10] !! 0
+1
+Prelude&gt; "a string" !! 3
+'t'</pre> </td>
+		</tr>
+		<tr class="foswikiTableEven foswikiTableRowdataBgSorted1 foswikiTableRowdataBg1">
+			<td class="foswikiTableCol0 foswikiFirstCol foswikiLast"> <em>notes:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol foswikiLast"> the valid 
+subscripts for a list l are: 0 .. (length l) - 1.          Therefore, 
+negative subscripts are not allowed, nor are subscripts          greater
+ than one less than the length of the list argument.          Subscripts
+ out of this range will result in a program error. </td>
+		</tr>
+	</tbody></table>
+<p></p>
+<a name="ConsPrelude"></a>
+<table class="foswikiTable" rules="none" border="1">
+	<tbody>
+		<tr class="foswikiTableOdd foswikiTableRowdataBgSorted0 foswikiTableRowdataBg0">
+			<td class="foswikiTableCol0 foswikiFirstCol"> <em>type:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol"> (:) :: a -&gt; [a] -&gt; [a] </td>
+		</tr>
+		<tr class="foswikiTableEven foswikiTableRowdataBgSorted1 foswikiTableRowdataBg1">
+			<td class="foswikiTableCol0 foswikiFirstCol"> <em>description:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol"> prefixes an element onto the front of a list. </td>
+		</tr>
+		<tr class="foswikiTableOdd foswikiTableRowdataBgSorted0 foswikiTableRowdataBg0">
+			<td class="foswikiTableCol0 foswikiFirstCol foswikiLast"> <em>usage:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol foswikiLast"> <pre>Prelude&gt; 1:[2,3]
+[1,2,3]
+Prelude&gt; True:[]
+[True]
+Prelude&gt; 'h':"elium"
+"helium"</pre> </td>
+		</tr>
+	</tbody></table>
+<p></p>
+<a name="AppendPrelude"></a>
+<table class="foswikiTable" rules="none" border="1">
+	<tbody>
+		<tr class="foswikiTableOdd foswikiTableRowdataBgSorted0 foswikiTableRowdataBg0">
+			<td class="foswikiTableCol0 foswikiFirstCol"> <em>type:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol"> (++) :: [a] -&gt; [a] -&gt; [a] </td>
+		</tr>
+		<tr class="foswikiTableEven foswikiTableRowdataBgSorted1 foswikiTableRowdataBg1">
+			<td class="foswikiTableCol0 foswikiFirstCol"> <em>description:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol"> appends its second list argument onto the end of its first list          argument. </td>
+		</tr>
+		<tr class="foswikiTableOdd foswikiTableRowdataBgSorted0 foswikiTableRowdataBg0">
+			<td class="foswikiTableCol0 foswikiFirstCol foswikiLast"> <em>usage:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol foswikiLast"> <pre>Prelude&gt; [1,2,3] ++ [4,5,6]
+[1,2,3,4,5,6]
+Prelude&gt; "foo " ++ "was" ++ " here"
+"foo was here"</pre> </td>
+		</tr>
+	</tbody></table>
+<p></p>
+<a name="ComposePrelude"></a>
+<table class="foswikiTable" rules="none" border="1">
+	<tbody>
+		<tr class="foswikiTableOdd foswikiTableRowdataBgSorted0 foswikiTableRowdataBg0">
+			<td class="foswikiTableCol0 foswikiFirstCol"> <em>type:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol"> (.) :: (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c </td>
+		</tr>
+		<tr class="foswikiTableEven foswikiTableRowdataBgSorted1 foswikiTableRowdataBg1">
+			<td class="foswikiTableCol0 foswikiFirstCol"> <em>description:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol"> composes two functions into a single function. </td>
+		</tr>
+		<tr class="foswikiTableOdd foswikiTableRowdataBgSorted0 foswikiTableRowdataBg0">
+			<td class="foswikiTableCol0 foswikiFirstCol"> <em>usage:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol"> <pre>Prelude&gt; (sqrt . fromInt . sum ) [1,2,3,4,5]
+3.87298</pre> </td>
+		</tr>
+		<tr class="foswikiTableEven foswikiTableRowdataBgSorted1 foswikiTableRowdataBg1">
+			<td class="foswikiTableCol0 foswikiFirstCol foswikiLast"> <em>notes:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol foswikiLast"> <tt>(f.g.h) x</tt> is equivalent to <tt>f (g (h x))</tt>. </td>
+		</tr>
+	</tbody></table>
+<p></p>
+<a name="StarstarPrelude"></a>
+<table class="foswikiTable" rules="none" border="1">
+	<tbody>
+		<tr class="foswikiTableOdd foswikiTableRowdataBgSorted0 foswikiTableRowdataBg0">
+			<td class="foswikiTableCol0 foswikiFirstCol"> <em>type:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol"> (**.) :: Float -&gt; Float -&gt; Float </td>
+		</tr>
+		<tr class="foswikiTableEven foswikiTableRowdataBgSorted1 foswikiTableRowdataBg1">
+			<td class="foswikiTableCol0 foswikiFirstCol"> <em>description:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol"> raises its first argument to the power of its second argument. </td>
+		</tr>
+		<tr class="foswikiTableOdd foswikiTableRowdataBgSorted0 foswikiTableRowdataBg0">
+			<td class="foswikiTableCol0 foswikiFirstCol foswikiLast"> <em>usage:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol foswikiLast"> <pre>Prelude&gt; 3.2**.pi
+38.6345</pre> </td>
+		</tr>
+	</tbody></table>
+<p></p>
+<a name="HatPrelude"></a>
+<table class="foswikiTable" rules="none" border="1">
+	<tbody>
+		<tr class="foswikiTableOdd foswikiTableRowdataBgSorted0 foswikiTableRowdataBg0">
+			<td class="foswikiTableCol0 foswikiFirstCol"> <em>type:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol"> (^) :: Int -&gt; Int -&gt; Int </td>
+		</tr>
+		<tr class="foswikiTableEven foswikiTableRowdataBgSorted1 foswikiTableRowdataBg1">
+			<td class="foswikiTableCol0 foswikiFirstCol"> <em>description:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol"> raises its first argument to the power of its second argument. </td>
+		</tr>
+		<tr class="foswikiTableOdd foswikiTableRowdataBgSorted0 foswikiTableRowdataBg0">
+			<td class="foswikiTableCol0 foswikiFirstCol foswikiLast"> <em>usage:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol foswikiLast"> <pre>Prelude&gt; 3^4
+81</pre> </td>
+		</tr>
+	</tbody></table>
+<p></p>
+<a name="MulPrelude"></a>
+<table class="foswikiTable" rules="none" border="1">
+	<tbody>
+		<tr class="foswikiTableOdd foswikiTableRowdataBgSorted0 foswikiTableRowdataBg0">
+			<td class="foswikiTableCol0 foswikiFirstCol"> <em>type:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol"> (*) :: Int -&gt; Int -&gt; Int </td>
+		</tr>
+		<tr class="foswikiTableEven foswikiTableRowdataBgSorted1 foswikiTableRowdataBg1">
+			<td class="foswikiTableCol0 foswikiFirstCol"> <em>description:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol"> returns the multiple of its two arguments. </td>
+		</tr>
+		<tr class="foswikiTableOdd foswikiTableRowdataBgSorted0 foswikiTableRowdataBg0">
+			<td class="foswikiTableCol0 foswikiFirstCol foswikiLast"> <em>usage:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol foswikiLast"> <pre>Prelude&gt; 6 * 2
+12</pre> </td>
+		</tr>
+	</tbody></table>
+<p></p>
+<a name="OpdivPrelude"></a>
+<table class="foswikiTable" rules="none" border="1">
+	<tbody>
+		<tr class="foswikiTableOdd foswikiTableRowdataBgSorted0 foswikiTableRowdataBg0">
+			<td class="foswikiTableCol0 foswikiFirstCol"> <em>type:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol"> (/) :: Int -&gt; Int -&gt; Int </td>
+		</tr>
+		<tr class="foswikiTableEven foswikiTableRowdataBgSorted1 foswikiTableRowdataBg1">
+			<td class="foswikiTableCol0 foswikiFirstCol"> <em>description:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol"> returns the result of dividing its first argument by its          second. . </td>
+		</tr>
+		<tr class="foswikiTableOdd foswikiTableRowdataBgSorted0 foswikiTableRowdataBg0">
+			<td class="foswikiTableCol0 foswikiFirstCol foswikiLast"> <em>usage:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol foswikiLast"> <pre>Prelude&gt; 12 / 5
+2</pre> </td>
+		</tr>
+	</tbody></table>
+<p></p>
+<a name="AddPrelude"></a>
+<table class="foswikiTable" rules="none" border="1">
+	<tbody>
+		<tr class="foswikiTableOdd foswikiTableRowdataBgSorted0 foswikiTableRowdataBg0">
+			<td class="foswikiTableCol0 foswikiFirstCol"> <em>type:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol"> (+) :: Int -&gt; Int -&gt; Int </td>
+		</tr>
+		<tr class="foswikiTableEven foswikiTableRowdataBgSorted1 foswikiTableRowdataBg1">
+			<td class="foswikiTableCol0 foswikiFirstCol"> <em>description:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol"> returns the addition of its arguments. </td>
+		</tr>
+		<tr class="foswikiTableOdd foswikiTableRowdataBgSorted0 foswikiTableRowdataBg0">
+			<td class="foswikiTableCol0 foswikiFirstCol foswikiLast"> <em>usage:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol foswikiLast"> <pre>Prelude&gt; 3 + 4
+7</pre> </td>
+		</tr>
+	</tbody></table>
+<p></p>
+<a name="SubPrelude"></a>
+<table class="foswikiTable" rules="none" border="1">
+	<tbody>
+		<tr class="foswikiTableOdd foswikiTableRowdataBgSorted0 foswikiTableRowdataBg0">
+			<td class="foswikiTableCol0 foswikiFirstCol"> <em>type:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol"> (-) :: Int -&gt; Int -&gt; Int </td>
+		</tr>
+		<tr class="foswikiTableEven foswikiTableRowdataBgSorted1 foswikiTableRowdataBg1">
+			<td class="foswikiTableCol0 foswikiFirstCol"> <em>description:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol"> returns the substraction of its second argument from its first. </td>
+		</tr>
+		<tr class="foswikiTableOdd foswikiTableRowdataBgSorted0 foswikiTableRowdataBg0">
+			<td class="foswikiTableCol0 foswikiFirstCol foswikiLast"> <em>usage:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol foswikiLast"> <pre>Prelude&gt; 4 - 3
+1
+Prelude&gt; 4 - (-3)
+7</pre> </td>
+		</tr>
+	</tbody></table>
+<p></p>
+<a name="NePrelude"></a>
+<table class="foswikiTable" rules="none" border="1">
+	<tbody>
+		<tr class="foswikiTableOdd foswikiTableRowdataBgSorted0 foswikiTableRowdataBg0">
+			<td class="foswikiTableCol0 foswikiFirstCol"> <em>type:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol"> (/=) :: Int -&gt; Int -&gt; Bool </td>
+		</tr>
+		<tr class="foswikiTableEven foswikiTableRowdataBgSorted1 foswikiTableRowdataBg1">
+			<td class="foswikiTableCol0 foswikiFirstCol"> <em>description:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol"> is <tt>True</tt> if its first argument is not equal to its          second argument, and <tt>False</tt> otherwise. </td>
+		</tr>
+		<tr class="foswikiTableOdd foswikiTableRowdataBgSorted0 foswikiTableRowdataBg0">
+			<td class="foswikiTableCol0 foswikiFirstCol foswikiLast"> <em>usage:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol foswikiLast"> <pre>Prelude&gt; 3 /= 4
+True</pre> </td>
+		</tr>
+	</tbody></table>
+<p></p>
+<a name="EqPrelude"></a>
+<table class="foswikiTable" rules="none" border="1">
+	<tbody>
+		<tr class="foswikiTableOdd foswikiTableRowdataBgSorted0 foswikiTableRowdataBg0">
+			<td class="foswikiTableCol0 foswikiFirstCol"> <em>type:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol"> (==) :: Int -&gt; Int -&gt; Bool </td>
+		</tr>
+		<tr class="foswikiTableEven foswikiTableRowdataBgSorted1 foswikiTableRowdataBg1">
+			<td class="foswikiTableCol0 foswikiFirstCol"> <em>description:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol"> is <tt>True</tt> if its first argument is equal to its second          argument, and <tt>False</tt> otherwise. </td>
+		</tr>
+		<tr class="foswikiTableOdd foswikiTableRowdataBgSorted0 foswikiTableRowdataBg0">
+			<td class="foswikiTableCol0 foswikiFirstCol"> <em>usage:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol"> <pre>Prelude&gt; 3 == 4
+False</pre> </td>
+		</tr>
+		<tr class="foswikiTableEven foswikiTableRowdataBgSorted1 foswikiTableRowdataBg1">
+			<td class="foswikiTableCol0 foswikiFirstCol foswikiLast"> <em>see also:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol foswikiLast"> <a href="#EqboolPrelude">eqBool</a>, <a href="#EqcharPrelude">eqChar</a>,          <a href="#EqlistPrelude">eqList</a>, <a href="#EqstringPrelude">eqString</a>,          <a href="#EqPrelude">(==)</a>, <a href="#EqfltPrelude">(==.)</a> </td>
+		</tr>
+	</tbody></table>
+<p></p>
+<a name="LtPrelude"></a>
+<table class="foswikiTable" rules="none" border="1">
+	<tbody>
+		<tr class="foswikiTableOdd foswikiTableRowdataBgSorted0 foswikiTableRowdataBg0">
+			<td class="foswikiTableCol0 foswikiFirstCol"> <em>type:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol"> (&lt;) :: Int -&gt; Int -&gt; Bool </td>
+		</tr>
+		<tr class="foswikiTableEven foswikiTableRowdataBgSorted1 foswikiTableRowdataBg1">
+			<td class="foswikiTableCol0 foswikiFirstCol"> <em>description:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol"> returns <tt>True</tt> if its first argument is strictly less          than its second argument, and <tt>False</tt> otherwise. </td>
+		</tr>
+		<tr class="foswikiTableOdd foswikiTableRowdataBgSorted0 foswikiTableRowdataBg0">
+			<td class="foswikiTableCol0 foswikiFirstCol foswikiLast"> <em>usage:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol foswikiLast"> <pre>Prelude&gt; 1 &lt; 2
+True</pre> </td>
+		</tr>
+	</tbody></table>
+<p></p>
+<a name="LePrelude"></a>
+<table class="foswikiTable" rules="none" border="1">
+	<tbody>
+		<tr class="foswikiTableOdd foswikiTableRowdataBgSorted0 foswikiTableRowdataBg0">
+			<td class="foswikiTableCol0 foswikiFirstCol"> <em>type:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol"> (&lt;=) :: Int -&gt; Int -&gt; Bool </td>
+		</tr>
+		<tr class="foswikiTableEven foswikiTableRowdataBgSorted1 foswikiTableRowdataBg1">
+			<td class="foswikiTableCol0 foswikiFirstCol"> <em>description:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol"> returns <tt>True</tt> if its first argument is less than or          equal to its second argument, and <tt>False</tt> otherwise. </td>
+		</tr>
+		<tr class="foswikiTableOdd foswikiTableRowdataBgSorted0 foswikiTableRowdataBg0">
+			<td class="foswikiTableCol0 foswikiFirstCol foswikiLast"> <em>usage:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol foswikiLast"> <pre>Prelude&gt; 3 &lt;= 4
+True
+Prelude&gt; 4 &lt;= 4
+True
+Prelude&gt; 5 &lt;= 4
+False</pre> </td>
+		</tr>
+	</tbody></table>
+<p></p>
+<a name="GtPrelude"></a>
+<table class="foswikiTable" rules="none" border="1">
+	<tbody>
+		<tr class="foswikiTableOdd foswikiTableRowdataBgSorted0 foswikiTableRowdataBg0">
+			<td class="foswikiTableCol0 foswikiFirstCol"> <em>type:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol"> (&gt;) :: Int -&gt; Int -&gt; Bool </td>
+		</tr>
+		<tr class="foswikiTableEven foswikiTableRowdataBgSorted1 foswikiTableRowdataBg1">
+			<td class="foswikiTableCol0 foswikiFirstCol"> <em>description:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol"> returns <tt>True</tt> if its first argument is strictly greater          than its second argument, and <tt>False</tt> otherwise. . </td>
+		</tr>
+		<tr class="foswikiTableOdd foswikiTableRowdataBgSorted0 foswikiTableRowdataBg0">
+			<td class="foswikiTableCol0 foswikiFirstCol foswikiLast"> <em>usage:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol foswikiLast"> <pre>Prelude&gt; 2 &gt; 1
+True</pre> </td>
+		</tr>
+	</tbody></table>
+<p></p>
+<a name="GePrelude"></a>
+<table class="foswikiTable" rules="none" border="1">
+	<tbody>
+		<tr class="foswikiTableOdd foswikiTableRowdataBgSorted0 foswikiTableRowdataBg0">
+			<td class="foswikiTableCol0 foswikiFirstCol"> <em>type:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol"> (&gt;=) :: Int -&gt; Int -&gt; Bool </td>
+		</tr>
+		<tr class="foswikiTableEven foswikiTableRowdataBgSorted1 foswikiTableRowdataBg1">
+			<td class="foswikiTableCol0 foswikiFirstCol"> <em>description:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol"> returns <tt>True</tt> if its first argument is greater than or          equal to its second argument, and <tt>False</tt> otherwise. </td>
+		</tr>
+		<tr class="foswikiTableOdd foswikiTableRowdataBgSorted0 foswikiTableRowdataBg0">
+			<td class="foswikiTableCol0 foswikiFirstCol foswikiLast"> <em>usage:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol foswikiLast"> <pre>Prelude&gt; 4 &gt;= 3
+True
+Prelude&gt; 4 &gt;= 4
+True
+Prelude&gt; 4 &gt;= 5
+False</pre> </td>
+		</tr>
+	</tbody></table>
+<p></p>
+<a name="MulfltPrelude"></a>
+<table class="foswikiTable" rules="none" border="1">
+	<tbody>
+		<tr class="foswikiTableOdd foswikiTableRowdataBgSorted0 foswikiTableRowdataBg0">
+			<td class="foswikiTableCol0 foswikiFirstCol"> <em>type:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol"> (*.) :: Float -&gt; Float -&gt; Float </td>
+		</tr>
+		<tr class="foswikiTableEven foswikiTableRowdataBgSorted1 foswikiTableRowdataBg1">
+			<td class="foswikiTableCol0 foswikiFirstCol"> <em>description:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol"> returns the multiple of its two arguments. </td>
+		</tr>
+		<tr class="foswikiTableOdd foswikiTableRowdataBgSorted0 foswikiTableRowdataBg0">
+			<td class="foswikiTableCol0 foswikiFirstCol foswikiLast"> <em>usage:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol foswikiLast"> <pre>Prelude&gt; 6.0 * 2.5
+15</pre> </td>
+		</tr>
+	</tbody></table>
+<p></p>
+<a name="OpdivfltPrelude"></a>
+<table class="foswikiTable" rules="none" border="1">
+	<tbody>
+		<tr class="foswikiTableOdd foswikiTableRowdataBgSorted0 foswikiTableRowdataBg0">
+			<td class="foswikiTableCol0 foswikiFirstCol"> <em>type:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol"> (/.) :: Float -&gt; Float -&gt; Float </td>
+		</tr>
+		<tr class="foswikiTableEven foswikiTableRowdataBgSorted1 foswikiTableRowdataBg1">
+			<td class="foswikiTableCol0 foswikiFirstCol"> <em>description:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol"> returns the result of dividing its first argument by its          second. </td>
+		</tr>
+		<tr class="foswikiTableOdd foswikiTableRowdataBgSorted0 foswikiTableRowdataBg0">
+			<td class="foswikiTableCol0 foswikiFirstCol foswikiLast"> <em>usage:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol foswikiLast"> <pre>Prelude&gt; 12.0 /. 5.0
+2.4</pre> </td>
+		</tr>
+	</tbody></table>
+<p></p>
+<a name="AddfltPrelude"></a>
+<table class="foswikiTable" rules="none" border="1">
+	<tbody>
+		<tr class="foswikiTableOdd foswikiTableRowdataBgSorted0 foswikiTableRowdataBg0">
+			<td class="foswikiTableCol0 foswikiFirstCol"> <em>type:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol"> (+.) :: Float -&gt; Float -&gt; Float </td>
+		</tr>
+		<tr class="foswikiTableEven foswikiTableRowdataBgSorted1 foswikiTableRowdataBg1">
+			<td class="foswikiTableCol0 foswikiFirstCol"> <em>description:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol"> returns the addition of its arguments. </td>
+		</tr>
+		<tr class="foswikiTableOdd foswikiTableRowdataBgSorted0 foswikiTableRowdataBg0">
+			<td class="foswikiTableCol0 foswikiFirstCol foswikiLast"> <em>usage:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol foswikiLast"> <pre>Prelude&gt; 3.0 +. 4.5
+7.5</pre> </td>
+		</tr>
+	</tbody></table>
+<p></p>
+<a name="SubfltPrelude"></a>
+<table class="foswikiTable" rules="none" border="1">
+	<tbody>
+		<tr class="foswikiTableOdd foswikiTableRowdataBgSorted0 foswikiTableRowdataBg0">
+			<td class="foswikiTableCol0 foswikiFirstCol"> <em>type:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol"> (-.) :: Float -&gt; Float -&gt; Float </td>
+		</tr>
+		<tr class="foswikiTableEven foswikiTableRowdataBgSorted1 foswikiTableRowdataBg1">
+			<td class="foswikiTableCol0 foswikiFirstCol"> <em>description:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol"> returns the substraction of its second argument from its first. </td>
+		</tr>
+		<tr class="foswikiTableOdd foswikiTableRowdataBgSorted0 foswikiTableRowdataBg0">
+			<td class="foswikiTableCol0 foswikiFirstCol foswikiLast"> <em>usage:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol foswikiLast"> <pre>Prelude&gt; 4.0 -. 3.0
+1
+Prelude&gt; 4.5 -. (-.3.0)
+7.5</pre> </td>
+		</tr>
+	</tbody></table>
+<p></p>
+<a name="PowfltPrelude"></a>
+<table class="foswikiTable" rules="none" border="1">
+	<tbody>
+		<tr class="foswikiTableOdd foswikiTableRowdataBgSorted0 foswikiTableRowdataBg0">
+			<td class="foswikiTableCol0 foswikiFirstCol"> <em>type:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol"> (^.) :: Float -&gt; Int -&gt; Float </td>
+		</tr>
+		<tr class="foswikiTableEven foswikiTableRowdataBgSorted1 foswikiTableRowdataBg1">
+			<td class="foswikiTableCol0 foswikiFirstCol"> <em>description:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol"> raises its first argument to the power of its second argument. </td>
+		</tr>
+		<tr class="foswikiTableOdd foswikiTableRowdataBgSorted0 foswikiTableRowdataBg0">
+			<td class="foswikiTableCol0 foswikiFirstCol foswikiLast"> <em>usage:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol foswikiLast"> <pre>Prelude&gt; 2.5 ^. 3
+15.625</pre> </td>
+		</tr>
+	</tbody></table>
+<p></p>
+<a name="NefltPrelude"></a>
+<table class="foswikiTable" rules="none" border="1">
+	<tbody>
+		<tr class="foswikiTableOdd foswikiTableRowdataBgSorted0 foswikiTableRowdataBg0">
+			<td class="foswikiTableCol0 foswikiFirstCol"> <em>type:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol"> (/=.) :: Float -&gt; Float -&gt; Bool </td>
+		</tr>
+		<tr class="foswikiTableEven foswikiTableRowdataBgSorted1 foswikiTableRowdataBg1">
+			<td class="foswikiTableCol0 foswikiFirstCol"> <em>description:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol"> is <tt>True</tt> if its first argument is not equal to its          second argument, and <tt>False</tt> otherwise. </td>
+		</tr>
+		<tr class="foswikiTableOdd foswikiTableRowdataBgSorted0 foswikiTableRowdataBg0">
+			<td class="foswikiTableCol0 foswikiFirstCol foswikiLast"> <em>usage:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol foswikiLast"> <pre>Prelude&gt; 3.0 /=. 4.0
+True</pre> </td>
+		</tr>
+	</tbody></table>
+<p></p>
+<a name="EqfltPrelude"></a>
+<table class="foswikiTable" rules="none" border="1">
+	<tbody>
+		<tr class="foswikiTableOdd foswikiTableRowdataBgSorted0 foswikiTableRowdataBg0">
+			<td class="foswikiTableCol0 foswikiFirstCol"> <em>type:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol"> (==.) :: Float -&gt; Float -&gt; Bool </td>
+		</tr>
+		<tr class="foswikiTableEven foswikiTableRowdataBgSorted1 foswikiTableRowdataBg1">
+			<td class="foswikiTableCol0 foswikiFirstCol"> <em>description:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol"> is <tt>True</tt> if its first argument is equal to its second          argument, and <tt>False</tt> otherwise. </td>
+		</tr>
+		<tr class="foswikiTableOdd foswikiTableRowdataBgSorted0 foswikiTableRowdataBg0">
+			<td class="foswikiTableCol0 foswikiFirstCol"> <em>usage:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol"> <pre>Prelude&gt; 3.0 ==. 4.0
+False</pre> </td>
+		</tr>
+		<tr class="foswikiTableEven foswikiTableRowdataBgSorted1 foswikiTableRowdataBg1">
+			<td class="foswikiTableCol0 foswikiFirstCol foswikiLast"> <em>see also:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol foswikiLast"> <a href="#EqboolPrelude">eqBool</a>, <a href="#EqcharPrelude">eqChar</a>,          <a href="#EqlistPrelude">eqList</a>, <a href="#EqstringPrelude">eqString</a>,          <a href="#EqPrelude">(==)</a>, <a href="#EqfltPrelude">(==.)</a> </td>
+		</tr>
+	</tbody></table>
+<p></p>
+<a name="LtfltPrelude"></a>
+<table class="foswikiTable" rules="none" border="1">
+	<tbody>
+		<tr class="foswikiTableOdd foswikiTableRowdataBgSorted0 foswikiTableRowdataBg0">
+			<td class="foswikiTableCol0 foswikiFirstCol"> <em>type:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol"> (&lt;.) :: Float -&gt; Float -&gt; Bool </td>
+		</tr>
+		<tr class="foswikiTableEven foswikiTableRowdataBgSorted1 foswikiTableRowdataBg1">
+			<td class="foswikiTableCol0 foswikiFirstCol"> <em>description:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol"> returns <tt>True</tt> if its first argument is strictly less          than its second argument, and <tt>False</tt> otherwise. . </td>
+		</tr>
+		<tr class="foswikiTableOdd foswikiTableRowdataBgSorted0 foswikiTableRowdataBg0">
+			<td class="foswikiTableCol0 foswikiFirstCol foswikiLast"> <em>usage:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol foswikiLast"> <pre>Prelude&gt; 1.0 &lt;. 2.0
+True</pre> </td>
+		</tr>
+	</tbody></table>
+<p></p>
+<a name="LefltPrelude"></a>
+<table class="foswikiTable" rules="none" border="1">
+	<tbody>
+		<tr class="foswikiTableOdd foswikiTableRowdataBgSorted0 foswikiTableRowdataBg0">
+			<td class="foswikiTableCol0 foswikiFirstCol"> <em>type:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol"> (&lt;=.) :: Float -&gt; Float -&gt; Bool </td>
+		</tr>
+		<tr class="foswikiTableEven foswikiTableRowdataBgSorted1 foswikiTableRowdataBg1">
+			<td class="foswikiTableCol0 foswikiFirstCol"> <em>description:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol"> returns <tt>True</tt> if its first argument is less than or          equal to its second argument, and <tt>False</tt> otherwise. </td>
+		</tr>
+		<tr class="foswikiTableOdd foswikiTableRowdataBgSorted0 foswikiTableRowdataBg0">
+			<td class="foswikiTableCol0 foswikiFirstCol foswikiLast"> <em>usage:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol foswikiLast"> <pre>Prelude&gt; 3.0 &lt;=. 4.0
+True
+Prelude&gt; 4.0 &lt;=. 4.0
+True
+Prelude&gt; 5.0 &lt;=. 4.0
+False</pre> </td>
+		</tr>
+	</tbody></table>
+<p></p>
+<a name="GtfltPrelude"></a>
+<table class="foswikiTable" rules="none" border="1">
+	<tbody>
+		<tr class="foswikiTableOdd foswikiTableRowdataBgSorted0 foswikiTableRowdataBg0">
+			<td class="foswikiTableCol0 foswikiFirstCol"> <em>type:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol"> (&gt;.) :: Float -&gt; Float -&gt; Bool </td>
+		</tr>
+		<tr class="foswikiTableEven foswikiTableRowdataBgSorted1 foswikiTableRowdataBg1">
+			<td class="foswikiTableCol0 foswikiFirstCol"> <em>description:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol"> returns <tt>True</tt> if its first argument is strictly greater          than its second argument, and <tt>False</tt> otherwise. . </td>
+		</tr>
+		<tr class="foswikiTableOdd foswikiTableRowdataBgSorted0 foswikiTableRowdataBg0">
+			<td class="foswikiTableCol0 foswikiFirstCol foswikiLast"> <em>usage:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol foswikiLast"> <pre>Prelude&gt; 2.0 &gt;. 1.0
+True</pre> </td>
+		</tr>
+	</tbody></table>
+<p></p>
+<a name="GefltPrelude"></a>
+<table class="foswikiTable" rules="none" border="1">
+	<tbody>
+		<tr class="foswikiTableOdd foswikiTableRowdataBgSorted0 foswikiTableRowdataBg0">
+			<td class="foswikiTableCol0 foswikiFirstCol"> <em>type:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol"> (&gt;=.) :: Float -&gt; Float -&gt; Bool </td>
+		</tr>
+		<tr class="foswikiTableEven foswikiTableRowdataBgSorted1 foswikiTableRowdataBg1">
+			<td class="foswikiTableCol0 foswikiFirstCol"> <em>description:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol"> returns <tt>True</tt> if its first argument is greater than or          equal to its second argument, and <tt>False</tt> otherwise. </td>
+		</tr>
+		<tr class="foswikiTableOdd foswikiTableRowdataBgSorted0 foswikiTableRowdataBg0">
+			<td class="foswikiTableCol0 foswikiFirstCol foswikiLast"> <em>usage:</em> </td>
+			<td class="foswikiTableCol1 foswikiLastCol foswikiLast"> <pre>Prelude&gt; 4.0 &gt;=. 3.0
+True
+Prelude&gt; 4.0 &gt;=. 4.0
+True
+Prelude&gt; 4.0 &gt;=. 5.0
+False</pre> </td>
+		</tr>
+	</tbody></table>
+
+</body>
+</html>
