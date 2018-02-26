@@ -36,7 +36,7 @@ in `heliumsystem/hint` that contains the `Hint` jar file, e.g.,
 `java -jar Hint-1.7.jar ` or whatever other way your operating system allows you
 to execute Java jar files. Then you should obtain a window like this:
 
-<img align="middle" alt="" border="0" height="496" src="http://www.cs.uu.nl/people/jur/HintStartup.png" width="559" />
+<img align="middle" alt="" border="0" height="496" src="http://www.cs.uu.nl/people/jur/images/HintStartup.png" width="559" />
 
 If you want, you can move `Hint` to a different, more accessible location,
 or you can write a small wrapper script in a location that is part of your
@@ -225,7 +225,7 @@ file for Hint. Note that this configuration file is also used by `texthint`. On 
 does not support making changes to the configuration. Either use `Hint` or a text editor to
 change the configuration directly. Below is a snapshot of the current menu.
 
-<img align="middle" alt="" border="0" height="343" src="http://www.cs.uu.nl/people/jur/HintConfigureDialog.png" width="546" />
+<img align="middle" alt="" border="0" height="343" src="http://www.cs.uu.nl/people/jur/images/HintConfigureDialog.png" width="546" />
 
 As you can see boolean flags are checkboxes and the all other fields are simple text fields
 where you can type the text. As described earlier, if you need to include spaces in the text (some
