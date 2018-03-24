@@ -170,7 +170,7 @@ optionDescription moreOptions experimentalOptions =
       , Option "M" [flag AlgorithmM ]                   (NoArg AlgorithmM) "use folklore top-down type inference algorithm M"
       , Option ""  [flag DisableDirectives]             (NoArg DisableDirectives) "disable type inference directives"
       , Option ""  [flag NoRepairHeuristics]            (NoArg NoRepairHeuristics) "don't suggest program fixes"
-      , Option ""  [flag HFullQualification]             (NoArg HFullQualification) "to determine fully qualified names for Holmes"
+      , Option ""  [flag HFullQualification]            (NoArg HFullQualification) "to determine fully qualified names for Holmes"
       , Option ""  [flag (BasePath "")]                 (ReqArg BasePath "PATH") "use PATH as base path instead"
       ]
       ++
@@ -196,6 +196,8 @@ optionDescription moreOptions experimentalOptions =
       , Option "" [flag (SelectConstraintNumber 0)]     (ReqArg selectCNR "CNR") "select constraint number to be reported"
       , Option "" [flag NoOverloadingTypeCheck]         (NoArg NoOverloadingTypeCheck)  "disable overloading errors (experimental)"
       , Option "" [flag NoPrelude]                      (NoArg NoPrelude)  "do not import the prelude (experimental)"
+      , Option "" [flag (RepairDepth 0)]                (ReqArg selectDepth "RDEPTH") "specify depth of transformation tree"
+      , Option "" [flag (RepairEvalLimit 0)]            (ReqArg selectEvalLimit "RTREVL") "specify re-evaluation limit of transformed expressions"      
       ]
 
 
@@ -215,6 +217,7 @@ data Option
    | TreeWalkInorderTopFirstPost | TreeWalkInorderTopLastPost | SolverSimple | SolverGreedy
    | SolverTypeGraph | SolverCombination | SolverChunks | UnifierHeuristics
    | SelectConstraintNumber Int | NoOverloadingTypeCheck | NoPrelude | UseTutor
+   | RepairDepth Int | RepairEvalLimit Int -- Arjen Langebaerd's work 
  deriving (Eq)
 
 stripShow :: String -> String
@@ -277,7 +280,8 @@ instance Show Option where
  show NoOverloadingTypeCheck             = "--no-overloading-typecheck"
  show NoPrelude                          = "--no-prelude"
  show UseTutor                           = "--use-tutor"
-
+ show (RepairDepth depth)                = "--repair-depth=" ++ show depth
+ show (RepairEvalLimit limit)            = "--repair-eval-limit=" ++ show limit
 
 basePathFromOptions :: [Option] -> Maybe String
 basePathFromOptions [] = Nothing
@@ -317,13 +321,21 @@ alertMessageFromOptions (_ : rest) = alertMessageFromOptions rest
 hasAlertOption :: [Option] -> Bool
 hasAlertOption = isJust . alertMessageFromOptions
 
+selectNumber :: String -> Int
+selectNumber str 
+   | all isDigit str = read ('0':str)
+   | otherwise       = -1
+   
 selectPort :: String -> Option
-selectPort pn
-   | all isDigit pn = Port (read ('0':pn))
-   | otherwise     = Port (-1) -- problem with argument
+selectPort = Port . selectNumber 
 
 selectCNR :: String -> Option
-selectCNR s
-   | all isDigit s = SelectConstraintNumber (read ('0':s))
-   | otherwise     = SelectConstraintNumber (-1) -- problem with argument
+selectCNR = SelectConstraintNumber . selectNumber
+
+selectDepth :: String -> Option
+selectDepth = RepairDepth . selectNumber
+
+selectEvalLimit :: String -> Option
+selectEvalLimit = RepairEvalLimit . selectNumber
+
 
