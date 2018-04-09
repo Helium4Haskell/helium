@@ -4,3 +4,7 @@
 *.html
 *.css
 *.gif
+dist
+lib/*.lvm
+lib/simple/*.lvm
+*.temp
