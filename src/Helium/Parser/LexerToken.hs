@@ -33,6 +33,8 @@ data Lexeme
     | LexCaseFeedback    String
     | LexMustUse
     | LexHole
+    | LexNamedHole       String
+    | LexEta             Char
 
     | LexInsertedOpenBrace  -- { inserted because of layout
     | LexInsertedCloseBrace -- }
@@ -62,6 +64,8 @@ instance Show Lexeme where
         LexCaseFeedback f   -> "Case feedback \"" ++ f ++ "\""
         LexMustUse          -> "Must Use"
         LexHole             -> "Hole"
+        LexNamedHole h      -> "Hole \"" ++ h ++ "\""
+        LexEta n            -> "Eta \"" ++ n : "\""
         
         LexInsertedOpenBrace  -> Texts.parserInsertedLBrace 
         LexInsertedCloseBrace -> Texts.parserEndOfBlock
@@ -80,6 +84,9 @@ lexemeLength l = case l of
     LexVarSym          s     -> length s
     LexCon             s     -> length s
     LexConSym          s     -> length s
+
+    LexHole                  -> 1
+    LexNamedHole       s     -> 1 + length s
 
     LexSpecial         _     -> 1
     LexKeyword         s     -> length s

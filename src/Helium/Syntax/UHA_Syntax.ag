@@ -44,7 +44,7 @@ DATA Export
 DATA Body
     | Hole
         range                    : Range
-        id                       : Integer
+        id                       : String
     | Body
         range                    : Range
         importdeclarations       : ImportDeclarations
@@ -103,7 +103,7 @@ TYPE Declarations                = [ Declaration ]
 DATA Declaration                                  {- *** -}
     | Hole
         range                    : Range
-        id                       : Integer
+        id                       : String
     | Type
         range                    : Range
         simpletype               : SimpleType
@@ -306,13 +306,17 @@ DATA MaybeExpression
 DATA Expression                                   {- *** -}
     | Hole
         range                    : Range
-        id                       : Integer
+        id                       : String
     | Feedback
         range                    : Range
         feedback                 : String
         expression               : Expression
     | MustUse
         range                    : Range
+        expression               : Expression
+    | Eta
+        range                    : Range
+        expansion                : Int
         expression               : Expression
     | Literal                          {- *** -}
         range                    : Range
@@ -528,7 +532,7 @@ TYPE Alternatives                = [ Alternative ]
 DATA Alternative
     | Hole
         range                    : Range
-        id                       : Integer
+        id                       : String
     | Feedback
         range                    : Range
         feedback                 : String
@@ -569,7 +573,7 @@ TYPE FunctionBindings            = [ FunctionBinding ]
 DATA FunctionBinding
     | Hole
         range                    : Range
-        id                       : Integer
+        id                       : String
     | Feedback
         range                    : Range
         feedback                 : String
@@ -613,7 +617,7 @@ TYPE Patterns                    = [ Pattern ]
 DATA Pattern
     | Hole
         range                    : Range
-        id                       : Integer
+        id                       : String
     | Literal                             {- *** -}
         range                    : Range
         literal                  : Literal

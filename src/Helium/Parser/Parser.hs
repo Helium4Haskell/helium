@@ -107,8 +107,8 @@ body :: HParser Body
 body = addRange $
       withBraces' $ \explicit -> 
         do
-          lexHOLE
-          return (\r -> Body_Hole r 0)
+          n <- lexNamedHole
+          return (\r -> Body_Hole r n)
         <|>
         do 
           (is, ds) <- importsThenTopdecls explicit
@@ -216,11 +216,11 @@ cdecls =
     ) 
     <|> addRange (
       do
-         lexHOLE
+         n <- lexNamedHole
          jb <- optionMaybe normalRhs
          case jb  of
-            Just b ->  return $ \r -> Declaration_PatternBinding r (Pattern_Hole r (-1)) b
-            Nothing -> return $ \r -> Declaration_Hole r (-1)
+            Just b ->  return $ \r -> Declaration_PatternBinding r (Pattern_Hole r n) b
+            Nothing -> return $ \r -> Declaration_Hole r n
       )
     <|>
     decl
@@ -456,14 +456,14 @@ decl :: HParser Declaration
 decl = addRange (
     do fb <- lexCaseFeedback
        return $ \r -> Declaration_FunctionBindings r
-          [FunctionBinding_Feedback r fb $ FunctionBinding_Hole r 0]
+          [FunctionBinding_Feedback r fb $ FunctionBinding_Hole r ""]
     <|>
     do
-        lexHOLE
+        n <- lexNamedHole
         jb <- optionMaybe normalRhs
         case jb  of
-           Just b ->  return $ \r -> Declaration_PatternBinding r (Pattern_Hole r (-1)) b
-           Nothing -> return $ \r -> Declaration_Hole r (-1)
+           Just b ->  return $ \r -> Declaration_PatternBinding r (Pattern_Hole r n) b
+           Nothing -> return $ \r -> Declaration_Hole r n
     <|>
     do 
         nr <- try (withRange var)
@@ -474,8 +474,8 @@ decl = addRange (
         decl2 pr
     <|>
     -- do
-    --     lexHOLE
-    --     return $ \r -> Declaration_Hole r (-1)
+    --     n <- lexNamedHole
+    --     return $ \r -> Declaration_Hole r n
     do
         l <- funlhs
         b <- normalRhs
@@ -860,13 +860,18 @@ aexp = addRange (
         return $ \r -> Expression_Constructor r n
     <|>
     do 
-        lexHOLE
-        return $ \r -> Expression_Hole r (-1)
+        n <- lexNamedHole
+        return $ \r -> Expression_Hole r n
     <|>
     do
         feedback <- lexFeedback
         e        <- aexp
         return $ \r -> Expression_Feedback r feedback e
+    <|>
+    do
+        n <- lexEta
+        e <- aexp
+        return $ \r -> Expression_Eta r n e
     <|>
     do
         lexeme LexMustUse
@@ -1005,11 +1010,11 @@ alt -> pat rhs
 alt :: HParser Alternative
 alt = addRange $
     do fb <- lexCaseFeedback
-       return $ \r -> Alternative_Feedback r fb $ Alternative_Hole r (-1)
+       return $ \r -> Alternative_Feedback r fb $ Alternative_Hole r ""
     <|>
     do
-       lexHOLE
-       return $ \r -> Alternative_Hole r (-1)
+       n <- lexNamedHole
+       return $ \r -> Alternative_Hole r n
     <|>
     do
         p <- pat
@@ -1159,8 +1164,8 @@ apat = addRange (
 phole :: HParser Pattern
 phole = addRange (
     do
-        lexHOLE
-        return $ \r -> Pattern_Hole r (-1)
+        n <- lexNamedHole
+        return $ \r -> Pattern_Hole r n
     )
 
 {-

@@ -293,6 +293,10 @@ lexConSym :: HParser String
 lexConSym
   = satisfy (\lex' -> case lex' of { LexConSym s -> Just s; _ -> Nothing })
 
+lexNamedHole :: HParser String
+lexNamedHole
+  = satisfy (\lex' -> case lex' of { LexNamedHole s -> Just s; _ -> Nothing })
+
 lexFeedback :: HParser String
 lexFeedback
   = satisfy (\lex' -> case lex' of { LexFeedback s -> Just s; _ -> Nothing })
@@ -300,6 +304,10 @@ lexFeedback
 lexCaseFeedback :: HParser String
 lexCaseFeedback
     = satisfy (\lex' -> case lex' of { LexCaseFeedback s -> Just s; _ -> Nothing })
+
+lexEta :: HParser Int
+lexEta
+  = satisfy (\lex' -> case lex' of { LexEta s -> Just (read [s]); _ -> Nothing })
 
 satisfy :: (Lexeme -> Maybe a) -> HParser a
 satisfy predicate

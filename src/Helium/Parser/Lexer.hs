@@ -68,6 +68,10 @@ mainLexer' useTutor ('{':'-':'#':' ':'F':cs) | useTutor = do
     incPos 5
     lexFeedbackComment "" pos cs 
 
+mainLexer' useTutor ('{':'-':'#':' ':'E':'T':'A':' ':n:' ':'#':'-':'}':cs)
+    | useTutor, myIsDigit n = do
+    returnToken (LexEta n) 13 mainLexer cs
+
 mainLexer' _ ('{':'-':cs) = do 
     pos <- getPos 
     incPos 2
@@ -99,6 +103,9 @@ mainLexer' useTutor input@(c:cs)
         lexName isLetter LexCon (internalError "Lexer" "mainLexer'" "constructor") [] input
     | c == ':' = -- constructor operator
         lexName isSymbol LexConSym LexResConSym reservedConSyms input
+    | useTutor, c == '?' = -- named hole
+        lexName (\c -> isLetter c || c == '?') LexNamedHole
+                (internalError "Lexer" "mainLexer'" "constructor") [] input
     | isSymbol c = -- variable operator
         lexName isSymbol LexVarSym LexResVarSym (if useTutor then hole : reservedVarSyms else reservedVarSyms) input
     | c `elem` "([{" = do
