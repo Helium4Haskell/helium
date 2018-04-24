@@ -98,7 +98,7 @@ ATTR GuardedExpressions
 ATTR
     Constructors Exports ImportDeclarations Imports Declarations Types ContextItems
     FieldDeclarations AnnotatedTypes Expressions
-    Statements Qualifiers Alternatives RecordExpressionBindings RecordPatternBindings 
+    Statements Qualifiers Alternatives RecordExpressionBindings RecordPatternBindings
     FunctionBindings Patterns Names Strings
     [
     |
@@ -120,7 +120,7 @@ ATTR
     ]
 
 ATTR
-    Name 
+    Name
     [ | | isOperator, isIdentifier, isSpecial USE { (error "Name has no children!") } { False } : Bool ]
 
 ATTR
@@ -132,10 +132,10 @@ ATTR
 
 SEM Module
     | Module loc.text =
-        maybe   
+        maybe
             id
             ( \name body ->
-                text "module" <+> name <+> 
+                text "module" <+> name <+>
                     (maybe
                         (text "where")
                         (\x -> indent 4 (utrechtList (text "(") (text ")") x <+> text "where"))
@@ -190,7 +190,7 @@ SEM Body
     --  declarations             : Declarations
 
 SEM ImportDeclaration
-    | Import      loc.text = text "import" <+> (if @qualified then (text "qualified" <+>) else id) @name.text <+> maybe empty id @importspecification.text 
+    | Import      loc.text = text "import" <+> (if @qualified then (text "qualified" <+>) else id) @name.text <+> maybe empty id @importspecification.text
     --  range                    : Range
     --  qualified                : Bool
     --  name                     : Name
@@ -230,8 +230,8 @@ SEM Import
 
 SEM MaybeDeclarations
     | Nothing     loc.text = Nothing
---    | Just        loc.text = Just @declarations.text          
-    | Just loc.text = case filter ((/= "") . show) @declarations.text of 
+--    | Just        loc.text = Just @declarations.text
+    | Just loc.text = case filter ((/= "") . show) @declarations.text of
                         [] -> Nothing
                         xs -> Just xs
 
@@ -276,7 +276,7 @@ SEM Declaration                                  {- *** -}
     --  derivings                : Names
     | Newtype           loc.text =  text "newtype"
                                     <+>
-                                    @contextDoc 
+                                    @contextDoc
                                     <>
                                     @simpletype.text
                                     <+>
@@ -297,7 +297,7 @@ SEM Declaration                                  {- *** -}
     --  simpletype               : SimpleType
     --  constructor              : Constructor  -- has only one field, no strictness
     --  derivings                : Names
-    | Class             loc.text = (PPrint.empty 
+    | Class             loc.text = (PPrint.empty
                                         <$> text "class" <+> contextPP @context.text <+> @simpletype.text
                                             <>  maybe
                                                    empty
@@ -308,7 +308,7 @@ SEM Declaration                                  {- *** -}
     --  context                  : ContextItems -- is a "simple" context
     --  simpletype               : SimpleType   -- Haskell 98 allows only one variable
     --  where                    : MaybeDeclarations -- cannot have everything
-    | Instance          loc.text = (PPrint.empty 
+    | Instance          loc.text = (PPrint.empty
                                         <$> text "instance" <+> contextPP @context.text <+> @name.text <+> PPrint.list @types.text
                                             <>  maybe
                                                    empty
@@ -325,7 +325,7 @@ SEM Declaration                                  {- *** -}
     --  range                    : Range
     --  types                    : Types        -- should be instances of Num
 --    | FunctionBindings  loc.text = foldl1 (<$>) @bindings.text
-    | FunctionBindings  loc.text = 
+    | FunctionBindings  loc.text =
          case filter ((/= "") . show) @bindings.text of -- AG: no eq for doc
             [] -> text hole -- empty
             xs -> foldl1  (<$>) xs
@@ -437,7 +437,7 @@ SEM FieldDeclaration
     | FieldDeclaration loc.text = text "{- !!! field declaration -}"
     --  range                    : Range
     --  names                    : Names
-    --  type                     : AnnotatedType        
+    --  type                     : AnnotatedType
 
 SEM AnnotatedType
     | AnnotatedType   loc.text = (if @strict then (text "!" <+>) else id) @type.text -- ToDo: or _Type?
@@ -494,7 +494,7 @@ SEM Expression                                   {- *** -}
     --  leftExpression           : MaybeExpression
     --  operator                 : Expression
     --  rightExpression          : MaybeExpression
-    | If                 loc.text =  text "if" <+> @guardExpression.text <$> 
+    | If                 loc.text =  text "if" <+> @guardExpression.text <$>
                                         indent 4 (text "then" <+> @thenExpression.text <$>
                                                   text "else" <+> @elseExpression.text)
     --  range                    : Range
@@ -530,7 +530,7 @@ SEM Expression                                   {- *** -}
     | Tuple              loc.text = tupled @expressions.text
     --  range                    : Range
     --  expressions              : Expressions
-    | Comprehension      loc.text = text "[" <+> @expression.text <+> 
+    | Comprehension      loc.text = text "[" <+> @expression.text <+>
                                     text "|" <+> commas @qualifiers.text <+> text "]"
     --  range                    : Range
     --  expression               : Expression
@@ -581,7 +581,7 @@ SEM Qualifier
     | Guard               loc.text = @guard.text
     --  range                    : Range
     --  guard                    : Expression -- type: Boolean
-    | Let                 loc.text = text "let" <$> (indent 4 $ vcat @declarations.text) 
+    | Let                 loc.text = text "let" <$> (indent 4 $ vcat @declarations.text)
     --  range                    : Range
     --  declarations             : Declarations
     | Generator           loc.text = @pattern.text <+> text "<-" <+> @expression.text
@@ -592,7 +592,7 @@ SEM Qualifier
     --  range                    : Range
 
 SEM Alternative
-    | Hole              loc.text = text hole  
+    | Hole              loc.text = text hole
     | Alternative       loc.text = @pattern.text <$> indent 2 (@righthandside.text (text "->"))
     --  range                    : Range
     --  pattern                  : Pattern
@@ -619,7 +619,7 @@ SEM RecordPatternBinding
     --  pattern                  : Pattern
 
 SEM FunctionBinding
-    | Hole            loc.text = empty --text ""  
+    | Hole            loc.text = empty --text ""
     | FunctionBinding loc.text = @lefthandside.text <+> @righthandside.text (text "=")
     --  range                    : Range
     --  lefthandside             : LeftHandSide
@@ -651,7 +651,7 @@ SEM RightHandSide
                                (\ds -> PPrint.empty <$> text "where" <$> indent 4 (vcat ds))
                                @where.text
                         )
-             --     
+             --
              -- loc.text           = \assign       -> assign <+> @justText
              -- loc.justText       =
              --    @expression.text
@@ -726,7 +726,7 @@ SEM Pattern
     | Irrefutable           loc.text = text "~" <> @pattern.text
     --  range                    : Range
     --  pattern                  : Pattern
-    | Successor             loc.text = @name.text <+> text "+" <+> @literal.text -- n+k patterns        
+    | Successor             loc.text = @name.text <+> text "+" <+> @literal.text -- n+k patterns
     --  range                    : Range
     --  name                     : Name
     --  literal                  : Literal -- only integers allowed here

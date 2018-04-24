@@ -89,7 +89,7 @@ data-files:
 source-repository head
   type:     git
   location: https://github.com/Helium4Haskell/helium.git
-  
+
 --------------------------------------------------------------------------------
 
 Executable helium
@@ -99,7 +99,7 @@ Executable helium
   hs-source-dirs:    src/commands/helium
   Main-is:           Helium/Main.hs
   other-modules:     Paths_helium
-  
+
 --------------------------------------------------------------------------------
 
 Executable texthint
@@ -108,7 +108,7 @@ Executable texthint
   default-language:  Haskell98
   hs-source-dirs:    src/commands/texthint
   Main-is:           TextHint/Main.hs
-  other-modules:     Paths_helium, TextHint.ConfigFile                
+  other-modules:     Paths_helium, TextHint.ConfigFile
 
 --------------------------------------------------------------------------------
 
@@ -128,10 +128,10 @@ Executable heliumpath
   default-language:  Haskell98
   hs-source-dirs:    src/commands/heliumpath
   Main-is:           Main.hs
-  other-modules:     Paths_helium                
-  
+  other-modules:     Paths_helium
+
 --------------------------------------------------------------------------------
-  
+
 Library
   Build-Depends:     base >= 3 && < 5, containers, mtl, parsec, network, process, transformers, filepath, directory, wl-pprint, Top >= 1.7, lvmlib >= 1.1
   ghc-options:       -Wall
@@ -214,6 +214,7 @@ Library
     Helium.Syntax.UHA_Pretty
     Helium.Syntax.UHA_Range
     Helium.Syntax.UHA_Syntax
+    Helium.Syntax.UHA_Syntax_Show
     Helium.Syntax.UHA_Utils
     Helium.Utils.Logger
     Helium.Utils.OneLiner
@@ -221,6 +222,6 @@ Library
     Helium.Utils.Texts
     Helium.Utils.Utils
   Other-modules:
-    
 
- 
+
+

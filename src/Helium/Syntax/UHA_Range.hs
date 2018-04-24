@@ -20,7 +20,7 @@ import Data.List(sort, partition)
 
 instance Show Range where
     show = showRange
-    
+
 instance Eq Range where
     Range_Range start1 stop1 == Range_Range start2 stop2 =
         start1 == start2 && stop1 == stop2
@@ -45,7 +45,7 @@ instance Ord Position where
         (l1 == l2 && c1 <= c2)
     Position_Unknown        <= Position_Unknown        = True
     Position_Unknown        <= Position_Position _ _ _ = True
-    Position_Position _ _ _ <= Position_Unknown        = False   
+    Position_Position _ _ _ <= Position_Unknown        = False
 
 --------------------------------------------------------------
 
@@ -55,7 +55,7 @@ getNameRange (Name_Operator   r _ _) = r
 getNameRange (Name_Special    r _ _) = r
 
 setNameRange :: Name -> Range -> Name -- !!!Name
-setNameRange (Name_Identifier _ s e) r = Name_Identifier r s e 
+setNameRange (Name_Identifier _ s e) r = Name_Identifier r s e
 setNameRange (Name_Operator   _ s e) r = Name_Operator   r s e
 setNameRange (Name_Special    _ s e) r = Name_Special    r s e
 
@@ -64,7 +64,7 @@ rangeFromImportDeclaration importDecl =
     case importDecl of
         ImportDeclaration_Import r _ _ _ _ -> r
         ImportDeclaration_Empty r -> r
-    
+
 mergeRanges :: Range -> Range -> Range
 mergeRanges
     (Range_Range
@@ -126,13 +126,13 @@ getRangeEnd :: Range -> Position
 getRangeEnd (Range_Range _ end) = end
 
 getStatementRange :: Statement -> Range
-getStatementRange s = 
+getStatementRange s =
     case s of
         Statement_Expression r _ -> r
         Statement_Let r _ -> r
         Statement_Generator r _ _ -> r
         Statement_Empty r -> r
-        
+
 getPatRange :: Pattern -> Range
 getPatRange (Pattern_As r _ _) = r
 getPatRange (Pattern_Constructor r _ _) = r
@@ -202,7 +202,7 @@ getAlternativeRange alternative = case alternative of
    Alternative_Empty r           -> r
    Alternative_Feedback _ _ _    -> error "not supported"
    Alternative_Hole _ _          -> error "not supported"
-                     
+
 getLHSRange :: LeftHandSide -> Range
 getLHSRange lhs = case lhs of
    LeftHandSide_Function r _ _      -> r
@@ -214,7 +214,7 @@ getFBRange fb = case fb of
    FunctionBinding_FunctionBinding r _ _ -> r
    FunctionBinding_Feedback _ _ _        -> error "not supported"
    FunctionBinding_Hole _ _              -> error "not supported"
-                     
+
 getDeclarationRange :: Declaration -> Range
 getDeclarationRange decl = case decl of
    Declaration_Type r _ _           -> r
@@ -234,7 +234,7 @@ getBodyRange :: Body -> Range
 getBodyRange body = case body of
    Body_Body r _ _ -> r
    Body_Hole _ _   -> error "not supported"
-   
+
 getTypeRange :: Type -> Range
 getTypeRange tp = case tp of
    Type_Application r _ _ _ -> r
@@ -242,18 +242,18 @@ getTypeRange tp = case tp of
    Type_Constructor r _     -> r
    Type_Qualified r _ _     -> r
    Type_Forall r _ _        -> r
-   Type_Exists r _ _        -> r 
+   Type_Exists r _ _        -> r
    Type_Parenthesized r _   -> r
-   
+
 getGuardedExprRange :: GuardedExpression -> Range
 getGuardedExprRange gexpr = case gexpr of
    GuardedExpression_GuardedExpression r _ _ -> r
 
 getRHSRangeSpecial :: RightHandSide -> Range
-getRHSRangeSpecial rhs = case rhs of 
+getRHSRangeSpecial rhs = case rhs of
    RightHandSide_Expression _ expr _ -> getExprRange expr
    RightHandSide_Guarded r _ _       -> r
-   
+
 showRanges :: [Range] -> String
 showRanges (range:ranges) = show range ++ concatMap ((", " ++) . show) ranges
 showRanges [] = ""
@@ -280,12 +280,12 @@ showPosition _ =
 sortRanges :: [Range] -> [Range]
 sortRanges ranges = let (xs,ys) = partition isImportRange ranges
                     in sort ys ++ xs
-                                        
+
 moduleFromPosition :: Position -> String
 moduleFromPosition pos =
     case pos of
-        Position_Position moduleName _ _ -> 
+        Position_Position moduleName _ _ ->
             moduleName
-        _ -> 
+        _ ->
             internalError "UHA_Range" "moduleFromPosition" "unknown position"
-            
+

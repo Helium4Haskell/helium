@@ -4,7 +4,10 @@
 
 -- At some places we still have to look at,
 -- a "-- ToDo:" comment is inserted
-
+imports{
+import Data.Maybe(isJust)
+import Helium.Utils.Utils(internalError)
+}
 -- ------------------------------------------------------------------------
 -- -- Modules                                                            --
 -- ------------------------------------------------------------------------
@@ -73,7 +76,7 @@ DATA ImportSpecification
         hiding                   : Bool
         imports                  : Imports
 
-TYPE Imports                     = [ Import ] 
+TYPE Imports                     = [ Import ]
 
 DATA Import
     | Variable
@@ -199,7 +202,7 @@ DATA Type                                         {- *** -}
 -- Representation examples (ranges are skipped):
 --   o "(Int,Int,Int)" as
 --
---     Type_Application 
+--     Type_Application
 --       False (Type_Constructor (Name_Special "(,,)"))
 --       [Type_Constructor (Name_Identifier "Int")
 --       ,Type_Constructor (Name_Identifier "Int")
@@ -207,7 +210,7 @@ DATA Type                                         {- *** -}
 --
 --   o "(,,) Int Int Int" as
 --
---     Type_Application 
+--     Type_Application
 --       True (Type_Constructor (Name_Special "(,,)"))
 --       [Type_Constructor (Name_Identifier "Int")
 --       ,Type_Constructor (Name_Identifier "Int")
@@ -218,7 +221,7 @@ DATA Type                                         {- *** -}
 --     Type_Application
 --       True
 --       (Type_Parenthesized
---         (Type_Application 
+--         (Type_Application
 --            True (Type_Constructor (Name_Special "(,,)"))
 --            [Type_Constructor (Name_Identifier "Int")]))
 --       [Type_Constructor (Name_Identifier "Int")
@@ -226,21 +229,21 @@ DATA Type                                         {- *** -}
 --
 --   o "Int -> Int" as
 --
---     Type_Application 
+--     Type_Application
 --       False (Type_Constructor (Name_Special "->"))
 --       [Type_Constructor (Name_Identifier "Int")
 --       ,Type_Constructor (Name_Identifier "Int")]
 --
 --   o "(->) Int Int" as
 --
---     Type_Application 
+--     Type_Application
 --       True (Type_Constructor (Name_Special "->"))
 --       [Type_Constructor (Name_Identifier "Int")
 --       ,Type_Constructor (Name_Identifier "Int")]
 --
 --   o "Tree Int" as
 --
---     Type_Application 
+--     Type_Application
 --       True (Type_Constructor (Name_Identifier "Tree"))
 --       [Type_Constructor (Name_Identifier "Int")]
 
@@ -262,7 +265,7 @@ DATA ContextItem
 TYPE Constructors                = [ Constructor ]
 
 DATA Constructor
-    | Constructor 
+    | Constructor
         range                    : Range
         constructor              : Name
         types                    : AnnotatedTypes
@@ -282,7 +285,7 @@ DATA FieldDeclaration
     | FieldDeclaration
         range                    : Range
         names                    : Names
-        type                     : AnnotatedType        
+        type                     : AnnotatedType
 
 TYPE AnnotatedTypes              = [ AnnotatedType ]
 
@@ -394,9 +397,9 @@ DATA Expression                                   {- *** -}
 -- Representation examples (ranges are skipped):
 --
 --   o "(+) 2 3" as
---     
+--
 --     Expression_NormalApplication
---       (Expression_InfixApplication 
+--       (Expression_InfixApplication
 --          Nothing (Name_Operator [] "+") Nothing)
 --       [Expression_Literal (Literal_Int "2")
 --       ,Expression_Literal (Literal_Int "3")]
@@ -413,7 +416,7 @@ DATA Expression                                   {- *** -}
 --
 --     Expression_NormalApplication
 --       (Expression_InfixApplication
---          Nothing (Name_Operator [] "+") 
+--          Nothing (Name_Operator [] "+")
 --          (Just (Expression_Literal (Literal_Int "3"))))
 --       [Expression_Literal (Literal_Int "2")]
 --
@@ -426,7 +429,7 @@ DATA Expression                                   {- *** -}
 --       [Expression_Literal (Literal_Int "3")]
 --
 --   o "2 + 3" as
--- 
+--
 --     Expression_InfixApplication
 --       (Just (Expression_Literal (Literal_Int "2")))
 --       (Name_Operator [] "+")
@@ -443,7 +446,7 @@ DATA Expression                                   {- *** -}
 --
 --     Expression_NormalApplication
 --       (Expression_InfixApplication
---          Nothing (Name_Identifier [] "mod") 
+--          Nothing (Name_Identifier [] "mod")
 --          (Just (Expression_Literal (Literal_Int "2"))))
 --       [Expression_Literal (Literal_Int "5")]
 --
@@ -458,7 +461,7 @@ DATA Expression                                   {- *** -}
 --   o "(mod 5) 2" as
 --
 --     Expression_NormalApplication
---       (Expression_Parenthesized 
+--       (Expression_Parenthesized
 --         (Expression_NormalApplication
 --           (Expression_Variable (Name_Identifier [] "mod"))
 --           [Expression_Literal (Literal_Int "5")]))
@@ -486,7 +489,7 @@ DATA Expression                                   {- *** -}
 --       (Just (Expression_Literal (Literal_Int "2")))
 --       (Name_Operator [] "-") Nothing
 --
--- Summary: 
+-- Summary:
 -- Sections are represented as partial infix applications. Backquotes
 -- and parentheses that originate from pre/in-fixing an operator/identifier
 -- are not stored explicitly.
@@ -618,7 +621,7 @@ DATA Pattern
         range                    : Range
         literal                  : Literal
     | Variable                            {- *** -}
-        range                    : Range          
+        range                    : Range
         name                     : Name
     | Constructor                         {- *** -}
         range                    : Range
@@ -654,7 +657,7 @@ DATA Pattern
     | Irrefutable
         range                    : Range
         pattern                  : Pattern
-    | Successor                    -- n+k patterns        
+    | Successor                    -- n+k patterns
         range                    : Range
         name                     : Name
         literal                  : Literal -- only integers allowed here
@@ -814,4 +817,3 @@ Documented Design Decisions:
        he thinks are most important with {- *** -}.
 
 -}
-
