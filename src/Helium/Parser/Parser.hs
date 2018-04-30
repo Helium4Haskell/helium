@@ -127,7 +127,7 @@ importsThenTopdecls explicit =
                        ; return i
                        } )
         ds <- topdeclCombinator topdecl
-        return $! traceShowId (is, ds)
+        return (is, ds)
 
   where
     topdeclCombinator = if explicit then semiSepTerm else semiOrInsertedSemiSepTerm
@@ -718,12 +718,12 @@ exp10 = addRange (
         e <- exp_
         return $ \r -> Expression_Lambda r ps e
     <|>
-    (do
+    do
         lexLET
         ds <- decls
         lexIN
         e <- exp_
-        return $ \r -> Expression_Let r ds e)
+        return $ \r -> Expression_Let r ds e
     <|>
     do
         lexIF
@@ -749,6 +749,20 @@ exp10 = addRange (
     <|>
     fexp
     <?> Texts.parserExpression
+
+{-
+heap recycle expression
+    var "@(" exp ")" (heap recycling)
+-}
+
+rexp ::  HParser (Range -> Expression)
+rexp = do
+    n <- varid
+    lexAT
+    lexLPAREN
+    e <- exp_
+    lexRPAREN
+    return $ \r -> Expression_RecycleConstructor r n e
 
 {-
 fexp  -> aexp+
@@ -853,6 +867,8 @@ aexp = addRange (
                     [e] -> Expression_Parenthesized r e
                     _ -> Expression_Tuple r es
          )
+    <|>
+    try(rexp) -- | var "@(" exp ")" | Look-ahead for the '@' | (heap recycling)
     <|>
     do
         n <- varid

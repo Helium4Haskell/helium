@@ -394,6 +394,12 @@ DATA Expression                                   {- *** -}
         range                    : Range
         expression               : Expression
 
+-- Heap recycling
+    | RecycleConstructor
+        range                    : Range
+        name                     : Name
+        expression               : Expression
+
 -- Representation examples (ranges are skipped):
 --
 --   o "(+) 2 3" as
