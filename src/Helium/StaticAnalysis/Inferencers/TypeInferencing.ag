@@ -1,7 +1,7 @@
 
 -----------------------------------------------------------------------------
 -- |The Helium Compiler : Static Analysis
--- 
+--
 -- Maintainer  :  bastiaan@cs.uu.nl
 -- Stability   :  experimental
 -- Portability :  unknown
@@ -21,13 +21,13 @@ typeInferencing options importEnv module_ =
    in (debugIO, dictionaryEnvironment_Syn_Module res, toplevelTypes_Syn_Module res, typeErrors_Syn_Module res, warnings_Syn_Module res)
 
 proximaTypeInferencing :: [Option] -> ImportEnvironment -> Module
-                      -> (TypeErrors, Warnings, TypeEnvironment, [(Range, TpScheme)])  
+                      -> (TypeErrors, Warnings, TypeEnvironment, [(Range, TpScheme)])
 proximaTypeInferencing options importEnv module_ =
    let res = wrap_Module (sem_Module module_) Inh_Module {
                  importEnvironment_Inh_Module = importEnv,
                  options_Inh_Module = options }
        localTypeSchemes = typeSchemesInInfoTree (substitutionFromResult $ solveResult_Syn_Module res)
-                                                (qualifiersFromResult $ solveResult_Syn_Module res) 
+                                                (qualifiersFromResult $ solveResult_Syn_Module res)
                                                 (infoTree_Syn_Module res)
    in (typeErrors_Syn_Module res, warnings_Syn_Module res, toplevelTypes_Syn_Module res, localTypeSchemes)
 }
@@ -59,21 +59,21 @@ INCLUDE "TypeInferenceInfo.ag"
 INCLUDE "LocalInfo.ag"
 INCLUDE "GlobalInfo.ag"
 INCLUDE "HeliumPartialSyntax.ag"
-INCLUDE "Scope.ag"  
+INCLUDE "Scope.ag"
 INCLUDE "UHA_Syntax.ag"
 
 --- Type Inference Directives (may be turned off)
 INCLUDE "TS_PatternMatching.ag"
 
--- SEM Module | Module   lhs . solveResult = @solveResult { debugFromResult =  debugFromResult @solveResult 
---                                                                          ++ "Inference Strategies:" 
+-- SEM Module | Module   lhs . solveResult = @solveResult { debugFromResult =  debugFromResult @solveResult
+--                                                                          ++ "Inference Strategies:"
 --                                                                          } -- ++ [ ] @body.matchIO }
 
 -- Pattern Match Warnings (may be turned off)
 INCLUDE "PatternMatchWarnings.ag"
-SEM Module 
+SEM Module
   | Module lhs . warnings = @loc.warnings ++ @body.patternMatchWarnings
-  
+
 -------------------------------------------------------------------------------
 -- Imports
 
@@ -105,8 +105,8 @@ import Helium.StaticAnalysis.Inferencers.BindingGroupAnalysis
 
 -- UHA syntax
 import Helium.Syntax.UHA_Syntax
-import Helium.Syntax.UHA_Range                 
-         
+import Helium.Syntax.UHA_Range
+
 -- other
 
 import Helium.Utils.Utils (internalError, hole)
@@ -116,5 +116,5 @@ import Helium.Main.Args
 
 -- standard
 import qualified Data.Map as M
-import Data.Maybe 
+import Data.Maybe
 }

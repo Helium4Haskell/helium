@@ -1,16 +1,16 @@
 -----------------------------------------------------------------------------
 -- |The Helium Compiler : Static Analysis
--- 
+--
 -- Maintainer  :  bastiaan@cs.uu.nl
 -- Stability   :  experimental
 -- Portability :  unknown
 --
--- All variables (of type Name) are determined that are in 
+-- All variables (of type Name) are determined that are in
 --    scope (for each location in the abstract syntax tree)
--- 
--- Variables can be added to the scope by three ways: 
 --
---   1) externally defefined, imported, or primitive
+-- Variables can be added to the scope by three ways:
+--
+--   1) externally defined, imported, or primitive
 --           Module.Module
 --
 --   2) introduced in a binding-group (nodes with "Declarations")
@@ -22,7 +22,7 @@
 --
 --   3) introduced in a pattern that is not part of a binding-group; these
 --         variables are automatically monomorphic. (nodes with "Pattern"
---         or "Patterns") 
+--         or "Patterns")
 --            FunctionBinding.FunctionBinding
 --            Expression.Lambda
 --            Alternative.Alternative
@@ -46,27 +46,27 @@ ATTR Expression RightHandSide
 SEM Module
   | Module   loc . (namesInScope, unboundNames, scopeInfo) = changeOfScope (@initialScope ++ @body.declVarNames) @body.unboundNames []
              body . counter = 0
-                 
+
 SEM MaybeDeclarations
   | Just   loc . (namesInScope, unboundNames, scopeInfo)   = changeOfScope @declarations.declVarNames (@declarations.unboundNames ++ @lhs.unboundNames) @lhs.namesInScope
            lhs . unboundNames = @unboundNames -- not a copy-rule for my ag-compiler!
-           
+
 SEM Expression
   | Let    loc . (namesInScope, unboundNames, scopeInfo) = changeOfScope @declarations.declVarNames (@declarations.unboundNames ++ @expression.unboundNames) @lhs.namesInScope
            lhs . unboundNames = @unboundNames -- not a copy-rule for my ag-compiler!
-           
+
 SEM Statement
   | Let    loc . (namesInScope, unboundNames, scopeInfo) = changeOfScope @declarations.declVarNames (@declarations.unboundNames ++ @lhs.unboundNames) @lhs.namesInScope
-           
+
 SEM Qualifier
   | Let    loc . (namesInScope, unboundNames, scopeInfo) = changeOfScope @declarations.declVarNames (@declarations.unboundNames ++ @lhs.unboundNames) @lhs.namesInScope
-           
+
 -- monomorphic binding constructs
 
 SEM FunctionBinding
   | FunctionBinding   loc . (namesInScope, unboundNames, scopeInfo) = changeOfScope @lefthandside.patVarNames @righthandside.unboundNames @lhs.namesInScope
                       lhs . unboundNames = @unboundNames -- not a copy-rule for my ag-compiler!
-                      
+
 SEM Expression
   | Lambda            loc . (namesInScope, unboundNames, scopeInfo) = changeOfScope @patterns.patVarNames @expression.unboundNames @lhs.namesInScope
                       lhs . unboundNames = @unboundNames -- not a copy-rule for my ag-compiler!
@@ -76,29 +76,29 @@ SEM Expression
 SEM Alternative
   | Alternative       loc . (namesInScope, unboundNames, scopeInfo) = changeOfScope @pattern.patVarNames @righthandside.unboundNames @lhs.namesInScope
                       lhs . unboundNames = @unboundNames -- not a copy-rule for my ag-compiler!
-                      
+
 SEM Statement
   | Generator         loc . (namesInScope, unboundNames, scopeInfo) = changeOfScope @pattern.patVarNames (@expression.unboundNames ++ @lhs.unboundNames) @lhs.namesInScope
 
 SEM Qualifier
   | Generator         loc . (namesInScope, unboundNames, scopeInfo) = changeOfScope @pattern.patVarNames (@expression.unboundNames  ++ @lhs.unboundNames)  @lhs.namesInScope
-                      
+
 -- correct scope for RightHandSides (where)
 
 ATTR MaybeDeclarations [ | counter : Int unboundNames : Names namesInScope : Names | ]
 
-SEM RightHandSide 
+SEM RightHandSide
   | Expression   lhs                . unboundNames = @where.unboundNames
                  expression         . namesInScope = @where.namesInScope
                  where              . unboundNames = @expression.unboundNames
   | Guarded      lhs                . unboundNames = @where.unboundNames
-                 guardedexpressions . namesInScope = @where.namesInScope 
+                 guardedexpressions . namesInScope = @where.namesInScope
                  where              . unboundNames = @guardedexpressions.unboundNames
 
-SEM Declaration 
-  | Class    where . unboundNames = []  
+SEM Declaration
+  | Class    where . unboundNames = []
   | Instance where . unboundNames = []
-  
+
 -- correct scope for Statements/Qualifiers
 
 ATTR Statements Statement Qualifier Qualifiers [ | counter : Int namesInScope : Names unboundNames : Names | ]
@@ -110,15 +110,15 @@ SEM Statement
   | Generator   lhs        . namesInScope = @namesInScope
                            . unboundNames = @unboundNames
                 expression . namesInScope = @lhs.namesInScope
-  | Let         lhs        . unboundNames = @unboundNames                
-  | Expression  lhs        . unboundNames = @expression.unboundNames ++ @lhs.unboundNames                 
+  | Let         lhs        . unboundNames = @unboundNames
+  | Expression  lhs        . unboundNames = @expression.unboundNames ++ @lhs.unboundNames
 
 SEM Statements
   | Cons   lhs . unboundNames = @hd.unboundNames
            tl  . unboundNames = @lhs.unboundNames
            hd  . unboundNames = @tl.unboundNames
   | Nil    lhs . unboundNames = @lhs.unboundNames
-  
+
 SEM Expression
   | Comprehension    lhs        . unboundNames = @qualifiers.unboundNames
                      expression . namesInScope = @qualifiers.namesInScope
@@ -129,8 +129,8 @@ SEM Qualifier
   | Generator   lhs        . namesInScope = @namesInScope
                            . unboundNames = @unboundNames
                 expression . namesInScope = @lhs.namesInScope
-  | Let         lhs        . unboundNames = @unboundNames                
-  | Guard       lhs        . unboundNames = @guard.unboundNames ++ @lhs.unboundNames  
+  | Let         lhs        . unboundNames = @unboundNames
+  | Guard       lhs        . unboundNames = @guard.unboundNames ++ @lhs.unboundNames
 
 SEM Qualifiers
   | Cons   lhs . unboundNames = @hd.unboundNames
@@ -140,38 +140,41 @@ SEM Qualifiers
 
 -------------------------------------------------------------------------------------
 
-ATTR Pattern Patterns 
+ATTR Pattern Patterns
      LeftHandSide [ | | patVarNames USE {++} {[]} : Names ]
 
-SEM Pattern 
+SEM Pattern
   | Variable   lhs . patVarNames = [ @name.self ]
   | As         lhs . patVarNames = @name.self : @pattern.patVarNames
   | Hole       lhs . patVarNames = [ Name_Special noRange [] ("hole" ++ show @loc.i) ]
                loc . i : UNIQUEREF counter
 
-SEM Expression 
-  | Variable   lhs . unboundNames = [ @name.self ]    
+SEM Expression
+  | Variable   lhs . unboundNames = [ @name.self ]
+
+SEM Expression
+  | RecycleConstructor lhs . unboundNames = [ @name.self ] ++ @expression.unboundNames
 
 ATTR Body Declaration Declarations MaybeDeclarations [ | | declVarNames USE {++} {[]} : Names ]
 
 SEM MaybeDeclarations | Just    lhs          . declVarNames = @declarations.declVarNames
                       | Nothing lhs          . declVarNames = []
 
-SEM Declaration 
+SEM Declaration
   | FunctionBindings  lhs . declVarNames = [@bindings.name]
   | PatternBinding    lhs . declVarNames = @pattern.patVarNames
-  | Class             lhs . declVarNames = [] -- @where.declVarNames  
+  | Class             lhs . declVarNames = [] -- @where.declVarNames
   | Instance          lhs . declVarNames = [] -- @where.declVarNames
 
 -- utility function
-{                  
+{
 type ScopeInfo = ( [Names]          -- duplicated variables
                  , [Name]           -- unused variables
                  , [(Name, Name)]   -- shadowed variables
                  )
 
 changeOfScope :: Names -> Names -> Names -> (Names, Names, ScopeInfo)
-changeOfScope names unboundNames namesInScope = 
+changeOfScope names unboundNames namesInScope =
    let (uniqueNames, duplicatedNames) = uniqueAppearance names
        unusedNames   = uniqueNames \\ unboundNames
        shadowedNames = let f n = [ (n, n') | n' <- namesInScope, n == n' ]
@@ -180,12 +183,12 @@ changeOfScope names unboundNames namesInScope =
       , unboundNames \\ names
       , (duplicatedNames, unusedNames, shadowedNames)
       )
-      
+
 uniqueAppearance :: Ord a => [a] -> ([a],[[a]])
 uniqueAppearance = Prelude.foldr myInsert ([],[]) . group . sort
    where myInsert [x] (as,bs) = (x:as,bs)
          myInsert xs  (as,bs) = (as,xs:bs)
-       
-nextUnique :: Num a => a -> (a, a)         
+
+nextUnique :: Num a => a -> (a, a)
 nextUnique n = (n+1, n)
 }
