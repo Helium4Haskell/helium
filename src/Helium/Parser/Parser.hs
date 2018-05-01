@@ -49,7 +49,10 @@ import Helium.Syntax.UHA_Range
 import qualified Helium.Parser.CollectFunctionBindings as CollectFunctionBindings
 import Helium.Utils.Utils
 
-import Debug.Trace (traceShowId)
+import qualified Debug.Trace as Debug
+
+trace :: Show a => a -> a
+trace x = id $! Debug.trace (show x) x
 
 parseOnlyImports :: String -> IO [String]
 parseOnlyImports fullName = do
@@ -127,7 +130,7 @@ importsThenTopdecls explicit =
                        ; return i
                        } )
         ds <- topdeclCombinator topdecl
-        return (is, ds)
+        return $ trace (is, ds)
 
   where
     topdeclCombinator = if explicit then semiSepTerm else semiOrInsertedSemiSepTerm
