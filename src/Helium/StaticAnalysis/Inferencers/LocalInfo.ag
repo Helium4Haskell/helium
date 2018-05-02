@@ -148,11 +148,11 @@ SEM Expression
                                     , assignedType = Just @beta
                                     , monos = @lhs.monos
                                     }
-  | RecycleConstructor
-       loc . localInfo  = LocalInfo { self = UHA_Expr @self
-                                    , assignedType = Just @beta
-                                    , monos = @lhs.monos
-                                    }
+--  | RecycleConstructor
+--       loc . localInfo  = LocalInfo { self = UHA_Expr @self
+--                                    , assignedType = Just @beta
+--                                    , monos = @lhs.monos
+--                                    }
 ---------------------------------------------------------------------------------------
 -- Pattern
 

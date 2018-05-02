@@ -31,9 +31,9 @@ SEM Expression [ parentTree : InfoTree | | infoTree : InfoTree ]
   | Variable
        loc . parentTree = node @lhs.parentTree @localInfo []
        lhs . infoTree   = @parentTree
-  | RecycleConstructor
-       loc . parentTree = node @lhs.parentTree @localInfo [@expression.infoTree]
-       lhs . infoTree   = @parentTree
+--  | RecycleConstructor
+--       loc . parentTree = node @lhs.parentTree @localInfo [@expression.infoTree]
+--       lhs . infoTree   = @parentTree
   | Hole
        loc . parentTree = node @lhs.parentTree @localInfo []
        lhs . infoTree   = @parentTree

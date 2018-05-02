@@ -1,6 +1,6 @@
 -----------------------------------------------------------------------------
 -- |The Helium Compiler : Static Analysis
--- 
+--
 -- Maintainer  :  bastiaan@cs.uu.nl
 -- Stability   :  experimental
 -- Portability :  unknown
@@ -12,8 +12,8 @@
 ---------------------------------------------------------------------------------------
 -- Constraint Information : Body
 
-SEM Body | Body loc . cinfo = 
-  \name -> variableConstraint "variable" (nameToUHA_Expr name) 
+SEM Body | Body loc . cinfo =
+  \name -> variableConstraint "variable" (nameToUHA_Expr name)
      [ FolkloreConstraint, HasTrustFactor 10.0, IsImported name ]
 
 ---------------------------------------------------------------------------------------
@@ -31,13 +31,13 @@ SEM Declaration | PatternBinding loc . cinfo =
 -- Type Inferencing : FunctionBinding
 
 SEM FunctionBinding | FunctionBinding loc . cinfoLeft =
-  \num  -> 
+  \num  ->
   orphanConstraint num "pattern of function binding" @parentTree
-     [ Unifier (head (ftv (@lhs.betasLeft !! num))) (ordinal True (num+1)++" pattern of function bindings", attribute @lhs.parentTree, "pattern") ]                      
+     [ Unifier (head (ftv (@lhs.betasLeft !! num))) (ordinal True (num+1)++" pattern of function bindings", attribute @lhs.parentTree, "pattern") ]
 
 SEM FunctionBinding | FunctionBinding loc . cinfoBind =
-  \name -> variableConstraint "variable" (nameToUHA_Expr name) 
-     [ FolkloreConstraint 
+  \name -> variableConstraint "variable" (nameToUHA_Expr name)
+     [ FolkloreConstraint
      , makeUnifier name "function binding" @lefthandside.environment @parentTree
      ]
 
@@ -45,8 +45,8 @@ SEM FunctionBinding | FunctionBinding loc . cinfoBind =
 -- Type Inferencing : RightHandSide
 
 -- RightHandSide.Expression
-SEM RightHandSide | Expression loc . cinfo = 
-  orphanConstraint 0 "right-hand side" @parentTree 
+SEM RightHandSide | Expression loc . cinfo =
+  orphanConstraint 0 "right-hand side" @parentTree
      [ Unifier (head (ftv @lhs.betaRight)) ("right-hand sides", attribute (skip_UHA_FB_RHS @lhs.parentTree), "right-hand side") ]
 
 ---------------------------------------------------------------------------------------
@@ -59,7 +59,7 @@ SEM Expression | Literal loc . cinfo =
 
 -- Expression.Constructor
 SEM Expression | Constructor loc . cinfo =
-  resultConstraint "constructor" @parentTree       
+  resultConstraint "constructor" @parentTree
      [ FolkloreConstraint, HasTrustFactor 10.0, IsImported @name.self ]
 
 -- Expression.NormalApplication
@@ -71,9 +71,9 @@ SEM Expression | NormalApplication loc . cinfo =
 SEM Expression | InfixApplication loc . operatorNr    = length @leftExpression.infoTrees
                                   loc . cinfoOperator =
   childConstraint @operatorNr "infix application" @parentTree $
-     if @leftExpression.section || @rightExpression.section 
+     if @leftExpression.section || @rightExpression.section
      then [ HasTrustFactor 10.0 ]
-     else [ ApplicationEdge True (map attribute (@leftExpression.infoTrees ++ @rightExpression.infoTrees)) ] 
+     else [ ApplicationEdge True (map attribute (@leftExpression.infoTrees ++ @rightExpression.infoTrees)) ]
 
 SEM Expression | InfixApplication loc . cinfoComplete =
   specialConstraint "infix application (INTERNAL ERROR)" @parentTree
@@ -86,7 +86,7 @@ SEM Expression | InfixApplication loc . cinfoLeftSection =
      [  ]
 
 SEM Expression | InfixApplication loc . cinfoRightSection =
-  specialConstraint "right section" @parentTree        
+  specialConstraint "right section" @parentTree
      (self @localInfo, Nothing)
      [ ]
 
@@ -94,18 +94,18 @@ SEM Expression | InfixApplication loc . cinfoEmpty =
   specialConstraint "infix application" @parentTree
     (self @localInfo, Nothing)
     [ FolkloreConstraint, HasTrustFactor 10.0 ]
-    
+
 -- Expression.If
 SEM Expression | If loc . cinfoGuard =
   childConstraint 0 "conditional" @parentTree
-     []   
+     []
 
 SEM Expression | If loc . cinfoThen =
-  childConstraint 1 "then branch of conditional" @parentTree 
+  childConstraint 1 "then branch of conditional" @parentTree
      [ Unifier (head (ftv @beta)) ("conditional", @localInfo, "then branch") ]
 
 SEM Expression | If loc . cinfoElse =
-  childConstraint 2 "else branch of conditional" @parentTree 
+  childConstraint 2 "else branch of conditional" @parentTree
      [ Unifier (head (ftv @beta)) ("conditional", @localInfo, "else branch") ]
 
 -- Expression.Lambda
@@ -116,7 +116,7 @@ SEM Expression | Lambda loc . cinfoBind =
      ]
 
 SEM Expression | Lambda loc . cinfoType =
-  resultConstraint "lambda abstraction" @parentTree 
+  resultConstraint "lambda abstraction" @parentTree
      [ FolkloreConstraint ]
 
 -- Expression.Case
@@ -128,7 +128,7 @@ SEM Expression | Case loc . cinfo =
 SEM Expression | Let loc . cinfoType =
   resultConstraint "let expression (INTERNAL ERROR)" @thisTree
      [ FolkloreConstraint, highlyTrusted ]
-     
+
 -- Expression.Do
 SEM Expression | Do loc . cinfo =
   resultConstraint "do-expression" @parentTree
@@ -145,32 +145,32 @@ SEM Expression | List loc . cinfoResult =
   resultConstraint "list" @parentTree
   [ FolkloreConstraint ]
 
--- Expression.Tuple   
+-- Expression.Tuple
 SEM Expression | Tuple loc . cinfo =
-  resultConstraint "tuple" @parentTree 
+  resultConstraint "tuple" @parentTree
      [ FolkloreConstraint ]
-        
--- Expression.Comprehension   
+
+-- Expression.Comprehension
 SEM Expression | Comprehension loc . cinfo =
   resultConstraint "list comprehension" @parentTree
      [ FolkloreConstraint ]
 
 -- Expression.Typed
 SEM Expression | Typed loc . cinfoExpr =
-  childConstraint 0 "type annotation" @parentTree 
+  childConstraint 0 "type annotation" @parentTree
      [ TypeSignatureLocation (getTypeRange @type.self) ]
 
 SEM Expression | Typed loc . cinfoResult =
-  resultConstraint "type annotation" @parentTree 
+  resultConstraint "type annotation" @parentTree
      [ FolkloreConstraint ]     {- ??? -}
-       
+
 -- Expression.Enum
 SEM Expression | Enum loc . cinfoFrom =
-  childConstraint 0 "enumeration" @parentTree 
+  childConstraint 0 "enumeration" @parentTree
      []
 
 SEM Expression | Enum loc . cinfoThen =
-  childConstraint 1 "enumeration" @parentTree                      
+  childConstraint 1 "enumeration" @parentTree
      []
 
 SEM Expression | Enum loc . toChildNr = 1 + length @then.infoTrees
@@ -180,29 +180,34 @@ SEM Expression | Enum loc . toChildNr = 1 + length @then.infoTrees
 
 SEM Expression | Enum loc . cinfoResult =
   resultConstraint "enumeration" @parentTree
-     [ FolkloreConstraint ]       
+     [ FolkloreConstraint ]
 
 SEM Expression | Enum loc . cinfoPred =
-  resultConstraint "enumeration" @parentTree 
+  resultConstraint "enumeration" @parentTree
      [ ReductionErrorInfo (Predicate "Enum" @elementType) ]
 
 -- Expression.Negate
 SEM Expression | Negate loc . cinfo =
-  specialConstraint "negation" @parentTree 
-     (self @localInfo, Just $ nameToUHA_Expr (Name_Operator @range.self [] "-")) 
+  specialConstraint "negation" @parentTree
+     (self @localInfo, Just $ nameToUHA_Expr (Name_Operator @range.self [] "-"))
      []
 
 SEM Expression | NegateFloat loc . cinfo =
-  specialConstraint "negation" @parentTree 
+  specialConstraint "negation" @parentTree
      (self @localInfo, Just $ nameToUHA_Expr (Name_Operator @range.self [] "-."))
-     []        
+     []
+
+-- Expression.RecycleConstructor
+-- SEM Expression | RecycleConstructor loc . cinfo =
+--   resultConstraint "recycle constructor" @parentTree
+--      [ FolkloreConstraint, HasTrustFactor 10.0 ]
 
 ---------------------------------------------------------------------------------------
 -- Type Inferencing : GuardedExpression
 
 SEM GuardedExpression | GuardedExpression loc . cinfoGuard =
   resultConstraint "guard" @guard.infoTree
-     []       
+     []
 
 SEM GuardedExpression | GuardedExpression loc . cinfoExpr =
   resultConstraint "guarded expression" @expression.infoTree $
@@ -215,7 +220,7 @@ SEM GuardedExpression | GuardedExpression loc . cinfoExpr =
 -- Pattern.Literal
 SEM Pattern | Literal loc . cinfo =
   resultConstraint "literal pattern" @parentTree
-     [ FolkloreConstraint, HasTrustFactor 10.0 ]        
+     [ FolkloreConstraint, HasTrustFactor 10.0 ]
 
 -- Pattern.Constructor
 SEM Pattern | Constructor loc . cinfoConstructor =
@@ -225,27 +230,27 @@ SEM Pattern | Constructor loc . cinfoConstructor =
 SEM Pattern | Constructor loc . cinfoApply =
   specialConstraint "pattern application" @parentTree
      (self @localInfo, Just $ nameToUHA_Pat @name.self)
-     [ ApplicationEdge False (map attribute @patterns.infoTrees) ]    
-                                   
+     [ ApplicationEdge False (map attribute @patterns.infoTrees) ]
+
 SEM Pattern | Constructor loc . cinfoEmpty =
   resultConstraint "pattern constructor" @parentTree
      [ HasTrustFactor 10.0 ]
-                                
+
 -- Pattern.InfixConstructor
 SEM Pattern | InfixConstructor loc . cinfoConstructor =
-  variableConstraint "pattern constructor" (nameToUHA_Pat @constructorOperator.self) 
-     [ FolkloreConstraint, HasTrustFactor 10.0 ] 
+  variableConstraint "pattern constructor" (nameToUHA_Pat @constructorOperator.self)
+     [ FolkloreConstraint, HasTrustFactor 10.0 ]
 
 SEM Pattern | InfixConstructor loc . cinfoApply =
-  specialConstraint "infix pattern application" @parentTree 
+  specialConstraint "infix pattern application" @parentTree
      (self @localInfo, Just $ nameToUHA_Pat  @constructorOperator.self)
-     [ ApplicationEdge True (map attribute [@leftPattern.infoTree, @rightPattern.infoTree]) ] 
+     [ ApplicationEdge True (map attribute [@leftPattern.infoTree, @rightPattern.infoTree]) ]
 
 -- Pattern.List
 SEM Pattern | List loc . cinfoElem =
   \elemNr ->
   childConstraint elemNr "element of pattern list" @parentTree $
-     [ HasTrustFactor 10.0 | length @patterns.constraintslist < 2 ] ++ 
+     [ HasTrustFactor 10.0 | length @patterns.constraintslist < 2 ] ++
      [ Unifier (head (ftv @beta')) ("pattern list", @localInfo, ordinal False (elemNr+1) ++ " element") ]
 
 SEM Pattern | List loc . cinfoResult =
@@ -278,10 +283,10 @@ SEM Pattern | NegateFloat loc . cinfo =
 
 SEM Alternative | Alternative loc . cinfoLeft =
   resultConstraint "case pattern" @pattern.infoTree
-     [ Unifier (head (ftv @lhs.betaLeft)) ("case patterns", attribute @lhs.parentTree, "case pattern") ]     
+     [ Unifier (head (ftv @lhs.betaLeft)) ("case patterns", attribute @lhs.parentTree, "case pattern") ]
 
 SEM Alternative | Alternative loc . cinfoBind =
-  \name -> variableConstraint "variable" (nameToUHA_Expr name) 
+  \name -> variableConstraint "variable" (nameToUHA_Expr name)
      [ FolkloreConstraint
      , makeUnifier name "case alternative" @pattern.environment @lhs.parentTree
      ]
@@ -296,10 +301,10 @@ SEM Statement | Expression loc . cinfo =
 SEM Statement | Generator loc . cinfoResult =
   childConstraint 1 "generator" @parentTree
      []
-     
+
 SEM Statement | Generator loc . cinfoBind =
   \name -> variableConstraint "variable" (nameToUHA_Expr name)
-     [ FolkloreConstraint 
+     [ FolkloreConstraint
      , makeUnifier name "generator" @pattern.environment @parentTree
      ]
 
@@ -313,9 +318,9 @@ SEM Qualifier | Guard loc . cinfo =
 SEM Qualifier | Generator loc . cinfoResult =
   childConstraint 1 "generator" @parentTree
      []
-     
+
 SEM Qualifier | Generator loc . cinfoBind =
-  \name -> variableConstraint "variable" (nameToUHA_Expr name) 
+  \name -> variableConstraint "variable" (nameToUHA_Expr name)
      [ FolkloreConstraint
      , makeUnifier name "generator" @pattern.environment @parentTree
-     ] 
+     ]
