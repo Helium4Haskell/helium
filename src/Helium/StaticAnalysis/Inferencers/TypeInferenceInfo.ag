@@ -197,10 +197,10 @@ SEM Expression | NegateFloat loc . cinfo =
      (self @localInfo, Just $ nameToUHA_Expr (Name_Operator @range.self [] "-."))
      []
 
--- Expression.RecycleConstructor
--- SEM Expression | RecycleConstructor loc . cinfo =
---   resultConstraint "recycle constructor" @parentTree
---      [ FolkloreConstraint, HasTrustFactor 10.0 ]
+---- Expression.RecycleConstructor
+--SEM Expression | RecycleConstructor loc . cinfo =
+--  resultConstraint "recycle constructor" @parentTree
+--     [ FolkloreConstraint, HasTrustFactor 10.0 ]
 
 ---------------------------------------------------------------------------------------
 -- Type Inferencing : GuardedExpression

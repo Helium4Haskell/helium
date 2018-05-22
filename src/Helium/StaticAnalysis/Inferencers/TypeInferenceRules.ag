@@ -215,14 +215,13 @@ ATTR                        MaybeExpression [ | | beta:Tp constraints:Constraint
 SEM Expression
 
 --  | RecycleConstructor
---      lhs . betaUnique  = @lhs.betaUnique + 1
+--      expression . betaUnique  = @lhs.betaUnique + 1
 --      loc . beta        = TVar @lhs.betaUnique
---          . assumptions = @assVar -- @assVar `combine` @assExpr
+--          . assumptions = @assVar `combine` @assExpr
 --          . assVar      = @name.self `single` @beta
 --          . assExpr     = @expression.assumptions
---          . constraints = --Node [ @conExpr .<. @expression.constraints ]
---                          @conVar
---          . conVar      = Node [ Receive @lhs.betaUnique ]
+--          . constraints = @conExpr .<. Node [ @conVar, @expression.constraints ]
+--          . conVar      = Receive @lhs.betaUnique
 --          . conExpr     = [ (@expression.beta .==. @beta) @cinfo ]
 
   | Literal
