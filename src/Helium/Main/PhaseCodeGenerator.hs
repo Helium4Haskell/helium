@@ -25,4 +25,4 @@ phaseCodeGenerator fullName coreModule options = do
             fullNameNoExt ++ ".lvm" ++ "'" ++ show (ioErr :: CE.IOException));
         exitWith (ExitFailure 1)
      )
-    
+
