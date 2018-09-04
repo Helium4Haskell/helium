@@ -19,7 +19,6 @@ import Helium.Main.PhaseTypeInferencer
 import Helium.Main.PhaseDesugarer
 import Helium.Main.PhaseCodeGenerator
 import Helium.Main.CompileUtils
-import Helium.Parser.Lexer (checkTokenStreamForClassOrInstance)
 import Helium.Main.Args (overloadingFromOptions)
 import Helium.Utils.Utils
 import Data.IORef
@@ -39,45 +38,34 @@ compile basedir fullName options lvmPath doneModules =
         contents <- readSourceFile fullName
 
         -- Phase 1: Lexing
-        (lexerWarnings, tokens) <- 
+        (lexerWarnings, tokens) <-
             doPhaseWithExit 20 (const "L") compileOptions $
                phaseLexer fullName contents options
-        
+
         unless (NoWarnings `elem` options) $
             showMessages lexerWarnings
 
-        -- If the token stream contains the words class or instance
-        -- and overloading is off, then print error message and bail out:
-        if not (overloadingFromOptions options) then 
-           let classInstanceMessages = checkTokenStreamForClassOrInstance tokens
-           in if not (null classInstanceMessages) 
-               then do 
-                      showMessages classInstanceMessages
-                      stopCompilingIf True
-               else return ()  
-         else 
-            return ()
-        
+
         -- Phase 2: Parsing
-        parsedModule <- 
+        parsedModule <-
             doPhaseWithExit 20 (const "P") compileOptions $
                phaseParser fullName tokens options
 
         -- Phase 3: Importing
         (indirectionDecls, importEnvs) <-
             phaseImport fullName parsedModule lvmPath options
-        
+
         -- Phase 4: Resolving operators
-        resolvedModule <- 
+        resolvedModule <-
             doPhaseWithExit 20 (const "R") compileOptions $
                phaseResolveOperators parsedModule importEnvs options
-            
+
         stopCompilingIf (StopAfterParser `elem` options)
 
         -- Phase 5: Static checking
         (localEnv, typeSignatures, staticWarnings) <-
             doPhaseWithExit 20 (("S"++) . errorsLogCode) compileOptions $
-               phaseStaticChecks fullName resolvedModule importEnvs options        
+               phaseStaticChecks fullName resolvedModule importEnvs options
 
         unless (NoWarnings `elem` options) $
             showMessages staticWarnings
@@ -89,14 +77,14 @@ compile basedir fullName options lvmPath doneModules =
         when (KindInferencing `elem` options) $
            doPhaseWithExit maximumNumberOfKindErrors (const "K") compileOptions $
               phaseKindInferencer combinedEnv resolvedModule options
-              
+
         -- Phase 7: Type Inference Directives
         (beforeTypeInferEnv, typingStrategiesDecls) <-
             phaseTypingStrategies fullName combinedEnv typeSignatures options
 
         -- Phase 8: Type inferencing
-        (dictionaryEnv, afterTypeInferEnv, toplevelTypes, typeWarnings) <- 
-            doPhaseWithExit maximumNumberOfTypeErrors (const "T") compileOptions $ 
+        (dictionaryEnv, afterTypeInferEnv, toplevelTypes, typeWarnings) <-
+            doPhaseWithExit maximumNumberOfTypeErrors (const "T") compileOptions $
                phaseTypeInferencer basedir fullName resolvedModule {-doneModules-} localEnv beforeTypeInferEnv options
 
         unless (NoWarnings `elem` options) $
@@ -105,13 +93,13 @@ compile basedir fullName options lvmPath doneModules =
         stopCompilingIf (StopAfterTypeInferencing `elem` options)
 
         -- Phase 9: Desugaring
-        coreModule <-                
+        coreModule <-
             phaseDesugarer dictionaryEnv
-                           fullName resolvedModule 
-                           (typingStrategiesDecls ++ indirectionDecls) 
+                           fullName resolvedModule
+                           (typingStrategiesDecls ++ indirectionDecls)
                            afterTypeInferEnv
-                           toplevelTypes 
-                           options                           
+                           toplevelTypes
+                           options
 
         stopCompilingIf (StopAfterDesugar `elem` options)
 
