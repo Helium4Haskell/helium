@@ -1,2 +1,1 @@
-ghci Helium/Main/Develop.hs -fglasgow-exts -fallow-overlapping-instances -fallow-undecidable-instances -i../../lvm/src/lib:../../Top/src/:../../Top/dist/build/autogen/:../dist/build/autogen/uuagc
-
+ghci Helium/Main/Develop.hs -fglasgow-exts -fallow-overlapping-instances -fallow-undecidable-instances -i../../lvm/src/lib:../../Top/src/:../../Top/dist/build/autogen/:../dist/build/autogen/uuagc:commands/helium/Helium
