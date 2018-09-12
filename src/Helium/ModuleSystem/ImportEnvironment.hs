@@ -21,14 +21,13 @@ import Helium.StaticAnalysis.Directives.TS_CoreSyntax
 import Data.List
 import Data.Maybe (catMaybes)
 import Data.Function (on)
-import Data.Typeable
 
 type TypeEnvironment             = M.Map Name TpScheme
 type ValueConstructorEnvironment = M.Map Name TpScheme
 type TypeConstructorEnvironment  = M.Map Name Int
 type TypeSynonymEnvironment      = M.Map Name (Int, Tps -> Tp)
-type ClassMemberEnvironment      = M.Map Name [(Name, TpScheme, Bool)]
-type InstanceEnvironment         = M.Map Name [Name]
+type ClassMemberEnvironment      = M.Map Name (Names, [(Name, TpScheme, Bool)])
+type InstanceEnvironment         = M.Map Name (Instance, [Type], [(Name, TpScheme)])
 
 type ImportEnvironments = [ImportEnvironment]
 data ImportEnvironment  =
@@ -106,7 +105,7 @@ setOperatorTable new importenv = importenv {operatorTable = new}
 getOrderedTypeSynonyms :: ImportEnvironment -> OrderedTypeSynonyms
 getOrderedTypeSynonyms importEnvironment =
    let synonyms = let insertIt name = M.insert (show name)
-                  in M.foldWithKey insertIt M.empty (typeSynonyms importEnvironment)
+                  in M.foldrWithKey insertIt M.empty (typeSynonyms importEnvironment)
        ordering = fst (getTypeSynonymOrdering synonyms)
    in (ordering, synonyms)
 
@@ -291,11 +290,12 @@ instance Show ImportEnvironment where
 
        classmembers =
           let f (c, fs) = show c ++ " - " ++ intercalate ", " (map (\(n, t, _)->show n ++ " :: " ++ show t) fs)
-          in showWithTitle "Class members" (showEm f (M.assocs cm))
+          in showWithTitle "Class members" (showEm f (map (\(c, m)->(c, snd m)) $ M.assocs cm))
 
        instances =
-           let f (i, fs) = show i ++ " - " ++ intercalate ", " (map show fs)
-           in showWithTitle "Instances" (showEm f (M.assocs ins))
+           let
+                f (i, types, fs) = show i ++ " - " ++ intercalate ", " (map show fs)
+           in showWithTitle "Instances" (showEm (f . snd) (M.assocs ins))
 
        showWithTitle title xs
           | null xs   = []

@@ -105,7 +105,7 @@ compile basedir fullName options lvmPath doneModules =
 
         -- Phase 10: Code generation
         phaseCodeGenerator fullName coreModule options
-        
+
         sendLog "C" fullName doneModules options
 
         let number = length staticWarnings + length typeWarnings + length lexerWarnings

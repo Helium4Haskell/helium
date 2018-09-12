@@ -4,7 +4,7 @@
     Maintainer  :  helium@cs.uu.nl
     Stability   :  experimental
     Portability :  portable
-    
+
     The conversion from UHA types to Tp (a simpler representation), and vice versa.
 -}
 
@@ -19,6 +19,7 @@ import Data.Maybe
 import Helium.Syntax.UHA_Syntax
 
 import Top.Types
+import Data.List
 
 ----------------------------------------------------------------------
 -- conversion functions from and to UHA
@@ -29,15 +30,15 @@ namesInTypes = foldr (union . namesInType) []
 namesInType :: Type -> Names
 namesInType uhaType = case uhaType of
 
-      Type_Application _ _ fun args -> namesInTypes (fun : args)                                                 
-      Type_Variable _ name          -> [name]      
+      Type_Application _ _ fun args -> namesInTypes (fun : args)
+      Type_Variable _ name          -> [name]
       Type_Constructor _ _          -> []
-      Type_Parenthesized _ t        -> namesInType t                    
+      Type_Parenthesized _ t        -> namesInType t
       Type_Qualified _ _ t          -> namesInType t
-      Type_Forall{}                 -> internalError "TypeConversion.hs" "namesInType" "universal types are currently not supported"            
+      Type_Forall{}                 -> internalError "TypeConversion.hs" "namesInType" "universal types are currently not supported"
       Type_Exists{}                 -> internalError "TypeConversion.hs" "namesInType" "existential types are currently not supported"
-      
--- name maps play an important role in converting since they map UHA type variables (string) to TVar's (int)  
+
+-- name maps play an important role in converting since they map UHA type variables (string) to TVar's (int)
 makeNameMap :: Names -> [(Name,Tp)]
 makeNameMap = flip zip (map TVar [0..])
 
@@ -52,8 +53,23 @@ makeTpSchemeFromType' uhaType =
        scheme  = Quantification (ftv tp, [ (i,getNameName n) | (n,TVar i) <- nameMap], context .=>. tp)
    in (scheme, intMap)
 
+
+
 makeTpSchemeFromType :: Type -> TpScheme
 makeTpSchemeFromType = fst . makeTpSchemeFromType'
+
+addContextToType :: SimpleType -> Forall (Qualification [Predicate] Tp) -> Forall (Qualification [Predicate] Tp)
+addContextToType (SimpleType_SimpleType _ name typevariables) (Quantification (freeTV, nameMap', Qualification (prep, tp)))  = --(Quantification (freeTV, nameMap, qualif))
+    let nameMap = makeNameMap typevariables
+        context = concatMap (nameToPredicate nameMap) typevariables
+    in Quantification (freeTV, nub $ [ (i,getNameName n) | (n,TVar i) <- nameMap] ++ nameMap', Qualification (prep ++ context, tp))
+    where
+        nameToPredicate :: [(Name, Tp)] -> Name -> [Predicate]
+        nameToPredicate nameMap tv = case lookup tv nameMap of
+            Nothing -> []
+            Just tp -> [Predicate (getNameName name) tp]
+
+
 
 predicatesFromContext :: [(Name,Tp)] -> Type -> Predicates
 predicatesFromContext nameMap (Type_Qualified _ is _) =
@@ -66,33 +82,33 @@ predicatesFromContext nameMap (Type_Qualified _ is _) =
      predicateFromContext _ = internalError "TypeConversion.hs" "predicateFromContext" "malformed type in context"
 predicatesFromContext _ _   = []
 
-makeTpFromType :: [(Name,Tp)] -> Type -> Tp    
-makeTpFromType nameMap = rec_ 
-  where                    
+makeTpFromType :: [(Name,Tp)] -> Type -> Tp
+makeTpFromType nameMap = rec_
+  where
         rec_ :: Type -> Tp
-        rec_ uhaType = case uhaType of  
+        rec_ uhaType = case uhaType of
              Type_Application _ _ fun args -> foldl TApp (rec_ fun) (map rec_ args)
-             Type_Variable _ name          -> fromMaybe (TCon "???") (lookup name nameMap)                                                      
+             Type_Variable _ name          -> fromMaybe (TCon "???") (lookup name nameMap)
              Type_Constructor _ name       -> TCon (getNameName name)
-             Type_Parenthesized _ t        -> rec_ t                                                 
+             Type_Parenthesized _ t        -> rec_ t
              Type_Qualified _ _ t          -> rec_ t
-             Type_Forall{}                 -> internalError "TypeConversion.hs" "makeTpFromType" "universal types are currently not supported"            
+             Type_Forall{}                 -> internalError "TypeConversion.hs" "makeTpFromType" "universal types are currently not supported"
              Type_Exists{}                 -> internalError "TypeConversion.hs" "makeTpFromType" "existential types are currently not supported"
 
 convertFromSimpleTypeAndTypes :: SimpleType -> Types -> (Tp,Tps)
-convertFromSimpleTypeAndTypes stp  tps = 
+convertFromSimpleTypeAndTypes stp  tps =
    let SimpleType_SimpleType _ name typevariables = stp
        nameMap    = makeNameMap (foldr union [] (typevariables : map namesInType tps))
        simpletype = foldl TApp (TCon (getNameName name)) (take (length typevariables) (map TVar [0..]))
    in (simpletype,map (makeTpFromType nameMap) tps)
-       
+
 makeTypeFromTp :: Tp -> Type
-makeTypeFromTp t = 
-    let (x,xs) = leftSpine t 
-    in if null xs 
+makeTypeFromTp t =
+    let (x,xs) = leftSpine t
+    in if null xs
         then f x
         else Type_Application noRange True (f x) (map makeTypeFromTp xs)
-   where f (TVar i) = Type_Variable noRange    (nameFromString ('v' : show i)) 
+   where f (TVar i) = Type_Variable noRange    (nameFromString ('v' : show i))
          f (TCon s) = Type_Constructor noRange (nameFromString s)
          f (TApp _ _) = error "TApp case in makeTypeFromTp"
-         
+

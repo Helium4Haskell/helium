@@ -21,6 +21,10 @@
 --    8) type classes and their declarations
 -------------------------------------------------------------------------------
 
+imports{
+import Data.Maybe
+}
+
 SEM Module
   | Module   loc . collectEnvironment = setValueConstructors   (M.fromList @body.collectValueConstructors)
                                         . setTypeConstructors  (M.fromList @body.collectTypeConstructors)
@@ -30,7 +34,7 @@ SEM Module
                                         . setClassEnvironment  @body.classEnv
                                         . setInstanceEnvironment @body.instanceEnv
                                         . setClassMemberEnvironment @body.collectClassMemberEnv
-                                        $ emptyEnvironment
+                                        $emptyEnvironment
                                         -- the type environment will be added after type inferencing.
                  . derivedFunctions = let f (n,i) = ( nameOfShowFunction n
                                                     , typeOfShowFunction n (take i [ nameFromString s | s <- variableList])
@@ -228,7 +232,8 @@ uniqueKeys = let comp (x,_) (y,_) = compare x y
 
 -- The following haskell code is used for building a temporary dictionairy in order to complete static checks
 type ClassDef = (Name, ClassMembers)
-type ClassMembers = [(Name, TpScheme, Bool)]
+type ClassMembers = (Names, [(Name, TpScheme, Bool)])
+type ClassMembers' = [(Name, TpScheme, Bool)]
 
 --In declarations we find both type signatures and function declarations
 filterType :: Declarations -> (Declarations, Declarations) -> (Declarations, Declarations)
@@ -237,12 +242,12 @@ filterType (d:ds) (t, dec)                                   = filterType ds (t,
 filterType []     res                                        = res
 
 --A type can be declared for multiple function names
-createClassDef1 :: Declaration -> ClassMembers
+createClassDef1 :: Declaration -> ClassMembers'
 createClassDef1 (Declaration_TypeSignature _ names ty) = [(n, fst $ makeTpSchemeFromType' ty, False) | n <- names]
-createClassDef1 _                                      = error "Error createClassDef1, filtering failed..."
+createClassDef1 _                                     = error "Error createClassDef1, filtering failed..."
 
 --A function declaration should be associated with a type in the class definition
-createClassDef2 :: Declarations -> ClassMembers -> ClassMembers
+createClassDef2 :: Declarations -> ClassMembers' -> ClassMembers'
 createClassDef2 (d:ds) m = createClassDef2 ds $ createClassDef2' (nameOfDeclaration d) d m
 createClassDef2 []     m = m
 
@@ -256,9 +261,9 @@ createClassDef2'' n d (m@(n2,t, _):ms) | n == n2   = (n2, t, True):ms
                                      | otherwise = m:(createClassDef2'' n d ms)
 createClassDef2'' _ _ []                             = [] -- Should not happen but if it happens the error is reported by another check
 
-createClassDef :: Name -> MaybeDeclarations -> ClassMemberEnvironment
-createClassDef n MaybeDeclarations_Nothing      = M.singleton n []
-createClassDef n (MaybeDeclarations_Just decls) = M.singleton n (createClassDef2 fdecl $ concatMap createClassDef1 types)
+createClassDef :: Name -> MaybeDeclarations -> Names -> ClassMemberEnvironment
+createClassDef n MaybeDeclarations_Nothing names  = M.singleton n (names, [])
+createClassDef n (MaybeDeclarations_Just decls) names = M.singleton n (names, createClassDef2 fdecl $ concatMap createClassDef1 types)
                where (types, fdecl) = filterType decls ([], [])
 
 
@@ -278,7 +283,7 @@ SEM Module
 
 SEM Declaration
     | Class lhs . collectTypeClasses = [(@simpletype.name, @where.typeSignatures)]
-            lhs . collectClassMemberEnv = createClassDef @simpletype.name @where.self
+            lhs . collectClassMemberEnv = createClassDef @simpletype.name @where.self @simpletype.typevariables
 
 SEM Declarations
     | Cons     lhs . collectTypeClasses = @hd.collectTypeClasses  ++ @tl.collectTypeClasses
@@ -304,14 +309,15 @@ SEM Qualifier         | Let     declarations . typeSignatures = []
 SEM MaybeDeclarations | Just    declarations . typeSignatures = []
                       | Nothing lhs          . typeSignatures = []
 
+
 SEM Declaration
   | TypeSignature
       lhs . typeSignatures = [ (name, @typeScheme) | name <- @names.self ] ++ @lhs.typeSignatures
       loc . (typeScheme, intMap) = makeTpSchemeFromType' @type.self
   | Class
-      lhs . typeSignatures = @lhs.typeSignatures -- just shortcut it
+      lhs . typeSignatures = @lhs.typeSignatures -- trace (show @lhs.classMemberEnv) $map (\(n, t) -> (n, addContextToType @simpletype.self t)) @where.typeSignatures
   | Instance
-      lhs . typeSignatures = @lhs.typeSignatures -- And we apply the same trick again
+      lhs . typeSignatures = @where.typeSignatures -- And we apply the same trick again
 
 -------
 -- Building a Class Environment
@@ -332,9 +338,22 @@ SEM Declaration
     | Class
         lhs . classEnv = M.singleton (getClassName @simpletype.self) (getSuperClasses @context.self, [])
     | Instance
-       lhs . instanceEnv = M.singleton (@name.self) (getInstanceFunctionNames @where.self)
-
+       lhs . instanceEnv = M.singleton (@name.self) (makeInstance (show @name.self) 0 "", @types.self ,@loc.instanceFunctions)
+        loc . instanceFunctions = (map (\n->(n, getTypeOfInstanceFunction @name.self n @lhs.classMemberEnv)) $ getInstanceFunctionNames @where.self)
 {
+
+getTypeOfInstanceFunction :: Name -> Name -> ClassMemberEnvironment -> TpScheme
+getTypeOfInstanceFunction instanceName name env = case M.lookup instanceName env of
+        Just c ->   let (typeVariables, functions) = c
+                        (fn, tp, _) = fromMaybe (error "Unkown function in instance") (lookupFunc name functions)
+                    in tp
+        Nothing -> error "Unkown class in instance declaration"
+    where
+        lookupFunc :: Name -> [(Name, a, b)] -> Maybe (Name, a, b)
+        lookupFunc n [] = Nothing
+        lookupFunc n (f@(nf, _, _):fs)  | n == nf   = Just f
+                                        | otherwise = lookupFunc n fs
+
 getClassName :: SimpleType -> String
 getClassName (SimpleType_SimpleType _ n _) = getNameName n
 
