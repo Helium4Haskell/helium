@@ -37,37 +37,38 @@ SEM Module
   | Module  body . collectWarnings = []
                  . collectErrors   = []
 
+
 SEM Body
   | Body   loc . inferredTypes      = findInferredTypes @lhs.typeschemeMap @implicitsFM
-           lhs . collectWarnings    = missingTypeSignature True @declarations.simplePatNames @inferredTypes
+           lhs . collectWarnings    = missingTypeSignature True @declarations.simplePatNames @inferredTypes @lhs.importEnvironment
                                       ++ @declarations.collectWarnings
                . collectErrors      = restrictedNameErrors @inferredTypes @declarations.restrictedNames
                                       ++ @declarations.collectErrors
 
 SEM MaybeDeclarations
   | Just   loc . inferredTypes      = findInferredTypes @lhs.typeschemeMap @implicitsFM
-           lhs . collectWarnings    = missingTypeSignature False @declarations.simplePatNames @inferredTypes
+           lhs . collectWarnings    = missingTypeSignature False @declarations.simplePatNames @inferredTypes @lhs.importEnvironment
                                       ++ @declarations.collectWarnings
                . collectErrors      = restrictedNameErrors @inferredTypes @declarations.restrictedNames
                                       ++ @declarations.collectErrors
 
 SEM Expression
   | Let    loc . inferredTypes      = findInferredTypes @lhs.typeschemeMap @implicitsFM
-           lhs . collectWarnings    = missingTypeSignature False @declarations.simplePatNames  @inferredTypes
+           lhs . collectWarnings    = missingTypeSignature False @declarations.simplePatNames  @inferredTypes @lhs.importEnvironment
                                       ++ @expression.collectWarnings
                . collectErrors      = restrictedNameErrors @inferredTypes @declarations.restrictedNames
                                       ++ @declarations.collectErrors
 
 SEM Statement
   | Let    loc . inferredTypes      = findInferredTypes @lhs.typeschemeMap @implicitsFM
-           lhs . collectWarnings    = missingTypeSignature False @declarations.simplePatNames @inferredTypes
+           lhs . collectWarnings    = missingTypeSignature False @declarations.simplePatNames @inferredTypes @lhs.importEnvironment
                                       ++ @declarations.collectWarnings
                . collectErrors      = restrictedNameErrors @inferredTypes @declarations.restrictedNames
                                       ++ @declarations.collectErrors
 
 SEM Qualifier
   | Let    loc . inferredTypes      = findInferredTypes @lhs.typeschemeMap @implicitsFM
-           lhs . collectWarnings    = missingTypeSignature False @declarations.simplePatNames @inferredTypes
+           lhs . collectWarnings    = missingTypeSignature False @declarations.simplePatNames @inferredTypes @lhs.importEnvironment
                                       ++ @declarations.collectWarnings
                . collectErrors      = restrictedNameErrors @inferredTypes @declarations.restrictedNames
                                       ++ @declarations.collectErrors
@@ -81,13 +82,17 @@ findInferredTypes typeschemeMap =
        f (SigmaScheme ts) = ts
    in M.map f
 
-missingTypeSignature :: Bool -> Names -> TypeEnvironment -> Warnings
-missingTypeSignature topLevel simplePats =
+missingTypeSignature :: Bool -> Names -> TypeEnvironment -> ImportEnvironment -> Warnings
+missingTypeSignature topLevel simplePats typeenv importEnvironment =
    let -- for the moment, only missing type signature for top-level functions are reported (unless monomorphic).
       makeWarning (name, scheme) =
-         let fromSimple = name `elem` simplePats && isOverloaded scheme
-         in [ NoTypeDef name scheme topLevel fromSimple | null (ftv scheme) && (topLevel || fromSimple)  ]
-   in concatMap makeWarning . M.assocs
+         let  fromSimple = name `elem` simplePats && isOverloaded scheme
+              classFunctions = map (\(n, _, _)->n) $ concatMap (snd.snd) $ M.toList $ classMemberEnvironment importEnvironment
+         in [ NoTypeDef name scheme topLevel fromSimple 
+              | null (ftv scheme) 
+              && (topLevel || fromSimple) 
+              && (not topLevel || not (name `elem` classFunctions))]
+   in concatMap makeWarning . M.assocs $ typeenv
 
 restrictedNameErrors :: TypeEnvironment -> Names -> TypeErrors
 restrictedNameErrors env =
