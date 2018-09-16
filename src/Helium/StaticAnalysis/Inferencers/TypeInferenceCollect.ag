@@ -196,9 +196,13 @@ ATTR Module -> Declaration [ | | collectInstances USE { ++ } { [] } : {[(Name, I
 
 SEM Declaration
   | Data
-       lhs . collectInstances = [ (cl, makeInstance (show cl) (length @simpletype.typevariables) (show @simpletype.name) )
-                                | cl <- @derivings.self
-                                ]
+        lhs . collectInstances =  [ (cl, makeInstance (show cl) (length @simpletype.typevariables) (show @simpletype.name) )
+                                    | cl <- @derivings.self
+                                  ]
+  | Instance
+        lhs . collectInstances  = [(@name.self, makeInstance (show @name.self) 0 @loc.type)]
+        loc . type              = show $ makeTpFromType [] (head $ @types.self)
+
 
 ATTR SimpleType [ | | name:Name typevariables:Names ]
 SEM SimpleType

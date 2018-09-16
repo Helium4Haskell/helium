@@ -61,7 +61,6 @@ data Error  = NoFunDef Entity Name {-names in scope-}Names
             | NonDerivableClass Name
             | CannotDerive Name Tps
             | TupleTooBig Range
-            | MissingInstanceDefinition Name Name
 
 instance HasMessage Error where
    getMessage x = let (oneliner, hints) = showError x
@@ -104,7 +103,6 @@ instance HasMessage Error where
       NonDerivableClass name      -> [getNameRange name]
       CannotDerive name _         -> [getNameRange name]
       TupleTooBig r               -> [r]
-      MissingInstanceDefinition name _  -> [getNameRange name]
 
 sensiblySimilar :: Name -> Names -> [Name]
 sensiblySimilar name inScope =
@@ -370,11 +368,6 @@ showError anError = case anError of
       ( MessageString "Tuples can have up to 10 elements"
       , []
       )
-
-   MissingInstanceDefinition insName functionName ->
-     ( MessageString $ "Instance " ++ show insName ++ " is missing the function " ++ show functionName
-     , []
-     )
 
    _ -> internalError "StaticErrors.hs" "showError" "unknown type of Error"
 

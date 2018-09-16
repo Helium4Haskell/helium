@@ -118,3 +118,11 @@ import Helium.Main.Args
 import qualified Data.Map as M
 import Data.Maybe 
 }
+
+ATTR Body Declaration Declarations Expression Expressions
+     GuardedExpression GuardedExpressions MaybeDeclarations
+     MaybeExpression Qualifier Qualifiers RecordExpressionBinding
+     RightHandSide Alternative Alternatives FunctionBinding
+     FunctionBindings Statement RecordExpressionBindings
+     Statements
+               [ classMemberEnv : {ClassMemberEnvironment} | | ]

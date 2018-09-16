@@ -58,11 +58,22 @@ makeTpSchemeFromType' uhaType =
 makeTpSchemeFromType :: Type -> TpScheme
 makeTpSchemeFromType = fst . makeTpSchemeFromType'
 
-addContextToType :: SimpleType -> Forall (Qualification [Predicate] Tp) -> Forall (Qualification [Predicate] Tp)
-addContextToType (SimpleType_SimpleType _ name typevariables) (Quantification (freeTV, nameMap', Qualification (prep, tp)))  = --(Quantification (freeTV, nameMap, qualif))
+addSimpleTypeContextToType :: SimpleType -> TpScheme -> TpScheme
+addSimpleTypeContextToType (SimpleType_SimpleType _ name typevariables ) (Quantification (freeTV, nameMap', Qualification (prep, tp)))  = --(Quantification (freeTV, nameMap, qualif))
     let nameMap = makeNameMap typevariables
         context = concatMap (nameToPredicate nameMap) typevariables
     in Quantification (freeTV, nub $ [ (i,getNameName n) | (n,TVar i) <- nameMap] ++ nameMap', Qualification (prep ++ context, tp))
+    where
+        nameToPredicate :: [(Name, Tp)] -> Name -> [Predicate]
+        nameToPredicate nameMap tv = case lookup tv nameMap of
+            Nothing -> []
+            Just tp -> [Predicate (getNameName name) tp]
+
+addContextToType :: Name -> [(Name, Tp)] -> TpScheme -> TpScheme
+addContextToType name nameMap (Quantification (freeTV, nameMap', Qualification (prep, tp)))  = --(Quantification (freeTV, nameMap, qualif))
+    let typevariables = map fst nameMap
+        context = concatMap (nameToPredicate nameMap) typevariables
+    in Quantification (nub freeTV, nub $ [ (i,getNameName n) | (n,TVar i) <- nameMap] ++ nameMap', Qualification (prep ++ context, tp))
     where
         nameToPredicate :: [(Name, Tp)] -> Name -> [Predicate]
         nameToPredicate nameMap tv = case lookup tv nameMap of

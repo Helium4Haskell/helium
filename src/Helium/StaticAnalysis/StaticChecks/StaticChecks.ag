@@ -108,3 +108,11 @@ SEM LeftHandSide
 SEM Patterns
   | Cons  lhs . numberOfPatterns = 1 + @tl.numberOfPatterns
   | Nil   lhs . numberOfPatterns = 0
+
+  ATTR Body Declaration Declarations Expression Expressions
+     GuardedExpression GuardedExpressions MaybeDeclarations
+     MaybeExpression Qualifier Qualifiers RecordExpressionBinding
+     RightHandSide Alternative Alternatives FunctionBinding
+     FunctionBindings Statement RecordExpressionBindings
+     Statements
+               [ classMemberEnv : {ClassMemberEnvironment} | | ]

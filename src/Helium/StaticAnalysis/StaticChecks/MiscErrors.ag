@@ -36,12 +36,11 @@ SEM Module
 -- Body
 
 SEM Body
-  | Body   lhs . miscerrors = @typeSignatureErrors ++ @classErrors ++ @declarations.miscerrors ++ @missingInstanceDefErrors
+  | Body   lhs . miscerrors = @typeSignatureErrors ++ @classErrors ++ @declarations.miscerrors
            loc . typeSignatureErrors = checkTypeSignatures @declarations.declVarNames @declarations.restrictedNames @declarations.typeSignatures
            loc . classErrors = checkClass @declarations.collectTypeClasses @declarations.declVarNames @declarations.restrictedNames @declarations.typeSignatures @lhs.importedClassEnv
            lhs . classEnv = @declarations.classEnv
            lhs . instances = @declarations.instances
-           loc . missingInstanceDefErrors = checkMissingInstanceMembers @declarations.collectClassMemberEnv @declarations.instanceEnv
 
 
 -----------------------------------------
@@ -391,15 +390,6 @@ checkTypeSignatures declVarNames restrictedNames xs =
       , name `elem` restrictedNames
       , isOverloaded scheme
       ]
-
-checkMissingInstanceMembers :: ClassMemberEnvironment -> InstanceEnvironment -> Errors
-checkMissingInstanceMembers classEnv instanceEnv = [MissingInstanceDefinition insName cfname
-        | (cname, (_, cmembers)) <- M.toList classEnv
-        , (insName, insMembers) <- M.toList instanceEnv
-        , (cfname, _, _) <- cmembers
-        , cname == insName
-        , not (elem cfname (map fst $ (\(_, _, x)->x) insMembers))
-        ]
 
 }
 

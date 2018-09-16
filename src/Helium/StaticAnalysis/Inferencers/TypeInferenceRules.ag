@@ -65,8 +65,9 @@ SEM Body
           . constraints = emptyTree
   | Body
       declarations . bindingGroups    = []
-      (loc.csetBinds,lhs.assumptions) = (typeEnvironment @lhs.importEnvironment .:::. @aset) @cinfo
-      loc . constraints               = @csetBinds .>>. @cset
+      lhs . assumptions               = @loc.assumps
+      (loc.csetBinds,loc.assumps)     = (typeEnvironment @lhs.importEnvironment .:::. (@aset)) @cinfo
+      loc . constraints               = (@csetBinds ++ @declarations.collectClassMemberBindings).>>. @cset
 
       (loc.aset, loc.cset, loc.inheritedBDG, loc.chunkNr, lhs.betaUnique, loc.implicitsFM) =
          let inputBDG = (True, @lhs.currentChunk, @declarations.uniqueChunk, @lhs.monos, @declarations.typeSignatures, Nothing, @declarations.betaUnique)
@@ -76,7 +77,9 @@ SEM Body
 ---------------------------------------------------------------------------------------
 -- Type Inferencing : Declaration, Declarations, MaybeDeclarations
 
-ATTR Declaration Declarations MaybeDeclarations [ monos:Monos | betaUnique:Int | boundBetas USE {(++)} {[]} : {[(Name, [Tp])]} memberBindings USE {(++)} {[]} : {[(Name, Tp)]}]
+ATTR Declaration Declarations MaybeDeclarations Body [ | | collectClassMemberBindings USE {(++)} {[]} : {[TypeConstraint ConstraintInfo]}]
+
+ATTR Declaration Declarations MaybeDeclarations [ monos:Monos typeClassSignatures : {[(Name, TpScheme)]} | betaUnique:Int | boundBetas USE {(++)} {[]} : {[(Name, Tp, [Tp])]} memberBindings USE {(++)} {[]} : {[(Name, TpScheme)]}]
 ATTR Declaration Declarations                   [ inheritedBDG:InheritedBDG | bindingGroups:BindingGroups | ]
 ATTR                          MaybeDeclarations [ | assumptions:Assumptions constraints:ConstraintSet | ]
 
@@ -84,8 +87,7 @@ SEM Declaration
 
   | FunctionBindings
       lhs      . bindingGroups = @mybdggrp : @lhs.bindingGroups
-      lhs      . memberBindings = [(@bindings.name, @loc.beta)]
-      lhs      . boundBetas    = [(@bindings.name, @betasLeft ++ [@betaRight])]
+      lhs      . boundBetas    = [(@bindings.name, @beta, @betasLeft ++ [@betaRight])]
       bindings . betaUnique    = @lhs.betaUnique + 2 + @bindings.numberOfPatterns
                . monos         = findMono @bindings.name @lhs.inheritedBDG ++ @lhs.monos
       loc      . beta          = TVar @lhs.betaUnique
@@ -115,32 +117,78 @@ SEM Declaration
                                                ]
                                         ]
                                       )
+  | TypeSignature
+        lhs         . betaUnique = @lhs.betaUnique + 1
+        lhs         . memberBindings = map (\name -> (name, makeTpSchemeFromType @type.self)) @names.self
   | Class
-        lhs         . bindingGroups = (noAssumptions, @where.assumptions, []) : @lhs.bindingGroups
+        lhs         . bindingGroups = (@loc.environment, @where.assumptions, @loc.classMembers) : @lhs.bindingGroups
+        lhs         . classMemberBindings = []
         where       . assumptions   = noAssumptions
         where       . constraints   = emptyTree
+        where       . betaUnique    = @lhs.betaUnique + 1 + (2 * length @where.memberBindings)
+        loc         . environment   = M.fromList $ map (\((n, _), tp, _)->(n, tp)) @members
+        loc         . classBeta     = TVar @lhs.betaUnique
+        loc         . classVariable = @simpletype.name
+        loc         . classMembers  = map (\((name, tpscheme), tp, (_, sigma)) -> 
+                                            let 
+                                                subType = substituteClassVariables tpscheme @classVariable @classBeta
+                                                fType = addSimpleTypeContextToType @simpletype.self subType
+                                            in ([(tp .::. fType) emptyConstraintInfo] {- ++ genConstraints @lhs.monos cinfoGeneralize [(sigma, (name, tp))] -}) .>. Node []
+                                        ) @members
+        loc         . members       =  (zip3 @where.memberBindings $ map TVar [(@lhs.betaUnique + 1)..]) @sigmaBindings
+        loc         . sigmaBindings = zip (map fst @where.memberBindings) [(@lhs.betaUnique + 1 + length @where.memberBindings)..]
   | Instance
         where   . betaUnique            = @lhs.betaUnique + 2 + 1
-        -- Dit moet performBindingGroup worden, zie ook de body , Moet dit, dit gebeurt al in where
+        where   . typeClassSignatures   = [] --map (\(name, tpscheme, _)->(name, tpscheme)) $ getClassFunctions @loc.classMembers
+        where   . assumptions           = noAssumptions
+        where   . constraints           = emptyTree
+        loc     . classMembers          = selectClass @lhs.importEnvironment @name.self
         lhs     . bindingGroups         = (@loc.environment, @loc.assumptions, @loc.constraints) : @lhs.bindingGroups
         loc     . assumptions           = @where.assumptions
         loc     . environment           = noAssumptions
-        loc     . constraints           = [@where.constraints] ++ @loc.memberConstraints ++ @loc.instanceConstraints ++ @loc.classConstraints
-        loc     . classMembers          = selectClass @lhs.importEnvironment @name.self
-        loc     . instanceMembers       = getInstanceMembers @lhs.importEnvironment @name.self
-        loc     . instsType             = makeTpFromType [] (head $ @types.self)
+        loc     . constraints           = [@where.constraints] ++ @instanceConstraints ++ @memberConstraints
+        loc     . instanceConstraints   = [     
+                                            [    
+                                                ((@loc.instBeta .==. @loc.instsType) @loc.cinfo),
+                                                ((@loc.instBeta .==. @loc.classBeta) @loc.cinfo)
+                                            ] 
+                                            .>. Node []]
         loc     . instBeta              = TVar @lhs.betaUnique
         loc     . classBeta             = TVar $ @lhs.betaUnique + 1
-        loc     . memberConstraints     = map   (
+        loc     . instsType             = makeTpFromType [] (head $ @types.self)
+        loc     . cinfo                 = emptyConstraintInfo
+        loc     . memberConstraints     =  [(.>. Node []) $ map (\(name, tpscheme, tp)->
+                                            let 
+                                                subType = substituteClassVariables tpscheme (fst @classVariable) @classBeta
+                                                fType = addContextToType @name.self [(head $ getClassTypeVariables @loc.classMembers, @classBeta)] subType
+                                            in ((tp .::. fType) @loc.cinfo)
+                                            ) @memberBetas]
+        loc     . memberBetas           = matchClassDefinitionToInstanceDefinition 
+                                                (getInstanceFunctions (getInstanceMembers @lhs.importEnvironment @name.self)) $ 
+                                                map (\(n, b, _)->(n, b)) @where.boundBetas
+        loc     . classVariable         = head $ classVariablesToBeta (@lhs.betaUnique + 2) $ getClassTypeVariables @loc.classMembers
+        -- Dit moet performBindingGroup worden, zie ook de body , Moet dit, dit gebeurt al in where
+        {-
+        loc     . assumptions           = @where.assumptions
+        loc     . environment           = M.fromList $ map (\(n, _, tp)->(n, tp)) @combinedMembers
+        lhs . collectClassMemberBindings = @loc.memberConstraints
+        loc     . constraints           = [@where.constraints] ++ @loc.instanceConstraints ++ @loc.classConstraints
+        loc     . classMembers          = selectClass @lhs.importEnvironment @name.self
+        loc     . instanceMembers       = getInstanceMembers @lhs.importEnvironment @name.self
+        
+        loc     . instBeta              = TVar @lhs.betaUnique
+        loc     . classBeta             = TVar $ @lhs.betaUnique + 1
+        loc     . memberConstraints     = const [] $ map   ( -- add this list to the top level
                                                     \(name, tpscheme, tp) -> 
-                                                        [
-                                                            ((tp .::. substituteClassVariables tpscheme (fst @classVariable) @classBeta) @loc.cinfo)
-                                                        ] .>. Node []
+                                                            let 
+                                                                subType = substituteClassVariables tpscheme (fst @classVariable) @classBeta
+                                                                fType = addContextToType @name.self [(head $ getClassTypeVariables @loc.classMembers, @classBeta)] subType
+                                                            in (((tp) .::. fType) @loc.cinfo)
                                                 ) @combinedMembers
         loc     . classVariable         = head $ classVariablesToBeta (@lhs.betaUnique + 2)$ getClassTypeVariables @loc.classMembers
         loc     . instanceConstraints   = [     [    
-                                                    ((@loc.instBeta .==. @loc.instsType) @loc.cinfo), 
-                                                    ((@loc.instBeta .==. @loc.classBeta) @loc.cinfo)
+                                                    -- ((@loc.instBeta .==. @loc.instsType) @loc.cinfo), 
+                                                    -- ((@loc.instBeta .==. @loc.classBeta) @loc.cinfo)
                                                 ] 
                                                 .>. Node []]
         loc     . classConstraints      = [[    
@@ -148,9 +196,8 @@ SEM Declaration
                                             ] 
                                             .>. Node []]
         loc     . cinfo                 = emptyConstraintInfo
-        loc     . combinedMembers       = matchClassDefinitionToInstanceDefinition (getClassFunctions @loc.classMembers) (@where.memberBindings)
-        where   . assumptions           = noAssumptions
-        where   . constraints           = emptyTree
+        loc     . combinedMembers       = [] -- matchClassDefinitionToInstanceDefinition (getClassFunctions @loc.classMembers) (@where.memberBindings)
+       -}
 
 {
 
@@ -175,11 +222,11 @@ substituteClassVariables tps classVariable beta = ntps
         substitution = listToSubstitution [(numb, beta) | (numb, tvar) <- qmap, tvar == cvString]
 
 
-matchClassDefinitionToInstanceDefinition :: [(Name, TpScheme, Bool)] -> [(Name, Tp)] -> [(Name, TpScheme, Tp)]
+matchClassDefinitionToInstanceDefinition :: [(Name, TpScheme)] -> [(Name, Tp)] -> [(Name, TpScheme, Tp)]
 matchClassDefinitionToInstanceDefinition classMember insMember = map combineMember classMember
     where
-        combineMember :: (Name, TpScheme, Bool) -> (Name, TpScheme, Tp)
-        combineMember (name, tpscheme, _) = 
+        combineMember :: (Name, TpScheme) -> (Name, TpScheme, Tp)
+        combineMember (name, tpscheme) = 
                 case lookup name insMember of
                     Nothing -> internalError "TypeInferenceRules.ag" "matchClassDefinitionToInstanceDefinition" "Unknown instance member"
                     Just tp -> (name, tpscheme, tp)
@@ -212,7 +259,7 @@ SEM MaybeDeclarations
   | Just
       declarations . bindingGroups  = []
       (lhs.assumptions, lhs.constraints, loc.inheritedBDG, loc.chunkNr, lhs.betaUnique, loc.implicitsFM) = 
-         let inputBDG   = (False, @lhs.currentChunk, @declarations.uniqueChunk, @lhs.monos, @declarations.typeSignatures, mybdggroup, @declarations.betaUnique)
+         let inputBDG   = (False, @lhs.currentChunk, @declarations.uniqueChunk, @lhs.monos, (@declarations.typeSignatures `M.union` (M.fromList @lhs.typeClassSignatures)), mybdggroup, @declarations.betaUnique)
              mybdggroup = Just (@lhs.assumptions, [@lhs.constraints])
          in performBindingGroup inputBDG @declarations.bindingGroups
 

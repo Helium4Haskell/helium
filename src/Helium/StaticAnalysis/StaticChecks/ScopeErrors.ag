@@ -46,8 +46,8 @@ SEM Qualifier
   | Generator        lhs . collectScopeInfos = (@scopeInfo, Variable)   : @expression.collectScopeInfos
 
 SEM Declaration
-    | Class         lhs . collectScopeInfos = []
-    | Instance      lhs . collectScopeInfos = []
+    | Class         lhs . collectScopeInfos = (@scopeInfo, Definition) : @where.collectScopeInfos
+    | Instance      lhs . collectScopeInfos = @lhs.collectScopeInfos
 
 
 {
