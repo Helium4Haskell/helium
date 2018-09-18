@@ -83,7 +83,7 @@ everythingPublicButPrelude theModule = theModule { Core.moduleDecls = map setPub
             public = case Core.declAccess declaration of
                     Core.Defined _ -> True
                     Core.Imported { Core.importModule = m } -> 
-                    stringFromId m `notElem` ["Prelude", "HeliumLang"]
+                      stringFromId m `notElem` ["Prelude", "HeliumLang"]
 
         in
         declaration{ Core.declAccess =
@@ -97,8 +97,8 @@ everythingPublicButImported theModule = theModule { Core.moduleDecls = map setPu
         let -- accessRecord = Core.declAccess decl
             public = case Core.declAccess declaration of
                     Core.Defined _ -> True
-                    modu@(Core.Imported { Core.importModule = m }) ->
-                    stringFromId m `elem` ["PreludePrim"]
+                    Core.Imported { Core.importModule = m } ->
+                      stringFromId m `elem` ["PreludePrim"]
         in
         declaration{ Core.declAccess =
                   (Core.declAccess declaration){ Core.accessPublic = public } }
