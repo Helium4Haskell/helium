@@ -27,6 +27,7 @@ import qualified Data.Map as M
 import Helium.StaticAnalysis.Miscellaneous.TypeConversion
 import Data.Char (ord)
 
+import Helium.CodeGeneration.InstanceDictionary
 
 import Lvm.Common.Id
 import Lvm.Common.IdSet 

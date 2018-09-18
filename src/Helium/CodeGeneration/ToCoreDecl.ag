@@ -3,15 +3,21 @@
 -- ------------------------------------------------------------------------
 
 ATTR Declaration Declarations [ | patBindNr : Int | ]
+ATTR MaybeDeclarations [ | | whereDeclarations : {[(String, CoreDecl)]}]
+
+
+ATTR Declaration Declarations MaybeDeclarations [ instanceName : {Maybe Name} | | functionNames USE {(++)} {[]}: {[Name]} ]
         
 SEM MaybeDeclarations [ | |   core : { Core.Expr -> Core.Expr } ]
     | Nothing     lhs.core = \continue -> continue
     | Just        declarations.patBindNr = 0
                   declarations.isTopLevel = False
+                  lhs.whereDeclarations = map (\d -> (getCoreName d, d)) @declarations.decls
                   lhs.core = \continue -> letrec_ @declarations.decls continue  
 
 SEM Declaration          
-    | Type              lhs.decls  =
+    | Type  
+            lhs.decls  =
         let -- if we would have the collected type synonym information here, things could have been
             -- done much easier.
             (t1,[t2])   = convertFromSimpleTypeAndTypes @simpletype.self [@type.self]
@@ -71,12 +77,13 @@ SEM Declaration
     --  constructors             : Constructors
     --  derivings                : Names
     
-    | FunctionBindings  loc.ids      = freshIds "u$" @bindings.arity
+    | FunctionBindings  
+                        loc.ids      = freshIds "u$" @bindings.arity
                         bindings.ids = @loc.ids
                         bindings.range = @range.self
-                        loc.dictionaries = map predicateToId 
-                                              (getPredicateForDecl @bindings.name @lhs.dictionaryEnv)
-                        lhs.decls    =
+                        loc.instanceDict = [idFromString $ "$instanceDict" ++ show name | Just name <- [@lhs.instanceName]]
+                        loc.dictionaries = (map predicateToId (getPredicateForDecl @bindings.name @lhs.dictionaryEnv))
+                        lhs.decls    = 
         [ Core.DeclValue
             { Core.declName    = idFromName @bindings.name
             , Core.declAccess  = Core.private
@@ -142,7 +149,8 @@ SEM Declaration
     --  pattern                  : Pattern
     --  righthandside            : RightHandSide
     
-    | TypeSignature     lhs.decls    = []
+    | TypeSignature         lhs.decls    = []
+                            lhs.functionNames = @names.self    
     --  range                    : Range
     --  names                    : Names
     --  type                     : Type   -- may have context
@@ -180,6 +188,14 @@ SEM Declaration
     --  fixity                   : Fixity
     --  priority                 : MaybeInt
     --  operators                : Names
+    | Class             lhs.decls    = classFunctions $ constructFunctionMap @lhs.importEnv @simpletype.name
+    | Instance          lhs .   decls    =  [ constructDictionary 
+                                                (constructFunctionMap @lhs.importEnv @name.self)
+                                                @where.whereDeclarations 
+                                                (getNameName @name.self ++ @loc.typeName )
+                                            ] 
+                        loc .   typeName = show $ makeTpFromType [] $ head @types.self
+                        where . instanceName = Just @name.self
     
     -- Not supported
     
@@ -192,19 +208,6 @@ SEM Declaration
     --  constructor              : Constructor  -- has only one field, no strictness
     --  derivings                : Names
     
-    | Class             lhs.decls    = internalError "ToCoreDecl" "Declaration" "'class' not supported"
-    --  range                    : Range
-    --  context                  : ContextItems -- is a "simple" context
-    --  simpletype               : SimpleType   -- Haskell 98 allows only one variable
-    --  where                    : MaybeDeclarations -- cannot have everything
-    
-    | Instance          lhs.decls    = internalError "ToCoreDecl" "Declaration" "'instance' not supported"
-    --  range                    : Range
-    --  context                  : ContextItems -- is a "simple" context
-    --  name                     : Name
-    --  types                    : Types        -- Haskell 98 allows only one type
-                                                -- that is severely restricted
-    --  where                    : MaybeDeclarations -- cannot have everything
     
     | Default           lhs.decls    = internalError "ToCoreDecl" "Declaration" "'default' not supported"
     --  range                    : Range

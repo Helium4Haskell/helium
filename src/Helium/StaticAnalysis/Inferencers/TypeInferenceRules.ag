@@ -77,7 +77,13 @@ SEM Body
 ---------------------------------------------------------------------------------------
 -- Type Inferencing : Declaration, Declarations, MaybeDeclarations
 
-ATTR Declaration Declarations MaybeDeclarations [ monos:Monos | betaUnique:Int | boundBetas USE {(++)} {[]} : {[(Name, Tp, [Tp])]} memberBindings USE {(++)} {[]} : {[(Name, TpScheme)]}]
+ATTR Declaration Declarations MaybeDeclarations 
+            [   monos:Monos 
+            |   betaUnique:Int 
+            |   boundBetas      USE {(++)} {[]} : {[(Name, Tp, [Tp])]} 
+                memberBindings  USE {(++)} {[]} : {[(Name, TpScheme)]}
+                instanceDicts   USE {M.union} {M.empty} : {TypeEnvironment}
+            ]
 ATTR Declaration Declarations                   [ inheritedBDG:InheritedBDG | bindingGroups:BindingGroups | ]
 ATTR                          MaybeDeclarations [ | assumptions:Assumptions constraints:ConstraintSet | ]
 
@@ -137,6 +143,7 @@ SEM Declaration
         where   . betaUnique            = @lhs.betaUnique + 2 + 1
         where   . assumptions           = noAssumptions
         where   . constraints           = emptyTree
+        lhs     . instanceDicts         = M.singleton (constructDictionaryName @name.self (show @loc.instsType)) (makeScheme [] [] $ TCon "DictZInt")
         loc     . classMembers          = selectClass @lhs.importEnvironment @name.self
         lhs     . bindingGroups         = (noAssumptions, @where.assumptions, @loc.constraints) : @lhs.bindingGroups
         loc     . constraints           = [@where.constraints] ++ @instanceConstraints ++ @memberConstraints
@@ -162,6 +169,9 @@ SEM Declaration
         loc     . classVariable         = head $ classVariablesToBeta (@lhs.betaUnique + 2) $ getClassTypeVariables @loc.classMembers
 
 {
+
+constructDictionaryName :: Name -> String -> Name
+constructDictionaryName (Name_Identifier range modules name) s = Name_Identifier range modules ("($dict" ++ name ++ s ++ ")")    
 
 classVariablesToBeta :: Int -> Names -> [(Name, Tp)]
 classVariablesToBeta _ [] = []

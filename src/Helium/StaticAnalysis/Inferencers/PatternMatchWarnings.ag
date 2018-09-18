@@ -159,7 +159,10 @@ SEM Expression
                                                   ++ @expression.patternMatchWarnings                     
 
 SEM Declaration
-  | FunctionBindings lhs . patternMatchWarnings = patternMatchWarnings @lhs.importEnvironment
+  | FunctionBindings lhs . patternMatchWarnings = ( if @bindings.argcount == 0 then 
+                                                      [] 
+                                                    else
+                                                      patternMatchWarnings @lhs.importEnvironment
                                                                        @lhs.substitution
                                                                        @loc.beta
                                                                        (take @bindings.argcount . fst . functionSpine)
@@ -170,7 +173,7 @@ SEM Declaration
                                                                        @bindings.unrwars
                                                                        "function bindings"
                                                                        "="
-                                                  ++ @bindings.patternMatchWarnings 
+                                                  ) ++ @bindings.patternMatchWarnings 
   | PatternBinding   lhs . patternMatchWarnings = patternMatchWarnings @lhs.importEnvironment
                                                                        @lhs.substitution
                                                                        @pattern.beta

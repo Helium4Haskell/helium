@@ -309,7 +309,7 @@ SEM Declaration
       lhs . typeSignatures = [ (name, @typeScheme) | name <- @names.self ] ++ @lhs.typeSignatures
       loc . (typeScheme, intMap) = makeTpSchemeFromType' @type.self
   | Class
-      lhs . typeSignatures = @where.typeSignatures -- trace (show @lhs.classMemberEnv) $map (\(n, t) -> (n, addContextToType @simpletype.self t)) @where.typeSignatures
+      lhs . typeSignatures = @where.typeSignatures
   | Instance
       lhs . typeSignatures = @where.typeSignatures -- And we apply the same trick again
 

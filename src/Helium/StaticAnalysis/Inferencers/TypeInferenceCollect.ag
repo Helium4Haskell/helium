@@ -110,7 +110,7 @@ ATTR Body [ |  | toplevelTypes : TypeEnvironment ]
 
 SEM Body
   | Hole   lhs . toplevelTypes = M.empty
-  | Body   lhs . toplevelTypes = @declarations.typeSignatures `M.union` @inferredTypes
+  | Body   lhs . toplevelTypes = @declarations.instanceDicts `M.union` @declarations.typeSignatures `M.union` @inferredTypes
 
 ---------------------------------------------------------
 -- Collecting all the type schemes that are in scope
@@ -153,8 +153,8 @@ makeLocalTypeEnv :: TypeEnvironment -> BindingGroups -> M.Map NameWithRange TpSc
 makeLocalTypeEnv local groups =
    let (environment, _, _) = concatBindingGroups groups
        names = M.keys environment
-       f x   = maybe err id (find (==x) names)
-       err   = internalError "TypeInferenceCollect.ag" "makeLocalTypeEnv" "could not find name"
+       f x   = maybe (err x) id (find (==x) names)
+       err x  = internalError "TypeInferenceCollect.ag" "makeLocalTypeEnv" ("could not find name " ++ show x)
    in M.fromList [ (NameWithRange (f name), scheme) | (name, scheme) <- M.assocs local ]
 }
 

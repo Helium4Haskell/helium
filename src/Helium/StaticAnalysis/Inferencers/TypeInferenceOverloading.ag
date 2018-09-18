@@ -20,6 +20,12 @@ ATTR Declarations Declaration Expressions Expression Statements Statement
         | 
         ]
 
+ATTR Body Declarations Declaration MaybeDeclarations [
+    instanceName : {Maybe Name}
+  |
+  |
+]
+
 SEM Module
   | Module
        -- return an empty dictionary environment for the non-overloading setting
@@ -28,19 +34,28 @@ SEM Module
                                         else emptyDictionaryEnvironment
        body . dictionaryEnvironment = emptyDictionaryEnvironment
             . classEnvironment      = @classEnv
+            . classMemberEnv        = classMemberEnvironment @lhs.importEnvironment
             . availablePredicates   = []
+            . instanceName          = Nothing
     
 SEM Declaration   
  
   | FunctionBindings
-       loc      . declPredicates        = let scheme     = M.findWithDefault err (NameWithRange @bindings.name) @lhs.allTypeSchemes
+       loc      . declPredicates        = let scheme     = M.findWithDefault (err (NameWithRange @bindings.name) @lhs.allTypeSchemes) (NameWithRange @bindings.name) @lhs.allTypeSchemes
                                               predicates = matchTypeWithScheme @lhs.orderedTypeSynonyms 
                                                               (@lhs.substitution |-> @beta) 
                                                               (@lhs.substitution |-> scheme)
-                                              err = internalError "TypeInferenceOverloading.ag" "n/a" "could not find type for function binding"
+                                              err name typeSchemes = internalError "TypeInferenceOverloading.ag" "n/a" 
+                                                  ("could not find type for function binding for " ++ show name ++ " in " ++ (unlines $ map show $ M.toList typeSchemes) ++
+                                                    " -- " ++ show (M.lookup name typeSchemes) ++ " in " ++ show @lhs.instanceName
+                                                  
+                                                  )
                                           in expandPredicates @lhs.orderedTypeSynonyms predicates      
        bindings . availablePredicates   = @declPredicates ++ @lhs.availablePredicates
-       lhs      . dictionaryEnvironment = addForDeclaration @bindings.name @declPredicates @bindings.dictionaryEnvironment
+       lhs      . dictionaryEnvironment =   if (not $ isJust @lhs.instanceName) then 
+                                                addForDeclaration @bindings.name @declPredicates @bindings.dictionaryEnvironment
+                                            else
+                                                @bindings.dictionaryEnvironment
        
   | PatternBinding 
        loc           . declPredicates = case @pattern.self of
@@ -58,7 +73,8 @@ SEM Declaration
        lhs           . dictionaryEnvironment = case @declPredicates of
                                                   Just (n, ps) -> addForDeclaration n ps @righthandside.dictionaryEnvironment
                                                   Nothing      -> @righthandside.dictionaryEnvironment
-       
+  | Instance
+      where . instanceName  = Just @name.self
 SEM Expression 
 
   | Variable   lhs . dictionaryEnvironment = @newDEnv              
