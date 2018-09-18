@@ -69,7 +69,7 @@ module_ = addRange $
     do
         lexMODULE
         n <- modid
-        let mes = MaybeExports_Nothing
+        mes <- exportList 
         lexWHERE
         b <- body
         return (\r -> Module_Module r (MaybeName_Just n) mes b)
@@ -79,6 +79,52 @@ module_ = addRange $
         return (\r ->
             Module_Module r MaybeName_Nothing MaybeExports_Nothing b)
 
+
+{-
+exports? -> Nothing
+          | Just exports
+exports ->   "(" export1 "," ... "," exportn [ , ] ) (n>=0)
+-}
+exportList :: HParser MaybeExports
+exportList =
+    do lexLPAREN
+       exps <- export `sepBy` lexCOMMAnotFollowedByRParen
+       optional lexCOMMA
+       lexRPAREN
+       return (MaybeExports_Just exps)
+    <|>
+    return MaybeExports_Nothing
+  where
+    lexCOMMAnotFollowedByRParen = try (do{lexCOMMA; notFollowedBy lexRPAREN})
+    -- TODO: Add qualified names or name alliases
+    export :: HParser Export
+    export = addRange $
+      exportVariable <|> exportModule <|> exportTypeOrClass
+
+    exportVariable = do
+        varname <- var
+        return (\range -> Export_Variable range varname)
+
+    exportModule = do
+      lexMODULE
+      modname <- modid
+      return  (\range -> Export_Module range modname)
+
+    exportTypeOrClass = do
+      typename <- tycon
+      -- First let's try if constructors/methods are added (e.g. Bool(..) or Bool(True, False)
+      do
+        lexLPAREN
+        do
+          lexDOTDOT
+          lexRPAREN
+          return (\range -> Export_TypeOrClassComplete range typename)
+         <|> do
+          cnames <- cname `sepBy` lexCOMMA
+          lexRPAREN
+          return (\range -> Export_TypeOrClass range typename (MaybeNames_Just cnames))
+       -- If there are no parens, no constructors are added.
+       <|> return (\range -> Export_TypeOrClass range typename MaybeNames_Nothing)
 
 onlyImports :: HParser [ImportDeclaration]
 onlyImports = 

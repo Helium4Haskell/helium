@@ -61,7 +61,14 @@ con :: ParsecT [Token] SourcePos Identity Name
 con = conid <|> parens consym
    <?> Texts.parserVariable
 
--- op  ->  varop | conop  (operator)  
+-- cname 	→ 	var | con
+-- But we have to make sure that parsing will not fail for the symbol cases,
+-- if parens are allready parsed.
+cname :: ParsecT [Token] SourcePos Identity Name
+cname = varid <|> conid <|> parens (consym <|> varsym)
+   <?> Texts.parserVariable
+
+-- op  ->  varop | conop  (operator)
 -- expanded for better parse errors
 op :: ParsecT [Token] SourcePos Identity Name
 op = varsym <|> consym <|> lexBACKQUOTEs (varid <|> conid) 
