@@ -67,7 +67,7 @@ SEM Module
                                 insertedMain @lhs.toplevelTypes : Module.moduleDecls @module_ }
                 loc.module_ = 
 
-                    everythingPublicButPrelude
+                    everythingPublicButImported
                         (makeCoreModule (fmap idFromName @name.name)
                             ( @body.decls ++ @lhs.extraDecls
                             ))
@@ -78,14 +78,29 @@ SEM Module
 everythingPublicButPrelude :: Core.CoreModule -> Core.CoreModule
 everythingPublicButPrelude theModule = theModule { Core.moduleDecls = map setPublic (Core.moduleDecls theModule) }
   where
-    setPublic declaration = 
+    setPublic declaration =
         let -- accessRecord = Core.declAccess decl
-            public = case Core.declAccess declaration of 
+            public = case Core.declAccess declaration of
                     Core.Defined _ -> True
                     Core.Imported { Core.importModule = m } -> 
-                        stringFromId m `notElem` ["Prelude", "HeliumLang"] 
-        in 
-        declaration{ Core.declAccess = 
+                    stringFromId m `notElem` ["Prelude", "HeliumLang"]
+
+        in
+        declaration{ Core.declAccess =
+                  (Core.declAccess declaration){ Core.accessPublic = public } }
+
+-- Set all imported modules to private, and export the normal declarations.
+everythingPublicButImported :: Core.CoreModule -> Core.CoreModule
+everythingPublicButImported theModule = theModule { Core.moduleDecls = map setPublic (Core.moduleDecls theModule) }
+  where
+    setPublic declaration =
+        let -- accessRecord = Core.declAccess decl
+            public = case Core.declAccess declaration of
+                    Core.Defined _ -> True
+                    modu@(Core.Imported { Core.importModule = m }) ->
+                    stringFromId m `elem` ["PreludePrim"]
+        in
+        declaration{ Core.declAccess =
                   (Core.declAccess declaration){ Core.accessPublic = public } }
 }
 
