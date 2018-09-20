@@ -3,16 +3,23 @@
 -- ------------------------------------------------------------------------
 
 ATTR Declaration Declarations [ | patBindNr : Int | ]
-ATTR MaybeDeclarations [ | | whereDeclarations : {[(String, CoreDecl)]}]
+ATTR MaybeDeclarations [ | | whereDeclarations : {[(Name, CoreDecl)]}]
 
 
-ATTR Declaration Declarations MaybeDeclarations [ instanceName : {Maybe Name} | | functionNames USE {(++)} {[]}: {[Name]} ]
+ATTR Declaration Declarations MaybeDeclarations [ 
+        instanceName : {Maybe Name} 
+    |
+
+    |   functionNames USE {(++)} {[]}: {[Name]} 
+        declNames USE {(++)} {[]}: {[Name]}
+    ]
         
 SEM MaybeDeclarations [ | |   core : { Core.Expr -> Core.Expr } ]
     | Nothing     lhs.core = \continue -> continue
+                  lhs.whereDeclarations = []
     | Just        declarations.patBindNr = 0
                   declarations.isTopLevel = False
-                  lhs.whereDeclarations = map (\d -> (getCoreName d, d)) @declarations.decls
+                  lhs.whereDeclarations = zip @declarations.declNames @declarations.decls
                   lhs.core = \continue -> letrec_ @declarations.decls continue  
 
 SEM Declaration          
@@ -81,6 +88,7 @@ SEM Declaration
                         loc.ids      = freshIds "u$" @bindings.arity
                         bindings.ids = @loc.ids
                         bindings.range = @range.self
+                        lhs.declNames = [@bindings.name]
                         loc.instanceDict = [idFromString $ "$instanceDict" ++ show name | Just name <- [@lhs.instanceName]]
                         loc.dictionaries = (map predicateToId (getPredicateForDecl @bindings.name @lhs.dictionaryEnv))
                         lhs.decls    = 
@@ -188,11 +196,10 @@ SEM Declaration
     --  fixity                   : Fixity
     --  priority                 : MaybeInt
     --  operators                : Names
-    | Class             lhs.decls    = classFunctions $ constructFunctionMap @lhs.importEnv @simpletype.name
+    | Class             lhs.decls    = classFunctions @lhs.importEnv $ constructFunctionMap @lhs.importEnv @simpletype.name
     | Instance          lhs .   decls    =  [ constructDictionary 
                                                 (constructFunctionMap @lhs.importEnv @name.self)
-                                                @where.whereDeclarations 
-                                                (getNameName @name.self ++ @loc.typeName )
+                                                @where.whereDeclarations @name.self @loc.typeName
                                             ] 
                         loc .   typeName = show $ makeTpFromType [] $ head @types.self
                         where . instanceName = Just @name.self
@@ -253,7 +260,7 @@ SEM FunctionBinding [ | | core : { Core.Expr -> Core.Expr } ]
 {
 predicateToId :: Predicate -> Id
 predicateToId (Predicate class_ tp) =
-    idFromString $ "$dict" ++ class_ ++ show tp
+    idFromString $ "$dict" ++ class_ ++ "$" ++ show tp
     
 dictionaryTreeToCore :: DictionaryTree -> Core.Expr
 dictionaryTreeToCore theTree = 
@@ -262,7 +269,7 @@ dictionaryTreeToCore theTree =
          Core.Var (predicateToId predicate)
       ByInstance className instanceName trees ->
          foldl Core.Ap
-               (Core.Var (idFromString ("$dict"++className++instanceName)))
+               (Core.Var (idFromString ("$dict"++className++ "$" ++ instanceName)))
                (map dictionaryTreeToCore trees)
       BySuperClass subClass superClass tree -> 
          Core.Ap (Core.Var (idFromString ("$get" ++ superClass ++ "From" ++ subClass)))          
@@ -309,15 +316,16 @@ SEM RightHandSide
         isGuarded : Bool
     ]
 
-    | Expression      lhs.core = @where.core @expression.core
-                         .isGuarded = False
+    | Expression        lhs.core = @where.core @expression.core
+                            .isGuarded = False
+                        where.instanceName = Nothing 
     --  range                    : Range
     --  expression               : Expression
     --  where                    : MaybeDeclarations
 
     | Guarded         lhs.isGuarded = True
-                         .core = 
-        @where.core (foldr ($) (Core.Var nextClauseId) @guardedexpressions.core)
+                         .core = @where.core (foldr ($) (Core.Var nextClauseId) @guardedexpressions.core)
+                    where.instanceName = Nothing
                          
     --  range                    : Range
     --  guardedexpressions       : GuardedExpressions
@@ -385,16 +393,6 @@ SEM AnnotatedTypes [ | | length : Int ]
     | Nil  lhs.length = 0
 
 {
-toplevelType :: Name -> ImportEnvironment -> Bool -> [Core.Custom]
-toplevelType name ie isTopLevel
-    | isTopLevel = [custom "type" typeString]
-    | otherwise  = []
-    where
-        typeString = maybe
-            (internalError "ToCoreDecl" "Declaration" ("no type found for " ++ getNameName name))
-            show
-            (M.lookup name (typeEnvironment ie))
-
 constructorCustoms :: Name -> Name -> ValueConstructorEnvironment -> [Core.Custom]
 constructorCustoms dataTypeName name env =
     maybe 

@@ -50,11 +50,11 @@ dataDictionary :: UHA.Declaration -> CoreDecl
 dataDictionary  (UHA.Declaration_Data _ _ (UHA.SimpleType_SimpleType _ name names) _ _) =
     let nameId = idFromString ("show" ++ getNameName name) in
     DeclValue 
-    { declName    = idFromString ("$dictShow" ++ getNameName name)
+    { declName    = idFromString ("$dictShow$" ++ getNameName name)
     , declAccess  = public
     , valueEnc    = Nothing
     , valueValue  = makeShowDictionary (length names) nameId
-    , declCustoms = [ custom "type" ("DictShow" ++ getNameName name) ] 
+    , declCustoms = [ custom "type" ("DictShow$" ++ getNameName name) ] 
     }
   where
     makeShowDictionary :: Int -> Id -> Expr

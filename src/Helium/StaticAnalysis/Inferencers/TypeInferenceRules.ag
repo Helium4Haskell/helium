@@ -171,7 +171,7 @@ SEM Declaration
 {
 
 constructDictionaryName :: Name -> String -> Name
-constructDictionaryName (Name_Identifier range modules name) s = Name_Identifier range modules ("($dict" ++ name ++ s ++ ")")    
+constructDictionaryName (Name_Identifier range modules name) s = Name_Identifier range modules ("($dict" ++ name ++ "$" ++ s ++ ")")    
 
 classVariablesToBeta :: Int -> Names -> [(Name, Tp)]
 classVariablesToBeta _ [] = []
@@ -300,6 +300,7 @@ SEM RightHandSide
            . constraints = @where.constraints
      where . assumptions = @expression.assumptions
            . constraints = @newcon .>. @expression.constraints
+           . instanceName = Nothing
      loc   . newcon      = [ (@expression.beta .==. @lhs.betaRight) @cinfo ]
 
 
@@ -308,6 +309,7 @@ SEM RightHandSide
                         . constraints    = @where.constraints
      guardedexpressions . numberOfGuards = length @guardedexpressions.constraintslist
      where              . assumptions    = @guardedexpressions.assumptions
+                        . instanceName   = Nothing
                         . constraints    = Node @guardedexpressions.constraintslist
 
 ---------------------------------------------------------------------------------------

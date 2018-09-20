@@ -15,32 +15,32 @@ import Data.Maybe
 
 import Debug.Trace
 
-constructFunctionMap :: ImportEnvironment -> Name -> [(String, Int)]
+constructFunctionMap :: ImportEnvironment -> Name -> [(Name, Int)]
 constructFunctionMap env name = 
     let 
         err = error "Invalid class name" 
-        f :: (Name, a, b) -> String
-        f (name, _, _) = getNameName name 
+        f :: (Name, a, b) -> Name
+        f (name, _, _) = name 
         mapF = map f . snd
     in zip (maybe err mapF  $ M.lookup name (classMemberEnvironment env)) [0..]
 
 --returns for every function in a class the function that retrieves that class from a dictionary
-classFunctions :: [(String, Int)] -> [CoreDecl]
-classFunctions combinedNames = map classFunction combinedNames
+classFunctions :: ImportEnvironment -> [(Name, Int)] -> [CoreDecl]
+classFunctions importEnv combinedNames = map classFunction combinedNames
         where
-            classFunction :: (String, Int) -> CoreDecl
+            classFunction :: (Name, Int) -> CoreDecl
             classFunction (name, label) = 
                 let dictParam = idFromString "dict"
                     val = DeclValue 
-                        { declName    = idFromString name
+                        { declName    = idFromString $ getNameName name
                         , declAccess  = public
                         , valueEnc    = Nothing
                         , valueValue  = Lam dictParam (Ap (Var dictParam) (Lit (LitInt label)))
-                        , declCustoms = [] 
+                        , declCustoms = toplevelType name importEnv True
                         }
                 in val
          
-combineDeclIndex :: [(String, Int)] -> [(String, CoreDecl)] -> [(Int, Maybe CoreDecl)]
+combineDeclIndex :: [(Name, Int)] -> [(Name, CoreDecl)] -> [(Int, Maybe CoreDecl)]
 combineDeclIndex ls [] = map (\(_, l) -> (l, Nothing)) ls
 combineDeclIndex [] _ = error "Inconsistent mapping"
 combineDeclIndex names decls = 
@@ -49,14 +49,14 @@ combineDeclIndex names decls =
         in map (\(name, label) -> (label, lookup name decls)) names
 
 --returns a dictionary with specific implementations for every instance
-constructDictionary :: [(String, Int)] -> [(String, CoreDecl)] -> String -> CoreDecl
-constructDictionary combinedNames whereDecls dictionaryName = let 
+constructDictionary :: [(Name, Int)] -> [(Name, CoreDecl)] -> Name -> String -> CoreDecl
+constructDictionary combinedNames whereDecls className insName  = let 
             val = DeclValue 
-                { declName    = idFromString ("$dict" ++ dictionaryName)
+                { declName    = idFromString ("$dict" ++ getNameName className ++ "$" ++ insName)
                 , declAccess  = public
                 , valueEnc    = Nothing
                 , valueValue  = getFunc
-                , declCustoms = [ custom "type" ("Dict" ++ dictionaryName) ] 
+                , declCustoms = [ custom "type" ("Dict" ++ getNameName className ++ "$" ++ insName) ] 
                 }
             in val
         where 

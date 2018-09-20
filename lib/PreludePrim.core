@@ -44,26 +44,26 @@ module PreludePrim
     , error, catch, catchEof, raise
 
     -- dictionaries
-    , ''$dictShowInt'', ''$dictShowFloat'', ''$dictShowChar'', ''$dictShowBool'', ''$dictShow[]''
-    , ''$dictShow()'', ''$dictShow(,)'', ''$dictShow(,,)'', ''$dictShow(,,,)'', ''$dictShow(,,,,)'', ''$dictShow(,,,,,)''
-    , ''$dictShow(,,,,,,)'', ''$dictShow(,,,,,,,)'', ''$dictShow(,,,,,,,,)'', ''$dictShow(,,,,,,,,,)''
+    , ''$dictShow$Int'', ''$dictShow$Float'', ''$dictShow$Char'', ''$dictShow$Bool'', ''$dictShow$[]''
+    , ''$dictShow$()'', ''$dictShow$(,)'', ''$dictShow$(,,)'', ''$dictShow$(,,,)'', ''$dictShow$(,,,,)'', ''$dictShow$(,,,,,)''
+    , ''$dictShow$(,,,,,,)'', ''$dictShow$(,,,,,,,)'', ''$dictShow$(,,,,,,,,)'', ''$dictShow$(,,,,,,,,,)''
     
-    , ''$dictEqInt'', ''$dictEqFloat'', ''$dictEqChar'', ''$dictEqBool'', ''$dictEq[]''
-    , ''$dictEq()'', ''$dictEq(,)'', ''$dictEq(,,)'', ''$dictEq(,,,)'', ''$dictEq(,,,,)'', ''$dictEq(,,,,,)''
-    , ''$dictEq(,,,,,,)'', ''$dictEq(,,,,,,,)'', ''$dictEq(,,,,,,,,)'', ''$dictEq(,,,,,,,,,)''
+    , ''$dictEq$Int'', ''$dictEq$Float'', ''$dictEq$Char'', ''$dictEq$Bool'', ''$dictEq$[]''
+    , ''$dictEq$()'', ''$dictEq$(,)'', ''$dictEq$(,,)'', ''$dictEq$(,,,)'', ''$dictEq$(,,,,)'', ''$dictEq$(,,,,,)''
+    , ''$dictEq$(,,,,,,)'', ''$dictEq$(,,,,,,,)'', ''$dictEq$(,,,,,,,,)'', ''$dictEq$(,,,,,,,,,)''
     
-    , ''$dictNumInt'', ''$dictNumFloat''
+    , ''$dictNum$Int'', ''$dictNum$Float''
     
-    , ''$dictOrdInt'', ''$dictOrdFloat'', ''$dictOrdChar'', ''$dictOrdBool'', ''$dictOrd[]''
-    , ''$dictOrd()'', ''$dictOrd(,)'', ''$dictOrd(,,)'', ''$dictOrd(,,,)'', ''$dictOrd(,,,,)'', ''$dictOrd(,,,,,)''
-    , ''$dictOrd(,,,,,,)'', ''$dictOrd(,,,,,,,)'', ''$dictOrd(,,,,,,,,)'', ''$dictOrd(,,,,,,,,,)''
-    , ''$dictShowOrdering''
+    , ''$dictOrd$Int'', ''$dictOrd$Float'', ''$dictOrd$Char'', ''$dictOrd$Bool'', ''$dictOrd$[]''
+    , ''$dictOrd$()'', ''$dictOrd$(,)'', ''$dictOrd$(,,)'', ''$dictOrd$(,,,)'', ''$dictOrd$(,,,,)'', ''$dictOrd$(,,,,,)''
+    , ''$dictOrd$(,,,,,,)'', ''$dictOrd$(,,,,,,,)'', ''$dictOrd$(,,,,,,,,)'', ''$dictOrd$(,,,,,,,,,)''
+    , ''$dictShow$Ordering''
 
     , Ordering(EQ, LT, GT), showOrdering
     
     , ''$getEqFromOrd'', ''$getEqFromNum'', ''$getShowFromNum''
     
-    , ''$dictEnumInt'', ''$dictEnumFloat'', ''$dictEnum()'', ''$dictEnumChar'', ''$dictEnumBool''
+    , ''$dictEnum$Int'', ''$dictEnum$Float'', ''$dictEnum$()'', ''$dictEnum$Char'', ''$dictEnum$Bool''
     ) where
 
 import HeliumLang
@@ -166,7 +166,7 @@ sqrt :: Float -> Float
 sqrt x = let! x = x 
               y = float_of_string_extern "0.0"
          in
-            case (>=) ''$dictOrdFloat'' x y of
+            case (>=) ''$dictOrd$Float'' x y of
             {   True -> primFloatSqrt x
             ;   _    -> errorPacked "Can't apply sqrt to negative floating-point number"
             }
@@ -239,73 +239,73 @@ round x
 
 {- Show -}
 
-''$dictShowInt'' :: "DictShowInt"
-''$dictShowInt''    = (@0, 2) showInt (showList showInt)
+''$dictShow$Int'' :: "DictShowInt"
+''$dictShow$Int''    = (@0, 2) showInt (showList showInt)
 
-''$dictShowFloat'' :: "DictShowFloat"
-''$dictShowFloat''  = (@0, 2) showFloat (showList showFloat)
+''$dictShow$Float'' :: "DictShowFloat"
+''$dictShow$Float''  = (@0, 2) showFloat (showList showFloat)
 
-''$dictShowBool'' :: "DictShowBool"
-''$dictShowBool''   = (@0, 2) showBool (showList showBool)
+''$dictShow$Bool'' :: "DictShowBool"
+''$dictShow$Bool''   = (@0, 2) showBool (showList showBool)
 
-''$dictShowChar'' :: "DictShowChar"
-''$dictShowChar''   = (@0, 2) showChar showString
+''$dictShow$Char'' :: "DictShowChar"
+''$dictShow$Char''   = (@0, 2) showChar showString
 
-''$dictShowOrdering'' :: "DictShowOrdering"
-''$dictShowOrdering'' = (@0, 2) showOrdering (showList showOrdering)
+''$dictShow$Ordering'' :: "DictShowOrdering"
+''$dictShow$Ordering'' = (@0, 2) showOrdering (showList showOrdering)
 
-''$dictShow[]'' :: "DictShowList"
-''$dictShow[]'' dict = (@0, 2) (showAList dict) (showList (showAList dict))
+''$dictShow$[]'' :: "DictShowList"
+''$dictShow$[]'' dict = (@0, 2) (showAList dict) (showList (showAList dict))
 
-''$dictShow()'' :: "DictShowTuple0"
-''$dictShow()'' = (@0, 2) showUnit (showList showUnit)
+''$dictShow$()'' :: "DictShowTuple0"
+''$dictShow$()'' = (@0, 2) showUnit (showList showUnit)
 
-''$dictShow(,)'' :: "DictShowTuple2"
-''$dictShow(,)'' d1 d2 = 
+''$dictShow$(,)'' :: "DictShowTuple2"
+''$dictShow$(,)'' d1 d2 = 
    let! x = showTuple2  (show d1) (show d2)
    in (@0, 2) x (showList x)
                
-''$dictShow(,,)'' :: "DictShowTuple3"
-''$dictShow(,,)'' d1 d2 d3 =
+''$dictShow$(,,)'' :: "DictShowTuple3"
+''$dictShow$(,,)'' d1 d2 d3 =
    let! x = showTuple3  (show d1) (show d2) (show d3)
    in (@0, 2) x (showList x)
 
-''$dictShow(,,,)'' :: "DictShowTuple4"
-''$dictShow(,,,)'' d1 d2 d3 d4 = 
+''$dictShow$(,,,)'' :: "DictShowTuple4"
+''$dictShow$(,,,)'' d1 d2 d3 d4 = 
    let! x = showTuple4  (show d1) (show d2) (show d3) (show d4)
    in (@0, 2) x (showList x)
 
-''$dictShow(,,,,)'' :: "DictShowTuple5"
-''$dictShow(,,,,)'' d1 d2 d3 d4 d5 = 
+''$dictShow$(,,,,)'' :: "DictShowTuple5"
+''$dictShow$(,,,,)'' d1 d2 d3 d4 d5 = 
    let! x = showTuple5  (show d1) (show d2) (show d3) (show d4) (show d5)
    in (@0, 2) x (showList x)
 
-''$dictShow(,,,,,)'' :: "DictShowTuple6"
-''$dictShow(,,,,,)'' d1 d2 d3 d4 d5 d6 = 
+''$dictShow$(,,,,,)'' :: "DictShowTuple6"
+''$dictShow$(,,,,,)'' d1 d2 d3 d4 d5 d6 = 
    let! x = showTuple6  (show d1) (show d2) (show d3) (show d4) (show d5) 
                         (show d6)
    in (@0, 2) x (showList x)
 
-''$dictShow(,,,,,,)'' :: "DictShowTuple7"
-''$dictShow(,,,,,,)'' d1 d2 d3 d4 d5 d6 d7 = 
+''$dictShow$(,,,,,,)'' :: "DictShowTuple7"
+''$dictShow$(,,,,,,)'' d1 d2 d3 d4 d5 d6 d7 = 
    let! x = showTuple7  (show d1) (show d2) (show d3) (show d4) (show d5) 
                         (show d6) (show d7)
    in (@0, 2) x (showList x)
 
-''$dictShow(,,,,,,,)'' :: "DictShowTuple8"
-''$dictShow(,,,,,,,)'' d1 d2 d3 d4 d5 d6 d7 d8 = 
+''$dictShow$(,,,,,,,)'' :: "DictShowTuple8"
+''$dictShow$(,,,,,,,)'' d1 d2 d3 d4 d5 d6 d7 d8 = 
    let! x = showTuple8  (show d1) (show d2) (show d3) (show d4) (show d5) 
                         (show d6) (show d7) (show d8)
    in (@0, 2) x (showList x)
 
-''$dictShow(,,,,,,,,)'' :: "DictShowTuple9"
-''$dictShow(,,,,,,,,)'' d1 d2 d3 d4 d5 d6 d7 d8 d9 = 
+''$dictShow$(,,,,,,,,)'' :: "DictShowTuple9"
+''$dictShow$(,,,,,,,,)'' d1 d2 d3 d4 d5 d6 d7 d8 d9 = 
    let! x = showTuple9  (show d1) (show d2) (show d3) (show d4) (show d5) 
                         (show d6) (show d7) (show d8) (show d9)
    in (@0, 2) x (showList x)
 
-''$dictShow(,,,,,,,,,)'' :: "DictShowTuple10"
-''$dictShow(,,,,,,,,,)'' d1 d2 d3 d4 d5 d6 d7 d8 d9 d10 = 
+''$dictShow$(,,,,,,,,,)'' :: "DictShowTuple10"
+''$dictShow$(,,,,,,,,,)'' d1 d2 d3 d4 d5 d6 d7 d8 d9 d10 = 
    let! x = showTuple10 (show d1) (show d2) (show d3) (show d4) (show d5) 
                         (show d6) (show d7) (show d8) (show d9) (show d10)
    in (@0, 2) x (showList x)
@@ -323,11 +323,11 @@ showAList dShow =
      
 {- Num -}
 
-''$dictNumInt'' :: "DictNumInt"
-''$dictNumInt''   = (@0, 7) ''$dictEqInt''   ''$dictShowInt''   (+#) (*#) (-#) negInt   id
+''$dictNum$Int'' :: "DictNumInt"
+''$dictNum$Int''   = (@0, 7) ''$dictEq$Int''   ''$dictShow$Int''   (+#) (*#) (-#) negInt   id
 
-''$dictNumFloat'' :: "DictNumFloat"
-''$dictNumFloat'' = (@0, 7) ''$dictEqFloat'' ''$dictShowFloat'' (+.) (*.) (-.) negFloat intToFloat {- fromInt -}
+''$dictNum$Float'' :: "DictNumFloat"
+''$dictNum$Float'' = (@0, 7) ''$dictEq$Float'' ''$dictShow$Float'' (+.) (*.) (-.) negFloat intToFloat {- fromInt -}
 
 id x = x
 
@@ -369,81 +369,81 @@ fromInt dNum =
 
 {- Eq -}
 
-''$dictEqInt'' :: "DictEqInt"
-''$dictEqInt''    = (==#)
+''$dictEq$Int'' :: "DictEq$Int"
+''$dictEq$Int''    = (==#)
 
-''$dictEqFloat'' :: "DictEqFloat"
-''$dictEqFloat''  = (==.)
+''$dictEq$Float'' :: "DictEq$Float"
+''$dictEq$Float''  = (==.)
 
-''$dictEqBool'' :: "DictEqBool"
-''$dictEqBool''   = eqBool
+''$dictEq$Bool'' :: "DictEq$Bool"
+''$dictEq$Bool''   = eqBool
 
-''$dictEq[]'' :: "DictEqList"
-''$dictEq[]'' dict = eqList dict
+''$dictEq$[]'' :: "DictEq$List"
+''$dictEq$[]'' dict = eqList dict
 
-''$dictEqChar'' :: "DictEqChar"
-''$dictEqChar''   = ''$dictEqInt''
+''$dictEq$Char'' :: "DictEq$Char"
+''$dictEq$Char''   = ''$dictEq$Int''
 
-''$dictEq()'' :: "DictEqTuple0"
-''$dictEq()'' = \x y -> 
+''$dictEq$()'' :: "DictEq$Tuple0"
+''$dictEq$()'' = \x y -> 
     case x of { '':()'' -> case y of { '':()'' -> True } }
 
-''$dictEq(,)'' :: "DictEqTuple2"
-''$dictEq(,)'' d1 d2 = \x y -> 
+''$dictEq$(,)'' :: "DictEq$Tuple2"
+''$dictEq$(,)'' d1 d2 = \x y -> 
     case x of { (@0, 2) x1 x2 -> case y of { (@0, 2) y1 y2 ->
         allTrue [ (==) d1 x1 y1, (==) d2 x2 y2 ] } }
 
-''$dictEq(,,)'' :: "DictEqTuple3"
-''$dictEq(,,)'' d1 d2 d3 = \x y -> 
+''$dictEq$(,,)'' :: "DictEq$Tuple3"
+''$dictEq$(,,)'' d1 d2 d3 = \x y -> 
     case x of { (@0, 3) x1 x2 x3 -> 
         case y of { (@0, 3) y1 y2 y3 ->
             allTrue [ (==) d1 x1 y1, (==) d2 x2 y2, (==) d3 x3 y3 ] } }
 
-''$dictEq(,,,)'' :: "DictEqTuple4"
-''$dictEq(,,,)'' d1 d2 d3 d4 = \x y -> 
+''$dictEq$(,,,)'' :: "DictEq$Tuple4"
+''$dictEq$(,,,)'' d1 d2 d3 d4 = \x y -> 
     case x of { (@0, 4) x1 x2 x3 x4 -> 
         case y of { (@0, 4) y1 y2 y3 y4 ->
             allTrue [ (==) d1 x1 y1, (==) d2 x2 y2, (==) d3 x3 y3, (==) d4 x4 y4 ] } }
 
-''$dictEq(,,,,)'' :: "DictEqTuple5"
-''$dictEq(,,,,)'' d1 d2 d3 d4 d5 = \x y -> 
+''$dictEq$(,,,,)'' :: "DictEq$Tuple5"
+''$dictEq$(,,,,)'' d1 d2 d3 d4 d5 = \x y -> 
     case x of { (@0, 5) x1 x2 x3 x4 x5 -> 
         case y of { (@0, 5) y1 y2 y3 y4 y5 ->
             allTrue [ (==) d1 x1 y1, (==) d2 x2 y2, (==) d3 x3 y3, (==) d4 x4 y4
                     , (==) d5 x5 y5 ] } }
 
-''$dictEq(,,,,,)'' :: "DictEqTuple6"
-''$dictEq(,,,,,)'' d1 d2 d3 d4 d5 d6 = \x y -> 
+''$dictEq$(,,,,,)'' :: "DictEq$Tuple6"
+''$dictEq$(,,,,,)'' d1 d2 d3 d4 d5 d6 = \x y -> 
     case x of { (@0, 6) x1 x2 x3 x4 x5 x6 -> 
         case y of { (@0, 6) y1 y2 y3 y4 y5 y6 ->
             allTrue [ (==) d1 x1 y1, (==) d2 x2 y2, (==) d3 x3 y3, (==) d4 x4 y4
                     , (==) d5 x5 y5, (==) d6 x6 y6 ] } }
 
-''$dictEq(,,,,,,)'' :: "DictEqTuple7"
-''$dictEq(,,,,,,)'' d1 d2 d3 d4 d5 d6 d7 = \x y -> 
+''$dictEq$(,,,,,,)'' :: "DictEq$Tuple7"
+''$dictEq$(,,,,,,)'' d1 d2 d3 d4 d5 d6 d7 = \x y -> 
     case x of { (@0, 7) x1 x2 x3 x4 x5 x6 x7 -> 
         case y of { (@0, 7) y1 y2 y3 y4 y5 y6 y7 ->
             allTrue [ (==) d1 x1 y1, (==) d2 x2 y2, (==) d3 x3 y3, (==) d4 x4 y4
                     , (==) d5 x5 y5, (==) d6 x6 y6, (==) d7 x7 y7 ] } }
 
-''$dictEq(,,,,,,,)'' :: "DictEqTuple8"
-''$dictEq(,,,,,,,)'' d1 d2 d3 d4 d5 d6 d7 d8 = \x y -> 
+''$dictEq$(,,,,,,,)'' :: "DictEq$Tuple8"
+''$dictEq$(,,,,,,,)'' d1 d2 d3 d4 d5 d6 d7 d8 = \x y -> 
     case x of { (@0, 8) x1 x2 x3 x4 x5 x6 x7 x8 -> 
         case y of { (@0, 8) y1 y2 y3 y4 y5 y6 y7 y8 ->
             allTrue [ (==) d1 x1 y1, (==) d2 x2 y2, (==) d3 x3 y3, (==) d4 x4 y4
                     , (==) d5 x5 y5, (==) d6 x6 y6, (==) d7 x7 y7, (==) d8 x8 y8
                     ] } }
 
-''$dictEq(,,,,,,,,)'' :: "DictEqTuple9"
-''$dictEq(,,,,,,,,)'' d1 d2 d3 d4 d5 d6 d7 d8 d9 = \x y -> 
+''$dictEq$(,,,,,,,,)'' :: "DictEq$Tuple9"
+''$dictEq$(,,,,,,,,)'' d1 d2 d3 d4 d5 d6 d7 d8 d9 = \x y -> 
     case x of { (@0, 9) x1 x2 x3 x4 x5 x6 x7 x8 x9 -> 
         case y of { (@0, 9) y1 y2 y3 y4 y5 y6 y7 y8 y9 ->
             allTrue [ (==) d1 x1 y1, (==) d2 x2 y2, (==) d3 x3 y3, (==) d4 x4 y4
                     , (==) d5 x5 y5, (==) d6 x6 y6, (==) d7 x7 y7, (==) d8 x8 y8
                     , (==) d9 x9 y9 ] } }
 
-''$dictEq(,,,,,,,,,)'' :: "DictEqTuple10"
-''$dictEq(,,,,,,,,,)'' d1 d2 d3 d4 d5 d6 d7 d8 d9 d10 = \x y -> 
+''$dictEq$(,,,,,,,,,)'' :: "DictEq$Tuple10"
+''$dictEq$(,,,,,,,,,)'' d1 d2 d3 d4 d5 d6 d7 d8 d9 d10 = \x y -> 
     case x of { (@0, 10) x1 x2 x3 x4 x5 x6 x7 x8 x9 x10 -> 
         case y of { (@0, 10) y1 y2 y3 y4 y5 y6 y7 y8 y9 y10 ->
             allTrue [ (==) d1 x1 y1, (==) d2 x2 y2, (==) d3 x3 y3, (==) d4 x4 y4
@@ -468,13 +468,13 @@ eqBool x y =
         True -> y
         False -> not y
 
-eqList ''$dictEqElem'' xs ys = 
+eqList ''$dictEq$Elem'' xs ys = 
     case xs of 
         (:) xh xt -> 
             case ys of 
                 (:) yh yt ->
-                    case (==) ''$dictEqElem'' xh yh of
-                        True  -> eqList ''$dictEqElem'' xt yt
+                    case (==) ''$dictEq$Elem'' xh yh of
+                        True  -> eqList ''$dictEq$Elem'' xt yt
                         False -> False
                 _ -> False
         _ -> case ys of
@@ -487,85 +487,85 @@ not x = case x of True -> False
             
 {- Ord -}
 
-''$dictOrdInt'' :: "DictOrdInt"
-''$dictOrdInt''   = (@0, 2) ''$dictEqInt''   compareInt
+''$dictOrd$Int'' :: "DictOrd$Int"
+''$dictOrd$Int''   = (@0, 2) ''$dictEq$Int''   compareInt
 
 
-''$dictOrdFloat'' :: "DictOrdFloat"
-''$dictOrdFloat'' = (@0, 2) ''$dictEqFloat'' compareFloat
+''$dictOrd$Float'' :: "DictOrd$Float"
+''$dictOrd$Float'' = (@0, 2) ''$dictEq$Float'' compareFloat
 
-''$dictOrdChar''  :: "DictOrdChar"
-''$dictOrdChar''  = ''$dictOrdInt''
+''$dictOrd$Char''  :: "DictOrd$Char"
+''$dictOrd$Char''  = ''$dictOrd$Int''
 
-''$dictOrdBool''  :: "DictOrdBool"
-''$dictOrdBool''  = (@0, 2) ''$dictEqBool'' compareBool
+''$dictOrd$Bool''  :: "DictOrd$Bool"
+''$dictOrd$Bool''  = (@0, 2) ''$dictEq$Bool'' compareBool
 
-''$dictOrd[]'' :: "DictOrdList"
-''$dictOrd[]'' dict = (@0, 2) ''$dictEq[]'' (compareList dict)
+''$dictOrd$[]'' :: "DictOrd$List"
+''$dictOrd$[]'' dict = (@0, 2) ''$dictEq$[]'' (compareList dict)
 
-''$dictOrd()'' :: "DictOrdTuple0"
-''$dictOrd()'' = 
-    (@0, 2) ''$dictEq()'' 
+''$dictOrd$()'' :: "DictOrd$Tuple0"
+''$dictOrd$()'' = 
+    (@0, 2) ''$dictEq$()'' 
         (\x y -> 
         case x of { '':()'' -> 
             case y of { '':()'' ->
                 EQ } } )
 
-''$dictOrd(,)'' :: "DictOrdTuple2"
-''$dictOrd(,)'' d1 d2 = 
-    (@0, 2) ''$dictEq(,)'' 
+''$dictOrd$(,)'' :: "DictOrd$Tuple2"
+''$dictOrd$(,)'' d1 d2 = 
+    (@0, 2) ''$dictEq$(,)'' 
         (\x y -> 
         case x of { (@0, 2) x1 x2 -> 
             case y of { (@0, 2) y1 y2 ->
                 lexico  [ compare d1 x1 y1, compare d2 x2 y2 ] } } )
 
-''$dictOrd(,,)'' :: "DictOrdTuple3"
-''$dictOrd(,,)'' d1 d2 d3 = 
-    (@0, 2) ''$dictEq(,,)'' 
+''$dictOrd$(,,)'' :: "DictOrd$Tuple3"
+''$dictOrd$(,,)'' d1 d2 d3 = 
+    (@0, 2) ''$dictEq$(,,)'' 
         (\x y -> 
         case x of { (@0, 3) x1 x2 x3 -> 
             case y of { (@0, 3) y1 y2 y3 ->
                 lexico  [ compare d1 x1 y1, compare d2 x2 y2, compare d3 x3 y3 ] } } )
 
-''$dictOrd(,,,)'' :: "DictOrdTuple4"
-''$dictOrd(,,,)'' d1 d2 d3 d4 = 
-    (@0, 2) ''$dictEq(,,,)'' 
+''$dictOrd$(,,,)'' :: "DictOrd$Tuple4"
+''$dictOrd$(,,,)'' d1 d2 d3 d4 = 
+    (@0, 2) ''$dictEq$(,,,)'' 
         (\x y -> 
         case x of { (@0, 4) x1 x2 x3 x4 -> 
             case y of { (@0, 4) y1 y2 y3 y4 ->
                 lexico  [ compare d1 x1 y1, compare d2 x2 y2, compare d3 x3 y3, compare d4 x4 y4
                         ] } } )
 
-''$dictOrd(,,,,)'' :: "DictOrdTuple5"
-''$dictOrd(,,,,)'' d1 d2 d3 d4 d5 = 
-    (@0, 2) ''$dictEq(,,,,)'' 
+''$dictOrd$(,,,,)'' :: "DictOrd$Tuple5"
+''$dictOrd$(,,,,)'' d1 d2 d3 d4 d5 = 
+    (@0, 2) ''$dictEq$(,,,,)'' 
         (\x y -> 
         case x of { (@0, 5) x1 x2 x3 x4 x5 -> 
             case y of { (@0, 5) y1 y2 y3 y4 y5 ->
                 lexico  [ compare d1 x1 y1, compare d2 x2 y2, compare d3 x3 y3, compare d4 x4 y4
                         , compare d5 x5 y5 ] } } )
 
-''$dictOrd(,,,,,)'' :: "DictOrdTuple6"
-''$dictOrd(,,,,,)'' d1 d2 d3 d4 d5 d6 = 
-    (@0, 2) ''$dictEq(,,,,,)'' 
+''$dictOrd$(,,,,,)'' :: "DictOrd$Tuple6"
+''$dictOrd$(,,,,,)'' d1 d2 d3 d4 d5 d6 = 
+    (@0, 2) ''$dictEq$(,,,,,)'' 
         (\x y -> 
         case x of { (@0, 6) x1 x2 x3 x4 x5 x6 -> 
             case y of { (@0, 6) y1 y2 y3 y4 y5 y6 ->
                 lexico  [ compare d1 x1 y1, compare d2 x2 y2, compare d3 x3 y3, compare d4 x4 y4
                         , compare d5 x5 y5, compare d6 x6 y6 ] } } )
                         
-''$dictOrd(,,,,,,)'' :: "DictOrdTuple7"
-''$dictOrd(,,,,,,)'' d1 d2 d3 d4 d5 d6 d7 = 
-    (@0, 2) ''$dictEq(,,,,,,)'' 
+''$dictOrd$(,,,,,,)'' :: "DictOrd$Tuple7"
+''$dictOrd$(,,,,,,)'' d1 d2 d3 d4 d5 d6 d7 = 
+    (@0, 2) ''$dictEq$(,,,,,,)'' 
         (\x y -> 
         case x of { (@0, 7) x1 x2 x3 x4 x5 x6 x7 -> 
             case y of { (@0, 7) y1 y2 y3 y4 y5 y6 y7 ->
                 lexico  [ compare d1 x1 y1, compare d2 x2 y2, compare d3 x3 y3, compare d4 x4 y4
                         , compare d5 x5 y5, compare d6 x6 y6, compare d7 x7 y7 ] } } )
 
-''$dictOrd(,,,,,,,)'' :: "DictOrdTuple8"
-''$dictOrd(,,,,,,,)'' d1 d2 d3 d4 d5 d6 d7 d8 = 
-    (@0, 2) ''$dictEq(,,,,,,,)'' 
+''$dictOrd$(,,,,,,,)'' :: "DictOrd$Tuple8"
+''$dictOrd$(,,,,,,,)'' d1 d2 d3 d4 d5 d6 d7 d8 = 
+    (@0, 2) ''$dictEq$(,,,,,,,)'' 
         (\x y -> 
         case x of { (@0, 8) x1 x2 x3 x4 x5 x6 x7 x8 -> 
             case y of { (@0, 8) y1 y2 y3 y4 y5 y6 y7 y8 ->
@@ -573,9 +573,9 @@ not x = case x of True -> False
                         , compare d5 x5 y5, compare d6 x6 y6, compare d7 x7 y7, compare d8 x8 y8
                         ] } } )
 
-''$dictOrd(,,,,,,,,)'' :: "DictOrdTuple9"
-''$dictOrd(,,,,,,,,)'' d1 d2 d3 d4 d5 d6 d7 d8 d9 = 
-    (@0, 2) ''$dictEq(,,,,,,,,)'' 
+''$dictOrd$(,,,,,,,,)'' :: "DictOrd$Tuple9"
+''$dictOrd$(,,,,,,,,)'' d1 d2 d3 d4 d5 d6 d7 d8 d9 = 
+    (@0, 2) ''$dictEq$(,,,,,,,,)'' 
         (\x y -> 
         case x of { (@0, 9) x1 x2 x3 x4 x5 x6 x7 x8 x9  -> 
             case y of { (@0, 9) y1 y2 y3 y4 y5 y6 y7 y8 y9 ->
@@ -583,9 +583,9 @@ not x = case x of True -> False
                         , compare d5 x5 y5, compare d6 x6 y6, compare d7 x7 y7, compare d8 x8 y8
                         , compare d9 x9 y9 ] } } )
 
-''$dictOrd(,,,,,,,,,)'' :: "DictOrdTuple10"
-''$dictOrd(,,,,,,,,,)'' d1 d2 d3 d4 d5 d6 d7 d8 d9 d10 = 
-    (@0, 2) ''$dictEq(,,,,,,,,,)'' 
+''$dictOrd$(,,,,,,,,,)'' :: "DictOrd$Tuple10"
+''$dictOrd$(,,,,,,,,,)'' d1 d2 d3 d4 d5 d6 d7 d8 d9 d10 = 
+    (@0, 2) ''$dictEq$(,,,,,,,,,)'' 
         (\x y -> 
         case x of { (@0, 10) x1 x2 x3 x4 x5 x6 x7 x8 x9 x10 -> 
             case y of { (@0, 10) y1 y2 y3 y4 y5 y6 y7 y8 y9 y10 ->
@@ -672,8 +672,8 @@ map f xs = case xs of
               [] -> [] ;
 			  (:) x xs -> (:) (f x) (map f xs)
 
-''$dictEnumInt'' :: "DictEnumInt"
-''$dictEnumInt'' = (@0, 8) id id enumFromInt enumFromThenInt enumSuccInt enumPredInt enumFromToInt enumFromThenToInt
+''$dictEnum$Int'' :: "DictEnum$Int"
+''$dictEnum$Int'' = (@0, 8) id id enumFromInt enumFromThenInt enumSuccInt enumPredInt enumFromToInt enumFromThenToInt
 
 enumSuccInt x = (+#) x 1
 enumPredInt x = (-#) x 1
@@ -691,8 +691,8 @@ enumIntWithSteps p d x =
       True -> (:) x (enumIntWithSteps p d ((+#) d x)) ;
 	  _ -> []
 
-''$dictEnumFloat'' :: "DictEnumFloat"
-''$dictEnumFloat'' = (@0, 8) toEnumFloat truncate enumFromFloat enumFromThenFloat enumSuccFloat enumPredFloat enumFromToFloat enumFromThenToFloat
+''$dictEnum$Float'' :: "DictEnum$Float"
+''$dictEnum$Float'' = (@0, 8) toEnumFloat truncate enumFromFloat enumFromThenFloat enumSuccFloat enumPredFloat enumFromToFloat enumFromThenToFloat
 
 toEnumFloat x   = let! x = x in primIntToFloat x
 enumSuccFloat x = let! x = ((+#) (truncate x) 1) in primIntToFloat x
@@ -711,8 +711,8 @@ enumFloatWithSteps p d x =
       True -> (:) x (enumFloatWithSteps p d ((+.) d x)) ;
 	  _ -> []
 
-''$dictEnum()'' :: "DictEnumTuple0"
-''$dictEnum()'' = makeEnumDict toEnumVoid fromEnumVoid enumFromVoid enumFromThenVoid
+''$dictEnum$()'' :: "DictEnum$Tuple0"
+''$dictEnum$()'' = makeEnumDict toEnumVoid fromEnumVoid enumFromVoid enumFromThenVoid
 
 toEnumVoid i = 
    case i of 
@@ -722,8 +722,8 @@ fromEnumVoid _ = 0
 enumFromVoid _ = [()]
 enumFromThenVoid _ _ = [()]
 	  
-''$dictEnumChar'' :: "DictEnumChar"
-''$dictEnumChar'' = makeEnumDict primChr primOrd enumFromChar enumFromThenChar
+''$dictEnum$Char'' :: "DictEnum$Char"
+''$dictEnum$Char'' = makeEnumDict primChr primOrd enumFromChar enumFromThenChar
 
 enumFromChar x = enumCharWithSteps 1 (primOrd x)
 enumFromThenChar x y = enumCharWithSteps ((-#) (primOrd y) (primOrd x)) (primOrd x)
@@ -734,8 +734,8 @@ enumCharWithSteps d x =
 	          True -> [] ;
 			  _ -> (:) (primChr x) (enumCharWithSteps d ((+#) d x))
 
-''$dictEnumBool'' :: "DictEnumBool"
-''$dictEnumBool'' = makeEnumDict toEnumBool fromEnumBool enumFromBool enumFromThenBool
+''$dictEnum$Bool'' :: "DictEnum$Bool"
+''$dictEnum$Bool'' = makeEnumDict toEnumBool fromEnumBool enumFromBool enumFromThenBool
 
 toEnumBool i =
    case i of 

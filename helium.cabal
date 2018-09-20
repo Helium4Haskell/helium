@@ -146,6 +146,7 @@ Library
     Helium.CodeGeneration.DerivingEq
     Helium.CodeGeneration.DerivingShow
     Helium.CodeGeneration.PatternMatch
+    Helium.CodeGeneration.InstanceDictionary
     Helium.Main.Args
     Helium.Main.Compile
     Helium.Main.CompileUtils

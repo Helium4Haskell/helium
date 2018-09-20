@@ -24,7 +24,7 @@ import Helium.Utils.Utils(internalError, hole)
 
 import Control.Monad(when, liftM)
 import Data.Char(ord)
-import Data.List(isPrefixOf)
+import Data.List(isPrefixOf, isSuffixOf)
 
 lexer :: [Option] -> String -> [Char] -> Either LexerError ([Token], [LexerWarning])
 lexer opts fileName input = runLexerMonad opts fileName (mainLexer input)
@@ -99,7 +99,12 @@ mainLexer' useTutor input@(c:cs)
         nextPos c
         mainLexer cs
     | myIsUpper c = -- constructor
-        lexName isLetter LexCon (internalError "Lexer" "mainLexer'" "constructor") [] input
+            let 
+                firstLex = takeWhile (\c -> isLetter c || (c =='$')) input
+                correctInput = not (isPrefixOf "$" firstLex) && not (isSuffixOf "$" firstLex) && '$' `elem` firstLex
+                select  | correctInput = \c -> isLetter c || c == '$'
+                        | otherwise = isLetter
+            in lexName select  LexCon (internalError "Lexer" "mainLexer'" "constructor") [] input
     | c == ':' = -- constructor operator
         lexName isSymbol LexConSym LexResConSym reservedConSyms input
     | useTutor, c == '?' = -- named hole

@@ -181,20 +181,22 @@ combineClassDecls (super1, inst1) (super2, inst2)
 createClassEnvironment :: ImportEnvironment -> ClassEnvironment
 createClassEnvironment importenv =
     let  dicts = map (drop (length dictPrefix) . show)
-               . M.keys
-               . M.filterWithKey isDict
-               $ typeEnvironment importenv
+                . M.keys
+                . M.filterWithKey isDict
+                $ typeEnvironment importenv
          isDict n _ = dictPrefix `isPrefixOf` show n
          dictPrefix = "$dict"
-         -- classes = ["Eq","Num","Ord","Enum","Show"]
-         -- TODO: put $ between class name and type in dictionary name
-         --  i.e. $dictEq$Int instead of $dictEqInt
-         splitDictName ('E':'q':t) = ("Eq", t)
-         splitDictName ('N':'u':'m':t) = ("Num", t)
-         splitDictName ('O':'r':'d':t) = ("Ord", t)
-         splitDictName ('E':'n':'u':'m':t) = ("Enum", t)
-         splitDictName ('S':'h':'o':'w':t) = ("Show", t)
-         splitDictName x = internalError "ImportEnvironment" "splitDictName" ("illegal dictionary: " ++ show x)
+         dictSplitter = "$"
+            -- classes = ["Eq","Num","Ord","Enum","Show"]
+            -- TODO: put $ between class name and type in dictionary name
+            --  i.e. $dictEq$Int instead of $dictEqInt
+         splitDictName dict  | length (filter (== '$') dict) == 1 = (className dict, typeName dict)
+                            | otherwise = internalError "ImportEnvironment" "splitDictName" ("illegal dictionary: " ++ show dict)
+         className :: String -> String
+         className = takeWhile (/='$')
+         typeName :: String -> String
+         typeName = drop 1 . dropWhile (/='$')
+
          arity s | s == "()" = 0
                  | isTupleConstructor s = length s - 1
                  | otherwise = M.findWithDefault

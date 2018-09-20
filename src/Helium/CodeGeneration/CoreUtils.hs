@@ -13,6 +13,7 @@ module Helium.CodeGeneration.CoreUtils
     ,   cons, nil
     ,   var, decl
     ,   float, packedString
+    ,   toplevelType
     ) where
 
 import Lvm.Core.Expr
@@ -21,6 +22,11 @@ import Lvm.Core.Utils
 import Data.Char
 import Lvm.Common.Byte(bytesFromString)
 import qualified Lvm.Core.Expr as Core
+import qualified Data.Map as M
+import Helium.ModuleSystem.ImportEnvironment
+import Helium.Syntax.UHA_Syntax
+import Helium.Syntax.UHA_Utils
+import Helium.Utils.Utils
 
 infixl `app_`
 
@@ -117,3 +123,14 @@ decl isPublic x e =
 
 packedString :: String -> Expr
 packedString s = Lit (LitBytes (bytesFromString s))
+
+
+toplevelType :: Name -> ImportEnvironment -> Bool -> [Custom]
+toplevelType name ie isTopLevel
+    | isTopLevel = [custom "type" typeString]
+    | otherwise  = []
+    where
+        typeString = maybe
+            (internalError "ToCoreDecl" "Declaration" ("no type found for " ++ getNameName name))
+            show
+            (M.lookup name (typeEnvironment ie))
