@@ -10,19 +10,24 @@ module Helium.ModuleSystem.CoreToImportEnv(getImportEnvironment) where
 
 import Lvm.Core.Expr
 import Lvm.Core.Utils
+import Lvm.Common.Id
+import Lvm.Common.Byte(stringFromBytes)
+
 import Helium.Utils.Utils
 import Helium.StaticAnalysis.Miscellaneous.TypeConversion
 import Helium.Parser.ParseLibrary
 import Helium.Parser.Lexer(lexer)
 import Helium.Parser.Parser(type_, contextAndType)
+import Helium.Parser.OperatorTable
 import Helium.ModuleSystem.ImportEnvironment
 import Helium.Syntax.UHA_Utils
-import Lvm.Common.Id
-import Helium.Syntax.UHA_Syntax
-import Helium.Parser.OperatorTable
-import Top.Types
-import Lvm.Common.Byte(stringFromBytes)
 import Helium.Syntax.UHA_Range(makeImportRange, setNameRange)
+import Helium.Syntax.UHA_Syntax
+
+import Top.Types
+
+
+
 
 typeFromCustoms :: String -> [Custom] -> TpScheme
 typeFromCustoms n [] =
@@ -112,9 +117,11 @@ makeImportName importedInMod importedFromMod n =
         (nameFromId n)
         (makeImportRange (idFromString importedInMod) importedFromMod)
 
+
 getImportEnvironment :: String -> [CoreDecl] -> ImportEnvironment
 getImportEnvironment importedInModule = foldr insert emptyEnvironment
    where
+      insert :: CoreDecl -> (ImportEnvironment -> ImportEnvironment) 
       insert decl = 
          case decl of 
          
@@ -187,7 +194,30 @@ getImportEnvironment importedInModule = foldr insert emptyEnvironment
               in case reads text of 
                     [(rule, [])] -> addTypingStrategies rule
                     _ -> intErr "Could not parse typing strategy from core file"
-
+            
+           -- class decls
+           DeclCustom { declName    = n
+                      , declKind    = DeclKindCustom ident
+                      , declCustoms = cs
+                      }
+                      | stringFromId ident == "ClassDefinition" -> 
+                        let 
+                            selectCustom :: String -> [Custom] -> [Custom]
+                            selectCustom s = filter (isCustom s)
+                            isCustom :: String -> Custom -> Bool
+                            isCustom s (CustomDecl (DeclKindCustom id) _) = stringFromId id == s 
+                            isCustom _ _ = False
+                            getTypeVariable :: Custom -> Names
+                            getTypeVariable (CustomDecl _ [CustomName n]) = [nameFromString $ stringFromId n]
+                            className = nameFromString $ stringFromId n
+                            classVariables = getTypeVariable $ head (selectCustom "ClassTypeVariables" cs)
+                            getFunction :: Custom -> (Name, TpScheme, Bool)
+                            getFunction (CustomDecl _ [
+                                    CustomName fname,
+                                    CustomBytes tps
+                                ]) = (nameFromString $ stringFromId fname, makeTpSchemeFromType $ parseFromString type_ $ stringFromBytes tps, False)
+                            classMembers = (classVariables, map getFunction $ selectCustom "Function" cs)
+                        in addClassMember className classMembers 
            -- !!! Print importedFromModId from "declAccess = Imported{importModule = importedFromModId}" as well
            DeclAbstract{ declName = n } ->
               intErr  ("don't know how to handle declared DeclAbstract: " ++ stringFromId n)

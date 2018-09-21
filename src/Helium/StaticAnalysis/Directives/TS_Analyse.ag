@@ -94,7 +94,7 @@ SEM TypingStrategy
                                            } 
                 in fst (solve options (reverse @statements.userConstraints) greedyConstraintSolver)
                       
-           . classEnv = createClassEnvironment @lhs.importEnvironment
+           . classEnv = createClassEnvironment [@lhs.importEnvironment] @lhs.importEnvironment
            
            . soundnessErrors = 
                 if not (null @staticErrors)

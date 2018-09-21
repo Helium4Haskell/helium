@@ -4,16 +4,19 @@ import Lvm.Core.Expr
 import Lvm.Core.Module
 
 import Lvm.Common.Id 
+import Lvm.Common.Byte
 
 import Helium.CodeGeneration.CoreUtils
 import Helium.ModuleSystem.ImportEnvironment
 import Helium.Syntax.UHA_Syntax
 import Helium.Syntax.UHA_Utils
+import Helium.Utils.Utils
+
+import Top.Types
 import Text.PrettyPrint.Leijen
 import qualified Data.Map as M
 import Data.Maybe
 
-import Debug.Trace
 
 constructFunctionMap :: ImportEnvironment -> Name -> [(Name, Int)]
 constructFunctionMap env name = 
@@ -78,3 +81,21 @@ getCoreName cd = stringFromId $ declName cd
 
 getCoreValue :: CoreDecl -> Expr 
 getCoreValue = valueValue
+
+constructClassMemberCustomDecl :: Maybe (Names, [(Name, TpScheme, Bool)]) -> [Custom]
+constructClassMemberCustomDecl Nothing =  internalError "InstanceDictionary" "constructClassMemberCustomDecl" "Unknown class" 
+constructClassMemberCustomDecl (Just (typevars, members)) = typeVarsDecl : map functionToCustom members
+                        where
+                            typeVarsDecl :: Custom
+                            typeVarsDecl = CustomDecl 
+                                (DeclKindCustom $ idFromString "ClassTypeVariables")
+                                (map (CustomName . idFromString . getNameName) typevars)
+                            functionToCustom :: (Name, TpScheme, Bool) -> Custom
+                            functionToCustom (name, tps, _) = CustomDecl 
+                                (DeclKindCustom $ idFromString "Function") 
+                                [
+                                    CustomName $ idFromString $ getNameName name, 
+                                    CustomBytes $ bytesFromString $ show tps
+                                ]
+
+                            

@@ -196,7 +196,16 @@ SEM Declaration
     --  fixity                   : Fixity
     --  priority                 : MaybeInt
     --  operators                : Names
-    | Class             lhs.decls    = classFunctions @lhs.importEnv $ constructFunctionMap @lhs.importEnv @simpletype.name
+    | Class             lhs.decls    = (classFunctions @lhs.importEnv $ constructFunctionMap @lhs.importEnv @simpletype.name) ++ [
+                                            Core.DeclCustom
+                                                {
+                                                    --declName :: Id, declAccess :: !Access, declArity :: !Arity, declCustoms :: ![Custom]
+                                                    Core.declName = idFromName @simpletype.name,
+                                                    Core.declAccess = Core.public,
+                                                    Core.declKind = Core.DeclKindCustom $ idFromString "ClassDefinition",
+                                                    Core.declCustoms = constructClassMemberCustomDecl (M.lookup @simpletype.name $ classMemberEnvironment @lhs.importEnv)
+                                                }
+                                        ]
     | Instance          lhs .   decls    =  [ constructDictionary 
                                                 (constructFunctionMap @lhs.importEnv @name.self)
                                                 @where.whereDeclarations @name.self @loc.typeName

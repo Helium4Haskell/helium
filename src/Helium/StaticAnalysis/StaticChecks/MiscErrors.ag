@@ -30,7 +30,7 @@ SEM Module
             loc .  typeSynonyms = getOrderedTypeSynonyms @loc.imports
             loc  . typeSynonymErrors = noTypeSynonymsInInstance @loc.typeSynonyms @body.instances
             loc  . instanceErrors = makeClassEnvironmentErrors $ checkClassEnvironment @loc.typeSynonyms @body.classEnv @body.instances
-            loc  . overlappingInstances = overlappingInstances $ foldr insertInst @body.classEnv @body.instances
+            loc  . overlappingInstances = overlappingInstances $ foldr insertInst @body.classEnv (getInstanceNames @lhs.importEnvironments ++ @body.instances)
 
 -----------------------------------------
 -- Body

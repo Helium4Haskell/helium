@@ -70,10 +70,6 @@ SEM Declaration
 
 -- monomorphic binding constructs
 
-imports{
-import Debug.Trace
-}
-
 SEM FunctionBinding
   | FunctionBinding   loc . (namesInScope, unboundNames, scopeInfo) = changeOfScope @lefthandside.patVarNames @righthandside.unboundNames @lhs.namesInScope
                       lhs . unboundNames = @unboundNames -- not a copy-rule for my ag-compiler!

@@ -27,7 +27,7 @@ SEM Module
            . classEnv            = -- extend the set of imported instance declarations with the
                                    -- derived instances
                                    foldr (\(n, i) -> insertInstance (show n) i)
-                                         (createClassEnvironment @lhs.importEnvironment)
+                                         (createClassEnvironment [@lhs.importEnvironment] @lhs.importEnvironment)
                                          @body.collectInstances
            . typeErrors          = case makeTypeErrors @lhs.options @classEnv @orderedTypeSynonyms @substitution @solveErrors of
                                       []   -> if NoOverloadingTypeCheck `elem` @lhs.options
@@ -193,13 +193,13 @@ substituteClassVariables tps classVariable beta = ntps
 
 
 matchClassDefinitionToInstanceDefinition :: [(Name, TpScheme)] -> [(Name, Tp)] -> [(Name, TpScheme, Tp)]
-matchClassDefinitionToInstanceDefinition classMember insMember = map combineMember classMember
+matchClassDefinitionToInstanceDefinition classMember insMember = map combineMember insMember
     where
-        combineMember :: (Name, TpScheme) -> (Name, TpScheme, Tp)
-        combineMember (name, tpscheme) = 
-                case lookup name insMember of
-                    Nothing -> internalError "TypeInferenceRules.ag" "matchClassDefinitionToInstanceDefinition" "Unknown instance member"
-                    Just tp -> (name, tpscheme, tp)
+        combineMember :: (Name, Tp) -> (Name, TpScheme, Tp)
+        combineMember (name, tp) = 
+                case lookup name classMember of
+                    Nothing -> internalError "TypeInferenceRules.ag" "matchClassDefinitionToInstanceDefinition" $ "Unknown instance member" ++ show name ++ " in " ++ show classMember
+                    Just tps -> (name, tps, tp)
 
 getClassTypeVariables :: (Names, a) -> Names
 getClassTypeVariables = fst

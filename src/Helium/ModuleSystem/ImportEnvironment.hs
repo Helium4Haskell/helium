@@ -9,18 +9,21 @@
 
 module Helium.ModuleSystem.ImportEnvironment where
 
-import qualified Data.Map as M
-import Helium.Utils.Utils (internalError)
-import Helium.Syntax.UHA_Syntax -- (Name)
-import Helium.Syntax.UHA_Utils
-import Top.Types
 import Helium.Parser.OperatorTable
 import Helium.StaticAnalysis.Messages.Messages () -- instance Show Name
 import Helium.StaticAnalysis.Heuristics.RepairHeuristics (Siblings)
 import Helium.StaticAnalysis.Directives.TS_CoreSyntax
+import Helium.Utils.Utils (internalError)
+import Helium.Syntax.UHA_Syntax -- (Name)
+import Helium.Syntax.UHA_Utils
+import Helium.Syntax.UHA_Range
+import Top.Types
+
+
 import Data.List
 import Data.Maybe (catMaybes)
 import Data.Function (on)
+import qualified Data.Map as M
 
 type TypeEnvironment             = M.Map Name TpScheme
 type ValueConstructorEnvironment = M.Map Name TpScheme
@@ -112,6 +115,9 @@ getOrderedTypeSynonyms importEnvironment =
 setClassMemberEnvironment :: ClassMemberEnvironment -> ImportEnvironment -> ImportEnvironment
 setClassMemberEnvironment new importenv = importenv { classMemberEnvironment = new }
 
+addClassMember :: Name -> (Names, [(Name, TpScheme, Bool)]) -> ImportEnvironment -> ImportEnvironment
+addClassMember name members env = setClassMemberEnvironment (M.insert name members (classMemberEnvironment env)) env
+
 setClassEnvironment :: ClassEnvironment -> ImportEnvironment -> ImportEnvironment
 setClassEnvironment new importenv = importenv { classEnvironment = new }
 
@@ -176,11 +182,18 @@ combineClassDecls (super1, inst1) (super2, inst2)
    | super1 == super2 = (super1, inst1 ++ inst2)
    | otherwise        = internalError "ImportEnvironment.hs" "combineClassDecls" "cannot combine class environments"
 
+getInstanceNames :: [ImportEnvironment] -> [(Range, Instance)]
+getInstanceNames c = concatMap (getInstanceNames . createClassEnvironment c) c
+        where
+            getInstanceNames :: M.Map String Class -> [(Range, Instance)]
+            getInstanceNames classes = concatMap (map (\x -> (noRange, x)) . snd) classes
+
 -- Bastiaan:
 -- Create a class environment from the dictionaries in the import environment
-createClassEnvironment :: ImportEnvironment -> ClassEnvironment
-createClassEnvironment importenv =
-    let  dicts = map (drop (length dictPrefix) . show)
+createClassEnvironment :: [ImportEnvironment] -> ImportEnvironment -> ClassEnvironment
+createClassEnvironment lookupEnvs importenv =
+    let  lookupEnv = combineImportEnvironmentList lookupEnvs
+         dicts = map (drop (length dictPrefix) . show)
                 . M.keys
                 . M.filterWithKey isDict
                 $ typeEnvironment importenv
@@ -202,7 +215,7 @@ createClassEnvironment importenv =
                  | otherwise = M.findWithDefault
                                   (internalError "ImportEnvironment" "splitDictName" ("unknown type constructor: " ++ show s))
                                   (nameFromString s)
-                                  (typeConstructors importenv)
+                                  (typeConstructors lookupEnv)
          dictTuples = [ (c, makeInstance c (arity t) t)
                       | d <- dicts, let (c, t) = splitDictName d
                       ]
@@ -287,7 +300,7 @@ instance Show ImportEnvironment where
           in showWithTitle "Functions" (showEm f (M.assocs te))
 
        classes =
-          let f (n, _) = n
+          let f (n, s) = n ++ show s
           in showWithTitle "Classes" (map f (M.assocs ce))
 
        classmembers =
