@@ -25,12 +25,14 @@ import Data.Maybe (catMaybes)
 import Data.Function (on)
 import qualified Data.Map as M
 
+type HasDefault = Bool
+
 type TypeEnvironment             = M.Map Name TpScheme
 type ValueConstructorEnvironment = M.Map Name TpScheme
 type TypeConstructorEnvironment  = M.Map Name Int
 type TypeSynonymEnvironment      = M.Map Name (Int, Tps -> Tp)
-type ClassMemberEnvironment      = M.Map Name (Names, [(Name, TpScheme, Bool)])
-type InstanceEnvironment         = M.Map Name (Instance, [Type], [(Name, TpScheme)])
+type ClassMemberEnvironment      = M.Map Name (Names, [(Name, TpScheme, Bool, HasDefault)])
+type InstanceEnvironment         = M.Map (Name, [Tp]) (Instance, [Type], [(Name, TpScheme)])
 
 type ImportEnvironments = [ImportEnvironment]
 data ImportEnvironment  =
@@ -115,7 +117,7 @@ getOrderedTypeSynonyms importEnvironment =
 setClassMemberEnvironment :: ClassMemberEnvironment -> ImportEnvironment -> ImportEnvironment
 setClassMemberEnvironment new importenv = importenv { classMemberEnvironment = new }
 
-addClassMember :: Name -> (Names, [(Name, TpScheme, Bool)]) -> ImportEnvironment -> ImportEnvironment
+addClassMember :: Name -> (Names, [(Name, TpScheme, Bool, HasDefault)]) -> ImportEnvironment -> ImportEnvironment
 addClassMember name members env = setClassMemberEnvironment (M.insert name members (classMemberEnvironment env)) env
 
 setClassEnvironment :: ClassEnvironment -> ImportEnvironment -> ImportEnvironment
@@ -304,13 +306,13 @@ instance Show ImportEnvironment where
           in showWithTitle "Classes" (map f (M.assocs ce))
 
        classmembers =
-          let f (c, fs) = show c ++ " - " ++ intercalate ", " (map (\(n, t, _)->show n ++ " :: " ++ show t) fs)
+          let f (c, fs) = show c ++ " - " ++ intercalate ", " (map (\(n, t, _, b)->show n ++ " :: " ++ show t ++ if b then " has default" else "") fs)
           in showWithTitle "Class members" (showEm f (map (\(c, m)->(c, snd m)) $ M.assocs cm))
 
        instances =
            let
                 f (i, types, fs) = show i ++ " - " ++ intercalate ", " (map show fs)
-           in showWithTitle "Instances" (showEm (f . snd) (M.assocs ins))
+           in showWithTitle "Instances" (map (f . snd) (M.assocs ins))
 
        showWithTitle title xs
           | null xs   = []

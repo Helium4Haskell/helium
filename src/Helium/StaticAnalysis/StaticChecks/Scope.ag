@@ -66,7 +66,8 @@ SEM Qualifier
 
 SEM Declaration 
   | Class   loc . (namesInScope, unboundNames, scopeInfo) = changeOfScope (@where.declVarNames) @where.unboundNames @lhs.namesInScope
-            lhs . classMemberNames = getClassMemberNames @simpletype.name @lhs.classMemberEnv
+            lhs . classMemberNames = @loc.classMemberNames
+            loc . classMemberNames = getClassMemberNames @simpletype.name @lhs.classMemberEnv
 
 -- monomorphic binding constructs
 
@@ -196,8 +197,8 @@ uniqueAppearance = Prelude.foldr myInsert ([],[]) . group . sort
 nextUnique :: Num a => a -> (a, a)         
 nextUnique n = (n+1, n)
 
-getClassMemberNames :: Name -> M.Map Name (Names, [(Name, TpScheme, Bool)]) -> [Name]
+getClassMemberNames :: Name -> M.Map Name (Names, [(Name, TpScheme, Bool, HasDefault)]) -> [Name]
 getClassMemberNames name env =  let err = internalError "Scope.ag" "getClassMemberNames" "Unkown class in environment"
-                                in maybe err (map (\(name, _, _) -> name) . snd) (M.lookup name env)
+                                in maybe err (map (\(name, _, _, _) -> name) . snd) (M.lookup name env)
 }
 

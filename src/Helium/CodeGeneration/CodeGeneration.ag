@@ -26,6 +26,7 @@ import Helium.ModuleSystem.DictionaryEnvironment
 import qualified Data.Map as M
 import Helium.StaticAnalysis.Miscellaneous.TypeConversion
 import Data.Char (ord)
+import Data.Maybe
 
 import Helium.CodeGeneration.InstanceDictionary
 
@@ -63,11 +64,10 @@ ATTR Body Declarations Declaration Expressions Expression Statements Statement
      RecordExpressionBindings Constructors Constructor
     [ dictionaryEnv : DictionaryEnvironment | | ]
 
-ATTR Body Declarations Declaration Constructor Constructors
+ATTR Body Declarations Declaration MaybeDeclarations Constructor Constructors
     [ importEnv     : ImportEnvironment | | ]
     
-SEM Expression        | Let  loc.importEnv = internalError "CodeGeneration.ag" "Expression.Let" ""
-SEM MaybeDeclarations | Just loc.importEnv = internalError "CodeGeneration.ag" "MaybeDeclarations.Just" ""      
+SEM Expression        | Let  loc.importEnv = internalError "CodeGeneration.ag" "Expression.Let" ""   
 SEM Qualifier         | Let  loc.importEnv = internalError "CodeGeneration.ag" "Qualifier.Let" ""       
 SEM Statement         | Let  loc.importEnv = internalError "CodeGeneration.ag" "Statement.Let" ""       
 

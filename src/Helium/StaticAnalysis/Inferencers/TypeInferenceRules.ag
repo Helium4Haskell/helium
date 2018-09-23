@@ -81,7 +81,7 @@ ATTR Declaration Declarations MaybeDeclarations
             [   monos:Monos 
             |   betaUnique:Int 
             |   boundBetas      USE {(++)} {[]} : {[(Name, Tp, [Tp])]} 
-                memberBindings  USE {(++)} {[]} : {[(Name, TpScheme)]}
+                typeMemberBindings  USE {(++)} {[]} : {[(Name, TpScheme)]}
                 instanceDicts   USE {M.union} {M.empty} : {TypeEnvironment}
             ]
 ATTR Declaration Declarations                   [ inheritedBDG:InheritedBDG | bindingGroups:BindingGroups | ]
@@ -123,22 +123,32 @@ SEM Declaration
                                       )
   | TypeSignature
         lhs         . betaUnique = @lhs.betaUnique + 1
-        lhs         . memberBindings = map (\name -> (name, makeTpSchemeFromType @type.self)) @names.self
+        lhs         . typeMemberBindings = map (\name -> (name, makeTpSchemeFromType @type.self)) @names.self
   | Class
         lhs         . bindingGroups = (@loc.environment, @where.assumptions, @loc.classMembers) : @lhs.bindingGroups
         lhs         . classMemberBindings = []
         where       . assumptions   = noAssumptions
         where       . constraints   = emptyTree
-        where       . betaUnique    = @lhs.betaUnique + 1 + (length @where.memberBindings)
+        where       . betaUnique    = @lhs.betaUnique + 1 + (length @where.typeMemberBindings)
         loc         . environment   = M.fromList $ map (\((n, _), tp)->(n, tp)) @members
         loc         . classBeta     = TVar @lhs.betaUnique
-        loc         . classMembers  = map (\((name, tpscheme), tp) -> 
+        loc         . classMembers  = (map (\((name, tpscheme), tp) -> 
                                             let 
                                                 subType = substituteClassVariables tpscheme @simpletype.name @classBeta
                                                 fType = addSimpleTypeContextToType @simpletype.self subType
                                             in unitTree $ (tp .::. fType) emptyConstraintInfo
-                                        ) @members
-        loc         . members       = zip @where.memberBindings (map TVar [(@lhs.betaUnique + 1)..])
+                                        ) @members)
+                                        ++
+                                        (
+                                            map (\(name, beta, _) ->
+                                                let 
+                                                    funcDef = head (filter (\((x, _), _) -> x == name) @loc.members)
+                                                    subType = substituteClassVariables (snd . fst $ funcDef) @simpletype.name @classBeta
+                                                    fType = addSimpleTypeContextToType @simpletype.self subType
+                                                in [(beta .==. (snd funcDef)) emptyConstraintInfo, (beta .::. fType) emptyConstraintInfo] .>. Node[] -- substitutue the tpscheme to be equal to @classBeta                                   
+                                            ) @where.boundBetas
+                                        ) ++ [@where.constraints]
+        loc         . members       = zip @where.typeMemberBindings (map TVar [(@lhs.betaUnique + 1)..])
   | Instance
         where   . betaUnique            = @lhs.betaUnique + 2 + 1
         where   . assumptions           = noAssumptions
@@ -164,7 +174,7 @@ SEM Declaration
                                             in ((tp .::. fType) @loc.cinfo)
                                             ) @memberBetas]
         loc     . memberBetas           = matchClassDefinitionToInstanceDefinition 
-                                                (getInstanceFunctions (getInstanceMembers @lhs.importEnvironment @name.self)) $ 
+                                                (getInstanceFunctions (getInstanceMembers @lhs.importEnvironment (@name.self, map (makeTpFromType []) @types.self))) $ 
                                                 map (\(n, b, _) -> (n, b)) @where.boundBetas
         loc     . classVariable         = head $ classVariablesToBeta (@lhs.betaUnique + 2) $ getClassTypeVariables @loc.classMembers
 
@@ -193,25 +203,25 @@ substituteClassVariables tps classVariable beta = ntps
 
 
 matchClassDefinitionToInstanceDefinition :: [(Name, TpScheme)] -> [(Name, Tp)] -> [(Name, TpScheme, Tp)]
-matchClassDefinitionToInstanceDefinition classMember insMember = map combineMember insMember
+matchClassDefinitionToInstanceDefinition classMember insMember = catMaybes $ map combineMember insMember
     where
-        combineMember :: (Name, Tp) -> (Name, TpScheme, Tp)
+        combineMember :: (Name, Tp) -> Maybe (Name, TpScheme, Tp)
         combineMember (name, tp) = 
                 case lookup name classMember of
-                    Nothing -> internalError "TypeInferenceRules.ag" "matchClassDefinitionToInstanceDefinition" $ "Unknown instance member" ++ show name ++ " in " ++ show classMember
-                    Just tps -> (name, tps, tp)
+                    Nothing -> Nothing
+                    Just tps -> Just (name, tps, tp)
 
 getClassTypeVariables :: (Names, a) -> Names
 getClassTypeVariables = fst
 
-getClassFunctions :: (Names, [(Name, TpScheme, Bool)]) -> [(Name, TpScheme, Bool)]
+getClassFunctions :: (Names, [(Name, TpScheme, Bool, HasDefault)]) -> [(Name, TpScheme, Bool, HasDefault)]
 getClassFunctions = snd
 
-selectClass :: ImportEnvironment -> Name -> (Names, [(Name, TpScheme, Bool)])
+selectClass :: ImportEnvironment -> Name -> (Names, [(Name, TpScheme, Bool, HasDefault)])
 selectClass env name =  let err = internalError "TypeInferenceRules.ag" "selectClass" "Specified class could not be found"
                         in M.findWithDefault err name (classMemberEnvironment env)
 
-getInstanceMembers :: ImportEnvironment -> Name -> (Instance, Types, [(Name, TpScheme)])
+getInstanceMembers :: ImportEnvironment -> (Name, [Tp]) -> (Instance, Types, [(Name, TpScheme)])
 getInstanceMembers env name =   let err = internalError "TypeInferenceRules.ag" "getInstanceMembers" "Specified instance could not be found"
                                 in M.findWithDefault err name (instanceEnvironment env)
 

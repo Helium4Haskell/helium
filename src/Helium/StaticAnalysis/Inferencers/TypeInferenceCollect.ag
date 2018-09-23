@@ -87,7 +87,7 @@ missingTypeSignature topLevel simplePats typeenv importEnvironment =
    let -- for the moment, only missing type signature for top-level functions are reported (unless monomorphic).
       makeWarning (name, scheme) =
          let  fromSimple = name `elem` simplePats && isOverloaded scheme
-              classFunctions = map (\(n, _, _)->n) $ concatMap (snd.snd) $ M.toList $ classMemberEnvironment importEnvironment
+              classFunctions = map (\(n, _, _, _)->n) $ concatMap (snd.snd) $ M.toList $ classMemberEnvironment importEnvironment
          in [ NoTypeDef name scheme topLevel fromSimple 
               | null (ftv scheme) 
               && (topLevel || fromSimple) 

@@ -47,7 +47,8 @@ SEM Body
 -- Declaration
 
 SEM Declaration
-    | Class              lhs . miscerrors = deleteNoFunDefErrors @where.miscerrors ++ (checkClassFunctions @loc.declVarNames @loc.types) ++ @contextErrors
+    | Class              lhs . miscerrors = deleteClassErrors (@where.miscerrors ++ (checkClassFunctions @loc.declVarNames @loc.types) ++ @contextErrors)
+                         lhs . typeSignatures = []
                          loc . types = @where.typeSignatures
                          loc . declVarNames = @where.declVarNames
                          loc . typeVars = @simpletype.self
@@ -483,7 +484,7 @@ instanceMembers (MaybeDeclarations_Just decls) d = instanceMembers' decls d
 
 instanceMembers' :: Declarations -> ClassDef -> Errors
 instanceMembers' (d:ds) c@(n, members) = let fn = head $ nameOfDeclaration d
-                                             cm = map (\(x, _, _) -> x) (snd members)
+                                             cm = map (\(x, _, _, _) -> x) (snd members)
                                           in
                                              case elem fn cm of
                                               True -> instanceMembers' ds c
@@ -523,9 +524,12 @@ typeSynonymInPredicate :: OrderedTypeSynonyms -> Predicate -> Bool
 typeSynonymInPredicate typeSyn (Predicate _ ty) = case (expandToplevelTC typeSyn ty) of
                                                     Nothing -> False
                                                     _       -> True
-deleteNoFunDefErrors :: Errors -> Errors
-deleteNoFunDefErrors errs = filter p errs where
-    p (NoFunDef TypeSignature _ _) = False
-    p _              = True
+deleteClassErrors :: Errors -> Errors
+deleteClassErrors errs = filter p errs where
+    p (NoFunDef TypeSignature _ _)  = False
+    p _                             = True
+
+
+   
 }
 

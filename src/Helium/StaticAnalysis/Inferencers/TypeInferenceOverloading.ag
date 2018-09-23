@@ -46,10 +46,7 @@ SEM Declaration
                                                               (@lhs.substitution |-> @beta) 
                                                               (@lhs.substitution |-> scheme)
                                               err name typeSchemes = internalError "TypeInferenceOverloading.ag" "n/a" 
-                                                  ("could not find type for function binding for " ++ show name ++ " in " ++ (unlines $ map show $ M.toList typeSchemes) ++
-                                                    " -- " ++ show (M.lookup name typeSchemes) ++ " in " ++ show @lhs.instanceName
-                                                  
-                                                  )
+                                                  ("could not find type for function binding for " ++ show name)
                                           in expandPredicates @lhs.orderedTypeSynonyms predicates      
        bindings . availablePredicates   = @declPredicates ++ @lhs.availablePredicates
        lhs      . dictionaryEnvironment =   if (not $ isJust @lhs.instanceName) then 
@@ -75,6 +72,8 @@ SEM Declaration
                                                   Nothing      -> @righthandside.dictionaryEnvironment
   | Instance
       where . instanceName  = Just @name.self
+  | Class
+      where . instanceName = Just @simpletype.name
 SEM Expression 
 
   | Variable   lhs . dictionaryEnvironment = @newDEnv              

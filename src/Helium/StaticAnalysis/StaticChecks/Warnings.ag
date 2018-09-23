@@ -173,14 +173,29 @@ simplifyContext synonyms range intMap typescheme =
 -- Missing instance members
 
 SEM Declaration
-    | Instance loc . missingMemberWarning = [ MissingClassMember @name.self n | n <- noInstanceOrDefault @loc.classDefinition @where.self ]
+    | Instance  loc . missingMemberWarning = [ MissingClassMember @name.self n | n <- noInstanceOrDefault @name.self @lhs.namesInScope @loc.classDefinition @where.self ]
+    | Class     lhs . warnings = deleteClassWarnings @where.warnings 
 
 {
 
-noInstanceOrDefault :: Maybe ClassDef -> MaybeDeclarations -> Names
-noInstanceOrDefault Nothing             _                              = []
-noInstanceOrDefault (Just (_, members)) MaybeDeclarations_Nothing      = [ n | (n, undefined, d) <- snd members, not d ]
-noInstanceOrDefault (Just (_, members)) (MaybeDeclarations_Just decls) = [ n | (n, undefined, d) <- snd members, not d
-                                                                             , notElem n (map (head . nameOfDeclaration) decls) ]
+noInstanceOrDefault :: Name -> Names -> Maybe ClassDef -> MaybeDeclarations -> Names
+noInstanceOrDefault _ _     Nothing             _                                       = []
+noInstanceOrDefault className imps  (Just (_, members)) MaybeDeclarations_Nothing       = 
+                                                            [ n 
+                                                            | (n, undefined, d, False) <- snd members
+                                                            , not d
+                                                            , not (("default$" ++ getNameName className ++ "$" ++ getNameName n) `elem` (map getNameName imps)) 
+                                                            ]
+noInstanceOrDefault className imps  (Just (_, members)) (MaybeDeclarations_Just decls)  = 
+                                                            [ n 
+                                                            | (n, undefined, d, False) <- snd members
+                                                            , not d
+                                                            , notElem n (map (head . nameOfDeclaration) decls)
+                                                            , not (("default$" ++ getNameName className ++ "$" ++ getNameName n) `elem` (map getNameName imps)) ]
+
+deleteClassWarnings :: Warnings -> Warnings
+deleteClassWarnings warnings = filter p warnings where
+    p (Unused _ _)                  = False
+    p _                             = True
 
 }

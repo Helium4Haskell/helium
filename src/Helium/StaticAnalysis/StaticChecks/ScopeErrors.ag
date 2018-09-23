@@ -46,11 +46,14 @@ SEM Qualifier
   | Generator        lhs . collectScopeInfos = (@scopeInfo, Variable)   : @expression.collectScopeInfos
 
 SEM Declaration
-    | Class         lhs . collectScopeInfos = (@scopeInfo, Definition) : @where.collectScopeInfos
+    | Class         lhs . collectScopeInfos = (removeDefaultsDulicates @loc.classMemberNames @scopeInfo, Definition) : @lhs.collectScopeInfos
     | Instance      lhs . collectScopeInfos = @lhs.collectScopeInfos
 
-
 {
+
+removeDefaultsDulicates :: [Name] -> ScopeInfo -> ScopeInfo
+removeDefaultsDulicates names (duplicated, unused, shadowed) = (duplicated, [], filter (\(s1, s2) -> not (s1 `elem` names) || not (s2 `elem` names)) shadowed)
+
 topLevelScopeInfo :: ScopeInfo -> ScopeInfo
 topLevelScopeInfo (xs, _, _) = (xs, [], [])
 
@@ -58,6 +61,6 @@ makeErrors :: [(ScopeInfo, Entity)] -> Errors
 makeErrors xs = [ Duplicated entity ys | ((yss, _, _), entity) <- xs, ys <- yss ]
 
 makeWarnings :: [(ScopeInfo, Entity)] -> Warnings
-makeWarnings xs =  [ Unused entity name | ((_, names, _), entity) <- xs, name <- names ]
+makeWarnings xs = [ Unused entity name | ((_, names, _), entity) <- xs, name <- names ]
                 ++ [ Shadow n2 n1 | ((_, _, pairs), _) <- xs, (n1, n2) <- pairs ]
 }

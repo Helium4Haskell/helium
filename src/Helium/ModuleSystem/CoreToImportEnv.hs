@@ -211,11 +211,11 @@ getImportEnvironment importedInModule = foldr insert emptyEnvironment
                             getTypeVariable (CustomDecl _ [CustomName n]) = [nameFromString $ stringFromId n]
                             className = nameFromString $ stringFromId n
                             classVariables = getTypeVariable $ head (selectCustom "ClassTypeVariables" cs)
-                            getFunction :: Custom -> (Name, TpScheme, Bool)
+                            getFunction :: Custom -> (Name, TpScheme, Bool, HasDefault)
                             getFunction (CustomDecl _ [
                                     CustomName fname,
                                     CustomBytes tps
-                                ]) = (nameFromString $ stringFromId fname, makeTpSchemeFromType $ parseFromString type_ $ stringFromBytes tps, False)
+                                ]) = (nameFromString $ stringFromId fname, makeTpSchemeFromType $ parseFromString type_ $ stringFromBytes tps, False, False)
                             classMembers = (classVariables, map getFunction $ selectCustom "Function" cs)
                         in addClassMember className classMembers 
            -- !!! Print importedFromModId from "declAccess = Imported{importModule = importedFromModId}" as well
