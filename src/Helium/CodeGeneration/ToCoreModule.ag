@@ -66,12 +66,19 @@ SEM Module
                 lhs.core = @module_ { Module.moduleDecls = 
                                 insertedMain @lhs.toplevelTypes : Module.moduleDecls @module_ }
                 loc.module_ = 
-
-                    everythingPublicButImported
+                    Core.modulePublic @exports.isImplicit @loc.exportlists
                         (makeCoreModule (fmap idFromName @name.name)
                             ( @body.decls ++ @lhs.extraDecls
                             ))
-
+                loc.exportlists = (@exports.values
+                                  , @exports.confieldormethods
+                                  , @exports.typeorclasses
+                                  , @exports.typeorclassesCompl
+                                  , @exports.modules)
+    --  range                    : Range
+    --  name                     : MaybeName
+    --  exports                  : MaybeExports
+    --  body                     : Body
 {
 -- set the public bit of all declarations except those that are imported from
 -- Prelude or HeliumLang. I.e. export everything everywhere
@@ -131,37 +138,31 @@ ATTR Declarations Declaration
     |
     ]   
     
+ATTR MaybeExports[|| isImplicit : Bool]
+
+SEM MaybeExports
+    | Nothing lhs.isImplicit = True
+    | Just    lhs.isImplicit = False
 
 ATTR MaybeExports Export Exports
     [
     |
-    | values, types, cons, mods USE { `unionSet` } { emptySet } : {IdSet}
+    | values, typeorclasses, confieldormethods, typeorclassesCompl, modules USE { `unionSet` } { emptySet } : {IdSet}
     ]
 
 SEM Export
-    | Variable               lhs.values = singleSet (idFromName @name.self)
-                                .types  = emptySet
-                                .cons   = emptySet
-                                .mods   = emptySet
+    | Variable               lhs.values             = singleSet (idFromName @name.self)
     --  range                    : Range
     --  name                     : Name
-    | TypeOrClass            lhs.values = emptySet
-                                .types  = singleSet (idFromName @name.self)
-                                .cons   = setFromList (maybe [] (map idFromName) @names.names)
-                                .mods   = emptySet
+    | TypeOrClass            lhs.typeorclasses      = singleSet (idFromName @name.self)
+                                .confieldormethods  = setFromList (maybe [] (map idFromName) @names.names)
     --  range                    : Range
     --  name                     : Name
     --  names                    : MaybeNames  -- constructors or field names or class methods
-    | TypeOrClassComplete    lhs.values = internalError "ToCoreModule" "exports.tocc" "Unsupported export declaration"
-                                .types  = internalError "ToCoreModule" "exports.tocc" "Unsupported export declaration"
-                                .cons   = internalError "ToCoreModule" "exports.tocc" "Unsupported export declaration"
-                                .mods   = internalError "ToCoreModule" "exports.tocc" "Unsupported export declaration"
+    | TypeOrClassComplete    lhs.typeorclassesCompl = singleSet (idFromName @name.self)
     --  range                    : Range
     --  name                     : Name
-    | Module                 lhs.values = emptySet
-                                .types  = emptySet
-                                .cons   = emptySet
-                                .mods   = singleSet (idFromName @name.self)
+    | Module                 lhs.modules            = singleSet (idFromName @name.self)
     --  range                    : Range
     --  name                     : Name   -- this is a module name
 

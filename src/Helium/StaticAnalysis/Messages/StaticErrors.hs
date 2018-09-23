@@ -452,8 +452,8 @@ errorLogCode anError = case anError of
           ClassesAndInstancesNotAllowed _         -> "ci"
    where code entity = fromMaybe "??"
                      . lookup entity 
-                     $ [ (TypeSignature    ,"ts"), (TypeVariable         ,"tv"), (TypeConstructor,"tc")
-                       , (Definition       ,"de"), (Constructor          ,"co"), (Variable       ,"va") 
-                       , (Import           ,"im"), (ExportVariable       ,"ev"), (ExportModule   ,"em")
-                       , (ExportConstructor,"ec"), (ExportTypeConstructor,"et"), (Fixity         ,"fx")
+                     $ [ (TypeSignature    ,"ts"), (TypeVariable                ,"tv"), (TypeConstructor,"tc")
+                       , (Definition       ,"de"), (Constructor                 ,"co"), (Variable       ,"va") 
+                       , (Import           ,"im"), (ExportVariable              ,"ev"), (ExportModule   ,"em")
+                       , (ExportConstructor,"ec"), (ExportTypeConstructorOrClass,"et"), (Fixity         ,"fx")
                        ]                    

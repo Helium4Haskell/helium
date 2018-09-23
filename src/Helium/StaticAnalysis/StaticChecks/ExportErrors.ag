@@ -9,21 +9,6 @@
 --
 -------------------------------------------------------------------------------
 
-{-
-SEM Export
-    | TypeOrClassComplete
-                  lhs . errors =  checkExport ExportTypeConstructor @name.self
-                                    @lhs.tyconsInScope
-    | TypeOrClass lhs . errors =  checkExport ExportTypeConstructor @name.self
-                                    @lhs.tyconsInScope
-                                ++
-                                concatMap
-                                    (\name ->
-                                        checkExport ExportConstructor name
-                                            @lhs.consInScope
-                                    )
-                                    @names.toList
--}
 SEM Module
   | Module  exports . namesInScop   = concat [ @body.declVarNames
                                               , concatMap (M.keys . typeEnvironment) @lhs.importEnvironments
@@ -62,9 +47,29 @@ equalName x y =
     getNameName x == getNameName y        
 }
 
+
+ATTR MaybeNames [ | | toList USE { ++ } { [] } : Names ]
+
+SEM MaybeNames
+    | Nothing lhs.toList = []
+    | Just    lhs.toList = @names.self
+
+-- If classes are added, this should be updated aswell
 SEM Export
     | Variable    lhs . exportErrors =  checkExport ExportVariable @name.self
                                            @lhs.namesInScop
+    | TypeOrClassComplete
+                  lhs . exportErrors =  checkExport ExportTypeConstructorOrClass @name.self
+                                           @lhs.tyconsInScope
+    | TypeOrClass lhs . exportErrors =  checkExport ExportTypeConstructorOrClass @name.self
+                                           @lhs.tyconsInScope
+                                            ++
+                                            concatMap
+                                                (\name ->
+                                                    checkExport ExportConstructor name
+                                                        @lhs.consInScope
+                                                )
+                                                @names.toList
     | Module      lhs . exportErrors =  checkExport ExportModule @name.self
                                            @lhs.modulesInScope    
 -------------------------------------------
