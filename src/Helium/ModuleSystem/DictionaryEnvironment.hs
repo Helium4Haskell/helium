@@ -11,6 +11,7 @@ module Helium.ModuleSystem.DictionaryEnvironment
    , emptyDictionaryEnvironment, addForDeclaration, addForVariable
    , getPredicateForDecl, getDictionaryTrees
    , makeDictionaryTree, makeDictionaryTrees
+   , setCurrentClassNames, currentClassNames
    ) where
 
 import qualified Data.Map as M
@@ -22,6 +23,7 @@ import Top.Types
 data DictionaryEnvironment = 
      DEnv { declMap :: M.Map NameWithRange Predicates
           , varMap  :: M.Map NameWithRange [DictionaryTree]
+          , currentClassNames :: [(Name, String)]
           }
           
 data DictionaryTree = ByPredicate Predicate
@@ -32,11 +34,17 @@ data DictionaryTree = ByPredicate Predicate
 instance Show DictionaryEnvironment where
    show denv = 
       "{ declMap = " ++ show (M.assocs $ declMap denv) ++
-      ", varMap = "  ++ show (M.assocs $ varMap denv) ++ "}"
-       
+      ", varMap = "  ++ show (M.assocs $ varMap denv) ++ 
+      ", currentClassNames = " ++ show (currentClassNames denv) ++ "}"
+     
+setCurrentClassNames :: [(Name, String)] -> DictionaryEnvironment -> DictionaryEnvironment
+setCurrentClassNames cur denv = denv{
+    currentClassNames = cur
+    }      
+
 emptyDictionaryEnvironment :: DictionaryEnvironment
 emptyDictionaryEnvironment = 
-   DEnv { declMap = M.empty, varMap = M.empty }
+   DEnv { declMap = M.empty, varMap = M.empty, currentClassNames = [] }
  
 addForDeclaration :: Name -> Predicates -> DictionaryEnvironment -> DictionaryEnvironment
 addForDeclaration name predicates dEnv

@@ -94,9 +94,9 @@ SEM Declaration
                         bindings.range = @range.self
                         lhs.declNames = [@bindings.name]
                         loc.instanceDict = [idFromString $ "$instanceDict" ++ show name | Just name <- [@lhs.instanceName]]
-                        loc.dictionaries = (map predicateToId (getPredicateForDecl @bindings.name @lhs.dictionaryEnv))
+                        loc.dictionaries = @instanceDict ++ (map predicateToId (getPredicateForDecl @bindings.name @lhs.dictionaryEnv))
                         bindings.isClass = False
-                        lhs.decls    =
+                        lhs.decls    =  
         [ Core.DeclValue
             { Core.declName    = idFromName @bindings.name
             , Core.declAccess  = Core.private
@@ -116,7 +116,7 @@ SEM Declaration
                                       (getPredicateForDecl n @lhs.dictionaryEnv)
                                 _ -> []                        
                         lhs.decls     = 
-        case @pattern.self of
+        case  @pattern.self of
             Pattern_Variable _ n ->
                 [ Core.DeclValue
                     { Core.declName    = idFromName n
@@ -132,8 +132,7 @@ SEM Declaration
                     , Core.declCustoms = toplevelType n @lhs.importEnv @lhs.isTopLevel
                     }
                ]
-            _ ->
-                Core.DeclValue
+            _ -> Core.DeclValue
                     { Core.declName    = patBindId
                     , Core.declAccess  = Core.private
                     , Core.valueEnc    = Nothing
@@ -212,6 +211,8 @@ SEM Declaration
                                                 }
                                         ] ++ convertDictionaries @lhs.importEnv @simpletype.name @where.functionNames @where.whereDeclarations 
                         where .isClass = True
+                        where . instanceName = Just @simpletype.name
+                        where . dictionaryEnv = setCurrentClassNames (zip @where.functionNames (repeat ("$instanceDict" ++ show @simpletype.name))) @lhs.dictionaryEnv
     | Instance          lhs .   decls    =  [ constructDictionary 
                                                 (constructFunctionMap @lhs.importEnv @name.self)
                                                 @where.whereDeclarations @name.self @loc.typeName
@@ -292,10 +293,10 @@ dictionaryTreeToCore theTree =
                  (dictionaryTreeToCore tree)
 
 insertDictionaries :: Name -> DictionaryEnvironment -> Core.Expr
-insertDictionaries name dictionaryEnv = 
+insertDictionaries name dictionaryEnv =
    foldl Core.Ap
          (Core.Var (idFromName name))
-         (map dictionaryTreeToCore (getDictionaryTrees name dictionaryEnv))
+         ([Core.Var (idFromString dict) | (fname, dict) <- currentClassNames dictionaryEnv, name == fname] ++ (map dictionaryTreeToCore (getDictionaryTrees name dictionaryEnv)))
 }
 
 ATTR LeftHandSide 

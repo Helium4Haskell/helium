@@ -17,7 +17,6 @@ import Text.PrettyPrint.Leijen
 import qualified Data.Map as M
 import Data.Maybe
 
-
 constructFunctionMap :: ImportEnvironment -> Name -> [(Name, Int)]
 constructFunctionMap env name = 
     let 
@@ -38,7 +37,7 @@ classFunctions importEnv combinedNames = map classFunction combinedNames
                         { declName    = idFromString $ getNameName name
                         , declAccess  = public
                         , valueEnc    = Nothing
-                        , valueValue  = Lam dictParam (Ap (Var dictParam) (Lit (LitInt label)))
+                        , valueValue  = Lam dictParam (Ap (Ap (Var dictParam) (Lit (LitInt label))) (Var dictParam))
                         , declCustoms = toplevelType name importEnv True
                         }
                 in val

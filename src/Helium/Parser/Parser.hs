@@ -209,7 +209,8 @@ cdecls =
         ts <- iType
         ds <- option MaybeDeclarations_Nothing (try $ do lexWHERE
                                                          d <- idecls
-                                                         return (MaybeDeclarations_Just d))
+                                                         let d' = CollectFunctionBindings.decls' d
+                                                         return (MaybeDeclarations_Just d'))
         return $ \r -> Declaration_Instance r ct n [ts] ds
     <|>
     infixdecl

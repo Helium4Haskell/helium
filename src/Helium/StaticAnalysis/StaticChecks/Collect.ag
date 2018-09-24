@@ -347,9 +347,9 @@ SEM Declaration
 getTypeOfInstanceFunction :: Name -> Name -> ClassMemberEnvironment -> TpScheme
 getTypeOfInstanceFunction instanceName name env = case M.lookup instanceName env of
         Just c ->   let (typeVariables, functions) = c
-                        (fn, tp, _, _) = fromMaybe (error "Unkown function in instance") (lookupFunc name functions)
+                        (fn, tp, _, _) = fromMaybe (error "Unknown function in instance") (lookupFunc name functions)
                     in tp
-        Nothing -> error "Unkown class in instance declaration"
+        Nothing -> error "Unknown class in instance declaration"
     where
         lookupFunc :: Name -> [(Name, a, b, c)] -> Maybe (Name, a, b, c)
         lookupFunc n [] = Nothing
@@ -367,8 +367,14 @@ getInstanceFunctionNames (MaybeDeclarations_Nothing) = []
 getInstanceFunctionNames (MaybeDeclarations_Just ds) = fmap (\d -> getDeclarationName d) ds
 
 getDeclarationName :: Declaration -> Name
+getDeclarationName (Declaration_FunctionBindings _ []) = error "No function bindings found" 
 getDeclarationName (Declaration_FunctionBindings _ [fb]) = getFunctionBindingName fb
-getDeclarationName _ = error "Unkown declaration in instance"
+getDeclarationName (Declaration_FunctionBindings _ fb) =
+        let names = map getFunctionBindingName fb 
+            valid = all (==(head names)) names
+        in if valid then head names else error "Inconsistent names in function bindings"
+
+getDeclarationName _ = error $ "Unknown declaration in instance"
 
 getFunctionBindingName :: FunctionBinding -> Name
 getFunctionBindingName (FunctionBinding_FunctionBinding _ lhs _)= getLhsName lhs
