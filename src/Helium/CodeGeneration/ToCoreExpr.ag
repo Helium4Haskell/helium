@@ -299,9 +299,7 @@ SEM Literal [ | | core : { Core.Expr } ]
     --  range                    : Range
     --  value                    : String
 
-    | String                lhs.core = 
-        var "$primPackedToString" `app_` 
-            packedString (read ("\"" ++ @value ++ "\""))
+    | String                lhs.core = foldr (\char expr -> cons (Core.Lit $ Core.LitInt $ ord char) expr) nil @value
     --  range                    : Range
     --  value                    : String -- without the quotes
 
