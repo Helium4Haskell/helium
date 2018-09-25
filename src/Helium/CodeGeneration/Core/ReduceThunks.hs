@@ -24,9 +24,11 @@ reduceThunksInDecl decl@(DeclValue{}) = decl{ valueValue = reduceThunksInExpr $ 
 reduceThunksInDecl decl = decl
 
 reduceThunksInExpr :: Expr -> Expr
-reduceThunksInExpr (Let (NonRec b@(Bind _ value)) expr)
-  | isCheap value = Let (Strict b) $ reduceThunksInExpr expr
-  | otherwise = Let (NonRec $ reduceThunksInBind b) $ reduceThunksInExpr expr
+reduceThunksInExpr (Let (NonRec b@(Bind x value)) expr)
+  | isCheap value' = Let (Strict (Bind x value')) $ reduceThunksInExpr expr
+  | otherwise      = Let (NonRec (Bind x value')) $ reduceThunksInExpr expr
+  where
+    value' = reduceThunksInExpr value
 reduceThunksInExpr (Let (Strict b) expr) = Let (Strict $ reduceThunksInBind b) $ reduceThunksInExpr expr
 reduceThunksInExpr (Let (Rec bs) expr) = Let (Rec $ map reduceThunksInBind bs) $ reduceThunksInExpr expr
 reduceThunksInExpr (Match name alts) = Match name $ map reduceThunksInAlt alts
@@ -45,4 +47,8 @@ isCheap (Lit _) = True
 -- A constructor (or applied constructor) is cheap
 isCheap (Ap l _) = isCheap l
 isCheap (Con _) = True
+-- A let expression is cheap if its expression is cheap
+-- and (the binding is lazy or its value is cheap)
+isCheap (Let (Strict (Bind _ value)) expr) = isCheap value && isCheap expr
+isCheap (Let _ expr) = isCheap expr
 isCheap _ = False

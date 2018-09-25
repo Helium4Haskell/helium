@@ -50,7 +50,6 @@ data BindThunk = BindThunk Id Id [Id] -- variable, function, arguments
 data Expr
   = Literal Literal
   | Call Id [Id]
-  | Thunk
   | Eval Id
   | Alloc Id [Id]
   | Var Id
@@ -107,3 +106,11 @@ instance Show Method where
 
 instance Show Module where
   show (Module name methods) = "module " ++ show name ++ "\n" ++ (methods >>= ('\n' :) . show)
+
+mapBlocks :: (Instruction -> Instruction) -> Module -> Module
+mapBlocks fn (Module name methods) = Module name $ map fnMethod methods
+  where
+    fnMethod :: Method -> Method
+    fnMethod (Method name entry blocks) = Method name (fnBlock entry) $ map fnBlock blocks
+    fnBlock :: Block -> Block
+    fnBlock (Block name args instr) = Block name args $ fn instr
