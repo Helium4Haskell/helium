@@ -150,6 +150,7 @@ Library
     Helium.CodeGeneration.Core.Lift
     Helium.CodeGeneration.Core.Normalize
     Helium.CodeGeneration.Core.NoShadow
+    Helium.CodeGeneration.Core.ReduceThunks
     Helium.CodeGeneration.Iridium.Data
     Helium.CodeGeneration.Iridium.FromCore
     Helium.Main.Args

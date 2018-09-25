@@ -13,10 +13,11 @@ import Lvm.Core.Expr
 
 import Helium.CodeGeneration.Core.Normalize(coreNormalize)
 import Helium.CodeGeneration.Core.Lift(coreLift)
+import Helium.CodeGeneration.Core.ReduceThunks(coreReduceThunks)
 import Helium.CodeGeneration.Core.NoShadow(coreRename)
 
 -- Desugars core. The desugared AST can be converted to Iridium.
 desugarCore :: NameSupply -> CoreModule -> CoreModule
-desugarCore supply = coreLift supplyLift . coreNormalize supplyNormalize . coreRename supplyNoShadow
+desugarCore supply = coreLift supplyLift . coreReduceThunks . coreNormalize supplyNormalize . coreRename supplyNoShadow
   where
     supplyLift : supplyNormalize : supplyFromCore : supplyNoShadow : _ = splitNameSupplies supply
