@@ -146,6 +146,12 @@ Library
     Helium.CodeGeneration.DerivingEq
     Helium.CodeGeneration.DerivingShow
     Helium.CodeGeneration.PatternMatch
+    Helium.CodeGeneration.Core
+    Helium.CodeGeneration.Core.Lift
+    Helium.CodeGeneration.Core.Normalize
+    Helium.CodeGeneration.Core.NoShadow
+    Helium.CodeGeneration.Iridium.Data
+    Helium.CodeGeneration.Iridium.FromCore
     Helium.Main.Args
     Helium.Main.Compile
     Helium.Main.CompileUtils
