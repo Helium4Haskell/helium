@@ -79,6 +79,7 @@ SEM Body
 
 ATTR Declaration Declarations MaybeDeclarations 
             [   monos:Monos 
+                classMemberTypeSchemes : {Maybe [(Name, TpScheme)]}
             |   betaUnique:Int 
             |   boundBetas      USE {(++)} {[]} : {[(Name, Tp, [Tp])]} 
                 typeMemberBindings  USE {(++)} {[]} : {[(Name, TpScheme)]}
@@ -130,6 +131,7 @@ SEM Declaration
         where       . assumptions   = noAssumptions
         where       . constraints   = emptyTree
         where       . betaUnique    = @lhs.betaUnique + 1 + (length @where.typeMemberBindings)
+        where       . classMemberTypeSchemes = appendClasses @simpletype.name @where.typeMemberBindings @range.self @lhs.allTypeSchemes
         loc         . environment   = M.fromList $ map (\((n, _), tp)->(n, tp)) @members
         loc         . classBeta     = TVar @lhs.betaUnique
         loc         . classMembers  = (map (\((name, tpscheme), tp) -> 
@@ -179,6 +181,14 @@ SEM Declaration
         loc     . classVariable         = head $ classVariablesToBeta (@lhs.betaUnique + 2) $ getClassTypeVariables @loc.classMembers
 
 {
+appendClasses :: Name -> [(Name, TpScheme)] -> Range -> M.Map NameWithRange TpScheme -> Maybe [(Name, TpScheme)]
+appendClasses className typeMemberBindings range allTypeSchemes = Just (map lookupScheme typeMemberBindings)
+    where
+        lookupScheme :: (Name, TpScheme) -> (Name, TpScheme)
+        lookupScheme (n, _) = (n, fromJust $ M.lookup (NameWithRange n) (allTypeSchemes))
+
+getSuperClasses ::  ContextItems -> [String]
+getSuperClasses = map (\(ContextItem_ContextItem _ n _) -> getNameName n)
 
 constructDictionaryName :: Name -> String -> Name
 constructDictionaryName (Name_Identifier range modules name) s = Name_Identifier range modules ("($dict" ++ name ++ "$" ++ s ++ ")")    

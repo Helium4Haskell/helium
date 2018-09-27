@@ -17,19 +17,32 @@ import Text.PrettyPrint.Leijen
 import qualified Data.Map as M
 import Data.Maybe
 
-constructFunctionMap :: ImportEnvironment -> Name -> [(Name, Int)]
-constructFunctionMap env name = 
+constructFunctionMap :: ImportEnvironment -> Int -> Name -> [(Name, Int)]
+constructFunctionMap env nrOfSupers name = 
     let 
         err = error "Invalid class name" 
         f :: (Name, a, b, c) -> Name
         f (name, _, _, _) = name 
         mapF = map f . snd
-    in zip (maybe err mapF  $ M.lookup name (classMemberEnvironment env)) [0..]
+    in zip (maybe err mapF  $ M.lookup name (classMemberEnvironment env)) [nrOfSupers..]
+
 
 --returns for every function in a class the function that retrieves that class from a dictionary
-classFunctions :: ImportEnvironment -> [(Name, Int)] -> [CoreDecl]
-classFunctions importEnv combinedNames = map classFunction combinedNames
+classFunctions :: ImportEnvironment -> String -> [(Name, Int)] -> [CoreDecl]
+classFunctions importEnv className combinedNames = map superDict superclasses ++ map classFunction combinedNames
         where
+            superclasses = zip (maybe [] fst (M.lookup className $ classEnvironment importEnv)) [0..]
+            superDict :: (String, Int) -> CoreDecl
+            superDict (superName, label) =
+                let dictParam = idFromString "dict"
+                    val = DeclValue 
+                        { declName    = idFromString $ "$get" ++ superName ++ "$" ++ className
+                        , declAccess  = public
+                        , valueEnc    = Nothing
+                        , valueValue  = Lam dictParam (Ap (Ap (Var dictParam) (Lit (LitInt label))) (Var dictParam))
+                        , declCustoms = [custom "type" ("Dict$" ++ className ++" -> Dict$" ++ superName)]
+                        }
+                in val
             classFunction :: (Name, Int) -> CoreDecl
             classFunction (name, label) = 
                 let dictParam = idFromString "dict"
@@ -51,8 +64,8 @@ combineDeclIndex names decls =
         in map (\(name, label) -> (label, name, lookup name decls)) names
 
 --returns a dictionary with specific implementations for every instance
-constructDictionary :: [(Name, Int)] -> [(Name, CoreDecl)] -> Name -> String  -> CoreDecl
-constructDictionary combinedNames whereDecls className insName = let 
+constructDictionary :: [String] -> [(Name, Int)] -> [(Name, CoreDecl)] -> Name -> String  -> CoreDecl
+constructDictionary superClasses combinedNames whereDecls className insName = let 
             
             val = DeclValue 
                 { declName    = idFromString ("$dict" ++ getNameName className ++ "$" ++ insName)
@@ -65,11 +78,13 @@ constructDictionary combinedNames whereDecls className insName = let
         where 
             functions = combineDeclIndex combinedNames whereDecls
             idP = idFromString "index"
-            getFunc = Lam idP (Match idP (makeAlts functions))
-            makeAlts :: [(Int, Name, Maybe CoreDecl)] -> Alts
-            makeAlts = map (\(l, n, mc) -> makeAlt l n mc)
-            makeAlt :: Int -> Name -> Maybe CoreDecl -> Alt
-            makeAlt label name decl = let 
+            getFunc = Lam idP (Match idP makeAlts)
+            makeAlts :: Alts
+            makeAlts = map (uncurry makeAltD) (zip superClasses [0..]) ++ map (\(l, n, mc) -> makeAltF l n mc) functions
+            makeAltD :: String -> Int -> Alt
+            makeAltD cName label = Alt (PatLit (LitInt label)) (Lam (idFromString "_") $ Var (idFromString ("$dict" ++ cName ++ "$" ++ insName)))
+            makeAltF :: Int -> Name -> Maybe CoreDecl -> Alt
+            makeAltF label name decl = let 
                             undefinedFunc = (Var $ idFromString ("default$" ++ getNameName className ++ "$" ++ getNameName name))
                             func = maybe undefinedFunc getCoreValue decl
                             pat = PatLit (LitInt label)

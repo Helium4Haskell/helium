@@ -160,6 +160,7 @@ SEM Body
     | Body             lhs.decls    = @declarations.decls
                        declarations.patBindNr = 0
                        declarations.isTopLevel = True
+                       declarations.instanceName = Nothing
     --  range                    : Range
     --  importdeclarations       : ImportDeclarations
     --  declarations             : Declarations

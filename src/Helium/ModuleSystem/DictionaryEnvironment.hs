@@ -18,7 +18,10 @@ import qualified Data.Map as M
 import Helium.Syntax.UHA_Syntax (Name)
 import Helium.Syntax.UHA_Utils (NameWithRange(..) )
 import Helium.Utils.Utils (internalError)
+import Data.Maybe
 import Top.Types
+
+import Debug.Trace
 
 data DictionaryEnvironment = 
      DEnv { declMap :: M.Map NameWithRange Predicates
@@ -29,6 +32,7 @@ data DictionaryEnvironment =
 data DictionaryTree = ByPredicate Predicate
                     | ByInstance String {- class name -} String {- instance name -} [DictionaryTree]
                     | BySuperClass String {- sub -} String {- super -} DictionaryTree
+                    | ByCurrentClass String
    deriving Show
    
 instance Show DictionaryEnvironment where
@@ -64,27 +68,44 @@ getDictionaryTrees :: Name -> DictionaryEnvironment -> [DictionaryTree]
 getDictionaryTrees name dEnv =
    M.findWithDefault [] (NameWithRange name) (varMap dEnv)
 
-makeDictionaryTrees :: ClassEnvironment -> Predicates -> Predicates -> Maybe [DictionaryTree]
-makeDictionaryTrees classEnv ps = mapM (makeDictionaryTree classEnv ps)
+makeDictionaryTrees :: ClassEnvironment -> Predicates -> Maybe String -> Predicates -> Maybe [DictionaryTree]
+makeDictionaryTrees classEnv ps currentClass = mapM (makeDictionaryTree classEnv ps currentClass)
 
-makeDictionaryTree :: ClassEnvironment -> Predicates -> Predicate -> Maybe DictionaryTree
-makeDictionaryTree classEnv availablePredicates p@(Predicate className tp) =      
-   case tp of
-      TVar _ | p `elem` availablePredicates -> Just (ByPredicate p)
-             | otherwise -> case [ (path, availablePredicate)
-                                 | availablePredicate@(Predicate c t) <- availablePredicates
-                                 , t == tp
-                                 , path <- superclassPaths c className classEnv
-                                 ] of
-                             []     -> Nothing
-                             (path,fromPredicate):_ -> 
-                                let list = reverse (zip path (tail path))
-                                    tree = foldr (uncurry BySuperClass) (ByPredicate fromPredicate) list
-                                in Just tree 
+makeDictionaryTree :: ClassEnvironment -> Predicates -> Maybe String -> Predicate -> Maybe DictionaryTree
+makeDictionaryTree classEnv unFilteredavailablePredicates currentClass p@(Predicate className tp) = 
+    let 
+        getSuperClasses :: String -> [String]
+        getSuperClasses className = maybe err fst $ M.lookup className classEnv
+        err = error "Invalid class"
+        -- ClassName -> (SuperClass, SubClass)
+        relations :: [(String, String)]
+        relations = concatMap (\(Predicate n _) -> [(s, n) | s <- getSuperClasses n]) unFilteredavailablePredicates
+        
+        availablePredicates = filter hasSuperClassAvailable unFilteredavailablePredicates
+        hasSuperClassAvailable (Predicate n t) = let
+            subclasses = filter (\x -> fst x == n) relations   
+                in True
+    in case tp of
+        TVar _ | p `elem` availablePredicates -> Just (ByPredicate p)
+                | otherwise -> case [ (path, availablePredicate)
+                                    | availablePredicate@(Predicate c t) <- availablePredicates
+                                    , t == tp
+                                    , path <- superclassPaths c className classEnv
+                                    ] of
+                                []     -> Nothing
+                                (path,fromPredicate):_ -> 
+                                    let list = reverse (zip path (tail path)) -- ByInstance String {- class name -} String {- instance name -} [DictionaryTree]
+                                        tree = foldr (uncurry BySuperClass) (if isJust currentClass then
+                                                ByCurrentClass (fromJust currentClass)
+                                            else
+                                                ByPredicate fromPredicate
+                                            ) list
+                                    in Just tree 
                                 
-      _      -> case byInstance noOrderedTypeSynonyms classEnv p of
-                   Nothing -> internalError "DictionaryEnvironment" "makeDictionaryTree" ("reduction error" ++ show (M.assocs classEnv))
-                   Just predicates -> 
-                      do let (TCon instanceName, _) = leftSpine tp
-                         trees <- makeDictionaryTrees classEnv availablePredicates predicates
-                         return (ByInstance className instanceName trees)
+        _      -> case byInstance noOrderedTypeSynonyms classEnv p of
+                    Nothing -> internalError "DictionaryEnvironment" "makeDictionaryTree" ("reduction error" ++ show (M.assocs classEnv))
+                    Just predicates -> 
+                        do 
+                            let (TCon instanceName, _) = leftSpine tp
+                            trees <- makeDictionaryTrees classEnv availablePredicates currentClass predicates
+                            return (ByInstance className instanceName trees)

@@ -222,7 +222,7 @@ createClassEnvironment lookupEnvs importenv =
                       | d <- dicts, let (c, t) = splitDictName d
                       ]
 
-         classEnv = foldr
+         classEnv = classEnvironment lookupEnv `M.union` foldr
                     (\(className, inst) e -> insertInstance className inst e)
                     superClassRelation
                     dictTuples

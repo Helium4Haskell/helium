@@ -22,6 +22,7 @@ ATTR Expression Expressions MaybeExpression Alternative Alternatives
           substitution        : FixpointSubstitution
           typeschemeMap       : {M.Map Int (Scheme Predicates)}
           allTypeSchemes      : {M.Map NameWithRange TpScheme}
+          classTypeSchemes    : {M.Map Name TpScheme}
           orderedTypeSynonyms : OrderedTypeSynonyms
         | collectWarnings     : Warnings
           collectErrors       : TypeErrors

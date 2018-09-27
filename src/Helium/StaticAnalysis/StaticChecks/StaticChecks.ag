@@ -114,5 +114,5 @@ SEM Patterns
      MaybeExpression Qualifier Qualifiers RecordExpressionBinding
      RightHandSide Alternative Alternatives FunctionBinding
      FunctionBindings Statement RecordExpressionBindings
-     Statements
+     Statements ContextItem ContextItems Type
                [ classMemberEnv : {ClassMemberEnvironment} | | ]

@@ -200,7 +200,9 @@ SEM Declaration
     --  fixity                   : Fixity
     --  priority                 : MaybeInt
     --  operators                : Names
-    | Class             lhs.decls    = (classFunctions @lhs.importEnv $ constructFunctionMap @lhs.importEnv @simpletype.name) ++ [
+    | Class             loc . superClasses = getSuperClasses @context.self
+                        lhs.decls    = (classFunctions @lhs.importEnv (getNameName @simpletype.name) $ constructFunctionMap @lhs.importEnv (length @superClasses) @simpletype.name) ++ 
+                                        [
                                             Core.DeclCustom
                                                 {
                                                     --declName :: Id, declAccess :: !Access, declArity :: !Arity, declCustoms :: ![Custom]
@@ -214,10 +216,13 @@ SEM Declaration
                         where . instanceName = Just @simpletype.name
                         where . dictionaryEnv = setCurrentClassNames (zip @where.functionNames (repeat ("$instanceDict" ++ show @simpletype.name))) @lhs.dictionaryEnv
     | Instance          lhs .   decls    =  [ constructDictionary 
-                                                (constructFunctionMap @lhs.importEnv @name.self)
+                                                @superClasses
+                                                (constructFunctionMap @lhs.importEnv (length @superClasses) @name.self)
                                                 @where.whereDeclarations @name.self @loc.typeName
                                             ] 
                         loc .   typeName = show $ makeTpFromType [] $ head @types.self
+                        loc .   err = error "Invalid class name"
+                        loc . superClasses = fst (fromMaybe @err (M.lookup (getNameName @name.self) (classEnvironment @lhs.importEnv)))
                         where . instanceName = Just @name.self
                         where . isClass = True
     
@@ -273,8 +278,11 @@ SEM FunctionBinding [ | | core : { Core.Expr -> Core.Expr } ]
     --  range                    : Range
     --  lefthandside             : LeftHandSide
     --  righthandside            : RightHandSide
-
 {
+
+getSuperClasses ::  ContextItems -> [String]
+getSuperClasses = map (\(ContextItem_ContextItem _ n _) -> getNameName n)
+
 predicateToId :: Predicate -> Id
 predicateToId (Predicate class_ tp) =
     idFromString $ "$dict" ++ class_ ++ "$" ++ show tp
@@ -286,14 +294,16 @@ dictionaryTreeToCore theTree =
          Core.Var (predicateToId predicate)
       ByInstance className instanceName trees ->
          foldl Core.Ap
-               (Core.Var (idFromString ("$dict"++className++ "$" ++ instanceName)))
+                (Core.Var (idFromString ("$dict"++className++ "$" ++ instanceName)))
                (map dictionaryTreeToCore trees)
       BySuperClass subClass superClass tree -> 
-         Core.Ap (Core.Var (idFromString ("$get" ++ superClass ++ "From" ++ subClass)))          
+         Core.Ap (Core.Var (idFromString ("$get" ++ superClass ++ "$" ++ subClass)))          
                  (dictionaryTreeToCore tree)
+      ByCurrentClass className ->
+        Core.Var (idFromString $ "$instanceDict" ++ className)
 
 insertDictionaries :: Name -> DictionaryEnvironment -> Core.Expr
-insertDictionaries name dictionaryEnv =
+insertDictionaries name dictionaryEnv = 
    foldl Core.Ap
          (Core.Var (idFromName name))
          ([Core.Var (idFromString dict) | (fname, dict) <- currentClassNames dictionaryEnv, name == fname] ++ (map dictionaryTreeToCore (getDictionaryTrees name dictionaryEnv)))
