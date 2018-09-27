@@ -37,23 +37,20 @@ SEM Module
 SEM Declaration   
  
   | FunctionBindings  -- for every predicate, copy class and replace the class with it's superclass 
-       loc      . declPredicates        = let !scheme     = M.findWithDefault (search2 @bindings.name) (NameWithRange @bindings.name) (@lhs.allTypeSchemes)
+       loc      . declPredicates        = let !scheme     = M.findWithDefault (searchClasses @bindings.name) (NameWithRange @bindings.name) (@lhs.allTypeSchemes)
                                               predicates = matchTypeWithScheme @lhs.orderedTypeSynonyms 
                                                               (@lhs.substitution |-> @beta) 
                                                               (@lhs.substitution |-> scheme)
                                               classFunctions :: Maybe Name -> [(Name, TpScheme)]
                                               classFunctions Nothing = []
-                                              classFunctions (Just className)= fromJust @lhs.classMemberTypeSchemes
-                                              search2 :: Name -> TpScheme
-                                              search2 name = maybe (err name) snd $ find (\(n, _)->n == name) (classFunctions @lhs.instanceName)
-                                              errClass = internalError "TypeInferenceOverloading.ag" "n/a" 
-                                                  ("could not find type for class function")
-
+                                              classFunctions (Just _)= fromJust @lhs.classMemberTypeSchemes
+                                              searchClasses :: Name -> TpScheme
+                                              searchClasses name = maybe (err name) snd $ find (\(n, _)->n == name) (classFunctions @lhs.instanceName)
                                               err name = internalError "TypeInferenceOverloading.ag" "n/a" 
                                                   ("could not find type for function binding for " ++ show name ++ " in " ++ (unlines $ map show $ M.toList @lhs.allTypeSchemes) ++ show @lhs.importEnvironment)
         
                                           in expandPredicates @lhs.orderedTypeSynonyms predicates      
-       bindings . availablePredicates   = {-extendPredicatesWithSuper (classEnvironment @lhs.importEnvironment) (fmap getNameName @lhs.instanceName)-} (@declPredicates ++ @lhs.availablePredicates)
+       bindings . availablePredicates   = (@declPredicates ++ @lhs.availablePredicates)
        lhs      . dictionaryEnvironment =   if (not $ isJust @lhs.instanceName) then 
                                                 addForDeclaration @bindings.name @declPredicates @bindings.dictionaryEnvironment
                                             else
@@ -136,15 +133,6 @@ SEM Expression
                                                               @expression.dictionaryEnvironment                                          
              
 {      
-
-extendPredicatesWithSuper :: ClassEnvironment -> Maybe String -> Predicates -> Predicates
-extendPredicatesWithSuper _ Nothing preds = preds
-extendPredicatesWithSuper classEnv (Just className) preds = let 
-                superClasses = fst $ fromMaybe err (M.lookup className classEnv)
-                err = internalError "TypeInferenceOverloading.ag" "extendPredicatesWithSuper" "Invalid class name"
-                classPredicate = head (filter (\(Predicate p _)->p == className) preds)
-                npreds = preds ++ [Predicate n v | let (Predicate _ v) = classPredicate, n <- superClasses]
-                in preds -- nub (npreds ++ concatMap (\n -> extendPredicatesWithSuper classEnv (Just n) npreds) superClasses)
 
 getSuperClassesFromClass :: ClassEnvironment -> String -> [String]
 getSuperClassesFromClass classEnv className = fst $ M.findWithDefault err className classEnv 

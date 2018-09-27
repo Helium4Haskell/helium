@@ -13,16 +13,16 @@ import Helium.Syntax.UHA_Utils
 import Helium.Utils.Utils
 
 import Top.Types
-import Text.PrettyPrint.Leijen
+
 import qualified Data.Map as M
-import Data.Maybe
+
 
 constructFunctionMap :: ImportEnvironment -> Int -> Name -> [(Name, Int)]
 constructFunctionMap env nrOfSupers name = 
     let 
         err = error "Invalid class name" 
         f :: (Name, a, b, c) -> Name
-        f (name, _, _, _) = name 
+        f (n, _, _, _) = n 
         mapF = map f . snd
     in zip (maybe err mapF  $ M.lookup name (classMemberEnvironment env)) [nrOfSupers..]
 
@@ -58,10 +58,7 @@ classFunctions importEnv className combinedNames = map superDict superclasses ++
 combineDeclIndex :: [(Name, Int)] -> [(Name, CoreDecl)] -> [(Int, Name, Maybe CoreDecl)]
 combineDeclIndex ls [] = map (\(n, l) -> (l, n, Nothing)) ls
 combineDeclIndex [] _ = error "Inconsistent mapping"
-combineDeclIndex names decls = 
-        let
-            err = error "Invalid mapping" 
-        in map (\(name, label) -> (label, name, lookup name decls)) names
+combineDeclIndex names decls = map (\(name, label) -> (label, name, lookup name decls)) names
 
 --returns a dictionary with specific implementations for every instance
 constructDictionary :: [String] -> [(Name, Int)] -> [(Name, CoreDecl)] -> Name -> String  -> CoreDecl
@@ -80,13 +77,13 @@ constructDictionary superClasses combinedNames whereDecls className insName = le
             idP = idFromString "index"
             getFunc = Lam idP (Match idP makeAlts)
             makeAlts :: Alts
-            makeAlts = map (uncurry makeAltD) (zip superClasses [0..]) ++ map (\(l, n, mc) -> makeAltF l n mc) functions
+            makeAlts = zipWith makeAltD superClasses [0..] ++ map (\(l, n, mc) -> makeAltF l n mc) functions
             makeAltD :: String -> Int -> Alt
             makeAltD cName label = Alt (PatLit (LitInt label)) (Lam (idFromString "_") $ Var (idFromString ("$dict" ++ cName ++ "$" ++ insName)))
             makeAltF :: Int -> Name -> Maybe CoreDecl -> Alt
-            makeAltF label name decl = let 
+            makeAltF label name fdecl = let 
                             undefinedFunc = (Var $ idFromString ("default$" ++ getNameName className ++ "$" ++ getNameName name))
-                            func = maybe undefinedFunc getCoreValue decl
+                            func = maybe undefinedFunc getCoreValue fdecl
                             pat = PatLit (LitInt label)
                             in Alt pat func
 
@@ -122,7 +119,7 @@ convertDictionaries importEnv className functions defaults = map makeFunction fu
                 makeFunction fname = 
                     let 
                         updateName :: CoreDecl -> CoreDecl
-                        updateName decl = decl{
+                        updateName fdecl = fdecl{
                             declName = idFromString $ constructName fname
                         }
                         fDefault :: CoreDecl
@@ -130,7 +127,7 @@ convertDictionaries importEnv className functions defaults = map makeFunction fu
                             { declName    = idFromString $ constructName fname
                             , declAccess  = public 
                             , valueEnc    = Nothing
-                            , valueValue  = (Var $ idFromString "undefined")
+                            , valueValue  = Var $ idFromString "undefined"
                             , declCustoms = toplevelType fname importEnv True
                             }
                     in maybe fDefault updateName (lookup fname defaults)

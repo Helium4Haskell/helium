@@ -18,7 +18,6 @@ import Helium.Main.Args
 import Helium.Parser.LexerMonad
 import Helium.Parser.LexerMessage
 import Helium.Parser.LexerToken
-import Helium.StaticAnalysis.Messages.StaticErrors
 import Text.ParserCombinators.Parsec.Pos
 import Helium.Utils.Utils(internalError, hole)
 

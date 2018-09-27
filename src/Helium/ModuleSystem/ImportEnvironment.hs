@@ -185,10 +185,8 @@ combineClassDecls (super1, inst1) (super2, inst2)
    | otherwise        = internalError "ImportEnvironment.hs" "combineClassDecls" "cannot combine class environments"
 
 getInstanceNames :: [ImportEnvironment] -> [(Range, Instance)]
-getInstanceNames c = concatMap (getInstanceNames . createClassEnvironment c) c
-        where
-            getInstanceNames :: M.Map String Class -> [(Range, Instance)]
-            getInstanceNames classes = concatMap (map (\x -> (noRange, x)) . snd) classes
+getInstanceNames c = concatMap (concatMap (map (\x -> (noRange, x)) . snd) . createClassEnvironment c) c
+
 
 -- Bastiaan:
 -- Create a class environment from the dictionaries in the import environment
@@ -201,14 +199,10 @@ createClassEnvironment lookupEnvs importenv =
                 $ typeEnvironment importenv
          isDict n _ = dictPrefix `isPrefixOf` show n
          dictPrefix = "$dict"
-         dictSplitter = "$"
-            -- classes = ["Eq","Num","Ord","Enum","Show"]
-            -- TODO: put $ between class name and type in dictionary name
-            --  i.e. $dictEq$Int instead of $dictEqInt
-         splitDictName dict  | length (filter (== '$') dict) == 1 = (className dict, typeName dict)
+         splitDictName dict  | length (filter (== '$') dict) == 1 = (getClassName dict, typeName dict)
                             | otherwise = internalError "ImportEnvironment" "splitDictName" ("illegal dictionary: " ++ show dict)
-         className :: String -> String
-         className = takeWhile (/='$')
+         getClassName :: String -> String
+         getClassName = takeWhile (/='$')
          typeName :: String -> String
          typeName = drop 1 . dropWhile (/='$')
 
@@ -264,7 +258,7 @@ instance Show ImportEnvironment where
                       , functions
                       , classes
                       , classmembers
-                      , instances
+                      , sinstances
                       ])
     where
        fixities =
@@ -309,9 +303,9 @@ instance Show ImportEnvironment where
           let f (c, fs) = show c ++ " - " ++ intercalate ", " (map (\(n, t, _, b)->show n ++ " :: " ++ show t ++ if b then " has default" else "") fs)
           in showWithTitle "Class members" (showEm f (map (\(c, m)->(c, snd m)) $ M.assocs cm))
 
-       instances =
+       sinstances =
            let
-                f (i, types, fs) = show i ++ " - " ++ intercalate ", " (map show fs)
+                f (i, _, fs) = show i ++ " - " ++ intercalate ", " (map show fs)
            in showWithTitle "Instances" (map (f . snd) (M.assocs ins))
 
        showWithTitle title xs

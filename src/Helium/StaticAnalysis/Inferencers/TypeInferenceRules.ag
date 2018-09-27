@@ -42,6 +42,7 @@ SEM Module
            . monomorphics        = ftv (  (M.elems $ valueConstructors @lhs.importEnvironment)
                                        ++ (M.elems $ typeEnvironment   @lhs.importEnvironment)
                                        )
+           . classMemberTypeSchemes = Nothing
 
       body . typeschemeMap = M.fromList (M.assocs @typeschemeMap) -- was a copy rule.
            . betaUnique          = if null @monomorphics
@@ -76,10 +77,15 @@ SEM Body
 
 ---------------------------------------------------------------------------------------
 -- Type Inferencing : Declaration, Declarations, MaybeDeclarations
-
+ATTR Declaration Declarations MaybeDeclarations RightHandSide Qualifier Qualifiers Body Expression Expressions
+    FunctionBinding FunctionBindings Alternative Alternatives MaybeExpression GuardedExpression GuardedExpressions RecordExpressionBinding
+    RecordExpressionBindings Statement Statements[
+    classMemberTypeSchemes : {Maybe [(Name, TpScheme)]}
+    | 
+    |
+]
 ATTR Declaration Declarations MaybeDeclarations 
             [   monos:Monos 
-                classMemberTypeSchemes : {Maybe [(Name, TpScheme)]}
             |   betaUnique:Int 
             |   boundBetas      USE {(++)} {[]} : {[(Name, Tp, [Tp])]} 
                 typeMemberBindings  USE {(++)} {[]} : {[(Name, TpScheme)]}
@@ -127,14 +133,13 @@ SEM Declaration
         lhs         . typeMemberBindings = map (\name -> (name, makeTpSchemeFromType @type.self)) @names.self
   | Class
         lhs         . bindingGroups = (@loc.environment, @where.assumptions, @loc.classMembers) : @lhs.bindingGroups
-        lhs         . classMemberBindings = []
         where       . assumptions   = noAssumptions
         where       . constraints   = emptyTree
         where       . betaUnique    = @lhs.betaUnique + 1 + (length @where.typeMemberBindings)
-        where       . classMemberTypeSchemes = appendClasses @simpletype.name @where.typeMemberBindings @range.self @lhs.allTypeSchemes
+        where       . classMemberTypeSchemes = appendClasses @where.typeMemberBindings @lhs.allTypeSchemes
         loc         . environment   = M.fromList $ map (\((n, _), tp)->(n, tp)) @members
         loc         . classBeta     = TVar @lhs.betaUnique
-        loc         . classMembers  = (map (\((name, tpscheme), tp) -> 
+        loc         . classMembers  = (map (\((_, tpscheme), tp) -> 
                                             let 
                                                 subType = substituteClassVariables tpscheme @simpletype.name @classBeta
                                                 fType = addSimpleTypeContextToType @simpletype.self subType
@@ -169,7 +174,7 @@ SEM Declaration
         loc     . classBeta             = TVar $    @lhs.betaUnique + 1
         loc     . instsType             = makeTpFromType [] (head $ @types.self)
         loc     . cinfo                 = emptyConstraintInfo
-        loc     . memberConstraints     =  [(.>. Node []) $ map (\(name, tpscheme, tp)->
+        loc     . memberConstraints     =  [(.>. Node []) $ map (\(_, tpscheme, tp)->
                                             let 
                                                 subType = substituteClassVariables tpscheme (fst @classVariable) @classBeta
                                                 fType = addContextToType @name.self [(head $ getClassTypeVariables @loc.classMembers, @classBeta)] subType
@@ -181,8 +186,8 @@ SEM Declaration
         loc     . classVariable         = head $ classVariablesToBeta (@lhs.betaUnique + 2) $ getClassTypeVariables @loc.classMembers
 
 {
-appendClasses :: Name -> [(Name, TpScheme)] -> Range -> M.Map NameWithRange TpScheme -> Maybe [(Name, TpScheme)]
-appendClasses className typeMemberBindings range allTypeSchemes = Just (map lookupScheme typeMemberBindings)
+appendClasses :: [(Name, TpScheme)] -> M.Map NameWithRange TpScheme -> Maybe [(Name, TpScheme)]
+appendClasses typeMemberBindings allTypeSchemes = Just (map lookupScheme typeMemberBindings)
     where
         lookupScheme :: (Name, TpScheme) -> (Name, TpScheme)
         lookupScheme (n, _) = (n, fromJust $ M.lookup (NameWithRange n) (allTypeSchemes))

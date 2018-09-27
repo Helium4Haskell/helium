@@ -71,6 +71,7 @@ SEM Module
                         (makeCoreModule (fmap idFromName @name.name)
                             ( @body.decls ++ @lhs.extraDecls
                             ))
+                body . instanceName = Nothing
 
 {
 -- set the public bit of all declarations except those that are imported from

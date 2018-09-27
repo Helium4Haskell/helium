@@ -37,6 +37,7 @@ ATTR LeftHandSide Pattern Patterns [ importEnvironment : ImportEnvironment | | ]
 SEM Module
   | Module  body . collectWarnings = []
                  . collectErrors   = []
+                 . classTypeSchemes = M.empty
 
 
 SEM Body

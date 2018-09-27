@@ -267,10 +267,10 @@ createClassDef n (MaybeDeclarations_Just decls) names = M.singleton n (names, cr
                where (types, fdecl) = filterType decls ([], [])
 
 insertDefaults :: Name -> Names -> ClassMemberEnvironment -> ClassMemberEnvironment
-insertDefaults name defaults env = M.mapWithKey (\n membs -> if n == name then (update defaults membs) else membs) env 
+insertDefaults name defs env = M.mapWithKey (\n membs -> if n == name then (update defs membs) else membs) env 
       where
           update :: Names -> (Names, [(Name, TpScheme, Bool, HasDefault)]) -> (Names, [(Name, TpScheme, Bool, HasDefault)])
-          update defaults (tvars, funcs) = (tvars, map (\(fname, tpscheme, b, _)->(fname, tpscheme, b, fname `elem` defaults)) funcs)
+          update defs (tvars, funcs) = (tvars, map (\(fname, tpscheme, b, _)->(fname, tpscheme, b, fname `elem` defs)) funcs)
 
 }
 
@@ -346,13 +346,13 @@ SEM Declaration
 
 getTypeOfInstanceFunction :: Name -> Name -> ClassMemberEnvironment -> TpScheme
 getTypeOfInstanceFunction instanceName name env = case M.lookup instanceName env of
-        Just c ->   let (typeVariables, functions) = c
-                        (fn, tp, _, _) = fromMaybe (error "Unknown function in instance") (lookupFunc name functions)
+        Just c ->   let (_, functions) = c
+                        (_, tp, _, _) = fromMaybe (error "Unknown function in instance") (lookupFunc name functions)
                     in tp
         Nothing -> error "Unknown class in instance declaration"
     where
         lookupFunc :: Name -> [(Name, a, b, c)] -> Maybe (Name, a, b, c)
-        lookupFunc n [] = Nothing
+        lookupFunc _ [] = Nothing
         lookupFunc n (f@(nf, _, _, _):fs)  | n == nf   = Just f
                                         | otherwise = lookupFunc n fs
 

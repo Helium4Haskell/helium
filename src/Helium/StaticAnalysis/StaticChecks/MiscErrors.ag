@@ -9,9 +9,6 @@
 --
 -------------------------------------------------------------------------------
 
-imports{
-import qualified Data.Map as M
-}
 
 ATTR Expression Expressions MaybeExpression Pattern Patterns Alternative Alternatives
      Statement Statements Declaration Declarations MaybeDeclarations LeftHandSide RightHandSide

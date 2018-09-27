@@ -62,7 +62,9 @@ ATTR Body Declarations Declaration Expressions Expression Statements Statement
      Alternatives Alternative FunctionBindings FunctionBinding
      RightHandSide MaybeDeclarations MaybeExpression RecordExpressionBinding
      RecordExpressionBindings Constructors Constructor
-    [ dictionaryEnv : DictionaryEnvironment | | ]
+    [ dictionaryEnv : DictionaryEnvironment
+        instanceName : {Maybe Name} 
+        | | ]
 
 ATTR Body Declarations Declaration MaybeDeclarations Constructor Constructors
     [ importEnv     : ImportEnvironment | | ]

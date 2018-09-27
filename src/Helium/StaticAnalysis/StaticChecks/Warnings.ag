@@ -182,13 +182,13 @@ noInstanceOrDefault :: Name -> Names -> Maybe ClassDef -> MaybeDeclarations -> N
 noInstanceOrDefault _ _     Nothing             _                                       = []
 noInstanceOrDefault className imps  (Just (_, members)) MaybeDeclarations_Nothing       = 
                                                             [ n 
-                                                            | (n, undefined, d, False) <- snd members
+                                                            | (n, _, d, False) <- snd members
                                                             , not d
                                                             , not (("default$" ++ getNameName className ++ "$" ++ getNameName n) `elem` (map getNameName imps)) 
                                                             ]
 noInstanceOrDefault className imps  (Just (_, members)) (MaybeDeclarations_Just decls)  = 
                                                             [ n 
-                                                            | (n, undefined, d, False) <- snd members
+                                                            | (n, _, d, False) <- snd members
                                                             , not d
                                                             , notElem n (map (head . nameOfDeclaration) decls)
                                                             , not (("default$" ++ getNameName className ++ "$" ++ getNameName n) `elem` (map getNameName imps)) ]

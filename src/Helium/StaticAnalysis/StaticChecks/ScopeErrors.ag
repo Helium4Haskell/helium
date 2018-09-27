@@ -52,7 +52,7 @@ SEM Declaration
 {
 
 removeDefaultsDulicates :: [Name] -> ScopeInfo -> ScopeInfo
-removeDefaultsDulicates names (duplicated, unused, shadowed) = (duplicated, [], filter (\(s1, s2) -> not (s1 `elem` names) || not (s2 `elem` names)) shadowed)
+removeDefaultsDulicates names (duplicated, _, shadowed) = (duplicated, [], filter (\(s1, s2) -> not (s1 `elem` names) || not (s2 `elem` names)) shadowed)
 
 topLevelScopeInfo :: ScopeInfo -> ScopeInfo
 topLevelScopeInfo (xs, _, _) = (xs, [], [])

@@ -7,10 +7,8 @@ ATTR MaybeDeclarations [ | | whereDeclarations : {[(Name, CoreDecl)]}]
 
 
 ATTR Declaration Declarations MaybeDeclarations [ 
-        instanceName : {Maybe Name} 
         
-    |   isClass : Bool
-        defaultDefinitions : {[(Name, [(Name, CoreDecl)])]}
+    |  
     |   functionNames USE {(++)} {[]}: {[Name]} 
         declNames USE {(++)} {[]}: {[Name]}
         collectDefaults USE {(++)} {[]} : {[(Name, CoreDecl)]}
@@ -21,7 +19,6 @@ SEM MaybeDeclarations [ | |   core : { Core.Expr -> Core.Expr } ]
                   lhs.whereDeclarations = []
     | Just        declarations.patBindNr = 0
                   declarations.isTopLevel = False
-                  declarations.isClass = @lhs.isClass
                   declarations.importEnv = @lhs.importEnv
                   lhs.whereDeclarations = zip @declarations.declNames @declarations.decls
                   lhs.core = \continue -> letrec_ @declarations.decls continue  
@@ -95,14 +92,13 @@ SEM Declaration
                         lhs.declNames = [@bindings.name]
                         loc.instanceDict = [idFromString $ "$instanceDict" ++ show name | Just name <- [@lhs.instanceName]]
                         loc.dictionaries = @instanceDict ++ (map predicateToId (getPredicateForDecl @bindings.name @lhs.dictionaryEnv))
-                        bindings.isClass = False
                         lhs.decls    =  
         [ Core.DeclValue
             { Core.declName    = idFromName @bindings.name
             , Core.declAccess  = Core.private
             , Core.valueEnc    = Nothing
             , Core.valueValue  = foldr Core.Lam @bindings.core (@dictionaries ++ @ids)
-            , Core.declCustoms = toplevelType @bindings.name @lhs.importEnv (@lhs.isTopLevel || @lhs.isClass)
+            , Core.declCustoms = toplevelType @bindings.name @lhs.importEnv (@lhs.isTopLevel || isJust @lhs.instanceName)
             }
         ]
     --  range                    : Range          
@@ -212,7 +208,6 @@ SEM Declaration
                                                     Core.declCustoms = constructClassMemberCustomDecl (M.lookup @simpletype.name $ classMemberEnvironment @lhs.importEnv)
                                                 }
                                         ] ++ convertDictionaries @lhs.importEnv @simpletype.name @where.functionNames @where.whereDeclarations 
-                        where .isClass = True
                         where . instanceName = Just @simpletype.name
                         where . dictionaryEnv = setCurrentClassNames (zip @where.functionNames (repeat ("$instanceDict" ++ show @simpletype.name))) @lhs.dictionaryEnv
     | Instance          lhs .   decls    =  [ constructDictionary 
@@ -224,7 +219,6 @@ SEM Declaration
                         loc .   err = error "Invalid class name"
                         loc . superClasses = fst (fromMaybe @err (M.lookup (getNameName @name.self) (classEnvironment @lhs.importEnv)))
                         where . instanceName = Just @name.self
-                        where . isClass = True
     
     -- Not supported
     

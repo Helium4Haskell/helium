@@ -205,10 +205,10 @@ getImportEnvironment importedInModule = foldr insert emptyEnvironment
                             selectCustom :: String -> [Custom] -> [Custom]
                             selectCustom s = filter (isCustom s)
                             isCustom :: String -> Custom -> Bool
-                            isCustom s (CustomDecl (DeclKindCustom id) _) = stringFromId id == s 
+                            isCustom s (CustomDecl (DeclKindCustom cid) _) = stringFromId cid == s 
                             isCustom _ _ = False
                             getTypeVariable :: Custom -> Names
-                            getTypeVariable (CustomDecl _ [CustomName n]) = [nameFromString $ stringFromId n]
+                            getTypeVariable (CustomDecl _ [CustomName tn]) = [nameFromString $ stringFromId tn]
                             className = nameFromString $ stringFromId n
                             classVariables = getTypeVariable $ head (selectCustom "ClassTypeVariables" cs)
                             getFunction :: Custom -> (Name, TpScheme, Bool, HasDefault)

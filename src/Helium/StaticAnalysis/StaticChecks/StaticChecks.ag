@@ -109,10 +109,12 @@ SEM Patterns
   | Cons  lhs . numberOfPatterns = 1 + @tl.numberOfPatterns
   | Nil   lhs . numberOfPatterns = 0
 
-  ATTR Body Declaration Declarations Expression Expressions
+ATTR Body Declaration Declarations Expression Expressions
      GuardedExpression GuardedExpressions MaybeDeclarations
      MaybeExpression Qualifier Qualifiers RecordExpressionBinding
      RightHandSide Alternative Alternatives FunctionBinding
      FunctionBindings Statement RecordExpressionBindings
-     Statements ContextItem ContextItems Type
+     Statements AnnotatedType Types Constructor AnnotatedTypes 
+     ContextItem FieldDeclaration Constructors ContextItems 
+     FieldDeclarations Type 
                [ classMemberEnv : {ClassMemberEnvironment} | | ]

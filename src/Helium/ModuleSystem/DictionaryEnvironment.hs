@@ -18,10 +18,8 @@ import qualified Data.Map as M
 import Helium.Syntax.UHA_Syntax (Name)
 import Helium.Syntax.UHA_Utils (NameWithRange(..) )
 import Helium.Utils.Utils (internalError)
-import Data.Maybe
-import Top.Types
 
-import Debug.Trace
+import Top.Types
 
 data DictionaryEnvironment = 
      DEnv { declMap :: M.Map NameWithRange Predicates
@@ -72,20 +70,8 @@ makeDictionaryTrees :: ClassEnvironment -> Predicates -> Maybe String -> Predica
 makeDictionaryTrees classEnv ps currentClass = mapM (makeDictionaryTree classEnv ps currentClass)
 
 makeDictionaryTree :: ClassEnvironment -> Predicates -> Maybe String -> Predicate -> Maybe DictionaryTree
-makeDictionaryTree classEnv unFilteredavailablePredicates currentClass p@(Predicate className tp) = 
-    let 
-        getSuperClasses :: String -> [String]
-        getSuperClasses className = maybe err fst $ M.lookup className classEnv
-        err = error "Invalid class"
-        -- ClassName -> (SuperClass, SubClass)
-        relations :: [(String, String)]
-        relations = concatMap (\(Predicate n _) -> [(s, n) | s <- getSuperClasses n]) unFilteredavailablePredicates
-        
-        availablePredicates = filter hasSuperClassAvailable unFilteredavailablePredicates
-        hasSuperClassAvailable (Predicate n t) = let
-            subclasses = filter (\x -> fst x == n) relations   
-                in True
-    in case tp of
+makeDictionaryTree classEnv availablePredicates currentClass p@(Predicate className tp) = 
+    case tp of
         TVar _ | p `elem` availablePredicates -> Just (ByPredicate p)
                 | otherwise -> case [ (path, availablePredicate)
                                     | availablePredicate@(Predicate c t) <- availablePredicates
@@ -95,11 +81,9 @@ makeDictionaryTree classEnv unFilteredavailablePredicates currentClass p@(Predic
                                 []     -> Nothing
                                 (path,fromPredicate):_ -> 
                                     let list = reverse (zip path (tail path)) -- ByInstance String {- class name -} String {- instance name -} [DictionaryTree]
-                                        tree = foldr (uncurry BySuperClass) (if isJust currentClass then
-                                                ByCurrentClass (fromJust currentClass)
-                                            else
-                                                ByPredicate fromPredicate
-                                            ) list
+                                        tree = foldr (uncurry BySuperClass) 
+                                            (maybe (ByPredicate fromPredicate) ByCurrentClass currentClass) 
+                                            list
                                     in Just tree 
                                 
         _      -> case byInstance noOrderedTypeSynonyms classEnv p of

@@ -124,5 +124,7 @@ ATTR Body Declaration Declarations Expression Expressions
      MaybeExpression Qualifier Qualifiers RecordExpressionBinding
      RightHandSide Alternative Alternatives FunctionBinding
      FunctionBindings Statement RecordExpressionBindings
-     Statements
+     Statements AnnotatedType Types Constructor AnnotatedTypes 
+     ContextItem FieldDeclaration Constructors ContextItems 
+     FieldDeclarations Type 
                [ classMemberEnv : {ClassMemberEnvironment} | | ]
