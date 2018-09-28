@@ -36,6 +36,19 @@ typeFromCustoms n ( CustomDecl (DeclKindCustom ident) [CustomBytes bytes] : cs)
         typeFromCustoms n cs
 typeFromCustoms _ _ = error "Pattern match failure in ModuleSystem.CoreToImportEnv.typeFromCustoms"
 
+nameFromCustoms :: String -> Id -> String -> [Custom] -> Name
+nameFromCustoms importedInModule importedFromModId conName [] =
+    internalError "CoreToImportEnv" "nameFromCustoms"
+        ("constuctor import without name: " ++ conName)
+nameFromCustoms importedInModule importedFromModId conName ( CustomLink parentid (DeclKindCustom ident) : cs) 
+    | stringFromId ident == "data" = makeImportName importedInModule importedFromModId parentid
+    | otherwise =
+        nameFromCustoms importedInModule importedFromModId conName cs
+nameFromCustoms importedInModule importedFromModId conName (_ : cs) = nameFromCustoms importedInModule importedFromModId conName cs
+nameFromCustoms _ _ _ _ = error "Pattern match failure in ModuleSystem.CoreToImportEnv.nameFromCustoms"
+
+
+
 parseFromString :: HParser a -> String -> a
 parseFromString p string = 
     case lexer [] "CoreToImportEnv" string of 
@@ -144,6 +157,7 @@ getImportEnvironment importedInModule = foldr insert emptyEnvironment
               addValueConstructor
                 (makeImportName importedInModule importedFromModId n)
                 (typeFromCustoms (stringFromId n) cs)
+                (nameFromCustoms importedInModule importedFromModId (stringFromId n) cs)
 
            -- type constructor import
            DeclCustom { declName    = n

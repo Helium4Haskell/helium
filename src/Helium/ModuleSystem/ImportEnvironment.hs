@@ -23,7 +23,7 @@ import Data.Maybe (catMaybes)
 import Data.Function (on)
 
 type TypeEnvironment             = M.Map Name TpScheme
-type ValueConstructorEnvironment = M.Map Name TpScheme
+type ValueConstructorEnvironment = M.Map Name (Name, TpScheme)
 type TypeConstructorEnvironment  = M.Map Name Int
 type TypeSynonymEnvironment      = M.Map Name (Int, Tps -> Tp)
 type ClassMemberEnvironment      = M.Map Name [(Name, Bool)]
@@ -75,15 +75,15 @@ addToTypeEnvironment :: TypeEnvironment -> ImportEnvironment -> ImportEnvironmen
 addToTypeEnvironment new importenv =
    importenv {typeEnvironment = typeEnvironment importenv `M.union` new} 
    
-addValueConstructor :: Name -> TpScheme -> ImportEnvironment -> ImportEnvironment                      
-addValueConstructor name tpscheme importenv = 
-   importenv {valueConstructors = M.insert name tpscheme (valueConstructors importenv)}
+addValueConstructor :: Name -> TpScheme -> Name -> ImportEnvironment -> ImportEnvironment
+addValueConstructor name tpscheme parent importenv = 
+   importenv {valueConstructors = M.insert name (parent, tpscheme) (valueConstructors importenv)}
 
 addOperator :: Name -> (Int,Assoc) -> ImportEnvironment -> ImportEnvironment  
 addOperator name pair importenv = 
    importenv {operatorTable = M.insert name pair (operatorTable importenv) } 
    
-setValueConstructors :: M.Map Name TpScheme -> ImportEnvironment -> ImportEnvironment  
+setValueConstructors :: M.Map Name (Name, TpScheme) -> ImportEnvironment -> ImportEnvironment  
 setValueConstructors new importenv = importenv {valueConstructors = new} 
 
 setTypeConstructors :: M.Map Name Int -> ImportEnvironment -> ImportEnvironment     
@@ -125,10 +125,14 @@ getSiblings :: ImportEnvironment -> Siblings
 getSiblings importenv =
    let f s = [ (s, ts) | ts <- findTpScheme (nameFromString s) ]
        findTpScheme n = 
-          catMaybes [ M.lookup n (valueConstructors importenv)
+          catMaybes [ valueConsTpScheme n
                     , M.lookup n (typeEnvironment   importenv)
                     ]
-   in map (concatMap f) (getSiblingGroups importenv) 
+   in map (concatMap f) (getSiblingGroups importenv)
+   where
+    valueConsTpScheme n =
+        let res = M.lookup n (valueConstructors importenv)
+        in maybe Nothing (\(parent, scheme) -> Just scheme) res
          
 combineImportEnvironments :: ImportEnvironment -> ImportEnvironment -> ImportEnvironment
 combineImportEnvironments (ImportEnvironment tcs1 tss1 te1 vcs1 ot1 ce1 cm1 xs1) (ImportEnvironment tcs2 tss2 te2 vcs2 ot2 ce2 cm2 xs2) = 

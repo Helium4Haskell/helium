@@ -62,20 +62,23 @@ SEM Declaration
 -------------------------------------------
 -- 2) Collecting value constructors
 
-ATTR Body Declarations Declaration Constructors Constructor [ | collectValueConstructors : {[(Name,TpScheme)]} | ]
-ATTR Constructor Constructors [ | | parameterTypes USE { ++ } { [] } : Tps ]
+ATTR Body Declarations Declaration Constructors Constructor [ | collectValueConstructors : {[(Name, (Name, TpScheme))]} | ]
+ATTR Constructor Constructors [ parent : Name | | parameterTypes USE { ++ } { [] } : Tps ]
 
 SEM Module | Module   body . collectValueConstructors = []
+SEM Declaration
+    | Newtype constructor.parent  = @simpletype.name
+    | Data    constructors.parent = @simpletype.name
 
 SEM Constructor
   | Constructor
-       lhs . collectValueConstructors = (@constructor.self, @typeScheme) : @lhs.collectValueConstructors
+       lhs . collectValueConstructors = (@constructor.self, (@lhs.parent, @typeScheme)) : @lhs.collectValueConstructors
            . parameterTypes = @tps
        loc . typeScheme = generalizeAll ([] .=>. foldr (.->.) @tp @tps)
            . (tp,tps)   = convertFromSimpleTypeAndTypes @lhs.simpletype @types.types
                   
   | Infix
-       lhs . collectValueConstructors = (@constructorOperator.self, @typeScheme) : @lhs.collectValueConstructors
+       lhs . collectValueConstructors = (@constructorOperator.self, (@lhs.parent, @typeScheme)) : @lhs.collectValueConstructors
            . parameterTypes = @tps
        loc . typeScheme = generalizeAll ([] .=>. foldr (.->.) @tp @tps)
            . (tp,tps)   = convertFromSimpleTypeAndTypes @lhs.simpletype [@leftType.type,@rightType.type] 
@@ -116,15 +119,18 @@ SEM Module
                       uniqueKeys (  @body.collectValueConstructors 
                                  ++ concatMap (M.assocs . valueConstructors) @lhs.importEnvironments
                                  )
-                 . allValueConstructors = map fst @uniqueValueConstructors ++ map head @duplicatedValueConstructors
-                 . valueConstructors    = M.fromList @uniqueValueConstructors
+                 . allValueConstructors            = map fst @uniqueValueConstructors ++ map head @duplicatedValueConstructors
+                 . allValueConstructorsWithParents = map (\(con, (par, _)) -> (con,par)) @uniqueValueConstructors
+                 . valueConstructors               = M.fromList $ map (\(con, (_, tpscheme)) -> (con,tpscheme)) @uniqueValueConstructors
 
 ATTR Body Declarations Declaration Expressions Expression Patterns Pattern 
      Statement Statements Qualifier Qualifiers
      Alternative Alternatives Constructor Constructors
      GuardedExpressions GuardedExpression FunctionBinding FunctionBindings
      LeftHandSide RightHandSide MaybeDeclarations MaybeExpression AnnotatedType AnnotatedTypes
-     [ valueConstructors : {M.Map Name TpScheme} allValueConstructors : Names | | ]
+     [ valueConstructors : {M.Map Name TpScheme} 
+     allValueConstructors : Names
+     allValueConstructorsWithParents : {[(Name, Name)]} | | ]
 
 -------------------------------------------
 -- 6) Distributing Type Constructors

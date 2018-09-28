@@ -16,7 +16,7 @@ SEM Module
                                               ]
                     . modulesInScope = (@moduleName : @fileName : @body.importedModules)
                     . tyconsInScope  = @allTypeConstructors
-                    . consInScope    = @allValueConstructors
+                    . consInScope    = @allValueConstructorsWithParents
 
 SEM Module 
   | Module    loc . exportErrors = @exports.exportErrors
@@ -25,7 +25,7 @@ ATTR MaybeExports Exports Export
     [ namesInScop   : Names
       modulesInScope : Names
       tyconsInScope  : Names
-      consInScope    : Names
+      consInScope    : {[(Name, Name)]}
     |
     | exportErrors USE { ++ } { [] } : {[Error]}
     ]                    
@@ -41,6 +41,16 @@ checkExport entity name inScope =
             [name]
         )
         (nubBy equalName inScope)
+
+checkConstructorExport :: Entity -> (Name, Name) -> [(Name, Name)] -> [Error]
+checkConstructorExport entity name@(constructor, parent) inScopePairs =
+    makeUndefined entity
+        (if name `elem` inScopePairs then
+            []
+         else
+            [constructor]
+        )
+        (nubBy equalName (map fst inScopePairs))
 
 equalName :: Name -> Name -> Bool       
 equalName x y =
@@ -66,7 +76,7 @@ SEM Export
                                             ++
                                             concatMap
                                                 (\name ->
-                                                    checkExport ExportConstructor name
+                                                    checkConstructorExport ExportConstructor (name, @name.self)
                                                         @lhs.consInScope
                                                 )
                                                 @names.toList
