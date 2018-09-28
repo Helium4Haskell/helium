@@ -203,12 +203,14 @@ ATTR Module -> Declaration [ | | collectInstances USE { ++ } { [] } : {[(Name, I
 
 SEM Declaration
   | Data
-        lhs . collectInstances =  [ (cl, makeInstance (show cl) (length @simpletype.typevariables) (show @simpletype.name) )
+        lhs . collectInstances =  [ (cl, makeInstance (show cl) (length @simpletype.typevariables) (show @simpletype.name) True)
                                     | cl <- @derivings.self
                                   ]
   | Instance
-        lhs . collectInstances  = [(@name.self, makeInstance (show @name.self) 0 @loc.type)]
-        loc . type              = show $ makeTpFromType [] (head $ @types.self)
+        lhs . collectInstances  = [(@name.self, makeInstance (show @name.self) (length @typevariables) @stype False)]
+        loc . type              = head $ @types.self
+        loc . stype             = showInstanceType (makeTpFromType @typevariables @type)
+        loc . typevariables     = zip (namesInType @loc.type) [TVar n | n <- [0..]]
 
 
 ATTR SimpleType [ | | name:Name typevariables:Names ]

@@ -179,7 +179,7 @@ SEM Module
 
 SEM Declaration
   | Data
-       lhs . collectInstances = [ (cl, makeInstance (show cl) (length @simpletype.typevariables) (show @simpletype.name) )
+       lhs . collectInstances = [ (cl, makeInstance (show cl) (length @simpletype.typevariables) (show @simpletype.name) True)
                                 | cl <- @derivings.self
                                 ]
 
@@ -340,7 +340,7 @@ SEM Declaration
     | Class
         lhs . classEnv = M.singleton (getClassName @simpletype.self) (getSuperClasses @context.self, [])
     | Instance
-       lhs . instanceEnv = M.singleton (@name.self, map (makeTpFromType []) @types.self) (makeInstance (show @name.self) 0 "", @types.self ,@loc.instanceFunctions)
+       lhs . instanceEnv = M.singleton (@name.self, map (makeTpFromType []) @types.self) (makeInstance (show @name.self) 0 "" False, @types.self ,@loc.instanceFunctions)
        loc . instanceFunctions = (map (\n->(n , getTypeOfInstanceFunction @name.self n @lhs.classMemberEnv)) $ getInstanceFunctionNames @where.self)
 {
 

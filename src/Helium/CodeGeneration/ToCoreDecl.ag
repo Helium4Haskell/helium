@@ -215,9 +215,11 @@ SEM Declaration
                                                 (constructFunctionMap @lhs.importEnv (length @superClasses) @name.self)
                                                 @where.whereDeclarations @name.self @loc.typeName
                                             ] 
-                        loc .   typeName = show $ makeTpFromType [] $ head @types.self
+                        loc .   typeName = showInstanceType $ makeTpFromType @typevariables @type
                         loc .   err = error "Invalid class name"
-                        loc . superClasses = fst (fromMaybe @err (M.lookup (getNameName @name.self) (classEnvironment @lhs.importEnv)))
+                        loc .   superClasses = fst (fromMaybe @err (M.lookup (getNameName @name.self) (classEnvironment @lhs.importEnv)))
+                        loc .   typevariables = zip (namesInType @loc.type) [TVar n | n <- [0..]]
+                        loc .   type = head @types.self
                         where . instanceName = Just @name.self
     
     -- Not supported

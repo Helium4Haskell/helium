@@ -17,7 +17,7 @@ SEM Module
       loc  -- Solve the type constraints.
            . (SolveResult betaUniqueAtTheEnd substitution typeschemeMap _ solveErrors) = @solveResult
            . (solveResult, logEntries) =
-                (selectConstraintSolver @lhs.options @lhs.importEnvironment)
+                (selectConstraintSolver @lhs.options (setClassEnvironment @classEnv @lhs.importEnvironment))
                    @classEnv
                    @orderedTypeSynonyms
                    @body.betaUnique
@@ -157,7 +157,7 @@ SEM Declaration
                                         ) ++ [@where.constraints]
         loc         . members       = zip @where.typeMemberBindings (map TVar [(@lhs.betaUnique + 1)..])
   | Instance
-        where   . betaUnique            = @lhs.betaUnique + 2 + 1
+        where   . betaUnique            = @lhs.betaUnique + 2 + length(@typeVariabeles)
         where   . assumptions           = noAssumptions
         where   . constraints           = emptyTree
         lhs     . instanceDicts         = M.singleton (constructDictionaryName @name.self (show @loc.instsType)) (makeScheme [] [] $ TCon "DictZInt")
@@ -172,7 +172,8 @@ SEM Declaration
                                             ]
         loc     . instBeta              = TVar      @lhs.betaUnique
         loc     . classBeta             = TVar $    @lhs.betaUnique + 1
-        loc     . instsType             = makeTpFromType [] (head $ @types.self)
+        loc     . typeVariabeles        = namesInType (head $ @types.self)
+        loc     . instsType             = makeTpFromType (zip @typeVariabeles [TVar n | n <- [@lhs.betaUnique + 2..]]) (head $ @types.self)
         loc     . cinfo                 = emptyConstraintInfo
         loc     . memberConstraints     =  [(.>. Node []) $ map (\(_, tpscheme, tp)->
                                             let 

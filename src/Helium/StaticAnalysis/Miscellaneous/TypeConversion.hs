@@ -123,3 +123,10 @@ makeTypeFromTp t =
          f (TCon s) = Type_Constructor noRange (nameFromString s)
          f (TApp _ _) = error "TApp case in makeTypeFromTp"
 
+         
+
+showInstanceType :: Tp -> String
+showInstanceType (TCon c) = c
+showInstanceType (TApp f1 f2) = showInstanceType f1 ++ showInstanceType f2
+showInstanceType (TVar v) = ""
+            

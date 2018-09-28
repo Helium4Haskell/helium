@@ -212,7 +212,7 @@ createClassEnvironment lookupEnvs importenv =
                                   (internalError "ImportEnvironment" "splitDictName" ("unknown type constructor: " ++ show s))
                                   (nameFromString s)
                                   (typeConstructors lookupEnv)
-         dictTuples = [ (c, makeInstance c (arity t) t)
+         dictTuples = [ (c, makeInstance c (arity t) t True)
                       | d <- dicts, let (c, t) = splitDictName d
                       ]
 
@@ -231,11 +231,11 @@ superClassRelation = M.fromList
    , ("Show", ( [],              []))
    ]
 
-makeInstance :: String -> Int -> String -> Instance
-makeInstance className nrOfArgs tp =
+makeInstance :: String -> Int -> String -> Bool -> Instance
+makeInstance className nrOfArgs tp isDict =
    let tps = take nrOfArgs [ TVar i | i <- [0..] ]
    in ( Predicate className (foldl TApp (TCon tp) tps)
-      , [ Predicate className x | x <- tps ]
+      , [ Predicate className x | x <- tps, isDict ]
       )
 
 -- added for holmes
