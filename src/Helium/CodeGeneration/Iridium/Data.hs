@@ -21,8 +21,20 @@ type BlockName = Id
 
 data Module = Module
   { moduleName :: Id
+  , moduleDataTypes :: [DataType]
   , moduleMethods :: [Method]
   }
+
+data DataType = DataType Id [DataTypeConstructor]
+  deriving (Eq, Ord)
+data DataTypeConstructor = DataTypeConstructor Id [PrimitiveType]
+  deriving (Eq, Ord)
+
+data PrimitiveType
+  = TypeAny -- ^ Any value, possibly a non-evaluated thunk
+  | TypeAnyWHNF
+  deriving (Eq, Ord, Show)
+  -- TODO: Types for unboxed values 
 
 data Method = Method Id Block [Block]
   deriving (Eq, Ord)
@@ -80,7 +92,7 @@ instance Show Expr where
 instructionIndent :: String
 instructionIndent = "    "
 
-showArguments :: [Id] -> String
+showArguments :: Show a => [a] -> String
 showArguments = ("("++) . (++")") . intercalate ", " . map show
 
 declaredVarsInPattern :: Pattern -> [Id]
@@ -104,11 +116,17 @@ instance Show Block where
 instance Show Method where
   show (Method name entry blocks) = "fn " ++ show name ++ "\n" ++ show entry ++ (blocks >>= ('\n' :) . show) ++ "\n"
 
+instance Show DataTypeConstructor where
+  show (DataTypeConstructor name args) = "  " ++ show name ++ showArguments args
+
+instance Show DataType where
+  show (DataType name cons) = "data " ++ show name ++ (cons >>= (('\n' :) . show)) ++ "\n"
+
 instance Show Module where
-  show (Module name methods) = "module " ++ show name ++ "\n" ++ (methods >>= ('\n' :) . show)
+  show (Module name decls methods) = "module " ++ show name ++ "\n" ++ (decls >>= ('\n' :) . show) ++ (methods >>= ('\n' :) . show)
 
 mapBlocks :: (Instruction -> Instruction) -> Module -> Module
-mapBlocks fn (Module name methods) = Module name $ map fnMethod methods
+mapBlocks fn (Module name datas methods) = Module name datas $ map fnMethod methods
   where
     fnMethod :: Method -> Method
     fnMethod (Method name entry blocks) = Method name (fnBlock entry) $ map fnBlock blocks

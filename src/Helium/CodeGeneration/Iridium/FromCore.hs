@@ -10,16 +10,33 @@
 
 module Helium.CodeGeneration.Iridium.FromCore where
 
-import Lvm.Common.Id(Id, NameSupply, freshId, splitNameSupply, mapWithSupply)
+import Lvm.Common.Id(Id, NameSupply, freshId, splitNameSupply, mapWithSupply, idFromString)
+import Lvm.Common.IdMap
 import qualified Lvm.Core.Expr as Core
 import qualified Lvm.Core.Module as CoreModule
+import Data.List(find, replicate)
 
 import Text.PrettyPrint.Leijen (pretty) -- TODO: Remove
 
 import Helium.CodeGeneration.Iridium.Data
 
 fromCore :: NameSupply -> Core.CoreModule -> Module
-fromCore supply (CoreModule.Module name _ _ decls) = Module name $ concat $ mapWithSupply fromCoreDecl supply decls
+fromCore supply (CoreModule.Module name _ _ decls) = Module name datas methods
+  where
+    datas = map (\(dataName, cons) -> DataType dataName cons) $ listFromMap consMap
+    consMap = foldr dataTypeFromCoreDecl emptyMap decls
+    methods = concat $ mapWithSupply fromCoreDecl supply decls
+
+dataTypeFromCoreDecl :: Core.CoreDecl -> IdMap [DataTypeConstructor] -> IdMap [DataTypeConstructor]
+dataTypeFromCoreDecl decl@CoreModule.DeclCon{} = case find isDataName (CoreModule.declCustoms decl) of
+    Just (CoreModule.CustomLink dataType _) -> insertMapWith dataType [con] (con :)
+    Nothing -> id
+  where
+    isDataName (CoreModule.CustomLink _ (CoreModule.DeclKindCustom name)) = name == idFromString "data"
+    isDataName _ = False
+    -- When adding strictness annotations to data types, `TypeAny` on the following line should be changed.
+    con = DataTypeConstructor (CoreModule.declName decl) (replicate (CoreModule.declArity decl) TypeAny)
+dataTypeFromCoreDecl _ = id
 
 fromCoreDecl :: NameSupply -> Core.CoreDecl -> [Method]
 fromCoreDecl supply decl@CoreModule.DeclValue{} = [toMethod supply (CoreModule.declName decl) (CoreModule.valueValue decl)]

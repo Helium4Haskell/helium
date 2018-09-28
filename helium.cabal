@@ -147,12 +147,15 @@ Library
     Helium.CodeGeneration.DerivingShow
     Helium.CodeGeneration.PatternMatch
     Helium.CodeGeneration.Core
+    Helium.CodeGeneration.Core.LetSort
     Helium.CodeGeneration.Core.Lift
     Helium.CodeGeneration.Core.Normalize
     Helium.CodeGeneration.Core.NoShadow
     Helium.CodeGeneration.Core.ReduceThunks
+    Helium.CodeGeneration.Core.RemoveAliasses
     Helium.CodeGeneration.Iridium.Data
     Helium.CodeGeneration.Iridium.FromCore
+    Helium.CodeGeneration.Iridium.PassRemoveAliasses
     Helium.Main.Args
     Helium.Main.Compile
     Helium.Main.CompileUtils
