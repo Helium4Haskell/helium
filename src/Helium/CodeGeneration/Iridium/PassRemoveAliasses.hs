@@ -1,4 +1,4 @@
-{-| Module      :  Data
+{-| Module      :  PassRemoveAliasses
     License     :  GPL
 
     Maintainer  :  helium@cs.uu.nl

@@ -17,11 +17,7 @@ import Lvm.Core.Expr
 import Lvm.Core.Module
 
 coreReduceThunks :: CoreModule -> CoreModule
-coreReduceThunks (Module name major minor decls) = Module name major minor $ map reduceThunksInDecl decls
-
-reduceThunksInDecl :: CoreDecl -> CoreDecl
-reduceThunksInDecl decl@(DeclValue{}) = decl{ valueValue = reduceThunksInExpr $ valueValue decl }
-reduceThunksInDecl decl = decl
+coreReduceThunks = fmap reduceThunksInExpr
 
 reduceThunksInExpr :: Expr -> Expr
 reduceThunksInExpr (Let (NonRec b@(Bind x value)) expr)
