@@ -1,4 +1,4 @@
-module Reexport2 where
+module Reexport2(module Reexport2, Reexport3) where
 
 import Reexport3
 

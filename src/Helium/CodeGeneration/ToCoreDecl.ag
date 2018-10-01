@@ -393,7 +393,7 @@ toplevelType name ie isTopLevel
             (M.lookup name (typeEnvironment ie))
 
 constructorCustoms :: Name -> Name -> ValueConstructorEnvironment -> [Core.Custom]
-constructorCustoms dataTypeName name env =
+constructorCustoms dataTypeName name envWithParent =
     maybe 
         (internalError "ToCoreDecl" "Constructor" ("no type found for " ++ show name))
         (\tpScheme -> 
@@ -404,4 +404,6 @@ constructorCustoms dataTypeName name env =
             ]
         )
         (M.lookup name env)
+    where
+        env = M.map (\(parent, scheme) -> scheme) envWithParent
 }

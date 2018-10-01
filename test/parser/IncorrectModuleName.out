@@ -2,5 +2,5 @@ Prelude is up to date
 Compiling parser/IncorrectModuleName.hs
 (1,11): Syntax error: 
     unexpected operator '.'
-    expecting keyword 'where'
+    expecting '(' or keyword 'where'
 Compilation failed with 1 error
