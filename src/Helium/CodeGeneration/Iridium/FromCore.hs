@@ -10,6 +10,7 @@
 
 module Helium.CodeGeneration.Iridium.FromCore where
 
+import Helium.CodeGeneration.Core.Arity(aritiesMap)
 import Lvm.Common.Id(Id, NameSupply, freshId, splitNameSupply, mapWithSupply, idFromString)
 import Lvm.Common.IdMap
 import qualified Lvm.Core.Expr as Core
@@ -20,12 +21,15 @@ import Text.PrettyPrint.Leijen (pretty) -- TODO: Remove
 
 import Helium.CodeGeneration.Iridium.Data
 
+data Analyses = Analyses { arities :: IdMap CoreModule.Arity }
+
 fromCore :: NameSupply -> Core.CoreModule -> Module
-fromCore supply (CoreModule.Module name _ _ decls) = Module name datas methods
+fromCore supply mod@(CoreModule.Module name _ _ decls) = Module name datas methods
   where
     datas = map (\(dataName, cons) -> DataType dataName cons) $ listFromMap consMap
     consMap = foldr dataTypeFromCoreDecl emptyMap decls
-    methods = concat $ mapWithSupply fromCoreDecl supply decls
+    methods = concat $ mapWithSupply (`fromCoreDecl` analyses) supply decls
+    analyses = Analyses (aritiesMap mod)
 
 dataTypeFromCoreDecl :: Core.CoreDecl -> IdMap [DataTypeConstructor] -> IdMap [DataTypeConstructor]
 dataTypeFromCoreDecl decl@CoreModule.DeclCon{} = case find isDataName (CoreModule.declCustoms decl) of
@@ -38,16 +42,16 @@ dataTypeFromCoreDecl decl@CoreModule.DeclCon{} = case find isDataName (CoreModul
     con = DataTypeConstructor (CoreModule.declName decl) (replicate (CoreModule.declArity decl) TypeAny)
 dataTypeFromCoreDecl _ = id
 
-fromCoreDecl :: NameSupply -> Core.CoreDecl -> [Method]
-fromCoreDecl supply decl@CoreModule.DeclValue{} = [toMethod supply (CoreModule.declName decl) (CoreModule.valueValue decl)]
-fromCoreDecl _ _ = []
+fromCoreDecl :: NameSupply -> Analyses -> Core.CoreDecl -> [Method]
+fromCoreDecl supply analyses decl@CoreModule.DeclValue{} = [toMethod supply analyses (CoreModule.declName decl) (CoreModule.valueValue decl)]
+fromCoreDecl _ _ _ = []
 
-toMethod :: NameSupply -> Id -> Core.Expr -> Method
-toMethod supply name expr = Method name (Block entryName args entry) blocks
+toMethod :: NameSupply -> Analyses -> Id -> Core.Expr -> Method
+toMethod supply analyses name expr = Method name (Block entryName args entry) blocks
   where
     (entryName, supply') = freshId supply
     (args, expr') = consumeLambdas expr
-    Partial entry blocks = toInstruction supply' args CReturn expr'
+    Partial entry blocks = toInstruction supply' analyses args CReturn expr'
 
 -- Removes all lambda expression, returns a list of arguments and the remaining expression.
 consumeLambdas :: Core.Expr -> ([Id], Core.Expr)
@@ -73,21 +77,21 @@ ret :: Id -> Continue -> Partial
 ret x CReturn = Partial (Return x) []
 ret x (CBind instr blocks) = Partial (instr x) blocks
 
-toInstruction :: NameSupply -> [Id] -> Continue -> Core.Expr -> Partial
+toInstruction :: NameSupply -> Analyses -> [Id] -> Continue -> Core.Expr -> Partial
 -- Let bindings
-toInstruction supply scope continue (Core.Let (Core.NonRec b) expr)
+toInstruction supply analyses scope continue (Core.Let (Core.NonRec b) expr)
   = LetThunk [bind b]
-    +> toInstruction supply (boundVar b : scope) continue expr
+    +> toInstruction supply analyses (boundVar b : scope) continue expr
   where
-toInstruction supply scope continue (Core.Let (Core.Strict (Core.Bind x val)) expr)
-  = toInstruction supply1 scope (CBind next blocks) val
+toInstruction supply analyses scope continue (Core.Let (Core.Strict (Core.Bind x val)) expr)
+  = toInstruction supply1 analyses scope (CBind next blocks) val
   where
     (supply1, supply2) = splitNameSupply supply
-    Partial instr blocks = toInstruction supply2 (x : scope) continue expr
+    Partial instr blocks = toInstruction supply2 analyses (x : scope) continue expr
     next var = Let x (Var var) instr
-toInstruction supply scope continue (Core.Let (Core.Rec bs) expr)
+toInstruction supply analyses scope continue (Core.Let (Core.Rec bs) expr)
   = LetThunk (map bind bs)
-  +> toInstruction supply (map boundVar bs ++ scope) continue expr
+  +> toInstruction supply analyses (map boundVar bs ++ scope) continue expr
 
 -- Match
 -- TODO: Match with a single Alt can be transformed into a Match instruction, without any branching.
@@ -100,10 +104,10 @@ toInstruction supply scope continue (Core.Let (Core.Rec bs) expr)
     +> toInstruction supply (map declaredVarsInPattern bs ++ scope) continue expr
   where
     (name, supply') = freshId -}
-toInstruction supply scope continue (Core.Match x alts) =
+toInstruction supply analyses scope continue (Core.Match x alts) =
   blocks
     &> (Let name (Eval x)
-    +> transformAlts supply''' scope continue' name alts)
+    +> transformAlts supply''' analyses scope continue' name alts)
   where
     (name, supply') = freshId supply
     (blockId, supply'') = freshId supply'
@@ -118,42 +122,63 @@ toInstruction supply scope continue (Core.Match x alts) =
       CBind _ _ -> CBind (\res -> (Jump blockId (res : scope))) []
 
 -- Non-branching expressions
-toInstruction supply scope continue (Core.Lit lit) = Let name (Literal $ literal lit) +> ret name continue
+toInstruction supply analyses scope continue (Core.Lit lit) = Let name (Literal $ literal lit) +> ret name continue
   where
     (name, _) = freshId supply
-toInstruction supply scope continue (Core.Var var) = Let name (Eval var) +> ret name continue
+toInstruction supply analyses scope continue (Core.Var var) = Let name (Eval var) +> ret name continue
   where
     (name, _) = freshId supply
-toInstruction supply scope continue expr = case getApplicationOrConstruction expr [] of
+toInstruction supply analyses scope continue expr = case getApplicationOrConstruction expr [] of
   (Left con, args) ->
     Let x (Alloc (conId con) args)
       +> ret x continue
-  (Right fn, args) -> 
-    LetThunk [BindThunk x fn args]
-      +> Let y (Eval x)
-      +> ret y continue
+  (Right fn, args) ->
+    case lookupMap fn (arities analyses) of
+      Just arity
+        | arity == length args ->
+          -- Applied the correct number of arguments, compile to a Call.
+          Let x (Call fn args) +> ret x continue
+        | arity >  length args ->
+          -- Not enough arguments, cannot call the function yet. Compile to a thunk.
+          -- The thunk is already in WHNF, as the application does not have enough arguments.
+          LetThunk [BindThunk x fn args] +> ret x continue
+        | otherwise ->
+          -- Too many arguments. Evaluate the function with the first `arity` arguments,
+          -- and build a thunk for the additional arguments. This thunk might need to be
+          -- evaluated.
+          Let x (Call fn $ take arity args)
+            +> LetThunk [BindThunk y x $ drop arity args]
+            +> Let z (Eval y)
+            +> ret z continue
+      Nothing ->
+        -- Don't know whether some function must be evaluated, so bind it to a thunk
+        -- and try to evaluate it.
+        LetThunk [BindThunk x fn args]
+          +> Let y (Eval x)
+          +> ret y continue
   where
     (fn, args) = getApplication expr
     (x, supply') = freshId supply
-    (y, _) = freshId supply'
+    (y, supply'') = freshId supply'
+    (z, supply''') = freshId supply''
 
-transformAlts :: NameSupply -> [Id] -> Continue -> Id -> [Core.Alt] -> Partial
-transformAlts supply scope continue name [Core.Alt pat expr] = case pattern pat of
+transformAlts :: NameSupply -> Analyses -> [Id] -> Continue -> Id -> [Core.Alt] -> Partial
+transformAlts supply analyses scope continue name [Core.Alt pat expr] = case pattern pat of
   Nothing ->
-    toInstruction supply scope continue expr
+    toInstruction supply analyses scope continue expr
   Just p ->
     Match name p
-    +> toInstruction supply (declaredVarsInPattern p ++ scope) continue expr
-transformAlts supply scope continue name (alt@(Core.Alt pat expr) : alts) = case pattern pat of
-  Nothing -> transformAlts supply scope continue name [alt]
+    +> toInstruction supply analyses (declaredVarsInPattern p ++ scope) continue expr
+transformAlts supply analyses scope continue name (alt@(Core.Alt pat expr) : alts) = case pattern pat of
+  Nothing -> transformAlts supply analyses scope continue name [alt]
   Just p ->
     let
       (blockId, supply') = freshId supply
       blockArgs = declaredVarsInPattern p ++ scope
-      Partial exprInstr exprBlocks = toInstruction supply scope continue expr
+      Partial exprInstr exprBlocks = toInstruction supply analyses scope continue expr
     in Block blockId blockArgs exprInstr : exprBlocks
       &> IfMatch name p blockId blockArgs
-      +> transformAlts supply' scope continue name alts
+      +> transformAlts supply' analyses scope continue name alts
 
 bind :: Core.Bind -> BindThunk
 bind (Core.Bind x val) = BindThunk x fn args

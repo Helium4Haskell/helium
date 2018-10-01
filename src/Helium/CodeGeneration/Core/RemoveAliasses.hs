@@ -34,13 +34,3 @@ renameExpr env (Ap e1 e2) = Ap (renameExpr env e1) (renameExpr env e2)
 renameExpr env (Lam x expr) = Lam x $ renameExpr env expr
 renameExpr env (Var x) = Var $ fromMaybe x $ lookupMap x env
 renameExpr _ expr = expr -- Literal or Constructor
-
-{-
-data Expr       = Let       !Binds Expr       
-                | Match     !Id Alts
-                | Ap        Expr Expr
-                | Lam       !Id Expr
-                | Con       !(Con Expr)
-                | Var       !Id
-				| Lit       !Literal
-				-}

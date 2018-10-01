@@ -39,7 +39,7 @@ boundVar (Bind x _) = x
 liftExprInDecl :: NameSupply -> CoreDecl -> ([CoreDecl])
 liftExprInDecl supply (DeclValue name access enc expr customs) = DeclValue name access enc expr' customs : decls
   where
-    (expr', decls) = liftExprIgnoreLambdas supply [] expr 
+    (expr', decls) = liftExprIgnoreLambdas supply [] expr
 liftExprInDecl _ decl = [decl]
 
 liftExprIgnoreLambdas :: NameSupply -> [Id] -> Expr -> (Expr, [CoreDecl])
@@ -82,7 +82,10 @@ strictBind supply scope (Bind x expr) = (Bind x expr', decls)
     (expr', decls) = liftExpr supply scope expr
 
 lazyBind :: NameSupply -> [Id] -> Bind -> (Bind, [CoreDecl])
-lazyBind supply scope (Bind x expr) = (Bind x ap, decl : decls)
+lazyBind supply scope b@(Bind x expr)
+  -- Expression can already be put in a thunk, don't need to change anything.
+  | isValidThunk expr = (b, [])
+  | otherwise = (Bind x ap, decl : decls)
   where
     ap = foldl (\e arg -> Ap e (Var arg)) (Var name) scope -- TODO: foldl vs foldr, Ap vs flip Ap?
     (name, supply') = freshId supply
@@ -105,4 +108,6 @@ liftAlt supply scope (Alt pat expr) = (Alt pat expr', decls)
       PatCon _ ids -> ids
       _ -> []
 
-
+isValidThunk :: Expr -> Bool
+isValidThunk (Ap _ _) = True
+isValidThunk _ = False
