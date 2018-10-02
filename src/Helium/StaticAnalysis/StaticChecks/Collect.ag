@@ -150,7 +150,7 @@ ATTR Body Declarations Declaration Expressions Expression Patterns Pattern
      GuardedExpressions GuardedExpression FunctionBinding FunctionBindings     
      LeftHandSide RightHandSide MaybeDeclarations MaybeExpression 
      Type Types AnnotatedType AnnotatedTypes ContextItem ContextItems
-     [ typeConstructors : {M.Map Name Int} allTypeConstructors : Names | | ]
+     [ typeConstructors : {M.Map Name Int} allTypeConstructors : Names duplicatedTypeConstructors : {[Names]} | | ]
 
 -------------------------------------------
 -- 7) Distributing Type Synonyms

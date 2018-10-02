@@ -14,7 +14,7 @@ module Helium.StaticAnalysis.Messages.StaticErrors where
 import Helium.Syntax.UHA_Syntax
 import Helium.Syntax.UHA_Range
 import Helium.StaticAnalysis.Messages.Messages
-import Data.List        (nub, intersperse, sort, partition)
+import Data.List        (nub, intersperse, sort, partition, intercalate)
 import Data.Maybe
 import Helium.Utils.Utils       (commaList, internalError, maxInt)
 
@@ -45,6 +45,7 @@ data Error  = NoFunDef Entity Name {-names in scope-}Names
             | OverlappingInstance String Tp
             | MissingSuperClass Range Predicate Predicate 
             | Duplicated Entity Names
+            | Ambiguous Entity Name {-the name what is ambiguous-} [(Name, String)] {- The modules where it occurs, including the original module of the decl-}
             | LastStatementNotExpr Range
             | WrongFileName {-file name-}String {-module name-}String Range {- of module name -}
             | TypeVarApplication Name
@@ -87,6 +88,7 @@ instance HasMessage Error where
       MissingSuperClass range _ _ -> [range]
       InvalidInstanceConstraint _ name _ -> [getNameRange name]
       Duplicated _ names          -> sortRanges (map getNameRange names)
+      Ambiguous _ name _          -> [getNameRange name]
       LastStatementNotExpr range  -> [range]
       WrongFileName _ _ range     -> [range]
       TypeVarApplication name     -> [getNameRange name]
@@ -262,10 +264,8 @@ showError anError = case anError of
                    commaList [ snd (fromJust (modulesFromImportRange importRange)) 
                              | importRange <- importRanges
                              ]), [])
-
       | otherwise ->
-           ( MessageString ("Duplicated " ++ show entity ++ " " ++ (show . show . head) names), [])
-                 
+           ( MessageString ("Duplicated " ++ show entity ++ " " ++ (show . show . head) names), [])    
        where
 {-        fromRanges = [ if isImportRange range then
                          Range_Range position position
@@ -276,6 +276,18 @@ showError anError = case anError of
                      ] -}
         nameRanges   = sort (map getNameRange names)
 
+   Ambiguous entity name names ->
+     let 
+        showline (name', origin) |  (isImportRange.getNameRange) name' = (show.show) name' ++ " imported from module " ++ 
+                                      (snd . fromJust . modulesFromImportRange . getNameRange) name' ++
+                                      " (orignally defined in " ++ origin ++ ")"
+                                 | otherwise = (show.show) name' ++ " defined at " ++ (show.getNameRange) name'          
+     in
+       ( MessageString (
+           "The occurence of " ++ show entity ++ " " ++ (show.show) name ++
+           " is ambiguous. It could refer to: \n\t" ++ (intercalate "\n\t" . map showline) names
+       ) , []) 
+         
    LastStatementNotExpr _ ->
       ( MessageString "Last generator in do {...} must be an expression ", [])
     
@@ -382,7 +394,13 @@ makeUndefined :: Entity -> Names -> Names -> [Error]
 makeUndefined entity names inScope = [ Undefined entity name inScope [] | name <- names ]
 
 makeDuplicated :: Entity -> [Names] -> [Error]
-makeDuplicated entity nameslist = [ Duplicated entity names | names <- nameslist ]
+makeDuplicated entity nameslist = [ Duplicated entity names | names <- nameslist]
+
+makeDuplicatedNonImported :: Entity -> [Names] -> [Error]
+makeDuplicatedNonImported entity nameslist = [ Duplicated entity names | names <- (map getNonImportedNames nameslist), length names > 1]
+    where
+      getNonImportedNames :: Names -> Names
+      getNonImportedNames = filter (not . isImportRange . getNameRange)
 
 undefinedConstructorInExpr :: Name -> Names -> Names -> Error
 undefinedConstructorInExpr name sims tyconNames =
@@ -415,6 +433,7 @@ errorLogCode anError = case anError of
           NoFunDef entity _ _                     -> "nf" ++ code entity
           Undefined entity _ _ _                  -> "un" ++ code entity
           Duplicated entity _                     -> "du" ++ code entity
+          Ambiguous entity _ _                    -> "ab" ++ code entity
           LastStatementNotExpr _                  -> "ls"
           WrongFileName _ _ _                     -> "wf"
           TypeVarApplication _                    -> "tv"
