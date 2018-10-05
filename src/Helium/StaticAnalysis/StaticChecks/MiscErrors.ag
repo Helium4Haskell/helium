@@ -154,10 +154,9 @@ SEM Expression
                                                else let range = getStatementRange (last @statements.self)
                                                     in [ LastStatementNotExpr range ]  
                                                 
-  | Constructor  lhs . miscerrors = @undefinedConstructorErrors ++ @lhs.miscerrors
-                 loc . undefinedConstructorErrors = case M.lookup @name.self @lhs.valueConstructors of
-                                                       Nothing -> [ undefinedConstructorInExpr @name.self (@lhs.namesInScope ++ @lhs.allValueConstructors) @lhs.allTypeConstructors ]
-                                                       Just _  -> []
+  | Constructor  lhs . miscerrors = @constructorErrors ++ @lhs.miscerrors
+                 loc . constructorErrors = 
+                        constructorErrors @name.self @lhs.valueConstructors @lhs.ambiguousConflictsValCon @lhs.namesInScope @lhs.allValueConstructors @lhs.allTypeConstructors
 
   | Let          lhs . miscerrors = @typeSignatureErrors ++ @expression.miscerrors
                  loc . (_,doubles) = uniqueAppearance (map fst @declarations.typeSignatures)
@@ -179,27 +178,40 @@ ambiguousOrUndefinedErrors name namesInScope ambiguousConflicts =
         case amb of
             []   -> [Undefined Variable name namesInScope []]
             y:[] -> [Ambiguous Variable name (map (\n -> (n,"")) y)]
-            _    -> error ""
+            _    -> internalError "MiscErrors.ag" "n/a" "ambiguousOrUndefinedErrors"
+
+constructorErrors :: Name -> M.Map Name TpScheme -> [[Name]] -> Names -> Names -> Names -> Errors
+constructorErrors name valCons ambiguousConflictsValCon namesInScope allValueConstructors allTypeConstructors =
+    case M.lookup name valCons of
+        Just _ -> []
+        Nothing -> let amb = [a | a <- ambiguousConflictsValCon, head a == name] in
+                    case amb of
+                        []   -> [undefinedConstructorInExpr name (namesInScope ++ allValueConstructors) allTypeConstructors ]
+                        y:[] -> [Ambiguous Constructor name (map (\n -> (n,"")) y)]
+                        _    -> internalError "MiscErrors.ag" "n/a" "constructorErrors"
 }
 -----------------------------------------
 -- Pattern
 
 SEM Pattern
     | Constructor        lhs . miscerrors = @patConstructorErrors ++ @patterns.miscerrors
-                         loc . patConstructorErrors = patternConstructorErrors @maybetp @name.self @lhs.allValueConstructors @patterns.numberOfPatterns @lhs.lhsPattern @lhs.allTypeConstructors
+                         loc . patConstructorErrors = patternConstructorErrors @maybetp @name.self @lhs.ambiguousConflictsValCon @lhs.allValueConstructors @patterns.numberOfPatterns @lhs.lhsPattern @lhs.allTypeConstructors
                              . maybetp    = M.lookup @name.self @lhs.valueConstructors
 
     | InfixConstructor   lhs . miscerrors = @patConstructorErrors ++ @rightPattern.miscerrors
-                         loc . patConstructorErrors = patternConstructorErrors @maybetp @constructorOperator.self @lhs.allValueConstructors 2 False @lhs.allTypeConstructors
+                         loc . patConstructorErrors = patternConstructorErrors @maybetp @constructorOperator.self @lhs.ambiguousConflictsValCon @lhs.allValueConstructors 2 False @lhs.allTypeConstructors
                              . maybetp    = M.lookup @constructorOperator.self @lhs.valueConstructors
 
 
 {
-patternConstructorErrors :: Maybe TpScheme -> Name -> Names -> Int -> Bool -> Names -> [Error]
-patternConstructorErrors maybetparity name env useArity lhsPattern namesTyconEnv =
+patternConstructorErrors :: Maybe TpScheme -> Name -> [[Name]] -> Names -> Int -> Bool -> Names -> [Error]
+patternConstructorErrors maybetparity name ambiguousConflictsValCon env useArity lhsPattern namesTyconEnv =
     case maybetparity of
-        Nothing ->
-            [ undefinedConstructorInPat lhsPattern name env namesTyconEnv ]
+        Nothing -> let amb = [a | a <- ambiguousConflictsValCon, head a == name] in
+                    case amb of
+                        []   -> [undefinedConstructorInPat lhsPattern name env namesTyconEnv ]
+                        y:[] -> [Ambiguous Constructor name (map (\n -> (n,"")) y)]
+                        _    -> internalError "MiscErrors.ag" "n/a" "patternConstructorErrors"            
         Just tpScheme ->
             let arity = arityOfTpScheme tpScheme
             in if arity /= useArity

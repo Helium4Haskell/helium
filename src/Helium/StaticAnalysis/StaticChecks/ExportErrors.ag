@@ -43,7 +43,7 @@ checkExport entity name inScope =
         (nubBy equalName inScope)
 
 checkConstructorExport :: Entity -> (Name, Name) -> [(Name, Name)] -> [Error]
-checkConstructorExport entity name@(constructor, parent) inScopePairs =
+checkConstructorExport entity name@(constructor, _) inScopePairs =
     makeUndefined entity
         (if name `elem` inScopePairs then
             []
