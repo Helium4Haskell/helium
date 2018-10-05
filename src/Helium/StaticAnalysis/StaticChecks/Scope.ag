@@ -43,8 +43,20 @@ ATTR Expression RightHandSide
      AnnotatedTypes Constructor Constructors FieldDeclaration FieldDeclarations Body
      [ namesInScope : Names | counter : Int | unboundNames USE {++} {[]} : Names ]
 
+ATTR Expression RightHandSide
+     RecordExpressionBinding RecordExpressionBindings
+     MaybeExpression GuardedExpression FunctionBinding
+     Expressions Declaration Declarations Alternative FunctionBindings
+     Alternatives GuardedExpressions RecordPatternBinding
+     Patterns Pattern LeftHandSide RecordPatternBindings AnnotatedType
+     AnnotatedTypes Constructor Constructors FieldDeclaration FieldDeclarations Body
+     MaybeDeclarations Expression Statement Statements Qualifier Qualifiers
+     [ambiguousConflicts : {[[Name]]} | | ]
+
 SEM Module
-  | Module   loc . (namesInScope, unboundNames, scopeInfo) = changeOfScope (@initialScope ++ @body.declVarNames) @body.unboundNames []
+  | Module   loc . (namesInScope, unboundNames, scopeInfo) = changeOfScope (@scopeNoConflicts) @body.unboundNames []
+             loc . (scopeNoConflicts, ambiguousConflicts) = uniqueAppearance (@initialScope ++ @declNoConflicts)
+             loc . (declNoConflicts , declDouble) = uniqueAppearance @body.declVarNames
              body . counter = 0
                  
 SEM MaybeDeclarations

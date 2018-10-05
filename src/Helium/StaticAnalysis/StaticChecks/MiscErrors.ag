@@ -147,9 +147,7 @@ frequencies = map (\ys -> (head ys, length ys)) . group . sort
 
 SEM Expression
   | Variable     lhs . miscerrors     = @undefinedErrors ++ @lhs.miscerrors 
-                 loc . undefinedErrors = if @name.self `elem` @lhs.namesInScope
-                                           then []
-                                           else [ Undefined Variable @name.self @lhs.namesInScope [] ]
+                 loc . undefinedErrors = ambiguousOrUndefinedErrors @name.self @lhs.namesInScope @lhs.ambiguousConflicts
   | Do           lhs . miscerrors = @lastStatementErrors ++ @statements.miscerrors
                  loc . lastStatementErrors = if @statements.lastStatementIsExpr
                                                then []
@@ -171,6 +169,18 @@ SEM Expression
                         | length @expressions.self > 10
                         ]
 
+{
+ambiguousOrUndefinedErrors :: Name -> Names -> [[Name]] -> Errors
+ambiguousOrUndefinedErrors name namesInScope ambiguousConflicts =
+    if name `elem` namesInScope 
+        then []
+    else 
+        let amb = [a | a <- ambiguousConflicts, head a == name] in
+        case amb of
+            []   -> [Undefined Variable name namesInScope []]
+            y:[] -> [Ambiguous Variable name (map (\n -> (n,"")) y)]
+            _    -> error ""
+}
 -----------------------------------------
 -- Pattern
 

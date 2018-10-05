@@ -22,7 +22,7 @@ SEM Module
                  . scopeWarnings     = makeWarnings @collectScopeInfos
 
 SEM Module
-  | Module loc . collectScopeInfos = (topLevelScopeInfo @scopeInfo, Definition) : @body.collectScopeInfos
+  | Module loc . collectScopeInfos = (topLevelScopeInfo @scopeInfo @declDouble, Definition) : @body.collectScopeInfos
 
 SEM FunctionBinding
   | FunctionBinding  lhs . collectScopeInfos = (@scopeInfo, Variable)   : @righthandside.collectScopeInfos
@@ -46,8 +46,8 @@ SEM Qualifier
   | Generator        lhs . collectScopeInfos = (@scopeInfo, Variable)   : @expression.collectScopeInfos
   
 {
-topLevelScopeInfo :: ScopeInfo -> ScopeInfo
-topLevelScopeInfo (xs, _, _) = (xs, [], [])
+topLevelScopeInfo :: ScopeInfo -> [[Name]] -> ScopeInfo
+topLevelScopeInfo (xs, _, _) doubles = (xs ++ doubles, [], [])
 
 makeErrors :: [(ScopeInfo, Entity)] -> Errors
 makeErrors xs = [ Duplicated entity ys | ((yss, _, _), entity) <- xs, ys <- yss ]
