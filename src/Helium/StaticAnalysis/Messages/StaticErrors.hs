@@ -63,6 +63,7 @@ data Error  = NoFunDef Entity Name {-names in scope-}Names
             | CannotDerive Name Tps
             | TupleTooBig Range
             | ClassesAndInstancesNotAllowed Range
+            | ExportWrongParent Entity Name {-Value Construct-} Name {-Wrong Parent-} Name {-Right Parent-} 
             
 instance HasMessage Error where
    getMessage x = let (oneliner, hints) = showError x
@@ -107,7 +108,8 @@ instance HasMessage Error where
       CannotDerive name _         -> [getNameRange name]
       TupleTooBig r               -> [r]
       ClassesAndInstancesNotAllowed r -> [r]
-      
+      ExportWrongParent _ name _ _ -> [getNameRange name]
+ 
 sensiblySimilar :: Name -> Names -> [Name]   
 sensiblySimilar name inScope = 
    let
@@ -388,19 +390,30 @@ showError anError = case anError of
       , []
       )
 
+   ExportWrongParent entity name parent rightparent ->
+      ( MessageString $ (show parent) ++ " is not the parent of " ++ show entity ++ 
+                        " " ++ show name ++ ". Use the correct parent to export it: " ++ show rightparent
+      , []
+      )
+
    _ -> internalError "StaticErrors.hs" "showError" "unknown type of Error"
+
+ambiguousOrUndefinedErrors :: Entity -> Name -> Names -> [[Name]] -> [String] -> Errors
+ambiguousOrUndefinedErrors entity name namesInScope ambiguousConflicts undefinedHint =
+    if name `elem` namesInScope 
+        then []
+    else 
+        let amb = [a | a <- ambiguousConflicts, head a == name] in
+        case amb of
+            []   -> [Undefined entity name namesInScope undefinedHint]
+            y:[] -> [Ambiguous entity name (map (\n -> (n,"")) y)]
+            _    -> internalError "StaticErrors.hs" "n/a" "ambiguousOrUndefinedErrors"
 
 makeUndefined :: Entity -> Names -> Names -> [Error]
 makeUndefined entity names inScope = [ Undefined entity name inScope [] | name <- names ]
 
 makeDuplicated :: Entity -> [Names] -> [Error]
 makeDuplicated entity nameslist = [ Duplicated entity names | names <- nameslist]
-
-makeDuplicatedNonImported :: Entity -> [Names] -> [Error]
-makeDuplicatedNonImported entity nameslist = [ Duplicated entity names | names <- (map getNonImportedNames nameslist), length names > 1]
-    where
-      getNonImportedNames :: Names -> Names
-      getNonImportedNames = filter (not . isImportRange . getNameRange)
 
 undefinedConstructorInExpr :: Name -> Names -> Names -> Error
 undefinedConstructorInExpr name sims tyconNames =
@@ -417,7 +430,6 @@ undefinedConstructorInPat lhsPattern name sims tyconNames =
                [ "Type constructor "++show (show name)++" cannot be used in a pattern"
                | name `elem` tyconNames
                ]
-
    in Undefined Constructor name sims hints
 
 makeNoFunDef :: Entity -> Names -> Names -> [Error]
@@ -469,6 +481,7 @@ errorLogCode anError = case anError of
           OverlappingInstance _ _                 -> "oi"
           MissingSuperClass _ _ _                 -> "ms"
           ClassesAndInstancesNotAllowed _         -> "ci"
+          ExportWrongParent entity _ _ _          -> "wp" ++ code entity
    where code entity = fromMaybe "??"
                      . lookup entity 
                      $ [ (TypeSignature    ,"ts"), (TypeVariable                ,"tv"), (TypeConstructor,"tc")

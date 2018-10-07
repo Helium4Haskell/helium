@@ -115,14 +115,12 @@ SEM Declaration
 -- 5) Distributing Value Constructors
 
 SEM Module
-  | Module   loc . (uniqueValueConstructors, ambiguousConflictsValCon) =
+  | Module   loc . (uniqueValueConstructors, ambiguousValueConstructors) =
                       uniqueKeys (@declNoConflictsValCon ++ concatMap (M.assocs . valueConstructors) @lhs.importEnvironments)
                  . (declNoConflictsValCon, duplicatedValueConstructors) = uniqueKeys @body.collectValueConstructors
-                 . allValueConstructors            = map fst @uniqueValueConstructors ++ map head @duplicatedValueConstructors ++ map head @ambiguousConflictsValCon
-                 . allValueConstructorsWithParents = map (\(con, (par, _)) -> (con,par)) $ @uniqueValueConstructors
-                                                      -- ++ getDoubleValueConsThatAreDefinedOnce @duplicatedValueConstructorsWithValue
+                 . allValueConstructors            = map fst @uniqueValueConstructors ++ map head @duplicatedValueConstructors ++ map head @ambiguousValueConstructors
+                 . valueConstructorsWithParents = map (\(con, (par, _)) -> (con,par)) $ @uniqueValueConstructors
                  . valueConstructors               = M.fromList $ map (\(con, (_, tpscheme)) -> (con,tpscheme)) $ @uniqueValueConstructors
-                                                      -- ++ getDoubleValueConsThatAreDefinedOnce @duplicatedValueConstructorsWithValue
 
 ATTR Body Declarations Declaration Expressions Expression Patterns Pattern 
      Statement Statements Qualifier Qualifiers
@@ -131,19 +129,17 @@ ATTR Body Declarations Declaration Expressions Expression Patterns Pattern
      LeftHandSide RightHandSide MaybeDeclarations MaybeExpression AnnotatedType AnnotatedTypes
      [ valueConstructors : {M.Map Name TpScheme} 
      allValueConstructors : Names
-     allValueConstructorsWithParents : {[(Name, Name)]} 
-     ambiguousConflictsValCon : {[[Name]]} | | ]
+     ambiguousValueConstructors : {[[Name]]} | | ]
 
 -------------------------------------------
 -- 6) Distributing Type Constructors
 
 SEM Module
-  | Module loc . (uniqueTypeConstructors,duplicatedTypeConstructors) =
-                    uniqueKeys (  @body.collectTypeConstructors
-                               ++ concatMap (M.assocs . typeConstructors) @lhs.importEnvironments
-                               ++ [ (n,i) | (n,(i,_)) <- @body.collectTypeSynonyms ]
-                               )
-               . allTypeConstructors = map fst @uniqueTypeConstructors ++ map head @duplicatedTypeConstructors
+  | Module loc . (uniqueTypeConstructors, ambiguousTypeConstructors) = 
+                    uniqueKeys  ( @declNoConflictsTyCon ++ concatMap (M.assocs . typeConstructors) @lhs.importEnvironments )
+               . (declNoConflictsTyCon, duplicatedTypeConstructors) = 
+                    uniqueKeys ( @body.collectTypeConstructors ++ [(n,i) | (n,(i,_)) <- @body.collectTypeSynonyms ] )
+               . allTypeConstructors = map fst @uniqueTypeConstructors ++ map head @duplicatedTypeConstructors ++ map head @ambiguousTypeConstructors
                . typeConstructors    = M.fromList @uniqueTypeConstructors
 
 ATTR Body Declarations Declaration Expressions Expression Patterns Pattern    
@@ -152,7 +148,9 @@ ATTR Body Declarations Declaration Expressions Expression Patterns Pattern
      GuardedExpressions GuardedExpression FunctionBinding FunctionBindings     
      LeftHandSide RightHandSide MaybeDeclarations MaybeExpression 
      Type Types AnnotatedType AnnotatedTypes ContextItem ContextItems
-     [ typeConstructors : {M.Map Name Int} allTypeConstructors : Names duplicatedTypeConstructors : {[Names]} | | ]
+     [ typeConstructors : {M.Map Name Int}
+     allTypeConstructors : Names
+     ambiguousTypeConstructors : {[Names]} | | ]
 
 -------------------------------------------
 -- 7) Distributing Type Synonyms

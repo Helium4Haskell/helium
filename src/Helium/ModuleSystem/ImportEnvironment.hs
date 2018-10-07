@@ -133,14 +133,16 @@ getSiblings importenv =
     valueConsTpScheme n =
         let res = M.lookup n (valueConstructors importenv)
         in maybe Nothing (\(parent, scheme) -> Just scheme) res
-         
+
+-- The Value Constuctors are unioned normally (takes left if same). Because it is allowed to create a value constructor, that is also imported. As long as it is not used.
+-- But when you do this, it does need to check the type, when declared. Thus the normal union. We assume that the original module is always used as first argument.
 combineImportEnvironments :: ImportEnvironment -> ImportEnvironment -> ImportEnvironment
 combineImportEnvironments (ImportEnvironment tcs1 tss1 te1 vcs1 ot1 ce1 cm1 xs1) (ImportEnvironment tcs2 tss2 te2 vcs2 ot2 ce2 cm2 xs2) = 
    ImportEnvironment 
       (tcs1 `exclusiveUnion` tcs2) 
       (tss1 `exclusiveUnion` tss2)
       (te1  `exclusiveUnion` te2 )
-      (vcs1 `exclusiveUnion` vcs2)
+      (vcs1 `M.union` vcs2)
       (ot1  `exclusiveUnion` ot2)
       (M.unionWith combineClassDecls ce1 ce2)
       (cm1 `exclusiveUnion` cm2)

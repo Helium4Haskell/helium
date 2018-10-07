@@ -9,52 +9,51 @@
 --
 -------------------------------------------------------------------------------
 
+--The double declarations/type constructors are added, because we don't want extra errors for these.
 SEM Module
-  | Module  exports . namesInScop   = concat [ @body.declVarNames
-                                              , concatMap (M.keys . typeEnvironment) @lhs.importEnvironments
-                                              , map fst @derivedFunctions
-                                              ]
-                    . modulesInScope = (@moduleName : @fileName : @body.importedModules)
-                    . tyconsInScope  = @allTypeConstructors
-                    . consInScope    = @allValueConstructorsWithParents
+  | Module  exports . namesInScope    = @scopeNoConflicts ++ map head @declDouble
+                    . ambiguousNames  = @ambiguousConflicts
+                    . modulesInScope  = (@moduleName : @fileName : @body.importedModules)
+                    . tyconsInScope   = map fst @uniqueTypeConstructors ++ map head @duplicatedTypeConstructors
+                    . ambiguousTyCons = @ambiguousTypeConstructors
+                    . consInScope     = @valueConstructorsWithParents
+                    . duplicatedCons  = @duplicatedValueConstructors
+                    . ambiguousCons   = @ambiguousValueConstructors
 
 SEM Module 
   | Module    loc . exportErrors = @exports.exportErrors
                     
 ATTR MaybeExports Exports Export
-    [ namesInScop   : Names
-      modulesInScope : Names
-      tyconsInScope  : Names
-      consInScope    : {[(Name, Name)]}
+    [ namesInScope    : Names
+      ambiguousNames  : {[[Name]]}
+      modulesInScope  : Names
+      tyconsInScope   : Names
+      ambiguousTyCons : {[[Name]]}
+      consInScope     : {[(Name, Name)]}
+      duplicatedCons  : {[[Name]]}
+      ambiguousCons   : {[[Name]]}
     |
     | exportErrors USE { ++ } { [] } : {[Error]}
+      exportList   USE { ++ } { [] } :{[Name, String]}
     ]                    
     
 {
 
-checkExport :: Entity -> Name -> [Name] -> [Error]
-checkExport entity name inScope =
-    makeUndefined entity
-        (if name `elem` inScope then
-            []
-         else
-            [name]
-        )
-        (nubBy equalName inScope)
+checkExport :: Entity -> Name -> [Name] -> [[Name]]-> [Error]
+checkExport entity name inScope ambiguous = ambiguousOrUndefinedErrors entity name inScope ambiguous []
 
-checkConstructorExport :: Entity -> (Name, Name) -> [(Name, Name)] -> [Error]
-checkConstructorExport entity name@(constructor, _) inScopePairs =
-    makeUndefined entity
-        (if name `elem` inScopePairs then
-            []
-         else
-            [constructor]
-        )
-        (nubBy equalName (map fst inScopePairs))
 
-equalName :: Name -> Name -> Bool       
-equalName x y =
-    getNameName x == getNameName y        
+checkConstructorExport :: Entity -> (Name, Name) -> [(Name, Name)] -> [[Name]] -> [[Name]] -> [Error]
+checkConstructorExport entity name@(constructor, parent) inScopePairs duplicated ambiguous =
+    case lookup constructor inScopePairs of
+        Just realparent  -> if parent == realparent then 
+                                []
+                            else
+                                [ExportWrongParent entity constructor parent realparent]
+        Nothing          -> if constructor `elem` map head duplicated then
+                                []
+                            else
+                                ambiguousOrUndefinedErrors entity constructor (map fst inScopePairs) ambiguous []
 }
 
 
@@ -66,22 +65,20 @@ SEM MaybeNames
 
 -- If classes are added, this should be updated aswell
 SEM Export
-    | Variable    lhs . exportErrors =  checkExport ExportVariable @name.self
-                                           @lhs.namesInScop
+    | Variable    lhs . exportErrors =  checkExport ExportVariable @name.self @lhs.namesInScope @lhs.ambiguousNames
     | TypeOrClassComplete
-                  lhs . exportErrors =  checkExport ExportTypeConstructorOrClass @name.self
-                                           @lhs.tyconsInScope
+                  lhs . exportErrors =  checkExport ExportTypeConstructorOrClass @name.self @lhs.tyconsInScope @lhs.ambiguousTyCons
     | TypeOrClass lhs . exportErrors =  checkExport ExportTypeConstructorOrClass @name.self
-                                           @lhs.tyconsInScope
+                                           @lhs.tyconsInScope @lhs.ambiguousTyCons
                                             ++
                                             concatMap
                                                 (\name ->
-                                                    checkConstructorExport ExportConstructor (name, @name.self)
-                                                        @lhs.consInScope
+                                                    checkConstructorExport ExportConstructor (name, @name.self) 
+                                                        @lhs.consInScope @lhs.duplicatedCons @lhs.ambiguousCons
                                                 )
                                                 @names.toList
     | Module      lhs . exportErrors =  checkExport ExportModule @name.self
-                                           @lhs.modulesInScope    
+                                           @lhs.modulesInScope []    
 -------------------------------------------
 -- Collecting the imported modules
 

@@ -147,7 +147,7 @@ frequencies = map (\ys -> (head ys, length ys)) . group . sort
 
 SEM Expression
   | Variable     lhs . miscerrors     = @undefinedErrors ++ @lhs.miscerrors 
-                 loc . undefinedErrors = ambiguousOrUndefinedErrors @name.self @lhs.namesInScope @lhs.ambiguousConflicts
+                 loc . undefinedErrors = ambiguousOrUndefinedErrors Variable @name.self @lhs.namesInScope @lhs.ambiguousConflicts []
   | Do           lhs . miscerrors = @lastStatementErrors ++ @statements.miscerrors
                  loc . lastStatementErrors = if @statements.lastStatementIsExpr
                                                then []
@@ -156,7 +156,7 @@ SEM Expression
                                                 
   | Constructor  lhs . miscerrors = @constructorErrors ++ @lhs.miscerrors
                  loc . constructorErrors = 
-                        constructorErrors @name.self @lhs.valueConstructors @lhs.ambiguousConflictsValCon @lhs.namesInScope @lhs.allValueConstructors @lhs.allTypeConstructors
+                        constructorErrors @name.self @lhs.valueConstructors @lhs.ambiguousValueConstructors @lhs.namesInScope @lhs.allValueConstructors @lhs.allTypeConstructors
 
   | Let          lhs . miscerrors = @typeSignatureErrors ++ @expression.miscerrors
                  loc . (_,doubles) = uniqueAppearance (map fst @declarations.typeSignatures)
@@ -169,22 +169,11 @@ SEM Expression
                         ]
 
 {
-ambiguousOrUndefinedErrors :: Name -> Names -> [[Name]] -> Errors
-ambiguousOrUndefinedErrors name namesInScope ambiguousConflicts =
-    if name `elem` namesInScope 
-        then []
-    else 
-        let amb = [a | a <- ambiguousConflicts, head a == name] in
-        case amb of
-            []   -> [Undefined Variable name namesInScope []]
-            y:[] -> [Ambiguous Variable name (map (\n -> (n,"")) y)]
-            _    -> internalError "MiscErrors.ag" "n/a" "ambiguousOrUndefinedErrors"
-
 constructorErrors :: Name -> M.Map Name TpScheme -> [[Name]] -> Names -> Names -> Names -> Errors
-constructorErrors name valCons ambiguousConflictsValCon namesInScope allValueConstructors allTypeConstructors =
+constructorErrors name valCons ambiguousValueConstructors namesInScope allValueConstructors allTypeConstructors =
     case M.lookup name valCons of
         Just _ -> []
-        Nothing -> let amb = [a | a <- ambiguousConflictsValCon, head a == name] in
+        Nothing -> let amb = [a | a <- ambiguousValueConstructors, head a == name] in
                     case amb of
                         []   -> [undefinedConstructorInExpr name (namesInScope ++ allValueConstructors) allTypeConstructors ]
                         y:[] -> [Ambiguous Constructor name (map (\n -> (n,"")) y)]
@@ -195,19 +184,19 @@ constructorErrors name valCons ambiguousConflictsValCon namesInScope allValueCon
 
 SEM Pattern
     | Constructor        lhs . miscerrors = @patConstructorErrors ++ @patterns.miscerrors
-                         loc . patConstructorErrors = patternConstructorErrors @maybetp @name.self @lhs.ambiguousConflictsValCon @lhs.allValueConstructors @patterns.numberOfPatterns @lhs.lhsPattern @lhs.allTypeConstructors
+                         loc . patConstructorErrors = patternConstructorErrors @maybetp @name.self @lhs.ambiguousValueConstructors @lhs.allValueConstructors @patterns.numberOfPatterns @lhs.lhsPattern @lhs.allTypeConstructors
                              . maybetp    = M.lookup @name.self @lhs.valueConstructors
 
     | InfixConstructor   lhs . miscerrors = @patConstructorErrors ++ @rightPattern.miscerrors
-                         loc . patConstructorErrors = patternConstructorErrors @maybetp @constructorOperator.self @lhs.ambiguousConflictsValCon @lhs.allValueConstructors 2 False @lhs.allTypeConstructors
+                         loc . patConstructorErrors = patternConstructorErrors @maybetp @constructorOperator.self @lhs.ambiguousValueConstructors @lhs.allValueConstructors 2 False @lhs.allTypeConstructors
                              . maybetp    = M.lookup @constructorOperator.self @lhs.valueConstructors
 
 
 {
 patternConstructorErrors :: Maybe TpScheme -> Name -> [[Name]] -> Names -> Int -> Bool -> Names -> [Error]
-patternConstructorErrors maybetparity name ambiguousConflictsValCon env useArity lhsPattern namesTyconEnv =
+patternConstructorErrors maybetparity name ambiguousValueConstructors env useArity lhsPattern namesTyconEnv =
     case maybetparity of
-        Nothing -> let amb = [a | a <- ambiguousConflictsValCon, head a == name] in
+        Nothing -> let amb = [a | a <- ambiguousValueConstructors, head a == name] in
                     case amb of
                         []   -> [undefinedConstructorInPat lhsPattern name env namesTyconEnv ]
                         y:[] -> [Ambiguous Constructor name (map (\n -> (n,"")) y)]

@@ -27,30 +27,30 @@ SEM Module
   
 SEM Expression
   | Typed           lhs . kindErrors = @newErrors ++ @expression.kindErrors
-                    loc . newErrors  = checkType @lhs.typeConstructors @lhs.duplicatedTypeConstructors (@lhs.namesInScope ++ @lhs.allValueConstructors) @type.self
+                    loc . newErrors  = checkType @lhs.typeConstructors @lhs.ambiguousTypeConstructors (@lhs.namesInScope ++ @lhs.allValueConstructors) @type.self
 
 SEM Declaration
   | Type            lhs . kindErrors = @newErrors ++ @lhs.kindErrors
-                    loc . newErrors  = checkType @lhs.typeConstructors @lhs.duplicatedTypeConstructors (@lhs.namesInScope ++ @lhs.allValueConstructors) @type.self
+                    loc . newErrors  = checkType @lhs.typeConstructors @lhs.ambiguousTypeConstructors (@lhs.namesInScope ++ @lhs.allValueConstructors) @type.self
                       
   | TypeSignature   lhs . kindErrors = @newErrors ++ @lhs.kindErrors
-                    loc . newErrors  = checkType @lhs.typeConstructors @lhs.duplicatedTypeConstructors (@lhs.namesInScope ++ @lhs.allValueConstructors) @type.self
+                    loc . newErrors  = checkType @lhs.typeConstructors @lhs.ambiguousTypeConstructors (@lhs.namesInScope ++ @lhs.allValueConstructors) @type.self
 
 SEM AnnotatedType
   | AnnotatedType   lhs . kindErrors = @newErrors ++ @lhs.kindErrors
-                    loc . newErrors  = checkType @lhs.typeConstructors @lhs.duplicatedTypeConstructors (@lhs.namesInScope ++ @lhs.allValueConstructors) @type.self
+                    loc . newErrors  = checkType @lhs.typeConstructors @lhs.ambiguousTypeConstructors (@lhs.namesInScope ++ @lhs.allValueConstructors) @type.self
   
 {
 checkType :: M.Map Name Int -> [Names] -> Names -> Type -> [Error]
-checkType theTypeConstructors duplicatedTypeCon namesInScope t =
+checkType theTypeConstructors ambiguousTypeCon namesInScope t =
     let (f, xs) = walkSpine t
-        xsErrors = concatMap (checkType theTypeConstructors duplicatedTypeCon namesInScope) xs
+        xsErrors = concatMap (checkType theTypeConstructors ambiguousTypeCon namesInScope) xs
     in
         xsErrors
         ++
         case f of
             Type_Constructor r c ->
-                checkKind c theTypeConstructors duplicatedTypeCon (length xs) namesInScope
+                checkKind c theTypeConstructors ambiguousTypeCon (length xs) namesInScope
                 ++ [ TupleTooBig r
                    | let nameAsString = show c
                    , isTupleConstructor nameAsString
@@ -88,18 +88,11 @@ checkKind tycon@(Name_Special _ _ ('(':commas)) _ _ useArity _ = -- !!!Name
                  0 -> 0  -- ()
                  n -> n + 1 -- (,) (,,) ...
 
-checkKind tycon theTypeConstructors duplicatedTypeCon useArity namesInScope =
+checkKind tycon theTypeConstructors ambiguousTypeCon useArity namesInScope =
     case M.lookup tycon theTypeConstructors of
-        Nothing -> if tycon `elem` map head duplicatedTypeCon 
-                    then
-                        [Ambiguous TypeConstructor tycon
-                            [(tycon', "" ) | tycons <- duplicatedTypeCon, head tycons == tycon, tycon' <- tycons]
-                        ]
-                    else
-                        let hint = [ "Constructor "++show (show tycon)++" cannot be used in a type"
-                                | tycon `elem` namesInScope
-                                ]
-                        in [ Undefined TypeConstructor tycon (M.keys theTypeConstructors) hint ]
+        Nothing -> let hint = [ "Constructor "++show (show tycon)++" cannot be used in a type"
+                                | tycon `elem` namesInScope]
+                        in ambiguousOrUndefinedErrors TypeConstructor tycon (M.keys theTypeConstructors) ambiguousTypeCon hint
         Just defArity ->
             if useArity /= defArity then
                 [ ArityMismatch TypeConstructor tycon defArity useArity ]

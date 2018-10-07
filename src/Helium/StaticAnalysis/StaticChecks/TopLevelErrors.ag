@@ -26,13 +26,13 @@ SEM Module
 -- duplicated type constructors
 
 SEM Module 
-  | Module   loc . typeConstructorErrors = makeDuplicatedNonImported TypeConstructor @duplicatedTypeConstructors
+  | Module   loc . typeConstructorErrors = makeDuplicated TypeConstructor @duplicatedTypeConstructors
 
 ------------------------------------------------------------------------------
 -- duplicated value constructors
 
 SEM Module
-  | Module   loc . valueConstructorErrors = makeDuplicatedNonImported Constructor @duplicatedValueConstructors
+  | Module   loc . valueConstructorErrors = makeDuplicated Constructor @duplicatedValueConstructors
   
 ------------------------------------------------------------------------------
 -- duplicated fixity declarations

@@ -25,18 +25,18 @@ SEM Pattern
 
 SEM RecordExpressionBinding
   | RecordExpressionBinding  loc . (monos,constructorenv,betaUnique,miscerrors,warnings,kindErrors,valueConstructors
-                                   ,allValueConstructors,allValueConstructorsWithParents,typeConstructors,allTypeConstructors
-                                   ,importEnvironment,ambiguousConflictsValCon,duplicatedTypeConstructors) = internalError "PartialSyntax.ag" "n/a" "RecordExpressionBinding.RecordExpressionBinding"
+                                   ,allValueConstructors,typeConstructors,allTypeConstructors
+                                   ,importEnvironment,ambiguousValueConstructors,ambiguousTypeConstructors) = internalError "PartialSyntax.ag" "n/a" "RecordExpressionBinding.RecordExpressionBinding"
 
 SEM RecordPatternBinding
   | RecordPatternBinding    loc . (monos,constructorenv,betaUnique,miscerrors,warnings,valueConstructors
-                                  ,allValueConstructors,allValueConstructorsWithParents,typeConstructors,allTypeConstructors
-                                  ,importEnvironment,ambiguousConflictsValCon,duplicatedTypeConstructors) = internalError "PartialSyntax.ag" "n/a" "RecordPatternBinding.RecordPatternBinding"
+                                  ,allValueConstructors,typeConstructors,allTypeConstructors
+                                  ,importEnvironment,ambiguousValueConstructors,ambiguousTypeConstructors) = internalError "PartialSyntax.ag" "n/a" "RecordPatternBinding.RecordPatternBinding"
 
 SEM FieldDeclaration
   | FieldDeclaration    loc . (kindErrors,tyconEnv,constructorenv,importEnvironment,valueConstructors
-                              ,allValueConstructors,allValueConstructorsWithParents,typeConstructors,allTypeConstructors
-                              ,warnings,ambiguousConflictsValCon,duplicatedTypeConstructors) = internalError "PartialSyntax.ag" "n/a" "FieldDeclaration.FieldDeclaration"
+                              ,allValueConstructors,typeConstructors,allTypeConstructors
+                              ,warnings,ambiguousValueConstructors,ambiguousTypeConstructors) = internalError "PartialSyntax.ag" "n/a" "FieldDeclaration.FieldDeclaration"
 
 SEM ContextItem
   | ContextItem    loc . (tyconEnv) = internalError "PartialSyntax.ag" "n/a" "ContextItem.ContextItem"
