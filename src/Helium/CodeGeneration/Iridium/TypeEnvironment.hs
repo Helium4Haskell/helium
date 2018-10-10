@@ -51,14 +51,13 @@ expandEnvWithLet name expr env = expandEnvWith name (typeOfExpr env expr) env
 expandEnvWithLetThunk :: [BindThunk] -> TypeEnv -> TypeEnv
 expandEnvWithLetThunk thunks (TypeEnv datas values) = TypeEnv datas $ foldr (\(BindThunk var _ _) -> insertMap var (ValueVariable TypeAnyThunk)) values thunks
 
-declarationsInPattern :: TypeEnv -> Pattern -> [(Id, ValueDeclaration)]
-declarationsInPattern env (PatternCon con args) = case findMap con (teValues env) of
+declarationsInMatch :: TypeEnv -> Id -> [Id] -> [(Id, ValueDeclaration)]
+declarationsInMatch env con args = case findMap con (teValues env) of
   ValueConstructor _ (DataTypeConstructor _ fields) -> zip args $ map ValueVariable fields
-  _ -> error "declarationsInPattern: Illegal constructor name in a pattern. Expected a constructor."
-declarationsInPattern env (PatternLit _) = []
+  _ -> error "declarationsInMatch: Illegal constructor name in a pattern. Expected a constructor."
 
-expandEnvWithMatch :: Pattern -> TypeEnv -> TypeEnv
-expandEnvWithMatch pattern env@(TypeEnv datas values) = TypeEnv datas $ foldr (\(var, decl) -> insertMap var decl) values $ declarationsInPattern env pattern
+expandEnvWithMatch :: Id -> [Id] -> TypeEnv -> TypeEnv
+expandEnvWithMatch con args env@(TypeEnv datas values) = TypeEnv datas $ foldr (\(var, decl) -> insertMap var decl) values $ declarationsInMatch env con args
 
 argumentsOf :: TypeEnv -> Id -> Maybe [PrimitiveType]
 argumentsOf env name = case lookupMap name (teValues env) of

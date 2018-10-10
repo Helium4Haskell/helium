@@ -14,7 +14,6 @@ import Helium.Main.CompileUtils
 import Helium.CodeGeneration.Core(desugarCore)
 import Helium.CodeGeneration.Iridium.FromCore(fromCore)
 import Helium.CodeGeneration.Iridium.PassRemoveAliasses(passRemoveAliasses)
-import Helium.CodeGeneration.Iridium.PassUniqueNames(passUniqueNames)
 import Helium.CodeGeneration.LLVM.CompileModule(compileModule)
 import Helium.CodeGeneration.LLVM.Target(Target(..))
 import Helium.CodeGeneration.LLVM.Env(envForModule)
@@ -28,14 +27,14 @@ phaseCodeGeneratorLLVM fullName coreModule options = do
   enterNewPhase "Code generation LLVM" options
 
   supply <- newNameSupply
-  let supplyDesugar : supplyFromCore : supplyUniqueNames : supplyToLLVM : _ = splitNameSupplies supply
+  let supplyDesugar : supplyFromCore : supplyToLLVM : _ = splitNameSupplies supply
 
   let simplified = desugarCore supplyDesugar coreModule
   putDoc $ pretty simplified
 
   let imperative = fromCore supplyFromCore simplified
   print imperative
-  let imperative' = passRemoveAliasses $ passUniqueNames supplyUniqueNames imperative
+  let imperative' = passRemoveAliasses imperative
   print imperative'
 
   let target = Target 64

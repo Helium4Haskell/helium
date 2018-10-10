@@ -62,10 +62,9 @@ compileInstruction env supply (Iridium.LetThunk binds next) =
     env' = expand env $ Iridium.expandEnvWithLetThunk binds
 compileInstruction env supply (Iridium.Jump to args) = Partial [] (Do $ Br (toName to) []) []
 compileInstruction env supply (Iridium.Return var) = Partial [] (Do $ Ret (Just $ toOperand env var) []) []
--- A Match has undefined behaviour if it does not match, so we do not need to check whether it matches.
-compileInstruction env supply (Iridium.Match var (Iridium.PatternLit _) next) = compileInstruction env supply next
-compileInstruction env supply (Iridium.Match var (Iridium.PatternCon _ []) next) = compileInstruction env supply next
-compileInstruction env supply (Iridium.Match var pat@(Iridium.PatternCon conId args) next)
+-- A Match has undefined behaviour if it does not match, so we do not need to check whether it actually matches.
+compileInstruction env supply (Iridium.Match var _ [] next) = compileInstruction env supply next
+compileInstruction env supply (Iridium.Match var conId args next)
   = [ addressName := AST.BitCast (LocalReference voidPointer $ toName var) (pointer t) []
     ]
     +> compileExtractFields env supply'' address (fromIntegral $ headerSize * targetPointerSize (envTarget env)) fieldLayouts args
@@ -76,11 +75,10 @@ compileInstruction env supply (Iridium.Match var pat@(Iridium.PatternCon conId a
     address = LocalReference (pointer t) addressName
     (supply'', supply''') = splitNameSupply supply'
     LayoutPointer _ _ headerSize fieldLayouts = findMap conId (envConstructors env)
-    env' = expand env $ Iridium.expandEnvWithMatch pat
-compileInstruction env supply (Iridium.IfMatch varId (Iridium.PatternCon conId args) to toArgs next)
-  = compileIfMatchConstructor env supply1 varId conId conLayout [] to $ compileInstruction env supply2 next
+    env' = expand env $ Iridium.expandEnvWithMatch conId args
+compileInstruction env supply (Iridium.If varId (Iridium.PatternCon conId) whenTrue whenFalse)
+  = compileIfMatchConstructor env supply varId conId conLayout whenTrue whenFalse
   where
-    (supply1, supply2) = splitNameSupply supply
     conLayout = findMap conId (envConstructors env)
 
 compileExpression :: Env -> NameSupply -> Iridium.Expr -> Name -> [Named Instruction]
@@ -134,9 +132,9 @@ callEval pointer isWHNF =
   , metadata = []
   }
 
-compileIfMatchConstructor :: Env -> NameSupply -> Id -> Id -> ConstructorLayout -> [Id] -> Id -> Partial -> Partial
-compileIfMatchConstructor env supply varId conId (LayoutInline tag) [] branchId (Partial nextInstructions nextTerminator blocks)
-  = Partial instructions terminator blocks'
+compileIfMatchConstructor :: Env -> NameSupply -> Id -> Id -> ConstructorLayout -> Id -> Id -> Partial
+compileIfMatchConstructor env supply varId conId (LayoutInline tag) whenTrue whenFalse
+  = Partial instructions terminator []
   where
     instructions :: [Named Instruction]
     instructions =
@@ -145,13 +143,11 @@ compileIfMatchConstructor env supply varId conId (LayoutInline tag) [] branchId 
       ]
     expected = ConstantOperand $ Int (fromIntegral $ targetPointerSize $ envTarget env) (fromIntegral tag * 2 + 1)
     terminator :: Named Terminator
-    terminator = Do $ CondBr (LocalReference bool nameCond) (toName branchId) nameBlockFalse []
+    terminator = Do $ CondBr (LocalReference bool nameCond) (toName whenTrue) (toName whenFalse) []
     (nameInt, supply') = freshName supply
     (nameCond, supply'') = freshName supply'
-    (nameBlockFalse, supply''') = freshName supply''
-    blocks' = BasicBlock nameBlockFalse nextInstructions nextTerminator : blocks
-compileIfMatchConstructor env supply varId conId (LayoutPointer tag (firstHeaderBit, afterHeaderBit) headerSize fieldLayouts) args branchId (Partial nextInstructions nextTerminator blocks)
-  = Partial instructionsMain terminatorMain blocks'
+compileIfMatchConstructor env supply varId conId (LayoutPointer tag (firstHeaderBit, afterHeaderBit) headerSize fieldLayouts) whenTrue whenFalse
+  = Partial instructionsMain terminatorMain blocks
   where
     (nameCond, supply1) = freshName supply
     (addressName, supply2) = freshName supply1
@@ -161,8 +157,6 @@ compileIfMatchConstructor env supply varId conId (LayoutPointer tag (firstHeader
     (shifted, supply6) = freshName supply5
     (tagCheck, supply7) = freshName supply6
     (nameBlockCheck, supply8) = freshName supply7
-    (nameBlockTrue, supply9) = freshName supply8
-    (nameBlockFalse, supply10) = freshName supply9
 
     instructionsMain :: [Named Instruction]
     instructionsMain =
@@ -172,7 +166,7 @@ compileIfMatchConstructor env supply varId conId (LayoutPointer tag (firstHeader
     -- Check if the least significant bit of the pointer was a 1. If so, this is an inlined constructor
     -- so they do not match.
     -- If it is a 0, we must read the pointer and check its tag.
-    terminatorMain = Do $ CondBr (LocalReference bool nameCond) nameBlockFalse nameBlockCheck []
+    terminatorMain = Do $ CondBr (LocalReference bool nameCond) (toName whenFalse) nameBlockCheck []
 
     instructionsCheck :: [Named Instruction]
     instructionsCheck =
@@ -184,12 +178,7 @@ compileIfMatchConstructor env supply varId conId (LayoutPointer tag (firstHeader
       , tagCheck := ICmp IntegerPredicate.EQ (LocalReference headerType shifted) (ConstantOperand $ Int headerBits $ fromIntegral tag) []
       ]
     terminatorCheck :: Named Terminator
-    terminatorCheck = Do $ CondBr (LocalReference bool tagCheck) nameBlockTrue nameBlockFalse []
-
-    instructionsTrue :: [Named Instruction]
-    instructionsTrue = compileExtractFields env supply10 address (fromIntegral $ headerSize * targetPointerSize (envTarget env)) fieldLayouts args
-    terminatorTrue :: Named Terminator
-    terminatorTrue = Do $ Br (toName branchId) []
+    terminatorCheck = Do $ CondBr (LocalReference bool tagCheck) (toName whenTrue) (toName whenFalse) []
 
     address = LocalReference (pointer t) addressName
     t = NamedTypeReference $ toName conId
@@ -199,7 +188,4 @@ compileIfMatchConstructor env supply varId conId (LayoutPointer tag (firstHeader
     headerType = IntegerType headerBits
     header = LocalReference headerType headerName
 
-    blocks'
-      = BasicBlock nameBlockCheck instructionsCheck terminatorCheck : 
-        BasicBlock nameBlockTrue instructionsTrue terminatorTrue : 
-        BasicBlock nameBlockFalse nextInstructions nextTerminator : blocks
+    blocks = [BasicBlock nameBlockCheck instructionsCheck terminatorCheck]

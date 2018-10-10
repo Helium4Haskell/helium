@@ -42,7 +42,7 @@ data Block = Block BlockName [Argument] Instruction
   deriving (Eq, Ord)
 
 data Pattern
-  = PatternCon Id [Id]
+  = PatternCon Id
   | PatternLit Literal
   deriving (Eq, Ord)
 
@@ -50,9 +50,9 @@ data Instruction
   = Let Id Expr Instruction
   | LetThunk [BindThunk] Instruction
   | Jump BlockName [Id]
-  -- * Asserts that the variable matches with the pattern. If they do not match, the behaviour is undefined.
-  | Match Id Pattern Instruction
-  | IfMatch Id Pattern BlockName [Id] Instruction
+  -- * Asserts that the variable matches with the specified constructor. If they do not match, the behaviour is undefined.
+  | Match Id Id [Id] Instruction
+  | If Id Pattern BlockName BlockName
   | Return Id
   deriving (Eq, Ord)
 
@@ -80,7 +80,7 @@ instance Show Literal where
   show (LitDouble x) = show x
 
 instance Show Pattern where
-  show (PatternCon con args) = show con ++ showArguments args
+  show (PatternCon con) = show con
   show (PatternLit lit) = show lit
 
 instance Show Expr where
@@ -94,10 +94,6 @@ instance Show Expr where
 instructionIndent :: String
 instructionIndent = "    "
 
-declaredVarsInPattern :: Pattern -> [Id]
-declaredVarsInPattern (PatternCon _ args) = args
-declaredVarsInPattern (PatternLit _) = []
-
 instance Show BindThunk where
   show (BindThunk var fn args) = show var ++ " = " ++ show fn ++ showArguments args
 
@@ -105,8 +101,8 @@ instance Show Instruction where
   show (Let var expr next) = instructionIndent ++ "let " ++ show var ++ " = " ++ show expr ++ "\n" ++ show next
   show (LetThunk binds next) = instructionIndent ++ "letthunk " ++ intercalate ", " (map show binds) ++ "\n" ++ show next
   show (Jump to args) = instructionIndent ++ "jump " ++ show to ++ showArguments args
-  show (Match var pat next) = instructionIndent ++ "match " ++ show var ++ " on " ++ show pat ++ "\n" ++ show next
-  show (IfMatch var pat to toArgs next) = instructionIndent ++ "ifmatch " ++ show var ++ " on " ++ show pat ++ " to " ++ show to ++ showArguments toArgs ++ "\n" ++ show next
+  show (Match var conId args next) = instructionIndent ++ "match " ++ show var ++ " on " ++ show conId ++ showArguments args ++ "\n" ++ show next
+  show (If var pat whenTrue whenFalse) = instructionIndent ++ "if " ++ show var ++ " instanceof " ++ show pat ++ " then " ++ show whenTrue ++ " else " ++ show whenFalse
   show (Return var) = instructionIndent ++ "ret " ++ show var
 
 instance Show Argument where

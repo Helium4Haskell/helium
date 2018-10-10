@@ -33,8 +33,8 @@ removeAliasses :: Env -> Instruction -> Instruction
 removeAliasses env (Let name expr next) = aliassesInLet env name expr next
 removeAliasses env (LetThunk thunks next) = LetThunk (map (aliassesInThunk env) thunks) $ removeAliasses env next
 removeAliasses env (Jump to args) = Jump to $ mapIds env args
-removeAliasses env (Match name pat next) = Match (mapId env name) pat $ removeAliasses env next
-removeAliasses env (IfMatch name pat to args next) = IfMatch (mapId env name) pat to (mapIds env args) $ removeAliasses env next
+removeAliasses env (Match name con args next) = Match (mapId env name) con args $ removeAliasses env next
+removeAliasses env (If name pat whenTrue whenFalse) = If (mapId env name) pat whenTrue whenFalse
 removeAliasses env (Return name) = Return $ mapId env name
 
 aliassesInThunk :: Env -> BindThunk -> BindThunk

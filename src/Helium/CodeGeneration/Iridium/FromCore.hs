@@ -169,27 +169,29 @@ toInstruction supply env scope continue expr = case getApplicationOrConstruction
     (y, supply'') = freshId supply'
     (z, supply''') = freshId supply''
 
-transformAlts :: NameSupply -> TypeEnv -> [Id] -> Continue -> Id -> [Core.Alt] -> Partial
-transformAlts supply env scope continue name [Core.Alt pat expr] = case pattern pat of
-  Nothing ->
-    toInstruction supply env scope continue expr
-  Just p ->
-    let
-      env' = expandEnvWithMatch p env
+transformAlt :: NameSupply -> TypeEnv -> [Id] -> Continue -> Id -> Core.Alt -> Partial
+transformAlt supply env scope continue name (Core.Alt pat expr) = case constructorPattern pat of
+  Nothing -> toInstruction supply env scope continue expr
+  Just (con, args) ->
+    let env' = expandEnvWithMatch con args env
     in
-      Match name p
-      +> toInstruction supply env' (declaredVarsInPattern p ++ scope) continue expr
-transformAlts supply env scope continue name (alt@(Core.Alt pat expr) : alts) = case pattern pat of
-  Nothing -> transformAlts supply env scope continue name [alt]
+      Match name con args
+      +> toInstruction supply env' (args ++ scope) continue expr
+
+transformAlts :: NameSupply -> TypeEnv -> [Id] -> Continue -> Id -> [Core.Alt] -> Partial
+transformAlts supply env scope continue name [alt] = transformAlt supply env scope continue name alt
+transformAlts supply env scope continue name (alt@(Core.Alt pat _) : alts) = case pattern pat of
+  Nothing -> transformAlt supply env scope continue name alt
   Just p ->
     let
-      (blockId, supply') = freshId supply
-      blockArgs = declaredVarsInPattern p ++ scope
-      env' = expandEnvWithMatch p env
-      Partial exprInstr exprBlocks = toInstruction supply env' scope continue expr
-    in Block blockId (map (\arg -> Argument arg (typeOf env arg)) blockArgs) exprInstr : exprBlocks
-      &> IfMatch name p blockId blockArgs
-      +> transformAlts supply' env' scope continue name alts
+      (blockTrue, supply') = freshId supply
+      (blockFalse, supply'') = freshId supply'
+      (supply1, supply2) = splitNameSupply supply''
+      Partial whenTrueInstr whenTrueBlocks = transformAlt supply1 env scope continue name alt
+      Partial whenFalseInstr whenFalseBlocks = transformAlts supply2 env scope continue name alts
+      blocks = Block blockTrue blockArgs whenTrueInstr : Block blockFalse blockArgs whenFalseInstr : whenTrueBlocks ++ whenFalseBlocks
+      blockArgs = map (\arg -> Argument arg (typeOf env arg)) scope
+    in Partial (If name p blockTrue blockFalse) blocks
 
 bind :: Core.Bind -> BindThunk
 bind (Core.Bind x val) = BindThunk x fn args
@@ -222,4 +224,8 @@ literal (Core.LitBytes x) = LitInt 0 -- TODO: LitBytes
 pattern :: Core.Pat -> Maybe Pattern
 pattern Core.PatDefault = Nothing
 pattern (Core.PatLit lit) = Just $ PatternLit $ literal lit
-pattern (Core.PatCon con args) = Just $ PatternCon (conId con) args
+pattern (Core.PatCon con args) = Just $ PatternCon (conId con)
+
+constructorPattern :: Core.Pat -> Maybe (Id, [Id])
+constructorPattern (Core.PatCon con args) = Just (conId con, args)
+constructorPattern _ = Nothing
