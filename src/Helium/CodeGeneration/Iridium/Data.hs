@@ -17,6 +17,8 @@ module Helium.CodeGeneration.Iridium.Data where
 import Lvm.Common.Id(Id)
 import Data.List(intercalate)
 
+import Helium.CodeGeneration.Iridium.Type
+
 type BlockName = Id
 
 data Module = Module
@@ -25,21 +27,18 @@ data Module = Module
   , moduleMethods :: [Method]
   }
 
-data DataType = DataType Id [DataTypeConstructor]
-  deriving (Eq, Ord)
-data DataTypeConstructor = DataTypeConstructor Id [PrimitiveType]
+data Method = Method Id PrimitiveType Block [Block]
   deriving (Eq, Ord)
 
-data PrimitiveType
-  = TypeAny -- ^ Any value, possibly a non-evaluated thunk
-  | TypeAnyWHNF
-  deriving (Eq, Ord, Show)
-  -- TODO: Types for unboxed values 
-
-data Method = Method Id Block [Block]
+-- TODO: Annotations on methods
+data MethodAnnotation
+  = MAThunk -- ^ This method can be put in a thunk
   deriving (Eq, Ord)
 
-data Block = Block BlockName [Id] Instruction
+data Argument = Argument { argumentName :: Id, argumentType :: PrimitiveType }
+  deriving (Eq, Ord)
+
+data Block = Block BlockName [Argument] Instruction
   deriving (Eq, Ord)
 
 data Pattern
@@ -51,12 +50,13 @@ data Instruction
   = Let Id Expr Instruction
   | LetThunk [BindThunk] Instruction
   | Jump BlockName [Id]
+  -- * Asserts that the variable matches with the pattern. If they do not match, the behaviour is undefined.
   | Match Id Pattern Instruction
   | IfMatch Id Pattern BlockName [Id] Instruction
   | Return Id
   deriving (Eq, Ord)
 
-data BindThunk = BindThunk Id Id [Id] -- variable, function, arguments
+data BindThunk = BindThunk { bindThunkVar :: Id, bindThunkFunction :: Id, bindThunkArguments :: [Id] }
   deriving (Eq, Ord)
 
 data Expr
@@ -65,6 +65,7 @@ data Expr
   | Eval Id
   | Alloc Id [Id]
   | Var Id
+  | Cast Id PrimitiveType
   deriving (Eq, Ord)
 
 data Literal
@@ -88,12 +89,10 @@ instance Show Expr where
   show (Eval var) = "eval " ++ show var
   show (Alloc con args) = "alloc " ++ show con ++ showArguments args
   show (Var var) = "var " ++ show var
+  show (Cast var t) = "cast " ++ show var ++ " as " ++ show t
 
 instructionIndent :: String
 instructionIndent = "    "
-
-showArguments :: Show a => [a] -> String
-showArguments = ("("++) . (++")") . intercalate ", " . map show
 
 declaredVarsInPattern :: Pattern -> [Id]
 declaredVarsInPattern (PatternCon _ args) = args
@@ -110,17 +109,14 @@ instance Show Instruction where
   show (IfMatch var pat to toArgs next) = instructionIndent ++ "ifmatch " ++ show var ++ " on " ++ show pat ++ " to " ++ show to ++ showArguments toArgs ++ "\n" ++ show next
   show (Return var) = instructionIndent ++ "ret " ++ show var
 
+instance Show Argument where
+  show (Argument name t) = show name ++ ": " ++ show t
+
 instance Show Block where
   show (Block name args instruction) = "  " ++ show name ++ showArguments args ++ ":\n" ++ show instruction
 
 instance Show Method where
-  show (Method name entry blocks) = "fn " ++ show name ++ "\n" ++ show entry ++ (blocks >>= ('\n' :) . show) ++ "\n"
-
-instance Show DataTypeConstructor where
-  show (DataTypeConstructor name args) = "  " ++ show name ++ showArguments args
-
-instance Show DataType where
-  show (DataType name cons) = "data " ++ show name ++ (cons >>= (('\n' :) . show)) ++ "\n"
+  show (Method name rettype entry blocks) = "fn " ++ show name ++ ": " ++ show rettype ++ "\n" ++ show entry ++ (blocks >>= ('\n' :) . show) ++ "\n"
 
 instance Show Module where
   show (Module name decls methods) = "module " ++ show name ++ "\n" ++ (decls >>= ('\n' :) . show) ++ (methods >>= ('\n' :) . show)
@@ -129,6 +125,6 @@ mapBlocks :: (Instruction -> Instruction) -> Module -> Module
 mapBlocks fn (Module name datas methods) = Module name datas $ map fnMethod methods
   where
     fnMethod :: Method -> Method
-    fnMethod (Method name entry blocks) = Method name (fnBlock entry) $ map fnBlock blocks
+    fnMethod (Method name rettype entry blocks) = Method name rettype (fnBlock entry) $ map fnBlock blocks
     fnBlock :: Block -> Block
     fnBlock (Block name args instr) = Block name args $ fn instr

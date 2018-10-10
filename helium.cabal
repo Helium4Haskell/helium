@@ -133,7 +133,7 @@ Executable heliumpath
 --------------------------------------------------------------------------------
   
 Library
-  Build-Depends:     base >= 3 && < 5, containers, mtl, parsec, network, process, transformers, filepath, directory, wl-pprint, Top >= 1.7, lvmlib >= 1.1
+  Build-Depends:     base >= 3 && < 5, containers, mtl, parsec, network, process, transformers, filepath, directory, wl-pprint, Top >= 1.7, lvmlib >= 1.1, llvm-hs-pure >= 6.0.0 && < 7, llvm-hs-pretty >= 0.5 && < 0.6
   ghc-options:       -Wall
   default-language:  Haskell98
   hs-source-dirs:    src dist/build/autogen/uuagc
@@ -147,15 +147,29 @@ Library
     Helium.CodeGeneration.DerivingShow
     Helium.CodeGeneration.PatternMatch
     Helium.CodeGeneration.Core
+    Helium.CodeGeneration.Core.Arity
     Helium.CodeGeneration.Core.LetSort
     Helium.CodeGeneration.Core.Lift
     Helium.CodeGeneration.Core.Normalize
     Helium.CodeGeneration.Core.NoShadow
     Helium.CodeGeneration.Core.ReduceThunks
     Helium.CodeGeneration.Core.RemoveAliasses
+    Helium.CodeGeneration.Core.RemoveDead
     Helium.CodeGeneration.Iridium.Data
     Helium.CodeGeneration.Iridium.FromCore
     Helium.CodeGeneration.Iridium.PassRemoveAliasses
+    Helium.CodeGeneration.Iridium.Type
+    Helium.CodeGeneration.Iridium.TypeEnvironment
+    Helium.CodeGeneration.LLVM.Builtins
+    Helium.CodeGeneration.LLVM.CompileBlock
+    Helium.CodeGeneration.LLVM.CompileConstructor
+    Helium.CodeGeneration.LLVM.CompileMethod
+    Helium.CodeGeneration.LLVM.CompileThunk
+    Helium.CodeGeneration.LLVM.CompileType
+    Helium.CodeGeneration.LLVM.ConstructorLayout
+    Helium.CodeGeneration.LLVM.Env
+    Helium.CodeGeneration.LLVM.Target
+    Helium.CodeGeneration.LLVM.Utils
     Helium.Main.Args
     Helium.Main.Compile
     Helium.Main.CompileUtils
