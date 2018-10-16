@@ -48,7 +48,7 @@ data ConstructorFieldLayout
     }
 
 constructorLayout :: TypeEnv.TypeEnv -> Target -> Iridium.DataType -> Int -> Iridium.DataTypeConstructor -> ConstructorLayout
-constructorLayout env target (Iridium.DataType _ constructors) index (Iridium.DataTypeConstructor _ fields)
+constructorLayout env target (Iridium.DataType _ constructors) index (Iridium.DataTypeConstructor _ _ fields)
   | headerBits <= pointerSize - 1 && fields == [] = LayoutInline index
   | otherwise = LayoutPointer index (gcBits, gcBits + tagBits) headerSize fieldLayouts
   where

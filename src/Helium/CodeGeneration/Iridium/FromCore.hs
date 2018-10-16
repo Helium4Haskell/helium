@@ -32,17 +32,17 @@ fromCore supply mod@(CoreModule.Module name _ _ decls) = Module name datas metho
     methods = concat $ mapWithSupply (`fromCoreDecl` env) supply decls
     env = TypeEnv () $ unionMap valuesFunctions $ unionMap valuesCons $ mapFromList builtins
     valuesFunctions = mapMap (\arity -> ValueFunction (FunctionType (replicate arity TypeAny) TypeAnyWHNF)) $ aritiesMap mod
-    valuesCons = mapFromList $ listFromMap consMap >>= (\(dataName, cons) -> map (\con@(DataTypeConstructor conName _) -> (conName, ValueConstructor dataName con)) cons)
+    valuesCons = mapFromList $ listFromMap consMap >>= (\(dataName, cons) -> map (\con@(DataTypeConstructor _ conName _) -> (conName, ValueConstructor con)) cons)
 
 dataTypeFromCoreDecl :: Core.CoreDecl -> IdMap [DataTypeConstructor] -> IdMap [DataTypeConstructor]
 dataTypeFromCoreDecl decl@CoreModule.DeclCon{} = case find isDataName (CoreModule.declCustoms decl) of
-    Just (CoreModule.CustomLink dataType _) -> insertMapWith dataType [con] (con :)
+    Just (CoreModule.CustomLink dataType _) -> insertMapWith dataType [con dataType] (con dataType :)
     Nothing -> id
   where
     isDataName (CoreModule.CustomLink _ (CoreModule.DeclKindCustom name)) = name == idFromString "data"
     isDataName _ = False
     -- When adding strictness annotations to data types, `TypeAny` on the following line should be changed.
-    con = DataTypeConstructor (CoreModule.declName decl) (replicate (CoreModule.declArity decl) TypeAny)
+    con dataType = DataTypeConstructor dataType (CoreModule.declName decl) (replicate (CoreModule.declArity decl) TypeAny)
 dataTypeFromCoreDecl _ = id
 
 fromCoreDecl :: NameSupply -> TypeEnv -> Core.CoreDecl -> [Method]
@@ -53,10 +53,10 @@ toMethod :: NameSupply -> TypeEnv -> Id -> Core.Expr -> Method
 toMethod supply env name expr = Method name args' TypeAnyWHNF (Block entryName entry) blocks
   where
     (entryName, supply') = freshId supply
-    args' = zipWith Variable args $ fromMaybe (error "toMethod: could not find function signature") $ argumentsOf env name
+    args' = zipWith Local args $ fromMaybe (error "toMethod: could not find function signature") $ argumentsOf env name
     (args, expr') = consumeLambdas expr
-    env' = expandEnvWithArguments args' env
-    Partial entry blocks = toInstruction supply' env' args CReturn expr'
+    env' = expandEnvWithLocals args' env
+    Partial entry blocks = toInstruction supply' env' CReturn expr'
 
 -- Removes all lambda expression, returns a list of arguments and the remaining expression.
 consumeLambdas :: Core.Expr -> ([Id], Core.Expr)
@@ -79,45 +79,47 @@ infixr 2 &>
 bs &> (Partial instr blocks) = Partial instr $ bs ++ blocks
 
 ret :: Id -> PrimitiveType -> Continue -> Partial
-ret x t CReturn = Partial (Return $ Variable x t) []
+ret x t CReturn = Partial (Return $ VarLocal $ Local x t) []
 ret x t (CBind next) = next x t
 
-toInstruction :: NameSupply -> TypeEnv -> [Id] -> Continue -> Core.Expr -> Partial
+toInstruction :: NameSupply -> TypeEnv -> Continue -> Core.Expr -> Partial
 -- Let bindings
-toInstruction supply env scope continue (Core.Let (Core.NonRec b) expr)
+toInstruction supply env continue (Core.Let (Core.NonRec b) expr)
   = LetThunk binds
-    +> toInstruction supply env' (boundVar b : scope) continue expr
+    +> toInstruction supply env' continue expr
   where
     binds = [bind env b]
     env' = expandEnvWithLetThunk binds env
 
-toInstruction supply env scope continue (Core.Let (Core.Strict (Core.Bind x val)) expr)
-  = toInstruction supply1 env scope (CBind next) val
+toInstruction supply env continue (Core.Let (Core.Strict (Core.Bind x val)) expr)
+  = toInstruction supply1 env (CBind next) val
   where
     (supply1, supply2) = splitNameSupply supply
-    next var t = Let x (Var $ Variable var t) +> toInstruction supply2 env' (x : scope) continue expr
+    next var t = Let x (Var $ VarLocal $ Local var t) +> toInstruction supply2 env' continue expr
       where env' = expandEnvWith x t env
 
-toInstruction supply env scope continue (Core.Let (Core.Rec bs) expr)
+toInstruction supply env continue (Core.Let (Core.Rec bs) expr)
   = LetThunk binds
-  +> toInstruction supply env' (map boundVar bs ++ scope) continue expr
+  +> toInstruction supply env' continue expr
   where
     -- TODO: Is this recursive definition ok?
     binds = map (bind env') bs
     env' = expandEnvWithLetThunk binds env
 
 -- Match
-toInstruction supply env scope continue (Core.Match x alts) =
+toInstruction supply env continue (Core.Match x alts) =
   blocks
-    &> transformAlts supply'' env scope continues x alts
+    &> transformAlts supply'' env continues x alts
   where
     (supply1, supply2) = splitNameSupply supply
-    jumps :: [(Variable, Id)] -- Names of intermediate blocks and names of the variables containing the result
+    jumps :: [(Local, Id)] -- Names of intermediate blocks and names of the variables containing the result
     jumps = mapWithSupply (\s _ ->
       let
         (blockName, s') = freshId s
         (varName, _) = freshId s'
-      in (Variable varName expectedType, blockName)) supply alts
+      in (Local varName expectedType, blockName)) supply alts
+    phiArgs :: [(Variable, Id)]
+    phiArgs = map (\(loc, block) -> (VarLocal loc, block)) jumps
     (blockId, supply') = freshId supply
     (result, supply'') = freshId supply'
     expectedType = TypeAnyWHNF -- TODO: More precise type
@@ -126,18 +128,18 @@ toInstruction supply env scope continue (Core.Match x alts) =
       CBind next ->
         let
           Partial cInstr cBlocks = next result expectedType
-          resultBlock = Block blockId (Let result (Phi jumps) cInstr)
+          resultBlock = Block blockId (Let result (Phi phiArgs) cInstr)
         in resultBlock : cBlocks
     continues = case continue of
       CReturn -> repeat CReturn
       CBind _ -> map (altJump blockId) jumps
 
 -- Non-branching expressions
-toInstruction supply env scope continue (Core.Lit lit) = Let name expr +> ret name (typeOfExpr env expr) continue
+toInstruction supply env continue (Core.Lit lit) = Let name expr +> ret name (typeOfExpr expr) continue
   where
     (name, _) = freshId supply
     expr = (Literal $ literal lit)
-toInstruction supply env scope continue (Core.Var var) = Let name (Eval $ resolve env var) +> ret name resultType continue
+toInstruction supply env continue (Core.Var var) = Let name (Eval $ resolve env var) +> ret name resultType continue
   where
     (name, _) = freshId supply
     resultType = case typeOf env var of
@@ -145,30 +147,33 @@ toInstruction supply env scope continue (Core.Var var) = Let name (Eval $ resolv
       TypeAny -> TypeAnyWHNF
       t -> t
 
-toInstruction supply env scope continue expr = case getApplicationOrConstruction expr [] of
+toInstruction supply env continue expr = case getApplicationOrConstruction expr [] of
   (Left con, args) ->
     let
-      expr = (Alloc (conId con) args)
+      dataTypeCon = case valueDeclaration env $ conId con of
+        ValueConstructor c -> c
+        _ -> error "toInstruction: Illegal target of allocation, expected a constructor"
+      expr = Alloc dataTypeCon $ resolveList env args
     in
       Let x expr
-        +> ret x (typeOfExpr env expr) continue
+        +> ret x (typeOfExpr expr) continue
   (Right fn, args) ->
     case argumentsOf env fn of
       Just params
         | length params == length args ->
           -- Applied the correct number of arguments, compile to a Call.
-          Let x (Call fn args') +> ret x TypeAnyWHNF continue -- TODO: Replace TypeAnyWHNF with return type of function
+          Let x (Call (resolve env fn) args') +> ret x TypeAnyWHNF continue -- TODO: Replace TypeAnyWHNF with return type of function
         | length params >  length args ->
           -- Not enough arguments, cannot call the function yet. Compile to a thunk.
           -- The thunk is already in WHNF, as the application does not have enough arguments.
-          LetThunk [BindThunk x (Variable fn TypeFunction) args'] +> ret x TypeFunction continue
+          LetThunk [BindThunk x (resolve env fn) args'] +> ret x TypeFunction continue
         | otherwise ->
           -- Too many arguments. Evaluate the function with the first `length params` arguments,
           -- and build a thunk for the additional arguments. This thunk might need to be
           -- evaluated.
-          Let x (Call fn $ take (length params) args')
-            +> LetThunk [BindThunk y (Variable x returnType) $ drop (length params) args']
-            +> Let z (Eval $ Variable y TypeAnyThunk)
+          Let x (Call (resolve env fn) $ take (length params) args')
+            +> LetThunk [BindThunk y (VarLocal $ Local x returnType) $ drop (length params) args']
+            +> Let z (Eval $ VarLocal $ Local y TypeAnyThunk)
             +> ret z TypeAnyWHNF continue
       Nothing ->
         -- Don't know whether some function must be evaluated, so bind it to a thunk
@@ -184,36 +189,39 @@ toInstruction supply env scope continue expr = case getApplicationOrConstruction
     returnType = TypeAnyWHNF -- TODO: In case of a resolved function, determine the return type
     args' = resolveList env args
 
-altJump :: Id -> (Variable, Id ) -> Continue
-altJump toBlock (Variable toVar toType, intermediateBlockId) = CBind (\resultVar resultType ->
+altJump :: Id -> (Local, Id ) -> Continue
+altJump toBlock (Local toVar toType, intermediateBlockId) = CBind (\resultVar resultType ->
     let
       intermediateBlock = Block intermediateBlockId
-        $ Let toVar (Cast (Variable resultVar resultType) toType)
+        $ Let toVar (Cast (VarLocal $ Local resultVar resultType) toType)
         $ Jump toBlock
     in
       Partial (Jump intermediateBlockId) [intermediateBlock]
   )
 
-transformAlt :: NameSupply -> TypeEnv -> [Id] -> Continue -> Id -> Core.Alt -> Partial
-transformAlt supply env scope continue name (Core.Alt pat expr) = case constructorPattern pat of
-  Nothing -> toInstruction supply env scope continue expr
-  Just (con, args) ->
-    let env' = expandEnvWithMatch con args env
+transformAlt :: NameSupply -> TypeEnv -> Continue -> Id -> Core.Alt -> Partial
+transformAlt supply env continue name (Core.Alt pat expr) = case constructorPattern pat of
+  Nothing -> toInstruction supply env continue expr
+  Just (conId, args) ->
+    let
+      ValueConstructor con@(DataTypeConstructor _ _ fields) = valueDeclaration env $ conId
+      locals = zipWith (\name t -> Local name t) args fields
+      env' = expandEnvWithLocals locals env
     in
-      Match (resolve env name) con args
-      +> toInstruction supply env' (args ++ scope) continue expr
+      Match (resolve env name) con (map Just locals)
+      +> toInstruction supply env' continue expr
 
-transformAlts :: NameSupply -> TypeEnv -> [Id] -> [Continue] -> Id -> [Core.Alt] -> Partial
-transformAlts supply env scope (continue : _) name [alt] = transformAlt supply env scope continue name alt
-transformAlts supply env scope (continue : continues) name (alt@(Core.Alt pat _) : alts) = case pattern pat of
-  Nothing -> transformAlt supply env scope continue name alt
+transformAlts :: NameSupply -> TypeEnv -> [Continue] -> Id -> [Core.Alt] -> Partial
+transformAlts supply env (continue : _) name [alt] = transformAlt supply env continue name alt
+transformAlts supply env (continue : continues) name (alt@(Core.Alt pat _) : alts) = case pattern env pat of
+  Nothing -> transformAlt supply env continue name alt
   Just p ->
     let
       (blockTrue, supply') = freshId supply
       (blockFalse, supply'') = freshId supply'
       (supply1, supply2) = splitNameSupply supply''
-      Partial whenTrueInstr whenTrueBlocks = transformAlt supply1 env scope continue name alt
-      Partial whenFalseInstr whenFalseBlocks = transformAlts supply2 env scope continues name alts
+      Partial whenTrueInstr whenTrueBlocks = transformAlt supply1 env continue name alt
+      Partial whenFalseInstr whenFalseBlocks = transformAlts supply2 env continues name alts
       blocks = Block blockTrue whenTrueInstr : Block blockFalse whenFalseInstr : whenTrueBlocks ++ whenFalseBlocks
     in Partial (If (resolve env name) p blockTrue blockFalse) blocks
 
@@ -221,9 +229,6 @@ bind :: TypeEnv -> Core.Bind -> BindThunk
 bind env (Core.Bind x val) = BindThunk x (resolve env fn) $ resolveList env args
   where
     (fn, args) = getApplication val
-
-boundVar :: Core.Bind -> Id
-boundVar (Core.Bind x _) = x
 
 conId :: Core.Con a -> Id
 conId (Core.ConId x) = x
@@ -245,17 +250,22 @@ literal (Core.LitInt x) = LitInt x
 literal (Core.LitDouble x) = LitDouble x
 literal (Core.LitBytes x) = LitInt 0 -- TODO: LitBytes
 
-pattern :: Core.Pat -> Maybe Pattern
-pattern Core.PatDefault = Nothing
-pattern (Core.PatLit lit) = Just $ PatternLit $ literal lit
-pattern (Core.PatCon con args) = Just $ PatternCon (conId con)
+pattern :: TypeEnv -> Core.Pat -> Maybe Pattern
+pattern _ Core.PatDefault = Nothing
+pattern _ (Core.PatLit lit) = Just $ PatternLit $ literal lit
+pattern env (Core.PatCon con args) = Just $ PatternCon constructor
+  where
+    ValueConstructor constructor = valueDeclaration env $ conId con
 
 constructorPattern :: Core.Pat -> Maybe (Id, [Id])
 constructorPattern (Core.PatCon con args) = Just (conId con, args)
 constructorPattern _ = Nothing
 
 resolve :: TypeEnv -> Id -> Variable
-resolve env var = Variable var $ typeOf env var 
+resolve env name = case valueDeclaration env name of
+  ValueConstructor _ -> error "resolve: Constructor cannot be used as a value."
+  ValueFunction fntype -> VarFunction name fntype
+  ValueVariable t -> VarLocal $ Local name t
 
 resolveList :: TypeEnv -> [Id] -> [Variable]
 resolveList env = map (resolve env)

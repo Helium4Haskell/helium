@@ -41,15 +41,14 @@ voidPointer :: Type
 voidPointer = pointer (IntegerType 8)
 
 toOperand :: Env -> Iridium.Variable -> Operand
-toOperand env (Iridium.Variable name t) = case TypeEnv.valueDeclaration (envTypeEnv env) name of
-  (TypeEnv.ValueVariable _) -> LocalReference (compileType env t) (toName name)
-  (TypeEnv.ValueFunction fntype) -> ConstantOperand $ GlobalReference (compileFunctionType env fntype) (toName name)
+toOperand env (Iridium.VarLocal (Iridium.Local name t)) = LocalReference (compileType env t) (toName name)
+toOperand env (Iridium.VarFunction name fntype) = ConstantOperand $ GlobalReference (compileFunctionType env fntype) (toName name)
 
-splitValueFlag :: Env -> NameSupply -> Id -> ([Named Instruction], (Operand, Operand))
-splitValueFlag env supply name = case TypeEnv.valueDeclaration (envTypeEnv env) name of
-  (TypeEnv.ValueVariable Iridium.TypeAnyWHNF) ->
-    ( [ toName ptrValue := AST.GetElementPtr False (LocalReference taggedThunkPointer (toName name)) [ConstantOperand $ Int 8 0, ConstantOperand $ Int 8 0] []
-      , toName ptrIsWHNF := AST.GetElementPtr False (LocalReference taggedThunkPointer (toName name)) [ConstantOperand $ Int 8 0, ConstantOperand $ Int 8 1] []
+splitValueFlag :: Env -> NameSupply -> Iridium.Variable -> ([Named Instruction], (Operand, Operand))
+splitValueFlag env supply var = case Iridium.variableType var of
+  Iridium.TypeAnyWHNF ->
+    ( [ toName ptrValue := AST.GetElementPtr False operand [ConstantOperand $ Int 8 0, ConstantOperand $ Int 8 0] []
+      , toName ptrIsWHNF := AST.GetElementPtr False operand [ConstantOperand $ Int 8 0, ConstantOperand $ Int 8 1] []
       , toName nameValue := Load False (LocalReference (pointer voidPointer) (toName ptrValue)) Nothing 0 []
       , toName nameIsWHNF := Load False (LocalReference (pointer bool) (toName ptrIsWHNF)) Nothing 0 []
       ]
@@ -57,35 +56,35 @@ splitValueFlag env supply name = case TypeEnv.valueDeclaration (envTypeEnv env) 
       , LocalReference bool (toName nameIsWHNF)
       )
     )
-  (TypeEnv.ValueVariable Iridium.TypeAnyThunk) ->
+  Iridium.TypeAnyThunk ->
     ( []
-    , ( LocalReference voidPointer (toName name)
+    , ( operand
       , ConstantOperand $ Int 1 0 -- false
       )
     )
-  (TypeEnv.ValueVariable t) ->
+  t ->
     ( []
-    , (LocalReference (compileType env t) (toName name)
+    , ( operand
       , ConstantOperand $ Int 1 1 -- true
       )
     )
   where
-    operand = LocalReference (compileType env Iridium.TypeAnyWHNF) (toName name)
+    operand = toOperand env var
     (ptrValue, supply') = freshId supply
     (ptrIsWHNF, supply'') = freshId supply'
     (nameValue, supply''') = freshId supply''
     (nameIsWHNF, _) = freshId supply'''
 
 -- TODO: Casts from / to int or double
-cast :: Env -> Name -> Name -> Iridium.PrimitiveType -> Iridium.PrimitiveType -> [Named Instruction]
-cast env fromName toName Iridium.TypeAny Iridium.TypeAny = [toName := AST.BitCast (LocalReference taggedThunkPointer fromName) taggedThunkPointer []]
-cast env fromName toName fromType Iridium.TypeAny =
+cast :: Env -> Operand -> Name -> Iridium.PrimitiveType -> Iridium.PrimitiveType -> [Named Instruction]
+cast env fromOperand toName Iridium.TypeAny Iridium.TypeAny = [toName := AST.BitCast fromOperand taggedThunkPointer []]
+cast env fromOperand toName fromType Iridium.TypeAny =
   [ toName := AST.BitCast
       (ConstantOperand $ Struct Nothing True [Constant.Undef voidPointer, Constant.Int 1 (if fromType == Iridium.TypeAnyThunk then 0 else 1)])
       taggedThunkPointer
       []
-  , Do $ AST.InsertValue (LocalReference taggedThunkPointer toName) (LocalReference voidPointer fromName) [1] []
+  , Do $ AST.InsertValue (LocalReference taggedThunkPointer toName) fromOperand [1] []
   ]
-cast env fromName toName fromType toType = [toName := AST.BitCast (LocalReference fromT fromName) fromT []]
+cast env fromOperand toName fromType toType = [toName := AST.BitCast fromOperand fromT []]
   where
     fromT = compileType env fromType

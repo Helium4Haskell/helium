@@ -11,6 +11,7 @@ import Helium.CodeGeneration.LLVM.CompileType
 import Helium.CodeGeneration.LLVM.Target
 import Helium.CodeGeneration.LLVM.Utils
 import qualified Helium.CodeGeneration.LLVM.Builtins as Builtins
+import qualified Helium.CodeGeneration.Iridium.Data as Iridium
 import qualified Helium.CodeGeneration.Iridium.Type as Iridium
 import qualified Helium.CodeGeneration.Iridium.TypeEnvironment as TypeEnv
 import LLVM.AST as AST
@@ -33,8 +34,8 @@ constructorType env (LayoutPointer _ _ headerSize fieldLayouts) = StructureType 
     mapFieldType (ConstructorFieldLayout Iridium.TypeAny _ _) = voidPointer
     mapFieldType (ConstructorFieldLayout t _ _) = compileType env t
  
-compileAllocation :: Env -> NameSupply -> Id -> [Id] -> Name -> [Named Instruction]
-compileAllocation env supply conId args varName = concat splitInstructions ++ compileAllocation' env supplyAlloc conId con argsSplit varName
+compileAllocation :: Env -> NameSupply -> Iridium.DataTypeConstructor -> [Iridium.Variable] -> Name -> [Named Instruction]
+compileAllocation env supply (Iridium.DataTypeConstructor _ conId _) args varName = concat splitInstructions ++ compileAllocation' env supplyAlloc conId con argsSplit varName
   where
     con = findMap conId (envConstructors env)
     (supplyArgs, supplyAlloc) = splitNameSupply supply
@@ -98,7 +99,7 @@ compileFields env supply [] address header headerBits =
     (headerPtr, supply') = freshName supply
     t = IntegerType $ fromIntegral headerBits
 
-compileExtractFields :: Env -> NameSupply -> Operand -> Word32 -> [ConstructorFieldLayout] -> [Id] -> [Named Instruction]
+compileExtractFields :: Env -> NameSupply -> Operand -> Word32 -> [ConstructorFieldLayout] -> [Maybe Iridium.Local] -> [Named Instruction]
 compileExtractFields env supply address headerBits layouts vars
   = [ headerPtr := getElementPtr address [0, 0]
     , headerName := Load False (LocalReference (pointer $ IntegerType headerBits) headerPtr) Nothing 0 []
@@ -112,15 +113,16 @@ compileExtractFields env supply address headerBits layouts vars
       $ mapWithSupply (\s (layout, varId) -> compileExtractField env s address (LocalReference (IntegerType headerBits) headerName) headerBits layout varId) supply''
       $ zip layouts vars
 
-compileExtractField :: Env -> NameSupply -> Operand -> Operand -> Word32 -> ConstructorFieldLayout -> Id -> [Named Instruction]
-compileExtractField env supply address header headerBits (ConstructorFieldLayout primType index Nothing) varId =
+compileExtractField :: Env -> NameSupply -> Operand -> Operand -> Word32 -> ConstructorFieldLayout -> Maybe Iridium.Local -> [Named Instruction]
+compileExtractField _ _ _ _ _ _ Nothing = [] 
+compileExtractField env supply address header headerBits (ConstructorFieldLayout primType index Nothing) (Just (Iridium.Local varId _)) =
   [ namePtr := getElementPtr address [0, index]
   , toName varId := Load False (LocalReference (pointer t) namePtr) Nothing 0 []
   ]
   where
     (namePtr, supply') = freshName supply
     t = compileType env primType
-compileExtractField env supply address header headerBits (ConstructorFieldLayout primType index (Just headerIndex)) varId =
+compileExtractField env supply address header headerBits (ConstructorFieldLayout primType index (Just headerIndex)) (Just (Iridium.Local varId _)) =
   [ namePtr := getElementPtr address [0, index]
   , value := Load False (LocalReference voidPointer namePtr) Nothing 0 []
   , shifted := AST.LShr False header (ConstantOperand $ Int headerBits $ fromIntegral headerIndex) []

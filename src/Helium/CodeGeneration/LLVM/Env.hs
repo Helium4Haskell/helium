@@ -32,7 +32,7 @@ envForModule target mod = Env
     constructors = Iridium.moduleDataTypes mod >>=
       (\dataType@(Iridium.DataType name cons) ->
         zipWith
-          (\con@(Iridium.DataTypeConstructor conName _) index ->
+          (\con@(Iridium.DataTypeConstructor _ conName _) index ->
             (conName, constructorLayout typeEnv target dataType index con))
           cons
           [0..]

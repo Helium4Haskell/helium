@@ -51,6 +51,6 @@ compileMethod env supply (Iridium.Method name args retType entry blocks) = retur
       , Global.metadata = []
       }
     parameters :: [Parameter]
-    parameters = map (\(Iridium.Variable name t) -> Parameter (compileType env t) (toName name) []) args
+    parameters = map (\(Iridium.Local name t) -> Parameter (compileType env t) (toName name) []) args
     basicBlocks :: [BasicBlock]
     basicBlocks = concat $ mapWithSupply (compileBlock env) supply (entry : blocks)

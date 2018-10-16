@@ -14,12 +14,12 @@
 
 module Helium.CodeGeneration.Iridium.Type where
 
-import Lvm.Common.Id(Id)
+import Lvm.Common.Id(Id, stringFromId)
 import Data.List(intercalate)
 
 data DataType = DataType Id [DataTypeConstructor]
   deriving (Eq, Ord)
-data DataTypeConstructor = DataTypeConstructor Id [PrimitiveType]
+data DataTypeConstructor = DataTypeConstructor Id Id [PrimitiveType]
   deriving (Eq, Ord)
 
 data BitFlags = BitFlags [Int]
@@ -47,10 +47,10 @@ data FunctionType = FunctionType { functionArguments :: [PrimitiveType], functio
   deriving (Eq, Ord)
 
 instance Show DataTypeConstructor where
-  show (DataTypeConstructor name args) = show name ++ showArguments args
+  show (DataTypeConstructor dataType name args) = "@" ++ stringFromId name ++ ": " ++ showArguments args ++ " -> @" ++ stringFromId dataType
 
 instance Show DataType where
-  show (DataType name cons) = "data " ++ show name ++ (cons >>= (("\n  " ++) . show)) ++ "\n"
+  show (DataType name cons) = "data @" ++ stringFromId name ++ (cons >>= (("\n  " ++) . show)) ++ "\n"
 
 instance Show PrimitiveType where
   show (TypeAny) = "any"
@@ -58,11 +58,14 @@ instance Show PrimitiveType where
   show (TypeAnyWHNF) = "any_whnf"
 
   show (TypeInt) = "int"
-  show (TypeDataType name) = "data{" ++ show name ++ "}"
+  show (TypeDataType name) = "data<@" ++ stringFromId name ++ ">"
   show (TypeFunction) = "function"
 
+showArguments' :: (a -> String) -> [a] -> String
+showArguments' showFn = ("("++) . (++")") . intercalate ", " . map showFn
+
 showArguments :: Show a => [a] -> String
-showArguments = ("("++) . (++")") . intercalate ", " . map show
+showArguments = showArguments' show
 
 instance Show FunctionType where
   show (FunctionType args ret) = showArguments args ++ " -> " ++ show ret

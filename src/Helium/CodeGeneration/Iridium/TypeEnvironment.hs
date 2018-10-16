@@ -4,6 +4,7 @@ import Lvm.Common.Id(Id, idFromString)
 import Lvm.Common.IdMap
 import Helium.CodeGeneration.Iridium.Data
 import Helium.CodeGeneration.Iridium.Type
+import Data.Maybe(catMaybes)
 
 data TypeEnv = TypeEnv
   { teDataTypes :: () -- TODO: Do we need this field for a map of data type names to DataType objects?
@@ -26,50 +27,30 @@ builtins =
     fn name args result = (idFromString name, ValueFunction $ FunctionType args result)
 
 data ValueDeclaration
-  = ValueConstructor Id DataTypeConstructor
+  = ValueConstructor DataTypeConstructor
   | ValueFunction FunctionType
   | ValueVariable PrimitiveType
   deriving (Eq, Ord, Show)
 
 typeOf :: TypeEnv -> Id -> PrimitiveType
 typeOf env name = case valueDeclaration env name of
-  ValueConstructor dataName (DataTypeConstructor _ []) -> TypeDataType dataName
-  ValueConstructor _ _ -> error "typeOf: Unsaturated constructor cannot be used as a value."
   ValueFunction _ -> TypeFunction
   ValueVariable t -> t
-
-typeOfExpr :: TypeEnv -> Expr -> PrimitiveType
-typeOfExpr env (Literal (LitDouble _)) = TypeDouble
-typeOfExpr env (Literal _) = TypeInt
-typeOfExpr env (Call to _) = case findMap to (teValues env) of
-  ValueFunction (FunctionType _ ret) -> ret
-  _ -> error "typeOfExpr: Illegal target of Call expression. Expected a function declaration."
-typeOfExpr env (Eval _) = TypeAnyWHNF
-typeOfExpr env (Alloc con args) = case findMap con (teValues env) of
-  ValueConstructor dataName _ -> TypeDataType dataName
-  _ -> error "typeOfExpr: Illegal target of Alloc expression. Expected a constructor."
-typeOfExpr env (Var (Variable _ t)) = t
-typeOfExpr env (Cast _ t) = t
 
 expandEnvWith :: Id -> PrimitiveType -> TypeEnv -> TypeEnv
 expandEnvWith name t (TypeEnv datas values) = TypeEnv datas $ insertMap name (ValueVariable t) values
 
-expandEnvWithArguments :: [Variable] -> TypeEnv -> TypeEnv
-expandEnvWithArguments args env = foldr (\(Variable arg t) -> expandEnvWith arg t) env args
+expandEnvWithLocals :: [Local] -> TypeEnv -> TypeEnv
+expandEnvWithLocals args env = foldr (\(Local arg t) -> expandEnvWith arg t) env args
 
 expandEnvWithLet :: Id -> Expr -> TypeEnv -> TypeEnv
-expandEnvWithLet name expr env = expandEnvWith name (typeOfExpr env expr) env
+expandEnvWithLet name expr env = expandEnvWith name (typeOfExpr expr) env
 
 expandEnvWithLetThunk :: [BindThunk] -> TypeEnv -> TypeEnv
 expandEnvWithLetThunk thunks (TypeEnv datas values) = TypeEnv datas $ foldr (\(BindThunk var _ _) -> insertMap var (ValueVariable TypeAnyThunk)) values thunks
 
-declarationsInMatch :: TypeEnv -> Id -> [Id] -> [(Id, ValueDeclaration)]
-declarationsInMatch env con args = case findMap con (teValues env) of
-  ValueConstructor _ (DataTypeConstructor _ fields) -> zip args $ map ValueVariable fields
-  _ -> error "declarationsInMatch: Illegal constructor name in a pattern. Expected a constructor."
-
-expandEnvWithMatch :: Id -> [Id] -> TypeEnv -> TypeEnv
-expandEnvWithMatch con args env@(TypeEnv datas values) = TypeEnv datas $ foldr (\(var, decl) -> insertMap var decl) values $ declarationsInMatch env con args
+expandEnvWithMatch :: [Maybe Local] -> TypeEnv -> TypeEnv
+expandEnvWithMatch locals = expandEnvWithLocals $ catMaybes locals
 
 argumentsOf :: TypeEnv -> Id -> Maybe [PrimitiveType]
 argumentsOf env name = case lookupMap name (teValues env) of
@@ -84,7 +65,7 @@ typeEnvForModule (Module _ dataTypes methods) = TypeEnv () values
     methodDecls = map valueOfMethod methods 
 
     valuesInDataType :: DataType -> [(Id, ValueDeclaration)]
-    valuesInDataType (DataType name cs) = map (\con@(DataTypeConstructor conId _) -> (conId, ValueConstructor name con)) cs
+    valuesInDataType (DataType name cs) = map (\con@(DataTypeConstructor _ conId _) -> (conId, ValueConstructor con)) cs
 
     valueOfMethod :: Method -> (Id, ValueDeclaration)
-    valueOfMethod (Method name args retType _ _) = (name, ValueFunction (FunctionType (map variableType args) retType))
+    valueOfMethod (Method name args retType _ _) = (name, ValueFunction (FunctionType (map localType args) retType))

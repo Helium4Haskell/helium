@@ -63,8 +63,8 @@ compileInstruction env supply (Iridium.Jump to) = Partial [] (Do $ Br (toName to
 compileInstruction env supply (Iridium.Return var) = Partial [] (Do $ Ret (Just $ toOperand env var) []) []
 -- A Match has undefined behaviour if it does not match, so we do not need to check whether it actually matches.
 compileInstruction env supply (Iridium.Match var _ [] next) = compileInstruction env supply next
-compileInstruction env supply (Iridium.Match (Iridium.Variable var _) conId args next)
-  = [ addressName := AST.BitCast (LocalReference voidPointer $ toName var) (pointer t) []
+compileInstruction env supply (Iridium.Match var (Iridium.DataTypeConstructor _ conId _) args next)
+  = [ addressName := AST.BitCast (toOperand env var) (pointer t) []
     ]
     +> compileExtractFields env supply'' address (fromIntegral $ headerSize * targetPointerSize (envTarget env)) fieldLayouts args
     +> compileInstruction env' supply''' next
@@ -74,9 +74,9 @@ compileInstruction env supply (Iridium.Match (Iridium.Variable var _) conId args
     address = LocalReference (pointer t) addressName
     (supply'', supply''') = splitNameSupply supply'
     LayoutPointer _ _ headerSize fieldLayouts = findMap conId (envConstructors env)
-    env' = expand env $ Iridium.expandEnvWithMatch conId args
-compileInstruction env supply (Iridium.If (Iridium.Variable varId _) (Iridium.PatternCon conId) whenTrue whenFalse)
-  = compileIfMatchConstructor env supply varId conId conLayout whenTrue whenFalse
+    env' = expand env $ Iridium.expandEnvWithMatch args
+compileInstruction env supply (Iridium.If var (Iridium.PatternCon con@(Iridium.DataTypeConstructor _ conId _)) whenTrue whenFalse)
+  = compileIfMatchConstructor env supply var con conLayout whenTrue whenFalse
   where
     conLayout = findMap conId (envConstructors env)
 
@@ -91,29 +91,33 @@ compileExpression env supply (Iridium.Call to args) name =
       { tailCallKind = Nothing
       , callingConvention = Fast
       , returnAttributes = []
-      , function = Right $ toOperand env (Iridium.Variable to Iridium.TypeFunction)
+      , function = Right $ toOperand env to
       , arguments = map (\arg -> (toOperand env arg, [])) args
       , functionAttributes = []
       , metadata = []
       }
   ]
-compileExpression env supply (Iridium.Eval var@(Iridium.Variable _ Iridium.TypeAny)) name =
+compileExpression env supply (Iridium.Eval var) name = compileEval env supply (toOperand env var) (Iridium.variableType var) name
+compileExpression env supply (Iridium.Alloc con args) name = compileAllocation env supply con args name
+compileExpression env supply (Iridium.Var var) name = cast env (toOperand env var) name t t
+  where t = Iridium.variableType var
+compileExpression env supply (Iridium.Cast var toType) name = cast env (toOperand env var) name t toType
+  where t = Iridium.variableType var
+
+compileEval :: Env -> NameSupply -> Operand -> Iridium.PrimitiveType -> Name -> [Named Instruction]
+compileEval env supply operand Iridium.TypeAny name =
   [ toName namePtr := ExtractValue operand [0] []
   , toName nameIsWHNF := ExtractValue operand [1] []
   , name := callEval (LocalReference voidPointer $ toName namePtr) (LocalReference bool $ toName nameIsWHNF)
   ]
   where
-    operand = toOperand env var
     (namePtr, supply') = freshId supply
     (nameIsWHNF, _) = freshId supply'
-compileExpression env supply (Iridium.Eval (Iridium.Variable thunk Iridium.TypeAnyThunk)) name =
-  [ name := callEval (LocalReference voidPointer $ toName thunk) (ConstantOperand $ Int 1 0)
+compileEval env supply operand Iridium.TypeAnyThunk name =
+  [ name := callEval operand (ConstantOperand $ Int 1 0)
   ]
-compileExpression env supply (Iridium.Eval (Iridium.Variable thunk primType)) name =
-  cast env (toName thunk) name primType Iridium.TypeAnyWHNF
-compileExpression env supply (Iridium.Alloc conId args) name = compileAllocation env supply conId args name
-compileExpression env supply (Iridium.Var (Iridium.Variable varId t)) name = cast env (toName varId) name t t
-compileExpression env supply (Iridium.Cast (Iridium.Variable varId t) toType) name = cast env (toName varId) name t toType
+compileEval env supply operand primType name =
+  cast env operand name primType Iridium.TypeAnyWHNF
 
 callEval :: Operand -> Operand -> Instruction
 callEval pointer isWHNF =
@@ -127,13 +131,13 @@ callEval pointer isWHNF =
   , metadata = []
   }
 
-compileIfMatchConstructor :: Env -> NameSupply -> Id -> Id -> ConstructorLayout -> Id -> Id -> Partial
-compileIfMatchConstructor env supply varId conId (LayoutInline tag) whenTrue whenFalse
+compileIfMatchConstructor :: Env -> NameSupply -> Iridium.Variable -> Iridium.DataTypeConstructor -> ConstructorLayout -> Id -> Id -> Partial
+compileIfMatchConstructor env supply var _ (LayoutInline tag) whenTrue whenFalse
   = Partial instructions terminator []
   where
     instructions :: [Named Instruction]
     instructions =
-      [ nameInt := PtrToInt (LocalReference voidPointer (toName varId)) (envValueType env) []
+      [ nameInt := PtrToInt (toOperand env var) (envValueType env) []
       , nameCond := ICmp IntegerPredicate.EQ (LocalReference (envValueType env) nameInt) expected []
       ]
     expected = ConstantOperand $ Int (fromIntegral $ targetPointerSize $ envTarget env) (fromIntegral tag * 2 + 1)
@@ -141,7 +145,7 @@ compileIfMatchConstructor env supply varId conId (LayoutInline tag) whenTrue whe
     terminator = Do $ CondBr (LocalReference bool nameCond) (toName whenTrue) (toName whenFalse) []
     (nameInt, supply') = freshName supply
     (nameCond, supply'') = freshName supply'
-compileIfMatchConstructor env supply varId conId (LayoutPointer tag (firstHeaderBit, afterHeaderBit) headerSize fieldLayouts) whenTrue whenFalse
+compileIfMatchConstructor env supply var (Iridium.DataTypeConstructor _ conId _) (LayoutPointer tag (firstHeaderBit, afterHeaderBit) headerSize fieldLayouts) whenTrue whenFalse
   = Partial instructionsMain terminatorMain blocks
   where
     (nameCond, supply1) = freshName supply
@@ -156,7 +160,7 @@ compileIfMatchConstructor env supply varId conId (LayoutPointer tag (firstHeader
     instructionsMain :: [Named Instruction]
     instructionsMain =
       -- Convert pointer to int & truncate to a single bit
-      [ nameCond := PtrToInt (LocalReference voidPointer (toName varId)) bool [] ]
+      [ nameCond := PtrToInt (toOperand env var) bool [] ]
     terminatorMain :: Named Terminator
     -- Check if the least significant bit of the pointer was a 1. If so, this is an inlined constructor
     -- so they do not match.
@@ -165,7 +169,7 @@ compileIfMatchConstructor env supply varId conId (LayoutPointer tag (firstHeader
 
     instructionsCheck :: [Named Instruction]
     instructionsCheck =
-      [ addressName := AST.BitCast (LocalReference voidPointer $ toName varId) (pointer t) [] 
+      [ addressName := AST.BitCast (toOperand env var) (pointer t) [] 
       , headerPtrName := getElementPtr address [0, 0]
       , headerName := Load False (LocalReference (pointer $ headerType) headerPtrName) Nothing 0 []
       , shiftedLeft := Shl False False header (ConstantOperand $ Int headerBits $ fromIntegral headerBits - fromIntegral afterHeaderBit) []
