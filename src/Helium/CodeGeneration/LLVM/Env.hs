@@ -8,13 +8,9 @@ import Helium.CodeGeneration.LLVM.ConstructorLayout(constructorLayout, Construct
 import qualified LLVM.AST as AST
 import Lvm.Common.IdMap
 
-expand :: Env -> (TypeEnv.TypeEnv -> TypeEnv.TypeEnv) -> Env
-expand env fn = env{ envTypeEnv = fn $ envTypeEnv env }
-
 data Env = Env
   { envTarget :: Target
   , envValueType :: AST.Type
-  , envTypeEnv :: TypeEnv.TypeEnv
   , envMethod :: Maybe Iridium.Method
   , envConstructors :: IdMap ConstructorLayout
   }
@@ -23,7 +19,6 @@ envForModule :: Target -> Iridium.Module -> Env
 envForModule target mod = Env
   { envTarget = target
   , envValueType = AST.IntegerType $ fromIntegral $ targetPointerSize target
-  , envTypeEnv = typeEnv
   , envMethod = Nothing
   , envConstructors = mapFromList constructors
   }

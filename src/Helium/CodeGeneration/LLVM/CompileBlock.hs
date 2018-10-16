@@ -49,16 +49,14 @@ compileBlock env supply (Iridium.Block name instruction) = BasicBlock (toName na
 -}
 
 compileInstruction :: Env -> NameSupply -> Iridium.Instruction -> Partial
-compileInstruction env supply (Iridium.Let name expr next) = compileExpression env supply1 expr (toName name) +> compileInstruction env' supply2 next
+compileInstruction env supply (Iridium.Let name expr next) = compileExpression env supply1 expr (toName name) +> compileInstruction env supply2 next
   where
     (supply1, supply2) = splitNameSupply supply
-    env' = expand env $ Iridium.expandEnvWithLet name expr
 compileInstruction env supply (Iridium.LetThunk binds next) =
-  compileThunks env' supply1 binds
-  +> compileInstruction env' supply2 next -- TODO: Compile thunks
+  compileThunks env supply1 binds
+  +> compileInstruction env supply2 next -- TODO: Compile thunks
   where
     (supply1, supply2) = splitNameSupply supply
-    env' = expand env $ Iridium.expandEnvWithLetThunk binds
 compileInstruction env supply (Iridium.Jump to) = Partial [] (Do $ Br (toName to) []) []
 compileInstruction env supply (Iridium.Return var) = Partial [] (Do $ Ret (Just $ toOperand env var) []) []
 -- A Match has undefined behaviour if it does not match, so we do not need to check whether it actually matches.
@@ -67,14 +65,13 @@ compileInstruction env supply (Iridium.Match var (Iridium.DataTypeConstructor _ 
   = [ addressName := AST.BitCast (toOperand env var) (pointer t) []
     ]
     +> compileExtractFields env supply'' address (fromIntegral $ headerSize * targetPointerSize (envTarget env)) fieldLayouts args
-    +> compileInstruction env' supply''' next
+    +> compileInstruction env supply''' next
   where
     t = NamedTypeReference $ toName conId
     (addressName, supply') = freshName supply
     address = LocalReference (pointer t) addressName
     (supply'', supply''') = splitNameSupply supply'
     LayoutPointer _ _ headerSize fieldLayouts = findMap conId (envConstructors env)
-    env' = expand env $ Iridium.expandEnvWithMatch args
 compileInstruction env supply (Iridium.If var (Iridium.PatternCon con@(Iridium.DataTypeConstructor _ conId _)) whenTrue whenFalse)
   = compileIfMatchConstructor env supply var con conLayout whenTrue whenFalse
   where
