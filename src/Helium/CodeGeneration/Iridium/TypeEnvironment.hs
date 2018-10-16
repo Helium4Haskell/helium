@@ -1,6 +1,6 @@
 module Helium.CodeGeneration.Iridium.TypeEnvironment where
 
-import Lvm.Common.Id(Id)
+import Lvm.Common.Id(Id, idFromString)
 import Lvm.Common.IdMap
 import Helium.CodeGeneration.Iridium.Data
 import Helium.CodeGeneration.Iridium.Type
@@ -12,6 +12,18 @@ data TypeEnv = TypeEnv
 
 valueDeclaration :: TypeEnv -> Id -> ValueDeclaration
 valueDeclaration env name = findMap name (teValues env)
+
+builtins :: [(Id, ValueDeclaration)]
+builtins =
+  [ fn "$primUnsafePerformIO" [TypeAny] TypeAnyWHNF
+  , fn "$primPutStrLn" [TypeAny] TypeAnyWHNF
+  , fn "$primPatternFailPacked" [TypeAny] TypeAnyWHNF
+  , fn "$primConcat" [TypeAny] TypeAnyWHNF
+  , fn "$primPackedToString" [TypeAny] TypeAnyWHNF
+  ]
+  where
+    fn :: String -> [PrimitiveType] -> PrimitiveType -> (Id, ValueDeclaration)
+    fn name args result = (idFromString name, ValueFunction $ FunctionType args result)
 
 data ValueDeclaration
   = ValueConstructor Id DataTypeConstructor
@@ -36,14 +48,14 @@ typeOfExpr env (Eval _) = TypeAnyWHNF
 typeOfExpr env (Alloc con args) = case findMap con (teValues env) of
   ValueConstructor dataName _ -> TypeDataType dataName
   _ -> error "typeOfExpr: Illegal target of Alloc expression. Expected a constructor."
-typeOfExpr env (Var name) = typeOf env name
+typeOfExpr env (Var (Variable _ t)) = t
 typeOfExpr env (Cast _ t) = t
 
 expandEnvWith :: Id -> PrimitiveType -> TypeEnv -> TypeEnv
 expandEnvWith name t (TypeEnv datas values) = TypeEnv datas $ insertMap name (ValueVariable t) values
 
-expandEnvWithArguments :: [Argument] -> TypeEnv -> TypeEnv
-expandEnvWithArguments args env = foldr (\(Argument arg t) -> expandEnvWith arg t) env args
+expandEnvWithArguments :: [Variable] -> TypeEnv -> TypeEnv
+expandEnvWithArguments args env = foldr (\(Variable arg t) -> expandEnvWith arg t) env args
 
 expandEnvWithLet :: Id -> Expr -> TypeEnv -> TypeEnv
 expandEnvWithLet name expr env = expandEnvWith name (typeOfExpr env expr) env
@@ -75,4 +87,4 @@ typeEnvForModule (Module _ dataTypes methods) = TypeEnv () values
     valuesInDataType (DataType name cs) = map (\con@(DataTypeConstructor conId _) -> (conId, ValueConstructor name con)) cs
 
     valueOfMethod :: Method -> (Id, ValueDeclaration)
-    valueOfMethod (Method name retType (Block _ args _) _) = (name, ValueFunction (FunctionType (map argumentType args) retType))
+    valueOfMethod (Method name args retType _ _) = (name, ValueFunction (FunctionType (map variableType args) retType))

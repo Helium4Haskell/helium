@@ -40,10 +40,9 @@ infixr 3 +>
 instrs1 +> (Partial instrs2 terminator blocks) = Partial (instrs1 ++ instrs2) terminator blocks
 
 compileBlock :: Env -> NameSupply -> Iridium.Block -> [BasicBlock]
-compileBlock env supply (Iridium.Block name args instruction) = BasicBlock (toName name) instrs term : blocks
+compileBlock env supply (Iridium.Block name instruction) = BasicBlock (toName name) instrs term : blocks
   where
-    Partial instrs term blocks = compileInstruction env' supply instruction
-    env' = expand env $ Iridium.expandEnvWithArguments args
+    Partial instrs term blocks = compileInstruction env supply instruction
 
 {-
   | LetThunk [BindThunk] Instruction
@@ -60,11 +59,11 @@ compileInstruction env supply (Iridium.LetThunk binds next) =
   where
     (supply1, supply2) = splitNameSupply supply
     env' = expand env $ Iridium.expandEnvWithLetThunk binds
-compileInstruction env supply (Iridium.Jump to args) = Partial [] (Do $ Br (toName to) []) []
+compileInstruction env supply (Iridium.Jump to) = Partial [] (Do $ Br (toName to) []) []
 compileInstruction env supply (Iridium.Return var) = Partial [] (Do $ Ret (Just $ toOperand env var) []) []
 -- A Match has undefined behaviour if it does not match, so we do not need to check whether it actually matches.
 compileInstruction env supply (Iridium.Match var _ [] next) = compileInstruction env supply next
-compileInstruction env supply (Iridium.Match var conId args next)
+compileInstruction env supply (Iridium.Match (Iridium.Variable var _) conId args next)
   = [ addressName := AST.BitCast (LocalReference voidPointer $ toName var) (pointer t) []
     ]
     +> compileExtractFields env supply'' address (fromIntegral $ headerSize * targetPointerSize (envTarget env)) fieldLayouts args
@@ -76,7 +75,7 @@ compileInstruction env supply (Iridium.Match var conId args next)
     (supply'', supply''') = splitNameSupply supply'
     LayoutPointer _ _ headerSize fieldLayouts = findMap conId (envConstructors env)
     env' = expand env $ Iridium.expandEnvWithMatch conId args
-compileInstruction env supply (Iridium.If varId (Iridium.PatternCon conId) whenTrue whenFalse)
+compileInstruction env supply (Iridium.If (Iridium.Variable varId _) (Iridium.PatternCon conId) whenTrue whenFalse)
   = compileIfMatchConstructor env supply varId conId conLayout whenTrue whenFalse
   where
     conLayout = findMap conId (envConstructors env)
@@ -92,33 +91,29 @@ compileExpression env supply (Iridium.Call to args) name =
       { tailCallKind = Nothing
       , callingConvention = Fast
       , returnAttributes = []
-      , function = Right $ toOperand env to
+      , function = Right $ toOperand env (Iridium.Variable to Iridium.TypeFunction)
       , arguments = map (\arg -> (toOperand env arg, [])) args
       , functionAttributes = []
       , metadata = []
       }
   ]
-compileExpression env supply (Iridium.Eval thunk) name = case Iridium.typeOf (envTypeEnv env) thunk of
-  Iridium.TypeAny ->
-    [ toName namePtr := ExtractValue operand [0] []
-    , toName nameIsWHNF := ExtractValue operand [1] []
-    , name := callEval (LocalReference voidPointer $ toName namePtr) (LocalReference bool $ toName nameIsWHNF)
-    ]
-  Iridium.TypeAnyThunk ->
-    [ name := callEval (LocalReference voidPointer $ toName thunk) (ConstantOperand $ Int 1 0)
-    ]
-  primType ->
-    -- Already in WHNF, insert a cast to TypeAnyWHNF (voidPointer in LLVM)
-    cast env (toName thunk) name primType Iridium.TypeAnyWHNF
+compileExpression env supply (Iridium.Eval var@(Iridium.Variable _ Iridium.TypeAny)) name =
+  [ toName namePtr := ExtractValue operand [0] []
+  , toName nameIsWHNF := ExtractValue operand [1] []
+  , name := callEval (LocalReference voidPointer $ toName namePtr) (LocalReference bool $ toName nameIsWHNF)
+  ]
   where
-    operand = toOperand env thunk
+    operand = toOperand env var
     (namePtr, supply') = freshId supply
     (nameIsWHNF, _) = freshId supply'
+compileExpression env supply (Iridium.Eval (Iridium.Variable thunk Iridium.TypeAnyThunk)) name =
+  [ name := callEval (LocalReference voidPointer $ toName thunk) (ConstantOperand $ Int 1 0)
+  ]
+compileExpression env supply (Iridium.Eval (Iridium.Variable thunk primType)) name =
+  cast env (toName thunk) name primType Iridium.TypeAnyWHNF
 compileExpression env supply (Iridium.Alloc conId args) name = compileAllocation env supply conId args name
-compileExpression env supply (Iridium.Var varId) name = cast env (toName varId) name t t
-  where t = Iridium.typeOf (envTypeEnv env) varId
-compileExpression env supply (Iridium.Cast varId toType) name = cast env (toName varId) name t toType
-  where t = Iridium.typeOf (envTypeEnv env) varId
+compileExpression env supply (Iridium.Var (Iridium.Variable varId t)) name = cast env (toName varId) name t t
+compileExpression env supply (Iridium.Cast (Iridium.Variable varId t) toType) name = cast env (toName varId) name t toType
 
 callEval :: Operand -> Operand -> Instruction
 callEval pointer isWHNF =

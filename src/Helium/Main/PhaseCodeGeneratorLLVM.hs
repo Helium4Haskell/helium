@@ -13,7 +13,7 @@ import Lvm.Core.Expr(CoreModule)
 import Helium.Main.CompileUtils
 import Helium.CodeGeneration.Core(desugarCore)
 import Helium.CodeGeneration.Iridium.FromCore(fromCore)
-import Helium.CodeGeneration.Iridium.PassRemoveAliasses(passRemoveAliasses)
+-- import Helium.CodeGeneration.Iridium.PassRemoveAliasses(passRemoveAliasses)
 import Helium.CodeGeneration.LLVM.CompileModule(compileModule)
 import Helium.CodeGeneration.LLVM.Target(Target(..))
 import Helium.CodeGeneration.LLVM.Env(envForModule)
@@ -34,11 +34,11 @@ phaseCodeGeneratorLLVM fullName coreModule options = do
 
   let imperative = fromCore supplyFromCore simplified
   print imperative
-  let imperative' = passRemoveAliasses imperative
-  print imperative'
+  -- let imperative' = passRemoveAliasses imperative
+  -- print imperative'
 
   let target = Target 64
-  let llvm = compileModule (envForModule target imperative') supplyToLLVM imperative'
+  let llvm = compileModule (envForModule target imperative) supplyToLLVM imperative
   putStrLn $ Text.unpack $ ppllvm llvm
 
   {-LLVM.withContext $ \context ->

@@ -25,7 +25,7 @@ import LLVM.AST.CallingConvention
 import LLVM.AST.Linkage
 
 compileMethod :: Env -> NameSupply -> Iridium.Method -> [Definition]
-compileMethod env supply (Iridium.Method name retType entry@(Iridium.Block _ args _) blocks) = return $ GlobalDefinition fn
+compileMethod env supply (Iridium.Method name args retType entry blocks) = return $ GlobalDefinition fn
   where
     fn :: Global
     -- TODO: set Linkage to Private if possible
@@ -51,6 +51,6 @@ compileMethod env supply (Iridium.Method name retType entry@(Iridium.Block _ arg
       , Global.metadata = []
       }
     parameters :: [Parameter]
-    parameters = map (\(Iridium.Argument name t) -> Parameter (compileType env t) (toName name) []) args
+    parameters = map (\(Iridium.Variable name t) -> Parameter (compileType env t) (toName name) []) args
     basicBlocks :: [BasicBlock]
     basicBlocks = concat $ mapWithSupply (compileBlock env) supply (entry : blocks)

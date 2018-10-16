@@ -5,6 +5,7 @@ import Helium.CodeGeneration.LLVM.Env (Env(..))
 import Helium.CodeGeneration.LLVM.ConstructorLayout
 import Helium.CodeGeneration.LLVM.Target
 import Helium.CodeGeneration.LLVM.Utils
+import qualified Helium.CodeGeneration.Iridium.Data as Iridium
 import qualified Helium.CodeGeneration.Iridium.Type as Iridium
 import qualified Helium.CodeGeneration.Iridium.TypeEnvironment as TypeEnv
 import LLVM.AST as AST
@@ -39,9 +40,9 @@ pointer t = Type.PointerType t (AddrSpace 0)
 voidPointer :: Type
 voidPointer = pointer (IntegerType 8)
 
-toOperand :: Env -> Id -> Operand
-toOperand env name = case TypeEnv.valueDeclaration (envTypeEnv env) name of
-  (TypeEnv.ValueVariable prim) -> LocalReference (compileType env prim) (toName name)
+toOperand :: Env -> Iridium.Variable -> Operand
+toOperand env (Iridium.Variable name t) = case TypeEnv.valueDeclaration (envTypeEnv env) name of
+  (TypeEnv.ValueVariable _) -> LocalReference (compileType env t) (toName name)
   (TypeEnv.ValueFunction fntype) -> ConstantOperand $ GlobalReference (compileFunctionType env fntype) (toName name)
 
 splitValueFlag :: Env -> NameSupply -> Id -> ([Named Instruction], (Operand, Operand))
