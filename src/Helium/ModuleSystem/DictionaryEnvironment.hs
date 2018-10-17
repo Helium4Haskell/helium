@@ -8,6 +8,7 @@
 
 module Helium.ModuleSystem.DictionaryEnvironment 
    ( DictionaryEnvironment, DictionaryTree(..) 
+   , PredicateWithSource(..), superClassToPredicateWithSource
    , emptyDictionaryEnvironment, addForDeclaration, addForVariable
    , getPredicateForDecl, getDictionaryTrees
    , makeDictionaryTree, makeDictionaryTrees
@@ -15,10 +16,11 @@ module Helium.ModuleSystem.DictionaryEnvironment
    ) where
 
 import qualified Data.Map as M
+import Data.List(find)
+import Data.Maybe
 import Helium.Syntax.UHA_Syntax (Name)
 import Helium.Syntax.UHA_Utils (NameWithRange(..) )
 import Helium.Utils.Utils (internalError)
-
 import Top.Types
 
 data DictionaryEnvironment = 
@@ -26,11 +28,31 @@ data DictionaryEnvironment =
           , varMap  :: M.Map NameWithRange [DictionaryTree]
           , currentClassNames :: [(Name, String)]
           }
+
+data PredicateWithSource 
+    = PredicateFunction Predicate
+    | PredicateSuperInstance Predicate String {- Own predicate -} String {- type variable-} String {- ClassName -}
+    deriving (Eq, Show)
+    
+superClassToPredicateWithSource :: Predicate -> String -> String -> PredicateWithSource
+superClassToPredicateWithSource p@(Predicate pn _) className typeVariable = PredicateSuperInstance p pn typeVariable className
+    
+
+instance Substitutable PredicateWithSource where
+    sub |-> (PredicateFunction p) = PredicateFunction  (sub |-> p)
+    sub |-> (PredicateSuperInstance p pn pv pc) = PredicateSuperInstance (sub |-> p) pn pv pc
+    ftv = ftv . getPredicateFromPredicateWithSource
+
+
+getPredicateFromPredicateWithSource :: PredicateWithSource -> Predicate
+getPredicateFromPredicateWithSource (PredicateFunction p) = p
+getPredicateFromPredicateWithSource (PredicateSuperInstance p _ _ _) = p
           
 data DictionaryTree = ByPredicate Predicate
                     | ByInstance String {- class name -} String {- instance name -} [DictionaryTree]
                     | BySuperClass String {- sub -} String {- super -} DictionaryTree
                     | ByCurrentClass String
+                    | BySuperInstance Predicate String {- ClassName -} String {- Type Variable -} DictionaryTree
    deriving Show
    
 instance Show DictionaryEnvironment where
@@ -66,15 +88,30 @@ getDictionaryTrees :: Name -> DictionaryEnvironment -> [DictionaryTree]
 getDictionaryTrees name dEnv =
    M.findWithDefault [] (NameWithRange name) (varMap dEnv)
 
-makeDictionaryTrees :: ClassEnvironment -> Predicates -> Maybe String -> Predicates -> Maybe [DictionaryTree]
-makeDictionaryTrees classEnv ps currentClass = mapM (makeDictionaryTree classEnv ps currentClass)
+makeDictionaryTrees :: ClassEnvironment -> [PredicateWithSource] -> Maybe String -> Maybe Predicate -> [PredicateWithSource] -> Maybe [DictionaryTree]
+makeDictionaryTrees classEnv ps currentClass curPred x = mapM (makeDictionaryTree classEnv ps currentClass curPred) x
 
-makeDictionaryTree :: ClassEnvironment -> Predicates -> Maybe String -> Predicate -> Maybe DictionaryTree
-makeDictionaryTree classEnv availablePredicates currentClass p@(Predicate className tp) = 
+makeDictionaryTree :: ClassEnvironment -> [PredicateWithSource] -> Maybe String -> Maybe Predicate -> PredicateWithSource -> Maybe DictionaryTree
+makeDictionaryTree classEnv availablePredicates currentClass curPred ps =
+    let
+        p@(Predicate className tp) = getPredicateFromPredicateWithSource ps
+        bareAvailablePredicates = map getPredicateFromPredicateWithSource availablePredicates
+        hasSuperClassPredicate p = any (\ps -> isSuperClassPredicate ps && getPredicateFromPredicateWithSource ps == getPredicateFromPredicateWithSource p) availablePredicates
+        isSuperClassPredicate (PredicateFunction _) = False
+        isSuperClassPredicate (PredicateSuperInstance _ _ _ _) = True
+        getSuperClassPredicate :: Predicate -> PredicateWithSource
+        getSuperClassPredicate p = fromJust $ find (\ps -> isSuperClassPredicate ps && getPredicateFromPredicateWithSource ps == p) availablePredicates
+        convertPredicate :: (Predicate -> DictionaryTree) -> PredicateWithSource -> DictionaryTree
+        convertPredicate f p    | hasSuperClassPredicate p =  let
+                                                                    (PredicateSuperInstance pred pn tv cn) = getSuperClassPredicate $ getPredicateFromPredicateWithSource p 
+                                                                in BySuperInstance pred pn tv (ByCurrentClass cn)
+                                | otherwise = f (getPredicateFromPredicateWithSource p)
+    in 
     case tp of
-        TVar _ | p `elem` availablePredicates -> Just (ByPredicate p)
+        TVar _  | curPred == Just (getPredicateFromPredicateWithSource ps) -> Just (ByCurrentClass $ fromJust currentClass)
+                | p `elem` bareAvailablePredicates -> Just (convertPredicate ByPredicate ps)
                 | otherwise -> case [ (path, availablePredicate)
-                                    | availablePredicate@(Predicate c t) <- availablePredicates
+                                    | availablePredicate@(Predicate c t) <- bareAvailablePredicates
                                     , t == tp
                                     , path <- superclassPaths c className classEnv
                                     ] of
@@ -91,5 +128,5 @@ makeDictionaryTree classEnv availablePredicates currentClass p@(Predicate classN
                     Just predicates -> 
                         do 
                             let (TCon instanceName, _) = leftSpine tp
-                            trees <- makeDictionaryTrees classEnv availablePredicates currentClass predicates
+                            trees <- makeDictionaryTrees classEnv availablePredicates currentClass curPred $ map PredicateFunction predicates
                             return (ByInstance className instanceName trees)

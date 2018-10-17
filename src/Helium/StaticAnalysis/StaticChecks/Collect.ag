@@ -26,12 +26,12 @@ import Data.Maybe
 }
 
 SEM Module
-  | Module   loc . collectEnvironment = setValueConstructors   (M.fromList @body.collectValueConstructors)
+  | Module   loc . collectEnvironment = setValueConstructors   (M.fromList  @body.collectValueConstructors)
                                         . setTypeConstructors  (M.fromList @body.collectTypeConstructors)
                                         . setTypeSynonyms      (M.fromList @body.collectTypeSynonyms)
                                         . setOperatorTable     (M.fromList @body.operatorFixities)
-                                        . addToTypeEnvironment (M.fromList @derivedFunctions)
-                                        . setClassEnvironment  @body.classEnv
+                                        . addToTypeEnvironment  (insertClassMembers @body.collectClassMemberEnv (M.fromList @derivedFunctions))
+                                        . setClassEnvironment  (insertInstances @body.classInstances @body.classEnv)
                                         . setInstanceEnvironment @body.instanceEnv
                                         . setClassMemberEnvironment @body.collectClassMemberEnv
                                         $emptyEnvironment
@@ -272,6 +272,28 @@ insertDefaults name defs env = M.mapWithKey (\n membs -> if n == name then (upda
           update :: Names -> (Names, [(Name, TpScheme, Bool, HasDefault)]) -> (Names, [(Name, TpScheme, Bool, HasDefault)])
           update defs (tvars, funcs) = (tvars, map (\(fname, tpscheme, b, _)->(fname, tpscheme, b, fname `elem` defs)) funcs)
 
+insertInstances :: [(String, Tp, [(String, Tp)])] -> ClassEnvironment -> ClassEnvironment
+insertInstances instances classEnv = foldr (\inst@(n, _, _) -> M.update (insert inst) n) classEnv instances
+    where
+        insert :: (String, Tp, [(String, Tp)]) -> Class -> Maybe Class
+        insert (className, instType, preds) (cn, instances) = 
+            let 
+               curInstance = (Predicate className instType, [Predicate n v | (n, v) <- preds]) 
+            in Just (cn, curInstance : instances)
+
+insertClassMembers :: M.Map Name (Names, [(Name, TpScheme, Bool, HasDefault)]) -> M.Map Name TpScheme -> M.Map Name TpScheme
+insertClassMembers classMemberEnv valueEnv = M.foldrWithKey insert valueEnv classMemberEnv
+    where 
+        insert :: Name -> (Names, [(Name, TpScheme, Bool, HasDefault)]) -> M.Map Name TpScheme -> M.Map Name TpScheme
+        insert className (typeVars, funcs) env = foldr (insertFunc className typeVars)  env funcs
+        insertFunc :: Name -> Names -> (Name, TpScheme, Bool, HasDefault) -> M.Map Name TpScheme -> M.Map Name TpScheme
+        insertFunc className typeVars (name, tp, _, _) env = 
+            let 
+                typeIndices :: [(Int, String)]
+                typeIndices = filter (\(_, s) -> s `elem` (map getNameName typeVars)) (getQuantorMap tp)
+                typeVariablesMapped = map (\(n, s) -> (fromJust $ find (\tv -> getNameName tv == s) typeVars, TVar n)) typeIndices
+                tpWContext = addContextToType className typeVariablesMapped tp
+            in M.insert name tpWContext env
 }
 
 ATTR Declarations Declaration [ | | collectTypeClasses  USE { ++ } { [] } : { [(Name, [(Name, TpScheme)])] } ]
@@ -334,13 +356,19 @@ ATTR Body Declaration Declarations [
     |
         classEnv USE {`M.union`} {M.empty} : {ClassEnvironment}
         instanceEnv USE {`M.union`} {M.empty} : {InstanceEnvironment}
+        classInstances USE {(++)} {[]} : {[(String, Tp, [(String, Tp)])]}
 ]
 
 SEM Declaration
     | Class
-        lhs . classEnv = M.singleton (getClassName @simpletype.self) (getSuperClasses @context.self, [])
+        lhs . classEnv = M.singleton (getClassName @simpletype.self) ((map fst $ getSuperClasses @context.self), [])
     | Instance
-       lhs . instanceEnv = M.singleton (@name.self, map (makeTpFromType []) @types.self) (makeInstance (show @name.self) 0 "" False, @types.self ,@loc.instanceFunctions)
+       lhs . classInstances = let
+                                superClasses :: [(String, Tp)]
+                                superClasses = map (\(c, tpss)-> (c, unqualify $ unquantify $ head tpss)) $ getSuperClasses @context.self
+                              in [(getNameName $ @name.self, makeTpFromType' $ head @types.self, superClasses)] 
+
+       lhs . instanceEnv = M.singleton (@name.self, map makeTpFromType' @types.self) (makeInstance (show @name.self) 0 "" False, @types.self ,@loc.instanceFunctions)
        loc . instanceFunctions = (map (\n->(n , getTypeOfInstanceFunction @name.self n @lhs.classMemberEnv)) $ getInstanceFunctionNames @where.self)
 {
 
@@ -359,8 +387,8 @@ getTypeOfInstanceFunction instanceName name env = case M.lookup instanceName env
 getClassName :: SimpleType -> String
 getClassName (SimpleType_SimpleType _ n _) = getNameName n
 
-getSuperClasses ::  ContextItems -> [String]
-getSuperClasses = map (\(ContextItem_ContextItem _ n _) -> getNameName n)
+getSuperClasses ::  ContextItems -> [(String, [TpScheme])]
+getSuperClasses = map (\(ContextItem_ContextItem _ n vs) -> (getNameName n, (map makeTpSchemeFromType vs)))
 
 getInstanceFunctionNames :: MaybeDeclarations -> [Name]
 getInstanceFunctionNames (MaybeDeclarations_Nothing) = []

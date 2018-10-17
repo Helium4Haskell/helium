@@ -101,7 +101,7 @@ import Helium.StaticAnalysis.Inferencers.SelectConstraintSolver (selectConstrain
 import Top.Solver (SolveResult(..), LogEntries)
 import Helium.StaticAnalysis.Heuristics.HeuristicsInfo (makeUnifier, skip_UHA_FB_RHS)
 import Helium.StaticAnalysis.Inferencers.BindingGroupAnalysis
-
+import Helium.StaticAnalysis.Miscellaneous.TypeConstraints
 
 -- UHA syntax
 import Helium.Syntax.UHA_Syntax

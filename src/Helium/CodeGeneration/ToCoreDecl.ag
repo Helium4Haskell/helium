@@ -211,7 +211,7 @@ SEM Declaration
                         where . instanceName = Just @simpletype.name
                         where . dictionaryEnv = setCurrentClassNames (zip @where.functionNames (repeat ("$instanceDict" ++ show @simpletype.name))) @lhs.dictionaryEnv
     | Instance          lhs .   decls    =  [ constructDictionary 
-                                                @superClasses
+                                                @lhs.importEnv
                                                 (constructFunctionMap @lhs.importEnv (length @superClasses) @name.self)
                                                 @where.whereDeclarations @name.self @loc.typeName
                                             ] 
@@ -276,8 +276,8 @@ SEM FunctionBinding [ | | core : { Core.Expr -> Core.Expr } ]
     --  righthandside            : RightHandSide
 {
 
-getSuperClasses ::  ContextItems -> [String]
-getSuperClasses = map (\(ContextItem_ContextItem _ n _) -> getNameName n)
+getSuperClasses ::  ContextItems -> [(String, [TpScheme])]
+getSuperClasses = map (\(ContextItem_ContextItem _ n vs) -> (getNameName n, (map makeTpSchemeFromType vs)))
 
 predicateToId :: Predicate -> Id
 predicateToId (Predicate class_ tp) =
@@ -286,17 +286,20 @@ predicateToId (Predicate class_ tp) =
 dictionaryTreeToCore :: DictionaryTree -> Core.Expr
 dictionaryTreeToCore theTree = 
    case theTree of
-      ByPredicate predicate -> 
-         Core.Var (predicateToId predicate)
-      ByInstance className instanceName trees ->
-         foldl Core.Ap
+        ByPredicate predicate -> 
+            Core.Var (predicateToId predicate)
+        ByInstance className instanceName trees ->
+            foldl Core.Ap
                 (Core.Var (idFromString ("$dict"++className++ "$" ++ instanceName)))
                (map dictionaryTreeToCore trees)
-      BySuperClass subClass superClass tree -> 
-         Core.Ap (Core.Var (idFromString ("$get" ++ superClass ++ "$" ++ subClass)))          
+        BySuperClass subClass superClass tree -> 
+            Core.Ap (Core.Var (idFromString ("$get" ++ superClass ++ "$" ++ subClass)))          
                  (dictionaryTreeToCore tree)
-      ByCurrentClass className ->
-        Core.Var (idFromString $ "$instanceDict" ++ className)
+        ByCurrentClass className ->
+            Core.Var (idFromString $ "$instanceDict" ++ className)
+        BySuperInstance p className typeVariables dict -> 
+            Core.Var (idFromString $ "$instanceDict" ++ className ++ "$" ++ typeVariables )
+    
 
 insertDictionaries :: Name -> DictionaryEnvironment -> Core.Expr
 insertDictionaries name dictionaryEnv = 

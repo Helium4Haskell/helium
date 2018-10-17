@@ -14,15 +14,20 @@ module Helium.StaticAnalysis.Miscellaneous.TypeConversion where
 import Helium.Syntax.UHA_Utils (getNameName, nameFromString)
 import Helium.Syntax.UHA_Range (noRange)
 import Helium.Utils.Utils (internalError)
-import Data.List (union)
+import Data.List (union, (\\))
 import Data.Maybe
+import qualified Data.Map as M
 import Helium.Syntax.UHA_Syntax
 
 import Top.Types
 import Data.List
+import Control.Monad.State
+
 
 ----------------------------------------------------------------------
 -- conversion functions from and to UHA
+
+type ReservedVariables = Names
 
 namesInTypes :: Types -> Names
 namesInTypes = foldr (union . namesInType) []
@@ -69,6 +74,9 @@ addSimpleTypeContextToType (SimpleType_SimpleType _ name typevariables ) (Quanti
             Nothing -> []
             Just tp -> [Predicate (getNameName name) tp]
 
+addPredicateToType :: Predicate -> TpScheme -> TpScheme
+addPredicateToType pred (Quantification (freeTV, nameMap', Qualification (prep, tp))) = (Quantification (freeTV, nameMap', Qualification (pred : prep, tp)))
+
 addContextToType :: Name -> [(Name, Tp)] -> TpScheme -> TpScheme
 addContextToType name nameMap (Quantification (freeTV, nameMap', Qualification (prep, tp)))  = --(Quantification (freeTV, nameMap, qualif))
     let typevariables = map fst nameMap
@@ -79,7 +87,63 @@ addContextToType name nameMap (Quantification (freeTV, nameMap', Qualification (
         nameToPredicate nameMap tv = case lookup tv nameMap of
             Nothing -> []
             Just tp -> [Predicate (getNameName name) tp]
+{-}
+            substituteClassVariables    :: TpScheme -- ^ The type which has to substituted
+            -> Name     -- ^ The type variable of the class
+            -> Tp       -- ^ The beta which has to be placed in place
+            -> TpScheme
+substituteClassVariables tps classVariable beta = ntps
+where
+unqual = unquantify tps 
+ntps = quantify (map fst nqmap) ntp
+ntp = substitution |-> unqual
+nqmap = filter (\x -> snd x /= cvString ) qmap
+qmap = getQuantorMap tps
+cvString = getNameName classVariable
+substitution = listToSubstitution [(numb, beta) | (numb, tvar) <- qmap, tvar == cvString]
+-}
 
+-- addSuperClassContext @superClasses @instsType $
+
+
+superClassToPredicate ::  [(Name, Tp)] -> (String, Name) -> Predicate
+superClassToPredicate classBetaVar (superClassName, typeVariable) = pred
+    where
+        err = error $  "Invalid type variable" ++ show classBetaVar ++ show typeVariable
+        predVar     = fromMaybe err $ lookup typeVariable classBetaVar
+        pred = Predicate superClassName predVar
+
+
+{-superClassToPredicate :: [(Name, Tp)] -> (Name, [TpScheme]) -> Predicate
+superClassToPredicate classVariables (superClassName, tpVars) = 
+    let
+        var = show $ head tpVars
+        err = error "Unknown class variable"
+        tp = fromMaybe err (lookup var $ map (\(n, tp) -> (getNameName n, tp)) classVariables)
+    in Predicate (getNameName superClassName) tp-}
+
+
+addSuperClassContext :: (String, [TpScheme])-> Tp -> (Name, Tp) -> Tp -> TpScheme -> TpScheme
+addSuperClassContext superClass instanceType classBetaVar classBeta typeScheme = tpScheme
+            where   tpScheme = updateType superClass typeScheme
+                --add context where every variable is replaced with type variable in instanceType 
+                    updateType :: (String, [TpScheme]) -> TpScheme -> TpScheme
+                    updateType (superClassName, typeVariables) tpScheme =
+                        let 
+                            nameMap = filter (\x -> snd x == getNameName (fst classBetaVar)) $ concatMap getQuantorMap typeVariables 
+                            predVar  | null nameMap = error "Invalid type variable"
+                                     | otherwise = snd classBetaVar
+                            updatedContext = Predicate superClassName predVar
+                            substitutedTp = addPredicateToType updatedContext tpScheme
+                        in substitutedTp
+
+replaceName :: (Name, Tp) -> TpScheme -> TpScheme
+replaceName repVar tpscheme = let
+    vartp :: [(Int, String)]
+    vartp = filter (\(_, s)-> (s == (getNameName $ fst repVar))) $ getQuantorMap tpscheme
+    nqmap = getQuantorMap tpscheme \\ vartp
+    vars = quantifiers tpscheme \\ map fst vartp
+    in Quantification (vars, nqmap, (M.fromList $ map (\v -> (fst v, snd repVar)) vartp) |-> unquantify tpscheme)
 
 
 predicatesFromContext :: [(Name,Tp)] -> Type -> Predicates
@@ -92,6 +156,9 @@ predicatesFromContext nameMap (Type_Qualified _ is _) =
          Just tp -> [Predicate (getNameName cn) tp]
      predicateFromContext _ = internalError "TypeConversion.hs" "predicateFromContext" "malformed type in context"
 predicatesFromContext _ _   = []
+
+makeTpFromType' :: Type -> Tp
+makeTpFromType' = makeTpFromType =<< makeNameMap . namesInType
 
 makeTpFromType :: [(Name,Tp)] -> Type -> Tp
 makeTpFromType nameMap = rec_
@@ -130,3 +197,34 @@ showInstanceType (TCon c) = c
 showInstanceType (TApp f1 f2) = showInstanceType f1 ++ showInstanceType f2
 showInstanceType (TVar v) = ""
             
+
+class Freshen a where
+    freshen :: Int -> a -> (a, Int)
+
+instance Freshen Tp where
+    freshen n tp = (\(tp', (n', _))->(tp', n')) $ runState (freshenHelper tp) (n, []) 
+        where
+            freshenHelper :: Tp -> State (Int, [(Int, Int)]) Tp
+            freshenHelper (TCon n) = return (TCon n)
+            freshenHelper (TVar v') = do
+                    (uniq, mapping) <- get
+                    case lookup v' mapping of
+                        Just v -> return (TVar v)
+                        Nothing -> put (uniq + 1, (v', uniq) : mapping) >> return (TVar uniq)
+            freshenHelper (TApp a1 a2) = do
+                t1 <- freshenHelper a1
+                t2 <- freshenHelper a2
+                return $ TApp t1 t2
+
+combineTps :: Tp -> TpScheme -> [(String, Tp)]
+combineTps tp tpscheme = combineTpsHelper (getQuantorMap tpscheme) tp (unqualify $ unquantify tpscheme)
+    where 
+        err = error "Error in mapping"
+        combineTpsHelper :: [(Int, String)] -> Tp -> Tp -> [(String, Tp)]
+        combineTpsHelper mapping (TCon _) (TCon _) = []
+        combineTpsHelper mapping (TVar v1) (TVar v2) = return (fromMaybe err $ lookup v2 mapping, TVar v1)
+        combineTpsHelper mapping (TApp f1 a1) (TApp f2 a2) = let
+            f1Mapping = combineTpsHelper mapping f1 f2
+            f2Mapping = combineTpsHelper mapping a1 a2
+            in nub (f1Mapping ++ f2Mapping)
+        combineTpsHelper _ _ _ = err

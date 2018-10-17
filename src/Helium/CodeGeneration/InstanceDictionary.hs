@@ -11,82 +11,136 @@ import Helium.ModuleSystem.ImportEnvironment
 import Helium.Syntax.UHA_Syntax
 import Helium.Syntax.UHA_Utils
 import Helium.Utils.Utils
-
 import Top.Types
 
 import qualified Data.Map as M
 
+type DictLabel = String
 
-constructFunctionMap :: ImportEnvironment -> Int -> Name -> [(Name, Int)]
-constructFunctionMap env nrOfSupers name = 
+constructFunctionMap :: ImportEnvironment -> Int -> Name -> [(Name, Int, DictLabel)]
+constructFunctionMap env nrOfSuperclasses name = 
     let 
         err = error "Invalid class name" 
-        f :: (Name, a, b, c) -> Name
-        f (n, _, _, _) = n 
-        mapF = map f . snd
-    in zip (maybe err mapF  $ M.lookup name (classMemberEnvironment env)) [nrOfSupers..]
+        f :: Int -> (Name, a, b, c) -> (Name, Int, DictLabel)
+        f i (n, _, _, _) = (n, i, "func$" ++ getNameName n) 
+        
+    in maybe err (zipWith f [nrOfSuperclasses..] . snd) $ M.lookup name (classMemberEnvironment env)
 
+constructSuperClassMap :: ImportEnvironment -> String -> [(String, Int, DictLabel)]
+constructSuperClassMap env name =
+    let 
+        err = error "Invalid class name" 
+        f :: Class -> [(String, Int, DictLabel)]
+        f (ns, _) = zipWith (\n i -> (n, i, "superC$" ++ n)) ns [0..]
+    in maybe err f (M.lookup name $ classEnvironment env)
 
 --returns for every function in a class the function that retrieves that class from a dictionary
-classFunctions :: ImportEnvironment -> String -> [(Name, Int)] -> [CoreDecl]
-classFunctions importEnv className combinedNames = map superDict superclasses ++ map classFunction combinedNames
+classFunctions :: ImportEnvironment -> String -> [(Name, Int, DictLabel)] -> [CoreDecl]
+classFunctions importEnv className combinedNames = [DeclCon
+                                                    { declName = idFromString ("Dict" ++ className)
+                                                    , declAccess  = public
+                                                    , declArity   = length superclasses + length combinedNames
+                                                    , conTag      = 0
+                                                    , declCustoms = []       
+                                                    },
+                                                    DeclCon
+                                                    { declName = idFromString ("Dict2" ++ className)
+                                                    , declAccess  = public
+                                                    , declArity   = length superclasses + length combinedNames
+                                                    , conTag      = 1
+                                                    , declCustoms = []       
+                                                    }
+                                                    ] ++ map superDict superclasses ++ map classFunction combinedNames
         where
-            superclasses = zip (maybe [] fst (M.lookup className $ classEnvironment importEnv)) [0..]
-            superDict :: (String, Int) -> CoreDecl
-            superDict (superName, label) =
+            labels = map (\(_, _, l)->l) superclasses ++ map (\(_, _, l)->l) combinedNames
+            superclasses = constructSuperClassMap importEnv className
+            superDict :: (String, Int, DictLabel) -> CoreDecl
+            superDict (superName, tag, label) =
                 let dictParam = idFromString "dict"
                     val = DeclValue 
                         { declName    = idFromString $ "$get" ++ superName ++ "$" ++ className
                         , declAccess  = public
                         , valueEnc    = Nothing
-                        , valueValue  = Lam dictParam (Ap (Ap (Var dictParam) (Lit (LitInt label))) (Var dictParam))
+                        , valueValue  = Lam dictParam 
+                                        (Match dictParam 
+                                            [
+                                                Alt (PatCon (ConId $ idFromString ("Dict" ++ className)) (map idFromString labels)) 
+                                                    (Var $ idFromString label)
+                                                
+                                            ]
+                                        )
                         , declCustoms = [custom "type" ("Dict$" ++ className ++" -> Dict$" ++ superName)]
                         }
                 in val
-            classFunction :: (Name, Int) -> CoreDecl
-            classFunction (name, label) = 
+            classFunction :: (Name, Int, DictLabel) -> CoreDecl
+            classFunction (name, tag, label) = 
                 let dictParam = idFromString "dict"
                     val = DeclValue 
                         { declName    = idFromString $ getNameName name
                         , declAccess  = public
                         , valueEnc    = Nothing
-                        , valueValue  = Lam dictParam (Ap (Ap (Var dictParam) (Lit (LitInt label))) (Var dictParam))
+                        , valueValue  = Lam dictParam $ 
+                                Let (Strict $ Bind dictParam (Var dictParam))
+                                (Match dictParam 
+                                    [
+                                        Alt (PatCon (ConId $ idFromString ("Dict" ++ className)) (map idFromString labels)) 
+                                            (Ap (Var $ idFromString label) (Var dictParam))
+                                        --, Alt (PatCon (ConId $ idFromString ("Dict" ++ className)) $ map idFromString ["x", "y", "z"]) (Var $ idFromString "x")
+                                        --, Alt PatDefault (Lam (idFromString "d") $ Lam (idFromString "x") (Var $ idFromString "x"))
+                                    ]
+                                )
                         , declCustoms = toplevelType name importEnv True
                         }
                 in val
          
-combineDeclIndex :: [(Name, Int)] -> [(Name, CoreDecl)] -> [(Int, Name, Maybe CoreDecl)]
-combineDeclIndex ls [] = map (\(n, l) -> (l, n, Nothing)) ls
+combineDeclIndex :: [(Name, Int, DictLabel)] -> [(Name, CoreDecl)] -> [(DictLabel, Name, Maybe CoreDecl)]
+combineDeclIndex ls [] = map (\(n, _, l) -> (l, n, Nothing)) ls
 combineDeclIndex [] _ = error "Inconsistent mapping"
-combineDeclIndex names decls = map (\(name, label) -> (label, name, lookup name decls)) names
+combineDeclIndex names decls = map (\(name, _, label) -> (label, name, lookup name decls)) names
 
 --returns a dictionary with specific implementations for every instance
-constructDictionary :: [String] -> [(Name, Int)] -> [(Name, CoreDecl)] -> Name -> String  -> CoreDecl
-constructDictionary superClasses combinedNames whereDecls className insName = let 
+constructDictionary :: ImportEnvironment -> [(Name, Int, DictLabel)] -> [(Name, CoreDecl)] -> Name -> String  -> CoreDecl
+constructDictionary importEnv combinedNames whereDecls className insName = let 
             
             val = DeclValue 
                 { declName    = idFromString ("$dict" ++ getNameName className ++ "$" ++ insName)
                 , declAccess  = public
                 , valueEnc    = Nothing
-                , valueValue  = getFunc
+                , valueValue  = dict
                 , declCustoms = [ custom "type" ("Dict" ++ getNameName className ++ "$" ++ insName) ] 
                 }
             in val
         where 
             functions = combineDeclIndex combinedNames whereDecls
             idP = idFromString "index"
+            superClasses = constructSuperClassMap importEnv $ getNameName className
+            dict = Let (Rec binds) (Var $ idFromString "dict")
+            binds = map makeBindSuper superClasses ++ map makeBindFunc functions ++ [dictCon]
+            labels = map (\(_, _, l)->l) superClasses ++ map (\(l, _, _)->l) functions
+            makeBindSuper :: (String, Int, DictLabel) -> Bind
+            makeBindSuper (cName, tag, label) = Bind (idFromString label) (Var (idFromString ("$dict" ++ cName ++ "$" ++ insName)))
+            makeBindFunc :: (DictLabel, Name, Maybe CoreDecl) -> Bind
+            makeBindFunc (label, name, fdecl) = let 
+                undefinedFunc = (Var $ idFromString ("default$" ++ getNameName className ++ "$" ++ getNameName name))
+                func = maybe undefinedFunc getCoreValue fdecl
+                in Bind (idFromString label) func
+            dictCon = Bind (idFromString "dict") (
+                    foldl (\c l -> Ap c l) (Con $ ConId $ idFromString ("Dict" ++ getNameName className)) $ map (Var . idFromString) labels
+                )
+{-}
             getFunc = Lam idP (Match idP makeAlts)
+            superClasses = constructSuperClassMap importEnv $ getNameName className
             makeAlts :: Alts
-            makeAlts = zipWith makeAltD superClasses [0..] ++ map (\(l, n, mc) -> makeAltF l n mc) functions
-            makeAltD :: String -> Int -> Alt
-            makeAltD cName label = Alt (PatLit (LitInt label)) (Lam (idFromString "_") $ Var (idFromString ("$dict" ++ cName ++ "$" ++ insName)))
-            makeAltF :: Int -> Name -> Maybe CoreDecl -> Alt
+            makeAlts = map (\(n, t, l) -> makeAltD n t l) superClasses ++ map (\(l, n, mc) -> makeAltF l n mc) functions
+            makeAltD :: String -> Int -> DictLabel -> Alt
+            makeAltD cName tag label = Alt (PatCon (ConId $ idFromString label) []) (Lam (idFromString "_") $ Var (idFromString ("$dict" ++ cName ++ "$" ++ insName)))
+            makeAltF :: DictLabel -> Name -> Maybe CoreDecl -> Alt
             makeAltF label name fdecl = let 
                             undefinedFunc = (Var $ idFromString ("default$" ++ getNameName className ++ "$" ++ getNameName name))
                             func = maybe undefinedFunc getCoreValue fdecl
-                            pat = PatLit (LitInt label)
+                            pat = PatCon (ConId $ idFromString label) []
                             in Alt pat func
-
+-}
 
 getCoreName :: CoreDecl -> String 
 getCoreName cd = stringFromId $ declName cd
