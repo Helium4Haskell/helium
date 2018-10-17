@@ -66,7 +66,7 @@ SEM Module
                 lhs.core = @module_ { Module.moduleDecls = 
                                 insertedMain @lhs.toplevelTypes : Module.moduleDecls @module_ }
                 loc.module_ = 
-                    Core.modulePublic @exports.isImplicit @loc.exportlists
+                    setExportsPublic @exports.isImplicit @loc.exportlists
                         (makeCoreModule (fmap idFromName @name.name)
                             ( @body.decls ++ @lhs.extraDecls
                             ))

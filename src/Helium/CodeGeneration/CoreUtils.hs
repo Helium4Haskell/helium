@@ -13,10 +13,12 @@ module Helium.CodeGeneration.CoreUtils
     ,   cons, nil
     ,   var, decl
     ,   float, packedString
+    ,   setExportsPublic
     ) where
 
 import Lvm.Core.Expr
 import Lvm.Common.Id
+import Lvm.Common.IdSet
 import Lvm.Core.Utils
 import Data.Char
 import Lvm.Common.Byte(bytesFromString)
@@ -117,3 +119,59 @@ decl isPublic x e =
 
 packedString :: String -> Expr
 packedString s = Lit (LitBytes (bytesFromString s))
+
+customInfix :: DeclKind
+customInfix = customDeclKind "infix"
+
+setExportsPublic :: Bool -> (IdSet,IdSet,IdSet,IdSet,IdSet) -> Module v -> Module v
+setExportsPublic implicit (exports,exportCons,exportData,exportDataCon,exportMods) m
+  = m { moduleDecls = map setPublic (moduleDecls m) }
+  where
+    setPublic decl_  | declPublic decl_ = decl_{ declAccess = (declAccess decl_){ accessPublic = True } }
+                    | otherwise       = decl_
+
+    isExported decl_ elemIdSet =
+        let access = declAccess decl_ in
+        if implicit then
+            case decl_ of
+                DeclImport{} ->  False
+                _ ->
+                    case access of
+                        Imported{} -> False
+                        Defined{}  -> True --accessPublic access
+        else
+            case access of
+                Imported{ importModule = x }
+                    | elemSet x exportMods              -> True
+                    | otherwise                         -> elemIdSet
+                Defined{}
+                    | elemSet (moduleName m) exportMods -> True
+                    | otherwise                         -> elemIdSet
+
+    declPublic decl_ =
+        let name = declName decl_
+        in
+        case decl_ of
+            DeclValue{}     ->  isExported decl_ (elemSet name exports)
+            DeclAbstract{}  ->  isExported decl_ (elemSet name exports)
+            DeclExtern{}    ->  isExported decl_ (elemSet name exports)
+            DeclCon{}       ->  isExported decl_
+                                    (  elemSet name exportCons
+                                    || elemSet (conTypeName decl_) exportDataCon
+                                    )
+            DeclCustom{}    ->  isExported decl_
+                                    (declKind decl_ `elem` [customData, customTypeDecl] && (elemSet name exportData || elemSet name exportDataCon)
+                                    || (declKind decl_ `elem` [customInfix] && elemSet name exports)
+                                    )
+            DeclImport{}    ->  not implicit && case importKind (declAccess decl_) of
+                                    DeclKindValue  -> isExported decl_ (elemSet name exports)
+                                    DeclKindExtern -> isExported decl_ (elemSet name exports)
+                                    DeclKindCon    -> isExported decl_ (elemSet name exportCons)
+                                    DeclKindModule -> isExported decl_ (elemSet name exportMods)
+                                    dk@(DeclKindCustom _)
+                                     | dk `elem` [customData, customTypeDecl] ->
+                                         isExported decl_ (elemSet name exportData)
+                                    _          -> False
+
+    conTypeName (DeclCon{declCustoms=(_:CustomLink x _:_)}) = x
+    conTypeName _ = dummyId
