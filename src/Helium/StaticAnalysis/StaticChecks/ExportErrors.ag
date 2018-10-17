@@ -34,7 +34,7 @@ ATTR MaybeExports Exports Export
       ambiguousCons   : {[[Name]]}
     |
     | exportErrors USE { ++ } { [] } : {[Error]}
-      exportList   USE { ++ } { [] } :{[Name, String]}
+      exportList   USE { ++ } { [] } :{[(Name, String)]}
     ]                    
     
 {
@@ -44,12 +44,12 @@ checkExport entity name inScope ambiguous = ambiguousOrUndefinedErrors entity na
 
 
 checkConstructorExport :: Entity -> (Name, Name) -> [(Name, Name)] -> [[Name]] -> [[Name]] -> [Error]
-checkConstructorExport entity name@(constructor, parent) inScopePairs duplicated ambiguous =
+checkConstructorExport entity (constructor, parent) inScopePairs duplicated ambiguous =
     case lookup constructor inScopePairs of
         Just realparent  -> if parent == realparent then 
                                 []
                             else
-                                [ExportWrongParent entity constructor parent realparent]
+                                [ExportWrongParent entity constructor parent realparent [child | (child, par) <- inScopePairs, par == parent ]]
         Nothing          -> if constructor `elem` map head duplicated then
                                 []
                             else

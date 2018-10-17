@@ -45,7 +45,7 @@ data Error  = NoFunDef Entity Name {-names in scope-}Names
             | OverlappingInstance String Tp
             | MissingSuperClass Range Predicate Predicate 
             | Duplicated Entity Names
-            | Ambiguous Entity Name {-the name what is ambiguous-} [(Name, String)] {- The modules where it occurs, including the original module of the decl-}
+            | Ambiguous Entity Name {-the name what is ambiguous-} [(Name, String)] {- (Name of declaration, original module)-}
             | LastStatementNotExpr Range
             | WrongFileName {-file name-}String {-module name-}String Range {- of module name -}
             | TypeVarApplication Name
@@ -63,7 +63,8 @@ data Error  = NoFunDef Entity Name {-names in scope-}Names
             | CannotDerive Name Tps
             | TupleTooBig Range
             | ClassesAndInstancesNotAllowed Range
-            | ExportWrongParent Entity Name {-Value Construct-} Name {-Wrong Parent-} Name {-Right Parent-} 
+            | ExportWrongParent Entity Name {-Value Construct-} Name {-Wrong Parent-} Name {-Right Parent-} Names {-Right Childs-}
+            | ExportConflict Name {-The conflict-} [(Name, Name, String)] {-(export list entry, module, list entry in string)-}
             
 instance HasMessage Error where
    getMessage x = let (oneliner, hints) = showError x
@@ -108,7 +109,8 @@ instance HasMessage Error where
       CannotDerive name _         -> [getNameRange name]
       TupleTooBig r               -> [r]
       ClassesAndInstancesNotAllowed r -> [r]
-      ExportWrongParent _ name _ _ -> [getNameRange name]
+      ExportWrongParent _ name _ _ _ -> [getNameRange name]
+      ExportConflict _ conflicts   -> [getNameRange name | (name, _, _) <- conflicts]
  
 sensiblySimilar :: Name -> Names -> [Name]   
 sensiblySimilar name inScope = 
@@ -390,11 +392,27 @@ showError anError = case anError of
       , []
       )
 
-   ExportWrongParent entity name parent rightparent ->
-      ( MessageString $ (show parent) ++ " is not the parent of " ++ show entity ++ 
-                        " " ++ show name ++ ". Use the correct parent to export it: " ++ show rightparent
-      , []
+   ExportWrongParent entity name parent rightparent rightchilds ->
+      ( MessageString $ (show.show) parent ++ " is not the parent of " ++ show entity ++ 
+                        " " ++ (show.show) name ++ ". " ++ (capitalize.show) entity ++ "s can only be exported with the correct parent."
+      , let childhints = [MessageString $ "Did you mean to export " ++ (show.show) n ++ " with parent " ++ (show.show) parent ++ "?"| n <- sensiblySimilar name rightchilds]
+        in if null childhints then
+             [MessageString $ "Did you mean to export " ++ (show.show) name ++ " with parent " ++ (show.show) rightparent ++ "?"]
+           else childhints
       )
+
+   ExportConflict name conflicts ->
+      let 
+        origin = ""
+        showline (_, name', exportEntry)
+          | (isImportRange.getNameRange) name' = show exportEntry ++ " exports: " ++ (show.show) name' ++ " imported from module " ++ 
+                                     (snd . fromJust . modulesFromImportRange . getNameRange) name' ++ " (orignally defined in " ++ origin ++ ")"
+          | otherwise = show exportEntry ++ " exports: " ++ (show.show) name' ++ " defined at " ++ (show.getNameRange) name'          
+      in
+        ( MessageString (
+            "There is an export conflict for  " ++ (show.show) name ++ ". It could refer to: \n\t" ++ 
+            (intercalate "\n\t" . map showline) conflicts
+        ) , []) 
 
    _ -> internalError "StaticErrors.hs" "showError" "unknown type of Error"
 
@@ -481,7 +499,8 @@ errorLogCode anError = case anError of
           OverlappingInstance _ _                 -> "oi"
           MissingSuperClass _ _ _                 -> "ms"
           ClassesAndInstancesNotAllowed _         -> "ci"
-          ExportWrongParent entity _ _ _          -> "wp" ++ code entity
+          ExportWrongParent entity _ _ _ _        -> "wp" ++ code entity
+          ExportConflict _ _                      -> "cf"
    where code entity = fromMaybe "??"
                      . lookup entity 
                      $ [ (TypeSignature    ,"ts"), (TypeVariable                ,"tv"), (TypeConstructor,"tc")
