@@ -158,7 +158,7 @@ ATTR Pattern Patterns
 SEM Pattern 
   | Variable   lhs . patVarNames = [ @name.self ]
   | As         lhs . patVarNames = @name.self : @pattern.patVarNames
-  | Hole       lhs . patVarNames = [ Name_Special noRange [] ("hole" ++ show @loc.i) ]
+  | Hole       lhs . patVarNames = [ Name_Special noRange [] [] ("hole" ++ show @loc.i) ]
                loc . i : UNIQUEREF counter
 
 SEM Expression 

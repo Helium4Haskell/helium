@@ -151,7 +151,7 @@ SEM Expression
                                                                        (take (length @patterns.self) . fst . functionSpine)
                                                                        [(concat @patterns.elementss, False)]
                                                                        @range.self
-                                                                       (Just $ Name_Special noRange [] "\\") -- !!!Name
+                                                                       (Just $ Name_Special noRange [] [] "\\") -- !!!Name
                                                                        True
                                                                        []
                                                                        "lambda expression"
@@ -233,8 +233,8 @@ SEM GuardedExpressions
 
 SEM GuardedExpression
   | GuardedExpression lhs . fallthrough = case @guard.self
-                                          of Expression_Variable    _ (Name_Identifier _ _ "otherwise") -> False -- !!!Name
-                                             Expression_Constructor _ (Name_Identifier _ _ "True"     ) -> False -- !!!Name
+                                          of Expression_Variable    _ (Name_Identifier _ _ _ "otherwise") -> False -- !!!Name
+                                             Expression_Constructor _ (Name_Identifier _ _ _ "True"     ) -> False -- !!!Name
                                              _                                                          -> True
                       lhs . unrwar = UnreachableGuard @range.self @guard.self
 
@@ -261,7 +261,7 @@ type Env = [(Tp, (Name, [Tp]))]
 importEnvironmentToEnv :: ImportEnvironment -> [(Tp, (Name, [Tp]))]
 importEnvironmentToEnv = map rearrange . M.assocs .toSchemeMap . valueConstructors
   where
-    toSchemeMap = M.map (\(parent, scheme) -> scheme)
+    toSchemeMap = M.map (\(_, scheme) -> scheme)
 
 -- return the number of arguments of a constructor
 -- tuples ar not in the Env so they require special treatment
@@ -366,14 +366,14 @@ nicePattern b env = map (parensPattern b) . nice
           name = nameFromString con
           n    = nrOfArguments env con
       in case name 
-         of Name_Identifier _ _ _                          -> Pattern_Constructor noRange name (take n rest) : drop n rest -- !!!Name
-            Name_Operator   _ _ _ | con == ":"             -> case head $ tail rest -- !!!Name
-                                                              of Pattern_List _ pats -> Pattern_List noRange (head rest:pats) : (tail $ tail rest)
-                                                                 _ -> Pattern_InfixConstructor noRange (head rest) name (head $ tail rest) : (tail $ tail rest)
-                                  | otherwise              -> Pattern_InfixConstructor noRange (head rest) name (head $ tail rest) : (tail $ tail rest)
-            Name_Special    _ _ _ | isTupleConstructor con -> Pattern_Tuple noRange (take n rest) : drop n rest -- !!!Name
-                                  | con == "[]"            -> Pattern_List  noRange [] : rest
-                                  | otherwise              -> Pattern_Constructor noRange name (take n rest) : drop n rest
+         of Name_Identifier _ _ _ _                          -> Pattern_Constructor noRange name (take n rest) : drop n rest -- !!!Name
+            Name_Operator   _ _ _ _ | con == ":"             -> case head $ tail rest -- !!!Name
+                                                                of Pattern_List _ pats -> Pattern_List noRange (head rest:pats) : (tail $ tail rest)
+                                                                   _ -> Pattern_InfixConstructor noRange (head rest) name (head $ tail rest) : (tail $ tail rest)
+                                    | otherwise              -> Pattern_InfixConstructor noRange (head rest) name (head $ tail rest) : (tail $ tail rest)
+            Name_Special    _ _ _ _ | isTupleConstructor con -> Pattern_Tuple noRange (take n rest) : drop n rest -- !!!Name
+                                    | con == "[]"            -> Pattern_List  noRange [] : rest
+                                    | otherwise              -> Pattern_Constructor noRange name (take n rest) : drop n rest
 
 -- add parentheses to a pattern in the correct places
 -- bool means: if needed, should there be parenthesis around the complete pattern?

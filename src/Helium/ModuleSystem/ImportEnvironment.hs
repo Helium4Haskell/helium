@@ -22,11 +22,11 @@ import Data.List
 import Data.Maybe (catMaybes)
 import Data.Function (on)
 
-type TypeEnvironment             = M.Map Name TpScheme
-type ValueConstructorEnvironment = M.Map Name (Name, TpScheme)
-type TypeConstructorEnvironment  = M.Map Name Int
-type TypeSynonymEnvironment      = M.Map Name (Int, Tps -> Tp)
-type ClassMemberEnvironment      = M.Map Name [(Name, Bool)]
+type TypeEnvironment             = M.Map Name TpScheme {- Type scheme-}
+type ValueConstructorEnvironment = M.Map Name (Name, TpScheme) {-Parent, Type scheme-}
+type TypeConstructorEnvironment  = M.Map Name Int {-Arity -}
+type TypeSynonymEnvironment      = M.Map Name (Int, Tps -> Tp) {-Arity, function-}
+type ClassMemberEnvironment      = M.Map Name [(Name, Bool)] {-Member, original module-}
 
 type ImportEnvironments = [ImportEnvironment]
 data ImportEnvironment  = 
@@ -132,7 +132,7 @@ getSiblings importenv =
    where
     valueConsTpScheme n =
         let res = M.lookup n (valueConstructors importenv)
-        in maybe Nothing (\(parent, scheme) -> Just scheme) res
+        in maybe Nothing (\(_, scheme) -> Just scheme) res
 
 -- The Value Constuctors are unioned normally (takes left if same). Because it is allowed to create a value constructor, that is also imported. As long as it is not used.
 -- But when you do this, it does need to check the type, when declared. Thus the normal union. We assume that the original module is always used as first argument.

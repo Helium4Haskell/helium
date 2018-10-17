@@ -86,7 +86,7 @@ addImplicitImports (Module_Module moduleRange maybeName exports
         ImportDeclaration_Import
             noRange
             False
-            (Name_Identifier noRange [] moduleName) -- !!!Name
+            (Name_Identifier noRange [] [] moduleName) -- !!!Name
             MaybeName_Nothing
             MaybeImportSpecification_Nothing
 addImplicitImports (Module_Module _ _ _ (Body_Hole _ _)) = error "not supported"

@@ -892,7 +892,7 @@ aexp = addRange (
                 es <- commas exp_
                 lexRPAREN
                 return $ \r -> case es of
-                    [] -> Expression_Constructor r (Name_Special r [] "()") -- !!!Name
+                    [] -> Expression_Constructor r (Name_Special r [] [] "()") -- !!!Name
                     [e] -> Expression_Parenthesized r e
                     _ -> Expression_Tuple r es
          )
@@ -953,7 +953,7 @@ aexp1 =
     do
         lexRBRACKET
         return $ \r -> Expression_Constructor r
-                        (Name_Special r [] "[]") -- !!!Name
+                        (Name_Special r [] [] "[]") -- !!!Name
     <|>
     do
         e1 <- exp_
@@ -1179,14 +1179,14 @@ apat = addRange (
     do
         ps <- parens (commas pat)
         return $ \r -> case ps of
-            [] -> Pattern_Constructor r (Name_Special r [] "()") [] -- !!!Name
+            [] -> Pattern_Constructor r (Name_Special r [] [] "()") [] -- !!!Name
             [p] -> Pattern_Parenthesized r p
             _ -> Pattern_Tuple r ps
     <|>
     do
         ps <- brackets (commas pat)
         return $ \r -> case ps of
-            [] -> Pattern_Constructor r (Name_Special r [] "[]") [] -- !!!Name
+            [] -> Pattern_Constructor r (Name_Special r [] [] "[]") [] -- !!!Name
             _ -> Pattern_List r ps
     <|> 
     do
@@ -1247,7 +1247,7 @@ type_ = addRange (
                 (_, rangeArrow) <- withRange lexRARROW
                 right <- type_
                 return (\r -> Type_Application r False
-                        (Type_Constructor rangeArrow (Name_Special rangeArrow [] "->")) [left, right]) -- !!!Name
+                        (Type_Constructor rangeArrow (Name_Special rangeArrow [] [] "->")) [left, right]) -- !!!Name
     ) <?> Texts.parserType
 
 {-
@@ -1279,9 +1279,9 @@ iType = addRange (
     do
         ts <- parens (commas type_)
         return (\r -> case ts of
-            [] -> Type_Constructor r (Name_Special r [] "()") -- !!!Name
+            [] -> Type_Constructor r (Name_Special r [] [] "()") -- !!!Name
             [t] -> Type_Parenthesized r t
-            _ -> let n = Name_Special r []  -- !!!Name
+            _ -> let n = Name_Special r [] []  -- !!!Name
                             ( "(" ++ replicate (length ts - 1) ',' ++ ")" )
                  in Type_Application r False (Type_Constructor r n) ts
          )
@@ -1289,7 +1289,7 @@ iType = addRange (
     do
         t <- brackets type_
         return $ \r ->
-            let n = Name_Special r [] "[]" -- !!!Name
+            let n = Name_Special r [] [] "[]" -- !!!Name
             in Type_Application r False (Type_Constructor r n) [t]
     ) <?> Texts.parserType
 
@@ -1315,9 +1315,9 @@ atype = addRange (
     do
         ts <- parens (commas type_)
         return (\r -> case ts of
-            [] -> Type_Constructor r (Name_Special r [] "()") -- !!!Name
+            [] -> Type_Constructor r (Name_Special r [] [] "()") -- !!!Name
             [t] -> Type_Parenthesized r t
-            _ -> let n = Name_Special r []  -- !!!Name
+            _ -> let n = Name_Special r [] [] -- !!!Name
                             ( "(" ++ replicate (length ts - 1) ',' ++ ")" )
                  in Type_Application r False (Type_Constructor r n) ts
          )
@@ -1325,7 +1325,7 @@ atype = addRange (
     do
         t <- brackets type_
         return $ \r ->
-            let n = Name_Special r [] "[]" -- !!!Name
+            let n = Name_Special r [] [] "[]" -- !!!Name
             in Type_Application r False (Type_Constructor r n) [t]
     ) <?> Texts.parserType
 

@@ -50,14 +50,14 @@ instance Ord Position where
 --------------------------------------------------------------
 
 getNameRange :: Name -> Range -- !!!Name
-getNameRange (Name_Identifier r _ _) = r
-getNameRange (Name_Operator   r _ _) = r
-getNameRange (Name_Special    r _ _) = r
+getNameRange (Name_Identifier r _ _ _) = r
+getNameRange (Name_Operator   r _ _ _) = r
+getNameRange (Name_Special    r _ _ _) = r
 
 setNameRange :: Name -> Range -> Name -- !!!Name
-setNameRange (Name_Identifier _ s e) r = Name_Identifier r s e 
-setNameRange (Name_Operator   _ s e) r = Name_Operator   r s e
-setNameRange (Name_Special    _ s e) r = Name_Special    r s e
+setNameRange (Name_Identifier _ s o e) r = Name_Identifier r s o e 
+setNameRange (Name_Operator   _ s o e) r = Name_Operator   r s o e
+setNameRange (Name_Special    _ s o e) r = Name_Special    r s o e
 
 rangeFromImportDeclaration :: ImportDeclaration -> Range
 rangeFromImportDeclaration importDecl =

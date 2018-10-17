@@ -88,13 +88,13 @@ name :: HParser String -> HParser Name
 name p = addRange $
     do 
         n <- p
-        return (\r -> Name_Identifier r [] n) -- !!!Name
+        return (\r -> Name_Identifier r [] [] n) -- !!!Name
 
 opName :: HParser String -> HParser Name
 opName p = addRange $
     do 
         n <- p
-        return (\r -> Name_Operator r [] n) -- !!!Name
+        return (\r -> Name_Operator r [] [] n) -- !!!Name
 
 addRange :: HParser (Range -> a) -> HParser a
 addRange p =
@@ -206,9 +206,9 @@ The unary minus has 'unaryMinus' as its name to distinguish it from the binary m
 An example,  "-3+4" is parsed as:
 
 Expression_List <<unknown>,<unknown>> 
-    [   Expression_Variable <<unknown>,<unknown>> (Name_Identifier <<1,1>,<1,2>> [] "unaryMinus")
+    [   Expression_Variable <<unknown>,<unknown>> (Name_Identifier <<1,1>,<1,2>> [] [] "unaryMinus")
     ,   Expression_Literal <<1,2>,<1,3>> (Literal_Int <<1,2>,<1,3>> "3")
-    ,   Expression_Variable <<unknown>,<unknown>> (Name_Identifier <<1,3>,<1,4>> [] "+")
+    ,   Expression_Variable <<unknown>,<unknown>> (Name_Identifier <<1,3>,<1,4>> [] [] "+")
     ,   Expression_Literal <<1,4>,<1,5>> (Literal_Int <<1,4>,<1,5>> "4")
     ]
 

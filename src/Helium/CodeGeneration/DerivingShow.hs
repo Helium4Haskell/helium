@@ -142,8 +142,8 @@ showFunctionOfType isMainType = sFOT
         UHA.Type_Variable _ n             -> if isMainType then var "showPolymorphic" else Var (idFromName n) 
         -- show Strings not as List of Char but using showString
         UHA.Type_Application _ _ 
-                    ( UHA.Type_Constructor _ (UHA.Name_Special    _ _ "[]") ) -- !!!Name
-                    [ UHA.Type_Constructor _ (UHA.Name_Identifier _ _ "Char") ] -> -- !!!Name
+                    ( UHA.Type_Constructor _ (UHA.Name_Special    _ _ _ "[]") ) -- !!!Name
+                    [ UHA.Type_Constructor _ (UHA.Name_Identifier _ _ _ "Char") ] -> -- !!!Name
             var "showString"
         UHA.Type_Constructor _ n         -> var ("show" ++ checkForPrimitive (getNameName n))
         UHA.Type_Application _ _ f xs    -> foldl Ap (sFOT f) (map sFOT xs)
@@ -169,7 +169,7 @@ idFromNumber :: Int -> Id
 idFromNumber i = idFromString ("v$" ++ show i)
 
 nameOfShowFunction :: UHA.Name -> UHA.Name
-nameOfShowFunction (UHA.Name_Identifier r m n) = UHA.Name_Identifier r m ("show" ++ n) -- !!!Name
+nameOfShowFunction (UHA.Name_Identifier r m o n) = UHA.Name_Identifier r m o ("show" ++ n) -- !!!Name
 nameOfShowFunction _ = internalError "DerivingShow" "nameOfShowFunction" "name of type must be an identifier"
 
 typeOfShowFunction :: UHA.Name -> UHA.Names -> TpScheme

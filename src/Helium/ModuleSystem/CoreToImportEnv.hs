@@ -41,7 +41,7 @@ nameFromCustoms importedInModule importedFromModId conName [] =
     internalError "CoreToImportEnv" "nameFromCustoms"
         ("constuctor import without name: " ++ conName)
 nameFromCustoms importedInModule importedFromModId conName ( CustomLink parentid (DeclKindCustom ident) : cs) 
-    | stringFromId ident == "data" = makeImportName importedInModule importedFromModId parentid
+    | stringFromId ident == "data" = makeImportName importedInModule importedFromModId "" parentid
     | otherwise =
         nameFromCustoms importedInModule importedFromModId conName cs
 nameFromCustoms importedInModule importedFromModId conName (_ : cs) = nameFromCustoms importedInModule importedFromModId conName cs
@@ -119,8 +119,8 @@ makeOperatorTable oper _ =
     internalError "CoreToImportEnv" "makeOperatorTable"
         ("infix decl missing priority or associativity: " ++ show oper)
 
-makeImportName :: String -> Id -> Id -> Name
-makeImportName importedInMod importedFromMod n =
+makeImportName :: String -> Id -> String -> Id -> Name
+makeImportName importedInMod importedFromMod origin n = setNameOrigin origin $
     setNameRange 
         (nameFromId n)
         (makeImportRange (idFromString importedInMod) importedFromMod)
@@ -137,7 +137,7 @@ getImportEnvironment importedInModule = foldr insert emptyEnvironment
                         , declCustoms = cs
                         } ->
               addType
-                 (makeImportName importedInModule importedFromModId n)
+                 (makeImportName importedInModule importedFromModId "" n)
                  (typeFromCustoms (stringFromId n) cs)
           
            -- functions from non-core/non-lvm libraries and lvm-instructions
@@ -146,7 +146,7 @@ getImportEnvironment importedInModule = foldr insert emptyEnvironment
                       , declCustoms = cs
                       } ->
               addType
-                 (makeImportName importedInModule importedFromModId n)
+                 (makeImportName importedInModule importedFromModId "" n)
                  (typeFromCustoms (stringFromId n) cs)
             
            -- constructors
@@ -155,7 +155,7 @@ getImportEnvironment importedInModule = foldr insert emptyEnvironment
                    , declCustoms = cs
                    } ->
               addValueConstructor
-                (makeImportName importedInModule importedFromModId n)
+                (makeImportName importedInModule importedFromModId "" n)
                 (typeFromCustoms (stringFromId n) cs)
                 (nameFromCustoms importedInModule importedFromModId (stringFromId n) cs)
 
@@ -167,7 +167,7 @@ getImportEnvironment importedInModule = foldr insert emptyEnvironment
                       } 
                       | stringFromId ident == "data" ->
               addTypeConstructor
-                 (makeImportName importedInModule importedFromModId n)
+                 (makeImportName importedInModule importedFromModId "" n)
                  (arityFromCustoms (stringFromId n) cs)
             
            -- type synonym declarations
@@ -178,7 +178,7 @@ getImportEnvironment importedInModule = foldr insert emptyEnvironment
                       , declCustoms = cs
                       }
                       | stringFromId ident == "typedecl" ->
-              let typename = makeImportName importedInModule importedFromModId n
+              let typename = makeImportName importedInModule importedFromModId "" n
                   pair = typeSynFromCustoms (stringFromId n) cs
               in addTypeSynonym typename pair . addTypeConstructor typename (fst pair)
                              

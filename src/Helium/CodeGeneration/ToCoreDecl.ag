@@ -405,5 +405,5 @@ constructorCustoms dataTypeName name envWithParent =
         )
         (M.lookup name env)
     where
-        env = M.map (\(parent, scheme) -> scheme) envWithParent
+        env = M.map (\(_, scheme) -> scheme) envWithParent
 }

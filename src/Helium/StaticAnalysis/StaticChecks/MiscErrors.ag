@@ -463,9 +463,9 @@ validApplyType (Type_Constructor _ n) ts = validInstanceConstrName n ts
 validApplyType _                      _  =  False
 
 validInstanceConstrName :: Name -> Types -> Bool
-validInstanceConstrName (Name_Special _ _ s) ts = s == "(" ++ replicate (length ts - 1) ',' ++ ")" || s == "[]"
+validInstanceConstrName (Name_Special _ _ _ s) ts = s == "(" ++ replicate (length ts - 1) ',' ++ ")" || s == "[]"
     --We just want to know if it was a tuple
-validInstanceConstrName (Name_Identifier _ _ _) _ = True
+validInstanceConstrName (Name_Identifier _ _ _ _) _ = True
 validInstanceConstrName _ _ = False
 
 -- All type variables in an instance declaration have to be unique

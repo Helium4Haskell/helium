@@ -39,7 +39,7 @@ SEM Module
                                    in M.map f @body.assumptions
            . initialScope        = M.keys (typeEnvironment @lhs.importEnvironment)           
            . monos               = map TVar @monomorphics
-           . monomorphics        = ftv (  (map (\(parent, scheme) -> scheme) $ M.elems $ valueConstructors @lhs.importEnvironment) 
+           . monomorphics        = ftv (  (map (\(_, scheme) -> scheme) $ M.elems $ valueConstructors @lhs.importEnvironment) 
                                        ++ (M.elems $ typeEnvironment   @lhs.importEnvironment)
                                        )
                                   
@@ -227,7 +227,7 @@ SEM Expression
           . beta         = TVar @lhs.betaUnique
           . newcon       = case M.lookup @name.self (valueConstructors @lhs.importEnvironment) of
                               Nothing            -> []
-                              Just (parent, ctp) -> [ (@beta .::. ctp) @cinfo ]
+                              Just (_, ctp) -> [ (@beta .::. ctp) @cinfo ]
 
   | Variable
       lhs . betaUnique  = @lhs.betaUnique + 1
@@ -488,7 +488,7 @@ SEM Pattern
                   . conApply       = [ (@betaCon .==. @leftPattern.beta .->. @rightPattern.beta .->. @beta) @cinfoApply ]
                   . conConstructor = case M.lookup @constructorOperator.self (valueConstructors @lhs.importEnvironment) of
                                         Nothing            -> []
-                                        Just (parent, ctp) -> [ (@betaCon .::. ctp) @cinfoConstructor ]
+                                        Just (_, ctp) -> [ (@betaCon .::. ctp) @cinfoConstructor ]
 
   | Constructor
       patterns . betaUnique     = @lhs.betaUnique + 2
@@ -502,7 +502,7 @@ SEM Pattern
                                     (if @patterns.numberOfPatterns == 0  then @cinfoEmpty else @cinfoApply) ]             
                . conConstructor = case M.lookup @name.self (valueConstructors @lhs.importEnvironment) of
                                      Nothing            -> []
-                                     Just (parent, ctp) -> [ (@betaCon .::. ctp) @cinfoConstructor ]
+                                     Just (_, ctp) -> [ (@betaCon .::. ctp) @cinfoConstructor ]
 
   | As
       lhs     . environment = M.insert @name.self @beta @pattern.environment          

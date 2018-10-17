@@ -52,15 +52,15 @@ instance Ord NameWithRange where
 --------------------------------------------------------------
 
 getNameName :: Name -> String -- !!!Name
-getNameName (Name_Identifier _ _ name) = name
-getNameName (Name_Operator   _ _ name) = name
-getNameName (Name_Special    _ _ name) = name
+getNameName (Name_Identifier _ _ _ name) = name
+getNameName (Name_Operator   _ _ _ name) = name
+getNameName (Name_Special    _ _ _ name) = name
 
 -- added for Holmes
 getHolmesName :: String -> Name -> String -- !!!Name
-getHolmesName altname (Name_Identifier range _ name) = getFrom range altname ++ "." ++ name
-getHolmesName altname (Name_Operator   range _ name) = getFrom range altname ++ "." ++ name
-getHolmesName altname (Name_Special    range _ name) = getFrom range altname ++ "." ++ name
+getHolmesName altname (Name_Identifier range _ _ name) = getFrom range altname ++ "." ++ name
+getHolmesName altname (Name_Operator   range _ _ name) = getFrom range altname ++ "." ++ name
+getHolmesName altname (Name_Special    range _ _ name) = getFrom range altname ++ "." ++ name
 
 getFrom :: Range -> [Char] -> [Char]
 getFrom range altname = if result == "" then altname else result
@@ -74,19 +74,19 @@ getModuleName (Module_Module _ MaybeName_Nothing _ _) = ""
 getModuleName (Module_Module _ (MaybeName_Just name) _ _) = show name
 
 idFromName :: Name -> Id -- !!!Name
-idFromName (Name_Special _ _ s) = idFromString s
-idFromName (Name_Identifier _ _ s) = idFromString s
-idFromName (Name_Operator _ _ s) = idFromString s
+idFromName (Name_Special _ _ _ s) = idFromString s
+idFromName (Name_Identifier _ _ _ s) = idFromString s
+idFromName (Name_Operator _ _ _ s) = idFromString s
 
 nameFromId :: Id -> Name
 nameFromId = nameFromString . stringFromId
 
 nameFromString :: String -> Name -- !!!Name
 nameFromString str@(first:_) 
-    | isAlpha first = Name_Identifier noRange [] str 
+    | isAlpha first = Name_Identifier noRange [] [] str 
     | str == "[]" || isTupleConstructor str || str == "->" 
-                    = Name_Special noRange [] str
-    | otherwise     = Name_Operator noRange [] str
+                    = Name_Special noRange [] [] str
+    | otherwise     = Name_Operator noRange [] [] str
 nameFromString _ = internalError "UHA_Utils" "nameFromString" "empty string"
 
 isOperatorName :: Name -> Bool -- !!!Name
@@ -96,11 +96,11 @@ isOperatorName _ = False
 isConstructor :: Name -> Bool -- !!!Name
 isConstructor name = 
     case name of
-        Name_Operator   _ _ (':':_)   -> True
-        Name_Identifier _ _ (first:_) -> isUpper first
-        Name_Special    _ _ "()"      -> True
-        Name_Special    _ _ "[]"      -> True
-        _                             -> False
+        Name_Operator   _ _ _ (':':_)   -> True
+        Name_Identifier _ _ _ (first:_) -> isUpper first
+        Name_Special    _ _ _ "()"      -> True
+        Name_Special    _ _ _ "[]"      -> True
+        _                               -> False
         
 isIdentifierName :: Name -> Bool -- !!!Name
 isIdentifierName (Name_Identifier{}) = True
@@ -174,4 +174,13 @@ nameOfLeftHandSide lhs = case lhs of
     LeftHandSide_Function _ n _      -> [n]
     LeftHandSide_Infix _ _ n _       -> [n]
     LeftHandSide_Parenthesized _ l _ -> nameOfLeftHandSide l
-    
+
+setNameOrigin :: String -> Name -> Name -- !!!Name
+setNameOrigin o (Name_Identifier r s _ e) = Name_Identifier r s o e 
+setNameOrigin o (Name_Operator   r s _ e) = Name_Operator   r s o e
+setNameOrigin o (Name_Special    r s _ e) = Name_Special    r s o e
+
+getNameOrigin :: Name -> String
+getNameOrigin (Name_Identifier _ _ o _) = o
+getNameOrigin (Name_Operator   _ _ o _) = o
+getNameOrigin (Name_Special    _ _ o _) = o
