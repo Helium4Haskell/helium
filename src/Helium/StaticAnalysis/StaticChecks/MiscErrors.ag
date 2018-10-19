@@ -176,7 +176,7 @@ constructorErrors name valCons ambiguousValueConstructors namesInScope allValueC
         Nothing -> let amb = [a | a <- ambiguousValueConstructors, head a == name] in
                     case amb of
                         []   -> [undefinedConstructorInExpr name (namesInScope ++ allValueConstructors) allTypeConstructors ]
-                        y:[] -> [Ambiguous Constructor name (map (\n -> (n,"")) y)]
+                        y:[] -> [Ambiguous Constructor name y]
                         _    -> internalError "MiscErrors.ag" "n/a" "constructorErrors"
 }
 -----------------------------------------
@@ -199,7 +199,7 @@ patternConstructorErrors maybetparity name ambiguousValueConstructors env useAri
         Nothing -> let amb = [a | a <- ambiguousValueConstructors, head a == name] in
                     case amb of
                         []   -> [undefinedConstructorInPat lhsPattern name env namesTyconEnv ]
-                        y:[] -> [Ambiguous Constructor name (map (\n -> (n,"")) y)]
+                        y:[] -> [Ambiguous Constructor name y]
                         _    -> internalError "MiscErrors.ag" "n/a" "patternConstructorErrors"            
         Just tpScheme ->
             let arity = arityOfTpScheme tpScheme

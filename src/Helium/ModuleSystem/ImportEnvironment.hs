@@ -139,13 +139,13 @@ getSiblings importenv =
 combineImportEnvironments :: ImportEnvironment -> ImportEnvironment -> ImportEnvironment
 combineImportEnvironments (ImportEnvironment tcs1 tss1 te1 vcs1 ot1 ce1 cm1 xs1) (ImportEnvironment tcs2 tss2 te2 vcs2 ot2 ce2 cm2 xs2) = 
    ImportEnvironment 
-      (tcs1 `exclusiveUnion` tcs2) 
-      (tss1 `exclusiveUnion` tss2)
-      (te1  `exclusiveUnion` te2 )
+      (tcs1 `M.union` tcs2) 
+      (tss1 `M.union` tss2)
+      (te1  `M.union` te2 )
       (vcs1 `M.union` vcs2)
-      (ot1  `exclusiveUnion` ot2)
+      (ot1  `M.union` ot2)
       (M.unionWith combineClassDecls ce1 ce2)
-      (cm1 `exclusiveUnion` cm2)
+      (cm1 `M.union` cm2)
       (xs1 ++ xs2)
 
 combineImportEnvironmentList :: ImportEnvironments -> ImportEnvironment

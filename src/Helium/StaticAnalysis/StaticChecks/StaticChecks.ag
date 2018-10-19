@@ -72,8 +72,8 @@ SEM Module
                  . removedEntities = [ (name,TypeConstructor) | name:_ <- @duplicatedTypeConstructors  ] ++   
                                      [ (name,Constructor    ) | name:_ <- @duplicatedValueConstructors ]
                  . derivedRanges   = map getNameRange (map fst @derivedFunctions)
-                 . initialScope    = map fst @derivedFunctions ++ 
-                                     concatMap (M.keys . typeEnvironment) @lhs.importEnvironments                 
+                 . initialScope    = map fst (@derivedFunctions ++ 
+                                     mergeSameOrigins (concatMap (M.assocs . typeEnvironment) @lhs.importEnvironments) )                 
 {
 -- filter undefined errors that are caused by the removal of a duplicate definition
 filterRemovedNames :: [(Name,Entity)] -> Error -> Bool

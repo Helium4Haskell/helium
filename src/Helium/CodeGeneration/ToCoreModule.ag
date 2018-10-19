@@ -65,9 +65,10 @@ SEM Module
     | Module    -- insert "insertedMain" after modulePublic so that it remains private
                 lhs.core = @module_ { Module.moduleDecls = 
                                 insertedMain @lhs.toplevelTypes : Module.moduleDecls @module_ }
+                loc.modulename = maybe "Main" getNameName @name.name
                 loc.module_ = 
                     setExportsPublic @exports.isImplicit @loc.exportlists
-                        (makeCoreModule (fmap idFromName @name.name)
+                        (makeCoreModule (Just $ idFromString @modulename)
                             ( @body.decls ++ @lhs.extraDecls
                             ))
                 loc.exportlists = (@exports.values

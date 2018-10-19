@@ -17,6 +17,7 @@ import Helium.StaticAnalysis.Messages.Messages
 import Data.List        (nub, intersperse, sort, partition, intercalate)
 import Data.Maybe
 import Helium.Utils.Utils       (commaList, internalError, maxInt)
+import Helium.Syntax.UHA_Utils (getNameOrigin)
 
 import Top.Types
 
@@ -45,7 +46,7 @@ data Error  = NoFunDef Entity Name {-names in scope-}Names
             | OverlappingInstance String Tp
             | MissingSuperClass Range Predicate Predicate 
             | Duplicated Entity Names
-            | Ambiguous Entity Name {-the name what is ambiguous-} [(Name, String)] {- (Name of declaration, original module)-}
+            | Ambiguous Entity Name {-the name what is ambiguous-} Names {- (Names of declarations)-}
             | LastStatementNotExpr Range
             | WrongFileName {-file name-}String {-module name-}String Range {- of module name -}
             | TypeVarApplication Name
@@ -282,10 +283,10 @@ showError anError = case anError of
 
    Ambiguous entity name names ->
      let 
-        showline (name', origin) |  (isImportRange.getNameRange) name' = (show.show) name' ++ " imported from module " ++ 
-                                      (snd . fromJust . modulesFromImportRange . getNameRange) name' ++
-                                      " (orignally defined in " ++ origin ++ ")"
-                                 | otherwise = (show.show) name' ++ " defined at " ++ (show.getNameRange) name'          
+        showline name' |  (isImportRange.getNameRange) name' = (show.show) name' ++ " imported from module " ++ 
+                           (snd . fromJust . modulesFromImportRange . getNameRange) name' ++
+                           " (orignally defined in " ++ (show.getNameOrigin) name' ++ ")"
+                       | otherwise = (show.show) name' ++ " defined at " ++ (show.getNameRange) name'          
      in
        ( MessageString (
            "The occurence of " ++ show entity ++ " " ++ (show.show) name ++
@@ -406,7 +407,7 @@ showError anError = case anError of
         origin = ""
         showline (_, name', exportEntry)
           | (isImportRange.getNameRange) name' = show exportEntry ++ " exports: " ++ (show.show) name' ++ " imported from module " ++ 
-                                     (snd . fromJust . modulesFromImportRange . getNameRange) name' ++ " (orignally defined in " ++ origin ++ ")"
+                                     (snd . fromJust . modulesFromImportRange . getNameRange) name' ++ " (orignally defined in " ++ show origin ++ ")"
           | otherwise = show exportEntry ++ " exports: " ++ (show.show) name' ++ " defined at " ++ (show.getNameRange) name'          
       in
         ( MessageString (
@@ -424,7 +425,7 @@ ambiguousOrUndefinedErrors entity name namesInScope ambiguousConflicts undefined
         let amb = [a | a <- ambiguousConflicts, head a == name] in
         case amb of
             []   -> [Undefined entity name namesInScope undefinedHint]
-            y:[] -> [Ambiguous entity name (map (\n -> (n,"")) y)]
+            y:[] -> [Ambiguous entity name y]
             _    -> internalError "StaticErrors.hs" "n/a" "ambiguousOrUndefinedErrors"
 
 makeUndefined :: Entity -> Names -> Names -> [Error]

@@ -38,7 +38,7 @@ showInformation reportNotFound options importEnv =
           
           constructor = 
              case lookupWithKey (nameFromString string) (valueConstructors importEnv) of
-                Just (name, (parent, scheme)) -> 
+                Just (name, (_, scheme)) -> 
                    [ValueConstructor name scheme (M.lookup name (operatorTable importEnv))]
                 Nothing     -> []
 
@@ -150,7 +150,7 @@ findValueConstructors name =
    let test = isName . fst . leftSpine . snd . functionSpine . unqualify . unquantify
        isName (TCon s) = s == show name
        isName _        = False
-       toSchemeMap = M.map (\(parent, scheme) -> scheme)
+       toSchemeMap = M.map (\(_, scheme) -> scheme)
    in M.assocs . M.filter test . toSchemeMap . valueConstructors
 
 lookupWithKey :: Ord key => key -> M.Map key a -> Maybe (key, a)

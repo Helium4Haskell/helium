@@ -184,3 +184,6 @@ getNameOrigin :: Name -> String
 getNameOrigin (Name_Identifier _ _ o _) = o
 getNameOrigin (Name_Operator   _ _ o _) = o
 getNameOrigin (Name_Special    _ _ o _) = o
+
+getIdOrigin :: Name -> Id
+getIdOrigin = idFromString . getNameOrigin

@@ -116,7 +116,7 @@ SEM Declaration
 
 SEM Module
   | Module   loc . (uniqueValueConstructors, ambiguousValueConstructors) =
-                      uniqueKeys (@declNoConflictsValCon ++ concatMap (M.assocs . valueConstructors) @lhs.importEnvironments)
+                      uniqueKeys (@declNoConflictsValCon ++ mergeSameOrigins (concatMap (M.assocs . valueConstructors) @lhs.importEnvironments) )
                  . (declNoConflictsValCon, duplicatedValueConstructors) = uniqueKeys @body.collectValueConstructors
                  . allValueConstructors            = map fst @uniqueValueConstructors ++ map head @duplicatedValueConstructors ++ map head @ambiguousValueConstructors
                  . valueConstructorsWithParents = map (\(con, (par, _)) -> (con,par)) $ @uniqueValueConstructors
@@ -136,7 +136,7 @@ ATTR Body Declarations Declaration Expressions Expression Patterns Pattern
 
 SEM Module
   | Module loc . (uniqueTypeConstructors, ambiguousTypeConstructors) = 
-                    uniqueKeys  ( @declNoConflictsTyCon ++ concatMap (M.assocs . typeConstructors) @lhs.importEnvironments )
+                    uniqueKeys  ( @declNoConflictsTyCon ++ mergeSameOrigins (concatMap (M.assocs . typeConstructors) @lhs.importEnvironments) )
                . (declNoConflictsTyCon, duplicatedTypeConstructors) = 
                     uniqueKeys ( @body.collectTypeConstructors ++ [(n,i) | (n,(i,_)) <- @body.collectTypeSynonyms ] )
                . allTypeConstructors = map fst @uniqueTypeConstructors ++ map head @duplicatedTypeConstructors ++ map head @ambiguousTypeConstructors
@@ -159,7 +159,7 @@ ATTR Module -> Declaration [ orderedTypeSynonyms:OrderedTypeSynonyms | | ]
 
 SEM Module
   | Module body . orderedTypeSynonyms =
-                      let list     = concatMap (M.assocs . typeSynonyms) @lhs.importEnvironments ++
+                      let list     = mergeSameOrigins (concatMap (M.assocs . typeSynonyms) @lhs.importEnvironments) ++
                                      @body.collectTypeSynonyms
                           newmap   = M.fromList [ (show name, t) | (name, t) <- list ]
                           ordering = fst (getTypeSynonymOrdering newmap)
@@ -224,6 +224,16 @@ uniqueKeys = let comp (x,_) (y,_) = compare x y
               . partition predicate 
               . groupBy eq 
               . sortBy comp
+
+mergeSameOrigins :: [(Name,a)] -> [(Name,a)]
+mergeSameOrigins = map head
+                   . groupBy eq 
+                   . sortBy comp
+    where
+        comp (x,_) (y,_) = case compare x y of
+            EQ -> compare (getNameOrigin x) (getNameOrigin y)
+            cp -> cp
+        eq   (x,_) (y,_) = x == y && (getNameOrigin x) == (getNameOrigin y) && (getNameOrigin x) /= "unkown origin"
 }
 
 

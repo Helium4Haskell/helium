@@ -37,7 +37,7 @@ typeFromCustoms n ( CustomDecl (DeclKindCustom ident) [CustomBytes bytes] : cs)
 typeFromCustoms _ _ = error "Pattern match failure in ModuleSystem.CoreToImportEnv.typeFromCustoms"
 
 nameFromCustoms :: String -> Id -> String -> [Custom] -> Name
-nameFromCustoms importedInModule importedFromModId conName [] =
+nameFromCustoms _ _ conName [] =
     internalError "CoreToImportEnv" "nameFromCustoms"
         ("constuctor import without name: " ++ conName)
 nameFromCustoms importedInModule importedFromModId conName ( CustomLink parentid (DeclKindCustom ident) : cs) 
@@ -45,9 +45,15 @@ nameFromCustoms importedInModule importedFromModId conName ( CustomLink parentid
     | otherwise =
         nameFromCustoms importedInModule importedFromModId conName cs
 nameFromCustoms importedInModule importedFromModId conName (_ : cs) = nameFromCustoms importedInModule importedFromModId conName cs
-nameFromCustoms _ _ _ _ = error "Pattern match failure in ModuleSystem.CoreToImportEnv.nameFromCustoms"
 
-
+originFromCustoms :: [Custom] -> String
+originFromCustoms [] = "unkown origin"
+--    internalError "CoreToImportEnv" "originFromCustoms" 
+--        ("something imported without an origin: ")
+originFromCustoms ( CustomDecl (DeclKindCustom ident) [CustomName originid] : cs)
+    | stringFromId ident == "origin" = stringFromId originid
+    | otherwise                      = originFromCustoms cs
+originFromCustoms (_ : cs) = originFromCustoms cs
 
 parseFromString :: HParser a -> String -> a
 parseFromString p string = 
@@ -137,7 +143,7 @@ getImportEnvironment importedInModule = foldr insert emptyEnvironment
                         , declCustoms = cs
                         } ->
               addType
-                 (makeImportName importedInModule importedFromModId "" n)
+                 (makeImportName importedInModule importedFromModId (originFromCustoms cs) n)
                  (typeFromCustoms (stringFromId n) cs)
           
            -- functions from non-core/non-lvm libraries and lvm-instructions
@@ -146,7 +152,7 @@ getImportEnvironment importedInModule = foldr insert emptyEnvironment
                       , declCustoms = cs
                       } ->
               addType
-                 (makeImportName importedInModule importedFromModId "" n)
+                 (makeImportName importedInModule importedFromModId (originFromCustoms cs) n)
                  (typeFromCustoms (stringFromId n) cs)
             
            -- constructors
@@ -155,7 +161,7 @@ getImportEnvironment importedInModule = foldr insert emptyEnvironment
                    , declCustoms = cs
                    } ->
               addValueConstructor
-                (makeImportName importedInModule importedFromModId "" n)
+                (makeImportName importedInModule importedFromModId (originFromCustoms cs) n)
                 (typeFromCustoms (stringFromId n) cs)
                 (nameFromCustoms importedInModule importedFromModId (stringFromId n) cs)
 
@@ -167,7 +173,7 @@ getImportEnvironment importedInModule = foldr insert emptyEnvironment
                       } 
                       | stringFromId ident == "data" ->
               addTypeConstructor
-                 (makeImportName importedInModule importedFromModId "" n)
+                 (makeImportName importedInModule importedFromModId (originFromCustoms cs) n)
                  (arityFromCustoms (stringFromId n) cs)
             
            -- type synonym declarations
@@ -178,7 +184,7 @@ getImportEnvironment importedInModule = foldr insert emptyEnvironment
                       , declCustoms = cs
                       }
                       | stringFromId ident == "typedecl" ->
-              let typename = makeImportName importedInModule importedFromModId "" n
+              let typename = makeImportName importedInModule importedFromModId (originFromCustoms cs) n
                   pair = typeSynFromCustoms (stringFromId n) cs
               in addTypeSynonym typename pair . addTypeConstructor typename (fst pair)
                              
