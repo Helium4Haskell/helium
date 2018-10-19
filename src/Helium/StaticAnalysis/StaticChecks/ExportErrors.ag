@@ -5,7 +5,6 @@
 -- Stability   :  experimental
 -- Portability :  unknown
 --
--- !!! CLEAN UP THIS CODE !!!
 --
 -------------------------------------------------------------------------------
 
@@ -17,24 +16,33 @@ SEM Module
                     . tyconsInScope   = map fst @uniqueTypeConstructors ++ map head @duplicatedTypeConstructors
                     . ambiguousTyCons = @ambiguousTypeConstructors
                     . consInScope     = @valueConstructorsWithParents
+                    . allConsInScope  = @valueConstructorsWithParents ++ concat @ambiguousValueConstructorsWithParents
                     . duplicatedCons  = @duplicatedValueConstructors
                     . ambiguousCons   = @ambiguousValueConstructors
 
 SEM Module 
-  | Module    loc . exportErrors = @exports.exportErrors
+  | Module    loc . exportErrors = let firstErrors = @exports.exportErrors 
+                                   in if null firstErrors then @exportNameClashes else firstErrors
+              loc . modulename = maybe (nameFromString "Main") id @name.name
+              loc . exportModuleScope = [(@modulename, @declNoConflicts)] ++ getModuleList @lhs.importEnvironmentsWithMod
+              loc . exportNameClashes = (map ExportConflict . getConflicts.mergeSameOrigins) @exports.totalExports
+              
                     
 ATTR MaybeExports Exports Export
-    [ namesInScope    : Names
-      ambiguousNames  : {[[Name]]}
-      modulesInScope  : Names
-      tyconsInScope   : Names
-      ambiguousTyCons : {[[Name]]}
-      consInScope     : {[(Name, Name)]}
-      duplicatedCons  : {[[Name]]}
-      ambiguousCons   : {[[Name]]}
+    [ namesInScope      : Names
+      ambiguousNames    : { [[Name]] }
+      modulesInScope    : Names
+      tyconsInScope     : Names
+      ambiguousTyCons   : { [[Name]] }
+      consInScope       : { [(Name, Name)] }
+      allConsInScope    : { [(Name, Name)] }
+      duplicatedCons    : { [[Name]] }
+      ambiguousCons     : { [[Name]] }
+      exportModuleScope : { [(Name, Names)] }
     |
-    | exportErrors USE { ++ } { [] } : {[Error]}
-      exportList   USE { ++ } { [] } :{[(Name, String)]}
+    | exportErrors USE { ++ } { [] } : { [Error] }
+      exportList   USE { ++ } { [] } : { [(Name, String)] }
+      totalExports USE { ++ } { [] } : { [(Name, (Name,String))] }
     ]                    
     
 {
@@ -54,6 +62,29 @@ checkConstructorExport entity (constructor, parent) inScopePairs duplicated ambi
                                 []
                             else
                                 ambiguousOrUndefinedErrors entity constructor (map fst inScopePairs) ambiguous []
+
+getModuleList :: [(Name, ImportEnvironment)] -> [(Name, Names)]
+getModuleList = map getNames
+    where
+        getNames (mod,env) = (mod,
+            (M.keys . typeEnvironment  ) env ++
+            (M.keys . typeConstructors )  env ++
+            (M.keys . valueConstructors)  env
+            )
+
+setTotal :: Name -> Names -> String-> [(Name, (Name, String))]
+setTotal export inScope exportString = [(decl, (export, exportString)) | decl <- inScope, decl == export]
+
+setTotalCons :: Name -> [(Name, Name)] -> String -> [(Name, (Name, String))]
+setTotalCons exportPar inScopePairs exportString = [(child, (exportPar, exportString)) | (child, par) <- inScopePairs, par == exportPar ]
+
+getConflicts :: [(Name, a)] -> [[(Name, a)]]
+getConflicts = let comp (x,_) (y,_) = compare x y
+                   eq   (x,_) (y,_) = x == y
+                   predicate xs = length xs > 1
+               in filter predicate
+                . groupBy eq 
+                . sortBy comp
 }
 
 
@@ -66,8 +97,11 @@ SEM MaybeNames
 -- If classes are added, this should be updated aswell
 SEM Export
     | Variable    lhs . exportErrors =  checkExport ExportVariable @name.self @lhs.namesInScope @lhs.ambiguousNames
+                  lhs . totalExports = setTotal @name.self @lhs.namesInScope (show @name.self)
     | TypeOrClassComplete
                   lhs . exportErrors =  checkExport ExportTypeConstructorOrClass @name.self @lhs.tyconsInScope @lhs.ambiguousTyCons
+                  lhs . totalExports = setTotal @name.self @lhs.tyconsInScope @showExp ++ setTotalCons @name.self @lhs.allConsInScope @showExp
+                  loc . showExp      = (show @name.self) ++ "(..)"
     | TypeOrClass lhs . exportErrors =  checkExport ExportTypeConstructorOrClass @name.self
                                            @lhs.tyconsInScope @lhs.ambiguousTyCons
                                             ++
@@ -77,8 +111,12 @@ SEM Export
                                                         @lhs.consInScope @lhs.duplicatedCons @lhs.ambiguousCons
                                                 )
                                                 @names.toList
+                  lhs . totalExports = setTotal @name.self @lhs.tyconsInScope @showExp ++ concatMap (\n -> setTotal n (map fst @lhs.consInScope) @showExp) @names.toList
+                  loc . showExp      = (show @name.self) ++ "(" ++ intercalate "," (map show @names.toList) ++ ")"
     | Module      lhs . exportErrors =  checkExport ExportModule @name.self
-                                           @lhs.modulesInScope []    
+                                           @lhs.modulesInScope []
+                  lhs . totalExports = [(decl, (@name.self, @showExp)) | (mod, decls) <- @lhs.exportModuleScope, mod == @name.self, decl <- decls]
+                  loc . showExp      = "module " ++ show @name.self
 -------------------------------------------
 -- Collecting the imported modules
 

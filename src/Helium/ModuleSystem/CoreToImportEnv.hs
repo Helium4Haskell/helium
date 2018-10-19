@@ -47,9 +47,9 @@ nameFromCustoms importedInModule importedFromModId conName ( CustomLink parentid
 nameFromCustoms importedInModule importedFromModId conName (_ : cs) = nameFromCustoms importedInModule importedFromModId conName cs
 
 originFromCustoms :: [Custom] -> String
-originFromCustoms [] = "unkown origin"
---    internalError "CoreToImportEnv" "originFromCustoms" 
---        ("something imported without an origin: ")
+originFromCustoms [] =
+    internalError "CoreToImportEnv" "originFromCustoms" 
+        ("something imported without an origin: ")
 originFromCustoms ( CustomDecl (DeclKindCustom ident) [CustomName originid] : cs)
     | stringFromId ident == "origin" = stringFromId originid
     | otherwise                      = originFromCustoms cs

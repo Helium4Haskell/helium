@@ -10,9 +10,9 @@
 -----------------------------------------------------------------------------
 
 ATTR Module
-   [ baseName              : String
-     importEnvironments    : ImportEnvironments
-     options               : {[Option]}
+   [ baseName                  : String
+     importEnvironmentsWithMod : {[(Name,ImportEnvironment)]}
+     options                   : {[Option]}
    |
    | collectEnvironment    : ImportEnvironment  
      errors                : Errors
@@ -73,7 +73,8 @@ SEM Module
                                      [ (name,Constructor    ) | name:_ <- @duplicatedValueConstructors ]
                  . derivedRanges   = map getNameRange (map fst @derivedFunctions)
                  . initialScope    = map fst (@derivedFunctions ++ 
-                                     mergeSameOrigins (concatMap (M.assocs . typeEnvironment) @lhs.importEnvironments) )                 
+                                     mergeSameOrigins (concatMap (M.assocs . typeEnvironment) @importEnvironments) )
+                 . importEnvironments = map snd @lhs.importEnvironmentsWithMod                 
 {
 -- filter undefined errors that are caused by the removal of a duplicate definition
 filterRemovedNames :: [(Name,Entity)] -> Error -> Bool
@@ -108,3 +109,7 @@ SEM LeftHandSide
 SEM Patterns
   | Cons  lhs . numberOfPatterns = 1 + @tl.numberOfPatterns
   | Nil   lhs . numberOfPatterns = 0
+
+SEM MaybeName [ | | name : { Maybe Name } ]
+    | Nothing             lhs.name      = Nothing
+    | Just                lhs.name      = Just @name.self

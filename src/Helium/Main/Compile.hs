@@ -64,8 +64,9 @@ compile basedir fullName options lvmPath doneModules =
                phaseParser fullName tokens options
 
         -- Phase 3: Importing
-        (indirectionDecls, importEnvs) <-
+        (indirectionDecls, importEnvsWithMod) <-
             phaseImport fullName parsedModule lvmPath options
+        let importEnvs = map snd importEnvsWithMod
         
         -- Phase 4: Resolving operators
         resolvedModule <- 
@@ -77,7 +78,7 @@ compile basedir fullName options lvmPath doneModules =
         -- Phase 5: Static checking
         (localEnv, typeSignatures, staticWarnings) <-
             doPhaseWithExit 20 (("S"++) . errorsLogCode) compileOptions $
-               phaseStaticChecks fullName resolvedModule importEnvs options        
+               phaseStaticChecks fullName resolvedModule importEnvsWithMod options        
 
         unless (NoWarnings `elem` options) $
             showMessages staticWarnings

@@ -11,7 +11,7 @@ module Helium.Main.PhaseImport(phaseImport) where
 import Helium.Main.CompileUtils
 import qualified Lvm.Core.Expr as Core
 import qualified Lvm.Core.Utils as Core
-import Lvm.Common.Id(Id, stringFromId)
+import Lvm.Common.Id(Id, stringFromId, idFromString)
 import Helium.Syntax.UHA_Syntax
 import Helium.Syntax.UHA_Utils
 import Helium.Syntax.UHA_Range(noRange)
@@ -22,7 +22,7 @@ import qualified Helium.ModuleSystem.ExtractImportDecls as EID
 import Data.List(isPrefixOf)
 
 phaseImport :: String -> Module -> [String] -> [Option] -> 
-                    IO ([Core.CoreDecl], [ImportEnvironment])
+                    IO ([Core.CoreDecl], [(Name, ImportEnvironment)])
 phaseImport fullName module_ lvmPath options = do
     enterNewPhase "Importing" options
 
@@ -34,24 +34,24 @@ phaseImport fullName module_ lvmPath options = do
     -- Chase imports
     chasedImpsList <- chaseImports lvmPath moduleWithExtraImports
 
-    let indirectionDecls   = concat chasedImpsList
+    let indirectionDecls   = concat (map snd chasedImpsList)
         importEnvs = 
-            map (getImportEnvironment baseName) chasedImpsList
+            map (\(name,decls) -> (name, getImportEnvironment baseName decls)) chasedImpsList
     
     return (indirectionDecls, importEnvs)
 
-chaseImports :: [String] -> Module -> IO [[Core.CoreDecl]]
+chaseImports :: [String] -> Module -> IO [(Name, [Core.CoreDecl])]
 chaseImports lvmPath fromModule = 
     let coreImports   = EID.coreImportDecls_Syn_Module $ EID.wrap_Module (EID.sem_Module fromModule) EID.Inh_Module -- Expand imports
         findModule    = searchPath lvmPath ".lvm" . stringFromId
-        doImport :: (Core.CoreDecl,[Id]) -> IO [Core.CoreDecl]
-        doImport (importDecl,hidings)
+        doImport :: (Core.CoreDecl,[Id], Name) -> IO (Name, [Core.CoreDecl])
+        doImport (importDecl,hidings, mod)
           = do decls <- lvmImportDecls findModule [importDecl]
-               return [ d
-                      | d <- concat decls
-                      , let name = Core.declName d
-                      , "show" `isPrefixOf` stringFromId name || name `notElem` hidings
-                      ]
+               return (mod, [ fixOrigininDecl d
+                            | d <- concat decls
+                            , let name = Core.declName d
+                            , "show" `isPrefixOf` stringFromId name || name `notElem` hidings
+                            ])
 
     in mapM doImport coreImports
         -- zipWith ($) filterImports (lvmImportDecls findModule coreImportDecls)
@@ -90,3 +90,18 @@ addImplicitImports (Module_Module moduleRange maybeName exports
             MaybeName_Nothing
             MaybeImportSpecification_Nothing
 addImplicitImports (Module_Module _ _ _ (Body_Hole _ _)) = error "not supported"
+
+fixOrigininDecl :: Core.CoreDecl -> Core.CoreDecl
+fixOrigininDecl decl = let cs = Core.declCustoms decl
+                           access = Core.declAccess decl
+                           makeOrigin id = [Core.CustomDecl (Core.DeclKindCustom (idFromString "origin")) [Core.CustomName id]]
+                       in if hasOrigin cs then decl
+                            else case access of
+                                Core.Imported{Core.importModule = importedFromModId} -> decl {Core.declCustoms = cs ++ makeOrigin importedFromModId}
+
+hasOrigin :: [Core.Custom] -> Bool
+hasOrigin [] = False
+hasOrigin ( Core.CustomDecl (Core.DeclKindCustom ident) [Core.CustomName _] : cs)
+    | stringFromId ident == "origin" = True
+    | otherwise                      = hasOrigin cs
+hasOrigin (_ : cs) = hasOrigin cs

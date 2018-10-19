@@ -115,11 +115,13 @@ SEM Declaration
 -- 5) Distributing Value Constructors
 
 SEM Module
-  | Module   loc . (uniqueValueConstructors, ambiguousValueConstructors) =
-                      uniqueKeys (@declNoConflictsValCon ++ mergeSameOrigins (concatMap (M.assocs . valueConstructors) @lhs.importEnvironments) )
+  | Module   loc . (uniqueValueConstructors, ambiguousValueConstructorsWithValue) =
+                      uniqueKeysWithValue (@declNoConflictsValCon ++ mergeSameOrigins (concatMap (M.assocs . valueConstructors) @importEnvironments) )
                  . (declNoConflictsValCon, duplicatedValueConstructors) = uniqueKeys @body.collectValueConstructors
                  . allValueConstructors            = map fst @uniqueValueConstructors ++ map head @duplicatedValueConstructors ++ map head @ambiguousValueConstructors
                  . valueConstructorsWithParents = map (\(con, (par, _)) -> (con,par)) $ @uniqueValueConstructors
+                 . ambiguousValueConstructors = map (map fst) @ambiguousValueConstructorsWithValue
+                 . ambiguousValueConstructorsWithParents = map (map (\(con, (par, _)) -> (con,par))) $ @ambiguousValueConstructorsWithValue
                  . valueConstructors               = M.fromList $ map (\(con, (_, tpscheme)) -> (con,tpscheme)) $ @uniqueValueConstructors
 
 ATTR Body Declarations Declaration Expressions Expression Patterns Pattern 
@@ -136,7 +138,7 @@ ATTR Body Declarations Declaration Expressions Expression Patterns Pattern
 
 SEM Module
   | Module loc . (uniqueTypeConstructors, ambiguousTypeConstructors) = 
-                    uniqueKeys  ( @declNoConflictsTyCon ++ mergeSameOrigins (concatMap (M.assocs . typeConstructors) @lhs.importEnvironments) )
+                    uniqueKeys  ( @declNoConflictsTyCon ++ mergeSameOrigins (concatMap (M.assocs . typeConstructors) @importEnvironments) )
                . (declNoConflictsTyCon, duplicatedTypeConstructors) = 
                     uniqueKeys ( @body.collectTypeConstructors ++ [(n,i) | (n,(i,_)) <- @body.collectTypeSynonyms ] )
                . allTypeConstructors = map fst @uniqueTypeConstructors ++ map head @duplicatedTypeConstructors ++ map head @ambiguousTypeConstructors
@@ -159,7 +161,7 @@ ATTR Module -> Declaration [ orderedTypeSynonyms:OrderedTypeSynonyms | | ]
 
 SEM Module
   | Module body . orderedTypeSynonyms =
-                      let list     = mergeSameOrigins (concatMap (M.assocs . typeSynonyms) @lhs.importEnvironments) ++
+                      let list     = mergeSameOrigins (concatMap (M.assocs . typeSynonyms) @importEnvironments) ++
                                      @body.collectTypeSynonyms
                           newmap   = M.fromList [ (show name, t) | (name, t) <- list ]
                           ordering = fst (getTypeSynonymOrdering newmap)
@@ -173,7 +175,7 @@ ATTR Module -> Declaration [ classEnvironment:ClassEnvironment | | collectInstan
 SEM Module
   | Module
        body.classEnvironment = 
-          let importEnv = foldr combineImportEnvironments emptyEnvironment @lhs.importEnvironments
+          let importEnv = foldr combineImportEnvironments emptyEnvironment @importEnvironments
           in foldr (\(n, i) -> insertInstance (show n) i) 
                    (createClassEnvironment importEnv) 
                    @body.collectInstances
@@ -224,6 +226,15 @@ uniqueKeys = let comp (x,_) (y,_) = compare x y
               . partition predicate 
               . groupBy eq 
               . sortBy comp
+
+uniqueKeysWithValue :: Ord key => [(key,a)] -> ([(key,a)],[[(key,a)]])
+uniqueKeysWithValue = let comp (x,_) (y,_) = compare x y
+                          eq   (x,_) (y,_) = x == y
+                          predicate xs = length xs == 1 
+                      in (\(xs, ys) -> (map head xs, ys)) 
+                       . partition predicate 
+                       . groupBy eq 
+                       . sortBy comp
 
 mergeSameOrigins :: [(Name,a)] -> [(Name,a)]
 mergeSameOrigins = map head
@@ -289,7 +300,7 @@ ATTR Body Declaration Declarations Expression Expressions
      Statements 
                [ classMemberEnv : {ClassMemberEnvironment} | | ]
 SEM Module
-    | Module body . classMemberEnv = foldr exclusiveUnion @body.collectClassMemberEnv (map classMemberEnvironment @lhs.importEnvironments)
+    | Module body . classMemberEnv = foldr exclusiveUnion @body.collectClassMemberEnv (map classMemberEnvironment @importEnvironments)
 
 SEM Declaration
     | Class lhs . collectTypeClasses = [(@simpletype.name, @where.typeSignatures)]
@@ -334,7 +345,7 @@ SEM Declaration
 ATTR Body [ importedClassEnv : {ClassEnvironment}| | ]
 
 SEM Module
-  | Module body . importedClassEnv = classEnvironment $ combineImportEnvironmentList @lhs.importEnvironments
+  | Module body . importedClassEnv = classEnvironment $ combineImportEnvironmentList @importEnvironments
 
 ATTR Body Declaration Declarations [ | | classEnv USE {`M.union`} {M.empty} : {ClassEnvironment} ]
 

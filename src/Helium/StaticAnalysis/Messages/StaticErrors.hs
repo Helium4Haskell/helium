@@ -65,7 +65,7 @@ data Error  = NoFunDef Entity Name {-names in scope-}Names
             | TupleTooBig Range
             | ClassesAndInstancesNotAllowed Range
             | ExportWrongParent Entity Name {-Value Construct-} Name {-Wrong Parent-} Name {-Right Parent-} Names {-Right Childs-}
-            | ExportConflict Name {-The conflict-} [(Name, Name, String)] {-(export list entry, module, list entry in string)-}
+            | ExportConflict [(Name, (Name, String))] {-(declaration, export list entry, exact declaration entry)-}
             
 instance HasMessage Error where
    getMessage x = let (oneliner, hints) = showError x
@@ -111,7 +111,7 @@ instance HasMessage Error where
       TupleTooBig r               -> [r]
       ClassesAndInstancesNotAllowed r -> [r]
       ExportWrongParent _ name _ _ _ -> [getNameRange name]
-      ExportConflict _ conflicts   -> [getNameRange name | (name, _, _) <- conflicts]
+      ExportConflict conflicts    -> [getNameRange name | (_, (name, _)) <- conflicts]
  
 sensiblySimilar :: Name -> Names -> [Name]   
 sensiblySimilar name inScope = 
@@ -402,16 +402,16 @@ showError anError = case anError of
            else childhints
       )
 
-   ExportConflict name conflicts ->
+   ExportConflict conflicts ->
       let 
-        origin = ""
-        showline (_, name', exportEntry)
-          | (isImportRange.getNameRange) name' = show exportEntry ++ " exports: " ++ (show.show) name' ++ " imported from module " ++ 
-                                     (snd . fromJust . modulesFromImportRange . getNameRange) name' ++ " (orignally defined in " ++ show origin ++ ")"
-          | otherwise = show exportEntry ++ " exports: " ++ (show.show) name' ++ " defined at " ++ (show.getNameRange) name'          
+        showline (name', (exportEntry, exportString))
+          | (isImportRange.getNameRange) name' = show exportString ++ " exports: " ++ (show.show) name' ++ " imported from module " ++ 
+                                     (snd . fromJust . modulesFromImportRange . getNameRange) name' ++ " (orignally defined in " ++ (show.getNameOrigin) name' ++ ")"
+          | otherwise = show exportString ++ " exports: " ++ (show.show) name' ++ " defined at " ++ (show.getNameRange) name'
+        thename = (fst.head) conflicts           
       in
         ( MessageString (
-            "There is an export conflict for  " ++ (show.show) name ++ ". It could refer to: \n\t" ++ 
+            "There is an export conflict for  " ++ (show.show) thename ++ ": \n\t" ++ 
             (intercalate "\n\t" . map showline) conflicts
         ) , []) 
 
@@ -501,7 +501,7 @@ errorLogCode anError = case anError of
           MissingSuperClass _ _ _                 -> "ms"
           ClassesAndInstancesNotAllowed _         -> "ci"
           ExportWrongParent entity _ _ _ _        -> "wp" ++ code entity
-          ExportConflict _ _                      -> "cf"
+          ExportConflict _                        -> "cf"
    where code entity = fromMaybe "??"
                      . lookup entity 
                      $ [ (TypeSignature    ,"ts"), (TypeVariable                ,"tv"), (TypeConstructor,"tc")

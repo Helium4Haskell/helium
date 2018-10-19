@@ -1,4 +1,4 @@
-ATTR Module [ | | coreImportDecls : { [(Core.CoreDecl,[Id])] } ] 
+ATTR Module [ | | coreImportDecls : { [(Core.CoreDecl,[Id], Name)] } ] 
 
 INCLUDE "UHA_Syntax.ag"
 INCLUDE "ToCoreName.ag"
@@ -14,11 +14,11 @@ import Helium.Utils.Utils (internalError)
 
   
 ATTR Body ImportDeclarations ImportDeclaration
-   [ | | coreImportDecls USE { ++ } { [] } : { [(Core.CoreDecl,[Id])] } ]  
+   [ | | coreImportDecls USE { ++ } { [] } : { [(Core.CoreDecl,[Id], Name)] } ]  
     
 SEM ImportDeclaration
     | Import 
-        lhs.coreImportDecls = [(@loc.importDecls,@loc.hidings)]
+        lhs.coreImportDecls = [(@loc.importDecls,@loc.hidings, @name.self)]
         loc.importDecls =
             
           if @qualified || not @asname.isNothing then
