@@ -21,12 +21,22 @@ import LLVM.AST.AddrSpace
 import LLVM.AST.Operand
 import LLVM.AST.Constant as Constant
 
+dataType :: Env -> Iridium.DataType -> [(Id, ConstructorLayout)] -> Type
+dataType env (Iridium.DataType dataName _) layouts = case pointerLayouts of
+  [] -> envValueType env
+  [(conId, _)] -> pointer $ NamedTypeReference (toName conId)
+  _ -> voidPointer
+  where
+    pointerLayouts = filter (isPointer . snd) layouts
+    isPointer (LayoutPointer _ _ _ _) = True
+    isPointer _ = False
+
 constructorType :: Env -> ConstructorLayout -> Type
 constructorType env (LayoutInline tag) = envValueType env
 constructorType env (LayoutPointer _ _ headerSize fieldLayouts) = StructureType True $ headerType : fieldTypes
   where
-    headerType = IntegerType $ fromIntegral $ pointerSize * headerSize
-    pointerSize = targetPointerSize $ envTarget env
+    headerType = IntegerType $ fromIntegral $ wordSize * headerSize
+    wordSize = targetWordSize $ envTarget env
     -- TODO: This code assumes that the fields are not reordered. If we add strictness annotations on fields
     -- and reorder fields, this code must be changed.
     fieldTypes = map mapFieldType fieldLayouts
@@ -44,7 +54,7 @@ compileAllocation env supply (Iridium.DataTypeConstructor _ conId _) args varNam
     (splitInstructions, argsSplit) = unzip $ mapWithSupply (splitValueFlag env) supplyArgs args
 
 compileAllocation' :: Env -> NameSupply -> Id -> ConstructorLayout -> [(Operand, Operand)] -> Name -> [Named Instruction]
-compileAllocation' env _ _ (LayoutInline tag) _ varName = [varName := AST.IntToPtr (ConstantOperand $ Int (fromIntegral $ targetPointerSize $ envTarget env) value) voidPointer []]
+compileAllocation' env _ _ (LayoutInline tag) _ varName = [varName := AST.IntToPtr (ConstantOperand $ Int (fromIntegral $ targetWordSize $ envTarget env) value) voidPointer []]
   where
     -- Put a '1' in the least significant bit to distinguish it from a pointer.
     value :: Integer
@@ -61,7 +71,7 @@ compileAllocation' env supply conId layout@(LayoutPointer tag (firstTagBit, _) h
     fields :: [(ConstructorFieldLayout, (Operand, Operand))]
     fields = zip fieldLayouts args
     headerBits :: Word32
-    headerBits = fromIntegral headerSize * fromIntegral (targetPointerSize $ envTarget env)
+    headerBits = fromIntegral headerSize * fromIntegral (targetWordSize $ envTarget env)
     header :: Operand
     header = ConstantOperand $ Int headerBits $ Bits.shift (fromIntegral tag) firstTagBit
     size :: Integer
@@ -127,15 +137,14 @@ compileExtractField env supply address header headerBits (ConstructorFieldLayout
   , value := Load False (LocalReference voidPointer namePtr) Nothing 0 []
   , shifted := AST.LShr False header (ConstantOperand $ Int headerBits $ fromIntegral headerIndex) []
   , isWHNF := AST.Trunc (LocalReference (IntegerType headerBits) shifted) bool []
-  , toName varId := AST.BitCast (ConstantOperand struct) taggedThunkPointer []
-  , Do $ AST.InsertValue structRef (LocalReference voidPointer value) [0] []
-  , Do $ AST.InsertValue structRef (LocalReference bool isWHNF) [1] []
+  , structName := AST.InsertValue (ConstantOperand struct) (LocalReference voidPointer value) [0] []
+  , toName varId := AST.InsertValue (LocalReference taggedThunkPointer structName) (LocalReference bool isWHNF) [1] []
   ]
   where
     (namePtr, supply') = freshName supply
     (value, supply'') = freshName supply'
     (shifted, supply''') = freshName supply''
     (isWHNF, supply'''') = freshName supply'''
-    structRef = LocalReference taggedThunkPointer $ toName varId
+    (structName, _) = freshName supply''''
     struct :: Constant
     struct = Struct Nothing True [Constant.Undef voidPointer, Constant.Undef bool]

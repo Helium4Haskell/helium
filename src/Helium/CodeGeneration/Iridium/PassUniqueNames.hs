@@ -43,7 +43,7 @@ renameInBlock supply (Block name args instr) = Block name (renameArguments env a
 
 renameInInstruction :: Env -> Instruction -> Instruction
 renameInInstruction env (Let name expr next) = Let name (renameInExpr env expr) $ renameInInstruction env next
-renameInInstruction env (LetThunk thunks next) = LetThunk (map (renameInBindThunk env) thunks) $ renameInInstruction env next
+renameInInstruction env (LetAlloc thunks next) = LetAlloc (map (renameInBindThunk env) thunks) $ renameInInstruction env next
 renameInInstruction env (Jump to args) = Jump to $ renameIds env args
 renameInInstruction env (Match var pat next) = Match (renameId env var) pat $ renameInInstruction env next
 renameInInstruction env (IfMatch var pat to args next) = IfMatch (renameId env var) pat to (renameIds env args) $ renameInInstruction env next

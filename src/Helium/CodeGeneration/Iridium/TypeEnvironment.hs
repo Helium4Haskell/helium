@@ -9,7 +9,11 @@ import Data.Maybe(catMaybes)
 data TypeEnv = TypeEnv
   { teDataTypes :: () -- TODO: Do we need this field for a map of data type names to DataType objects?
   , teValues :: IdMap ValueDeclaration
+  , teMethod :: Maybe (Id, FunctionType)
   }
+
+teReturnType :: TypeEnv -> PrimitiveType
+teReturnType (TypeEnv _ _ (Just (_, FunctionType _ retType))) = retType
 
 valueDeclaration :: TypeEnv -> Id -> ValueDeclaration
 valueDeclaration env name = findMap name (teValues env)
@@ -37,28 +41,31 @@ typeOf env name = case valueDeclaration env name of
   ValueFunction _ -> TypeFunction
   ValueVariable t -> t
 
-expandEnvWith :: Id -> PrimitiveType -> TypeEnv -> TypeEnv
-expandEnvWith name t (TypeEnv datas values) = TypeEnv datas $ insertMap name (ValueVariable t) values
+enterFunction :: Id -> FunctionType -> TypeEnv -> TypeEnv
+enterFunction name fntype (TypeEnv datas values _) = TypeEnv datas values $ Just (name, fntype)
+
+expandEnvWith :: Local -> TypeEnv -> TypeEnv
+expandEnvWith (Local name t) (TypeEnv datas values method) = TypeEnv datas (insertMap name (ValueVariable t) values) method
 
 expandEnvWithLocals :: [Local] -> TypeEnv -> TypeEnv
-expandEnvWithLocals args env = foldr (\(Local arg t) -> expandEnvWith arg t) env args
+expandEnvWithLocals args env = foldr (\(Local arg t) -> expandEnvWith $ Local arg t) env args
 
 expandEnvWithLet :: Id -> Expr -> TypeEnv -> TypeEnv
-expandEnvWithLet name expr env = expandEnvWith name (typeOfExpr expr) env
+expandEnvWithLet name expr env = expandEnvWith (Local name (typeOfExpr expr)) env
 
-expandEnvWithLetThunk :: [BindThunk] -> TypeEnv -> TypeEnv
-expandEnvWithLetThunk thunks (TypeEnv datas values) = TypeEnv datas $ foldr (\(BindThunk var _ _) -> insertMap var (ValueVariable TypeAnyThunk)) values thunks
+expandEnvWithLetAlloc :: [Bind] -> TypeEnv -> TypeEnv
+expandEnvWithLetAlloc thunks env = foldr (\b -> expandEnvWith $ bindLocal b) env thunks
 
 expandEnvWithMatch :: [Maybe Local] -> TypeEnv -> TypeEnv
 expandEnvWithMatch locals = expandEnvWithLocals $ catMaybes locals
 
-argumentsOf :: TypeEnv -> Id -> Maybe [PrimitiveType]
-argumentsOf env name = case lookupMap name (teValues env) of
-  Just (ValueFunction (FunctionType args _)) -> Just args
+resolveFunction :: TypeEnv -> Id -> Maybe FunctionType
+resolveFunction env name = case lookupMap name (teValues env) of
+  Just (ValueFunction fn) -> Just fn
   _ -> Nothing
 
 typeEnvForModule :: Module -> TypeEnv
-typeEnvForModule (Module _ dataTypes methods) = TypeEnv () values
+typeEnvForModule (Module _ dataTypes methods) = TypeEnv () values Nothing
   where
     values = mapFromList $ cons ++ methodDecls
     cons = dataTypes >>= valuesInDataType

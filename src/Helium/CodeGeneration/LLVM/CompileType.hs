@@ -42,7 +42,7 @@ voidPointer = pointer (IntegerType 8)
 
 toOperand :: Env -> Iridium.Variable -> Operand
 toOperand env (Iridium.VarLocal (Iridium.Local name t)) = LocalReference (compileType env t) (toName name)
-toOperand env (Iridium.VarFunction name fntype) = ConstantOperand $ GlobalReference (compileFunctionType env fntype) (toName name)
+toOperand env (Iridium.VarGlobal (Iridium.Global name fntype)) = ConstantOperand $ GlobalReference (compileFunctionType env fntype) (toName name)
 
 splitValueFlag :: Env -> NameSupply -> Iridium.Variable -> ([Named Instruction], (Operand, Operand))
 splitValueFlag env supply var = case Iridium.variableType var of

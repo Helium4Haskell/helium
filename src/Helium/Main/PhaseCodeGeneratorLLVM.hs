@@ -37,7 +37,7 @@ phaseCodeGeneratorLLVM fullName coreModule options = do
   -- let imperative' = passRemoveAliasses imperative
   -- print imperative'
 
-  let target = Target 64
+  let target = Target 64 48
   let llvm = compileModule (envForModule target imperative) supplyToLLVM imperative
   putStrLn $ Text.unpack $ ppllvm llvm
 

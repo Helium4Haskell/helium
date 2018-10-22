@@ -49,16 +49,16 @@ data ConstructorFieldLayout
 
 constructorLayout :: TypeEnv.TypeEnv -> Target -> Iridium.DataType -> Int -> Iridium.DataTypeConstructor -> ConstructorLayout
 constructorLayout env target (Iridium.DataType _ constructors) index (Iridium.DataTypeConstructor _ _ fields)
-  | headerBits <= pointerSize - 1 && fields == [] = LayoutInline index
+  | headerBits <= wordSize - 1 && fields == [] = LayoutInline index
   | otherwise = LayoutPointer index (gcBits, gcBits + tagBits) headerSize fieldLayouts
   where
     tagBits = ceiling $ logBase 2.0 $ fromIntegral $ length constructors
     flagBits = length fields -- TODO: When adding strict fields, only count the fields that are not strict
-    pointerSize = targetPointerSize target
+    wordSize = targetWordSize target
 
     -- Number of bits that we need for the tag, flags that denote whether a field is evaluated and data for garbage collector.
     headerBits = tagBits + flagBits + gcBits -- Reserve `gcBits` bits for the garbage collector
-    headerSize = (headerBits + pointerSize - 1) `div` pointerSize -- ceiling of headerBits / pointerSize
+    headerSize = (headerBits + wordSize - 1) `div` wordSize -- ceiling of headerBits / wordSize
 
     fieldLayouts :: [ConstructorFieldLayout]
     -- TODO: When adding strict fields, change the types of the members and set layoutFieldFlag to Nothing
@@ -71,4 +71,4 @@ constructorSize :: Target -> ConstructorLayout -> Int
 constructorSize target (LayoutInline _) = 0
 constructorSize target (LayoutPointer _ _ headerSize fields) = bits `div` 8
   where
-    bits = (headerSize + length fields) * (targetPointerSize target)
+    bits = (headerSize + length fields) * (targetWordSize target)

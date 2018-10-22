@@ -15,7 +15,7 @@ import Helium.CodeGeneration.LLVM.Env
 import Helium.CodeGeneration.LLVM.Target
 import Helium.CodeGeneration.LLVM.Utils
 import Helium.CodeGeneration.LLVM.CompileType
-import Helium.CodeGeneration.LLVM.CompileThunk
+import Helium.CodeGeneration.LLVM.CompileBind
 import Helium.CodeGeneration.LLVM.ConstructorLayout
 import Helium.CodeGeneration.LLVM.CompileConstructor(compileAllocation, compileExtractFields)
 import qualified Helium.CodeGeneration.LLVM.Builtins as Builtins
@@ -44,17 +44,13 @@ compileBlock env supply (Iridium.Block name instruction) = BasicBlock (toName na
   where
     Partial instrs term blocks = compileInstruction env supply instruction
 
-{-
-  | LetThunk [BindThunk] Instruction
--}
-
 compileInstruction :: Env -> NameSupply -> Iridium.Instruction -> Partial
 compileInstruction env supply (Iridium.Let name expr next) = compileExpression env supply1 expr (toName name) +> compileInstruction env supply2 next
   where
     (supply1, supply2) = splitNameSupply supply
-compileInstruction env supply (Iridium.LetThunk binds next) =
-  compileThunks env supply1 binds
-  +> compileInstruction env supply2 next -- TODO: Compile thunks
+compileInstruction env supply (Iridium.LetAlloc binds next) =
+  compileBinds env supply1 binds
+  +> compileInstruction env supply2 next
   where
     (supply1, supply2) = splitNameSupply supply
 compileInstruction env supply (Iridium.Jump to) = Partial [] (Do $ Br (toName to) []) []
@@ -64,7 +60,7 @@ compileInstruction env supply (Iridium.Match var _ [] next) = compileInstruction
 compileInstruction env supply (Iridium.Match var (Iridium.DataTypeConstructor _ conId _) args next)
   = [ addressName := AST.BitCast (toOperand env var) (pointer t) []
     ]
-    +> compileExtractFields env supply'' address (fromIntegral $ headerSize * targetPointerSize (envTarget env)) fieldLayouts args
+    +> compileExtractFields env supply'' address (fromIntegral $ headerSize * targetWordSize (envTarget env)) fieldLayouts args
     +> compileInstruction env supply''' next
   where
     t = NamedTypeReference $ toName conId
@@ -81,25 +77,29 @@ compileExpression :: Env -> NameSupply -> Iridium.Expr -> Name -> [Named Instruc
 compileExpression env supply (Iridium.Literal (Iridium.LitInt value)) name = [name := ZExt (ConstantOperand constant) (envValueType env) []]
   where
     constant :: Constant
-    constant = Int (fromIntegral $ targetPointerSize $ envTarget $ env) (fromIntegral $ value)
+    constant = Int (fromIntegral $ targetWordSize $ envTarget $ env) (fromIntegral $ value)
 -- TODO: Float literals
 compileExpression env supply (Iridium.Call to args) name =
   [ name := Call
       { tailCallKind = Nothing
       , callingConvention = Fast
       , returnAttributes = []
-      , function = Right $ toOperand env to
+      , function = Right $ toOperand env (Iridium.VarGlobal to)
       , arguments = map (\arg -> (toOperand env arg, [])) args
       , functionAttributes = []
       , metadata = []
       }
   ]
 compileExpression env supply (Iridium.Eval var) name = compileEval env supply (toOperand env var) (Iridium.variableType var) name
-compileExpression env supply (Iridium.Alloc con args) name = compileAllocation env supply con args name
 compileExpression env supply (Iridium.Var var) name = cast env (toOperand env var) name t t
   where t = Iridium.variableType var
 compileExpression env supply (Iridium.Cast var toType) name = cast env (toOperand env var) name t toType
   where t = Iridium.variableType var
+compileExpression env supply expr@(Iridium.Phi branches) name = [name := Phi (compileType env t) (map compileBranch branches) []]
+  where
+    t = Iridium.typeOfExpr expr
+    compileBranch :: Iridium.PhiBranch -> (Operand, Name)
+    compileBranch (Iridium.PhiBranch blockId var) = (toOperand env var, toName blockId)
 
 compileEval :: Env -> NameSupply -> Operand -> Iridium.PrimitiveType -> Name -> [Named Instruction]
 compileEval env supply operand Iridium.TypeAny name =
@@ -137,7 +137,7 @@ compileIfMatchConstructor env supply var _ (LayoutInline tag) whenTrue whenFalse
       [ nameInt := PtrToInt (toOperand env var) (envValueType env) []
       , nameCond := ICmp IntegerPredicate.EQ (LocalReference (envValueType env) nameInt) expected []
       ]
-    expected = ConstantOperand $ Int (fromIntegral $ targetPointerSize $ envTarget env) (fromIntegral tag * 2 + 1)
+    expected = ConstantOperand $ Int (fromIntegral $ targetWordSize $ envTarget env) (fromIntegral tag * 2 + 1)
     terminator :: Named Terminator
     terminator = Do $ CondBr (LocalReference bool nameCond) (toName whenTrue) (toName whenFalse) []
     (nameInt, supply') = freshName supply
@@ -180,7 +180,7 @@ compileIfMatchConstructor env supply var (Iridium.DataTypeConstructor _ conId _)
     t = NamedTypeReference $ toName conId
 
     headerBits :: Word32
-    headerBits = fromIntegral $ headerSize * targetPointerSize (envTarget env)
+    headerBits = fromIntegral $ headerSize * targetWordSize (envTarget env)
     headerType = IntegerType headerBits
     header = LocalReference headerType headerName
 

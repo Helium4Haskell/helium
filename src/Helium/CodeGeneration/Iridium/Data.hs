@@ -38,9 +38,12 @@ data MethodAnnotation
 data Local = Local { localName :: Id, localType :: PrimitiveType }
   deriving (Eq, Ord)
 
+data Global = Global Id FunctionType
+  deriving (Eq, Ord)
+
 data Variable
   = VarLocal Local
-  | VarFunction Id FunctionType
+  | VarGlobal Global
   deriving (Eq, Ord)
 
 data Block = Block BlockName Instruction
@@ -53,7 +56,7 @@ data Pattern
 
 data Instruction
   = Let Id Expr Instruction
-  | LetThunk [BindThunk] Instruction
+  | LetAlloc [Bind] Instruction
   | Jump BlockName
   -- * Asserts that the variable matches with the specified constructor. If they do not match, the behaviour is undefined.
   | Match Variable DataTypeConstructor [Maybe Local] Instruction
@@ -61,17 +64,34 @@ data Instruction
   | Return Variable
   deriving (Eq, Ord)
 
-data BindThunk = BindThunk { bindThunkVar :: Id, bindThunkFunction :: Variable, bindThunkVariables :: [Variable] }
+data Bind = Bind { bindVar :: Id, bindTarget :: BindTarget, bindArguments :: [Variable] }
   deriving (Eq, Ord)
+
+data BindTarget
+  = BindTargetFunction Variable
+  | BindTargetConstructor DataTypeConstructor
+  deriving (Eq, Ord)
+
+bindType :: Bind -> PrimitiveType
+bindType (Bind _ (BindTargetConstructor (DataTypeConstructor dataName _ _)) _) = TypeDataType dataName
+bindType (Bind _ (BindTargetFunction (VarGlobal (Global fn (FunctionType fnargs _)))) args)
+  | length args == length fnargs = TypeAnyThunk
+  | otherwise = TypeFunction
+bindType _ = TypeAnyThunk
+
+bindLocal :: Bind -> Local
+bindLocal b@(Bind var _ _) = Local var $ bindType b
 
 data Expr
   = Literal Literal
-  | Call Variable [Variable] -- Target should be a VarFunction
+  | Call Global [Variable]
   | Eval Variable
-  | Alloc DataTypeConstructor [Variable]
   | Var Variable
   | Cast Variable PrimitiveType
-  | Phi [(Variable, Id)]
+  | Phi [PhiBranch]
+  deriving (Eq, Ord)
+
+data PhiBranch = PhiBranch BlockName Variable
   deriving (Eq, Ord)
 
 data Literal
@@ -91,21 +111,28 @@ instance Show Pattern where
 
 instance Show Expr where
   show (Literal lit) = show lit
-  show (Call fn args) = "call " ++ show fn ++ " with " ++ showArguments args
+  show (Call fn args) = "call " ++ show fn ++ " $ " ++ showArguments args
   show (Eval var) = "eval " ++ show var
-  show (Alloc con args) = "alloc " ++ show con ++ " with " ++ showArguments args
   show (Var var) = "var " ++ show var
   show (Cast var t) = "cast " ++ show var ++ " as " ++ show t
+  show (Phi branches) = "phi " ++ showArguments branches
+
+instance Show PhiBranch where
+  show (PhiBranch branch var) = stringFromId branch ++ " => " ++ show var
 
 instructionIndent :: String
 instructionIndent = "  "
 
-instance Show BindThunk where
-  show (BindThunk var fn args) = show var ++ " = " ++ show fn ++ " with " ++ showArguments args
+instance Show Bind where
+  show b@(Bind _ target args) = show (bindLocal b) ++ " = " ++ show target ++ " $ " ++ showArguments args
+
+instance Show BindTarget where
+  show (BindTargetFunction global) = show global
+  show (BindTargetConstructor con) = show con
 
 instance Show Instruction where
   show (Let var expr next) = instructionIndent ++ "let " ++ show (Local var $ typeOfExpr expr) ++ " = " ++ show expr ++ "\n" ++ show next
-  show (LetThunk binds next) = instructionIndent ++ "letthunk " ++ intercalate ", " (map show binds) ++ "\n" ++ show next
+  show (LetAlloc binds next) = instructionIndent ++ "letalloc " ++ intercalate ", " (map show binds) ++ "\n" ++ show next
   show (Jump to) = instructionIndent ++ "jump " ++ show to
   show (Match var conId args next) = instructionIndent ++ "match " ++ show var ++ " on " ++ show conId ++ showArguments' showField args ++ "\n" ++ show next
     where
@@ -117,15 +144,18 @@ instance Show Instruction where
 instance Show Local where
   show (Local name t) = "%" ++ stringFromId name ++ ": " ++ show t
 
+instance Show Global where
+  show (Global name fntype) = "@" ++ stringFromId name ++ ": " ++ show fntype
+
 instance Show Variable where
   show (VarLocal local) = show local
-  show (VarFunction name fntype) = "@" ++ stringFromId name ++ ": " ++ show fntype
+  show (VarGlobal global) = show global
 
 instance Show Block where
   show (Block name instruction) = stringFromId name ++ ":\n" ++ show instruction
 
 instance Show Method where
-  show (Method name args rettype entry blocks) = "define @" ++ stringFromId name ++ showArguments args ++ ": " ++ show rettype ++ "\n" ++ show entry ++ (blocks >>= ('\n' :) . show) ++ "\n"
+  show (Method name args rettype entry blocks) = "define @" ++ stringFromId name ++ showArguments args ++ ": " ++ show rettype ++ " {\n" ++ show entry ++ (blocks >>= ('\n' :) . show) ++ "\n}\n"
 
 instance Show Module where
   show (Module name decls methods) = "module " ++ show name ++ "\n" ++ (decls >>= ('\n' :) . show) ++ (methods >>= ('\n' :) . show)
@@ -141,13 +171,17 @@ mapBlocks fn (Module name datas methods) = Module name datas $ map fnMethod meth
 typeOfExpr :: Expr -> PrimitiveType
 typeOfExpr (Literal (LitDouble _)) = TypeDouble
 typeOfExpr (Literal _) = TypeInt
-typeOfExpr (Call (VarFunction _ (FunctionType _ ret)) _) = ret
-typeOfExpr (Call _ _) = error "typeOfExpr: Illegal target of Call expression. Expected a function declaration."
+typeOfExpr (Call (Global _ (FunctionType _ ret)) _) = ret
 typeOfExpr (Eval _) = TypeAnyWHNF
-typeOfExpr (Alloc (DataTypeConstructor dataName _ _) _) = TypeDataType dataName
 typeOfExpr (Var v) = variableType v
 typeOfExpr (Cast _ t) = t
+typeOfExpr (Phi []) = error "typeOfExpr: Empty phi node. A phi expression should have at least 1 branch."
+typeOfExpr (Phi (PhiBranch _ var : _)) = variableType var
 
 variableType :: Variable -> PrimitiveType
 variableType (VarLocal (Local _ t)) = t
-variableType (VarFunction _ (FunctionType _ _)) = TypeFunction
+variableType (VarGlobal (Global _ (FunctionType _ _))) = TypeFunction
+
+variableName :: Variable -> Id
+variableName (VarLocal (Local x _)) = x
+variableName (VarGlobal (Global x _)) = x

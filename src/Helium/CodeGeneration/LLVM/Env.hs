@@ -18,7 +18,7 @@ data Env = Env
 envForModule :: Target -> Iridium.Module -> Env
 envForModule target mod = Env
   { envTarget = target
-  , envValueType = AST.IntegerType $ fromIntegral $ targetPointerSize target
+  , envValueType = AST.IntegerType $ fromIntegral $ targetWordSize target
   , envMethod = Nothing
   , envConstructors = mapFromList constructors
   }

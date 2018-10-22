@@ -29,7 +29,7 @@
 -- 'remaining count' is zero if the target is a thunk. We put a one in the least significant bit of the target
 -- to denote that the target is a function, or a zero to denote that the target points at a thunk.
 
-module Helium.CodeGeneration.LLVM.CompileThunk (compileThunks) where
+module Helium.CodeGeneration.LLVM.CompileBind (compileBinds) where
 
 import qualified Data.Bits as Bits
 import Data.Word(Word32)
@@ -54,22 +54,23 @@ import LLVM.AST.Constant as Constant
 argumentCountBits :: Int
 argumentCountBits = 16 -- We assume that there are no more than 2 ^ argumentCountBits arguments in a thunk
 
-compileThunks :: Env -> NameSupply -> [Iridium.BindThunk] -> [Named Instruction]
-compileThunks env supply thunks = concat inits ++ concat assigns
+compileBinds :: Env -> NameSupply -> [Iridium.Bind] -> [Named Instruction]
+compileBinds env supply binds = concat inits ++ concat assigns
   where
-    (inits, assigns) = unzip $ mapWithSupply (compileThunk env) supply thunks
+    (inits, assigns) = unzip $ mapWithSupply (compileBind env) supply binds
 
-compileThunk :: Env -> NameSupply -> Iridium.BindThunk -> ([Named Instruction], [Named Instruction])
-compileThunk env supply (Iridium.BindThunk varId fnId args) =
+compileBind :: Env -> NameSupply -> Iridium.Bind -> ([Named Instruction], [Named Instruction])
+compileBind env supply (Iridium.Bind varId target args) = ([], []) -- TODO: Compile bind
+  {-
   ( [ toName varId := Call Nothing Fast [] (Right Builtins.alloc) [(ConstantOperand $ Int 32 8, []), (ConstantOperand $ Int 32 $ fromIntegral byteCount, [])] [] [] ]
   , [ ]
   )
   where
     argCount = length args
-    pointerSize = targetPointerSize $ envTarget env
+    wordSize = targetWordSize $ envTarget env
     flagBits = argCount + 16
-    flagFieldCount = (flagBits + pointerSize - 1) `div` pointerSize -- ceiling of flagBits / pointerSize
+    flagFieldCount = (flagBits + wordSize - 1) `div` wordSize -- ceiling of flagBits / wordSize
     byteCount = 8 -- GC + argument count
       + 8 -- function / thunk pointer or state
-      + flagFieldCount * pointerSize `div` 8 -- flags
-      + argCount * pointerSize `div` 8 -- fields
+      + flagFieldCount * wordSize `div` 8 -- flags
+      + argCount * wordSize `div` 8 -- fields -}
