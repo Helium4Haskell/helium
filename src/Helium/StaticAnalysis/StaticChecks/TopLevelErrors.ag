@@ -45,8 +45,9 @@ SEM Module
 ------------------------------------------------------------------------------
 -- fixity declarations without a definition
 
+
 SEM Module
-  | Module   loc . fixityButNoFunDefErrors = let list = nub (@body.declVarNames ++ @allValueConstructors)
+  | Module   loc . fixityButNoFunDefErrors = let list = nub (@body.declVarNames ++ @allValueConstructors ++ @body.classMemberNames)
                                              in makeNoFunDef Fixity (filter (`notElem` list) @correctFixities) list
        
 ------------------------------------------------------------------------------

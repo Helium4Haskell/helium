@@ -43,7 +43,7 @@ SEM Expression
   | Let   loc . (collectTypeConstructors,collectValueConstructors,collectTypeSynonyms,collectConstructorEnv,derivedFunctions,operatorFixities) = internalError "PartialSyntax.ag" "n/a" "toplevel Expression"
 
 SEM MaybeDeclarations
-  | Just  loc . (collectTypeConstructors,collectValueConstructors,collectTypeSynonyms,collectConstructorEnv,derivedFunctions,operatorFixities) = internalError "PartialSyntax.ag" "n/a" "toplevel MaybeDeclaration"
+  | Just  loc . (collectTypeConstructors,collectValueConstructors,collectTypeSynonyms,collectConstructorEnv,derivedFunctions) = internalError "PartialSyntax.ag" "n/a" "toplevel MaybeDeclaration"
 
 SEM Qualifier
   | Let   loc . (collectTypeConstructors,collectValueConstructors,collectTypeSynonyms,collectConstructorEnv,derivedFunctions,operatorFixities) = internalError "PartialSyntax.ag" "n/a" "toplevel Qualifier"

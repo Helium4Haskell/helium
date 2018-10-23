@@ -7,11 +7,11 @@ import PreludePrim
 infixr 9  .
 infixl 9  !!
 infixr 8  ^ -- , **.
--- infixl 7  *, `quot`, `rem`, `div`, `mod`,  /                [PreludePrim]
--- infixl 6  +, -                                              [PreludePrim]
+--infixl 7   `quot`, `rem`, `div`, `mod`,  /                
+--infixl 6  +, -                                              
 infixr 5  ++
 -- infixr 5 :                                                  [HeliumLang]
--- infix  4  ==, /=, <=, <, >, >=                              [PreludePrim]
+infix  4  ==, /=, <=, <, >, >=                                 
 infixr 3  &&
 infixr 2  ||
 infixr 0  $ --, $!                                             [PreludePrim]
@@ -152,6 +152,9 @@ class Ord a => Num a where
     abs :: a -> a
     signum :: a -> a
     fromInt :: Integer -> a
+    infixl 6 +, -
+    infixl 7 *
+val = 2 + 3 * 4
 
 {- imported from PreludePrim
 rem  :: Int -> Int -> Int

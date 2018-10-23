@@ -362,6 +362,10 @@ cdecl = addRange (
          nr <- withRange var
          cdecl1 nr)
     <|>
+    try (
+            infixdecl
+    )
+    <|>
     do
        l <- funlhs
        b <- normalRhs

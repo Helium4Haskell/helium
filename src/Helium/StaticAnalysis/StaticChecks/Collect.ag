@@ -99,9 +99,14 @@ SEM Declaration
 -------------------------------------------
 -- 4) Collecting Fixity Declarations
 
-ATTR Body Declarations Declaration [ | operatorFixities : {[(Name,(Int,Assoc))]} | ]
+ATTR Body Declarations Declaration MaybeDeclarations [ |  operatorFixities : {[(Name,(Int,Assoc))]} | ]
 
 SEM Module | Module   body . operatorFixities = []
+
+
+SEM MaybeDeclarations
+    | Just
+        lhs . operatorFixities = @declarations.operatorFixities
 
 SEM Declaration
   | Fixity   lhs . operatorFixities = let associativity = case @fixity.self of
@@ -112,6 +117,7 @@ SEM Declaration
                                                              MaybeInt_Just i  -> i
                                                              MaybeInt_Nothing -> 9
                                       in [ (name, (priority, associativity)) | name <- @operators.self ] ++ @lhs.operatorFixities
+    | Class lhs . operatorFixities = @where.operatorFixities
 
 -------------------------------------------
 -- 5) Distributing Value Constructors

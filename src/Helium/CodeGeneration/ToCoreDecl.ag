@@ -208,6 +208,7 @@ SEM Declaration
                                                     Core.declCustoms = constructClassMemberCustomDecl @lhs.importEnv @simpletype.name (M.lookup @simpletype.name $ classMemberEnvironment @lhs.importEnv)
                                                 }
                                         ] ++ convertDictionaries @lhs.importEnv @simpletype.name @where.functionNames @where.whereDeclarations 
+                                         ++ filter (\d -> Module.declName d `elem` map (idFromString . getNameName) @where.functionNames) @where.decls
                         where . instanceName = Just @simpletype.name
                         where . dictionaryEnv = setCurrentClassNames (zip @where.functionNames (repeat ("$instanceDict" ++ show @simpletype.name))) @lhs.dictionaryEnv
     | Instance          lhs .   decls    =  [ constructDictionary 
