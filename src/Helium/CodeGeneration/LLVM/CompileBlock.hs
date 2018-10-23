@@ -17,7 +17,8 @@ import Helium.CodeGeneration.LLVM.Utils
 import Helium.CodeGeneration.LLVM.CompileType
 import Helium.CodeGeneration.LLVM.CompileBind
 import Helium.CodeGeneration.LLVM.ConstructorLayout
-import Helium.CodeGeneration.LLVM.CompileConstructor(compileAllocation, compileExtractFields)
+import Helium.CodeGeneration.LLVM.CompileConstructor(compileExtractFields)
+import Helium.CodeGeneration.LLVM.CompileStruct
 import qualified Helium.CodeGeneration.LLVM.Builtins as Builtins
 
 import Lvm.Common.Id(Id, NameSupply, freshId, splitNameSupply, mapWithSupply)
@@ -60,14 +61,14 @@ compileInstruction env supply (Iridium.Match var _ [] next) = compileInstruction
 compileInstruction env supply (Iridium.Match var (Iridium.DataTypeConstructor _ conId _) args next)
   = [ addressName := AST.BitCast (toOperand env var) (pointer t) []
     ]
-    +> compileExtractFields env supply'' address (fromIntegral $ headerSize * targetWordSize (envTarget env)) fieldLayouts args
+    +> compileExtractFields env supply'' address struct args
     +> compileInstruction env supply''' next
   where
     t = NamedTypeReference $ toName conId
     (addressName, supply') = freshName supply
     address = LocalReference (pointer t) addressName
     (supply'', supply''') = splitNameSupply supply'
-    LayoutPointer _ _ headerSize fieldLayouts = findMap conId (envConstructors env)
+    LayoutPointer struct = findMap conId (envConstructors env)
 compileInstruction env supply (Iridium.If var (Iridium.PatternCon con@(Iridium.DataTypeConstructor _ conId _)) whenTrue whenFalse)
   = compileIfMatchConstructor env supply var con conLayout whenTrue whenFalse
   where
@@ -142,17 +143,16 @@ compileIfMatchConstructor env supply var _ (LayoutInline tag) whenTrue whenFalse
     terminator = Do $ CondBr (LocalReference bool nameCond) (toName whenTrue) (toName whenFalse) []
     (nameInt, supply') = freshName supply
     (nameCond, supply'') = freshName supply'
-compileIfMatchConstructor env supply var (Iridium.DataTypeConstructor _ conId _) (LayoutPointer tag (firstHeaderBit, afterHeaderBit) headerSize fieldLayouts) whenTrue whenFalse
+compileIfMatchConstructor env supply var (Iridium.DataTypeConstructor _ conId _) (LayoutPointer struct) whenTrue whenFalse
   = Partial instructionsMain terminatorMain blocks
   where
-    (nameCond, supply1) = freshName supply
-    (addressName, supply2) = freshName supply1
-    (headerPtrName, supply3) = freshName supply2
-    (headerName, supply4) = freshName supply3
-    (shiftedLeft, supply5) = freshName supply4
-    (shifted, supply6) = freshName supply5
-    (tagCheck, supply7) = freshName supply6
-    (nameBlockCheck, supply8) = freshName supply7
+    (supplyExtractTag, supply1) = splitNameSupply supply
+    (nameCasted, supply2) = freshName supply1
+    (nameCond, supply3) = freshName supply2
+    (nameTagCond, supply4) = freshName supply3
+    (nameBlockCheck, _) = freshName supply4
+
+    operand = toOperand env var
 
     instructionsMain :: [Named Instruction]
     instructionsMain =
@@ -164,24 +164,13 @@ compileIfMatchConstructor env supply var (Iridium.DataTypeConstructor _ conId _)
     -- If it is a 0, we must read the pointer and check its tag.
     terminatorMain = Do $ CondBr (LocalReference bool nameCond) (toName whenFalse) nameBlockCheck []
 
+    t = pointer $ structType env struct
+
     instructionsCheck :: [Named Instruction]
-    instructionsCheck =
-      [ addressName := AST.BitCast (toOperand env var) (pointer t) [] 
-      , headerPtrName := getElementPtr address [0, 0]
-      , headerName := Load False (LocalReference (pointer $ headerType) headerPtrName) Nothing 0 []
-      , shiftedLeft := Shl False False header (ConstantOperand $ Int headerBits $ fromIntegral headerBits - fromIntegral afterHeaderBit) []
-      , shifted := LShr False (LocalReference headerType shiftedLeft) (ConstantOperand $ Int headerBits $ fromIntegral headerBits - fromIntegral afterHeaderBit + fromIntegral firstHeaderBit) []
-      , tagCheck := ICmp IntegerPredicate.EQ (LocalReference headerType shifted) (ConstantOperand $ Int headerBits $ fromIntegral tag) []
-      ]
+    instructionsCheck = [ nameCasted := BitCast operand t [] ]
+      ++ checkTag supply env (LocalReference t nameCasted) struct nameTagCond
+
     terminatorCheck :: Named Terminator
-    terminatorCheck = Do $ CondBr (LocalReference bool tagCheck) (toName whenTrue) (toName whenFalse) []
-
-    address = LocalReference (pointer t) addressName
-    t = NamedTypeReference $ toName conId
-
-    headerBits :: Word32
-    headerBits = fromIntegral $ headerSize * targetWordSize (envTarget env)
-    headerType = IntegerType headerBits
-    header = LocalReference headerType headerName
+    terminatorCheck = Do $ CondBr (LocalReference bool nameTagCond) (toName whenTrue) (toName whenFalse) []
 
     blocks = [BasicBlock nameBlockCheck instructionsCheck terminatorCheck]

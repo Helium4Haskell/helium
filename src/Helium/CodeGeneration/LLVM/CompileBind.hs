@@ -31,16 +31,18 @@
 
 module Helium.CodeGeneration.LLVM.CompileBind (compileBinds) where
 
-import qualified Data.Bits as Bits
+import Data.Bits(shiftL, (.|.), (.&.))
 import Data.Word(Word32)
 
 import Lvm.Common.Id(Id, NameSupply, mapWithSupply, splitNameSupply)
 import Lvm.Common.IdMap(findMap)
 import Helium.CodeGeneration.LLVM.Env (Env(..))
 import Helium.CodeGeneration.LLVM.CompileType
+import Helium.CodeGeneration.LLVM.ConstructorLayout
+import Helium.CodeGeneration.LLVM.Struct
+import Helium.CodeGeneration.LLVM.CompileStruct
 import Helium.CodeGeneration.LLVM.Target
 import Helium.CodeGeneration.LLVM.Utils
-import Helium.CodeGeneration.LLVM.ConstructorLayout (gcBits)
 import qualified Helium.CodeGeneration.LLVM.Builtins as Builtins
 import qualified Helium.CodeGeneration.Iridium.Data as Iridium
 import qualified Helium.CodeGeneration.Iridium.Type as Iridium
@@ -49,10 +51,7 @@ import LLVM.AST.CallingConvention
 import LLVM.AST.Type as Type
 import LLVM.AST.AddrSpace
 import LLVM.AST.Operand
-import LLVM.AST.Constant as Constant
-
-argumentCountBits :: Int
-argumentCountBits = 16 -- We assume that there are no more than 2 ^ argumentCountBits arguments in a thunk
+import qualified LLVM.AST.Constant as Constant
 
 compileBinds :: Env -> NameSupply -> [Iridium.Bind] -> [Named Instruction]
 compileBinds env supply binds = concat inits ++ concat assigns
@@ -60,17 +59,48 @@ compileBinds env supply binds = concat inits ++ concat assigns
     (inits, assigns) = unzip $ mapWithSupply (compileBind env) supply binds
 
 compileBind :: Env -> NameSupply -> Iridium.Bind -> ([Named Instruction], [Named Instruction])
-compileBind env supply (Iridium.Bind varId target args) = ([], []) -- TODO: Compile bind
-  {-
-  ( [ toName varId := Call Nothing Fast [] (Right Builtins.alloc) [(ConstantOperand $ Int 32 8, []), (ConstantOperand $ Int 32 $ fromIntegral byteCount, [])] [] [] ]
-  , [ ]
+compileBind env supply b@(Iridium.Bind varId target args)
+  = compileBind' env supply b $ toStruct env target $ length args
+
+compileBind' :: Env -> NameSupply -> Iridium.Bind -> Either Int Struct -> ([Named Instruction], [Named Instruction])
+compileBind' env supply (Iridium.Bind varId _ _) (Left tag) = 
+  ( [toName varId := AST.IntToPtr (ConstantOperand $ Constant.Int (fromIntegral $ targetWordSize $ envTarget env) value) voidPointer []]
+  , [])
+  where
+    -- Put a '1' in the least significant bit to distinguish it from a pointer.
+    value :: Integer
+    value = fromIntegral tag * 2 + 1
+compileBind' env supply (Iridium.Bind varId target args) (Right struct) =
+  ( concat splitInstructions
+    ++ allocate env nameVoid nameStruct t struct
+    ++ [toName varId := BitCast (LocalReference voidPointer nameVoid) (expectedType target) []]
+  , initialize supplyInit env (LocalReference (pointer t) nameStruct) struct argOperands
   )
   where
-    argCount = length args
-    wordSize = targetWordSize $ envTarget env
-    flagBits = argCount + 16
-    flagFieldCount = (flagBits + wordSize - 1) `div` wordSize -- ceiling of flagBits / wordSize
-    byteCount = 8 -- GC + argument count
-      + 8 -- function / thunk pointer or state
-      + flagFieldCount * wordSize `div` 8 -- flags
-      + argCount * wordSize `div` 8 -- fields -}
+    t = structType env struct
+    (splitInstructions, argOperands) = unzip $ mapWithSupply (splitValueFlag env) supplyArgs $ bindArguments target args
+    (supplyArgs, supply1) = splitNameSupply supply
+    (supplyInit, supply2) = splitNameSupply supply1
+    (nameVoid, supply3) = freshName supply2
+    (nameStruct, _) = freshName supply3
+
+toStruct :: Env -> Iridium.BindTarget -> Int -> Either Int Struct
+toStruct env (Iridium.BindTargetConstructor (Iridium.DataTypeConstructor _ conId _)) arity = case findMap conId (envConstructors env) of
+  LayoutInline value -> Left value
+  LayoutPointer struct -> Right struct
+toStruct env (Iridium.BindTargetFunction var) arity = Right $ Struct Nothing 32 tag fields
+  where
+    tag = arity .|. (remaining `shiftL` 16)
+    remaining = case var of
+      Iridium.VarLocal _ -> (1 `shiftL` 16) - 1 -- All 16 bits to 1
+      Iridium.VarGlobal (Iridium.Global _ (Iridium.FunctionType args _)) -> length args - arity
+    fields = map (\i -> StructField Iridium.TypeAny (Just i)) [0..arity] 
+
+-- A thunk has an additional argument, namely the function. We add that argument here
+bindArguments :: Iridium.BindTarget -> [Iridium.Variable] -> [Iridium.Variable]
+bindArguments (Iridium.BindTargetFunction var) = (var :)
+bindArguments _ = id
+
+-- TODO: Use more specific type for data type constructors
+expectedType :: Iridium.BindTarget -> Type
+expectedType _ = voidPointer

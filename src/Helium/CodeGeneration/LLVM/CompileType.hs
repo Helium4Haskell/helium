@@ -79,11 +79,11 @@ splitValueFlag env supply var = case Iridium.variableType var of
 cast :: Env -> Operand -> Name -> Iridium.PrimitiveType -> Iridium.PrimitiveType -> [Named Instruction]
 cast env fromOperand toName Iridium.TypeAny Iridium.TypeAny = [toName := AST.BitCast fromOperand taggedThunkPointer []]
 cast env fromOperand toName fromType Iridium.TypeAny =
-  [ toName := AST.BitCast
+  [ toName := AST.InsertValue
       (ConstantOperand $ Struct Nothing True [Constant.Undef voidPointer, Constant.Int 1 (if fromType == Iridium.TypeAnyThunk then 0 else 1)])
-      taggedThunkPointer
+      fromOperand
+      [0]
       []
-  , Do $ AST.InsertValue (LocalReference taggedThunkPointer toName) fromOperand [1] []
   ]
 cast env fromOperand toName fromType toType = [toName := AST.BitCast fromOperand fromT []]
   where
