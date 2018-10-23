@@ -42,6 +42,7 @@ import Helium.Syntax.UHA_Range (noRange)
 import Helium.StaticAnalysis.Messages.Messages
 import Helium.StaticAnalysis.Directives.TS_Messages
 import Helium.ModuleSystem.ImportEnvironment hiding (setTypeSynonyms, classEnvironment)
+import qualified  Helium.ModuleSystem.ImportEnvironment as IE
 import Helium.Utils.Utils (internalError)
 import qualified Helium.Syntax.UHA_Pretty as PP
 }
@@ -94,7 +95,7 @@ SEM TypingStrategy
                                            } 
                 in fst (solve options (reverse @statements.userConstraints) greedyConstraintSolver)
                       
-           . classEnv = createClassEnvironment [@lhs.importEnvironment] @lhs.importEnvironment
+           . classEnv = IE.classEnvironment @lhs.importEnvironment
            
            . soundnessErrors = 
                 if not (null @staticErrors)

@@ -174,7 +174,7 @@ SEM Module
        body.classEnvironment =
           let importEnv = foldr combineImportEnvironments emptyEnvironment @lhs.importEnvironments
           in foldr (\(n, i) -> insertInstance (show n) i)
-                   (createClassEnvironment @lhs.importEnvironments importEnv)
+                   (classEnvironment importEnv)
                    @body.collectInstances
 
 SEM Declaration

@@ -23,6 +23,9 @@ import Top.Types
 import Data.List
 import Data.Maybe (catMaybes)
 import Data.Function (on)
+import Data.Char
+import Control.Arrow
+
 import qualified Data.Map as M
 
 type HasDefault = Bool
@@ -118,7 +121,30 @@ setClassMemberEnvironment :: ClassMemberEnvironment -> ImportEnvironment -> Impo
 setClassMemberEnvironment new importenv = importenv { classMemberEnvironment = new }
 
 addClassMember :: Name -> (Names, [(Name, TpScheme, Bool, HasDefault)]) -> ImportEnvironment -> ImportEnvironment
-addClassMember name members env = setClassMemberEnvironment (M.insert name members (classMemberEnvironment env)) env
+addClassMember name members env = 
+    let 
+        envMember =  setClassMemberEnvironment (M.insert name members (classMemberEnvironment env)) env
+        classEnv = classEnvironment envMember
+        classEntry =    if M.member (getNameName name) (classEnvironment envMember) then
+                            M.insert (getNameName name) ([], []) (classEnvironment envMember)
+                        else
+                            classEnvironment envMember -- update existing member with superclasses
+        envClass = setClassEnvironment classEntry envMember
+    in envClass
+    
+
+addClassInstance :: String -> String -> ImportEnvironment -> ImportEnvironment
+addClassInstance className instanceName env =  
+    let
+        instancePreds :: (Predicate, Predicates)
+        instancePreds = (Predicate className instanceVar, [])
+        instanceVar :: Tp
+        instanceVar | isUpper (head instanceName) = TCon instanceName
+                    | otherwise = TVar 0
+        classEnv = classEnvironment env
+        nClassEnv   | className `M.member` classEnv = M.update (Just . second (instancePreds:)) className classEnv
+                    | otherwise = M.insert className ([], [instancePreds]) classEnv
+    in setClassEnvironment (nClassEnv) env
 
 setClassEnvironment :: ClassEnvironment -> ImportEnvironment -> ImportEnvironment
 setClassEnvironment new importenv = importenv { classEnvironment = new }
@@ -185,51 +211,9 @@ combineClassDecls (super1, inst1) (super2, inst2)
    | otherwise        = internalError "ImportEnvironment.hs" "combineClassDecls" "cannot combine class environments"
 
 getInstanceNames :: [ImportEnvironment] -> [(Range, Instance)]
-getInstanceNames c = concatMap (concatMap (map (\x -> (noRange, x)) . snd) . createClassEnvironment c) c
+getInstanceNames c = concatMap (map (\x -> (noRange, x)) . snd . snd) $  M.toList $ classEnvironment (combineImportEnvironmentList c)
 
 
--- Bastiaan:
--- Create a class environment from the dictionaries in the import environment
-createClassEnvironment :: [ImportEnvironment] -> ImportEnvironment -> ClassEnvironment
-createClassEnvironment lookupEnvs importenv =
-    let  lookupEnv = combineImportEnvironmentList lookupEnvs
-         dicts = map (drop (length dictPrefix) . show)
-                . M.keys
-                . M.filterWithKey isDict
-                $ typeEnvironment importenv
-         isDict n _ = dictPrefix `isPrefixOf` show n
-         dictPrefix = "$dict"
-         splitDictName dict  | length (filter (== '$') dict) == 1 = (getClassName dict, typeName dict)
-                            | otherwise = internalError "ImportEnvironment" "splitDictName" ("illegal dictionary: " ++ show dict)
-         getClassName :: String -> String
-         getClassName = takeWhile (/='$')
-         typeName :: String -> String
-         typeName = drop 1 . dropWhile (/='$')
-
-         arity s | s == "()" = 0
-                 | isTupleConstructor s = length s - 1
-                 | otherwise = M.findWithDefault
-                                  (internalError "ImportEnvironment" "splitDictName" ("unknown type constructor: " ++ show s))
-                                  (nameFromString s)
-                                  (typeConstructors lookupEnv)
-         dictTuples = [ (c, makeInstance c (arity t) t True)
-                      | d <- dicts, let (c, t) = splitDictName d
-                      ]
-
-         classEnv = classEnvironment lookupEnv `M.union` foldr
-                    (\(className, inst) e -> insertInstance className inst e)
-                    superClassRelation
-                    dictTuples
-    in classEnv
-
-superClassRelation :: ClassEnvironment
-superClassRelation = M.fromList
-   [ ("Num",  ( ["Eq","Show"],   []))
-   , ("Enum", ( [],              []))
-   , ("Eq" ,  ( [],              []))
-   , ("Ord",  ( ["Eq"],          []))
-   , ("Show", ( [],              []))
-   ]
 
 makeInstance :: String -> Int -> String -> Bool -> Instance
 makeInstance className nrOfArgs tp isDict =

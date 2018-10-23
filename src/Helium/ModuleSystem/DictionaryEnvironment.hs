@@ -100,7 +100,7 @@ makeDictionaryTree classEnv availablePredicates currentClass curPred ps =
         isSuperClassPredicate (PredicateFunction _) = False
         isSuperClassPredicate (PredicateSuperInstance _ _ _ _) = True
         getSuperClassPredicate :: Predicate -> PredicateWithSource
-        getSuperClassPredicate p = fromJust $ find (\ps -> isSuperClassPredicate ps && getPredicateFromPredicateWithSource ps == p) availablePredicates
+        getSuperClassPredicate p = fromMaybe (error "cannot find") $ find (\ps -> isSuperClassPredicate ps && getPredicateFromPredicateWithSource ps == p) availablePredicates
         convertPredicate :: (Predicate -> DictionaryTree) -> PredicateWithSource -> DictionaryTree
         convertPredicate f p    | hasSuperClassPredicate p =  let
                                                                     (PredicateSuperInstance pred pn tv cn) = getSuperClassPredicate $ getPredicateFromPredicateWithSource p 
@@ -108,7 +108,7 @@ makeDictionaryTree classEnv availablePredicates currentClass curPred ps =
                                 | otherwise = f (getPredicateFromPredicateWithSource p)
     in 
     case tp of
-        TVar _  | curPred == Just (getPredicateFromPredicateWithSource ps) -> Just (ByCurrentClass $ fromJust currentClass)
+        TVar _  | curPred == Just (getPredicateFromPredicateWithSource ps) -> Just (ByCurrentClass $ fromMaybe (error "Cannot fromMaybe") currentClass)
                 | p `elem` bareAvailablePredicates -> Just (convertPredicate ByPredicate ps)
                 | otherwise -> case [ (path, availablePredicate)
                                     | availablePredicate@(Predicate c t) <- bareAvailablePredicates

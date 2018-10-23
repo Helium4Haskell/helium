@@ -39,11 +39,36 @@ product = foldl' (*) (fromInt 1)
  -- Eq
  -----------------------------------------------}
 
+class Eq a where
+    (==) :: a -> a -> Bool
+    (/=) :: a -> a -> Bool
+    (==) x y = not (x /= y)
+    (/=) x y = not ( x == y)
 {- imported from PreludePrim
 
 (==) :: Eq a => a -> a -> Bool
 (/=) :: Eq a => a -> a -> Bool
 -}
+
+instance Eq Bool where
+    (==) True True = True
+    (==) False False = True
+    (==) _ _ = False
+
+instance Eq a => Eq (Maybe a) where 
+    (==) Nothing Nothing = True
+    (==) (Just x) (Just y) = x == y
+    (==) _ _ = False
+
+instance (Eq a, Eq b) => Eq (Either a b) where
+    (==) (Left x) (Left y) = x == y
+    (==) (Right x) (Right y) = x == y
+    (==) _ _ = False
+
+instance Eq a => Eq [a] where
+    (==) [] [] = True
+    (==) (x:xs) (y:ys) = x == y && xs == ys
+    (==) _ _ = False    
 
 elem :: Eq a => a -> [a] -> Bool
 elem _ [] = False
@@ -63,6 +88,20 @@ lookup k ((x,y):xys)
 {-----------------------------------------------
  -- Ord
  -----------------------------------------------}
+
+class Eq a => Ord a where
+    (<)     :: a -> a -> Bool
+    (<=)    :: a -> a -> Bool
+    (>)     :: a -> a -> Bool
+    (>=)    :: a -> a -> Bool
+    compare :: a -> a -> Ordering
+    (<) x y = x <= y && x /= y
+    (>) x y = x >= y && x /= y
+    (<=) x y = x < y || x == y
+    (>=) x y = x > y || x == y
+    compare x y | x == y = EQ
+                | x < y = LT
+                | x > y = GT
 
 {- imported from PreludePrim
 
@@ -105,6 +144,15 @@ enumFromThen   :: Enum a => a -> a -> [a]
  -- Int
  -----------------------------------------------}
 
+class Ord a => Num a where
+    (+) :: a -> a -> a
+    (-) :: a -> a -> a
+    (*) :: a -> a -> a
+    negate :: a -> a
+    abs :: a -> a
+    signum :: a -> a
+    fromInt :: Integer -> a
+
 {- imported from PreludePrim
 rem  :: Int -> Int -> Int
 div  :: Int -> Int -> Int
@@ -115,18 +163,8 @@ quot :: Int -> Int -> Int
 -- for compatibility with Haskell textbooks
 type Integer = Int
 
-abs :: Int -> Int
-abs x = if x < 0 then - x else x
-
-signum :: Int -> Int
-signum x =
-    case compare x 0 of
-        LT -> -1
-        EQ ->  0
-        GT ->  1
-
 even :: Int -> Bool
-even n = n `rem` 2 == 0
+even n = (n `rem` 2) == 0
 
 odd :: Int -> Bool
 odd  n = not (even n)
@@ -154,6 +192,20 @@ i ^ n  | n > 0  = f i (n-1) i
                 f x m y = g x m
                           where g x' m' | even m'    = g (x' * x') (m' `quot` 2)
                                         | otherwise  = f x' (m' - 1) (x' * y)
+
+instance Eq Int where
+    (==) = (==#)
+
+instance Ord Int where
+    (<) = (<#)
+    (>) = (>#)
+    (<=) = (<=#)
+    (>=) = (>=#)
+
+instance Num Int where
+    (+) = (+#)
+    (-) = (-#)
+    (*) = (*#)
 
 {-----------------------------------------------
  -- Float
@@ -184,6 +236,20 @@ signumFloat x =
 pi :: Float
 pi = 3.141592653589793
 
+instance Eq Float where
+    (==) = (==.)
+
+instance Ord Float where
+    (<) = (<.)
+    (>) = (>.)
+    (<=) = (<=.)
+    (>=) = (>=.)
+
+instance Num Float where
+    (+) = (+.)
+    (-) = (-.)
+    (*) = (*.)
+
 {-----------------------------------------------
  -- Bool
  -----------------------------------------------}
@@ -208,7 +274,6 @@ otherwise = True
 data Maybe a
     = Nothing
     | Just a
-    deriving (Eq, Show)
  
 maybe :: b -> (a -> b) -> Maybe a -> b
 maybe e f m =
@@ -220,7 +285,7 @@ maybe e f m =
  -- Either
  -----------------------------------------------}
 
-data Either a b = Left a | Right b deriving (Eq, Show)
+data Either a b = Left a | Right b
 
 either :: (a -> c) -> (b -> c) -> Either a b -> c
 either l r e =
@@ -519,6 +584,45 @@ ceiling    :: Float -> Int
 truncate   :: Float -> Int
 -}
 
+instance Eq Char where
+    (==) = (==)
+
+class Show a where
+    show :: a -> String
+
+instance Show Int where
+    show = showInt
+
+instance Show Bool where
+    show True = "True"
+    show False = "False"
+
+instance Show Float where
+    show = showFloat
+
+instance (Show a, Show b) => Show (Either a b) where
+    show (Left x) = "Left " ++ show x
+    show (Right x) = "Right " ++ show x
+
+instance Show a => Show (Maybe a) where
+    show Nothing = "Nothing"
+    show (Just x) = "Just " ++ show x
+
+instance (Show a, Show b) => Show (b, a) where
+    show (x, y) = "(" ++ show x ++ ", " ++ show y ++ ")"
+
+instance (Show a, Show b, Show c) => Show (a, b, c) where
+    show (x, y, z) = "(" ++ show x ++ ", " ++ show y ++ ", " ++ show z ++ ")"
+
+instance Show a => Show [a] where
+    show xs = "[" ++ intercalate ", " (map show xs) ++ "]"
+    
+
+intercalate :: [a] -> [[a]] -> [a]
+intercalate _ [] = []
+intercalate _ [x] = x
+intercalate y (x:xs) = x ++ y ++ intercalate y xs
+
 {-----------------------------------------------
  -- Some standard functions
  -----------------------------------------------}
@@ -558,14 +662,14 @@ undefined = error "undefined"
 {-----------------------------------------------
  -- IO
  -----------------------------------------------}
-
+{-}
 (>>=) :: IO a -> (a -> IO b) -> IO b
 (>>=) io f = do x <- io
                 f x
 
 (>>) :: IO a -> IO b -> IO b
 p >> q = p >>= \ _ -> q
-
+-}
 {- imported from PreludePrim 
 return :: a -> IO a
 
@@ -582,9 +686,11 @@ unsafePerformIO :: IO a -> a
 unsafePerformIO = primUnsafePerformIO
 -}
 
+{-}
 sequence_ :: [IO a] -> IO ()
 sequence_ = foldr (>>) (return ())
-
+-}
+{-}
 print :: Show a => a -> IO ()
 print e = putStrLn (show e)
 
@@ -623,7 +729,7 @@ finallyIO io action
   = do x <- io `catch` (\exn -> do{ action; raise exn })
        action
        return x
-
+-}
 {-----------------------------------------------
  -- Read
  -----------------------------------------------}
@@ -640,3 +746,61 @@ readUnsigned =
     map (\c -> primOrd c - primOrd '0')
     .
     takeWhile localIsDigit
+
+-- Functor --
+
+(<$>) :: Functor f => (a -> b) -> f a -> f b
+(<$>) = fmap
+
+class Functor f where
+    fmap :: (a -> b) -> f a -> f b
+
+
+instance Functor Maybe where
+    fmap f Nothing = Nothing
+    fmap f (Just x) = Just (f x)
+
+    
+instance Functor (Either a) where
+    fmap _ (Left x) = Left x
+    fmap f (Right y) = Right (f y)
+        
+instance Functor [] where
+    fmap = map
+
+-- Applicative --
+
+class Functor f => Applicative f where
+    pure :: a -> f a
+    (<*>) :: f (a -> b) -> f a -> f b
+
+instance Applicative Maybe where
+    pure = Just
+    (<*>) (Just f) (Just x) = Just (f x)
+    (<*>) _ _ = Nothing
+
+instance Applicative (Either a) where
+    pure = Right
+    (<*>) (Left e) x = Left e
+    (<*>) (Right f) r = fmap f r
+
+-- Monad --
+
+class Applicative m => Monad m where
+    return :: a -> m a
+    (>>=) :: m a -> (a -> m b) -> m b
+
+instance Monad Maybe where
+    return = Just 
+    (>>=) Nothing f = Nothing
+    (>>=) (Just x) f = f x
+
+instance Monad (Either a) where
+    return = Right
+    (>>=) (Right x) f = f x
+    (>>=) l _ = l
+
+    
+    
+            
+        

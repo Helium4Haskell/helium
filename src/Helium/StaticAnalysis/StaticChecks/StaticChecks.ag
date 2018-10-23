@@ -117,4 +117,5 @@ ATTR Body Declaration Declarations Expression Expressions
      Statements AnnotatedType Types Constructor AnnotatedTypes 
      ContextItem FieldDeclaration Constructors ContextItems 
      FieldDeclarations Type 
-               [ classMemberEnv : {ClassMemberEnvironment} | | ]
+               [ classMemberEnv : {ClassMemberEnvironment} 
+               importEnvironments    : ImportEnvironments| | ]

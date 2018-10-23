@@ -94,20 +94,19 @@ SEM Declaration
       where . curPred = Just $ Predicate (getNameName @simpletype.name) @classBeta
       where . instanceName = Just @simpletype.name
    
-
 SEM Expression 
 
   | Variable   lhs . dictionaryEnvironment = @newDEnv              
                loc . nameInScope           = case filter (@name.self==) @lhs.namesInScope of 
                                                 [name] -> NameWithRange name
                                                 _      -> internalError "TypeInferenceOverloading.ag" "n/a" "name not in scope"
-                   . maybeInferredType     = M.lookup @nameInScope ((\x -> const id (unlines $ map show $ M.toList x) x) @lhs.allTypeSchemes)
+                   . maybeInferredType     = M.lookup @nameInScope @lhs.allTypeSchemes
                    . requiredDictionaries  = -- if not in finitemap then this is bound by a monomorphic pattern variable
                                              case @maybeInferredType of
                                                 Nothing     -> maybe [] (\className -> 
                                                                     let
-                                                                        classMembers = snd $ fromJust $ M.lookup className (classMemberEnvironment @lhs.importEnvironment)
-                                                                        classFunctions = map (\(n, tps, _, _)->(n, tps)) classMembers
+                                                                        classMembers = classMemberEnvironmentAddContext className $ fromJust $ M.lookup className (classMemberEnvironment @lhs.importEnvironment)
+                                                                        classFunctions = map (\(n, tps, _, _)->(n, tps)) $ snd classMembers
                                                                     in maybe [] (\scheme ->
                                                                         map PredicateFunction $ getRequiredDictionaries 
                                                                             (getOrderedTypeSynonyms @lhs.importEnvironment) 

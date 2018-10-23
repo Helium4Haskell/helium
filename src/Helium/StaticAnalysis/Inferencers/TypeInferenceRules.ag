@@ -27,7 +27,7 @@ SEM Module
            . classEnv            = -- extend the set of imported instance declarations with the
                                    -- derived instances
                                    foldr (\(n, i) -> insertInstance (show n) i)
-                                         (createClassEnvironment [@lhs.importEnvironment] @lhs.importEnvironment)
+                                         (classEnvironment @lhs.importEnvironment)
                                          @body.collectInstances
            . typeErrors          = case makeTypeErrors @lhs.options @classEnv @orderedTypeSynonyms @substitution @solveErrors of
                                       []   -> if NoOverloadingTypeCheck `elem` @lhs.options
@@ -202,10 +202,15 @@ SEM Declaration
         lhs     . bindingGroups         = (noAssumptions,  @where.assumptions, @loc.constraints) : @lhs.bindingGroups
         loc     . constraints           = [Node $ [@where.constraints] ++ @instanceConstraints ++ @memberConstraints]
         loc     . superPredicates       = map (
-                                                (\s -> superClassToPredicateWithSource 
-                                                    (superClassToPredicate @instanceBetas s) 
-                                                    (getNameName @name.self)
-                                                    (getNameName . fst . head $ @instanceBetas)
+                                                (\s -> 
+                                                    let 
+                                                        Predicate _ tvar = predicate
+                                                        predicate = superClassToPredicate @instanceBetas s
+                                                        tv = (getNameName . fst . fromJust $ find (\ib -> tvar == snd ib) @instanceBetas)
+                                                    in superClassToPredicateWithSource 
+                                                        predicate
+                                                        (getNameName @name.self)
+                                                        tv
                                                 )
                                             ) @superClasses
         loc     . instanceConstraints   = [     
@@ -249,7 +254,7 @@ appendClasses :: [(Name, TpScheme)] -> M.Map NameWithRange TpScheme -> Maybe [(N
 appendClasses typeMemberBindings allTypeSchemes = Just (map lookupScheme typeMemberBindings)
     where
         lookupScheme :: (Name, TpScheme) -> (Name, TpScheme)
-        lookupScheme (n, _) = (n, fromJust $ M.lookup (NameWithRange n) (allTypeSchemes))
+        lookupScheme (n, _) = (n, fromMaybe ((fromJust $ lookup n $ map (\(NameWithRange n', t) -> (n', t)) $ M.toList allTypeSchemes)) $ M.lookup (NameWithRange n) (allTypeSchemes))
 
 getSuperClasses ::  ContextItems -> [(String, Name)]
 getSuperClasses = map (\(ContextItem_ContextItem _ n vs) -> (getNameName n, var vs))

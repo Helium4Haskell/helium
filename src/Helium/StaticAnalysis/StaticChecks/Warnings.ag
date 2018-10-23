@@ -151,16 +151,16 @@ SEM Type [ | | contextRange:Range ]
 
 SEM Declaration
   | TypeSignature
-       lhs . warnings = simplifyContext @lhs.orderedTypeSynonyms @type.contextRange @intMap @typeScheme ++ @type.warnings
+       lhs . warnings = simplifyContext @lhs.orderedTypeSynonyms @type.contextRange @intMap @typeScheme (combineImportEnvironmentList @lhs.importEnvironments) ++ @type.warnings
 
 {
-simplifyContext :: OrderedTypeSynonyms -> Range -> [(Int, Name)] -> TpScheme -> Warnings
-simplifyContext synonyms range intMap typescheme =
+simplifyContext :: OrderedTypeSynonyms -> Range -> [(Int, Name)] -> TpScheme -> ImportEnvironment -> Warnings
+simplifyContext synonyms range intMap typescheme importEnv =
    let predicates = qualifiers (unquantify typescheme)
        reduced    = f predicates []
           where f [] as = reverse as -- reverse to original order
                 f (p:ps) as
-                   | entail synonyms standardClasses (ps++as) p = f ps as
+                   | entail synonyms (classEnvironment importEnv) (ps++as) p = f ps as
                    | otherwise = f ps (p:as)
        sub = listToSubstitution [ (i, TCon (show n)) | (i, n) <- intMap ]
    in if length reduced == length predicates

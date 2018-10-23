@@ -17,7 +17,6 @@ import Helium.Utils.Utils (hole)
 import Helium.Syntax.UHA_Syntax(Name(..), Range(..), Position(..))
 import qualified Helium.Utils.Texts as Texts
 
-
 type HParser a = GenParser Token SourcePos a
 
 runHParser :: HParser a -> FilePath -> [Token] -> Bool -> Either ParseError a
@@ -38,7 +37,9 @@ waitForEOF p
 
 tycls, tycon, tyvar, modid, varid, conid, consym, varsym :: ParsecT [Token] SourcePos Identity Name      
 tycls   = name   lexCon  <?> Texts.parserTypeClass
-tycon   = name   lexCon  <?> Texts.parserTypeConstructor
+tycon   = (opSpecial (try $ do { lexLBRACKET; lexRBRACKET; return "[]" })
+        <|> opSpecial (try $ do { commas <- parens (many pComma); return $ "(" ++ commas ++ ")"})
+        <|> (name  lexCon)  <?> Texts.parserTypeConstructor)
 tyvar   = name   lexVar  <?> Texts.parserTypeVariable
 modid   = name   lexCon  <?> Texts.parserModuleName
 varid   = name   lexVar  <?> Texts.parserVariable
@@ -89,6 +90,12 @@ opName p = addRange $
         n <- p
         return (\r -> Name_Operator r [] n) -- !!!Name
 
+opSpecial :: HParser String -> HParser Name
+opSpecial p = addRange $
+      do
+        n <- p
+        return (\r -> Name_Special r [] n)
+
 addRange :: HParser (Range -> a) -> HParser a
 addRange p =
     do 
@@ -112,6 +119,11 @@ lexBACKQUOTEs, brackets :: ParsecT [Token] SourcePos Identity a
                  -> ParsecT [Token] SourcePos Identity a
 lexBACKQUOTEs = between lexBACKQUOTE lexBACKQUOTE
 brackets = between lexLBRACKET  lexRBRACKET 
+
+pComma :: ParsecT [Token] SourcePos Identity Char
+pComma = do
+            lexCOMMA
+            return ','
 
 commas, commas1 :: ParsecT [Token] SourcePos Identity a
           -> ParsecT [Token] SourcePos Identity [a]

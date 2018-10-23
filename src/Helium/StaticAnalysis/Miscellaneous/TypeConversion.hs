@@ -18,6 +18,7 @@ import Data.List (union, (\\))
 import Data.Maybe
 import qualified Data.Map as M
 import Helium.Syntax.UHA_Syntax
+import Control.Arrow
 
 import Top.Types
 import Data.List
@@ -75,8 +76,17 @@ addSimpleTypeContextToType (SimpleType_SimpleType _ name typevariables ) (Quanti
             Just tp -> [Predicate (getNameName name) tp]
 
 addPredicateToType :: Predicate -> TpScheme -> TpScheme
-addPredicateToType pred (Quantification (freeTV, nameMap', Qualification (prep, tp))) = (Quantification (freeTV, nameMap', Qualification (pred : prep, tp)))
+addPredicateToType pred (Quantification (freeTV, nameMap', Qualification (prep, tp))) = Quantification (freeTV, nameMap', Qualification (pred : prep, tp))
 
+classMemberEnvironmentAddContext :: Name -> (Names, [(Name, TpScheme, Bool, Bool)]) -> (Names, [(Name, TpScheme, Bool, Bool)])
+classMemberEnvironmentAddContext className members = Control.Arrow.second mapFunctions members
+        where   mapFunctions = map updateFunc
+                updateFunc (name, tpscheme, b1, b2) = let 
+                    tpUpdated = addPredicateToType pred tpscheme
+                    pred = Predicate (getNameName className) tvar
+                    tvar = TVar $ fst $ fromJust $ find (\x -> snd x == show (head $ fst members)) (getQuantorMap tpscheme)
+                    in (name, tpUpdated, b1, b2)
+                
 addContextToType :: Name -> [(Name, Tp)] -> TpScheme -> TpScheme
 addContextToType name nameMap (Quantification (freeTV, nameMap', Qualification (prep, tp)))  = --(Quantification (freeTV, nameMap, qualif))
     let typevariables = map fst nameMap
