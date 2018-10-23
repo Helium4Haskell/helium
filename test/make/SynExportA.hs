@@ -1,3 +1,8 @@
+module SynExportA where
+
 import SynExportB
 
-main = f 3
+type P = Int
+
+main :: P
+main = f 3 5

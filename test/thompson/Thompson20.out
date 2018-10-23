@@ -1,4 +1,6 @@
 Prelude is up to date
 Compiling thompson/Thompson20.hs
-(2,1): Definition "elem" clashes with definition in imported module Prelude
+(5,17): The occurence of variable "elemBy" is ambiguous. It could refer to:
+      "elemBy" imported from module Prelude (orignally defined in "Prelude")
+      "elemBy" defined at (2,1)
 Compilation failed with 1 error

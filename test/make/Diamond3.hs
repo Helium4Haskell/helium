@@ -1,4 +1,4 @@
-module Diamond3 where
+module Diamond3(module Diamond3, module Diamond4) where
 
 import Diamond4
 
