@@ -59,7 +59,7 @@ data Instruction
   | LetAlloc [Bind] Instruction
   | Jump BlockName
   -- * Asserts that the variable matches with the specified constructor. If they do not match, the behaviour is undefined.
-  | Match Variable DataTypeConstructor [Maybe Local] Instruction
+  | Match Variable DataTypeConstructor [Maybe Local] Instruction -- TODO: For consistency, Maybe Local should be replaced with Maybe Id, as we also don't use Local for Let and LetAlloc
   | If Variable Pattern BlockName BlockName
   | Return Variable
   deriving (Eq, Ord)

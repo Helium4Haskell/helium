@@ -1,4 +1,4 @@
-module Helium.CodeGeneration.LLVM.CompileConstructor (constructorType, compileExtractFields) where
+module Helium.CodeGeneration.LLVM.CompileConstructor (dataTypeType, constructorType, compileExtractFields) where
 
 import qualified Data.Bits as Bits
 import Data.Word(Word32)
@@ -23,8 +23,8 @@ import LLVM.AST.AddrSpace
 import LLVM.AST.Operand
 import qualified LLVM.AST.Constant as Constant
 
-dataType :: Env -> Iridium.DataType -> [(Id, ConstructorLayout)] -> Type
-dataType env (Iridium.DataType dataName _) layouts = case pointerLayouts of
+dataTypeType :: Env -> Iridium.DataType -> [(Id, ConstructorLayout)] -> Type
+dataTypeType env (Iridium.DataType dataName _) layouts = case pointerLayouts of
   [] -> envValueType env
   [(conId, _)] -> pointer $ NamedTypeReference (toName conId)
   _ -> voidPointer
@@ -35,7 +35,7 @@ dataType env (Iridium.DataType dataName _) layouts = case pointerLayouts of
 
 constructorType :: Env -> ConstructorLayout -> Type
 constructorType env (LayoutInline tag) = envValueType env
-constructorType env (LayoutPointer struct) = pointer $ structType env struct
+constructorType env (LayoutPointer struct) = pointer $ structTypeNoAlias env struct
 
 compileExtractFields :: Env -> NameSupply -> Operand -> Struct -> [Maybe Iridium.Local] -> [Named Instruction]
 compileExtractFields env supply reference struct vars

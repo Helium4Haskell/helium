@@ -63,8 +63,8 @@ compileBind env supply b@(Iridium.Bind varId target args)
   = compileBind' env supply b $ toStruct env target $ length args
 
 compileBind' :: Env -> NameSupply -> Iridium.Bind -> Either Int Struct -> ([Named Instruction], [Named Instruction])
-compileBind' env supply (Iridium.Bind varId _ _) (Left tag) = 
-  ( [toName varId := AST.IntToPtr (ConstantOperand $ Constant.Int (fromIntegral $ targetWordSize $ envTarget env) value) voidPointer []]
+compileBind' env supply (Iridium.Bind varId target _) (Left tag) = 
+  ( [toName varId := AST.IntToPtr (ConstantOperand $ Constant.Int (fromIntegral $ targetWordSize $ envTarget env) value) (expectedType target) []]
   , [])
   where
     -- Put a '1' in the least significant bit to distinguish it from a pointer.
@@ -101,6 +101,6 @@ bindArguments :: Iridium.BindTarget -> [Iridium.Variable] -> [Iridium.Variable]
 bindArguments (Iridium.BindTargetFunction var) = (var :)
 bindArguments _ = id
 
--- TODO: Use more specific type for data type constructors
 expectedType :: Iridium.BindTarget -> Type
+expectedType (Iridium.BindTargetConstructor (Iridium.DataTypeConstructor dataId _ _)) = NamedTypeReference $ toNamePrefixed "$data_" dataId
 expectedType _ = voidPointer

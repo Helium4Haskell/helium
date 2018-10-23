@@ -19,7 +19,7 @@ import Data.List(intercalate)
 
 data DataType = DataType Id [DataTypeConstructor]
   deriving (Eq, Ord)
-data DataTypeConstructor = DataTypeConstructor Id Id [PrimitiveType]
+data DataTypeConstructor = DataTypeConstructor { constructorDataType :: Id, constructorName :: Id, constructorFields :: [PrimitiveType] }
   deriving (Eq, Ord)
 
 data BitFlags = BitFlags [Int]

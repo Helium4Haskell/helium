@@ -15,6 +15,9 @@ import Lvm.Common.Id(Id, stringFromId, freshId, NameSupply)
 toName :: Id -> Name
 toName = mkName . stringFromId
 
+toNamePrefixed :: String -> Id -> Name
+toNamePrefixed prefix = mkName . (prefix ++) . stringFromId
+
 freshName :: NameSupply -> (Name, NameSupply)
 freshName supply = (toName newId, supply')
   where

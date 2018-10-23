@@ -21,7 +21,7 @@ compileType env Iridium.TypeAnyThunk = voidPointer
 compileType env Iridium.TypeAnyWHNF = voidPointer
 compileType env Iridium.TypeInt = envValueType env
 compileType env Iridium.TypeDouble = FloatingPointType DoubleFP
-compileType env (Iridium.TypeDataType _) = voidPointer
+compileType env (Iridium.TypeDataType dataName) = NamedTypeReference $ toNamePrefixed "$data_" dataName
 compileType env Iridium.TypeFunction = voidPointer
 
 compileFunctionType :: Env -> Iridium.FunctionType -> Type
@@ -62,7 +62,7 @@ splitValueFlag env supply var = case Iridium.variableType var of
       , ConstantOperand $ Int 1 0 -- false
       )
     )
-  t ->
+  _ ->
     ( []
     , ( operand
       , ConstantOperand $ Int 1 1 -- true
@@ -85,6 +85,6 @@ cast env fromOperand toName fromType Iridium.TypeAny =
       [0]
       []
   ]
-cast env fromOperand toName fromType toType = [toName := AST.BitCast fromOperand fromT []]
+cast env fromOperand toName fromType toType = [toName := AST.BitCast fromOperand toT []]
   where
-    fromT = compileType env fromType
+    toT = compileType env toType

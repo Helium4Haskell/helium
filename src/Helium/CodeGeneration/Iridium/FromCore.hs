@@ -146,23 +146,21 @@ toInstruction supply env continue (Core.Lit lit) = Let name expr +> ret supply' 
   where
     (name, supply') = freshId supply
     expr = (Literal $ literal lit)
-toInstruction supply env continue (Core.Var var) = Let name (Eval $ resolve env var) +> ret supply' env name resultType continue
+toInstruction supply env continue (Core.Var var) = Let name (Eval $ resolve env var) +> ret supply' env name TypeAnyWHNF continue
   where
     (name, supply') = freshId supply
-    resultType = case typeOf env var of
-      TypeAnyThunk -> TypeAnyWHNF
-      TypeAny -> TypeAnyWHNF
-      t -> t
 
 toInstruction supply env continue expr = case getApplicationOrConstruction expr [] of
   (Left con, args) ->
     let
-      dataTypeCon@(DataTypeConstructor dataName _ _) = case valueDeclaration env $ conId con of
+      dataTypeCon@(DataTypeConstructor dataName _ params) = case valueDeclaration env $ conId con of
         ValueConstructor c -> c
         _ -> error "toInstruction: Illegal target of allocation, expected a constructor"
-      bind = Bind x (BindTargetConstructor dataTypeCon) $ resolveList env args
+      (casted, castInstructions) = maybeCasts supply''' env (zip args params)
+      bind = Bind x (BindTargetConstructor dataTypeCon) casted
     in
-      LetAlloc [bind]
+      castInstructions
+        +> LetAlloc [bind]
         +> ret supplyRet env x (TypeDataType dataName) continue
   (Right fn, args) ->
     case resolveFunction env fn of
