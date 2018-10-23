@@ -34,10 +34,10 @@ phaseStaticChecks fullName module_ importEnvsWithMod options = do
     
        _:_ ->
           do when (DumpInformationForAllModules `elem` options) $
-                print (foldr combineImportEnvironments emptyEnvironment importEnvs)
+                print (combineImportEnvironmentList importEnvs)
              
              -- display name information
-             let combinedEnv = foldr combineImportEnvironments emptyEnvironment importEnvs
+             let combinedEnv = combineImportEnvironmentList importEnvs
              showInformation False options combinedEnv
     
              return (Left $ SC.errors_Syn_Module res)

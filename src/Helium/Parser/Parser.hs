@@ -131,7 +131,7 @@ onlyImports =
     do
         lexMODULE
         _ <- modid
-        let _ = MaybeExports_Nothing
+        _ <- exportList 
         lexWHERE
         lexLBRACE <|> lexINSERTED_LBRACE
         many (do { i <- impdecl; semicolon; return i })

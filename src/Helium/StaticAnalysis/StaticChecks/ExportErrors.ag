@@ -24,8 +24,11 @@ SEM Module
   | Module    loc . exportErrors = let firstErrors = @exports.exportErrors 
                                    in if null firstErrors then @exportNameClashes else firstErrors
               loc . modulename = maybe (nameFromString "Main") id @name.name
-              loc . exportModuleScope = [(@modulename, @declNoConflicts)] ++ getModuleList @lhs.importEnvironmentsWithMod
-              loc . exportNameClashes = (map ExportConflict . getConflicts.mergeSameOrigins) @exports.totalExports
+              loc . exportModuleScope = [(@modulename, @declNoConflicts 
+                                                        ++ map fst @declNoConflictsTyCon
+                                                        ++ map fst @declNoConflictsValCon)] 
+                                            ++ getModuleList @lhs.importEnvironmentsWithMod
+              loc . exportNameClashes = (map ExportConflict . getConflicts.mergeSameOrigins) (@exports.totalExports)
               
                     
 ATTR MaybeExports Exports Export

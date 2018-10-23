@@ -55,7 +55,7 @@ ATTR Expression RightHandSide
 
 SEM Module
   | Module   loc . (namesInScope, unboundNames, scopeInfo) = changeOfScope (@scopeNoConflicts) @body.unboundNames []
-             loc . (scopeNoConflicts, ambiguousConflicts) = uniqueAppearance (@initialScope ++ @declNoConflicts)
+             loc . (scopeNoConflicts, ambiguousConflicts) = uniqueAppearance (mergeSameOriginName @initialScope ++ @declNoConflicts)
              loc . (declNoConflicts , declDouble) = uniqueAppearance @body.declVarNames
              body . counter = 0
                  
@@ -197,6 +197,16 @@ uniqueAppearance :: Ord a => [a] -> ([a],[[a]])
 uniqueAppearance = Prelude.foldr myInsert ([],[]) . group . sort
    where myInsert [x] (as,bs) = (x:as,bs)
          myInsert xs  (as,bs) = (as,xs:bs)
+
+mergeSameOriginName :: [Name] -> [Name]
+mergeSameOriginName = map head
+                   . groupBy eq 
+                   . sortBy comp
+    where
+        comp x y = case compare x y of
+            EQ -> compare (getNameOrigin x) (getNameOrigin y)
+            cp -> cp
+        eq   x y = x == y && (getNameOrigin x) == (getNameOrigin y)
        
 nextUnique :: Num a => a -> (a, a)         
 nextUnique n = (n+1, n)

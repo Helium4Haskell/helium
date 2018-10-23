@@ -1,0 +1,9 @@
+Prelude is up to date
+Compiling exports/ExportBasic.hs
+Compilation successful
+Compiling exports/Export11.hs
+(6,16): Undefined constructor "Empt"
+  Hint: Did you mean "Empty" ?
+(12,11): Undefined constructor "Emptyy"
+  Hint: Did you mean "Empty" ?
+Compilation failed with 2 errors

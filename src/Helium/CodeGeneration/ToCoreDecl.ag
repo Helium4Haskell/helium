@@ -34,7 +34,7 @@ SEM Declaration
                     )
                 , Core.CustomInt
                     (length @simpletype.typevariables)
-                ] ++ originCustoms @lhs.modulename
+                ] ++ originCustoms @lhs.modulename @range.self
             }
         ]
         ++
@@ -50,7 +50,7 @@ SEM Declaration
             , Core.declAccess  = Core.private
             , Core.declKind    = Core.DeclKindCustom (idFromString "data")
             , Core.declCustoms = [ Core.CustomInt (length @simpletype.typevariables) ]
-                                   ++ originCustoms @lhs.modulename
+                                   ++ originCustoms @lhs.modulename @range.self
             }
         ]
         ++
@@ -83,7 +83,7 @@ SEM Declaration
             , Core.declAccess  = Core.private
             , Core.valueEnc    = Nothing
             , Core.valueValue  = foldr Core.Lam @bindings.core (@dictionaries ++ @ids)
-            , Core.declCustoms = toplevelType @bindings.name @lhs.importEnv @lhs.isTopLevel ++ originCustoms @lhs.modulename
+            , Core.declCustoms = toplevelType @bindings.name @lhs.importEnv @lhs.isTopLevel ++ originCustoms @lhs.modulename @range.self
             }
         ]
     --  range                    : Range          
@@ -110,7 +110,7 @@ SEM Declaration
                                 @righthandside.core
                             )
                             @dictionaries
-                    , Core.declCustoms = toplevelType n @lhs.importEnv @lhs.isTopLevel ++ originCustoms @lhs.modulename
+                    , Core.declCustoms = toplevelType n @lhs.importEnv @lhs.isTopLevel ++ originCustoms @lhs.modulename @range.self
                     }
                ]
             _ ->
@@ -122,7 +122,7 @@ SEM Declaration
                         let_ 
                             nextClauseId (patternMatchFail "pattern binding" @range.self)
                             @righthandside.core
-                    , Core.declCustoms = [custom "type" "patternbinding"] ++ originCustoms @lhs.modulename
+                    , Core.declCustoms = [custom "type" "patternbinding"] ++ originCustoms @lhs.modulename @range.self
                     }
                 :
                 [ Core.DeclValue
@@ -133,7 +133,7 @@ SEM Declaration
                         (let_ nextClauseId (patternMatchFail "pattern binding" @range.self)
                             (patternToCore (patBindId, @pattern.self) (Core.Var (idFromName v)))
                         )
-                    , Core.declCustoms = toplevelType v @lhs.importEnv @lhs.isTopLevel ++ originCustoms @lhs.modulename
+                    , Core.declCustoms = toplevelType v @lhs.importEnv @lhs.isTopLevel ++ originCustoms @lhs.modulename @range.self
                     }
                 | v <- @pattern.vars
                 ]
@@ -170,7 +170,7 @@ SEM Declaration
                             --                            "SEM Declaration.Fixity"
                             --                            "unknown fixity"
                               )
-                        ] ++ originCustoms @lhs.modulename
+                        ] ++ originCustoms @lhs.modulename @range.self
                     }
               )
               . 
@@ -346,7 +346,7 @@ SEM Constructor [ dataTypeName : Name | | ]
                                     @lhs.dataTypeName
                                     @constructor.self 
                                     (valueConstructors @lhs.importEnv)
-                                 ++ originCustoms @lhs.modulename
+                                 ++ originCustoms @lhs.modulename @range.self
             }
           )
         ]
@@ -364,7 +364,7 @@ SEM Constructor [ dataTypeName : Name | | ]
                                     @lhs.dataTypeName
                                     @constructorOperator.self 
                                     (valueConstructors @lhs.importEnv)
-                                 ++ originCustoms @lhs.modulename
+                                 ++ originCustoms @lhs.modulename @range.self
             }
           )
         ]
@@ -410,6 +410,6 @@ constructorCustoms dataTypeName name envWithParent =
     where
         env = M.map (\(_, scheme) -> scheme) envWithParent
 
-originCustoms :: String -> [Core.Custom]
-originCustoms origin = [Core.CustomDecl (Core.DeclKindCustom (idFromString "origin")) [Core.CustomName (idFromString origin)] ]
+originCustoms :: String -> Range -> [Core.Custom]
+originCustoms origin range = [Core.CustomDecl (Core.DeclKindCustom (idFromString "origin")) [Core.CustomName (idFromString (origin ++ ":" ++ showFullRange range))] ]
 }

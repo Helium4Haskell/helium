@@ -175,7 +175,7 @@ ATTR Module -> Declaration [ classEnvironment:ClassEnvironment | | collectInstan
 SEM Module
   | Module
        body.classEnvironment = 
-          let importEnv = foldr combineImportEnvironments emptyEnvironment @importEnvironments
+          let importEnv = combineImportEnvironmentList @importEnvironments
           in foldr (\(n, i) -> insertInstance (show n) i) 
                    (createClassEnvironment importEnv) 
                    @body.collectInstances
@@ -244,7 +244,7 @@ mergeSameOrigins = map head
         comp (x,_) (y,_) = case compare x y of
             EQ -> compare (getNameOrigin x) (getNameOrigin y)
             cp -> cp
-        eq   (x,_) (y,_) = x == y && (getNameOrigin x) == (getNameOrigin y) && (getNameOrigin x) /= "unkown origin"
+        eq   (x,_) (y,_) = x == y && (getNameOrigin x) == (getNameOrigin y)
 }
 
 

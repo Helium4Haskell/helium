@@ -86,7 +86,7 @@ compile basedir fullName options lvmPath doneModules =
         stopCompilingIf (StopAfterStaticAnalysis `elem` options)
 
         -- Phase 6: Kind inferencing (by default turned off)
-        let combinedEnv = foldr combineImportEnvironments localEnv importEnvs
+        let combinedEnv = combineImportEnvironmentList (localEnv:importEnvs)
         when (KindInferencing `elem` options) $
            doPhaseWithExit maximumNumberOfKindErrors (const "K") compileOptions $
               phaseKindInferencer combinedEnv resolvedModule options

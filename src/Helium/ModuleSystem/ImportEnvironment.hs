@@ -148,6 +148,7 @@ combineImportEnvironments (ImportEnvironment tcs1 tss1 te1 vcs1 ot1 ce1 cm1 xs1)
       (cm1 `M.union` cm2)
       (xs1 ++ xs2)
 
+-- IMPORTANT: the local environment should ALWAYS be the head of the list. Otherwise errors with same named value constructors WILL occur.
 combineImportEnvironmentList :: ImportEnvironments -> ImportEnvironment
 combineImportEnvironmentList = foldr combineImportEnvironments emptyEnvironment
       

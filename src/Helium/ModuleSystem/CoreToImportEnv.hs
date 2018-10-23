@@ -49,7 +49,7 @@ nameFromCustoms importedInModule importedFromModId conName (_ : cs) = nameFromCu
 originFromCustoms :: [Custom] -> String
 originFromCustoms [] =
     internalError "CoreToImportEnv" "originFromCustoms" 
-        ("something imported without an origin: ")
+        ("something imported without an origin, but this should be fixed in import phase.")
 originFromCustoms ( CustomDecl (DeclKindCustom ident) [CustomName originid] : cs)
     | stringFromId ident == "origin" = stringFromId originid
     | otherwise                      = originFromCustoms cs

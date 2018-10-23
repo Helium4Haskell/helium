@@ -64,7 +64,7 @@ SEM Expression
   | Variable   lhs . dictionaryEnvironment = @newDEnv              
                loc . nameInScope           = case filter (@name.self==) @lhs.namesInScope of 
                                                 [name] -> NameWithRange name
-                                                _      -> internalError "TypeInferenceOverloading.ag" "n/a" "name not in scope"
+                                                _      -> internalError "TypeInferenceOverloading.ag" "n/a" ("name not in scope: " ++ (show.show) @name.self)
                    . maybeInferredType     = M.lookup @nameInScope @lhs.allTypeSchemes
                    . requiredDictionaries  = -- if not in finitemap then this is bound by a monomorphic pattern variable
                                              case @maybeInferredType of

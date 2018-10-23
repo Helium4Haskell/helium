@@ -47,7 +47,7 @@ chaseImports lvmPath fromModule =
         doImport :: (Core.CoreDecl,[Id], Name) -> IO (Name, [Core.CoreDecl])
         doImport (importDecl,hidings, mod)
           = do decls <- lvmImportDecls findModule [importDecl]
-               return (mod, [ fixOrigininDecl d
+               return (mod, [ fixOrigininDecl mod d
                             | d <- concat decls
                             , let name = Core.declName d
                             , "show" `isPrefixOf` stringFromId name || name `notElem` hidings
@@ -91,13 +91,12 @@ addImplicitImports (Module_Module moduleRange maybeName exports
             MaybeImportSpecification_Nothing
 addImplicitImports (Module_Module _ _ _ (Body_Hole _ _)) = error "not supported"
 
-fixOrigininDecl :: Core.CoreDecl -> Core.CoreDecl
-fixOrigininDecl decl = let cs = Core.declCustoms decl
-                           access = Core.declAccess decl
-                           makeOrigin id = [Core.CustomDecl (Core.DeclKindCustom (idFromString "origin")) [Core.CustomName id]]
-                       in if hasOrigin cs then decl
-                            else case access of
-                                Core.Imported{Core.importModule = importedFromModId} -> decl {Core.declCustoms = cs ++ makeOrigin importedFromModId}
+fixOrigininDecl :: Name -> Core.CoreDecl -> Core.CoreDecl
+fixOrigininDecl originalmod decl = let cs = Core.declCustoms decl
+                                       access = Core.declAccess decl
+                                       makeOrigin = [Core.CustomDecl (Core.DeclKindCustom (idFromString "origin")) [Core.CustomName (idFromName originalmod)]]
+                                   in if hasOrigin cs then decl
+                                        else decl {Core.declCustoms = cs ++ makeOrigin}
 
 hasOrigin :: [Core.Custom] -> Bool
 hasOrigin [] = False

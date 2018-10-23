@@ -285,7 +285,7 @@ showError anError = case anError of
      let 
         showline name' |  (isImportRange.getNameRange) name' = (show.show) name' ++ " imported from module " ++ 
                            (snd . fromJust . modulesFromImportRange . getNameRange) name' ++
-                           " (orignally defined in " ++ (show.getNameOrigin) name' ++ ")"
+                           " (originally defined in " ++ (show.getNameOrigin) name' ++ ")"
                        | otherwise = (show.show) name' ++ " defined at " ++ (show.getNameRange) name'          
      in
        ( MessageString (

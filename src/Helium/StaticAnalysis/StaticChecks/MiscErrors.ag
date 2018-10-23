@@ -22,7 +22,7 @@ SEM Module
             loc  . miscerrors = if length (@body.miscerrors ++ @loc.typeSynonymErrors ++ @loc.overlappingInstances) == 0
                                  then @loc.instanceErrors
                                  else @body.miscerrors ++ @loc.typeSynonymErrors ++ @loc.overlappingInstances
-            loc  . imports = foldr combineImportEnvironments emptyEnvironment ( @loc.collectEnvironment : @importEnvironments)
+            loc  . imports = combineImportEnvironmentList (@loc.collectEnvironment : @importEnvironments)
             loc .  typeSynonyms = getOrderedTypeSynonyms @loc.imports
             loc  . typeSynonymErrors = noTypeSynonymsInInstance @loc.typeSynonyms @body.instances
             loc  . instanceErrors = makeClassEnvironmentErrors $ checkClassEnvironment @loc.typeSynonyms @body.classEnv @body.instances

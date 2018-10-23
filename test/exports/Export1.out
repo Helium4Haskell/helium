@@ -1,0 +1,7 @@
+Prelude is up to date
+Compiling exports/ExportBasic.hs
+Compilation successful
+Compiling exports/Export1.hs
+(1,16): Undefined exported variable "f"
+(1,19): Undefined exported variable "z"
+Compilation failed with 2 errors
