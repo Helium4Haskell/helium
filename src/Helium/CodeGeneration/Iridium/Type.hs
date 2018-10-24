@@ -17,9 +17,9 @@ module Helium.CodeGeneration.Iridium.Type where
 import Lvm.Common.Id(Id, stringFromId)
 import Data.List(intercalate)
 
-data DataType = DataType Id [DataTypeConstructor]
+data DataType = DataType !Id ![DataTypeConstructor]
   deriving (Eq, Ord)
-data DataTypeConstructor = DataTypeConstructor { constructorDataType :: Id, constructorName :: Id, constructorFields :: [PrimitiveType] }
+data DataTypeConstructor = DataTypeConstructor { constructorDataType :: !Id, constructorName :: !Id, constructorFields :: ![PrimitiveType] }
   deriving (Eq, Ord)
 
 data BitFlags = BitFlags [Int]
@@ -32,7 +32,7 @@ data PrimitiveType
   -- Subtypes of TypeAnyWHNF
   | TypeInt
   | TypeDouble
-  | TypeDataType Id
+  | TypeDataType !Id
   | TypeFunction -- ^ Pointer to a function or a thunk in WHNF (partially applied function)
   deriving (Eq, Ord)
 
@@ -43,7 +43,7 @@ evaluationState TypeAny = EvaluationUnknown
 evaluationState TypeAnyThunk = Unevaluated
 evaluationState _ = Evaluated
 
-data FunctionType = FunctionType { functionArguments :: [PrimitiveType], functionReturnType :: PrimitiveType }
+data FunctionType = FunctionType { functionArguments :: ![PrimitiveType], functionReturnType :: !PrimitiveType }
   deriving (Eq, Ord)
 
 instance Show DataTypeConstructor where

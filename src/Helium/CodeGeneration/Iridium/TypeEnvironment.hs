@@ -7,9 +7,9 @@ import Helium.CodeGeneration.Iridium.Type
 import Data.Maybe(catMaybes)
 
 data TypeEnv = TypeEnv
-  { teDataTypes :: () -- TODO: Do we need this field for a map of data type names to DataType objects?
-  , teValues :: IdMap ValueDeclaration
-  , teMethod :: Maybe (Id, FunctionType)
+  { teDataTypes :: !() -- TODO: Do we need this field for a map of data type names to DataType objects?
+  , teValues :: !(IdMap ValueDeclaration)
+  , teMethod :: !(Maybe (Id, FunctionType))
   }
 
 teReturnType :: TypeEnv -> PrimitiveType
@@ -32,9 +32,9 @@ builtins = -- TODO: This should be replaced by parsing abstract definitions
     fn name args result = (idFromString name, ValueFunction $ FunctionType args result)
 
 data ValueDeclaration
-  = ValueConstructor DataTypeConstructor
-  | ValueFunction FunctionType
-  | ValueVariable PrimitiveType
+  = ValueConstructor !DataTypeConstructor
+  | ValueFunction !FunctionType
+  | ValueVariable !PrimitiveType
   deriving (Eq, Ord, Show)
 
 typeOf :: TypeEnv -> Id -> PrimitiveType

@@ -22,12 +22,12 @@ import Helium.CodeGeneration.Iridium.Type
 type BlockName = Id
 
 data Module = Module
-  { moduleName :: Id
-  , moduleDataTypes :: [DataType]
-  , moduleMethods :: [Method]
+  { moduleName :: !Id
+  , moduleDataTypes :: ![DataType]
+  , moduleMethods :: ![Method]
   }
 
-data Method = Method Id [Local] PrimitiveType Block [Block]
+data Method = Method !Id ![Local] !PrimitiveType !Block ![Block]
   deriving (Eq, Ord)
 
 -- TODO: Annotations on methods
@@ -35,41 +35,41 @@ data MethodAnnotation
   = MAThunk -- ^ This method can be put in a thunk
   deriving (Eq, Ord)
 
-data Local = Local { localName :: Id, localType :: PrimitiveType }
+data Local = Local { localName :: !Id, localType :: !PrimitiveType }
   deriving (Eq, Ord)
 
 data Global = Global Id FunctionType
   deriving (Eq, Ord)
 
 data Variable
-  = VarLocal Local
-  | VarGlobal Global
+  = VarLocal !Local
+  | VarGlobal !Global
   deriving (Eq, Ord)
 
 data Block = Block BlockName Instruction
   deriving (Eq, Ord)
 
 data Pattern
-  = PatternCon DataTypeConstructor
-  | PatternLit Literal
+  = PatternCon !DataTypeConstructor
+  | PatternLit !Literal
   deriving (Eq, Ord)
 
 data Instruction
-  = Let Id Expr Instruction
-  | LetAlloc [Bind] Instruction
-  | Jump BlockName
+  = Let !Id !Expr !Instruction
+  | LetAlloc ![Bind] !Instruction
+  | Jump !BlockName
   -- * Asserts that the variable matches with the specified constructor. If they do not match, the behaviour is undefined.
-  | Match Variable DataTypeConstructor [Maybe Local] Instruction -- TODO: For consistency, Maybe Local should be replaced with Maybe Id, as we also don't use Local for Let and LetAlloc
-  | If Variable Pattern BlockName BlockName
-  | Return Variable
+  | Match !Variable !DataTypeConstructor ![Maybe Local] !Instruction -- TODO: For consistency, Maybe Local should be replaced with Maybe Id, as we also don't use Local for Let and LetAlloc
+  | If !Variable !Pattern !BlockName !BlockName
+  | Return !Variable
   deriving (Eq, Ord)
 
-data Bind = Bind { bindVar :: Id, bindTarget :: BindTarget, bindArguments :: [Variable] }
+data Bind = Bind { bindVar :: !Id, bindTarget :: !BindTarget, bindArguments :: ![Variable] }
   deriving (Eq, Ord)
 
 data BindTarget
-  = BindTargetFunction Variable
-  | BindTargetConstructor DataTypeConstructor
+  = BindTargetFunction !Variable
+  | BindTargetConstructor !DataTypeConstructor
   deriving (Eq, Ord)
 
 bindType :: Bind -> PrimitiveType
@@ -83,21 +83,21 @@ bindLocal :: Bind -> Local
 bindLocal b@(Bind var _ _) = Local var $ bindType b
 
 data Expr
-  = Literal Literal
-  | Call Global [Variable]
-  | Eval Variable
-  | Var Variable
-  | Cast Variable PrimitiveType
-  | Phi [PhiBranch]
+  = Literal !Literal
+  | Call !Global ![Variable]
+  | Eval !Variable
+  | Var !Variable
+  | Cast !Variable !PrimitiveType
+  | Phi ![PhiBranch]
   deriving (Eq, Ord)
 
-data PhiBranch = PhiBranch BlockName Variable
+data PhiBranch = PhiBranch !BlockName !Variable
   deriving (Eq, Ord)
 
 data Literal
-  = LitInt Int
-  | LitDouble Double
-  | LitString String
+  = LitInt !Int
+  | LitDouble !Double
+  | LitString !String
   deriving (Eq, Ord)
 
 instance Show Literal where
