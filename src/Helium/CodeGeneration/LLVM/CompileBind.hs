@@ -34,7 +34,7 @@ module Helium.CodeGeneration.LLVM.CompileBind (compileBinds) where
 import Data.Bits(shiftL, (.|.), (.&.))
 import Data.Word(Word32)
 
-import Lvm.Common.Id(Id, NameSupply, mapWithSupply, splitNameSupply)
+import Lvm.Common.Id(idFromString, Id, NameSupply, mapWithSupply, splitNameSupply)
 import Lvm.Common.IdMap(findMap)
 import Helium.CodeGeneration.LLVM.Env (Env(..))
 import Helium.CodeGeneration.LLVM.CompileType
@@ -52,6 +52,12 @@ import LLVM.AST.Type as Type
 import LLVM.AST.AddrSpace
 import LLVM.AST.Operand
 import qualified LLVM.AST.Constant as Constant
+
+idThunk :: Id
+idThunk = idFromString "$alloc_thunk"
+
+idCon :: Id
+idCon = idFromString "$alloc_con"
 
 compileBinds :: Env -> NameSupply -> [Iridium.Bind] -> [Named Instruction]
 compileBinds env supply binds = concat inits ++ concat assigns
@@ -82,7 +88,11 @@ compileBind' env supply (Iridium.Bind varId target args) (Right struct) =
     (supplyArgs, supply1) = splitNameSupply supply
     (supplyInit, supply2) = splitNameSupply supply1
     (nameVoid, supply3) = freshName supply2
-    (nameStruct, _) = freshName supply3
+    (nameStruct, _) = freshNameFromId (nameSuggestion target) supply3
+
+nameSuggestion :: Iridium.BindTarget -> Id
+nameSuggestion (Iridium.BindTargetConstructor _) = idCon
+nameSuggestion (Iridium.BindTargetFunction _) = idThunk
 
 toStruct :: Env -> Iridium.BindTarget -> Int -> Either Int Struct
 toStruct env (Iridium.BindTargetConstructor (Iridium.DataTypeConstructor _ conId _)) arity = case findMap conId (envConstructors env) of

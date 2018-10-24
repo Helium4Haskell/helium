@@ -47,4 +47,6 @@ isCheap (Con _) = True
 -- and (the binding is lazy or its value is cheap)
 isCheap (Let (Strict (Bind _ value)) expr) = isCheap value && isCheap expr
 isCheap (Let _ expr) = isCheap expr
+-- A call to "$primPackedToString" is cheap
+isCheap (Var name) = name == idFromString "$primPackedToString"
 isCheap _ = False

@@ -14,7 +14,7 @@
 
 module Helium.CodeGeneration.Iridium.Data where
 
-import Lvm.Common.Id(Id, stringFromId)
+import Lvm.Common.Id(Id, stringFromId, idFromString)
 import Data.List(intercalate)
 
 import Helium.CodeGeneration.Iridium.Type
@@ -96,14 +96,14 @@ data PhiBranch = PhiBranch BlockName Variable
 
 data Literal
   = LitInt Int
-  | LitChar Char
   | LitDouble Double
+  | LitString String
   deriving (Eq, Ord)
 
 instance Show Literal where
-  show (LitInt x) = show x
-  show (LitChar x) = show x
-  show (LitDouble x) = show x
+  show (LitInt x) = "int " ++ show x
+  show (LitDouble x) = "float " ++ show x
+  show (LitString x) = "str " ++ show x
 
 instance Show Pattern where
   show (PatternCon con) = show con
@@ -170,6 +170,7 @@ mapBlocks fn (Module name datas methods) = Module name datas $ map fnMethod meth
 
 typeOfExpr :: Expr -> PrimitiveType
 typeOfExpr (Literal (LitDouble _)) = TypeDouble
+typeOfExpr (Literal (LitString _)) = TypeDataType (idFromString "[]")
 typeOfExpr (Literal _) = TypeInt
 typeOfExpr (Call (Global _ (FunctionType _ ret)) _) = ret
 typeOfExpr (Eval _) = TypeAnyWHNF

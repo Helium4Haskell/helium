@@ -21,7 +21,7 @@ import Helium.CodeGeneration.LLVM.CompileConstructor(compileExtractFields)
 import Helium.CodeGeneration.LLVM.CompileStruct
 import qualified Helium.CodeGeneration.LLVM.Builtins as Builtins
 
-import Lvm.Common.Id(Id, NameSupply, freshId, splitNameSupply, mapWithSupply)
+import Lvm.Common.Id(Id, NameSupply, splitNameSupply, mapWithSupply)
 import Lvm.Common.IdMap(findMap)
 
 import qualified Helium.CodeGeneration.Iridium.Data as Iridium
@@ -31,7 +31,7 @@ import LLVM.AST as AST
 import LLVM.AST.Visibility
 import LLVM.AST.CallingConvention
 import LLVM.AST.Linkage
-import LLVM.AST.Constant (Constant(Int))
+import LLVM.AST.Constant (Constant(Int, Vector))
 import qualified LLVM.AST.IntegerPredicate as IntegerPredicate
 
 data Partial = Partial [Named Instruction] (Named Terminator) [BasicBlock]
@@ -79,6 +79,26 @@ compileExpression env supply (Iridium.Literal (Iridium.LitInt value)) name = [na
   where
     constant :: Constant
     constant = Int (fromIntegral $ targetWordSize $ envTarget $ env) (fromIntegral $ value)
+compileExpression env supply (Iridium.Literal (Iridium.LitString value)) name =
+  [ namePtr := Alloca vectorType Nothing 0 []
+  , Do $ Store False (LocalReference (pointer vectorType) namePtr) (ConstantOperand vector) Nothing 0 []
+  , name := Call
+    { tailCallKind = Nothing
+    , callingConvention = Fast
+    , returnAttributes = []
+    , function = Right $ Builtins.unpackString
+    , arguments =
+      [ (ConstantOperand $ Int 32 $ fromIntegral $ length value, [])
+      , (LocalReference (pointer vectorType) namePtr, [])
+      ]
+    , functionAttributes = []
+    , metadata = []
+    }
+  ]
+  where
+    (namePtr, _) = freshName supply
+    vectorType = VectorType (fromIntegral $ length value) (IntegerType 32)
+    vector = Vector $ map (\c -> Int 32 $ fromIntegral $ fromEnum c) value
 -- TODO: Float literals
 compileExpression env supply (Iridium.Call to args) name =
   [ name := Call
@@ -104,13 +124,13 @@ compileExpression env supply expr@(Iridium.Phi branches) name = [name := Phi (co
 
 compileEval :: Env -> NameSupply -> Operand -> Iridium.PrimitiveType -> Name -> [Named Instruction]
 compileEval env supply operand Iridium.TypeAny name =
-  [ toName namePtr := ExtractValue operand [0] []
-  , toName nameIsWHNF := ExtractValue operand [1] []
-  , name := callEval (LocalReference voidPointer $ toName namePtr) (LocalReference bool $ toName nameIsWHNF)
+  [ namePtr := ExtractValue operand [0] []
+  , nameIsWHNF := ExtractValue operand [1] []
+  , name := callEval (LocalReference voidPointer $ namePtr) (LocalReference bool $ nameIsWHNF)
   ]
   where
-    (namePtr, supply') = freshId supply
-    (nameIsWHNF, _) = freshId supply'
+    (namePtr, supply') = freshName supply
+    (nameIsWHNF, _) = freshName supply'
 compileEval env supply operand Iridium.TypeAnyThunk name =
   [ name := callEval operand (ConstantOperand $ Int 1 0)
   ]

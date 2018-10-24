@@ -19,12 +19,13 @@ valueDeclaration :: TypeEnv -> Id -> ValueDeclaration
 valueDeclaration env name = findMap name (teValues env)
 
 builtins :: [(Id, ValueDeclaration)]
-builtins =
+builtins = -- TODO: This should be replaced by parsing abstract definitions
   [ fn "$primUnsafePerformIO" [TypeAny] TypeAnyWHNF
   , fn "$primPutStrLn" [TypeAny] TypeAnyWHNF
   , fn "$primPatternFailPacked" [TypeAny] TypeAnyWHNF
   , fn "$primConcat" [TypeAny] TypeAnyWHNF
   , fn "$primPackedToString" [TypeAny] TypeAnyWHNF
+  , fn "showString" [TypeAny] TypeAnyWHNF
   ]
   where
     fn :: String -> [PrimitiveType] -> PrimitiveType -> (Id, ValueDeclaration)

@@ -13,6 +13,7 @@ module Helium.CodeGeneration.Iridium.FromCore where
 import Helium.CodeGeneration.Core.Arity(aritiesMap)
 import Lvm.Common.Id(Id, NameSupply, freshId, splitNameSupply, mapWithSupply, idFromString, freshIdFromId)
 import Lvm.Common.IdMap
+import Lvm.Common.Byte(stringFromBytes)
 import qualified Lvm.Core.Expr as Core
 import qualified Lvm.Core.Module as CoreModule
 import Data.List(find, replicate)
@@ -302,7 +303,7 @@ getApplication expr = case getApplicationOrConstruction expr [] of
 literal :: Core.Literal -> Literal
 literal (Core.LitInt x) = LitInt x
 literal (Core.LitDouble x) = LitDouble x
-literal (Core.LitBytes x) = LitInt 0 -- TODO: LitBytes
+literal (Core.LitBytes x) = LitString $ stringFromBytes x -- TODO: LitBytes
 
 pattern :: TypeEnv -> Core.Pat -> Maybe Pattern
 pattern _ Core.PatDefault = Nothing

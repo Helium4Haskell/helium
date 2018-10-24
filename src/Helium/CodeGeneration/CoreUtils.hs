@@ -92,6 +92,7 @@ nilId, consId, trueId, guardId :: Id
 
 -- Function "stringToCore" converts a string to a Core expression
 stringToCore :: String -> Expr
+stringToCore [] = nil
 stringToCore [x] = cons (Lit (LitInt (ord x))) nil
 stringToCore xs = var "$primPackedToString" `app_` packedString xs
 

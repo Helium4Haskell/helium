@@ -3,7 +3,7 @@ module Helium.CodeGeneration.LLVM.CompileStruct where
 import Data.Bits (shiftL)
 import Data.Maybe (isJust)
 import Data.List (zipWith4)
-import Lvm.Common.Id(Id, NameSupply, mapWithSupply, splitNameSupply, splitNameSupplies)
+import Lvm.Common.Id(idFromString, Id, NameSupply, mapWithSupply, splitNameSupply, splitNameSupplies)
 import qualified Helium.CodeGeneration.Iridium.Data as Iridium
 import qualified Helium.CodeGeneration.Iridium.Type as Iridium
 import Helium.CodeGeneration.LLVM.Env
@@ -19,6 +19,10 @@ import LLVM.AST.AddrSpace
 import LLVM.AST.Operand
 import qualified LLVM.AST.Constant as Constant
 import qualified LLVM.AST.IntegerPredicate as IntegerPredicate
+
+idHeaderPtr = idFromString "$headerPtr"
+idHeaderValue = idFromString "$headerValue"
+idFieldPtr = idFromString "$fieldPtr"
 
 -- Ceil of a/b
 divCeiling :: Int -> Int -> Int
@@ -80,7 +84,7 @@ tagInFirstElement env struct = tagSize struct + targetGarbageCollectorBits targe
 allocate :: Env -> Name -> Name -> Type -> Struct -> [Named Instruction]
 allocate env nameVoid name t struct =
   [ nameVoid := Call Nothing Fast [] (Right Builtins.alloc) [(ConstantOperand $ Constant.Int 32 3, []), (ConstantOperand $ Constant.Int 32 $ fromIntegral $ sizeOf (envTarget env) struct, [])] [] []
-  , name := BitCast (LocalReference voidPointer nameVoid) t []
+  , name := BitCast (LocalReference voidPointer nameVoid) (pointer t) []
   ]
 
 headerElementSize :: Env -> Int -> Int
@@ -116,7 +120,7 @@ writeHeaderFields supply env reference fields = concat $ mapWithSupply writeHead
       , Do $ Store False (LocalReference (pointer $ IntegerType $ fromIntegral $ headerElementSize env i) namePtr) valueOperand Nothing 0 []
       ]
       where
-        (namePtr, _) = freshName s
+        (namePtr, _) = freshNameFromId idHeaderPtr s
 
 -- TODO: For updates, also use a bit mask to reset the flags in the header, of the fields 
 writeFields :: NameSupply -> Env -> Operand -> Struct -> [Maybe (Operand, Operand)] -> [Operand] -> ([Operand], [Named Instruction])
@@ -136,7 +140,7 @@ writeField env operand struct supply fieldIdx (StructField fType fFlagIndex) (Ju
     (supplyField, supplyHeader) = splitNameSupply supply
 
     -- Field
-    (nameElementPtr, _) = freshName supplyField
+    (nameElementPtr, _) = freshNameFromId idFieldPtr supplyField
     fieldCompiledType = case fType of
       Iridium.TypeAny -> voidPointer -- The flag is stored in the header instead of in the field
       _ -> compileType env fType
@@ -156,7 +160,7 @@ writeField env operand struct supply fieldIdx (StructField fType fFlagIndex) (Ju
           (headerIdx, bitIdx) = findFlagInHeader env struct index
           (nameExtended, supplyHeader') = freshName supplyHeader
           (nameShifted, supplyHeader'') = freshName supplyHeader'
-          (nameHeader, _) = freshName supplyHeader''
+          (nameHeader, _) = freshNameFromId idHeaderValue supplyHeader''
           headerBits = headerElementSize env headerIdx
           headerType = IntegerType $ fromIntegral headerBits
         in
@@ -185,8 +189,8 @@ checkTag supply env reference struct name
     headerBits = headerElementSize env headerIdx
     headerType = IntegerType $ fromIntegral headerBits
     tagType = IntegerType $ fromIntegral $ tagSize struct
-    (headerPtr, supply1) = freshName supply
-    (headerValue, supply2) = freshName supply1
+    (headerPtr, supply1) = freshNameFromId idHeaderPtr supply
+    (headerValue, supply2) = freshNameFromId idHeaderValue supply1
     (headerShifted, supply3) = freshName supply2
     (headerTrunc, _) = freshName supply3
 
@@ -196,7 +200,7 @@ extractField supply env reference _ index (StructField t Nothing) name =
   , name := Load False (LocalReference (compileType env t) namePtr) Nothing 0 []
   ]
   where
-    (namePtr, _) = freshName supply
+    (namePtr, _) = freshNameFromId idFieldPtr supply
 extractField supply env reference struct index (StructField t (Just flagIndex)) name =
   [ namePtr := getElementPtr reference [0, index]
   , nameValue := Load False (LocalReference voidPointer namePtr) Nothing 0 []
@@ -214,10 +218,10 @@ extractField supply env reference struct index (StructField t (Just flagIndex)) 
     emptyStruct :: Constant.Constant
     emptyStruct = Constant.Struct Nothing True [Constant.Undef voidPointer, Constant.Undef bool]
     -- Names
-    (namePtr, supply1) = freshName supply
+    (namePtr, supply1) = freshNameFromId idFieldPtr supply
     (nameValue, supply2) = freshName supply1
-    (headerPtr, supply3) = freshName supply2
-    (headerValue, supply4) = freshName supply3
+    (headerPtr, supply3) = freshNameFromId idHeaderPtr supply2
+    (headerValue, supply4) = freshNameFromId idHeaderValue supply3
     (headerShifted, supply5) = freshName supply4
     (isWhnf, supply6) = freshName supply5
     (nameStruct, _) = freshName supply6

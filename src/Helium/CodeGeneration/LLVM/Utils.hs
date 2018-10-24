@@ -10,7 +10,7 @@ module Helium.CodeGeneration.LLVM.Utils where
 
 import LLVM.AST as AST
 import LLVM.AST.Constant
-import Lvm.Common.Id(Id, stringFromId, freshId, NameSupply)
+import Lvm.Common.Id(Id, stringFromId, freshId, NameSupply, freshIdFromId)
 
 toName :: Id -> Name
 toName = mkName . stringFromId
@@ -22,6 +22,11 @@ freshName :: NameSupply -> (Name, NameSupply)
 freshName supply = (toName newId, supply')
   where
     (newId, supply') = freshId supply
+
+freshNameFromId :: Id -> NameSupply -> (Name, NameSupply)
+freshNameFromId oldId supply = (toName newId, supply')
+  where
+    (newId, supply') = freshIdFromId oldId supply
 
 getElementPtr :: Operand -> [Int] -> Instruction
 getElementPtr address indices = AST.GetElementPtr False address operands []
