@@ -164,8 +164,10 @@ Library
     Helium.CodeGeneration.LLVM.CompileBlock
     Helium.CodeGeneration.LLVM.CompileConstructor
     Helium.CodeGeneration.LLVM.CompileMethod
-    Helium.CodeGeneration.LLVM.CompileThunk
+    Helium.CodeGeneration.LLVM.CompileBind
     Helium.CodeGeneration.LLVM.CompileType
+    Helium.CodeGeneration.LLVM.Struct
+    Helium.CodeGeneration.LLVM.CompileStruct
     Helium.CodeGeneration.LLVM.ConstructorLayout
     Helium.CodeGeneration.LLVM.Env
     Helium.CodeGeneration.LLVM.Target

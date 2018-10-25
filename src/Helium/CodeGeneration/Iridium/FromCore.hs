@@ -18,6 +18,7 @@ import qualified Lvm.Core.Expr as Core
 import qualified Lvm.Core.Module as CoreModule
 import Data.List(find, replicate)
 import Data.Maybe(fromMaybe)
+import Data.Either(partitionEithers)
 
 import Text.PrettyPrint.Leijen (pretty) -- TODO: Remove
 
@@ -26,13 +27,14 @@ import Helium.CodeGeneration.Iridium.Type
 import Helium.CodeGeneration.Iridium.TypeEnvironment
 
 fromCore :: NameSupply -> Core.CoreModule -> Module
-fromCore supply mod@(CoreModule.Module name _ _ decls) = Module name datas methods
+fromCore supply mod@(CoreModule.Module name _ _ decls) = Module name datas abstracts methods
   where
     datas = map (\(dataName, cons) -> DataType dataName cons) $ listFromMap consMap
     consMap = foldr dataTypeFromCoreDecl emptyMap decls
-    methods = concat $ mapWithSupply (`fromCoreDecl` env) supply decls
-    env = TypeEnv () (unionMap valuesFunctions $ unionMap valuesCons $ mapFromList builtins) Nothing
+    (methods, abstracts) = partitionEithers $ concat $ mapWithSupply (`fromCoreDecl` env) supply decls
+    env = TypeEnv () (unionMap valuesFunctions $ unionMap valuesAbstracts $ unionMap valuesCons $ mapFromList builtins) Nothing
     valuesFunctions = mapMap (\arity -> ValueFunction (FunctionType (replicate arity TypeAny) TypeAnyWHNF)) $ aritiesMap mod
+    valuesAbstracts = mapFromList $ map (\(AbstractMethod name fntype) -> (name, ValueFunction fntype)) abstracts
     valuesCons = mapFromList $ listFromMap consMap >>= (\(dataName, cons) -> map (\con@(DataTypeConstructor _ conName _) -> (conName, ValueConstructor con)) cons)
 
 dataTypeFromCoreDecl :: Core.CoreDecl -> IdMap [DataTypeConstructor] -> IdMap [DataTypeConstructor]
@@ -46,14 +48,20 @@ dataTypeFromCoreDecl decl@CoreModule.DeclCon{} = case find isDataName (CoreModul
     con dataType = DataTypeConstructor dataType (CoreModule.declName decl) (replicate (CoreModule.declArity decl) TypeAny)
 dataTypeFromCoreDecl _ = id
 
-fromCoreDecl :: NameSupply -> TypeEnv -> Core.CoreDecl -> [Method]
-fromCoreDecl supply env decl@CoreModule.DeclValue{} = [toMethod supply env (CoreModule.declName decl) (CoreModule.valueValue decl)]
+fromCoreDecl :: NameSupply -> TypeEnv -> Core.CoreDecl -> [Either Method AbstractMethod]
+fromCoreDecl supply env decl@CoreModule.DeclValue{} = [Left $ toMethod supply env (CoreModule.declName decl) (CoreModule.valueValue decl)]
+fromCoreDecl supply env decl@CoreModule.DeclAbstract{} = [Right $ AbstractMethod (CoreModule.declName decl) $ FunctionType (replicate (CoreModule.declArity decl) TypeAny) TypeAnyWHNF]
 fromCoreDecl _ _ _ = []
+
+idEntry, idMatchAfter :: Id
+idEntry = idFromString "entry"
+idMatchAfter = idFromString "match_after"
+idMatchCase = idFromString "match_case"
 
 toMethod :: NameSupply -> TypeEnv -> Id -> Core.Expr -> Method
 toMethod supply env name expr = Method name args' returnType (Block entryName entry) blocks
   where
-    (entryName, supply') = freshId supply
+    (entryName, supply') = freshIdFromId idEntry supply
     fntype@(FunctionType fnArgs returnType) = fromMaybe (error "toMethod: could not find function signature") $ resolveFunction env name
     args' = zipWith Local args fnArgs
     (args, expr') = consumeLambdas expr
@@ -124,11 +132,11 @@ toInstruction supply env continue (Core.Match x alts) =
     jumps :: [(Local, Id)] -- Names of intermediate blocks and names of the variables containing the result
     jumps = mapWithSupply (\s _ ->
       let
-        (blockName, s') = freshId s
+        (blockName, s') = freshIdFromId idMatchCase s
         (varName, _) = freshId s'
       in (Local varName expectedType, blockName)) supply alts
     phiBranches = map (\(loc, block) -> PhiBranch block $ VarLocal loc) jumps
-    (blockId, supply') = freshId supply
+    (blockId, supply') = freshIdFromId idMatchAfter supply
     (result, supply'') = freshId supply'
     expectedType = TypeAnyWHNF -- TODO: More precise type
     blocks = case continue of
@@ -201,7 +209,7 @@ toInstruction supply env continue expr = case getApplicationOrConstruction expr 
         in
           castInstructions
             +> LetAlloc [Bind x (BindTargetFunction $ resolve env fn) args']
-            +> Let y (Eval $ resolve env x)
+            +> Let y (Eval $ VarLocal $ Local x TypeAnyThunk)
             +> ret supplyRet env y TypeAnyWHNF continue
   where
     (fn, args) = getApplication expr
@@ -238,10 +246,10 @@ maybeCasts supply env ((name, t) : tail) = (var : tailVars, instr . tailInstr)
     (var, instr) = maybeCast supply1 env name t
     (tailVars, tailInstr) = maybeCasts supply2 env tail
 
-
 transformAlt :: NameSupply -> TypeEnv -> Continue -> Id -> Core.Alt -> Partial
 transformAlt supply env continue name (Core.Alt pat expr) = case constructorPattern pat of
   Nothing -> toInstruction supply env continue expr
+  Just (_, []) -> toInstruction supply env continue expr
   Just (conId, args) ->
     let
       ValueConstructor con@(DataTypeConstructor _ _ fields) = valueDeclaration env $ conId

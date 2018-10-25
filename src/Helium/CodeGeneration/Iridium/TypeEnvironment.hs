@@ -20,13 +20,13 @@ valueDeclaration env name = findMap name (teValues env)
 
 builtins :: [(Id, ValueDeclaration)]
 builtins = -- TODO: This should be replaced by parsing abstract definitions
-  [ fn "$primUnsafePerformIO" [TypeAny] TypeAnyWHNF
+  [ {- fn "$primUnsafePerformIO" [TypeAny] TypeAnyWHNF
   , fn "$primPutStrLn" [TypeAny] TypeAnyWHNF
-  , fn "$primPatternFailPacked" [TypeAny] TypeAnyWHNF
+  , fn "$primPatternFailPacked" [TypeDataType $ idFromString "[]"] TypeAnyWHNF
   , fn "$primConcat" [TypeAny] TypeAnyWHNF
-  , fn "$primPackedToString" [TypeAny] TypeAnyWHNF
+  , fn "$primPackedToString" [TypeDataType $ idFromString "[]"] TypeAnyWHNF
   , fn "showString" [TypeAny] TypeAnyWHNF
-  ]
+  -} ]
   where
     fn :: String -> [PrimitiveType] -> PrimitiveType -> (Id, ValueDeclaration)
     fn name args result = (idFromString name, ValueFunction $ FunctionType args result)
@@ -66,14 +66,18 @@ resolveFunction env name = case lookupMap name (teValues env) of
   _ -> Nothing
 
 typeEnvForModule :: Module -> TypeEnv
-typeEnvForModule (Module _ dataTypes methods) = TypeEnv () values Nothing
+typeEnvForModule (Module _ dataTypes abstracts methods) = TypeEnv () values Nothing
   where
-    values = mapFromList $ cons ++ methodDecls
+    values = mapFromList $ cons ++ methodDecls ++ abstractDecls
     cons = dataTypes >>= valuesInDataType
     methodDecls = map valueOfMethod methods 
+    abstractDecls = map valueOfAbstract abstracts
 
     valuesInDataType :: DataType -> [(Id, ValueDeclaration)]
     valuesInDataType (DataType name cs) = map (\con@(DataTypeConstructor _ conId _) -> (conId, ValueConstructor con)) cs
 
     valueOfMethod :: Method -> (Id, ValueDeclaration)
     valueOfMethod (Method name args retType _ _) = (name, ValueFunction (FunctionType (map localType args) retType))
+
+    valueOfAbstract :: AbstractMethod -> (Id, ValueDeclaration)
+    valueOfAbstract (AbstractMethod name fntype) = (name, ValueFunction fntype)

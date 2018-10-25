@@ -24,8 +24,13 @@ type BlockName = Id
 data Module = Module
   { moduleName :: !Id
   , moduleDataTypes :: ![DataType]
+  , moduleAbstractMethods :: ![AbstractMethod]
   , moduleMethods :: ![Method]
   }
+
+-- Imported method, eg a method without a definition. The implementation is in some other file.
+data AbstractMethod = AbstractMethod !Id !FunctionType
+  deriving (Eq, Ord)
 
 data Method = Method !Id ![Local] !PrimitiveType !Block ![Block]
   deriving (Eq, Ord)
@@ -154,14 +159,21 @@ instance Show Variable where
 instance Show Block where
   show (Block name instruction) = stringFromId name ++ ":\n" ++ show instruction
 
+instance Show AbstractMethod where
+  show (AbstractMethod name fntype) = "declare @" ++ stringFromId name ++ ": " ++ show fntype
+
 instance Show Method where
   show (Method name args rettype entry blocks) = "define @" ++ stringFromId name ++ showArguments args ++ ": " ++ show rettype ++ " {\n" ++ show entry ++ (blocks >>= ('\n' :) . show) ++ "\n}\n"
 
 instance Show Module where
-  show (Module name decls methods) = "module " ++ show name ++ "\n" ++ (decls >>= ('\n' :) . show) ++ (methods >>= ('\n' :) . show)
+  show (Module name decls abstracts methods) =
+    "module " ++ show name ++ "\n"
+    ++ (decls >>= ('\n' :) . show)
+    ++ (abstracts >>= ('\n' :) . show)
+    ++ (methods >>= ('\n' :) . show)
 
 mapBlocks :: (Instruction -> Instruction) -> Module -> Module
-mapBlocks fn (Module name datas methods) = Module name datas $ map fnMethod methods
+mapBlocks fn (Module name datas abstracts methods) = Module name datas abstracts $ map fnMethod methods
   where
     fnMethod :: Method -> Method
     fnMethod (Method name args rettype entry blocks) = Method name args rettype (fnBlock entry) $ map fnBlock blocks
