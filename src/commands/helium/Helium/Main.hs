@@ -70,9 +70,10 @@ main = do
     
     -- And now deal with Prelude
     preludeRef <- newIORef []
-    _ <- make filePath' (joinPath [baseLibs,prelude]) lvmPath [prelude] options preludeRef
+    let preludeFullname = joinPath [baseLibs,prelude]
+    preludeDone <- make filePath' preludeFullname lvmPath [prelude] options preludeRef
 
-    doneRef <- newIORef []
+    doneRef <- newIORef [(preludeFullname, preludeDone)]
     _ <- make filePath' newFullName lvmPath [moduleName] options doneRef
     return ()
 
