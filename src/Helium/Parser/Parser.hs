@@ -120,9 +120,9 @@ exportList =
           lexRPAREN
           return (\range -> Export_TypeOrClassComplete range typename)
          <|> do
-          cnames <- cname `sepBy` lexCOMMA
+          names <- cname `sepBy` lexCOMMA <|> var `sepBy` lexCOMMA
           lexRPAREN
-          return (\range -> Export_TypeOrClass range typename (MaybeNames_Just cnames))
+          return (\range -> Export_TypeOrClass range typename (MaybeNames_Just names))
        -- If there are no parens, no constructors are added.
        <|> return (\range -> Export_TypeOrClass range typename MaybeNames_Nothing)
 
@@ -376,15 +376,40 @@ impdecl = addRange (
 impspec :: HParser ImportSpecification
 impspec = addRange $
     do  
-        h <- do { lexHIDING; return True }
-        is <- parens (commas import_)
+        h <- option False $
+            do { lexHIDING; return True }
+        lexLPAREN
+        is <- import_ `sepBy` lexCOMMAnotFollowedByRParen
+        optional lexCOMMA
+        lexRPAREN
         return $ \r -> ImportSpecification_Import r h is
+    where
+        lexCOMMAnotFollowedByRParen = try (do{lexCOMMA; notFollowedBy lexRPAREN})
+        
 
 import_ :: HParser Import
 import_ = addRange $
-    do
-        n <- var
-        return $ \r -> Import_Variable r n
+    importVariable <|> importTypeOrClass
+    where
+        importVariable = do
+            varname <- var
+            return (\range -> Import_Variable range varname)
+    
+        importTypeOrClass = do
+          typename <- tycon
+          -- First let's try if constructors/methods are added (e.g. Bool(..) or Bool(True, False)
+          do
+            lexLPAREN
+            do
+              lexDOTDOT
+              lexRPAREN
+              return (\range -> Import_TypeOrClassComplete range typename)
+             <|> do
+              names <- cname `sepBy` lexCOMMA <|> var `sepBy` lexCOMMA
+              lexRPAREN
+              return (\range -> Import_TypeOrClass range typename (MaybeNames_Just names))
+           -- If there are no parens, no constructors are added.
+           <|> return (\range -> Import_TypeOrClass range typename MaybeNames_Nothing)
 
 {-
 cdecls -> " {" decl1 ";" .... ";" decln "}"    (n>=0)
