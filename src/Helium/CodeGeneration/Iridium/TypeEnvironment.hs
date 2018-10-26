@@ -39,7 +39,7 @@ data ValueDeclaration
 
 typeOf :: TypeEnv -> Id -> PrimitiveType
 typeOf env name = case valueDeclaration env name of
-  ValueFunction _ -> TypeFunction
+  ValueFunction fntype -> TypeGlobalFunction fntype
   ValueVariable t -> t
 
 enterFunction :: Id -> FunctionType -> TypeEnv -> TypeEnv

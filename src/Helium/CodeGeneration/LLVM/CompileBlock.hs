@@ -31,7 +31,7 @@ import LLVM.AST as AST
 import LLVM.AST.Visibility
 import LLVM.AST.CallingConvention
 import LLVM.AST.Linkage
-import LLVM.AST.Constant (Constant(Int, Vector))
+import LLVM.AST.Constant (Constant(Int, Array))
 import qualified LLVM.AST.IntegerPredicate as IntegerPredicate
 
 data Partial = Partial [Named Instruction] (Named Terminator) [BasicBlock]
@@ -82,6 +82,8 @@ compileExpression env supply (Iridium.Literal (Iridium.LitInt value)) name = [na
 compileExpression env supply (Iridium.Literal (Iridium.LitString value)) name =
   [ namePtr := Alloca vectorType Nothing 0 []
   , Do $ Store False (LocalReference (pointer vectorType) namePtr) (ConstantOperand vector) Nothing 0 []
+  -- Cast [n x i32]* to [0 x 32]*
+  , nameZero := BitCast (LocalReference (pointer vectorType) namePtr) (pointer vectorZeroType) []
   , name := Call
     { tailCallKind = Nothing
     , callingConvention = Fast
@@ -89,16 +91,18 @@ compileExpression env supply (Iridium.Literal (Iridium.LitString value)) name =
     , function = Right $ Builtins.unpackString
     , arguments =
       [ (ConstantOperand $ Int 32 $ fromIntegral $ length value, [])
-      , (LocalReference (pointer vectorType) namePtr, [])
+      , (LocalReference (pointer vectorZeroType) nameZero, [])
       ]
     , functionAttributes = []
     , metadata = []
     }
   ]
   where
-    (namePtr, _) = freshName supply
-    vectorType = VectorType (fromIntegral $ length value) (IntegerType 32)
-    vector = Vector $ map (\c -> Int 32 $ fromIntegral $ fromEnum c) value
+    (namePtr, supply') = freshName supply
+    (nameZero, _) = freshName supply'
+    vectorType = ArrayType (fromIntegral $ length value) (IntegerType 32)
+    vectorZeroType = ArrayType 0 (IntegerType 32)
+    vector = Array (IntegerType 32) $ map (\c -> Int 32 $ fromIntegral $ fromEnum c) value
 -- TODO: Float literals
 compileExpression env supply (Iridium.Call to args) name =
   [ name := Call
@@ -112,9 +116,9 @@ compileExpression env supply (Iridium.Call to args) name =
       }
   ]
 compileExpression env supply (Iridium.Eval var) name = compileEval env supply (toOperand env var) (Iridium.variableType var) name
-compileExpression env supply (Iridium.Var var) name = cast env (toOperand env var) name t t
+compileExpression env supply (Iridium.Var var) name = cast supply env (toOperand env var) name t t
   where t = Iridium.variableType var
-compileExpression env supply (Iridium.Cast var toType) name = cast env (toOperand env var) name t toType
+compileExpression env supply (Iridium.Cast var toType) name = cast supply env (toOperand env var) name t toType
   where t = Iridium.variableType var
 compileExpression env supply expr@(Iridium.Phi branches) name = [name := Phi (compileType env t) (map compileBranch branches) []]
   where
@@ -135,7 +139,7 @@ compileEval env supply operand Iridium.TypeAnyThunk name =
   [ name := callEval operand (ConstantOperand $ Int 1 0)
   ]
 compileEval env supply operand primType name =
-  cast env operand name primType Iridium.TypeAnyWHNF
+  cast supply env operand name primType Iridium.TypeAnyWHNF
 
 callEval :: Operand -> Operand -> Instruction
 callEval pointer isWHNF =

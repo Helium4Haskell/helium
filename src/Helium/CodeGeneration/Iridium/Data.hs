@@ -193,7 +193,7 @@ typeOfExpr (Phi (PhiBranch _ var : _)) = variableType var
 
 variableType :: Variable -> PrimitiveType
 variableType (VarLocal (Local _ t)) = t
-variableType (VarGlobal (Global _ (FunctionType _ _))) = TypeFunction
+variableType (VarGlobal (Global _ fntype)) = TypeGlobalFunction fntype
 
 variableName :: Variable -> Id
 variableName (VarLocal (Local x _)) = x

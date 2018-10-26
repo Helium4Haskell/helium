@@ -11,6 +11,7 @@ module Helium.CodeGeneration.LLVM.CompileModule (compileModule) where
 import Helium.CodeGeneration.LLVM.CompileMethod(compileMethod, compileAbstractMethod)
 import Helium.CodeGeneration.LLVM.CompileConstructor(dataTypeType, constructorType)
 import Helium.CodeGeneration.LLVM.Env
+import Helium.CodeGeneration.LLVM.Builtins(builtinDefinitions)
 import Helium.CodeGeneration.LLVM.Utils
 
 import Data.String(fromString)
@@ -32,7 +33,7 @@ compileModule env supply (Iridium.Module name datas abstracts methods) = Module
   (fromString "<TODO: Filename.hs>")
   Nothing
   Nothing
-  (dataTypes ++ constructors ++ abstractFunctions ++ functions)
+  (dataTypes ++ constructors ++ builtinDefinitions ++ abstractFunctions ++ functions)
   where
     dataTypes = map (\d@(Iridium.DataType dataId cons) -> TypeDefinition (toNamePrefixed "$data_" dataId) $ Just $ dataTypeType env d $ map (\con -> let name = Iridium.constructorName con in (name, findMap name $ envConstructors env)) cons) datas
     constructors = map (\(name, con) -> TypeDefinition (toName name) $ Just $ constructorType env con) $ listFromMap $ envConstructors env

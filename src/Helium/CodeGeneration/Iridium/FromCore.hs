@@ -205,10 +205,13 @@ toInstruction supply env continue expr = case getApplicationOrConstruction expr 
         -- Don't know whether some function must be evaluated, so bind it to a thunk
         -- and try to evaluate it.
         let
-          (args', castInstructions) = maybeCasts supply''' env (zip args $ repeat TypeAny)
+          (supplyCast1, supplyCast2) = splitNameSupply supply'''
+          (args', castInstructions) = maybeCasts supplyCast1 env (zip args $ repeat TypeAny)
+          (fn', castInstructionFn) = maybeCast supplyCast2 env fn TypeAnyThunk
         in
           castInstructions
-            +> LetAlloc [Bind x (BindTargetFunction $ resolve env fn) args']
+            +> castInstructionFn
+            +> LetAlloc [Bind x (BindTargetFunction fn') args']
             +> Let y (Eval $ VarLocal $ Local x TypeAnyThunk)
             +> ret supplyRet env y TypeAnyWHNF continue
   where
@@ -233,8 +236,21 @@ maybeCast supply env name expected = maybeCastVariable supply (resolve env name)
 
 maybeCastVariable :: NameSupply -> Variable -> PrimitiveType -> (Variable, Instruction -> Instruction)
 maybeCastVariable supply var expected
-  | expected == variableType var = (var, id)
-  | otherwise = (VarLocal $ Local casted expected, Let casted $ Cast var expected)
+  | expected == varType = (var, id)
+  | otherwise = castTo supply var varType expected
+  where
+    varType = variableType var
+
+castTo :: NameSupply -> Variable -> PrimitiveType -> PrimitiveType -> (Variable, Instruction -> Instruction)
+castTo supply var TypeAny to = (newVar, Let nameAnyWhnf (Eval var) . instructions)
+  where
+    (nameAnyWhnf, supply') = freshIdFromId (variableName var) supply
+    (newVar, instructions) = maybeCastVariable supply' (VarLocal $ Local nameAnyWhnf TypeAnyWHNF) to
+castTo supply var (TypeGlobalFunction _) to = (newVar, LetAlloc [Bind nameFunc (BindTargetFunction var) []] . instructions)
+  where
+    (nameFunc, supply') = freshIdFromId (variableName var) supply
+    (newVar, instructions) = maybeCastVariable supply' (VarLocal $ Local nameFunc TypeFunction) to
+castTo supply var _ to = (VarLocal $ Local casted to, Let casted $ Cast var to)
   where
     (casted, _) = freshIdFromId (variableName var) supply
 

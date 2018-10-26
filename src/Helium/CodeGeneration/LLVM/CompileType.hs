@@ -23,6 +23,7 @@ compileType env Iridium.TypeInt = envValueType env
 compileType env Iridium.TypeDouble = FloatingPointType DoubleFP
 compileType env (Iridium.TypeDataType dataName) = NamedTypeReference $ toNamePrefixed "$data_" dataName
 compileType env Iridium.TypeFunction = voidPointer
+compileType env (Iridium.TypeGlobalFunction fntype) = compileFunctionType env fntype
 
 compileFunctionType :: Env -> Iridium.FunctionType -> Type
 compileFunctionType env (Iridium.FunctionType args returnType) = pointer $ FunctionType (compileType env returnType) (map (compileType env) args) False
@@ -46,14 +47,12 @@ toOperand env (Iridium.VarGlobal (Iridium.Global name fntype)) = ConstantOperand
 
 splitValueFlag :: Env -> NameSupply -> Iridium.Variable -> ([Named Instruction], (Operand, Operand))
 splitValueFlag env supply var = case Iridium.variableType var of
-  Iridium.TypeAnyWHNF ->
-    ( [ toName ptrValue := AST.GetElementPtr False operand [ConstantOperand $ Int 8 0, ConstantOperand $ Int 8 0] []
-      , toName ptrIsWHNF := AST.GetElementPtr False operand [ConstantOperand $ Int 8 0, ConstantOperand $ Int 8 1] []
-      , toName nameValue := Load False (LocalReference (pointer voidPointer) (toName ptrValue)) Nothing 0 []
-      , toName nameIsWHNF := Load False (LocalReference (pointer bool) (toName ptrIsWHNF)) Nothing 0 []
+  Iridium.TypeAny ->
+    ( [ nameValue := AST.ExtractValue operand [0] []
+      , nameIsWHNF := AST.ExtractValue operand [1] []
       ]
-    , ( LocalReference voidPointer (toName nameValue)
-      , LocalReference bool (toName nameIsWHNF)
+    , ( LocalReference voidPointer nameValue
+      , LocalReference bool nameIsWHNF
       )
     )
   Iridium.TypeAnyThunk ->
@@ -70,21 +69,29 @@ splitValueFlag env supply var = case Iridium.variableType var of
     )
   where
     operand = toOperand env var
-    (ptrValue, supply') = freshId supply
-    (ptrIsWHNF, supply'') = freshId supply'
-    (nameValue, supply''') = freshId supply''
-    (nameIsWHNF, _) = freshId supply'''
+    (nameValue, supply') = freshName supply
+    (nameIsWHNF, _) = freshName supply'
 
 -- TODO: Casts from / to int or double
-cast :: Env -> Operand -> Name -> Iridium.PrimitiveType -> Iridium.PrimitiveType -> [Named Instruction]
-cast env fromOperand toName Iridium.TypeAny Iridium.TypeAny = [toName := AST.BitCast fromOperand taggedThunkPointer []]
-cast env fromOperand toName fromType Iridium.TypeAny =
-  [ toName := AST.InsertValue
+cast :: NameSupply -> Env -> Operand -> Name -> Iridium.PrimitiveType -> Iridium.PrimitiveType -> [Named Instruction]
+cast supply env fromOperand toName Iridium.TypeAny Iridium.TypeAny = [toName := AST.BitCast fromOperand taggedThunkPointer []]
+cast supply env _ _ (Iridium.TypeGlobalFunction _) _ = error "Cannot cast from GlobalFunction"
+cast supply env _ _ _ (Iridium.TypeGlobalFunction _) = error "Cannot cast to GlobalFunction"
+cast supply env fromOperand toName fromType Iridium.TypeAny =
+  castToVoidPtr
+  ++ [ toName := AST.InsertValue
       (ConstantOperand $ Struct Nothing True [Constant.Undef voidPointer, Constant.Int 1 (if fromType == Iridium.TypeAnyThunk then 0 else 1)])
-      fromOperand
+      operandVoid
       [0]
       []
-  ]
-cast env fromOperand toName fromType toType = [toName := AST.BitCast fromOperand toT []]
+    ]
+  where
+    (castToVoidPtr, operandVoid)
+      | fromType == Iridium.TypeAnyThunk || fromType == Iridium.TypeAnyWHNF = ([], fromOperand)
+      | otherwise =
+        let
+          (name, supply') = freshName supply
+        in (cast supply' env fromOperand name fromType Iridium.TypeAnyWHNF, LocalReference voidPointer name)
+cast supply env fromOperand toName fromType toType = [toName := AST.BitCast fromOperand toT []]
   where
     toT = compileType env toType

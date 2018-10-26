@@ -25,7 +25,8 @@ import qualified LLVM.AST.Constant as Constant
 
 dataTypeType :: Env -> Iridium.DataType -> [(Id, ConstructorLayout)] -> Type
 dataTypeType env (Iridium.DataType dataName _) layouts = case pointerLayouts of
-  [] -> envValueType env
+  -- TODO: Use integer type for datatypes where all constructors have no arguments
+  -- [] -> envValueType env
   [(conId, _)] -> pointer $ NamedTypeReference (toName conId)
   _ -> voidPointer
   where
@@ -35,7 +36,7 @@ dataTypeType env (Iridium.DataType dataName _) layouts = case pointerLayouts of
 
 constructorType :: Env -> ConstructorLayout -> Type
 constructorType env (LayoutInline tag) = envValueType env
-constructorType env (LayoutPointer struct) = pointer $ structTypeNoAlias env struct
+constructorType env (LayoutPointer struct) = structTypeNoAlias env struct
 
 compileExtractFields :: Env -> NameSupply -> Operand -> Struct -> [Maybe Iridium.Local] -> [Named Instruction]
 compileExtractFields env supply reference struct vars

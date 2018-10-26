@@ -9,8 +9,10 @@ data Struct = Struct
   , tagValue :: Int
   , fields :: [StructField]
   }
+  deriving (Eq, Ord, Show)
 
 data StructField = StructField
   { fieldType :: Iridium.PrimitiveType
   , fieldFlagIndex :: Maybe Int
   }
+  deriving (Eq, Ord, Show)

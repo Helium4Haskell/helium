@@ -34,6 +34,7 @@ data PrimitiveType
   | TypeDouble
   | TypeDataType !Id
   | TypeFunction -- ^ Pointer to a function or a thunk in WHNF (partially applied function)
+  | TypeGlobalFunction FunctionType -- ^ A global function
   deriving (Eq, Ord)
 
 data EvaluationState = Unevaluated | EvaluationUnknown | Evaluated deriving (Show, Eq, Ord)
@@ -60,6 +61,7 @@ instance Show PrimitiveType where
   show (TypeInt) = "int"
   show (TypeDataType name) = "data<@" ++ stringFromId name ++ ">"
   show (TypeFunction) = "function"
+  show (TypeGlobalFunction fntype) = "function " ++ show fntype
 
 showArguments' :: (a -> String) -> [a] -> String
 showArguments' showFn = ("("++) . (++")") . intercalate ", " . map showFn

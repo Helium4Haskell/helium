@@ -104,7 +104,7 @@ toStruct env (Iridium.BindTargetFunction var) arity = Right $ Struct Nothing 32 
     remaining = case var of
       Iridium.VarLocal _ -> (1 `shiftL` 16) - 1 -- All 16 bits to 1
       Iridium.VarGlobal (Iridium.Global _ (Iridium.FunctionType args _)) -> length args - arity
-    fields = map (\i -> StructField Iridium.TypeAny (Just i)) [0..arity] 
+    fields = StructField (Iridium.variableType var) Nothing : map (\i -> StructField Iridium.TypeAny (Just i)) [0..arity - 1] 
 
 -- A thunk has an additional argument, namely the function. We add that argument here
 bindArguments :: Iridium.BindTarget -> [Iridium.Variable] -> [Iridium.Variable]

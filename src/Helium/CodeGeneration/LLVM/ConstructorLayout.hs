@@ -31,7 +31,7 @@ data ConstructorLayout
     }
 
 constructorLayout :: TypeEnv.TypeEnv -> Target -> Iridium.DataType -> Int -> Iridium.DataTypeConstructor -> ConstructorLayout
-constructorLayout env target (Iridium.DataType _ constructors) index (Iridium.DataTypeConstructor conId _ fields)
+constructorLayout env target (Iridium.DataType _ constructors) index (Iridium.DataTypeConstructor _ conId fields)
   | fields == [] = LayoutInline index
   | otherwise = LayoutPointer struct
   where

@@ -35,9 +35,7 @@ structType env struct = structTypeNoAlias env struct
 structTypeNoAlias :: Env -> Struct -> Type
 structTypeNoAlias env struct = StructureType False (headerStruct : fieldTypes)
   where
-    -- Search the last flag to find the number of additional header fields (after the field containing the garbage collector bits)
-    (additionalHeaderFields, _) = findFlagInHeader env struct (flagCount struct - 1)
-    headerStruct = StructureType False $ IntegerType (fromIntegral $ firstFieldSize $ envTarget env) : replicate additionalHeaderFields (envValueType env)
+    headerStruct = StructureType False $ IntegerType (fromIntegral $ firstFieldSize $ envTarget env) : replicate (additionalHeaderFields env struct) (envValueType env)
     getFieldType :: StructField -> Type
     getFieldType (StructField Iridium.TypeAny _) = voidPointer
     getFieldType (StructField t _) = compileType env t
@@ -56,6 +54,17 @@ sizeOf target struct = words * wordSize `div` 8
     headerWords = headerBits `divCeiling` wordSize
     wordSize = targetWordSize target
     words = headerWords + length (fields struct)
+
+additionalHeaderFields :: Env -> Struct -> Int
+additionalHeaderFields env struct
+  | flagCount struct == 0 = tagFieldCount
+  | otherwise = max tagFieldCount lastFlagField
+  where
+    -- Search the last flag to find the number of additional header fields (after the field containing the garbage collector bits)
+    (lastFlagField, _) = findFlagInHeader env struct (flagCount struct - 1)
+    tagFieldCount
+      | tagInFirstElement env struct = 0
+      | otherwise = 1
 
 findFlagInHeader :: Env -> Struct -> Int -> (Int, Int)
 findFlagInHeader env struct index
@@ -92,15 +101,14 @@ headerElementSize env 0 = firstFieldSize $ envTarget env
 headerElementSize env _ = targetWordSize $ envTarget env
 
 initialize :: NameSupply -> Env -> Operand -> Struct -> [(Operand, Operand)] -> [Named Instruction]
-initialize supply env reference struct fieldValues = writeInstructions ++ headerInstructions
+initialize supply env reference struct fieldValues
+  | length initialHeader /= length finalHeader = error "Lengths do not match"
+  | otherwise = writeInstructions ++ headerInstructions
   where
-    -- Search the last flag to find the number of additional header fields (after the field containing the garbage collector bits)
-    (additionalHeaderFields, _) = findFlagInHeader env struct (flagCount struct - 1)
-
     (supplyHeader, supplyFields) = splitNameSupply supply
 
     initialHeader = ConstantOperand (Constant.Int (fromIntegral $ headerElementSize env 0) (initialHeaderValue 0))
-      : map (\i -> ConstantOperand $ Constant.Int (fromIntegral $ headerElementSize env i) (initialHeaderValue i)) [0..additionalHeaderFields - 1]
+      : map (\i -> ConstantOperand $ Constant.Int (fromIntegral $ headerElementSize env i) (initialHeaderValue i)) [0..additionalHeaderFields env struct - 1]
     initialHeaderValue index
       | index == 0 && tagInFirstElement env struct = fromIntegral $ tagValue struct `shiftL` targetGarbageCollectorBits (envTarget env)
       | index == 1 && not (tagInFirstElement env struct) = fromIntegral $ tagValue struct
@@ -168,7 +176,7 @@ writeField env operand struct supply fieldIdx (StructField fType fFlagIndex) (Ju
             , nameShifted := Shl False False (LocalReference headerType nameExtended) (ConstantOperand $ Constant.Int (fromIntegral headerBits) (fromIntegral bitIdx)) []
             , nameHeader := Xor (headers !! headerIdx) (LocalReference headerType nameShifted) []
             ]
-          , take (headerIdx - 1) headers ++ [LocalReference headerType nameHeader] ++ drop headerIdx headers
+          , take (headerIdx) headers ++ [LocalReference headerType nameHeader] ++ drop (headerIdx + 1) headers
           )
 
 checkTag :: NameSupply -> Env -> Operand -> Struct -> Name -> [Named Instruction]
