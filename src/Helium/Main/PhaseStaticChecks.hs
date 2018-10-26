@@ -7,7 +7,7 @@
 -}
 
 module Helium.Main.PhaseStaticChecks(phaseStaticChecks) where
-
+import Helium.ModuleSystem.GatherImports (ModuleDecls, ImportList)
 import Helium.Main.CompileUtils
 import Helium.StaticAnalysis.Messages.Warnings(Warning)
 import qualified Helium.StaticAnalysis.StaticChecks.StaticChecks as SC
@@ -17,13 +17,13 @@ import Helium.StaticAnalysis.Messages.StaticErrors
 import Helium.StaticAnalysis.Messages.Information (showInformation)
 
 phaseStaticChecks :: 
-   String -> Module -> [(Name,ImportEnvironment)] -> [Option] -> 
+   String -> Module -> [(Name,ImportEnvironment, ModuleDecls)] -> [Option] -> 
    Phase Error (ImportEnvironment, [(Name,TpScheme)], [Warning])
 phaseStaticChecks fullName module_ importEnvsWithMod options = do
     enterNewPhase "Static checking" options
 
     let (_, baseName, _) = splitFilePath fullName
-        importEnvs = map snd importEnvsWithMod
+        importEnvs = map (\(_,b,_) -> b) importEnvsWithMod
 
         res = SC.wrap_Module (SC.sem_Module module_) SC.Inh_Module {
                  SC.baseName_Inh_Module = baseName,

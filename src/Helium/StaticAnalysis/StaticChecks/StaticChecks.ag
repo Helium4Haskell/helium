@@ -11,7 +11,7 @@
 
 ATTR Module
    [ baseName                  : String
-     importEnvironmentsWithMod : {[(Name,ImportEnvironment)]}
+     importEnvironmentsWithMod : {[(Name,ImportEnvironment, ModuleDecls)]}
      options                   : {[Option]}
    |
    | collectEnvironment    : ImportEnvironment  
@@ -52,6 +52,7 @@ import Helium.CodeGeneration.DerivingShow
 import qualified Data.Map as M
 
 import Helium.ModuleSystem.ImportEnvironment
+import Helium.ModuleSystem.GatherImports (ModuleDecls)
 import Helium.Parser.OperatorTable
 import Data.Char ( isUpper )
 
@@ -74,7 +75,7 @@ SEM Module
                  . derivedRanges   = map getNameRange (map fst @derivedFunctions)
                  . initialScope    = map fst @derivedFunctions ++ 
                                      (concatMap (M.keys . typeEnvironment) @importEnvironments)
-                 . importEnvironments = map snd @lhs.importEnvironmentsWithMod                 
+                 . importEnvironments = map (\(_,b,_) -> b) @lhs.importEnvironmentsWithMod                 
 {
 -- filter undefined errors that are caused by the removal of a duplicate definition
 filterRemovedNames :: [(Name,Entity)] -> Error -> Bool

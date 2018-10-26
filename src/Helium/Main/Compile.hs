@@ -66,7 +66,7 @@ compile basedir fullName options lvmPath doneModules =
         -- Phase 3: Importing
         (indirectionDecls, importEnvsWithMod) <-
             phaseImport fullName parsedModule lvmPath options
-        let importEnvs = map snd importEnvsWithMod
+        let importEnvs = map (\(_,b,_) -> b) importEnvsWithMod
         
         -- Phase 4: Resolving operators
         resolvedModule <- 

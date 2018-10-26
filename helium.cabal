@@ -163,6 +163,7 @@ Library
     Helium.ModuleSystem.CoreToImportEnv
     Helium.ModuleSystem.DictionaryEnvironment
     Helium.ModuleSystem.ExtractImportDecls
+    Helium.ModuleSystem.GatherImports
     Helium.ModuleSystem.ImportEnvironment
     Helium.Parser.CollectFunctionBindings
     Helium.Parser.LayoutRule

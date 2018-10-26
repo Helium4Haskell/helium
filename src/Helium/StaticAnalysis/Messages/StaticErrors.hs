@@ -66,6 +66,7 @@ data Error  = NoFunDef Entity Name {-names in scope-}Names
             | ClassesAndInstancesNotAllowed Range
             | ExportWrongParent Entity Name {-Value Construct-} Name {-Wrong Parent-} Name {-Right Parent-} Names {-Right Childs-}
             | ExportConflict [(Name, (Name, String))] {-(declaration, export list entry, exact declaration entry)-}
+            | NotExportedByModule Name {-The thing -} Name {-The module-} Names {-Similair names-}
             
 instance HasMessage Error where
    getMessage x = let (oneliner, hints) = showError x
@@ -112,6 +113,7 @@ instance HasMessage Error where
       ClassesAndInstancesNotAllowed r -> [r]
       ExportWrongParent _ name _ _ _ -> [getNameRange name]
       ExportConflict conflicts    -> [getNameRange name | (_, (name, _)) <- conflicts]
+      NotExportedByModule name _ _ -> [getNameRange name]
  
 sensiblySimilar :: Name -> Names -> [Name]   
 sensiblySimilar name inScope = 
@@ -394,11 +396,17 @@ showError anError = case anError of
       )
 
    ExportWrongParent entity name parent rightparent rightchilds ->
+    let impoorexp = case entity of
+                      ImportVariable -> "import"
+                      ImportConstructor -> "import"
+                      ImportTypeConstructorOrClass -> "import"
+                      _ -> "export"
+    in
       ( MessageString $ (show.show) parent ++ " is not the parent of " ++ show entity ++ 
-                        " " ++ (show.show) name ++ ". " ++ (capitalize.show) entity ++ "s can only be exported with the correct parent."
-      , let childhints = [MessageString $ "Did you mean to export " ++ (show.show) n ++ " with parent " ++ (show.show) parent ++ "?"| n <- sensiblySimilar name rightchilds]
+                        " " ++ (show.show) name ++ ". " ++ (capitalize.show) entity ++ "s can only be "++ impoorexp ++"ed with the correct parent."
+      , let childhints = [MessageString $ "Did you mean to "++ impoorexp ++" " ++ (show.show) n ++ " with parent " ++ (show.show) parent ++ "?"| n <- sensiblySimilar name rightchilds]
         in if null childhints then
-             [MessageString $ "Did you mean to export " ++ (show.show) name ++ " with parent " ++ (show.show) rightparent ++ "?"]
+             [MessageString $ "Did you mean to "++ impoorexp ++" " ++ (show.show) name ++ " with parent " ++ (show.show) rightparent ++ "?"]
            else childhints
       )
 
@@ -413,7 +421,14 @@ showError anError = case anError of
         ( MessageString (
             "There is an export conflict for  " ++ (show.show) thename ++ ": \n\t" ++ 
             (intercalate "\n\t" . map showline) conflicts
-        ) , []) 
+        ) , [])
+
+   NotExportedByModule name importMod inScope ->
+      let 
+        hints = [ MessageString ("Did you mean " ++ prettyOrList (map (show . show) xs) ++ " ?")
+                | let xs = sensiblySimilar name inScope, not (null xs) ]
+      in
+        (MessageString ("The module " ++ (show.show) importMod ++ " doesn't export " ++ (show.show) name) , hints)
 
    _ -> internalError "StaticErrors.hs" "showError" "unknown type of Error"
 
@@ -502,10 +517,12 @@ errorLogCode anError = case anError of
           ClassesAndInstancesNotAllowed _         -> "ci"
           ExportWrongParent entity _ _ _ _        -> "wp" ++ code entity
           ExportConflict _                        -> "cf"
+          NotExportedByModule _ _ _               -> "ne"
    where code entity = fromMaybe "??"
                      . lookup entity 
                      $ [ (TypeSignature    ,"ts"), (TypeVariable                ,"tv"), (TypeConstructor,"tc")
                        , (Definition       ,"de"), (Constructor                 ,"co"), (Variable       ,"va") 
                        , (Import           ,"im"), (ExportVariable              ,"ev"), (ExportModule   ,"em")
                        , (ExportConstructor,"ec"), (ExportTypeConstructorOrClass,"et"), (Fixity         ,"fx")
+                       , (ImportConstructor,"ic"), (ImportTypeConstructorOrClass,"it"), (ImportVariable ,"iv")
                        ]                    

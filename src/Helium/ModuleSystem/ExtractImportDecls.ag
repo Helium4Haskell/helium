@@ -1,4 +1,4 @@
-ATTR Module [ | | coreImportDecls : { [(Core.CoreDecl,[Id], Name)] } ] 
+ATTR Module [ | | coreImportDecls : { [ImportList] } ] 
 
 INCLUDE "UHA_Syntax.ag"
 INCLUDE "ToCoreName.ag"
@@ -7,18 +7,35 @@ imports{
 import Helium.Syntax.UHA_Syntax
 import Helium.Syntax.UHA_Utils
 import Lvm.Common.Id
+import Lvm.Common.IdSet
 import qualified Lvm.Core.Expr as Core
 import qualified Lvm.Core.Module as Core
 import Helium.Utils.Utils (internalError)
 }
+{
+type ImportList = ( Core.CoreDecl -- The import declaration
+                    , Maybe Bool    -- Nothing if there is no import specification. Then True if hiding, false if not.
+                    , IdSet         -- Values
+                    , IdSet         -- Constructors, records fields or class methods
+                    , IdSet         -- Complete types or classes
+                    , IdSet         -- Only the type constructor or class name
+                    , Name          -- The imported module name
+                    )
+}
 
   
 ATTR Body ImportDeclarations ImportDeclaration
-   [ | | coreImportDecls USE { ++ } { [] } : { [(Core.CoreDecl,[Id], Name)] } ]  
+   [ | | coreImportDecls USE { ++ } { [] } : { [ImportList] } ] 
     
 SEM ImportDeclaration
     | Import 
-        lhs.coreImportDecls = [(@loc.importDecls,@loc.hidings, @name.self)]
+        lhs.coreImportDecls = [( @loc.importDecls
+                               , @importspecification.importspec
+                               , @importspecification.values
+                               , @importspecification.confieldormethods
+                               , @importspecification.typeorclassesCompl
+                               , @importspecification.typeorclasses
+                               , @name.self)]
         loc.importDecls =
             
           if @qualified || not @asname.isNothing then
@@ -37,23 +54,19 @@ SEM ImportDeclaration
                           }
                   , Core.declCustoms = []
                   }
-                  
-        loc.hidings = @importspecification.imps
 
-SEM MaybeImportSpecification [ | | imps : {[Id]}]
-    | Nothing              lhs.imps     = []
-    | Just                 lhs.imps     = @importspecification.imps
+ATTR MaybeImportSpecification ImportSpecification [ | | importspec : {Maybe Bool} ]
+
+SEM MaybeImportSpecification
+    | Nothing              lhs.importspec     = Nothing
 
 SEM ImportSpecification
-    | Import               lhs.imps     =
-        if not @hiding then
-            internalError "ExtractImportDecls.ag" "ImportSpecification.Import" "import lists are not supported"
-        else
-            @imports.imps
+    | Import lhs.importspec = Just @hiding
 
-ATTR ImportSpecification Imports Import [ | | imps USE { ++ } { [] } : {[Id]} ]
+ATTR MaybeImportSpecification ImportSpecification Imports Import [ | | values, typeorclasses, confieldormethods, typeorclassesCompl USE { `unionSet` } { emptySet } : IdSet ]
 
 SEM Import
-    | Variable                lhs.imps = [idFromName @name.self]
-    | TypeOrClass             lhs.imps = internalError "ExtractImportDecls.ag" "ImportSpecification.Import" "only variables can be hidden"
-    | TypeOrClassComplete     lhs.imps = internalError "ExtractImportDecls.ag" "ImportSpecification.Import" "only variables can be hidden"
+    | Variable                lhs.values             = singleSet (idFromName @name.self)
+    | TypeOrClass             lhs.typeorclasses      = singleSet (idFromName @name.self)
+                              lhs.confieldormethods  = setFromList $ maybe [] (map idFromName) @names.names
+    | TypeOrClassComplete     lhs.typeorclassesCompl = singleSet (idFromName @name.self)
