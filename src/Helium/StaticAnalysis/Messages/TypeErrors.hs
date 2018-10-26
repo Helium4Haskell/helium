@@ -13,7 +13,7 @@ module Helium.StaticAnalysis.Messages.TypeErrors where
 import Helium.StaticAnalysis.Messages.Messages
 import Top.Types
 
-import Data.List       (union, partition)
+import Data.List       (union, partition,find, intercalate)
 import Helium.Syntax.UHA_Syntax (Range, Name)
 import Helium.Syntax.UHA_Range  (getNameRange)
 import Helium.StaticAnalysis.Miscellaneous.UHA_Source
@@ -127,3 +127,14 @@ makeRestrictedButOverloadedError name scheme =
                  ]
        hint    = "Only functions and simple patterns can have an overloaded type"
    in TypeError [getNameRange name] [message] table [("hint", MessageString hint)]
+
+makeMissingInstancePredicateError :: Range -> Name -> String -> Predicate -> [(String, Name)] -> [(Name, Tp)] -> TypeError
+makeMissingInstancePredicateError source className instanceName (Predicate predName tp) definedPredicates mapping =
+    let 
+        predicate = predName ++ " " ++ show (maybe (error "Invalid mapping") fst $ find (\x -> snd x == tp) mapping)
+        message = MessageOneLiner $ MessageString $ "Missing predicate " ++ show predicate ++ " for instance definition of " ++ show className ++ " " ++ instanceName
+        table = [
+            "Predicates" <:> MessageString (intercalate ", " $ map (\(name, var) -> name ++ " " ++ show var) definedPredicates)
+            ]
+        hint = "Add the missing predicate to the instance definition"
+    in TypeError [source] [message] table [("hint", MessageString hint)]

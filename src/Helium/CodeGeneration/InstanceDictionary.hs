@@ -54,7 +54,7 @@ classFunctions importEnv className combinedNames = [DeclCon
                         { declName    = idFromString $ "$get" ++ superName ++ "$" ++ className
                         , declAccess  = public
                         , valueEnc    = Nothing
-                        , valueValue  = Lam dictParam 
+                        , valueValue  = Lam dictParam $ Let (Strict $ Bind dictParam (Var dictParam))
                                         (Match dictParam 
                                             [
                                                 Alt (PatCon (ConId $ idFromString ("Dict" ++ className)) (map idFromString labels)) 

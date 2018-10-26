@@ -66,10 +66,10 @@ SEM Declaration
                                                     (@lhs.substitution |-> @originalFunctionType)
                                                     (@lhs.substitution |-> @declPredicates)
         bindings . availablePredicates   = map PredicateFunction @declPredicates ++ @lhs.availablePredicates
-        lhs      . dictionaryEnvironment =   if (not $ isJust @lhs.instanceName) then 
-                                                    addForDeclaration @bindings.name @declPredicates @bindings.dictionaryEnvironment
-                                                else
-                                                    @bindings.dictionaryEnvironment
+        lhs      . dictionaryEnvironment =  if (not $ isJust @lhs.instanceName) then 
+                                                addForDeclaration @bindings.name @declPredicates @bindings.dictionaryEnvironment
+                                            else
+                                                @bindings.dictionaryEnvironment
        
   | PatternBinding 
        loc           . declPredicates = case @pattern.self of
@@ -201,7 +201,7 @@ getCurrentClassPredicate Nothing _ _ predicates = Nothing
 getCurrentClassPredicate (Just (className, typeVars)) derivedType (Just classType) preds =    
     Just (Predicate (getNameName className) $ TVar tv)
     where
-        tv = maybe (error "Invalid type variable") snd (find ((getNameName (head typeVars) ==) . fst) typeVarMapping)
+        tv = maybe (error "Invalid type variable") snd (find ((getNameName (chead typeVars) ==) . fst) typeVarMapping)
         typeVarMapping :: [(String, Int)]
         typeVarMapping = map (\(orig, new) -> (fromJust $ lookup orig variables, new)) varMapping
         variables = getQuantorMap classType
@@ -212,5 +212,5 @@ getCurrentClassPredicate (Just (className, typeVars)) derivedType (Just classTyp
         mapping (TApp f1 a1) (TApp f2 a2) = nub (mapping f1 f2 ++ mapping a1 a2)
         mapping _ _ = error "Invalid type scheme"
 
-        
+
 }

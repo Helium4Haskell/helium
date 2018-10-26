@@ -26,7 +26,7 @@ SEM Module
             loc  . imports = foldr combineImportEnvironments emptyEnvironment ( @loc.collectEnvironment : @lhs.importEnvironments)
             loc .  typeSynonyms = getOrderedTypeSynonyms @loc.imports
             loc  . typeSynonymErrors = noTypeSynonymsInInstance @loc.typeSynonyms @body.instances
-            loc  . instanceErrors = makeClassEnvironmentErrors $ checkClassEnvironment @loc.typeSynonyms @body.classEnv @body.instances
+            loc  . instanceErrors = makeClassEnvironmentErrors $ checkClassEnvironment @loc.typeSynonyms (M.unionWith combineClassDecls @body.classEnv $ classEnvironment $ combineImportEnvironmentList @lhs.importEnvironments) @body.instances
             loc  . overlappingInstances = overlappingInstances $ foldr insertInst @body.classEnv (getInstanceNames @lhs.importEnvironments ++ @body.instances)
 
 -----------------------------------------

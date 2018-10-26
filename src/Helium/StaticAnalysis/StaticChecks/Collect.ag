@@ -306,7 +306,7 @@ ATTR Declarations Declaration [ | | collectTypeClasses  USE { ++ } { [] } : { [(
 ATTR Body Declarations Declaration [ | | collectClassMemberEnv USE { `M.union` } { M.empty } : {ClassMemberEnvironment} ]
 
 SEM Module
-    | Module body . classMemberEnv = foldr exclusiveUnion @body.collectClassMemberEnv (map classMemberEnvironment @lhs.importEnvironments)
+    | Module body . classMemberEnv = foldr M.union @body.collectClassMemberEnv (map classMemberEnvironment @lhs.importEnvironments)
 
 SEM Declaration
     | Class lhs . collectTypeClasses = [(@simpletype.name, @where.typeSignatures)]
@@ -415,6 +415,7 @@ getFunctionBindingName (FunctionBinding_FunctionBinding _ lhs _)= getLhsName lhs
 
 getLhsName :: LeftHandSide -> Name
 getLhsName (LeftHandSide_Function _ name _) = name
+getLhsName (LeftHandSide_Infix _ _ name _) = name
 }
 
 ATTR Body Declaration Declarations [ | | instances USE {++} {[]} : {[(Range, Instance)]} ]

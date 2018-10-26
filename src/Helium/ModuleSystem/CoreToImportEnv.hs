@@ -21,7 +21,7 @@ import Helium.Parser.Parser(type_, contextAndType)
 import Helium.Parser.OperatorTable
 import Helium.ModuleSystem.ImportEnvironment
 import Helium.Syntax.UHA_Utils
-import Helium.Syntax.UHA_Range(makeImportRange, setNameRange)
+import Helium.Syntax.UHA_Range(makeImportRange, setNameRange, noRange)
 import Helium.Syntax.UHA_Syntax
 
 import Top.Types
@@ -31,6 +31,8 @@ import Data.List
 import Data.Char
 import Data.Maybe
 import qualified Data.Map as M
+
+import Debug.Trace
 
 
 typeDictFromCustoms :: String -> [Custom] -> TpScheme
@@ -135,33 +137,58 @@ makeImportName importedInMod importedFromMod n =
         (makeImportRange (idFromString importedInMod) importedFromMod)
 
 
-insertDictionaries :: CoreDecl -> ImportEnvironment -> ImportEnvironment
-insertDictionaries DeclAbstract 
-                    { declName    = n
+insertDictionaries :: String -> CoreDecl -> ImportEnvironment -> ImportEnvironment
+insertDictionaries importedInModule 
+        DeclAbstract{ declName    = n
                     , declAccess  = Imported{importModule = importedFromModId}
                     , declCustoms = cs
-                    } env | "$dict" `isPrefixOf` stringFromId n = setClassEnvironment nClass env
-                where
-                    dictPrefix = "$dict"
-                    splitDictName dict = (getClassName dict, getTypeName dict) 
-                    getClassName :: String -> String
-                    getClassName = takeWhile (/='$')
-                    getTypeName :: String -> String
-                    getTypeName = drop 1 . dropWhile (/='$')
-                    (className, typeName) = splitDictName (drop (length dictPrefix) (stringFromId n))
-                    tpVars = zip (selectCustoms "typeVariable") (map TVar [0..])
-                    instancePred = Predicate className (foldl TApp (TCon typeName) (map snd tpVars))
-                    superPreds :: Predicates
-                    superPreds = map (\x -> Predicate (takeWhile (/='-') x) (fromJust $ lookup (drop 1 $ dropWhile (/= '-') x) tpVars)) $ selectCustoms "superInstance" 
-                    addInstance :: Instances -> Instances
-                    addInstance = ((instancePred, superPreds):)
-                    nClass = M.update (Just . second addInstance) className (classEnvironment env)
-                    selectCustoms :: String -> [String]
-                    selectCustoms n = map (\(CustomDecl _ [CustomBytes values]) -> stringFromBytes values) $ filter (\(CustomDecl (DeclKindCustom n') _) -> n == stringFromId n') cs
-insertDictionaries _ env = env
+                    } env 
+                        | "$dict" `isPrefixOf` stringFromId n = 
+                            let
+                                dictPrefix = "$dict"
+                                splitDictName dict = (getClassName dict, getTypeName dict) 
+                                getClassName :: String -> String
+                                getClassName = takeWhile (/='$')
+                                getTypeName :: String -> String
+                                getTypeName = drop 1 . dropWhile (/='$')
+                                (className, typeName) = splitDictName (drop (length dictPrefix) (stringFromId n))
+                                tpVars = zip (selectCustomsString "typeVariable" cs) (map TVar [0..])
+                                instancePred = Predicate className (foldl TApp (TCon typeName) (map snd tpVars))
+                                superPreds :: Predicates
+                                superPreds = map (\x -> Predicate (takeWhile (/='-') x) (fromJust $ lookup (drop 1 $ dropWhile (/= '-') x) tpVars)) $ selectCustomsString "superInstance" cs
+                                addInstance :: Instances -> Instances
+                                addInstance = ((instancePred, superPreds):)
+                                nClass = M.update (Just . second addInstance) className (classEnvironment env)
+                                
+                            in setClassEnvironment nClass env
+
+insertDictionaries importedInModule 
+                    DeclCustom  { declName    = n
+                                , declKind    = DeclKindCustom ident
+                                , declCustoms = cs
+                                } env
+                                | stringFromId ident == "ClassDefinition" = let
+                                    tpVar = map (\(CustomDecl _ [CustomName n]) -> nameFromId n) $ selectCustoms "ClassTypeVariables" cs 
+                                    functions = map getFunction $ selectCustoms "Function" cs
+                                    getFunction :: Custom -> (Name, TpScheme, Bool, HasDefault)
+                                    getFunction (CustomDecl _ [
+                                            CustomName fname,
+                                            CustomBytes tps
+                                        ]) = (nameFromString $ stringFromId fname, makeTpSchemeFromType $ parseFromString type_ $ stringFromBytes tps, False, False)
+                                    className = nameFromId n
+                                    classMembers = (tpVar, functions) 
+                                in setClassMemberEnvironment (M.insert className classMembers (classMemberEnvironment env)) env
+insertDictionaries _ _ env = env
+
+selectCustomsString ::  String -> [Custom] -> [String]
+selectCustomsString n cs = map (\(CustomDecl _ [CustomBytes values]) -> stringFromBytes values) $ filter (\(CustomDecl (DeclKindCustom n') _) -> n == stringFromId n') cs
+
+selectCustoms :: String -> [Custom] -> [Custom]
+selectCustoms n = filter (\(CustomDecl (DeclKindCustom n') _) -> n == stringFromId n')
+
 
 getImportEnvironment :: String -> [CoreDecl] -> ImportEnvironment
-getImportEnvironment importedInModule decls = foldr insertDictionaries (foldr insert emptyEnvironment decls) decls
+getImportEnvironment importedInModule decls = foldr (insertDictionaries importedInModule) (foldr insert emptyEnvironment decls) decls
    where
       insert :: CoreDecl -> (ImportEnvironment -> ImportEnvironment) 
       insert decl =

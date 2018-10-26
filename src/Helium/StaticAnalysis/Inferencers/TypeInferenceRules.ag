@@ -15,7 +15,7 @@
 SEM Module
   | Module
       loc  -- Solve the type constraints.
-           . (SolveResult betaUniqueAtTheEnd substitution typeschemeMap _ solveErrors) = @solveResult
+           . (SolveResult betaUniqueAtTheEnd substitution typeschemeMap predicates solveErrors) = @solveResult
            . (solveResult, logEntries) =
                 (selectConstraintSolver @lhs.options (setClassEnvironment @classEnv @lhs.importEnvironment))
                    @classEnv
@@ -50,6 +50,7 @@ SEM Module
                                      else maximum @monomorphics + 1
             . instanceTypes     = []
             . variableMapping   = Nothing
+            . requiredPredicates = @predicates
 
 ---------------------------------------------------------------------------------------
 -- Type Inferencing : Body
@@ -133,7 +134,7 @@ SEM Declaration
   | PatternBinding
       lhs           . bindingGroups = @mybdggrp : @lhs.bindingGroups
       pattern       . betaUnique    = @lhs.betaUnique + 1
-      righthandside . monos         = findMono (head (M.keys @pattern.environment)) @lhs.inheritedBDG ++ @lhs.monos
+      righthandside . monos         = findMono (chead (M.keys @pattern.environment)) @lhs.inheritedBDG ++ @lhs.monos
       loc           . betaRight     = TVar @lhs.betaUnique
                     . newcon        = [ (@betaRight .==. @pattern.beta) @cinfo ]
                     . mybdggrp      = ( @pattern.environment
@@ -169,7 +170,7 @@ SEM Declaration
                                         (
                                             map (\(name, beta, _) ->
                                                 let 
-                                                    funcDef = head (filter (\((x, _), _) -> x == name) @loc.members)
+                                                    funcDef = chead (filter (\((x, _), _) -> x == name) @loc.members)
                                                     subType = substituteClassVariables (snd . fst $ funcDef) @simpletype.name @classBeta
                                                     fType = addSimpleTypeContextToType @simpletype.self subType
                                                     typeVars = @simpletype.typevariables
@@ -182,10 +183,17 @@ SEM Declaration
                                         ) ++ [@where.constraints]
         loc         . members       = zip @where.typeMemberBindings (map TVar [(@lhs.betaUnique + 1)..])
   | Instance
+        lhs      . collectErrors        = let 
+                                            checkPredicate :: Predicate -> [TypeError]
+                                            checkPredicate p@(Predicate n v) 
+                                                | p `elem` map (superClassToPredicate @instanceBetas) @superClasses = []
+                                                | v `elem` map snd @instanceBetas = [makeMissingInstancePredicateError @range.self @name.self (show $ makeTpSchemeFromType (chead $ @types.self)) p (@superClasses) @instanceBetas]
+                                                | otherwise = []
+                                          in concatMap checkPredicate @lhs.requiredPredicates
         where   . betaUnique            = @lhs.betaUnique + 2 + length(@typeVariabeles) + length (@memberBetas) * (length (@superClasses) + 1)
         where   . assumptions           = noAssumptions
         where   . constraints           = emptyTree
-        where   . variableMapping       = Just [(head $ fst @classMembers, @instBeta)]
+        where   . variableMapping       = Just [(chead $ fst $ @classMembers, @instBeta)]
         where   . classMemberTypeSchemes = appendClasses ((maybe (error "Invalid class name") ((map (\(n, tps, _, _)->(n, tps))).snd)
                                             $ M.lookup @name.self (classMemberEnvironment @lhs.importEnvironment))) @lhs.allTypeSchemes
         where   . instanceTypes         = maybe [] ((map (\(n, tps, _, _)->(n, let
@@ -195,7 +203,7 @@ SEM Declaration
                                                     typeVariablesMapped = map (\(n, s) -> (fromJust $ find (\tv -> getNameName tv == s) typeVars, TVar n)) typeIndices
                                                     tpWContext = addContextToType className typeVariablesMapped tps
 
-                                                    --tpscheme = addContextToType @name.self [(head $ fst @classMembers, @classBeta)] tps
+                                                    --tpscheme = addContextToType @name.self [(chead $ fst @classMembers, @classBeta)] tps
                                                 in tpWContext))).snd) $ M.lookup @name.self (classMemberEnvironment @lhs.importEnvironment)
         lhs     . instanceDicts         = M.empty
         loc     . classMembers          = selectClass @lhs.importEnvironment @name.self
@@ -223,17 +231,17 @@ SEM Declaration
                                             ]
         loc     . instBeta              = TVar      @lhs.betaUnique
         loc     . classBeta             = TVar $    @lhs.betaUnique + 1
-        loc     . typeVariabeles        = namesInType (head $ @types.self)
+        loc     . typeVariabeles        = namesInType (chead $ @types.self)
         loc     . instanceBetas         = (zip @typeVariabeles [TVar n | n <- [@lhs.betaUnique + 2..]])
-        loc     . instsType             = makeTpFromType @instanceBetas (head $ @types.self)
+        loc     . instsType             = makeTpFromType @instanceBetas (chead $ @types.self)
         loc     . cinfo                 = emptyConstraintInfo
         loc     . superClasses          = getSuperClasses @context.self
         loc     . memberSuperClassBeta  = [TVar v | v <- [(@lhs.betaUnique + 2 + length @typeVariabeles)..]]
         loc     . memberConstraints     = [(.>. Node []) $ (concatMap (\((_, tpscheme, tp), memberSuperClassBeta)->
                                             let 
-                                                instSubType = substituteClassVariables tpscheme (fst $ head @classVariable) @instsType
-                                                subType = substituteClassVariables tpscheme (fst $ head @classVariable) @classBeta
-                                                fType = addContextToType @name.self [(head $ getClassTypeVariables @loc.classMembers, @classBeta)] tpscheme
+                                                instSubType = substituteClassVariables tpscheme (fst $ chead @classVariable) @instsType
+                                                subType = substituteClassVariables tpscheme (fst $ chead @classVariable) @classBeta
+                                                fType = addContextToType @name.self [(chead $ getClassTypeVariables @loc.classMembers, @classBeta)] tpscheme
                                                 typeVars = fst @classMembers
                                                 className = @name.self
                                                 typeIndices = filter (\(_, s) -> s `elem` (map getNameName typeVars)) (getQuantorMap tpscheme)
@@ -247,6 +255,7 @@ SEM Declaration
         loc     . classVariable         = classVariablesToBeta (@lhs.betaUnique + 2) $ (fst @classMembers)
 
 {
+
 chead [x] = x
 chead x = error "Not a singleton"
 
@@ -312,7 +321,7 @@ getInstanceMembers env (name, instType) =   let err = internalError "TypeInferen
 findInMap :: (k -> a -> Bool) -> M.Map k a -> Maybe a
 findInMap f m = let filtered = M.filterWithKey f m
                 in if length filtered == 1 then
-                        Just $ snd $ head (M.toList filtered)
+                        Just $ snd $ chead (M.toList filtered)
                     else
                         Nothing
 
@@ -452,12 +461,13 @@ SEM Expression
 
   | Variable
       lhs . betaUnique  = snd @updatedType
-      loc . updatedType = maybe (undefined, @lhs.betaUnique + 1) (freshen (@lhs.betaUnique + 1) . unqualify . unquantify) 
+      loc . updatedType = maybe (undefined, @lhs.betaUnique + 1) (freshen (@lhs.betaUnique + 1) . unquantify) 
                             $ lookup @name.self @lhs.instanceTypes
       
       loc . assumptions = @name.self `single` @beta
           . constraints = if isJust (lookup @name.self @lhs.instanceTypes) then  
-                                Node [[(@beta .::. (fromJust $ lookup @name.self @lhs.instanceTypes)) @cinfo] .>. Node[]]
+                                let (preds, tp) = split (fst @updatedType) in
+                                Node $ [[(@beta .==. tp) @cinfo] .>. Node[], Receive @lhs.betaUnique] ++ [(unitTree $ TC2 $ Prove p @cinfo) | p <- preds ]
                             else 
                                 Node [ Receive @lhs.betaUnique ]
           . beta        = TVar @lhs.betaUnique

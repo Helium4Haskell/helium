@@ -210,9 +210,11 @@ showInstanceType (TVar v) = ""
 
 class Freshen a where
     freshen :: Int -> a -> (a, Int)
-
+    freshenWithMapping :: [(Int, Int)] -> Int -> a -> ([(Int, Int)], (a, Int))
+    freshen n t = snd $ freshenWithMapping [] n t
+   
 instance Freshen Tp where
-    freshen n tp = (\(tp', (n', _))->(tp', n')) $ runState (freshenHelper tp) (n, []) 
+    freshenWithMapping mapping n tp = (\(tp', (n', m'))->(m', (tp', n'))) $ runState (freshenHelper tp) (n, mapping) 
         where
             freshenHelper :: Tp -> State (Int, [(Int, Int)]) Tp
             freshenHelper (TCon n) = return (TCon n)
@@ -225,6 +227,25 @@ instance Freshen Tp where
                 t1 <- freshenHelper a1
                 t2 <- freshenHelper a2
                 return $ TApp t1 t2
+
+instance Freshen Predicate where
+    freshenWithMapping mapping n (Predicate name tp) = let
+        (mapping', (tp', b')) = freshenWithMapping mapping n tp
+        in (mapping', (Predicate name tp', b'))
+        
+instance Freshen Predicates where
+    freshenWithMapping mapping n [] = (mapping, ([], n))
+    freshenWithMapping mapping n (p:ps) = let
+        (mapping', (p', n')) = freshenWithMapping mapping n p
+        (mapping'', (ps', n'')) = freshenWithMapping mapping' n' ps
+        in (mapping'', (p':ps', n''))
+        
+
+instance Freshen QType where
+    freshenWithMapping mapping n (Qualification (pred, tp)) = let
+        (mapping', (pred', b')) = freshenWithMapping mapping n pred
+        (mapping'', (tp', b'')) = freshenWithMapping mapping' b' tp
+        in (mapping', (Qualification (pred', tp'), b''))
 
 combineTps :: Tp -> TpScheme -> [(String, Tp)]
 combineTps tp tpscheme = combineTpsHelper (getQuantorMap tpscheme) tp (unqualify $ unquantify tpscheme)

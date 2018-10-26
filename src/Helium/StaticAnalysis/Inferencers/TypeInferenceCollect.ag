@@ -23,6 +23,7 @@ ATTR Expression Expressions MaybeExpression Alternative Alternatives
           typeschemeMap       : {M.Map Int (Scheme Predicates)}
           allTypeSchemes      : {M.Map NameWithRange TpScheme}
           classTypeSchemes    : {M.Map Name TpScheme}
+          requiredPredicates  : Predicates
           orderedTypeSynonyms : OrderedTypeSynonyms
         | collectWarnings     : Warnings
           collectErrors       : TypeErrors
