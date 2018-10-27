@@ -6,13 +6,10 @@
 --  $Id$
 
 ----------------------------------------------------------------
--- Make all local bindings locally unique.
--- and all local let-bindings globally unique.
---
--- After this pass, no variables shadow each other and let-bound variables
--- are globally unique.
+-- Make all declarations (in lets, lambdas and match expressions)
+-- globally unique.
 ----------------------------------------------------------------
-module Helium.CodeGeneration.Core.NoShadow (coreNoShadow, coreRename) where
+module Helium.CodeGeneration.Core.Rename (coreRename) where
 
 import Data.Maybe
 import Lvm.Common.Id
@@ -58,16 +55,8 @@ splitEnvs :: Env -> [Env]
 splitEnvs (Env supply set idmap)
   = map (\s -> Env s set idmap) (splitNameSupplies supply)
 
-
-----------------------------------------------------------------
--- coreNoShadow: make all local variables locally unique
--- ie. no local variable shadows another variable
-----------------------------------------------------------------
-coreNoShadow :: NameSupply -> CoreModule -> CoreModule
-coreNoShadow = mapExprWithSupply (nsDeclExpr emptySet)
-
 coreRename :: NameSupply -> CoreModule -> CoreModule
-coreRename supply m = mapExprWithSupply (nsDeclExpr (globalNames m)) supply m
+coreRename supply m = mapExprWithSupply (nsDeclExpr (runAnalysis m `unionSet` globalNames m)) supply m
 
 nsDeclExpr :: IdSet -> NameSupply -> Expr -> Expr
 nsDeclExpr inscope supply = nsExpr (Env supply inscope emptyMap)
@@ -117,3 +106,56 @@ nsPat env pat
       PatCon con ids -> let (env',ids') = renameBinders env ids
                         in (PatCon con ids',env')
       other          -> (other,env)
+
+-- Analysis to find identifiers that have multiple definitions.
+-- If an identifier is not in the IdMap, it means that the identifier is not defined in the expression.
+-- If the value if False, it is defined once. If the value is true, there are multiple definitions.
+
+type Analysis = IdMap Bool
+
+runAnalysis :: CoreModule -> IdSet
+runAnalysis = setFromList . map fst . filter snd . listFromMap . analyse
+
+analyse :: CoreModule -> Analysis
+analyse (Module _ _ _ decls) = foldr analyseDecl emptyMap decls
+
+analyseDecl :: CoreDecl -> Analysis -> Analysis
+analyseDecl (DeclValue _ _ _ expr _) = dupUnion $ duplicateNames expr
+analyseDecl _ = id
+
+{-
+data Expr       = Let       !Binds Expr       
+                | Match     !Id Alts
+                | Ap        Expr Expr
+                | Lam       !Id Expr
+                | Con       !(Con Expr)
+                | Var       !Id
+                | Lit       !Literal
+                -}
+duplicateNames :: Expr -> Analysis
+duplicateNames (Let bs expr) = dupInserts (varsInBinds bs) $ duplicateNames expr
+duplicateNames (Match _ alts) = foldr1 dupUnion $ map duplicateNamesInAlt alts
+duplicateNames (Ap e1 e2) = dupUnion (duplicateNames e1) (duplicateNames e2)
+duplicateNames (Lam x expr) = dupInsert x $ duplicateNames expr
+duplicateNames _ = emptyMap -- Con, Var or Lit
+
+duplicateNamesInAlt :: Alt -> Analysis
+duplicateNamesInAlt (Alt (PatCon _ args) expr) = dupInserts args $ duplicateNames expr
+duplicateNamesInAlt (Alt _ expr) = duplicateNames expr
+
+dupUnion :: Analysis -> Analysis -> Analysis
+dupUnion = unionMapWith (\_ _ -> True)
+
+dupInsert :: Id -> Analysis -> Analysis
+dupInsert name m = insertMap name (name `elemMap` m) m
+
+dupInserts :: [Id] -> Analysis -> Analysis
+dupInserts = flip $ foldr dupInsert
+
+varsInBinds :: Binds -> [Id]
+varsInBinds (Strict b) = return $ varInBind b
+varsInBinds (NonRec b) = return $ varInBind b
+varsInBinds (Rec bs) = map varInBind bs
+
+varInBind :: Bind -> Id
+varInBind (Bind x _) = x
