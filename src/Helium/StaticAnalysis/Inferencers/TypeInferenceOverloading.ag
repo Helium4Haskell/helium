@@ -19,6 +19,7 @@ ATTR Declarations Declaration Expressions Expression Statements Statement
           instanceName : {Maybe Name}
           classPredicate : {Maybe (Name, Names)}
           curPred       : {Maybe Predicate}
+          curClassPred       : {Maybe Predicate}
           variableMapping : {Maybe [(Name, Tp)]}
         | dictionaryEnvironment : DictionaryEnvironment          
         | 
@@ -37,6 +38,7 @@ SEM Module
             . availablePredicates   = []
             . instanceName          = Nothing
             . classPredicate        = Nothing
+            . curClassPred               = Nothing
             . curPred               = Nothing
 
 SEM Declaration   
@@ -91,7 +93,7 @@ SEM Declaration
       where . instanceName  = Just @name.self
       where . availablePredicates = @superPredicates ++ @lhs.availablePredicates
   | Class
-      where . curPred = Just $ Predicate (getNameName @simpletype.name) @classBeta
+      where . curClassPred = Just $ Predicate (getNameName @simpletype.name) @classBeta
       where . instanceName = Just @simpletype.name
    
 SEM Expression 

@@ -250,10 +250,10 @@ SEM Declaration
                                             in [((memberSuperClassBeta .::. tpWContext) @loc.cinfo), (memberSuperClassBeta .==. tp) @cinfo]
                                             ) $ zip @memberBetas @memberSuperClassBeta)]
         loc     . memberBetas           = matchClassDefinitionToInstanceDefinition 
-                                                (getInstanceFunctions (getInstanceMembers @lhs.importEnvironment (@name.self, map (makeTpFromType []) @types.self))) $ 
+                                                (maybe (error "Unknown class") (map (\(n, tp, _, _) -> (n, tp)).snd) $ M.lookup @name.self $ classMemberEnvironment @lhs.importEnvironment) $ 
                                                 map (\(n, b, _) -> (n, b)) @where.boundBetas
         loc     . classVariable         = classVariablesToBeta (@lhs.betaUnique + 2) $ (fst @classMembers)
-
+ 
 {
 
 chead [x] = x
@@ -314,9 +314,9 @@ selectClass :: ImportEnvironment -> Name -> (Names, [(Name, TpScheme, Bool, HasD
 selectClass env name =  let err = internalError "TypeInferenceRules.ag" "selectClass" "Specified class could not be found"
                         in M.findWithDefault err name (classMemberEnvironment env)
 
-getInstanceMembers :: ImportEnvironment -> (Name, [Tp]) -> (Instance, Types, [(Name, TpScheme)])
+getInstanceMembers :: ImportEnvironment -> (Name, Tp) -> (Names, [(String, String)])
 getInstanceMembers env (name, instType) =   let err = internalError "TypeInferenceRules.ag" "getInstanceMembers" "Specified instance could not be found"
-                                in fromMaybe err $ findInMap (\(iname, tv) _ -> name == iname && (and $ zipWith instanceEq tv instType)) (instanceEnvironment env)
+                                in fromMaybe err $ findInMap (\(iname, tv) _ -> name == iname && (instanceEq tv instType)) (instanceEnvironment env)
 
 findInMap :: (k -> a -> Bool) -> M.Map k a -> Maybe a
 findInMap f m = let filtered = M.filterWithKey f m

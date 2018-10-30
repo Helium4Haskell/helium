@@ -17,6 +17,7 @@ import Helium.Utils.Utils (internalError)
 import Helium.Syntax.UHA_Syntax -- (Name)
 import Helium.Syntax.UHA_Utils
 import Helium.Syntax.UHA_Range
+import Helium.StaticAnalysis.Miscellaneous.TypeConversion
 import Top.Types
 
 
@@ -35,7 +36,7 @@ type ValueConstructorEnvironment = M.Map Name TpScheme
 type TypeConstructorEnvironment  = M.Map Name Int
 type TypeSynonymEnvironment      = M.Map Name (Int, Tps -> Tp)
 type ClassMemberEnvironment      = M.Map Name (Names, [(Name, TpScheme, Bool, HasDefault)])
-type InstanceEnvironment         = M.Map (Name, [Tp]) (Instance, [Type], [(Name, TpScheme)])
+type InstanceEnvironment         = M.Map (Name, Tp) (Names, [(String, String)])
 
 type ImportEnvironments = [ImportEnvironment]
 data ImportEnvironment  =
@@ -289,8 +290,8 @@ instance Show ImportEnvironment where
 
        sinstances =
            let
-                f (i, _, fs) = show i ++ " - " ++ intercalate ", " (map show fs)
-           in showWithTitle "Instances" (map (f . snd) (M.assocs ins))
+                f ((className, instanceType),(variables, predicates)) = show className ++ " " ++ show instanceType ++ " - " ++ show variables ++ " <= " ++ show predicates
+           in showWithTitle "Instances" (map (f) (M.assocs ins))
 
        showWithTitle title xs
           | null xs   = []

@@ -21,6 +21,7 @@ import Data.Maybe
 import Helium.Syntax.UHA_Syntax (Name)
 import Helium.Syntax.UHA_Utils (NameWithRange(..) )
 import Helium.Utils.Utils (internalError)
+
 import Top.Types
 
 data DictionaryEnvironment = 
@@ -57,8 +58,8 @@ data DictionaryTree = ByPredicate Predicate
    
 instance Show DictionaryEnvironment where
    show denv = 
-      "{ declMap = " ++ show (M.assocs $ declMap denv) ++
-      ", varMap = "  ++ show (M.assocs $ varMap denv) ++ 
+      "{ declMap = " ++ (unlines $ map show (M.assocs $ declMap denv)) ++
+      ", varMap = "  ++ (unlines $ map show (M.assocs $ varMap denv)) ++ 
       ", currentClassNames = " ++ show (currentClassNames denv) ++ "}"
      
 setCurrentClassNames :: [(Name, String)] -> DictionaryEnvironment -> DictionaryEnvironment

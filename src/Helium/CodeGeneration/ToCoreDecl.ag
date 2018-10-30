@@ -197,7 +197,12 @@ SEM Declaration
     --  priority                 : MaybeInt
     --  operators                : Names
     | Class             loc . superClasses = getSuperClasses @context.self
-                        lhs.decls    = (classFunctions @lhs.importEnv (getNameName @simpletype.name) $ constructFunctionMap @lhs.importEnv (length @superClasses) @simpletype.name) ++ 
+                        lhs.decls    = let 
+                                            isInfix (Module.DeclCustom{
+                                                Core.declKind = (Core.DeclKindCustom n)
+                                            }) = stringFromId n `isSuffixOf` " infix"
+                                            isInfix _ = False
+                                        in (classFunctions @lhs.importEnv (getNameName @simpletype.name) $ constructFunctionMap @lhs.importEnv (length @superClasses) @simpletype.name) ++ 
                                         [
                                             Core.DeclCustom
                                                 {
@@ -208,7 +213,7 @@ SEM Declaration
                                                     Core.declCustoms = constructClassMemberCustomDecl @lhs.importEnv @simpletype.name (M.lookup @simpletype.name $ classMemberEnvironment @lhs.importEnv)
                                                 }
                                         ] ++ convertDictionaries @lhs.importEnv @simpletype.name @where.functionNames @where.whereDeclarations 
-                                         ++ filter (\d -> Module.declName d `elem` map (idFromString . getNameName) @where.functionNames) @where.decls
+                                         ++ (filter isInfix @where.decls)
                         where . instanceName = Just @simpletype.name
                         where . dictionaryEnv = setCurrentClassNames (zip @where.functionNames (repeat ("$instanceDict" ++ show @simpletype.name))) @lhs.dictionaryEnv
     | Instance          lhs .   decls    =  [ constructDictionary 
@@ -291,7 +296,7 @@ predicateToId (Predicate class_ tp) =
     idFromString $ "$dict" ++ class_ ++ "$" ++ show tp
     
 dictionaryTreeToCore :: DictionaryTree -> Core.Expr
-dictionaryTreeToCore theTree = 
+dictionaryTreeToCore theTree =
    case theTree of
         ByPredicate predicate -> 
             Core.Var (predicateToId predicate)
@@ -312,7 +317,7 @@ insertDictionaries :: Name -> DictionaryEnvironment -> Core.Expr
 insertDictionaries name dictionaryEnv = 
    foldl Core.Ap
          (Core.Var (idFromName name))
-         ([Core.Var (idFromString dict) | (fname, dict) <- currentClassNames dictionaryEnv, name == fname] ++ (map dictionaryTreeToCore (getDictionaryTrees name dictionaryEnv)))
+         ((map dictionaryTreeToCore (getDictionaryTrees name dictionaryEnv)))
 }
 
 ATTR LeftHandSide 

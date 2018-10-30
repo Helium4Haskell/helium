@@ -39,36 +39,14 @@ product = foldl' (*) (fromInt 1)
  -- Eq
  -----------------------------------------------}
 
-class Eq a where
-    (==) :: a -> a -> Bool
-    (/=) :: a -> a -> Bool
-    (==) x y = not (x /= y)
-    (/=) x y = not ( x == y)
+
 {- imported from PreludePrim
 
 (==) :: Eq a => a -> a -> Bool
 (/=) :: Eq a => a -> a -> Bool
 -}
 
-instance Eq Bool where
-    (==) True True = True
-    (==) False False = True
-    (==) _ _ = False
 
-instance Eq a => Eq (Maybe a) where 
-    (==) Nothing Nothing = True
-    (==) (Just x) (Just y) = x == y
-    (==) _ _ = False
-
-instance (Eq a, Eq b) => Eq (Either a b) where
-    (==) (Left x) (Left y) = x == y
-    (==) (Right x) (Right y) = x == y
-    (==) _ _ = False
-
-instance Eq a => Eq [a] where
-    (==) [] [] = True
-    (==) (x:xs) (y:ys) = x == y && xs == ys
-    (==) _ _ = False    
 
 elem :: Eq a => a -> [a] -> Bool
 elem _ [] = False
@@ -89,19 +67,7 @@ lookup k ((x,y):xys)
  -- Ord
  -----------------------------------------------}
 
-class Eq a => Ord a where
-    (<)     :: a -> a -> Bool
-    (<=)    :: a -> a -> Bool
-    (>)     :: a -> a -> Bool
-    (>=)    :: a -> a -> Bool
-    compare :: a -> a -> Ordering
-    (<) x y = x <= y && x /= y
-    (>) x y = x >= y && x /= y
-    (<=) x y = x < y || x == y
-    (>=) x y = x > y || x == y
-    compare x y | x == y = EQ
-                | x < y = LT
-                | x > y = GT
+
 
 {- imported from PreludePrim
 
@@ -111,6 +77,8 @@ class Eq a => Ord a where
 (>=)    :: Ord a => a -> a -> Bool
 compare :: Ord a => a -> a -> Ordering
 -}
+
+
 
 max :: Ord a => a -> a -> a
 max x y = if x < y then y else x
@@ -588,38 +556,12 @@ truncate   :: Float -> Int
 -}
 
 instance Eq Char where
-    (==) = (==)
+    c1 == c2 = primOrd c1 ==# primOrd c2
 
-class Show a where
-    show :: a -> String
+type ShowS = String -> String
 
-instance Show Int where
-    show = showInt
 
-instance Show Bool where
-    show True = "True"
-    show False = "False"
 
-instance Show Float where
-    show = showFloat
-
-instance (Show a, Show b) => Show (Either a b) where
-    show (Left x) = "Left " ++ show x
-    show (Right x) = "Right " ++ show x
-
-instance Show a => Show (Maybe a) where
-    show Nothing = "Nothing"
-    show (Just x) = "Just " ++ show x
-
-instance (Show a, Show b) => Show (b, a) where
-    show (x, y) = "(" ++ show x ++ ", " ++ show y ++ ")"
-
-instance (Show a, Show b, Show c) => Show (a, b, c) where
-    show (x, y, z) = "(" ++ show x ++ ", " ++ show y ++ ", " ++ show z ++ ")"
-
-instance Show a => Show [a] where
-    show xs = "[" ++ intercalate ", " (map show xs) ++ "]"
-    
 
 intercalate :: [a] -> [[a]] -> [a]
 intercalate _ [] = []
@@ -732,7 +674,7 @@ finallyIO io action
   = do x <- io `catch` (\exn -> do{ action; raise exn })
        action
        return x
--}
+
 {-----------------------------------------------
  -- Read
  -----------------------------------------------}
@@ -749,7 +691,7 @@ readUnsigned =
     map (\c -> primOrd c - primOrd '0')
     .
     takeWhile localIsDigit
-
+-}
 -- Functor --
 
 (<$>) :: Functor f => (a -> b) -> f a -> f b
@@ -803,7 +745,98 @@ instance Monad (Either a) where
     (>>=) (Right x) f = f x
     (>>=) l _ = l
 
-    
-    
-            
-        
+class Eq a where
+    (==) :: a -> a -> Bool
+    (/=) :: a -> a -> Bool
+    (==) x y = not (x /= y)
+    (/=) x y = not ( x == y)
+
+instance Eq Bool where
+    (==) True True = True
+    (==) False False = True
+    (==) _ _ = False
+
+instance Eq a => Eq (Maybe a) where 
+    (==) Nothing Nothing = True
+    (==) (Just x) (Just y) = x == y
+    (==) _ _ = False
+
+instance (Eq a, Eq b) => Eq (Either a b) where
+    (==) (Left x) (Left y) = x == y
+    (==) (Right x) (Right y) = x == y
+    (==) _ _ = False
+
+instance Eq a => Eq [a] where
+    (==) [] [] = True
+    (==) (x:xs) (y:ys) = x == y && xs == ys
+    (==) _ _ = False    
+
+
+class Eq a => Ord a where
+    (<)     :: a -> a -> Bool
+    (<=)    :: a -> a -> Bool
+    (>)     :: a -> a -> Bool
+    (>=)    :: a -> a -> Bool
+    compare :: a -> a -> Ordering
+    (<) x y = x <= y && x /= y
+    (>) x y = x >= y && x /= y
+    (<=) x y = x < y || x == y
+    (>=) x y = x > y || x == y
+    compare x y | x == y = EQ
+                | x < y = LT
+                | x > y = GT
+
+instance Ord a => Ord [a] where
+    [] < _ = False
+    [] < (_:_) = True
+    (x:xs) < (y:ys) = x < y && xs < ys
+
+
+
+
+shows :: Show a => a -> ShowS
+shows = showsPrec 0
+
+class Show a where
+    show :: a -> String
+    showList :: [a] -> ShowS
+    showsPrec :: Int -> a -> ShowS
+    showList ls s  = "[" ++ intercalate ", " (map (flip shows s) ls) ++ "]"
+    showsPrec _ x s = show x ++ s
+    show x          = shows x ""
+    {-showList []   s = "[]" ++ s
+    showList (l:ls) s = '[' : shows l (showl ls)
+        where
+            showl []     = ']' : s
+            showl (y:ys) = ',' : shows y (show ys)-}
+
+instance Show Int where
+    show = showInt
+
+instance Show Bool where
+    show True = "True"
+    show False = "False"
+
+instance Show Float where
+    show = showFloat
+
+instance Show Char where
+    show x = showChar x
+    showList ls s = "\"" ++ ls ++ "\"" ++ s
+
+instance (Show a, Show b) => Show (Either a b) where
+    show (Left x) = "Left " ++ show x
+    show (Right x) = "Right " ++ show x
+
+instance Show a => Show (Maybe a) where
+    show Nothing = "Nothing"
+    show (Just x) = "Just " ++ show x
+
+instance (Show a, Show b) => Show (b, a) where
+    show (x, y) = "(" ++ show x ++ ", " ++ show y ++ ")"
+
+instance (Show a, Show b, Show c) => Show (a, b, c) where
+    show (x, y, z) = "(" ++ show x ++ ", " ++ show y ++ ", " ++ show z ++ ")"
+
+instance Show a => Show [a] where
+    show ls = showList ls ""

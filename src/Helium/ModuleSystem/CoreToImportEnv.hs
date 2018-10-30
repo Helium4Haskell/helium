@@ -32,9 +32,6 @@ import Data.Char
 import Data.Maybe
 import qualified Data.Map as M
 
-import Debug.Trace
-
-
 typeDictFromCustoms :: String -> [Custom] -> TpScheme
 typeDictFromCustoms n [] = internalError "CoreToImportEnv" "typeFromCustoms"
                 ("function import without type: " ++ n)
@@ -155,12 +152,15 @@ insertDictionaries importedInModule
                                 tpVars = zip (selectCustomsString "typeVariable" cs) (map TVar [0..])
                                 instancePred = Predicate className (foldl TApp (TCon typeName) (map snd tpVars))
                                 superPreds :: Predicates
-                                superPreds = map (\x -> Predicate (takeWhile (/='-') x) (fromJust $ lookup (drop 1 $ dropWhile (/= '-') x) tpVars)) $ selectCustomsString "superInstance" cs
+                                superPreds = map (\x -> Predicate (takeWhile (/='-') x) (fromMaybe (error "Nothing") $ lookup (drop 1 $ dropWhile (/= '-') x) tpVars)) $ selectCustomsString "superInstance" cs
                                 addInstance :: Instances -> Instances
                                 addInstance = ((instancePred, superPreds):)
                                 nClass = M.update (Just . second addInstance) className (classEnvironment env)
-                                
-                            in setClassEnvironment nClass env
+                                instanceEnv = instanceEnvironment env
+                                nInstanceEnv = M.insert (nameFromString className, foldl TApp (TCon typeName) (map snd tpVars)) 
+                                                (map (nameFromString.fst) tpVars, map (\x -> (takeWhile (/= '-') x, drop 1 $ dropWhile (/= '-') x)) (selectCustomsString "superInstance" cs)) instanceEnv
+
+                            in setInstanceEnvironment nInstanceEnv $ setClassEnvironment nClass env
 
 insertDictionaries importedInModule 
                     DeclCustom  { declName    = n

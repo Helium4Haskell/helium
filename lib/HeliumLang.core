@@ -10,7 +10,7 @@ module HeliumLang
     , String, Int, Float, IO, Char
     
     , showFunction, showIO, showPolymorphic -- all show functions are used in inserted main
-    , showChar, showString, showInt, showList, showBool, showUnit, showFloat  
+    , showChar, showString, showInt, showBool, showUnit, showFloat  
     
     , ''$primPutStrLn'' -- inserted main
     , ''$primPutChar'', ''$primPutStr'' -- necessary for ''$primPutStrLn''
@@ -28,7 +28,6 @@ module HeliumLang
     , ''$negate''
     , ''$enumFrom'', ''$enumFromThen'', ''$enumFromTo'', ''$enumFromThenTo''
     , ''$floatUnaryMinus''
-    , ''$show'', ''$showList''
     ) where
 
 import LvmLang 
@@ -90,14 +89,6 @@ custom infix (:) : public [5,"right"]
 ''$floatUnaryMinus'' f
   = ''$primNegFloat'' f
 
-''$show'' :: "Show a => a -> String"
-''$show'' dShow = 
-    case dShow of
-        (@0, 2) x1 x2 -> x1
-
-''$showList'' :: "(a -> String) -> [a] -> String"
-''$showList'' = showList
-        
 {----------------------------------------------------------
   Basic data types
 ----------------------------------------------------------}
@@ -294,11 +285,7 @@ showPositiveInt i =
         {   True -> digit 
         ;   _    -> ''$primAppend'' (showPositiveInt rest) digit
         }
-
-showList :: (a -> String) -> [a] -> String
-showList showElem list =
-    ''$primConcat'' [ ['['], commaList (''$primMap'' showElem list), [']'] ] 
-    
+  
 ''$primMap'' f xs =
     case xs of
     {   '':[]'' -> []

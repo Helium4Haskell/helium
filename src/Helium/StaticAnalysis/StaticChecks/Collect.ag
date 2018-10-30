@@ -31,7 +31,8 @@ SEM Module
                                         . setTypeSynonyms      (M.fromList @body.collectTypeSynonyms)
                                         . setOperatorTable     (M.fromList @body.operatorFixities)
                                         . addToTypeEnvironment  (insertClassMembers @body.collectClassMemberEnv (M.fromList @derivedFunctions))
-                                        . setClassEnvironment  (insertInstances @body.classInstances @body.classEnv)
+                                        . setClassEnvironment  (insertInstances @body.classInstances 
+                                            (M.unionWith combineClassDecls @body.classEnv (classEnvironment $ combineImportEnvironmentList @lhs.importEnvironments)))
                                         . setInstanceEnvironment @body.instanceEnv
                                         . setClassMemberEnvironment @body.collectClassMemberEnv
                                         $emptyEnvironment
@@ -374,8 +375,7 @@ SEM Declaration
                                 superClasses = map (\(c, tpss)-> (c, unqualify $ unquantify $ head tpss)) $ getSuperClasses @context.self
                               in [(getNameName $ @name.self, makeTpFromType' $ head @types.self, superClasses)] 
 
-       lhs . instanceEnv = M.singleton (@name.self, map makeTpFromType' @types.self) (makeInstance (show @name.self) 0 "" False, @types.self ,@loc.instanceFunctions)
-       loc . instanceFunctions = (map (\n->(n , getTypeOfInstanceFunction @name.self n @lhs.classMemberEnv)) $ getInstanceFunctionNames @where.self)
+       lhs . instanceEnv = M.singleton (@name.self, makeTpFromType' $ head @types.self) (namesInType (head @types.self), map (\(n, tp) -> (n, show $ head tp)) $ getSuperClasses @context.self)
 {
 
 getTypeOfInstanceFunction :: Name -> Name -> ClassMemberEnvironment -> TpScheme

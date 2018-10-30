@@ -12,8 +12,12 @@ import Helium.Syntax.UHA_Syntax
 import Helium.Syntax.UHA_Utils
 import Helium.Utils.Utils
 import Top.Types
+import Control.Arrow
 
 import qualified Data.Map as M
+
+import Data.Maybe
+import Data.List
 
 type DictLabel = String
 
@@ -115,7 +119,53 @@ constructDictionary importEnv instanceSuperClass combinedNames whereDecls classN
             labels = map (\(_, _, l)->l) superClasses ++ map (\(l, _, _)->l) functions
             instanceSuperClassLabels = map (\(className, tvar) -> idFromString $ "$instanceDict" ++ className ++ "$" ++ getNameName tvar) instanceSuperClass
             makeBindSuper :: (String, Int, DictLabel) -> Bind
-            makeBindSuper (cName, tag, label) = Bind (idFromString label) (Var (idFromString ("$dict" ++ cName ++ "$" ++ insName)))
+            makeBindSuper (cName, tag, label) = let
+                    parentMapping :: [(String, String)]
+                    parentMapping = map (getNameName *** getNameName) $ getTVMapping importEnv (getNameName className) insName cName
+                    resolveSuperInstance :: (String, String) -> Expr
+                    resolveSuperInstance (n, var)
+                            -- check if the required class is already an existing parameter
+                            | (n, fst $ fromJust (find (\x -> snd x == var) parentMapping)) `elem` map (second getNameName) instanceSuperClass = let 
+                                        Just tvar = find (\(_, cn) -> cn == var) parentMapping
+                                    in 
+                                        Var (idFromString $ "$instanceDict" ++ cName ++ "$" ++ fst tvar)
+                            | otherwise =  let
+                                    -- get all the available super classes
+                                    repInstanceSuperClass = filter (\(_, v) -> getNameName v == rVar) instanceSuperClass
+                                    rVar = fst $ fromJust $find (\(_, cn) -> cn == var) parentMapping
+                                    shortestPath :: [[a]] -> [a]
+                                    shortestPath [x] = x
+                                    shortestPath (x:xs) = let 
+                                        sp = shortestPath xs
+                                        in if length sp < length x then sp else x
+                                    -- construct the path from a sub class to it's super class, e.g. ["Num", "Ord", "Eq"]
+                                    constructPath :: String -> String -> [[String]]
+                                    constructPath from to 
+                                        | from == to = [[to]] 
+                                        | otherwise = let
+                                                superClasses = getClassSuperClasses importEnv from
+                                                paths :: [[[String]]]
+                                                paths = map (`constructPath` to) superClasses
+                                                sPaths :: [[String]]
+                                                sPaths = map (shortestPath. filter (\x -> last x == to)) paths
+                                            in map (from:) sPaths
+                                    sPath = shortestPath (constructPath cName n)
+                                    combinePath :: String -> [String] -> [(String, String)]
+                                    combinePath first [] = []
+                                    combinePath first (x:xs) = (first, x) : combinePath x xs
+                                    combinedPath = shortestPath $ map (\source -> filter (uncurry (/=)) $ combinePath (fst source) sPath) repInstanceSuperClass
+                                in
+                                    foldl 
+                                        (\expr (sub, super) -> Ap (Var $ idFromString $ "$get" ++ super ++ "$" ++ sub) expr)
+                                        (Var (idFromString $ "$instanceDict" ++ fst (head combinedPath) ++ "$" ++ rVar))
+                                        combinedPath
+                                
+                    instanceSuperClasses = getInstanceSuperClasses importEnv cName insName
+
+                    baseInstance = foldl Ap (Var (idFromString ("$dict" ++ cName ++ "$" ++ insName))) $ map resolveSuperInstance instanceSuperClasses
+                    
+                in Bind (idFromString label) baseInstance 
+            
             makeBindFunc :: (DictLabel, Name, Maybe CoreDecl) -> Bind
             makeBindFunc (label, name, fdecl) = let 
                 undefinedFunc = (Var $ idFromString ("default$" ++ getNameName className ++ "$" ++ getNameName name))
@@ -124,6 +174,30 @@ constructDictionary importEnv instanceSuperClass combinedNames whereDecls classN
             dictCon = Bind (idFromString "dict") (
                     foldl Ap (Con $ ConId $ idFromString ("Dict" ++ getNameName className)) $ map (Var . idFromString) labels
                 )
+
+getInstanceSuperClassesNames :: ImportEnvironment -> String -> String -> [String]
+getInstanceSuperClassesNames env cName iName = map fst $ getInstanceSuperClasses env cName iName
+
+getTVMapping :: ImportEnvironment -> String -> String -> String -> [(Name, Name)]
+getTVMapping env className insName superClassName = let
+        isInsTp :: Tp -> Bool
+        isInsTp (TApp f _) = isInsTp f
+        isInsTp (TCon c) = c == insName
+        cTV = fst $ snd $ fromMaybe (error "Nothing") $ find (\((n, tp), _) -> getNameName n == className && isInsTp tp) $ M.toList $ instanceEnvironment env
+        iTV = fst $ snd $ fromMaybe (error "Nothing") $ find (\((n, tp), _) -> getNameName n == superClassName && isInsTp tp) $ M.toList $ instanceEnvironment env
+    in zip cTV iTV
+
+getClassSuperClasses :: ImportEnvironment -> String -> [String]
+getClassSuperClasses env className = fst $ fromMaybe (error "Nothing") $ M.lookup className (classEnvironment env)
+
+getInstanceSuperClasses :: ImportEnvironment -> String -> String -> [(String, String)]
+getInstanceSuperClasses env className insName = snd $ snd $ fromMaybe (error "Nothing") $ find(
+        \((n, tp),_) -> getNameName n == className && isInsTp tp
+    ) $ M.toList $ instanceEnvironment env
+    where
+        isInsTp :: Tp -> Bool
+        isInsTp (TApp f _) = isInsTp f
+        isInsTp (TCon c) = c == insName 
 
 getCoreName :: CoreDecl -> String 
 getCoreName cd = stringFromId $ declName cd
