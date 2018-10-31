@@ -15,7 +15,7 @@ import Helium.CodeGeneration.Core.LetSort(coreLetSort)
 import Helium.CodeGeneration.Core.Normalize(coreNormalize)
 import Helium.CodeGeneration.Core.Lift(coreLift)
 import Helium.CodeGeneration.Core.ReduceThunks(coreReduceThunks)
-import Helium.CodeGeneration.Core.NoShadow(coreRename)
+import Helium.CodeGeneration.Core.Rename(coreRename)
 import Helium.CodeGeneration.Core.RemoveAliasses(coreRemoveAliasses)
 import Helium.CodeGeneration.Core.RemoveDead(coreRemoveDead)
 

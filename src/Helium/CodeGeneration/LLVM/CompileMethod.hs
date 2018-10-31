@@ -35,8 +35,8 @@ compileAbstractMethod env (Iridium.AbstractMethod name (Iridium.FunctionType arg
   where
     args = map (Iridium.Local unusedArgumentName) argTypes
 
-compileMethod :: Env -> NameSupply -> Iridium.Method -> Definition
-compileMethod env supply (Iridium.Method name args retType entry blocks) = toFunction env name args retType basicBlocks
+compileMethod :: Env -> NameSupply -> Iridium.Declaration Iridium.Method -> Definition
+compileMethod env supply (Iridium.Declaration name _ _ (Iridium.Method args retType entry blocks)) = toFunction env name args retType basicBlocks
   where
     parameters :: [Parameter]
     parameters = map (\(Iridium.Local name t) -> Parameter (compileType env t) (toName name) []) args

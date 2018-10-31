@@ -75,7 +75,7 @@ compileInstruction env supply (Iridium.If var (Iridium.PatternCon con@(Iridium.D
     conLayout = findMap conId (envConstructors env)
 
 compileExpression :: Env -> NameSupply -> Iridium.Expr -> Name -> [Named Instruction]
-compileExpression env supply (Iridium.Literal (Iridium.LitInt value)) name = [name := ZExt (ConstantOperand constant) (envValueType env) []]
+compileExpression env supply (Iridium.Literal (Iridium.LitInt value)) name = [name := BitCast (ConstantOperand constant) (envValueType env) []]
   where
     constant :: Constant
     constant = Int (fromIntegral $ targetWordSize $ envTarget $ env) (fromIntegral $ value)

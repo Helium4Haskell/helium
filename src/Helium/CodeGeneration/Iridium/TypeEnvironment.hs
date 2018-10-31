@@ -76,8 +76,8 @@ typeEnvForModule (Module _ dataTypes abstracts methods) = TypeEnv () values Noth
     valuesInDataType :: DataType -> [(Id, ValueDeclaration)]
     valuesInDataType (DataType name cs) = map (\con@(DataTypeConstructor _ conId _) -> (conId, ValueConstructor con)) cs
 
-    valueOfMethod :: Method -> (Id, ValueDeclaration)
-    valueOfMethod (Method name args retType _ _) = (name, ValueFunction (FunctionType (map localType args) retType))
+    valueOfMethod :: Declaration Method -> (Id, ValueDeclaration)
+    valueOfMethod (Declaration name _ _ (Method args retType _ _)) = (name, ValueFunction (FunctionType (map localType args) retType))
 
     valueOfAbstract :: AbstractMethod -> (Id, ValueDeclaration)
     valueOfAbstract (AbstractMethod name fntype) = (name, ValueFunction fntype)

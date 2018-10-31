@@ -15,6 +15,7 @@
 module Helium.CodeGeneration.Iridium.Data where
 
 import Lvm.Common.Id(Id, stringFromId, idFromString)
+import Lvm.Core.Module(Custom(..))
 import Data.List(intercalate)
 
 import Helium.CodeGeneration.Iridium.Type
@@ -25,14 +26,20 @@ data Module = Module
   { moduleName :: !Id
   , moduleDataTypes :: ![DataType]
   , moduleAbstractMethods :: ![AbstractMethod]
-  , moduleMethods :: ![Method]
+  , moduleMethods :: ![Declaration Method]
   }
+
+data Visibility = Exported | Private deriving (Eq, Ord)
+data Declaration a = Declaration !Id !Visibility ![Custom] !a
+
+instance Functor Declaration where
+  fmap f (Declaration name visibility customs a) = Declaration name visibility customs $ f a
 
 -- Imported method, eg a method without a definition. The implementation is in some other file.
 data AbstractMethod = AbstractMethod !Id !FunctionType
   deriving (Eq, Ord)
 
-data Method = Method !Id ![Local] !PrimitiveType !Block ![Block]
+data Method = Method ![Local] !PrimitiveType !Block ![Block]
   deriving (Eq, Ord)
 
 -- TODO: Annotations on methods
@@ -105,78 +112,11 @@ data Literal
   | LitString !String
   deriving (Eq, Ord)
 
-instance Show Literal where
-  show (LitInt x) = "int " ++ show x
-  show (LitDouble x) = "float " ++ show x
-  show (LitString x) = "str " ++ show x
-
-instance Show Pattern where
-  show (PatternCon con) = show con
-  show (PatternLit lit) = show lit
-
-instance Show Expr where
-  show (Literal lit) = show lit
-  show (Call fn args) = "call " ++ show fn ++ " $ " ++ showArguments args
-  show (Eval var) = "eval " ++ show var
-  show (Var var) = "var " ++ show var
-  show (Cast var t) = "cast " ++ show var ++ " as " ++ show t
-  show (Phi branches) = "phi " ++ showArguments branches
-
-instance Show PhiBranch where
-  show (PhiBranch branch var) = stringFromId branch ++ " => " ++ show var
-
-instructionIndent :: String
-instructionIndent = "  "
-
-instance Show Bind where
-  show b@(Bind _ target args) = show (bindLocal b) ++ " = " ++ show target ++ " $ " ++ showArguments args
-
-instance Show BindTarget where
-  show (BindTargetFunction global) = show global
-  show (BindTargetConstructor con) = show con
-
-instance Show Instruction where
-  show (Let var expr next) = instructionIndent ++ "let " ++ show (Local var $ typeOfExpr expr) ++ " = " ++ show expr ++ "\n" ++ show next
-  show (LetAlloc binds next) = instructionIndent ++ "letalloc " ++ intercalate ", " (map show binds) ++ "\n" ++ show next
-  show (Jump to) = instructionIndent ++ "jump " ++ show to
-  show (Match var conId args next) = instructionIndent ++ "match " ++ show var ++ " on " ++ show conId ++ showArguments' showField args ++ "\n" ++ show next
-    where
-      showField Nothing = "_"
-      showField (Just l) = show l
-  show (If var pat whenTrue whenFalse) = instructionIndent ++ "if " ++ show var ++ " matches " ++ show pat ++ " then jump " ++ stringFromId whenTrue ++ " else " ++ stringFromId whenFalse
-  show (Return var) = instructionIndent ++ "ret " ++ show var
-
-instance Show Local where
-  show (Local name t) = "%" ++ stringFromId name ++ ": " ++ show t
-
-instance Show Global where
-  show (Global name fntype) = "@" ++ stringFromId name ++ ": " ++ show fntype
-
-instance Show Variable where
-  show (VarLocal local) = show local
-  show (VarGlobal global) = show global
-
-instance Show Block where
-  show (Block name instruction) = stringFromId name ++ ":\n" ++ show instruction
-
-instance Show AbstractMethod where
-  show (AbstractMethod name fntype) = "declare @" ++ stringFromId name ++ ": " ++ show fntype
-
-instance Show Method where
-  show (Method name args rettype entry blocks) = "define @" ++ stringFromId name ++ showArguments args ++ ": " ++ show rettype ++ " {\n" ++ show entry ++ (blocks >>= ('\n' :) . show) ++ "\n}\n"
-
-instance Show Module where
-  show (Module name decls abstracts methods) =
-    "module " ++ show name ++ "\n"
-    ++ (decls >>= ('\n' :) . show)
-    ++ (abstracts >>= ('\n' :) . show)
-    ++ (methods >>= ('\n' :) . show)
-
 mapBlocks :: (Instruction -> Instruction) -> Module -> Module
-mapBlocks fn (Module name datas abstracts methods) = Module name datas abstracts $ map fnMethod methods
+mapBlocks fn (Module name datas abstracts methods) = Module name datas abstracts $ map (fmap fnMethod) methods
   where
     fnMethod :: Method -> Method
-    fnMethod (Method name args rettype entry blocks) = Method name args rettype (fnBlock entry) $ map fnBlock blocks
+    fnMethod (Method args rettype entry blocks) = Method args rettype (fnBlock entry) $ map fnBlock blocks
     fnBlock :: Block -> Block
     fnBlock (Block name instr) = Block name $ fn instr
 

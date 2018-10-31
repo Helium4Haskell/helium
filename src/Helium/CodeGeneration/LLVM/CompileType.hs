@@ -74,7 +74,10 @@ splitValueFlag env supply var = case Iridium.variableType var of
 
 -- TODO: Casts from / to int or double
 cast :: NameSupply -> Env -> Operand -> Name -> Iridium.PrimitiveType -> Iridium.PrimitiveType -> [Named Instruction]
-cast supply env fromOperand toName Iridium.TypeAny Iridium.TypeAny = [toName := AST.BitCast fromOperand taggedThunkPointer []]
+cast supply env fromOperand toName fromType toType
+  | fromType == toType = [toName := AST.BitCast fromOperand toT []]
+  where
+    toT = compileType env toType
 cast supply env _ _ (Iridium.TypeGlobalFunction _) _ = error "Cannot cast from GlobalFunction"
 cast supply env _ _ _ (Iridium.TypeGlobalFunction _) = error "Cannot cast to GlobalFunction"
 cast supply env fromOperand toName fromType Iridium.TypeAny =
@@ -92,6 +95,8 @@ cast supply env fromOperand toName fromType Iridium.TypeAny =
         let
           (name, supply') = freshName supply
         in (cast supply' env fromOperand name fromType Iridium.TypeAnyWHNF, LocalReference voidPointer name)
+cast supply env fromOperand toName fromType Iridium.TypeInt = [toName := AST.PtrToInt fromOperand (envValueType env) []]
+cast supply env fromOperand toName Iridium.TypeInt toType = [toName := AST.IntToPtr fromOperand (compileType env toType) []]
 cast supply env fromOperand toName fromType toType = [toName := AST.BitCast fromOperand toT []]
   where
     toT = compileType env toType

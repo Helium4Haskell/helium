@@ -204,14 +204,14 @@ checkTag supply env reference struct name
 
 extractField :: NameSupply -> Env -> Operand -> Struct -> Int -> StructField -> Name -> [Named Instruction]
 extractField supply env reference _ index (StructField t Nothing) name =
-  [ namePtr := getElementPtr reference [0, index]
-  , name := Load False (LocalReference (compileType env t) namePtr) Nothing 0 []
+  [ namePtr := getElementPtr reference [0, index + 1]
+  , name := Load False (LocalReference (pointer $ compileType env t) namePtr) Nothing 0 []
   ]
   where
     (namePtr, _) = freshNameFromId idFieldPtr supply
 extractField supply env reference struct index (StructField t (Just flagIndex)) name =
-  [ namePtr := getElementPtr reference [0, index]
-  , nameValue := Load False (LocalReference voidPointer namePtr) Nothing 0 []
+  [ namePtr := getElementPtr reference [0, index + 1]
+  , nameValue := Load False (LocalReference (pointer voidPointer) namePtr) Nothing 0 []
   , headerPtr := getElementPtr reference [0, 0, headerIdx]
   , headerValue := Load False (LocalReference (pointer $ headerType) headerPtr) Nothing 0 []
   , headerShifted := LShr False (LocalReference headerType headerValue) (ConstantOperand $ Constant.Int (fromIntegral headerBits) $ fromIntegral bitIdx) []

@@ -13,7 +13,7 @@ import Lvm.Core.Expr(CoreModule)
 import Helium.Main.CompileUtils
 import Helium.CodeGeneration.Core(desugarCore)
 import Helium.CodeGeneration.Iridium.FromCore(fromCore)
--- import Helium.CodeGeneration.Iridium.PassRemoveAliasses(passRemoveAliasses)
+import Helium.CodeGeneration.Iridium.Show()
 import Helium.CodeGeneration.LLVM.CompileModule(compileModule)
 import Helium.CodeGeneration.LLVM.Target(Target(..))
 import Helium.CodeGeneration.LLVM.Env(envForModule)
@@ -30,18 +30,15 @@ phaseCodeGeneratorLLVM fullName coreModule options = do
   let supplyDesugar : supplyFromCore : supplyToLLVM : _ = splitNameSupplies supply
 
   let simplified = desugarCore supplyDesugar coreModule
-  putDoc $ pretty simplified
 
-  let imperative = fromCore supplyFromCore simplified
-  print imperative
-  -- let imperative' = passRemoveAliasses imperative
-  -- print imperative'
+  let iridium = fromCore supplyFromCore simplified
+
+  let (path, baseName, _) = splitFilePath fullName
+  let fullNameNoExt = combinePathAndFile path baseName
+
+  writeFile (fullNameNoExt ++ ".iridium") $ show iridium
 
   let target = Target 64 48
-  let llvm = compileModule (envForModule target imperative) supplyToLLVM imperative
-  putStrLn $ Text.unpack $ ppllvm llvm
+  let llvm = compileModule (envForModule target iridium) supplyToLLVM iridium
 
-  {-LLVM.withContext $ \context ->
-    LLVM.withModuleFromAST context llvm $ \mod -> do
-      byteString <- LLVM.moduleLLVMAssembly mod
-      print byteString-}
+  writeFile (fullNameNoExt ++ ".ll") $ Text.unpack $ ppllvm llvm

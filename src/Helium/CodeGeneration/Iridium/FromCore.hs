@@ -48,8 +48,11 @@ dataTypeFromCoreDecl decl@CoreModule.DeclCon{} = case find isDataName (CoreModul
     con dataType = DataTypeConstructor dataType (CoreModule.declName decl) (replicate (CoreModule.declArity decl) TypeAny)
 dataTypeFromCoreDecl _ = id
 
-fromCoreDecl :: NameSupply -> TypeEnv -> Core.CoreDecl -> [Either Method AbstractMethod]
-fromCoreDecl supply env decl@CoreModule.DeclValue{} = [Left $ toMethod supply env (CoreModule.declName decl) (CoreModule.valueValue decl)]
+fromCoreDecl :: NameSupply -> TypeEnv -> Core.CoreDecl -> [Either (Declaration Method) AbstractMethod]
+fromCoreDecl supply env decl@CoreModule.DeclValue{} = [Left $ Declaration name Exported (CoreModule.declCustoms decl) method]
+  where
+    name = CoreModule.declName decl
+    method = toMethod supply env (CoreModule.declName decl) (CoreModule.valueValue decl)
 fromCoreDecl supply env decl@CoreModule.DeclAbstract{} = [Right $ AbstractMethod (CoreModule.declName decl) $ FunctionType (replicate (CoreModule.declArity decl) TypeAny) TypeAnyWHNF]
 fromCoreDecl _ _ _ = []
 
@@ -59,7 +62,7 @@ idMatchAfter = idFromString "match_after"
 idMatchCase = idFromString "match_case"
 
 toMethod :: NameSupply -> TypeEnv -> Id -> Core.Expr -> Method
-toMethod supply env name expr = Method name args' returnType (Block entryName entry) blocks
+toMethod supply env name expr = Method args' returnType (Block entryName entry) blocks
   where
     (entryName, supply') = freshIdFromId idEntry supply
     fntype@(FunctionType fnArgs returnType) = fromMaybe (error "toMethod: could not find function signature") $ resolveFunction env name
