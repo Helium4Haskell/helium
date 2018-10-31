@@ -1,6 +1,7 @@
 module Helium.CodeGeneration.LLVM.Struct where
 
 import qualified Helium.CodeGeneration.Iridium.Type as Iridium
+import Helium.CodeGeneration.Iridium.Show()
 import LLVM.AST (Name)
 
 data Struct = Struct

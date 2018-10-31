@@ -24,10 +24,20 @@ type BlockName = Id
 
 data Module = Module
   { moduleName :: !Id
-  , moduleDataTypes :: ![DataType]
-  , moduleAbstractMethods :: ![AbstractMethod]
+  , moduleDataTypes :: ![Declaration DataType]
+  , moduleAbstractMethods :: ![Declaration AbstractMethod]
   , moduleMethods :: ![Declaration Method]
   }
+
+data DataType = DataType ![Declaration DataTypeConstructorDeclaration]
+
+data DataTypeConstructorDeclaration = DataTypeConstructorDeclaration ![PrimitiveType]
+
+data DataTypeConstructor = DataTypeConstructor { constructorDataType :: !Id, constructorName :: !Id, constructorFields :: ![PrimitiveType] }
+  deriving (Eq, Ord)
+
+getConstructors :: Declaration DataType -> [DataTypeConstructor]
+getConstructors (Declaration dataName _ _ (DataType cons)) = map (\(Declaration conId _ _ (DataTypeConstructorDeclaration fields)) -> DataTypeConstructor dataName conId fields) cons
 
 data Visibility = Exported | Private deriving (Eq, Ord)
 data Declaration a = Declaration !Id !Visibility ![Custom] !a
@@ -36,7 +46,7 @@ instance Functor Declaration where
   fmap f (Declaration name visibility customs a) = Declaration name visibility customs $ f a
 
 -- Imported method, eg a method without a definition. The implementation is in some other file.
-data AbstractMethod = AbstractMethod !Id !FunctionType
+data AbstractMethod = AbstractMethod !FunctionType
   deriving (Eq, Ord)
 
 data Method = Method ![Local] !PrimitiveType !Block ![Block]

@@ -30,8 +30,8 @@ import LLVM.AST.Linkage
 unusedArgumentName :: Id
 unusedArgumentName = idFromString "_argument"
 
-compileAbstractMethod :: Env -> Iridium.AbstractMethod -> Definition
-compileAbstractMethod env (Iridium.AbstractMethod name (Iridium.FunctionType argTypes retType)) = toFunction env name args retType []
+compileAbstractMethod :: Env -> Iridium.Declaration Iridium.AbstractMethod -> Definition
+compileAbstractMethod env (Iridium.Declaration name _ _ (Iridium.AbstractMethod (Iridium.FunctionType argTypes retType))) = toFunction env name args retType []
   where
     args = map (Iridium.Local unusedArgumentName) argTypes
 

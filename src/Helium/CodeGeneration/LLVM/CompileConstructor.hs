@@ -23,8 +23,8 @@ import LLVM.AST.AddrSpace
 import LLVM.AST.Operand
 import qualified LLVM.AST.Constant as Constant
 
-dataTypeType :: Env -> Iridium.DataType -> [(Id, ConstructorLayout)] -> Type
-dataTypeType env (Iridium.DataType dataName _) layouts = case pointerLayouts of
+dataTypeType :: Env -> Iridium.Declaration Iridium.DataType -> [(Id, ConstructorLayout)] -> Type
+dataTypeType env (Iridium.Declaration dataName _ _ _) layouts = case pointerLayouts of
   -- TODO: Use integer type for datatypes where all constructors have no arguments
   -- [] -> envValueType env
   [(conId, _)] -> pointer $ NamedTypeReference (toName conId)

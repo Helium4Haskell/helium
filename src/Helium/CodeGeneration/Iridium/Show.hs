@@ -22,9 +22,8 @@ class ShowDeclaration a where
 
 instance ShowDeclaration a => Show (Declaration a) where
   show (Declaration name vis customs a) = customsString ++ export  ++ keyword ++ " @" ++ stringFromId name ++ body
-    
     where
-      customsString = customs >>= ((++ "\n") . ('#' : ) . showCustom) -- TODO: Show customs
+      customsString = customs >>= ((++ "\n") . ('#' : ) . showCustom)
       export
         | vis == Exported = "export "
         | otherwise = ""
@@ -37,14 +36,6 @@ showCustom (CustomName id) = "[name " ++ stringFromId id ++ "]"
 showCustom (CustomLink id kind) = "[link @" ++ stringFromId id ++ " " ++ showDeclKind kind ++ "]"
 showCustom (CustomDecl kind customs) = "[decl " ++ showDeclKind kind ++ (customs >>= ((" " ++) . showCustom)) ++ "]"
 showCustom CustomNothing = "[nothing]"
-
-{- data Custom
-= CustomInt   !Int
-| CustomBytes !Bytes
-| CustomName  Id
-| CustomLink  Id !DeclKind
-| CustomDecl  !DeclKind ![Custom]
-| CustomNothing -}
 
 showDeclKind :: DeclKind -> String
 showDeclKind DeclKindName = "name"
@@ -113,8 +104,11 @@ instance Show Variable where
 instance Show Block where
   show (Block name instruction) = stringFromId name ++ ":\n" ++ show instruction
 
-instance Show AbstractMethod where
-  show (AbstractMethod name fntype) = "declare @" ++ stringFromId name ++ ": " ++ show fntype
+instance ShowDeclaration AbstractMethod where
+  showDeclaration (AbstractMethod fntype) =
+    ( "declare"
+    , ": " ++ show fntype ++ "\n"
+    )
 
 instance ShowDeclaration Method where
   showDeclaration (Method args rettype entry blocks) =
@@ -128,3 +122,37 @@ instance Show Module where
     ++ (decls >>= ('\n' :) . show)
     ++ (abstracts >>= ('\n' :) . show)
     ++ (methods >>= ('\n' :) . show)
+
+instance ShowDeclaration DataTypeConstructorDeclaration where
+  showDeclaration (DataTypeConstructorDeclaration args) =
+    ( "constructor"
+    , showArguments args
+    )
+
+instance Show DataTypeConstructor where
+  show (DataTypeConstructor dataType name args) = "@" ++ stringFromId name ++ ": " ++ showArguments args ++ " -> @" ++ stringFromId dataType
+
+instance ShowDeclaration DataType where
+  showDeclaration (DataType cons) =
+    ( "data"
+    , " {" ++ (cons >>= (("\n" ++) .unlines . map ("  " ++) . lines . show)) ++ "}\n"
+    )
+
+instance Show PrimitiveType where
+  show (TypeAny) = "any"
+  show (TypeAnyThunk) = "any_thunk"
+  show (TypeAnyWHNF) = "any_whnf"
+
+  show (TypeInt) = "int"
+  show (TypeDataType name) = "data<@" ++ stringFromId name ++ ">"
+  show (TypeFunction) = "function"
+  show (TypeGlobalFunction fntype) = "function " ++ show fntype
+
+showArguments' :: (a -> String) -> [a] -> String
+showArguments' showFn = ("("++) . (++")") . intercalate ", " . map showFn
+
+showArguments :: Show a => [a] -> String
+showArguments = showArguments' show
+
+instance Show FunctionType where
+  show (FunctionType args ret) = showArguments args ++ " -> " ++ show ret

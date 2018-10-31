@@ -4,6 +4,7 @@ import Lvm.Common.Id(Id, idFromString)
 import Lvm.Common.IdMap
 import Helium.CodeGeneration.Iridium.Data
 import Helium.CodeGeneration.Iridium.Type
+import Helium.CodeGeneration.Iridium.Show
 import Data.Maybe(catMaybes)
 
 data TypeEnv = TypeEnv
@@ -73,11 +74,11 @@ typeEnvForModule (Module _ dataTypes abstracts methods) = TypeEnv () values Noth
     methodDecls = map valueOfMethod methods 
     abstractDecls = map valueOfAbstract abstracts
 
-    valuesInDataType :: DataType -> [(Id, ValueDeclaration)]
-    valuesInDataType (DataType name cs) = map (\con@(DataTypeConstructor _ conId _) -> (conId, ValueConstructor con)) cs
+    valuesInDataType :: Declaration DataType -> [(Id, ValueDeclaration)]
+    valuesInDataType (Declaration name _ _ (DataType cs)) = map (\(Declaration conId _ _ (DataTypeConstructorDeclaration args)) -> (conId, ValueConstructor $ DataTypeConstructor name conId args)) cs
 
     valueOfMethod :: Declaration Method -> (Id, ValueDeclaration)
     valueOfMethod (Declaration name _ _ (Method args retType _ _)) = (name, ValueFunction (FunctionType (map localType args) retType))
 
-    valueOfAbstract :: AbstractMethod -> (Id, ValueDeclaration)
-    valueOfAbstract (AbstractMethod name fntype) = (name, ValueFunction fntype)
+    valueOfAbstract :: Declaration AbstractMethod -> (Id, ValueDeclaration)
+    valueOfAbstract (Declaration name _ _ (AbstractMethod fntype)) = (name, ValueFunction fntype)
