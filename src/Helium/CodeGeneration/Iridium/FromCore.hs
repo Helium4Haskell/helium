@@ -17,7 +17,7 @@ import Lvm.Common.Byte(stringFromBytes)
 import qualified Lvm.Core.Expr as Core
 import qualified Lvm.Core.Module as CoreModule
 import Data.List(find, replicate)
-import Data.Maybe(fromMaybe)
+import Data.Maybe(fromMaybe, mapMaybe)
 import Data.Either(partitionEithers)
 
 import Text.PrettyPrint.Leijen (pretty) -- TODO: Remove
@@ -27,33 +27,53 @@ import Helium.CodeGeneration.Iridium.Type
 import Helium.CodeGeneration.Iridium.TypeEnvironment
 
 fromCore :: NameSupply -> Core.CoreModule -> Module
-fromCore supply mod@(CoreModule.Module name _ _ decls) = Module name datas abstracts methods
+fromCore supply mod@(CoreModule.Module name _ _ decls) = Module name customs datas abstracts methods
   where
-    datas = map (\(dataName, cons) -> DataType dataName cons) $ listFromMap consMap
-    consMap = foldr dataTypeFromCoreDecl emptyMap decls
+    datas = decls >>= dataTypeFromCoreDecl consMap
+      -- map (\(dataName, cons) -> Declaration dataName Exported [] (DataType cons)) $ listFromMap consMap
+    consMap = foldr dataTypeConFromCoreDecl emptyMap decls
     (methods, abstracts) = partitionEithers $ concat $ mapWithSupply (`fromCoreDecl` env) supply decls
+    customs = mapMaybe customFromCoreDecl decls
+
     env = TypeEnv () (unionMap valuesFunctions $ unionMap valuesAbstracts $ unionMap valuesCons $ mapFromList builtins) Nothing
     valuesFunctions = mapMap (\arity -> ValueFunction (FunctionType (replicate arity TypeAny) TypeAnyWHNF)) $ aritiesMap mod
-    valuesAbstracts = mapFromList $ map (\(AbstractMethod name fntype) -> (name, ValueFunction fntype)) abstracts
-    valuesCons = mapFromList $ listFromMap consMap >>= (\(dataName, cons) -> map (\con@(DataTypeConstructor _ conName _) -> (conName, ValueConstructor con)) cons)
+    valuesAbstracts = mapFromList $ map (\(Declaration name _ _ (AbstractMethod fntype)) -> (name, ValueFunction fntype)) abstracts
+    valuesCons = mapFromList $ listFromMap consMap >>= (\(dataName, cons) -> map (\con@(Declaration conName _ _ (DataTypeConstructorDeclaration fields)) -> (conName, ValueConstructor (DataTypeConstructor dataName conName fields))) cons)
 
-dataTypeFromCoreDecl :: Core.CoreDecl -> IdMap [DataTypeConstructor] -> IdMap [DataTypeConstructor]
-dataTypeFromCoreDecl decl@CoreModule.DeclCon{} = case find isDataName (CoreModule.declCustoms decl) of
-    Just (CoreModule.CustomLink dataType _) -> insertMapWith dataType [con dataType] (con dataType :)
+customFromCoreDecl :: Core.CoreDecl -> Maybe (Declaration CustomDeclaration)
+customFromCoreDecl decl@CoreModule.DeclCustom{} = Just $ Declaration name (visibility decl) (CoreModule.declCustoms decl) $ CustomDeclaration $ CoreModule.declKind decl
+  where
+    name = CoreModule.declName decl
+customFromCoreDecl _ = Nothing
+
+dataTypeFromCoreDecl :: IdMap [Declaration DataTypeConstructorDeclaration] -> Core.CoreDecl -> [Declaration DataType]
+dataTypeFromCoreDecl consMap decl@CoreModule.DeclCustom{}
+  | CoreModule.declKind decl == CoreModule.DeclKindCustom (idFromString "data")
+    = [Declaration name (visibility decl) (CoreModule.declCustoms decl) $ DataType $ fromMaybe [] $ lookupMap name consMap]
+  where
+    name = CoreModule.declName decl
+dataTypeFromCoreDecl _ _ = []
+
+dataTypeConFromCoreDecl :: Core.CoreDecl -> IdMap [Declaration DataTypeConstructorDeclaration] -> IdMap [Declaration DataTypeConstructorDeclaration]
+dataTypeConFromCoreDecl decl@CoreModule.DeclCon{} = case find isDataName (CoreModule.declCustoms decl) of
+    Just (CoreModule.CustomLink dataType _) -> insertMapWith dataType [con] (con :)
     Nothing -> id
   where
     isDataName (CoreModule.CustomLink _ (CoreModule.DeclKindCustom name)) = name == idFromString "data"
     isDataName _ = False
     -- When adding strictness annotations to data types, `TypeAny` on the following line should be changed.
-    con dataType = DataTypeConstructor dataType (CoreModule.declName decl) (replicate (CoreModule.declArity decl) TypeAny)
-dataTypeFromCoreDecl _ = id
+    con = Declaration (CoreModule.declName decl) (visibility decl) (CoreModule.declCustoms decl) (DataTypeConstructorDeclaration $ replicate (CoreModule.declArity decl) TypeAny)
+dataTypeConFromCoreDecl _ = id
 
-fromCoreDecl :: NameSupply -> TypeEnv -> Core.CoreDecl -> [Either (Declaration Method) AbstractMethod]
-fromCoreDecl supply env decl@CoreModule.DeclValue{} = [Left $ Declaration name Exported (CoreModule.declCustoms decl) method]
+fromCoreDecl :: NameSupply -> TypeEnv -> Core.CoreDecl -> [Either (Declaration Method) (Declaration AbstractMethod)]
+fromCoreDecl supply env decl@CoreModule.DeclValue{} = [Left $ Declaration name (visibility decl) (CoreModule.declCustoms decl) method]
   where
     name = CoreModule.declName decl
     method = toMethod supply env (CoreModule.declName decl) (CoreModule.valueValue decl)
-fromCoreDecl supply env decl@CoreModule.DeclAbstract{} = [Right $ AbstractMethod (CoreModule.declName decl) $ FunctionType (replicate (CoreModule.declArity decl) TypeAny) TypeAnyWHNF]
+fromCoreDecl supply env decl@CoreModule.DeclAbstract{} = [Right $ Declaration name (visibility decl) (CoreModule.declCustoms decl) method]
+  where
+    name = CoreModule.declName decl
+    method = AbstractMethod $ FunctionType (replicate (CoreModule.declArity decl) TypeAny) TypeAnyWHNF
 fromCoreDecl _ _ _ = []
 
 idEntry, idMatchAfter :: Id
@@ -351,3 +371,8 @@ resolve env name = case valueDeclaration env name of
 
 resolveList :: TypeEnv -> [Id] -> [Variable]
 resolveList env = map (resolve env)
+
+visibility :: Core.CoreDecl -> Visibility
+visibility decl
+  | CoreModule.accessPublic $ CoreModule.declAccess decl = Exported
+  | otherwise = Private

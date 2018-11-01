@@ -15,7 +15,7 @@
 module Helium.CodeGeneration.Iridium.Data where
 
 import Lvm.Common.Id(Id, stringFromId, idFromString)
-import Lvm.Core.Module(Custom(..))
+import Lvm.Core.Module(Custom(..), DeclKind)
 import Data.List(intercalate)
 
 import Helium.CodeGeneration.Iridium.Type
@@ -24,6 +24,7 @@ type BlockName = Id
 
 data Module = Module
   { moduleName :: !Id
+  , moduleCustoms :: ![Declaration CustomDeclaration]
   , moduleDataTypes :: ![Declaration DataType]
   , moduleAbstractMethods :: ![Declaration AbstractMethod]
   , moduleMethods :: ![Declaration Method]
@@ -41,6 +42,8 @@ getConstructors (Declaration dataName _ _ (DataType cons)) = map (\(Declaration 
 
 data Visibility = Exported | Private deriving (Eq, Ord)
 data Declaration a = Declaration !Id !Visibility ![Custom] !a
+
+data CustomDeclaration = CustomDeclaration !DeclKind
 
 instance Functor Declaration where
   fmap f (Declaration name visibility customs a) = Declaration name visibility customs $ f a
@@ -123,7 +126,7 @@ data Literal
   deriving (Eq, Ord)
 
 mapBlocks :: (Instruction -> Instruction) -> Module -> Module
-mapBlocks fn (Module name datas abstracts methods) = Module name datas abstracts $ map (fmap fnMethod) methods
+mapBlocks fn (Module name customs datas abstracts methods) = Module name customs datas abstracts $ map (fmap fnMethod) methods
   where
     fnMethod :: Method -> Method
     fnMethod (Method args rettype entry blocks) = Method args rettype (fnBlock entry) $ map fnBlock blocks

@@ -117,11 +117,15 @@ instance ShowDeclaration Method where
     )
 
 instance Show Module where
-  show (Module name decls abstracts methods) =
+  show (Module name customs decls abstracts methods) =
     "module " ++ show name ++ "\n"
+    ++ (customs >>= ('\n' :) . show)
     ++ (decls >>= ('\n' :) . show)
     ++ (abstracts >>= ('\n' :) . show)
     ++ (methods >>= ('\n' :) . show)
+
+instance ShowDeclaration CustomDeclaration where
+  showDeclaration (CustomDeclaration kind) = ("custom", ": " ++ showDeclKind kind ++ "\n")
 
 instance ShowDeclaration DataTypeConstructorDeclaration where
   showDeclaration (DataTypeConstructorDeclaration args) =

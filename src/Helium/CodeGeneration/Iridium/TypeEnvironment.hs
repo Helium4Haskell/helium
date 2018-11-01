@@ -67,7 +67,7 @@ resolveFunction env name = case lookupMap name (teValues env) of
   _ -> Nothing
 
 typeEnvForModule :: Module -> TypeEnv
-typeEnvForModule (Module _ dataTypes abstracts methods) = TypeEnv () values Nothing
+typeEnvForModule (Module _ _ dataTypes abstracts methods) = TypeEnv () values Nothing
   where
     values = mapFromList $ cons ++ methodDecls ++ abstractDecls
     cons = dataTypes >>= valuesInDataType

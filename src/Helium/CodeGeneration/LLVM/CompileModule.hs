@@ -28,7 +28,7 @@ import LLVM.AST.CallingConvention
 import LLVM.AST.Linkage
 
 compileModule :: Env -> NameSupply -> Iridium.Module -> Module
-compileModule env supply (Iridium.Module name datas abstracts methods) = Module
+compileModule env supply (Iridium.Module name _ datas abstracts methods) = Module
   (fromString $ stringFromId name)
   (fromString "<TODO: Filename.hs>")
   Nothing
