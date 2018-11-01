@@ -112,6 +112,12 @@ parserConstructorOperator = select language
     , Dutch   :-> "constructor operator"
     ]
 
+parserQualified :: String
+parserQualified = select language
+    [ English :-> "qualifier"
+    , Dutch   :-> "kwalificeerder"
+    ]
+
 parserOperator :: String
 parserOperator = select language
     [ English :-> "operator"

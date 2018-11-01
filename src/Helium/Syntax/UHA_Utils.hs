@@ -18,6 +18,7 @@ import Data.Maybe     --added for Holmes
 import Helium.Syntax.UHA_Syntax --added for Holmes
 import Lvm.Common.Id(Id, idFromString, stringFromId)
 import Data.Char
+import Data.List(intercalate)
 
 import Top.Types(isTupleConstructor)
 import Helium.Utils.Utils(internalError)
@@ -52,9 +53,9 @@ instance Ord NameWithRange where
 --------------------------------------------------------------
 
 getNameName :: Name -> String -- !!!Name
-getNameName (Name_Identifier _ _ _ name) = name
-getNameName (Name_Operator   _ _ _ name) = name
-getNameName (Name_Special    _ _ _ name) = name
+getNameName (Name_Identifier _ qs _ name) = intercalate "." (qs ++ [name])
+getNameName (Name_Operator   _ qs _ name) = intercalate "." (qs ++ [name])
+getNameName (Name_Special    _ qs _ name) = intercalate "." (qs ++ [name])
 
 -- added for Holmes
 getHolmesName :: String -> Name -> String -- !!!Name
@@ -74,20 +75,30 @@ getModuleName (Module_Module _ MaybeName_Nothing _ _) = ""
 getModuleName (Module_Module _ (MaybeName_Just name) _ _) = show name
 
 idFromName :: Name -> Id -- !!!Name
-idFromName (Name_Special _ _ _ s) = idFromString s
-idFromName (Name_Identifier _ _ _ s) = idFromString s
-idFromName (Name_Operator _ _ _ s) = idFromString s
+idFromName = idFromString . getNameName
 
 nameFromId :: Id -> Name
 nameFromId = nameFromString . stringFromId
 
 nameFromString :: String -> Name -- !!!Name
-nameFromString str@(first:_) 
-    | isAlpha first = Name_Identifier noRange [] [] str 
-    | str == "[]" || isTupleConstructor str || str == "->" 
-                    = Name_Special noRange [] [] str
-    | otherwise     = Name_Operator noRange [] [] str
-nameFromString _ = internalError "UHA_Utils" "nameFromString" "empty string"
+nameFromString = nameFromBareString . getQualifier []
+    where
+        getQualifier :: [String] -> String -> ([String], String)
+        getQualifier quals s@(fst:rest) 
+            | isUpper fst = let (qual, rest) = span isLetter s in
+                            case rest of
+                                '.':rest' -> getQualifier (qual : quals) rest' 
+                                _         -> (quals, s)
+            | otherwise = (quals, s)
+        getQualifier _ _ = internalError "UHA_Utils" "nameFromString" "empty string"
+
+        nameFromBareString :: ([String], String) -> Name
+        nameFromBareString (quals, s@(first:_))
+            | isAlpha first = Name_Identifier noRange quals [] s 
+            | s == "[]" || isTupleConstructor s || s == "->" 
+                            = Name_Special noRange quals [] s
+            | otherwise     = Name_Operator noRange quals [] s
+        nameFromBareString _ = internalError "UHA_Utils" "nameFromString" "empty string"
 
 isOperatorName :: Name -> Bool -- !!!Name
 isOperatorName (Name_Operator{}) = True

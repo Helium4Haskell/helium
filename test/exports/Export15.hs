@@ -24,3 +24,4 @@ data Listt3 a = a :>>< a | Emptyy
 type Hello = Int
 
 main :: Int
+main = 0

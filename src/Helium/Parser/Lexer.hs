@@ -100,7 +100,7 @@ mainLexer' useTutor input@(c:cs)
         nextPos c 
         mainLexer cs        
     | myIsUpper c = -- constructor
-        lexName isLetter LexCon (internalError "Lexer" "mainLexer'" "constructor") [] input
+        lexQualOrCon input
     | c == ':' = -- constructor operator
         lexName isSymbol LexConSym LexResConSym reservedConSyms input
     | useTutor, c == '?' = -- named hole
@@ -133,6 +133,18 @@ lexName predicate normal reserved reserveds cs = do
         pos <- getPos
         lexerWarning CommentOperator pos
     returnToken lexeme (length name) mainLexer rest
+
+lexQualOrCon :: Lexer
+lexQualOrCon cs = do
+    let (name@(first:_), rest) = span isLetter cs
+    when ((isSymbol first || first == ':') && name `contains` "--") $ do
+        pos <- getPos
+        lexerWarning CommentOperator pos
+    case rest of
+        '.':x:rest' -> if myIsSpace x 
+            then returnToken (LexCon name) (length name) mainLexer rest
+            else returnToken (LexQual name) (length name + 1) mainLexer (x:rest')
+        _ -> returnToken (LexCon name) (length name) mainLexer rest
 
 contains :: Eq a => [a] -> [a] -> Bool
 [] `contains` _ = False
@@ -364,7 +376,7 @@ symbols = "!#$%&*+./<=>?@^|-~:\\"
 keywords :: [String]
 keywords = 
     [ "let", "in", "do", "where", "case", "of", "if"
-    , "then", "else", "data", "type", "module", "import", "hiding"
+    , "then", "else", "data", "type", "module", "import"
     , "infix", "infixl", "infixr", "_", "deriving"
     , "class", "instance", "default"
     , "newtype" -- not supported
