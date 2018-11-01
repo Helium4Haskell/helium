@@ -184,14 +184,14 @@ noInstanceOrDefault className imps  (Just (_, members)) MaybeDeclarations_Nothin
                                                             [ n 
                                                             | (n, _, d, False) <- snd members
                                                             , not d
-                                                            , not (("default$" ++ getNameName className ++ "$" ++ getNameName n) `elem` (map getNameName imps)) 
+                                                           
                                                             ]
 noInstanceOrDefault className imps  (Just (_, members)) (MaybeDeclarations_Just decls)  = 
                                                             [ n 
                                                             | (n, _, d, False) <- snd members
                                                             , not d
                                                             , notElem n (map (head . nameOfDeclaration) decls)
-                                                            , not (("default$" ++ getNameName className ++ "$" ++ getNameName n) `elem` (map getNameName imps)) ]
+                                                            ]
 
 deleteClassWarnings :: Warnings -> Warnings
 deleteClassWarnings warnings = filter p warnings where

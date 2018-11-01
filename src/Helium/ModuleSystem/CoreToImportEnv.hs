@@ -173,8 +173,9 @@ insertDictionaries importedInModule
                                     getFunction :: Custom -> (Name, TpScheme, Bool, HasDefault)
                                     getFunction (CustomDecl _ [
                                             CustomName fname,
-                                            CustomBytes tps
-                                        ]) = (nameFromString $ stringFromId fname, makeTpSchemeFromType $ parseFromString type_ $ stringFromBytes tps, False, False)
+                                            CustomBytes tps,
+                                            CustomInt n
+                                        ]) = (nameFromString $ stringFromId fname, makeTpSchemeFromType $ parseFromString type_ $ stringFromBytes tps, n == 1, n == 1)
                                     className = nameFromId n
                                     classMembers = (tpVar, functions) 
                                 in setClassMemberEnvironment (M.insert className classMembers (classMemberEnvironment env)) env

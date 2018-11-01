@@ -221,11 +221,12 @@ constructClassMemberCustomDecl env name (Just (typevars, members)) = typeVarsDec
                                 (DeclKindCustom $ idFromString "ClassTypeVariables")
                                 (map (CustomName . idFromString . getNameName) typevars)
                             functionToCustom :: (Name, TpScheme, Bool, HasDefault) -> Custom
-                            functionToCustom (name, tps, _, _) = CustomDecl 
+                            functionToCustom (name, tps, _, fDefault) = CustomDecl 
                                 (DeclKindCustom $ idFromString "Function") 
                                 [
                                     CustomName $ idFromString $ getNameName name, 
-                                    CustomBytes $ bytesFromString $ show tps
+                                    CustomBytes $ bytesFromString $ show tps,
+                                    if fDefault then CustomInt 1 else CustomInt 0
                                 ]
 
 convertDictionaries :: ImportEnvironment -> Name -> [Name] -> [(Name, CoreDecl)] -> [CoreDecl]
