@@ -10,13 +10,14 @@
 default: all
 all: ag
 
-AG      = uuagc -P Helium/Syntax -P Helium/StaticAnalysis/StaticChecks -P Helium/StaticAnalysis/Inferencers -P Helium/CodeGeneration -P Helium/StaticAnalysis/Directives
+AG      = uuagc -P Helium/Optimization -P Helium/Syntax -P Helium/StaticAnalysis/StaticChecks -P Helium/StaticAnalysis/Inferencers -P Helium/CodeGeneration -P Helium/StaticAnalysis/Directives
 AG_OPTS = -mscfrw --kennedywarren
 
 AG_OUT_DIR=../dist/build/autogen/uuagc
 
 # AG sources
 AGSOURCES = \
+     $(AG_OUT_DIR)/Helium/Optimization/LVM_Syntax.hs \
      $(AG_OUT_DIR)/Helium/Syntax/UHA_Pretty.hs \
      $(AG_OUT_DIR)/Helium/Syntax/UHA_OneLine.hs \
      $(AG_OUT_DIR)/Helium/StaticAnalysis/StaticChecks/StaticChecks.hs \
@@ -36,20 +37,26 @@ libraries:
 	@echo "****************************************************"
 	@echo "  Libraries (with overloading)"
 	@echo "****************************************************"
-	cd ../lib; $(MAKE) 
+	cd ../lib; $(MAKE)
 	@echo "****************************************************"
 	@echo "  Simple libraries (without overloading)"
 	@echo "****************************************************"
-	cd ../lib/simple; $(MAKE) 
+	cd ../lib/simple; $(MAKE)
 
 # AG sources
 
 ag : $(AGSOURCES)
 
-cleanag : 
+cleanag :
 	$(RM) $(AGSOURCES)
 
 ifdef AG
+$(AG_OUT_DIR)/Helium/Optimization/LVM_Syntax.hs : \
+		Helium/Optimization/LVM_Syntax.ag
+	mkdir -p `dirname $@`
+	# AG Optimization
+	$(AG) -dmr $(AG_OPTS) --module=Helium.Optimization.LVM_Syntax Helium/Optimization/LVM_Syntax.ag --output=$@
+
 $(AG_OUT_DIR)/Helium/Parser/ResolveOperators.hs : \
 		Helium/Parser/ResolveOperators.ag \
 		Helium/Syntax/UHA_Syntax.ag
@@ -80,7 +87,7 @@ $(AG_OUT_DIR)/Helium/StaticAnalysis/StaticChecks/StaticChecks.hs : \
     Helium/StaticAnalysis/StaticChecks/HeliumPartialSyntax.ag \
     Helium/StaticAnalysis/StaticChecks/Scope.ag \
     Helium/StaticAnalysis/StaticChecks/ScopeErrors.ag \
-		Helium/Syntax/UHA_Syntax.ag 
+		Helium/Syntax/UHA_Syntax.ag
 	mkdir -p `dirname $@`
 	# AG StaticAnalysis
 	$(AG) $(AG_OPTS) --self --module=Helium.StaticAnalysis.StaticChecks.StaticChecks Helium/StaticAnalysis/StaticChecks/StaticChecks.ag --output=$@
@@ -133,7 +140,7 @@ $(AG_OUT_DIR)/Helium/ModuleSystem/ExtractImportDecls.hs : \
 	mkdir -p `dirname $@`
 	# AG ExtractImportDecls
 	$(AG) $(AG_OPTS) --self --module=Helium.ModuleSystem.ExtractImportDecls Helium/ModuleSystem/ExtractImportDecls.ag --output=$@
-        
+
 $(AG_OUT_DIR)/Helium/StaticAnalysis/Directives/TS_Syntax.hs : \
 	  Helium/StaticAnalysis/Directives/TS_Syntax.ag
 	mkdir -p `dirname $@`
@@ -171,7 +178,7 @@ $(AG_OUT_DIR)/Helium/StaticAnalysis/Directives/TS_ToCore.hs : \
     Helium/StaticAnalysis/Directives/TS_Collect.ag \
     Helium/StaticAnalysis/Directives/TS_ToCore.ag \
     Helium/Syntax/UHA_Syntax.ag \
-    Helium/Syntax/UHA_OneLine.ag 
+    Helium/Syntax/UHA_OneLine.ag
 	mkdir -p `dirname $@`
 	# AG TS_Syntax
 	$(AG) -mscrfw --self --module=Helium.StaticAnalysis.Directives.TS_ToCore Helium/StaticAnalysis/Directives/TS_ToCore.ag --output=$@

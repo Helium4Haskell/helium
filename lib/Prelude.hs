@@ -1,6 +1,6 @@
 {- The overloaded Standard Prelude for the Helium Compiler -}
 
-module Prelude where 
+module Prelude where
 
 import PreludePrim
 
@@ -47,10 +47,10 @@ product = foldl' (*) (fromInt 1)
 
 elem :: Eq a => a -> [a] -> Bool
 elem _ [] = False
-elem x (y:ys) 
+elem x (y:ys)
   | x == y = True
   | otherwise = elem x ys
-  
+
 notElem :: Eq a => a -> [a] -> Bool
 notElem x ys = not (x `elem` ys)
 
@@ -58,7 +58,7 @@ lookup :: Eq a => a -> [(a,b)] -> Maybe b
 lookup _ []       = Nothing
 lookup k ((x,y):xys)
       | k == x  = Just y
-      | otherwise = lookup k xys  
+      | otherwise = lookup k xys
 
 {-----------------------------------------------
  -- Ord
@@ -209,10 +209,10 @@ data Maybe a
     = Nothing
     | Just a
     deriving (Eq, Show)
- 
+
 maybe :: b -> (a -> b) -> Maybe a -> b
 maybe e f m =
-    case m of 
+    case m of
         Nothing -> e
         Just x  -> f x
 
@@ -224,7 +224,7 @@ data Either a b = Left a | Right b deriving (Eq, Show)
 
 either :: (a -> c) -> (b -> c) -> Either a b -> c
 either l r e =
-    case e of 
+    case e of
         Left  x -> l x
         Right y -> r y
 
@@ -234,7 +234,7 @@ either l r e =
 
 {- imported from PreludePrim
 
-data Ordering = LT | EQ | GT 
+data Ordering = LT | EQ | GT
 -}
 
 {-----------------------------------------------
@@ -279,7 +279,7 @@ unzip3 = foldr (\(a,b,c) (as,bs,cs) -> (a:as,b:bs,c:cs)) ([],[],[])
  -----------------------------------------------}
 
 -- We can't import Char here because that would mean we couldn't import
--- it elsewhere. Therefore, we make local copies of the two functions 
+-- it elsewhere. Therefore, we make local copies of the two functions
 -- from that module
 localIsSpace :: Char -> Bool
 localIsSpace c =
@@ -326,12 +326,12 @@ map _ [] = []
 map f (x:xs) = f x : map f xs
 
 filter :: (a -> Bool) -> [a] -> [a]
-filter p (x:xs) 
-    | p x =  x : filter p xs 
+filter p (x:xs)
+    | p x =  x : filter p xs
     | otherwise = filter p xs
 filter _ [] = []
 
-{- 
+{-
 Naive implementation of length (slow because of laziness)
 
 length :: [a] -> Int
@@ -366,7 +366,7 @@ foldl1 f (x:xs)   = foldl f x xs
 foldl1 _ []       = error "Prelude.foldl1: empty list"
 
 scanl            :: (a -> b -> a) -> a -> [b] -> [a]
-scanl f q xs      = q : 
+scanl f q xs      = q :
     ( case xs of
              []   -> []
              y:ys -> scanl f (f q y) ys
@@ -387,7 +387,7 @@ foldr1 _ []       = error "Prelude.foldr1: empty list"
 
 scanr            :: (a -> b -> b) -> b -> [a] -> [b]
 scanr _ q0 []     = [q0]
-scanr f q0 (x:xs) = 
+scanr f q0 (x:xs) =
     case scanr f q0 xs of
         qs@(q:_) -> f x q : qs
         _        -> error "Prelude.scanr"
@@ -395,7 +395,7 @@ scanr f q0 (x:xs) =
 scanr1           :: (a -> a -> a) -> [a] -> [a]
 scanr1 _ []       = []
 scanr1 _ [x]      = [x]
-scanr1 f (x:xs)   = 
+scanr1 f (x:xs)   =
     case scanr1 f xs of
         qs@(q:_) -> f x q : qs
         _        -> error "Prelude.scanr"
@@ -414,39 +414,39 @@ cycle [] = error "Prelude.cycle: empty list"
 cycle xs = xs' where xs'=xs++xs'
 
 take :: Int -> [a] -> [a]
-take n xs 
+take n xs
     | n <= 0   = []
-    | otherwise = 
-        case xs of 
+    | otherwise =
+        case xs of
             [] -> []
             (y:ys) -> y : take (n-1) ys
-          
+
 drop :: Int -> [a] -> [a]
-drop n xs 
+drop n xs
     | n <= 0 = xs
-    | otherwise = 
+    | otherwise =
         case xs of
             [] -> []
             (_:ys) -> drop (n-1) ys
 
 splitAt :: Int -> [a] -> ([a], [a])
-splitAt n xs 
+splitAt n xs
     | n <= 0 = ([],xs)
-    | otherwise = 
-        case xs of 
+    | otherwise =
+        case xs of
             [] -> ([],[])
             (y:ys) -> (y:as,bs) where (as,bs) = splitAt (n-1) ys
 
 takeWhile :: (a -> Bool) -> [a] -> [a]
 takeWhile _ [] = []
 takeWhile p (x:xs)
-    | p x = x : takeWhile p xs 
+    | p x = x : takeWhile p xs
     | otherwise = []
 
 dropWhile :: (a -> Bool) -> [a] -> [a]
 dropWhile _ [] = []
 dropWhile p l@(x:xs)
-    | p x = dropWhile p xs 
+    | p x = dropWhile p xs
     | otherwise = l
 
 span :: (a -> Bool) -> [a] -> ([a],[a])
@@ -524,7 +524,7 @@ truncate   :: Float -> Int
  -----------------------------------------------}
 
 fix :: (a -> a) -> a
-fix f = x where x = f x 
+fix f = x where x = f x
 
 id :: a -> a
 id x = x
@@ -566,19 +566,19 @@ undefined = error "undefined"
 (>>) :: IO a -> IO b -> IO b
 p >> q = p >>= \ _ -> q
 
-{- imported from PreludePrim 
+{- imported from PreludePrim
 return :: a -> IO a
 
 putChar :: Char -> IO ()
 putChar c = primPutChar c
 
 putStr :: String -> IO ()
-putStr s = primPutStr s 
+putStr s = primPutStr s
 
 putStrLn :: String -> IO ()
 putStrLn s = primPutStrLn s
 
-unsafePerformIO :: IO a -> a 
+unsafePerformIO :: IO a -> a
 unsafePerformIO = primUnsafePerformIO
 -}
 
@@ -589,9 +589,9 @@ print :: Show a => a -> IO ()
 print e = putStrLn (show e)
 
 getLine   :: IO String
-getLine = do 
+getLine = do
     c <- getChar
-    if c == '\n' 
+    if c == '\n'
         then return ""
         else do cs <- getLine
                 return (c:cs)
@@ -608,9 +608,9 @@ readFile fname
               (hClose)
               (\h -> readAll h [])
   where
-    readAll h acc 
+    readAll h acc
       = do c  <- hGetChar h
-           readAll h (c:acc) 
+           readAll h (c:acc)
         `catchEof` (return (reverse acc))
 
 bracketIO :: IO a -> (a -> IO b) -> (a -> IO c) -> IO c
@@ -634,7 +634,7 @@ readInt ('-':s) = - readUnsigned s
 readInt s = readUnsigned s
 
 readUnsigned :: String -> Int
-readUnsigned = 
+readUnsigned =
     foldl (\a b -> a * 10 + b) 0
     .
     map (\c -> primOrd c - primOrd '0')

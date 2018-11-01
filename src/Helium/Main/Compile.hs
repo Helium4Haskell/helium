@@ -17,6 +17,8 @@ import Helium.Main.PhaseKindInferencer
 import Helium.Main.PhaseTypingStrategies
 import Helium.Main.PhaseTypeInferencer
 import Helium.Main.PhaseDesugarer
+import Helium.Main.PhaseNormalize
+import Helium.Main.PhaseOptimize
 import Helium.Main.PhaseCodeGenerator
 import Helium.Main.CompileUtils
 import Helium.Parser.Lexer (checkTokenStreamForClassOrInstance)
@@ -115,8 +117,12 @@ compile basedir fullName options lvmPath doneModules =
 
         stopCompilingIf (StopAfterDesugar `elem` options)
 
-        -- Phase 10: Code generation
-        phaseCodeGenerator fullName coreModule options
+        -- Phase 10: Normalization
+        normalizedCoreModule <- phaseNormalize coreModule options
+        -- Phase 11: Optimization
+        optimizedCoreModule <- phaseOptimize normalizedCoreModule options
+        -- Phase 12: Code generation
+        phaseCodeGenerator fullName optimizedCoreModule options
 
         sendLog "C" fullName doneModules options
 

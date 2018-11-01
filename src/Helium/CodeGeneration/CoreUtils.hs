@@ -11,7 +11,7 @@ module Helium.CodeGeneration.CoreUtils
     ,   stringToCore, coreList
     ,   let_, if_, app_, letrec_
     ,   cons, nil
-    ,   var, decl
+    ,   var, decl, char
     ,   float, packedString
     ) where
 
@@ -33,7 +33,7 @@ custom sort text =
 
 customStrategy :: String -> Decl a
 customStrategy text =
-    DeclCustom    
+    DeclCustom
         { declName = idFromString ""
         , declAccess = Defined { accessPublic = True }
         , declKind = DeclKindCustom (idFromString "strategy")
@@ -47,23 +47,23 @@ let_ :: Id -> Expr -> Expr -> Expr
 let_ x e b = Let (NonRec (Bind x e)) b
 
 letrec_ :: [CoreDecl] -> Expr -> Expr
-letrec_ bs e = 
-    Let 
-        (Rec 
+letrec_ bs e =
+    Let
+        (Rec
             [ Bind ident expr
             | DeclValue { declName = ident, valueValue = expr } <- bs
             ]
-        ) 
+        )
         e
 
 -- Function "if_" builds a Core expression of the following form
--- let! guardId = <guardExpr> in 
--- match guardId 
+-- let! guardId = <guardExpr> in
+-- match guardId
 --   True -> <thenExpr>
 --   _    -> <elseExpr>
 if_ :: Expr -> Expr -> Expr -> Expr
 if_ guardExpr thenExpr elseExpr =
-    Let 
+    Let
         (Strict (Bind guardId guardExpr))
         (Match guardId
             [ Alt (PatCon (ConId trueId) []) thenExpr
@@ -72,8 +72,8 @@ if_ guardExpr thenExpr elseExpr =
         )
 
 -- Function "coreList" builds a linked list of the given expressions
--- Example: coreList [e1, e2] ==> 
---   Ap (Ap (Con ":") e1) 
+-- Example: coreList [e1, e2] ==>
+--   Ap (Ap (Con ":") e1)
 --           (Ap (Ap (Con ":") e2)
 --                    (Con "[]")
 --           )
@@ -86,28 +86,28 @@ cons x xs = Con (ConId consId) `app_` x `app_` xs
 nil :: Expr
 nil = Con (ConId nilId)
 
-nilId, consId, trueId, guardId :: Id 
+nilId, consId, trueId, guardId :: Id
 ( nilId : consId :  trueId :  guardId : []) =
    map idFromString ["[]", ":", "True", "guard$"]
 
 -- Function "stringToCore" converts a string to a Core expression
 stringToCore :: String -> Expr
-stringToCore [x] = cons (Lit (LitInt (ord x))) nil
+stringToCore [x] = cons (char x) nil
 stringToCore xs = var "$primPackedToString" `app_` packedString xs
 
 var :: String -> Expr
 var x = Var (idFromString x)
 
+char :: Char -> Expr
+char x = var "primChr" `app_` (Lit (LitInt (ord x)))
+
 --Core.Lit (Core.LitDouble (read @value))   PUSHFLOAT nog niet geimplementeerd
 float :: String -> Expr
-float f = 
-    Core.Ap 
-        (Core.Var (idFromString "$primStringToFloat")) 
-        ( Core.Lit (Core.LitBytes (bytesFromString f)) )
+float f = var "$primStringToFloat" `app_` packedString f
 
 decl :: Bool -> String -> Expr -> CoreDecl
-decl isPublic x e = 
-    DeclValue 
+decl isPublic x e =
+    DeclValue
         { declName = idFromString x
         , declAccess = Defined { accessPublic = isPublic }
         , valueEnc = Nothing

@@ -18,8 +18,8 @@ import Helium.ModuleSystem.ImportEnvironment()
 import Helium.ModuleSystem.DictionaryEnvironment (DictionaryEnvironment)
 import qualified Helium.CodeGeneration.CodeGeneration as CodeGeneration
 
-phaseDesugarer :: DictionaryEnvironment -> 
-                  String -> Module -> [CoreDecl] -> 
+phaseDesugarer :: DictionaryEnvironment ->
+                  String -> Module -> [CoreDecl] ->
                     ImportEnvironment ->
                     TypeEnvironment -> [Option] -> IO CoreModule
 phaseDesugarer dictionaryEnv fullName module_ extraDecls afterTypeInferEnv toplevelTypes options = do
@@ -28,7 +28,7 @@ phaseDesugarer dictionaryEnv fullName module_ extraDecls afterTypeInferEnv tople
     let (path, baseName, _) = splitFilePath fullName
         fullNameNoExt = combinePathAndFile path baseName
 
-{- hier kunnen we misschien main inserten en dan is toplevelTypes niet nodig in AG. 
+{- hier kunnen we misschien main inserten en dan is toplevelTypes niet nodig in AG.
 
 en eigenlijk is afterTypeInferEnv te groot. alleen locale types en constructoren hoeven gezien te worden
 
@@ -51,8 +51,8 @@ en eigenlijk is afterTypeInferEnv te groot. alleen locale types en constructoren
 
     when (DumpCoreToFile `elem` options) $ do
         writeFile (fullNameNoExt ++ ".core") $ show . pretty $ strippedCoreModule
-        exitSuccess
-   
+        --exitSuccess
+
     return strippedCoreModule
 
 -- | Make sure the module has a name. If there is no name (module without

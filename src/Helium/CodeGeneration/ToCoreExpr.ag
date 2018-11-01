@@ -11,11 +11,11 @@ SEM MaybeExpression [ | | core : { Maybe Core.Expr } ]
 ATTR Expressions [ | | core USE { : } { [] } : { [Core.Expr] } ]
 
 SEM Expression [ | | core : { Core.Expr } ]
-    | Literal            lhs.core = @literal.core      
+    | Literal            lhs.core = @literal.core
     --  range                    : Range
     --  literal                  : Literal
 
-    | Variable           lhs.core = insertDictionaries @name.self @lhs.dictionaryEnv                     
+    | Variable           lhs.core = insertDictionaries @name.self @lhs.dictionaryEnv
     --  range                    : Range
     --  name                     : Name
 
@@ -31,7 +31,7 @@ SEM Expression [ | | core : { Core.Expr } ]
     --  range                    : Range
     --  expression               : Expression
 
-    | NormalApplication  lhs.core = foldl Core.Ap @function.core @arguments.core  
+    | NormalApplication  lhs.core = foldl Core.Ap @function.core @arguments.core
     --  range                    : Range
     --  function                 : Expression
     --  arguments                : Expressions
@@ -40,7 +40,7 @@ SEM Expression [ | | core : { Core.Expr } ]
         case (@leftExpression.core, @rightExpression.core) of
             (Nothing, Nothing) -> @operator.core
             (Just l , Nothing) -> Core.Ap @operator.core l
-            (Nothing, Just r ) -> Core.Lam parameterId 
+            (Nothing, Just r ) -> Core.Lam parameterId
                                     (foldl Core.Ap @operator.core [Core.Var parameterId, r])
             {-
                 -- At most one new variable is needed. Consider
@@ -52,20 +52,20 @@ SEM Expression [ | | core : { Core.Expr } ]
     --  operator                 : Expression
     --  rightExpression          : MaybeExpression
 
-    | If                 lhs.core = 
+    | If                 lhs.core =
         if_ @guardExpression.core @thenExpression.core @elseExpression.core
     --  range                    : Range
     --  guardExpression          : Expression
     --  thenExpression           : Expression
     --  elseExpression           : Expression
 
-    | Lambda             lhs.core = 
+    | Lambda             lhs.core =
         let ids = freshIds "u$" @patterns.length
         in let_ nextClauseId (patternMatchFail "lambda expression" @range.self)
-            (foldr 
-                Core.Lam 
-                (patternsToCore 
-                    (zip ids @patterns.self) 
+            (foldr
+                Core.Lam
+                (patternsToCore
+                    (zip ids @patterns.self)
                     @expression.core
                 )
                 ids
@@ -96,9 +96,9 @@ SEM Expression [ | | core : { Core.Expr } ]
     --  range                    : Range
     --  expressions              : Expressions
 
-    | Tuple              lhs.core = 
-        foldl 
-            Core.Ap 
+    | Tuple              lhs.core =
+        foldl
+            Core.Ap
             (Core.Con
                 (Core.ConTag
                     (Core.Lit (Core.LitInt 0))
@@ -109,7 +109,7 @@ SEM Expression [ | | core : { Core.Expr } ]
     --  range                    : Range
     --  expressions              : Expressions
 
-    | Comprehension      lhs.core = 
+    | Comprehension      lhs.core =
         let singleton x = cons x nil
         in foldr ($) (singleton @expression.core) @qualifiers.core
     --  range                    : Range
@@ -122,32 +122,32 @@ SEM Expression [ | | core : { Core.Expr } ]
     --  type                     : Type
 
     -- negate is overloaded and we need to insert a dictionary argument
-    | Negate             lhs.core = insertDictionaries (setNameRange intUnaryMinusName @range.self) @lhs.dictionaryEnv                  
-                                    `app_` @expression.core 
+    | Negate             lhs.core = insertDictionaries (setNameRange intUnaryMinusName @range.self) @lhs.dictionaryEnv
+                                    `app_` @expression.core
     --  range                    : Range
     --  expression               : Expression
 
-    | NegateFloat        lhs.core = 
-            var "$primNegFloat" `app_` @expression.core 
+    | NegateFloat        lhs.core =
+            var "$primNegFloat" `app_` @expression.core
     --  range                    : Range
     --  expression               : Expression
 
     -- enumerations are overloaded and we need to insert a dictionary argument
-    | Enum               lhs.core = 
+    | Enum               lhs.core =
             case (@then.core, @to.core) of
-                (Just then_, Just to) -> 
+                (Just then_, Just to) ->
                     insertDictionaries (setNameRange enumFromThenToName @range.self) @lhs.dictionaryEnv
                        `app_` @from.core `app_` then_ `app_` to
-                (Just then_, Nothing) -> 
+                (Just then_, Nothing) ->
                     insertDictionaries (setNameRange enumFromThenName @range.self) @lhs.dictionaryEnv
                        `app_` @from.core `app_` then_
                 (Nothing, Just to) ->
-                    insertDictionaries (setNameRange enumFromToName @range.self) @lhs.dictionaryEnv 
+                    insertDictionaries (setNameRange enumFromToName @range.self) @lhs.dictionaryEnv
                        `app_` @from.core `app_` to
                 (Nothing, Nothing) ->
                     insertDictionaries (setNameRange enumFromName @range.self) @lhs.dictionaryEnv
                        `app_` @from.core
-                    
+
     --  range                    : Range
     --  from                     : Expression
     --  then                     : MaybeExpression
@@ -168,7 +168,7 @@ ATTR Statements [ | | core USE { : } { [] } : { [Maybe Core.Expr -> Core.Expr] }
 
 SEM Statement [ | | core : { Maybe Core.Expr -> Core.Expr } ]
     | Expression          lhs.core =
-            \theRest -> 
+            \theRest ->
                 case theRest of
                     Nothing   -> @expression.core
                     Just rest -> bind @expression.core (Core.Lam dummyId rest)
@@ -181,7 +181,7 @@ SEM Statement [ | | core : { Maybe Core.Expr -> Core.Expr } ]
             \theRest ->
                 case theRest of
                     Nothing   -> internalError "ToCoreExpr" "Statement" "'let' can't be last in 'do'"
-                    Just rest -> letrec_ @declarations.decls rest 
+                    Just rest -> letrec_ @declarations.decls rest
     --  range                    : Range
     --  declarations             : Declarations
 
@@ -191,10 +191,10 @@ SEM Statement [ | | core : { Maybe Core.Expr -> Core.Expr } ]
     | Generator           lhs.core =
         \theRest -> case theRest of
             Nothing   -> internalError "ToCoreExpr" "Statement" "generator can't be last in 'do'"
-            Just rest -> 
+            Just rest ->
                 let_ nextClauseId (patternMatchFail "generator" @range.self)
-                    (let_ 
-                        okId 
+                    (let_
+                        okId
                         (Core.Lam parameterId
                             (patternToCore (parameterId, @pattern.self) rest)
                         )
@@ -208,7 +208,7 @@ SEM Statement [ | | core : { Maybe Core.Expr -> Core.Expr } ]
 
     | Empty               lhs.core =
             \theRest ->
-                case theRest of 
+                case theRest of
                     Nothing   -> internalError "ToCoreExpr" "Statement" "empty statements not supported"
                     Just rest -> rest
     --  range                    : Range
@@ -227,34 +227,34 @@ SEM Qualifier [ | | core : { Core.Expr -> Core.Expr } ]
                           lhs.core = \continue -> letrec_ @declarations.decls continue
     --  range                    : Range
     --  declarations             : Declarations
-   
+
     -- See Haskell report 3.11
     -- let _nextClause = [] in
     -- let _ok = \_misc -> case _misc of { pattern -> ...; _ -> _nextClause }
     -- in concatMap _ok expression
 
-    | Generator           lhs.core = 
+    | Generator           lhs.core =
         \continue ->
             let_ nextClauseId nil
-                (let_ 
-                    okId 
+                (let_
+                    okId
                     (Core.Lam parameterId
                         (patternToCore (parameterId, @pattern.self) continue)
                     )
                     (var "$primConcatMap"
-                        `app_` Core.Var okId 
+                        `app_` Core.Var okId
                         `app_` @expression.core
                     )
                 )
     --  range                    : Range
     --  pattern                  : Pattern
     --  expression               : Expression
-    
+
 -- Not supported
 
     | Empty               lhs.core = internalError "ToCoreExpr" "Qualifier" "empty qualifiers not supported"
     --  range                    : Range
-                  
+
 SEM Alternatives [ caseRange : Range | | core : { Core.Expr } ]
     | Cons              lhs.core     = @hd.core @tl.core
     | Nil               lhs.core     = patternMatchFail "case expression" @lhs.caseRange
@@ -263,8 +263,8 @@ SEM Alternative [ | | core : { Core.Expr -> Core.Expr } ]
     | Hole              lhs.core   = id
     | Alternative       lhs.core   = \nextCase  ->
                                         let thisCase =
-                                                patternToCore 
-                                                    (caseExprId, @pattern.self) 
+                                                patternToCore
+                                                    (caseExprId, @pattern.self)
                                                     @righthandside.core
                                         in
                                             let_ nextClauseId nextCase thisCase
@@ -278,7 +278,7 @@ SEM Alternative [ | | core : { Core.Expr -> Core.Expr } ]
 ATTR GuardedExpressions [ | | core USE { : } { [] } : { [Core.Expr -> Core.Expr] } ]
 
 SEM GuardedExpression [ | | core : { Core.Expr -> Core.Expr } ]
-    | GuardedExpression lhs.core = 
+    | GuardedExpression lhs.core =
         \fail' -> if_ @guard.core @expression.core fail'
     --  range                    : Range
     --  guard                    : Expression -- type: Boolean
@@ -289,9 +289,7 @@ SEM Literal [ | | core : { Core.Expr } ]
     --  range                    : Range
     --  value                    : String
 
-    | Char                  lhs.core = 
-            Core.Lit (Core.LitInt (ord 
-                (read ("'" ++ @value ++ "'"))))
+    | Char                  lhs.core = char (read ("'" ++ @value ++ "'"))
     --  range                    : Range
     --  value                    : String -- without the quotes
 
@@ -299,8 +297,8 @@ SEM Literal [ | | core : { Core.Expr } ]
     --  range                    : Range
     --  value                    : String
 
-    | String                lhs.core = 
-        var "$primPackedToString" `app_` 
+    | String                lhs.core =
+        var "$primPackedToString" `app_`
             packedString (read ("\"" ++ @value ++ "\""))
     --  range                    : Range
     --  value                    : String -- without the quotes

@@ -6,7 +6,7 @@
     Portability :  portable
 -}
 
-module Helium.ModuleSystem.CoreToImportEnv(getImportEnvironment) where
+module Helium.ModuleSystem.CoreToImportEnv(getImportEnvironment, arityFromCustoms,parseFromString, typeSynFromCustoms, type_, typeFromCustoms) where
 
 import Lvm.Core.Expr
 import Lvm.Core.Utils
@@ -28,17 +28,17 @@ typeFromCustoms :: String -> [Custom] -> TpScheme
 typeFromCustoms n [] =
     internalError "CoreToImportEnv" "typeFromCustoms"
         ("function import without type: " ++ n)
-typeFromCustoms n ( CustomDecl (DeclKindCustom ident) [CustomBytes bytes] : cs) 
+typeFromCustoms n ( CustomDecl (DeclKindCustom ident) [CustomBytes bytes] : cs)
     | stringFromId ident == "type" =
-        let string = filter (/= '!') (stringFromBytes bytes) 
+        let string = filter (/= '!') (stringFromBytes bytes)
         in makeTpSchemeFromType (parseFromString contextAndType string)
     | otherwise =
         typeFromCustoms n cs
 typeFromCustoms _ _ = error "Pattern match failure in ModuleSystem.CoreToImportEnv.typeFromCustoms"
 
 parseFromString :: HParser a -> String -> a
-parseFromString p string = 
-    case lexer [] "CoreToImportEnv" string of 
+parseFromString p string =
+    case lexer [] "CoreToImportEnv" string of
         Left _ -> internalError "CoreToImportEnv" "parseFromString" ("lex error in " ++ string)
         Right (tokens, _) ->
             case runHParser p "CoreToImportEnv" tokens True {- wait for EOF -} of
@@ -68,15 +68,15 @@ typeSynFromCustoms n _ =
     internalError "CoreToImportEnv" "typeSynFromCustoms"
         ("type synonym import missing definition: " ++ n)
 
--- in compiled Core files types have a kind (e.g. * -> *), 
+-- in compiled Core files types have a kind (e.g. * -> *),
 -- in Helium the have a number indicating the arity
 arityFromCustoms :: String -> [Custom] -> Int
 arityFromCustoms n [] =
     internalError "CoreToImportEnv" "arityFromCustoms"
         ("type constructor import without kind: " ++ n)
 arityFromCustoms _ ( CustomInt arity : _ ) = arity
-arityFromCustoms _ ( CustomDecl (DeclKindCustom ident) [CustomBytes bytes] : _ ) 
-    | stringFromId ident == "kind" = 
+arityFromCustoms _ ( CustomDecl (DeclKindCustom ident) [CustomBytes bytes] : _ )
+    | stringFromId ident == "kind" =
         (length . filter ('*'==) . stringFromBytes) bytes - 1
         -- the number of stars minus 1 is the arity
 arityFromCustoms n (_:cs) = arityFromCustoms n cs
@@ -90,7 +90,7 @@ makeOperatorTable oper (CustomInt i : CustomBytes bs : _) =
                 "right"  -> AssocRight
                 "none"   -> AssocNone
                 assocStr -> intErr ("unknown associativity: " ++ assocStr)
-        
+
         intErr = internalError "CoreToImportEnv" "makeOperatorTable"
     in
         if getNameName oper == "-" then
@@ -102,22 +102,22 @@ makeOperatorTable oper (CustomInt i : CustomBytes bs : _) =
             ]
         else
             [(oper, (i, associativity))]
-makeOperatorTable oper _ = 
+makeOperatorTable oper _ =
     internalError "CoreToImportEnv" "makeOperatorTable"
         ("infix decl missing priority or associativity: " ++ show oper)
 
 makeImportName :: String -> Id -> Id -> Name
 makeImportName importedInMod importedFromMod n =
-    setNameRange 
+    setNameRange
         (nameFromId n)
         (makeImportRange (idFromString importedInMod) importedFromMod)
 
 getImportEnvironment :: String -> [CoreDecl] -> ImportEnvironment
 getImportEnvironment importedInModule = foldr insert emptyEnvironment
    where
-      insert decl = 
-         case decl of 
-         
+      insert decl =
+         case decl of
+
            -- functions
            DeclAbstract { declName    = n
                         , declAccess  = Imported{importModule = importedFromModId}
@@ -126,7 +126,7 @@ getImportEnvironment importedInModule = foldr insert emptyEnvironment
               addType
                  (makeImportName importedInModule importedFromModId n)
                  (typeFromCustoms (stringFromId n) cs)
-          
+
            -- functions from non-core/non-lvm libraries and lvm-instructions
            DeclExtern { declName = n
                       , declAccess  = Imported{importModule = importedFromModId}
@@ -135,7 +135,7 @@ getImportEnvironment importedInModule = foldr insert emptyEnvironment
               addType
                  (makeImportName importedInModule importedFromModId n)
                  (typeFromCustoms (stringFromId n) cs)
-            
+
            -- constructors
            DeclCon { declName    = n
                    , declAccess  = Imported{importModule = importedFromModId}
@@ -149,13 +149,13 @@ getImportEnvironment importedInModule = foldr insert emptyEnvironment
            DeclCustom { declName    = n
                       , declAccess  = Imported{importModule = importedFromModId}
                       , declKind    = DeclKindCustom ident
-                      , declCustoms = cs 
-                      } 
+                      , declCustoms = cs
+                      }
                       | stringFromId ident == "data" ->
               addTypeConstructor
                  (makeImportName importedInModule importedFromModId n)
                  (arityFromCustoms (stringFromId n) cs)
-            
+
            -- type synonym declarations
            -- important: a type synonym also introduces a new type constructor!
            DeclCustom { declName    = n
@@ -167,7 +167,7 @@ getImportEnvironment importedInModule = foldr insert emptyEnvironment
               let typename = makeImportName importedInModule importedFromModId n
                   pair = typeSynFromCustoms (stringFromId n) cs
               in addTypeSynonym typename pair . addTypeConstructor typename (fst pair)
-                             
+
            -- infix decls
            DeclCustom { declName    = n
                       , declKind    = DeclKindCustom ident
@@ -184,7 +184,7 @@ getImportEnvironment importedInModule = foldr insert emptyEnvironment
                       | stringFromId ident == "strategy" ->
               let (CustomDecl _  [CustomBytes bytes]) = head cs
                   text = stringFromBytes bytes
-              in case reads text of 
+              in case reads text of
                     [(rule, [])] -> addTypingStrategies rule
                     _ -> intErr "Could not parse typing strategy from core file"
 
@@ -201,5 +201,5 @@ getImportEnvironment importedInModule = foldr insert emptyEnvironment
               intErr  ("don't know how to handle DeclValue: "             ++ stringFromId n)
            DeclImport  { declName = n } ->
               intErr  ("don't know how to handle DeclImport: "            ++ stringFromId n)
-        
+
       intErr = internalError "CoreToImportEnv" "getImportEnvironment"

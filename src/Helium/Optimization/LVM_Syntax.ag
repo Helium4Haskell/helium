@@ -1,0 +1,626 @@
+------------
+-- Imports --
+------------
+imports{
+import Helium.Optimization.Datas(DataAnns, emptyDataAnns, singletonDataAnns, singletonDataCon, unionDataAnns)
+import Helium.Optimization.Show()
+import Helium.Optimization.Types(T(..), Constraint(..), TSub, (-$-), (|=>), (|->), arity2T, assignT, applyT, freshT, solveConstraints, splitCons, eqAll, tuple)
+import Helium.Optimization.Env(Env, (|?|))
+import qualified Helium.Optimization.Env as Env
+
+import Data.Map(Map)
+import qualified Data.Map as Map
+import qualified Data.Maybe as M
+
+import qualified Helium.ModuleSystem.CoreToImportEnv as C
+import Helium.Utils.Utils
+
+import qualified Lvm.Common.Byte as B
+import qualified Lvm.Common.Id as I
+import qualified Lvm.Core.Expr as Expr
+import qualified Lvm.Core.Module as Module
+
+import qualified Top.Types as T
+import qualified Top.Types.Synonym as Syn
+
+-- Debug
+import qualified Debug.Trace as Trace
+import Text.PrettyPrint.Leijen (Pretty, pretty)
+}
+
+------------
+-- Module --
+------------
+DERIVING OptimizeModule Decl Expr Binds Bind Alt Pat Literal : Show
+DATA OptimizeModule
+    | Module
+        name                    : {I.Id}
+        majorV                  : {Int}
+        minorV                  : {Int}
+        decls                   : Decls
+
+TYPE Decls                      = [ Decl ]
+
+DATA Decl
+    | Start
+        name                    : {I.Id}
+        access                  : {Module.Access}
+        encoding                : {M.Maybe I.Id}
+        expr                    : Expr
+    | Function
+        name                    : {I.Id}
+        access                  : {Module.Access}
+        encoding                : {M.Maybe I.Id}
+        expr                    : Expr
+        customs                 : {[Module.Custom]}
+        ty                      : {T.TpScheme}
+    | Abstract
+        name                    : {I.Id}
+        access                  : {Module.Access}
+        arity                   : {Module.Arity}
+        customs                 : {[Module.Custom]}
+        ty                      : {T.TpScheme}
+    | Constructor
+        name                    : {I.Id}
+        access                  : {Module.Access}
+        arity                   : {Module.Arity}
+        tag                     : {Module.Tag}
+        customs                 : {[Module.Custom]}
+        datalink                : {I.Id}
+        ty                      : {T.TpScheme}
+    | Data
+        name                    : {I.Id}
+        access                  : {Module.Access}
+        kind                    : {Module.DeclKind}
+        customs                 : {[Module.Custom]}
+        typeKind                : {Int}
+    | Synonym
+        name                    : {I.Id}
+        access                  : {Module.Access}
+        kind                    : {Module.DeclKind}
+        customs                 : {[Module.Custom]}
+        tpSynonym               : {Synonym}
+    | Custom
+        name                    : {I.Id}
+        access                  : {Module.Access}
+        kind                    : {Module.DeclKind}
+        customs                 : {[Module.Custom]}
+        -- Contains: Infix & Strategy and possibly more
+
+----------
+-- Expr --
+----------
+
+DATA Expr
+    | Let
+        binds                   : Binds
+        expr                    : Expr
+    | Match
+        name                    : {I.Id}
+        alts                    : Alts
+    | Ap
+        expr1                   : Expr
+        expr2                   : Expr
+    | Lam
+        name                    : {I.Id}
+        expr                    : Expr
+    | ConId
+        name                    : {I.Id}
+    | ConTag
+        expr                    : Expr
+        arity                   : {Module.Arity}
+    | Var
+        name                    : {I.Id}
+    | Lit
+        lit                     : Literal
+
+-- Let bindings
+DATA Binds
+    | Rec
+        binds                   : Binds'
+    | NonRec
+        bind                    : Bind
+    | Strict
+        bind                    : Bind
+
+TYPE Binds'                     = [ Bind ]
+
+DATA Bind
+    | Bind
+        name                    : {I.Id}
+        expr                    : Expr
+
+-- Guard alternatives
+TYPE Alts                       = [ Alt ]
+
+DATA Alt
+    | Alt
+        pat                     : Pat
+        expr                    : Expr
+
+DATA Pat
+    | ConId
+        name                    : {I.Id}
+        ids                     : {[I.Id]}
+    | ConTag
+        tag                     : {Module.Tag}
+        arity                   : {Module.Arity}
+        ids                     : {[I.Id]}
+    | Lit
+        lit                     : Literal
+    | Default
+
+-- Typed literals
+DATA Literal
+    | LitInt
+        int_                    : {Int}
+    | LitDouble
+        double_                 : {Double}
+    | LitBytes
+        bytes_                  : {B.Bytes}
+
+-----------------
+-- Type Module --
+-----------------
+{
+defaultSyn :: Map I.Id Synonym -> Map I.Id Synonym -- adds { String = [Char] } and { PackedString = Bytes }
+defaultSyn = Map.union $ Map.fromList
+    [ ((I.idFromString "String"), (Synonym $ C.typeSynFromCustoms (show "String") [(Module.CustomBytes (B.bytesFromString "String = [Char]")), Module.CustomInt 0]))
+    , ((I.idFromString "PackedString"),(Synonym $ C.typeSynFromCustoms (show "PackedString") [(Module.CustomBytes (B.bytesFromString "PackedString = Bytes")), Module.CustomInt 0]))
+    ]
+}
+
+ATTR OptimizeModule [ | | ct USE {++} {[]} : { [Constraint T] } showIt : {[(String, T, T.TpScheme)]} ]
+SEM OptimizeModule
+    | Module        decls.uniqueId = 0
+                    decls.syn = defaultSyn $ trace ("Module : " ++ I.stringFromId @name ++ " : Syn : " ++ show @decls.genSyn) @decls.genSyn
+                    decls.data = @decls.genData
+                    decls.cons = @decls.genCons
+                    decls.env = trace ("Module : " ++ I.stringFromId @name ++ " : Env : " ++ show @decls.genEnv) @decls.genEnv
+                    loc.solved = solveConstraints @decls.uniqueId @decls.ct
+                    loc.uniqueId = fst @loc.solved -- the next free id
+                    decls.sub = snd @loc.solved
+
+
+ATTR Decls Decl [ syn : {Map I.Id Synonym}
+                  data : {DataAnns}
+                  cons : {DataAnns}
+                  env : {Env I.Id}
+                  sub : {TSub}
+                | uniqueId : {Int}
+                | genSyn USE {Map.union} {Map.empty} : {Map I.Id Synonym}
+                  genData USE {unionDataAnns} {emptyDataAnns} : {DataAnns}
+                  genCons USE {unionDataAnns} {emptyDataAnns} : {DataAnns}
+                  genEnv USE {Env.union} {Env.empty} : {Env I.Id}
+                  ct USE {++} {[]} : { [Constraint T] }
+                  showIt USE {++} {[]} : {[(String, T, T.TpScheme)]}
+                ]
+
+SEM Decls
+    | Cons          hd.uniqueId = @lhs.uniqueId
+                    tl.uniqueId = @hd.uniqueId
+                    lhs.uniqueId = @tl.uniqueId
+    | Nil           lhs.uniqueId = @lhs.uniqueId
+
+SEM Decl
+    | Function      lhs.genEnv = Env.singletonGlobal @name (tpScheme2T @lhs.syn @ty)
+                    expr.uniqueId = @lhs.uniqueId
+                    expr.env = {-@lhs.env --}trace ("entering function : " ++ I.stringFromId @name ++ " : expr : " ++ show @expr.expr ++ " : with module env : " ++ show @lhs.env) @lhs.env
+                    lhs.uniqueId = @expr.uniqueId
+                    lhs.ct = trace ("function " ++ I.stringFromId @name ++ " : type : " ++ show @expr.t ++ " : constraints : " ++ show @expr.ct) @expr.ct
+                    lhs.showIt = [(I.stringFromId @name, @lhs.sub -$- @expr.t, @ty)]
+    | Abstract      lhs.genEnv = Env.singletonGlobal @name (tpScheme2T @lhs.syn @ty)
+    | Constructor   loc.t = tpScheme2T @lhs.syn @ty
+                    lhs.genCons = unionDataAnns @lhs.data (singletonDataCon @datalink @name @loc.t)
+                    lhs.genEnv = Env.singletonGlobal @name @loc.t
+    | Data          lhs.genData = singletonDataAnns @name
+    | Synonym       lhs.genSyn = Map.singleton @name @tpSynonym
+
+{
+tpScheme2T :: Map I.Id Synonym -> T.TpScheme -> T
+tpScheme2T synonyms tpScheme = Trace.traceShowId $ preds' $ transformTp tp'
+    where
+        synonyms' = transformSynonyms synonyms
+        (preds, tp) = transformTpScheme tpScheme
+        tp' = expandTypes synonyms' tp
+        preds' = transformPreds preds
+
+transformSynonyms :: Map I.Id Synonym -> Map String (Int, T.Tps -> T.Tp)
+transformSynonyms synonym = Map.mapKeys I.stringFromId $ Map.map (\(Synonym a) -> a) $ synonym
+
+transformTpScheme :: T.TpScheme -> (T.Predicates, T.Tp)
+transformTpScheme tpScheme =
+    let unquantified = T.unquantify tpScheme
+        ty = T.unqualify unquantified
+        preds = T.qualifiers unquantified
+    in  (preds, ty)
+
+expandTypes :: Map String (Int, T.Tps -> T.Tp) -> T.Tp -> T.Tp
+expandTypes = Syn.expandType
+
+transformTp :: T.Tp -> T
+transformTp (T.TVar i) = TVar i
+transformTp (T.TCon s) = TCon s
+transformTp (T.TApp t1 t2) = TAp (transformTp t1) (transformTp t2)
+
+transformPreds :: T.Predicates -> (T -> T)
+transformPreds preds =
+    let transformPred (T.Predicate s t) = TPred s (transformTp t)
+    in  (|=>) $ map transformPred preds
+}
+---------------
+-- Type Expr --
+---------------
+ATTR Expr Binds Binds' Bind Alts Alt Pat [ env : { Env I.Id } | uniqueId : Int | t : { T } ct USE {++} {[]} : { [Constraint T] } ]
+-- Expr
+ATTR Expr [ | | expr : Expr]
+SEM Expr
+    | Let       lhs.expr = Expr_Let @binds.binds @expr.expr
+                loc.t = TVar @lhs.uniqueId
+                lhs.ct = [ EqTy "Let" @loc.t @expr.t ] ++ @binds.ct ++ @expr.ct
+                loc.env = Env.unionLocal @binds.extendEnv @lhs.env
+                binds.env = @loc.env
+                expr.env = @loc.env
+                binds.uniqueId = @lhs.uniqueId + 1
+                expr.uniqueId = @binds.uniqueId
+                lhs.uniqueId = @expr.uniqueId
+    | Match     lhs.expr = Expr_Match @name @alts.alts
+                loc.t = TVar @lhs.uniqueId
+                loc.lookup = (@lhs.uniqueId + 1, @lhs.env) |?| (@name, "Match")
+                lhs.ct = [ EqTy "Match" @alts.t ((snd @loc.lookup) |-> @loc.t) ] ++ @alts.ct
+                alts.uniqueId = fst @loc.lookup
+                lhs.uniqueId = @alts.uniqueId
+    -- case a of b -> c, d -> e => f | a == b, a == d, c == f, e == f
+    | Ap        lhs.expr = Expr_Ap @expr1.expr @expr2.expr
+                loc.t = TVar @lhs.uniqueId
+                lhs.ct = [ EqTy "Ap" @expr1.t (@expr2.t |-> @loc.t) ] ++ @expr1.ct ++ @expr2.ct
+                expr1.uniqueId = @lhs.uniqueId + 1
+                expr2.uniqueId = @expr1.uniqueId
+    | Lam       lhs.expr = Expr_Lam @name @expr.expr
+                loc.t = TVar @lhs.uniqueId
+                loc.nameT = TVar (@lhs.uniqueId + 1)
+                lhs.ct = [ EqTy "Lam" @loc.t (@loc.nameT |-> @expr.t)] ++ @expr.ct
+                expr.env = Env.insertLocal @name @loc.nameT @lhs.env
+                expr.uniqueId = @lhs.uniqueId + 2
+                lhs.uniqueId = @expr.uniqueId
+    | ConId     lhs.expr = Expr_ConId @name
+                loc.t = TVar @lhs.uniqueId
+                loc.lookup = (@lhs.uniqueId + 1, @lhs.env) |?| (@name, "ConId")
+                lhs.ct = [ EqTy "ConId" @loc.t (snd @loc.lookup) ]
+                lhs.uniqueId = fst @loc.lookup
+    | ConTag    lhs.expr = Expr_ConTag @expr.expr @arity
+                loc.t = TVar @lhs.uniqueId
+                lhs.ct = [ EqTy "ConTag" @loc.t (arity2T (@lhs.uniqueId + 1) @arity) ] ++ @expr.ct
+                expr.uniqueId = @lhs.uniqueId + @arity + 2
+                lhs.uniqueId = @expr.uniqueId
+    | Var       lhs.expr = Expr_Var @name
+                loc.t = TVar @lhs.uniqueId
+                loc.lookup = (@lhs.uniqueId + 1, @lhs.env) |?| (@name, "Var")
+                lhs.ct = [ EqTy "Var" @loc.t (snd @loc.lookup) ]
+                lhs.uniqueId = fst @loc.lookup
+    | Lit       lhs.expr = Expr_Lit @lit.lit
+                loc.t = TVar @lhs.uniqueId
+                lhs.ct = [ EqTy "Lit" @loc.t @lit.t ]
+                lhs.uniqueId = @lhs.uniqueId + 1
+
+-- Let bindings
+ATTR Binds Binds' Bind [ | | extendEnv USE {Map.union} {Map.empty} : {Map I.Id T} ]
+
+ATTR Binds [ | | binds : Binds ]
+SEM Binds
+    | Rec       lhs.binds = Binds_Rec @binds.binds
+                loc.t = @binds.t
+                lhs.ct = @binds.ct
+                lhs.extendEnv = @binds.extendEnv
+                binds.uniqueId = @lhs.uniqueId
+                lhs.uniqueId = @binds.uniqueId
+    | Strict    lhs.binds = Binds_Strict @bind.bind
+                loc.t = @bind.t
+                lhs.ct = @bind.ct
+                lhs.extendEnv = @bind.extendEnv
+                bind.uniqueId = @lhs.uniqueId
+                lhs.uniqueId = @bind.uniqueId
+    | NonRec    lhs.binds = Binds_NonRec @bind.bind
+                loc.t = @bind.t
+                lhs.ct = @bind.ct
+                lhs.extendEnv = @bind.extendEnv
+                bind.uniqueId = @lhs.uniqueId
+                lhs.uniqueId = @bind.uniqueId
+
+ATTR Binds' [ | | binds : Binds' ]
+SEM Binds'
+    | Cons      lhs.binds = @hd.bind : @tl.binds
+                loc.t = @tl.t
+                lhs.ct = [ EqTy "Binds' Cons" @tl.t @hd.t ] ++ @hd.ct ++ @tl.ct
+                lhs.extendEnv = Map.union @hd.extendEnv @tl.extendEnv
+                hd.uniqueId = @lhs.uniqueId
+                tl.uniqueId = @hd.uniqueId
+                lhs.uniqueId = @tl.uniqueId
+    | Nil       lhs.binds = []
+                loc.t = TVar @lhs.uniqueId
+                lhs.uniqueId = @lhs.uniqueId + 1
+
+ATTR Bind [ | | bind : Bind ]
+SEM Bind
+    | Bind      lhs.bind = Bind_Bind @name @expr.expr
+                loc.t = TVar @lhs.uniqueId
+                lhs.ct = [ EqTy "Bind" @loc.t @expr.t ] ++ @expr.ct
+                expr.uniqueId = @lhs.uniqueId + 1
+                lhs.uniqueId = @expr.uniqueId
+                lhs.extendEnv = Map.singleton @name @loc.t
+
+-- Guard alternatives
+
+ATTR Alts [ | | alts : Alts ]
+SEM Alts
+    | Cons      lhs.alts = @hd.alt : @tl.alts
+                loc.t = @tl.t
+                lhs.ct = [ EqTy "Alts Cons" @tl.t @hd.t ] ++ @hd.ct ++ @tl.ct
+                hd.uniqueId = @lhs.uniqueId
+                tl.uniqueId = @hd.uniqueId
+                lhs.uniqueId = @tl.uniqueId
+    | Nil       lhs.alts = []
+                loc.t = TVar @lhs.uniqueId
+                lhs.uniqueId = @lhs.uniqueId + 1
+
+ATTR Alt [ | | alt : Alt ]
+SEM Alt
+    | Alt       lhs.alt = Alt_Alt @pat.pat @expr.expr
+                loc.t = TVar @lhs.uniqueId
+                lhs.ct = [ EqTy "Alt" @loc.t (@pat.t |-> @expr.t) ] ++ @pat.ct ++ @expr.ct
+                expr.env = Env.unionLocal @pat.extendEnv @lhs.env
+                pat.uniqueId = @lhs.uniqueId + 1
+                expr.uniqueId = @pat.uniqueId
+                lhs.uniqueId = @expr.uniqueId
+
+ATTR Pat [ | | extendEnv USE {Map.union} {Map.empty} : {Map I.Id T} pat : Pat ]
+SEM Pat
+    | ConId     lhs.pat = Pat_ConId @name @ids
+                loc.t = TVar @lhs.uniqueId
+                loc.lookup = (@lhs.uniqueId + 1, @lhs.env) |?| (@name, "Pat")
+                loc.idXidsWt = assignT (fst @loc.lookup) @ids
+                lhs.ct = eqAll "Pat ConId" (@loc.t:(map snd $ snd $ @loc.idXidsWt)) (let (xs,x) = splitCons $ snd @loc.lookup in x:xs)
+                --[ EqTy "Pat ConId" @loc.t (applyT (snd @loc.lookup) )]
+                lhs.uniqueId = fst @loc.idXidsWt
+                lhs.extendEnv = Map.fromList $ snd $ @loc.idXidsWt
+    | ConTag    lhs.pat = Pat_ConTag @tag @arity @ids
+                loc.t = TVar @lhs.uniqueId
+                loc.idXidsWt = assignT (@lhs.uniqueId + @arity + 2) @ids
+                lhs.ct = eqAll "Pat ConTag" (@loc.t:(map snd $ snd $ @loc.idXidsWt)) (let (xs,x) = splitCons $ (arity2T (@lhs.uniqueId + 1) @arity) in tuple @arity xs:xs)
+                --[ EqTy "Pat ConTag" @loc.t (applyT (arity2T (@lhs.uniqueId + 1) @arity) (map snd $ snd $ @loc.idXidsWt))]
+                lhs.uniqueId = fst @loc.idXidsWt
+                lhs.extendEnv = Map.fromList $ snd $ @loc.idXidsWt
+    | Lit       lhs.pat = Pat_Lit @lit.lit
+                loc.t = TVar @lhs.uniqueId
+                lhs.ct = [ EqTy "Pat Lit" @loc.t @lit.t ]
+                lhs.uniqueId = @lhs.uniqueId + 1
+    | Default   lhs.pat = Pat_Default
+                lhs.t = TVar @lhs.uniqueId
+                lhs.uniqueId = @lhs.uniqueId + 1
+
+-- Typed literals
+ATTR Literal [ | | t : { T } lit : Literal ]
+SEM Literal
+    | LitInt    lhs.lit = Literal_LitInt @int_
+                loc.t = TCon "Int"
+    | LitDouble lhs.lit = Literal_LitDouble @double_
+                loc.t = TCon "Double"
+    | LitBytes  lhs.lit = Literal_LitBytes @bytes_
+                loc.t = TCon "Bytes"
+
+{
+-- Debug
+trace :: String -> a -> a
+trace = Trace.trace
+
+traceShow :: Show a => String -> a -> a
+traceShow s x = trace s $ Trace.traceShowId x
+
+tracePretty :: Pretty a => String -> a -> a
+tracePretty s x = trace s $ Trace.traceShow (pretty x) x
+
+printDeclKindCustoms :: Int -> Module.DeclKind -> [Module.Custom] -> String
+printDeclKindCustoms level declKind customs = (concat $ replicate level "    ") ++ (show declKind) ++ "\n" ++ (printCustoms (level + 1) customs)
+
+printCustoms :: Int -> [Module.Custom] -> String
+printCustoms _ [] = []
+printCustoms level (custom:customs) = (concat $ replicate level "    ") ++ (case custom of
+    Module.CustomInt x -> "CustomInt " ++ show x
+    Module.CustomBytes b -> "CustomBytes " ++ (show b) ++ " | " ++ (B.stringFromBytes b)
+    Module.CustomName i -> "CustomName " ++ show i
+    Module.CustomLink i declkind -> "CustomLink " ++ show i ++ " : " ++ show declkind
+    Module.CustomDecl declkind customs2 -> "CustomDecl " ++ show declkind ++ " :(\n" ++ printCustoms (level + 1) customs2 ++ ")"
+    Module.CustomNothing -> "CustomNothing") ++ "\n" ++ printCustoms level customs
+
+-- Wrap synonym
+newtype Synonym = Synonym (Int, T.Tps -> T.Tp)
+instance Show Synonym where
+    show (Synonym (i, _)) = "Synonym (" ++ (show i) ++ ", Tps -> Tp )"
+
+-- to OptimizeModule
+coreModule2OptimizeModule :: Expr.CoreModule -> OptimizeModule
+coreModule2OptimizeModule (Module.Module name majorV minorV decls) =
+    OptimizeModule_Module name majorV minorV (coreDecls2Decls decls)
+
+coreDecls2Decls :: [Expr.CoreDecl] -> Decls
+coreDecls2Decls = map coreDecl2Decl
+
+coreDecl2Decl :: Expr.CoreDecl -> Decl
+coreDecl2Decl (Module.DeclValue name access encoding expr []) =
+    Decl_Start name access encoding (coreExpr2Expr expr)
+coreDecl2Decl (Module.DeclValue name access encoding expr customs) =
+    Decl_Function name access encoding (coreExpr2Expr expr) customs
+    --(tracePretty ("Function: " ++ (show name) ++ " => ") customs)
+    (customsToTpScheme name customs)
+coreDecl2Decl (Module.DeclAbstract name access arity customs) =
+    Decl_Abstract name access arity customs
+    --(tracePretty ("Abstract: " ++ (show name) ++ " => ") customs)
+    (customsToTpScheme name customs)
+coreDecl2Decl (Module.DeclCon name access arity tag customs) =
+    Decl_Constructor name access arity tag customs
+    --(trace (trace ("Custom: " ++ (show name) ++ " => ") (printCustoms 1 customs)) customs)
+    --(tracePretty ("Constructor: " ++ (show name) ++ " => ") customs)
+    (customsToLink name customs)
+    (customsToTpScheme name customs)
+coreDecl2Decl (Module.DeclCustom name access kind customs) =
+    --(trace (trace ("Custom: " ++ (show name) ++ " => ") (printDeclKindCustoms 1 kind customs)) customs)
+    case kind of
+        Module.DeclKindCustom ident
+            | show ident == "\"data\"" -> Decl_Data name access kind customs (C.arityFromCustoms (show name) customs)
+            | show ident == "\"typedecl\"" -> Decl_Synonym name access kind (trace (trace ("Custom: " ++ (show name) ++ " => ") (printDeclKindCustoms 1 kind customs)) customs) (Synonym $ C.typeSynFromCustoms (show name) customs)
+        _ -> Decl_Custom name access kind customs
+coreDecl2Decl _ = internalError "LVM_Syntax.ag" "coreDecl2Decl" "unsupported decl"
+
+customsToTpScheme :: I.Id -> [Module.Custom] -> T.TpScheme
+customsToTpScheme name xs = C.typeFromCustoms (show name) xs
+
+customsToLink :: I.Id -> [Module.Custom] -> I.Id
+customsToLink con [] = internalError "LVM_Syntax.ag" "customsToLink" ("no link for : " ++ show con)
+customsToLink con ((Module.CustomLink name declkind):_)
+    | show declkind == "DeclKindCustom \"data\"" = name
+    | True = internalError "LVM_Syntax.ag" "customsToLink" ("different link for : " ++ show con ++ " : " ++ show declkind)
+customsToLink con (_:cs) = customsToLink con cs
+
+coreExpr2Expr :: Expr.Expr -> Expr
+coreExpr2Expr (Expr.Let binds expr) =
+    Expr_Let (coreBinds2Binds binds) (coreExpr2Expr expr)
+coreExpr2Expr (Expr.Match name alts) =
+    Expr_Match name (coreAlts2Alts alts)
+coreExpr2Expr (Expr.Ap expr1 expr2) =
+    Expr_Ap (coreExpr2Expr expr1) (coreExpr2Expr expr2)
+coreExpr2Expr (Expr.Lam name expr) =
+    Expr_Lam name (coreExpr2Expr expr)
+coreExpr2Expr (Expr.Con (Expr.ConId name)) =
+    Expr_ConId name
+coreExpr2Expr (Expr.Con (Expr.ConTag tag arity)) =
+    Expr_ConTag (coreExpr2Expr tag) arity
+coreExpr2Expr (Expr.Var name) =
+    Expr_Var name
+coreExpr2Expr (Expr.Lit lit) =
+    Expr_Lit (coreLit2Lit lit)
+
+coreBinds2Binds :: Expr.Binds -> Binds
+coreBinds2Binds (Expr.Rec binds) =
+    Binds_Rec (map coreBind2Bind binds)
+coreBinds2Binds (Expr.NonRec bind) =
+    Binds_NonRec (coreBind2Bind bind)
+coreBinds2Binds (Expr.Strict bind) =
+    Binds_Strict (coreBind2Bind bind)
+
+coreBind2Bind :: Expr.Bind -> Bind
+coreBind2Bind (Expr.Bind name expr) =
+    Bind_Bind name (coreExpr2Expr expr)
+
+coreAlts2Alts :: Expr.Alts -> Alts
+coreAlts2Alts = map coreAlt2Alt
+
+coreAlt2Alt :: Expr.Alt -> Alt
+coreAlt2Alt (Expr.Alt pat expr) =
+    Alt_Alt (corePat2Pat pat) (coreExpr2Expr expr)
+
+corePat2Pat :: Expr.Pat -> Pat
+corePat2Pat (Expr.PatCon (Expr.ConId name) ids) =
+    Pat_ConId name ids
+corePat2Pat (Expr.PatCon (Expr.ConTag tag arity) ids) =
+    Pat_ConTag tag arity ids
+corePat2Pat (Expr.PatLit lit) =
+    Pat_Lit (coreLit2Lit lit)
+corePat2Pat (Expr.PatDefault) =
+    Pat_Default
+
+coreLit2Lit :: Expr.Literal -> Literal
+coreLit2Lit (Expr.LitInt int) =
+    Literal_LitInt int
+coreLit2Lit (Expr.LitDouble double) =
+    Literal_LitDouble double
+coreLit2Lit (Expr.LitBytes bytes) =
+    Literal_LitBytes bytes
+
+-- uuagc wrapping
+constraints :: OptimizeModule -> [Constraint T]
+constraints module_ = ct_Syn_OptimizeModule $ wrap_OptimizeModule (sem_OptimizeModule module_) Inh_OptimizeModule { }
+showIt :: OptimizeModule -> [(String, T, T.TpScheme)]
+showIt module_ = showIt_Syn_OptimizeModule $ wrap_OptimizeModule (sem_OptimizeModule module_) Inh_OptimizeModule { }
+
+-- to CoreModule
+optimizeModule2CoreModule :: OptimizeModule -> Expr.CoreModule
+optimizeModule2CoreModule (OptimizeModule_Module name majorV minorV decls) =
+    Module.Module name majorV minorV (decls2CoreDecls decls)
+
+decls2CoreDecls :: Decls -> [Expr.CoreDecl]
+decls2CoreDecls = map decl2CoreDecl
+
+decl2CoreDecl :: Decl -> Expr.CoreDecl
+decl2CoreDecl (Decl_Start name access encoding expr) =
+    Module.DeclValue name access encoding (expr2CoreExpr expr) []
+decl2CoreDecl (Decl_Function name access encoding expr customs _) =
+    Module.DeclValue name access encoding (expr2CoreExpr expr) customs
+    --(trace (show mayTpScheme) customs)
+decl2CoreDecl (Decl_Abstract name access arity customs _) =
+    Module.DeclAbstract name access arity customs
+    --(trace (show tpScheme) customs)
+decl2CoreDecl (Decl_Constructor name access arity tag customs _ _) =
+    Module.DeclCon name access arity tag customs
+    --(trace (show tpScheme) customs)
+decl2CoreDecl (Decl_Data name access kind customs _) =
+    Module.DeclCustom name access kind customs
+decl2CoreDecl (Decl_Synonym name access kind customs _) =
+    Module.DeclCustom name access kind customs
+decl2CoreDecl (Decl_Custom name access kind customs) =
+    Module.DeclCustom name access kind customs
+
+expr2CoreExpr :: Expr -> Expr.Expr
+expr2CoreExpr (Expr_Let binds expr) =
+    Expr.Let (binds2CoreBinds binds) (expr2CoreExpr expr)
+expr2CoreExpr (Expr_Match name alts) =
+    Expr.Match name (alts2CoreAlts alts)
+expr2CoreExpr (Expr_Ap expr1 expr2) =
+    Expr.Ap (expr2CoreExpr expr1) (expr2CoreExpr expr2)
+expr2CoreExpr (Expr_Lam name expr) =
+    Expr.Lam name (expr2CoreExpr expr)
+expr2CoreExpr (Expr_ConId name) =
+    Expr.Con (Expr.ConId name)
+expr2CoreExpr (Expr_ConTag tag arity) =
+    Expr.Con (Expr.ConTag (expr2CoreExpr tag) arity)
+expr2CoreExpr (Expr_Var name) =
+    Expr.Var name
+expr2CoreExpr (Expr_Lit lit) =
+    Expr.Lit (lit2CoreLit lit)
+
+binds2CoreBinds :: Binds -> Expr.Binds
+binds2CoreBinds (Binds_Rec binds) =
+    Expr.Rec (map bind2CoreBind binds)
+binds2CoreBinds (Binds_NonRec bind) =
+    Expr.NonRec (bind2CoreBind bind)
+binds2CoreBinds (Binds_Strict bind) =
+    Expr.Strict (bind2CoreBind bind)
+
+bind2CoreBind :: Bind -> Expr.Bind
+bind2CoreBind (Bind_Bind name expr) =
+    Expr.Bind name (expr2CoreExpr expr)
+
+alts2CoreAlts :: Alts -> Expr.Alts
+alts2CoreAlts = map alt2CoreAlt
+
+alt2CoreAlt :: Alt -> Expr.Alt
+alt2CoreAlt (Alt_Alt pat expr) =
+    Expr.Alt (pat2CorePat pat) (expr2CoreExpr expr)
+
+pat2CorePat :: Pat -> Expr.Pat
+pat2CorePat (Pat_ConId name ids) =
+    Expr.PatCon (Expr.ConId name) ids
+pat2CorePat (Pat_ConTag tag arity ids) =
+    Expr.PatCon (Expr.ConTag tag arity) ids
+pat2CorePat (Pat_Lit lit) =
+    Expr.PatLit (lit2CoreLit lit)
+pat2CorePat Pat_Default =
+    Expr.PatDefault
+
+lit2CoreLit :: Literal -> Expr.Literal
+lit2CoreLit (Literal_LitInt int) =
+    Expr.LitInt int
+lit2CoreLit (Literal_LitDouble double) =
+    Expr.LitDouble double
+lit2CoreLit (Literal_LitBytes bytes) =
+    Expr.LitBytes bytes
+}

@@ -7,7 +7,7 @@ module PreludePrim
     , (+), (-), (*), negate, fromInt
 
     -- Eq
-    , (==), (/=)
+    , (==), (/=), primEqChar
 
     -- Ord
     , (<), (>), (<=), (>=), compare
@@ -137,6 +137,9 @@ primOrd x = x
 
 primChr :: Int -> Char
 primChr x = x
+
+primEqChar :: Char -> Char -> Bool
+primEqChar x y = (==) (primOrd x) (primOrd y)
 
 {--------------------------------------------------------------------------
   IO
