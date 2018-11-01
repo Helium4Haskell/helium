@@ -290,7 +290,7 @@ constructors impenv tp | isTupleConstructor name = [tupleconstructor]
     tupleconstructor = (nameFromString name, snd $ leftSpine tp)
     unTCon :: Tp -> String
     unTCon (TCon c) = c
-    unTCon tp' = pmError "unTCon" $ "type " ++ show tp' ++ " is not a TCon"
+    unTCon tp' = show tp'
     expand :: (Name, [Tp]) -> (Name, [Tp])
     expand (n, ts) = (n, map (expandTypeFromImportEnvironment impenv) ts)
 

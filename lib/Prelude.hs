@@ -608,16 +608,6 @@ undefined = error "undefined"
  -- IO
  -----------------------------------------------}
 {-}
-(>>=) :: IO a -> (a -> IO b) -> IO b
-(>>=) io f = do x <- io
-                f x
-
-(>>) :: IO a -> IO b -> IO b
-p >> q = p >>= \ _ -> q
--}
-{- imported from PreludePrim 
-return :: a -> IO a
-
 putChar :: Char -> IO ()
 putChar c = primPutChar c
 
@@ -631,21 +621,18 @@ unsafePerformIO :: IO a -> a
 unsafePerformIO = primUnsafePerformIO
 -}
 
-{-}
+getLine :: IO String
+getLine = do 
+        c <- getChar
+        if c == '\n' 
+            then return ""
+            else getLine >>= (return . (c :))
+
 sequence_ :: [IO a] -> IO ()
 sequence_ = foldr (>>) (return ())
--}
-{-}
+
 print :: Show a => a -> IO ()
 print e = putStrLn (show e)
-
-getLine   :: IO String
-getLine = do 
-    c <- getChar
-    if c == '\n' 
-        then return ""
-        else do cs <- getLine
-                return (c:cs)
 
 writeFile :: String -> String -> IO ()
 writeFile fname s
@@ -691,7 +678,7 @@ readUnsigned =
     map (\c -> primOrd c - primOrd '0')
     .
     takeWhile localIsDigit
--}
+
 -- Functor --
 
 (<$>) :: Functor f => (a -> b) -> f a -> f b
@@ -713,6 +700,9 @@ instance Functor (Either a) where
 instance Functor [] where
     fmap = map
 
+instance Functor IO where
+    fmap = fmapIO
+
 -- Applicative --
 
 class Functor f => Applicative f where
@@ -729,11 +719,18 @@ instance Applicative (Either a) where
     (<*>) (Left e) x = Left e
     (<*>) (Right f) r = fmap f r
 
+instance Applicative IO where
+    pure = pureIO
+    (<*>) = apIO
+
 -- Monad --
 
 class Applicative m => Monad m where
     return :: a -> m a
     (>>=) :: m a -> (a -> m b) -> m b
+    (>>) :: m a -> m b -> m b
+    return = pure
+    m >> k = m >>= (\_ -> k)
 
 instance Monad Maybe where
     return = Just 
@@ -744,6 +741,10 @@ instance Monad (Either a) where
     return = Right
     (>>=) (Right x) f = f x
     (>>=) l _ = l
+
+instance Monad IO where
+    return = returnIO
+    (>>=) = bindIO
 
 class Eq a where
     (==) :: a -> a -> Bool

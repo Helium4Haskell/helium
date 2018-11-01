@@ -552,15 +552,22 @@ SEM Expression
 
   | Do
       lhs        . constraints   = Node [ @newcon .<. @statements.constraints ]
-      statements . betaUnique    = @lhs.betaUnique + 1
+      statements . betaUnique    = @lhs.betaUnique + 3
                  . generatorBeta = Nothing
                  . assumptions   = noAssumptions
+                 . monadBeta     = @loc.betaMonad
       loc        . assumptions   = @statements.assumptions
                  . constraints   = emptyTree
                  . beta          = TVar @lhs.betaUnique
+                 . betaMonad     = TVar $ @lhs.betaUnique + 1
+                 . betaVar       = TVar $ @lhs.betaUnique + 2
+                 . betaReturn    = TVar $ @lhs.betaUnique + 3
+                 . monadPredicate = Predicate "Monad" @betaMonad
+                 . monadType     = TApp @betaMonad @betaVar
+                 . monadBeta     = quantify [] ([@monadPredicate] .=>. @monadType)
                  . newcon        = case @statements.generatorBeta of
                                       Nothing -> []
-                                      Just b  -> [ (ioType b .==. @beta) @cinfo ]
+                                      Just b  -> [ (b .==. @beta) @cinfo, (@beta .::. @monadBeta) @cinfo ]
 
   | List
       expressions . betaUnique   = @lhs.betaUnique + 2
@@ -845,7 +852,7 @@ SEM Alternatives
 -- Type Inferencing : Statement, Statements, Qualifier, Qualifiers
 
 ATTR Statement Statements Qualifier Qualifiers [ | assumptions:Assumptions betaUnique:Int constraints:ConstraintSet | ]
-ATTR Statement Statements                      [ | generatorBeta:{Maybe Tp} | ]
+ATTR Statement Statements                      [ monadBeta : Tp | generatorBeta:{Maybe Tp} | ]
 ATTR Statement            Qualifier Qualifiers [ | monos:Monos | ]
 ATTR           Statements                      [ monos:Monos | | ]
 
@@ -855,12 +862,13 @@ SEM Statement
       lhs        . generatorBeta  = Just @beta
                  . assumptions    = @lhs.assumptions `combine` @expression.assumptions
                  . constraints    = @locConstraints
-      expression . betaUnique     = @lhs.betaUnique + 1
+      expression . betaUnique     = @lhs.betaUnique + 2
       loc        . locConstraints = Node [ @newcon .<. @expression.constraints
                                          , @lhs.constraints
                                          ]
                  . beta           = TVar @lhs.betaUnique
-                 . newcon         = [ (@expression.beta .==. ioType @beta) @cinfo ]
+                 . betaRes        = TVar $ @lhs.betaUnique + 1
+                 . newcon         = [ (@expression.beta .==. @beta) @cinfo, (@beta .==. TApp @lhs.monadBeta @betaRes) @cinfo]
 
   | Let
       lhs          . generatorBeta  = Nothing
@@ -877,12 +885,18 @@ SEM Statement
           . constraints   = @locConstraints
           . assumptions   = @assumptions' `combine` @expression.assumptions
           . monos         = M.elems @pattern.environment ++ getMonos @csetBinds ++ @lhs.monos
+          . betaUnique    = @expression.betaUnique
+      pattern . betaUnique = @lhs.betaUnique + 2
+      expression . betaUnique = @pattern.betaUnique
+      
+      
       loc . locConstraints = @newcon .>. @csetBinds .>>.
                                 Node [ @pattern.constraints
                                      , @expression.constraints
                                      , @lhs.constraints
                                      ]
-          . newcon        = [ (@expression.beta .==. ioType @pattern.beta) @cinfoResult ]
+          . beta          = TVar $ @lhs.betaUnique + 1
+          . newcon        = [(@expression.beta .==. (TApp @lhs.monadBeta @pattern.beta)) @cinfoResult]
           . (csetBinds,assumptions') = (@pattern.environment .===. @lhs.assumptions) @cinfoBind
 
 SEM Statements

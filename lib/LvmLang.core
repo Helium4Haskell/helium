@@ -16,6 +16,7 @@ module LvmLang
     -- IO
     , bindIO, returnIO
     , primIO, unsafePerformIO, unsafePerformStrictIO
+    , fmapIO, pureIO, apIO
     
     -- Int
     , (+#), (-#), (*#), (/#), (%#), quot, rem
@@ -303,6 +304,19 @@ foldlStrict f z xs
 {----------------------------------------------------------
   The IO monad
 ----------------------------------------------------------}
+
+fmapIO :: (a -> b) -> IO a -> IO b
+fmapIO f io = \_ -> case io () of
+          IORes x -> IORes (f x)
+
+pureIO :: a -> IO a
+pureIO x = \_ -> IORes x
+
+apIO :: IO (a -> b) -> IO a -> IO b
+apIO fIO vIO = 
+  \_ -> case fIO () of
+          IORes f -> fmapIO f vIO
+
 bindIO :: IO a -> (a -> IO b) -> IO b
 bindIO io f
   = \_ -> case io () of

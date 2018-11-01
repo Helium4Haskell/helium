@@ -88,7 +88,8 @@ SEM Expression [ | | core : { Core.Expr } ]
     --  declarations             : Declarations
     --  expression               : Expression
 
-    | Do                 lhs.core = chainCode @statements.core
+    | Do                 lhs.core = let_ (idFromString "$monadDict") (dictionaryTreeToCore $ head $ getDictionaryTrees @loc.name @lhs.dictionaryEnv) $ chainCode @statements.core
+                         loc.name = setNameRange (nameFromString $ "do-" ++ show @range.self) @range.self
     --  range                    : Range
     --  statements               : Statements
 
@@ -163,7 +164,6 @@ SEM Expression [ | | core : { Core.Expr } ]
     --  expression               : Expression
     --  recordExpressionBindings : RecordExpressionBindings
 
-
 ATTR Statements [ | | core USE { : } { [] } : { [Maybe Core.Expr -> Core.Expr] } ]
 
 SEM Statement [ | | core : { Maybe Core.Expr -> Core.Expr } ]
@@ -192,14 +192,8 @@ SEM Statement [ | | core : { Maybe Core.Expr -> Core.Expr } ]
         \theRest -> case theRest of
             Nothing   -> internalError "ToCoreExpr" "Statement" "generator can't be last in 'do'"
             Just rest -> 
-                let_ nextClauseId (patternMatchFail "generator" @range.self)
-                    (let_ 
-                        okId 
-                        (Core.Lam parameterId
-                            (patternToCore (parameterId, @pattern.self) rest)
-                        )
-                        (@expression.core `bind` Core.Var okId)
-                    )
+               Core.Ap (Core.Ap (Core.Ap (Core.Var $ idFromString ">>=") (Core.Var $ idFromString "$monadDict")) @expression.core) (Core.Lam parameterId (patternToCore (parameterId, @pattern.self) rest))       
+                    
     --  range                    : Range
     --  pattern                  : Pattern
     --  expression               : Expression
@@ -234,7 +228,7 @@ SEM Qualifier [ | | core : { Core.Expr -> Core.Expr } ]
     -- in concatMap _ok expression
 
     | Generator           lhs.core = 
-        \continue ->
+        \continue ->  
             let_ nextClauseId nil
                 (let_ 
                     okId 
@@ -246,6 +240,7 @@ SEM Qualifier [ | | core : { Core.Expr -> Core.Expr } ]
                         `app_` @expression.core
                     )
                 )
+                
     --  range                    : Range
     --  pattern                  : Pattern
     --  expression               : Expression

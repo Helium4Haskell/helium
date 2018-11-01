@@ -163,8 +163,21 @@ SEM Expression
                                                               (@lhs.substitution |-> @requiredDictionaries)
                                                               (fmap getNameName @lhs.instanceName)
                                                               @lhs.curPred
-                                                              @expression.dictionaryEnvironment                                          
-             
+                                                              @expression.dictionaryEnvironment   
+  | Do      lhs . dictionaryEnvironment = @newDEnv                    
+            loc . usedAsType            = @lhs.substitution |-> @beta
+            loc . usedAsMonad           = @lhs.substitution |-> @betaMonad
+                . requiredDictionaries  = map PredicateFunction $ getRequiredDictionaries 
+                                              (getOrderedTypeSynonyms @lhs.importEnvironment) 
+                                              (@lhs.substitution |-> @usedAsType)
+                                              (@lhs.substitution |-> @monadBeta)
+                . localName             = setNameRange (nameFromString $ "do-" ++ show @range.self) @range.self
+                . newDEnv               = resolveOverloading (@lhs.classEnvironment)  @localName 
+                                                              (@lhs.substitution |-> @lhs.availablePredicates) 
+                                                              (@lhs.substitution |-> @requiredDictionaries)
+                                                              (fmap getNameName @lhs.instanceName)
+                                                              @lhs.curPred
+                                                              @statements.dictionaryEnvironment   
 {      
 
 getSuperClassesFromClass :: ClassEnvironment -> String -> [String]
