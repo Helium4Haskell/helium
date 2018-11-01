@@ -1,6 +1,7 @@
 module Helium.Optimization.Env where
 
 import Helium.Optimization.Types
+import Helium.Optimization.Utils
 
 import Data.Map.Strict (Map)
 import qualified Data.Map.Strict as Map
@@ -40,6 +41,14 @@ infixr 5 |?|
 (uniqueId, env@(Env global local)) |?| (key, err) = case Map.lookup key local of
     Just x -> (uniqueId, x)
     Nothing -> case Map.lookup key global of
-        Just x -> freshT uniqueId x
+        Just x -> freshTOld uniqueId x
+        Nothing -> internalError "LVM_Syntax.ag" "|?|" ("key : " ++ show key ++ " : not found in env : " ++ show env ++ " : " ++ err )
+
+infixr 5 |??|
+(|??|) :: (Ord k, Show k) => Env k -> (k, String) -> Fresh T
+(env@(Env global local)) |??| (key, err) = case Map.lookup key local of
+    Just x -> return x
+    Nothing -> case Map.lookup key global of
+        Just x -> freshT x
         Nothing -> internalError "LVM_Syntax.ag" "|?|" ("key : " ++ show key ++ " : not found in env : " ++ show env ++ " : " ++ err )
 

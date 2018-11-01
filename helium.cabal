@@ -167,11 +167,13 @@ Library
     Helium.ModuleSystem.DictionaryEnvironment
     Helium.ModuleSystem.ExtractImportDecls
     Helium.ModuleSystem.ImportEnvironment
+    Helium.Optimization.Annotations
     Helium.Optimization.Datas
     Helium.Optimization.LVM_Syntax
     Helium.Optimization.Show
     Helium.Optimization.Types
     Helium.Optimization.Env
+    Helium.Optimization.Utils
     Helium.Parser.CollectFunctionBindings
     Helium.Parser.LayoutRule
     Helium.Parser.Lexer
