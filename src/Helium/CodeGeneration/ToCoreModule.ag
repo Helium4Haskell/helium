@@ -64,7 +64,7 @@ insertedMain tse toplevelTypes =
 SEM Module
     | Module    -- insert "insertedMain" after modulePublic so that it remains private
                 lhs.core = @module_ { Module.moduleDecls = 
-                                insertedMain @lhs.toplevelTypes : Module.moduleDecls @module_ }
+                                insertedMain (typeSynonyms @lhs.importEnv) @lhs.toplevelTypes : Module.moduleDecls @module_ }
                 loc.module_ = 
 
                     everythingPublicButPrelude
