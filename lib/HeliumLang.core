@@ -26,7 +26,6 @@ module HeliumLang
     , ''$primPackedToString'' -- string literals and the built-in string  "No main defined..." and derived shows
 
     , ''$negate''
-    , ''$enumFrom'', ''$enumFromThen'', ''$enumFromTo'', ''$enumFromThenTo''
     , ''$floatUnaryMinus''
     ) where
 
@@ -63,27 +62,6 @@ custom infix (:) : public [5,"right"]
 ''$negate'' dNum = 
     case dNum of
      (@0, 7) x1 x2 x3 x4 x5 x6 x7 -> x6
-
-
-''$enumFrom'' :: "Enum a => a -> [a]"
-''$enumFrom'' dEnum = 
-    case dEnum of
-        (@0, 8) x1 x2 x3 x4 x5 x6 x7 x8 -> x3
-		
-''$enumFromThen'' :: "Enum a => a -> a -> [a]"
-''$enumFromThen'' dEnum = 
-    case dEnum of
-        (@0, 8) x1 x2 x3 x4 x5 x6 x7 x8 -> x4
-
-''$enumFromTo'' :: "Enum a => a -> a -> [a]"
-''$enumFromTo'' dEnum = 
-    case dEnum of
-        (@0, 8) x1 x2 x3 x4 x5 x6 x7 x8 -> x7
-		
-''$enumFromThenTo'' :: "Enum a => a -> a -> a -> [a]"
-''$enumFromThenTo'' dEnum = 
-    case dEnum of
-        (@0, 8) x1 x2 x3 x4 x5 x6 x7 x8 -> x8
 
 ''$floatUnaryMinus'' :: "Float -> Float"
 ''$floatUnaryMinus'' f

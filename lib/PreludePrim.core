@@ -8,9 +8,18 @@ module PreludePrim
     , show
     
     -- Enum
-    , toEnum, fromEnum, succ, pred
-    , enumFrom, enumFromThen, enumFromTo, enumFromThenTo
+    , enumSuccInt, enumPredInt
+    , enumFromInt, enumFromThenInt, enumFromToInt, enumFromThenToInt
 	
+    , enumSuccFloat, enumPredFloat, toEnumFloat
+    , enumFromFloat, enumFromThenFloat, enumFromToFloat, enumFromThenToFloat
+
+    , toEnumVoid, fromEnumVoid, enumFromVoid, enumFromThenVoid
+
+    , toEnumBool, fromEnumBool, enumFromBool, enumFromThenBool
+
+    , enumFromChar, enumFromThenChar
+
     -- Int
     , div, mod, quot, rem
        -- Int
@@ -50,7 +59,6 @@ module PreludePrim
 import HeliumLang
     ( showFloat, showInt, showBool, showChar, showUnit
     , ''$negate''
-    , ''$enumFrom'', ''$enumFromThen'', ''$enumFromTo'', ''$enumFromThenTo''
     , ''$primPutChar'', ''$primPutStr'', ''$primPutStrLn'', ''$primUnsafePerformIO''
     )
 
@@ -241,14 +249,17 @@ map f xs = case xs of
               [] -> [] ;
 			  (:) x xs -> (:) (f x) (map f xs)
 
-''$dictEnum$Int'' :: "DictEnum$Int"
-''$dictEnum$Int'' = (@0, 8) id id enumFromInt enumFromThenInt enumSuccInt enumPredInt enumFromToInt enumFromThenToInt
-
+enumSuccInt :: Int -> Int
 enumSuccInt x = (+#) x 1
+enumPredInt :: Int -> Int
 enumPredInt x = (-#) x 1
+enumFromInt :: Int -> [Int]
 enumFromInt = enumIntWithSteps (const True) 1
+enumFromThenInt :: Int -> Int -> [Int]
 enumFromThenInt x y = enumIntWithSteps (const True) ((-#) y x) x
+enumFromToInt :: Int -> Int -> [Int]
 enumFromToInt x y = enumIntWithSteps ((>=#) y) 1 x
+enumFromThenToInt :: Int -> Int -> Int -> [Int]
 enumFromThenToInt x y z = 
    case compareInt x y of
       LT -> enumIntWithSteps ((>=#) z) ((-#) y x) x;
@@ -260,15 +271,19 @@ enumIntWithSteps p d x =
       True -> (:) x (enumIntWithSteps p d ((+#) d x)) ;
 	  _ -> []
 
-''$dictEnum$Float'' :: "DictEnum$Float"
-''$dictEnum$Float'' = (@0, 8) toEnumFloat truncate enumFromFloat enumFromThenFloat enumSuccFloat enumPredFloat enumFromToFloat enumFromThenToFloat
-
+toEnumFloat :: Int -> Float
 toEnumFloat x   = let! x = x in primIntToFloat x
+enumSuccFloat :: Float -> Float
 enumSuccFloat x = let! x = ((+#) (truncate x) 1) in primIntToFloat x
+enumPredFloat :: Float -> Float
 enumPredFloat x = let! x = ((-#) (truncate x) 1) in primIntToFloat x
+enumFromFloat :: Float -> [Float]
 enumFromFloat = let! one = primIntToFloat 1 in enumFloatWithSteps (const True) one
+enumFromThenFloat :: Float -> Float -> [Float]
 enumFromThenFloat x y = enumFloatWithSteps (const True) ((-.) y x) x
+enumFromToFloat :: Float -> Float -> [Float]
 enumFromToFloat x y = let! one = primIntToFloat 1 in enumFloatWithSteps ((>=.) y) one x
+enumFromThenToFloat :: Float -> Float -> Float  -> [Float]
 enumFromThenToFloat x y z =
    case compareFloat x y of
       LT -> enumFloatWithSteps ((>=.) z) ((-.) y x) x;
@@ -280,21 +295,21 @@ enumFloatWithSteps p d x =
       True -> (:) x (enumFloatWithSteps p d ((+.) d x)) ;
 	  _ -> []
 
-''$dictEnum$()'' :: "DictEnum$Tuple0"
-''$dictEnum$()'' = makeEnumDict toEnumVoid fromEnumVoid enumFromVoid enumFromThenVoid
-
+toEnumVoid :: Int -> ()
 toEnumVoid i = 
    case i of 
       0 -> () ;
 	  _ -> errorPacked "illegal () enumeration"	  
+fromEnumVoid :: () -> Int
 fromEnumVoid _ = 0
+enumFromVoid :: () -> [()]
 enumFromVoid _ = [()]
+enumFromThenVoid :: () -> () -> [()]
 enumFromThenVoid _ _ = [()]
 	  
-''$dictEnum$Char'' :: "DictEnum$Char"
-''$dictEnum$Char'' = makeEnumDict primChr primOrd enumFromChar enumFromThenChar
-
+enumFromChar :: Char -> [Char]
 enumFromChar x = enumCharWithSteps 1 (primOrd x)
+enumFromThenChar :: Char -> Char -> [Char]
 enumFromThenChar x y = enumCharWithSteps ((-#) (primOrd y) (primOrd x)) (primOrd x)
 enumCharWithSteps d x =
    case (<#) x 0 of
@@ -303,63 +318,26 @@ enumCharWithSteps d x =
 	          True -> [] ;
 			  _ -> (:) (primChr x) (enumCharWithSteps d ((+#) d x))
 
-''$dictEnum$Bool'' :: "DictEnum$Bool"
-''$dictEnum$Bool'' = makeEnumDict toEnumBool fromEnumBool enumFromBool enumFromThenBool
-
+toEnumBool :: Int -> Bool
 toEnumBool i =
    case i of 
       0 -> False ;
 	  1 -> True ;
 	  _ -> errorPacked "illegal boolean enumeration"
+fromEnumBool :: Bool -> Int
 fromEnumBool b =
    case b of {
       False -> 0 ;
       True -> 1 } 
 
+enumFromBool :: Bool -> [Bool]
 enumFromBool b = map toEnumBool (enumFromToInt (fromEnumBool b) 1)
+enumFromThenBool :: Bool -> Bool -> Bool
 enumFromThenBool b1 b2 =
    case b1 of {
       False -> map toEnumBool (enumFromThenToInt (fromEnumBool b1) (fromEnumBool b2) 1) ;
       _ -> map toEnumBool (enumFromThenToInt (fromEnumBool b1) (fromEnumBool b2) 0) }
 
-toEnum :: "Enum a => Int -> a"
-toEnum dEnum = 
-    case dEnum of
-        (@0, 8) x1 x2 x3 x4 x5 x6 x7 x8 -> x1
-		
-fromEnum :: "Enum a => a -> Int"
-fromEnum dEnum = 
-    case dEnum of
-        (@0, 8) x1 x2 x3 x4 x5 x6 x7 x8 -> x2
-
-succ :: "Enum a => a -> a"
-succ dEnum = 
-    case dEnum of
-        (@0, 8) x1 x2 x3 x4 x5 x6 x7 x8 -> x5
-		
-pred :: "Enum a => a -> a"
-pred dEnum = 
-    case dEnum of
-        (@0, 8) x1 x2 x3 x4 x5 x6 x7 x8 -> x6
-
-enumFrom :: "Enum a => a -> [a]"
-enumFrom dEnum = 
-    ''$enumFrom'' dEnum 
-		
-enumFromThen :: "Enum a => a -> a -> [a]"
-enumFromThen dEnum = 
-    ''$enumFromThen'' dEnum 
-
-enumFromTo :: "Enum a => a -> a -> [a]"
-enumFromTo dEnum = 
-    ''$enumFromTo'' dEnum 
-		
-enumFromThenTo :: "Enum a => a -> a -> a -> [a]"
-enumFromThenTo dEnum = 
-    ''$enumFromThenTo'' dEnum 
-
-makeEnumDict f1 f2 f3 f4 =
-    (@0, 8) f1 f2 f3 f4 (enumSuccDefault f1 f2) (enumPredDefault f1 f2) (enumFromToDefault f1 f2) (enumFromThenToDefault f1 f2)
 
 enumSuccDefault f1 f2 x = f1 ((+#) (f2 x) 1)
 enumPredDefault f1 f2 x = f1 ((-#) (f2 x) 1)

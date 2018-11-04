@@ -821,6 +821,9 @@ instance Show Bool where
 instance Show Float where
     show = showFloat
 
+instance Show () where
+    show () = "()"
+
 instance Show Char where
     show x = showChar x
     showList ls s = "\"" ++ ls ++ "\"" ++ s
@@ -841,3 +844,66 @@ instance (Show a, Show b, Show c) => Show (a, b, c) where
 
 instance Show a => Show [a] where
     show ls = showList ls ""
+
+-- Enum
+
+class Enum a where
+    succ, pred :: a -> a
+    toEnum :: Int -> a
+    fromEnum :: a -> Int
+    enumFrom :: a -> [a]
+    enumFromThen :: a -> a -> [a]
+    enumFromTo :: a -> a -> [a]
+    enumFromThenTo :: a -> a -> a -> [a] 
+    enumFromTo x y = map toEnum [fromEnum x .. fromEnum y]
+    enumFromThenTo x y z = map toEnum [fromEnum x, fromEnum y .. fromEnum z]
+
+
+instance Enum Int where
+    succ            = enumSuccInt
+    pred            = enumPredInt
+    toEnum          = id
+    fromEnum        = id
+    enumFrom        = enumFromInt
+    enumFromThen    = enumFromThenInt
+    enumFromTo      = enumFromToInt
+    enumFromThenTo  = enumFromThenToInt
+
+instance Enum Float where
+    succ            = enumSuccFloat
+    pred            = enumPredFloat
+    toEnum          = toEnumFloat
+    fromEnum        = truncate
+    enumFrom        = enumFromFloat
+    enumFromThen    = enumFromThenFloat
+    enumFromTo      = enumFromToFloat
+    enumFromThenTo  = enumFromThenToFloat
+
+instance Enum () where
+    succ            = error "There is no successor for ()"
+    pred            = error "There is no predecessor for ()"
+    fromEnum        = fromEnumVoid
+    toEnum          = toEnumVoid
+    enumFrom        = enumFromVoid
+    enumFromThen    = enumFromThenVoid
+    enumFromTo _ _  = [()]
+    enumFromThenTo _ _ _ = repeat ()
+
+instance Enum Bool where
+    succ False              = True
+    succ _                  = error "There is no successor for False"
+    pred True               = False
+    pred _                  = error "There is no predecessor for True"
+    toEnum                  = toEnumBool
+    fromEnum                = fromEnumBool
+    enumFrom                = enumFromBool
+    enumFromThen            = enumFromThen
+
+instance Enum Char where
+    --primChr primOrd enumFromChar enumFromThenChar
+    succ c          = primChr (primOrd c + 1)
+    pred c          = primChr (primOrd c - 1)
+    toEnum          = primChr
+    fromEnum        = primOrd
+    enumFrom        = enumFromChar
+    enumFromThen    = enumFromThenChar

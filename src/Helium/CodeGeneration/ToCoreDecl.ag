@@ -52,7 +52,7 @@ SEM Declaration
             }
         ]
         ++
-        [ DerivingShow.typeShowFunction @self ]
+        [ DerivingShow.typeShowFunction (typeSynonyms @lhs.importEnv) @self ]
     
     | Data    constructors.tag = 0
               constructors.dataTypeName = @simpletype.name
@@ -65,12 +65,9 @@ SEM Declaration
             , Core.declKind    = Core.DeclKindCustom (idFromString "data")
             , Core.declCustoms = [Core.CustomInt (length @simpletype.typevariables)]
             }
-        ]
-        ++
-        [ DerivingShow.dataShowFunction @self ]
-        ++ 
+        ] ++ 
         (if "Show" `elem` map show @derivings.self 
-         then [ DerivingShow.dataDictionary @self ]
+         then [ DerivingShow.dataDictionary (typeSynonyms @lhs.importEnv) @self ]
          else []
         )
         ++

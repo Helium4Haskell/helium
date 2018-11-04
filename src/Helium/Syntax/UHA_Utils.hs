@@ -125,12 +125,12 @@ stringFromImportDeclaration importDecl =
 
 -- TODO: daan
 intUnaryMinusName, floatUnaryMinusName, enumFromName, enumFromToName, enumFromThenName, enumFromThenToName :: Name
-intUnaryMinusName   = nameFromString "$negate"
+intUnaryMinusName   = nameFromString "negate"
 floatUnaryMinusName = nameFromString "$floatUnaryMinus"
-enumFromName        = nameFromString "$enumFrom"
-enumFromToName      = nameFromString "$enumFromTo"
-enumFromThenName    = nameFromString "$enumFromThen"
-enumFromThenToName  = nameFromString "$enumFromThenTo"
+enumFromName        = nameFromString "enumFrom"
+enumFromToName      = nameFromString "enumFromTo"
+enumFromThenName    = nameFromString "enumFromThen"
+enumFromThenToName  = nameFromString "enumFromThenTo"
 
 patternVars :: Pattern -> [Name]
 patternVars p = case p of

@@ -26,8 +26,8 @@ interpreterMain = "interpreter_main"
 -- The interpreter_main has te be wrapped inside unsafePerformIO etcetera, too
 -- We can't just call it main because we'll get import clashes.  Sigh!
 
-insertedMain :: TypeEnvironment -> CoreDecl
-insertedMain toplevelTypes =
+insertedMain :: TypeSynonymEnvironment -> TypeEnvironment -> CoreDecl
+insertedMain tse toplevelTypes = 
     let maybeWrapMainAndType = 
             case M.lookup (Name_Identifier noRange [] "main") toplevelTypes of -- !!!Name
                 Just t -> Just ("main", t)
@@ -52,7 +52,7 @@ insertedMain toplevelTypes =
                         var name
                     | otherwise ->
                         var "$primPutStrLn" `app_` 
-                            (DerivingShow.showFunctionOfType True (makeTypeFromTp tp) `app_` 
+                            (Core.Ap (var "show")  (DerivingShow.showFunctionOfType tse True (makeTypeFromTp tp)) `app_` 
                                 var name)
                     where                        
                         (qs, tp) = split (snd (instantiate 123456789 tpScheme))

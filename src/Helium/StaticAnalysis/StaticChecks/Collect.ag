@@ -31,7 +31,7 @@ SEM Module
                                         . setTypeSynonyms      (M.fromList @body.collectTypeSynonyms)
                                         . setOperatorTable     (M.fromList @body.operatorFixities)
                                         . addToTypeEnvironment  (insertClassMembers @body.collectClassMemberEnv (M.fromList @derivedFunctions))
-                                        . setClassEnvironment  (insertInstances @body.classInstances 
+                                        . setClassEnvironment  (insertInstances @body.classInstances
                                             (M.unionWith combineClassDecls @body.classEnv (classEnvironment $ combineImportEnvironmentList @lhs.importEnvironments)))
                                         . setInstanceEnvironment @body.instanceEnv
                                         . setClassMemberEnvironment @body.collectClassMemberEnv
@@ -376,6 +376,25 @@ SEM Declaration
                               in [(getNameName $ @name.self, makeTpFromType' $ head @types.self, superClasses)] 
 
        lhs . instanceEnv = M.singleton (@name.self, makeTpFromType' $ head @types.self) (namesInType (head @types.self), map (\(n, tp) -> (n, show $ head tp)) $ getSuperClasses @context.self)
+    | Data  lhs . instanceEnv = M.fromList 
+                                    [
+                                        let className = dn
+                                            dataName = @simpletype.name
+                                            tvs = @simpletype.typevariables
+                                            tVars = zip tvs (map TVar [0..])
+                                            key = (dn, foldl TApp (TCon $ show dataName) $ map snd tVars)
+                                            value = (tvs, [(show dn, tv) | tv <- map show tvs])
+                                        in (key, value) | dn <- @derivings.self
+                                    ]
+            lhs . classInstances =  [
+                                        let 
+                                            tvs = @simpletype.typevariables
+                                            tVars = zip tvs (map TVar [0..])
+                                            typeClass = foldl TApp (TCon $ show @simpletype.name) $ map snd tVars
+                                        in (show dn, typeClass, map (\x -> (show dn, snd x)) tVars)
+                                        | dn <- @derivings.self
+                                    ]
+        
 {
 
 getTypeOfInstanceFunction :: Name -> Name -> ClassMemberEnvironment -> TpScheme
@@ -423,6 +442,11 @@ ATTR Body Declaration Declarations [ | | instances USE {++} {[]} : {[(Range, Ins
 SEM Declaration
   | Instance
      lhs . instances = [createInstance @range.self @name.self (head @types.self) @context.self]
+  | Data
+    lhs. instances = [ (@range.self, makeInstance (show cl) (length @simpletype.typevariables) (show @simpletype.name) True)
+                                | cl <- @derivings.self
+                                ]
+    
 
 {
 

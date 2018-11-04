@@ -82,8 +82,6 @@ classFunctions importEnv className combinedNames = [DeclCon
                                     [
                                         Alt (PatCon (ConId $ idFromString ("Dict" ++ className)) (map idFromString labels)) 
                                             (Ap (Var $ idFromString label) (Var dictParam))
-                                        --, Alt (PatCon (ConId $ idFromString ("Dict" ++ className)) $ map idFromString ["x", "y", "z"]) (Var $ idFromString "x")
-                                        --, Alt PatDefault (Lam (idFromString "d") $ Lam (idFromString "x") (Var $ idFromString "x"))
                                     ]
                                 )
                         , declCustoms = toplevelType name importEnv True
