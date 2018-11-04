@@ -24,6 +24,7 @@ type BlockName = Id
 
 data Module = Module
   { moduleName :: !Id
+  , moduleDependencies :: ![FilePath]
   , moduleCustoms :: ![Declaration CustomDeclaration]
   , moduleDataTypes :: ![Declaration DataType]
   , moduleAbstractMethods :: ![Declaration AbstractMethod]
@@ -41,7 +42,12 @@ getConstructors :: Declaration DataType -> [DataTypeConstructor]
 getConstructors (Declaration dataName _ _ (DataType cons)) = map (\(Declaration conId _ _ (DataTypeConstructorDeclaration fields)) -> DataTypeConstructor dataName conId fields) cons
 
 data Visibility = Exported | Private deriving (Eq, Ord)
-data Declaration a = Declaration !Id !Visibility ![Custom] !a
+data Declaration a = Declaration
+  { declarationName :: !Id
+  , declarationVisibilitiy :: !Visibility
+  , declarationCustom :: ![Custom]
+  , declarationValue :: !a
+  }
 
 data CustomDeclaration = CustomDeclaration !DeclKind
 
@@ -79,13 +85,18 @@ data Pattern
   | PatternLit !Literal
   deriving (Eq, Ord)
 
+data Case
+  = CaseConstructor [(DataTypeConstructor, BlockName)]
+  | CaseLiteral [(Literal, BlockName)] BlockName
+  deriving (Eq, Ord)
+
 data Instruction
   = Let !Id !Expr !Instruction
   | LetAlloc ![Bind] !Instruction
   | Jump !BlockName
   -- * Asserts that the variable matches with the specified constructor. If they do not match, the behaviour is undefined.
   | Match !Variable !DataTypeConstructor ![Maybe Local] !Instruction -- TODO: For consistency, Maybe Local should be replaced with Maybe Id, as we also don't use Local for Let and LetAlloc
-  | If !Variable !Pattern !BlockName !BlockName
+  | Case !Variable Case
   | Return !Variable
   deriving (Eq, Ord)
 
@@ -126,7 +137,7 @@ data Literal
   deriving (Eq, Ord)
 
 mapBlocks :: (Instruction -> Instruction) -> Module -> Module
-mapBlocks fn (Module name customs datas abstracts methods) = Module name customs datas abstracts $ map (fmap fnMethod) methods
+mapBlocks fn (Module name dependencies customs datas abstracts methods) = Module name dependencies customs datas abstracts $ map (fmap fnMethod) methods
   where
     fnMethod :: Method -> Method
     fnMethod (Method args rettype entry blocks) = Method args rettype (fnBlock entry) $ map fnBlock blocks

@@ -80,6 +80,16 @@ instance Show BindTarget where
   show (BindTargetFunction global) = show global
   show (BindTargetConstructor con) = show con
 
+instance Show Case where
+  show (CaseConstructor branches) = "constructor" ++ (branches >>= showBranch)
+    where
+      showBranch :: (DataTypeConstructor, BlockName) -> String
+      showBranch (con, to) = "\n" ++ instructionIndent ++ "  " ++ show con ++ " to " ++ stringFromId to
+  show (CaseLiteral branches defaultBranch) = "literal" ++ (branches >>= showBranch) ++ "\n" ++ instructionIndent ++ "  otherwise " ++ stringFromId defaultBranch
+    where
+      showBranch :: (Literal, BlockName) -> String
+      showBranch (lit, to) = "\n" ++ instructionIndent ++ "  " ++ show lit ++ " to " ++ stringFromId to
+
 instance Show Instruction where
   show (Let var expr next) = instructionIndent ++ "let " ++ show (Local var $ typeOfExpr expr) ++ " = " ++ show expr ++ "\n" ++ show next
   show (LetAlloc binds next) = instructionIndent ++ "letalloc " ++ intercalate ", " (map show binds) ++ "\n" ++ show next
@@ -88,7 +98,7 @@ instance Show Instruction where
     where
       showField Nothing = "_"
       showField (Just l) = show l
-  show (If var pat whenTrue whenFalse) = instructionIndent ++ "if " ++ show var ++ " matches " ++ show pat ++ " then jump " ++ stringFromId whenTrue ++ " else " ++ stringFromId whenFalse
+  show (Case var branches) = instructionIndent ++ "case " ++ show var ++ " of " ++ show branches
   show (Return var) = instructionIndent ++ "ret " ++ show var
 
 instance Show Local where
@@ -117,13 +127,17 @@ instance ShowDeclaration Method where
     )
 
 instance Show Module where
-  show (Module name customs decls abstracts methods) =
+  show (Module name dependencies customs decls abstracts methods) =
     "module " ++ show name ++ "\n"
+    ++ importString
     ++ (customs >>= ('\n' :) . show)
     ++ (decls >>= ('\n' :) . show)
     ++ (abstracts >>= ('\n' :) . show)
     ++ (methods >>= ('\n' :) . show)
-
+    where
+      importString
+        | null dependencies = ""
+        | otherwise = "import " ++ intercalate ", " (map show dependencies)
 instance ShowDeclaration CustomDeclaration where
   showDeclaration (CustomDeclaration kind) = ("custom", ": " ++ showDeclKind kind ++ "\n")
 

@@ -27,15 +27,15 @@ import Helium.CodeGeneration.Iridium.Type
 import Helium.CodeGeneration.Iridium.TypeEnvironment
 
 fromCore :: NameSupply -> Core.CoreModule -> Module
-fromCore supply mod@(CoreModule.Module name _ _ decls) = Module name customs datas abstracts methods
+fromCore supply mod@(CoreModule.Module name _ _ decls) = Module name dependencies customs datas abstracts methods
   where
+    dependencies = [] -- TODO: Gather dependencies
     datas = decls >>= dataTypeFromCoreDecl consMap
-      -- map (\(dataName, cons) -> Declaration dataName Exported [] (DataType cons)) $ listFromMap consMap
     consMap = foldr dataTypeConFromCoreDecl emptyMap decls
     (methods, abstracts) = partitionEithers $ concat $ mapWithSupply (`fromCoreDecl` env) supply decls
     customs = mapMaybe customFromCoreDecl decls
 
-    env = TypeEnv () (unionMap valuesFunctions $ unionMap valuesAbstracts $ unionMap valuesCons $ mapFromList builtins) Nothing
+    env = TypeEnv (mapFromList $ map (\d -> (declarationName d, getConstructors d)) datas) (unionMap valuesFunctions $ unionMap valuesAbstracts $ unionMap valuesCons $ mapFromList builtins) Nothing
     valuesFunctions = mapMap (\arity -> ValueFunction (FunctionType (replicate arity TypeAny) TypeAnyWHNF)) $ aritiesMap mod
     valuesAbstracts = mapFromList $ map (\(Declaration name _ _ (AbstractMethod fntype)) -> (name, ValueFunction fntype)) abstracts
     valuesCons = mapFromList $ listFromMap consMap >>= (\(dataName, cons) -> map (\con@(Declaration conName _ _ (DataTypeConstructorDeclaration fields)) -> (conName, ValueConstructor (DataTypeConstructor dataName conName fields))) cons)
@@ -76,10 +76,11 @@ fromCoreDecl supply env decl@CoreModule.DeclAbstract{} = [Right $ Declaration na
     method = AbstractMethod $ FunctionType (replicate (CoreModule.declArity decl) TypeAny) TypeAnyWHNF
 fromCoreDecl _ _ _ = []
 
-idEntry, idMatchAfter :: Id
+idEntry, idMatchAfter, idMatchCase, idMatchDefault :: Id
 idEntry = idFromString "entry"
 idMatchAfter = idFromString "match_after"
 idMatchCase = idFromString "match_case"
+idMatchDefault = idFromString "match_default"
 
 toMethod :: NameSupply -> TypeEnv -> Id -> Core.Expr -> Method
 toMethod supply env name expr = Method args' returnType (Block entryName entry) blocks
@@ -148,8 +149,13 @@ toInstruction supply env continue (Core.Let (Core.Rec bs) expr)
 
 -- Match
 toInstruction supply env continue (Core.Match x alts) =
-  blocks
-    &> transformAlts supply'' env continues x alts
+  blocks &> (case head alts of
+    Core.Alt Core.PatDefault expr -> toInstruction supply'' env (head continues) expr
+    Core.Alt (Core.PatCon con _) _ ->
+      let ValueConstructor (DataTypeConstructor dataName _ _) = findMap (conId con) (teValues env)
+      in transformCaseConstructor supply'' env continues x dataName alts
+    Core.Alt (Core.PatLit _) _ -> error "Match on literals is not yet supported"
+    )
   where
     (supply1, supply2) = splitNameSupply supply
     jumps :: [(Local, Id)] -- Names of intermediate blocks and names of the variables containing the result
@@ -157,9 +163,9 @@ toInstruction supply env continue (Core.Match x alts) =
       let
         (blockName, s') = freshIdFromId idMatchCase s
         (varName, _) = freshId s'
-      in (Local varName expectedType, blockName)) supply alts
+      in (Local varName expectedType, blockName)) supply1 alts
     phiBranches = map (\(loc, block) -> PhiBranch block $ VarLocal loc) jumps
-    (blockId, supply') = freshIdFromId idMatchAfter supply
+    (blockId, supply') = freshIdFromId idMatchAfter supply2
     (result, supply'') = freshId supply'
     expectedType = TypeAnyWHNF -- TODO: More precise type
     blocks = case continue of
@@ -285,32 +291,38 @@ maybeCasts supply env ((name, t) : tail) = (var : tailVars, instr . tailInstr)
     (var, instr) = maybeCast supply1 env name t
     (tailVars, tailInstr) = maybeCasts supply2 env tail
 
-transformAlt :: NameSupply -> TypeEnv -> Continue -> Id -> Core.Alt -> Partial
-transformAlt supply env continue name (Core.Alt pat expr) = case constructorPattern pat of
-  Nothing -> toInstruction supply env continue expr
-  Just (_, []) -> toInstruction supply env continue expr
-  Just (conId, args) ->
-    let
-      ValueConstructor con@(DataTypeConstructor _ _ fields) = valueDeclaration env $ conId
-      locals = zipWith (\name t -> Local name t) args fields
-      env' = expandEnvWithLocals locals env
-    in
-      Match (resolve env name) con (map Just locals)
-      +> toInstruction supply env' continue expr
+transformAlt :: NameSupply -> TypeEnv -> Continue -> Variable -> DataTypeConstructor -> [Id] -> Core.Expr -> Partial
+transformAlt supply env continue var con@(DataTypeConstructor _ _ fields) args expr = 
+  let
+    locals = zipWith (\name t -> Local name t) args fields
+    env' = expandEnvWithLocals locals env
+  in
+    Match var con (map Just locals)
+    +> toInstruction supply env' continue expr
 
-transformAlts :: NameSupply -> TypeEnv -> [Continue] -> Id -> [Core.Alt] -> Partial
-transformAlts supply env (continue : _) name [alt] = transformAlt supply env continue name alt
-transformAlts supply env (continue : continues) name (alt@(Core.Alt pat _) : alts) = case pattern env pat of
-  Nothing -> transformAlt supply env continue name alt
-  Just p ->
-    let
-      (blockTrue, supply') = freshId supply
-      (blockFalse, supply'') = freshId supply'
-      (supply1, supply2) = splitNameSupply supply''
-      Partial whenTrueInstr whenTrueBlocks = transformAlt supply1 env continue name alt
-      Partial whenFalseInstr whenFalseBlocks = transformAlts supply2 env continues name alts
-      blocks = Block blockTrue whenTrueInstr : Block blockFalse whenFalseInstr : whenTrueBlocks ++ whenFalseBlocks
-    in Partial (If (resolve env name) p blockTrue blockFalse) blocks
+transformCaseConstructor :: NameSupply -> TypeEnv -> [Continue] -> Id -> Id -> [Core.Alt] -> Partial
+transformCaseConstructor supply env continues varName dataType alts = Partial (castInstr $ Case var c) blocks
+  where
+    (supply1, supply2) = splitNameSupply supply
+    (var, castInstr) = maybeCast supply1 env varName (TypeDataType dataType)
+    c = CaseConstructor alts'
+    constructors = findMap dataType (teDataTypes env)
+    (alts', blocks) = gatherCaseConstructorAlts supply2 env continues constructors var alts
+
+gatherCaseConstructorAlts :: NameSupply -> TypeEnv -> [Continue] -> [DataTypeConstructor] -> Variable -> [Core.Alt] -> ([(DataTypeConstructor, BlockName)], [Block])
+gatherCaseConstructorAlts _ _ _ _ _ [] = ([], [])
+gatherCaseConstructorAlts supply env (continue:_) remaining _ (Core.Alt Core.PatDefault expr : _) = (map (\con -> (con, blockName)) remaining, Block blockName instr : blocks)
+  where
+    (blockName, supply') = freshIdFromId idMatchDefault supply
+    Partial instr blocks = toInstruction supply' env continue expr
+gatherCaseConstructorAlts supply env (continue:continues) remaining var (Core.Alt (Core.PatCon c args) expr : alts) = ((con, blockName) : nextAlts, Block blockName instr : blocks ++ nextBlocks)
+  where
+    ValueConstructor con = valueDeclaration env $ conId c
+    remaining' = filter (/= con) remaining
+    (blockName, supply') = freshIdFromId idMatchCase supply
+    (supply1, supply2) = splitNameSupply supply'
+    Partial instr blocks = transformAlt supply1 env continue var con args expr
+    (nextAlts, nextBlocks) = gatherCaseConstructorAlts supply2 env continues remaining' var alts
 
 bind :: NameSupply -> TypeEnv -> Core.Bind -> (Instruction -> Instruction, Bind)
 bind supply env (Core.Bind x val) = (castInstructions, Bind x target args')

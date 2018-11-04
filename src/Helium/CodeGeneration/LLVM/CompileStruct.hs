@@ -179,16 +179,15 @@ writeField env operand struct supply fieldIdx (StructField fType fFlagIndex) (Ju
           , take (headerIdx) headers ++ [LocalReference headerType nameHeader] ++ drop (headerIdx + 1) headers
           )
 
-checkTag :: NameSupply -> Env -> Operand -> Struct -> Name -> [Named Instruction]
-checkTag supply env reference struct name
+extractTag :: NameSupply -> Env -> Operand -> Struct -> Name -> [Named Instruction]
+extractTag supply env reference struct name
   | tagSize struct == 0 = [ name := BitCast (ConstantOperand $ Constant.Int 1 0) (IntegerType 1) [] ]
   | otherwise =
     [ headerPtr := getElementPtr reference [0, 0, headerIdx]
     , headerValue := Load False (LocalReference (pointer headerType) headerPtr) Nothing 0 []
     , headerShifted := LShr False (LocalReference headerType headerValue) (ConstantOperand $ Constant.Int (fromIntegral headerBits) $ fromIntegral shift) []
     , headerTrunc := Trunc (LocalReference headerType headerShifted) tagType []
-    -- , name := ZExt (LocalReference (IntegerType $ fromIntegral $ tagSize struct) headerTrunc) (envValueType env) []
-    , name := ICmp IntegerPredicate.EQ (LocalReference tagType headerTrunc) (ConstantOperand $ Constant.Int (fromIntegral $ tagSize struct) $ fromIntegral $ tagValue struct) []
+    , name := ZExt (LocalReference (IntegerType $ fromIntegral $ tagSize struct) headerTrunc) (envValueType env) []
     ]
   where
     (headerIdx, shift)

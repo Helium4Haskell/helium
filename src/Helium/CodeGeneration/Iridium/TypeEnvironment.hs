@@ -8,7 +8,7 @@ import Helium.CodeGeneration.Iridium.Show
 import Data.Maybe(catMaybes)
 
 data TypeEnv = TypeEnv
-  { teDataTypes :: !() -- TODO: Do we need this field for a map of data type names to DataType objects?
+  { teDataTypes :: !(IdMap [DataTypeConstructor])
   , teValues :: !(IdMap ValueDeclaration)
   , teMethod :: !(Maybe (Id, FunctionType))
   }
@@ -67,9 +67,10 @@ resolveFunction env name = case lookupMap name (teValues env) of
   _ -> Nothing
 
 typeEnvForModule :: Module -> TypeEnv
-typeEnvForModule (Module _ _ dataTypes abstracts methods) = TypeEnv () values Nothing
+typeEnvForModule (Module _ _ _ dataTypes abstracts methods) = TypeEnv dataTypeMap values Nothing
   where
     values = mapFromList $ cons ++ methodDecls ++ abstractDecls
+    dataTypeMap = mapFromList $ map (\d@(Declaration name _ _ _) -> (name, getConstructors d)) dataTypes
     cons = dataTypes >>= valuesInDataType
     methodDecls = map valueOfMethod methods 
     abstractDecls = map valueOfAbstract abstracts

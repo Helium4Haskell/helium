@@ -18,10 +18,11 @@ import Helium.CodeGeneration.LLVM.CompileType
 import Helium.CodeGeneration.LLVM.CompileBind
 import Helium.CodeGeneration.LLVM.ConstructorLayout
 import Helium.CodeGeneration.LLVM.CompileConstructor(compileExtractFields)
+import Helium.CodeGeneration.LLVM.Struct(tagValue)
 import Helium.CodeGeneration.LLVM.CompileStruct
 import qualified Helium.CodeGeneration.LLVM.Builtins as Builtins
 
-import Lvm.Common.Id(Id, NameSupply, splitNameSupply, mapWithSupply)
+import Lvm.Common.Id(Id, NameSupply, splitNameSupply, splitNameSupplies, mapWithSupply, freshId)
 import Lvm.Common.IdMap(findMap)
 
 import qualified Helium.CodeGeneration.Iridium.Data as Iridium
@@ -33,6 +34,9 @@ import LLVM.AST.CallingConvention
 import LLVM.AST.Linkage
 import LLVM.AST.Constant (Constant(Int, Array))
 import qualified LLVM.AST.IntegerPredicate as IntegerPredicate
+
+import Data.List (maximumBy, group, sort, partition)
+import Data.Function (on)
 
 data Partial = Partial [Named Instruction] (Named Terminator) [BasicBlock]
 
@@ -69,10 +73,51 @@ compileInstruction env supply (Iridium.Match var (Iridium.DataTypeConstructor _ 
     address = LocalReference (pointer t) addressName
     (supply'', supply''') = splitNameSupply supply'
     LayoutPointer struct = findMap conId (envConstructors env)
-compileInstruction env supply (Iridium.If var (Iridium.PatternCon con@(Iridium.DataTypeConstructor _ conId _)) whenTrue whenFalse)
+{- compileInstruction env supply (Iridium.If var (Iridium.PatternCon con@(Iridium.DataTypeConstructor _ conId _)) whenTrue whenFalse)
   = compileIfMatchConstructor env supply var con conLayout whenTrue whenFalse
   where
-    conLayout = findMap conId (envConstructors env)
+    conLayout = findMap conId (envConstructors env) -}
+-- compileInstruction env supply 
+compileInstruction env supply (Iridium.Case var (Iridium.CaseConstructor alts))
+  -- All constructors are pointers
+  | null inlines =
+    let (instr, terminator) = compileCaseConstructorPointer env supply var pointers
+    in Partial instr terminator []
+
+  -- All constructors are inline
+  | null pointers =
+    -- Extract the most frequent branch
+    let
+      (defaultBranch, alts'') = caseExtractMostFrequentBranch inlines
+      (instr, terminator) = compileCaseConstructorInline env supply var alts'' defaultBranch
+    in
+      Partial instr terminator []
+
+  -- Only one pointer value
+  | length pointers == 1 =
+    let
+      [CaseAlt _ _ pointerBranch] = pointers
+      (instr, terminator) = compileCaseConstructorInline env supply var inlines pointerBranch
+    in
+      Partial instr terminator []
+
+  -- Mixed
+  | otherwise =
+    let
+      supply1 : supplyCaseInline : supplyCasePointer : _ = splitNameSupplies supply
+      (pointerBranch, _) = freshId supply1
+
+      -- Check whether an inline constructor matches, otherwise jump to the pointers branch
+      (inlineInstr, inlineTerminator) = compileCaseConstructorInline env supply var inlines pointerBranch
+
+      -- Check which pointer constructor matches
+      (pointerInstr, pointerTerminator) = compileCaseConstructorPointer env supply var pointers
+    in
+      Partial inlineInstr inlineTerminator [BasicBlock (toName pointerBranch) pointerInstr pointerTerminator]
+
+  where
+    alts' = map (toCaseAlt env) alts
+    (inlines, pointers) = partition altIsInline alts'
 
 compileExpression :: Env -> NameSupply -> Iridium.Expr -> Name -> [Named Instruction]
 compileExpression env supply (Iridium.Literal (Iridium.LitInt value)) name = [name := BitCast (ConstantOperand constant) (envValueType env) []]
@@ -153,48 +198,57 @@ callEval pointer isWHNF =
   , metadata = []
   }
 
-compileIfMatchConstructor :: Env -> NameSupply -> Iridium.Variable -> Iridium.DataTypeConstructor -> ConstructorLayout -> Id -> Id -> Partial
-compileIfMatchConstructor env supply var _ (LayoutInline tag) whenTrue whenFalse
-  = Partial instructions terminator []
+data CaseAlt = CaseAlt Iridium.DataTypeConstructor ConstructorLayout Iridium.BlockName
+
+toCaseAlt :: Env -> (Iridium.DataTypeConstructor, Iridium.BlockName) -> CaseAlt
+toCaseAlt env (con@(Iridium.DataTypeConstructor _ conId _), block) = CaseAlt con layout block
   where
-    instructions :: [Named Instruction]
-    instructions =
-      [ nameInt := PtrToInt (toOperand env var) (envValueType env) []
-      , nameCond := ICmp IntegerPredicate.EQ (LocalReference (envValueType env) nameInt) expected []
-      ]
-    expected = ConstantOperand $ Int (fromIntegral $ targetWordSize $ envTarget env) (fromIntegral tag * 2 + 1)
-    terminator :: Named Terminator
-    terminator = Do $ CondBr (LocalReference bool nameCond) (toName whenTrue) (toName whenFalse) []
+    layout = findMap conId (envConstructors env)
+
+altIsInline :: CaseAlt -> Bool
+altIsInline (CaseAlt _ (LayoutInline _) _) = True
+altIsInline _ = False
+
+compileCaseConstructorInline :: Env -> NameSupply -> Iridium.Variable -> [CaseAlt] -> Iridium.BlockName -> ([Named Instruction], Named Terminator)
+compileCaseConstructorInline env supply var alts defaultBranch = ([nameInt := PtrToInt (toOperand env var) (envValueType env) []], (Do switch))
+  where
     (nameInt, supply') = freshName supply
-    (nameCond, supply'') = freshName supply'
-compileIfMatchConstructor env supply var (Iridium.DataTypeConstructor _ conId _) (LayoutPointer struct) whenTrue whenFalse
-  = Partial instructionsMain terminatorMain blocks
+    switch :: Terminator
+    switch = Switch (LocalReference (envValueType env) nameInt) (toName defaultBranch) (map altToDestination alts) []
+    altToDestination :: CaseAlt -> (Constant, Name)
+    altToDestination (CaseAlt (Iridium.DataTypeConstructor _ conId _) (LayoutInline tag) to)
+      = (Int (fromIntegral $ targetWordSize $ envTarget env) (fromIntegral $ 2 * tag + 1), toName to)
+
+compileCaseConstructorPointer :: Env -> NameSupply -> Iridium.Variable -> [CaseAlt] -> ([Named Instruction], Named Terminator)
+compileCaseConstructorPointer env supply var alts = (instructions, (Do switch))
   where
+    (defaultBranch, alts') = caseExtractMostFrequentBranch alts
+
+    -- Cast the pointer to the type of the first constructor. It does not matter to which constructor we cast,
+    -- as they all have the tag on the same position.
+    CaseAlt _ (LayoutPointer structFirst) _ : _ = alts
+    t = pointer $ structType env structFirst
+
     (supplyExtractTag, supply1) = splitNameSupply supply
     (nameCasted, supply2) = freshName supply1
-    (nameCond, supply3) = freshName supply2
-    (nameTagCond, supply4) = freshName supply3
-    (nameBlockCheck, _) = freshName supply4
+    (nameTag, supply3) = freshName supply2
 
-    operand = toOperand env var
+    instructions :: [Named Instruction]
+    instructions =
+      [ nameCasted := BitCast (toOperand env var) t [] ]
+      ++ extractTag supply env (LocalReference t nameCasted) structFirst nameTag
 
-    instructionsMain :: [Named Instruction]
-    instructionsMain =
-      -- Convert pointer to int & truncate to a single bit
-      [ nameCond := PtrToInt (toOperand env var) bool [] ]
-    terminatorMain :: Named Terminator
-    -- Check if the least significant bit of the pointer was a 1. If so, this is an inlined constructor
-    -- so they do not match.
-    -- If it is a 0, we must read the pointer and check its tag.
-    terminatorMain = Do $ CondBr (LocalReference bool nameCond) (toName whenFalse) nameBlockCheck []
+    altToDestination :: CaseAlt -> (Constant, Name)
+    altToDestination (CaseAlt (Iridium.DataTypeConstructor _ conId _) (LayoutPointer struct) to)
+      = (Int (fromIntegral $ targetWordSize $ envTarget env) (fromIntegral $ tagValue struct), toName to)
 
-    t = pointer $ structType env struct
+    switch :: Terminator
+    switch = Switch (LocalReference (envValueType env) nameTag) (toName defaultBranch) (map altToDestination alts) []
 
-    instructionsCheck :: [Named Instruction]
-    instructionsCheck = [ nameCasted := BitCast operand t [] ]
-      ++ checkTag supply env (LocalReference t nameCasted) struct nameTagCond
-
-    terminatorCheck :: Named Terminator
-    terminatorCheck = Do $ CondBr (LocalReference bool nameTagCond) (toName whenTrue) (toName whenFalse) []
-
-    blocks = [BasicBlock nameBlockCheck instructionsCheck terminatorCheck]
+caseExtractMostFrequentBranch :: [CaseAlt] -> (Iridium.BlockName, [CaseAlt])
+caseExtractMostFrequentBranch alts = (defaultBranch, alts')
+  where
+     -- Find the branch that occurs most frequently
+     defaultBranch = head $ maximumBy (compare `on` length) $ group $ sort $ map (\(CaseAlt _ _ block) -> block) alts
+     -- Remove the default branch from the alts
+     alts' = filter (\(CaseAlt _ _ block) -> defaultBranch /= block) alts

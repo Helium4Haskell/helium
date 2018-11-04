@@ -147,7 +147,7 @@ dupUnion :: Analysis -> Analysis -> Analysis
 dupUnion = unionMapWith (\_ _ -> True)
 
 dupInsert :: Id -> Analysis -> Analysis
-dupInsert name m = insertMap name (name `elemMap` m) m
+dupInsert name m = updateMap name (name `elemMap` m) m
 
 dupInserts :: [Id] -> Analysis -> Analysis
 dupInserts = flip $ foldr dupInsert
