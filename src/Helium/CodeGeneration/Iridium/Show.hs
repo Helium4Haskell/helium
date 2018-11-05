@@ -21,7 +21,7 @@ class ShowDeclaration a where
   showDeclaration :: a -> (String, String)
 
 instance ShowDeclaration a => Show (Declaration a) where
-  show (Declaration name vis customs a) = customsString ++ export  ++ keyword ++ " @" ++ stringFromId name ++ body
+  show (Declaration name vis customs a) = customsString ++ export  ++ keyword ++ " @" ++ showId name ++ body
     where
       customsString = customs >>= ((++ "\n") . ('#' : ) . showCustom)
       export
@@ -32,8 +32,8 @@ instance ShowDeclaration a => Show (Declaration a) where
 showCustom :: Custom -> String
 showCustom (CustomInt i) = "[int " ++ show i ++ "]"
 showCustom (CustomBytes bs) = "[bytes " ++ show (stringFromBytes bs) ++ "]"
-showCustom (CustomName id) = "[name " ++ stringFromId id ++ "]"
-showCustom (CustomLink id kind) = "[link @" ++ stringFromId id ++ " " ++ showDeclKind kind ++ "]"
+showCustom (CustomName id) = "[name " ++ showId id ++ "]"
+showCustom (CustomLink id kind) = "[link @" ++ showId id ++ " " ++ showDeclKind kind ++ "]"
 showCustom (CustomDecl kind customs) = "[decl " ++ showDeclKind kind ++ (customs >>= ((" " ++) . showCustom)) ++ "]"
 showCustom CustomNothing = "[nothing]"
 
@@ -48,7 +48,7 @@ showDeclKind DeclKindImport = "import"
 showDeclKind DeclKindModule = "module"
 showDeclKind DeclKindExtern = "extern"
 showDeclKind DeclKindExternType = "externtype"
-showDeclKind (DeclKindCustom id) = "@" ++ stringFromId id
+showDeclKind (DeclKindCustom id) = "@" ++ showId id
 
 instance Show Literal where
   show (LitInt x) = "int " ++ show x
@@ -74,11 +74,11 @@ instructionIndent :: String
 instructionIndent = "  "
 
 instance Show Bind where
-  show b@(Bind _ target args) = show (bindLocal b) ++ " = " ++ show target ++ " $ " ++ showArguments args
+  show (Bind var target args) = "%" ++ showId var ++ " = " ++ show target ++ " $ " ++ showArguments args
 
 instance Show BindTarget where
-  show (BindTargetFunction global) = show global
-  show (BindTargetConstructor con) = show con
+  show (BindTargetFunction global) = "thunk " ++ show global
+  show (BindTargetConstructor con) = "constructor " ++ show con
 
 instance Show Case where
   show (CaseConstructor branches) = "constructor" ++ (branches >>= showBranch)
@@ -91,7 +91,7 @@ instance Show Case where
       showBranch (lit, to) = "\n" ++ instructionIndent ++ "  " ++ show lit ++ " to " ++ stringFromId to
 
 instance Show Instruction where
-  show (Let var expr next) = instructionIndent ++ "let " ++ show (Local var $ typeOfExpr expr) ++ " = " ++ show expr ++ "\n" ++ show next
+  show (Let var expr next) = instructionIndent ++ "let %" ++ showId var ++ " = " ++ show expr ++ "\n" ++ show next
   show (LetAlloc binds next) = instructionIndent ++ "letalloc " ++ intercalate ", " (map show binds) ++ "\n" ++ show next
   show (Jump to) = instructionIndent ++ "jump " ++ show to
   show (Match var conId args next) = instructionIndent ++ "match " ++ show var ++ " on " ++ show conId ++ showArguments' showField args ++ "\n" ++ show next
@@ -102,10 +102,10 @@ instance Show Instruction where
   show (Return var) = instructionIndent ++ "ret " ++ show var
 
 instance Show Local where
-  show (Local name t) = "%" ++ stringFromId name ++ ": " ++ show t
+  show (Local name t) = "%" ++ showId name ++ ": " ++ show t
 
 instance Show Global where
-  show (Global name fntype) = "@" ++ stringFromId name ++ ": " ++ show fntype
+  show (Global name fntype) = "@" ++ showId name ++ ": " ++ show fntype
 
 instance Show Variable where
   show (VarLocal local) = show local
@@ -137,7 +137,7 @@ instance Show Module where
     where
       importString
         | null dependencies = ""
-        | otherwise = "import " ++ intercalate ", " (map show dependencies)
+        | otherwise = "import " ++ intercalate ", " (map stringFromId dependencies) ++ "\n"
 instance ShowDeclaration CustomDeclaration where
   showDeclaration (CustomDeclaration kind) = ("custom", ": " ++ showDeclKind kind ++ "\n")
 
@@ -148,7 +148,7 @@ instance ShowDeclaration DataTypeConstructorDeclaration where
     )
 
 instance Show DataTypeConstructor where
-  show (DataTypeConstructor dataType name args) = "@" ++ stringFromId name ++ ": " ++ showArguments args ++ " -> @" ++ stringFromId dataType
+  show (DataTypeConstructor dataType name args) = "@" ++ showId name ++ ": " ++ showArguments args ++ " -> @" ++ showId dataType
 
 instance ShowDeclaration DataType where
   showDeclaration (DataType cons) =
@@ -162,7 +162,7 @@ instance Show PrimitiveType where
   show (TypeAnyWHNF) = "any_whnf"
 
   show (TypeInt) = "int"
-  show (TypeDataType name) = "data<@" ++ stringFromId name ++ ">"
+  show (TypeDataType name) = "data<@" ++ showId name ++ ">"
   show (TypeFunction) = "function"
   show (TypeGlobalFunction fntype) = "function " ++ show fntype
 
@@ -174,3 +174,11 @@ showArguments = showArguments' show
 
 instance Show FunctionType where
   show (FunctionType args ret) = showArguments args ++ " -> " ++ show ret
+
+showId :: Id -> String
+showId name
+  | all (`elem` chars) str = str
+  | otherwise = show str
+  where
+    chars = ['.', '$'] ++ ['a' .. 'z'] ++ ['A' .. 'Z'] ++ ['0' .. '9'] 
+    str = stringFromId name

@@ -24,7 +24,7 @@ type BlockName = Id
 
 data Module = Module
   { moduleName :: !Id
-  , moduleDependencies :: ![FilePath]
+  , moduleDependencies :: ![Id]
   , moduleCustoms :: ![Declaration CustomDeclaration]
   , moduleDataTypes :: ![Declaration DataType]
   , moduleAbstractMethods :: ![Declaration AbstractMethod]
