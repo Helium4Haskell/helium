@@ -13,10 +13,11 @@ module Helium.CodeGeneration.Iridium.FromCore where
 import Helium.CodeGeneration.Core.Arity(aritiesMap)
 import Lvm.Common.Id(Id, NameSupply, freshId, splitNameSupply, mapWithSupply, idFromString, freshIdFromId)
 import Lvm.Common.IdMap
+import Lvm.Common.IdSet
 import Lvm.Common.Byte(stringFromBytes)
 import qualified Lvm.Core.Expr as Core
 import qualified Lvm.Core.Module as CoreModule
-import Data.List(find, replicate)
+import Data.List(find, replicate, group, sort)
 import Data.Maybe(fromMaybe, mapMaybe)
 import Data.Either(partitionEithers)
 
@@ -29,7 +30,7 @@ import Helium.CodeGeneration.Iridium.TypeEnvironment
 fromCore :: NameSupply -> Core.CoreModule -> Module
 fromCore supply mod@(CoreModule.Module name _ _ decls) = Module name dependencies customs datas abstracts methods
   where
-    dependencies = [] -- TODO: Gather dependencies
+    dependencies = listFromSet $ foldr gatherDependencies emptySet decls
     datas = decls >>= dataTypeFromCoreDecl consMap
     consMap = foldr dataTypeConFromCoreDecl emptyMap decls
     (methods, abstracts) = partitionEithers $ concat $ mapWithSupply (`fromCoreDecl` env) supply decls
@@ -45,6 +46,11 @@ customFromCoreDecl decl@CoreModule.DeclCustom{} = Just $ Declaration name (visib
   where
     name = CoreModule.declName decl
 customFromCoreDecl _ = Nothing
+
+gatherDependencies :: Core.CoreDecl -> IdSet -> IdSet
+gatherDependencies decl = case CoreModule.declAccess decl of
+  CoreModule.Imported _ mod _ _ _ _ -> insertSet mod
+  _ -> id
 
 dataTypeFromCoreDecl :: IdMap [Declaration DataTypeConstructorDeclaration] -> Core.CoreDecl -> [Declaration DataType]
 dataTypeFromCoreDecl consMap decl@CoreModule.DeclCustom{}
