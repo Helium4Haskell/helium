@@ -35,7 +35,7 @@ showCustom (CustomBytes bs) = "[bytes " ++ show (stringFromBytes bs) ++ "]"
 showCustom (CustomName id) = "[name " ++ showId id ++ "]"
 showCustom (CustomLink id kind) = "[link @" ++ showId id ++ " " ++ showDeclKind kind ++ "]"
 showCustom (CustomDecl kind customs) = "[decl " ++ showDeclKind kind ++ (customs >>= ((" " ++) . showCustom)) ++ "]"
-showCustom CustomNothing = "[nothing]"
+showCustom CustomNothing = "[]"
 
 showDeclKind :: DeclKind -> String
 showDeclKind DeclKindName = "name"
@@ -60,7 +60,7 @@ instance Show Pattern where
   show (PatternLit lit) = show lit
 
 instance Show Expr where
-  show (Literal lit) = show lit
+  show (Literal lit) = "literal " ++ show lit
   show (Call fn args) = "call " ++ show fn ++ " $ " ++ showArguments args
   show (Eval var) = "eval " ++ show var
   show (Var var) = "var " ++ show var
@@ -81,11 +81,11 @@ instance Show BindTarget where
   show (BindTargetConstructor con) = "constructor " ++ show con
 
 instance Show Case where
-  show (CaseConstructor branches) = "constructor" ++ (branches >>= showBranch)
+  show (CaseConstructor branches) = "constructor " ++ showArguments' showBranch branches
     where
       showBranch :: (DataTypeConstructor, BlockName) -> String
       showBranch (con, to) = "\n" ++ instructionIndent ++ "  " ++ show con ++ " to " ++ stringFromId to
-  show (CaseLiteral branches defaultBranch) = "literal" ++ (branches >>= showBranch) ++ "\n" ++ instructionIndent ++ "  otherwise " ++ stringFromId defaultBranch
+  show (CaseLiteral branches defaultBranch) = "literal " ++ showArguments' showBranch branches ++ "\n" ++ instructionIndent ++ "  otherwise " ++ stringFromId defaultBranch
     where
       showBranch :: (Literal, BlockName) -> String
       showBranch (lit, to) = "\n" ++ instructionIndent ++ "  " ++ show lit ++ " to " ++ stringFromId to
@@ -94,12 +94,12 @@ instance Show Instruction where
   show (Let var expr next) = instructionIndent ++ "let %" ++ showId var ++ " = " ++ show expr ++ "\n" ++ show next
   show (LetAlloc binds next) = instructionIndent ++ "letalloc " ++ intercalate ", " (map show binds) ++ "\n" ++ show next
   show (Jump to) = instructionIndent ++ "jump " ++ show to
-  show (Match var conId args next) = instructionIndent ++ "match " ++ show var ++ " on " ++ show conId ++ showArguments' showField args ++ "\n" ++ show next
+  show (Match var con args next) = instructionIndent ++ "match " ++ show var ++ " on " ++ show con ++ showArguments' showField args ++ "\n" ++ show next
     where
       showField Nothing = "_"
       showField (Just l) = show l
-  show (Case var branches) = instructionIndent ++ "case " ++ show var ++ " of " ++ show branches
-  show (Return var) = instructionIndent ++ "ret " ++ show var
+  show (Case var branches) = instructionIndent ++ "case " ++ show var ++ " " ++ show branches
+  show (Return var) = instructionIndent ++ "return " ++ show var
 
 instance Show Local where
   show (Local name t) = "%" ++ showId name ++ ": " ++ show t
@@ -128,16 +128,15 @@ instance ShowDeclaration Method where
 
 instance Show Module where
   show (Module name dependencies customs decls abstracts methods) =
-    "module " ++ show name ++ "\n"
+    "module " ++ stringFromId name ++ "\n"
     ++ importString
     ++ (customs >>= ('\n' :) . show)
     ++ (decls >>= ('\n' :) . show)
     ++ (abstracts >>= ('\n' :) . show)
     ++ (methods >>= ('\n' :) . show)
     where
-      importString
-        | null dependencies = ""
-        | otherwise = "import " ++ intercalate ", " (map stringFromId dependencies) ++ "\n"
+      importString = "import " ++ showArguments' (stringFromId) dependencies ++ "\n"
+
 instance ShowDeclaration CustomDeclaration where
   showDeclaration (CustomDeclaration kind) = ("custom", ": " ++ showDeclKind kind ++ "\n")
 
@@ -162,8 +161,8 @@ instance Show PrimitiveType where
   show (TypeAnyWHNF) = "any_whnf"
 
   show (TypeInt) = "int"
-  show (TypeDataType name) = "data<@" ++ showId name ++ ">"
-  show (TypeFunction) = "function"
+  show (TypeDataType name) = "data @" ++ showId name
+  show (TypeFunction) = "anyfunction"
   show (TypeGlobalFunction fntype) = "function " ++ show fntype
 
 showArguments' :: (a -> String) -> [a] -> String
