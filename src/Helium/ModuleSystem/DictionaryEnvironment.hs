@@ -22,6 +22,7 @@ import Helium.Syntax.UHA_Syntax (Name)
 import Helium.Syntax.UHA_Utils (NameWithRange(..) )
 import Helium.Utils.Utils (internalError)
 
+
 import Top.Types
 
 data DictionaryEnvironment = 
@@ -93,15 +94,16 @@ makeDictionaryTrees :: ClassEnvironment -> [PredicateWithSource] -> Maybe String
 makeDictionaryTrees classEnv ps currentClass curPred x = mapM (makeDictionaryTree classEnv ps currentClass curPred) x
 
 makeDictionaryTree :: ClassEnvironment -> [PredicateWithSource] -> Maybe String -> Maybe Predicate -> PredicateWithSource -> Maybe DictionaryTree
-makeDictionaryTree classEnv availablePredicates currentClass curPred ps =
+makeDictionaryTree classEnv availablePredicates currentClass curPred ps = 
     let
         p@(Predicate className tp) = getPredicateFromPredicateWithSource ps
         bareAvailablePredicates = map getPredicateFromPredicateWithSource availablePredicates
+        baseSuperClassPredicates = map getPredicateFromPredicateWithSource $ filter isSuperClassPredicate availablePredicates
         hasSuperClassPredicate p = any (\ps -> isSuperClassPredicate ps && getPredicateFromPredicateWithSource ps == getPredicateFromPredicateWithSource p) availablePredicates
         isSuperClassPredicate (PredicateFunction _) = False
         isSuperClassPredicate (PredicateSuperInstance _ _ _ _) = True
         getSuperClassPredicate :: Predicate -> PredicateWithSource
-        getSuperClassPredicate p = fromMaybe (error "cannot find") $ find (\ps -> isSuperClassPredicate ps && getPredicateFromPredicateWithSource ps == p) availablePredicates
+        getSuperClassPredicate p = fromMaybe (PredicateFunction p) $ find (\ps -> isSuperClassPredicate ps && getPredicateFromPredicateWithSource ps == p) availablePredicates
         convertPredicate :: (Predicate -> DictionaryTree) -> PredicateWithSource -> DictionaryTree
         convertPredicate f p    | hasSuperClassPredicate p =  let
                                                                     (PredicateSuperInstance pred pn tv cn) = getSuperClassPredicate $ getPredicateFromPredicateWithSource p 
@@ -117,12 +119,12 @@ makeDictionaryTree classEnv availablePredicates currentClass curPred ps =
                                     , path <- superclassPaths c className classEnv
                                     ] of
                                 []     -> Nothing
-                                (path,fromPredicate):_ -> 
+                                (path,fromPredicate):others -> 
                                     let list = reverse (zip path (tail path)) -- ByInstance String {- class name -} String {- instance name -} [DictionaryTree]
                                         tree = foldr (uncurry BySuperClass) 
                                             (maybe (ByPredicate fromPredicate) ByCurrentClass currentClass) 
                                             list
-                                    in Just tree 
+                                    in if fromPredicate `elem` baseSuperClassPredicates then Just (foldr (uncurry BySuperClass) (convertPredicate ByPredicate (getSuperClassPredicate fromPredicate)) list) else Just tree 
                                 
         _      -> case byInstance noOrderedTypeSynonyms classEnv p of
                     Nothing -> internalError "DictionaryEnvironment" "makeDictionaryTree" ("reduction error" ++ show (M.assocs classEnv))

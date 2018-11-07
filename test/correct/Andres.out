@@ -9,7 +9,12 @@ Compiling correct/Andres.hs
 (5,13): Warning: Missing pattern in pattern binding: 
   [] = ...
 (7,1): Warning: Missing type signature: test3 :: Int
-(9,1): Warning: Missing type signature: test4 :: IO ()
+(9,1): Warning: Missing type signature: test4 :: Monad a => a ()
+  Hint: Because test4 has an overloaded type, computations may be repeated.
+        Insert the missing type signature if this is indeed your intention.
+(9,16): Warning: Missing type signature: f :: Monad a => a ()
+  Hint: Because f has an overloaded type, computations may be repeated. Insert
+        the missing type signature if this is indeed your intention.
 (11,1): Warning: Missing type signature: main :: (Int, Int, Int)
-Compilation successful with 10 warnings
+Compilation successful with 11 warnings
 ((-2),2,(-5))

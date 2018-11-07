@@ -52,7 +52,7 @@ SEM Declaration
             }
         ]
         ++
-        [ DerivingShow.typeShowFunction (typeSynonyms @lhs.importEnv) @self ]
+        [ DerivingShow.typeShowFunction (classEnvironment @lhs.importEnv) (typeSynonyms @lhs.importEnv) @self ]
     
     | Data    constructors.tag = 0
               constructors.dataTypeName = @simpletype.name
@@ -67,7 +67,7 @@ SEM Declaration
             }
         ] ++ 
         (if "Show" `elem` map show @derivings.self 
-         then [ DerivingShow.dataDictionary (typeSynonyms @lhs.importEnv) @self ]
+         then [ DerivingShow.dataDictionary (classEnvironment @lhs.importEnv) (typeSynonyms @lhs.importEnv) @self ]
          else []
         )
         ++

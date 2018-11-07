@@ -177,6 +177,9 @@ instance Num Int where
     (+) = (+#)
     (-) = (-#)
     (*) = (*#)
+    negate = negInt
+    fromInt = id
+    abs n = if n < 0 then negate n else n
 
 {-----------------------------------------------
  -- Float
@@ -220,6 +223,8 @@ instance Num Float where
     (+) = (+.)
     (-) = (-.)
     (*) = (*.)
+    negate = negFloat
+    abs n = if n < 0.0 then negate n else n
 
 {-----------------------------------------------
  -- Bool
@@ -732,6 +737,10 @@ class Applicative m => Monad m where
     return = pure
     m >> k = m >>= (\_ -> k)
 
+instance Monad IO where
+    return = returnIO
+    (>>=) = bindIO
+
 instance Monad Maybe where
     return = Just 
     (>>=) Nothing f = Nothing
@@ -741,10 +750,7 @@ instance Monad (Either a) where
     return = Right
     (>>=) (Right x) f = f x
     (>>=) l _ = l
-
-instance Monad IO where
-    return = returnIO
-    (>>=) = bindIO
+    
 
 class Eq a where
     (==) :: a -> a -> Bool
@@ -772,6 +778,37 @@ instance Eq a => Eq [a] where
     (==) (x:xs) (y:ys) = x == y && xs == ys
     (==) _ _ = False    
 
+instance Eq () where
+    () == () = True
+
+instance (Eq a, Eq b) => Eq (a, b) where
+    (x1, y1) == (x2, y2) = x1 == x2 && y1 == y2
+
+instance (Eq a, Eq b, Eq c) => Eq (a, b, c) where
+    (x1, y1, z1) == (x2, y2, z2) = x1 == x2 && y1 == y2 && z1 == z2
+
+instance (Eq a, Eq b, Eq c, Eq d) => Eq (a, b, c, d) where
+    (x1, y1, z1, a1) == (x2, y2, z2, a2) = x1 == x2 && y1 == y2 && z1 == z2 && a1 == a2
+
+instance (Eq a, Eq b, Eq c, Eq d, Eq e) => Eq (a, b, c, d, e) where
+    (x1, y1, z1, a1, b1) == (x2, y2, z2, a2, b2) = x1 == x2 && y1 == y2 && z1 == z2 && a1 == a2 && b1 == b2
+
+instance (Eq a, Eq b, Eq c, Eq d, Eq e, Eq f) => Eq (a, b, c, d, e, f) where
+    (x1, y1, z1, a1, b1, c1) == (x2, y2, z2, a2, b2, c2) = x1 == x2 && y1 == y2 && z1 == z2 && a1 == a2 && b1 == b2 && c1 == c2
+
+instance (Eq a, Eq b, Eq c, Eq d, Eq e, Eq f, Eq g) => Eq (a, b, c, d, e, f, g) where
+    (x1, y1, z1, a1, b1, c1, d1) == (x2, y2, z2, a2, b2, c2, d2) = x1 == x2 && y1 == y2 && z1 == z2 && a1 == a2 && b1 == b2 && c1 == c2 && d1 == d2
+    
+instance (Eq a, Eq b, Eq c, Eq d, Eq e, Eq f, Eq g, Eq h) => Eq (a, b, c, d, e, f, g, h) where
+    (x1, y1, z1, a1, b1, c1, d1, e1) == (x2, y2, z2, a2, b2, c2, d2, e2) = x1 == x2 && y1 == y2 && z1 == z2 && a1 == a2 && b1 == b2 && c1 == c2 && d1 == d2 && e1 == e2
+
+instance (Eq a, Eq b, Eq c, Eq d, Eq e, Eq f, Eq g, Eq h, Eq i) => Eq (a, b, c, d, e, f, g, h, i) where
+    (x1, y1, z1, a1, b1, c1, d1, e1, f1) == (x2, y2, z2, a2, b2, c2, d2, e2, f2) = x1 == x2 && y1 == y2 && z1 == z2 && a1 == a2 && b1 == b2 && c1 == c2 && d1 == d2 && e1 == e2 && f1 == f2
+    
+instance (Eq a, Eq b, Eq c, Eq d, Eq e, Eq f, Eq g, Eq h, Eq i, Eq j) => Eq (a, b, c, d, e, f, g, h, i, j) where
+    (x1, y1, z1, a1, b1, c1, d1, e1, f1, g1) == (x2, y2, z2, a2, b2, c2, d2, e2, f2, g2) = x1 == x2 && y1 == y2 && z1 == z2 && a1 == a2 && b1 == b2 && c1 == c2 && d1 == d2 && e1 == e2 && f1 == f2 && g1 == g2
+        
+    
 
 class Eq a => Ord a where
     (<)     :: a -> a -> Bool
@@ -781,19 +818,71 @@ class Eq a => Ord a where
     compare :: a -> a -> Ordering
     (<) x y = x <= y && x /= y
     (>) x y = x >= y && x /= y
-    (<=) x y = x < y || x == y
-    (>=) x y = x > y || x == y
+    (<=) x y = not (x > y)
+    (>=) x y = not (x < y)
     compare x y | x == y = EQ
                 | x < y = LT
                 | x > y = GT
 
 instance Ord a => Ord [a] where
-    [] < _ = False
+    [] < [] = False
     [] < (_:_) = True
-    (x:xs) < (y:ys) = x < y && xs < ys
+    (x:xs) < (y:ys) | x == y = xs < ys
+                    | otherwise = x < y
+    (x:xs) < [] = False
 
+instance (Ord a, Ord b) => Ord (a, b) where
+    (x1, y1) < (x2, y2) | x1 /= x2 = x1 < x2
+                        | otherwise = y1 < y2
 
+instance (Ord a, Ord b, Ord c) => Ord (a, b, c) where
+    (x1, y1, z1) < (x2, y2, z2) | x1 /= x2 = x1 < x2
+                                | otherwise = (y1, z1) < (y2, z2)
 
+instance (Ord a, Ord b, Ord c, Ord d) => Ord (a, b, c, d) where
+    (x1, y1, z1, a1) < (x2, y2, z2, a2) | x1 /= x2 = x1 < x2
+                                        | otherwise = (y1, z1, a1) < (y2, z2, a2)
+
+instance (Ord a, Ord b, Ord c, Ord d, Ord e) => Ord (a, b, c, d, e) where
+    (x1, y1, z1, a1, b1) < (x2, y2, z2, a2, b2) | x1 /= x2 = x1 < x2
+                                                | otherwise = (y1, z1, a1, b1) < (y2, z2, a2, b2)
+
+instance (Ord a, Ord b, Ord c, Ord d, Ord e, Ord f) => Ord (a, b, c, d, e, f) where
+    (x1, y1, z1, a1, b1, c1) < (x2, y2, z2, a2, b2, c2) | x1 /= x2 = x1 < x2
+                                                        | otherwise = (y1, z1, a1, b1, c1) < (y2, z2, a2, b2, c2)
+
+instance (Ord a, Ord b, Ord c, Ord d, Ord e, Ord f, Ord g) => Ord (a, b, c, d, e, f, g) where
+    (x1, y1, z1, a1, b1, c1, d1) < (x2, y2, z2, a2, b2, c2, d2)     | x1 /= x2 = x1 < x2
+                                                                    | otherwise = (y1, z1, a1, b1, c1, d1) < (y2, z2, a2, b2, c2, d2)
+    
+instance (Ord a, Ord b, Ord c, Ord d, Ord e, Ord f, Ord g, Ord h) => Ord (a, b, c, d, e, f, g, h) where
+    (x1, y1, z1, a1, b1, c1, d1, e1) < (x2, y2, z2, a2, b2, c2, d2, e2) | x1 /= x2 = x1 < x2
+                                                                        | otherwise = (y1, z1, a1, b1, c1, d1, e1) < (y2, z2, a2, b2, c2, d2, e2)
+
+instance (Ord a, Ord b, Ord c, Ord d, Ord e, Ord f, Ord g, Ord h, Ord i) => Ord (a, b, c, d, e, f, g, h, i) where
+    (x1, y1, z1, a1, b1, c1, d1, e1, f1) < (x2, y2, z2, a2, b2, c2, d2, e2, f2) | x1 /= x2 = x1 < x2
+                                                                                | otherwise = (y1, z1, a1, b1, c1, d1, e1, f1) < (y2, z2, a2, b2, c2, d2, e2, f2)
+    
+instance (Ord a, Ord b, Ord c, Ord d, Ord e, Ord f, Ord g, Ord h, Ord i, Ord j) => Ord (a, b, c, d, e, f, g, h, i, j) where
+    (x1, y1, z1, a1, b1, c1, d1, e1, f1, g1) < (x2, y2, z2, a2, b2, c2, d2, e2, f2, g2) | x1 /= x2 = x1 < x2
+                                                                                        | otherwise = (y1, z1, a1, b1, c1, d1, e1, f1, g1) < (y2, z2, a2, b2, c2, d2, e2, f2, g2)
+    
+instance Ord Char where
+    c1 < c2 = primOrd c1 < primOrd c2
+    c1 > c2 = primOrd c1 > primOrd c2
+
+instance Ord Bool where
+    False < False = False
+    False < True = True
+    True < False = False
+    True < True = False
+    False > False = False
+    False > True = False
+    True > False = True
+    True > True = False
+
+instance Ord () where
+    () < () = False
 
 shows :: Show a => a -> ShowS
 shows = showsPrec 0
@@ -802,7 +891,7 @@ class Show a where
     show :: a -> String
     showList :: [a] -> ShowS
     showsPrec :: Int -> a -> ShowS
-    showList ls s  = "[" ++ intercalate ", " (map (flip shows s) ls) ++ "]"
+    showList ls s  = "[" ++ intercalate "," (map (flip shows s) ls) ++ "]"
     showsPrec _ x s = show x ++ s
     show x          = shows x ""
     {-showList []   s = "[]" ++ s
@@ -824,9 +913,19 @@ instance Show Float where
 instance Show () where
     show () = "()"
 
+instance Show Ordering where
+    show LT = "LT"
+    show GT = "GT"
+    show EQ = "EQ"
+
 instance Show Char where
-    show x = showChar x
-    showList ls s = "\"" ++ ls ++ "\"" ++ s
+    show = showChar
+    showList ls s = "\"" ++ concatMap escapeChar ls ++ "\"" ++ s
+
+escapeChar :: Char -> String
+escapeChar '\\' = "\\"
+escapeChar '"' = "\""
+escapeChar c = [c]
 
 instance (Show a, Show b) => Show (Either a b) where
     show (Left x) = "Left " ++ show x
@@ -836,11 +935,33 @@ instance Show a => Show (Maybe a) where
     show Nothing = "Nothing"
     show (Just x) = "Just " ++ show x
 
-instance (Show a, Show b) => Show (b, a) where
-    show (x, y) = "(" ++ show x ++ ", " ++ show y ++ ")"
+instance (Show a, Show b) => Show (a, b) where
+    show (x, y) = "(" ++ show x ++ "," ++ show y ++ ")"
 
 instance (Show a, Show b, Show c) => Show (a, b, c) where
-    show (x, y, z) = "(" ++ show x ++ ", " ++ show y ++ ", " ++ show z ++ ")"
+    show (x, y, z) = "(" ++ show x ++ "," ++ show y ++ "," ++ show z ++ ")"
+
+instance (Show a, Show b, Show c, Show d) => Show (a, b, c, d) where
+    show (a, b, c, d) = "(" ++ show a ++ "," ++ show b ++ "," ++ show c ++ "," ++ show d ++ ")"
+
+instance (Show a, Show b, Show c, Show d, Show e) => Show (a, b, c, d, e) where
+    show (a, b, c, d, e) = "(" ++ show a ++ "," ++ show b ++ "," ++ show c ++ "," ++ show d ++ "," ++ show e ++ ")"
+ 
+instance (Show a, Show b, Show c, Show d, Show e, Show f) => Show (a, b, c, d, e, f) where
+    show (a, b, c, d, e, f) = "(" ++ show a ++ "," ++ show b ++ "," ++ show c ++ "," ++ show d ++ "," ++ show e ++ "," ++ show f ++ ")"
+
+instance (Show a, Show b, Show c, Show d, Show e, Show f, Show g) => Show (a, b, c, d, e, f, g) where
+    show (a, b, c, d, e, f, g) = "(" ++ show a ++ "," ++ show b ++ "," ++ show c ++ "," ++ show d ++ "," ++ show e ++ "," ++ show f ++ "," ++ show g ++ ")"
+ 
+instance (Show a, Show b, Show c, Show d, Show e, Show f, Show g, Show h) => Show (a, b, c, d, e, f, g, h) where
+    show (a, b, c, d, e, f, g, h) = "(" ++ show a ++ "," ++ show b ++ "," ++ show c ++ "," ++ show d ++ "," ++ show e ++ "," ++ show f ++ "," ++ show g ++ "," ++ show h ++ ")"
+ 
+instance (Show a, Show b, Show c, Show d, Show e, Show f, Show g, Show h, Show i) => Show (a, b, c, d, e, f, g, h, i) where
+    show (a, b, c, d, e, f, g, h, i) = "(" ++ show a ++ "," ++ show b ++ "," ++ show c ++ "," ++ show d ++ "," ++ show e ++ "," ++ show f ++ "," ++ show g ++ "," ++ show h ++ "," ++ show i ++ ")"
+    
+instance (Show a, Show b, Show c, Show d, Show e, Show f, Show g, Show h, Show i, Show j) => Show (a, b, c, d, e, f, g, h, i, j) where
+    show (a, b, c, d, e, f, g, h, i, j) = "(" ++ show a ++ "," ++ show b ++ "," ++ show c ++ "," ++ show d ++ "," ++ show e ++ "," ++ show f ++ "," ++ show g ++ "," ++ show h ++ "," ++ show i ++ "," ++ show j ++ ")"
+            
 
 instance Show a => Show [a] where
     show ls = showList ls ""
@@ -907,3 +1028,4 @@ instance Enum Char where
     fromEnum        = primOrd
     enumFrom        = enumFromChar
     enumFromThen    = enumFromThenChar
+

@@ -15,7 +15,8 @@ module Helium.StaticAnalysis.Inferencers.SelectConstraintSolver (selectConstrain
 import Helium.Main.Args (Option(..))
 import Helium.StaticAnalysis.Miscellaneous.ConstraintInfo
 import Helium.StaticAnalysis.Miscellaneous.TypeConstraints
-import Helium.ModuleSystem.ImportEnvironment (ImportEnvironment, getSiblings)
+import Helium.ModuleSystem.ImportEnvironment (ImportEnvironment, getSiblings, 
+  getNeverDirectives, getCloseDirectives, getDisjointDirectives, getDefaultDirectives)
 import Helium.StaticAnalysis.Heuristics.ListOfHeuristics (listOfHeuristics)
 import Top.Types
 import Top.Solver
@@ -25,7 +26,10 @@ import Top.Solver.Greedy
 import Top.Solver.TypeGraph
 import Top.Solver.PartitionCombinator
 import Top.Solver.SwitchCombinator
+import Top.Constraint.Information
+import Top.Implementation.TypeClassDirectives
 import Top.Interface.Substitution (makeSubstConsistent)
+
 
 type TreeSolver = ClassEnvironment -> OrderedTypeSynonyms -> Int 
                        -> Tree (TypeConstraint ConstraintInfo) -> (SolveResult ConstraintInfo, LogEntries)
@@ -35,6 +39,7 @@ selectConstraintSolver options importenv classEnv synonyms unique constraintTree
    solve selectedOptions constraints selectedSolver
 
  where   
+      
        -- spread type constraints or not (i.e., map some type constraints to a 
        -- corresponding node in the constraint tree)
        -- spreading is enabled by default 
@@ -62,12 +67,18 @@ selectConstraintSolver options importenv classEnv synonyms unique constraintTree
        constraints      = flattening constraintTree
        chunkConstraints = chunkTree . phases . spreadTree spreadFunction $ constraintTree
        siblings         = getSiblings importenv
-      
-       selectedOptions :: SolveOptions
+
+       neverDirectives      = map (uncurry NeverDirective)    $ getNeverDirectives importenv
+       closeDirectives      = map (uncurry CloseDirective)    $ getCloseDirectives importenv
+       disjointDirectives   = map (uncurry DisjointDirective) $ getDisjointDirectives importenv
+       defaultDirectives    = map (uncurry (uncurry DefaultDirective))  $ getDefaultDirectives importenv
+
+       selectedOptions :: SolveOptions ConstraintInfo
        selectedOptions = 
           solveOptions { uniqueCounter    = unique 
                        , typeSynonyms     = synonyms
                        , classEnvironment = classEnv
+                       , typeClassDirectives = neverDirectives ++ closeDirectives ++ disjointDirectives ++ defaultDirectives
                        }
           
        selectedSolver :: ConstraintSolver (TypeConstraint ConstraintInfo) ConstraintInfo
@@ -83,6 +94,7 @@ selectConstraintSolver options importenv classEnv synonyms unique constraintTree
           -- (if SignatureWarnings `elem` options then warnForTooSpecificSignatures runGreedy else runGreedy)   
           greedyConstraintSolver |>>| typegraphConstraintSolver heuristics
 
+          
        heuristics = listOfHeuristics options siblings
 
 

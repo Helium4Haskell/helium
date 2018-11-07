@@ -233,7 +233,7 @@ instance Freshen Predicate where
         (mapping', (tp', b')) = freshenWithMapping mapping n tp
         in (mapping', (Predicate name tp', b'))
         
-instance Freshen Predicates where
+instance Freshen a => Freshen [a] where
     freshenWithMapping mapping n [] = (mapping, ([], n))
     freshenWithMapping mapping n (p:ps) = let
         (mapping', (p', n')) = freshenWithMapping mapping n p
@@ -241,7 +241,7 @@ instance Freshen Predicates where
         in (mapping'', (p':ps', n''))
         
 
-instance Freshen QType where
+instance (Freshen a, Freshen b) => Freshen (Qualification a b) where
     freshenWithMapping mapping n (Qualification (pred, tp)) = let
         (mapping', (pred', b')) = freshenWithMapping mapping n pred
         (mapping'', (tp', b'')) = freshenWithMapping mapping' b' tp

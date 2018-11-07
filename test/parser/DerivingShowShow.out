@@ -1,4 +1,4 @@
 Prelude is up to date
 Compiling parser/DerivingShowShow.hs
-Compilation successful
-No 'main' function defined in this module
+(1,1): Overlapping instances found for class: "Show" for type constructor: A.
+Compilation failed with 1 error

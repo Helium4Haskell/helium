@@ -25,7 +25,7 @@ module HeliumLang
     , ''$primConcatMap'' -- list comprehensions
     , ''$primPackedToString'' -- string literals and the built-in string  "No main defined..." and derived shows
 
-    , ''$negate''
+    , negFloat, negInt
     , ''$floatUnaryMinus''
     ) where
 
@@ -36,11 +36,11 @@ import LvmLang
     , '':[]''('':[]'', (:))
     , '':()''('':()'')
     , ''$primBindIO'' = bindIO, ''$primReturnIO'' = returnIO
-    , negInt 
-    , negFloat, ''$primEqFloat'' = (==.)
+    , ''$primEqFloat'' = (==.)
     , (+#), (-#), (>#), (<#), (>=#), quot, rem, (==#)
     , stringFromPacked
-    , unsafePerformIO    
+    , unsafePerformIO  
+    , negInt, negFloat  
     )
 import LvmIO
     ( stdin, stdout, stderr, flush, outputChar, outputPacked
@@ -58,14 +58,6 @@ custom infix (:) : public [5,"right"]
 {--------------------------------------------------------------------------
   Built into the language
 --------------------------------------------------------------------------}
-''$negate'' :: "Num a => a -> a"
-''$negate'' dNum = 
-    case dNum of
-     (@0, 7) x1 x2 x3 x4 x5 x6 x7 -> x6
-
-''$floatUnaryMinus'' :: "Float -> Float"
-''$floatUnaryMinus'' f
-  = ''$primNegFloat'' f
 
 {----------------------------------------------------------
   Basic data types

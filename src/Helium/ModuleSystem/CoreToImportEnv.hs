@@ -303,8 +303,9 @@ getImportEnvironment importedInModule decls = foldr (insertDictionaries imported
                             getFunction :: Custom -> (Name, TpScheme, Bool, HasDefault)
                             getFunction (CustomDecl _ [
                                     CustomName fname,
-                                    CustomBytes tps
-                                ]) = (nameFromString $ stringFromId fname, makeTpSchemeFromType $ parseFromString type_ $ stringFromBytes tps, False, False)
+                                    CustomBytes tps,
+                                    CustomInt n
+                                ]) = (nameFromString $ stringFromId fname, makeTpSchemeFromType $ parseFromString type_ $ stringFromBytes tps, False, n == 1)
                             classMembers = (classVariables, map getFunction $ selectCustom "Function" cs)
                         in addClass className superClasses . addClassMember className classMembers 
            -- !!! Print importedFromModId from "declAccess = Imported{importModule = importedFromModId}" as well

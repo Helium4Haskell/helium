@@ -38,7 +38,7 @@ waitForEOF p
 tycls, tycon, tyvar, modid, varid, conid, consym, varsym :: ParsecT [Token] SourcePos Identity Name      
 tycls   = name   lexCon  <?> Texts.parserTypeClass
 tycon   = (opSpecial (try $ do { lexLBRACKET; lexRBRACKET; return "[]" })
-        <|> opSpecial (try $ do { commas <- parens (many pComma); return $ "(" ++ commas ++ ")"})
+        <|> opSpecial (try $ do { commas <- parens (many pComma); if null commas then fail "() not allowed" else return $ "(" ++ commas ++ ")"})
         <|> (name  lexCon)  <?> Texts.parserTypeConstructor)
 tyvar   = name   lexVar  <?> Texts.parserTypeVariable
 modid   = name   lexCon  <?> Texts.parserModuleName
@@ -197,6 +197,10 @@ lexPHASE, lexCONSTRAINTS, lexSIBLINGS, lexCOL, lexASGASG :: HParser ()
 lexPHASE       = lexeme (LexKeyword "phase")
 lexCONSTRAINTS = lexeme (LexKeyword "constraints")
 lexSIBLINGS    = lexeme (LexKeyword "siblings")
+lexNEVER       = lexeme (LexKeyword "never")
+lexCLOSE       = lexeme (LexKeyword "close")
+lexDISJOINT    = lexeme (LexKeyword "disjoint")
+lexDEFAULT     = lexeme (LexKeyword "default")
 lexCOL         = lexeme (LexResConSym ":")
 lexASGASG      = lexeme (LexResVarSym "==")
 

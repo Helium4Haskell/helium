@@ -25,6 +25,8 @@ dataDictionary  (UHA.Declaration_Data _ _ (UHA.SimpleType_SimpleType _ name name
     , valueEnc    = Nothing
     , valueValue  = eqDict names constructors
     , declCustoms = [ custom "type" ("DictEq$" ++ getNameName name) ] 
+        ++ map (custom "typeVariable" . getNameName) names
+        ++ map (\n -> custom "superInstance" ("Eq-" ++ getNameName n)) names
     }
 dataDictionary _ = error "pattern match failure in CodeGeneration.Deriving.dataDictionary"
 

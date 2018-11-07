@@ -57,7 +57,18 @@ SEM TypingStrategy
   | Siblings             -- no analysis for siblings (yet)
        lhs . errors       = []
            . warnings     = []
-           
+  | Never
+        lhs . errors    = []
+            . warnings  = []
+  | Close
+        lhs . errors    = []
+            . warnings  = []
+  | Disjoint
+        lhs . errors    = []
+            . warnings  = []
+  | Default
+        lhs . errors    = []
+            . warnings  = []
   | TypingStrategy  
        loc . name         = show (PP.text_Syn_Expression $ PP.wrap_Expression (PP.sem_Expression @typerule.conclusionExpression) PP.Inh_Expression)
            . nameMap      = zip @uniqueTypevariables (map TVar [0..])

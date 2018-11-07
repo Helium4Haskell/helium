@@ -10,7 +10,7 @@ module Helium.CodeGeneration.DerivingShow
     ( dataShowFunction
     , typeShowFunction
     , dataDictionary
-    , nameOfShowFunction, typeOfShowFunction, showFunctionOfType
+    , typeOfShowFunction, showFunctionOfType
     ) where
 
 import qualified Helium.Syntax.UHA_Syntax as UHA
@@ -24,11 +24,12 @@ import Lvm.Common.Id
 import Helium.Utils.Utils
 import Top.Types
 import qualified Data.Map as M
-
+import Data.Maybe
+import Data.List
 
 -- Show function for a data type declaration
-dataShowFunction :: TypeSynonymEnvironment -> UHA.Declaration -> Expr
-dataShowFunction tse (UHA.Declaration_Data _ _ (UHA.SimpleType_SimpleType _ name names) constructors _) =
+dataShowFunction :: ClassEnvironment -> TypeSynonymEnvironment -> UHA.Declaration -> Expr
+dataShowFunction classEnv tse (UHA.Declaration_Data _ _ (UHA.SimpleType_SimpleType _ name names) constructors _) =
     let typeString = show (typeOfShowFunction name names)
         valueId    = idFromString "value$"
         in
@@ -36,55 +37,57 @@ dataShowFunction tse (UHA.Declaration_Data _ _ (UHA.SimpleType_SimpleType _ name
         (Let 
             (Strict (Bind valueId (Var valueId)))
             (Match valueId
-                (map (makeAlt tse) constructors)
+                (map (makeAlt classEnv tse) constructors)
             )
         )   
         [idFromString "$instanceDictShow", valueId]
-dataShowFunction _ _ = error "not supported"
+dataShowFunction _ _ _ = error "not supported"
 
 -- Show Dictionary for a data type declaration
-dataDictionary :: TypeSynonymEnvironment -> UHA.Declaration -> CoreDecl
-dataDictionary  tse decl@(UHA.Declaration_Data _ _ (UHA.SimpleType_SimpleType _ name names) _ _) =
+dataDictionary :: ClassEnvironment -> TypeSynonymEnvironment -> UHA.Declaration -> CoreDecl
+dataDictionary classEnv tse decl@(UHA.Declaration_Data _ _ (UHA.SimpleType_SimpleType _ name names) _ _) =
     let nameId = idFromString ("show" ++ getNameName name) in
     DeclValue 
     { declName    = idFromString ("$dictShow$" ++ getNameName name)
     , declAccess  = public
     , valueEnc    = Nothing
     , valueValue  = makeShowDictionary (length names)
-    , declCustoms = [ custom "type" ("DictShow$" ++ getNameName name) ] 
+    , declCustoms = [ custom "type" ("DictShow$" ++ getNameName name)] 
+                ++ map (custom "typeVariable" . getNameName) names
+                ++ map (\n -> custom "superInstance" ("Show-" ++ getNameName n)) names
     }
   where
     makeShowDictionary :: Int -> Expr
     makeShowDictionary nrOfArgs =
        let 
-           showBody = dataShowFunction tse decl
+           showBody = dataShowFunction classEnv tse decl
            ids  = map idFromName names -- take nrOfArgs [ idFromString ("d" ++ show i) | i <- [(1::Integer)..] ]
            list = map idFromString ["showsPred", "showList", "showDef"]
            declarations = zipWith Bind list [Var $ idFromString "default$Show$showsPrec", Var $ idFromString "default$Show$showList", showBody]
-           body = Let (Rec declarations) (foldl Ap (Con $ ConId $ idFromString $ "DictShow") $ map Var list)
+           body = Let (Rec declarations) (foldl Ap (Con $ ConId $ idFromString "DictShow") $ map Var list)
        in foldr Lam body ids
-dataDictionary_  _ = error "not supported"
+dataDictionary _ _ _ = error "not supported"
 
 -- Show function for a type synonym
 -- type T a b = (b, a) 
 --   ===>
 -- showT :: (a -> String) -> (b -> String) -> T a b -> String
 -- showT a b = showTuple2 b a 
-typeShowFunction :: TypeSynonymEnvironment -> UHA.Declaration -> Decl Expr
-typeShowFunction tse (UHA.Declaration_Type _ (UHA.SimpleType_SimpleType _ name names) type_) =
+typeShowFunction :: ClassEnvironment -> TypeSynonymEnvironment -> UHA.Declaration -> Decl Expr
+typeShowFunction classEnv tse (UHA.Declaration_Type _ (UHA.SimpleType_SimpleType _ name names) type_) =
     let typeString = show (typeOfShowFunction name names) in
     DeclValue 
     { declName    = idFromString ("show" ++ getNameName name)
     , declAccess  = public
     , valueEnc    = Nothing
-    , valueValue  = foldr (Lam . idFromName) (showFunctionOfType tse False type_) names
+    , valueValue  = foldr (Lam . idFromName) (showFunctionOfType classEnv tse False type_) names
     , declCustoms = [ custom "type" typeString ] 
     }
-typeShowFunction _ _ = error "not supported"
+typeShowFunction _ _ _ = error "not supported"
 
 -- Convert a data type constructor to a Core alternative
-makeAlt :: TypeSynonymEnvironment -> UHA.Constructor -> Alt
-makeAlt tse c = Alt (constructorToPat ident types) (showConstructor tse ident types)
+makeAlt :: ClassEnvironment -> TypeSynonymEnvironment -> UHA.Constructor -> Alt
+makeAlt classEnv tse c = Alt (constructorToPat ident types) (showConstructor classEnv tse ident types)
   where
     (ident, types) = nameAndTypes c
     
@@ -102,14 +105,14 @@ makeAlt tse c = Alt (constructorToPat ident types) (showConstructor tse ident ty
     annotatedTypeToType (UHA.AnnotatedType_AnnotatedType _ _ t) = t
 
 -- Show expression for one constructor
-showConstructor :: TypeSynonymEnvironment -> Id -> [UHA.Type] -> Expr
-showConstructor tse c ts -- name of constructor and paramater types
+showConstructor :: ClassEnvironment -> TypeSynonymEnvironment -> Id -> [UHA.Type] -> Expr
+showConstructor classEnv tse c ts -- name of constructor and paramater types
     | isConOp && length ts == 2 = 
         Ap (Var (idFromString "$primConcat")) $ coreList 
             [   stringToCore "("
-            ,   Ap (showFunctionOfType tse False (ts!!0)) (Var (idFromNumber 1))
+            ,   Ap (Ap (var "show") (showFunctionOfType classEnv tse False (ts!!0))) (Var (idFromNumber 1))
             ,   stringToCore name
-            ,   Ap (showFunctionOfType tse False (ts!!1)) (Var (idFromNumber 2)) 
+            ,   Ap (Ap (var "show") (showFunctionOfType classEnv tse False (ts!!1))) (Var (idFromNumber 2))
             ,   stringToCore ")"
             ]
     | otherwise =
@@ -117,7 +120,7 @@ showConstructor tse c ts -- name of constructor and paramater types
             (  (if null ts then [] else [stringToCore "("])
             ++ (if isConOp then parens else id) [stringToCore name]
             ++ concat
-                   [ [stringToCore " ", Ap (Ap (Var $ idFromString "show") (showFunctionOfType tse False t)) (Var (idFromNumber i))]
+                   [ [stringToCore " ", Ap (Ap (var "show") (showFunctionOfType classEnv tse False t)) (Var (idFromNumber i))]
                    | (t, i) <- zip ts [1..] 
                    ]
             ++ (if null ts then [] else [stringToCore ")"])
@@ -131,51 +134,66 @@ showConstructor tse c ts -- name of constructor and paramater types
 -- If this function is called for the main function, type variables are printed
 -- using showPolymorphic. Otherwise, a show function for the type variable
 -- should be available
-showFunctionOfType :: TypeSynonymEnvironment -> Bool -> UHA.Type -> Expr
-showFunctionOfType tse isMainType = sFOT
+showFunctionOfType :: ClassEnvironment -> TypeSynonymEnvironment -> Bool -> UHA.Type -> Expr
+showFunctionOfType classEnv tse isMainType = sFOT 0
   where
     expandTS :: UHA.Type -> UHA.Type
     expandTS t@(UHA.Type_Constructor _ n) = case M.lookup n tse of
         Just (i, g) -> makeTypeFromTp (g $ take i (map TCon variableList))
         Nothing -> t
     expandTS t = t
-    sFOT tp =
+    sFOT nrOfArguments tp  =
         let 
             t = expandTS tp
         in 
       case t of
-        UHA.Type_Variable _ n             -> if isMainType then var "showPolymorphic" else Var (idFromName n) 
+        UHA.Type_Variable _ n             -> if isMainType then var "$dictShow$Int" else Var (idFromName n) 
         -- show Strings not as List of Char but using showString
         UHA.Type_Application _ _ 
                     ( UHA.Type_Constructor _ (UHA.Name_Special    _ _ "[]") ) -- !!!Name
                     [ UHA.Type_Constructor _ (UHA.Name_Identifier _ _ "Char") ] -- !!!Name
                 ->  Ap (var "$dictShow$[]") (var "$dictShow$Char" )
-        UHA.Type_Constructor _ n         -> var (checkForPrimitiveDict (getNameName n))
-        UHA.Type_Application _ _ f xs    -> foldl Ap (sFOT f) (map sFOT xs)
-        UHA.Type_Parenthesized _ t'      -> showFunctionOfType tse isMainType t'
+        UHA.Type_Constructor _ n         -> checkForPrimitiveDict nrOfArguments classEnv (getNameName n)
+        UHA.Type_Application _ _ f xs    -> foldl Ap (sFOT (length xs) f) (map (sFOT 0) xs )
+        UHA.Type_Parenthesized _ t'      -> showFunctionOfType classEnv tse isMainType t'
         _ -> internalError "DerivingShow" "showFunctionOfType" "unsupported type"
 
 -- Some primitive types have funny names and their Show function has a different name
-checkForPrimitiveDict :: String -> String
-checkForPrimitiveDict name =
+checkForPrimitiveDict :: Int -> ClassEnvironment -> String -> Expr
+checkForPrimitiveDict nrOfArguments classEnv name =
     case name of 
-        "[]" -> "$dictShow$[]"
-        "()" -> "$dictShow$()"
-        "->" -> "$dictShow$Either"
+        "[]" -> var "$dictShow$[]"
+        "()" -> var "$dictShow$()"
+        "->" -> let dict = foldl Ap (Con $ ConId $ idFromString "DictShow") functions
+                    showFunction = Lam (idFromString "d") $ Lam (idFromString "p") $ stringToCore "<<function>>"
+                    functions = [Var $ idFromString "default$Show$showsPrec", Var $ idFromString "default$Show$showList", showFunction]
+                in Lam (idFromString "d1") $ Lam (idFromString "d2") dict
         ('(':commasAndClose) -> 
             let arity = length commasAndClose in 
                 if arity > 10 then
                     internalError "DerivingShow" "checkForPrimitive" "No show functions for tuples with more than 10 elements"
                 else
-                    "$dictShow$(" ++ replicate (arity-1) ',' ++ ")"
-        _ -> "$dictShow$" ++ name 
+                    var $ "$dictShow$(" ++ replicate (arity-1) ',' ++ ")"
+        _ -> 
+            let 
+                showInstances :: Instances
+                showInstances = snd $ fromJust $ M.lookup "Show" classEnv
+                dict = var $ "$dictShow$" ++ name 
+                isTCon :: Tp -> String -> Bool
+                isTCon (TCon n) s = n == s
+                isTCon (TApp t _) s = isTCon t s 
+                isTCon (TVar _) _ = False
+                pred = find (\((Predicate n t), _)-> isTCon t name ) showInstances
+            in if isJust pred then 
+                    dict 
+                else 
+                    let dict = foldr Lam (foldl Ap (Con $ ConId $ idFromString "DictShow") functions) $ take nrOfArguments [idFromString ("d" ++ show i) | i <- [0..]]
+                        showFunction = Lam (idFromString "d") $ Lam (idFromString "p") $ stringToCore ("<<type " ++ name ++ ">>")              
+                        functions = [Var $ idFromString "default$Show$showsPrec", Var $ idFromString "default$Show$showList", showFunction]
+                    in dict
         
 idFromNumber :: Int -> Id
 idFromNumber i = idFromString ("v$" ++ show i)
-
-nameOfShowFunction :: UHA.Name -> UHA.Name
-nameOfShowFunction (UHA.Name_Identifier r m n) = UHA.Name_Identifier r m ("show" ++ n) -- !!!Name
-nameOfShowFunction _ = internalError "DerivingShow" "nameOfShowFunction" "name of type must be an identifier"
 
 typeOfShowFunction :: UHA.Name -> UHA.Names -> TpScheme
 typeOfShowFunction name names =

@@ -17,12 +17,15 @@ import Helium.Utils.Utils (internalError)
 import Helium.Syntax.UHA_Syntax -- (Name)
 import Helium.Syntax.UHA_Utils
 import Helium.Syntax.UHA_Range
+import Helium.StaticAnalysis.Directives.TS_Syntax
 import Helium.StaticAnalysis.Miscellaneous.TypeConversion
+import Helium.StaticAnalysis.Miscellaneous.ConstraintInfo
+import Helium.StaticAnalysis.Messages.Messages
 import Top.Types
 
 
 import Data.List
-import Data.Maybe (catMaybes)
+import Data.Maybe (catMaybes, isJust, fromJust)
 import Data.Function (on)
 import Data.Char
 import Control.Arrow
@@ -172,9 +175,50 @@ getSiblings importenv =
                     ]
    in map (concatMap f) (getSiblingGroups importenv)
 
+getNeverDirectives :: ImportEnvironment -> [(Predicate, ConstraintInfo)]
+getNeverDirectives importEnv = let
+    tps = typingStrategies importEnv
+    convertNever :: Core_TypingStrategy -> [(Predicate, ConstraintInfo)]
+    convertNever (Never predicateName predicateType message) = let
+            predicate = Predicate predicateName predicateType
+            info = addProperty (CustomError message) standardConstraintInfo
+        in [(predicate, info)]
+    convertNever _ = []
+    in concatMap convertNever tps
+
+getCloseDirectives :: ImportEnvironment -> [(String, ConstraintInfo)]
+getCloseDirectives importEnv = let
+    tps = typingStrategies importEnv
+    convertClose :: Core_TypingStrategy -> [(String, ConstraintInfo)]
+    convertClose (Close name message) = let
+            info = addProperty (CustomError message) standardConstraintInfo
+        in [(name, info)]
+    convertClose _ = []
+    in concatMap convertClose tps 
+
+getDisjointDirectives :: ImportEnvironment -> [([String], ConstraintInfo)]
+getDisjointDirectives importEnv = let
+    tps = typingStrategies importEnv
+    convertDisjoint :: Core_TypingStrategy -> [([String], ConstraintInfo)]
+    convertDisjoint (Disjoint ns message) = let
+            info = addProperty (CustomError message) standardConstraintInfo
+        in [(ns, info)]
+    convertDisjoint _ = []
+    in concatMap convertDisjoint tps 
+
+getDefaultDirectives :: ImportEnvironment -> [((String, Tps), ConstraintInfo)]
+getDefaultDirectives importEnv = let
+    tps = typingStrategies importEnv
+    convertDefault :: Core_TypingStrategy -> [((String, Tps), ConstraintInfo)]
+    convertDefault (Default n tps) = let
+            info = standardConstraintInfo
+        in [((n, tps), info)]
+    convertDefault _ = []
+    in concatMap convertDefault tps
+
 combineImportEnvironments :: ImportEnvironment -> ImportEnvironment -> ImportEnvironment
 combineImportEnvironments (ImportEnvironment tcs1 tss1 te1 vcs1 ot1 ce1 cm1 ins1 xs1) (ImportEnvironment tcs2 tss2 te2 vcs2 ot2 ce2 cm2 ins2 xs2) =
-   ImportEnvironment
+    insertMissingInstances $ ImportEnvironment
       (tcs1 `exclusiveUnion` tcs2)
       (tss1 `exclusiveUnion` tss2)
       (te1  `exclusiveUnion` te2 )
@@ -184,6 +228,32 @@ combineImportEnvironments (ImportEnvironment tcs1 tss1 te1 vcs1 ot1 ce1 cm1 ins1
       (cm1 `exclusiveUnion` cm2)
       (ins1 `exclusiveUnion` ins2)
       (xs1 ++ xs2)
+
+insertMissingInstances :: ImportEnvironment -> ImportEnvironment
+insertMissingInstances env = setClassEnvironment nClassEnv env
+    where
+        classEnv = classEnvironment env
+        nClassEnv = foldr addMissingInstance classEnv (M.toList $ instanceEnvironment env)
+        addMissingInstance :: ((Name, Tp), (Names, [(String, String)])) -> ClassEnvironment -> ClassEnvironment
+        addMissingInstance ((className, instanceType), (typeVariables, superClasses)) env = let
+                update :: ([String], Instances) -> ([String], Instances)
+                update (supers, instances) = let
+                        predicate = Predicate (getNameName className) instanceType
+                        existingInstance = find (\(p, _) -> p == predicate) instances
+                        getTypeVariables :: Tp -> [Tp]
+                        getTypeVariables v@(TVar _) = [v]
+                        getTypeVariables (TApp t1 t2) = getTypeVariables t1 ++ getTypeVariables t2
+                        getTypeVariables _ = []
+                        mapping = zip (map getNameName typeVariables) $ getTypeVariables instanceType 
+                        pSuperClasses = map (\(c, n) -> Predicate c (fromJust $ lookup n mapping)) superClasses
+                        nInstance = (predicate, pSuperClasses)
+                        nInstances = 
+                            if isJust existingInstance then
+                                instances
+                            else 
+                                nInstance : instances
+                    in (supers, nInstances)
+            in M.adjust update (getNameName className) env
 
 combineImportEnvironmentList :: ImportEnvironments -> ImportEnvironment
 combineImportEnvironmentList = foldr combineImportEnvironments emptyEnvironment
@@ -208,7 +278,7 @@ combineClassDecls :: ([[Char]],[(Predicate,[Predicate])]) ->
                      ([[Char]],[(Predicate,[Predicate])]) ->
                      ([[Char]],[(Predicate,[Predicate])])
 combineClassDecls (super1, inst1) (super2, inst2)
-   | super1 == super2 = (super1, inst1 ++ inst2)
+   | super1 == super2 = (super1, nub $ inst1 ++ inst2)
    | otherwise        = internalError "ImportEnvironment.hs" "combineClassDecls" "cannot combine class environments"
 
 getInstanceNames :: [ImportEnvironment] -> [(Range, Instance)]

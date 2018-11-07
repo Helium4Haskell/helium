@@ -47,7 +47,7 @@ classFunctions importEnv className combinedNames = [DeclCon
                                                     , conTag      = 0
                                                     , declCustoms = [ custom "type" ("Dict" ++ className) ]       
                                                     }]
-                                                    ++ map superDict superclasses ++ map classFunction combinedNames
+                                                    ++ map superDict superclasses ++ concatMap classFunction combinedNames
         where
             labels = map (\(_, _, l)->l) superclasses ++ map (\(_, _, l)->l) combinedNames
             superclasses = constructSuperClassMap importEnv className
@@ -69,7 +69,7 @@ classFunctions importEnv className combinedNames = [DeclCon
                         , declCustoms = [custom "type" ("Dict$" ++ className ++" -> Dict$" ++ superName)]
                         }
                 in val
-            classFunction :: (Name, Int, DictLabel) -> CoreDecl
+            classFunction :: (Name, Int, DictLabel) -> [CoreDecl]
             classFunction (name, tag, label) = 
                 let dictParam = idFromString "dict"
                     val = DeclValue 
@@ -86,7 +86,12 @@ classFunctions importEnv className combinedNames = [DeclCon
                                 )
                         , declCustoms = toplevelType name importEnv True
                         }
-                in val
+                in  if getNameName name == "negate" && className == "Num" then 
+                        [val, val{
+                            declName = idFromString "$negate"
+                        }]
+                    else
+                    [val]
          
 combineDeclIndex :: [(Name, Int, DictLabel)] -> [(Name, CoreDecl)] -> [(DictLabel, Name, Maybe CoreDecl)]
 combineDeclIndex ls [] = map (\(n, _, l) -> (l, n, Nothing)) ls

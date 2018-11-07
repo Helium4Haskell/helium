@@ -51,6 +51,13 @@ SEM Module
             . instanceTypes     = []
             . variableMapping   = Nothing
             . requiredPredicates = @predicates
+            . moduleName = @name.name
+
+SEM MaybeName [ | | isNothing : Bool name : { Maybe Name } ]
+    | Nothing             lhs.isNothing = True
+                          lhs.name      = Nothing
+    | Just                lhs.isNothing = False
+                          lhs.name      = Just @name.self
 
 ---------------------------------------------------------------------------------------
 -- Type Inferencing : Body
@@ -85,7 +92,7 @@ ATTR Declaration Declarations MaybeDeclarations RightHandSide Qualifier Qualifie
     RecordExpressionBindings Statement Statements[
         classMemberTypeSchemes : {Maybe [(Name, TpScheme)]}
         instanceTypes : {[(Name, TpScheme)]}
-
+        moduleName : {Maybe Name}
     | 
     |
 ]
@@ -107,7 +114,7 @@ SEM Declaration
       bindings . betaUnique    = @lhs.betaUnique + 2 + @bindings.numberOfPatterns
                . monos         = findMono @bindings.name @lhs.inheritedBDG ++ @lhs.monos
       loc      . beta          = TVar @lhs.betaUnique
-               . betaRight     = TVar (@lhs.betaUnique + 1)
+               . betaRight     = TVar (@lhs.betaUnique + 1)             
                . betasLeft     = take @bindings.numberOfPatterns (map TVar [@lhs.betaUnique + 2..])
                . newcon        = (@beta .==. foldr (.->.) @betaRight @betasLeft) @cinfo
                . functionType  = lookup @bindings.name @lhs.instanceTypes
@@ -133,7 +140,7 @@ SEM Declaration
 
   | PatternBinding
       lhs           . bindingGroups = @mybdggrp : @lhs.bindingGroups
-      pattern       . betaUnique    = @lhs.betaUnique + 1
+      pattern       . betaUnique    = @lhs.betaUnique + 2
       righthandside . monos         = findMono (chead (M.keys @pattern.environment)) @lhs.inheritedBDG ++ @lhs.monos
       loc           . betaRight     = TVar @lhs.betaUnique
                     . newcon        = [ (@betaRight .==. @pattern.beta) @cinfo ]
@@ -143,8 +150,15 @@ SEM Declaration
                                           Node [ @pattern.constraints
                                                , @righthandside.constraints
                                                ]
+                                          , listTree @mainConstraint
                                         ]
                                       )
+                    . betaMain       = TVar $ @lhs.betaUnique + 1
+                    . mainConstraint =  if "main" `elem` map (getNameName . fst) (M.toList @pattern.environment) && (getNameName <$> @lhs.moduleName) == Just "Main" then
+                                            [(@pattern.beta .==. TApp (TCon "IO") @betaMain) @cinfo]
+                                        else
+                                            []
+                                    
   | TypeSignature
         lhs         . betaUnique = @lhs.betaUnique + 1
         lhs         . typeMemberBindings = map (\name -> (name, makeTpSchemeFromType @type.self)) @names.self
@@ -202,8 +216,6 @@ SEM Declaration
                                                     typeIndices = filter (\(_, s) -> s `elem` (map getNameName typeVars)) (getQuantorMap tps)
                                                     typeVariablesMapped = map (\(n, s) -> (fromJust $ find (\tv -> getNameName tv == s) typeVars, TVar n)) typeIndices
                                                     tpWContext = addContextToType className typeVariablesMapped tps
-
-                                                    --tpscheme = addContextToType @name.self [(chead $ fst @classMembers, @classBeta)] tps
                                                 in tpWContext))).snd) $ M.lookup @name.self (classMemberEnvironment @lhs.importEnvironment)
         lhs     . instanceDicts         = M.empty
         loc     . classMembers          = selectClass @lhs.importEnvironment @name.self
@@ -224,7 +236,11 @@ SEM Declaration
         loc     . instanceConstraints   = [     
                                                 (   [TC2 $ Assume pred @cinfo | pred <- map (superClassToPredicate @instanceBetas) @superClasses] ++
                                                     [TC2 $ Assume (Predicate (getNameName @name.self) @loc.classBeta) @cinfo] ++
-                                                    [
+                                                    [(!::!) 
+                                                        @loc.instBeta 
+                                                        @instanceTpScheme
+                                                        [] 
+                                                        @cinfo ,
                                                     ((@loc.instBeta .==. @loc.instsType) @loc.cinfo),
                                                     ((@loc.instBeta .==. @loc.classBeta) @loc.cinfo)
                                                 ]) .>. Node []
@@ -234,7 +250,7 @@ SEM Declaration
         loc     . typeVariabeles        = namesInType (chead $ @types.self)
         loc     . instanceBetas         = (zip @typeVariabeles [TVar n | n <- [@lhs.betaUnique + 2..]])
         loc     . instsType             = makeTpFromType @instanceBetas (chead $ @types.self)
-        loc     . cinfo                 = emptyConstraintInfo
+        loc     . instanceTpScheme      = addPredicatesToTpScheme (@superClasses) $ makeTpSchemeFromType (chead @types.self)
         loc     . superClasses          = getSuperClasses @context.self
         loc     . memberSuperClassBeta  = [TVar v | v <- [(@lhs.betaUnique + 2 + length @typeVariabeles)..]]
         loc     . memberConstraints     = [(.>. Node []) $ (concatMap (\((_, tpscheme, tp), memberSuperClassBeta)->
@@ -253,6 +269,7 @@ SEM Declaration
                                                 (maybe (error "Unknown class") (map (\(n, tp, _, _) -> (n, tp)).snd) $ M.lookup @name.self $ classMemberEnvironment @lhs.importEnvironment) $ 
                                                 map (\(n, b, _) -> (n, b)) @where.boundBetas
         loc     . classVariable         = classVariablesToBeta (@lhs.betaUnique + 2) $ (fst @classMembers)
+        loc     . cinfo                 = resultConstraint "instance definition" @parentTree [SkolemizedTypeScheme ([], @instanceTpScheme), TypeSignatureLocation @range.self]
  
 {
 
@@ -272,6 +289,17 @@ getSuperClasses = map (\(ContextItem_ContextItem _ n vs) -> (getNameName n, var 
         var _ = error "Type variable not a single type"
         name [n] = n
         name _ = error "Type variable not a single name"
+
+
+addPredicatesToTpScheme :: [(String, Name)] -> TpScheme -> TpScheme
+addPredicatesToTpScheme preds (Quantification (nrs, map, q)) =
+    Quantification (nrs, map, foldr addPredicate q preds)
+    where
+        addPredicate :: (String, Name) -> QType -> QType
+        addPredicate (className, var) qtype = let
+            (preds, tp) = split qtype
+            pred = Predicate className (maybe (error "Undefined type variable") (TVar . fst) $ find (\n -> snd n == getNameName var) map)
+            in (pred : preds) .=>. tp
 
 constructDictionaryName :: Name -> String -> Name
 constructDictionaryName (Name_Identifier range modules name) s = Name_Identifier range modules ("($dict" ++ name ++ "$" ++ s ++ ")")    

@@ -125,7 +125,7 @@ stringFromImportDeclaration importDecl =
 
 -- TODO: daan
 intUnaryMinusName, floatUnaryMinusName, enumFromName, enumFromToName, enumFromThenName, enumFromThenToName :: Name
-intUnaryMinusName   = nameFromString "negate"
+intUnaryMinusName   = nameFromString "$negate"
 floatUnaryMinusName = nameFromString "$floatUnaryMinus"
 enumFromName        = nameFromString "enumFrom"
 enumFromToName      = nameFromString "enumFromTo"

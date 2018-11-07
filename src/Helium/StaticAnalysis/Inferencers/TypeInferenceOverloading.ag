@@ -38,7 +38,7 @@ SEM Module
             . availablePredicates   = []
             . instanceName          = Nothing
             . classPredicate        = Nothing
-            . curClassPred               = Nothing
+            . curClassPred          = Nothing
             . curPred               = Nothing
 
 SEM Declaration   
@@ -152,7 +152,7 @@ SEM Expression
              loc . localName             = setNameRange intUnaryMinusName @range.self
                  . negateTypeScheme      = case M.lookup @localName (typeEnvironment @lhs.importEnvironment) of 
                                               Just scheme -> scheme
-                                              Nothing     -> internalError "TypeInferenceOverloading.ag" "n/a" "type of negate unknown"
+                                              Nothing     -> generalizeAll ([Predicate "Num" (TVar 0)] .=>. TVar 0 .->. TVar 0)
                  . requiredDictionaries  = map PredicateFunction $ getRequiredDictionaries 
                                               (getOrderedTypeSynonyms @lhs.importEnvironment) 
                                               (@lhs.substitution |-> @usedAsType)

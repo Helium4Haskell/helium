@@ -19,9 +19,12 @@ SEM Body | Body loc . cinfo =
 ---------------------------------------------------------------------------------------
 -- Constraint Information : Declaration
 
-SEM Declaration | FunctionBindings loc . cinfo =
+SEM Declaration 
+  | FunctionBindings loc . cinfo =
   resultConstraint "function bindings (INTERNAL ERROR)" @parentTree
      [ FolkloreConstraint, highlyTrusted, FuntionBindingEdge @bindings.numberOfPatterns ]
+      
+
      
 SEM Declaration | PatternBinding loc . cinfo =
   orphanConstraint 1 "right hand side" @parentTree

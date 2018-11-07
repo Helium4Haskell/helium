@@ -31,18 +31,13 @@ SEM Module
                                         . setTypeSynonyms      (M.fromList @body.collectTypeSynonyms)
                                         . setOperatorTable     (M.fromList @body.operatorFixities)
                                         . addToTypeEnvironment  (insertClassMembers @body.collectClassMemberEnv (M.fromList @derivedFunctions))
-                                        . setClassEnvironment  (insertInstances @body.classInstances
+                                        . setClassEnvironment (insertInstances @body.classInstances
                                             (M.unionWith combineClassDecls @body.classEnv (classEnvironment $ combineImportEnvironmentList @lhs.importEnvironments)))
                                         . setInstanceEnvironment @body.instanceEnv
                                         . setClassMemberEnvironment @body.collectClassMemberEnv
                                         $emptyEnvironment
                                         -- the type environment will be added after type inferencing.
-                 . derivedFunctions = let f (n,i) = ( nameOfShowFunction n
-                                                    , typeOfShowFunction n (take i [ nameFromString s | s <- variableList])
-                                                    )
-                                          g (n,(i,_)) = f (n,i)
-                                      in map f @body.collectTypeConstructors ++
-                                         map g @body.collectTypeSynonyms
+                 . derivedFunctions = []
 
 {-
                  . derivedInstances = let f (n,i) = makeInstance "Show" i (show n)
@@ -232,7 +227,6 @@ uniqueKeys = let comp (x,_) (y,_) = compare x y
               . sortBy comp
 }
 
-
 -- Collecting the Classes
 {
 
@@ -286,7 +280,7 @@ insertInstances instances classEnv = foldr (\inst@(n, _, _) -> M.update (insert 
         insert (className, instType, preds) (cn, instances) = 
             let 
                curInstance = (Predicate className instType, [Predicate n v | (n, v) <- preds]) 
-            in Just (cn, curInstance : instances)
+            in Just (cn, nub $ curInstance : instances)
 
 insertClassMembers :: M.Map Name (Names, [(Name, TpScheme, Bool, HasDefault)]) -> M.Map Name TpScheme -> M.Map Name TpScheme
 insertClassMembers classMemberEnv valueEnv = M.foldrWithKey insert valueEnv classMemberEnv

@@ -1,1 +1,1 @@
-main = show "hello, world"
+main = "hello, world"

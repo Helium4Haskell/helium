@@ -24,11 +24,11 @@ module PreludePrim
     , div, mod, quot, rem
        -- Int
     , (+#), (-#), (*#), (/#), (%#)
-    , and, xor, or, shr, shl, shrNat, negInt
+    , and, xor, or, shr, shl, shrNat
     , (==#), (/=#), (<#), (>#), (<=#), (>=#)
 
     -- Float
-    , (+.), (-.), (*.), (/.), negFloat
+    , (+.), (-.), (*.), (/.)
     , (==.), (/=.), (<.), (>.), (<=.), (>=.)
     -- Float
     , (/)
@@ -58,17 +58,16 @@ module PreludePrim
 
 import HeliumLang
     ( showFloat, showInt, showBool, showChar, showUnit
-    , ''$negate''
     , ''$primPutChar'', ''$primPutStr'', ''$primPutStrLn'', ''$primUnsafePerformIO''
     )
 
 import LvmLang
-    ( (+#) , (*#), (-#), negInt
+    ( (+#) , (*#), (-#)
     , (==#), (/=#)
     , (<#), (<=#), (>=#), (>#)
     , mod = (%#), quot, rem, div = (/#)
     
-    , (+.), (*.), (-.), (/) = (/.), negFloat
+    , (+.), (*.), (-.), (/) = (/.)
     , (==.), (/=.)
     , (<.), (<=.), (>=.), (>.)
     
@@ -121,6 +120,7 @@ primOrd x = x
 primChr :: Int -> Char
 primChr x = x
 
+
 {--------------------------------------------------------------------------
   IO
 --------------------------------------------------------------------------}
@@ -143,7 +143,14 @@ unsafePerformIO io
 extern primFloatSqrt "fp_sqrt" :: "FF"
 extern float_of_string_extern "float_of_string" :: "Fz"
 
-
+sqrt :: Float -> Float
+sqrt x = let! x = x 
+              y = float_of_string_extern "0.0"
+         in
+            case (>=.) x y of
+            {   True -> primFloatSqrt x
+            ;   _    -> errorPacked "Can't apply sqrt to negative floating-point number"
+            }
 
 extern primFloatPower "fp_pow" :: "FFF"
 

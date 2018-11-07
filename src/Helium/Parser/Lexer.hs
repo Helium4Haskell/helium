@@ -395,6 +395,6 @@ reserveStrategyNames =
       )
 
 strategiesKeywords :: [String]
-strategiesKeywords = [ "phase", "constraints", "siblings" ]
+strategiesKeywords = [ "phase", "constraints", "siblings", "never", "close", "disjoint" ]
 
 
