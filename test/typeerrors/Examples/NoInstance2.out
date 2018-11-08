@@ -6,6 +6,6 @@ Compiling typeerrors/Examples/NoInstance2.hs
    used as        :           A -> String
  problem          : A is not an instance of class Show
  hint             : valid instances of Show are B, Int, Bool, Float, Ordering,
-                    Char, Either a b, Maybe a, [a], B and tuples
+                    Char, Either a b, Maybe a, [a] and tuples
 
 Compilation failed with 1 error

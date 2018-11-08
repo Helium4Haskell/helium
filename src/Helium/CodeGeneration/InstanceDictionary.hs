@@ -19,6 +19,8 @@ import qualified Data.Map as M
 import Data.Maybe
 import Data.List
 
+import Debug.Trace
+
 type DictLabel = String
 
 constructFunctionMap :: ImportEnvironment -> Int -> Name -> [(Name, Int, DictLabel)]
@@ -128,11 +130,11 @@ constructDictionary importEnv instanceSuperClass combinedNames whereDecls classN
                     resolveSuperInstance :: (String, String) -> Expr
                     resolveSuperInstance (n, var)
                             -- check if the required class is already an existing parameter
-                            | (n, fst $ fromJust (find (\x -> snd x == var) parentMapping)) `elem` map (second getNameName) instanceSuperClass = let 
+                            | (n, fst $ fromJust (find (\x -> snd x == var) parentMapping)) `elem` map (second getNameName) instanceSuperClass && n == cName= let 
                                         Just tvar = find (\(_, cn) -> cn == var) parentMapping
-                                    in 
-                                        Var (idFromString $ "$instanceDict" ++ cName ++ "$" ++ fst tvar)
-                            | otherwise =  let
+                                    in
+                                            Var (idFromString $ "$instanceDict" ++ cName ++ "$" ++ fst tvar)
+                            | otherwise = let
                                     -- get all the available super classes
                                     repInstanceSuperClass = filter (\(_, v) -> getNameName v == rVar) instanceSuperClass
                                     rVar = fst $ fromJust $find (\(_, cn) -> cn == var) parentMapping
@@ -152,7 +154,7 @@ constructDictionary importEnv instanceSuperClass combinedNames whereDecls classN
                                                 sPaths :: [[String]]
                                                 sPaths = map (shortestPath. filter (\x -> last x == to)) paths
                                             in map (from:) sPaths
-                                    sPath = shortestPath (constructPath cName n)
+                                    sPath = shortestPath (constructPath n cName)
                                     combinePath :: String -> [String] -> [(String, String)]
                                     combinePath first [] = []
                                     combinePath first (x:xs) = (first, x) : combinePath x xs

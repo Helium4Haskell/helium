@@ -1,0 +1,8 @@
+Prelude is up to date
+Compiling typeClasses/ClassInstaneError5.hs
+(6,11): Type error in right-hand side
+ expression       : 'a'
+   type           : Char
+   does not match : Int 
+
+Compilation failed with 1 error

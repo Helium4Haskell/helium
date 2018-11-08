@@ -6,6 +6,6 @@ Compiling typeerrors/Examples/NoInstanceEq.hs
    used as        :         A -> A -> Bool
  problem          : A is not an instance of class Eq
  hint             : valid instances of Eq are D, Int, Float, Char, Bool, Maybe
-                    a, Either a b, [a], D and tuples
+                    a, Either a b, [a] and tuples
 
 Compilation failed with 1 error

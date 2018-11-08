@@ -1,0 +1,6 @@
+Prelude is up to date
+Compiling typeClasses/MonadInstance2.hs
+(2,1): Warning: Missing type signature: fail :: Maybe a
+(4,1): Warning: Missing type signature: main :: Maybe (Int, String, a)
+Compilation successful with 2 warnings
+Nothing

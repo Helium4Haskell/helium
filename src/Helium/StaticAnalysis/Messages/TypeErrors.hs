@@ -19,6 +19,7 @@ import Helium.Syntax.UHA_Range  (getNameRange)
 import Helium.StaticAnalysis.Miscellaneous.UHA_Source
 
 import Data.Maybe
+import Data.List
 
 type TypeErrors = [TypeError]
 data TypeError  = TypeError
@@ -107,7 +108,7 @@ makeReductionError source extra classEnvironment (Predicate className predicateT
     hint = case valids of
               []  -> "there are no valid instances of "++className
               [x] -> "valid instance of "++className++" is "++show x
-              _   -> "valid instances of "++className++" are "++prettyAndList valids
+              _   -> "valid instances of "++className++" are "++prettyAndList (nub valids)
          
     valids :: [String]
     valids = let tps              = [ tp | (Predicate _ tp, _) <- instances className classEnvironment ]

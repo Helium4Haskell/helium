@@ -171,7 +171,7 @@ SEM Statement [ | | core : { Maybe Core.Expr -> Core.Expr } ]
             \theRest -> 
                 case theRest of
                     Nothing   -> @expression.core
-                    Just rest -> bind @expression.core (Core.Lam dummyId rest)
+                    Just rest -> bind (Core.Var $ idFromString "$monadDict") @expression.core (Core.Lam dummyId rest)
     --  range                    : Range
     --  expression               : Expression
 
@@ -303,8 +303,8 @@ SEM Literal [ | | core : { Core.Expr } ]
 {
 
 -- Function "bind" is used in the translation of do-expressions
-bind :: Core.Expr -> Core.Expr -> Core.Expr
-bind ma f = Core.Var primBindIOId `app_` ma `app_` f
+bind :: Core.Expr -> Core.Expr -> Core.Expr -> Core.Expr
+bind dict ma f = (Core.Ap (Core.Var (idFromString ">>=")) (dict)) `app_` ma `app_` f
 
 primBindIOId, caseExprId, okId, parameterId :: Id
 ( primBindIOId :  caseExprId :  okId :  parameterId : []) = map idFromString $
