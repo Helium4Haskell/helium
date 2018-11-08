@@ -168,6 +168,7 @@ Library
     Helium.ModuleSystem.ExtractImportDecls
     Helium.ModuleSystem.ImportEnvironment
     Helium.Optimization.Annotations
+    Helium.Optimization.CountingAnalysis
     Helium.Optimization.Datas
     Helium.Optimization.LVM_Syntax
     Helium.Optimization.Show

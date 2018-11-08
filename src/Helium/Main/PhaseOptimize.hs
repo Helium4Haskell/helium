@@ -12,6 +12,7 @@ import Lvm.Core.Expr(CoreModule)
 import Helium.Main.CompileUtils
 
 import qualified Helium.Optimization.LVM_Syntax as LVM_Syntax
+import Helium.Optimization.CountingAnalysis(countingAnalysis)
 import qualified Helium.Optimization.Types as Types
 import Text.PrettyPrint.Leijen (Pretty, pretty)
 
@@ -26,5 +27,8 @@ phaseOptimize coreModule options = do
     --putStrLn $ show $ constraints
     --putStrLn "Solved =>"
     --putStrLn $ show $ Types.solveConstraints constraints
-    let coreModule' = LVM_Syntax.optimizeModule2CoreModule optimizeModule
+    let optimizeModule' = countingAnalysis optimizeModule
+    when (DumpCoreToFile `elem` options) $ do
+        writeFile (fullNameNoExt ++ ".core.optimize") $ show . pretty $ optimizeModule'
+    let coreModule' = LVM_Syntax.optimizeModule2CoreModule optimizeModule'
     return coreModule'

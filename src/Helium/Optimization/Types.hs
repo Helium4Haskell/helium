@@ -2,6 +2,7 @@ module Helium.Optimization.Types
     ( T(..)
     , Constraint(..)
     , TSub, (-$-)
+    , Ann(..)
     , (|=>)
     , (|->)
     , (|^|)
@@ -36,7 +37,7 @@ data T = TAp T T -- [] a => [a], -> a b => a -> b
        | TAnn Anno T
     deriving (Eq, Ord)
 
-data Anno   = Anno1 Ann -- demand
+data Anno   = Anno1 Ann -- usage
             | Anno2 (Ann,Ann) -- usage | demand
             | AnnoD [Ann] --data type
     deriving (Show, Eq, Ord)

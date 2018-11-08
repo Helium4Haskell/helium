@@ -252,7 +252,7 @@ transformPreds preds =
 ---------------
 -- Type Expr --
 ---------------
-ATTR Expr Binds Binds' Bind Alts Alt Pat [ env : { Env I.Id } | uniqueId : Int | t : { T } ct USE {++} {[]} : { [Constraint T] } ctann {-USE {listAdd} {freshList}-} : { Env I.Id -> Fresh (T, [Constraint T]) } ]
+ATTR Expr Binds Binds' Bind Alts Alt Pat [ env : { Env I.Id } | uniqueId : Int | t : { T } ct USE {++} {[]} : { [Constraint T] } ]
 -- Expr
 ATTR Expr [ | | expr : Expr]
 SEM Expr
@@ -269,75 +269,41 @@ SEM Expr
                 loc.t = TVar @lhs.uniqueId
                 loc.lookup = (@lhs.uniqueId + 1, @lhs.env) |?| (@name, "Match")
                 lhs.ct = [ EqTy "Match" @alts.t ((snd @loc.lookup) |-> @loc.t) ] ++ @alts.ct
-                lhs.ctann = { \env -> do
-                    tvar <- freshTVar
-                }
                 alts.uniqueId = fst @loc.lookup
                 lhs.uniqueId = @alts.uniqueId
-    -- case a of b -> c, d -> e => f | a == b, a == d, c == f, e == f
     | Ap        lhs.expr = Expr_Ap @expr1.expr @expr2.expr
                 loc.t = TVar @lhs.uniqueId
                 lhs.ct = [ EqTy "Ap" @expr1.t (@expr2.t |-> @loc.t) ] ++ @expr1.ct ++ @expr2.ct
-                lhs.ctann = { \env -> do
-                    tvar <- freshTVar
-                    (texpr1, ctexpr1) <- @expr1.ctann env
-                    (texpr2, ctexpr2) <- @expr2.ctann env
-                    return (tvar, EqTy "Ap" texpr1 (texpr2 |-> tvar) : ctexpr1 ++ ctexpr2)
-                }
                 expr1.uniqueId = @lhs.uniqueId + 1
                 expr2.uniqueId = @expr1.uniqueId
     | Lam       lhs.expr = Expr_Lam @name @expr.expr
                 loc.t = TVar @lhs.uniqueId
                 loc.nameT = TVar (@lhs.uniqueId + 1)
+                loc.ann1 = (AnnVar (@lhs.uniqueId + 2), AnnVar (@lhs.uniqueId + 3))
+                loc.ann2 = AnnVar (@lhs.uniqueId + 4)
                 lhs.ct = [ EqTy "Lam" @loc.t (@loc.nameT |-> @expr.t)] ++ @expr.ct
-                lhs.ctann = { \env -> do
-                    tvar <- freshTVar
-                    tname <- freshTVar
-                    (texpr, ctexpr) <- @expr.ctann (Env.insertLocal @name tname env)
-                    return (tvar, EqTy "Lam" tvar (tname |-> texpr) : ctexpr)
-                }
                 expr.env = Env.insertLocal @name @loc.nameT @lhs.env
-                expr.uniqueId = @lhs.uniqueId + 2
+                expr.uniqueId = @lhs.uniqueId + 5
                 lhs.uniqueId = @expr.uniqueId
     | ConId     lhs.expr = Expr_ConId @name
                 loc.t = TVar @lhs.uniqueId
                 loc.lookup = (@lhs.uniqueId + 1, @lhs.env) |?| (@name, "ConId")
                 lhs.ct = [ EqTy "ConId" @loc.t (snd @loc.lookup) ]
-                lhs.ctann = { \env -> do
-                    tvar <- freshTVar
-                    envt <- env |??| (@name, "ConId")
-                    return (tvar, [ EqTy "ConId" tvar envt ])
-                }
                 lhs.uniqueId = fst @loc.lookup
     | ConTag    lhs.expr = Expr_ConTag @expr.expr @arity
                 loc.t = TVar @lhs.uniqueId
                 lhs.ct = [ EqTy "ConTag" @loc.t (arity2TOld (@lhs.uniqueId + 1) @arity) ] ++ @expr.ct
-                lhs.ctan = { \env -> do
-                    tvar <- freshTVar
-                    tarity <- arity2T @arity
-                    (_, ctexpr) <- @expr.ctann
-                    return (tvar, EqTy "ConTag" tvar tarity : ctexpr)
-                }
                 expr.uniqueId = @lhs.uniqueId + @arity + 2
                 lhs.uniqueId = @expr.uniqueId
     | Var       lhs.expr = Expr_Var @name
                 loc.t = TVar @lhs.uniqueId
                 loc.lookup = (@lhs.uniqueId + 1, @lhs.env) |?| (@name, "Var")
                 lhs.ct = [ EqTy "Var" @loc.t (snd @loc.lookup) ]
-                lhs.ctann = { \env -> do
-                    tvar <- freshTVar
-                    envt <- env |??| (@name, "Var")
-                    return (tvar, [ EqTy "Var" tvar envt ])
-                }
                 lhs.uniqueId = fst @loc.lookup
     | Lit       lhs.expr = Expr_Lit @lit.lit
                 loc.t = TVar @lhs.uniqueId
+                loc.ann = AnnVar (@lhs.uniqueId + 1)
                 lhs.ct = [ EqTy "Lit" @loc.t @lit.t ]
-                lhs.ctann = { \env -> do
-                    tvar <- freshTVar
-                    ann <- freshAnn
-                    return (tvar, [ EqTy "Lit" tvar (@lit.t{- |^| ann-}) ])
-                }
                 lhs.uniqueId = @lhs.uniqueId + 2
 
 -- Let bindings
@@ -660,3 +626,156 @@ lit2CoreLit (Literal_LitDouble double) =
 lit2CoreLit (Literal_LitBytes bytes) =
     Expr.LitBytes bytes
 }
+
+{- Annotations -}
+{-
+ATTR OptimizeModule [ | | ctann USE {++} {[]} : { [Constraint T] } ]
+SEM OptimizeModule
+    | Module        decls.annid = fst @loc.solved -- the next free id
+
+
+ATTR Decls Decl [ | annid : {Int} | ctann USE {++} {[]} : { [Constraint T] } ]
+
+SEM Decls
+    | Cons          hd.annid = @lhs.annid
+                    tl.annid = @hd.annid
+                    lhs.annid = @tl.annid
+    | Nil           lhs.annid = @lhs.annid
+
+SEM Decl
+    | Function      expr.annid = @lhs.annid
+                    lhs.annid = @expr.annid
+                    lhs.ctann = @expr.ctann
+    | Abstract
+    | Constructor
+    | Data
+    | Synonym
+
+---------------
+-- Type Expr --
+---------------
+ATTR Expr Binds Binds' Bind Alts Alt Pat
+    [ t : { T }
+      importmap : { Map I.Id Ts }
+      exportset : { Set I.Id Ts }
+      dataenv : {DataAnns}
+    | annid : Int
+    | localmap : { Map I.Id Ts }
+      ctann USE {++} {[]} : { [Constraint T] }
+    ]
+-- Expr
+ATTR Expr [ | | ]
+SEM Expr
+    | Let       --EqTy "Let" @loc.t @expr.t ] ++ @binds.ct ++ @expr.ct
+    | Match     --EqTy "Match" @alts.t ((snd @loc.lookup) |-> @loc.t) ] ++ @alts.ct
+    | Ap        --EqTy "Ap" @expr1.t (@expr2.t |-> @loc.t) ] ++ @expr1.ct ++ @expr2.ct
+    | Lam       --EqTy "Lam" @loc.t (@loc.nameT |-> @expr.t)] ++ @expr.ct
+    | ConId     --EqTy "ConId" @loc.t (snd @loc.lookup) ]
+    | ConTag    --EqTy "ConTag" @loc.t (arity2TOld (@lhs.uniqueId + 1) @arity) ] ++ @expr.ct
+    | Var       --EqTy "Var" @loc.t (snd @loc.lookup) ]
+    | Lit       --EqTy "Lit" @loc.t @lit.t ]
+
+-- Let bindings
+ATTR Binds Binds' Bind [ | | extendEnv USE {Map.union} {Map.empty} : {Map I.Id T} ]
+
+ATTR Binds [ | | binds : Binds ]
+SEM Binds
+    | Rec       lhs.binds = Binds_Rec @binds.binds
+                loc.t = @binds.t
+                lhs.ct = @binds.ct
+                lhs.extendEnv = @binds.extendEnv
+                binds.uniqueId = @lhs.uniqueId
+                lhs.uniqueId = @binds.uniqueId
+    | Strict    lhs.binds = Binds_Strict @bind.bind
+                loc.t = @bind.t
+                lhs.ct = @bind.ct
+                lhs.extendEnv = @bind.extendEnv
+                bind.uniqueId = @lhs.uniqueId
+                lhs.uniqueId = @bind.uniqueId
+    | NonRec    lhs.binds = Binds_NonRec @bind.bind
+                loc.t = @bind.t
+                lhs.ct = @bind.ct
+                lhs.extendEnv = @bind.extendEnv
+                bind.uniqueId = @lhs.uniqueId
+                lhs.uniqueId = @bind.uniqueId
+
+ATTR Binds' [ | | binds : Binds' ]
+SEM Binds'
+    | Cons      lhs.binds = @hd.bind : @tl.binds
+                loc.t = @tl.t
+                lhs.ct = [ EqTy "Binds' Cons" @tl.t @hd.t ] ++ @hd.ct ++ @tl.ct
+                lhs.extendEnv = Map.union @hd.extendEnv @tl.extendEnv
+                hd.uniqueId = @lhs.uniqueId
+                tl.uniqueId = @hd.uniqueId
+                lhs.uniqueId = @tl.uniqueId
+    | Nil       lhs.binds = []
+                loc.t = TVar @lhs.uniqueId
+                lhs.uniqueId = @lhs.uniqueId + 1
+
+ATTR Bind [ | | bind : Bind ]
+SEM Bind
+    | Bind      lhs.bind = Bind_Bind @name @expr.expr
+                loc.t = TVar @lhs.uniqueId
+                lhs.ct = [ EqTy "Bind" @loc.t @expr.t ] ++ @expr.ct
+                expr.uniqueId = @lhs.uniqueId + 1
+                lhs.uniqueId = @expr.uniqueId
+                lhs.extendEnv = Map.singleton @name @loc.t
+
+-- Guard alternatives
+
+ATTR Alts [ | | alts : Alts ]
+SEM Alts
+    | Cons      lhs.alts = @hd.alt : @tl.alts
+                loc.t = @tl.t
+                lhs.ct = [ EqTy "Alts Cons" @tl.t @hd.t ] ++ @hd.ct ++ @tl.ct
+                hd.uniqueId = @lhs.uniqueId
+                tl.uniqueId = @hd.uniqueId
+                lhs.uniqueId = @tl.uniqueId
+    | Nil       lhs.alts = []
+                loc.t = TVar @lhs.uniqueId
+                lhs.uniqueId = @lhs.uniqueId + 1
+
+ATTR Alt [ | | alt : Alt ]
+SEM Alt
+    | Alt       lhs.alt = Alt_Alt @pat.pat @expr.expr
+                loc.t = TVar @lhs.uniqueId
+                lhs.ct = [ EqTy "Alt" @loc.t (@pat.t |-> @expr.t) ] ++ @pat.ct ++ @expr.ct
+                expr.env = Env.unionLocal @pat.extendEnv @lhs.env
+                pat.uniqueId = @lhs.uniqueId + 1
+                expr.uniqueId = @pat.uniqueId
+                lhs.uniqueId = @expr.uniqueId
+
+ATTR Pat [ | | extendEnv USE {Map.union} {Map.empty} : {Map I.Id T} pat : Pat ]
+SEM Pat
+    | ConId     lhs.pat = Pat_ConId @name @ids
+                loc.t = TVar @lhs.uniqueId
+                loc.lookup = (@lhs.uniqueId + 1, @lhs.env) |?| (@name, "Pat")
+                loc.idXidsWt = assignT (fst @loc.lookup) @ids
+                lhs.ct = eqAll "Pat ConId" (@loc.t:(map snd $ snd $ @loc.idXidsWt)) (let (xs,x) = splitCons $ snd @loc.lookup in x:xs)
+                --[ EqTy "Pat ConId" @loc.t (applyT (snd @loc.lookup) )]
+                lhs.uniqueId = fst @loc.idXidsWt
+                lhs.extendEnv = Map.fromList $ snd $ @loc.idXidsWt
+    | ConTag    lhs.pat = Pat_ConTag @tag @arity @ids
+                loc.t = TVar @lhs.uniqueId
+                loc.idXidsWt = assignT (@lhs.uniqueId + @arity + 2) @ids
+                lhs.ct = eqAll "Pat ConTag" (@loc.t:(map snd $ snd $ @loc.idXidsWt)) (let (xs,x) = splitCons $ (arity2TOld (@lhs.uniqueId + 1) @arity) in tuple @arity xs:xs)
+                lhs.uniqueId = fst @loc.idXidsWt
+                lhs.extendEnv = Map.fromList $ snd $ @loc.idXidsWt
+    | Lit       lhs.pat = Pat_Lit @lit.lit
+                loc.t = TVar @lhs.uniqueId
+                lhs.ct = [ EqTy "Pat Lit" @loc.t @lit.t ]
+                lhs.uniqueId = @lhs.uniqueId + 1
+    | Default   lhs.pat = Pat_Default
+                lhs.t = TVar @lhs.uniqueId
+                lhs.uniqueId = @lhs.uniqueId + 1
+
+-- Typed literals
+ATTR Literal [ | | t : { T } lit : Literal ]
+SEM Literal
+    | LitInt    lhs.lit = Literal_LitInt @int_
+                loc.t = TCon "Int"
+    | LitDouble lhs.lit = Literal_LitDouble @double_
+                loc.t = TCon "Double"
+    | LitBytes  lhs.lit = Literal_LitBytes @bytes_
+                loc.t = TCon "Bytes"
+-}
