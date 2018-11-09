@@ -18,7 +18,7 @@ import Helium.Main.PhaseTypingStrategies
 import Helium.Main.PhaseTypeInferencer
 import Helium.Main.PhaseDesugarer
 import Helium.Main.PhaseCodeGenerator
-import Helium.Main.PhaseCodeGeneratorLLVM
+import Helium.Main.PhaseCodeGeneratorIridium
 import Helium.Main.CompileUtils
 import Helium.Parser.Lexer (checkTokenStreamForClassOrInstance)
 import Helium.Main.Args (overloadingFromOptions)
@@ -90,7 +90,7 @@ compile basedir fullName options lvmPath doneModules =
         when (KindInferencing `elem` options) $
            doPhaseWithExit maximumNumberOfKindErrors (const "K") compileOptions $
               phaseKindInferencer combinedEnv resolvedModule options
-              
+
         -- Phase 7: Type Inference Directives
         (beforeTypeInferEnv, typingStrategiesDecls) <-
             phaseTypingStrategies fullName combinedEnv typeSignatures options
@@ -121,8 +121,8 @@ compile basedir fullName options lvmPath doneModules =
         
         sendLog "C" fullName doneModules options
 
-        -- Phase 11: Code generation for LLVM
-        phaseCodeGeneratorLLVM fullName coreModule options
+        -- Phase 11: Code generation for Iridium
+        (files, shouldLink) <- phaseCodeGeneratorIridium lvmPath fullName coreModule options
 
         let number = length staticWarnings + length typeWarnings + length lexerWarnings
         putStrLn $ "Compilation successful" ++
