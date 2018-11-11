@@ -21,8 +21,13 @@ SEM Body | Body loc . cinfo =
 
 SEM Declaration 
   | FunctionBindings loc . cinfo =
-  resultConstraint "function bindings (INTERNAL ERROR)" @parentTree
-     [ FolkloreConstraint, highlyTrusted, FuntionBindingEdge @bindings.numberOfPatterns ]
+  resultConstraint "function bindings (INTERNAL ERROR)" @parentTree $
+     [ FolkloreConstraint, highlyTrusted, FuntionBindingEdge @bindings.numberOfPatterns ] ++
+    if isJust @lhs.instanceName then 
+      let 
+        functionType = lookup @bindings.name @lhs.instanceTypes
+      in maybe [] (\ft -> [SkolemizedTypeScheme ([], ft), TypeSignatureLocation noRange]) functionType
+    else []
       
 
      

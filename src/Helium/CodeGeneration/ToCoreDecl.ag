@@ -306,7 +306,7 @@ dictionaryTreeToCore theTree =
                  (dictionaryTreeToCore tree)
         ByCurrentClass className ->
             Core.Var (idFromString $ "$instanceDict" ++ className)
-        BySuperInstance p className typeVariables dict -> 
+        BySuperInstance p className typeVariables -> 
             Core.Var (idFromString $ "$instanceDict" ++ className ++ "$" ++ typeVariables )
     
 

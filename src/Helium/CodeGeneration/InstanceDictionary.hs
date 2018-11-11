@@ -19,8 +19,6 @@ import qualified Data.Map as M
 import Data.Maybe
 import Data.List
 
-import Debug.Trace
-
 type DictLabel = String
 
 constructFunctionMap :: ImportEnvironment -> Int -> Name -> [(Name, Int, DictLabel)]
@@ -47,7 +45,7 @@ classFunctions importEnv className combinedNames = [DeclCon
                                                     , declAccess  = public
                                                     , declArity   = length superclasses + length combinedNames
                                                     , conTag      = 0
-                                                    , declCustoms = [ custom "type" ("Dict" ++ className) ]       
+                                                    , declCustoms = [ custom "type" ("Dict$" ++ className) ]       
                                                     }]
                                                     ++ map superDict superclasses ++ concatMap classFunction combinedNames
         where

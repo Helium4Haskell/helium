@@ -54,7 +54,7 @@ data DictionaryTree = ByPredicate Predicate
                     | ByInstance String {- class name -} String {- instance name -} [DictionaryTree]
                     | BySuperClass String {- sub -} String {- super -} DictionaryTree
                     | ByCurrentClass String
-                    | BySuperInstance Predicate String {- ClassName -} String {- Type Variable -} DictionaryTree
+                    | BySuperInstance Predicate String {- ClassName -} String {- Type Variable -}
    deriving Show
    
 instance Show DictionaryEnvironment where
@@ -107,7 +107,7 @@ makeDictionaryTree classEnv availablePredicates currentClass curPred ps =
         convertPredicate :: (Predicate -> DictionaryTree) -> PredicateWithSource -> DictionaryTree
         convertPredicate f p    | hasSuperClassPredicate p =  let
                                                                     (PredicateSuperInstance pred pn tv cn) = getSuperClassPredicate $ getPredicateFromPredicateWithSource p 
-                                                                in BySuperInstance pred pn tv (ByCurrentClass cn)
+                                                                in BySuperInstance pred pn tv
                                 | otherwise = f (getPredicateFromPredicateWithSource p)
     in 
     case tp of
