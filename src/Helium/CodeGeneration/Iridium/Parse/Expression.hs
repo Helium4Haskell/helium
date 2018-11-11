@@ -42,7 +42,7 @@ pExpression = do
     "var" -> Var <$> pVariable
     "cast" -> Cast <$> pVariable <* pWhitespace <* pSymbol "as" <* pWhitespace <*> pType
     "phi" -> Phi <$> pArguments pPhiBranch
-    -- TODO: Eval!
+    "prim" -> PrimitiveExpr <$> pId <* pWhitespace <*> pArguments pVariable
     _ -> pError "expected expression"
 
 pPhiBranch :: Parser PhiBranch

@@ -19,6 +19,7 @@ import Lvm.Core.Module(Custom(..), DeclKind)
 import Data.List(intercalate)
 
 import Helium.CodeGeneration.Iridium.Type
+import Helium.CodeGeneration.Iridium.Primitive(findPrimitive, primReturn)
 
 type BlockName = Id
 
@@ -87,7 +88,7 @@ data Pattern
 
 data Case
   = CaseConstructor [(DataTypeConstructor, BlockName)]
-  | CaseLiteral [(Literal, BlockName)] BlockName
+  | CaseInt [(Int, BlockName)] BlockName
   deriving (Eq, Ord)
 
 data Instruction
@@ -125,6 +126,7 @@ data Expr
   | Var !Variable
   | Cast !Variable !PrimitiveType
   | Phi ![PhiBranch]
+  | PrimitiveExpr !Id ![Variable]
   deriving (Eq, Ord)
 
 data PhiBranch = PhiBranch !BlockName !Variable
@@ -154,6 +156,7 @@ typeOfExpr (Var v) = variableType v
 typeOfExpr (Cast _ t) = t
 typeOfExpr (Phi []) = error "typeOfExpr: Empty phi node. A phi expression should have at least 1 branch."
 typeOfExpr (Phi (PhiBranch _ var : _)) = variableType var
+typeOfExpr (PrimitiveExpr name _) = primReturn $ findPrimitive name
 
 variableType :: Variable -> PrimitiveType
 variableType (VarLocal (Local _ t)) = t

@@ -28,6 +28,7 @@ import Lvm.Common.IdMap(findMap)
 import qualified Helium.CodeGeneration.Iridium.Data as Iridium
 import qualified Helium.CodeGeneration.Iridium.Type as Iridium
 import qualified Helium.CodeGeneration.Iridium.TypeEnvironment as Iridium
+import qualified Helium.CodeGeneration.Iridium.Primitive as Iridium
 import LLVM.AST as AST
 import LLVM.AST.Visibility
 import LLVM.AST.CallingConvention
@@ -170,6 +171,9 @@ compileExpression env supply expr@(Iridium.Phi branches) name = [name := Phi (co
     t = Iridium.typeOfExpr expr
     compileBranch :: Iridium.PhiBranch -> (Operand, Name)
     compileBranch (Iridium.PhiBranch blockId var) = (toOperand env var, toName blockId)
+compileExpression env supply (Iridium.PrimitiveExpr primName args) name = compile (envTarget env) supply (map (toOperand env) args) name
+  where
+    (Iridium.Primitive _ _ compile) = Iridium.findPrimitive primName
 
 compileEval :: Env -> NameSupply -> Operand -> Iridium.PrimitiveType -> Name -> [Named Instruction]
 compileEval env supply operand Iridium.TypeAny name =

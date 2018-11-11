@@ -66,6 +66,7 @@ instance Show Expr where
   show (Var var) = "var " ++ show var
   show (Cast var t) = "cast " ++ show var ++ " as " ++ show t
   show (Phi branches) = "phi " ++ showArguments branches
+  show (PrimitiveExpr prim args) = "prim " ++ stringFromId prim ++ showArguments args
 
 instance Show PhiBranch where
   show (PhiBranch branch var) = stringFromId branch ++ " => " ++ show var
@@ -85,9 +86,9 @@ instance Show Case where
     where
       showBranch :: (DataTypeConstructor, BlockName) -> String
       showBranch (con, to) = "\n" ++ instructionIndent ++ "  " ++ show con ++ " to " ++ stringFromId to
-  show (CaseLiteral branches defaultBranch) = "literal " ++ showArguments' showBranch branches ++ "\n" ++ instructionIndent ++ "  otherwise " ++ stringFromId defaultBranch
+  show (CaseInt branches defaultBranch) = "int " ++ showArguments' showBranch branches ++ "\n" ++ instructionIndent ++ "  otherwise " ++ stringFromId defaultBranch
     where
-      showBranch :: (Literal, BlockName) -> String
+      showBranch :: (Int, BlockName) -> String
       showBranch (lit, to) = "\n" ++ instructionIndent ++ "  " ++ show lit ++ " to " ++ stringFromId to
 
 instance Show Instruction where

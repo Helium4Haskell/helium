@@ -42,8 +42,8 @@ pCase = do
   key <- pKeyword
   case key of
     "constructor" -> CaseConstructor <$> pArguments (pCaseAlt pDataTypeConstructor)
-    "literal" -> CaseLiteral <$> pArguments (pCaseAlt pLiteral) <* pWhitespace <* pSymbol "otherwise" <* pWhitespace <*> pId
-    _ -> pError "expected 'constructor' or 'literal' in case instruction"
+    "int" -> CaseInt <$> pArguments (pCaseAlt pInt) <* pWhitespace <* pSymbol "otherwise" <* pWhitespace <*> pId
+    _ -> pError "expected 'constructor' or 'int' in case instruction"
 
 pCaseAlt :: Parser a -> Parser (a, BlockName)
 pCaseAlt pPattern = (\pat to -> (pat, to)) <$> pPattern <* pWhitespace <* pSymbol "to" <* pWhitespace <*> pId
