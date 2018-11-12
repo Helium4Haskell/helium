@@ -15,6 +15,7 @@ pType = do
     "anyfunction" -> return TypeFunction
     "function" -> TypeGlobalFunction <$> pFunctionType
     "data" -> TypeDataType <$ pWhitespace <* pToken '@' <*> pId
+    "unsafeptr" -> return TypeUnsafePtr
     _ -> pError "expected type"
 
 pFunctionType :: Parser FunctionType

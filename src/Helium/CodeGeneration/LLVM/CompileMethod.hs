@@ -12,7 +12,7 @@ import Data.String(fromString)
 
 import Helium.CodeGeneration.LLVM.Env
 import Helium.CodeGeneration.LLVM.Utils
-import Helium.CodeGeneration.LLVM.CompileType(compileType)
+import Helium.CodeGeneration.LLVM.CompileType(compileType, compileCallingConvention, voidPointer)
 import Helium.CodeGeneration.LLVM.CompileBlock(compileBlock)
 
 import Lvm.Common.Id(Id, NameSupply, freshId, splitNameSupply, mapWithSupply, idFromString)
@@ -30,42 +30,68 @@ import LLVM.AST.Linkage
 unusedArgumentName :: Id
 unusedArgumentName = idFromString "_argument"
 
-compileAbstractMethod :: Env -> Iridium.Declaration Iridium.AbstractMethod -> Definition
-compileAbstractMethod env (Iridium.Declaration name _ _ (Iridium.AbstractMethod (Iridium.FunctionType argTypes retType))) = toFunction env name args retType []
+compileAbstractMethod :: Env -> Iridium.Declaration Iridium.AbstractMethod -> [Definition]
+compileAbstractMethod env (Iridium.Declaration name _ _ (Iridium.AbstractMethod (Iridium.FunctionType argTypes retType) annotations)) = toFunction env name annotations args retType []
   where
     args = map (Iridium.Local unusedArgumentName) argTypes
 
-compileMethod :: Env -> NameSupply -> Iridium.Declaration Iridium.Method -> Definition
-compileMethod env supply (Iridium.Declaration name _ _ (Iridium.Method args retType entry blocks)) = toFunction env name args retType basicBlocks
+compileMethod :: Env -> NameSupply -> Iridium.Declaration Iridium.Method -> [Definition]
+compileMethod env supply (Iridium.Declaration name _ _ (Iridium.Method args retType annotations entry blocks)) = toFunction env name annotations args retType basicBlocks
   where
     parameters :: [Parameter]
     parameters = map (\(Iridium.Local name t) -> Parameter (compileType env t) (toName name) []) args
     basicBlocks :: [BasicBlock]
     basicBlocks = concat $ mapWithSupply (compileBlock env) supply (entry : blocks)
 
-toFunction :: Env -> Id -> [Iridium.Local] -> Iridium.PrimitiveType -> [BasicBlock] -> Definition
-toFunction env name args retType basicBlocks = GlobalDefinition $ Function
-    -- TODO: set Linkage to Private if possible
-    -- TODO: set Visibility to Hidden or Protected, if that does not give issues with function pointers
-    -- TODO: check whether setting [ParameterAttribute] on arguments and return type can improve performance
-  { Global.linkage = External
-  , Global.visibility = Default
-  , Global.dllStorageClass = Nothing
-  , Global.callingConvention = Fast
-  , Global.returnAttributes = []
-  , Global.returnType = compileType env retType
-  , Global.name = toName name
-  , Global.parameters = (parameters, {- varargs: -} False)
-  , Global.functionAttributes = []
-  , Global.section = Nothing
-  , Global.comdat = Nothing
-  , Global.alignment = 0
-  , Global.garbageCollectorName = Nothing
-  , Global.prefix = Nothing
-  , Global.basicBlocks = basicBlocks
-  , Global.personalityFunction = Nothing
-  , Global.metadata = []
-  }
+toFunction :: Env -> Id -> [Iridium.Annotation] -> [Iridium.Local] -> Iridium.PrimitiveType -> [BasicBlock] -> [Definition]
+toFunction env name annotations args retType basicBlocks = trampoline ++ [def]
   where
+    def = GlobalDefinition $ Function
+      -- TODO: set Linkage to Private if possible
+      -- TODO: set Visibility to Hidden or Protected, if that does not give issues with function pointers
+      -- TODO: check whether setting [ParameterAttribute] on arguments and return type can improve performance
+      { Global.linkage = External
+      , Global.visibility = Default
+      , Global.dllStorageClass = Nothing
+      , Global.callingConvention = callConv
+      , Global.returnAttributes = []
+      , Global.returnType = compileType env retType
+      , Global.name = toName name
+      , Global.parameters = (parameters, {- varargs: -} False)
+      , Global.functionAttributes = []
+      , Global.section = Nothing
+      , Global.comdat = Nothing
+      , Global.alignment = 0
+      , Global.garbageCollectorName = Nothing
+      , Global.prefix = Nothing
+      , Global.basicBlocks = basicBlocks
+      , Global.personalityFunction = Nothing
+      , Global.metadata = []
+      }
     parameters :: [Parameter]
     parameters = map (\(Iridium.Local name t) -> Parameter (compileType env t) (toName name) []) args
+
+    callConv = compileCallingConvention $ Iridium.callingConvention annotations
+
+    trampoline :: [Definition]
+    trampoline
+      | Iridium.AnnotateTrampoline `notElem` annotations = []
+      | otherwise = return $ GlobalDefinition $ Function
+        { Global.linkage = External
+        , Global.visibility = Default
+        , Global.dllStorageClass = Nothing
+        , Global.callingConvention = callConv
+        , Global.returnAttributes = []
+        , Global.returnType = compileType env retType
+        , Global.name = toNamePrefixed "trampoline$" name
+        , Global.parameters = ([Parameter voidPointer (mkName "thunk") []], {- varargs: -} False)
+        , Global.functionAttributes = []
+        , Global.section = Nothing
+        , Global.comdat = Nothing
+        , Global.alignment = 0
+        , Global.garbageCollectorName = Nothing
+        , Global.prefix = Nothing
+        , Global.basicBlocks = [] -- TODO...
+        , Global.personalityFunction = Nothing
+        , Global.metadata = []
+        }

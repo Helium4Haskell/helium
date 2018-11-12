@@ -30,6 +30,9 @@ data PrimitiveType
   | TypeDataType !Id
   | TypeFunction -- ^ Pointer to a function or a thunk in WHNF (partially applied function)
   | TypeGlobalFunction FunctionType -- ^ A global function
+
+  -- Types used for the runtime
+  | TypeUnsafePtr
   deriving (Eq, Ord)
 
 data EvaluationState = Unevaluated | EvaluationUnknown | Evaluated deriving (Show, Eq, Ord)

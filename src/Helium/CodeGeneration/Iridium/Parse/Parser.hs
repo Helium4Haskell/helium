@@ -116,8 +116,16 @@ pSome elem continue = do
   else
     return [item]
 
-pWhitespace :: Parser String
-pWhitespace = pManySatisfy isWhitespace
+pWhitespace :: Parser ()
+pWhitespace = 
+  do
+    pManySatisfy isWhitespace
+    c <- lookahead
+    if c == ';' then do
+      pChar
+      pManySatisfy (/= '\n')
+      pWhitespace
+    else return ()
 
 pString :: Parser String
 pString = read <$> Parser f

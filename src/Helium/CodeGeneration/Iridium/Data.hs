@@ -56,15 +56,25 @@ instance Functor Declaration where
   fmap f (Declaration name visibility customs a) = Declaration name visibility customs $ f a
 
 -- Imported method, eg a method without a definition. The implementation is in some other file.
-data AbstractMethod = AbstractMethod !FunctionType
+data AbstractMethod = AbstractMethod !FunctionType ![Annotation]
   deriving (Eq, Ord)
 
-data Method = Method ![Local] !PrimitiveType !Block ![Block]
+data Method = Method ![Local] !PrimitiveType ![Annotation] !Block ![Block]
   deriving (Eq, Ord)
 
--- TODO: Annotations on methods
-data MethodAnnotation
-  = MAThunk -- ^ This method can be put in a thunk
+-- Annotations on methods
+data Annotation
+  -- * This method can be put in a thunk. An additional trampoline function is generated. We store a pointer to the trampoline in the thunk.
+  = AnnotateTrampoline
+  | AnnotateCallConvention !CallingConvention
+  deriving (Eq, Ord)
+
+data CallingConvention
+  = CCC -- C calling convention
+  | CCFast -- Fast calling convention of LLVM
+  -- * Preserves most registers. Created for runtime functions that have a hot path that doesn't use many registers,
+  -- and a cold path that might call other functions.
+  | CCPreserveMost
   deriving (Eq, Ord)
 
 data Local = Local { localName :: !Id, localType :: !PrimitiveType }
@@ -142,7 +152,7 @@ mapBlocks :: (Instruction -> Instruction) -> Module -> Module
 mapBlocks fn (Module name dependencies customs datas abstracts methods) = Module name dependencies customs datas abstracts $ map (fmap fnMethod) methods
   where
     fnMethod :: Method -> Method
-    fnMethod (Method args rettype entry blocks) = Method args rettype (fnBlock entry) $ map fnBlock blocks
+    fnMethod (Method args rettype annotations entry blocks) = Method args rettype annotations (fnBlock entry) $ map fnBlock blocks
     fnBlock :: Block -> Block
     fnBlock (Block name instr) = Block name $ fn instr
 
@@ -165,3 +175,8 @@ variableType (VarGlobal (Global _ fntype)) = TypeGlobalFunction fntype
 variableName :: Variable -> Id
 variableName (VarLocal (Local x _)) = x
 variableName (VarGlobal (Global x _)) = x
+
+callingConvention :: [Annotation] -> CallingConvention
+callingConvention [] = CCFast -- Default
+callingConvention (AnnotateCallConvention c : _) = c
+callingConvention (_ : as) = callingConvention as

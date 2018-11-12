@@ -1,4 +1,4 @@
-module Helium.CodeGeneration.LLVM.CompileType (compileType, toOperand, taggedThunkPointer, bool, pointer, voidPointer, splitValueFlag, cast) where
+module Helium.CodeGeneration.LLVM.CompileType (compileType, toOperand, taggedThunkPointer, bool, pointer, voidPointer, splitValueFlag, cast, compileCallingConvention) where
 
 import Lvm.Common.Id(Id, freshId, stringFromId, NameSupply)
 import Helium.CodeGeneration.LLVM.Env (Env(..))
@@ -14,6 +14,7 @@ import LLVM.AST.Type as Type
 import LLVM.AST.AddrSpace
 import LLVM.AST.Operand
 import LLVM.AST.Constant
+import qualified LLVM.AST.CallingConvention as CallingConvention
 
 compileType :: Env -> Iridium.PrimitiveType -> Type
 compileType env Iridium.TypeAny = taggedThunkPointer
@@ -24,6 +25,7 @@ compileType env Iridium.TypeDouble = FloatingPointType DoubleFP
 compileType env (Iridium.TypeDataType dataName) = NamedTypeReference $ toNamePrefixed "$data_" dataName
 compileType env Iridium.TypeFunction = voidPointer
 compileType env (Iridium.TypeGlobalFunction fntype) = compileFunctionType env fntype
+compileType env Iridium.TypeUnsafePtr = voidPointer
 
 compileFunctionType :: Env -> Iridium.FunctionType -> Type
 compileFunctionType env (Iridium.FunctionType args returnType) = pointer $ FunctionType (compileType env returnType) (map (compileType env) args) False
@@ -100,3 +102,8 @@ cast supply env fromOperand toName Iridium.TypeInt toType = [toName := AST.IntTo
 cast supply env fromOperand toName fromType toType = [toName := AST.BitCast fromOperand toT []]
   where
     toT = compileType env toType
+
+compileCallingConvention :: Iridium.CallingConvention -> CallingConvention.CallingConvention
+compileCallingConvention Iridium.CCC = CallingConvention.C
+compileCallingConvention Iridium.CCFast = CallingConvention.Fast
+compileCallingConvention Iridium.CCPreserveMost = CallingConvention.PreserveMost

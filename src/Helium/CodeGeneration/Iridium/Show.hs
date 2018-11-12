@@ -95,7 +95,7 @@ instance Show Instruction where
   show (Let var expr next) = instructionIndent ++ "let %" ++ showId var ++ " = " ++ show expr ++ "\n" ++ show next
   show (LetAlloc binds next) = instructionIndent ++ "letalloc " ++ intercalate ", " (map show binds) ++ "\n" ++ show next
   show (Jump to) = instructionIndent ++ "jump " ++ show to
-  show (Match var con args next) = instructionIndent ++ "match " ++ show var ++ " on " ++ show con ++ showArguments' showField args ++ "\n" ++ show next
+  show (Match var con args next) = instructionIndent ++ "match " ++ show var ++ " on " ++ show con ++ " " ++ showArguments' showField args ++ "\n" ++ show next
     where
       showField Nothing = "_"
       showField (Just l) = show l
@@ -115,16 +115,28 @@ instance Show Variable where
 instance Show Block where
   show (Block name instruction) = stringFromId name ++ ":\n" ++ show instruction
 
+instance Show Annotation where
+  show AnnotateTrampoline = "trampoline"
+  show (AnnotateCallConvention conv) = "callconvention:" ++ show conv
+
+instance Show CallingConvention where
+  show CCC = "c"
+  show CCFast = "fast"
+  show CCPreserveMost = "preserve_most"
+
+showAnnotations :: [Annotation] -> String
+showAnnotations annotations = "[" ++ intercalate " " (map show annotations) ++ "]"
+
 instance ShowDeclaration AbstractMethod where
-  showDeclaration (AbstractMethod fntype) =
+  showDeclaration (AbstractMethod fntype annotations) =
     ( "declare"
-    , ": " ++ show fntype ++ "\n"
+    , ": " ++ show fntype ++ " " ++ showAnnotations annotations ++ "\n"
     )
 
 instance ShowDeclaration Method where
-  showDeclaration (Method args rettype entry blocks) =
+  showDeclaration (Method args rettype annotations entry blocks) =
     ( "define"
-    , showArguments args ++ ": " ++ show rettype ++ " {\n" ++ show entry ++ (blocks >>= ('\n' :) . show) ++ "\n}\n"
+    , showArguments args ++ ": " ++ show rettype ++ " " ++ showAnnotations annotations ++ " {\n" ++ show entry ++ (blocks >>= ('\n' :) . show) ++ "\n}\n"
     )
 
 instance Show Module where
@@ -165,6 +177,8 @@ instance Show PrimitiveType where
   show (TypeDataType name) = "data @" ++ showId name
   show (TypeFunction) = "anyfunction"
   show (TypeGlobalFunction fntype) = "function " ++ show fntype
+
+  show (TypeUnsafePtr) = "unsafeptr"
 
 showArguments' :: (a -> String) -> [a] -> String
 showArguments' showFn = ("("++) . (++")") . intercalate ", " . map showFn

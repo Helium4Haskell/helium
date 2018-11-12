@@ -37,5 +37,5 @@ compileModule env supply (Iridium.Module name _ _ datas abstracts methods) = Mod
   where
     dataTypes = map (\d@(Iridium.Declaration dataId _ _ _) -> TypeDefinition (toNamePrefixed "$data_" dataId) $ Just $ dataTypeType env d $ map (\con@(Iridium.DataTypeConstructor _ name _) -> (name, findMap name $ envConstructors env)) $ Iridium.getConstructors d) datas
     constructors = map (\(name, con) -> TypeDefinition (toName name) $ Just $ constructorType env con) $ listFromMap $ envConstructors env
-    abstractFunctions = map (compileAbstractMethod env) abstracts
-    functions = mapWithSupply (compileMethod env) supply methods
+    abstractFunctions = concat $ map (compileAbstractMethod env) abstracts
+    functions = concat $ mapWithSupply (compileMethod env) supply methods

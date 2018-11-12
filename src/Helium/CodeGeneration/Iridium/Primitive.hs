@@ -19,6 +19,8 @@ import Helium.CodeGeneration.LLVM.Utils(freshName)
 import qualified LLVM.AST as LLVM
 import qualified LLVM.AST.Instruction as LLVM
 import qualified LLVM.AST.IntegerPredicate as IntegerPredicate
+import qualified LLVM.AST.AddrSpace as LLVM
+import qualified LLVM.AST.CallingConvention as LLVM
 
 type PrimitiveCompiler = Target -> NameSupply -> [LLVM.Operand] -> LLVM.Name -> [LLVM.Named LLVM.Instruction]
 
@@ -69,7 +71,72 @@ primitiveList =
 
   , primCompare "int_eq" TypeInt $ LLVM.ICmp IntegerPredicate.EQ
   , primCompare "int_slt" TypeInt $ LLVM.ICmp IntegerPredicate.SLT -- Signed less than
+
+  , prim "unsafeptr_add" [TypeUnsafePtr, TypeInt] TypeUnsafePtr compilePtrAdd
+  -- Reads a 32 bit integer
+  , prim "unsafeptr_read32" [TypeUnsafePtr] TypeInt compileRead32
+  , prim "unsafeptr_read" [TypeUnsafePtr] TypeAny compileRead
+  , prim "unsafeptr_write" [TypeUnsafePtr, TypeAny] TypeInt compileWrite
+
+  , prim "thunk_extract_tag" [TypeUnsafePtr] TypeInt undefined -- TODO
+  , prim "thunk_target_ptr_offset" [TypeInt] TypeInt undefined -- TODO
+  , prim "thunk_write_tag" [TypeUnsafePtr, TypeInt] TypeInt undefined -- TODO
+  , prim "thunk_call" [TypeUnsafePtr, TypeUnsafePtr] TypeAny compileThunkCall
   ]
 
 findPrimitive :: Id -> Primitive
 findPrimitive = (`findMap` primitives)
+
+compilePtrAdd :: PrimitiveCompiler
+compilePtrAdd _ _  [pointer, inc] name = [ name LLVM.:= LLVM.GetElementPtr False pointer [inc] [] ]
+
+compileRead32 :: PrimitiveCompiler
+compileRead32 target supply [pointer] name =
+  [ namePtr LLVM.:= LLVM.BitCast pointer ptrType []
+  , (if is32Bit then name else nameValue) LLVM.:= LLVM.Load False (LLVM.LocalReference ptrType namePtr) Nothing 0 []
+  ] ++ if is32Bit then [] else
+    [ name LLVM.:= LLVM.ZExt (LLVM.LocalReference (LLVM.IntegerType 32) nameValue) (LLVM.IntegerType $ fromIntegral $ targetWordSize target) [] ]
+  where
+    ptrType = LLVM.PointerType (LLVM.IntegerType 32) (LLVM.AddrSpace 0)
+    (namePtr, supply') = freshName supply
+    (nameValue, _) = freshName supply'
+    is32Bit = targetWordSize target == 32
+
+typeVoidPtr :: LLVM.Type
+typeVoidPtr = LLVM.PointerType (LLVM.IntegerType 8) (LLVM.AddrSpace 0)
+typeVoidPtrPtr = LLVM.PointerType typeVoidPtr (LLVM.AddrSpace 0)
+
+compileRead :: PrimitiveCompiler
+compileRead _ supply [pointer] name =
+  [ namePtr LLVM.:= LLVM.BitCast pointer typeVoidPtr []
+  , name LLVM.:= LLVM.Load False (LLVM.LocalReference typeVoidPtrPtr namePtr) Nothing 0 []
+  ]
+  where
+    (namePtr, _) = freshName supply
+
+compileWrite :: PrimitiveCompiler
+compileWrite _ supply [pointer, value] name =
+  [ namePtr LLVM.:= LLVM.BitCast pointer typeVoidPtr []
+  , LLVM.Do $ LLVM.Store False (LLVM.LocalReference typeVoidPtrPtr namePtr) value Nothing 0 []
+  ]
+  where
+    (namePtr, _) = freshName supply
+
+compileThunkCall :: PrimitiveCompiler
+compileThunkCall target supply [fn, arg] name =
+  [ nameFn LLVM.:= LLVM.BitCast fn fnType []
+  , name LLVM.:= LLVM.Call 
+    { LLVM.tailCallKind = Nothing
+    , LLVM.callingConvention = LLVM.Fast
+    , LLVM.returnAttributes = []
+    , LLVM.function = Right $ LLVM.LocalReference fnType nameFn
+    , LLVM.arguments =
+      [ (arg, [])
+      ]
+    , LLVM.functionAttributes = []
+    , LLVM.metadata = []
+    }
+  ]
+  where
+    fnType = LLVM.PointerType (LLVM.FunctionType typeVoidPtr [typeVoidPtr] False) (LLVM.AddrSpace 0)
+    (nameFn, _) = freshName supply

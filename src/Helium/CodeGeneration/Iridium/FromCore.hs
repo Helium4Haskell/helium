@@ -37,8 +37,8 @@ fromCore supply mod@(CoreModule.Module name _ _ decls) = Module name dependencie
     customs = mapMaybe customFromCoreDecl decls
 
     env = TypeEnv (mapFromList $ map (\d -> (declarationName d, getConstructors d)) datas) (unionMap valuesFunctions $ unionMap valuesAbstracts $ unionMap valuesCons $ mapFromList builtins) Nothing
-    valuesFunctions = mapMap (\arity -> ValueFunction (FunctionType (replicate arity TypeAny) TypeAnyWHNF)) $ aritiesMap mod
-    valuesAbstracts = mapFromList $ map (\(Declaration name _ _ (AbstractMethod fntype)) -> (name, ValueFunction fntype)) abstracts
+    valuesFunctions = mapMap (\arity -> ValueFunction (FunctionType (replicate arity TypeAny) TypeAnyWHNF) CCFast) $ aritiesMap mod
+    valuesAbstracts = mapFromList $ map (\(Declaration name _ _ (AbstractMethod fntype annotations)) -> (name, ValueFunction fntype $ callingConvention annotations)) abstracts
     valuesCons = mapFromList $ listFromMap consMap >>= (\(dataName, cons) -> map (\con@(Declaration conName _ _ (DataTypeConstructorDeclaration fields)) -> (conName, ValueConstructor (DataTypeConstructor dataName conName fields))) cons)
 
 customFromCoreDecl :: Core.CoreDecl -> Maybe (Declaration CustomDeclaration)
@@ -79,7 +79,7 @@ fromCoreDecl supply env decl@CoreModule.DeclValue{} = [Left $ Declaration name (
 fromCoreDecl supply env decl@CoreModule.DeclAbstract{} = [Right $ Declaration name (visibility decl) (CoreModule.declCustoms decl) method]
   where
     name = CoreModule.declName decl
-    method = AbstractMethod $ FunctionType (replicate (CoreModule.declArity decl) TypeAny) TypeAnyWHNF
+    method = AbstractMethod (FunctionType (replicate (CoreModule.declArity decl) TypeAny) TypeAnyWHNF) [AnnotateTrampoline]
 fromCoreDecl _ _ _ = []
 
 idEntry, idMatchAfter, idMatchCase, idMatchDefault :: Id
@@ -89,7 +89,7 @@ idMatchCase = idFromString "match_case"
 idMatchDefault = idFromString "match_default"
 
 toMethod :: NameSupply -> TypeEnv -> Id -> Core.Expr -> Method
-toMethod supply env name expr = Method args' returnType (Block entryName entry) blocks
+toMethod supply env name expr = Method args' returnType [AnnotateTrampoline] (Block entryName entry) blocks
   where
     (entryName, supply') = freshIdFromId idEntry supply
     fntype@(FunctionType fnArgs returnType) = fromMaybe (error "toMethod: could not find function signature") $ resolveFunction env name
@@ -384,7 +384,7 @@ constructorPattern _ = Nothing
 resolve :: TypeEnv -> Id -> Variable
 resolve env name = case valueDeclaration env name of
   ValueConstructor _ -> error "resolve: Constructor cannot be used as a value."
-  ValueFunction fntype -> VarGlobal $ Global name fntype
+  ValueFunction fntype _ -> VarGlobal $ Global name fntype
   ValueVariable t -> VarLocal $ Local name t
 
 resolveList :: TypeEnv -> [Id] -> [Variable]

@@ -23,7 +23,7 @@ pInstruction = do
           else
             return False
     "jump" -> Jump <$> pId
-    "match" -> Match <$> pVariable <* pWhitespace <* pSymbol "on" <* pWhitespace <*> pDataTypeConstructor <*> pArguments pMatchField <*> pInstruction
+    "match" -> Match <$> pVariable <* pWhitespace <* pSymbol "on" <* pWhitespace <*> pDataTypeConstructor <* pWhitespace <*> pArguments pMatchField <*> pInstruction
     "case" -> Case <$> pVariable <* pWhitespace <*> pCase
     "return" -> Return <$> pVariable
     _ -> pError "expected instruction"

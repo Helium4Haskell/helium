@@ -28,19 +28,19 @@ builtins = -- TODO: This should be replaced by parsing abstract definitions
   , fn "$primPackedToString" [TypeDataType $ idFromString "[]"] TypeAnyWHNF
   , fn "showString" [TypeAny] TypeAnyWHNF
   -} ]
-  where
-    fn :: String -> [PrimitiveType] -> PrimitiveType -> (Id, ValueDeclaration)
-    fn name args result = (idFromString name, ValueFunction $ FunctionType args result)
+  -- where
+    -- fn :: String -> [PrimitiveType] -> PrimitiveType -> (Id, ValueDeclaration)
+    -- fn name args result = (idFromString name, ValueFunction $ FunctionType args result)
 
 data ValueDeclaration
   = ValueConstructor !DataTypeConstructor
-  | ValueFunction !FunctionType
+  | ValueFunction !FunctionType !CallingConvention
   | ValueVariable !PrimitiveType
   deriving (Eq, Ord, Show)
 
 typeOf :: TypeEnv -> Id -> PrimitiveType
 typeOf env name = case valueDeclaration env name of
-  ValueFunction fntype -> TypeGlobalFunction fntype
+  ValueFunction fntype _ -> TypeGlobalFunction fntype
   ValueVariable t -> t
 
 enterFunction :: Id -> FunctionType -> TypeEnv -> TypeEnv
@@ -63,7 +63,7 @@ expandEnvWithMatch locals = expandEnvWithLocals $ catMaybes locals
 
 resolveFunction :: TypeEnv -> Id -> Maybe FunctionType
 resolveFunction env name = case lookupMap name (teValues env) of
-  Just (ValueFunction fn) -> Just fn
+  Just (ValueFunction fn _) -> Just fn
   _ -> Nothing
 
 typeEnvForModule :: Module -> TypeEnv
@@ -79,7 +79,7 @@ typeEnvForModule (Module _ _ _ dataTypes abstracts methods) = TypeEnv dataTypeMa
     valuesInDataType (Declaration name _ _ (DataType cs)) = map (\(Declaration conId _ _ (DataTypeConstructorDeclaration args)) -> (conId, ValueConstructor $ DataTypeConstructor name conId args)) cs
 
     valueOfMethod :: Declaration Method -> (Id, ValueDeclaration)
-    valueOfMethod (Declaration name _ _ (Method args retType _ _)) = (name, ValueFunction (FunctionType (map localType args) retType))
+    valueOfMethod (Declaration name _ _ (Method args retType annotations _ _)) = (name, ValueFunction (FunctionType (map localType args) retType) $ callingConvention annotations)
 
     valueOfAbstract :: Declaration AbstractMethod -> (Id, ValueDeclaration)
-    valueOfAbstract (Declaration name _ _ (AbstractMethod fntype)) = (name, ValueFunction fntype)
+    valueOfAbstract (Declaration name _ _ (AbstractMethod fntype annotations)) = (name, ValueFunction fntype $ callingConvention annotations)
