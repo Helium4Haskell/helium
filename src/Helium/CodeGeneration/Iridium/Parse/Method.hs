@@ -12,6 +12,7 @@ pMethod = (\args rettype annotations (b:bs) -> Method args rettype annotations b
     pSep :: Parser Bool
     pSep = do
       pWhitespace
+
       c <- lookahead
       if c == '}' then do
         pChar
@@ -26,13 +27,20 @@ pAbstractMethod :: Parser AbstractMethod
 pAbstractMethod = AbstractMethod <$ pToken ':' <* pWhitespace <*> pFunctionType <* pWhitespace <*> pAnnotations
 
 pAnnotations :: Parser [Annotation]
-pAnnotations = pToken '[' *> pSome pAnnotation pSep <* pToken ']'
+pAnnotations =
+  do
+    eof <- isEndOfFile
+    if eof then
+      return []
+    else do
+      c <- lookahead
+      if c == '[' then pToken '[' *> pSome pAnnotation pSep <* pToken ']' else return []
   where
     pSep :: Parser Bool
     pSep = do
       pWhitespace
       c <- lookahead
-      return $ c /= '/'
+      return $ c /= ']'
 
 pAnnotation :: Parser Annotation
 pAnnotation = do
