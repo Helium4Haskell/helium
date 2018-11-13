@@ -109,6 +109,7 @@ data Instruction
   | Match !Variable !DataTypeConstructor ![Maybe Local] !Instruction -- TODO: For consistency, Maybe Local should be replaced with Maybe Id, as we also don't use Local for Let and LetAlloc
   | Case !Variable Case
   | Return !Variable
+  | Unreachable
   deriving (Eq, Ord)
 
 data Bind = Bind { bindVar :: !Id, bindTarget :: !BindTarget, bindArguments :: ![Variable] }

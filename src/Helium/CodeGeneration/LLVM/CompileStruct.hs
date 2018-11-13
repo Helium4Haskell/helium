@@ -92,7 +92,7 @@ tagInFirstElement env struct = tagSize struct + targetGarbageCollectorBits targe
 
 allocate :: Env -> Name -> Name -> Type -> Struct -> [Named Instruction]
 allocate env nameVoid name t struct =
-  [ nameVoid := Call Nothing Fast [] (Right Builtins.alloc) [(ConstantOperand $ Constant.Int 32 3, []), (ConstantOperand $ Constant.Int 32 $ fromIntegral $ sizeOf (envTarget env) struct, [])] [] []
+  [ nameVoid := Call Nothing C [] (Right Builtins.alloc) [(ConstantOperand $ Constant.Int 32 $ fromIntegral $ sizeOf (envTarget env) struct, [])] [] []
   , name := BitCast (LocalReference voidPointer nameVoid) (pointer t) []
   ]
 

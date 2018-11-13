@@ -13,6 +13,7 @@ data Env = Env
   , envValueType :: AST.Type
   , envMethod :: Maybe Iridium.Method
   , envConstructors :: IdMap ConstructorLayout
+  , envCallConventions :: IdMap Iridium.CallingConvention
   }
 
 envForModule :: Target -> Iridium.Module -> Env
@@ -21,6 +22,7 @@ envForModule target mod = Env
   , envValueType = AST.IntegerType $ fromIntegral $ targetWordSize target
   , envMethod = Nothing
   , envConstructors = mapFromList constructors
+  , envCallConventions = mapFromList conventions
   }
   where
     typeEnv = TypeEnv.typeEnvForModule mod
@@ -32,3 +34,6 @@ envForModule target mod = Env
           (Iridium.getConstructors dataTypeDecl)
           [0..]
       )
+    conventions :: [(Id, Iridium.CallingConvention)]
+    conventions = fmap (\(Iridium.Declaration name _ _ (Iridium.Method _ _ annotations _ _)) -> (name, Iridium.callingConvention annotations)) (Iridium.moduleMethods mod)
+      ++ fmap (\(Iridium.Declaration name _ _ (Iridium.AbstractMethod _ annotations)) -> (name, Iridium.callingConvention annotations)) (Iridium.moduleAbstractMethods mod)

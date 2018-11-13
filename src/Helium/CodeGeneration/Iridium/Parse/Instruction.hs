@@ -26,6 +26,7 @@ pInstruction = do
     "match" -> Match <$> pVariable <* pWhitespace <* pSymbol "on" <* pWhitespace <*> pDataTypeConstructor <* pWhitespace <*> pArguments pMatchField <*> pInstruction
     "case" -> Case <$> pVariable <* pWhitespace <*> pCase
     "return" -> Return <$> pVariable
+    "unreachable" -> return Unreachable
     _ -> pError "expected instruction"
 
 pMatchField :: Parser (Maybe Local)

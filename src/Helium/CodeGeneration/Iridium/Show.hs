@@ -101,6 +101,7 @@ instance Show Instruction where
       showField (Just l) = show l
   show (Case var branches) = instructionIndent ++ "case " ++ show var ++ " " ++ show branches
   show (Return var) = instructionIndent ++ "return " ++ show var
+  show Unreachable = instructionIndent ++ "unreachable"
 
 instance Show Local where
   show (Local name t) = "%" ++ showId name ++ ": " ++ show t
