@@ -25,6 +25,8 @@ import Helium.Main.PhaseCodeGenerator
 import Helium.Main.PhaseCodeGeneratorIridium
 import Helium.Main.PhaseCodeGeneratorLlvm
 import Helium.Main.CompileUtils
+import qualified Helium.CodeGeneration.Iridium.Parse.Module as Iridium
+import qualified Helium.CodeGeneration.Iridium.ResolveDependencies as Iridium
 import Helium.Parser.Lexer (checkTokenStreamForClassOrInstance)
 import Helium.Main.Args (overloadingFromOptions)
 import Helium.Utils.Utils
@@ -45,23 +47,37 @@ compile basedir fullName options lvmPath doneModules =
 
     contents <- readSourceFile fullName
 
-    (coreModule, warnings) <- case ext of
-      "hs" -> compileHaskellToCore basedir fullName contents options lvmPath doneModules
-      "core" -> do
-        let tokens = Lvm.layout (Lvm.lexer (1,1) contents)
-        coreModule <- Lvm.parseModule fullName tokens
-        return (coreModule, 0)
-      _ -> do
-        putStrLn $ "Unsupported file extension: " ++ show ext
-        exitWith (ExitFailure 1)
+    (iridiumFiles, shouldLink, warnings) <- if ext /= "iridium" then do
+        (coreModule, warnings) <- case ext of
+          "hs" -> compileHaskellToCore basedir fullName contents options lvmPath doneModules
+          "core" -> do
+            let tokens = Lvm.layout $ Lvm.lexer (1,1) contents
+            coreModule <- Lvm.parseModule fullName tokens
+            return (coreModule, 0)
+          _ -> do
+            putStrLn $ "Unsupported file extension: " ++ show ext
+            exitWith (ExitFailure 1)
 
-    -- Phase 10: Code generation
-    phaseCodeGenerator fullName coreModule options
-    
-    sendLog "C" fullName doneModules options
+        -- Phase 10: Code generation
+        phaseCodeGenerator fullName coreModule options
 
-    -- Phase 11: Code generation for Iridium
-    (files, shouldLink) <- phaseCodeGeneratorIridium lvmPath fullName coreModule options
+        sendLog "C" fullName doneModules options
+
+        -- Phase 11: Code generation for Iridium
+        (files, link) <- phaseCodeGeneratorIridium lvmPath fullName coreModule options
+        return (files, link, warnings)
+      else do
+        iridium <- case Iridium.parseModule contents of
+            Left err -> do
+                putStrLn $ "Failed to parse Iridium file " ++ show fullName
+                print err
+                exitWith (ExitFailure 1)
+            Right ir -> return ir
+        print iridium
+        return ([Iridium.IridiumFile fullName iridium True], False, 0)
+
+    -- Phase 12: Generate LLVM code
+    phaseCodeGeneratorLlvm iridiumFiles shouldLink options
 
     putStrLn $ "Compilation successful" ++
                   if warnings == 0 || (NoWarnings `elem` options)

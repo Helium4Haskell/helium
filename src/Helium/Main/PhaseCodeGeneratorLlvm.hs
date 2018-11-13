@@ -20,8 +20,8 @@ import Helium.CodeGeneration.LLVM.Env(envForModule)
 import qualified Data.Text.Lazy as Text
 import LLVM.Pretty (ppllvm)
 
-phaseCodeGeneratorLlvm :: String -> [IridiumFile] -> Bool -> [Option] -> IO ()
-phaseCodeGeneratorLlvm fullName files shouldLink options = do
+phaseCodeGeneratorLlvm :: [IridiumFile] -> Bool -> [Option] -> IO ()
+phaseCodeGeneratorLlvm files shouldLink options = do
   enterNewPhase "Code generation for LLVM" options
 
   let target = Target 64 48
