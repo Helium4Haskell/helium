@@ -1,5 +1,6 @@
 module Helium.Optimization.Types
     ( T(..)
+    , Ts(..)
     , Constraint(..)
     , TSub, (-$-)
     , Ann(..)
@@ -8,11 +9,9 @@ module Helium.Optimization.Types
     , (|^|)
     , (|^^|)
     , arity2T
-    , arity2TOld
     , assignT
     , applyT
     , freshT
-    , freshTOld
     , freshAnn
     , freshTVar
     , solveConstraints
@@ -24,17 +23,24 @@ import qualified Data.Map.Strict as Map
 import Data.Set (Set)
 import qualified Data.Set as Set
 --import qualified Data.Either as Either
-import qualified Data.List as List
+--import qualified Data.List as List
 import Helium.Utils.Utils
 
 import Helium.Optimization.Annotations
 import Helium.Optimization.Utils
+
+--import qualified Debug.Trace as Trace(trace)
+--traceShow :: Show a => String -> a -> a
+--traceShow s x = Trace.trace (s ++ ":" ++ show x) x
 
 data T = TAp T T -- [] a => [a], -> a b => a -> b
        | TCon String -- ->, [], Int
        | TVar Int -- a
        | TPred String T -- Num a|Eq a|Ord a|...
        | TAnn Anno T
+    deriving (Eq, Ord)
+
+data Ts = Ts (Set Int) T
     deriving (Eq, Ord)
 
 data Anno   = Anno1 Ann -- usage
@@ -61,6 +67,16 @@ instance Show T where
     show (TPred s t) = "(TPred \"" ++ s ++ "\" " ++ show t ++ ")"
     show (TAnn ann t) = show t ++ "^" ++ show ann
 
+instance Show Ts where
+    show (Ts vars t) = "forall" ++ show (Set.toList vars) ++ ". " ++ show t
+
+debug :: T -> String
+debug (TAp t1 t2) = "(TAp " ++ debug t1 ++ " " ++ debug t2 ++ ")"
+debug (TCon s) = "(TCon " ++ s ++ ")"
+debug (TVar i) = "(TVar " ++ show i ++ ")"
+debug (TPred s t) = "(TPred " ++ s ++ " " ++ debug t ++ ")"
+debug (TAnn ann t) = "(" ++ debug t ++ "^" ++ show ann ++ ")"
+
 isFreeIn :: Int -> T -> Bool
 isFreeIn i (TAp t1 t2) = i `isFreeIn` t1 || i `isFreeIn` t2
 isFreeIn i (TPred _ t) = i `isFreeIn` t
@@ -68,50 +84,24 @@ isFreeIn i (TAnn _ t) = i `isFreeIn` t
 isFreeIn _ (TCon _) = False
 isFreeIn i (TVar x) = i == x
 
-freshT :: T -> Fresh T
-freshT t = do
-    (_,_,t' )<- freshT' Set.empty t
-    return t'
-
-freshT' :: Set Int -> T -> Fresh (Set Int, TSub, T)
-freshT' changed (TAp t1 t2) = do
-    (changed', subs1, t1') <- freshT' changed t1
-    (changed'', subs2, t2') <- freshT' changed' (subs1 -$- t2)
-    return (changed'', subs2 -.- subs1, TAp t1' t2')
-freshT' changed (TPred s t) = do
-    (changed', subs, t') <- freshT' changed t
-    return (changed', subs, TPred s t')
-freshT' changed (TAnn ann t) = do
-    (changed', subs, t') <- freshT' changed t
-    return (changed', subs, TAnn ann t')
-freshT' changed t@(TCon _) = return (changed, idSub, t)
-freshT' changed t@(TVar i)
-    | Set.member i changed = return (changed, idSub, t)
-    | otherwise = do
-        tvar@(TVar uniqueId) <- freshTVar
-        return  ( Set.insert uniqueId changed
-                , sub i tvar
-                , tvar
-                )
-
-freshTOld :: Int -> T -> (Int, T)
-freshTOld uniqueId t =
-    let (uniqueId', _, _, t') = freshTOld' uniqueId Set.empty t
+freshT :: Int -> T -> (Int, T)
+freshT uniqueId t =
+    let (uniqueId', _, _, t') = freshT' uniqueId Set.empty t
     in  (uniqueId', t')
 
-freshTOld' :: Int -> Set Int -> T -> (Int, Set Int, TSub, T)
-freshTOld' uniqueId changed (TAp t1 t2) =
-    let (uniqueId', changed', subs1, t1') = freshTOld' uniqueId changed t1
-        (uniqueId'', changed'', subs2, t2') = freshTOld' uniqueId' changed' (subs1 -$- t2)
+freshT' :: Int -> Set Int -> T -> (Int, Set Int, TSub, T)
+freshT' uniqueId changed (TAp t1 t2) =
+    let (uniqueId', changed', subs1, t1') = freshT' uniqueId changed t1
+        (uniqueId'', changed'', subs2, t2') = freshT' uniqueId' changed' (subs1 -$- t2)
     in (uniqueId'', changed'', subs2 -.- subs1, TAp t1' t2')
-freshTOld' uniqueId changed (TPred s t) =
-    let (uniqueId', changed', subs, t') = freshTOld' uniqueId changed t
+freshT' uniqueId changed (TPred s t) =
+    let (uniqueId', changed', subs, t') = freshT' uniqueId changed t
     in  (uniqueId', changed', subs, TPred s t')
-freshTOld' uniqueId changed (TAnn ann t) =
-    let (uniqueId', changed', subs, t') = freshTOld' uniqueId changed t
+freshT' uniqueId changed (TAnn ann t) =
+    let (uniqueId', changed', subs, t') = freshT' uniqueId changed t
     in  (uniqueId', changed', subs, TAnn ann t')
-freshTOld' uniqueId changed t@(TCon _) = (uniqueId, changed, idSub, t)
-freshTOld' uniqueId changed t@(TVar i)
+freshT' uniqueId changed t@(TCon _) = (uniqueId, changed, idSub, t)
+freshT' uniqueId changed t@(TVar i)
     | Set.member i changed = (uniqueId, changed, idSub, t)
     | otherwise =
         ( uniqueId + 1
@@ -144,7 +134,7 @@ sub a t = Map.singleton a t
     a@(TVar i) -> Map.findWithDefault a i subs
 
 (-#-) :: TSub -> Constraint T -> Constraint T
-(-#-) subs (EqTy debug t1 t2) = EqTy debug (subs -$- t1) (subs -$- t2)
+(-#-) subs (EqTy d t1 t2) = EqTy d (subs -$- t1) (subs -$- t2)
 (-#-) _ eq = eq
 
 data Constraint ty
@@ -185,17 +175,8 @@ eqAll s (x:xs) (y:ys) = EqTy s x y : eqAll s xs ys
 eqAll _ [] [] = []
 eqAll s xs ys = internalError "Types.hs" "eqAll" ("Creating constraints for: " ++ s ++ " | unequal lengths remaining xs: " ++ show xs ++ " | remaining ys: " ++ show ys)
 
-arity2T :: Int -> Fresh T
-arity2T 0 = freshTVar
-arity2T arity
-    | arity > 0 = do
-        tvar <- freshTVar
-        tarity <- arity2T (arity - 1)
-        return $ tvar |-> tarity
-    | otherwise = internalError "Types.hs" "arity2T" "n smaller than 0"
-
-arity2TOld :: Int -> Int -> T
-arity2TOld start n
+arity2T :: Int -> Int -> T
+arity2T start n
     | n >= 0 = foldr (\a b -> (TVar a) |-> b) (TVar (start+n)) [(start)..(start+n-1)]
     | otherwise = internalError "Types.hs" "arity2T" "n smaller than 0"
 
@@ -212,69 +193,67 @@ tuple arity ts | arity == length ts = applyT (TCon ("(" ++ replicate (arity - 1)
 tuple arity ts = internalError "Types.hs" "tuple" ("Creating a tuple unit. arity: " ++ show arity ++ " != length ts: " ++ show ts)
 
 {- Constraint solver -}
-mapSnd :: (b->c) -> (a,b) -> (a,c)
-mapSnd f (a,b) = (a, f b)
+--mapSnd :: (b->c) -> (a,b) -> (a,c)
+--mapSnd f (a,b) = (a, f b)
 
-solveConstraints :: Int -> [Constraint T] -> (Int, TSub)
-solveConstraints uniqueId [] = (uniqueId, idSub)
-solveConstraints uniqueId (c:cs) =
-    let (uniqueId', subs) = (solveConstraint uniqueId c)
+solveConstraints :: [Constraint T] -> TSub
+solveConstraints [] = idSub
+solveConstraints (c:cs) =
+    let subs = (solveConstraint c)
         cs' = map (subs -#-) cs
-    in  mapSnd (-.- subs) (solveConstraints uniqueId' cs')
+    in  (solveConstraints cs') -.- subs
 
-solveConstraint :: Int -> Constraint T -> (Int, TSub)
-solveConstraint uniqueId (EqTy debug t1 t2) = throwPossibleErr debug $ tryUnify uniqueId t1 t2
-solveConstraint _ eq = internalError "Types.hs" "solveConstraint" ("Eq not yet supported: " ++ show eq)
+solveConstraint :: Constraint T -> TSub
+solveConstraint (EqTy d t1 t2) = throwPossibleErr d $ tryUnify t1 t2
+solveConstraint eq = internalError "Types.hs" "solveConstraint" ("Eq not yet supported: " ++ show eq)
 
 throwPossibleErr :: String -> Either String a -> a
-throwPossibleErr debug possibleErr = case possibleErr of
+throwPossibleErr d possibleErr = case possibleErr of
     Right subs -> subs
-    Left err -> internalError "Types.hs" "solveConstraint" ("Constraint : " ++ debug ++ " : " ++ err)
+    Left err -> internalError "Types.hs" "solveConstraint" ("Constraint : " ++ d ++ " : " ++ err)
 
-tryUnify :: Int -> T -> T -> Either String (Int, TSub)
-tryUnify uniqueId t1 t2 = traceUnify t1 t2 $ case (t1, t2) of
+tryUnify :: T -> T -> Either String TSub
+tryUnify t1 t2 = traceUnify t1 t2 $ case (t1, t2) of
+    (TAp (TAp (TCon "->") _) _, TAp (TAp (TCon "=>") _) _) -> tryUnify t2 t1
     (TAp (TAp (TCon "=>") preds1) t3, TAp (TAp (TCon "=>") preds2) t4) -> do
-        (uniqueId', subs1) <- tryUnify uniqueId preds1 preds2
-        (uniqueId'', subs2) <- tryUnify uniqueId' (subs1 -$- t3) (subs1 -$- t4)
-        Right $ (uniqueId'', subs2 -.- subs1)
-    (TAp (TAp (TCon "=>") preds1) t3, TAp (TAp (TCon "->") t4) t5) -> do
-            (uniqueId', subs1) <- tryUnify uniqueId preds1 t4
-            (uniqueId'', subs2) <- tryUnify uniqueId' (subs1 -$- t3) (subs1 -$- t5)
-            Right $ (uniqueId'', subs2 -.- subs1)
-    (TAp (TAp (TCon "->") _) _, TAp (TAp (TCon "=>") _) _) -> do
-        tryUnify uniqueId t2 t1
+        subs1 <- tryUnify preds1 preds2
+        subs2 <- tryUnify (subs1 -$- t3) (subs1 -$- t4)
+        Right $ subs2 -.- subs1
+    (TAp (TAp (TCon "=>") (TAp p preds)) t3, TAp (TAp (TCon "->") t4) t5) -> do
+        subs1 <- tryUnify p t4
+        subs2 <- tryUnify (subs1 -$- (TAp (TAp (TCon "=>") preds) t3)) (subs1 -$- t5)
+        Right $ subs2 -.- subs1
+    (TAp (TAp (TCon "=>") p) t3, TAp (TAp (TCon "->") t4) t5) -> do
+            subs1 <- tryUnify p t4
+            subs2 <- tryUnify (subs1 -$- t3) (subs1 -$- t5)
+            Right $ subs2 -.- subs1
     (TAp (TAp (TCon "->") t3) t4, TAp (TAp (TCon "->") t5) t6) -> do
-        (uniqueId', subs1) <- tryUnify uniqueId t3 t5
-        (uniqueId'', subs2) <- tryUnify uniqueId' (subs1 -$- t4) (subs1 -$- t6)
-        Right $ (uniqueId'', subs2 -.- subs1)
+        subs1 <- tryUnify t3 t5
+        subs2 <- tryUnify (subs1 -$- t4) (subs1 -$- t6)
+        Right $ subs2 -.- subs1
     (TAp t3 t4, TAp t5 t6) -> do
-        (uniqueId', subs1) <- tryUnify uniqueId t3 t5
-        (uniqueId'', subs2) <- tryUnify uniqueId' (subs1 -$- t4) (subs1 -$- t6)
-        Right $ (uniqueId'', subs2 -.- subs1)
+        subs1 <- tryUnify t3 t5
+        subs2 <- tryUnify (subs1 -$- t4) (subs1 -$- t6)
+        Right $ subs2 -.- subs1
     (TPred s1 t3, TPred s2 t4) ->
         if s1 == s2
-         then tryUnify uniqueId t3 t4
+         then tryUnify t3 t4
          else failUnify "Unequal predicates" t1 t2
-    (TCon n1, TCon n2) -> if n1 == n2 then Right (uniqueId, idSub) else failUnify "Unequal typeconstructors" t1 t2
-    (TVar a1, a2@(TVar _)) -> Right $ (uniqueId, sub a1 a2)
-    (TVar a1, t) -> if not $ a1 `isFreeIn` t then Right $ (uniqueId, sub a1 t) else failUnify "Not free" t1 t2
-    (t, a2@(TVar _)) -> tryUnify uniqueId a2 t
-    (TCon ('D':'i':'c':'t':_), _) -> tryUnify uniqueId t2 t1
-    (TPred s t, TCon ('D':'i':'c':'t':n)) -> case List.stripPrefix s n of
-        Just tstr -> tryUnify uniqueId t (TCon tstr)
-        Nothing -> failUnify ("stripPrefix s: " ++ s ++ " from n: " ++ n ++ "seems impossible") t1 t2
-    (t, TCon ('D':'i':'c':'t':n)) -> case List.reverse n of
-        ('t':'s':'i':'L':n') -> let p = List.reverse n' in tryUnify (uniqueId + 1) t ([(TPred p (TVar uniqueId))] |=> (TPred p (TAp (TCon "[]") (TVar uniqueId))))
-        _ -> case n of
-            ('E':'q':d) -> tryUnify (uniqueId + 1) t ([(TPred "Eq" (TVar uniqueId))] |=> (TPred "Eq" (TAp (TCon d) (TVar uniqueId))))
-            ('S':'h':'o':'w':d) -> tryUnify (uniqueId + 1) t ([(TPred "Show" (TVar uniqueId))] |=> (TPred "Show" (TAp (TCon d) (TVar uniqueId))))
-            _ -> failUnify "Dict{pred}{data}?" t1 t2
+    (TCon n1, TCon n2) -> if n1 == n2 then Right idSub else failUnify "Unequal typeconstructors" t1 t2
+    (TVar a1, a2@(TVar _)) -> Right $ sub a1 a2
+    (TVar a1, t) -> if not $ a1 `isFreeIn` t then Right $ sub a1 t else failUnify "Not free" t1 t2
+    (_, TVar _) -> tryUnify t2 t1
+    (TPred s1 t3, _) -> case s1 of -- EqTy "Decl"
+        "Eq" -> tryUnify (t3 |-> t3 |-> TCon "Bool") t2
+        "Show" -> tryUnify (t3 |-> (TAp (TCon "[]") (TCon "Char"))) t2
+        _ -> failUnify ("No function for " ++ s1 ++ "?") t1 t2
+    (_, TPred _ _) -> tryUnify t2 t1
     _ -> failUnify "?" t1 t2
 
 failUnify :: String -> T -> T -> Either String a
 failUnify reason t1 t2 = Left $ "\nUnable to unify t1: " ++ show t1 ++ " | with t2: " ++ show t2 ++ " | because : " ++ reason
 
-traceUnify :: T -> T -> Either String (Int, TSub) -> Either String (Int, TSub)
+traceUnify :: T -> T -> Either String a -> Either String a
 traceUnify t1 t2 trace = do -- creating a stacktrace on a fail
     case trace of
         Left err -> Left $ err ++ "\n=> trace: " ++ (fromLeft $ failUnify "trace" t1 t2)

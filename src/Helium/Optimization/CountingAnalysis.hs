@@ -2,11 +2,11 @@ module Helium.Optimization.CountingAnalysis(countingAnalysis) where
 
 import Helium.Optimization.LVM_Syntax
 
-import Data.Set (Set)
-import qualified Data.Set as Set
+--import Data.Set (Set)
+--import qualified Data.Set as Set
 
-countingAnalysis :: OptimizationModule -> OptimizationModule
-countingAnalysis (Module name majorV minorV decls) = Module name majorV minorV (analyseDecls decls)
+countingAnalysis :: OptimizeModule -> OptimizeModule
+countingAnalysis (OptimizeModule_Module name majorV minorV decls) = OptimizeModule_Module name majorV minorV (analyseDecls decls)
 
 analyseDecls :: Decls -> Decls
 analyseDecls decls = optimizedDecls
@@ -61,7 +61,7 @@ DATA Decl
 ----------
 -- Expr --
 ----------
-
+{-
 type GlobalEnv = Map Id Ts
 type LocalEnv = Map Id Ts
 type Constraints = Set Constraint
@@ -175,3 +175,4 @@ DATA Pat
     | Lit
         lit                     : Literal
     | Default
+-}
