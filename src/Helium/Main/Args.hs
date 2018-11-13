@@ -105,7 +105,7 @@ processRunHeliumArgs args = do
           terminateWithMessage options "Error in invocation: the name of the lvm file to be run seems to be missing." []
         Just _ ->
           return (options, maybeFiles)
-          
+
 -- Sometimes you know the options are correct. Then you can use this.
 argsToOptions :: [String] -> [Option]
 argsToOptions args =
@@ -121,7 +121,7 @@ basicProcessArgs defaults args =
     in if not (null errors) then
           terminateWithMessage options "Error in invocation: list of parameters is erroneous.\nProblem(s):"
                                (map ("  " ++) errors)
-    else        
+    else
         if length arguments > 1 then
             terminateWithMessage options ("Error in invocation: only one non-option parameter expected, but found instead:\n" ++ unlines (map ("  "++) arguments)) []
         else
@@ -196,6 +196,8 @@ optionDescription moreOptions experimentalOptions =
       , Option "" [flag (SelectConstraintNumber 0)]     (ReqArg selectCNR "CNR") "select constraint number to be reported"
       , Option "" [flag NoOverloadingTypeCheck]         (NoArg NoOverloadingTypeCheck)  "disable overloading errors (experimental)"
       , Option "" [flag NoPrelude]                      (NoArg NoPrelude)  "do not import the prelude (experimental)"
+      , Option "" [flag CountingAnalysisOne]            (NoArg CountingAnalysisOne) "do counting analysis for module"
+      , Option "" [flag CountingAnalysisAll]            (NoArg CountingAnalysisAll) "do counting analysis for all modules"
       ]
 
 
@@ -215,6 +217,7 @@ data Option
    | TreeWalkInorderTopFirstPost | TreeWalkInorderTopLastPost | SolverSimple | SolverGreedy
    | SolverTypeGraph | SolverCombination | SolverChunks | UnifierHeuristics
    | SelectConstraintNumber Int | NoOverloadingTypeCheck | NoPrelude | UseTutor
+   | CountingAnalysisOne | CountingAnalysisAll
  deriving (Eq)
 
 stripShow :: String -> String
@@ -277,6 +280,8 @@ instance Show Option where
  show NoOverloadingTypeCheck             = "--no-overloading-typecheck"
  show NoPrelude                          = "--no-prelude"
  show UseTutor                           = "--use-tutor"
+ show CountingAnalysisOne                = "--counting-analysis-one"
+ show CountingAnalysisAll                = "--counting-analysis-all"
 
 
 basePathFromOptions :: [Option] -> Maybe String

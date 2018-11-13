@@ -27,8 +27,8 @@ import Helium.Utils.Utils
 import Data.IORef
 import Helium.StaticAnalysis.Messages.StaticErrors(errorsLogCode)
 
-compile :: String -> String -> [Option] -> [String] -> [String] -> IO ()
-compile basedir fullName options lvmPath doneModules =
+compile :: String -> String -> [Option] -> [String] -> [String] -> Bool -> IO ()
+compile basedir fullName options lvmPath doneModules isTopMostModule =
     do
         let compileOptions = (options, fullName, doneModules)
         putStrLn ("Compiling " ++ fullName)
@@ -120,9 +120,9 @@ compile basedir fullName options lvmPath doneModules =
         -- Phase 10: Normalization
         normalizedCoreModule <- phaseNormalize coreModule options
         -- Phase 11: Optimization
-        optimizedCoreModule <- phaseOptimize normalizedCoreModule options
+        optimizedCoreModule <- phaseOptimize fullName normalizedCoreModule options isTopMostModule
         -- Phase 12: Code generation
-        phaseCodeGenerator fullName optimizedCoreModule options
+        phaseCodeGenerator fullName {-normalizedCoreModule-} optimizedCoreModule options
 
         sendLog "C" fullName doneModules options
 
