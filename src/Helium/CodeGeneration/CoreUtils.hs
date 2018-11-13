@@ -11,7 +11,7 @@ module Helium.CodeGeneration.CoreUtils
     ,   stringToCore, coreList
     ,   let_, if_, app_, letrec_
     ,   cons, nil
-    ,   var, decl, char
+    ,   var, decl, char, charOrd
     ,   float, packedString
     ) where
 
@@ -100,6 +100,9 @@ var x = Var (idFromString x)
 
 char :: Char -> Expr
 char x = var "primChr" `app_` (Lit (LitInt (ord x)))
+
+charOrd :: Expr -> Expr
+charOrd expr = var "primOrd" `app_` expr
 
 --Core.Lit (Core.LitDouble (read @value))   PUSHFLOAT nog niet geimplementeerd
 float :: String -> Expr

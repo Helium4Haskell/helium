@@ -16,33 +16,35 @@ import Lvm.Core.Utils
 import Lvm.Common.Id
 import Helium.Utils.Utils
 
+import qualified Debug.Trace as Trace
+
 -- Eq Dictionary for a data type declaration
 dataDictionary :: UHA.Declaration -> CoreDecl
 dataDictionary  (UHA.Declaration_Data _ _ (UHA.SimpleType_SimpleType _ name names) constructors _) =
-    DeclValue 
+    DeclValue
     { declName    = idFromString ("$dictEq" ++ getNameName name)
     , declAccess  = public
     , valueEnc    = Nothing
     , valueValue  = eqFunction names constructors
-    , declCustoms = [ custom "type" ("DictEq" ++ getNameName name) ] 
+    , declCustoms = [ custom "type" ("DictEq" ++ getNameName name) ]
     }
-  where  
+  where
 dataDictionary _ = error "pattern match failure in CodeGeneration.Deriving.dataDictionary"
 
 -- Example: data X a b = C a b Int | D Char b
 eqFunction :: [UHA.Name] -> [UHA.Constructor] -> Expr
-eqFunction names constructors = 
-    let 
-        body = 
+eqFunction names constructors =
+    let
+        body =
             Let (Strict (Bind fstArg (Var fstArg))) -- evaluate both
                 (Let (Strict (Bind sndArg (Var sndArg)))
                     (Match fstArg  -- case $fstArg of ...
-                        (map makeAlt constructors))) 
+                        (map makeAlt constructors)))
     in
         foldr Lam body (map idFromName names ++ [fstArg, sndArg]) -- \a b $fstArg $sndArg ->
 
-fstArg, sndArg :: Id        
-[fstArg, sndArg] = map idFromString ["$fstArg", "$sndArg"] 
+fstArg, sndArg :: Id
+[fstArg, sndArg] = map idFromString ["$fstArg", "$sndArg"]
 
 makeAlt :: UHA.Constructor -> Alt
 makeAlt constructor =
@@ -54,11 +56,11 @@ makeAlt constructor =
             --                      ?? $v1 $w1 &&
             --                      ?? $v2 $w2
             --                  _ -> False
-            (Match sndArg 
+            (Match sndArg
                 [ Alt (PatCon (ConId ident) ws)
                       ( if null types then Con (ConId (idFromString "True"))
                         else
-                            foldr1 andCore [ Ap (Ap (eqFunForType tp) (Var v)) (Var w)
+                            foldr1 andCore [ Ap (Ap (Ap (var "==") (eqFunForType tp)) (Var v)) (Var w)
                                            | (v, w, tp) <- zip3 vs ws types
                                            ]
                       )
@@ -72,7 +74,7 @@ makeAlt constructor =
     constructorToPat id ts =
         PatCon (ConId ident) [ idFromNumber i | i <- [1..length ts] ] -}
     andCore x y = Ap (Ap (Var (idFromString "&&")) x) y
-    
+
 nameAndTypes :: UHA.Constructor -> (Id, [UHA.Type])
 nameAndTypes c =
     case c of
@@ -87,9 +89,9 @@ nameAndTypes c =
 --idFromNumber i = idFromString ("v$" ++ show i)
 
 eqFunForType :: UHA.Type -> Expr
-eqFunForType t = 
+eqFunForType t =
     case t of
-        UHA.Type_Variable _ n             -> Var (idFromName n) 
+        UHA.Type_Variable _ n             -> Var (idFromName n)
         UHA.Type_Constructor _ n          -> var ("$dictEq" ++ show n)
         UHA.Type_Application _ _ f xs     -> foldl Ap (eqFunForType f) (map eqFunForType xs)
         UHA.Type_Parenthesized _ ty       -> eqFunForType  ty

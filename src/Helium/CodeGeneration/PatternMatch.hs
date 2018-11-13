@@ -88,16 +88,10 @@ patternToCore' (name, pat) continue nr =
                 Literal_Int _ i -> withNr nr $
                     case_ name [ Core.Alt (Core.PatLit (Core.LitInt (read i))) continue ]
                 Literal_Char _ c -> withNr nr $
-                    if_ (var "primEqChar" `app_` (char (read ("'" ++ c ++ "'"))) `app_` Core.Var name)
-                        continue
-                        (Core.Var nextClauseId)
-                    --case_ name
-                    --[ Core.Alt
-                    --    (Core.PatLit
-                    --        (char (read ("'" ++ c ++ "'")))
-                    --    )
+                    --if_ (var "primEqChar" `app_` (char (read ("'" ++ c ++ "'"))) `app_` Core.Var name)
                     --    continue
-                    --]
+                    --    (Core.Var nextClauseId)
+                    caseChar_ name [ Core.Alt (Core.PatLit (Core.LitInt (ord (read ("'" ++ c ++ "'"))))) continue ]
                 Literal_Float _ f -> withNr nr $
                     if_ (var "$primEqFloat" `app_` float f `app_` Core.Var name)
                         continue
@@ -217,5 +211,11 @@ case_ :: Id -> [Core.Alt] -> Core.Expr
 case_ ident alts =
     Core.Let
         (Core.Strict (Core.Bind ident (Core.Var ident)))      -- let! id = id in
+        (Core.Match ident (alts++[nextClauseAlternative]))    -- match id { alt; ...; alt; _ -> _nextClause }
+
+caseChar_ :: Id -> [Core.Alt] -> Core.Expr
+caseChar_ ident alts =
+    Core.Let
+        (Core.Strict (Core.Bind ident (charOrd (Core.Var ident))))      -- let! id = primOrd id in
         (Core.Match ident (alts++[nextClauseAlternative]))    -- match id { alt; ...; alt; _ -> _nextClause }
 
