@@ -12,16 +12,22 @@ module Helium.Optimization.Types
     , assignT
     , applyT
     , freshT
+    , freshTfromTs
     , freshAnn
     , freshTVar
     , solveConstraints
     , splitCons
     , eqAll
+    , ftv
+    , t2ts
+    , ts2t
+    , t2tsall
     , tuple) where
 import Data.Map.Strict (Map)
 import qualified Data.Map.Strict as Map
 import Data.Set (Set)
 import qualified Data.Set as Set
+import qualified Data.Maybe as Maybe
 --import qualified Data.Either as Either
 --import qualified Data.List as List
 import Helium.Utils.Utils
@@ -29,9 +35,9 @@ import Helium.Utils.Utils
 import Helium.Optimization.Annotations
 import Helium.Optimization.Utils
 
---import qualified Debug.Trace as Trace(trace)
---traceShow :: Show a => String -> a -> a
---traceShow s x = Trace.trace (s ++ ":" ++ show x) x
+import qualified Debug.Trace as Trace(trace)
+traceShow :: Show a => String -> a -> a
+traceShow s x = Trace.trace (s ++ ":" ++ show x) x
 
 data T = TAp T T -- [] a => [a], -> a b => a -> b
        | TCon String -- ->, [], Int
@@ -84,34 +90,51 @@ isFreeIn i (TAnn _ t) = i `isFreeIn` t
 isFreeIn _ (TCon _) = False
 isFreeIn i (TVar x) = i == x
 
-freshT :: Int -> T -> (Int, T)
-freshT uniqueId t =
-    let (uniqueId', _, _, t') = freshT' uniqueId Set.empty t
-    in  (uniqueId', t')
+freshTfromTs :: Int -> Ts -> (Int, T)
+freshTfromTs uniqueId (Ts vars t) =
+    let zippedVars = zip (Set.toList vars) [uniqueId..]
+        newVars = Map.fromList zippedVars
+        uniqueId' = snd $ Maybe.fromMaybe (0,uniqueId) $ maybeLast zippedVars
+        t' = freshT newVars t
+    in  (uniqueId' + 1, t')
+    where
+    maybeLast :: [a] -> Maybe a
+    maybeLast [] = Nothing
+    maybeLast [x] = Just x
+    maybeLast (_:xs) = maybeLast xs
 
-freshT' :: Int -> Set Int -> T -> (Int, Set Int, TSub, T)
-freshT' uniqueId changed (TAp t1 t2) =
-    let (uniqueId', changed', subs1, t1') = freshT' uniqueId changed t1
-        (uniqueId'', changed'', subs2, t2') = freshT' uniqueId' changed' (subs1 -$- t2)
-    in (uniqueId'', changed'', subs2 -.- subs1, TAp t1' t2')
-freshT' uniqueId changed (TPred s t) =
-    let (uniqueId', changed', subs, t') = freshT' uniqueId changed t
-    in  (uniqueId', changed', subs, TPred s t')
-freshT' uniqueId changed (TAnn ann t) =
-    let (uniqueId', changed', subs, t') = freshT' uniqueId changed t
-    in  (uniqueId', changed', subs, TAnn ann t')
-freshT' uniqueId changed t@(TCon _) = (uniqueId, changed, idSub, t)
-freshT' uniqueId changed t@(TVar i)
-    | Set.member i changed = (uniqueId, changed, idSub, t)
-    | otherwise =
-        ( uniqueId + 1
-        , Set.insert uniqueId changed
-        , sub i (TVar uniqueId)
-        , TVar uniqueId
-        )
+freshT :: Map Int Int -> T -> T
+freshT newVars (TAp t1 t2) =
+    let t1' = freshT newVars t1
+        t2' = freshT newVars t2
+    in TAp t1' t2'
+freshT newVars (TPred s t) =
+    let t' = freshT newVars t
+    in  TPred s t'
+freshT newVars (TAnn ann t) =
+    let t' = freshT newVars t
+    in  TAnn ann t'
+freshT _ t@(TCon _) = t
+freshT newVars (TVar i) = TVar (Maybe.fromMaybe i $ Map.lookup i newVars)
 
 freshTVar :: Fresh T
 freshTVar = TVar <$> fresh
+
+t2ts :: T -> Ts
+t2ts t = Ts Set.empty t
+
+ts2t :: Ts -> T
+ts2t (Ts _ t) = t
+
+t2tsall :: T -> Ts
+t2tsall t = Ts (ftv t) t
+
+ftv :: T -> Set Int
+ftv (TAp t1 t2) = Set.union (ftv t1) (ftv t2)
+ftv (TPred _ t) = ftv t
+ftv (TAnn _ t) = ftv t
+ftv (TCon _) = Set.empty
+ftv (TVar i) = Set.singleton i
 
 {- Substitutions -}
 type TSub = Map Int T
@@ -199,7 +222,7 @@ tuple arity ts = internalError "Types.hs" "tuple" ("Creating a tuple unit. arity
 solveConstraints :: [Constraint T] -> TSub
 solveConstraints [] = idSub
 solveConstraints (c:cs) =
-    let subs = (solveConstraint c)
+    let subs = solveConstraint c
         cs' = map (subs -#-) cs
     in  (solveConstraints cs') -.- subs
 

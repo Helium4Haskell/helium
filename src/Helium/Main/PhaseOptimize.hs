@@ -23,9 +23,9 @@ phaseOptimize fullName coreModule options isTopMostModule = do
 
     let optimizeModule = LVM_Syntax.coreModule2OptimizeModule coreModule
     let showIt = LVM_Syntax.showIt optimizeModule
-    --print showIt -- Shows the types of the functions and their corresponding top types
+    print showIt -- Shows the types of the functions and their corresponding top types {Important: This forces the typesystem}
     let letBangs = getLetBangs optimizeModule
-    --putStrLn $ showLetBangs letBangs -- For comparison after added strictness
+    putStrLn $ showLetBangs letBangs -- For comparison after added strictness
     if (CountingAnalysisAll `elem` options) || (CountingAnalysisOne `elem` options && isTopMostModule)
      then
     {- Handle Counting Analysis after here -}
