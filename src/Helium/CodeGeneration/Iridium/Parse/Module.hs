@@ -58,7 +58,7 @@ pModule = do
   pWhitespace
   let emptyModule = Module name dependencies [] [] [] []
   decls <- pSome pModuleDeclaration (not <$ pWhitespace <*> isEndOfFile)
-  return $ foldl (\m f -> f m) emptyModule decls
+  return $ foldr (\f m -> f m) emptyModule decls
 
 pModuleDeclaration :: Parser (Module -> Module)
 pModuleDeclaration = pDeclaration f
@@ -72,29 +72,6 @@ pModuleDeclaration = pDeclaration f
 parseModule :: String -> Either ParseError Module
 parseModule = parse pModule
 
-{-
-instance Show Module where
-  show (Module name dependencies customs decls abstracts methods) =
-    "module " ++ show name ++ "\n"
-    ++ importString
-    ++ (customs >>= ('\n' :) . show)
-    ++ (decls >>= ('\n' :) . show)
-    ++ (abstracts >>= ('\n' :) . show)
-    ++ (methods >>= ('\n' :) . show)
-    where
-      importString = "import " ++ showArguments' (stringFromId) dependencies ++ "\n"
-
-
-data Module = Module
-  { moduleName :: !Id
-  , moduleDependencies :: ![Id]
-  , moduleCustoms :: ![Declaration CustomDeclaration]
-  , moduleDataTypes :: ![Declaration DataType]
-  , moduleAbstractMethods :: ![Declaration AbstractMethod]
-  , moduleMethods :: ![Declaration Method]
-  }
-
-  -}
 addCustom :: Declaration CustomDeclaration -> Module -> Module
 addCustom c m = m{ moduleCustoms = c : moduleCustoms m }
 
