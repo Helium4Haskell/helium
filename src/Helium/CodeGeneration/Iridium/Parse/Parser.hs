@@ -60,7 +60,7 @@ pWord = pManySatisfy validWordChar
 lookahead :: Parser Char
 lookahead = Parser f
   where
-    f [] = (Left "unexpected EOF", [])
+    f [] = (Right '\0', "")
     f str@(c : _) = (Right c, str)
 
 isEndOfFile :: Parser Bool
@@ -72,7 +72,7 @@ isEndOfFile = Parser f
 pChar :: Parser Char
 pChar = Parser f
   where
-    f [] = (Left "unexpected EOF", [])
+    f [] = (Left "unexpected EOF while reading a single character", [])
     f (c : str) = (Right c, str)
 
 pToken :: Char -> Parser ()
@@ -136,7 +136,7 @@ pString = read <$> Parser f
     g ('\\' : c : str) = prepend '\\' $ prepend c $ g str
     g ('"' : str) = (Right "\"", str)
     g (c : str) = prepend c $ g str
-    g [] = (Left "unexpected EOF", [])
+    g [] = (Left "unexpected EOF while parsing a string", [])
     prepend :: Char -> (Either String String, String) -> (Either String String, String)
     prepend c (Right str, remaining) = (Right $ c : str, remaining)
     prepend _ r = r
