@@ -59,7 +59,7 @@ insertedMain classEnv tse toplevelTypes =
     where
         unsafePIO = var "$primUnsafePerformIO"    
                 
-
+}
 
 SEM Module
     | Module    -- insert "insertedMain" after modulePublic so that it remains private
