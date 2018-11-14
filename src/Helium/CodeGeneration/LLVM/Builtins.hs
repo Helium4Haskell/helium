@@ -16,11 +16,12 @@ builtin :: String -> [Type] -> Type -> Builtin
 builtin = Builtin . mkName
 
 eval', alloc', unpackString' :: Builtin
-eval' = builtin "_$helium_runtime_eval" [voidPointer, bool] voidPointer
+eval' = builtin "_$helium_runtime_eval" [voidPointer, IntegerType 64] voidPointer
 -- Alignment, size (number of bytes)
-alloc' = builtin "_$helium_runtime_alloc" [IntegerType 32, IntegerType 32] voidPointer
+alloc' = builtin "malloc" [IntegerType 32] voidPointer
 -- Size, pointer to character (i32) array
-unpackString' = builtin "_$helium_runtime_unpack_string" [IntegerType 32, pointer $ ArrayType 0 $ IntegerType 32] (NamedTypeReference $ mkName "$data_[]")
+-- TODO: use target pointer size
+unpackString' = builtin "_$helium_runtime_unpack_string" [IntegerType 64, pointer $ IntegerType 8] (NamedTypeReference $ mkName "$data_[]")
 
 builtins :: [Builtin]
 builtins = [eval', alloc', unpackString']
@@ -43,7 +44,7 @@ definition (Builtin name args ret) = GlobalDefinition $ Function
   { Global.linkage = External
   , Global.visibility = Default
   , Global.dllStorageClass = Nothing
-  , Global.callingConvention = Fast
+  , Global.callingConvention = C
   , Global.returnAttributes = []
   , Global.returnType = ret
   , Global.name = name
