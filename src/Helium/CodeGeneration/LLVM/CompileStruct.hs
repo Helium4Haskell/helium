@@ -68,7 +68,7 @@ additionalHeaderFields env struct
 
 findFlagInHeader :: Env -> Struct -> Int -> (Int, Int)
 findFlagInHeader env struct index
-  | index < flagsInFirstWord = (0, index)
+  | index < flagsInFirstWord = (0, wordSize - flagsInFirstWord + index)
   | otherwise = (indexAfterFirstElement `div` wordSize, indexAfterFirstElement `mod` wordSize)
   where
     target = envTarget env
@@ -135,7 +135,7 @@ writeFields :: NameSupply -> Env -> Operand -> Struct -> [Maybe (Operand, Operan
 writeFields supply env operand struct values headers = foldr f (headers, []) compiledFields
   where
     f :: ([Operand] -> ([Operand], [Named Instruction])) -> ([Operand], [Named Instruction]) -> ([Operand], [Named Instruction])
-    f field (headers, instrs) = (newHeaders, fInstrs ++ instrs)
+    f field (headers, instrs) = (newHeaders, instrs ++ fInstrs)
       where
         (newHeaders, fInstrs) = field headers
     compiledFields :: [[Operand] -> ([Operand], [Named Instruction])]
