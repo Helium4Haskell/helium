@@ -92,7 +92,7 @@ instance Show Case where
       showBranch (lit, to) = "\n" ++ instructionIndent ++ "  " ++ show lit ++ " to " ++ stringFromId to
 
 instance Show Instruction where
-  show (Let var expr next) = instructionIndent ++ "let %" ++ showId var ++ " = " ++ show expr ++ "\n" ++ show next
+  show (Let var expr next) = instructionIndent ++ "%" ++ showId var ++ " = " ++ show expr ++ "\n" ++ show next
   show (LetAlloc binds next) = instructionIndent ++ "letalloc " ++ intercalate ", " (map show binds) ++ "\n" ++ show next
   show (Jump to) = instructionIndent ++ "jump " ++ show to
   show (Match var con args next) = instructionIndent ++ "match " ++ show var ++ " on " ++ show con ++ " " ++ showArguments' showField args ++ "\n" ++ show next
@@ -175,7 +175,7 @@ instance Show PrimitiveType where
   show (TypeAnyWHNF) = "any_whnf"
 
   show (TypeInt) = "int"
-  show (TypeDataType name) = "data @" ++ showId name
+  show (TypeDataType name) = "@" ++ showId name
   show (TypeFunction) = "anyfunction"
   show (TypeGlobalFunction fntype) = "function " ++ show fntype
 

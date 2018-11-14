@@ -6,17 +6,20 @@ import Helium.CodeGeneration.Iridium.Type
 
 pType :: Parser PrimitiveType
 pType = do
-  key <- pWord
-  case key of
-    "any" -> return TypeAny
-    "any_thunk" -> return TypeAnyThunk
-    "any_whnf" -> return TypeAnyWHNF
-    "int" -> return TypeInt
-    "anyfunction" -> return TypeFunction
-    "function" -> TypeGlobalFunction <$> pFunctionType
-    "data" -> TypeDataType <$ pWhitespace <* pToken '@' <*> pId
-    "unsafeptr" -> return TypeUnsafePtr
-    _ -> pError "expected type"
+  c <- lookahead
+  if c == '@' then
+    TypeDataType <$ pChar <*> pId
+  else do
+    key <- pWord
+    case key of
+      "any" -> return TypeAny
+      "any_thunk" -> return TypeAnyThunk
+      "any_whnf" -> return TypeAnyWHNF
+      "int" -> return TypeInt
+      "anyfunction" -> return TypeFunction
+      "function" -> TypeGlobalFunction <$> pFunctionType
+      "unsafeptr" -> return TypeUnsafePtr
+      _ -> pError "expected type"
 
 pFunctionType :: Parser FunctionType
 pFunctionType = FunctionType <$> pArguments pType <* pWhitespace <* pToken '-' <* pToken '>' <* pWhitespace <*> pType

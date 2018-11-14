@@ -7,27 +7,30 @@ import Helium.CodeGeneration.Iridium.Data
 
 pInstruction = do
   pWhitespace
-  key <- pKeyword
-  case key of
-    "let" -> Let <$ pToken '%' <*> pId <* pWhitespace <* pToken '=' <* pWhitespace <*> pExpression <*> pInstruction
-    "letalloc" -> LetAlloc <$> pSome pBind pSep <*> pInstruction
-      where
-        pSep :: Parser Bool
-        pSep = do
-          pWhitespace
-          c <- lookahead
-          if c == ',' then do
-            pChar
-            pWhitespace
-            return True
-          else
-            return False
-    "jump" -> Jump <$> pId
-    "match" -> Match <$> pVariable <* pWhitespace <* pSymbol "on" <* pWhitespace <*> pDataTypeConstructor <* pWhitespace <*> pArguments pMatchField <*> pInstruction
-    "case" -> Case <$> pVariable <* pWhitespace <*> pCase
-    "return" -> Return <$> pVariable
-    "unreachable" -> return Unreachable
-    _ -> pError "expected instruction"
+  c <- lookahead
+  case c of
+    '%' -> Let <$ pChar <*> pId <* pWhitespace <* pToken '=' <* pWhitespace <*> pExpression <*> pInstruction
+    _ -> do
+      key <- pKeyword
+      case key of
+        "letalloc" -> LetAlloc <$> pSome pBind pSep <*> pInstruction
+          where
+            pSep :: Parser Bool
+            pSep = do
+              pWhitespace
+              c <- lookahead
+              if c == ',' then do
+                pChar
+                pWhitespace
+                return True
+              else
+                return False
+        "jump" -> Jump <$> pId
+        "match" -> Match <$> pVariable <* pWhitespace <* pSymbol "on" <* pWhitespace <*> pDataTypeConstructor <* pWhitespace <*> pArguments pMatchField <*> pInstruction
+        "case" -> Case <$> pVariable <* pWhitespace <*> pCase
+        "return" -> Return <$> pVariable
+        "unreachable" -> return Unreachable
+        _ -> pError "expected instruction"
 
 pMatchField :: Parser (Maybe Local)
 pMatchField = do
