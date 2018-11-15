@@ -126,7 +126,8 @@ compileWrite _ supply [pointer, value] name =
 compileThunkExtractTag :: PrimitiveCompiler
 compileThunkExtractTag target supply [pointer] name =
   [ namePtr LLVM.:= LLVM.BitCast pointer ptrType []
-  , (if is32Bit then name else nameValue) LLVM.:= LLVM.Load False (LLVM.LocalReference ptrType namePtr) Nothing 0 []
+  , nameElementPtr LLVM.:= getElementPtr (LLVM.LocalReference ptrType namePtr) [if is32Bit then 2 else 1]
+  , (if is32Bit then name else nameValue) LLVM.:= LLVM.Load False (LLVM.LocalReference ptrType nameElementPtr) Nothing 0 []
   ] ++ if is32Bit then [] else
     [ name LLVM.:= LLVM.And (LLVM.LocalReference intType nameValue) (LLVM.ConstantOperand $ LLVMConstant.Int (fromIntegral wordSize) 0xFFFFFFFF) [] ]
   where
@@ -135,7 +136,8 @@ compileThunkExtractTag target supply [pointer] name =
     wordSize = targetWordSize target
     is32Bit = wordSize == 32
     (namePtr, supply') = freshName supply
-    (nameValue, _) = freshName supply'
+    (nameElementPtr, supply'') = freshName supply'
+    (nameValue, _) = freshName supply''
 
 -- Result value is not defined for this construct. 
 compileThunkWriteTag :: PrimitiveCompiler

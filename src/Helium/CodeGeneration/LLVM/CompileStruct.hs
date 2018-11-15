@@ -40,9 +40,9 @@ structTypeNoAlias env struct = StructureType False (headerStruct : fieldTypes)
     getFieldType (StructField Iridium.TypeAny _) = voidPointer
     getFieldType (StructField t _) = compileType env t
     fieldTypes = map getFieldType $ fields struct
--- Example for a 32 bit system, with 48 gc bits. The first header element thus needs 64 bits (first multiple of 32 bits larger than 48).
+-- Example for a 32 bit system, with 48 gc bits. The first header element thus needs 64 bits (first multiple of 32, larger than 48).
 -- If the tag is large or if there are many flags needed, we need additional 32-bit sized fields.
--- { { i64, i32, i32 }, i8*, i8*, i8*, i8* }
+-- { { i64, i32, i32 }, i8*, i8*, i8*, i8*, ... }
 
 flagCount :: Struct -> Int
 flagCount struct = length (filter (\f -> isJust $ fieldFlagIndex f) $ fields struct)
@@ -108,7 +108,7 @@ initialize supply env reference struct fieldValues
     (supplyHeader, supplyFields) = splitNameSupply supply
 
     initialHeader = ConstantOperand (Constant.Int (fromIntegral $ headerElementSize env 0) (initialHeaderValue 0))
-      : map (\i -> ConstantOperand $ Constant.Int (fromIntegral $ headerElementSize env i) (initialHeaderValue i)) [0..additionalHeaderFields env struct - 1]
+      : map (\i -> ConstantOperand $ Constant.Int (fromIntegral $ headerElementSize env i) (initialHeaderValue i)) [1..additionalHeaderFields env struct]
     initialHeaderValue index
       | index == 0 && tagInFirstElement env struct = fromIntegral $ tagValue struct `shiftL` targetGarbageCollectorBits (envTarget env)
       | index == 1 && not (tagInFirstElement env struct) = fromIntegral $ tagValue struct
