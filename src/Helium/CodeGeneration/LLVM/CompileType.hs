@@ -1,4 +1,4 @@
-module Helium.CodeGeneration.LLVM.CompileType (compileType, toOperand, taggedThunkPointer, bool, pointer, voidPointer, splitValueFlag, cast, compileCallingConvention) where
+module Helium.CodeGeneration.LLVM.CompileType (compileType, toOperand, taggedThunkPointer, bool, pointer, trampolineType, voidPointer, splitValueFlag, cast, compileCallingConvention) where
 
 import Lvm.Common.Id(Id, freshId, stringFromId, NameSupply)
 import Helium.CodeGeneration.LLVM.Env (Env(..))
@@ -29,6 +29,9 @@ compileType env Iridium.TypeUnsafePtr = voidPointer
 
 compileFunctionType :: Env -> Iridium.FunctionType -> Type
 compileFunctionType env (Iridium.FunctionType args returnType) = pointer $ FunctionType (compileType env returnType) (map (compileType env) args) False
+
+trampolineType :: Type
+trampolineType = pointer $ FunctionType voidPointer [voidPointer] False
 
 bool :: Type
 bool = IntegerType 1

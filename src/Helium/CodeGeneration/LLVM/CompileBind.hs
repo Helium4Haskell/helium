@@ -49,11 +49,11 @@ compileBind' env supply (Iridium.Bind varId target args) (Right struct) =
   ( concat splitInstructions
     ++ allocate env nameVoid nameStruct t struct
     ++ [toName varId := BitCast (LocalReference voidPointer nameVoid) (expectedType target) []]
-  , initialize supplyInit env (LocalReference (pointer t) nameStruct) struct argOperands
+  , initialize supplyInit env (LocalReference (pointer t) nameStruct) struct $ bindArguments env target argOperands
   )
   where
     t = structType env struct
-    (splitInstructions, argOperands) = unzip $ mapWithSupply (splitValueFlag env) supplyArgs $ bindArguments target args
+    (splitInstructions, argOperands) = unzip $ mapWithSupply (splitValueFlag env) supplyArgs args
     (supplyArgs, supply1) = splitNameSupply supply
     (supplyInit, supply2) = splitNameSupply supply1
     (nameVoid, supply3) = freshName supply2
@@ -73,12 +73,16 @@ toStruct env (Iridium.BindTargetFunction var) arity = Right $ Struct Nothing 32 
     remaining = case var of
       Iridium.VarLocal _ -> (1 `shiftL` 16) - 1 -- All 16 bits to 1
       Iridium.VarGlobal (Iridium.Global _ (Iridium.FunctionType args _)) -> length args - arity
-    fields = StructField (Iridium.variableType var) Nothing : map (\i -> StructField Iridium.TypeAny (Just i)) [0..arity - 1] 
+    fields = StructField (Iridium.TypeGlobalFunction $ Iridium.FunctionType [Iridium.TypeUnsafePtr] Iridium.TypeAnyWHNF) Nothing : map (\i -> StructField Iridium.TypeAny (Just i)) [0..arity - 1] 
+
+toTrampolineOperand :: Env -> Iridium.Variable -> Operand
+toTrampolineOperand _ (Iridium.VarGlobal (Iridium.Global fn _)) = ConstantOperand $ Constant.GlobalReference trampolineType $ toNamePrefixed "trampoline$" fn
+toTrampolineOperand env local = toOperand env local
 
 -- A thunk has an additional argument, namely the function. We add that argument here
-bindArguments :: Iridium.BindTarget -> [Iridium.Variable] -> [Iridium.Variable]
-bindArguments (Iridium.BindTargetFunction var) = (var :)
-bindArguments _ = id
+bindArguments :: Env -> Iridium.BindTarget -> [(Operand, Operand)] -> [(Operand, Operand)]
+bindArguments env (Iridium.BindTargetFunction var) = ((toTrampolineOperand env var, ConstantOperand $ Constant.Int 1 1) :)
+bindArguments env _ = id
 
 expectedType :: Iridium.BindTarget -> Type
 expectedType (Iridium.BindTargetConstructor (Iridium.DataTypeConstructor dataId _ _)) = NamedTypeReference $ toNamePrefixed "$data_" dataId
