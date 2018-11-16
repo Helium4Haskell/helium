@@ -6,7 +6,7 @@
     Portability :  portable
 -}
 
-module Helium.Parser.ParseLibrary where 
+module Helium.Parser.ParseLibrary where
 
 import Text.ParserCombinators.Parsec hiding (satisfy)
 import Text.ParserCombinators.Parsec.Pos(newPos)
@@ -22,21 +22,21 @@ type HParser a = GenParser Token SourcePos a
 
 runHParser :: HParser a -> FilePath -> [Token] -> Bool -> Either ParseError a
 runHParser p fname theTokens withEOF =
-    runParser 
-        (if withEOF then waitForEOF p else p) 
-        (newPos fname 0 0) 
-        fname 
+    runParser
+        (if withEOF then waitForEOF p else p)
+        (newPos fname 0 0)
+        fname
         theTokens
 
 waitForEOF :: ParsecT [Token] SourcePos Identity b
-              -> ParsecT [Token] SourcePos Identity b        
+              -> ParsecT [Token] SourcePos Identity b
 waitForEOF p
   = do{ x <- p
       ; lexeme LexEOF
       ; return x
       }
 
-tycls, tycon, tyvar, modid, varid, conid, consym, varsym :: ParsecT [Token] SourcePos Identity Name      
+tycls, tycon, tyvar, modid, varid, conid, consym, varsym :: ParsecT [Token] SourcePos Identity Name
 tycls   = name   lexCon  <?> Texts.parserTypeClass
 tycon   = name   lexCon  <?> Texts.parserTypeConstructor
 tyvar   = name   lexVar  <?> Texts.parserTypeVariable
@@ -45,13 +45,13 @@ varid   = name   lexVar  <?> Texts.parserVariable
 conid   = name   lexCon  <?> Texts.parserVariable
 consym  = opName lexConSym
        <?> Texts.parserOperator
-varsym  = opName (   lexVarSym 
-                 <|> do { lexMIN;    return "-" } 
+varsym  = opName (   lexVarSym
+                 <|> do { lexMIN;    return "-" }
                  <|> do { lexMINDOT; return "-." }
                  )
        <?> Texts.parserOperator
 
--- var  ->  varid | ( varsym )  (variable)  
+-- var  ->  varid | ( varsym )  (variable)
 var :: ParsecT [Token] SourcePos Identity Name
 var = varid <|> parens varsym
    <?> Texts.parserVariable
@@ -61,37 +61,37 @@ con :: ParsecT [Token] SourcePos Identity Name
 con = conid <|> parens consym
    <?> Texts.parserVariable
 
--- op  ->  varop | conop  (operator)  
+-- op  ->  varop | conop  (operator)
 -- expanded for better parse errors
 op :: ParsecT [Token] SourcePos Identity Name
-op = varsym <|> consym <|> lexBACKQUOTEs (varid <|> conid) 
+op = varsym <|> consym <|> lexBACKQUOTEs (varid <|> conid)
   <?> Texts.parserOperator
 
--- varop  ->  varsym | `varid ` (variable operator)  
+-- varop  ->  varsym | `varid ` (variable operator)
 varop :: ParsecT [Token] SourcePos Identity Name
 varop = varsym <|> lexBACKQUOTEs varid
      <?> Texts.parserOperator
-        
--- conop  ->  consym | `conid ` (constructor operator)  
+
+-- conop  ->  consym | `conid ` (constructor operator)
 conop :: ParsecT [Token] SourcePos Identity Name
 conop = consym <|> lexBACKQUOTEs conid
      <?> Texts.parserOperator
 
 name :: HParser String -> HParser Name
 name p = addRange $
-    do 
+    do
         n <- p
         return (\r -> Name_Identifier r [] n) -- !!!Name
 
 opName :: HParser String -> HParser Name
 opName p = addRange $
-    do 
+    do
         n <- p
         return (\r -> Name_Operator r [] n) -- !!!Name
 
 addRange :: HParser (Range -> a) -> HParser a
 addRange p =
-    do 
+    do
         start <- getPosition
         f <- p
         end <- getLastPosition
@@ -103,15 +103,15 @@ withRange p = addRange (do { x <- p; return (\r -> (x, r)); })
 
 sourcePosToPosition :: SourcePos -> Position
 sourcePosToPosition sourcePos =
-    Position_Position 
-        (sourceName sourcePos) 
+    Position_Position
+        (sourceName sourcePos)
         (sourceLine sourcePos)
         (sourceColumn sourcePos)
 
 lexBACKQUOTEs, brackets :: ParsecT [Token] SourcePos Identity a
                  -> ParsecT [Token] SourcePos Identity a
 lexBACKQUOTEs = between lexBACKQUOTE lexBACKQUOTE
-brackets = between lexLBRACKET  lexRBRACKET 
+brackets = between lexLBRACKET  lexRBRACKET
 
 commas, commas1 :: ParsecT [Token] SourcePos Identity a
           -> ParsecT [Token] SourcePos Identity [a]
@@ -136,7 +136,7 @@ lexCOMMA    = lexeme (LexSpecial ',')
 lexSEMI     = lexeme (LexSpecial ';')
 lexBACKQUOTE = lexeme (LexSpecial '`')
 
-lexHOLE :: HParser () 
+lexHOLE :: HParser ()
 lexHOLE     =  lexeme (LexResVarSym hole)
 
 
@@ -156,12 +156,13 @@ lexTILDE    = lexeme (LexResVarSym "~")
 lexCOLCOL :: HParser ()
 lexCOLCOL   = lexeme (LexResConSym "::")
 
-lexCLASS, lexINSTANCE, lexDATA, lexDERIVING, lexTYPE, lexLET, lexIN, lexDO, lexIF, lexTHEN, lexELSE, lexCASE, lexOF, lexMODULE, lexWHERE, lexIMPORT, lexHIDING, lexINFIX, lexINFIXL, lexINFIXR, lexUNDERSCORE :: HParser ()
+lexCLASS, lexINSTANCE, lexDATA, lexDERIVING, lexTYPE, lexLETB, lexLET, lexIN, lexDO, lexIF, lexTHEN, lexELSE, lexCASE, lexOF, lexMODULE, lexWHERE, lexIMPORT, lexHIDING, lexINFIX, lexINFIXL, lexINFIXR, lexUNDERSCORE :: HParser ()
 lexCLASS    = lexeme (LexKeyword "class")
 lexINSTANCE = lexeme (LexKeyword "instance")
 lexDATA     = lexeme (LexKeyword "data")
 lexDERIVING = lexeme (LexKeyword "deriving")
 lexTYPE     = lexeme (LexKeyword "type")
+lexLETB     = lexeme (LexKeyword "let!")
 lexLET      = lexeme (LexKeyword "let")
 lexIN       = lexeme (LexKeyword "in")
 lexDO       = lexeme (LexKeyword "do")
@@ -190,7 +191,7 @@ lexASGASG      = lexeme (LexResVarSym "==")
 
 {-
 Expressions and patterns with operators are represented by lists. The Range
-of this list is 'noRange' (a range with two unknown positions). The post-processor 
+of this list is 'noRange' (a range with two unknown positions). The post-processor
 recognises this and will build infix applications out of the list.
 The list itself contains expressions (/patterns) and operators. Operators can
 be recognised because they also have noRange. Their name, however, does have a range.
@@ -198,7 +199,7 @@ The unary minus has 'unaryMinus' as its name to distinguish it from the binary m
 
 An example,  "-3+4" is parsed as:
 
-Expression_List <<unknown>,<unknown>> 
+Expression_List <<unknown>,<unknown>>
     [   Expression_Variable <<unknown>,<unknown>> (Name_Identifier <<1,1>,<1,2>> [] "unaryMinus")
     ,   Expression_Literal <<1,2>,<1,3>> (Literal_Int <<1,2>,<1,3>> "3")
     ,   Expression_Variable <<unknown>,<unknown>> (Name_Identifier <<1,3>,<1,4>> [] "+")
@@ -221,7 +222,7 @@ withLayout1 p =
 
 withBraces' :: (Bool -> ParsecT [Token] SourcePos Identity a)
                  -> ParsecT [Token] SourcePos Identity a
-withBraces' p = 
+withBraces' p =
     withBraces (p True) (p False)
 
 withBraces :: ParsecT [Token] SourcePos Identity a
@@ -234,12 +235,12 @@ withBraces p1 p2 =
         lexRBRACE
         return x
     <|>
-    do 
+    do
         lexINSERTED_LBRACE
         x <- p2
         lexINSERTED_RBRACE
         return x
-    
+
 semiSepTerm1, semiSepTerm, semiOrInsertedSemiSepTerm1, semiOrInsertedSemiSepTerm :: ParsecT [Token] SourcePos Identity a
           -> ParsecT [Token] SourcePos Identity [a]
 semiSepTerm1 p = p `sepEndBy1` lexSEMI
@@ -280,7 +281,7 @@ lexInt
 lexVar :: HParser String
 lexVar
   = satisfy (\lex' -> case lex' of { LexVar s -> Just s; _ -> Nothing })
-                          
+
 lexCon :: HParser String
 lexCon
   = satisfy (\lex' -> case lex' of { LexCon s -> Just s; _ -> Nothing })
@@ -304,8 +305,8 @@ lexCaseFeedback
 satisfy :: (Lexeme -> Maybe a) -> HParser a
 satisfy predicate
   = tokenPrimEx
-        showtok 
-        nextpos 
+        showtok
+        nextpos
         (Just (\_ (pos,lex') _ _ -> incSourceColumn pos (lexemeLength lex')))
         (\(_,lex') -> predicate lex')
   where

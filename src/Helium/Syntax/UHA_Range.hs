@@ -161,6 +161,7 @@ getExprRange (Expression_InfixApplication   r _ _ _) = r
 getExprRange (Expression_If                 r _ _ _) = r
 getExprRange (Expression_Lambda             r _ _  ) = r
 getExprRange (Expression_Case               r _ _  ) = r
+getExprRange (Expression_Letb               r _ _  ) = r
 getExprRange (Expression_Let                r _ _  ) = r
 getExprRange (Expression_Do                 r _    ) = r
 getExprRange (Expression_List               r _    ) = r
@@ -173,6 +174,7 @@ getExprRange (Expression_Enum               r _ _ _) = r
 getExprRange (Expression_Negate             r _    ) = r
 getExprRange (Expression_NegateFloat        r _    ) = r
 getExprRange (Expression_Feedback           r _ _  ) = r
+getExprRange (Expression_RecycleConstructor r _ _  ) = r
 getExprRange (Expression_MustUse            _ _    ) = error "not supported"
 
 getRHSRange :: RightHandSide -> Range

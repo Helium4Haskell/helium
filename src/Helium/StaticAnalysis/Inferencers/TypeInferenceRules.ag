@@ -313,6 +313,17 @@ SEM Expression
                    . beta'       = TVar (@lhs.betaUnique + 1)
                    . newcon      = [ (@expression.beta .==. @beta') @cinfo ]
 
+  | Letb
+      declaration  . betaUnique     = @lhs.betaUnique + 1
+                   . bindingGroups  = []
+      loc          . constraints    = [ (@expression.beta .==. @beta) @cinfoType ] .>. @cset
+                   . beta           = TVar @lhs.betaUnique
+
+      (loc.assumptions, loc.cset, loc.inheritedBDG, loc.chunkNr, lhs.betaUnique, loc.implicitsFM) =
+         let inputBDG   = (False, @lhs.currentChunk, @expression.uniqueChunk, @lhs.monos, @declaration.typeSignatures, mybdggroup, @expression.betaUnique)
+             mybdggroup = Just (@expression.assumptions, [@expression.constraints])
+         in performBindingGroup inputBDG @declaration.bindingGroups
+
   | Let
       declarations . betaUnique     = @lhs.betaUnique + 1
                    . bindingGroups  = []

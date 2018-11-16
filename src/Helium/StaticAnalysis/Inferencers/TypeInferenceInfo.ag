@@ -124,6 +124,11 @@ SEM Expression | Case loc . cinfo =
   childConstraint 0 "scrutinee of case expression" @parentTree
      [ Unifier (head (ftv @beta')) ("case patterns", @localInfo, "scrutinee") ]
 
+-- Expression.Let!
+SEM Expression | Letb loc . cinfoType =
+  resultConstraint "let! expression (INTERNAL ERROR)" @thisTree
+     [ FolkloreConstraint, highlyTrusted ]
+
 -- Expression.Let
 SEM Expression | Let loc . cinfoType =
   resultConstraint "let expression (INTERNAL ERROR)" @thisTree

@@ -1,28 +1,4 @@
-module Helium.Optimization.Types
-    ( T(..)
-    , Ts(..)
-    , Constraint(..)
-    , TSub, (-$-)
-    , Ann(..)
-    , (|=>)
-    , (|->)
-    , (|^|)
-    , (|^^|)
-    , arity2T
-    , assignT
-    , applyT
-    , freshT
-    , freshTfromTs
-    , freshAnn
-    , freshTVar
-    , solveConstraints
-    , splitCons
-    , eqAll
-    , ftv
-    , t2ts
-    , ts2t
-    , t2tsall
-    , tuple) where
+module Helium.Optimization.Types where
 import Data.Map.Strict (Map)
 import qualified Data.Map.Strict as Map
 import Data.Set (Set)
@@ -35,10 +11,9 @@ import Helium.Utils.Utils
 import Helium.Optimization.Annotations
 import Helium.Optimization.Utils
 
-import qualified Debug.Trace as Trace(trace)
-traceShow :: Show a => String -> a -> a
-traceShow s x = Trace.trace (s ++ ":" ++ show x) x
+import Lvm.Common.Id(Id)
 
+{- Type -}
 data T = TAp T T -- [] a => [a], -> a b => a -> b
        | TCon String -- ->, [], Int
        | TVar Int -- a
@@ -46,23 +21,18 @@ data T = TAp T T -- [] a => [a], -> a b => a -> b
        | TAnn Anno T
     deriving (Eq, Ord)
 
-data Ts = Ts (Set Int) T
+{- TypeScheme -}
+data Ts = TsVar Int
+        | Ts (Set Int) Constraints T
+        | TsAnn Anno Ts
     deriving (Eq, Ord)
 
+{- Annotations -}
 data Anno   = Anno1 Ann -- usage
             | Anno2 (Ann,Ann) -- usage | demand
             | AnnoD [Ann] --data type
     deriving (Show, Eq, Ord)
 
---instance Show T where
---    show (TAp (TAp (TCon "=>") t1) t2) = "(" ++ show t1 ++ ") => " ++ show t2
---    show (TAp (TAp (TCon "->") t1) t2) = "(" ++ show t1 ++ " -> " ++ show t2 ++ ")"
---    show (TAp pred@(TPred s i) t) = show pred ++ ", " ++ show t
---    show (TAp (TCon "[]") t) = "[" ++ show t ++ "]"
---    show (TAp t1 t2) = "(" ++ show t1 ++ " " ++ show t2 ++ ")"
---    show (TCon s) = s
---    show (TVar i) = show i
---    show (TPred s t) = s ++ " " ++ show t
 instance Show T where
     show (TAp (TAp (TCon "=>") t1) t2) = "([" ++ show t1 ++ "] |=> " ++ show t2 ++ ")"
     show (TAp (TAp (TCon "->") t1) t2) = "(" ++ show t1 ++ " |-> " ++ show t2 ++ ")"
@@ -74,102 +44,11 @@ instance Show T where
     show (TAnn ann t) = show t ++ "^" ++ show ann
 
 instance Show Ts where
-    show (Ts vars t) = "forall" ++ show (Set.toList vars) ++ ". " ++ show t
+    show (TsVar x) = "forall(" ++ show x ++ ")"
+    show (Ts vars ct t) = "forall{" ++ show (Set.toList vars) ++ "}. C " ++ show ct ++ ". "++ show t
+    show (TsAnn ann ts) = "(" ++ show ts ++ ")^" ++ show ann
 
-debug :: T -> String
-debug (TAp t1 t2) = "(TAp " ++ debug t1 ++ " " ++ debug t2 ++ ")"
-debug (TCon s) = "(TCon " ++ s ++ ")"
-debug (TVar i) = "(TVar " ++ show i ++ ")"
-debug (TPred s t) = "(TPred " ++ s ++ " " ++ debug t ++ ")"
-debug (TAnn ann t) = "(" ++ debug t ++ "^" ++ show ann ++ ")"
-
-isFreeIn :: Int -> T -> Bool
-isFreeIn i (TAp t1 t2) = i `isFreeIn` t1 || i `isFreeIn` t2
-isFreeIn i (TPred _ t) = i `isFreeIn` t
-isFreeIn i (TAnn _ t) = i `isFreeIn` t
-isFreeIn _ (TCon _) = False
-isFreeIn i (TVar x) = i == x
-
-freshTfromTs :: Int -> Ts -> (Int, T)
-freshTfromTs uniqueId (Ts vars t) =
-    let zippedVars = zip (Set.toList vars) [uniqueId..]
-        newVars = Map.fromList zippedVars
-        uniqueId' = snd $ Maybe.fromMaybe (0,uniqueId) $ maybeLast zippedVars
-        t' = freshT newVars t
-    in  (uniqueId' + 1, t')
-    where
-    maybeLast :: [a] -> Maybe a
-    maybeLast [] = Nothing
-    maybeLast [x] = Just x
-    maybeLast (_:xs) = maybeLast xs
-
-freshT :: Map Int Int -> T -> T
-freshT newVars (TAp t1 t2) =
-    let t1' = freshT newVars t1
-        t2' = freshT newVars t2
-    in TAp t1' t2'
-freshT newVars (TPred s t) =
-    let t' = freshT newVars t
-    in  TPred s t'
-freshT newVars (TAnn ann t) =
-    let t' = freshT newVars t
-    in  TAnn ann t'
-freshT _ t@(TCon _) = t
-freshT newVars (TVar i) = TVar (Maybe.fromMaybe i $ Map.lookup i newVars)
-
-freshTVar :: Fresh T
-freshTVar = TVar <$> fresh
-
-t2ts :: T -> Ts
-t2ts t = Ts Set.empty t
-
-ts2t :: Ts -> T
-ts2t (Ts _ t) = t
-
-t2tsall :: T -> Ts
-t2tsall t = Ts (ftv t) t
-
-ftv :: T -> Set Int
-ftv (TAp t1 t2) = Set.union (ftv t1) (ftv t2)
-ftv (TPred _ t) = ftv t
-ftv (TAnn _ t) = ftv t
-ftv (TCon _) = Set.empty
-ftv (TVar i) = Set.singleton i
-
-{- Substitutions -}
-type TSub = Map Int T
-
-idSub :: TSub
-idSub = Map.empty
-
-sub :: Int -> T -> TSub
-sub a t = Map.singleton a t
-
-(-.-) :: TSub -> TSub -> TSub
-(-.-) sub1 sub2 = Map.union sub1 $ Map.map (sub1 -$-) sub2
-
-(-$-) :: TSub -> T -> T
-(-$-) subs t = case t of
-    TAp t1 t2 -> TAp (subs -$- t1) (subs -$- t2)
-    TPred s t1 -> TPred s (subs -$- t1)
-    TAnn ann t1 -> TAnn ann (subs -$- t1)
-    TCon _ -> t
-    a@(TVar i) -> Map.findWithDefault a i subs
-
-(-#-) :: TSub -> Constraint T -> Constraint T
-(-#-) subs (EqTy d t1 t2) = EqTy d (subs -$- t1) (subs -$- t2)
-(-#-) _ eq = eq
-
-data Constraint ty
-    = EqTy String ty ty             -- t1   == t2
-    | EqAnn String Ann Ann          -- phi1 == phi2
-    | EqPlus String Ann Ann Ann     -- phi1 == phi2 (+) phi3
-    | EqUnion String Ann Ann Ann    -- phi1 == phi2 (U) phi3
-    | EqTimes String Ann Ann Ann    -- phi1 == phi2 (*) phi3
-    | EqCond String Ann Ann Ann     -- phi1 == phi2 |> phi3
-    deriving (Show, Eq, Ord)
-
-
+{- Create Types -}
 infixr 5 |^|
 (|^|) :: T -> Ann -> T
 t |^| ann = TAnn (Anno1 ann) t
@@ -187,14 +66,14 @@ infixr 5 |->
 (|->) :: T -> T -> T
 t1 |-> t2 = TAp (TAp (TCon "->") t1) t2
 
-splitCons :: T -> ([T],T)
+splitCons :: T -> ([T],T) -- TODO: rename splits type not constructor (a->b->c)=>([a,b],c)
 splitCons (TAp (TAp (TCon "->") t1) t2) =
     let (t3,t4) = splitCons t2
     in  (t1:t3, t4)
 splitCons t = ([],t)
 
-eqAll :: String -> [T] -> [T] -> [Constraint T]
-eqAll s (x:xs) (y:ys) = EqTy s x y : eqAll s xs ys
+eqAll :: String -> [T] -> [T] -> Constraints
+eqAll s (x:xs) (y:ys) = EqT s x y : eqAll s xs ys
 eqAll _ [] [] = []
 eqAll s xs ys = internalError "Types.hs" "eqAll" ("Creating constraints for: " ++ s ++ " | unequal lengths remaining xs: " ++ show xs ++ " | remaining ys: " ++ show ys)
 
@@ -215,19 +94,303 @@ tuple 1 [_] = internalError "Types.hs" "tuple" "Creating a tuple unit. Represent
 tuple arity ts | arity == length ts = applyT (TCon ("(" ++ replicate (arity - 1) ',' ++ ")")) ts
 tuple arity ts = internalError "Types.hs" "tuple" ("Creating a tuple unit. arity: " ++ show arity ++ " != length ts: " ++ show ts)
 
+{- Try direct instantiation-}
+instTs2T :: String -> Int -> Ts -> (Int,T,Constraints)
+instTs2T d uniqueId (TsAnn ann ts) = let (uniqueId',t,ct) = instTs2T d uniqueId ts in (uniqueId',TAnn ann t,ct) -- TODO: is this correct usage | demand propagation?
+instTs2T d uniqueId ts@(TsVar _) = let t = TVar uniqueId in (uniqueId + 1, t, [ EqInst d t ts ] )
+instTs2T _ uniqueId (Ts vars ct t) =
+    let zippedVars = zip (Set.toList vars) [uniqueId..]
+        subT = subm $ Map.map TVar $ Map.fromList zippedVars
+        subTs = subm $ Map.map TsVar $ Map.fromList zippedVars
+        subAnn = subm $ Map.map AnnVar $ Map.fromList zippedVars
+        subs = subT -$- subTs -$- subAnn
+        uniqueId' = (snd $ Maybe.fromMaybe (0,uniqueId) $ maybeLast zippedVars) + 1
+        t' = subs -$- t
+        ct' = subs -$- ct
+    in  (uniqueId',t',ct')
+    where
+    maybeLast :: [a] -> Maybe a
+    maybeLast [] = Nothing
+    maybeLast [x] = Just x
+    maybeLast (_:xs) = maybeLast xs
+
+{- Create and destruct TypeSchemes -}
+t2ts :: T -> Ts
+t2ts t = Ts Set.empty [] t
+
+ts2t :: Ts -> T
+ts2t (Ts _ _ t) = t
+ts2t ts = internalError "Types.hs" "ts2t" ("Not supported: " ++ show ts)
+
+t2tsall :: T -> Ts
+t2tsall t = Ts (quantified t) [] t
+
+{- Variables -}
+class Vars a where
+    isfreein :: Int -> a -> Bool
+    isfreein i t = Set.member i (freevars t)
+    freevars :: a -> Set Int
+    quantified :: a -> Set Int
+
+instance Vars a => Vars [a] where
+    freevars as = Set.unions $ map freevars as
+
+    quantified as = Set.unions $ map quantified as
+
+instance Vars T where
+    freevars (TAp t1 t2) = Set.union (freevars t1) (freevars t2)
+    freevars (TPred _ t) = freevars t
+    freevars (TCon _) = Set.empty
+    freevars (TVar i) = Set.singleton i
+    freevars (TAnn ann t) = Set.union (freevars ann) (freevars t)
+
+    quantified (TAp t1 t2) = Set.union (quantified t1) (quantified t2)
+    quantified (TPred _ t) = quantified t
+    quantified (TCon _) = Set.empty
+    quantified (TVar i) = Set.singleton i
+    quantified (TAnn ann t) = Set.union (quantified ann) (quantified t)
+
+instance Vars Ts where
+    freevars (TsVar i) = Set.singleton i
+    freevars (Ts vars ct t) = (Set.union (freevars t) (freevars ct)) Set.\\ vars
+    freevars (TsAnn ann ts) = Set.union (freevars ann) (freevars ts)
+
+    quantified (TsVar i) = Set.singleton i
+    quantified (Ts vars ct t) = (Set.union (quantified t) (quantified ct)) Set.\\ vars
+    quantified (TsAnn ann ts) = Set.union (quantified ann) (quantified ts)
+
+instance Vars Anno where
+    freevars (Anno1 ann) = freevars ann
+    freevars (Anno2 (ann1,ann2)) = Set.union (freevars ann1) (freevars ann2)
+    freevars (AnnoD anns) = Set.unions $ map freevars anns
+
+    quantified (Anno1 ann) = quantified ann
+    quantified (Anno2 (ann1,ann2)) = Set.union (quantified ann1) (quantified ann2)
+    quantified (AnnoD anns) = Set.unions $ map quantified anns
+
+instance Vars Ann where
+    freevars (AnnVar i) = Set.singleton i
+    freevars (AnnVal _) = Set.empty
+
+    quantified (AnnVar i) = Set.singleton i
+    quantified (AnnVal _) = Set.empty
+
+instance Vars Constraint where
+    freevars (EqT _ t1 t2) = Set.union (freevars t1) (freevars t2)
+    freevars (EqTs _ ts1 ts2) = Set.union (freevars ts1) (freevars ts2)
+    freevars (EqInst _ t ts) = Set.union (freevars t) (freevars ts)
+    freevars (EqGen _ ts (t,ct,env)) = Set.unions [freevars ts, freevars env] -- Vars in ts and env will be free. TODO: TAnn will need to be handled.
+    freevars (EqAnn _ ann1 ann2) = Set.union (freevars ann1) (freevars ann2)
+    freevars (EqPlus _ ann1 ann2 ann3) = Set.unions [freevars ann1, freevars ann2, freevars ann3]
+    freevars (EqUnion _ ann1 ann2 ann3) = Set.unions [freevars ann1, freevars ann2, freevars ann3]
+    freevars (EqTimes _ ann1 ann2 ann3) = Set.unions [freevars ann1, freevars ann2, freevars ann3]
+    freevars (EqCond _ ann1 ann2 ann3) = Set.unions [freevars ann1, freevars ann2, freevars ann3]
+
+    quantified (EqT _ t1 t2) = Set.union (quantified t1) (quantified t2)
+    quantified (EqTs _ ts1 ts2) = Set.union (quantified ts1) (quantified ts2)
+    quantified (EqInst _ t ts) = Set.union (quantified t) (quantified ts)
+    quantified (EqGen _ ts (t,ct,env)) = Set.unions [quantified ts, quantified t, quantified ct] -- Vars in t and ct will be quantified. TODO: TAnn will need to be handled. TODO: Which are the free vars? for EqGen
+    quantified (EqAnn _ ann1 ann2) = Set.union (quantified ann1) (quantified ann2)
+    quantified (EqPlus _ ann1 ann2 ann3) = Set.unions [quantified ann1, quantified ann2, quantified ann3]
+    quantified (EqUnion _ ann1 ann2 ann3) = Set.unions [quantified ann1, quantified ann2, quantified ann3]
+    quantified (EqTimes _ ann1 ann2 ann3) = Set.unions [quantified ann1, quantified ann2, quantified ann3]
+    quantified (EqCond _ ann1 ann2 ann3) = Set.unions [quantified ann1, quantified ann2, quantified ann3]
+
+instance Vars Env where
+    freevars (Env global local) = Set.union (Set.unions $ map (freevars . snd) $ Map.toList global) (Set.unions $ map (freevars . snd) $ Map.toList local)
+
+    quantified (Env global local) = Set.union (Set.unions $ map (quantified . snd) $ Map.toList global) (Set.unions $ map (quantified . snd) $ Map.toList local)
+
+{- Substitutions -}
+data Sub = Sub (Map Int T) (Map Int Ts) (Map Int Ann)
+    deriving (Show, Eq, Ord)
+
+idSub :: Sub
+idSub = Sub Map.empty Map.empty Map.empty
+
+emptySub :: Sub -> Bool
+emptySub (Sub subt subts subann) = Map.null subt && Map.null subts && Map.null subann
+
+withoutSub :: Set Int -> Sub -> Sub
+withoutSub vars (Sub subT subTs subAnn) =
+    let withoutVars = Map.filterWithKey (\k _ -> k `Set.notMember` vars)
+        subT' = withoutVars subT
+        subTs' = withoutVars subTs
+        subAnn' = withoutVars subAnn
+    in  Sub subT' subTs' subAnn'
+
+class SubNew a where
+    sub :: Int -> a -> Sub
+    subm :: Map Int a -> Sub
+
+class Subs a where
+    (-$-) :: Sub -> a -> a
+
+instance Subs a => Subs [a] where
+    (-$-) subs = map ((-$-) subs)
+
+instance Subs Sub where
+    (-$-) subs1@(Sub subT1 subTs1 subAnn1) (Sub subT2 subTs2 subAnn2) =
+        let subT = Map.union subT1 $ Map.map (subs1 -$-) subT2
+            subTs = Map.union subTs1 $ Map.map (subs1 -$-) subTs2
+            subAnn = Map.union subAnn1 $ Map.map (subs1 -$-) subAnn2
+        in  Sub subT subTs subAnn
+
+instance SubNew T where
+    sub i t = Sub (Map.singleton i t) Map.empty Map.empty
+    subm tm = Sub tm Map.empty Map.empty
+
+instance Subs T where
+    (-$-) subs (TAp t1 t2) = TAp (subs -$- t1) (subs -$- t2)
+    (-$-) subs (TPred s t1) = TPred s (subs -$- t1)
+    (-$-) subs (TAnn ann t1) = TAnn (subs -$- ann) (subs -$- t1)
+    (-$-) _ (TCon s) = TCon s
+    (-$-) (Sub subT _ _) a@(TVar i) = Map.findWithDefault a i subT
+
+instance SubNew Ts where
+    sub i ts = Sub Map.empty (Map.singleton i ts) Map.empty
+    subm tsm = Sub Map.empty tsm Map.empty
+
+instance Subs Ts where
+    (-$-) (Sub _ subTs _) ts@(TsVar i) = Map.findWithDefault ts i subTs
+    (-$-) subs (Ts vars ct t) = let subs' = withoutSub vars subs in Ts vars ((-$-) subs' ct) ((-$-) subs' t)
+    (-$-) subs (TsAnn ann ts) = TsAnn ((-$-) subs ann) ((-$-) subs ts)
+
+instance Subs Anno where
+    (-$-) subs (Anno1 ann) = Anno1 $ (-$-) subs ann
+    (-$-) subs (Anno2 (ann1,ann2)) = Anno2 ((-$-) subs ann1, (-$-) subs ann2)
+    (-$-) subs (AnnoD anns) = AnnoD $ map ((-$-) subs) anns
+
+instance SubNew Ann where
+    sub i ann = Sub Map.empty Map.empty (Map.singleton i ann)
+    subm annm = Sub Map.empty Map.empty annm
+
+instance Subs Ann where
+    (-$-) (Sub _ _ subAnn) a@(AnnVar i) = Map.findWithDefault a i subAnn
+    (-$-) _ ann@(AnnVal _) = ann
+
+instance Subs Constraint where
+    (-$-) subs (EqT d t1 t2) = EqT d ((-$-) subs t1) ((-$-) subs t2)
+    (-$-) subs (EqTs d ts1 ts2) = EqTs d ((-$-) subs ts1) ((-$-) subs ts2)
+    (-$-) subs (EqInst d t ts) = EqInst d ((-$-) subs t) ((-$-) subs ts)
+    (-$-) subs (EqGen d ts (t,ct,env)) = EqGen d ((-$-) subs ts) (t,ct, (-$-) subs env) -- Vars in t and ct will be quantified. TODO: TAnn will need to be handled
+    (-$-) subs (EqAnn d ann1 ann2) = EqAnn d ((-$-) subs ann1) ((-$-) subs ann2)
+    (-$-) subs (EqPlus d ann1 ann2 ann3) = EqPlus d ((-$-) subs ann1) ((-$-) subs ann2) ((-$-) subs ann3)
+    (-$-) subs (EqUnion d ann1 ann2 ann3) = EqUnion d ((-$-) subs ann1) ((-$-) subs ann2) ((-$-) subs ann3)
+    (-$-) subs (EqTimes d ann1 ann2 ann3) = EqTimes d ((-$-) subs ann1) ((-$-) subs ann2) ((-$-) subs ann3)
+    (-$-) subs (EqCond d ann1 ann2 ann3) = EqCond d ((-$-) subs ann1) ((-$-) subs ann2) ((-$-) subs ann3)
+
+instance Subs Env where
+    ((-$-) subs) (Env global local) = Env (Map.map ((-$-) subs) global) (Map.map ((-$-) subs) local)
+
+
+{- Environment -}
+data Env = Env (Map Id Ts) (Map Id Ts)
+    deriving (Show, Eq, Ord)
+
+empty :: Env
+empty = Env Map.empty Map.empty
+
+singletonGlobal :: Id -> Ts -> Env
+singletonGlobal key t = insertGlobal key t empty
+
+singletonLocal :: Id -> Ts -> Env
+singletonLocal key t = insertLocal key t empty
+
+insertGlobal :: Id -> Ts -> Env -> Env
+insertGlobal key t (Env global local) = Env (Map.insert key t global) local
+
+insertLocal :: Id -> Ts -> Env -> Env
+insertLocal key t (Env global local) = Env global (Map.insert key t local)
+
+union :: Env -> Env -> Env
+union (Env extendGlobal extendLocal) env = unionLocal extendLocal $ unionGlobal extendGlobal env
+
+unionGlobal :: Map Id Ts -> Env -> Env
+unionGlobal extendGlobal (Env global local) = Env (Map.union extendGlobal global) local
+
+unionLocal :: Map Id Ts -> Env -> Env
+unionLocal extendLocal (Env global local) = Env global (Map.union extendLocal local)
+
+infixr 5 |?|
+(|?|) :: (Int, Env) -> (Id, String) -> (Int, T, Constraints)
+(uniqueId, env@(Env global local)) |?| (key, err) = case Map.lookup key local of
+    Just x -> instTs2T err uniqueId x
+    Nothing -> case Map.lookup key global of
+        Just x -> instTs2T err uniqueId x
+        Nothing -> internalError "LVM_Syntax.ag" "|?|" ("key : " ++ show key ++ " : not found in env : " ++ show env ++ " : " ++ err )
+
+{- Constraints -}
+type Constraints = [Constraint]
+data Constraint
+    = EqT String T T                            -- t1   == t2
+    | EqTs String Ts Ts                         -- ts1   == ts2
+    | EqInst String T Ts                        -- t1 == Inst(ts2)
+    | EqGen String Ts (T, Constraints, Env)     -- ts1 == Gen(t2,ct,env)
+    | EqAnn String Ann Ann                      -- phi1 == phi2
+    | EqPlus String Ann Ann Ann                 -- phi1 == phi2 (+) phi3
+    | EqUnion String Ann Ann Ann                -- phi1 == phi2 (U) phi3
+    | EqTimes String Ann Ann Ann                -- phi1 == phi2 (*) phi3
+    | EqCond String Ann Ann Ann                 -- phi1 == phi2 |> phi3
+    deriving (Show, Eq, Ord)
+
 {- Constraint solver -}
---mapSnd :: (b->c) -> (a,b) -> (a,c)
---mapSnd f (a,b) = (a, f b)
+solveConstraints :: Constraints -> Fresh (Sub,Constraints)
+solveConstraints ct = do
+    let ctOrder = orderConstraints ct
+    (subs1, ct') <- solveConstraints' ctOrder
+    let ct'Order = orderConstraints ct'
+    (subs2, ct'') <- solveConstraints' ct'Order
+    let ct''Order = orderConstraints ct''
+    if emptySub subs2 && (null ct''Order || ct'Order == ct''Order)
+     then return (subs1,ct''Order)
+     else mapFst (-$- (subs2 -$- subs1)) <$> (solveConstraints ct''Order)
 
-solveConstraints :: [Constraint T] -> TSub
-solveConstraints [] = idSub
-solveConstraints (c:cs) =
-    let subs = solveConstraint c
-        cs' = map (subs -#-) cs
-    in  (solveConstraints cs') -.- subs
+orderConstraints :: Constraints -> Constraints
+orderConstraints cs = let (cont,conts,conann,congen,coninst) = orderConstraints' cs in concat [cont,conts,conann,congen,coninst]
 
-solveConstraint :: Constraint T -> TSub
-solveConstraint (EqTy d t1 t2) = throwPossibleErr d $ tryUnify t1 t2
+orderConstraints' :: Constraints ->
+    ( Constraints -- T
+    , Constraints -- Ts
+    , Constraints -- Ann
+    , Constraints -- Gen
+    , Constraints -- Inst
+    )
+orderConstraints' [] = ([],[],[],[],[])
+orderConstraints' (c:cs) = let (cont,conts,conann,congen,coninst) = orderConstraints' cs in case c of
+    EqT     _ _ _   -> (c:cont , conts   , conann   , congen   , coninst   )
+    EqTs    _ _ _   -> (cont   , c:conts , conann   , congen   , coninst   )
+    EqAnn   _ _ _   -> (cont   , conts   , c:conann , congen   , coninst   )
+    EqPlus  _ _ _ _ -> (cont   , conts   , c:conann , congen   , coninst   )
+    EqUnion _ _ _ _ -> (cont   , conts   , c:conann , congen   , coninst   )
+    EqTimes _ _ _ _ -> (cont   , conts   , c:conann , congen   , coninst   )
+    EqCond  _ _ _ _ -> (cont   , conts   , c:conann , congen   , coninst   )
+    EqGen   _ _ _   -> (cont   , conts   , conann   , c:congen , coninst   )
+    EqInst  _ _ _   -> (cont   , conts   , conann   , congen   , c:coninst )
+
+solveConstraints' :: Constraints -> Fresh (Sub,Constraints)
+solveConstraints' [] = return (idSub,[])
+solveConstraints' (c:cs) = do
+    (subs,ct) <- solveConstraint c
+    let cs' = (\t -> trace ("solveConstraints':mapped:" ++ show (length t)) t) $ map (subs -$-) cs
+    mapSnd (ct ++) <$> (mapFst (-$- subs) <$> (solveConstraints' cs'))
+
+solveConstraint :: Constraint -> Fresh (Sub,Constraints)
+solveConstraint (EqT d t1 t2) = return (throwPossibleErr ("EqT:" ++ d) $ tryUnify t1 t2,[])
+solveConstraint (EqTs d ts1 ts2) = return (throwPossibleErr ("EqTs:" ++ d) $ tryUnifyTs ts1 ts2,[])
+solveConstraint (EqGen d ts (t,ct,env)) = do
+    (subs,ct') <- {-trace ("EqGen:" ++ show ts ++ ":solveConstraints") $-} solveConstraints ct
+    let t' = subs -$- t
+        fvctt = (Set.union (quantified ct') (quantified t'))
+        fv = Set.union (quantified ts) (fvctt Set.\\ fvenvann) -- quantify over youself as you always exist in the environment...
+        fvenvann = (Set.union (freevars env) (Set.empty)) -- TODO: usage | demand Set.empty == t^^(ann1,ann2)
+    return $ trace ("EqGen:" ++ show ts) $ (subs,[EqTs d ts (Ts fv ct' t')])
+solveConstraint eq@(EqInst d _ ts@(TsVar _)) = {-trace ("EqInst:" ++ d ++ ":" ++ show ts) <$>-} return (idSub, [eq])
+solveConstraint (EqInst d t ts@(Ts _ _ st)) = do
+    uniqueId <- getFresh
+    let (uniqueId',ts2t_,ct) = {-trace "EqInst:instTs2t" $-} instTs2T ("EqInst " ++ d) uniqueId ts
+    putFresh $ uniqueId' + 1
+    return $ {-trace ("EqInst: " ++ show st) $-} (idSub,[ EqT d t ts2t_ ] ++ ct)
 solveConstraint eq = internalError "Types.hs" "solveConstraint" ("Eq not yet supported: " ++ show eq)
 
 throwPossibleErr :: String -> Either String a -> a
@@ -235,36 +398,36 @@ throwPossibleErr d possibleErr = case possibleErr of
     Right subs -> subs
     Left err -> internalError "Types.hs" "solveConstraint" ("Constraint : " ++ d ++ " : " ++ err)
 
-tryUnify :: T -> T -> Either String TSub
+tryUnify :: T -> T -> Either String Sub
 tryUnify t1 t2 = traceUnify t1 t2 $ case (t1, t2) of
     (TAp (TAp (TCon "->") _) _, TAp (TAp (TCon "=>") _) _) -> tryUnify t2 t1
     (TAp (TAp (TCon "=>") preds1) t3, TAp (TAp (TCon "=>") preds2) t4) -> do
         subs1 <- tryUnify preds1 preds2
         subs2 <- tryUnify (subs1 -$- t3) (subs1 -$- t4)
-        Right $ subs2 -.- subs1
+        Right $ subs2 -$- subs1
     (TAp (TAp (TCon "=>") (TAp p preds)) t3, TAp (TAp (TCon "->") t4) t5) -> do
         subs1 <- tryUnify p t4
         subs2 <- tryUnify (subs1 -$- (TAp (TAp (TCon "=>") preds) t3)) (subs1 -$- t5)
-        Right $ subs2 -.- subs1
+        Right $ subs2 -$- subs1
     (TAp (TAp (TCon "=>") p) t3, TAp (TAp (TCon "->") t4) t5) -> do
             subs1 <- tryUnify p t4
             subs2 <- tryUnify (subs1 -$- t3) (subs1 -$- t5)
-            Right $ subs2 -.- subs1
+            Right $ subs2 -$- subs1
     (TAp (TAp (TCon "->") t3) t4, TAp (TAp (TCon "->") t5) t6) -> do
         subs1 <- tryUnify t3 t5
         subs2 <- tryUnify (subs1 -$- t4) (subs1 -$- t6)
-        Right $ subs2 -.- subs1
+        Right $ subs2 -$- subs1
     (TAp t3 t4, TAp t5 t6) -> do
         subs1 <- tryUnify t3 t5
         subs2 <- tryUnify (subs1 -$- t4) (subs1 -$- t6)
-        Right $ subs2 -.- subs1
+        Right $ subs2 -$- subs1
     (TPred s1 t3, TPred s2 t4) ->
         if s1 == s2
          then tryUnify t3 t4
          else failUnify "Unequal predicates" t1 t2
     (TCon n1, TCon n2) -> if n1 == n2 then Right idSub else failUnify "Unequal typeconstructors" t1 t2
     (TVar a1, a2@(TVar _)) -> Right $ sub a1 a2
-    (TVar a1, t) -> if not $ a1 `isFreeIn` t then Right $ sub a1 t else failUnify "Not free" t1 t2
+    (TVar a1, t) -> if not $ a1 `isfreein` t then Right $ sub a1 t else failUnify "Not free" t1 t2
     (_, TVar _) -> tryUnify t2 t1
     (TPred s1 t3, _) -> case s1 of -- EqTy "Decl"
         "Eq" -> tryUnify (t3 |-> t3 |-> TCon "Bool") t2
@@ -273,14 +436,19 @@ tryUnify t1 t2 = traceUnify t1 t2 $ case (t1, t2) of
     (_, TPred _ _) -> tryUnify t2 t1
     _ -> failUnify "?" t1 t2
 
-failUnify :: String -> T -> T -> Either String a
-failUnify reason t1 t2 = Left $ "\nUnable to unify t1: " ++ show t1 ++ " | with t2: " ++ show t2 ++ " | because : " ++ reason
+tryUnifyTs :: Ts -> Ts -> Either String Sub
+tryUnifyTs ts1 ts2 = traceUnify ts1 ts2 $ case (ts1,ts2) of
+    (TsVar a1, t) -> if not $ a1 `isfreein` t then Right $ sub a1 t else failUnify "Not free" ts1 ts2
+    _ -> failUnify "?" ts1 ts2
 
-traceUnify :: T -> T -> Either String a -> Either String a
-traceUnify t1 t2 trace = do -- creating a stacktrace on a fail
-    case trace of
-        Left err -> Left $ err ++ "\n=> trace: " ++ (fromLeft $ failUnify "trace" t1 t2)
-        _ -> trace
+failUnify :: Show a => String -> a -> a -> Either String b
+failUnify reason u1 u2 = Left $ "\nUnable to unify u1: " ++ show u1 ++ " | with u2: " ++ show u2 ++ " | because : " ++ reason
+
+traceUnify :: Show a => a -> a -> Either String b -> Either String b
+traceUnify u1 u2 stacktrace = do -- creating a stacktrace on a fail
+    case stacktrace of
+        Left err -> Left $ err ++ "\n=> stacktrace: " ++ (fromLeft $ failUnify "stacktrace" u1 u2)
+        _ -> stacktrace
     where
         fromLeft :: Either a b -> a
         fromLeft (Left err) = err

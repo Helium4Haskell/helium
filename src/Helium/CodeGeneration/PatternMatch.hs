@@ -209,13 +209,11 @@ wildcardId, nextClauseId :: Id
 
 case_ :: Id -> [Core.Alt] -> Core.Expr
 case_ ident alts =
-    Core.Let
-        (Core.Strict (Core.Bind ident (Core.Var ident)))      -- let! id = id in
+    letstrict_ ident (Core.Var ident)      -- let! id = id in
         (Core.Match ident (alts++[nextClauseAlternative]))    -- match id { alt; ...; alt; _ -> _nextClause }
 
 caseChar_ :: Id -> [Core.Alt] -> Core.Expr
 caseChar_ ident alts =
-    Core.Let
-        (Core.Strict (Core.Bind ident (charOrd (Core.Var ident))))      -- let! id = primOrd id in
+    letstrict_ ident (charOrd (Core.Var ident))      -- let! id = primOrd id in
         (Core.Match ident (alts++[nextClauseAlternative]))    -- match id { alt; ...; alt; _ -> _nextClause }
 

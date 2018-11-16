@@ -513,6 +513,14 @@ SEM Expression                                   {- *** -}
     --  alternatives             : Alternatives
     -- | Let                loc.text =  align (text "let"<+> align (vcat @declarations.text) <$>
     --                                         text "in" <+> @expression.text) <$> empty
+    | Letb               loc.text =  (text "let!"<$>
+                                                    (indent 4 $ @declaration.text) <+>
+                                                 text "in" <$>
+                                                    (indent 4 $ @expression.text)
+                                                ) <$> empty
+    --  range                    : Range
+    --  declarations             : Declarations
+    --  expression               : Expression
     | Let                loc.text =  (text "let"<$>
                                                     (indent 4 $ vcat @declarations.text) <+>
                                                  text "in" <$>

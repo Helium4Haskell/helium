@@ -52,6 +52,8 @@ SEM MaybeDeclarations
            lhs . unboundNames = @unboundNames -- not a copy-rule for my ag-compiler!
 
 SEM Expression
+  | Letb   loc . (namesInScope, unboundNames, scopeInfo) = changeOfScope @declaration.declVarNames (@declaration.unboundNames ++ @expression.unboundNames) @lhs.namesInScope
+lhs . unboundNames = @unboundNames -- not a copy-rule for my ag-compiler!
   | Let    loc . (namesInScope, unboundNames, scopeInfo) = changeOfScope @declarations.declVarNames (@declarations.unboundNames ++ @expression.unboundNames) @lhs.namesInScope
            lhs . unboundNames = @unboundNames -- not a copy-rule for my ag-compiler!
 

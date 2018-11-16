@@ -11,19 +11,17 @@ module Helium.Main.PhaseNormalize(phaseNormalize) where
 import Lvm.Core.Expr(CoreModule)
 import Helium.Main.CompileUtils
 
-import Helium.Optimization.Show
-import Lvm.Core.Module(Module,Decl(..),moduleDecls)
-import Lvm.Core.Expr(Expr(..),Binds(..),Bind(..),Alts(..),Alt(..),Pat(..),Literal(..),Con(..))
+import Helium.Optimization.Show()
+import Lvm.Core.Module(Decl(..),moduleDecls)
+import Lvm.Core.Expr(Expr(..),Binds(..),Bind(..),Alts,Alt(..),Pat(..),Con(..))
 import Data.Map(Map)
 import qualified Data.Map as Map
 import Data.Set(Set)
 import qualified Data.Set as Set
-import Data.Maybe(Maybe)
-import qualified Data.Maybe as Maybe
+--import qualified Data.Maybe as Maybe
 
-import Text.PrettyPrint.Leijen(Pretty, pretty)
 
-import Lvm.Common.Id              (Id, NameSupply, newNameSupply, splitNameSupplies, stringFromId)
+import Lvm.Common.Id              (Id, NameSupply, newNameSupply, splitNameSupplies)
 import Lvm.Core.NoShadow          (coreRename)    -- rename local variables
 import Lvm.Core.Saturate          (coreSaturate)  -- saturate constructors, instructions and externs
 import Lvm.Core.Normalize         (coreNormalize) -- normalize core, ie. atomic arguments and lambda's at let bindings
@@ -31,6 +29,7 @@ import Lvm.Core.LetSort           (coreLetSort)   -- find smallest recursive let
 import Lvm.Core.Lift              (coreLift)      -- lambda-lift, ie. make free variables arguments
 
 import Debug.Trace(trace)
+import Text.PrettyPrint.Leijen(Pretty, pretty)
 tracePretty :: Pretty a => String -> a -> a
 tracePretty s t = trace (s ++ ": \n" ++ (show $ pretty t)) t
 
@@ -44,8 +43,8 @@ phaseNormalize coreModule options = do
 
 normalize :: NameSupply -> CoreModule -> CoreModule
 normalize supply =
-  --  coreSimplify
-    coreLift
+    coreSimplify
+  . coreLift
   . coreLetSort
   . coreNormalize supply2
   . coreSaturate supply1
@@ -54,13 +53,48 @@ normalize supply =
     (supply0:supply1:supply2:_) = splitNameSupplies supply
 
 {- CoreSimplify -}
-{- TODO: future work?
 coreSimplify :: CoreModule -> CoreModule
 coreSimplify m = t
     where
     t = m{moduleDecls = map (\decl -> case decl of
-            DeclValue name _ _ expr _ -> decl{valueValue = tracePretty ("\nnew: " ++ stringFromId name) $ exprRemoveRenames emptyRenames $ exprSimplify ( tracePretty ("\nold: " ++ stringFromId name) expr)}
+            DeclValue _{-name-} _ _ expr _ -> decl{valueValue = {-tracePretty ("\nnew: " ++ stringFromId name) $-} {-exprRemoveRenames emptyRenames $ exprSimplify-} exprRemoveDeadLet ( {-tracePretty ("\nold: " ++ stringFromId name)-} expr)}
             _ -> decl) $ moduleDecls m}
+
+exprRemoveDeadLet :: Expr -> Expr
+exprRemoveDeadLet expr = case expr of
+    Let binds expr1 ->
+        let binds' = tracePretty "binds'" $ (bindsRemoveDeadLet binds)
+            expr1' = exprRemoveDeadLet expr1
+            (_, bindNames) = bindsOcc binds'
+            occ2 = exprOcc expr1'
+            simplify = Let binds' expr1'
+        in  if anyMember occ2 bindNames -- Only removes complete let bindings (which are split for mutual recursion)
+             then simplify -- Not a dead let
+             else expr1' -- Dead let removal
+    Match name alts -> Match name (altsRemoveDeadLet alts)
+    Ap expr1 expr2 -> Ap (exprRemoveDeadLet expr1) (exprRemoveDeadLet expr2)
+    Lam name expr1 -> Lam name (exprRemoveDeadLet expr1)
+    Con _ -> expr
+    Var _ -> expr
+    Lit _ -> expr
+
+bindsRemoveDeadLet :: Binds -> Binds
+bindsRemoveDeadLet binds = case binds of
+    NonRec bind -> NonRec $ bindRemoveDeadLet bind
+    Strict bind -> Strict $ bindRemoveDeadLet bind
+    Rec binds' -> Rec $ map bindRemoveDeadLet binds'
+
+bindRemoveDeadLet :: Bind -> Bind
+bindRemoveDeadLet (Bind name expr) = Bind name (exprRemoveDeadLet expr)
+
+altsRemoveDeadLet :: Alts -> Alts
+altsRemoveDeadLet = map altRemoveDeadLet
+
+altRemoveDeadLet :: Alt -> Alt
+altRemoveDeadLet (Alt pat expr) = Alt pat (exprRemoveDeadLet expr)
+
+
+{-
 
 {- ExprSimplify -}
 type Renames = (Map Id Expr, Set Id) -- renames | isStrict
@@ -203,7 +237,7 @@ altsInline name inline alts = let altIn = altInline name inline in map altIn alt
 
 altInline :: Id -> Expr -> Alt -> Alt
 altInline name inline (Alt pat expr) = Alt pat (exprInline name inline expr)
-
+-}
 {- Occurences -}
 exprOcc :: Expr -> Occ
 exprOcc expr = case expr of
@@ -232,11 +266,6 @@ bindsOcc :: Binds -> (Occ,Names)
 bindsOcc (NonRec bind) = bindOcc bind
 bindsOcc (Strict bind) = bindOcc bind
 bindsOcc (Rec binds) = foldr (\(occ,name) (occs,names) -> (combineOcc occ occs, Set.union name names)) (noOcc,Set.empty) (map bindOcc binds)
-    where
-    mapFst :: (a -> c) -> (a,b) -> (c,b)
-    mapFst f (a,b) = (f a,b)
-    mapSnd :: (b -> c) -> (a,b) -> (a,c)
-    mapSnd f (a,b) = (a,f b)
 
 bindOcc :: Bind -> (Occ,Names)
 bindOcc (Bind name expr) = (exprOcc expr, Set.singleton name)
@@ -278,8 +307,8 @@ noOcc = Map.empty
 useOcc :: Id -> Occ
 useOcc name = Map.singleton name 1
 
-getOcc :: Id -> Occ -> Maybe Int
-getOcc = Map.lookup
+--getOcc :: Id -> Occ -> Maybe Int
+--getOcc = Map.lookup
 
 deleteOcc :: Id -> Occ -> Occ
 deleteOcc = Map.delete

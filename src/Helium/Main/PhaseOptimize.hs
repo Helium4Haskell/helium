@@ -21,13 +21,16 @@ phaseOptimize :: String -> CoreModule -> [Option] -> Bool -> IO CoreModule
 phaseOptimize fullName coreModule options isTopMostModule = do
     enterNewPhase "Code optimization" options
 
+    let (path, baseName, _) = splitFilePath fullName
+        fullNameNoExt = combinePathAndFile path baseName
+    when (DumpCoreToFile `elem` options) $ do
+        writeFile (fullNameNoExt ++ ".core.beforeoptimize") $ show . pretty $ coreModule
+
     let optimizeModule = LVM_Syntax.coreModule2OptimizeModule coreModule
     let showIt = LVM_Syntax.showIt optimizeModule
-    print showIt -- Shows the types of the functions and their corresponding top types {Important: This forces the typesystem}
     let letBangs = getLetBangs optimizeModule
-    putStrLn $ showLetBangs letBangs -- For comparison after added strictness
     if (CountingAnalysisAll `elem` options) || (CountingAnalysisOne `elem` options && isTopMostModule)
-     then
+     then do
     {- Handle Counting Analysis after here -}
     --let constraints = LVM_Syntax.constraints optimizeModule
     --putStrLn $ show $ constraints
@@ -35,15 +38,17 @@ phaseOptimize fullName coreModule options isTopMostModule = do
     --putStrLn $ show $ Types.solveConstraints constraints
     --let optimizeModule' = countingAnalysis optimizeModule
         putStrLn $ "Do counting analysis for: " ++ fullName
-     else
+        print $ length $ show showIt -- Shows the types of the functions and their corresponding top types
+        -- {Important: This forces the typesystem on core}
+        --putStrLn $ showLetBangs letBangs -- For comparison after added strictness
+        putStrLn $ "Done counting analysis for: " ++ fullName
+     else do
         putStrLn $ "Skip counting analysis for: " ++ fullName
 
     {- Back to normal coreModule -}
     let coreModule' = LVM_Syntax.optimizeModule2CoreModule optimizeModule
 
-    let (path, baseName, _) = splitFilePath fullName
-        fullNameNoExt = combinePathAndFile path baseName
     when (DumpCoreToFile `elem` options) $ do
-        writeFile (fullNameNoExt ++ ".core.optimize") $ show . pretty $ coreModule'
+        writeFile (fullNameNoExt ++ ".core.afteroptimize") $ show . pretty $ coreModule'
 
     return coreModule'

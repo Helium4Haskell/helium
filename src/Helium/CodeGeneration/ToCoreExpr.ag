@@ -80,6 +80,13 @@ SEM Expression [ | | core : { Core.Expr } ]
     --  expression               : Expression
     --  alternatives             : Alternatives
 
+    | Letb               declaration.patBindNr = 0
+                         declaration.isTopLevel = False
+                         lhs.core =
+        letstrict__ @declaration.decls @expression.core
+    --  range                    : Range
+    --  declarations             : Declarations
+    --  expression               : Expression
     | Let                declarations.patBindNr = 0
                          declarations.isTopLevel = False
                          lhs.core =

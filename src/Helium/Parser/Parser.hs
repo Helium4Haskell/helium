@@ -42,7 +42,7 @@ import Helium.Parser.LayoutRule
 import qualified Helium.Utils.Texts as Texts
 
 import Helium.Syntax.UHA_Syntax
-import Helium.Syntax.UHA_Syntax_Show
+import Helium.Syntax.UHA_Syntax_Show()
 import Helium.Syntax.UHA_Utils
 import Helium.Syntax.UHA_Range
 
@@ -705,7 +705,8 @@ unaryMinus =
 
 {-
 exp10   ->  "\" apat1 ... apatn "->" exp  (lambda abstraction, n>=1)
-         |  "let" decls "in" exp  (let expression)
+         |  "let!" decl "in" exp  (let! expression)
+         |  "let"  decls "in" exp  (let expression)
          |  "if" exp "then" exp "else" exp  (conditional)
          |  "case" exp "of" alts  (case expression)
          |  "do" stmts (do expression)
@@ -720,6 +721,13 @@ exp10 = addRange (
         lexRARROW
         e <- exp_
         return $ \r -> Expression_Lambda r ps e
+    <|>
+    do
+        lexLETB
+        d <- decl
+        lexIN
+        e <- exp_
+        return $ \r -> Expression_Letb r d e
     <|>
     do
         lexLET
@@ -983,7 +991,7 @@ stmts =
     withLayout stmt
 
 {-
-stmt    ->  "let" decls
+stmt    -> "let" decls
          |  pat "<-" exp
          |  exp
 -}
@@ -1039,7 +1047,7 @@ alt = addRange $
         return $ \r -> Alternative_Alternative r p b
 
 {-
-qual    ->  "let" decls  (local declaration)
+qual    -> "let"  decls (local declaration)
          |  pat "<-" exp  (generator)
          |  exp  (guard)
 -}

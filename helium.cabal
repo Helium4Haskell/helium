@@ -174,7 +174,6 @@ Library
     Helium.Optimization.LVM_Syntax
     Helium.Optimization.Show
     Helium.Optimization.Types
-    Helium.Optimization.Env
     Helium.Optimization.Utils
     Helium.Parser.CollectFunctionBindings
     Helium.Parser.LayoutRule

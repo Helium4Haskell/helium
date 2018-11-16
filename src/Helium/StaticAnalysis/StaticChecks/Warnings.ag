@@ -32,6 +32,8 @@ SEM Body
                           @suspiciousErrors
 
 SEM Expression
+  | Letb       lhs . warnings = @expression.warnings ++
+                                @suspiciousErrors
   | Let        lhs . warnings = @expression.warnings ++
                                 @suspiciousErrors
 
@@ -74,6 +76,9 @@ SEM MaybeDeclarations
                     loc . suspiciousErrors  = findSimilarFunctionBindings @declarations.typeSignatures @declarations.suspiciousFBs
 
 SEM Expression
+  | Letb   declaration  . previousWasAlsoFB = Nothing
+                        . suspiciousFBs     = []
+                    loc . suspiciousErrors  = findSimilarFunctionBindings @declaration.typeSignatures @declaration.suspiciousFBs
   | Let    declarations . previousWasAlsoFB = Nothing
                         . suspiciousFBs     = []
                     loc . suspiciousErrors  = findSimilarFunctionBindings @declarations.typeSignatures @declarations.suspiciousFBs

@@ -2,12 +2,11 @@
 -- Imports --
 ------------
 imports{
+import Helium.Optimization.Annotations
 import Helium.Optimization.Datas(DataAnns, emptyDataAnns, singletonDataAnns, singletonDataCon, unionDataAnns)
 import Helium.Optimization.Show()
 import Helium.Optimization.Types
-import Helium.Optimization.Env(Env, (|?|))
-import qualified Helium.Optimization.Env as Env
---import Helium.Optimization.Utils
+import Helium.Optimization.Utils
 
 import Data.Map(Map)
 import qualified Data.Map as Map
@@ -24,10 +23,6 @@ import qualified Lvm.Core.Module as Module
 
 import qualified Top.Types as T
 import qualified Top.Types.Synonym as Syn
-
--- Debug
-import qualified Debug.Trace as Trace
-import Text.PrettyPrint.Leijen (Pretty, pretty)
 }
 
 ------------
@@ -172,7 +167,7 @@ defaultSyn = Map.union $ Map.fromList
     ]
 }
 
-ATTR OptimizeModule [ | | ct USE {++} {[]} : { [Constraint T] } showIt : {[(String, T, T.TpScheme)]} ]
+ATTR OptimizeModule [ | | ct USE {++} {[]} : { Constraints } showIt : {[(String, Ts, T.TpScheme)]} ]
 SEM OptimizeModule
     | Module        decls.uniqueId = 0
                     decls.syn = defaultSyn $ @decls.genSyn --}trace ("Module : " ++ I.stringFromId @name ++ " : Syn : " ++ show @decls.genSyn) @decls.genSyn
@@ -180,25 +175,25 @@ SEM OptimizeModule
                     decls.dataKind = @decls.genDataKind
                     decls.cons = @decls.genCons
                     decls.env = @decls.genEnv --}trace ("Module : " ++ I.stringFromId @name ++ " : Env : " ++ show @decls.genEnv) @decls.genEnv
-                    loc.solved = solveConstraints @decls.ct
-                    loc.uniqueId = @decls.uniqueId -- the next free id
-                    decls.sub = @loc.solved
+                    loc.solved = runFreshFrom @decls.uniqueId $ solveConstraints @decls.ct
+                    loc.uniqueId = snd $ @loc.solved -- the next free id
+                    decls.sub = fst $ (\t -> trace ("decls.sub:" ++ ((\(Sub subt subts subann) -> "Sub " ++ show (Map.size subt) ++ " " ++ show (Map.size subts) ++ " " ++ show (Map.size subann)) $ fst t) ++ ":ct:" ++ show (length $ snd t)) t) $ fst $ @loc.solved
 
 
 ATTR Decls Decl [ syn : {Map I.Id Synonym}
                   data : {DataAnns}
                   dataKind : {Map I.Id Int}
                   cons : {DataAnns}
-                  env : {Env I.Id}
-                  sub : {TSub}
+                  env : {Env}
+                  sub : {Sub}
                 | uniqueId : {Int}
                 | genSyn USE {Map.union} {Map.empty} : {Map I.Id Synonym}
                   genData USE {unionDataAnns} {emptyDataAnns} : {DataAnns}
                   genDataKind USE {Map.union} {Map.empty} : {Map I.Id Int}
                   genCons USE {unionDataAnns} {emptyDataAnns} : {DataAnns}
-                  genEnv USE {Env.union} {Env.empty} : {Env I.Id}
-                  ct USE {++} {[]} : { [Constraint T] }
-                  showIt USE {++} {[]} : {[(String, T, T.TpScheme)]}
+                  genEnv USE {union} {empty} : {Env}
+                  ct USE {++} {[]} : { Constraints }
+                  showIt USE {++} {[]} : {[(String, Ts, T.TpScheme)]}
                 ]
 
 SEM Decls
@@ -208,19 +203,19 @@ SEM Decls
     | Nil           lhs.uniqueId = @lhs.uniqueId
 
 SEM Decl
-    | Function      lhs.genEnv = Env.singletonGlobal @name (tpScheme2Ts @lhs.syn @lhs.dataKind @ty)
+    | Function      lhs.genEnv = singletonGlobal @name (tpScheme2Ts @lhs.syn @lhs.dataKind @ty)
                     expr.uniqueId = @lhs.uniqueId
                     expr.env = @lhs.env --}trace ("entering function : " ++ I.stringFromId @name ++ " : expr : " ++ show @expr.expr ++ " : with module env : " ++ show @lhs.env) @lhs.env
                     loc.uniqueId = @expr.uniqueId
                     loc.lookup = (@loc.uniqueId, @lhs.env) |?| (@name, "Decl")
-                    lhs.uniqueId = fst @loc.lookup
-                    loc.ct = @expr.ct ++ [ EqTy "Decl" @expr.t (snd @loc.lookup) ]
+                    lhs.uniqueId = first @loc.lookup
+                    loc.ct = @expr.ct ++ [ EqT "Decl" @expr.t (second @loc.lookup) ] ++ third @loc.lookup
                     lhs.ct = @loc.ct --}trace ("function " ++ I.stringFromId @name ++ " : type : " ++ show @expr.t ++ " : constraints : " ++ show @loc.ct) @loc.ct
-                    lhs.showIt = [(I.stringFromId @name, @lhs.sub -$- @expr.t, @ty)]
-    | Abstract      lhs.genEnv = Env.singletonGlobal @name (tpScheme2Ts @lhs.syn @lhs.dataKind @ty)
+                    lhs.showIt = [(I.stringFromId @name, (t2tsall $ @lhs.sub -$- @expr.t), @ty)]
+    | Abstract      lhs.genEnv = singletonGlobal @name (tpScheme2Ts @lhs.syn @lhs.dataKind @ty)
     | Constructor   loc.t = tpScheme2Ts @lhs.syn @lhs.dataKind @ty
                     lhs.genCons = unionDataAnns @lhs.data (singletonDataCon @datalink @name (ts2t @loc.t))
-                    lhs.genEnv = Env.singletonGlobal @name @loc.t
+                    lhs.genEnv = singletonGlobal @name @loc.t
     | Data          lhs.genData = singletonDataAnns @name
                     lhs.genDataKind = Map.singleton @name @typeKind
     | Synonym       lhs.genSyn = Map.singleton @name @tpSynonym
@@ -277,14 +272,14 @@ transformPreds dataKind preds =
 ---------------
 -- Type Expr --
 ---------------
-ATTR Expr Binds Binds' Bind Alts Alt Pat [ env : { Env I.Id } | uniqueId : Int | t : { T } ct USE {++} {[]} : { [Constraint T] } ]
+ATTR Expr Alts Alt Pat [ env : { Env } | uniqueId : Int | t : { T } ct USE {++} {[]} : { Constraints } ]
 -- Expr
 ATTR Expr [ | | expr : Expr]
 SEM Expr
     | Let       lhs.expr = Expr_Let @binds.binds @expr.expr
                 loc.t = TVar @lhs.uniqueId
-                lhs.ct = [ EqTy "Let" @loc.t @expr.t ] ++ @binds.ct ++ @expr.ct
-                loc.env = Env.unionLocal @binds.extendEnv @lhs.env
+                lhs.ct = [ EqT "Let" @loc.t @expr.t ] ++ @binds.ct ++ @expr.ct
+                loc.env = unionLocal @binds.extendEnv @lhs.env
                 binds.env = @loc.env
                 expr.env = @loc.env
                 binds.uniqueId = @lhs.uniqueId + 1
@@ -293,12 +288,12 @@ SEM Expr
     | Match     lhs.expr = Expr_Match @name @alts.alts
                 loc.t = TVar @lhs.uniqueId
                 loc.lookup = (@lhs.uniqueId + 1, @lhs.env) |?| (@name, "Match")
-                lhs.ct = [ EqTy "Match" @alts.t ((snd @loc.lookup) |-> @loc.t) ] ++ @alts.ct
-                alts.uniqueId = fst @loc.lookup
+                lhs.ct = [ EqT "Match" @alts.t ((second @loc.lookup) |-> @loc.t) ] ++ third @loc.lookup ++ @alts.ct
+                alts.uniqueId = first @loc.lookup
                 lhs.uniqueId = @alts.uniqueId
     | Ap        lhs.expr = Expr_Ap @expr1.expr @expr2.expr
                 loc.t = TVar @lhs.uniqueId
-                lhs.ct = [ EqTy "Ap" @expr1.t (@expr2.t |-> @loc.t) ] ++ @expr1.ct ++ @expr2.ct
+                lhs.ct = [ EqT "Ap" @expr1.t (@expr2.t |-> @loc.t) ] ++ @expr1.ct ++ @expr2.ct
                 expr1.uniqueId = @lhs.uniqueId + 1
                 expr2.uniqueId = @expr1.uniqueId
     | Lam       lhs.expr = Expr_Lam @name @expr.expr
@@ -306,76 +301,85 @@ SEM Expr
                 loc.nameT = TVar (@lhs.uniqueId + 1)
                 loc.ann1 = (AnnVar (@lhs.uniqueId + 2), AnnVar (@lhs.uniqueId + 3))
                 loc.ann2 = AnnVar (@lhs.uniqueId + 4)
-                lhs.ct = [ EqTy "Lam" @loc.t (@loc.nameT |-> @expr.t)] ++ @expr.ct
-                expr.env = Env.insertLocal @name (t2ts @loc.nameT) @lhs.env
+                lhs.ct = [ EqT "Lam" @loc.t (@loc.nameT |-> @expr.t)] ++ @expr.ct
+                expr.env = insertLocal @name (t2ts @loc.nameT) @lhs.env
                 expr.uniqueId = @lhs.uniqueId + 5
                 lhs.uniqueId = @expr.uniqueId
     | ConId     lhs.expr = Expr_ConId @name
                 loc.t = TVar @lhs.uniqueId
                 loc.lookup = (@lhs.uniqueId + 1, @lhs.env) |?| (@name, "ConId")
-                lhs.ct = [ EqTy "ConId" @loc.t (snd @loc.lookup) ]
-                lhs.uniqueId = fst @loc.lookup
+                lhs.ct = [ EqT "ConId" @loc.t (second @loc.lookup) ] ++ third @loc.lookup
+                lhs.uniqueId = first @loc.lookup
     | ConTag    lhs.expr = Expr_ConTag @expr.expr @arity
                 loc.t = TVar @lhs.uniqueId
-                lhs.ct = [ EqTy "ConTag" @loc.t (arity2T (@lhs.uniqueId + 1) @arity) ] ++ @expr.ct
+                lhs.ct = [ EqT "ConTag" @loc.t (arity2T (@lhs.uniqueId + 1) @arity) ] ++ @expr.ct
                 expr.uniqueId = @lhs.uniqueId + @arity + 2
                 lhs.uniqueId = @expr.uniqueId
     | Var       lhs.expr = Expr_Var @name
                 loc.t = TVar @lhs.uniqueId
                 loc.lookup = (@lhs.uniqueId + 1, @lhs.env) |?| (@name, "Var")
-                lhs.ct = [ EqTy "Var" @loc.t (snd @loc.lookup) ]
-                lhs.uniqueId = fst @loc.lookup
+                lhs.ct = [ EqT "Var" @loc.t (second @loc.lookup) ] ++ third @loc.lookup
+                lhs.uniqueId = first @loc.lookup
     | Lit       lhs.expr = Expr_Lit @lit.lit
                 loc.t = TVar @lhs.uniqueId
                 loc.ann = AnnVar (@lhs.uniqueId + 1)
-                lhs.ct = [ EqTy "Lit" @loc.t @lit.t ]
+                lhs.ct = [ EqT "Lit" @loc.t @lit.t ]
                 lhs.uniqueId = @lhs.uniqueId + 2
 
 -- Let bindings
-ATTR Binds Binds' Bind [ | | extendEnv USE {Map.union} {Map.empty} : {Map I.Id Ts} ]
-
+ATTR Binds Binds' Bind
+    [ env : { Env }
+    | uniqueId : Int
+    | extendEnv USE {Map.union} {Map.empty} : {Map I.Id Ts}
+      ct USE {++} {[]} : { Constraints }
+    ]
 ATTR Binds [ | | binds : Binds ]
 SEM Binds
     | Rec       lhs.binds = Binds_Rec @binds.binds
-                loc.t = @binds.t
                 lhs.ct = @binds.ct
                 lhs.extendEnv = @binds.extendEnv
-                binds.uniqueId = @lhs.uniqueId
+                binds.uniqueIdEnv = @lhs.uniqueId
+                binds.uniqueId = @binds.uniqueIdEnv
                 lhs.uniqueId = @binds.uniqueId
     | Strict    lhs.binds = Binds_Strict @bind.bind
-                loc.t = @bind.t
                 lhs.ct = @bind.ct
                 lhs.extendEnv = @bind.extendEnv
-                bind.uniqueId = @lhs.uniqueId
+                bind.uniqueIdEnv = @lhs.uniqueId
+                bind.uniqueId = @bind.uniqueIdEnv
                 lhs.uniqueId = @bind.uniqueId
     | NonRec    lhs.binds = Binds_NonRec @bind.bind
-                loc.t = @bind.t
                 lhs.ct = @bind.ct
                 lhs.extendEnv = @bind.extendEnv
-                bind.uniqueId = @lhs.uniqueId
+                bind.uniqueIdEnv = @lhs.uniqueId
+                bind.uniqueId = @bind.uniqueIdEnv
                 lhs.uniqueId = @bind.uniqueId
 
-ATTR Binds' [ | | binds : Binds' ]
+ATTR Binds' [ | uniqueIdEnv : Int | binds : Binds' ]
 SEM Binds'
     | Cons      lhs.binds = @hd.bind : @tl.binds
-                loc.t = @tl.t
-                lhs.ct = [ EqTy "Binds' Cons" @tl.t @hd.t ] ++ @hd.ct ++ @tl.ct
+                lhs.ct = @hd.ct ++ @tl.ct
                 lhs.extendEnv = Map.union @hd.extendEnv @tl.extendEnv
                 hd.uniqueId = @lhs.uniqueId
                 tl.uniqueId = @hd.uniqueId
                 lhs.uniqueId = @tl.uniqueId
+                hd.uniqueIdEnv = @lhs.uniqueIdEnv
+                tl.uniqueIdEnv = @hd.uniqueIdEnv
+                lhs.uniqueIdEnv = @tl.uniqueIdEnv
     | Nil       lhs.binds = []
-                loc.t = TVar @lhs.uniqueId
-                lhs.uniqueId = @lhs.uniqueId + 1
 
-ATTR Bind [ | | bind : Bind ]
+ATTR Bind [ | uniqueIdEnv : Int | bind : Bind ]
 SEM Bind
     | Bind      lhs.bind = Bind_Bind @name @expr.expr
-                loc.t = TVar @lhs.uniqueId
-                lhs.ct = [ EqTy "Bind" @loc.t @expr.t ] ++ @expr.ct
-                expr.uniqueId = @lhs.uniqueId + 1
+                loc.t = (TsVar @lhs.uniqueIdEnv)
+                lhs.ct = [ EqGen "Bind" @loc.t (@expr.t,@expr.ct,@lhs.env) ]
+                expr.uniqueId = @lhs.uniqueId
                 lhs.uniqueId = @expr.uniqueId
-                lhs.extendEnv = Map.singleton @name (t2tsall @loc.t)
+                -- expr uses uniqueId and env.
+                -- env depends on extendEnv.
+                -- extendEnv depends on all bind in a let binding having a uniqueId
+                -- *Cyclic* -> solved with uniqueIdEnv
+                lhs.extendEnv = Map.singleton @name @loc.t
+                lhs.uniqueIdEnv = @lhs.uniqueIdEnv + 1
 
 -- Guard alternatives
 
@@ -383,7 +387,7 @@ ATTR Alts [ | | alts : Alts ]
 SEM Alts
     | Cons      lhs.alts = @hd.alt : @tl.alts
                 loc.t = @tl.t
-                lhs.ct = [ EqTy "Alts Cons" @tl.t @hd.t ] ++ @hd.ct ++ @tl.ct
+                lhs.ct = [ EqT "Alts Cons" @tl.t @hd.t ] ++ @hd.ct ++ @tl.ct
                 hd.uniqueId = @lhs.uniqueId
                 tl.uniqueId = @hd.uniqueId
                 lhs.uniqueId = @tl.uniqueId
@@ -395,8 +399,8 @@ ATTR Alt [ | | alt : Alt ]
 SEM Alt
     | Alt       lhs.alt = Alt_Alt @pat.pat @expr.expr
                 loc.t = TVar @lhs.uniqueId
-                lhs.ct = [ EqTy "Alt" @loc.t (@pat.t |-> @expr.t) ] ++ @pat.ct ++ @expr.ct
-                expr.env = Env.unionLocal @pat.extendEnv @lhs.env
+                lhs.ct = [ EqT "Alt" @loc.t (@pat.t |-> @expr.t) ] ++ @pat.ct ++ @expr.ct
+                expr.env = unionLocal @pat.extendEnv @lhs.env
                 pat.uniqueId = @lhs.uniqueId + 1
                 expr.uniqueId = @pat.uniqueId
                 lhs.uniqueId = @expr.uniqueId
@@ -406,9 +410,8 @@ SEM Pat
     | ConId     lhs.pat = Pat_ConId @name @ids
                 loc.t = TVar @lhs.uniqueId
                 loc.lookup = (@lhs.uniqueId + 1, @lhs.env) |?| (@name, "Pat")
-                loc.idXidsWt = assignT (fst @loc.lookup) @ids
-                lhs.ct = eqAll "Pat ConId" (@loc.t:(map snd $ snd $ @loc.idXidsWt)) (let (xs,x) = splitCons $ snd @loc.lookup in x:xs)
-                --[ EqTy "Pat ConId" @loc.t (applyT (snd @loc.lookup) )]
+                loc.idXidsWt = assignT (first @loc.lookup) @ids
+                lhs.ct = (eqAll "Pat ConId" (@loc.t:(map snd $ snd $ @loc.idXidsWt)) (let (xs,x) = splitCons $ second @loc.lookup in x:xs)) ++ third @loc.lookup
                 lhs.uniqueId = fst @loc.idXidsWt
                 lhs.extendEnv = Map.fromList $ map (\(id_,type_) -> (id_, t2ts type_)) $ snd $ @loc.idXidsWt
     | ConTag    lhs.pat = Pat_ConTag @tag @arity @ids
@@ -419,7 +422,7 @@ SEM Pat
                 lhs.extendEnv = Map.fromList $ map (\(id_,type_) -> (id_, t2ts type_)) $ snd $ @loc.idXidsWt
     | Lit       lhs.pat = Pat_Lit @lit.lit
                 loc.t = TVar @lhs.uniqueId
-                lhs.ct = [ EqTy "Pat Lit" @loc.t @lit.t ]
+                lhs.ct = [ EqT "Pat Lit" @loc.t @lit.t ]
                 lhs.uniqueId = @lhs.uniqueId + 1
     | Default   lhs.pat = Pat_Default
                 lhs.t = TVar @lhs.uniqueId
@@ -437,15 +440,6 @@ SEM Literal
 
 {
 -- Debug
-trace :: String -> a -> a
-trace = Trace.trace
-
-traceShow :: Show a => String -> a -> a
-traceShow s x = trace (s ++ ":" ++ show x) x
-
-tracePretty :: Pretty a => String -> a -> a
-tracePretty s x = trace (s ++ ":" ++ (show $ pretty x)) x
-
 printDeclKindCustoms :: Int -> Module.DeclKind -> [Module.Custom] -> String
 printDeclKindCustoms level declKind customs = (concat $ replicate level "    ") ++ (show declKind) ++ "\n" ++ (printCustoms (level + 1) customs)
 
@@ -564,9 +558,9 @@ coreLit2Lit (Expr.LitBytes bytes) =
     Literal_LitBytes bytes
 
 -- uuagc wrapping
-constraints :: OptimizeModule -> [Constraint T]
+constraints :: OptimizeModule -> Constraints
 constraints module_ = ct_Syn_OptimizeModule $ wrap_OptimizeModule (sem_OptimizeModule module_) Inh_OptimizeModule { }
-showIt :: OptimizeModule -> [(String, T, T.TpScheme)]
+showIt :: OptimizeModule -> [(String, Ts, T.TpScheme)]
 showIt module_ = showIt_Syn_OptimizeModule $ wrap_OptimizeModule (sem_OptimizeModule module_) Inh_OptimizeModule { }
 
 -- to CoreModule

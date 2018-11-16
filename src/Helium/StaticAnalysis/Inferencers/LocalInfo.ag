@@ -103,6 +103,11 @@ SEM Expression
                                     , assignedType = Just @beta
                                     , monos = @lhs.monos
                                     }
+  | Letb
+       loc . localInfo  = LocalInfo { self = UHA_Expr @self
+                                    , assignedType = Just @beta
+                                    , monos = @lhs.monos
+                                    }
   | Let
        loc . localInfo  = LocalInfo { self = UHA_Expr @self
                                     , assignedType = Just @beta
@@ -279,6 +284,11 @@ SEM MaybeDeclarations
                                   , monos = @lhs.monos
                                   }
 SEM Expression
+  | Letb
+       loc . declInfo = LocalInfo { self = UHA_Decls [@declaration.self]
+                                  , assignedType = Nothing
+                                  , monos = @lhs.monos
+                                  }
   | Let
        loc . declInfo = LocalInfo { self = UHA_Decls @declarations.self
                                   , assignedType = Nothing

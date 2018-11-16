@@ -5,6 +5,7 @@ import Lvm.Core.Module
 import Lvm.Core.Expr
 
 {-Module-}
+deriving instance Show a => Show (Decl a)
 deriving instance Show Access
 deriving instance Show Custom
 

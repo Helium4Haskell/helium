@@ -56,6 +56,12 @@ SEM Expression [ parentTree : InfoTree | | infoTree : InfoTree ]
   | Case
        loc . parentTree = node @lhs.parentTree @localInfo (@expression.infoTree : @alternatives.infoTrees)
        lhs . infoTree   = @parentTree
+  | Letb
+       loc . thisTree   = node @lhs.parentTree @localInfo [@declTree, @expression.infoTree]
+           . declTree   = node @thisTree @declInfo @declaration.infoTrees
+       lhs . infoTree   = @thisTree
+       expression   . parentTree = @thisTree
+       declaration  . parentTree = @declTree
   | Let
        loc . thisTree   = node @lhs.parentTree @localInfo [@declTree, @expression.infoTree]
            . declTree   = node @thisTree @declInfo @declarations.infoTrees

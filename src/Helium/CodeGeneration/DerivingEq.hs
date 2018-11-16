@@ -16,7 +16,7 @@ import Lvm.Core.Utils
 import Lvm.Common.Id
 import Helium.Utils.Utils
 
-import qualified Debug.Trace as Trace
+--import qualified Debug.Trace as Trace
 
 -- Eq Dictionary for a data type declaration
 dataDictionary :: UHA.Declaration -> CoreDecl
@@ -35,9 +35,8 @@ dataDictionary _ = error "pattern match failure in CodeGeneration.Deriving.dataD
 eqFunction :: [UHA.Name] -> [UHA.Constructor] -> Expr
 eqFunction names constructors =
     let
-        body =
-            Let (Strict (Bind fstArg (Var fstArg))) -- evaluate both
-                (Let (Strict (Bind sndArg (Var sndArg)))
+        body = letstrict_ fstArg (Var fstArg) -- evaluate both
+                (letstrict_ sndArg (Var sndArg)
                     (Match fstArg  -- case $fstArg of ...
                         (map makeAlt constructors)))
     in

@@ -16,10 +16,11 @@ showLetBangs :: [(String, Expr, [Expr])] -> String
 showLetBangs fnBangs = intercalate "\n" (map showLetBang (filter (\(_,_,bangs) -> not $ null bangs) fnBangs))
 
 showLetBang :: (String, Expr, [Expr]) -> String
-showLetBang (functionName, expr, letBangs) = functionName ++ ":\n" {-++ showPrettyExpr expr ++ "\n"-} ++ (intercalate "\n" (map showBang letBangs))
+showLetBang (functionName, _{-expr-}, letBangs) = functionName ++ ":\n" {-++ showPrettyExpr expr ++ "\n"-} ++ (intercalate "\n" (map showBang letBangs))
     where
     showBang :: Expr -> String
     showBang (Expr_Let (Binds_Strict (Bind_Bind name expr)) _) = "    let! " ++ stringFromId name ++ " = " ++ showPrettyExpr expr
+    showBang _ = internalError "StrictnessInfo.hs" "showLetBang" "not bang!?"
 
 showPrettyExpr :: Expr -> String
 showPrettyExpr = show . pretty . expr2CoreExpr

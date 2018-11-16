@@ -9,7 +9,7 @@
 module Helium.CodeGeneration.CoreUtils
     (   custom, customStrategy
     ,   stringToCore, coreList
-    ,   let_, if_, app_, letrec_
+    ,   let_, if_, app_, letstrict_, letstrict__, letrec_
     ,   cons, nil
     ,   var, decl, char, charOrd
     ,   float, packedString
@@ -20,7 +20,10 @@ import Lvm.Common.Id
 import Lvm.Core.Utils
 import Data.Char
 import Lvm.Common.Byte(bytesFromString)
-import qualified Lvm.Core.Expr as Core
+--import qualified Lvm.Core.Expr as Core
+import Debug.Trace(trace)
+import Helium.Optimization.Show()
+import Helium.Syntax.UHA_Syntax_Show()
 
 infixl `app_`
 
@@ -46,6 +49,12 @@ app_ f x = Ap f x
 let_ :: Id -> Expr -> Expr -> Expr
 let_ x e b = Let (NonRec (Bind x e)) b
 
+letstrict_ :: Id -> Expr -> Expr -> Expr
+letstrict_ x e b = Let (Strict (Bind x e)) b
+
+letstrict__ :: [CoreDecl] -> Expr -> Expr
+letstrict__ [DeclValue { declName = ident, valueValue = expr }] e = letstrict_ ident expr e
+
 letrec_ :: [CoreDecl] -> Expr -> Expr
 letrec_ bs e =
     Let
@@ -63,8 +72,7 @@ letrec_ bs e =
 --   _    -> <elseExpr>
 if_ :: Expr -> Expr -> Expr -> Expr
 if_ guardExpr thenExpr elseExpr =
-    Let
-        (Strict (Bind guardId guardExpr))
+    letstrict_ guardId guardExpr
         (Match guardId
             [ Alt (PatCon (ConId trueId) []) thenExpr
             , Alt PatDefault elseExpr

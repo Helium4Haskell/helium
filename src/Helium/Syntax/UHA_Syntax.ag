@@ -5,8 +5,8 @@
 -- At some places we still have to look at,
 -- a "-- ToDo:" comment is inserted
 imports{
-import Data.Maybe(isJust)
-import Helium.Utils.Utils(internalError)
+--import Data.Maybe(isJust)
+--import Helium.Utils.Utils(internalError)
 }
 -- ------------------------------------------------------------------------
 -- -- Modules                                                            --
@@ -351,6 +351,10 @@ DATA Expression                                   {- *** -}
         range                    : Range
         expression               : Expression
         alternatives             : Alternatives
+    | Letb                             {- *** -}
+        range                    : Range
+        declaration              : Declaration
+        expression               : Expression
     | Let                              {- *** -}
         range                    : Range
         declarations             : Declarations
