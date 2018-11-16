@@ -81,6 +81,10 @@ instance Show BindTarget where
   show (BindTargetFunction global) = "thunk " ++ show global
   show (BindTargetConstructor con) = "constructor " ++ show con
 
+instance Show MatchTarget where
+  show (MatchTargetConstructor con) = show con
+  show (MatchTargetThunk arity) = "thunk " ++ show arity
+
 instance Show Case where
   show (CaseConstructor branches) = "constructor " ++ showArguments' showBranch branches
     where
@@ -95,7 +99,7 @@ instance Show Instruction where
   show (Let var expr next) = instructionIndent ++ "%" ++ showId var ++ " = " ++ show expr ++ "\n" ++ show next
   show (LetAlloc binds next) = instructionIndent ++ "letalloc " ++ intercalate ", " (map show binds) ++ "\n" ++ show next
   show (Jump to) = instructionIndent ++ "jump " ++ show to
-  show (Match var con args next) = instructionIndent ++ "match " ++ show var ++ " on " ++ show con ++ " " ++ showArguments' showField args ++ "\n" ++ show next
+  show (Match var target args next) = instructionIndent ++ "match " ++ show var ++ " on " ++ show target ++ " " ++ showArguments' showField args ++ "\n" ++ show next
     where
       showField Nothing = "_"
       showField (Just l) = show l

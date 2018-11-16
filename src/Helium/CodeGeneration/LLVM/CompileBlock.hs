@@ -63,17 +63,19 @@ compileInstruction env supply (Iridium.Jump to) = Partial [] (Do $ Br (toName to
 compileInstruction env supply (Iridium.Return var) = Partial [] (Do $ Ret (Just $ toOperand env var) []) []
 -- A Match has undefined behaviour if it does not match, so we do not need to check whether it actually matches.
 compileInstruction env supply (Iridium.Match var _ [] next) = compileInstruction env supply next
-compileInstruction env supply (Iridium.Match var (Iridium.DataTypeConstructor _ conId _) args next)
+compileInstruction env supply (Iridium.Match var target args next)
   = [ addressName := AST.BitCast (toOperand env var) (pointer t) []
     ]
     +> compileExtractFields env supply'' address struct args
     +> compileInstruction env supply''' next
   where
-    t = NamedTypeReference $ toName conId
+    t = structType env struct
     (addressName, supply') = freshName supply
     address = LocalReference (pointer t) addressName
     (supply'', supply''') = splitNameSupply supply'
-    LayoutPointer struct = findMap conId (envConstructors env)
+    LayoutPointer struct = case target of
+      Iridium.MatchTargetConstructor (Iridium.DataTypeConstructor _ conId _) -> findMap conId (envConstructors env)
+      Iridium.MatchTargetThunk arity -> LayoutPointer $ thunkStruct arity
 {- compileInstruction env supply (Iridium.If var (Iridium.PatternCon con@(Iridium.DataTypeConstructor _ conId _)) whenTrue whenFalse)
   = compileIfMatchConstructor env supply var con conLayout whenTrue whenFalse
   where

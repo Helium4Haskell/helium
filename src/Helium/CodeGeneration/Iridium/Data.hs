@@ -15,7 +15,7 @@
 module Helium.CodeGeneration.Iridium.Data where
 
 import Lvm.Common.Id(Id, stringFromId, idFromString)
-import Lvm.Core.Module(Custom(..), DeclKind)
+import Lvm.Core.Module(Custom(..), DeclKind, Arity)
 import Data.List(intercalate)
 
 import Helium.CodeGeneration.Iridium.Type
@@ -106,7 +106,7 @@ data Instruction
   | LetAlloc ![Bind] !Instruction
   | Jump !BlockName
   -- * Asserts that the variable matches with the specified constructor. If they do not match, the behaviour is undefined.
-  | Match !Variable !DataTypeConstructor ![Maybe Local] !Instruction -- TODO: For consistency, Maybe Local should be replaced with Maybe Id, as we also don't use Local for Let and LetAlloc
+  | Match !Variable !MatchTarget ![Maybe Local] !Instruction -- TODO: For consistency, Maybe Local should be replaced with Maybe Id, as we also don't use Local for Let and LetAlloc
   | Case !Variable Case
   | Return !Variable
   | Unreachable
@@ -118,6 +118,11 @@ data Bind = Bind { bindVar :: !Id, bindTarget :: !BindTarget, bindArguments :: !
 data BindTarget
   = BindTargetFunction !Variable
   | BindTargetConstructor !DataTypeConstructor
+  deriving (Eq, Ord)
+
+data MatchTarget
+  = MatchTargetConstructor !DataTypeConstructor
+  | MatchTargetThunk !Arity
   deriving (Eq, Ord)
 
 bindType :: Bind -> PrimitiveType

@@ -303,7 +303,7 @@ transformAlt supply env continue var con@(DataTypeConstructor _ _ fields) args e
     locals = zipWith (\name t -> Local name t) args fields
     env' = expandEnvWithLocals locals env
   in
-    Match var con (map Just locals)
+    Match var (MatchTargetConstructor con) (map Just locals)
     +> toInstruction supply env' continue expr
 
 transformCaseConstructor :: NameSupply -> TypeEnv -> [Continue] -> Id -> Id -> [Core.Alt] -> Partial

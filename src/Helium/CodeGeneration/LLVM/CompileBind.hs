@@ -1,10 +1,11 @@
-module Helium.CodeGeneration.LLVM.CompileBind (compileBinds, toStruct) where
+module Helium.CodeGeneration.LLVM.CompileBind (compileBinds, toStruct, thunkStruct) where
 
 import Data.Bits(shiftL, (.|.), (.&.))
 import Data.Word(Word32)
 
 import Lvm.Common.Id(idFromString, Id, NameSupply, mapWithSupply, splitNameSupply)
 import Lvm.Common.IdMap(findMap)
+import Lvm.Core.Module(Arity)
 import Helium.CodeGeneration.LLVM.Env (Env(..))
 import Helium.CodeGeneration.LLVM.CompileType
 import Helium.CodeGeneration.LLVM.ConstructorLayout
@@ -87,3 +88,10 @@ bindArguments env _ = id
 expectedType :: Iridium.BindTarget -> Type
 expectedType (Iridium.BindTargetConstructor (Iridium.DataTypeConstructor dataId _ _)) = NamedTypeReference $ toNamePrefixed "$data_" dataId
 expectedType _ = voidPointer
+
+-- Gives a struct given an arity. Does not specify a tag, this is intended for purposes when the tag is not known / needed.
+thunkStruct :: Arity -> Struct
+thunkStruct arity = Struct Nothing 32 0 fields
+  where
+    -- Function pointer & arguments
+    fields = StructField Iridium.TypeAnyWHNF Nothing : map (\i -> StructField Iridium.TypeAny (Just i)) [0..arity - 1] 

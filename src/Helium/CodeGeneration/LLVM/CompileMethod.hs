@@ -15,6 +15,7 @@ import Helium.CodeGeneration.LLVM.Utils
 import Helium.CodeGeneration.LLVM.CompileType(compileType, compileCallingConvention, voidPointer, toOperand, pointer, taggedThunkPointer)
 import Helium.CodeGeneration.LLVM.CompileBlock(compileBlock)
 import Helium.CodeGeneration.LLVM.Struct(Struct(..), StructField(..))
+import Helium.CodeGeneration.LLVM.CompileBind(thunkStruct)
 import Helium.CodeGeneration.LLVM.CompileStruct(structType, extractField)
 
 import Lvm.Common.Id(Id, NameSupply, freshId, splitNameSupply, mapWithSupply, idFromString)
@@ -134,7 +135,5 @@ trampolineBlock supply env fn callConv args = BasicBlock (mkName "trampoline_ent
 
     -- Struct representing a thunk for this function
     -- Note that we ignore the value for the tag and the type for the function pointer, as we don't need those
-    struct = Struct Nothing 32 0 fields
+    struct = thunkStruct arity
     t = structType env struct
-    -- Function pointer & arguments
-    fields = StructField Iridium.TypeAnyWHNF Nothing : map (\i -> StructField Iridium.TypeAny (Just i)) [0..arity - 1] 

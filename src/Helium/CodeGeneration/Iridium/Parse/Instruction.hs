@@ -26,7 +26,7 @@ pInstruction = do
               else
                 return False
         "jump" -> Jump <$> pId
-        "match" -> Match <$> pVariable <* pWhitespace <* pSymbol "on" <* pWhitespace <*> pDataTypeConstructor <* pWhitespace <*> pArguments pMatchField <*> pInstruction
+        "match" -> Match <$> pVariable <* pWhitespace <* pSymbol "on" <* pWhitespace <*> pMatchTarget <* pWhitespace <*> pArguments pMatchField <*> pInstruction
         "case" -> Case <$> pVariable <* pWhitespace <*> pCase
         "return" -> Return <$> pVariable
         "unreachable" -> return Unreachable
@@ -62,3 +62,13 @@ pBindTarget = do
     "thunk" -> BindTargetFunction <$> pVariable
     "constructor" -> BindTargetConstructor <$> pDataTypeConstructor
     _ -> pError "expected bind in letalloc"
+
+pMatchTarget :: Parser MatchTarget
+pMatchTarget = do
+  c <- lookahead
+  if c == '@' then
+    MatchTargetConstructor <$> pDataTypeConstructor
+  else do
+    pSymbol "thunk"
+    pWhitespace
+    MatchTargetThunk <$> pInt
