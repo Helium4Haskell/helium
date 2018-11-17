@@ -1,0 +1,69 @@
+module IridiumLang.String
+import ()
+
+declare @putchar: (int) -> int [callconvention:c]
+
+#[decl @kind [bytes "* -> *"]]
+custom @"[]": @data
+
+#[decl @kind [bytes "* -> *"]]
+data @"[]" {
+  #[decl @type [bytes "[a]"]]
+  #[link @"[]" @data]
+  constructor @"[]"()
+
+  #[decl @type [bytes "a -> [a] -> [a]"]]
+  #[link @"[]" @data]
+  constructor @":"(any, any)
+}
+
+define @_$helium_runtime_unpack_string(%length: int, %pointer: unsafeptr): @"[]" {
+unpack.entry:
+  case %length: int int (0 to unpack.nil) otherwise unpack.cons
+unpack.cons:
+  %1 = literal int 1
+  %length_minus_one = prim int_sub(%length: int, %1: int)
+  %c = prim unsafeptr_read32(%pointer: unsafeptr)
+  %4 = literal int 4
+  %pointer_plus_four = prim unsafeptr_add(%pointer: unsafeptr, %4: int)
+  %tail = call @_$helium_runtime_unpack_string: (int, unsafeptr) -> @"[]" $ (%length_minus_one: int, %pointer_plus_four: unsafeptr)
+  %tail_as_any = cast %tail: @"[]" as any
+  %c_as_any = cast %c: int as any
+  letalloc %list = constructor @":": (any, any) -> @"[]" $ (%c_as_any: any, %tail_as_any: any)
+  return %list: @"[]"
+unpack.nil:
+  letalloc %nil = constructor @"[]": () -> @"[]" $ ()
+  return %nil: @"[]"
+}
+
+define @helium_print_string(%arg_list: @"[]"): int {
+print.entry:
+  jump print.loop
+print.loop:
+  %list = phi (print.entry => %arg_list: @"[]", print.cons => %cons: @"[]")
+  case %list: @"[]" constructor (@"[]": () -> @"[]" to print.nil, @":": (any, any) -> @"[]" to print.cons)
+print.nil:
+  %0 = literal int 0
+  return %0: int
+print.cons:
+  match %list: @"[]" on @":": (any, any) -> @"[]" (%c_thunk: any, %cons_as_any: any)
+  %c_whnf = eval %c_thunk: any
+  %c = cast %c_whnf: any_whnf as int
+  %_ = call @putchar: (int) -> int $ (%c: int)
+  %cons_whnf = eval %cons_as_any: any
+  %cons = cast %cons_whnf: any_whnf as @"[]"
+
+  jump print.loop
+}
+
+declare @exit: (int) -> int [callconvention:c]
+
+define @error(%msg: any): any_whnf [trampoline] {
+error.entry:
+  %msg_whnf = eval %msg: any
+  %msg_list = cast %msg_whnf: any_whnf as @"[]"
+  %_1 = call @helium_print_string: (@"[]") -> int $ (%msg_list: @"[]")
+  %1 = literal int 1
+  %_2 = call @exit: (int) -> int $ (%1: int)
+  unreachable
+}
