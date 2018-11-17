@@ -17,7 +17,7 @@ pType = do
       "any_whnf" -> return TypeAnyWHNF
       "int" -> return TypeInt
       "anyfunction" -> return TypeFunction
-      "function" -> TypeGlobalFunction <$> pFunctionType
+      "function" -> TypeGlobalFunction <$ pWhitespace <*> pFunctionType
       "unsafeptr" -> return TypeUnsafePtr
       _ -> pError "expected type"
 

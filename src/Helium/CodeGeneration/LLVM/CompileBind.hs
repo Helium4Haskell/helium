@@ -74,7 +74,10 @@ toStruct env (Iridium.BindTargetFunction var) arity = Right $ Struct Nothing 32 
     remaining = case var of
       Iridium.VarLocal _ -> (1 `shiftL` 16) - 1 -- All 16 bits to 1
       Iridium.VarGlobal (Iridium.Global _ (Iridium.FunctionType args _)) -> length args - arity
-    fields = StructField (Iridium.TypeGlobalFunction $ Iridium.FunctionType [Iridium.TypeUnsafePtr] Iridium.TypeAnyWHNF) Nothing : map (\i -> StructField Iridium.TypeAny (Just i)) [0..arity - 1] 
+    targetType = case var of
+      Iridium.VarLocal _ -> Iridium.TypeAnyWHNF
+      Iridium.VarGlobal _ -> Iridium.TypeGlobalFunction $ Iridium.FunctionType [Iridium.TypeUnsafePtr] Iridium.TypeAnyWHNF
+    fields = StructField targetType Nothing : map (\i -> StructField Iridium.TypeAny (Just i)) [0..arity - 1] 
 
 toTrampolineOperand :: Env -> Iridium.Variable -> Operand
 toTrampolineOperand _ (Iridium.VarGlobal (Iridium.Global fn _)) = ConstantOperand $ Constant.GlobalReference trampolineType $ toNamePrefixed "trampoline$" fn
@@ -94,4 +97,4 @@ thunkStruct :: Arity -> Struct
 thunkStruct arity = Struct Nothing 32 0 fields
   where
     -- Function pointer & arguments
-    fields = StructField Iridium.TypeAnyWHNF Nothing : map (\i -> StructField Iridium.TypeAny (Just i)) [0..arity - 1] 
+    fields = StructField Iridium.TypeUnsafePtr Nothing : map (\i -> StructField Iridium.TypeAny (Just i)) [0..arity - 1] 
