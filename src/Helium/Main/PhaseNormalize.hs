@@ -33,6 +33,9 @@ import Text.PrettyPrint.Leijen(Pretty, pretty)
 tracePretty :: Pretty a => String -> a -> a
 tracePretty s t = trace (s ++ ": \n" ++ (show $ pretty t)) t
 
+traceShow :: Show a => String -> a -> a
+traceShow s t = trace (s ++ ": \n" ++ show t) t
+
 phaseNormalize :: CoreModule -> [Option] -> IO CoreModule
 phaseNormalize coreModule options = do
     enterNewPhase "Code normalization" options
@@ -62,13 +65,17 @@ coreSimplify m = t
 
 exprRemoveDeadLet :: Expr -> Expr
 exprRemoveDeadLet expr = case expr of
-    Let binds expr1 ->
-        let binds' = tracePretty "binds'" $ (bindsRemoveDeadLet binds)
+    Let (Strict bind) expr1 ->
+        let bind' = bindRemoveDeadLet bind
             expr1' = exprRemoveDeadLet expr1
-            (_, bindNames) = bindsOcc binds'
-            occ2 = exprOcc expr1'
+        in  Let (Strict bind') expr1'
+    Let binds expr1 ->
+        let binds' = bindsRemoveDeadLet binds
+            expr1' = exprRemoveDeadLet expr1
+            bindNames = snd $ bindsOcc binds'
+            occ = exprOcc expr1'
             simplify = Let binds' expr1'
-        in  if anyMember occ2 bindNames -- Only removes complete let bindings (which are split for mutual recursion)
+        in  if anyMember occ bindNames -- Only removes complete let bindings (which are already split for mutual recursion)
              then simplify -- Not a dead let
              else expr1' -- Dead let removal
     Match name alts -> Match name (altsRemoveDeadLet alts)
@@ -241,6 +248,10 @@ altInline name inline (Alt pat expr) = Alt pat (exprInline name inline expr)
 {- Occurences -}
 exprOcc :: Expr -> Occ
 exprOcc expr = case expr of
+    Let (Strict bind) expr1 ->
+        let (occ1, bindNames) = bindOcc bind
+            occ2 = exprOcc expr1
+        in  removeNames (combineOcc occ1 occ2) bindNames
     Let binds expr1 ->
         let (occ1, bindNames) = bindsOcc binds
             occ2 = exprOcc expr1
