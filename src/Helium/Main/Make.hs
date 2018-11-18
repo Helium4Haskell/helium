@@ -1,6 +1,6 @@
 module Helium.Main.Make (make) where
 
-import Helium.Main.Compile(compile)
+import Helium.Main.Compile(compile, readCore)
 import Helium.Parser.Parser(parseOnlyImports)
 import Control.Monad
 import System.FilePath(joinPath)
@@ -161,20 +161,3 @@ parseCoreOnlyImports fullName =
     importedModule decl = case Lvm.declAccess decl of
       Lvm.Imported{ Lvm.importModule = name } -> Just $ stringFromId name
       _ -> Nothing
-
-resolveDeclarations :: [String] -> Id -> IO (Lvm.CoreModule)
-resolveDeclarations paths name = do
-  maybeFullNameLvm <- searchPathMaybe paths ".lvm" $ stringFromId name
-  case maybeFullNameLvm of
-    Just fullName -> do
-      readCore fullName
-    Nothing -> do
-      fullName <- searchPath paths ".iridium" $ stringFromId name
-      -- TODO: Extract declarations out of Iridium file
-      return $ Lvm.Module name 0 0 []
-
-readCore :: FilePath -> IO Lvm.CoreModule
-readCore fullName = do
-  contents <- readSourceFile fullName
-  let tokens = Lvm.layout $ Lvm.lexer (1,1) contents
-  Lvm.parseModule fullName tokens

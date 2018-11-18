@@ -6,16 +6,17 @@
     Portability :  portable
 -}
 
-module Helium.Main.Compile where
+module Helium.Main.Compile(compile, readCore) where
 
 import Lvm.Core.Expr(CoreModule)
 import qualified Lvm.Core.Parsing.Parser as Lvm
 import qualified Lvm.Core.Parsing.Lexer as Lvm
 import qualified Lvm.Core.Parsing.Layout as Lvm
 import qualified Lvm.Core.Module as Lvm
+import qualified Lvm.Core.Expr as Lvm
 import qualified Lvm.Import as Lvm
-import Lvm.Path (searchPath)
-import Lvm.Common.Id (stringFromId)
+import Lvm.Path (searchPath, searchPathMaybe)
+import Lvm.Common.Id (Id, stringFromId)
 import Helium.Main.PhaseLexer
 import Helium.Main.PhaseParser
 import Helium.Main.PhaseImport
@@ -31,6 +32,7 @@ import Helium.Main.PhaseCodeGeneratorLlvm
 import Helium.Main.CompileUtils
 import qualified Helium.CodeGeneration.Iridium.Parse.Module as Iridium
 import qualified Helium.CodeGeneration.Iridium.ResolveDependencies as Iridium
+import Helium.CodeGeneration.Iridium.ImportAbstract (toAbstractModule)
 import Helium.Parser.Lexer (checkTokenStreamForClassOrInstance)
 import Helium.Main.Args (overloadingFromOptions)
 import Helium.Utils.Utils
@@ -185,3 +187,26 @@ maximumNumberOfTypeErrors = 3
 
 maximumNumberOfKindErrors :: Int
 maximumNumberOfKindErrors = 1
+
+resolveDeclarations :: [String] -> Id -> IO (Lvm.CoreModule)
+resolveDeclarations paths name = do
+  maybeFullNameLvm <- searchPathMaybe paths ".lvm" $ stringFromId name
+  case maybeFullNameLvm of
+    Just fullName -> do
+      readCore fullName
+    Nothing -> do
+      fullName <- searchPath paths ".iridium" $ stringFromId name
+      contents <- readSourceFile fullName
+      iridium <- case Iridium.parseModule contents of
+        Left err -> do
+            putStrLn $ "Failed to parse Iridium file " ++ show fullName
+            print err
+            exitWith (ExitFailure 1)
+        Right ir -> return ir
+      return $ toAbstractModule iridium
+
+readCore :: FilePath -> IO Lvm.CoreModule
+readCore fullName = do
+    contents <- readSourceFile fullName
+    let tokens = Lvm.layout $ Lvm.lexer (1,1) contents
+    Lvm.parseModule fullName tokens
