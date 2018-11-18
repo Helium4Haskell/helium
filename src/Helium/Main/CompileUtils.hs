@@ -114,8 +114,11 @@ checkExistence path name =
 
 resolve :: [String] -> String -> IO (Maybe String)
 resolve path name = 
-    do maybeFullName <- searchPathMaybe path ".hs" name
-       case maybeFullName of
-           Just fullName -> return (Just fullName)
-           Nothing       -> searchPathMaybe path ".lvm" name
+  do
+    maybeFullName <- searchPathMaybe path ".hs" name
+    case maybeFullName of
+      Just fullName -> return (Just fullName)
+      Nothing -> do
+        maybeCore <- searchPathMaybe path ".core" name
+        maybe (searchPathMaybe path ".iridium" name) (return . Just) maybeCore
 

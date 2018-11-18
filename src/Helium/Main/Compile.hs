@@ -12,6 +12,10 @@ import Lvm.Core.Expr(CoreModule)
 import qualified Lvm.Core.Parsing.Parser as Lvm
 import qualified Lvm.Core.Parsing.Lexer as Lvm
 import qualified Lvm.Core.Parsing.Layout as Lvm
+import qualified Lvm.Core.Module as Lvm
+import qualified Lvm.Import as Lvm
+import Lvm.Path (searchPath)
+import Lvm.Common.Id (stringFromId)
 import Helium.Main.PhaseLexer
 import Helium.Main.PhaseParser
 import Helium.Main.PhaseImport
@@ -52,8 +56,13 @@ compile basedir fullName options lvmPath doneModules =
           "hs" -> compileHaskellToCore basedir fullName contents options lvmPath doneModules
           "core" -> do
             let tokens = Lvm.layout $ Lvm.lexer (1,1) contents
-            coreModule <- Lvm.parseModule fullName tokens
-            return (coreModule, 0)
+            -- coreModule <- Lvm.parseModule fullName tokens
+            (m, implExps, es) <- Lvm.parseModuleExport fullName tokens
+
+            -- resolve imports
+            chasedMod  <- Lvm.lvmImport (searchPath lvmPath ".lvm" . stringFromId) m
+            let publicmod = Lvm.modulePublic implExps es chasedMod
+            return (publicmod, 0)
           _ -> do
             putStrLn $ "Unsupported file extension: " ++ show ext
             exitWith (ExitFailure 1)
