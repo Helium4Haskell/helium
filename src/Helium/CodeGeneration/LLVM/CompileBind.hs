@@ -68,6 +68,7 @@ toStruct :: Env -> Iridium.BindTarget -> Int -> Either Int Struct
 toStruct env (Iridium.BindTargetConstructor (Iridium.DataTypeConstructor _ conId _)) arity = case findMap conId (envConstructors env) of
   LayoutInline value -> Left value
   LayoutPointer struct -> Right struct
+toStruct env (Iridium.BindTargetTuple arity) _ = Right $ tupleStruct arity
 toStruct env target arity = Right $ Struct Nothing 32 tag fields
   where
     var = case target of

@@ -1,7 +1,7 @@
 module Helium.CodeGeneration.Iridium.Utils where
 
 import Helium.CodeGeneration.Iridium.Data
-import Lvm.Common.Id (NameSupply, mapWithSupply, splitNameSupply)
+import Lvm.Common.Id (NameSupply, mapWithSupply, splitNameSupply, idFromString)
 
 mapBlocks :: (Instruction -> Instruction) -> Module -> Module
 mapBlocks fn (Module name dependencies customs datas abstracts methods) = Module name dependencies customs datas abstracts $ map (fmap fnMethod) methods

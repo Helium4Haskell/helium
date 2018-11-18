@@ -81,10 +81,12 @@ instance Show BindTarget where
   show (BindTargetFunction global) = "function " ++ show global
   show (BindTargetThunk var) = "thunk " ++ show var
   show (BindTargetConstructor con) = "constructor " ++ show con
+  show (BindTargetTuple arity) = "tuple " ++ show arity
 
 instance Show MatchTarget where
   show (MatchTargetConstructor con) = show con
   show (MatchTargetThunk arity) = "thunk " ++ show arity
+  show (MatchTargetTuple arity) = "tuple " ++ show arity
 
 instance Show Case where
   show (CaseConstructor branches) = "constructor " ++ showArguments' showBranch branches
@@ -181,6 +183,7 @@ instance Show PrimitiveType where
 
   show (TypeInt) = "int"
   show (TypeDataType name) = "@" ++ showId name
+  show (TypeTuple arity) = "tuple " ++ show arity
   show (TypeFunction) = "anyfunction"
   show (TypeGlobalFunction fntype) = "function " ++ show fntype
 

@@ -23,6 +23,7 @@ compileType env Iridium.TypeAnyWHNF = voidPointer
 compileType env Iridium.TypeInt = envValueType env
 compileType env Iridium.TypeDouble = FloatingPointType DoubleFP
 compileType env (Iridium.TypeDataType dataName) = NamedTypeReference $ toNamePrefixed "$data_" dataName
+compileType env (Iridium.TypeTuple _) = voidPointer
 compileType env Iridium.TypeFunction = voidPointer
 compileType env (Iridium.TypeGlobalFunction fntype) = compileFunctionType env fntype
 compileType env Iridium.TypeUnsafePtr = voidPointer

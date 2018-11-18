@@ -119,15 +119,18 @@ data BindTarget
   = BindTargetFunction !Variable
   | BindTargetThunk !Variable
   | BindTargetConstructor !DataTypeConstructor
+  | BindTargetTuple !Arity
   deriving (Eq, Ord)
 
 data MatchTarget
   = MatchTargetConstructor !DataTypeConstructor
   | MatchTargetThunk !Arity
+  | MatchTargetTuple !Arity
   deriving (Eq, Ord)
 
 bindType :: Bind -> PrimitiveType
 bindType (Bind _ (BindTargetConstructor (DataTypeConstructor dataName _ _)) _) = TypeDataType dataName
+bindType (Bind _ (BindTargetTuple _) args) = TypeTuple $ length args
 bindType (Bind _ (BindTargetFunction (VarGlobal (Global fn (FunctionType fnargs _)))) args)
   | length args == length fnargs = TypeAnyThunk
   | otherwise = TypeFunction

@@ -18,7 +18,7 @@ import Helium.CodeGeneration.LLVM.CompileType
 import Helium.CodeGeneration.LLVM.CompileBind
 import Helium.CodeGeneration.LLVM.ConstructorLayout
 import Helium.CodeGeneration.LLVM.CompileConstructor(compileExtractFields)
-import Helium.CodeGeneration.LLVM.Struct(tagValue)
+import Helium.CodeGeneration.LLVM.Struct(tagValue, tupleStruct)
 import Helium.CodeGeneration.LLVM.CompileStruct
 import qualified Helium.CodeGeneration.LLVM.Builtins as Builtins
 
@@ -76,6 +76,7 @@ compileInstruction env supply (Iridium.Match var target args next)
     LayoutPointer struct = case target of
       Iridium.MatchTargetConstructor (Iridium.DataTypeConstructor _ conId _) -> findMap conId (envConstructors env)
       Iridium.MatchTargetThunk arity -> LayoutPointer $ thunkStruct arity
+      Iridium.MatchTargetTuple arity -> LayoutPointer $ tupleStruct arity
 {- compileInstruction env supply (Iridium.If var (Iridium.PatternCon con@(Iridium.DataTypeConstructor _ conId _)) whenTrue whenFalse)
   = compileIfMatchConstructor env supply var con conLayout whenTrue whenFalse
   where

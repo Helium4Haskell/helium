@@ -17,3 +17,8 @@ data StructField = StructField
   , fieldFlagIndex :: Maybe Int
   }
   deriving (Eq, Ord, Show)
+
+tupleStruct :: Int -> Struct
+tupleStruct arity = Struct Nothing 0 0 $ map field [0 .. arity - 1]
+  where
+    field index = StructField Iridium.TypeAny (Just index)

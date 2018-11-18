@@ -16,6 +16,7 @@ pType = do
       "any_thunk" -> return TypeAnyThunk
       "any_whnf" -> return TypeAnyWHNF
       "int" -> return TypeInt
+      "tuple" -> TypeTuple <$ pWhitespace <*> pInt
       "anyfunction" -> return TypeFunction
       "function" -> TypeGlobalFunction <$ pWhitespace <*> pFunctionType
       "unsafeptr" -> return TypeUnsafePtr

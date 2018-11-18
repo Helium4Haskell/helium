@@ -28,6 +28,7 @@ data PrimitiveType
   | TypeInt
   | TypeDouble
   | TypeDataType !Id
+  | TypeTuple !Int
   | TypeFunction -- ^ Pointer to a function or a thunk in WHNF (partially applied function)
   | TypeGlobalFunction FunctionType -- ^ A global function
 

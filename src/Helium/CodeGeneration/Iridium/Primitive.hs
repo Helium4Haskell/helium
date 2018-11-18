@@ -41,11 +41,11 @@ primBinaryInt name g = prim name [TypeInt, TypeInt] TypeInt f
     f _ _ _ _ = error "expected two arguments for binary int primitive"
 
 primCompare :: String -> PrimitiveType -> (LLVM.Operand -> LLVM.Operand -> LLVM.InstructionMetadata -> LLVM.Instruction) -> (Id, Primitive)
-primCompare name t g = prim name [t, t] TypeInt f
+primCompare name t g = prim name [t, t, TypeAnyWHNF, TypeAnyWHNF] TypeAnyWHNF f
   where
-    f target supply [a, b] var =
+    f target supply [a, b, whenTrue, whenFalse] var =
       [ bool LLVM.:= g a b []
-      , var LLVM.:= LLVM.ZExt (LLVM.LocalReference (LLVM.IntegerType 1) bool) (LLVM.IntegerType $ fromIntegral $ targetWordSize target) []
+      , var LLVM.:= LLVM.Select (LLVM.LocalReference (LLVM.IntegerType 1) bool) whenTrue whenFalse []
       ]
       where
         (bool, _) = freshName supply
@@ -62,7 +62,7 @@ primitiveList =
   -- This thus maps to `quot` in haskell.
   , primBinaryInt "int_sdiv" $ LLVM.SDiv False
   , primBinaryInt "int_srem" LLVM.SRem
-  
+
   , primBinaryInt "int_and" LLVM.And
   , primBinaryInt "int_or" LLVM.Or
   , primBinaryInt "int_xor" LLVM.Xor

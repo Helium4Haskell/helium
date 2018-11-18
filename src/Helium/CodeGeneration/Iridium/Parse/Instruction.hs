@@ -62,6 +62,7 @@ pBindTarget = do
     "function" -> BindTargetFunction <$> pVariable
     "thunk" -> BindTargetThunk <$> pVariable
     "constructor" -> BindTargetConstructor <$> pDataTypeConstructor
+    "tuple" -> BindTargetTuple <$> pInt
     _ -> pError "expected bind in letalloc"
 
 pMatchTarget :: Parser MatchTarget
@@ -70,6 +71,8 @@ pMatchTarget = do
   if c == '@' then
     MatchTargetConstructor <$> pDataTypeConstructor
   else do
-    pSymbol "thunk"
-    pWhitespace
-    MatchTargetThunk <$> pInt
+    key <- pKeyword
+    case key of
+      "thunk" -> MatchTargetThunk <$> pInt
+      "tuple" -> MatchTargetTuple <$> pInt
+      _ -> pError "Expected match target"

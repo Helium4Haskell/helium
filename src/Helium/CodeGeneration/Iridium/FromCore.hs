@@ -157,8 +157,16 @@ toInstruction supply env continue (Core.Let (Core.Rec bs) expr)
 toInstruction supply env continue (Core.Match x alts) =
   blocks &> (case head alts of
     Core.Alt Core.PatDefault expr -> toInstruction supply'' env (head continues) expr
-    Core.Alt (Core.PatCon con _) _ ->
-      let ValueConstructor (DataTypeConstructor dataName _ _) = findMap (conId con) (teValues env)
+    -- ConTag is only used for Tuples, so we don't need to create a Case statement, we only Match on the elements of the tuple.
+    Core.Alt (Core.PatCon (Core.ConTag _ arity) fields) expr ->
+      let
+        locals = map (\name -> Local name TypeAny) fields
+        env' = expandEnvWithLocals locals env
+      in
+        Match (resolve env x) (MatchTargetTuple arity) (map Just locals)
+        +> toInstruction supply'' env' (head continues) expr
+    Core.Alt (Core.PatCon (Core.ConId con) _) _ ->
+      let ValueConstructor (DataTypeConstructor dataName _ _) = findMap con (teValues env)
       in transformCaseConstructor supply'' env continues x dataName alts
     Core.Alt (Core.PatLit _) _ -> error "Match on literals is not yet supported"
     )
@@ -338,9 +346,10 @@ bind supply env (Core.Bind x val) = (castInstructions, Bind x target args')
     target :: BindTarget
     params :: [PrimitiveType]
     (target, params) = case apOrCon of
-      Left con ->
-        let ValueConstructor constructor@(DataTypeConstructor _ _ fields) = valueDeclaration env (conId con)
+      Left (Core.ConId con) ->
+        let ValueConstructor constructor@(DataTypeConstructor _ _ fields) = valueDeclaration env con
         in (BindTargetConstructor constructor, fields)
+      Left (Core.ConTag _ arity) -> (BindTargetTuple arity, replicate arity TypeAny)
       Right fn -> case resolveFunction env fn of
         Just fntype@(FunctionType fparams returnType) ->
           -- The bind might provide more arguments than the arity of the function, if the function returns another function.
