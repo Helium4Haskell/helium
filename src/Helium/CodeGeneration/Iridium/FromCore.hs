@@ -233,7 +233,7 @@ toInstruction supply env continue expr = case getApplicationOrConstruction expr 
           in
             castInstructions
               +> Let x (Call (Global fn fntype) $ take (length params) args')
-              +> LetAlloc [Bind y (BindTargetFunction $ VarLocal $ Local x returnType) $ drop (length params) args']
+              +> LetAlloc [Bind y (BindTargetThunk $ VarLocal $ Local x returnType) $ drop (length params) args']
               +> Let z (Eval $ VarLocal $ Local y TypeAnyThunk)
               +> ret supplyRet env z TypeAnyWHNF continue
       Nothing ->
@@ -246,7 +246,7 @@ toInstruction supply env continue expr = case getApplicationOrConstruction expr 
         in
           castInstructions
             +> castInstructionFn
-            +> LetAlloc [Bind x (BindTargetFunction fn') args']
+            +> LetAlloc [Bind x (BindTargetThunk fn') args']
             +> Let y (Eval $ VarLocal $ Local x TypeAnyThunk)
             +> ret supplyRet env y TypeAnyWHNF continue
   where
@@ -341,14 +341,11 @@ bind supply env (Core.Bind x val) = (castInstructions, Bind x target args')
       Left con ->
         let ValueConstructor constructor@(DataTypeConstructor _ _ fields) = valueDeclaration env (conId con)
         in (BindTargetConstructor constructor, fields)
-      Right fn ->
-        let
-          fnVar = resolve env fn
-          fields = case fnVar of
-            VarLocal _ -> repeat TypeAny
-            -- The bind might provide more arguments than the arity of the function, if the function returns another function.
-            VarGlobal (Global _ (FunctionType f _)) -> f ++ repeat TypeAny
-        in (BindTargetFunction fnVar, fields)
+      Right fn -> case resolveFunction env fn of
+        Just fntype@(FunctionType fparams returnType) ->
+          -- The bind might provide more arguments than the arity of the function, if the function returns another function.
+          (BindTargetFunction $ resolve env fn, fparams ++ repeat TypeAny)
+        Nothing -> (BindTargetThunk $ resolve env fn, repeat TypeAny)
 
 conId :: Core.Con a -> Id
 conId (Core.ConId x) = x

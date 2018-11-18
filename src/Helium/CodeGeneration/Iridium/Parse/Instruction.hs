@@ -59,7 +59,8 @@ pBindTarget :: Parser BindTarget
 pBindTarget = do
   key <- pKeyword
   case key of
-    "thunk" -> BindTargetFunction <$> pVariable
+    "function" -> BindTargetFunction <$> pVariable
+    "thunk" -> BindTargetThunk <$> pVariable
     "constructor" -> BindTargetConstructor <$> pDataTypeConstructor
     _ -> pError "expected bind in letalloc"
 

@@ -15,6 +15,7 @@ import Helium.Main.CompileUtils
 import Helium.CodeGeneration.Core(desugarCore)
 import Helium.CodeGeneration.Iridium.FromCore(fromCore)
 import Helium.CodeGeneration.Iridium.Show()
+import Helium.CodeGeneration.Iridium.PassThunkArity(passThunkArity)
 import Helium.CodeGeneration.Iridium.ResolveDependencies(resolveDependencies, IridiumFile(..))
 import Helium.CodeGeneration.LLVM.CompileModule(compileModule)
 import Helium.CodeGeneration.LLVM.Target(Target(..))
@@ -28,14 +29,15 @@ phaseCodeGeneratorIridium paths fullName coreModule options = do
   enterNewPhase "Code generation for Iridium" options
 
   supply <- newNameSupply
-  let supplyDesugar : supplyFromCore : _ = splitNameSupplies supply
+  let supplyDesugar : supplyFromCore : supplyPassThunkArity : _ = splitNameSupplies supply
 
   let simplified = desugarCore supplyDesugar coreModule
 
   -- Check whether the module has a 'main$' function
   let hasMain = any ((== idFromString "main$") . Core.declName) $ Core.moduleDecls coreModule
 
-  let iridium = fromCore supplyFromCore simplified
+  let iridium' = fromCore supplyFromCore simplified
+  let iridium = passThunkArity supplyPassThunkArity iridium'
 
   let (path, baseName, _) = splitFilePath fullName
   let fullNameNoExt = combinePathAndFile path baseName

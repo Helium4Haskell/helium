@@ -117,6 +117,7 @@ data Bind = Bind { bindVar :: !Id, bindTarget :: !BindTarget, bindArguments :: !
 
 data BindTarget
   = BindTargetFunction !Variable
+  | BindTargetThunk !Variable
   | BindTargetConstructor !DataTypeConstructor
   deriving (Eq, Ord)
 
@@ -153,14 +154,6 @@ data Literal
   | LitDouble !Double
   | LitString !String
   deriving (Eq, Ord)
-
-mapBlocks :: (Instruction -> Instruction) -> Module -> Module
-mapBlocks fn (Module name dependencies customs datas abstracts methods) = Module name dependencies customs datas abstracts $ map (fmap fnMethod) methods
-  where
-    fnMethod :: Method -> Method
-    fnMethod (Method args rettype annotations entry blocks) = Method args rettype annotations (fnBlock entry) $ map fnBlock blocks
-    fnBlock :: Block -> Block
-    fnBlock (Block name instr) = Block name $ fn instr
 
 typeOfExpr :: Expr -> PrimitiveType
 typeOfExpr (Literal (LitDouble _)) = TypeDouble

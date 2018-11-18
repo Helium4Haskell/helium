@@ -78,7 +78,8 @@ instance Show Bind where
   show (Bind var target args) = "%" ++ showId var ++ " = " ++ show target ++ " $ " ++ showArguments args
 
 instance Show BindTarget where
-  show (BindTargetFunction global) = "thunk " ++ show global
+  show (BindTargetFunction global) = "function " ++ show global
+  show (BindTargetThunk var) = "thunk " ++ show var
   show (BindTargetConstructor con) = "constructor " ++ show con
 
 instance Show MatchTarget where

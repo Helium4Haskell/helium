@@ -62,14 +62,17 @@ compileBind' env supply (Iridium.Bind varId target args) (Right struct) =
 
 nameSuggestion :: Iridium.BindTarget -> Id
 nameSuggestion (Iridium.BindTargetConstructor _) = idCon
-nameSuggestion (Iridium.BindTargetFunction _) = idThunk
+nameSuggestion _ = idThunk
 
 toStruct :: Env -> Iridium.BindTarget -> Int -> Either Int Struct
 toStruct env (Iridium.BindTargetConstructor (Iridium.DataTypeConstructor _ conId _)) arity = case findMap conId (envConstructors env) of
   LayoutInline value -> Left value
   LayoutPointer struct -> Right struct
-toStruct env (Iridium.BindTargetFunction var) arity = Right $ Struct Nothing 32 tag fields
+toStruct env target arity = Right $ Struct Nothing 32 tag fields
   where
+    var = case target of
+      Iridium.BindTargetFunction v -> v
+      Iridium.BindTargetThunk v -> v
     tag = arity .|. (remaining `shiftL` 16)
     remaining = case var of
       Iridium.VarLocal _ -> (1 `shiftL` 16) - 1 -- All 16 bits to 1
@@ -86,6 +89,7 @@ toTrampolineOperand env local = toOperand env local
 -- A thunk has an additional argument, namely the function. We add that argument here
 bindArguments :: Env -> Iridium.BindTarget -> [(Operand, Operand)] -> [(Operand, Operand)]
 bindArguments env (Iridium.BindTargetFunction var) = ((toTrampolineOperand env var, ConstantOperand $ Constant.Int 1 1) :)
+bindArguments env (Iridium.BindTargetThunk var) = ((toOperand env var, ConstantOperand $ Constant.Int 1 1) :)
 bindArguments env _ = id
 
 expectedType :: Iridium.BindTarget -> Type
