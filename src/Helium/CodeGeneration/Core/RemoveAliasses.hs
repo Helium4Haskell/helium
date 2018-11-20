@@ -26,7 +26,7 @@ type Env = IdMap Id
 
 renameExpr :: Env -> Expr -> Expr
 renameExpr env (Let (NonRec (Bind x (Var y))) expr) = renameExpr (insertMap x y env) expr
-renameExpr env (Let bs expr) = Let (mapBinds (\x e -> Bind x $ renameExpr env e) bs) expr
+renameExpr env (Let bs expr) = Let (mapBinds (\x e -> Bind x $ renameExpr env e) bs) $ renameExpr env expr
 renameExpr env (Match x alts) =
   Match (fromMaybe x $ lookupMap x env)
     $ mapAlts (\pat expr -> Alt pat $ renameExpr env expr) alts
