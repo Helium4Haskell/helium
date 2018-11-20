@@ -5,9 +5,25 @@ import Helium.CodeGeneration.Iridium.Parse.Type
 import Helium.CodeGeneration.Iridium.Parse.Instruction
 import Helium.CodeGeneration.Iridium.Parse.Expression
 import Helium.CodeGeneration.Iridium.Data
+import Lvm.Common.Id(Id, idFromString)
 
 pMethod :: Parser Method
-pMethod = (\args rettype annotations (b:bs) -> Method args rettype annotations b bs) <$> pArguments pLocal <* pToken ':' <* pWhitespace <*> pType <* pWhitespace <*> pAnnotations <* pWhitespace <* pToken '{' <* pWhitespace <*> pSome pBlock pSep
+pMethod = do
+  args <- pArguments pLocal
+  pWhitespace
+  c <- pChar
+  case c of
+    ':' ->
+      (\rettype annotations (b:bs) -> Method args rettype annotations b bs) <$ pWhitespace <*> pType <* pWhitespace <*> pAnnotations <* pWhitespace <* pToken '{' <* pWhitespace <*> pSome pBlock pSep
+    '=' -> do
+      -- Shorthand for a function that computes a single expression and returns it
+      pWhitespace
+      expr <- pExpression
+      annotations <- pAnnotations
+      let result = idFromString "result"
+      let returnType = typeOfExpr expr 
+      let b = Block (idFromString "entry") (Let result expr $ Return $ VarLocal $ Local result returnType)
+      return $ Method args returnType annotations b []
   where
     pSep :: Parser Bool
     pSep = do
