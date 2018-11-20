@@ -200,6 +200,7 @@ instance Show FunctionType where
 
 showId :: Id -> String
 showId name
+  | str == "" = "\"\""
   | all (`elem` chars) str = str
   | otherwise = show str
   where

@@ -17,7 +17,16 @@ pDataTypeConstructorDeclaration = pDeclaration f
     f _ _ = pError "expected constructor declaration"
 
 pDataType :: Parser DataType
-pDataType = DataType <$ pWhitespace <* pToken '{' <*> pSome (pWhitespace *> pDataTypeConstructorDeclaration) pSep
+pDataType = do
+  pWhitespace
+  pToken '{'
+  pWhitespace
+  c <- lookahead
+  if c == '}' then do
+    pChar
+    return $ DataType []
+  else
+    DataType <$> pSome pDataTypeConstructorDeclaration pSep
   where
     pSep :: Parser Bool
     pSep = do
