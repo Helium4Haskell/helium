@@ -151,7 +151,8 @@ toInstruction supply env continue (Core.Let (Core.Rec bs) expr)
     -- TODO: Is this recursive definition ok?
     (supply1, supply2) = splitNameSupply supply
     (castInstructions, binds) = unzip $ mapWithSupply (`bind` env') supply1 bs
-    env' = expandEnvWithLetAlloc binds env
+    locals = map (coreBindLocal env) bs
+    env' = expandEnvWithLocals locals env
 
 -- Match
 toInstruction supply env continue (Core.Match x alts) =
@@ -349,9 +350,6 @@ transformAltInt supply env (Core.Alt pattern expr, continue) = ((value, blockNam
       _ -> Nothing
     (blockName, supply') = freshIdFromId idMatchCase supply
     Partial instr blocks = toInstruction supply' env continue expr
-transformAltInt _ _ (Core.Alt pat _, _) = case pat of
-  Core.PatLit _ -> error "transformAltInt: Unexpected literal in transformAltInt, expected int literal pattern"
-  Core.PatCon _ _ -> error "transformAltInt: Unexpected constructor in transformAltInt, expected int literal pattern"
 
 transformAlt :: NameSupply -> TypeEnv -> Continue -> Variable -> DataTypeConstructor -> [Id] -> Core.Expr -> Partial
 transformAlt supply env continue var con@(DataTypeConstructor _ _ fields) args expr = 
@@ -404,6 +402,23 @@ bind supply env (Core.Bind x val) = (castInstructions, Bind x target args')
           (BindTargetFunction $ resolve env fn, fparams ++ repeat TypeAny)
         Nothing -> (BindTargetThunk $ resolve env fn, repeat TypeAny)
 
+coreBindLocal :: TypeEnv -> Core.Bind -> Local
+coreBindLocal env (Core.Bind name expr) = Local name $ coreBindType env expr
+
+coreBindType :: TypeEnv -> Core.Expr -> PrimitiveType
+coreBindType env val = case apOrCon of
+  Left (Core.ConId con) ->
+    let ValueConstructor constructor@(DataTypeConstructor dataName _ fields) = valueDeclaration env con
+    in TypeDataType dataName
+  Left (Core.ConTag _ arity) -> TypeTuple arity
+  Right fn -> case resolveFunction env fn of
+    Just fntype@(FunctionType fparams returnType)
+      | length args >= length fparams -> TypeAnyThunk
+      | otherwise -> TypeFunction
+    Nothing -> TypeAnyThunk
+  where
+    (apOrCon, args) = getApplicationOrConstruction val []
+
 conId :: Core.Con a -> Id
 conId (Core.ConId x) = x
 conId _ = error "ConTags (tuples?) are not supported yet"
@@ -422,7 +437,7 @@ getApplication expr = case getApplicationOrConstruction expr [] of
 literal :: Core.Literal -> Literal
 literal (Core.LitInt x) = LitInt x
 literal (Core.LitDouble x) = LitDouble x
-literal (Core.LitBytes x) = LitString $ stringFromBytes x -- TODO: LitBytes
+literal (Core.LitBytes x) = LitString $ stringFromBytes x 
 
 pattern :: TypeEnv -> Core.Pat -> Maybe Pattern
 pattern _ Core.PatDefault = Nothing
