@@ -168,7 +168,8 @@ toInstruction supply env continue (Core.Match x alts) =
     Core.Alt (Core.PatCon (Core.ConId con) _) _ ->
       let ValueConstructor (DataTypeConstructor dataName _ _) = findMap con (teValues env)
       in transformCaseConstructor supply'' env continues x dataName alts
-    Core.Alt (Core.PatLit _) _ -> error "Match on literals is not yet supported"
+    Core.Alt (Core.PatLit (Core.LitInt _)) _ -> transformCaseInt supply'' env continues x alts
+    Core.Alt (Core.PatLit _) _ -> error "Match on float literals is not yet supported"
     )
   where
     (supply1, supply2) = splitNameSupply supply
@@ -198,14 +199,24 @@ toInstruction supply env continue (Core.Lit lit) = Let name expr +> ret supply' 
   where
     (name, supply') = freshId supply
     expr = (Literal $ literal lit)
-toInstruction supply env continue (Core.Var var) = Let name (Eval $ resolve env var) +> ret supply' env name TypeAnyWHNF continue
+toInstruction supply env continue (Core.Var var) = case variable of
+  VarGlobal global@(Global _ (FunctionType [] returnType)) ->
+    Let name (Call global []) +> ret supply' env name returnType continue
+  VarGlobal _ ->
+    let
+      bind = Bind name (BindTargetFunction variable) []
+    in
+      LetAlloc [bind] +> ret supply' env name TypeFunction continue
+  VarLocal _ ->
+    Let name (Eval $ resolve env var) +> ret supply' env name TypeAnyWHNF continue
   where
+    variable = resolve env var
     (name, supply') = freshId supply
 
 toInstruction supply env continue expr = case getApplicationOrConstruction expr [] of
-  (Left con, args) ->
+  (Left (Core.ConId con), args) ->
     let
-      dataTypeCon@(DataTypeConstructor dataName _ params) = case valueDeclaration env $ conId con of
+      dataTypeCon@(DataTypeConstructor dataName _ params) = case valueDeclaration env con of
         ValueConstructor c -> c
         _ -> error "toInstruction: Illegal target of allocation, expected a constructor"
       (casted, castInstructions) = maybeCasts supply''' env (zip args params)
@@ -214,6 +225,14 @@ toInstruction supply env continue expr = case getApplicationOrConstruction expr 
       castInstructions
         +> LetAlloc [bind]
         +> ret supplyRet env x (TypeDataType dataName) continue
+  (Left (Core.ConTag _ arity), args) ->
+    let
+      (casted, castInstructions) = maybeCasts supply''' env (zip args $ repeat TypeAnyWHNF)
+      bind = Bind x (BindTargetTuple arity) casted
+    in
+      castInstructions
+        +> LetAlloc [bind]
+        +> ret supplyRet env x (TypeTuple arity) continue
   (Right fn, args) ->
     case resolveFunction env fn of
       Just fntype@(FunctionType params returnType)
@@ -304,6 +323,35 @@ maybeCasts supply env ((name, t) : tail) = (var : tailVars, instr . tailInstr)
     (supply1, supply2) = splitNameSupply supply
     (var, instr) = maybeCast supply1 env name t
     (tailVars, tailInstr) = maybeCasts supply2 env tail
+
+transformCaseInt :: NameSupply -> TypeEnv -> [Continue] -> Id -> [Core.Alt] -> Partial
+transformCaseInt supply env continues name alts = Partial (castInstr $ Case var c) $ concat blocks
+  where
+    (supply1, supply2) = splitNameSupply supply
+    (var, castInstr) = maybeCast supply1 env name TypeInt
+    c = gatherCaseIntAlts branches
+    branches :: [(Maybe Int, BlockName)]
+    blocks :: [[Block]]
+    (branches, blocks) = unzip $ mapWithSupply (`transformAltInt` env) supply2 $ zip alts continues 
+
+gatherCaseIntAlts :: [(Maybe Int, BlockName)] -> Case
+gatherCaseIntAlts ((Nothing, block) : _) = CaseInt [] block
+gatherCaseIntAlts [(Just _, block)] = CaseInt [] block -- Promote last branch to the `otherwise` branch.
+gatherCaseIntAlts ((Just value, block) : xs) = CaseInt ((value, block) : alts) def
+  where
+    CaseInt alts def = gatherCaseIntAlts xs
+
+transformAltInt :: NameSupply -> TypeEnv -> (Core.Alt, Continue) -> ((Maybe Int, BlockName), [Block])
+transformAltInt supply env (Core.Alt pattern expr, continue) = ((value, blockName), Block blockName instr : blocks)
+  where
+    value = case pattern of
+      Core.PatLit (Core.LitInt value) -> Just value
+      _ -> Nothing
+    (blockName, supply') = freshIdFromId idMatchCase supply
+    Partial instr blocks = toInstruction supply' env continue expr
+transformAltInt _ _ (Core.Alt pat _, _) = case pat of
+  Core.PatLit _ -> error "transformAltInt: Unexpected literal in transformAltInt, expected int literal pattern"
+  Core.PatCon _ _ -> error "transformAltInt: Unexpected constructor in transformAltInt, expected int literal pattern"
 
 transformAlt :: NameSupply -> TypeEnv -> Continue -> Variable -> DataTypeConstructor -> [Id] -> Core.Expr -> Partial
 transformAlt supply env continue var con@(DataTypeConstructor _ _ fields) args expr = 
