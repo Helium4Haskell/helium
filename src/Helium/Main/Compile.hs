@@ -6,7 +6,7 @@
     Portability :  portable
 -}
 
-module Helium.Main.Compile(compile, readCore) where
+module Helium.Main.Compile(compile) where
 
 import Lvm.Core.Expr(CoreModule)
 import qualified Lvm.Core.Parsing.Parser as Lvm
@@ -15,6 +15,7 @@ import qualified Lvm.Core.Parsing.Layout as Lvm
 import qualified Lvm.Core.Module as Lvm
 import qualified Lvm.Core.Expr as Lvm
 import qualified Lvm.Import as Lvm
+import qualified Lvm.Read as Lvm
 import Lvm.Path (searchPath, searchPathMaybe)
 import Lvm.Common.Id (Id, stringFromId)
 import Helium.Main.PhaseLexer
@@ -62,7 +63,7 @@ compile basedir fullName options lvmPath doneModules =
             (m, implExps, es) <- Lvm.parseModuleExport fullName tokens
 
             -- resolve imports
-            chasedMod  <- Lvm.lvmImport (searchPath lvmPath ".lvm" . stringFromId) m
+            chasedMod  <- Lvm.lvmImport' (resolveDeclarations lvmPath) m
             let publicmod = Lvm.modulePublic implExps es chasedMod
             return (publicmod, 0)
           _ -> do
@@ -193,7 +194,7 @@ resolveDeclarations paths name = do
   maybeFullNameLvm <- searchPathMaybe paths ".lvm" $ stringFromId name
   case maybeFullNameLvm of
     Just fullName -> do
-      readCore fullName
+      Lvm.lvmReadFile fullName
     Nothing -> do
       fullName <- searchPath paths ".iridium" $ stringFromId name
       contents <- readSourceFile fullName
@@ -204,9 +205,3 @@ resolveDeclarations paths name = do
             exitWith (ExitFailure 1)
         Right ir -> return ir
       return $ toAbstractModule iridium
-
-readCore :: FilePath -> IO Lvm.CoreModule
-readCore fullName = do
-    contents <- readSourceFile fullName
-    let tokens = Lvm.layout $ Lvm.lexer (1,1) contents
-    Lvm.parseModule fullName tokens

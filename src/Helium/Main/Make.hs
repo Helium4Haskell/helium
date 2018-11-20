@@ -1,6 +1,6 @@
 module Helium.Main.Make (make) where
 
-import Helium.Main.Compile(compile, readCore)
+import Helium.Main.Compile(compile)
 import Helium.Parser.Parser(parseOnlyImports)
 import Control.Monad
 import System.FilePath(joinPath)
@@ -14,7 +14,7 @@ import Helium.Main.CompileUtils
 import Helium.Utils.Utils
 import Data.IORef
 import qualified Lvm.Core.Module as Lvm
-import Lvm.Common.Id (Id, stringFromId)
+import Lvm.Common.Id (Id, stringFromId, idFromString)
 import qualified Lvm.Core.Parsing.Parser as Lvm
 import qualified Lvm.Core.Parsing.Lexer as Lvm
 import qualified Lvm.Core.Parsing.Layout as Lvm
@@ -41,9 +41,9 @@ make basedir fullName lvmPath chain options doneRef =
         case lookup fullName done of 
           Just isRecompiled -> return isRecompiled
           Nothing -> do
-            let (_, _, ext) = splitFilePath fullName
+            let (_, name, ext) = splitFilePath fullName
             imports <- case ext of
-              "hs" -> (["HeliumLang", "Prelude"] ++) <$> parseOnlyImports fullName
+              "hs" -> ((if name == "Prelude" then [] else ["Prelude", "HeliumLang"]) ++) <$> parseOnlyImports fullName
               "core" -> parseCoreOnlyImports fullName
               "iridium" -> return []
 
@@ -59,7 +59,7 @@ make basedir fullName lvmPath chain options doneRef =
                         
             -- Find all imports in the search path
             resolvedImports <- mapM (resolve lvmPath) imports
-            
+
             -- For each of the imports...
             compileResults <- forM (zip imports resolvedImports) 
               $ \(importModuleName, maybeImportFullName) -> do
@@ -73,7 +73,6 @@ make basedir fullName lvmPath chain options doneRef =
                             "\nSearch path:\n" ++ showSearchPath lvmPath
                         exitWith (ExitFailure 1)
                     Just _ -> return ()
-
                 let importFullName = fromJust maybeImportFullName
                 -- TODO : print names imported modules in verbose mode.
                 
@@ -90,7 +89,7 @@ make basedir fullName lvmPath chain options doneRef =
             --      compiling the top-most module (head of chain)
             --  * the module is not up to date (.hs newer than .lvm or .iridium)
             let (filePath, moduleName, _) = splitFilePath fullName
-            upToDate <- upToDateCheck (combinePathAndFile filePath moduleName)
+            upToDate <- upToDateCheck (combinePathAndFile filePath moduleName) ext
             newDone <- readIORef doneRef
             isRecompiled <- 
                 if or compileResults || 
@@ -103,7 +102,7 @@ make basedir fullName lvmPath chain options doneRef =
                       else do
                         putStrLn (moduleName ++ " is up to date")
                         return False
-            
+
             -- Remember the fact that we have already been at this module
             writeIORef doneRef ((fullName, isRecompiled):newDone)
             return isRecompiled
@@ -114,10 +113,6 @@ showImportChain = intercalate " imports "
 showSearchPath :: [String] -> String
 showSearchPath = unlines . map ("\t" ++)
 
-preludeImportsPrelude :: [String] -> Bool 
-preludeImportsPrelude [x,y] = x == prelude && y == prelude
-preludeImportsPrelude _ = False
-
 circularityCheck :: [String] -> [String] -> Maybe [String]
 circularityCheck (import_:imports) chain =
     case elemIndex import_ chain of
@@ -126,15 +121,16 @@ circularityCheck (import_:imports) chain =
 circularityCheck [] _ = Nothing
 
 -- | upToDateCheck returns true if the .iridium is newer than the .hs
-upToDateCheck :: String -> IO Bool
-upToDateCheck basePath = do
+upToDateCheck :: String -> String -> IO Bool
+upToDateCheck _ "iridium" = return True
+upToDateCheck basePath ext = do
     let lvmPath = basePath ++ ".lvm"
         irPath = basePath ++ ".iridium"
-        hsPath = basePath ++ ".hs"
-    lvmExists <- doesFileExist (lvmPath)
-    irExists <- doesFileExist hsPath
+        sourcePath = basePath ++ "." ++ ext
+    lvmExists <- doesFileExist lvmPath
+    irExists <- doesFileExist irPath
     if lvmExists && irExists then do
-        t1 <- getModificationTime hsPath
+        t1 <- getModificationTime sourcePath
         t2 <- getModificationTime irPath
         t3 <- getModificationTime lvmPath
         if t1 == t2 && t1 == t3
@@ -143,7 +139,7 @@ upToDateCheck basePath = do
                 -- and therefore consider it up to date.
                let isReadOnly file = (not . writable) `fmap` getPermissions file
                lvmReadOnly <- isReadOnly lvmPath
-               hsReadOnly <- isReadOnly hsPath
+               hsReadOnly <- isReadOnly sourcePath
                -- Up to date if both are read only (and of equal mod time)
                return (lvmReadOnly && hsReadOnly)
           else return (t1 < t2 && t1 < t3)
@@ -161,3 +157,9 @@ parseCoreOnlyImports fullName =
     importedModule decl = case Lvm.declAccess decl of
       Lvm.Imported{ Lvm.importModule = name } -> Just $ stringFromId name
       _ -> Nothing
+
+readCore :: FilePath -> IO Lvm.CoreModule
+readCore fullName = do
+  contents <- readSourceFile fullName
+  let tokens = Lvm.layout $ Lvm.lexer (1,1) contents
+  Lvm.parseModule fullName tokens
