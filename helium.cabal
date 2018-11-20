@@ -172,6 +172,7 @@ Library
     Helium.Optimization.StrictnessInfo
     Helium.Optimization.Datas
     Helium.Optimization.LVM_Syntax
+    Helium.Optimization.Pretty
     Helium.Optimization.Show
     Helium.Optimization.Types
     Helium.Optimization.Utils

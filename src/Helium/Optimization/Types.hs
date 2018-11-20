@@ -34,18 +34,28 @@ data Anno   = Anno1 Ann -- usage
     deriving (Show, Eq, Ord)
 
 instance Show T where
-    show (TAp (TAp (TCon "=>") t1) t2) = "([" ++ show t1 ++ "] |=> " ++ show t2 ++ ")"
-    show (TAp (TAp (TCon "->") t1) t2) = "(" ++ show t1 ++ " |-> " ++ show t2 ++ ")"
+    show (TAp (TAp (TCon "=>") t1) t2) = "(" ++ show t1 ++ ") => " ++ show t2 ++ ""
+    show (TAp (TAp (TCon "->") t1) t2) = "(" ++ show t1 ++ " -> " ++ show t2 ++ ")"
     show (TAp p@(TPred _ _) t) = show p ++ ", " ++ show t
-    show (TAp t1 t2) = "(TAp " ++ show t1 ++ " " ++ show t2 ++ ")"
-    show (TCon s) = "(TCon \"" ++ s ++ "\")"
-    show (TVar i) = "(TVar " ++ show i ++ ")"
-    show (TPred s t) = "(TPred \"" ++ s ++ "\" " ++ show t ++ ")"
+    show (TAp t1 t2) = "(" ++ show t1 ++ " " ++ show t2 ++ ")"
+    show (TCon s) = show s
+    show (TVar i) = show i
+    show (TPred s t) = "(" ++ show s ++ " " ++ show t ++ ")"
     show (TAnn ann t) = show t ++ "^" ++ show ann
+
+--instance Show T where
+--    show (TAp (TAp (TCon "=>") t1) t2) = "([" ++ show t1 ++ "] |=> " ++ show t2 ++ ")"
+--    show (TAp (TAp (TCon "->") t1) t2) = "(" ++ show t1 ++ " |-> " ++ show t2 ++ ")"
+--    show (TAp p@(TPred _ _) t) = show p ++ ", " ++ show t
+--    show (TAp t1 t2) = "(TAp " ++ show t1 ++ " " ++ show t2 ++ ")"
+--    show (TCon s) = "(TCon \"" ++ s ++ "\")"
+--    show (TVar i) = "(TVar " ++ show i ++ ")"
+--    show (TPred s t) = "(TPred \"" ++ s ++ "\" " ++ show t ++ ")"
+--    show (TAnn ann t) = show t ++ "^" ++ show ann
 
 instance Show Ts where
     show (TsVar x) = "forall(" ++ show x ++ ")"
-    show (Ts vars ct t) = "forall{" ++ show (Set.toList vars) ++ "}. C " ++ show ct ++ ". "++ show t
+    show (Ts vars ct t) = "forall{" ++ show (Set.toList vars) ++ "}. C{" ++ show ct ++ "}. " ++ show t
     show (TsAnn ann ts) = "(" ++ show ts ++ ")^" ++ show ann
 
 {- Create Types -}
@@ -346,6 +356,8 @@ solveConstraints ct = do
      then return (subs1,ct''Order)
      else mapFst (-$- (subs2 -$- subs1)) <$> (solveConstraints ct''Order)
 
+{- Order constraints:
+   * Generalize before Instantiation constraints -}
 orderConstraints :: Constraints -> Constraints
 orderConstraints cs = let (cont,conts,conann,congen,coninst) = orderConstraints' cs in concat [cont,conts,conann,congen,coninst]
 
@@ -372,7 +384,7 @@ solveConstraints' :: Constraints -> Fresh (Sub,Constraints)
 solveConstraints' [] = return (idSub,[])
 solveConstraints' (c:cs) = do
     (subs,ct) <- solveConstraint c
-    let cs' = (\t -> trace ("solveConstraints':mapped:" ++ show (length t)) t) $ map (subs -$-) cs
+    let cs' = map (subs -$-) cs
     mapSnd (ct ++) <$> (mapFst (-$- subs) <$> (solveConstraints' cs'))
 
 solveConstraint :: Constraint -> Fresh (Sub,Constraints)
@@ -382,8 +394,8 @@ solveConstraint (EqGen d ts (t,ct,env)) = do
     (subs,ct') <- {-trace ("EqGen:" ++ show ts ++ ":solveConstraints") $-} solveConstraints ct
     let t' = subs -$- t
         fvctt = (Set.union (quantified ct') (quantified t'))
-        fv = Set.union (quantified ts) (fvctt Set.\\ fvenvann) -- quantify over youself as you always exist in the environment...
         fvenvann = (Set.union (freevars env) (Set.empty)) -- TODO: usage | demand Set.empty == t^^(ann1,ann2)
+        fv = Set.union (quantified ts) (fvctt Set.\\ fvenvann) -- quantify over youself as you always exist in the environment...
     return $ trace ("EqGen:" ++ show ts) $ (subs,[EqTs d ts (Ts fv ct' t')])
 solveConstraint eq@(EqInst d _ ts@(TsVar _)) = {-trace ("EqInst:" ++ d ++ ":" ++ show ts) <$>-} return (idSub, [eq])
 solveConstraint (EqInst d t ts@(Ts _ _ st)) = do
