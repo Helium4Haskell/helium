@@ -16,6 +16,7 @@ module LvmLang
     -- IO
     , bindIO, returnIO
     , primIO, unsafePerformIO, unsafePerformStrictIO
+    , ''$primPutStrLn''
     
     -- Int
     , (+), (-), (*), (/), (%), quot, rem
@@ -28,10 +29,12 @@ module LvmLang
 
     ) where
 
+import IridiumLang
+
 {----------------------------------------------------------
   Instructions
 ----------------------------------------------------------}
-instruction primAddInt  "addint" :: Int! -> Int! -> Int!
+{- instruction primAddInt  "addint" :: Int! -> Int! -> Int!
 instruction primSubInt  "subint" :: Int! -> Int! -> Int!
 instruction primMulInt  "mulint" :: Int! -> Int! -> Int!
 instruction primDivInt  "divint" :: Int! -> Int! -> Int!
@@ -68,7 +71,7 @@ instruction primGeFloat   "gefloat"  :: Float! -> Float! -> Bool!
 
 instruction primAlloc   "alloc"  :: Int! {- tag -} -> Int! {- size -} -> a!
 instruction primGetTag  "gettag" :: a! -> Int!
-instruction primGetSize "getsize":: a! -> Int!
+instruction primGetSize "getsize":: a! -> Int! -}
 -- instruction primNew     "new"    :: Int! {- tag -} -> Int! {- size -} -> {- x_1 ... x_n -> -} a!
 -- instruction primPack    "pack"   :: a! -> Int! {- size -} -> {- x_1 ... x_size -} ()
 -- instruction primUnPack  "unpack" :: a! -> (# x_1 ... x_size #)
@@ -86,15 +89,6 @@ data Float
 data Bool       = False -- tag 0
                 | True  -- tag 1
 
-{-
-Be aware that de definition
-data Bool       = True  -- tag 0
-                | False -- tag 1
-is not allowed because the instructions
-eqint, neint etc. assume False has tag 0
-and True has tag 1.
--}
-
 data '':[]'' a  = '':[]'' | (:) a [a]
 data '':()''    = '':()''
 
@@ -108,8 +102,7 @@ type Char         = Int
 type Double       = Float
 
 type PackedString = Bytes
-type String       = [Char]
-
+type String       = [Char] 
 
 {----------------------------------------------------------
   Strictness
@@ -132,11 +125,13 @@ seq x y    = let! x = x in y
 (*) :: Int -> Int -> Int!
 (*) x y    = let! y = y in let! x = x in primMulInt x y
 
+-- TODO: Round to -inf instead of zero
 (/) :: Int -> Int -> Int!
-(/) x y    = let! y = y in let! x = x in primDivInt x y
+(/) x y    = quot x y -- let! y = y in let! x = x in primDivInt x y
 
+-- TODO: Round to -inf instead of zero
 (%) :: Int -> Int -> Int!
-(%) x y    = let! y = y in let! x = x in primModInt x y
+(%) x y    = rem x y -- let! y = y in let! x = x in primModInt x y
 
 quot :: Int -> Int -> Int!
 quot x y    = let! y = y in let! x = x in primQuotInt x y
@@ -189,6 +184,7 @@ negInt x      = let! x = x in primNegInt x
 {----------------------------------------------------------
   Basic arithmetic on Float's
 ----------------------------------------------------------}
+{-
 (+.) :: Float -> Float -> Float!
 (+.) x y    = let! y = y in let! x = x in primAddFloat x y
 
@@ -203,10 +199,12 @@ negInt x      = let! x = x in primNegInt x
 
 negFloat :: Float -> Float!
 negFloat x = let! x = x in primNegFloat x
+-}
 
 {----------------------------------------------------------
   Comparisons on Float's
 ----------------------------------------------------------}
+{-
 (==.) :: Float -> Float -> Bool!
 (==.) x y   = let! y = y in let! x = x in primEqFloat x y
 
@@ -224,6 +222,7 @@ negFloat x = let! x = x in primNegFloat x
 
 (>=.) :: Float -> Float -> Bool!
 (>=.) x y   = let! y = y in let! x = x in primGeFloat x y
+-}
 
 {----------------------------------------------------------
   Boolean expressions
@@ -251,12 +250,12 @@ not x
   Packed strings
 ----------------------------------------------------------}
 stringFromPacked :: PackedString -> String
-stringFromPacked packed
-  = let! packed = packed in prim_chars_of_string packed
+stringFromPacked packed = packed
+  -- = let! packed = packed in prim_chars_of_string packed
 
 packedFromString :: String -> PackedString
-packedFromString s
-  = let forced s = case s of
+packedFromString s = s
+  {- = let forced s = case s of
                      []       -> []
                      (:) x xs -> let! y  = x
                                       ys = forced xs
@@ -267,7 +266,7 @@ packedFromString s
                                    in length m xs
     in let! fs  = forced s
             len = length 0 fs
-       in prim_string_of_chars len fs
+       in prim_string_of_chars len fs -}
             
   
     {-
@@ -279,10 +278,10 @@ packedFromString s
        in prim_string_of_chars len t
     -}
 
-packedLength :: PackedString -> Int
+{- packedLength :: PackedString -> Int
 packedLength s
   = let! s = s in prim_string_length s
-
+-}
 {----------------------------------------------------------
   List helpers
 ----------------------------------------------------------}
@@ -325,3 +324,14 @@ unsafePerformIO io
 unsafePerformStrictIO :: IO a -> a
 unsafePerformStrictIO io
   = let! x = unsafePerformIO io in x
+
+-- TODO: unsafePerformStrictIO should be removed, as it is the same as unsafePerformIO as a function is already strict in
+-- its return value
+
+''$primPutStrLn'' :: String -> IO ()
+''$primPutStrLn'' str =
+  let! str = str in
+  let! _1 = ''_$helium_runtime_print_string'' str in
+  let! newline = "\n" in
+  let! _2 = ''_$helium_runtime_print_string'' newline in
+  IORes ()

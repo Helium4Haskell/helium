@@ -170,7 +170,7 @@ sin   :: Float -> Float
 cos   :: Float -> Float
 tan   :: Float -> Float
 -}
-
+{-
 absFloat :: Float -> Float
 absFloat x = if x < 0.0 then (-. x) else x
 
@@ -183,7 +183,7 @@ signumFloat x =
 
 pi :: Float
 pi = 3.141592653589793
-
+-}
 {-----------------------------------------------
  -- Bool
  -----------------------------------------------}
@@ -584,7 +584,7 @@ unsafePerformIO = primUnsafePerformIO
 
 sequence_ :: [IO a] -> IO ()
 sequence_ = foldr (>>) (return ())
-
+{-
 print :: Show a => a -> IO ()
 print e = putStrLn (show e)
 
@@ -623,7 +623,7 @@ finallyIO io action
   = do x <- io `catch` (\exn -> do{ action; raise exn })
        action
        return x
-
+-}
 {-----------------------------------------------
  -- Read
  -----------------------------------------------}

@@ -11,6 +11,7 @@ module LvmException( Exception(..), RuntimeException(..), SystemException(..)
                    ) where
 
 import LvmLang( packedFromString )
+import IridiumLang(''_$helium_runtime_error'')
 
 instruction primCatch "catch" :: (Exception -> a) -> a -> a
 instruction primRaise "raise" :: Exception! -> a
@@ -92,32 +93,32 @@ data SignalException
 {----------------------------------------------------------
   raise and catch
 ----------------------------------------------------------}
-raise :: Exception -> a
+{- raise :: Exception -> a
 raise exn
   = let! exn = exn in primRaise exn
 
 catch :: IO a -> (Exception -> IO a) -> IO a
 catch action handler
-  = \_ -> primCatch (\exn -> handler exn ()) (action ())
+  = \_ -> primCatch (\exn -> handler exn ()) (action ()) -}
 
 {----------------------------------------------------------
   user errors
 ----------------------------------------------------------}
 error :: String -> a
-error msg
-  = let! s = (packedFromString msg) in raise (UserError s)
+error msg = ''_$helium_runtime_error'' msg
+  -- = let! s = (packedFromString msg) in raise (UserError s)
 
 errorPacked :: PackedString -> a
-errorPacked msg
-  = raise (UserError msg)
+errorPacked msg = error msg
+  -- = raise (UserError msg)
 
 patternFail :: String -> a
-patternFail msg
-  = let! s   = packedFromString msg
+patternFail msg = error msg
+  {- = let! s   = packedFromString msg
          exn = PatternFailure s
-    in raise (Runtime exn)
+    in raise (Runtime exn) -}
 
 patternFailPacked :: PackedString -> a
-patternFailPacked msg
-  = let! exn = PatternFailure msg
-    in raise (Runtime exn)
+patternFailPacked msg = error msg
+  {- = let! exn = PatternFailure msg
+    in raise (Runtime exn) -}

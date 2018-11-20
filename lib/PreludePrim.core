@@ -23,8 +23,8 @@ module PreludePrim
     , div, mod, quot, rem
     
     -- Float
-    , (/)
-    , sqrt, (**.), exp, log, sin, cos, tan
+    --, (/)
+    --, sqrt, (**.), exp, log, sin, cos, tan
         
     -- IO monad
     , return 
@@ -48,13 +48,13 @@ module PreludePrim
     , ''$dictShow()'', ''$dictShow(,)'', ''$dictShow(,,)'', ''$dictShow(,,,)'', ''$dictShow(,,,,)'', ''$dictShow(,,,,,)''
     , ''$dictShow(,,,,,,)'', ''$dictShow(,,,,,,,)'', ''$dictShow(,,,,,,,,)'', ''$dictShow(,,,,,,,,,)''
     
-    , ''$dictEqInt'', ''$dictEqFloat'', ''$dictEqChar'', ''$dictEqBool'', ''$dictEq[]''
+    , ''$dictEqInt'', {-''$dictEqFloat'',-} ''$dictEqChar'', ''$dictEqBool'', ''$dictEq[]''
     , ''$dictEq()'', ''$dictEq(,)'', ''$dictEq(,,)'', ''$dictEq(,,,)'', ''$dictEq(,,,,)'', ''$dictEq(,,,,,)''
     , ''$dictEq(,,,,,,)'', ''$dictEq(,,,,,,,)'', ''$dictEq(,,,,,,,,)'', ''$dictEq(,,,,,,,,,)''
     
     , ''$dictNumInt'', ''$dictNumFloat''
     
-    , ''$dictOrdInt'', ''$dictOrdFloat'', ''$dictOrdChar'', ''$dictOrdBool'', ''$dictOrd[]''
+    , ''$dictOrdInt'', {-''$dictOrdFloat'',-} ''$dictOrdChar'', ''$dictOrdBool'', ''$dictOrd[]''
     , ''$dictOrd()'', ''$dictOrd(,)'', ''$dictOrd(,,)'', ''$dictOrd(,,,)'', ''$dictOrd(,,,,)'', ''$dictOrd(,,,,,)''
     , ''$dictOrd(,,,,,,)'', ''$dictOrd(,,,,,,,)'', ''$dictOrd(,,,,,,,,)'', ''$dictOrd(,,,,,,,,,)''
     , ''$dictShowOrdering''
@@ -63,16 +63,16 @@ module PreludePrim
     
     , ''$getEqFromOrd'', ''$getEqFromNum'', ''$getShowFromNum''
     
-    , ''$dictEnumInt'', ''$dictEnumFloat'', ''$dictEnum()'', ''$dictEnumChar'', ''$dictEnumBool''
+    , ''$dictEnumInt'', {- ''$dictEnumFloat'',-} ''$dictEnum()'', ''$dictEnumChar'', ''$dictEnumBool''
     ) where
 
 import HeliumLang
-    ( showFloat, showInt, showBool, showChar, showList, showUnit, showString
+    ( {-showFloat,-} showInt, showBool, showChar, showList, showUnit, showString
     , showTuple2, showTuple3, showTuple4, showTuple5, showTuple6, showTuple7
     , showTuple8, showTuple9, showTuple10
     , ''$negate'', ''$show''
     , ''$enumFrom'', ''$enumFromThen'', ''$enumFromTo'', ''$enumFromThenTo''
-    , ''$primPutChar'', ''$primPutStr'', ''$primPutStrLn'', ''$primUnsafePerformIO''
+    {-, ''$primPutChar'', ''$primPutStr'', ''$primPutStrLn''-} , ''$primUnsafePerformIO''
     )
 
 import LvmLang
@@ -81,10 +81,10 @@ import LvmLang
     , (<#) = (<), (<=#) = (<=), (>=#) = (>=), (>#) = (>)
     , mod = (%), quot, rem, div = (/)
     
-    , (+.), (*.), (-.), (/) = (/.), negFloat
+    {-, (+.), (*.), (-.), (/) = (/.), negFloat
     , (==.), (/=.)
     , (<.), (<=.), (>=.), (>.)
-    
+    -}
     , primPackedToString = stringFromPacked
 
     , Int(), Float(), IO()
@@ -100,6 +100,7 @@ import LvmLang
     , True -- hack
     )
 
+{-
 import LvmIO
     ( stdinChannel = stdin, stdoutChannel = stdout, stderrChannel = stderr
     , Channel(), Input(), Output()
@@ -108,10 +109,11 @@ import LvmIO
     , close, flush
     , inputChar, outputChar, outputString
     )
+-}
 
 import LvmException
-    ( error, errorPacked {- hack -}, catch, raise 
-    , Exception(System), SystemException(EndOfFile)
+    ( error, errorPacked {- hack -} {- , catch, raise 
+    , Exception(System), SystemException(EndOfFile) -}
     )
 
 custom infix (+)  : public [6,"left"]
@@ -143,7 +145,7 @@ primChr x = x
 {--------------------------------------------------------------------------
   IO
 --------------------------------------------------------------------------}
-putChar :: Char -> IO ()
+{- putChar :: Char -> IO ()
 putChar c = ''$primPutChar''c
 
 putStr :: String -> IO ()
@@ -151,14 +153,14 @@ putStr s = ''$primPutStr'' s
 
 putStrLn :: String -> IO ()
 putStrLn s = ''$primPutStrLn'' s
-
+-}
 unsafePerformIO :: IO a -> a 
 unsafePerformIO io 
   = ''$primUnsafePerformIO'' io
 
 
 -- Float
-
+{-
 extern primFloatSqrt "fp_sqrt" :: "FF"
 extern float_of_string_extern "float_of_string" :: "Fz"
 
@@ -234,17 +236,17 @@ round x
            z = primFloatNear     y
            i = primFloatRoundInt z
       in i
-
+-}
 -- Overloading
 
 {- Show -}
 
 ''$dictShowInt'' :: "DictShowInt"
 ''$dictShowInt''    = (@0, 2) showInt (showList showInt)
-
+{-
 ''$dictShowFloat'' :: "DictShowFloat"
 ''$dictShowFloat''  = (@0, 2) showFloat (showList showFloat)
-
+-}
 ''$dictShowBool'' :: "DictShowBool"
 ''$dictShowBool''   = (@0, 2) showBool (showList showBool)
 
@@ -325,10 +327,10 @@ showAList dShow =
 
 ''$dictNumInt'' :: "DictNumInt"
 ''$dictNumInt''   = (@0, 7) ''$dictEqInt''   ''$dictShowInt''   (+#) (*#) (-#) negInt   id
-
+{-
 ''$dictNumFloat'' :: "DictNumFloat"
 ''$dictNumFloat'' = (@0, 7) ''$dictEqFloat'' ''$dictShowFloat'' (+.) (*.) (-.) negFloat intToFloat {- fromInt -}
-
+-}
 id x = x
 
 ''$getEqFromNum'' :: "GetEqFromNum"
@@ -371,10 +373,10 @@ fromInt dNum =
 
 ''$dictEqInt'' :: "DictEqInt"
 ''$dictEqInt''    = (==#)
-
+{-
 ''$dictEqFloat'' :: "DictEqFloat"
 ''$dictEqFloat''  = (==.)
-
+-}
 ''$dictEqBool'' :: "DictEqBool"
 ''$dictEqBool''   = eqBool
 
@@ -490,10 +492,10 @@ not x = case x of True -> False
 ''$dictOrdInt'' :: "DictOrdInt"
 ''$dictOrdInt''   = (@0, 2) ''$dictEqInt''   compareInt
 
-
+{-
 ''$dictOrdFloat'' :: "DictOrdFloat"
 ''$dictOrdFloat'' = (@0, 2) ''$dictEqFloat'' compareFloat
-
+-}
 ''$dictOrdChar''  :: "DictOrdChar"
 ''$dictOrdChar''  = ''$dictOrdInt''
 
@@ -650,14 +652,14 @@ compareInt x y =
         _    -> case (==#) x y of
                     True -> EQ
                     _    -> GT
-
+{-
 compareFloat x y = 
     case (<.) x y of
         True -> LT
         _    -> case (==.) x y of
                     True -> EQ
                     _    -> GT
-                    
+      -}              
 compareBool x y =
     case x of 
         True -> case y of True -> EQ
@@ -690,7 +692,7 @@ enumIntWithSteps p d x =
    case p x of 
       True -> (:) x (enumIntWithSteps p d ((+#) d x)) ;
 	  _ -> []
-
+{-
 ''$dictEnumFloat'' :: "DictEnumFloat"
 ''$dictEnumFloat'' = (@0, 8) toEnumFloat truncate enumFromFloat enumFromThenFloat enumSuccFloat enumPredFloat enumFromToFloat enumFromThenToFloat
 
@@ -710,7 +712,7 @@ enumFloatWithSteps p d x =
    case p x of 
       True -> (:) x (enumFloatWithSteps p d ((+.) d x)) ;
 	  _ -> []
-
+-}
 ''$dictEnum()'' :: "DictEnumTuple0"
 ''$dictEnum()'' = makeEnumDict toEnumVoid fromEnumVoid enumFromVoid enumFromThenVoid
 
@@ -841,7 +843,7 @@ data IOMode
  = ReadMode
  | WriteMode
  | AppendMode
-
+{-
 stdin :: Handle
 stdin
   = HandleRead stdinChannel
@@ -908,3 +910,4 @@ catchEof io onEof
                 _             -> raise exn
      )
 
+-}

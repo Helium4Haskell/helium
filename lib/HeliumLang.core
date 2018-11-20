@@ -41,14 +41,15 @@ import LvmLang
     , '':()''('':()'')
     , ''$primBindIO'' = bindIO, ''$primReturnIO'' = returnIO
     , negInt 
-    , negFloat, ''$primEqFloat'' = (==.)
+    {-, negFloat, ''$primEqFloat'' = (==.) -}
     , (+), (-), (>), (<), (>=), quot, rem, (==)
     , stringFromPacked
     , unsafePerformIO    
+    , ''$primPutStrLn''
     )
-import LvmIO
+{- import LvmIO
     ( stdin, stdout, stderr, flush, outputChar, outputPacked
-    )
+    ) -}
 import LvmException
     ( errorPacked
     , patternFailPacked
@@ -87,11 +88,11 @@ custom infix (:) : public [5,"right"]
 ''$enumFromThenTo'' dEnum = 
     case dEnum of
         (@0, 8) x1 x2 x3 x4 x5 x6 x7 x8 -> x8
-
+{-
 ''$floatUnaryMinus'' :: "Float -> Float"
 ''$floatUnaryMinus'' f
   = ''$primNegFloat'' f
-
+-}
 ''$show'' :: "Show a => a -> String"
 ''$show'' dShow = 
     case dShow of
@@ -123,6 +124,7 @@ data Char
 ''$primErrorPacked'' p
   = errorPacked p
 
+{-
 ''$primPutChar'' :: Char -> IO ()
 ''$primPutChar'' c = 
     ''$primBindIO'' 
@@ -148,7 +150,8 @@ data Char
     ''$primBindIO''  
         (''$primPutChars'' xs) 
         (''$primPutChar'' '\n') -- does the flush
-        
+-}
+
 ''$primNegInt''   :: Int -> Int!
 ''$primNegInt''   = negInt
 
@@ -372,23 +375,23 @@ commaList list =
     }
 
 -- Float
-
+{-
 ''$primNegFloat''   :: Float -> Float!
 ''$primNegFloat''   = negFloat
 
 ''$primStringToFloat'' :: String -> Float
 ''$primStringToFloat'' = float_of_string_extern
-
+-}
 extern float_of_string_extern "float_of_string" :: "Fz"
-
+{-
 ''$primShowFloat'' :: Float -> String
 ''$primShowFloat'' x = let! x = x in stringFromPacked (stringFromFloat x 6 'g')
-
+-}
 extern stringFromFloat "string_of_float" :: "aFII"
 
 -- in overloaded version, a negative float is shown as usual (not with "-.")
-showFloat : public [custom "type"  ["Float -> String"]]
-  = \f -> addPointZero (''$primShowFloat'' f)
+--showFloat : public [custom "type"  ["Float -> String"]]
+--  = \f -> addPointZero (''$primShowFloat'' f)
 
 {- 
 safeMinus : private [custom "type"  ["String -> String"]]

@@ -1,4 +1,4 @@
-module IridiumLang.String
+module IridiumLangString
 import ()
 
 declare @putchar: (int) -> int [callconvention:c]
@@ -36,7 +36,7 @@ unpack.nil:
   return %nil: @"[]"
 }
 
-define @helium_print_string(%arg_list: @"[]"): int {
+export define @_$helium_runtime_print_string(%arg_list: @"[]"): int {
 print.entry:
   jump print.loop
 print.loop:
@@ -58,7 +58,7 @@ print.cons:
 
 declare @exit: (int) -> int [callconvention:c]
 
-define @error(%msg: any): any_whnf [trampoline] {
+export define @_$helium_runtime_error(%msg: any): any_whnf {
 error.entry:
   %msg_whnf = eval %msg: any
   %msg_list = cast %msg_whnf: any_whnf as @"[]"

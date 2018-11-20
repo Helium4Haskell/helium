@@ -1,0 +1,97 @@
+module IridiumLang
+import (IridiumLangEval, IridiumLangString)
+
+export declare @_$helium_runtime_error: (any) -> any_whnf
+export declare @_$helium_runtime_print_string: (@"[]") -> int
+
+#[decl @kind [bytes "*"]]
+export data @Bool {
+  #[decl @type [bytes "Bool"]]
+  #[link @Bool @data]
+  export constructor @False()
+
+  #[decl @type [bytes "Bool"]]
+  #[link @Bool @data]
+  export constructor @True()
+}
+
+export define @primAddInt(%a: int, %b: int) = prim int_add(%a: int, %b: int)
+export define @primSubInt(%a: int, %b: int) = prim int_sub(%a: int, %b: int)
+export define @primMulInt(%a: int, %b: int) = prim int_mul(%a: int, %b: int)
+export define @primQuotInt(%a: int, %b: int) = prim int_sdiv(%a: int, %b: int)
+export define @primRemInt(%a: int, %b: int) = prim int_srem(%a: int, %b: int)
+; TODO: Are div and mod (rounding to -inf) available in LLVM?
+
+export define @primAndInt(%a: int, %b: int) = prim int_and(%a: int, %b: int)
+export define @primOrInt(%a: int, %b: int) = prim int_or(%a: int, %b: int)
+export define @primXorInt(%a: int, %b: int) = prim int_xor(%a: int, %b: int)
+export define @primShrInt(%a: int, %b: int) = prim int_ashr(%a: int, %b: int)
+export define @primShrNat(%a: int, %b: int) = prim int_lshr(%a: int, %b: int)
+export define @primShlInt(%a: int, %b: int) = prim int_shl(%a: int, %b: int)
+
+export define @primNegInt(%a: int): int {
+entry:
+  %0 = literal int 0
+  %result = prim int_sub(%0: int, %a: int)
+  return %result: int
+}
+
+export define @primEqInt(%a: int, %b: int): @Bool {
+entry:
+  letalloc %true_ = constructor @True: () -> @Bool $ ()
+  letalloc %false_ = constructor @False: () -> @Bool $ ()
+  %true = cast %true_: @Bool as any_whnf
+  %false = cast %false_: @Bool as any_whnf
+  %result = prim int_eq(%a: int, %b: int, %true: any_whnf, %false: any_whnf)
+  %result_ = cast %result: any_whnf as @Bool
+  return %result_: @Bool
+}
+
+export define @primNeInt(%a: int, %b: int): @Bool {
+entry:
+  letalloc %true_ = constructor @True: () -> @Bool $ ()
+  letalloc %false_ = constructor @False: () -> @Bool $ ()
+  %true = cast %true_: @Bool as any_whnf
+  %false = cast %false_: @Bool as any_whnf
+  %result = prim int_eq(%a: int, %b: int, %false: any_whnf, %true: any_whnf)
+  %result_ = cast %result: any_whnf as @Bool
+  return %result_: @Bool
+}
+
+export define @primLtInt(%a: int, %b: int): @Bool {
+entry:
+  letalloc %true_ = constructor @True: () -> @Bool $ ()
+  letalloc %false_ = constructor @False: () -> @Bool $ ()
+  %true = cast %true_: @Bool as any_whnf
+  %false = cast %false_: @Bool as any_whnf
+  %result = prim int_slt(%a: int, %b: int, %true: any_whnf, %false: any_whnf)
+  %result_ = cast %result: any_whnf as @Bool
+  return %result_: @Bool
+}
+
+export define @primGeInt(%a: int, %b: int): @Bool { ; a >= b <=> not(a < b)
+entry:
+  letalloc %true_ = constructor @True: () -> @Bool $ ()
+  letalloc %false_ = constructor @False: () -> @Bool $ ()
+  %true = cast %true_: @Bool as any_whnf
+  %false = cast %false_: @Bool as any_whnf
+  %result = prim int_slt(%a: int, %b: int, %false: any_whnf, %true: any_whnf)
+  %result_ = cast %result: any_whnf as @Bool
+  return %result_: @Bool
+}
+
+export define @primLeInt(%a: int, %b: int) = call @primGeInt: (int, int) -> @Bool $ (%b: int, %a: int)
+export define @primGtInt(%a: int, %b: int) = call @primLtInt: (int, int) -> @Bool $ (%b: int, %a: int)
+
+; instruction primAddFloat  "addfloat" :: Float! -> Float! -> Float!
+; instruction primSubFloat  "subfloat" :: Float! -> Float! -> Float!
+; instruction primMulFloat  "mulfloat" :: Float! -> Float! -> Float!
+; instruction primDivFloat  "divfloat" :: Float! -> Float! -> Float!
+; instruction primNegFloat  "negfloat" :: Float! -> Float!
+
+; instruction primEqFloat   "eqfloat"  :: Float! -> Float! -> Bool!
+; instruction primNeFloat   "nefloat"  :: Float! -> Float! -> Bool!
+; instruction primLtFloat   "ltfloat"  :: Float! -> Float! -> Bool!
+; instruction primGtFloat   "gtfloat"  :: Float! -> Float! -> Bool!
+; instruction primLeFloat   "lefloat"  :: Float! -> Float! -> Bool!
+; instruction primGeFloat   "gefloat"  :: Float! -> Float! -> Bool!

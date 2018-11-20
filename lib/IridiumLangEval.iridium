@@ -1,4 +1,4 @@
-module IridiumLang.Eval
+module IridiumLangEval
 import ()
 
 define @_$helium_runtime_concatThunk(%left: unsafeptr, %right: unsafeptr): any_thunk {
@@ -25,14 +25,14 @@ unreachable:
 
 0:
   match %left: unsafeptr on thunk 0 (%0_target: unsafeptr)
-  letalloc %0_res = thunk %0_target: unsafeptr $ (%right_argument: any)
+  letalloc %0_res = function %0_target: unsafeptr $ (%right_argument: any)
   %0_unsafe = cast %0_res: any_whnf as unsafeptr
   %0_ = prim thunk_write_tag(%0_unsafe: unsafeptr, %newtag: int)
   return %0_res: any_thunk
 
 1:
   match %left: unsafeptr on thunk 1 (%1_target: unsafeptr, %1_0: any)
-  letalloc %1_res = thunk %1_target: unsafeptr $ (%1_0: any, %right_argument: any)
+  letalloc %1_res = function %1_target: unsafeptr $ (%1_0: any, %right_argument: any)
   %1_unsafe = cast %1_res: any_whnf as unsafeptr
   %1_ = prim thunk_write_tag(%1_unsafe: unsafeptr, %newtag: int)
   return %1_res: any_thunk
