@@ -68,7 +68,7 @@ primitiveList =
   , primBinaryInt "int_xor" LLVM.Xor
   , primBinaryInt "int_shl" $ LLVM.Shl False False
   , primBinaryInt "int_lshr" $ LLVM.LShr False -- Logical right shift
-  , primBinaryInt "int_rshr" $ LLVM.AShr False -- Arithmetic right shift
+  , primBinaryInt "int_ashr" $ LLVM.AShr False -- Arithmetic right shift
 
   , primCompare "int_eq" TypeInt $ LLVM.ICmp IntegerPredicate.EQ
   , primCompare "int_slt" TypeInt $ LLVM.ICmp IntegerPredicate.SLT -- Signed less than
