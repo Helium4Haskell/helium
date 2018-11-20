@@ -24,13 +24,17 @@ coreRemoveAliasses = fmap (renameExpr emptyMap)
 
 type Env = IdMap Id
 
+lookupId :: Env -> Id -> Id
+lookupId env x = fromMaybe x $ lookupMap x env 
+
 renameExpr :: Env -> Expr -> Expr
-renameExpr env (Let (NonRec (Bind x (Var y))) expr) = renameExpr (insertMap x y env) expr
+renameExpr env (Let (NonRec (Bind x (Var y))) expr) = renameExpr (insertMap x (lookupId env y) env) expr
 renameExpr env (Let bs expr) = Let (mapBinds (\x e -> Bind x $ renameExpr env e) bs) $ renameExpr env expr
 renameExpr env (Match x alts) =
-  Match (fromMaybe x $ lookupMap x env)
+  Match (lookupId env x)
     $ mapAlts (\pat expr -> Alt pat $ renameExpr env expr) alts
 renameExpr env (Ap e1 e2) = Ap (renameExpr env e1) (renameExpr env e2)
 renameExpr env (Lam x expr) = Lam x $ renameExpr env expr
-renameExpr env (Var x) = Var $ fromMaybe x $ lookupMap x env
-renameExpr _ expr = expr -- Literal or Constructor
+renameExpr env (Var x) = Var $ lookupId env x
+renameExpr _ (Con con) = Con con
+renameExpr _ (Lit lit) = Lit lit
