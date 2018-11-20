@@ -19,7 +19,7 @@
 -- bar z = let y! = f z in f y
 -- foo z = let x = bar z in f x
 --
--- Assumes that the AST is normalized, eg. the Normalize pass should be executed before.
+-- Assumes that the AST is normalized, ie. the Normalize pass should be executed before.
 
 module Helium.CodeGeneration.Core.Lift (coreLift) where
 
@@ -68,9 +68,11 @@ liftExpr supply scope (Let (Rec bs) e) = (Let (Rec bs') e', concat decls1 ++ dec
 liftExpr supply scope (Match name alts) = (Match name alts', concat decls)
   where
     (alts', decls) = unzip $ mapWithSupply (`liftAlt` scope) supply alts
-liftExpr supply scope (Lam x expr) = (Lam x expr', decls)
+-- Convert `\x -> expr` to `let y = \x -> expr in y
+liftExpr supply scope expr@(Lam _ _) = liftExpr supply' scope $ Let (NonRec bind) (Var name)
   where
-    (expr', decls) = liftExpr supply (x : scope) expr
+    (name, supply') = freshId supply
+    bind = Bind name expr
 -- After normalization the other expression constructors cannot have let bindings
 -- as subexpressions, so we can ignore them.
 liftExpr supply scope expr = (expr, [])
@@ -89,13 +91,13 @@ lazyBind supply scope b@(Bind x expr)
   where
     ap = foldl (\e arg -> Ap e (Var arg)) (Var name) scope -- TODO: foldl vs foldr, Ap vs flip Ap?
     (name, supply') = freshId supply
-    (expr', decls) = liftExpr supply' scope expr
+    (expr', decls) = liftExprIgnoreLambdas supply' scope expr
     value = foldr Lam expr' scope
     decl :: CoreDecl
     decl = DeclValue
       { declName = name
       , declAccess = Defined False
-      , valueEnc = Nothing -- TODO: What is valueEnc?
+      , valueEnc = Nothing
       , valueValue = value
       , declCustoms = []
       }

@@ -132,7 +132,7 @@ bindType :: Bind -> PrimitiveType
 bindType (Bind _ (BindTargetConstructor (DataTypeConstructor dataName _ _)) _) = TypeDataType dataName
 bindType (Bind _ (BindTargetTuple _) args) = TypeTuple $ length args
 bindType (Bind _ (BindTargetFunction (VarGlobal (Global fn (FunctionType fnargs _)))) args)
-  | length args == length fnargs = TypeAnyThunk
+  | length args >= length fnargs = TypeAnyThunk
   | otherwise = TypeFunction
 bindType _ = TypeAnyThunk
 
