@@ -28,12 +28,12 @@ import LLVM.AST.CallingConvention
 import LLVM.AST.Linkage
 
 compileModule :: Env -> NameSupply -> Iridium.Module -> Module
-compileModule env supply (Iridium.Module name _ _ datas abstracts methods) = Module
+compileModule env supply iridium@(Iridium.Module name _ _ datas abstracts methods) = Module
   (fromString $ stringFromId name)
   (fromString "<TODO: Filename.hs>")
   Nothing
   Nothing
-  (dataTypes ++ constructors ++ builtinDefinitions ++ abstractFunctions ++ functions)
+  (dataTypes ++ constructors ++ builtinDefinitions iridium ++ abstractFunctions ++ functions)
   where
     dataTypes = map (\d@(Iridium.Declaration dataId _ _ _) -> TypeDefinition (toNamePrefixed "$data_" dataId) $ Just $ dataTypeType env d $ map (\con@(Iridium.DataTypeConstructor _ name _) -> (name, findMap name $ envConstructors env)) $ Iridium.getConstructors d) datas
     constructors = map (\(name, con) -> TypeDefinition (toName name) $ Just $ constructorType env con) $ listFromMap $ envConstructors env

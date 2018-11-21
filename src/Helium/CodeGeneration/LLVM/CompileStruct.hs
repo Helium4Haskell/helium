@@ -181,7 +181,7 @@ writeField env operand struct supply fieldIdx (StructField fType fFlagIndex) (Ju
 
 extractTag :: NameSupply -> Env -> Operand -> Struct -> Name -> [Named Instruction]
 extractTag supply env reference struct name
-  | tagSize struct == 0 = [ name := BitCast (ConstantOperand $ Constant.Int 1 0) (IntegerType 1) [] ]
+  | tagSize struct == 0 = [ name := BitCast (ConstantOperand $ Constant.Int (fromIntegral $ targetWordSize $ envTarget env) 0) (envValueType env) [] ]
   | otherwise =
     [ headerPtr := getElementPtr reference [0, 0, headerIdx]
     , headerValue := Load False (LocalReference (pointer headerType) headerPtr) Nothing 0 []
