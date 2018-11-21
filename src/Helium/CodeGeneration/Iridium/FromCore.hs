@@ -148,7 +148,6 @@ toInstruction supply env continue (Core.Let (Core.Rec bs) expr)
   +> LetAlloc binds
   +> toInstruction supply2 env' continue expr
   where
-    -- TODO: Is this recursive definition ok?
     (supply1, supply2) = splitNameSupply supply
     (castInstructions, binds) = unzip $ mapWithSupply (`bind` env') supply1 bs
     locals = map (coreBindLocal env) bs
@@ -385,22 +384,26 @@ gatherCaseConstructorAlts supply env (continue:continues) remaining var (Core.Al
     (nextAlts, nextBlocks) = gatherCaseConstructorAlts supply2 env continues remaining' var alts
 
 bind :: NameSupply -> TypeEnv -> Core.Bind -> (Instruction -> Instruction, Bind)
-bind supply env (Core.Bind x val) = (castInstructions, Bind x target args')
+bind supply env (Core.Bind x val) = (castInstructions . targetCast, Bind x target args')
   where
     (apOrCon, args) = getApplicationOrConstruction val []
-    (args', castInstructions) = maybeCasts supply env (zip args params)
+    (supply1, supply2) = splitNameSupply supply
+    (args', castInstructions) = maybeCasts supply1 env (zip args params)
     target :: BindTarget
     params :: [PrimitiveType]
-    (target, params) = case apOrCon of
+    targetCast :: Instruction -> Instruction
+    (target, params, targetCast) = case apOrCon of
       Left (Core.ConId con) ->
         let ValueConstructor constructor@(DataTypeConstructor _ _ fields) = valueDeclaration env con
-        in (BindTargetConstructor constructor, fields)
-      Left (Core.ConTag _ arity) -> (BindTargetTuple arity, replicate arity TypeAny)
+        in (BindTargetConstructor constructor, fields, id)
+      Left (Core.ConTag _ arity) -> (BindTargetTuple arity, replicate arity TypeAny, id)
       Right fn -> case resolveFunction env fn of
         Just fntype@(FunctionType fparams returnType) ->
           -- The bind might provide more arguments than the arity of the function, if the function returns another function.
-          (BindTargetFunction $ resolve env fn, fparams ++ repeat TypeAny)
-        Nothing -> (BindTargetThunk $ resolve env fn, repeat TypeAny)
+          (BindTargetFunction $ resolve env fn, fparams ++ repeat TypeAny, id)
+        Nothing -> 
+          let (t, castInstr) = maybeCast supply2 env fn TypeAnyThunk
+          in (BindTargetThunk t, repeat TypeAny, castInstr)
 
 coreBindLocal :: TypeEnv -> Core.Bind -> Local
 coreBindLocal env (Core.Bind name expr) = Local name $ coreBindType env expr
