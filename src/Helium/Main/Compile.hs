@@ -17,7 +17,7 @@ import qualified Lvm.Core.Expr as Lvm
 import qualified Lvm.Import as Lvm
 import qualified Lvm.Read as Lvm
 import Lvm.Path (searchPath, searchPathMaybe)
-import Lvm.Common.Id (Id, stringFromId)
+import Lvm.Common.Id (Id, stringFromId, newNameSupply, splitNameSupply)
 import Helium.Main.PhaseLexer
 import Helium.Main.PhaseParser
 import Helium.Main.PhaseImport
@@ -54,6 +54,9 @@ compile basedir fullName options lvmPath doneModules =
 
     contents <- readSourceFile fullName
 
+    supply <- newNameSupply
+    let (supplyIridium, supplyLlvm) = splitNameSupply supply
+
     (iridiumFiles, shouldLink, warnings) <- if ext /= "iridium" then do
         (coreModule, warnings) <- case ext of
           "hs" -> compileHaskellToCore basedir fullName contents options lvmPath doneModules
@@ -76,7 +79,7 @@ compile basedir fullName options lvmPath doneModules =
         sendLog "C" fullName doneModules options
 
         -- Phase 11: Code generation for Iridium
-        (files, link) <- phaseCodeGeneratorIridium lvmPath fullName coreModule options
+        (files, link) <- phaseCodeGeneratorIridium supplyIridium lvmPath fullName coreModule options
         return (files, link, warnings)
       else do
         iridium <- case Iridium.parseModule contents of
@@ -89,7 +92,7 @@ compile basedir fullName options lvmPath doneModules =
         return ([Iridium.IridiumFile fullName iridium True], False, 0)
 
     -- Phase 12: Generate LLVM code
-    phaseCodeGeneratorLlvm iridiumFiles shouldLink options
+    phaseCodeGeneratorLlvm supplyLlvm iridiumFiles shouldLink options
 
     putStrLn $ "Compilation successful" ++
                   if warnings == 0 || (NoWarnings `elem` options)

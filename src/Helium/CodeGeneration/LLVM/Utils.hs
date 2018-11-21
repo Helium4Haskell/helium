@@ -10,7 +10,7 @@ module Helium.CodeGeneration.LLVM.Utils where
 
 import LLVM.AST as AST
 import LLVM.AST.Constant
-import Lvm.Common.Id(Id, stringFromId, freshId, NameSupply, freshIdFromId)
+import Lvm.Common.Id(Id, idFromString, stringFromId, freshId, NameSupply, freshIdFromId)
 
 toName :: Id -> Name
 toName = mkName . stringFromId
@@ -18,10 +18,12 @@ toName = mkName . stringFromId
 toNamePrefixed :: String -> Id -> Name
 toNamePrefixed prefix = mkName . (prefix ++) . stringFromId
 
+-- Prevent collisions with previously generated identifiers
+name_ :: Id
+name_ = idFromString "$"
+
 freshName :: NameSupply -> (Name, NameSupply)
-freshName supply = (toName newId, supply')
-  where
-    (newId, supply') = freshId supply
+freshName = freshNameFromId name_
 
 freshNameFromId :: Id -> NameSupply -> (Name, NameSupply)
 freshNameFromId oldId supply = (toName newId, supply')
