@@ -182,3 +182,7 @@ callingConvention :: [Annotation] -> CallingConvention
 callingConvention [] = CCFast -- Default
 callingConvention (AnnotateCallConvention c : _) = c
 callingConvention (_ : as) = callingConvention as
+
+-- Checks whether this module has a declaration or definition for this function
+declaresFunction :: Module -> Id -> Bool
+declaresFunction (Module _ _ _ _ abstracts methods) name = any ((== name) . declarationName) abstracts || any ((== name) . declarationName) methods
