@@ -40,12 +40,13 @@ data DataTypeConstructor = DataTypeConstructor { constructorDataType :: !Id, con
   deriving (Eq, Ord)
 
 getConstructors :: Declaration DataType -> [DataTypeConstructor]
-getConstructors (Declaration dataName _ _ (DataType cons)) = map (\(Declaration conId _ _ (DataTypeConstructorDeclaration fields)) -> DataTypeConstructor dataName conId fields) cons
+getConstructors (Declaration dataName _ _ _ (DataType cons)) = map (\(Declaration conId _ _ _ (DataTypeConstructorDeclaration fields)) -> DataTypeConstructor dataName conId fields) cons
 
 data Visibility = Exported | Private deriving (Eq, Ord)
 data Declaration a = Declaration
   { declarationName :: !Id
   , declarationVisibilitiy :: !Visibility
+  , declarationModule :: Maybe Id
   , declarationCustom :: ![Custom]
   , declarationValue :: !a
   }
@@ -53,7 +54,7 @@ data Declaration a = Declaration
 data CustomDeclaration = CustomDeclaration !DeclKind
 
 instance Functor Declaration where
-  fmap f (Declaration name visibility customs a) = Declaration name visibility customs $ f a
+  fmap f (Declaration name visibility mod customs a) = Declaration name visibility mod customs $ f a
 
 -- Imported method, eg a method without a definition. The implementation is in some other file.
 data AbstractMethod = AbstractMethod !FunctionType ![Annotation]

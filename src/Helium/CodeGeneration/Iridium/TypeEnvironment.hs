@@ -70,16 +70,16 @@ typeEnvForModule :: Module -> TypeEnv
 typeEnvForModule (Module _ _ _ dataTypes abstracts methods) = TypeEnv dataTypeMap values Nothing
   where
     values = mapFromList $ cons ++ methodDecls ++ abstractDecls
-    dataTypeMap = mapFromList $ map (\d@(Declaration name _ _ _) -> (name, getConstructors d)) dataTypes
+    dataTypeMap = mapFromList $ map (\d@(Declaration name _ _ _ _) -> (name, getConstructors d)) dataTypes
     cons = dataTypes >>= valuesInDataType
     methodDecls = map valueOfMethod methods 
     abstractDecls = map valueOfAbstract abstracts
 
     valuesInDataType :: Declaration DataType -> [(Id, ValueDeclaration)]
-    valuesInDataType (Declaration name _ _ (DataType cs)) = map (\(Declaration conId _ _ (DataTypeConstructorDeclaration args)) -> (conId, ValueConstructor $ DataTypeConstructor name conId args)) cs
+    valuesInDataType (Declaration name _ _ _ (DataType cs)) = map (\(Declaration conId _ _ _ (DataTypeConstructorDeclaration args)) -> (conId, ValueConstructor $ DataTypeConstructor name conId args)) cs
 
     valueOfMethod :: Declaration Method -> (Id, ValueDeclaration)
-    valueOfMethod (Declaration name _ _ (Method args retType annotations _ _)) = (name, ValueFunction (FunctionType (map localType args) retType) $ callingConvention annotations)
+    valueOfMethod (Declaration name _ _ _ (Method args retType annotations _ _)) = (name, ValueFunction (FunctionType (map localType args) retType) $ callingConvention annotations)
 
     valueOfAbstract :: Declaration AbstractMethod -> (Id, ValueDeclaration)
-    valueOfAbstract (Declaration name _ _ (AbstractMethod fntype annotations)) = (name, ValueFunction fntype $ callingConvention annotations)
+    valueOfAbstract (Declaration name _ _ _ (AbstractMethod fntype annotations)) = (name, ValueFunction fntype $ callingConvention annotations)

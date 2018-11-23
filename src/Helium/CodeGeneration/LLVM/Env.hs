@@ -27,7 +27,7 @@ envForModule target mod = Env
   where
     typeEnv = TypeEnv.typeEnvForModule mod
     constructors = Iridium.moduleDataTypes mod >>=
-      (\dataTypeDecl@(Iridium.Declaration name _ _ dataType) ->
+      (\dataTypeDecl@(Iridium.Declaration name _ _ _ dataType) ->
         zipWith
           (\con@(Iridium.DataTypeConstructor _ conName _) index ->
             (conName, constructorLayout typeEnv target dataType index con))
@@ -35,5 +35,5 @@ envForModule target mod = Env
           [0..]
       )
     conventions :: [(Id, Iridium.CallingConvention)]
-    conventions = fmap (\(Iridium.Declaration name _ _ (Iridium.Method _ _ annotations _ _)) -> (name, Iridium.callingConvention annotations)) (Iridium.moduleMethods mod)
-      ++ fmap (\(Iridium.Declaration name _ _ (Iridium.AbstractMethod _ annotations)) -> (name, Iridium.callingConvention annotations)) (Iridium.moduleAbstractMethods mod)
+    conventions = fmap (\(Iridium.Declaration name _ _ _ (Iridium.Method _ _ annotations _ _)) -> (name, Iridium.callingConvention annotations)) (Iridium.moduleMethods mod)
+      ++ fmap (\(Iridium.Declaration name _ _ _ (Iridium.AbstractMethod _ annotations)) -> (name, Iridium.callingConvention annotations)) (Iridium.moduleAbstractMethods mod)

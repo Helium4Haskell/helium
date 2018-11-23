@@ -1,5 +1,6 @@
 module Helium.CodeGeneration.Iridium.Parse.Module where
 
+import Lvm.Common.Id(Id)
 import Helium.CodeGeneration.Iridium.Parse.Parser
 import Helium.CodeGeneration.Iridium.Parse.Type
 import Helium.CodeGeneration.Iridium.Parse.Custom
@@ -41,19 +42,27 @@ pDataType = do
 pDeclaration :: (String -> (forall a . a -> Declaration a) -> Parser b) -> Parser b
 pDeclaration f = do
   customs <- pCustoms
-  (vis, key) <- pDeclarationVisibilityAndKeyword
+  (vis, mod, key) <- pDeclarationVisibilityOriginAndKeyword
   pToken '@'
   name <- pId
-  f key (Declaration name vis customs)
+  f key (Declaration name vis mod customs)
 
-pDeclarationVisibilityAndKeyword :: Parser (Visibility, String)
-pDeclarationVisibilityAndKeyword = do
+pDeclarationVisibilityOriginAndKeyword :: Parser (Visibility, Maybe Id, String)
+pDeclarationVisibilityOriginAndKeyword = do
   key <- pKeyword
   if key == "export" then do
     key' <- pKeyword
-    return (Exported, key')
+    pOriginAndKeyword Exported key'
   else
-    return (Private, key)
+    pOriginAndKeyword Private key
+  where
+    pOriginAndKeyword :: Visibility -> String -> Parser (Visibility, Maybe Id, String)
+    pOriginAndKeyword vis "from" = do
+      mod <- pId
+      pWhitespace
+      key <- pKeyword
+      return (vis, Just mod, key)
+    pOriginAndKeyword vis key = return (vis, Nothing, key)
 
 pModule :: Parser Module
 pModule = do
