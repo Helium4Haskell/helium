@@ -38,11 +38,13 @@ instance Pretty OptimizeModule where
 
 {-Decl-}
 instance Pretty Decl where
-    pretty (Decl_Start name _ _ expr) =
-        text (stringFromId name) <+> text "=" <+> pretty expr
-    pretty (Decl_Function name _ _ expr _ tpScheme) =
-        text (stringFromId name) <+> text "::" <+> text (show tpScheme)
-            <$> text (stringFromId name) <+> text "=" <+> pretty expr
+    pretty (Decl_Start name _ _ expr ts) =
+        (if isJust ts then (text (stringFromId name) <+> text "::" <+> pretty (fromJust ts) <$>) else (empty <>))
+            (text (stringFromId name) <+> text "=" <+> pretty expr)
+    pretty (Decl_Function name _ _ expr _ tpScheme ts) =
+        text (stringFromId name) <+> text "::" <+> text (show tpScheme) <$>
+        (if isJust ts then (text (stringFromId name) <+> text "::" <+> pretty (fromJust ts) <$>) else (empty <>))
+            (text (stringFromId name) <+> text "=" <+> pretty expr)
     pretty (Decl_Abstract name _ _ _ tpScheme) =
         text (stringFromId name) <+> text "::" <+> text (show tpScheme)
     pretty (Decl_Constructor name _ _ _ _ datalink tpScheme) =
@@ -71,8 +73,8 @@ instance Pretty Expr where
         isAp (Expr_Ap _ _ _) = True
         isAp _ = False
     pretty (Expr_Lam name expr t) =
-        char '\\' <> text (stringFromId name) <+> text "->"
-            </> pretty expr
+        nest 4 (char '\\' <> text (stringFromId name) <+> text "->"
+            </> pretty expr)
     pretty (Expr_ConId name t) =
         text (stringFromId name)
     pretty (Expr_ConTag tag arity t) =
@@ -149,7 +151,7 @@ instance Pretty Ts where
     pretty (TsVar x) = text "forall(" <> pretty x <> char ')'
     pretty (Ts vars ct t) = nest 4 (pforall </> pct </> pretty t)
         where
-        pforall = text "forall{" <> (if not $ Set.null vars then hcat (map pretty (Set.toList vars)) else empty) <> text "}."
+        pforall = text "forall{" <> (if not $ Set.null vars then sep (map (pretty) (Set.toList vars)) else empty) <> text "}."
         pct = text "C" <> (if not $ null ct then char '{' <> align (vcat (map pretty ct)) <> char '}' else empty) <> char '.'
     pretty (TsAnn ann ts) = char '(' <> pretty ts <> text ")^" <> text (show ann)
 

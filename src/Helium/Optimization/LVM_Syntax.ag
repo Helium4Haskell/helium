@@ -44,6 +44,7 @@ DATA Decl
         access                  : {Module.Access}
         encoding                : {M.Maybe I.Id}
         expr                    : Expr
+        ts                      : {Maybe Ts}
     | Function
         name                    : {I.Id}
         access                  : {Module.Access}
@@ -51,6 +52,7 @@ DATA Decl
         expr                    : Expr
         customs                 : {[Module.Custom]}
         ty                      : {T.TpScheme}
+        ts                      : {Maybe Ts}
     | Abstract
         name                    : {I.Id}
         access                  : {Module.Access}
@@ -219,7 +221,7 @@ SEM Decls
 ATTR Decl [ | | decl : Decl ]
 
 SEM Decl
-    | Start         lhs.decl = Decl_Start @name @access @encoding @expr.expr
+    | Start         lhs.decl = Decl_Start @name @access @encoding @expr.expr (Just $ t2tsall $ @lhs.sub -$- @expr.t)
     | Function      lhs.genEnv = singletonGlobal @name (tpScheme2Ts @lhs.syn @lhs.dataKind @ty)
                     expr.uniqueId = @lhs.uniqueId
                     expr.env = @lhs.env --}trace ("entering function : " ++ I.stringFromId @name ++ " : expr : " ++ show @expr.expr ++ " : with module env : " ++ show @lhs.env) @lhs.env
@@ -229,7 +231,7 @@ SEM Decl
                     loc.ct = @expr.ct -- TODO: this is just a check ++ [ EqT "Decl" @expr.t (second @loc.lookup) ] ++ third @loc.lookup
                     lhs.ct = @loc.ct --}trace ("function " ++ I.stringFromId @name ++ " : type : " ++ show @expr.t ++ " : constraints : " ++ show @loc.ct) @loc.ct
                     lhs.showIt = [(I.stringFromId @name, (t2tsall $ @lhs.sub -$- @expr.t), @ty)]
-                    lhs.decl = Decl_Function @name @access @encoding @expr.expr @customs @ty
+                    lhs.decl = Decl_Function @name @access @encoding @expr.expr @customs @ty (Just $ t2tsall  $ @lhs.sub -$- @expr.t)
     | Abstract      lhs.genEnv = singletonGlobal @name (tpScheme2Ts @lhs.syn @lhs.dataKind @ty)
                     lhs.decl = Decl_Abstract @name @access @arity @customs @ty
     | Constructor   loc.t = tpScheme2Ts @lhs.syn @lhs.dataKind @ty
@@ -488,11 +490,11 @@ coreDecls2Decls = map coreDecl2Decl
 
 coreDecl2Decl :: Expr.CoreDecl -> Decl
 coreDecl2Decl (Module.DeclValue name access encoding expr []) =
-    Decl_Start name access encoding (coreExpr2Expr expr)
+    Decl_Start name access encoding (coreExpr2Expr expr) Nothing
 coreDecl2Decl (Module.DeclValue name access encoding expr customs) =
     Decl_Function name access encoding (coreExpr2Expr expr) customs
     --(tracePretty ("Function: " ++ (show name) ++ " => ") customs)
-    (customsToTpScheme name customs)
+    (customsToTpScheme name customs) Nothing
 coreDecl2Decl (Module.DeclAbstract name access arity customs) =
     Decl_Abstract name access arity customs
     --(tracePretty ("Abstract: " ++ (show name) ++ " => ") customs)
@@ -596,9 +598,9 @@ decls2CoreDecls :: Decls -> [Expr.CoreDecl]
 decls2CoreDecls = map decl2CoreDecl
 
 decl2CoreDecl :: Decl -> Expr.CoreDecl
-decl2CoreDecl (Decl_Start name access encoding expr) =
+decl2CoreDecl (Decl_Start name access encoding expr _) =
     Module.DeclValue name access encoding (expr2CoreExpr expr) []
-decl2CoreDecl (Decl_Function name access encoding expr customs _) =
+decl2CoreDecl (Decl_Function name access encoding expr customs _ _) =
     Module.DeclValue name access encoding (expr2CoreExpr expr) customs
     --(trace (show mayTpScheme) customs)
 decl2CoreDecl (Decl_Abstract name access arity customs _) =

@@ -31,8 +31,8 @@ getLetBangs (OptimizeModule_Module _ _ _ decls) = getLetBangsDecls decls
 getLetBangsDecls :: Decls -> [(String, Expr, [Expr])]
 getLetBangsDecls = mapMaybe getLetBangsDecl
 getLetBangsDecl :: Decl -> Maybe (String, Expr, [Expr])
-getLetBangsDecl (Decl_Start name _ _ expr) = Just (stringFromId name, expr, getLetBangsExpr expr)
-getLetBangsDecl (Decl_Function name _ _ expr _ _) = Just (stringFromId name, expr, getLetBangsExpr expr)
+getLetBangsDecl (Decl_Start name _ _ expr _) = Just (stringFromId name, expr, getLetBangsExpr expr)
+getLetBangsDecl (Decl_Function name _ _ expr _ _ _) = Just (stringFromId name, expr, getLetBangsExpr expr)
 getLetBangsDecl _ = Nothing
 
 getLetBangsExpr :: Expr -> [Expr]
