@@ -30,8 +30,9 @@ resolveDependencies :: [String] -> [IridiumFile] -> IO [IridiumFile]
 resolveDependencies paths modules = resolve paths worklist found modules
   where
     initialDependencies = modules >>= moduleDependencies . iridiumModule
-    found = setFromList $ fmap (moduleName . iridiumModule) modules
-    worklist = filter (not . (`elemSet` found)) initialDependencies
+    found' = setFromList $ fmap (moduleName . iridiumModule) modules
+    found = foldr insertSet found' initialDependencies
+    worklist = filter (not . (`elemSet` found')) initialDependencies
 
 resolve :: [String] -> [Id] -> IdSet -> [IridiumFile] -> IO [IridiumFile]
 -- Worklist is empty, so all modules are resolved

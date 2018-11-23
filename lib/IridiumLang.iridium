@@ -18,13 +18,6 @@ data @"[]" {
   constructor @":"(any, any)
 }
 
-declare @main$: () -> any_whnf
-export define @start(): any_whnf {
-entry:
-  %_ = call @main$: () -> any_whnf $ ()
-  return %_: any_whnf
-}
-
 #[decl @kind [bytes "*"]]
 export data @Bool {
   #[decl @type [bytes "Bool"]]
