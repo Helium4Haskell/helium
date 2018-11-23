@@ -39,10 +39,10 @@ import LvmLang
     , Bool(True, False)
     , '':[]''('':[]'', (:))
     , '':()''('':()'')
-    , ''$primBindIO'' = bindIO, ''$primReturnIO'' = returnIO
+    , ''$primBindIO'', ''$primReturnIO''
     , negInt 
     {-, negFloat, ''$primEqFloat'' = (==.) -}
-    , (+), (-), (>), (<), (>=), quot, rem, (==)
+    , (+#), (-#), (>#), (<#), (>=#), quot, rem, (==#)
     , stringFromPacked
     , unsafePerformIO    
     , ''$primPutStrLn''
@@ -183,39 +183,39 @@ data Char
 -- [1,3..]   === ''$primEnumFromThen'' 1 3
 
 ''$primEnumFrom'' :: Int -> [Int]
-''$primEnumFrom'' n = (:) n (''$primEnumFrom'' ((+) n 1))
+''$primEnumFrom'' n = (:) n (''$primEnumFrom'' ((+#) n 1))
 
 ''$primEnumFromTo'' :: Int -> Int -> [Int]
 ''$primEnumFromTo'' n m =
-    case (>) n m of
+    case (>#) n m of
     {   True -> []
-    ;   _    -> (:) n (''$primEnumFromTo'' ((+) n 1) m)
+    ;   _    -> (:) n (''$primEnumFromTo'' ((+#) n 1) m)
     }
 
 ''$primEnumFromThenTo'' :: Int -> Int -> Int -> [Int]
 ''$primEnumFromThenTo'' n a m =
-    case (>) a n of
-    {   True -> ''$primAscendToWithStep'' n m ((-) a n) 
-    ;   _    -> ''$primDescendToWithStep'' n m ((-) a n) 
+    case (>#) a n of
+    {   True -> ''$primAscendToWithStep'' n m ((-#) a n) 
+    ;   _    -> ''$primDescendToWithStep'' n m ((-#) a n) 
     }
     
 ''$primAscendToWithStep'' :: Int -> Int -> Int -> [Int]
 ''$primAscendToWithStep'' n m step = 
-    case (>) n m of 
+    case (>#) n m of 
     {   True -> []
-    ;   _    -> (:) n (''$primAscendToWithStep'' ((+) n step) m step)
+    ;   _    -> (:) n (''$primAscendToWithStep'' ((+#) n step) m step)
     }
     
 
 ''$primDescendToWithStep'' :: Int -> Int -> Int -> [Int]
 ''$primDescendToWithStep'' n m step = 
-    case (<) n m of 
+    case (<#) n m of 
     {   True -> []
-    ;   _    -> (:) n (''$primDescendToWithStep'' ((+) n step) m step)
+    ;   _    -> (:) n (''$primDescendToWithStep'' ((+#) n step) m step)
     }
 
 ''$primEnumFromThen'' :: Int -> Int -> [Int]
-''$primEnumFromThen'' n a = (:) n (''$primEnumFromThen'' a ((+) a ((-) a n)))
+''$primEnumFromThen'' n a = (:) n (''$primEnumFromThen'' a ((+#) a ((-#) a n)))
 
 -- Show
 
@@ -260,7 +260,7 @@ safeShowChar inChar c =
                              ; _    -> stringFromPacked "\\\""
                              }
     ; _    -> 
-        case logicalAnd ((>=) c 32) ((<) c 127) of
+        case logicalAnd ((>=#) c 32) ((<#) c 127) of
         {   True -> [c]
         ;   _    -> (:) '\\' (showInt c)
         }
@@ -280,7 +280,7 @@ showString s =
 
 showInt :: Int -> String
 showInt n = 
-    case (<) n 0 of
+    case (<#) n 0 of
     {   True -> (:) '(' ((:) '-' 
                     (''$primAppend'' 
                         (showPositiveInt (''$primNegInt'' n)) 
@@ -293,9 +293,9 @@ showPositiveInt :: Int -> String
 showPositiveInt i =
     let 
         rest = quot i 10
-        digit = [ (+) '0' (rem i 10) ]
+        digit = [ (+#) '0' (rem i 10) ]
     in 
-        case (==) rest 0 of
+        case (==#) rest 0 of
         {   True -> digit 
         ;   _    -> ''$primAppend'' (showPositiveInt rest) digit
         }

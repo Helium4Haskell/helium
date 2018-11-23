@@ -1,6 +1,20 @@
 module IridiumLangEval
 import ()
 
+#[decl @kind [bytes "* -> *"]]
+custom @"[]": @data
+
+#[decl @kind [bytes "* -> *"]]
+data @"[]" {
+  #[decl @type [bytes "[a]"]]
+  #[link @"[]" @data]
+  constructor @"[]"()
+
+  #[decl @type [bytes "a -> [a] -> [a]"]]
+  #[link @"[]" @data]
+  constructor @":"(any, any)
+}
+
 define @_$helium_runtime_concatThunk(%left: unsafeptr, %right: unsafeptr): any_thunk {
 entry:
   %left_tag = prim thunk_extract_tag(%left: unsafeptr)
@@ -53,6 +67,8 @@ eval.thunk:
   %res = call @eval_thunk: (unsafeptr) -> any_whnf $ (%a: unsafeptr)
   return %res: any_whnf
 }
+
+declare @error: (any) -> any_whnf
 
 export define @eval_thunk(%a: unsafeptr): any_whnf {
 eval_thunk.entry:

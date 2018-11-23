@@ -14,19 +14,19 @@ module LvmLang
     , ($!), seq
     
     -- IO
-    , bindIO, returnIO
+    , ''$primBindIO'', ''$primReturnIO''
     , primIO, unsafePerformIO, unsafePerformStrictIO
     , ''$primPutStrLn''
     
     -- Int
-    , (+), (-), (*), (/), (%), quot, rem
+    , (+#), (-#), (*#), div, mod, quot, rem
     , and, xor, or, shr, shl, shrNat, negInt
-    , (==), (/=), (<), (>), (<=), (>=)
-
+    , (==#), (/=#), (<#), (>#), (<=#), (>=#)
+{-
     -- Float
     , (+.), (-.), (*.), (/.), negFloat
     , (==.), (/=.), (<.), (>.), (<=.), (>=.)
-
+-}
     ) where
 
 import IridiumLang
@@ -116,29 +116,29 @@ seq x y    = let! x = x in y
 {----------------------------------------------------------
   Basic arithmetic on Int's
 ----------------------------------------------------------}
-(+) :: Int -> Int -> Int!
-(+) x y    = let! y = y in let! x = x in primAddInt x y
+(+#) :: Int -> Int -> Int!
+(+#) x y    = let! y = y in let! x = x in primAddInt x y
 
-(-) :: Int -> Int -> Int!
-(-) x y    = let! y = y in let! x = x in primSubInt x y
+(-#) :: Int -> Int -> Int!
+(-#) x y    = let! y = y in let! x = x in primSubInt x y
 
-(*) :: Int -> Int -> Int!
-(*) x y    = let! y = y in let! x = x in primMulInt x y
-
--- TODO: Round to -inf instead of zero
-(/) :: Int -> Int -> Int!
-(/) x y    = quot x y -- let! y = y in let! x = x in primDivInt x y
+(*#) :: Int -> Int -> Int!
+(*#) x y    = let! y = y in let! x = x in primMulInt x y
 
 -- TODO: Round to -inf instead of zero
-(%) :: Int -> Int -> Int!
-(%) x y    = rem x y -- let! y = y in let! x = x in primModInt x y
+div :: Int -> Int -> Int!
+div x y    = quot x y -- let! y = y in let! x = x in primDivInt x y
+
+-- TODO: Round to -inf instead of zero
+mod :: Int -> Int -> Int!
+mod x y    = rem x y -- let! y = y in let! x = x in primModInt x y
 
 quot :: Int -> Int -> Int!
 quot x y    = let! y = y in let! x = x in primQuotInt x y
 
 rem :: Int -> Int -> Int!
 rem x y    = let! y = y in let! x = x in primRemInt x y
-
+{-
 and :: Int -> Int -> Int!
 and x y    = let! y = y in let! x = x in primAndInt x y
 
@@ -147,7 +147,7 @@ xor x y    = let! y = y in let! x = x in primXorInt x y
 
 or :: Int -> Int -> Int!
 or x y    = let! y = y in let! x = x in primOrInt x y
-
+-}
 shr :: Int -> Int -> Int!
 shr x y    = let! y = y in let! x = x in primShrInt x y
 
@@ -163,23 +163,23 @@ negInt x      = let! x = x in primNegInt x
 {----------------------------------------------------------
   Comparisons on Int's
 ----------------------------------------------------------}
-(==) :: Int -> Int -> Bool!
-(==) x y   = let! y = y in let! x = x in primEqInt x y
+(==#) :: Int -> Int -> Bool!
+(==#) x y   = let! y = y in let! x = x in primEqInt x y
 
-(/=) :: Int -> Int -> Bool!
-(/=) x y   = let! y = y in let! x = x in primNeInt x y
+(/=#) :: Int -> Int -> Bool!
+(/=#) x y   = let! y = y in let! x = x in primNeInt x y
 
-(<) :: Int -> Int -> Bool!
-(<) x y   = let! y = y in let! x = x in primLtInt x y
+(<#) :: Int -> Int -> Bool!
+(<#) x y   = let! y = y in let! x = x in primLtInt x y
 
-(>) :: Int -> Int -> Bool!
-(>) x y   = let! y = y in let! x = x in primGtInt x y
+(>#) :: Int -> Int -> Bool!
+(>#) x y   = let! y = y in let! x = x in primGtInt x y
 
-(<=) :: Int -> Int -> Bool!
-(<=) x y   = let! y = y in let! x = x in primLeInt x y
+(<=#) :: Int -> Int -> Bool!
+(<=#) x y   = let! y = y in let! x = x in primLeInt x y
 
-(>=) :: Int -> Int -> Bool!
-(>=) x y   = let! y = y in let! x = x in primGeInt x y
+(>=#) :: Int -> Int -> Bool!
+(>=#) x y   = let! y = y in let! x = x in primGeInt x y
 
 {----------------------------------------------------------
   Basic arithmetic on Float's
@@ -262,7 +262,7 @@ packedFromString s = s
                                  in (:) y ys
         length n s = case s of
                        []       -> n
-                       (:) x xs -> let! m = (+) n 1
+                       (:) x xs -> let! m = (+#) n 1
                                    in length m xs
     in let! fs  = forced s
             len = length 0 fs
@@ -271,7 +271,7 @@ packedFromString s = s
   
     {-
     let forceLength n xs = case xs of
-                             (:) x xx -> seq x (forceLength ((+) n 1) xx)
+                             (:) x xx -> seq x (forceLength ((+#) n 1) xx)
                              []       -> n 
     in let! len = forceLength 0 s 
             t   = s 
@@ -288,7 +288,7 @@ packedLength s
 {-
 length :: [a] -> Int
 length xs
-  = foldlStrict (+) 0 xs
+  = foldlStrict (+#) 0 xs
 
 foldlStrict :: (b -> a -> b) -> b -> [a] -> b
 foldlStrict f z xs
@@ -302,13 +302,13 @@ foldlStrict f z xs
 {----------------------------------------------------------
   The IO monad
 ----------------------------------------------------------}
-bindIO :: IO a -> (a -> IO b) -> IO b
-bindIO io f
+''$primBindIO'' :: IO a -> (a -> IO b) -> IO b
+''$primBindIO'' io f
   = \_ -> case io () of
             IORes x -> f x ()
 
-returnIO :: a -> IO a
-returnIO x
+''$primReturnIO'' :: a -> IO a
+''$primReturnIO'' x
   = \_ -> IORes x
 
 primIO :: (() -> a) -> IO a

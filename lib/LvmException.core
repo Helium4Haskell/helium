@@ -16,6 +16,7 @@ import IridiumLang(''_$helium_runtime_error'')
 instruction primCatch "catch" :: (Exception -> a) -> a -> a
 instruction primRaise "raise" :: Exception! -> a
 
+data '':[]'' a  = '':[]'' | (:) a [a]
 
 {----------------------------------------------------------
   Exception and Signals

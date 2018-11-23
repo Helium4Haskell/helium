@@ -4,6 +4,27 @@ import (IridiumLangEval, IridiumLangString)
 export declare @_$helium_runtime_error: (any) -> any_whnf
 export declare @_$helium_runtime_print_string: (@"[]") -> int
 
+#[decl @kind [bytes "* -> *"]]
+custom @"[]": @data
+
+#[decl @kind [bytes "* -> *"]]
+data @"[]" {
+  #[decl @type [bytes "[a]"]]
+  #[link @"[]" @data]
+  constructor @"[]"()
+
+  #[decl @type [bytes "a -> [a] -> [a]"]]
+  #[link @"[]" @data]
+  constructor @":"(any, any)
+}
+
+declare @main$: () -> any_whnf
+export define @start(): any_whnf {
+entry:
+  %_ = call @main$: () -> any_whnf $ ()
+  return %_: any_whnf
+}
+
 #[decl @kind [bytes "*"]]
 export data @Bool {
   #[decl @type [bytes "Bool"]]

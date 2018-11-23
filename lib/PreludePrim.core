@@ -76,25 +76,23 @@ import HeliumLang
     )
 
 import LvmLang
-    ( (+#) = (+), (*#) = (*), (-#) = (-), negInt
-    , (==#) = (==), (/=#) = (/=)
-    , (<#) = (<), (<=#) = (<=), (>=#) = (>=), (>#) = (>)
-    , mod = (%), quot, rem, div = (/)
+    ( (+#), (*#), (-#), negInt
+    , (==#), (/=#)
+    , (<#), (<=#), (>=#), (>#)
+    , mod, quot, rem, div
     
     {-, (+.), (*.), (-.), (/) = (/.), negFloat
     , (==.), (/=.)
     , (<.), (<=.), (>=.), (>.)
     -}
-    , primPackedToString = stringFromPacked
 
     , Int(), Float(), IO()
     , custom "typedecl" String
     , Bool(True, False)
     , '':[]''('':[]'', (:))
     , '':()''('':()'')
-    , bindIO, return = returnIO
-    , primPackedToString = stringFromPacked
-    , primUnsafePerformIO = unsafePerformIO
+    , ''$primBindIO'', ''$primReturnIO''
+    , unsafePerformIO
     
     , ($!), seq
     , True -- hack
@@ -154,9 +152,9 @@ putStr s = ''$primPutStr'' s
 putStrLn :: String -> IO ()
 putStrLn s = ''$primPutStrLn'' s
 -}
-unsafePerformIO :: IO a -> a 
+{-unsafePerformIO :: IO a -> a 
 unsafePerformIO io 
-  = ''$primUnsafePerformIO'' io
+  = ''$primUnsafePerformIO'' io-}
 
 
 -- Float
@@ -804,9 +802,9 @@ data Ordering = LT | EQ | GT
 showOrdering :: Ordering -> String
 showOrdering x = 
     case x of
-        LT -> primPackedToString "LT"
-        EQ -> primPackedToString "EQ"
-        GT -> primPackedToString "GT"
+        LT -> "LT"
+        EQ -> "EQ"
+        GT -> "GT"
 
 compareList ''$dictElem'' xs ys =
     case xs of
@@ -839,6 +837,9 @@ data Handle
  = HandleRead  (Channel Input)
  | HandleWrite (Channel Output)
 
+return :: a -> IO a
+return = ''$primReturnIO''
+
 data IOMode
  = ReadMode
  | WriteMode
@@ -863,17 +864,17 @@ getChar
 openFile :: String -> IOMode -> IO Handle
 openFile fpath mode
   = case mode of
-      ReadMode  -> bindIO (openInputFile fpath True) (\ch -> return (HandleRead ch))
-      WriteMode -> bindIO (openOutputFile fpath True CreateOverwrite) (\ch -> return (HandleWrite ch))
-      AppendMode-> bindIO (openOutputFile fpath True CreateIfNotExists) (\ch -> return (HandleWrite ch))
+      ReadMode  -> ''$primBindIO'' (openInputFile fpath True) (\ch -> ''$primReturnIO'' (HandleRead ch))
+      WriteMode -> ''$primBindIO'' (openOutputFile fpath True CreateOverwrite) (\ch -> ''$primReturnIO'' (HandleWrite ch))
+      AppendMode-> ''$primBindIO'' (openOutputFile fpath True CreateIfNotExists) (\ch -> ''$primReturnIO'' (HandleWrite ch))
 
 hClose :: Handle -> IO ()
 hClose handle
   = case handle of
       HandleRead ch   -> close ch
       HandleWrite ch  -> -- Yuck: alleen maar om altijd geflushed te closen..
-                         catch (bindIO (flush ch) (\_ -> close ch)) 
-                               (\exn -> bindIO (catch (close ch) (\_ -> raise exn))
+                         catch (''$primBindIO'' (flush ch) (\_ -> close ch)) 
+                               (\exn -> ''$primBindIO'' (catch (close ch) (\_ -> raise exn))
                                                (\_ -> raise exn))
 
 hFlush :: Handle -> IO ()
