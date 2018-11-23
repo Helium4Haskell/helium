@@ -32,7 +32,7 @@ entry:
   %tag_diff = literal int 65535
   %newtag = prim int_sub(%left_tag: int, %tag_diff: int)
 
-  case %left_arguments: int int ( 0 to 0, 1 to 1 ) otherwise unreachable
+  case %left_arguments: int int ( 0 to 0, 1 to 1, 2 to 2, 3 to 3 ) otherwise unreachable
 
 unreachable:
   unreachable
@@ -51,6 +51,19 @@ unreachable:
   %1_ = prim thunk_write_tag(%1_unsafe: unsafeptr, %newtag: int)
   return %1_res: any_thunk
 
+2:
+  match %left: unsafeptr on thunk 2 (%2_target: unsafeptr, %2_0: any, %2_1: any)
+  letalloc %2_res = function %2_target: unsafeptr $ (%2_0: any, %2_1: any, %right_argument: any)
+  %2_unsafe = cast %2_res: any_whnf as unsafeptr
+  %2_ = prim thunk_write_tag(%2_unsafe: unsafeptr, %newtag: int)
+  return %2_res: any_thunk
+
+3:
+  match %left: unsafeptr on thunk 3 (%3_target: unsafeptr, %3_0: any, %3_1: any, %3_2: any)
+  letalloc %3_res = function %3_target: unsafeptr $ (%3_0: any, %3_1: any, %3_2: any, %right_argument: any)
+  %3_unsafe = cast %3_res: any_whnf as unsafeptr
+  %3_ = prim thunk_write_tag(%3_unsafe: unsafeptr, %newtag: int)
+  return %3_res: any_thunk
 ; TODO: Allow more than 1 argument
 }
 
