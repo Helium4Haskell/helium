@@ -16,6 +16,7 @@ import Lvm.Common.Id
 import Lvm.Common.IdSet
 import Helium.CodeGeneration.Iridium.Data
 import Helium.CodeGeneration.Iridium.Parse.Module(parseModule)
+import System.Directory(doesFileExist, getModificationTime)
 
 data IridiumFile = IridiumFile
   { iridiumPath :: FilePath
@@ -46,11 +47,26 @@ resolve paths (x:xs) found m = do
       exitWith (ExitFailure 1)
     Right ir -> return ir
 
-  -- TODO: Check whether file should be recompiled
-  let m' = IridiumFile path iridium False : m
+  let (filePath, moduleName, _) = splitFilePath path
+  isUpToDate <- upToDate $ filePath ++ moduleName
+  let m' = IridiumFile path iridium (not isUpToDate) : m
   let dependencies = filter (not . (`elemSet` found)) $ moduleDependencies iridium
 
   let found' = foldr insertSet found dependencies
   let xs' = dependencies ++ xs
 
   resolve paths xs' found' m'
+
+-- Checks if the .ll is newer than the .iridium file
+-- TODO: We also need to check whether the .ll file was compiled for the same target as we're currently using.
+upToDate :: String -> IO Bool
+upToDate basePath = do
+  let llPath = basePath ++ ".ll"
+  let irPath = basePath ++ ".iridium"
+  llExists <- doesFileExist llPath
+  if llExists then do
+    t1 <- getModificationTime irPath
+    t2 <- getModificationTime llPath
+    return $ t1 < t2
+  else
+    return False
