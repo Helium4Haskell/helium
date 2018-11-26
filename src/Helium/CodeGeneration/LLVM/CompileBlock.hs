@@ -77,11 +77,6 @@ compileInstruction env supply (Iridium.Match var target args next)
       Iridium.MatchTargetConstructor (Iridium.DataTypeConstructor _ conId _) -> findMap conId (envConstructors env)
       Iridium.MatchTargetThunk arity -> LayoutPointer $ thunkStruct arity
       Iridium.MatchTargetTuple arity -> LayoutPointer $ tupleStruct arity
-{- compileInstruction env supply (Iridium.If var (Iridium.PatternCon con@(Iridium.DataTypeConstructor _ conId _)) whenTrue whenFalse)
-  = compileIfMatchConstructor env supply var con conLayout whenTrue whenFalse
-  where
-    conLayout = findMap conId (envConstructors env) -}
--- compileInstruction env supply 
 compileInstruction env supply (Iridium.Case var (Iridium.CaseConstructor alts))
   -- All constructors are pointers
   | null inlines =

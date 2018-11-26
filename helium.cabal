@@ -147,7 +147,7 @@ Library
     Helium.CodeGeneration.DerivingShow
     Helium.CodeGeneration.PatternMatch
     Helium.CodeGeneration.Core
-    Helium.CodeGeneration.Core.Arity
+    Helium.CodeGeneration.Core.FunctionType
     Helium.CodeGeneration.Core.LetSort
     Helium.CodeGeneration.Core.Lift
     Helium.CodeGeneration.Core.Normalize

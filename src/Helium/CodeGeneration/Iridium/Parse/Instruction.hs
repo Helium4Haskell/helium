@@ -4,6 +4,7 @@ import Helium.CodeGeneration.Iridium.Parse.Parser
 import Helium.CodeGeneration.Iridium.Parse.Type
 import Helium.CodeGeneration.Iridium.Parse.Expression
 import Helium.CodeGeneration.Iridium.Data
+import Lvm.Common.Id(Id)
 
 pInstruction = do
   pWhitespace
@@ -32,14 +33,14 @@ pInstruction = do
         "unreachable" -> return Unreachable
         _ -> pError "expected instruction"
 
-pMatchField :: Parser (Maybe Local)
+pMatchField :: Parser (Maybe Id)
 pMatchField = do
   c <- lookahead
   if c == '_' then do
     pChar
     return Nothing
   else
-    Just <$> pLocal
+    Just <$ pToken '%' <*> pId
 
 pCase :: Parser Case
 pCase = do

@@ -10,7 +10,7 @@
 
 module Helium.CodeGeneration.Iridium.FromCore where
 
-import Helium.CodeGeneration.Core.Arity(aritiesMap)
+import Helium.CodeGeneration.Core.FunctionType(functionsMap)
 import Lvm.Common.Id(Id, NameSupply, freshId, splitNameSupply, mapWithSupply, idFromString, freshIdFromId)
 import Lvm.Common.IdMap
 import Lvm.Common.IdSet
@@ -26,6 +26,8 @@ import Text.PrettyPrint.Leijen (pretty) -- TODO: Remove
 import Helium.CodeGeneration.Iridium.Data
 import Helium.CodeGeneration.Iridium.Type
 import Helium.CodeGeneration.Iridium.TypeEnvironment
+import Helium.CodeGeneration.Iridium.Parse.Module (parseFunctionType)
+import Helium.CodeGeneration.Iridium.Parse.Parser (ParseError)
 
 fromCore :: NameSupply -> Core.CoreModule -> Module
 fromCore supply mod@(CoreModule.Module name _ _ decls) = Module name dependencies customs datas abstracts methods
@@ -37,7 +39,7 @@ fromCore supply mod@(CoreModule.Module name _ _ decls) = Module name dependencie
     customs = mapMaybe customFromCoreDecl decls
 
     env = TypeEnv (mapFromList $ map (\d -> (declarationName d, getConstructors d)) datas) (unionMap valuesFunctions $ unionMap valuesAbstracts $ unionMap valuesCons $ mapFromList builtins) Nothing
-    valuesFunctions = mapMap (\arity -> ValueFunction (FunctionType (replicate arity TypeAny) TypeAnyWHNF) CCFast) $ aritiesMap mod
+    valuesFunctions = mapMap (\fn -> ValueFunction fn CCFast) $ functionsMap mod
     valuesAbstracts = mapFromList $ map (\(Declaration name _ _ _ (AbstractMethod fntype annotations)) -> (name, ValueFunction fntype $ callingConvention annotations)) abstracts
     valuesCons = mapFromList $ listFromMap consMap >>= (\(dataName, cons) -> map (\con@(Declaration conName _ _ _ (DataTypeConstructorDeclaration fields)) -> (conName, ValueConstructor (DataTypeConstructor dataName conName fields))) cons)
 
@@ -79,7 +81,16 @@ fromCoreDecl supply env decl@CoreModule.DeclValue{} = [Left $ Declaration name (
 fromCoreDecl supply env decl@CoreModule.DeclAbstract{} = [Right $ Declaration name (visibility decl) (origin decl) (CoreModule.declCustoms decl) method]
   where
     name = CoreModule.declName decl
-    method = AbstractMethod (FunctionType (replicate (CoreModule.declArity decl) TypeAny) TypeAnyWHNF) [AnnotateTrampoline]
+    method = AbstractMethod (findType (CoreModule.declArity decl) (CoreModule.declCustoms decl)) (if name == idFromString "main" then [AnnotateTrampoline, AnnotateCallConvention CCC] else [AnnotateTrampoline])
+
+    findType :: CoreModule.Arity -> [CoreModule.Custom] -> FunctionType
+    findType arity [] = FunctionType (replicate arity TypeAny) TypeAnyWHNF
+    findType _ (CoreModule.CustomDecl (CoreModule.DeclKindCustom name) [CoreModule.CustomBytes bytes] : _)
+      | name == idFromString "iridiumtype" = case parseFunctionType $ stringFromBytes bytes of
+        Left err -> error ("Illegal iridiumtype annotation: " ++ show (stringFromBytes bytes) ++ "\nParse error: " ++ show err)
+        Right val -> val
+    findType arity (_ : cs) = findType arity cs
+
 fromCoreDecl _ _ _ = []
 
 idEntry, idMatchAfter, idMatchCase, idMatchDefault :: Id
@@ -163,7 +174,7 @@ toInstruction supply env continue (Core.Match x alts) =
         locals = map (\name -> Local name TypeAny) fields
         env' = expandEnvWithLocals locals env
       in
-        Match (resolve env x) (MatchTargetTuple arity) (map Just locals)
+        Match (resolve env x) (MatchTargetTuple arity) (map Just fields)
         +> toInstruction supply'' env' (head continues) expr
     Core.Alt (Core.PatCon (Core.ConId con) _) _ ->
       let ValueConstructor (DataTypeConstructor dataName _ _) = findMap con (teValues env)
@@ -308,10 +319,10 @@ castTo supply var TypeAny to = (newVar, Let nameAnyWhnf (Eval var) . instruction
   where
     (nameAnyWhnf, supply') = freshIdFromId (variableName var) supply
     (newVar, instructions) = maybeCastVariable supply' (VarLocal $ Local nameAnyWhnf TypeAnyWHNF) to
-castTo supply var (TypeGlobalFunction _) to = (newVar, LetAlloc [Bind nameFunc (BindTargetFunction var) []] . instructions)
+castTo supply var (TypeGlobalFunction (FunctionType args _)) to = (newVar, LetAlloc [Bind nameFunc (BindTargetFunction var) []] . instructions)
   where
     (nameFunc, supply') = freshIdFromId (variableName var) supply
-    (newVar, instructions) = maybeCastVariable supply' (VarLocal $ Local nameFunc TypeFunction) to
+    (newVar, instructions) = maybeCastVariable supply' (VarLocal $ Local nameFunc (if null args then TypeAnyThunk else TypeFunction)) to
 castTo supply var _ to = (VarLocal $ Local casted to, Let casted $ Cast var to)
   where
     (casted, _) = freshIdFromId (variableName var) supply
@@ -356,7 +367,7 @@ transformAlt supply env continue var con@(DataTypeConstructor _ _ fields) args e
     locals = zipWith (\name t -> Local name t) args fields
     env' = expandEnvWithLocals locals env
   in
-    Match var (MatchTargetConstructor con) (map Just locals)
+    Match var (MatchTargetConstructor con) (map Just args)
     +> toInstruction supply env' continue expr
 
 transformCaseConstructor :: NameSupply -> TypeEnv -> [Continue] -> Id -> Id -> [Core.Alt] -> Partial

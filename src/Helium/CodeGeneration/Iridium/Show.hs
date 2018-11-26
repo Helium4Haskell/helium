@@ -105,7 +105,7 @@ instance Show Instruction where
   show (Match var target args next) = instructionIndent ++ "match " ++ show var ++ " on " ++ show target ++ " " ++ showArguments' showField args ++ "\n" ++ show next
     where
       showField Nothing = "_"
-      showField (Just l) = show l
+      showField (Just l) = '%' : showId l
   show (Case var branches) = instructionIndent ++ "case " ++ show var ++ " " ++ show branches
   show (Return var) = instructionIndent ++ "return " ++ show var
   show Unreachable = instructionIndent ++ "unreachable"

@@ -17,7 +17,7 @@ data @"[]" {
   constructor @":"(any, any)
 }
 
-define @_$helium_runtime_unpack_string(%length: int, %pointer: unsafeptr): @"[]" {
+export define @_$helium_runtime_unpack_string(%length: int, %pointer: unsafeptr): @"[]" {
 unpack.entry:
   case %length: int int (0 to unpack.nil) otherwise unpack.cons
 unpack.cons:
@@ -46,7 +46,7 @@ print.nil:
   %0 = literal int 0
   return %0: int
 print.cons:
-  match %list: @"[]" on @":": (any, any) -> @"[]" (%c_thunk: any, %cons_as_any: any)
+  match %list: @"[]" on @":": (any, any) -> @"[]" (%c_thunk, %cons_as_any)
   %c_whnf = eval %c_thunk: any
   %c = cast %c_whnf: any_whnf as int
   %_ = call @putchar: (int) -> int $ (%c: int)

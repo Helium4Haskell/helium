@@ -8,3 +8,4 @@ dist
 lib/*.lvm
 lib/simple/*.lvm
 *.temp
+*.ll

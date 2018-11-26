@@ -25,46 +25,75 @@ entry:
   %argcount_mask = literal int 65535
   %left_arguments = prim int_and(%left_tag: int, %argcount_mask: int)
 
-  match %right: unsafeptr on thunk 1 (_, %right_argument: any)
+  match %right: unsafeptr on thunk 1 (_, %right_argument)
 
   ; New tag has one argument more (so tag += 1)
   ; and thus one less remaining (so tag -= 65536)
   %tag_diff = literal int 65535
   %newtag = prim int_sub(%left_tag: int, %tag_diff: int)
 
-  case %left_arguments: int int ( 0 to 0, 1 to 1, 2 to 2, 3 to 3 ) otherwise unreachable
+  case %left_arguments: int int ( 0 to 0, 1 to 1, 2 to 2, 3 to 3, 4 to 4, 5 to 5, 6 to 6, 7 to 7 ) otherwise unreachable
 
 unreachable:
   unreachable
 
 0:
-  match %left: unsafeptr on thunk 0 (%0_target: unsafeptr)
+  match %left: unsafeptr on thunk 0 (%0_target)
   letalloc %0_res = function %0_target: unsafeptr $ (%right_argument: any)
   %0_unsafe = cast %0_res: any_whnf as unsafeptr
   %0_ = prim thunk_write_tag(%0_unsafe: unsafeptr, %newtag: int)
   return %0_res: any_thunk
 
 1:
-  match %left: unsafeptr on thunk 1 (%1_target: unsafeptr, %1_0: any)
+  match %left: unsafeptr on thunk 1 (%1_target, %1_0)
   letalloc %1_res = function %1_target: unsafeptr $ (%1_0: any, %right_argument: any)
   %1_unsafe = cast %1_res: any_whnf as unsafeptr
   %1_ = prim thunk_write_tag(%1_unsafe: unsafeptr, %newtag: int)
   return %1_res: any_thunk
 
 2:
-  match %left: unsafeptr on thunk 2 (%2_target: unsafeptr, %2_0: any, %2_1: any)
+  match %left: unsafeptr on thunk 2 (%2_target, %2_0, %2_1)
   letalloc %2_res = function %2_target: unsafeptr $ (%2_0: any, %2_1: any, %right_argument: any)
   %2_unsafe = cast %2_res: any_whnf as unsafeptr
   %2_ = prim thunk_write_tag(%2_unsafe: unsafeptr, %newtag: int)
   return %2_res: any_thunk
 
 3:
-  match %left: unsafeptr on thunk 3 (%3_target: unsafeptr, %3_0: any, %3_1: any, %3_2: any)
+  match %left: unsafeptr on thunk 3 (%3_target, %3_0, %3_1, %3_2)
   letalloc %3_res = function %3_target: unsafeptr $ (%3_0: any, %3_1: any, %3_2: any, %right_argument: any)
   %3_unsafe = cast %3_res: any_whnf as unsafeptr
   %3_ = prim thunk_write_tag(%3_unsafe: unsafeptr, %newtag: int)
   return %3_res: any_thunk
-; TODO: Allow more than 1 argument
+
+4:
+  match %left: unsafeptr on thunk 4 (%4_target, %4_0, %4_1, %4_2, %4_3)
+  letalloc %4_res = function %4_target: unsafeptr $ (%4_0: any, %4_1: any, %4_2: any, %4_3: any, %right_argument: any)
+  %4_unsafe = cast %4_res: any_whnf as unsafeptr
+  %4_ = prim thunk_write_tag(%4_unsafe: unsafeptr, %newtag: int)
+  return %4_res: any_thunk
+
+5:
+  match %left: unsafeptr on thunk 5 (%5_target, %5_0, %5_1, %5_2, %5_3, %5_4)
+  letalloc %5_res = function %5_target: unsafeptr $ (%5_0: any, %5_1: any, %5_2: any, %5_3: any, %5_4: any, %right_argument: any)
+  %5_unsafe = cast %5_res: any_whnf as unsafeptr
+  %5_ = prim thunk_write_tag(%5_unsafe: unsafeptr, %newtag: int)
+  return %5_res: any_thunk
+
+6:
+  match %left: unsafeptr on thunk 6 (%6_target, %6_0, %6_1, %6_2, %6_3, %6_4, %6_5)
+  letalloc %6_res = function %6_target: unsafeptr $ (%6_0: any, %6_1: any, %6_2: any, %6_3: any, %6_4: any, %6_5: any, %right_argument: any)
+  %6_unsafe = cast %6_res: any_whnf as unsafeptr
+  %6_ = prim thunk_write_tag(%6_unsafe: unsafeptr, %newtag: int)
+  return %6_res: any_thunk
+
+7:
+  match %left: unsafeptr on thunk 7 (%7_target, %7_0, %7_1, %7_2, %7_3, %7_4, %7_5, %7_6)
+  letalloc %7_res = function %7_target: unsafeptr $ (%7_0: any, %7_1: any, %7_2: any, %7_3: any, %7_4: any, %7_5: any, %7_6: any, %right_argument: any)
+  %7_unsafe = cast %7_res: any_whnf as unsafeptr
+  %7_ = prim thunk_write_tag(%7_unsafe: unsafeptr, %newtag: int)
+  return %7_res: any_thunk
+
+; TODO: Allow more than 7 arguments
 }
 
 

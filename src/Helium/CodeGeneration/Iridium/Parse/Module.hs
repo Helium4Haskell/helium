@@ -1,4 +1,4 @@
-module Helium.CodeGeneration.Iridium.Parse.Module where
+module Helium.CodeGeneration.Iridium.Parse.Module (parseModule, parseFunctionType) where
 
 import Lvm.Common.Id(Id)
 import Helium.CodeGeneration.Iridium.Parse.Parser
@@ -7,6 +7,7 @@ import Helium.CodeGeneration.Iridium.Parse.Custom
 import Helium.CodeGeneration.Iridium.Parse.Instruction
 import Helium.CodeGeneration.Iridium.Parse.Method
 import Helium.CodeGeneration.Iridium.Data
+import Helium.CodeGeneration.Iridium.Type
 
 pCustomDeclaration :: Parser CustomDeclaration
 pCustomDeclaration = CustomDeclaration <$ pToken ':' <* pWhitespace <*> pDeclKind
@@ -89,6 +90,9 @@ pModuleDeclaration = pDeclaration f
 
 parseModule :: String -> Either ParseError Module
 parseModule = parse pModule
+
+parseFunctionType :: String -> Either ParseError FunctionType
+parseFunctionType = parse pFunctionType
 
 addCustom :: Declaration CustomDeclaration -> Module -> Module
 addCustom c m = m{ moduleCustoms = c : moduleCustoms m }

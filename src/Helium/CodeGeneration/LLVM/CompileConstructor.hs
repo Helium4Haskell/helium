@@ -38,12 +38,12 @@ constructorType :: Env -> ConstructorLayout -> Type
 constructorType env (LayoutInline tag) = envValueType env
 constructorType env (LayoutPointer struct) = structTypeNoAlias env struct
 
-compileExtractFields :: Env -> NameSupply -> Operand -> Struct -> [Maybe Iridium.Local] -> [Named Instruction]
+compileExtractFields :: Env -> NameSupply -> Operand -> Struct -> [Maybe Id] -> [Named Instruction]
 compileExtractFields env supply reference struct vars
   = concat
     $ mapWithSupply (compileExtractField env reference struct) supply
     $ zip3 (fields struct) vars [0..]
 
-compileExtractField :: Env -> Operand -> Struct -> NameSupply -> (StructField, Maybe Iridium.Local, Int) -> [Named Instruction]
-compileExtractField env reference struct supply (field, Just (Iridium.Local name _), index) = extractField supply env reference struct index field $ toName name
+compileExtractField :: Env -> Operand -> Struct -> NameSupply -> (StructField, Maybe Id, Int) -> [Named Instruction]
+compileExtractField env reference struct supply (field, Just name, index) = extractField supply env reference struct index field $ toName name
 compileExtractField _ _ _ _ (_, Nothing, _) = []
