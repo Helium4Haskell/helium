@@ -143,7 +143,7 @@ toInstruction supply env continue (Core.Let (Core.NonRec b) expr)
     +> LetAlloc [letbind]
     +> toInstruction supply2 env' continue expr
   where
-    (castInstr, letbind) = bind supply1 env b
+    (castInstr, letbind) = bind supply1 env [] b
     (supply1, supply2) = splitNameSupply supply
     env' = expandEnvWithLetAlloc [letbind] env
 
@@ -160,7 +160,7 @@ toInstruction supply env continue (Core.Let (Core.Rec bs) expr)
   +> toInstruction supply2 env' continue expr
   where
     (supply1, supply2) = splitNameSupply supply
-    (castInstructions, binds) = unzip $ mapWithSupply (`bind` env') supply1 bs
+    (castInstructions, binds) = unzip $ mapWithSupply (\s -> bind s env' locals) supply1 bs
     locals = map (coreBindLocal env) bs
     env' = expandEnvWithLocals locals env
 
@@ -394,12 +394,22 @@ gatherCaseConstructorAlts supply env (continue:continues) remaining var (Core.Al
     Partial instr blocks = transformAlt supply1 env continue var con args expr
     (nextAlts, nextBlocks) = gatherCaseConstructorAlts supply2 env continues remaining' var alts
 
-bind :: NameSupply -> TypeEnv -> Core.Bind -> (Instruction -> Instruction, Bind)
-bind supply env (Core.Bind x val) = (castInstructions . targetCast, Bind x target args')
+-- locals: a list of all locals declared in the current Core.Let, in case of a recursive bind.
+-- For a non recursive bind, locals is an empty list.
+bind :: NameSupply -> TypeEnv -> [Local] -> Core.Bind -> (Instruction -> Instruction, Bind)
+bind supply env locals (Core.Bind x val) = (castInstructions . targetCast, Bind x target args')
   where
     (apOrCon, args) = getApplicationOrConstruction val []
     (supply1, supply2) = splitNameSupply supply
-    (args', castInstructions) = maybeCasts supply1 env (zip args params)
+    (args', castInstructions) = maybeCasts supply1 env (zipWith argType args params)
+    locals' = map (\l@(Local n t) -> (n, t)) locals
+    -- We should not add casts for recursive references. This function prevents those casts,
+    -- by replacing the expected type with the actual type of the variable
+    argType :: Id -> PrimitiveType -> (Id, PrimitiveType)
+    argType name t = case lookup name locals' of
+      Nothing -> (name, t)
+      Just ty -> (name, ty)
+
     target :: BindTarget
     params :: [PrimitiveType]
     targetCast :: Instruction -> Instruction

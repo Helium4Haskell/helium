@@ -50,11 +50,12 @@ compileBind' env supply (Iridium.Bind varId target args) (Right struct) =
   ( concat splitInstructions
     ++ allocate env nameVoid nameStruct t struct
     ++ [toName varId := BitCast (LocalReference voidPointer nameVoid) (expectedType target) []]
-  , initialize supplyInit env (LocalReference (pointer t) nameStruct) struct $ bindArguments env target argOperands
+  , initialize supplyInit env (LocalReference (pointer t) nameStruct) struct $ additionalArg ++ argOperands
   )
   where
     t = structType env struct
-    (splitInstructions, argOperands) = unzip $ mapWithSupply (splitValueFlag env) supplyArgs args
+    additionalArg = bindArguments env target
+    (splitInstructions, argOperands) = unzip $ mapWithSupply (splitValueFlag env) supplyArgs (zip args $ map fieldType $ drop (length additionalArg) $ fields struct)
     (supplyArgs, supply1) = splitNameSupply supply
     (supplyInit, supply2) = splitNameSupply supply1
     (nameVoid, supply3) = freshName supply2
@@ -88,10 +89,10 @@ toTrampolineOperand _ (Iridium.VarGlobal (Iridium.Global fn _)) = ConstantOperan
 toTrampolineOperand env local = toOperand env local
 
 -- A thunk has an additional argument, namely the function. We add that argument here
-bindArguments :: Env -> Iridium.BindTarget -> [(Operand, Operand)] -> [(Operand, Operand)]
-bindArguments env (Iridium.BindTargetFunction var) = ((toTrampolineOperand env var, ConstantOperand $ Constant.Int 1 1) :)
-bindArguments env (Iridium.BindTargetThunk var) = ((toOperand env var, ConstantOperand $ Constant.Int 1 1) :)
-bindArguments env _ = id
+bindArguments :: Env -> Iridium.BindTarget -> [(Operand, Operand)]
+bindArguments env (Iridium.BindTargetFunction var) = return (toTrampolineOperand env var, ConstantOperand $ Constant.Int 1 1)
+bindArguments env (Iridium.BindTargetThunk var) = return (toOperand env var, ConstantOperand $ Constant.Int 1 1)
+bindArguments env _ = []
 
 expectedType :: Iridium.BindTarget -> Type
 expectedType (Iridium.BindTargetConstructor (Iridium.DataTypeConstructor dataId _ _)) = NamedTypeReference $ toNamePrefixed "$data_" dataId

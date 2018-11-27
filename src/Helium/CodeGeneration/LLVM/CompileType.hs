@@ -51,12 +51,14 @@ toOperand :: Env -> Iridium.Variable -> Operand
 toOperand env (Iridium.VarLocal (Iridium.Local name t)) = LocalReference (compileType env t) (toName name)
 toOperand env (Iridium.VarGlobal (Iridium.Global name fntype)) = ConstantOperand $ GlobalReference (compileFunctionType env fntype) (toName name)
 
-splitValueFlag :: Env -> NameSupply -> Iridium.Variable -> ([Named Instruction], (Operand, Operand))
-splitValueFlag env supply var = case Iridium.variableType var of
+-- Splits a variable into its value and its tag. Casts to a less-precise type.
+splitValueFlag :: Env -> NameSupply -> (Iridium.Variable, Iridium.PrimitiveType) -> ([Named Instruction], (Operand, Operand))
+splitValueFlag env supply (var, toType) = case t of
   Iridium.TypeAny ->
     ( [ nameValue := AST.ExtractValue operand [0] []
       , nameIsWHNF := AST.ExtractValue operand [1] []
       ]
+      -- toType should be TypeAny, as it is only allowed to cast to a less-precise type
     , ( LocalReference voidPointer nameValue
       , LocalReference bool nameIsWHNF
       )
@@ -67,13 +69,23 @@ splitValueFlag env supply var = case Iridium.variableType var of
       , ConstantOperand $ Int 1 0 -- false
       )
     )
-  _ ->
-    ( []
-    , ( operand
-      , ConstantOperand $ Int 1 1 -- true
+  _
+    | t == toType' ->
+      ( []
+      , ( operand
+        , ConstantOperand $ Int 1 1 -- true
+        )
       )
-    )
+    | otherwise ->
+      ( cast supply' env operand nameValue t toType'
+      , ( LocalReference (compileType env toType') nameValue
+        , ConstantOperand $ Int 1 1
+        )
+      )
   where
+    t = Iridium.variableType var
+    -- Remove flag from type
+    toType' = if toType == Iridium.TypeAny then Iridium.TypeAnyWHNF else toType
     operand = toOperand env var
     (nameValue, supply') = freshName supply
     (nameIsWHNF, _) = freshName supply'
@@ -84,8 +96,8 @@ cast supply env fromOperand toName fromType toType
   | fromType == toType = [toName := AST.BitCast fromOperand toT []]
   where
     toT = compileType env toType
-cast supply env _ _ (Iridium.TypeGlobalFunction _) _ = error "Cannot cast from GlobalFunction"
-cast supply env _ _ _ (Iridium.TypeGlobalFunction _) = error "Cannot cast to GlobalFunction"
+cast supply env _ name (Iridium.TypeGlobalFunction _) _ = error $ "Cannot cast from GlobalFunction (" ++ show name ++ ")"
+cast supply env _ name _ (Iridium.TypeGlobalFunction _) = error $ "Cannot cast to GlobalFunction (" ++ show name ++ ")"
 cast supply env fromOperand toName fromType Iridium.TypeAny =
   castToVoidPtr
   ++ [ toName := AST.InsertValue
