@@ -129,7 +129,7 @@ SEM Declaration
                                           , if isJust @lhs.instanceName then 
                                                 let 
                                                     functionType = lookup @bindings.name @lhs.instanceTypes
-                                                in maybe emptyTree (\ft -> listTree [((@beta .::. replaceName (head $ fromJust @lhs.variableMapping) ft) @cinfo),
+                                                in maybe emptyTree (\ft -> listTree [
                                                         (@beta !::!  replaceName (head $ fromJust @lhs.variableMapping) ft) [] @cinfo
                                                     ]) functionType
                                             else
@@ -181,18 +181,7 @@ SEM Declaration
                                             in unitTree $ (tp .::. tpWContext) emptyConstraintInfo
                                         ) @members)
                                         ++
-                                        (
-                                            map (\(name, beta, _) ->
-                                                let 
-                                                    funcDef = chead (filter (\((x, _), _) -> x == name) @loc.members)
-                                                    typeVars = @simpletype.typevariables
-                                                    className = @simpletype.name
-                                                    typeIndices = filter (\(_, s) -> s `elem` (map getNameName typeVars)) (getQuantorMap $ snd . fst $ funcDef)
-                                                    typeVariablesMapped = map (\(n, s) -> (fromJust $ find (\tv -> getNameName tv == s) typeVars, TVar n)) typeIndices
-                                                    tpWContext = addContextToType className typeVariablesMapped $ snd $ fst funcDef
-                                                in [(beta .::. tpWContext) emptyConstraintInfo] .>. Node[] -- substitutue the tpscheme to be equal to @classBeta                                   
-                                            ) @where.boundBetas
-                                        ) ++ [@where.constraints]
+                                        [@where.constraints]
         loc         . members       = zip @where.typeMemberBindings (map TVar [(@lhs.betaUnique + 1)..])
   | Instance
         lhs      . collectErrors        = let 
@@ -451,6 +440,7 @@ ATTR                        MaybeExpression [ | | beta:Tp constraints:Constraint
 imports{
 import Top.Constraint.Qualifier
 }
+
 SEM Expression
 
   | Literal
@@ -471,10 +461,10 @@ SEM Expression
   | Variable
       lhs . betaUnique  = snd @updatedType
       loc . updatedType = maybe (undefined, @lhs.betaUnique + 1) (freshen (@lhs.betaUnique + 1) . unquantify) 
-                            $ lookup @name.self @lhs.instanceTypes
+                            $ M.lookup @name.self $ typeEnvironment @lhs.importEnvironment
       
       loc . assumptions = @name.self `single` @beta
-          . constraints = if isJust (lookup @name.self @lhs.instanceTypes) then  
+          . constraints = if isJust (M.lookup @name.self $ typeEnvironment @lhs.importEnvironment) then  
                                 let (preds, tp) = split (fst @updatedType) in
                                 Node $ [[(@beta .==. tp) @cinfo] .>. Node[], Receive @lhs.betaUnique] ++ [(unitTree $ TC2 $ Prove p @cinfo) | p <- preds ]
                             else 

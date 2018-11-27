@@ -69,6 +69,7 @@ SEM Module
        | let flag = Overloading `elem` @lhs.options
              imp  = any isOverloaded (concatMap (M.elems . typeEnvironment) @lhs.importEnvironments)
        , flag /= imp
+       , False
        ]
        
 ------------------------------------------------------------------------------

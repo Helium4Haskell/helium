@@ -30,7 +30,6 @@ import Top.Constraint.Information
 import Top.Implementation.TypeClassDirectives
 import Top.Interface.Substitution (makeSubstConsistent)
 
-
 type TreeSolver = ClassEnvironment -> OrderedTypeSynonyms -> Int 
                        -> Tree (TypeConstraint ConstraintInfo) -> (SolveResult ConstraintInfo, LogEntries)
 

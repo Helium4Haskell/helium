@@ -746,12 +746,6 @@ instance Monad Maybe where
     (>>=) Nothing f = Nothing
     (>>=) (Just x) f = f x
 
-instance Monad (Either a) where
-    return = Right
-    (>>=) (Right x) f = f x
-    (>>=) l _ = l
-    
-
 class Eq a where
     (==) :: a -> a -> Bool
     (/=) :: a -> a -> Bool
