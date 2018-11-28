@@ -41,13 +41,15 @@ instance Pretty Decl where
     pretty (Decl_Start name _ _ expr ts) =
         (if isJust ts then (text (stringFromId name) <+> text "::" <+> pretty (fromJust ts) <$>) else (empty <>))
             (text (stringFromId name) <+> text "=" <+> pretty expr)
-    pretty (Decl_Function name _ _ expr _ tpScheme ts) =
-        text (stringFromId name) <+> text "::" <+> text (show tpScheme) <$>
-        (if isJust ts then (text (stringFromId name) <+> text "::" <+> pretty (fromJust ts) <$>) else (empty <>))
-            (text (stringFromId name) <+> text "=" <+> pretty expr)
-    pretty (Decl_Abstract name _ _ _ tpScheme) =
-        text (stringFromId name) <+> text "::" <+> text (show tpScheme)
-    pretty (Decl_Constructor name _ _ _ _ datalink tpScheme) =
+    pretty (Decl_Function name _ _ expr _ tpScheme ty2ts ts) =
+        -- text (stringFromId name) <+> text "::" <+> text (show tpScheme) <$>
+        (if isJust ty2ts then (text (stringFromId name) <+> text "::" <+> pretty (fromJust ty2ts) <$>) else (empty <>))
+        ((if isJust ts then (text (stringFromId name) <+> text "::" <+> pretty (fromJust ts) <$>) else (empty <>))
+        (text (stringFromId name) <+> text "=" <+> pretty expr))
+    pretty (Decl_Abstract name _ _ _ tpScheme ty2ts) =
+        (if isJust ty2ts then text (stringFromId name) <+> text "::" <+> pretty (fromJust ty2ts) else empty)
+        -- <$> (text (stringFromId name) <+> text "::" <+> text (show tpScheme))
+    pretty (Decl_Constructor name _ _ _ _ datalink tpScheme ty2ts) =
         text "Constructor:" <+> text (stringFromId name)
             <+> text "Data:" <+> text (stringFromId datalink)
     pretty (Decl_Data name _ _ _ typeKind) =

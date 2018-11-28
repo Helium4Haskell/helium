@@ -52,6 +52,7 @@ DATA Decl
         expr                    : Expr
         customs                 : {[Module.Custom]}
         ty                      : {T.TpScheme}
+        ty2ts                   : {Maybe Ts}
         ts                      : {Maybe Ts}
     | Abstract
         name                    : {I.Id}
@@ -59,6 +60,7 @@ DATA Decl
         arity                   : {Module.Arity}
         customs                 : {[Module.Custom]}
         ty                      : {T.TpScheme}
+        ty2ts                   : {Maybe Ts}
     | Constructor
         name                    : {I.Id}
         access                  : {Module.Access}
@@ -67,6 +69,7 @@ DATA Decl
         customs                 : {[Module.Custom]}
         datalink                : {I.Id}
         ty                      : {T.TpScheme}
+        ty2ts                   : {Maybe Ts}
     | Data
         name                    : {I.Id}
         access                  : {Module.Access}
@@ -222,7 +225,8 @@ ATTR Decl [ | | decl : Decl ]
 
 SEM Decl
     | Start         lhs.decl = Decl_Start @name @access @encoding @expr.expr (Just $ t2tsall $ @lhs.sub -$- @expr.t)
-    | Function      lhs.genEnv = singletonGlobal @name (tpScheme2Ts @lhs.syn @lhs.dataKind @ty)
+    | Function      loc.ty = tpScheme2Ts @lhs.syn @lhs.dataKind @ty
+                    lhs.genEnv = singletonGlobal @name @loc.ty
                     expr.uniqueId = @lhs.uniqueId
                     expr.env = @lhs.env --}trace ("entering function : " ++ I.stringFromId @name ++ " : expr : " ++ show @expr.expr ++ " : with module env : " ++ show @lhs.env) @lhs.env
                     loc.uniqueId = @expr.uniqueId
@@ -231,13 +235,14 @@ SEM Decl
                     loc.ct = @expr.ct -- TODO: this is just a check ++ [ EqT "Decl" @expr.t (second @loc.lookup) ] ++ third @loc.lookup
                     lhs.ct = @loc.ct --}trace ("function " ++ I.stringFromId @name ++ " : type : " ++ show @expr.t ++ " : constraints : " ++ show @loc.ct) @loc.ct
                     lhs.showIt = [(I.stringFromId @name, (t2tsall $ @lhs.sub -$- @expr.t), @ty)]
-                    lhs.decl = Decl_Function @name @access @encoding @expr.expr @customs @ty (Just $ t2tsall  $ @lhs.sub -$- @expr.t)
-    | Abstract      lhs.genEnv = singletonGlobal @name (tpScheme2Ts @lhs.syn @lhs.dataKind @ty)
-                    lhs.decl = Decl_Abstract @name @access @arity @customs @ty
-    | Constructor   loc.t = tpScheme2Ts @lhs.syn @lhs.dataKind @ty
-                    lhs.genCons = unionDataAnns @lhs.data (singletonDataCon @datalink @name (ts2t @loc.t))
-                    lhs.genEnv = singletonGlobal @name @loc.t
-                    lhs.decl = Decl_Constructor @name @access @arity @tag @customs @datalink @ty
+                    lhs.decl = Decl_Function @name @access @encoding @expr.expr @customs @ty (Just @loc.ty) (Just $ t2tsall  $ @lhs.sub -$- @expr.t)
+    | Abstract      loc.ty = tpScheme2Ts @lhs.syn @lhs.dataKind @ty
+                    lhs.genEnv = singletonGlobal @name @loc.ty
+                    lhs.decl = Decl_Abstract @name @access @arity @customs @ty (Just @loc.ty)
+    | Constructor   loc.ty = tpScheme2Ts @lhs.syn @lhs.dataKind @ty
+                    lhs.genCons = unionDataAnns @lhs.data (singletonDataCon @datalink @name (ts2t @loc.ty))
+                    lhs.genEnv = singletonGlobal @name @loc.ty
+                    lhs.decl = Decl_Constructor @name @access @arity @tag @customs @datalink @ty (Just @loc.ty)
     | Data          lhs.genData = singletonDataAnns @name
                     lhs.genDataKind = Map.singleton @name @typeKind
                     lhs.decl = Decl_Data @name @access @kind @customs @typeKind
@@ -247,7 +252,7 @@ SEM Decl
 
 {
 tpScheme2Ts :: Map I.Id Synonym -> Map I.Id Int -> T.TpScheme -> Ts
-tpScheme2Ts synonyms dataKind tpScheme = ({-snd $ traceShow "tpScheme2Ts" (tpScheme,-}t2tsall $ preds' $ transformTp dataKind tp')
+tpScheme2Ts synonyms dataKind tpScheme = {-snd $ traceShow "tpScheme2Ts" (tpScheme,-}t2tsall $ preds' $ transformTp dataKind tp'
     where
         synonyms' = transformSynonyms synonyms
         (preds, tp) = transformTpScheme tpScheme
@@ -510,17 +515,17 @@ coreDecl2Decl (Module.DeclValue name access encoding expr []) =
 coreDecl2Decl (Module.DeclValue name access encoding expr customs) =
     Decl_Function name access encoding (coreExpr2Expr expr) customs
     --(tracePretty ("Function: " ++ (show name) ++ " => ") customs)
-    (customsToTpScheme name customs) Nothing
+    (customsToTpScheme name customs) Nothing Nothing
 coreDecl2Decl (Module.DeclAbstract name access arity customs) =
     Decl_Abstract name access arity customs
     --(tracePretty ("Abstract: " ++ (show name) ++ " => ") customs)
-    (customsToTpScheme name customs)
+    (customsToTpScheme name customs) Nothing
 coreDecl2Decl (Module.DeclCon name access arity tag customs) =
     Decl_Constructor name access arity tag customs
     --(trace (trace ("Custom: " ++ (show name) ++ " => ") (printCustoms 1 customs)) customs)
     --(tracePretty ("Constructor: " ++ (show name) ++ " => ") customs)
     (customsToLink name customs)
-    (customsToTpScheme name customs)
+    (customsToTpScheme name customs) Nothing
 coreDecl2Decl (Module.DeclCustom name access kind customs) =
     --(trace (trace ("Custom: " ++ (show name) ++ " => ") (printDeclKindCustoms 1 kind customs)) customs)
     case kind of
@@ -616,13 +621,13 @@ decls2CoreDecls = map decl2CoreDecl
 decl2CoreDecl :: Decl -> Expr.CoreDecl
 decl2CoreDecl (Decl_Start name access encoding expr _) =
     Module.DeclValue name access encoding (expr2CoreExpr expr) []
-decl2CoreDecl (Decl_Function name access encoding expr customs _ _) =
+decl2CoreDecl (Decl_Function name access encoding expr customs _ _ _) =
     Module.DeclValue name access encoding (expr2CoreExpr expr) customs
     --(trace (show mayTpScheme) customs)
-decl2CoreDecl (Decl_Abstract name access arity customs _) =
+decl2CoreDecl (Decl_Abstract name access arity customs _ _) =
     Module.DeclAbstract name access arity customs
     --(trace (show tpScheme) customs)
-decl2CoreDecl (Decl_Constructor name access arity tag customs _ _) =
+decl2CoreDecl (Decl_Constructor name access arity tag customs _ _ _) =
     Module.DeclCon name access arity tag customs
     --(trace (show tpScheme) customs)
 decl2CoreDecl (Decl_Data name access kind customs _) =
