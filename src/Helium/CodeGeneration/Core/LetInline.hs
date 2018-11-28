@@ -165,7 +165,14 @@ inlineInExpr env (Let (NonRec (Bind name value)) expr)
   | otherwise = Let (NonRec (Bind name value')) $ inlineInExpr env expr
   where
     value' = inlineInExpr env value
-inlineInExpr env (Let (Strict b) expr) = Let (Strict $ inlineInBind env b) $ inlineInExpr env expr
+inlineInExpr env (Let (Strict b) expr) = Let (Strict b') $ inlineInExpr env' expr
+  where
+    b' = inlineInBind env b
+    env' = case b' of
+      -- let! name = x in expr
+      -- Replace all occurrences of x with name in expr, to prevent unneccesary `eval` instructions in Iridium.
+      Bind name (Var x) -> env{ values = insertMap x (Var name) $ values env }
+      _ -> env
 inlineInExpr env (Let (Rec bs) expr) = Let (Rec $ map (inlineInBind env) bs) $ inlineInExpr env expr
 
 inlineInBind :: Env -> Bind -> Bind
