@@ -10,7 +10,7 @@ import Helium.Optimization.LVM_Syntax
 import Helium.Optimization.Types hiding (empty)
 
 import Lvm.Common.Byte(stringFromBytes)
-import Lvm.Common.Id(stringFromId)
+import Lvm.Common.Id(Id, stringFromId)
 
 import Text.PrettyPrint.Leijen
 
@@ -56,7 +56,7 @@ instance Pretty Decl where
     pretty (Decl_Synonym name _ _ _ _) =
         text "Synonym:" <+> text (stringFromId name)
     pretty (Decl_Custom _ _ _ _) =
-        empty
+        text "Custom"
 
 {-Expr-}
 instance Pretty Expr where
@@ -65,7 +65,7 @@ instance Pretty Expr where
             <$> text "in" <+> pretty expr)
     pretty (Expr_Match name alts t) =
         align (pt t (text "match" <+> text (stringFromId name) <+> text "with")
-            <$> indent 4 (pretty alts))
+            <$> indent 2 (pretty alts))
     pretty (Expr_Ap expr1 expr2 t) =
         pq expr1 <+> pq expr2
         where
@@ -73,18 +73,25 @@ instance Pretty Expr where
         isAp (Expr_Ap _ _ _) = True
         isAp _ = False
     pretty (Expr_Lam name expr t) =
-        nest 4 (char '\\' <> text (stringFromId name) <+> text "->"
-            </> pretty expr)
+        let (names,expr') = lams expr
+        in  nest 2 (char '\\' <> hsep (map (text . stringFromId) (name:names)) <+> pt t (text "->")
+                </> pretty expr')
     pretty (Expr_ConId name t) =
         text (stringFromId name)
     pretty (Expr_ConTag tag arity t) =
-        parens (char '@' <> pretty tag <> comma <> pretty arity)
+        pt t $ parens (char '@' <> pretty tag <> comma <> pretty arity)
     pretty (Expr_Var name t) =
         text (stringFromId name)
     pretty (Expr_Lit lit t) =
         pretty lit
 
-pt t = if isJust t then (<+> nest 4 (parens (text "::" <+> pretty (fromJust t)))) else (<> empty)
+lams :: Expr -> ([Id], Expr)
+lams (Expr_Lam name expr _) =
+    let (names, expr') = lams expr
+    in (name:names, expr')
+lams expr = ([], expr)
+
+pt t = if isJust t then (<+> nest 2 (parens (text "::" <+> pretty (fromJust t)))) else (<> empty)
 
 {-Binds-}
 instance Pretty Binds where
@@ -95,10 +102,10 @@ instance Pretty Binds where
     pretty (Binds_Rec binds) =
         nest 4 (text "let" <+> vcat (map pretty binds))
 
-{-Bind-} -- TODO: future print type here
+{-Bind-}
 instance Pretty Bind where
     pretty (Bind_Bind name expr ts) =
-        pts $ nest 4 (text (stringFromId name) <+> text "="
+        pts $ nest 2 (text (stringFromId name) <+> text "="
             </> pretty expr)
         where
         pts = if isJust ts then (text (stringFromId name) <+> text "::" <+> pretty (fromJust ts) <$>) else (empty <>)
@@ -106,7 +113,7 @@ instance Pretty Bind where
 {-Alts-}
 instance Pretty Alt where
     pretty (Alt_Alt pat expr) =
-        nest 4 (pretty pat <+> text "->"
+        nest 2 (pretty pat <+> text "->"
             </> pretty expr)
 
 {-Pat-}
@@ -133,7 +140,7 @@ instance Pretty Literal where
 {-Types-}
 instance Pretty T where
     pretty (TAp (TAp (TCon "=>") t1) t2) = parens (pretty t1) <+> text "=>" <+> pqTap t2
-    pretty (TAp (TAp (TCon "->") t1) t2) = nest 4 (pqTap t1 <+> text "->" </> pqTap t2) -- make breaks in type possible
+    pretty (TAp (TAp (TCon "->") t1) t2) = nest 2 (pqTap t1 <+> text "->" </> pqTap t2) -- make breaks in type possible
     pretty (TAp (TCon "[]") t) = char '[' <> pretty t <> char ']'
     pretty (TAp p@(TPred _ _) t) = pretty p <> char ',' <+> pretty t
     pretty (TAp t1 t2) = pqTap t1 <+> pqTap t2
@@ -149,10 +156,10 @@ pqTap t = let p = pretty t in if isTAp t then parens p else p
 
 instance Pretty Ts where
     pretty (TsVar x) = text "forall(" <> pretty x <> char ')'
-    pretty (Ts vars ct t) = nest 4 (pforall </> pct </> pretty t)
+    pretty (Ts vars ct t) = nest 2 (pforall </> pct </> pretty t)
         where
         pforall = text "forall{" <> (if not $ Set.null vars then sep (map (pretty) (Set.toList vars)) else empty) <> text "}."
-        pct = text "C" <> (if not $ null ct then char '{' <> align (vcat (map pretty ct)) <> char '}' else empty) <> char '.'
+        pct = text "C" <> (if not $ null ct then char '{' <> vcat (map pretty ct) <> char '}' else empty) <> char '.'
     pretty (TsAnn ann ts) = char '(' <> pretty ts <> text ")^" <> text (show ann)
 
 {-Constraints-}

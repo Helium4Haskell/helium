@@ -42,7 +42,7 @@ phaseOptimize fullName coreModule options isTopMostModule = do
         let letBangs = getLetBangs optimizeModule
 
         putStrLn $ "Do counting analysis for: " ++ fullName
-        print showIt -- Shows the types of the functions and their corresponding top types
+        print $ length $ show showIt -- Shows the types of the functions and their corresponding top types
         -- {Important: This forces the typesystem on core}
         --putStrLn $ showLetBangs letBangs -- For comparison after added strictness
         let optimizeModule' = LVM_Syntax.optimizeModule wrapped_module

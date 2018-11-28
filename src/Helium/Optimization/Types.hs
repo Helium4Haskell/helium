@@ -92,6 +92,13 @@ arity2T start n
     | n >= 0 = foldr (\a b -> (TVar a) |-> b) (TVar (start+n)) [(start)..(start+n-1)]
     | otherwise = internalError "Types.hs" "arity2T" "n smaller than 0"
 
+arity2Tuple :: Int -> Int -> T
+arity2Tuple start n
+    | n >= 0 =
+        let t = map TVar [(start)..(start+n-1)]
+        in foldr (\a b -> a |-> b) (tuple n t) t
+    | otherwise = internalError "Types.hs" "arity2Tuple" "n smaller than 0"
+
 assignT :: Int -> [a] -> (Int,[(a,T)])
 assignT start xs = (start + length xs, zip xs (map TVar [start..]))
 
@@ -133,19 +140,16 @@ ts2t (Ts _ _ t) = t
 ts2t ts = internalError "Types.hs" "ts2t" ("Not supported: " ++ show ts)
 
 t2tsall :: T -> Ts
-t2tsall t = Ts (quantified t) [] t
+t2tsall t = Ts (freevars t) [] t
 
 {- Variables -}
 class Vars a where
     isfreein :: Int -> a -> Bool
     isfreein i t = Set.member i (freevars t)
     freevars :: a -> Set Int
-    quantified :: a -> Set Int
 
 instance Vars a => Vars [a] where
     freevars as = Set.unions $ map freevars as
-
-    quantified as = Set.unions $ map quantified as
 
 instance Vars T where
     freevars (TAp t1 t2) = Set.union (freevars t1) (freevars t2)
@@ -154,36 +158,19 @@ instance Vars T where
     freevars (TVar i) = Set.singleton i
     freevars (TAnn ann t) = Set.union (freevars ann) (freevars t)
 
-    quantified (TAp t1 t2) = Set.union (quantified t1) (quantified t2)
-    quantified (TPred _ t) = quantified t
-    quantified (TCon _) = Set.empty
-    quantified (TVar i) = Set.singleton i
-    quantified (TAnn ann t) = Set.union (quantified ann) (quantified t)
-
 instance Vars Ts where
     freevars (TsVar i) = Set.singleton i
     freevars (Ts vars ct t) = (Set.union (freevars t) (freevars ct)) Set.\\ vars
     freevars (TsAnn ann ts) = Set.union (freevars ann) (freevars ts)
-
-    quantified (TsVar i) = Set.singleton i
-    quantified (Ts vars ct t) = (Set.union (quantified t) (quantified ct)) Set.\\ vars
-    quantified (TsAnn ann ts) = Set.union (quantified ann) (quantified ts)
 
 instance Vars Anno where
     freevars (Anno1 ann) = freevars ann
     freevars (Anno2 (ann1,ann2)) = Set.union (freevars ann1) (freevars ann2)
     freevars (AnnoD anns) = Set.unions $ map freevars anns
 
-    quantified (Anno1 ann) = quantified ann
-    quantified (Anno2 (ann1,ann2)) = Set.union (quantified ann1) (quantified ann2)
-    quantified (AnnoD anns) = Set.unions $ map quantified anns
-
 instance Vars Ann where
     freevars (AnnVar i) = Set.singleton i
     freevars (AnnVal _) = Set.empty
-
-    quantified (AnnVar i) = Set.singleton i
-    quantified (AnnVal _) = Set.empty
 
 instance Vars Constraint where
     freevars (EqT _ t1 t2) = Set.union (freevars t1) (freevars t2)
@@ -196,20 +183,8 @@ instance Vars Constraint where
     freevars (EqTimes _ ann1 ann2 ann3) = Set.unions [freevars ann1, freevars ann2, freevars ann3]
     freevars (EqCond _ ann1 ann2 ann3) = Set.unions [freevars ann1, freevars ann2, freevars ann3]
 
-    quantified (EqT _ t1 t2) = Set.union (quantified t1) (quantified t2)
-    quantified (EqTs _ ts1 ts2) = Set.union (quantified ts1) (quantified ts2)
-    quantified (EqInst _ t ts) = Set.union (quantified t) (quantified ts)
-    quantified (EqGen _ ts (t,ct,env)) = Set.unions [quantified ts, quantified t, quantified ct] -- Vars in t and ct will be quantified. TODO: TAnn will need to be handled. TODO: Which are the free vars? for EqGen
-    quantified (EqAnn _ ann1 ann2) = Set.union (quantified ann1) (quantified ann2)
-    quantified (EqPlus _ ann1 ann2 ann3) = Set.unions [quantified ann1, quantified ann2, quantified ann3]
-    quantified (EqUnion _ ann1 ann2 ann3) = Set.unions [quantified ann1, quantified ann2, quantified ann3]
-    quantified (EqTimes _ ann1 ann2 ann3) = Set.unions [quantified ann1, quantified ann2, quantified ann3]
-    quantified (EqCond _ ann1 ann2 ann3) = Set.unions [quantified ann1, quantified ann2, quantified ann3]
-
 instance Vars Env where
     freevars (Env global local) = Set.union (Set.unions $ map (freevars . snd) $ Map.toList global) (Set.unions $ map (freevars . snd) $ Map.toList local)
-
-    quantified (Env global local) = Set.union (Set.unions $ map (quantified . snd) $ Map.toList global) (Set.unions $ map (quantified . snd) $ Map.toList local)
 
 {- Substitutions -}
 data Sub = Sub (Map Int T) (Map Int Ts) (Map Int Ann)
@@ -263,7 +238,9 @@ instance SubNew Ts where
 
 instance Subs Ts where
     (-$-) (Sub _ subTs _) ts@(TsVar i) = Map.findWithDefault ts i subTs
-    (-$-) subs (Ts vars ct t) = let subs' = withoutSub vars subs in Ts vars ((-$-) subs' ct) ((-$-) subs' t)
+    (-$-) subs (Ts vars ct t) =
+        let subs' = withoutSub vars subs
+        in Ts vars ((-$-) subs' ct) ((-$-) subs' t)
     (-$-) subs (TsAnn ann ts) = TsAnn ((-$-) subs ann) ((-$-) subs ts)
 
 instance Subs Anno where
@@ -283,7 +260,10 @@ instance Subs Constraint where
     (-$-) subs (EqT d t1 t2) = EqT d ((-$-) subs t1) ((-$-) subs t2)
     (-$-) subs (EqTs d ts1 ts2) = EqTs d ((-$-) subs ts1) ((-$-) subs ts2)
     (-$-) subs (EqInst d t ts) = EqInst d ((-$-) subs t) ((-$-) subs ts)
-    (-$-) subs (EqGen d ts (t,ct,env)) = EqGen d ((-$-) subs ts) (t,ct, (-$-) subs env) -- Vars in t and ct will be quantified. TODO: TAnn will need to be handled
+    (-$-) subs (EqGen d ts (t,ct,env)) =
+        let without = (Set.union (freevars t) (freevars ct)) Set.\\ (Set.union (freevars env) (Set.empty))
+            subs' = withoutSub without subs
+        in EqGen d ((-$-) subs ts) ((-$-) subs' t, (-$-) subs' ct, (-$-) subs env) -- TODO: TAnn will need to be handled
     (-$-) subs (EqAnn d ann1 ann2) = EqAnn d ((-$-) subs ann1) ((-$-) subs ann2)
     (-$-) subs (EqPlus d ann1 ann2 ann3) = EqPlus d ((-$-) subs ann1) ((-$-) subs ann2) ((-$-) subs ann3)
     (-$-) subs (EqUnion d ann1 ann2 ann3) = EqUnion d ((-$-) subs ann1) ((-$-) subs ann2) ((-$-) subs ann3)
@@ -292,7 +272,6 @@ instance Subs Constraint where
 
 instance Subs Env where
     ((-$-) subs) (Env global local) = Env (Map.map ((-$-) subs) global) (Map.map ((-$-) subs) local)
-
 
 {- Environment -}
 data Env = Env (Map Id Ts) (Map Id Ts)
@@ -349,12 +328,14 @@ solveConstraints :: Constraints -> Fresh (Sub,Constraints)
 solveConstraints ct = do
     let ctOrder = orderConstraints ct
     (subs1, ct') <- solveConstraints' ctOrder
+    subs1' <- simplifyTss subs1
     let ct'Order = orderConstraints ct'
     (subs2, ct'') <- solveConstraints' ct'Order
+    subs2' <- simplifyTss subs2
     let ct''Order = orderConstraints ct''
-    if emptySub subs2 && (null ct''Order || ct'Order == ct''Order)
-     then return (subs1,ct''Order)
-     else mapFst (-$- (subs2 -$- subs1)) <$> (solveConstraints ct''Order)
+    if emptySub subs2' && (null ct''Order || ct'Order == ct''Order)
+     then return (subs1',ct''Order)
+     else mapFst (-$- (subs2' -$- subs1')) <$> (solveConstraints ct''Order)
 
 {- Order constraints:
    * Generalize before Instantiation constraints -}
@@ -380,29 +361,49 @@ orderConstraints' (c:cs) = let (cont,conts,conann,congen,coninst) = orderConstra
     EqGen   _ _ _   -> (cont   , conts   , conann   , c:congen , coninst   )
     EqInst  _ _ _   -> (cont   , conts   , conann   , congen   , c:coninst )
 
+{- simplifyTss -}
+simplifyTss :: Sub -> Fresh Sub
+simplifyTss (Sub subt subts subann) = do
+    substs <- mapM simplifyTs subts
+    let subts' = Map.map snd substs
+        subs' = map fst $ Map.elems substs
+    return $ foldr (-$-) (Sub subt subts' subann) subs'
+    where
+        simplifyTs :: Ts -> Fresh (Sub,Ts)
+        simplifyTs (TsVar i) = return (idSub, TsVar i)
+        simplifyTs (Ts is [] t) = return (idSub, Ts is [] t)
+        simplifyTs (Ts is ct t) = do
+            (subs1,ct') <- solveConstraints ct
+            let t' = subs1 -$- t
+                is' = Set.intersection is (Set.union (freevars ct') (freevars t'))
+            return (subs1, Ts is' ct' t')
+        simplifyTs (TsAnn anno ts) = mapSnd (TsAnn anno) <$> simplifyTs ts
+
 solveConstraints' :: Constraints -> Fresh (Sub,Constraints)
 solveConstraints' [] = return (idSub,[])
 solveConstraints' (c:cs) = do
     (subs,ct) <- solveConstraint c
-    let cs' = map (subs -$-) cs
-    mapSnd (ct ++) <$> (mapFst (-$- subs) <$> (solveConstraints' cs'))
+    subs' <- simplifyTss subs
+    let cs' = map (subs' -$-) cs
+    mapSnd (ct ++) <$> (mapFst (-$- subs') <$> (solveConstraints' cs'))
 
 solveConstraint :: Constraint -> Fresh (Sub,Constraints)
 solveConstraint (EqT d t1 t2) = return (throwPossibleErr ("EqT:" ++ d) $ tryUnify t1 t2,[])
 solveConstraint (EqTs d ts1 ts2) = return (throwPossibleErr ("EqTs:" ++ d) $ tryUnifyTs ts1 ts2,[])
 solveConstraint (EqGen d ts (t,ct,env)) = do
-    (subs,ct') <- {-trace ("EqGen:" ++ show ts ++ ":solveConstraints") $-} solveConstraints ct
+    (subs,ct') <- solveConstraints ct
     let t' = subs -$- t
-        fvctt = (Set.union (quantified ct') (quantified t'))
-        fvenvann = (Set.union (freevars env) (Set.empty)) -- TODO: usage | demand Set.empty == t^^(ann1,ann2)
-        fv = Set.union (quantified ts) (fvctt Set.\\ fvenvann) -- quantify over youself as you always exist in the environment...
-    return $ trace ("EqGen:" ++ show ts) $ (subs,[EqTs d ts (Ts fv ct' t')])
-solveConstraint eq@(EqInst d _ ts@(TsVar _)) = {-trace ("EqInst:" ++ d ++ ":" ++ show ts) <$>-} return (idSub, [eq])
+        env' = subs -$- env
+        fvctt = (Set.union (freevars ct') (freevars t'))
+        fvenvann = (Set.union (freevars env') (Set.empty)) -- TODO: usage | demand Set.empty == t^^(ann1,ann2)
+        fv = fvctt Set.\\ fvenvann
+    return (subs,[ EqTs d ts (Ts fv ct' t') ])
+solveConstraint eq@(EqInst d _ ts@(TsVar _)) = return (idSub, [eq])
 solveConstraint (EqInst d t ts@(Ts _ _ st)) = do
     uniqueId <- getFresh
-    let (uniqueId',ts2t_,ct) = {-trace "EqInst:instTs2t" $-} instTs2T ("EqInst " ++ d) uniqueId ts
+    let (uniqueId',ts2t_,ct) = instTs2T ("EqInst " ++ d) uniqueId ts
     putFresh $ uniqueId' + 1
-    return $ {-trace ("EqInst: " ++ show st) $-} (idSub,[ EqT d t ts2t_ ] ++ ct)
+    return (idSub,[ EqT d t ts2t_ ] ++ ct)
 solveConstraint eq = internalError "Types.hs" "solveConstraint" ("Eq not yet supported: " ++ show eq)
 
 throwPossibleErr :: String -> Either String a -> a
