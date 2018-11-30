@@ -69,6 +69,7 @@ phaseTypeInferencer basedir fullName module_ localEnv completeEnv options =
                      putStrLn "Top level types are not equal"
                      print tld
                   )   
+               print toplevelTypesOIX
                unless (null typeErrors && null typeErrorsOIX || not (null typeErrors) && not (null typeErrorsOIX)) (
                   do
                      putStrLn "Length of errors doesn't match"
