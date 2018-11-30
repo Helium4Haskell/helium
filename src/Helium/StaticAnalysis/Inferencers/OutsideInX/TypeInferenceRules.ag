@@ -1,0 +1,199 @@
+
+ATTR Module Body Declaration Declarations Expression Expressions
+     GuardedExpression GuardedExpressions MaybeDeclarations
+     MaybeExpression Qualifier Qualifiers RecordExpressionBinding
+     RightHandSide Alternative Alternatives FunctionBinding
+     FunctionBindings Statement RecordExpressionBindings
+     Statements AnnotatedType Types Constructor AnnotatedTypes 
+     ContextItem FieldDeclaration Constructors ContextItems 
+     FieldDeclarations Type Literal LeftHandSide RightHandSide
+     Pattern Patterns
+        [ 
+                substitution : {[(TyVar, MonoType)]}
+            |   betaUnique : Integer
+            |   assumptions USE {(++)} {[]} : {[(Name, TyVar)]}
+                environment USE {(++)} {[]} : {[(Name, TyVar)]}
+                gather USE {combineGR} {emptyGatherResult}: {GatherResult}
+                toplevelTypes USE {M.union} {M.empty}        : TypeEnvironment
+                
+        ]
+{
+
+data GatherResult = GatherResult{
+    constraints :: [Constraint],
+    unifyVariables :: [TyVar]
+} deriving Show
+
+emptyGatherResult :: GatherResult
+emptyGatherResult = GatherResult{
+    constraints = [],
+    unifyVariables = []
+}
+
+addConstraint :: Constraint -> GatherResult -> GatherResult
+addConstraint c gr = gr{
+    constraints = c : constraints gr 
+}
+
+addConstraints :: [Constraint] -> GatherResult -> GatherResult
+addConstraints cs gr = gr{
+    constraints = cs ++ constraints gr 
+}
+
+addUnifyVariable :: TyVar -> GatherResult -> GatherResult
+addUnifyVariable tv gr = gr{
+    unifyVariables = tv : unifyVariables gr
+}
+
+addUnifyVariables :: [TyVar] -> GatherResult -> GatherResult
+addUnifyVariables tvs gr = gr{
+    unifyVariables = tvs ++ unifyVariables gr
+}
+
+combineGR :: GatherResult -> GatherResult -> GatherResult
+combineGR gr1 gr2 = GatherResult{
+    constraints = constraints gr1 ++ constraints gr2,
+    unifyVariables = unifyVariables gr1 ++ unifyVariables gr2
+}
+
+combineGRList :: [GatherResult] -> GatherResult
+combineGRList = foldr combineGR emptyGatherResult
+
+environmentAssumptionsConstraint :: [(Name, TyVar)] -> [(Name, TyVar)] -> [Constraint]
+environmentAssumptionsConstraint []                     assumptions = []
+environmentAssumptionsConstraint ((name, envTV):envs)   assumptions = 
+    case filter (\as -> name == fst as) assumptions of
+        []  -> environmentAssumptionsConstraint envs assumptions
+        xs  -> map (\x -> Constraint_Unify (MonoType_Var envTV) (MonoType_Var $ snd x)) xs ++ environmentAssumptionsConstraint envs assumptions 
+
+
+type SolveResult = ([TypeError], [Warning], [(TyVar, MonoType)])
+
+constructErrors :: (Either NamedSolverError Solution, Graph) -> SolveResult
+constructErrors (et, _) = either (const ([TypeError [] [] [] []], [], [])) (\solution -> ([], [], substitution solution)) et
+
+getTypeErrors :: SolveResult -> [TypeError]
+getTypeErrors (te, _, _) = te
+
+getWarnings :: SolveResult -> [Warning]
+getWarnings (_, wa, _) = wa
+
+}
+
+SEM Module
+    | Module
+        lhs . dictionaryEnvironment = trace ((\(_, _, subs) -> unlines $ map show subs) @solveResults) $ trace (unlines $ map show @constrs) $ emptyDictionaryEnvironment
+        lhs . toplevelTypes = @body.toplevelTypes
+        lhs . typeErrors = getTypeErrors @solveResults
+        lhs . warnings = getWarnings @solveResults
+        body . betaUnique = 1
+        body . substitution = (\(_, _, subs) -> subs) @solveResults
+        loc . gatherResult = @body.gather
+        loc . constrs = constraints @gatherResult
+        loc . tyvars = unifyVariables @gatherResult
+        loc . solveResults = constructErrors $ traceShowId $ runFreshM $ solve [] [] @constrs @tyvars
+
+ATTR FunctionBinding FunctionBindings [ betasLeft : {[TyVar]} betaRight : TyVar | | name : Name numberOfPatterns : Integer  ]
+
+SEM Declaration
+    | FunctionBindings
+        lhs . toplevelTypes     = M.singleton (@bindings.name) (maybe @err monoTypeToTypeScheme $ lookup @beta @lhs.substitution)
+        lhs . gather            = addUnifyVariables (@beta : @br : @bls) $ addConstraints @paramterCons $ addConstraint @constraint @bindings.gather
+        loc . bls               = take (fromInteger @bindings.numberOfPatterns) (map integer2Name [@lhs.betaUnique + 2..])
+        loc . br                = integer2Name $ @lhs.betaUnique + 1
+        loc . beta              = integer2Name @lhs.betaUnique
+        loc . constraint        = Constraint_Unify (MonoType_Var @beta) $ foldr (:-->:) (MonoType_Var @br) (map MonoType_Var @bls)
+        loc . paramterCons      = environmentAssumptionsConstraint @bindings.environment @bindings.assumptions
+        loc . err               = internalError "TypeInferenceRules.ag" "FunctionBindings" "No substitution found for type"
+        bindings.betasLeft      = @bls 
+        bindings.betaRight      = @br 
+        bindings . betaUnique   = @lhs.betaUnique + 2 + @bindings.numberOfPatterns
+
+ATTR Pattern    [ | | beta : TyVar ]
+ATTR Patterns   [ | | betas : {[TyVar]} numberOfPatterns:Integer ]
+
+
+SEM Patterns
+  | Cons
+      lhs . betas            = @hd.beta : @tl.betas
+          . numberOfPatterns = 1 + @tl.numberOfPatterns
+  | Nil
+      lhs . betas            = []
+          . numberOfPatterns = 0
+SEM Pattern
+    | Variable
+        lhs . gather        = addUnifyVariable @beta emptyGatherResult
+        lhs . betaUnique    = @lhs.betaUnique + 1
+        lhs . environment   = [(@name.self, @beta)]
+        loc . beta          = integer2Name @lhs.betaUnique
+        
+SEM FunctionBinding 
+    | FunctionBinding
+        lhs . gather    = addConstraints @locConstraints (combineGR @lefthandside.gather @righthandside.gather)
+        lhs . name      = @lefthandside.name
+        lhs . numberOfPatterns = @lefthandside.numberOfPatterns
+        loc . locConstraints = (Constraint_Unify (MonoType_Var @lhs.betaRight) (MonoType_Var @righthandside.beta)) : zipWith (\bt bb -> Constraint_Unify (MonoType_Var bt) (MonoType_Var bb)) @lhs.betasLeft @lefthandside.betas
+
+SEM FunctionBindings
+
+  | Cons
+        lhs . numberOfPatterns  = @hd.numberOfPatterns
+            . name              = @hd.name
+  | Nil
+        lhs . numberOfPatterns  = internalError "TypeInferencing.ag" "n/a" "FunctionBindings(1)"
+            . name              = internalError "TypeInferencing.ag" "n/a" "FunctionBindings(2)"
+
+
+ATTR LeftHandSide   [ | | name : {Name} betas : {[TyVar]} numberOfPatterns:Integer ]
+
+SEM LeftHandSide
+    | Function
+        lhs . betas             = @patterns.betas
+        lhs . numberOfPatterns  = @patterns.numberOfPatterns
+        lhs . name              = @name.self
+
+ATTR RightHandSide  [ | | beta : TyVar]
+
+SEM RightHandSide
+    | Expression
+        lhs . beta = @expression.beta
+
+ATTR Expression [ | | beta : TyVar]
+ATTR Expressions [ | | betas : {[TyVar]} nrOfExpressions : Integer]
+
+SEM Expressions
+    | Cons
+        lhs . betas = @hd.beta : @tl.betas
+        lhs . nrOfExpressions = @tl.nrOfExpressions + 1
+    | Nil 
+        lhs . betas = []
+        lhs . nrOfExpressions = 0
+
+
+SEM Expression
+    | Literal
+        lhs . beta = @literal.beta
+    | Variable
+        lhs . gather        = addUnifyVariable @beta emptyGatherResult
+        loc . beta          = integer2Name @lhs.betaUnique
+        lhs . betaUnique    = @lhs.betaUnique + 1
+        lhs . assumptions   = [(@name.self, @beta)]
+    | NormalApplication
+        loc . beta              = integer2Name @lhs.betaUnique
+        function . betaUnique   = @lhs.betaUnique + 1
+        lhs . gather            = addUnifyVariable @beta $ addConstraint @constraint $ combineGR @function.gather @arguments.gather
+        loc . constraint        = Constraint_Unify (MonoType_Var @function.beta) (foldr (:-->:) (MonoType_Var @beta) (map MonoType_Var @arguments.betas)) 
+
+ATTR Literal [ | | beta : TyVar]
+
+SEM Literal
+    | Int
+        lhs . beta          = @locBeta
+        lhs . betaUnique    = @lhs.betaUnique + 1
+        loc . locBeta       = integer2Name @lhs.betaUnique
+        loc . intType       = MonoType_Con "Int" []
+        loc . constraint    = Constraint_Unify (MonoType_Var @locBeta) @intType
+        lhs . gather        = addUnifyVariable @locBeta $ addConstraint @constraint emptyGatherResult
+              
+
+

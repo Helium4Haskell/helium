@@ -30,6 +30,7 @@ data DictionaryEnvironment =
           , varMap  :: M.Map NameWithRange [DictionaryTree]
           , currentClassNames :: [(Name, String)]
           }
+    deriving Eq
 
 data PredicateWithSource 
     = PredicateFunction Predicate
@@ -55,7 +56,7 @@ data DictionaryTree = ByPredicate Predicate
                     | BySuperClass String {- sub -} String {- super -} DictionaryTree
                     | ByCurrentClass String
                     | BySuperInstance Predicate String {- ClassName -} String {- Type Variable -}
-   deriving Show
+   deriving (Show, Eq)
    
 instance Show DictionaryEnvironment where
    show denv = 

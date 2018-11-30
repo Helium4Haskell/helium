@@ -21,6 +21,7 @@ AGSOURCES = \
      $(AG_OUT_DIR)/Helium/Syntax/UHA_OneLine.hs \
      $(AG_OUT_DIR)/Helium/StaticAnalysis/StaticChecks/StaticChecks.hs \
      $(AG_OUT_DIR)/Helium/StaticAnalysis/Inferencers/TypeInferencing.hs \
+	 $(AG_OUT_DIR)/Helium/StaticAnalysis/Inferencers/OutsideInX/TypeInferencing.hs \
      $(AG_OUT_DIR)/Helium/StaticAnalysis/Inferencers/KindInferencing.hs \
      $(AG_OUT_DIR)/Helium/CodeGeneration/CodeGeneration.hs \
      $(AG_OUT_DIR)/Helium/Syntax/UHA_Syntax.hs \
@@ -101,6 +102,16 @@ $(AG_OUT_DIR)/Helium/StaticAnalysis/Inferencers/TypeInferencing.hs : \
 	mkdir -p `dirname $@`
 	# AG TypeInferencing
 	$(AG) $(AG_OPTS) --self --module=Helium.StaticAnalysis.Inferencers.TypeInferencing Helium/StaticAnalysis/Inferencers/TypeInferencing.ag --output=$@
+
+
+$(AG_OUT_DIR)/Helium/StaticAnalysis/Inferencers/OutsideInX/TypeInferencing.hs : \
+		Helium/StaticAnalysis/Inferencers/OutsideInX/TypeInferencing.ag \
+	Helium/StaticAnalysis/Inferencers/OutsideInX/TypeInferenceRules.ag \
+    Helium/StaticAnalysis/StaticChecks/HeliumPartialSyntax.ag \
+		Helium/Syntax/UHA_Syntax.ag
+	mkdir -p `dirname $@`
+	# AG TypeInferencing
+	$(AG) $(AG_OPTS) --self --module=Helium.StaticAnalysis.Inferencers.OutsideInX.TypeInferencing Helium/StaticAnalysis/Inferencers/OutsideInX/TypeInferencing.ag --output=$@
 
 $(AG_OUT_DIR)/Helium/StaticAnalysis/Inferencers/KindInferencing.hs : \
 		Helium/StaticAnalysis/Inferencers/KindInferencing.ag \

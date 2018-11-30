@@ -1,0 +1,72 @@
+
+{
+typeInferencingIOX :: [Option] -> ImportEnvironment -> Module
+                      -> (DictionaryEnvironment, TypeEnvironment, TypeErrors, Warnings)
+typeInferencingIOX options importEnv module_ =
+   let res = wrap_Module (sem_Module module_) Inh_Module {
+                 importEnvironment_Inh_Module = importEnv,
+                 options_Inh_Module = options }
+   in (dictionaryEnvironment_Syn_Module res, toplevelTypes_Syn_Module res, typeErrors_Syn_Module res, warnings_Syn_Module res)
+}
+
+-------------------------------------------------------------------------------
+-- Attributes for type inferencing
+
+ATTR Module
+   [ importEnvironment     : ImportEnvironment
+     options               : {[Option]}
+   |
+   | dictionaryEnvironment : DictionaryEnvironment
+     typeErrors            : TypeErrors
+     warnings              : Warnings
+   ]
+
+-------------------------------------------------------------------------------
+-- Includes
+
+INCLUDE "TypeInferenceRules.ag"
+INCLUDE "HeliumPartialSyntax.ag"
+INCLUDE "UHA_Syntax.ag"
+
+
+  
+-------------------------------------------------------------------------------
+-- Imports
+
+imports {
+
+-- error messages and warnings
+import Helium.StaticAnalysis.Messages.Messages
+import Helium.StaticAnalysis.Messages.TypeErrors
+import Helium.StaticAnalysis.Messages.Warnings
+import Helium.StaticAnalysis.Miscellaneous.ConstraintInfo
+import Helium.StaticAnalysis.Inferencers.OutsideInX.TopConversion
+
+-- UHA syntax
+import Helium.Syntax.UHA_Syntax
+import Helium.Syntax.UHA_Range   
+import Helium.Syntax.UHA_Utils
+
+import Helium.Utils.Utils (internalError, hole)
+import Helium.ModuleSystem.ImportEnvironment  hiding (setTypeSynonyms)
+import Helium.ModuleSystem.DictionaryEnvironment
+import Helium.Main.Args
+
+-- standard
+import qualified Data.Map as M
+import Data.Maybe 
+import Data.List
+import Control.Monad
+
+import qualified Unbound.LocallyNameless as UL
+import Unbound.LocallyNameless(integer2Name)
+import Unbound.LocallyNameless.Fresh
+
+import Cobalt.Core.Types
+import Cobalt.OutsideIn.Solver
+import Cobalt.Core.Graph
+import Cobalt.Core.Errors
+
+import Debug.Trace
+
+}

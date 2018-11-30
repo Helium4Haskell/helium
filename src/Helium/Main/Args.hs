@@ -215,6 +215,7 @@ data Option
    | TreeWalkInorderTopFirstPost | TreeWalkInorderTopLastPost | SolverSimple | SolverGreedy
    | SolverTypeGraph | SolverCombination | SolverChunks | UnifierHeuristics
    | SelectConstraintNumber Int | NoOverloadingTypeCheck | NoPrelude | UseTutor
+   | OutsideInX | VerifyOutsideInResult
  deriving (Eq)
 
 stripShow :: String -> String
@@ -277,6 +278,9 @@ instance Show Option where
  show NoOverloadingTypeCheck             = "--no-overloading-typecheck"
  show NoPrelude                          = "--no-prelude"
  show UseTutor                           = "--use-tutor"
+ show OutsideInX                         = "--outsideinx"
+ show VerifyOutsideInResult              = "--verify-outsideinx-results"
+
 
 
 basePathFromOptions :: [Option] -> Maybe String
