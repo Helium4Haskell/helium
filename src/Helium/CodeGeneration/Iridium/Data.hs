@@ -148,6 +148,8 @@ data Expr
   | Cast !Variable !PrimitiveType
   | Phi ![PhiBranch]
   | PrimitiveExpr !Id ![Variable]
+  -- Denotes an undefined value, not the Haskell function 'undefined'. This expression does not throw, but just has some unknown value.
+  | Undefined !PrimitiveType
   deriving (Eq, Ord)
 
 data PhiBranch = PhiBranch !BlockName !Variable
@@ -170,6 +172,7 @@ typeOfExpr (Cast _ t) = t
 typeOfExpr (Phi []) = error "typeOfExpr: Empty phi node. A phi expression should have at least 1 branch."
 typeOfExpr (Phi (PhiBranch _ var : _)) = variableType var
 typeOfExpr (PrimitiveExpr name _) = primReturn $ findPrimitive name
+typeOfExpr (Undefined t) = t
 
 variableType :: Variable -> PrimitiveType
 variableType (VarLocal (Local _ t)) = t

@@ -33,7 +33,7 @@ import LLVM.AST as AST
 import LLVM.AST.Visibility
 import LLVM.AST.CallingConvention
 import LLVM.AST.Linkage
-import LLVM.AST.Constant (Constant(Int, Array))
+import LLVM.AST.Constant (Constant(Int, Array, Undef))
 import qualified LLVM.AST.IntegerPredicate as IntegerPredicate
 
 import Data.List (maximumBy, group, sort, partition)
@@ -183,6 +183,9 @@ compileExpression env supply expr@(Iridium.Phi branches) name = [name := Phi (co
 compileExpression env supply (Iridium.PrimitiveExpr primName args) name = compile (envTarget env) supply (map (toOperand env) args) name
   where
     (Iridium.Primitive _ _ compile) = Iridium.findPrimitive primName
+compileExpression env supply (Iridium.Undefined ty) name = [name := BitCast (ConstantOperand $ Undef t) t []]
+  where
+    t = compileType env ty
 
 compileEval :: Env -> NameSupply -> Operand -> Iridium.PrimitiveType -> Name -> [Named Instruction]
 compileEval env supply operand Iridium.TypeAny name =

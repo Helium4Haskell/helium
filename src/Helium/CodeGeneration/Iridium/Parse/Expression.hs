@@ -43,6 +43,7 @@ pExpression = do
     "cast" -> Cast <$> pVariable <* pWhitespace <* pSymbol "as" <* pWhitespace <*> pType
     "phi" -> Phi <$> pArguments pPhiBranch
     "prim" -> PrimitiveExpr <$> pId <* pWhitespace <*> pArguments pVariable
+    "undefined" -> Undefined <$ pWhitespace <*> pType
     _ -> pError "expected expression"
 
 pPhiBranch :: Parser PhiBranch
