@@ -17,7 +17,7 @@ import Lvm.Common.IdSet
 import Lvm.Common.Byte(stringFromBytes)
 import qualified Lvm.Core.Expr as Core
 import qualified Lvm.Core.Module as CoreModule
-import Data.List(find, replicate, group, sort)
+import Data.List(find, replicate, group, sort, sortOn)
 import Data.Maybe(fromMaybe, mapMaybe)
 import Data.Either(partitionEithers)
 
@@ -41,7 +41,7 @@ fromCore supply mod@(CoreModule.Module name _ _ decls) = Module name dependencie
     env = TypeEnv (mapFromList $ map (\d -> (declarationName d, getConstructors d)) datas) (unionMap valuesFunctions $ unionMap valuesAbstracts $ unionMap valuesCons $ mapFromList builtins) Nothing
     valuesFunctions = mapMap (\fn -> ValueFunction fn CCFast) $ functionsMap mod
     valuesAbstracts = mapFromList $ map (\(Declaration name _ _ _ (AbstractMethod fntype annotations)) -> (name, ValueFunction fntype $ callingConvention annotations)) abstracts
-    valuesCons = mapFromList $ listFromMap consMap >>= (\(dataName, cons) -> map (\con@(Declaration conName _ _ _ (DataTypeConstructorDeclaration fields)) -> (conName, ValueConstructor (DataTypeConstructor dataName conName fields))) cons)
+    valuesCons = mapFromList $ listFromMap consMap >>= (\(dataName, cons) -> map (\con@(_, Declaration conName _ _ _ (DataTypeConstructorDeclaration fields)) -> (conName, ValueConstructor (DataTypeConstructor dataName conName fields))) $ sortOn fst cons)
 
 customFromCoreDecl :: Core.CoreDecl -> Maybe (Declaration CustomDeclaration)
 customFromCoreDecl decl@CoreModule.DeclCustom{} = Just $ Declaration name (visibility decl) (origin decl) (CoreModule.declCustoms decl) $ CustomDeclaration $ CoreModule.declKind decl
@@ -54,22 +54,23 @@ gatherDependencies decl = case CoreModule.declAccess decl of
   CoreModule.Imported _ mod _ _ _ _ -> insertSet mod
   _ -> id
 
-dataTypeFromCoreDecl :: IdMap [Declaration DataTypeConstructorDeclaration] -> Core.CoreDecl -> [Declaration DataType]
+dataTypeFromCoreDecl :: IdMap [(Int, Declaration DataTypeConstructorDeclaration)] -> Core.CoreDecl -> [Declaration DataType]
 dataTypeFromCoreDecl consMap decl@CoreModule.DeclCustom{}
   | CoreModule.declKind decl == CoreModule.DeclKindCustom (idFromString "data")
-    = [Declaration name (visibility decl) (origin decl) (CoreModule.declCustoms decl) $ DataType $ fromMaybe [] $ lookupMap name consMap]
+    = [Declaration name (visibility decl) (origin decl) (CoreModule.declCustoms decl) $ DataType $ map snd $ sortOn fst $ fromMaybe [] $ lookupMap name consMap]
   where
     name = CoreModule.declName decl
 dataTypeFromCoreDecl _ _ = []
 
-dataTypeConFromCoreDecl :: Core.CoreDecl -> IdMap [Declaration DataTypeConstructorDeclaration] -> IdMap [Declaration DataTypeConstructorDeclaration]
+dataTypeConFromCoreDecl :: Core.CoreDecl -> IdMap [(Int, Declaration DataTypeConstructorDeclaration)] -> IdMap [(Int, Declaration DataTypeConstructorDeclaration)]
 dataTypeConFromCoreDecl decl@CoreModule.DeclCon{} = case find isDataName (CoreModule.declCustoms decl) of
-    Just (CoreModule.CustomLink dataType _) -> insertMapWith dataType [con] (con :)
+    Just (CoreModule.CustomLink dataType _) -> insertMapWith dataType [tagCon] (tagCon :)
     Nothing -> id
   where
     isDataName (CoreModule.CustomLink _ (CoreModule.DeclKindCustom name)) = name == idFromString "data"
     isDataName _ = False
     -- When adding strictness annotations to data types, `TypeAny` on the following line should be changed.
+    tagCon = (CoreModule.conTag decl, con)
     con = Declaration (CoreModule.declName decl) (visibility decl) (origin decl) (CoreModule.declCustoms decl) (DataTypeConstructorDeclaration $ replicate (CoreModule.declArity decl) TypeAny)
 dataTypeConFromCoreDecl _ = id
 
