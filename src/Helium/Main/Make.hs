@@ -47,8 +47,6 @@ make basedir fullName lvmPath chain options doneRef =
               "core" -> parseCoreOnlyImports fullName
               "iridium" -> return []
 
-            print imports
-            
             -- If this module imports a module earlier in the chain, there is a cycle
             case circularityCheck imports chain of
                 Just cycl -> do
@@ -75,7 +73,7 @@ make basedir fullName lvmPath chain options doneRef =
                     Just _ -> return ()
                 let importFullName = fromJust maybeImportFullName
                 -- TODO : print names imported modules in verbose mode.
-                
+
                 -- If we only have an Iridium file we do not need to (/can't) recompile 
                 if ".iridium" `isSuffixOf` importFullName then
                     return False

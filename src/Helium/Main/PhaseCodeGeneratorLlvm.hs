@@ -29,8 +29,7 @@ phaseCodeGeneratorLlvm supply files shouldLink options = do
   sequence_ $ mapWithSupply (compileToLlvm target) supply files
 
   if shouldLink then do
-
-    let args = map ({-show .-} toLlvmPath) files
+    let args = "-O3" : map toLlvmPath files
     print args
     (x, res, err) <- readProcessWithExitCode "clang" args ""
     putStrLn res
