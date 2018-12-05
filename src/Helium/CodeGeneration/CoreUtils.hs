@@ -23,6 +23,9 @@ import Lvm.Core.Utils
 import Data.Char
 import Lvm.Common.Byte(bytesFromString)
 import qualified Lvm.Core.Expr as Core
+import Helium.Syntax.UHA_Utils
+import Data.List(isPrefixOf)
+import Helium.Utils.Utils(internalError)
 
 infixl `app_`
 
@@ -125,10 +128,17 @@ customInfix = customDeclKind "infix"
 
 setExportsPublic :: Bool -> (IdSet,IdSet,IdSet,IdSet,IdSet) -> Module v -> Module v
 setExportsPublic implicit (exports,exportCons,exportData,exportDataCon,exportMods) m
-  = m { moduleDecls = map setPublic (moduleDecls m) }
+  = m { moduleDecls = concatMap setPublic (moduleDecls m) }
   where
-    setPublic decl_  | declPublic decl_ = decl_{ declAccess = (declAccess decl_){ accessPublic = True } }
-                    | otherwise       = decl_
+    setPublic decl_ | isQual decl_ && (isInstance decl_ || isTypeSynonym decl_ || declPublic decl_) = 
+                        let name = stringFromId $! declName decl_
+                            newname = idFromString $! unQualifyName name
+                        in [decl_{ declName = newname, declAccess = (declAccess decl_){ accessPublic = True } }, decl_{declAccess = (declAccess decl_){ accessPublic = False }}]
+                    | isQual decl_ = 
+                        [decl_{declAccess = (declAccess decl_){ accessPublic = False }}]
+                    | isInstance decl_ || isTypeSynonym decl_ || declPublic decl_ =
+                        [decl_{declAccess = (declAccess decl_){ accessPublic = True } }]
+                    | otherwise       = [decl_]
 
     isExported decl_ elemIdSet =
         let access = declAccess decl_ in
@@ -163,15 +173,18 @@ setExportsPublic implicit (exports,exportCons,exportData,exportDataCon,exportMod
                                     (declKind decl_ `elem` [customData, customTypeDecl] && (elemSet name exportData || elemSet name exportDataCon)
                                     || (declKind decl_ `elem` [customInfix] && elemSet name exports)
                                     )
-            DeclImport{}    ->  not implicit && case importKind (declAccess decl_) of
-                                    DeclKindValue  -> isExported decl_ (elemSet name exports)
-                                    DeclKindExtern -> isExported decl_ (elemSet name exports)
-                                    DeclKindCon    -> isExported decl_ (elemSet name exportCons)
-                                    DeclKindModule -> isExported decl_ (elemSet name exportMods)
-                                    dk@(DeclKindCustom _)
-                                     | dk `elem` [customData, customTypeDecl] ->
-                                         isExported decl_ (elemSet name exportData)
-                                    _          -> False
+            _               -> internalError "CoreUtils" "setExportsPublic" "We can only deal with Custom, Value, and Con Core.Decl"
+    
+    isQual decl_ = let name = stringFromId $ declName decl_ in isQualifiedString name
+    
+            -- Always export dictionaries and functions that start with "show" (because used)
+    isInstance decl_ = let name = stringFromId $ declName decl_ in "$dict" `isPrefixOf` name || "show" `isPrefixOf` name
+    
+    --For now we always export type synonyms
+    isTypeSynonym decl_ =case decl_ of
+        DeclCustom{declKind = k} | k == customTypeDecl -> True
+        _ -> False
+        
 
     conTypeName (DeclCon{declCustoms=(_:CustomLink x _:_)}) = x
     conTypeName _ = dummyId
