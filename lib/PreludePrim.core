@@ -87,8 +87,9 @@ import LvmLang
     
     , primPackedToString = stringFromPacked
 
-    , Int(), Float(), IO()
+    , Int(), Float(), IO(), Char()
     , custom "typedecl" String
+    --, custom "typedecl" Char
     , Bool(True, False)
     , '':[]''('':[]'', (:))
     , '':()''('':()'')
@@ -310,13 +311,13 @@ round x
                         (show d6) (show d7) (show d8) (show d9) (show d10)
    in (@0, 2) x (showList x)
         
-show :: "Show a => a -> String"
+show :: "Show a => a -> LvmLang.String"
 show dShow = 
   case dShow of
      (@0, 2) x1 x2 -> x1
 
 -- not exported
-showAList :: "Show a => [a] -> String"
+showAList :: "Show a => [a] -> LvmLang.String"
 showAList dShow = 
   case dShow of
      (@0, 2) x1 x2 -> x2
@@ -360,7 +361,7 @@ id x = x
 negate :: "Num a => a -> a"
 negate dNum = ''$negate'' dNum
 
-fromInt :: "Num a => Int -> a"
+fromInt :: "Num a => LvmLang.Int -> a"
 fromInt dNum = 
     case dNum of
       (@0, 7) x1 x2 x3 x4 x5 x6 x7 -> x7
@@ -457,10 +458,10 @@ allTrue xs =
                               _     -> allTrue bs
 
 
-(==) :: "Eq a => a -> a -> Bool"
+(==) :: "Eq a => a -> a -> LvmLang.Bool"
 (==) dEq = dEq
         
-(/=) :: "Eq a => a -> a -> Bool"
+(/=) :: "Eq a => a -> a -> LvmLang.Bool"
 (/=) dEq = \x y -> not (dEq x y)
 
 eqBool x y = 
@@ -606,7 +607,7 @@ lexico xs =
     case dOrd of
         (@0, 2) eq cmp -> eq
         
-(<) :: "Ord a => a -> a -> Bool"
+(<) :: "Ord a => a -> a -> LvmLang.Bool"
 (<) dOrd x y = 
     case dOrd of
         (@0, 2) eq cmp -> 
@@ -614,7 +615,7 @@ lexico xs =
                 LT -> True
                 _  -> False
 
-(<=) :: "Ord a => a -> a -> Bool"
+(<=) :: "Ord a => a -> a -> LvmLang.Bool"
 (<=) dOrd x y = 
     case dOrd of
         (@0, 2) eq cmp -> 
@@ -622,7 +623,7 @@ lexico xs =
                 GT -> False
                 _  -> True
 
-(>=) :: "Ord a => a -> a -> Bool"
+(>=) :: "Ord a => a -> a -> LvmLang.Bool"
 (>=) dOrd x y = 
     case dOrd of
         (@0, 2) eq cmp -> 
@@ -630,7 +631,7 @@ lexico xs =
                 LT -> False
                 _  -> True
 
-(>) :: "Ord a => a -> a -> Bool"
+(>) :: "Ord a => a -> a -> LvmLang.Bool"
 (>) dOrd x y = 
     case dOrd of
         (@0, 2) eq cmp -> 
@@ -638,7 +639,7 @@ lexico xs =
                 GT -> True
                 _  -> False
 
-compare :: "Ord a => a -> a -> Ordering"
+compare :: "Ord a => a -> a -> PreludePrim.Ordering"
 compare dOrd =
     case dOrd of
         (@0, 2) eq cmp -> cmp
@@ -753,12 +754,12 @@ enumFromThenBool b1 b2 =
       False -> map toEnumBool (enumFromThenToInt (fromEnumBool b1) (fromEnumBool b2) 1) ;
       _ -> map toEnumBool (enumFromThenToInt (fromEnumBool b1) (fromEnumBool b2) 0) }
 
-toEnum :: "Enum a => Int -> a"
+toEnum :: "Enum a => LvmLang.Int -> a"
 toEnum dEnum = 
     case dEnum of
         (@0, 8) x1 x2 x3 x4 x5 x6 x7 x8 -> x1
 		
-fromEnum :: "Enum a => a -> Int"
+fromEnum :: "Enum a => a -> LvmLang.Int"
 fromEnum dEnum = 
     case dEnum of
         (@0, 8) x1 x2 x3 x4 x5 x6 x7 x8 -> x2

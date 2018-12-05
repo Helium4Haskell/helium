@@ -1,6 +1,6 @@
 {- The Simple (non-overloaded) Standard Prelude for the Helium Compiler -}
 
-module Prelude where 
+module Prelude(module Prelude, module PreludePrim) where 
 
 import PreludePrim
 

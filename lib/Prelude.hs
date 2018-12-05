@@ -1,8 +1,9 @@
 {- The overloaded Standard Prelude for the Helium Compiler -}
 
-module Prelude(module Prelude, module PreludePrim) where 
+module Prelude(module Prelude, module PreludePrim, module HeliumLang) where 
 
 import PreludePrim
+import HeliumLang
 
 infixr 9  .
 infixl 9  !!

@@ -34,8 +34,10 @@ module HeliumLang
     ) where
 
 import LvmLang 
-    ( Int(), Float(), IO()
+    ( Int(), Float(), IO(), Char()
     , custom "typedecl" String
+    , custom "typedecl" PackedString
+    , custom "typedecl" Double
     , Bool(True, False)
     , '':[]''('':[]'', (:))
     , '':()''('':()'')
@@ -88,16 +90,16 @@ custom infix (:) : public [5,"right"]
     case dEnum of
         (@0, 8) x1 x2 x3 x4 x5 x6 x7 x8 -> x8
 
-''$floatUnaryMinus'' :: "Float -> Float"
+''$floatUnaryMinus'' :: Float -> Float
 ''$floatUnaryMinus'' f
   = ''$primNegFloat'' f
 
-''$show'' :: "Show a => a -> String"
+''$show'' :: "Show a => a -> LvmLang.String"
 ''$show'' dShow = 
     case dShow of
         (@0, 2) x1 x2 -> x1
 
-''$showList'' :: "(a -> String) -> [a] -> String"
+''$showList'' :: (a -> String) -> [a] -> String
 ''$showList'' = showList
         
 {----------------------------------------------------------
@@ -105,7 +107,7 @@ custom infix (:) : public [5,"right"]
 ----------------------------------------------------------}
 data '':->'' x y
 -- Daan has type Char = Int
-data Char
+-- data Char
 
 ''$primPackedToString'' :: PackedString -> String
 ''$primPackedToString'' p

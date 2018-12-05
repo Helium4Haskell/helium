@@ -80,6 +80,7 @@ extern prim_string_length   :: "la"
 {----------------------------------------------------------
   Basic data types
 ----------------------------------------------------------}
+data Char
 data Bytes
 data Int
 data Float
@@ -104,7 +105,7 @@ data IO a --    = () -> IORes a
 {----------------------------------------------------------
   Type definitions
 ----------------------------------------------------------}
-type Char         = Int
+--type Char         = Int
 type Double       = Float
 
 type PackedString = Bytes

@@ -10,7 +10,7 @@ module LvmException( Exception(..), RuntimeException(..), SystemException(..)
                    , catch, raise, error, errorPacked, patternFail, patternFailPacked
                    ) where
 
-import LvmLang( packedFromString )
+import LvmLang
 
 instruction primCatch "catch" :: (Exception -> a) -> a -> a
 instruction primRaise "raise" :: Exception! -> a

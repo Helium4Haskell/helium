@@ -24,8 +24,10 @@ module HeliumLang
     ) where
 
 import LvmLang 
-    ( Int(), Float(), IO()
+    ( Int(), Float(), IO(), Char()
     , custom "typedecl" String
+    , custom "typedecl" PackedString
+    , custom "typedecl" Double
     , Bool(True, False)
     , '':[]''('':[]'', (:))
     , '':()''('':()'')
@@ -58,11 +60,11 @@ custom infix (:) : public [5,"right"]
 ''$floatUnaryMinus'' :: Float -> Float
 ''$floatUnaryMinus'' f = ''$primNegFloat'' f
 
-''$show'' :: "showDict -> a -> String"
+''$show'' :: "showDict -> a -> LvmLang.String"
 ''$show'' dShow
    = errorPacked "internal error: show called in the simple prelude!"
 
-''$showList'' :: "(a -> String) -> [a] -> String"
+''$showList'' :: "(a -> LvmLang.String) -> [a] -> LvmLang.String"
 ''$showList'' = showList
 
 -- the enumeration functions are used in the translation of the .. notation
@@ -96,7 +98,7 @@ custom infix (:) : public [5,"right"]
 ----------------------------------------------------------}
 data '':->'' x y
 -- Daan has type Char = Int
-data Char
+-- data Char
 
 ''$primPackedToString'' :: PackedString -> String
 ''$primPackedToString'' p

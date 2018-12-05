@@ -45,6 +45,9 @@ import LvmLang
     
     , ($!), seq
     , True -- hack
+    , Char(), Int(), Float(), IO()
+    , Bool(True, False)
+    , custom "typedecl" String
     )
 import LvmIO
     ( stdinChannel = stdin, stdoutChannel = stdout, stderrChannel = stderr
