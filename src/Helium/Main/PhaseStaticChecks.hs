@@ -7,7 +7,7 @@
 -}
 
 module Helium.Main.PhaseStaticChecks(phaseStaticChecks) where
-import Helium.ModuleSystem.GatherImports (ModuleDecls, ImportList)
+import Helium.ModuleSystem.GatherImports (ModuleDecls)
 import Helium.Main.CompileUtils
 import Helium.StaticAnalysis.Messages.Warnings(Warning)
 import qualified Helium.StaticAnalysis.StaticChecks.StaticChecks as SC

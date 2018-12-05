@@ -11,16 +11,19 @@ import Lvm.Common.IdSet
 import qualified Lvm.Core.Expr as Core
 import qualified Lvm.Core.Module as Core
 import Helium.Utils.Utils (internalError)
+import Data.Maybe(fromMaybe)
 }
 {
 type ImportList = ( Core.CoreDecl -- The import declaration
-                    , Maybe Bool    -- Nothing if there is no import specification. Then True if hiding, false if not.
-                    , IdSet         -- Values
-                    , IdSet         -- Constructors, records fields or class methods
-                    , IdSet         -- Complete types or classes
-                    , IdSet         -- Only the type constructor or class name
-                    , Name          -- The imported module name
-                    )
+                  , Maybe Bool    -- Nothing if there is no import specification. Then True if hiding, false if not.
+                  , Bool          -- True if qualified
+                  , Name          -- How the imports should be qualified (normally the module name)
+                  , IdSet         -- Values
+                  , IdSet         -- Constructors, records fields or class methods
+                  , IdSet         -- Complete types or classes
+                  , IdSet         -- Only the type constructor or class name
+                  , Name          -- The imported module name
+                  )
 }
 
   
@@ -31,29 +34,27 @@ SEM ImportDeclaration
     | Import 
         lhs.coreImportDecls = [( @loc.importDecls
                                , @importspecification.importspec
+                               , @qualified
+                               , fromMaybe @name.self @asname.name
                                , @importspecification.values
                                , @importspecification.confieldormethods
                                , @importspecification.typeorclassesCompl
                                , @importspecification.typeorclasses
                                , @name.self)]
         loc.importDecls =
-            
-          if @qualified || not @asname.isNothing then
-              internalError "ExtractImportDecls.ag" "ImportDeclaration.Import" "qualified and as-imports not supported yet"
-          else
-              Core.DeclImport
-                  { Core.declName = idFromName @name.self
-                  , Core.declAccess =
-                      Core.Imported
-                          { Core.accessPublic   = False -- private
-                          , Core.importModule   = idFromName @name.self
-                          , Core.importName     = dummyId
-                          , Core.importKind     = Core.DeclKindModule
-                          , Core.importMajorVer = 0
-                          , Core.importMinorVer = 0
-                          }
-                  , Core.declCustoms = []
-                  }
+            Core.DeclImport
+                { Core.declName = idFromName @name.self
+                , Core.declAccess =
+                    Core.Imported
+                        { Core.accessPublic   = False -- private
+                        , Core.importModule   = idFromName @name.self
+                        , Core.importName     = dummyId
+                        , Core.importKind     = Core.DeclKindModule
+                        , Core.importMajorVer = 0
+                        , Core.importMinorVer = 0
+                        }
+                , Core.declCustoms = []
+                }
 
 ATTR MaybeImportSpecification ImportSpecification [ | | importspec : {Maybe Bool} ]
 
