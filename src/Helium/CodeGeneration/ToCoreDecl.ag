@@ -8,61 +8,57 @@ SEM MaybeDeclarations [ | |   core : { Core.Expr -> Core.Expr } ]
     | Nothing     lhs.core = \continue -> continue
     | Just        declarations.patBindNr = 0
                   declarations.isTopLevel = False
+                  declarations.moduleQual = internalError "ToCoreDecl.ag" "n/a" "toplevel MaybeDeclarations"
                   lhs.core = \continue -> letrec_ @declarations.decls continue  
 
-SEM Declaration          
-    | Type              lhs.decls  =
-        let -- if we would have the collected type synonym information here, things could have been
-            -- done much easier.
-            (t1,[t2])   = convertFromSimpleTypeAndTypes @simpletype.self [@type.self]
-            allTypeVars = ftv [t1,t2]
-            (ts1,ts2)   = ( Quantification (allTypeVars, [], [] .=>. t1) :: TpScheme
-                          , Quantification (allTypeVars, [], [] .=>. t2) :: TpScheme
-                          )
-        in
-        [ Core.DeclCustom
-            { Core.declName    = idFromString (getNameName @simpletype.name)
-            , Core.declAccess  = Core.private
-            , Core.declKind    = Core.DeclKindCustom (idFromString "typedecl")
-            , Core.declCustoms =
-                [ Core.CustomBytes
-                    (Byte.bytesFromString
-                        (  show ts1
-                        ++ " = "
-                        ++ show ts2
-                        )
-                    )
-                , Core.CustomInt
-                    (length @simpletype.typevariables)
-                ] ++ originCustoms @lhs.modulename @range.self
-            }
-        ]
-        ++
-        [ DerivingShow.typeShowFunction @self ]
+SEM Declaration        
+    | Type              
+        loc . qualrhs   = convertTypeToQualified (typeConstructors @lhs.importEnv) @type.self
+            . (t1,t2s)  = convertFromSimpleTypeAndTypes @simpletype.self [@qualrhs]
+            . t2        = head @t2s
+            . allTypeVars = ftv [@t1, @t2]
+            . (ts1,ts2)   = ( Quantification (@allTypeVars, [], [] .=>. @t1) :: TpScheme
+                            , Quantification (@allTypeVars, [], [] .=>. @t2) :: TpScheme
+                            )
+            . typestring  = show @ts1 ++ " = " ++ show @ts2
+            . origin      = originCustoms @lhs.modulename @range.self
+            . qualname    = addQualified @lhs.moduleQual @simpletype.name
+
+        lhs . decls  = 
+                map (\n -> Core.DeclCustom
+                            { Core.declName    = idFromString (getNameName @simpletype.name)
+                            , Core.declAccess  = Core.private
+                            , Core.declKind    = Core.DeclKindCustom (idFromString "typedecl")
+                            , Core.declCustoms = [ Core.CustomBytes (Byte.bytesFromString @typestring)
+                                                 , Core.CustomInt (length @simpletype.typevariables)
+                                                 ] ++ @origin})
+                    [@simpletype.name, @qualname]
+                ++
+                [ DerivingShow.typeShowFunction @self @lhs.moduleQual @origin ]
     
     | Data    constructors.tag = 0
               constructors.dataTypeName = @simpletype.name
+              loc . origin     = originCustoms @lhs.modulename @range.self
+                  . qualname    = addQualified @lhs.moduleQual @simpletype.name
               lhs.decls  =
         map snd @constructors.cons
         ++
-        [ Core.DeclCustom
-            { Core.declName    = idFromString (getNameName @simpletype.name)
-            , Core.declAccess  = Core.private
-            , Core.declKind    = Core.DeclKindCustom (idFromString "data")
-            , Core.declCustoms = [ Core.CustomInt (length @simpletype.typevariables) ]
-                                   ++ originCustoms @lhs.modulename @range.self
-            }
-        ]
+        map (\n -> Core.DeclCustom
+                    { Core.declName    = idFromString (getNameName n)
+                    , Core.declAccess  = Core.private
+                    , Core.declKind    = Core.DeclKindCustom (idFromString "data")
+                    , Core.declCustoms = [ Core.CustomInt (length @simpletype.typevariables) ] ++ @origin})
+            [@simpletype.name, @qualname]         
         ++
-        [ DerivingShow.dataShowFunction @self ]
+        [ DerivingShow.dataShowFunction @self @lhs.moduleQual @origin]
         ++ 
         (if "Show" `elem` map show @derivings.self 
-         then [ DerivingShow.dataDictionary @self ]
+         then [ DerivingShow.dataDictionary @self @origin]
          else []
         )
         ++
         (if "Eq" `elem` map show @derivings.self 
-         then [ DerivingEq.dataDictionary @self ]
+         then [ DerivingEq.dataDictionary @self @origin]
          else []
         )
         
@@ -72,20 +68,21 @@ SEM Declaration
     --  constructors             : Constructors
     --  derivings                : Names
     
-    | FunctionBindings  loc.ids      = freshIds "u$" @bindings.arity
-                        bindings.ids = @loc.ids
-                        bindings.range = @range.self
-                        loc.dictionaries = map predicateToId 
+    | FunctionBindings  loc.ids            = freshIds "u$" @bindings.arity
+                        bindings.ids       = @loc.ids
+                        bindings.range     = @range.self
+                        loc . dictionaries = map predicateToId 
                                               (getPredicateForDecl @bindings.name @lhs.dictionaryEnv)
-                        lhs.decls    =
-        [ Core.DeclValue
-            { Core.declName    = idFromName @bindings.name
-            , Core.declAccess  = Core.private
-            , Core.valueEnc    = Nothing
-            , Core.valueValue  = foldr Core.Lam @bindings.core (@dictionaries ++ @ids)
-            , Core.declCustoms = toplevelType @bindings.name @lhs.importEnv @lhs.isTopLevel ++ originCustoms @lhs.modulename @range.self
-            }
-        ]
+                            . qualname     = addQualified @lhs.moduleQual @bindings.name
+                        lhs.decls    = map (\n ->
+                                            Core.DeclValue
+                                                { Core.declName    = idFromName n
+                                                , Core.declAccess  = Core.private
+                                                , Core.valueEnc    = Nothing
+                                                , Core.valueValue  = foldr Core.Lam @bindings.core (@dictionaries ++ @ids)
+                                                , Core.declCustoms = toplevelType @bindings.name @lhs.importEnv @lhs.isTopLevel ++ originCustoms @lhs.modulename @range.self})
+                                            $ @bindings.name : if @lhs.isTopLevel then [@qualname] else []
+        
     --  range                    : Range          
     --  bindings                 : FunctionBindings -- should all be for the same function
     
@@ -98,21 +95,19 @@ SEM Declaration
                                 _ -> []                        
                         lhs.decls     =
         case @pattern.self of
-            Pattern_Variable _ n ->
-                [ Core.DeclValue
-                    { Core.declName    = idFromName n
+            Pattern_Variable _ n -> map (\nn -> 
+                  Core.DeclValue
+                    { Core.declName    = idFromName nn
                     , Core.declAccess  = Core.private
                     , Core.valueEnc    = Nothing
                     , Core.valueValue  = 
                         foldr Core.Lam 
                             ( let_ -- because guards can fail
                                 nextClauseId (patternMatchFail "pattern binding" @range.self)
-                                @righthandside.core
-                            )
+                                @righthandside.core )
                             @dictionaries
                     , Core.declCustoms = toplevelType n @lhs.importEnv @lhs.isTopLevel ++ originCustoms @lhs.modulename @range.self
-                    }
-               ]
+                    } ) $ n : if @lhs.isTopLevel then [addQualified @lhs.moduleQual n] else []
             _ ->
                 Core.DeclValue
                     { Core.declName    = patBindId
@@ -135,8 +130,7 @@ SEM Declaration
                         )
                     , Core.declCustoms = toplevelType v @lhs.importEnv @lhs.isTopLevel ++ originCustoms @lhs.modulename @range.self
                     }
-                | v <- @pattern.vars
-                ]
+                | v1 <- @pattern.vars, let allv = v1 : if @lhs.isTopLevel then [addQualified @lhs.moduleQual v1] else [], v <- allv ]
                 where 
                     patBindId = idFromString ("patBind$" ++ show @lhs.patBindNr)
     --  range                    : Range
@@ -176,7 +170,7 @@ SEM Declaration
               . 
               getNameName
             )
-            @operators.self
+            $ concatMap (\n -> [n, addQualified @lhs.moduleQual n]) @operators.self
     --  range                    : Range
     --  fixity                   : Fixity
     --  priority                 : MaybeInt
@@ -260,7 +254,7 @@ dictionaryTreeToCore theTree =
          Core.Var (predicateToId predicate)
       ByInstance className instanceName trees ->
          foldl Core.Ap
-               (Core.Var (idFromString ("$dict"++className++instanceName)))
+               (Core.Var (idFromString ("$dict"++className++(unQualifyName instanceName))))
                (map dictionaryTreeToCore trees)
       BySuperClass subClass superClass tree -> 
          Core.Ap (Core.Var (idFromString ("$get" ++ superClass ++ "From" ++ subClass)))          
@@ -336,38 +330,41 @@ SEM Constructors [ dataTypeName : Name | | ]
             tl.tag = @lhs.tag + 1
 
 SEM Constructor [ dataTypeName : Name | | ]
-    | Constructor       lhs.cons = 
-        [ (idFromName @constructor.self, Core.DeclCon
-            { Core.declName    = idFromName @constructor.self
-            , Core.declAccess  = Core.private
-            , Core.declArity   = @types.length
-            , Core.conTag      = @lhs.tag
-            , Core.declCustoms = constructorCustoms 
-                                    @lhs.dataTypeName
-                                    @constructor.self 
-                                    (valueConstructors @lhs.importEnv)
-                                 ++ originCustoms @lhs.modulename @range.self
-            }
-          )
-        ]
+    | Constructor       
+        loc.qualname = @lhs.dataTypeName --addQualified (getQualifiedFromString @lhs.modulename) @lhs.dataTypeName
+        lhs.cons = map (\n ->
+                        (idFromName n, Core.DeclCon
+                            { Core.declName    = idFromName n
+                            , Core.declAccess  = Core.private
+                            , Core.declArity   = @types.length
+                            , Core.conTag      = @lhs.tag
+                            , Core.declCustoms = constructorCustoms 
+                                                    @qualname
+                                                    @constructor.self 
+                                                    (valueConstructors @lhs.importEnv)
+                                                ++ originCustoms @lhs.modulename @range.self
+                            }
+                        ) ) [@constructor.self, addQualified @lhs.moduleQual @constructor.self]
     --  range                    : Range
     --  constructor              : Name
     --  types                    : AnnotatedTypes
     
-    | Infix             lhs.cons = 
-        [ (idFromName @constructorOperator.self, Core.DeclCon
-            { Core.declName    = idFromName @constructorOperator.self
-            , Core.declAccess  = Core.private
-            , Core.declArity   = 2
-            , Core.conTag      = @lhs.tag
-            , Core.declCustoms = constructorCustoms
-                                    @lhs.dataTypeName
-                                    @constructorOperator.self 
-                                    (valueConstructors @lhs.importEnv)
-                                 ++ originCustoms @lhs.modulename @range.self
-            }
-          )
-        ]
+    | Infix             
+        loc.qualname = @lhs.dataTypeName --addQualified (getQualifiedFromString @lhs.modulename) @lhs.dataTypeName
+        lhs.cons = map (\n ->
+                        (idFromName n, Core.DeclCon
+                            { Core.declName    = idFromName n
+                            , Core.declAccess  = Core.private
+                            , Core.declArity   = 2
+                            , Core.conTag      = @lhs.tag
+                            , Core.declCustoms = constructorCustoms
+                                                    @qualname
+                                                    @constructorOperator.self 
+                                                    (valueConstructors @lhs.importEnv)
+                                                ++ originCustoms @lhs.modulename @range.self
+                            }
+                        ) ) [@constructorOperator.self, addQualified @lhs.moduleQual @constructorOperator.self]
+            
     --  range                    : Range
     --  leftType                 : AnnotatedType
     --  constructorOperator      : Name

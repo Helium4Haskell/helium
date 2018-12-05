@@ -25,6 +25,7 @@ import Helium.ModuleSystem.ImportEnvironment
 import Helium.ModuleSystem.DictionaryEnvironment
 import qualified Data.Map as M
 import Helium.StaticAnalysis.Miscellaneous.TypeConversion
+import Helium.Utils.QualifiedTypes
 import Data.Char (ord)
 
 

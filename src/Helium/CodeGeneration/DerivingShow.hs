@@ -21,12 +21,13 @@ import Lvm.Core.Utils
 import Lvm.Common.Id
 import Helium.Utils.Utils
 import Top.Types
+import Helium.Utils.QualifiedTypes
 
 -- Show function for a data type declaration
-dataShowFunction :: UHA.Declaration -> CoreDecl
-dataShowFunction (UHA.Declaration_Data _ _ (UHA.SimpleType_SimpleType _ name names) constructors _) =
-    let typeString = show (typeOfShowFunction name names)
-        nameId     = idFromString ("show" ++ getNameName name)
+dataShowFunction :: UHA.Declaration -> [String] -> [Custom] -> CoreDecl
+dataShowFunction (UHA.Declaration_Data _ _ (UHA.SimpleType_SimpleType _ name names) constructors _) qual origin =
+    let typeString = show (typeOfShowFunction name qual names)
+        nameId     = idFromString ("show" ++ (unQualifyName . getNameName) name)
         valueId    = idFromString "value$"
         in
     DeclValue 
@@ -41,20 +42,20 @@ dataShowFunction (UHA.Declaration_Data _ _ (UHA.SimpleType_SimpleType _ name nam
             )
         )    
         (map idFromName names ++ [valueId])
-    , declCustoms = [ custom "type" typeString ] 
+    , declCustoms = [ custom "type" typeString ] ++ origin
     }
-dataShowFunction _ = error "not supported"
+dataShowFunction _ _ _ = error "not supported"
 
 -- Show Dictionary for a data type declaration
-dataDictionary :: UHA.Declaration -> CoreDecl
-dataDictionary  (UHA.Declaration_Data _ _ (UHA.SimpleType_SimpleType _ name names) _ _) =
-    let nameId = idFromString ("show" ++ getNameName name) in
+dataDictionary :: UHA.Declaration -> [Custom] -> CoreDecl
+dataDictionary  (UHA.Declaration_Data _ _ (UHA.SimpleType_SimpleType _ name names) _ _) origin =
+    let nameId = idFromString ("show" ++ (unQualifyName . getNameName) name) in
     DeclValue 
     { declName    = idFromString ("$dictShow" ++ getNameName name)
     , declAccess  = public
     , valueEnc    = Nothing
     , valueValue  = makeShowDictionary (length names) nameId
-    , declCustoms = [ custom "type" ("DictShow" ++ getNameName name) ] 
+    , declCustoms = [ custom "type" ("DictShow" ++ getNameName name) ] ++ origin
     }
   where
     makeShowDictionary :: Int -> Id -> Expr
@@ -66,24 +67,24 @@ dataDictionary  (UHA.Declaration_Data _ _ (UHA.SimpleType_SimpleType _ name name
            declaration = Bind idX (foldl Ap (Var nameId) list)
            body = Let (Strict declaration) (Ap (Ap con (Var idX)) (Ap (Var (idFromString "$showList")) (Var idX)))
        in foldr Lam body ids
-dataDictionary _ = error "not supported"
+dataDictionary _ _ = error "not supported"
 
 -- Show function for a type synonym
 -- type T a b = (b, a) 
 --   ===>
 -- showT :: (a -> String) -> (b -> String) -> T a b -> String
 -- showT a b = showTuple2 b a 
-typeShowFunction :: UHA.Declaration -> Decl Expr
-typeShowFunction (UHA.Declaration_Type _ (UHA.SimpleType_SimpleType _ name names) type_) =
-    let typeString = show (typeOfShowFunction name names) in
+typeShowFunction :: UHA.Declaration -> [String] -> [Custom] -> Decl Expr
+typeShowFunction (UHA.Declaration_Type _ (UHA.SimpleType_SimpleType _ name names) type_) qual origin =
+    let typeString = show (typeOfShowFunction name qual names) in
     DeclValue 
-    { declName    = idFromString ("show" ++ getNameName name)
+    { declName    = idFromString ("show" ++ (unQualifyName . getNameName) name)
     , declAccess  = public
     , valueEnc    = Nothing
     , valueValue  = foldr (Lam . idFromName) (showFunctionOfType False type_) names
-    , declCustoms = [ custom "type" typeString ] 
+    , declCustoms = [ custom "type" typeString ] ++ origin
     }
-typeShowFunction _ = error "not supported"
+typeShowFunction _ _ _ = error "not supported"
 
 -- Convert a data type constructor to a Core alternative
 makeAlt :: UHA.Constructor -> Alt
@@ -145,7 +146,9 @@ showFunctionOfType isMainType = sFOT
                     ( UHA.Type_Constructor _ (UHA.Name_Special    _ _ _ "[]") ) -- !!!Name
                     [ UHA.Type_Constructor _ (UHA.Name_Identifier _ _ _ "Char") ] -> -- !!!Name
             var "showString"
-        UHA.Type_Constructor _ n         -> var ("show" ++ checkForPrimitive (getNameName n))
+        UHA.Type_Constructor _ n         -> 
+            let conname = (unQualifyName . getNameName) n
+            in seq conname $ var ("show" ++ checkForPrimitive conname)
         UHA.Type_Application _ _ f xs    -> foldl Ap (sFOT f) (map sFOT xs)
         UHA.Type_Parenthesized _ t'      -> showFunctionOfType isMainType t'
         _ -> internalError "DerivingShow" "showFunctionOfType" "unsupported type"
@@ -172,11 +175,11 @@ nameOfShowFunction :: UHA.Name -> UHA.Name
 nameOfShowFunction (UHA.Name_Identifier r m o n) = UHA.Name_Identifier r m o ("show" ++ n) -- !!!Name
 nameOfShowFunction _ = internalError "DerivingShow" "nameOfShowFunction" "name of type must be an identifier"
 
-typeOfShowFunction :: UHA.Name -> UHA.Names -> TpScheme
-typeOfShowFunction name names =
+typeOfShowFunction :: UHA.Name -> [String] -> UHA.Names -> TpScheme
+typeOfShowFunction name qual names =
     -- Build type from type name and parameters.
     -- e.g. data T a b = ...  ===> (0 -> String) -> (1 -> String) -> (T 0 1 -> String)
     let vars  = map TVar (take (length names) [0..])
-        types = vars ++ [foldl TApp (TCon (getNameName name)) vars]
-    in generalizeAll ([] .=>. foldr1 (.->.) (map (.->. stringType) types))
+        types = vars ++ [foldl TApp (TCon (getNameName (addQualified qual name))) vars]
+    in generalizeAll ([] .=>. foldr1 (.->.) (map (.->. stringQualType) types))
 

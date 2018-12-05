@@ -17,17 +17,17 @@ import Lvm.Common.Id
 import Helium.Utils.Utils
 
 -- Eq Dictionary for a data type declaration
-dataDictionary :: UHA.Declaration -> CoreDecl
-dataDictionary  (UHA.Declaration_Data _ _ (UHA.SimpleType_SimpleType _ name names) constructors _) =
+dataDictionary :: UHA.Declaration -> [Custom] -> CoreDecl
+dataDictionary  (UHA.Declaration_Data _ _ (UHA.SimpleType_SimpleType _ name names) constructors _) origin =
     DeclValue 
     { declName    = idFromString ("$dictEq" ++ getNameName name)
     , declAccess  = public
     , valueEnc    = Nothing
     , valueValue  = eqFunction names constructors
-    , declCustoms = [ custom "type" ("DictEq" ++ getNameName name) ] 
+    , declCustoms = [ custom "type" ("DictEq" ++ getNameName name) ] ++ origin
     }
   where  
-dataDictionary _ = error "pattern match failure in CodeGeneration.Deriving.dataDictionary"
+dataDictionary _ _ = error "pattern match failure in CodeGeneration.Deriving.dataDictionary"
 
 -- Example: data X a b = C a b Int | D Char b
 eqFunction :: [UHA.Name] -> [UHA.Constructor] -> Expr

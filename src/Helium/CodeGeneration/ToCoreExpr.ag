@@ -82,6 +82,7 @@ SEM Expression [ | | core : { Core.Expr } ]
 
     | Let                declarations.patBindNr = 0
                          declarations.isTopLevel = False
+                         declarations.moduleQual = internalError "ToCoreExpr.ag" "n/a" "toplevel Expression"
                          lhs.core =
         letrec_ @declarations.decls @expression.core
     --  range                    : Range
@@ -177,6 +178,7 @@ SEM Statement [ | | core : { Maybe Core.Expr -> Core.Expr } ]
 
     | Let                 declarations.patBindNr = 0
                           declarations.isTopLevel = False
+                          declarations.moduleQual = internalError "ToCoreExpr.ag" "n/a" "toplevel Statement"
                           lhs.core =
             \theRest ->
                 case theRest of
@@ -224,6 +226,7 @@ SEM Qualifier [ | | core : { Core.Expr -> Core.Expr } ]
 
     | Let                 declarations.patBindNr = 0
                           declarations.isTopLevel = False
+                          declarations.moduleQual = internalError "ToCoreExpr.ag" "n/a" "toplevel Qualifier"
                           lhs.core = \continue -> letrec_ @declarations.decls continue
     --  range                    : Range
     --  declarations             : Declarations

@@ -29,10 +29,10 @@ interpreterMain = "interpreter_main"
 insertedMain :: TypeEnvironment -> CoreDecl
 insertedMain toplevelTypes =
     let maybeWrapMainAndType = 
-            case M.lookup (Name_Identifier noRange [] [] "main") toplevelTypes of -- !!!Name
+            case (M.lookup (Name_Identifier noRange [] [] "main") $! toplevelTypes) of -- !!!Name
                 Just t -> Just ("main", t)
                 Nothing ->
-                    case M.lookup (Name_Identifier noRange [] [] interpreterMain) toplevelTypes of -- !!!Name
+                    case (M.lookup (Name_Identifier noRange [] [] interpreterMain) $! toplevelTypes) of -- !!!Name
                         Just t -> Just (interpreterMain, t)
                         Nothing -> Nothing
     in
@@ -66,6 +66,7 @@ SEM Module
                 lhs.core = @module_ { Module.moduleDecls = 
                                 insertedMain @lhs.toplevelTypes : Module.moduleDecls @module_ }
                 loc.modulename = maybe "Main" getNameName @name.name
+                loc.moduleQual = maybe ["Main"] getQualified @name.name
                 loc.module_ = 
                     setExportsPublic @exports.isImplicit @loc.exportlists
                         (makeCoreModule (Just $ idFromString @modulename)
@@ -168,10 +169,13 @@ SEM Export
     --  name                     : Name   -- this is a module name
 
 ATTR Body Declarations Declaration
-    [ 
+    [   moduleQual : { [String] }
     | 
     |   decls USE { ++ } { [] } : { [CoreDecl] }
     ]
+
+ATTR Constructors Constructor
+    [ moduleQual : { [String] } | | ]
 
 SEM Body
     | Body             lhs.decls    = @declarations.decls
