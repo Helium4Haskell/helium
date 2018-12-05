@@ -87,8 +87,8 @@ SEM Pattern
   | Hole             lhs . elements  = [FiniteElement hole]
   | Variable         lhs . elements  = [WildcardElement]
   | Wildcard         lhs . elements  = [WildcardElement]
-  | Constructor      lhs . elements  = FiniteElement (getNameName @name.self) : concat @patterns.elementss
-  | InfixConstructor lhs . elements  = FiniteElement (getNameName @constructorOperator.self) : @leftPattern.elements ++ @rightPattern.elements
+  | Constructor      lhs . elements  = FiniteElement (getOnlyName @name.self) : concat @patterns.elementss
+  | InfixConstructor lhs . elements  = FiniteElement (getOnlyName @constructorOperator.self) : @leftPattern.elements ++ @rightPattern.elements
   | Record           lhs . elements  = pmError "Pattern_Record.elements" "Records are not supported"
   | Successor        lhs . elements  = pmError "Pattern_Successor.elements" "Successors are not supported"
   | Tuple            lhs . elements  = FiniteElement ("(" ++ replicate (length $ tail @patterns.self) ',' ++ ")") : concat @patterns.elementss
@@ -281,7 +281,7 @@ rearrange (name, tpscheme) = let (args, res) = functionSpine $ unqualify $ unqua
 constructors :: ImportEnvironment -> Tp -> [(Name, [Tp])]
 constructors _ (TVar _) = []
 constructors impenv tp | isTupleConstructor name = [tupleconstructor]
-                       | otherwise               = map expand $ concatMap (substitute tp) $ importEnvironmentToEnv impenv
+                       | otherwise               = (map expand . removeDoubles . removeQual . concatMap (substitute tp) . importEnvironmentToEnv) impenv
   where
     name :: String
     name = unTCon $ fst $ leftSpine tp
@@ -292,6 +292,12 @@ constructors impenv tp | isTupleConstructor name = [tupleconstructor]
     unTCon tp' = pmError "unTCon" $ "type " ++ show tp' ++ " is not a TCon"
     expand :: (Name, [Tp]) -> (Name, [Tp])
     expand (n, ts) = (n, map (expandTypeFromImportEnvironment impenv) ts)
+
+    removeQual :: [(Name, [Tp])] -> [(Name, [Tp])]
+    removeQual = map (\(n,tps) -> (addQualified [] n, tps))
+
+    removeDoubles :: [(Name, [Tp])] -> [(Name, [Tp])]
+    removeDoubles = nubBy (\(x,_) (y,_) -> x == y)
 
 -- check of an entry in an Env is a constructor for the given type
 -- if so, return this constructor, but with variables substituted for whatever is in the given type
@@ -420,11 +426,11 @@ complement env (tp:tps) pss    | null $ unMissing anyComplement                 
     anyComplement :: PatternsMissing
     anyComplement = patComplement (filter ((== WildcardElement).head) pss) WildcardElement tps
     conComplement :: (Name, [Tp]) -> PatternsMissing
-    conComplement (con, args) = patComplement (  filter ((== FiniteElement (getNameName con)).head) pss
-                                              ++ map (\ps -> FiniteElement (getNameName con) : replicate (length args) WildcardElement ++ tail ps)
+    conComplement (con, args) = patComplement (  filter ((== FiniteElement (getOnlyName con)).head) pss
+                                              ++ map (\ps -> FiniteElement (getOnlyName con) : replicate (length args) WildcardElement ++ tail ps)
                                                      (filter ((== WildcardElement).head) pss)
                                               )
-                                              (FiniteElement (getNameName con)) (args ++ tps)
+                                              (FiniteElement (getOnlyName con)) (args ++ tps)
     finComplement :: PatternsMissing
     finComplement = case constructors env tp
                     of []   -> wildMissing $ 1 + length tps
@@ -466,7 +472,7 @@ reachable env (tp:tps) ps
       | otherwise                 = reachable env (arguments (elementString.head.fst.head $ pats) ++ tps) 
                                             $ map (\(es, i) -> (tail es, i)) pats
     arguments :: String -> [Tp]
-    arguments c = maybe [] id $ lookup c $ map (\(n, typs) -> (getNameName n, typs)) $ constructors env tp
+    arguments c = maybe [] id $ lookup c $ map (\(n, typs) -> (getOnlyName n, typs)) $ constructors env tp
 
 -- remove double occurances and wildcards
 thin :: [PatternElement] -> [PatternElement]

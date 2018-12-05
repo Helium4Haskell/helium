@@ -105,11 +105,13 @@ import Helium.StaticAnalysis.Inferencers.BindingGroupAnalysis
 
 -- UHA syntax
 import Helium.Syntax.UHA_Syntax
-import Helium.Syntax.UHA_Range                 
+import Helium.Syntax.UHA_Range
+import Helium.Syntax.UHA_Utils                
          
 -- other
 
 import Helium.Utils.Utils (internalError, hole)
+import Helium.Utils.QualifiedTypes
 import Helium.ModuleSystem.ImportEnvironment  hiding (setTypeSynonyms)
 import Helium.ModuleSystem.DictionaryEnvironment
 import Helium.Main.Args
@@ -118,3 +120,21 @@ import Helium.Main.Args
 import qualified Data.Map as M
 import Data.Maybe 
 }
+
+SEM MaybeName [ | | name : { Maybe Name } ]
+    | Nothing             lhs.name      = Nothing
+    | Just                lhs.name      = Just @name.self
+
+SEM Module | Module loc . moduleQual = maybe ["Main"] getQualified @name.name
+                    loc . isTopLevel = True
+
+SEM Body Declarations Declaration [moduleQual : { [String] } isTopLevel : Bool | | ]
+
+SEM Statement
+  | Let   loc . isTopLevel = False
+SEM Expression
+  | Let  loc . isTopLevel = False
+SEM MaybeDeclarations
+  | Just  loc . isTopLevel = False
+SEM Qualifier
+  | Let   loc . isTopLevel = False

@@ -29,11 +29,14 @@ SEM Module
                                    foldr (\(n, i) -> insertInstance (show n) i) 
                                          (createClassEnvironment @lhs.importEnvironment) 
                                          @body.collectInstances
-           . typeErrors          = case makeTypeErrors @lhs.options @classEnv @orderedTypeSynonyms @substitution @solveErrors of
-                                      []   -> if NoOverloadingTypeCheck `elem` @lhs.options
-                                                 then filter (\(TypeError _ ms _ _) -> not $ isInfixOf "Illegal overloaded type" $ show ms) @body.collectErrors
-                                                 else @body.collectErrors
-                                      errs -> reverse errs
+           . tyConEnv            = typeConstructors @lhs.importEnvironment
+           . typeErrors          = map (convertTypeError (fromQualName (convertMap @tyConEnv))) @typeErrorsBase
+           . typeErrorsBase      =  let unqualifier = unqualifyTp (typeConstructors @lhs.importEnvironment) 
+                                    in case makeTypeErrors @lhs.options @classEnv unqualifier @orderedTypeSynonyms @substitution @solveErrors of
+                                        []   -> if NoOverloadingTypeCheck `elem` @lhs.options
+                                                   then filter (\(TypeError _ ms _ _) -> not $ isInfixOf "Illegal overloaded type" $ show ms) @body.collectErrors
+                                                   else @body.collectErrors
+                                        errs -> reverse errs
            . warnings            = @body.collectWarnings -- ++ @tooSpecificWarnings
            . assumptions         = let f xs = [ (n, @substitution |-> tp) | (n, tp) <- xs ] 
                                    in M.map f @body.assumptions
@@ -42,6 +45,7 @@ SEM Module
            . monomorphics        = ftv (  (map (\(_, scheme) -> scheme) $ M.elems $ valueConstructors @lhs.importEnvironment) 
                                        ++ (M.elems $ typeEnvironment   @lhs.importEnvironment)
                                        )
+           . typeConstructors    = typeConstructors @lhs.importEnvironment
                                   
       body . typeschemeMap = M.fromList (M.assocs @typeschemeMap) -- was a copy rule.
            . betaUnique          = if null @monomorphics 
@@ -52,7 +56,7 @@ SEM Module
 -- Type Inferencing : Body
 
 ATTR Body
-    [ 
+    [ typeConstructors      : TypeConstructorEnvironment
       monos                 : Monos
     | betaUnique            : Int
     | assumptions           : Assumptions
@@ -76,7 +80,7 @@ SEM Body
 ---------------------------------------------------------------------------------------
 -- Type Inferencing : Declaration, Declarations, MaybeDeclarations
 
-ATTR Declaration Declarations MaybeDeclarations [ monos:Monos | betaUnique:Int | ]
+ATTR Declaration Declarations MaybeDeclarations [ typeConstructors : TypeConstructorEnvironment monos:Monos | betaUnique:Int | ]
 ATTR Declaration Declarations                   [ inheritedBDG:InheritedBDG | bindingGroups:BindingGroups | ]
 ATTR                          MaybeDeclarations [ | assumptions:Assumptions constraints:ConstraintSet | ]
 
@@ -90,7 +94,9 @@ SEM Declaration
                . betaRight     = TVar (@lhs.betaUnique + 1)
                . betasLeft     = take @bindings.numberOfPatterns (map TVar [@lhs.betaUnique + 2..])
                . newcon        = (@beta .==. foldr (.->.) @betaRight @betasLeft) @cinfo
-               . mybdggrp      = ( M.singleton @bindings.name @beta
+               . mybdggrp      = ( if @lhs.isTopLevel then
+                                    M.fromList [(@bindings.name, @beta), (addQualified @lhs.moduleQual @bindings.name, @beta)] 
+                                    else M.fromList [(@bindings.name, @beta)]      
                                  , @bindings.assumptions
                                  , [ Node [ Phase (-1) [@newcon] 
                                           , Receive @lhs.betaUnique
@@ -105,7 +111,9 @@ SEM Declaration
       righthandside . monos         = findMono (head (M.keys @pattern.environment)) @lhs.inheritedBDG ++ @lhs.monos    
       loc           . betaRight     = TVar @lhs.betaUnique
                     . newcon        = [ (@betaRight .==. @pattern.beta) @cinfo ]
-                    . mybdggrp      = ( @pattern.environment
+                    . mybdggrp      = ( if @lhs.isTopLevel then
+                                            M.foldrWithKey (\n result old -> M.insert (addQualified @lhs.moduleQual n) result old) @pattern.environment @pattern.environment
+                                            else @pattern.environment
                                       , @righthandside.assumptions
                                       , [ @newcon .>.
                                           Node [ @pattern.constraints
@@ -125,7 +133,8 @@ SEM MaybeDeclarations
 ---------------------------------------------------------------------------------------
 -- Type Inferencing : FunctionBinding, FunctionBindings
 
-ATTR FunctionBinding FunctionBindings [ betasLeft:Tps betaRight:Tp monos:Monos | betaUnique:Int | assumptions:Assumptions numberOfPatterns:Int name:Name ]
+ATTR FunctionBinding FunctionBindings [ typeConstructors : TypeConstructorEnvironment betasLeft:Tps betaRight:Tp monos:Monos | betaUnique:Int 
+                                      | assumptions:Assumptions numberOfPatterns:Int name:Name ]
 ATTR FunctionBinding                  [ | | constraints:ConstraintSet]
 ATTR                 FunctionBindings [ | | constraintslist:ConstraintSets]
 
@@ -161,7 +170,7 @@ SEM FunctionBindings
 ---------------------------------------------------------------------------------------
 -- Type Inferencing : LeftHandSide, RightHandSide
 
-ATTR LeftHandSide RightHandSide [ monos:Monos | betaUnique:Int | constraints:ConstraintSet ]
+ATTR LeftHandSide RightHandSide [ typeConstructors : TypeConstructorEnvironment monos:Monos | betaUnique:Int | constraints:ConstraintSet ]
 ATTR LeftHandSide               [ | | betas:Tps environment:PatternAssumptions numberOfPatterns:Int name:Name ]
 ATTR              RightHandSide [ betaRight:Tp | | assumptions:Assumptions ]
 
@@ -207,7 +216,7 @@ SEM RightHandSide
 ---------------------------------------------------------------------------------------
 -- Type Inferencing : Expression, Expressions, MaybeExpression
 
-ATTR Expression Expressions MaybeExpression [ monos:Monos | betaUnique:Int | assumptions:Assumptions ]
+ATTR Expression Expressions MaybeExpression [ typeConstructors : TypeConstructorEnvironment monos:Monos | betaUnique:Int | assumptions:Assumptions ]
 ATTR Expression                             [ | | beta:Tp constraints:ConstraintSet ]
 ATTR            Expressions                 [ | | betas:Tps constraintslist:ConstraintSets ]
 ATTR                        MaybeExpression [ | | beta:Tp constraints:ConstraintSet section:Bool ]
@@ -276,7 +285,7 @@ SEM Expression
                                            , @conElse  .<. @elseExpression.constraints
                                            ]
                       . beta        = TVar @lhs.betaUnique
-                      . conGuard    = [ (@guardExpression.beta .==. boolType) @cinfoGuard ]
+                      . conGuard    = [ (@guardExpression.beta .==. boolQualType) @cinfoGuard ]
                       . conThen     = [ (@thenExpression.beta  .==. @beta   ) @cinfoThen  ]
                       . conElse     = [ (@elseExpression.beta  .==. @beta   ) @cinfoElse  ]
 
@@ -324,7 +333,7 @@ SEM Expression
                  . beta          = TVar @lhs.betaUnique
                  . newcon        = case @statements.generatorBeta of
                                       Nothing -> []
-                                      Just b  -> [ (ioType b .==. @beta) @cinfo ]
+                                      Just b  -> [ (ioQualType b .==. @beta) @cinfo ]
 
   | List
       expressions . betaUnique   = @lhs.betaUnique + 2
@@ -347,7 +356,8 @@ SEM Expression
                  . constraints = @conResult .>.
                                  Node [ @conExpr .<. @expression.constraints ]
                  . beta        = TVar @lhs.betaUnique
-                 . typeScheme  = makeTpSchemeFromType @type.self 
+                 . qualType    = convertTypeToQualified @lhs.typeConstructors @type.self
+                 . typeScheme  = makeTpSchemeFromType @qualType 
                  . conResult   = [ (@beta            .::. @typeScheme) @cinfoResult          ]
                  . conExpr     = [ (@expression.beta !::! @typeScheme) @lhs.monos @cinfoExpr ]
 
@@ -374,7 +384,7 @@ SEM Expression
             . overloaded   = case M.lookup enumFromName (typeEnvironment @lhs.importEnvironment) of
                                 Just scheme -> isOverloaded scheme
                                 Nothing     -> False
-            . elementType  = if @overloaded then TVar (@lhs.betaUnique + 1) else intType
+            . elementType  = if @overloaded then TVar (@lhs.betaUnique + 1) else intQualType
             . conPredicate = if @overloaded then [predicate (Predicate "Enum" @elementType) @cinfoPred] else []
             . conList      = [ (listType @elementType .==. @beta) @cinfoResult ]
             . conFrom      = [ (@from.beta .==. @elementType) @cinfoFrom ]
@@ -395,7 +405,7 @@ SEM Expression
        expression . betaUnique  = @lhs.betaUnique + 1
        loc        . constraints = @newcon .>. Node [ @expression.constraints ]
                   . beta        = TVar @lhs.betaUnique
-                  . newcon      = [ (floatType .->. floatType .==. @expression.beta .->. @beta) @cinfo]
+                  . newcon      = [ (floatQualType .->. floatQualType .==. @expression.beta .->. @beta) @cinfo]
 
 SEM Expressions
 
@@ -424,7 +434,7 @@ SEM MaybeExpression
 ---------------------------------------------------------------------------------------
 -- Type Inferencing : GuardedExpression, GuardedExpressions
 
-ATTR GuardedExpressions GuardedExpression [ numberOfGuards:Int monos:Monos betaRight:Tp | betaUnique:Int | assumptions:Assumptions ]
+ATTR GuardedExpressions GuardedExpression [ typeConstructors : TypeConstructorEnvironment numberOfGuards:Int monos:Monos betaRight:Tp | betaUnique:Int | assumptions:Assumptions ]
 ATTR GuardedExpressions                   [ | | constraintslist:ConstraintSets ]
 ATTR                    GuardedExpression [ | | constraints:ConstraintSet      ]
 
@@ -435,7 +445,7 @@ SEM GuardedExpression
                                , @newconExpr  .<. @expression.constraints
                                ]
           . assumptions = @guard.assumptions `combine` @expression.assumptions
-      loc . newconGuard = [ (@guard.beta .==. boolType) @cinfoGuard ]
+      loc . newconGuard = [ (@guard.beta .==. boolQualType) @cinfoGuard ]
           . newconExpr  = [ (@expression.beta .==. @lhs.betaRight) @cinfoExpr ]
 
 SEM GuardedExpressions
@@ -452,7 +462,7 @@ SEM GuardedExpressions
 ---------------------------------------------------------------------------------------
 -- Type Inferencing : Pattern
 
-ATTR Pattern Patterns [ monos:Monos | betaUnique:Int | environment:PatternAssumptions ]
+ATTR Pattern Patterns [ typeConstructors : TypeConstructorEnvironment monos:Monos | betaUnique:Int | environment:PatternAssumptions ]
 ATTR Pattern          [ | | beta:Tp constraints:ConstraintSet ]
 ATTR         Patterns [ | | betas:Tps constraintslist:ConstraintSets numberOfPatterns:Int ]
 
@@ -553,7 +563,7 @@ SEM Pattern
       loc . constraints = listTree @newcon
           . beta        = TVar @lhs.betaUnique
           . newcon      = -- The parser only accepts a literal after '-.' in a Pattern
-                          [ (floatType .==. @beta) @cinfo ]
+                          [ (floatQualType .==. @beta) @cinfo ]
 
 SEM Patterns
 
@@ -572,7 +582,7 @@ SEM Patterns
 ---------------------------------------------------------------------------------------
 -- Type Inferencing : Alternative, Alternatives
 
-ATTR Alternative Alternatives [ betaLeft:Tp betaRight:Tp monos:Monos | betaUnique:Int | assumptions:Assumptions ]
+ATTR Alternative Alternatives [ typeConstructors : TypeConstructorEnvironment betaLeft:Tp betaRight:Tp monos:Monos | betaUnique:Int | assumptions:Assumptions ]
 ATTR Alternative              [ | | constraints:ConstraintSet ]
 ATTR             Alternatives [ | | constraintslist:ConstraintSets ]
 
@@ -608,7 +618,7 @@ SEM Alternatives
 ---------------------------------------------------------------------------------------
 -- Type Inferencing : Statement, Statements, Qualifier, Qualifiers
 
-ATTR Statement Statements Qualifier Qualifiers [ | assumptions:Assumptions betaUnique:Int constraints:ConstraintSet | ]
+ATTR Statement Statements Qualifier Qualifiers [ typeConstructors : TypeConstructorEnvironment | assumptions:Assumptions betaUnique:Int constraints:ConstraintSet | ]
 ATTR Statement Statements                      [ | generatorBeta:{Maybe Tp} | ]
 ATTR Statement            Qualifier Qualifiers [ | monos:Monos | ]
 ATTR           Statements                      [ monos:Monos | | ]
@@ -624,7 +634,7 @@ SEM Statement
                                          , @lhs.constraints
                                          ]
                  . beta           = TVar @lhs.betaUnique
-                 . newcon         = [ (@expression.beta .==. ioType @beta) @cinfo ]
+                 . newcon         = [ (@expression.beta .==. ioQualType @beta) @cinfo ]
 
   | Let
       lhs          . generatorBeta  = Nothing
@@ -646,7 +656,7 @@ SEM Statement
                                      , @expression.constraints
                                      , @lhs.constraints
                                      ]
-          . newcon        = [ (@expression.beta .==. ioType @pattern.beta) @cinfoResult ]
+          . newcon        = [ (@expression.beta .==. ioQualType @pattern.beta) @cinfoResult ]
           . (csetBinds,assumptions') = (@pattern.environment .===. @lhs.assumptions) @cinfoBind
 
 SEM Statements
@@ -667,7 +677,7 @@ SEM Qualifier
       loc . locConstraints = Node [ @newcon .<. @guard.constraints
                                   , @lhs.constraints
                                   ]
-          . newcon      = [ (@guard.beta .==. boolType) @cinfo ]
+          . newcon      = [ (@guard.beta .==. boolQualType) @cinfo ]
 
   | Let   declarations . bindingGroups  = []
           (lhs.assumptions, lhs.constraints, loc.inheritedBDG, loc.chunkNr, lhs.betaUnique, loc.implicitsFM) = 
@@ -704,7 +714,7 @@ SEM Qualifiers
 ATTR Literal [ | | literalType:Tp ]
 
 SEM Literal
-  | Int     lhs . literalType = intType
-  | Char    lhs . literalType = charType
-  | String  lhs . literalType = stringType
-  | Float   lhs . literalType = floatType
+  | Int     lhs . literalType = intQualType    --intType
+  | Char    lhs . literalType = charQualType   --charType
+  | String  lhs . literalType = stringQualType --stringType
+  | Float   lhs . literalType = floatQualType  --floatType

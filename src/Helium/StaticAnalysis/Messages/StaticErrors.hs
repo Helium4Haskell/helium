@@ -526,3 +526,8 @@ errorLogCode anError = case anError of
                        , (ExportConstructor,"ec"), (ExportTypeConstructorOrClass,"et"), (Fixity         ,"fx")
                        , (ImportConstructor,"ic"), (ImportTypeConstructorOrClass,"it"), (ImportVariable ,"iv")
                        ]                    
+
+convertError :: (Tp -> Tp) -> Error -> Error
+convertError f (CannotDerive n tps) = CannotDerive n (map f tps)
+convertError f (OverlappingInstance str tp) = OverlappingInstance str (f tp)
+convertError _ err = err

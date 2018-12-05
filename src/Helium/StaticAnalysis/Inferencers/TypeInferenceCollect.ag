@@ -39,7 +39,8 @@ SEM Module
 
 SEM Body
   | Body   loc . inferredTypes      = findInferredTypes @lhs.typeschemeMap @implicitsFM
-           lhs . collectWarnings    = missingTypeSignature True @declarations.simplePatNames @inferredTypes 
+           lhs . collectWarnings    = map (convertWarnings (typeConstructors @lhs.importEnvironment)) . filter notQualifiedWarnings $ 
+                                      missingTypeSignature True @declarations.simplePatNames @inferredTypes 
                                       ++ @declarations.collectWarnings
                . collectErrors      = restrictedNameErrors @inferredTypes @declarations.restrictedNames
                                       ++ @declarations.collectErrors
@@ -96,12 +97,22 @@ restrictedNameErrors env =
                    Nothing     -> []
    in concatMap f
 
+notQualifiedWarnings :: Warning -> Bool
+notQualifiedWarnings (NoTypeDef name _ _ _) = (not . isQualified) name
+notQualifiedWarnings _                      = True
+
+convertWarnings :: TypeConstructorEnvironment -> Warning -> Warning
+convertWarnings env (NoTypeDef name tpschem b1 b2) = NoTypeDef name (unqualifyTpScheme env tpschem) b1 b2
+convertWarnings env (MissingPatterns ra na tp ps str1 str2) = MissingPatterns ra na (unqualifyTp env tp) ps str1 str2
+convertWarnings env (SignatureTooSpecific na tps1 tps2) = SignatureTooSpecific na (unqualifyTpScheme env tps1) (unqualifyTpScheme env tps2)
+convertWarnings _ war = war
+
 }
 
 ----------------------------------------------------------------------------------------
 -- Collecting inferred top level types
 
-ATTR Body [ |  | toplevelTypes : TypeEnvironment ]   
+ATTR Body [|  | toplevelTypes : TypeEnvironment ]   
   
 SEM Body
   | Hole   lhs . toplevelTypes = M.empty
@@ -187,7 +198,7 @@ SEM MaybeDeclarations | Just    declarations . typeSignatures = M.empty
 SEM Declaration
   | TypeSignature
       lhs . typeSignatures = @lhs.typeSignatures `M.union` (M.fromList [ (name, @typeScheme) | name <- @names.self ])
-      loc . typeScheme     = makeTpSchemeFromType @type.self
+      loc . typeScheme     = makeTpSchemeFromType (convertTypeToQualified @lhs.typeConstructors @type.self)
 
 --------------------------------
 -- Derived instances
@@ -196,7 +207,7 @@ ATTR Module -> Declaration [ | | collectInstances USE { ++ } { [] } : {[(Name, I
 
 SEM Declaration
   | Data
-       lhs . collectInstances = [ (cl, makeInstance (show cl) (length @simpletype.typevariables) (show @simpletype.name) ) 
+       lhs . collectInstances = [ (cl, makeInstance (show cl) (length @simpletype.typevariables) (show $ addQualified @lhs.moduleQual @simpletype.name) ) 
                                 | cl <- @derivings.self 
                                 ]
 

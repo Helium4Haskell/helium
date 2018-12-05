@@ -50,7 +50,7 @@ topLevelScopeInfo :: ScopeInfo -> [[Name]] -> ScopeInfo
 topLevelScopeInfo (xs, _, _) doubles = (xs ++ doubles, [], [])
 
 makeErrors :: [(ScopeInfo, Entity)] -> Errors
-makeErrors xs = [ Duplicated entity ys | ((yss, _, _), entity) <- xs, ys <- yss ]
+makeErrors xs = [ Duplicated entity ys | ((yss, _, _), entity) <- xs, ys <- yss, all (not . isQualified) ys ]
 
 makeWarnings :: [(ScopeInfo, Entity)] -> Warnings
 makeWarnings xs =  [ Unused entity name | ((_, names, _), entity) <- xs, name <- names ]

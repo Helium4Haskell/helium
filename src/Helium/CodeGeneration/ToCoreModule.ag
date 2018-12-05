@@ -48,7 +48,7 @@ insertedMain toplevelTypes =
                         var "$primPutStrLn" `app_` 
                             (var "$primPackedToString" `app_`
                                 packedString "<<overloaded function>>")
-                    | isIOType tp -> 
+                    | (isIOType tp || isQualIOType tp) -> 
                         var name
                     | otherwise ->
                         var "$primPutStrLn" `app_` 

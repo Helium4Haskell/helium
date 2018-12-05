@@ -65,7 +65,8 @@ SEM Module
   | Module   lhs . errors = filter (\err -> filterRemovedNames @removedEntities err 
                                          && filterDerivedNames @derivedRanges err) @allErrors
                  . warnings  = @scopeWarnings ++ @warnings                                        
-             loc . allErrors = concat [ @exportErrors
+             loc . allErrors = map (convertError (unqualifyTp @typeConstructors)) $ concat 
+                                      [ @exportErrors
                                       , @scopeErrors
                                       , @miscerrors
                                       , if KindInferencing `elem` @lhs.options then [] else @kindErrors

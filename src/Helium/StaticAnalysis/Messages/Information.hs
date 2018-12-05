@@ -50,7 +50,7 @@ showInformation reportNotFound options importEnv =
       
           datatypeconstructor =
              case lookupWithKey (nameFromString string) (typeConstructors importEnv) of
-                Just (name, i) | not (M.member name (typeSynonyms importEnv))  
+                Just (name, (i,_)) | not (M.member name (typeSynonyms importEnv))  
                    -> [DataTypeConstructor name i (findValueConstructors name importEnv)]
                 _  -> []
       

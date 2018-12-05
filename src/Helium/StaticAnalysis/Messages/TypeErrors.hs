@@ -83,8 +83,8 @@ makeUnresolvedOverloadingError source description (functionType, usedAsType) =
                  ]
    in TypeError [rangeOfSource source] message table []
       
-makeReductionError :: UHA_Source -> Either (TpScheme, Tp) (String, Maybe Tp) -> ClassEnvironment -> Predicate -> TypeError
-makeReductionError source extra classEnvironment (Predicate className predicateTp) =
+makeReductionError :: UHA_Source -> Either (TpScheme, Tp) (String, Maybe Tp) -> ClassEnvironment -> (Tp -> Tp) -> Predicate -> TypeError
+makeReductionError source extra classEnvironment unqualifier (Predicate className predicateTp) =
    let location = either (const "function") fst extra
        message  = [ MessageOneLiner $ MessageString $ "Type error in overloaded " ++ location ]
        tab1     = case extra of 
@@ -110,7 +110,7 @@ makeReductionError source extra classEnvironment (Predicate className predicateT
               _   -> "valid instances of "++className++" are "++prettyAndList valids
          
     valids :: [String]
-    valids = let tps              = [ tp | (Predicate _ tp, _) <- instances className classEnvironment ]
+    valids = let tps              = [ unqualifier tp | (Predicate _ tp, _) <- instances className classEnvironment ]
                  (tuples, others) = let p (TCon s) = isTupleConstructor s
                                         p _        = False
                                     in partition (p . fst . leftSpine) tps
@@ -127,3 +127,10 @@ makeRestrictedButOverloadedError name scheme =
                  ]
        hint    = "Only functions and simple patterns can have an overloaded type"
    in TypeError [getNameRange name] [message] table [("hint", MessageString hint)]
+
+convertTypeError :: (Name -> Name) -> TypeError -> TypeError
+convertTypeError f (TypeError ran lines table hints) = 
+   let newtab = map (\(b, block1, block2) -> (b, changeMessageBlock f block1, changeMessageBlock f block2)) table
+       newlines = map (changeMessageLine f) lines
+       newhints = map (\(str, block) -> (str, changeMessageBlock f block)) hints
+   in TypeError ran newlines newtab newhints

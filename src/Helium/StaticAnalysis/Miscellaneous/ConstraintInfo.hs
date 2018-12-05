@@ -288,8 +288,8 @@ tooGeneralLabels = [skolemVersusConstantLabel, skolemVersusSkolemLabel, escaping
 -- TODO: get rid of the TypeError and TypeErrorHint data types, and move the following two functions
 -- to the module TypeErrors
     
-makeTypeErrors :: Substitution sub => [Option] -> ClassEnvironment -> OrderedTypeSynonyms -> sub -> [(ConstraintInfo, ErrorLabel)] -> TypeErrors
-makeTypeErrors options classEnv synonyms sub errors =
+makeTypeErrors :: Substitution sub => [Option] -> ClassEnvironment -> (Tp -> Tp) -> OrderedTypeSynonyms -> sub -> [(ConstraintInfo, ErrorLabel)] -> TypeErrors
+makeTypeErrors options classEnv unqualifier synonyms sub errors =
    let --comp l1 l2
        --   | l1 `elem` tooGeneralLabels && l2 `elem` tooGeneralLabels = EQ
        --   | otherwise = l1 `compare` l2
@@ -371,7 +371,7 @@ makeTypeErrors options classEnv synonyms sub errors =
                       pred' = let err = internalError "ConstraintInfo" "makeTypeErrors" 
                                                        "unknown predicate which resulted in a reduction error"
                                in fromMaybe err $ maybeReductionErrorPredicate info
-                  in special info (sub |-> makeReductionError source extra classEnv pred')
+                  in special info (sub |-> makeReductionError source extra classEnv unqualifier pred')
            in (4, map f infos)     
   
       -- ambiguous class predicates
