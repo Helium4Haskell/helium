@@ -221,6 +221,7 @@ Library
     Helium.Utils.Similarity
     Helium.Utils.Texts
     Helium.Utils.Utils
+    Helium.Utils.QualifiedTypes
   Other-modules:
     
 
