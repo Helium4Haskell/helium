@@ -1,0 +1,10 @@
+Prelude is up to date
+Compiling exports/Qual1.hs
+Compilation successful
+Compiling exports/Qual4.hs
+(31,8): Type error in right-hand side
+ expression       : listtest
+   type           : Q.Listt3 Int
+   does not match : Listt3 Int
+
+Compilation failed with 1 error

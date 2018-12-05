@@ -14,9 +14,9 @@ _ /** z = 2 * g * z -- 18 * z
 
 infixl 6 /**
 
-data Listt a = a :> a | Empty
+data Listt5 a = a :> a | Empty
 
-type Hello = Int
+type Hello2 = Int
 
 (+) :: Int -> Int -> Int
 _ + _ = 5

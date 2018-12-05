@@ -5,4 +5,4 @@ import ExportBasic2
 z :: Int
 z = 8
 
-data Bool = True
+data Bool2 = True

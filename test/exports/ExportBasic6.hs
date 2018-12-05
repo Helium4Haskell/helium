@@ -1,4 +1,4 @@
-module ExportBasic6(Listt((:>)), Listt(Empty), div, z, (+)) where
+module ExportBasic6(Listt6((:>)), Listt6(Empty), div, z, (+)) where
 
 import Prelude hiding ((+))
 import ExportBasic3
@@ -15,9 +15,9 @@ _ /** l = 2 * g * l -- 18 * l
 
 infixl 6 /**
 
-data Listt a = a :> (Listt a) | Empty
+data Listt6 a = a :> (Listt6 a) | Empty
 
-type Hello = Int
+type Hello2 = Int
 
 (+) :: Int -> Int -> Int
 _ + _ = 5
