@@ -56,7 +56,7 @@ ATTR Expression RightHandSide
 SEM Module
   | Module   loc . (namesInScope, unboundNames, scopeInfo) = changeOfScope (@scopeNoConflicts) @body.unboundNames []
              loc . (scopeNoConflicts, ambiguousConflicts) = uniqueAppearance (mergeSameOriginName @initialScope ++ @declNoConflicts)
-             loc . (declNoConflicts , declDouble) = uniqueAppearance @body.declVarNames
+             loc . (declNoConflicts , declDouble) = (\(x,y) -> (concatMap (includeQualifiedName @moduleQual) x, y)) $ uniqueAppearance @body.declVarNames
              body . counter = 0
                  
 SEM MaybeDeclarations
@@ -210,4 +210,7 @@ mergeSameOriginName = map head
        
 nextUnique :: Num a => a -> (a, a)         
 nextUnique n = (n+1, n)
+
+includeQualifiedName :: [String] -> Name -> [Name]
+includeQualifiedName qual n = addQualified qual n : [n]
 }

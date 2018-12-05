@@ -44,8 +44,8 @@ import Top.Types
 import Helium.StaticAnalysis.Messages.StaticErrors
 import Helium.StaticAnalysis.Messages.Warnings
 import Helium.StaticAnalysis.Messages.Messages
-import Data.List
 import Helium.Utils.Utils ( internalError, minInt, maxInt )
+import Helium.Utils.QualifiedTypes
 import Helium.StaticAnalysis.Miscellaneous.TypeConversion
 import Helium.CodeGeneration.DerivingShow
 
@@ -55,7 +55,8 @@ import Helium.ModuleSystem.ImportEnvironment
 import Helium.ModuleSystem.GatherImports (ModuleDecls)
 import Helium.Parser.OperatorTable
 import Data.Char ( isUpper )
-
+import Data.List
+import Data.Maybe (fromMaybe)
 }
 
 -- combine all the collected errors, then filter out the "entity is undefined" 

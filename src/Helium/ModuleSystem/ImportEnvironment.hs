@@ -24,7 +24,7 @@ import Data.Function (on)
 
 type TypeEnvironment             = M.Map Name TpScheme {- Type scheme-}
 type ValueConstructorEnvironment = M.Map Name (Name, TpScheme) {-Parent, Type scheme-}
-type TypeConstructorEnvironment  = M.Map Name Int {-Arity -}
+type TypeConstructorEnvironment  = M.Map Name (Int, Name) {-Arity, Original qualified name -}
 type TypeSynonymEnvironment      = M.Map Name (Int, Tps -> Tp) {-Arity, function-}
 type ClassMemberEnvironment      = M.Map Name [(Name, Bool)] {-Member, original module-}
 
@@ -56,16 +56,13 @@ emptyEnvironment = ImportEnvironment
    , typingStrategies  = [] 
    }
                                               
-addTypeConstructor :: Name -> Int -> ImportEnvironment -> ImportEnvironment                      
-addTypeConstructor name int importenv = 
-   importenv {typeConstructors = M.insert name int (typeConstructors importenv)} 
+addTypeConstructor :: Name -> (Int, Name) -> ImportEnvironment -> ImportEnvironment                      
+addTypeConstructor name (int, fullname) importenv = 
+   importenv {typeConstructors = M.insert name (int, fullname) (typeConstructors importenv)} 
 
--- add a type synonym also to the type constructor environment   
 addTypeSynonym :: Name -> (Int,Tps -> Tp) -> ImportEnvironment -> ImportEnvironment                      
 addTypeSynonym name (arity, function) importenv = 
-   importenv { typeSynonyms     = M.insert name (arity, function) (typeSynonyms importenv)
-             , typeConstructors = M.insert name arity (typeConstructors importenv)
-             } 
+   importenv { typeSynonyms     = M.insert name (arity, function) (typeSynonyms importenv) } 
 
 addType :: Name -> TpScheme -> ImportEnvironment -> ImportEnvironment                      
 addType name tpscheme importenv = 
@@ -86,7 +83,7 @@ addOperator name pair importenv =
 setValueConstructors :: M.Map Name (Name, TpScheme) -> ImportEnvironment -> ImportEnvironment  
 setValueConstructors new importenv = importenv {valueConstructors = new} 
 
-setTypeConstructors :: M.Map Name Int -> ImportEnvironment -> ImportEnvironment     
+setTypeConstructors :: M.Map Name (Int, Name) -> ImportEnvironment -> ImportEnvironment     
 setTypeConstructors new importenv = importenv {typeConstructors = new}
 
 setTypeSynonyms :: M.Map Name (Int,Tps -> Tp) -> ImportEnvironment -> ImportEnvironment  
@@ -196,13 +193,22 @@ createClassEnvironment importenv =
          splitDictName x = internalError "ImportEnvironment" "splitDictName" ("illegal dictionary: " ++ show x)
          arity s | s == "()" = 0
                  | isTupleConstructor s = length s - 1
-                 | otherwise = M.findWithDefault
+                 | otherwise = fst $ M.findWithDefault
                                   (internalError "ImportEnvironment" "splitDictName" ("unknown type constructor: " ++ show s))                            
                                   (nameFromString s)
-                                  (typeConstructors importenv) 
-         dictTuples = [ (c, makeInstance c (arity t) t) 
+                                  (typeConstructors importenv)
+         getQualName s | s == "()" = s
+                       | isTupleConstructor s = s
+                       | isListConstructor s = s
+                       | otherwise = getNameName . snd $ M.findWithDefault
+                           (internalError "ImportEnvironment" "splitDictName" ("unknown type constructor: " ++ show s))
+                           (nameFromString s)
+                           (typeConstructors importenv)
+         dictTuples = [ (c, makeInstance c (arity t) (getQualName t) ) 
                       | d <- dicts, let (c, t) = splitDictName d 
                       ]
+         isListConstructor "[]" = True
+         isListConstructor _    = False
          
          classEnv = foldr 
                     (\(className, inst) e -> insertInstance className inst e) 
@@ -266,7 +272,7 @@ instance Show ImportEnvironment where
        
        datatypes = 
           let allDatas = filter ((`notElem` M.keys tss). fst) (M.assocs tcs)
-              f (n,i)  = unwords ("data" : showNameAsVariable n : take i variableList)
+              f (n,(i,_))  = unwords ("data" : showNameAsVariable n : take i variableList)
           in showWithTitle "Data types" (showEm f allDatas)
        
        typesynonyms =

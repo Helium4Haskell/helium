@@ -6,7 +6,7 @@
     Portability :  portable
 -}
 
-module Helium.ModuleSystem.CoreToImportEnv(getImportEnvironment) where
+module Helium.ModuleSystem.CoreToImportEnv(getImportEnvironment, originFromCustoms) where
 
 import Lvm.Core.Expr
 import Lvm.Core.Utils
@@ -49,7 +49,7 @@ nameFromCustoms importedInModule importedFromModId conName (_ : cs) = nameFromCu
 originFromCustoms :: [Custom] -> String
 originFromCustoms [] =
     internalError "CoreToImportEnv" "originFromCustoms" 
-        ("something imported without an origin, but this should be fixed in import phase.")
+        ("something imported without an origin, maybe you should recompile (base) libraries or update lvm.")
 originFromCustoms ( CustomDecl (DeclKindCustom ident) [CustomName originid] : cs)
     | stringFromId ident == "origin" = stringFromId originid
     | otherwise                      = originFromCustoms cs
@@ -131,6 +131,11 @@ makeImportName importedInMod importedFromMod origin n = setNameOrigin origin $
         (nameFromId n)
         (makeImportRange (idFromString importedInMod) importedFromMod)
 
+makeFullQualifiedImportName:: String -> Name -> Name
+makeFullQualifiedImportName origin = 
+    let (modu, _) = break (==':') origin 
+    in addQualified (getQualifiedFromString modu)
+
 getImportEnvironment :: String -> [CoreDecl] -> ImportEnvironment
 getImportEnvironment importedInModule = foldr insert emptyEnvironment
    where
@@ -172,9 +177,12 @@ getImportEnvironment importedInModule = foldr insert emptyEnvironment
                       , declCustoms = cs 
                       } 
                       | stringFromId ident == "data" ->
-              addTypeConstructor
-                 (makeImportName importedInModule importedFromModId (originFromCustoms cs) n)
-                 (arityFromCustoms (stringFromId n) cs)
+              let origin = (originFromCustoms cs)
+                  typename = makeImportName importedInModule importedFromModId origin n
+                  fullname = makeFullQualifiedImportName origin typename
+                  pair     = (arityFromCustoms (stringFromId n) cs, fullname)
+              in addTypeConstructor typename pair
+                 
             
            -- type synonym declarations
            -- important: a type synonym also introduces a new type constructor!
@@ -184,9 +192,12 @@ getImportEnvironment importedInModule = foldr insert emptyEnvironment
                       , declCustoms = cs
                       }
                       | stringFromId ident == "typedecl" ->
-              let typename = makeImportName importedInModule importedFromModId (originFromCustoms cs) n
+              let origin = (originFromCustoms cs)
+                  typename = makeImportName importedInModule importedFromModId origin n
+                  fullname = makeFullQualifiedImportName origin typename
                   pair = typeSynFromCustoms (stringFromId n) cs
-              in addTypeSynonym typename pair . addTypeConstructor typename (fst pair)
+                  pair2 = (fst pair, fullname)
+              in addTypeSynonym fullname pair . addTypeConstructor typename pair2
                              
            -- infix decls
            DeclCustom { declName    = n
