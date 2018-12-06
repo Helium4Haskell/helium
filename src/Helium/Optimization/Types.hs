@@ -76,7 +76,7 @@ infixr 5 |->
 (|->) :: T -> T -> T
 t1 |-> t2 = TAp (TAp (TCon "->") t1) t2
 
-splitCons :: T -> ([T],T) -- TODO: rename splits type not constructor (a->b->c)=>([a,b],c)
+splitCons :: T -> ([T],T)
 splitCons (TAp (TAp (TCon "->") t1) t2) =
     let (t3,t4) = splitCons t2
     in  (t1:t3, t4)
@@ -323,6 +323,18 @@ data Constraint
     | EqCond String Ann Ann Ann                 -- phi1 == phi2 |> phi3
     deriving (Show, Eq, Ord)
 
+countCt :: Constraints -> Int
+countCt (EqTs _ ts1 ts2:xs) = 1 + countCtTs ts1 + countCtTs ts2 + countCt xs
+countCt (EqInst _ _ ts:xs) = 1 + countCtTs ts + countCt xs
+countCt (EqGen _ ts (_,ct,_):xs) = 1 + countCtTs ts + countCt ct + countCt xs
+countCt (x:xs) = 1 + countCt xs
+countCt [] = 0
+
+countCtTs :: Ts -> Int
+countCtTs (TsVar _) = 0
+countCtTs (Ts _ ct _) = countCt ct
+countCtTs (TsAnn _ ts) = countCtTs ts
+
 {- Constraint solver -}
 solveConstraints :: Constraints -> Fresh (Sub,Constraints)
 solveConstraints ct = do
@@ -447,6 +459,7 @@ tryUnify t1 t2 = traceUnify t1 t2 $ case (t1, t2) of
         "Show" -> tryUnify (t3 |-> (TAp (TCon "[]") (TCon "Char"))) t2
         _ -> failUnify ("No function for " ++ s1 ++ "?") t1 t2
     (_, TPred _ _) -> tryUnify t2 t1
+
     _ -> failUnify "?" t1 t2
 
 tryUnifyTs :: Ts -> Ts -> Either String Sub
