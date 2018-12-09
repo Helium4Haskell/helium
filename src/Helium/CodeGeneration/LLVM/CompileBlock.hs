@@ -33,7 +33,7 @@ import LLVM.AST as AST
 import LLVM.AST.Visibility
 import LLVM.AST.CallingConvention
 import LLVM.AST.Linkage
-import LLVM.AST.Constant (Constant(Int, Array, Undef))
+import LLVM.AST.Constant (Constant(Int, Array, Undef, GlobalReference))
 import qualified LLVM.AST.IntegerPredicate as IntegerPredicate
 
 import Data.List (maximumBy, group, sort, partition)
@@ -157,7 +157,7 @@ compileExpression env supply (Iridium.Literal (Iridium.LitString value)) name =
     vectorType = ArrayType (fromIntegral $ length value) (IntegerType 32)
     vector = Array (IntegerType 32) $ map (\c -> Int 32 $ fromIntegral $ fromEnum c) value
 -- TODO: Float literals
-compileExpression env supply (Iridium.Call to@(Iridium.Global global _) args) name =
+compileExpression env supply (Iridium.Call to@(Iridium.GlobalFunction global _) args) name =
   [ name := Call
       { tailCallKind = Nothing
       , callingConvention = compileCallingConvention convention

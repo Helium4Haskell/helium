@@ -81,7 +81,9 @@ data CallingConvention
 data Local = Local { localName :: !Id, localType :: !PrimitiveType }
   deriving (Eq, Ord)
 
-data Global = Global Id FunctionType
+data Global
+  = GlobalFunction !Id !FunctionType
+  | GlobalVariable !Id !PrimitiveType
   deriving (Eq, Ord)
 
 data Variable
@@ -117,7 +119,7 @@ data Bind = Bind { bindVar :: !Id, bindTarget :: !BindTarget, bindArguments :: !
   deriving (Eq, Ord)
 
 data BindTarget
-  = BindTargetFunction !Variable
+  = BindTargetFunction !Variable 
   | BindTargetThunk !Variable
   | BindTargetConstructor !DataTypeConstructor
   | BindTargetTuple !Arity
@@ -132,7 +134,7 @@ data MatchTarget
 bindType :: Bind -> PrimitiveType
 bindType (Bind _ (BindTargetConstructor (DataTypeConstructor dataName _ _)) _) = TypeDataType dataName
 bindType (Bind _ (BindTargetTuple _) args) = TypeTuple $ length args
-bindType (Bind _ (BindTargetFunction (VarGlobal (Global fn (FunctionType fnargs _)))) args)
+bindType (Bind _ (BindTargetFunction (VarGlobal (GlobalFunction fn (FunctionType fnargs _)))) args)
   | length args >= length fnargs = TypeAnyThunk
   | otherwise = TypeFunction
 bindType _ = TypeAnyThunk
@@ -165,7 +167,7 @@ typeOfExpr :: Expr -> PrimitiveType
 typeOfExpr (Literal (LitDouble _)) = TypeDouble
 typeOfExpr (Literal (LitString _)) = TypeDataType (idFromString "[]")
 typeOfExpr (Literal _) = TypeInt
-typeOfExpr (Call (Global _ (FunctionType _ ret)) _) = ret
+typeOfExpr (Call (GlobalFunction _ (FunctionType _ ret)) _) = ret
 typeOfExpr (Eval _) = TypeAnyWHNF
 typeOfExpr (Var v) = variableType v
 typeOfExpr (Cast _ t) = t
@@ -176,11 +178,13 @@ typeOfExpr (Undefined t) = t
 
 variableType :: Variable -> PrimitiveType
 variableType (VarLocal (Local _ t)) = t
-variableType (VarGlobal (Global _ fntype)) = TypeGlobalFunction fntype
+variableType (VarGlobal (GlobalFunction _ fntype)) = TypeGlobalFunction fntype
+variableType (VarGlobal (GlobalVariable _ t)) = t
 
 variableName :: Variable -> Id
 variableName (VarLocal (Local x _)) = x
-variableName (VarGlobal (Global x _)) = x
+variableName (VarGlobal (GlobalFunction x _)) = x
+variableName (VarGlobal (GlobalVariable x _)) = x
 
 callingConvention :: [Annotation] -> CallingConvention
 callingConvention [] = CCFast -- Default

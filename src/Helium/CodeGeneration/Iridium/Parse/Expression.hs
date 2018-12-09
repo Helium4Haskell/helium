@@ -19,7 +19,15 @@ pLiteral = do
     _ -> pError "expected literal"
 
 pGlobal :: Parser Global
-pGlobal = Global <$ pToken '@' <*> pId <* pToken ':' <* pWhitespace <*> pFunctionType
+pGlobal = do
+  pToken '@'
+  name <- pId
+  pToken ':'
+  pWhitespace
+  c <- lookahead
+  case c of
+    '(' -> GlobalFunction name <$> pFunctionType
+    _ -> GlobalVariable name <$> pType
 
 pLocal :: Parser Local
 pLocal = Local <$ pToken '%' <*> pId <* pToken ':' <* pWhitespace <*> pType

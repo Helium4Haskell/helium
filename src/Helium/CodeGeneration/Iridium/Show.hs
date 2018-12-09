@@ -115,7 +115,8 @@ instance Show Local where
   show (Local name t) = "%" ++ showId name ++ ": " ++ show t
 
 instance Show Global where
-  show (Global name fntype) = "@" ++ showId name ++ ": " ++ show fntype
+  show (GlobalFunction name fntype) = "@" ++ showId name ++ ": " ++ show fntype
+  show (GlobalVariable name t) = "@" ++ showId name ++ ": " ++ show t
 
 instance Show Variable where
   show (VarLocal local) = show local

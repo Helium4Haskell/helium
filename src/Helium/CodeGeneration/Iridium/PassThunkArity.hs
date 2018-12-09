@@ -1,6 +1,9 @@
 -- Assures that primary thunks (which point to function pointers) are not overstaturated
 -- and that secondary thunks (which point to other thunks) have exactly one argument.
 
+-- TODO: If a global without arguments is the target of a thunk, we need to add a cast from global to local here,
+-- as a bind with zero arguments will cause that the global is not shared.
+
 module Helium.CodeGeneration.Iridium.PassThunkArity (passThunkArity) where
 
 import Helium.CodeGeneration.Iridium.Data
@@ -20,7 +23,7 @@ handleInstruction supply (Match var target fields next) = Match var target field
 handleInstruction _ instr = instr -- Jump, Case, Return and Unreachable
 
 handleBind :: NameSupply -> Bind -> [Bind]
-handleBind supply (Bind var target@(BindTargetFunction (VarGlobal (Global _ (FunctionType args returnType)))) params)
+handleBind supply (Bind var target@(BindTargetFunction (VarGlobal (GlobalFunction _ (FunctionType args returnType)))) params)
   | length params > arity = bindFn : bindThunks
   -- Too many arguments are passed, the thunk is oversaturated.
   where
@@ -34,6 +37,7 @@ handleBind supply (Bind var target@(BindTargetFunction (VarGlobal (Global _ (Fun
   (varTemp, supply') = freshIdFromId var supply
   arity = length args
 handleBind supply (Bind var target@(BindTargetThunk _) params)
+  | length params == 0 = error "Secondary thunk must have at least 1 argument"
   | length params > 1 = -- A secondary thunk should have exactly one argument.
   zipWith3 Bind names targets $ map return params
   where

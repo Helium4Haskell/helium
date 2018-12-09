@@ -77,15 +77,15 @@ toStruct env target arity = Right $ Struct Nothing 32 tag fields
       Iridium.BindTargetThunk v -> v
     tag = arity .|. (remaining `shiftL` 16)
     remaining = case var of
-      Iridium.VarLocal _ -> (1 `shiftL` 16) - 1 -- All 16 bits to 1
-      Iridium.VarGlobal (Iridium.Global _ (Iridium.FunctionType args _)) -> length args - arity
+      Iridium.VarGlobal (Iridium.GlobalFunction _ (Iridium.FunctionType args _)) -> length args - arity
+      _ -> (1 `shiftL` 16) - 1 -- All 16 bits to 1
     targetType = case var of
-      Iridium.VarLocal _ -> Iridium.TypeAnyWHNF
-      Iridium.VarGlobal _ -> Iridium.TypeGlobalFunction $ Iridium.FunctionType [Iridium.TypeUnsafePtr] Iridium.TypeAnyWHNF
+      Iridium.VarGlobal (Iridium.GlobalFunction _ _) -> Iridium.TypeGlobalFunction $ Iridium.FunctionType [Iridium.TypeUnsafePtr] Iridium.TypeAnyWHNF
+      _ -> Iridium.TypeAnyWHNF
     fields = StructField targetType Nothing : map (\i -> StructField Iridium.TypeAny (Just i)) [0..arity - 1] 
 
 toTrampolineOperand :: Env -> Iridium.Variable -> Operand
-toTrampolineOperand _ (Iridium.VarGlobal (Iridium.Global fn _)) = ConstantOperand $ Constant.GlobalReference trampolineType $ toNamePrefixed "trampoline$" fn
+toTrampolineOperand _ (Iridium.VarGlobal (Iridium.GlobalFunction fn _)) = ConstantOperand $ Constant.GlobalReference trampolineType $ toNamePrefixed "trampoline$" fn
 toTrampolineOperand env local = toOperand env local
 
 -- A thunk has an additional argument, namely the function. We add that argument here

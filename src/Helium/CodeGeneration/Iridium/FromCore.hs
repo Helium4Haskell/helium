@@ -212,18 +212,17 @@ toInstruction supply env continue (Core.Lit lit) = Let name expr +> ret supply' 
     (name, supply') = freshId supply
     expr = (Literal $ literal lit)
 toInstruction supply env continue (Core.Var var) = case variable of
-  VarGlobal global@(Global _ (FunctionType [] returnType)) ->
-    Let name (Call global []) +> ret supply' env name returnType continue
-  VarGlobal _ ->
+  VarGlobal (GlobalFunction _ (FunctionType (_ : _) _)) ->
     let
       bind = Bind name (BindTargetFunction variable) []
     in
       LetAlloc [bind] +> ret supply' env name TypeFunction continue
-  VarLocal _ ->
-    Let name (Eval $ resolve env var) +> ret supply' env name TypeAnyWHNF continue
+  _ ->
+    Let name (Eval variable) +> ret supply' env name TypeAnyWHNF continue
   where
     variable = resolve env var
     (name, supply') = freshId supply
+    (nameThunk, supply'') = freshId supply'
 
 toInstruction supply env continue expr = case getApplicationOrConstruction expr [] of
   (Left (Core.ConId con), args) ->
@@ -253,7 +252,7 @@ toInstruction supply env continue expr = case getApplicationOrConstruction expr 
           let
             (args', castInstructions) = maybeCasts supply''' env (zip args params)
           in
-            castInstructions +> Let x (Call (Global fn fntype) args') +> ret supplyRet env x returnType continue
+            castInstructions +> Let x (Call (GlobalFunction fn fntype) args') +> ret supplyRet env x returnType continue
         | length params >  length args ->
           -- Not enough arguments, cannot call the function yet. Compile to a thunk.
           -- The thunk is already in WHNF, as the application does not have enough arguments.
@@ -271,7 +270,7 @@ toInstruction supply env continue expr = case getApplicationOrConstruction expr 
             (args', castInstructions) = maybeCasts supply''' env (zip args (params ++ repeat TypeAny))
           in
             castInstructions
-              +> Let x (Call (Global fn fntype) $ take (length params) args')
+              +> Let x (Call (GlobalFunction fn fntype) $ take (length params) args')
               +> LetAlloc [Bind y (BindTargetThunk $ VarLocal $ Local x returnType) $ drop (length params) args']
               +> Let z (Eval $ VarLocal $ Local y TypeAnyThunk)
               +> ret supplyRet env z TypeAnyWHNF continue
@@ -320,10 +319,12 @@ castTo supply var TypeAny to = (newVar, Let nameAnyWhnf (Eval var) . instruction
   where
     (nameAnyWhnf, supply') = freshIdFromId (variableName var) supply
     (newVar, instructions) = maybeCastVariable supply' (VarLocal $ Local nameAnyWhnf TypeAnyWHNF) to
-castTo supply var (TypeGlobalFunction (FunctionType args _)) to = (newVar, LetAlloc [Bind nameFunc (BindTargetFunction var) []] . instructions)
+-- A function type with at least one argument is casted using a `letalloc`.
+-- A function type with no arguments is handled using a normal `Cast` instruction.
+castTo supply var (TypeGlobalFunction (FunctionType (_ : _) _)) to = (newVar, LetAlloc [Bind nameFunc (BindTargetFunction var) []] . instructions)
   where
     (nameFunc, supply') = freshIdFromId (variableName var) supply
-    (newVar, instructions) = maybeCastVariable supply' (VarLocal $ Local nameFunc (if null args then TypeAnyThunk else TypeFunction)) to
+    (newVar, instructions) = maybeCastVariable supply' (VarLocal $ Local nameFunc TypeFunction) to
 castTo supply var _ to = (VarLocal $ Local casted to, Let casted $ Cast var to)
   where
     (casted, _) = freshIdFromId (variableName var) supply
@@ -420,10 +421,12 @@ bind supply env locals (Core.Bind x val) = (castInstructions . targetCast, Bind 
         in (BindTargetConstructor constructor, fields, id)
       Left (Core.ConTag _ arity) -> (BindTargetTuple arity, replicate arity TypeAny, id)
       Right fn -> case resolveFunction env fn of
-        Just fntype@(FunctionType fparams returnType) ->
+        Just fntype@(FunctionType fparams@(_ : _) returnType) ->
           -- The bind might provide more arguments than the arity of the function, if the function returns another function.
           (BindTargetFunction $ resolve env fn, fparams ++ repeat TypeAny, id)
-        Nothing -> 
+        _
+          | null args -> error $ "bind: a secondary thunk cannot have zero arguments"
+        _ ->
           let (t, castInstr) = maybeCast supply2 env fn TypeAnyThunk
           in (BindTargetThunk t, repeat TypeAny, castInstr)
 
@@ -478,7 +481,8 @@ constructorPattern _ = Nothing
 resolve :: TypeEnv -> Id -> Variable
 resolve env name = case valueDeclaration env name of
   ValueConstructor _ -> error "resolve: Constructor cannot be used as a value."
-  ValueFunction fntype _ -> VarGlobal $ Global name fntype
+  ValueFunction (FunctionType [] _) _ -> VarGlobal $ GlobalVariable name TypeAnyThunk
+  ValueFunction fntype _ -> VarGlobal $ GlobalFunction name fntype
   ValueVariable t -> VarLocal $ Local name t
 
 resolveList :: TypeEnv -> [Id] -> [Variable]

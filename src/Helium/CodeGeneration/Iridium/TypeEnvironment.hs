@@ -40,6 +40,7 @@ data ValueDeclaration
 
 typeOf :: TypeEnv -> Id -> PrimitiveType
 typeOf env name = case valueDeclaration env name of
+  ValueFunction (FunctionType [] t) _ -> TypeAnyThunk
   ValueFunction fntype _ -> TypeGlobalFunction fntype
   ValueVariable t -> t
 
@@ -78,8 +79,8 @@ typeEnvForModule (Module _ _ _ dataTypes abstracts methods) = TypeEnv dataTypeMa
     valuesInDataType :: Declaration DataType -> [(Id, ValueDeclaration)]
     valuesInDataType (Declaration name _ _ _ (DataType cs)) = map (\(Declaration conId _ _ _ (DataTypeConstructorDeclaration args)) -> (conId, ValueConstructor $ DataTypeConstructor name conId args)) cs
 
-    valueOfMethod :: Declaration Method -> (Id, ValueDeclaration)
-    valueOfMethod (Declaration name _ _ _ (Method args retType annotations _ _)) = (name, ValueFunction (FunctionType (map localType args) retType) $ callingConvention annotations)
+valueOfMethod :: Declaration Method -> (Id, ValueDeclaration)
+valueOfMethod (Declaration name _ _ _ (Method args retType annotations _ _)) = (name, ValueFunction (FunctionType (map localType args) retType) $ callingConvention annotations)
 
-    valueOfAbstract :: Declaration AbstractMethod -> (Id, ValueDeclaration)
-    valueOfAbstract (Declaration name _ _ _ (AbstractMethod fntype annotations)) = (name, ValueFunction fntype $ callingConvention annotations)
+valueOfAbstract :: Declaration AbstractMethod -> (Id, ValueDeclaration)
+valueOfAbstract (Declaration name _ _ _ (AbstractMethod fntype annotations)) = (name, ValueFunction fntype $ callingConvention annotations)

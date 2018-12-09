@@ -12,7 +12,7 @@ import Data.String(fromString)
 
 import Helium.CodeGeneration.LLVM.Env
 import Helium.CodeGeneration.LLVM.Utils
-import Helium.CodeGeneration.LLVM.CompileType(compileType, compileCallingConvention, voidPointer, toOperand, pointer, taggedThunkPointer)
+import Helium.CodeGeneration.LLVM.CompileType(compileType, compileCallingConvention, voidPointer, toOperand, pointer, taggedThunkPointer, trampolineType, emptyThunkType)
 import Helium.CodeGeneration.LLVM.CompileBlock(compileBlock)
 import Helium.CodeGeneration.LLVM.Struct(Struct(..), StructField(..))
 import Helium.CodeGeneration.LLVM.CompileBind(thunkStruct)
@@ -27,6 +27,8 @@ import qualified LLVM.AST.Global as Global
 import LLVM.AST.Visibility
 import LLVM.AST.CallingConvention
 import LLVM.AST.Linkage
+import LLVM.AST.AddrSpace
+import qualified LLVM.AST.Constant as Constant
 
 -- llvm-hs-pure requires to set a name on the argument of a declared (abstract) function. However, when pretty printing / exporting the
 -- IR this is not used. We thus can use a non-unique name.
@@ -48,7 +50,7 @@ compileMethod env supply (Iridium.Declaration name visible _ _ (Iridium.Method a
     (supply1, supply2) = splitNameSupply supply
 
 toFunction :: Env -> NameSupply -> Id -> Iridium.Visibility -> [Iridium.Annotation] -> [Iridium.Local] -> Iridium.PrimitiveType -> [BasicBlock] -> [Definition]
-toFunction env supply name visible annotations args retType basicBlocks = trampoline ++ [def]
+toFunction env supply name visible annotations args retType basicBlocks = trampoline ++ thunk ++ [def]
   where
     def = GlobalDefinition $ Function
       -- TODO: set Linkage to Private if possible
@@ -105,8 +107,32 @@ toFunction env supply name visible annotations args retType basicBlocks = trampo
         , Global.personalityFunction = Nothing
         , Global.metadata = []
         }
+    thunk :: [Definition]
+    thunk
+      | length args /= 0 = []
+      | otherwise = return $ GlobalDefinition $ GlobalVariable
+        { Global.name = toNamePrefixed "thunk$" name
+        , Global.linkage = linkage
+        , Global.visibility = Default
+        , Global.dllStorageClass = Nothing
+        , Global.threadLocalMode = Nothing
+        , Global.unnamedAddr = Nothing
+        , Global.isConstant = False
+        , Global.type' = emptyThunkType
+        , Global.addrSpace = AddrSpace 0
+        , Global.initializer =
+          if null basicBlocks then Nothing else
+            Just $ Constant.Struct Nothing False
+                [ Constant.Int 64 0 -- GC bits
+                , Constant.Int 64 0 -- Given & remaining argument count
+                , Constant.GlobalReference trampolineType $ toNamePrefixed "trampoline$" name
+                ]
+        , Global.section = Nothing
+        , Global.comdat = Nothing
+        , Global.alignment = 0
+        , Global.metadata = []
+        }
 
--- extractField :: NameSupply -> Env -> Operand -> Struct -> Int -> StructField -> Name -> [Named Instruction]
 trampolineBlock :: NameSupply -> Env -> Id -> CallingConvention -> [Iridium.Local] -> BasicBlock
 trampolineBlock supply env fn callConv args = BasicBlock (mkName "trampoline_entry") instructions ret
   where
@@ -126,7 +152,7 @@ trampolineBlock supply env fn callConv args = BasicBlock (mkName "trampoline_ent
             { tailCallKind = Nothing
             , callingConvention = callConv
             , returnAttributes = []
-            , function = Right $ toOperand env (Iridium.VarGlobal $ Iridium.Global fn $ Iridium.FunctionType (map Iridium.localType args) Iridium.TypeAnyWHNF)
+            , function = Right $ toOperand env (Iridium.VarGlobal $ Iridium.GlobalFunction fn $ Iridium.FunctionType (map Iridium.localType args) Iridium.TypeAnyWHNF)
             , arguments = map (\index -> (LocalReference taggedThunkPointer $ mkName $ "$_arg" ++ show index, [])) [0..arity - 1]
             , functionAttributes = []
             , metadata = []
