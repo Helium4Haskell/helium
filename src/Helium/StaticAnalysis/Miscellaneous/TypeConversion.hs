@@ -208,12 +208,12 @@ showInstanceType (TApp f1 f2) = showInstanceType f1 ++ showInstanceType f2
 showInstanceType (TVar v) = ""
             
 
-class Freshen a where
-    freshen :: Int -> a -> (a, Int)
-    freshenWithMapping :: [(Int, Int)] -> Int -> a -> ([(Int, Int)], (a, Int))
+class Num b => Freshen a b where
+    freshen :: b -> a -> (a, b)
+    freshenWithMapping :: [(b, b)] -> b -> a -> ([(b, b)], (a, b))
     freshen n t = snd $ freshenWithMapping [] n t
    
-instance Freshen Tp where
+instance Freshen Tp Int where
     freshenWithMapping mapping n tp = (\(tp', (n', m'))->(m', (tp', n'))) $ runState (freshenHelper tp) (n, mapping) 
         where
             freshenHelper :: Tp -> State (Int, [(Int, Int)]) Tp
@@ -228,12 +228,12 @@ instance Freshen Tp where
                 t2 <- freshenHelper a2
                 return $ TApp t1 t2
 
-instance Freshen Predicate where
+instance Freshen Predicate Int where
     freshenWithMapping mapping n (Predicate name tp) = let
         (mapping', (tp', b')) = freshenWithMapping mapping n tp
         in (mapping', (Predicate name tp', b'))
         
-instance Freshen a => Freshen [a] where
+instance Freshen a b => Freshen [a] b where
     freshenWithMapping mapping n [] = (mapping, ([], n))
     freshenWithMapping mapping n (p:ps) = let
         (mapping', (p', n')) = freshenWithMapping mapping n p
@@ -241,11 +241,12 @@ instance Freshen a => Freshen [a] where
         in (mapping'', (p':ps', n''))
         
 
-instance (Freshen a, Freshen b) => Freshen (Qualification a b) where
+instance (Freshen a c, Freshen b c) => Freshen (Qualification a b) c where
     freshenWithMapping mapping n (Qualification (pred, tp)) = let
         (mapping', (pred', b')) = freshenWithMapping mapping n pred
         (mapping'', (tp', b'')) = freshenWithMapping mapping' b' tp
         in (mapping', (Qualification (pred', tp'), b''))
+
 
 combineTps :: Tp -> TpScheme -> [(String, Tp)]
 combineTps tp tpscheme = combineTpsHelper (getQuantorMap tpscheme) tp (unqualify $ unquantify tpscheme)
