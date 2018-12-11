@@ -164,6 +164,16 @@ SEM Pattern
         lhs . constraints   = [Constraint_Unify (var @beta) @literal.literalType]
         loc . beta          = integer2Name @lhs.betaUnique
         lhs . betaUnique    = @lhs.betaUnique + 1
+    | Tuple
+        patterns    . betaUnique  = @lhs.betaUnique + 1
+        lhs         . constraints = @constraint : @patterns.constraints
+        lhs         . touchables  = @beta : @patterns.touchables
+        loc         . beta        = integer2Name @lhs.betaUnique
+                    . constraint  = Constraint_Unify (var @beta) (monotypeTuple (map var @patterns.betas))
+    | Wildcard
+        lhs         . touchables    = [@beta]
+        lhs         . betaUnique    = @lhs.betaUnique + 1
+        loc         . beta          = integer2Name @lhs.betaUnique
         
 SEM FunctionBinding 
     | FunctionBinding
@@ -237,6 +247,21 @@ SEM Expression
                                         unifyVar @beta @thenExpression.beta,
                                         unifyVar @beta @elseExpression.beta 
                                     ]
+    | Lambda
+        lhs . touchables        = [@beta] ++ @expression.touchables ++ @patterns.touchables
+        lhs . constraints       = @fConstraint : @envConstraints ++ @expression.constraints ++ @patterns.constraints
+        lhs . assumptions       = @expression.assumptions M.\\ @patterns.environment
+        loc . envConstraints    = M.elems $ M.intersectionWith (\a e -> Constraint_Unify (var a) (var e)) @expression.assumptions @patterns.environment
+        patterns . betaUnique   = @lhs.betaUnique + 1
+        loc . beta              = integer2Name @lhs.betaUnique
+        loc . fConstraint       = Constraint_Unify (foldr ((:-->:).var) (var @expression.beta) @patterns.betas) (var @beta)
+    | Tuple
+        lhs . touchables        = @beta : @expressions.touchables
+        lhs . constraints       = @constraint : @expressions.constraints
+        loc . constraint        = Constraint_Unify (var @beta) (monotypeTuple (map var @expressions.betas))
+        loc . beta              = integer2Name @lhs.betaUnique
+        expressions . betaUnique = @lhs.betaUnique + 1
+
 
 ATTR Literal [ | | literalType : MonoType]
 

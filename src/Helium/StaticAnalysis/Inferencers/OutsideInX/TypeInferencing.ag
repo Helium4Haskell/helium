@@ -46,6 +46,7 @@ import Helium.StaticAnalysis.Messages.Warnings
 import Helium.StaticAnalysis.Miscellaneous.ConstraintInfo
 import Helium.StaticAnalysis.Inferencers.OutsideInX.TopConversion
 import Helium.StaticAnalysis.Inferencers.OutsideInX.BindingGroupAnalysis
+import Helium.StaticAnalysis.Inferencers.OutsideInX.ConstraintHelper
 import Helium.StaticAnalysis.Miscellaneous.TypeConversion
 
 -- UHA syntax

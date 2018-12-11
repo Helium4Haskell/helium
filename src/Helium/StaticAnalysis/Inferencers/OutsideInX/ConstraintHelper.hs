@@ -1,0 +1,8 @@
+module Helium.StaticAnalysis.Inferencers.OutsideInX.ConstraintHelper where
+
+import Cobalt.Core.Types
+
+monotypeTuple :: [MonoType] -> MonoType
+monotypeTuple vars = let
+    tupleType = "(" ++ replicate (length vars - 1) ',' ++ ")"
+    in MonoType_Con tupleType vars

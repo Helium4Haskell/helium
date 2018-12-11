@@ -39,7 +39,7 @@ monoTypeToTypeScheme mtp = let
     in quantifiedType
 monoTypeToTp :: MonoType -> Tp
 monoTypeToTp (MonoType_Var n) = TVar (fromInteger (name2Integer n))
-monoTypeToTp (MonoType_Con n args) = foldr TApp (TCon n) (map monoTypeToTp args)
+monoTypeToTp (MonoType_Con n args) = foldl TApp (TCon n) (map monoTypeToTp args)
 monoTypeToTp (MonoType_Arrow f a) = monoTypeToTp f .->. monoTypeToTp a
 
 tpSchemeListDifference :: M.Map Name TpScheme -> M.Map Name TpScheme -> M.Map Name  ((Tp, String), (Tp, String))
