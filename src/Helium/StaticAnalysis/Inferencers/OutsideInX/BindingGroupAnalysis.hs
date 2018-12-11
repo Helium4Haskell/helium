@@ -172,14 +172,34 @@ type Constraints = [Constraint]
 type BindingGroup = (Environment, Assumptions, Constraints)
 type Substitution = [(TyVar, MonoType)]
 
+emptyBindingGroup :: BindingGroup
+emptyBindingGroup = 
+   (M.empty, M.empty, [])
+
+combineBindingGroup :: BindingGroup -> BindingGroup -> BindingGroup
+combineBindingGroup (e1,a1,c1) (e2,a2,c2) = 
+   (e1 `M.union` e2, a1 `M.union` a2, c1++c2)
+
+concatBindingGroups :: [BindingGroup] -> BindingGroup
+concatBindingGroups = foldr combineBindingGroup emptyBindingGroup
 
 bindingGroupAnalysis :: (Assumptions, Constraints, TypeSignatures, Monos, Touchables, Integer) -> 
                         [BindingGroup] -> 
                         (Touchables, Monos, Assumptions, Environment, TypeSignatures, Constraints, Integer, Substitution, TypeErrors)
-bindingGroupAnalysis (assumptions, constraints, typeSignatures, monos, touchables, betaUnique) groups = res
+bindingGroupAnalysis (assumptions, constraints, typeSignatures, monos, touchables, betaUnique) groups = variableDependencies
                   where
-                     res = variableDependencies
-                     variableDependencies = foldr op initial groups
+                     bindingGroupAnalysis :: [BindingGroup] -> [BindingGroup]
+                     bindingGroupAnalysis cs =
+                           let 
+                              explicits = M.keys typeSignatures
+                              indexMap = concat (zipWith f cs [0..])
+                              f (env,_,_) i = [ (n,i) | n <- M.keys env, n `notElem` explicits ]
+                              edges    = concat (zipWith f' cs [0..])
+                              f' (_,ass,_) i = [ (i,j)| n <- M.keys ass, (n',j) <- indexMap, n==n' ]
+                              list = topSort (length cs-1) edges
+                           in map (concatBindingGroups . map (cs !!)) list
+                     sortedGroups = reverse (bindingGroupAnalysis groups)
+                     variableDependencies = foldr op initial sortedGroups
                         where
                            instanceTS :: Integer -> Assumptions -> TypeSignatures -> (Integer, [Constraint], Touchables)
                            instanceTS bu ass ts = M.foldr combineTS (bu, [], []) $ M.intersectionWith (\a (_, t) -> (a, t)) ass ts
@@ -203,15 +223,15 @@ bindingGroupAnalysis (assumptions, constraints, typeSignatures, monos, touchable
                                  c2 = instanceTSE env1 ts2
                                  c3 = equalASENV (assumptions M.\\ ts2) env1
                                  assR = ass2 `M.union` ass1
-                                 conR = c1 ++ c2 ++ c3 ++ con1 ++ con2 ++ constraints
+                                 conR = c1 ++ c2 ++ c3 ++ con1 ++ con2
                                  touchablesW = touchs ++ touchs1
                                  (solverResult, _) = runFreshM $ solve [] [] conR touchablesW
                                  te = either (\e -> [TypeError [] [MessageOneLiner $ MessageString $ show e] [] []]) (const []) solverResult
                                  (touchablesR, resiualConstraints, subs) = either (const ([], [], [])) (\sol -> (touchable sol, residual sol, substitution sol)) solverResult
                                  envR = env2 `M.union` env1
-                                 tsR = traceShow "New ts" $ traceShowId $ M.fromList $ mapMaybe (\(n, v) -> (\m -> (n, (v, PolyType_Mono [] m))) <$> lookup v subs) (traceShowId $ M.toList $ envR M.\\ typeSignatures)
-                                 conTS = traceShow "Conts" $ traceShowId $ mapMaybe (\(n, v) -> (\m -> Constraint_Unify (var v) m) <$> lookup v subs) (M.toList $ envR M.\\ typeSignatures)
-                              in (nub touchablesR, ms, assR, envR, ts2 `M.union` tsR, con2 ++ conTS, buR, cleanSubs $ subsOrig ++ subs, typeErrors ++ te)
+                                 tsR = M.fromList $ mapMaybe (\(n, v) -> (\m -> (n, (v, PolyType_Mono [] m))) <$> lookup v subs) (M.toList $ envR M.\\ typeSignatures)
+                                 conTS =  mapMaybe (\(n, v) -> Constraint_Unify (var v) <$> lookup v subs) (M.toList $ envR M.\\ typeSignatures)
+                              in (nub touchablesR, ms, assR, envR, tsR `M.union` ts2, conTS, buR, [], typeErrors ++ te)
                            
 instance Show TypeError where
    show x = sortAndShowMessages [x]
@@ -250,12 +270,15 @@ cleanSubs subs = let
                                                                         in if all (\(v1, v2) -> isUniq v1 && isUniq v2) diffVars then
                                                                               m1
                                                                            else error "Incompattible types"
+                                                | stricter sorted m1 m2     = m1
+                                                | stricter sorted m2 m1     = m2
+                                                |  otherwise = error $ show "Incompatiable types" ++ show sorted ++ " - " ++ show v ++ show m1  ++ " :-: " ++ show m2
 
 
          ms' = sf m1 m2
       in (v, ms')
    decided = map decide grouped
-   in trace (unlines $ map show decided) decided
+   in decided
 
 applySubs :: [(TyVar, MonoType)] -> MonoType -> MonoType
 applySubs subs (MonoType_Var v) = fromMaybe (var v) (lookup v subs)
@@ -266,6 +289,14 @@ samePattern :: MonoType -> MonoType -> Bool
 samePattern (MonoType_Var _) (MonoType_Var _) = True
 samePattern (MonoType_Con n1 cs1) (MonoType_Con n2 cs2) = n1 == n2 && and (zipWith samePattern cs1 cs2)
 samePattern (f1 :-->: a1) (f2 :-->: a2) = samePattern f1 f2 && samePattern a1 a2
+samePattern _ _ = False
+
+stricter :: [(TyVar, MonoType)] -> MonoType -> MonoType -> Bool
+stricter subs (MonoType_Var v1) (MonoType_Var v2) = filter ((v2==).fst) subs == [(v2, var v2)]
+stricter subs _ (MonoType_Var v2) = True
+stricter subs (f1 :-->: a1) (f2 :-->: a2) = stricter subs f1 f2 && stricter subs a1 a2
+stricter subs (MonoType_Con n1 c1) (MonoType_Con n2 c2) = n1 == n2 && and (zipWith (stricter subs) c1 c2)
+stricter subs _ _ = False
 
 diffVariables :: MonoType -> MonoType -> [(TyVar, TyVar)]
 diffVariables (MonoType_Var v1) (MonoType_Var v2)  | v1 == v2 = []

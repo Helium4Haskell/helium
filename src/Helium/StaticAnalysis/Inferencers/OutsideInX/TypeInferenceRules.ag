@@ -85,6 +85,7 @@ SEM Module
 SEM Body
     | Body
         declarations . bindingGroups    = []
+        lhs . toplevelTypes = M.map (monoTypeToTypeScheme.getMonoFromPoly.snd) @lhs.typeSignatures
         lhs . (
             touchables, 
             monos, 
