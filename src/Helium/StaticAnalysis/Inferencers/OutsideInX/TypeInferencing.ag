@@ -18,8 +18,8 @@ typeInferencingIOX options importEnv module_ =
 -- Attributes for type inferencing
 
 ATTR Module
-   [ importEnvironment     : ImportEnvironment
-     options               : {[Option]}
+   [
+      options               : {[Option]}
    |
    | dictionaryEnvironment : DictionaryEnvironment
      warnings              : Warnings

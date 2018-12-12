@@ -11,6 +11,7 @@ ATTR Module Body Declaration Declarations Expression Expressions
         [ 
                 typeSignatures : {M.Map Name (TyVar, PolyType)}
                 substitution : {[(TyVar, MonoType)]}
+                importEnvironment : ImportEnvironment
                 monos : Monos
             |   betaUnique : Integer
             |   assumptions USE {M.union} {M.empty} : {M.Map Name TyVar}
@@ -165,15 +166,33 @@ SEM Pattern
         loc . beta          = integer2Name @lhs.betaUnique
         lhs . betaUnique    = @lhs.betaUnique + 1
     | Tuple
-        patterns    . betaUnique  = @lhs.betaUnique + 1
-        lhs         . constraints = @constraint : @patterns.constraints
-        lhs         . touchables  = @beta : @patterns.touchables
-        loc         . beta        = integer2Name @lhs.betaUnique
-                    . constraint  = Constraint_Unify (var @beta) (monotypeTuple (map var @patterns.betas))
+        patterns    . betaUnique        = @lhs.betaUnique + 1
+        lhs         . constraints       = @constraint : @patterns.constraints
+        lhs         . touchables        = @beta : @patterns.touchables
+        loc         . beta              = integer2Name @lhs.betaUnique
+                    . constraint        = Constraint_Unify (var @beta) (monotypeTuple (map var @patterns.betas))
     | Wildcard
-        lhs         . touchables    = [@beta]
-        lhs         . betaUnique    = @lhs.betaUnique + 1
-        loc         . beta          = integer2Name @lhs.betaUnique
+        lhs         . touchables        = [@beta]
+        lhs         . betaUnique        = @lhs.betaUnique + 1
+        loc         . beta              = integer2Name @lhs.betaUnique
+    | List 
+        lhs         . touchables        = @beta : @elemBeta : @patterns.touchables
+        lhs         . constraints       = @lstConstraints ++ @patterns.constraints
+        patterns    . betaUnique        = @lhs.betaUnique + 2
+        loc         . beta              = integer2Name @lhs.betaUnique
+        loc         . elemBeta          = integer2Name (@lhs.betaUnique + 1)
+        loc         . lstConstraints    = Constraint_Unify (var @beta) (monotypeList (var @elemBeta)) : map (unifyVar @elemBeta) @patterns.betas
+    | Constructor
+        patterns    . betaUnique        = @lhs.betaUnique + 2
+        lhs . touchables                = @beta : @betaCon : @patterns.touchables
+        lhs . constraints               = @conApply : @conConstraints ++ @patterns.constraints
+        loc . beta                      = integer2Name @lhs.betaUnique
+        loc . betaCon                   = integer2Name (@lhs.betaUnique + 1)
+        loc . conApply                  = Constraint_Unify (var @betaCon) (foldr (:-->:) (var @beta) (map var @patterns.betas))
+        loc . conConstraints            = case M.lookup @name.self (valueConstructors @lhs.importEnvironment) of
+                                                Nothing  -> []
+                                                Just ctp -> [Constraint_Inst (var @betaCon) (PolyType_Mono [] $ tpSchemeToMonoType ctp)]
+
         
 SEM FunctionBinding 
     | FunctionBinding
@@ -261,6 +280,20 @@ SEM Expression
         loc . constraint        = Constraint_Unify (var @beta) (monotypeTuple (map var @expressions.betas))
         loc . beta              = integer2Name @lhs.betaUnique
         expressions . betaUnique = @lhs.betaUnique + 1
+    | List
+        lhs . touchables        = @elemBeta : @beta : @expressions.touchables
+        lhs . constraints       = @lstConstraints ++ @expressions.constraints
+        expressions . betaUnique = @lhs.betaUnique + 2
+        loc . elemBeta          = integer2Name @lhs.betaUnique
+        loc . beta              = integer2Name (@lhs.betaUnique + 1)
+        loc . lstConstraints    = Constraint_Unify (var @beta) (monotypeList (var @elemBeta)) : map (unifyVar @elemBeta) @expressions.betas
+    | Constructor
+        lhs . touchables        = [@beta]
+        lhs . betaUnique        = @lhs.betaUnique + 1
+        lhs . constraints       = case M.lookup @name.self (valueConstructors @lhs.importEnvironment) of
+                                    Nothing  -> []
+                                    Just ctp -> [Constraint_Inst (var @beta) (PolyType_Mono [] $ tpSchemeToMonoType ctp)]
+        loc . beta              = integer2Name @lhs.betaUnique
 
 
 ATTR Literal [ | | literalType : MonoType]
