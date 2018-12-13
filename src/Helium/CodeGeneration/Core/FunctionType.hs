@@ -27,7 +27,6 @@ functionsMap = mapFromList . functionsList
 
 functionInDecl :: CoreDecl -> Maybe (Id, FunctionType)
 functionInDecl (DeclValue name _ _ expr _) = Just (name, FunctionType (replicate (arityOfExpr expr 0) TypeAny) TypeAnyWHNF)
-  -- Just (name, arityOfExpr expr 0)
 functionInDecl decl = Nothing
 
 arityOfExpr :: Expr -> Int -> Int

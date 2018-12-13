@@ -23,6 +23,11 @@ handleInstruction supply (Match var target fields next) = Match var target field
 handleInstruction _ instr = instr -- Jump, Case, Return and Unreachable
 
 handleBind :: NameSupply -> Bind -> [Bind]
+handleBind supply b@(Bind var target@(BindTargetFunction global@(VarGlobal (GlobalVariable _ _))) params)
+  | null params = error "passThunkArity: Cannot bind zero arguments to a global function"
+  | otherwise = handleBind supply bindThunk
+  where
+    bindThunk = Bind var (BindTargetThunk global) params
 handleBind supply (Bind var target@(BindTargetFunction (VarGlobal (GlobalFunction _ (FunctionType args returnType)))) params)
   | length params > arity = bindFn : bindThunks
   -- Too many arguments are passed, the thunk is oversaturated.

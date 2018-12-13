@@ -1,4 +1,4 @@
-{-| Module      :  RemoveAliasses
+{-| Module      :  RemoveAliases
     License     :  GPL
 
     Maintainer  :  helium@cs.uu.nl
@@ -10,7 +10,7 @@
 -- Before: let x = y in f x
 -- After:  f y
 
-module Helium.CodeGeneration.Core.RemoveAliasses (coreRemoveAliasses) where
+module Helium.CodeGeneration.Core.RemoveAliases (coreRemoveAliases) where
 
 import Lvm.Common.Id
 import Lvm.Common.IdMap
@@ -19,8 +19,8 @@ import Lvm.Core.Expr
 import Lvm.Core.Module
 import Lvm.Core.Utils(mapAlts, mapBinds)
 
-coreRemoveAliasses :: CoreModule -> CoreModule
-coreRemoveAliasses = fmap (renameExpr emptyMap)
+coreRemoveAliases :: CoreModule -> CoreModule
+coreRemoveAliases = fmap (renameExpr emptyMap)
 
 type Env = IdMap Id
 

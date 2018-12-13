@@ -55,10 +55,6 @@ instance Show Literal where
   show (LitDouble x) = "float " ++ show x
   show (LitString x) = "str " ++ show x
 
-instance Show Pattern where
-  show (PatternCon con) = show con
-  show (PatternLit lit) = show lit
-
 instance Show Expr where
   show (Literal lit) = "literal " ++ show lit
   show (Call fn args) = "call " ++ show fn ++ " $ " ++ showArguments args

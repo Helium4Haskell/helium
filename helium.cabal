@@ -153,11 +153,10 @@ Library
     Helium.CodeGeneration.Core.Normalize
     Helium.CodeGeneration.Core.NoShadow
     Helium.CodeGeneration.Core.ReduceThunks
-    Helium.CodeGeneration.Core.RemoveAliasses
+    Helium.CodeGeneration.Core.RemoveAliases
     Helium.CodeGeneration.Core.RemoveDead
     Helium.CodeGeneration.Iridium.Data
     Helium.CodeGeneration.Iridium.FromCore
-    Helium.CodeGeneration.Iridium.PassRemoveAliasses
     Helium.CodeGeneration.Iridium.Type
     Helium.CodeGeneration.Iridium.TypeEnvironment
     Helium.CodeGeneration.LLVM.Builtins

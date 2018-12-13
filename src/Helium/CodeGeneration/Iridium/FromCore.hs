@@ -262,6 +262,15 @@ toInstruction supply env continue expr = case getApplicationOrConstruction expr 
             castInstructions
               +> LetAlloc [Bind x (BindTargetFunction $ resolve env fn) args']
               +> ret supplyRet env x TypeFunction continue
+        | null params ->
+          -- Function has no arguments, e.g. it is a global variable.
+          let
+            (args', castInstructions) = maybeCasts supply''' env (zip args (repeat TypeAny))
+          in
+            castInstructions
+              +> LetAlloc [Bind y (BindTargetThunk $ VarGlobal $ GlobalVariable fn TypeAnyThunk) args']
+              +> Let z (Eval $ VarLocal $ Local y TypeAnyThunk)
+              +> ret supplyRet env z TypeAnyWHNF continue
         | otherwise ->
           -- Too many arguments. Evaluate the function with the first `length params` arguments,
           -- and build a thunk for the additional arguments. This thunk might need to be
@@ -466,17 +475,6 @@ literal :: Core.Literal -> Literal
 literal (Core.LitInt x) = LitInt x
 literal (Core.LitDouble x) = LitDouble x
 literal (Core.LitBytes x) = LitString $ stringFromBytes x 
-
-pattern :: TypeEnv -> Core.Pat -> Maybe Pattern
-pattern _ Core.PatDefault = Nothing
-pattern _ (Core.PatLit lit) = Just $ PatternLit $ literal lit
-pattern env (Core.PatCon con args) = Just $ PatternCon constructor
-  where
-    ValueConstructor constructor = valueDeclaration env $ conId con
-
-constructorPattern :: Core.Pat -> Maybe (Id, [Id])
-constructorPattern (Core.PatCon con args) = Just (conId con, args)
-constructorPattern _ = Nothing
 
 resolve :: TypeEnv -> Id -> Variable
 resolve env name = case valueDeclaration env name of

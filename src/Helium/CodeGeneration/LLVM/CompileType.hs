@@ -1,4 +1,4 @@
-module Helium.CodeGeneration.LLVM.CompileType (compileType, toOperand, taggedThunkPointer, bool, pointer, trampolineType, voidPointer, splitValueFlag, cast, compileCallingConvention) where
+module Helium.CodeGeneration.LLVM.CompileType (compileType, toOperand, taggedThunkPointer, bool, pointer, trampolineType, voidPointer, splitValueFlag, cast, compileCallingConvention, emptyThunkType) where
 
 import Lvm.Common.Id(Id, freshId, stringFromId, NameSupply)
 import Helium.CodeGeneration.LLVM.Env (Env(..))
@@ -13,7 +13,6 @@ import LLVM.AST.Constant as Constant
 import LLVM.AST.Type as Type
 import LLVM.AST.AddrSpace
 import LLVM.AST.Operand
-import LLVM.AST.Constant
 import qualified LLVM.AST.CallingConvention as CallingConvention
 
 compileType :: Env -> Iridium.PrimitiveType -> Type
@@ -34,6 +33,9 @@ compileFunctionType env (Iridium.FunctionType args returnType) = pointer $ Funct
 trampolineType :: Type
 trampolineType = pointer $ FunctionType voidPointer [voidPointer] False
 
+emptyThunkType :: Type
+emptyThunkType = StructureType False [IntegerType 64, IntegerType 64, trampolineType]
+
 bool :: Type
 bool = IntegerType 1
 
@@ -49,7 +51,8 @@ voidPointer = pointer (IntegerType 8)
 
 toOperand :: Env -> Iridium.Variable -> Operand
 toOperand env (Iridium.VarLocal (Iridium.Local name t)) = LocalReference (compileType env t) (toName name)
-toOperand env (Iridium.VarGlobal (Iridium.Global name fntype)) = ConstantOperand $ GlobalReference (compileFunctionType env fntype) (toName name)
+toOperand env (Iridium.VarGlobal (Iridium.GlobalVariable name t)) = ConstantOperand $ Constant.BitCast (GlobalReference (pointer emptyThunkType) (toNamePrefixed "thunk$" name)) (compileType env t)
+toOperand env (Iridium.VarGlobal (Iridium.GlobalFunction name fntype)) = ConstantOperand $ GlobalReference (compileFunctionType env fntype) (toName name)
 
 -- Splits a variable into its value and its tag. Casts to a less-precise type.
 splitValueFlag :: Env -> NameSupply -> (Iridium.Variable, Iridium.PrimitiveType) -> ([Named Instruction], (Operand, Operand))
