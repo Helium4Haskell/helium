@@ -69,23 +69,13 @@ tpSchemeToMonoType = tpToMonoType . unqualify . unquantify
 tpToMonoType :: Tp -> MonoType
 tpToMonoType (TVar v) = MonoType_Var (integer2Name $ toInteger v)
 tpToMonoType (TApp (TApp (TCon "->") f) t) = tpToMonoType f :-->: tpToMonoType t
-tpToMonoType (TApp (TCon n) ts) = MonoType_Con n $ tpList ts
-    where
-        tpList :: Tp -> [MonoType]
-        tpList (TApp x y) = tpToMonoType x : tpList y
-        tpList t = [tpToMonoType t]
 tpToMonoType (TCon n) = MonoType_Con n []
-tpToMonoType t@(TApp c a) = MonoType_Con name variables
+tpToMonoType t@(TApp c a) = tConHelper [] t
     where
-        name = getName c
-        variables = getVariables t
-        getName (TApp c n) = getName c
-        getName (TCon n) = n
-        getName (TVar v) = show v
-        getVariables (TApp (TVar _) a) = getVariables a
-        getVariables (TApp (TCon _) a) = getVariables a
-        getVariables (TApp c a) = getVariables c ++ getVariables a
-        getVariables v = [tpToMonoType v]
+    tConHelper lst (TApp c a) = tConHelper (tpToMonoType a : lst) c
+    tConHelper lst (TCon n) = MonoType_Con n lst
+    tConHelper lst (TVar v) = MonoType_Con (show v) lst
+
 tpToMonoType t = error $ "Unknown pattern " ++ show t
 
 getTypeVariablesFromMonoType :: MonoType -> [TyVar]

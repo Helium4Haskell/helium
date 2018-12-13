@@ -106,10 +106,10 @@ ATTR FunctionBinding FunctionBindings [ betasLeft : {[TyVar]} betaRight : TyVar 
 SEM Declaration
     | FunctionBindings
         lhs . bindingGroups     = [@bindingGroup]
-        loc . bindingGroup      = (@environment, @assumptions, @constraints)
+        loc . bindingGroup      = traceShowId (@environment, @assumptions, @constraints)
         lhs . toplevelTypes     = M.singleton (@bindings.name) (maybe @err monoTypeToTypeScheme $ lookup @beta @lhs.substitution)
         loc . environment       = M.singleton @bindings.name @beta
-        loc . assumptions       = M.insert @bindings.name @beta @bindings.assumptions
+        loc . assumptions       = @bindings.assumptions
         lhs . touchables        = @beta : @br : @bls ++ @bindings.touchables
         loc . constraints       = @parameterCons ++ @bindings.constraints 
         loc . bls               = take (fromInteger @bindings.numberOfPatterns) (map integer2Name [(@lhs.betaUnique + 2)..])
@@ -192,6 +192,12 @@ SEM Pattern
         loc . conConstraints            = case M.lookup @name.self (valueConstructors @lhs.importEnvironment) of
                                                 Nothing  -> []
                                                 Just ctp -> [Constraint_Inst (var @betaCon) (PolyType_Mono [] $ tpSchemeToMonoType ctp)]
+    | As
+        pattern . betaUnique            = @lhs.betaUnique + 1
+        lhs . touchables                = @beta : @pattern.touchables
+        lhs . constraints               = unifyVar @beta @pattern.beta : @pattern.constraints
+        lhs . environment               = M.insert @name.self @beta @pattern.environment
+        loc . beta                      = integer2Name @lhs.betaUnique
 
         
 SEM FunctionBinding 
@@ -199,9 +205,11 @@ SEM FunctionBinding
         lhs . constraints       = @locConstraints ++ @lefthandside.constraints ++ @righthandside.constraints
         lhs . name              = @lefthandside.name
         lhs . numberOfPatterns  = @lefthandside.numberOfPatterns
+        lhs . assumptions       = @righthandside.assumptions M.\\ @lefthandside.environment
         loc . locConstraints    = Constraint_Unify (var @lhs.betaRight) (var @righthandside.beta) : 
                                     zipWith (\bt bb -> Constraint_Unify (var bt) (var bb)) @lhs.betasLeft @lefthandside.betas ++
                                     (M.elems $ M.intersectionWith (\a e -> Constraint_Unify (var a) (var e)) @righthandside.assumptions @lefthandside.environment)
+        
 
 SEM FunctionBindings
 
@@ -288,11 +296,12 @@ SEM Expression
         loc . beta              = integer2Name (@lhs.betaUnique + 1)
         loc . lstConstraints    = Constraint_Unify (var @beta) (monotypeList (var @elemBeta)) : map (unifyVar @elemBeta) @expressions.betas
     | Constructor
-        lhs . touchables        = [@beta]
-        lhs . betaUnique        = @lhs.betaUnique + 1
-        lhs . constraints       = case M.lookup @name.self (valueConstructors @lhs.importEnvironment) of
-                                    Nothing  -> []
-                                    Just ctp -> [Constraint_Inst (var @beta) (PolyType_Mono [] $ tpSchemeToMonoType ctp)]
+        lhs . touchables        = @beta : getTypeVariablesFromMonoType @tp
+        lhs . betaUnique        = @bu
+        loc . (tp, bu)          = case M.lookup @name.self (valueConstructors @lhs.importEnvironment) of
+                                    Nothing  -> internalError "TypeInferenceRules" "n/a" "Constructor not found"
+                                    Just ctp -> freshen (@lhs.betaUnique + 1) (tpSchemeToMonoType ctp)
+        lhs . constraints       = [Constraint_Inst (var @beta) (PolyType_Mono [] @tp)]
         loc . beta              = integer2Name @lhs.betaUnique
 
 

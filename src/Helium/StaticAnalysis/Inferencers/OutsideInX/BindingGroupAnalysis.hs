@@ -217,21 +217,23 @@ bindingGroupAnalysis (assumptions, constraints, typeSignatures, monos, touchable
                            op :: (Environment, Assumptions, Constraints) -> 
                                  (Touchables, Monos, Assumptions, Environment, TypeSignatures, Constraints, Integer, Substitution, TypeErrors) -> 
                                  (Touchables, Monos, Assumptions, Environment, TypeSignatures, Constraints, Integer, Substitution, TypeErrors) 
-                           op (env1, ass1, con1) (touchs, ms, ass2, env2, ts2, con2, bu, subsOrig, typeErrors) =
+                           op (env1, ass1, con1) (touchs, ms, ass2, _, ts2, con2, bu, subsOrig, typeErrors) =
                               let
                                  (buR, c1, touchs1) = instanceTS bu ass1 ts2
                                  c2 = instanceTSE env1 ts2
-                                 c3 = equalASENV (assumptions M.\\ ts2) env1
-                                 assR = ass2 `M.union` ass1
+                                 env' = env1 M.\\ ts2
+                                 c3 = equalASENV (ass1 M.\\ ts2) env'
+                                 
+                                 assR = (ass2 M.\\ env') `M.union` ((ass1 M.\\ ts2) M.\\ env')
                                  conR = c1 ++ c2 ++ c3 ++ con1 ++ con2
                                  touchablesW = touchs ++ touchs1
                                  (solverResult, _) = runFreshM $ solve [] [] conR touchablesW
                                  te = either (\e -> [TypeError [] [MessageOneLiner $ MessageString $ show e] [] []]) (const []) solverResult
                                  (touchablesR, resiualConstraints, subs) = either (const ([], [], [])) (\sol -> (touchable sol, residual sol, substitution sol)) solverResult
-                                 envR = env2 `M.union` env1
-                                 tsR = M.fromList $ mapMaybe (\(n, v) -> (\m -> (n, (v, PolyType_Mono [] m))) <$> lookup v subs) (M.toList $ envR M.\\ typeSignatures)
+                                 envR = env1
+                                 tsR = traceShowId $ M.fromList $ mapMaybe (\(n, v) -> (\m -> (n, (v, PolyType_Mono [] m))) <$> lookup v subs) (M.toList $ envR M.\\ typeSignatures M.\\assR)
                                  conTS =  mapMaybe (\(n, v) -> Constraint_Unify (var v) <$> lookup v subs) (M.toList $ envR M.\\ typeSignatures)
-                              in (nub touchablesR, ms, assR, envR, tsR `M.union` ts2, conTS, buR, [], typeErrors ++ te)
+                              in trace (unlines $ map show conR) (nub touchablesR, ms, assR, M.empty, tsR `M.union` ts2, conTS, buR, [], typeErrors ++ te)
                            
 instance Show TypeError where
    show x = sortAndShowMessages [x]
