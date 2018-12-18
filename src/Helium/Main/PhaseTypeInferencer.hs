@@ -17,8 +17,10 @@ import Helium.StaticAnalysis.Inferencers.OutsideInX.TopConversion
 --import UHA_Syntax
 import Helium.StaticAnalysis.Messages.TypeErrors
 import Helium.StaticAnalysis.Messages.Information (showInformation)
+import Helium.StaticAnalysis.Messages.HeliumMessages
 import System.FilePath.Posix
 import Data.Maybe
+import qualified Data.Map.Strict as M
 import Helium.Utils.Utils
 
 phaseTypeInferencer :: 
@@ -69,11 +71,13 @@ phaseTypeInferencer basedir fullName module_ localEnv completeEnv options =
                      putStrLn "Top level types are not equal"
                      print tld
                   )   
-               print toplevelTypesOIX
+               putStrLn $ unlines $ map show $ M.toList toplevelTypesOIX
+               putStrLn (sortAndShowMessages typeErrorsOIX)
                unless (null typeErrors && null typeErrorsOIX || not (null typeErrors) && not (null typeErrorsOIX)) (
                   do
                      putStrLn "Length of errors doesn't match"
-                  )           
+                  )
+                       
          )
 
       case typeErrors of 

@@ -162,15 +162,18 @@ topSort n = map G.flatten . G.scc . G.buildG (0, n)
 
 -}
 
-type Assumptions = M.Map Name TyVar
+type Assumptions = M.Map Name [(Name, TyVar)]
 type Environment = M.Map Name TyVar
 
 type TypeSignatures = M.Map Name (TyVar, PolyType)
 type Monos = [TyVar]
-type Touchables = [TyVar]
+type Touchables = [(Maybe Name, TyVar)]
 type Constraints = [Constraint]
 type BindingGroup = (Environment, Assumptions, Constraints)
 type Substitution = [(TyVar, MonoType)]
+
+combineAssumptions :: Assumptions -> Assumptions -> Assumptions
+combineAssumptions = M.unionWith (++)
 
 emptyBindingGroup :: BindingGroup
 emptyBindingGroup = 
@@ -178,7 +181,7 @@ emptyBindingGroup =
 
 combineBindingGroup :: BindingGroup -> BindingGroup -> BindingGroup
 combineBindingGroup (e1,a1,c1) (e2,a2,c2) = 
-   (e1 `M.union` e2, a1 `M.union` a2, c1++c2)
+   (e1 `M.union` e2, a1 `combineAssumptions` a2, c1++c2)
 
 concatBindingGroups :: [BindingGroup] -> BindingGroup
 concatBindingGroups = foldr combineBindingGroup emptyBindingGroup
@@ -186,7 +189,8 @@ concatBindingGroups = foldr combineBindingGroup emptyBindingGroup
 bindingGroupAnalysis :: (Assumptions, Constraints, TypeSignatures, Monos, Touchables, Integer) -> 
                         [BindingGroup] -> 
                         (Touchables, Monos, Assumptions, Environment, TypeSignatures, Constraints, Integer, Substitution, TypeErrors)
-bindingGroupAnalysis (assumptions, constraints, typeSignatures, monos, touchables, betaUnique) groups = variableDependencies
+bindingGroupAnalysis input@(assumptions, constraints, typeSignatures, monos, touchables, betaUnique) groups = --trace ("Variable dependencies" ++ show variableDependencies) 
+                  variableDependencies
                   where
                      bindingGroupAnalysis :: [BindingGroup] -> [BindingGroup]
                      bindingGroupAnalysis cs =
@@ -202,39 +206,55 @@ bindingGroupAnalysis (assumptions, constraints, typeSignatures, monos, touchable
                      variableDependencies = foldr op initial sortedGroups
                         where
                            instanceTS :: Integer -> Assumptions -> TypeSignatures -> (Integer, [Constraint], Touchables)
-                           instanceTS bu ass ts = M.foldr combineTS (bu, [], []) $ M.intersectionWith (\a (_, t) -> (a, t)) ass ts
+                           instanceTS bu ass ts = foldr combineTS (bu, [], []) $ concat $ M.elems $ M.intersectionWith (\a (_, t) -> [(a', t) | (_, a') <- a]) ass ts
                               where
                                  combineTS :: (TyVar, PolyType) -> (Integer, Constraints, Touchables) -> (Integer, [Constraint], Touchables)
                                  combineTS (a, t) (bu, cs, tc) = let
                                     (t', bu') = freshen bu t
-                                    in (bu', Constraint_Unify (var a) (getMonoFromPoly t') : cs, getTypeVariablesFromMonoType (getMonoFromPoly t') ++ tc)
+                                    in (bu', Constraint_Unify (var a) (getMonoFromPoly t') : cs, map (\x -> (Nothing ,x)) (getTypeVariablesFromMonoType (getMonoFromPoly t')) ++ tc)
                            instanceTSE :: Environment -> TypeSignatures -> Constraints
                            instanceTSE env1 ts = concatMap snd $ M.toList $ M.intersectionWith (\e (b, t) -> [Constraint_Unify (var b) $ getMonoFromPoly t, Constraint_Unify (var b) (var e)]) env1 ts
                            equalASENV :: Assumptions -> Environment -> Constraints
-                           equalASENV ass env = M.elems $ M.intersectionWith (\a e -> Constraint_Unify (var a) (var e)) ass env
+                           equalASENV ass env = concat $ M.elems $ M.intersectionWith (\a e -> [Constraint_Unify (var a') (var e) | (_, a') <- a]) ass env
                            initial :: (Touchables, Monos, Assumptions, Environment, TypeSignatures, Constraints, Integer, Substitution, TypeErrors)
-                           initial = (touchables, monos, M.empty, M.empty, typeSignatures, [], betaUnique, [], [])
+                           initial = (touchables, monos, assumptions, M.empty, typeSignatures, constraints, betaUnique, [], [])
                            op :: (Environment, Assumptions, Constraints) -> 
                                  (Touchables, Monos, Assumptions, Environment, TypeSignatures, Constraints, Integer, Substitution, TypeErrors) -> 
                                  (Touchables, Monos, Assumptions, Environment, TypeSignatures, Constraints, Integer, Substitution, TypeErrors) 
-                           op (env1, ass1, con1) (touchs, ms, ass2, _, ts2, con2, bu, subsOrig, typeErrors) =
+                           op g@(env1, ass1, con1) (touchs, ms, ass2, _, ts2, con2, bu, subsOrig, typeErrors) =
                               let
-                                 (buR, c1, touchs1) = instanceTS bu ass1 ts2
+                                 (buR1, c1, touchs1) = instanceTS bu ass1 ts2
                                  c2 = instanceTSE env1 ts2
                                  env' = env1 M.\\ ts2
                                  c3 = equalASENV (ass1 M.\\ ts2) env'
-                                 
-                                 assR = (ass2 M.\\ env') `M.union` ((ass1 M.\\ ts2) M.\\ env')
-                                 conR = c1 ++ c2 ++ c3 ++ con1 ++ con2
+                                 (buR2, c4) = foldr (\(a, e) (b, cs)-> let 
+                                       t = 3
+                                    in (b, [Constraint_Unify (var e) (var a') | (_, a') <- a ] ++ cs)) (buR1, []) $ M.intersectionWith (,) ass2 env'
+                                 assR = ((ass1 M.\\ ts2) M.\\ env') `combineAssumptions` (ass2 M.\\ env')
+                                 conR = c1 ++ c2 ++ c3 ++ c4 ++ con1
                                  touchablesW = touchs ++ touchs1
-                                 (solverResult, _) = runFreshM $ solve [] [] conR touchablesW
+                                 (solverResult, _) = runFreshM $ solve [] [] conR $ map snd touchablesW
                                  te = either (\e -> [TypeError [] [MessageOneLiner $ MessageString $ show e] [] []]) (const []) solverResult
-                                 (touchablesR, resiualConstraints, subs) = either (const ([], [], [])) (\sol -> (touchable sol, residual sol, substitution sol)) solverResult
-                                 envR = env1
-                                 tsR = traceShowId $ M.fromList $ mapMaybe (\(n, v) -> (\m -> (n, (v, PolyType_Mono [] m))) <$> lookup v subs) (M.toList $ envR M.\\ typeSignatures M.\\assR)
+                                 (touchablesR, resiualConstraints, subs) = either (const (touchablesW, [], [])) (\sol -> (addTouchables (touchable sol) touchablesW, residual sol, substitution sol)) solverResult
+                                 envR = traceShowId env1
+                                 tsR = M.fromList $ mapMaybe (\(n, v) -> (\m -> (n, (v, PolyType_Mono [] m))) <$> lookup v subs) (M.toList $ envR M.\\ typeSignatures M.\\ assR)
                                  conTS =  mapMaybe (\(n, v) -> Constraint_Unify (var v) <$> lookup v subs) (M.toList $ envR M.\\ typeSignatures)
-                              in trace (unlines $ map show conR) (nub touchablesR, ms, assR, M.empty, tsR `M.union` ts2, conTS, buR, [], typeErrors ++ te)
+                              in --trace "ConR" $ trace (unlines $ map show constraints)
+                                 --trace ("env\n" ++ (unlines $ map show $ M.toList env1)) $ 
+                                 --trace ("env'\n" ++ (unlines $ map show $ M.toList env')) $ 
+                                 --trace ("ass\n" ++ (unlines $ map show $ M.toList assR)) $
+                                 --trace ("ass1\n" ++ (unlines $ map show $ M.toList ass1)) $
+                                 --trace ("ass2\n" ++ (unlines $ map show $ M.toList ass2)) $
+                                 --trace ("subs\n" ++ (unlines $ map show subs)) $
+                                 --trace ("touchables\n" ++ (unlines $ map show touchablesR)) $
+                                 --trace (unlines $ map show conR)
+                                 trace (showBG g) $ traceCShow showBGR (touchablesR, ms, assR, M.empty, tsR `M.union` ts2, conTS ++ conR ++ con2, buR2, subs ++ subsOrig, typeErrors ++ te)
                            
+addTouchables :: [TyVar] -> Touchables -> Touchables
+addTouchables [] touchs = touchs
+addTouchables (t:ts) touchs   | t `elem` map snd touchs = addTouchables ts touchs
+                              | otherwise = (Nothing, t) : addTouchables ts touchs     
+
 instance Show TypeError where
    show x = sortAndShowMessages [x]
 
@@ -318,3 +338,39 @@ eqSubs subs m1 m2 | applySubs subs m1 == applySubs subs m2 = True
 topSort :: G.Vertex -> [G.Edge] -> [[G.Vertex]]
 topSort n = map G.flatten . G.scc . G.buildG (0, n)
                               
+
+traceCShow :: (a -> String) -> a -> a
+traceCShow s x = trace (s x) x
+traceCShow s x = x
+
+showBG :: (Environment, Assumptions, Constraints) -> String
+showBG (env, ass, cons) = unlines [
+        "BG(",
+        "\tEnv: " ++ show env,
+        "\tAss: " ++ show ass,
+        "\tCon:" ++ show cons,
+        ")"
+    ]
+
+showIBG :: (Assumptions, Constraints, TypeSignatures, Monos, Touchables, Integer) -> String
+showIBG (ass, cons, ts, monos, touchables, bu) = unlines $ "IBG(" : map ("\t" ++) [
+        "Asumptions: " ++ show ass, 
+        "Constraints: \n" ++ unlines (map (\c -> "\t\t" ++ show c) $ nub cons),
+        "TypeSignatures: " ++ show ts,
+        "Monos: " ++ show monos,
+        "Touchables: " ++ show touchables,
+        "Beta unique: " ++ show bu
+    ] ++ [")"]
+
+showBGR :: (Touchables, Monos, Assumptions, Environment, TypeSignatures, Constraints, Integer, Substitution, TypeErrors) -> String
+showBGR (touchables, monos, ass, env, ts, cons, bu, subs, te) = unlines $ "BGR(" : map ("\t" ++) [
+        "Touchables: " ++ show touchables,
+        "Monos: " ++ show monos,
+        "Assumptions: " ++ show ass,
+        "Environment: " ++ show env,
+        "TypeSignatures: " ++ show ts,
+        "Constraints: \n" ++ unlines (map (\c -> "\t\t" ++ show c) $ nub cons),
+        "BetaUnique: " ++ show bu,
+        "TypErrors: " ++ show te,
+        "Subs: " ++ show subs
+    ] ++ [")", "", "-----------------------------------------", ""]
