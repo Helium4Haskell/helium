@@ -175,6 +175,8 @@ compileExpression env supply (Iridium.Var var) name = cast supply env (toOperand
   where t = Iridium.variableType var
 compileExpression env supply (Iridium.Cast var toType) name = cast supply env (toOperand env var) name t toType
   where t = Iridium.variableType var
+compileExpression env supply (Iridium.Seq _ var) name = cast supply env (toOperand env var) name t t
+  where t = Iridium.variableType var
 compileExpression env supply expr@(Iridium.Phi branches) name = [name := Phi (compileType env t) (map compileBranch branches) []]
   where
     t = Iridium.typeOfExpr expr

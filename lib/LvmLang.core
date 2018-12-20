@@ -11,7 +11,7 @@ module LvmLang
     , IO, Char, Double, PackedString, String
     
     , packedFromString, stringFromPacked, packedLength
-    , ($!), seq
+    , ($!), seq, pseq
     
     -- IO
     , ''$primBindIO'', ''$primReturnIO''
@@ -111,7 +111,10 @@ type String       = [Char]
 ($!) f x   = let! x = x in f x
 
 seq :: a -> b -> b
-seq x y    = let! x = x in y
+seq a b = primSeq a b
+
+pseq :: a -> b -> b
+pseq a b = primPseq a b
 
 {----------------------------------------------------------
   Basic arithmetic on Int's

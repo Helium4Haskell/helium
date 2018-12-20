@@ -64,6 +64,7 @@ instance Show Expr where
   show (Phi branches) = "phi " ++ showArguments branches
   show (PrimitiveExpr prim args) = "prim " ++ stringFromId prim ++ showArguments args
   show (Undefined t) = "undefined " ++ show t
+  show (Seq v1 v2) = "seq " ++ show v1 ++ ", " ++ show v2
 
 instance Show PhiBranch where
   show (PhiBranch branch var) = stringFromId branch ++ " => " ++ show var

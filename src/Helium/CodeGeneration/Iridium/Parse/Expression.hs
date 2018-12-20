@@ -52,6 +52,7 @@ pExpression = do
     "phi" -> Phi <$> pArguments pPhiBranch
     "prim" -> PrimitiveExpr <$> pId <* pWhitespace <*> pArguments pVariable
     "undefined" -> Undefined <$ pWhitespace <*> pType
+    "seq" -> Seq <$> pVariable <* pWhitespace <* pToken ',' <* pWhitespace <*> pVariable
     _ -> pError "expected expression"
 
 pPhiBranch :: Parser PhiBranch

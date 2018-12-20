@@ -127,3 +127,21 @@ export define @primGtInt(%a: int, %b: int) = call @primLtInt: (int, int) -> @Boo
 ; instruction primGtFloat   "gtfloat"  :: Float! -> Float! -> Bool!
 ; instruction primLeFloat   "lefloat"  :: Float! -> Float! -> Bool!
 ; instruction primGeFloat   "gefloat"  :: Float! -> Float! -> Bool!
+
+#[decl @type [bytes "a -> b -> b"]]
+export define @primSeq(%a: any, %b: any): any_whnf [trampoline] {
+entry:
+  %a_whnf = eval %a: any
+  %b_whnf = eval %b: any
+  %c = seq %a_whnf: any_whnf, %b_whnf: any_whnf
+  return %c: any_whnf
+}
+
+#[decl @type [bytes "a -> b -> b"]]
+export define @primPseq(%a: any, %b: any): any_whnf [trampoline] {
+entry:
+  %a_whnf = eval %a: any
+  %c = seq %a_whnf: any_whnf, %b: any
+  %c_whnf = eval %c: any
+  return %c_whnf: any_whnf
+}

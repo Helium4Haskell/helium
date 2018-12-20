@@ -197,6 +197,9 @@ data Expr
   -- Denotes an undefined value, not the Haskell function 'undefined'. This expression does not throw, but just has some unknown value.
   -- This can be used for a value which is not used.
   | Undefined !PrimitiveType
+  -- `%c = seq %a %b` marks a dependency between variables %a and %b. Assigns %b to %c and ignores the value of %a. 
+  -- Prevents that variable %a is removed by dead code removal. Can be used to compile the Haskell functions `seq` and
+  | Seq !Variable !Variable
   deriving (Eq, Ord)
 
 data PhiBranch = PhiBranch !BlockName !Variable
@@ -220,6 +223,7 @@ typeOfExpr (Phi []) = error "typeOfExpr: Empty phi node. A phi expression should
 typeOfExpr (Phi (PhiBranch _ var : _)) = variableType var
 typeOfExpr (PrimitiveExpr name _) = primReturn $ findPrimitive name
 typeOfExpr (Undefined t) = t
+typeOfExpr (Seq _ v) = variableType v
 
 variableType :: Variable -> PrimitiveType
 variableType (VarLocal (Local _ t)) = t

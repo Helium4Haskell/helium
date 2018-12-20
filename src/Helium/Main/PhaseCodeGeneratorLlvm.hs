@@ -36,6 +36,7 @@ phaseCodeGeneratorLlvm supply output files shouldLink options = do
       ExitFailure _ -> do
         putStrLn "Clang failed with the following errors:"
         putStrLn res
+        putStrLn err
         putStrLn "Failed to link files. This is probably a bug of Helium. See errors above."
         exitWith (ExitFailure 1)
     return ()
