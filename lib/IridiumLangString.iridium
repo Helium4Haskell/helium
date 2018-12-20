@@ -38,21 +38,29 @@ unpack.nil:
 
 export define @_$helium_runtime_print_string(%arg_list: @"[]"): int {
 print.entry:
+  %0 = literal int 0
   jump print.loop
+
 print.loop:
+  ; %res is always zero, but we need it to prevent the removal of the @putchar functions.
+  ; variable %_ will remain live, by the `seq` instruction and will thus not be removed by
+  ; a dead code analysis
+  %res = phi (print.entry => %0: int, print.cons => %res_cons: int)
   %list = phi (print.entry => %arg_list: @"[]", print.cons => %cons: @"[]")
   case %list: @"[]" constructor (@"[]": () -> @"[]" to print.nil, @":": (any, any) -> @"[]" to print.cons)
+
 print.nil:
-  %0 = literal int 0
-  return %0: int
+  return %res: int
+
 print.cons:
   match %list: @"[]" on @":": (any, any) -> @"[]" (%c_thunk, %cons_as_any)
   %c_whnf = eval %c_thunk: any
   %c = cast %c_whnf: any_whnf as int
-  %_ = call @putchar: (int) -> int $ (%c: int)
+  %c2 = seq %res: int, %c: int ; Prevent reordering of @putchar calls
+  %_ = call @putchar: (int) -> int $ (%c2: int)
   %cons_whnf = eval %cons_as_any: any
   %cons = cast %cons_whnf: any_whnf as @"[]"
-
+  %res_cons = seq %_: int, %res: int
   jump print.loop
 }
 
