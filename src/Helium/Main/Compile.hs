@@ -39,13 +39,14 @@ import Helium.Main.Args (overloadingFromOptions)
 import Helium.Utils.Utils
 import Data.IORef
 import Helium.StaticAnalysis.Messages.StaticErrors(errorsLogCode)
+import System.FilePath(joinPath)
 import System.Exit
 
 compile :: String -> String -> [Option] -> [String] -> [String] -> IO ()
 compile basedir fullName options lvmPath doneModules =
   do
     putStrLn ("Compiling " ++ fullName)
-    let (_, _, ext) = splitFilePath fullName
+    let (filePath, fileName, ext) = splitFilePath fullName
 
     -- Store the current module file-name and its context in
     -- two IO refs (unsafe! only used for internal error bug-report)
@@ -88,11 +89,10 @@ compile basedir fullName options lvmPath doneModules =
                 print err
                 exitWith (ExitFailure 1)
             Right ir -> return ir
-        print iridium
         return ([Iridium.IridiumFile fullName iridium True], False, 0)
 
     -- Phase 12: Generate LLVM code
-    phaseCodeGeneratorLlvm supplyLlvm iridiumFiles shouldLink options
+    phaseCodeGeneratorLlvm supplyLlvm (joinPath [filePath, fileName]) iridiumFiles shouldLink options
 
     putStrLn $ "Compilation successful" ++
                   if warnings == 0 || (NoWarnings `elem` options)

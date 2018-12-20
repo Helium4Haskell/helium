@@ -83,7 +83,6 @@ normSubExprs supply (Ap e1 e2) = (Ap e1'' e2', bindings1' ++ bindings2)
     (e2', bindings2) = normExpr supply2 e2
 normSubExprs supply (Lam x expr) = (Lam x $ normalizeLambda supply expr, [])
 normSubExprs supply expr = (expr, []) -- expr is already trivial, we don't need to normalize it further.
--- TODO: What should we do with 'Con'?
 
 normBinds :: NameSupply -> Binds -> Binds
 normBinds supply (Rec binds) = Rec $ mapWithSupply normBind supply binds

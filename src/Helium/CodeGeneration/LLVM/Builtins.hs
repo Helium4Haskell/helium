@@ -20,7 +20,7 @@ builtin = Builtin . idFromString
 eval', alloc', unpackString' :: Builtin
 eval' = builtin "_$helium_runtime_eval" [voidPointer, IntegerType 64] voidPointer
 -- Alignment, size (number of bytes)
-alloc' = builtin "malloc" [IntegerType 32] voidPointer
+alloc' = builtin "helium_global_alloc" [IntegerType 32] voidPointer
 -- Size, pointer to character (i32) array
 -- TODO: use target pointer size
 unpackString' = builtin "_$helium_runtime_unpack_string" [IntegerType 64, pointer $ IntegerType 8] (NamedTypeReference $ mkName "$data_[]")

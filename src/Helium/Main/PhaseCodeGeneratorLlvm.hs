@@ -21,31 +21,29 @@ import System.Process
 import qualified Data.Text.Lazy as Text
 import LLVM.Pretty (ppllvm)
 
-phaseCodeGeneratorLlvm :: NameSupply -> [IridiumFile] -> Bool -> [Option] -> IO ()
-phaseCodeGeneratorLlvm supply files shouldLink options = do
+phaseCodeGeneratorLlvm :: NameSupply -> FilePath -> [IridiumFile] -> Bool -> [Option] -> IO ()
+phaseCodeGeneratorLlvm supply output files shouldLink options = do
   enterNewPhase "Code generation for LLVM" options
 
   let target = Target 64 48
   sequence_ $ mapWithSupply (compileToLlvm target) supply files
 
   if shouldLink then do
-    let args = "-O3" : map toLlvmPath files
-    print args
-    (x, res, err) <- readProcessWithExitCode "clang" args ""
-    putStrLn res
-    unless (null err) $ do
-      putStrLn "Clang error"
-      putStrLn err
+    let args = "-o" : output : "-O3" : "../lib/runtime/memory.c" : map toLlvmPath files
+    (code, res, err) <- readProcessWithExitCode "clang" args ""
+    case code of
+      ExitSuccess -> return ()
+      ExitFailure _ -> do
+        putStrLn "Clang failed with the following errors:"
+        putStrLn res
+        putStrLn "Failed to link files. This is probably a bug of Helium. See errors above."
+        exitWith (ExitFailure 1)
     return ()
   else return ()
-
-  return ()
 
 compileToLlvm :: Target -> NameSupply -> IridiumFile -> IO ()
 compileToLlvm _ supply (IridiumFile _ _ False) = return ()
 compileToLlvm target supply ir@(IridiumFile f iridium _) = do
-  putStrLn f
-  putStrLn $ toLlvmPath ir
   let llvm = compileModule (envForModule target iridium) supply iridium
   writeFile (toLlvmPath ir) $ Text.unpack $ ppllvm llvm
 
