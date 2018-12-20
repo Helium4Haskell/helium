@@ -202,7 +202,7 @@ data Expr
   | Seq !Variable !Variable
   deriving (Eq, Ord)
 
-data PhiBranch = PhiBranch !BlockName !Variable
+data PhiBranch = PhiBranch { phiBlock :: !BlockName, phiVariable :: !Variable }
   deriving (Eq, Ord)
 
 data Literal
@@ -224,6 +224,17 @@ typeOfExpr (Phi (PhiBranch _ var : _)) = variableType var
 typeOfExpr (PrimitiveExpr name _) = primReturn $ findPrimitive name
 typeOfExpr (Undefined t) = t
 typeOfExpr (Seq _ v) = variableType v
+
+dependenciesOfExpr :: Expr -> [Id]
+dependenciesOfExpr (Literal _) = []
+dependenciesOfExpr (Call (GlobalFunction name _) args) = name : map variableName args
+dependenciesOfExpr (Eval var) = [variableName var]
+dependenciesOfExpr (Var var) = [variableName var]
+dependenciesOfExpr (Cast var _) = [variableName var]
+dependenciesOfExpr (Phi branches) = map (variableName . phiVariable) branches
+dependenciesOfExpr (PrimitiveExpr _ args) = map variableName args
+dependenciesOfExpr (Undefined _) = []
+dependenciesOfExpr (Seq v1 v2) = [variableName v1, variableName v2]
 
 variableType :: Variable -> PrimitiveType
 variableType (VarLocal (Local _ t)) = t
