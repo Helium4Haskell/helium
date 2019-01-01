@@ -247,6 +247,14 @@ instance (Freshen a c, Freshen b c) => Freshen (Qualification a b) c where
         (mapping'', (tp', b'')) = freshenWithMapping mapping' b' tp
         in (mapping', (Qualification (pred', tp'), b''))
 
+freshenList :: Freshen a b => b -> [a] -> ([a], b)
+freshenList n [] = ([], n)
+freshenList n (x:xs) = let
+    (x', n') = freshen n x
+    (xs', ns') = freshenList n' xs
+    in (x':xs', ns')
+
+-- freshenMapList :: Freshen a b => (a -> c) -> (c -> a) -> [c] -> ([c], b)
 
 combineTps :: Tp -> TpScheme -> [(String, Tp)]
 combineTps tp tpscheme = combineTpsHelper (getQuantorMap tpscheme) tp (unqualify $ unquantify tpscheme)
@@ -260,3 +268,5 @@ combineTps tp tpscheme = combineTpsHelper (getQuantorMap tpscheme) tp (unqualify
             f2Mapping = combineTpsHelper mapping a1 a2
             in nub (f1Mapping ++ f2Mapping)
         combineTpsHelper _ _ _ = err
+
+

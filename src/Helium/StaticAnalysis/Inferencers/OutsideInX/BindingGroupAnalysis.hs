@@ -24,14 +24,21 @@ import Helium.StaticAnalysis.Messages.HeliumMessages
 
 import Cobalt.Core.Types
 import Cobalt.OutsideIn.Solver
+import Cobalt.Core.Errors
 
 import Unbound.LocallyNameless.Fresh
+import Unbound.LocallyNameless hiding (Name)
+import Unbound.LocallyNameless.Ops hiding (freshen)
 
 import qualified Data.Map as M
 import qualified Data.Graph as G
 import qualified Data.Tree as G
 import Data.List
 import Data.Maybe
+import Data.Either
+import Data.Functor.Identity
+
+import Control.Monad.State
 
 
 import Debug.Trace
@@ -169,27 +176,54 @@ type TypeSignatures = M.Map Name (TyVar, PolyType)
 type Monos = [TyVar]
 type Touchables = [(Maybe Name, TyVar)]
 type Constraints = [Constraint]
-type BindingGroup = (Environment, Assumptions, Constraints)
+type BindingGroup = (Environment, Assumptions, Constraints, Substitution)
 type Substitution = [(TyVar, MonoType)]
+type InheritedBDG  = [(Names, Monos)]
+
 
 combineAssumptions :: Assumptions -> Assumptions -> Assumptions
 combineAssumptions = M.unionWith (++)
 
-emptyBindingGroup :: BindingGroup
-emptyBindingGroup = 
+emptyBindingGroup2 :: BindingGroup2
+emptyBindingGroup2 = 
    (M.empty, M.empty, [])
 
-combineBindingGroup :: BindingGroup -> BindingGroup -> BindingGroup
-combineBindingGroup (e1,a1,c1) (e2,a2,c2) = 
+emptyBindingGroup :: BindingGroup
+emptyBindingGroup = 
+   (M.empty, M.empty, [], [])
+
+combineBindingGroup2 :: BindingGroup2 -> BindingGroup2 -> BindingGroup2
+combineBindingGroup2 (e1,a1,c1) (e2,a2,c2) = 
    (e1 `M.union` e2, a1 `combineAssumptions` a2, c1++c2)
+
+concatBindingGroups2 :: [BindingGroup2] -> BindingGroup2
+concatBindingGroups2 = foldr combineBindingGroup2 emptyBindingGroup2
+
+combineBindingGroup :: BindingGroup -> BindingGroup -> BindingGroup
+combineBindingGroup (e1,a1,c1, s1) (e2,a2,c2, s2) = 
+   (e1 `M.union` e2, a1 `combineAssumptions` a2, c1++c2, s1 ++ s2)
 
 concatBindingGroups :: [BindingGroup] -> BindingGroup
 concatBindingGroups = foldr combineBindingGroup emptyBindingGroup
 
-bindingGroupAnalysis :: (Assumptions, Constraints, TypeSignatures, Monos, Touchables, Integer) -> 
-                        [BindingGroup] -> 
-                        (Touchables, Monos, Assumptions, Environment, TypeSignatures, Constraints, Integer, Substitution, TypeErrors)
-bindingGroupAnalysis input@(assumptions, constraints, typeSignatures, monos, touchables, betaUnique) groups = --trace ("Variable dependencies" ++ show variableDependencies) 
+type BindingGroup2 = (Environment, Assumptions, Constraints)
+
+bindingGroupAnalysis2 :: (Bool, TypeSignatures, Monos, Touchables, Maybe (Assumptions, Constraints, Substitution), Integer) -> 
+                        
+   
+   
+   
+   
+   
+   
+   [BindingGroup] -> 
+                       
+      
+      
+      
+      
+      (Touchables, Assumptions, TypeSignatures, Constraints, Integer, Substitution, TypeErrors, InheritedBDG)
+bindingGroupAnalysis2 input@(isTopLevel, typeSignatures, monos, touchables, body, betaUnique) groups = --trace ("Variable dependencies" ++ show variableDependencies) 
                   variableDependencies
                   where
                      bindingGroupAnalysis :: [BindingGroup] -> [BindingGroup]
@@ -197,31 +231,67 @@ bindingGroupAnalysis input@(assumptions, constraints, typeSignatures, monos, tou
                            let 
                               explicits = M.keys typeSignatures
                               indexMap = concat (zipWith f cs [0..])
-                              f (env,_,_) i = [ (n,i) | n <- M.keys env, n `notElem` explicits ]
+                              f (env,_,_,_) i = [ (n,i) | n <- M.keys env, n `notElem` explicits ]
                               edges    = concat (zipWith f' cs [0..])
-                              f' (_,ass,_) i = [ (i,j)| n <- M.keys ass, (n',j) <- indexMap, n==n' ]
+                              f' (_,ass,_,_) i = [ (i,j)| n <- M.keys ass, (n',j) <- indexMap, n==n' ]
                               list = topSort (length cs-1) edges
-                           in map (concatBindingGroups . map (cs !!)) list
-                     sortedGroups = reverse (bindingGroupAnalysis groups)
+                           in 
+                              (map (concatBindingGroups . map (cs !!)) list) ++ (
+                                 case body of
+                                    Nothing -> []
+                                    Just (a, c, s) -> [(M.empty, a, c, s)]
+                                 )
+                     sortedGroups = bindingGroupAnalysis groups
                      variableDependencies = foldr op initial sortedGroups
                         where
                            instanceTS :: Integer -> Assumptions -> TypeSignatures -> (Integer, [Constraint], Touchables)
-                           instanceTS bu ass ts = foldr combineTS (bu, [], []) $ concat $ M.elems $ M.intersectionWith (\a (_, t) -> [(a', t) | (_, a') <- a]) ass ts
+                           instanceTS bu ass ts = trace "InstanceTS: " $ traceShowId $ foldr combineTS (bu, [], []) $ concat $ M.elems $ M.intersectionWith (\a (_, t) -> [(a', t) | (_, a') <- a]) ass ts
                               where
                                  combineTS :: (TyVar, PolyType) -> (Integer, Constraints, Touchables) -> (Integer, [Constraint], Touchables)
                                  combineTS (a, t) (bu, cs, tc) = let
-                                    (t', bu') = freshen bu t
+                                    (t', bu') = snd $ trace "FreshenWithMapping" traceShowId $ freshenWithMapping (map (\x -> (name2Integer x, name2Integer x)) monos) bu t
                                     in (bu', Constraint_Unify (var a) (getMonoFromPoly t') : cs, map (\x -> (Nothing ,x)) (getTypeVariablesFromMonoType (getMonoFromPoly t')) ++ tc)
                            instanceTSE :: Environment -> TypeSignatures -> Constraints
                            instanceTSE env1 ts = concatMap snd $ M.toList $ M.intersectionWith (\e (b, t) -> [Constraint_Unify (var b) $ getMonoFromPoly t, Constraint_Unify (var b) (var e)]) env1 ts
                            equalASENV :: Assumptions -> Environment -> Constraints
                            equalASENV ass env = concat $ M.elems $ M.intersectionWith (\a e -> [Constraint_Unify (var a') (var e) | (_, a') <- a]) ass env
-                           initial :: (Touchables, Monos, Assumptions, Environment, TypeSignatures, Constraints, Integer, Substitution, TypeErrors)
-                           initial = (touchables, monos, assumptions, M.empty, typeSignatures, constraints, betaUnique, [], [])
-                           op :: (Environment, Assumptions, Constraints) -> 
-                                 (Touchables, Monos, Assumptions, Environment, TypeSignatures, Constraints, Integer, Substitution, TypeErrors) -> 
-                                 (Touchables, Monos, Assumptions, Environment, TypeSignatures, Constraints, Integer, Substitution, TypeErrors) 
-                           op g@(env1, ass1, con1) (touchs, ms, ass2, _, ts2, con2, bu, subsOrig, typeErrors) =
+                           initial :: (Touchables, Assumptions, TypeSignatures, Constraints, Integer, Substitution, TypeErrors, InheritedBDG)
+                           initial = (touchables, M.empty, typeSignatures, [], betaUnique, [], [], [])
+                           op :: (Environment, Assumptions, Constraints, Substitution) -> 
+                                 (Touchables, Assumptions, TypeSignatures, Constraints, Integer, Substitution, TypeErrors, InheritedBDG) -> 
+                                 (Touchables, Assumptions, TypeSignatures, Constraints, Integer, Substitution, TypeErrors, InheritedBDG) 
+                           op g@(env1, ass1, con1, subs1) (touchs, ass2, ts2, con2, bu, subsOrig, typeErrors, iBDG) =
+                              let
+                                  {- Solving -}
+                                 sBu = bu
+                                 sAxioms = []
+                                 sGiven = []
+                                 sWanted = subsConstraints subs1 ++ subsConstraints subsOrig ++ con1
+                                 sTouchables = map snd (touchs ++ touchables ++ touchs1)
+                                 ((solverResult, _), bu1) = contFreshMRes (solve sAxioms sGiven sWanted sTouchables) sBu
+
+                                 {- Gathering -}
+                                 (bu2, c1, touchs1) = instanceTS bu1 ass1 (trace "Input" $ traceShowId resTypeSignatures)
+                                 c2 = instanceTSE env1 resTypeSignatures
+                                 env' = env1 M.\\ resTypeSignatures
+                                 c3 = equalASENV (ass1 M.\\ resTypeSignatures) env'
+                                 c4 = concatMap (\(a', e) -> [Constraint_Unify (var a) (var e) | (_, a) <- a']) $ M.elems $ M.intersectionWith (,) ass2 env'
+                                 (resBetaUnique, c5, touchs2) = instanceTS bu2 ass2 resTypeSignatures
+                                 --(bu2, c4) = foldr (\(a, e) (b, cs)-> (b, [Constraint_Unify (var e) (var a') | (_, a') <- a ] ++ cs)) (bu1, []) $ M.intersectionWith (,) ass2 env'
+                                
+                                 {- Results -}
+                                 resTouchables = touchs2 ++ touchs1 ++ map (\x -> (Nothing, x)) (right touchable [] solverResult)
+                                 resAssumptions = ((ass1 M.\\ resTypeSignatures) M.\\ env') `combineAssumptions` (ass2 M.\\ env')
+
+                                 resTypeSignatures | isTopLevel = ts2 `M.union` M.fromList (mapMaybe (\(n, v) -> (\m -> (n, (v, PolyType_Mono [] m))) <$> lookup v resSubstitution) (M.toList env1))
+                                                   | otherwise =  ts2
+                                 resConstraints = con2 ++ right residual [] solverResult ++ c1 ++ c2 ++ c3 ++ c4 ++ c5
+                                 resSubstitution = right substitution [] solverResult
+                                 resTypeErrors = left makeTypeError [] solverResult ++ typeErrors
+                                 resInheritedBDG = (M.keys env1, M.elems env') : iBDG
+                              in trace (showBG g) $ traceCShow showBGR (resTouchables, resAssumptions, resTypeSignatures, resConstraints, resBetaUnique, resSubstitution, resTypeErrors, resInheritedBDG)
+
+                              {-
                               let
                                  (buR1, c1, touchs1) = instanceTS bu ass1 ts2
                                  c2 = instanceTSE env1 ts2
@@ -237,8 +307,8 @@ bindingGroupAnalysis input@(assumptions, constraints, typeSignatures, monos, tou
                                  te = either (\e -> [TypeError [] [MessageOneLiner $ MessageString $ show e] [] []]) (const []) solverResult
                                  (touchablesR, resiualConstraints, subs) = either (const (touchablesW, [], [])) (\sol -> (addTouchables (touchable sol) touchablesW, residual sol, substitution sol)) solverResult
                                  envR = traceShowId env1
-                                 tsR = M.fromList $ mapMaybe (\(n, v) -> (\m -> (n, (v, PolyType_Mono [] m))) <$> lookup v subs) (M.toList $ envR M.\\ typeSignatures M.\\ assR)
-                                 conTS =  mapMaybe (\(n, v) -> Constraint_Unify (var v) <$> lookup v subs) (M.toList $ envR M.\\ typeSignatures)
+                                 tsR = if not isTopLevel then M.empty else M.fromList $ mapMaybe (\(n, v) -> (\m -> (n, (v, PolyType_Mono [] m))) <$> lookup v subs) (M.toList $ envR M.\\ typeSignatures M.\\ assR)
+                                 conTS = if not isTopLevel then [] else mapMaybe (\(n, v) -> Constraint_Unify (var v) <$> lookup v subs) (M.toList $ envR M.\\ typeSignatures)
                               in --trace "ConR" $ trace (unlines $ map show constraints)
                                  --trace ("env\n" ++ (unlines $ map show $ M.toList env1)) $ 
                                  --trace ("env'\n" ++ (unlines $ map show $ M.toList env')) $ 
@@ -248,8 +318,8 @@ bindingGroupAnalysis input@(assumptions, constraints, typeSignatures, monos, tou
                                  --trace ("subs\n" ++ (unlines $ map show subs)) $
                                  --trace ("touchables\n" ++ (unlines $ map show touchablesR)) $
                                  --trace (unlines $ map show conR)
-                                 trace (showBG g) $ traceCShow showBGR (touchablesR, ms, assR, M.empty, tsR `M.union` ts2, conTS ++ conR ++ con2, buR2, subs ++ subsOrig, typeErrors ++ te)
-                           
+                                 trace (showBG g) (touchablesR, assR, tsR `M.union` ts2, conR ++ con2, buR2, nub $ subs ++ subsOrig, typeErrors ++ te, iBDG) --(M.keys env1, M.elems env') : mt)
+                           -}
 addTouchables :: [TyVar] -> Touchables -> Touchables
 addTouchables [] touchs = touchs
 addTouchables (t:ts) touchs   | t `elem` map snd touchs = addTouchables ts touchs
@@ -337,40 +407,117 @@ eqSubs subs m1 m2 | applySubs subs m1 == applySubs subs m2 = True
 
 topSort :: G.Vertex -> [G.Edge] -> [[G.Vertex]]
 topSort n = map G.flatten . G.scc . G.buildG (0, n)
-                              
+
+getMonos :: [Constraint] -> Monos
+getMonos = concatMap fv
+
+findMono :: Name -> InheritedBDG -> Monos
+findMono n xs = 
+            let 
+               p = elem n . fst
+               shead (x:_) = snd x
+               shead [] = []
+            in shead $ filter p xs
 
 traceCShow :: (a -> String) -> a -> a
 traceCShow s x = trace (s x) x
 traceCShow s x = x
 
-showBG :: (Environment, Assumptions, Constraints) -> String
-showBG (env, ass, cons) = unlines [
+showBG :: (Environment, Assumptions, Constraints, Substitution) -> String
+showBG (env, ass, cons, subs) = unlines [
         "BG(",
         "\tEnv: " ++ show env,
         "\tAss: " ++ show ass,
-        "\tCon:" ++ show cons,
+        "\tCon: " ++ show cons,
+        "\tSub: " ++ show subs,
         ")"
     ]
-
-showIBG :: (Assumptions, Constraints, TypeSignatures, Monos, Touchables, Integer) -> String
-showIBG (ass, cons, ts, monos, touchables, bu) = unlines $ "IBG(" : map ("\t" ++) [
-        "Asumptions: " ++ show ass, 
-        "Constraints: \n" ++ unlines (map (\c -> "\t\t" ++ show c) $ nub cons),
-        "TypeSignatures: " ++ show ts,
+    --(Bool, TypeSignatures, Monos, Touchables, Maybe (Assumptions, Constraints, Substitution), Integer)
+-- showIBG :: (Bool, Assumptions, Constraints, TypeSignatures, Monos, Touchables, Integer) -> String
+showIBG ::    (Bool, TypeSignatures, Monos, Touchables, Maybe (Assumptions, Constraints, Substitution), Integer) -> String
+showIBG (tl, ts, monos, touchables, group, bu) = unlines $ "IBG(" : map ("\t" ++) [
+        --"TypeSignatures: " ++ show ts,
         "Monos: " ++ show monos,
         "Touchables: " ++ show touchables,
+        "Group" ++ maybe "" showBG ((\(x, y, z) -> (M.empty, x, y, z)) <$> group),
         "Beta unique: " ++ show bu
     ] ++ [")"]
 
-showBGR :: (Touchables, Monos, Assumptions, Environment, TypeSignatures, Constraints, Integer, Substitution, TypeErrors) -> String
-showBGR (touchables, monos, ass, env, ts, cons, bu, subs, te) = unlines $ "BGR(" : map ("\t" ++) [
+showBGR :: (Touchables, Assumptions, TypeSignatures, Constraints, Integer, Substitution, TypeErrors, InheritedBDG) -> String
+showBGR (touchables, ass, ts, cons, bu, subs, te, iBDG) = unlines $ "BGR(" : map ("\t" ++) [
+        "Subs: \n" ++ unlines (map (\c -> "\t\t" ++ show c) subs),
         "Touchables: " ++ show touchables,
-        "Monos: " ++ show monos,
         "Assumptions: " ++ show ass,
-        "Environment: " ++ show env,
         "TypeSignatures: " ++ show ts,
-        "Constraints: \n" ++ unlines (map (\c -> "\t\t" ++ show c) $ nub cons),
+        "Constraints: \n" ++ unlines (map (\c -> "\t\t" ++ show c) cons),
         "BetaUnique: " ++ show bu,
         "TypErrors: " ++ show te,
-        "Subs: " ++ show subs
+        "Subs: " ++ show (nub subs),
+        "Inherited BDG: " ++ show iBDG
     ] ++ [")", "", "-----------------------------------------", ""]
+
+
+type InputBDG = (Bool, Constraints, Assumptions, Environment, TypeSignatures, Touchables, Integer)
+type OutputBDG = (Substitution, TypeSignatures, Constraints, Touchables, TypeErrors, Integer)
+
+
+bindingGroupAnalysis :: InputBDG -> [BindingGroup] -> OutputBDG
+bindingGroupAnalysis t@(toplevel, bodyConstraints, bodyAssumptions, bodyEnvironment, typeSignatures, inTouchables, betaUnique) groups = traceShow sortedGroups $ traceShow typeSignatures $ traceShow bodyEnvironment variableDependencies
+   where
+      sortBindingGroups :: [BindingGroup] -> [BindingGroup]
+      sortBindingGroups cs =
+            let 
+               explicits = M.keys typeSignatures
+               indexMap = concat (zipWith f cs [0..])
+               f (env,_,_, _) i = [ (n,i) | n <- M.keys env, n `notElem` explicits ]
+               edges    = concat (zipWith f' cs [0..])
+               f' (_,ass,_, _) i = [ (i,j)| n <- M.keys ass, (n',j) <- indexMap, n==n' ]
+               list = topSort (length cs-1) edges
+            in reverse $ map (concatBindingGroups . map (cs !!)) list
+      sortedGroups = sortBindingGroups groups
+      variableDependencies = foldr op initial sortedGroups
+      initial :: OutputBDG
+      initial = ([], typeSignatures, [], inTouchables, [], betaUnique)
+      op :: BindingGroup -> OutputBDG -> OutputBDG
+      op g@(gEnv, gAss, gCon, gSubs) i@(subs, typeSigs, resConstraints, resTouchables, resTypeErrors, bu) =
+         let
+            {- Gather new constraints -}
+            bgTouchables = map snd resTouchables
+            bgConstraints = subsConstraints gSubs ++ subsConstraints subs ++ gCon
+            {- Solve results -} 
+            ((solverResult, _), resultBetaUnique) = traceShowId $ contFreshMRes (solve [] [] bgConstraints bgTouchables) bu
+            solverTouchables = map (\x -> (Nothing, x)) $ map integer2Name [bu..resultBetaUnique - 1]
+            {- Construct results -}
+            resultSubs = right substitution [] solverResult
+            resultTypeSigs = typeSigs
+            resultResConstraints = right residual [] solverResult
+            resultResTouchables = solverTouchables ++ map (\x -> (Nothing, x)) (right touchable [] solverResult)
+            resultResTypeErrors = left makeTypeError [] solverResult ++ resTypeErrors
+         in traceShow bodyEnvironment (resultSubs, resultTypeSigs, resultResConstraints, resultResTouchables, resultResTypeErrors, resultBetaUnique)
+
+
+makeTypeError :: NamedSolverError -> [TypeError]
+makeTypeError s = [TypeError [] [MessageOneLiner $ MessageString $ show s] [] []]
+
+subsConstraints :: Substitution -> Constraints
+subsConstraints = map (uncurry (Constraint_Unify . var))
+
+runFreshMRes :: FreshM a -> (a, Integer)
+runFreshMRes = runIdentity . runFreshMTRes
+
+runFreshMTRes :: Monad m => FreshMT m a -> m (a, Integer)
+runFreshMTRes m = contFreshMTRes m 0
+
+contFreshMRes :: FreshM a -> Integer -> (a, Integer)
+contFreshMRes i = runIdentity . contFreshMTRes i
+
+contFreshMTRes :: Monad m => FreshMT m a -> Integer -> m (a, Integer)
+contFreshMTRes (FreshMT m) = runStateT m
+
+left :: (a -> c) -> c -> Either a b -> c
+left f d (Left x) = f x
+left f d (Right _) = d
+
+right :: (b -> c) -> c -> Either a b -> c
+right f d (Left _) = d
+right f d (Right x) = f x

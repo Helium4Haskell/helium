@@ -69,7 +69,7 @@ phaseTypeInferencer basedir fullName module_ localEnv completeEnv options =
                unless (null typeErrorsOIX && null tld) (
                   do
                      putStrLn "Top level types are not equal"
-                     print tld
+                     putStrLn (unlines $ map show $ M.toList tld)
                   )   
                putStrLn $ unlines $ map show $ M.toList toplevelTypesOIX
                putStrLn (sortAndShowMessages typeErrorsOIX)

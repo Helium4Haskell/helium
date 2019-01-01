@@ -7,7 +7,6 @@ typeInferencingIOX options importEnv module_ =
                   importEnvironment_Inh_Module = importEnv,
                   options_Inh_Module = options,
                   betaUnique_Inh_Module = 0,
-                  monos_Inh_Module = [],
                   typeSignatures_Inh_Module = M.empty,
                   substitution_Inh_Module = []
                   }
