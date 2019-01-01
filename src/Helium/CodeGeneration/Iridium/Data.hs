@@ -176,6 +176,12 @@ bindType _ = TypeAnyThunk
 bindLocal :: Bind -> Local
 bindLocal b@(Bind var _ _) = Local var $ bindType b
 
+bindTargetArgumentTypes :: BindTarget -> [PrimitiveType]
+bindTargetArgumentTypes (BindTargetConstructor (DataTypeConstructor _ _ args)) = args
+bindTargetArgumentTypes (BindTargetTuple arity) = replicate arity TypeAny
+bindTargetArgumentTypes (BindTargetFunction (VarGlobal (GlobalFunction _ (FunctionType fnargs _)))) = fnargs
+bindTargetArgumentTypes _ = repeat TypeAny
+
 -- * Expressions are used to bind values to variables in 'let' instructions.
 -- Those binds cannot be recursive.
 data Expr
@@ -198,7 +204,7 @@ data Expr
   -- This can be used for a value which is not used.
   | Undefined !PrimitiveType
   -- `%c = seq %a %b` marks a dependency between variables %a and %b. Assigns %b to %c and ignores the value of %a. 
-  -- Prevents that variable %a is removed by dead code removal. Can be used to compile the Haskell functions `seq` and
+  -- Prevents that variable %a is removed by dead code removal. Can be used to compile the Haskell functions `seq` and `pseq`.
   | Seq !Variable !Variable
   deriving (Eq, Ord)
 
@@ -225,16 +231,16 @@ typeOfExpr (PrimitiveExpr name _) = primReturn $ findPrimitive name
 typeOfExpr (Undefined t) = t
 typeOfExpr (Seq _ v) = variableType v
 
-dependenciesOfExpr :: Expr -> [Id]
+dependenciesOfExpr :: Expr -> [Variable]
 dependenciesOfExpr (Literal _) = []
-dependenciesOfExpr (Call (GlobalFunction name _) args) = name : map variableName args
-dependenciesOfExpr (Eval var) = [variableName var]
-dependenciesOfExpr (Var var) = [variableName var]
-dependenciesOfExpr (Cast var _) = [variableName var]
-dependenciesOfExpr (Phi branches) = map (variableName . phiVariable) branches
-dependenciesOfExpr (PrimitiveExpr _ args) = map variableName args
+dependenciesOfExpr (Call g args) = VarGlobal g : args
+dependenciesOfExpr (Eval var) = [var]
+dependenciesOfExpr (Var var) = [var]
+dependenciesOfExpr (Cast var _) = [var]
+dependenciesOfExpr (Phi branches) = map (phiVariable) branches
+dependenciesOfExpr (PrimitiveExpr _ args) = args
 dependenciesOfExpr (Undefined _) = []
-dependenciesOfExpr (Seq v1 v2) = [variableName v1, variableName v2]
+dependenciesOfExpr (Seq v1 v2) = [v1, v2]
 
 variableType :: Variable -> PrimitiveType
 variableType (VarLocal (Local _ t)) = t

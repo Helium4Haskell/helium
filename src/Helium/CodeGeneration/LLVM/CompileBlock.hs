@@ -185,7 +185,7 @@ compileExpression env supply expr@(Iridium.Phi branches) name = [name := Phi (co
 compileExpression env supply (Iridium.PrimitiveExpr primName args) name = compile (envTarget env) supply (map (toOperand env) args) name
   where
     (Iridium.Primitive _ _ compile) = Iridium.findPrimitive primName
-compileExpression env supply (Iridium.Undefined ty) name = [name := BitCast (ConstantOperand $ Undef t) t []]
+compileExpression env supply (Iridium.Undefined ty) name = [name := Select (ConstantOperand $ Int 1 1) (ConstantOperand $ Undef t) (ConstantOperand $ Undef t) []]
   where
     t = compileType env ty
 

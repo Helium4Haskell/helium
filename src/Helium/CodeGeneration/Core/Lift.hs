@@ -103,7 +103,7 @@ liftExpr supply scope expr env = (inlineInSimpleExpr env expr, [])
 inlineInSimpleExpr :: Env -> Expr -> Expr
 inlineInSimpleExpr env e@(Var name) = case lookupMap name env of
   Nothing -> e
-  Just expr -> expr
+  Just expr -> inlineInSimpleExpr env expr
 inlineInSimpleExpr env (Ap e1 e2) = Ap (inlineInSimpleExpr env e1) (inlineInSimpleExpr env e2)
 inlineInSimpleExpr env e@(Con _) = e
 inlineInSimpleExpr env e@(Lit _) = e
@@ -123,10 +123,14 @@ lazyBind isRec supply scope b@(Bind x expr) env
   | otherwise = (Just $ Bind x ap, decl : decls, id)
   where
     inline = null scope
-    ap = foldl (\e arg -> Ap e (Var arg)) (Var name) scope -- TODO: foldl vs foldr, Ap vs flip Ap?
+    ap = foldl (\e arg -> Ap e (Var arg)) (Var name) scope
     (name, supply') = freshId supply
-    (expr', decls) = liftExprIgnoreLambdas supply' scope expr env
-    value = foldr Lam expr' scope
+    (supply1, supply2) = splitNameSupply supply'
+    argNames :: [(Id, Id)]
+    argNames = mapWithSupply (\s arg -> let (arg', _) = freshIdFromId arg s in (arg, arg')) supply1 scope
+    env' = foldr (\(arg, arg') -> insertMap arg $ Var arg') env argNames
+    (expr', decls) = liftExprIgnoreLambdas supply2 (map snd argNames) expr env'
+    value = foldr (Lam . snd) expr' argNames
     decl :: CoreDecl
     decl = DeclValue
       { declName = name

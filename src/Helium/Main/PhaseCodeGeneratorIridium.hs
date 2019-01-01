@@ -16,6 +16,7 @@ import Helium.CodeGeneration.Core(desugarCore)
 import Helium.CodeGeneration.Iridium.FromCore(fromCore)
 import Helium.CodeGeneration.Iridium.Show()
 import Helium.CodeGeneration.Iridium.PassThunkArity(passThunkArity)
+import Helium.CodeGeneration.Iridium.PassLiveVariables(passLiveVariables)
 import Helium.CodeGeneration.Iridium.ResolveDependencies(resolveDependencies, IridiumFile(..))
 import Helium.CodeGeneration.LLVM.CompileModule(compileModule)
 import Helium.CodeGeneration.LLVM.Target(Target(..))
@@ -28,7 +29,7 @@ phaseCodeGeneratorIridium :: NameSupply -> [String] -> String -> Core.CoreModule
 phaseCodeGeneratorIridium supply paths fullName coreModule options = do
   enterNewPhase "Code generation for Iridium" options
 
-  let supplyDesugar : supplyFromCore : supplyPassThunkArity : _ = splitNameSupplies supply
+  let supplyDesugar : supplyFromCore : supplyPassThunkArity : supplyPassLiveVariables : _ = splitNameSupplies supply
 
   let simplified = desugarCore supplyDesugar coreModule
 
@@ -39,7 +40,7 @@ phaseCodeGeneratorIridium supply paths fullName coreModule options = do
   let hasMain = any ((== idFromString "main$") . Core.declName) $ Core.moduleDecls coreModule
 
   let iridium' = fromCore supplyFromCore simplified
-  let iridium = passThunkArity supplyPassThunkArity iridium'
+  let iridium = passLiveVariables supplyPassLiveVariables $ passThunkArity supplyPassThunkArity iridium'
 
   writeFile (fullNameNoExt ++ ".iridium") $ show iridium
 
