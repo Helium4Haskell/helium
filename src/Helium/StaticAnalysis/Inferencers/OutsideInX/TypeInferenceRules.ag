@@ -17,7 +17,7 @@ ATTR Module Body Declaration Declarations Expression Expressions
                 environment USE {M.union} {M.empty} : {M.Map Name TyVar}
                 constraints USE {(++)} {[]} : {[Constraint]}
                 bindingGroups USE {(++)} {[]} : {[BindingGroup]}
-                touchables USE {(++)} {[]} : {[(Maybe Name, TyVar)]}
+                touchables USE {(++)} {[]} : {[TyVar]}
                 toplevelTypes USE {M.union} {M.empty}  : TypeEnvironment
                 typeSignaturesCollect USE {M.union} {M.empty} : {M.Map Name (TyVar, PolyType)}
                 typeErrors USE {(++)} {[]} : TypeErrors
@@ -73,9 +73,9 @@ SEM Module
         body . substitution = getSubstitution @solveResults
         body . monos = []
         loc . constrs = @body.constraints ++  map (uncurry (Constraint_Unify . var)) @body.substitutionCollect
-        loc . tyvars = map snd @body.touchables
+        loc . tyvars = @body.touchables
         loc . solveResults = constructErrors $ runFreshM $ solve [] [] @constrs @tyvars
-        body . typeSignatures = (M.map (\tps -> (integer2Name (-1), PolyType_Mono [] $ tpSchemeToMonoType tps)) $ typeEnvironment @lhs.importEnvironment)
+        body . typeSignatures = M.map (\tps -> (integer2Name (-1), PolyType_Mono [] $ tpSchemeToMonoType tps)) $ typeEnvironment @lhs.importEnvironment
 
 SEM Body
     | Body
@@ -93,7 +93,7 @@ SEM Body
             loc . iBDG
         ) =
             let inputBDG = (True, @declarations.typeSignaturesCollect `M.union` @lhs.typeSignatures, [], @declarations.touchables, Nothing, @declarations.betaUnique)
-            in  bindingGroupAnalysis2 inputBDG @declarations.bindingGroups
+            in  bindingGroupAnalysis inputBDG @declarations.bindingGroups
 
 ATTR FunctionBinding FunctionBindings [ betasLeft : {[TyVar]} betaRight : TyVar | | name : Name numberOfPatterns : Integer  ]
 
@@ -107,13 +107,13 @@ SEM Declaration
         lhs . tlEnvironment           = @environment
         loc . environment       = M.singleton @bindings.name @beta
         loc . assumptions       = @bindings.assumptions
-        lhs . touchables        = (Just @bindings.name, @beta) : (Nothing, @br) : map (\x -> (Nothing,x)) @bls ++ @bindings.touchables
+        lhs . touchables        = @beta : @br : @bls ++ @bindings.touchables
         loc . constraints       = @parameterCons ++ @bindings.constraints 
         loc . bls               = take (fromInteger @bindings.numberOfPatterns) (map integer2Name [(@lhs.betaUnique + 2)..])
         loc . br                = integer2Name $ @lhs.betaUnique + 1
-        loc . beta              = traceShow @bindings.name $ traceShowId $ integer2Name @lhs.betaUnique
-        loc . parameterCons     = traceShowId [Constraint_Unify (var @beta) (foldr ((:-->:) . var) (var @br) @bls)] --++
-                                    --maybe [] (\ts -> [Constraint_Unify (var @beta) (fst $ freshen (9999 :: Integer) $ getMonoFromPoly ts)]) (M.lookup @bindings.name @lhs.typeSignatures)
+        loc . beta              = integer2Name @lhs.betaUnique
+        loc . parameterCons     = [Constraint_Unify (var @beta) (foldr ((:-->:) . var) (var @br) @bls)]
+                    
         loc . err               = internalError "TypeInferenceRules.ag" "FunctionBindings" ("No substitution found for " ++ show @bindings.name)
         bindings.betasLeft      = @bls 
         bindings.betaRight      = @br 
@@ -125,7 +125,7 @@ SEM Declaration
         lhs . substitutionCollect = []
         loc . bindingGroup      = (@environment, @assumptions, @constraints, @righthandside.substitutionCollect)
         lhs . toplevelTypes     = M.fromList $ map (\(n, v) -> (n, monoTypeToTypeScheme $ substitutePoly v @lhs.substitution)) $ M.toList @pattern.environment
-        lhs . touchables        = (Nothing, @beta) : @pattern.touchables ++ @righthandside.touchables
+        lhs . touchables        = @beta : @pattern.touchables ++ @righthandside.touchables
         loc . constraints       = [unifyVar @beta @pattern.beta, unifyVar @beta @righthandside.beta] ++ @pattern.constraints ++ @righthandside.constraints
         loc . environment       = @pattern.environment
         loc . assumptions       = @righthandside.assumptions
@@ -134,14 +134,14 @@ SEM Declaration
         loc . beta              = integer2Name @lhs.betaUnique
         loc . err               = internalError "TypeInferenceRules.ag" "PatternBinding" "No substitution found for type"
     | TypeSignature
-        lhs . touchables        = (Nothing, @beta) : map (\(x, _) -> (Nothing, x)) (M.elems @ts) -- ++ concatMap (getTypeVariablesFromMonoType . getMonoFromPoly . snd) @ts
+        lhs . touchables        = @beta : map fst (M.elems @ts)
         loc . beta              = integer2Name @lhs.betaUnique
         lhs . betaUnique        = @bu
         lhs . typeSignaturesCollect = @ts
         loc . (ts, bu)          = foldr (\n (m, b) -> let 
                                                 (t, b') = typeToPolytype b @type.self
                                                 m' = M.insert n (integer2Name b', t) m
-                                            in (m', b' + 1)) (M.empty, @lhs.betaUnique + 1) $ @names.self
+                                            in (m', b' + 2)) (M.empty, @lhs.betaUnique + 1) $ @names.self
 
 ATTR Pattern    [ | | beta : TyVar ]
 ATTR Patterns   [ | | betas : {[TyVar]} numberOfPatterns:Integer ]
@@ -156,45 +156,57 @@ SEM Patterns
           . numberOfPatterns = 0
 SEM Pattern
     | Variable
-        lhs . touchables    = [(Just @name.self, @beta)]
+        lhs . touchables    = [@beta]
         lhs . betaUnique    = @lhs.betaUnique + 1
         lhs . environment   = M.singleton @name.self @beta
         loc . beta          = integer2Name @lhs.betaUnique
     | Literal
-        lhs . touchables    = [(Nothing, @beta)]
+        lhs . touchables    = [@beta]
         lhs . constraints   = [Constraint_Unify (var @beta) @literal.literalType]
         loc . beta          = integer2Name @lhs.betaUnique
         lhs . betaUnique    = @lhs.betaUnique + 1
     | Tuple
         patterns    . betaUnique        = @lhs.betaUnique + 1
         lhs         . constraints       = @constraint : @patterns.constraints
-        lhs         . touchables        = (Nothing, @beta) : @patterns.touchables
+        lhs         . touchables        = @beta : @patterns.touchables
         loc         . beta              = integer2Name @lhs.betaUnique
                     . constraint        = Constraint_Unify (var @beta) (monotypeTuple (map var @patterns.betas))
     | Wildcard
-        lhs         . touchables        = [(Nothing, @beta)]
+        lhs         . touchables        = [@beta]
         lhs         . betaUnique        = @lhs.betaUnique + 1
         loc         . beta              = integer2Name @lhs.betaUnique
     | List 
-        lhs         . touchables        = (Nothing, @beta) : (Nothing, @elemBeta) : @patterns.touchables
+        lhs         . touchables        = @beta : @elemBeta : @patterns.touchables
         lhs         . constraints       = @lstConstraints ++ @patterns.constraints
         patterns    . betaUnique        = @lhs.betaUnique + 2
         loc         . beta              = integer2Name @lhs.betaUnique
         loc         . elemBeta          = integer2Name (@lhs.betaUnique + 1)
         loc         . lstConstraints    = Constraint_Unify (var @beta) (monotypeList (var @elemBeta)) : map (unifyVar @elemBeta) @patterns.betas
     | Constructor
-        patterns    . betaUnique        = @lhs.betaUnique + 2
-        lhs . touchables                = (Just @name.self, @beta) : (Just @name.self, @betaCon) : @patterns.touchables
+        patterns    . betaUnique        = @bu
+        lhs . touchables                = @beta : @betaCon : getTypeVariablesFromMonoType @tp ++ @patterns.touchables
         lhs . constraints               = @conApply : @conConstraints ++ @patterns.constraints
         loc . beta                      = integer2Name @lhs.betaUnique
         loc . betaCon                   = integer2Name (@lhs.betaUnique + 1)
         loc . conApply                  = Constraint_Unify (var @betaCon) (foldr (:-->:) (var @beta) (map var @patterns.betas))
-        loc . conConstraints            = case M.lookup @name.self (valueConstructors @lhs.importEnvironment) of
-                                                Nothing  -> []
-                                                Just ctp -> [Constraint_Inst (var @betaCon) (PolyType_Mono [] $ tpSchemeToMonoType ctp)]
+        loc . conConstraints            = [Constraint_Inst (var @betaCon) (PolyType_Mono [] @tp)]
+        loc . (tp, bu)                  = case M.lookup @name.self (valueConstructors @lhs.importEnvironment) of
+                                            Nothing  -> internalError "TypeInferenceRules" "n/a" "Constructor not found"
+                                            Just ctp -> freshen (@lhs.betaUnique + 2) (tpSchemeToMonoType ctp)
+    | InfixConstructor
+        leftPattern . betaUnique        = @bu
+        lhs . touchables                = @beta : @betaCon : getTypeVariablesFromMonoType @tp ++ @leftPattern.touchables ++ @rightPattern.touchables
+        lhs . constraints               = @conApply : @conConstraints ++ @leftPattern.constraints ++ @rightPattern.constraints
+        loc . beta                      = integer2Name @lhs.betaUnique
+        loc . betaCon                   = integer2Name (@lhs.betaUnique + 1)
+        loc . conApply                  = Constraint_Unify (var @betaCon) (var @leftPattern.beta :-->: (var @rightPattern.beta :-->: var @beta))
+        loc . (tp, bu)                  = case M.lookup @constructorOperator.self (valueConstructors @lhs.importEnvironment) of
+                                            Nothing  -> internalError "TypeInferenceRules" "n/a" "Constructor not found"
+                                            Just ctp -> freshen (@lhs.betaUnique + 2) (tpSchemeToMonoType ctp)
+        loc . conConstraints            = [Constraint_Inst (var @betaCon) (PolyType_Mono [] @tp)]
     | As
         pattern . betaUnique            = @lhs.betaUnique + 1
-        lhs . touchables                = (Just @name.self, @beta) : @pattern.touchables
+        lhs . touchables                = @beta : @pattern.touchables
         lhs . constraints               = unifyVar @beta @pattern.beta : @pattern.constraints
         lhs . environment               = M.insert @name.self @beta @pattern.environment
         loc . beta                      = integer2Name @lhs.betaUnique
@@ -236,7 +248,7 @@ SEM RightHandSide
     | Expression
         lhs . beta = @expression.beta
 
-ATTR Expression [ | | beta : TyVar]
+ATTR Expression MaybeExpression [ | | beta : TyVar]
 ATTR Expressions [ | | betas : {[TyVar]} nrOfExpressions : Integer]
 
 SEM Expressions
@@ -253,21 +265,21 @@ SEM Expression
         lhs . betaUnique    = @lhs.betaUnique + 1
         loc . beta          = integer2Name @lhs.betaUnique
         lhs . constraints   = [Constraint_Unify (var @beta) @literal.literalType]
-        lhs . touchables    = [(Nothing, @beta)]
+        lhs . touchables    = [@beta]
     | Variable
-        lhs . touchables    = [(Just @name.self, @beta)]
+        lhs . touchables    = [@beta]
         loc . beta          = integer2Name @lhs.betaUnique
         lhs . betaUnique    = @lhs.betaUnique + 1
         lhs . assumptions   = M.singleton @name.self [(@name.self, @beta)]
     | NormalApplication
         loc . beta              = integer2Name @lhs.betaUnique
         function . betaUnique   = @lhs.betaUnique + 1
-        lhs . touchables        = [(Nothing, @beta)] ++ @function.touchables ++ @arguments.touchables
+        lhs . touchables        = @beta : @function.touchables ++ @arguments.touchables
         lhs . constraints       = [@constraint] ++ @function.constraints ++ @arguments.constraints
         loc . constraint        = Constraint_Unify (var @function.beta) (foldr (:-->:) (var @beta) (map var @arguments.betas))
     | If
         lhs . constraints       = @constraints ++ concat [@guardExpression.constraints, @thenExpression.constraints, @elseExpression.constraints]
-        lhs . touchables        = (Nothing, @beta) : concat [@guardExpression.touchables, @thenExpression.touchables, @elseExpression.touchables]
+        lhs . touchables        = @beta : concat [ @guardExpression.touchables, @thenExpression.touchables, @elseExpression.touchables ]
         guardExpression.betaUnique = @lhs.betaUnique + 1
         loc . beta              = integer2Name @lhs.betaUnique
         loc . constraints       =   [
@@ -276,7 +288,7 @@ SEM Expression
                                         unifyVar @beta @elseExpression.beta 
                                     ]
     | Lambda
-        lhs . touchables        = [(Nothing, @beta)] ++ @expression.touchables ++ @patterns.touchables
+        lhs . touchables        = @beta : @expression.touchables ++ @patterns.touchables
         lhs . constraints       = @fConstraint : @envConstraints ++ @expression.constraints ++ @patterns.constraints
         lhs . assumptions       = @expression.assumptions M.\\ @patterns.environment
         loc . envConstraints    = concat $ M.elems $ M.intersectionWith (\a e -> [Constraint_Unify (var a') (var e) | (_, a') <- a]) @expression.assumptions @patterns.environment
@@ -285,29 +297,41 @@ SEM Expression
         loc . fConstraint       = Constraint_Unify (foldr ((:-->:).var) (var @expression.beta) @patterns.betas) (var @beta)
         expression . monos       = M.elems @patterns.environment ++ getMonos @envConstraints ++ @lhs.monos
     | Tuple
-        lhs . touchables        = (Nothing, @beta) : @expressions.touchables
+        lhs . touchables        = @beta : @expressions.touchables
         lhs . constraints       = @constraint : @expressions.constraints
         loc . constraint        = Constraint_Unify (var @beta) (monotypeTuple (map var @expressions.betas))
         loc . beta              = integer2Name @lhs.betaUnique
         expressions . betaUnique = @lhs.betaUnique + 1
     | List
-        lhs . touchables        = (Nothing, @elemBeta) : (Nothing, @beta) : @expressions.touchables
+        lhs . touchables        = @elemBeta : @beta : @expressions.touchables
         lhs . constraints       = @lstConstraints ++ @expressions.constraints
         expressions . betaUnique = @lhs.betaUnique + 2
         loc . elemBeta          = integer2Name @lhs.betaUnique
         loc . beta              = integer2Name (@lhs.betaUnique + 1)
         loc . lstConstraints    = Constraint_Unify (var @beta) (monotypeList (var @elemBeta)) : map (unifyVar @elemBeta) @expressions.betas
     | Constructor
-        lhs . touchables        = (Just @name.self, @beta) : (map (\x -> (Nothing, x)) $ getTypeVariablesFromMonoType @tp)
+        lhs . touchables        = @beta : getTypeVariablesFromMonoType @tp
         lhs . betaUnique        = @bu
         loc . (tp, bu)          = case M.lookup @name.self (valueConstructors @lhs.importEnvironment) of
                                     Nothing  -> internalError "TypeInferenceRules" "n/a" "Constructor not found"
                                     Just ctp -> freshen (@lhs.betaUnique + 1) (tpSchemeToMonoType ctp)
         lhs . constraints       = [Constraint_Inst (var @beta) (PolyType_Mono [] @tp)]
         loc . beta              = integer2Name @lhs.betaUnique
+    | InfixApplication
+        leftExpression . betaUnique = @lhs.betaUnique + 2
+        lhs . touchables            = @beta : @betaResOp : @leftExpression.touchables ++ @operator.touchables ++ @rightExpression.touchables
+        lhs . constraints           = @constraints ++ @leftExpression.constraints ++ @operator.constraints ++ @rightExpression.constraints
+        loc . beta                  = integer2Name @lhs.betaUnique
+        loc . betaResOp             = integer2Name $ @lhs.betaUnique + 1 
+    	loc . conOperator           = Constraint_Unify (var @operator.beta) (var @leftExpression.beta :-->: (var @rightExpression.beta :-->: var @betaResOp))
+        loc . constraints           = case (@leftExpression.section,@rightExpression.section) of
+                                                (False,False) -> [ @conOperator, (unifyVar @betaResOp @beta)                        ]
+                                                (True ,True ) -> [               (unifyVar @operator.beta @beta)                        ]
+                                                (False,True ) -> [ @conOperator, (Constraint_Unify (var @rightExpression.beta :-->: var @betaResOp) (var @beta)) ]
+                                                (True ,False) -> [ @conOperator, (Constraint_Unify (var @leftExpression.beta  :-->: var @betaResOp) (var @beta)) ]
     | Let
         declarations.betaUnique = @lhs.betaUnique + 1
-        lhs . touchables        = (Nothing, @beta) : @touchables
+        lhs . touchables        = @beta : @touchables
         lhs . constraints       = unifyVar @beta @expression.beta : @constraints
         lhs . bindingGroups     = []
         loc . inheritedBDG      = []
@@ -322,10 +346,19 @@ SEM Expression
             lhs . typeErrors,
             loc . iBDG
         ) =
-            let inputBDG = (False, @lhs.typeSignatures, @lhs.monos, @declarations.touchables ++ @expression.touchables, Just (@expression.assumptions, @expression.constraints, @expression.substitutionCollect), @expression.betaUnique)
-            in bindingGroupAnalysis2 inputBDG @declarations.bindingGroups
-            
+            let inputBDG = (False, @declarations.typeSignaturesCollect `M.union` @lhs.typeSignatures, @lhs.monos, @declarations.touchables ++ @expression.touchables, Just (@expression.assumptions, @expression.constraints, @expression.substitutionCollect), @expression.betaUnique)
+            in bindingGroupAnalysis inputBDG @declarations.bindingGroups
 
+ATTR MaybeExpression [ | | section : Bool]            
+SEM MaybeExpression
+
+  | Just
+      lhs . section = False
+
+  | Nothing
+      lhs . section     = True
+          . betaUnique  = @lhs.betaUnique + 1
+      loc . beta        = integer2Name @lhs.betaUnique
 
 
 ATTR Literal [ | | literalType : MonoType]

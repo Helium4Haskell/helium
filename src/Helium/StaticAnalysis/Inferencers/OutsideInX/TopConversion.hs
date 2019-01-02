@@ -58,7 +58,7 @@ typeToPolytype bu t = let
     !mt = typeToMonoType t
     !(mt', bu') = freshen bu mt 
     !vars = getTypeVariablesFromMonoType mt'
-    in (foldr (\b p -> PolyType_Bind (B b p)) (PolyType_Mono [] mt') $ map (\v -> integer2Name (name2Integer v)) vars, bu')
+    in (foldr (\b p -> PolyType_Bind (B b p)) (PolyType_Mono [] mt') vars, bu')
 
 typeToMonoType :: Type -> MonoType
 typeToMonoType = tpSchemeToMonoType . makeTpSchemeFromType
@@ -75,8 +75,6 @@ tpToMonoType t@(TApp c a) = tConHelper [] t
     tConHelper lst (TApp c a) = tConHelper (tpToMonoType a : lst) c
     tConHelper lst (TCon n) = MonoType_Con n lst
     tConHelper lst (TVar v) = MonoType_Con (show v) lst
-
-tpToMonoType t = error $ "Unknown pattern " ++ show t
 
 getTypeVariablesFromMonoType :: MonoType -> [TyVar]
 getTypeVariablesFromMonoType (MonoType_Var v) = [v]
