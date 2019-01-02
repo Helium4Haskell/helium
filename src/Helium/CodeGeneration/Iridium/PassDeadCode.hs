@@ -1,4 +1,4 @@
-{-| Module      :  PassLiveVariables
+{-| Module      :  PassDeadCode
     License     :  GPL
 
     Maintainer  :  helium@cs.uu.nl
@@ -6,11 +6,17 @@
     Portability :  portable
 -}
 
--- Implements a live variable analysis pass. Note that a variable can only go out of scope
--- at the end of a block.
--- The pass removes all variables whose value is not needed. 
+-- Implements a dead code analysis pass.
+-- The pass removes all variables whose value is not needed.
+-- Furthermore it removes arguments from functions if possible.
+-- Unused arguments cannot always be removed due to currying.
+-- The analysis determines the minimum number of arguments which are always
+-- bound to a function when curried, stored in stateBindCount.
+-- The arguments whose index is smaller than the minimum bind count may be removed.
+-- If an argument cannot be removed, the caller will replace the (possibly dead)
+-- variable with an undefined value.
 
-module Helium.CodeGeneration.Iridium.PassLiveVariables(passLiveVariables) where
+module Helium.CodeGeneration.Iridium.PassDeadCode(passDeadCode) where
 
 import Helium.CodeGeneration.Iridium.Type
 import Helium.CodeGeneration.Iridium.Data
@@ -19,8 +25,8 @@ import Lvm.Common.Id
 import Lvm.Common.IdMap
 import Lvm.Common.IdSet
 
-passLiveVariables :: NameSupply -> Module -> Module
-passLiveVariables supply mod = mod{ moduleMethods = methods }
+passDeadCode :: NameSupply -> Module -> Module
+passDeadCode supply mod = mod{ moduleMethods = methods }
   where
     res = analyse mod
     methods = catMaybes $ mapWithSupply (`transformMethod` res) supply $ moduleMethods mod
