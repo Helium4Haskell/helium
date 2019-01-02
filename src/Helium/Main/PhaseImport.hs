@@ -16,14 +16,14 @@ import Helium.Syntax.UHA_Syntax
 import Helium.Syntax.UHA_Utils
 import Helium.Syntax.UHA_Range(noRange)
 import Lvm.Path(searchPath)
-import Lvm.Import(lvmImportDecls)
+import Lvm.Import(lvmImportDecls')
 import Helium.ModuleSystem.CoreToImportEnv(getImportEnvironment)
 import qualified Helium.ModuleSystem.ExtractImportDecls as EID
 import Data.List(isPrefixOf)
 
-phaseImport :: String -> Module -> [String] -> [Option] -> 
+phaseImport :: String -> Module -> (Id -> IO Core.CoreModule) -> [Option] -> 
                     IO ([Core.CoreDecl], [ImportEnvironment])
-phaseImport fullName module_ lvmPath options = do
+phaseImport fullName module_ resolve options = do
     enterNewPhase "Importing" options
 
     let (_, baseName, _) = splitFilePath fullName
@@ -32,7 +32,7 @@ phaseImport fullName module_ lvmPath options = do
     let moduleWithExtraImports = addImplicitImports module_
                     
     -- Chase imports
-    chasedImpsList <- chaseImports lvmPath moduleWithExtraImports
+    chasedImpsList <- chaseImports resolve moduleWithExtraImports
 
     let indirectionDecls   = concat chasedImpsList
         importEnvs = 
@@ -40,13 +40,13 @@ phaseImport fullName module_ lvmPath options = do
     
     return (indirectionDecls, importEnvs)
 
-chaseImports :: [String] -> Module -> IO [[Core.CoreDecl]]
-chaseImports lvmPath fromModule = 
-    let coreImports   = EID.coreImportDecls_Syn_Module $ EID.wrap_Module (EID.sem_Module fromModule) EID.Inh_Module -- Expand imports
-        findModule    = searchPath lvmPath ".lvm" . stringFromId
+chaseImports :: (Id -> IO Core.CoreModule) -> Module -> IO [[Core.CoreDecl]]
+chaseImports resolve fromModule = 
+    let coreImports   = EID.coreImportDecls_Syn_Module $  EID.wrap_Module (EID.sem_Module fromModule) EID.Inh_Module -- Expand imports
+        -- findModule    = searchPath lvmPath ".iridium" . stringFromId
         doImport :: (Core.CoreDecl, [Id]) -> IO [Core.CoreDecl]
         doImport (importDecl,hidings)
-          = do decls <- lvmImportDecls findModule [importDecl]
+          = do decls <- lvmImportDecls' resolve [importDecl]
                return [ d
                       | d <- concat decls
                       , let name = Core.declName d

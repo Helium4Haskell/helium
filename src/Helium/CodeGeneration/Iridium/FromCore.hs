@@ -44,9 +44,11 @@ fromCore supply mod@(CoreModule.Module name _ _ decls) = Module name dependencie
     valuesCons = mapFromList $ listFromMap consMap >>= (\(dataName, cons) -> map (\con@(_, Declaration conName _ _ _ (DataTypeConstructorDeclaration fields)) -> (conName, ValueConstructor (DataTypeConstructor dataName conName fields))) $ sortOn fst cons)
 
 customFromCoreDecl :: Core.CoreDecl -> Maybe (Declaration CustomDeclaration)
-customFromCoreDecl decl@CoreModule.DeclCustom{} = Just $ Declaration name (visibility decl) (origin decl) (CoreModule.declCustoms decl) $ CustomDeclaration $ CoreModule.declKind decl
+customFromCoreDecl decl@CoreModule.DeclCustom{}
+  | not isData = Just $ Declaration name (visibility decl) (origin decl) (CoreModule.declCustoms decl) $ CustomDeclaration $ CoreModule.declKind decl
   where
     name = CoreModule.declName decl
+    isData = CoreModule.declKind decl == CoreModule.DeclKindCustom (idFromString "data")
 customFromCoreDecl _ = Nothing
 
 gatherDependencies :: Core.CoreDecl -> IdSet -> IdSet

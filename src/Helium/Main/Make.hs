@@ -6,7 +6,7 @@ import Control.Monad
 import System.FilePath(joinPath)
 import Data.List(nub, elemIndex, isSuffixOf, isPrefixOf, intercalate)
 import Data.Maybe(fromJust, mapMaybe)
-import Lvm.Path(explodePath,getLvmPath,searchPath,searchPathMaybe)
+import Lvm.Path(explodePath,getLvmPath)
 import System.Directory(doesFileExist, getModificationTime,
                         getPermissions, Permissions(writable))
 import Helium.Main.Args

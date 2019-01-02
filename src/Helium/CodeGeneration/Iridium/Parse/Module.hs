@@ -1,4 +1,4 @@
-module Helium.CodeGeneration.Iridium.Parse.Module (parseModule, parseFunctionType) where
+module Helium.CodeGeneration.Iridium.Parse.Module (parseModule, parseModuleIO, parseFunctionType) where
 
 import Lvm.Common.Id(Id)
 import Helium.CodeGeneration.Iridium.Parse.Parser
@@ -8,6 +8,7 @@ import Helium.CodeGeneration.Iridium.Parse.Instruction
 import Helium.CodeGeneration.Iridium.Parse.Method
 import Helium.CodeGeneration.Iridium.Data
 import Helium.CodeGeneration.Iridium.Type
+import System.Exit
 
 pCustomDeclaration :: Parser CustomDeclaration
 pCustomDeclaration = CustomDeclaration <$ pToken ':' <* pWhitespace <*> pDeclKind
@@ -90,6 +91,15 @@ pModuleDeclaration = pDeclaration f
 
 parseModule :: String -> Either ParseError Module
 parseModule = parse pModule
+
+parseModuleIO :: FilePath -> String -> IO Module
+parseModuleIO fullName contents =
+  case parseModule contents of
+    Left err -> do
+      putStrLn $ "Failed to parse Iridium file " ++ show fullName
+      print err
+      exitWith (ExitFailure 1)
+    Right ir -> return ir
 
 parseFunctionType :: String -> Either ParseError FunctionType
 parseFunctionType = parse pFunctionType

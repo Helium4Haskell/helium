@@ -15,7 +15,7 @@ import Lvm.Path
 import Lvm.Common.Id
 import Lvm.Common.IdSet
 import Helium.CodeGeneration.Iridium.Data
-import Helium.CodeGeneration.Iridium.Parse.Module(parseModule)
+import Helium.CodeGeneration.Iridium.Parse.Module(parseModuleIO)
 import System.Directory(doesFileExist, getModificationTime)
 
 data IridiumFile = IridiumFile
@@ -41,12 +41,7 @@ resolve paths (x:xs) found m = do
   path <- searchPath paths ".iridium" $ stringFromId x
   file <- readFile path
 
-  iridium <- case parseModule file of
-    Left err -> do
-      putStrLn $ "Failed to parse Iridium file " ++ show path
-      print err
-      exitWith (ExitFailure 1)
-    Right ir -> return ir
+  iridium <- parseModuleIO path file
 
   let (filePath, moduleName, _) = splitFilePath path
   isUpToDate <- upToDate $ filePath ++ moduleName

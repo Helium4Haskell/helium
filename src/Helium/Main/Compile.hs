@@ -27,7 +27,6 @@ import Helium.Main.PhaseKindInferencer
 import Helium.Main.PhaseTypingStrategies
 import Helium.Main.PhaseTypeInferencer
 import Helium.Main.PhaseDesugarer
-import Helium.Main.PhaseCodeGenerator
 import Helium.Main.PhaseCodeGeneratorIridium
 import Helium.Main.PhaseCodeGeneratorLlvm
 import Helium.Main.CompileUtils
@@ -74,24 +73,16 @@ compile basedir fullName options lvmPath doneModules =
             putStrLn $ "Unsupported file extension: " ++ show ext
             exitWith (ExitFailure 1)
 
-        -- Phase 10: Code generation
-        phaseCodeGenerator fullName coreModule options
+        -- Phase 10: Code generation for Iridium
+        (files, link) <- phaseCodeGeneratorIridium supplyIridium lvmPath fullName coreModule options
 
         sendLog "C" fullName doneModules options
-
-        -- Phase 11: Code generation for Iridium
-        (files, link) <- phaseCodeGeneratorIridium supplyIridium lvmPath fullName coreModule options
         return (files, link, warnings)
       else do
-        iridium <- case Iridium.parseModule contents of
-            Left err -> do
-                putStrLn $ "Failed to parse Iridium file " ++ show fullName
-                print err
-                exitWith (ExitFailure 1)
-            Right ir -> return ir
+        iridium <- Iridium.parseModuleIO fullName contents
         return ([Iridium.IridiumFile fullName iridium True], False, 0)
 
-    -- Phase 12: Generate LLVM code
+    -- Phase 11: Generate LLVM code
     phaseCodeGeneratorLlvm supplyLlvm (joinPath [filePath, fileName]) iridiumFiles shouldLink options
 
     putStrLn $ "Compilation successful" ++
@@ -130,8 +121,8 @@ compileHaskellToCore basedir fullName contents options lvmPath doneModules = do
 
   -- Phase 3: Importing
   (indirectionDecls, importEnvs) <-
-      phaseImport fullName parsedModule lvmPath options
-  
+      phaseImport fullName parsedModule (resolveDeclarations lvmPath) options
+
   -- Phase 4: Resolving operators
   resolvedModule <- 
       doPhaseWithExit 20 (const "R") compileOptions $
@@ -194,17 +185,7 @@ maximumNumberOfKindErrors = 1
 
 resolveDeclarations :: [String] -> Id -> IO (Lvm.CoreModule)
 resolveDeclarations paths name = do
-  maybeFullNameLvm <- searchPathMaybe paths ".lvm" $ stringFromId name
-  case maybeFullNameLvm of
-    Just fullName -> do
-      Lvm.lvmReadFile fullName
-    Nothing -> do
-      fullName <- searchPath paths ".iridium" $ stringFromId name
-      contents <- readSourceFile fullName
-      iridium <- case Iridium.parseModule contents of
-        Left err -> do
-            putStrLn $ "Failed to parse Iridium file " ++ show fullName
-            print err
-            exitWith (ExitFailure 1)
-        Right ir -> return ir
-      return $ toAbstractModule iridium
+  fullName <- searchPath paths ".iridium" $ stringFromId name
+  contents <- readSourceFile fullName
+  iridium <- Iridium.parseModuleIO fullName contents
+  return $ toAbstractModule iridium
