@@ -1,7 +1,7 @@
 
 ATTR Module Body Declaration Declarations Expression Expressions
-     GuardedExpression GuardedExpressions MaybeDeclarations
-     MaybeExpression Qualifier Qualifiers RecordExpressionBinding
+     GuardedExpression GuardedExpressions
+     MaybeExpression RecordExpressionBinding
      RightHandSide Alternative Alternatives FunctionBinding
      FunctionBindings Statement RecordExpressionBindings
      Statements AnnotatedType Types Constructor AnnotatedTypes 
@@ -23,6 +23,18 @@ ATTR Module Body Declaration Declarations Expression Expressions
                 typeErrors USE {(++)} {[]} : TypeErrors
                 substitutionCollect USE {(++)} {[]} : {[(TyVar, MonoType)]}
                 tlEnvironment USE {M.union} {M.empty} : {M.Map Name TyVar}
+        ]
+
+ATTR MaybeDeclarations Qualifier Qualifiers
+        [ 
+                typeSignatures : {M.Map Name (TyVar, PolyType)}
+                substitution : {[(TyVar, MonoType)]}
+                importEnvironment : ImportEnvironment
+            |   betaUnique : Integer
+            |   environment USE {M.union} {M.empty} : {M.Map Name TyVar}
+                bindingGroups USE {(++)} {[]} : {[BindingGroup]}
+                typeSignaturesCollect USE {M.union} {M.empty} : {M.Map Name (TyVar, PolyType)}
+                typeErrors USE {(++)} {[]} : TypeErrors
         ]
 
 ATTR Body Declaration Declarations MaybeDeclarations FunctionBinding FunctionBindings LeftHandSide RightHandSide Expression Expressions MaybeExpression
@@ -70,7 +82,7 @@ SEM Module
         loc . typeErrors = getTypeErrors @solveResults ++ @body.typeErrors
         lhs . warnings = getWarnings @solveResults
         body . betaUnique = 1
-        body . substitution = getSubstitution @solveResults
+        body . substitution = (if null @body.assumptions then id else trace "Unresolved assumptions" . traceShow @body.assumptions)getSubstitution @solveResults
         body . monos = []
         loc . constrs = @body.constraints ++  map (uncurry (Constraint_Unify . var)) @body.substitutionCollect
         loc . tyvars = @body.touchables
@@ -125,13 +137,13 @@ SEM Declaration
         lhs . substitutionCollect = []
         loc . bindingGroup      = (@environment, @assumptions, @constraints, @righthandside.substitutionCollect)
         lhs . toplevelTypes     = M.fromList $ map (\(n, v) -> (n, monoTypeToTypeScheme $ substitutePoly v @lhs.substitution)) $ M.toList @pattern.environment
-        lhs . touchables        = @beta : @pattern.touchables ++ @righthandside.touchables
-        loc . constraints       = [unifyVar @beta @pattern.beta, unifyVar @beta @righthandside.beta] ++ @pattern.constraints ++ @righthandside.constraints
+        lhs . touchables        = @betaRight : @pattern.touchables ++ @righthandside.touchables
+        loc . constraints       = [unifyVar @betaRight @pattern.beta, unifyVar @betaRight @righthandside.beta] ++ @pattern.constraints ++ @righthandside.constraints
         loc . environment       = @pattern.environment
         loc . assumptions       = @righthandside.assumptions
         pattern . betaUnique    = @lhs.betaUnique + 1 
         righthandside . monos   = M.elems (@pattern.environment M.\\ @lhs.typeSignatures) ++ @lhs.monos
-        loc . beta              = integer2Name @lhs.betaUnique
+        loc . betaRight         = integer2Name @lhs.betaUnique
         loc . err               = internalError "TypeInferenceRules.ag" "PatternBinding" "No substitution found for type"
     | TypeSignature
         lhs . touchables        = @beta : map fst (M.elems @ts)
@@ -241,12 +253,59 @@ SEM LeftHandSide
         lhs . betas             = @patterns.betas
         lhs . numberOfPatterns  = @patterns.numberOfPatterns
         lhs . name              = @name.self
+    | Infix
+        lhs . betas             = [@leftPattern.beta, @rightPattern.beta]
+        lhs . numberOfPatterns  = 2
+        lhs . name              = @operator.self
+    | Parenthesized
+        lhs . betas = @lefthandside.betas ++ @patterns.betas
+        lhs . numberOfPatterns = @lefthandside.numberOfPatterns + @patterns.numberOfPatterns
 
-ATTR RightHandSide  [ | | beta : TyVar]
+ATTR RightHandSide  [ betaRight : TyVar | | beta : TyVar]
 
 SEM RightHandSide
     | Expression
-        lhs . beta = @expression.beta
+        lhs     . assumptions = @where.assumptions
+                . constraints = @where.constraints
+        where   . assumptions = @expression.assumptions
+                . constraints = (unifyVar @expression.beta @lhs.betaRight) : @expression.constraints
+    | Guarded
+        lhs                 . beta           = @lhs.betaRight
+        lhs                 . assumptions    = @where.assumptions
+                            . constraints    = @where.constraints
+        guardedexpressions  . numberOfGuards = length @guardedexpressions.self
+        where               . assumptions    = @guardedexpressions.assumptions
+                            . constraints    = @guardedexpressions.constraints
+
+ATTR GuardedExpressions GuardedExpression [ betaRight:TyVar | | beta : TyVar]
+
+SEM GuardedExpression
+
+  | GuardedExpression
+      lhs . constraints = [Constraint_Unify (var @guard.beta) (MonoType_Con "Bool" []), (unifyVar @expression.beta @lhs.betaRight)] ++ @guard.constraints ++ @expression.constraints
+
+ATTR MaybeDeclarations [ | touchables : Touchables assumptions:Assumptions constraints:Constraints substitutionCollect : Substitution | ]
+
+SEM MaybeDeclarations
+    | Just
+        lhs . touchables        = @touchables
+        lhs . constraints       = @constraints
+        lhs . bindingGroups     = []
+        loc . inheritedBDG      = []
+        (
+            loc . touchables,
+            lhs . assumptions,
+            lhs . typeSignaturesCollect,
+            loc . constraints,
+            lhs . betaUnique,
+            lhs . substitutionCollect,
+            lhs . typeErrors,
+            loc . iBDG
+        ) =
+            let inputBDG = (False, @declarations.typeSignaturesCollect `M.union` @lhs.typeSignatures, @lhs.monos, @declarations.touchables ++ @lhs.touchables, Just (@lhs.assumptions, @lhs.constraints, @lhs.substitutionCollect), @declarations.betaUnique)
+            in bindingGroupAnalysis inputBDG @declarations.bindingGroups
+
+
 
 ATTR Expression MaybeExpression [ | | beta : TyVar]
 ATTR Expressions [ | | betas : {[TyVar]} nrOfExpressions : Integer]
@@ -348,8 +407,99 @@ SEM Expression
         ) =
             let inputBDG = (False, @declarations.typeSignaturesCollect `M.union` @lhs.typeSignatures, @lhs.monos, @declarations.touchables ++ @expression.touchables, Just (@expression.assumptions, @expression.constraints, @expression.substitutionCollect), @expression.betaUnique)
             in bindingGroupAnalysis inputBDG @declarations.bindingGroups
+    | Case
+        lhs . touchables              = @beta : @beta' : @expression.touchables ++ @alternatives.touchables
+        lhs . constraints             = unifyVar @expression.beta @beta' : @expression.constraints ++ @alternatives.constraints
+        expression      . betaUnique  = @lhs.betaUnique + 2
+        alternatives    . betaLeft    = @beta'
+                        . betaRight   = @beta
+        loc             . beta        = integer2Name @lhs.betaUnique
+                        . beta'       = integer2Name $ @lhs.betaUnique + 1
+    | Typed 
+        expression . betaUnique = @bu
+        lhs . touchables    = @beta : @expression.touchables
+        lhs . constraints   =   [
+                                    unifyVar @beta @expression.beta,
+                                    Constraint_Inst (var @beta) @tp
+                                ] ++ @expression.constraints
+        loc . beta          = integer2Name @lhs.betaUnique
+        loc . (tp, bu)      = typeToPolytype (@lhs.betaUnique + 1) @type.self
+    | Comprehension
+        lhs . constraints           = @newcon : @qualifiers.constraints
+        lhs . touchables            = @beta : @expression.touchables ++ @qualifiers.touchables
+        expression  . betaUnique    = @lhs.betaUnique + 1
+        qualifiers  . assumptions   = @expression.assumptions
+                    . constraints   = @expression.constraints
+                    . monos         = []
+        loc         . assumptions   = @qualifiers.assumptions
+                    . beta          = integer2Name @lhs.betaUnique
+                    . newcon        = Constraint_Unify (monotypeList (var @expression.beta)) (var @beta)
 
-ATTR MaybeExpression [ | | section : Bool]            
+ATTR Alternative Alternatives [ betaLeft:TyVar betaRight:TyVar | | ]
+
+SEM Alternative
+    | Alternative
+        lhs . constraints = unifyVar @pattern.beta @lhs.betaLeft : @envConstraints ++ @pattern.constraints ++ @righthandside.constraints
+        lhs . assumptions =  @righthandside.assumptions M.\\ @pattern.environment
+        loc . envConstraints = concat $ M.elems (M.intersectionWith (\a' e -> [unifyVar a e | (_, a) <- a']) @righthandside.assumptions @pattern.environment)
+
+ATTR Qualifier Qualifiers [ |  touchables : {[TyVar]} assumptions:Assumptions constraints:Constraints substitutionCollect : Substitution monos : Monos| ]
+
+SEM Qualifier
+    | Guard
+        lhs . touchables = @guard.touchables ++ @lhs.touchables
+        lhs . assumptions = @lhs.assumptions `combineAssumptions` @guard.assumptions
+        lhs . constraints =  Constraint_Unify (var @guard.beta) (MonoType_Con "Bool" []) : @guard.constraints ++ @lhs.constraints
+        lhs . substitutionCollect = @lhs.substitutionCollect ++ @guard.substitutionCollect
+    | Generator
+        lhs . touchables        = @expression.touchables ++ @pattern.touchables ++ @lhs.touchables
+        lhs . assumptions       = @assumptions' `combineAssumptions` @expression.assumptions
+        lhs . constraints       = @newcon : @envConstraints ++ @pattern.constraints ++ @expression.constraints ++ @lhs.constraints
+        lhs . substitutionCollect = @lhs.substitutionCollect ++ @expression.substitutionCollect
+        loc . newcon            = Constraint_Unify (var @expression.beta) $ monotypeList (var @pattern.beta)
+        loc . assumptions'      = @lhs.assumptions M.\\ @pattern.environment
+        loc . envConstraints    = concat $ M.elems (M.intersectionWith (\a' e -> [unifyVar a e | (_, a) <- a']) @lhs.assumptions @pattern.environment)
+        lhs . monos = @lhs.monos
+    | Let
+        lhs . bindingGroups     = []
+        loc . inheritedBDG      = []
+        declarations.monos = @lhs.monos
+        (
+            lhs . touchables,
+            lhs . assumptions,
+            lhs . typeSignaturesCollect,
+            lhs . constraints,
+            lhs . betaUnique,
+            lhs . substitutionCollect,
+            lhs . typeErrors,
+            loc . iBDG
+        ) =
+            let inputBDG = (False, @declarations.typeSignaturesCollect `M.union` @lhs.typeSignatures, @lhs.monos, @declarations.touchables ++ @lhs.touchables, Just (@lhs.assumptions, @lhs.constraints, @lhs.substitutionCollect), @declarations.betaUnique)
+            in bindingGroupAnalysis inputBDG @declarations.bindingGroups
+
+SEM Qualifiers
+
+  | Cons
+        lhs . assumptions = @hd.assumptions
+            . constraints = @hd.constraints
+            . touchables  = @hd.touchables
+            . betaUnique = @hd.betaUnique
+            . monos     = @hd.monos
+        hd  . assumptions = @tl.assumptions
+            . constraints = @tl.constraints
+            . touchables  = @tl.touchables
+            . betaUnique = @tl.betaUnique
+            . monos = @tl.monos
+        tl  . assumptions = @lhs.assumptions
+            . constraints = @lhs.constraints
+            . touchables = @lhs.touchables
+            . betaUnique = @lhs.betaUnique
+            . monos = @lhs.monos
+
+
+
+ATTR MaybeExpression [ | | section : Bool]          
+
 SEM MaybeExpression
 
   | Just

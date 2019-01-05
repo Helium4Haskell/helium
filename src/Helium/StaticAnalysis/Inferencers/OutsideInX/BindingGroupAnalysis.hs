@@ -74,7 +74,7 @@ concatBindingGroups = foldr combineBindingGroup emptyBindingGroup
 bindingGroupAnalysis ::   (Bool, TypeSignatures, Monos, Touchables, Maybe (Assumptions, Constraints, Substitution), Integer) -> 
                            [BindingGroup] -> 
                            (Touchables, Assumptions, TypeSignatures, Constraints, Integer, Substitution, TypeErrors, InheritedBDG)
-bindingGroupAnalysis input@(isTopLevel, typeSignatures, monos, touchables, body, betaUnique) groups =
+bindingGroupAnalysis input@(isTopLevel, typeSignatures, monos, touchables, body, betaUnique) groups = 
                   variableDependencies
                   where
                      bindingGroupAnalysis :: [BindingGroup] -> [BindingGroup]
@@ -118,7 +118,7 @@ bindingGroupAnalysis input@(isTopLevel, typeSignatures, monos, touchables, body,
                                  sAxioms = []
                                  sGiven = []
                                  sWanted = subsConstraints subs1 ++ subsConstraints subsOrig ++ con1
-                                 sTouchables = touchs ++ touchables ++ touchs1
+                                 sTouchables =  touchs ++ touchables
                                  ((solverResult, _), bu1) = contFreshMRes (solve sAxioms sGiven sWanted sTouchables) sBu
 
                                  {- Gathering -}
