@@ -128,12 +128,13 @@ bindingGroupAnalysis input@(isTopLevel, typeSignatures, monos, touchables, body,
                                  ((solverResult, _), bu1) = contFreshMRes (solve sAxioms sGiven sWanted sTouchables) sBu
 
                                  {- Gathering -}
-                                 (bu2, rc1, touchs3) = instanceTS bu1 ass1 resTypeSignatures
-                                 rc2 = instanceTSE env1 resTypeSignatures
-                                 env' = env1 M.\\ resTypeSignatures
-                                 rc3 = equalASENV (ass1 M.\\ resTypeSignatures) env'
+                                 ts' = resTypeSignatures M.\\ ts2
+                                 (bu2, rc1, touchs3) = instanceTS bu1 ass1 ts'
+                                 rc2 = instanceTSE env1' ts'
+                                 env' = env1' M.\\ (ts')
+                                 rc3 = equalASENV (ass1 M.\\ ts') env'
                                  rc4 = concatMap (\(a', e) -> [Constraint_Unify (var a) (var e) | (_, a) <- a']) $ M.elems $ M.intersectionWith (,) ass2 env'
-                                 (resBetaUnique, rc5, touchs4) = instanceTS bu2 ass2 resTypeSignatures                                
+                                 (resBetaUnique, rc5, touchs4) = instanceTS bu2 ass2 ts'                                
                                  {- Results -}
                                  resTouchables = touchs3 ++ touchs4 ++ right touchable [] solverResult
                                  resAssumptions = ((ass1 M.\\ resTypeSignatures) M.\\ env') `combineAssumptions` (ass2 M.\\ resTypeSignatures M.\\ env')
