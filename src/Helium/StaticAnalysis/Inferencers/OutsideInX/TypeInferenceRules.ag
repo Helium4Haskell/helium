@@ -77,7 +77,7 @@ getSubstitution (_, _, subs) = subs
 
 SEM Module
     | Module
-        lhs . dictionaryEnvironment = trace (unlines $ map show $ getSubstitution @solveResults) emptyDictionaryEnvironment
+        lhs . dictionaryEnvironment = trace (unlines $ map show $ sortOn fst $ nub $ getSubstitution @solveResults) emptyDictionaryEnvironment
         lhs . toplevelTypes = if null @typeErrors then @body.toplevelTypes else M.empty -- 
         loc . typeErrors = getTypeErrors @solveResults ++ @body.typeErrors
         lhs . warnings = getWarnings @solveResults
@@ -87,7 +87,7 @@ SEM Module
         loc . constrs = @body.constraints ++  map (uncurry (Constraint_Unify . var)) @body.substitutionCollect
         loc . tyvars = @body.touchables
         loc . solveResults = constructErrors $ runFreshM $ solve [] [] @constrs @tyvars
-        body . typeSignatures = M.map (\tps -> (integer2Name (-1), PolyType_Mono [] $ tpSchemeToMonoType tps)) $ typeEnvironment @lhs.importEnvironment
+        body . typeSignatures = M.map (\tps -> (integer2Name (-1), tpSchemeToPolyType tps)) $ typeEnvironment @lhs.importEnvironment
 
 SEM Body
     | Body
@@ -104,7 +104,7 @@ SEM Body
             lhs . typeErrors,
             loc . iBDG
         ) =
-            let inputBDG = (True, @declarations.typeSignaturesCollect `M.union` @lhs.typeSignatures, [], @declarations.touchables, Nothing, @declarations.betaUnique)
+            let inputBDG = (True, @declarations.typeSignaturesCollect `M.union` @lhs.typeSignatures, [], @declarations.touchables, Nothing, @declarations.typeErrors, @declarations.betaUnique)
             in  bindingGroupAnalysis inputBDG @declarations.bindingGroups
 
 ATTR FunctionBinding FunctionBindings [ betasLeft : {[TyVar]} betaRight : TyVar | | name : Name numberOfPatterns : Integer  ]
@@ -195,27 +195,27 @@ SEM Pattern
         loc         . elemBeta          = integer2Name (@lhs.betaUnique + 1)
         loc         . lstConstraints    = Constraint_Unify (var @beta) (monotypeList (var @elemBeta)) : map (unifyVar @elemBeta) @patterns.betas
     | Constructor
-        patterns    . betaUnique        = @bu
-        lhs . touchables                = @beta : @betaCon : getTypeVariablesFromMonoType @tp ++ @patterns.touchables
+        patterns    . betaUnique        = @lhs.betaUnique + 2
+        lhs . touchables                = @beta : @betaCon : @patterns.touchables
         lhs . constraints               = @conApply : @conConstraints ++ @patterns.constraints
         loc . beta                      = integer2Name @lhs.betaUnique
         loc . betaCon                   = integer2Name (@lhs.betaUnique + 1)
         loc . conApply                  = Constraint_Unify (var @betaCon) (foldr (:-->:) (var @beta) (map var @patterns.betas))
-        loc . conConstraints            = [Constraint_Inst (var @betaCon) (PolyType_Mono [] @tp)]
-        loc . (tp, bu)                  = case M.lookup @name.self (valueConstructors @lhs.importEnvironment) of
+        loc . conConstraints            = [Constraint_Inst (var @betaCon) @tp]
+        loc . tp                        = case M.lookup @name.self (valueConstructors @lhs.importEnvironment) of
                                             Nothing  -> internalError "TypeInferenceRules" "n/a" "Constructor not found"
-                                            Just ctp -> freshen (@lhs.betaUnique + 2) (tpSchemeToMonoType ctp)
+                                            Just ctp -> tpSchemeToPolyType ctp
     | InfixConstructor
-        leftPattern . betaUnique        = @bu
-        lhs . touchables                = @beta : @betaCon : getTypeVariablesFromMonoType @tp ++ @leftPattern.touchables ++ @rightPattern.touchables
+        leftPattern . betaUnique        = @lhs.betaUnique + 2
+        lhs . touchables                = @beta : @betaCon : @leftPattern.touchables ++ @rightPattern.touchables
         lhs . constraints               = @conApply : @conConstraints ++ @leftPattern.constraints ++ @rightPattern.constraints
         loc . beta                      = integer2Name @lhs.betaUnique
         loc . betaCon                   = integer2Name (@lhs.betaUnique + 1)
         loc . conApply                  = Constraint_Unify (var @betaCon) (var @leftPattern.beta :-->: (var @rightPattern.beta :-->: var @beta))
-        loc . (tp, bu)                  = case M.lookup @constructorOperator.self (valueConstructors @lhs.importEnvironment) of
+        loc . tp                        = case M.lookup @constructorOperator.self (valueConstructors @lhs.importEnvironment) of
                                             Nothing  -> internalError "TypeInferenceRules" "n/a" "Constructor not found"
-                                            Just ctp -> freshen (@lhs.betaUnique + 2) (tpSchemeToMonoType ctp)
-        loc . conConstraints            = [Constraint_Inst (var @betaCon) (PolyType_Mono [] @tp)]
+                                            Just ctp -> tpSchemeToPolyType ctp
+        loc . conConstraints            = [Constraint_Inst (var @betaCon) @tp]
     | As
         pattern . betaUnique            = @lhs.betaUnique + 1
         lhs . touchables                = @beta : @pattern.touchables
@@ -268,7 +268,7 @@ SEM RightHandSide
         lhs     . assumptions = @where.assumptions
                 . constraints = @where.constraints
         where   . assumptions = @expression.assumptions
-                . constraints = (unifyVar @expression.beta @lhs.betaRight) : @expression.constraints
+                . constraints = @expression.constraints
     | Guarded
         lhs                 . beta           = @lhs.betaRight
         lhs                 . assumptions    = @where.assumptions
@@ -302,7 +302,7 @@ SEM MaybeDeclarations
             lhs . typeErrors,
             loc . iBDG
         ) =
-            let inputBDG = (False, @declarations.typeSignaturesCollect `M.union` @lhs.typeSignatures, @lhs.monos, @declarations.touchables ++ @lhs.touchables, Just (@lhs.assumptions, @lhs.constraints, @lhs.substitutionCollect), @declarations.betaUnique)
+            let inputBDG = (False, @declarations.typeSignaturesCollect `M.union` @lhs.typeSignatures, @lhs.monos, @declarations.touchables ++ @lhs.touchables, Just (@lhs.assumptions, @lhs.constraints, @lhs.substitutionCollect), @declarations.typeErrors,  @declarations.betaUnique)
             in bindingGroupAnalysis inputBDG @declarations.bindingGroups
 
 
@@ -369,12 +369,12 @@ SEM Expression
         loc . beta              = integer2Name (@lhs.betaUnique + 1)
         loc . lstConstraints    = Constraint_Unify (var @beta) (monotypeList (var @elemBeta)) : map (unifyVar @elemBeta) @expressions.betas
     | Constructor
-        lhs . touchables        = @beta : getTypeVariablesFromMonoType @tp
-        lhs . betaUnique        = @bu
-        loc . (tp, bu)          = case M.lookup @name.self (valueConstructors @lhs.importEnvironment) of
+        lhs . touchables        = @beta : [] -- getTypeVariablesFromMonoType @tp
+        lhs . betaUnique        = @lhs.betaUnique + 1
+        loc . tp                = case M.lookup @name.self (valueConstructors @lhs.importEnvironment) of
                                     Nothing  -> internalError "TypeInferenceRules" "n/a" "Constructor not found"
-                                    Just ctp -> freshen (@lhs.betaUnique + 1) (tpSchemeToMonoType ctp)
-        lhs . constraints       = [Constraint_Inst (var @beta) (PolyType_Mono [] @tp)]
+                                    Just ctp -> tpSchemeToPolyType ctp
+        lhs . constraints       = [Constraint_Inst (var @beta) @tp]
         loc . beta              = integer2Name @lhs.betaUnique
     | InfixApplication
         leftExpression . betaUnique = @lhs.betaUnique + 2
@@ -405,7 +405,7 @@ SEM Expression
             lhs . typeErrors,
             loc . iBDG
         ) =
-            let inputBDG = (False, @declarations.typeSignaturesCollect `M.union` @lhs.typeSignatures, @lhs.monos, @declarations.touchables ++ @expression.touchables, Just (@expression.assumptions, @expression.constraints, @expression.substitutionCollect), @expression.betaUnique)
+            let inputBDG = (False, @declarations.typeSignaturesCollect `M.union` @lhs.typeSignatures, @lhs.monos, @declarations.touchables ++ @expression.touchables, Just (@expression.assumptions, @expression.constraints, @expression.substitutionCollect),  @declarations.typeErrors ++ @expression.typeErrors, @expression.betaUnique)
             in bindingGroupAnalysis inputBDG @declarations.bindingGroups
     | Case
         lhs . touchables              = @beta : @beta' : @expression.touchables ++ @alternatives.touchables
@@ -474,7 +474,7 @@ SEM Qualifier
             lhs . typeErrors,
             loc . iBDG
         ) =
-            let inputBDG = (False, @declarations.typeSignaturesCollect `M.union` @lhs.typeSignatures, @lhs.monos, @declarations.touchables ++ @lhs.touchables, Just (@lhs.assumptions, @lhs.constraints, @lhs.substitutionCollect), @declarations.betaUnique)
+            let inputBDG = (False, @declarations.typeSignaturesCollect `M.union` @lhs.typeSignatures, @lhs.monos, @declarations.touchables ++ @lhs.touchables, Just (@lhs.assumptions, @lhs.constraints, @lhs.substitutionCollect), @declarations.typeErrors,  @declarations.betaUnique)
             in bindingGroupAnalysis inputBDG @declarations.bindingGroups
 
 SEM Qualifiers

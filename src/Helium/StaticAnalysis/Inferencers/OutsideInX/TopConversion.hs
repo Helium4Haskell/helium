@@ -8,12 +8,13 @@ module Helium.StaticAnalysis.Inferencers.OutsideInX.TopConversion(
     ,   getMonoFromPoly
     ,   getTypeVariablesFromMonoType
     ,   tpSchemeToMonoType
+    ,   tpSchemeToPolyType
 
 ) where
 
 import Unbound.LocallyNameless hiding (Name, freshen)
 import Unbound.LocallyNameless.Types (GenBind(..))
-import Cobalt.Core.Types
+import Cobalt.Core.Types hiding (split)
 import Top.Types.Primitive
 import Top.Types.Quantification
 import Top.Types.Qualification
@@ -31,6 +32,9 @@ import Debug.Trace
 
 deriving instance Show Type
 deriving instance Show ContextItem 
+
+bindVariables :: [TyVar] -> PolyType -> PolyType
+bindVariables = flip (foldr ((PolyType_Bind .) . bind))
 
 monoTypeToTypeScheme :: MonoType -> TpScheme
 monoTypeToTypeScheme mtp = let
@@ -55,16 +59,28 @@ eqTpScheme t1@(Quantification (is1, qmap1, tp1)) t2@(Quantification (is2, qmap2,
 
 typeToPolytype :: Integer -> Type -> (PolyType, Integer)
 typeToPolytype bu t = let
-    !mt = typeToMonoType t
-    !(mt', bu') = freshen bu mt 
-    !vars = getTypeVariablesFromMonoType mt'
+    (cs, tv, mt) = typeToMonoType t
+    (mt', bu') = freshen bu mt 
+    vars = getTypeVariablesFromMonoType mt'
     in (foldr (\b p -> PolyType_Bind (B b p)) (PolyType_Mono [] mt') vars, bu')
 
-typeToMonoType :: Type -> MonoType
+typeToMonoType :: Type -> ([Constraint], [TyVar], MonoType)
 typeToMonoType = tpSchemeToMonoType . makeTpSchemeFromType
 
-tpSchemeToMonoType :: TpScheme -> MonoType
-tpSchemeToMonoType = tpToMonoType . unqualify . unquantify
+tpSchemeToPolyType :: TpScheme -> PolyType
+tpSchemeToPolyType tps = let 
+        (cs, tv, mt) = tpSchemeToMonoType tps
+        pt' = PolyType_Mono cs mt
+        pt = bindVariables tv pt'
+    in pt 
+
+tpSchemeToMonoType :: TpScheme -> ([Constraint], [TyVar], MonoType)
+tpSchemeToMonoType tps = 
+    let 
+        tyvars = map (integer2Name . toInteger) $ quantifiers tps
+        (qs, tp) = split $ unquantify tps
+        monoType = tpToMonoType tp
+        in ([], tyvars, monoType)
 
 tpToMonoType :: Tp -> MonoType
 tpToMonoType (TVar v) = MonoType_Var (integer2Name $ toInteger v)

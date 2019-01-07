@@ -71,10 +71,10 @@ concatBindingGroups :: [BindingGroup] -> BindingGroup
 concatBindingGroups = foldr combineBindingGroup emptyBindingGroup
 
 
-bindingGroupAnalysis ::   (Bool, TypeSignatures, Monos, Touchables, Maybe (Assumptions, Constraints, Substitution), Integer) -> 
+bindingGroupAnalysis ::   (Bool, TypeSignatures, Monos, Touchables, Maybe (Assumptions, Constraints, Substitution), TypeErrors, Integer) -> 
                            [BindingGroup] -> 
                            (Touchables, Assumptions, TypeSignatures, Constraints, Integer, Substitution, TypeErrors, InheritedBDG)
-bindingGroupAnalysis input@(isTopLevel, typeSignatures, monos, touchables, body, betaUnique) groups = 
+bindingGroupAnalysis input@(isTopLevel, typeSignatures, monos, touchables, body, errors, betaUnique) groups = 
                   variableDependencies
                   where
                      bindingGroupAnalysis :: [BindingGroup] -> [BindingGroup]
@@ -87,7 +87,7 @@ bindingGroupAnalysis input@(isTopLevel, typeSignatures, monos, touchables, body,
                               f' (_,ass,_,_) i = [ (i,j)| n <- M.keys ass, (n',j) <- indexMap, n==n' ]
                               list = topSort (length cs-1) edges
                            in 
-                              map (concatBindingGroups . map (cs !!)) list ++ (
+                              (if isTopLevel then reverse else id) (map (concatBindingGroups . map (cs !!)) list) ++ (
                                  case body of
                                     Nothing -> []
                                     Just (a, c, s) -> [(M.empty, a, c, s)]
@@ -107,38 +107,46 @@ bindingGroupAnalysis input@(isTopLevel, typeSignatures, monos, touchables, body,
                            equalASENV :: Assumptions -> Environment -> Constraints
                            equalASENV ass env = concat $ M.elems $ M.intersectionWith (\a e -> [Constraint_Unify (var a') (var e) | (_, a') <- a]) ass env
                            initial :: (Touchables, Assumptions, TypeSignatures, Constraints, Integer, Substitution, TypeErrors, InheritedBDG)
-                           initial = (touchables, M.empty, typeSignatures, [], betaUnique, [], [], [])
+                           initial = (touchables, M.empty, typeSignatures, [], betaUnique, [], errors, [])
                            op :: (Environment, Assumptions, Constraints, Substitution) -> 
                                  (Touchables, Assumptions, TypeSignatures, Constraints, Integer, Substitution, TypeErrors, InheritedBDG) -> 
                                  (Touchables, Assumptions, TypeSignatures, Constraints, Integer, Substitution, TypeErrors, InheritedBDG) 
                            op g@(env1, ass1, con1, subs1) (touchs, ass2, ts2, con2, bu, subsOrig, typeErrors, iBDG) =
                               let
+                                 (sbu1, c1, touchs1) = instanceTS bu ass1 ts2
+                                 c2 = instanceTSE env1 ts2
+                                 env1' = env1 M.\\ ts2
+                                 c3 = equalASENV (ass1 M.\\ ts2) env1'
+                                 c4 = concatMap (\(a', e) -> [Constraint_Unify (var a) (var e) | (_, a) <- a']) $ M.elems $ M.intersectionWith (,) ass2 env1'
+                                 (sbu2, c5, touchs2) = instanceTS sbu1 ass2 ts2                                
                                   {- Solving -}
-                                 sBu = bu
+                                 sBu = sbu2
                                  sAxioms = []
                                  sGiven = []
-                                 sWanted = subsConstraints subs1 ++ subsConstraints subsOrig ++ con1
-                                 sTouchables =  touchs ++ touchables
+                                 sWanted = subsConstraints subs1 ++ subsConstraints subsOrig ++ con1 ++ con2 ++ c1 ++ c2 ++ c3 ++ c4 ++ c5
+                                 sTouchables =  touchs1 ++ touchs ++ touchs2
                                  ((solverResult, _), bu1) = contFreshMRes (solve sAxioms sGiven sWanted sTouchables) sBu
 
                                  {- Gathering -}
-                                 (bu2, c1, touchs1) = instanceTS bu1 ass1 resTypeSignatures
-                                 c2 = instanceTSE env1 resTypeSignatures
+                                 (bu2, rc1, touchs3) = instanceTS bu1 ass1 resTypeSignatures
+                                 rc2 = instanceTSE env1 resTypeSignatures
                                  env' = env1 M.\\ resTypeSignatures
-                                 c3 = equalASENV (ass1 M.\\ resTypeSignatures) env'
-                                 c4 = concatMap (\(a', e) -> [Constraint_Unify (var a) (var e) | (_, a) <- a']) $ M.elems $ M.intersectionWith (,) ass2 env'
-                                 (resBetaUnique, c5, touchs2) = instanceTS bu2 ass2 resTypeSignatures                                
+                                 rc3 = equalASENV (ass1 M.\\ resTypeSignatures) env'
+                                 rc4 = concatMap (\(a', e) -> [Constraint_Unify (var a) (var e) | (_, a) <- a']) $ M.elems $ M.intersectionWith (,) ass2 env'
+                                 (resBetaUnique, rc5, touchs4) = instanceTS bu2 ass2 resTypeSignatures                                
                                  {- Results -}
-                                 resTouchables = touchs2 ++ touchs1 ++ right touchable [] solverResult
-                                 resAssumptions = ((ass1 M.\\ resTypeSignatures) M.\\ env') `combineAssumptions` (ass2 M.\\ env')
+                                 resTouchables = touchs3 ++ touchs4 ++ right touchable [] solverResult
+                                 resAssumptions = ((ass1 M.\\ resTypeSignatures) M.\\ env') `combineAssumptions` (ass2 M.\\ resTypeSignatures M.\\ env')
 
                                  resTypeSignatures | isTopLevel = ts2 `M.union` M.fromList (mapMaybe (\(n, v) -> (\m -> (n, (v, PolyType_Mono [] m))) <$> lookup v resSubstitution) (M.toList env1))
                                                    | otherwise =  ts2
-                                 resConstraints = c1 ++ c2 ++ c3 ++ c4 ++ c5 ++ right residual [] solverResult ++ con2
-                                 resSubstitution = right substitution [] solverResult
+                                 resConstraints = rc1 ++ rc2 ++ rc3 ++ rc4 ++ rc5 ++ right residual [] solverResult ++ (c1 ++ c2 ++ c3 ++ c4 ++ c5)
+                                 resSubstitution = nub $ right substitution [] solverResult
                                  resTypeErrors = left makeTypeError [] solverResult ++ typeErrors
                                  resInheritedBDG = (M.keys env1, M.elems env') : iBDG
-                              in (resTouchables, resAssumptions, resTypeSignatures, resConstraints, resBetaUnique, resSubstitution, resTypeErrors, resInheritedBDG)
+                                 printResidual | null (right residual [] solverResult) = id
+                                               | otherwise = trace "Residual" $ traceShow (right residual [] solverResult)
+                              in printResidual (resTouchables, resAssumptions, resTypeSignatures, resConstraints, resBetaUnique, resSubstitution, resTypeErrors, resInheritedBDG)
 
 instance Show TypeError where
    show x = sortAndShowMessages [x]
