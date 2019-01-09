@@ -12,6 +12,7 @@ ATTR Module Body Declaration Declarations Expression Expressions
                 typeSignatures : {M.Map Name (TyVar, PolyType)}
                 substitution : {[(TyVar, MonoType)]}
                 importEnvironment : ImportEnvironment
+                axioms : {[Axiom]}
             |   betaUnique : Integer
             |   assumptions USE {M.unionWith (++)} {M.empty} : {M.Map Name [(Name, TyVar)]}
                 environment USE {M.union} {M.empty} : {M.Map Name TyVar}
@@ -23,6 +24,7 @@ ATTR Module Body Declaration Declarations Expression Expressions
                 typeErrors USE {(++)} {[]} : TypeErrors
                 substitutionCollect USE {(++)} {[]} : {[(TyVar, MonoType)]}
                 tlEnvironment USE {M.union} {M.empty} : {M.Map Name TyVar}
+                resolvedContraints USE {(++)} {[]} : {[Constraint]}
         ]
 
 ATTR MaybeDeclarations Qualifier Qualifiers
@@ -30,11 +32,13 @@ ATTR MaybeDeclarations Qualifier Qualifiers
                 typeSignatures : {M.Map Name (TyVar, PolyType)}
                 substitution : {[(TyVar, MonoType)]}
                 importEnvironment : ImportEnvironment
+                axioms : {[Axiom]}
             |   betaUnique : Integer
             |   environment USE {M.union} {M.empty} : {M.Map Name TyVar}
                 bindingGroups USE {(++)} {[]} : {[BindingGroup]}
                 typeSignaturesCollect USE {M.union} {M.empty} : {M.Map Name (TyVar, PolyType)}
                 typeErrors USE {(++)} {[]} : TypeErrors
+                resolvedContraints USE {(++)} {[]} : {[Constraint]}
         ]
 
 ATTR Body Declaration Declarations MaybeDeclarations FunctionBinding FunctionBindings LeftHandSide RightHandSide Expression Expressions MaybeExpression
@@ -58,35 +62,44 @@ substitutePoly v env = case lookup v env of
 bindTypeVariables :: [TyVar] -> PolyType -> PolyType
 bindTypeVariables = flip (foldr ((PolyType_Bind .) . UL.bind))
 
-type SolveResult = ([TypeError], [Warning], [(TyVar, MonoType)])
+type SolveResult = ([TypeError], [Warning], [(TyVar, MonoType)], Constraints)
 
 constructErrors :: (Either NamedSolverError Solution, Graph) -> SolveResult
-constructErrors (et, _) = either (\e -> (makeTypeError e, [], [])) (\solution -> ([], [], substitution solution)) et
+constructErrors (et, _) = either (\e -> (makeTypeError e, [], [], [])) (\solution -> ([], [], substitution solution, residual solution)) et
 
 getTypeErrors :: SolveResult -> [TypeError]
-getTypeErrors (te, _, _) = te
+getTypeErrors (te, _, _, _) = te
 
 getWarnings :: SolveResult -> [Warning]
-getWarnings (_, wa, _) = wa
+getWarnings (_, wa, _, _) = wa
 
 getSubstitution :: SolveResult -> [(TyVar, MonoType)]
-getSubstitution (_, _, subs) = subs
+getSubstitution (_, _, subs, _) = subs
 
+getResidualConstraints :: SolveResult -> [Constraint]
+getResidualConstraints (_, _, _, cs) = cs
 
+lookupType :: M.Map Name (TyVar, PolyType) -> Name -> TyVar -> TpScheme
+lookupType env name _ = 
+    case M.lookup name env of
+        Nothing -> internalError "TypeInferenceRules" "lookupType" "Top level type not found"
+        Just (_, p) -> polyTypeToTypeScheme p
 }
 
 SEM Module
     | Module
-        lhs . dictionaryEnvironment = trace (unlines $ map show $ sortOn fst $ nub $ getSubstitution @solveResults) emptyDictionaryEnvironment
-        lhs . toplevelTypes = if null @typeErrors then @body.toplevelTypes else M.empty -- 
-        loc . typeErrors = getTypeErrors @solveResults ++ @body.typeErrors
+        lhs . dictionaryEnvironment = emptyDictionaryEnvironment
+        lhs . toplevelTypes = trace "Residual constraints" $ traceShow (getResidualConstraints @solveResults) $ trace (unlines $ map show $ sortOn fst $ nub $ getSubstitution @solveResults) $ if null @typeErrors then M.mapWithKey (lookupType @body.typeSignaturesCollect) @body.tlEnvironment else M.empty -- 
+        loc . typeErrors = concatMap makeMissingInstanceError (getResidualConstraints @solveResults \\ @body.resolvedContraints) ++ getTypeErrors @solveResults ++ @body.typeErrors
         lhs . warnings = getWarnings @solveResults
+        loc . axioms = classEnvironmentToAxioms (classEnvironment @lhs.importEnvironment)
+        body . axioms = @axioms
         body . betaUnique = 1
         body . substitution = (if null @body.assumptions then id else trace "Unresolved assumptions" . traceShow @body.assumptions)getSubstitution @solveResults
         body . monos = []
         loc . constrs = @body.constraints ++  map (uncurry (Constraint_Unify . var)) @body.substitutionCollect
         loc . tyvars = @body.touchables
-        loc . solveResults = constructErrors $ runFreshM $ solve [] [] @constrs @tyvars
+        loc . solveResults = constructErrors $ runFreshM $ solve @axioms [] (@constrs) @tyvars
         body . typeSignatures = M.map (\tps -> (integer2Name (-1), tpSchemeToPolyType tps)) $ typeEnvironment @lhs.importEnvironment
 
 SEM Body
@@ -102,9 +115,10 @@ SEM Body
             lhs . betaUnique,
             lhs . substitutionCollect,
             lhs . typeErrors,
+            lhs . resolvedContraints,
             loc . iBDG
         ) =
-            let inputBDG = (True, @declarations.typeSignaturesCollect `M.union` @lhs.typeSignatures, [], @declarations.touchables, Nothing, @declarations.typeErrors, @declarations.betaUnique)
+            let inputBDG = (True, @lhs.axioms, @declarations.typeSignaturesCollect `M.union` @lhs.typeSignatures, [], @declarations.touchables, Nothing, @declarations.typeErrors, @declarations.resolvedContraints, @declarations.betaUnique)
             in  bindingGroupAnalysis inputBDG @declarations.bindingGroups
 
 ATTR FunctionBinding FunctionBindings [ betasLeft : {[TyVar]} betaRight : TyVar | | name : Name numberOfPatterns : Integer  ]
@@ -115,8 +129,8 @@ SEM Declaration
         lhs . bindingGroups     = [@bindingGroup]
         lhs . substitutionCollect = []
         loc . bindingGroup      = (@environment, @assumptions, @constraints, @bindings.substitutionCollect)
-        lhs . toplevelTypes     = M.singleton (@bindings.name) (maybe @err monoTypeToTypeScheme $ lookup @beta @lhs.substitution)
-        lhs . tlEnvironment           = @environment
+        -- lhs . toplevelTypes  = M.singleton (@bindings.name) (maybe @err polyTypeToTypeScheme $ lookup @beta @lhs.substitution)
+        lhs . tlEnvironment     = @environment
         loc . environment       = M.singleton @bindings.name @beta
         loc . assumptions       = @bindings.assumptions
         lhs . touchables        = @beta : @br : @bls ++ @bindings.touchables
@@ -136,7 +150,7 @@ SEM Declaration
         lhs . bindingGroups     = [@bindingGroup]
         lhs . substitutionCollect = []
         loc . bindingGroup      = (@environment, @assumptions, @constraints, @righthandside.substitutionCollect)
-        lhs . toplevelTypes     = M.fromList $ map (\(n, v) -> (n, monoTypeToTypeScheme $ substitutePoly v @lhs.substitution)) $ M.toList @pattern.environment
+        --lhs . toplevelTypes     = M.fromList $ map (\(n, v) -> (n, monoTypeToTypeScheme $ substitutePoly v @lhs.substitution)) $ M.toList @pattern.environment
         lhs . touchables        = @betaRight : @pattern.touchables ++ @righthandside.touchables
         loc . constraints       = [unifyVar @betaRight @pattern.beta, unifyVar @betaRight @righthandside.beta] ++ @pattern.constraints ++ @righthandside.constraints
         loc . environment       = @pattern.environment
@@ -300,9 +314,10 @@ SEM MaybeDeclarations
             lhs . betaUnique,
             lhs . substitutionCollect,
             lhs . typeErrors,
+            lhs . resolvedContraints,
             loc . iBDG
         ) =
-            let inputBDG = (False, @declarations.typeSignaturesCollect `M.union` @lhs.typeSignatures, @lhs.monos, @declarations.touchables ++ @lhs.touchables, Just (@lhs.assumptions, @lhs.constraints, @lhs.substitutionCollect), @declarations.typeErrors,  @declarations.betaUnique)
+            let inputBDG = (False, @lhs.axioms, @declarations.typeSignaturesCollect `M.union` @lhs.typeSignatures, @lhs.monos, @declarations.touchables ++ @lhs.touchables, Just (@lhs.assumptions, @lhs.constraints, @lhs.substitutionCollect), @declarations.typeErrors, @declarations.resolvedContraints, @declarations.betaUnique)
             in bindingGroupAnalysis inputBDG @declarations.bindingGroups
 
 
@@ -403,9 +418,10 @@ SEM Expression
             lhs . betaUnique,
             lhs . substitutionCollect,
             lhs . typeErrors,
+            lhs . resolvedContraints,
             loc . iBDG
         ) =
-            let inputBDG = (False, @declarations.typeSignaturesCollect `M.union` @lhs.typeSignatures, @lhs.monos, @declarations.touchables ++ @expression.touchables, Just (@expression.assumptions, @expression.constraints, @expression.substitutionCollect),  @declarations.typeErrors ++ @expression.typeErrors, @expression.betaUnique)
+            let inputBDG = (False, @lhs.axioms, @declarations.typeSignaturesCollect `M.union` @lhs.typeSignatures, @lhs.monos, @declarations.touchables ++ @expression.touchables, Just (@expression.assumptions, @expression.constraints, @expression.substitutionCollect),  @declarations.typeErrors ++ @expression.typeErrors, @declarations.resolvedContraints ++ @expression.resolvedContraints ,@expression.betaUnique)
             in bindingGroupAnalysis inputBDG @declarations.bindingGroups
     | Case
         lhs . touchables              = @beta : @beta' : @expression.touchables ++ @alternatives.touchables
@@ -472,9 +488,10 @@ SEM Qualifier
             lhs . betaUnique,
             lhs . substitutionCollect,
             lhs . typeErrors,
+            lhs . resolvedContraints,
             loc . iBDG
         ) =
-            let inputBDG = (False, @declarations.typeSignaturesCollect `M.union` @lhs.typeSignatures, @lhs.monos, @declarations.touchables ++ @lhs.touchables, Just (@lhs.assumptions, @lhs.constraints, @lhs.substitutionCollect), @declarations.typeErrors,  @declarations.betaUnique)
+            let inputBDG = (False, @lhs.axioms, @declarations.typeSignaturesCollect `M.union` @lhs.typeSignatures, @lhs.monos, @declarations.touchables ++ @lhs.touchables, Just (@lhs.assumptions, @lhs.constraints, @lhs.substitutionCollect), @declarations.typeErrors, @declarations.resolvedContraints, @declarations.betaUnique)
             in bindingGroupAnalysis inputBDG @declarations.bindingGroups
 
 SEM Qualifiers
@@ -506,9 +523,11 @@ SEM MaybeExpression
       lhs . section = False
 
   | Nothing
+      lhs . touchables  = [@beta]
       lhs . section     = True
           . betaUnique  = @lhs.betaUnique + 1
       loc . beta        = integer2Name @lhs.betaUnique
+      
 
 
 ATTR Literal [ | | literalType : MonoType]

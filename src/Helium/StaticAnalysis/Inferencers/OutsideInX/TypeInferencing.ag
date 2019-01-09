@@ -74,6 +74,8 @@ import Cobalt.OutsideIn.Solver
 import Cobalt.Core.Graph
 import Cobalt.Core.Errors
 
+import Top.Types.Schemes
+
 import Debug.Trace
 
 }

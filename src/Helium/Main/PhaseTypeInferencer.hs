@@ -60,12 +60,12 @@ phaseTypeInferencer basedir fullName module_ localEnv completeEnv options =
                let err = internalError "PhaseTyperInferencer" "phaseTypeInferencer" "Flag VerifyOutsideInResult used without OutsideInX flag present"
                let (dictionaryEnvOIX, toplevelTypesOIX, typeErrorsOIX, warningOIX) = fromMaybe err outsideInResult
                let tld = tpSchemeListDifference toplevelTypes toplevelTypesOIX
-               unless (dictionaryEnv == dictionaryEnvOIX) (
-                  do
-                     putStrLn "Dictionary environment are not equal"
-                     print dictionaryEnv
-                     print dictionaryEnvOIX
-                  )
+               --unless (dictionaryEnv == dictionaryEnvOIX) (
+                 -- do
+                    -- putStrLn "Dictionary environment are not equal"
+                     --print dictionaryEnv
+                     --print dictionaryEnvOIX
+                 -- )
                unless (null typeErrorsOIX && null tld) (
                   do
                      putStrLn "Top level types are not equal"
