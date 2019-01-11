@@ -1,9 +1,6 @@
 -- Assures that primary thunks (which point to function pointers) are not overstaturated
 -- and that secondary thunks (which point to other thunks) have exactly one argument.
 
--- TODO: If a global without arguments is the target of a thunk, we need to add a cast from global to local here,
--- as a bind with zero arguments will cause that the global is not shared.
-
 module Helium.CodeGeneration.Iridium.PassThunkArity (passThunkArity) where
 
 import Helium.CodeGeneration.Iridium.Data

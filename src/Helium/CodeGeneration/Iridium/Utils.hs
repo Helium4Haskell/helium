@@ -3,6 +3,11 @@ module Helium.CodeGeneration.Iridium.Utils where
 import Helium.CodeGeneration.Iridium.Data
 import Lvm.Common.Id (NameSupply, mapWithSupply, splitNameSupply, idFromString)
 
+mapMethodsWithSupply :: (NameSupply -> Declaration Method -> Declaration Method) -> NameSupply -> Module -> Module
+mapMethodsWithSupply fn supply (Module name dependencies customs datas abstracts methods) = Module name dependencies customs datas abstracts methods'
+  where
+    methods' = mapWithSupply fn supply methods
+
 mapBlocks :: (Instruction -> Instruction) -> Module -> Module
 mapBlocks fn (Module name dependencies customs datas abstracts methods) = Module name dependencies customs datas abstracts $ map (fmap fnMethod) methods
   where
@@ -10,7 +15,6 @@ mapBlocks fn (Module name dependencies customs datas abstracts methods) = Module
     fnMethod (Method args rettype annotations entry blocks) = Method args rettype annotations (fnBlock entry) $ map fnBlock blocks
     fnBlock :: Block -> Block
     fnBlock (Block name instr) = Block name $ fn instr
-
 
 mapBlocksWithSupply :: (NameSupply -> Instruction -> Instruction) -> NameSupply -> Module -> Module
 mapBlocksWithSupply fn supply (Module name dependencies customs datas abstracts methods) = Module name dependencies customs datas abstracts $ mapWithSupply (\s -> fmap (fnMethod s)) supply methods
