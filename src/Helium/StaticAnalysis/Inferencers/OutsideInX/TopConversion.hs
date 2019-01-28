@@ -8,9 +8,12 @@ module Helium.StaticAnalysis.Inferencers.OutsideInX.TopConversion(
     ,   getTypeVariablesFromMonoType
     ,   tpSchemeToMonoType
     ,   tpSchemeToPolyType
+    ,   tpSchemeToPolyType'
     ,   polyTypeToTypeScheme
     ,   classEnvironmentToAxioms
     ,   getTypeVariablesFromPolyType
+    ,   getConstraintFromPoly
+    ,   polytypeToMonoType
 
 ) where
 
@@ -33,6 +36,11 @@ import Control.Arrow
 import Data.Maybe 
 import Data.List
 import Debug.Trace
+import Data.Functor.Identity
+
+import Unbound.LocallyNameless.Fresh
+import Unbound.LocallyNameless.Ops hiding (freshen)
+import Unbound.LocallyNameless.Types hiding (Name)
 
 deriving instance Show Type
 deriving instance Show ContextItem 
@@ -74,26 +82,37 @@ eqTpScheme t1@(Quantification (is1, qmap1, tp1)) t2@(Quantification (is2, qmap2,
     tp1r = unqualify tp1
     in if tp1r == tp2r  then Nothing else Just ((tp1r, "Orig"), (tp2r, "OutsideIn(X)"))
 
-typeToPolytype :: Integer -> Type -> (PolyType, Integer)
+typeToPolytype :: Integer -> Type -> (PolyType, Integer, [(String, TyVar)])
 typeToPolytype bu t = let
-    (cs, tv, mt) = typeToMonoType t
-    (mt', bu') = freshen bu mt 
+    (cs, tv, mt) = traceShowId $ typeToMonoType t
+    (mapping, (mt', bu')) = freshenWithMapping [] bu mt
+    mappingSub :: [(TyVar, MonoType)]
+    mappingSub = map (\(i, v) -> (integer2Name i, var (integer2Name v))) mapping
+    cs' = map (substs mappingSub) cs 
+    qmap = getQuantorMap (makeTpSchemeFromType t)
+    mapping' :: [(String, TyVar)]
+    mapping' = map (\(o, s) -> (fromMaybe (internalError "TopConversion.hs" "typeToPolytype" "Type variable not found") $ lookup (fromInteger o) qmap, integer2Name s)) mapping
     vars = getTypeVariablesFromMonoType mt'
-    in (foldr (\b p -> PolyType_Bind (B b p)) (PolyType_Mono [] mt') vars, bu')
+    in (foldr (\b p -> PolyType_Bind (bind b p)) (PolyType_Mono cs' mt') vars, bu', mapping')
 
-typeToMonoType :: Type -> ([Constraint], [TyVar], MonoType)
+typeToMonoType :: Type -> ([Constraint], [(String, TyVar)], MonoType)
 typeToMonoType = tpSchemeToMonoType . makeTpSchemeFromType
 
 tpSchemeToPolyType :: TpScheme -> PolyType
-tpSchemeToPolyType tps = let 
+tpSchemeToPolyType = fst . tpSchemeToPolyType' []
+
+tpSchemeToPolyType' :: [String] -> TpScheme -> (PolyType, [(String, TyVar)])
+tpSchemeToPolyType' restricted tps = let 
         (cs, tv, mt) = tpSchemeToMonoType tps
         pt' = PolyType_Mono cs mt
-        pt = bindVariables tv pt'
-    in pt 
+        pt = bindVariables (map snd (filter (\(c, _) -> c `notElem` restricted) tv)) pt'
+        --pt = bindVariables (map snd tv) pt'
+    in (pt, tv) 
 
-tpSchemeToMonoType :: TpScheme -> ([Constraint], [TyVar], MonoType)
+tpSchemeToMonoType :: TpScheme -> ([Constraint], [(String, TyVar)], MonoType)
 tpSchemeToMonoType tps = 
     let 
+        qmap = map (\(v, n) -> (n, integer2Name (toInteger v))) $ getQuantorMap tps
         tyvars = map (\x -> (TVar x, integer2Name (toInteger x))) $ quantifiers tps
         qs :: [Predicate]
         (qs, tp) = split $ unquantify tps
@@ -102,7 +121,7 @@ tpSchemeToMonoType tps =
         convertPred (Predicate c v) = case lookup v tyvars of
             Nothing -> internalError "TopConversion" "tpSchemeToMonoType" "Type variable not found"
             Just tv -> Constraint_Class c [var tv]
-        in (map convertPred qs , map snd tyvars, monoType)
+        in (map convertPred qs , qmap, monoType)
 
 tpToMonoType :: Tp -> MonoType
 tpToMonoType (TVar v) = MonoType_Var (integer2Name $ toInteger v)
@@ -127,6 +146,17 @@ getTypeVariablesFromMonoType (MonoType_Arrow f a) = nub $ getTypeVariablesFromMo
 getMonoFromPoly :: PolyType -> MonoType
 getMonoFromPoly (PolyType_Bind (B p t)) = getMonoFromPoly t
 getMonoFromPoly (PolyType_Mono _ m) = m
+
+getConstraintFromPoly :: PolyType -> [Constraint]
+getConstraintFromPoly (PolyType_Bind (B _ t)) = getConstraintFromPoly t
+getConstraintFromPoly (PolyType_Mono cs _) = cs
+
+polytypeToMonoType :: [(Integer, Integer)] -> Integer -> PolyType -> ([(Integer, Integer)], ((MonoType, [Constraint]), Integer))
+polytypeToMonoType mapping bu (PolyType_Bind b) = let
+    ((_, x), bu') = contFreshMRes (unbind b) bu
+    in polytypeToMonoType mapping bu' x
+polytypeToMonoType mapping bu (PolyType_Mono cs m) = freshenWithMapping mapping bu (m, cs)
+    
 
 classEnvironmentToAxioms :: ClassEnvironment -> [Axiom]
 classEnvironmentToAxioms env = concatMap (uncurry classToAxioms) (M.toList env)
@@ -172,9 +202,32 @@ instance Freshen PolyType Integer where
             freshenHelper :: PolyType -> State (Integer, [(TyVar, TyVar)]) PolyType
             freshenHelper (PolyType_Mono cs m) = do
                 m' <- freshenHelperMT m
-                return (PolyType_Mono cs m')
-            freshenHelper (PolyType_Bind (B p t)) = do
                 (uniq, mapping) <- get
-                put (uniq, (p, p) : mapping)
+                let cs' = map (substs (map (\(t, v) -> (t, var v)) mapping)) cs
+                return (PolyType_Mono cs' m')
+            freshenHelper (PolyType_Bind b) = do
+                (uniq, mapping) <- get
+                let ((p, t), uniq') = contFreshMRes (unbind b) uniq
+                let p' = integer2Name $ uniq' + 1
+                put (uniq' + 1, (p, p') : mapping)
                 t' <- freshenHelper t
-                return (PolyType_Bind (B p t'))
+                return (PolyType_Bind (bind p' t'))
+
+instance (Freshen a c, Freshen b c) => Freshen (a, b) c where
+    freshenWithMapping mapping n (x, y) = let
+        (mapping', (x', b)) = freshenWithMapping mapping n x
+        (mapping'', (y', b')) = freshenWithMapping mapping' b y
+        in (mapping'', ((x', y'), b')) 
+
+instance Freshen Constraint Integer where
+    freshenWithMapping mapping n (Constraint_Class cn vs) = let 
+        (mapping', (vs', n')) = freshenWithMapping mapping n vs
+        in (mapping', (Constraint_Class cn vs', n'))
+        
+
+contFreshMRes :: FreshM a -> Integer -> (a, Integer)
+contFreshMRes i = runIdentity . contFreshMTRes i
+
+contFreshMTRes :: Monad m => FreshMT m a -> Integer -> m (a, Integer)
+contFreshMTRes (FreshMT m) = runStateT m
+
