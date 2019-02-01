@@ -176,15 +176,15 @@ instance Vars Constraint where
     freevars (EqT _ t1 t2) = Set.union (freevars t1) (freevars t2)
     freevars (EqTs _ ts1 ts2) = Set.union (freevars ts1) (freevars ts2)
     freevars (EqInst _ t ts) = Set.union (freevars t) (freevars ts)
-    freevars (EqGen _ ts (t,ct,env)) = Set.unions [freevars ts, freevars env] -- Vars in ts and env will be free. TODO: TAnn will need to be handled.
+    freevars (EqGen _ ts (_,_,env)) = Set.unions [freevars ts, freevars env] -- Vars in ts and env will be free. TODO: TAnn will need to be handled.
     freevars (EqAnn _ ann1 ann2) = Set.union (freevars ann1) (freevars ann2)
     freevars (EqPlus _ ann1 ann2 ann3) = Set.unions [freevars ann1, freevars ann2, freevars ann3]
     freevars (EqUnion _ ann1 ann2 ann3) = Set.unions [freevars ann1, freevars ann2, freevars ann3]
     freevars (EqTimes _ ann1 ann2 ann3) = Set.unions [freevars ann1, freevars ann2, freevars ann3]
     freevars (EqCond _ ann1 ann2 ann3) = Set.unions [freevars ann1, freevars ann2, freevars ann3]
 
-instance Vars Env where
-    freevars (Env global local) = Set.union (Set.unions $ map (freevars . snd) $ Map.toList global) (Set.unions $ map (freevars . snd) $ Map.toList local)
+instance Vars GlobalEnv where
+    freevars (GlobalEnv global local) = Set.union (Set.unions $ map (freevars . snd) $ Map.toList global) (Set.unions $ map (freevars . snd) $ Map.toList local)
 
 {- Substitutions -}
 data Sub = Sub (Map Int T) (Map Int Ts) (Map Int Ann)
@@ -270,40 +270,40 @@ instance Subs Constraint where
     (-$-) subs (EqTimes d ann1 ann2 ann3) = EqTimes d ((-$-) subs ann1) ((-$-) subs ann2) ((-$-) subs ann3)
     (-$-) subs (EqCond d ann1 ann2 ann3) = EqCond d ((-$-) subs ann1) ((-$-) subs ann2) ((-$-) subs ann3)
 
-instance Subs Env where
-    ((-$-) subs) (Env global local) = Env (Map.map ((-$-) subs) global) (Map.map ((-$-) subs) local)
+instance Subs GlobalEnv where
+    ((-$-) subs) (GlobalEnv global local) = GlobalEnv (Map.map ((-$-) subs) global) (Map.map ((-$-) subs) local)
 
 {- Environment -}
-data Env = Env (Map Id Ts) (Map Id Ts)
+data GlobalEnv = GlobalEnv (Map Id Ts) (Map Id Ts) -- Import Export
     deriving (Show, Eq, Ord)
 
-empty :: Env
-empty = Env Map.empty Map.empty
+empty :: GlobalEnv
+empty = GlobalEnv Map.empty Map.empty
 
-singletonGlobal :: Id -> Ts -> Env
-singletonGlobal key t = insertGlobal key t empty
+singletonImport :: Id -> Ts -> GlobalEnv
+singletonImport key t = insertImport key t empty
 
-singletonLocal :: Id -> Ts -> Env
-singletonLocal key t = insertLocal key t empty
+singletonExport :: Id -> Ts -> GlobalEnv
+singletonExport key t = insertExport key t empty
 
-insertGlobal :: Id -> Ts -> Env -> Env
-insertGlobal key t (Env global local) = Env (Map.insert key t global) local
+insertImport :: Id -> Ts -> GlobalEnv -> GlobalEnv
+insertImport key t (GlobalEnv import_ export_) = GlobalEnv (Map.insert key t import_) export_
 
-insertLocal :: Id -> Ts -> Env -> Env
-insertLocal key t (Env global local) = Env global (Map.insert key t local)
+insertExport :: Id -> Ts -> GlobalEnv -> GlobalEnv
+insertExport key t (GlobalEnv import_ export_) = GlobalEnv import_ (Map.insert key t export_)
 
-union :: Env -> Env -> Env
-union (Env extendGlobal extendLocal) env = unionLocal extendLocal $ unionGlobal extendGlobal env
+union :: GlobalEnv -> GlobalEnv -> GlobalEnv
+union (GlobalEnv extendImport extendExport) env = unionImport extendImport $ unionExport extendExport env
 
-unionGlobal :: Map Id Ts -> Env -> Env
-unionGlobal extendGlobal (Env global local) = Env (Map.union extendGlobal global) local
+unionImport :: Map Id Ts -> GlobalEnv -> GlobalEnv
+unionImport extendImport (GlobalEnv import_ export_) = GlobalEnv (Map.union extendImport import_) export_
 
-unionLocal :: Map Id Ts -> Env -> Env
-unionLocal extendLocal (Env global local) = Env global (Map.union extendLocal local)
+unionExport :: Map Id Ts -> GlobalEnv -> GlobalEnv
+unionExport extendExport (GlobalEnv import_ export_) = GlobalEnv import_ (Map.union extendExport export_)
 
 infixr 5 |?|
-(|?|) :: (Int, Env) -> (Id, String) -> (Int, T, Constraints)
-(uniqueId, env@(Env global local)) |?| (key, err) = case Map.lookup key local of
+(|?|) :: (Int, GlobalEnv) -> (Id, String) -> (Int, T, Constraints)
+(uniqueId, env@(GlobalEnv global local)) |?| (key, err) = case Map.lookup key local of
     Just x -> instTs2T err uniqueId x
     Nothing -> case Map.lookup key global of
         Just x -> instTs2T err uniqueId x
@@ -315,7 +315,7 @@ data Constraint
     = EqT String T T                            -- t1   == t2
     | EqTs String Ts Ts                         -- ts1   == ts2
     | EqInst String T Ts                        -- t1 == Inst(ts2)
-    | EqGen String Ts (T, Constraints, Env)     -- ts1 == Gen(t2,ct,env)
+    | EqGen String Ts (T, Constraints, GlobalEnv)     -- ts1 == Gen(t2,ct,env)
     | EqAnn String Ann Ann                      -- phi1 == phi2
     | EqPlus String Ann Ann Ann                 -- phi1 == phi2 (+) phi3
     | EqUnion String Ann Ann Ann                -- phi1 == phi2 (U) phi3
@@ -327,7 +327,7 @@ countCt :: Constraints -> Int
 countCt (EqTs _ ts1 ts2:xs) = 1 + countCtTs ts1 + countCtTs ts2 + countCt xs
 countCt (EqInst _ _ ts:xs) = 1 + countCtTs ts + countCt xs
 countCt (EqGen _ ts (_,ct,_):xs) = 1 + countCtTs ts + countCt ct + countCt xs
-countCt (x:xs) = 1 + countCt xs
+countCt (_:xs) = 1 + countCt xs
 countCt [] = 0
 
 countCtTs :: Ts -> Int
@@ -410,8 +410,8 @@ solveConstraint (EqGen d ts (t,ct,env)) = do
         fvenvann = (Set.union (freevars env') (Set.empty)) -- TODO: usage | demand Set.empty == t^^(ann1,ann2)
         fv = fvctt Set.\\ fvenvann
     return (subs,[ EqTs d ts (Ts fv ct' t') ])
-solveConstraint eq@(EqInst d _ ts@(TsVar _)) = return (idSub, [eq])
-solveConstraint (EqInst d t ts@(Ts _ _ st)) = do
+solveConstraint eq@(EqInst _ _ (TsVar _)) = return (idSub, [eq])
+solveConstraint (EqInst d t ts@(Ts _ _ _)) = do
     uniqueId <- getFresh
     let (uniqueId',ts2t_,ct) = instTs2T ("EqInst " ++ d) uniqueId ts
     putFresh $ uniqueId' + 1
