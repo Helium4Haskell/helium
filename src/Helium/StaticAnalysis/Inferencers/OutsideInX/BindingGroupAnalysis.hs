@@ -23,9 +23,8 @@ import Helium.StaticAnalysis.Messages.TypeErrors
 import Helium.StaticAnalysis.Messages.Messages
 import Helium.StaticAnalysis.Messages.HeliumMessages
 
-import Cobalt.Core.Types
-import Cobalt.OutsideIn.Solver
-import Cobalt.Core.Errors
+import Cobalt.OutsideIn
+import Cobalt.Core
 
 import Unbound.LocallyNameless.Fresh
 import Unbound.LocallyNameless hiding (Name, close)
@@ -80,6 +79,7 @@ bindingGroupAnalysis ::   (Bool, [Axiom], TypeSignatures, Monos, Touchables, May
 bindingGroupAnalysis input@(isTopLevel, axioms, typeSignatures, monos, touchables, body, errors, resolvedConstraints, betaUnique, classContexts) groups =
                   variableDependencies
                   where
+                     bodyAssumptions = maybe M.empty (\(a, _, _) -> a) body
                      bindingGroupAnalysis :: [BindingGroup] -> [BindingGroup]
                      bindingGroupAnalysis cs =
                            let 
@@ -112,8 +112,8 @@ bindingGroupAnalysis input@(isTopLevel, axioms, typeSignatures, monos, touchable
                                     hasConstraints :: PolyType -> Bool
                                     hasConstraints (PolyType_Bind (B _ t)) = hasConstraints t
                                     hasConstraints (PolyType_Mono cs _) = not $ null cs
-                                    (bu', classFixConstraint, classFixConstraintTouchables) = trace "ClassFix" $  
-                                          if hasConstraints t
+                                    (bu', classFixConstraint, classFixConstraintTouchables) =
+                                          if True || hasConstraints t
                                           then 
                                              let 
                                                 (mapping, ((mt, cs), b')) = polytypeToMonoType [] cbu t
@@ -139,13 +139,13 @@ bindingGroupAnalysis input@(isTopLevel, axioms, typeSignatures, monos, touchable
                                  c4 = concatMap (\(a', e) -> [Constraint_Unify (var a) (var e) | (_, a) <- a']) $ M.elems $ M.intersectionWith (,) ass2 env1'
                                  (sbu3, c5, touchs3) = instanceTS sbu2 ass2 ts2                                
                                   {- Solving -}
-                                 !sBu = sbu2
-                                 !sAxioms = axioms
-                                 !sGiven = c1 ++ c2
-                                 !sWanted = traceShowId (con1 ++ c3 ++ c4 ++ c5)
-                                 !sTouchables = touchables ++ touchs1 ++ touchs ++ touchs2 ++ touchs3
-                                 ((solverResult, _), bu1)   | isTopLevel = traceShowId $ contFreshMRes (solve sAxioms sGiven sWanted sTouchables) sBu
-                                                            | otherwise = ((traceStack "stack" $ error "solve result needed", undefined), sBu) 
+                                 sBu = sbu2
+                                 sAxioms = axioms
+                                 sGiven = c1 ++ c2
+                                 sWanted = (con1 ++ c3 ++ c4 ++ c5)
+                                 sTouchables = touchs1 ++ touchs ++ touchs2 ++ touchs3
+                                 ((solverResult, _), bu1)   | isTopLevel = contFreshMRes (solve sAxioms sGiven sWanted sTouchables) sBu
+                                                            | otherwise = ((error "solve result needed", undefined), sBu) 
                                  {- Gathering -}
                                  ts' = resTypeSignatures M.\\ ts2
                                  (bu2, rc1, touchs4) = instanceTS bu1 ass1 ts'
@@ -170,29 +170,58 @@ bindingGroupAnalysis input@(isTopLevel, axioms, typeSignatures, monos, touchable
                                              v, addConstraintsToMonoType residualConstraints m))
                                           ) <$> lookup v resSubstitution) 
                                     (M.toList (env1 M.\\ ts2)))
-                                 resTypeSignatures | isTopLevel = ts2 `M.union` M.map (\(t, (p, _)) -> (t, p)) newTS
+                                 resTypeSignatures | isTopLevel = ts2 `M.union` M.map (\(t, (p, _)) -> (t, replacePolytype (right smallGiven [] solverResult) p)) newTS
                                                    | otherwise =  ts2
-                                 resConstraints = rc1 ++ rc3 ++ rc4 ++ rc5 ++ (residualConstraints \\ resResolvedConstraints) -- ++ (c1 ++ c2 ++ c3 ++ c4 ++ c5)
+                                 resConstraints = rc1 ++ rc3 ++ rc4 ++ rc5 ++ (residualConstraints \\ resResolvedConstraints) ++ right smallGiven [] solverResult -- ++ (c1 ++ c2 ++ c3 ++ c4 ++ c5)
                                  resSubstitution   | isTopLevel = nub $ right substitution [] solverResult ++ subs1 ++ subsOrig
                                                    | otherwise = [] 
-                                 missingInstanceErrors = concatMap makeMissingInstanceError ((resConstraints 
-                                    \\ (map (\(cn, _, tyvars) -> Constraint_Class cn (map (substs resSubstitution . var) tyvars)) classContexts))
-                                    \\ let 
-                                          axiomToClass :: Axiom -> [Constraint]
-                                          axiomToClass (Axiom_Class (B [] ([], n, mt))) = [Constraint_Class n (map (substs resSubstitution) mt) ]
-                                          axiomToClass _ = []
-                                       in concatMap axiomToClass axioms)
                                  resResolvedConstraints = concatMap (snd . snd) (M.elems newTS) ++ resolvedConstraints
-                                 resTypeErrors  | isTopLevel = left makeTypeError [] solverResult ++ typeErrors
-                                                | otherwise = typeErrors
+                                 resTypeErrors  | isTopLevel = checkTooGeneralSignature (right smallGiven [] solverResult) (M.intersectionWith (\(t1, pt) t2 -> (t1, pt, t2)) ts2 env1)
+                                                                   ++ escapeVariableCheck (resAssumptions M.\\ bodyAssumptions) env1 ts2 ++ left createTypeError [] solverResult ++ typeErrors
+                                                | otherwise = escapeVariableCheck (resAssumptions M.\\ bodyAssumptions) env1 ts2 ++ typeErrors
                                  resInheritedBDG = (M.keys env1, M.elems env') : iBDG
                                  printResidual | null residualConstraints = id
-                                               | otherwise = trace "Residual" $ traceShow residualConstraints $ traceMessage "Res constraints" (sGiven) $ traceMessage "Non res" sWanted
+                                               | otherwise = id -- trace "Residual" $ traceShow residualConstraints
                               in printResidual (resTouchables, resAssumptions, resTypeSignatures, residualConstraints, resBetaUnique, resSubstitution, resTypeErrors, resResolvedConstraints, resInheritedBDG)
 
-makeMissingInstanceError :: Constraint -> [TypeError]
-makeMissingInstanceError (Constraint_Class s v ) = makeTypeError ("Missing instance (" ++ s ++ " " ++ show (head v) ++ ")")
-makeMissingInstanceError _ = [] 
+
+replacePolytype :: [Constraint] -> PolyType -> PolyType
+replacePolytype [] p = p
+replacePolytype (Constraint_Inst (MonoType_Var v) pt:cs) p  | var v == p = pt
+                                                            | otherwise =  replacePolytype cs p
+replacePolytype (_:cs) p = replacePolytype cs p
+
+checkTooGeneralSignature :: [Constraint] -> M.Map Name (TyVar, PolyType, TyVar) -> [TypeError]
+checkTooGeneralSignature cs ts = concatMap (flip checkTS cs) $ M.elems ts
+                        where
+                           check :: PolyType -> PolyType -> [TypeError]
+                           check v1 v2@(PolyType_Mono _ m)  | clearConstraints v1 /= bindVariables (getTypeVariablesFromMonoType m) v2 = createTypeError $ "Type signature " ++ show v1 ++ " too general, more general than " ++ show (bindVariables (getTypeVariablesFromMonoType m) v2)
+                                                            | otherwise = []
+                           check v1 v2                      | v1 /= v2 = createTypeError $ "Type signature " ++ show v1 ++ " too general, more than " ++ show v2
+                                                            | otherwise = []
+                           checkTS :: (TyVar, PolyType, TyVar) -> [Constraint] -> [TypeError]
+                           checkTS (tyvar, pt, tyvar2) ((Constraint_Unify v1 v2):cs)  | v1 == var tyvar2 = check pt (PolyType_Mono [] v2)
+                                                                              | otherwise = checkTS (tyvar, pt, tyvar2) cs
+                           checkTS (tyvar, pt, tyvar2) ((Constraint_Inst v1 v2):cs)   | v1 == var tyvar2 = check pt v2
+                                                                              | otherwise = checkTS (tyvar, pt, tyvar2) cs
+                           checkTS (tyvar, pt, tyvar2) (_:cs)                         = checkTS (tyvar, pt, tyvar2) cs
+                           checkTS _ []                                       = []
+
+escapeVariableCheck :: Assumptions -> Environment -> TypeSignatures -> [TypeError]
+escapeVariableCheck ass env ts   | null ass = []
+                                 | otherwise = let 
+                                          ftv = concatMap (getTypeVariablesFromPolyType.snd) (M.intersection ts env)
+                                       in traceShow ass $ traceShow env $ traceShow ass $ traceShowId $ concatMap (\v -> createTypeError $ "Variable " ++ show v ++ " is too general in " ++ show (M.intersection ts env) ) ftv
+
+clearConstraints :: PolyType -> PolyType
+clearConstraints (PolyType_Mono _ m) = PolyType_Mono [] m
+clearConstraints (PolyType_Bind (B t p)) = PolyType_Bind (B t (clearConstraints p))
+
+makeTypeError :: [TyVar] -> Constraint -> [TypeError]
+makeTypeError _ (Constraint_Class s v ) = createTypeError ("Missing instance (" ++ s ++ " " ++ show (head v) ++ ")")
+makeTypeError touchables (Constraint_Inst (MonoType_Var v) p) | v `notElem` touchables = createTypeError ("Variable " ++ show v ++ " should not be unified")
+                                                               | otherwise = []
+makeTypeError _ _ = [] 
 
 bindVariables :: [TyVar] -> PolyType -> PolyType
 bindVariables = flip (foldr ((PolyType_Bind .) . bind))
@@ -270,8 +299,8 @@ findMono n xs =
                shead [] = []
             in shead $ filter p xs
 
-makeTypeError :: Show a => a -> [TypeError]
-makeTypeError s = [TypeError [] [MessageOneLiner $ MessageString $ show s] [] []]
+createTypeError :: Show a => a -> [TypeError]
+createTypeError s = [TypeError [] [MessageOneLiner $ MessageString $ show s] [] []]
 
 subsConstraints :: Substitution -> Constraints
 subsConstraints = map (uncurry (Constraint_Unify . var))

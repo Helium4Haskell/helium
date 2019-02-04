@@ -22,6 +22,7 @@ import System.FilePath.Posix
 import Data.Maybe
 import qualified Data.Map.Strict as M
 import Helium.Utils.Utils
+import Debug.Trace
 
 phaseTypeInferencer :: 
     String -> String -> Module -> ImportEnvironment -> ImportEnvironment -> [Option] -> 
@@ -39,7 +40,7 @@ phaseTypeInferencer basedir fullName module_ localEnv completeEnv options =
                         then filter (/= NoSpreading) . ([TreeWalkInorderTopFirstPre, SolverGreedy]++)  
                         else id)
                    $ options
-      let outsideInResult = if OutsideInX `elem` options then   
+      let outsideInResult = if True || OutsideInX `elem` options then   
                Just $ typeInferencingIOX newOptions completeEnv module_
             else
                Nothing
@@ -54,7 +55,7 @@ phaseTypeInferencer basedir fullName module_ localEnv completeEnv options =
      
       -- display name information
       showInformation True options finalEnv
-      when (VerifyOutsideInResult `elem` options) 
+      when (True || VerifyOutsideInResult `elem` options) 
          (
             do
                let err = internalError "PhaseTyperInferencer" "phaseTypeInferencer" "Flag VerifyOutsideInResult used without OutsideInX flag present"
@@ -66,16 +67,26 @@ phaseTypeInferencer basedir fullName module_ localEnv completeEnv options =
                      --print dictionaryEnv
                      --print dictionaryEnvOIX
                  -- )
-               unless (null typeErrorsOIX && null tld) (
+               unless (not (null typeErrorsOIX) && null tld) (
                   do
+                     if null tld then return () else do
                      putStrLn "Top level types are not equal"
                      putStrLn (unlines $ map show $ M.toList tld)
+                     putStrLn (show toplevelTypes)
+                     putStrLn (show toplevelTypesOIX)
                   )   
-               putStrLn $ unlines $ map show $ M.toList toplevelTypesOIX
-               putStrLn (sortAndShowMessages typeErrorsOIX)
+               putStrLn $ unlines $ map show $ M.toList toplevelTypes
+               unless (null typeErrorsOIX) ( do
+                     --putStrLn (sortAndShowMessages typeErrorsOIX)
+                     return ()
+                  )
                unless (null typeErrors && null typeErrorsOIX || not (null typeErrors) && not (null typeErrorsOIX)) (
                   do
                      putStrLn "Length of errors doesn't match"
+                     putStrLn (sortAndShowMessages typeErrorsOIX)
+                     putStrLn (show toplevelTypes)
+                     print (show toplevelTypesOIX)
+                     
                   )
                        
          )

@@ -1,4 +1,7 @@
 {-# LANGUAGE BangPatterns #-}
+{-# LANGUAGE StandaloneDeriving #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE FlexibleInstances #-}
 module Helium.StaticAnalysis.Inferencers.OutsideInX.TopConversion(
         monoTypeToTp
     ,   tpSchemeListDifference
@@ -11,6 +14,7 @@ module Helium.StaticAnalysis.Inferencers.OutsideInX.TopConversion(
     ,   tpSchemeToPolyType'
     ,   polyTypeToTypeScheme
     ,   classEnvironmentToAxioms
+    ,   typeEnvironmentToAxioms
     ,   getTypeVariablesFromPolyType
     ,   getConstraintFromPoly
     ,   polytypeToMonoType
@@ -19,7 +23,7 @@ module Helium.StaticAnalysis.Inferencers.OutsideInX.TopConversion(
 
 import Unbound.LocallyNameless hiding (Name, freshen)
 import Unbound.LocallyNameless.Types (GenBind(..))
-import Cobalt.Core.Types hiding (split)
+import Cobalt.Core hiding (split)
 import Top.Types.Classes
 import Top.Types.Primitive
 import Top.Types.Quantification
@@ -30,6 +34,7 @@ import Helium.Syntax.UHA_Syntax
 import Helium.Syntax.UHA_Utils
 import Helium.Utils.Utils
 import Helium.StaticAnalysis.Miscellaneous.TypeConversion
+import Helium.ModuleSystem.ImportEnvironment
 import qualified Data.Map as M
 import Control.Monad.State
 import Control.Arrow
@@ -84,7 +89,7 @@ eqTpScheme t1@(Quantification (is1, qmap1, tp1)) t2@(Quantification (is2, qmap2,
 
 typeToPolytype :: Integer -> Type -> (PolyType, Integer, [(String, TyVar)])
 typeToPolytype bu t = let
-    (cs, tv, mt) = traceShowId $ typeToMonoType t
+    (cs, tv, mt) = typeToMonoType t
     (mapping, (mt', bu')) = freshenWithMapping [] bu mt
     mappingSub :: [(TyVar, MonoType)]
     mappingSub = map (\(i, v) -> (integer2Name i, var (integer2Name v))) mapping
@@ -157,6 +162,17 @@ polytypeToMonoType mapping bu (PolyType_Bind b) = let
     in polytypeToMonoType mapping bu' x
 polytypeToMonoType mapping bu (PolyType_Mono cs m) = freshenWithMapping mapping bu (m, cs)
     
+typeEnvironmentToAxioms :: TypeSynonymEnvironment -> [Axiom]
+typeEnvironmentToAxioms env = concatMap (uncurry synonymToAxiom) (M.toList env)
+    where
+        synonymToAxiom :: Name -> (Int, Tps -> Tp) -> [Axiom]
+        synonymToAxiom name (size, func) = let 
+                bvar = take size $ map integer2Name [0..]
+                tcons = take size (map TCon variableList)
+                tp = func tcons
+                vnew = tpToMonoType tp
+                vorig = MonoType_Con (show name) (map var bvar)
+            in [Axiom_Unify (bind bvar (vorig, vnew))]
 
 classEnvironmentToAxioms :: ClassEnvironment -> [Axiom]
 classEnvironmentToAxioms env = concatMap (uncurry classToAxioms) (M.toList env)
@@ -223,7 +239,7 @@ instance Freshen Constraint Integer where
     freshenWithMapping mapping n (Constraint_Class cn vs) = let 
         (mapping', (vs', n')) = freshenWithMapping mapping n vs
         in (mapping', (Constraint_Class cn vs', n'))
-        
+
 
 contFreshMRes :: FreshM a -> Integer -> (a, Integer)
 contFreshMRes i = runIdentity . contFreshMTRes i

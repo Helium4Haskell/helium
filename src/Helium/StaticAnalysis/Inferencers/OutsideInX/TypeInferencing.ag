@@ -69,10 +69,9 @@ import qualified Unbound.LocallyNameless as UL
 import Unbound.LocallyNameless(integer2Name)
 import Unbound.LocallyNameless.Fresh
 
-import Cobalt.Core.Types
-import Cobalt.OutsideIn.Solver
-import Cobalt.Core.Graph
-import Cobalt.Core.Errors
+import Cobalt.Core
+import Cobalt.OutsideIn
+
 
 import Top.Types.Schemes
 

@@ -106,6 +106,7 @@ Executable helium
                     , Top >= 1.8
                     , lvmlib >= 1.2
                     , cobalt >= 0.1.0.1
+                    , unbound
                     , helium 
   ghc-options:       -Wall
   default-language:  Haskell98
@@ -146,7 +147,7 @@ Executable heliumpath
 --------------------------------------------------------------------------------
   
 Library
-  Build-Depends:     base >= 3 && < 5, containers, mtl, parsec, network, process, transformers, filepath, directory, wl-pprint, Top >= 1.7, lvmlib >= 1.1
+  Build-Depends:     base >= 3 && < 5, containers, mtl, parsec, network, process, transformers, filepath, directory, wl-pprint, Top >= 1.7, lvmlib >= 1.1, cobalt >= 0.1.0.1, unbound
   ghc-options:       -Wall
   default-language:  Haskell98
   hs-source-dirs:    src dist/build/autogen/uuagc
@@ -210,6 +211,10 @@ Library
     Helium.StaticAnalysis.Inferencers.KindInferencing
     Helium.StaticAnalysis.Inferencers.SelectConstraintSolver
     Helium.StaticAnalysis.Inferencers.TypeInferencing
+    Helium.StaticAnalysis.Inferencers.OutsideInX.TopConversion
+    Helium.StaticAnalysis.Inferencers.OutsideInX.TypeInferencing
+    Helium.StaticAnalysis.Inferencers.OutsideInX.BindingGroupAnalysis
+    Helium.StaticAnalysis.Inferencers.OutsideInX.ConstraintHelper
     Helium.StaticAnalysis.Messages.HeliumMessages
     Helium.StaticAnalysis.Messages.Information
     Helium.StaticAnalysis.Messages.KindErrors

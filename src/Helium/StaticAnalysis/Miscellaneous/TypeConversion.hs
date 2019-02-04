@@ -7,6 +7,8 @@
 
     The conversion from UHA types to Tp (a simpler representation), and vice versa.
 -}
+{-# LANGUAGE FlexibleInstances#-}
+{-# LANGUAGE MultiParamTypeClasses #-}
 
 module Helium.StaticAnalysis.Miscellaneous.TypeConversion where
 

@@ -1,6 +1,6 @@
 module Helium.StaticAnalysis.Inferencers.OutsideInX.ConstraintHelper where
 
-import Cobalt.Core.Types
+import Cobalt.Core
 
 monotypeTuple :: [MonoType] -> MonoType
 monotypeTuple vars = let
