@@ -20,7 +20,9 @@ compileType env Iridium.TypeAny = taggedThunkPointer
 compileType env Iridium.TypeAnyThunk = voidPointer
 compileType env Iridium.TypeAnyWHNF = voidPointer
 compileType env Iridium.TypeInt = envValueType env
-compileType env Iridium.TypeDouble = FloatingPointType DoubleFP
+compileType env (Iridium.TypeFloat Iridium.Float32) = FloatingPointType FloatFP
+compileType env (Iridium.TypeFloat Iridium.Float64) = FloatingPointType DoubleFP
+compileType env Iridium.TypeRealWorld = envValueType env
 compileType env (Iridium.TypeDataType dataName) = NamedTypeReference $ toNamePrefixed "$data_" dataName
 compileType env (Iridium.TypeTuple _) = voidPointer
 compileType env Iridium.TypeFunction = voidPointer
@@ -116,6 +118,20 @@ cast supply env fromOperand toName fromType Iridium.TypeAny =
         let
           (name, supply') = freshName supply
         in (cast supply' env fromOperand name fromType Iridium.TypeAnyWHNF, LocalReference voidPointer name)
+cast supply env _ toName fromType toType
+  | fromType == Iridium.TypeRealWorld || toType == Iridium.TypeRealWorld = [toName := AST.Select (ConstantOperand $ Constant.Int 1 1) undef undef []]
+  where
+    undef = ConstantOperand $ Constant.Undef $ compileType env toType
+cast supply env fromOperand toName (Iridium.TypeFloat Iridium.Float64) toType = 
+  [nameInt := AST.BitCast fromOperand (envValueType env) []]
+  ++ cast supply' env (LocalReference (envValueType env) nameInt) toName Iridium.TypeInt toType
+  where
+    (nameInt, supply') = freshName supply
+cast supply env fromOperand toName fromType (Iridium.TypeFloat Iridium.Float64) =
+  cast supply' env fromOperand nameInt fromType Iridium.TypeInt
+  ++ [toName := AST.BitCast (LocalReference (envValueType env) nameInt) (compileType env ((Iridium.TypeFloat Iridium.Float64))) []]
+  where
+    (nameInt, supply') = freshName supply
 cast supply env fromOperand toName fromType Iridium.TypeInt = [toName := AST.PtrToInt fromOperand (envValueType env) []]
 cast supply env fromOperand toName Iridium.TypeInt toType = [toName := AST.IntToPtr fromOperand (compileType env toType) []]
 cast supply env fromOperand toName fromType toType = [toName := AST.BitCast fromOperand toT []]

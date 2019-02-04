@@ -27,7 +27,7 @@ pCustom = do
     keyword <- pName
     pWhitespace
     result <- case keyword of
-      "int" -> CustomInt <$> pInt
+      "int" -> CustomInt <$> pSignedInt
       "bytes" -> (CustomBytes . bytesFromString) <$> pString
       "name" -> CustomName <$ pToken '@' <*> pId
       "link" -> CustomLink <$ pToken '@' <*> pId <* pWhitespace <*> pDeclKind

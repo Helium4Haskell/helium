@@ -47,7 +47,7 @@ pCase = do
   key <- pKeyword
   case key of
     "constructor" -> CaseConstructor <$> pArguments (pCaseAlt pDataTypeConstructor)
-    "int" -> CaseInt <$> pArguments (pCaseAlt pInt) <* pWhitespace <* pSymbol "otherwise" <* pWhitespace <*> pId
+    "int" -> CaseInt <$> pArguments (pCaseAlt pUnsignedInt) <* pWhitespace <* pSymbol "otherwise" <* pWhitespace <*> pId
     _ -> pError "expected 'constructor' or 'int' in case instruction"
 
 pCaseAlt :: Parser a -> Parser (a, BlockName)
@@ -63,7 +63,7 @@ pBindTarget = do
     "function" -> BindTargetFunction <$> pVariable
     "thunk" -> BindTargetThunk <$> pVariable
     "constructor" -> BindTargetConstructor <$> pDataTypeConstructor
-    "tuple" -> BindTargetTuple <$> pInt
+    "tuple" -> BindTargetTuple <$> pUnsignedInt
     _ -> pError "expected bind in letalloc"
 
 pMatchTarget :: Parser MatchTarget
@@ -74,6 +74,6 @@ pMatchTarget = do
   else do
     key <- pKeyword
     case key of
-      "thunk" -> MatchTargetThunk <$> pInt
-      "tuple" -> MatchTargetTuple <$> pInt
+      "thunk" -> MatchTargetThunk <$> pUnsignedInt
+      "tuple" -> MatchTargetTuple <$> pUnsignedInt
       _ -> pError "Expected match target"

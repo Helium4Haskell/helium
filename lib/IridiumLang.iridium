@@ -115,18 +115,95 @@ export define @primLeInt(%a: int, %b: int) = call @primGeInt: (int, int) -> @Boo
 #[decl @iridiumtype [bytes "(int, int) -> @Bool"]]
 export define @primGtInt(%a: int, %b: int) = call @primLtInt: (int, int) -> @Bool $ (%b: int, %a: int)
 
-; instruction primAddFloat  "addfloat" :: Float! -> Float! -> Float!
-; instruction primSubFloat  "subfloat" :: Float! -> Float! -> Float!
-; instruction primMulFloat  "mulfloat" :: Float! -> Float! -> Float!
-; instruction primDivFloat  "divfloat" :: Float! -> Float! -> Float!
-; instruction primNegFloat  "negfloat" :: Float! -> Float!
+#[decl @iridiumtype [bytes "(float64, float64) -> float64"]]
+export define @primAddFloat(%a: float64, %b: float64) = prim float64_add(%a: float64, %b: float64)
+#[decl @iridiumtype [bytes "(float64, float64) -> float64"]]
+export define @primSubFloat(%a: float64, %b: float64) = prim float64_sub(%a: float64, %b: float64)
+#[decl @iridiumtype [bytes "(float64, float64) -> float64"]]
+export define @primMulFloat(%a: float64, %b: float64) = prim float64_mul(%a: float64, %b: float64)
+#[decl @iridiumtype [bytes "(float64, float64) -> float64"]]
+export define @primDivFloat(%a: float64, %b: float64) = prim float64_div(%a: float64, %b: float64)
 
-; instruction primEqFloat   "eqfloat"  :: Float! -> Float! -> Bool!
-; instruction primNeFloat   "nefloat"  :: Float! -> Float! -> Bool!
-; instruction primLtFloat   "ltfloat"  :: Float! -> Float! -> Bool!
-; instruction primGtFloat   "gtfloat"  :: Float! -> Float! -> Bool!
-; instruction primLeFloat   "lefloat"  :: Float! -> Float! -> Bool!
-; instruction primGeFloat   "gefloat"  :: Float! -> Float! -> Bool!
+#[decl @iridiumtype [bytes "(float64) -> float64"]]
+export define @primNegFloat(%a: float64): float64 {
+entry:
+  %0 = literal float64 0
+  %result = prim float64_sub(%0: float64, %a: float64)
+  return %result: float64
+}
+
+#[decl @iridiumtype [bytes "(float64, float64) -> @Bool"]]
+export define @primEqFloat(%a: float64, %b: float64): @Bool {
+entry:
+  letalloc %true_ = constructor @True: () -> @Bool $ ()
+  letalloc %false_ = constructor @False: () -> @Bool $ ()
+  %true = cast %true_: @Bool as any_whnf
+  %false = cast %false_: @Bool as any_whnf
+  %result = prim float64_eq(%a: float64, %b: float64, %true: any_whnf, %false: any_whnf)
+  %result_ = cast %result: any_whnf as @Bool
+  return %result_: @Bool
+}
+
+#[decl @iridiumtype [bytes "(float64, float64) -> @Bool"]]
+export define @primNeFloat(%a: float64, %b: float64): @Bool {
+entry:
+  letalloc %true_ = constructor @True: () -> @Bool $ ()
+  letalloc %false_ = constructor @False: () -> @Bool $ ()
+  %true = cast %true_: @Bool as any_whnf
+  %false = cast %false_: @Bool as any_whnf
+  %result = prim float64_ne(%a: float64, %b: float64, %true: any_whnf, %false: any_whnf)
+  %result_ = cast %result: any_whnf as @Bool
+  return %result_: @Bool
+}
+
+
+#[decl @iridiumtype [bytes "(float64, float64) -> @Bool"]]
+export define @primLtFloat(%a: float64, %b: float64): @Bool {
+entry:
+  letalloc %true_ = constructor @True: () -> @Bool $ ()
+  letalloc %false_ = constructor @False: () -> @Bool $ ()
+  %true = cast %true_: @Bool as any_whnf
+  %false = cast %false_: @Bool as any_whnf
+  %result = prim float64_lt(%a: float64, %b: float64, %true: any_whnf, %false: any_whnf)
+  %result_ = cast %result: any_whnf as @Bool
+  return %result_: @Bool
+}
+
+#[decl @iridiumtype [bytes "(float64, float64) -> @Bool"]]
+export define @primGtFloat(%a: float64, %b: float64): @Bool {
+entry:
+  letalloc %true_ = constructor @True: () -> @Bool $ ()
+  letalloc %false_ = constructor @False: () -> @Bool $ ()
+  %true = cast %true_: @Bool as any_whnf
+  %false = cast %false_: @Bool as any_whnf
+  %result = prim float64_gt(%a: float64, %b: float64, %true: any_whnf, %false: any_whnf)
+  %result_ = cast %result: any_whnf as @Bool
+  return %result_: @Bool
+}
+
+#[decl @iridiumtype [bytes "(float64, float64) -> @Bool"]]
+export define @primLeFloat(%a: float64, %b: float64): @Bool {
+entry:
+  letalloc %true_ = constructor @True: () -> @Bool $ ()
+  letalloc %false_ = constructor @False: () -> @Bool $ ()
+  %true = cast %true_: @Bool as any_whnf
+  %false = cast %false_: @Bool as any_whnf
+  %result = prim float64_le(%a: float64, %b: float64, %true: any_whnf, %false: any_whnf)
+  %result_ = cast %result: any_whnf as @Bool
+  return %result_: @Bool
+}
+
+#[decl @iridiumtype [bytes "(float64, float64) -> @Bool"]]
+export define @primGeFloat(%a: float64, %b: float64): @Bool {
+entry:
+  letalloc %true_ = constructor @True: () -> @Bool $ ()
+  letalloc %false_ = constructor @False: () -> @Bool $ ()
+  %true = cast %true_: @Bool as any_whnf
+  %false = cast %false_: @Bool as any_whnf
+  %result = prim float64_ge(%a: float64, %b: float64, %true: any_whnf, %false: any_whnf)
+  %result_ = cast %result: any_whnf as @Bool
+  return %result_: @Bool
+}
 
 #[decl @type [bytes "a -> b -> b"]]
 export define @primSeq(%a: any, %b: any): any_whnf [trampoline] {

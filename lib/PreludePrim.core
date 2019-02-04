@@ -21,7 +21,7 @@ module PreludePrim
 	
     -- Int
     , div, mod, quot, rem
-    
+
     -- Float
     --, (/)
     --, sqrt, (**.), exp, log, sin, cos, tan
@@ -80,7 +80,7 @@ import LvmLang
     , (==#), (/=#)
     , (<#), (<=#), (>=#), (>#)
     , mod, quot, rem, div
-    
+
     {-, (+.), (*.), (-.), (/) = (/.), negFloat
     , (==.), (/=.)
     , (<.), (<=.), (>=.), (>.)

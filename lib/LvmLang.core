@@ -86,8 +86,6 @@ extern prim_string_length   :: "la"
 data Bytes
 data Int
 data Float
-data Bool       = False -- tag 0
-                | True  -- tag 1
 
 data '':[]'' a  = '':[]'' | (:) a [a]
 data '':()''    = '':()''
@@ -187,7 +185,7 @@ negInt x      = let! x = x in primNegInt x
 {----------------------------------------------------------
   Basic arithmetic on Float's
 ----------------------------------------------------------}
-{-
+
 (+.) :: Float -> Float -> Float!
 (+.) x y    = let! y = y in let! x = x in primAddFloat x y
 
@@ -202,12 +200,11 @@ negInt x      = let! x = x in primNegInt x
 
 negFloat :: Float -> Float!
 negFloat x = let! x = x in primNegFloat x
--}
 
 {----------------------------------------------------------
   Comparisons on Float's
 ----------------------------------------------------------}
-{-
+
 (==.) :: Float -> Float -> Bool!
 (==.) x y   = let! y = y in let! x = x in primEqFloat x y
 
@@ -225,7 +222,6 @@ negFloat x = let! x = x in primNegFloat x
 
 (>=.) :: Float -> Float -> Bool!
 (>=.) x y   = let! y = y in let! x = x in primGeFloat x y
--}
 
 {----------------------------------------------------------
   Boolean expressions

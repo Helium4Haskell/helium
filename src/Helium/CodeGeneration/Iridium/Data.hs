@@ -213,12 +213,12 @@ data PhiBranch = PhiBranch { phiBlock :: !BlockName, phiVariable :: !Variable }
 
 data Literal
   = LitInt !Int
-  | LitDouble !Double
+  | LitFloat !FloatPrecision !Double
   | LitString !String
   deriving (Eq, Ord)
 
 typeOfExpr :: Expr -> PrimitiveType
-typeOfExpr (Literal (LitDouble _)) = TypeDouble
+typeOfExpr (Literal (LitFloat precision _)) = TypeFloat precision
 typeOfExpr (Literal (LitString _)) = TypeDataType (idFromString "[]")
 typeOfExpr (Literal _) = TypeInt
 typeOfExpr (Call (GlobalFunction _ (FunctionType _ ret)) _) = ret

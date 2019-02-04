@@ -475,7 +475,7 @@ getApplication expr = case getApplicationOrConstruction expr [] of
 
 literal :: Core.Literal -> Literal
 literal (Core.LitInt x) = LitInt x
-literal (Core.LitDouble x) = LitDouble x
+literal (Core.LitDouble x) = LitFloat Float64 x
 literal (Core.LitBytes x) = LitString $ stringFromBytes x 
 
 resolve :: TypeEnv -> Id -> Variable

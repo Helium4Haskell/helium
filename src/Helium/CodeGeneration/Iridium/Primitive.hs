@@ -19,6 +19,7 @@ import Helium.CodeGeneration.LLVM.Utils(freshName, getElementPtr)
 import qualified LLVM.AST as LLVM
 import qualified LLVM.AST.Instruction as LLVM
 import qualified LLVM.AST.IntegerPredicate as IntegerPredicate
+import qualified LLVM.AST.FloatingPointPredicate as FloatingPointPredicate
 import qualified LLVM.AST.AddrSpace as LLVM
 import qualified LLVM.AST.CallingConvention as LLVM
 import qualified LLVM.AST.Constant as LLVMConstant
@@ -40,6 +41,12 @@ primBinaryInt name g = prim name [TypeInt, TypeInt] TypeInt f
     f _ _ [a, b] var = [var LLVM.:= g a b []]
     f _ _ _ _ = error "expected two arguments for binary int primitive"
 
+primBinaryDouble :: String -> (LLVM.Operand -> LLVM.Operand -> LLVM.InstructionMetadata -> LLVM.Instruction) -> (Id, Primitive)
+primBinaryDouble name g = prim name [TypeFloat Float64, TypeFloat Float64] (TypeFloat Float64) f
+  where
+    f _ _ [a, b] var = [var LLVM.:= g a b []]
+    f _ _ _ _ = error "expected two arguments for binary double primitive"
+
 primCompare :: String -> PrimitiveType -> (LLVM.Operand -> LLVM.Operand -> LLVM.InstructionMetadata -> LLVM.Instruction) -> (Id, Primitive)
 primCompare name t g = prim name [t, t, TypeAnyWHNF, TypeAnyWHNF] TypeAnyWHNF f
   where
@@ -52,6 +59,9 @@ primCompare name t g = prim name [t, t, TypeAnyWHNF, TypeAnyWHNF] TypeAnyWHNF f
 
 primitives :: IdMap Primitive
 primitives = mapFromList primitiveList
+
+fastMathFlagsNone :: LLVM.FastMathFlags
+fastMathFlagsNone = LLVM.FastMathFlags False False False False False False False
 
 primitiveList :: [(Id, Primitive)]
 primitiveList =
@@ -73,6 +83,20 @@ primitiveList =
   , primCompare "int_eq" TypeInt $ LLVM.ICmp IntegerPredicate.EQ
   , primCompare "int_slt" TypeInt $ LLVM.ICmp IntegerPredicate.SLT -- Signed less than
 
+  -- Float arithmetics
+  , primBinaryDouble "float64_add" $ LLVM.FAdd fastMathFlagsNone
+  , primBinaryDouble "float64_sub" $ LLVM.FSub fastMathFlagsNone
+  , primBinaryDouble "float64_mul" $ LLVM.FMul fastMathFlagsNone
+  , primBinaryDouble "float64_div" $ LLVM.FDiv fastMathFlagsNone
+
+  -- Float comparisons
+  , primCompare "float64_eq" (TypeFloat Float64) $ LLVM.FCmp FloatingPointPredicate.OEQ
+  , primCompare "float64_ne" (TypeFloat Float64) $ LLVM.FCmp FloatingPointPredicate.ONE
+  , primCompare "float64_gt" (TypeFloat Float64) $ LLVM.FCmp FloatingPointPredicate.OGT
+  , primCompare "float64_lt" (TypeFloat Float64) $ LLVM.FCmp FloatingPointPredicate.OLT
+  , primCompare "float64_ge" (TypeFloat Float64) $ LLVM.FCmp FloatingPointPredicate.OGE
+  , primCompare "float64_le" (TypeFloat Float64) $ LLVM.FCmp FloatingPointPredicate.OLE
+
   , prim "unsafeptr_add" [TypeUnsafePtr, TypeInt] TypeUnsafePtr compilePtrAdd
   -- Reads a 32 bit integer
   , prim "unsafeptr_read32" [TypeUnsafePtr] TypeInt compileRead32
@@ -83,6 +107,10 @@ primitiveList =
   , prim "thunk_target_ptr_offset" [TypeInt] TypeInt compileThunkTargetOffset
   , prim "thunk_write_tag" [TypeUnsafePtr, TypeInt] TypeInt compileThunkWriteTag
   , prim "thunk_call" [TypeUnsafePtr, TypeUnsafePtr] TypeAny compileThunkCall
+
+  -- Conversion
+  , prim "float64_to_int" [TypeFloat Float64] TypeInt $ compileConversion LLVM.FPToSI (\target -> LLVM.IntegerType $ fromIntegral $ targetWordSize target)
+  , prim "int_to_float64" [TypeInt] (TypeFloat Float64) $ compileConversion LLVM.SIToFP $ const $ LLVM.FloatingPointType LLVM.DoubleFP
   ]
 
 findPrimitive :: Id -> Primitive
@@ -217,3 +245,8 @@ compileThunkCall target supply [fn, arg] name =
   where
     fnType = LLVM.PointerType (LLVM.FunctionType typeVoidPtr [typeVoidPtr] False) (LLVM.AddrSpace 0)
     (nameFn, _) = freshName supply
+
+compileConversion :: (LLVM.Operand -> LLVM.Type -> LLVM.InstructionMetadata -> LLVM.Instruction) -> (Target -> LLVM.Type) -> PrimitiveCompiler
+compileConversion instr ty target _ [arg] name =
+  [ name LLVM.:= instr arg (ty target) []
+  ]

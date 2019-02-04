@@ -33,8 +33,9 @@ import LLVM.AST as AST
 import LLVM.AST.Visibility
 import LLVM.AST.CallingConvention
 import LLVM.AST.Linkage
-import LLVM.AST.Constant (Constant(Int, Array, Undef, GlobalReference))
+import LLVM.AST.Constant (Constant(Int, Float, Array, Undef, GlobalReference))
 import qualified LLVM.AST.IntegerPredicate as IntegerPredicate
+import qualified LLVM.AST.Float as Float
 
 import Data.List (maximumBy, group, sort, partition)
 import Data.Function (on)
@@ -129,10 +130,6 @@ compileInstruction env supply (Iridium.Case var (Iridium.CaseInt alts defaultBra
 compileInstruction _ _ Iridium.Unreachable = Partial [] (Do $ Unreachable []) []
 
 compileExpression :: Env -> NameSupply -> Iridium.Expr -> Name -> [Named Instruction]
-compileExpression env supply (Iridium.Literal (Iridium.LitInt value)) name = [name := BitCast (ConstantOperand constant) (envValueType env) []]
-  where
-    constant :: Constant
-    constant = Int (fromIntegral $ targetWordSize $ envTarget $ env) (fromIntegral $ value)
 compileExpression env supply (Iridium.Literal (Iridium.LitString value)) name =
   [ namePtr := Alloca vectorType Nothing 0 []
   , Do $ Store False (LocalReference (pointer vectorType) namePtr) (ConstantOperand vector) Nothing 0 []
@@ -156,7 +153,22 @@ compileExpression env supply (Iridium.Literal (Iridium.LitString value)) name =
     (nameArray, _) = freshName supply'
     vectorType = ArrayType (fromIntegral $ length value) (IntegerType 32)
     vector = Array (IntegerType 32) $ map (\c -> Int 32 $ fromIntegral $ fromEnum c) value
--- TODO: Float literals
+compileExpression env supply (Iridium.Literal literal) name = [name := BitCast (ConstantOperand constant) t []]
+  where
+    constant :: Constant
+    (constant, t) = case literal of
+      Iridium.LitInt value ->
+        ( Int (fromIntegral $ targetWordSize $ envTarget $ env) (fromIntegral $ value)
+        , envValueType env
+        )
+      Iridium.LitFloat Iridium.Float32 value ->
+        ( Float $ Float.Single $ realToFrac value
+        , FloatingPointType FloatFP
+        )
+      Iridium.LitFloat Iridium.Float64 value ->
+        ( Float $ Float.Double value
+        , FloatingPointType DoubleFP
+        )
 compileExpression env supply (Iridium.Call to@(Iridium.GlobalFunction global _) args) name =
   [ name := Call
       { tailCallKind = Nothing

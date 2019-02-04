@@ -26,7 +26,8 @@ data PrimitiveType
 
   -- Subtypes of TypeAnyWHNF
   | TypeInt
-  | TypeDouble
+  | TypeFloat FloatPrecision
+  | TypeRealWorld
   | TypeDataType !Id
   | TypeTuple !Int
   | TypeFunction -- ^ Pointer to a function or a thunk in WHNF (partially applied function)
@@ -35,6 +36,8 @@ data PrimitiveType
   -- Types used for the runtime
   | TypeUnsafePtr
   deriving (Eq, Ord)
+
+data FloatPrecision = Float32 | Float64 deriving (Eq, Ord)
 
 data EvaluationState = Unevaluated | EvaluationUnknown | Evaluated deriving (Show, Eq, Ord)
 

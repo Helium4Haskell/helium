@@ -158,8 +158,8 @@ pName = do
       || ('0' <= c && c <= '9')
       || c == '$' || c == '.' || c == '_'
 
-pInt :: Parser Int
-pInt = do
+pUnsignedInt :: Parser Int
+pUnsignedInt = do
     str <- pManySatisfy valid
     if str == "" then
       pError "expected integer"
@@ -167,6 +167,15 @@ pInt = do
       return $ read str
   where
     valid c = '0' <= c && c <= '9'
+
+pSignedInt :: Parser Int
+pSignedInt = do
+  c <- lookahead
+  if c == '-' then do
+    pChar
+    (0 -) <$> pUnsignedInt
+  else
+    pUnsignedInt
 
 pArguments :: Parser a -> Parser [a]
 pArguments pArg = do

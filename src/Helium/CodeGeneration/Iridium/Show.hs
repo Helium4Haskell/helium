@@ -52,7 +52,7 @@ showDeclKind (DeclKindCustom id) = "@" ++ showId id
 
 instance Show Literal where
   show (LitInt x) = "int " ++ show x
-  show (LitDouble x) = "float " ++ show x
+  show (LitFloat precision x) = "float" ++ show precision ++ " " ++ show x
   show (LitString x) = "str " ++ show x
 
 instance Show Expr where
@@ -180,7 +180,9 @@ instance Show PrimitiveType where
   show (TypeAnyThunk) = "any_thunk"
   show (TypeAnyWHNF) = "any_whnf"
 
-  show (TypeInt) = "int"
+  show TypeInt = "int"
+  show (TypeFloat precision) = "float" ++ show precision
+  show TypeRealWorld = "real_world"
   show (TypeDataType name) = "@" ++ showId name
   show (TypeTuple arity) = "tuple " ++ show arity
   show (TypeFunction) = "anyfunction"
@@ -188,6 +190,9 @@ instance Show PrimitiveType where
 
   show (TypeUnsafePtr) = "unsafeptr"
 
+instance Show FloatPrecision where
+  show Float32 = "32"
+  show Float64 = "64"
 showArguments' :: (a -> String) -> [a] -> String
 showArguments' showFn = ("("++) . (++")") . intercalate ", " . map showFn
 

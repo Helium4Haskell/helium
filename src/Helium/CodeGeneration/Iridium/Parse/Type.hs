@@ -16,11 +16,21 @@ pType = do
       "any_thunk" -> return TypeAnyThunk
       "any_whnf" -> return TypeAnyWHNF
       "int" -> return TypeInt
-      "tuple" -> TypeTuple <$ pWhitespace <*> pInt
+      "float" -> TypeFloat <$> pFloatPrecision
+      "real_world" -> return TypeRealWorld
+      "tuple" -> TypeTuple <$ pWhitespace <*> pUnsignedInt
       "anyfunction" -> return TypeFunction
       "function" -> TypeGlobalFunction <$ pWhitespace <*> pFunctionType
       "unsafeptr" -> return TypeUnsafePtr
       _ -> pError "expected type"
+
+pFloatPrecision :: Parser FloatPrecision
+pFloatPrecision = do
+  bits <- pUnsignedInt
+  case bits of
+    32 -> return Float32
+    64 -> return Float64
+    _ -> pError $ "Unsupported floating point precision: " ++ show bits
 
 pFunctionType :: Parser FunctionType
 pFunctionType = FunctionType <$> pArguments pType <* pWhitespace <* pToken '-' <* pToken '>' <* pWhitespace <*> pType
