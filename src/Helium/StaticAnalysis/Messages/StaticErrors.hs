@@ -61,6 +61,8 @@ data Error  = NoFunDef Entity Name {-names in scope-}Names
             | NonDerivableClass Name
             | CannotDerive Name Tps
             | TupleTooBig Range
+            | IncorrectConstructorResult Range Name {- Constructor -} TpScheme {- Given result type -} TpScheme {- Expected result type -}
+            | MissingGADTOption
 
 instance HasMessage Error where
    getMessage x = let (oneliner, hints) = showError x
@@ -103,6 +105,8 @@ instance HasMessage Error where
       NonDerivableClass name      -> [getNameRange name]
       CannotDerive name _         -> [getNameRange name]
       TupleTooBig r               -> [r]
+      IncorrectConstructorResult r _ _ _ -> [r]
+      MissingGADTOption          -> []
 
 sensiblySimilar :: Name -> Names -> [Name]
 sensiblySimilar name inScope =
@@ -368,6 +372,23 @@ showError anError = case anError of
       ( MessageString "Tuples can have up to 10 elements"
       , []
       )
+   --IncorrectConstructorResult Range Name {- Constructor -} TpScheme {- Given result type -} TpScheme {- Expected result type -} 
+   IncorrectConstructorResult _ n given expected ->
+         (  MessageCompose [
+            MessageString "Result of given type ",
+            MessageString (show given),
+            MessageString " does not match ",
+            MessageString (show expected),
+            MessageString " in constructor ",
+            MessageString (show n)
+         ]
+      ,  [
+            
+         ]
+      )
+   MissingGADTOption ->
+      (MessageString "GADTs used, but GADTs are not enabled"
+      , [MessageString "Enable the option to use GADTs by using --gadts"])
 
    _ -> internalError "StaticErrors.hs" "showError" "unknown type of Error"
 
@@ -442,6 +463,7 @@ errorLogCode anError = case anError of
           DuplicatedClassImported _               -> "di"
           OverlappingInstance _ _                 -> "oi"
           MissingSuperClass _ _ _                 -> "ms"
+          IncorrectConstructorResult _ _ _ _      -> "wc"
    where code entity = fromMaybe "??"
                      . lookup entity
                      $ [ (TypeSignature    ,"ts"), (TypeVariable         ,"tv"), (TypeConstructor,"tc")

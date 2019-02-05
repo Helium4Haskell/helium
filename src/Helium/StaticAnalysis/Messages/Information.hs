@@ -7,6 +7,7 @@ import Helium.StaticAnalysis.Messages.Messages hiding (Constructor)
 import Helium.Syntax.UHA_Syntax hiding (Fixity)
 import Helium.Syntax.UHA_Utils
 import Helium.Syntax.UHA_Range
+import Control.Arrow
 import qualified Data.Map as M
 
 type Fixity = (Int, Assoc)
@@ -38,7 +39,7 @@ showInformation reportNotFound options importEnv =
           
           constructor = 
              case lookupWithKey (nameFromString string) (valueConstructors importEnv) of
-                Just (name, scheme) -> 
+                Just (name, (scheme, _)) -> 
                    [ValueConstructor name scheme (M.lookup name (operatorTable importEnv))]
                 Nothing     -> []
 
@@ -147,10 +148,10 @@ instance HasMessage InfoItem where
 
 findValueConstructors :: Name -> ImportEnvironment -> [(Name, TpScheme)]
 findValueConstructors name =
-   let test = isName . fst . leftSpine . snd . functionSpine . unqualify . unquantify
+   let test = isName . fst . leftSpine . snd . functionSpine . unqualify . unquantify . fst
        isName (TCon s) = s == show name
        isName _        = False
-   in M.assocs . M.filter test . valueConstructors
+   in map (second fst) . M.assocs . M.filter test . valueConstructors
 
 lookupWithKey :: Ord key => key -> M.Map key a -> Maybe (key, a)
 lookupWithKey key = M.lookup key . M.mapWithKey (,)

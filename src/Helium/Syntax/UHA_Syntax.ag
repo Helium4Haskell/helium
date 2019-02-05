@@ -114,6 +114,10 @@ DATA Declaration                                  {- *** -}
         simpletype               : SimpleType
         constructors             : Constructors
         derivings                : Names
+    | Data_Gadt
+        range                    : Range
+        simpletype               : SimpleType
+        constructors             : Constructors
     | Newtype
         range                    : Range
         context                  : ContextItems
@@ -275,6 +279,11 @@ DATA Constructor
         range                    : Range
         constructor              : Name
         fieldDeclarations        : FieldDeclarations
+    | GADT             
+        range                    : Range
+        constructor              : Name
+        type                     : Type
+
 
 TYPE FieldDeclarations           = [ FieldDeclaration ]
 

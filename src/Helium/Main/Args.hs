@@ -215,7 +215,7 @@ data Option
    | TreeWalkInorderTopFirstPost | TreeWalkInorderTopLastPost | SolverSimple | SolverGreedy
    | SolverTypeGraph | SolverCombination | SolverChunks | UnifierHeuristics
    | SelectConstraintNumber Int | NoOverloadingTypeCheck | NoPrelude | UseTutor
-   | OutsideInX | VerifyOutsideInResult
+   | OutsideInX | VerifyOutsideInResult | GADTs
  deriving (Eq)
 
 stripShow :: String -> String
@@ -235,7 +235,7 @@ instance Show Option where
  show Overloading                        = "--overloading"
  show NoOverloading                      = "--no-overloading"
  show (LvmPath str)                      = "--lvmpath=\"" ++ str ++ "\"" -- May contain spaces
- show (BasePath str)                      = "--basepath=\"" ++ str ++ "\"" -- May contain spaces
+ show (BasePath str)                     = "--basepath=\"" ++ str ++ "\"" -- May contain spaces
  show Verbose                            = "--verbose"
  show NoWarnings                         = "--no-warnings"
  show MoreOptions                        = "--moreoptions"
@@ -280,6 +280,7 @@ instance Show Option where
  show UseTutor                           = "--use-tutor"
  show OutsideInX                         = "--outsideinx"
  show VerifyOutsideInResult              = "--verify-outsideinx-results"
+ show GADTs                              = "--gadts"
 
 
 

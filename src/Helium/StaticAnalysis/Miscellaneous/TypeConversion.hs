@@ -26,6 +26,8 @@ import Top.Types
 import Data.List
 import Control.Monad.State
 
+import Debug.Trace
+
 
 ----------------------------------------------------------------------
 -- conversion functions from and to UHA
@@ -191,6 +193,26 @@ convertFromSimpleTypeAndTypes stp  tps =
        nameMap    = makeNameMap (foldr union [] (typevariables : map namesInType tps))
        simpletype = foldl TApp (TCon (getNameName name)) (take (length typevariables) (map TVar [0..]))
    in (simpletype,map (makeTpFromType nameMap) tps)
+
+datatypeToTpScheme :: Name -> Names -> TpScheme
+datatypeToTpScheme name typevars = let 
+        mapping = zip [0..] (map show typevars) 
+        tp = foldl (TApp) (TCon $ show name) (map (TVar . fst) mapping)
+    in Quantification (map fst mapping, mapping, [] .=>. tp)
+
+
+matchReturnType :: TpScheme -> TpScheme -> Bool
+matchReturnType constructor dt = let
+    tpC = unqualify $ unquantify constructor
+    tpD = unqualify $ unquantify dt
+    lastTp (TApp (TApp (TCon "->") _) v) = lastTp v
+    lastTp x = x
+    matchTP (TCon n) (TCon m) = n == m
+    matchTP (TCon x) (TVar v) = True
+    matchTP (TApp f1 a1) (TApp f2 a2) = matchTP f1 f2 && matchTP a1 a2
+    matchTP (TVar _) (TVar _) = True
+    matchTP _ _ = False
+    in matchTP (lastTp tpC) tpD
 
 makeTypeFromTp :: Tp -> Type
 makeTypeFromTp t =

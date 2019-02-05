@@ -32,7 +32,7 @@ SEM Module
 -- duplicated value constructors
 
 SEM Module
-  | Module   loc . valueConstructorErrors = makeDuplicated Constructor @duplicatedValueConstructors
+  | Module   loc . valueConstructorErrors = makeDuplicated Constructor @duplicatedValueConstructors ++ @body.incorrectReturnTypeErrors
   
 ------------------------------------------------------------------------------
 -- duplicated fixity declarations

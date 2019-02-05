@@ -95,7 +95,7 @@ SEM Module
     | Module
         lhs . dictionaryEnvironment = emptyDictionaryEnvironment
         lhs . toplevelTypes = const id (trace "Residual constraints" $ traceShow (getResidualConstraints @solveResults)) $ if null @typeErrors then M.mapWithKey (lookupType @body.typeSignaturesCollect) @body.tlEnvironment else M.empty -- 
-        loc . typeErrors = const id (trace (unlines $ map show $ sortOn fst $ nub $ @substitution)) $ concatMap (makeTypeError @tyvars)(getResidualConstraints @solveResults \\ @body.resolvedContraints) ++ getTypeErrors @solveResults ++ @body.typeErrors
+        loc . typeErrors = traceShowId $ const id (trace (unlines $ map show $ sortOn fst $ nub $ @substitution)) $ concatMap (makeTypeError @tyvars)(getResidualConstraints @solveResults \\ @body.resolvedContraints) ++ getTypeErrors @solveResults ++ @body.typeErrors
         lhs . warnings = getWarnings @solveResults
         loc . axioms = typeEnvironmentToAxioms (typeSynonyms @lhs.importEnvironment) ++ classEnvironmentToAxioms (classEnvironment @lhs.importEnvironment)
         body . axioms = @axioms
@@ -264,7 +264,7 @@ SEM Pattern
         loc         . lstConstraints    = Constraint_Unify (var @beta) (monotypeList (var @elemBeta)) : map (unifyVar @elemBeta) @patterns.betas
     | Constructor
         patterns    . betaUnique        = @bu
-        lhs . touchables                = @beta : @betaCon : getTypeVariablesFromPolyType @tp ++ @patterns.touchables
+        lhs . touchables                = @beta : @betaCon : getTypeVariablesFromPolyType' @tp ++ @patterns.touchables
         lhs . constraints               = @conApply : @conConstraints ++ @patterns.constraints
         loc . beta                      = integer2Name @lhs.betaUnique
         loc . betaCon                   = integer2Name (@lhs.betaUnique + 1)
@@ -272,17 +272,17 @@ SEM Pattern
         loc . conConstraints            = [Constraint_Inst (var @betaCon) @tp]
         loc . (tp, bu)                  = case M.lookup @name.self (valueConstructors @lhs.importEnvironment) of
                                             Nothing  -> internalError "TypeInferenceRules" "n/a" "Constructor not found"
-                                            Just ctp -> freshen (@lhs.betaUnique + 2) $ tpSchemeToPolyType ctp
+                                            Just (ctp, _) -> freshen (@lhs.betaUnique + 2) $ tpSchemeToPolyType ctp
     | InfixConstructor
         leftPattern . betaUnique        = @bu
-        lhs . touchables                = @beta : @betaCon : @leftPattern.touchables ++ @rightPattern.touchables
+        lhs . touchables                = @beta : @betaCon : @leftPattern.touchables ++ @rightPattern.touchables ++ getTypeVariablesFromPolyType' @tp
         lhs . constraints               = @conApply : @conConstraints ++ @leftPattern.constraints ++ @rightPattern.constraints
         loc . beta                      = integer2Name @lhs.betaUnique
         loc . betaCon                   = integer2Name (@lhs.betaUnique + 1)
         loc . conApply                  = Constraint_Unify (var @betaCon) (var @leftPattern.beta :-->: (var @rightPattern.beta :-->: var @beta))
         loc . (tp, bu)                  = case M.lookup @constructorOperator.self (valueConstructors @lhs.importEnvironment) of
                                             Nothing  -> internalError "TypeInferenceRules" "n/a" "Constructor not found"
-                                            Just ctp -> freshen (@lhs.betaUnique + 2) $ tpSchemeToPolyType ctp
+                                            Just (ctp, _) -> freshen (@lhs.betaUnique + 2) $ tpSchemeToPolyType ctp
         loc . conConstraints            = [Constraint_Inst (var @betaCon) @tp]
     | As
         pattern . betaUnique            = @lhs.betaUnique + 1
@@ -442,7 +442,7 @@ SEM Expression
         lhs . betaUnique        = @bu
         loc . (tp, bu)          = case M.lookup @name.self (valueConstructors @lhs.importEnvironment) of
                                     Nothing  -> internalError "TypeInferenceRules" "n/a" "Constructor not found"
-                                    Just ctp -> freshen (@lhs.betaUnique + 1) $ tpSchemeToPolyType ctp
+                                    Just (ctp, _) -> freshen (@lhs.betaUnique + 1) $ tpSchemeToPolyType ctp
         lhs . constraints       = [Constraint_Inst (var @beta) @tp]
         loc . beta              = integer2Name @lhs.betaUnique
     | InfixApplication

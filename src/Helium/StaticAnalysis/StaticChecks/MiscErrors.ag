@@ -33,15 +33,18 @@ SEM Module
 -- Body
 
 SEM Body
-  | Body   lhs . miscerrors = @typeSignatureErrors ++ @classErrors ++ @declarations.miscerrors
+  | Body   lhs . miscerrors = @typeSignatureErrors ++ @classErrors ++ @declarations.miscerrors ++ @gadtErrors
            loc . typeSignatureErrors = checkTypeSignatures @declarations.declVarNames @declarations.restrictedNames @declarations.typeSignatures
            loc . classErrors = checkClass @declarations.collectTypeClasses @declarations.declVarNames @declarations.restrictedNames @declarations.typeSignatures @lhs.importedClassEnv
            lhs . classEnv = @declarations.classEnv
            lhs . instances = @declarations.instances
+           loc . gadtErrors = [ MissingGADTOption | GADTs `notElem` @lhs.options, @declarations.hasGADT || (any (==ConstructorGADT) $ map snd $ M.elems $ valueConstructors $ combineImportEnvironmentList @lhs.importEnvironments)]
 
 
 -----------------------------------------
 -- Declaration
+
+ATTR Declaration Declarations [ | | hasGADT USE {(||)} {False} : Bool]
 
 SEM Declaration
     | Class              lhs . miscerrors = deleteClassErrors (@where.miscerrors ++ (checkClassFunctions @loc.declVarNames @loc.types) ++ @contextErrors)
@@ -96,6 +99,15 @@ SEM Declaration
                                    (_, errs) = contextReduction @lhs.orderedTypeSynonyms @lhs.classEnvironment preds
                              , not (null errs)
                              ]
+    | Data_Gadt 
+            lhs . hasGADT = True
+            lhs . miscerrors = concat [ makeDuplicated TypeVariable @doubles
+                                       , makeUndefined TypeVariable @undef @simpletype.typevariables
+                                       , @lhs.miscerrors
+                                       ]
+            loc . unused  = filter (`notElem` @constructors.typevariables) @simpletype.typevariables
+                . doubles = filter ((>1) . length) . group . sort $        @simpletype.typevariables
+                . undef   = filter (`notElem` @simpletype.typevariables)   @constructors.typevariables
 
     | Type   lhs . miscerrors = concat [ makeDuplicated TypeVariable @doubles
                                        , makeUndefined TypeVariable @undef @simpletype.typevariables

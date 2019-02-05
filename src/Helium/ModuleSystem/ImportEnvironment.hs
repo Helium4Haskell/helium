@@ -34,8 +34,11 @@ import qualified Data.Map as M
 
 type HasDefault = Bool
 
+data ConstructorType = ConstructorRegular | ConstructorGADT
+   deriving (Show, Eq)
+
 type TypeEnvironment             = M.Map Name TpScheme
-type ValueConstructorEnvironment = M.Map Name TpScheme
+type ValueConstructorEnvironment = M.Map Name (TpScheme, ConstructorType)
 type TypeConstructorEnvironment  = M.Map Name Int
 type TypeSynonymEnvironment      = M.Map Name (Int, Tps -> Tp)
 type ClassMemberEnvironment      = M.Map Name (Names, [(Name, TpScheme, Bool, HasDefault)])
@@ -91,15 +94,15 @@ addToTypeEnvironment :: TypeEnvironment -> ImportEnvironment -> ImportEnvironmen
 addToTypeEnvironment new importenv =
    importenv {typeEnvironment = typeEnvironment importenv `M.union` new}
 
-addValueConstructor :: Name -> TpScheme -> ImportEnvironment -> ImportEnvironment
-addValueConstructor name tpscheme importenv =
-   importenv {valueConstructors = M.insert name tpscheme (valueConstructors importenv)}
+addValueConstructor :: Name -> TpScheme -> ConstructorType -> ImportEnvironment -> ImportEnvironment
+addValueConstructor name tpscheme constructorType importenv =
+   importenv {valueConstructors = M.insert name (tpscheme, constructorType) (valueConstructors importenv)}
 
 addOperator :: Name -> (Int,Assoc) -> ImportEnvironment -> ImportEnvironment
 addOperator name pair importenv =
    importenv {operatorTable = M.insert name pair (operatorTable importenv) }
 
-setValueConstructors :: M.Map Name TpScheme -> ImportEnvironment -> ImportEnvironment
+setValueConstructors :: M.Map Name (TpScheme, ConstructorType) -> ImportEnvironment -> ImportEnvironment
 setValueConstructors new importenv = importenv {valueConstructors = new}
 
 setTypeConstructors :: M.Map Name Int -> ImportEnvironment -> ImportEnvironment
@@ -170,7 +173,7 @@ getSiblings :: ImportEnvironment -> Siblings
 getSiblings importenv =
    let f s = [ (s, ts) | ts <- findTpScheme (nameFromString s) ]
        findTpScheme n =
-          catMaybes [ M.lookup n (valueConstructors importenv)
+          catMaybes [ fst <$> M.lookup n (valueConstructors importenv)
                     , M.lookup n (typeEnvironment   importenv)
                     ]
    in map (concatMap f) (getSiblingGroups importenv)
@@ -343,7 +346,7 @@ instance Show ImportEnvironment where
           in showWithTitle "Type synonyms" (showEm f (M.assocs tss))
 
        theValueConstructors =
-          let f (n,t) = showNameAsVariable n ++ " :: "++show t
+          let f (n,(t, ct)) = showNameAsVariable n ++ " :: "++show t ++ " -- " ++ show ct
           in showWithTitle "Value constructors" (showEm f (M.assocs vcs))
 
        functions =

@@ -169,10 +169,22 @@ topdecl = addRange (
     do
         lexDATA
         st <- simpleType
-        lexASG
-        cs <- constrs
-        ds <- option [] derivings
-        return (\r -> Declaration_Data r [] st cs ds)
+        id (
+                (
+                    do 
+                        lexASG
+                        cs <- constrs
+                        ds <- option [] derivings
+                        return (\r -> Declaration_Data r [] st cs ds)
+                ) 
+                <|> 
+                (
+                    do
+                        lexWHERE
+                        cs <- withLayout constr_gadt
+                        return (\r -> Declaration_Data_Gadt r st cs)
+                )
+            )
     <|>
     do
         lexTYPE
@@ -286,6 +298,7 @@ constrs  ->  constr1 "|" ... "|" constrn  (n>=1)
 constrs :: HParser Constructors
 constrs = constr `sepBy1` lexBAR
 
+
 {-
 constr  ->  btype conop btype  (infix conop)  
          |  con atype1 ... atypek  (arity con = k, k>=0)  
@@ -305,7 +318,15 @@ constr = addRange $
         n <- con 
         ts <- many (annotatedType atype)
         return (\r -> Constructor_Constructor r n ts)
-        
+  
+constr_gadt :: HParser Constructor
+constr_gadt = addRange $
+    do
+        n <- con 
+        lexCOLCOL
+        t <- contextAndType
+        return $ \r -> Constructor_GADT r n t
+
 
 {-
 Simplified import:

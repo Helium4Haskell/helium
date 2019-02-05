@@ -39,7 +39,7 @@ SEM Module
                                    in M.map f @body.assumptions
            . initialScope        = M.keys (typeEnvironment @lhs.importEnvironment)
            . monos               = map TVar @monomorphics
-           . monomorphics        = ftv (  (M.elems $ valueConstructors @lhs.importEnvironment)
+           . monomorphics        = ftv (  (M.elems $ M.map fst $ valueConstructors @lhs.importEnvironment)
                                        ++ (M.elems $ typeEnvironment   @lhs.importEnvironment)
                                        )
            . classMemberTypeSchemes = Nothing
@@ -456,7 +456,7 @@ SEM Expression
           . beta         = TVar @lhs.betaUnique
           . newcon       = case M.lookup @name.self (valueConstructors @lhs.importEnvironment) of
                               Nothing  -> []
-                              Just ctp -> [ (@beta .::. ctp) @cinfo ]
+                              Just (ctp, _) -> [ (@beta .::. ctp) @cinfo ]
 
   | Variable
       lhs . betaUnique  = snd @updatedType
@@ -730,7 +730,7 @@ SEM Pattern
                   . conApply       = [ (@betaCon .==. @leftPattern.beta .->. @rightPattern.beta .->. @beta) @cinfoApply ]
                   . conConstructor = case M.lookup @constructorOperator.self (valueConstructors @lhs.importEnvironment) of
                                         Nothing  -> []
-                                        Just ctp -> [ (@betaCon .::. ctp) @cinfoConstructor ]
+                                        Just (ctp, _) -> [ (@betaCon .::. ctp) @cinfoConstructor ]
 
   | Constructor
       patterns . betaUnique     = @lhs.betaUnique + 2
@@ -744,7 +744,7 @@ SEM Pattern
                                     (if @patterns.numberOfPatterns == 0  then @cinfoEmpty else @cinfoApply) ]
                . conConstructor = case M.lookup @name.self (valueConstructors @lhs.importEnvironment) of
                                      Nothing  -> []
-                                     Just ctp -> [ (@betaCon .::. ctp) @cinfoConstructor ]
+                                     Just (ctp, _) -> [ (@betaCon .::. ctp) @cinfoConstructor ]
 
   | As
       lhs     . environment = M.insert @name.self @beta @pattern.environment

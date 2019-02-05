@@ -23,10 +23,11 @@
 
 imports{
 import Data.Maybe
+import Control.Arrow
 }
 
 SEM Module
-  | Module   loc . collectEnvironment = setValueConstructors   (M.fromList  @body.collectValueConstructors)
+  | Module   loc . collectEnvironment = setValueConstructors   (M.fromList @body.collectValueConstructors)
                                         . setTypeConstructors  (M.fromList @body.collectTypeConstructors)
                                         . setTypeSynonyms      (M.fromList @body.collectTypeSynonyms)
                                         . setOperatorTable     (M.fromList @body.operatorFixities)
@@ -58,28 +59,37 @@ ATTR Body Declarations Declaration [ | collectTypeConstructors : {[(Name,Int)]} 
 SEM Module | Module   body . collectTypeConstructors = []
 
 SEM Declaration
-  | Data   lhs . collectTypeConstructors = (@simpletype.name,length @simpletype.typevariables) : @lhs.collectTypeConstructors
+  | Data        lhs . collectTypeConstructors = (@simpletype.name,length @simpletype.typevariables) : @lhs.collectTypeConstructors
+  | Data_Gadt   lhs . collectTypeConstructors = (@simpletype.name, length @simpletype.typevariables) : @lhs.collectTypeConstructors
+                constructors . returnType   = datatypeToTpScheme @simpletype.name @simpletype.typevariables
 
 -------------------------------------------
 -- 2) Collecting value constructors
 
-ATTR Body Declarations Declaration Constructors Constructor [ | collectValueConstructors : {[(Name,TpScheme)]} | ]
-ATTR Constructor Constructors [ | | parameterTypes USE { ++ } { [] } : Tps ]
+ATTR Body Declarations Declaration Constructors Constructor [ 
+    | collectValueConstructors : {[(Name, (TpScheme, ConstructorType))]} 
+    | incorrectReturnTypeErrors USE {(++)} {[]}  : {[Error]} 
+    ]
+ATTR Constructor Constructors [ returnType : TpScheme | | parameterTypes USE { ++ } { [] } : Tps ]
 
 SEM Module | Module   body . collectValueConstructors = []
 
 SEM Constructor
   | Constructor
-       lhs . collectValueConstructors = (@constructor.self, @typeScheme) : @lhs.collectValueConstructors
+       lhs . collectValueConstructors = (@constructor.self, (@typeScheme, ConstructorRegular)) : @lhs.collectValueConstructors
            . parameterTypes = @tps
        loc . typeScheme = generalizeAll ([] .=>. foldr (.->.) @tp @tps)
            . (tp,tps)   = convertFromSimpleTypeAndTypes @lhs.simpletype @types.types
 
   | Infix
-       lhs . collectValueConstructors = (@constructorOperator.self, @typeScheme) : @lhs.collectValueConstructors
+       lhs . collectValueConstructors = (@constructorOperator.self, (@typeScheme, ConstructorRegular)) : @lhs.collectValueConstructors
            . parameterTypes = @tps
        loc . typeScheme = generalizeAll ([] .=>. foldr (.->.) @tp @tps)
            . (tp,tps)   = convertFromSimpleTypeAndTypes @lhs.simpletype [@leftType.type,@rightType.type]
+   | GADT 
+        lhs . collectValueConstructors = (@constructor.self, (@typeScheme, ConstructorGADT)) : @lhs.collectValueConstructors
+        loc . typeScheme                = makeTpSchemeFromType @type.self
+        lhs . incorrectReturnTypeErrors = [IncorrectConstructorResult @range.self @constructor.self @typeScheme @lhs.returnType | not $ matchReturnType @typeScheme @lhs.returnType]
 
 -------------------------------------------
 -- 3) Collecting type synonyms
@@ -124,7 +134,7 @@ SEM Module
                                  ++ concatMap (M.assocs . valueConstructors) @lhs.importEnvironments
                                  )
                  . allValueConstructors = map fst @uniqueValueConstructors ++ map head @duplicatedValueConstructors
-                 . valueConstructors    = M.fromList @uniqueValueConstructors
+                 . valueConstructors    = M.map fst $ M.fromList @uniqueValueConstructors
 
 ATTR Body Declarations Declaration Expressions Expression Patterns Pattern
      Statement Statements Qualifier Qualifiers
@@ -203,8 +213,9 @@ SEM Type
 ATTR Constructors Constructor [ simpletype:SimpleType | | ]
 
 SEM Declaration
-  | Data     constructors . simpletype = @simpletype.self
-  | Newtype  constructor  . simpletype = @simpletype.self
+  | Data        constructors . simpletype = @simpletype.self
+  | Data_Gadt   constructors . simpletype = @simpletype.self
+  | Newtype     constructor  . simpletype = @simpletype.self
 
 ATTR AnnotatedTypes [ | | types : Types ]
 ATTR AnnotatedType  [ | | type  : Type  ]

@@ -231,6 +231,7 @@ getImportEnvironment importedInModule decls = foldr (insertDictionaries imported
               addValueConstructor
                 (makeImportName importedInModule importedFromModId n)
                 (typeFromCustoms (stringFromId n) cs)
+                ConstructorRegular
 
            -- type constructor import
            DeclCustom { declName    = n

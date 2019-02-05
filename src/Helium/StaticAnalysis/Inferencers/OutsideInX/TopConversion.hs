@@ -16,6 +16,7 @@ module Helium.StaticAnalysis.Inferencers.OutsideInX.TopConversion(
     ,   classEnvironmentToAxioms
     ,   typeEnvironmentToAxioms
     ,   getTypeVariablesFromPolyType
+    ,   getTypeVariablesFromPolyType'
     ,   getConstraintFromPoly
     ,   polytypeToMonoType
 
@@ -141,6 +142,10 @@ tpToMonoType t@(TApp c a) = tConHelper [] t
 getTypeVariablesFromPolyType :: PolyType -> [TyVar]
 getTypeVariablesFromPolyType (PolyType_Bind (B p t)) = p : getTypeVariablesFromPolyType t
 getTypeVariablesFromPolyType _ = []
+
+getTypeVariablesFromPolyType' :: PolyType -> [TyVar]
+getTypeVariablesFromPolyType' (PolyType_Mono _ m) = getTypeVariablesFromMonoType m
+getTypeVariablesFromPolyType' _ = []
 
 getTypeVariablesFromMonoType :: MonoType -> [TyVar]
 getTypeVariablesFromMonoType (MonoType_Var v) = [v]

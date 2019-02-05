@@ -269,6 +269,15 @@ SEM Declaration                                  {- *** -}
                                 <+>  text "deriving"
                                 <+>  tupledUnit @derivings.text
                                 )
+    --  range                    : Range
+    --  simpletype               : SimpleType
+    --  constructors             : Constructors
+    | Data_Gadt
+                        loc.text = text "data" <+> @simpletype.text <+> text "where"
+                                    <$$>
+                                    (indent 4 $ vcat @constructors.text)
+                                            
+                                    
     --  range                    : Range        {- *** -}
     --  context                  : ContextItems
     --  simpletype               : SimpleType
@@ -432,6 +441,10 @@ SEM Constructor
     --  range                    : Range
     --  constructor              : Name
     --  fieldDeclarations        : FieldDeclarations
+    | GADT              loc . text = @constructor.text <+> text "::" <+> @type.text
+    --  range                    : Range
+    --  constructor              : Name
+    --  type                     : Type
 
 SEM FieldDeclaration
     | FieldDeclaration loc.text = text "{- !!! field declaration -}"
