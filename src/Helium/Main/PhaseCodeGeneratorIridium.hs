@@ -15,6 +15,7 @@ import Helium.Main.CompileUtils
 import Helium.CodeGeneration.Core(desugarCore)
 import Helium.CodeGeneration.Iridium.FromCore(fromCore)
 import Helium.CodeGeneration.Iridium.Show()
+import Helium.CodeGeneration.Iridium.FileCache
 import Helium.CodeGeneration.Iridium.PassThunkArity(passThunkArity)
 import Helium.CodeGeneration.Iridium.PassDeadCode(passDeadCode)
 import Helium.CodeGeneration.Iridium.PassTailRecursion(passTailRecursion)
@@ -26,8 +27,8 @@ import Helium.CodeGeneration.LLVM.Env(envForModule)
 import qualified Data.Text.Lazy as Text
 import LLVM.Pretty (ppllvm)
 
-phaseCodeGeneratorIridium :: NameSupply -> [String] -> String -> Core.CoreModule -> [Option] -> IO ([IridiumFile], Bool)
-phaseCodeGeneratorIridium supply paths fullName coreModule options = do
+phaseCodeGeneratorIridium :: NameSupply -> FileCache -> String -> Core.CoreModule -> [Option] -> IO ([IridiumFile], Bool)
+phaseCodeGeneratorIridium supply cache fullName coreModule options = do
   enterNewPhase "Code generation for Iridium" options
 
   let supplyDesugar : supplyFromCore : supplyPassThunkArity : supplyPassDeadCode : supplyPassTailRecursion : _ = splitNameSupplies supply
@@ -48,7 +49,7 @@ phaseCodeGeneratorIridium supply paths fullName coreModule options = do
   let file = IridiumFile (fullNameNoExt ++ ".iridium") iridium True
   files <-
     if hasMain then
-      resolveDependencies paths [file]
+      resolveDependencies cache [file]
     else
       return [file]
 

@@ -10,6 +10,7 @@ import Control.Monad
 import Helium.Main.Make
 import Helium.Main.Compile
 import Helium.Main.Args
+import qualified Helium.CodeGeneration.Iridium.FileCache as Iridium
 
 compileFile :: String -> IO ()
 compileFile s = do
@@ -20,7 +21,9 @@ compileFile s = do
     let output = fst (splitExtension file)
     let preludePath = "../lib"
     doneRef <- newIORef []
-    make developLocation file [preludePath, developLocation] [] [Overloading, BuildAll] doneRef
+    let paths = [preludePath, developLocation]
+    cache <- Iridium.newFileCache paths
+    make developLocation file paths [] [Overloading, BuildAll] cache doneRef
     putStrLn "Compiled!"
     (code, res, err) <- readProcessWithExitCode output [] ""
     putStrLn("Exit code: " ++ show code)

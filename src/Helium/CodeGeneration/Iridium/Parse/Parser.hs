@@ -2,29 +2,31 @@ module Helium.CodeGeneration.Iridium.Parse.Parser where
 
 import Lvm.Common.Id(Id, idFromString)
 
+data ParseResult p = ResError !String !String | ResValue !p !String
+
 -- A greedy parser with 1 character lookahead
-newtype Parser p = Parser { runParser :: (String -> (Either String p, String)) }
+newtype Parser p = Parser { runParser :: String -> ParseResult p }
 
 instance Functor Parser where
   fmap f (Parser fn) = Parser (\source -> case fn source of
-      (Left err, remaining) -> (Left err, remaining)
-      (Right x, remaining) -> (Right $ f x, remaining)
+      ResError err remaining -> ResError err remaining
+      ResValue x remaining -> ResValue (f x) remaining
     )
 
 instance Applicative Parser where
-  pure x = Parser (\source -> (Right x, source))
+  pure x = Parser $ ResValue x
   Parser fn1 <*> Parser fn2 = Parser (\source -> case fn1 source of
-      (Left err, remaining) -> (Left err, remaining)
-      (Right f, remaining) -> case fn2 remaining of
-        (Left err, remaining') -> (Left err, remaining')
-        (Right x, remaining') -> (Right $ f x, remaining')
+      ResError err remaining -> ResError err remaining
+      ResValue f remaining -> case fn2 remaining of
+        ResError err remaining' -> ResError err remaining'
+        ResValue x remaining' -> ResValue (f x) remaining'
     )
 
 instance Monad Parser where
   return = pure
   Parser fn1 >>= p = Parser (\source -> case fn1 source of
-      (Left err, remaining) -> (Left err, remaining)
-      (Right x, remaining) ->
+      ResError err remaining -> ResError err remaining
+      ResValue x remaining ->
         let Parser fn2 = p x
         in fn2 remaining
     )
@@ -36,7 +38,7 @@ isWhitespace '\t' = True
 isWhitespace _ = False
 
 pError :: String -> Parser a
-pError err = Parser (\s -> (Left err, s))
+pError err = Parser $ ResError err
 
 validWordChar :: Char -> Bool
 validWordChar c = ('a' <= c && c <= 'z') || c == '_'
@@ -49,10 +51,10 @@ pKeyword = Parser f
         (parsed, remaining) = span validWordChar str
         (spaces, remaining') = span isWhitespace remaining
       in case parsed of
-        [] -> (Left "expected keyword", str)
+        [] -> ResError "expected keyword" str
         _ -> case spaces of
-          [] -> (Left "expected whitespace after keyword", remaining)
-          _ -> (Right parsed, remaining')
+          [] -> ResError "expected whitespace after keyword" remaining
+          _ -> ResValue parsed remaining'
 
 pWord :: Parser String
 pWord = pManySatisfy validWordChar
@@ -60,34 +62,34 @@ pWord = pManySatisfy validWordChar
 lookahead :: Parser Char
 lookahead = Parser f
   where
-    f [] = (Right '\0', "")
-    f str@(c : _) = (Right c, str)
+    f [] = ResValue '\0' ""
+    f str@(c : _) = ResValue c str
 
 isEndOfFile :: Parser Bool
 isEndOfFile = Parser f
   where
-    f str = (Right $ null str, str)
+    f str = ResValue (null str) str
 
 -- Reads a single character
 pChar :: Parser Char
 pChar = Parser f
   where
-    f [] = (Left "unexpected EOF while reading a single character", [])
-    f (c : str) = (Right c, str)
+    f [] = ResError "unexpected EOF while reading a single character" []
+    f (c : str) = ResValue c str
 
 pToken :: Char -> Parser ()
 pToken t = Parser f
   where
     f (c : str)
-      | c == t = (Right (), str)
-    f str = (Left $ "expected " ++ show t, str)
+      | c == t = ResValue () str
+    f str = ResError ("expected " ++ show t) str
 
 pSymbol :: String -> Parser ()
 pSymbol sym = Parser f
   where
     f str
-      | compare == sym = (Right (), remaining)
-      | otherwise = (Left $ "expected " ++ sym, str)
+      | compare == sym = ResValue () remaining
+      | otherwise = ResError ("expected " ++ sym) str
       where
         (compare, remaining) = splitAt (length sym) str
 
@@ -105,7 +107,7 @@ pManySatisfy fn = Parser f
     f str =
       let
         (parsed, remaining) = span fn str
-      in (Right parsed, remaining)
+      in ResValue parsed remaining
 
 pSome :: Parser a -> Parser Bool -> Parser [a]
 pSome elem continue = do
@@ -131,14 +133,14 @@ pString :: Parser String
 pString = read <$> Parser f
   where
     f ('"' : str) = prepend '"' $ g str
-    f str = (Left "expected string", str)
-    g :: String -> (Either String String, String)
+    f str = ResError "expected string" str
+    g :: String -> ParseResult String
     g ('\\' : c : str) = prepend '\\' $ prepend c $ g str
-    g ('"' : str) = (Right "\"", str)
+    g ('"' : str) = ResValue "\"" str
     g (c : str) = prepend c $ g str
-    g [] = (Left "unexpected EOF while parsing a string", [])
-    prepend :: Char -> (Either String String, String) -> (Either String String, String)
-    prepend c (Right str, remaining) = (Right $ c : str, remaining)
+    g [] = ResError "unexpected EOF while parsing a string" []
+    prepend :: Char -> ParseResult String -> ParseResult String
+    prepend c (ResValue str remaining) = ResValue (c : str) remaining
     prepend _ r = r
 
 pId :: Parser Id
@@ -207,8 +209,8 @@ instance Show ParseError where
 
 parse :: Parser a -> String -> Either ParseError a
 parse (Parser parser) source = case parser source of
-  (Right a, _) -> Right a
-  (Left err, remaining) ->
+  ResValue a _ -> Right a
+  ResError err remaining ->
     let 
       consumed = take (length source - length remaining) source
       line = length $ filter (== '\n') consumed

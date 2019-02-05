@@ -15,6 +15,7 @@ import Lvm.Path
 import Lvm.Common.Id
 import Lvm.Common.IdSet
 import Helium.CodeGeneration.Iridium.Data
+import Helium.CodeGeneration.Iridium.FileCache
 import Helium.CodeGeneration.Iridium.Parse.Module(parseModuleIO)
 import System.Directory(doesFileExist, getModificationTime)
 
@@ -26,22 +27,19 @@ data IridiumFile = IridiumFile
   }
 
 -- Takes a list of modules, as some modules might already be parsed, as they were needed in the import phase
-resolveDependencies :: [String] -> [IridiumFile] -> IO [IridiumFile]
-resolveDependencies paths modules = resolve paths worklist found modules
+resolveDependencies :: FileCache -> [IridiumFile] -> IO [IridiumFile]
+resolveDependencies cache modules = resolve cache worklist found modules
   where
     initialDependencies = modules >>= moduleDependencies . iridiumModule
     found' = setFromList $ fmap (moduleName . iridiumModule) modules
     found = foldr insertSet found' initialDependencies
     worklist = filter (not . (`elemSet` found')) initialDependencies
 
-resolve :: [String] -> [Id] -> IdSet -> [IridiumFile] -> IO [IridiumFile]
+resolve :: FileCache -> [Id] -> IdSet -> [IridiumFile] -> IO [IridiumFile]
 -- Worklist is empty, so all modules are resolved
-resolve paths [] found m = return m
-resolve paths (x:xs) found m = do
-  path <- searchPath paths ".iridium" $ stringFromId x
-  file <- readFile path
-
-  iridium <- parseModuleIO path file
+resolve _ [] _ m = return m
+resolve cache (x:xs) found m = do
+  (path, iridium) <- readIridiumFile cache x
 
   let (filePath, moduleName, _) = splitFilePath path
   isUpToDate <- upToDate $ filePath ++ moduleName
@@ -51,7 +49,7 @@ resolve paths (x:xs) found m = do
   let found' = foldr insertSet found dependencies
   let xs' = dependencies ++ xs
 
-  resolve paths xs' found' m'
+  resolve cache xs' found' m'
 
 -- Checks if the .ll is newer than the .iridium file
 -- TODO: We also need to check whether the .ll file was compiled for the same target as we're currently using.

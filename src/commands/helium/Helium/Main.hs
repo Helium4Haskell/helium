@@ -9,6 +9,7 @@ module Main where
 
 import Helium.Main.Make(make)
 import Helium.Parser.Parser(parseOnlyImports)
+import qualified Helium.CodeGeneration.Iridium.FileCache as Iridium
 import Control.Monad
 import System.FilePath(joinPath)
 import Data.List(nub, elemIndex, isSuffixOf, isPrefixOf, intercalate)
@@ -51,7 +52,9 @@ main = do
         filePath' = if null filePath then "." else filePath
         lvmPath   = filter (not.null) . nub
                   $ (filePath' : lvmPathFromOptionsOrEnv) ++ [baseLibs] -- baseLibs always last
-    
+
+    cache <- Iridium.newFileCache lvmPath
+
     -- File that is compiled must exist, this test doesn't use the search path
     fileExists <- doesFileExist fullName
     newFullName <- 
@@ -65,13 +68,6 @@ main = do
                 exitWith (ExitFailure 1)
             return filePlusHS
 
-    -- Ensure .core libs are compiled to .lvm
-    mapM_ (makeCoreLib baseLibs) coreLibs    
-    
-    -- And now deal with Prelude
-    preludeRef <- newIORef []
-    _ <- make filePath' (joinPath [baseLibs,prelude]) lvmPath [prelude] options preludeRef
-
     doneRef <- newIORef []
-    _ <- make filePath' newFullName lvmPath [moduleName] options doneRef
+    _ <- make filePath' newFullName lvmPath [moduleName] options cache doneRef
     return ()

@@ -32,6 +32,7 @@ import Helium.Main.PhaseCodeGeneratorLlvm
 import Helium.Main.CompileUtils
 import qualified Helium.CodeGeneration.Iridium.Parse.Module as Iridium
 import qualified Helium.CodeGeneration.Iridium.ResolveDependencies as Iridium
+import qualified Helium.CodeGeneration.Iridium.FileCache as Iridium
 import Helium.CodeGeneration.Iridium.ImportAbstract (toAbstractModule)
 import Helium.Parser.Lexer (checkTokenStreamForClassOrInstance)
 import Helium.Main.Args (overloadingFromOptions)
@@ -41,8 +42,8 @@ import Helium.StaticAnalysis.Messages.StaticErrors(errorsLogCode)
 import System.FilePath(joinPath)
 import System.Exit
 
-compile :: String -> String -> [Option] -> [String] -> [String] -> IO ()
-compile basedir fullName options lvmPath doneModules =
+compile :: String -> String -> [Option] -> [String] -> Iridium.FileCache -> [String] -> IO ()
+compile basedir fullName options lvmPath iridiumCache doneModules =
   do
     putStrLn ("Compiling " ++ fullName)
     let (filePath, fileName, ext) = splitFilePath fullName
@@ -59,14 +60,14 @@ compile basedir fullName options lvmPath doneModules =
 
     (iridiumFiles, shouldLink, warnings) <- if ext /= "iridium" then do
         (coreModule, warnings) <- case ext of
-          "hs" -> compileHaskellToCore basedir fullName contents options lvmPath doneModules
+          "hs" -> compileHaskellToCore basedir fullName contents options iridiumCache doneModules
           "core" -> do
             let tokens = Lvm.layout $ Lvm.lexer (1,1) contents
             -- coreModule <- Lvm.parseModule fullName tokens
             (m, implExps, es) <- Lvm.parseModuleExport fullName tokens
 
             -- resolve imports
-            chasedMod  <- Lvm.lvmImport' (resolveDeclarations lvmPath) m
+            chasedMod <- Lvm.lvmImport' (resolveDeclarations iridiumCache) m
             let publicmod = Lvm.modulePublic implExps es chasedMod
             return (publicmod, 0)
           _ -> do
@@ -74,7 +75,7 @@ compile basedir fullName options lvmPath doneModules =
             exitWith (ExitFailure 1)
 
         -- Phase 10: Code generation for Iridium
-        (files, link) <- phaseCodeGeneratorIridium supplyIridium lvmPath fullName coreModule options
+        (files, link) <- phaseCodeGeneratorIridium supplyIridium iridiumCache fullName coreModule options
 
         sendLog "C" fullName doneModules options
         return (files, link, warnings)
@@ -90,8 +91,8 @@ compile basedir fullName options lvmPath doneModules =
                     then ""
                     else " with " ++ show warnings ++ " warning" ++ if warnings == 1 then "" else "s"
 
-compileHaskellToCore :: String -> String -> String -> [Option] -> [String] -> [String] -> IO (CoreModule, Int)
-compileHaskellToCore basedir fullName contents options lvmPath doneModules = do
+compileHaskellToCore :: String -> String -> String -> [Option] -> Iridium.FileCache -> [String] -> IO (CoreModule, Int)
+compileHaskellToCore basedir fullName contents options iridiumCache doneModules = do
   let compileOptions = (options, fullName, doneModules)
 
   -- Phase 1: Lexing
@@ -121,7 +122,7 @@ compileHaskellToCore basedir fullName contents options lvmPath doneModules = do
 
   -- Phase 3: Importing
   (indirectionDecls, importEnvs) <-
-      phaseImport fullName parsedModule (resolveDeclarations lvmPath) options
+      phaseImport fullName parsedModule (resolveDeclarations iridiumCache) options
 
   -- Phase 4: Resolving operators
   resolvedModule <- 
@@ -183,9 +184,7 @@ maximumNumberOfTypeErrors = 3
 maximumNumberOfKindErrors :: Int
 maximumNumberOfKindErrors = 1
 
-resolveDeclarations :: [String] -> Id -> IO (Lvm.CoreModule)
-resolveDeclarations paths name = do
-  fullName <- searchPath paths ".iridium" $ stringFromId name
-  contents <- readSourceFile fullName
-  iridium <- Iridium.parseModuleIO fullName contents
+resolveDeclarations :: Iridium.FileCache -> Id -> IO (Lvm.CoreModule)
+resolveDeclarations iridiumCache name = do
+  iridium <- Iridium.readIridium iridiumCache name
   return $ toAbstractModule iridium

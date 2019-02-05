@@ -2,6 +2,7 @@ module Helium.Main.Make (make) where
 
 import Helium.Main.Compile(compile)
 import Helium.Parser.Parser(parseOnlyImports)
+import qualified Helium.CodeGeneration.Iridium.FileCache as Iridium
 import Control.Monad
 import System.FilePath(joinPath)
 import Data.List(nub, elemIndex, isSuffixOf, isPrefixOf, intercalate)
@@ -32,78 +33,76 @@ prelude = "Prelude.hs"
 -- doneRef = an IO ref to a list of already compiled files
 --                        (their names and whether they were recompiled or not)
 -- returns: recompiled or not? (true = recompiled)
-make :: String -> String -> [String] -> [String] -> [Option] -> IORef [(String, Bool)] -> IO Bool
-make basedir fullName lvmPath chain options doneRef =
-    do
-        -- If we already compiled this module, return the result we already know
-        done <- readIORef doneRef
-        
-        case lookup fullName done of 
-          Just isRecompiled -> return isRecompiled
-          Nothing -> do
-            let (_, name, ext) = splitFilePath fullName
-            imports <- case ext of
-              "hs" -> ((if name == "Prelude" then [] else ["Prelude", "HeliumLang"]) ++) <$> parseOnlyImports fullName
-              "core" -> parseCoreOnlyImports fullName
-              "iridium" -> return []
+make :: String -> String -> [String] -> [String] -> [Option] -> Iridium.FileCache -> IORef [(String, Bool)] -> IO Bool
+make basedir fullName lvmPath chain options iridiumCache doneRef = do
+  -- If we already compiled this module, return the result we already know
+  done <- readIORef doneRef
 
-            -- If this module imports a module earlier in the chain, there is a cycle
-            case circularityCheck imports chain of
-                Just cycl -> do
-                      putStrLn $ "Circular import chain: \n\t" ++ showImportChain cycl ++ "\n"
-                      exitWith (ExitFailure 1)
-                Nothing -> 
-                    return ()
-                        
-            -- Find all imports in the search path
-            resolvedImports <- mapM (resolve lvmPath) imports
+  case lookup fullName done of 
+    Just isRecompiled -> return isRecompiled
+    Nothing -> do
+      let (_, name, ext) = splitFilePath fullName
+      imports <- case ext of
+        "hs" -> ((if name == "Prelude" then [] else ["Prelude", "HeliumLang"]) ++) <$> parseOnlyImports fullName
+        "core" -> parseCoreOnlyImports fullName
+        "iridium" -> return []
 
-            -- For each of the imports...
-            compileResults <- forM (zip imports resolvedImports) 
-              $ \(importModuleName, maybeImportFullName) -> do
+      -- If this module imports a module earlier in the chain, there is a cycle
+      case circularityCheck imports chain of
+        Just cycl -> do
+          putStrLn $ "Circular import chain: \n\t" ++ showImportChain cycl ++ "\n"
+          exitWith (ExitFailure 1)
+        Nothing -> return ()
 
-                -- Issue error if import can not be found in the search path
-                case maybeImportFullName of
-                    Nothing -> do
-                        putStrLn $ 
-                            "Can't find module '" ++ importModuleName ++ "'\n" ++ 
-                            "Import chain: \n\t" ++ showImportChain (chain ++ [importModuleName]) ++
-                            "\nSearch path:\n" ++ showSearchPath lvmPath
-                        exitWith (ExitFailure 1)
-                    Just _ -> return ()
-                let importFullName = fromJust maybeImportFullName
-                -- TODO : print names imported modules in verbose mode.
+      -- Find all imports in the search path
+      resolvedImports <- mapM (resolve lvmPath) imports
 
-                -- If we only have an Iridium file we do not need to (/can't) recompile 
-                if ".iridium" `isSuffixOf` importFullName then
-                    return False
-                  else
-                    make basedir importFullName lvmPath (chain ++ [importModuleName]) options doneRef
+      -- For each of the imports...
+      compileResults <- forM (zip imports resolvedImports) 
+        $ \(importModuleName, maybeImportFullName) -> do
 
-            -- Recompile the current module if:
-            --  * any of the children was recompiled
-            --  * the build all option (-B) was on the command line
-            --  * the build one option (-b) was there and we are 
-            --      compiling the top-most module (head of chain)
-            --  * the module is not up to date (.hs newer than .lvm or .iridium)
-            let (filePath, moduleName, _) = splitFilePath fullName
-            upToDate <- upToDateCheck (combinePathAndFile filePath moduleName) ext
-            newDone <- readIORef doneRef
-            isRecompiled <- 
-                if or compileResults || 
-                    BuildAll `elem` options || 
-                    (BuildOne `elem` options && moduleName == head chain) ||
-                    not upToDate 
-                    then do
-                        compile basedir fullName options lvmPath (map fst newDone)
-                        return True
-                      else do
-                        putStrLn (moduleName ++ " is up to date")
-                        return False
+          -- Issue error if import can not be found in the search path
+          case maybeImportFullName of
+            Nothing -> do
+              putStrLn $ 
+                "Can't find module '" ++ importModuleName ++ "'\n" ++ 
+                "Import chain: \n\t" ++ showImportChain (chain ++ [importModuleName]) ++
+                "\nSearch path:\n" ++ showSearchPath lvmPath
+              exitWith (ExitFailure 1)
+            Just _ -> return ()
+          let importFullName = fromJust maybeImportFullName
+          -- TODO : print names imported modules in verbose mode.
 
-            -- Remember the fact that we have already been at this module
-            writeIORef doneRef ((fullName, isRecompiled):newDone)
-            return isRecompiled
+          -- If we only have an Iridium file we do not need to (/can't) recompile 
+          if ".iridium" `isSuffixOf` importFullName then
+            return False
+          else
+            make basedir importFullName lvmPath (chain ++ [importModuleName]) options iridiumCache doneRef
+
+      -- Recompile the current module if:
+      --  * any of the children was recompiled
+      --  * the build all option (-B) was on the command line
+      --  * the build one option (-b) was there and we are 
+      --      compiling the top-most module (head of chain)
+      --  * the module is not up to date (.hs newer than .lvm or .iridium)
+      let (filePath, moduleName, _) = splitFilePath fullName
+      upToDate <- upToDateCheck (combinePathAndFile filePath moduleName) ext
+      newDone <- readIORef doneRef
+      isRecompiled <- 
+          if or compileResults || 
+              BuildAll `elem` options || 
+              (BuildOne `elem` options && moduleName == head chain) ||
+              not upToDate 
+            then do
+              compile basedir fullName options lvmPath iridiumCache (map fst newDone)
+              return True
+            else do
+              putStrLn (moduleName ++ " is up to date")
+              return False
+
+      -- Remember the fact that we have already been at this module
+      writeIORef doneRef ((fullName, isRecompiled):newDone)
+      return isRecompiled
             
 showImportChain :: [String] -> String
 showImportChain = intercalate " imports "
