@@ -132,6 +132,7 @@ instance Show CallingConvention where
   show CCPreserveMost = "preserve_most"
 
 showAnnotations :: [Annotation] -> String
+showAnnotations [] = ""
 showAnnotations annotations = "[" ++ intercalate " " (map show annotations) ++ "]"
 
 instance ShowDeclaration AbstractMethod where

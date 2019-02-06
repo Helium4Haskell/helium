@@ -41,7 +41,7 @@ phaseCodeGeneratorIridium supply cache fullName coreModule options = do
   -- Check whether the module has a 'main$' function
   let hasMain = any ((== idFromString "main$") . Core.declName) $ Core.moduleDecls coreModule
 
-  let iridium' = fromCore supplyFromCore simplified
+  iridium' <- fromCore cache supplyFromCore simplified
   let iridium = passTailRecursion supplyPassTailRecursion $ passDeadCode supplyPassDeadCode $ passThunkArity supplyPassThunkArity iridium'
 
   writeFile (fullNameNoExt ++ ".iridium") $ show iridium

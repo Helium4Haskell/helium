@@ -17,31 +17,47 @@ import Lvm.Common.IdSet
 import Lvm.Common.Byte(stringFromBytes)
 import qualified Lvm.Core.Expr as Core
 import qualified Lvm.Core.Module as CoreModule
-import Data.List(find, replicate, group, sort, sortOn)
+import Data.List(find, replicate, group, sort, sortOn, partition)
 import Data.Maybe(fromMaybe, mapMaybe)
 import Data.Either(partitionEithers)
 
-import Text.PrettyPrint.Leijen (pretty) -- TODO: Remove
+import Text.PrettyPrint.Leijen (pretty)
 
 import Helium.CodeGeneration.Iridium.Data
 import Helium.CodeGeneration.Iridium.Type
 import Helium.CodeGeneration.Iridium.TypeEnvironment
 import Helium.CodeGeneration.Iridium.Parse.Module (parseFunctionType)
 import Helium.CodeGeneration.Iridium.Parse.Parser (ParseError)
+import Helium.CodeGeneration.Iridium.FileCache
+import Helium.CodeGeneration.Iridium.FromCoreImports
 
-fromCore :: NameSupply -> Core.CoreModule -> Module
-fromCore supply mod@(CoreModule.Module name _ _ decls) = Module name dependencies customs datas abstracts methods
+fromCore :: FileCache -> NameSupply -> Core.CoreModule -> IO Module
+fromCore cache supply mod@(CoreModule.Module name _ _ decls) = do
+  imports <- fromCoreImports cache imported
+  return $ fromCoreAfterImports imports supply mod defs dependencies
   where
-    dependencies = listFromSet $ foldr gatherDependencies emptySet decls
+    dependencies = listFromSet $ foldr gatherDependencies emptySet imported
+    (imported, defs) = partition isImported decls
+
+fromCoreAfterImports :: ([Declaration CustomDeclaration], [Declaration DataType], [Declaration AbstractMethod]) -> NameSupply -> Core.CoreModule -> [Core.CoreDecl] -> [Id] -> Module
+fromCoreAfterImports (importedCustoms, importedDatas, importedAbstracts) supply mod@(CoreModule.Module name _ _ _) decls dependencies = do
+  Module name dependencies (importedCustoms ++ customs) (importedDatas ++ datas) (importedAbstracts ++ abstracts) methods
+  where
     datas = decls >>= dataTypeFromCoreDecl consMap
     consMap = foldr dataTypeConFromCoreDecl emptyMap decls
     (methods, abstracts) = partitionEithers $ concat $ mapWithSupply (`fromCoreDecl` env) supply decls
     customs = mapMaybe customFromCoreDecl decls
-
-    env = TypeEnv (mapFromList $ map (\d -> (declarationName d, getConstructors d)) datas) (unionMap valuesFunctions $ unionMap valuesAbstracts $ unionMap valuesCons $ mapFromList builtins) Nothing
+    env = TypeEnv (mapFromList $ map (\d -> (declarationName d, getConstructors d)) $ importedDatas ++ datas) (unionMap valuesFunctions $ unionMap valuesAbstracts $ unionMap valuesCons $ mapFromList builtins) Nothing
     valuesFunctions = mapMap (\fn -> ValueFunction fn CCFast) $ functionsMap mod
-    valuesAbstracts = mapFromList $ map (\(Declaration name _ _ _ (AbstractMethod fntype annotations)) -> (name, ValueFunction fntype $ callingConvention annotations)) abstracts
-    valuesCons = mapFromList $ listFromMap consMap >>= (\(dataName, cons) -> map (\con@(_, Declaration conName _ _ _ (DataTypeConstructorDeclaration fields)) -> (conName, ValueConstructor (DataTypeConstructor dataName conName fields))) $ sortOn fst cons)
+    valuesAbstracts = mapFromList $ map (\(Declaration name _ _ _ (AbstractMethod fntype annotations)) -> (name, ValueFunction fntype $ callingConvention annotations)) $ importedAbstracts ++ abstracts
+
+    allConsList = map (\(Declaration name _ _ _ (DataType cons)) -> (name, cons)) importedDatas ++ listFromMap consMap
+    valuesCons = mapFromList $ allConsList >>= (\(dataName, cons) -> map (\(Declaration conName _ _ _ (DataTypeConstructorDeclaration fields)) -> (conName, ValueConstructor (DataTypeConstructor dataName conName fields))) cons)
+
+isImported :: Core.CoreDecl -> Bool
+isImported decl = case CoreModule.declAccess decl of
+  CoreModule.Defined _ -> False
+  _ -> True
 
 customFromCoreDecl :: Core.CoreDecl -> Maybe (Declaration CustomDeclaration)
 customFromCoreDecl decl@CoreModule.DeclCustom{}
@@ -56,23 +72,22 @@ gatherDependencies decl = case CoreModule.declAccess decl of
   CoreModule.Imported _ mod _ _ _ _ -> insertSet mod
   _ -> id
 
-dataTypeFromCoreDecl :: IdMap [(Int, Declaration DataTypeConstructorDeclaration)] -> Core.CoreDecl -> [Declaration DataType]
+dataTypeFromCoreDecl :: IdMap [Declaration DataTypeConstructorDeclaration] -> Core.CoreDecl -> [Declaration DataType]
 dataTypeFromCoreDecl consMap decl@CoreModule.DeclCustom{}
   | CoreModule.declKind decl == CoreModule.DeclKindCustom (idFromString "data")
-    = [Declaration name (visibility decl) (origin decl) (CoreModule.declCustoms decl) $ DataType $ map snd $ sortOn fst $ fromMaybe [] $ lookupMap name consMap]
+    = [Declaration name (visibility decl) (origin decl) (CoreModule.declCustoms decl) $ DataType $ fromMaybe [] $ lookupMap name consMap]
   where
     name = CoreModule.declName decl
 dataTypeFromCoreDecl _ _ = []
 
-dataTypeConFromCoreDecl :: Core.CoreDecl -> IdMap [(Int, Declaration DataTypeConstructorDeclaration)] -> IdMap [(Int, Declaration DataTypeConstructorDeclaration)]
+dataTypeConFromCoreDecl :: Core.CoreDecl -> IdMap [Declaration DataTypeConstructorDeclaration] -> IdMap [Declaration DataTypeConstructorDeclaration]
 dataTypeConFromCoreDecl decl@CoreModule.DeclCon{} = case find isDataName (CoreModule.declCustoms decl) of
-    Just (CoreModule.CustomLink dataType _) -> insertMapWith dataType [tagCon] (tagCon :)
+    Just (CoreModule.CustomLink dataType _) -> insertMapWith dataType [con] (con :)
     Nothing -> id
   where
     isDataName (CoreModule.CustomLink _ (CoreModule.DeclKindCustom name)) = name == idFromString "data"
     isDataName _ = False
     -- When adding strictness annotations to data types, `TypeAny` on the following line should be changed.
-    tagCon = (CoreModule.conTag decl, con)
     con = Declaration (CoreModule.declName decl) (visibility decl) (origin decl) (CoreModule.declCustoms decl) (DataTypeConstructorDeclaration $ replicate (CoreModule.declArity decl) TypeAny)
 dataTypeConFromCoreDecl _ = id
 
@@ -487,11 +502,6 @@ resolve env name = case valueDeclaration env name of
 
 resolveList :: TypeEnv -> [Id] -> [Variable]
 resolveList env = map (resolve env)
-
-visibility :: Core.CoreDecl -> Visibility
-visibility decl
-  | CoreModule.accessPublic $ CoreModule.declAccess decl = Exported
-  | otherwise = Private
 
 origin :: Core.CoreDecl -> Maybe Id
 origin decl = case CoreModule.declAccess decl of

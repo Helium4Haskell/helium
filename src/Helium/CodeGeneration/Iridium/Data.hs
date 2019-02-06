@@ -46,7 +46,7 @@ data Visibility = Exported | Private deriving (Eq, Ord)
 
 data Declaration a = Declaration
   { declarationName :: !Id
-  , declarationVisibilitiy :: !Visibility
+  , declarationVisibility :: !Visibility
   , declarationModule :: Maybe Id
   , declarationCustom :: ![Custom]
   , declarationValue :: !a
