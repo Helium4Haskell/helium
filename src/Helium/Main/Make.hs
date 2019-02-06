@@ -121,25 +121,22 @@ circularityCheck [] _ = Nothing
 upToDateCheck :: String -> String -> IO Bool
 upToDateCheck _ "iridium" = return True
 upToDateCheck basePath ext = do
-    let lvmPath = basePath ++ ".lvm"
-        irPath = basePath ++ ".iridium"
+    let irPath = basePath ++ ".iridium"
         sourcePath = basePath ++ "." ++ ext
-    lvmExists <- doesFileExist lvmPath
     irExists <- doesFileExist irPath
-    if lvmExists && irExists then do
+    if irExists then do
         t1 <- getModificationTime sourcePath
         t2 <- getModificationTime irPath
-        t3 <- getModificationTime lvmPath
-        if t1 == t2 && t1 == t3
+        if t1 == t2
           then do -- If the times are equal and the files are not writable,
                 -- we assume that it was installed in a system directory
                 -- and therefore consider it up to date.
                let isReadOnly file = (not . writable) `fmap` getPermissions file
-               lvmReadOnly <- isReadOnly lvmPath
+               irReadOnly <- isReadOnly irPath
                hsReadOnly <- isReadOnly sourcePath
                -- Up to date if both are read only (and of equal mod time)
-               return (lvmReadOnly && hsReadOnly)
-          else return (t1 < t2 && t1 < t3)
+               return (irReadOnly && hsReadOnly)
+          else return (t1 < t2)
      else
         return False
 
