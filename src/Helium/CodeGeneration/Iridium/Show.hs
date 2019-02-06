@@ -24,9 +24,9 @@ instance ShowDeclaration a => Show (Declaration a) where
   show (Declaration name vis mod customs a) = customsString ++ export ++ maybe "" (("from " ++) . (++ " ") . stringFromId) mod ++ keyword ++ " @" ++ showId name ++ body
     where
       customsString = customs >>= ((++ "\n") . ('#' : ) . showCustom)
-      export
-        | vis == Exported = "export "
-        | otherwise = ""
+      export = case vis of
+        ExportedAs exportName -> "export_as @" ++ showId exportName ++ " "
+        _ -> ""
       (keyword, body) = showDeclaration a
 
 showCustom :: Custom -> String

@@ -69,7 +69,7 @@ analyseMethod (Declaration name vis _ _ (Method args _ _ b bs)) =
   where
     env = Env name
     fnConstraint = case vis of
-      Exported -> CSequence $ CSequence
+      ExportedAs _ -> CSequence $ CSequence
         (CBindCount name 0) -- cannot remove arguments, as other modules can import this function
         $ CLive name -- the function is exported and is thus live
       Private -> id

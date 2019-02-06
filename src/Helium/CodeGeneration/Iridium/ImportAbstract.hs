@@ -14,28 +14,28 @@ toAbstractModule (Module name _ customs datas abstracts methods) = Core.Module n
   ++ mapMaybe convertAbstractMethod abstracts
 
 convertCustom :: Declaration CustomDeclaration -> Maybe (Core.Decl v)
-convertCustom (Declaration name Exported mod customs (CustomDeclaration kind)) = Just $
+convertCustom (Declaration _ (ExportedAs name) mod customs (CustomDeclaration kind)) = Just $
   Core.DeclCustom name (toAccess name mod) kind customs
 convertCustom _ = Nothing
 
 convertData :: Declaration DataType -> [Core.Decl v]
-convertData (Declaration name Exported mod customs (DataType cons)) =
+convertData (Declaration _ (ExportedAs name) mod customs (DataType cons)) =
   Core.DeclCustom name (toAccess name mod) (Core.DeclKindCustom $ idFromString "data") customs
   : catMaybes (zipWith convertConstructor cons [0..])
 convertData _ = []
 
 convertConstructor :: Declaration DataTypeConstructorDeclaration -> Int -> Maybe (Core.Decl v)
-convertConstructor (Declaration name Exported mod customs (DataTypeConstructorDeclaration fields)) tag = Just $
+convertConstructor (Declaration _ (ExportedAs name) mod customs (DataTypeConstructorDeclaration fields)) tag = Just $
   Core.DeclCon name (toAccess name mod) (length fields) tag customs
 convertConstructor _ _ = Nothing
 
 convertMethod :: Declaration Method -> Maybe (Core.Decl v)
-convertMethod (Declaration name Exported mod customs (Method args _ _ _ _)) = Just $
+convertMethod (Declaration _ (ExportedAs name) mod customs (Method args _ _ _ _)) = Just $
   Core.DeclAbstract name (toAccess name mod) (length args) customs
 convertMethod _ = Nothing
 
 convertAbstractMethod :: Declaration AbstractMethod -> Maybe (Core.Decl v)
-convertAbstractMethod (Declaration name Exported mod customs (AbstractMethod (FunctionType args _) _)) = Just $
+convertAbstractMethod (Declaration _ (ExportedAs name) mod customs (AbstractMethod (FunctionType args _) _)) = Just $
   Core.DeclAbstract name (toAccess name mod) (length args) customs
 convertAbstractMethod _ = Nothing
 

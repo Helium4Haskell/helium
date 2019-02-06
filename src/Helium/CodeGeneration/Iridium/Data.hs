@@ -42,7 +42,7 @@ data DataTypeConstructor = DataTypeConstructor { constructorDataType :: !Id, con
 getConstructors :: Declaration DataType -> [DataTypeConstructor]
 getConstructors (Declaration dataName _ _ _ (DataType cons)) = map (\(Declaration conId _ _ _ (DataTypeConstructorDeclaration fields)) -> DataTypeConstructor dataName conId fields) cons
 
-data Visibility = Exported | Private deriving (Eq, Ord)
+data Visibility = ExportedAs !Id | Private deriving (Eq, Ord)
 
 data Declaration a = Declaration
   { declarationName :: !Id

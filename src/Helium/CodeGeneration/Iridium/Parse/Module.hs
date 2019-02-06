@@ -52,9 +52,12 @@ pDeclaration f = do
 pDeclarationVisibilityOriginAndKeyword :: Parser (Visibility, Maybe Id, String)
 pDeclarationVisibilityOriginAndKeyword = do
   key <- pKeyword
-  if key == "export" then do
+  if key == "export_as" then do
+    pToken '@'
+    exportedName <- pId
+    pWhitespace
     key' <- pKeyword
-    pOriginAndKeyword Exported key'
+    pOriginAndKeyword (ExportedAs exportedName) key'
   else
     pOriginAndKeyword Private key
   where
@@ -88,6 +91,7 @@ pModuleDeclaration = pDeclaration f
     f "data" decl = addDataType . decl <$> pDataType
     f "declare" decl = addAbstract . decl <$> pAbstractMethod
     f "define" decl = addMethod . decl <$> pMethod
+    f keyword _ = pError $ "Unknown declaration keyword: " ++ keyword
 
 parseModule :: String -> Either ParseError Module
 parseModule = parse pModule

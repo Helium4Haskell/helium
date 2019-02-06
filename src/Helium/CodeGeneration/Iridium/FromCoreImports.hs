@@ -58,7 +58,7 @@ lookupDeclaration cache decl getDeclarations = do
         Core.Imported _ mod _ _ _ _ -> mod
         _ -> error "fromCoreImports: expected an imported declaration, got a definition"
   importedModule <- readIridium cache moduleName
-  return $ fmap (setModule moduleName decl) $ find (\d -> Core.declName decl == declarationName d && declarationVisibility d == Exported) $ getDeclarations importedModule
+  return $ fmap (setModule moduleName decl) $ find (\d -> declarationVisibility d == ExportedAs (Core.declName decl)) $ getDeclarations importedModule
 
 setModule :: Id -> Core.CoreDecl -> Declaration a -> Declaration a
 setModule moduleName coreDecl decl = decl{ declarationModule = Just moduleName, declarationVisibility = visibility coreDecl }
@@ -74,5 +74,5 @@ reportError decl =  do
 
 visibility :: Core.CoreDecl -> Visibility
 visibility decl
-  | Core.accessPublic $ Core.declAccess decl = Exported
+  | Core.accessPublic $ Core.declAccess decl = ExportedAs $ Core.declName decl
   | otherwise = Private
