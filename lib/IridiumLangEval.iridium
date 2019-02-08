@@ -97,7 +97,7 @@ unreachable:
 }
 
 
-export define @_$helium_runtime_eval(%a: unsafeptr, %b: int): any_whnf {
+export_as @_$helium_runtime_eval define @_$helium_runtime_eval(%a: unsafeptr, %b: int): any_whnf {
 eval.entry:
   case %b: int int ( 0 to eval.thunk) otherwise eval.whnf
 
@@ -110,9 +110,9 @@ eval.thunk:
   return %res: any_whnf
 }
 
-declare @error: (any) -> any_whnf
+declare @LvmException#error: (any) -> any_whnf
 
-export define @eval_thunk(%a: unsafeptr): any_whnf {
+export_as @eval_thunk define @eval_thunk(%a: unsafeptr): any_whnf {
 eval_thunk.entry:
   %tag = prim thunk_extract_tag(%a: unsafeptr)
 
@@ -144,7 +144,7 @@ eval.whnf:
 eval.is_blackhole:
   %err_loop = literal str "Loop"
   %err_loop_any = cast %err_loop: @"[]" as any
-  %_call = call @error: (any) -> any_whnf $ (%err_loop_any: any)
+  %_call = call @LvmException#error: (any) -> any_whnf $ (%err_loop_any: any)
   unreachable
 
 eval.is_evaluated:

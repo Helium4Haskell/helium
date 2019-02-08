@@ -68,11 +68,14 @@ analyseMethod (Declaration name vis _ _ (Method args _ _ b bs)) =
   )
   where
     env = Env name
-    fnConstraint = case vis of
-      ExportedAs _ -> CSequence $ CSequence
+    exported = case vis of
+      ExportedAs _ -> True
+      _ -> name == idFromString "main"
+    fnConstraint = case exported of
+      True -> CSequence $ CSequence
         (CBindCount name 0) -- cannot remove arguments, as other modules can import this function
         $ CLive name -- the function is exported and is thus live
-      Private -> id
+      False -> id
 
 analyseBlock :: Env -> Block -> Constraint
 analyseBlock env (Block _ instr) = analyseInstruction env instr

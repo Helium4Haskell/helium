@@ -8,13 +8,14 @@ import Helium.CodeGeneration.Iridium.Show
 import Data.Maybe(catMaybes)
 
 data TypeEnv = TypeEnv
-  { teDataTypes :: !(IdMap [DataTypeConstructor])
+  { teModuleName :: !Id
+  , teDataTypes :: !(IdMap [DataTypeConstructor]) -- TODO: Make data types fully qualified
   , teValues :: !(IdMap ValueDeclaration)
   , teMethod :: !(Maybe (Id, FunctionType))
   }
 
 teReturnType :: TypeEnv -> PrimitiveType
-teReturnType (TypeEnv _ _ (Just (_, FunctionType _ retType))) = retType
+teReturnType (TypeEnv _ _ _ (Just (_, FunctionType _ retType))) = retType
 
 valueDeclaration :: TypeEnv -> Id -> ValueDeclaration
 valueDeclaration env name = findMap name (teValues env)
@@ -34,21 +35,21 @@ builtins = -- TODO: This should be replaced by parsing abstract definitions
 
 data ValueDeclaration
   = ValueConstructor !DataTypeConstructor
-  | ValueFunction !FunctionType !CallingConvention
+  | ValueFunction !Id !FunctionType !CallingConvention
   | ValueVariable !PrimitiveType
   deriving (Eq, Ord, Show)
 
 typeOf :: TypeEnv -> Id -> PrimitiveType
 typeOf env name = case valueDeclaration env name of
-  ValueFunction (FunctionType [] t) _ -> TypeAnyThunk
-  ValueFunction fntype _ -> TypeGlobalFunction fntype
+  ValueFunction _ (FunctionType [] t) _ -> TypeAnyThunk
+  ValueFunction _ fntype _ -> TypeGlobalFunction fntype
   ValueVariable t -> t
 
 enterFunction :: Id -> FunctionType -> TypeEnv -> TypeEnv
-enterFunction name fntype (TypeEnv datas values _) = TypeEnv datas values $ Just (name, fntype)
+enterFunction name fntype (TypeEnv moduleName datas values _) = TypeEnv moduleName datas values $ Just (name, fntype)
 
 expandEnvWith :: Local -> TypeEnv -> TypeEnv
-expandEnvWith (Local name t) (TypeEnv datas values method) = TypeEnv datas (insertMap name (ValueVariable t) values) method
+expandEnvWith (Local name t) (TypeEnv moduleName datas values method) = TypeEnv moduleName datas (insertMap name (ValueVariable t) values) method
 
 expandEnvWithLocals :: [Local] -> TypeEnv -> TypeEnv
 expandEnvWithLocals args env = foldr (\(Local arg t) -> expandEnvWith $ Local arg t) env args
@@ -62,25 +63,13 @@ expandEnvWithLetAlloc thunks env = foldr (\b -> expandEnvWith $ bindLocal b) env
 expandEnvWithMatch :: [Maybe Local] -> TypeEnv -> TypeEnv
 expandEnvWithMatch locals = expandEnvWithLocals $ catMaybes locals
 
-resolveFunction :: TypeEnv -> Id -> Maybe FunctionType
+resolveFunction :: TypeEnv -> Id -> Maybe (Id, FunctionType)
 resolveFunction env name = case lookupMap name (teValues env) of
-  Just (ValueFunction fn _) -> Just fn
+  Just (ValueFunction qualifiedName fn _) -> Just (qualifiedName, fn)
   _ -> Nothing
 
-typeEnvForModule :: Module -> TypeEnv
-typeEnvForModule (Module _ _ _ dataTypes abstracts methods) = TypeEnv dataTypeMap values Nothing
-  where
-    values = mapFromList $ cons ++ methodDecls ++ abstractDecls
-    dataTypeMap = mapFromList $ map (\d@(Declaration name _ _ _ _) -> (name, getConstructors d)) dataTypes
-    cons = dataTypes >>= valuesInDataType
-    methodDecls = map valueOfMethod methods 
-    abstractDecls = map valueOfAbstract abstracts
+valueOfMethod :: Id -> Declaration Method -> (Id, ValueDeclaration)
+valueOfMethod name (Declaration qualifiedName _ _ _ (Method args retType annotations _ _)) = (name, ValueFunction qualifiedName (FunctionType (map localType args) retType) $ callingConvention annotations)
 
-    valuesInDataType :: Declaration DataType -> [(Id, ValueDeclaration)]
-    valuesInDataType (Declaration name _ _ _ (DataType cs)) = map (\(Declaration conId _ _ _ (DataTypeConstructorDeclaration args)) -> (conId, ValueConstructor $ DataTypeConstructor name conId args)) cs
-
-valueOfMethod :: Declaration Method -> (Id, ValueDeclaration)
-valueOfMethod (Declaration name _ _ _ (Method args retType annotations _ _)) = (name, ValueFunction (FunctionType (map localType args) retType) $ callingConvention annotations)
-
-valueOfAbstract :: Declaration AbstractMethod -> (Id, ValueDeclaration)
-valueOfAbstract (Declaration name _ _ _ (AbstractMethod fntype annotations)) = (name, ValueFunction fntype $ callingConvention annotations)
+valueOfAbstract :: Id -> Declaration AbstractMethod -> (Id, ValueDeclaration)
+valueOfAbstract name (Declaration qualifiedName _ _ _ (AbstractMethod fntype annotations)) = (name, ValueFunction qualifiedName fntype $ callingConvention annotations)

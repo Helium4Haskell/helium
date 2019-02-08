@@ -12,29 +12,29 @@ import qualified Lvm.Core.Expr as Core
 import qualified Lvm.Core.Module as Core
 import System.Exit
 
-fromCoreImports :: FileCache -> [Core.CoreDecl] -> IO ([Declaration CustomDeclaration], [Declaration DataType], [Declaration AbstractMethod])
+fromCoreImports :: FileCache -> [Core.CoreDecl] -> IO ([(Id, Declaration CustomDeclaration)], [(Id, Declaration DataType)], [(Id, Declaration AbstractMethod)])
 fromCoreImports cache decls = do
   customs <- mapM (importCustom cache) decls
   datas <- mapM (importData cache) decls
   abstracts <- mapM (importAbstract cache) decls
   return (catMaybes customs, catMaybes datas, catMaybes abstracts)
 
-importCustom :: FileCache -> Core.CoreDecl -> IO (Maybe (Declaration CustomDeclaration))
+importCustom :: FileCache -> Core.CoreDecl -> IO (Maybe (Id, Declaration CustomDeclaration))
 importCustom cache decl@Core.DeclCustom{}
   | Core.declKind decl /= Core.DeclKindCustom (idFromString "data") = Just <$> findDeclaration cache decl moduleCustoms
 importCustom _ _ = return Nothing
 
-importData :: FileCache -> Core.CoreDecl -> IO (Maybe (Declaration DataType))
+importData :: FileCache -> Core.CoreDecl -> IO (Maybe (Id, Declaration DataType))
 importData cache decl@Core.DeclCustom{}
   | Core.declKind decl == Core.DeclKindCustom (idFromString "data") = Just <$> findDeclaration cache decl moduleDataTypes
 importData _ _ = return Nothing
 
-importAbstract :: FileCache -> Core.CoreDecl -> IO (Maybe (Declaration AbstractMethod))
+importAbstract :: FileCache -> Core.CoreDecl -> IO (Maybe (Id, Declaration AbstractMethod))
 importAbstract cache decl
   | isMethod = do
     method <- lookupDeclaration cache decl moduleMethods
     case method of
-      Just methodDecl -> return $ Just $ fmap toAbstract methodDecl
+      Just (name, methodDecl) -> return $ Just (name, fmap toAbstract methodDecl)
       Nothing -> Just <$> findDeclaration cache decl moduleAbstractMethods
   where
     isMethod = case decl of
@@ -45,20 +45,20 @@ importAbstract cache decl
     toAbstract (Method args ret annotations _ _) = AbstractMethod (FunctionType (map localType args) ret) annotations
 importAbstract _ _ = return Nothing
 
-findDeclaration :: FileCache -> Core.CoreDecl -> (Module -> [Declaration a]) -> IO (Declaration a)
+findDeclaration :: FileCache -> Core.CoreDecl -> (Module -> [Declaration a]) -> IO (Id, Declaration a)
 findDeclaration cache decl getDeclarations = do
   maybeDecl <- lookupDeclaration cache decl getDeclarations
   case maybeDecl of
     Nothing -> reportError decl
     Just d -> return d
 
-lookupDeclaration :: FileCache -> Core.CoreDecl -> (Module -> [Declaration a]) -> IO (Maybe (Declaration a))
+lookupDeclaration :: FileCache -> Core.CoreDecl -> (Module -> [Declaration a]) -> IO (Maybe (Id, Declaration a))
 lookupDeclaration cache decl getDeclarations = do
-  let moduleName = case Core.declAccess decl of
-        Core.Imported _ mod _ _ _ _ -> mod
+  let (moduleName, externalName) = case Core.declAccess decl of
+        Core.Imported _ mod n _ _ _ -> (mod, n)
         _ -> error "fromCoreImports: expected an imported declaration, got a definition"
   importedModule <- readIridium cache moduleName
-  return $ fmap (setModule moduleName decl) $ find (\d -> declarationVisibility d == ExportedAs (Core.declName decl)) $ getDeclarations importedModule
+  return $ fmap (\d -> (Core.declName decl, setModule moduleName decl d)) $ find (\d -> declarationVisibility d == ExportedAs externalName) $ getDeclarations importedModule
 
 setModule :: Id -> Core.CoreDecl -> Declaration a -> Declaration a
 setModule moduleName coreDecl decl = decl{ declarationModule = Just moduleName, declarationVisibility = visibility coreDecl }

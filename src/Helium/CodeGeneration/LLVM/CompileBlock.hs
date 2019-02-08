@@ -27,7 +27,6 @@ import Lvm.Common.IdMap(findMap)
 
 import qualified Helium.CodeGeneration.Iridium.Data as Iridium
 import qualified Helium.CodeGeneration.Iridium.Type as Iridium
-import qualified Helium.CodeGeneration.Iridium.TypeEnvironment as Iridium
 import qualified Helium.CodeGeneration.Iridium.Primitive as Iridium
 import LLVM.AST as AST
 import LLVM.AST.Visibility

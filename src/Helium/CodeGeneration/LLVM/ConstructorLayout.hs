@@ -21,7 +21,6 @@ import Helium.CodeGeneration.LLVM.Target
 import Helium.CodeGeneration.LLVM.Struct
 import qualified Helium.CodeGeneration.Iridium.Data as Iridium
 import qualified Helium.CodeGeneration.Iridium.Type as Iridium
-import qualified Helium.CodeGeneration.Iridium.TypeEnvironment as TypeEnv
 
 data ConstructorLayout
   = LayoutInline 
@@ -31,8 +30,8 @@ data ConstructorLayout
     { layoutStruct :: Struct
     }
 
-constructorLayout :: TypeEnv.TypeEnv -> Target -> Iridium.DataType -> Int -> Iridium.DataTypeConstructor -> ConstructorLayout
-constructorLayout env target (Iridium.DataType constructors) index (Iridium.DataTypeConstructor _ conId fields)
+constructorLayout :: Target -> Iridium.DataType -> Int -> Iridium.DataTypeConstructor -> ConstructorLayout
+constructorLayout target (Iridium.DataType constructors) index (Iridium.DataTypeConstructor _ conId fields)
   | fields == [] = LayoutInline index
   | otherwise = LayoutPointer struct
   where

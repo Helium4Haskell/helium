@@ -17,7 +17,7 @@ data @"[]" {
   constructor @":"(any, any)
 }
 
-export define @_$helium_runtime_unpack_string(%length: int, %pointer: unsafeptr): @"[]" {
+export_as @_$helium_runtime_unpack_string define @_$helium_runtime_unpack_string(%length: int, %pointer: unsafeptr): @"[]" {
 unpack.entry:
   case %length: int int (0 to unpack.nil) otherwise unpack.cons
 unpack.cons:
@@ -36,7 +36,7 @@ unpack.nil:
   return %nil: @"[]"
 }
 
-export define @_$helium_runtime_print_string(%arg_list: @"[]"): int {
+export_as @_$helium_runtime_print_string define @_$helium_runtime_print_string(%arg_list: @"[]"): int {
 print.entry:
   %0 = literal int 0
   jump print.loop
@@ -66,7 +66,7 @@ print.cons:
 
 declare @exit: (int) -> int [callconvention:c]
 
-export define @_$helium_runtime_error(%msg: any): any_whnf {
+export_as @_$helium_runtime_error define @_$helium_runtime_error(%msg: any): any_whnf {
 error.entry:
   %msg_whnf = eval %msg: any
   %msg_list = cast %msg_whnf: any_whnf as @"[]"

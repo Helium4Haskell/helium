@@ -1,8 +1,8 @@
 module IridiumLang
 import (IridiumLangEval, IridiumLangString)
 
-export declare @_$helium_runtime_error: (any) -> any_whnf
-export declare @_$helium_runtime_print_string: (@"[]") -> int
+export_as @_$helium_runtime_error from IridiumLangString declare @_$helium_runtime_error: (any) -> any_whnf
+export_as @_$helium_runtime_print_string from IridiumLangString declare @_$helium_runtime_print_string: (@"[]") -> int
 
 #[decl @kind [bytes "* -> *"]]
 custom @"[]": @data
@@ -19,43 +19,43 @@ data @"[]" {
 }
 
 #[decl @kind [bytes "*"]]
-export data @Bool {
+export_as @Bool data @Bool {
   #[decl @type [bytes "Bool"]]
   #[link @Bool @data]
-  export constructor @False()
+  export_as @False constructor @False()
 
   #[decl @type [bytes "Bool"]]
   #[link @Bool @data]
-  export constructor @True()
+  export_as @True constructor @True()
 }
 
 #[decl @iridiumtype [bytes "(int, int) -> int"]]
-export define @primAddInt(%a: int, %b: int) = prim int_add(%a: int, %b: int)
+export_as @primAddInt define @primAddInt(%a: int, %b: int) = prim int_add(%a: int, %b: int)
 #[decl @iridiumtype [bytes "(int, int) -> int"]]
-export define @primSubInt(%a: int, %b: int) = prim int_sub(%a: int, %b: int)
+export_as @primSubInt define @primSubInt(%a: int, %b: int) = prim int_sub(%a: int, %b: int)
 #[decl @iridiumtype [bytes "(int, int) -> int"]]
-export define @primMulInt(%a: int, %b: int) = prim int_mul(%a: int, %b: int)
+export_as @primMulInt define @primMulInt(%a: int, %b: int) = prim int_mul(%a: int, %b: int)
 #[decl @iridiumtype [bytes "(int, int) -> int"]]
-export define @primQuotInt(%a: int, %b: int) = prim int_sdiv(%a: int, %b: int)
+export_as @primQuotInt define @primQuotInt(%a: int, %b: int) = prim int_sdiv(%a: int, %b: int)
 #[decl @iridiumtype [bytes "(int, int) -> int"]]
-export define @primRemInt(%a: int, %b: int) = prim int_srem(%a: int, %b: int)
+export_as @primRemInt define @primRemInt(%a: int, %b: int) = prim int_srem(%a: int, %b: int)
 ; TODO: Are div and mod (rounding to -inf) available in LLVM?
 
 #[decl @iridiumtype [bytes "(int, int) -> int"]]
-export define @primAndInt(%a: int, %b: int) = prim int_and(%a: int, %b: int)
+export_as @primAndInt define @primAndInt(%a: int, %b: int) = prim int_and(%a: int, %b: int)
 #[decl @iridiumtype [bytes "(int, int) -> int"]]
-export define @primOrInt(%a: int, %b: int) = prim int_or(%a: int, %b: int)
+export_as @primOrInt define @primOrInt(%a: int, %b: int) = prim int_or(%a: int, %b: int)
 #[decl @iridiumtype [bytes "(int, int) -> int"]]
-export define @primXorInt(%a: int, %b: int) = prim int_xor(%a: int, %b: int)
+export_as @primXorInt define @primXorInt(%a: int, %b: int) = prim int_xor(%a: int, %b: int)
 #[decl @iridiumtype [bytes "(int, int) -> int"]]
-export define @primShrInt(%a: int, %b: int) = prim int_ashr(%a: int, %b: int)
+export_as @primShrInt define @primShrInt(%a: int, %b: int) = prim int_ashr(%a: int, %b: int)
 #[decl @iridiumtype [bytes "(int, int) -> int"]]
-export define @primShrNat(%a: int, %b: int) = prim int_lshr(%a: int, %b: int)
+export_as @primShrNat define @primShrNat(%a: int, %b: int) = prim int_lshr(%a: int, %b: int)
 #[decl @iridiumtype [bytes "(int, int) -> int"]]
-export define @primShlInt(%a: int, %b: int) = prim int_shl(%a: int, %b: int)
+export_as @primShlInt define @primShlInt(%a: int, %b: int) = prim int_shl(%a: int, %b: int)
 
 #[decl @iridiumtype [bytes "(int) -> int"]]
-export define @primNegInt(%a: int): int {
+export_as @primNegInt define @primNegInt(%a: int): int {
 entry:
   %0 = literal int 0
   %result = prim int_sub(%0: int, %a: int)
@@ -63,7 +63,7 @@ entry:
 }
 
 #[decl @iridiumtype [bytes "(int, int) -> @Bool"]]
-export define @primEqInt(%a: int, %b: int): @Bool {
+export_as @primEqInt define @primEqInt(%a: int, %b: int): @Bool {
 entry:
   letalloc %true_ = constructor @True: () -> @Bool $ ()
   letalloc %false_ = constructor @False: () -> @Bool $ ()
@@ -75,7 +75,7 @@ entry:
 }
 
 #[decl @iridiumtype [bytes "(int, int) -> @Bool"]]
-export define @primNeInt(%a: int, %b: int): @Bool {
+export_as @primNeInt define @primNeInt(%a: int, %b: int): @Bool {
 entry:
   letalloc %true_ = constructor @True: () -> @Bool $ ()
   letalloc %false_ = constructor @False: () -> @Bool $ ()
@@ -87,7 +87,7 @@ entry:
 }
 
 #[decl @iridiumtype [bytes "(int, int) -> @Bool"]]
-export define @primLtInt(%a: int, %b: int): @Bool {
+export_as @primLtInt define @primLtInt(%a: int, %b: int): @Bool {
 entry:
   letalloc %true_ = constructor @True: () -> @Bool $ ()
   letalloc %false_ = constructor @False: () -> @Bool $ ()
@@ -99,7 +99,7 @@ entry:
 }
 
 #[decl @iridiumtype [bytes "(int, int) -> @Bool"]]
-export define @primGeInt(%a: int, %b: int): @Bool { ; a >= b <=> not(a < b)
+export_as @primGeInt define @primGeInt(%a: int, %b: int): @Bool { ; a >= b <=> not(a < b)
 entry:
   letalloc %true_ = constructor @True: () -> @Bool $ ()
   letalloc %false_ = constructor @False: () -> @Bool $ ()
@@ -111,21 +111,21 @@ entry:
 }
 
 #[decl @iridiumtype [bytes "(int, int) -> @Bool"]]
-export define @primLeInt(%a: int, %b: int) = call @primGeInt: (int, int) -> @Bool $ (%b: int, %a: int)
+export_as @primLeInt define @primLeInt(%a: int, %b: int) = call @primGeInt: (int, int) -> @Bool $ (%b: int, %a: int)
 #[decl @iridiumtype [bytes "(int, int) -> @Bool"]]
-export define @primGtInt(%a: int, %b: int) = call @primLtInt: (int, int) -> @Bool $ (%b: int, %a: int)
+export_as @primGtInt define @primGtInt(%a: int, %b: int) = call @primLtInt: (int, int) -> @Bool $ (%b: int, %a: int)
 
 #[decl @iridiumtype [bytes "(float64, float64) -> float64"]]
-export define @primAddFloat(%a: float64, %b: float64) = prim float64_add(%a: float64, %b: float64)
+export_as @primAddFloat define @primAddFloat(%a: float64, %b: float64) = prim float64_add(%a: float64, %b: float64)
 #[decl @iridiumtype [bytes "(float64, float64) -> float64"]]
-export define @primSubFloat(%a: float64, %b: float64) = prim float64_sub(%a: float64, %b: float64)
+export_as @primSubFloat define @primSubFloat(%a: float64, %b: float64) = prim float64_sub(%a: float64, %b: float64)
 #[decl @iridiumtype [bytes "(float64, float64) -> float64"]]
-export define @primMulFloat(%a: float64, %b: float64) = prim float64_mul(%a: float64, %b: float64)
+export_as @primMulFloat define @primMulFloat(%a: float64, %b: float64) = prim float64_mul(%a: float64, %b: float64)
 #[decl @iridiumtype [bytes "(float64, float64) -> float64"]]
-export define @primDivFloat(%a: float64, %b: float64) = prim float64_div(%a: float64, %b: float64)
+export_as @primDivFloat define @primDivFloat(%a: float64, %b: float64) = prim float64_div(%a: float64, %b: float64)
 
 #[decl @iridiumtype [bytes "(float64) -> float64"]]
-export define @primNegFloat(%a: float64): float64 {
+export_as @primNegFloat define @primNegFloat(%a: float64): float64 {
 entry:
   %0 = literal float64 0
   %result = prim float64_sub(%0: float64, %a: float64)
@@ -133,7 +133,7 @@ entry:
 }
 
 #[decl @iridiumtype [bytes "(float64, float64) -> @Bool"]]
-export define @primEqFloat(%a: float64, %b: float64): @Bool {
+export_as @primEqFloat define @primEqFloat(%a: float64, %b: float64): @Bool {
 entry:
   letalloc %true_ = constructor @True: () -> @Bool $ ()
   letalloc %false_ = constructor @False: () -> @Bool $ ()
@@ -145,7 +145,7 @@ entry:
 }
 
 #[decl @iridiumtype [bytes "(float64, float64) -> @Bool"]]
-export define @primNeFloat(%a: float64, %b: float64): @Bool {
+export_as @primNeFloat define @primNeFloat(%a: float64, %b: float64): @Bool {
 entry:
   letalloc %true_ = constructor @True: () -> @Bool $ ()
   letalloc %false_ = constructor @False: () -> @Bool $ ()
@@ -156,9 +156,8 @@ entry:
   return %result_: @Bool
 }
 
-
 #[decl @iridiumtype [bytes "(float64, float64) -> @Bool"]]
-export define @primLtFloat(%a: float64, %b: float64): @Bool {
+export_as @primLtFloat define @primLtFloat(%a: float64, %b: float64): @Bool {
 entry:
   letalloc %true_ = constructor @True: () -> @Bool $ ()
   letalloc %false_ = constructor @False: () -> @Bool $ ()
@@ -170,7 +169,7 @@ entry:
 }
 
 #[decl @iridiumtype [bytes "(float64, float64) -> @Bool"]]
-export define @primGtFloat(%a: float64, %b: float64): @Bool {
+export_as @primGtFloat define @primGtFloat(%a: float64, %b: float64): @Bool {
 entry:
   letalloc %true_ = constructor @True: () -> @Bool $ ()
   letalloc %false_ = constructor @False: () -> @Bool $ ()
@@ -182,7 +181,7 @@ entry:
 }
 
 #[decl @iridiumtype [bytes "(float64, float64) -> @Bool"]]
-export define @primLeFloat(%a: float64, %b: float64): @Bool {
+export_as @primLeFloat define @primLeFloat(%a: float64, %b: float64): @Bool {
 entry:
   letalloc %true_ = constructor @True: () -> @Bool $ ()
   letalloc %false_ = constructor @False: () -> @Bool $ ()
@@ -194,7 +193,7 @@ entry:
 }
 
 #[decl @iridiumtype [bytes "(float64, float64) -> @Bool"]]
-export define @primGeFloat(%a: float64, %b: float64): @Bool {
+export_as @primGeFloat define @primGeFloat(%a: float64, %b: float64): @Bool {
 entry:
   letalloc %true_ = constructor @True: () -> @Bool $ ()
   letalloc %false_ = constructor @False: () -> @Bool $ ()
@@ -206,7 +205,7 @@ entry:
 }
 
 #[decl @type [bytes "a -> b -> b"]]
-export define @primSeq(%a: any, %b: any): any_whnf [trampoline] {
+export_as @primSeq define @primSeq(%a: any, %b: any): any_whnf [trampoline] {
 entry:
   %a_whnf = eval %a: any
   %b_whnf = eval %b: any
@@ -215,7 +214,7 @@ entry:
 }
 
 #[decl @type [bytes "a -> b -> b"]]
-export define @primPseq(%a: any, %b: any): any_whnf [trampoline] {
+export_as @primPseq define @primPseq(%a: any, %b: any): any_whnf [trampoline] {
 entry:
   %a_whnf = eval %a: any
   %c = seq %a_whnf: any_whnf, %b: any

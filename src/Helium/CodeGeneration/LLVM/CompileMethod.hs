@@ -77,7 +77,7 @@ toFunction env supply name visible annotations args retType basicBlocks = trampo
 
     linkage = case visible of
       Iridium.Private
-        | not (null basicBlocks) && name /= idFromString "main$" -> Private
+        | not (null basicBlocks) && name /= idFromString "main" -> Private
       _ -> External
 
     parameters :: [Parameter]

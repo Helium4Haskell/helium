@@ -209,5 +209,5 @@ showId name
   | all (`elem` chars) str = str
   | otherwise = show str
   where
-    chars = ['.', '$'] ++ ['a' .. 'z'] ++ ['A' .. 'Z'] ++ ['0' .. '9'] 
+    chars = ['.', '$', '#', '_'] ++ ['a' .. 'z'] ++ ['A' .. 'Z'] ++ ['0' .. '9'] 
     str = stringFromId name

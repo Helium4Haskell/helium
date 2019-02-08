@@ -7,7 +7,6 @@ import Helium.CodeGeneration.LLVM.Target
 import Helium.CodeGeneration.LLVM.Utils
 import qualified Helium.CodeGeneration.Iridium.Data as Iridium
 import qualified Helium.CodeGeneration.Iridium.Type as Iridium
-import qualified Helium.CodeGeneration.Iridium.TypeEnvironment as TypeEnv
 import LLVM.AST as AST
 import LLVM.AST.Constant as Constant
 import LLVM.AST.Type as Type
