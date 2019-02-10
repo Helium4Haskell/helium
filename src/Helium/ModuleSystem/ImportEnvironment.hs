@@ -98,7 +98,7 @@ setOperatorTable new importenv = importenv {operatorTable = new}
 getOrderedTypeSynonyms :: ImportEnvironment -> OrderedTypeSynonyms
 getOrderedTypeSynonyms importEnvironment = 
    let synonyms = let insertIt name = M.insert (show name)
-                  in M.foldWithKey insertIt M.empty (typeSynonyms importEnvironment)
+                  in M.foldrWithKey insertIt M.empty (typeSynonyms importEnvironment)
        ordering = fst (getTypeSynonymOrdering synonyms)
    in (ordering, synonyms)
 

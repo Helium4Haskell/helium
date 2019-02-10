@@ -125,7 +125,7 @@ tp .::. ts = tp .<=. SigmaScheme ts
                     key' = head (filter (==key) (M.keys as)) {- this is the other name -}
                 in ((tp !::! ts) monos (info monos key key') : cs, fm)
              Nothing -> (cs, M.insert key tp fm)
-   in M.foldWithKey op ([], M.empty) bs
+   in M.foldrWithKey op ([], M.empty) bs
 
 (.<=.) :: Show info => Tp -> Sigma Predicates -> info -> TypeConstraint info
 (tp .<=. ts) info = TC3 (Instantiate tp ts info)

@@ -511,7 +511,7 @@ makeClassEnvironmentErrors []                             = []
 
 
 overlappingInstances :: ClassEnvironment -> Errors
-overlappingInstances = M.foldWithKey (\k (_, i) b -> (overlappingInstances' k i) ++ b) []
+overlappingInstances = M.foldrWithKey (\k (_, i) b -> (overlappingInstances' k i) ++ b) []
    where
     overlappingInstances' :: String -> Instances -> Errors
     overlappingInstances' name insts = [OverlappingInstance name ty | 
