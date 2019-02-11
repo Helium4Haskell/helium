@@ -5,9 +5,6 @@ export_as @_$helium_runtime_error from IridiumLangString declare @_$helium_runti
 export_as @_$helium_runtime_print_string from IridiumLangString declare @_$helium_runtime_print_string: (@"[]") -> int
 
 #[decl @kind [bytes "* -> *"]]
-custom @"[]": @data
-
-#[decl @kind [bytes "* -> *"]]
 data @"[]" {
   #[decl @type [bytes "[a]"]]
   #[link @"[]" @data]
@@ -220,4 +217,35 @@ entry:
   %c = seq %a_whnf: any_whnf, %b: any
   %c_whnf = eval %c: any
   return %c_whnf: any_whnf
+}
+
+; IO
+; data IORes a = IORes a !RealWorld
+#[decl @kind [bytes "* -> *"]]
+export_as @IORes data @IORes {
+  #[decl @type [bytes "a -> RealWorld -> IORes a"]]
+  #[link @"IORes" @data]
+  export_as @IORes constructor @"IORes"(any, real_world)
+}
+
+; data IO a = IO !(!RealWorld -> IORes a)
+#[decl @kind [bytes "* -> *"]]
+export_as @IO data @IO {
+  #[decl @type [bytes "(RealWorld -> IORes a) -> IO a"]]
+  #[link @"IO" @data]
+  export_as @IO constructor @"IO"(anyfunction)
+}
+
+; unsafePerformIO :: IO a -> a
+#[decl @type [bytes "IO a -> a"]]
+export_as @unsafePerformIO define @unsafePerformIO(%io: @IO): any_whnf [trampoline] {
+entry:
+  match %io: @IO on @IO: (anyfunction) -> @IO (%fn)
+  %world = undefined real_world
+  letalloc %thunk = thunk %fn: anyfunction $ (%world: real_world)
+  %res_any = eval %thunk: any_thunk
+  %res = cast %res_any: any_whnf as @IORes
+  match %res: @IORes on @IORes: (any, real_world) -> @IO (%value_any, _)
+  %value = eval %value_any: any
+  return %value: any_whnf
 }

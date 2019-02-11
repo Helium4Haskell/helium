@@ -15,6 +15,7 @@
 
 module Helium.CodeGeneration.LLVM.ConstructorLayout(constructorLayout, ConstructorLayout(..)) where
 
+import Data.List(mapAccumL)
 import Lvm.Common.Id(Id, stringFromId)
 import Helium.CodeGeneration.LLVM.Utils
 import Helium.CodeGeneration.LLVM.Target
@@ -41,4 +42,7 @@ constructorLayout target (Iridium.DataType constructors) index (Iridium.DataType
     struct = Struct (Just $ toName conId) tagBits index structFields
 
     structFields :: [StructField]
-    structFields = zipWith (\fieldType fieldIndex -> StructField fieldType (Just fieldIndex)) fields [0..]
+    (_, structFields) = mapAccumL toField 0 fields
+    
+    toField nextIndex Iridium.TypeAny = (nextIndex + 1, StructField Iridium.TypeAny (Just nextIndex)) -- Use a bit in the header
+    toField nextIndex fieldType = (nextIndex, StructField fieldType Nothing) -- Do not use a bit in the header

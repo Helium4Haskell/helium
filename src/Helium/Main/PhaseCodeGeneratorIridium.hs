@@ -42,7 +42,7 @@ phaseCodeGeneratorIridium supply cache fullName coreModule options = do
   let hasMain = any ((== idFromString "main$") . Core.declName) $ Core.moduleDecls coreModule
 
   iridium' <- fromCore cache supplyFromCore simplified
-  let iridium = passTailRecursion supplyPassTailRecursion $ passDeadCode supplyPassDeadCode $ passThunkArity supplyPassThunkArity iridium'
+  let iridium = passTailRecursion supplyPassTailRecursion $ {- passDeadCode supplyPassDeadCode $ -} passThunkArity supplyPassThunkArity iridium'
 
   writeFile (fullNameNoExt ++ ".iridium") $ show iridium
 

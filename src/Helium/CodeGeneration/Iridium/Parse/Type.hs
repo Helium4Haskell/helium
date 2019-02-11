@@ -22,7 +22,7 @@ pType = do
       "anyfunction" -> return TypeFunction
       "function" -> TypeGlobalFunction <$ pWhitespace <*> pFunctionType
       "unsafeptr" -> return TypeUnsafePtr
-      _ -> pError "expected type"
+      _ -> pError $ "expected type, got " ++ show key ++ " instead"
 
 pFloatPrecision :: Parser FloatPrecision
 pFloatPrecision = do

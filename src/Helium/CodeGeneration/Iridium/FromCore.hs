@@ -323,7 +323,7 @@ toInstruction supply env continue expr = case getApplicationOrConstruction expr 
         let
           (supplyCast1, supplyCast2) = splitNameSupply supply'''
           (args', castInstructions) = maybeCasts supplyCast1 env (zip args $ repeat TypeAny)
-          (fn', castInstructionFn) = maybeCast supplyCast2 env fn TypeAnyThunk
+          (fn', castInstructionFn) = maybeCast supplyCast2 env fn TypeFunction
         in
           castInstructions
             +> castInstructionFn
@@ -358,7 +358,9 @@ maybeCastVariable supply var expected
     varType = variableType var
 
 castTo :: NameSupply -> Variable -> PrimitiveType -> PrimitiveType -> (Variable, Instruction -> Instruction)
-castTo supply var TypeAny to = (newVar, Let nameAnyWhnf (Eval var) . instructions)
+castTo _ _ from TypeAnyThunk = error $ "FromCore.castTo: cannot cast from " ++ show from ++ " to any_thunk"
+castTo supply var from to
+  | from == TypeAny || from == TypeAnyThunk = (newVar, Let nameAnyWhnf (Eval var) . instructions)
   where
     (nameAnyWhnf, supply') = freshIdFromId (variableName var) supply
     (newVar, instructions) = maybeCastVariable supply' (VarLocal $ Local nameAnyWhnf TypeAnyWHNF) to
@@ -470,7 +472,7 @@ bind supply env locals (Core.Bind x val) = (castInstructions . targetCast, Bind 
         _
           | null args -> error $ "bind: a secondary thunk cannot have zero arguments"
         _ ->
-          let (t, castInstr) = maybeCast supply2 env fn TypeAnyThunk
+          let (t, castInstr) = maybeCast supply2 env fn TypeFunction
           in (BindTargetThunk t, repeat TypeAny, castInstr)
 
 coreBindLocal :: TypeEnv -> Core.Bind -> Local

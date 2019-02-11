@@ -7,7 +7,7 @@ module HeliumLang
     , '':[]''('':[]'', (:)) -- lists
     , '':()''('':()'') -- unit tuple
     , '':->'' -- function arrow
-    , String, Int, Float, IO, Char
+    , String, Int, Float, Char
     
     , showFunction, showIO, showPolymorphic -- all show functions are used in inserted main
     , showChar, showString, showInt, showList, showBool, showUnit, showFloat  
@@ -34,7 +34,7 @@ module HeliumLang
     ) where
 
 import LvmLang 
-    ( Int(), Float(), IO()
+    ( Int(), Float(), IO(IO)
     , custom "typedecl" String
     , Bool(True, False)
     , '':[]''('':[]'', (:))

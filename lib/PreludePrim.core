@@ -27,6 +27,7 @@ module PreludePrim
     --, sqrt, (**.), exp, log, sin, cos, tan
         
     -- IO monad
+    , IO
     , return 
     , unsafePerformIO
     , putChar, putStr, putStrLn
@@ -152,10 +153,6 @@ putStr s = ''$primPutStr'' s
 putStrLn :: String -> IO ()
 putStrLn s = ''$primPutStrLn'' s
 -}
-{-unsafePerformIO :: IO a -> a 
-unsafePerformIO io 
-  = ''$primUnsafePerformIO'' io-}
-
 
 -- Float
 {-

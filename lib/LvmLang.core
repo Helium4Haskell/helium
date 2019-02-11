@@ -90,9 +90,6 @@ data Float
 data '':[]'' a  = '':[]'' | (:) a [a]
 data '':()''    = '':()''
 
-data IORes a    = IORes a
-data IO a --    = () -> IORes a
-
 {----------------------------------------------------------
   Type definitions
 ----------------------------------------------------------}
@@ -302,22 +299,24 @@ foldlStrict f z xs
   The IO monad
 ----------------------------------------------------------}
 ''$primBindIO'' :: IO a -> (a -> IO b) -> IO b
-''$primBindIO'' io f
-  = \_ -> case io () of
-            IORes x -> f x ()
+''$primBindIO'' a f = case a of
+  IO ioA ->
+    IO
+      (
+        \world -> case ioA world of
+          IORes x world' -> 
+            ( case f x of
+                IO ioB -> ioB world'
+            )
+      )
 
 ''$primReturnIO'' :: a -> IO a
 ''$primReturnIO'' x
-  = \_ -> IORes x
+  = IO (\world -> IORes x world)
 
 primIO :: (() -> a) -> IO a
 primIO f
   = \_ -> let! x = f () in IORes x
-
-unsafePerformIO :: IO a -> a
-unsafePerformIO io
-  = case io () of
-      IORes x -> x
 
 -- used to execute "main"
 unsafePerformStrictIO :: IO a -> a
