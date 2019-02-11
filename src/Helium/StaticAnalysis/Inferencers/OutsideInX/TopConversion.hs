@@ -244,6 +244,10 @@ instance Freshen Constraint Integer where
     freshenWithMapping mapping n (Constraint_Class cn vs) = let 
         (mapping', (vs', n')) = freshenWithMapping mapping n vs
         in (mapping', (Constraint_Class cn vs', n'))
+    freshenWithMapping mapping n (Constraint_Unify v1 v2) = let
+        (mapping', (v1', n')) = freshenWithMapping mapping n v1
+        (mapping'', (v2', n'')) = freshenWithMapping mapping' n' v2
+        in (mapping'', (Constraint_Unify v1' v2', n''))
 
 
 contFreshMRes :: FreshM a -> Integer -> (a, Integer)
