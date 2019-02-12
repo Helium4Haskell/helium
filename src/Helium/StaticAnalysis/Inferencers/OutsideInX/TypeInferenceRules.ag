@@ -272,7 +272,7 @@ SEM Pattern
                                             else
                                                 @beta : @betaCon : getTypeVariablesFromPolyType' @tp ++ @patterns.touchables
                                                 ++ 
-                                                (trace "Touchables" $ traceShowId $ concatMap getTypeVariablesFromConstraints @resConstraints)
+                                                const [] (trace "Touchables" $ traceShowId $ concatMap getTypeVariablesFromConstraints @resConstraints)
         loc . gadtAssumeConstraints     =   if @ct == ConstructorRegular then 
                                                 []
                                             else
@@ -329,19 +329,27 @@ SEM FunctionBinding
     | FunctionBinding
         lhs . touchables        = @lefthandside.touchables ++ @righthandside.touchables
         lhs . constraints       =   if null @lefthandside.gadtVariables then 
-                                       @lefthandside.constraints ++ @righthandside.constraints
+                                       @lefthandside.constraints ++ @righthandside.constraints  ++ @assConstraints ++ @locConstraints
                                     else
                                         --traceShowId $ @locConstraints ++ assConstraints ++ [Constraint_Exists (UL.bind (@righthandside.touchables) (trace "LHS" $ traceShowId @lefthandside.constraints, trace "RHS" $ traceShowId $ @righthandside.constraints))]
                                         @lefthandside.constraints ++ @locConstraints
-        lhs . gadtConstraints   =   if null @lefthandside.gadtVariables then [] else
+        lhs . gadtConstraints   =   (if null @lefthandside.gadtVariables then [] else
                                         [(@righthandside.touchables ++ @lefthandside.gadtVariables , @lefthandside.gadtAssumeConstraints, @righthandside.constraints ++ @assConstraints , @assumptions)]
+                                    ) ++ @subGADTConstraints
         lhs . name              = @lefthandside.name
         lhs . numberOfPatterns  = @lefthandside.numberOfPatterns
         loc . assumptions       = @righthandside.assumptions M.\\ @lefthandside.environment
-        loc . locConstraints    = 
-                                    zipWith (\bt bb -> Constraint_Unify (var bb) (var bt) ) @lhs.betasLeft @lefthandside.betas
-        loc. assConstraints     = (concat $ M.elems $ M.intersectionWith (\a e -> [Constraint_Inst (var a') (var e) | (_, a') <- a]) 
+        loc . locConstraints    = zipWith (\bt bb -> Constraint_Unify (var bb) (var bt) ) @lhs.betasLeft @lefthandside.betas
+        loc . assConstraints     = (concat $ M.elems $ M.intersectionWith (\a e -> [Constraint_Inst (var a') (var e) | (_, a') <- a]) 
                                         @righthandside.assumptions @lefthandside.environment) ++ [Constraint_Unify (var @lhs.betaRight) (var @righthandside.beta)]
+        loc . subGADTConstraints = map (resolveEnv @lefthandside.environment) @righthandside.gadtConstraints
+
+{
+
+resolveEnv :: Environment -> GADTConstraint -> GADTConstraint
+resolveEnv env (t, gCond, gCons, ass) = (t, gCond, gCons ++ (concat $ M.elems $ M.intersectionWith (\a e -> [Constraint_Inst (var a') (var e) | (_, a') <- a]) ass env), ass M.\\ env)
+
+}
 
 ATTR FunctionBinding LeftHandSide Pattern Patterns 
     [ 
@@ -551,9 +559,18 @@ ATTR Alternative Alternatives [ betaLeft:TyVar betaRight:TyVar | | ]
 
 SEM Alternative
     | Alternative
-        lhs . constraints = unifyVar @pattern.beta @lhs.betaLeft : @envConstraints ++ @pattern.constraints ++ @righthandside.constraints
-        lhs . assumptions =  @righthandside.assumptions M.\\ @pattern.environment
+        lhs . gadtVariables = []
+        lhs . constraints = traceShowId $ if null @pattern.gadtVariables then 
+                                unifyVar @pattern.beta @lhs.betaLeft : @envConstraints ++ @pattern.constraints ++ @righthandside.constraints
+                            else
+                                [unifyVar @pattern.beta @lhs.betaLeft]
+        lhs . assumptions = if null @pattern.gadtVariables then @assumptions else M.empty
+        loc . assumptions =  @righthandside.assumptions M.\\ @pattern.environment
         loc . envConstraints = concat $ M.elems (M.intersectionWith (\a' e -> [unifyVar a e | (_, a) <- a']) @righthandside.assumptions @pattern.environment)
+        lhs . gadtConstraints = trace "Alternative" $ traceShowId $ (if null @pattern.gadtVariables then [] else
+                                    [(  @righthandside.touchables ++ @pattern.gadtVariables
+                                    ,   @pattern.gadtAssumeConstraints
+                                    ,   @righthandside.constraints ++ @envConstraints, @assumptions)]) ++ @righthandside.gadtConstraints
 
 ATTR Qualifier Qualifiers [ |  touchables : {[TyVar]} assumptions:Assumptions constraints:Constraints substitutionCollect : Substitution gadtConstraints : GADTConstraints | ]
 
