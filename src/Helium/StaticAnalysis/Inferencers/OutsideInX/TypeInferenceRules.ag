@@ -257,7 +257,7 @@ SEM Pattern
                                              if @ct == ConstructorRegular then 
                                                 []
                                              else
-                                                getTypeVariablesFromMonoType @rt
+                                                getTypeVariablesFromMonoType @rt 
                                             ) ++ getTypeVariablesFromPolyType' @tp ++ @patterns.touchables
         lhs . constraints               =   if @ct == ConstructorRegular then 
                                                 @conApply : @conConstraints ++ @patterns.constraints
@@ -271,15 +271,16 @@ SEM Pattern
                                                 []
                                             else
                                                 @beta : @betaCon : getTypeVariablesFromPolyType' @tp ++ @patterns.touchables
+                                                ++ 
+                                                (trace "Touchables" $ traceShowId $ concatMap getTypeVariablesFromConstraints @resConstraints)
         loc . gadtAssumeConstraints     =   if @ct == ConstructorRegular then 
                                                 []
                                             else
-                                                @resConstraints ++  @conApply : @conConstraints ++ @patterns.constraints
+                                                [Constraint_Unify (var @betaCon) @conrt] ++ @resConstraints ++  @conApply : @conConstraints ++ @patterns.constraints
         loc . ((tp, bu), ct)            = case M.lookup @name.self (valueConstructors @lhs.importEnvironment) of
                                             Nothing  -> internalError "TypeInferenceRules" "n/a" "Constructor not found"
                                             Just (ctp, ct) -> (freshen (@lhs.betaUnique + 2) $ tpSchemeToPolyType ctp, ct)
-        loc . ((rt, resConstraints), bu2) = freshen @bu $ getResultType (getMonoFromPoly @tp)
-        lhs . resultTypes               =  [@rt]
+        loc . ((rt, conrt, resConstraints), bu2) = traceShowId $ freshen (@bu + 1) $ getResultType @tp
 
     | InfixConstructor
         leftPattern . betaUnique        = @bu
@@ -300,11 +301,27 @@ SEM Pattern
         loc . beta                      = integer2Name @lhs.betaUnique
 
 {
-getResultType :: MonoType -> (MonoType, [Constraint])
-getResultType (_ :-->: x) = getResultType x
-getResultType (MonoType_Var _) = error "Return type cannot be a variable"
-getResultType (MonoType_Con s tp) = (   MonoType_Con s $ take (length tp) [var (integer2Name x) | x <- [0..]],
-                                        zipWith (\tp x -> Constraint_Unify (var $ integer2Name x) tp ) tp [0..]
+
+getResultType :: PolyType -> (MonoType, MonoType, [Constraint])
+getResultType = getResultTypeHelper 0
+
+getResultTypeHelper :: Integer -> PolyType -> (MonoType, MonoType, [Constraint])
+getResultTypeHelper i (PolyType_Mono cs m) = (\(mr, m, c, _) -> (mr, m, c ++ cs)) (getResultTypeM i m)
+getResultTypeHelper i (PolyType_Bind b) = traceShowId $ contFreshM (UL.unbind b >>= (\(t, x) -> return $ getResultTypeHelper (UL.name2Integer t + 1) x)) i
+
+
+
+getResultTypeM :: Integer -> MonoType -> (MonoType, MonoType, [Constraint], Integer)
+getResultTypeM i (y :-->: x) =  let 
+                                    (_, m1, cs1, i1) = getResultTypeM i y 
+                                    (r, m2, cs2, i2) = getResultTypeM i1 x
+                                in (r, m1 :-->:  m2, cs1 ++ cs2, i2) 
+getResultTypeM i (MonoType_Var v) = (error "Result type can not be a vaiable", MonoType_Var v, [], i)
+getResultTypeM i (MonoType_Con s tp) = (
+                                        MonoType_Con s $ take (length tp) [var (integer2Name x) | x <- [i..]],   
+                                        MonoType_Con s $ take (length tp) [var (integer2Name x) | x <- [i..]],
+                                        zipWith (\tp x -> Constraint_Unify (var $ integer2Name x) tp ) tp [i..]
+                                        , i + toInteger (length tp)
                                     )
 }
         

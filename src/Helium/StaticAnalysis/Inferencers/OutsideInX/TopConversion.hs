@@ -17,6 +17,7 @@ module Helium.StaticAnalysis.Inferencers.OutsideInX.TopConversion(
     ,   typeEnvironmentToAxioms
     ,   getTypeVariablesFromPolyType
     ,   getTypeVariablesFromPolyType'
+    ,   getTypeVariablesFromConstraints
     ,   getConstraintFromPoly
     ,   polytypeToMonoType
 
@@ -153,6 +154,10 @@ getTypeVariablesFromMonoType (MonoType_Fam _ ms) = nub $ concatMap getTypeVariab
 getTypeVariablesFromMonoType (MonoType_Con _ ms) = nub $ concatMap getTypeVariablesFromMonoType ms
 getTypeVariablesFromMonoType (MonoType_Arrow f a) = nub $ getTypeVariablesFromMonoType f ++ getTypeVariablesFromMonoType a
 
+getTypeVariablesFromConstraints :: Constraint -> [TyVar]
+getTypeVariablesFromConstraints (Constraint_Unify v1 v2) = nub $ getTypeVariablesFromMonoType v1 ++ getTypeVariablesFromMonoType v2
+getTypeVariablesFromConstraints (Constraint_Class _ vs) = nub $ concatMap getTypeVariablesFromMonoType vs
+
 getMonoFromPoly :: PolyType -> MonoType
 getMonoFromPoly (PolyType_Bind (B p t)) = getMonoFromPoly t
 getMonoFromPoly (PolyType_Mono _ m) = m
@@ -239,6 +244,14 @@ instance (Freshen a c, Freshen b c) => Freshen (a, b) c where
         (mapping', (x', b)) = freshenWithMapping mapping n x
         (mapping'', (y', b')) = freshenWithMapping mapping' b y
         in (mapping'', ((x', y'), b')) 
+
+instance (Freshen a d, Freshen b d, Freshen c d) => Freshen (a, b, c) d where
+    freshenWithMapping mapping n (x, y, z) = let
+        (mapping', (x', b)) = freshenWithMapping mapping n x
+        (mapping'', (y', b')) = freshenWithMapping mapping' b y
+        (mapping''', (z', b'')) = freshenWithMapping mapping'' b' z
+        in (mapping'', ((x', y', z'), b''))         
+
 
 instance Freshen Constraint Integer where
     freshenWithMapping mapping n (Constraint_Class cn vs) = let 
