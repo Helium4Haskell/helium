@@ -149,19 +149,22 @@ bindingGroupAnalysis input@(isTopLevel, axioms, typeSignatures, touchables, body
                                  c4 = concatMap (\(a', e) -> [Constraint_Unify (var a) (var e) | (_, a) <- a']) $ M.elems $ M.intersectionWith (,) ass2 env1'
                                  (sbu3, c5, touchs3) = instanceTS sbu2 ass2 ts2
                                  
-                                 resGADTConstraints = let 
-
-                                    in gadtCons
+                                 (sbu4, resGADTConstraints) = foldr (\c@(gTouchs, gCond, gCons, gAss) (lbu, cs) -> 
+                                       let 
+                                          (rBu, lc1, ltouchs1) = instanceTS lbu gAss ts2
+                                          lc2 = equalASENV (gAss M.\\ ts2) env1'
+                                       in (rBu, (gTouchs ++ ltouchs1, gCond, gCons ++ lc1 ++ lc2, gAss M.\\ ts2 M.\\ env1') : cs)
+                                    ) (sbu3, []) gadtCons
 
                                  gadtConstraints   | isTopLevel = map gadtConstraintToConstraint resGADTConstraints
                                                    | otherwise = []
                                  {- -}                                
                                   {- Solving -}
-                                 sBu = sbu2
+                                 sBu = sbu4
                                  sGiven = []
                                  sWanted = traceMessageId "Wanted" $ (con1 ++ c3 ++ c4 ++ c5 ++ gadtConstraints) ++ c1 ++ c2
                                  sTouchables = touchs1 ++ touchs ++ touchs2 ++ touchs3
-                                 ((solverResult, _), bu1)   | isTopLevel = traceMessageId "Result" $ contFreshMRes (solve axioms sGiven sWanted sTouchables) sBu
+                                 ((solverResult, _), bu1)   | isTopLevel = contFreshMRes (solve axioms sGiven sWanted sTouchables) sBu
                                                             | otherwise = ((error "solve result needed", undefined), sBu) 
                                  {- Gathering -}
                                  ts' = resTypeSignatures M.\\ ts2
@@ -196,7 +199,7 @@ bindingGroupAnalysis input@(isTopLevel, axioms, typeSignatures, touchables, body
                                                 | otherwise = escapeVariableCheck (resAssumptions M.\\ bodyAssumptions) env1 ts2 ++ typeErrors
                                  printResidual | null residualConstraints = id
                                                | otherwise = id -- trace "Residual" $ traceShow residualConstraints
-                              in printResidual (resTouchables, resAssumptions, resTypeSignatures, residualConstraints, resBetaUnique, resSubstitution, resTypeErrors, resResolvedConstraints)
+                              in printResidual $ traceMessage "Result" solverResult $ (resTouchables, resAssumptions, resTypeSignatures, residualConstraints, resBetaUnique, resSubstitution, resTypeErrors, resResolvedConstraints)
 
                           
 

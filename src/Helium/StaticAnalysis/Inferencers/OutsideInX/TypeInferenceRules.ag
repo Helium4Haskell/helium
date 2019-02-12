@@ -310,20 +310,20 @@ getResultType (MonoType_Con s tp) = (   MonoType_Con s $ take (length tp) [var (
         
 SEM FunctionBinding 
     | FunctionBinding
-        lhs . touchables        = traceShowId $ @lefthandside.touchables ++ @righthandside.touchables
+        lhs . touchables        = @lefthandside.touchables ++ @righthandside.touchables
         lhs . constraints       =   if null @lefthandside.gadtVariables then 
                                        @lefthandside.constraints ++ @righthandside.constraints
                                     else
                                         --traceShowId $ @locConstraints ++ assConstraints ++ [Constraint_Exists (UL.bind (@righthandside.touchables) (trace "LHS" $ traceShowId @lefthandside.constraints, trace "RHS" $ traceShowId $ @righthandside.constraints))]
                                         @lefthandside.constraints ++ @locConstraints
         lhs . gadtConstraints   =   if null @lefthandside.gadtVariables then [] else
-                                        traceShow @lefthandside.environment $ [(traceShowId $ @righthandside.touchables ++ @lefthandside.gadtVariables , @lefthandside.gadtAssumeConstraints, @righthandside.constraints ++ @assConstraints , @assumptions)]
+                                        [(@righthandside.touchables ++ @lefthandside.gadtVariables , @lefthandside.gadtAssumeConstraints, @righthandside.constraints ++ @assConstraints , @assumptions)]
         lhs . name              = @lefthandside.name
         lhs . numberOfPatterns  = @lefthandside.numberOfPatterns
         loc . assumptions       = @righthandside.assumptions M.\\ @lefthandside.environment
         loc . locConstraints    = 
                                     zipWith (\bt bb -> Constraint_Unify (var bb) (var bt) ) @lhs.betasLeft @lefthandside.betas
-        loc. assConstraints     = trace "Ass ass" $ traceShow @righthandside.assumptions $ trace "Ass env" $ traceShow @lefthandside.environment (concat $ M.elems $ M.intersectionWith (\a e -> [Constraint_Inst (var a') (var e) | (_, a') <- a]) 
+        loc. assConstraints     = (concat $ M.elems $ M.intersectionWith (\a e -> [Constraint_Inst (var a') (var e) | (_, a') <- a]) 
                                         @righthandside.assumptions @lefthandside.environment) ++ [Constraint_Unify (var @lhs.betaRight) (var @righthandside.beta)]
 
 ATTR FunctionBinding LeftHandSide Pattern Patterns 
