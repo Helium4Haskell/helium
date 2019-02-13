@@ -125,6 +125,7 @@ instance Show Block where
 instance Show Annotation where
   show AnnotateTrampoline = "trampoline"
   show (AnnotateCallConvention conv) = "callconvention:" ++ show conv
+  show AnnotateFakeIO = "fake_io"
 
 instance Show CallingConvention where
   show CCC = "c"

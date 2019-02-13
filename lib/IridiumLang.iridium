@@ -249,3 +249,11 @@ entry:
   %value = eval %value_any: any
   return %value: any_whnf
 }
+
+; $primPutChar :: Char -> RealWorld -> IORes
+#[decl @type [bytes "Char -> RealWorld -> IORes"]]
+export_as @$primPutChar declare @putchar: (int, real_world) -> @IORes [callconvention:c fake_io]
+
+; $primPutChar :: RealWorld -> IORes
+#[decl @type [bytes "RealWorld -> IORes"]]
+export_as @$primGetChar declare @getchar: (real_world) -> @IORes [callconvention:c fake_io]

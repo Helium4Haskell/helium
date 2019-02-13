@@ -1,4 +1,4 @@
-module Helium.CodeGeneration.LLVM.Env where
+module Helium.CodeGeneration.LLVM.Env (Env(..), envForModule, EnvMethodInfo(..)) where
 
 import qualified Helium.CodeGeneration.Iridium.Data as Iridium
 import qualified Helium.CodeGeneration.Iridium.Type as Iridium
@@ -12,7 +12,7 @@ data Env = Env
   , envValueType :: AST.Type
   , envMethod :: Maybe Iridium.Method
   , envConstructors :: IdMap ConstructorLayout
-  , envCallConventions :: IdMap Iridium.CallingConvention
+  , envMethodInfo :: IdMap EnvMethodInfo
   }
 
 envForModule :: Target -> Iridium.Module -> Env
@@ -21,7 +21,7 @@ envForModule target mod = Env
   , envValueType = AST.IntegerType $ fromIntegral $ targetWordSize target
   , envMethod = Nothing
   , envConstructors = mapFromList constructors
-  , envCallConventions = mapFromList conventions
+  , envMethodInfo = mapFromList methods
   }
   where
     constructors = Iridium.moduleDataTypes mod >>=
@@ -32,6 +32,11 @@ envForModule target mod = Env
           (Iridium.getConstructors dataTypeDecl)
           [0..]
       )
-    conventions :: [(Id, Iridium.CallingConvention)]
-    conventions = fmap (\(Iridium.Declaration name _ _ _ (Iridium.Method _ _ annotations _ _)) -> (name, Iridium.callingConvention annotations)) (Iridium.moduleMethods mod)
-      ++ fmap (\(Iridium.Declaration name _ _ _ (Iridium.AbstractMethod _ annotations)) -> (name, Iridium.callingConvention annotations)) (Iridium.moduleAbstractMethods mod)
+    methods :: [(Id, EnvMethodInfo)]
+    methods = fmap (\(Iridium.Declaration name _ _ _ (Iridium.Method _ _ annotations _ _)) -> (name, methodInfo annotations)) (Iridium.moduleMethods mod)
+      ++ fmap (\(Iridium.Declaration name _ _ _ (Iridium.AbstractMethod _ annotations)) -> (name, methodInfo annotations)) (Iridium.moduleAbstractMethods mod)
+
+data EnvMethodInfo = EnvMethodInfo { envMethodConvention :: !Iridium.CallingConvention, envMethodFakeIO :: !Bool }
+
+methodInfo :: [Iridium.Annotation] -> EnvMethodInfo
+methodInfo annotations = EnvMethodInfo (Iridium.callingConvention annotations) (Iridium.AnnotateFakeIO `elem` annotations)

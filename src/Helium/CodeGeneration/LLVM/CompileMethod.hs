@@ -63,9 +63,9 @@ toFunction env supply name visible annotations args retType basicBlocks = trampo
       , Global.dllStorageClass = Nothing
       , Global.callingConvention = callConv
       , Global.returnAttributes = []
-      , Global.returnType = compileType env retType
+      , Global.returnType = compileType env (if fake_io then Iridium.TypeInt else retType)
       , Global.name = toName name
-      , Global.parameters = (parameters, {- varargs: -} False)
+      , Global.parameters = (if fake_io then init parameters else parameters, {- varargs: -} False)
       , Global.functionAttributes = []
       , Global.section = Nothing
       , Global.comdat = Nothing
@@ -90,6 +90,8 @@ toFunction env supply name visible annotations args retType basicBlocks = trampo
     (supplyTrampoline1, supplyTrampoline2) = splitNameSupply supply
 
     arity = length args
+
+    fake_io = Iridium.AnnotateFakeIO `elem` annotations
 
     trampoline :: [Definition]
     trampoline

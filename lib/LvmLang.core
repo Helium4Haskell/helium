@@ -17,6 +17,8 @@ module LvmLang
     , ''$primBindIO'', ''$primReturnIO''
     , primIO, unsafePerformIO, unsafePerformStrictIO
     , ''$primPutStrLn''
+    , putChar
+    , getChar
     
     -- Int
     , (+#), (-#), (*#), div, mod, quot, rem
@@ -325,6 +327,15 @@ unsafePerformStrictIO io
 
 -- TODO: unsafePerformStrictIO should be removed, as it is the same as unsafePerformIO as a function is already strict in
 -- its return value
+
+getChar :: IO Char
+getChar = IO (\world -> ''$primGetChar'' world)
+
+putChar :: Char -> IO ()
+putChar char = IO
+  (\world -> case ''$primPutChar'' char world of
+    IORes _ world2 -> IORes () world2
+  )
 
 ''$primPutStrLn'' :: String -> IO ()
 ''$primPutStrLn'' str =

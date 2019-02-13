@@ -72,4 +72,5 @@ pAnnotation = do
         "fast" -> return $ AnnotateCallConvention CCFast
         "preserve_most" -> return $ AnnotateCallConvention CCPreserveMost
         _ -> pError $ "Unknown calling convention: " ++ show conv
+    "fake_io" -> return AnnotateFakeIO
     _ -> pError $ "Unknown annotation: " ++ show word

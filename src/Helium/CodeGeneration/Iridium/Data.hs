@@ -70,6 +70,11 @@ data Annotation
   = AnnotateTrampoline
   -- * Marks that this function uses a custom calling convention. When none is given, it is assumed to use CCFast
   | AnnotateCallConvention !CallingConvention
+  -- * The type of the method ends in RealWorld -> IORes, but in reality the fuction does not take RealWorld as an argument and only produces
+  -- the value in the IORes object (not the 'next' real world). This is used to declare extern functions like putchar and getchar.
+  -- We currently assume that the return type of the function is 'int'.
+  -- Cannot be used in combination with 'AnnotateTrampoline'.
+  | AnnotateFakeIO
   deriving (Eq, Ord)
 
 data CallingConvention

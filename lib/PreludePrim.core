@@ -94,6 +94,7 @@ import LvmLang
     , '':()''('':()'')
     , ''$primBindIO'', ''$primReturnIO''
     , unsafePerformIO
+    , putChar, getChar
     
     , ($!), seq
     , True -- hack
