@@ -226,6 +226,8 @@ SEM Declaration [ parentTree : InfoTree | | infoTrees : InfoTrees ]
   | TypeSignature  lhs . infoTrees = []
   | Fixity         lhs . infoTrees = []
   | Empty          lhs . infoTrees = []
+  | Instance       loc . parentTree = node @lhs.parentTree @localInfo @where.infoTrees
+                   lhs . infoTrees  = [@parentTree]
     
 SEM FunctionBindings [ parentTree : InfoTree | | infoTrees : InfoTrees ]
   | Cons   lhs . infoTrees = @hd.infoTree : @tl.infoTrees

@@ -13,12 +13,13 @@ module Helium.StaticAnalysis.Messages.TypeErrors where
 import Helium.StaticAnalysis.Messages.Messages
 import Top.Types
 
-import Data.List       (union, partition)
+import Data.List       (union, partition,find, intercalate)
 import Helium.Syntax.UHA_Syntax (Range, Name)
 import Helium.Syntax.UHA_Range  (getNameRange)
 import Helium.StaticAnalysis.Miscellaneous.UHA_Source
 
 import Data.Maybe
+import Data.List
 
 type TypeErrors = [TypeError]
 data TypeError  = TypeError
@@ -107,7 +108,7 @@ makeReductionError source extra classEnvironment unqualifier (Predicate classNam
     hint = case valids of
               []  -> "there are no valid instances of "++className
               [x] -> "valid instance of "++className++" is "++show x
-              _   -> "valid instances of "++className++" are "++prettyAndList valids
+              _   -> "valid instances of "++className++" are "++prettyAndList (nub valids)
          
     valids :: [String]
     valids = let tps              = [ unqualifier tp | (Predicate _ tp, _) <- instances className classEnvironment ]
@@ -134,3 +135,14 @@ convertTypeError f (TypeError ran lines table hints) =
        newlines = map (changeMessageLine f) lines
        newhints = map (\(str, block) -> (str, changeMessageBlock f block)) hints
    in TypeError ran newlines newtab newhints
+   
+makeMissingInstancePredicateError :: Range -> Name -> String -> Predicate -> [(String, Name)] -> [(Name, Tp)] -> TypeError
+makeMissingInstancePredicateError source className instanceName (Predicate predName tp) definedPredicates mapping =
+    let 
+        predicate = predName ++ " " ++ show (maybe (error "Invalid mapping") fst $ find (\x -> snd x == tp) mapping)
+        message = MessageOneLiner $ MessageString $ "Missing predicate " ++ show predicate ++ " for instance definition of " ++ show className ++ " " ++ instanceName
+        table = [
+            "Predicates" <:> MessageString (intercalate ", " $ map (\(name, var) -> name ++ " " ++ show var) definedPredicates)
+            ]
+        hint = "Add the missing predicate to the instance definition"
+    in TypeError [source] [message] table [("hint", MessageString hint)]

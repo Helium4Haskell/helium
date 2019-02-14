@@ -159,7 +159,10 @@ SEM Expression
                                                   ++ @expression.patternMatchWarnings                     
 
 SEM Declaration
-  | FunctionBindings lhs . patternMatchWarnings = patternMatchWarnings @lhs.importEnvironment
+  | FunctionBindings lhs . patternMatchWarnings = ( if @bindings.argcount == 0 then 
+                                                      [] 
+                                                    else
+                                                      patternMatchWarnings @lhs.importEnvironment
                                                                        @lhs.substitution
                                                                        @loc.beta
                                                                        (take @bindings.argcount . fst . functionSpine)
@@ -170,7 +173,7 @@ SEM Declaration
                                                                        @bindings.unrwars
                                                                        "function bindings"
                                                                        "="
-                                                  ++ @bindings.patternMatchWarnings 
+                                                  ) ++ @bindings.patternMatchWarnings 
   | PatternBinding   lhs . patternMatchWarnings = patternMatchWarnings @lhs.importEnvironment
                                                                        @lhs.substitution
                                                                        @pattern.beta
@@ -289,7 +292,7 @@ constructors impenv tp | isTupleConstructor name = [tupleconstructor]
     tupleconstructor = (nameFromString name, snd $ leftSpine tp)
     unTCon :: Tp -> String
     unTCon (TCon c) = c
-    unTCon tp' = pmError "unTCon" $ "type " ++ show tp' ++ " is not a TCon"
+    unTCon tp' = show tp'
     expand :: (Name, [Tp]) -> (Name, [Tp])
     expand (n, ts) = (n, map (expandTypeFromImportEnvironment impenv) ts)
 

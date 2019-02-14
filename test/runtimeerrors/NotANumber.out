@@ -9,8 +9,9 @@ trace:
   demanded from "HeliumLang.$primShowFloat"
   demanded from "HeliumLang.hasPointOrE"
   demanded from "HeliumLang.addPointZero"
-  demanded from "HeliumLang.$primAppend"
-  demanded from "HeliumLang.$primAppend"
-  demanded from "HeliumLang.$primPutChars"
+  ...
+  demanded from "LvmLang.bindIO"
+  demanded from "LvmLang.bindIO"
+  demanded from "LvmLang.bindIO"
   demanded from "LvmLang.bindIO"
   demanded from "LvmLang.unsafePerformIO"

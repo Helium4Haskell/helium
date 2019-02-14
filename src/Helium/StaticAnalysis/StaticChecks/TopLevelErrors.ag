@@ -45,9 +45,20 @@ SEM Module
 ------------------------------------------------------------------------------
 -- fixity declarations without a definition
 
+ATTR Module Body Declarations Declaration MaybeDeclarations [
+  | | 
+    fixityButNoFunDefErrors USE {(++)} {[]} : {[Error]}
+    fixityDefs USE {(++)} {[]} : Names
+]
 SEM Module
-  | Module   loc . fixityButNoFunDefErrors = let list = nub (@body.declVarNames ++ @allValueConstructors)
-                                             in makeNoFunDef Fixity (filter (`notElem` list) @correctFixities) list
+  | Module   loc . fixityButNoFunDefErrors = let list = nub (@body.declVarNames ++ @allValueConstructors ++ @body.classMemberNames)
+                                             in makeNoFunDef Fixity (filter (`notElem` list) @correctFixities) list ++ (@body.fixityButNoFunDefErrors)
+
+SEM Declaration
+  | Class   lhs . fixityButNoFunDefErrors = let list = nub (@loc.classMemberNames)
+                                             in makeNoFunDef Fixity (filter (`notElem` list) (@where.fixityDefs)) list
+  | Fixity  lhs . fixityDefs  = @operators.self
+                                                          
        
 ------------------------------------------------------------------------------
 -- wrong overloading flag is used (w.r.t. imported functions)
@@ -58,6 +69,7 @@ SEM Module
        | let flag = Overloading `elem` @lhs.options
              imp  = any isOverloaded (concatMap (M.elems . typeEnvironment) @importEnvironments)
        , flag /= imp
+       , False
        ]
        
 ------------------------------------------------------------------------------

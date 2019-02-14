@@ -55,7 +55,7 @@ showInformation reportNotFound options importEnv =
                 _  -> []
       
           typeclass = 
-             case M.lookup string standardClasses of
+             case M.lookup string (classEnvironment importEnv) of
                 Just cl -> [TypeClass string cl]
                 Nothing -> []
       in 

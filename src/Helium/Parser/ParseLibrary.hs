@@ -17,7 +17,6 @@ import Helium.Utils.Utils (hole)
 import Helium.Syntax.UHA_Syntax(Name(..), Range(..), Position(..))
 import qualified Helium.Utils.Texts as Texts
 
-
 type HParser a = GenParser Token SourcePos a
 
 runHParser :: HParser a -> FilePath -> [Token] -> Bool -> Either ParseError a
@@ -38,7 +37,9 @@ waitForEOF p
 
 tycls, tycon, tyvar, varid, conid, consym, varsym :: ParsecT [Token] SourcePos Identity Name      
 tycls   = name   lexCon  <?> Texts.parserTypeClass
-tycon   = name   lexCon  <?> Texts.parserTypeConstructor
+tycon   = (opSpecial (try $ do { lexLBRACKET; lexRBRACKET; return "[]" })
+        <|> opSpecial (try $ do { commas <- parens (many pComma); if null commas then fail "() not allowed" else return $ "(" ++ commas ++ ")"})
+        <|> (name  lexCon)  <?> Texts.parserTypeConstructor)
 tyvar   = name   lexVar  <?> Texts.parserTypeVariable
 varid   = name   lexVar  <?> Texts.parserVariable
 conid   = name   lexCon  <?> Texts.parserVariable
@@ -181,6 +182,12 @@ qOpName p = try . addRange $
         n <- p
         return (\r -> Name_Operator r qs [] n) -- !!!Name
 
+opSpecial :: HParser String -> HParser Name
+opSpecial p = addRange $
+      do
+        n <- p
+        return (\r -> Name_Special r [] n)
+
 addRange :: HParser (Range -> a) -> HParser a
 addRange p =
     do 
@@ -204,6 +211,11 @@ lexBACKQUOTEs, brackets :: ParsecT [Token] SourcePos Identity a
                  -> ParsecT [Token] SourcePos Identity a
 lexBACKQUOTEs = between lexBACKQUOTE lexBACKQUOTE
 brackets = between lexLBRACKET  lexRBRACKET 
+
+pComma :: ParsecT [Token] SourcePos Identity Char
+pComma = do
+            lexCOMMA
+            return ','
 
 commas, commas1 :: ParsecT [Token] SourcePos Identity a
           -> ParsecT [Token] SourcePos Identity [a]
@@ -281,6 +293,10 @@ lexPHASE, lexCONSTRAINTS, lexSIBLINGS, lexCOL, lexASGASG :: HParser ()
 lexPHASE       = lexeme (LexKeyword "phase")
 lexCONSTRAINTS = lexeme (LexKeyword "constraints")
 lexSIBLINGS    = lexeme (LexKeyword "siblings")
+lexNEVER       = lexeme (LexKeyword "never")
+lexCLOSE       = lexeme (LexKeyword "close")
+lexDISJOINT    = lexeme (LexKeyword "disjoint")
+lexDEFAULT     = lexeme (LexKeyword "default")
 lexCOL         = lexeme (LexResConSym ":")
 lexASGASG      = lexeme (LexResVarSym "==")
 

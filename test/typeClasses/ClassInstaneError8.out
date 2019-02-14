@@ -1,0 +1,8 @@
+Prelude is up to date
+Compiling typeClasses/ClassInstaneError8.hs
+(5,11): Type error in right-hand side
+ expression       : n
+   type           : Maybe a
+   does not match : Int    
+
+Compilation failed with 1 error

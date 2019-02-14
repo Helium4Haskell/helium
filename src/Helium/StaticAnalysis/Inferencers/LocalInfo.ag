@@ -53,6 +53,11 @@ SEM Declaration
                                     , assignedType = Nothing 
                                     , monos = @lhs.monos
                                     }
+  | Instance  
+       loc . localInfo  = LocalInfo { self = UHA_Decl @self
+                                    , assignedType = Nothing 
+                                    , monos = @lhs.monos
+                                    }
 
 ---------------------------------------------------------------------------------------
 -- Expression

@@ -1,0 +1,5 @@
+Prelude is up to date
+Compiling typeClasses/PreludeInstances1.hs
+(6,1): Warning: Missing type signature: main :: [Bool]
+Compilation successful with 1 warning
+[False,True,True,True]

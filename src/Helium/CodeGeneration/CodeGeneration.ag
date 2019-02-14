@@ -27,7 +27,10 @@ import qualified Data.Map as M
 import Helium.StaticAnalysis.Miscellaneous.TypeConversion
 import Helium.Utils.QualifiedTypes
 import Data.Char (ord)
+import Data.Maybe
+import Data.List(isSuffixOf)
 
+import Helium.CodeGeneration.InstanceDictionary
 
 import Lvm.Common.Id
 import Lvm.Common.IdSet 
@@ -61,7 +64,9 @@ ATTR Body Declarations Declaration Expressions Expression Statements Statement
      Alternatives Alternative FunctionBindings FunctionBinding
      RightHandSide MaybeDeclarations MaybeExpression RecordExpressionBinding
      RecordExpressionBindings Constructors Constructor
-    [ dictionaryEnv : DictionaryEnvironment | | ]
+    [ dictionaryEnv : DictionaryEnvironment
+        instanceName : {Maybe Name} 
+        | | ]
 
 ATTR Body Declarations Declaration Constructor Constructors
     [ importEnv     : ImportEnvironment modulename : String | | ]

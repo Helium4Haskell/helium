@@ -1,0 +1,12 @@
+Prelude is up to date
+Compiling typeClasses/PreludeInstances7.hs
+(22,19): Warning: The function: fromInt for an instance of: Num is not defined and doesn't have a default.
+(22,19): Warning: The function: signum for an instance of: Num is not defined and doesn't have a default.
+(22,19): Warning: The function: abs for an instance of: Num is not defined and doesn't have a default.
+(8,1): Warning: Missing patterns in function bindings: 
+  fromNum (_ :*: _) = ...
+  fromNum (_ :+: _) = ...
+  fromNum (_ :-: _) = ...
+(29,1): Warning: Missing type signature: main :: String
+Compilation successful with 5 warnings
+"(Num 57)"

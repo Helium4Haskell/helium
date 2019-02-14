@@ -101,7 +101,7 @@ import Helium.StaticAnalysis.Inferencers.SelectConstraintSolver (selectConstrain
 import Top.Solver (SolveResult(..), LogEntries)
 import Helium.StaticAnalysis.Heuristics.HeuristicsInfo (makeUnifier, skip_UHA_FB_RHS)
 import Helium.StaticAnalysis.Inferencers.BindingGroupAnalysis
-
+import Helium.StaticAnalysis.Miscellaneous.TypeConstraints
 
 -- UHA syntax
 import Helium.Syntax.UHA_Syntax
@@ -138,3 +138,13 @@ SEM MaybeDeclarations
   | Just  loc . isTopLevel = False
 SEM Qualifier
   | Let   loc . isTopLevel = False
+  
+ATTR Body Declaration Declarations Expression Expressions
+     GuardedExpression GuardedExpressions MaybeDeclarations
+     MaybeExpression Qualifier Qualifiers RecordExpressionBinding
+     RightHandSide Alternative Alternatives FunctionBinding
+     FunctionBindings Statement RecordExpressionBindings
+     Statements AnnotatedType Types Constructor AnnotatedTypes 
+     ContextItem FieldDeclaration Constructors ContextItems 
+     FieldDeclarations Type 
+               [ classMemberEnv : {ClassMemberEnvironment} | | ]

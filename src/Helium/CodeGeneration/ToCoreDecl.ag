@@ -3,12 +3,25 @@
 -- ------------------------------------------------------------------------
 
 ATTR Declaration Declarations [ | patBindNr : Int | ]
+ATTR MaybeDeclarations [ | | whereDeclarations : {[(Name, CoreDecl)]}]
+
+
+ATTR Declaration Declarations MaybeDeclarations [ 
+        
+    |  
+    |   functionNames USE {(++)} {[]}: {[Name]} 
+        declNames USE {(++)} {[]}: {[Name]}
+        collectDefaults USE {(++)} {[]} : {[(Name, CoreDecl)]}
+    ]
         
 SEM MaybeDeclarations [ | |   core : { Core.Expr -> Core.Expr } ]
     | Nothing     lhs.core = \continue -> continue
+                  lhs.whereDeclarations = []
     | Just        declarations.patBindNr = 0
                   declarations.isTopLevel = False
                   declarations.moduleQual = internalError "ToCoreDecl.ag" "n/a" "toplevel MaybeDeclarations"
+                  declarations.importEnv = @lhs.importEnv
+                  lhs.whereDeclarations = zip @declarations.declNames @declarations.decls
                   lhs.core = \continue -> letrec_ @declarations.decls continue  
 
 SEM Declaration        
@@ -24,17 +37,34 @@ SEM Declaration
             . origin      = originCustoms @lhs.modulename @range.self
             . qualname    = addQualified @lhs.moduleQual @simpletype.name
 
-        lhs . decls  = 
-                map (\n -> Core.DeclCustom
-                            { Core.declName    = idFromString (getNameName @simpletype.name)
-                            , Core.declAccess  = Core.private
-                            , Core.declKind    = Core.DeclKindCustom (idFromString "typedecl")
-                            , Core.declCustoms = [ Core.CustomBytes (Byte.bytesFromString @typestring)
-                                                 , Core.CustomInt (length @simpletype.typevariables)
-                                                 ] ++ @origin})
-                    [@simpletype.name, @qualname]
-                ++
-                [ DerivingShow.typeShowFunction @self @lhs.moduleQual @origin ]
+        lhs . decls  =
+            let -- if we would have the collected type synonym information here, things could have been
+                -- done much easier.
+                (t1,[t2])   = convertFromSimpleTypeAndTypes @simpletype.self [@type.self]
+                allTypeVars = ftv [t1,t2]
+                (ts1,ts2)   = ( Quantification (allTypeVars, [], [] .=>. t1) :: TpScheme
+                              , Quantification (allTypeVars, [], [] .=>. t2) :: TpScheme
+                              )
+            in
+            [ Core.DeclCustom
+                { Core.declName    = idFromString (getNameName @simpletype.name)
+                , Core.declAccess  = Core.private
+                , Core.declKind    = Core.DeclKindCustom (idFromString "typedecl")
+                , Core.declCustoms =
+                    [ Core.CustomBytes
+                        (Byte.bytesFromString
+                            (  show ts1
+                            ++ " = "
+                            ++ show ts2
+                            )
+                        )
+                    , Core.CustomInt
+                        (length @simpletype.typevariables)
+                    ]
+                }
+            ]
+            ++
+            [ DerivingShow.typeShowFunction (classEnvironment @lhs.importEnv) (typeSynonyms @lhs.importEnv) @self @lhs.moduleQual @origin ]
     
     | Data    constructors.tag = 0
               constructors.dataTypeName = @simpletype.name
@@ -48,12 +78,10 @@ SEM Declaration
                     , Core.declAccess  = Core.private
                     , Core.declKind    = Core.DeclKindCustom (idFromString "data")
                     , Core.declCustoms = [ Core.CustomInt (length @simpletype.typevariables) ] ++ @origin})
-            [@simpletype.name, @qualname]         
-        ++
-        [ DerivingShow.dataShowFunction @self @lhs.moduleQual @origin]
+            [@simpletype.name, @qualname]
         ++ 
         (if "Show" `elem` map show @derivings.self 
-         then [ DerivingShow.dataDictionary @self @origin]
+         then [ DerivingShow.dataDictionary (classEnvironment @lhs.importEnv) (typeSynonyms @lhs.importEnv) @self @lhs.moduleQual @origin ]
          else []
         )
         ++
@@ -71,8 +99,10 @@ SEM Declaration
     | FunctionBindings  loc.ids            = freshIds "u$" @bindings.arity
                         bindings.ids       = @loc.ids
                         bindings.range     = @range.self
-                        loc . dictionaries = map predicateToId 
-                                              (getPredicateForDecl @bindings.name @lhs.dictionaryEnv)
+                        lhs.declNames = [@bindings.name]
+                        loc.instanceDict = [idFromString $ "$instanceDict" ++ show name | Just name <- [@lhs.instanceName]]
+                        loc . dictionaries = @instanceDict ++ (map predicateToId 
+                                              (getPredicateForDecl @bindings.name @lhs.dictionaryEnv))
                             . qualname     = addQualified @lhs.moduleQual @bindings.name
                         lhs.decls    = map (\n ->
                                             Core.DeclValue
@@ -80,7 +110,7 @@ SEM Declaration
                                                 , Core.declAccess  = Core.private
                                                 , Core.valueEnc    = Nothing
                                                 , Core.valueValue  = foldr Core.Lam @bindings.core (@dictionaries ++ @ids)
-                                                , Core.declCustoms = toplevelType @bindings.name @lhs.importEnv @lhs.isTopLevel ++ originCustoms @lhs.modulename @range.self})
+                                                , Core.declCustoms = toplevelType @bindings.name @lhs.importEnv (@lhs.isTopLevel || isJust @lhs.instanceName) ++ originCustoms @lhs.modulename @range.self})
                                             $ @bindings.name : if @lhs.isTopLevel then [@qualname] else []
         
     --  range                    : Range          
@@ -100,7 +130,7 @@ SEM Declaration
                     { Core.declName    = idFromName nn
                     , Core.declAccess  = Core.private
                     , Core.valueEnc    = Nothing
-                    , Core.valueValue  = 
+                    , Core.valueValue  =  
                         foldr Core.Lam 
                             ( let_ -- because guards can fail
                                 nextClauseId (patternMatchFail "pattern binding" @range.self)
@@ -108,8 +138,7 @@ SEM Declaration
                             @dictionaries
                     , Core.declCustoms = toplevelType n @lhs.importEnv @lhs.isTopLevel ++ originCustoms @lhs.modulename @range.self
                     } ) $ n : if @lhs.isTopLevel then [addQualified @lhs.moduleQual n] else []
-            _ ->
-                Core.DeclValue
+            _ -> Core.DeclValue
                     { Core.declName    = patBindId
                     , Core.declAccess  = Core.private
                     , Core.valueEnc    = Nothing
@@ -137,7 +166,8 @@ SEM Declaration
     --  pattern                  : Pattern
     --  righthandside            : RightHandSide
     
-    | TypeSignature     lhs.decls    = []
+    | TypeSignature         lhs.decls    = []
+                            lhs.functionNames = @names.self    
     --  range                    : Range
     --  names                    : Names
     --  type                     : Type   -- may have context
@@ -175,6 +205,38 @@ SEM Declaration
     --  fixity                   : Fixity
     --  priority                 : MaybeInt
     --  operators                : Names
+    | Class             loc . superClasses = getSuperClasses @context.self
+                        lhs.decls    = let 
+                                            isInfix (Module.DeclCustom{
+                                                Core.declKind = (Core.DeclKindCustom n)
+                                            }) = stringFromId n `isSuffixOf` " infix"
+                                            isInfix _ = False
+                                        in (classFunctions @lhs.importEnv (getNameName @simpletype.name) $ constructFunctionMap @lhs.importEnv (length @superClasses) @simpletype.name) ++ 
+                                        [
+                                            Core.DeclCustom
+                                                {
+                                                    --declName :: Id, declAccess :: !Access, declArity :: !Arity, declCustoms :: ![Custom]
+                                                    Core.declName = idFromName @simpletype.name,
+                                                    Core.declAccess = Core.public,
+                                                    Core.declKind = Core.DeclKindCustom $ idFromString "ClassDefinition",
+                                                    Core.declCustoms = constructClassMemberCustomDecl @lhs.importEnv @simpletype.name (M.lookup @simpletype.name $ classMemberEnvironment @lhs.importEnv)
+                                                }
+                                        ] ++ convertDictionaries @lhs.importEnv @simpletype.name @where.functionNames @where.whereDeclarations 
+                                         ++ (filter isInfix @where.decls)
+                        where . instanceName = Just @simpletype.name
+                        where . dictionaryEnv = setCurrentClassNames (zip @where.functionNames (repeat ("$instanceDict" ++ show @simpletype.name))) @lhs.dictionaryEnv
+    | Instance          lhs .   decls    =  [ constructDictionary 
+                                                @lhs.importEnv
+                                                (getSuperClasses @context.self)
+                                                (constructFunctionMap @lhs.importEnv (length @superClasses) @name.self)
+                                                @where.whereDeclarations @name.self @loc.typeName (namesInType @loc.type)
+                                            ] 
+                        loc .   typeName = showInstanceType $ makeTpFromType @typevariables @type
+                        loc .   err = error $ "Invalid class name " ++ getNameName @name.self
+                        loc .   superClasses = fst (fromMaybe @err (M.lookup (getNameName @name.self) (classEnvironment @lhs.importEnv)))
+                        loc .   typevariables = zip (namesInType @loc.type) [TVar n | n <- [0..]]
+                        loc .   type = head @types.self
+                        where . instanceName = Just @name.self
     
     -- Not supported
     
@@ -187,19 +249,6 @@ SEM Declaration
     --  constructor              : Constructor  -- has only one field, no strictness
     --  derivings                : Names
     
-    | Class             lhs.decls    = internalError "ToCoreDecl" "Declaration" "'class' not supported"
-    --  range                    : Range
-    --  context                  : ContextItems -- is a "simple" context
-    --  simpletype               : SimpleType   -- Haskell 98 allows only one variable
-    --  where                    : MaybeDeclarations -- cannot have everything
-    
-    | Instance          lhs.decls    = internalError "ToCoreDecl" "Declaration" "'instance' not supported"
-    --  range                    : Range
-    --  context                  : ContextItems -- is a "simple" context
-    --  name                     : Name
-    --  types                    : Types        -- Haskell 98 allows only one type
-                                                -- that is severely restricted
-    --  where                    : MaybeDeclarations -- cannot have everything
     
     | Default           lhs.decls    = internalError "ToCoreDecl" "Declaration" "'default' not supported"
     --  range                    : Range
@@ -241,30 +290,43 @@ SEM FunctionBinding [ | | core : { Core.Expr -> Core.Expr } ]
     --  range                    : Range
     --  lefthandside             : LeftHandSide
     --  righthandside            : RightHandSide
-
 {
+
+getSuperClasses ::  ContextItems -> [(String, Name)]
+getSuperClasses = map (\(ContextItem_ContextItem _ n vs) -> (getNameName n, var vs))
+    where
+        var [vs] = name $ namesInType vs
+        var _ = error "Type variable not a single type"
+        name [n] = n
+        name _ = error "Type variable not a single name"
+
 predicateToId :: Predicate -> Id
 predicateToId (Predicate class_ tp) =
-    idFromString $ "$dict" ++ class_ ++ show tp
+    idFromString $ "$dict" ++ class_ ++ "$" ++ show tp
     
 dictionaryTreeToCore :: DictionaryTree -> Core.Expr
-dictionaryTreeToCore theTree = 
+dictionaryTreeToCore theTree =
    case theTree of
-      ByPredicate predicate -> 
-         Core.Var (predicateToId predicate)
-      ByInstance className instanceName trees ->
-         foldl Core.Ap
-               (Core.Var (idFromString ("$dict"++className++(unQualifyName instanceName))))
+        ByPredicate predicate -> 
+            Core.Var (predicateToId predicate)
+        ByInstance className instanceName trees ->
+            foldl Core.Ap
+                (Core.Var (idFromString ("$dict"++className++ "$" ++ (unQualifyName instanceName))))
                (map dictionaryTreeToCore trees)
-      BySuperClass subClass superClass tree -> 
-         Core.Ap (Core.Var (idFromString ("$get" ++ superClass ++ "From" ++ subClass)))          
+        BySuperClass subClass superClass tree -> 
+            Core.Ap (Core.Var (idFromString ("$get" ++ superClass ++ "$" ++ subClass)))          
                  (dictionaryTreeToCore tree)
+        ByCurrentClass className ->
+            Core.Var (idFromString $ "$instanceDict" ++ className)
+        BySuperInstance p className typeVariables -> 
+            Core.Var (idFromString $ "$instanceDict" ++ className ++ "$" ++ typeVariables )
+    
 
 insertDictionaries :: Name -> DictionaryEnvironment -> Core.Expr
 insertDictionaries name dictionaryEnv = 
    foldl Core.Ap
          (Core.Var (idFromName name))
-         (map dictionaryTreeToCore (getDictionaryTrees name dictionaryEnv))
+         ((map dictionaryTreeToCore (getDictionaryTrees name dictionaryEnv)))
 }
 
 ATTR LeftHandSide 
@@ -301,15 +363,16 @@ SEM RightHandSide
         isGuarded : Bool
     ]
 
-    | Expression      lhs.core = @where.core @expression.core
-                         .isGuarded = False
+    | Expression        lhs.core = @where.core @expression.core
+                            .isGuarded = False
+                        where.instanceName = Nothing 
     --  range                    : Range
     --  expression               : Expression
     --  where                    : MaybeDeclarations
 
     | Guarded         lhs.isGuarded = True
-                         .core = 
-        @where.core (foldr ($) (Core.Var nextClauseId) @guardedexpressions.core)
+                         .core = @where.core (foldr ($) (Core.Var nextClauseId) @guardedexpressions.core)
+                    where.instanceName = Nothing
                          
     --  range                    : Range
     --  guardedexpressions       : GuardedExpressions
@@ -382,16 +445,6 @@ SEM AnnotatedTypes [ | | length : Int ]
     | Nil  lhs.length = 0
 
 {
-toplevelType :: Name -> ImportEnvironment -> Bool -> [Core.Custom]
-toplevelType name ie isTopLevel
-    | isTopLevel = [custom "type" typeString]
-    | otherwise  = []
-    where
-        typeString = maybe
-            (internalError "ToCoreDecl" "Declaration" ("no type found for " ++ getNameName name))
-            show
-            (M.lookup name (typeEnvironment ie))
-
 constructorCustoms :: Name -> Name -> ValueConstructorEnvironment -> [Core.Custom]
 constructorCustoms dataTypeName name envWithParent =
     maybe 

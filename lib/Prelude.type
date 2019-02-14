@@ -54,4 +54,7 @@ siblings   showString , showList , showMaybe , showEither , showOrdering ,
 siblings   + , ++ ;
 
 -- Char, Int conversions
-siblings ord , chr ;
+siblings   ord , chr ;
+
+default Num (Int, Integer, Float, Double)
+default Show (String, Bool, Int)

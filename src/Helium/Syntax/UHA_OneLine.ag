@@ -128,7 +128,7 @@ SEM Declaration                                  {- *** -}
     --  context                  : ContextItems -- is a "simple" context
     --  simpletype               : SimpleType   -- Haskell 98 allows only one variable
     --  where                    : MaybeDeclarations -- cannot have everything
-    | Instance          loc.oneLineTree = intErr "Declaration" "instance"
+    | Instance          loc.oneLineTree = OneLineText $ "instance " ++ show @name.self
     --  range                    : Range
     --  context                  : ContextItems -- is a "simple" context
     --  name                     : Name

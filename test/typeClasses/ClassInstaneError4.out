@@ -1,0 +1,8 @@
+Prelude is up to date
+Compiling typeClasses/ClassInstaneError4.hs
+(2,5): Type signature is too general
+ function         : f
+   declared type  : X a => a   -> Int
+   inferred type  :        Int -> Int
+
+Compilation failed with 1 error

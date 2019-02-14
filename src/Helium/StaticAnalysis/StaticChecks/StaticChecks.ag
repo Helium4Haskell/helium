@@ -116,3 +116,13 @@ SEM Patterns
 SEM MaybeName [ | | name : { Maybe Name } ]
     | Nothing             lhs.name      = Nothing
     | Just                lhs.name      = Just @name.self
+ATTR Body Declaration Declarations Expression Expressions
+     GuardedExpression GuardedExpressions MaybeDeclarations
+     MaybeExpression Qualifier Qualifiers RecordExpressionBinding
+     RightHandSide Alternative Alternatives FunctionBinding
+     FunctionBindings Statement RecordExpressionBindings
+     Statements AnnotatedType Types Constructor AnnotatedTypes 
+     ContextItem FieldDeclaration Constructors ContextItems 
+     FieldDeclarations Type 
+               [ classMemberEnv : {ClassMemberEnvironment} 
+               importEnvironments    : ImportEnvironments| | ]

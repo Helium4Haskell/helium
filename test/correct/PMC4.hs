@@ -1,6 +1,7 @@
 module PMC4 where
 
 data MyList a = Cons a (MyList a) | Nil
+    deriving Show
 
 main :: MyList Int
 main = map2 (\x -> x + 1) (Cons 1 Nil)

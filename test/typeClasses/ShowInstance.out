@@ -1,0 +1,5 @@
+Prelude is up to date
+Compiling typeClasses/ShowInstance.hs
+(6,1): Warning: Missing type signature: main :: String
+Compilation successful with 1 warning
+"Y"

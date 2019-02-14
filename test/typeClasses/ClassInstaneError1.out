@@ -1,0 +1,10 @@
+Prelude is up to date
+Compiling typeClasses/ClassInstaneError1.hs
+(4,8): Type error in overloaded function
+ function         : f
+   type           : X a => a   -> Int
+   used as        :        Int -> Int
+ problem          : Int is not an instance of class X
+ hint             : there are no valid instances of X
+
+Compilation failed with 1 error

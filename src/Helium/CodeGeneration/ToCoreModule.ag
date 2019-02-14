@@ -26,8 +26,8 @@ interpreterMain = "interpreter_main"
 -- The interpreter_main has te be wrapped inside unsafePerformIO etcetera, too
 -- We can't just call it main because we'll get import clashes.  Sigh!
 
-insertedMain :: TypeEnvironment -> CoreDecl
-insertedMain toplevelTypes =
+insertedMain :: ClassEnvironment -> TypeSynonymEnvironment -> TypeEnvironment -> CoreDecl
+insertedMain classEnv tse toplevelTypes = 
     let maybeWrapMainAndType = 
             case (M.lookup (Name_Identifier noRange [] [] "main") $! toplevelTypes) of -- !!!Name
                 Just t -> Just ("main", t)
@@ -52,7 +52,7 @@ insertedMain toplevelTypes =
                         var name
                     | otherwise ->
                         var "$primPutStrLn" `app_` 
-                            (DerivingShow.showFunctionOfType True (makeTypeFromTp tp) `app_` 
+                            (Core.Ap (var "show")  (DerivingShow.showFunctionOfType classEnv tse True (makeTypeFromTp tp)) `app_` 
                                 var name)
                     where                        
                         (qs, tp) = split (snd (instantiate 123456789 tpScheme))
@@ -64,7 +64,7 @@ insertedMain toplevelTypes =
 SEM Module
     | Module    -- insert "insertedMain" after modulePublic so that it remains private
                 lhs.core = @module_ { Module.moduleDecls = 
-                                insertedMain @lhs.toplevelTypes : Module.moduleDecls @module_ }
+                                insertedMain (classEnvironment @lhs.importEnv) (typeSynonyms @lhs.importEnv) @lhs.toplevelTypes : Module.moduleDecls @module_ }
                 loc.modulename = maybe "Main" getNameName @name.name
                 loc.moduleQual = maybe ["Main"] getQualified @name.name
                 loc.module_ = 
@@ -72,6 +72,7 @@ SEM Module
                         (makeCoreModule (Just $ idFromString @modulename)
                             ( @body.decls ++ @lhs.extraDecls
                             ))
+                body . instanceName = Nothing
                 loc.exportlists = (@exports.values
                                   , @exports.confieldormethods
                                   , @exports.typeorclasses
@@ -81,6 +82,7 @@ SEM Module
     --  name                     : MaybeName
     --  exports                  : MaybeExports
     --  body                     : Body
+
 {
 -- set the public bit of all declarations except those that are imported from
 -- Prelude or HeliumLang. I.e. export everything everywhere
@@ -168,7 +170,7 @@ SEM Export
     --  range                    : Range
     --  name                     : Name   -- this is a module name
 
-ATTR Body Declarations Declaration
+ATTR Body Declarations Declaration MaybeDeclarations
     [   moduleQual : { [String] }
     | 
     |   decls USE { ++ } { [] } : { [CoreDecl] }
@@ -181,6 +183,7 @@ SEM Body
     | Body             lhs.decls    = @declarations.decls
                        declarations.patBindNr = 0
                        declarations.isTopLevel = True
+                       declarations.instanceName = Nothing
     --  range                    : Range
     --  importdeclarations       : ImportDeclarations
     --  declarations             : Declarations

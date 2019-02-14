@@ -1,0 +1,8 @@
+Prelude is up to date
+Compiling typeClasses/ClassInstaneError13.hs
+(6,9): Type error in right-hand side
+ expression       : f
+   type           : a -> Int 
+   does not match : b -> Bool
+
+Compilation failed with 1 error

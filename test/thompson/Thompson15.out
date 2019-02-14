@@ -3,8 +3,8 @@ Compiling thompson/Thompson15.hs
 (1,17): Type error in infix application
  expression       : x + abs - 2
  operator         : -
-   type           : a            -> a   -> a
-   does not match : (Int -> Int) -> Int -> b
+   type           : Int      -> Int -> Int
+   does not match : (a -> a) -> Int -> b
  possible fix     : Insert parentheses to negate the int literal: (-2)
 
 Compilation failed with 1 error

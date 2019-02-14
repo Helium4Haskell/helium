@@ -10,19 +10,40 @@ module Helium.ModuleSystem.CoreToImportEnv(getImportEnvironment, originFromCusto
 
 import Lvm.Core.Expr
 import Lvm.Core.Utils
+import Lvm.Common.Id
+import Lvm.Common.Byte(stringFromBytes)
+
 import Helium.Utils.Utils
 import Helium.StaticAnalysis.Miscellaneous.TypeConversion
 import Helium.Parser.ParseLibrary
 import Helium.Parser.Lexer(lexer)
 import Helium.Parser.Parser(type_, contextAndType)
+import Helium.Parser.OperatorTable
 import Helium.ModuleSystem.ImportEnvironment
 import Helium.Syntax.UHA_Utils
-import Lvm.Common.Id
+import Helium.Syntax.UHA_Range(makeImportRange, setNameRange, noRange)
 import Helium.Syntax.UHA_Syntax
-import Helium.Parser.OperatorTable
+
 import Top.Types
-import Lvm.Common.Byte(stringFromBytes)
-import Helium.Syntax.UHA_Range(makeImportRange, setNameRange)
+
+import Control.Arrow
+import Data.List
+import Data.Char
+import Data.Maybe
+import qualified Data.Map as M
+
+typeDictFromCustoms :: String -> [Custom] -> TpScheme
+typeDictFromCustoms n [] = internalError "CoreToImportEnv" "typeFromCustoms"
+                ("function import without type: " ++ n)
+typeDictFromCustoms n ( CustomDecl (DeclKindCustom ident) [CustomBytes bytes] : cs) 
+    | stringFromId ident == "type" =
+        let 
+            string = filter (/= '!') (stringFromBytes bytes) 
+            dictName = takeWhile (/= '$') string
+            dictType = drop 1 $ dropWhile (/= '$') string
+        in makeTpSchemeFromType (parseFromString contextAndType dictType)
+    | otherwise =
+        typeDictFromCustoms n cs
 
 typeFromCustoms :: String -> [Custom] -> TpScheme
 typeFromCustoms n [] =
@@ -136,10 +157,65 @@ makeFullQualifiedImportName origin =
     let (modu, _) = break (==':') origin 
     in addQualified (getQualifiedFromString modu)
 
+insertDictionaries :: String -> CoreDecl -> ImportEnvironment -> ImportEnvironment
+insertDictionaries importedInModule 
+        DeclAbstract{ declName    = n
+                    , declAccess  = Imported{importModule = importedFromModId}
+                    , declCustoms = cs
+                    } env 
+                        | "$dict" `isPrefixOf` stringFromId n = 
+                            let
+                                dictPrefix = "$dict"
+                                splitDictName dict = (getClassName dict, getTypeName dict) 
+                                getClassName :: String -> String
+                                getClassName = takeWhile (/='$')
+                                getTypeName :: String -> String
+                                getTypeName = drop 1 . dropWhile (/='$')
+                                (className, typeName) = splitDictName (drop (length dictPrefix) (stringFromId n))
+                                tpVars = zip (selectCustomsString "typeVariable" cs) (map TVar [0..])
+                                instancePred = Predicate className (foldl TApp (TCon typeName) (map snd tpVars))
+                                superPreds :: Predicates
+                                superPreds = map (\x -> Predicate (takeWhile (/='-') x) (fromMaybe (error "Nothing") $ lookup (drop 1 $ dropWhile (/= '-') x) tpVars)) $ selectCustomsString "superInstance" cs
+                                addInstance :: Instances -> Instances
+                                addInstance = ((instancePred, superPreds):)
+                                nClass = M.update (Just . second addInstance) className (classEnvironment env)
+                                instanceEnv = instanceEnvironment env
+                                nInstanceEnv = M.insert (nameFromString className, foldl TApp (TCon typeName) (map snd tpVars)) 
+                                                (map (nameFromString.fst) tpVars, map (\x -> (takeWhile (/= '-') x, drop 1 $ dropWhile (/= '-') x)) (selectCustomsString "superInstance" cs)) instanceEnv
+
+                            in setInstanceEnvironment nInstanceEnv $ setClassEnvironment nClass env
+
+insertDictionaries importedInModule 
+                    DeclCustom  { declName    = n
+                                , declKind    = DeclKindCustom ident
+                                , declCustoms = cs
+                                } env
+                                | stringFromId ident == "ClassDefinition" = let
+                                    tpVar = map (\(CustomDecl _ [CustomName n]) -> nameFromId n) $ selectCustoms "ClassTypeVariables" cs 
+                                    functions = map getFunction $ selectCustoms "Function" cs
+                                    getFunction :: Custom -> (Name, TpScheme, Bool, HasDefault)
+                                    getFunction (CustomDecl _ [
+                                            CustomName fname,
+                                            CustomBytes tps,
+                                            CustomInt n
+                                        ]) = (nameFromString $ stringFromId fname, makeTpSchemeFromType $ parseFromString type_ $ stringFromBytes tps, n == 1, n == 1)
+                                    className = nameFromId n
+                                    classMembers = (tpVar, functions) 
+                                in setClassMemberEnvironment (M.insert className classMembers (classMemberEnvironment env)) env
+insertDictionaries _ _ env = env
+
+selectCustomsString ::  String -> [Custom] -> [String]
+selectCustomsString n cs = map (\(CustomDecl _ [CustomBytes values]) -> stringFromBytes values) $ filter (\(CustomDecl (DeclKindCustom n') _) -> n == stringFromId n') cs
+
+selectCustoms :: String -> [Custom] -> [Custom]
+selectCustoms n = filter (\(CustomDecl (DeclKindCustom n') _) -> n == stringFromId n')
+
+
 getImportEnvironment :: String -> [CoreDecl] -> ImportEnvironment
-getImportEnvironment importedInModule = foldr insert emptyEnvironment
+getImportEnvironment importedInModule decls = foldr (insertDictionaries importedInModule) (foldr insert emptyEnvironment decls) decls
    where
-      insert decl = 
+      insert :: CoreDecl -> (ImportEnvironment -> ImportEnvironment) 
+      insert decl =
          case decl of 
          
            -- functions
@@ -147,9 +223,19 @@ getImportEnvironment importedInModule = foldr insert emptyEnvironment
                         , declAccess  = Imported{importModule = importedFromModId}
                         , declCustoms = cs
                         } ->
-              addType
-                 (makeImportName importedInModule importedFromModId (originFromCustoms cs) n)
-                 (typeFromCustoms (stringFromId n) cs)
+                \env ->  
+                    let
+                        nEnv =  addType
+                                    (makeImportName importedInModule importedFromModId (originFromCustoms cs) n)
+                                    ((  
+                                        if "$dict" `isPrefixOf` (stringFromId n) then 
+                                            typeDictFromCustoms
+                                        else 
+                                            typeFromCustoms) 
+                                        (stringFromId n) cs) env
+                        
+                    in nEnv 
+                
           
            -- functions from non-core/non-lvm libraries and lvm-instructions
            DeclExtern { declName = n
@@ -164,7 +250,7 @@ getImportEnvironment importedInModule = foldr insert emptyEnvironment
            DeclCon { declName    = n
                    , declAccess  = Imported{importModule = importedFromModId}
                    , declCustoms = cs
-                   } ->
+                   } -> 
               addValueConstructor
                 (makeImportName importedInModule importedFromModId (originFromCustoms cs) n)
                 (typeFromCustoms (stringFromId n) cs)
@@ -218,7 +304,40 @@ getImportEnvironment importedInModule = foldr insert emptyEnvironment
               in case reads text of 
                     [(rule, [])] -> addTypingStrategies rule
                     _ -> intErr "Could not parse typing strategy from core file"
-
+            
+           -- class decls
+           DeclCustom { declName    = n
+                      , declKind    = DeclKindCustom ident
+                      , declCustoms = cs
+                      }
+                      | stringFromId ident == "ClassDefinition" -> 
+                        let 
+                            selectCustom :: String -> [Custom] -> [Custom]
+                            selectCustom s = filter (isCustom s)
+                            isCustom :: String -> Custom -> Bool
+                            isCustom s (CustomDecl (DeclKindCustom cid) _) = stringFromId cid == s 
+                            isCustom _ _ = False
+                            getTypeVariable :: Custom -> Names
+                            getTypeVariable (CustomDecl _ [CustomName tn]) = [nameFromString $ stringFromId tn]
+                            className = nameFromString $ stringFromId n
+                            classVariables = getTypeVariable $ head (selectCustom "ClassTypeVariables" cs)
+                            superClasses = selectCustom "SuperClass" cs
+                            addClass :: Name -> [Custom] -> ImportEnvironment -> ImportEnvironment
+                            addClass className superClasses env = let
+                                    classEnv = classEnvironment env
+                                    superClassLabels = map superClassToLabel superClasses
+                                    superClassToLabel :: Custom -> String
+                                    superClassToLabel (CustomDecl _ [CustomName n]) = stringFromId n
+                                    nClassEnv = M.insert (getNameName className) (superClassLabels, []) classEnv
+                                in setClassEnvironment nClassEnv env
+                            getFunction :: Custom -> (Name, TpScheme, Bool, HasDefault)
+                            getFunction (CustomDecl _ [
+                                    CustomName fname,
+                                    CustomBytes tps,
+                                    CustomInt n
+                                ]) = (nameFromString $ stringFromId fname, makeTpSchemeFromType $ parseFromString type_ $ stringFromBytes tps, False, n == 1)
+                            classMembers = (classVariables, map getFunction $ selectCustom "Function" cs)
+                        in addClass className superClasses . addClassMember className classMembers 
            -- !!! Print importedFromModId from "declAccess = Imported{importModule = importedFromModId}" as well
            DeclAbstract{ declName = n } ->
               intErr  ("don't know how to handle declared DeclAbstract: " ++ stringFromId n)

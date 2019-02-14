@@ -2,4 +2,5 @@ Prelude is up to date
 Compiling typeClassesStatic/FunctionInMultipleClasses.hs
 (2,3): Type declaration for "duplicate" in multipe classes
   Hint: You declared it in: "ClassB" or "ClassA" .
-Compilation failed with 1 error
+(2,3), (5,3): Duplicated definition "duplicate"
+Compilation failed with 2 errors

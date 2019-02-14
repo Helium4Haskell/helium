@@ -14,6 +14,7 @@ module Helium.CodeGeneration.CoreUtils
     ,   var, decl
     ,   float, packedString
     ,   setExportsPublic
+    ,   toplevelType
     ) where
 
 import Lvm.Core.Expr
@@ -23,9 +24,12 @@ import Lvm.Core.Utils
 import Data.Char
 import Lvm.Common.Byte(bytesFromString)
 import qualified Lvm.Core.Expr as Core
-import Helium.Syntax.UHA_Utils
+import qualified Data.Map as M
 import Data.List(isPrefixOf)
-import Helium.Utils.Utils(internalError)
+import Helium.ModuleSystem.ImportEnvironment
+import Helium.Syntax.UHA_Syntax
+import Helium.Syntax.UHA_Utils
+import Helium.Utils.Utils
 
 infixl `app_`
 
@@ -188,3 +192,13 @@ setExportsPublic implicit (exports,exportCons,exportData,exportDataCon,exportMod
 
     conTypeName (DeclCon{declCustoms=(_:CustomLink x _:_)}) = x
     conTypeName _ = dummyId
+
+toplevelType :: Name -> ImportEnvironment -> Bool -> [Custom]
+toplevelType name ie isTopLevel
+    | isTopLevel = [custom "type" typeString]
+    | otherwise  = []
+    where
+        typeString = maybe
+            (internalError "ToCoreDecl" "Declaration" ("no type found for " ++ getNameName name))
+            show
+            (M.lookup name (typeEnvironment ie))

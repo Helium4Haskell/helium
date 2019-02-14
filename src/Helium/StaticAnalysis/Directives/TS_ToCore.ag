@@ -38,11 +38,18 @@ import Data.List
 import Helium.Utils.OneLiner
 import Helium.StaticAnalysis.Directives.TS_Attributes
 import Helium.StaticAnalysis.Miscellaneous.TypeConstraints
-
 }
 ATTR TypingStrategies TypingStrategy [ importEnvironment : ImportEnvironment | | ]
 
 SEM TypingStrategy [ | | core : Core_TypingStrategy ]
+  | Never
+      lhs . core = Never (getNameName @predName.self) (makeTpFromType [] @predType.self) @message
+  | Close
+      lhs . core = Close (getNameName @name) @message
+  | Disjoint
+      lhs . core = Disjoint (map getNameName @names) @message
+  | Default 
+      lhs . core = Default (getNameName @className) (map (makeTpFromType []) @constructors)
   | Siblings
       lhs . core = Siblings (map getNameName @names.self)
   | TypingStrategy
