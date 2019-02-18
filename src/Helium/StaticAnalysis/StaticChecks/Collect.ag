@@ -33,7 +33,7 @@ SEM Module
                                         . setOperatorTable     (M.fromList @body.operatorFixities)
                                         . addToTypeEnvironment  (insertClassMembers @body.collectClassMemberEnv (M.fromList @derivedFunctions))
                                         . setClassEnvironment (insertInstances @body.classInstances
-                                            (M.unionWith combineClassDecls @body.classEnv (classEnvironment $ combineImportEnvironmentList @lhs.importEnvironments)))
+                                            (M.unionWith combineClassDecls @body.classEnv (classEnvironment $ combineImportEnvironmentList @importEnvironments)))
                                         . setInstanceEnvironment @body.instanceEnv
                                         . setClassMemberEnvironment @body.collectClassMemberEnv
                                         $emptyEnvironment
@@ -49,8 +49,8 @@ SEM Module
                                             ( []
                                             , map f @body.collectTypeConstructors
                                             )
-                 
--}                 
+
+-}                             
 ATTR Body Declarations Declaration Constructors Constructor [ moduleQual : {[ String ]} | | ]
 {
 addQualifiedCollect :: [String] -> Name -> a -> [(Name, a)] -> [(Name, a)]
@@ -60,8 +60,6 @@ addQualifiedCollect qual name result collect =
         res2 = (qualname, result)
     in res1 : res2 : collect
 }
-
--}
 
 -------------------------------------------
 -- 1) Collecting (data-)type constructors
@@ -209,7 +207,7 @@ ATTR Module -> Declaration [ classEnvironment:ClassEnvironment | | collectInstan
 SEM Module
   | Module
        body.classEnvironment =
-          let importEnv = foldr combineImportEnvironments emptyEnvironment @lhs.importEnvironments
+          let importEnv = foldr combineImportEnvironments emptyEnvironment @importEnvironments
           in foldr (\(n, i) -> insertInstance (show n) i)
                    (classEnvironment importEnv)
                    @body.collectInstances

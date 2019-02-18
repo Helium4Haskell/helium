@@ -68,7 +68,7 @@ ATTR Body Declarations Declaration Expressions Expression Statements Statement
         instanceName : {Maybe Name} 
         | | ]
 
-ATTR Body Declarations Declaration Constructor Constructors
+ATTR Body Declarations Declaration MaybeDeclarations Constructor Constructors
     [ importEnv     : ImportEnvironment modulename : String | | ]
     
 SEM Expression        | Let  loc.importEnv  = internalError "CodeGeneration.ag" "Expression.Let" ""

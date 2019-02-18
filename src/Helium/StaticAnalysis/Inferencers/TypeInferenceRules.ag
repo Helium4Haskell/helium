@@ -101,7 +101,8 @@ ATTR Declaration Declarations MaybeDeclarations RightHandSide Qualifier Qualifie
     |
 ]
 ATTR Declaration Declarations MaybeDeclarations 
-            [   monos:Monos 
+            [   typeConstructors:TypeConstructorEnvironment
+                monos:Monos 
             |   betaUnique:Int 
             |   boundBetas      USE {(++)} {[]} : {[(Name, Tp, [Tp])]} 
                 typeMemberBindings  USE {(++)} {[]} : {[(Name, TpScheme)]}
@@ -280,7 +281,7 @@ addPredicatesToTpScheme preds (Quantification (nrs, map, q)) =
             in (pred : preds) .=>. tp
 
 constructDictionaryName :: Name -> String -> Name
-constructDictionaryName (Name_Identifier range modules name) s = Name_Identifier range modules ("($dict" ++ name ++ "$" ++ s ++ ")")    
+constructDictionaryName (Name_Identifier range modules origin name) s = Name_Identifier range modules origin ("($dict" ++ name ++ "$" ++ s ++ ")")    
 
 classVariablesToBeta :: Int -> Names -> [(Name, Tp)]
 classVariablesToBeta _ [] = []

@@ -121,10 +121,6 @@ import qualified Data.Map as M
 import Data.Maybe 
 }
 
-SEM MaybeName [ | | name : { Maybe Name } ]
-    | Nothing             lhs.name      = Nothing
-    | Just                lhs.name      = Just @name.self
-
 SEM Module | Module loc . moduleQual = maybe ["Main"] getQualified @name.name
                     loc . isTopLevel = True
 

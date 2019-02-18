@@ -72,15 +72,15 @@ emptyEnvironment = ImportEnvironment
    , typingStrategies  = []
    }
 
-addTypeConstructor :: Name -> Int -> ImportEnvironment -> ImportEnvironment
-addTypeConstructor name int importenv =
-   importenv {typeConstructors = M.insert name int (typeConstructors importenv)}
+addTypeConstructor :: Name -> (Int, Name) -> ImportEnvironment -> ImportEnvironment
+addTypeConstructor name (int, fullname) importenv =
+   importenv {typeConstructors = M.insert name (int, fullname) (typeConstructors importenv)}
 
 -- add a type synonym also to the type constructor environment
-addTypeSynonym :: Name -> (Int,Tps -> Tp) -> ImportEnvironment -> ImportEnvironment
-addTypeSynonym name (arity, function) importenv =
+addTypeSynonym :: Name -> (Int,Tps -> Tp, Name) -> ImportEnvironment -> ImportEnvironment
+addTypeSynonym name (arity, function, fullname) importenv =
    importenv { typeSynonyms     = M.insert name (arity, function) (typeSynonyms importenv)
-             , typeConstructors = M.insert name arity (typeConstructors importenv)
+             , typeConstructors = M.insert name (arity, fullname) (typeConstructors importenv)
              }
 
 addType :: Name -> TpScheme -> ImportEnvironment -> ImportEnvironment
@@ -320,7 +320,7 @@ createClassEnvironment importenv =
                            (internalError "ImportEnvironment" "splitDictName" ("unknown type constructor: " ++ show s))
                            (nameFromString s)
                            (typeConstructors importenv)
-         dictTuples = [ (c, makeInstance c (arity t) (getQualName t) ) 
+         dictTuples = [ (c, makeInstance c (arity t) (getQualName t) True )  --TODO: Is True correct?
                       | d <- dicts, let (c, t) = splitDictName d 
                       ]
          isListConstructor "[]" = True

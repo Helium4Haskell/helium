@@ -186,7 +186,7 @@ opSpecial :: HParser String -> HParser Name
 opSpecial p = addRange $
       do
         n <- p
-        return (\r -> Name_Special r [] n)
+        return (\r -> Name_Special r [] n n) -- TODO: Is the second `n` correct?
 
 addRange :: HParser (Range -> a) -> HParser a
 addRange p =
