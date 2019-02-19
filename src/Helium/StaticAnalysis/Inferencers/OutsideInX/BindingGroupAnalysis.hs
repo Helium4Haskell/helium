@@ -195,7 +195,7 @@ bindingGroupAnalysis input@(isTopLevel, axioms, typeSignatures, touchables, body
                                  resSubstitution   | isTopLevel = traceShow solverResult $ nub $ right substitution [] solverResult ++ subsOrig
                                                    | otherwise = [] 
                                  resResolvedConstraints = concatMap (snd . snd) (M.elems newTS) ++ resolvedConstraints
-                                 resTypeErrors  | isTopLevel = checkTooGeneralSignature (right smallGiven [] solverResult) (M.intersectionWith (\(t1, pt) t2 -> (t1, pt, t2)) ts2 env1)
+                                 resTypeErrors  | isTopLevel = checkTooGeneralSignature (right smallGiven [] solverResult ++ map (\(v, m) -> Constraint_Unify (var v) m) resSubstitution) (M.intersectionWith (\(t1, pt) t2 -> (t1, pt, t2)) ts2 env1)
                                                                    ++ escapeVariableCheck (resAssumptions M.\\ bodyAssumptions) env1 ts2
                                                                    ++ residualConstraintsCheck (env1 M.\\ ts2) (residualConstraints) ++ left createTypeError [] solverResult ++ typeErrors
                                                 | otherwise = escapeVariableCheck (resAssumptions M.\\ bodyAssumptions) env1 ts2 ++ typeErrors
@@ -226,13 +226,13 @@ replacePolytype (Constraint_Inst (MonoType_Var v) pt:cs) p  | var v == p = pt
 replacePolytype (_:cs) p = replacePolytype cs p
 
 checkTooGeneralSignature :: [Constraint] -> M.Map Name (TyVar, PolyType, TyVar) -> [TypeError]
-checkTooGeneralSignature cs ts = concatMap (\x -> traceShow x $ checkTS x cs) $ M.elems ts
+checkTooGeneralSignature cs ts = concatMap (\x -> traceShow x $ checkTS x cs) $ traceShow cs $ M.elems ts
                         where
                            check :: PolyType -> PolyType -> [TypeError]
                            check v1 v2@(PolyType_Mono _ m)  | clearConstraints v1 /= bindVariables (getTypeVariablesFromMonoType m) v2 = let 
                                                                      equal v1 v2 =
                                                                         case (v1, v2) of 
-                                                                           (PolyType_Mono _ v1, PolyType_Mono _ v2) -> return (traceShowId (freshen 0 $ traceShowId v1) == traceShowId (freshen (0 :: Integer) $ traceShowId v2))
+                                                                           (PolyType_Mono _ v1, PolyType_Mono _ v2) -> return $ (\x y -> traceShow "comp" $ traceShow x $ traceShow y $ eqMT x y) (fst (freshen (0 :: Integer) v1)) (fst (freshen (0 :: Integer) v2))
                                                                            (v1@(PolyType_Mono _ _), PolyType_Bind b) -> unbind b >>= (\(t, p) -> (equal v1 p))
                                                                            (PolyType_Bind b, v2@(PolyType_Mono _ _)) -> unbind b >>= (\(t, p) -> (equal p v2))
                                                                            (PolyType_Bind b1, PolyType_Bind b2) -> unbind2 b1 b2 >>= (\(Just (_, p1, _, p2)) -> (equal p1 p2))
@@ -249,6 +249,15 @@ checkTooGeneralSignature cs ts = concatMap (\x -> traceShow x $ checkTS x cs) $ 
                                                                               | otherwise = checkTS (tyvar, pt, tyvar2) cs
                            checkTS (tyvar, pt, tyvar2) (_:cs)                         = checkTS (tyvar, pt, tyvar2) cs
                            checkTS _ []                                       = []
+
+
+                           eqMT :: MonoType -> MonoType -> Bool 
+                           eqMT (MonoType_Var v1) (MonoType_Var v2) = v1 == v2
+                           eqMT (MonoType_Con n1) (MonoType_Con n2) = n1 == n2
+                           eqMT (MonoType_Fam n []) _ = True
+                           eqMT (MonoType_Fam n xs) m = and $ zipWith eqMT (snd $ conList m) xs
+                           eqMT (MonoType_App f1 a1) (MonoType_App f2 a2) = eqMT f1 f2 && eqMT a1 a2
+                           eqMT _ _ = False
 
 escapeVariableCheck :: Assumptions -> Environment -> TypeSignatures -> [TypeError]
 escapeVariableCheck ass env ts   | null ass = []

@@ -95,7 +95,7 @@ SEM Module
         lhs . toplevelTypes = const id (trace "Residual constraints" $ traceShow (getResidualConstraints @solveResults)) $ if null @typeErrors then M.mapWithKey (lookupType @body.typeSignaturesCollect) @body.tlEnvironment else M.empty -- 
         loc . typeErrors = traceShowId $ const id (trace (unlines $ map show $ sortOn fst $ nub $ @substitution)) $ concatMap (makeTypeError @tyvars) (getResidualConstraints @solveResults \\ @body.resolvedContraints) ++ getTypeErrors @solveResults ++ @body.typeErrors
         lhs . warnings = getWarnings @solveResults
-        loc . axioms = classEnvironmentToAxioms (classEnvironment @lhs.importEnvironment)
+        loc . axioms = traceShowId $ typeSynonymsToAxioms (typeSynonyms @lhs.importEnvironment) ++ classEnvironmentToAxioms (importEnvironmentToTypeFamilies @lhs.importEnvironment) (classEnvironment @lhs.importEnvironment)
         body . axioms = @axioms
         body . betaUnique = 1
         loc . substitution = (if null @body.assumptions then id else trace "Unresolved assumptions" . traceShow @body.assumptions) (getSubstitution @solveResults ++ @body.substitutionCollect)
@@ -103,7 +103,7 @@ SEM Module
         loc . constrs = @body.constraints
         loc . tyvars = @body.touchables
         loc . solveResults = constructErrors $ contFreshM (solve @axioms (map (uncurry (Constraint_Unify . var)) @body.substitutionCollect) (@constrs) @tyvars) @body.betaUnique 
-        body . typeSignatures = M.map (\tps -> (integer2Name (-1), tpSchemeToPolyType tps)) $ typeEnvironment @lhs.importEnvironment
+        body . typeSignatures = M.map (\tps -> (integer2Name (-1), tpSchemeToPolyType (importEnvironmentToTypeFamilies @lhs.importEnvironment) tps)) $ typeEnvironment @lhs.importEnvironment
         body . instanceType = Nothing
         body . className = Nothing
         body . typeSignatureConstraints = []
@@ -152,7 +152,7 @@ SEM Declaration
                                                     M.lookup cn (classMemberEnvironment @lhs.importEnvironment)
                                                 (_, functionTpScheme, _, _) = fromMaybe (internalError "TypeInferenceRules" "n/a" "class function not found")
                                                     (find (\(n, _, _, _) -> n == @bindings.name) classFunctions) 
-                                                (polyType, mapping) = tpSchemeToPolyType' (map show classTypeVariables) functionTpScheme
+                                                (polyType, mapping) = tpSchemeToPolyType' (importEnvironmentToTypeFamilies @lhs.importEnvironment) (map show classTypeVariables) functionTpScheme
                                             
                                                 (fMapping, (freshend, bu)) = freshenWithMapping [] (@lhs.betaUnique + 2 + @bindings.numberOfPatterns) polyType
                                                 replacedFreshened = UL.substs (combineSubsitutions @lhs.typeVariableReplace mapping fMapping) freshend
@@ -183,8 +183,8 @@ SEM Declaration
         loc . beta              = integer2Name @lhs.betaUnique
         lhs . betaUnique        = @bu
         lhs . typeSignaturesCollect = @ts
-        loc . (ts, bu)          = foldr (\n (m, b) -> let 
-                                                (t, b', mapping) = typeToPolytype b @type.self
+        loc . (ts, bu)          = traceShowId $ foldr (\n (m, b) -> let 
+                                                (t, b', mapping) = typeToPolytype (importEnvironmentToTypeFamilies @lhs.importEnvironment) b @type.self
                                                 t' = t -- replaceTypeVariables mapping @lhs.typeVariableReplace t 
                                                 m' = M.insert n (integer2Name b', expandClassPredicates (classEnvironment @lhs.importEnvironment) t') m
                                             in (m', b' + 2)) (M.empty, @lhs.betaUnique + 1) $ @names.self
@@ -204,7 +204,7 @@ SEM Declaration
         loc . classBeta     = case (M.lookup @name.self (classMemberEnvironment @lhs.importEnvironment)) of
                                 Nothing -> internalError "TypeInferenceRules" "n/a" "Class not found"
                                 Just (classBeta, _) -> show $ head classBeta
-        loc . ((tp, mapping), bu) = freshen (@lhs.betaUnique + toInteger (length @instanceBetas + 1)) $ (\(_, mapping, x) -> (x, mapping)) $ typeToMonoType (head @types.self)
+        loc . ((tp, mapping), bu) = freshen (@lhs.betaUnique + toInteger (length @instanceBetas + 1)) $ (\(_, mapping, x) -> (x, mapping)) $ typeToMonoType (importEnvironmentToTypeFamilies @lhs.importEnvironment) (head @types.self)
         where . betaUnique = @bu
         where . className = Just @name.self
         where . typeSignatureConstraints = 
@@ -311,7 +311,7 @@ SEM Pattern
                                                 [Constraint_Unify (var @betaCon) @conrt] ++ @resConstraints ++  @conApply : @conConstraints ++ @patterns.constraints
         loc . ((tp, bu), ct)            = case M.lookup @name.self (valueConstructors @lhs.importEnvironment) of
                                             Nothing  -> internalError "TypeInferenceRules" "n/a" "Constructor not found"
-                                            Just (ctp, ct) -> (freshen (@lhs.betaUnique + 2) $ tpSchemeToPolyType ctp, ct)
+                                            Just (ctp, ct) -> (freshen (@lhs.betaUnique + 2) $ tpSchemeToPolyType (importEnvironmentToTypeFamilies @lhs.importEnvironment) ctp, ct)
         loc . ((rt, conrt, resConstraints), bu2) = freshen (@bu + 1) $ getResultType @tp
 
     | InfixConstructor
@@ -323,7 +323,7 @@ SEM Pattern
         loc . conApply                  = Constraint_Unify (var @betaCon) (var @leftPattern.beta :-->: (var @rightPattern.beta :-->: var @beta))
         loc . (tp, bu)                  = case M.lookup @constructorOperator.self (valueConstructors @lhs.importEnvironment) of
                                             Nothing  -> internalError "TypeInferenceRules" "n/a" "Constructor not found"
-                                            Just (ctp, _) -> freshen (@lhs.betaUnique + 2) $ tpSchemeToPolyType ctp
+                                            Just (ctp, _) -> freshen (@lhs.betaUnique + 2) $ tpSchemeToPolyType (importEnvironmentToTypeFamilies @lhs.importEnvironment) ctp
         loc . conConstraints            = [Constraint_Inst (var @betaCon) @tp]
     | As
         pattern . betaUnique            = @lhs.betaUnique + 1
@@ -555,7 +555,7 @@ SEM Expression
         lhs . betaUnique        = @bu
         loc . (tp, bu)          = case M.lookup @name.self (valueConstructors @lhs.importEnvironment) of
                                     Nothing  -> internalError "TypeInferenceRules" "n/a" "Constructor not found"
-                                    Just (ctp, _) -> freshen (@lhs.betaUnique + 1) $ tpSchemeToPolyType ctp
+                                    Just (ctp, _) -> freshen (@lhs.betaUnique + 1) $ tpSchemeToPolyType (importEnvironmentToTypeFamilies @lhs.importEnvironment) ctp
         lhs . constraints       = [Constraint_Inst (var @beta) @tp]
         loc . beta              = integer2Name @lhs.betaUnique
     | InfixApplication
@@ -604,7 +604,7 @@ SEM Expression
                                     Constraint_Inst (var @beta) @tp
                                 ] ++ @expression.constraints
         loc . beta          = integer2Name @lhs.betaUnique
-        loc . (tp, bu, mapping)      = typeToPolytype (@lhs.betaUnique + 1) @type.self
+        loc . (tp, bu, mapping)      = typeToPolytype (importEnvironmentToTypeFamilies @lhs.importEnvironment) (@lhs.betaUnique + 1) @type.self
     | Comprehension
         lhs . constraints           = @newcon : @qualifiers.constraints
         lhs . touchables            = @beta : @expression.touchables ++ @qualifiers.touchables
