@@ -27,7 +27,7 @@ import Cobalt.OutsideIn
 import Cobalt.Core
 
 import Unbound.LocallyNameless.Fresh
-import Unbound.LocallyNameless hiding (Name, close)
+import Unbound.LocallyNameless hiding (Name, close, freshen)
 import Unbound.LocallyNameless.Ops hiding (freshen)
 import Unbound.LocallyNameless.Types hiding (Name)
 
@@ -52,10 +52,16 @@ type Environment = M.Map Name TyVar
 type TypeSignatures = M.Map Name (TyVar, PolyType)
 type Touchables = [TyVar]
 type Constraints = [Constraint]
-type BindingGroup = (Environment, Assumptions, Constraints, GADTConstraints)
+type BindingGroup = (Environment, Assumptions, Constraints, Constraints, GADTConstraints)
 type Substitution = [(TyVar, MonoType)]
 
-type GADTConstraint = ([TyVar], [Constraint], [Constraint], Assumptions)
+data GADTConstraint = GADTConstraint 
+      {  gadtTouchables :: [TyVar]
+      ,  gadtCondition :: [Constraint]
+      ,  gadtImplication :: [Constraint]
+      ,  gadtAssumptions :: Assumptions
+      ,  gadtSubGADTConstraints :: GADTConstraints
+      } deriving Show
 
 type GADTConstraints = [GADTConstraint]
 
@@ -65,20 +71,17 @@ combineAssumptions = M.unionWith (++)
 
 emptyBindingGroup :: BindingGroup
 emptyBindingGroup = 
-   (M.empty, M.empty, [], [])
+   (M.empty, M.empty, [], [], [])
 
 combineBindingGroup :: BindingGroup -> BindingGroup -> BindingGroup
-combineBindingGroup (e1,a1,c1, gcs1) (e2,a2,c2, gcs2) = 
-   (e1 `M.union` e2, a1 `combineAssumptions` a2, c1++c2, gcs1 ++ gcs2)
+combineBindingGroup (e1,a1,c1, gCon1, gcs1) (e2,a2,c2, gCon2, gcs2) = 
+   (e1 `M.union` e2, a1 `combineAssumptions` a2, c1++c2, gCon1 ++ gCon2, gcs1 ++ gcs2)
 
 concatBindingGroups :: [BindingGroup] -> BindingGroup
 concatBindingGroups = foldr combineBindingGroup emptyBindingGroup
 
-gadtConstraintAssumptions :: GADTConstraint -> Assumptions
-gadtConstraintAssumptions (_, _, _, ass) = ass
-
 gadtConstraintsAssumptions :: [GADTConstraint] -> Assumptions
-gadtConstraintsAssumptions = foldr (combineAssumptions . gadtConstraintAssumptions) M.empty
+gadtConstraintsAssumptions = foldr (combineAssumptions . gadtAssumptions) M.empty
 
 instanceTS :: Integer -> Assumptions -> TypeSignatures -> (Integer, [Constraint], Touchables)
 instanceTS bu ass ts = foldr combineTS (bu, [], []) $ concat $ M.elems $ M.intersectionWith (\a (_, t) -> [(a', t) | (_, a') <- a]) ass ts
@@ -88,11 +91,13 @@ instanceTS bu ass ts = foldr combineTS (bu, [], []) $ concat $ M.elems $ M.inter
          (mapping, (t', bu')) = freshenWithMapping [] bu t
          in (bu', Constraint_Inst (var a) t' : cs, map (integer2Name . snd) mapping ++ getTypeVariablesFromPolyType t' ++ tc)
 
+equalASENV :: Assumptions -> Environment -> Constraints
+equalASENV ass env = concat $ M.elems $ M.intersectionWith (\a e -> [Constraint_Unify (var a') (var e) | (_, a') <- a]) ass env
 
-bindingGroupAnalysis ::   (Bool, [Axiom], TypeSignatures, Touchables, Maybe (Assumptions, Constraints, GADTConstraints), TypeErrors, [Constraint], Integer, [(String, [String], [TyVar])]) -> 
+bindingGroupAnalysis ::   (Bool, [Axiom], TypeSignatures, Touchables, Maybe (Assumptions, Constraints, GADTConstraints), TypeErrors, [Constraint], Integer) -> 
                            [BindingGroup] -> 
                            (Touchables, Assumptions, TypeSignatures, Constraints, Integer, Substitution, TypeErrors, Constraints)
-bindingGroupAnalysis input@(isTopLevel, axioms, typeSignatures, touchables, body, errors, resolvedConstraints, betaUnique, classContexts) groups =
+bindingGroupAnalysis input@(isTopLevel, axioms, typeSignatures, touchables, body, errors, resolvedConstraints, betaUnique) groups =
                   variableDependencies
                   where
                      bodyAssumptions :: Assumptions
@@ -102,15 +107,15 @@ bindingGroupAnalysis input@(isTopLevel, axioms, typeSignatures, touchables, body
                            let 
                               explicits = M.keys typeSignatures
                               indexMap = concat (zipWith f cs [0..])
-                              f (env,_,_, _) i = [ (n,i) | n <- M.keys env, n `notElem` explicits ]
+                              f (env,_,_,_, _) i = [ (n,i) | n <- M.keys env, n `notElem` explicits ]
                               edges    = concat (zipWith f' cs [0..])
-                              f' (_,ass,_, gass) i = [ (i,j)| n <- M.keys (ass `combineAssumptions` gadtConstraintsAssumptions gass), (n',j) <- indexMap, n==n' ]
+                              f' (_,ass,_, _, gass) i = [ (i,j)| n <- M.keys (ass `combineAssumptions` gadtConstraintsAssumptions gass), (n',j) <- indexMap, n==n' ]
                               list = topSort (length cs-1) edges
                            in 
                               (if isTopLevel then reverse else id) (map (concatBindingGroups . map (cs !!)) list) ++ (
                                  case body of
                                     Nothing -> []
-                                    Just (a, c, g) -> [(M.empty, a, c, g)]
+                                    Just (a, c, g) -> [(M.empty, a, c, [], g)]
                                  )
                      sortedGroups = bindingGroupAnalysis groups
                      variableDependencies = foldr' op initial sortedGroups
@@ -133,14 +138,13 @@ bindingGroupAnalysis input@(isTopLevel, axioms, typeSignatures, touchables, body
                            extractVariable :: TyVar -> MonoType -> TyVar
                            extractVariable _ (MonoType_Var v) = v
                            extractVariable def m = def
-                           equalASENV :: Assumptions -> Environment -> Constraints
-                           equalASENV ass env = concat $ M.elems $ M.intersectionWith (\a e -> [Constraint_Unify (var a') (var e) | (_, a') <- a]) ass env
+                           
                            initial :: (Touchables, Assumptions, TypeSignatures, Constraints, Integer, Substitution, TypeErrors, Constraints)
                            initial = (touchables, M.empty, typeSignatures, [], betaUnique, [], errors, resolvedConstraints)
                            op :: BindingGroup -> 
                                  (Touchables, Assumptions, TypeSignatures, Constraints, Integer, Substitution, TypeErrors, Constraints) -> 
                                  (Touchables, Assumptions, TypeSignatures, Constraints, Integer, Substitution, TypeErrors, Constraints) 
-                           op g@(env1, ass1, con1, gadtCons) (touchs, ass2, ts2, con2, bu, subsOrig, typeErrors, resolvedConstraints) =
+                           op g@(env1, ass1, con1, gCon1, gadtCons) (touchs, ass2, ts2, con2, bu, subsOrig, typeErrors, resolvedConstraints) =
                               let
                                  (sbu1, c1, touchs1) = instanceTS bu ass1 ts2
                                  (sbu2, c2, touchs2) = instanceTSE sbu1 env1 ts2
@@ -149,20 +153,15 @@ bindingGroupAnalysis input@(isTopLevel, axioms, typeSignatures, touchables, body
                                  c4 = concatMap (\(a', e) -> [Constraint_Unify (var a) (var e) | (_, a) <- a']) $ M.elems $ M.intersectionWith (,) ass2 env1'
                                  (sbu3, c5, touchs3) = instanceTS sbu2 ass2 ts2
                                  
-                                 (sbu4, resGADTConstraints) = foldr (\c@(gTouchs, gCond, gCons, gAss) (lbu, cs) -> 
-                                       let 
-                                          (rBu, lc1, ltouchs1) = instanceTS lbu gAss ts2
-                                          lc2 = equalASENV (gAss M.\\ ts2) env1'
-                                       in (rBu, (gTouchs ++ ltouchs1, gCond, gCons ++ lc1 ++ lc2, gAss M.\\ ts2 M.\\ env1') : cs)
-                                    ) (sbu3, []) gadtCons
+                                 (sbu4, resGADTConstraints) = resolveGADTAssumptions ts2 env1' sbu3 gadtCons
 
                                  gadtConstraints   | isTopLevel = map gadtConstraintToConstraint resGADTConstraints
                                                    | otherwise = []
                                  {- -}                                
                                   {- Solving -}
                                  sBu = sbu4
-                                 sGiven = []
-                                 sWanted = traceMessageId "Wanted" $ (con1 ++ c3 ++ c4 ++ c5 ++ gadtConstraints) ++ c1 ++ c2
+                                 sGiven = c2 ++ gCon1
+                                 sWanted = (c1 ++ con1 ++ c3 ++ c4 ++ c5 ++ gadtConstraints) 
                                  sTouchables = touchs1 ++ touchs ++ touchs2 ++ touchs3
                                  ((solverResult, _), bu1)   | isTopLevel = contFreshMRes (solve axioms sGiven sWanted sTouchables) sBu
                                                             | otherwise = ((error "solve result needed", undefined), sBu) 
@@ -182,26 +181,43 @@ bindingGroupAnalysis input@(isTopLevel, axioms, typeSignatures, touchables, body
                                  resAssumptions = ((ass1 M.\\ resTypeSignatures) M.\\ env') `combineAssumptions` (ass2 M.\\ resTypeSignatures M.\\ env')
                                  residualConstraints  | isTopLevel = con2 ++ (right residual [] solverResult \\ right smallGiven [] solverResult)
                                                       | otherwise = con2 ++ sGiven ++ sWanted 
-                                 newTS = M.fromList (mapMaybe 
+                                 newTS' = M.fromList (mapMaybe 
                                     (\(name, v) -> (\m -> 
                                           (name, (
-                                             v, addConstraintsToMonoType residualConstraints m))
+                                             v, addConstraintsToMonoType [] m))
                                           ) <$> lookup v resSubstitution) 
                                     (M.toList (env1 M.\\ ts2)))
+                                 --newTS :: TypeSignatures
+                                 newTS = M.fromList $ map (\(name, v) -> (name, (v, (maybe (var v) (PolyType_Mono []) (lookup v resSubstitution), [])))) $ M.toList (env1 M.\\ ts2)
                                  resTypeSignatures | isTopLevel = ts2 `M.union` M.map (\(t, (p, _)) -> (t, replacePolytype (right smallGiven [] solverResult) p)) newTS
                                                    | otherwise =  ts2
-                                 resConstraints = rc1 ++ rc3 ++ rc4 ++ rc5 ++ (residualConstraints \\ resResolvedConstraints) ++ right smallGiven [] solverResult -- ++ (c1 ++ c2 ++ c3 ++ c4 ++ c5)
+                                 resConstraints = rc1 ++ rc3 ++ rc4 ++ rc5 ++ (residualConstraints \\ resResolvedConstraints) ++ if isTopLevel then right smallGiven [] solverResult else [] -- ++ (c1 ++ c2 ++ c3 ++ c4 ++ c5)
                                  resSubstitution   | isTopLevel = nub $ right substitution [] solverResult ++ subsOrig
                                                    | otherwise = [] 
                                  resResolvedConstraints = concatMap (snd . snd) (M.elems newTS) ++ resolvedConstraints
                                  resTypeErrors  | isTopLevel = checkTooGeneralSignature (right smallGiven [] solverResult) (M.intersectionWith (\(t1, pt) t2 -> (t1, pt, t2)) ts2 env1)
-                                                                   ++ escapeVariableCheck (resAssumptions M.\\ bodyAssumptions) env1 ts2 ++ left createTypeError [] solverResult ++ typeErrors
+                                                                   ++ escapeVariableCheck (resAssumptions M.\\ bodyAssumptions) env1 ts2
+                                                                   ++ residualConstraintsCheck (env1 M.\\ ts2) (residualConstraints) ++ left createTypeError [] solverResult ++ typeErrors
                                                 | otherwise = escapeVariableCheck (resAssumptions M.\\ bodyAssumptions) env1 ts2 ++ typeErrors
                                  printResidual | null residualConstraints = id
                                                | otherwise = id -- trace "Residual" $ traceShow residualConstraints
-                              in printResidual $ traceMessage "Result" solverResult $ (resTouchables, resAssumptions, resTypeSignatures, residualConstraints, resBetaUnique, resSubstitution, resTypeErrors, resResolvedConstraints)
+                              in printResidual (resTouchables, resAssumptions, resTypeSignatures, residualConstraints, resBetaUnique, resSubstitution, resTypeErrors, resResolvedConstraints)
 
-                          
+resolveGADTAssumptions :: TypeSignatures -> Environment -> Integer -> GADTConstraints -> (Integer, GADTConstraints)
+resolveGADTAssumptions ts env bu = foldr (\c@(GADTConstraint gTouchs gCond gCons gAss subCons) (lbu, cs) -> 
+                  let 
+                     (rBu, lc1, ltouchs1) = instanceTS lbu gAss ts
+                     lc2 = equalASENV (gAss M.\\ ts) env
+                     (rBU2, subCons') = resolveGADTAssumptions ts env rBu subCons 
+                  in (rBU2, GADTConstraint (gTouchs ++ ltouchs1) gCond (gCons ++ lc1 ++ lc2) (gAss M.\\ ts M.\\ env) subCons' : cs)
+               ) (bu, [])
+
+residualConstraintsCheck :: Environment -> Constraints -> [TypeError]
+residualConstraintsCheck env = concatMap constraintCheck
+                     where
+                        constraintCheck :: Constraint -> [TypeError]
+                        constraintCheck (Constraint_Inst (MonoType_Var v) p) | v `elem` (M.elems env) = createTypeError $ "Type of " ++ show v ++ " should be " ++  show p
+                        constraintCheck _ = []
 
 replacePolytype :: [Constraint] -> PolyType -> PolyType
 replacePolytype [] p = p
@@ -213,7 +229,16 @@ checkTooGeneralSignature :: [Constraint] -> M.Map Name (TyVar, PolyType, TyVar) 
 checkTooGeneralSignature cs ts = concatMap (flip checkTS cs) $ M.elems ts
                         where
                            check :: PolyType -> PolyType -> [TypeError]
-                           check v1 v2@(PolyType_Mono _ m)  | clearConstraints v1 /= bindVariables (getTypeVariablesFromMonoType m) v2 = createTypeError $ "Type signature " ++ show v1 ++ " too general, more general than " ++ show (bindVariables (getTypeVariablesFromMonoType m) v2)
+                           check v1 v2@(PolyType_Mono _ m)  | clearConstraints v1 /= bindVariables (getTypeVariablesFromMonoType m) v2 = let 
+                                                                     equal v1 v2 = runFreshM $
+                                                                        case (v1, v2) of 
+                                                                           (PolyType_Mono _ v1, PolyType_Mono _ v2) -> return (freshen 0 v1 == freshen (0 :: Integer) v2)
+                                                                           (v1@(PolyType_Mono _ _), PolyType_Bind b) -> unbind b >>= (\(t, p) -> return (equal v1 p))
+                                                                           (PolyType_Bind b, v2@(PolyType_Mono _ _)) -> unbind b >>= (\(t, p) -> return (equal p v2))
+                                                                           (PolyType_Bind b1, PolyType_Bind b2) -> unbind2 b1 b2 >>= (\(Just (_, p1, _, p2)) -> return (equal p1 p2))
+
+
+                                                                  in if equal v1 v2 then [] else createTypeError $ "Type signature " ++ show v1 ++ " too general, more general than " ++ show (bindVariables (getTypeVariablesFromMonoType m) v2)
                                                             | otherwise = []
                            check v1 v2                      | v1 /= v2 = createTypeError $ "Type signature " ++ show v1 ++ " too general, more than " ++ show v2
                                                             | otherwise = []
@@ -229,7 +254,7 @@ escapeVariableCheck :: Assumptions -> Environment -> TypeSignatures -> [TypeErro
 escapeVariableCheck ass env ts   | null ass = []
                                  | otherwise = let 
                                           ftv = concatMap (getTypeVariablesFromPolyType.snd) (M.intersection ts env)
-                                       in traceShow ass $ traceShow env $ traceShow ass $ traceShowId $ concatMap (\v -> createTypeError $ "Variable " ++ show v ++ " is too general in " ++ show (M.intersection ts env) ) ftv
+                                       in concatMap (\v -> createTypeError $ "Variable " ++ show v ++ " is too general in " ++ show (M.intersection ts env) ) ftv
 
 clearConstraints :: PolyType -> PolyType
 clearConstraints (PolyType_Mono _ m) = PolyType_Mono [] m
@@ -251,11 +276,14 @@ traceMessage :: Show a => String -> a -> b -> b
 traceMessage s x y = trace ("-----BEGIN:" ++ s ++ "-----") $ traceShow x $ trace ("-----END:" ++ s ++ "-----") y
 
 addConstraint :: Constraint -> PolyType -> PolyType
-addConstraint c (PolyType_Mono cs mt) = PolyType_Mono (c:cs) mt
-addConstraint c (PolyType_Bind b) = runFreshM $ do
+addConstraint c p = runFreshM $ addConstraint' c p
+
+addConstraint' :: Constraint -> PolyType -> FreshM PolyType
+addConstraint' c (PolyType_Mono cs mt) = return $ PolyType_Mono (c:cs) mt
+addConstraint' c p@(PolyType_Bind b) = do
    (t, p) <- unbind b
-   let p' = addConstraint c p
-   return (PolyType_Bind (bind t p'))
+   p' <- addConstraint' c p
+   return $ PolyType_Bind (bind t p')
 
 addConstraintsToMonoType :: [Constraint] -> MonoType -> (PolyType, [Constraint])
 addConstraintsToMonoType cs mt = foldr check (PolyType_Mono [] mt, []) cs
@@ -332,9 +360,20 @@ right f d (Left _) = d
 right f d (Right x) = f x
 
 gadtConstraintToConstraint :: GADTConstraint -> Constraint
-gadtConstraintToConstraint g@(tyvars, assumed, implicit, assumptions)   | not (null assumptions) = error ("Unresolved assumptions" ++ show g)
-                                                                        | otherwise = traceMessage "Group" g $ Constraint_Exists (bind tyvars (assumed, implicit))
+gadtConstraintToConstraint = gadtConstraintToConstraint' [] []
+
+
+gadtConstraintToConstraint' :: [TyVar] -> [Constraint] -> GADTConstraint -> Constraint
+gadtConstraintToConstraint' extraT extraC g  | not (null $ gadtAssumptions g) = error ("Unresolved assumptions" ++ show g)
+                                             | otherwise = Constraint_Exists (bind 
+                                                   (gadtTouchables g ++ extraT) 
+                                                   (
+                                                      gadtCondition g ++ extraC, 
+                                                      gadtImplication g ++ 
+                                                         map (gadtConstraintToConstraint' [] []) (gadtSubGADTConstraints g)))
 
 
 insertGADTTouchable :: [TyVar] -> GADTConstraint -> GADTConstraint
-insertGADTTouchable tyvars1 (tyvars2, c1, c2, ass) = (tyvars1 ++ tyvars2, c1, c2, ass)
+insertGADTTouchable tyvars gadtConstraint = gadtConstraint{
+                                                gadtTouchables = gadtTouchables gadtConstraint ++ tyvars
+                                                }

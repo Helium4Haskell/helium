@@ -74,6 +74,7 @@ import Cobalt.OutsideIn
 
 
 import Top.Types.Schemes
+import Top.Types.Quantification
 
 import Debug.Trace
 
