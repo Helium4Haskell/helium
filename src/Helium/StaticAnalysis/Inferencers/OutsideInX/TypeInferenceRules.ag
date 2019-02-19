@@ -3,8 +3,8 @@ ATTR Module Body Declaration Declarations Expression Expressions
      GuardedExpression GuardedExpressions
      MaybeExpression RecordExpressionBinding
      RightHandSide Alternative Alternatives FunctionBinding
-     FunctionBindings Statement RecordExpressionBindings
-     Statements AnnotatedType Types Constructor AnnotatedTypes 
+     FunctionBindings RecordExpressionBindings
+     AnnotatedType Types Constructor AnnotatedTypes 
      ContextItem FieldDeclaration Constructors ContextItems 
      FieldDeclarations Type Literal LeftHandSide RightHandSide
      Pattern Patterns
@@ -33,7 +33,7 @@ ATTR Module Body Declaration Declarations Expression Expressions
                 gadtConstraints USE {(++)} {[]} : GADTConstraints
         ]
 
-ATTR MaybeDeclarations Qualifier Qualifiers
+ATTR MaybeDeclarations Qualifier Qualifiers Statement Statements
         [ 
                 typeSignatures : {M.Map Name (TyVar, PolyType)}
                 substitution : {[(TyVar, MonoType)]}
@@ -106,6 +106,7 @@ SEM Module
         body . typeSignatures = M.map (\tps -> (integer2Name (-1), tpSchemeToPolyType tps)) $ typeEnvironment @lhs.importEnvironment
         body . instanceType = Nothing
         body . className = Nothing
+        body . typeSignatureConstraints = []
 
 SEM Body
     | Body
@@ -613,6 +614,89 @@ SEM Expression
         loc         . assumptions   = @qualifiers.assumptions
                     . beta          = integer2Name @lhs.betaUnique
                     . newcon        = Constraint_Unify (monotypeList (var @expression.beta)) (var @beta)
+    | Enum
+        loc . beta                  = integer2Name @lhs.betaUnique
+        loc . betaElem              = integer2Name $ @lhs.betaUnique + 1
+        from . betaUnique           = @lhs.betaUnique + 2
+        lhs . touchables            = @beta : @betaElem : @from.touchables ++ @then.touchables ++ @to.touchables
+        lhs . constraints           =   [
+                                            Constraint_Unify (monotypeList (var @betaElem)) (var @beta),
+                                            Constraint_Unify (var @betaElem) (var @from.beta),
+                                            Constraint_Unify (var @betaElem) (var @then.beta),
+                                            Constraint_Unify (var @betaElem) (var @to.beta),
+                                            Constraint_Class "Enum" [var @betaElem]
+                                        ] ++ @from.constraints ++ @then.constraints ++ @to.constraints
+    | Do 
+        statements . betaUnique     = @lhs.betaUnique + 3
+        statements . generatorBeta  = Nothing
+        statements . monadBeta      = var @betaMonad
+        statements . assumptions    = M.empty
+        statements . constraints    = []
+        statements . touchables     = []
+        loc . beta                  = integer2Name @lhs.betaUnique
+        loc . betaMonad             = integer2Name $ @lhs.betaUnique + 1
+        loc . betaVar               = integer2Name $ @lhs.betaUnique + 2
+        lhs . constraints           =   [
+                                            Constraint_Unify (var @beta) (MonoType_App (var @betaMonad) (var @betaVar)),
+                                            Constraint_Class "Monad" [var @betaMonad]
+                                        ] ++ maybe [] (\b -> [Constraint_Unify (var @beta) (var b)]) @statements.generatorBeta ++ traceShowId @statements.constraints
+
+ATTR Statements Statement [ monadBeta : {MonoType} | touchables : {[TyVar]} generatorBeta : {Maybe TyVar} assumptions : Assumptions constraints:Constraints substitutionCollect : Substitution gadtConstraints : GADTConstraints | ]
+
+SEM Statement 
+    | Expression
+        expression . betaUnique = @lhs.betaUnique + 2
+        loc . beta              = integer2Name @lhs.betaUnique
+        loc . betaRes           = integer2Name $ @lhs.betaUnique + 1
+        lhs . generatorBeta     = Just @beta
+        lhs . touchables        = @beta : @betaRes : @expression.touchables ++ @lhs.touchables
+        lhs . assumptions       = @lhs.assumptions `combineAssumptions` @expression.assumptions
+        lhs . constraints       =   [
+                                        Constraint_Unify (var @expression.beta) (var @beta), 
+                                        Constraint_Unify (var @beta) (MonoType_App @lhs.monadBeta (var @betaRes))
+                                    ] ++ @expression.constraints ++ @lhs.constraints
+    | Generator 
+        lhs . generatorBeta         = Nothing
+        lhs . betaUnique            = @expression.betaUnique
+        lhs . assumptions           = @assumptions' `combineAssumptions` @expression.assumptions
+        lhs . constraints           = Constraint_Unify (var @expression.beta) (MonoType_App @lhs.monadBeta (var @pattern.beta)) : 
+                                            @envConstraints ++ @expression.constraints ++ @pattern.constraints ++ @lhs.constraints
+        lhs . touchables            = @expression.touchables ++ @pattern.touchables ++ @lhs.touchables
+        pattern . betaUnique        = @lhs.betaUnique + 2
+        expression . betaUnique     = @pattern.betaUnique
+        loc . assumptions'          = @lhs.assumptions M.\\ @pattern.environment
+        loc . envConstraints        = concat $ M.elems (M.intersectionWith (\a' e -> [unifyVar a e | (_, a) <- a']) @lhs.assumptions @pattern.environment)
+    | Let 
+        lhs . generatorBeta  = Nothing
+        declarations . bindingGroups = []
+        (
+            lhs . touchables,
+            lhs . assumptions,
+            lhs . typeSignaturesCollect,
+            lhs . constraints,
+            lhs . betaUnique,
+            _,
+            lhs . typeErrors,
+            lhs . resolvedContraints
+        ) =
+            let !inputBDG = (False, @lhs.axioms, @declarations.typeSignaturesCollect `M.union` (@lhs.typeSignatures M.\\ @declarations.environment), @declarations.touchables ++ @lhs.touchables, Just (@lhs.assumptions, @lhs.constraints, @lhs.gadtConstraints), @declarations.typeErrors, @declarations.resolvedContraints, @declarations.betaUnique)
+            in bindingGroupAnalysis inputBDG @declarations.bindingGroups
+
+SEM Statements
+
+    | Cons
+        lhs . assumptions = @hd.assumptions
+            . constraints = @hd.constraints
+            . touchables  = @hd.touchables
+            . betaUnique = @hd.betaUnique
+        hd  . assumptions = @tl.assumptions
+            . constraints = @tl.constraints
+            . touchables  = @tl.touchables
+            . betaUnique = @tl.betaUnique
+        tl  . assumptions = @lhs.assumptions
+            . constraints = @lhs.constraints
+            . touchables = @lhs.touchables
+            . betaUnique = @lhs.betaUnique
 
 ATTR Alternative Alternatives [ betaLeft:TyVar betaRight:TyVar | | ]
 
