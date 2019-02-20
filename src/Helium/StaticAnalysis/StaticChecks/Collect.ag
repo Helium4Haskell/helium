@@ -38,10 +38,7 @@ SEM Module
                                         . setClassMemberEnvironment @body.collectClassMemberEnv
                                         $emptyEnvironment
                                         -- the type environment will be added after type inferencing.
-                 . derivedFunctions = let f (n,(i, _)) = ( nameOfShowFunction n
-                                                         , typeOfShowFunction n @moduleQual (take i [ nameFromString s | s <- variableList])
-                                                         )
-                                      in map f @body.collectTypeConstructors
+                 . derivedFunctions = []
 
 {-
                  . derivedInstances = let f (n,i) = makeInstance "Show" i (show n)

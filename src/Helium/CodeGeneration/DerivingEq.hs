@@ -28,7 +28,7 @@ dataDictionary  (UHA.Declaration_Data _ _ (UHA.SimpleType_SimpleType _ name name
         ++ map (custom "typeVariable" . getNameName) names
         ++ map (\n -> custom "superInstance" ("Eq-" ++ getNameName n)) names
     }
-dataDictionary _ = error "pattern match failure in CodeGeneration.Deriving.dataDictionary"
+dataDictionary _ _ = error "pattern match failure in CodeGeneration.Deriving.dataDictionary"
 
 eqDict :: [UHA.Name] -> [UHA.Constructor] -> Expr
 eqDict names constructors = foldr Lam dictBody (map idFromName names)
