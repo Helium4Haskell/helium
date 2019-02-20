@@ -44,18 +44,17 @@ dataShowFunction classEnv tse (UHA.Declaration_Data _ _ (UHA.SimpleType_SimpleTy
         )   
         ( (map idFromName names ++ [valueId])
         ++ [idFromString "$instanceDictShow", valueId])
-dataShowFunction _ _ _ = error "not supported"
+dataShowFunction _ _ _ _ _ = error "not supported"
 
 --TODO Fix qual
 -- Show Dictionary for a data type declaration
 dataDictionary :: ClassEnvironment -> TypeSynonymEnvironment -> UHA.Declaration -> [String] -> [Custom] -> CoreDecl
 dataDictionary classEnv tse decl@(UHA.Declaration_Data _ _ (UHA.SimpleType_SimpleType _ name names) _ _) qual origin =
-    let nameId = idFromString ("show" ++ getNameName name) in
     DeclValue 
     { declName    = idFromString ("$dictShow$" ++ getNameName name)
     , declAccess  = public
     , valueEnc    = Nothing
-    , valueValue  = makeShowDictionary (length names) nameId
+    , valueValue  = makeShowDictionary (length names)
     , declCustoms = [ custom "type" ("DictShow$" ++ getNameName name)] 
                 ++ map (custom "typeVariable" . getNameName) names
                 ++ map (\n -> custom "superInstance" ("Show-" ++ getNameName n)) names
@@ -65,8 +64,8 @@ dataDictionary classEnv tse decl@(UHA.Declaration_Data _ _ (UHA.SimpleType_Simpl
     makeShowDictionary :: Int -> Expr
     makeShowDictionary nrOfArgs =
        let 
-           showBody = dataShowFunction classEnv tse decl
-           ids  = map idFromName names -- take nrOfArgs [ idFromString ("d" ++ show i) | i <- [(1::Integer)..] ]
+           showBody = dataShowFunction classEnv tse decl qual origin
+           ids  = map idFromName names
            list = map idFromString ["showsPred", "showList", "showDef"]
            declarations = zipWith Bind list [Var $ idFromString "default$Show$showsPrec", Var $ idFromString "default$Show$showList", showBody]
            body = Let (Rec declarations) (foldl Ap (Con $ ConId $ idFromString "DictShow") $ map Var list)
@@ -88,7 +87,7 @@ typeShowFunction classEnv tse (UHA.Declaration_Type _ (UHA.SimpleType_SimpleType
     , valueValue  = foldr (Lam . idFromName) (showFunctionOfType classEnv tse False type_) names
     , declCustoms = [ custom "type" typeString ] ++ origin
     }
-typeShowFunction _ _ _ = error "not supported"
+typeShowFunction _ _ _ _ _ = error "not supported"
 
 -- Convert a data type constructor to a Core alternative
 makeAlt :: ClassEnvironment -> TypeSynonymEnvironment -> UHA.Constructor -> Alt
@@ -160,7 +159,7 @@ showFunctionOfType classEnv tse isMainType = sFOT 0
                 ->  Ap (var "$dictShow$[]") (var "$dictShow$Char" )
         UHA.Type_Constructor _ n         -> 
             let conname = (unQualifyName . getNameName) n
-            in seq conname $ var ("show" ++ checkForPrimitive nsOrArguments classEnv conname)
+            in checkForPrimitiveDict nrOfArguments classEnv conname
         UHA.Type_Application _ _ f xs    -> foldl Ap (sFOT (length xs) f) (map (sFOT 0) xs )
         UHA.Type_Parenthesized _ t'      -> showFunctionOfType classEnv tse isMainType t'
         _ -> internalError "DerivingShow" "showFunctionOfType" "unsupported type"

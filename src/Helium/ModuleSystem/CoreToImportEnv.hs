@@ -283,7 +283,8 @@ getImportEnvironment importedInModule decls = foldr (insertDictionaries imported
                   fullname = makeFullQualifiedImportName origin typename
                   pair = typeSynFromCustoms (stringFromId n) cs
                   pair2 = (fst pair, fullname)
-              in addTypeSynonym fullname pair . addTypeConstructor typename pair2
+                  pair3 = (fst pair, snd pair, fullname)
+              in addTypeSynonym fullname pair3 . addTypeConstructor typename pair2
                              
            -- infix decls
            DeclCustom { declName    = n

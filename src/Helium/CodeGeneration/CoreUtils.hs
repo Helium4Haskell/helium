@@ -27,9 +27,9 @@ import qualified Lvm.Core.Expr as Core
 import qualified Data.Map as M
 import Data.List(isPrefixOf)
 import Helium.ModuleSystem.ImportEnvironment
-import Helium.Syntax.UHA_Syntax
 import Helium.Syntax.UHA_Utils
 import Helium.Utils.Utils
+import Helium.Syntax.UHA_Syntax ( Name )
 
 infixl `app_`
 
