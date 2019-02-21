@@ -1,0 +1,14 @@
+Prelude is up to date
+Compiling gadts/GADT7.hs
+fromList [(f,X a -> X b -> Int)]
+
+Length of errors doesn't match
+
+fromList [(f,X a -> X b -> Int)]
+"fromList [(f,X a -> X b -> Int)]"
+(6,1): Type signature is too general
+ function         : f
+   declared type  : X a   -> X b   -> Int
+   inferred type  : X Int -> X Int -> Int
+
+Compilation failed with 1 error

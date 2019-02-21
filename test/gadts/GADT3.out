@@ -1,0 +1,14 @@
+Prelude is up to date
+Compiling gadts/GADT3.hs
+(6,9): Warning: Variable "y" is not used
+(7,6): Warning: Variable "b" is not used
+fromList []
+Could not unify 'Bool ~ 'Int (different head constructors)
+
+
+(7,4): Type error in pattern of function binding
+ pattern          : B b
+   type           : X Bool
+   does not match : X Int 
+
+Compilation failed with 1 error

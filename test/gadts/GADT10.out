@@ -1,0 +1,15 @@
+Prelude is up to date
+Compiling gadts/GADT10.hs
+fromList [(answer1,Bool),(eval,Expr a -> a)]
+
+Length of errors doesn't match
+
+fromList [(answer1,Bool),(eval,Expr a -> a)]
+"fromList [(answer1,Bool),(eval,Expr a -> a)]"
+(8,7): Type error in pattern application
+ pattern          : I i
+ constructor      : I
+   type           : Int  -> Expr Int 
+   does not match : Bool -> Expr Bool
+
+Compilation failed with 1 error

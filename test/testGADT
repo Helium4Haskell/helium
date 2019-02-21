@@ -1,0 +1,5 @@
+#!/bin/sh
+
+ERRORS=0
+for f in gadts/*.hs          ; do /bin/sh testOne ${f%.hs}; ERRORS=$(($ERRORS+$?)) ; done
+exit $ERRORS

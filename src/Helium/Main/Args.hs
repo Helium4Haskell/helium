@@ -196,6 +196,7 @@ optionDescription moreOptions experimentalOptions =
       , Option "" [flag (SelectConstraintNumber 0)]     (ReqArg selectCNR "CNR") "select constraint number to be reported"
       , Option "" [flag NoOverloadingTypeCheck]         (NoArg NoOverloadingTypeCheck)  "disable overloading errors (experimental)"
       , Option "" [flag NoPrelude]                      (NoArg NoPrelude)  "do not import the prelude (experimental)"
+      , Option "" [flag GADTs]                          (NoArg GADTs) "allows the usage of GADTs"
       ]
 
 

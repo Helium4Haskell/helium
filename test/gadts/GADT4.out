@@ -1,0 +1,14 @@
+Prelude is up to date
+Compiling gadts/GADT4.hs
+fromList [(f,X a -> Bool)]
+
+Length of errors doesn't match
+
+fromList [(f,X a -> Bool)]
+"fromList [(f,X a -> Bool)]"
+(7,4): Type error in pattern of function binding
+ pattern          : I i
+   type           : X Int 
+   does not match : X Bool
+
+Compilation failed with 1 error

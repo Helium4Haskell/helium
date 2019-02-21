@@ -31,6 +31,7 @@ ATTR Module Body Declaration Declarations Expression Expressions
                 tlEnvironment USE {M.union} {M.empty} : {M.Map Name TyVar}
                 resolvedContraints USE {(++)} {[]} : {[Constraint]}
                 gadtConstraints USE {(++)} {[]} : GADTConstraints
+                gadtUsed USE {(||)} {False} : Bool
         ]
 
 ATTR MaybeDeclarations Qualifier Qualifiers Statement Statements
@@ -287,6 +288,7 @@ SEM Pattern
         loc         . lstConstraints    = Constraint_Unify (var @beta) (monotypeList (var @elemBeta)) : map (unifyVar @elemBeta) @patterns.betas
     | Constructor
         patterns    . betaUnique        = @bu2
+        lhs . gadtUsed                  = @ct == ConstructorGADT || @patterns.gadtUsed
         lhs . touchables                = @beta : @betaCon : (
                                              if @ct == ConstructorRegular then 
                                                 []

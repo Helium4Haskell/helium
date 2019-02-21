@@ -1,0 +1,3 @@
+#!/bin/sh
+
+for f in gadts/*.hs          ; do echo $f; /bin/sh ./MakeOutput ${f%.hs} ; done

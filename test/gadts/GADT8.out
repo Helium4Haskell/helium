@@ -1,0 +1,13 @@
+Prelude is up to date
+Compiling gadts/GADT8.hs
+fromList []
+Could not unify 'Bool ~ 'Int (different head constructors)
+
+
+(10,13): Type error in pattern application
+ pattern          : B b
+ constructor      : B
+   type           : Bool -> X Bool
+   does not match : Int  -> X Int 
+
+Compilation failed with 1 error

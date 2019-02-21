@@ -1,0 +1,12 @@
+Prelude is up to date
+Compiling gadts/GADT5.hs
+fromList []
+Could not discharge [$Eq _32]
+
+
+(7,4): Type error in pattern of function binding
+ pattern          : I i
+   type           : X Int 
+   does not match : X Bool
+
+Compilation failed with 1 error
