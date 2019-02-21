@@ -61,10 +61,11 @@ bindVariables = flip (foldr ((PolyType_Bind .) . bind))
 
 
 monoTypeToTp :: MonoType -> Tp
+monoTypeToTp (MonoType_App (MonoType_Con "[]") (MonoType_Con "Char")) = TCon "String"
 monoTypeToTp (MonoType_Var n)   = TVar (fromInteger (name2Integer n))
 monoTypeToTp (MonoType_Con n)   = TCon n
 monoTypeToTp (MonoType_App f a) = TApp (monoTypeToTp f) (monoTypeToTp a)
-monoTypeToTp (MonoType_Fam s a) = foldr TApp (TCon s) (map monoTypeToTp a)
+monoTypeToTp (MonoType_Fam s a) = foldl TApp (TCon s) (map monoTypeToTp a)
 
 polyTypeToTypeScheme :: PolyType -> TpScheme
 polyTypeToTypeScheme p = let
@@ -94,7 +95,7 @@ eqTpScheme t1@(Quantification (is1, qmap1, tp1)) t2@(Quantification (is2, qmap2,
     subs = M.fromList $ zipWith (\orig rep -> (orig, TVar rep)) is2 is1
     tp2r = subs |-> unqualify tp2
     tp1r = unqualify tp1
-    in if tp1r == tp2r  then Nothing else Just ((tp1r, "Orig"), (tp2r, "OutsideIn(X)"))
+    in if freshen (0 :: Int) tp1r == freshen 0 tp2r  then Nothing else Just ((tp1r, "Orig"), (tp2r, "OutsideIn(X)"))
 
 typeToPolytype :: TypeFamilies -> Integer -> Type -> (PolyType, Integer, [(String, TyVar)])
 typeToPolytype fams bu t = let
@@ -141,7 +142,12 @@ tpToMonoType :: TypeFamilies -> Tp -> MonoType
 tpToMonoType fams (TVar v) = MonoType_Var (integer2Name $ toInteger v)
 tpToMonoType fams (TCon n) | isTypeFamily fams (TCon n) = MonoType_Fam n []
                            | otherwise = MonoType_Con n
-tpToMonoType fams (TApp f a) = MonoType_App (tpToMonoType fams f) (tpToMonoType fams a)
+tpToMonoType fams ta@(TApp f a) | isTypeFamily fams ta = let 
+                                                m1 = tpToMonoType fams f
+                                                m2 = tpToMonoType fams a 
+                                                (MonoType_Con famName, params) = conList (MonoType_App m1 m2)
+                                                in MonoType_Fam famName params
+                                | otherwise = MonoType_App (tpToMonoType fams f) (tpToMonoType fams a)
 
 tpDepth :: Tp -> Int
 tpDepth (TVar _) = 0
@@ -217,7 +223,7 @@ typeSynonymsToAxioms env = concatMap tsToAxioms $ M.toList env
                         mtVars = map (integer2Name . toInteger) vars
                         
                         unifyAxiom = Axiom_Unify (bind mtVars ((MonoType_Fam (show name) $ map var mtVars), mt))
-                    in [Axiom_Injective $ show name, unifyAxiom]
+                    in [unifyAxiom] -- [Axiom_Injective $ show name, unifyAxiom]
 
 
 

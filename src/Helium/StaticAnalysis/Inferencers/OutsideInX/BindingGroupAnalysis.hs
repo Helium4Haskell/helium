@@ -160,8 +160,8 @@ bindingGroupAnalysis input@(isTopLevel, axioms, typeSignatures, touchables, body
                                  {- -}                                
                                   {- Solving -}
                                  sBu = sbu4
-                                 sGiven = traceMessageId "sGiven" $ c2 ++ gCon1
-                                 sWanted = traceMessageId "sWanted" $ (c1 ++ con1 ++ c3 ++ c4 ++ c5 ++ gadtConstraints) 
+                                 sGiven = c2 ++ gCon1
+                                 sWanted = (c1 ++ con1 ++ c3 ++ c4 ++ c5 ++ gadtConstraints) 
                                  sTouchables = touchs1 ++ touchs ++ touchs2 ++ touchs3
                                  ((solverResult, _), bu1)   | isTopLevel = contFreshMRes (solve axioms sGiven sWanted sTouchables) sBu
                                                             | otherwise = ((error "solve result needed", undefined), sBu) 
@@ -192,7 +192,7 @@ bindingGroupAnalysis input@(isTopLevel, axioms, typeSignatures, touchables, body
                                  resTypeSignatures | isTopLevel = ts2 `M.union` M.map (\(t, (p, _)) -> (t, replacePolytype (right smallGiven [] solverResult) p)) newTS
                                                    | otherwise =  ts2
                                  resConstraints = rc1 ++ rc3 ++ rc4 ++ rc5 ++ (residualConstraints \\ resResolvedConstraints) ++ if isTopLevel then right smallGiven [] solverResult else [] -- ++ (c1 ++ c2 ++ c3 ++ c4 ++ c5)
-                                 resSubstitution   | isTopLevel = traceShow solverResult $ nub $ right substitution [] solverResult ++ subsOrig
+                                 resSubstitution   | isTopLevel = nub $ right substitution [] solverResult ++ subsOrig
                                                    | otherwise = [] 
                                  resResolvedConstraints = concatMap (snd . snd) (M.elems newTS) ++ resolvedConstraints
                                  resTypeErrors  | isTopLevel = checkTooGeneralSignature (right smallGiven [] solverResult ++ map (\(v, m) -> Constraint_Unify (var v) m) resSubstitution) (M.intersectionWith (\(t1, pt) t2 -> (t1, pt, t2)) ts2 env1)
@@ -226,13 +226,13 @@ replacePolytype (Constraint_Inst (MonoType_Var v) pt:cs) p  | var v == p = pt
 replacePolytype (_:cs) p = replacePolytype cs p
 
 checkTooGeneralSignature :: [Constraint] -> M.Map Name (TyVar, PolyType, TyVar) -> [TypeError]
-checkTooGeneralSignature cs ts = concatMap (\x -> traceShow x $ checkTS x cs) $ traceShow cs $ M.elems ts
+checkTooGeneralSignature cs ts = concatMap (\x -> checkTS x cs) $ M.elems ts
                         where
                            check :: PolyType -> PolyType -> [TypeError]
                            check v1 v2@(PolyType_Mono _ m)  | clearConstraints v1 /= bindVariables (getTypeVariablesFromMonoType m) v2 = let 
                                                                      equal v1 v2 =
                                                                         case (v1, v2) of 
-                                                                           (PolyType_Mono _ v1, PolyType_Mono _ v2) -> return $ (\x y -> traceShow "comp" $ traceShow x $ traceShow y $ eqMT x y) (fst (freshen (0 :: Integer) v1)) (fst (freshen (0 :: Integer) v2))
+                                                                           (PolyType_Mono _ v1, PolyType_Mono _ v2) -> return $ (\x y -> eqMT x y) (fst (freshen (0 :: Integer) v1)) (fst (freshen (0 :: Integer) v2))
                                                                            (v1@(PolyType_Mono _ _), PolyType_Bind b) -> unbind b >>= (\(t, p) -> (equal v1 p))
                                                                            (PolyType_Bind b, v2@(PolyType_Mono _ _)) -> unbind b >>= (\(t, p) -> (equal p v2))
                                                                            (PolyType_Bind b1, PolyType_Bind b2) -> unbind2 b1 b2 >>= (\(Just (_, p1, _, p2)) -> (equal p1 p2))
@@ -252,6 +252,7 @@ checkTooGeneralSignature cs ts = concatMap (\x -> traceShow x $ checkTS x cs) $ 
 
 
                            eqMT :: MonoType -> MonoType -> Bool 
+                           eqMT (f1 :-->: a1) (f2 :-->: a2) = f1 `eqMT` f2 && a1 `eqMT` a2
                            eqMT (MonoType_Var v1) (MonoType_Var v2) = v1 == v2
                            eqMT (MonoType_Con n1) (MonoType_Con n2) = n1 == n2
                            eqMT (MonoType_Fam n []) _ = True
@@ -262,7 +263,7 @@ checkTooGeneralSignature cs ts = concatMap (\x -> traceShow x $ checkTS x cs) $ 
 escapeVariableCheck :: Assumptions -> Environment -> TypeSignatures -> [TypeError]
 escapeVariableCheck ass env ts   | null ass = []
                                  | otherwise = let 
-                                          ftv = concatMap (getTypeVariablesFromPolyType.snd) (M.intersection ts env)
+                                          ftv = concatMap (getTypeVariablesFromPolyType . snd) $ M.filter (\(_, pt) -> pt /= PolyType_Bind (bind (integer2Name 0) (var $ integer2Name 0))) $ (M.intersection ts env)
                                        in concatMap (\v -> createTypeError $ "Variable " ++ show v ++ " is too general in " ++ show (M.intersection ts env) ) ftv
 
 clearConstraints :: PolyType -> PolyType

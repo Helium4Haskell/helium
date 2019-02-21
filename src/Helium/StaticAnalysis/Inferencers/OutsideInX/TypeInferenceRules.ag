@@ -93,9 +93,9 @@ SEM Module
     | Module
         lhs . dictionaryEnvironment = emptyDictionaryEnvironment
         lhs . toplevelTypes = const id (trace "Residual constraints" $ traceShow (getResidualConstraints @solveResults)) $ if null @typeErrors then M.mapWithKey (lookupType @body.typeSignaturesCollect) @body.tlEnvironment else M.empty -- 
-        loc . typeErrors = traceShowId $ const id (trace (unlines $ map show $ sortOn fst $ nub $ @substitution)) $ concatMap (makeTypeError @tyvars) (getResidualConstraints @solveResults \\ @body.resolvedContraints) ++ getTypeErrors @solveResults ++ @body.typeErrors
+        loc . typeErrors = const id (trace (unlines $ map show $ sortOn fst $ nub $ @substitution)) $ concatMap (makeTypeError @tyvars) (getResidualConstraints @solveResults \\ @body.resolvedContraints) ++ getTypeErrors @solveResults ++ @body.typeErrors
         lhs . warnings = getWarnings @solveResults
-        loc . axioms = traceShowId $ typeSynonymsToAxioms (typeSynonyms @lhs.importEnvironment) ++ classEnvironmentToAxioms (importEnvironmentToTypeFamilies @lhs.importEnvironment) (classEnvironment @lhs.importEnvironment)
+        loc . axioms = typeSynonymsToAxioms (typeSynonyms @lhs.importEnvironment) ++ classEnvironmentToAxioms (importEnvironmentToTypeFamilies @lhs.importEnvironment) (classEnvironment @lhs.importEnvironment)
         body . axioms = @axioms
         body . betaUnique = 1
         loc . substitution = (if null @body.assumptions then id else trace "Unresolved assumptions" . traceShow @body.assumptions) (getSubstitution @solveResults ++ @body.substitutionCollect)
@@ -183,7 +183,7 @@ SEM Declaration
         loc . beta              = integer2Name @lhs.betaUnique
         lhs . betaUnique        = @bu
         lhs . typeSignaturesCollect = @ts
-        loc . (ts, bu)          = traceShowId $ foldr (\n (m, b) -> let 
+        loc . (ts, bu)          = foldr (\n (m, b) -> let 
                                                 (t, b', mapping) = typeToPolytype (importEnvironmentToTypeFamilies @lhs.importEnvironment) b @type.self
                                                 t' = t -- replaceTypeVariables mapping @lhs.typeVariableReplace t 
                                                 m' = M.insert n (integer2Name b', expandClassPredicates (classEnvironment @lhs.importEnvironment) t') m
@@ -331,6 +331,19 @@ SEM Pattern
         lhs . constraints               = unifyVar @beta @pattern.beta : @pattern.constraints
         lhs . environment               = M.insert @name.self @beta @pattern.environment
         loc . beta                      = integer2Name @lhs.betaUnique
+    | Negate 
+        literal . betaUnique            = @bu
+        lhs . touchables                = @beta : @literal.touchables
+        lhs . constraints               = [Constraint_Inst (@literal.literalType :-->: var @beta) @tp] ++ @literal.constraints
+        loc . beta                      = integer2Name @lhs.betaUnique
+        loc . (tp, bu)                  =   let standard = PolyType_Mono [Constraint_Class "Num" [var $ integer2Name 0]] ((var $ integer2Name 0) :-->: (var $ integer2Name 0))
+                                            in freshen (@lhs.betaUnique + 1) $ M.findWithDefault standard (nameFromString "negate") (tpSchemeToPolyType (importEnvironmentToTypeFamilies @lhs.importEnvironment) <$> typeEnvironment @lhs.importEnvironment)
+    | NegateFloat
+        lhs . betaUnique  = @lhs.betaUnique + 1
+        lhs . touchables  = @beta : @literal.touchables
+        loc . constraints = [ Constraint_Unify (MonoType_Con "Float") (var @beta)] ++ @literal.constraints
+            . beta        = integer2Name @lhs.betaUnique
+
 
 {
 
@@ -349,8 +362,9 @@ getResultTypeM i (f :-->: a) = let
 getResultTypeM i (MonoType_App y x) =  let 
                                     (m1, cs1, i1) = getResultTypeM' i y 
                                     (m2, cs2, i2) = getResultTypeM' i1 x
-                                in (m2, MonoType_App m1 m2, cs1 ++ cs2, i2) 
+                                in (MonoType_App m1 m2, MonoType_App m1 m2, cs1 ++ cs2, i2) 
 getResultTypeM i (MonoType_Con s)   = (MonoType_Con s, MonoType_Con s, [], i)
+getResultTypeM i f@(MonoType_Fam _ _) = (f, f, [], i)
 getResultTypeM i (MonoType_Var v)   = (internalError "TypeInferenceRules" "getResultTypeM" "Return type of a GADT can never be a type variable", MonoType_Var v, [], i)
 
 getResultTypeM' :: Integer -> MonoType -> (MonoType, [Constraint], Integer)
@@ -626,6 +640,19 @@ SEM Expression
                                             Constraint_Unify (var @betaElem) (var @to.beta),
                                             Constraint_Class "Enum" [var @betaElem]
                                         ] ++ @from.constraints ++ @then.constraints ++ @to.constraints
+    | Negate  
+        expression . betaUnique     =   @lhs.betaUnique + 1
+        lhs . touchables            =   @beta : @expression.touchables
+        lhs . constraints           =   [Constraint_Inst (var @expression.beta :-->: var @beta) @tp ] ++ @expression.constraints
+        loc . beta                  =   integer2Name @lhs.betaUnique
+        loc . (tp, bu)              =   let standard = PolyType_Mono [Constraint_Class "Num" [var $ integer2Name 0]] ((var $ integer2Name 0) :-->: (var $ integer2Name 0))
+                                        in freshen (@lhs.betaUnique + 1) $ M.findWithDefault standard (nameFromString "negate") (tpSchemeToPolyType (importEnvironmentToTypeFamilies @lhs.importEnvironment) <$> typeEnvironment @lhs.importEnvironment)
+    | NegateFloat 
+        expression . betaUnique     = @lhs.betaUnique + 1
+        lhs . touchables            = @beta : @expression.touchables
+        lhs . constraints           = [Constraint_Unify (MonoType_Con "Float" :-->: MonoType_Con "Float") (var @expression.beta :-->: var @beta)] ++ @expression.constraints
+        loc . beta                  = integer2Name @lhs.betaUnique
+
     | Do 
         statements . betaUnique     = @lhs.betaUnique + 3
         statements . generatorBeta  = Nothing
@@ -633,13 +660,15 @@ SEM Expression
         statements . assumptions    = M.empty
         statements . constraints    = []
         statements . touchables     = []
+        statements . gadtConstraints= []
         loc . beta                  = integer2Name @lhs.betaUnique
         loc . betaMonad             = integer2Name $ @lhs.betaUnique + 1
         loc . betaVar               = integer2Name $ @lhs.betaUnique + 2
         lhs . constraints           =   [
                                             Constraint_Unify (var @beta) (MonoType_App (var @betaMonad) (var @betaVar)),
                                             Constraint_Class "Monad" [var @betaMonad]
-                                        ] ++ maybe [] (\b -> [Constraint_Unify (var @beta) (var b)]) @statements.generatorBeta ++ traceShowId @statements.constraints
+                                        ] ++ maybe [] (\b -> [Constraint_Unify (var @beta) (var b)]) @statements.generatorBeta ++ @statements.constraints
+                                        
 
 ATTR Statements Statement [ monadBeta : {MonoType} | touchables : {[TyVar]} generatorBeta : {Maybe TyVar} assumptions : Assumptions constraints:Constraints substitutionCollect : Substitution gadtConstraints : GADTConstraints | ]
 
@@ -793,7 +822,7 @@ SEM Literal
     | Float
         lhs . literalType   = MonoType_Con "Float"
     | String
-        lhs . literalType   = MonoType_Con "String"
+        lhs . literalType   = MonoType_Fam "String" []
     | Char
         lhs . literalType   = MonoType_Con "Char"
               

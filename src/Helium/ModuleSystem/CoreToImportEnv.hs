@@ -31,6 +31,15 @@ import Data.List
 import Data.Char
 import Data.Maybe
 import qualified Data.Map as M
+import Debug.Trace
+
+constructorTypeFromCustoms :: [Custom] -> ConstructorType
+constructorTypeFromCustoms (c@(CustomDecl (DeclKindCustom n) [CustomBytes bytes]):rest) 
+    | stringFromId n == "consType" && stringFromBytes bytes == "ConstructorRegular" = ConstructorRegular
+    | stringFromId n == "consType" && stringFromBytes bytes == "ConstructorGADT" = ConstructorGADT
+    | otherwise = constructorTypeFromCustoms rest
+constructorTypeFromCustoms (_:rest) = constructorTypeFromCustoms rest
+constructorTypeFromCustoms [] = ConstructorRegular
 
 typeDictFromCustoms :: String -> [Custom] -> TpScheme
 typeDictFromCustoms n [] = internalError "CoreToImportEnv" "typeFromCustoms"
@@ -231,7 +240,7 @@ getImportEnvironment importedInModule decls = foldr (insertDictionaries imported
               addValueConstructor
                 (makeImportName importedInModule importedFromModId n)
                 (typeFromCustoms (stringFromId n) cs)
-                ConstructorRegular
+                (constructorTypeFromCustoms cs)
 
            -- type constructor import
            DeclCustom { declName    = n

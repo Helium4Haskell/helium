@@ -433,7 +433,8 @@ constructorCustoms dataTypeName name env =
     maybe 
         (internalError "ToCoreDecl" "Constructor" ("no type found for " ++ show name))
         (\tpScheme -> 
-            [ custom "type" (show tpScheme)
+            [ custom "type" (show $ fst tpScheme),
+              custom "consType" (show $ snd tpScheme)
             , Core.CustomLink 
                     (idFromName dataTypeName) 
                     (Core.DeclKindCustom (idFromString "data"))
