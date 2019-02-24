@@ -33,7 +33,7 @@ import Data.Maybe
 import qualified Data.Map as M
 
 typeDictFromCustoms :: String -> [Custom] -> TpScheme
-typeDictFromCustoms n [] = internalError "CoreToImportEnv" "typeFromCustoms"
+typeDictFromCustoms n [] = internalError "CoreToImportEnv" "typeDictFromCustoms"
                 ("function import without type: " ++ n)
 typeDictFromCustoms n ( CustomDecl (DeclKindCustom ident) [CustomBytes bytes] : cs) 
     | stringFromId ident == "type" =
