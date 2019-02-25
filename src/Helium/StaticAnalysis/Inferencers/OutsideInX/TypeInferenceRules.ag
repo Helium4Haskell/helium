@@ -1,4 +1,8 @@
 
+ATTR Module [
+    | | toplevelTypes USE {M.union} {M.empty}  : TypeEnvironment
+]
+
 ATTR Module Body Declaration Declarations Expression Expressions
      GuardedExpression GuardedExpressions
      MaybeExpression RecordExpressionBinding
@@ -10,7 +14,6 @@ ATTR Module Body Declaration Declarations Expression Expressions
      Pattern Patterns
         [ 
                 typeSignatures : {M.Map Name (TyVar, PolyType)}
-                substitution : {[(TyVar, MonoType)]}
                 importEnvironment : ImportEnvironment
                 axioms : {[Axiom]}
                 typeSignatureConstraints : {[Constraint]}
@@ -24,7 +27,7 @@ ATTR Module Body Declaration Declarations Expression Expressions
                 givenConstraints USE {(++)} {[]} : {[Constraint]}
                 bindingGroups USE {(++)} {[]} : {[BindingGroup]}
                 touchables USE {(++)} {[]} : {[TyVar]}
-                toplevelTypes USE {M.union} {M.empty}  : TypeEnvironment
+                
                 typeSignaturesCollect USE {M.union} {M.empty} : {M.Map Name (TyVar, PolyType)}
                 typeErrors USE {(++)} {[]} : TypeErrors
 
@@ -37,7 +40,6 @@ ATTR Module Body Declaration Declarations Expression Expressions
 ATTR MaybeDeclarations Qualifier Qualifiers Statement Statements
         [ 
                 typeSignatures : {M.Map Name (TyVar, PolyType)}
-                substitution : {[(TyVar, MonoType)]}
                 importEnvironment : ImportEnvironment
                 axioms : {[Axiom]}
                 typeSignatureConstraints : {[Constraint]}
@@ -93,27 +95,22 @@ lookupType env name _ =
 SEM Module
     | Module
         lhs . dictionaryEnvironment = emptyDictionaryEnvironment
-        lhs . toplevelTypes = const id (trace "Residual constraints" $ traceShow (getResidualConstraints @solveResults)) $ if null @typeErrors then M.mapWithKey (lookupType @body.typeSignaturesCollect) @body.tlEnvironment else M.empty -- 
-        loc . typeErrors = const id (trace (unlines $ map show $ sortOn fst $ nub $ @substitution)) $ concatMap (makeTypeError @tyvars) (getResidualConstraints @solveResults \\ @body.resolvedContraints) ++ getTypeErrors @solveResults ++ @body.typeErrors
+        lhs . toplevelTypes = if null @typeErrors then M.mapWithKey (lookupType @body.typeSignaturesCollect) @body.tlEnvironment else M.empty
+        loc . typeErrors = concatMap (makeTypeError @tyvars) (getResidualConstraints @solveResults \\ @body.resolvedContraints) ++ getTypeErrors @solveResults ++ @body.typeErrors
         lhs . warnings = getWarnings @solveResults
         loc . axioms = typeSynonymsToAxioms (typeSynonyms @lhs.importEnvironment) ++ classEnvironmentToAxioms (importEnvironmentToTypeFamilies @lhs.importEnvironment) (classEnvironment @lhs.importEnvironment)
         body . axioms = @axioms
         body . betaUnique = 1
-        loc . substitution = (if null @body.assumptions then id else trace "Unresolved assumptions" . traceShow @body.assumptions) (getSubstitution @solveResults ++ @body.substitutionCollect)
-        body . substitution = @substitution
         loc . constrs = @body.constraints
         loc . tyvars = @body.touchables
         loc . solveResults = constructErrors $ contFreshM (solve @axioms (map (uncurry (Constraint_Unify . var)) @body.substitutionCollect) (@constrs) @tyvars) @body.betaUnique 
         body . typeSignatures = M.map (\tps -> (integer2Name (-1), tpSchemeToPolyType (importEnvironmentToTypeFamilies @lhs.importEnvironment) tps)) $ typeEnvironment @lhs.importEnvironment
-        body . instanceType = Nothing
         body . className = Nothing
         body . typeSignatureConstraints = []
 
 SEM Body
     | Body
-        declarations . bindingGroups    = []
         lhs . constraints = @loc.constraints
-        -- lhs . toplevelTypes = M.map (monoTypeToTypeScheme.getMonoFromPoly.snd) @lhs.typeSignatures `M.union` M.map (monoTypeToTypeScheme.getMonoFromPoly.snd) @typeSignatures
         declarations . betaUnique = @lhs.betaUnique
         (
             lhs . touchables,
@@ -136,7 +133,6 @@ SEM Declaration
         lhs . betaUnique        = @bindings.betaUnique
         lhs . bindingGroups     = [@bindingGroup]
         loc . bindingGroup      = (@environment, @assumptions, @constraints, @lhs.typeSignatureConstraints ++ @instanceCons ++ @bindings.givenConstraints, @bindings.gadtConstraints)
-        -- lhs . toplevelTypes  = M.singleton (@bindings.name) (maybe @err polyTypeToTypeScheme $ lookup @beta @lhs.substitution)
         lhs . tlEnvironment     = @environment
         loc . environment       = if isJust @lhs.className then M.empty else M.singleton @bindings.name @beta 
         loc . assumptions       = @bindings.assumptions 
@@ -168,7 +164,6 @@ SEM Declaration
         lhs . tlEnvironment     = @environment
         lhs . bindingGroups     = [@bindingGroup]
         loc . bindingGroup      = (@environment, @assumptions, @constraints, [], @righthandside.gadtConstraints)
-        --lhs . toplevelTypes   = M.fromList $ map (\(n, v) -> (n, monoTypeToTypeScheme $ substitutePoly v @lhs.substitution)) $ M.toList @pattern.environment
         lhs . touchables        = @betaRight : @pattern.touchables ++ @righthandside.touchables
         loc . constraints       = [unifyVar @pattern.beta @betaRight, unifyVar @betaRight @righthandside.beta] ++ @pattern.constraints ++ @righthandside.constraints
         loc . environment       = @pattern.environment
@@ -253,11 +248,9 @@ SEM Patterns
   | Cons
       lhs . betas            = @hd.beta : @tl.betas
           . numberOfPatterns = 1 + @tl.numberOfPatterns
-          . resultTypes       = @hd.resultTypes ++ @tl.resultTypes
   | Nil
       lhs . betas            = []
           . numberOfPatterns = 0
-          . resultTypes      = []
 SEM Pattern
     | Variable
         lhs . touchables    = [@beta]
@@ -303,11 +296,10 @@ SEM Pattern
         loc . beta                      = integer2Name @lhs.betaUnique
         loc . betaCon                   = integer2Name (@lhs.betaUnique + 1)
         loc . conApply                  = Constraint_Unify (var @betaCon) (foldr (:-->:) (var @beta) (map var @patterns.betas))
-        loc . conConstraints            = [Constraint_Inst (var @betaCon) (Helium.StaticAnalysis.Inferencers.OutsideInX.TypeInferencing.bindTypeVariables (getTypeVariablesFromMonoType (getRHSPT @tp)) @tp)]
+        loc . conConstraints            = [Constraint_Inst (var @betaCon) (bindTypeVariables (getTypeVariablesFromMonoType (getRHSPT @tp)) @tp)]
         loc . gadtVariables             =   if @ct == ConstructorRegular then 
                                                 []
                                             else
-                                                --@beta : @betaCon : getTypeVariablesFromPolyType' @tp ++ @patterns.touchables
                                                 @beta : @betaCon : @patterns.touchables ++ getTypeVariablesFromMonoType (getRHSPT @tp)
         loc . gadtAssumeConstraints     =   if @ct == ConstructorRegular then 
                                                 []
@@ -433,7 +425,6 @@ ATTR FunctionBinding LeftHandSide Pattern Patterns
         gadtVariables USE {(++)} {[]} : {[TyVar]}
         gadtCondition USE {(++)} {[]} : {[Constraint]}
         gadtAssumeConstraints USE {(++)} {[]} : {[Constraint]}
-        resultTypes : {[MonoType]}
     ]        
 
 SEM FunctionBindings
@@ -474,7 +465,6 @@ SEM RightHandSide
         lhs                 . beta           = @lhs.betaRight
         lhs                 . assumptions    = @where.assumptions
                             . constraints    = @where.constraints
-        guardedexpressions  . numberOfGuards = length @guardedexpressions.self
         where               . assumptions    = @guardedexpressions.assumptions
                             . constraints    = @guardedexpressions.constraints
 
@@ -710,7 +700,6 @@ SEM Statement
         loc . envConstraints        = concat $ M.elems (M.intersectionWith (\a' e -> [unifyVar a e | (_, a) <- a']) @lhs.assumptions @pattern.environment)
     | Let 
         lhs . generatorBeta  = Nothing
-        declarations . bindingGroups = []
         (
             lhs . touchables,
             lhs . assumptions,
@@ -744,7 +733,6 @@ ATTR Alternative Alternatives [ betaLeft:TyVar betaRight:TyVar | | ]
 
 SEM Alternative
     | Alternative
-        lhs . gadtVariables = []
         lhs . constraints = if null @pattern.gadtVariables then 
                                 unifyVar @pattern.beta @lhs.betaLeft : @envConstraints ++ @pattern.constraints ++ @righthandside.constraints
                             else
