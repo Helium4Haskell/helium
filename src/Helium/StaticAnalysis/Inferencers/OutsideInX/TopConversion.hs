@@ -120,9 +120,9 @@ tpSchemeToPolyType' :: TypeFamilies -> [String] -> TpScheme -> (PolyType, [(Stri
 tpSchemeToPolyType' fams restricted tps = let 
         (cs, tv, mt) = tpSchemeToMonoType fams tps
         pt' = PolyType_Mono cs mt
+        pt = bindVariables (map snd tv) pt'
         --pt = bindVariables (map snd tv) pt'
-        --pt = bindVariables (map snd tv) pt'
-    in (pt', tv) 
+    in (pt, tv) 
 
 tpSchemeToMonoType :: TypeFamilies -> TpScheme -> ([Constraint], [(String, TyVar)], MonoType)
 tpSchemeToMonoType fams tps = 

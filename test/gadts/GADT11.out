@@ -1,0 +1,14 @@
+Prelude is up to date
+Compiling gadts/GADT11.hs
+(5,6): Warning: Variable "f" is not used
+(5,6): Warning: Variable "f" shadows the one at (5,1)
+fromList []
+Unifying non-touchable variables [_10,_14]
+
+
+(4,1): Type signature is too general
+ function         : f
+   declared type  : X a   -> a  
+   inferred type  : X Int -> Int
+
+Compilation failed with 1 error

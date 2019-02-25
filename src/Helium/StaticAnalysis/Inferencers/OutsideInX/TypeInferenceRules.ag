@@ -299,21 +299,23 @@ SEM Pattern
                                                 @conApply : @conConstraints ++ @patterns.constraints
                                             else
                                                 [Constraint_Unify (var @beta) @rt]
+        lhs . gadtCondition             = [@conApply]
         loc . beta                      = integer2Name @lhs.betaUnique
         loc . betaCon                   = integer2Name (@lhs.betaUnique + 1)
         loc . conApply                  = Constraint_Unify (var @betaCon) (foldr (:-->:) (var @beta) (map var @patterns.betas))
-        loc . conConstraints            = [Constraint_Inst (var @betaCon) @tp]
+        loc . conConstraints            = [Constraint_Inst (var @betaCon) (Helium.StaticAnalysis.Inferencers.OutsideInX.TypeInferencing.bindTypeVariables (getTypeVariablesFromMonoType (getRHSPT @tp)) @tp)]
         loc . gadtVariables             =   if @ct == ConstructorRegular then 
                                                 []
                                             else
-                                                @beta : @betaCon : getTypeVariablesFromPolyType' @tp ++ @patterns.touchables
+                                                --@beta : @betaCon : getTypeVariablesFromPolyType' @tp ++ @patterns.touchables
+                                                @beta : @betaCon : @patterns.touchables ++ getTypeVariablesFromMonoType (getRHSPT @tp)
         loc . gadtAssumeConstraints     =   if @ct == ConstructorRegular then 
                                                 []
                                             else
-                                                [Constraint_Unify (var @betaCon) @conrt] ++ @resConstraints ++  @conApply : @conConstraints ++ @patterns.constraints
+                                                 @conConstraints ++ [Constraint_Unify (var @betaCon) @conrt] ++ @resConstraints ++ @patterns.constraints
         loc . ((tp, bu), ct)            = case M.lookup @name.self (valueConstructors @lhs.importEnvironment) of
                                             Nothing  -> internalError "TypeInferenceRules" "n/a" "Constructor not found"
-                                            Just (ctp, ct) -> (freshen (@lhs.betaUnique + 2) $ tpSchemeToPolyType (importEnvironmentToTypeFamilies @lhs.importEnvironment) ctp, ct)
+                                            Just (ctp, ct) -> (freshen (@lhs.betaUnique + 2) $ unbindPolyType $ tpSchemeToPolyType (importEnvironmentToTypeFamilies @lhs.importEnvironment) ctp, ct)
         loc . ((rt, conrt, resConstraints), bu2) = freshen (@bu + 1) $ getResultType @tp
 
     | InfixConstructor
@@ -349,6 +351,13 @@ SEM Pattern
 
 {
 
+getRHSPT :: PolyType -> MonoType
+getRHSPT (PolyType_Mono _ m) = getRHS m
+
+getRHS :: MonoType -> MonoType
+getRHS (f :-->: a) = getRHS a
+getRHS x = x
+
 getResultType :: PolyType -> (MonoType, MonoType, [Constraint])
 getResultType x = getResultTypeHelper 0 x
 
@@ -365,7 +374,7 @@ getResultTypeM i (MonoType_App y x) =  let
                                     (m1, cs1, i1) = getResultTypeM' i y 
                                     (m2, cs2, i2) = getResultTypeM' i1 x
                                 in (MonoType_App m1 m2, MonoType_App m1 m2, cs1 ++ cs2, i2) 
-getResultTypeM i (MonoType_Con s)   = (MonoType_Con s, MonoType_Con s, [], i)
+getResultTypeM i (MonoType_Con s)   = let v = var $ integer2Name i in (v, v, [Constraint_Unify v (MonoType_Con s)], i + 1)
 getResultTypeM i f@(MonoType_Fam _ _) = (f, f, [], i)
 getResultTypeM i (MonoType_Var v)   = (internalError "TypeInferenceRules" "getResultTypeM" "Return type of a GADT can never be a type variable", MonoType_Var v, [], i)
 
@@ -374,14 +383,15 @@ getResultTypeM' i (MonoType_Var v) = (MonoType_Var v, [], i)
 getResultTypeM' i (MonoType_Con "->") = (MonoType_Con "->", [], i)
 getResultTypeM' i (MonoType_Con c) = (MonoType_Var (integer2Name i), [Constraint_Unify (var $ integer2Name i) (MonoType_Con c)], i + 1) 
 getResultTypeM' i (MonoType_App x y) = let 
-                                    
-                                    (m2, cs2, i2) = getResultTypeM' i y
-                                in (MonoType_App x m2, cs2, i2) 
+                                    (m1, cs1, i1) = getResultTypeM' i x
+                                    (m2, cs2, i2) = getResultTypeM' i1 y
+                                in (MonoType_App m1 m2, cs1 ++ cs2, i2) 
 }
         
 SEM FunctionBinding 
     | FunctionBinding
         lhs . touchables        = @lefthandside.touchables ++ @righthandside.touchables
+        lhs . assumptions       = if null @lefthandside.gadtVariables then @assumptions else M.empty
         lhs . constraints       =   if null @lefthandside.gadtVariables then 
                                        @lefthandside.constraints ++ @righthandside.constraints  ++ @assConstraints ++ @locConstraints
                                     else
@@ -392,7 +402,7 @@ SEM FunctionBinding
                                         [GADTConstraint 
                                             (@righthandside.touchables ++ @lefthandside.gadtVariables) 
                                             @lefthandside.gadtAssumeConstraints
-                                            (@righthandside.constraints ++ @assConstraints)
+                                            (@lefthandside.gadtCondition ++ @righthandside.constraints ++ @assConstraints)
                                             @assumptions
                                             @subGADTConstraints
                                         ]
@@ -421,6 +431,7 @@ ATTR FunctionBinding LeftHandSide Pattern Patterns
     | 
     |
         gadtVariables USE {(++)} {[]} : {[TyVar]}
+        gadtCondition USE {(++)} {[]} : {[Constraint]}
         gadtAssumeConstraints USE {(++)} {[]} : {[Constraint]}
         resultTypes : {[MonoType]}
     ]        
@@ -747,7 +758,7 @@ SEM Alternative
                                     [GADTConstraint
                                         (@righthandside.touchables ++ @pattern.gadtVariables)
                                         @pattern.gadtAssumeConstraints
-                                        (@righthandside.constraints ++ @envConstraints)
+                                        (@pattern.gadtCondition ++ @righthandside.constraints ++ @envConstraints)
                                         @assumptions
                                         @subGADTConstraints
                                     ]

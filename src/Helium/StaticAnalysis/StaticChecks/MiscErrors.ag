@@ -102,12 +102,10 @@ SEM Declaration
     | Data_Gadt 
             lhs . hasGADT = True
             lhs . miscerrors = concat [ makeDuplicated TypeVariable @doubles
-                                       , makeUndefined TypeVariable @undef @simpletype.typevariables
                                        , @lhs.miscerrors
                                        ]
             loc . unused  = filter (`notElem` @constructors.typevariables) @simpletype.typevariables
                 . doubles = filter ((>1) . length) . group . sort $        @simpletype.typevariables
-                . undef   = filter (`notElem` @simpletype.typevariables)   @constructors.typevariables
 
     | Type   lhs . miscerrors = concat [ makeDuplicated TypeVariable @doubles
                                        , makeUndefined TypeVariable @undef @simpletype.typevariables
