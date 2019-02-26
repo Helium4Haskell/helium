@@ -39,8 +39,8 @@ typeDictFromCustoms n ( CustomDecl (DeclKindCustom ident) [CustomBytes bytes] : 
     | stringFromId ident == "type" =
         let 
             string = filter (/= '!') (stringFromBytes bytes) 
-            dictName = takeWhile (/= '$') string
-            dictType = drop 1 $ dropWhile (/= '$') string
+            dictName = takeWhile (/= ' ')
+            dictType = tail $ dropWhile (/= ' ') string
         in makeTpSchemeFromType (parseFromString contextAndType dictType)
     | otherwise =
         typeDictFromCustoms n cs

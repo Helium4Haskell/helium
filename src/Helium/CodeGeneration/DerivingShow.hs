@@ -53,7 +53,7 @@ dataDictionary classEnv tse decl@(UHA.Declaration_Data _ _ (UHA.SimpleType_Simpl
     , declAccess  = public
     , valueEnc    = Nothing
     , valueValue  = makeShowDictionary (length names)
-    , declCustoms = [ custom "type" ("DictShow$" ++ getNameName name)] 
+    , declCustoms = [ custom "type" ("Dict$Show " ++ getNameName name)] 
                 ++ map (custom "typeVariable" . getNameName) names
                 ++ map (\n -> custom "superInstance" ("Show-" ++ getNameName n)) names
     }
@@ -65,7 +65,7 @@ dataDictionary classEnv tse decl@(UHA.Declaration_Data _ _ (UHA.SimpleType_Simpl
            ids  = map idFromName names -- take nrOfArgs [ idFromString ("d" ++ show i) | i <- [(1::Integer)..] ]
            list = map idFromString ["showsPred", "showList", "showDef"]
            declarations = zipWith Bind (map (`Variable` Core.TAny) list) [Var $ idFromString "default$Show$showsPrec", Var $ idFromString "default$Show$showList", showBody]
-           body = Let (Rec declarations) (foldl Ap (Con $ ConId $ idFromString "DictShow") $ map Var list)
+           body = Let (Rec declarations) (foldl Ap (Con $ ConId $ idFromString "Dict$Show") $ map Var list)
        in foldr Lam body $ map (`Variable` Core.TAny) ids
 dataDictionary _ _ _ = error "not supported"
 
@@ -165,7 +165,7 @@ checkForPrimitiveDict nrOfArguments classEnv name =
     case name of 
         "[]" -> var "$dictShow$[]"
         "()" -> var "$dictShow$()"
-        "->" -> let dict = foldl Ap (Con $ ConId $ idFromString "DictShow") functions
+        "->" -> let dict = foldl Ap (Con $ ConId $ idFromString "Dict$Show") functions
                     showFunction = Lam (Variable (idFromString "d") Core.TAny) $ Lam (Variable (idFromString "p") Core.TAny) $ stringToCore "<<function>>"
                     functions = [Var $ idFromString "default$Show$showsPrec", Var $ idFromString "default$Show$showList", showFunction]
                 in Lam (Variable (idFromString "d1") Core.TAny) $ Lam (Variable (idFromString "d2") Core.TAny) dict
@@ -188,7 +188,7 @@ checkForPrimitiveDict nrOfArguments classEnv name =
             in if isJust pred then 
                     dict 
                 else 
-                    let dict = foldr Lam (foldl Ap (Con $ ConId $ idFromString "DictShow") functions) $ map (`Variable` Core.TAny) $ take nrOfArguments [idFromString ("d" ++ show i) | i <- [0..]]
+                    let dict = foldr Lam (foldl Ap (Con $ ConId $ idFromString "Dict$Show") functions) $ map (`Variable` Core.TAny) $ take nrOfArguments [idFromString ("d" ++ show i) | i <- [0..]]
                         showFunction = Lam (Variable (idFromString "d") Core.TAny) $ Lam (Variable (idFromString "p") Core.TAny) $ stringToCore ("<<type " ++ name ++ ">>")              
                         functions = [Var $ idFromString "default$Show$showsPrec", Var $ idFromString "default$Show$showList", showFunction]
                     in dict

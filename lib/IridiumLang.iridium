@@ -245,9 +245,10 @@ entry:
   letalloc %thunk = thunk %fn: anyfunction $ (%world: real_world)
   %res_any = eval %thunk: any_thunk
   %res = cast %res_any: any_whnf as @IORes
-  match %res: @IORes on @IORes: (any, real_world) -> @IO (%value_any, _)
+  match %res: @IORes on @IORes: (any, real_world) -> @IORes (%value_any, %new_world)
   %value = eval %value_any: any
-  return %value: any_whnf
+  %value2 = seq %new_world: real_world, %value: any_whnf
+  return %value2: any_whnf
 }
 
 ; $primPutChar :: Char -> RealWorld -> IORes

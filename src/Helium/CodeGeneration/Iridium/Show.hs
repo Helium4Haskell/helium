@@ -32,7 +32,7 @@ instance ShowDeclaration a => Show (Declaration a) where
 showCustom :: Custom -> String
 showCustom (CustomInt i) = "[int " ++ show i ++ "]"
 showCustom (CustomBytes bs) = "[bytes " ++ show (stringFromBytes bs) ++ "]"
-showCustom (CustomName id) = "[name " ++ showId id ++ "]"
+showCustom (CustomName id) = "[name @" ++ showId id ++ "]"
 showCustom (CustomLink id kind) = "[link @" ++ showId id ++ " " ++ showDeclKind kind ++ "]"
 showCustom (CustomDecl kind customs) = "[decl " ++ showDeclKind kind ++ (customs >>= ((" " ++) . showCustom)) ++ "]"
 showCustom CustomNothing = "[]"

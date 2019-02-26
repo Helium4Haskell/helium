@@ -42,7 +42,7 @@ module PreludePrim
     , Handle, stdin, stdout, stderr
     , IOMode(..), openFile, hClose
     , hGetChar, hPutChar, hPutString
-    , fmapIO, pureIO, returnIO, apIO, bindIO
+    , fmapIO, pureIO, returnIO, apIO
     
     -- strictness
     , ($!), seq

@@ -37,10 +37,6 @@ product = foldl' (*) (fromInteger 1)
 (/=) :: Eq a => a -> a -> Bool
 -}
 
-not :: Bool -> Bool
-not True = False
-not _ = True
-
 elem :: Eq a => a -> [a] -> Bool
 elem _ [] = False
 elem x (y:ys) 
@@ -72,7 +68,7 @@ maximum = foldl1 max
 minimum :: Ord a => [a] -> a
 minimum = foldl1 min
 
-class Eq a, Show a => Num a where
+class (Eq a, Show a) => Num a where
     (+) :: a -> a -> a
     (-) :: a -> a -> a
     (*) :: a -> a -> a
@@ -140,6 +136,10 @@ instance Num Int where
     negate = negInt
     fromInteger = id
     abs n = if n < 0 then negate n else n
+    signum n
+        | n < 0     = -1
+        | n == 0    = 0
+        | otherwise = 1
 
 {-----------------------------------------------
  -- Float
@@ -170,23 +170,23 @@ signumFloat x =
 pi :: Float
 pi = 3.141592653589793
 -}
-
+{-
 instance Eq Float where
     (==) = (==.)
-
 instance Ord Float where
     (<) = (<.)
     (>) = (>.)
     (<=) = (<=.)
     (>=) = (>=.)
-
+-}
+{-
 instance Num Float where
     (+) = (+.)
     (-) = (-.)
     (*) = (*.)
     negate x = 0 -. x
     abs n = if n < 0.0 then negate n else n
-
+-}
 {-----------------------------------------------
  -- Bool
  -----------------------------------------------}
@@ -234,7 +234,7 @@ either l r e =
  -- Ordering
  -----------------------------------------------}
 
-data Ordering = LT | EQ | GT deriving (Show, Ord, Enum)
+data Ordering = LT | EQ | GT deriving (Show, Eq)
 
 {-----------------------------------------------
  -- Tuple
@@ -774,7 +774,7 @@ class Eq a => Ord a where
     (>=) x y = not (x < y)
     compare x y | x == y = EQ
                 | x < y = LT
-                | x > y = GT
+                | otherwise = GT
 
 instance Ord a => Ord [a] where
     [] < [] = False
@@ -859,16 +859,13 @@ instance Show Bool where
     show True = "True"
     show False = "False"
 
+{-
 instance Show Float where
     show = showFloat
+-}
 
 instance Show () where
     show () = "()"
-
-instance Show Ordering where
-    show LT = "LT"
-    show GT = "GT"
-    show EQ = "EQ"
 
 instance Show Char where
     show = showChar
@@ -933,8 +930,8 @@ class Enum a where
 
 
 instance Enum Int where
-  succ = (+1)
-  pred = (-1)
+  succ x = x + 1
+  pred x = x - 1
   toEnum = id
   fromEnum = id
   enumFrom x = f x
@@ -948,11 +945,16 @@ instance Enum Int where
       f y
         | y > end = []
         | otherwise = y : f (y + 1)
-  enumFromThenTo x next end = f x
+  enumFromThenTo x next end
+    | step > 0 = f x
+    | otherwise = g x
     where
       step = next - x
       f y
         | y > end = []
+        | otherwise = y : f (y + step)
+      g y
+        | y < end = []
         | otherwise = y : f (y + step)
 
 {-
@@ -970,11 +972,12 @@ instance Enum Float where
 instance Enum () where
     succ            = error "There is no successor for ()"
     pred            = error "There is no predecessor for ()"
-    fromEnum        = fromEnumVoid
-    toEnum          = toEnumVoid
-    enumFrom        = enumFromVoid
-    enumFromThen    = enumFromThenVoid
-    enumFromTo _ _  = [()]
+    fromEnum _ = 0
+    toEnum 0 = ()
+    toEnum n = error ("Cannot convert " ++ show n ++ " to unit in toEnum")
+    enumFrom _       = [()]
+    enumFromThen _ _ = repeat ()
+    enumFromTo _ _   = [()]
     enumFromThenTo _ _ _ = repeat ()
 
 instance Enum Bool where

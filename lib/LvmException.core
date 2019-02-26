@@ -106,20 +106,20 @@ catch action handler
   user errors
 ----------------------------------------------------------}
 error :: String -> a
-error msg = ''_$helium_runtime_error'' msg
+error = \msg: String -> ''_$helium_runtime_error'' msg
   -- = let! s = (packedFromString msg) in raise (UserError s)
 
 errorPacked :: PackedString -> a
-errorPacked msg = error msg
+errorPacked = \msg: String -> error msg
   -- = raise (UserError msg)
 
 patternFail :: String -> a
-patternFail msg = error msg
+patternFail = \msg: String -> error msg
   {- = let! s   = packedFromString msg
          exn = PatternFailure s
     in raise (Runtime exn) -}
 
 patternFailPacked :: PackedString -> a
-patternFailPacked msg = error msg
+patternFailPacked = \msg: String -> error msg
   {- = let! exn = PatternFailure msg
     in raise (Runtime exn) -}

@@ -25,7 +25,7 @@ dataDictionary  (UHA.Declaration_Data _ _ (UHA.SimpleType_SimpleType _ name name
     , declAccess  = public
     , valueEnc    = Nothing
     , valueValue  = eqDict names constructors
-    , declCustoms = [ custom "type" ("DictEq$" ++ getNameName name) ] 
+    , declCustoms = [ custom "type" ("Dict$Eq " ++ getNameName name) ] 
         ++ map (custom "typeVariable" . getNameName) names
         ++ map (\n -> custom "superInstance" ("Eq-" ++ getNameName n)) names
     }
@@ -34,7 +34,7 @@ dataDictionary _ = error "pattern match failure in CodeGeneration.Deriving.dataD
 eqDict :: [UHA.Name] -> [UHA.Constructor] -> Expr
 eqDict names constructors = foldr Lam dictBody (map (\name -> Variable (idFromName name) Core.TAny) names)
     where
-        dictBody = let_ (idFromString "func$eq") (eqFunction constructors) (Ap (Ap (Con $ ConId $ idFromString $ "DictEq") (var "default$Eq$/=")) (var "func$eq"))
+        dictBody = let_ (idFromString "func$eq") (eqFunction constructors) (Ap (Ap (Con $ ConId $ idFromString $ "Dict$Eq") (var "default$Eq$/=")) (var "func$eq"))
 -- Example: data X a b = C a b Int | D Char b
 eqFunction :: [UHA.Constructor] -> Expr
 eqFunction constructors = 

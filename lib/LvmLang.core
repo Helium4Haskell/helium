@@ -14,8 +14,8 @@ module LvmLang
     , ($!), seq, pseq
 
     -- IO
-    , primIO, unsafePerformIO, unsafePerformStrictIO
-    , fmapIO, pureIO, apIO
+    , unsafePerformIO, unsafePerformStrictIO
+    , fmapIO, pureIO, apIO, bindIO, returnIO
     , ''$primPutStrLn''
     , putChar
     , getChar
@@ -105,154 +105,131 @@ type String       = [Char]
   Strictness
 ----------------------------------------------------------}
 ($!) :: (a -> b) -> a -> b
-($!) f x   = let! x = x in f x
+($!) = \f: (a -> b) -> \x: a -> let! x: a! = x in f x
 
 seq :: a -> b -> b
-seq a b = primSeq a b
+seq = \a: a -> \b: b -> primSeq a b
 
 pseq :: a -> b -> b
-pseq a b = primPseq a b
+pseq = \a: a -> \b: b -> primPseq a b
 
 {----------------------------------------------------------
   Basic arithmetic on Int's
 ----------------------------------------------------------}
 (+#) :: Int -> Int -> Int!
-(+#) x y    = let! y = y in let! x = x in primAddInt x y
+(+#) = \x: Int -> \y: Int -> primAddInt x y
 
 (-#) :: Int -> Int -> Int!
-(-#) x y    = let! y = y in let! x = x in primSubInt x y
+(-#) = \x: Int -> \y: Int -> primSubInt x y
 
 (*#) :: Int -> Int -> Int!
-(*#) x y    = let! y = y in let! x = x in primMulInt x y
+(*#) = \x: Int -> \y: Int -> primMulInt x y
 
 -- TODO: Round to -inf instead of zero
 div :: Int -> Int -> Int!
-div x y    = quot x y -- let! y = y in let! x = x in primDivInt x y
+div = \x: Int -> \y: Int -> quot x y -- primDivInt x y
 
 -- TODO: Round to -inf instead of zero
 mod :: Int -> Int -> Int!
-mod x y    = rem x y -- let! y = y in let! x = x in primModInt x y
+mod = \x: Int -> \y: Int -> rem x y -- primModInt x y
 
 quot :: Int -> Int -> Int!
-quot x y    = let! y = y in let! x = x in primQuotInt x y
+quot = \x: Int -> \y: Int -> primQuotInt x y
 
 rem :: Int -> Int -> Int!
-rem x y    = let! y = y in let! x = x in primRemInt x y
+rem = \x: Int -> \y: Int -> primRemInt x y
 {-
 and :: Int -> Int -> Int!
-and x y    = let! y = y in let! x = x in primAndInt x y
+and = \x: Int -> \y: Int -> primAndInt x y
 
 xor :: Int -> Int -> Int!
-xor x y    = let! y = y in let! x = x in primXorInt x y
+xor = \x: Int -> \y: Int -> primXorInt x y
 
 or :: Int -> Int -> Int!
-or x y    = let! y = y in let! x = x in primOrInt x y
+or = \x: Int -> \y: Int -> primOrInt x y
 -}
 shr :: Int -> Int -> Int!
-shr x y    = let! y = y in let! x = x in primShrInt x y
+shr = \x: Int -> \y: Int -> primShrInt x y
 
 shl :: Int -> Int -> Int!
-shl x y    = let! y = y in let! x = x in primShlInt x y
+shl = \x: Int -> \y: Int -> primShlInt x y
 
 shrNat :: Int -> Int -> Int!
-shrNat x y = let! y = y in let! x = x in primShrNat x y
+shrNat = \x: Int -> \y: Int -> primShrNat x y
 
 negInt :: Int -> Int!
-negInt x      = let! x = x in primNegInt x
+negInt = \x: Int -> primNegInt x
 
 {----------------------------------------------------------
   Comparisons on Int's
 ----------------------------------------------------------}
 (==#) :: Int -> Int -> Bool!
-(==#) x y   = let! y = y in let! x = x in primEqInt x y
+(==#) = \x: Int -> \y: Int -> primEqInt x y
 
 (/=#) :: Int -> Int -> Bool!
-(/=#) x y   = let! y = y in let! x = x in primNeInt x y
+(/=#) = \x: Int -> \y: Int -> primNeInt x y
 
 (<#) :: Int -> Int -> Bool!
-(<#) x y   = let! y = y in let! x = x in primLtInt x y
+(<#) = \x: Int -> \y: Int -> primLtInt x y
 
 (>#) :: Int -> Int -> Bool!
-(>#) x y   = let! y = y in let! x = x in primGtInt x y
+(>#) = \x: Int -> \y: Int -> primGtInt x y
 
 (<=#) :: Int -> Int -> Bool!
-(<=#) x y   = let! y = y in let! x = x in primLeInt x y
+(<=#) = \x: Int -> \y: Int -> primLeInt x y
 
 (>=#) :: Int -> Int -> Bool!
-(>=#) x y   = let! y = y in let! x = x in primGeInt x y
+(>=#) = \x: Int -> \y: Int -> primGeInt x y
 
 {----------------------------------------------------------
   Basic arithmetic on Float's
 ----------------------------------------------------------}
 
 (+.) :: Float -> Float -> Float!
-(+.) x y    = let! y = y in let! x = x in primAddFloat x y
+(+.) = \x: Float -> \y: Float -> primAddFloat x y
 
 (-.) :: Float -> Float -> Float!
-(-.) x y    = let! y = y in let! x = x in primSubFloat x y
+(-.) = \x: Float -> \y: Float -> primSubFloat x y
 
 (*.) :: Float -> Float -> Float!
-(*.) x y    = let! y = y in let! x = x in primMulFloat x y
+(*.) = \x: Float -> \y: Float -> primMulFloat x y
 
 (/.) :: Float -> Float -> Float!
-(/.) x y    = let! y = y in let! x = x in primDivFloat x y
+(/.) = \x: Float -> \y: Float -> primDivFloat x y
 
 negFloat :: Float -> Float!
-negFloat x = let! x = x in primNegFloat x
+negFloat = \x: Float -> primNegFloat x
 
 {----------------------------------------------------------
   Comparisons on Float's
 ----------------------------------------------------------}
 
 (==.) :: Float -> Float -> Bool!
-(==.) x y   = let! y = y in let! x = x in primEqFloat x y
+(==.) = \x: Float -> \y: Float -> primEqFloat x y
 
 (/=.) :: Float -> Float -> Bool!
-(/=.) x y   = let! y = y in let! x = x in primNeFloat x y
+(/=.) = \x: Float -> \y: Float -> primNeFloat x y
 
 (<.) :: Float -> Float -> Bool!
-(<.) x y   = let! y = y in let! x = x in primLtFloat x y
+(<.) = \x: Float -> \y: Float -> primLtFloat x y
 
 (>.) :: Float -> Float -> Bool!
-(>.) x y   = let! y = y in let! x = x in primGtFloat x y
+(>.) = \x: Float -> \y: Float -> primGtFloat x y
 
 (<=.) :: Float -> Float -> Bool!
-(<=.) x y   = let! y = y in let! x = x in primLeFloat x y
+(<=.) = \x: Float -> \y: Float -> primLeFloat x y
 
 (>=.) :: Float -> Float -> Bool!
-(>=.) x y   = let! y = y in let! x = x in primGeFloat x y
-
-{----------------------------------------------------------
-  Boolean expressions
-----------------------------------------------------------}
-(&&) :: Bool -> Bool -> Bool
-(&&) x y
-  = case x of
-      False   -> False
-      True    -> y
-
-
-(||) :: Bool -> Bool -> Bool
-(||) x y
-  = case x of
-      True  -> True
-      False -> y
-
-not :: Bool -> Bool
-not x
-  = case x of
-      True  -> False
-      False -> True
+(>=.) = \x: Float -> \y: Float -> primGeFloat x y
 
 {----------------------------------------------------------
   Packed strings
 ----------------------------------------------------------}
 stringFromPacked :: PackedString -> String
-stringFromPacked packed = packed
-  -- = let! packed = packed in prim_chars_of_string packed
+stringFromPacked = \p: String -> p
 
 packedFromString :: String -> PackedString
-packedFromString s = s
+packedFromString = \s: String -> s
   {- = let forced s = case s of
                      []       -> []
                      (:) x xs -> let! y  = x
@@ -301,72 +278,69 @@ foldlStrict f z xs
   The IO monad
 ----------------------------------------------------------}
 bindIO :: IO a -> (a -> IO b) -> IO b
-bindIO a f = case a of
+bindIO = \a: IO a -> \f: (a -> IO b) -> case a of
   IO ioA ->
     IO
       (
-        \world -> case ioA world of
-          IORes x world' -> 
-            ( case f x of
+        \world: RealWorld -> let! res: IORes a = ioA world in case res of
+          IORes x world' ->
+            ( let! b: IO b = f x in case b of
                 IO ioB -> ioB world'
             )
       )
 
 returnIO :: a -> IO a
-returnIO x
-  = IO (\world -> IORes x world)
+returnIO = \x: a -> IO (\world: RealWorld -> IORes x world)
 
 fmapIO :: (a -> b) -> IO a -> IO b
-fmapIO f io = IO (
-    \world ->
-      case io of IO op ->
-        let! res = op world
-        in case res of
-          IORes x world' -> IORes (f x) world'
+fmapIO = \f: (a -> b) -> \ioA: IO a -> IO (
+    \world: RealWorld ->
+      case ioA of
+        IO op ->
+          let! res: IORes a = op world
+          in case res of
+            IORes x world' -> IORes (f x) world'
   )
 
-pureIO x = returnIO x
+pureIO :: a -> IO a
+pureIO = \x: a -> returnIO x
 
 apIO :: IO (a -> b) -> IO a -> IO b
-apIO fIO vIO = IO (
-    \world ->
+apIO = \fIO: IO (a -> b) -> \vIO: IO a -> IO (
+    \world: RealWorld ->
       case fIO of
         IO fOp -> case vIO of
-          vOp ->
-            let! fRes = fOp world
+          IO vOp ->
+            let! fRes: IORes (a -> b) = fOp world
             in case fRes of
               IORes f world' ->
-                let! vRes = vOp world'
+                let! vRes: IORes a = vOp world'
                 in case vRes of
                   IORes v world'' -> IORes (f v) world''
   )
 
-
-primIO :: (() -> a) -> IO a
-primIO f
-  = \_ -> let! x = f () in IORes x
-
 -- used to execute "main"
 unsafePerformStrictIO :: IO a -> a
-unsafePerformStrictIO io
-  = let! x = unsafePerformIO io in x
+unsafePerformStrictIO = \io: IO a ->
+  let! x: IO a = unsafePerformIO io in x
 
 -- TODO: unsafePerformStrictIO should be removed, as it is the same as unsafePerformIO as a function is already strict in
 -- its return value
 
 getChar :: IO Char
-getChar = IO (\world -> ''$primGetChar'' world)
+getChar = IO (\world: RealWorld -> ''$primGetChar'' world)
 
 putChar :: Char -> IO ()
-putChar char = IO
-  (\world -> case ''$primPutChar'' char world of
+putChar = \char: Char -> IO
+  (\world: RealWorld -> let! res: IORes Int = ''$primPutChar'' char world in case res of
     IORes _ world2 -> IORes () world2
   )
 
+{-
 ''$primPutStrLn'' :: String -> IO ()
-''$primPutStrLn'' str =
-  let! str = str in
-  let! _1 = ''_$helium_runtime_print_string'' str in
+''$primPutStrLn'' = \str: String ->
   let! newline = "\n" in
+  let! _1 = ''_$helium_runtime_print_string'' str in
   let! _2 = ''_$helium_runtime_print_string'' newline in
   IORes ()
+-}

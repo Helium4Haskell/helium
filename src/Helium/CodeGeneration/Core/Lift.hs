@@ -32,7 +32,7 @@ import Lvm.Core.Utils
 
 import Data.Maybe (catMaybes)
 
-type Env = IdMap Expr
+type Env = IdMap Id
 
 coreLift :: NameSupply -> CoreModule -> CoreModule
 coreLift supply (Module name major minor decls) = Module name major minor decls'
@@ -87,7 +87,7 @@ liftExpr supply scope (Let (Rec bs) e) env = (Let (Rec $ catMaybes bs') e', conc
     (supply1, supply2) = splitNameSupply supply
     (bs', decls1, envMaps) = unzip3 $ mapWithSupply (\s b -> lazyBind True s scope' b env) supply1 bs
     (e', decls2) = liftExpr supply2 scope' e (foldr id env envMaps)
-liftExpr supply scope (Match name alts) env = (Match name alts', concat decls)
+liftExpr supply scope (Match name alts) env = (Match (rename env name) alts', concat decls)
   where
     (alts', decls) = unzip $ mapWithSupply (\s a -> liftAlt s scope a env) supply alts
 -- Convert `\x -> expr` to `let y = \x -> expr in y
@@ -96,18 +96,21 @@ liftExpr supply scope expr@(Lam _ _) env = liftExpr supply' scope (Let (NonRec b
     (name, supply') = freshId supply
     bind = Bind (Variable name TAny) expr
 -- After normalization the other expression constructors cannot have let bindings
--- as subexpressions, so we do not have to lift here. We do need to inline variables used in `expr`,
+-- as subexpressions, so we do not have to lift here. We do need to rename variables used in `expr`,
 -- if they are mapped in `env`.
-liftExpr supply scope expr env = (inlineInSimpleExpr env expr, [])
+liftExpr supply scope expr env = (renameInSimpleExpr env expr, [])
 
--- Inlines according to Env. Works on expressions consisting of Ap, Var, Con and Lit nodes.
-inlineInSimpleExpr :: Env -> Expr -> Expr
-inlineInSimpleExpr env e@(Var name) = case lookupMap name env of
-  Nothing -> e
-  Just expr -> inlineInSimpleExpr env expr
-inlineInSimpleExpr env (Ap e1 e2) = Ap (inlineInSimpleExpr env e1) (inlineInSimpleExpr env e2)
-inlineInSimpleExpr env e@(Con _) = e
-inlineInSimpleExpr env e@(Lit _) = e
+-- Renames according to Env. Works on expressions consisting of Ap, Var, Con and Lit nodes.
+renameInSimpleExpr :: Env -> Expr -> Expr
+renameInSimpleExpr env (Var name) = Var $ rename env name
+renameInSimpleExpr env (Ap e1 e2) = Ap (renameInSimpleExpr env e1) (renameInSimpleExpr env e2)
+renameInSimpleExpr env e@(Con _) = e
+renameInSimpleExpr env e@(Lit _) = e
+
+rename :: Env -> Id -> Id
+rename env name = case lookupMap name env of
+  Nothing -> name
+  Just name' -> rename env name'
 
 strictBind :: NameSupply -> [Variable] -> Bind -> Env -> (Maybe Bind, [CoreDecl], Env -> Env)
 strictBind supply scope b@(Bind _ (Lam _ _)) env = lazyBind False supply scope b env
@@ -118,18 +121,17 @@ strictBind supply scope (Bind var expr) env = (Just $ Bind var expr', decls, id)
 lazyBind :: Bool -> NameSupply -> [Variable] -> Bind -> Env -> (Maybe Bind, [CoreDecl], Env -> Env)
 lazyBind isRec supply scope b@(Bind var@(Variable x _) expr) env
   -- Expression can already be put in a thunk, don't need to change anything.
-  | isValidThunk expr = (Just (Bind var $ inlineInSimpleExpr env expr), [], id)
-  -- Put in a thunk. If possible, we will inline the call to the new declaration.
-  | inline = (Nothing, decl : decls, insertMap x ap)
+  | isValidThunk expr = (Just (Bind var $ renameInSimpleExpr env expr), [], id)
+  -- Do not construct a Bind if the value is placed in a toplevel value which is not a Lambda
+  | null scope = (Nothing, decl : decls, insertMap x name)
   | otherwise = (Just $ Bind var ap, decl : decls, id)
   where
-    inline = null scope
     ap = foldl (\e (Variable arg _) -> Ap e (Var arg)) (Var name) scope
     (name, supply') = freshId supply
     (supply1, supply2) = splitNameSupply supply'
     argNames :: [(Variable, Variable)]
     argNames = mapWithSupply (\s var@(Variable arg t) -> let (arg', _) = freshIdFromId arg s in (var, Variable arg' t)) supply1 scope
-    env' = foldr (\(Variable arg _, Variable arg' _) -> insertMap arg $ Var arg') env argNames
+    env' = foldr (\(Variable arg _, Variable arg' _) -> insertMap arg arg') env argNames
     (expr', decls) = liftExprIgnoreLambdas supply2 (map snd argNames) expr env'
     value = foldr (Lam . snd) expr' argNames
     decl :: CoreDecl
