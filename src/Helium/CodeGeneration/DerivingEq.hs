@@ -12,7 +12,7 @@ import qualified Helium.Syntax.UHA_Syntax as UHA
 import Helium.Syntax.UHA_Utils
 import Helium.CodeGeneration.CoreUtils
 import Lvm.Core.Expr
-import Lvm.Core.Type
+import qualified Lvm.Core.Type as Core
 import Lvm.Core.Utils
 import Lvm.Common.Id
 import Helium.Utils.Utils
@@ -21,18 +21,23 @@ import Helium.Utils.Utils
 dataDictionary :: UHA.Declaration -> CoreDecl
 dataDictionary  (UHA.Declaration_Data _ _ (UHA.SimpleType_SimpleType _ name names) constructors _) =
     DeclValue 
-    { declName    = idFromString ("$dictEq" ++ getNameName name)
+    { declName    = idFromString ("$dictEq$" ++ getNameName name)
     , declAccess  = public
     , valueEnc    = Nothing
-    , valueValue  = eqFunction names constructors
-    , declCustoms = [ custom "type" ("DictEq" ++ getNameName name) ] 
+    , valueValue  = eqDict names constructors
+    , declCustoms = [ custom "type" ("DictEq$" ++ getNameName name) ] 
+        ++ map (custom "typeVariable" . getNameName) names
+        ++ map (\n -> custom "superInstance" ("Eq-" ++ getNameName n)) names
     }
-  where  
 dataDictionary _ = error "pattern match failure in CodeGeneration.Deriving.dataDictionary"
 
+eqDict :: [UHA.Name] -> [UHA.Constructor] -> Expr
+eqDict names constructors = foldr Lam dictBody (map (\name -> Variable (idFromName name) Core.TAny) names)
+    where
+        dictBody = let_ (idFromString "func$eq") (eqFunction constructors) (Ap (Ap (Con $ ConId $ idFromString $ "DictEq") (var "default$Eq$/=")) (var "func$eq"))
 -- Example: data X a b = C a b Int | D Char b
-eqFunction :: [UHA.Name] -> [UHA.Constructor] -> Expr
-eqFunction names constructors = 
+eqFunction :: [UHA.Constructor] -> Expr
+eqFunction constructors = 
     let 
         body = 
             Let (Strict (Bind fstArg (Var $ variableName fstArg))) -- evaluate both
@@ -40,10 +45,10 @@ eqFunction names constructors =
                     (Match (variableName fstArg)  -- case $fstArg of ...
                         (map makeAlt constructors))) 
     in
-        foldr Lam body (map ((`Variable` TAny) . idFromName) names ++ [fstArg, sndArg]) -- \a b $fstArg $sndArg ->
+        foldr Lam body ([Variable (idFromString "dict") Core.TAny, fstArg, sndArg]) -- \$fstArg $sndArg ->
 
 fstArg, sndArg :: Variable
-[fstArg, sndArg] = map ((`Variable` TAny) . idFromString) ["$fstArg", "$sndArg"] 
+[fstArg, sndArg] = map ((`Variable` Core.TAny) . idFromString) ["$fstArg", "$sndArg"] 
 
 makeAlt :: UHA.Constructor -> Alt
 makeAlt constructor =
@@ -59,7 +64,7 @@ makeAlt constructor =
                 [ Alt (PatCon (ConId ident) ws)
                       ( if null types then Con (ConId (idFromString "True"))
                         else
-                            foldr1 andCore [ Ap (Ap (eqFunForType tp) (Var v)) (Var w)
+                            foldr1 andCore [ Ap (Ap (Ap (var "==") $ eqFunForType tp) (Var v)) (Var w)
                                            | (v, w, tp) <- zip3 vs ws types
                                            ]
                       )
@@ -91,7 +96,7 @@ eqFunForType :: UHA.Type -> Expr
 eqFunForType t = 
     case t of
         UHA.Type_Variable _ n             -> Var (idFromName n) 
-        UHA.Type_Constructor _ n          -> var ("$dictEq" ++ show n)
+        UHA.Type_Constructor _ n          -> var ("$dictEq$" ++ show n)
         UHA.Type_Application _ _ f xs     -> foldl Ap (eqFunForType f) (map eqFunForType xs)
         UHA.Type_Parenthesized _ ty       -> eqFunForType  ty
         _ -> internalError "DerivingEq" "eqFunForType" "unsupported type"

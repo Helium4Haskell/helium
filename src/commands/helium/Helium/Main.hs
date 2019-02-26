@@ -21,7 +21,7 @@ import Helium.Main.Args
 import Helium.Main.CompileUtils
 import Data.IORef
 import Paths_helium
-        
+
 -- Prelude will be treated specially
 prelude :: String
 prelude = "Prelude.hs"
@@ -34,15 +34,15 @@ main :: IO ()
 main = do
     args                     <- getArgs
     (options, Just fullName) <- processHeliumArgs args -- Can't fail, because processHeliumArgs checks it.
-    
-    lvmPathFromOptionsOrEnv <- case lvmPathFromOptions options of 
+
+    lvmPathFromOptionsOrEnv <- case lvmPathFromOptions options of
         Nothing -> getLvmPath
         Just s  -> return (explodePath s)
-    
-    baseLibs <- case basePathFromOptions options of 
-        Nothing -> getDataFileName $ 
-                     if overloadingFromOptions options 
-                     then "lib" 
+
+    baseLibs <- case basePathFromOptions options of
+        Nothing -> getDataFileName $
+                     if overloadingFromOptions options
+                     then "lib"
                      else joinPath ["lib","simple"]
         Just path -> if overloadingFromOptions options
                      then return path
@@ -57,8 +57,8 @@ main = do
 
     -- File that is compiled must exist, this test doesn't use the search path
     fileExists <- doesFileExist fullName
-    newFullName <- 
-        if fileExists then 
+    newFullName <-
+        if fileExists then
             return fullName
         else do
             let filePlusHS = fullName ++ ".hs"

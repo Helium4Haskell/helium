@@ -34,7 +34,6 @@ import qualified Helium.CodeGeneration.Iridium.Parse.Module as Iridium
 import qualified Helium.CodeGeneration.Iridium.ResolveDependencies as Iridium
 import qualified Helium.CodeGeneration.Iridium.FileCache as Iridium
 import Helium.CodeGeneration.Iridium.ImportAbstract (toAbstractModule)
-import Helium.Parser.Lexer (checkTokenStreamForClassOrInstance)
 import Helium.Main.Args (overloadingFromOptions)
 import Helium.Utils.Utils
 import Data.IORef
@@ -102,18 +101,6 @@ compileHaskellToCore basedir fullName contents options iridiumCache doneModules 
 
   unless (NoWarnings `elem` options) $
       showMessages lexerWarnings
-
-  -- If the token stream contains the words class or instance
-  -- and overloading is off, then print error message and bail out:
-  if not (overloadingFromOptions options) then 
-    let classInstanceMessages = checkTokenStreamForClassOrInstance tokens
-    in if not (null classInstanceMessages) 
-        then do 
-              showMessages classInstanceMessages
-              stopCompilingIf True
-        else return ()
-  else
-    return ()
 
   -- Phase 2: Parsing
   parsedModule <- 

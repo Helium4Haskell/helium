@@ -14,11 +14,17 @@ ATTR Declarations Declaration Expressions Expression Statements Statement
      Alternatives Alternative FunctionBindings FunctionBinding
      RightHandSide MaybeDeclarations MaybeExpression RecordExpressionBinding
      RecordExpressionBindings Body
-        [ availablePredicates   : Predicates
+        [ availablePredicates   : {[PredicateWithSource]}
           classEnvironment      : ClassEnvironment
+          instanceName : {Maybe Name}
+          classPredicate : {Maybe (Name, Names)}
+          curPred       : {Maybe Predicate}
+          curClassPred       : {Maybe Predicate}
+          variableMapping : {Maybe [(Name, Tp)]}
         | dictionaryEnvironment : DictionaryEnvironment          
         | 
         ]
+
 
 SEM Module
   | Module
@@ -28,19 +34,44 @@ SEM Module
                                         else emptyDictionaryEnvironment
        body . dictionaryEnvironment = emptyDictionaryEnvironment
             . classEnvironment      = @classEnv
+            . classMemberEnv        = classMemberEnvironment @lhs.importEnvironment
             . availablePredicates   = []
-    
+            . instanceName          = Nothing
+            . classPredicate        = Nothing
+            . curClassPred          = Nothing
+            . curPred               = Nothing
+
 SEM Declaration   
  
-  | FunctionBindings
-       loc      . declPredicates        = let scheme     = M.findWithDefault err (NameWithRange @bindings.name) @lhs.allTypeSchemes
-                                              predicates = matchTypeWithScheme @lhs.orderedTypeSynonyms 
+  | FunctionBindings  -- for every predicate, copy class and replace the class with it's superclass 
+       loc      . declPredicates        = let
+                                              !predicates = matchTypeWithScheme @lhs.orderedTypeSynonyms 
                                                               (@lhs.substitution |-> @beta) 
-                                                              (@lhs.substitution |-> scheme)
-                                              err = internalError "TypeInferenceOverloading.ag" "n/a" "could not find type for function binding"
+                                                              (@lhs.substitution |-> @scheme)
                                           in expandPredicates @lhs.orderedTypeSynonyms predicates      
-       bindings . availablePredicates   = @declPredicates ++ @lhs.availablePredicates
-       lhs      . dictionaryEnvironment = addForDeclaration @bindings.name @declPredicates @bindings.dictionaryEnvironment
+        loc . scheme                     =  let 
+                                                classFunctions :: Maybe Name -> [(Name, TpScheme)]
+                                                classFunctions Nothing = []
+                                                classFunctions (Just n) = fromJust @lhs.classMemberTypeSchemes
+                                                searchClasses :: Name -> TpScheme
+                                                searchClasses name = maybe (err name) snd $ find (\(n, _)->n == name) (classFunctions @lhs.instanceName)
+                                                err name = internalError "TypeInferenceOverloading.ag" "n/a" 
+                                                    ("could not find type for function binding for " ++ show name ++ " in " ++ "")
+        
+                                            in M.findWithDefault (searchClasses @bindings.name) (NameWithRange @bindings.name) (@lhs.allTypeSchemes)
+        loc . originalFunctionType       =   fmap 
+                                                    (\cname -> (\(_, tp, _, _) -> tp) $ fromJust $ find (\(n, _, _, _)-> n == @bindings.name) $ snd $ fromJust $ M.lookup cname (classMemberEnvironment @lhs.importEnvironment)) 
+                                                @lhs.instanceName
+        bindings . curPred                    = getCurrentClassPredicate 
+                                                    @lhs.classPredicate
+                                                    (@lhs.substitution |-> @beta)
+                                                    (@lhs.substitution |-> @originalFunctionType)
+                                                    (@lhs.substitution |-> @declPredicates)
+        bindings . availablePredicates   = map PredicateFunction @declPredicates ++ @lhs.availablePredicates
+        lhs      . dictionaryEnvironment =  if (not $ isJust @lhs.instanceName) then 
+                                                addForDeclaration @bindings.name @declPredicates @bindings.dictionaryEnvironment
+                                            else
+                                                @bindings.dictionaryEnvironment
        
   | PatternBinding 
        loc           . declPredicates = case @pattern.self of
@@ -53,12 +84,18 @@ SEM Declaration
                                              in Just (name, expandPredicates @lhs.orderedTypeSynonyms predicates)
                                           _ -> Nothing
        righthandside . availablePredicates = case @declPredicates of
-                                                Just (_, ps) -> ps ++ @lhs.availablePredicates
+                                                Just (_, ps) -> (map PredicateFunction ps ++ @lhs.availablePredicates)
                                                 Nothing      -> @lhs.availablePredicates
        lhs           . dictionaryEnvironment = case @declPredicates of
                                                   Just (n, ps) -> addForDeclaration n ps @righthandside.dictionaryEnvironment
                                                   Nothing      -> @righthandside.dictionaryEnvironment
-       
+  | Instance
+      where . instanceName  = Just @name.self
+      where . availablePredicates = @superPredicates ++ @lhs.availablePredicates
+  | Class
+      where . curClassPred = Just $ Predicate (getNameName @simpletype.name) @classBeta
+      where . instanceName = Just @simpletype.name
+   
 SEM Expression 
 
   | Variable   lhs . dictionaryEnvironment = @newDEnv              
@@ -68,8 +105,20 @@ SEM Expression
                    . maybeInferredType     = M.lookup @nameInScope @lhs.allTypeSchemes
                    . requiredDictionaries  = -- if not in finitemap then this is bound by a monomorphic pattern variable
                                              case @maybeInferredType of
-                                                Nothing     -> [] 
-                                                Just scheme -> getRequiredDictionaries 
+                                                Nothing     -> maybe [] (\className -> 
+                                                                    let
+                                                                        classMembers = classMemberEnvironmentAddContext className $ fromJust $ M.lookup className (classMemberEnvironment @lhs.importEnvironment)
+                                                                        classFunctions = map (\(n, tps, _, _)->(n, tps)) $ snd classMembers
+                                                                    in maybe [] (\scheme ->
+                                                                        map PredicateFunction $ getRequiredDictionaries 
+                                                                            (getOrderedTypeSynonyms @lhs.importEnvironment) 
+                                                                            (@lhs.substitution |-> @usedAsType)
+                                                                            (@lhs.substitution |-> scheme)
+                                                                    ) (lookup @name.self classFunctions)
+                                                                ) @lhs.instanceName 
+
+
+                                                Just scheme -> map PredicateFunction $ getRequiredDictionaries 
                                                                   (getOrderedTypeSynonyms @lhs.importEnvironment) 
                                                                   (@lhs.substitution |-> @usedAsType)
                                                                   (@lhs.substitution |-> scheme)
@@ -77,7 +126,10 @@ SEM Expression
                                                                 @name.self 
                                                                 (@lhs.substitution |-> @lhs.availablePredicates)
                                                                 (@lhs.substitution |-> @requiredDictionaries)
+                                                                (fmap getNameName @lhs.instanceName)
+                                                                (@lhs.curPred)
                                                                 @lhs.dictionaryEnvironment 
+                                                                
                    . usedAsType            = @lhs.substitution |-> @beta
 
   | Enum     lhs . dictionaryEnvironment = @newDEnv
@@ -87,10 +139,12 @@ SEM Expression
                                               (False, True ) -> enumFromThenName 
                                               (True , False) -> enumFromToName 
                                               (True , True ) -> enumFromName 
-                 . requiredDictionaries  = if @overloaded then @lhs.substitution |-> [Predicate "Enum" @elementType] else []
+                 . requiredDictionaries  = if @overloaded then @lhs.substitution |-> [PredicateFunction $ Predicate "Enum" @elementType] else []
                  . newDEnv               = resolveOverloading (@lhs.classEnvironment)  @localName 
                                                               (@lhs.substitution |-> @lhs.availablePredicates) 
                                                               (@lhs.substitution |-> @requiredDictionaries) 
+                                                              (fmap getNameName @lhs.instanceName)
+                                                              @lhs.curPred
                                                               @to.dictionaryEnvironment 
 
   
@@ -98,8 +152,8 @@ SEM Expression
              loc . localName             = setNameRange intUnaryMinusName @range.self
                  . negateTypeScheme      = case M.lookup @localName (typeEnvironment @lhs.importEnvironment) of 
                                               Just scheme -> scheme
-                                              Nothing     -> internalError "TypeInferenceOverloading.ag" "n/a" "type of negate unknown"
-                 . requiredDictionaries  = getRequiredDictionaries 
+                                              Nothing     -> generalizeAll ([Predicate "Num" (TVar 0)] .=>. TVar 0 .->. TVar 0)
+                 . requiredDictionaries  = map PredicateFunction $ getRequiredDictionaries 
                                               (getOrderedTypeSynonyms @lhs.importEnvironment) 
                                               (@lhs.substitution |-> @usedAsType)
                                               (@lhs.substitution |-> @negateTypeScheme)
@@ -107,9 +161,29 @@ SEM Expression
                  . newDEnv               = resolveOverloading (@lhs.classEnvironment)  @localName 
                                                               (@lhs.substitution |-> @lhs.availablePredicates) 
                                                               (@lhs.substitution |-> @requiredDictionaries)
-                                                              @expression.dictionaryEnvironment                                              
-             
-{         
+                                                              (fmap getNameName @lhs.instanceName)
+                                                              @lhs.curPred
+                                                              @expression.dictionaryEnvironment   
+  | Do      lhs . dictionaryEnvironment = @newDEnv                    
+            loc . usedAsType            = @lhs.substitution |-> @beta
+            loc . usedAsMonad           = @lhs.substitution |-> @betaMonad
+                . requiredDictionaries  = map PredicateFunction $ getRequiredDictionaries 
+                                              (getOrderedTypeSynonyms @lhs.importEnvironment) 
+                                              (@lhs.substitution |-> @usedAsType)
+                                              (@lhs.substitution |-> @monadBeta)
+                . localName             = setNameRange (nameFromString $ "do-" ++ show @range.self) @range.self
+                . newDEnv               = resolveOverloading (@lhs.classEnvironment)  @localName 
+                                                              (@lhs.substitution |-> @lhs.availablePredicates) 
+                                                              (@lhs.substitution |-> @requiredDictionaries)
+                                                              (fmap getNameName @lhs.instanceName)
+                                                              @lhs.curPred
+                                                              @statements.dictionaryEnvironment   
+{      
+
+getSuperClassesFromClass :: ClassEnvironment -> String -> [String]
+getSuperClassesFromClass classEnv className = fst $ M.findWithDefault err className classEnv 
+        where err = internalError "TypeInferenceOverloading.ag" "getSuperClassenFromClass" "Invalid class name"
+
 getRequiredDictionaries :: OrderedTypeSynonyms -> Tp -> TpScheme -> Predicates
 getRequiredDictionaries synonyms useType defType =
    expandPredicates synonyms (matchTypeWithScheme synonyms useType defType)
@@ -123,17 +197,35 @@ matchTypeWithScheme synonyms tp scheme =
             let f (Predicate s typ) = Predicate s (unfreezeVariablesInType $ sub |-> typ)
             in map f ips
             
-resolveOverloading :: ClassEnvironment -> Name -> Predicates -> Predicates ->
+resolveOverloading :: ClassEnvironment -> Name -> [PredicateWithSource] -> [PredicateWithSource]  -> Maybe String -> Maybe Predicate ->
                          DictionaryEnvironment -> DictionaryEnvironment
-resolveOverloading classEnv name availablePredicates predicates dEnv = 
-   let maybeTrees = map (makeDictionaryTree classEnv availablePredicates) predicates
+resolveOverloading classEnv name availablePredicates predicates currentClass curPred dEnv =
+   let maybeTrees = map (makeDictionaryTree classEnv availablePredicates currentClass curPred) predicates
    in if all isJust maybeTrees
         then addForVariable name (map fromJust maybeTrees) dEnv
-        else internalError "TypeInferenceOverloading.ag" "resolveOverloading" ("cannot resolve overloading (" ++ show name ++ ")")
+    else internalError "TypeInferenceOverloading.ag" "resolveOverloading" ("cannot resolve overloading (" ++ show (NameWithRange name) ++ ")" ++ show predicates) 
    
 expandPredicates :: OrderedTypeSynonyms -> Predicates -> Predicates
 expandPredicates synonyms = map (expandPredicate synonyms)
 
 expandPredicate :: OrderedTypeSynonyms -> Predicate -> Predicate
 expandPredicate (_, synonyms) (Predicate className tp) = Predicate className (expandType synonyms tp)
+
+getCurrentClassPredicate :: Maybe (Name, Names) -> Tp -> Maybe TpScheme -> [Predicate] -> Maybe Predicate
+getCurrentClassPredicate Nothing _ _ predicates = Nothing
+getCurrentClassPredicate (Just (className, typeVars)) derivedType (Just classType) preds =    
+    Just (Predicate (getNameName className) $ TVar tv)
+    where
+        tv = maybe (error "Invalid type variable") snd (find ((getNameName (chead typeVars) ==) . fst) typeVarMapping)
+        typeVarMapping :: [(String, Int)]
+        typeVarMapping = map (\(orig, new) -> (fromJust $ lookup orig variables, new)) varMapping
+        variables = getQuantorMap classType
+        varMapping = mapping (unqualify $ unquantify classType) derivedType
+        mapping :: Tp -> Tp -> [(Int, Int)]
+        mapping (TVar v1) (TVar v2) = [(v1, v2)]
+        mapping (TCon _) (TCon _) = []
+        mapping (TApp f1 a1) (TApp f2 a2) = nub (mapping f1 f2 ++ mapping a1 a2)
+        mapping _ _ = error "Invalid type scheme"
+
+
 }

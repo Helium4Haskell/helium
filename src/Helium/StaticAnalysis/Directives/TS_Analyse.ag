@@ -42,6 +42,7 @@ import Helium.Syntax.UHA_Range (noRange)
 import Helium.StaticAnalysis.Messages.Messages
 import Helium.StaticAnalysis.Directives.TS_Messages
 import Helium.ModuleSystem.ImportEnvironment hiding (setTypeSynonyms, classEnvironment)
+import qualified  Helium.ModuleSystem.ImportEnvironment as IE
 import Helium.Utils.Utils (internalError)
 import qualified Helium.Syntax.UHA_Pretty as PP
 }
@@ -56,7 +57,18 @@ SEM TypingStrategy
   | Siblings             -- no analysis for siblings (yet)
        lhs . errors       = []
            . warnings     = []
-           
+  | Never
+        lhs . errors    = []
+            . warnings  = []
+  | Close
+        lhs . errors    = []
+            . warnings  = []
+  | Disjoint
+        lhs . errors    = []
+            . warnings  = []
+  | Default
+        lhs . errors    = []
+            . warnings  = []
   | TypingStrategy  
        loc . name         = show (PP.text_Syn_Expression $ PP.wrap_Expression (PP.sem_Expression @typerule.conclusionExpression) PP.Inh_Expression)
            . nameMap      = zip @uniqueTypevariables (map TVar [0..])
@@ -94,7 +106,7 @@ SEM TypingStrategy
                                            } 
                 in fst (solve options (reverse @statements.userConstraints) greedyConstraintSolver)
                       
-           . classEnv = createClassEnvironment @lhs.importEnvironment
+           . classEnv = IE.classEnvironment @lhs.importEnvironment
            
            . soundnessErrors = 
                 if not (null @staticErrors)

@@ -1,8 +1,8 @@
 #!/bin/sh
 
 ERRORS=0
-for f in typeerrors/Edinburgh/*.hs  ; do /bin/sh testOne ${f%.hs}; ERRORS=$[$ERRORS+$?] ; done
-for f in typeerrors/Examples/*.hs   ; do /bin/sh testOne ${f%.hs}; ERRORS=$[$ERRORS+$?] ; done
-for f in typeerrors/Heuristics/*.hs ; do /bin/sh testOne ${f%.hs}; ERRORS=$[$ERRORS+$?] ; done
-for f in typeerrors/Strategies/*.hs ; do /bin/sh testOne ${f%.hs}; ERRORS=$[$ERRORS+$?] ; done
+for f in typeerrors/Edinburgh/*.hs  ; do /bin/sh testOne ${f%.hs}; ERRORS=$(($ERRORS+$?)) ; done
+for f in typeerrors/Examples/*.hs   ; do /bin/sh testOne ${f%.hs}; ERRORS=$(($ERRORS+$?)) ; done
+for f in typeerrors/Heuristics/*.hs ; do /bin/sh testOne ${f%.hs}; ERRORS=$(($ERRORS+$?)) ; done
+for f in typeerrors/Strategies/*.hs ; do /bin/sh testOne ${f%.hs}; ERRORS=$(($ERRORS+$?)) ; done
 exit $ERRORS

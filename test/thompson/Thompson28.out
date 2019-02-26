@@ -3,7 +3,7 @@ Compiling thompson/Thompson28.hs
 (2,26): Type error in infix application
  expression       : 300 + tail s
  operator         : +
-   type           : a   -> a      -> a     
+   type           : Int          -> Int -> Int
    does not match : Int -> [Char] -> [Char]
 
 Compilation failed with 1 error

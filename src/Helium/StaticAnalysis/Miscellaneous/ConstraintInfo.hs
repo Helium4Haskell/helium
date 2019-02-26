@@ -23,6 +23,10 @@ import Helium.StaticAnalysis.Messages.TypeErrors
 import Helium.StaticAnalysis.Messages.Messages
 import Helium.StaticAnalysis.Miscellaneous.DoublyLinkedTree
 import Helium.StaticAnalysis.Miscellaneous.TypeConstraints
+
+import Data.Typeable
+import Data.Data
+
 import Top.Constraint.Information
 import Top.Implementation.Overloading
 import Top.Interface.Basic (ErrorLabel)
@@ -32,6 +36,10 @@ import Helium.Utils.Utils (internalError)
 import Data.Maybe
 import Data.Function
 import Data.List
+import Control.Applicative
+
+import Helium.Utils.OneLiner
+
 
 data ConstraintInfo =
    CInfo_ { location      :: String
@@ -68,7 +76,11 @@ data Property
    | PredicateArisingFrom (Predicate, ConstraintInfo)
    | TypeSignatureLocation Range
    | TypePair (Tp, Tp)
-                
+   | CustomError String
+   | NeverDirectiveProperty (Predicate, ConstraintInfo)
+   | CloseDirectiveProperty (String, ConstraintInfo)
+   | DisjointDirectiveProperty (String, ConstraintInfo) (String, ConstraintInfo)
+ 
 class HasProperties a where
    getProperties :: a -> Properties
    addProperty   :: Property   -> a -> a
@@ -98,9 +110,19 @@ maybeHead (a:_) = Just a
 headWithDefault :: a -> [a] -> a
 headWithDefault a = fromMaybe a . maybeHead
 
+maybeNeverDirectivePredicate :: HasProperties a => a -> Maybe (Predicate, ConstraintInfo)
+maybeNeverDirectivePredicate a = 
+   maybeHead [ (p, info) | NeverDirectiveProperty (p, info) <- getProperties a ]
+
+maybeCloseDirective :: HasProperties a => a -> Maybe (String, ConstraintInfo)
+maybeCloseDirective a = maybeHead [ (n, info) | CloseDirectiveProperty (n, info) <- getProperties a]
+
+maybeDisjointDirective :: HasProperties a => a -> Maybe ((String, ConstraintInfo), (String, ConstraintInfo))
+maybeDisjointDirective a = maybeHead [((n1, info1),(n2, info2)) | DisjointDirectiveProperty (n1, info1) (n2, info2) <- getProperties a]
+
 maybeReductionErrorPredicate :: HasProperties a => a -> Maybe Predicate
 maybeReductionErrorPredicate a = 
-   maybeHead [ p | ReductionErrorInfo p <- getProperties a ]
+    maybeHead [ p | ReductionErrorInfo p <- getProperties a ]
 
 isFolkloreConstraint :: HasProperties a => a -> Bool
 isFolkloreConstraint a = 
@@ -114,6 +136,9 @@ maybeInstantiatedTypeScheme a =
 maybeSkolemizedTypeScheme :: HasProperties a => a -> Maybe (Tps, TpScheme)
 maybeSkolemizedTypeScheme info =
    maybeHead [ s | SkolemizedTypeScheme s <- getProperties info ]
+
+maybeCustomError :: HasProperties a => a -> Maybe String
+maybeCustomError info = maybeHead [ s | CustomError s <- getProperties info ]
 
 maybeUserConstraint :: HasProperties a => a -> Maybe (Int, Int)
 maybeUserConstraint a =
@@ -252,6 +277,9 @@ instance TypeConstraintInfo ConstraintInfo where
    escapedSkolems       = addProperty . EscapedSkolems
    predicateArisingFrom = addProperty . PredicateArisingFrom
    equalityTypePair     = setTypePair
+   neverDirective       = addProperty . NeverDirectiveProperty
+   closeDirective       = addProperty . CloseDirectiveProperty
+   disjointDirective    = (addProperty .) . DisjointDirectiveProperty
    
 
 instance PolyTypeConstraintInfo ConstraintInfo where
@@ -362,7 +390,11 @@ makeTypeErrors options classEnv synonyms sub errors =
       -- a reduction error
       | label == unresolvedLabel =
            let f info = 
-                  let source = fst (sources info)
+                  let 
+                      maybeNever = maybeNeverDirectivePredicate info
+                      maybeClose = maybeCloseDirective info
+                      customMessage = maybe Nothing (maybeCustomError) (snd <$> maybeNever <|> snd <$> maybeClose)
+                      source = fst (sources info)
                       extra  = case maybeInstantiatedTypeScheme info of
                                   Just scheme -> -- overloaded function
                                      Left (scheme, snd $ typepair info)
@@ -370,8 +402,9 @@ makeTypeErrors options classEnv synonyms sub errors =
                                      Right (location info, sub |-> assignedType (attribute (localInfo info)))
                       pred' = let err = internalError "ConstraintInfo" "makeTypeErrors" 
                                                        "unknown predicate which resulted in a reduction error"
-                               in fromMaybe err $ maybeReductionErrorPredicate info
-                  in special info (sub |-> makeReductionError source extra classEnv pred')
+                               in maybe (fromMaybe err $ maybeReductionErrorPredicate info) fst maybeNever
+                  in maybe (special info (sub |-> makeReductionError source extra classEnv pred'))
+                        (\m -> TypeError [rangeOfSource source] ([MessageOneLiner $ MessageString m]) [] []) customMessage
            in (4, map f infos)     
   
       -- ambiguous class predicates
@@ -383,7 +416,18 @@ makeTypeErrors options classEnv synonyms sub errors =
                       err       = internalError "ConstraintInfo" "makeTypeErrors" "unknown original type scheme"
                   in special info (makeUnresolvedOverloadingError (fst $ sources info) className (scheme1, scheme2))
            in (5, map f infos)
-  
+      | label == disjointLabel = 
+            let f info = let 
+                        source1 = fst $ sources i1
+                        source2 = fst $ sources i2
+                        msg = fromMaybe err $ maybeCustomError info
+                        err = internalError "ConstraintInfo" "makeTypeErrors" "Unknown disjoint directive in directive error" 
+                        tab =  [ "predicate" <:> MessageString n1
+                                , "disjoint from" <:> MessageString n2
+                                ]
+                        ((n1, i1),(n2, i2)) = fromMaybe err (maybeDisjointDirective info)
+                    in TypeError [rangeOfSource source1, rangeOfSource source2] [MessageOneLiner $ MessageString msg] tab []
+            in (6, map f infos)
       | otherwise = 
            internalError "ConstraintInfo" "makeTypeErrors" ("unknown label "++show label)
 

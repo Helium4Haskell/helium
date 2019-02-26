@@ -1,0 +1,6 @@
+Prelude is up to date
+Compiling typeClasses/ClassInstaneError7.hs
+(4,12): Syntax error: 
+    unexpected variable 'a'
+    expecting type
+Compilation failed with 1 error

@@ -1,0 +1,5 @@
+Prelude is up to date
+Compiling typeClasses/MonadInstance3.hs
+(2,1): Warning: Missing type signature: main :: Maybe Int
+Compilation successful with 1 warning
+Just 40

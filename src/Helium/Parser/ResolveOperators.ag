@@ -63,10 +63,18 @@ operatorsFromModule m =
 
 collectInfixdecls :: Module -> [Declaration]
 collectInfixdecls 
-    (Module_Module _ _ _ (Body_Body _ _ ds)) = filter isInfixdecl ds
+    (Module_Module _ _ _ (Body_Body _ _ ds)) = filter isInfixdecl ds ++ concatMap classFixities ds
     where
         isInfixdecl (Declaration_Fixity _ _ _ _) = True
         isInfixdecl _ = False
+        classFixities :: Declaration -> [Declaration]
+        classFixities (Declaration_Class _ _ _ w) = whereFixities w
+        classFixities _ = []
+        whereFixities :: MaybeDeclarations -> [Declaration]
+        whereFixities (MaybeDeclarations_Just decls) = filter isInfixdecl decls
+        whereFixities (MaybeDeclarations_Nothing) = []
+
+
 collectInfixdecls (Module_Module _ _ _ (Body_Hole _ _)) = error "not supported"        
 }
 

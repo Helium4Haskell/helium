@@ -171,6 +171,7 @@ Library
     Helium.CodeGeneration.LLVM.Env
     Helium.CodeGeneration.LLVM.Target
     Helium.CodeGeneration.LLVM.Utils
+    Helium.CodeGeneration.InstanceDictionary
     Helium.Main.Args
     Helium.Main.Compile
     Helium.Main.CompileUtils

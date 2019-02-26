@@ -1,0 +1,5 @@
+Prelude is up to date
+Compiling typeClasses/ClassInstance14.hs
+(24,1): Warning: Missing type signature: main :: (Int, Int)
+Compilation successful with 1 warning
+(2,18)

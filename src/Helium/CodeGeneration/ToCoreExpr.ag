@@ -88,7 +88,8 @@ SEM Expression [ | | core : { Core.Expr } ]
     --  declarations             : Declarations
     --  expression               : Expression
 
-    | Do                 lhs.core = chainCode @statements.core
+    | Do                 lhs.core = let_ (idFromString "$monadDict") (dictionaryTreeToCore $ head $ getDictionaryTrees @loc.name @lhs.dictionaryEnv) $ chainCode @statements.core
+                         loc.name = setNameRange (nameFromString $ "do-" ++ show @range.self) @range.self
     --  range                    : Range
     --  statements               : Statements
 
@@ -163,7 +164,6 @@ SEM Expression [ | | core : { Core.Expr } ]
     --  expression               : Expression
     --  recordExpressionBindings : RecordExpressionBindings
 
-
 ATTR Statements [ | | core USE { : } { [] } : { [Maybe Core.Expr -> Core.Expr] } ]
 
 SEM Statement [ | | core : { Maybe Core.Expr -> Core.Expr } ]
@@ -171,7 +171,7 @@ SEM Statement [ | | core : { Maybe Core.Expr -> Core.Expr } ]
             \theRest -> 
                 case theRest of
                     Nothing   -> @expression.core
-                    Just rest -> bind @expression.core (Core.Lam (Core.Variable dummyId Core.TAny) rest)
+                    Just rest -> bind (Core.Var $ idFromString "$monadDict") @expression.core (Core.Lam (Core.Variable dummyId Core.TAny) rest)
     --  range                    : Range
     --  expression               : Expression
 
@@ -192,14 +192,8 @@ SEM Statement [ | | core : { Maybe Core.Expr -> Core.Expr } ]
         \theRest -> case theRest of
             Nothing   -> internalError "ToCoreExpr" "Statement" "generator can't be last in 'do'"
             Just rest -> 
-                let_ nextClauseId (patternMatchFail "generator" @range.self)
-                    (let_ 
-                        okId 
-                        (Core.Lam (Core.Variable parameterId Core.TAny)
-                            (patternToCore (parameterId, @pattern.self) rest)
-                        )
-                        (@expression.core `bind` Core.Var okId)
-                    )
+               Core.Ap (Core.Ap (Core.Ap (Core.Var $ idFromString ">>=") (Core.Var $ idFromString "$monadDict")) @expression.core) (Core.Lam (Core.Variable parameterId Core.TAny) (patternToCore (parameterId, @pattern.self) rest))       
+
     --  range                    : Range
     --  pattern                  : Pattern
     --  expression               : Expression
@@ -234,7 +228,7 @@ SEM Qualifier [ | | core : { Core.Expr -> Core.Expr } ]
     -- in concatMap _ok expression
 
     | Generator           lhs.core = 
-        \continue ->
+        \continue ->  
             let_ nextClauseId nil
                 (let_ 
                     okId 
@@ -246,6 +240,7 @@ SEM Qualifier [ | | core : { Core.Expr -> Core.Expr } ]
                         `app_` @expression.core
                     )
                 )
+                
     --  range                    : Range
     --  pattern                  : Pattern
     --  expression               : Expression
@@ -306,8 +301,8 @@ SEM Literal [ | | core : { Core.Expr } ]
 {
 
 -- Function "bind" is used in the translation of do-expressions
-bind :: Core.Expr -> Core.Expr -> Core.Expr
-bind ma f = Core.Var primBindIOId `app_` ma `app_` f
+bind :: Core.Expr -> Core.Expr -> Core.Expr -> Core.Expr
+bind dict ma f = (Core.Ap (Core.Var (idFromString ">>=")) (dict)) `app_` ma `app_` f
 
 primBindIOId, caseExprId, okId, parameterId :: Id
 ( primBindIOId :  caseExprId :  okId :  parameterId : []) = map idFromString $

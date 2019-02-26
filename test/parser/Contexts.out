@@ -1,5 +1,7 @@
 Prelude is up to date
 Compiling parser/Contexts.hs
+(4,15): Warning: The context (Ord a, Num a) has superfluous predicates.
+  Hint: You may change it into (Num a).
 (8,10): Type annotation is too general
  expression       : 3
    declared type  : Num a => a  

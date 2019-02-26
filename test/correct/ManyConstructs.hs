@@ -7,7 +7,8 @@ module ManyConstructs where
 
 -- import Prelude((>), (+), unsafePerformIO, putChar) -- , dictNumInt, dictOrdInt)
 
-data A = A Int String
+data A = A Int String   
+    deriving Show
 
 main :: ([Int], [Int], Int, Int, [Int], A, ())
 main = -- primUnsafePerformIO, primPutStrLn, primShowTuple8 in inserted main

@@ -1,0 +1,5 @@
+#!/bin/sh
+
+ERRORS=0
+for f in typeClasses/*.hs          ; do /bin/sh testOne ${f%.hs}; ERRORS=$(($ERRORS+$?)) ; done
+exit $ERRORS

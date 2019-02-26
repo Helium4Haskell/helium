@@ -10,9 +10,7 @@ module HeliumLang
     , String, Int, Float, Char
     
     , showFunction, showIO, showPolymorphic -- all show functions are used in inserted main
-    , showChar, showString, showInt, showList, showBool, showUnit, showFloat  
-    , showTuple2, showTuple3, showTuple4, showTuple5, showTuple6, showTuple7
-    , showTuple8, showTuple9, showTuple10
+    , showChar, showString, showInt, showBool, showUnit, showFloat  
     
     , ''$primPutStrLn'' -- inserted main
     , ''$primPutChar'', ''$primPutStr'' -- necessary for ''$primPutStrLn''
@@ -27,10 +25,8 @@ module HeliumLang
     , ''$primConcatMap'' -- list comprehensions
     , ''$primPackedToString'' -- string literals and the built-in string  "No main defined..." and derived shows
 
-    , ''$negate''
-    , ''$enumFrom'', ''$enumFromThen'', ''$enumFromTo'', ''$enumFromThenTo''
+    , negFloat, negInt
     , ''$floatUnaryMinus''
-    , ''$show'', ''$showList''
     ) where
 
 import LvmLang 
@@ -40,12 +36,11 @@ import LvmLang
     , '':[]''('':[]'', (:))
     , '':()''('':()'')
     , ''$primBindIO'', ''$primReturnIO''
-    , negInt 
-    {-, negFloat, ''$primEqFloat'' = (==.) -}
+    -- , ''$primEqFloat'' = (==.)
     , (+#), (-#), (>#), (<#), (>=#), quot, rem, (==#)
     , stringFromPacked
-    , unsafePerformIO    
-    , ''$primPutStrLn''
+    , unsafePerformIO  
+    , negInt --, negFloat  
     )
 {- import LvmIO
     ( stdin, stdout, stderr, flush, outputChar, outputPacked
@@ -63,44 +58,7 @@ custom infix (:) : public [5,"right"]
 {--------------------------------------------------------------------------
   Built into the language
 --------------------------------------------------------------------------}
-''$negate'' :: "Num a => a -> a"
-''$negate'' dNum = 
-    case dNum of
-     (@0, 7) x1 x2 x3 x4 x5 x6 x7 -> x6
 
-
-''$enumFrom'' :: "Enum a => a -> [a]"
-''$enumFrom'' dEnum = 
-    case dEnum of
-        (@0, 8) x1 x2 x3 x4 x5 x6 x7 x8 -> x3
-		
-''$enumFromThen'' :: "Enum a => a -> a -> [a]"
-''$enumFromThen'' dEnum = 
-    case dEnum of
-        (@0, 8) x1 x2 x3 x4 x5 x6 x7 x8 -> x4
-
-''$enumFromTo'' :: "Enum a => a -> a -> [a]"
-''$enumFromTo'' dEnum = 
-    case dEnum of
-        (@0, 8) x1 x2 x3 x4 x5 x6 x7 x8 -> x7
-		
-''$enumFromThenTo'' :: "Enum a => a -> a -> a -> [a]"
-''$enumFromThenTo'' dEnum = 
-    case dEnum of
-        (@0, 8) x1 x2 x3 x4 x5 x6 x7 x8 -> x8
-{-
-''$floatUnaryMinus'' :: "Float -> Float"
-''$floatUnaryMinus'' f
-  = ''$primNegFloat'' f
--}
-''$show'' :: "Show a => a -> String"
-''$show'' dShow = 
-    case dShow of
-        (@0, 2) x1 x2 -> x1
-
-''$showList'' :: "(a -> String) -> [a] -> String"
-''$showList'' = showList
-        
 {----------------------------------------------------------
   Basic data types
 ----------------------------------------------------------}
@@ -299,11 +257,7 @@ showPositiveInt i =
         {   True -> digit 
         ;   _    -> ''$primAppend'' (showPositiveInt rest) digit
         }
-
-showList :: (a -> String) -> [a] -> String
-showList showElem list =
-    ''$primConcat'' [ ['['], commaList (''$primMap'' showElem list), [']'] ] 
-    
+  
 ''$primMap'' f xs =
     case xs of
     {   '':[]'' -> []
@@ -313,55 +267,6 @@ showList showElem list =
 showPolymorphic :: a -> String
 showPolymorphic x = 
     let! x = x in stringFromPacked "<<polymorphic value>>"
-
-showTuple2 s1 s2 t : public [custom "type" ["(a -> String) -> (b -> String) -> (a, b) -> String" ]] =
-    case t of
-        (@0, 2) x1 x2 -> 
-            showTupleList [ s1 x1, s2 x2 ]
-
-showTuple3 s1 s2 s3 t : public [custom "type" ["(a -> String) -> (b -> String) -> (c -> String) -> (a, b, c) -> String" ]] =
-    case t of
-        (@0, 3) x1 x2 x3 ->
-            showTupleList [ s1 x1, s2 x2, s3 x3 ]
-
-showTuple4 s1 s2 s3 s4 t : public [custom "type" ["(a -> String) -> (b -> String) -> (c -> String) -> (d -> String) -> (a, b, c, d) -> String" ]] =
-    case t of
-        (@0, 4) x1 x2 x3 x4 ->
-            showTupleList [ s1 x1, s2 x2, s3 x3, s4 x4 ]
-
-showTuple5 s1 s2 s3 s4 s5 t : public [custom "type" ["(a -> String) -> (b -> String) -> (c -> String) -> (d -> String) -> (e -> String) -> (a, b, c, d, e) -> String" ]] =
-    case t of
-        (@0, 5) x1 x2 x3 x4 x5 ->
-            showTupleList [ s1 x1, s2 x2, s3 x3, s4 x4, s5 x5 ]
-
-showTuple6 s1 s2 s3 s4 s5 s6 t : public [custom "type" ["(a -> String) -> (b -> String) -> (c -> String) -> (d -> String) -> (e -> String) -> (f -> String) -> (a, b, c, d, e, f) -> String" ]] =
-    case t of
-        (@0, 6) x1 x2 x3 x4 x5 x6 ->
-            showTupleList [ s1 x1, s2 x2, s3 x3, s4 x4, s5 x5, s6 x6 ]
-
-showTuple7 s1 s2 s3 s4 s5 s6 s7 t : public [custom "type" ["(a -> String) -> (b -> String) -> (c -> String) -> (d -> String) -> (e -> String) -> (f -> String) -> (g -> String) -> (a, b, c, d, e, f, g) -> String" ]] =
-    case t of
-        (@0, 7) x1 x2 x3 x4 x5 x6 x7 ->
-            showTupleList [ s1 x1, s2 x2, s3 x3, s4 x4, s5 x5, s6 x6, s7 x7 ]
-
-showTuple8 s1 s2 s3 s4 s5 s6 s7 s8 t : public [custom "type" ["(a -> String) -> (b -> String) -> (c -> String) -> (d -> String) -> (e -> String) -> (f -> String) -> (g -> String) -> (h -> String) -> (a, b, c, d, e, f, g, h) -> String" ]] =
-    case t of
-        (@0, 8) x1 x2 x3 x4 x5 x6 x7 x8 ->
-            showTupleList [ s1 x1, s2 x2, s3 x3, s4 x4, s5 x5, s6 x6, s7 x7, s8 x8 ]
-
-showTuple9 s1 s2 s3 s4 s5 s6 s7 s8 s9 t : public [custom "type" ["(a -> String) -> (b -> String) -> (c -> String) -> (d -> String) -> (e -> String) -> (f -> String) -> (g -> String) -> (h -> String) -> (i -> String) -> (a, b, c, d, e, f, g, h, i) -> String" ]] =
-    case t of
-        (@0, 9) x1 x2 x3 x4 x5 x6 x7 x8 x9 ->
-            showTupleList [ s1 x1, s2 x2, s3 x3, s4 x4, s5 x5, s6 x6, s7 x7, s8 x8, s9 x9 ]
-
-showTuple10 s1 s2 s3 s4 s5 s6 s7 s8 s9 s10 t : public [custom "type" ["(a -> String) -> (b -> String) -> (c -> String) -> (d -> String) -> (e -> String) -> (f -> String) -> (g -> String) -> (h -> String) -> (i -> String) -> (j -> String) -> (a, b, c, d, e, f, g, h, i, j) -> String" ]]=
-    case t of
-        (@0, 10) x1 x2 x3 x4 x5 x6 x7 x8 x9 x10 ->
-            showTupleList [ s1 x1, s2 x2, s3 x3, s4 x4, s5 x5, s6 x6, s7 x7, s8 x8, s9 x9, s10 x10 ]
-
-showTupleList :: [String] -> String
-showTupleList xs = 
-    ''$primConcat'' [ ['('], commaList xs, [')'] ] 
 
 commaList :: [String] -> String
 commaList list =

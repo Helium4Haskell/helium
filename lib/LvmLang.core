@@ -12,10 +12,10 @@ module LvmLang
     
     , packedFromString, stringFromPacked, packedLength
     , ($!), seq, pseq
-    
+
     -- IO
-    , ''$primBindIO'', ''$primReturnIO''
     , primIO, unsafePerformIO, unsafePerformStrictIO
+    , fmapIO, pureIO, apIO
     , ''$primPutStrLn''
     , putChar
     , getChar
@@ -300,8 +300,8 @@ foldlStrict f z xs
 {----------------------------------------------------------
   The IO monad
 ----------------------------------------------------------}
-''$primBindIO'' :: IO a -> (a -> IO b) -> IO b
-''$primBindIO'' a f = case a of
+bindIO :: IO a -> (a -> IO b) -> IO b
+bindIO a f = case a of
   IO ioA ->
     IO
       (
@@ -312,9 +312,35 @@ foldlStrict f z xs
             )
       )
 
-''$primReturnIO'' :: a -> IO a
-''$primReturnIO'' x
+returnIO :: a -> IO a
+returnIO x
   = IO (\world -> IORes x world)
+
+fmapIO :: (a -> b) -> IO a -> IO b
+fmapIO f io = IO (
+    \world ->
+      case io of IO op ->
+        let! res = op world
+        in case res of
+          IORes x world' -> IORes (f x) world'
+  )
+
+pureIO x = returnIO x
+
+apIO :: IO (a -> b) -> IO a -> IO b
+apIO fIO vIO = IO (
+    \world ->
+      case fIO of
+        IO fOp -> case vIO of
+          vOp ->
+            let! fRes = fOp world
+            in case fRes of
+              IORes f world' ->
+                let! vRes = vOp world'
+                in case vRes of
+                  IORes v world'' -> IORes (f v) world''
+  )
+
 
 primIO :: (() -> a) -> IO a
 primIO f

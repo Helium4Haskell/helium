@@ -1,0 +1,9 @@
+Prelude is up to date
+Compiling typeClasses/ClassInstaneError11.hs
+(6,22): Type error in infix application
+ expression       : f x == 3
+ operator         : ==
+   type           : a    -> a   -> Bool
+   does not match : Bool -> Int -> Bool
+
+Compilation failed with 1 error

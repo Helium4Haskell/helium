@@ -58,7 +58,7 @@ checkType theTypeConstructors namesInScope t =
                    ]
             Type_Variable _ v ->
                 if length xs /= 0 then
-                    [ TypeVarApplication v ]
+                    [] -- [ TypeVarApplication v ]
                 else
                     []
             _ ->
