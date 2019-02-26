@@ -50,8 +50,6 @@ module PreludePrim
     -- misc
     , error, catch, catchEof, raise
 
-    , Ordering(EQ, LT, GT)
-
     ) where
 
 import HeliumLang
@@ -116,23 +114,23 @@ custom infix (**.) : public [8,"right"]
 custom infix ($!)  : public [0,"right"]
 
 primOrd :: Char -> Int
-primOrd x = x
+primOrd = \x: Char -> x
 
 primChr :: Int -> Char
-primChr x = x
+primChr = \x: Char -> x
 
 
 {--------------------------------------------------------------------------
   IO
 --------------------------------------------------------------------------}
 {- putChar :: Char -> IO ()
-putChar c = ''$primPutChar''c
+putChar = \c: Char -> ''$primPutChar''c
 
 putStr :: String -> IO ()
-putStr s = ''$primPutStr'' s 
+putStr = \s: String -> ''$primPutStr'' s 
 
 putStrLn :: String -> IO ()
-putStrLn s = ''$primPutStrLn'' s
+putStrLn = \s: String -> ''$primPutStrLn'' s
 -}
 
 -- Float
@@ -214,164 +212,21 @@ round x
       in i
 -}
 
-allTrue xs =
-    case xs of
-        [] -> True
-        (:) b bs -> case b of False -> False
-                              _     -> allTrue bs
-
-not :: Bool -> Bool
-not x = case x of True -> False
-                  False -> True
-
-const x y = x
-map f xs = case xs of
-              [] -> [] ;
-			  (:) x xs -> (:) (f x) (map f xs)
-
-enumSuccInt :: Int -> Int
-enumSuccInt x = (+#) x 1
-enumPredInt :: Int -> Int
-enumPredInt x = (-#) x 1
-enumFromInt :: Int -> [Int]
-enumFromInt = enumIntWithSteps (const True) 1
-enumFromThenInt :: Int -> Int -> [Int]
-enumFromThenInt x y = enumIntWithSteps (const True) ((-#) y x) x
-enumFromToInt :: Int -> Int -> [Int]
-enumFromToInt x y = enumIntWithSteps ((>=#) y) 1 x
-enumFromThenToInt :: Int -> Int -> Int -> [Int]
-enumFromThenToInt x y z = 
-   case compareInt x y of
-      LT -> enumIntWithSteps ((>=#) z) ((-#) y x) x;
-	  EQ -> enumIntWithSteps (const True) 0 x ;
-	  GT -> enumIntWithSteps ((<=#) z) ((-#) y x) x
-
-enumIntWithSteps p d x = 
-   case p x of 
-      True -> (:) x (enumIntWithSteps p d ((+#) d x)) ;
-	  _ -> []
-
-toEnumFloat :: Int -> Float
-toEnumFloat x   = let! x = x in primIntToFloat x
-enumSuccFloat :: Float -> Float
-enumSuccFloat x = let! x = ((+#) (truncate x) 1) in primIntToFloat x
-enumPredFloat :: Float -> Float
-enumPredFloat x = let! x = ((-#) (truncate x) 1) in primIntToFloat x
-enumFromFloat :: Float -> [Float]
-enumFromFloat = let! one = primIntToFloat 1 in enumFloatWithSteps (const True) one
-enumFromThenFloat :: Float -> Float -> [Float]
-enumFromThenFloat x y = enumFloatWithSteps (const True) ((-.) y x) x
-enumFromToFloat :: Float -> Float -> [Float]
-enumFromToFloat x y = let! one = primIntToFloat 1 in enumFloatWithSteps ((>=.) y) one x
-enumFromThenToFloat :: Float -> Float -> Float  -> [Float]
-enumFromThenToFloat x y z =
-   case compareFloat x y of
-      LT -> enumFloatWithSteps ((>=.) z) ((-.) y x) x;
-	  EQ -> let! zero = primIntToFloat 0 in enumFloatWithSteps (const True) zero x ;
-	  GT -> enumFloatWithSteps ((<=.) z) ((-.) y x) x
-
-enumFloatWithSteps p d x = 
-   case p x of 
-      True -> (:) x (enumFloatWithSteps p d ((+.) d x)) ;
-	  _ -> []
-
-toEnumVoid :: Int -> ()
-toEnumVoid i = 
-   case i of 
-      0 -> () ;
-	  _ -> errorPacked "illegal () enumeration"	  
-fromEnumVoid :: () -> Int
-fromEnumVoid _ = 0
-enumFromVoid :: () -> [()]
-enumFromVoid _ = [()]
-enumFromThenVoid :: () -> () -> [()]
-enumFromThenVoid _ _ = [()]
-	  
-enumFromChar :: Char -> [Char]
-enumFromChar x = enumCharWithSteps 1 (primOrd x)
-enumFromThenChar :: Char -> Char -> [Char]
-enumFromThenChar x y = enumCharWithSteps ((-#) (primOrd y) (primOrd x)) (primOrd x)
-enumCharWithSteps d x =
-   case (<#) x 0 of
-      True -> [] ;
-	  _ -> case (>#) x 255 of
-	          True -> [] ;
-			  _ -> (:) (primChr x) (enumCharWithSteps d ((+#) d x))
-
-toEnumBool :: Int -> Bool
-toEnumBool i =
-   case i of 
-      0 -> False ;
-	  1 -> True ;
-	  _ -> errorPacked "illegal boolean enumeration"
-fromEnumBool :: Bool -> Int
-fromEnumBool b =
-   case b of {
-      False -> 0 ;
-      True -> 1 } 
-
-enumFromBool :: Bool -> [Bool]
-enumFromBool b = map toEnumBool (enumFromToInt (fromEnumBool b) 1)
-enumFromThenBool :: Bool -> Bool -> Bool
-enumFromThenBool b1 b2 =
-   case b1 of {
-      False -> map toEnumBool (enumFromThenToInt (fromEnumBool b1) (fromEnumBool b2) 1) ;
-      _ -> map toEnumBool (enumFromThenToInt (fromEnumBool b1) (fromEnumBool b2) 0) }
-
-
-enumSuccDefault f1 f2 x = f1 ((+#) (f2 x) 1)
-enumPredDefault f1 f2 x = f1 ((-#) (f2 x) 1)
-enumFromToDefault f1 f2 x y = map f1 (enumFromToInt (f2 x) (f2 y))
-enumFromThenToDefault f1 f2 x y z = map f1 (enumFromThenToInt (f2 x) (f2 y) (f2 z))
-
-data Ordering = LT | EQ | GT 
-
-showOrdering :: Ordering -> String
-showOrdering x = 
-    case x of
-        LT -> "LT"
-        EQ -> "EQ"
-        GT -> "GT"
-
-compareList ''$dictElem'' xs ys =
-    case xs of
-        [] -> 
-            case ys of
-                (:) yh yt -> LT
-                _         -> EQ
-        (:) xh xt ->
-            case ys of
-                [] -> GT
-                (:) yh yt ->
-                    case compare ''$dictElem'' xh yh of
-                        GT -> GT
-                        LT -> LT
-                        EQ -> compareList ''$dictElem'' xt yt
-
-{- misc -}
-
-primAppend :: [a] -> [a] -> [a] -- is '++'
-primAppend xs ys =
-    case xs of 
-    {   '':[]'' -> ys
-    ;   (:) z zs -> (:) z (primAppend zs ys)
-    }
-
 {--------------------------------------------------------------------------
   IO
 --------------------------------------------------------------------------}
-data Handle
+{-data Handle
  = HandleRead  (Channel Input)
- | HandleWrite (Channel Output)
+ | HandleWrite (Channel Output)-}
 
 return :: a -> IO a
 return = ''$primReturnIO''
 
-data IOMode
+{-data IOMode
  = ReadMode
  | WriteMode
  | AppendMode
-{-
+
 stdin :: Handle
 stdin
   = HandleRead stdinChannel
@@ -439,23 +294,3 @@ catchEof io onEof
      )
 
 -}
-compareInt x y = 
-    case (<#) x y of
-        True -> LT
-        _    -> case (==#) x y of
-                    True -> EQ
-                    _    -> GT
-
-compareFloat x y = 
-    case (<.) x y of
-        True -> LT
-        _    -> case (==.) x y of
-                    True -> EQ
-                    _    -> GT
-                    
-compareBool x y =
-    case x of 
-        True -> case y of True -> EQ
-                          _    -> GT
-        _    -> case y of True -> LT
-                          _    -> EQ

@@ -20,20 +20,11 @@ infixr 0  $ --, $!                                             [PreludePrim]
  -- Num
  -----------------------------------------------}
 
-{- imported from PreludePrim
-
-(+)     :: Num a => a -> a -> a
-(-)     :: Num a => a -> a -> a
-(*)     :: Num a => a -> a -> a
-negate  :: Num a => a -> a
-fromInt :: Num a => Int -> a
--}
-
 sum :: Num a => [a] -> a
-sum = foldl' (+) (fromInt 0)
+sum = foldl' (+) (fromInteger 0)
 
 product :: Num a => [a] -> a
-product = foldl' (*) (fromInt 1)
+product = foldl' (*) (fromInteger 1)
 
 {-----------------------------------------------
  -- Eq
@@ -46,7 +37,9 @@ product = foldl' (*) (fromInt 1)
 (/=) :: Eq a => a -> a -> Bool
 -}
 
-
+not :: Bool -> Bool
+not True = False
+not _ = True
 
 elem :: Eq a => a -> [a] -> Bool
 elem _ [] = False
@@ -79,43 +72,23 @@ maximum = foldl1 max
 minimum :: Ord a => [a] -> a
 minimum = foldl1 min
 
-{-----------------------------------------------
- -- Enum
- -----------------------------------------------}
-
-{- imported from PreludePrim
-
-succ           :: Enum a => a -> a
-pred           :: Enum a => a -> a
-enumFromTo     :: Enum a => a -> a -> [a]
-enumFromThenTo :: Enum a => a -> a -> a -> [a]
-toEnum         :: Enum a => Int -> a
-fromEnum       :: Enum a => a -> Int
-enumFrom       :: Enum a => a -> [a]
-enumFromThen   :: Enum a => a -> a -> [a]
--}
-
-{-----------------------------------------------
- -- Int
- -----------------------------------------------}
-
-class Ord a => Num a where
+class Eq a, Show a => Num a where
     (+) :: a -> a -> a
     (-) :: a -> a -> a
     (*) :: a -> a -> a
     negate :: a -> a
     abs :: a -> a
     signum :: a -> a
-    fromInt :: Integer -> a
+    fromInteger :: Integer -> a
     infixl 6 +, -
     infixl 7 *
-val = 2 + 3 * 4
 
 {- imported from PreludePrim
 rem  :: Int -> Int -> Int
 div  :: Int -> Int -> Int
 mod  :: Int -> Int -> Int
 quot :: Int -> Int -> Int
+-- TODO: Define Fractional, Real, Integral
 -}
 
 -- for compatibility with Haskell textbooks
@@ -143,7 +116,7 @@ lcm 0 _ = 0
 lcm x y = abs ((x `quot` gcd x y) * y)
 
 (^) :: Num a => a -> Int -> a
-_ ^ 0           = fromInt 1
+_ ^ 0           = fromInteger 1
 i ^ n  | n > 0  = f i (n-1) i
        | otherwise = error "Prelude.^: negative exponent"
           where f _ 0 y = y
@@ -165,7 +138,7 @@ instance Num Int where
     (-) = (-#)
     (*) = (*#)
     negate = negInt
-    fromInt = id
+    fromInteger = id
     abs n = if n < 0 then negate n else n
 
 {-----------------------------------------------
@@ -261,10 +234,7 @@ either l r e =
  -- Ordering
  -----------------------------------------------}
 
-{- imported from PreludePrim
-
-data Ordering = LT | EQ | GT 
--}
+data Ordering = LT | EQ | GT deriving (Show, Ord, Enum)
 
 {-----------------------------------------------
  -- Tuple
@@ -963,15 +933,29 @@ class Enum a where
 
 
 instance Enum Int where
-    succ            = enumSuccInt
-    pred            = enumPredInt
-    toEnum          = id
-    fromEnum        = id
-    enumFrom        = enumFromInt
-    enumFromThen    = enumFromThenInt
-    enumFromTo      = enumFromToInt
-    enumFromThenTo  = enumFromThenToInt
+  succ = (+1)
+  pred = (-1)
+  toEnum = id
+  fromEnum = id
+  enumFrom x = f x
+    where f y = y : f (y + 1)
+  enumFromThen x next = f x
+    where
+      f y = y : f (y + step)
+      step = next - x
+  enumFromTo x end = f x
+    where
+      f y
+        | y > end = []
+        | otherwise = y : f (y + 1)
+  enumFromThenTo x next end = f x
+    where
+      step = next - x
+      f y
+        | y > end = []
+        | otherwise = y : f (y + step)
 
+{-
 instance Enum Float where
     succ            = enumSuccFloat
     pred            = enumPredFloat
@@ -981,6 +965,7 @@ instance Enum Float where
     enumFromThen    = enumFromThenFloat
     enumFromTo      = enumFromToFloat
     enumFromThenTo  = enumFromThenToFloat
+-}
 
 instance Enum () where
     succ            = error "There is no successor for ()"
@@ -997,17 +982,24 @@ instance Enum Bool where
     succ _                  = error "There is no successor for False"
     pred True               = False
     pred _                  = error "There is no predecessor for True"
-    toEnum                  = toEnumBool
-    fromEnum                = fromEnumBool
-    enumFrom                = enumFromBool
-    enumFromThen            = enumFromThen
+    toEnum 0 = False
+    toEnum 1 = True
+    toEnum _ = error "illegal boolean enumeration"
+    fromEnum True  = 1
+    fromEnum False = 0
+    enumFrom False = [False, True]
+    enumFrom True  = [True]
+    enumFromThen False False = repeat False
+    enumFromThen True  True  = repeat True
+    enumFromThen False True  = [False, True]
+    enumFromThen True  False = []
 
+{-
 instance Enum Char where
-    --primChr primOrd enumFromChar enumFromThenChar
     succ c          = primChr (primOrd c + 1)
     pred c          = primChr (primOrd c - 1)
     toEnum          = primChr
     fromEnum        = primOrd
     enumFrom        = enumFromChar
     enumFromThen    = enumFromThenChar
-
+-}
