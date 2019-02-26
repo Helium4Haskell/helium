@@ -116,15 +116,10 @@ fromCoreDecl supply env decl@CoreModule.DeclValue{} = [Left (name, Declaration (
 fromCoreDecl supply env decl@CoreModule.DeclAbstract{} = [Right (name, Declaration (qualifiedName (teModuleName env) name) (visibility decl) (origin decl) (CoreModule.declCustoms decl) method)]
   where
     name = CoreModule.declName decl
-    method = AbstractMethod (findType (CoreModule.declArity decl) (CoreModule.declCustoms decl)) (if name == idFromString "main" then [AnnotateTrampoline, AnnotateCallConvention CCC] else [AnnotateTrampoline])
+    method = AbstractMethod (findType $ CoreModule.declArity decl) (if name == idFromString "main" then [AnnotateTrampoline, AnnotateCallConvention CCC] else [AnnotateTrampoline])
 
-    findType :: CoreModule.Arity -> [CoreModule.Custom] -> FunctionType
-    findType arity [] = FunctionType (replicate arity TypeAny) TypeAnyWHNF
-    findType _ (CoreModule.CustomDecl (CoreModule.DeclKindCustom name) [CoreModule.CustomBytes bytes] : _)
-      | name == idFromString "iridiumtype" = case parseFunctionType $ stringFromBytes bytes of
-        Left err -> error ("Illegal iridiumtype annotation: " ++ show (stringFromBytes bytes) ++ "\nParse error: " ++ show err)
-        Right val -> val
-    findType arity (_ : cs) = findType arity cs
+    findType :: CoreModule.Arity -> FunctionType
+    findType arity = FunctionType (replicate arity TypeAny) TypeAnyWHNF
 
 fromCoreDecl _ _ _ = []
 
