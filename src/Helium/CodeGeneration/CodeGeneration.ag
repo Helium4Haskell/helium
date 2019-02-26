@@ -43,6 +43,7 @@ import Helium.CodeGeneration.CoreUtils
 
 -- Daan
 import qualified Lvm.Core.Expr as Core
+import qualified Lvm.Core.Type as Core
 import qualified Lvm.Core.Module as Core
 import qualified Lvm.Core.Module as Module
 import qualified Lvm.Common.Byte as Byte

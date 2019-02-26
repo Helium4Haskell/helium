@@ -15,6 +15,7 @@ import Data.Graph hiding (topSort)
 import Data.Tree
 import Lvm.Common.IdSet
 import Lvm.Core.Expr
+import Lvm.Core.Type
 import Lvm.Core.FreeVar
 import Lvm.Core.Utils
 import Data.Maybe
@@ -32,8 +33,8 @@ coreLetSort = fmap lsExpr
 lsExpr :: Expr -> Expr
 lsExpr expr
   = case expr of
-      Let (Strict (Bind x rhs)) e
-        -> Let (Strict (Bind x (lsExpr rhs))) (lsExpr e)
+      Let (Strict (Bind var rhs)) e
+        -> Let (Strict (Bind var (lsExpr rhs))) (lsExpr e)
       Let binds e
         -> let bindss = sortBinds binds
            in foldr Let (lsExpr e) bindss
@@ -56,28 +57,28 @@ lsAlts = mapAlts (\pat -> Alt pat . lsExpr)
 ----------------------------------------------------------------
 sortBinds :: Binds -> [Binds]
 sortBinds (Rec bindsrec)
-  = let binds  = map (\(Bind x rhs) -> (x,rhs)) bindsrec
+  = let binds  = map (\(Bind (Variable x t) rhs) -> (x,(t, rhs))) bindsrec
         names  = zip (map fst binds) [0..]
         es     = concatMap (depends names) binds
         sorted = topSort (length names-1) es
         binds'  = map (map (binds!!)) sorted
-        binds'' = map (map (second lsExpr)) binds'
+        binds'' = map (map (\(x, (t, rhs)) -> (x, (t, lsExpr rhs)))) binds'
     in  map toBinding binds'' -- foldr sortLets (lsExpr expr) binds''
 sortBinds binds
-  = [mapBinds (\x expr -> Bind x (lsExpr expr)) binds]
+  = [mapBinds (\var expr -> Bind var (lsExpr expr)) binds]
 
 -- topological sort
 topSort :: Vertex -> [Edge] -> [[Vertex]]
 topSort n = map flatten . scc . buildG (0, n)
 
-toBinding :: [(Id, Expr)] -> Binds
-toBinding [(x,rhs)]
-  | not (elemSet x (freeVar rhs)) = NonRec (Bind x rhs)
+toBinding :: [(Id, (Type, Expr))] -> Binds
+toBinding [(x, (t, rhs))]
+  | not (elemSet x (freeVar rhs)) = NonRec (Bind (Variable x t) rhs)
 toBinding binds
-  = Rec (map (uncurry Bind) binds)
+  = Rec (map (\(x, (t, rhs)) -> Bind (Variable x t) rhs) binds)
 
-depends :: [(Id,Vertex)] -> (Id,Expr) -> [(Vertex,Vertex)]
-depends names (v,expr)
+depends :: [(Id, Vertex)] -> (Id, (Type, Expr)) -> [(Vertex,Vertex)]
+depends names (v, (_, expr))
   = foldSet depend [] (freeVar expr)
   where
     index = fromMaybe (error msg) (lookup v names)

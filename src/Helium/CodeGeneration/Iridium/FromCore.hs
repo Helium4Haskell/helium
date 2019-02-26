@@ -139,14 +139,14 @@ toMethod supply env name expr = Method args' returnType [AnnotateTrampoline] (Bl
   where
     (entryName, supply') = freshIdFromId idEntry supply
     (_, fntype@(FunctionType fnArgs returnType)) = fromMaybe (error "toMethod: could not find function signature") $ resolveFunction env name
-    args' = zipWith Local args fnArgs
+    args' = zipWith (\(Core.Variable name _) t -> Local name t) args fnArgs -- TODO: Use types from Core
     (args, expr') = consumeLambdas expr
     env' = enterFunction name fntype $ expandEnvWithLocals args' env
     Partial entry blocks = toInstruction supply' env' CReturn expr'
 
 -- Removes all lambda expression, returns a list of arguments and the remaining expression.
-consumeLambdas :: Core.Expr -> ([Id], Core.Expr)
-consumeLambdas (Core.Lam name expr) = (name : args, expr')
+consumeLambdas :: Core.Expr -> ([Core.Variable], Core.Expr)
+consumeLambdas (Core.Lam arg expr) = (arg : args, expr')
   where
     (args, expr') = consumeLambdas expr
 consumeLambdas expr = ([], expr)
@@ -182,7 +182,7 @@ toInstruction supply env continue (Core.Let (Core.NonRec b) expr)
     (supply1, supply2) = splitNameSupply supply
     env' = expandEnvWithLetAlloc [letbind] env
 
-toInstruction supply env continue (Core.Let (Core.Strict (Core.Bind x val)) expr)
+toInstruction supply env continue (Core.Let (Core.Strict (Core.Bind (Core.Variable x _) val)) expr)
   = toInstruction supply1 env (CBind next) val
   where
     (supply1, supply2) = splitNameSupply supply
@@ -444,7 +444,7 @@ gatherCaseConstructorAlts supply env (continue:continues) remaining var (Core.Al
 -- locals: a list of all locals declared in the current Core.Let, in case of a recursive bind.
 -- For a non recursive bind, locals is an empty list.
 bind :: NameSupply -> TypeEnv -> [Local] -> Core.Bind -> (Instruction -> Instruction, Bind)
-bind supply env locals (Core.Bind x val) = (castInstructions . targetCast, Bind x target args')
+bind supply env locals (Core.Bind (Core.Variable x _) val) = (castInstructions . targetCast, Bind x target args')
   where
     (apOrCon, args) = getApplicationOrConstruction val []
     (supply1, supply2) = splitNameSupply supply
@@ -476,7 +476,7 @@ bind supply env locals (Core.Bind x val) = (castInstructions . targetCast, Bind 
           in (BindTargetThunk t, repeat TypeAny, castInstr)
 
 coreBindLocal :: TypeEnv -> Core.Bind -> Local
-coreBindLocal env (Core.Bind name expr) = Local name $ coreBindType env expr
+coreBindLocal env (Core.Bind (Core.Variable name _) expr) = Local name $ coreBindType env expr
 
 coreBindType :: TypeEnv -> Core.Expr -> PrimitiveType
 coreBindType env val = case apOrCon of

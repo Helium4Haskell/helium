@@ -17,6 +17,7 @@ import qualified Helium.Syntax.UHA_Syntax as UHA
 import Helium.Syntax.UHA_Utils
 import Helium.CodeGeneration.CoreUtils
 import Lvm.Core.Expr
+import qualified Lvm.Core.Type as Core
 import Lvm.Core.Utils
 import Lvm.Common.Id
 import Helium.Utils.Utils
@@ -35,12 +36,12 @@ dataShowFunction (UHA.Declaration_Data _ _ (UHA.SimpleType_SimpleType _ name nam
     , valueEnc    = Nothing
     , valueValue  = foldr Lam 
         (Let 
-            (Strict (Bind valueId (Var valueId)))
+            (Strict (Bind (Variable valueId Core.TAny) (Var valueId)))
             (Match valueId
                 (map makeAlt constructors)
             )
         )    
-        (map idFromName names ++ [valueId])
+        (map (`Variable` Core.TAny) $ map idFromName names ++ [valueId])
     , declCustoms = [ custom "type" typeString ] 
     }
 dataShowFunction _ = error "not supported"
@@ -63,9 +64,9 @@ dataDictionary  (UHA.Declaration_Data _ _ (UHA.SimpleType_SimpleType _ name name
            idX  = idFromString "x"
            con  = Con (ConTag (Lit (LitInt 0)) 2)
            list = [ Ap (Var (idFromString "$show")) (Var ident) | ident <- ids ]
-           declaration = Bind idX (foldl Ap (Var nameId) list)
+           declaration = Bind (Variable idX Core.TAny) (foldl Ap (Var nameId) list)
            body = Let (Strict declaration) (Ap (Ap con (Var idX)) (Ap (Var (idFromString "$showList")) (Var idX)))
-       in foldr Lam body ids
+       in foldr Lam body $ map (`Variable` Core.TAny) ids
 dataDictionary _ = error "not supported"
 
 -- Show function for a type synonym
@@ -80,7 +81,7 @@ typeShowFunction (UHA.Declaration_Type _ (UHA.SimpleType_SimpleType _ name names
     { declName    = idFromString ("show" ++ getNameName name)
     , declAccess  = public
     , valueEnc    = Nothing
-    , valueValue  = foldr (Lam . idFromName) (showFunctionOfType False type_) names
+    , valueValue  = foldr (Lam . (`Variable` Core.TAny) . idFromName) (showFunctionOfType False type_) names
     , declCustoms = [ custom "type" typeString ] 
     }
 typeShowFunction _ = error "not supported"

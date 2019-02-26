@@ -68,8 +68,8 @@ nsExpr env expr
       Let binds e       -> nsBinds env binds $ \env' binds' ->
                            Let binds' (nsExpr env' e)
       Match x alts      -> Match (renameVar env x) (nsAlts env alts)
-      Lam x e           -> renameBinder env x $ \env2 x2 ->
-                           Lam x2 (nsExpr env2 e)
+      Lam (Variable x t) e -> renameBinder env x $ \env2 x2 ->
+                           Lam (Variable x2 t) (nsExpr env2 e)
       Ap expr1 expr2    -> let (env1,env2) = splitEnv env
                            in  Ap (nsExpr env1 expr1) (nsExpr env2 expr2)
       Var x             -> Var (renameVar env x)
@@ -79,18 +79,18 @@ nsExpr env expr
 nsBinds :: Env -> Binds -> (Env -> Binds -> a) -> a
 nsBinds env binds cont
   = case binds of
-      Strict (Bind x rhs)  -> nonrec Strict x rhs
-      NonRec (Bind x rhs)  -> nonrec NonRec x rhs
+      Strict (Bind var rhs)  -> nonrec Strict var rhs
+      NonRec (Bind var rhs)  -> nonrec NonRec var rhs
       Rec _                -> rec_
   where
-    nonrec make x1 rhs
+    nonrec make (Variable x1 t1) rhs
       = renameLetBinder env x1 $ \env' x2 ->
-        cont env' (make (Bind x2 (nsExpr env rhs)))
+        cont env' (make (Bind (Variable x2 t1) (nsExpr env rhs)))
       
     rec_ 
-      = let (binds',env') = mapAccumBinds (\env1 x1 rhs -> renameLetBinder env1 x1 $ \env2 x2 -> (Bind x2 rhs,env2))
+      = let (binds',env') = mapAccumBinds (\env1 (Variable x1 t1) rhs -> renameLetBinder env1 x1 $ \env2 x2 -> (Bind (Variable x2 t1) rhs,env2))
                                            env binds
-        in cont env' (zipBindsWith (\env1 x1 rhs -> Bind x1 (nsExpr env1 rhs)) (splitEnvs env') binds')
+        in cont env' (zipBindsWith (\env1 (Variable x1 t1) rhs -> Bind (Variable x1 t1) (nsExpr env1 rhs)) (splitEnvs env') binds')
 
 nsAlts :: Env -> Alts -> Alts
 nsAlts = zipAltsWith nsAlt . splitEnvs
@@ -136,7 +136,7 @@ duplicateNames :: Expr -> Analysis
 duplicateNames (Let bs expr) = dupInserts (varsInBinds bs) $ duplicateNames expr
 duplicateNames (Match _ alts) = foldr1 dupUnion $ map duplicateNamesInAlt alts
 duplicateNames (Ap e1 e2) = dupUnion (duplicateNames e1) (duplicateNames e2)
-duplicateNames (Lam x expr) = dupInsert x $ duplicateNames expr
+duplicateNames (Lam (Variable x _) expr) = dupInsert x $ duplicateNames expr
 duplicateNames _ = emptyMap -- Con, Var or Lit
 
 duplicateNamesInAlt :: Alt -> Analysis
@@ -158,4 +158,4 @@ varsInBinds (NonRec b) = return $ varInBind b
 varsInBinds (Rec bs) = map varInBind bs
 
 varInBind :: Bind -> Id
-varInBind (Bind x _) = x
+varInBind (Bind (Variable x _) _) = x

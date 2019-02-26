@@ -101,7 +101,7 @@ usageExpr locals used expr
       Let binds e     -> let used'   = usageBinds locals used binds 
                              locals' = unionSet locals (binder binds)
                          in usageExpr locals' used' e
-      Lam x e         -> usageExpr (insertSet x locals) used e
+      Lam (Variable x _) e -> usageExpr (insertSet x locals) used e
       Match x alts    -> usageAlts locals (usageVar locals used x) alts
       Ap e1 e2        -> usageExpr locals (usageExpr locals used e1) e2
       Var x           -> usageVar locals used x
@@ -124,7 +124,7 @@ usageBinds locals used binds
   = case binds of
       NonRec (Bind _ rhs)  -> usageExpr locals used rhs
       Strict (Bind _ rhs)  -> usageExpr locals used rhs
-      Rec bs               -> let (ids,rhss) = unzipBinds bs
+      Rec bs               -> let (ids,rhss) = unzip $ map (\(Bind (Variable x _) rhs) -> (x, rhs)) bs
                                   locals'    = unionSet locals (setFromList ids)
                               in usageExprs locals' used rhss
   

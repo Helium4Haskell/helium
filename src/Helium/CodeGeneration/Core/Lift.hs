@@ -27,6 +27,7 @@ import Lvm.Common.Id
 import Lvm.Common.IdSet
 import Lvm.Common.IdMap
 import Lvm.Core.Expr
+import Lvm.Core.Type
 import Lvm.Core.Utils
 
 import Data.Maybe (catMaybes)
@@ -38,8 +39,8 @@ coreLift supply (Module name major minor decls) = Module name major minor decls'
   where
     decls' = concat $ mapWithSupply liftExprInDecl supply decls
 
-boundVar :: Bind -> Id
-boundVar (Bind x _) = x
+boundVar :: Bind -> Variable
+boundVar (Bind var _) = var
 
 liftExprInDecl :: NameSupply -> CoreDecl -> ([CoreDecl])
 liftExprInDecl supply (DeclValue name access enc expr customs) = DeclValue name access enc expr' customs : decls
@@ -47,13 +48,13 @@ liftExprInDecl supply (DeclValue name access enc expr customs) = DeclValue name 
     (expr', decls) = liftExprIgnoreLambdas supply [] expr emptyMap
 liftExprInDecl _ decl = [decl]
 
-liftExprIgnoreLambdas :: NameSupply -> [Id] -> Expr -> Env -> (Expr, [CoreDecl])
+liftExprIgnoreLambdas :: NameSupply -> [Variable] -> Expr -> Env -> (Expr, [CoreDecl])
 liftExprIgnoreLambdas supply scope (Lam x expr) env = (Lam x expr', decls)
   where
     (expr', decls) = liftExprIgnoreLambdas supply (x : scope) expr env
 liftExprIgnoreLambdas supply scope expr env = liftExpr supply scope expr env
 
-liftExpr :: NameSupply -> [Id] -> Expr -> Env -> (Expr, [CoreDecl])
+liftExpr :: NameSupply -> [Variable] -> Expr -> Env -> (Expr, [CoreDecl])
 liftExpr supply scope (Let (Strict b) e) env =
   ( case b' of
     Nothing -> e'
@@ -93,7 +94,7 @@ liftExpr supply scope (Match name alts) env = (Match name alts', concat decls)
 liftExpr supply scope expr@(Lam _ _) env = liftExpr supply' scope (Let (NonRec bind) (Var name)) env
   where
     (name, supply') = freshId supply
-    bind = Bind name expr
+    bind = Bind (Variable name TAny) expr
 -- After normalization the other expression constructors cannot have let bindings
 -- as subexpressions, so we do not have to lift here. We do need to inline variables used in `expr`,
 -- if they are mapped in `env`.
@@ -108,27 +109,27 @@ inlineInSimpleExpr env (Ap e1 e2) = Ap (inlineInSimpleExpr env e1) (inlineInSimp
 inlineInSimpleExpr env e@(Con _) = e
 inlineInSimpleExpr env e@(Lit _) = e
 
-strictBind :: NameSupply -> [Id] -> Bind -> Env -> (Maybe Bind, [CoreDecl], Env -> Env)
+strictBind :: NameSupply -> [Variable] -> Bind -> Env -> (Maybe Bind, [CoreDecl], Env -> Env)
 strictBind supply scope b@(Bind _ (Lam _ _)) env = lazyBind False supply scope b env
-strictBind supply scope (Bind x expr) env = (Just $ Bind x expr', decls, id)
+strictBind supply scope (Bind var expr) env = (Just $ Bind var expr', decls, id)
   where
     (expr', decls) = liftExpr supply scope expr env
 
-lazyBind :: Bool -> NameSupply -> [Id] -> Bind -> Env -> (Maybe Bind, [CoreDecl], Env -> Env)
-lazyBind isRec supply scope b@(Bind x expr) env
+lazyBind :: Bool -> NameSupply -> [Variable] -> Bind -> Env -> (Maybe Bind, [CoreDecl], Env -> Env)
+lazyBind isRec supply scope b@(Bind var@(Variable x _) expr) env
   -- Expression can already be put in a thunk, don't need to change anything.
-  | isValidThunk expr = (Just (Bind x $ inlineInSimpleExpr env expr), [], id)
+  | isValidThunk expr = (Just (Bind var $ inlineInSimpleExpr env expr), [], id)
   -- Put in a thunk. If possible, we will inline the call to the new declaration.
   | inline = (Nothing, decl : decls, insertMap x ap)
-  | otherwise = (Just $ Bind x ap, decl : decls, id)
+  | otherwise = (Just $ Bind var ap, decl : decls, id)
   where
     inline = null scope
-    ap = foldl (\e arg -> Ap e (Var arg)) (Var name) scope
+    ap = foldl (\e (Variable arg _) -> Ap e (Var arg)) (Var name) scope
     (name, supply') = freshId supply
     (supply1, supply2) = splitNameSupply supply'
-    argNames :: [(Id, Id)]
-    argNames = mapWithSupply (\s arg -> let (arg', _) = freshIdFromId arg s in (arg, arg')) supply1 scope
-    env' = foldr (\(arg, arg') -> insertMap arg $ Var arg') env argNames
+    argNames :: [(Variable, Variable)]
+    argNames = mapWithSupply (\s var@(Variable arg t) -> let (arg', _) = freshIdFromId arg s in (var, Variable arg' t)) supply1 scope
+    env' = foldr (\(Variable arg _, Variable arg' _) -> insertMap arg $ Var arg') env argNames
     (expr', decls) = liftExprIgnoreLambdas supply2 (map snd argNames) expr env'
     value = foldr (Lam . snd) expr' argNames
     decl :: CoreDecl
@@ -140,10 +141,10 @@ lazyBind isRec supply scope b@(Bind x expr) env
       , declCustoms = []
       }
 
-liftAlt :: NameSupply -> [Id] -> Alt -> Env -> (Alt, [CoreDecl])
+liftAlt :: NameSupply -> [Variable] -> Alt -> Env -> (Alt, [CoreDecl])
 liftAlt supply scope (Alt pat expr) env = (Alt pat expr', decls)
   where
-    (expr', decls) = liftExpr supply (newVars ++ scope) expr env
+    (expr', decls) = liftExpr supply (map (\x -> Variable x TAny) newVars ++ scope) expr env
     newVars = case pat of
       PatCon _ ids -> ids
       _ -> []

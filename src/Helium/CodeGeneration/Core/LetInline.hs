@@ -45,7 +45,7 @@ aAlts [] = ANil
 aAlts (a:as) = foldr AAlts a as
 
 analyseBind :: Bind -> Analysis
-analyseBind (Bind name expr) = AIgnore name $ analyse expr
+analyseBind (Bind (Variable name _) expr) = AIgnore name $ analyse expr
 
 -- TODO: For performance, add AIgnore nodes for all declared variables in the pattern
 analyseAlt :: Alt -> Analysis
@@ -54,13 +54,13 @@ analyseAlt (Alt _ expr) = analyse expr
 analyse :: Expr -> Analysis
 analyse (Let (Rec binds) expr) = aSequence $ aexpr : map analyseBind binds
   where
-    aexpr = foldr (\(Bind name _) -> AIgnore name) (analyse expr) binds
-analyse (Let (NonRec (Bind name e1)) e2) = ASequence (analyse e1) $ ABind name $ analyse e2
-analyse (Let (Strict (Bind name e1)) e2) = ASequence (analyse e1) $ AIgnore name $ analyse e2
+    aexpr = foldr (\(Bind (Variable name _) _) -> AIgnore name) (analyse expr) binds
+analyse (Let (NonRec (Bind (Variable name _) e1)) e2) = ASequence (analyse e1) $ ABind name $ analyse e2
+analyse (Let (Strict (Bind (Variable name _) e1)) e2) = ASequence (analyse e1) $ AIgnore name $ analyse e2
 analyse (Var name) = AValue name Inline
 analyse (Match name alts) = ASequence (AValue name DontInline) (aAlts (map analyseAlt alts))
 analyse (Ap e1 e2) = ASequence (analyse e1) (analyse e2)
-analyse (Lam name e) = ALambda $ AIgnore name $ analyse e
+analyse (Lam (Variable name _) e) = ALambda $ AIgnore name $ analyse e
 analyse (Con _) = ANil
 analyse (Lit _) = ANil
 
@@ -156,13 +156,13 @@ inlineInExpr env (Ap e1 e2) = Ap (inlineInExpr env e1) (inlineInExpr env e2)
 inlineInExpr env (Match x alts) = Match x (map inlineInAlt alts)
   where
     inlineInAlt (Alt pat expr) = Alt pat $ inlineInExpr env expr
-inlineInExpr env (Let (NonRec (Bind name value)) expr)
+inlineInExpr env (Let (NonRec (Bind var@(Variable name _) value)) expr)
   | shouldInline env (findMap name $ variables env) expr =
     let
       env' = env{ values = insertMap name value' $ values env }
     in
       inlineInExpr env' expr
-  | otherwise = Let (NonRec (Bind name value')) $ inlineInExpr env expr
+  | otherwise = Let (NonRec (Bind var value')) $ inlineInExpr env expr
   where
     value' = inlineInExpr env value
 inlineInExpr env (Let (Strict b) expr) = Let (Strict b') $ inlineInExpr env' expr
@@ -171,12 +171,12 @@ inlineInExpr env (Let (Strict b) expr) = Let (Strict b') $ inlineInExpr env' exp
     env' = case b' of
       -- let! name = x in expr
       -- Replace all occurrences of x with name in expr, to prevent unneccesary `eval` instructions in Iridium.
-      Bind name (Var x) -> env{ values = insertMap x (Var name) $ values env }
+      Bind (Variable name _) (Var x) -> env{ values = insertMap x (Var name) $ values env }
       _ -> env
 inlineInExpr env (Let (Rec bs) expr) = Let (Rec $ map (inlineInBind env) bs) $ inlineInExpr env expr
 
 inlineInBind :: Env -> Bind -> Bind
-inlineInBind env (Bind name expr) = Bind name $ inlineInExpr env expr
+inlineInBind env (Bind var expr) = Bind var $ inlineInExpr env expr
 
 shouldInline :: Env -> InlineState -> Expr -> Bool
 shouldInline _ Inline _ = True

@@ -12,6 +12,7 @@ import qualified Helium.Syntax.UHA_Syntax as UHA
 import Helium.Syntax.UHA_Utils
 import Helium.CodeGeneration.CoreUtils
 import Lvm.Core.Expr
+import Lvm.Core.Type
 import Lvm.Core.Utils
 import Lvm.Common.Id
 import Helium.Utils.Utils
@@ -34,15 +35,15 @@ eqFunction :: [UHA.Name] -> [UHA.Constructor] -> Expr
 eqFunction names constructors = 
     let 
         body = 
-            Let (Strict (Bind fstArg (Var fstArg))) -- evaluate both
-                (Let (Strict (Bind sndArg (Var sndArg)))
-                    (Match fstArg  -- case $fstArg of ...
+            Let (Strict (Bind fstArg (Var $ variableName fstArg))) -- evaluate both
+                (Let (Strict (Bind sndArg (Var $ variableName sndArg)))
+                    (Match (variableName fstArg)  -- case $fstArg of ...
                         (map makeAlt constructors))) 
     in
-        foldr Lam body (map idFromName names ++ [fstArg, sndArg]) -- \a b $fstArg $sndArg ->
+        foldr Lam body (map ((`Variable` TAny) . idFromName) names ++ [fstArg, sndArg]) -- \a b $fstArg $sndArg ->
 
-fstArg, sndArg :: Id        
-[fstArg, sndArg] = map idFromString ["$fstArg", "$sndArg"] 
+fstArg, sndArg :: Variable
+[fstArg, sndArg] = map ((`Variable` TAny) . idFromString) ["$fstArg", "$sndArg"] 
 
 makeAlt :: UHA.Constructor -> Alt
 makeAlt constructor =
@@ -54,7 +55,7 @@ makeAlt constructor =
             --                      ?? $v1 $w1 &&
             --                      ?? $v2 $w2
             --                  _ -> False
-            (Match sndArg 
+            (Match (variableName sndArg)
                 [ Alt (PatCon (ConId ident) ws)
                       ( if null types then Con (ConId (idFromString "True"))
                         else

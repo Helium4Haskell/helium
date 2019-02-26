@@ -18,6 +18,7 @@ import Data.Maybe
 import Lvm.Common.Id    
 import Lvm.Common.IdMap
 import Lvm.Core.Expr
+import Lvm.Core.Type
 import Lvm.Core.Utils
 
 ----------------------------------------------------------------
@@ -67,14 +68,14 @@ satExpr env expr
            in  Let (satBinds env0 binds) (satExpr env1 e)
       Match x alts
         -> Match x (satAlts env alts)
-      Lam x e
-        -> Lam x (satExpr env e)
+      Lam var e
+        -> Lam var (satExpr env e)
       _
         -> let expr'  = satExprSimple env expr
            in addLam env  (requiredArgs env expr') expr'
 
 satBinds :: Env -> Binds -> Binds
-satBinds = zipBindsWith (\env x expr -> Bind x (satExpr env expr)) . splitEnvs
+satBinds = zipBindsWith (\env var expr -> Bind var (satExpr env expr)) . splitEnvs
 
 satAlts :: Env -> Alts -> Alts
 satAlts = zipAltsWith (\env pat expr -> Alt pat (satExpr env expr)) . splitEnvs
@@ -97,7 +98,7 @@ satExprSimple env expr
 addLam :: (Num a, Enum a) => Env -> a -> Expr -> Expr
 addLam env n expr
   = let (_,ids) = mapAccumR (\env2 _ -> let (x,env') = uniqueId env2 in (env',x)) env [1..n]
-    in  foldr Lam (foldl Ap expr (map Var ids)) ids
+    in  foldr (\x e -> Lam (Variable x TAny) e) (foldl Ap expr (map Var ids)) ids
 
 requiredArgs :: Env -> Expr -> Int
 requiredArgs env expr

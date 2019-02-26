@@ -81,7 +81,7 @@ SEM Declaration
             { Core.declName    = idFromName @bindings.name
             , Core.declAccess  = Core.private
             , Core.valueEnc    = Nothing
-            , Core.valueValue  = foldr Core.Lam @bindings.core (@dictionaries ++ @ids)
+            , Core.valueValue  = foldr Core.Lam @bindings.core (map (`Core.Variable` Core.TAny) $ @dictionaries ++ @ids)
             , Core.declCustoms = toplevelType @bindings.name @lhs.importEnv @lhs.isTopLevel
             }
         ]
@@ -108,7 +108,7 @@ SEM Declaration
                                 nextClauseId (patternMatchFail "pattern binding" @range.self)
                                 @righthandside.core
                             )
-                            @dictionaries
+                            (map (`Core.Variable` Core.TAny) @dictionaries)
                     , Core.declCustoms = toplevelType n @lhs.importEnv @lhs.isTopLevel
                     }
                ]

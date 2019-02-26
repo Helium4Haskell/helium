@@ -28,8 +28,8 @@ lookupId :: Env -> Id -> Id
 lookupId env x = fromMaybe x $ lookupMap x env 
 
 renameExpr :: Env -> Expr -> Expr
-renameExpr env (Let (NonRec (Bind x (Var y))) expr) = renameExpr (insertMap x (lookupId env y) env) expr
-renameExpr env (Let bs expr) = Let (mapBinds (\x e -> Bind x $ renameExpr env e) bs) $ renameExpr env expr
+renameExpr env (Let (NonRec (Bind (Variable x _) (Var y))) expr) = renameExpr (insertMap x (lookupId env y) env) expr
+renameExpr env (Let bs expr) = Let (mapBinds (\var e -> Bind var $ renameExpr env e) bs) $ renameExpr env expr
 renameExpr env (Match x alts) =
   Match (lookupId env x)
     $ mapAlts (\pat expr -> Alt pat $ renameExpr env expr) alts

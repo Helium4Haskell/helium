@@ -9,6 +9,7 @@
 module Helium.CodeGeneration.PatternMatch(patternToCore, patternsToCore, nextClauseId, freshIds) where
 
 import qualified Lvm.Core.Expr as Core
+import qualified Lvm.Core.Type as Core
 import Helium.Syntax.UHA_Syntax
 import Helium.Syntax.UHA_Utils
 import Helium.Syntax.UHA_Range
@@ -213,6 +214,6 @@ wildcardId, nextClauseId :: Id
 case_ :: Id -> [Core.Alt] -> Core.Expr
 case_ ident alts = 
     Core.Let 
-        (Core.Strict (Core.Bind ident (Core.Var ident)))      -- let! id = id in
+        (Core.Strict (Core.Bind (Core.Variable ident Core.TAny) (Core.Var ident)))      -- let! id = id in
         (Core.Match ident (alts++[nextClauseAlternative]))    -- match id { alt; ...; alt; _ -> _nextClause }
     

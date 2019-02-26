@@ -16,6 +16,7 @@ module Helium.CodeGeneration.CoreUtils
     ) where
 
 import Lvm.Core.Expr
+import Lvm.Core.Type
 import Lvm.Common.Id
 import Lvm.Core.Utils
 import Data.Char
@@ -44,13 +45,13 @@ app_ :: Expr -> Expr -> Expr
 app_ f x = Ap f x
 
 let_ :: Id -> Expr -> Expr -> Expr
-let_ x e b = Let (NonRec (Bind x e)) b
+let_ x e b = Let (NonRec (Bind (Variable x TAny) e)) b
 
 letrec_ :: [CoreDecl] -> Expr -> Expr
 letrec_ bs e = 
     Let 
         (Rec 
-            [ Bind ident expr
+            [ Bind (Variable ident TAny) expr
             | DeclValue { declName = ident, valueValue = expr } <- bs
             ]
         ) 
@@ -64,7 +65,7 @@ letrec_ bs e =
 if_ :: Expr -> Expr -> Expr -> Expr
 if_ guardExpr thenExpr elseExpr =
     Let 
-        (Strict (Bind guardId guardExpr))
+        (Strict (Bind (Variable guardId typeBool) guardExpr))
         (Match guardId
             [ Alt (PatCon (ConId trueId) []) thenExpr
             , Alt PatDefault elseExpr

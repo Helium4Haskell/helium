@@ -25,6 +25,7 @@ module Helium.CodeGeneration.Core.Normalize (coreNormalize) where
 import Lvm.Common.Id
 import Lvm.Common.IdSet
 import Lvm.Core.Expr
+import Lvm.Core.Type
 import Lvm.Core.Utils
 
 -- A trivial expression is a variable
@@ -47,7 +48,7 @@ coreNormalize supply m
 -- Here we skip through all Lambda nodes until we find a non-lambda node,
 -- which we will normalize.
 normalizeLambda :: NameSupply -> Expr -> Expr
-normalizeLambda supply (Lam x expr) = Lam x $ normalizeLambda supply expr
+normalizeLambda supply (Lam var expr) = Lam var $ normalizeLambda supply expr
 normalizeLambda supply expr = normalize supply expr
 
 -- Normalizes an expression.
@@ -60,7 +61,7 @@ normalize supply expr = addBindings expr' bindings
 normExpr :: NameSupply -> Expr -> (Expr, [Bind])
 normExpr supply expr
   | isTrivial expr' = (expr', bindings)
-  | otherwise = (Var name, [Bind name $ addBindings expr' bindings])
+  | otherwise = (Var name, [Bind (Variable name TAny) $ addBindings expr' bindings])
   where
     (expr', bindings) = normSubExprs supply' expr
     (name, supply') = freshId supply
@@ -79,9 +80,9 @@ normSubExprs supply (Ap e1 e2) = (Ap e1'' e2', bindings1' ++ bindings2)
     (e1', bindings1) = normSubExprs supply1 e1
     (e1'', bindings1')
       | isApTarget e1' = (e1', bindings1)
-      | otherwise = (Var name, [Bind name $ addBindings e1' bindings1])
+      | otherwise = (Var name, [Bind (Variable name TAny) $ addBindings e1' bindings1])
     (e2', bindings2) = normExpr supply2 e2
-normSubExprs supply (Lam x expr) = (Lam x $ normalizeLambda supply expr, [])
+normSubExprs supply (Lam var expr) = (Lam var $ normalizeLambda supply expr, [])
 normSubExprs supply expr = (expr, []) -- expr is already trivial, we don't need to normalize it further.
 
 normBinds :: NameSupply -> Binds -> Binds
@@ -90,7 +91,7 @@ normBinds supply (Strict b) = Strict $ normBind supply b
 normBinds supply (NonRec b) = NonRec $ normBind supply b
 
 normBind :: NameSupply -> Bind -> Bind
-normBind supply (Bind x expr) = Bind x $ normalize supply expr
+normBind supply (Bind var expr) = Bind var $ normalize supply expr
 
 normAlt :: NameSupply -> Alt -> Alt
 normAlt supply (Alt p expr) = Alt p $ normalize supply expr
