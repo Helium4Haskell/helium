@@ -23,7 +23,7 @@ dataDictionary  (UHA.Declaration_Data _ _ (UHA.SimpleType_SimpleType _ name name
     DeclValue 
     { declName    = idFromString ("$dictEq$" ++ getNameName name)
     , declAccess  = public
-    , valueEnc    = Nothing
+    , declType    = Core.TAny
     , valueValue  = eqDict names constructors
     , declCustoms = [ custom "type" ("Dict$Eq " ++ getNameName name) ] 
         ++ map (custom "typeVariable" . getNameName) names

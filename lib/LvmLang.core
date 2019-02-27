@@ -73,7 +73,7 @@ instruction primGeFloat   "gefloat"  :: Float! -> Float! -> Bool!
 
 instruction primAlloc   "alloc"  :: Int! {- tag -} -> Int! {- size -} -> a!
 instruction primGetTag  "gettag" :: a! -> Int!
-instruction primGetSize "getsize":: a! -> Int! -}
+instruction primGetSize "getsize":: a! -> Int!
 -- instruction primNew     "new"    :: Int! {- tag -} -> Int! {- size -} -> {- x_1 ... x_n -> -} a!
 -- instruction primPack    "pack"   :: a! -> Int! {- size -} -> {- x_1 ... x_size -} ()
 -- instruction primUnPack  "unpack" :: a! -> (# x_1 ... x_size #)
@@ -81,6 +81,7 @@ instruction primGetSize "getsize":: a! -> Int! -}
 extern prim_chars_of_string :: "aa"
 extern prim_string_of_chars :: "ala"
 extern prim_string_length   :: "la"
+-}
 
 {----------------------------------------------------------
   Basic data types

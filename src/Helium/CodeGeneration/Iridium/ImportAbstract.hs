@@ -5,6 +5,7 @@ import Helium.CodeGeneration.Iridium.Data
 import Helium.CodeGeneration.Iridium.Type
 import Lvm.Common.Id (Id, idFromString)
 import qualified Lvm.Core.Module as Core
+import qualified Lvm.Core.Type as Core
 
 toAbstractModule :: Module -> Core.Module v
 toAbstractModule (Module name _ customs datas abstracts methods) = Core.Module name 0 0
@@ -21,22 +22,22 @@ convertCustom _ = Nothing
 convertData :: Declaration DataType -> [Core.Decl v]
 convertData (Declaration _ (ExportedAs name) mod customs (DataType cons)) =
   Core.DeclCustom name (toAccess name mod) (Core.DeclKindCustom $ idFromString "data") customs
-  : catMaybes (zipWith convertConstructor cons [0..])
+  : catMaybes (map convertConstructor cons)
 convertData _ = []
 
-convertConstructor :: Declaration DataTypeConstructorDeclaration -> Int -> Maybe (Core.Decl v)
-convertConstructor (Declaration _ (ExportedAs name) mod customs (DataTypeConstructorDeclaration fields)) tag = Just $
-  Core.DeclCon name (toAccess name mod) (length fields) tag customs
-convertConstructor _ _ = Nothing
+convertConstructor :: Declaration DataTypeConstructorDeclaration -> Maybe (Core.Decl v)
+convertConstructor (Declaration _ (ExportedAs name) mod customs (DataTypeConstructorDeclaration fields)) = Just $
+  Core.DeclCon name (toAccess name mod) (Core.typeFunction (map (const Core.TAny) fields) $ Core.TStrict Core.TAny) customs
+convertConstructor _ = Nothing
 
 convertMethod :: Declaration Method -> Maybe (Core.Decl v)
 convertMethod (Declaration _ (ExportedAs name) mod customs (Method args _ _ _ _)) = Just $
-  Core.DeclAbstract name (toAccess name mod) (length args) customs
+  Core.DeclAbstract name (toAccess name mod) (Core.typeFunction (map (const Core.TAny) args) $ Core.TStrict Core.TAny) customs
 convertMethod _ = Nothing
 
 convertAbstractMethod :: Declaration AbstractMethod -> Maybe (Core.Decl v)
 convertAbstractMethod (Declaration _ (ExportedAs name) mod customs (AbstractMethod (FunctionType args _) _)) = Just $
-  Core.DeclAbstract name (toAccess name mod) (length args) customs
+  Core.DeclAbstract name (toAccess name mod) (Core.typeFunction (map (const Core.TAny) args) $ Core.TStrict Core.TAny) customs
 convertAbstractMethod _ = Nothing
 
 toAccess :: Id -> Maybe Id -> Core.Access

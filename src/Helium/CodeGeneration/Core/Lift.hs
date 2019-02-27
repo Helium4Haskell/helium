@@ -119,7 +119,7 @@ strictBind supply scope (Bind var expr) env = (Just $ Bind var expr', decls, id)
     (expr', decls) = liftExpr supply scope expr env
 
 lazyBind :: Bool -> NameSupply -> [Variable] -> Bind -> Env -> (Maybe Bind, [CoreDecl], Env -> Env)
-lazyBind isRec supply scope b@(Bind var@(Variable x _) expr) env
+lazyBind isRec supply scope b@(Bind var@(Variable x t) expr) env
   -- Expression can already be put in a thunk, don't need to change anything.
   | isValidThunk expr = (Just (Bind var $ renameInSimpleExpr env expr), [], id)
   -- Do not construct a Bind if the value is placed in a toplevel value which is not a Lambda
@@ -138,7 +138,7 @@ lazyBind isRec supply scope b@(Bind var@(Variable x _) expr) env
     decl = DeclValue
       { declName = name
       , declAccess = Defined False
-      , valueEnc = Nothing
+      , declType = typeFunction (map variableType scope) (typeToStrict t)
       , valueValue = value
       , declCustoms = []
       }

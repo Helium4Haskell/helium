@@ -44,8 +44,7 @@ classFunctions :: ImportEnvironment -> String -> [(Name, Int, DictLabel)] -> [Co
 classFunctions importEnv className combinedNames = [DeclCon -- Declare the constructor for the dictionary
                                                     { declName = dictName
                                                     , declAccess  = public
-                                                    , declArity   = length superclasses + length combinedNames
-                                                    , conTag      = 0
+                                                    , declType    = Core.typeFunction (replicate (length superclasses + length combinedNames) Core.TAny) $ Core.TStrict Core.TAny
                                                     , declCustoms = 
                                                         -- Types of constructors are not enforced
                                                         [ custom "type" ("todo")
@@ -68,7 +67,7 @@ classFunctions importEnv className combinedNames = [DeclCon -- Declare the const
                     val = DeclValue 
                         { declName    = idFromString $ "$get" ++ superName ++ "$" ++ className
                         , declAccess  = public
-                        , valueEnc    = Nothing
+                        , declType    = Core.TAny
                         , valueValue  = Lam (Variable dictParam Core.TAny) $ Let (Strict $ Bind (Variable dictParam Core.TAny) (Var dictParam))
                                         (Match dictParam 
                                             [
@@ -86,7 +85,7 @@ classFunctions importEnv className combinedNames = [DeclCon -- Declare the const
                     val = DeclValue 
                         { declName    = idFromString $ getNameName name
                         , declAccess  = public
-                        , valueEnc    = Nothing
+                        , declType    = Core.TAny
                         , valueValue  = Lam (Variable dictParam Core.TAny) $ 
                                 Let (Strict $ Bind (Variable dictParam Core.TAny) (Var dictParam))
                                 (Match dictParam 
@@ -117,7 +116,7 @@ constructDictionary importEnv instanceSuperClass combinedNames whereDecls classN
             val = DeclValue 
                 { declName    = idFromString ("$dict" ++ getNameName className ++ "$" ++ insName)
                 , declAccess  = public
-                , valueEnc    = Nothing
+                , declType    = Core.TAny
                 , valueValue  = dict
                 , declCustoms = custom "type" ("Dict$" ++ getNameName className ++ " " ++ insName)
                             :    map (custom "typeVariable" . getNameName) typeVariables 
@@ -259,7 +258,7 @@ convertDictionaries importEnv className functions defaults = map makeFunction fu
                         fDefault = DeclValue
                             { declName    = idFromString $ constructName fname
                             , declAccess  = public 
-                            , valueEnc    = Nothing
+                            , declType    = Core.TAny
                             , valueValue  = Var $ idFromString "undefined"
                             , declCustoms = toplevelType fname importEnv True
                             }

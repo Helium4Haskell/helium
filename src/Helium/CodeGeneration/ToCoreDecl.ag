@@ -54,8 +54,7 @@ SEM Declaration
         ++
         [ DerivingShow.typeShowFunction (classEnvironment @lhs.importEnv) (typeSynonyms @lhs.importEnv) @self ]
     
-    | Data    constructors.tag = 0
-              constructors.dataTypeName = @simpletype.name
+    | Data    constructors.dataTypeName = @simpletype.name
               lhs.decls  =
         map snd @constructors.cons
         ++
@@ -93,7 +92,7 @@ SEM Declaration
         [ Core.DeclValue
             { Core.declName    = idFromName @bindings.name
             , Core.declAccess  = Core.private
-            , Core.valueEnc    = Nothing
+            , Core.declType    = declarationType @bindings.name @lhs.importEnv (@lhs.isTopLevel || isJust @lhs.instanceName)
             , Core.valueValue  = foldr Core.Lam @bindings.core (map (`Core.Variable` Core.TAny) $ @dictionaries ++ @ids)
             , Core.declCustoms = toplevelType @bindings.name @lhs.importEnv (@lhs.isTopLevel || isJust @lhs.instanceName)
             }
@@ -114,7 +113,7 @@ SEM Declaration
                 [ Core.DeclValue
                     { Core.declName    = idFromName n
                     , Core.declAccess  = Core.private
-                    , Core.valueEnc    = Nothing
+                    , Core.declType    = declarationType n @lhs.importEnv @lhs.isTopLevel
                     , Core.valueValue  =  
                         foldr Core.Lam 
                             ( let_ -- because guards can fail
@@ -128,7 +127,7 @@ SEM Declaration
             _ -> Core.DeclValue
                     { Core.declName    = patBindId
                     , Core.declAccess  = Core.private
-                    , Core.valueEnc    = Nothing
+                    , Core.declType    = Core.TAny
                     , Core.valueValue  = 
                         let_ 
                             nextClauseId (patternMatchFail "pattern binding" @range.self)
@@ -139,7 +138,7 @@ SEM Declaration
                 [ Core.DeclValue
                     { Core.declName    = idFromName v
                     , Core.declAccess  = Core.private
-                    , Core.valueEnc    = Nothing
+                    , Core.declType    = declarationType v @lhs.importEnv @lhs.isTopLevel
                     , Core.valueValue  =
                         (let_ nextClauseId (patternMatchFail "pattern binding" @range.self)
                             (patternToCore (patBindId, @pattern.self) (Core.Var (idFromName v)))
@@ -229,7 +228,6 @@ SEM Declaration
     -- Not supported
     
     | Newtype           lhs.decls    = internalError "ToCoreDecl" "Declaration" "'newType' not supported"
-                        constructor.tag = 0
                         constructor.dataTypeName = @simpletype.name
     --  range                    : Range
     --  context                  : ContextItems
@@ -371,22 +369,19 @@ SEM RightHandSide
 -- ------------------------------------------------------------------------
 
 ATTR Constructors Constructor 
-    [   tag : Int 
+    [
     | 
     |   cons USE { ++ } { [] } : { [(Id, CoreDecl)] } 
     ]
 
 SEM Constructors [ dataTypeName : Name | | ]
-    | Cons  hd.tag = @lhs.tag
-            tl.tag = @lhs.tag + 1
 
 SEM Constructor [ dataTypeName : Name | | ]
     | Constructor       lhs.cons = 
         [ (idFromName @constructor.self, Core.DeclCon
             { Core.declName    = idFromName @constructor.self
             , Core.declAccess  = Core.private
-            , Core.declArity   = @types.length
-            , Core.conTag      = @lhs.tag
+            , Core.declType    = Core.typeFunction (replicate @types.length Core.TAny) Core.TAny
             , Core.declCustoms = constructorCustoms 
                                     @lhs.dataTypeName
                                     @constructor.self 
@@ -402,8 +397,7 @@ SEM Constructor [ dataTypeName : Name | | ]
         [ (idFromName @constructorOperator.self, Core.DeclCon
             { Core.declName    = idFromName @constructorOperator.self
             , Core.declAccess  = Core.private
-            , Core.declArity   = 2
-            , Core.conTag      = @lhs.tag
+            , Core.declType   = Core.typeFunction [Core.TAny, Core.TAny] Core.TAny
             , Core.declCustoms = constructorCustoms
                                     @lhs.dataTypeName
                                     @constructorOperator.self 

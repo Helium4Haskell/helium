@@ -253,7 +253,7 @@ safeMinus : private [custom "type"  ["String -> String"]]
     ; _ -> s
     }
 -}
-
+{-
 addPointZero : private [custom "type"  ["String -> String"]]
     = \s: String ->
         let! cond: Bool = hasPointOrE s in case cond of
@@ -272,3 +272,4 @@ hasPointOrE : private []
         ; default -> hasPointOrE ys
         }
     }
+-}

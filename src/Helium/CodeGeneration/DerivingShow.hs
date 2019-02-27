@@ -51,7 +51,7 @@ dataDictionary classEnv tse decl@(UHA.Declaration_Data _ _ (UHA.SimpleType_Simpl
     DeclValue 
     { declName    = idFromString ("$dictShow$" ++ getNameName name)
     , declAccess  = public
-    , valueEnc    = Nothing
+    , declType    = Core.TAny
     , valueValue  = makeShowDictionary (length names)
     , declCustoms = [ custom "type" ("Dict$Show " ++ getNameName name)] 
                 ++ map (custom "typeVariable" . getNameName) names
@@ -80,7 +80,7 @@ typeShowFunction classEnv tse (UHA.Declaration_Type _ (UHA.SimpleType_SimpleType
     DeclValue 
     { declName    = idFromString ("show" ++ getNameName name)
     , declAccess  = public
-    , valueEnc    = Nothing
+    , declType    = Core.typeFunction (map (const Core.TAny) names) $ Core.TStrict Core.TAny
     , valueValue  = foldr (Lam . (`Variable` Core.TAny) . idFromName) (showFunctionOfType classEnv tse False type_) names
     , declCustoms = [ custom "type" typeString ] 
     }

@@ -13,14 +13,16 @@ module Helium.CodeGeneration.CoreUtils
     ,   cons, nil
     ,   var, decl
     ,   float, packedString
-    ,   toplevelType
+    ,   toplevelType, declarationType
     ) where
 
+import Top.Types (TpScheme)
 import Lvm.Core.Expr
-import Lvm.Core.Type
+import Lvm.Core.Type as Core
 import Lvm.Common.Id
 import Lvm.Core.Utils
 import Data.Char
+import Data.Maybe
 import Lvm.Common.Byte(bytesFromString)
 import qualified Lvm.Core.Expr as Core
 import qualified Data.Map as M
@@ -113,12 +115,12 @@ float f =
         (Core.Var (idFromString "$primStringToFloat")) 
         ( Core.Lit (Core.LitBytes (bytesFromString f)) )
 
-decl :: Bool -> String -> Expr -> CoreDecl
-decl isPublic x e = 
+decl :: Bool -> String -> Core.Type -> Expr -> CoreDecl
+decl isPublic x t e = 
     DeclValue 
         { declName = idFromString x
         , declAccess = Defined { accessPublic = isPublic }
-        , valueEnc = Nothing
+        , declType = t
         , valueValue = e
         , declCustoms = []
         }
@@ -126,6 +128,15 @@ decl isPublic x e =
 packedString :: String -> Expr
 packedString s = Lit (LitBytes (bytesFromString s))
 
+declarationType :: Name -> ImportEnvironment -> Bool -> Core.Type
+declarationType name ie isTopLevel
+    | isTopLevel = toCoreType haskellType
+    | otherwise = Core.TAny
+    where
+        haskellType = fromMaybe (internalError "ToCoreDecl" "Declaration" ("no type found for " ++ getNameName name)) (M.lookup name (typeEnvironment ie))
+
+toCoreType :: TpScheme -> Core.Type
+toCoreType _ = Core.TAny
 
 toplevelType :: Name -> ImportEnvironment -> Bool -> [Custom]
 toplevelType name ie isTopLevel

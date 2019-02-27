@@ -68,11 +68,7 @@ usageDecl :: Used -> CoreDecl -> Used
 usageDecl used decl
   = let usedCustoms = usageCustoms used (declCustoms decl)
     in case decl of
-         DeclValue{} -> let usedExpr = usageValue usedCustoms (valueValue decl)
-                            usedEnc  = case valueEnc decl of
-                                        Just x  -> Set.insert (DeclKindValue,x) usedExpr
-                                        Nothing  -> usedExpr
-                         in usedEnc
+         DeclValue{} -> usageValue usedCustoms (valueValue decl)
          _           -> usedCustoms
 
 usageCustoms :: Used -> [Custom] -> Used
