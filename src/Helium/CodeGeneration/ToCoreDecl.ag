@@ -203,7 +203,6 @@ SEM Declaration
                                         [
                                             Core.DeclCustom
                                                 {
-                                                    --declName :: Id, declAccess :: !Access, declArity :: !Arity, declCustoms :: ![Custom]
                                                     Core.declName = idFromName @simpletype.name,
                                                     Core.declAccess = Core.public,
                                                     Core.declKind = Core.DeclKindCustom $ idFromString "ClassDefinition",
@@ -385,7 +384,7 @@ SEM Constructor [ dataTypeName : Name typevariables : Names dataTypeCoreType : {
         [ (idFromName @constructor.self, Core.DeclCon
             { Core.declName    = idFromName @constructor.self
             , Core.declAccess  = Core.private
-            , Core.declType    = foldr (Core.TForall) (Core.typeFunction @types.coreTypes @lhs.dataTypeCoreType) $ map idFromName @lhs.typevariables
+            , Core.declType    = foldr (`Core.TForall` Core.KStar) (Core.typeFunction @types.coreTypes @lhs.dataTypeCoreType) $ map idFromName @lhs.typevariables
             , Core.declCustoms = constructorCustoms 
                                     @lhs.dataTypeName
                                     @constructor.self 
@@ -401,7 +400,7 @@ SEM Constructor [ dataTypeName : Name typevariables : Names dataTypeCoreType : {
         [ (idFromName @constructorOperator.self, Core.DeclCon
             { Core.declName    = idFromName @constructorOperator.self
             , Core.declAccess  = Core.private
-            , Core.declType   = Core.typeFunction [Core.TAny, Core.TAny] @lhs.dataTypeCoreType
+            , Core.declType    = foldr (`Core.TForall` Core.KStar) (Core.typeFunction [@leftType.coreType, @rightType.coreType] @lhs.dataTypeCoreType) $ map idFromName @lhs.typevariables
             , Core.declCustoms = constructorCustoms
                                     @lhs.dataTypeName
                                     @constructorOperator.self 

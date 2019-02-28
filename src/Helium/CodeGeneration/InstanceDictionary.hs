@@ -43,13 +43,13 @@ constructSuperClassMap env name =
 
 constructorType :: Id -> [Core.Type] -> Core.Type -> Core.Type
 constructorType typeVar fields classType =
-    Core.TForall typeVar $ Core.typeFunction fields' classType
+    Core.TForall typeVar Core.KStar $ Core.typeFunction fields' classType
     where
         fields' = map instantiateClassVar fields
         instantiateClassVar :: Core.Type -> Core.Type
-        instantiateClassVar (Core.TForall x t)
+        instantiateClassVar (Core.TForall x k t)
             | x == typeVar = t
-            | otherwise = Core.TForall x $ instantiateClassVar t
+            | otherwise = Core.TForall x k $ instantiateClassVar t
         instantiateClassVar t = t
 
 --returns for every function in a class the function that retrieves that class from a dictionary
@@ -83,7 +83,7 @@ classFunctions importEnv className typeVar combinedNames = [DeclCon -- Declare t
                     val = DeclValue 
                         { declName    = idFromString $ "$get" ++ superName ++ "$" ++ className
                         , declAccess  = public
-                        , declType    = Core.TForall typeArgId $ Core.typeFunction [classType] $ Core.TAp t typeArg
+                        , declType    = Core.TForall typeArgId Core.KStar $ Core.typeFunction [classType] $ Core.TAp t typeArg
                         , valueValue  = Lam (Variable dictParam classType) $ Let (Strict $ Bind (Variable dictParam $ Core.typeToStrict classType) (Var dictParam))
                                         (Match dictParam 
                                             [
@@ -200,7 +200,7 @@ constructDictionary importEnv instanceSuperClass combinedNames whereDecls classN
                 undefinedFunc = (Var $ idFromString ("default$" ++ getNameName className ++ "$" ++ getNameName name))
                 func = maybe undefinedFunc getCoreValue fdecl
                 in Bind (Variable (idFromString label) t) func
-            dictCon = Bind (Variable (idFromString "dict") Core.TAny) (
+            dictCon = Bind (Variable (idFromString "dict") $ typeClassType $ idFromName className) (
                     foldl Ap (Con $ ConId $ idFromString ("Dict$" ++ getNameName className)) $ map (Var . idFromString) labels
                 )
 

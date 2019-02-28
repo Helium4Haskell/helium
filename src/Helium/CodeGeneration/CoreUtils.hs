@@ -141,7 +141,7 @@ toCoreType :: Top.TpScheme -> Core.Type
 toCoreType (Top.Quantification (tvars, qmap, t)) = foldr addTypeVar t' tvars
   where
     t' = qtypeToCoreType qmap t
-    addTypeVar index = Core.TForall (typeVarToId qmap index)
+    addTypeVar index = Core.TForall (typeVarToId qmap index) Core.KStar
 
 toCoreTypeNotQuantified :: Top.TpScheme -> Core.Type
 toCoreTypeNotQuantified (Top.Quantification (_, qmap, t)) = qtypeToCoreType qmap t

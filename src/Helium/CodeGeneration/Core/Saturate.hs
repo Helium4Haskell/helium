@@ -22,40 +22,44 @@ import Lvm.Core.Type
 import Lvm.Core.Utils
 
 ----------------------------------------------------------------
--- Environment: a name supply and a map from id to its arity
+-- Environment: a name supply and a map from id to its required arguments
 ----------------------------------------------------------------
-data Env    = Env NameSupply (IdMap Int)
+data Env    = Env NameSupply (IdMap [Type])
 
 uniqueId :: Env -> (Id, Env)
-uniqueId (Env supply arities)
+uniqueId (Env supply requiredArgs)
   = let (x,supply') = freshId supply
-    in  (x,Env supply' arities)
+    in  (x,Env supply' requiredArgs)
 
-findArity :: Id -> Env -> Int
-findArity x (Env _ arities)
-  = fromMaybe 0 (lookupMap x arities)
+findRequiredArguments :: Id -> Env -> [Type]
+findRequiredArguments x (Env _ requiredArgs)
+  = fromMaybe [] (lookupMap x requiredArgs)
 
 splitEnv :: Env -> (Env, Env)
-splitEnv (Env supply arities)
+splitEnv (Env supply requiredArgs)
   = let (s0,s1) = splitNameSupply supply
-    in  (Env s0 arities, Env s1 arities)
+    in  (Env s0 requiredArgs, Env s1 requiredArgs)
 
 splitEnvs :: Env -> [Env]
-splitEnvs (Env supply arities)
-  = map (`Env` arities) (splitNameSupplies supply)
+splitEnvs (Env supply requiredArgs)
+  = map (`Env` requiredArgs) (splitNameSupplies supply)
 
 ----------------------------------------------------------------
 -- coreSaturate
 ----------------------------------------------------------------
 coreSaturate :: NameSupply -> CoreModule -> CoreModule
 coreSaturate supply m
-  = mapExprWithSupply (satDeclExpr arities) supply m
+  = mapExprWithSupply (satDeclExpr requiredArgs) supply m
   where
-    arities = mapFromList [(declName d,declArity d) | d <- moduleDecls m, isDeclCon d || isDeclExtern d]
+    requiredArgs = mapFromList [(declName d, extractArguments $ declType d) | d <- moduleDecls m, isDeclCon d || isDeclExtern d]
 
+extractArguments :: Type -> [Type]
+extractArguments (TForall _ _ t) = extractArguments t
+extractArguments (TAp (TAp (TCon TConFun) t1) t2) = t1 : extractArguments t2
+extractArguments _ = []
 
-satDeclExpr :: IdMap Int -> NameSupply -> Expr -> Expr
-satDeclExpr arities supply = satExpr (Env supply arities)
+satDeclExpr :: IdMap [Type] -> NameSupply -> Expr -> Expr
+satDeclExpr requiredArgs supply = satExpr (Env supply requiredArgs)
 
 ----------------------------------------------------------------
 -- saturate expressions
@@ -95,19 +99,16 @@ satExprSimple env expr
 -- Add lambda's
 ----------------------------------------------------------------
 
-addLam :: (Num a, Enum a) => Env -> a -> Expr -> Expr
-addLam env n expr
-  = let (_,ids) = mapAccumR (\env2 _ -> let (x,env') = uniqueId env2 in (env',x)) env [1..n]
-    in  foldr (\x e -> Lam (Variable x TAny) e) (foldl Ap expr (map Var ids)) ids
+addLam :: Env -> [Type] -> Expr -> Expr
+addLam env args expr
+  = let (_, vars) = mapAccumR (\env2 t -> let (x,env') = uniqueId env2 in (env', Variable x t)) env args
+    in  foldr Lam (foldl Ap expr (map (Var . variableName) vars)) vars
 
-requiredArgs :: Env -> Expr -> Int
+requiredArgs :: Env -> Expr -> [Type]
 requiredArgs env expr
   = case expr of
-      Let _ _               -> 0
-      Match _ _             -> 0
-      Lam _ _               -> 0
-      Ap e1 _               -> requiredArgs env e1 - 1
-      Var x                 -> findArity x env
-      Con (ConId x)         -> findArity x env
-      Con (ConTag _ arity)  -> arity
-      _                     -> 0
+      Ap e1 _               -> drop 1 $ requiredArgs env e1
+      Var x                 -> findRequiredArguments x env
+      Con (ConId x)         -> findRequiredArguments x env
+      Con (ConTag _ arity)  -> zipWith (\_ env' -> let (arg, _) = uniqueId env' in TVar arg) [1..arity] $ splitEnvs env
+      _                     -> []
