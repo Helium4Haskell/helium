@@ -15,6 +15,7 @@ module Helium.CodeGeneration.CoreUtils
     ,   float, packedString
     ,   toplevelType, declarationType
     ,   toCoreType, typeToCoreType
+    ,   addLambdas
     ) where
 
 import Top.Types as Top
@@ -150,9 +151,13 @@ typeVarToId qmap index = case lookup index qmap of
 qtypeToCoreType :: Top.QuantorMap -> Top.QType -> Core.Type
 qtypeToCoreType qmap (Top.Qualification (q, t)) = foldr addDictArgument (typeToCoreType qmap t) q
   where
-    addDictArgument (Top.Predicate className tp) = Core.TAp $ Core.TAp (Core.TCon Core.TConFun) arg
+    addDictArgument predicate = Core.TAp $ Core.TAp (Core.TCon Core.TConFun) arg
       where
-        arg = Core.TAp (Core.TCon $ TConTypeClassDictionary $ idFromString className) $ typeToCoreType qmap tp
+        arg = predicateToCoreType qmap predicate
+
+predicateToCoreType :: Top.QuantorMap -> Top.Predicate -> Core.Type
+predicateToCoreType qmap (Top.Predicate className tp) =
+    Core.TAp (Core.TCon $ TConTypeClassDictionary $ idFromString className) $ typeToCoreType qmap tp
 
 typeToCoreType :: Top.QuantorMap -> Top.Tp -> Core.Type
 typeToCoreType qmap (Top.TVar index) = Core.TVar $ typeVarToId qmap index
@@ -174,3 +179,41 @@ toplevelType name ie isTopLevel
             (internalError "ToCoreDecl" "Declaration" ("no type found for " ++ getNameName name))
             show
             (M.lookup name (typeEnvironment ie))
+
+addLambdas :: Bool -> ImportEnvironment -> Name -> [Id] -> Core.Expr -> Core.Expr
+addLambdas False _ _ args expr = foldr Core.Lam expr $ map (`Core.Variable` Core.TAny) args
+-- TODO: Add type Lambdas
+addLambdas _ env name args expr = addLambdasForQType env qmap t args expr
+  where
+    Top.Quantification (tvars, qmap, t) = fromMaybe
+        (internalError "ToCoreDecl" "Declaration" ("no type found for " ++ getNameName name))
+        (M.lookup name (typeEnvironment env))
+
+addLambdasForQType :: ImportEnvironment -> QuantorMap -> Top.QType -> [Id] -> Core.Expr -> Core.Expr
+addLambdasForQType env qmap (Top.Qualification ([], t)) args expr = addLambdasForType env qmap t args expr
+addLambdasForQType env qmap (Top.Qualification (p : ps, t)) (arg:args) expr =
+    Core.Lam (Core.Variable arg $ predicateToCoreType qmap p) $ addLambdasForQType env qmap (Top.Qualification (ps, t)) args expr
+
+addLambdasForType :: ImportEnvironment -> QuantorMap -> Top.Tp -> [Id] -> Core.Expr -> Core.Expr
+addLambdasForType _ _ _ [] expr = expr
+addLambdasForType env qmap (Top.TApp (Top.TApp (Top.TCon "->") argType) retType) (arg:args) expr =
+    Core.Lam (Core.Variable arg $ typeToCoreType qmap argType)
+        $ addLambdasForType env qmap retType args expr
+addLambdasForType env qmap tp args expr =
+    case tp' of 
+        -- Verify that the resulting type is a function type
+        Top.TApp (Top.TApp (Top.TCon "->") _) _ -> addLambdasForType env qmap tp' args expr
+        _ -> internalError "ToCoreDecl" "Declaration" ("Expected a function type, got " ++ show tp' ++ " instead")
+    where
+        tp' = applyTypeSynonym env tp []
+
+applyTypeSynonym :: ImportEnvironment -> Top.Tp -> Top.Tps -> Top.Tp
+applyTypeSynonym env tp@(Top.TCon name) tps = case M.lookup (nameFromString name) $ typeSynonyms env of
+    Just (arity, fn) ->
+        let
+            tps' = drop arity tps
+            tp' = fn (take arity tps)
+        in
+            applyTypeSynonym env tp' tps'
+    _ -> foldl (Top.TApp) tp tps
+applyTypeSynonym env (Top.TApp t1 t2) tps = applyTypeSynonym env t1 (t2 : tps)

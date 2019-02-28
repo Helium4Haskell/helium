@@ -93,7 +93,7 @@ SEM Declaration
             { Core.declName    = idFromName @bindings.name
             , Core.declAccess  = Core.private
             , Core.declType    = declarationType @bindings.name @lhs.importEnv (@lhs.isTopLevel || isJust @lhs.instanceName)
-            , Core.valueValue  = foldr Core.Lam @bindings.core (map (`Core.Variable` Core.TAny) $ @dictionaries ++ @ids)
+            , Core.valueValue  = addLambdas (@lhs.isTopLevel || isJust @lhs.instanceName) @lhs.importEnv @bindings.name (@dictionaries ++ @ids) @bindings.core
             , Core.declCustoms = toplevelType @bindings.name @lhs.importEnv (@lhs.isTopLevel || isJust @lhs.instanceName)
             }
         ]
@@ -114,13 +114,12 @@ SEM Declaration
                     { Core.declName    = idFromName n
                     , Core.declAccess  = Core.private
                     , Core.declType    = declarationType n @lhs.importEnv @lhs.isTopLevel
-                    , Core.valueValue  =  
-                        foldr Core.Lam 
+                    , Core.valueValue  =
+                        addLambdas @lhs.isTopLevel @lhs.importEnv n @dictionaries
                             ( let_ -- because guards can fail
                                 nextClauseId (patternMatchFail "pattern binding" @range.self)
                                 @righthandside.core
                             )
-                            (map (`Core.Variable` Core.TAny) @dictionaries)
                     , Core.declCustoms = toplevelType n @lhs.importEnv @lhs.isTopLevel
                     }
                ]
@@ -352,7 +351,7 @@ SEM RightHandSide
 
     | Expression        lhs.core = @where.core @expression.core
                             .isGuarded = False
-                        where.instanceName = Nothing 
+                        where.instanceName = Nothing
     --  range                    : Range
     --  expression               : Expression
     --  where                    : MaybeDeclarations
