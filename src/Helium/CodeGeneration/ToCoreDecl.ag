@@ -198,7 +198,7 @@ SEM Declaration
                                                 Core.declKind = (Core.DeclKindCustom n)
                                             }) = stringFromId n `isSuffixOf` " infix"
                                             isInfix _ = False
-                                        in (classFunctions @lhs.importEnv (getNameName @simpletype.name) $ constructFunctionMap @lhs.importEnv (length @superClasses) @simpletype.name) ++ 
+                                        in (classFunctions @lhs.importEnv (getNameName @simpletype.name) (getNameName $ head @simpletype.typevariables) $ constructFunctionMap @lhs.importEnv (length @superClasses) @simpletype.name) ++ 
                                         [
                                             Core.DeclCustom
                                                 {
@@ -217,6 +217,7 @@ SEM Declaration
                                                 (getSuperClasses @context.self)
                                                 (constructFunctionMap @lhs.importEnv (length @superClasses) @name.self)
                                                 @where.whereDeclarations @name.self @loc.typeName (namesInType @loc.type)
+                                                (typeToCoreType [] $ makeTpFromType @typevariables @type)
                                             ] 
                         loc .   typeName = showInstanceType $ makeTpFromType @typevariables @type
                         loc .   err = error $ "Invalid class name " ++ getNameName @name.self
@@ -278,8 +279,8 @@ SEM FunctionBinding [ | | core : { Core.Expr -> Core.Expr } ]
     --  righthandside            : RightHandSide
 {
 
-getSuperClasses ::  ContextItems -> [(String, Name)]
-getSuperClasses = map (\(ContextItem_ContextItem _ n vs) -> (getNameName n, var vs))
+getSuperClasses ::  ContextItems -> [(String, Name, Core.Type)]
+getSuperClasses = map (\(ContextItem_ContextItem _ n vs) -> (getNameName n, var vs, Core.TAny))
     where
         var [vs] = name $ namesInType vs
         var _ = error "Type variable not a single type"

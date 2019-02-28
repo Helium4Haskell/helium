@@ -138,7 +138,7 @@ lazyBind isRec supply scope b@(Bind var@(Variable x t) expr) env
     decl = DeclValue
       { declName = name
       , declAccess = Defined False
-      , declType = typeFunction (map variableType scope) (typeToStrict t)
+      , declType = typeFunction (map variableType scope) t
       , valueValue = value
       , declCustoms = []
       }

@@ -35,7 +35,7 @@ insertedMain classEnv tse toplevelTypes =
                     case M.lookup (Name_Identifier noRange [] interpreterMain) toplevelTypes of -- !!!Name
                         Just t -> Just (interpreterMain, t)
                         Nothing -> Nothing
-        d = Just . decl False "main$" Core.TAny . app_ unsafePIO
+        d = Just . decl False "main$" (Core.TCon $ Core.TConDataType $ idFromString "Int") . app_ unsafePIO
     in
         case maybeWrapMainAndType of 
             Nothing -> 

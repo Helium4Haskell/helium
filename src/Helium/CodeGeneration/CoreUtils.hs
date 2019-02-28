@@ -14,9 +14,10 @@ module Helium.CodeGeneration.CoreUtils
     ,   var, decl
     ,   float, packedString
     ,   toplevelType, declarationType
+    ,   toCoreType, typeToCoreType
     ) where
 
-import Top.Types (TpScheme)
+import Top.Types as Top
 import Lvm.Core.Expr
 import Lvm.Core.Type as Core
 import Lvm.Common.Id
@@ -135,8 +136,34 @@ declarationType name ie isTopLevel
     where
         haskellType = fromMaybe (internalError "ToCoreDecl" "Declaration" ("no type found for " ++ getNameName name)) (M.lookup name (typeEnvironment ie))
 
-toCoreType :: TpScheme -> Core.Type
-toCoreType _ = Core.TAny
+toCoreType :: Top.TpScheme -> Core.Type
+toCoreType (Top.Quantification (tvars, qmap, t)) = foldr addTypeVar t' tvars
+  where
+    t' = qtypeToCoreType qmap t
+    addTypeVar index = Core.TForall (typeVarToId qmap index)
+
+typeVarToId :: Top.QuantorMap -> Int -> Id
+typeVarToId qmap index = case lookup index qmap of
+    Just name -> idFromString name
+    _ -> idFromString ("v" ++ show index)
+
+qtypeToCoreType :: Top.QuantorMap -> Top.QType -> Core.Type
+qtypeToCoreType qmap (Top.Qualification (q, t)) = foldr addDictArgument (typeToCoreType qmap t) q
+  where
+    addDictArgument (Top.Predicate className tp) = Core.TAp $ Core.TAp (Core.TCon Core.TConFun) arg
+      where
+        arg = Core.TAp (Core.TCon $ TConTypeClassDictionary $ idFromString className) $ typeToCoreType qmap tp
+
+typeToCoreType :: Top.QuantorMap -> Top.Tp -> Core.Type
+typeToCoreType qmap (Top.TVar index) = Core.TVar $ typeVarToId qmap index
+typeToCoreType _ (Top.TCon name) = Core.TCon c
+  where
+    c = case name of
+        "->" -> Core.TConFun
+        '(':str
+          | dropWhile (==',') str == ")" -> Core.TConTuple (length str)
+        _ -> Core.TConDataType $ idFromString name
+typeToCoreType qmap (Top.TApp t1 t2) = Core.TAp (typeToCoreType qmap t1) (typeToCoreType qmap t2)
 
 toplevelType :: Name -> ImportEnvironment -> Bool -> [Custom]
 toplevelType name ie isTopLevel

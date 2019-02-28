@@ -910,7 +910,6 @@ instance (Show a, Show b, Show c, Show d, Show e, Show f, Show g, Show h, Show i
     
 instance (Show a, Show b, Show c, Show d, Show e, Show f, Show g, Show h, Show i, Show j) => Show (a, b, c, d, e, f, g, h, i, j) where
     show (a, b, c, d, e, f, g, h, i, j) = "(" ++ show a ++ "," ++ show b ++ "," ++ show c ++ "," ++ show d ++ "," ++ show e ++ "," ++ show f ++ "," ++ show g ++ "," ++ show h ++ "," ++ show i ++ "," ++ show j ++ ")"
-            
 
 instance Show a => Show [a] where
     show ls = showList ls ""
@@ -927,7 +926,6 @@ class Enum a where
     enumFromThenTo :: a -> a -> a -> [a] 
     enumFromTo x y = map toEnum [fromEnum x .. fromEnum y]
     enumFromThenTo x y z = map toEnum [fromEnum x, fromEnum y .. fromEnum z]
-
 
 instance Enum Int where
   succ x = x + 1
