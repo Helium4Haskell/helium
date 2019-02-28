@@ -75,8 +75,9 @@ SEM Expression        | Let  loc.importEnv = internalError "CodeGeneration.ag" "
 SEM Qualifier         | Let  loc.importEnv = internalError "CodeGeneration.ag" "Qualifier.Let" ""       
 SEM Statement         | Let  loc.importEnv = internalError "CodeGeneration.ag" "Statement.Let" ""       
 
-ATTR SimpleType [ | | name:Name typevariables:Names ]
+ATTR SimpleType [ | | name:Name typevariables:Names coreType: {Core.Type} ]
 
 SEM SimpleType
   | SimpleType  lhs . name          = @name.self                   
                     . typevariables = @typevariables.self
+                    . coreType = foldl Core.TAp (Core.TCon $ Core.TConDataType $ idFromName @name.self) $ map (Core.TVar . idFromName) @typevariables.self

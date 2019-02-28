@@ -14,7 +14,7 @@ module Helium.CodeGeneration.CoreUtils
     ,   var, decl
     ,   float, packedString
     ,   toplevelType, declarationType
-    ,   toCoreType, typeToCoreType
+    ,   toCoreType, toCoreTypeNotQuantified, typeToCoreType
     ,   addLambdas
     ) where
 
@@ -142,6 +142,9 @@ toCoreType (Top.Quantification (tvars, qmap, t)) = foldr addTypeVar t' tvars
   where
     t' = qtypeToCoreType qmap t
     addTypeVar index = Core.TForall (typeVarToId qmap index)
+
+toCoreTypeNotQuantified :: Top.TpScheme -> Core.Type
+toCoreTypeNotQuantified (Top.Quantification (_, qmap, t)) = qtypeToCoreType qmap t
 
 typeVarToId :: Top.QuantorMap -> Int -> Id
 typeVarToId qmap index = case lookup index qmap of

@@ -55,6 +55,8 @@ SEM Declaration
         [ DerivingShow.typeShowFunction (classEnvironment @lhs.importEnv) (typeSynonyms @lhs.importEnv) @self ]
     
     | Data    constructors.dataTypeName = @simpletype.name
+              constructors.dataTypeCoreType = @simpletype.coreType
+              constructors.typevariables = @simpletype.typevariables
               lhs.decls  =
         map snd @constructors.cons
         ++
@@ -229,6 +231,8 @@ SEM Declaration
     
     | Newtype           lhs.decls    = internalError "ToCoreDecl" "Declaration" "'newType' not supported"
                         constructor.dataTypeName = @simpletype.name
+                        constructor.dataTypeCoreType = @simpletype.coreType
+                        constructor.typevariables = @simpletype.typevariables
     --  range                    : Range
     --  context                  : ContextItems
     --  simpletype               : SimpleType
@@ -374,14 +378,14 @@ ATTR Constructors Constructor
     |   cons USE { ++ } { [] } : { [(Id, CoreDecl)] } 
     ]
 
-SEM Constructors [ dataTypeName : Name | | ]
+SEM Constructors [ dataTypeName : Name typevariables : Names dataTypeCoreType : { Core.Type } | | ]
 
-SEM Constructor [ dataTypeName : Name | | ]
+SEM Constructor [ dataTypeName : Name typevariables : Names dataTypeCoreType : { Core.Type } | | ]
     | Constructor       lhs.cons = 
         [ (idFromName @constructor.self, Core.DeclCon
             { Core.declName    = idFromName @constructor.self
             , Core.declAccess  = Core.private
-            , Core.declType    = Core.typeFunction (replicate @types.length Core.TAny) Core.TAny
+            , Core.declType    = foldr (Core.TForall) (Core.typeFunction @types.coreTypes @lhs.dataTypeCoreType) $ map idFromName @lhs.typevariables
             , Core.declCustoms = constructorCustoms 
                                     @lhs.dataTypeName
                                     @constructor.self 
@@ -397,7 +401,7 @@ SEM Constructor [ dataTypeName : Name | | ]
         [ (idFromName @constructorOperator.self, Core.DeclCon
             { Core.declName    = idFromName @constructorOperator.self
             , Core.declAccess  = Core.private
-            , Core.declType   = Core.typeFunction [Core.TAny, Core.TAny] Core.TAny
+            , Core.declType   = Core.typeFunction [Core.TAny, Core.TAny] @lhs.dataTypeCoreType
             , Core.declCustoms = constructorCustoms
                                     @lhs.dataTypeName
                                     @constructorOperator.self 
@@ -417,10 +421,15 @@ SEM Constructor [ dataTypeName : Name | | ]
     --  constructor              : Name
     --  fieldDeclarations        : FieldDeclarations
 
-SEM AnnotatedTypes [ | | length : Int ]
-    | Cons lhs.length = 1 + @tl.length
-    | Nil  lhs.length = 0
+SEM AnnotatedTypes [ typevariables : Names | | coreTypes : { [Core.Type] } ]
+    | Cons lhs.coreTypes = @hd.coreType : @tl.coreTypes
+    | Nil  lhs.coreTypes = []
 
+SEM AnnotatedType [ typevariables : Names | | coreType : { Core.Type } ]
+    | AnnotatedType lhs.coreType =
+        let
+            tp = toCoreTypeNotQuantified $ makeTpSchemeFromType @type.self
+        in if @strict then Core.TStrict tp else tp
 {
 constructorCustoms :: Name -> Name -> ValueConstructorEnvironment -> [Core.Custom]
 constructorCustoms dataTypeName name env =
