@@ -17,38 +17,47 @@ import Lvm.Core.Utils
 import Lvm.Common.Id
 import Helium.Utils.Utils
 
+typeDictEq :: Core.Type
+typeDictEq = Core.TCon $ Core.TConTypeClassDictionary $ idFromString "Eq"
+
 -- Eq Dictionary for a data type declaration
 dataDictionary :: UHA.Declaration -> CoreDecl
 dataDictionary  (UHA.Declaration_Data _ _ (UHA.SimpleType_SimpleType _ name names) constructors _) =
     DeclValue 
     { declName    = idFromString ("$dictEq$" ++ getNameName name)
     , declAccess  = public
-    , declType    = Core.TAny
-    , valueValue  = eqDict names constructors
+    , declType    = foldr (\typeArg -> Core.TForall (idFromName typeArg) Core.KStar) (Core.typeFunction argTypes dictType) names
+    , valueValue  = eqDict dictType dataType names constructors
     , declCustoms = [ custom "type" ("Dict$Eq " ++ getNameName name) ] 
         ++ map (custom "typeVariable" . getNameName) names
         ++ map (\n -> custom "superInstance" ("Eq-" ++ getNameName n)) names
     }
+    where
+        argTypes :: [Core.Type]
+        argTypes = map (\typeArg -> Core.TAp typeDictEq $ Core.TVar $ idFromName typeArg) names
+        dictType = Core.TAp typeDictEq dataType
+        dataType = foldl Core.TAp (Core.TCon $ Core.typeConFromString $ getNameName name) $ map (Core.TVar . idFromName) names
 dataDictionary _ = error "pattern match failure in CodeGeneration.Deriving.dataDictionary"
 
-eqDict :: [UHA.Name] -> [UHA.Constructor] -> Expr
-eqDict names constructors = foldr Lam dictBody (map (\name -> Variable (idFromName name) Core.TAny) names)
+eqDict :: Core.Type -> Core.Type -> [UHA.Name] -> [UHA.Constructor] -> Expr
+eqDict dictType dataType names constructors = foldr Lam dictBody (map (\name -> Variable (idFromName name) $ Core.TAp typeDictEq $ Core.TVar $ idFromName name) names)
     where
-        dictBody = let_ (idFromString "func$eq") (eqFunction constructors) (Ap (Ap (Con $ ConId $ idFromString $ "Dict$Eq") (var "default$Eq$/=")) (var "func$eq"))
+        dictBody = let_ (idFromString "func$eq") (Core.typeFunction [dataType, dataType] Core.typeBool) (eqFunction dictType dataType constructors) (Ap (Ap (Con $ ConId $ idFromString $ "Dict$Eq") (var "default$Eq$/=")) (var "func$eq"))
+
 -- Example: data X a b = C a b Int | D Char b
-eqFunction :: [UHA.Constructor] -> Expr
-eqFunction constructors = 
+eqFunction :: Core.Type -> Core.Type -> [UHA.Constructor] -> Expr
+eqFunction dictType dataType constructors = 
     let 
         body = 
-            Let (Strict (Bind fstArg (Var $ variableName fstArg))) -- evaluate both
-                (Let (Strict (Bind sndArg (Var $ variableName sndArg)))
-                    (Match (variableName fstArg)  -- case $fstArg of ...
+            Let (Strict (Bind (Variable fstArg $ Core.typeToStrict dataType) (Var fstArg))) -- evaluate both
+                (Let (Strict (Bind (Variable sndArg $ Core.typeToStrict dataType) (Var sndArg)))
+                    (Match fstArg -- case $fstArg of ...
                         (map makeAlt constructors))) 
     in
-        foldr Lam body ([Variable (idFromString "dict") Core.TAny, fstArg, sndArg]) -- \$fstArg $sndArg ->
+        foldr Lam body ([Variable (idFromString "dict") dictType, Variable fstArg dataType, Variable sndArg dataType]) -- \$fstArg $sndArg ->
 
-fstArg, sndArg :: Variable
-[fstArg, sndArg] = map ((`Variable` Core.TAny) . idFromString) ["$fstArg", "$sndArg"] 
+fstArg, sndArg :: Id
+[fstArg, sndArg] = map idFromString ["$fstArg", "$sndArg"] 
 
 makeAlt :: UHA.Constructor -> Alt
 makeAlt constructor =
@@ -60,7 +69,7 @@ makeAlt constructor =
             --                      ?? $v1 $w1 &&
             --                      ?? $v2 $w2
             --                  _ -> False
-            (Match (variableName sndArg)
+            (Match sndArg
                 [ Alt (PatCon (ConId ident) ws)
                       ( if null types then Con (ConId (idFromString "True"))
                         else

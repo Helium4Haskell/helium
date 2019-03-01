@@ -54,15 +54,15 @@ customStrategy text =
 app_ :: Expr -> Expr -> Expr
 app_ f x = Ap f x
 
-let_ :: Id -> Expr -> Expr -> Expr
-let_ x e b = Let (NonRec (Bind (Variable x TAny) e)) b
+let_ :: Id -> Core.Type -> Expr -> Expr -> Expr
+let_ x t e b = Let (NonRec (Bind (Variable x t) e)) b
 
 letrec_ :: [CoreDecl] -> Expr -> Expr
 letrec_ bs e = 
     Let 
         (Rec 
-            [ Bind (Variable ident TAny) expr
-            | DeclValue { declName = ident, valueValue = expr } <- bs
+            [ Bind (Variable ident t) expr
+            | DeclValue { declName = ident, declType = t, valueValue = expr } <- bs
             ]
         ) 
         e

@@ -61,7 +61,7 @@ SEM Expression [ | | core : { Core.Expr } ]
 
     | Lambda             lhs.core = 
         let ids = freshIds "u$" @patterns.length
-        in let_ nextClauseId (patternMatchFail "lambda expression" @range.self)
+        in let_ nextClauseId Core.typeUndefined (patternMatchFail "lambda expression" @range.self)
             (foldr 
                 (Core.Lam . (`Core.Variable` Core.TAny))
                 (patternsToCore 
@@ -74,7 +74,7 @@ SEM Expression [ | | core : { Core.Expr } ]
     --  patterns                 : Patterns
     --  expression               : Expression
 
-    | Case               lhs.core = let_ caseExprId @expression.core @alternatives.core
+    | Case               lhs.core = let_ caseExprId Core.TAny @expression.core @alternatives.core
                          alternatives.caseRange = @range.self
     --  range                    : Range
     --  expression               : Expression
@@ -88,7 +88,7 @@ SEM Expression [ | | core : { Core.Expr } ]
     --  declarations             : Declarations
     --  expression               : Expression
 
-    | Do                 lhs.core = let_ (idFromString "$monadDict") (dictionaryTreeToCore $ head $ getDictionaryTrees @loc.name @lhs.dictionaryEnv) $ chainCode @statements.core
+    | Do                 lhs.core = let_ (idFromString "$monadDict") Core.TAny (dictionaryTreeToCore $ head $ getDictionaryTrees @loc.name @lhs.dictionaryEnv) $ chainCode @statements.core
                          loc.name = setNameRange (nameFromString $ "do-" ++ show @range.self) @range.self
     --  range                    : Range
     --  statements               : Statements
@@ -229,9 +229,9 @@ SEM Qualifier [ | | core : { Core.Expr -> Core.Expr } ]
 
     | Generator           lhs.core = 
         \continue ->  
-            let_ nextClauseId nil
+            let_ nextClauseId Core.typeEmptyArray nil
                 (let_ 
-                    okId 
+                    okId Core.TAny
                     (Core.Lam (Core.Variable parameterId Core.TAny)
                         (patternToCore (parameterId, @pattern.self) continue)
                     )
@@ -262,7 +262,7 @@ SEM Alternative [ | | core : { Core.Expr -> Core.Expr } ]
                                                     (caseExprId, @pattern.self) 
                                                     @righthandside.core
                                         in
-                                            let_ nextClauseId nextCase thisCase
+                                            let_ nextClauseId Core.TAny nextCase thisCase
     --  range                    : Range
     --  pattern                  : Pattern
     --  righthandside            : RightHandSide

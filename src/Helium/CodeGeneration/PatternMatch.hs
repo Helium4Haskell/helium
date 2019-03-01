@@ -42,7 +42,7 @@ patternToCore' (name, pat) continue nr =
             if name == wildcardId || name == idFromName n then
                 continue
             else 
-                let_ (idFromName n) (Core.Var name) continue
+                let_ (idFromName n) Core.TAny (Core.Var name) continue
         
         -- case _u1 of C _l1 _l2 -> ...
         --             _         -> _next
@@ -76,7 +76,7 @@ patternToCore' (name, pat) continue nr =
             let (expr, nr') = patternToCore' (name, p) continue nr
             in withNr nr' $
                 let_ 
-                    (idFromName n) (Core.Var name) 
+                    (idFromName n) Core.TAny (Core.Var name) 
                     expr
 
         Pattern_Wildcard _ -> withNr nr continue
@@ -164,7 +164,7 @@ patternToCore' (name, pat) continue nr =
         Pattern_Irrefutable _ p -> 
             let vars = map idFromName (patternVars p)
             in withNr nr $ foldr 
-                (\v r -> let_ v (patternToCore (name, p) (Core.Var v)) r)
+                (\v r -> let_ v Core.TAny (patternToCore (name, p) (Core.Var v)) r)
                 continue
                 vars
         

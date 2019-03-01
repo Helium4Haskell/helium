@@ -7,10 +7,9 @@
 -}
 
 module Helium.CodeGeneration.DerivingShow
-    ( dataShowFunction
-    , typeShowFunction
+    ( typeShowFunction
     , dataDictionary
-    , typeOfShowFunction, showFunctionOfType
+    , showFunctionOfType
     ) where
 
 import qualified Helium.Syntax.UHA_Syntax as UHA
@@ -28,21 +27,24 @@ import qualified Data.Map as M
 import Data.Maybe
 import Data.List
 
+typeDictShow :: Core.Type
+typeDictShow = Core.TCon $ Core.TConTypeClassDictionary $ idFromString "Show"
+
 -- Show function for a data type declaration
-dataShowFunction :: ClassEnvironment -> TypeSynonymEnvironment -> UHA.Declaration -> Expr
-dataShowFunction classEnv tse (UHA.Declaration_Data _ _ (UHA.SimpleType_SimpleType _ name names) constructors _) =
-    let typeString = show (typeOfShowFunction name names)
-        valueId    = idFromString "value$"
-        in
-        foldr Lam 
-        (Let 
-            (Strict (Bind (Variable valueId Core.TAny) (Var valueId)))
+dataShowFunction :: Core.Type -> Core.Type -> ClassEnvironment -> TypeSynonymEnvironment -> UHA.Declaration -> Expr
+dataShowFunction dictType dataType classEnv tse (UHA.Declaration_Data _ _ (UHA.SimpleType_SimpleType _ name names) constructors _) =
+    foldr Lam
+        (Let
+            (Strict (Bind (Variable valueId $ Core.typeToStrict dataType) (Var valueId)))
             (Match valueId
                 (map (makeAlt classEnv tse) constructors)
             )
-        )   
-        [(Variable (idFromString "$instanceDictShow") Core.TAny), Variable valueId Core.TAny]
-dataShowFunction _ _ _ = error "not supported"
+        )
+        [(Variable (idFromString "$instanceDictShow") dictType), Variable valueId dataType]
+    where
+        typeString = show (typeOfShowFunction name names)
+        valueId    = idFromString "value$"
+dataShowFunction _ _ _ _ _ = error "not supported"
 
 -- Show Dictionary for a data type declaration
 dataDictionary :: ClassEnvironment -> TypeSynonymEnvironment -> UHA.Declaration -> CoreDecl
@@ -51,17 +53,21 @@ dataDictionary classEnv tse decl@(UHA.Declaration_Data _ _ (UHA.SimpleType_Simpl
     DeclValue 
     { declName    = idFromString ("$dictShow$" ++ getNameName name)
     , declAccess  = public
-    , declType    = Core.TAny
+    , declType    = foldr (\typeArg -> Core.TForall (idFromName typeArg) Core.KStar) (Core.typeFunction argTypes dictType) names
     , valueValue  = makeShowDictionary (length names)
     , declCustoms = [ custom "type" ("Dict$Show " ++ getNameName name)] 
                 ++ map (custom "typeVariable" . getNameName) names
                 ++ map (\n -> custom "superInstance" ("Show-" ++ getNameName n)) names
     }
   where
+    argTypes :: [Core.Type]
+    argTypes = map (\typeArg -> Core.TAp typeDictShow $ Core.TVar $ idFromName typeArg) names
+    dictType = Core.TAp typeDictShow dataType
+    dataType = foldl Core.TAp (Core.TCon $ Core.typeConFromString $ getNameName name) $ map (Core.TVar . idFromName) names
     makeShowDictionary :: Int -> Expr
     makeShowDictionary nrOfArgs =
        let 
-           showBody = dataShowFunction classEnv tse decl
+           showBody = dataShowFunction dictType dataType classEnv tse decl
            ids  = map idFromName names -- take nrOfArgs [ idFromString ("d" ++ show i) | i <- [(1::Integer)..] ]
            list = map idFromString ["showsPred", "showList", "showDef"]
            declarations = zipWith Bind (map (`Variable` Core.TAny) list) [Var $ idFromString "default$Show$showsPrec", Var $ idFromString "default$Show$showList", showBody]

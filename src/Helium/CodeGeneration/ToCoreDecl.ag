@@ -119,7 +119,7 @@ SEM Declaration
                     , Core.valueValue  =
                         addLambdas @lhs.isTopLevel @lhs.importEnv n @dictionaries
                             ( let_ -- because guards can fail
-                                nextClauseId (patternMatchFail "pattern binding" @range.self)
+                                nextClauseId Core.typeUndefined (patternMatchFail "pattern binding" @range.self)
                                 @righthandside.core
                             )
                     , Core.declCustoms = toplevelType n @lhs.importEnv @lhs.isTopLevel
@@ -131,7 +131,7 @@ SEM Declaration
                     , Core.declType    = Core.TAny
                     , Core.valueValue  = 
                         let_ 
-                            nextClauseId (patternMatchFail "pattern binding" @range.self)
+                            nextClauseId Core.typeUndefined (patternMatchFail "pattern binding" @range.self)
                             @righthandside.core
                     , Core.declCustoms = [custom "type" "patternbinding"]
                     }
@@ -141,7 +141,7 @@ SEM Declaration
                     , Core.declAccess  = Core.private
                     , Core.declType    = declarationType v @lhs.importEnv @lhs.isTopLevel
                     , Core.valueValue  =
-                        (let_ nextClauseId (patternMatchFail "pattern binding" @range.self)
+                        (let_ nextClauseId Core.typeUndefined (patternMatchFail "pattern binding" @range.self)
                             (patternToCore (patBindId, @pattern.self) (Core.Var (idFromName v)))
                         )
                     , Core.declCustoms = toplevelType v @lhs.importEnv @lhs.isTopLevel
@@ -274,7 +274,7 @@ SEM FunctionBinding [ | | core : { Core.Expr -> Core.Expr } ]
             then
                 thisClause
             else
-                let_ nextClauseId nextClause thisClause
+                let_ nextClauseId Core.TAny nextClause thisClause
                                       
     --  range                    : Range
     --  lefthandside             : LeftHandSide
