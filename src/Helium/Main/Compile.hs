@@ -138,7 +138,7 @@ compileHaskellToCore basedir fullName contents options iridiumCache doneModules 
       phaseTypingStrategies fullName combinedEnv typeSignatures options
 
   -- Phase 8: Type inferencing
-  (dictionaryEnv, afterTypeInferEnv, toplevelTypes, typeWarnings) <- 
+  (dictionaryEnv, afterTypeInferEnv, toplevelTypes, allTypeSchemes, solveResult, typeWarnings) <- 
       doPhaseWithExit maximumNumberOfTypeErrors (const "T") compileOptions $ 
           phaseTypeInferencer basedir fullName resolvedModule {-doneModules-} localEnv beforeTypeInferEnv options
 
@@ -150,7 +150,7 @@ compileHaskellToCore basedir fullName contents options iridiumCache doneModules 
   -- Phase 9: Desugaring
   coreModule <-
       phaseDesugarer dictionaryEnv
-                      fullName resolvedModule 
+                      fullName resolvedModule allTypeSchemes solveResult
                       (typingStrategiesDecls ++ indirectionDecls) 
                       afterTypeInferEnv
                       toplevelTypes 

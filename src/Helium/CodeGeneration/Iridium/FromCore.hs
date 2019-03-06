@@ -144,6 +144,7 @@ consumeLambdas :: Core.Expr -> ([Core.Variable], Core.Expr)
 consumeLambdas (Core.Lam arg expr) = (arg : args, expr')
   where
     (args, expr') = consumeLambdas expr
+consumeLambdas (Core.Forall x k expr) = consumeLambdas expr
 consumeLambdas expr = ([], expr)
 
 -- Represents a part of a method. Used during the construction of a method.
@@ -167,6 +168,7 @@ ret supply env x t CReturn = Partial (castInstr $ Return casted) []
 ret _ _ x t (CBind next) = next x t
 
 toInstruction :: NameSupply -> TypeEnv -> Continue -> Core.Expr -> Partial
+toInstruction supply env continue (Core.Forall x k e) = toInstruction supply env continue e
 -- Let bindings
 toInstruction supply env continue (Core.Let (Core.NonRec b) expr)
   = castInstr

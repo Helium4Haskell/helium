@@ -218,10 +218,10 @@ round x
 {-data Handle
  = HandleRead  (Channel Input)
  | HandleWrite (Channel Output)-}
-
+{-
 return :: a -> IO a
 return = ''$primReturnIO''
-
+-}
 {-data IOMode
  = ReadMode
  | WriteMode

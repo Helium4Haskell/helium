@@ -8,21 +8,26 @@
 
 module Helium.Main.PhaseDesugarer(phaseDesugarer) where
 
+import qualified Data.Map as M
 import Helium.Main.CompileUtils
 import Text.PrettyPrint.Leijen
+import Top.Solver(SolveResult)
+import qualified Top.Types as Top
+import Helium.StaticAnalysis.Miscellaneous.ConstraintInfo (ConstraintInfo)
 import Lvm.Core.Expr(CoreModule, CoreDecl)
-import Lvm.Core.RemoveDead( coreRemoveDead ) -- remove dead (import) declarations
+import Helium.CodeGeneration.Core.RemoveDead( coreRemoveDead ) -- remove dead (import) declarations
 import Helium.Syntax.UHA_Syntax(Name(..), MaybeName(..))
+import Helium.Syntax.UHA_Utils(NameWithRange)
 import Helium.Syntax.UHA_Range(noRange)
 import Helium.ModuleSystem.ImportEnvironment()
 import Helium.ModuleSystem.DictionaryEnvironment (DictionaryEnvironment)
 import qualified Helium.CodeGeneration.CodeGeneration as CodeGeneration
 
 phaseDesugarer :: DictionaryEnvironment -> 
-                  String -> Module -> [CoreDecl] -> 
+                  String -> Module -> M.Map NameWithRange Top.TpScheme -> SolveResult ConstraintInfo -> [CoreDecl] -> 
                     ImportEnvironment ->
                     TypeEnvironment -> [Option] -> IO CoreModule
-phaseDesugarer dictionaryEnv fullName module_ extraDecls afterTypeInferEnv toplevelTypes options = do
+phaseDesugarer dictionaryEnv fullName module_ fullTypeSchemes solveResult extraDecls afterTypeInferEnv toplevelTypes options = do
     enterNewPhase "Desugaring" options
 
     let (path, baseName, _) = splitFilePath fullName
@@ -42,7 +47,9 @@ en eigenlijk is afterTypeInferEnv te groot. alleen locale types en constructoren
                     CodeGeneration.dictionaryEnv_Inh_Module = dictionaryEnv,
                     CodeGeneration.extraDecls_Inh_Module    = extraDecls,
                     CodeGeneration.importEnv_Inh_Module     = afterTypeInferEnv,
-                    CodeGeneration.toplevelTypes_Inh_Module = toplevelTypes }
+                    CodeGeneration.toplevelTypes_Inh_Module = toplevelTypes,
+                    CodeGeneration.fullTypeSchemes_Inh_Module = fullTypeSchemes,
+                    CodeGeneration.solveResult_Inh_Module   = solveResult }
 
         strippedCoreModule = coreRemoveDead coreModule
 

@@ -110,21 +110,22 @@ SEM Declaration
   | FunctionBindings
       lhs      . bindingGroups = @mybdggrp : @lhs.bindingGroups
       lhs      . boundBetas    = [(@bindings.name, @beta, @betasLeft ++ [@betaRight])]
-      bindings . betaUnique    = @lhs.betaUnique + 2 + @bindings.numberOfPatterns
+      bindings . betaUnique    = @lhs.betaUnique + 1 + @bindings.numberOfPatterns
                . monos         = findMono @bindings.name @lhs.inheritedBDG ++ @lhs.monos
-      loc      . beta          = TVar @lhs.betaUnique
-               . betaRight     = TVar (@lhs.betaUnique + 1)             
-               . betasLeft     = take @bindings.numberOfPatterns (map TVar [@lhs.betaUnique + 2..])
+      loc      . beta          = TVar @lhs.betaDeclUnique
+               . betaRight     = TVar @lhs.betaUnique
+               . betasLeft     = take @bindings.numberOfPatterns (map TVar [@lhs.betaUnique + 1..])
                . newcon        = (@beta .==. foldr (.->.) @betaRight @betasLeft) @cinfo
                . functionType  = lookup @bindings.name @lhs.instanceTypes
                . mybdggrp      = let 
                                     assumptions = filterAssumptions @bindings.assumptions
                                     filterAssumptions = M.filterWithKey (\k _ -> not $ k `elem` map fst @lhs.instanceTypes )
 
-                                  in ( M.singleton @bindings.name @beta
+                                  in
+                                 ( M.singleton @bindings.name @beta
                                  , assumptions
                                  , [ Node [ Phase (-1) [@newcon]
-                                          , Receive @lhs.betaUnique
+                                          , Receive @lhs.betaDeclUnique
                                           , Node @bindings.constraintslist
                                           , if isJust @lhs.instanceName then 
                                                 let 
@@ -516,13 +517,12 @@ SEM Expression
                       . conElse     = [ (@elseExpression.beta  .==. @beta   ) @cinfoElse  ]
 
   | Lambda
-      patterns   . betaUnique  = @lhs.betaUnique + 1
       expression . monos       = M.elems @patterns.environment ++ getMonos @csetBinds ++ @lhs.monos
       loc        . constraints = @newcon .>. @csetBinds .>>.
                                  Node [ Node @patterns.constraintslist
                                       , @expression.constraints
                                       ]
-                 . beta        = TVar @lhs.betaUnique
+                 . beta        = TVar @lhs.betaDeclUnique
                  . newcon      = [ (foldr (.->.) @expression.beta @patterns.betas .==. @beta) @cinfoType ]
       (loc.csetBinds, loc.assumptions) = (@patterns.environment .===. @expression.assumptions) @cinfoBind
 

@@ -37,8 +37,10 @@ isTrivial _ = False
 -- variables.
 isApTarget :: Expr -> Bool
 isApTarget (Ap _ _) = True
-isApTarget (Con _)  = True
-isApTarget expr = isTrivial expr
+isApTarget (Con _) = True
+isApTarget (Var _) = True
+isApTarget (Forall _ _ e) = isApTarget e
+isApTarget _ = False
 
 coreNormalize :: NameSupply -> CoreModule -> CoreModule
 coreNormalize supply m
@@ -49,6 +51,7 @@ coreNormalize supply m
 -- which we will normalize.
 normalizeLambda :: NameSupply -> Expr -> Expr
 normalizeLambda supply (Lam var expr) = Lam var $ normalizeLambda supply expr
+normalizeLambda supply (Forall x k expr) = Forall x k $ normalizeLambda supply expr
 normalizeLambda supply expr = normalize supply expr
 
 -- Normalizes an expression.
@@ -83,6 +86,9 @@ normSubExprs supply (Ap e1 e2) = (Ap e1'' e2', bindings1' ++ bindings2)
       | otherwise = (Var name, [Bind (Variable name TAny) $ addBindings e1' bindings1])
     (e2', bindings2) = normExpr supply2 e2
 normSubExprs supply (Lam var expr) = (Lam var $ normalizeLambda supply expr, [])
+normSubExprs supply (Forall x k expr) = (Forall x k expr', binds)
+  where
+    (expr', binds) = normSubExprs supply expr
 normSubExprs supply expr = (expr, []) -- expr is already trivial, we don't need to normalize it further.
 
 normBinds :: NameSupply -> Binds -> Binds

@@ -87,6 +87,7 @@ $(AG_OUT_DIR)/Helium/StaticAnalysis/StaticChecks/StaticChecks.hs : \
 
 $(AG_OUT_DIR)/Helium/StaticAnalysis/Inferencers/TypeInferencing.hs : \
 		Helium/StaticAnalysis/Inferencers/TypeInferencing.ag \
+    Helium/StaticAnalysis/Inferencers/TypeInferenceDeclTypeVar.ag \
     Helium/StaticAnalysis/Inferencers/TypeInferenceRules.ag \
     Helium/StaticAnalysis/Inferencers/TypeInferenceOverloading.ag \
     Helium/StaticAnalysis/Inferencers/TypeInferenceCollect.ag \
@@ -112,6 +113,7 @@ $(AG_OUT_DIR)/Helium/StaticAnalysis/Inferencers/KindInferencing.hs : \
 $(AG_OUT_DIR)/Helium/CodeGeneration/CodeGeneration.hs : \
 		Helium/CodeGeneration/CodeGeneration.ag \
 		Helium/Syntax/UHA_Syntax.ag \
+    Helium/StaticAnalysis/Inferencers/TypeInferenceDeclTypeVar.ag \
 		Helium/CodeGeneration/ToCoreModule.ag \
 		Helium/CodeGeneration/ToCoreDecl.ag \
 		Helium/CodeGeneration/ToCoreExpr.ag \

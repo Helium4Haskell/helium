@@ -65,6 +65,7 @@ SEM Expression [ | | core : { Core.Expr } ]
             (foldr 
                 (Core.Lam . (`Core.Variable` Core.TAny))
                 (patternsToCore 
+                    @lhs.fullTypeSchemes
                     (zip ids @patterns.self) 
                     @expression.core
                 )
@@ -192,7 +193,7 @@ SEM Statement [ | | core : { Maybe Core.Expr -> Core.Expr } ]
         \theRest -> case theRest of
             Nothing   -> internalError "ToCoreExpr" "Statement" "generator can't be last in 'do'"
             Just rest -> 
-               Core.Ap (Core.Ap (Core.Ap (Core.Var $ idFromString ">>=") (Core.Var $ idFromString "$monadDict")) @expression.core) (Core.Lam (Core.Variable parameterId Core.TAny) (patternToCore (parameterId, @pattern.self) rest))       
+               Core.Ap (Core.Ap (Core.Ap (Core.Var $ idFromString ">>=") (Core.Var $ idFromString "$monadDict")) @expression.core) (Core.Lam (Core.Variable parameterId Core.TAny) (patternToCore @lhs.fullTypeSchemes (parameterId, @pattern.self) rest))       
 
     --  range                    : Range
     --  pattern                  : Pattern
@@ -233,7 +234,7 @@ SEM Qualifier [ | | core : { Core.Expr -> Core.Expr } ]
                 (let_ 
                     okId Core.TAny
                     (Core.Lam (Core.Variable parameterId Core.TAny)
-                        (patternToCore (parameterId, @pattern.self) continue)
+                        (patternToCore @lhs.fullTypeSchemes (parameterId, @pattern.self) continue)
                     )
                     (var "$primConcatMap"
                         `app_` Core.Var okId 
@@ -258,7 +259,8 @@ SEM Alternative [ | | core : { Core.Expr -> Core.Expr } ]
     | Hole              lhs.core   = id
     | Alternative       lhs.core   = \nextCase  ->
                                         let thisCase =
-                                                patternToCore 
+                                                patternToCore
+                                                    @lhs.fullTypeSchemes
                                                     (caseExprId, @pattern.self) 
                                                     @righthandside.core
                                         in

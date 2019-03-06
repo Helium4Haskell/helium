@@ -10,6 +10,7 @@ module Helium.CodeGeneration.PatternMatch(patternToCore, patternsToCore, nextCla
 
 import qualified Lvm.Core.Expr as Core
 import qualified Lvm.Core.Type as Core
+import qualified Top.Types as Top
 import Helium.Syntax.UHA_Syntax
 import Helium.Syntax.UHA_Utils
 import Helium.Syntax.UHA_Range
@@ -17,32 +18,33 @@ import Lvm.Common.Id
 import Data.Char
 import Helium.Utils.Utils
 import Helium.CodeGeneration.CoreUtils
+import qualified Data.Map as M
 
-patternsToCore :: [(Id, Pattern)] -> Core.Expr -> Core.Expr
-patternsToCore nps continue = fst (patternsToCore' nps continue 0)
+patternsToCore :: M.Map NameWithRange Top.TpScheme -> [(Id, Pattern)] -> Core.Expr -> Core.Expr
+patternsToCore fullTypeSchemes nps continue = fst (patternsToCore' fullTypeSchemes nps continue 0)
 
-patternsToCore' :: [(Id, Pattern)] -> Core.Expr -> Int -> (Core.Expr, Int)
-patternsToCore' [] continue nr = (continue, nr)
-patternsToCore' (np:nps) continue nr =
-    let (expr, nr') = patternsToCore' nps continue nr
-    in patternToCore' np expr nr'
+patternsToCore' :: M.Map NameWithRange Top.TpScheme -> [(Id, Pattern)] -> Core.Expr -> Int -> (Core.Expr, Int)
+patternsToCore' _ [] continue nr = (continue, nr)
+patternsToCore' fullTypeSchemes (np:nps) continue nr =
+    let (expr, nr') = patternsToCore' fullTypeSchemes nps continue nr
+    in patternToCore' fullTypeSchemes np expr nr'
     
-patternToCore :: (Id, Pattern) -> Core.Expr -> Core.Expr
-patternToCore np continue = fst (patternToCore' np continue 0)
+patternToCore :: M.Map NameWithRange Top.TpScheme -> (Id, Pattern) -> Core.Expr -> Core.Expr
+patternToCore fullTypeSchemes np continue = fst (patternToCore' fullTypeSchemes np continue 0)
 
 
 withNr :: a -> b -> (b, a)
 withNr nr e = (e, nr)
 
-patternToCore' :: (Id, Pattern) -> Core.Expr -> Int -> (Core.Expr, Int)
-patternToCore' (name, pat) continue nr = 
+patternToCore' :: M.Map NameWithRange Top.TpScheme -> (Id, Pattern) -> Core.Expr -> Int -> (Core.Expr, Int)
+patternToCore' fullTypeSchemes (name, pat) continue nr = 
     case pat of
         -- let x = _u1 in ...
         Pattern_Variable _ n -> withNr nr $
             if name == wildcardId || name == idFromName n then
                 continue
             else 
-                let_ (idFromName n) Core.TAny (Core.Var name) continue
+                let_ (idFromName n) (localDeclarationType fullTypeSchemes n) (Core.Var name) continue
         
         -- case _u1 of C _l1 _l2 -> ...
         --             _         -> _next
@@ -54,7 +56,7 @@ patternToCore' (name, pat) continue nr =
                     else 
                         freshIds' "l$" nr (length ps)
                 (expr, nr'') =
-                    patternsToCore' (zip ids ps) continue nr'
+                    patternsToCore' fullTypeSchemes (zip ids ps) continue nr'
             in withNr nr'' $
                 case_ name
                 [ Core.Alt 
@@ -66,17 +68,17 @@ patternToCore' (name, pat) continue nr =
         --             _         -> _next
         Pattern_InfixConstructor _ p1 n p2 ->
             let ie = internalError "PatternMatch" "patternToCore'" "shouldn't look at range"
-            in patternToCore' (name, Pattern_Constructor ie n [p1, p2]) continue nr
+            in patternToCore' fullTypeSchemes (name, Pattern_Constructor ie n [p1, p2]) continue nr
                 
         Pattern_Parenthesized _ p ->
-            patternToCore' (name, p) continue nr
+            patternToCore' fullTypeSchemes (name, p) continue nr
 
         -- let n = _u1 in ...
         Pattern_As _ n p -> 
-            let (expr, nr') = patternToCore' (name, p) continue nr
+            let (expr, nr') = patternToCore' fullTypeSchemes (name, p) continue nr
             in withNr nr' $
                 let_ 
-                    (idFromName n) Core.TAny (Core.Var name) 
+                    (idFromName n) (localDeclarationType fullTypeSchemes n) (Core.Var name) 
                     expr
 
         Pattern_Wildcard _ -> withNr nr continue
@@ -103,7 +105,8 @@ patternToCore' (name, pat) continue nr =
 -- !!! if we would have MATCHFLOAT instruction it could be: 
 --  case_ name [ Core.Alt (Core.PatLit (Core.LitDouble (read f))) continue ]
                 Literal_String _ s -> 
-                    patternToCore' 
+                    patternToCore'
+                        fullTypeSchemes
                         ( name
                         , Pattern_List noRange 
                             (map (Pattern_Literal noRange . Literal_Int noRange . show . ord) characters) 
@@ -114,7 +117,7 @@ patternToCore' (name, pat) continue nr =
                     characters = read ("\"" ++ s ++ "\"") :: String
             
         Pattern_List _ ps -> 
-            patternToCore' (name, expandPatList ps) continue nr
+            patternToCore' fullTypeSchemes (name, expandPatList ps) continue nr
         
         Pattern_Tuple _ ps ->
             let
@@ -124,7 +127,7 @@ patternToCore' (name, pat) continue nr =
                     else 
                         freshIds' "l$" nr (length ps)
                 (expr, nr'') = 
-                    patternsToCore' (zip ids ps) continue nr'
+                    patternsToCore' fullTypeSchemes (zip ids ps) continue nr'
             in withNr nr'' $
                 case_ name
                 [ Core.Alt 
@@ -134,7 +137,8 @@ patternToCore' (name, pat) continue nr =
             
         
         Pattern_Negate _ (Literal_Int r v) -> 
-            patternToCore' 
+            patternToCore'
+                fullTypeSchemes
                 (name, Pattern_Literal r (Literal_Int r neg))
                 continue
                 nr
@@ -143,6 +147,7 @@ patternToCore' (name, pat) continue nr =
 
         Pattern_Negate _ (Literal_Float r v) -> 
             patternToCore'
+                fullTypeSchemes
                 (name, Pattern_Literal r (Literal_Float r neg))
                 continue
                 nr
@@ -151,6 +156,7 @@ patternToCore' (name, pat) continue nr =
             
         Pattern_NegateFloat _ (Literal_Float r v) -> 
             patternToCore'
+                fullTypeSchemes
                 (name, Pattern_Literal r (Literal_Float r neg))
                 continue
                 nr
@@ -162,11 +168,10 @@ patternToCore' (name, pat) continue nr =
         --       y = case _u1 of p -> y   (for each var in p)
         --   in continue
         Pattern_Irrefutable _ p -> 
-            let vars = map idFromName (patternVars p)
-            in withNr nr $ foldr 
-                (\v r -> let_ v Core.TAny (patternToCore (name, p) (Core.Var v)) r)
+            withNr nr $ foldr 
+                (\v r -> let_ (idFromName v) (localDeclarationType fullTypeSchemes v) (patternToCore fullTypeSchemes (name, p) (Core.Var $ idFromName v)) r)
                 continue
-                vars
+                $ patternVars p
         
         _ -> internalError "PatternMatch" "patternToCore'" "unknown pattern kind"
 

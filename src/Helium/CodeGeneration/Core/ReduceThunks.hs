@@ -30,6 +30,7 @@ reduceThunksInExpr (Let (Rec bs) expr) = Let (Rec $ map reduceThunksInBind bs) $
 reduceThunksInExpr (Match name alts) = Match name $ map reduceThunksInAlt alts
 reduceThunksInExpr (Ap e1 e2) = Ap (reduceThunksInExpr e1) (reduceThunksInExpr e2)
 reduceThunksInExpr (Lam var expr) = Lam var $ reduceThunksInExpr expr
+reduceThunksInExpr (Forall x k expr) = Forall x k $ reduceThunksInExpr expr
 reduceThunksInExpr expr = expr
 
 reduceThunksInBind :: Bind -> Bind
@@ -49,4 +50,5 @@ isCheap (Let (Strict (Bind _ value)) expr) = isCheap value && isCheap expr
 isCheap (Let _ expr) = isCheap expr
 -- A call to "$primPackedToString" is cheap
 isCheap (Var name) = name == idFromString "$primPackedToString"
+isCheap (Forall _ _ e) = isCheap e
 isCheap _ = False

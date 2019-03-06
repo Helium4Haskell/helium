@@ -74,6 +74,7 @@ nsExpr env expr
                            in  Ap (nsExpr env1 expr1) (nsExpr env2 expr2)
       Var x             -> Var (renameVar env x)
       Con (ConTag e a)  -> Con (ConTag (nsExpr env e) a)
+      Forall x k e      -> Forall x k $ nsExpr env e
       _                 -> expr
 
 nsBinds :: Env -> Binds -> (Env -> Binds -> a) -> a

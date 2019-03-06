@@ -7,8 +7,19 @@ ATTR Module
    |   core             : { Core.CoreModule }
    ]
 
+ATTR Module Body Declaration Declarations MaybeDeclarations
+  Expression Expressions MaybeExpression
+  Statements Statement Qualifiers Qualifier Alternatives Alternative
+  GuardedExpressions GuardedExpression RecordExpressionBindings
+  RecordExpressionBinding RecordPatternBindings RecordPatternBinding
+  FunctionBindings FunctionBinding LeftHandSide RightHandSide
+  Patterns Pattern [ fullTypeSchemes : { M.Map NameWithRange TpScheme } solveResult : { SolveResult ConstraintInfo } | | ]
+
 -- UHA
 INCLUDE "UHA_Syntax.ag"
+
+-- Type variables to recover type information from constraint solver output
+INCLUDE "../StaticAnalysis/Inferencers/TypeInferenceDeclTypeVar.ag"
 
 -- Transformation into Core
 INCLUDE "ToCoreModule.ag"
@@ -36,6 +47,8 @@ import Lvm.Common.IdSet
 import Helium.Utils.Utils(internalError)
 
 import Top.Types
+import Top.Solver (SolveResult)
+import Helium.StaticAnalysis.Miscellaneous.ConstraintInfo (ConstraintInfo)
 
 import Helium.CodeGeneration.PatternMatch
 import qualified Helium.CodeGeneration.DerivingShow as DerivingShow

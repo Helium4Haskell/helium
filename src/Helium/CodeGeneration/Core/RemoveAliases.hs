@@ -38,3 +38,4 @@ renameExpr env (Lam x expr) = Lam x $ renameExpr env expr
 renameExpr env (Var x) = Var $ lookupId env x
 renameExpr _ (Con con) = Con con
 renameExpr _ (Lit lit) = Lit lit
+renameExpr env (Forall x k expr) = Forall x k $ renameExpr env expr

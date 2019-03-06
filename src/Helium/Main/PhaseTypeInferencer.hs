@@ -8,6 +8,7 @@
 
 module Helium.Main.PhaseTypeInferencer (phaseTypeInferencer) where
 
+import qualified Data.Map as M
 import Helium.Main.CompileUtils
 import Helium.StaticAnalysis.Messages.Warnings(Warning)
 import Helium.StaticAnalysis.Inferencers.TypeInferencing(typeInferencing)
@@ -15,11 +16,15 @@ import Helium.ModuleSystem.DictionaryEnvironment (DictionaryEnvironment)
 --import UHA_Syntax
 import Helium.StaticAnalysis.Messages.TypeErrors
 import Helium.StaticAnalysis.Messages.Information (showInformation)
+import Helium.StaticAnalysis.Miscellaneous.ConstraintInfo (ConstraintInfo)
+import Helium.Syntax.UHA_Utils(NameWithRange)
+import Top.Solver (SolveResult)
+import Top.Types (TpScheme)
 import System.FilePath.Posix
 
 phaseTypeInferencer :: 
     String -> String -> Module -> ImportEnvironment -> ImportEnvironment -> [Option] -> 
-    Phase TypeError (DictionaryEnvironment, ImportEnvironment, TypeEnvironment, [Warning])
+    Phase TypeError (DictionaryEnvironment, ImportEnvironment, TypeEnvironment, M.Map NameWithRange TpScheme, SolveResult ConstraintInfo, [Warning])
 
 phaseTypeInferencer basedir fullName module_ localEnv completeEnv options = do
     enterNewPhase "Type inferencing" options
@@ -33,7 +38,7 @@ phaseTypeInferencer basedir fullName module_ localEnv completeEnv options = do
                         else id)
                    $ options
                    
-        (debugIO, dictionaryEnv, toplevelTypes, typeErrors, warnings) =
+        (debugIO, dictionaryEnv, toplevelTypes, allTypeSchemes, solveResult, typeErrors, warnings) =
            typeInferencing newOptions completeEnv module_
 
         -- add the top-level types (including the inferred types)
@@ -63,4 +68,4 @@ phaseTypeInferencer basedir fullName module_ localEnv completeEnv options = do
                   ) 
                   $ print (addToTypeEnvironment toplevelTypes localEnv)
                   
-             return (Right (dictionaryEnv, finalEnv, toplevelTypes, warnings))
+             return (Right (dictionaryEnv, finalEnv, toplevelTypes, allTypeSchemes, solveResult, warnings))

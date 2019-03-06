@@ -74,6 +74,8 @@ satExpr env expr
         -> Match x (satAlts env alts)
       Lam var e
         -> Lam var (satExpr env e)
+      Forall x k e
+        -> Forall x k $ satExpr env e
       _
         -> let expr'  = satExprSimple env expr
            in addLam env  (requiredArgs env expr') expr'
@@ -91,6 +93,7 @@ satExprSimple env expr
       Let _ _     -> satExpr env expr
       Match _ _   -> satExpr env expr
       Lam _ _     -> satExpr env expr
+      Forall _ _ _ -> satExpr env expr
       Ap e1 e2    -> let (env1,env2) = splitEnv env
                      in  Ap (satExprSimple env1 e1) (satExpr env2 e2)
       _           -> expr
@@ -104,6 +107,7 @@ addLam env args expr
   = let (_, vars) = mapAccumR (\env2 t -> let (x,env') = uniqueId env2 in (env', Variable x t)) env args
     in  foldr Lam (foldl Ap expr (map (Var . variableName) vars)) vars
 
+-- TODO: Add Forall types
 requiredArgs :: Env -> Expr -> [Type]
 requiredArgs env expr
   = case expr of

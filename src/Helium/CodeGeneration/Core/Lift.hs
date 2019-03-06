@@ -52,6 +52,10 @@ liftExprIgnoreLambdas :: NameSupply -> [Variable] -> Expr -> Env -> (Expr, [Core
 liftExprIgnoreLambdas supply scope (Lam x expr) env = (Lam x expr', decls)
   where
     (expr', decls) = liftExprIgnoreLambdas supply (x : scope) expr env
+liftExprIgnoreLambdas supply scope (Forall x k expr) env = (Forall x k expr', decls)
+  where
+    -- We should also keep track of all type variables which are in scope
+    (expr', decls) = liftExprIgnoreLambdas supply scope expr env
 liftExprIgnoreLambdas supply scope expr env = liftExpr supply scope expr env
 
 liftExpr :: NameSupply -> [Variable] -> Expr -> Env -> (Expr, [CoreDecl])
@@ -95,6 +99,10 @@ liftExpr supply scope expr@(Lam _ _) env = liftExpr supply' scope (Let (NonRec b
   where
     (name, supply') = freshId supply
     bind = Bind (Variable name TAny) expr
+liftExpr supply scope (Forall x k expr) env = (Forall x k expr', decls)
+  where
+    -- TODO: Add type variable to scope
+    (expr', decls) = liftExpr supply scope expr env
 -- After normalization the other expression constructors cannot have let bindings
 -- as subexpressions, so we do not have to lift here. We do need to rename variables used in `expr`,
 -- if they are mapped in `env`.
@@ -112,8 +120,14 @@ rename env name = case lookupMap name env of
   Nothing -> name
   Just name' -> rename env name'
 
+isQuantifiedLambda :: Expr -> Bool
+isQuantifiedLambda (Forall _ _ expr) = isQuantifiedLambda expr
+isQuantifiedLambda (Lam _ _) = True
+isQuantifiedLambda _ = False
+
 strictBind :: NameSupply -> [Variable] -> Bind -> Env -> (Maybe Bind, [CoreDecl], Env -> Env)
-strictBind supply scope b@(Bind _ (Lam _ _)) env = lazyBind False supply scope b env
+strictBind supply scope b@(Bind _ expr) env
+  | isQuantifiedLambda expr = lazyBind False supply scope b env
 strictBind supply scope (Bind var expr) env = (Just $ Bind var expr', decls, id)
   where
     (expr', decls) = liftExpr supply scope expr env
@@ -153,4 +167,5 @@ liftAlt supply scope (Alt pat expr) env = (Alt pat expr', decls)
 
 isValidThunk :: Expr -> Bool
 isValidThunk (Ap _ _) = True
+isValidThunk (Forall _ _ e) = isValidThunk e
 isValidThunk _ = False

@@ -13,6 +13,8 @@
 --
 -----------------------------------------------------------------------------
 
+ATTR Module [ | | fullTypeSchemes : {M.Map NameWithRange TpScheme} ]
+
 ATTR Expression Expressions MaybeExpression Alternative Alternatives
      Statement Statements Declaration Declarations MaybeDeclarations
      RightHandSide Body Qualifier Qualifiers
@@ -21,12 +23,13 @@ ATTR Expression Expressions MaybeExpression Alternative Alternatives
         [ importEnvironment   : ImportEnvironment
           substitution        : FixpointSubstitution
           typeschemeMap       : {M.Map Int (Scheme Predicates)}
-          allTypeSchemes      : {M.Map NameWithRange TpScheme}
+          allTypeSchemes      : {M.Map NameWithRange TpScheme} -- All type schemes in scope
           classTypeSchemes    : {M.Map Name TpScheme}
           requiredPredicates  : Predicates
           orderedTypeSynonyms : OrderedTypeSynonyms
         | collectWarnings     : Warnings
           collectErrors       : TypeErrors
+          fullTypeSchemes     : {M.Map NameWithRange TpScheme} -- Gathers all type schemes in the whole file
         |
         ]
 
@@ -125,11 +128,14 @@ SEM Body
 ATTR MaybeDeclarations [ | | localTypes : {M.Map NameWithRange TpScheme} ]
 
 SEM Module
-  | Module  body . allTypeSchemes = M.fromList [ (NameWithRange name, scheme) | (name, scheme) <- M.assocs (typeEnvironment @lhs.importEnvironment) ]
+  | Module  loc . typeSchemes = M.fromList [ (NameWithRange name, scheme) | (name, scheme) <- M.assocs (typeEnvironment @lhs.importEnvironment) ]
+            body . allTypeSchemes = @loc.typeSchemes
+            body . fullTypeSchemes = @loc.typeSchemes
 
 SEM Body
   | Body   loc . allTypeSchemes = @localTypes `M.union` @lhs.allTypeSchemes
                . localTypes     = makeLocalTypeEnv (@declarations.typeSignatures `M.union` @inferredTypes) @declarations.bindingGroups
+           declarations.fullTypeSchemes = @localTypes `M.union` @lhs.fullTypeSchemes
 
 SEM MaybeDeclarations
   | Just     lhs . localTypes  = makeLocalTypeEnv (@declarations.typeSignatures `M.union` @inferredTypes) @declarations.bindingGroups
@@ -137,19 +143,24 @@ SEM MaybeDeclarations
 
 SEM RightHandSide
   | Expression  loc . allTypeSchemes = @where.localTypes `M.union` @lhs.allTypeSchemes
+                expression.fullTypeSchemes = @where.localTypes `M.union` @lhs.fullTypeSchemes
   | Guarded     loc . allTypeSchemes = @where.localTypes `M.union` @lhs.allTypeSchemes
+                guardedexpressions.fullTypeSchemes = @where.localTypes `M.union` @lhs.fullTypeSchemes
 
 SEM Expression
   | Let    loc . allTypeSchemes = @localTypes `M.union` @lhs.allTypeSchemes
                . localTypes     = makeLocalTypeEnv (@declarations.typeSignatures `M.union` @inferredTypes) @declarations.bindingGroups
+           declarations.fullTypeSchemes = @localTypes `M.union` @lhs.fullTypeSchemes
 
 SEM Statement
   | Let    loc . allTypeSchemes = @localTypes `M.union` @lhs.allTypeSchemes
                . localTypes     = makeLocalTypeEnv (@declarations.typeSignatures `M.union` @inferredTypes) @declarations.bindingGroups
+           declarations.fullTypeSchemes = @localTypes `M.union` @lhs.fullTypeSchemes
 
 SEM Qualifier
   | Let    loc . allTypeSchemes = @localTypes `M.union` @lhs.allTypeSchemes
                . localTypes     = makeLocalTypeEnv (@declarations.typeSignatures `M.union` @inferredTypes) @declarations.bindingGroups
+           declarations.fullTypeSchemes = @localTypes `M.union` @lhs.fullTypeSchemes
 
 {
 makeLocalTypeEnv :: TypeEnvironment -> BindingGroups -> M.Map NameWithRange TpScheme

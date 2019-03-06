@@ -53,8 +53,8 @@ constructorType typeVar fields classType =
         instantiateClassVar t = t
 
 --returns for every function in a class the function that retrieves that class from a dictionary
-classFunctions :: ImportEnvironment -> String -> String -> [(Name, Int, DictLabel, Core.Type)] -> [CoreDecl]
-classFunctions importEnv className typeVar combinedNames = [DeclCon -- Declare the constructor for the dictionary
+classFunctions :: ImportEnvironment -> M.Map NameWithRange TpScheme -> String -> String -> [(Name, Int, DictLabel, Core.Type)] -> [CoreDecl]
+classFunctions importEnv fullTypeSchemes className typeVar combinedNames = [DeclCon -- Declare the constructor for the dictionary
                                                     { declName = dictName
                                                     , declAccess  = public
                                                     , declType    = constructorType typeArgId (map (\(_, _, _, t) -> t) superclasses ++ map (\(_, _, _, t) -> t) combinedNames) classType
@@ -101,7 +101,7 @@ classFunctions importEnv className typeVar combinedNames = [DeclCon -- Declare t
                     val = DeclValue 
                         { declName    = idFromString $ getNameName name
                         , declAccess  = public
-                        , declType    = declarationType name importEnv True
+                        , declType    = declarationType fullTypeSchemes importEnv TCCNone name
                         , valueValue  = Lam (Variable dictParam classType) $ 
                                 Let (Strict $ Bind (Variable dictParam $ Core.typeToStrict classType) (Var dictParam))
                                 (Match dictParam 
@@ -258,8 +258,8 @@ constructClassMemberCustomDecl env name (Just (typevars, members)) = typeVarsDec
                                     if fDefault then CustomInt 1 else CustomInt 0
                                 ]
 
-convertDictionaries :: ImportEnvironment -> Name -> [Name] -> [(Name, CoreDecl)] -> [CoreDecl]
-convertDictionaries importEnv className functions defaults = map makeFunction functions
+convertDictionaries :: ImportEnvironment -> M.Map NameWithRange TpScheme -> Name -> [Name] -> [(Name, CoreDecl)] -> [CoreDecl]
+convertDictionaries importEnv fullTypeSchemes className functions defaults = map makeFunction functions
             where
                 constructName :: Name -> String
                 constructName fname = "default$" ++ getNameName className ++ "$" ++ getNameName fname
@@ -270,7 +270,7 @@ convertDictionaries importEnv className functions defaults = map makeFunction fu
                         updateName fdecl = fdecl{
                             declName = idFromString $ constructName fname
                         }
-                        tp = declarationType fname importEnv True
+                        tp = declarationType fullTypeSchemes importEnv TCCNone fname
                         fDefault :: CoreDecl
                         fDefault = DeclValue
                             { declName    = idFromString $ constructName fname

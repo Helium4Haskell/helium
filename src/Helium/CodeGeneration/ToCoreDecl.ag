@@ -5,15 +5,30 @@
 ATTR Declaration Declarations [ | patBindNr : Int | ]
 ATTR MaybeDeclarations [ | | whereDeclarations : {[(Name, CoreDecl)]}]
 
-
 ATTR Declaration Declarations MaybeDeclarations [ 
-        
+        typeClassContext : TypeClassContext
     |  
     |   functionNames USE {(++)} {[]}: {[Name]} 
         declNames USE {(++)} {[]}: {[Name]}
         collectDefaults USE {(++)} {[]} : {[(Name, CoreDecl)]}
     ]
-        
+      
+SEM Body
+    | Body
+        declarations.typeClassContext = TCCNone
+
+SEM Expression
+    | Let
+        declarations.typeClassContext = TCCNone
+
+SEM Qualifier
+    | Let
+        declarations.typeClassContext = TCCNone
+
+SEM Statement
+    | Let
+        declarations.typeClassContext = TCCNone
+
 SEM MaybeDeclarations [ | |   core : { Core.Expr -> Core.Expr } ]
     | Nothing     lhs.core = \continue -> continue
                   lhs.whereDeclarations = []
@@ -94,8 +109,8 @@ SEM Declaration
         [ Core.DeclValue
             { Core.declName    = idFromName @bindings.name
             , Core.declAccess  = Core.private
-            , Core.declType    = declarationType @bindings.name @lhs.importEnv (@lhs.isTopLevel || isJust @lhs.instanceName)
-            , Core.valueValue  = addLambdas (@lhs.isTopLevel || isJust @lhs.instanceName) @lhs.importEnv @bindings.name (@dictionaries ++ @ids) @bindings.core
+            , Core.declType    = declarationType @lhs.fullTypeSchemes @lhs.importEnv @lhs.typeClassContext @bindings.name
+            , Core.valueValue  = addLambdas @lhs.fullTypeSchemes @lhs.importEnv @lhs.typeClassContext @bindings.name (@dictionaries ++ @ids) @bindings.core
             , Core.declCustoms = toplevelType @bindings.name @lhs.importEnv (@lhs.isTopLevel || isJust @lhs.instanceName)
             }
         ]
@@ -115,9 +130,9 @@ SEM Declaration
                 [ Core.DeclValue
                     { Core.declName    = idFromName n
                     , Core.declAccess  = Core.private
-                    , Core.declType    = declarationType n @lhs.importEnv @lhs.isTopLevel
+                    , Core.declType    = declarationType @lhs.fullTypeSchemes @lhs.importEnv @lhs.typeClassContext n
                     , Core.valueValue  =
-                        addLambdas @lhs.isTopLevel @lhs.importEnv n @dictionaries
+                        addLambdas @lhs.fullTypeSchemes @lhs.importEnv @lhs.typeClassContext n @dictionaries
                             ( let_ -- because guards can fail
                                 nextClauseId Core.typeUndefined (patternMatchFail "pattern binding" @range.self)
                                 @righthandside.core
@@ -139,10 +154,10 @@ SEM Declaration
                 [ Core.DeclValue
                     { Core.declName    = idFromName v
                     , Core.declAccess  = Core.private
-                    , Core.declType    = declarationType v @lhs.importEnv @lhs.isTopLevel
+                    , Core.declType    = declarationType @lhs.fullTypeSchemes @lhs.importEnv @lhs.typeClassContext v
                     , Core.valueValue  =
                         (let_ nextClauseId Core.typeUndefined (patternMatchFail "pattern binding" @range.self)
-                            (patternToCore (patBindId, @pattern.self) (Core.Var (idFromName v)))
+                            (patternToCore @lhs.fullTypeSchemes (patBindId, @pattern.self) (Core.Var (idFromName v)))
                         )
                     , Core.declCustoms = toplevelType v @lhs.importEnv @lhs.isTopLevel
                     }
@@ -199,7 +214,7 @@ SEM Declaration
                                                 Core.declKind = (Core.DeclKindCustom n)
                                             }) = stringFromId n `isSuffixOf` " infix"
                                             isInfix _ = False
-                                        in (classFunctions @lhs.importEnv (getNameName @simpletype.name) (getNameName $ head @simpletype.typevariables) $ constructFunctionMap @lhs.importEnv (length @superClasses) @simpletype.name) ++ 
+                                        in (classFunctions @lhs.importEnv @lhs.fullTypeSchemes (getNameName @simpletype.name) (getNameName $ head @simpletype.typevariables) $ constructFunctionMap @lhs.importEnv (length @superClasses) @simpletype.name) ++ 
                                         [
                                             Core.DeclCustom
                                                 {
@@ -208,9 +223,10 @@ SEM Declaration
                                                     Core.declKind = Core.DeclKindCustom $ idFromString "ClassDefinition",
                                                     Core.declCustoms = constructClassMemberCustomDecl @lhs.importEnv @simpletype.name (M.lookup @simpletype.name $ classMemberEnvironment @lhs.importEnv)
                                                 }
-                                        ] ++ convertDictionaries @lhs.importEnv @simpletype.name @where.functionNames @where.whereDeclarations 
+                                        ] ++ convertDictionaries @lhs.importEnv @lhs.fullTypeSchemes @simpletype.name @where.functionNames @where.whereDeclarations 
                                          ++ (filter isInfix @where.decls)
                         where . instanceName = Just @simpletype.name
+                        where . typeClassContext = TCCClass
                         where . dictionaryEnv = setCurrentClassNames (zip @where.functionNames (repeat ("$instanceDict" ++ show @simpletype.name))) @lhs.dictionaryEnv
     | Instance          lhs .   decls    =  [ constructDictionary 
                                                 @lhs.importEnv
@@ -225,6 +241,7 @@ SEM Declaration
                         loc .   typevariables = zip (namesInType @loc.type) [TVar n | n <- [0..]]
                         loc .   type = head @types.self
                         where . instanceName = Just @name.self
+                        where . typeClassContext = TCCInstance (idFromName @name.self) (toCoreTypeNotQuantified $ makeTpSchemeFromType @loc.type)
     
     -- Not supported
     
@@ -265,7 +282,8 @@ SEM FunctionBinding [ | | core : { Core.Expr -> Core.Expr } ]
                        lhs.core = 
         \nextClause ->
             let thisClause = 
-                    patternsToCore 
+                    patternsToCore
+                        @lhs.fullTypeSchemes
                         (zip @lhs.ids @lefthandside.patterns)
                         @righthandside.core in
             if all patternAlwaysSucceeds @lefthandside.patterns 
@@ -355,6 +373,7 @@ SEM RightHandSide
     | Expression        lhs.core = @where.core @expression.core
                             .isGuarded = False
                         where.instanceName = Nothing
+                        where.typeClassContext = TCCNone
     --  range                    : Range
     --  expression               : Expression
     --  where                    : MaybeDeclarations
@@ -362,6 +381,7 @@ SEM RightHandSide
     | Guarded         lhs.isGuarded = True
                          .core = @where.core (foldr ($) (Core.Var nextClauseId) @guardedexpressions.core)
                     where.instanceName = Nothing
+                    where.typeClassContext = TCCNone
                          
     --  range                    : Range
     --  guardedexpressions       : GuardedExpressions

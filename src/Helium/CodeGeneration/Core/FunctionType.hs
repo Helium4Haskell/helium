@@ -30,5 +30,6 @@ functionInDecl (DeclValue name _ _ expr _) = Just (name, FunctionType (replicate
 functionInDecl decl = Nothing
 
 arityOfExpr :: Expr -> Int -> Int
+arityOfExpr (Forall _ _ expr) accum = arityOfExpr expr accum
 arityOfExpr (Lam _ expr) accum = arityOfExpr expr $ accum + 1
 arityOfExpr _ accum = accum
