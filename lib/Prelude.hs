@@ -121,8 +121,9 @@ class Ord a => Num a where
     abs :: a -> a
     signum :: a -> a
     fromInt :: Integer -> a
-    infixl 6 +, -
-    infixl 7 *
+
+infixl 6 +, -
+infixl 7 *
 val = 2 + 3 * 4
 
 {- imported from PreludePrim

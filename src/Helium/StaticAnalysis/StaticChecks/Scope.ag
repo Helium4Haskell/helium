@@ -58,7 +58,7 @@ ATTR Expression RightHandSide
 
 SEM Module
   | Module   loc . (namesInScope, unboundNames, scopeInfo) = changeOfScope (@scopeNoConflicts) @body.unboundNames []
-             loc . (scopeNoConflicts, ambiguousConflicts) = uniqueAppearance (mergeSameOriginName @initialScope ++ @declNoConflicts)
+             loc . (scopeNoConflicts, ambiguousConflicts) = uniqueAppearance (mergeSameOriginName (@initialScope ++ @declNoConflicts))
              loc . (declNoConflicts , declDouble) = (\(x,y) -> (concatMap (includeQualifiedName @moduleQual) x, y)) $ uniqueAppearance (@body.declVarNames ++ @body.classMemberNames)
              body . counter = 0
                  
