@@ -79,14 +79,21 @@ ATTR Body Declarations Declaration Expressions Expression Statements Statement
      RecordExpressionBindings Constructors Constructor
     [ dictionaryEnv : DictionaryEnvironment
         instanceName : {Maybe Name} 
+        importEnv : ImportEnvironment
         | | ]
 
-ATTR Body Declarations Declaration MaybeDeclarations Constructor Constructors
-    [ importEnv     : ImportEnvironment | | ]
-    
-SEM Expression        | Let  loc.importEnv = internalError "CodeGeneration.ag" "Expression.Let" ""   
-SEM Qualifier         | Let  loc.importEnv = internalError "CodeGeneration.ag" "Qualifier.Let" ""       
-SEM Statement         | Let  loc.importEnv = internalError "CodeGeneration.ag" "Statement.Let" ""       
+ATTR Declarations Declaration Expressions Expression Statements Statement
+     Qualifiers Qualifier GuardedExpressions GuardedExpression 
+     Alternatives Alternative FunctionBindings FunctionBinding
+     RightHandSide MaybeDeclarations MaybeExpression RecordExpressionBinding
+     RecordExpressionBindings Constructors Constructor Pattern Patterns
+     LeftHandSide RecordPatternBinding RecordPatternBindings
+    [ quantorMap : QuantorMap
+        | | ]
+
+SEM Body
+  | Body
+    declarations.quantorMap = []
 
 ATTR SimpleType [ | | name:Name typevariables:Names coreType: {Core.Type} ]
 

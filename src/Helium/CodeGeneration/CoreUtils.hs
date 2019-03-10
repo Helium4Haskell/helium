@@ -15,7 +15,8 @@ module Helium.CodeGeneration.CoreUtils
     ,   float, packedString
     ,   toplevelType, declarationType, localDeclarationType
     ,   toCoreType, toCoreTypeNotQuantified, typeToCoreType
-    ,   addLambdas, TypeClassContext(..)
+    ,   addLambdas, addLambdasForLambdaExpression, TypeClassContext(..)
+    ,   findCoreType, findInstantiation
     ) where
 import Debug.Trace
 import Top.Types as Top
@@ -154,15 +155,25 @@ instantiationInTypeClassInstance (TCCInstance className instanceType) (Top.Quant
   = Just (typeVarToId qmap typeVar, instanceType)
 instantiationInTypeClassInstance _ _ = Nothing
 
-declarationType :: M.Map NameWithRange Top.TpScheme -> ImportEnvironment -> TypeClassContext -> Name -> Core.Type
-declarationType fullTypeSchemes importEnv context name =
+mergeQuantorMaps :: QuantorMap -> QuantorMap -> QuantorMap
+mergeQuantorMaps parentMap childMap = childMap ++ parentMap
+-- TODO: Remove duplicates (?)
+
+declarationType :: M.Map NameWithRange Top.TpScheme -> ImportEnvironment -> TypeClassContext -> QuantorMap -> Name -> (QuantorMap, Core.Type)
+declarationType fullTypeSchemes importEnv context qmapParent name =
   case declarationTpScheme fullTypeSchemes importEnv context name of
-    Just ty ->
-      let coreType = toCoreType ty
+    Just (Top.Quantification (tvars, qmap, t)) ->
+      let
+        qmap' = mergeQuantorMaps qmapParent qmap
+        ty = Top.Quantification (tvars, qmap', t)
+        coreType = toCoreType ty
       in case instantiationInTypeClassInstance context ty of
-        Just (typeVar, instanceType) -> Core.typeInstantiate typeVar instanceType coreType
-        Nothing -> coreType
-    Nothing -> Core.TAny
+        Just (typeVar, instanceType) -> (qmap', Core.typeInstantiate typeVar instanceType coreType)
+        Nothing -> (qmap', coreType)
+    Nothing -> ([], Core.TAny)
+
+findCoreType :: SolveResult a -> QuantorMap -> Int -> Core.Type
+findCoreType result qmap beta = typeToCoreType qmap $ lookupInt beta $ substitutionFromResult result
 
 toCoreType :: Top.TpScheme -> Core.Type
 toCoreType (Top.Quantification (tvars, qmap, t)) = foldr addTypeVar t' tvars
@@ -210,17 +221,24 @@ toplevelType name ie isTopLevel
             show
             (M.lookup name (typeEnvironment ie))
 
-addLambdas :: M.Map NameWithRange Top.TpScheme -> ImportEnvironment -> TypeClassContext -> Name -> [Id] -> Core.Expr -> Core.Expr
-addLambdas fullTypeSchemes env context name args expr = case declarationTpScheme fullTypeSchemes env context name of
+addLambdasForLambdaExpression :: ImportEnvironment -> QuantorMap -> SolveResult a -> Int -> [Id] -> Core.Expr -> Core.Expr
+addLambdasForLambdaExpression env qmap result beta args expr = if tp == Top.TVar beta
+    then trace "Type not found for lambda expr" $ foldr Core.Lam expr $ map (`Core.Variable` Core.TAny) args
+    else addLambdasForType env qmap tp id args expr
+  where
+    tp = lookupInt beta $ substitutionFromResult result
+
+addLambdas :: M.Map NameWithRange Top.TpScheme -> ImportEnvironment -> TypeClassContext -> QuantorMap -> Name -> [Id] -> Core.Expr -> Core.Expr
+addLambdas fullTypeSchemes env context qmapParent name args expr = case declarationTpScheme fullTypeSchemes env context name of
   -- No type found, just use `any`
   Nothing -> foldr Core.Lam expr $ map (`Core.Variable` Core.TAny) args
   Just ty@(Top.Quantification (tvars, qmap, t)) ->
     let
+      qmap' = mergeQuantorMaps qmapParent qmap
       (tvars', substitute) = case instantiationInTypeClassInstance context ty of
-        Just (typeVar, instanceType) -> (filter (\v -> typeVarToId qmap v /= typeVar) tvars, Core.typeSubstitute typeVar instanceType)
+        Just (typeVar, instanceType) -> (filter (\v -> typeVarToId qmap' v /= typeVar) tvars, Core.typeSubstitute typeVar instanceType)
         Nothing -> (tvars, id)
-    in foldr (\x e -> Core.Forall (typeVarToId qmap x) Core.KStar e) (addLambdasForQType env qmap t substitute args expr) tvars'
-    -- TODO: Use 'typeSubstitute'
+    in foldr (\x e -> Core.Forall (typeVarToId qmap' x) Core.KStar e) (addLambdasForQType env qmap' t substitute args expr) tvars'
 
 addLambdasForQType :: ImportEnvironment -> QuantorMap -> Top.QType -> (Core.Type -> Core.Type) -> [Id] -> Core.Expr -> Core.Expr
 addLambdasForQType env qmap (Top.Qualification ([], t)) substitute args expr = addLambdasForType env qmap t substitute args expr
@@ -250,3 +268,17 @@ applyTypeSynonym env tp@(Top.TCon name) tps = case M.lookup (nameFromString name
             applyTypeSynonym env tp' tps'
     _ -> foldl (Top.TApp) tp tps
 applyTypeSynonym env (Top.TApp t1 t2) tps = applyTypeSynonym env t1 (t2 : tps)
+
+findInstantiation :: ImportEnvironment -> QuantorMap -> Top.TpScheme -> Top.Tp -> [Core.Type]
+findInstantiation importEnv qmap (Top.Quantification (tvars, _, Top.Qualification (_, tLeft))) tRight
+  = fmap (\a -> fromMaybe typeUnit $ lookup a instantiations) tvars
+  where
+    instantiations = traverse tLeft tRight
+    traverse :: Top.Tp -> Top.Tp -> [(Int, Core.Type)]
+    traverse (Top.TVar a) t2 = [(a, typeToCoreType qmap t2)]
+    traverse (Top.TCon _) _ = []
+    traverse t1 t2 = traverseNoTypeSynonym (applyTypeSynonym importEnv t1 []) (applyTypeSynonym importEnv t2 [])
+    traverseNoTypeSynonym :: Top.Tp -> Top.Tp -> [(Int, Core.Type)]
+    traverseNoTypeSynonym (Top.TApp tl1 tl2) (Top.TApp tr1 tr2) =
+      traverseNoTypeSynonym tl1 tr1 ++ traverse tl2 tr2
+    traverseNoTypeSynonym t1 t2 = traverse t1 t2

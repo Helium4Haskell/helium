@@ -99,6 +99,7 @@ SEM Declaration
     --  derivings                : Names
     
     | FunctionBindings  
+                        (bindings.quantorMap, loc.declType) = declarationType @lhs.fullTypeSchemes @lhs.importEnv @lhs.typeClassContext @lhs.quantorMap @bindings.name
                         loc.ids      = freshIds "u$" @bindings.arity
                         bindings.ids = @loc.ids
                         bindings.range = @range.self
@@ -109,8 +110,8 @@ SEM Declaration
         [ Core.DeclValue
             { Core.declName    = idFromName @bindings.name
             , Core.declAccess  = Core.private
-            , Core.declType    = declarationType @lhs.fullTypeSchemes @lhs.importEnv @lhs.typeClassContext @bindings.name
-            , Core.valueValue  = addLambdas @lhs.fullTypeSchemes @lhs.importEnv @lhs.typeClassContext @bindings.name (@dictionaries ++ @ids) @bindings.core
+            , Core.declType    = @loc.declType
+            , Core.valueValue  = addLambdas @lhs.fullTypeSchemes @lhs.importEnv @lhs.typeClassContext @lhs.quantorMap @bindings.name (@dictionaries ++ @ids) @bindings.core
             , Core.declCustoms = toplevelType @bindings.name @lhs.importEnv (@lhs.isTopLevel || isJust @lhs.instanceName)
             }
         ]
@@ -123,16 +124,17 @@ SEM Declaration
                                 Pattern_Variable _ n ->
                                    map predicateToId 
                                       (getPredicateForDecl n @lhs.dictionaryEnv)
-                                _ -> []                        
+                                _ -> []
+                        -- TODO: Set quantorMap                   
                         lhs.decls     = 
         case  @pattern.self of
             Pattern_Variable _ n ->
                 [ Core.DeclValue
                     { Core.declName    = idFromName n
                     , Core.declAccess  = Core.private
-                    , Core.declType    = declarationType @lhs.fullTypeSchemes @lhs.importEnv @lhs.typeClassContext n
+                    , Core.declType    = snd $ declarationType @lhs.fullTypeSchemes @lhs.importEnv @lhs.typeClassContext @lhs.quantorMap n
                     , Core.valueValue  =
-                        addLambdas @lhs.fullTypeSchemes @lhs.importEnv @lhs.typeClassContext n @dictionaries
+                        addLambdas @lhs.fullTypeSchemes @lhs.importEnv @lhs.typeClassContext @lhs.quantorMap n @dictionaries
                             ( let_ -- because guards can fail
                                 nextClauseId Core.typeUndefined (patternMatchFail "pattern binding" @range.self)
                                 @righthandside.core
@@ -140,13 +142,15 @@ SEM Declaration
                     , Core.declCustoms = toplevelType n @lhs.importEnv @lhs.isTopLevel
                     }
                ]
-            _ -> Core.DeclValue
+            _ -> 
+              let tp = Core.TAny
+              in Core.DeclValue
                     { Core.declName    = patBindId
                     , Core.declAccess  = Core.private
-                    , Core.declType    = Core.TAny
-                    , Core.valueValue  = 
+                    , Core.declType    = tp
+                    , Core.valueValue  =
                         let_ 
-                            nextClauseId Core.typeUndefined (patternMatchFail "pattern binding" @range.self)
+                            nextClauseId tp (patternMatchFail "pattern binding" @range.self)
                             @righthandside.core
                     , Core.declCustoms = [custom "type" "patternbinding"]
                     }
@@ -154,14 +158,15 @@ SEM Declaration
                 [ Core.DeclValue
                     { Core.declName    = idFromName v
                     , Core.declAccess  = Core.private
-                    , Core.declType    = declarationType @lhs.fullTypeSchemes @lhs.importEnv @lhs.typeClassContext v
+                    , Core.declType    = tp
                     , Core.valueValue  =
-                        (let_ nextClauseId Core.typeUndefined (patternMatchFail "pattern binding" @range.self)
-                            (patternToCore @lhs.fullTypeSchemes (patBindId, @pattern.self) (Core.Var (idFromName v)))
+                        (let_ nextClauseId tp (patternMatchFail "pattern binding" @range.self)
+                            (patternToCore @pattern.patternTypes (patBindId, @pattern.self) (Core.Var (idFromName v)))
                         )
                     , Core.declCustoms = toplevelType v @lhs.importEnv @lhs.isTopLevel
                     }
-                | v <- @pattern.vars
+                | v <- @pattern.vars,
+                  let tp = snd $ declarationType @lhs.fullTypeSchemes @lhs.importEnv @lhs.typeClassContext @lhs.quantorMap v
                 ]
                 where 
                     patBindId = idFromString ("patBind$" ++ show @lhs.patBindNr)
@@ -233,7 +238,7 @@ SEM Declaration
                                                 (getSuperClasses @context.self)
                                                 (constructFunctionMap @lhs.importEnv (length @superClasses) @name.self)
                                                 @where.whereDeclarations @name.self @loc.typeName (namesInType @loc.type)
-                                                (typeToCoreType [] $ makeTpFromType @typevariables @type)
+                                                (typeToCoreType @lhs.quantorMap $ makeTpFromType @typevariables @type)
                                             ] 
                         loc .   typeName = showInstanceType $ makeTpFromType @typevariables @type
                         loc .   err = error $ "Invalid class name " ++ getNameName @name.self
@@ -283,7 +288,7 @@ SEM FunctionBinding [ | | core : { Core.Expr -> Core.Expr } ]
         \nextClause ->
             let thisClause = 
                     patternsToCore
-                        @lhs.fullTypeSchemes
+                        @lefthandside.patternTypes
                         (zip @lhs.ids @lefthandside.patterns)
                         @righthandside.core in
             if all patternAlwaysSucceeds @lefthandside.patterns 

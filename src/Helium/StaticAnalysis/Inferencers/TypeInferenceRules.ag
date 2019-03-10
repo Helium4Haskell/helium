@@ -712,10 +712,9 @@ SEM Pattern
           . beta        = TVar @lhs.betaUnique
 
   | Variable
-      lhs . betaUnique  = @lhs.betaUnique + 1
-          . environment = M.singleton @name.self @beta
-      loc . constraints = Receive @lhs.betaUnique
-          . beta        = TVar @lhs.betaUnique
+      lhs . environment = M.singleton @name.self @beta
+      loc . constraints = Receive @lhs.betaDeclUnique
+          . beta        = TVar @lhs.betaDeclUnique
 
   | InfixConstructor
       lhs         . environment    = @leftPattern.environment `M.union` @rightPattern.environment
@@ -748,12 +747,11 @@ SEM Pattern
 
   | As
       lhs     . environment = M.insert @name.self @beta @pattern.environment
-      pattern . betaUnique  = @lhs.betaUnique + 1
       loc     . constraints = @newcon .>.
-                              Node [ Receive @lhs.betaUnique
+                              Node [ Receive @lhs.betaDeclUnique
                                    , @pattern.constraints
                                    ]
-              . beta        = TVar @lhs.betaUnique
+              . beta        = TVar @lhs.betaDeclUnique
               . newcon      = [ (@beta .==. @pattern.beta) @cinfo ]
 
   | Wildcard

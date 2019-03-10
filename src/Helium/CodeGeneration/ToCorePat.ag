@@ -9,7 +9,13 @@ ATTR Pattern Patterns
     | 
     |   vars USE { ++ } { [] } : { [Name] }
     ]
-    
+
+ATTR LeftHandSide Pattern Patterns
+    [
+    |
+    |   patternTypes USE { M.union } { M.empty } : { M.Map Name Core.Type }
+    ]
+
 SEM Patterns
     | Cons lhs.length = 1 + @tl.length
     | Nil  lhs.length = 0
@@ -17,10 +23,12 @@ SEM Patterns
 
 SEM Pattern
     | Variable              lhs.vars    = [ @name.self ]
+                            lhs.patternTypes = M.singleton @name.self $ findCoreType @lhs.solveResult @lhs.quantorMap @lhs.betaDeclUnique
     --  range                    : Range
     --  name                     : Name
 
     | As                    lhs.vars    = @name.self : @pattern.vars
+                            lhs.patternTypes = M.singleton @name.self $ findCoreType @lhs.solveResult @lhs.quantorMap @lhs.betaDeclUnique
     --  range                    : Range
     --  name                     : Name
     --  pattern                  : Pattern

@@ -36,5 +36,9 @@ SEM Expression
     -- One type variable for the function type
     patterns.betaDeclUnique = @lhs.betaDeclUnique + 1
 
-
--- TODO: patterns
+SEM Pattern
+  | Variable
+    lhs.betaDeclUnique = @lhs.betaDeclUnique + 1
+  | As
+    pattern.betaDeclUnique = @lhs.betaDeclUnique + 1
+ 
