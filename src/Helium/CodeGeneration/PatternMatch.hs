@@ -17,21 +17,22 @@ import Helium.Syntax.UHA_Range
 import Lvm.Common.Id
 import Data.Char
 import Helium.Utils.Utils
+import Helium.ModuleSystem.ImportEnvironment
 import Helium.CodeGeneration.CoreUtils
 import qualified Data.Map as M
 import Data.Maybe
 
-patternsToCore :: M.Map Name Core.Type -> [(Id, Pattern)] -> Core.Expr -> Core.Expr
-patternsToCore types nps continue = fst (patternsToCore' types nps continue 0)
+patternsToCore :: ImportEnvironment -> M.Map Name Core.Type -> [(Id, Core.Type, Pattern)] -> Core.Expr -> Core.Expr
+patternsToCore env types nps continue = fst (patternsToCore' env types nps continue 0)
 
-patternsToCore' :: M.Map Name Core.Type -> [(Id, Pattern)] -> Core.Expr -> Int -> (Core.Expr, Int)
-patternsToCore' _ [] continue nr = (continue, nr)
-patternsToCore' types (np:nps) continue nr =
-    let (expr, nr') = patternsToCore' types nps continue nr
-    in patternToCore' types np expr nr'
-    
-patternToCore :: M.Map Name Core.Type -> (Id, Pattern) -> Core.Expr -> Core.Expr
-patternToCore types np continue = fst (patternToCore' types np continue 0)
+patternsToCore' :: ImportEnvironment -> M.Map Name Core.Type -> [(Id, Core.Type, Pattern)] -> Core.Expr -> Int -> (Core.Expr, Int)
+patternsToCore' _ _ [] continue nr = (continue, nr)
+patternsToCore' env types (np:nps) continue nr =
+    let (expr, nr') = patternsToCore' env types nps continue nr
+    in patternToCore' env types np expr nr'
+
+patternToCore :: ImportEnvironment -> M.Map Name Core.Type -> (Id, Core.Type, Pattern) -> Core.Expr -> Core.Expr
+patternToCore env types np continue = fst (patternToCore' env types np continue 0)
 
 
 withNr :: a -> b -> (b, a)
@@ -40,8 +41,8 @@ withNr nr e = (e, nr)
 findType :: Name -> M.Map Name Core.Type -> Core.Type
 findType name types = fromMaybe (internalError "PatternMatch" "patternToCore'" $ "Could not find type for variable in pattern: " ++ show name) $ M.lookup name types
 
-patternToCore' :: M.Map Name Core.Type -> (Id, Pattern) -> Core.Expr -> Int -> (Core.Expr, Int)
-patternToCore' types (name, pat) continue nr = 
+patternToCore' :: ImportEnvironment -> M.Map Name Core.Type -> (Id, Core.Type, Pattern) -> Core.Expr -> Int -> (Core.Expr, Int)
+patternToCore' env types (name, tp, pat) continue nr = 
     case pat of
         -- let x = _u1 in ...
         Pattern_Variable _ n -> withNr nr $
@@ -60,9 +61,9 @@ patternToCore' types (name, pat) continue nr =
                     else 
                         freshIds' "l$" nr (length ps)
                 (expr, nr'') =
-                    patternsToCore' types (zip ids ps) continue nr'
+                    patternsToCore' env types (zip3 ids (constructorFieldTypes env n tp) ps) continue nr'
             in withNr nr'' $
-                case_ name
+                case_ name tp
                 [ Core.Alt 
                     (Core.PatCon (Core.ConId (idFromName n)) ids) 
                     expr
@@ -72,14 +73,14 @@ patternToCore' types (name, pat) continue nr =
         --             _         -> _next
         Pattern_InfixConstructor _ p1 n p2 ->
             let ie = internalError "PatternMatch" "patternToCore'" "shouldn't look at range"
-            in patternToCore' types (name, Pattern_Constructor ie n [p1, p2]) continue nr
+            in patternToCore' env types (name, tp, Pattern_Constructor ie n [p1, p2]) continue nr
                 
         Pattern_Parenthesized _ p ->
-            patternToCore' types (name, p) continue nr
+            patternToCore' env types (name, tp, p) continue nr
 
         -- let n = _u1 in ...
         Pattern_As _ n p -> 
-            let (expr, nr') = patternToCore' types (name, p) continue nr
+            let (expr, nr') = patternToCore' env types (name, tp, p) continue nr
             in withNr nr' $
                 let_ 
                     (idFromName n) (findType n types) (Core.Var name) 
@@ -93,9 +94,9 @@ patternToCore' types (name, pat) continue nr =
         Pattern_Literal _ l ->  
             case l of
                 Literal_Int _ i -> withNr nr $
-                    case_ name [ Core.Alt (Core.PatLit (Core.LitInt (read i))) continue ]
+                    case_ name tp [ Core.Alt (Core.PatLit (Core.LitInt (read i))) continue ]
                 Literal_Char _ c -> withNr nr $
-                    case_ name 
+                    case_ name tp
                     [ Core.Alt  
                         (Core.PatLit 
                             (Core.LitInt (ord (read ("'" ++ c ++ "'"))))
@@ -107,11 +108,13 @@ patternToCore' types (name, pat) continue nr =
                         continue
                         (Core.Var nextClauseId)
 -- !!! if we would have MATCHFLOAT instruction it could be: 
---  case_ name [ Core.Alt (Core.PatLit (Core.LitDouble (read f))) continue ]
+--  case_ name tp [ Core.Alt (Core.PatLit (Core.LitDouble (read f))) continue ]
                 Literal_String _ s -> 
                     patternToCore'
+                        env
                         types
                         ( name
+                        , tp
                         , Pattern_List noRange 
                             (map (Pattern_Literal noRange . Literal_Int noRange . show . ord) characters) 
                         )
@@ -121,7 +124,7 @@ patternToCore' types (name, pat) continue nr =
                     characters = read ("\"" ++ s ++ "\"") :: String
             
         Pattern_List _ ps -> 
-            patternToCore' types (name, expandPatList ps) continue nr
+            patternToCore' env types (name, tp, expandPatList ps) continue nr
         
         Pattern_Tuple _ ps ->
             let
@@ -131,9 +134,9 @@ patternToCore' types (name, pat) continue nr =
                     else 
                         freshIds' "l$" nr (length ps)
                 (expr, nr'') = 
-                    patternsToCore' types (zip ids ps) continue nr'
+                    patternsToCore' env types (zip3 ids (Core.typeTupleElements tp) ps) continue nr'
             in withNr nr'' $
-                case_ name
+                case_ name tp
                 [ Core.Alt 
                     (Core.PatCon (Core.ConTag 0 (length ps)) ids) 
                     expr
@@ -142,8 +145,9 @@ patternToCore' types (name, pat) continue nr =
         
         Pattern_Negate _ (Literal_Int r v) -> 
             patternToCore'
+                env
                 types
-                (name, Pattern_Literal r (Literal_Int r neg))
+                (name, tp, Pattern_Literal r (Literal_Int r neg))
                 continue
                 nr
             where
@@ -151,8 +155,9 @@ patternToCore' types (name, pat) continue nr =
 
         Pattern_Negate _ (Literal_Float r v) -> 
             patternToCore'
+                env
                 types
-                (name, Pattern_Literal r (Literal_Float r neg))
+                (name, tp, Pattern_Literal r (Literal_Float r neg))
                 continue
                 nr
             where
@@ -160,8 +165,9 @@ patternToCore' types (name, pat) continue nr =
             
         Pattern_NegateFloat _ (Literal_Float r v) -> 
             patternToCore'
+                env
                 types
-                (name, Pattern_Literal r (Literal_Float r neg))
+                (name, tp, Pattern_Literal r (Literal_Float r neg))
                 continue
                 nr
             where
@@ -173,7 +179,7 @@ patternToCore' types (name, pat) continue nr =
         --   in continue
         Pattern_Irrefutable _ p -> 
             withNr nr $ foldr 
-                (\v r -> let_ (idFromName v) (findType v types) (patternToCore types (name, p) (Core.Var $ idFromName v)) r)
+                (\v r -> let_ (idFromName v) (findType v types) (patternToCore env types (name, tp, p) (Core.Var $ idFromName v)) r)
                 continue
                 $ patternVars p
         
@@ -220,9 +226,34 @@ nextClauseAlternative =
 wildcardId, nextClauseId :: Id
 ( wildcardId :  nextClauseId : [] ) = map idFromString ["_", "nextClause$"] 
 
-case_ :: Id -> [Core.Alt] -> Core.Expr
-case_ ident alts = 
+case_ :: Id -> Core.Type -> [Core.Alt] -> Core.Expr
+case_ ident tp alts = 
     Core.Let 
-        (Core.Strict (Core.Bind (Core.Variable ident Core.TAny) (Core.Var ident)))      -- let! id = id in
+        (Core.Strict (Core.Bind (Core.Variable ident $ Core.typeToStrict tp) (Core.Var ident)))      -- let! id = id in
         (Core.Match ident (alts++[nextClauseAlternative]))    -- match id { alt; ...; alt; _ -> _nextClause }
-    
+
+constructorFieldTypes :: ImportEnvironment -> Name -> Core.Type -> [Core.Type]
+constructorFieldTypes _ _ Core.TAny = repeat Core.TAny
+constructorFieldTypes env conName tp = map (Core.typeSubstitutions $ zipWith (\(Core.TVar typeArg) t -> (typeArg, t)) (getDataTypeArgs retType []) typeArgs) args
+  where
+    typeArgs = getDataTypeArgs tp []
+    consTpScheme = fromMaybe (internalError "ToCorePat" "Pattern" $ "Could not find constructor " ++ show conName) $ M.lookup conName $ valueConstructors env
+    (args, retType) = Core.typeExtractFunction $ toCoreTypeNotQuantified consTpScheme
+
+    getDataTypeArgs :: Core.Type -> [Core.Type] -> [Core.Type]
+    getDataTypeArgs (Core.TCon (Core.TConDataType name)) accum = case M.lookup (nameFromId name) $ typeSynonyms env of
+      Nothing -> accum
+      Just (arity, fn)
+        | arity > length accum -> internalError "ToCorePat" "Pattern" "Expected data type, got partially applied type synonym"
+        | otherwise ->
+          let
+            args = take arity accum
+            remaining = drop arity accum
+            f idx
+              | idx < 0 = Just $ args !! (-1 - idx)
+              | otherwise = Nothing
+            tp' = typeToCoreType' [] f $ fn $ map Top.TVar [-1, -2 .. -arity]
+          in
+            getDataTypeArgs tp' remaining
+    getDataTypeArgs (Core.TAp t1 t2) accum = getDataTypeArgs t1 (t2 : accum)
+    getDataTypeArgs tp _ = internalError "ToCorePat" "Pattern" $ "Unexpected type " ++ show tp ++ ", expected a data type"

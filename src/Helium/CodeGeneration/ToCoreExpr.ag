@@ -63,10 +63,11 @@ SEM Expression [ | | core : { Core.Expr } ]
         let ids = freshIds "u$" @patterns.length
         in let_ nextClauseId Core.typeUndefined (patternMatchFail "lambda expression" @range.self)
             $ addLambdasForLambdaExpression @lhs.importEnv @lhs.quantorMap @lhs.solveResult @lhs.betaDeclUnique ids
-            $ patternsToCore 
+            (\tps -> patternsToCore
+                @lhs.importEnv
                 @patterns.patternTypes
-                (zip ids @patterns.self) 
-                @expression.core
+                (zip3 ids tps @patterns.self) 
+                @expression.core)
 
     --  range                    : Range
     --  patterns                 : Patterns
@@ -190,7 +191,7 @@ SEM Statement [ | | core : { Maybe Core.Expr -> Core.Expr } ]
         \theRest -> case theRest of
             Nothing   -> internalError "ToCoreExpr" "Statement" "generator can't be last in 'do'"
             Just rest -> 
-               Core.Ap (Core.Ap (Core.Ap (Core.Var $ idFromString ">>=") (Core.Var $ idFromString "$monadDict")) @expression.core) (Core.Lam (Core.Variable parameterId Core.TAny) (patternToCore @pattern.patternTypes (parameterId, @pattern.self) rest))       
+               Core.Ap (Core.Ap (Core.Ap (Core.Var $ idFromString ">>=") (Core.Var $ idFromString "$monadDict")) @expression.core) (Core.Lam (Core.Variable parameterId Core.TAny) (patternToCore @lhs.importEnv @pattern.patternTypes (parameterId, Core.TAny, @pattern.self) rest))       
 
     --  range                    : Range
     --  pattern                  : Pattern
@@ -231,7 +232,7 @@ SEM Qualifier [ | | core : { Core.Expr -> Core.Expr } ]
                 (let_ 
                     okId Core.TAny
                     (Core.Lam (Core.Variable parameterId Core.TAny)
-                        (patternToCore @pattern.patternTypes (parameterId, @pattern.self) continue)
+                        (patternToCore @lhs.importEnv @pattern.patternTypes (parameterId, Core.TAny, @pattern.self) continue)
                     )
                     (var "$primConcatMap"
                         `app_` Core.Var okId 
@@ -257,8 +258,9 @@ SEM Alternative [ | | core : { Core.Expr -> Core.Expr } ]
     | Alternative       lhs.core   = \nextCase  ->
                                         let thisCase =
                                                 patternToCore
+                                                    @lhs.importEnv
                                                     @pattern.patternTypes
-                                                    (caseExprId, @pattern.self) 
+                                                    (caseExprId, Core.TAny, @pattern.self) 
                                                     @righthandside.core
                                         in
                                             let_ nextClauseId Core.TAny nextCase thisCase

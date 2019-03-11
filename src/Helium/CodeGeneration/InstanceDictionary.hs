@@ -125,7 +125,7 @@ combineDeclIndex [] _ = error "Inconsistent mapping"
 combineDeclIndex names decls = map (\(name, _, label, t) -> (label, name, t, lookup name decls)) names
 
 --returns a dictionary with specific implementations for every instance
-constructDictionary :: ImportEnvironment -> [(String, Name, Core.Type)] -> [(Name, Int, DictLabel, Core.Type)] -> [(Name, CoreDecl)] -> Name -> String -> [Name] -> Core.Type -> CoreDecl
+constructDictionary :: ImportEnvironment -> [(String, Name)] -> [(Name, Int, DictLabel, Core.Type)] -> [(Name, CoreDecl)] -> Name -> String -> [Name] -> Core.Type -> CoreDecl
 constructDictionary importEnv instanceSuperClass combinedNames whereDecls className insName typeVariables insType = 
         let 
             
@@ -136,7 +136,7 @@ constructDictionary importEnv instanceSuperClass combinedNames whereDecls classN
                 , valueValue  = dict
                 , declCustoms = custom "type" ("Dict$" ++ getNameName className ++ " " ++ insName)
                             :    map (custom "typeVariable" . getNameName) typeVariables 
-                            ++   map (\(superName, superVar, _) -> custom "superInstance" $ superName ++ "-" ++ getNameName superVar) instanceSuperClass
+                            ++   map (\(superName, superVar) -> custom "superInstance" $ superName ++ "-" ++ getNameName superVar) instanceSuperClass
                 }
             in val
         where 
@@ -146,7 +146,7 @@ constructDictionary importEnv instanceSuperClass combinedNames whereDecls classN
             dict = foldr Lam (Let (Rec binds) (Var $ idFromString "dict")) instanceSuperClassVariables
             binds = map makeBindSuper superClasses ++ map makeBindFunc functions ++ [dictCon]
             labels = map (\(_, _, l, _)->l) superClasses ++ map (\(l, _, _, _)->l) functions
-            instanceSuperClassVariables = map (\(className, tvar, superType) -> Variable (idFromString $ "$instanceDict" ++ className ++ "$" ++ getNameName tvar) superType) instanceSuperClass
+            instanceSuperClassVariables = map (\(className, tvar) -> Variable (idFromString $ "$instanceDict" ++ className ++ "$" ++ getNameName tvar) $ Core.TAp (typeClassType $ idFromString className) $ Core.TVar $ idFromName tvar) instanceSuperClass
             makeBindSuper :: (String, Int, DictLabel, Core.Type) -> Bind
             makeBindSuper (cName, tag, label, t) = let
                     parentMapping :: [(String, String)]
@@ -154,13 +154,13 @@ constructDictionary importEnv instanceSuperClass combinedNames whereDecls classN
                     resolveSuperInstance :: (String, String) -> Expr
                     resolveSuperInstance (n, var)
                             -- check if the required class is already an existing parameter
-                            | (n, fst $ fromJust (find (\x -> snd x == var) parentMapping)) `elem` map (\(a, b, _) -> (a, getNameName b)) instanceSuperClass && n == cName= let 
+                            | (n, fst $ fromJust (find (\x -> snd x == var) parentMapping)) `elem` map (\(a, b) -> (a, getNameName b)) instanceSuperClass && n == cName= let 
                                         Just tvar = find (\(_, cn) -> cn == var) parentMapping
                                     in
                                             Var (idFromString $ "$instanceDict" ++ cName ++ "$" ++ fst tvar)
                             | otherwise = let
                                     -- get all the available super classes
-                                    repInstanceSuperClass = filter (\(_, v, _) -> getNameName v == rVar) instanceSuperClass
+                                    repInstanceSuperClass = filter (\(_, v) -> getNameName v == rVar) instanceSuperClass
                                     rVar = fst $ fromJust $find (\(_, cn) -> cn == var) parentMapping
                                     shortestPath :: [[a]] -> [a]
                                     shortestPath [x] = x
@@ -182,7 +182,7 @@ constructDictionary importEnv instanceSuperClass combinedNames whereDecls classN
                                     combinePath :: String -> [String] -> [(String, String)]
                                     combinePath first [] = []
                                     combinePath first (x:xs) = (first, x) : combinePath x xs
-                                    combinedPath = shortestPath $ map (\(source, _, _) -> filter (uncurry (/=)) $ combinePath source sPath) repInstanceSuperClass
+                                    combinedPath = shortestPath $ map (\(source, _) -> filter (uncurry (/=)) $ combinePath source sPath) repInstanceSuperClass
                                 in
                                     foldl 
                                         (\expr (sub, super) -> Ap (Var $ idFromString $ "$get" ++ super ++ "$" ++ sub) expr)

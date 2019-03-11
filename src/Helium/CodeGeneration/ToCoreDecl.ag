@@ -135,7 +135,7 @@ SEM Declaration
                     , Core.declType    = snd $ declarationType @lhs.fullTypeSchemes @lhs.importEnv @lhs.typeClassContext @lhs.quantorMap n
                     , Core.valueValue  =
                         addLambdas @lhs.fullTypeSchemes @lhs.importEnv @lhs.typeClassContext @lhs.quantorMap n @dictionaries
-                            ( let_ -- because guards can fail
+                            (\_ -> let_ -- because guards can fail
                                 nextClauseId Core.typeUndefined (patternMatchFail "pattern binding" @range.self)
                                 @righthandside.core
                             )
@@ -143,14 +143,14 @@ SEM Declaration
                     }
                ]
             _ -> 
-              let tp = Core.TAny
+              let patBindTp = Core.TAny
               in Core.DeclValue
                     { Core.declName    = patBindId
                     , Core.declAccess  = Core.private
-                    , Core.declType    = tp
+                    , Core.declType    = patBindTp
                     , Core.valueValue  =
                         let_ 
-                            nextClauseId tp (patternMatchFail "pattern binding" @range.self)
+                            nextClauseId patBindTp (patternMatchFail "pattern binding" @range.self)
                             @righthandside.core
                     , Core.declCustoms = [custom "type" "patternbinding"]
                     }
@@ -161,7 +161,7 @@ SEM Declaration
                     , Core.declType    = tp
                     , Core.valueValue  =
                         (let_ nextClauseId tp (patternMatchFail "pattern binding" @range.self)
-                            (patternToCore @pattern.patternTypes (patBindId, @pattern.self) (Core.Var (idFromName v)))
+                            (patternToCore @lhs.importEnv @pattern.patternTypes (patBindId, patBindTp, @pattern.self) (Core.Var (idFromName v)))
                         )
                     , Core.declCustoms = toplevelType v @lhs.importEnv @lhs.isTopLevel
                     }
@@ -274,22 +274,23 @@ ATTR FunctionBinding FunctionBindings
     |   arity : Int
     ]
 
-SEM FunctionBindings [ range : Range | | core : {Core.Expr}  ]
-    | Cons             lhs.core  = @hd.core @tl.core
+SEM FunctionBindings [ range : Range | | core : {[Core.Type] -> Core.Expr}  ]
+    | Cons             lhs.core  = \tps -> @hd.core tps $ @tl.core tps
                           .arity = @hd.arity
-    | Nil              lhs.core  = patternMatchFail "function bindings" @lhs.range
+    | Nil              lhs.core  = \_ -> patternMatchFail "function bindings" @lhs.range
                           .arity = internalError "ToCoreDecl" "FunctionBindings" "arity: empty list of function bindings"
 
-SEM FunctionBinding [ | | core : { Core.Expr -> Core.Expr } ]
+SEM FunctionBinding [ | | core : { [Core.Type] -> Core.Expr -> Core.Expr } ]
     | Hole             lhs.arity = 0
                           . core = internalError "ToCoreDecl" "FunctionBinding" "holes not supported"
     | FunctionBinding  lhs.arity = @lefthandside.arity
                        lhs.core = 
-        \nextClause ->
+        \tps nextClause ->
             let thisClause = 
                     patternsToCore
+                        @lhs.importEnv
                         @lefthandside.patternTypes
-                        (zip @lhs.ids @lefthandside.patterns)
+                        (zip3 @lhs.ids tps @lefthandside.patterns)
                         @righthandside.core in
             if all patternAlwaysSucceeds @lefthandside.patterns 
                &&
@@ -304,8 +305,8 @@ SEM FunctionBinding [ | | core : { Core.Expr -> Core.Expr } ]
     --  righthandside            : RightHandSide
 {
 
-getSuperClasses ::  ContextItems -> [(String, Name, Core.Type)]
-getSuperClasses = map (\(ContextItem_ContextItem _ n vs) -> (getNameName n, var vs, Core.TAny))
+getSuperClasses ::  ContextItems -> [(String, Name)]
+getSuperClasses = map (\(ContextItem_ContextItem _ n vs) -> (getNameName n, var vs))
     where
         var [vs] = name $ namesInType vs
         var _ = error "Type variable not a single type"
