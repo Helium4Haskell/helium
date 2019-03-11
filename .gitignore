@@ -10,4 +10,5 @@ lib/simple/*.lvm
 *.temp
 
 Develop/
+develop/
 .cabal-sandbox/

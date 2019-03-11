@@ -420,7 +420,7 @@ SEM Declaration
        lhs . classInstances = let
                                 superClasses :: [(String, Tp)]
                                 superClasses = map (\(c, tpss)-> (c, unqualify $ unquantify $ head tpss)) $ getSuperClasses @context.self
-                              in [(getNameName $ @name.self, makeTpFromType' $ head @types.self, superClasses)] 
+                              in  [(getNameName @name.self, makeTpFromType' $ convertTypeToQualified @lhs.typeConstructorsWithDefined $ head @types.self, superClasses)] 
 
        lhs . instanceEnv = M.singleton (@name.self, makeTpFromType' $ head @types.self) (namesInType (head @types.self), map (\(n, tp) -> (n, show $ head tp)) $ getSuperClasses @context.self)
     | Data  lhs . instanceEnv = M.fromList 

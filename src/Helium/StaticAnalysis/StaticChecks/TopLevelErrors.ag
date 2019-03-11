@@ -55,7 +55,7 @@ SEM Module
                                              in makeNoFunDef Fixity (filter (`notElem` list) @correctFixities) list ++ (@body.fixityButNoFunDefErrors)
 
 SEM Declaration
-  | Class   lhs . fixityButNoFunDefErrors = let list = nub (@loc.classMemberNames)
+  | Class   lhs . fixityButNoFunDefErrors = let list = nub @loc.classMemberNames
                                              in makeNoFunDef Fixity (filter (`notElem` list) (@where.fixityDefs)) list
   | Fixity  lhs . fixityDefs  = @operators.self
                                                           

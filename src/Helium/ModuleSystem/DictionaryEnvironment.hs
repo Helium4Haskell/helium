@@ -21,6 +21,7 @@ import Data.Maybe
 import Helium.Syntax.UHA_Syntax (Name)
 import Helium.Syntax.UHA_Utils (NameWithRange(..) )
 import Helium.Utils.Utils (internalError)
+import Debug.Trace
 
 
 import Top.Types
@@ -126,7 +127,7 @@ makeDictionaryTree classEnv availablePredicates currentClass curPred ps =
                                             list
                                     in if fromPredicate `elem` baseSuperClassPredicates then Just (foldr (uncurry BySuperClass) (convertPredicate ByPredicate (getSuperClassPredicate fromPredicate)) list) else Just tree 
                                 
-        _      -> case byInstance noOrderedTypeSynonyms classEnv p of
+        _      -> case byInstance {-(M.singleton "LvmLang.Int" 0, M.singleton "LvmLang.Int" (0, \_ -> TCon "Int"))-} noOrderedTypeSynonyms classEnv p of
                     Nothing -> internalError "DictionaryEnvironment" "makeDictionaryTree" ("reduction error" ++ show (M.assocs classEnv))
                     Just predicates -> 
                         do 
