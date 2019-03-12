@@ -125,8 +125,7 @@ SEM Declaration
                                    map predicateToId 
                                       (getPredicateForDecl n @lhs.dictionaryEnv)
                                 _ -> []
-                        -- TODO: Set quantorMap                   
-                        lhs.decls     = 
+                        lhs.decls     =
         case  @pattern.self of
             Pattern_Variable _ n ->
                 [ Core.DeclValue
@@ -142,8 +141,9 @@ SEM Declaration
                     , Core.declCustoms = toplevelType n @lhs.importEnv @lhs.isTopLevel
                     }
                ]
-            _ -> 
-              let patBindTp = Core.TAny
+            _ ->
+              -- TODO: Add type arguments
+              let patBindTp = findCoreType @lhs.solveResult @lhs.quantorMap @lhs.betaDeclUnique
               in Core.DeclValue
                     { Core.declName    = patBindId
                     , Core.declAccess  = Core.private
