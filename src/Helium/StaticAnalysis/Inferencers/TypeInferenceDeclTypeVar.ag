@@ -37,6 +37,9 @@ SEM Expression
   | Lambda
     -- One type variable for the function type
     patterns.betaDeclUnique = @lhs.betaDeclUnique + 1
+  | Case
+    -- One type variable for the scrutinee, one type for the right hand side
+    expression.betaDeclUnique = @lhs.betaDeclUnique + 2
 
 SEM Pattern
   | Variable

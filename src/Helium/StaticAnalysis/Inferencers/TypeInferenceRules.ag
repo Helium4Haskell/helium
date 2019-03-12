@@ -141,9 +141,9 @@ SEM Declaration
 
   | PatternBinding
       lhs           . bindingGroups = @mybdggrp : @lhs.bindingGroups
-      pattern       . betaUnique    = @lhs.betaUnique + 2
+      pattern       . betaUnique    = @lhs.betaUnique + 1
       righthandside . monos         = findMono (chead (M.keys @pattern.environment)) @lhs.inheritedBDG ++ @lhs.monos
-      loc           . betaRight     = TVar @lhs.betaUnique
+      loc           . betaRight     = TVar @lhs.betaDeclUnique
                     . newcon        = [ (@betaRight .==. @pattern.beta) @cinfo ]
                     . mybdggrp      = ( @pattern.environment
                                       , @righthandside.assumptions
@@ -154,7 +154,7 @@ SEM Declaration
                                           , listTree @mainConstraint
                                         ]
                                       )
-                    . betaMain       = TVar $ @lhs.betaUnique + 1
+                    . betaMain       = TVar $ @lhs.betaUnique
                     . mainConstraint =  if "main" `elem` map (getNameName . fst) (M.toList @pattern.environment) && (getNameName <$> @lhs.moduleName) == Just "Main" then
                                             [(@pattern.beta .==. TApp (TCon "IO") @betaMain) @cinfo]
                                         else
@@ -527,15 +527,14 @@ SEM Expression
       (loc.csetBinds, loc.assumptions) = (@patterns.environment .===. @expression.assumptions) @cinfoBind
 
   | Case
-      expression   . betaUnique  = @lhs.betaUnique + 2
       alternatives . betaLeft    = @beta'
                    . betaRight   = @beta
       loc          . assumptions = @expression.assumptions `combine` @alternatives.assumptions
                    . constraints = Node [ @newcon .<. @expression.constraints
                                         , Node @alternatives.constraintslist
                                         ]
-                   . beta        = TVar @lhs.betaUnique
-                   . beta'       = TVar (@lhs.betaUnique + 1)
+                   . beta        = TVar @lhs.betaDeclUnique
+                   . beta'       = TVar $ @lhs.betaDeclUnique + 1
                    . newcon      = [ (@expression.beta .==. @beta') @cinfo ]
 
   | Let

@@ -74,8 +74,11 @@ SEM Expression [ | | core : { Core.Expr } ]
     --  patterns                 : Patterns
     --  expression               : Expression
 
-    | Case               lhs.core = let_ caseExprId Core.TAny @expression.core @alternatives.core
+    | Case               loc.scrutineeType = findCoreType @lhs.solveResult @lhs.quantorMap $ @lhs.betaDeclUnique + 1
+                         lhs.core = let_ caseExprId @loc.scrutineeType @expression.core @alternatives.core
                          alternatives.caseRange = @range.self
+                         alternatives.scrutineeType = @loc.scrutineeType
+                         alternatives.rhsType = findCoreType @lhs.solveResult @lhs.quantorMap @lhs.betaDeclUnique
     --  range                    : Range
     --  expression               : Expression
     --  alternatives             : Alternatives
@@ -250,6 +253,7 @@ SEM Qualifier [ | | core : { Core.Expr -> Core.Expr } ]
     | Empty               lhs.core = internalError "ToCoreExpr" "Qualifier" "empty qualifiers not supported"
     --  range                    : Range
                   
+ATTR Alternatives Alternative [ scrutineeType : { Core.Type } rhsType : { Core.Type } | | ]
 SEM Alternatives [ caseRange : Range | | core : { Core.Expr } ]
     | Cons              lhs.core     = @hd.core @tl.core
     | Nil               lhs.core     = patternMatchFail "case expression" @lhs.caseRange
@@ -261,10 +265,10 @@ SEM Alternative [ | | core : { Core.Expr -> Core.Expr } ]
                                                 patternToCore
                                                     @lhs.importEnv
                                                     @pattern.patternTypes
-                                                    (caseExprId, Core.TAny, @pattern.self) 
+                                                    (caseExprId, @lhs.scrutineeType, @pattern.self) 
                                                     @righthandside.core
                                         in
-                                            let_ nextClauseId Core.TAny nextCase thisCase
+                                            let_ nextClauseId @lhs.rhsType nextCase thisCase
     --  range                    : Range
     --  pattern                  : Pattern
     --  righthandside            : RightHandSide
