@@ -23,12 +23,12 @@ SEM Patterns
 
 SEM Pattern
     | Variable              lhs.vars    = [ @name.self ]
-                            lhs.patternTypes = M.singleton @name.self $ findCoreType @lhs.solveResult @lhs.quantorMap @lhs.betaDeclUnique
+                            lhs.patternTypes = M.singleton @name.self $ findCoreType @lhs.solveResult @lhs.betaDeclUnique
     --  range                    : Range
     --  name                     : Name
 
     | As                    lhs.vars    = @name.self : @pattern.vars
-                            lhs.patternTypes = M.singleton @name.self $ findCoreType @lhs.solveResult @lhs.quantorMap @lhs.betaDeclUnique
+                            lhs.patternTypes = M.singleton @name.self $ findCoreType @lhs.solveResult @lhs.betaDeclUnique
     --  range                    : Range
     --  name                     : Name
     --  pattern                  : Pattern

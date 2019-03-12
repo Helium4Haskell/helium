@@ -252,7 +252,7 @@ constructorFieldTypes env conName tp = map (Core.typeSubstitutions $ zipWith (\(
             f idx
               | idx < 0 = Just $ args !! (-1 - idx)
               | otherwise = Nothing
-            tp' = typeToCoreType' [] f $ fn $ map Top.TVar [-1, -2 .. -arity]
+            tp' = typeToCoreTypeMapped [] f $ fn $ map Top.TVar [-1, -2 .. -arity]
           in
             getDataTypeArgs tp' remaining
     getDataTypeArgs (Core.TAp t1 t2) accum = getDataTypeArgs t1 (t2 : accum)

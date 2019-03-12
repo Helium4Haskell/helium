@@ -82,19 +82,6 @@ ATTR Body Declarations Declaration Expressions Expression Statements Statement
         importEnv : ImportEnvironment
         | | ]
 
-ATTR Declarations Declaration Expressions Expression Statements Statement
-     Qualifiers Qualifier GuardedExpressions GuardedExpression 
-     Alternatives Alternative FunctionBindings FunctionBinding
-     RightHandSide MaybeDeclarations MaybeExpression RecordExpressionBinding
-     RecordExpressionBindings Constructors Constructor Pattern Patterns
-     LeftHandSide RecordPatternBinding RecordPatternBindings
-    [ quantorMap : QuantorMap
-        | | ]
-
-SEM Body
-  | Body
-    declarations.quantorMap = []
-
 ATTR SimpleType [ | | name:Name typevariables:Names coreType: {Core.Type} ]
 
 SEM SimpleType

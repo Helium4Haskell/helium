@@ -99,7 +99,7 @@ SEM Declaration
     --  derivings                : Names
     
     | FunctionBindings  
-                        (bindings.quantorMap, loc.declType) = declarationType @lhs.fullTypeSchemes @lhs.importEnv @lhs.typeClassContext @lhs.quantorMap @bindings.name
+                        loc.declType = declarationType @lhs.fullTypeSchemes @lhs.importEnv @lhs.typeClassContext @bindings.name
                         loc.ids      = freshIds "u$" @bindings.arity
                         bindings.ids = @loc.ids
                         bindings.range = @range.self
@@ -131,7 +131,7 @@ SEM Declaration
                 [ Core.DeclValue
                     { Core.declName    = idFromName n
                     , Core.declAccess  = Core.private
-                    , Core.declType    = snd $ declarationType @lhs.fullTypeSchemes @lhs.importEnv @lhs.typeClassContext @lhs.quantorMap n
+                    , Core.declType    = declarationType @lhs.fullTypeSchemes @lhs.importEnv @lhs.typeClassContext n
                     , Core.valueValue  =
                         addLambdas @lhs.fullTypeSchemes @lhs.importEnv @lhs.typeClassContext @lhs.solveResult @lhs.betaDeclUnique n @dictionaries
                             (\_ retType -> let_ -- because guards can fail
@@ -143,7 +143,7 @@ SEM Declaration
                ]
             _ ->
               -- TODO: Add type arguments
-              let patBindTp = findCoreType @lhs.solveResult @lhs.quantorMap @lhs.betaDeclUnique
+              let patBindTp = findCoreType @lhs.solveResult @lhs.betaDeclUnique
               in Core.DeclValue
                     { Core.declName    = patBindId
                     , Core.declAccess  = Core.private
@@ -166,7 +166,7 @@ SEM Declaration
                     , Core.declCustoms = toplevelType v @lhs.importEnv @lhs.isTopLevel
                     }
                 | v <- @pattern.vars,
-                  let tp = snd $ declarationType @lhs.fullTypeSchemes @lhs.importEnv @lhs.typeClassContext @lhs.quantorMap v
+                  let tp = declarationType @lhs.fullTypeSchemes @lhs.importEnv @lhs.typeClassContext v
                 ]
                 where 
                     patBindId = idFromString ("patBind$" ++ show @lhs.patBindNr)
@@ -238,7 +238,7 @@ SEM Declaration
                                                 (getSuperClasses @context.self)
                                                 (constructFunctionMap @lhs.importEnv (length @superClasses) @name.self)
                                                 @where.whereDeclarations @name.self @loc.typeName (namesInType @loc.type)
-                                                (typeToCoreType @lhs.quantorMap $ makeTpFromType @typevariables @type)
+                                                (typeToCoreType $ makeTpFromType @typevariables @type)
                                             ] 
                         loc .   typeName = showInstanceType $ makeTpFromType @typevariables @type
                         loc .   err = error $ "Invalid class name " ++ getNameName @name.self

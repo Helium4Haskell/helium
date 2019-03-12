@@ -14,7 +14,7 @@ module Helium.CodeGeneration.CoreUtils
     ,   var, decl
     ,   float, packedString
     ,   toplevelType, declarationType, localDeclarationType
-    ,   toCoreType, toCoreTypeNotQuantified, typeToCoreType, typeToCoreType'
+    ,   toCoreType, toCoreTypeNotQuantified, typeToCoreType, typeToCoreTypeMapped
     ,   addLambdas, addLambdasForLambdaExpression, TypeClassContext(..)
     ,   findCoreType, findInstantiation
     ) where
@@ -155,25 +155,19 @@ instantiationInTypeClassInstance (TCCInstance className instanceType) (Top.Quant
   = Just (typeVarToId qmap typeVar, instanceType)
 instantiationInTypeClassInstance _ _ = Nothing
 
-mergeQuantorMaps :: QuantorMap -> QuantorMap -> QuantorMap
-mergeQuantorMaps parentMap childMap = childMap ++ parentMap
--- TODO: Remove duplicates (?)
-
-declarationType :: M.Map NameWithRange Top.TpScheme -> ImportEnvironment -> TypeClassContext -> QuantorMap -> Name -> (QuantorMap, Core.Type)
-declarationType fullTypeSchemes importEnv context qmapParent name =
+declarationType :: M.Map NameWithRange Top.TpScheme -> ImportEnvironment -> TypeClassContext -> Name -> Core.Type
+declarationType fullTypeSchemes importEnv context name =
   case declarationTpScheme fullTypeSchemes importEnv context name of
-    Just (Top.Quantification (tvars, qmap, t)) ->
+    Just ty ->
       let
-        qmap' = mergeQuantorMaps qmapParent qmap
-        ty = Top.Quantification (tvars, qmap', t)
         coreType = toCoreType ty
       in case instantiationInTypeClassInstance context ty of
-        Just (typeVar, instanceType) -> (qmap', Core.typeInstantiate typeVar instanceType coreType)
-        Nothing -> (qmap', coreType)
-    Nothing -> ([], Core.TAny)
+        Just (typeVar, instanceType) -> Core.typeInstantiate typeVar instanceType coreType
+        Nothing -> coreType
+    Nothing -> internalError "ToCoreDecl" "Declaration" ("no type found for " ++ getNameName name)
 
-findCoreType :: SolveResult a -> QuantorMap -> Int -> Core.Type
-findCoreType result qmap beta = typeToCoreType qmap $ lookupInt beta $ substitutionFromResult result
+findCoreType :: SolveResult a -> Int -> Core.Type
+findCoreType result beta = typeToCoreType $ lookupInt beta $ substitutionFromResult result
 
 toCoreType :: Top.TpScheme -> Core.Type
 toCoreType (Top.Quantification (tvars, qmap, t)) = foldr addTypeVar t' tvars
@@ -190,7 +184,7 @@ typeVarToId qmap index = case lookup index qmap of
     _ -> idFromString ("v" ++ show index)
 
 qtypeToCoreType :: Top.QuantorMap -> Top.QType -> Core.Type
-qtypeToCoreType qmap (Top.Qualification (q, t)) = foldr addDictArgument (typeToCoreType qmap t) q
+qtypeToCoreType qmap (Top.Qualification (q, t)) = foldr addDictArgument (typeToCoreType' qmap t) q
   where
     addDictArgument predicate = Core.TAp $ Core.TAp (Core.TCon Core.TConFun) arg
       where
@@ -198,21 +192,24 @@ qtypeToCoreType qmap (Top.Qualification (q, t)) = foldr addDictArgument (typeToC
 
 predicateToCoreType :: Top.QuantorMap -> Top.Predicate -> Core.Type
 predicateToCoreType qmap (Top.Predicate className tp) =
-    Core.TAp (Core.TCon $ TConTypeClassDictionary $ idFromString className) $ typeToCoreType qmap tp
+    Core.TAp (Core.TCon $ TConTypeClassDictionary $ idFromString className) $ typeToCoreType' qmap tp
 
-typeToCoreType :: Top.QuantorMap -> Top.Tp -> Core.Type
-typeToCoreType qmap t = typeToCoreType' qmap (const Nothing) t
+typeToCoreType :: Top.Tp -> Core.Type
+typeToCoreType = typeToCoreType' []
 
-typeToCoreType' :: Top.QuantorMap -> (Int -> Maybe Core.Type) -> Top.Tp -> Core.Type
-typeToCoreType' qmap f (Top.TVar index) = fromMaybe (Core.TVar $ typeVarToId qmap index) $ f index
-typeToCoreType' _ _ (Top.TCon name) = Core.TCon c
+typeToCoreType' :: Top.QuantorMap -> Top.Tp -> Core.Type
+typeToCoreType' qmap t = typeToCoreTypeMapped qmap (const Nothing) t
+
+typeToCoreTypeMapped :: Top.QuantorMap -> (Int -> Maybe Core.Type) -> Top.Tp -> Core.Type
+typeToCoreTypeMapped qmap f (Top.TVar index) = fromMaybe (Core.TVar $ typeVarToId qmap index) $ f index
+typeToCoreTypeMapped _ _ (Top.TCon name) = Core.TCon c
   where
     c = case name of
         "->" -> Core.TConFun
         '(':str
           | dropWhile (==',') str == ")" -> Core.TConTuple (length str)
         _ -> Core.TConDataType $ idFromString name
-typeToCoreType' qmap f (Top.TApp t1 t2) = Core.TAp (typeToCoreType' qmap f t1) (typeToCoreType' qmap f t2)
+typeToCoreTypeMapped qmap f (Top.TApp t1 t2) = Core.TAp (typeToCoreTypeMapped qmap f t1) (typeToCoreTypeMapped qmap f t2)
 
 toplevelType :: Name -> ImportEnvironment -> Bool -> [Custom]
 toplevelType name ie isTopLevel
@@ -224,8 +221,8 @@ toplevelType name ie isTopLevel
             show
             (M.lookup name (typeEnvironment ie))
 
-addLambdasForLambdaExpression :: ImportEnvironment -> QuantorMap -> SolveResult a -> Int -> [Id] -> ([Core.Type] -> Core.Type -> Core.Expr) -> Core.Expr
-addLambdasForLambdaExpression env qmap result beta args expr = addLambdasForType env qmap tp id args [] expr
+addLambdasForLambdaExpression :: ImportEnvironment -> SolveResult a -> Int -> [Id] -> ([Core.Type] -> Core.Type -> Core.Expr) -> Core.Expr
+addLambdasForLambdaExpression env result beta args expr = addLambdasForType env [] tp id args [] expr
   where
     tp = lookupInt beta $ substitutionFromResult result
 
@@ -244,7 +241,7 @@ addLambdas fullTypeSchemes env context solveResult beta name args expr = case de
       getTVar (Top.TVar idx) = Just idx
       getTVar _ = Nothing
       tvars' = mapMaybe getTVar instantiation
-      substitute = Core.typeSubstitutions $ zipWith (\idx typeArg -> (typeVarToId [] idx, typeToCoreType [] typeArg)) tvars instantiation
+      substitute = Core.typeSubstitutions $ zipWith (\idx typeArg -> (typeVarToId [] idx, typeToCoreType typeArg)) tvars instantiation
     in foldr (\x e -> Core.Forall (typeVarToId [] x) Core.KStar e) (addLambdasForQType env [] t substitute args expr) tvars'
 
 addLambdasForQType :: ImportEnvironment -> QuantorMap -> Top.QType -> (Core.Type -> Core.Type) -> [Id] -> ([Core.Type] -> Core.Type -> Core.Expr) -> Core.Expr
@@ -253,12 +250,12 @@ addLambdasForQType env qmap (Top.Qualification (p : ps, t)) substitute (arg:args
   Core.Lam (Core.Variable arg $ substitute $ predicateToCoreType qmap p) $ addLambdasForQType env qmap (Top.Qualification (ps, t)) substitute args expr
 
 addLambdasForType :: ImportEnvironment -> QuantorMap -> Top.Tp -> (Core.Type -> Core.Type) -> [Id] -> [Core.Type] -> ([Core.Type] -> Core.Type -> Core.Expr) -> Core.Expr
-addLambdasForType _ qmap retType substitute [] accumArgTypes expr = expr (reverse accumArgTypes) $ substitute $ typeToCoreType qmap retType
+addLambdasForType _ qmap retType substitute [] accumArgTypes expr = expr (reverse accumArgTypes) $ substitute $ typeToCoreType' qmap retType
 addLambdasForType env qmap (Top.TApp (Top.TApp (Top.TCon "->") argType) retType) substitute (arg:args) accumArgTypes expr =
   Core.Lam (Core.Variable arg tp)
     $ addLambdasForType env qmap retType substitute args (tp : accumArgTypes) expr
   where
-    tp = substitute $ typeToCoreType qmap argType
+    tp = substitute $ typeToCoreType' qmap argType
 addLambdasForType env qmap tp substitute args accumArgTypes expr =
     case tp' of
         -- Verify that the resulting type is a function type

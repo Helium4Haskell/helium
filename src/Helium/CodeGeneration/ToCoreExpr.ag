@@ -61,7 +61,7 @@ SEM Expression [ | | core : { Core.Expr } ]
 
     | Lambda             lhs.core = 
         let ids = freshIds "u$" @patterns.length
-        in addLambdasForLambdaExpression @lhs.importEnv @lhs.quantorMap @lhs.solveResult @lhs.betaDeclUnique ids
+        in addLambdasForLambdaExpression @lhs.importEnv @lhs.solveResult @lhs.betaDeclUnique ids
             (\tps retType -> 
                 let_ nextClauseId retType (patternMatchFail "lambda expression" @range.self)
                   $ patternsToCore
@@ -74,11 +74,11 @@ SEM Expression [ | | core : { Core.Expr } ]
     --  patterns                 : Patterns
     --  expression               : Expression
 
-    | Case               loc.scrutineeType = findCoreType @lhs.solveResult @lhs.quantorMap $ @lhs.betaDeclUnique + 1
+    | Case               loc.scrutineeType = findCoreType @lhs.solveResult $ @lhs.betaDeclUnique + 1
                          lhs.core = let_ caseExprId @loc.scrutineeType @expression.core @alternatives.core
                          alternatives.caseRange = @range.self
                          alternatives.scrutineeType = @loc.scrutineeType
-                         alternatives.rhsType = findCoreType @lhs.solveResult @lhs.quantorMap @lhs.betaDeclUnique
+                         alternatives.rhsType = findCoreType @lhs.solveResult @lhs.betaDeclUnique
     --  range                    : Range
     --  expression               : Expression
     --  alternatives             : Alternatives
