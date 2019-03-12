@@ -111,7 +111,7 @@ SEM Declaration
             { Core.declName    = idFromName @bindings.name
             , Core.declAccess  = Core.private
             , Core.declType    = @loc.declType
-            , Core.valueValue  = addLambdas @lhs.fullTypeSchemes @lhs.importEnv @lhs.typeClassContext @lhs.quantorMap @bindings.name (@dictionaries ++ @ids) @bindings.core
+            , Core.valueValue  = addLambdas @lhs.fullTypeSchemes @lhs.importEnv @lhs.typeClassContext @lhs.solveResult @lhs.betaDeclUnique @bindings.name (@dictionaries ++ @ids) @bindings.core
             , Core.declCustoms = toplevelType @bindings.name @lhs.importEnv (@lhs.isTopLevel || isJust @lhs.instanceName)
             }
         ]
@@ -134,9 +134,9 @@ SEM Declaration
                     , Core.declAccess  = Core.private
                     , Core.declType    = snd $ declarationType @lhs.fullTypeSchemes @lhs.importEnv @lhs.typeClassContext @lhs.quantorMap n
                     , Core.valueValue  =
-                        addLambdas @lhs.fullTypeSchemes @lhs.importEnv @lhs.typeClassContext @lhs.quantorMap n @dictionaries
-                            (\_ -> let_ -- because guards can fail
-                                nextClauseId Core.typeUndefined (patternMatchFail "pattern binding" @range.self)
+                        addLambdas @lhs.fullTypeSchemes @lhs.importEnv @lhs.typeClassContext @lhs.solveResult @lhs.betaDeclUnique n @dictionaries
+                            (\_ retType -> let_ -- because guards can fail
+                                nextClauseId retType (patternMatchFail "pattern binding" @range.self)
                                 @righthandside.core
                             )
                     , Core.declCustoms = toplevelType n @lhs.importEnv @lhs.isTopLevel
@@ -149,7 +149,7 @@ SEM Declaration
                     , Core.declAccess  = Core.private
                     , Core.declType    = patBindTp
                     , Core.valueValue  =
-                        let_ 
+                        let_ -- because guards can fail
                             nextClauseId patBindTp (patternMatchFail "pattern binding" @range.self)
                             @righthandside.core
                     , Core.declCustoms = [custom "type" "patternbinding"]
@@ -274,23 +274,23 @@ ATTR FunctionBinding FunctionBindings
     |   arity : Int
     ]
 
-SEM FunctionBindings [ range : Range | | core : {[Core.Type] -> Core.Expr}  ]
-    | Cons             lhs.core  = \tps -> @hd.core tps $ @tl.core tps
+SEM FunctionBindings [ range : Range | | core : {[Core.Type] -> Core.Type -> Core.Expr}  ]
+    | Cons             lhs.core  = \args retType -> @hd.core args retType $ @tl.core args retType
                           .arity = @hd.arity
-    | Nil              lhs.core  = \_ -> patternMatchFail "function bindings" @lhs.range
+    | Nil              lhs.core  = \_ _ -> patternMatchFail "function bindings" @lhs.range
                           .arity = internalError "ToCoreDecl" "FunctionBindings" "arity: empty list of function bindings"
 
-SEM FunctionBinding [ | | core : { [Core.Type] -> Core.Expr -> Core.Expr } ]
+SEM FunctionBinding [ | | core : { [Core.Type] -> Core.Type -> Core.Expr -> Core.Expr } ]
     | Hole             lhs.arity = 0
                           . core = internalError "ToCoreDecl" "FunctionBinding" "holes not supported"
     | FunctionBinding  lhs.arity = @lefthandside.arity
                        lhs.core = 
-        \tps nextClause ->
+        \args retType nextClause ->
             let thisClause = 
                     patternsToCore
                         @lhs.importEnv
                         @lefthandside.patternTypes
-                        (zip3 @lhs.ids tps @lefthandside.patterns)
+                        (zip3 @lhs.ids args @lefthandside.patterns)
                         @righthandside.core in
             if all patternAlwaysSucceeds @lefthandside.patterns 
                &&
@@ -298,7 +298,7 @@ SEM FunctionBinding [ | | core : { [Core.Type] -> Core.Expr -> Core.Expr } ]
             then
                 thisClause
             else
-                let_ nextClauseId Core.TAny nextClause thisClause
+                let_ nextClauseId retType nextClause thisClause
                                       
     --  range                    : Range
     --  lefthandside             : LeftHandSide

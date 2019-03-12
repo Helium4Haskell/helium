@@ -30,6 +30,8 @@ SEM Declaration
   | FunctionBindings
     -- One type variable for the function type
     bindings.betaDeclUnique = @lhs.betaDeclUnique + 1
+  | PatternBinding
+    pattern.betaDeclUnique = @lhs.betaDeclUnique + 1
 
 SEM Expression
   | Lambda

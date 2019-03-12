@@ -224,29 +224,36 @@ toplevelType name ie isTopLevel
             show
             (M.lookup name (typeEnvironment ie))
 
-addLambdasForLambdaExpression :: ImportEnvironment -> QuantorMap -> SolveResult a -> Int -> [Id] -> ([Core.Type] -> Core.Expr) -> Core.Expr
+addLambdasForLambdaExpression :: ImportEnvironment -> QuantorMap -> SolveResult a -> Int -> [Id] -> ([Core.Type] -> Core.Type -> Core.Expr) -> Core.Expr
 addLambdasForLambdaExpression env qmap result beta args expr = addLambdasForType env qmap tp id args [] expr
   where
     tp = lookupInt beta $ substitutionFromResult result
 
-addLambdas :: M.Map NameWithRange Top.TpScheme -> ImportEnvironment -> TypeClassContext -> QuantorMap -> Name -> [Id] -> ([Core.Type] -> Core.Expr) -> Core.Expr
-addLambdas fullTypeSchemes env context qmapParent name args expr = case declarationTpScheme fullTypeSchemes env context name of
+addLambdas :: M.Map NameWithRange Top.TpScheme -> ImportEnvironment -> TypeClassContext -> SolveResult a -> Int -> Name -> [Id] -> ([Core.Type] -> Core.Type -> Core.Expr) -> Core.Expr
+addLambdas fullTypeSchemes env context solveResult beta name args expr = case declarationTpScheme fullTypeSchemes env context name of
   Nothing -> internalError "ToCoreDecl" "Declaration" ("Could not find type for declaration " ++ show name)
-  Just ty@(Top.Quantification (tvars, qmap, t)) ->
+  Just ty@(Top.Quantification (tvars, _, t)) ->
     let
-      qmap' = mergeQuantorMaps qmapParent qmap
-      (tvars', substitute) = case instantiationInTypeClassInstance context ty of
-        Just (typeVar, instanceType) -> (filter (\v -> typeVarToId qmap' v /= typeVar) tvars, Core.typeSubstitute typeVar instanceType)
-        Nothing -> (tvars, id)
-    in foldr (\x e -> Core.Forall (typeVarToId qmap' x) Core.KStar e) (addLambdasForQType env qmap' t substitute args expr) tvars'
+      -- When a binding is annotated with a type, it may have different type variables in the signature
+      -- and the body. We use the type variables from the body. We construct a mapping of type variables
+      -- of the signatures to type variables used in the body.
+      -- Furthermore, in an instance declaration of a type class, a type variable is instantiated with the type
+      -- for which the class is implemented. Eg `a -> String` becomes `Int -> String`.
+      typeCorrectTVars = lookupInt beta $ substitutionFromResult solveResult
+      instantiation = findInstantiation name env ty typeCorrectTVars
+      getTVar (Top.TVar idx) = Just idx
+      getTVar _ = Nothing
+      tvars' = mapMaybe getTVar instantiation
+      substitute = Core.typeSubstitutions $ zipWith (\idx typeArg -> (typeVarToId [] idx, typeToCoreType [] typeArg)) tvars instantiation
+    in foldr (\x e -> Core.Forall (typeVarToId [] x) Core.KStar e) (addLambdasForQType env [] t substitute args expr) tvars'
 
-addLambdasForQType :: ImportEnvironment -> QuantorMap -> Top.QType -> (Core.Type -> Core.Type) -> [Id] -> ([Core.Type] -> Core.Expr) -> Core.Expr
+addLambdasForQType :: ImportEnvironment -> QuantorMap -> Top.QType -> (Core.Type -> Core.Type) -> [Id] -> ([Core.Type] -> Core.Type -> Core.Expr) -> Core.Expr
 addLambdasForQType env qmap (Top.Qualification ([], t)) substitute args expr = addLambdasForType env qmap t substitute args [] expr
 addLambdasForQType env qmap (Top.Qualification (p : ps, t)) substitute (arg:args) expr =
   Core.Lam (Core.Variable arg $ substitute $ predicateToCoreType qmap p) $ addLambdasForQType env qmap (Top.Qualification (ps, t)) substitute args expr
 
-addLambdasForType :: ImportEnvironment -> QuantorMap -> Top.Tp -> (Core.Type -> Core.Type) -> [Id] -> [Core.Type] -> ([Core.Type] -> Core.Expr) -> Core.Expr
-addLambdasForType _ _ _ _ [] accumArgTypes expr = expr $ reverse accumArgTypes
+addLambdasForType :: ImportEnvironment -> QuantorMap -> Top.Tp -> (Core.Type -> Core.Type) -> [Id] -> [Core.Type] -> ([Core.Type] -> Core.Type -> Core.Expr) -> Core.Expr
+addLambdasForType _ qmap retType substitute [] accumArgTypes expr = expr (reverse accumArgTypes) $ substitute $ typeToCoreType qmap retType
 addLambdasForType env qmap (Top.TApp (Top.TApp (Top.TCon "->") argType) retType) substitute (arg:args) accumArgTypes expr =
   Core.Lam (Core.Variable arg tp)
     $ addLambdasForType env qmap retType substitute args (tp : accumArgTypes) expr
@@ -270,17 +277,18 @@ applyTypeSynonym env tp@(Top.TCon name) tps = case M.lookup (nameFromString name
             applyTypeSynonym env tp' tps'
     _ -> foldl (Top.TApp) tp tps
 applyTypeSynonym env (Top.TApp t1 t2) tps = applyTypeSynonym env t1 (t2 : tps)
+applyTypeSynonym env (Top.TVar a) tps = foldl (Top.TApp) (Top.TVar a) tps
 
-findInstantiation :: ImportEnvironment -> QuantorMap -> Top.TpScheme -> Top.Tp -> [Core.Type]
-findInstantiation importEnv qmap (Top.Quantification (tvars, _, Top.Qualification (_, tLeft))) tRight
-  = fmap (\a -> fromMaybe typeUnit $ lookup a instantiations) tvars
+findInstantiation :: Name -> ImportEnvironment -> Top.TpScheme -> Top.Tp -> [Top.Tp]
+findInstantiation name importEnv (Top.Quantification (tvars, _, Top.Qualification (_, tLeft))) tRight
+  = fmap (\a -> fromMaybe (Top.TCon "()") $ lookup a instantiations) tvars
   where
-    instantiations = traverse tLeft tRight
-    traverse :: Top.Tp -> Top.Tp -> [(Int, Core.Type)]
-    traverse (Top.TVar a) t2 = [(a, typeToCoreType qmap t2)]
-    traverse (Top.TCon _) _ = []
+    instantiations = traverse tLeft tRight []
+    traverse :: Top.Tp -> Top.Tp -> [(Int, Top.Tp)] -> [(Int, Top.Tp)]
+    traverse (Top.TVar a) t2 = ((a, t2) :)
+    traverse (Top.TCon _) _ = id
     traverse t1 t2 = traverseNoTypeSynonym (applyTypeSynonym importEnv t1 []) (applyTypeSynonym importEnv t2 [])
-    traverseNoTypeSynonym :: Top.Tp -> Top.Tp -> [(Int, Core.Type)]
+    traverseNoTypeSynonym :: Top.Tp -> Top.Tp -> [(Int, Top.Tp)] -> [(Int, Top.Tp)]
     traverseNoTypeSynonym (Top.TApp tl1 tl2) (Top.TApp tr1 tr2) =
-      traverseNoTypeSynonym tl1 tr1 ++ traverse tl2 tr2
+      traverseNoTypeSynonym tl1 tr1 . traverse tl2 tr2
     traverseNoTypeSynonym t1 t2 = traverse t1 t2

@@ -61,13 +61,14 @@ SEM Expression [ | | core : { Core.Expr } ]
 
     | Lambda             lhs.core = 
         let ids = freshIds "u$" @patterns.length
-        in let_ nextClauseId Core.typeUndefined (patternMatchFail "lambda expression" @range.self)
-            $ addLambdasForLambdaExpression @lhs.importEnv @lhs.quantorMap @lhs.solveResult @lhs.betaDeclUnique ids
-            (\tps -> patternsToCore
-                @lhs.importEnv
-                @patterns.patternTypes
-                (zip3 ids tps @patterns.self) 
-                @expression.core)
+        in addLambdasForLambdaExpression @lhs.importEnv @lhs.quantorMap @lhs.solveResult @lhs.betaDeclUnique ids
+            (\tps retType -> 
+                let_ nextClauseId retType (patternMatchFail "lambda expression" @range.self)
+                  $ patternsToCore
+                    @lhs.importEnv
+                    @patterns.patternTypes
+                    (zip3 ids tps @patterns.self) 
+                    @expression.core)
 
     --  range                    : Range
     --  patterns                 : Patterns
