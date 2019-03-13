@@ -76,6 +76,8 @@ satExpr env expr
         -> Lam var (satExpr env e)
       Forall x k e
         -> Forall x k $ satExpr env e
+      ApType e t
+        -> ApType (satExpr env e) t
       _
         -> let expr'  = satExprSimple env expr
            in addLam env  (requiredArgs env expr') expr'
@@ -94,6 +96,7 @@ satExprSimple env expr
       Match _ _   -> satExpr env expr
       Lam _ _     -> satExpr env expr
       Forall _ _ _ -> satExpr env expr
+      ApType e t  -> ApType (satExpr env e) t
       Ap e1 e2    -> let (env1,env2) = splitEnv env
                      in  Ap (satExprSimple env1 e1) (satExpr env2 e2)
       _           -> expr

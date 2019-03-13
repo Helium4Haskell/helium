@@ -13,10 +13,10 @@ module Helium.CodeGeneration.CoreUtils
     ,   cons, nil
     ,   var, decl
     ,   float, packedString
-    ,   toplevelType, declarationType, localDeclarationType
+    ,   toplevelType, declarationType, declarationTypeInPattern, addToTypeEnv
     ,   toCoreType, toCoreTypeNotQuantified, typeToCoreType, typeToCoreTypeMapped
     ,   addLambdas, addLambdasForLambdaExpression, TypeClassContext(..)
-    ,   findCoreType, findInstantiation
+    ,   findCoreType, createInstantiation
     ) where
 import Debug.Trace
 import Top.Types as Top
@@ -120,6 +120,9 @@ float f =
         (Core.Var (idFromString "$primStringToFloat")) 
         ( Core.Lit (Core.LitBytes (bytesFromString f)) )
 
+addToTypeEnv :: TypeEnvironment -> [(Name, TpScheme)] -> TypeEnvironment
+addToTypeEnv = foldr (\(name, tpScheme) env -> M.insert name tpScheme env)
+
 decl :: Bool -> String -> Core.Type -> Expr -> CoreDecl
 decl isPublic x t e = 
     DeclValue 
@@ -142,11 +145,6 @@ declarationTpScheme :: M.Map NameWithRange Top.TpScheme -> ImportEnvironment -> 
 declarationTpScheme fullTypeSchemes _ TCCNone name = M.lookup (NameWithRange name) fullTypeSchemes
 declarationTpScheme _ importEnv _ name = M.lookup name (typeEnvironment importEnv)
 
-localDeclarationType :: M.Map NameWithRange Top.TpScheme -> Name -> Core.Type
-localDeclarationType fullTypeSchemes name = case M.lookup (NameWithRange name) fullTypeSchemes of
-  Just scheme -> toCoreType scheme
-  Nothing -> trace ("Could not find type for local variable " ++ getNameName name) Core.TAny
-
 -- Finds the instantiation of a declaration in a type class instance.
 -- E.g. Num a => a -> a
 -- For a function in an instance for `Num Int` this will return (a, Int)
@@ -155,16 +153,26 @@ instantiationInTypeClassInstance (TCCInstance className instanceType) (Top.Quant
   = Just (typeVarToId qmap typeVar, instanceType)
 instantiationInTypeClassInstance _ _ = Nothing
 
-declarationType :: M.Map NameWithRange Top.TpScheme -> ImportEnvironment -> TypeClassContext -> Name -> Core.Type
+declarationType :: M.Map NameWithRange Top.TpScheme -> ImportEnvironment -> TypeClassContext -> Name -> (Top.TpScheme, Core.Type)
 declarationType fullTypeSchemes importEnv context name =
   case declarationTpScheme fullTypeSchemes importEnv context name of
     Just ty ->
       let
         coreType = toCoreType ty
       in case instantiationInTypeClassInstance context ty of
-        Just (typeVar, instanceType) -> Core.typeInstantiate typeVar instanceType coreType
-        Nothing -> coreType
+        Just (typeVar, instanceType) -> (ty, Core.typeInstantiate typeVar instanceType coreType)
+        Nothing -> (ty, coreType)
     Nothing -> internalError "ToCoreDecl" "Declaration" ("no type found for " ++ getNameName name)
+
+declarationTypeInPattern :: M.Map NameWithRange Top.TpScheme -> ImportEnvironment -> SolveResult a -> Name -> Int -> (Top.TpScheme, Core.Type)
+declarationTypeInPattern fullTypeSchemes importEnv result name beta = 
+  case declarationTpScheme fullTypeSchemes importEnv TCCNone name of
+    Just scheme -> (scheme, toCoreType scheme)
+    Nothing ->
+      let
+        ty = lookupInt beta $ substitutionFromResult result
+        scheme = Top.Quantification ([], [], (Top.Qualification ([], ty)))
+      in (scheme, typeToCoreType ty)
 
 findCoreType :: SolveResult a -> Int -> Core.Type
 findCoreType result beta = typeToCoreType $ lookupInt beta $ substitutionFromResult result
@@ -237,7 +245,7 @@ addLambdas fullTypeSchemes env context solveResult beta name args expr = case de
       -- Furthermore, in an instance declaration of a type class, a type variable is instantiated with the type
       -- for which the class is implemented. Eg `a -> String` becomes `Int -> String`.
       typeCorrectTVars = lookupInt beta $ substitutionFromResult solveResult
-      instantiation = findInstantiation name env ty typeCorrectTVars
+      instantiation = findInstantiation env ty typeCorrectTVars
       getTVar (Top.TVar idx) = Just idx
       getTVar _ = Nothing
       tvars' = mapMaybe getTVar instantiation
@@ -276,8 +284,16 @@ applyTypeSynonym env tp@(Top.TCon name) tps = case M.lookup (nameFromString name
 applyTypeSynonym env (Top.TApp t1 t2) tps = applyTypeSynonym env t1 (t2 : tps)
 applyTypeSynonym env (Top.TVar a) tps = foldl (Top.TApp) (Top.TVar a) tps
 
-findInstantiation :: Name -> ImportEnvironment -> Top.TpScheme -> Top.Tp -> [Top.Tp]
-findInstantiation name importEnv (Top.Quantification (tvars, _, Top.Qualification (_, tLeft))) tRight
+createInstantiation :: ImportEnvironment -> TypeEnvironment -> SolveResult a -> Name -> Int -> Core.Expr
+createInstantiation importEnv typeEnv solveResult name beta = case M.lookup name typeEnv of
+  Nothing -> expr
+  Just scheme -> foldl (\e t -> Core.ApType e $ typeToCoreType t) expr $ findInstantiation importEnv scheme tp
+  where
+    expr = Core.Var $ idFromName name
+    tp = lookupInt beta $ substitutionFromResult solveResult
+
+findInstantiation :: ImportEnvironment -> Top.TpScheme -> Top.Tp -> [Top.Tp]
+findInstantiation importEnv (Top.Quantification (tvars, _, Top.Qualification (_, tLeft))) tRight
   = fmap (\a -> fromMaybe (Top.TCon "()") $ lookup a instantiations) tvars
   where
     instantiations = traverse tLeft tRight []

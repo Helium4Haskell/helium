@@ -7,7 +7,7 @@ ATTR Patterns
 ATTR Pattern Patterns
     [   
     | 
-    |   vars USE { ++ } { [] } : { [Name] }
+    |   vars USE { ++ } { [] } : { [(Name, TpScheme)] }
     ]
 
 ATTR LeftHandSide Pattern Patterns
@@ -22,12 +22,14 @@ SEM Patterns
     
 
 SEM Pattern
-    | Variable              lhs.vars    = [ @name.self ]
-                            lhs.patternTypes = M.singleton @name.self $ findCoreType @lhs.solveResult @lhs.betaDeclUnique
+    | Variable              (loc.tpScheme, loc.coreType) = declarationTypeInPattern @lhs.fullTypeSchemes @lhs.importEnv @lhs.solveResult @name.self @lhs.betaDeclUnique
+                            lhs.vars    = [ (@name.self, @loc.tpScheme) ]
+                            lhs.patternTypes = M.singleton @name.self @loc.coreType
     --  range                    : Range
     --  name                     : Name
 
-    | As                    lhs.vars    = @name.self : @pattern.vars
+    | As                    (loc.tpScheme, loc.coreType) = declarationTypeInPattern @lhs.fullTypeSchemes @lhs.importEnv @lhs.solveResult @name.self @lhs.betaDeclUnique
+                            lhs.vars    = (@name.self, @loc.tpScheme) : @pattern.vars
                             lhs.patternTypes = M.singleton @name.self $ findCoreType @lhs.solveResult @lhs.betaDeclUnique
     --  range                    : Range
     --  name                     : Name

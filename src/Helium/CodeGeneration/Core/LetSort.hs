@@ -48,6 +48,8 @@ lsExpr expr
         -> Con (ConTag (lsExpr tag) arity)
       Forall x k e
         -> Forall x k $ lsExpr e
+      ApType e t
+        -> ApType (lsExpr e) t
       _
         -> expr
 

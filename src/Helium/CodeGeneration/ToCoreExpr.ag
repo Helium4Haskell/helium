@@ -15,7 +15,7 @@ SEM Expression [ | | core : { Core.Expr } ]
     --  range                    : Range
     --  literal                  : Literal
 
-    | Variable           lhs.core = insertDictionaries @name.self @lhs.dictionaryEnv                     
+    | Variable           lhs.core = insertDictionaries @name.self @lhs.dictionaryEnv $ createInstantiation @lhs.importEnv @lhs.typeEnv @lhs.solveResult @name.self @lhs.betaDeclUnique
     --  range                    : Range
     --  name                     : Name
 
@@ -40,8 +40,9 @@ SEM Expression [ | | core : { Core.Expr } ]
         case (@leftExpression.core, @rightExpression.core) of
             (Nothing, Nothing) -> @operator.core
             (Just l , Nothing) -> Core.Ap @operator.core l
-            (Nothing, Just r ) -> Core.Lam (Core.Variable parameterId Core.TAny)
-                                    (foldl Core.Ap @operator.core [Core.Var parameterId, r])
+            (Nothing, Just r ) ->
+                addLambdasForLambdaExpression @lhs.importEnv @lhs.solveResult @lhs.betaDeclUnique [parameterId]
+                    (\_ _ -> Core.Ap (Core.Ap @operator.core $ Core.Var parameterId) r)
             {-
                 -- At most one new variable is needed. Consider
                 --  (. (+ 3))  ==  \x -> (.) x (\x -> (+) x 3)
@@ -91,7 +92,8 @@ SEM Expression [ | | core : { Core.Expr } ]
     --  declarations             : Declarations
     --  expression               : Expression
 
-    | Do                 lhs.core = let_ (idFromString "$monadDict") Core.TAny (dictionaryTreeToCore $ head $ getDictionaryTrees @loc.name @lhs.dictionaryEnv) $ chainCode @statements.core
+    | Do                 loc.monadType = findCoreType @lhs.solveResult @lhs.betaDeclUnique
+                         lhs.core = let_ (idFromString "$monadDict") (Core.TAp (Core.TCon $ Core.TConTypeClassDictionary $ idFromString "Monad") @loc.monadType) (dictionaryTreeToCore $ head $ getDictionaryTrees @loc.name @lhs.dictionaryEnv) $ chainCode @statements.core
                          loc.name = setNameRange (nameFromString $ "do-" ++ show @range.self) @range.self
     --  range                    : Range
     --  statements               : Statements
@@ -113,7 +115,8 @@ SEM Expression [ | | core : { Core.Expr } ]
     --  range                    : Range
     --  expressions              : Expressions
 
-    | Comprehension      lhs.core = 
+    | Comprehension      qualifiers.coreType = findCoreType @lhs.solveResult @lhs.betaDeclUnique
+                         lhs.core = 
         let singleton x = cons x nil
         in foldr ($) (singleton @expression.core) @qualifiers.core
     --  range                    : Range
@@ -126,7 +129,7 @@ SEM Expression [ | | core : { Core.Expr } ]
     --  type                     : Type
 
     -- negate is overloaded and we need to insert a dictionary argument
-    | Negate             lhs.core = insertDictionaries (setNameRange intUnaryMinusName @range.self) @lhs.dictionaryEnv                  
+    | Negate             lhs.core = insertDictionaries' (setNameRange intUnaryMinusName @range.self) @lhs.dictionaryEnv                  
                                     `app_` @expression.core 
     --  range                    : Range
     --  expression               : Expression
@@ -140,16 +143,16 @@ SEM Expression [ | | core : { Core.Expr } ]
     | Enum               lhs.core = 
             case (@then.core, @to.core) of
                 (Just then_, Just to) -> 
-                    insertDictionaries (setNameRange enumFromThenToName @range.self) @lhs.dictionaryEnv
+                    insertDictionaries' (setNameRange enumFromThenToName @range.self) @lhs.dictionaryEnv
                        `app_` @from.core `app_` then_ `app_` to
                 (Just then_, Nothing) -> 
-                    insertDictionaries (setNameRange enumFromThenName @range.self) @lhs.dictionaryEnv
+                    insertDictionaries' (setNameRange enumFromThenName @range.self) @lhs.dictionaryEnv
                        `app_` @from.core `app_` then_
                 (Nothing, Just to) ->
-                    insertDictionaries (setNameRange enumFromToName @range.self) @lhs.dictionaryEnv 
+                    insertDictionaries' (setNameRange enumFromToName @range.self) @lhs.dictionaryEnv 
                        `app_` @from.core `app_` to
                 (Nothing, Nothing) ->
-                    insertDictionaries (setNameRange enumFromName @range.self) @lhs.dictionaryEnv
+                    insertDictionaries' (setNameRange enumFromName @range.self) @lhs.dictionaryEnv
                        `app_` @from.core
                     
     --  range                    : Range
@@ -170,11 +173,12 @@ SEM Expression [ | | core : { Core.Expr } ]
 ATTR Statements [ | | core USE { : } { [] } : { [Maybe Core.Expr -> Core.Expr] } ]
 
 SEM Statement [ | | core : { Maybe Core.Expr -> Core.Expr } ]
-    | Expression          lhs.core =
+    | Expression          loc.argType = findCoreType @lhs.solveResult @lhs.betaDeclUnique
+                          lhs.core =
             \theRest -> 
                 case theRest of
                     Nothing   -> @expression.core
-                    Just rest -> bind (Core.Var $ idFromString "$monadDict") @expression.core (Core.Lam (Core.Variable dummyId Core.TAny) rest)
+                    Just rest -> bind (Core.Var $ idFromString "$monadDict") @expression.core (Core.Lam (Core.Variable dummyId @loc.argType) rest)
     --  range                    : Range
     --  expression               : Expression
 
@@ -191,11 +195,12 @@ SEM Statement [ | | core : { Maybe Core.Expr -> Core.Expr } ]
     -- let _nextClause = <throw exception> in
     -- let _ok = \_misc -> case _misc of { pattern -> ...; _ -> _nextClause }
     -- in expression >>= ok
-    | Generator           lhs.core =
+    | Generator           loc.argType = let (TVar beta) = @pattern.beta in findCoreType @lhs.solveResult beta
+                          lhs.core =
         \theRest -> case theRest of
             Nothing   -> internalError "ToCoreExpr" "Statement" "generator can't be last in 'do'"
             Just rest -> 
-               Core.Ap (Core.Ap (Core.Ap (Core.Var $ idFromString ">>=") (Core.Var $ idFromString "$monadDict")) @expression.core) (Core.Lam (Core.Variable parameterId Core.TAny) (patternToCore @lhs.importEnv @pattern.patternTypes (parameterId, Core.TAny, @pattern.self) rest))       
+               Core.Ap (Core.Ap (Core.Ap (Core.Var $ idFromString ">>=") (Core.Var $ idFromString "$monadDict")) @expression.core) (Core.Lam (Core.Variable parameterId @loc.argType) (patternToCore @lhs.importEnv @pattern.patternTypes (parameterId, @loc.argType, @pattern.self) rest))       
 
     --  range                    : Range
     --  pattern                  : Pattern
@@ -210,7 +215,7 @@ SEM Statement [ | | core : { Maybe Core.Expr -> Core.Expr } ]
                     Just rest -> rest
     --  range                    : Range
 
-
+ATTR Qualifiers Qualifier [ coreType : { Core.Type } | | ]
 
 ATTR Qualifiers [ | | core USE { : } { [] } : { [Core.Expr -> Core.Expr] } ]
 
@@ -230,13 +235,14 @@ SEM Qualifier [ | | core : { Core.Expr -> Core.Expr } ]
     -- let _ok = \_misc -> case _misc of { pattern -> ...; _ -> _nextClause }
     -- in concatMap _ok expression
 
-    | Generator           lhs.core = 
+    | Generator           loc.argType = let (TVar beta) = @pattern.beta in findCoreType @lhs.solveResult beta
+                          lhs.core = 
         \continue ->  
-            let_ nextClauseId Core.typeEmptyArray nil
+            let_ nextClauseId @lhs.coreType nil
                 (let_ 
-                    okId Core.TAny
-                    (Core.Lam (Core.Variable parameterId Core.TAny)
-                        (patternToCore @lhs.importEnv @pattern.patternTypes (parameterId, Core.TAny, @pattern.self) continue)
+                    okId (Core.typeFunction [@loc.argType] @lhs.coreType)
+                    (Core.Lam (Core.Variable parameterId @loc.argType)
+                        (patternToCore @lhs.importEnv @pattern.patternTypes (parameterId, @loc.argType, @pattern.self) continue)
                     )
                     (var "$primConcatMap"
                         `app_` Core.Var okId 

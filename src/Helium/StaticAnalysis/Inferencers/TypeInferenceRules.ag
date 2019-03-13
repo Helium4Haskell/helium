@@ -461,16 +461,16 @@ SEM Expression
 
   | Variable
       lhs . betaUnique  = snd @updatedType
-      loc . updatedType = maybe (undefined, @lhs.betaUnique + 1) (freshen (@lhs.betaUnique + 1) . unquantify) 
+      loc . updatedType = maybe (undefined, @lhs.betaUnique) (freshen (@lhs.betaUnique) . unquantify) 
                             $ M.lookup @name.self $ typeEnvironment @lhs.importEnvironment
       
       loc . assumptions = @name.self `single` @beta
           . constraints = if isJust (M.lookup @name.self $ typeEnvironment @lhs.importEnvironment) then  
                                 let (preds, tp) = split (fst @updatedType) in
-                                Node $ [[(@beta .==. tp) @cinfo] .>. Node[], Receive @lhs.betaUnique] ++ [(unitTree $ TC2 $ Prove p @cinfo) | p <- preds ]
+                                Node $ [[(@beta .==. tp) @cinfo] .>. Node[], Receive @lhs.betaDeclUnique] ++ [(unitTree $ TC2 $ Prove p @cinfo) | p <- preds ]
                             else 
-                                Node [ Receive @lhs.betaUnique ]
-          . beta        = TVar @lhs.betaUnique
+                                Node [ Receive @lhs.betaDeclUnique ]
+          . beta        = TVar @lhs.betaDeclUnique
   | Hole
       lhs . betaUnique  = @lhs.betaUnique + 1
       loc . assumptions = noAssumptions
@@ -488,15 +488,15 @@ SEM Expression
                . newcon      = [ (@function.beta .==. foldr (.->.) @beta @arguments.betas) @cinfo ]
 
   | InfixApplication
-      leftExpression . betaUnique  = @lhs.betaUnique + 2
+      leftExpression . betaUnique  = @lhs.betaUnique + 1
       loc            . assumptions = @leftExpression.assumptions `combine` @operator.assumptions `combine` @rightExpression.assumptions
                      . constraints = @conTotal .>.
                                      Node [ @operator.constraints
                                           , @leftExpression.constraints
                                           , @rightExpression.constraints
                                           ]
-                     . beta        = TVar @lhs.betaUnique
-                     . betaResOp   = TVar (@lhs.betaUnique + 1)
+                     . beta        = TVar @lhs.betaDeclUnique
+                     . betaResOp   = TVar @lhs.betaUnique
                      . conOperator = (@operator.beta .==. @leftExpression.beta .->. @rightExpression.beta .->. @betaResOp) @cinfoOperator
                      . conTotal    = case (@leftExpression.section,@rightExpression.section) of
                                             (False,False) -> [ @conOperator, (@betaResOp     .==. @beta)                        @cinfoComplete     ]
@@ -550,16 +550,16 @@ SEM Expression
 
   | Do
       lhs        . constraints   = Node [ @newcon .<. @statements.constraints ]
-      statements . betaUnique    = @lhs.betaUnique + 3
+      statements . betaUnique    = @lhs.betaUnique + 2
                  . generatorBeta = Nothing
                  . assumptions   = noAssumptions
                  . monadBeta     = @loc.betaMonad
       loc        . assumptions   = @statements.assumptions
                  . constraints   = emptyTree
                  . beta          = TVar @lhs.betaUnique
-                 . betaMonad     = TVar $ @lhs.betaUnique + 1
-                 . betaVar       = TVar $ @lhs.betaUnique + 2
-                 . betaReturn    = TVar $ @lhs.betaUnique + 3
+                 . betaMonad     = TVar $ @lhs.betaDeclUnique
+                 . betaVar       = TVar $ @lhs.betaUnique + 1
+                 . betaReturn    = TVar $ @lhs.betaUnique + 2
                  . monadPredicate = Predicate "Monad" @betaMonad
                  . monadType     = TApp @betaMonad @betaVar
                  . monadBeta     = quantify [] ([@monadPredicate] .=>. @monadType)
@@ -593,14 +593,13 @@ SEM Expression
                  . conExpr     = [ (@expression.beta !::! @typeScheme) @lhs.monos @cinfoExpr ]
 
   | Comprehension
-      expression . betaUnique  = @lhs.betaUnique + 1
-                 . monos       = @qualifiers.monos
+      expression . monos       = @qualifiers.monos
       qualifiers . assumptions = @expression.assumptions
                  . constraints = @expression.constraints
                  . monos       = @lhs.monos
       loc        . assumptions = @qualifiers.assumptions
                  . constraints = @newcon .>. Node [ @qualifiers.constraints ]
-                 . beta        = TVar @lhs.betaUnique
+                 . beta        = TVar @lhs.betaDeclUnique
                  . newcon      = [ (listType @expression.beta .==. @beta) @cinfo ]
 
   | Enum
@@ -694,50 +693,43 @@ SEM GuardedExpressions
 -- Type Inferencing : Pattern
 
 ATTR Pattern Patterns [ monos:Monos | betaUnique:Int | environment:PatternAssumptions ]
-ATTR Pattern          [ | | beta:Tp constraints:ConstraintSet ]
+ATTR Pattern          [ | | constraints:ConstraintSet ]
 ATTR         Patterns [ | | betas:Tps constraintslist:ConstraintSets numberOfPatterns:Int ]
 
 SEM Pattern
   | Hole
-      lhs . betaUnique  = @lhs.betaUnique + 1
-          . environment = noAssumptions
+      lhs . environment = noAssumptions
       loc . constraints = emptyTree
-          . beta        = TVar @lhs.betaUnique
 
   | Literal
-      lhs . betaUnique  = @lhs.betaUnique + 1
-          . environment = noAssumptions
+      lhs . environment = noAssumptions
       loc . constraints = unitTree ((@literal.literalType .==. @beta) @cinfo)
-          . beta        = TVar @lhs.betaUnique
 
   | Variable
       lhs . environment = M.singleton @name.self @beta
       loc . constraints = Receive @lhs.betaDeclUnique
-          . beta        = TVar @lhs.betaDeclUnique
 
   | InfixConstructor
       lhs         . environment    = @leftPattern.environment `M.union` @rightPattern.environment
-      leftPattern . betaUnique     = @lhs.betaUnique + 2
+      leftPattern . betaUnique     = @lhs.betaUnique + 1
       loc         . constraints    = @conApply .>.
                                      Node [ listTree @conConstructor
                                           , @leftPattern.constraints
                                           , @rightPattern.constraints
                                           ]
-                  . beta           = TVar @lhs.betaUnique
-                  . betaCon        = TVar (@lhs.betaUnique + 1)
+                  . betaCon        = TVar @lhs.betaUnique
                   . conApply       = [ (@betaCon .==. @leftPattern.beta .->. @rightPattern.beta .->. @beta) @cinfoApply ]
                   . conConstructor = case M.lookup @constructorOperator.self (valueConstructors @lhs.importEnvironment) of
                                         Nothing  -> []
                                         Just ctp -> [ (@betaCon .::. ctp) @cinfoConstructor ]
 
   | Constructor
-      patterns . betaUnique     = @lhs.betaUnique + 2
+      patterns . betaUnique     = @lhs.betaUnique + 1
       loc      . constraints    = @conApply .>.
                                   Node [ listTree @conConstructor
                                        , Node @patterns.constraintslist
                                        ]
-               . beta           = TVar (@lhs.betaUnique)
-               . betaCon        = TVar (@lhs.betaUnique + 1)
+               . betaCon        = TVar @lhs.betaUnique
                . conApply       = [ (@betaCon .==. foldr (.->.) @beta @patterns.betas)
                                     (if @patterns.numberOfPatterns == 0  then @cinfoEmpty else @cinfoApply) ]
                . conConstructor = case M.lookup @name.self (valueConstructors @lhs.importEnvironment) of
@@ -750,35 +742,27 @@ SEM Pattern
                               Node [ Receive @lhs.betaDeclUnique
                                    , @pattern.constraints
                                    ]
-              . beta        = TVar @lhs.betaDeclUnique
               . newcon      = [ (@beta .==. @pattern.beta) @cinfo ]
 
   | Wildcard
-      lhs . betaUnique  = @lhs.betaUnique + 1
-          . environment = noAssumptions
+      lhs . environment = noAssumptions
       loc . constraints = emptyTree
-          . beta        = TVar @lhs.betaUnique
 
   | List
-      patterns . betaUnique   = @lhs.betaUnique + 2
+      patterns . betaUnique   = @lhs.betaUnique + 1
       loc      . constraints  = @newcon .>.
                                 Node (zipWith3 @zipf @patterns.betas [0..] @patterns.constraintslist)
-               . beta         = TVar @lhs.betaUnique
-               . beta'        = TVar (@lhs.betaUnique + 1)
+               . beta'        = TVar @lhs.betaUnique
                . newcon       = [ (listType @beta' .==. @beta) @cinfoResult ]
                . zipf         = \tp elemNr ctree -> [ (tp .==. @beta') (@cinfoElem elemNr) ] .<. ctree
 
   | Tuple
-      patterns . betaUnique  = @lhs.betaUnique + 1
       loc      . constraints = @newcon .>. Node @patterns.constraintslist
-               . beta        = TVar @lhs.betaUnique
                . newcon      = [ (tupleType @patterns.betas .==. @beta) @cinfo ]
 
   | Negate
-      lhs . betaUnique  = @lhs.betaUnique + 1
-          . environment = noAssumptions
+      lhs . environment = noAssumptions
       loc . constraints = listTree @newcon
-          . beta        = TVar @lhs.betaUnique
           . newcon      = -- The parser only accepts a literal after '-' in a Pattern
                           -- search for the type of 'negate' in the import envionment: otherwise use the default type.
                           let standard = makeScheme [] [Predicate "Num" (TVar 0)] (TVar 0 .->. TVar 0)
@@ -787,10 +771,8 @@ SEM Pattern
 
 {- only if type inferencing without overloading -}
   | NegateFloat
-      lhs . betaUnique  = @lhs.betaUnique + 1
-          . environment = noAssumptions
+      lhs . environment = noAssumptions
       loc . constraints = listTree @newcon
-          . beta        = TVar @lhs.betaUnique
           . newcon      = -- The parser only accepts a literal after '-.' in a Pattern
                           [ (floatType .==. @beta) @cinfo ]
 
@@ -858,12 +840,12 @@ SEM Statement
       lhs        . generatorBeta  = Just @beta
                  . assumptions    = @lhs.assumptions `combine` @expression.assumptions
                  . constraints    = @locConstraints
-      expression . betaUnique     = @lhs.betaUnique + 2
+      expression . betaUnique     = @lhs.betaUnique
       loc        . locConstraints = Node [ @newcon .<. @expression.constraints
                                          , @lhs.constraints
                                          ]
                  . beta           = TVar @lhs.betaUnique
-                 . betaRes        = TVar $ @lhs.betaUnique + 1
+                 . betaRes        = TVar @lhs.betaDeclUnique
                  . newcon         = [ (@expression.beta .==. @beta) @cinfo, (@beta .==. TApp @lhs.monadBeta @betaRes) @cinfo]
 
   | Let

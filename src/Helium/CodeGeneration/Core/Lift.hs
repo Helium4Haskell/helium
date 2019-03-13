@@ -103,6 +103,9 @@ liftExpr supply scope (Forall x k expr) env = (Forall x k expr', decls)
   where
     -- TODO: Add type variable to scope
     (expr', decls) = liftExpr supply scope expr env
+liftExpr supply scope (ApType expr t) env = (ApType expr' t, decls)
+  where
+    (expr', decls) = liftExpr supply scope expr env
 -- After normalization the other expression constructors cannot have let bindings
 -- as subexpressions, so we do not have to lift here. We do need to rename variables used in `expr`,
 -- if they are mapped in `env`.
@@ -112,6 +115,7 @@ liftExpr supply scope expr env = (renameInSimpleExpr env expr, [])
 renameInSimpleExpr :: Env -> Expr -> Expr
 renameInSimpleExpr env (Var name) = Var $ rename env name
 renameInSimpleExpr env (Ap e1 e2) = Ap (renameInSimpleExpr env e1) (renameInSimpleExpr env e2)
+renameInSimpleExpr env (ApType e t) = ApType (renameInSimpleExpr env e) t
 renameInSimpleExpr env e@(Con _) = e
 renameInSimpleExpr env e@(Lit _) = e
 
@@ -168,4 +172,5 @@ liftAlt supply scope (Alt pat expr) env = (Alt pat expr', decls)
 isValidThunk :: Expr -> Bool
 isValidThunk (Ap _ _) = True
 isValidThunk (Forall _ _ e) = isValidThunk e
+isValidThunk (ApType e _) = isValidThunk e
 isValidThunk _ = False

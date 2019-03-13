@@ -169,6 +169,7 @@ ret _ _ x t (CBind next) = next x t
 
 toInstruction :: NameSupply -> TypeEnv -> Continue -> Core.Expr -> Partial
 toInstruction supply env continue (Core.Forall x k e) = toInstruction supply env continue e
+toInstruction supply env continue (Core.ApType e t) = toInstruction supply env continue e
 -- Let bindings
 toInstruction supply env continue (Core.Let (Core.NonRec b) expr)
   = castInstr
@@ -497,6 +498,7 @@ getApplicationOrConstruction :: Core.Expr -> [Id] -> (Either (Core.Con Core.Expr
 getApplicationOrConstruction (Core.Var x) accum = (Right x, accum)
 getApplicationOrConstruction (Core.Con c) accum = (Left c, accum)
 getApplicationOrConstruction (Core.Ap expr (Core.Var arg)) accum = getApplicationOrConstruction expr (arg : accum)
+getApplicationOrConstruction (Core.ApType expr _) accum = getApplicationOrConstruction expr accum
 getApplicationOrConstruction e _ = error $ "getApplicationOrConstruction: expression is not properly normalized: " ++ show (pretty e)
 
 getApplication :: Core.Expr -> (Id, [Id])

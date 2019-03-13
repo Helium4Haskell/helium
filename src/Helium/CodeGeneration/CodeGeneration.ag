@@ -76,11 +76,28 @@ ATTR Body Declarations Declaration Expressions Expression Statements Statement
      Qualifiers Qualifier GuardedExpressions GuardedExpression 
      Alternatives Alternative FunctionBindings FunctionBinding
      RightHandSide MaybeDeclarations MaybeExpression RecordExpressionBinding
-     RecordExpressionBindings Constructors Constructor
+     RecordExpressionBindings Constructors Constructor LeftHandSide Patterns
+     Pattern RecordPatternBinding RecordPatternBindings
     [ dictionaryEnv : DictionaryEnvironment
         instanceName : {Maybe Name} 
         importEnv : ImportEnvironment
         | | ]
+
+
+ATTR Body Declarations Declaration Expressions Expression
+     GuardedExpressions GuardedExpression 
+     Alternatives Alternative FunctionBindings FunctionBinding
+     RightHandSide MaybeDeclarations MaybeExpression RecordExpressionBinding
+     RecordExpressionBindings Constructors Constructor LeftHandSide Patterns
+     Pattern RecordPatternBinding RecordPatternBindings
+    [ typeEnv : TypeEnvironment | | ]
+
+ATTR Statements Statement Qualifiers Qualifier
+    [ | typeEnv : TypeEnvironment | ]
+
+SEM Module
+  | Module
+    body.typeEnv = typeEnvironment @lhs.importEnv
 
 ATTR SimpleType [ | | name:Name typevariables:Names coreType: {Core.Type} ]
 

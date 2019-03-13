@@ -18,8 +18,8 @@ SEM Expression
   | RecordConstruction  loc . (assumptions,constraints,beta) = internalError "PartialSyntax.ag" "n/a" "Expression.RecordConstruction"
 
 SEM Pattern
-  | Record    loc . (beta,constraints,environment) = internalError "PartialSyntax.ag" "n/a" "Pattern.Record"
-  | Successor loc . (beta,constraints,environment) = internalError "PartialSyntax.ag" "n/a" "Pattern.Successor"
+  | Record    loc . (constraints,environment) = internalError "PartialSyntax.ag" "n/a" "Pattern.Record"
+  | Successor loc . (constraints,environment) = internalError "PartialSyntax.ag" "n/a" "Pattern.Successor"
 
 SEM RecordExpressionBinding
   | RecordExpressionBinding  loc . (monos,constructorenv,betaUnique,miscerrors,warnings,kindErrors,valueConstructors,allValueConstructors,typeConstructors,allTypeConstructors,importEnvironment) = internalError "PartialSyntax.ag" "n/a" "RecordExpressionBinding.RecordExpressionBinding"

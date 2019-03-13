@@ -40,10 +40,75 @@ SEM Expression
   | Case
     -- One type variable for the scrutinee, one type for the right hand side
     expression.betaDeclUnique = @lhs.betaDeclUnique + 2
-
-SEM Pattern
+  | InfixApplication
+    leftExpression.betaDeclUnique = @lhs.betaDeclUnique + 1
+  | Comprehension
+    expression.betaDeclUnique = @lhs.betaDeclUnique + 1
+  | Do
+    -- One type variable for the monad type (kind * -> *)
+    statements.betaDeclUnique = @lhs.betaDeclUnique + 1
   | Variable
     lhs.betaDeclUnique = @lhs.betaDeclUnique + 1
+
+SEM Statement
+  | Expression
+    -- One type variable for the value in the monad (eg the 'a' in 'IO a')
+    expression.betaDeclUnique = @lhs.betaDeclUnique + 1
+
+ATTR Pattern          [ | | beta:Tp ]
+
+SEM Pattern
+  | Hole
+    lhs.betaDeclUnique = @lhs.betaDeclUnique + 1
+    loc.beta = TVar @lhs.betaDeclUnique
+
+  | Literal
+    lhs.betaDeclUnique = @lhs.betaDeclUnique + 1
+    loc.beta = TVar @lhs.betaDeclUnique
+
+  | Variable
+    lhs.betaDeclUnique = @lhs.betaDeclUnique + 1
+    loc.beta = TVar @lhs.betaDeclUnique
+
+  | Constructor
+    patterns.betaDeclUnique = @lhs.betaDeclUnique + 1
+    loc.beta = TVar @lhs.betaDeclUnique
+
+  | InfixConstructor
+    leftPattern.betaDeclUnique = @lhs.betaDeclUnique + 1
+    loc.beta = TVar @lhs.betaDeclUnique
+
+  | List
+    patterns.betaDeclUnique = @lhs.betaDeclUnique + 1
+    loc.beta = TVar @lhs.betaDeclUnique
+
+  | Tuple
+    patterns.betaDeclUnique = @lhs.betaDeclUnique + 1
+    loc.beta = TVar @lhs.betaDeclUnique
+
+  | Record
+    recordPatternBindings.betaDeclUnique = @lhs.betaDeclUnique + 1
+    loc.beta = TVar @lhs.betaDeclUnique
+
+  | Negate
+    lhs.betaDeclUnique = @lhs.betaDeclUnique + 1
+    loc.beta = TVar @lhs.betaDeclUnique
+
   | As
     pattern.betaDeclUnique = @lhs.betaDeclUnique + 1
- 
+    loc.beta = TVar @lhs.betaDeclUnique
+
+  | Wildcard
+    lhs.betaDeclUnique = @lhs.betaDeclUnique + 1
+    loc.beta = TVar @lhs.betaDeclUnique
+
+  | Irrefutable
+    pattern.betaDeclUnique = @lhs.betaDeclUnique + 1
+    loc.beta = TVar @lhs.betaDeclUnique
+
+  | NegateFloat
+    lhs.betaDeclUnique = @lhs.betaDeclUnique + 1
+    loc.beta = TVar @lhs.betaDeclUnique
+
+  | Successor
+    loc.beta = internalError "TypeInferenceDeclTypeVar.ag" "n/a" "Pattern.Successor"

@@ -7,8 +7,7 @@
 -}
 
 module Helium.CodeGeneration.DerivingShow
-    ( typeShowFunction
-    , dataDictionary
+    ( dataDictionary
     , showFunctionOfType
     ) where
 
@@ -29,6 +28,12 @@ import Data.List
 
 typeDictShow :: Core.Type
 typeDictShow = Core.TCon $ Core.TConTypeClassDictionary $ idFromString "Show"
+
+typeFromUHA :: UHA.Type -> Core.Type
+typeFromUHA = typeToCoreType . makeTpFromType'
+
+typeDictFor :: Core.Type -> Core.Type
+typeDictFor = Core.TAp typeDictShow
 
 -- Show function for a data type declaration
 dataShowFunction :: Core.Type -> Core.Type -> ClassEnvironment -> TypeSynonymEnvironment -> UHA.Declaration -> Expr
@@ -54,43 +59,26 @@ dataDictionary classEnv tse decl@(UHA.Declaration_Data _ _ (UHA.SimpleType_Simpl
     { declName    = idFromString ("$dictShow$" ++ getNameName name)
     , declAccess  = public
     , declType    = foldr (\typeArg -> Core.TForall (idFromName typeArg) Core.KStar) (Core.typeFunction argTypes dictType) names
-    , valueValue  = makeShowDictionary (length names)
+    , valueValue  = makeShowDictionary
     , declCustoms = [ custom "type" ("Dict$Show " ++ getNameName name)] 
                 ++ map (custom "typeVariable" . getNameName) names
                 ++ map (\n -> custom "superInstance" ("Show-" ++ getNameName n)) names
     }
   where
     argTypes :: [Core.Type]
-    argTypes = map (\typeArg -> Core.TAp typeDictShow $ Core.TVar $ idFromName typeArg) names
-    dictType = Core.TAp typeDictShow dataType
+    argTypes = map (\typeArg -> typeDictFor $ Core.TVar $ idFromName typeArg) names
+    dictType = typeDictFor dataType
     dataType = foldl Core.TAp (Core.TCon $ Core.typeConFromString $ getNameName name) $ map (Core.TVar . idFromName) names
-    makeShowDictionary :: Int -> Expr
-    makeShowDictionary nrOfArgs =
+    makeShowDictionary :: Expr
+    makeShowDictionary =
        let 
            showBody = dataShowFunction dictType dataType classEnv tse decl
-           ids  = map idFromName names -- take nrOfArgs [ idFromString ("d" ++ show i) | i <- [(1::Integer)..] ]
+           ids  = map (\n -> let arg = idFromName n in Variable arg $ typeDictFor $ Core.TVar arg) names -- take nrOfArgs [ idFromString ("d" ++ show i) | i <- [(1::Integer)..] ]
            list = map idFromString ["showsPred", "showList", "showDef"]
-           declarations = zipWith Bind (map (`Variable` Core.TAny) list) [Var $ idFromString "default$Show$showsPrec", Var $ idFromString "default$Show$showList", showBody]
-           body = Let (Rec declarations) (foldl Ap (Con $ ConId $ idFromString "Dict$Show") $ map Var list)
-       in foldr Lam body $ map (`Variable` Core.TAny) ids
+           fields = [Var $ idFromString "default$Show$showsPrec", Var $ idFromString "default$Show$showList", showBody]
+           body = foldl Ap (Con $ ConId $ idFromString "Dict$Show") fields
+       in foldr Lam body ids
 dataDictionary _ _ _ = error "not supported"
-
--- Show function for a type synonym
--- type T a b = (b, a) 
---   ===>
--- showT :: (a -> String) -> (b -> String) -> T a b -> String
--- showT a b = showTuple2 b a 
-typeShowFunction :: ClassEnvironment -> TypeSynonymEnvironment -> UHA.Declaration -> Decl Expr
-typeShowFunction classEnv tse (UHA.Declaration_Type _ (UHA.SimpleType_SimpleType _ name names) type_) =
-    let typeString = show (typeOfShowFunction name names) in
-    DeclValue 
-    { declName    = idFromString ("show" ++ getNameName name)
-    , declAccess  = public
-    , declType    = Core.typeFunction (map (const Core.TAny) names) $ Core.TStrict Core.TAny
-    , valueValue  = foldr (Lam . (`Variable` Core.TAny) . idFromName) (showFunctionOfType classEnv tse False type_) names
-    , declCustoms = [ custom "type" typeString ] 
-    }
-typeShowFunction _ _ _ = error "not supported"
 
 -- Convert a data type constructor to a Core alternative
 makeAlt :: ClassEnvironment -> TypeSynonymEnvironment -> UHA.Constructor -> Alt
@@ -142,39 +130,40 @@ showConstructor classEnv tse c ts -- name of constructor and paramater types
 -- using showPolymorphic. Otherwise, a show function for the type variable
 -- should be available
 showFunctionOfType :: ClassEnvironment -> TypeSynonymEnvironment -> Bool -> UHA.Type -> Expr
-showFunctionOfType classEnv tse isMainType = sFOT 0
+showFunctionOfType classEnv tse isMainType = sFOT []
   where
     expandTS :: UHA.Type -> UHA.Type
     expandTS t@(UHA.Type_Constructor _ n) = case M.lookup n tse of
         Just (i, g) -> makeTypeFromTp (g $ take i (map TCon variableList))
         Nothing -> t
     expandTS t = t
-    sFOT nrOfArguments tp  =
+    sFOT argTypes tp  =
         let 
             t = expandTS tp
         in 
       case t of
         UHA.Type_Variable _ n             -> if isMainType then var "$dictShow$Int" else Var (idFromName n) 
-        -- show Strings not as List of Char but using showString
         UHA.Type_Application _ _ 
                     ( UHA.Type_Constructor _ (UHA.Name_Special    _ _ "[]") ) -- !!!Name
                     [ UHA.Type_Constructor _ (UHA.Name_Identifier _ _ "Char") ] -- !!!Name
                 ->  Ap (var "$dictShow$[]") (var "$dictShow$Char" )
-        UHA.Type_Constructor _ n         -> checkForPrimitiveDict nrOfArguments classEnv (getNameName n)
-        UHA.Type_Application _ _ f xs    -> foldl Ap (sFOT (length xs) f) (map (sFOT 0) xs )
+        UHA.Type_Constructor _ n         -> checkForPrimitiveDict argTypes classEnv (getNameName n)
+        UHA.Type_Application _ _ f xs    -> foldl Ap (sFOT xs f) (map (sFOT []) xs )
         UHA.Type_Parenthesized _ t'      -> showFunctionOfType classEnv tse isMainType t'
         _ -> internalError "DerivingShow" "showFunctionOfType" "unsupported type"
 
 -- Some primitive types have funny names and their Show function has a different name
-checkForPrimitiveDict :: Int -> ClassEnvironment -> String -> Expr
-checkForPrimitiveDict nrOfArguments classEnv name =
+checkForPrimitiveDict :: [UHA.Type] -> ClassEnvironment -> String -> Expr
+checkForPrimitiveDict typeArgs classEnv name =
     case name of 
         "[]" -> var "$dictShow$[]"
         "()" -> var "$dictShow$()"
-        "->" -> let dict = foldl Ap (Con $ ConId $ idFromString "Dict$Show") functions
-                    showFunction = Lam (Variable (idFromString "d") Core.TAny) $ Lam (Variable (idFromString "p") Core.TAny) $ stringToCore "<<function>>"
+        "->" -> let t1:t2:_ = typeArgs
+                    t = Core.typeFunction [typeFromUHA t1] $ typeFromUHA t2
+                    dict = foldl Ap (Con $ ConId $ idFromString "Dict$Show") functions
+                    showFunction = Lam (Variable (idFromString "d") $ typeDictFor t) $ Lam (Variable (idFromString "p") t) $ stringToCore "<<function>>"
                     functions = [Var $ idFromString "default$Show$showsPrec", Var $ idFromString "default$Show$showList", showFunction]
-                in Lam (Variable (idFromString "d1") Core.TAny) $ Lam (Variable (idFromString "d2") Core.TAny) dict
+                in Lam (Variable (idFromString "d1") $ typeDictFor $ typeFromUHA t1) $ Lam (Variable (idFromString "d2") $ typeDictFor $ typeFromUHA t2) dict
         ('(':commasAndClose) -> 
             let arity = length commasAndClose in 
                 if arity > 10 then
@@ -191,11 +180,14 @@ checkForPrimitiveDict nrOfArguments classEnv name =
                 isTCon (TApp t _) s = isTCon t s 
                 isTCon (TVar _) _ = False
                 pred = find (\((Predicate n t), _)-> isTCon t name ) showInstances
+                coreTypeArgs = map typeFromUHA typeArgs
+                tp = typeDictFor $ foldl Core.TAp (Core.TCon $ Core.TConDataType $ idFromString name) coreTypeArgs
             in if isJust pred then 
                     dict 
                 else 
-                    let dict = foldr Lam (foldl Ap (Con $ ConId $ idFromString "Dict$Show") functions) $ map (`Variable` Core.TAny) $ take nrOfArguments [idFromString ("d" ++ show i) | i <- [0..]]
-                        showFunction = Lam (Variable (idFromString "d") Core.TAny) $ Lam (Variable (idFromString "p") Core.TAny) $ stringToCore ("<<type " ++ name ++ ">>")              
+                    let dict = foldr Lam (foldl Ap (Con $ ConId $ idFromString "Dict$Show") functions)
+                            $ zipWith (\arg tp -> Variable arg $ typeDictFor tp) [idFromString ("d" ++ show i) | i <- [0..]] coreTypeArgs
+                        showFunction = Lam (Variable (idFromString "d") $ typeDictFor tp) $ Lam (Variable (idFromString "p") tp) $ stringToCore ("<<type " ++ name ++ ">>")              
                         functions = [Var $ idFromString "default$Show$showsPrec", Var $ idFromString "default$Show$showList", showFunction]
                     in dict
         

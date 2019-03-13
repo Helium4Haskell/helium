@@ -62,6 +62,7 @@ analyse (Match name alts) = ASequence (AValue name DontInline) (aAlts (map analy
 analyse (Ap e1 e2) = ASequence (analyse e1) (analyse e2)
 analyse (Lam (Variable name _) e) = ALambda $ AIgnore name $ analyse e
 analyse (Forall _ _ e) = analyse e
+analyse (ApType e1 _) = analyse e1
 analyse (Con _) = ANil
 analyse (Lit _) = ANil
 
@@ -157,6 +158,7 @@ inlineInExpr env e@(Con _) = e
 inlineInExpr env (Lam x e) = Lam x $ inlineInExpr env e
 inlineInExpr env (Ap e1 e2) = Ap (inlineInExpr env e1) (inlineInExpr env e2)
 inlineInExpr env (Forall x k e) = Forall x k $ inlineInExpr env e
+inlineInExpr env (ApType e t) = ApType (inlineInExpr env e) t
 inlineInExpr env (Match x alts) = Match x (map inlineInAlt alts)
   where
     inlineInAlt (Alt pat expr) = Alt pat $ inlineInExpr env expr

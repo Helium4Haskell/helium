@@ -40,6 +40,12 @@ import Helium.StaticAnalysis.Messages.StaticErrors(errorsLogCode)
 import System.FilePath(joinPath)
 import System.Exit
 
+-- Temp fix to add types to imported declarations
+import Helium.CodeGeneration.CoreUtils
+import Helium.Syntax.UHA_Utils
+import qualified Data.Map as M
+import Data.Maybe
+
 compile :: String -> String -> [Option] -> [String] -> Iridium.FileCache -> [String] -> IO ()
 compile basedir fullName options lvmPath iridiumCache doneModules =
   do
@@ -147,11 +153,19 @@ compileHaskellToCore basedir fullName contents options iridiumCache doneModules 
 
   stopCompilingIf (StopAfterTypeInferencing `elem` options)
 
+  -- Temp fix: add types to imported declarations
+  let
+    addTypesToImportedDecl decl@Lvm.DeclAbstract{} = decl{ Lvm.declType = toCoreType $ fromMaybe (error $ "No type found for " ++ show (Lvm.declName decl)) $ M.lookup (nameFromId $ Lvm.declName decl) $ typeEnvironment afterTypeInferEnv }
+    addTypesToImportedDecl decl@Lvm.DeclCon{} = decl{ Lvm.declType = toCoreType $ fromMaybe (error $ "No type found for constructor " ++ show (Lvm.declName decl)) $ M.lookup (nameFromId $ Lvm.declName decl) $ valueConstructors afterTypeInferEnv }
+    addTypesToImportedDecl decl = decl
+
+  let indirectionDecls' = map addTypesToImportedDecl indirectionDecls
+
   -- Phase 9: Desugaring
   coreModule <-
       phaseDesugarer dictionaryEnv
                       fullName resolvedModule allTypeSchemes solveResult
-                      (typingStrategiesDecls ++ indirectionDecls) 
+                      (typingStrategiesDecls ++ indirectionDecls') 
                       afterTypeInferEnv
                       toplevelTypes 
                       options                           

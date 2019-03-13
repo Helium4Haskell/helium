@@ -104,6 +104,7 @@ usageExpr locals used expr
       Con con         -> usageCon locals used con
       Lit _           -> used
       Forall _ _ e    -> usageExpr locals used e
+      ApType e _      -> usageExpr locals used e
 
 usageVar :: IdSet -> Set (DeclKind, Id) -> Id -> Set (DeclKind, Id)
 usageVar locals used x

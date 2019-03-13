@@ -40,6 +40,7 @@ isApTarget (Ap _ _) = True
 isApTarget (Con _) = True
 isApTarget (Var _) = True
 isApTarget (Forall _ _ e) = isApTarget e
+isApTarget (ApType e _) = isApTarget e
 isApTarget _ = False
 
 coreNormalize :: NameSupply -> CoreModule -> CoreModule
@@ -87,6 +88,9 @@ normSubExprs supply (Ap e1 e2) = (Ap e1'' e2', bindings1' ++ bindings2)
     (e2', bindings2) = normExpr supply2 e2
 normSubExprs supply (Lam var expr) = (Lam var $ normalizeLambda supply expr, [])
 normSubExprs supply (Forall x k expr) = (Forall x k expr', binds)
+  where
+    (expr', binds) = normSubExprs supply expr
+normSubExprs supply (ApType expr t) = (ApType expr' t, binds)
   where
     (expr', binds) = normSubExprs supply expr
 normSubExprs supply expr = (expr, []) -- expr is already trivial, we don't need to normalize it further.

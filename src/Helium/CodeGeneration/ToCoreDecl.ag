@@ -2,8 +2,9 @@
 -- -- Declarations                                                       --
 -- ------------------------------------------------------------------------
 
+ATTR Declaration Declarations [ | | whereDeclarationTypes USE { ++ } { [] } : { [(Name, TpScheme)] } ]
 ATTR Declaration Declarations [ | patBindNr : Int | ]
-ATTR MaybeDeclarations [ | | whereDeclarations : {[(Name, CoreDecl)]}]
+ATTR MaybeDeclarations [ | | whereDeclarations : {[(Name, CoreDecl)]} ]
 
 ATTR Declaration Declarations MaybeDeclarations [ 
         typeClassContext : TypeClassContext
@@ -12,7 +13,7 @@ ATTR Declaration Declarations MaybeDeclarations [
         declNames USE {(++)} {[]}: {[Name]}
         collectDefaults USE {(++)} {[]} : {[(Name, CoreDecl)]}
     ]
-      
+
 SEM Body
     | Body
         declarations.typeClassContext = TCCNone
@@ -20,14 +21,21 @@ SEM Body
 SEM Expression
     | Let
         declarations.typeClassContext = TCCNone
+        expression.typeEnv = addToTypeEnv @lhs.typeEnv @declarations.whereDeclarationTypes
 
 SEM Qualifier
     | Let
         declarations.typeClassContext = TCCNone
+        loc.env = addToTypeEnv @lhs.typeEnv @declarations.whereDeclarationTypes
+        declarations.typeEnv = @loc.env
+        lhs.typeEnv = @loc.env
 
 SEM Statement
     | Let
         declarations.typeClassContext = TCCNone
+        loc.env = addToTypeEnv @lhs.typeEnv @declarations.whereDeclarationTypes
+        declarations.typeEnv = @loc.env
+        lhs.typeEnv = @loc.env
 
 SEM MaybeDeclarations [ | |   core : { Core.Expr -> Core.Expr } ]
     | Nothing     lhs.core = \continue -> continue
@@ -66,8 +74,6 @@ SEM Declaration
                 ]
             }
         ]
-        ++
-        [ DerivingShow.typeShowFunction (classEnvironment @lhs.importEnv) (typeSynonyms @lhs.importEnv) @self ]
     
     | Data    constructors.dataTypeName = @simpletype.name
               constructors.dataTypeCoreType = @simpletype.coreType
@@ -99,14 +105,15 @@ SEM Declaration
     --  derivings                : Names
     
     | FunctionBindings  
-                        loc.declType = declarationType @lhs.fullTypeSchemes @lhs.importEnv @lhs.typeClassContext @bindings.name
+                        (loc.tpScheme, loc.declType) = declarationType @lhs.fullTypeSchemes @lhs.importEnv @lhs.typeClassContext @bindings.name
                         loc.ids      = freshIds "u$" @bindings.arity
                         bindings.ids = @loc.ids
                         bindings.range = @range.self
                         lhs.declNames = [@bindings.name]
                         loc.instanceDict = [idFromString $ "$instanceDict" ++ show name | Just name <- [@lhs.instanceName]]
                         loc.dictionaries = @instanceDict ++ (map predicateToId (getPredicateForDecl @bindings.name @lhs.dictionaryEnv))
-                        lhs.decls    =  
+                        lhs.whereDeclarationTypes = [(@bindings.name, @loc.tpScheme)]
+                        lhs.decls =
         [ Core.DeclValue
             { Core.declName    = idFromName @bindings.name
             , Core.declAccess  = Core.private
@@ -125,13 +132,14 @@ SEM Declaration
                                    map predicateToId 
                                       (getPredicateForDecl n @lhs.dictionaryEnv)
                                 _ -> []
+                        lhs.whereDeclarationTypes = @pattern.vars
                         lhs.decls     =
         case  @pattern.self of
             Pattern_Variable _ n ->
                 [ Core.DeclValue
                     { Core.declName    = idFromName n
                     , Core.declAccess  = Core.private
-                    , Core.declType    = declarationType @lhs.fullTypeSchemes @lhs.importEnv @lhs.typeClassContext n
+                    , Core.declType    = snd $ declarationType @lhs.fullTypeSchemes @lhs.importEnv @lhs.typeClassContext n
                     , Core.valueValue  =
                         addLambdas @lhs.fullTypeSchemes @lhs.importEnv @lhs.typeClassContext @lhs.solveResult @lhs.betaDeclUnique n @dictionaries
                             (\_ retType -> let_ -- because guards can fail
@@ -165,8 +173,7 @@ SEM Declaration
                         )
                     , Core.declCustoms = toplevelType v @lhs.importEnv @lhs.isTopLevel
                     }
-                | v <- @pattern.vars,
-                  let tp = declarationType @lhs.fullTypeSchemes @lhs.importEnv @lhs.typeClassContext v
+                | (v, tp) <- M.assocs @pattern.patternTypes
                 ]
                 where 
                     patBindId = idFromString ("patBind$" ++ show @lhs.patBindNr)
@@ -335,10 +342,16 @@ dictionaryTreeToCore theTree =
             Core.Var (idFromString $ "$instanceDict" ++ className ++ "$" ++ typeVariables )
     
 
-insertDictionaries :: Name -> DictionaryEnvironment -> Core.Expr
-insertDictionaries name dictionaryEnv = 
+insertDictionaries :: Name -> DictionaryEnvironment -> Core.Expr -> Core.Expr
+insertDictionaries name dictionaryEnv expr = 
    foldl Core.Ap
-         (Core.Var (idFromName name))
+         expr
+         ((map dictionaryTreeToCore (getDictionaryTrees name dictionaryEnv)))
+
+insertDictionaries' :: Name -> DictionaryEnvironment -> Core.Expr
+insertDictionaries' name dictionaryEnv = 
+   foldl Core.Ap
+         (Core.Var $ idFromName name)
          ((map dictionaryTreeToCore (getDictionaryTrees name dictionaryEnv)))
 }
 

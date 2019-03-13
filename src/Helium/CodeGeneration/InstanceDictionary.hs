@@ -101,7 +101,7 @@ classFunctions importEnv fullTypeSchemes className typeVar combinedNames = [Decl
                     val = DeclValue 
                         { declName    = idFromString $ getNameName name
                         , declAccess  = public
-                        , declType    = declarationType fullTypeSchemes importEnv TCCNone name
+                        , declType    = snd $ declarationType fullTypeSchemes importEnv TCCNone name
                         , valueValue  = Lam (Variable dictParam classType) $ 
                                 Let (Strict $ Bind (Variable dictParam $ Core.typeToStrict classType) (Var dictParam))
                                 (Match dictParam 
@@ -270,7 +270,7 @@ convertDictionaries importEnv fullTypeSchemes className functions defaults = map
                         updateName fdecl = fdecl{
                             declName = idFromString $ constructName fname
                         }
-                        tp = declarationType fullTypeSchemes importEnv TCCNone fname
+                        tp = snd $ declarationType fullTypeSchemes importEnv TCCNone fname
                         fDefault :: CoreDecl
                         fDefault = DeclValue
                             { declName    = idFromString $ constructName fname
