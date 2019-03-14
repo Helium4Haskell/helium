@@ -90,7 +90,7 @@ data Bytes
 data Int
 data Float
 
-data '':[]'' a  = '':[]'' | (:) a [a]
+data '':[]'' v$0 = '':[]'' | (:) v$0 [v$0]
 data '':()''    = '':()''
 
 {----------------------------------------------------------
@@ -105,14 +105,14 @@ type String       = [Char]
 {----------------------------------------------------------
   Strictness
 ----------------------------------------------------------}
-($!) :: (a -> b) -> a -> b
-($!) = \f: (a -> b) -> \x: a -> let! x: a! = x in f x
+($!) :: forall v$0. forall v$1. (v$0 -> v$1) -> v$0 -> v$1
+($!) = forall v$0. forall v$1. \f: (v$0 -> v$1) -> \x: v$0 -> let! x: v$0! = x in f x
 
-seq :: a -> b -> b
-seq = \a: a -> \b: b -> primSeq a b
+seq :: forall v$0. forall v$1. v$0 -> v$1 -> v$1
+seq = forall v$0. forall v$1. \a: v$0 -> \b: v$1 -> primSeq {v$0} {v$1} a b
 
-pseq :: a -> b -> b
-pseq = \a: a -> \b: b -> primPseq a b
+pseq :: forall v$0. forall v$1. v$0 -> v$1 -> v$1
+pseq = forall v$0. forall v$1. \a: v$0 -> \b: v$1 -> primPseq {v$0} {v$1} a b
 
 {----------------------------------------------------------
   Basic arithmetic on Int's
@@ -278,55 +278,47 @@ foldlStrict f z xs
 {----------------------------------------------------------
   The IO monad
 ----------------------------------------------------------}
-bindIO :: IO a -> (a -> IO b) -> IO b
-bindIO = \a: IO a -> \f: (a -> IO b) -> case a of
+bindIO :: forall v$0. forall v$1. IO v$0 -> (v$0 -> IO v$1) -> IO v$1
+bindIO = forall v$0. \a: IO v$0 -> \f: (v$0 -> IO v$1) -> case a of
   IO ioA ->
-    IO
+    IO {v$1}
       (
-        \world: RealWorld -> let! res: IORes a = ioA world in case res of
+        \world: RealWorld -> let! res: IORes v$0 = ioA world in case res of
           IORes x world' ->
-            ( let! b: IO b = f x in case b of
+            ( let! b: IO v$1 = f x in case b of
                 IO ioB -> ioB world'
             )
       )
 
-returnIO :: a -> IO a
-returnIO = \x: a -> IO (\world: RealWorld -> IORes x world)
+returnIO :: forall v$0. v$0 -> IO v$0
+returnIO = forall v$0. \x: v$0 -> IO {v$0} (\world: RealWorld -> IORes {v$0} x world)
 
-fmapIO :: (a -> b) -> IO a -> IO b
-fmapIO = \f: (a -> b) -> \ioA: IO a -> IO (
+fmapIO :: forall v$0. (v$0 -> v$1) -> IO v$0 -> IO v$1
+fmapIO = forall v$0. forall v$1. \f: (v$0 -> v$1) -> \ioA: IO v$0 -> IO {v$1} (
     \world: RealWorld ->
       case ioA of
         IO op ->
-          let! res: IORes a = op world
+          let! res: IORes v$0 = op world
           in case res of
-            IORes x world' -> IORes (f x) world'
+            IORes x world' -> IORes {v$1} (f x) world'
   )
 
-pureIO :: a -> IO a
-pureIO = \x: a -> returnIO x
+pureIO :: forall v$0. v$0 -> IO v$0
+pureIO = \x: v$0 -> returnIO x
 
-apIO :: IO (a -> b) -> IO a -> IO b
-apIO = \fIO: IO (a -> b) -> \vIO: IO a -> IO (
+apIO :: forall v$0. forall v$1. IO (v$0 -> v$1) -> IO v$0 -> IO v$1
+apIO = forall v$0. forall v$1. \fIO: IO (v$0 -> v$1) -> \vIO: IO v$0 -> IO {v$1} (
     \world: RealWorld ->
       case fIO of
         IO fOp -> case vIO of
           IO vOp ->
-            let! fRes: IORes (a -> b) = fOp world
+            let! fRes: IORes (v$0 -> v$1) = fOp world
             in case fRes of
               IORes f world' ->
-                let! vRes: IORes a = vOp world'
+                let! vRes: IORes v$0 = vOp world'
                 in case vRes of
-                  IORes v world'' -> IORes (f v) world''
+                  IORes v world'' -> IORes {v$1} (f v) world''
   )
-
--- used to execute "main"
-unsafePerformStrictIO :: IO a -> a
-unsafePerformStrictIO = \io: IO a ->
-  let! x: IO a = unsafePerformIO io in x
-
--- TODO: unsafePerformStrictIO should be removed, as it is the same as unsafePerformIO as a function is already strict in
--- its return value
 
 getChar :: IO Char
 getChar = IO (\world: RealWorld -> ''$primGetChar'' world)

@@ -26,7 +26,7 @@ dataDictionary  (UHA.Declaration_Data _ _ (UHA.SimpleType_SimpleType _ name name
     DeclValue 
     { declName    = idFromString ("$dictEq$" ++ getNameName name)
     , declAccess  = public
-    , declType    = foldr (\typeArg -> Core.TForall (idFromName typeArg) Core.KStar) (Core.typeFunction argTypes dictType) names
+    , declType    = foldr (\(typeArg, idx) -> Core.TForall (Core.Quantor idx $ Just $ getNameName typeArg) Core.KStar) (Core.typeFunction argTypes dictType) $ zip names [1..]
     , valueValue  = eqDict dictType dataType names constructors
     , declCustoms = [ custom "type" ("Dict$Eq " ++ getNameName name) ] 
         ++ map (custom "typeVariable" . getNameName) names
@@ -34,13 +34,13 @@ dataDictionary  (UHA.Declaration_Data _ _ (UHA.SimpleType_SimpleType _ name name
     }
     where
         argTypes :: [Core.Type]
-        argTypes = map (\typeArg -> Core.TAp typeDictEq $ Core.TVar $ idFromName typeArg) names
+        argTypes = zipWith (\_ idx -> Core.TAp typeDictEq $ Core.TVar idx) names [0..]
         dictType = Core.TAp typeDictEq dataType
-        dataType = foldl Core.TAp (Core.TCon $ Core.typeConFromString $ getNameName name) $ map (Core.TVar . idFromName) names
+        dataType = Core.typeApply (Core.TCon $ Core.typeConFromString $ getNameName name) $ zipWith (\_ idx -> Core.TVar idx) names [1..]
 dataDictionary _ = error "pattern match failure in CodeGeneration.Deriving.dataDictionary"
 
 eqDict :: Core.Type -> Core.Type -> [UHA.Name] -> [UHA.Constructor] -> Expr
-eqDict dictType dataType names constructors = foldr Lam dictBody (map (\name -> Variable (idFromName name) $ Core.TAp typeDictEq $ Core.TVar $ idFromName name) names)
+eqDict dictType dataType names constructors = foldr Lam dictBody (zipWith (\name idx -> Variable (idFromName name) $ Core.TAp typeDictEq $ Core.TVar idx) names [1..])
     where
         dictBody = let_ (idFromString "func$eq") (Core.typeFunction [dataType, dataType] Core.typeBool) (eqFunction dictType dataType constructors) (Ap (Ap (Con $ ConId $ idFromString $ "Dict$Eq") (var "default$Eq$/=")) (var "func$eq"))
 

@@ -13,10 +13,10 @@ module LvmException( Exception(..), RuntimeException(..), SystemException(..)
 import LvmLang( packedFromString )
 import IridiumLang(''_$helium_runtime_error'')
 
-instruction primCatch "catch" :: (Exception -> a) -> a -> a
-instruction primRaise "raise" :: Exception! -> a
+instruction primCatch "catch" :: (Exception -> v$0) -> v$0 -> v$0
+instruction primRaise "raise" :: Exception! -> v$0
 
-data '':[]'' a  = '':[]'' | (:) a [a]
+data '':[]'' v$0  = '':[]'' | (:) v$0 [v$0]
 
 {----------------------------------------------------------
   Exception and Signals
@@ -105,21 +105,21 @@ catch action handler
 {----------------------------------------------------------
   user errors
 ----------------------------------------------------------}
-error :: String -> a
-error = \msg: String -> ''_$helium_runtime_error'' msg
+error :: forall v$0. String -> v$0
+error = forall v$0. \msg: String -> ''_$helium_runtime_error'' {v$0} msg
   -- = let! s = (packedFromString msg) in raise (UserError s)
 
-errorPacked :: PackedString -> a
-errorPacked = \msg: String -> error msg
+errorPacked :: forall v$0. String -> v$0
+errorPacked = forall v$0. \msg: String -> error {v$0} msg
   -- = raise (UserError msg)
 
-patternFail :: String -> a
-patternFail = \msg: String -> error msg
+patternFail :: forall v$0. String -> v$0
+patternFail = forall v$0. \msg: String -> error {v$0} msg
   {- = let! s   = packedFromString msg
          exn = PatternFailure s
     in raise (Runtime exn) -}
 
-patternFailPacked :: PackedString -> a
-patternFailPacked = \msg: String -> error msg
+patternFailPacked :: forall v$0. PackedString -> v$0
+patternFailPacked = forall v$0. \msg: String -> error {v$0} msg
   {- = let! exn = PatternFailure msg
     in raise (Runtime exn) -}

@@ -148,9 +148,9 @@ declarationTpScheme _ importEnv _ name = M.lookup name (typeEnvironment importEn
 -- Finds the instantiation of a declaration in a type class instance.
 -- E.g. Num a => a -> a
 -- For a function in an instance for `Num Int` this will return (a, Int)
-instantiationInTypeClassInstance :: TypeClassContext -> Top.TpScheme -> Maybe (Id, Core.Type)
+instantiationInTypeClassInstance :: TypeClassContext -> Top.TpScheme -> Maybe (Int, Core.Type)
 instantiationInTypeClassInstance (TCCInstance className instanceType) (Top.Quantification (_, qmap, (Top.Qualification (Predicate _ (Top.TVar typeVar) : _, _))))
-  = Just (typeVarToId qmap typeVar, instanceType)
+  = Just (typeVar, instanceType)
 instantiationInTypeClassInstance _ _ = Nothing
 
 declarationType :: M.Map NameWithRange Top.TpScheme -> ImportEnvironment -> TypeClassContext -> Name -> (Top.TpScheme, Core.Type)
@@ -181,15 +181,13 @@ toCoreType :: Top.TpScheme -> Core.Type
 toCoreType (Top.Quantification (tvars, qmap, t)) = foldr addTypeVar t' tvars
   where
     t' = qtypeToCoreType qmap t
-    addTypeVar index = Core.TForall (typeVarToId qmap index) Core.KStar
+    addTypeVar index = Core.TForall (typeVarToQuantor qmap index) Core.KStar
 
 toCoreTypeNotQuantified :: Top.TpScheme -> Core.Type
 toCoreTypeNotQuantified (Top.Quantification (_, qmap, t)) = qtypeToCoreType qmap t
 
-typeVarToId :: Top.QuantorMap -> Int -> Id
-typeVarToId qmap index = case lookup index qmap of
-    Just name -> idFromString name
-    _ -> idFromString ("v" ++ show index)
+typeVarToQuantor :: Top.QuantorMap -> Int -> Core.Quantor
+typeVarToQuantor qmap index = Core.Quantor index $ lookup index qmap
 
 qtypeToCoreType :: Top.QuantorMap -> Top.QType -> Core.Type
 qtypeToCoreType qmap (Top.Qualification (q, t)) = foldr addDictArgument (typeToCoreType' qmap t) q
@@ -209,7 +207,7 @@ typeToCoreType' :: Top.QuantorMap -> Top.Tp -> Core.Type
 typeToCoreType' qmap t = typeToCoreTypeMapped qmap (const Nothing) t
 
 typeToCoreTypeMapped :: Top.QuantorMap -> (Int -> Maybe Core.Type) -> Top.Tp -> Core.Type
-typeToCoreTypeMapped qmap f (Top.TVar index) = fromMaybe (Core.TVar $ typeVarToId qmap index) $ f index
+typeToCoreTypeMapped qmap f (Top.TVar index) = fromMaybe (Core.TVar index) $ f index
 typeToCoreTypeMapped _ _ (Top.TCon name) = Core.TCon c
   where
     c = case name of
@@ -237,7 +235,7 @@ addLambdasForLambdaExpression env result beta args expr = addLambdasForType env 
 addLambdas :: M.Map NameWithRange Top.TpScheme -> ImportEnvironment -> TypeClassContext -> SolveResult a -> Int -> Name -> [Id] -> ([Core.Type] -> Core.Type -> Core.Expr) -> Core.Expr
 addLambdas fullTypeSchemes env context solveResult beta name args expr = case declarationTpScheme fullTypeSchemes env context name of
   Nothing -> internalError "ToCoreDecl" "Declaration" ("Could not find type for declaration " ++ show name)
-  Just ty@(Top.Quantification (tvars, _, t)) ->
+  Just ty@(Top.Quantification (tvars, qmap, t)) ->
     let
       -- When a binding is annotated with a type, it may have different type variables in the signature
       -- and the body. We use the type variables from the body. We construct a mapping of type variables
@@ -249,8 +247,8 @@ addLambdas fullTypeSchemes env context solveResult beta name args expr = case de
       getTVar (Top.TVar idx) = Just idx
       getTVar _ = Nothing
       tvars' = mapMaybe getTVar instantiation
-      substitute = Core.typeSubstitutions $ zipWith (\idx typeArg -> (typeVarToId [] idx, typeToCoreType typeArg)) tvars instantiation
-    in foldr (\x e -> Core.Forall (typeVarToId [] x) Core.KStar e) (addLambdasForQType env [] t substitute args expr) tvars'
+      substitute = Core.typeSubstitutions $ zipWith (\idx typeArg -> (idx, typeToCoreType typeArg)) tvars instantiation
+    in foldr (\x e -> Core.Forall (typeVarToQuantor qmap x) Core.KStar e) (addLambdasForQType env [] t substitute args expr) tvars'
 
 addLambdasForQType :: ImportEnvironment -> QuantorMap -> Top.QType -> (Core.Type -> Core.Type) -> [Id] -> ([Core.Type] -> Core.Type -> Core.Expr) -> Core.Expr
 addLambdasForQType env qmap (Top.Qualification ([], t)) substitute args expr = addLambdasForType env qmap t substitute args [] expr

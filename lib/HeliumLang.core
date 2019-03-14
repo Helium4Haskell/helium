@@ -8,8 +8,7 @@ module HeliumLang
     , '':()''('':()'') -- unit tuple
     , '':->'' -- function arrow
     , String, Int, Float, Char
-    
-    , showFunction, showIO, showPolymorphic -- all show functions are used in inserted main
+
     , showChar, showString, showInt, showBool, showUnit, showFloat  
     
     , ''$primPutStrLn'' -- inserted main
@@ -63,20 +62,20 @@ custom infix (:) : public [5,"right"]
 {----------------------------------------------------------
   Basic data types
 ----------------------------------------------------------}
-data '':->'' x y
+data '':->'' v$0 v$1
 -- Daan has type Char = Int
 data Char
 
 ''$primPackedToString'' :: PackedString -> String
 ''$primPackedToString'' = \p: String -> stringFromPacked p
 
-''$primUnsafePerformIO'' :: IO a -> a
-''$primUnsafePerformIO'' = \io: IO a -> unsafePerformIO io
+''$primUnsafePerformIO'' :: forall v$0. IO v$0 -> v$0
+''$primUnsafePerformIO'' = forall v$0. \io: IO v$0 -> unsafePerformIO {v$0} io
 
-''$primPatternFailPacked'' :: PackedString -> a
+''$primPatternFailPacked'' :: PackedString -> v$0
 ''$primPatternFailPacked'' = \p: String -> patternFailPacked p
 
-''$primErrorPacked'' :: PackedString -> a
+''$primErrorPacked'' :: PackedString -> v$0
 ''$primErrorPacked'' = \p: String -> errorPacked p
 
 {-
@@ -107,22 +106,22 @@ data Char
         (''$primPutChar'' '\n') -- does the flush
 -}
 
-''$primConcat'' :: [[a]] -> [a]
-''$primConcat'' = \xss: [[a]] ->
+''$primConcat'' :: forall v$0. [[v$0]] -> [v$0]
+''$primConcat'' = forall v$0. \xss: [[v$0]] ->
     case xss of 
     {   '':[]'' -> []
     ;   (:) ys yss -> ''$primAppend'' ys (''$primConcat'' yss)
     }
 
-''$primConcatMap'' :: (a -> [b]) -> [a] -> [b]
-''$primConcatMap'' = \f: (a -> [b]) -> \xs: [a] ->
+''$primConcatMap'' :: forall v$0. forall v$1. (v$0 -> [v$1]) -> [v$0] -> [v$1]
+''$primConcatMap'' = forall v$0. forall v$1. \f: (v$0 -> [v$1]) -> \xs: [v$0] ->
     case xs of
     {   '':[]''  -> []
     ;   (:) y ys -> ''$primAppend'' (f y) (''$primConcatMap'' f ys)
     }
     
-''$primAppend'' :: [a] -> [a] -> [a] -- is '++'
-''$primAppend'' = \xs: [a] -> \ys: [a] ->
+''$primAppend'' :: forall v$0. [v$0] -> [v$0] -> [v$0] -- is '++'
+''$primAppend'' = forall v$0. \xs: [v$0] -> \ys: [v$0] ->
     case xs of 
     {   '':[]'' -> ys
     ;   (:) z zs -> (:) z (''$primAppend'' zs ys)
@@ -142,14 +141,6 @@ showUnit = \u: () ->
     case u of
     {   '':()'' -> "()"
     }
-
-showFunction :: (a -> String) -> (b -> String) -> (a->b) -> String
-showFunction = \showA: (a -> String) -> \showB: (b -> String) -> \x: (a -> b) ->
-  seq x "<<function>>"
-
-showIO :: (a -> String) -> IO a -> String
-showIO = \showA: (a -> String) -> \x: IO a -> 
-  seq x "<<IO action>>"
 
 showChar :: Char -> String
 showChar = \c: Char ->
@@ -209,10 +200,6 @@ showPositiveInt = \i: Int ->
         {   True -> digit 
         ;   default -> ''$primAppend'' (showPositiveInt rest) digit
         }
-
-showPolymorphic :: a -> String
-showPolymorphic = \x: a ->
-    seq x "<<polymorphic value>>"
 
 commaList :: [String] -> String
 commaList = \list: [String] ->

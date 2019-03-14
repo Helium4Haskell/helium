@@ -117,5 +117,5 @@ requiredArgs env expr
       Ap e1 _               -> drop 1 $ requiredArgs env e1
       Var x                 -> findRequiredArguments x env
       Con (ConId x)         -> findRequiredArguments x env
-      Con (ConTag _ arity)  -> zipWith (\_ env' -> let (arg, _) = uniqueId env' in TVar arg) [1..arity] $ splitEnvs env
+      Con (ConTag _ arity)  -> map TVar [1..arity]
       _                     -> []

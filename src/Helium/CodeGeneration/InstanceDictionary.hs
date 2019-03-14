@@ -33,31 +33,48 @@ constructFunctionMap env nrOfSuperclasses name =
 typeClassType :: Id -> Core.Type
 typeClassType n = Core.TCon $ Core.TConTypeClassDictionary n
 
-constructSuperClassMap :: ImportEnvironment -> String -> [(String, Int, DictLabel, Core.Type)]
-constructSuperClassMap env name =
+constructSuperClassMap :: ImportEnvironment -> String -> Maybe String -> [(String, Int, DictLabel, Core.Type)]
+constructSuperClassMap env name typeVar =
     let 
         err = error $ "Invalid class name " ++ show name ++ " in " ++ show (classEnvironment env)
         f :: Class -> [(String, Int, DictLabel, Core.Type)]
-        f (ns, _) = zipWith (\n i -> (n, i, "superC$" ++ n, typeClassType $ idFromString n)) ns [0..]
+        f (ns, _) = zipWith (\n i -> (n, i, "superC$" ++ n, Core.TForall (Core.Quantor 0 typeVar) Core.KStar $ Core.TAp (typeClassType $ idFromString n) $ Core.TVar 0)) ns [0..]
     in maybe err f (M.lookup name $ classEnvironment env)
 
-constructorType :: Id -> [Core.Type] -> Core.Type -> Core.Type
+constructorType :: String -> [Core.Type] -> Core.Type -> Core.Type
 constructorType typeVar fields classType =
-    Core.TForall typeVar Core.KStar $ Core.typeFunction fields' classType
+    Core.TForall (Core.Quantor 0 $ Just typeVar) Core.KStar $ Core.typeFunction fields' classType
     where
         fields' = map instantiateClassVar fields
+
+        -- We use 0 for the type variable for the argument of the type class.
+        -- The types for the fields may need to be updated for this.
+        -- We increment all other type variables with 1 (such that 0 is not used)
+        -- and replace the type variable for the type class with 0.
         instantiateClassVar :: Core.Type -> Core.Type
-        instantiateClassVar (Core.TForall x k t)
-            | x == typeVar = t
-            | otherwise = Core.TForall x k $ instantiateClassVar t
-        instantiateClassVar t = t
+        instantiateClassVar (Core.TForall (Core.Quantor idx name) k t)
+            | name == Just typeVar = updateTypeVars idx t
+            | otherwise = Core.TForall (Core.Quantor (idx + 1) name) k $ instantiateClassVar t
+        instantiateClassVar t = internalError "InstanceDictionary" "constructorType" ("Type argument for type class not found in signature of field. Var: " ++ show typeVar ++ " Fields: " ++ show fields) 
+
+        -- Substitute type variable with index idxTypeClass with `TVar 0`. Increment all other type variables with 1.
+        updateTypeVars idxTypeClass (Core.TForall (Core.Quantor idx name) k t)
+            = Core.TForall (Core.Quantor (idx + 1) name) k $ updateTypeVars idxTypeClass t  
+        updateTypeVars idxTypeClass (Core.TVar idx)
+            | idx == idxTypeClass = Core.TVar 0
+            | otherwise = Core.TVar $ idx + 1
+        updateTypeVars idxTypeClass (Core.TStrict t) = updateTypeVars idxTypeClass t
+        updateTypeVars idxTypeClass (Core.TAp t1 t2) = Core.TAp (updateTypeVars idxTypeClass t1) (updateTypeVars idxTypeClass t2)
+        updateTypeVars _ (Core.TCon c) = Core.TCon c
+
+-- data DictEq a = DictEq (Eq a => a -> a -> Bool) (forall b . Eq a => b -> a -> Bool)
 
 --returns for every function in a class the function that retrieves that class from a dictionary
 classFunctions :: ImportEnvironment -> M.Map NameWithRange TpScheme -> String -> String -> [(Name, Int, DictLabel, Core.Type)] -> [CoreDecl]
 classFunctions importEnv fullTypeSchemes className typeVar combinedNames = [DeclCon -- Declare the constructor for the dictionary
                                                     { declName = dictName
                                                     , declAccess  = public
-                                                    , declType    = constructorType typeArgId (map (\(_, _, _, t) -> t) superclasses ++ map (\(_, _, _, t) -> t) combinedNames) classType
+                                                    , declType    = constructorType typeVar (map (\(_, _, _, t) -> t) superclasses ++ map (\(_, _, _, t) -> t) combinedNames) classType
                                                     , declCustoms = 
                                                         -- Types of constructors are not enforced
                                                         [ custom "type" ("whatever")
@@ -71,19 +88,18 @@ classFunctions importEnv fullTypeSchemes className typeVar combinedNames = [Decl
                                                    ]
                                                     ++ map superDict superclasses ++ concatMap classFunction combinedNames
         where
-            typeArgId = idFromString typeVar
-            typeArg = Core.TVar typeArgId
+            typeArg = Core.TVar 0
             classType = Core.TAp (typeClassType $ idFromString className) typeArg
             dictName = idFromString ("Dict$" ++ className)
             labels = map (\(_, _, l, _)->l) superclasses ++ map (\(_, _, l, _)->l) combinedNames
-            superclasses = constructSuperClassMap importEnv className
+            superclasses = constructSuperClassMap importEnv className $ Just typeVar
             superDict :: (String, Int, DictLabel, Core.Type) -> CoreDecl
             superDict (superName, tag, label, t) =
                 let dictParam = idFromString "dict"
                     val = DeclValue 
                         { declName    = idFromString $ "$get" ++ superName ++ "$" ++ className
                         , declAccess  = public
-                        , declType    = Core.TForall typeArgId Core.KStar $ Core.typeFunction [classType] $ Core.TAp t typeArg
+                        , declType    = Core.TForall (Core.Quantor 0 $ Just typeVar) Core.KStar $ Core.typeFunction [classType] $ Core.TAp t typeArg
                         , valueValue  = Lam (Variable dictParam classType) $ Let (Strict $ Bind (Variable dictParam $ Core.typeToStrict classType) (Var dictParam))
                                         (Match dictParam 
                                             [
@@ -142,11 +158,11 @@ constructDictionary importEnv instanceSuperClass combinedNames whereDecls classN
         where 
             functions = combineDeclIndex combinedNames whereDecls
             idP = idFromString "index"
-            superClasses = constructSuperClassMap importEnv $ getNameName className
+            superClasses = constructSuperClassMap importEnv (getNameName className) Nothing
             dict = foldr Lam (Let (Rec binds) (Var $ idFromString "dict")) instanceSuperClassVariables
             binds = map makeBindSuper superClasses ++ map makeBindFunc functions ++ [dictCon]
             labels = map (\(_, _, l, _)->l) superClasses ++ map (\(l, _, _, _)->l) functions
-            instanceSuperClassVariables = map (\(className, tvar) -> Variable (idFromString $ "$instanceDict" ++ className ++ "$" ++ getNameName tvar) $ Core.TAp (typeClassType $ idFromString className) $ Core.TVar $ idFromName tvar) instanceSuperClass
+            instanceSuperClassVariables = zipWith (\(className, tvar) idx -> Variable (idFromString $ "$instanceDict" ++ className ++ "$" ++ getNameName tvar) $ Core.TAp (typeClassType $ idFromString className) $ Core.TVar idx) instanceSuperClass [1..]
             makeBindSuper :: (String, Int, DictLabel, Core.Type) -> Bind
             makeBindSuper (cName, tag, label, t) = let
                     parentMapping :: [(String, String)]

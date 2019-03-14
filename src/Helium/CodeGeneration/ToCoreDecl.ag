@@ -423,7 +423,7 @@ SEM Constructor [ dataTypeName : Name typevariables : Names dataTypeCoreType : {
         [ (idFromName @constructor.self, Core.DeclCon
             { Core.declName    = idFromName @constructor.self
             , Core.declAccess  = Core.private
-            , Core.declType    = foldr (`Core.TForall` Core.KStar) (Core.typeFunction @types.coreTypes @lhs.dataTypeCoreType) $ map idFromName @lhs.typevariables
+            , Core.declType    = foldr (`Core.TForall` Core.KStar) (Core.typeFunction @types.coreTypes @lhs.dataTypeCoreType) $ zipWith (\var idx -> Core.Quantor idx $ Just $ getNameName var) @lhs.typevariables [0..]
             , Core.declCustoms = constructorCustoms 
                                     @lhs.dataTypeName
                                     @constructor.self 
@@ -439,7 +439,7 @@ SEM Constructor [ dataTypeName : Name typevariables : Names dataTypeCoreType : {
         [ (idFromName @constructorOperator.self, Core.DeclCon
             { Core.declName    = idFromName @constructorOperator.self
             , Core.declAccess  = Core.private
-            , Core.declType    = foldr (`Core.TForall` Core.KStar) (Core.typeFunction [@leftType.coreType, @rightType.coreType] @lhs.dataTypeCoreType) $ map idFromName @lhs.typevariables
+            , Core.declType    = foldr (`Core.TForall` Core.KStar) (Core.typeFunction [@leftType.coreType, @rightType.coreType] @lhs.dataTypeCoreType) $ zipWith (\var idx -> Core.Quantor idx $ Just $ getNameName var) @lhs.typevariables [0..]
             , Core.declCustoms = constructorCustoms
                                     @lhs.dataTypeName
                                     @constructorOperator.self 

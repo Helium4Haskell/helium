@@ -104,4 +104,4 @@ ATTR SimpleType [ | | name:Name typevariables:Names coreType: {Core.Type} ]
 SEM SimpleType
   | SimpleType  lhs . name          = @name.self                   
                     . typevariables = @typevariables.self
-                    . coreType = foldl Core.TAp (Core.TCon $ Core.TConDataType $ idFromName @name.self) $ map (Core.TVar . idFromName) @typevariables.self
+                    . coreType = Core.typeApply (Core.TCon $ Core.TConDataType $ idFromName @name.self) $ zipWith (\_ idx -> Core.TVar idx) @typevariables.self [0..]

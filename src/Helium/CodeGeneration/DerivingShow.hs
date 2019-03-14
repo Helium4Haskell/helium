@@ -58,7 +58,7 @@ dataDictionary classEnv tse decl@(UHA.Declaration_Data _ _ (UHA.SimpleType_Simpl
     DeclValue 
     { declName    = idFromString ("$dictShow$" ++ getNameName name)
     , declAccess  = public
-    , declType    = foldr (\typeArg -> Core.TForall (idFromName typeArg) Core.KStar) (Core.typeFunction argTypes dictType) names
+    , declType    = foldr (\(typeArg, idx) -> Core.TForall (Core.Quantor idx $ Just $ getNameName typeArg) Core.KStar) (Core.typeFunction argTypes dictType) $ zip names [1..]
     , valueValue  = makeShowDictionary
     , declCustoms = [ custom "type" ("Dict$Show " ++ getNameName name)] 
                 ++ map (custom "typeVariable" . getNameName) names
@@ -66,14 +66,14 @@ dataDictionary classEnv tse decl@(UHA.Declaration_Data _ _ (UHA.SimpleType_Simpl
     }
   where
     argTypes :: [Core.Type]
-    argTypes = map (\typeArg -> typeDictFor $ Core.TVar $ idFromName typeArg) names
+    argTypes = zipWith (\_ idx -> typeDictFor $ Core.TVar idx) names [1..]
     dictType = typeDictFor dataType
-    dataType = foldl Core.TAp (Core.TCon $ Core.typeConFromString $ getNameName name) $ map (Core.TVar . idFromName) names
+    dataType = Core.typeApply (Core.TCon $ Core.typeConFromString $ getNameName name) $ zipWith (\_ idx -> Core.TVar idx) names [1..]
     makeShowDictionary :: Expr
     makeShowDictionary =
        let 
            showBody = dataShowFunction dictType dataType classEnv tse decl
-           ids  = map (\n -> let arg = idFromName n in Variable arg $ typeDictFor $ Core.TVar arg) names -- take nrOfArgs [ idFromString ("d" ++ show i) | i <- [(1::Integer)..] ]
+           ids  = zipWith (\n idx -> let arg = idFromName n in Variable arg $ typeDictFor $ Core.TVar idx) names [1..] -- take nrOfArgs [ idFromString ("d" ++ show i) | i <- [(1::Integer)..] ]
            list = map idFromString ["showsPred", "showList", "showDef"]
            fields = [Var $ idFromString "default$Show$showsPrec", Var $ idFromString "default$Show$showList", showBody]
            body = foldl Ap (Con $ ConId $ idFromString "Dict$Show") fields
@@ -181,7 +181,7 @@ checkForPrimitiveDict typeArgs classEnv name =
                 isTCon (TVar _) _ = False
                 pred = find (\((Predicate n t), _)-> isTCon t name ) showInstances
                 coreTypeArgs = map typeFromUHA typeArgs
-                tp = typeDictFor $ foldl Core.TAp (Core.TCon $ Core.TConDataType $ idFromString name) coreTypeArgs
+                tp = typeDictFor $ Core.typeApply (Core.TCon $ Core.TConDataType $ idFromString name) coreTypeArgs
             in if isJust pred then 
                     dict 
                 else 
