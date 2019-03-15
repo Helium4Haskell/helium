@@ -56,7 +56,11 @@ SEM Declaration
             (ts1,ts2)   = ( Quantification (allTypeVars, [], [] .=>. t1) :: TpScheme
                           , Quantification (allTypeVars, [], [] .=>. t2) :: TpScheme
                           )
+            ts = makeTpSchemeFromType @type.self
+            qmap = getQuantorMap ts
+            free = maximum (map fst qmap) + 1
         in
+        -- Old declaration for type synonyms, based on Custom decls
         [ Core.DeclCustom
             { Core.declName    = idFromString (getNameName @simpletype.name)
             , Core.declAccess  = Core.private
@@ -72,6 +76,20 @@ SEM Declaration
                 , Core.CustomInt
                     (length @simpletype.typevariables)
                 ]
+            }
+        -- New declaration for type synonyms
+        , Core.DeclTypeSynonym
+            { Core.declName = idFromName @simpletype.name
+            , Core.declAccess = Core.private
+            , Core.declTypeVariables = zipWith
+                (\name freeIndex -> let str = getNameName name in case find (\(_, str') -> str == str') qmap of
+                    Nothing -> Core.Quantor freeIndex (Just str)
+                    Just (idx, _) -> Core.Quantor idx (Just str)
+                )
+                @simpletype.typevariables
+                [free..]
+            , Core.declType = toCoreTypeNotQuantified ts
+            , Core.declCustoms = []
             }
         ]
     

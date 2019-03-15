@@ -38,7 +38,7 @@ import qualified Data.Map as M
 import Helium.StaticAnalysis.Miscellaneous.TypeConversion
 import Data.Char (ord)
 import Data.Maybe
-import Data.List(isSuffixOf)
+import Data.List(isSuffixOf, find)
 
 import Helium.CodeGeneration.InstanceDictionary
 
