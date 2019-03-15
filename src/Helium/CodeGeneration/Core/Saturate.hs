@@ -117,5 +117,5 @@ requiredArgs env expr
       Ap e1 _               -> drop 1 $ requiredArgs env e1
       Var x                 -> findRequiredArguments x env
       Con (ConId x)         -> findRequiredArguments x env
-      Con (ConTag _ arity)  -> map TVar [1..arity]
+      Con (ConTuple arity)  -> map TVar [1..arity]
       _                     -> []

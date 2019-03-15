@@ -111,11 +111,11 @@ usageVar locals used x
   | elemSet x locals = used
   | otherwise        = Set.insert (DeclKindValue,x) used
 
-usageCon :: IdSet -> Set (DeclKind, Id) -> Con Expr -> Set (DeclKind, Id)
+usageCon :: IdSet -> Set (DeclKind, Id) -> Con -> Set (DeclKind, Id)
 usageCon locals used con
   = case con of
-      ConId x      -> Set.insert (DeclKindCon,x) used
-      ConTag tag _ -> usageExpr locals used tag
+      ConId x    -> Set.insert (DeclKindCon,x) used
+      ConTuple _ -> used
 
 usageBinds :: IdSet -> Used -> Binds -> Used
 usageBinds locals used binds 
@@ -133,13 +133,13 @@ usageAlts = foldl' . usageAlt
 usageAlt :: IdSet -> Set (DeclKind, Id) -> Alt -> Used
 usageAlt locals used (Alt pat expr)
   = case pat of
-      PatCon con ids  -> let locals' = unionSet locals (setFromList ids)
-                             used'   = usageConPat used con
+      PatCon con _ ids  -> let locals' = unionSet locals (setFromList ids)
+                               used'   = usageConPat used con
                          in usageExpr locals' used' expr
       _               -> usageExpr locals used expr
       
-usageConPat :: Set (DeclKind, Id) -> Con t -> Set (DeclKind, Id)
+usageConPat :: Set (DeclKind, Id) -> Con -> Set (DeclKind, Id)
 usageConPat used con
   = case con of
       ConId x    -> Set.insert (DeclKindCon,x) used
-      ConTag _ _ -> used
+      ConTuple _ -> used

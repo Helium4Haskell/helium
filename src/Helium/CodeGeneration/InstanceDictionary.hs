@@ -103,7 +103,7 @@ classFunctions importEnv fullTypeSchemes className typeVar combinedNames = [Decl
                         , valueValue  = Lam (Variable dictParam classType) $ Let (Strict $ Bind (Variable dictParam $ Core.typeToStrict classType) (Var dictParam))
                                         (Match dictParam 
                                             [
-                                                Alt (PatCon (ConId $ idFromString ("Dict$" ++ className)) (map idFromString labels)) 
+                                                Alt (PatCon (ConId $ idFromString ("Dict$" ++ className)) [typeArg] (map idFromString labels)) 
                                                     (Var $ idFromString label)
                                                 
                                             ]
@@ -122,7 +122,7 @@ classFunctions importEnv fullTypeSchemes className typeVar combinedNames = [Decl
                                 Let (Strict $ Bind (Variable dictParam $ Core.typeToStrict classType) (Var dictParam))
                                 (Match dictParam 
                                     [
-                                        Alt (PatCon (ConId $ idFromString ("Dict$" ++ className)) (map idFromString labels)) 
+                                        Alt (PatCon (ConId $ idFromString ("Dict$" ++ className)) [typeArg] (map idFromString labels)) 
                                             (Ap (Var $ idFromString label) (Var dictParam))
                                     ]
                                 )

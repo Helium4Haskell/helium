@@ -80,7 +80,7 @@ if_ guardExpr thenExpr elseExpr =
     Let 
         (Strict (Bind (Variable guardId typeBool) guardExpr))
         (Match guardId
-            [ Alt (PatCon (ConId trueId) []) thenExpr
+            [ Alt (PatCon (ConId trueId) [] []) thenExpr
             , Alt PatDefault elseExpr
             ]
         )
@@ -212,6 +212,7 @@ typeToCoreTypeMapped _ _ (Top.TCon name) = Core.TCon c
   where
     c = case name of
         "->" -> Core.TConFun
+        "()" -> Core.TConTuple 0
         '(':str
           | dropWhile (==',') str == ")" -> Core.TConTuple (length str)
         _ -> Core.TConDataType $ idFromString name

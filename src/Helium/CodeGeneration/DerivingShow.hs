@@ -42,7 +42,7 @@ dataShowFunction dictType dataType classEnv tse (UHA.Declaration_Data _ _ (UHA.S
         (Let
             (Strict (Bind (Variable valueId $ Core.typeToStrict dataType) (Var valueId)))
             (Match valueId
-                (map (makeAlt classEnv tse) constructors)
+                (map (makeAlt classEnv tse names) constructors)
             )
         )
         [(Variable (idFromString "$instanceDictShow") dictType), Variable valueId dataType]
@@ -81,8 +81,8 @@ dataDictionary classEnv tse decl@(UHA.Declaration_Data _ _ (UHA.SimpleType_Simpl
 dataDictionary _ _ _ = error "not supported"
 
 -- Convert a data type constructor to a Core alternative
-makeAlt :: ClassEnvironment -> TypeSynonymEnvironment -> UHA.Constructor -> Alt
-makeAlt classEnv tse c = Alt (constructorToPat ident types) (showConstructor classEnv tse ident types)
+makeAlt :: ClassEnvironment -> TypeSynonymEnvironment -> UHA.Names -> UHA.Constructor -> Alt
+makeAlt classEnv tse names c = Alt (constructorToPat ident types) (showConstructor classEnv tse ident types)
   where
     (ident, types) = nameAndTypes c
     
@@ -94,7 +94,7 @@ makeAlt classEnv tse c = Alt (constructorToPat ident types) (showConstructor cla
             UHA.Constructor_Record _ _ _          -> error "not supported"
     constructorToPat :: Id -> [UHA.Type] -> Pat
     constructorToPat ident' ts =
-        PatCon (ConId ident') [ idFromNumber i | i <- [1..length ts] ]
+        PatCon (ConId ident') (zipWith (\_ i -> Core.TVar i) names [1..]) [ idFromNumber i | i <- [1..length ts] ]
         
     annotatedTypeToType :: UHA.AnnotatedType -> UHA.Type
     annotatedTypeToType (UHA.AnnotatedType_AnnotatedType _ _ t) = t

@@ -53,19 +53,23 @@ patternToCore' env types (name, tp, pat) continue nr =
         
         -- case _u1 of C _l1 _l2 -> ...
         --             _         -> _next
-        Pattern_Constructor _ n ps -> 
+        Pattern_Constructor range n ps
+          | getNameName n == "()" ->
+            patternToCore' env types (name, tp, Pattern_Tuple range ps) continue nr
+          | otherwise ->
             let 
                 (ids, nr') =
                     if all isSimple ps then 
                         (map getIdOfSimplePattern ps, nr)
                     else 
                         freshIds' "l$" nr (length ps)
+                (instantiation, fieldTypes) = constructorFieldTypes env n tp
                 (expr, nr'') =
-                    patternsToCore' env types (zip3 ids (constructorFieldTypes env n tp) ps) continue nr'
+                    patternsToCore' env types (zip3 ids fieldTypes ps) continue nr'
             in withNr nr'' $
                 case_ name tp
                 [ Core.Alt 
-                    (Core.PatCon (Core.ConId (idFromName n)) ids) 
+                    (Core.PatCon (Core.ConId (idFromName n)) instantiation ids) 
                     expr
                 ]
 
@@ -133,12 +137,13 @@ patternToCore' env types (name, tp, pat) continue nr =
                         (map getIdOfSimplePattern ps, nr)
                     else 
                         freshIds' "l$" nr (length ps)
+                tps = Core.typeTupleElements tp
                 (expr, nr'') = 
-                    patternsToCore' env types (zip3 ids (Core.typeTupleElements tp) ps) continue nr'
+                    patternsToCore' env types (zip3 ids tps ps) continue nr'
             in withNr nr'' $
                 case_ name tp
                 [ Core.Alt 
-                    (Core.PatCon (Core.ConTag 0 (length ps)) ids) 
+                    (Core.PatCon (Core.ConTuple (length ps)) tps ids) 
                     expr
                 ]
             
@@ -232,11 +237,14 @@ case_ ident tp alts =
         (Core.Strict (Core.Bind (Core.Variable ident $ Core.typeToStrict tp) (Core.Var ident)))      -- let! id = id in
         (Core.Match ident (alts++[nextClauseAlternative]))    -- match id { alt; ...; alt; _ -> _nextClause }
 
-constructorFieldTypes :: ImportEnvironment -> Name -> Core.Type -> [Core.Type]
-constructorFieldTypes _ _ Core.TAny = repeat Core.TAny
-constructorFieldTypes env conName tp = map (Core.typeSubstitutions $ zipWith (\(Core.TVar typeArg) t -> (typeArg, t)) (getDataTypeArgs retType []) typeArgs) args
+constructorFieldTypes :: ImportEnvironment -> Name -> Core.Type -> ([Core.Type], [Core.Type])
+constructorFieldTypes env conName tp =
+    ( instantiation
+    , map (Core.typeSubstitutions $ zipWith (\(Core.TVar typeArg) t -> (typeArg, t)) instantiation typeArgs) args
+    )
   where
     typeArgs = getDataTypeArgs tp []
+    instantiation = getDataTypeArgs retType []
     consTpScheme = fromMaybe (internalError "ToCorePat" "Pattern" $ "Could not find constructor " ++ show conName) $ M.lookup conName $ valueConstructors env
     (args, retType) = Core.typeExtractFunction $ toCoreTypeNotQuantified consTpScheme
 

@@ -201,15 +201,15 @@ toInstruction supply env continue (Core.Let (Core.Rec bs) expr)
 toInstruction supply env continue (Core.Match x alts) =
   blocks &> (case head alts of
     Core.Alt Core.PatDefault expr -> toInstruction supply'' env (head continues) expr
-    -- ConTag is only used for Tuples, so we don't need to create a Case statement, we only Match on the elements of the tuple.
-    Core.Alt (Core.PatCon (Core.ConTag _ arity) fields) expr ->
+    -- We don't need to create a Case statement for tuples, we only Match on the elements of the tuple.
+    Core.Alt (Core.PatCon (Core.ConTuple arity) _ fields) expr ->
       let
         locals = map (\name -> Local name TypeAny) fields
         env' = expandEnvWithLocals locals env
       in
         Match (resolve env x) (MatchTargetTuple arity) (map Just fields)
         +> toInstruction supply'' env' (head continues) expr
-    Core.Alt (Core.PatCon (Core.ConId con) _) _ ->
+    Core.Alt (Core.PatCon (Core.ConId con) _ _) _ ->
       let ValueConstructor (DataTypeConstructor dataName _ _) = findMap con (teValues env)
       in transformCaseConstructor supply'' env continues x dataName alts
     Core.Alt (Core.PatLit (Core.LitInt _)) _ -> transformCaseInt supply'' env continues x alts
@@ -268,7 +268,7 @@ toInstruction supply env continue expr = case getApplicationOrConstruction expr 
       castInstructions
         +> LetAlloc [bind]
         +> ret supplyRet env x (TypeDataType dataName) continue
-  (Left (Core.ConTag _ arity), args) ->
+  (Left (Core.ConTuple arity), args) ->
     let
       (casted, castInstructions) = maybeCasts supply''' env (zip args $ repeat TypeAnyWHNF)
       bind = Bind x (BindTargetTuple arity) casted
@@ -430,7 +430,7 @@ gatherCaseConstructorAlts supply env (continue:_) remaining _ (Core.Alt Core.Pat
   where
     (blockName, supply') = freshIdFromId idMatchDefault supply
     Partial instr blocks = toInstruction supply' env continue expr
-gatherCaseConstructorAlts supply env (continue:continues) remaining var (Core.Alt (Core.PatCon c args) expr : alts) = ((con, blockName) : nextAlts, Block blockName instr : blocks ++ nextBlocks)
+gatherCaseConstructorAlts supply env (continue:continues) remaining var (Core.Alt (Core.PatCon c _ args) expr : alts) = ((con, blockName) : nextAlts, Block blockName instr : blocks ++ nextBlocks)
   where
     ValueConstructor con = valueDeclaration env $ conId c
     remaining' = filter (/= con) remaining
@@ -462,7 +462,7 @@ bind supply env locals (Core.Bind (Core.Variable x _) val) = (castInstructions .
       Left (Core.ConId con) ->
         let ValueConstructor constructor@(DataTypeConstructor _ _ fields) = valueDeclaration env con
         in (BindTargetConstructor constructor, fields, id)
-      Left (Core.ConTag _ arity) -> (BindTargetTuple arity, replicate arity TypeAny, id)
+      Left (Core.ConTuple arity) -> (BindTargetTuple arity, replicate arity TypeAny, id)
       Right fn -> case resolveFunction env fn of
         Just (qualifiedName, fntype@(FunctionType fparams@(_ : _) returnType)) ->
           -- The bind might provide more arguments than the arity of the function, if the function returns another function.
@@ -481,7 +481,7 @@ coreBindType env val = case apOrCon of
   Left (Core.ConId con) ->
     let ValueConstructor constructor@(DataTypeConstructor dataName _ fields) = valueDeclaration env con
     in TypeDataType dataName
-  Left (Core.ConTag _ arity) -> TypeTuple arity
+  Left (Core.ConTuple arity) -> TypeTuple arity
   Right fn -> case resolveFunction env fn of
     Just (_, fntype@(FunctionType fparams returnType))
       | length args >= length fparams -> TypeAnyThunk
@@ -490,11 +490,11 @@ coreBindType env val = case apOrCon of
   where
     (apOrCon, args) = getApplicationOrConstruction val []
 
-conId :: Core.Con a -> Id
+conId :: Core.Con -> Id
 conId (Core.ConId x) = x
-conId _ = error "ConTags (tuples?) are not supported yet"
+conId _ = error "conId: unexpected ConTuple in gatherCaseConstructorAlts"
 
-getApplicationOrConstruction :: Core.Expr -> [Id] -> (Either (Core.Con Core.Expr) Id, [Id])
+getApplicationOrConstruction :: Core.Expr -> [Id] -> (Either Core.Con Id, [Id])
 getApplicationOrConstruction (Core.Var x) accum = (Right x, accum)
 getApplicationOrConstruction (Core.Con c) accum = (Left c, accum)
 getApplicationOrConstruction (Core.Ap expr (Core.Var arg)) accum = getApplicationOrConstruction expr (arg : accum)

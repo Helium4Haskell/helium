@@ -44,8 +44,6 @@ lsExpr expr
         -> Lam x (lsExpr e)
       Ap e1 e2
         -> Ap (lsExpr e1) (lsExpr e2)
-      Con (ConTag tag arity)
-        -> Con (ConTag (lsExpr tag) arity)
       Forall x k e
         -> Forall x k $ lsExpr e
       ApType e t

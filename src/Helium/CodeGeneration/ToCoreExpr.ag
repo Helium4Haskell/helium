@@ -106,8 +106,7 @@ SEM Expression [ | | core : { Core.Expr } ]
         foldl 
             Core.Ap 
             (Core.Con
-                (Core.ConTag
-                    (Core.Lit (Core.LitInt 0))
+                (Core.ConTuple
                     (length @expressions.core)
                 )
             )

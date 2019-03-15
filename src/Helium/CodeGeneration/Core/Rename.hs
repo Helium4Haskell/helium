@@ -73,7 +73,6 @@ nsExpr env expr
       Ap expr1 expr2    -> let (env1,env2) = splitEnv env
                            in  Ap (nsExpr env1 expr1) (nsExpr env2 expr2)
       Var x             -> Var (renameVar env x)
-      Con (ConTag e a)  -> Con (ConTag (nsExpr env e) a)
       Forall x k e      -> Forall x k $ nsExpr env e
       ApType e t        -> ApType (nsExpr env e) t
       _                 -> expr
@@ -105,8 +104,8 @@ nsAlt env pat expr
 nsPat :: Env -> Pat -> (Pat, Env)
 nsPat env pat
   = case pat of
-      PatCon con ids -> let (env',ids') = renameBinders env ids
-                        in (PatCon con ids',env')
+      PatCon con tps ids -> let (env',ids') = renameBinders env ids
+                        in (PatCon con tps ids',env')
       other          -> (other,env)
 
 -- Analysis to find identifiers that have multiple definitions.
@@ -142,7 +141,7 @@ duplicateNames (Lam (Variable x _) expr) = dupInsert x $ duplicateNames expr
 duplicateNames _ = emptyMap -- Con, Var or Lit
 
 duplicateNamesInAlt :: Alt -> Analysis
-duplicateNamesInAlt (Alt (PatCon _ args) expr) = dupInserts args $ duplicateNames expr
+duplicateNamesInAlt (Alt (PatCon _ _ args) expr) = dupInserts args $ duplicateNames expr
 duplicateNamesInAlt (Alt _ expr) = duplicateNames expr
 
 dupUnion :: Analysis -> Analysis -> Analysis

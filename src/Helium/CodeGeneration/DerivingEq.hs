@@ -42,27 +42,28 @@ dataDictionary _ = error "pattern match failure in CodeGeneration.Deriving.dataD
 eqDict :: Core.Type -> Core.Type -> [UHA.Name] -> [UHA.Constructor] -> Expr
 eqDict dictType dataType names constructors = foldr Lam dictBody (zipWith (\name idx -> Variable (idFromName name) $ Core.TAp typeDictEq $ Core.TVar idx) names [1..])
     where
-        dictBody = let_ (idFromString "func$eq") (Core.typeFunction [dataType, dataType] Core.typeBool) (eqFunction dictType dataType constructors) (Ap (Ap (Con $ ConId $ idFromString $ "Dict$Eq") (var "default$Eq$/=")) (var "func$eq"))
+        dictBody = let_ (idFromString "func$eq") (Core.typeFunction [dataType, dataType] Core.typeBool) (eqFunction dictType dataType typeArgs constructors) (Ap (Ap (Con $ ConId $ idFromString $ "Dict$Eq") (var "default$Eq$/=")) (var "func$eq"))
+        typeArgs = zipWith (\_ idx -> Core.TVar idx) names [1..]
 
 -- Example: data X a b = C a b Int | D Char b
-eqFunction :: Core.Type -> Core.Type -> [UHA.Constructor] -> Expr
-eqFunction dictType dataType constructors = 
+eqFunction :: Core.Type -> Core.Type -> [Core.Type] -> [UHA.Constructor] -> Expr
+eqFunction dictType dataType typeArgs constructors = 
     let 
         body = 
             Let (Strict (Bind (Variable fstArg $ Core.typeToStrict dataType) (Var fstArg))) -- evaluate both
                 (Let (Strict (Bind (Variable sndArg $ Core.typeToStrict dataType) (Var sndArg)))
                     (Match fstArg -- case $fstArg of ...
-                        (map makeAlt constructors))) 
+                        (map (makeAlt typeArgs) constructors))) 
     in
         foldr Lam body ([Variable (idFromString "dict") dictType, Variable fstArg dataType, Variable sndArg dataType]) -- \$fstArg $sndArg ->
 
 fstArg, sndArg :: Id
 [fstArg, sndArg] = map idFromString ["$fstArg", "$sndArg"] 
 
-makeAlt :: UHA.Constructor -> Alt
-makeAlt constructor =
+makeAlt :: [Core.Type] -> UHA.Constructor -> Alt
+makeAlt typeArgs constructor =
         -- C $v0 $v1 $v2 -> ...
-        Alt (PatCon (ConId ident) vs)
+        Alt (PatCon (ConId ident) typeArgs vs)
             --             case $sndArg of
             --                  C $w0 $w1 $w2 -> ...
             --                      ?? $v0 $w0 &&
@@ -70,7 +71,7 @@ makeAlt constructor =
             --                      ?? $v2 $w2
             --                  _ -> False
             (Match sndArg
-                [ Alt (PatCon (ConId ident) ws)
+                [ Alt (PatCon (ConId ident) typeArgs ws)
                       ( if null types then Con (ConId (idFromString "True"))
                         else
                             foldr1 andCore [ Ap (Ap (Ap (var "==") $ eqFunForType tp) (Var v)) (Var w)

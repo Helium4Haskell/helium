@@ -166,7 +166,7 @@ liftAlt supply scope (Alt pat expr) env = (Alt pat expr', decls)
   where
     (expr', decls) = liftExpr supply (map (\x -> Variable x TAny) newVars ++ scope) expr env
     newVars = case pat of
-      PatCon _ ids -> ids
+      PatCon _ _ ids -> ids
       _ -> []
 
 isValidThunk :: Expr -> Bool
