@@ -42,9 +42,10 @@ fromCore cache supply mod@(CoreModule.Module name _ _ decls) = do
 fromCoreAfterImports :: ([(Id, Declaration CustomDeclaration)], [(Id, Declaration DataType)], [(Id, Declaration AbstractMethod)]) -> NameSupply -> Core.CoreModule -> [Core.CoreDecl] -> [Id] -> Module
 fromCoreAfterImports (importedCustoms, importedDatas, importedAbstracts) supply mod@(CoreModule.Module name _ _ _) decls dependencies
   | not $ null abstracts = error "fromCore: Abstract method should be an imported declaration, found a definition instead"
-  | otherwise = Module name dependencies (map snd $ importedCustoms ++ customs) (map snd importedDatas ++ datas) (map snd $ importedAbstracts ++ abstracts) (map snd methods)
+  | otherwise = Module name dependencies (map snd $ importedCustoms ++ customs) (map snd importedDatas ++ datas) synonyms (map snd $ importedAbstracts ++ abstracts) (map snd methods)
   where
     datas = decls >>= dataTypeFromCoreDecl consMap
+    synonyms = [ Declaration (CoreModule.declName decl) (visibility decl) (origin decl) (CoreModule.declCustoms decl) $ TypeSynonym (CoreModule.declType decl) | decl@CoreModule.DeclTypeSynonym{} <- decls ]
     consMap = foldr dataTypeConFromCoreDecl emptyMap decls
     (methods, abstracts) = partitionEithers $ concat $ mapWithSupply (`fromCoreDecl` env) supply decls
     customs = mapMaybe (customFromCoreDecl name) decls

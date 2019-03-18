@@ -56,8 +56,13 @@ SEM Declaration
             (ts1,ts2)   = ( Quantification (allTypeVars, [], [] .=>. t1) :: TpScheme
                           , Quantification (allTypeVars, [], [] .=>. t2) :: TpScheme
                           )
-            ts = makeTpSchemeFromType @type.self
-            qmap = getQuantorMap ts
+            Quantification (_, qmap, tp) = makeTpSchemeFromType @type.self
+            getQuantor :: String -> Int -> ((Int, String), Int)
+            getQuantor name freeIndex = case find (\(_, x) -> name == x) qmap of
+              Just (idx, _) -> ((idx, name), idx)
+              Nothing -> ((freeIndex, name), freeIndex)
+            (qmap', quantors) = unzip $ zipWith getQuantor (map getNameName @simpletype.typevariables) [free..] 
+            ts = Quantification (quantors, qmap', tp)
             free = maximum (map fst qmap) + 1
         in
         -- Old declaration for type synonyms, based on Custom decls
@@ -81,14 +86,7 @@ SEM Declaration
         , Core.DeclTypeSynonym
             { Core.declName = idFromName @simpletype.name
             , Core.declAccess = Core.private
-            , Core.declTypeVariables = zipWith
-                (\name freeIndex -> let str = getNameName name in case find (\(_, str') -> str == str') qmap of
-                    Nothing -> Core.Quantor freeIndex (Just str)
-                    Just (idx, _) -> Core.Quantor idx (Just str)
-                )
-                @simpletype.typevariables
-                [free..]
-            , Core.declType = toCoreTypeNotQuantified ts
+            , Core.declType = toCoreType ts
             , Core.declCustoms = []
             }
         ]
@@ -161,7 +159,7 @@ SEM Declaration
                     , Core.valueValue  =
                         addLambdas @lhs.fullTypeSchemes @lhs.importEnv @lhs.typeClassContext @lhs.solveResult @lhs.betaDeclUnique n @dictionaries
                             (\_ retType -> let_ -- because guards can fail
-                                nextClauseId retType (patternMatchFail "pattern binding" @range.self)
+                                nextClauseId retType (patternMatchFail "pattern binding" retType @range.self)
                                 @righthandside.core
                             )
                     , Core.declCustoms = toplevelType n @lhs.importEnv @lhs.isTopLevel
@@ -176,7 +174,7 @@ SEM Declaration
                     , Core.declType    = patBindTp
                     , Core.valueValue  =
                         let_ -- because guards can fail
-                            nextClauseId patBindTp (patternMatchFail "pattern binding" @range.self)
+                            nextClauseId patBindTp (patternMatchFail "pattern binding" patBindTp @range.self)
                             @righthandside.core
                     , Core.declCustoms = [custom "type" "patternbinding"]
                     }
@@ -186,7 +184,7 @@ SEM Declaration
                     , Core.declAccess  = Core.private
                     , Core.declType    = tp
                     , Core.valueValue  =
-                        (let_ nextClauseId tp (patternMatchFail "pattern binding" @range.self)
+                        (let_ nextClauseId tp (patternMatchFail "pattern binding" tp @range.self)
                             (patternToCore @lhs.importEnv @pattern.patternTypes (patBindId, patBindTp, @pattern.self) (Core.Var (idFromName v)))
                         )
                     , Core.declCustoms = toplevelType v @lhs.importEnv @lhs.isTopLevel
@@ -258,7 +256,8 @@ SEM Declaration
                         where . instanceName = Just @simpletype.name
                         where . typeClassContext = TCCClass
                         where . dictionaryEnv = setCurrentClassNames (zip @where.functionNames (repeat ("$instanceDict" ++ show @simpletype.name))) @lhs.dictionaryEnv
-    | Instance          lhs .   decls    =  [ constructDictionary 
+    | Instance          lhs .   decls    =  [ constructDictionary
+                                                @lhs.fullTypeSchemes
                                                 @lhs.importEnv
                                                 (getSuperClasses @context.self)
                                                 (constructFunctionMap @lhs.importEnv (length @superClasses) @name.self)
@@ -302,7 +301,7 @@ ATTR FunctionBinding FunctionBindings
 SEM FunctionBindings [ range : Range | | core : {[Core.Type] -> Core.Type -> Core.Expr}  ]
     | Cons             lhs.core  = \args retType -> @hd.core args retType $ @tl.core args retType
                           .arity = @hd.arity
-    | Nil              lhs.core  = \_ _ -> patternMatchFail "function bindings" @lhs.range
+    | Nil              lhs.core  = \_ retType -> patternMatchFail "function bindings" retType @lhs.range
                           .arity = internalError "ToCoreDecl" "FunctionBindings" "arity: empty list of function bindings"
 
 SEM FunctionBinding [ | | core : { [Core.Type] -> Core.Type -> Core.Expr -> Core.Expr } ]

@@ -46,9 +46,9 @@ patternAlwaysSucceeds p =
         Pattern_Parenthesized _ pat -> patternAlwaysSucceeds pat
         _ -> False
 
-patternMatchFail :: String -> Range -> Core.Expr
-patternMatchFail nodeDescription range =
-    var "$primPatternFailPacked"
+patternMatchFail :: String -> Core.Type -> Range -> Core.Expr
+patternMatchFail nodeDescription tp range =
+    Core.ApType (var "$primPatternFailPacked") tp
         `app_` packedString (
                     nodeDescription ++ " ranging from " ++ 
                     showPosition start ++ " to " ++ 

@@ -43,12 +43,21 @@ SEM Expression
   | InfixApplication
     leftExpression.betaDeclUnique = @lhs.betaDeclUnique + 1
   | Comprehension
+    -- One type variable for the elements of the list
     expression.betaDeclUnique = @lhs.betaDeclUnique + 1
   | Do
     -- One type variable for the monad type (kind * -> *)
     statements.betaDeclUnique = @lhs.betaDeclUnique + 1
   | Variable
     lhs.betaDeclUnique = @lhs.betaDeclUnique + 1
+  | Constructor
+    lhs.betaDeclUnique = @lhs.betaDeclUnique + 1
+  | List
+    -- One type variable for the elements of the list
+    expressions.betaDeclUnique = @lhs.betaDeclUnique + 1
+  | Enum
+    -- One type variable for the elements of the list
+    from.betaDeclUnique = @lhs.betaDeclUnique + 1
 
 SEM Statement
   | Expression

@@ -99,7 +99,7 @@ data '':()''    = '':()''
 type Char         = Int
 type Double       = Float
 
-type PackedString = Bytes
+type PackedString = String
 type String       = [Char] 
 
 {----------------------------------------------------------

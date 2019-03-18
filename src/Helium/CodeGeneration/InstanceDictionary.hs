@@ -45,7 +45,11 @@ constructorType :: String -> [Core.Type] -> Core.Type -> Core.Type
 constructorType typeVar fields classType =
     Core.TForall (Core.Quantor 0 $ Just typeVar) Core.KStar $ Core.typeFunction fields' classType
     where
-        fields' = map instantiateClassVar fields
+        fields' = map (addDictArgument . instantiateClassVar) fields
+
+        -- Adds the dictionary argument to the types of the fields of the type class
+        addDictArgument :: Core.Type -> Core.Type
+        addDictArgument = Core.TAp (Core.TAp (Core.TCon Core.TConFun) classType)
 
         -- We use 0 for the type variable for the argument of the type class.
         -- The types for the fields may need to be updated for this.
@@ -118,7 +122,8 @@ classFunctions importEnv fullTypeSchemes className typeVar combinedNames = [Decl
                         { declName    = idFromString $ getNameName name
                         , declAccess  = public
                         , declType    = snd $ declarationType fullTypeSchemes importEnv TCCNone name
-                        , valueValue  = Lam (Variable dictParam classType) $ 
+                        , valueValue  = Forall (Core.Quantor 0 $ Just typeVar) Core.KStar
+                            (Lam (Variable dictParam classType) $
                                 Let (Strict $ Bind (Variable dictParam $ Core.typeToStrict classType) (Var dictParam))
                                 (Match dictParam 
                                     [
@@ -126,6 +131,7 @@ classFunctions importEnv fullTypeSchemes className typeVar combinedNames = [Decl
                                             (Ap (Var $ idFromString label) (Var dictParam))
                                     ]
                                 )
+                            )
                         , declCustoms = toplevelType name importEnv True
                         }
                 in  if getNameName name == "negate" && className == "Num" then 
@@ -141,8 +147,8 @@ combineDeclIndex [] _ = error "Inconsistent mapping"
 combineDeclIndex names decls = map (\(name, _, label, t) -> (label, name, t, lookup name decls)) names
 
 --returns a dictionary with specific implementations for every instance
-constructDictionary :: ImportEnvironment -> [(String, Name)] -> [(Name, Int, DictLabel, Core.Type)] -> [(Name, CoreDecl)] -> Name -> String -> [Name] -> Core.Type -> CoreDecl
-constructDictionary importEnv instanceSuperClass combinedNames whereDecls className insName typeVariables insType = 
+constructDictionary :: M.Map NameWithRange TpScheme -> ImportEnvironment -> [(String, Name)] -> [(Name, Int, DictLabel, Core.Type)] -> [(Name, CoreDecl)] -> Name -> String -> [Name] -> Core.Type -> CoreDecl
+constructDictionary fullTypeSchemes importEnv instanceSuperClass combinedNames whereDecls className insName typeVariables insType = 
         let 
             
             val = DeclValue 
@@ -212,10 +218,12 @@ constructDictionary importEnv instanceSuperClass combinedNames whereDecls classN
                 in Bind (Variable (idFromString label) t) baseInstance 
             
             makeBindFunc :: (DictLabel, Name, Core.Type, Maybe CoreDecl) -> Bind
-            makeBindFunc (label, name, t, fdecl) = let 
-                undefinedFunc = (Var $ idFromString ("default$" ++ getNameName className ++ "$" ++ getNameName name))
+            makeBindFunc (label, name, t, fdecl) = let
+                (_, tp) = declarationType fullTypeSchemes importEnv (TCCInstance (idFromString insName) insType) name
+                    -- declarationType :: M.Map NameWithRange Top.TpScheme -> ImportEnvironment -> TypeClassContext -> Name -> (Top.TpScheme, Core.Type)
+                undefinedFunc = ApType (Var $ idFromString ("default$" ++ getNameName className ++ "$" ++ getNameName name)) insType
                 func = maybe undefinedFunc getCoreValue fdecl
-                in Bind (Variable (idFromString label) t) func
+                in Bind (Variable (idFromString label) tp) func
             dictCon = Bind (Variable (idFromString "dict") $ typeClassType $ idFromName className) (
                     foldl Ap (Con $ ConId $ idFromString ("Dict$" ++ getNameName className)) $ map (Var . idFromString) labels
                 )
@@ -292,7 +300,7 @@ convertDictionaries importEnv fullTypeSchemes className functions defaults = map
                             { declName    = idFromString $ constructName fname
                             , declAccess  = public 
                             , declType    = tp
-                            , valueValue  = Var $ idFromString "undefined"
+                            , valueValue  = ApType (Var (idFromString "undefined")) tp
                             , declCustoms = toplevelType fname importEnv True
                             }
                     in maybe fDefault updateName (lookup fname defaults)

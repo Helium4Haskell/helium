@@ -36,7 +36,7 @@ dataDictionary  (UHA.Declaration_Data _ _ (UHA.SimpleType_SimpleType _ name name
         argTypes :: [Core.Type]
         argTypes = zipWith (\_ idx -> Core.TAp typeDictEq $ Core.TVar idx) names [0..]
         dictType = Core.TAp typeDictEq dataType
-        dataType = Core.typeApply (Core.TCon $ Core.typeConFromString $ getNameName name) $ zipWith (\_ idx -> Core.TVar idx) names [1..]
+        dataType = Core.typeApplyList (Core.TCon $ Core.typeConFromString $ getNameName name) $ zipWith (\_ idx -> Core.TVar idx) names [1..]
 dataDictionary _ = error "pattern match failure in CodeGeneration.Deriving.dataDictionary"
 
 eqDict :: Core.Type -> Core.Type -> [UHA.Name] -> [UHA.Constructor] -> Expr

@@ -86,19 +86,19 @@ if_ guardExpr thenExpr elseExpr =
         )
 
 -- Function "coreList" builds a linked list of the given expressions
--- Example: coreList [e1, e2] ==> 
---   Ap (Ap (Con ":") e1) 
---           (Ap (Ap (Con ":") e2)
---                    (Con "[]")
+-- Example: coreList tp [e1, e2] ==> 
+--   Ap (Ap (Con ":" `ApType` tp) e1) 
+--           (Ap (Ap (Con ":" `ApType` tp) e2)
+--                    (Con "[]" `ApType` tp)
 --           )
-coreList :: [Expr] -> Expr
-coreList = foldr cons nil
+coreList :: Core.Type -> [Expr] -> Expr
+coreList tp = foldr (cons tp) (nil tp)
 
-cons :: Expr -> Expr -> Expr
-cons x xs = Con (ConId consId) `app_` x `app_` xs
+cons :: Core.Type -> Expr -> Expr -> Expr
+cons tp x xs = ApType (Con (ConId consId)) tp `app_` x `app_` xs
 
-nil :: Expr
-nil = Con (ConId nilId)
+nil :: Core.Type -> Expr
+nil tp = ApType (Con (ConId nilId)) tp
 
 nilId, consId, trueId, guardId :: Id 
 ( nilId : consId :  trueId :  guardId : []) =
@@ -106,8 +106,12 @@ nilId, consId, trueId, guardId :: Id
 
 -- Function "stringToCore" converts a string to a Core expression
 stringToCore :: String -> Expr
-stringToCore [] = nil
-stringToCore [x] = cons (Lit (LitInt (ord x))) nil
+stringToCore [] = nil tp
+  where
+    tp = Core.TCon $ Core.TConDataType $ idFromString "Char"
+stringToCore [x] = cons tp (Lit (LitInt (ord x))) $ nil tp
+  where
+    tp = Core.TCon $ Core.TConDataType $ idFromString "Char"
 stringToCore xs = var "$primPackedToString" `app_` packedString xs
 
 var :: String -> Expr
@@ -283,12 +287,14 @@ applyTypeSynonym env tp@(Top.TCon name) tps = case M.lookup (nameFromString name
 applyTypeSynonym env (Top.TApp t1 t2) tps = applyTypeSynonym env t1 (t2 : tps)
 applyTypeSynonym env (Top.TVar a) tps = foldl (Top.TApp) (Top.TVar a) tps
 
-createInstantiation :: ImportEnvironment -> TypeEnvironment -> SolveResult a -> Name -> Int -> Core.Expr
-createInstantiation importEnv typeEnv solveResult name beta = case M.lookup name typeEnv of
+createInstantiation :: ImportEnvironment -> TypeEnvironment -> SolveResult a -> Name -> Bool -> Int -> Core.Expr
+createInstantiation importEnv typeEnv solveResult name isConstructor beta = case M.lookup name typeEnv of
   Nothing -> expr
   Just scheme -> foldl (\e t -> Core.ApType e $ typeToCoreType t) expr $ findInstantiation importEnv scheme tp
   where
-    expr = Core.Var $ idFromName name
+    expr
+      | isConstructor = Core.Con $ Core.ConId $ idFromName name
+      | otherwise = Core.Var $ idFromName name
     tp = lookupInt beta $ substitutionFromResult solveResult
 
 findInstantiation :: ImportEnvironment -> Top.TpScheme -> Top.Tp -> [Top.Tp]

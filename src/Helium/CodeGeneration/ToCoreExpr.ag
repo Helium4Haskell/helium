@@ -15,7 +15,7 @@ SEM Expression [ | | core : { Core.Expr } ]
     --  range                    : Range
     --  literal                  : Literal
 
-    | Variable           lhs.core = insertDictionaries @name.self @lhs.dictionaryEnv $ createInstantiation @lhs.importEnv @lhs.typeEnv @lhs.solveResult @name.self @lhs.betaDeclUnique
+    | Variable           lhs.core = insertDictionaries @name.self @lhs.dictionaryEnv $ createInstantiation @lhs.importEnv @lhs.typeEnv @lhs.solveResult @name.self False @lhs.betaDeclUnique
     --  range                    : Range
     --  name                     : Name
 
@@ -23,7 +23,7 @@ SEM Expression [ | | core : { Core.Expr } ]
     --  range                    : Range
     --  id                       : Integer
 
-    | Constructor        lhs.core = Core.Con (Core.ConId (idFromName @name.self))
+    | Constructor        lhs.core = createInstantiation @lhs.importEnv @lhs.typeEnv @lhs.solveResult @name.self True @lhs.betaDeclUnique
     --  range                    : Range
     --  name                     : Name
 
@@ -64,7 +64,7 @@ SEM Expression [ | | core : { Core.Expr } ]
         let ids = freshIds "u$" @patterns.length
         in addLambdasForLambdaExpression @lhs.importEnv @lhs.solveResult @lhs.betaDeclUnique ids
             (\tps retType -> 
-                let_ nextClauseId retType (patternMatchFail "lambda expression" @range.self)
+                let_ nextClauseId retType (patternMatchFail "lambda expression" retType @range.self)
                   $ patternsToCore
                     @lhs.importEnv
                     @patterns.patternTypes
@@ -98,7 +98,7 @@ SEM Expression [ | | core : { Core.Expr } ]
     --  range                    : Range
     --  statements               : Statements
 
-    | List               lhs.core = coreList @expressions.core
+    | List               lhs.core = coreList (findCoreType @lhs.solveResult @lhs.betaDeclUnique) @expressions.core
     --  range                    : Range
     --  expressions              : Expressions
 
@@ -114,9 +114,10 @@ SEM Expression [ | | core : { Core.Expr } ]
     --  range                    : Range
     --  expressions              : Expressions
 
-    | Comprehension      qualifiers.coreType = findCoreType @lhs.solveResult @lhs.betaDeclUnique
+    | Comprehension      loc.tp = findCoreType @lhs.solveResult @lhs.betaDeclUnique
+                         qualifiers.coreType = @loc.tp
                          lhs.core = 
-        let singleton x = cons x nil
+        let singleton x = cons @loc.tp x $ nil @loc.tp
         in foldr ($) (singleton @expression.core) @qualifiers.core
     --  range                    : Range
     --  expression               : Expression
@@ -139,19 +140,24 @@ SEM Expression [ | | core : { Core.Expr } ]
     --  expression               : Expression
 
     -- enumerations are overloaded and we need to insert a dictionary argument
-    | Enum               lhs.core = 
+    | Enum               loc.tp = findCoreType @lhs.solveResult @lhs.betaDeclUnique
+                         lhs.core = 
             case (@then.core, @to.core) of
                 (Just then_, Just to) -> 
-                    insertDictionaries' (setNameRange enumFromThenToName @range.self) @lhs.dictionaryEnv
+                    insertDictionaries (setNameRange enumFromThenToName @range.self) @lhs.dictionaryEnv
+                       (Core.Var (idFromName enumFromThenToName) `Core.ApType` @loc.tp)
                        `app_` @from.core `app_` then_ `app_` to
                 (Just then_, Nothing) -> 
-                    insertDictionaries' (setNameRange enumFromThenName @range.self) @lhs.dictionaryEnv
+                    insertDictionaries (setNameRange enumFromThenName @range.self) @lhs.dictionaryEnv
+                        (Core.Var (idFromName enumFromThenName) `Core.ApType` @loc.tp)
                        `app_` @from.core `app_` then_
                 (Nothing, Just to) ->
-                    insertDictionaries' (setNameRange enumFromToName @range.self) @lhs.dictionaryEnv 
+                    insertDictionaries (setNameRange enumFromToName @range.self) @lhs.dictionaryEnv
+                        (Core.Var (idFromName enumFromToName) `Core.ApType` @loc.tp)
                        `app_` @from.core `app_` to
                 (Nothing, Nothing) ->
-                    insertDictionaries' (setNameRange enumFromName @range.self) @lhs.dictionaryEnv
+                    insertDictionaries (setNameRange enumFromName @range.self) @lhs.dictionaryEnv
+                        (Core.Var (idFromName enumFromName) `Core.ApType` @loc.tp)
                        `app_` @from.core
                     
     --  range                    : Range
@@ -219,7 +225,7 @@ ATTR Qualifiers Qualifier [ coreType : { Core.Type } | | ]
 ATTR Qualifiers [ | | core USE { : } { [] } : { [Core.Expr -> Core.Expr] } ]
 
 SEM Qualifier [ | | core : { Core.Expr -> Core.Expr } ]
-    | Guard               lhs.core = \continue -> if_ @guard.core continue nil
+    | Guard               lhs.core = \continue -> if_ @guard.core continue (nil @lhs.coreType)
     --  range                    : Range
     --  guard                    : Expression -- type: Boolean
 
@@ -237,7 +243,7 @@ SEM Qualifier [ | | core : { Core.Expr -> Core.Expr } ]
     | Generator           loc.argType = let (TVar beta) = @pattern.beta in findCoreType @lhs.solveResult beta
                           lhs.core = 
         \continue ->  
-            let_ nextClauseId @lhs.coreType nil
+            let_ nextClauseId @lhs.coreType (nil @lhs.coreType)
                 (let_ 
                     okId (Core.typeFunction [@loc.argType] @lhs.coreType)
                     (Core.Lam (Core.Variable parameterId @loc.argType)
@@ -261,7 +267,7 @@ SEM Qualifier [ | | core : { Core.Expr -> Core.Expr } ]
 ATTR Alternatives Alternative [ scrutineeType : { Core.Type } rhsType : { Core.Type } | | ]
 SEM Alternatives [ caseRange : Range | | core : { Core.Expr } ]
     | Cons              lhs.core     = @hd.core @tl.core
-    | Nil               lhs.core     = patternMatchFail "case expression" @lhs.caseRange
+    | Nil               lhs.core     = patternMatchFail "case expression" @lhs.rhsType @lhs.caseRange
 
 SEM Alternative [ | | core : { Core.Expr -> Core.Expr } ]
     | Hole              lhs.core   = id

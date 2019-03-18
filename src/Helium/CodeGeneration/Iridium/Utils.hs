@@ -4,12 +4,12 @@ import Helium.CodeGeneration.Iridium.Data
 import Lvm.Common.Id (NameSupply, mapWithSupply, splitNameSupply, idFromString)
 
 mapMethodsWithSupply :: (NameSupply -> Declaration Method -> Declaration Method) -> NameSupply -> Module -> Module
-mapMethodsWithSupply fn supply (Module name dependencies customs datas abstracts methods) = Module name dependencies customs datas abstracts methods'
+mapMethodsWithSupply fn supply (Module name dependencies customs datas types abstracts methods) = Module name dependencies customs datas types abstracts methods'
   where
     methods' = mapWithSupply fn supply methods
 
 mapBlocks :: (Instruction -> Instruction) -> Module -> Module
-mapBlocks fn (Module name dependencies customs datas abstracts methods) = Module name dependencies customs datas abstracts $ map (fmap fnMethod) methods
+mapBlocks fn (Module name dependencies customs datas types abstracts methods) = Module name dependencies customs datas types abstracts $ map (fmap fnMethod) methods
   where
     fnMethod :: Method -> Method
     fnMethod (Method args rettype annotations entry blocks) = Method args rettype annotations (fnBlock entry) $ map fnBlock blocks
@@ -17,7 +17,7 @@ mapBlocks fn (Module name dependencies customs datas abstracts methods) = Module
     fnBlock (Block name instr) = Block name $ fn instr
 
 mapBlocksWithSupply :: (NameSupply -> Instruction -> Instruction) -> NameSupply -> Module -> Module
-mapBlocksWithSupply fn supply (Module name dependencies customs datas abstracts methods) = Module name dependencies customs datas abstracts $ mapWithSupply (\s -> fmap (fnMethod s)) supply methods
+mapBlocksWithSupply fn supply (Module name dependencies customs datas types abstracts methods) = Module name dependencies customs datas types abstracts $ mapWithSupply (\s -> fmap (fnMethod s)) supply methods
   where
     fnMethod :: NameSupply -> Method -> Method
     fnMethod s (Method args rettype annotations entry blocks) = Method args rettype annotations (fnBlock supply1 entry) $ mapWithSupply fnBlock supply2 blocks

@@ -35,6 +35,11 @@ typeFromUHA = typeToCoreType . makeTpFromType'
 typeDictFor :: Core.Type -> Core.Type
 typeDictFor = Core.TAp typeDictShow
 
+typeString :: Core.Type
+typeString = Core.TAp (Core.TCon $ Core.TConDataType $ idFromString "[]") char
+  where
+    char = Core.TCon $ Core.TConDataType $ idFromString "Char" 
+
 -- Show function for a data type declaration
 dataShowFunction :: Core.Type -> Core.Type -> ClassEnvironment -> TypeSynonymEnvironment -> UHA.Declaration -> Expr
 dataShowFunction dictType dataType classEnv tse (UHA.Declaration_Data _ _ (UHA.SimpleType_SimpleType _ name names) constructors _) =
@@ -68,7 +73,7 @@ dataDictionary classEnv tse decl@(UHA.Declaration_Data _ _ (UHA.SimpleType_Simpl
     argTypes :: [Core.Type]
     argTypes = zipWith (\_ idx -> typeDictFor $ Core.TVar idx) names [1..]
     dictType = typeDictFor dataType
-    dataType = Core.typeApply (Core.TCon $ Core.typeConFromString $ getNameName name) $ zipWith (\_ idx -> Core.TVar idx) names [1..]
+    dataType = Core.typeApplyList (Core.TCon $ Core.typeConFromString $ getNameName name) $ zipWith (\_ idx -> Core.TVar idx) names [1..]
     makeShowDictionary :: Expr
     makeShowDictionary =
        let 
@@ -103,7 +108,7 @@ makeAlt classEnv tse names c = Alt (constructorToPat ident types) (showConstruct
 showConstructor :: ClassEnvironment -> TypeSynonymEnvironment -> Id -> [UHA.Type] -> Expr
 showConstructor classEnv tse c ts -- name of constructor and paramater types
     | isConOp && length ts == 2 = 
-        Ap (Var (idFromString "$primConcat")) $ coreList 
+        Ap (Var (idFromString "$primConcat")) $ coreList typeString
             [   stringToCore "("
             ,   Ap (Ap (var "show") (showFunctionOfType classEnv tse False (ts!!0))) (Var (idFromNumber 1))
             ,   stringToCore name
@@ -111,7 +116,7 @@ showConstructor classEnv tse c ts -- name of constructor and paramater types
             ,   stringToCore ")"
             ]
     | otherwise =
-        Ap (Var (idFromString "$primConcat")) $ coreList 
+        Ap (Var (idFromString "$primConcat")) $ coreList typeString
             (  (if null ts then [] else [stringToCore "("])
             ++ (if isConOp then parens else id) [stringToCore name]
             ++ concat
@@ -181,7 +186,7 @@ checkForPrimitiveDict typeArgs classEnv name =
                 isTCon (TVar _) _ = False
                 pred = find (\((Predicate n t), _)-> isTCon t name ) showInstances
                 coreTypeArgs = map typeFromUHA typeArgs
-                tp = typeDictFor $ Core.typeApply (Core.TCon $ Core.TConDataType $ idFromString name) coreTypeArgs
+                tp = typeDictFor $ Core.typeApplyList (Core.TCon $ Core.TConDataType $ idFromString name) coreTypeArgs
             in if isJust pred then 
                     dict 
                 else 

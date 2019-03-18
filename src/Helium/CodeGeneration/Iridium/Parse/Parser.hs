@@ -1,6 +1,7 @@
 module Helium.CodeGeneration.Iridium.Parse.Parser where
 
 import Lvm.Common.Id(Id, idFromString)
+import Data.Maybe
 
 data ParseResult p = ResError !String !String | ResValue !p !String
 
@@ -39,6 +40,20 @@ isWhitespace _ = False
 
 pError :: String -> Parser a
 pError err = Parser $ ResError err
+
+pMaybe :: Parser a -> Parser (Maybe a)
+pMaybe (Parser p) = Parser f
+  where
+    f str = case p str of
+      ResError _ _ -> ResValue Nothing str
+      ResValue v str' -> ResValue (Just v) str'
+
+pManyMaybe :: Parser (Maybe a) -> Parser [a]
+pManyMaybe p = do
+  res <- p
+  case res of
+    Just x -> (x : ) <$> pManyMaybe p
+    Nothing -> return []
 
 validWordChar :: Char -> Bool
 validWordChar c = ('a' <= c && c <= 'z') || c == '_'

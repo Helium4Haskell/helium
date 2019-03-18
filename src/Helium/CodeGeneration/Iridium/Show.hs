@@ -13,6 +13,7 @@ module Helium.CodeGeneration.Iridium.Show where
 import Lvm.Common.Byte(stringFromBytes)
 import Lvm.Common.Id(Id, stringFromId, idFromString)
 import Lvm.Core.Module(Custom(..), DeclKind(..))
+import Lvm.Core.Type
 import Data.List(intercalate)
 import Helium.CodeGeneration.Iridium.Data
 import Helium.CodeGeneration.Iridium.Type
@@ -149,11 +150,12 @@ instance ShowDeclaration Method where
     )
 
 instance Show Module where
-  show (Module name dependencies customs decls abstracts methods) =
+  show (Module name dependencies customs datas types abstracts methods) =
     "module " ++ stringFromId name ++ "\n"
     ++ importString
     ++ (customs >>= ('\n' :) . show)
-    ++ (decls >>= ('\n' :) . show)
+    ++ (datas >>= ('\n' :) . show)
+    ++ (types >>= ('\n' :) . show)
     ++ (abstracts >>= ('\n' :) . show)
     ++ (methods >>= ('\n' :) . show)
     where
@@ -175,6 +177,12 @@ instance ShowDeclaration DataType where
   showDeclaration (DataType cons) =
     ( "data"
     , " {" ++ (cons >>= (("\n" ++) .unlines . map ("  " ++) . lines . show)) ++ "}\n"
+    )
+
+instance ShowDeclaration TypeSynonym where
+  showDeclaration (TypeSynonym tp) =
+    ( "type"
+    , " = { " ++ show tp ++ " }"
     )
 
 instance Show PrimitiveType where

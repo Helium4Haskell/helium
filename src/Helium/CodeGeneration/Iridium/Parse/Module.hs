@@ -41,6 +41,17 @@ pDataType = do
       else
         return True
 
+pTypeSynonym :: Parser TypeSynonym
+pTypeSynonym = do
+  pWhitespace
+  pToken '='
+  pWhitespace
+  pToken '{'
+  pWhitespace
+  tp <- pCoreType
+  pToken '}'
+  return $ TypeSynonym tp
+
 pDeclaration :: (String -> (forall a . a -> Declaration a) -> Parser b) -> Parser b
 pDeclaration f = do
   customs <- pCustoms
@@ -79,7 +90,7 @@ pModule = do
   pWhitespace
   dependencies <- pArguments pId
   pWhitespace
-  let emptyModule = Module name dependencies [] [] [] []
+  let emptyModule = Module name dependencies [] [] [] [] []
   decls <- pSome pModuleDeclaration (not <$ pWhitespace <*> isEndOfFile)
   return $ foldr (\f m -> f m) emptyModule decls
 
@@ -89,6 +100,7 @@ pModuleDeclaration = pDeclaration f
     f :: String -> (forall a . a -> Declaration a) -> Parser (Module -> Module)
     f "custom" decl = addCustom . decl <$> pCustomDeclaration
     f "data" decl = addDataType . decl <$> pDataType
+    f "type" decl = addTypeSynonym . decl <$> pTypeSynonym
     f "declare" decl = addAbstract . decl <$> pAbstractMethod
     f "define" decl = addMethod . decl <$> pMethod
     f keyword _ = pError $ "Unknown declaration keyword: " ++ keyword
@@ -119,3 +131,6 @@ addAbstract a m = m{ moduleAbstractMethods = a : moduleAbstractMethods m }
 
 addMethod :: Declaration Method -> Module -> Module
 addMethod f m = m{ moduleMethods = f : moduleMethods m }
+
+addTypeSynonym :: Declaration TypeSynonym -> Module -> Module
+addTypeSynonym ts m = m { moduleTypeSynonyms = ts : moduleTypeSynonyms m }

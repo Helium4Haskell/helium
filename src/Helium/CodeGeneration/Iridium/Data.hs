@@ -16,6 +16,7 @@ module Helium.CodeGeneration.Iridium.Data where
 
 import Lvm.Common.Id(Id, stringFromId, idFromString)
 import Lvm.Core.Module(Custom(..), DeclKind, Arity)
+import Lvm.Core.Type
 import Data.List(intercalate)
 
 import Helium.CodeGeneration.Iridium.Type
@@ -28,6 +29,7 @@ data Module = Module
   , moduleDependencies :: ![Id]
   , moduleCustoms :: ![Declaration CustomDeclaration]
   , moduleDataTypes :: ![Declaration DataType]
+  , moduleTypeSynonyms :: ![Declaration TypeSynonym]
   , moduleAbstractMethods :: ![Declaration AbstractMethod]
   , moduleMethods :: ![Declaration Method]
   }
@@ -85,6 +87,7 @@ data CallingConvention
   | CCPreserveMost
   deriving (Eq, Ord)
 
+data TypeSynonym = TypeSynonym !Type
 data Local = Local { localName :: !Id, localType :: !PrimitiveType }
   deriving (Eq, Ord)
 
@@ -264,4 +267,4 @@ callingConvention (_ : as) = callingConvention as
 
 -- Checks whether this module has a declaration or definition for this function
 declaresFunction :: Module -> Id -> Bool
-declaresFunction (Module _ _ _ _ abstracts methods) name = any ((== name) . declarationName) abstracts || any ((== name) . declarationName) methods
+declaresFunction (Module _ _ _ _ _ abstracts methods) name = any ((== name) . declarationName) abstracts || any ((== name) . declarationName) methods

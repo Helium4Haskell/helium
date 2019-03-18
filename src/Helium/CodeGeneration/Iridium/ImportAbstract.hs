@@ -8,11 +8,12 @@ import qualified Lvm.Core.Module as Core
 import qualified Lvm.Core.Type as Core
 
 toAbstractModule :: Module -> Core.Module v
-toAbstractModule (Module name _ customs datas abstracts methods) = Core.Module name 0 0
+toAbstractModule (Module name _ customs datas synonyms abstracts methods) = Core.Module name 0 0
   $ mapMaybe convertCustom customs
   ++ (datas >>= convertData)
   ++ mapMaybe convertMethod methods
   ++ mapMaybe convertAbstractMethod abstracts
+  ++ mapMaybe convertTypeSynonym synonyms
 
 convertCustom :: Declaration CustomDeclaration -> Maybe (Core.Decl v)
 convertCustom (Declaration _ (ExportedAs name) mod customs (CustomDeclaration kind)) = Just $
@@ -39,6 +40,11 @@ convertAbstractMethod :: Declaration AbstractMethod -> Maybe (Core.Decl v)
 convertAbstractMethod (Declaration _ (ExportedAs name) mod customs (AbstractMethod (FunctionType args _) _)) = Just $
   Core.DeclAbstract name (toAccess name mod) (Core.typeFunction (map (const Core.TAny) args) $ Core.TStrict Core.TAny) customs
 convertAbstractMethod _ = Nothing
+
+convertTypeSynonym :: Declaration TypeSynonym -> Maybe (Core.Decl v)
+convertTypeSynonym d@(Declaration _ (ExportedAs name) mod customs (TypeSynonym tp)) = Just $
+  Core.DeclTypeSynonym name (toAccess name mod) tp customs
+convertTypeSynonym _ = Nothing
 
 toAccess :: Id -> Maybe Id -> Core.Access
 toAccess _ Nothing = Core.Defined True

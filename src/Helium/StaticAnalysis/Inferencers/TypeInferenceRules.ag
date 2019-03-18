@@ -451,10 +451,9 @@ SEM Expression
           . beta        = TVar @lhs.betaUnique
 
   | Constructor
-      lhs . betaUnique   = @lhs.betaUnique + 1
       loc . assumptions  = noAssumptions
           . constraints  = listTree @newcon
-          . beta         = TVar @lhs.betaUnique
+          . beta         = TVar @lhs.betaDeclUnique
           . newcon       = case M.lookup @name.self (valueConstructors @lhs.importEnvironment) of
                               Nothing  -> []
                               Just ctp -> [ (@beta .::. ctp) @cinfo ]
@@ -568,11 +567,11 @@ SEM Expression
                                       Just b  -> [ (b .==. @beta) @cinfo, (@beta .::. @monadBeta) @cinfo ]
 
   | List
-      expressions . betaUnique   = @lhs.betaUnique + 2
+      expressions . betaUnique   = @lhs.betaUnique + 1
       loc         . constraints  = @newcon .>.
                                     Node (zipWith3 @zipf @expressions.betas [0..] @expressions.constraintslist)
                   . beta         = TVar @lhs.betaUnique
-                  . beta'        = TVar (@lhs.betaUnique + 1)
+                  . beta'        = TVar @lhs.betaDeclUnique
                   . newcon       = [ (listType @beta' .==. @beta) @cinfoResult ]
                   . zipf         = \tp childNr ctree -> [ (tp .==. @beta') (@cinfoElem childNr) ] .<. ctree
 
@@ -603,7 +602,7 @@ SEM Expression
                  . newcon      = [ (listType @expression.beta .==. @beta) @cinfo ]
 
   | Enum
-       from . betaUnique   = @lhs.betaUnique + (if @overloaded then 2 else 1)
+       from . betaUnique   = @lhs.betaUnique + (if @overloaded then 1 else 0)
        loc  . assumptions  = @from.assumptions `combine` @then.assumptions `combine` @to.assumptions
             . constraints  = (@conList ++ @conPredicate) .>.
                              Node [ @conFrom .<. @from.constraints
@@ -614,7 +613,7 @@ SEM Expression
             . overloaded   = case M.lookup enumFromName (typeEnvironment @lhs.importEnvironment) of
                                 Just scheme -> isOverloaded scheme
                                 Nothing     -> False
-            . elementType  = if @overloaded then TVar (@lhs.betaUnique + 1) else intType
+            . elementType  = if @overloaded then TVar @lhs.betaDeclUnique else intType
             . conPredicate = if @overloaded then [predicate (Predicate "Enum" @elementType) @cinfoPred] else []
             . conList      = [ (listType @elementType .==. @beta) @cinfoResult ]
             . conFrom      = [ (@from.beta .==. @elementType) @cinfoFrom ]
