@@ -29,6 +29,7 @@ import Helium.Main.PhaseDesugarer
 import Helium.Main.PhaseCodeGeneratorIridium
 import Helium.Main.PhaseCodeGeneratorLlvm
 import Helium.Main.CompileUtils
+import qualified Helium.CodeGeneration.Core.TypeCheck as Core
 import qualified Helium.CodeGeneration.Iridium.Parse.Module as Iridium
 import qualified Helium.CodeGeneration.Iridium.ResolveDependencies as Iridium
 import qualified Helium.CodeGeneration.Iridium.FileCache as Iridium
@@ -45,6 +46,8 @@ import Helium.CodeGeneration.CoreUtils
 import Helium.Syntax.UHA_Utils
 import qualified Data.Map as M
 import Data.Maybe
+
+import Text.PrettyPrint.Leijen (pretty)
 
 compile :: String -> String -> [Option] -> [String] -> Iridium.FileCache -> [String] -> IO ()
 compile basedir fullName options lvmPath iridiumCache doneModules =
@@ -167,8 +170,13 @@ compileHaskellToCore basedir fullName contents options iridiumCache doneModules 
                       fullName resolvedModule allTypeSchemes solveResult
                       (typingStrategiesDecls ++ indirectionDecls') 
                       afterTypeInferEnv
-                      toplevelTypes 
-                      options                           
+                      toplevelTypes
+                      options
+  
+  let (path, baseName, _) = splitFilePath fullName
+  let fullNameNoExt = combinePathAndFile path baseName
+  writeFile (fullNameNoExt ++ ".desugared.core") $ show $ pretty coreModule
+  verifyCore options coreModule
 
   stopCompilingIf (StopAfterDesugar `elem` options)
 
@@ -188,3 +196,8 @@ resolveDeclarations :: Iridium.FileCache -> Id -> IO (Lvm.CoreModule)
 resolveDeclarations iridiumCache name = do
   iridium <- Iridium.readIridium iridiumCache name
   return $ toAbstractModule iridium
+
+verifyCore :: [Option] -> Lvm.CoreModule -> IO ()
+verifyCore options mod
+  | VerifyBackend `elem` options = Core.checkModuleIO mod
+  | otherwise = return ()

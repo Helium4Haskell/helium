@@ -162,6 +162,7 @@ optionDescription moreOptions experimentalOptions =
       , Option "u" [flag DumpUHA]                       (NoArg DumpUHA) "pretty print abstract syntax tree"
       , Option "c" [flag DumpCore]                      (NoArg DumpCore) "pretty print Core program"
       , Option "C" [flag DumpCoreToFile]                (NoArg DumpCoreToFile) "write Core program to file"
+      , Option ""  [flag VerifyBackend]                 (NoArg VerifyBackend) "type check the intermediate languages of the backend for consistency"
       , Option ""  [flag DebugLogger]                   (NoArg DebugLogger) "show logger debug information"
       , Option ""  [flag (Host "")]                     (ReqArg Host "HOST") ("specify which HOST to use for logging (default " ++ loggerDEFAULTHOST ++ ")")
       , Option ""  [flag (Port 0)]                      (ReqArg selectPort "PORT") ("select the PORT number for the logger (default: " ++ show loggerDEFAULTPORT ++ ")")
@@ -206,7 +207,7 @@ data Option
    | Information String | BasePath String
    -- More options
    | StopAfterParser | StopAfterStaticAnalysis | StopAfterTypeInferencing | StopAfterDesugar
-   | DumpTokens | DumpUHA | DumpCore | DumpCoreToFile
+   | DumpTokens | DumpUHA | DumpCore | DumpCoreToFile | VerifyBackend
    | DebugLogger | Host String | Port Int
    | DumpTypeDebug | AlgorithmW | AlgorithmM | DisableDirectives | NoRepairHeuristics | HFullQualification
    -- Experimental options
@@ -247,6 +248,7 @@ instance Show Option where
  show DumpUHA                            = "--dump-uha"
  show DumpCore                           = "--dump-core"
  show DumpCoreToFile                     = "--save-core"
+ show VerifyBackend                      = "--verify-backend"
  show DebugLogger                        = "--debug-logger"
  show (Host host)                        = "--host=" ++ host
  show (Port port)                        = "--port=" ++ show port
