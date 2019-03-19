@@ -140,7 +140,8 @@ typeEqual env TAny TAny = True
 typeEqual env (TStrict t1) t2 = typeEqual env t1 t2 -- Ignore strictness
 typeEqual env t1 (TStrict t2) = typeEqual env t1 t2 -- Ignore strictness
 typeEqual env (TVar x1) (TVar x2) = x1 == x2
-typeEqual env (TCon c1) (TCon c2) = c1 == c2
+typeEqual env t1@(TCon c1) t2 = typeEqualNoTypeSynonym env (typeNormalizeHead env t1) (typeNormalizeHead env t2)
+typeEqual env t1 t2@(TCon _) = typeEqualNoTypeSynonym env t1 (typeNormalizeHead env t2)
 typeEqual env t1@(TAp _ _) t2 = typeEqualNoTypeSynonym env (typeNormalizeHead env t1) (typeNormalizeHead env t2)
 typeEqual env t1 t2@(TAp _ _) = typeEqualNoTypeSynonym env t1 (typeNormalizeHead env t2)
 typeEqual env (TForall (Quantor x _) _ t1) (TForall (Quantor y _) _ t2) =
@@ -154,6 +155,9 @@ typeEqualNoTypeSynonym env (TAp tl1 tl2) (TAp tr1 tr2)
   && typeEqualNoTypeSynonym env tl2 tr2
 typeEqualNoTypeSynonym _ (TAp _ _) _ = False
 typeEqualNoTypeSynonym _ _ (TAp _ _) = False
+typeEqualNoTypeSynonym _ (TCon c1) (TCon c2) = c1 == c2
+typeEqualNoTypeSynonym _ (TCon _) _ = False
+typeEqualNoTypeSynonym _ _ (TCon _) = False
 typeEqualNoTypeSynonym env t1 t2 = typeEqual env t1 t2
 
 typeOfLiteral :: Literal -> Type

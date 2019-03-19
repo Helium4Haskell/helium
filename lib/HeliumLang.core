@@ -8,6 +8,7 @@ module HeliumLang
     , '':()''('':()'') -- unit tuple
     , '':->'' -- function arrow
     , String, Int, Float, Char
+    , PackedString
 
     , showChar, showString, showInt, showBool, showUnit, showFloat  
     
@@ -30,7 +31,8 @@ module HeliumLang
 
 import LvmLang 
     ( Int(), Float(), IO(IO)
-    , custom "typedecl" String
+    , type String
+    , type PackedString
     , Bool(True, False)
     , '':[]''('':[]'', (:))
     , '':()''('':()'')

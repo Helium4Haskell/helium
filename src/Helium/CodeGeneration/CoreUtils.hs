@@ -18,7 +18,7 @@ module Helium.CodeGeneration.CoreUtils
     ,   addLambdas, addLambdasForLambdaExpression, TypeClassContext(..)
     ,   findCoreType, createInstantiation
     ) where
-import Debug.Trace
+
 import Top.Types as Top
 import Top.Solver(SolveResult(..))
 import Top.Types.Substitution(FixpointSubstitution, lookupInt)

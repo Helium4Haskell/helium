@@ -12,12 +12,13 @@ import qualified Lvm.Core.Expr as Core
 import qualified Lvm.Core.Module as Core
 import System.Exit
 
-fromCoreImports :: FileCache -> [Core.CoreDecl] -> IO ([(Id, Declaration CustomDeclaration)], [(Id, Declaration DataType)], [(Id, Declaration AbstractMethod)])
+fromCoreImports :: FileCache -> [Core.CoreDecl] -> IO ([(Id, Declaration CustomDeclaration)], [(Id, Declaration DataType)], [(Id, Declaration TypeSynonym)], [(Id, Declaration AbstractMethod)])
 fromCoreImports cache decls = do
   customs <- mapM (importCustom cache) decls
   datas <- mapM (importData cache) decls
+  types <- mapM (importTypeSynonym cache) decls
   abstracts <- mapM (importAbstract cache) decls
-  return (catMaybes customs, catMaybes datas, catMaybes abstracts)
+  return (catMaybes customs, catMaybes datas, catMaybes types, catMaybes abstracts)
 
 importCustom :: FileCache -> Core.CoreDecl -> IO (Maybe (Id, Declaration CustomDeclaration))
 importCustom cache decl@Core.DeclCustom{}
@@ -28,6 +29,10 @@ importData :: FileCache -> Core.CoreDecl -> IO (Maybe (Id, Declaration DataType)
 importData cache decl@Core.DeclCustom{}
   | Core.declKind decl == Core.DeclKindCustom (idFromString "data") = Just <$> findDeclaration cache decl moduleDataTypes
 importData _ _ = return Nothing
+
+importTypeSynonym :: FileCache -> Core.CoreDecl -> IO (Maybe (Id, Declaration TypeSynonym))
+importTypeSynonym cache decl@Core.DeclTypeSynonym{} = Just <$> findDeclaration cache decl moduleTypeSynonyms
+importTypeSynonym _ _ = return Nothing
 
 importAbstract :: FileCache -> Core.CoreDecl -> IO (Maybe (Id, Declaration AbstractMethod))
 importAbstract cache decl

@@ -24,6 +24,8 @@ import Helium.CodeGeneration.LLVM.CompileModule(compileModule)
 import Helium.CodeGeneration.LLVM.Target(Target(..))
 import Helium.CodeGeneration.LLVM.Env(envForModule)
 
+import Text.PrettyPrint.Leijen (pretty)
+
 import qualified Data.Text.Lazy as Text
 import LLVM.Pretty (ppllvm)
 
@@ -37,6 +39,8 @@ phaseCodeGeneratorIridium supply cache fullName coreModule options = do
 
   let (path, baseName, _) = splitFilePath fullName
   let fullNameNoExt = combinePathAndFile path baseName
+
+  writeFile (fullNameNoExt ++ ".test.core") $ show $ pretty simplified
 
   -- Check whether the module has a 'main$' function
   let hasMain = any ((== idFromString "main$") . Core.declName) $ Core.moduleDecls coreModule

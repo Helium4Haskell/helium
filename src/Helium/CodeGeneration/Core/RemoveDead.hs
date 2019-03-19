@@ -57,6 +57,7 @@ coreRemoveDead m
 -- Is a declaration used?
 ----------------------------------------------------------------
 isUsed :: Used -> CoreDecl -> Bool
+isUsed _ DeclTypeSynonym{} = True
 isUsed used decl
   = accessPublic (declAccess decl) || Set.member (declIdentity decl) used
 

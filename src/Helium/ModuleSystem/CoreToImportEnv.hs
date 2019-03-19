@@ -9,6 +9,7 @@
 module Helium.ModuleSystem.CoreToImportEnv(getImportEnvironment) where
 
 import Lvm.Core.Expr
+import qualified Lvm.Core.Type as Core
 import Lvm.Core.Utils
 import Lvm.Common.Id
 import Lvm.Common.Byte(stringFromBytes)
@@ -63,8 +64,26 @@ parseFromString p string =
         Left _ -> internalError "CoreToImportEnv" "parseFromString" ("lex error in " ++ string)
         Right (tokens, _) ->
             case runHParser p "CoreToImportEnv" tokens True {- wait for EOF -} of
-                Left _  -> internalError "CoreToImportEnv" "parseFromString" ("parse error in " ++ string)
+                Left e  -> internalError "CoreToImportEnv" "parseFromString" ("parse error in " ++ string ++ ": " ++ show e)
                 Right x -> x
+
+typeSynFromCore :: Core.Type -> (Int, Tps -> Tp)
+typeSynFromCore quantifiedType = (length typeArgs, \args -> fromCore (zip typeArgs args) tp)
+  where
+    (typeArgs, tp) = splitForalls quantifiedType
+    splitForalls :: Core.Type -> ([Int], Core.Type)
+    splitForalls (Core.TForall (Core.Quantor idx _) _ t) = (idx : idxs, t)
+      where
+        (idxs, t') = splitForalls t
+    splitForalls t = ([], t)
+    fromCore :: [(Int, Tp)] -> Core.Type -> Tp
+    fromCore args (Core.TCon c) = TCon $ show c
+    fromCore args (Core.TAp t1 t2) = TApp (fromCore args t1) (fromCore args t2)
+    fromCore args (Core.TVar x) = case lookup x args of
+      Just t -> t
+      Nothing -> internalError "CoreToImportEnv" "typeSynFromCore" ("Type variable not found: v$" ++ show x)
+    fromCore args (Core.TAny) = internalError "CoreToImportEnv" "typeSynFromCore" ("Unexpected 'any' in type synonym")
+    fromCore args (Core.TForall _ _ _) = internalError "CoreToImportEnv" "typeSynFromCore" ("Unexpected 'forall' in type synonym")
 
 typeSynFromCustoms :: String -> [Custom] -> (Int, Tps -> Tp) -- !!! yuck
 typeSynFromCustoms n (CustomBytes bs:cs) =
@@ -242,17 +261,15 @@ getImportEnvironment importedInModule decls = foldr (insertDictionaries imported
               addTypeConstructor
                  (makeImportName importedInModule importedFromModId n)
                  (arityFromCustoms (stringFromId n) cs)
-            
+
            -- type synonym declarations
            -- important: a type synonym also introduces a new type constructor!
-           DeclCustom { declName    = n
-                      , declAccess  = Imported{importModule = importedFromModId}
-                      , declKind    = DeclKindCustom ident
-                      , declCustoms = cs
-                      }
-                      | stringFromId ident == "typedecl" ->
+           DeclTypeSynonym { declName = n
+                           , declAccess = Imported{importModule = importedFromModId}
+                           , declType = tp
+                           } ->
               let typename = makeImportName importedInModule importedFromModId n
-                  pair = typeSynFromCustoms (stringFromId n) cs
+                  pair = typeSynFromCore tp
               in addTypeSynonym typename pair . addTypeConstructor typename (fst pair)
                              
            -- infix decls

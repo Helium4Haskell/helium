@@ -25,14 +25,16 @@ import Text.PrettyPrint.Leijen (pretty)
 type Location = [String]
 data TypeError = TypeError Location Message
 data Message
-  = MessageExpected String Type Expr
+  = MessageExpected String Type (Maybe Expr)
   | MessageNotEqual Type Type
   | MessageNameNotFound Id
 
 instance Show Message where
-  show (MessageExpected str tp expr)
+  show (MessageExpected str tp (Just expr))
     = "  Expected " ++ str ++ ", got `" ++ show tp ++ "' instead"
     ++ "  as the type of expression:\n\n" ++ show (pretty expr)
+  show (MessageExpected str tp Nothing)
+    = "  Expected " ++ str ++ ", got `" ++ show tp ++ "' instead"
   show (MessageNotEqual t1 t2)
     = "  Types `" ++ show t1 ++ "' and `" ++ show t2 ++ "' do not match"
   show (MessageNameNotFound name)
@@ -71,7 +73,6 @@ checkModuleIO mod = case checkModule mod of
   [] -> return ()
   errors -> do
     putStrLn "Type errors in Core file"
-    -- print $ pretty mod
     mapM_ print errors
     putStrLn (show (length errors) ++ " errors")
     exitWith (ExitFailure 1)
@@ -94,7 +95,7 @@ checkExpression env (Let binds expr) = do
         case binds of
           Rec _ -> env'
           _ -> env
-  sequence_ $ map (checkBind env) $ listFromBinds binds
+  sequence_ $ map (checkBind env') $ listFromBinds binds
   checkExpression env' expr
 checkExpression env (Match name alts) = do
   scrutinee <- checkId env name
@@ -108,12 +109,12 @@ checkExpression env (Ap e1 e2) = do
     (TAp (TAp (TCon TConFun) tArg) tReturn) -> do
       assert env t2 tArg @@ "the argument of an application"
       return tReturn
-    t1' -> report (MessageExpected "function type" t1' e1) @@ "the argument of an application"
+    t1' -> report (MessageExpected "function type" t1' $ Just e1) @@ "the argument of an application"
 checkExpression env (ApType e1 t2) = do
   t1 <- checkExpression env e1
   case typeNormalizeHead env t1 of
     TForall (Quantor idx _) _ t1' -> return $ typeSubstitute idx t2 t1'
-    t1' -> report $ MessageExpected "forall type" t1' e1
+    t1' -> report $ MessageExpected "forall type" t1' $ Just e1
 checkExpression env (Lam var@(Variable x tArg) expr) = do
   let env' = typeEnvAddVariable var env
   tReturn <- checkExpression env' expr @@ "lambda with argument " ++ show x
@@ -153,6 +154,8 @@ checkPattern env tp pat@(PatCon con typeArgs ids) = do
       let var = Variable x tArg
       vars <- findVars tReturn xs
       return (var : vars)
+    findVars t _ = do
+      report $ MessageExpected "function type" t Nothing
 
 
 checkId :: TypeEnvironment -> Id -> Check Type
