@@ -51,11 +51,6 @@ SEM Declaration
             lhs.decls  =
         let -- if we would have the collected type synonym information here, things could have been
             -- done much easier.
-            (t1,[t2])   = convertFromSimpleTypeAndTypes @simpletype.self [@type.self]
-            allTypeVars = ftv [t1,t2]
-            (ts1,ts2)   = ( Quantification (allTypeVars, [], [] .=>. t1) :: TpScheme
-                          , Quantification (allTypeVars, [], [] .=>. t2) :: TpScheme
-                          )
             Quantification (_, qmap, tp) = makeTpSchemeFromType @type.self
             getQuantor :: String -> Int -> ((Int, String), Int)
             getQuantor name freeIndex = case find (\(_, x) -> name == x) qmap of
@@ -65,25 +60,7 @@ SEM Declaration
             ts = Quantification (quantors, qmap', tp)
             free = maximum (map fst qmap) + 1
         in
-        -- Old declaration for type synonyms, based on Custom decls
-        [ Core.DeclCustom
-            { Core.declName    = idFromString (getNameName @simpletype.name)
-            , Core.declAccess  = Core.private
-            , Core.declKind    = Core.DeclKindCustom (idFromString "typedecl")
-            , Core.declCustoms =
-                [ Core.CustomBytes
-                    (Byte.bytesFromString
-                        (  show ts1
-                        ++ " = "
-                        ++ show ts2
-                        )
-                    )
-                , Core.CustomInt
-                    (length @simpletype.typevariables)
-                ]
-            }
-        -- New declaration for type synonyms
-        , Core.DeclTypeSynonym
+        [ Core.DeclTypeSynonym
             { Core.declName = idFromName @simpletype.name
             , Core.declAccess = Core.private
             , Core.declType = toCoreType ts
