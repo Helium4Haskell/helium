@@ -241,8 +241,8 @@ SEM Declaration
         loc     . instBeta              = TVar      @lhs.betaUnique
         loc     . typeVariabeles        = namesInType (chead $ @types.self)
         loc     . instanceBetas         = (zip @typeVariabeles [TVar n | n <- [@lhs.betaUnique + 2..]])
-        loc     . instsType             = makeTpFromType @instanceBetas (chead $ @types.self)
-        loc     . instanceTpScheme      = addPredicatesToTpScheme (@superClasses) $ makeTpSchemeFromType (chead @types.self)
+        loc     . instsType             = convertTpToQualified @lhs.typeConstructors $ makeTpFromType @instanceBetas (chead $ @types.self)
+        loc     . instanceTpScheme      = addPredicatesToTpScheme (@superClasses) $ convertTpSchemeToQualified @lhs.typeConstructors $ makeTpSchemeFromType (chead @types.self)
         loc     . superClasses          = getSuperClasses @context.self
         loc     . memberSuperClassBeta  = [TVar v | v <- [(@lhs.betaUnique + 2 + length @typeVariabeles)..]]
         loc     . memberBetas           = matchClassDefinitionToInstanceDefinition 
