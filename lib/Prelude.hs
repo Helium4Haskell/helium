@@ -953,7 +953,7 @@ instance Enum Int where
         | otherwise = y : f (y + step)
       g y
         | y < end = []
-        | otherwise = y : f (y + step)
+        | otherwise = y : g (y + step)
 
 {-
 instance Enum Float where

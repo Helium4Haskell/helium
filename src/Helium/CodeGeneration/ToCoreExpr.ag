@@ -15,7 +15,7 @@ SEM Expression [ | | core : { Core.Expr } ]
     --  range                    : Range
     --  literal                  : Literal
 
-    | Variable           lhs.core = insertDictionaries @name.self @lhs.dictionaryEnv $ createInstantiation @lhs.importEnv @lhs.typeEnv @lhs.solveResult @name.self False @lhs.betaDeclUnique
+    | Variable           lhs.core = insertDictionaries @name.self @lhs.dictionaryEnv $ createInstantiation @lhs.typeOutput @lhs.typeEnv @name.self False @lhs.betaDeclUnique
     --  range                    : Range
     --  name                     : Name
 
@@ -23,7 +23,7 @@ SEM Expression [ | | core : { Core.Expr } ]
     --  range                    : Range
     --  id                       : Integer
 
-    | Constructor        lhs.core = createInstantiation @lhs.importEnv @lhs.typeEnv @lhs.solveResult @name.self True @lhs.betaDeclUnique
+    | Constructor        lhs.core = createInstantiation @lhs.typeOutput @lhs.typeEnv @name.self True @lhs.betaDeclUnique
     --  range                    : Range
     --  name                     : Name
 
@@ -41,7 +41,7 @@ SEM Expression [ | | core : { Core.Expr } ]
             (Nothing, Nothing) -> @operator.core
             (Just l , Nothing) -> Core.Ap @operator.core l
             (Nothing, Just r ) ->
-                addLambdasForLambdaExpression @lhs.importEnv @lhs.solveResult @lhs.betaDeclUnique [parameterId]
+                addLambdasForLambdaExpression @lhs.typeOutput @lhs.betaDeclUnique [parameterId]
                     (\_ _ -> Core.Ap (Core.Ap @operator.core $ Core.Var parameterId) r)
             {-
                 -- At most one new variable is needed. Consider
@@ -62,7 +62,7 @@ SEM Expression [ | | core : { Core.Expr } ]
 
     | Lambda             lhs.core = 
         let ids = freshIds "u$" @patterns.length
-        in addLambdasForLambdaExpression @lhs.importEnv @lhs.solveResult @lhs.betaDeclUnique ids
+        in addLambdasForLambdaExpression @lhs.typeOutput @lhs.betaDeclUnique ids
             (\tps retType -> 
                 let_ nextClauseId retType (patternMatchFail "lambda expression" retType @range.self)
                   $ patternsToCore
@@ -75,11 +75,11 @@ SEM Expression [ | | core : { Core.Expr } ]
     --  patterns                 : Patterns
     --  expression               : Expression
 
-    | Case               loc.scrutineeType = findCoreType @lhs.solveResult $ @lhs.betaDeclUnique + 1
+    | Case               loc.scrutineeType = findCoreType @lhs.typeOutput $ @lhs.betaDeclUnique + 1
                          lhs.core = let_ caseExprId @loc.scrutineeType @expression.core @alternatives.core
                          alternatives.caseRange = @range.self
                          alternatives.scrutineeType = @loc.scrutineeType
-                         alternatives.rhsType = findCoreType @lhs.solveResult @lhs.betaDeclUnique
+                         alternatives.rhsType = findCoreType @lhs.typeOutput @lhs.betaDeclUnique
     --  range                    : Range
     --  expression               : Expression
     --  alternatives             : Alternatives
@@ -92,13 +92,13 @@ SEM Expression [ | | core : { Core.Expr } ]
     --  declarations             : Declarations
     --  expression               : Expression
 
-    | Do                 loc.monadType = findCoreType @lhs.solveResult @lhs.betaDeclUnique
+    | Do                 loc.monadType = findCoreType @lhs.typeOutput @lhs.betaDeclUnique
                          lhs.core = let_ (idFromString "$monadDict") (Core.TAp (Core.TCon $ Core.TConTypeClassDictionary $ idFromString "Monad") @loc.monadType) (dictionaryTreeToCore $ head $ getDictionaryTrees @loc.name @lhs.dictionaryEnv) $ chainCode @statements.core
                          loc.name = setNameRange (nameFromString $ "do-" ++ show @range.self) @range.self
     --  range                    : Range
     --  statements               : Statements
 
-    | List               lhs.core = coreList (findCoreType @lhs.solveResult @lhs.betaDeclUnique) @expressions.core
+    | List               lhs.core = coreList (findCoreType @lhs.typeOutput @lhs.betaDeclUnique) @expressions.core
     --  range                    : Range
     --  expressions              : Expressions
 
@@ -114,7 +114,7 @@ SEM Expression [ | | core : { Core.Expr } ]
     --  range                    : Range
     --  expressions              : Expressions
 
-    | Comprehension      loc.tp = findCoreType @lhs.solveResult @lhs.betaDeclUnique
+    | Comprehension      loc.tp = findCoreType @lhs.typeOutput @lhs.betaDeclUnique
                          qualifiers.coreType = @loc.tp
                          lhs.core = 
         let singleton x = cons @loc.tp x $ nil @loc.tp
@@ -140,7 +140,7 @@ SEM Expression [ | | core : { Core.Expr } ]
     --  expression               : Expression
 
     -- enumerations are overloaded and we need to insert a dictionary argument
-    | Enum               loc.tp = findCoreType @lhs.solveResult @lhs.betaDeclUnique
+    | Enum               loc.tp = findCoreType @lhs.typeOutput @lhs.betaDeclUnique
                          lhs.core = 
             case (@then.core, @to.core) of
                 (Just then_, Just to) -> 
@@ -178,7 +178,7 @@ SEM Expression [ | | core : { Core.Expr } ]
 ATTR Statements [ | | core USE { : } { [] } : { [Maybe Core.Expr -> Core.Expr] } ]
 
 SEM Statement [ | | core : { Maybe Core.Expr -> Core.Expr } ]
-    | Expression          loc.argType = findCoreType @lhs.solveResult @lhs.betaDeclUnique
+    | Expression          loc.argType = findCoreType @lhs.typeOutput @lhs.betaDeclUnique
                           lhs.core =
             \theRest -> 
                 case theRest of
@@ -200,7 +200,7 @@ SEM Statement [ | | core : { Maybe Core.Expr -> Core.Expr } ]
     -- let _nextClause = <throw exception> in
     -- let _ok = \_misc -> case _misc of { pattern -> ...; _ -> _nextClause }
     -- in expression >>= ok
-    | Generator           loc.argType = let (TVar beta) = @pattern.beta in findCoreType @lhs.solveResult beta
+    | Generator           loc.argType = let (TVar beta) = @pattern.beta in findCoreType @lhs.typeOutput beta
                           lhs.core =
         \theRest -> case theRest of
             Nothing   -> internalError "ToCoreExpr" "Statement" "generator can't be last in 'do'"
@@ -240,7 +240,7 @@ SEM Qualifier [ | | core : { Core.Expr -> Core.Expr } ]
     -- let _ok = \_misc -> case _misc of { pattern -> ...; _ -> _nextClause }
     -- in concatMap _ok expression
 
-    | Generator           loc.argType = let (TVar beta) = @pattern.beta in findCoreType @lhs.solveResult beta
+    | Generator           loc.argType = let (TVar beta) = @pattern.beta in findCoreType @lhs.typeOutput beta
                           lhs.core = 
         \continue ->  
             let_ nextClauseId @lhs.coreType (nil @lhs.coreType)

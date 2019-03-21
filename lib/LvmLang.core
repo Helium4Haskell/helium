@@ -96,7 +96,6 @@ data '':()''    = '':()''
 {----------------------------------------------------------
   Type definitions
 ----------------------------------------------------------}
-type Char         = Int
 type Double       = Float
 
 type PackedString = String

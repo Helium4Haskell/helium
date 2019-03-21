@@ -16,6 +16,7 @@ import qualified Top.Types as Top
 import Helium.StaticAnalysis.Miscellaneous.ConstraintInfo (ConstraintInfo)
 import Lvm.Core.Expr(CoreModule, CoreDecl)
 import Helium.CodeGeneration.Core.RemoveDead( coreRemoveDead ) -- remove dead (import) declarations
+import Helium.CodeGeneration.CoreUtils(TypeInferenceOutput(..))
 import Helium.Syntax.UHA_Syntax(Name(..), MaybeName(..))
 import Helium.Syntax.UHA_Utils(NameWithRange)
 import Helium.Syntax.UHA_Range(noRange)
@@ -48,8 +49,7 @@ en eigenlijk is afterTypeInferEnv te groot. alleen locale types en constructoren
                     CodeGeneration.extraDecls_Inh_Module    = extraDecls,
                     CodeGeneration.importEnv_Inh_Module     = afterTypeInferEnv,
                     CodeGeneration.toplevelTypes_Inh_Module = toplevelTypes,
-                    CodeGeneration.fullTypeSchemes_Inh_Module = fullTypeSchemes,
-                    CodeGeneration.solveResult_Inh_Module   = solveResult }
+                    CodeGeneration.typeOutput_Inh_Module = TypeInferenceOutput solveResult fullTypeSchemes afterTypeInferEnv }
 
         strippedCoreModule = coreRemoveDead coreModule
 

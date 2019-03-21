@@ -13,7 +13,7 @@ ATTR Module Body Declaration Declarations MaybeDeclarations
   GuardedExpressions GuardedExpression RecordExpressionBindings
   RecordExpressionBinding RecordPatternBindings RecordPatternBinding
   FunctionBindings FunctionBinding LeftHandSide RightHandSide
-  Patterns Pattern [ fullTypeSchemes : { M.Map NameWithRange TpScheme } solveResult : { SolveResult ConstraintInfo } | | ]
+  Patterns Pattern [ typeOutput : TypeInferenceOutput | | ]
 
 -- UHA
 INCLUDE "UHA_Syntax.ag"

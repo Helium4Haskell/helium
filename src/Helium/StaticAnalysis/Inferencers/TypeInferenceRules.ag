@@ -839,7 +839,7 @@ SEM Statement
       lhs        . generatorBeta  = Just @beta
                  . assumptions    = @lhs.assumptions `combine` @expression.assumptions
                  . constraints    = @locConstraints
-      expression . betaUnique     = @lhs.betaUnique
+      expression . betaUnique     = @lhs.betaUnique + 1
       loc        . locConstraints = Node [ @newcon .<. @expression.constraints
                                          , @lhs.constraints
                                          ]

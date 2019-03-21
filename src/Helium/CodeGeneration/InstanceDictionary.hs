@@ -74,8 +74,8 @@ constructorType typeVar fields classType =
 -- data DictEq a = DictEq (Eq a => a -> a -> Bool) (forall b . Eq a => b -> a -> Bool)
 
 --returns for every function in a class the function that retrieves that class from a dictionary
-classFunctions :: ImportEnvironment -> M.Map NameWithRange TpScheme -> String -> String -> [(Name, Int, DictLabel, Core.Type)] -> [CoreDecl]
-classFunctions importEnv fullTypeSchemes className typeVar combinedNames = [DeclCon -- Declare the constructor for the dictionary
+classFunctions :: TypeInferenceOutput -> String -> String -> [(Name, Int, DictLabel, Core.Type)] -> [CoreDecl]
+classFunctions typeOutput className typeVar combinedNames = [DeclCon -- Declare the constructor for the dictionary
                                                     { declName = dictName
                                                     , declAccess  = public
                                                     , declType    = constructorType typeVar (map (\(_, _, _, t) -> t) superclasses ++ map (\(_, _, _, t) -> t) combinedNames) classType
@@ -96,7 +96,7 @@ classFunctions importEnv fullTypeSchemes className typeVar combinedNames = [Decl
             classType = Core.TAp (typeClassType $ idFromString className) typeArg
             dictName = idFromString ("Dict$" ++ className)
             labels = map (\(_, _, l, _)->l) superclasses ++ map (\(_, _, l, _)->l) combinedNames
-            superclasses = constructSuperClassMap importEnv className $ Just typeVar
+            superclasses = constructSuperClassMap (importEnv typeOutput) className $ Just typeVar
             superDict :: (String, Int, DictLabel, Core.Type) -> CoreDecl
             superDict (superName, tag, label, t) =
                 let dictParam = idFromString "dict"
@@ -121,7 +121,7 @@ classFunctions importEnv fullTypeSchemes className typeVar combinedNames = [Decl
                     val = DeclValue 
                         { declName    = idFromString $ getNameName name
                         , declAccess  = public
-                        , declType    = snd $ declarationType fullTypeSchemes importEnv TCCNone name
+                        , declType    = snd $ declarationType typeOutput TCCNone name
                         , valueValue  = Forall (Core.Quantor 0 $ Just typeVar) Core.KStar
                             (Lam (Variable dictParam classType) $
                                 Let (Strict $ Bind (Variable dictParam $ Core.typeToStrict classType) (Var dictParam))
@@ -132,7 +132,7 @@ classFunctions importEnv fullTypeSchemes className typeVar combinedNames = [Decl
                                     ]
                                 )
                             )
-                        , declCustoms = toplevelType name importEnv True
+                        , declCustoms = toplevelType name (importEnv typeOutput) True
                         }
                 in  if getNameName name == "negate" && className == "Num" then 
                         [val, val{
@@ -147,8 +147,8 @@ combineDeclIndex [] _ = error "Inconsistent mapping"
 combineDeclIndex names decls = map (\(name, _, label, t) -> (label, name, t, lookup name decls)) names
 
 --returns a dictionary with specific implementations for every instance
-constructDictionary :: M.Map NameWithRange TpScheme -> ImportEnvironment -> [(String, Name)] -> [(Name, Int, DictLabel, Core.Type)] -> [(Name, CoreDecl)] -> Name -> String -> [Name] -> Core.Type -> CoreDecl
-constructDictionary fullTypeSchemes importEnv instanceSuperClass combinedNames whereDecls className insName typeVariables insType = 
+constructDictionary :: TypeInferenceOutput -> [(String, Name)] -> [(Name, Int, DictLabel, Core.Type)] -> [(Name, CoreDecl)] -> Name -> String -> [Name] -> Core.Type -> CoreDecl
+constructDictionary typeOutput instanceSuperClass combinedNames whereDecls className insName typeVariables insType = 
         let 
             
             val = DeclValue 
@@ -164,7 +164,7 @@ constructDictionary fullTypeSchemes importEnv instanceSuperClass combinedNames w
         where 
             functions = combineDeclIndex combinedNames whereDecls
             idP = idFromString "index"
-            superClasses = constructSuperClassMap importEnv (getNameName className) Nothing
+            superClasses = constructSuperClassMap (importEnv typeOutput) (getNameName className) Nothing
             dict = foldr Lam (Let (Rec binds) (Var $ idFromString "dict")) instanceSuperClassVariables
             binds = map makeBindSuper superClasses ++ map makeBindFunc functions ++ [dictCon]
             labels = map (\(_, _, l, _)->l) superClasses ++ map (\(l, _, _, _)->l) functions
@@ -172,7 +172,7 @@ constructDictionary fullTypeSchemes importEnv instanceSuperClass combinedNames w
             makeBindSuper :: (String, Int, DictLabel, Core.Type) -> Bind
             makeBindSuper (cName, tag, label, t) = let
                     parentMapping :: [(String, String)]
-                    parentMapping = map (getNameName *** getNameName) $ getTVMapping importEnv (getNameName className) insName cName
+                    parentMapping = map (getNameName *** getNameName) $ getTVMapping (importEnv typeOutput) (getNameName className) insName cName
                     resolveSuperInstance :: (String, String) -> Expr
                     resolveSuperInstance (n, var)
                             -- check if the required class is already an existing parameter
@@ -194,7 +194,7 @@ constructDictionary fullTypeSchemes importEnv instanceSuperClass combinedNames w
                                     constructPath from to 
                                         | from == to = [[to]] 
                                         | otherwise = let
-                                                superClasses = getClassSuperClasses importEnv from
+                                                superClasses = getClassSuperClasses (importEnv typeOutput) from
                                                 paths :: [[[String]]]
                                                 paths = map (`constructPath` to) superClasses
                                                 sPaths :: [[String]]
@@ -211,7 +211,7 @@ constructDictionary fullTypeSchemes importEnv instanceSuperClass combinedNames w
                                         (Var (idFromString $ "$instanceDict" ++ fst (head combinedPath) ++ "$" ++ rVar))
                                         combinedPath
                                 
-                    instanceSuperClasses = getInstanceSuperClasses importEnv cName insName
+                    instanceSuperClasses = getInstanceSuperClasses (importEnv typeOutput) cName insName
 
                     baseInstance = foldl Ap (Var (idFromString ("$dict" ++ cName ++ "$" ++ insName))) $ map resolveSuperInstance instanceSuperClasses
                     
@@ -219,13 +219,13 @@ constructDictionary fullTypeSchemes importEnv instanceSuperClass combinedNames w
             
             makeBindFunc :: (DictLabel, Name, Core.Type, Maybe CoreDecl) -> Bind
             makeBindFunc (label, name, t, fdecl) = let
-                (_, tp) = declarationType fullTypeSchemes importEnv (TCCInstance (idFromString insName) insType) name
+                (_, tp) = declarationType typeOutput (TCCInstance (idFromString insName) insType) name
                     -- declarationType :: M.Map NameWithRange Top.TpScheme -> ImportEnvironment -> TypeClassContext -> Name -> (Top.TpScheme, Core.Type)
                 undefinedFunc = ApType (Var $ idFromString ("default$" ++ getNameName className ++ "$" ++ getNameName name)) insType
                 func = maybe undefinedFunc getCoreValue fdecl
                 in Bind (Variable (idFromString label) tp) func
-            dictCon = Bind (Variable (idFromString "dict") $ typeClassType $ idFromName className) (
-                    foldl Ap (Con $ ConId $ idFromString ("Dict$" ++ getNameName className)) $ map (Var . idFromString) labels
+            dictCon = Bind (Variable (idFromString "dict") $ Core.TAp (typeClassType $ idFromName className) insType) (
+                    foldl Ap (Con (ConId $ idFromString ("Dict$" ++ getNameName className)) `ApType` insType) $ map (Var . idFromString) labels
                 )
 
 getInstanceSuperClassesNames :: ImportEnvironment -> String -> String -> [String]
@@ -282,8 +282,8 @@ constructClassMemberCustomDecl env name (Just (typevars, members)) = typeVarsDec
                                     if fDefault then CustomInt 1 else CustomInt 0
                                 ]
 
-convertDictionaries :: ImportEnvironment -> M.Map NameWithRange TpScheme -> Name -> [Name] -> [(Name, CoreDecl)] -> [CoreDecl]
-convertDictionaries importEnv fullTypeSchemes className functions defaults = map makeFunction functions
+convertDictionaries :: TypeInferenceOutput -> Name -> [Name] -> [(Name, CoreDecl)] -> [CoreDecl]
+convertDictionaries typeOutput className functions defaults = map makeFunction functions
             where
                 constructName :: Name -> String
                 constructName fname = "default$" ++ getNameName className ++ "$" ++ getNameName fname
@@ -294,14 +294,14 @@ convertDictionaries importEnv fullTypeSchemes className functions defaults = map
                         updateName fdecl = fdecl{
                             declName = idFromString $ constructName fname
                         }
-                        tp = snd $ declarationType fullTypeSchemes importEnv TCCNone fname
+                        tp = snd $ declarationType typeOutput TCCNone fname
                         fDefault :: CoreDecl
                         fDefault = DeclValue
                             { declName    = idFromString $ constructName fname
                             , declAccess  = public 
                             , declType    = tp
                             , valueValue  = ApType (Var (idFromString "undefined")) tp
-                            , declCustoms = toplevelType fname importEnv True
+                            , declCustoms = toplevelType fname (importEnv typeOutput) True
                             }
                     in maybe fDefault updateName (lookup fname defaults)
                 

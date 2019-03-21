@@ -16,11 +16,12 @@ module Helium.CodeGeneration.CoreUtils
     ,   toplevelType, declarationType, declarationTypeInPattern, addToTypeEnv
     ,   toCoreType, toCoreTypeNotQuantified, typeToCoreType, typeToCoreTypeMapped
     ,   addLambdas, addLambdasForLambdaExpression, TypeClassContext(..)
-    ,   findCoreType, createInstantiation
+    ,   findCoreType, createInstantiation, TypeInferenceOutput(TypeInferenceOutput, importEnv)
     ) where
 
 import Top.Types as Top
 import Top.Solver(SolveResult(..))
+import Helium.StaticAnalysis.Miscellaneous.ConstraintInfo(ConstraintInfo)
 import Top.Types.Substitution(FixpointSubstitution, lookupInt)
 import Lvm.Core.Expr
 import Lvm.Core.Type as Core
@@ -35,6 +36,9 @@ import Helium.ModuleSystem.ImportEnvironment
 import Helium.Syntax.UHA_Syntax
 import Helium.Syntax.UHA_Utils
 import Helium.Utils.Utils
+
+lookupBeta :: Int -> TypeInferenceOutput -> Top.Tp
+lookupBeta beta typeOutput = lookupInt beta $ substitutionFromResult $ solveResult typeOutput
 
 infixl `app_`
 
@@ -145,9 +149,15 @@ data TypeClassContext
     | TCCClass
     | TCCInstance Id Core.Type
 
-declarationTpScheme :: M.Map NameWithRange Top.TpScheme -> ImportEnvironment -> TypeClassContext -> Name -> Maybe Top.TpScheme
-declarationTpScheme fullTypeSchemes _ TCCNone name = M.lookup (NameWithRange name) fullTypeSchemes
-declarationTpScheme _ importEnv _ name = M.lookup name (typeEnvironment importEnv)
+data TypeInferenceOutput = TypeInferenceOutput
+  { solveResult :: !(SolveResult ConstraintInfo)
+  , fullTypeSchemes :: !(M.Map NameWithRange Top.TpScheme)
+  , importEnv :: !ImportEnvironment
+  }
+
+declarationTpScheme :: TypeInferenceOutput -> TypeClassContext -> Name -> Maybe Top.TpScheme
+declarationTpScheme (TypeInferenceOutput solveResult fullTypeSchemes _) TCCNone name = fmap (substitutionFromResult solveResult |->) $ M.lookup (NameWithRange name) fullTypeSchemes
+declarationTpScheme (TypeInferenceOutput _ _ importEnv) _ name = M.lookup name (typeEnvironment importEnv)
 
 -- Finds the instantiation of a declaration in a type class instance.
 -- E.g. Num a => a -> a
@@ -157,9 +167,9 @@ instantiationInTypeClassInstance (TCCInstance className instanceType) (Top.Quant
   = Just (typeVar, instanceType)
 instantiationInTypeClassInstance _ _ = Nothing
 
-declarationType :: M.Map NameWithRange Top.TpScheme -> ImportEnvironment -> TypeClassContext -> Name -> (Top.TpScheme, Core.Type)
-declarationType fullTypeSchemes importEnv context name =
-  case declarationTpScheme fullTypeSchemes importEnv context name of
+declarationType :: TypeInferenceOutput -> TypeClassContext -> Name -> (Top.TpScheme, Core.Type)
+declarationType typeOutput context name =
+  case declarationTpScheme typeOutput context name of
     Just ty ->
       let
         coreType = toCoreType ty
@@ -168,18 +178,18 @@ declarationType fullTypeSchemes importEnv context name =
         Nothing -> (ty, coreType)
     Nothing -> internalError "ToCoreDecl" "Declaration" ("no type found for " ++ getNameName name)
 
-declarationTypeInPattern :: M.Map NameWithRange Top.TpScheme -> ImportEnvironment -> SolveResult a -> Name -> Int -> (Top.TpScheme, Core.Type)
-declarationTypeInPattern fullTypeSchemes importEnv result name beta = 
-  case declarationTpScheme fullTypeSchemes importEnv TCCNone name of
+declarationTypeInPattern :: TypeInferenceOutput -> Name -> Int -> (Top.TpScheme, Core.Type)
+declarationTypeInPattern typeOutput name beta = 
+  case declarationTpScheme typeOutput TCCNone name of
     Just scheme -> (scheme, toCoreType scheme)
     Nothing ->
       let
-        ty = lookupInt beta $ substitutionFromResult result
+        ty = lookupBeta beta $ typeOutput
         scheme = Top.Quantification ([], [], (Top.Qualification ([], ty)))
       in (scheme, typeToCoreType ty)
 
-findCoreType :: SolveResult a -> Int -> Core.Type
-findCoreType result beta = typeToCoreType $ lookupInt beta $ substitutionFromResult result
+findCoreType :: TypeInferenceOutput -> Int -> Core.Type
+findCoreType typeOutput beta = typeToCoreType $ lookupBeta beta typeOutput
 
 toCoreType :: Top.TpScheme -> Core.Type
 toCoreType (Top.Quantification (tvars, qmap, t)) = foldr addTypeVar t' tvars
@@ -232,13 +242,13 @@ toplevelType name ie isTopLevel
             show
             (M.lookup name (typeEnvironment ie))
 
-addLambdasForLambdaExpression :: ImportEnvironment -> SolveResult a -> Int -> [Id] -> ([Core.Type] -> Core.Type -> Core.Expr) -> Core.Expr
-addLambdasForLambdaExpression env result beta args expr = addLambdasForType env [] tp id args [] expr
+addLambdasForLambdaExpression :: TypeInferenceOutput -> Int -> [Id] -> ([Core.Type] -> Core.Type -> Core.Expr) -> Core.Expr
+addLambdasForLambdaExpression typeOutput beta args expr = addLambdasForType (importEnv typeOutput) [] tp id args [] expr
   where
-    tp = lookupInt beta $ substitutionFromResult result
+    tp = lookupBeta beta typeOutput
 
-addLambdas :: M.Map NameWithRange Top.TpScheme -> ImportEnvironment -> TypeClassContext -> SolveResult a -> Int -> Name -> [Id] -> ([Core.Type] -> Core.Type -> Core.Expr) -> Core.Expr
-addLambdas fullTypeSchemes env context solveResult beta name args expr = case declarationTpScheme fullTypeSchemes env context name of
+addLambdas :: TypeInferenceOutput -> TypeClassContext -> Int -> Name -> [Id] -> ([Core.Type] -> Core.Type -> Core.Expr) -> Core.Expr
+addLambdas typeOutput context beta name args expr = case declarationTpScheme typeOutput context name of
   Nothing -> internalError "ToCoreDecl" "Declaration" ("Could not find type for declaration " ++ show name)
   Just ty@(Top.Quantification (tvars, qmap, t)) ->
     let
@@ -247,13 +257,13 @@ addLambdas fullTypeSchemes env context solveResult beta name args expr = case de
       -- of the signatures to type variables used in the body.
       -- Furthermore, in an instance declaration of a type class, a type variable is instantiated with the type
       -- for which the class is implemented. Eg `a -> String` becomes `Int -> String`.
-      typeCorrectTVars = lookupInt beta $ substitutionFromResult solveResult
-      instantiation = findInstantiation env ty typeCorrectTVars
+      typeCorrectTVars = lookupBeta beta typeOutput
+      instantiation = findInstantiation (importEnv typeOutput) ty typeCorrectTVars
       getTVar (Top.TVar idx) = Just idx
       getTVar _ = Nothing
       tvars' = mapMaybe getTVar instantiation
       substitute = Core.typeSubstitutions $ zipWith (\idx typeArg -> (idx, typeToCoreType typeArg)) tvars instantiation
-    in foldr (\x e -> Core.Forall (typeVarToQuantor qmap x) Core.KStar e) (addLambdasForQType env [] t substitute args expr) tvars'
+    in foldr (\x e -> Core.Forall (typeVarToQuantor qmap x) Core.KStar e) (addLambdasForQType (importEnv typeOutput) [] t substitute args expr) tvars'
 
 addLambdasForQType :: ImportEnvironment -> QuantorMap -> Top.QType -> (Core.Type -> Core.Type) -> [Id] -> ([Core.Type] -> Core.Type -> Core.Expr) -> Core.Expr
 addLambdasForQType env qmap (Top.Qualification ([], t)) substitute args expr = addLambdasForType env qmap t substitute args [] expr
@@ -287,15 +297,16 @@ applyTypeSynonym env tp@(Top.TCon name) tps = case M.lookup (nameFromString name
 applyTypeSynonym env (Top.TApp t1 t2) tps = applyTypeSynonym env t1 (t2 : tps)
 applyTypeSynonym env (Top.TVar a) tps = foldl (Top.TApp) (Top.TVar a) tps
 
-createInstantiation :: ImportEnvironment -> TypeEnvironment -> SolveResult a -> Name -> Bool -> Int -> Core.Expr
-createInstantiation importEnv typeEnv solveResult name isConstructor beta = case M.lookup name typeEnv of
+createInstantiation :: TypeInferenceOutput -> TypeEnvironment -> Name -> Bool -> Int -> Core.Expr
+createInstantiation typeOutput typeEnv name isConstructor beta = case M.lookup name valueMap of
   Nothing -> expr
-  Just scheme -> foldl (\e t -> Core.ApType e $ typeToCoreType t) expr $ findInstantiation importEnv scheme tp
+  Just scheme -> foldl (\e t -> Core.ApType e $ typeToCoreType t) expr $ findInstantiation (importEnv typeOutput) scheme tp
   where
     expr
       | isConstructor = Core.Con $ Core.ConId $ idFromName name
       | otherwise = Core.Var $ idFromName name
-    tp = lookupInt beta $ substitutionFromResult solveResult
+    tp = lookupBeta beta typeOutput
+    valueMap = if isConstructor then valueConstructors $ importEnv typeOutput else typeEnv
 
 findInstantiation :: ImportEnvironment -> Top.TpScheme -> Top.Tp -> [Top.Tp]
 findInstantiation importEnv (Top.Quantification (tvars, _, Top.Qualification (_, tLeft))) tRight

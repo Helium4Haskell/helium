@@ -141,7 +141,7 @@ checkPattern env tp (PatLit lit) = do
   assert env tp (typeOfLiteral lit)
   return env
 checkPattern env tp PatDefault = return env
-checkPattern env tp pat@(PatCon con typeArgs ids) = do
+checkPattern env tp pat@(PatCon con@(ConId _) typeArgs ids) = do
   let tCon = typeApplyList (typeOfCoreExpression env $ Con con) typeArgs
   vars <- findVars tCon ids
   return $ typeEnvAddVariables vars env
@@ -156,6 +156,7 @@ checkPattern env tp pat@(PatCon con typeArgs ids) = do
       return (var : vars)
     findVars t _ = do
       report $ MessageExpected "function type" t Nothing
+checkPattern env tp pat = return $ typeEnvAddPattern pat env
 
 
 checkId :: TypeEnvironment -> Id -> Check Type

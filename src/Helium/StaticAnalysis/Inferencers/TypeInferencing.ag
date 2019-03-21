@@ -80,8 +80,6 @@ SEM Module
 
 imports {
 
-import Debug.Trace
-
 -- types
 import Top.Types
 import Helium.StaticAnalysis.Miscellaneous.TypeConversion
