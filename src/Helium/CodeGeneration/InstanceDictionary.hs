@@ -50,7 +50,8 @@ constructorType typeVar fieldsSuper fieldsMembers classType =
 
         -- Adds the dictionary argument to the types of the fields of the type class
         addDictArgument :: Core.Type -> Core.Type
-        addDictArgument = Core.TAp (Core.TAp (Core.TCon Core.TConFun) classType)
+        addDictArgument (Core.TForall quantor kind tp) = Core.TForall quantor kind $ addDictArgument tp
+        addDictArgument tp = Core.TAp (Core.TAp (Core.TCon Core.TConFun) classType) tp
 
         -- We use 0 for the type variable for the argument of the type class.
         -- The types for the fields may need to be updated for this.

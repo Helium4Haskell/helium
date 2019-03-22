@@ -317,9 +317,12 @@ dictionaryTreeToCore theTree =
    case theTree of
         ByPredicate predicate ->
             Core.Var (predicateToId predicate)
-        ByInstance className instanceName trees ->
+        ByInstance className instanceName typeArgs trees ->
             foldl Core.Ap
-                (Core.Var (idFromString ("$dict"++className++ "$" ++ instanceName)))
+                (foldl Core.ApType
+                    (Core.Var (idFromString ("$dict"++className++ "$" ++ instanceName)))
+                    $ map typeToCoreType typeArgs
+                )
                 (map dictionaryTreeToCore trees)
         BySuperClass subClass superClass tp tree ->
             Core.Ap (Core.ApType (Core.Var (idFromString ("$get" ++ superClass ++ "$" ++ subClass))) $ typeToCoreType tp)

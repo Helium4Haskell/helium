@@ -242,10 +242,21 @@ filterType (d@(Declaration_TypeSignature _ _ _):ds) (t, dec) = filterType ds (d:
 filterType (d:ds) (t, dec)                                   = filterType ds (t, d:dec)
 filterType []     res                                        = res
 
+
+reorderQuantors :: Names -> TpScheme -> TpScheme
+reorderQuantors firstQuantors ty1@(Quantification (quantors, qmap, tp)) =
+  Quantification (quantors', qmap, tp)
+  where
+    quantors' = map fst (mapMaybe (\name -> find ((getNameName name == ) . snd) qmap) firstQuantors)
+      ++ filter notInFirst quantors
+    notInFirst idx = case lookup idx qmap of
+      Nothing -> True
+      Just str -> all (\name -> getNameName name /= str) firstQuantors
+
 --A type can be declared for multiple function names
-createClassDef1 :: Declaration -> ClassMembers'
-createClassDef1 (Declaration_TypeSignature _ names ty) = [(n, fst $ makeTpSchemeFromType' ty, False, False) | n <- names]
-createClassDef1 _                                     = error "Error createClassDef1, filtering failed..."
+createClassDef1 :: Names -> Declaration -> ClassMembers'
+createClassDef1 typeArgs (Declaration_TypeSignature _ names ty) = [(n, reorderQuantors typeArgs $ fst $ makeTpSchemeFromType' ty, False, False) | n <- names]
+createClassDef1 _ _ = error "Error createClassDef1, filtering failed..."
 
 --A function declaration should be associated with a type in the class definition
 createClassDef2 :: Declarations -> ClassMembers' -> ClassMembers'
@@ -264,7 +275,7 @@ createClassDef2'' _ _ []                             = [] -- Should not happen b
 
 createClassDef :: Name -> MaybeDeclarations -> Names -> ClassMemberEnvironment
 createClassDef n MaybeDeclarations_Nothing names  = M.singleton n (names, [])
-createClassDef n (MaybeDeclarations_Just decls) names = M.singleton n (names, createClassDef2 fdecl $ concatMap createClassDef1 types)
+createClassDef n (MaybeDeclarations_Just decls) names = M.singleton n (names, createClassDef2 fdecl $ concatMap (createClassDef1 names) types)
                where (types, fdecl) = filterType decls ([], [])
 
 insertDefaults :: Name -> Names -> ClassMemberEnvironment -> ClassMemberEnvironment

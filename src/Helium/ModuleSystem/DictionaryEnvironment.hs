@@ -51,7 +51,7 @@ getPredicateFromPredicateWithSource (PredicateFunction p) = p
 getPredicateFromPredicateWithSource (PredicateSuperInstance p _ _ _) = p
           
 data DictionaryTree = ByPredicate Predicate
-                    | ByInstance String {- class name -} String {- instance name -} [DictionaryTree]
+                    | ByInstance String {- class name -} String {- instance name -} [Tp] [DictionaryTree]
                     | BySuperClass String {- sub -} String {- super -} Tp DictionaryTree
                     | ByCurrentClass String
                     | BySuperInstance Predicate String {- ClassName -} String {- Type Variable -}
@@ -120,7 +120,7 @@ makeDictionaryTree classEnv availablePredicates currentClass curPred ps =
                                     ] of
                                 []     -> Nothing
                                 (path,fromPredicate):others -> 
-                                    let list = reverse (zip path (tail path)) -- ByInstance String {- class name -} String {- instance name -} [DictionaryTree]
+                                    let list = reverse (zip path (tail path))
                                         tree = foldr (\(sub, super) -> BySuperClass sub super tp) 
                                             (maybe (ByPredicate fromPredicate) ByCurrentClass currentClass) 
                                             list
@@ -130,6 +130,6 @@ makeDictionaryTree classEnv availablePredicates currentClass curPred ps =
                     Nothing -> internalError "DictionaryEnvironment" "makeDictionaryTree" ("reduction error" ++ show (M.assocs classEnv))
                     Just predicates -> 
                         do 
-                            let (TCon instanceName, _) = leftSpine tp
+                            let (TCon instanceName, args) = leftSpine tp
                             trees <- makeDictionaryTrees classEnv availablePredicates currentClass curPred $ map PredicateFunction predicates
-                            return (ByInstance className instanceName trees)
+                            return (ByInstance className instanceName args trees)
