@@ -239,13 +239,14 @@ SEM Declaration
                                                 @lhs.typeOutput
                                                 (getSuperClasses @context.self)
                                                 (constructFunctionMap @lhs.importEnv (length @superClasses) @name.self)
-                                                @where.whereDeclarations @name.self @loc.typeName (namesInType @loc.type)
-                                                (typeToCoreType $ makeTpFromType @typevariables @type)
+                                                @where.whereDeclarations @name.self @loc.typeName (map (\(n, TVar i) -> (n, i)) @instanceBetas)
+                                                (typeToCoreType @tp)
                                             ] 
-                        loc .   typeName = showInstanceType $ makeTpFromType @typevariables @type
+                        loc .   tp = makeTpFromType @instanceBetas @type
+                        loc .   typeName = showInstanceType @tp
                         loc .   err = error $ "Invalid class name " ++ getNameName @name.self
-                        loc .   superClasses = fst (fromMaybe @err (M.lookup (getNameName @name.self) (classEnvironment @lhs.importEnv)))
-                        loc .   typevariables = zip (namesInType @loc.type) [TVar n | n <- [0..]]
+                        -- loc .   superClasses = fst (fromMaybe @err (M.lookup (getNameName @name.self) (classEnvironment @lhs.importEnv)))
+                        -- loc .   typevariables = zip (namesInType @loc.type) [TVar n | n <- [0..]]
                         loc .   type = head @types.self
                         where . instanceName = Just @name.self
                         where . typeClassContext = TCCInstance (idFromName @name.self) (toCoreTypeNotQuantified $ makeTpSchemeFromType @loc.type)
@@ -307,14 +308,6 @@ SEM FunctionBinding [ | | core : { [Core.Type] -> Core.Type -> Core.Expr -> Core
     --  righthandside            : RightHandSide
 {
 
-getSuperClasses ::  ContextItems -> [(String, Name)]
-getSuperClasses = map (\(ContextItem_ContextItem _ n vs) -> (getNameName n, var vs))
-    where
-        var [vs] = name $ namesInType vs
-        var _ = error "Type variable not a single type"
-        name [n] = n
-        name _ = error "Type variable not a single name"
-
 predicateToId :: Predicate -> Id
 predicateToId (Predicate class_ tp) =
     idFromString $ "$dict" ++ class_ ++ "$" ++ show tp
@@ -322,18 +315,18 @@ predicateToId (Predicate class_ tp) =
 dictionaryTreeToCore :: DictionaryTree -> Core.Expr
 dictionaryTreeToCore theTree =
    case theTree of
-        ByPredicate predicate -> 
+        ByPredicate predicate ->
             Core.Var (predicateToId predicate)
         ByInstance className instanceName trees ->
             foldl Core.Ap
                 (Core.Var (idFromString ("$dict"++className++ "$" ++ instanceName)))
-               (map dictionaryTreeToCore trees)
-        BySuperClass subClass superClass tree -> 
-            Core.Ap (Core.Var (idFromString ("$get" ++ superClass ++ "$" ++ subClass)))          
-                 (dictionaryTreeToCore tree)
+                (map dictionaryTreeToCore trees)
+        BySuperClass subClass superClass tp tree ->
+            Core.Ap (Core.ApType (Core.Var (idFromString ("$get" ++ superClass ++ "$" ++ subClass))) $ typeToCoreType tp)
+                (dictionaryTreeToCore tree)
         ByCurrentClass className ->
             Core.Var (idFromString $ "$instanceDict" ++ className)
-        BySuperInstance p className typeVariables -> 
+        BySuperInstance p className typeVariables ->
             Core.Var (idFromString $ "$instanceDict" ++ className ++ "$" ++ typeVariables )
     
 
@@ -424,7 +417,7 @@ SEM Constructor [ dataTypeName : Name typevariables : Names dataTypeCoreType : {
         [ (idFromName @constructor.self, Core.DeclCon
             { Core.declName    = idFromName @constructor.self
             , Core.declAccess  = Core.private
-            , Core.declType    = foldr (`Core.TForall` Core.KStar) (Core.typeFunction @types.coreTypes @lhs.dataTypeCoreType) $ zipWith (\var idx -> Core.Quantor idx $ Just $ getNameName var) @lhs.typevariables [0..]
+            , Core.declType    = declarationConstructorType @lhs.importEnv @constructor.self
             , Core.declCustoms = constructorCustoms 
                                     @lhs.dataTypeName
                                     @constructor.self 
@@ -440,7 +433,7 @@ SEM Constructor [ dataTypeName : Name typevariables : Names dataTypeCoreType : {
         [ (idFromName @constructorOperator.self, Core.DeclCon
             { Core.declName    = idFromName @constructorOperator.self
             , Core.declAccess  = Core.private
-            , Core.declType    = foldr (`Core.TForall` Core.KStar) (Core.typeFunction [@leftType.coreType, @rightType.coreType] @lhs.dataTypeCoreType) $ zipWith (\var idx -> Core.Quantor idx $ Just $ getNameName var) @lhs.typevariables [0..]
+            , Core.declType    = declarationConstructorType @lhs.importEnv @constructorOperator.self
             , Core.declCustoms = constructorCustoms
                                     @lhs.dataTypeName
                                     @constructorOperator.self 

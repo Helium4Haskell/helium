@@ -213,7 +213,7 @@ toInstruction supply env continue (Core.Match x alts) =
     Core.Alt (Core.PatCon (Core.ConId con) _ _) _ ->
       let ValueConstructor (DataTypeConstructor dataName _ _) = findMap con (teValues env)
       in transformCaseConstructor supply'' env continues x dataName alts
-    Core.Alt (Core.PatLit (Core.LitInt _)) _ -> transformCaseInt supply'' env continues x alts
+    Core.Alt (Core.PatLit (Core.LitInt _ _)) _ -> transformCaseInt supply'' env continues x alts
     Core.Alt (Core.PatLit _) _ -> error "Match on float literals is not yet supported"
     )
   where
@@ -402,7 +402,7 @@ transformAltInt :: NameSupply -> TypeEnv -> (Core.Alt, Continue) -> ((Maybe Int,
 transformAltInt supply env (Core.Alt pattern expr, continue) = ((value, blockName), Block blockName instr : blocks)
   where
     value = case pattern of
-      Core.PatLit (Core.LitInt value) -> Just value
+      Core.PatLit (Core.LitInt value _) -> Just value
       _ -> Nothing
     (blockName, supply') = freshIdFromId idMatchCase supply
     Partial instr blocks = toInstruction supply' env continue expr
@@ -508,7 +508,7 @@ getApplication expr = case getApplicationOrConstruction expr [] of
   (Right fn, args) -> (fn, args)
 
 literal :: Core.Literal -> Literal
-literal (Core.LitInt x) = LitInt x
+literal (Core.LitInt x _) = LitInt x
 literal (Core.LitDouble x) = LitFloat Float64 x
 literal (Core.LitBytes x) = LitString $ stringFromBytes x 
 

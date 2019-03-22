@@ -67,14 +67,14 @@ typeEnvAddPattern (PatCon (ConId name) tps ids) env
     findVars _ tp = internalError "Core.TypeEnvironment" "typeEnvAddPattern" $ "Expected function type for constructor " ++ show name ++ ", got " ++ show tp
 
 typeNormalizeHead :: TypeEnvironment -> Type -> Type
-typeNormalizeHead env = expand []
-  where
-    expand args (TStrict t) = expand args t
-    expand args (TAp t1 t2) = expand (t2 : args) t1
-    expand args tp@(TCon (TConDataType name)) = case lookupMap name $ typeEnvSynonyms env of
-      Just tp' -> expand [] $ typeApplyList tp' args
-      _ -> typeApplyList tp args
-    expand args tp = typeApplyList tp args
+typeNormalizeHead env (TStrict t) = typeNormalizeHead env t
+typeNormalizeHead env (TAp t1 t2) = case typeNormalizeHead env t1 of
+  t1'@(TForall _ _ _) -> typeNormalizeHead env $ typeApply t1' t2
+  t1' -> TAp t1' t2
+typeNormalizeHead env tp@(TCon (TConDataType name)) = case lookupMap name $ typeEnvSynonyms env of
+  Just tp' -> typeNormalizeHead env tp'
+  Nothing -> tp
+typeNormalizeHead env tp = tp
 
 typeOfId :: TypeEnvironment -> Id -> Type
 typeOfId env name = case lookupMap name $ typeEnvValues env of
@@ -121,7 +121,7 @@ typeOfCoreExpression env (Forall x kind expr) =
 -- Expression: (,)
 -- Type: forall a. forall b. a -> b -> (a, b)
 typeOfCoreExpression env (Con (ConTuple arity)) =
-  foldr (\var -> TForall (Quantor var Nothing) KStar) tp vars
+  foldr (\var -> TForall (Quantor var Nothing) KStar) (typeFunction (map TVar vars) tp) vars
   where
     -- Type without quantifications, eg (a, b)
     tp = foldl (\t var -> TAp t $ TVar var) (TCon $ TConTuple arity) vars
@@ -140,10 +140,10 @@ typeEqual env TAny TAny = True
 typeEqual env (TStrict t1) t2 = typeEqual env t1 t2 -- Ignore strictness
 typeEqual env t1 (TStrict t2) = typeEqual env t1 t2 -- Ignore strictness
 typeEqual env (TVar x1) (TVar x2) = x1 == x2
-typeEqual env t1@(TCon c1) t2 = typeEqualNoTypeSynonym env (typeNormalizeHead env t1) (typeNormalizeHead env t2)
-typeEqual env t1 t2@(TCon _) = typeEqualNoTypeSynonym env t1 (typeNormalizeHead env t2)
+typeEqual env t1@(TCon _) t2 = typeEqualNoTypeSynonym env (typeNormalizeHead env t1) (typeNormalizeHead env t2)
+typeEqual env t1 t2@(TCon _) = typeEqualNoTypeSynonym env (typeNormalizeHead env t1) (typeNormalizeHead env t2)
 typeEqual env t1@(TAp _ _) t2 = typeEqualNoTypeSynonym env (typeNormalizeHead env t1) (typeNormalizeHead env t2)
-typeEqual env t1 t2@(TAp _ _) = typeEqualNoTypeSynonym env t1 (typeNormalizeHead env t2)
+typeEqual env t1 t2@(TAp _ _) = typeEqualNoTypeSynonym env (typeNormalizeHead env t1) (typeNormalizeHead env t2)
 typeEqual env (TForall (Quantor x _) _ t1) (TForall (Quantor y _) _ t2) =
   typeEqual env t1 (typeSubstitute y (TVar x) t2)
 typeEqual env _ _ = False
@@ -151,8 +151,8 @@ typeEqual env _ _ = False
 -- Checks type equivalence, assuming that there is no synonym at the head of the type
 typeEqualNoTypeSynonym :: TypeEnvironment -> Type -> Type -> Bool
 typeEqualNoTypeSynonym env (TAp tl1 tl2) (TAp tr1 tr2)
-  = typeEqual env tl1 tr1
-  && typeEqualNoTypeSynonym env tl2 tr2
+  = typeEqualNoTypeSynonym env tl1 tr1
+  && typeEqual env tl2 tr2
 typeEqualNoTypeSynonym _ (TAp _ _) _ = False
 typeEqualNoTypeSynonym _ _ (TAp _ _) = False
 typeEqualNoTypeSynonym _ (TCon c1) (TCon c2) = c1 == c2
@@ -161,6 +161,6 @@ typeEqualNoTypeSynonym _ _ (TCon _) = False
 typeEqualNoTypeSynonym env t1 t2 = typeEqual env t1 t2
 
 typeOfLiteral :: Literal -> Type
-typeOfLiteral (LitInt _) = TCon $ TConDataType $ idFromString "Int"
+typeOfLiteral (LitInt _ tp) = TCon $ TConDataType $ idFromString $ show tp
 typeOfLiteral (LitDouble _) = TCon $ TConDataType $ idFromString "Double"
 typeOfLiteral (LitBytes _) = TCon $ TConDataType $ idFromString "String"

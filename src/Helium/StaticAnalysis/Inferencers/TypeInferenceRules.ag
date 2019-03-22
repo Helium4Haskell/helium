@@ -192,7 +192,6 @@ SEM Declaration
                                                 | v `elem` map snd @instanceBetas = [makeMissingInstancePredicateError @range.self @name.self (show $ makeTpSchemeFromType (chead $ @types.self)) p (@superClasses) @instanceBetas]
                                                 | otherwise = []
                                           in (concatMap checkPredicate @lhs.requiredPredicates) ++ @lhs.collectErrors
-        where   . betaUnique            = @lhs.betaUnique + 2 + length(@typeVariabeles) + length (@memberBetas) * (length (@superClasses) + 1)
         where   . assumptions           = noAssumptions
         where   . constraints           = emptyTree
         where   . variableMapping       = Just [(chead $ fst $ @classMembers, @instBeta)]
@@ -230,47 +229,15 @@ SEM Declaration
                                                     ((@loc.instBeta .==. @loc.instsType) @loc.cinfo)
                                                 ]) .>. Node []
                                             ]
-        loc     . instBeta              = TVar      @lhs.betaUnique
-        loc     . typeVariabeles        = namesInType (chead $ @types.self)
-        loc     . instanceBetas         = (zip @typeVariabeles [TVar n | n <- [@lhs.betaUnique + 2..]])
-        loc     . instsType             = makeTpFromType @instanceBetas (chead $ @types.self)
-        loc     . instanceTpScheme      = addPredicatesToTpScheme (@superClasses) $ makeTpSchemeFromType (chead @types.self)
-        loc     . superClasses          = getSuperClasses @context.self
-        loc     . memberSuperClassBeta  = [TVar v | v <- [(@lhs.betaUnique + 2 + length @typeVariabeles)..]]
-        loc     . memberBetas           = matchClassDefinitionToInstanceDefinition 
-                                                (maybe (error "Unknown class") (map (\(n, tp, _, _) -> (n, tp)).snd) $ M.lookup @name.self $ classMemberEnvironment @lhs.importEnvironment) $ 
-                                                map (\(n, b, _) -> (n, b)) @where.boundBetas
         loc     . cinfo                 = resultConstraint "instance definition" @parentTree [SkolemizedTypeScheme ([], @instanceTpScheme), TypeSignatureLocation @range.self]
  
 {
-
-chead [x] = x
-chead x = error "Not a singleton"
 
 appendClasses :: [(Name, TpScheme)] -> M.Map NameWithRange TpScheme -> Maybe [(Name, TpScheme)]
 appendClasses typeMemberBindings allTypeSchemes = Just (map lookupScheme typeMemberBindings)
     where
         lookupScheme :: (Name, TpScheme) -> (Name, TpScheme)
         lookupScheme (n, _) = (n, fromMaybe ((fromJust $ lookup n $ map (\(NameWithRange n', t) -> (n', t)) $ M.toList allTypeSchemes)) $ M.lookup (NameWithRange n) (allTypeSchemes))
-
-getSuperClasses ::  ContextItems -> [(String, Name)]
-getSuperClasses = map (\(ContextItem_ContextItem _ n vs) -> (getNameName n, var vs))
-    where
-        var [vs] = name $ namesInType vs
-        var _ = error "Type variable not a single type"
-        name [n] = n
-        name _ = error "Type variable not a single name"
-
-
-addPredicatesToTpScheme :: [(String, Name)] -> TpScheme -> TpScheme
-addPredicatesToTpScheme preds (Quantification (nrs, map, q)) =
-    Quantification (nrs, map, foldr addPredicate q preds)
-    where
-        addPredicate :: (String, Name) -> QType -> QType
-        addPredicate (className, var) qtype = let
-            (preds, tp) = split qtype
-            pred = Predicate className (maybe (error "Undefined type variable") (TVar . fst) $ find (\n -> snd n == getNameName var) map)
-            in (pred : preds) .=>. tp
 
 constructDictionaryName :: Name -> String -> Name
 constructDictionaryName (Name_Identifier range modules name) s = Name_Identifier range modules ("($dict" ++ name ++ "$" ++ s ++ ")")    
@@ -576,9 +543,8 @@ SEM Expression
                   . zipf         = \tp childNr ctree -> [ (tp .==. @beta') (@cinfoElem childNr) ] .<. ctree
 
   | Tuple
-      expressions . betaUnique  = @lhs.betaUnique + 1
       loc         . constraints = @newcon .>. Node @expressions.constraintslist
-                  . beta        = TVar @lhs.betaUnique
+                  . beta        = TVar @lhs.betaDeclUnique
                   . newcon      = [ (tupleType @expressions.betas .==. @beta) @cinfo ]
 
   | Typed

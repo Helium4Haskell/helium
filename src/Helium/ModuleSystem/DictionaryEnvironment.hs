@@ -52,7 +52,7 @@ getPredicateFromPredicateWithSource (PredicateSuperInstance p _ _ _) = p
           
 data DictionaryTree = ByPredicate Predicate
                     | ByInstance String {- class name -} String {- instance name -} [DictionaryTree]
-                    | BySuperClass String {- sub -} String {- super -} DictionaryTree
+                    | BySuperClass String {- sub -} String {- super -} Tp DictionaryTree
                     | ByCurrentClass String
                     | BySuperInstance Predicate String {- ClassName -} String {- Type Variable -}
    deriving Show
@@ -121,10 +121,10 @@ makeDictionaryTree classEnv availablePredicates currentClass curPred ps =
                                 []     -> Nothing
                                 (path,fromPredicate):others -> 
                                     let list = reverse (zip path (tail path)) -- ByInstance String {- class name -} String {- instance name -} [DictionaryTree]
-                                        tree = foldr (uncurry BySuperClass) 
+                                        tree = foldr (\(sub, super) -> BySuperClass sub super tp) 
                                             (maybe (ByPredicate fromPredicate) ByCurrentClass currentClass) 
                                             list
-                                    in if fromPredicate `elem` baseSuperClassPredicates then Just (foldr (uncurry BySuperClass) (convertPredicate ByPredicate (getSuperClassPredicate fromPredicate)) list) else Just tree 
+                                    in if fromPredicate `elem` baseSuperClassPredicates then Just (foldr (\(sub, super) -> BySuperClass sub super tp) (convertPredicate ByPredicate (getSuperClassPredicate fromPredicate)) list) else Just tree 
                                 
         _      -> case byInstance noOrderedTypeSynonyms classEnv p of
                     Nothing -> internalError "DictionaryEnvironment" "makeDictionaryTree" ("reduction error" ++ show (M.assocs classEnv))

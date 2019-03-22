@@ -32,7 +32,34 @@ SEM Declaration
     bindings.betaDeclUnique = @lhs.betaDeclUnique + 1
   | PatternBinding
     pattern.betaDeclUnique = @lhs.betaDeclUnique + 1
+  | Instance
+    where   . betaDeclUnique            = @lhs.betaDeclUnique + 1 + length(@typeVariables)
+    loc     . instBeta              = TVar @lhs.betaDeclUnique
+    loc     . typeVariables        = namesInType (chead $ @types.self)
+    loc     . instanceBetas         = (zip @typeVariables [TVar n | n <- [@lhs.betaDeclUnique + 1..]])
+    loc     . instsType             = makeTpFromType @instanceBetas (chead $ @types.self)
+    loc     . instanceTpScheme      = addPredicatesToTpScheme (@superClasses) $ makeTpSchemeFromType (chead @types.self)
+    loc     . superClasses          = getSuperClasses @context.self
 
+{
+getSuperClasses ::  ContextItems -> [(String, Name)]
+getSuperClasses = map (\(ContextItem_ContextItem _ n vs) -> (getNameName n, var vs))
+    where
+        var [vs] = name $ namesInType vs
+        var _ = error "Type variable not a single type"
+        name [n] = n
+        name _ = error "Type variable not a single name"
+
+addPredicatesToTpScheme :: [(String, Name)] -> TpScheme -> TpScheme
+addPredicatesToTpScheme preds (Quantification (nrs, map, q)) =
+    Quantification (nrs, map, foldr addPredicate q preds)
+    where
+        addPredicate :: (String, Name) -> QType -> QType
+        addPredicate (className, var) qtype = let
+            (preds, tp) = split qtype
+            pred = Predicate className (maybe (error "Undefined type variable") (TVar . fst) $ find (\n -> snd n == getNameName var) map)
+            in (pred : preds) .=>. tp
+}
 SEM Expression
   | Lambda
     -- One type variable for the function type
@@ -58,6 +85,8 @@ SEM Expression
   | Enum
     -- One type variable for the elements of the list
     from.betaDeclUnique = @lhs.betaDeclUnique + 1
+  | Tuple
+    expressions.betaDeclUnique = @lhs.betaDeclUnique + 1
 
 SEM Statement
   | Expression
@@ -121,3 +150,8 @@ SEM Pattern
 
   | Successor
     loc.beta = internalError "TypeInferenceDeclTypeVar.ag" "n/a" "Pattern.Successor"
+
+{
+chead [x] = x
+chead x = error "Not a singleton"
+}

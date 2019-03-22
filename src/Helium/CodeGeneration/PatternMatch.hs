@@ -98,12 +98,12 @@ patternToCore' env types (name, tp, pat) continue nr =
         Pattern_Literal _ l ->  
             case l of
                 Literal_Int _ i -> withNr nr $
-                    case_ name tp [ Core.Alt (Core.PatLit (Core.LitInt (read i))) continue ]
+                    case_ name tp [ Core.Alt (Core.PatLit (Core.LitInt (read i) Core.IntTypeInt)) continue ]
                 Literal_Char _ c -> withNr nr $
                     case_ name tp
                     [ Core.Alt  
                         (Core.PatLit 
-                            (Core.LitInt (ord (read ("'" ++ c ++ "'"))))
+                            (Core.LitInt (ord (read ("'" ++ c ++ "'"))) Core.IntTypeChar)
                         )
                         continue 
                     ]
@@ -237,14 +237,16 @@ case_ ident tp alts =
         (Core.Strict (Core.Bind (Core.Variable ident $ Core.typeToStrict tp) (Core.Var ident)))      -- let! id = id in
         (Core.Match ident (alts++[nextClauseAlternative]))    -- match id { alt; ...; alt; _ -> _nextClause }
 
+toTp (Top.Quantification (_, _, tp)) = tp
+
 constructorFieldTypes :: ImportEnvironment -> Name -> Core.Type -> ([Core.Type], [Core.Type])
 constructorFieldTypes env conName tp =
     ( instantiation
-    , map (Core.typeSubstitutions $ zipWith (\(Core.TVar typeArg) t -> (typeArg, t)) instantiation typeArgs) args
+    , map (Core.typeSubstitutions $ zipWith (\(Core.TVar typeArg) t -> (typeArg, t)) typeArgs instantiation) args
     )
   where
-    typeArgs = getDataTypeArgs tp []
-    instantiation = getDataTypeArgs retType []
+    typeArgs = getDataTypeArgs retType []
+    instantiation = getDataTypeArgs tp []
     consTpScheme = fromMaybe (internalError "ToCorePat" "Pattern" $ "Could not find constructor " ++ show conName) $ M.lookup conName $ valueConstructors env
     (args, retType) = Core.typeExtractFunction $ toCoreTypeNotQuantified consTpScheme
 

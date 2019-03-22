@@ -103,13 +103,14 @@ SEM Expression [ | | core : { Core.Expr } ]
     --  expressions              : Expressions
 
     | Tuple              lhs.core = 
-        foldl 
+        let
+            tp = findCoreType @lhs.typeOutput @lhs.betaDeclUnique
+            tps = Core.typeTupleElements tp
+            constructor =
+                foldl Core.ApType (Core.Con $ Core.ConTuple $ length @expressions.core) tps  
+        in foldl 
             Core.Ap 
-            (Core.Con
-                (Core.ConTuple
-                    (length @expressions.core)
-                )
-            )
+            constructor
             @expressions.core
     --  range                    : Range
     --  expressions              : Expressions
@@ -297,13 +298,13 @@ SEM GuardedExpression [ | | core : { Core.Expr -> Core.Expr } ]
     --  expression               : Expression
 
 SEM Literal [ | | core : { Core.Expr } ]
-    | Int                   lhs.core = Core.Lit (Core.LitInt (read @value))
+    | Int                   lhs.core = Core.Lit (Core.LitInt (read @value) Core.IntTypeInt)
     --  range                    : Range
     --  value                    : String
 
     | Char                  lhs.core = 
             Core.Lit (Core.LitInt (ord 
-                (read ("'" ++ @value ++ "'"))))
+                (read ("'" ++ @value ++ "'"))) Core.IntTypeChar)
     --  range                    : Range
     --  value                    : String -- without the quotes
 

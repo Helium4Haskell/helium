@@ -12,11 +12,11 @@ module Helium.CodeGeneration.CoreUtils
     ,   let_, if_, app_, letrec_
     ,   cons, nil
     ,   var, decl
-    ,   float, packedString
+    ,   float, packedString, declarationConstructorType
     ,   toplevelType, declarationType, declarationTypeInPattern, addToTypeEnv
     ,   toCoreType, toCoreTypeNotQuantified, typeToCoreType, typeToCoreTypeMapped
     ,   addLambdas, addLambdasForLambdaExpression, TypeClassContext(..)
-    ,   findCoreType, createInstantiation, TypeInferenceOutput(TypeInferenceOutput, importEnv)
+    ,   findCoreType, createInstantiation, TypeInferenceOutput(TypeInferenceOutput, importEnv), lookupBeta
     ) where
 
 import Top.Types as Top
@@ -113,7 +113,7 @@ stringToCore :: String -> Expr
 stringToCore [] = nil tp
   where
     tp = Core.TCon $ Core.TConDataType $ idFromString "Char"
-stringToCore [x] = cons tp (Lit (LitInt (ord x))) $ nil tp
+stringToCore [x] = cons tp (Lit (LitInt (ord x) IntTypeChar)) $ nil tp
   where
     tp = Core.TCon $ Core.TConDataType $ idFromString "Char"
 stringToCore xs = var "$primPackedToString" `app_` packedString xs
@@ -166,6 +166,31 @@ instantiationInTypeClassInstance :: TypeClassContext -> Top.TpScheme -> Maybe (I
 instantiationInTypeClassInstance (TCCInstance className instanceType) (Top.Quantification (_, qmap, (Top.Qualification (Predicate _ (Top.TVar typeVar) : _, _))))
   = Just (typeVar, instanceType)
 instantiationInTypeClassInstance _ _ = Nothing
+
+declarationConstructorTypeScheme :: ImportEnvironment -> Name -> Top.TpScheme
+declarationConstructorTypeScheme importEnv name = case M.lookup name $ valueConstructors importEnv of
+  Just (Quantification (quantors, qmap, qtp)) -> 
+    let
+      -- We must assure that the order of the quantors matches the order in which the type variables
+      -- appear in the data type / return type of the constructor, eg [a, b] in
+      -- a -> Either a b
+      
+      Qualification (_, tp) = qtp
+
+      -- Finds the (order of the) type arguments
+      findTypeArgs :: Top.Tp -> [Int]
+      findTypeArgs (Top.TApp (Top.TApp (Top.TCon "->") tArg) tReturn) = findTypeArgs tReturn
+      findTypeArgs t = consume [] t
+        where
+          consume accum (Top.TApp t (Top.TVar idx)) = consume (idx : accum) t
+          consume accum _ = accum
+      
+      quantors' = findTypeArgs tp
+    in Quantification (quantors', qmap, qtp)
+  Nothing -> internalError "CodeGeneration" "declarationConstructorTypeScheme" ("Constructor not found: " ++ show name)
+
+declarationConstructorType :: ImportEnvironment -> Name -> Core.Type
+declarationConstructorType importEnv name = toCoreType $ declarationConstructorTypeScheme importEnv name
 
 declarationType :: TypeInferenceOutput -> TypeClassContext -> Name -> (Top.TpScheme, Core.Type)
 declarationType typeOutput context name =
@@ -298,7 +323,7 @@ applyTypeSynonym env (Top.TApp t1 t2) tps = applyTypeSynonym env t1 (t2 : tps)
 applyTypeSynonym env (Top.TVar a) tps = foldl (Top.TApp) (Top.TVar a) tps
 
 createInstantiation :: TypeInferenceOutput -> TypeEnvironment -> Name -> Bool -> Int -> Core.Expr
-createInstantiation typeOutput typeEnv name isConstructor beta = case M.lookup name valueMap of
+createInstantiation typeOutput typeEnv name isConstructor beta = case maybeScheme of
   Nothing -> expr
   Just scheme -> foldl (\e t -> Core.ApType e $ typeToCoreType t) expr $ findInstantiation (importEnv typeOutput) scheme tp
   where
@@ -306,7 +331,9 @@ createInstantiation typeOutput typeEnv name isConstructor beta = case M.lookup n
       | isConstructor = Core.Con $ Core.ConId $ idFromName name
       | otherwise = Core.Var $ idFromName name
     tp = lookupBeta beta typeOutput
-    valueMap = if isConstructor then valueConstructors $ importEnv typeOutput else typeEnv
+    maybeScheme
+      | isConstructor = Just $ declarationConstructorTypeScheme (importEnv typeOutput) name
+      | otherwise = M.lookup name typeEnv
 
 findInstantiation :: ImportEnvironment -> Top.TpScheme -> Top.Tp -> [Top.Tp]
 findInstantiation importEnv (Top.Quantification (tvars, _, Top.Qualification (_, tLeft))) tRight
