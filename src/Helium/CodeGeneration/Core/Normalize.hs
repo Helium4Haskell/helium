@@ -27,6 +27,7 @@ import Lvm.Common.IdSet
 import Lvm.Core.Expr
 import Lvm.Core.Type
 import Lvm.Core.Utils
+import Helium.CodeGeneration.Core.TypeEnvironment
 
 -- A trivial expression is a variable
 isTrivial :: Expr -> Bool
@@ -45,66 +46,79 @@ isApTarget _ = False
 
 coreNormalize :: NameSupply -> CoreModule -> CoreModule
 coreNormalize supply m
-  = mapExprWithSupply normalizeLambda supply m
+  = mapExprWithSupply (`normalizeLambda` env) supply m
+  where
+    env = typeEnvForModule m
 
 -- Lambda expressions are allowed on toplevel, in a let binding and in a lambda.
 -- Here we skip through all Lambda nodes until we find a non-lambda node,
 -- which we will normalize.
-normalizeLambda :: NameSupply -> Expr -> Expr
-normalizeLambda supply (Lam var expr) = Lam var $ normalizeLambda supply expr
-normalizeLambda supply (Forall x k expr) = Forall x k $ normalizeLambda supply expr
-normalizeLambda supply expr = normalize supply expr
+normalizeLambda :: NameSupply -> TypeEnvironment -> Expr -> Expr
+normalizeLambda supply env (Lam var expr) = Lam var $ normalizeLambda supply env' expr
+  where
+    env' = typeEnvAddVariable var env
+normalizeLambda supply env (Forall x k expr) = Forall x k $ normalizeLambda supply env expr
+normalizeLambda supply env expr = normalize supply env expr
 
 -- Normalizes an expression.
-normalize :: NameSupply -> Expr -> Expr
-normalize supply expr = addBindings expr' bindings
+normalize :: NameSupply -> TypeEnvironment -> Expr -> Expr
+normalize supply env expr = addBindings expr' bindings
   where
-    (expr', bindings) = normSubExprs supply expr
+    (expr', bindings) = normSubExprs supply env expr
 
 -- Normalizes an expression. Adds a new binding if the expression isn't a variable.
-normExpr :: NameSupply -> Expr -> (Expr, [Bind])
-normExpr supply expr
+normExpr :: NameSupply -> TypeEnvironment -> Expr -> (Expr, [Bind])
+normExpr supply env expr
   | isTrivial expr' = (expr', bindings)
-  | otherwise = (Var name, [Bind (Variable name TAny) $ addBindings expr' bindings])
+  | otherwise = (Var name, [Bind (Variable name TAny {-$ typeOfCoreExpression env expr-}) $ addBindings expr' bindings])
   where
-    (expr', bindings) = normSubExprs supply' expr
+    (expr', bindings) = normSubExprs supply' env expr
     (name, supply') = freshId supply
 
 -- Normalizes the subexpressions of an expression
-normSubExprs :: NameSupply -> Expr -> (Expr, [Bind])
-normSubExprs supply (Let binds expr) = (Let (normBinds supply1 binds) $ normalize supply2 expr, [])
+normSubExprs :: NameSupply -> TypeEnvironment -> Expr -> (Expr, [Bind])
+normSubExprs supply env (Let binds expr) = (Let binds' $ normalize supply2 env' expr, [])
   where
     (supply1, supply2) = splitNameSupply supply
-normSubExprs supply (Match x alts) = (Match x $ mapWithSupply normAlt supply alts, [])
-normSubExprs supply (Ap e1 e2) = (Ap e1'' e2', bindings1' ++ bindings2)
+    (env', binds') = normBinds supply1 env binds
+normSubExprs supply env (Match x alts) = (Match x $ mapWithSupply (`normAlt` env) supply alts, [])
+normSubExprs supply env (Ap e1 e2) = (Ap e1'' e2', bindings1' ++ bindings2)
   where
     (name, supply') = freshId supply
     (supply1, supply2) = splitNameSupply supply'
     -- Normalize e1 to a variable or application
-    (e1', bindings1) = normSubExprs supply1 e1
+    (e1', bindings1) = normSubExprs supply1 env e1
     (e1'', bindings1')
       | isApTarget e1' = (e1', bindings1)
-      | otherwise = (Var name, [Bind (Variable name TAny) $ addBindings e1' bindings1])
-    (e2', bindings2) = normExpr supply2 e2
-normSubExprs supply (Lam var expr) = (Lam var $ normalizeLambda supply expr, [])
-normSubExprs supply (Forall x k expr) = (Forall x k expr', binds)
+      | otherwise = (Var name, [Bind (Variable name TAny {- $ typeOfCoreExpression env e1 -}) $ addBindings e1' bindings1])
+    (e2', bindings2) = normExpr supply2 env e2
+normSubExprs supply env expr@(Lam _ _) = (normalizeLambda supply env expr, [])
+normSubExprs supply env (Forall x k expr) = (Forall x k expr', binds)
   where
-    (expr', binds) = normSubExprs supply expr
-normSubExprs supply (ApType expr t) = (ApType expr' t, binds)
+    (expr', binds) = normSubExprs supply env expr
+normSubExprs supply env (ApType expr t) = (ApType expr' t, binds)
   where
-    (expr', binds) = normSubExprs supply expr
-normSubExprs supply expr = (expr, []) -- expr is already trivial, we don't need to normalize it further.
+    (expr', binds) = normSubExprs supply env expr
+normSubExprs supply env expr = (expr, []) -- expr is already trivial, we don't need to normalize it further.
 
-normBinds :: NameSupply -> Binds -> Binds
-normBinds supply (Rec binds) = Rec $ mapWithSupply normBind supply binds
-normBinds supply (Strict b) = Strict $ normBind supply b
-normBinds supply (NonRec b) = NonRec $ normBind supply b
+normBinds :: NameSupply -> TypeEnvironment -> Binds -> (TypeEnvironment, Binds)
+normBinds supply env (Rec binds) = (env, Rec $ mapWithSupply (`normBind` env') supply binds)
+  where
+    env' = typeEnvAddBinds (Rec binds) env
+normBinds supply env (Strict b) = (env', Strict $ normBind supply env b)
+  where
+    env' = typeEnvAddBind b env
+normBinds supply env (NonRec b) = (env', NonRec $ normBind supply env b)
+  where
+    env' = typeEnvAddBind b env
 
-normBind :: NameSupply -> Bind -> Bind
-normBind supply (Bind var expr) = Bind var $ normalize supply expr
+normBind :: NameSupply -> TypeEnvironment -> Bind -> Bind
+normBind supply env (Bind var expr) = Bind var $ normalize supply env expr
 
-normAlt :: NameSupply -> Alt -> Alt
-normAlt supply (Alt p expr) = Alt p $ normalize supply expr
+normAlt :: NameSupply -> TypeEnvironment -> Alt -> Alt
+normAlt supply env (Alt p expr) = Alt p $ normalize supply env' expr
+  where
+    env' = typeEnvAddPattern p env
 
 addBindings :: Expr -> [Bind] -> Expr
 addBindings = foldl add

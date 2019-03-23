@@ -516,7 +516,7 @@ SEM Expression
 
   | Do
       lhs        . constraints   = Node [ @newcon .<. @statements.constraints ]
-      statements . betaUnique    = @lhs.betaUnique + 2
+      statements . betaUnique    = @lhs.betaUnique + 1
                  . generatorBeta = Nothing
                  . assumptions   = noAssumptions
                  . monadBeta     = @loc.betaMonad
@@ -524,8 +524,7 @@ SEM Expression
                  . constraints   = emptyTree
                  . beta          = TVar @lhs.betaUnique
                  . betaMonad     = TVar $ @lhs.betaDeclUnique
-                 . betaVar       = TVar $ @lhs.betaUnique + 1
-                 . betaReturn    = TVar $ @lhs.betaUnique + 2
+                 . betaVar       = TVar $ @lhs.betaDeclUnique + 1
                  . monadPredicate = Predicate "Monad" @betaMonad
                  . monadType     = TApp @betaMonad @betaVar
                  . monadBeta     = quantify [] ([@monadPredicate] .=>. @monadType)
@@ -587,9 +586,8 @@ SEM Expression
             . conTo        = [ (@to.beta   .==. @elementType) @cinfoTo   ]
 
   | Negate
-       expression . betaUnique  = @lhs.betaUnique + 1
        loc        . constraints = @newcon .>. Node [ @expression.constraints ]
-                  . beta        = TVar @lhs.betaUnique
+                  . beta        = TVar @lhs.betaDeclUnique
                   . newcon      = -- search for the type of 'negate' in the import envionment: otherwise use the default type.
                                   let standard = makeScheme [] [Predicate "Num" (TVar 0)] (TVar 0 .->. TVar 0)
                                       tpscheme = M.findWithDefault standard (nameFromString "negate") (typeEnvironment @lhs.importEnvironment)

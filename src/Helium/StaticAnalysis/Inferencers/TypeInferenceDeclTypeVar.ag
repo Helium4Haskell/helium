@@ -74,7 +74,8 @@ SEM Expression
     expression.betaDeclUnique = @lhs.betaDeclUnique + 1
   | Do
     -- One type variable for the monad type (kind * -> *)
-    statements.betaDeclUnique = @lhs.betaDeclUnique + 1
+    -- One type variable for the value in the monad (eg the 'a' in 'm a')
+    statements.betaDeclUnique = @lhs.betaDeclUnique + 2
   | Variable
     lhs.betaDeclUnique = @lhs.betaDeclUnique + 1
   | Constructor
@@ -87,6 +88,8 @@ SEM Expression
     from.betaDeclUnique = @lhs.betaDeclUnique + 1
   | Tuple
     expressions.betaDeclUnique = @lhs.betaDeclUnique + 1
+  | Negate
+    expression.betaDeclUnique = @lhs.betaDeclUnique + 1 
 
 SEM Statement
   | Expression

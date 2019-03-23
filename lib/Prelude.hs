@@ -234,7 +234,18 @@ either l r e =
  -- Ordering
  -----------------------------------------------}
 
-data Ordering = LT | EQ | GT deriving (Show, Eq)
+data Ordering = LT | EQ | GT
+
+instance Show Ordering where
+    show LT = "LT"
+    show EQ = "EQ"
+    show GT = "GT"
+
+instance Eq Ordering where
+    LT == LT = True
+    EQ == EQ = True
+    GT == GT = True
+    _  == _  = False
 
 {-----------------------------------------------
  -- Tuple

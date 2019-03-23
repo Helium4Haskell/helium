@@ -36,9 +36,9 @@ data Module = Module
 
 data DataType = DataType ![Declaration DataTypeConstructorDeclaration]
 
-data DataTypeConstructorDeclaration = DataTypeConstructorDeclaration ![PrimitiveType]
+data DataTypeConstructorDeclaration = DataTypeConstructorDeclaration ![Quantor] ![Type]
 
-data DataTypeConstructor = DataTypeConstructor { constructorDataType :: !Id, constructorName :: !Id, constructorFields :: ![PrimitiveType] }
+data DataTypeConstructor = DataTypeConstructor { constructorDataType :: !Id, constructorName :: !Id, constructorType :: !Type }
   deriving (Eq, Ord)
 
 getConstructors :: Declaration DataType -> [DataTypeConstructor]
@@ -60,10 +60,10 @@ instance Functor Declaration where
   fmap f (Declaration name visibility mod customs a) = Declaration name visibility mod customs $ f a
 
 -- Imported method, eg a method without a definition. The implementation is in some other file.
-data AbstractMethod = AbstractMethod !FunctionType ![Annotation]
+data AbstractMethod = AbstractMethod !Arity !Type ![Annotation]
   deriving (Eq, Ord)
 
-data Method = Method ![Local] !PrimitiveType ![Annotation] !Block ![Block]
+data Method = Method ![Either Quantor Local] !Type ![Annotation] !Block ![Block]
   deriving (Eq, Ord)
 
 -- Annotations on methods
@@ -88,12 +88,12 @@ data CallingConvention
   deriving (Eq, Ord)
 
 data TypeSynonym = TypeSynonym !Type
-data Local = Local { localName :: !Id, localType :: !PrimitiveType }
+data Local = Local { localName :: !Id, localType :: !Type }
   deriving (Eq, Ord)
 
 data Global
   = GlobalFunction !Id !FunctionType
-  | GlobalVariable !Id !PrimitiveType
+  | GlobalVariable !Id !Type
   deriving (Eq, Ord)
 
 data Variable
@@ -152,9 +152,9 @@ data BindTarget
   -- * The object points at another thunk and is thus a secondary thunk.
   | BindTargetThunk !Variable
   -- * The bind represents a constructor invocation.
-  | BindTargetConstructor !DataTypeConstructor
+  | BindTargetConstructor !DataTypeConstructor ![Type]
   -- * The bind represents the construction of a tuple.
-  | BindTargetTuple !Arity
+  | BindTargetTuple ![Type]
   deriving (Eq, Ord)
 
 -- * A 'match' instruction can pattern match on constructors, tuples or thunks. The latter

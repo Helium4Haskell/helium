@@ -66,6 +66,7 @@ pCoreType' quantors = do
       arrow <- pMaybe (pSymbol "->")
       case arrow of
         Just _ -> do
+          pWhitespace
           right <- pCoreType' quantors
           return $ TAp (TAp (TCon TConFun) left) right
         Nothing -> return left

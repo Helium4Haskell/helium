@@ -121,20 +121,28 @@ classFunctions typeOutput className typeVar combinedNames = [DeclCon -- Declare 
             classFunction :: (Name, Int, DictLabel, Core.Type) -> [CoreDecl]
             classFunction (name, tag, label, _) = 
                 let dictParam = idFromString "dict"
+                    quantors = 
+                        drop 1
+                        $ unfoldr
+                            (\tp -> case tp of
+                                Core.TForall quantor _ t -> Just (quantor, t)
+                                _ -> Nothing
+                            )
+                            declType
+                    declType = snd $ declarationType typeOutput TCCNone name
                     val = DeclValue 
                         { declName    = idFromString $ getNameName name
                         , declAccess  = public
-                        , declType    = snd $ declarationType typeOutput TCCNone name
+                        , declType    = declType
                         , valueValue  = Forall (Core.Quantor 0 $ Just typeVar) Core.KStar
-                            (Lam (Variable dictParam classType) $
-                                Let (Strict $ Bind (Variable dictParam $ Core.typeToStrict classType) (Var dictParam))
-                                (Match dictParam 
-                                    [
-                                        Alt (PatCon (ConId $ idFromString ("Dict$" ++ className)) [typeArg] (map idFromString labels)) 
-                                            (Ap (Var $ idFromString label) (Var dictParam))
-                                    ]
-                                )
-                            )
+                            $ flip (foldr (\q e -> Forall q Core.KStar e)) quantors
+                            $ Lam (Variable dictParam classType)
+                            $ Let (Strict $ Bind (Variable dictParam $ Core.typeToStrict classType) (Var dictParam))
+                            $ Match dictParam 
+                                [
+                                    Alt (PatCon (ConId $ idFromString ("Dict$" ++ className)) [typeArg] (map idFromString labels)) 
+                                        (Ap (foldl (\e (Core.Quantor idx _) -> ApType e (Core.TVar idx)) (Var $ idFromString label) quantors) $ Var dictParam)
+                                ]
                         , declCustoms = toplevelType name (importEnv typeOutput) True
                         }
                 in  if getNameName name == "negate" && className == "Num" then 

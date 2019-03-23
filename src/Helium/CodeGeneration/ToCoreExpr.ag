@@ -93,6 +93,8 @@ SEM Expression [ | | core : { Core.Expr } ]
     --  expression               : Expression
 
     | Do                 loc.monadType = findCoreType @lhs.typeOutput @lhs.betaDeclUnique
+                         statements.monadType = @loc.monadType
+                         statements.returnType = findCoreType @lhs.typeOutput (@lhs.betaDeclUnique + 1)
                          lhs.core = let_ (idFromString "$monadDict") (Core.TAp (Core.TCon $ Core.TConTypeClassDictionary $ idFromString "Monad") @loc.monadType) (dictionaryTreeToCore $ head $ getDictionaryTrees @loc.name @lhs.dictionaryEnv) $ chainCode @statements.core
                          loc.name = setNameRange (nameFromString $ "do-" ++ show @range.self) @range.self
     --  range                    : Range
@@ -130,8 +132,11 @@ SEM Expression [ | | core : { Core.Expr } ]
     --  type                     : Type
 
     -- negate is overloaded and we need to insert a dictionary argument
-    | Negate             lhs.core = insertDictionaries' (setNameRange intUnaryMinusName @range.self) @lhs.dictionaryEnv                  
-                                    `app_` @expression.core 
+    | Negate             loc.tp   = findCoreType @lhs.typeOutput @lhs.betaDeclUnique
+                         lhs.core =
+            insertDictionaries (setNameRange intUnaryMinusName @range.self) @lhs.dictionaryEnv 
+                (Core.Var (idFromName intUnaryMinusName) `Core.ApType` @loc.tp)
+                `app_` @expression.core 
     --  range                    : Range
     --  expression               : Expression
 
@@ -176,7 +181,8 @@ SEM Expression [ | | core : { Core.Expr } ]
     --  expression               : Expression
     --  recordExpressionBindings : RecordExpressionBindings
 
-ATTR Statements [ | | core USE { : } { [] } : { [Maybe Core.Expr -> Core.Expr] } ]
+ATTR Statements Statement [ monadType : { Core.Type } returnType : { Core.Type } | | ]
+ATTR Statements [  | | core USE { : } { [] } : { [Maybe Core.Expr -> Core.Expr] } ]
 
 SEM Statement [ | | core : { Maybe Core.Expr -> Core.Expr } ]
     | Expression          loc.argType = findCoreType @lhs.typeOutput @lhs.betaDeclUnique
@@ -184,7 +190,7 @@ SEM Statement [ | | core : { Maybe Core.Expr -> Core.Expr } ]
             \theRest -> 
                 case theRest of
                     Nothing   -> @expression.core
-                    Just rest -> bind (Core.Var $ idFromString "$monadDict") @expression.core (Core.Lam (Core.Variable dummyId @loc.argType) rest)
+                    Just rest -> bind @lhs.monadType @argType @lhs.returnType (Core.Var $ idFromString "$monadDict") @expression.core (Core.Lam (Core.Variable dummyId @loc.argType) rest)
     --  range                    : Range
     --  expression               : Expression
 
@@ -205,8 +211,9 @@ SEM Statement [ | | core : { Maybe Core.Expr -> Core.Expr } ]
                           lhs.core =
         \theRest -> case theRest of
             Nothing   -> internalError "ToCoreExpr" "Statement" "generator can't be last in 'do'"
-            Just rest -> 
-               Core.Ap (Core.Ap (Core.Ap (Core.Var $ idFromString ">>=") (Core.Var $ idFromString "$monadDict")) @expression.core) (Core.Lam (Core.Variable parameterId @loc.argType) (patternToCore @lhs.importEnv @pattern.patternTypes (parameterId, @loc.argType, @pattern.self) rest))       
+            Just rest ->
+                bind @lhs.monadType @argType @lhs.returnType (Core.Var $ idFromString "$monadDict") @expression.core (Core.Lam (Core.Variable parameterId @loc.argType) (patternToCore @lhs.importEnv @pattern.patternTypes (parameterId, @loc.argType, @pattern.self) rest))
+               -- Core.Ap (Core.Ap (Core.Ap (Core.Var $ idFromString ">>=") (Core.Var $ idFromString "$monadDict")) @expression.core) (Core.Lam (Core.Variable parameterId @loc.argType) 
 
     --  range                    : Range
     --  pattern                  : Pattern
@@ -319,8 +326,10 @@ SEM Literal [ | | core : { Core.Expr } ]
 {
 
 -- Function "bind" is used in the translation of do-expressions
-bind :: Core.Expr -> Core.Expr -> Core.Expr -> Core.Expr
-bind dict ma f = (Core.Ap (Core.Var (idFromString ">>=")) (dict)) `app_` ma `app_` f
+bind :: Core.Type -> Core.Type -> Core.Type -> Core.Expr -> Core.Expr -> Core.Expr -> Core.Expr
+bind tMonad tArg tReturn dict ma f = (Core.Ap instantiated dict) `app_` ma `app_` f
+  where
+    instantiated = (Core.Var (idFromString ">>=")) `Core.ApType` tMonad `Core.ApType` tArg `Core.ApType` tReturn
 
 primBindIOId, caseExprId, okId, parameterId :: Id
 ( primBindIOId :  caseExprId :  okId :  parameterId : []) = map idFromString $
