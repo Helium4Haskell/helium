@@ -68,7 +68,7 @@ SEM Declaration
     
     | Data    constructors.tag = 0
               constructors.dataTypeName = @simpletype.name
-              loc . origin     = originCustoms @lhs.modulename @range.self
+              loc . origin      = originCustoms @lhs.modulename @range.self
                   . qualname    = addQualified @lhs.moduleQual @simpletype.name
               lhs.decls  =
         map snd @constructors.cons
@@ -301,7 +301,7 @@ getSuperClasses = map (\(ContextItem_ContextItem _ n vs) -> (getNameName n, var 
         name _ = error "Type variable not a single name"
 
 predicateToId :: Predicate -> Id
-predicateToId (Predicate class_ tp) = traceShowId $ 
+predicateToId (Predicate class_ tp) =
     idFromString $ "$dict" ++ class_ ++ "$" ++ show tp
     
 dictionaryTreeToCore :: DictionaryTree -> Core.Expr
@@ -366,6 +366,7 @@ SEM RightHandSide
     | Expression        lhs.core = @where.core @expression.core
                             .isGuarded = False
                         where.instanceName = Nothing 
+                        where.modulename = internalError "ToCoreDecl.ag" "RightHandSide.Expression - modulename" ""
     --  range                    : Range
     --  expression               : Expression
     --  where                    : MaybeDeclarations

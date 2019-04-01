@@ -100,7 +100,7 @@ combineDeclIndex names decls = map (\(name, _, label) -> (label, name, lookup na
 
 --returns a dictionary with specific implementations for every instance
 constructDictionary :: ImportEnvironment -> [(String, Name)] -> [(Name, Int, DictLabel)] -> [(Name, CoreDecl)] -> Name -> String -> [Name] -> CoreDecl
-constructDictionary importEnv instanceSuperClass combinedNames whereDecls className insName typeVariables = 
+constructDictionary importEnv instanceSuperClass combinedNames whereDecls className insName typeVariables =
         let 
             
             val = DeclValue 
