@@ -45,6 +45,9 @@ convertContextItemToQualified env (ContextItem_ContextItem ran name types)
 convertTpToQualified :: M.Map Name (Int, Name) -> Tp -> Tp
 convertTpToQualified env = convertTp (toQualTyCon env)
 
+convertTpSchemeToQualified :: M.Map Name (Int, Name) -> TpScheme -> TpScheme
+convertTpSchemeToQualified env = convertTpScheme (toQualTyCon env)
+
 convertTp :: (Name -> Name) -> Tp -> Tp
 convertTp _ t@(TVar _) = t
 convertTp f (TCon str) = TCon . getNameName . f . nameFromString $ str
@@ -85,7 +88,6 @@ charQualType   = TCon "LvmLang.Char"
 stringQualType = TCon "LvmLang.String"
 floatQualType  = TCon "LvmLang.Float"
 boolQualType   = TCon "LvmLang.Bool"
-ioQualType     = TApp (TCon "LvmLang.IO") 
 
 isQualIOType :: Tp -> Bool
 isQualIOType (TApp (TCon "LvmLang.IO") _) = True 

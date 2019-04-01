@@ -22,7 +22,6 @@
 
 module Helium.Parser.LayoutRule(layout) where
 
---import Debug.Trace
 import Helium.Parser.LexerToken(Token, Lexeme(..), lexemeLength)
 import Text.ParserCombinators.Parsec.Pos
 

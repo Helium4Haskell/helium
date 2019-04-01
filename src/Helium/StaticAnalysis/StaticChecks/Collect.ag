@@ -320,6 +320,9 @@ createClassDef n MaybeDeclarations_Nothing names  = M.singleton n (names, [])
 createClassDef n (MaybeDeclarations_Just decls) names = M.singleton n (names, createClassDef2 fdecl $ concatMap createClassDef1 types)
                where (types, fdecl) = filterType decls ([], [])
 
+convertClassMemberEnvironmentTypes :: (TpScheme -> TpScheme) -> ClassMemberEnvironment -> ClassMemberEnvironment
+convertClassMemberEnvironmentTypes f = fmap $ fmap $ fmap (\(a,b,c,d) -> (a,f b,c,d))
+
 insertDefaults :: Name -> Names -> ClassMemberEnvironment -> ClassMemberEnvironment
 insertDefaults name defs env = M.mapWithKey (\n membs -> if n == name then (update defs membs) else membs) env 
       where
@@ -357,8 +360,11 @@ SEM Module
     | Module body . classMemberEnv = foldr exclusiveUnion @body.collectClassMemberEnv (map classMemberEnvironment @importEnvironments)
 
 SEM Declaration
-    | Class lhs . collectTypeClasses = [(@simpletype.name, @where.typeSignatures)]
-            lhs . collectClassMemberEnv = insertDefaults @simpletype.name @where.functionDefaults $ createClassDef @simpletype.name @where.self @simpletype.typevariables
+    | Class lhs . collectTypeClasses    = [(@simpletype.name, @where.typeSignatures)]
+            lhs . collectClassMemberEnv = insertDefaults @simpletype.name @where.functionDefaults @qualifiedClassDef
+            loc . classDef              = createClassDef @simpletype.name @where.self @simpletype.typevariables
+                . qualifiedClassDef          = convertClassMemberEnvironmentTypes (convertTpSchemeToQualified @lhs.typeConstructorsWithDefined) @classDef
+            
 
 SEM Declarations
     | Cons     lhs . collectTypeClasses = @hd.collectTypeClasses  ++ @tl.collectTypeClasses
@@ -389,7 +395,7 @@ SEM MaybeDeclarations | Just    declarations . typeSignatures = []
 SEM Declaration
   | TypeSignature
       lhs . typeSignatures = [ (name, @typeScheme) | name <- @names.self ] ++ @lhs.typeSignatures
-      loc . (typeScheme, intMap) = makeTpSchemeFromType' @type.self
+      loc . (typeScheme, intMap) = makeTpSchemeFromType' $ convertTypeToQualified @lhs.typeConstructorsWithDefined @type.self
   | Class
       --lhs . typeSignatures = [] --@where.typeSignatures
   | Instance
@@ -417,12 +423,14 @@ SEM Declaration
     | Class
         lhs . classEnv = M.singleton (getClassName @simpletype.self) ((map fst $ getSuperClasses @context.self), [])
     | Instance
+       loc . qualifiedType  = convertTypeToQualified @lhs.typeConstructorsWithDefined $ head @types.self
+       loc . qualifiedTp    = makeTpFromType' @qualifiedType
        lhs . classInstances = let
                                 superClasses :: [(String, Tp)]
-                                superClasses = map (\(c, tpss)-> (c, unqualify $ unquantify $ head tpss)) $ getSuperClasses @context.self
-                              in  [(getNameName @name.self, makeTpFromType' $ convertTypeToQualified @lhs.typeConstructorsWithDefined $ head @types.self, superClasses)] 
+                                superClasses = map (\(c, tpss)-> (c, unqualify  $ unquantify $ head tpss)) $ getSuperClasses (map (convertContextItemToQualified @lhs.typeConstructorsWithDefined) @context.self)
+                              in [(getNameName @name.self, @qualifiedTp, superClasses)]
 
-       lhs . instanceEnv = M.singleton (@name.self, makeTpFromType' $ head @types.self) (namesInType (head @types.self), map (\(n, tp) -> (n, show $ head tp)) $ getSuperClasses @context.self)
+       lhs . instanceEnv = M.singleton (@name.self, @qualifiedTp) (namesInType @qualifiedType, map (\(n, tp) -> (n, show $ head tp)) $ getSuperClasses @context.self)
     | Data  lhs . instanceEnv = M.fromList 
                                     [
                                         let className = dn

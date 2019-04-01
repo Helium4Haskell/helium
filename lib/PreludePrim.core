@@ -73,7 +73,7 @@ import LvmLang
     
     , primPackedToString = stringFromPacked
 
-    , Int(), Float(), IO()
+    , Int(), Float(), IO(), Char()
     , custom "typedecl" String
     , Bool(True, False)
     , '':[]''('':[]'', (:))

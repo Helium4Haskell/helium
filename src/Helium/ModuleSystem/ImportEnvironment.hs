@@ -225,14 +225,14 @@ getDefaultDirectives importEnv = let
 combineImportEnvironments :: ImportEnvironment -> ImportEnvironment -> ImportEnvironment
 combineImportEnvironments (ImportEnvironment tcs1 tss1 te1 vcs1 ot1 ce1 cm1 ins1 xs1) (ImportEnvironment tcs2 tss2 te2 vcs2 ot2 ce2 cm2 ins2 xs2) =
     insertMissingInstances $ ImportEnvironment
-      (tcs1 `exclusiveUnion` tcs2)
-      (tss1 `exclusiveUnion` tss2)
-      (te1  `exclusiveUnion` te2 )
-      (vcs1 `exclusiveUnion` vcs2)
-      (ot1  `exclusiveUnion` ot2)
+      (tcs1 `M.union` tcs2)
+      (tss1 `M.union` tss2)
+      (te1  `M.union` te2 )
+      (vcs1 `M.union` vcs2)
+      (ot1  `M.union` ot2)
       (M.unionWith combineClassDecls ce1 ce2)
-      (cm1 `exclusiveUnion` cm2)
-      (ins1 `exclusiveUnion` ins2)
+      (cm1  `M.union` cm2)
+      (ins1 `M.union` ins2)
       (xs1 ++ xs2)
 
 insertMissingInstances :: ImportEnvironment -> ImportEnvironment
@@ -287,50 +287,6 @@ combineClassDecls :: ([[Char]],[(Predicate,[Predicate])]) ->
 combineClassDecls (super1, inst1) (super2, inst2)
    | super1 == super2 = (super1, nub $ inst1 ++ inst2)
    | otherwise        = internalError "ImportEnvironment.hs" "combineClassDecls" "cannot combine class environments"
-
--- Bastiaan:
--- Create a class environment from the dictionaries in the import environment
-createClassEnvironment :: ImportEnvironment -> ClassEnvironment
-createClassEnvironment importenv = 
-    let  dicts = map (drop (length dictPrefix) . show) 
-               . M.keys 
-               . M.filterWithKey isDict 
-               $ typeEnvironment importenv
-         isDict n _ = dictPrefix `isPrefixOf` show n
-         dictPrefix = "$dict"
-         -- classes = ["Eq","Num","Ord","Enum","Show"]
-         -- TODO: put $ between class name and type in dictionary name
-         --  i.e. $dictEq$Int instead of $dictEqInt
-         splitDictName ('E':'q':t) = ("Eq", t)
-         splitDictName ('N':'u':'m':t) = ("Num", t)
-         splitDictName ('O':'r':'d':t) = ("Ord", t)
-         splitDictName ('E':'n':'u':'m':t) = ("Enum", t)
-         splitDictName ('S':'h':'o':'w':t) = ("Show", t)
-         splitDictName x = internalError "ImportEnvironment" "splitDictName" ("illegal dictionary: " ++ show x)
-         arity s | s == "()" = 0
-                 | isTupleConstructor s = length s - 1
-                 | otherwise = fst $ M.findWithDefault
-                                  (internalError "ImportEnvironment" "splitDictName" ("unknown type constructor: " ++ show s))                            
-                                  (nameFromString s)
-                                  (typeConstructors importenv)
-         getQualName s | s == "()" = s
-                       | isTupleConstructor s = s
-                       | isListConstructor s = s
-                       | otherwise = getNameName . snd $ M.findWithDefault
-                           (internalError "ImportEnvironment" "splitDictName" ("unknown type constructor: " ++ show s))
-                           (nameFromString s)
-                           (typeConstructors importenv)
-         dictTuples = [ (c, makeInstance c (arity t) (getQualName t) True )  --TODO: Is True correct?
-                      | d <- dicts, let (c, t) = splitDictName d 
-                      ]
-         isListConstructor "[]" = True
-         isListConstructor _    = False
-         
-         classEnv = foldr 
-                    (\(className, inst) e -> insertInstance className inst e) 
-                    superClassRelation 
-                    dictTuples
-    in classEnv
 
 superClassRelation :: ClassEnvironment
 superClassRelation = M.fromList

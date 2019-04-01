@@ -229,9 +229,9 @@ SEM Declaration
                                   ]
   | Instance
         lhs . collectInstances  = [(@name.self, updateSuperclasses @typevariables (getSuperClasses @context.self) $ makeInstance (show @name.self) (length @typevariables) @stype False)]
-        loc . type              = head $ @types.self
-        loc . stype             = showInstanceType (makeTpFromType @typevariables @type)
-        loc . typevariables     = zip (namesInType @loc.type) [TVar n | n <- [0..]]
+        loc . type              = head @types.self
+        loc . stype             = showInstanceType $ makeTpFromType @typevariables @type
+        loc . typevariables     = zip (namesInType @type) [TVar n | n <- [0..]]
 {
 updateSuperclasses :: [(Name, Tp)] -> [(String, Name)] -> Instance -> Instance
 updateSuperclasses typevars supers (pred, preds) = (pred, preds ++ superPreds)

@@ -346,12 +346,12 @@ makeTypeErrors options classEnv unqualifier synonyms sub errors =
       
       -- an unification error: first test if the two types can really not be unified
       | label == unificationErrorLabel =
-           let f info = 
+           let f info =
                   case mguWithTypeSynonyms synonyms (sub |-> fst (typepair info)) (sub |-> snd (typepair info)) of
-                     Left (InfiniteType _) -> 
+                     Left (InfiniteType _) ->
                         let hint = ("because", MessageString "unification would give infinite type")
                         in [ sub |-> special info (makeUnificationTypeError (addProperty (WithHint hint) info)) ]
-                     Left _  -> 
+                     Left _  ->
                         [ sub |-> special info (makeUnificationTypeError info) ]
                      Right _ -> []
            in (1, concatMap f infos)

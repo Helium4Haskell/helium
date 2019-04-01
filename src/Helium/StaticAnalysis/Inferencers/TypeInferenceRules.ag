@@ -170,7 +170,7 @@ SEM Declaration
                                     
   | TypeSignature
         lhs         . betaUnique = @lhs.betaUnique + 1
-        lhs         . typeMemberBindings = map (\name -> (name, makeTpSchemeFromType @type.self)) @names.self
+        lhs         . typeMemberBindings = map (\name -> (name, makeTpSchemeFromType $ convertTypeToQualified @lhs.typeConstructors @type.self)) @names.self
   | Class
         lhs         . bindingGroups = (@loc.environment, @where.assumptions, @loc.classMembers) : @lhs.bindingGroups
         where       . assumptions   = noAssumptions
@@ -561,7 +561,7 @@ SEM Expression
 
   | Do
       lhs        . constraints   = Node [ @newcon .<. @statements.constraints ]
-      statements . betaUnique    = @lhs.betaUnique + 3
+      statements . betaUnique    = @lhs.betaUnique + 4
                  . generatorBeta = Nothing
                  . assumptions   = noAssumptions
                  . monadBeta     = @loc.betaMonad
@@ -576,7 +576,7 @@ SEM Expression
                  . monadBeta     = quantify [] ([@monadPredicate] .=>. @monadType)
                  . newcon        = case @statements.generatorBeta of
                                       Nothing -> []
-                                      Just b  -> [ (ioQualType b .==. @beta) @cinfo, (@beta .::. @monadBeta) @cinfo ]
+                                      Just b  -> [ (b .==. @beta) @cinfo, (@beta .::. @monadBeta) @cinfo ]
 
   | List
       expressions . betaUnique   = @lhs.betaUnique + 2
@@ -878,7 +878,7 @@ SEM Statement
                                          ]
                  . beta           = TVar @lhs.betaUnique
                  . betaRes        = TVar $ @lhs.betaUnique + 1
-                 . newcon         = [ (@expression.beta .==. ioQualType @beta) @cinfo, (@beta .==. TApp @lhs.monadBeta @betaRes) @cinfo]
+                 . newcon         = [ (@expression.beta .==. @beta) @cinfo, (@beta .==. TApp @lhs.monadBeta @betaRes) @cinfo]
 
   | Let
       lhs          . generatorBeta  = Nothing
@@ -906,7 +906,7 @@ SEM Statement
                                      , @lhs.constraints
                                      ]
           . beta          = TVar $ @lhs.betaUnique + 1
-          . newcon        = [(@expression.beta .==. (TApp @lhs.monadBeta (ioQualType @pattern.beta))) @cinfoResult]
+          . newcon        = [(@expression.beta .==. (TApp @lhs.monadBeta @pattern.beta)) @cinfoResult]
           . (csetBinds,assumptions') = (@pattern.environment .===. @lhs.assumptions) @cinfoBind
 
 SEM Statements

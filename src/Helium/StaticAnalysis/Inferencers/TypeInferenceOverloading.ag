@@ -43,7 +43,7 @@ SEM Module
 
 SEM Declaration   
  
-  | FunctionBindings  -- for every predicate, copy class and replace the class with it's superclass 
+  | FunctionBindings  -- for every predicate, copy class and replace the class with its superclass 
        loc      . declPredicates        = let
                                               !predicates = matchTypeWithScheme @lhs.orderedTypeSynonyms 
                                                               (@lhs.substitution |-> @beta) 
@@ -192,7 +192,7 @@ matchTypeWithScheme :: OrderedTypeSynonyms -> Tp -> TpScheme -> Predicates
 matchTypeWithScheme synonyms tp scheme =
    let (ips, itp) = split . snd . instantiate 0 . freezeFTV $ scheme
    in case mguWithTypeSynonyms synonyms itp (freezeVariablesInType tp) of
-         Left _ -> internalError "TypeInferenceOverloading.ag" "matchTypeWithScheme" "no unification"
+         Left _ -> internalError "TypeInferenceOverloading.ag" "matchTypeWithScheme" ("no unification on " ++ show tp ++ " and " ++ show scheme)
          Right (_, sub) -> 
             let f (Predicate s typ) = Predicate s (unfreezeVariablesInType $ sub |-> typ)
             in map f ips
