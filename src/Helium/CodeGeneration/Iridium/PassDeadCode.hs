@@ -24,6 +24,7 @@ import Data.Maybe (catMaybes, fromMaybe, isNothing)
 import Lvm.Common.Id
 import Lvm.Common.IdMap
 import Lvm.Common.IdSet
+import Lvm.Core.Type
 
 passDeadCode :: NameSupply -> Module -> Module
 passDeadCode supply mod = mod{ moduleMethods = methods }
@@ -46,27 +47,32 @@ fromList (c : cs) = foldr CSequence c cs
 
 data Env = Env { envFunction :: !Id }
 -- Set of live variables, bools denoting whether the argument of a variable should be preserved
-data Result = Result !IdSet !(IdMap [Bool])
+data Result = Result !TypeEnvironment !IdSet !(IdMap [Bool])
 
 analyse :: Module -> Result
-analyse mod = Result (stateLive state) $ mapMapWithId liveArgs argMap
+analyse mod = Result (envWithSynonyms mod) (stateLive state) $ mapMapWithId liveArgs argMap
   where
     state = solve initialState
     initialState = constraintToState argMap c $ emptyState argMap
     argMap = mapFromList fns
     c = fromList constraints
     (fns, constraints) = unzip $ map analyseMethod $ moduleMethods mod
-    liveArgs :: Id -> [Id] -> [Bool]
-    liveArgs fn args = zipWith (\arg index -> index >= bindCount || arg `elemSet` stateLive state) args [0..]
+    liveArgs :: Id -> [Either () Id] -> [Bool]
+    liveArgs fn args = zipWith argIsLive args [0..]
       where
+        argIsLive :: Either () Id -> Int -> Bool
+        argIsLive (Left _) _ = True
+        argIsLive (Right name) index = index >= bindCount || name `elemSet` stateLive state
         bindCount = findMap fn $ stateBindCount state
 
-analyseMethod :: Declaration Method -> ((Id, [Id]), Constraint)
-analyseMethod (Declaration name vis _ _ (Method args _ _ b bs)) =
-  ( (name, map localName args) -- Try to remove unused arguments
+analyseMethod :: Declaration Method -> ((Id, [Either () Id]), Constraint)
+analyseMethod (Declaration name vis _ _ (Method _ args _ _ b bs)) =
+  ( (name, map argName args) -- Try to remove unused arguments
   , fnConstraint $ fromList $ map (analyseBlock env) $ b : bs
   )
   where
+    argName (Left _) = Left ()
+    argName (Right local) = Right $ localName local
     env = Env name
     exported = case vis of
       ExportedAs _ -> True
@@ -82,8 +88,7 @@ analyseBlock env (Block _ instr) = analyseInstruction env instr
 
 analyseInstruction :: Env -> Instruction -> Constraint
 analyseInstruction env (Let var (Call fn args) next) = CSequence
-  (fromList $ zipWith (\arg index -> CArgument var (variableName $ VarGlobal fn) index $ variableName arg) args [0..])
-  $ CSequence (CImplies var [variableName $ VarGlobal fn])
+  (analyseCall var (variableName $ VarGlobal fn) args)
   $ analyseInstruction env next
 analyseInstruction env (Let var expr next) = CSequence
   (CImplies var (map variableName $ dependenciesOfExpr expr))
@@ -92,19 +97,25 @@ analyseInstruction env (LetAlloc binds next) = CSequence
   (fromList $ map analyseBind binds)
   $ analyseInstruction env next
 analyseInstruction env (Jump _) = CEmpty
-analyseInstruction env (Match var _ args next) = CSequence
+analyseInstruction env (Match var _ _ args next) = CSequence
   (fromList $ map (\name -> CImplies name [variableName var]) $ catMaybes args)
   $ analyseInstruction env next
 analyseInstruction env (Case var _) = CImplies (envFunction env) [variableName var]
 analyseInstruction env (Return var) = CImplies (envFunction env) [variableName var]
 analyseInstruction env Unreachable = CEmpty
 
+analyseCall :: Id -> Id -> [Either Type Variable] -> Constraint
+analyseCall var fn args = fromList $
+  CImplies var [fn]
+  : CBindCount fn (length args)
+  : zipWith constraintArgument args [0..]
+  where
+    constraintArgument (Right arg) index = CArgument var fn index $ variableName arg
+    constraintArgument (Left tp) index = CEmpty
+
 analyseBind :: Bind -> Constraint
-analyseBind (Bind var (BindTargetFunction fn@(VarGlobal _)) args) = fromList $
-  CImplies var [variableName fn]
-  : CBindCount (variableName fn) (length args)
-  : zipWith (\arg index -> CArgument var (variableName fn) index $ variableName arg) args [0..]
-analyseBind (Bind var target args) = CImplies var $ targetVars ++ map variableName args
+analyseBind (Bind var (BindTargetFunction fn@(VarGlobal _)) args) = analyseCall var (variableName fn) args
+analyseBind (Bind var target args) = CImplies var $ targetVars ++ [variableName arg | Right arg <- args]
   where
     targetVars = case target of
       BindTargetFunction var -> [variableName var]
@@ -121,7 +132,7 @@ data State = State
   , stateWorklist :: [Id]
   }
 
-emptyState :: IdMap [Id] -> State
+emptyState :: IdMap [Either () Id] -> State
 emptyState argMap = State emptySet emptyMap (mapMap length argMap) []
 
 addLive :: Id -> State -> State
@@ -143,14 +154,15 @@ addTwoImplies a b c (State live implies bindCount worklist) =
 addBindCount :: Id -> Int -> State -> State
 addBindCount var count (State live implies bindCount worklist) = State live implies (insertMapWith var 0 (min count) bindCount) worklist
 
-constraintToState :: IdMap [Id] -> Constraint -> State -> State
+constraintToState :: IdMap [Either () Id] -> Constraint -> State -> State
 constraintToState _ CEmpty = id
 constraintToState _ (CLive var) = addLive var
 constraintToState _ (CImplies var vars) = addImplies var vars
 constraintToState argMap (CArgument ret fn argIndex value) = case lookupMap fn argMap of
   Just args
     | argIndex < length args ->
-      addTwoImplies (args !! argIndex) ret value
+      let Right argName = args !! argIndex
+      in addTwoImplies argName ret value
   _ -> addImplies ret [value]
 constraintToState _ (CBindCount var count) = addBindCount var count
 constraintToState argMap (CSequence c1 c2) = constraintToState argMap c1 . constraintToState argMap c2
@@ -169,15 +181,18 @@ solveStep (State live implies bindCount (var : worklist)) =
       Nothing -> []
 
 isLive :: Result -> Id -> Bool
-isLive (Result live _) var = var `elemSet` live
+isLive (Result _ live _) var = var `elemSet` live
 
 preservedArguments :: Result -> Id -> [Bool]
-preservedArguments (Result _ args) var = fromMaybe (repeat True) $ lookupMap var args
+preservedArguments (Result _ _ args) var = fromMaybe (repeat True) $ lookupMap var args
+
+preservedArguments' :: Result -> Id -> Maybe [Bool]
+preservedArguments' (Result _ _ args) var = lookupMap var args
 
 transformMethod :: NameSupply -> Result -> Declaration Method -> Maybe (Declaration Method)
-transformMethod supply res (Declaration name vis mod customs (Method args retType annotations b bs))
+transformMethod supply res (Declaration name vis mod customs (Method tp args retType annotations b bs))
   | not $ isLive res name = Nothing
-  | otherwise = Just $ Declaration name vis mod customs $ Method args' retType annotations b' bs'
+  | otherwise = Just $ Declaration name vis mod customs $ Method tp args' retType annotations b' bs'
   where
     args' = map fst $ filter snd $ zip args $ preservedArguments res name
     b' : bs' = mapWithSupply transformBlock supply $ b : bs
@@ -201,38 +216,55 @@ transformInstruction _ _ instr@(Jump _) = instr
 transformInstruction _ _ instr@(Return _) = instr
 transformInstruction _ _ instr@Unreachable = instr
 transformInstruction _ _ instr@(Case _ _) = instr
-transformInstruction supply res (Match var t fields next)
+transformInstruction supply res (Match var t instantiation fields next)
   | all isNothing fields' = transformInstruction supply res next
-  | otherwise = Match var t fields' $ transformInstruction supply res next
+  | otherwise = Match var t instantiation fields' $ transformInstruction supply res next
   where
     fields' = map (>>= (\field -> if isLive res field then Just field else Nothing)) fields
 
 transformExpr :: NameSupply -> Result -> Expr -> (Expr, Instruction -> Instruction)
 transformExpr supply res (Call fn args) = (Call (transformGlobal res fn) args', instr)
   where
-    (args', instr) = transformCall supply res (VarGlobal fn) args (map variableType args)
+    (args', instr) = transformCall supply res (VarGlobal fn) args (getArgTypes args)
 transformExpr _ _ expr = (expr, id)
 
+getArgTypes :: [Either Type Variable] -> [Either () Type]
+getArgTypes = map argType
+  where
+    argType (Right var) = Right $ variableType var
+    argType (Left _) = Left ()
+
 transformBind :: NameSupply -> Result -> Bind -> (Bind, Instruction -> Instruction)
-transformBind supply res (Bind var (BindTargetFunction fn@(VarGlobal global@(GlobalFunction _ (FunctionType argTypes _)))) args) =
+transformBind supply res@(Result env _ _) (Bind var (BindTargetFunction fn@(VarGlobal global@(GlobalFunction _ arity fnType))) args) =
   (Bind var (BindTargetFunction $ VarGlobal $ transformGlobal res global) args', instr)
   where
-    (args', instr) = transformCall supply res fn args argTypes
+    (args', instr) = transformCall supply res fn args (getArgTypes args)
 transformBind _ _ bind = (bind, id)
 
-transformCall :: NameSupply -> Result -> Variable -> [Variable] -> [PrimitiveType] -> ([Variable], Instruction -> Instruction)
+transformCall :: NameSupply -> Result -> Variable -> [Either Type Variable] -> [Either () Type] -> ([Either Type Variable], Instruction -> Instruction)
 transformCall supply res fn args argTypes = (args', flip (foldr id) instrs)
   where
     (args', instrs) = unzip $ catMaybes $ mapWithSupply transformArgument supply $ zip (zip args argTypes) $ preservedArguments res $ variableName fn
+    
+    transformArgument :: NameSupply -> ((Either Type Variable, Either () Type), Bool) -> Maybe (Either Type Variable, Instruction -> Instruction)
     transformArgument _ (_, False) = Nothing
-    transformArgument s ((arg, t), True)
-      | isLive res $ variableName arg = Just (arg, id)
-      | otherwise = Just (VarLocal $ Local name t, Let name $ Undefined t)
+    transformArgument s ((Right arg, Right t), True)
+      | not $ isLive res $ variableName arg = Just (Right $ VarLocal $ Local name t, Let name $ Undefined t)
       where
         (name, _) = freshIdFromId (variableName arg) s
+    transformArgument s ((arg, _), True) = Just $ (arg, id)
 
 transformGlobal :: Result -> Global -> Global
-transformGlobal res (GlobalFunction name (FunctionType args retType)) = GlobalFunction name $ FunctionType args' retType
-  where
-    args' = map fst $ filter snd $ zip args $ preservedArguments res name
+transformGlobal res (GlobalFunction name arity fnType) = GlobalFunction name arity $ transformType res name arity fnType
 transformGlobal _ g = g
+
+transformType :: Result -> Id -> Int -> Type -> Type
+transformType res@(Result env _ _) name arity fnType =
+  case preservedArguments' res name of
+    Nothing -> fnType
+    Just bools ->
+      let
+        FunctionType args retType = extractFunctionTypeWithArity env arity fnType
+        args' = map fst $ filter snd $ zip args bools
+      in
+        typeFromFunctionType $ FunctionType args' retType

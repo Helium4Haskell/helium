@@ -1,5 +1,6 @@
 module Helium.CodeGeneration.LLVM.Struct where
 
+import qualified Lvm.Core.Type as Core
 import qualified Helium.CodeGeneration.Iridium.Type as Iridium
 import Helium.CodeGeneration.Iridium.Show()
 import LLVM.AST (Name)
@@ -13,12 +14,12 @@ data Struct = Struct
   deriving (Eq, Ord, Show)
 
 data StructField = StructField
-  { fieldType :: Iridium.PrimitiveType
+  { fieldType :: Core.Type
   , fieldFlagIndex :: Maybe Int
   }
   deriving (Eq, Ord, Show)
 
 tupleStruct :: Int -> Struct
-tupleStruct arity = Struct Nothing 0 0 $ map field [0 .. arity - 1]
+tupleStruct arity = Struct Nothing 0 0 $ map field [0..arity - 1]
   where
-    field index = StructField Iridium.TypeAny (Just index)
+    field index = StructField (Core.TVar index) (Just index)

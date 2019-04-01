@@ -5,7 +5,7 @@ import Data.Word(Word32)
 
 import Lvm.Common.Id(idFromString, Id, NameSupply, mapWithSupply, splitNameSupply)
 import Lvm.Common.IdMap(findMap)
-import Lvm.Core.Module(Arity)
+import qualified Lvm.Core.Type as Core
 import Helium.CodeGeneration.LLVM.Env (Env(..))
 import Helium.CodeGeneration.LLVM.CompileType
 import Helium.CodeGeneration.LLVM.ConstructorLayout
@@ -55,7 +55,8 @@ compileBind' env supply (Iridium.Bind varId target args) (Right struct) =
   where
     t = structType env struct
     additionalArg = bindArguments env target
-    (splitInstructions, argOperands) = unzip $ mapWithSupply (splitValueFlag env) supplyArgs (zip args $ map fieldType $ drop (length additionalArg) $ fields struct)
+    args' = [arg | Right arg <- args]
+    (splitInstructions, argOperands) = unzip $ mapWithSupply (splitValueFlag env) supplyArgs (zip args' $ map fieldType $ drop (length additionalArg) $ fields struct)
     (supplyArgs, supply1) = splitNameSupply supply
     (supplyInit, supply2) = splitNameSupply supply1
     (nameVoid, supply3) = freshName supply2
@@ -66,7 +67,7 @@ nameSuggestion (Iridium.BindTargetConstructor _) = idCon
 nameSuggestion _ = idThunk
 
 toStruct :: Env -> Iridium.BindTarget -> Int -> Either Int Struct
-toStruct env (Iridium.BindTargetConstructor (Iridium.DataTypeConstructor _ conId _)) arity = case findMap conId (envConstructors env) of
+toStruct env (Iridium.BindTargetConstructor (Iridium.DataTypeConstructor conId _)) arity = case findMap conId (envConstructors env) of
   LayoutInline value -> Left value
   LayoutPointer struct -> Right struct
 toStruct env (Iridium.BindTargetTuple arity) _ = Right $ tupleStruct arity
@@ -77,15 +78,15 @@ toStruct env target arity = Right $ Struct Nothing 32 tag fields
       Iridium.BindTargetThunk v -> v
     tag = arity .|. (remaining `shiftL` 16)
     remaining = case var of
-      Iridium.VarGlobal (Iridium.GlobalFunction _ (Iridium.FunctionType args _)) -> length args - arity
+      Iridium.VarGlobal (Iridium.GlobalFunction _ fnArity _) -> fnArity - arity
       _ -> (1 `shiftL` 16) - 1 -- All 16 bits to 1
     targetType = case var of
-      Iridium.VarGlobal (Iridium.GlobalFunction _ _) -> Iridium.TypeGlobalFunction $ Iridium.FunctionType [Iridium.TypeUnsafePtr] Iridium.TypeAnyWHNF
-      _ -> Iridium.TypeAnyWHNF
-    fields = StructField targetType Nothing : map (\i -> StructField Iridium.TypeAny (Just i)) [0..arity - 1] 
+      Iridium.VarGlobal (Iridium.GlobalFunction _ _ _) -> Core.TCon $ Core.TConDataType $ idFromString "$Trampoline"
+      _ -> Core.TVar (-1)
+    fields = StructField targetType Nothing : map (\i -> StructField (Core.TVar i) (Just i)) [0..arity - 1] 
 
 toTrampolineOperand :: Env -> Iridium.Variable -> Operand
-toTrampolineOperand _ (Iridium.VarGlobal (Iridium.GlobalFunction fn _)) = ConstantOperand $ Constant.GlobalReference trampolineType $ toNamePrefixed "trampoline$" fn
+toTrampolineOperand _ (Iridium.VarGlobal (Iridium.GlobalFunction fn _ _)) = ConstantOperand $ Constant.GlobalReference trampolineType $ toNamePrefixed "trampoline$" fn
 toTrampolineOperand env local = toOperand env local
 
 -- A thunk has an additional argument, namely the function. We add that argument here
@@ -95,12 +96,12 @@ bindArguments env (Iridium.BindTargetThunk var) = return (toOperand env var, Con
 bindArguments env _ = []
 
 expectedType :: Iridium.BindTarget -> Type
-expectedType (Iridium.BindTargetConstructor (Iridium.DataTypeConstructor dataId _ _)) = NamedTypeReference $ toNamePrefixed "$data_" dataId
+expectedType (Iridium.BindTargetConstructor cons) = NamedTypeReference $ toNamePrefixed "$data_" $ Iridium.constructorDataType cons
 expectedType _ = voidPointer
 
 -- Gives a struct given an arity. Does not specify a tag, this is intended for purposes when the tag is not known / needed.
-thunkStruct :: Arity -> Struct
+thunkStruct :: Int -> Struct
 thunkStruct arity = Struct Nothing 32 0 fields
   where
     -- Function pointer & arguments
-    fields = StructField Iridium.TypeUnsafePtr Nothing : map (\i -> StructField Iridium.TypeAny (Just i)) [0..arity - 1] 
+    fields = StructField (Core.TCon $ Core.TConDataType $ idFromString "$UnsafePtr") Nothing : map (\i -> StructField (Core.TVar i) (Just i)) [0..arity - 1] 

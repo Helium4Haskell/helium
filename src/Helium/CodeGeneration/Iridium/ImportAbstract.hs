@@ -27,18 +27,18 @@ convertData (Declaration _ (ExportedAs name) mod customs (DataType cons)) =
 convertData _ = []
 
 convertConstructor :: Declaration DataTypeConstructorDeclaration -> Maybe (Core.Decl v)
-convertConstructor (Declaration _ (ExportedAs name) mod customs (DataTypeConstructorDeclaration fields)) = Just $
-  Core.DeclCon name (toAccess name mod) (Core.typeFunction (map (const Core.TAny) fields) $ Core.TStrict Core.TAny) customs
+convertConstructor (Declaration _ (ExportedAs name) mod customs (DataTypeConstructorDeclaration tp)) = Just $
+  Core.DeclCon name (toAccess name mod) tp customs
 convertConstructor _ = Nothing
 
 convertMethod :: Declaration Method -> Maybe (Core.Decl v)
-convertMethod (Declaration _ (ExportedAs name) mod customs (Method args _ _ _ _)) = Just $
-  Core.DeclAbstract name (toAccess name mod) (Core.typeFunction (map (const Core.TAny) args) $ Core.TStrict Core.TAny) customs
+convertMethod (Declaration _ (ExportedAs name) mod customs method) = Just $
+  Core.DeclAbstract name (toAccess name mod) (methodType method) customs
 convertMethod _ = Nothing
 
 convertAbstractMethod :: Declaration AbstractMethod -> Maybe (Core.Decl v)
-convertAbstractMethod (Declaration _ (ExportedAs name) mod customs (AbstractMethod (FunctionType args _) _)) = Just $
-  Core.DeclAbstract name (toAccess name mod) (Core.typeFunction (map (const Core.TAny) args) $ Core.TStrict Core.TAny) customs
+convertAbstractMethod (Declaration _ (ExportedAs name) mod customs (AbstractMethod _ tp _)) = Just $
+  Core.DeclAbstract name (toAccess name mod) tp customs
 convertAbstractMethod _ = Nothing
 
 convertTypeSynonym :: Declaration TypeSynonym -> Maybe (Core.Decl v)

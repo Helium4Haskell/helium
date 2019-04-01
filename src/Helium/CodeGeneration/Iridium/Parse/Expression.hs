@@ -4,6 +4,7 @@ import Helium.CodeGeneration.Iridium.Parse.Parser
 import Helium.CodeGeneration.Iridium.Parse.Type
 import Helium.CodeGeneration.Iridium.Data
 import Helium.CodeGeneration.Iridium.Type
+import Lvm.Core.Type
 
 pLiteral :: Parser Literal
 pLiteral = do
@@ -43,42 +44,53 @@ pFloat = do
       return $ sign * fromIntegral int * 10 ^ exp
     _ -> return $ sign * fromIntegral int
 
-pGlobal :: Parser Global
-pGlobal = do
+pGlobal :: QuantorIndexing -> Parser Global
+pGlobal quantors = do
   pToken '@'
   name <- pId
-  pToken ':'
-  pWhitespace
   c <- lookahead
   case c of
-    '(' -> GlobalFunction name <$> pFunctionType
-    _ -> GlobalVariable name <$> pType
+    '[' -> GlobalFunction name <$ pChar <*> pUnsignedInt <* pToken ']' <* pToken ':' <* pWhitespace <*> pTypeAtom' quantors
+    _ -> do
+      pToken ':'
+      pWhitespace
+      GlobalVariable name <$> pTypeAtom
 
-pLocal :: Parser Local
-pLocal = Local <$ pToken '%' <*> pId <* pToken ':' <* pWhitespace <*> pType
+pLocal :: QuantorIndexing -> Parser Local
+pLocal quantors = Local <$ pToken '%' <*> pId <* pToken ':' <* pWhitespace <*> pTypeAtom' quantors
 
-pVariable :: Parser Variable
-pVariable = do
+pVariable :: QuantorIndexing -> Parser Variable
+pVariable quantors = do
   c <- lookahead
   case c of
-    '@' -> VarGlobal <$> pGlobal
-    '%' -> VarLocal <$> pLocal
+    '@' -> VarGlobal <$> pGlobal quantors
+    '%' -> VarLocal <$> pLocal quantors
     _ -> pError "expected variable"
 
-pExpression :: Parser Expr
-pExpression = do
+pCallArguments :: QuantorIndexing -> Parser [Either Type Variable]
+pCallArguments quantors = pArguments pCallArgument
+  where
+    pCallArgument = do
+      c <- lookahead
+      if c == '{' then
+        Left <$ pChar <* pWhitespace <*> pType' quantors <* pToken '}'
+      else
+        Right <$> pVariable quantors
+
+pExpression :: QuantorIndexing -> Parser Expr
+pExpression quantors = do
   keyword <- pKeyword
   case keyword of
     "literal" -> Literal <$> pLiteral
-    "call" -> Call <$> pGlobal <* pWhitespace <* pToken '$' <* pWhitespace <*> pArguments pVariable
-    "eval" -> Eval <$> pVariable
-    "var" -> Var <$> pVariable
-    "cast" -> Cast <$> pVariable <* pWhitespace <* pSymbol "as" <* pWhitespace <*> pType
-    "phi" -> Phi <$> pArguments pPhiBranch
-    "prim" -> PrimitiveExpr <$> pId <* pWhitespace <*> pArguments pVariable
-    "undefined" -> Undefined <$ pWhitespace <*> pType
-    "seq" -> Seq <$> pVariable <* pWhitespace <* pToken ',' <* pWhitespace <*> pVariable
+    "call" -> Call <$> pGlobal quantors <* pWhitespace <* pToken '$' <* pWhitespace <*> pCallArguments quantors
+    "eval" -> Eval <$> pVariable quantors
+    "var" -> Var <$> pVariable quantors
+    "cast" -> Cast <$> pVariable quantors <* pWhitespace <* pSymbol "as" <* pWhitespace <*> pTypeAtom' quantors
+    "phi" -> Phi <$> pArguments (pPhiBranch quantors)
+    "prim" -> PrimitiveExpr <$> pId <* pWhitespace <*> pCallArguments quantors
+    "undefined" -> Undefined <$ pWhitespace <*> pTypeAtom' quantors
+    "seq" -> Seq <$> pVariable quantors <* pWhitespace <* pToken ',' <* pWhitespace <*> pVariable quantors
     _ -> pError "expected expression"
 
-pPhiBranch :: Parser PhiBranch
-pPhiBranch = PhiBranch <$> pId <* pWhitespace <* pSymbol "=>" <* pWhitespace <*> pVariable
+pPhiBranch :: QuantorIndexing -> Parser PhiBranch
+pPhiBranch quantors = PhiBranch <$> pId <* pWhitespace <* pSymbol "=>" <* pWhitespace <*> pVariable quantors

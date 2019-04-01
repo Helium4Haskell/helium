@@ -138,6 +138,8 @@ duplicateNames (Let bs expr) = dupInserts (varsInBinds bs) $ duplicateNames expr
 duplicateNames (Match _ alts) = foldr1 dupUnion $ map duplicateNamesInAlt alts
 duplicateNames (Ap e1 e2) = dupUnion (duplicateNames e1) (duplicateNames e2)
 duplicateNames (Lam (Variable x _) expr) = dupInsert x $ duplicateNames expr
+duplicateNames (Forall _ _ expr) = duplicateNames expr
+duplicateNames (ApType expr _) = duplicateNames expr
 duplicateNames _ = emptyMap -- Con, Var or Lit
 
 duplicateNamesInAlt :: Alt -> Analysis

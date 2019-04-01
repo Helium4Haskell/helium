@@ -17,6 +17,7 @@ module Helium.CodeGeneration.LLVM.ConstructorLayout(constructorLayout, Construct
 
 import Data.List(mapAccumL)
 import Lvm.Common.Id(Id, stringFromId)
+import qualified Lvm.Core.Type as Core
 import Helium.CodeGeneration.LLVM.Utils
 import Helium.CodeGeneration.LLVM.Target
 import Helium.CodeGeneration.LLVM.Struct
@@ -32,10 +33,13 @@ data ConstructorLayout
     }
 
 constructorLayout :: Target -> Iridium.DataType -> Int -> Iridium.DataTypeConstructor -> ConstructorLayout
-constructorLayout target (Iridium.DataType constructors) index (Iridium.DataTypeConstructor _ conId fields)
+constructorLayout target (Iridium.DataType constructors) index (Iridium.DataTypeConstructor conId tp)
   | fields == [] = LayoutInline index
   | otherwise = LayoutPointer struct
   where
+    Iridium.FunctionType typeArgs typeReturn = Iridium.extractFunctionTypeNoSynonyms tp
+    fields = [field | Right field <- typeArgs]
+
     tagBits = ceiling $ logBase 2.0 $ fromIntegral $ length constructors
 
     struct :: Struct
@@ -44,5 +48,6 @@ constructorLayout target (Iridium.DataType constructors) index (Iridium.DataType
     structFields :: [StructField]
     (_, structFields) = mapAccumL toField 0 fields
     
-    toField nextIndex Iridium.TypeAny = (nextIndex + 1, StructField Iridium.TypeAny (Just nextIndex)) -- Use a bit in the header
-    toField nextIndex fieldType = (nextIndex, StructField fieldType Nothing) -- Do not use a bit in the header
+    toField nextIndex fieldType
+      | Core.typeIsStrict fieldType = (nextIndex, StructField fieldType Nothing) -- Do not use a bit in the header
+      | otherwise = (nextIndex + 1, StructField fieldType $ Just nextIndex) -- Use a bit in the header

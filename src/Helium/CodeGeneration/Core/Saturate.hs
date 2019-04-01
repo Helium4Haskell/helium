@@ -20,20 +20,22 @@ import Lvm.Common.IdMap
 import Lvm.Core.Expr
 import Lvm.Core.Type
 import Lvm.Core.Utils
+import Helium.CodeGeneration.Core.TypeEnvironment
 
 ----------------------------------------------------------------
--- Environment: a name supply and a map from id to its required arguments
+-- Environment: a name supply and a map from id to the function
+-- type, containing its required arguments
 ----------------------------------------------------------------
-data Env    = Env NameSupply (IdMap [Type])
+data Env    = Env NameSupply (IdMap Type)
 
 uniqueId :: Env -> (Id, Env)
 uniqueId (Env supply requiredArgs)
   = let (x,supply') = freshId supply
     in  (x,Env supply' requiredArgs)
 
-findRequiredArguments :: Id -> Env -> [Type]
-findRequiredArguments x (Env _ requiredArgs)
-  = fromMaybe [] (lookupMap x requiredArgs)
+findConstructorType :: Id -> Env -> Maybe Type
+findConstructorType x (Env _ requiredArgs)
+  = lookupMap x requiredArgs
 
 splitEnv :: Env -> (Env, Env)
 splitEnv (Env supply requiredArgs)
@@ -49,16 +51,16 @@ splitEnvs (Env supply requiredArgs)
 ----------------------------------------------------------------
 coreSaturate :: NameSupply -> CoreModule -> CoreModule
 coreSaturate supply m
-  = mapExprWithSupply (satDeclExpr requiredArgs) supply m
+  = mapExprWithSupply (satDeclExpr constructors) supply m
   where
-    requiredArgs = mapFromList [(declName d, extractArguments $ declType d) | d <- moduleDecls m, isDeclCon d || isDeclExtern d]
+    constructors = mapFromList [(declName d, declType d) | d <- moduleDecls m, isDeclCon d || isDeclExtern d]
 
 extractArguments :: Type -> [Type]
 extractArguments (TForall _ _ t) = extractArguments t
 extractArguments (TAp (TAp (TCon TConFun) t1) t2) = t1 : extractArguments t2
 extractArguments _ = []
 
-satDeclExpr :: IdMap [Type] -> NameSupply -> Expr -> Expr
+satDeclExpr :: IdMap Type -> NameSupply -> Expr -> Expr
 satDeclExpr requiredArgs supply = satExpr (Env supply requiredArgs)
 
 ----------------------------------------------------------------
@@ -76,11 +78,13 @@ satExpr env expr
         -> Lam var (satExpr env e)
       Forall x k e
         -> Forall x k $ satExpr env e
-      ApType e t
-        -> ApType (satExpr env e) t
       _
-        -> let expr'  = satExprSimple env expr
-           in addLam env  (requiredArgs env expr') expr'
+        ->
+          let expr'  = satExprSimple env expr
+          in
+            case requiredArgs env expr' of
+              Nothing -> expr'
+              Just tp -> addLam env (extractArguments tp) expr'
 
 satBinds :: Env -> Binds -> Binds
 satBinds = zipBindsWith (\env var expr -> Bind var (satExpr env expr)) . splitEnvs
@@ -96,7 +100,7 @@ satExprSimple env expr
       Match _ _   -> satExpr env expr
       Lam _ _     -> satExpr env expr
       Forall _ _ _ -> satExpr env expr
-      ApType e t  -> ApType (satExpr env e) t
+      ApType e t  -> ApType (satExprSimple env e) t
       Ap e1 e2    -> let (env1,env2) = splitEnv env
                      in  Ap (satExprSimple env1 e1) (satExpr env2 e2)
       _           -> expr
@@ -110,12 +114,16 @@ addLam env args expr
   = let (_, vars) = mapAccumR (\env2 t -> let (x,env') = uniqueId env2 in (env', Variable x t)) env args
     in  foldr Lam (foldl Ap expr (map (Var . variableName) vars)) vars
 
--- TODO: Add Forall types
-requiredArgs :: Env -> Expr -> [Type]
+-- Returns the function type containing the remaining required types
+requiredArgs :: Env -> Expr -> Maybe Type
 requiredArgs env expr
   = case expr of
-      Ap e1 _               -> drop 1 $ requiredArgs env e1
-      Var x                 -> findRequiredArguments x env
-      Con (ConId x)         -> findRequiredArguments x env
-      Con (ConTuple arity)  -> map TVar [1..arity]
-      _                     -> []
+      Ap e1 _               -> case requiredArgs env e1 of
+        Just (TAp (TAp (TCon TConFun) _) t) -> Just t
+        Nothing -> Nothing
+      ApType e1 t2 -> case requiredArgs env e1 of
+        Just t1 -> Just $ typeApply t1 t2
+        Nothing -> Nothing
+      Con (ConId x)         -> findConstructorType x env
+      Con (ConTuple arity)  -> Just $ typeTuple arity
+      _                     -> Nothing

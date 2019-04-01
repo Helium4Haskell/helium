@@ -35,20 +35,20 @@ insertedMain classEnv tse toplevelTypes =
                     case M.lookup (Name_Identifier noRange [] interpreterMain) toplevelTypes of -- !!!Name
                         Just t -> Just (interpreterMain, t)
                         Nothing -> Nothing
-        d = Just . decl False "main$" (Core.TCon $ Core.TConDataType $ idFromString "Int") . app_ unsafePIO
+        d tp expr = Just $ decl False "main$" (Core.TCon $ Core.TConDataType $ idFromString "Int") $ app_ (Core.ApType unsafePIO tp) expr
     in
         case maybeWrapMainAndType of 
             Nothing -> 
                 Nothing
             Just (name, tpScheme)
                 | not (null qs) ->
-                    d $ var "$primPutStrLn" `app_` 
+                    d (Core.TCon $ Core.TConTuple 0) $ var "$primPutStrLn" `app_` 
                         (var "$primPackedToString" `app_`
                             packedString "<<overloaded function>>")
-                | isIOType tp -> 
-                    d $ var name
+                | isJust (isIOType tp) -> 
+                    d (typeToCoreType $ fromJust $ isIOType tp) $ var name
                 | otherwise ->
-                    d $ var "$primPutStrLn" `app_` 
+                    d (Core.TCon $ Core.TConTuple 0) $ var "$primPutStrLn" `app_` 
                         (Core.Ap (var "show")  (DerivingShow.showFunctionOfType classEnv tse True (makeTypeFromTp tp)) `app_` 
                             var name)
                 where                        

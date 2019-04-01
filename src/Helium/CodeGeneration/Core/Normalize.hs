@@ -70,7 +70,7 @@ normalize supply env expr = addBindings expr' bindings
 normExpr :: NameSupply -> TypeEnvironment -> Expr -> (Expr, [Bind])
 normExpr supply env expr
   | isTrivial expr' = (expr', bindings)
-  | otherwise = (Var name, [Bind (Variable name TAny {-$ typeOfCoreExpression env expr-}) $ addBindings expr' bindings])
+  | otherwise = (Var name, [Bind (Variable name $ typeOfCoreExpression env expr) $ addBindings expr' bindings])
   where
     (expr', bindings) = normSubExprs supply' env expr
     (name, supply') = freshId supply
@@ -90,7 +90,7 @@ normSubExprs supply env (Ap e1 e2) = (Ap e1'' e2', bindings1' ++ bindings2)
     (e1', bindings1) = normSubExprs supply1 env e1
     (e1'', bindings1')
       | isApTarget e1' = (e1', bindings1)
-      | otherwise = (Var name, [Bind (Variable name TAny {- $ typeOfCoreExpression env e1 -}) $ addBindings e1' bindings1])
+      | otherwise = (Var name, [Bind (Variable name $ typeOfCoreExpression env e1) $ addBindings e1' bindings1])
     (e2', bindings2) = normExpr supply2 env e2
 normSubExprs supply env expr@(Lam _ _) = (normalizeLambda supply env expr, [])
 normSubExprs supply env (Forall x k expr) = (Forall x k expr', binds)

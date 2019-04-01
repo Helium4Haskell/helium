@@ -19,6 +19,8 @@ import Lvm.Core.Type
 import Lvm.Common.Id
 import Lvm.Common.IdMap
 
+import Text.PrettyPrint.Leijen
+
 data TypeEnvironment = TypeEnvironment
   { typeEnvSynonyms :: IdMap Type
   , typeEnvValues :: IdMap Type
@@ -53,28 +55,38 @@ typeEnvAddBinds (Strict bind) env = typeEnvAddBind bind env
 typeEnvAddBinds (NonRec bind) env = typeEnvAddBind bind env
 typeEnvAddBinds (Rec binds) env = foldr typeEnvAddBind env binds
 
-typeEnvAddPattern :: Pat -> TypeEnvironment -> TypeEnvironment
-typeEnvAddPattern (PatCon (ConTuple _) tps ids) env
-  = typeEnvAddVariables (zipWith Variable ids tps) env
-typeEnvAddPattern (PatCon (ConId name) tps ids) env
-  = typeEnvAddVariables (findVars ids conType) env
+patternVariables :: TypeEnvironment -> Pat -> [Variable]
+patternVariables _ (PatCon (ConTuple _) tps ids)
+  = (zipWith Variable ids tps)
+patternVariables env (PatCon (ConId name) tps ids)
+  = findVars ids conType
   where
     conType = typeApplyList (typeOfId env name) tps
     findVars :: [Id] -> Type -> [Variable]
     findVars (x:xs) (TAp (TAp (TCon TConFun) tArg) tReturn)
       = Variable x tArg : findVars xs tReturn
     findVars [] _ = []
-    findVars _ tp = internalError "Core.TypeEnvironment" "typeEnvAddPattern" $ "Expected function type for constructor " ++ show name ++ ", got " ++ show tp
+    findVars _ tp = internalError "Core.TypeEnvironment" "patternVariables" $ "Expected function type for constructor " ++ show name ++ ", got " ++ showType [] tp
+patternVariables _ _ = [] -- Literal or default
+
+typeEnvAddPattern :: Pat -> TypeEnvironment -> TypeEnvironment
+typeEnvAddPattern pat env
+  = typeEnvAddVariables (patternVariables env pat) env
 
 typeNormalizeHead :: TypeEnvironment -> Type -> Type
-typeNormalizeHead env (TStrict t) = typeNormalizeHead env t
-typeNormalizeHead env (TAp t1 t2) = case typeNormalizeHead env t1 of
-  t1'@(TForall _ _ _) -> typeNormalizeHead env $ typeApply t1' t2
-  t1' -> TAp t1' t2
-typeNormalizeHead env tp@(TCon (TConDataType name)) = case lookupMap name $ typeEnvSynonyms env of
-  Just tp' -> typeNormalizeHead env tp'
-  Nothing -> tp
-typeNormalizeHead env tp = tp
+typeNormalizeHead env = normalize False
+  where
+    normalize strict (TAp t1 t2) = case normalize False t1 of
+      t1'@(TForall _ _ _) -> normalize strict $ typeApply t1' t2
+      t1' -> 
+        let tp = TAp t1' t2
+        in if strict then TStrict tp else tp
+    normalize _ (TStrict t1) = normalize True t1
+    normalize strict t1@(TCon (TConDataType name)) = case lookupMap name $ typeEnvSynonyms env of
+      Just t2 -> normalize strict t2
+      Nothing -> if strict then TStrict t1 else t1
+    normalize True t1 = TStrict t1
+    normalize False t1 = t1
 
 typeOfId :: TypeEnvironment -> Id -> Type
 typeOfId env name = case lookupMap name $ typeEnvValues env of
@@ -96,15 +108,15 @@ typeOfCoreExpression env (Match name (Alt pattern expr : _))
 
 -- Expression: e1 e2
 -- Resolve the type of e1, which should be a function type.
-typeOfCoreExpression env (Ap e1 e2) = case typeNormalizeHead env $ typeOfCoreExpression env e1 of
+typeOfCoreExpression env e@(Ap e1 e2) = case typeNormalizeHead env $ typeOfCoreExpression env e1 of
   TAp (TAp (TCon TConFun) _) tReturn -> tReturn
-  tp -> internalError "Core.TypeEnvironment" "typeOfCoreExpression" $ "expected a function type in the first argument of a function application, got " ++ show tp
+  tp -> internalError "Core.TypeEnvironment" "typeOfCoreExpression" $ "expected a function type in the first argument of a function application, got " ++ showType [] tp ++ " in expression " ++ show (pretty e)
 
 -- Expression: e1 { tp1 }
 -- The type of e1 should be of the form `forall x. tp2`. Substitute x with tp1 in tp2.
 typeOfCoreExpression env (ApType e1 tp1) = case typeNormalizeHead env $ typeOfCoreExpression env e1 of
-  TForall (Quantor idx _) _ tp2 -> typeSubstitute idx tp1 tp2
-  tp -> internalError "Core.TypeEnvironment" "typeOfCoreExpression" $ "typeOfCoreExpression: expected a forall type in the first argument of a function application, got " ++ show tp
+  tp@(TForall (Quantor idx _) _ tp2) -> typeSubstitute idx tp1 tp2
+  tp -> internalError "Core.TypeEnvironment" "typeOfCoreExpression" $ "typeOfCoreExpression: expected a forall type in the first argument of a function application, got " ++ showType [] tp
 
 -- Expression: \x: t1 -> e
 -- If e has type t2, then the lambda has type t1 -> t2
@@ -120,12 +132,7 @@ typeOfCoreExpression env (Forall x kind expr) =
 
 -- Expression: (,)
 -- Type: forall a. forall b. a -> b -> (a, b)
-typeOfCoreExpression env (Con (ConTuple arity)) =
-  foldr (\var -> TForall (Quantor var Nothing) KStar) (typeFunction (map TVar vars) tp) vars
-  where
-    -- Type without quantifications, eg (a, b)
-    tp = foldl (\t var -> TAp t $ TVar var) (TCon $ TConTuple arity) vars
-    vars = [0 .. arity - 1]
+typeOfCoreExpression env (Con (ConTuple arity)) = typeTuple arity
 
 -- Resolve the type of a variable or constructor
 typeOfCoreExpression env (Con (ConId x)) = typeOfId env x
@@ -133,6 +140,13 @@ typeOfCoreExpression env (Var x) = typeOfId env x
 
 -- Types of literals
 typeOfCoreExpression _ (Lit lit) = typeOfLiteral lit
+
+typeTuple :: Int -> Type
+typeTuple arity = foldr (\var -> TForall (Quantor var Nothing) KStar) (typeFunction (map TVar vars) tp) vars
+  where
+    -- Type without quantifications, eg (a, b)
+    tp = foldl (\t var -> TAp t $ TVar var) (TCon $ TConTuple arity) vars
+    vars = [0 .. arity - 1]
 
 -- Checks type equivalence
 typeEqual :: TypeEnvironment -> Type -> Type -> Bool

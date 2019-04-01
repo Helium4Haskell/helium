@@ -851,7 +851,6 @@ aexp = addRange (
                 es <- commas exp_
                 lexRPAREN
                 return $ \r -> case es of
-                    [] -> Expression_Constructor r (Name_Special r [] "()") -- !!!Name
                     [e] -> Expression_Parenthesized r e
                     _ -> Expression_Tuple r es
          )
@@ -1138,7 +1137,6 @@ apat = addRange (
     do
         ps <- parens (commas pat)
         return $ \r -> case ps of
-            [] -> Pattern_Constructor r (Name_Special r [] "()") [] -- !!!Name
             [p] -> Pattern_Parenthesized r p
             _ -> Pattern_Tuple r ps
     <|>

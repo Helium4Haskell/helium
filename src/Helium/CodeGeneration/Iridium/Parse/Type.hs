@@ -10,12 +10,14 @@ import Lvm.Core.Type
 import Data.List
 import Data.Char
 
+import Debug.Trace
+
 pTypeArgName :: Parser (Either Int String)
 pTypeArgName = do
   cs <- pSomeSatisfy "expected type variable" isLower
   c2 <- lookahead
   if cs == "v" && c2 == '$' then do
-    Left <$> pUnsignedInt
+    Left <$ pChar <*> pUnsignedInt
   else
     return $ Right cs
 
@@ -52,46 +54,66 @@ pQuantor (QuantorIndexing nextIdx stringMapping numberMapping) = do
       , QuantorIndexing (nextIdx + 1) (addToMapping name nextIdx stringMapping) numberMapping
       )
 
-pCoreType :: Parser Type
-pCoreType = pCoreType' $ QuantorIndexing 0 [] []
+pTypeAtom :: Parser Type
+pTypeAtom = pTypeAtom' $ QuantorIndexing 0 [] []
 
-pCoreType' :: QuantorIndexing -> Parser Type
-pCoreType' quantors = do
+pType :: Parser Type
+pType = pType' $ QuantorIndexing 0 [] []
+
+pType' :: QuantorIndexing -> Parser Type
+pType' quantors = do
   forallType <- pMaybe $ pTypeForall quantors
   case forallType of
-    Just (quantors', tp) -> tp <$> pCoreType' quantors'
+    Just (quantors', tp) -> tp <$> pType' quantors'
     Nothing -> do
       -- Parse function type
-      left <- pCoreTypeAp quantors
+      left <- pTypeAp quantors
       arrow <- pMaybe (pSymbol "->")
       case arrow of
         Just _ -> do
           pWhitespace
-          right <- pCoreType' quantors
+          right <- pType' quantors
           return $ TAp (TAp (TCon TConFun) left) right
         Nothing -> return left
 
-pCoreTypeAp :: QuantorIndexing -> Parser Type
-pCoreTypeAp quantors = do
-  tp1 <- pCoreTypeAtom quantors
+pTypeAp :: QuantorIndexing -> Parser Type
+pTypeAp quantors = do
+  tp1 <- pTypeAtom' quantors
   pWhitespace
-  tps <- pManyMaybe $ pMaybe (pCoreTypeAtom quantors <* pWhitespace)
+  tps <- pManyMaybe $ pMaybe (pTypeAtom' quantors <* pWhitespace)
   return $ foldl TAp tp1 tps
 
-pCoreTypeAtom :: QuantorIndexing -> Parser Type
-pCoreTypeAtom quantors = do
+pTypeAtom' :: QuantorIndexing -> Parser Type
+pTypeAtom' quantors = do
   c1 <- lookahead
   case c1 of
+    '!' -> do
+      pChar
+      pWhitespace
+      typeToStrict <$> pTypeAtom' quantors
     '[' -> do
       pChar
       pWhitespace
-      tp <- pCoreType' quantors
-      pToken ']'
-      return $ TAp (TCon $ TConDataType $ idFromString "[]") tp
+      c2 <- lookahead
+      if c2 == ']' then do
+        pChar
+        return (TCon $ TConDataType $ idFromString "[]")
+      else do
+        tp <- pType' quantors
+        pToken ']'
+        return $ TAp (TCon $ TConDataType $ idFromString "[]") tp
     '(' -> do
       pChar
       c2 <- lookahead
       case c2 of
+        '@' -> do
+          pChar
+          pSymbol "dictionary"
+          pWhitespace
+          typeClass <- pId
+          pWhitespace
+          pToken ')'
+          return $ TCon $ TConTypeClassDictionary typeClass
         ')' -> do
           pChar
           return $ TCon $ TConTuple 0
@@ -101,7 +123,7 @@ pCoreTypeAtom quantors = do
           return $ TCon $ TConTuple $ length commas + 1
         _ -> do
           pWhitespace
-          tp <- pCoreType' quantors
+          tp <- pType' quantors
           pToken ')'
           return tp
     _ | isLower c1 -> do
@@ -110,7 +132,6 @@ pCoreTypeAtom quantors = do
     _ -> do
       name <- pId
       return $ TCon $ TConDataType name
-  
 
 pTypeForall :: QuantorIndexing -> Parser (QuantorIndexing, Type -> Type)
 pTypeForall quantors = do
@@ -124,26 +145,6 @@ pTypeForall quantors = do
       return (quantors', TForall q KStar)
     _ -> pError "Expected keyword 'forall'"
 
-pType :: Parser PrimitiveType
-pType = do
-  c <- lookahead
-  if c == '@' then
-    TypeDataType <$ pChar <*> pId
-  else do
-    key <- pWord
-    case key of
-      "any" -> return TypeAny
-      "any_thunk" -> return TypeAnyThunk
-      "any_whnf" -> return TypeAnyWHNF
-      "int" -> return TypeInt
-      "float" -> TypeFloat <$> pFloatPrecision
-      "real_world" -> return TypeRealWorld
-      "tuple" -> TypeTuple <$ pWhitespace <*> pUnsignedInt
-      "anyfunction" -> return TypeFunction
-      "function" -> TypeGlobalFunction <$ pWhitespace <*> pFunctionType
-      "unsafeptr" -> return TypeUnsafePtr
-      _ -> pError $ "expected type, got " ++ show key ++ " instead"
-
 pFloatPrecision :: Parser FloatPrecision
 pFloatPrecision = do
   bits <- pUnsignedInt
@@ -152,9 +153,6 @@ pFloatPrecision = do
     64 -> return Float64
     _ -> pError $ "Unsupported floating point precision: " ++ show bits
 
-pFunctionType :: Parser FunctionType
-pFunctionType = FunctionType <$> pArguments pType <* pWhitespace <* pToken '-' <* pToken '>' <* pWhitespace <*> pType
-
 pDataTypeConstructor :: Parser DataTypeConstructor
-pDataTypeConstructor = (\name args dataType -> DataTypeConstructor dataType name args)
-  <$ pToken '@' <*> pId <* pToken ':' <* pWhitespace <*> pArguments pType <* pWhitespace <* pSymbol "->" <* pWhitespace <* pToken '@' <*> pId
+pDataTypeConstructor = DataTypeConstructor
+  <$ pToken '@' <*> pId <* pToken ':' <* pWhitespace <*> pTypeAtom

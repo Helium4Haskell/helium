@@ -1006,6 +1006,40 @@ instance Enum Bool where
     enumFromThen False True  = [False, True]
     enumFromThen True  False = []
 
+
+{----------------------------------------------------------
+  The IO monad
+----------------------------------------------------------}
+bindIO :: IO a -> (a -> IO b) -> IO b
+bindIO (IO ioA) f =
+    IO (
+        \world -> let res = ioA world in case res of
+          IORes x world' ->
+            let IO ioB = f x in ioB world'
+        )
+
+returnIO :: a -> IO a
+returnIO x = IO (\world -> IORes x world)
+
+fmapIO :: (a -> b) -> IO a -> IO b
+fmapIO f (IO op) = IO (
+    \world ->
+        let IORes x world' = op world
+        in IORes (f x) world'
+  )
+
+pureIO :: a -> IO a
+pureIO x = returnIO x
+
+apIO :: IO (a -> b) -> IO a -> IO b
+apIO (IO fOp) (IO vOp) = IO (
+    \world ->
+        let IORes f world' = fOp world
+        in
+            let (IORes v world'') = vOp world'
+            in IORes (f v) world''
+  )
+
 {-
 instance Enum Char where
     succ c          = primChr (primOrd c + 1)

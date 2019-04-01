@@ -1,4 +1,4 @@
-module Helium.CodeGeneration.Iridium.Parse.Module (parseModule, parseModuleIO, parseFunctionType) where
+module Helium.CodeGeneration.Iridium.Parse.Module (parseModule, parseModuleIO, parseModuleIO') where
 
 import Lvm.Common.Id(Id)
 import Helium.CodeGeneration.Iridium.Parse.Parser
@@ -16,7 +16,7 @@ pCustomDeclaration = CustomDeclaration <$ pToken ':' <* pWhitespace <*> pDeclKin
 pDataTypeConstructorDeclaration :: Parser (Declaration DataTypeConstructorDeclaration)
 pDataTypeConstructorDeclaration = pDeclaration f
   where
-    f "constructor" decl = (decl . DataTypeConstructorDeclaration) <$> pArguments pType
+    f "constructor" decl = (decl . DataTypeConstructorDeclaration) <$ pToken ':' <* pWhitespace <* pToken '{' <* pWhitespace <*> pType <* pToken '}'
     f _ _ = pError "expected constructor declaration"
 
 pDataType :: Parser DataType
@@ -48,7 +48,7 @@ pTypeSynonym = do
   pWhitespace
   pToken '{'
   pWhitespace
-  tp <- pCoreType
+  tp <- pType
   pToken '}'
   return $ TypeSynonym tp
 
@@ -108,6 +108,9 @@ pModuleDeclaration = pDeclaration f
 parseModule :: String -> Either ParseError Module
 parseModule = parse pModule
 
+parseModuleIO' :: FilePath -> IO Module
+parseModuleIO' path = readFile path >>= parseModuleIO path
+
 parseModuleIO :: FilePath -> String -> IO Module
 parseModuleIO fullName contents =
   case parseModule contents of
@@ -116,9 +119,6 @@ parseModuleIO fullName contents =
       print err
       exitWith (ExitFailure 1)
     Right ir -> return ir
-
-parseFunctionType :: String -> Either ParseError FunctionType
-parseFunctionType = parse pFunctionType
 
 addCustom :: Declaration CustomDeclaration -> Module -> Module
 addCustom c m = m{ moduleCustoms = c : moduleCustoms m }

@@ -61,7 +61,7 @@ constructorType typeVar fieldsSuper fieldsMembers classType =
         instantiateClassVar (Core.TForall (Core.Quantor idx name) k t)
             | name == Just typeVar = updateTypeVars idx t
             | otherwise = Core.TForall (Core.Quantor (idx + 1) name) k $ instantiateClassVar t
-        instantiateClassVar t = internalError "InstanceDictionary" "constructorType" ("Type argument for type class not found in signature of field. Var: " ++ show typeVar ++ " Fields: " ++ show fieldsMembers) 
+        instantiateClassVar t = internalError "InstanceDictionary" "constructorType" "Type argument for type class not found in signature of field."
 
         -- Substitute type variable with index idxTypeClass with `TVar 0`. Increment all other type variables with 1.
         updateTypeVars idxTypeClass (Core.TForall (Core.Quantor idx name) k t)

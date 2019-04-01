@@ -4,6 +4,7 @@ module Helium.CodeGeneration.Iridium.FromCoreImports (fromCoreImports, visibilit
 
 import Data.List (find)
 import Data.Maybe (catMaybes)
+import Data.Either (isRight)
 import Lvm.Common.Id
 import Helium.CodeGeneration.Iridium.Data
 import Helium.CodeGeneration.Iridium.Type
@@ -47,7 +48,7 @@ importAbstract cache decl
       Core.DeclAbstract{} -> True
       _ -> False
     toAbstract :: Method -> AbstractMethod
-    toAbstract (Method args ret annotations _ _) = AbstractMethod (FunctionType (map localType args) ret) annotations
+    toAbstract method@(Method tp args _ annotations _ _) = AbstractMethod (length $ filter isRight args) tp annotations
 importAbstract _ _ = return Nothing
 
 findDeclaration :: FileCache -> Core.CoreDecl -> (Module -> [Declaration a]) -> IO (Id, Declaration a)

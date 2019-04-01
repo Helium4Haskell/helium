@@ -54,8 +54,6 @@ patternToCore' env types (name, tp, pat) continue nr =
         -- case _u1 of C _l1 _l2 -> ...
         --             _         -> _next
         Pattern_Constructor range n ps
-          | getNameName n == "()" ->
-            patternToCore' env types (name, tp, Pattern_Tuple range ps) continue nr
           | otherwise ->
             let 
                 (ids, nr') =
@@ -266,4 +264,4 @@ constructorFieldTypes env conName tp =
           in
             getDataTypeArgs tp' remaining
     getDataTypeArgs (Core.TAp t1 t2) accum = getDataTypeArgs t1 (t2 : accum)
-    getDataTypeArgs tp _ = internalError "ToCorePat" "Pattern" $ "Unexpected type " ++ show tp ++ ", expected a data type"
+    getDataTypeArgs tp _ = internalError "ToCorePat" "Pattern" $ "Unexpected type " ++ Core.showType [] tp ++ ", expected a data type"

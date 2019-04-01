@@ -8,29 +8,40 @@ import Helium.CodeGeneration.Iridium.Data
 import Helium.CodeGeneration.Iridium.Type
 import Helium.CodeGeneration.Iridium.Utils
 import Lvm.Common.Id (Id, NameSupply, freshId, freshIdFromId, mapWithSupply, splitNameSupply)
+import Lvm.Core.Type
 
 passTailRecursion :: NameSupply -> Module -> Module
 passTailRecursion = mapMethodsWithSupply transformMethod
 
-data TailRecursion = TailRecursion !BlockName ![Variable]
+data TailRecursion = TailRecursion !BlockName ![Either Type Variable]
 
-data Context = Context !Id !BlockName
+data Context = Context !Id ![Either Quantor Local] !BlockName
 
 findTailRecursion :: Context -> Instruction -> Maybe TailRecursion
-findTailRecursion (Context fnName blockName) (Let var (Call (GlobalFunction fn _) args) (Return (VarLocal (Local ret _))))
-  | fnName == fn && var == ret = Just $ TailRecursion blockName args
+findTailRecursion (Context fnName params blockName) (Let var (Call (GlobalFunction fn _ _) args) (Return (VarLocal (Local ret _))))
+  | fnName == fn && var == ret && typeArgumentsPreserved params args = Just $ TailRecursion blockName args
 findTailRecursion context (Let _ _ next) = findTailRecursion context next
 findTailRecursion context (LetAlloc _ next) = findTailRecursion context next
-findTailRecursion context (Match _ _ _ next) = findTailRecursion context next
+findTailRecursion context (Match _ _ _ _ next) = findTailRecursion context next
 findTailRecursion _ _ = Nothing
 
+-- Checks whether no type arguments have changed.
+-- We currently only allow tail recursion when type argument instantiation does
+-- not change, as we do not have phi nodes on type arguments, and it is
+-- probably not a good idea to introduce those.
+typeArgumentsPreserved :: [Either Quantor Local] -> [Either Type Variable] -> Bool
+typeArgumentsPreserved params args = all (uncurry sameTypeVar) $ zip params args
+  where
+    sameTypeVar (Left (Quantor idx _)) (Left tp) = tp == TVar idx
+    sameTypeVar _ _ = True -- Not a type parameter
+
 transformMethod :: NameSupply -> Declaration Method -> Declaration Method
-transformMethod supply decl@(Declaration name vis mod customs (Method params retType annotations b@(Block entryName entryInstr) bs))
+transformMethod supply decl@(Declaration name vis mod customs (Method tp params retType annotations b@(Block entryName entryInstr) bs))
   | null tails = decl -- No tail recursion
-  | otherwise = Declaration name vis mod customs $ Method params' retType annotations entry $ b' : bs'
+  | otherwise = Declaration name vis mod customs $ Method tp params' retType annotations entry $ b' : bs'
   where
     blocks :: [(Block, Maybe TailRecursion)]
-    blocks = map (\b@(Block blockName instr) -> (b, findTailRecursion (Context name blockName) instr)) $ b : bs
+    blocks = map (\b@(Block blockName instr) -> (b, findTailRecursion (Context name params blockName) instr)) $ b : bs
     tails = mapMaybe snd blocks
     (entryName', supply') = freshId supply
     entry = Block entryName' (Jump entryName)
@@ -42,18 +53,25 @@ transformMethod supply decl@(Declaration name vis mod customs (Method params ret
     phis = createPhis entryName' params params' tails
 
     -- The renamed arguments
-    params' :: [Local]
-    params' = mapWithSupply (\s (Local argName t) -> Local (fst $ freshIdFromId argName s) t) supply' params
+    params' :: [Either Quantor Local]
+    params' = mapWithSupply renameParam supply' params
+    renameParam s (Right (Local argName t)) = Right $ Local (fst $ freshIdFromId argName s) t
+    renameParam _ (Left q) = Left q
 
-createPhis :: BlockName -> [Local] -> [Local] -> [TailRecursion] -> Instruction -> Instruction
+createPhis :: BlockName -> [Either Quantor Local] -> [Either Quantor Local] -> [TailRecursion] -> Instruction -> Instruction
 createPhis entryName [] [] tails = id
-createPhis entryName (Local arg t : args) (Local arg' _ : args') tails = phi . createPhis entryName args args' tails'
+createPhis entryName (Left _ : args) (Left _ : args') tails = createPhis entryName args args' $ map tailRecursionDrop tails
+createPhis entryName (Right (Local arg t) : args) (Right (Local arg' _) : args') tails = phi . createPhis entryName args args' tails'
   where
     phi = Let arg $ Phi $ PhiBranch entryName (VarLocal $ Local arg' t) : tailBranches
-    tailBranches = map (\(TailRecursion block (v:_)) -> PhiBranch block v) tails
+    tailBranches = map (\(TailRecursion block (Right v:_)) -> PhiBranch block v) tails
 
     -- Remove first argument from tails, for recursive call
-    tails' = map (\(TailRecursion block (_:vs)) -> TailRecursion block vs) tails
+    tails' = map tailRecursionDrop tails
+
+-- Remove first argument from tails
+tailRecursionDrop :: TailRecursion -> TailRecursion
+tailRecursionDrop (TailRecursion block (_:vs)) = TailRecursion block vs
 
 transformBlock :: Id -> (Block, Maybe TailRecursion) -> Block
 transformBlock _ (b, Nothing) = b
@@ -64,5 +82,5 @@ transformInstruction :: Id -> Instruction -> Instruction
 transformInstruction entryName (Let _ (Call _ _) (Return _)) = Jump entryName
 transformInstruction entryName (Let var expr next) = Let var expr $ transformInstruction entryName next
 transformInstruction entryName (LetAlloc binds next) = LetAlloc binds $ transformInstruction entryName next
-transformInstruction entryName (Match var target fields next) = Match var target fields $ transformInstruction entryName next
+transformInstruction entryName (Match var target instantiation fields next) = Match var target instantiation fields $ transformInstruction entryName next
 transformInstruction entryName _ = error "PassTailRecursion: Expected block to be tail recursive"

@@ -6,10 +6,11 @@
     Portability :  portable
 -}
 
-module Helium.CodeGeneration.Core where
+module Helium.CodeGeneration.Core (desugarCore) where
 
 import Lvm.Common.Id
 import Lvm.Core.Expr
+import Helium.CodeGeneration.Core.TypeCheck
 
 import Helium.CodeGeneration.Core.LetInline(coreLetInline)
 import Helium.CodeGeneration.Core.LetSort(coreLetSort)
@@ -20,8 +21,27 @@ import Helium.CodeGeneration.Core.Rename(coreRename)
 import Helium.CodeGeneration.Core.RemoveAliases(coreRemoveAliases)
 import Helium.CodeGeneration.Core.Saturate(coreSaturate)
 
+pipeline :: [(String, NameSupply -> CoreModule -> CoreModule)]
+pipeline =
+  [ ("Rename", coreRename)
+  , ("Saturate", coreSaturate)
+  , ("LetSort", const coreLetSort)
+  , ("LetInline 1", const coreLetInline)
+  , ("LetInline 2", const coreLetInline)
+  , ("Normalize", coreNormalize)
+  , ("RemoveAliases", const coreRemoveAliases)
+  , ("ReduceThunks", const coreReduceThunks)
+  , ("Lift", coreLift)
+  ]
+
 -- Desugars core. The desugared AST can be converted to Iridium.
-desugarCore :: NameSupply -> CoreModule -> CoreModule
-desugarCore supply = coreLift supplyLift . coreReduceThunks . coreRemoveAliases . coreNormalize supplyNormalize . coreLetInline . coreLetInline . coreLetSort . coreSaturate supplySaturate . coreRename supplyNoShadow
-  where
-    supplyLift : supplyNormalize : supplyFromCore : supplyNoShadow : supplySaturate : _ = splitNameSupplies supply
+desugarCore :: NameSupply -> CoreModule -> IO CoreModule
+desugarCore supply mod = desugar supply pipeline mod
+
+desugar :: NameSupply -> [(String, NameSupply -> CoreModule -> CoreModule)] -> CoreModule -> IO CoreModule
+desugar supply ((passName, passFn) : passes) mod = do
+  let (supply1, supply2) = splitNameSupply supply
+  let mod' = passFn supply1 mod
+  checkModuleIO passName mod' 
+  desugar supply2 passes mod'
+desugar _ [] mod = return mod

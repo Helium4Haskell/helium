@@ -33,7 +33,7 @@ module PreludePrim
     --, sqrt, (**.), exp, log, sin, cos, tan
 
     -- IO monad
-    , IO
+    , IO, IORes
     , unsafePerformIO
     , putChar, putStr, putStrLn
 
@@ -69,18 +69,15 @@ import LvmLang
     , (<.), (<=.), (>=.), (>.)
     -}
 
-    , Int(), Float(), IO()
+    , Int(), Float(), IO(), IORes()
     , type String
     , Bool(True, False)
     , '':[]''('':[]'', (:))
-    , '':()''('':()'')
-    , bindIO, returnIO
     , stringFromPacked
     , unsafePerformIO
-    , fmapIO, apIO, pureIO
     , putChar, getChar
     , ($!), seq
-    , True -- hack
+    , ''$primUnsafeCast''
     )
 
 {-
@@ -114,10 +111,10 @@ custom infix (**.) : public [8,"right"]
 custom infix ($!)  : public [0,"right"]
 
 primOrd :: Char -> Int
-primOrd = \x: Char -> x
+primOrd = \x: Char -> ''$primUnsafeCast'' {Char} {Int} x
 
 primChr :: Int -> Char
-primChr = \x: Char -> x
+primChr = \x: Int -> ''$primUnsafeCast'' {Int} {Char} x
 
 
 {--------------------------------------------------------------------------

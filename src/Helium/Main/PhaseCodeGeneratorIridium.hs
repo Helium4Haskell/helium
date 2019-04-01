@@ -11,6 +11,7 @@ module Helium.Main.PhaseCodeGeneratorIridium(phaseCodeGeneratorIridium) where
 import Lvm.Common.Id(NameSupply, splitNameSupplies, mapWithSupply, idFromString)
 import qualified Lvm.Core.Expr as Core
 import qualified Lvm.Core.Module as Core
+import qualified Helium.CodeGeneration.Core.TypeCheck as Core
 import Helium.Main.CompileUtils
 import Helium.CodeGeneration.Core(desugarCore)
 import Helium.CodeGeneration.Iridium.FromCore(fromCore)
@@ -20,6 +21,7 @@ import Helium.CodeGeneration.Iridium.PassThunkArity(passThunkArity)
 import Helium.CodeGeneration.Iridium.PassDeadCode(passDeadCode)
 import Helium.CodeGeneration.Iridium.PassTailRecursion(passTailRecursion)
 import Helium.CodeGeneration.Iridium.ResolveDependencies(resolveDependencies, IridiumFile(..))
+import Helium.CodeGeneration.Iridium.TypeCheck
 import Helium.CodeGeneration.LLVM.CompileModule(compileModule)
 import Helium.CodeGeneration.LLVM.Target(Target(..))
 import Helium.CodeGeneration.LLVM.Env(envForModule)
@@ -35,7 +37,7 @@ phaseCodeGeneratorIridium supply cache fullName coreModule options = do
 
   let supplyDesugar : supplyFromCore : supplyPassThunkArity : supplyPassDeadCode : supplyPassTailRecursion : _ = splitNameSupplies supply
 
-  let simplified = desugarCore supplyDesugar coreModule
+  simplified <- desugarCore supplyDesugar coreModule
 
   let (path, baseName, _) = splitFilePath fullName
   let fullNameNoExt = combinePathAndFile path baseName
@@ -46,9 +48,13 @@ phaseCodeGeneratorIridium supply cache fullName coreModule options = do
   let hasMain = any ((== idFromString "main$") . Core.declName) $ Core.moduleDecls coreModule
 
   iridium' <- fromCore cache supplyFromCore simplified
+  writeFile (fullNameNoExt ++ ".iridium") $ show iridium'
+  checkModuleIO "fromCore" (fullNameNoExt ++ ".iridium") iridium'
+
   let iridium = passTailRecursion supplyPassTailRecursion $ {- passDeadCode supplyPassDeadCode $ -} passThunkArity supplyPassThunkArity iridium'
 
   writeFile (fullNameNoExt ++ ".iridium") $ show iridium
+  checkModuleIO "passTailRecursion" (fullNameNoExt ++ ".iridium") iridium'
 
   let file = IridiumFile (fullNameNoExt ++ ".iridium") iridium True
   files <-

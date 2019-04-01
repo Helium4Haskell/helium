@@ -76,6 +76,9 @@ compile basedir fullName options lvmPath iridiumCache doneModules =
             -- resolve imports
             chasedMod <- Lvm.lvmImport' (resolveDeclarations iridiumCache) m
             let publicmod = Lvm.modulePublic implExps es chasedMod
+
+            verifyCore options "LvmImport" publicmod
+
             return (publicmod, 0)
           _ -> do
             putStrLn $ "Unsupported file extension: " ++ show ext
@@ -156,19 +159,11 @@ compileHaskellToCore basedir fullName contents options iridiumCache doneModules 
 
   stopCompilingIf (StopAfterTypeInferencing `elem` options)
 
-  -- Temp fix: add types to imported declarations
-  let
-    addTypesToImportedDecl decl@Lvm.DeclAbstract{} = decl{ Lvm.declType = toCoreType $ fromMaybe (error $ "No type found for " ++ show (Lvm.declName decl)) $ M.lookup (nameFromId $ Lvm.declName decl) $ typeEnvironment afterTypeInferEnv }
-    addTypesToImportedDecl decl@Lvm.DeclCon{} = decl{ Lvm.declType = toCoreType $ fromMaybe (error $ "No type found for constructor " ++ show (Lvm.declName decl)) $ M.lookup (nameFromId $ Lvm.declName decl) $ valueConstructors afterTypeInferEnv }
-    addTypesToImportedDecl decl = decl
-
-  let indirectionDecls' = map addTypesToImportedDecl indirectionDecls
-
   -- Phase 9: Desugaring
   coreModule <-
       phaseDesugarer dictionaryEnv
                       fullName resolvedModule allTypeSchemes solveResult
-                      (typingStrategiesDecls ++ indirectionDecls') 
+                      (typingStrategiesDecls ++ indirectionDecls) 
                       afterTypeInferEnv
                       toplevelTypes
                       options
@@ -176,7 +171,7 @@ compileHaskellToCore basedir fullName contents options iridiumCache doneModules 
   let (path, baseName, _) = splitFilePath fullName
   let fullNameNoExt = combinePathAndFile path baseName
   writeFile (fullNameNoExt ++ ".desugared.core") $ show $ pretty coreModule
-  verifyCore options coreModule
+  verifyCore options "Desugar" coreModule
 
   stopCompilingIf (StopAfterDesugar `elem` options)
 
@@ -197,7 +192,7 @@ resolveDeclarations iridiumCache name = do
   iridium <- Iridium.readIridium iridiumCache name
   return $ toAbstractModule iridium
 
-verifyCore :: [Option] -> Lvm.CoreModule -> IO ()
-verifyCore options mod
-  | VerifyBackend `elem` options = Core.checkModuleIO mod
+verifyCore :: [Option] -> String -> Lvm.CoreModule -> IO ()
+verifyCore options afterPass mod
+  | VerifyBackend `elem` options = Core.checkModuleIO afterPass mod
   | otherwise = return ()

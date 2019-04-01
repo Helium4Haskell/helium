@@ -9,6 +9,7 @@
 module Helium.CodeGeneration.LLVM.CompileMethod (compileMethod, compileAbstractMethod) where
 
 import Data.String(fromString)
+import Data.Either
 
 import Helium.CodeGeneration.LLVM.Env
 import Helium.CodeGeneration.LLVM.Utils
@@ -19,6 +20,7 @@ import Helium.CodeGeneration.LLVM.CompileBind(thunkStruct)
 import Helium.CodeGeneration.LLVM.CompileStruct(structType, extractField)
 
 import Lvm.Common.Id(Id, NameSupply, freshId, freshIdFromId, splitNameSupply, mapWithSupply, idFromString)
+import qualified Lvm.Core.Type as Core
 
 import qualified Helium.CodeGeneration.Iridium.Data as Iridium
 import qualified Helium.CodeGeneration.Iridium.Type as Iridium
@@ -36,24 +38,26 @@ unusedArgumentName :: Id
 unusedArgumentName = idFromString "_argument"
 
 compileAbstractMethod :: Env -> NameSupply -> Iridium.Declaration Iridium.AbstractMethod -> [Definition]
-compileAbstractMethod env supply (Iridium.Declaration name visible _ _ (Iridium.AbstractMethod (Iridium.FunctionType argTypes retType) annotations)) = toFunction env supply name visible annotations args retType []
+compileAbstractMethod env supply (Iridium.Declaration name visible _ _ method@(Iridium.AbstractMethod arity fnType annotations)) = toFunction env supply name visible annotations args fnType retType []
   where
+    Iridium.FunctionType argTypes' retType = Iridium.abstractFunctionType (envTypeEnv env) method
+    argTypes = [tp | Right tp <- argTypes']
     args = map (Iridium.Local unusedArgumentName) argTypes
 
 compileMethod :: Env -> NameSupply -> Iridium.Declaration Iridium.Method -> [Definition]
-compileMethod env supply (Iridium.Declaration name visible _ _ (Iridium.Method args retType annotations entry blocks)) = toFunction env supply2 name visible annotations args retType basicBlocks
+compileMethod env supply (Iridium.Declaration name visible _ _ method@(Iridium.Method _ args retType annotations entry blocks)) = toFunction env supply2 name visible annotations args' fnType retType basicBlocks
   where
+    fnType = Iridium.methodType method
     parameters :: [Parameter]
-    parameters = map (\(Iridium.Local name t) -> Parameter (compileType env t) (toName name) []) args
+    parameters = [Parameter (compileType env t) (toName name) [] | Right (Iridium.Local name t) <- args]
+    args' = [arg | Right arg <- args]
     basicBlocks :: [BasicBlock]
     basicBlocks = concat $ mapWithSupply (compileBlock env) supply1 (entry : blocks)
     (supply1, supply2) = splitNameSupply supply
 
-toFunction :: Env -> NameSupply -> Id -> Iridium.Visibility -> [Iridium.Annotation] -> [Iridium.Local] -> Iridium.PrimitiveType -> [BasicBlock] -> [Definition]
-toFunction env supply name visible annotations args retType basicBlocks = trampoline ++ thunk ++ [def]
+toFunction :: Env -> NameSupply -> Id -> Iridium.Visibility -> [Iridium.Annotation] -> [Iridium.Local] -> Core.Type -> Core.Type -> [BasicBlock] -> [Definition]
+toFunction env supply name visible annotations args fnType retType basicBlocks = trampoline ++ thunk ++ [def]
   where
-    fnType = Iridium.FunctionType (map Iridium.localType args) retType
-
     def = GlobalDefinition $ Function
       -- TODO: set Linkage to Private if possible
       -- TODO: set Visibility to Hidden or Protected, if that does not give issues with function pointers
@@ -63,7 +67,7 @@ toFunction env supply name visible annotations args retType basicBlocks = trampo
       , Global.dllStorageClass = Nothing
       , Global.callingConvention = callConv
       , Global.returnAttributes = []
-      , Global.returnType = compileType env (if fake_io then Iridium.TypeInt else retType)
+      , Global.returnType = compileType env (if fake_io then Iridium.typeInt else retType)
       , Global.name = toName name
       , Global.parameters = (if fake_io then init parameters else parameters, {- varargs: -} False)
       , Global.functionAttributes = []
@@ -118,7 +122,7 @@ toFunction env supply name visible annotations args retType basicBlocks = trampo
                 [ nameThunk := BitCast (LocalReference voidPointer $ mkName "$_thunk_void") (pointer structTy) [] ]
                 ++ concat (
                   mapWithSupply
-                    (\s (Iridium.Local arg _, index) -> extractField s env (LocalReference (pointer structTy) nameThunk) struct (index + 1) (StructField Iridium.TypeAny (Just index)) $ toName arg)
+                    (\s (Iridium.Local arg _, index) -> extractField s env (LocalReference (pointer structTy) nameThunk) struct (index + 1) (StructField Iridium.typeUnsafePtr (Just index)) $ toName arg)
                     supplyTrampoline1
                     $ zip args [0..arity - 1]
                   )
@@ -129,14 +133,14 @@ toFunction env supply name visible annotations args retType basicBlocks = trampo
         , Global.personalityFunction = Nothing
         , Global.metadata = []
         }
-    [BasicBlock _ trampolineInstructions trampolineTerminator] = compileBlock env supplyTrampoline1 $ Iridium.Block (idFromString "entry") $ trampolineBody supplyTrampoline2 name args retType
+    [BasicBlock _ trampolineInstructions trampolineTerminator] = compileBlock env supplyTrampoline1 $ Iridium.Block (idFromString "entry") $ trampolineBody supplyTrampoline2 name args fnType retType
     struct = thunkStruct arity
     structTy = structType env struct
     nameThunk = mkName "$_thunk"
 
     thunk :: [Definition]
     thunk
-      | length args /= 0 = []
+      | not (null args) = []
       | otherwise = return $ GlobalDefinition $ GlobalVariable
         { Global.name = toNamePrefixed "thunk$" name
         , Global.linkage = linkage
@@ -160,30 +164,25 @@ toFunction env supply name visible annotations args retType basicBlocks = trampo
         , Global.metadata = []
         }
 
-trampolineBody :: NameSupply -> Id -> [Iridium.Local] -> Iridium.PrimitiveType -> Iridium.Instruction
-trampolineBody supply fn params retType = foldr id call instrs
+trampolineBody :: NameSupply -> Id -> [Iridium.Local] -> Core.Type -> Core.Type -> Iridium.Instruction
+trampolineBody supply fn params fnType retType = foldr id call instrs
   where
     res = idFromString "$_result"
     (args, instrs) = unzip $ mapWithSupply trampolineCastArgument supply params
-    call = Iridium.Let res (Iridium.Call (Iridium.GlobalFunction fn $ Iridium.FunctionType (map Iridium.localType params) retType) $ map Iridium.VarLocal args)
+    call = Iridium.Let res (Iridium.Call (Iridium.GlobalFunction fn (length params) fnType) $ map (Right . Iridium.VarLocal) args)
       $ Iridium.Return $ Iridium.VarLocal $ Iridium.Local res retType
 
 trampolineCastArgument :: NameSupply -> Iridium.Local -> (Iridium.Local, Iridium.Instruction -> Iridium.Instruction)
-trampolineCastArgument _ local@(Iridium.Local name Iridium.TypeAny) = (local, id)
-trampolineCastArgument supply (Iridium.Local name Iridium.TypeAnyWHNF) = (Iridium.Local nameWhnf Iridium.TypeAnyWHNF, instr)
-  where
-    (nameWhnf, _) = freshIdFromId name supply
-    instr = Iridium.Let nameWhnf $ Iridium.Eval $ Iridium.VarLocal $ Iridium.Local name Iridium.TypeAny
-trampolineCastArgument supply (Iridium.Local nameAny t) = (Iridium.Local name t, instr)
-  where
-    (nameWhnf, supply') = freshIdFromId nameAny supply
-    (name, _) = freshIdFromId nameAny supply'
-    instr =
-      Iridium.Let nameWhnf (Iridium.Eval $ Iridium.VarLocal $ Iridium.Local nameAny Iridium.TypeAny)
-      . Iridium.Let name (Iridium.Cast (Iridium.VarLocal $ Iridium.Local nameWhnf Iridium.TypeAnyWHNF) t)
-
-trampolineBlock :: NameSupply -> Env -> Id -> CallingConvention -> [Iridium.Local] -> BasicBlock
-trampolineBlock supply env fn callConv args = BasicBlock (mkName "trampoline_entry") instructions ret
+trampolineCastArgument supply local@(Iridium.Local name tp)
+  | Core.typeIsStrict tp =
+    let (nameWhnf, _) = freshIdFromId name supply
+    in
+      ( Iridium.Local nameWhnf tp
+      , Iridium.Let nameWhnf (Iridium.Eval $ Iridium.VarLocal $ Iridium.Local name $ Core.typeNotStrict tp)
+      )
+  | otherwise = (local, id)
+trampolineBlock :: NameSupply -> Env -> Id -> Core.Type -> Iridium.FunctionType -> CallingConvention -> [Iridium.Local] -> BasicBlock
+trampolineBlock supply env fn tp (Iridium.FunctionType argTypes retType) callConv args = BasicBlock (mkName "trampoline_entry") instructions ret
   where
     instructions :: [Named Instruction]
     instructions =
@@ -191,9 +190,9 @@ trampolineBlock supply env fn callConv args = BasicBlock (mkName "trampoline_ent
       ]
       ++ concat (
         mapWithSupply
-          (\s index -> extractField s env (LocalReference (pointer t) nameThunk) struct (index + 1) (StructField Iridium.TypeAny (Just index)) $ mkName $ "$_arg" ++ show index)
+          (\s (index, argType) -> extractField s env (LocalReference (pointer t) nameThunk) struct (index + 1) (StructField argType (Just index)) $ mkName $ "$_arg" ++ show index)
           supply
-          [0..arity - 1]
+          $ zip [0..] [t | Right t <- argTypes]
         )
       ++
         [ nameResult :=
@@ -201,7 +200,7 @@ trampolineBlock supply env fn callConv args = BasicBlock (mkName "trampoline_ent
             { tailCallKind = Nothing
             , callingConvention = callConv
             , returnAttributes = []
-            , function = Right $ toOperand env (Iridium.VarGlobal $ Iridium.GlobalFunction fn $ Iridium.FunctionType (map Iridium.localType args) Iridium.TypeAnyWHNF)
+            , function = Right $ toOperand env (Iridium.VarGlobal $ Iridium.GlobalFunction fn arity tp)
             , arguments = map (\index -> (LocalReference taggedThunkPointer $ mkName $ "$_arg" ++ show index, [])) [0..arity - 1]
             , functionAttributes = []
             , metadata = []

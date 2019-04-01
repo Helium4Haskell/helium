@@ -31,12 +31,12 @@ data Message
 
 instance Show Message where
   show (MessageExpected str tp (Just expr))
-    = "  Expected " ++ str ++ ", got `" ++ show tp ++ "' instead"
+    = "  Expected " ++ str ++ ", got `" ++ showType [] tp ++ "' instead"
     ++ "  as the type of expression:\n\n" ++ show (pretty expr)
   show (MessageExpected str tp Nothing)
-    = "  Expected " ++ str ++ ", got `" ++ show tp ++ "' instead"
+    = "  Expected " ++ str ++ ", got `" ++ showType [] tp ++ "' instead"
   show (MessageNotEqual t1 t2)
-    = "  Types `" ++ show t1 ++ "' and `" ++ show t2 ++ "' do not match"
+    = "  Types `" ++ showType [] t1 ++ "' and `" ++ showType [] t2 ++ "' do not match"
   show (MessageNameNotFound name)
     = "  Variable not found: " ++ show name
 
@@ -63,23 +63,25 @@ Left (TypeError loc msg) @@ name = Left $ TypeError (name : loc) msg
 
 infix 1 @@
 
-checkModule :: CoreModule -> [TypeError]
+checkModule :: CoreModule -> [(CoreDecl, TypeError)]
 checkModule mod@(Module _ _ _ decls) = decls >>= checkDecl env
   where
     env = typeEnvForModule mod
 
-checkModuleIO :: CoreModule -> IO ()
-checkModuleIO mod = case checkModule mod of
+checkModuleIO :: String -> CoreModule -> IO ()
+checkModuleIO pass mod = case checkModule mod of
   [] -> return ()
   errors -> do
-    putStrLn "Type errors in Core file"
-    mapM_ print errors
-    putStrLn (show (length errors) ++ " errors")
+    putStrLn ("\n\nType errors in Core file after pass " ++ show pass)
+    mapM_ printError errors
+    putStrLn (show (length errors) ++ " errors after pass " ++ show pass)
     exitWith (ExitFailure 1)
+  where
+    printError (decl, err) = putStrLn $ "\n" ++ show (pretty decl) ++ "\n\n" ++ show err
 
-checkDecl :: TypeEnvironment -> CoreDecl -> [TypeError]
+checkDecl :: TypeEnvironment -> CoreDecl -> [(CoreDecl, TypeError)]
 checkDecl env decl = case checkDecl' env decl of
-  Left err -> [err]
+  Left err -> [(decl, err)]
   Right _ -> []
 
 checkDecl' :: TypeEnvironment -> CoreDecl -> Check ()

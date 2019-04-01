@@ -1,192 +1,162 @@
 module IridiumLang
 import (IridiumLangEval, IridiumLangString)
 
-export_as @_$helium_runtime_error from IridiumLangString declare @_$helium_runtime_error: (any) -> any_whnf
-export_as @_$helium_runtime_print_string from IridiumLangString declare @_$helium_runtime_print_string: (@"[]") -> int
+export_as @_$helium_runtime_error from IridiumLangString declare @_$helium_runtime_error[1]: { forall a. ![Char] -> a }
+export_as @_$helium_runtime_print_string from IridiumLangString declare @_$helium_runtime_print_string[1]: { ![Char] -> Int }
 
 #[decl @kind [bytes "* -> *"]]
-data @"[]" {
+export_as @"[]" data @"[]" {
   #[decl @type [bytes "[a]"]]
   #[link @"[]" @data]
-  constructor @"[]"()
+  export_as @"[]" constructor @"[]": { forall a. [a] }
 
   #[decl @type [bytes "a -> [a] -> [a]"]]
   #[link @"[]" @data]
-  constructor @":"(any, any)
+  export_as @":" constructor @":": { forall a. a -> [a] -> [a] }
 }
 
 #[decl @kind [bytes "*"]]
 export_as @Bool data @Bool {
   #[decl @type [bytes "Bool"]]
   #[link @Bool @data]
-  export_as @False constructor @False()
+  export_as @False constructor @False: { Bool }
 
   #[decl @type [bytes "Bool"]]
   #[link @Bool @data]
-  export_as @True constructor @True()
+  export_as @True constructor @True: { Bool }
 }
 
-export_as @primAddInt define @primAddInt(%a: int, %b: int) = prim int_add(%a: int, %b: int)
-export_as @primSubInt define @primSubInt(%a: int, %b: int) = prim int_sub(%a: int, %b: int)
-export_as @primMulInt define @primMulInt(%a: int, %b: int) = prim int_mul(%a: int, %b: int)
-export_as @primQuotInt define @primQuotInt(%a: int, %b: int) = prim int_sdiv(%a: int, %b: int)
-export_as @primRemInt define @primRemInt(%a: int, %b: int) = prim int_srem(%a: int, %b: int)
+export_as @primAddInt define @primAddInt(%a: Int, %b: Int): Int = prim int_add(%a: Int, %b: Int)
+export_as @primSubInt define @primSubInt(%a: Int, %b: Int): Int = prim int_sub(%a: Int, %b: Int)
+export_as @primMulInt define @primMulInt(%a: Int, %b: Int): Int = prim int_mul(%a: Int, %b: Int)
+export_as @primQuotInt define @primQuotInt(%a: Int, %b: Int): Int = prim int_sdiv(%a: Int, %b: Int)
+export_as @primRemInt define @primRemInt(%a: Int, %b: Int): Int = prim int_srem(%a: Int, %b: Int)
 
-export_as @primAndInt define @primAndInt(%a: int, %b: int) = prim int_and(%a: int, %b: int)
-export_as @primOrInt define @primOrInt(%a: int, %b: int) = prim int_or(%a: int, %b: int)
-export_as @primXorInt define @primXorInt(%a: int, %b: int) = prim int_xor(%a: int, %b: int)
-export_as @primShrInt define @primShrInt(%a: int, %b: int) = prim int_ashr(%a: int, %b: int)
-export_as @primShrNat define @primShrNat(%a: int, %b: int) = prim int_lshr(%a: int, %b: int)
-export_as @primShlInt define @primShlInt(%a: int, %b: int) = prim int_shl(%a: int, %b: int)
+export_as @primAndInt define @primAndInt(%a: Int, %b: Int): Int = prim int_and(%a: Int, %b: Int)
+export_as @primOrInt define @primOrInt(%a: Int, %b: Int): Int = prim int_or(%a: Int, %b: Int)
+export_as @primXorInt define @primXorInt(%a: Int, %b: Int): Int = prim int_xor(%a: Int, %b: Int)
+export_as @primShrInt define @primShrInt(%a: Int, %b: Int): Int = prim int_ashr(%a: Int, %b: Int)
+export_as @primShrNat define @primShrNat(%a: Int, %b: Int): Int = prim int_lshr(%a: Int, %b: Int)
+export_as @primShlInt define @primShlInt(%a: Int, %b: Int): Int = prim int_shl(%a: Int, %b: Int)
 
-export_as @primNegInt define @primNegInt(%a: int): int {
+export_as @primNegInt define @primNegInt(%a: Int): Int {
 entry:
   %0 = literal int 0
-  %result = prim int_sub(%0: int, %a: int)
-  return %result: int
+  %result = prim int_sub(%0: Int, %a: Int)
+  return %result: Int
 }
 
-export_as @primEqInt define @primEqInt(%a: int, %b: int): @Bool {
+export_as @primEqInt define @primEqInt(%a: Int, %b: Int): Bool {
 entry:
-  letalloc %true_ = constructor @True: () -> @Bool $ ()
-  letalloc %false_ = constructor @False: () -> @Bool $ ()
-  %true = cast %true_: @Bool as any_whnf
-  %false = cast %false_: @Bool as any_whnf
-  %result = prim int_eq(%a: int, %b: int, %true: any_whnf, %false: any_whnf)
-  %result_ = cast %result: any_whnf as @Bool
-  return %result_: @Bool
+  letalloc %true = constructor @True: Bool $ ()
+  letalloc %false = constructor @False: Bool $ ()
+  %result = prim int_eq({ !Bool }, %a: Int, %b: Int, %true: !Bool, %false: !Bool)
+  return %result: !Bool
 }
 
-export_as @primNeInt define @primNeInt(%a: int, %b: int): @Bool {
+export_as @primNeInt define @primNeInt(%a: Int, %b: Int): Bool {
 entry:
-  letalloc %true_ = constructor @True: () -> @Bool $ ()
-  letalloc %false_ = constructor @False: () -> @Bool $ ()
-  %true = cast %true_: @Bool as any_whnf
-  %false = cast %false_: @Bool as any_whnf
-  %result = prim int_eq(%a: int, %b: int, %false: any_whnf, %true: any_whnf)
-  %result_ = cast %result: any_whnf as @Bool
-  return %result_: @Bool
+  letalloc %true = constructor @True: Bool $ ()
+  letalloc %false = constructor @False: Bool $ ()
+  %result = prim int_eq({ !Bool }, %a: Int, %b: Int, %false: !Bool, %true: !Bool)
+  return %result: !Bool
 }
 
-export_as @primLtInt define @primLtInt(%a: int, %b: int): @Bool {
+export_as @primLtInt define @primLtInt(%a: Int, %b: Int): Bool {
 entry:
-  letalloc %true_ = constructor @True: () -> @Bool $ ()
-  letalloc %false_ = constructor @False: () -> @Bool $ ()
-  %true = cast %true_: @Bool as any_whnf
-  %false = cast %false_: @Bool as any_whnf
-  %result = prim int_slt(%a: int, %b: int, %true: any_whnf, %false: any_whnf)
-  %result_ = cast %result: any_whnf as @Bool
-  return %result_: @Bool
+  letalloc %true = constructor @True: Bool $ ()
+  letalloc %false = constructor @False: Bool $ ()
+  %result = prim int_slt({ !Bool }, %a: Int, %b: Int, %true: !Bool, %false: !Bool)
+  return %result: !Bool
 }
 
-export_as @primGeInt define @primGeInt(%a: int, %b: int): @Bool { ; a >= b <=> not(a < b)
+export_as @primGeInt define @primGeInt(%a: Int, %b: Int): Bool { ; a >= b <=> not(a < b)
 entry:
-  letalloc %true_ = constructor @True: () -> @Bool $ ()
-  letalloc %false_ = constructor @False: () -> @Bool $ ()
-  %true = cast %true_: @Bool as any_whnf
-  %false = cast %false_: @Bool as any_whnf
-  %result = prim int_slt(%a: int, %b: int, %false: any_whnf, %true: any_whnf)
-  %result_ = cast %result: any_whnf as @Bool
-  return %result_: @Bool
+  letalloc %true = constructor @True: Bool $ ()
+  letalloc %false = constructor @False: Bool $ ()
+  %result = prim int_slt({ !Bool }, %a: Int, %b: Int, %false: !Bool, %true: !Bool)
+  return %result: !Bool
 }
 
-export_as @primLeInt define @primLeInt(%a: int, %b: int) = call @primGeInt: (int, int) -> @Bool $ (%b: int, %a: int)
-export_as @primGtInt define @primGtInt(%a: int, %b: int) = call @primLtInt: (int, int) -> @Bool $ (%b: int, %a: int)
+export_as @primLeInt define @primLeInt(%a: Int, %b: Int): Bool = call @primGeInt[2]: (Int -> Int -> Bool) $ (%b: Int, %a: Int)
+export_as @primGtInt define @primGtInt(%a: Int, %b: Int): Bool = call @primLtInt[2]: (Int -> Int -> Bool) $ (%b: Int, %a: Int)
 
-export_as @primAddFloat define @primAddFloat(%a: float64, %b: float64) = prim float64_add(%a: float64, %b: float64)
-export_as @primSubFloat define @primSubFloat(%a: float64, %b: float64) = prim float64_sub(%a: float64, %b: float64)
-export_as @primMulFloat define @primMulFloat(%a: float64, %b: float64) = prim float64_mul(%a: float64, %b: float64)
-export_as @primDivFloat define @primDivFloat(%a: float64, %b: float64) = prim float64_div(%a: float64, %b: float64)
+export_as @primAddFloat define @primAddFloat(%a: Float, %b: Float): Float = prim float64_add(%a: Float, %b: Float)
+export_as @primSubFloat define @primSubFloat(%a: Float, %b: Float): Float = prim float64_sub(%a: Float, %b: Float)
+export_as @primMulFloat define @primMulFloat(%a: Float, %b: Float): Float = prim float64_mul(%a: Float, %b: Float)
+export_as @primDivFloat define @primDivFloat(%a: Float, %b: Float): Float = prim float64_div(%a: Float, %b: Float)
 
-export_as @primNegFloat define @primNegFloat(%a: float64): float64 {
+export_as @primNegFloat define @primNegFloat(%a: Float): Float {
 entry:
   %0 = literal float64 0
-  %result = prim float64_sub(%0: float64, %a: float64)
-  return %result: float64
+  %result = prim float64_sub(%0: Float, %a: Float)
+  return %result: Float
 }
 
-export_as @primEqFloat define @primEqFloat(%a: float64, %b: float64): @Bool {
+export_as @primEqFloat define @primEqFloat(%a: Float, %b: Float): Bool {
 entry:
-  letalloc %true_ = constructor @True: () -> @Bool $ ()
-  letalloc %false_ = constructor @False: () -> @Bool $ ()
-  %true = cast %true_: @Bool as any_whnf
-  %false = cast %false_: @Bool as any_whnf
-  %result = prim float64_eq(%a: float64, %b: float64, %true: any_whnf, %false: any_whnf)
-  %result_ = cast %result: any_whnf as @Bool
-  return %result_: @Bool
+  letalloc %true = constructor @True: Bool $ ()
+  letalloc %false = constructor @False: Bool $ ()
+  %result = prim float64_eq({!Bool}, %a: Float, %b: Float, %true: !Bool, %false: !Bool)
+  return %result: Bool
 }
 
-export_as @primNeFloat define @primNeFloat(%a: float64, %b: float64): @Bool {
+export_as @primNeFloat define @primNeFloat(%a: Float, %b: Float): Bool {
 entry:
-  letalloc %true_ = constructor @True: () -> @Bool $ ()
-  letalloc %false_ = constructor @False: () -> @Bool $ ()
-  %true = cast %true_: @Bool as any_whnf
-  %false = cast %false_: @Bool as any_whnf
-  %result = prim float64_ne(%a: float64, %b: float64, %true: any_whnf, %false: any_whnf)
-  %result_ = cast %result: any_whnf as @Bool
-  return %result_: @Bool
+  letalloc %true = constructor @True: Bool $ ()
+  letalloc %false = constructor @False: Bool $ ()
+  %result = prim float64_ne({ !Bool }, %a: Float, %b: Float, %true: !Bool, %false: !Bool)
+  return %result: !Bool
 }
 
-export_as @primLtFloat define @primLtFloat(%a: float64, %b: float64): @Bool {
+export_as @primLtFloat define @primLtFloat(%a: Float, %b: Float): Bool {
 entry:
-  letalloc %true_ = constructor @True: () -> @Bool $ ()
-  letalloc %false_ = constructor @False: () -> @Bool $ ()
-  %true = cast %true_: @Bool as any_whnf
-  %false = cast %false_: @Bool as any_whnf
-  %result = prim float64_lt(%a: float64, %b: float64, %true: any_whnf, %false: any_whnf)
-  %result_ = cast %result: any_whnf as @Bool
-  return %result_: @Bool
+  letalloc %true = constructor @True: Bool $ ()
+  letalloc %false = constructor @False: Bool $ ()
+  %result = prim float64_lt({ !Bool }, %a: Float, %b: Float, %true: !Bool, %false: !Bool)
+  return %result: !Bool
 }
 
-export_as @primGtFloat define @primGtFloat(%a: float64, %b: float64): @Bool {
+export_as @primGtFloat define @primGtFloat(%a: Float, %b: Float): Bool {
 entry:
-  letalloc %true_ = constructor @True: () -> @Bool $ ()
-  letalloc %false_ = constructor @False: () -> @Bool $ ()
-  %true = cast %true_: @Bool as any_whnf
-  %false = cast %false_: @Bool as any_whnf
-  %result = prim float64_gt(%a: float64, %b: float64, %true: any_whnf, %false: any_whnf)
-  %result_ = cast %result: any_whnf as @Bool
-  return %result_: @Bool
+  letalloc %true = constructor @True: Bool $ ()
+  letalloc %false = constructor @False: Bool $ ()
+  %result = prim float64_gt({ !Bool }, %a: Float, %b: Float, %true: Bool, %false: Bool)
+  return %result_: !Bool
 }
 
-export_as @primLeFloat define @primLeFloat(%a: float64, %b: float64): @Bool {
+export_as @primLeFloat define @primLeFloat(%a: Float, %b: Float): Bool {
 entry:
-  letalloc %true_ = constructor @True: () -> @Bool $ ()
-  letalloc %false_ = constructor @False: () -> @Bool $ ()
-  %true = cast %true_: @Bool as any_whnf
-  %false = cast %false_: @Bool as any_whnf
-  %result = prim float64_le(%a: float64, %b: float64, %true: any_whnf, %false: any_whnf)
-  %result_ = cast %result: any_whnf as @Bool
-  return %result_: @Bool
+  letalloc %true = constructor @True: Bool $ ()
+  letalloc %false = constructor @False: Bool $ ()
+  %result = prim float64_le({ !Bool }, %a: Float, %b: Float, %true: !Bool, %false: !Bool)
+  return %result: !Bool
 }
 
-export_as @primGeFloat define @primGeFloat(%a: float64, %b: float64): @Bool {
+export_as @primGeFloat define @primGeFloat(%a: Float, %b: Float): Bool {
 entry:
-  letalloc %true_ = constructor @True: () -> @Bool $ ()
-  letalloc %false_ = constructor @False: () -> @Bool $ ()
-  %true = cast %true_: @Bool as any_whnf
-  %false = cast %false_: @Bool as any_whnf
-  %result = prim float64_ge(%a: float64, %b: float64, %true: any_whnf, %false: any_whnf)
-  %result_ = cast %result: any_whnf as @Bool
-  return %result_: @Bool
+  letalloc %true = constructor @True: Bool $ ()
+  letalloc %false = constructor @False: Bool $ ()
+  %result = prim float64_ge({ !Bool }, %a: Float, %b: Float, %true: !Bool, %false: !Bool)
+  return %result: !Bool
 }
 
 #[decl @type [bytes "a -> b -> b"]]
-export_as @primSeq define @primSeq(%a: any, %b: any): any_whnf [trampoline] {
+export_as @primSeq define @primSeq(forall a, forall b, %a: a, %b: b): b [trampoline] {
 entry:
-  %a_whnf = eval %a: any
-  %b_whnf = eval %b: any
-  %c = seq %a_whnf: any_whnf, %b_whnf: any_whnf
-  return %c: any_whnf
+  %a_whnf = eval %a: a
+  %b_whnf = eval %b: b
+  %c = seq %a_whnf: !a, %b_whnf: !b
+  return %c: !b
 }
 
 #[decl @type [bytes "a -> b -> b"]]
-export_as @primPseq define @primPseq(%a: any, %b: any): any_whnf [trampoline] {
+export_as @primPseq define @primPseq(forall a, forall b, %a: a, %b: b): b [trampoline] {
 entry:
-  %a_whnf = eval %a: any
-  %c = seq %a_whnf: any_whnf, %b: any
-  %c_whnf = eval %c: any
-  return %c_whnf: any_whnf
+  %a_whnf = eval %a: a
+  %c = seq %a_whnf: !a, %b: b
+  %c_whnf = eval %c: b
+  return %c_whnf: !b
 }
 
 ; IO
@@ -195,7 +165,7 @@ entry:
 export_as @IORes data @IORes {
   #[decl @type [bytes "a -> RealWorld -> IORes a"]]
   #[link @"IORes" @data]
-  export_as @IORes constructor @"IORes"(any, real_world)
+  export_as @IORes constructor @IORes: { forall a. a -> !RealWorld -> IORes a }
 }
 
 ; data IO a = IO !(!RealWorld -> IORes a)
@@ -203,28 +173,33 @@ export_as @IORes data @IORes {
 export_as @IO data @IO {
   #[decl @type [bytes "(RealWorld -> IORes a) -> IO a"]]
   #[link @"IO" @data]
-  export_as @IO constructor @"IO"(anyfunction)
+  export_as @IO constructor @"IO": { forall a. !(!RealWorld -> IORes a) -> IO a }
 }
 
 ; unsafePerformIO :: IO a -> a
 #[decl @type [bytes "IO a -> a"]]
-export_as @unsafePerformIO define @unsafePerformIO(%io: @IO): any_whnf [trampoline] {
+export_as @unsafePerformIO define @unsafePerformIO(forall a, %io: !(IO a)): a [trampoline] {
 entry:
-  match %io: @IO on @IO: (anyfunction) -> @IO (%fn)
-  %world = undefined real_world
-  letalloc %thunk = thunk %fn: anyfunction $ (%world: real_world)
-  %res_any = eval %thunk: any_thunk
-  %res = cast %res_any: any_whnf as @IORes
-  match %res: @IORes on @IORes: (any, real_world) -> @IORes (%value_any, %new_world)
-  %value = eval %value_any: any
-  %value2 = seq %new_world: real_world, %value: any_whnf
-  return %value2: any_whnf
+  match %io: !IO on @IO: (forall a. !(!RealWorld -> IORes a) -> IO a) { a } (%fn)
+  %world = undefined RealWorld
+  letalloc %thunk = thunk %fn: !(!RealWorld -> IORes a) $ (%world: RealWorld)
+  %res = eval %thunk: (IORes a)
+  match %res: !(IORes a) on @IORes: (forall a. a -> !RealWorld -> IORes a) { a } (%value_any, %new_world)
+  %value = eval %value_any: a
+  %value2 = seq %new_world: !RealWorld, %value: !a
+  return %value2: !a
 }
 
-; $primPutChar :: Char -> RealWorld -> IORes
-#[decl @type [bytes "Char -> RealWorld -> IORes"]]
-export_as @$primPutChar declare @putchar: (int, real_world) -> @IORes [callconvention:c fake_io]
+; $primPutChar :: Char -> RealWorld -> IORes Int
+#[decl @type [bytes "Char -> RealWorld -> IORes Int"]]
+export_as @$primPutChar declare @putchar[2]: { Char -> !RealWorld -> IORes Int } [callconvention:c fake_io]
 
-; $primPutChar :: RealWorld -> IORes
-#[decl @type [bytes "RealWorld -> IORes"]]
-export_as @$primGetChar declare @getchar: (real_world) -> @IORes [callconvention:c fake_io]
+; $primGetChar :: RealWorld -> IORes Char
+#[decl @type [bytes "RealWorld -> IORes Char"]]
+export_as @$primGetChar declare @getchar[1]: { RealWorld -> IORes Char } [callconvention:c fake_io]
+
+export_as @$primUnsafeCast define @$primUnsafeCast(forall a, forall b, %x: a): b [trampoline] {
+entry:
+  %res = cast %x: a as b
+  return %res: b
+}

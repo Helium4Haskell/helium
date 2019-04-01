@@ -1,7 +1,7 @@
 module IridiumLangString
 import ()
 
-declare @putchar: (int) -> int [callconvention:c]
+declare @putchar[1]: { Int -> Int } [callconvention:c]
 
 #[decl @kind [bytes "* -> *"]]
 custom @"[]": @data
@@ -10,33 +10,33 @@ custom @"[]": @data
 data @"[]" {
   #[decl @type [bytes "[a]"]]
   #[link @"[]" @data]
-  constructor @"[]"()
+  constructor @"[]": { forall a. [a] }
 
   #[decl @type [bytes "a -> [a] -> [a]"]]
   #[link @"[]" @data]
-  constructor @":"(any, any)
+  constructor @":": { forall a. a -> [a] -> [a] }
 }
 
-export_as @_$helium_runtime_unpack_string define @_$helium_runtime_unpack_string(%length: int, %pointer: unsafeptr): @"[]" {
+export_as @_$helium_runtime_unpack_string define @_$helium_runtime_unpack_string(%length: !Int, %pointer: !$UnsafePtr): ([Char]) {
 unpack.entry:
-  case %length: int int (0 to unpack.nil) otherwise unpack.cons
+  case %length: Int int (0 to unpack.nil) otherwise unpack.cons
 unpack.cons:
   %1 = literal int 1
-  %length_minus_one = prim int_sub(%length: int, %1: int)
-  %c = prim unsafeptr_read32(%pointer: unsafeptr)
+  %length_minus_one = prim int_sub(%length: !Int, %1: !Int)
+  %c = prim unsafeptr_read32(%pointer: !$UnsafePtr)
   %4 = literal int 4
-  %pointer_plus_four = prim unsafeptr_add(%pointer: unsafeptr, %4: int)
-  %tail = call @_$helium_runtime_unpack_string: (int, unsafeptr) -> @"[]" $ (%length_minus_one: int, %pointer_plus_four: unsafeptr)
-  %tail_as_any = cast %tail: @"[]" as any
-  %c_as_any = cast %c: int as any
-  letalloc %list = constructor @":": (any, any) -> @"[]" $ (%c_as_any: any, %tail_as_any: any)
-  return %list: @"[]"
+  %pointer_plus_four = prim unsafeptr_add(%pointer: !$UnsafePtr, %4: !Int)
+  %tail = call @_$helium_runtime_unpack_string[2]: (!Int -> !$UnsafePtr -> [Char]) $ (%length_minus_one: !Int, %pointer_plus_four: !$UnsafePtr)
+  %tail_as_any = cast %tail: ![Char] as [Char]
+  %c_as_any = cast %c: !Int as Int
+  letalloc %list = constructor @":": (forall a. a -> [a] -> [a]) $ ({Char}, %c_as_any: Char, %tail_as_any: [Char])
+  return %list: ![Char]
 unpack.nil:
-  letalloc %nil = constructor @"[]": () -> @"[]" $ ()
-  return %nil: @"[]"
+  letalloc %nil = constructor @"[]": (forall a. [a]) $ ({Char})
+  return %nil: ![Char]
 }
 
-export_as @_$helium_runtime_print_string define @_$helium_runtime_print_string(%arg_list: @"[]"): int {
+export_as @_$helium_runtime_print_string define @_$helium_runtime_print_string(%arg_list: ![Char]): Int {
 print.entry:
   %0 = literal int 0
   jump print.loop
@@ -45,33 +45,31 @@ print.loop:
   ; %res is always zero, but we need it to prevent the removal of the @putchar functions.
   ; variable %_ will remain live, by the `seq` instruction and will thus not be removed by
   ; a dead code analysis
-  %res = phi (print.entry => %0: int, print.cons => %res_cons: int)
-  %list = phi (print.entry => %arg_list: @"[]", print.cons => %cons: @"[]")
-  case %list: @"[]" constructor (@"[]": () -> @"[]" to print.nil, @":": (any, any) -> @"[]" to print.cons)
+  %res = phi (print.entry => %0: Int, print.cons => %res_cons: Int)
+  %list = phi (print.entry => %arg_list: ![Char], print.cons => %cons: ![Char])
+  case %list: ![Char] constructor (@"[]": (forall a. [a]) to print.nil, @":": (forall a. a -> [a] -> [a]) to print.cons)
 
 print.nil:
-  return %res: int
+  return %res: Int
 
 print.cons:
-  match %list: @"[]" on @":": (any, any) -> @"[]" (%c_thunk, %cons_as_any)
-  %c_whnf = eval %c_thunk: any
-  %c = cast %c_whnf: any_whnf as int
-  %c2 = seq %res: int, %c: int ; Prevent reordering of @putchar calls
-  %_ = call @putchar: (int) -> int $ (%c2: int)
-  %cons_whnf = eval %cons_as_any: any
-  %cons = cast %cons_whnf: any_whnf as @"[]"
-  %res_cons = seq %_: int, %res: int
+  match %list: ![Char] on @":": (forall a. a -> [a] -> [a]) {Char} (%c_thunk, %cons_as_any)
+  %c_whnf = eval %c_thunk: Char
+  %c = cast %c_whnf: !Char as !Int
+  %c2 = seq %res: !Int, %c: !Int ; Prevent reordering of @putchar calls
+  %_ = call @putchar[1]: (!Int -> Int) $ (%c2: !Int)
+  %cons = eval %cons_as_any: [Char]
+  %res_cons = seq %_: Int, %res: Int
   jump print.loop
 }
 
-declare @exit: (int) -> int [callconvention:c]
+declare @exit[1]: { !Int -> Int } [callconvention:c]
 
-export_as @_$helium_runtime_error define @_$helium_runtime_error(%msg: any): any_whnf {
+export_as @_$helium_runtime_error define @_$helium_runtime_error(forall a, %msg: [Char]): a {
 error.entry:
-  %msg_whnf = eval %msg: any
-  %msg_list = cast %msg_whnf: any_whnf as @"[]"
-  %_1 = call @_$helium_runtime_print_string: (@"[]") -> int $ (%msg_list: @"[]")
+  %msg_list = eval %msg: [Char]
+  %_1 = call @_$helium_runtime_print_string: (![Char] -> Int) $ (%msg_list: ![Char])
   %1 = literal int 1
-  %_2 = call @exit: (int) -> int $ (%1: int)
+  %_2 = call @exit[1]: (!Int -> Int) $ (%1: !Int)
   unreachable
 }

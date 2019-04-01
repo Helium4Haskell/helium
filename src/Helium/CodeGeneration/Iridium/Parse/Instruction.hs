@@ -5,16 +5,18 @@ import Helium.CodeGeneration.Iridium.Parse.Type
 import Helium.CodeGeneration.Iridium.Parse.Expression
 import Helium.CodeGeneration.Iridium.Data
 import Lvm.Common.Id(Id)
+import Lvm.Core.Type
 
-pInstruction = do
+pInstruction :: QuantorIndexing -> Parser Instruction
+pInstruction quantors = do
   pWhitespace
   c <- lookahead
   case c of
-    '%' -> Let <$ pChar <*> pId <* pWhitespace <* pToken '=' <* pWhitespace <*> pExpression <*> pInstruction
+    '%' -> Let <$ pChar <*> pId <* pWhitespace <* pToken '=' <* pWhitespace <*> pExpression quantors <*> pInstruction quantors
     _ -> do
       key <- pKeyword
       case key of
-        "letalloc" -> LetAlloc <$> pSome pBind pSep <*> pInstruction
+        "letalloc" -> LetAlloc <$> pSome (pBind quantors) pSep <*> pInstruction quantors
           where
             pSep :: Parser Bool
             pSep = do
@@ -27,9 +29,9 @@ pInstruction = do
               else
                 return False
         "jump" -> Jump <$> pId
-        "match" -> Match <$> pVariable <* pWhitespace <* pSymbol "on" <* pWhitespace <*> pMatchTarget <* pWhitespace <*> pArguments pMatchField <*> pInstruction
-        "case" -> Case <$> pVariable <* pWhitespace <*> pCase
-        "return" -> Return <$> pVariable
+        "match" -> Match <$> pVariable quantors <* pWhitespace <* pSymbol "on" <* pWhitespace <*> pMatchTarget <* pWhitespace <*> pInstantiation quantors <*> pArguments pMatchField <*> pInstruction quantors
+        "case" -> Case <$> pVariable quantors <* pWhitespace <*> pCase
+        "return" -> Return <$> pVariable quantors
         "unreachable" -> return Unreachable
         _ -> pError "expected instruction"
 
@@ -42,6 +44,19 @@ pMatchField = do
   else
     Just <$ pToken '%' <*> pId
 
+pInstantiation :: QuantorIndexing -> Parser [Type]
+pInstantiation quantors = do
+  c <- lookahead
+  if c == '{' then do
+    pChar
+    pWhitespace
+    tp <- pType' quantors
+    pToken '}'
+    pWhitespace
+    tps <- pInstantiation quantors
+    return (tp : tps)
+  else return []
+
 pCase :: Parser Case
 pCase = do
   key <- pKeyword
@@ -53,15 +68,15 @@ pCase = do
 pCaseAlt :: Parser a -> Parser (a, BlockName)
 pCaseAlt pPattern = (\pat to -> (pat, to)) <$> pPattern <* pWhitespace <* pSymbol "to" <* pWhitespace <*> pId
 
-pBind :: Parser Bind
-pBind = Bind <$ pToken '%' <*> pId <* pWhitespace <* pToken '=' <* pWhitespace <*> pBindTarget <* pWhitespace <* pToken '$' <* pWhitespace <*> pArguments pVariable
+pBind :: QuantorIndexing -> Parser Bind
+pBind quantors = Bind <$ pToken '%' <*> pId <* pWhitespace <* pToken '=' <* pWhitespace <*> pBindTarget quantors <* pWhitespace <* pToken '$' <* pWhitespace <*> pCallArguments quantors
 
-pBindTarget :: Parser BindTarget
-pBindTarget = do
+pBindTarget :: QuantorIndexing -> Parser BindTarget
+pBindTarget quantors = do
   key <- pKeyword
   case key of
-    "function" -> BindTargetFunction <$> pVariable
-    "thunk" -> BindTargetThunk <$> pVariable
+    "function" -> BindTargetFunction <$> pVariable quantors
+    "thunk" -> BindTargetThunk <$> pVariable quantors
     "constructor" -> BindTargetConstructor <$> pDataTypeConstructor
     "tuple" -> BindTargetTuple <$> pUnsignedInt
     _ -> pError "expected bind in letalloc"

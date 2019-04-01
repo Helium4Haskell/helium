@@ -91,7 +91,7 @@ SEM Pattern
   | InfixConstructor lhs . elements  = FiniteElement (getNameName @constructorOperator.self) : @leftPattern.elements ++ @rightPattern.elements
   | Record           lhs . elements  = pmError "Pattern_Record.elements" "Records are not supported"
   | Successor        lhs . elements  = pmError "Pattern_Successor.elements" "Successors are not supported"
-  | Tuple            lhs . elements  = FiniteElement ("(" ++ replicate (length $ tail @patterns.self) ',' ++ ")") : concat @patterns.elementss
+  | Tuple            lhs . elements  = FiniteElement ("(" ++ replicate (length @patterns.self - 1) ',' ++ ")") : concat @patterns.elementss
   | List             lhs . elements  = listPat @patterns.elementss
 
 SEM Literal

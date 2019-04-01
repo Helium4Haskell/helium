@@ -24,6 +24,7 @@ import qualified Helium.CodeGeneration.LLVM.Builtins as Builtins
 
 import Lvm.Common.Id(Id, NameSupply, splitNameSupply, splitNameSupplies, mapWithSupply, freshId, idFromString)
 import Lvm.Common.IdMap(findMap)
+import qualified Lvm.Core.Type as Core
 
 import qualified Helium.CodeGeneration.Iridium.Data as Iridium
 import qualified Helium.CodeGeneration.Iridium.Type as Iridium
@@ -62,8 +63,8 @@ compileInstruction env supply (Iridium.LetAlloc binds next) =
 compileInstruction env supply (Iridium.Jump to) = Partial [] (Do $ Br (toName to) []) []
 compileInstruction env supply (Iridium.Return var) = Partial [] (Do $ Ret (Just $ toOperand env var) []) []
 -- A Match has undefined behaviour if it does not match, so we do not need to check whether it actually matches.
-compileInstruction env supply (Iridium.Match var _ [] next) = compileInstruction env supply next
-compileInstruction env supply (Iridium.Match var target args next)
+compileInstruction env supply (Iridium.Match var _ _ [] next) = compileInstruction env supply next
+compileInstruction env supply (Iridium.Match var target _ args next)
   = [ addressName := AST.BitCast (toOperand env var) (pointer t) []
     ]
     +> compileExtractFields env supply'' address struct args
@@ -74,7 +75,7 @@ compileInstruction env supply (Iridium.Match var target args next)
     address = LocalReference (pointer t) addressName
     (supply'', supply''') = splitNameSupply supply'
     LayoutPointer struct = case target of
-      Iridium.MatchTargetConstructor (Iridium.DataTypeConstructor _ conId _) -> findMap conId (envConstructors env)
+      Iridium.MatchTargetConstructor (Iridium.DataTypeConstructor conId _) -> findMap conId (envConstructors env)
       Iridium.MatchTargetThunk arity -> LayoutPointer $ thunkStruct arity
       Iridium.MatchTargetTuple arity -> LayoutPointer $ tupleStruct arity
 compileInstruction env supply (Iridium.Case var (Iridium.CaseConstructor alts))
@@ -168,39 +169,41 @@ compileExpression env supply (Iridium.Literal literal) name = [toName name := Bi
         ( Float $ Float.Double value
         , FloatingPointType DoubleFP
         )
-compileExpression env supply (Iridium.Call to@(Iridium.GlobalFunction global (Iridium.FunctionType argTypes retType)) args) name
+compileExpression env supply (Iridium.Call to@(Iridium.GlobalFunction global arity tp) args) name
   | not fakeIO =
     [ toName name := Call
         { tailCallKind = Nothing
         , callingConvention = compileCallingConvention convention
         , returnAttributes = []
         , function = Right $ toOperand env (Iridium.VarGlobal to)
-        , arguments = map (\arg -> (toOperand env arg, [])) args
+        , arguments = [(toOperand env arg, []) | Right arg <- args]
         , functionAttributes = []
         , metadata = []
         }
     ]
   | otherwise =
-    [ toName nameValue := Call
-        { tailCallKind = Nothing
-        , callingConvention = compileCallingConvention convention
-        , returnAttributes = []
-        , function = Right $ toOperand env (Iridium.VarGlobal (Iridium.GlobalFunction global $ Iridium.FunctionType (init argTypes) Iridium.TypeInt))
-        , arguments = map (\arg -> (toOperand env arg, [])) $ init args
-        , functionAttributes = []
-        , metadata = []
-        }
-    ]
-    ++ [toName nameRealWorld := Select (ConstantOperand $ Int 1 1) (ConstantOperand $ Undef tRealWorld) (ConstantOperand $ Undef tRealWorld) []]
-    ++ compileBinds env supply'' [Iridium.Bind name (Iridium.BindTargetConstructor ioRes)
-        [Iridium.VarLocal $ Iridium.Local nameValue Iridium.TypeInt, Iridium.VarLocal $ Iridium.Local nameRealWorld Iridium.TypeRealWorld]]
+    let Iridium.FunctionType argTypes _ = Iridium.extractFunctionTypeWithArity (envTypeEnv env) arity tp
+    in
+      [ toName nameValue := Call
+          { tailCallKind = Nothing
+          , callingConvention = compileCallingConvention convention
+          , returnAttributes = []
+          , function = Right $ toOperand env (Iridium.VarGlobal (Iridium.GlobalFunction global (arity - 1) $ Iridium.typeFromFunctionType $ Iridium.FunctionType (init argTypes) $ Core.TCon $ Core.TConDataType $ idFromString "Int"))
+          , arguments = [(toOperand env arg, []) | Right arg <- init args]
+          , functionAttributes = []
+          , metadata = []
+          }
+      ]
+      ++ [toName nameRealWorld := Select (ConstantOperand $ Int 1 1) (ConstantOperand $ Undef tRealWorld) (ConstantOperand $ Undef tRealWorld) []]
+      ++ compileBinds env supply'' [Iridium.Bind name (Iridium.BindTargetConstructor ioRes)
+          [Left Iridium.typeInt, Right $ Iridium.VarLocal $ Iridium.Local nameValue Iridium.typeInt, Right $ Iridium.VarLocal $ Iridium.Local nameRealWorld Iridium.typeRealWorld]]
   where
     EnvMethodInfo convention fakeIO = findMap global (envMethodInfo env)
     (nameValue, supply') = freshId supply
     (nameRealWorld, supply'') = freshId supply'
-    ioRes = Iridium.DataTypeConstructor ioResId ioResId [Iridium.TypeAny, Iridium.TypeRealWorld]
+    ioRes = Iridium.DataTypeConstructor ioResId $ Iridium.typeFromFunctionType $ Iridium.FunctionType [Left $ Core.Quantor 0 Nothing, Right $ Core.TVar 0, Right Iridium.typeRealWorld] Iridium.typeRealWorld
     ioResId = idFromString "IORes"
-    tRealWorld = compileType env Iridium.TypeRealWorld
+    tRealWorld = compileType env Iridium.typeRealWorld
 compileExpression env supply (Iridium.Eval var) name = compileEval env supply (toOperand env var) (Iridium.variableType var) $ toName name
 compileExpression env supply (Iridium.Var var) name = cast supply env (toOperand env var) (toName name) t t
   where t = Iridium.variableType var
@@ -210,32 +213,29 @@ compileExpression env supply (Iridium.Seq _ var) name = cast supply env (toOpera
   where t = Iridium.variableType var
 compileExpression env supply expr@(Iridium.Phi branches) name = [toName name := Phi (compileType env t) (map compileBranch branches) []]
   where
-    t = Iridium.typeOfExpr expr
+    t = Iridium.typeOfExpr (envTypeEnv env) expr
     compileBranch :: Iridium.PhiBranch -> (Operand, Name)
     compileBranch (Iridium.PhiBranch blockId var) = (toOperand env var, toName blockId)
-compileExpression env supply (Iridium.PrimitiveExpr primName args) name = compile (envTarget env) supply (map (toOperand env) args) $ toName name
+compileExpression env supply (Iridium.PrimitiveExpr primName args) name = compile (envTarget env) supply [toOperand env arg | Right arg <- args] $ toName name
   where
-    (Iridium.Primitive _ _ compile) = Iridium.findPrimitive primName
+    (Iridium.Primitive _ compile) = Iridium.findPrimitive primName
 compileExpression env supply (Iridium.Undefined ty) name = [toName name := Select (ConstantOperand $ Int 1 1) (ConstantOperand $ Undef t) (ConstantOperand $ Undef t) []]
   where
     t = compileType env ty
 
-compileEval :: Env -> NameSupply -> Operand -> Iridium.PrimitiveType -> Name -> [Named Instruction]
-compileEval env supply operand Iridium.TypeAny name =
-  [ namePtr := ExtractValue operand [0] []
-  , nameIsWHNF := ExtractValue operand [1] []
-  , nameIsWHNFExt := ZExt (LocalReference bool nameIsWHNF) (envValueType env) []
-  , name := callEval (LocalReference voidPointer namePtr) (LocalReference (envValueType env) nameIsWHNFExt)
-  ]
+compileEval :: Env -> NameSupply -> Operand -> Core.Type -> Name -> [Named Instruction]
+compileEval env supply operand tp name
+  | Core.typeIsStrict tp = copy env operand name tp
+  | otherwise =
+    [ namePtr := ExtractValue operand [0] []
+    , nameIsWHNF := ExtractValue operand [1] []
+    , nameIsWHNFExt := ZExt (LocalReference bool nameIsWHNF) (envValueType env) []
+    , name := callEval (LocalReference voidPointer namePtr) (LocalReference (envValueType env) nameIsWHNFExt)
+    ]
   where
     (namePtr, supply') = freshName supply
     (nameIsWHNF, supply'') = freshName supply'
     (nameIsWHNFExt, _) = freshName supply''
-compileEval env supply operand Iridium.TypeAnyThunk name =
-  [ name := callEval operand (ConstantOperand $ Int (fromIntegral $ targetWordSize $ envTarget env) 0)
-  ]
-compileEval env supply operand primType name =
-  cast supply env operand name primType Iridium.TypeAnyWHNF
 
 callEval :: Operand -> Operand -> Instruction
 callEval pointer isWHNF =
@@ -252,7 +252,7 @@ callEval pointer isWHNF =
 data CaseAlt = CaseAlt Iridium.DataTypeConstructor ConstructorLayout Iridium.BlockName
 
 toCaseAlt :: Env -> (Iridium.DataTypeConstructor, Iridium.BlockName) -> CaseAlt
-toCaseAlt env (con@(Iridium.DataTypeConstructor _ conId _), block) = CaseAlt con layout block
+toCaseAlt env (con@(Iridium.DataTypeConstructor conId _), block) = CaseAlt con layout block
   where
     layout = findMap conId (envConstructors env)
 
@@ -267,7 +267,7 @@ compileCaseConstructorInline env supply var alts defaultBranch = ([nameInt := Pt
     switch :: Terminator
     switch = Switch (LocalReference (envValueType env) nameInt) (toName defaultBranch) (map altToDestination alts) []
     altToDestination :: CaseAlt -> (Constant, Name)
-    altToDestination (CaseAlt (Iridium.DataTypeConstructor _ conId _) (LayoutInline tag) to)
+    altToDestination (CaseAlt (Iridium.DataTypeConstructor conId _) (LayoutInline tag) to)
       = (Int (fromIntegral $ targetWordSize $ envTarget env) (fromIntegral $ 2 * tag + 1), toName to)
 
 compileCaseConstructorPointer :: Env -> NameSupply -> Iridium.Variable -> [CaseAlt] -> ([Named Instruction], Named Terminator)
@@ -290,7 +290,7 @@ compileCaseConstructorPointer env supply var alts = (instructions, (Do switch))
       ++ extractTag supply env (LocalReference t nameCasted) structFirst nameTag
 
     altToDestination :: CaseAlt -> (Constant, Name)
-    altToDestination (CaseAlt (Iridium.DataTypeConstructor _ conId _) (LayoutPointer struct) to)
+    altToDestination (CaseAlt (Iridium.DataTypeConstructor conId _) (LayoutPointer struct) to)
       = (Int (fromIntegral $ targetWordSize $ envTarget env) (fromIntegral $ tagValue struct), toName to)
 
     switch :: Terminator

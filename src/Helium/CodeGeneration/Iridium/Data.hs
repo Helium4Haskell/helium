@@ -15,12 +15,14 @@
 module Helium.CodeGeneration.Iridium.Data where
 
 import Lvm.Common.Id(Id, stringFromId, idFromString)
+import Lvm.Common.IdMap(mapFromList, emptyMap)
 import Lvm.Core.Module(Custom(..), DeclKind, Arity)
 import Lvm.Core.Type
 import Data.List(intercalate)
+import Data.Either (isLeft, isRight)
 
 import Helium.CodeGeneration.Iridium.Type
-import Helium.CodeGeneration.Iridium.Primitive(findPrimitive, primReturn)
+import Helium.CodeGeneration.Iridium.Primitive(findPrimitive, primType)
 
 type BlockName = Id
 
@@ -36,13 +38,26 @@ data Module = Module
 
 data DataType = DataType ![Declaration DataTypeConstructorDeclaration]
 
-data DataTypeConstructorDeclaration = DataTypeConstructorDeclaration ![Quantor] ![Type]
+data DataTypeConstructorDeclaration = DataTypeConstructorDeclaration !Type
 
-data DataTypeConstructor = DataTypeConstructor { constructorDataType :: !Id, constructorName :: !Id, constructorType :: !Type }
+data DataTypeConstructor = DataTypeConstructor { constructorName :: !Id, constructorType :: !Type }
   deriving (Eq, Ord)
 
+constructorDataType :: DataTypeConstructor -> Id
+constructorDataType cons = findName $ findReturn $ constructorType cons
+  where
+    findReturn :: Type -> Type
+    findReturn (TForall _ _ t) = findReturn t
+    findReturn (TAp (TAp (TCon TConFun) _) t) = findReturn t
+    findReturn t = t
+    findName :: Type -> Id
+    findName (TAp t _) = findName t
+    findName (TCon (TConDataType name)) = name
+    findName (TCon (TConTypeClassDictionary name)) = idFromString $ ("Dict$" ++ stringFromId name)
+    findName t = error ("constructorDataType: Could not find data type name in type " ++ showType [] t)
+
 getConstructors :: Declaration DataType -> [DataTypeConstructor]
-getConstructors (Declaration dataName _ _ _ (DataType cons)) = map (\(Declaration conId _ _ _ (DataTypeConstructorDeclaration fields)) -> DataTypeConstructor dataName conId fields) cons
+getConstructors (Declaration dataName _ _ _ (DataType cons)) = map (\(Declaration conId _ _ _ (DataTypeConstructorDeclaration tp)) -> DataTypeConstructor conId tp) cons
 
 data Visibility = ExportedAs !Id | Private deriving (Eq, Ord)
 
@@ -63,8 +78,20 @@ instance Functor Declaration where
 data AbstractMethod = AbstractMethod !Arity !Type ![Annotation]
   deriving (Eq, Ord)
 
-data Method = Method ![Either Quantor Local] !Type ![Annotation] !Block ![Block]
+abstractFunctionType :: TypeEnvironment -> AbstractMethod -> FunctionType
+abstractFunctionType env (AbstractMethod arity tp _) = extractFunctionTypeWithArity env arity tp
+
+data Method = Method !Type ![Either Quantor Local] !Type ![Annotation] !Block ![Block]
   deriving (Eq, Ord)
+
+methodFunctionType :: Method -> FunctionType
+methodFunctionType (Method _ args returnType _ _ _) = FunctionType (map arg args) returnType
+  where
+    arg (Left quantor) = Left quantor
+    arg (Right (Local _ tp)) = Right tp
+
+methodType :: Method -> Type
+methodType (Method tp _ _ _ _ _) = tp
 
 -- Annotations on methods
 data Annotation
@@ -92,7 +119,7 @@ data Local = Local { localName :: !Id, localType :: !Type }
   deriving (Eq, Ord)
 
 data Global
-  = GlobalFunction !Id !FunctionType
+  = GlobalFunction !Id !Arity !Type
   | GlobalVariable !Id !Type
   deriving (Eq, Ord)
 
@@ -126,7 +153,7 @@ data Instruction
   -- tuples and thunks. Pattern matching on thunks is not possible from Haskell code, but is used to write the
   -- runtime library. If the variable does not match with the specified MatchTarget, the behaviour is undefined.
   -- Extracts fields out of the object.
-  | Match !Variable !MatchTarget ![Maybe Id] !Instruction
+  | Match !Variable !MatchTarget ![Type] ![Maybe Id] !Instruction
   -- * Conditionally jumps to a block, depending on the value of the variable. Can be used to distinguish
   -- different constructors of a data type, or on integers.
   | Case !Variable Case
@@ -141,7 +168,7 @@ data Instruction
 -- * A bind describes the construction of an object in a 'letalloc' instruction. It consists of the
 -- variable to which the object is bound, the target and argument. A target represents what kind of object
 -- is created.
-data Bind = Bind { bindVar :: !Id, bindTarget :: !BindTarget, bindArguments :: ![Variable] }
+data Bind = Bind { bindVar :: !Id, bindTarget :: !BindTarget, bindArguments :: ![Either Type Variable] }
   deriving (Eq, Ord)
 
 -- * A bind can either construct a thunk, a constructor or a tuple. For thunks, we distinguish
@@ -152,9 +179,9 @@ data BindTarget
   -- * The object points at another thunk and is thus a secondary thunk.
   | BindTargetThunk !Variable
   -- * The bind represents a constructor invocation.
-  | BindTargetConstructor !DataTypeConstructor ![Type]
+  | BindTargetConstructor !DataTypeConstructor
   -- * The bind represents the construction of a tuple.
-  | BindTargetTuple ![Type]
+  | BindTargetTuple !Arity
   deriving (Eq, Ord)
 
 -- * A 'match' instruction can pattern match on constructors, tuples or thunks. The latter
@@ -168,27 +195,57 @@ data MatchTarget
   | MatchTargetTuple !Arity
   deriving (Eq, Ord)
 
+matchArgumentType :: MatchTarget -> [Type] -> Type
+matchArgumentType (MatchTargetConstructor (DataTypeConstructor _ tp)) instantiation = typeToStrict ret
+  where
+    FunctionType _ ret = extractFunctionTypeNoSynonyms $ typeApplyList tp instantiation
+matchArgumentType (MatchTargetThunk _) _ = typeToStrict $ TCon $ TConDataType $ idFromString "$UnsafePtr"
+matchArgumentType (MatchTargetTuple arity) instantiation = foldr TAp (TCon $ TConTuple arity) instantiation
+
+matchFieldTypes :: MatchTarget -> [Type] -> [Type]
+matchFieldTypes (MatchTargetConstructor (DataTypeConstructor _ tp)) instantiation =
+  [ arg | Right arg <- args ]
+  where
+    FunctionType args _ = extractFunctionTypeNoSynonyms $ typeApplyList tp instantiation
+
+typeApplyArguments :: TypeEnvironment -> Type -> [Either Type Variable] -> Type
+typeApplyArguments env t1@(TForall _ _ _) (Left t2 : args) = typeApplyArguments env t1' args
+  where
+    t1' = typeApply t1 t2
+typeApplyArguments env (TAp (TAp (TCon TConFun) _) tReturn) (Right _ : args) = typeApplyArguments env tReturn args
+typeApplyArguments env tp [] = tp
+typeApplyArguments env tp args = case tp' of
+  TForall _ _ _
+    | isLeft $ head args -> typeApplyArguments env tp' args
+  TAp (TAp (TCon TConFun) _) _
+    | isRight $ head args -> typeApplyArguments env tp' args
+  _
+    | isRight $ head args -> error ("typeApplyArguments: expected a function type, got " ++ showType [] tp')
+    | otherwise -> error ("typeApplyArguments: expected a forall type, got " ++ showType [] tp')
+  where
+    tp' = case typeNormalizeHead env tp of
+      TStrict tp' -> tp'
+      tp' -> tp'
+
 -- * Find the type of the constructed object in a Bind
-bindType :: Bind -> PrimitiveType
+bindType :: TypeEnvironment -> Bind -> Type
 -- In case of a constructor application, we get a value in WHNF of the related data type.
-bindType (Bind _ (BindTargetConstructor (DataTypeConstructor dataName _ _)) _) = TypeDataType dataName
+bindType env (Bind _ (BindTargetConstructor cons) args) = typeToStrict $ typeApplyArguments env (constructorType cons) args
 -- For a tuple, we get a value in WHNF of the given tuple size.
-bindType (Bind _ (BindTargetTuple _) args) = TypeTuple $ length args
+bindType env (Bind _ (BindTargetTuple arity) args) = typeToStrict $ typeApplyArguments env (TCon $ TConTuple arity) args
 -- When binding to a global function, we get a thunk in WHNF (TypeFunction) if not enough arguments were passed,
 -- or TypeAnyThunk (not in WHNF) otherwise.
-bindType (Bind _ (BindTargetFunction (VarGlobal (GlobalFunction fn (FunctionType fnargs _)))) args)
-  | length args >= length fnargs = TypeAnyThunk
-  | otherwise = TypeFunction
-bindType _ = TypeAnyThunk
+bindType env (Bind _ (BindTargetFunction (VarGlobal (GlobalFunction fn arity fntype))) args)
+  | arity > valueArgCount = typeToStrict $ tp
+  | otherwise = tp
+  where
+    tp = typeApplyArguments env fntype args
+    valueArgCount = length $ filter isRight args
+bindType env (Bind _ (BindTargetFunction fn) args) = typeApplyArguments env (variableType fn) args
+bindType env (Bind _ (BindTargetThunk fn) args) = typeApplyArguments env (variableType fn) args
 
-bindLocal :: Bind -> Local
-bindLocal b@(Bind var _ _) = Local var $ bindType b
-
-bindTargetArgumentTypes :: BindTarget -> [PrimitiveType]
-bindTargetArgumentTypes (BindTargetConstructor (DataTypeConstructor _ _ args)) = args
-bindTargetArgumentTypes (BindTargetTuple arity) = replicate arity TypeAny
-bindTargetArgumentTypes (BindTargetFunction (VarGlobal (GlobalFunction _ (FunctionType fnargs _)))) = fnargs
-bindTargetArgumentTypes _ = repeat TypeAny
+bindLocal :: TypeEnvironment -> Bind -> Local
+bindLocal env b@(Bind var _ _) = Local var $ bindType env b
 
 -- * Expressions are used to bind values to variables in 'let' instructions.
 -- Those binds cannot be recursive.
@@ -196,21 +253,22 @@ data Expr
   -- A literal value. Note that strings are allocated, integers and floats not.
   = Literal !Literal
   -- Calls a function. The number of arguments should be equal to the number of parameters of the specified function.
-  | Call !Global ![Variable]
+  | Call !Global ![Either Type Variable]
+  | Instantiate !Variable ![Type]
   -- Evaluates a value to WHNF or returns the value if it is already in WHNF.
   | Eval !Variable
   -- Gets the value of a variable. Does not evaluate the variable.
   | Var !Variable
   -- Casts a variable to a (possibly) different type.
-  | Cast !Variable !PrimitiveType
+  | Cast !Variable !Type
   -- Represents a phi node in the control flow of the method. Gets a value, based on the previous block.
   | Phi ![PhiBranch]
   -- Calls a primitive instruction, like integer addition. The number of arguments should be equal to the number of parameters
   -- that the primitive expects.
-  | PrimitiveExpr !Id ![Variable]
+  | PrimitiveExpr !Id ![Either Type Variable]
   -- Denotes an undefined value, not the Haskell function 'undefined'. This expression does not throw, but just has some unknown value.
   -- This can be used for a value which is not used.
-  | Undefined !PrimitiveType
+  | Undefined !Type
   -- `%c = seq %a %b` marks a dependency between variables %a and %b. Assigns %b to %c and ignores the value of %a. 
   -- Prevents that variable %a is removed by dead code removal. Can be used to compile the Haskell functions `seq` and `pseq`.
   | Seq !Variable !Variable
@@ -225,39 +283,41 @@ data Literal
   | LitString !String
   deriving (Eq, Ord)
 
-typeOfExpr :: Expr -> PrimitiveType
-typeOfExpr (Literal (LitFloat precision _)) = TypeFloat precision
-typeOfExpr (Literal (LitString _)) = TypeDataType (idFromString "[]")
-typeOfExpr (Literal _) = TypeInt
-typeOfExpr (Call (GlobalFunction _ (FunctionType _ ret)) _) = ret
-typeOfExpr (Eval _) = TypeAnyWHNF
-typeOfExpr (Var v) = variableType v
-typeOfExpr (Cast _ t) = t
-typeOfExpr (Phi []) = error "typeOfExpr: Empty phi node. A phi expression should have at least 1 branch."
-typeOfExpr (Phi (PhiBranch _ var : _)) = variableType var
-typeOfExpr (PrimitiveExpr name _) = primReturn $ findPrimitive name
-typeOfExpr (Undefined t) = t
-typeOfExpr (Seq _ v) = variableType v
+typeOfExpr :: TypeEnvironment -> Expr -> Type
+typeOfExpr _ (Literal (LitFloat precision _)) = TStrict $ TCon $ TConDataType $ idFromString "Float" -- TODO: Precision
+typeOfExpr _ (Literal (LitString _)) = TStrict $ TAp (TCon $ TConDataType $ idFromString "[]") $ TCon $ TConDataType $ idFromString "Char"
+typeOfExpr _ (Literal _) = TStrict $ TCon $ TConDataType $ idFromString "Int" -- TODO: Distinguish int and char
+typeOfExpr env (Call (GlobalFunction _ _ t) args) = typeToStrict $ typeApplyArguments env t args
+typeOfExpr env (Instantiate v args) = typeNormalizeHead env $ typeApplyList (variableType v) args
+typeOfExpr _ (Eval v) = typeToStrict $ variableType v
+typeOfExpr _ (Var v) = variableType v
+typeOfExpr _ (Cast _ t) = t
+typeOfExpr _ (Phi []) = error "typeOfExpr: Empty phi node. A phi expression should have at least 1 branch."
+typeOfExpr _ (Phi (PhiBranch _ var : _)) = variableType var
+typeOfExpr env (PrimitiveExpr name args) = typeApplyArguments env (typeFromFunctionType $ primType $ findPrimitive name) args
+typeOfExpr _ (Undefined t) = t
+typeOfExpr _ (Seq _ v) = variableType v
 
 dependenciesOfExpr :: Expr -> [Variable]
 dependenciesOfExpr (Literal _) = []
-dependenciesOfExpr (Call g args) = VarGlobal g : args
+dependenciesOfExpr (Call g args) = VarGlobal g : [arg | Right arg <- args]
+dependenciesOfExpr (Instantiate var _) = [var]
 dependenciesOfExpr (Eval var) = [var]
 dependenciesOfExpr (Var var) = [var]
 dependenciesOfExpr (Cast var _) = [var]
-dependenciesOfExpr (Phi branches) = map (phiVariable) branches
-dependenciesOfExpr (PrimitiveExpr _ args) = args
+dependenciesOfExpr (Phi branches) = map phiVariable branches
+dependenciesOfExpr (PrimitiveExpr _ args) = [arg | Right arg <- args]
 dependenciesOfExpr (Undefined _) = []
 dependenciesOfExpr (Seq v1 v2) = [v1, v2]
 
-variableType :: Variable -> PrimitiveType
+variableType :: Variable -> Type
 variableType (VarLocal (Local _ t)) = t
-variableType (VarGlobal (GlobalFunction _ fntype)) = TypeGlobalFunction fntype
+variableType (VarGlobal (GlobalFunction _ _ t)) = t
 variableType (VarGlobal (GlobalVariable _ t)) = t
 
 variableName :: Variable -> Id
 variableName (VarLocal (Local x _)) = x
-variableName (VarGlobal (GlobalFunction x _)) = x
+variableName (VarGlobal (GlobalFunction x _ _)) = x
 variableName (VarGlobal (GlobalVariable x _)) = x
 
 callingConvention :: [Annotation] -> CallingConvention
@@ -268,3 +328,8 @@ callingConvention (_ : as) = callingConvention as
 -- Checks whether this module has a declaration or definition for this function
 declaresFunction :: Module -> Id -> Bool
 declaresFunction (Module _ _ _ _ _ abstracts methods) name = any ((== name) . declarationName) abstracts || any ((== name) . declarationName) methods
+
+envWithSynonyms :: Module -> TypeEnvironment
+envWithSynonyms (Module _ _ _ _ synonyms _ _) = TypeEnvironment (mapFromList synonymsList) emptyMap
+  where
+    synonymsList = map (\(Declaration name _ _ _ (TypeSynonym tp)) -> (name, tp)) synonyms

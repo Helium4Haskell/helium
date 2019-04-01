@@ -5,25 +5,58 @@ import Helium.CodeGeneration.Iridium.Parse.Type
 import Helium.CodeGeneration.Iridium.Parse.Instruction
 import Helium.CodeGeneration.Iridium.Parse.Expression
 import Helium.CodeGeneration.Iridium.Data
+import Helium.CodeGeneration.Iridium.Type
 import Lvm.Common.Id(Id, idFromString)
+import Lvm.Core.Type
+import Data.Maybe
 
 pMethod :: Parser Method
 pMethod = do
-  args <- pArguments pLocal
+  c <- lookahead
+  tp <- if c == ':' then do
+    pToken ':'
+    pWhitespace
+    pToken '{'
+    pWhitespace
+    tp <- pType
+    pWhitespace
+    pToken '}'
+    pWhitespace
+    pToken '$'
+    pWhitespace
+    return $ Just tp
+  else
+    return Nothing
+  pToken '('
+  pWhitespace
+  let emptyQuantors = QuantorIndexing 0 [] []
+  c <- lookahead
+  (args, quantors) <-
+    if c == ')' then
+      return ([], emptyQuantors)
+    else
+      pMethodArguments (QuantorIndexing 0 [] [])
+  pToken ')'
+  pWhitespace
+  pToken ':'
+  pWhitespace
+  returnType <- pType' quantors
+  annotations <- pAnnotations
   pWhitespace
   c <- pChar
+  let tp' = fromMaybe (typeFromFunctionType $ FunctionType (map toArg args) returnType) tp
   case c of
-    ':' ->
-      (\rettype annotations (b:bs) -> Method args rettype annotations b bs) <$ pWhitespace <*> pType <* pWhitespace <*> pAnnotations <* pWhitespace <* pToken '{' <* pWhitespace <*> pSome pBlock pSep
+    '{' ->
+      (\(b:bs) -> Method tp' args returnType annotations b bs) <$ pWhitespace <*> pSome (pBlock quantors) pSep
     '=' -> do
       -- Shorthand for a function that computes a single expression and returns it
       pWhitespace
-      expr <- pExpression
+      expr <- pExpression quantors
       annotations <- pAnnotations
       let result = idFromString "result"
-      let returnType = typeOfExpr expr 
       let b = Block (idFromString "entry") (Let result expr $ Return $ VarLocal $ Local result returnType)
-      return $ Method args returnType annotations b []
+      return $ Method tp' args returnType annotations b []
+    _ -> pError "Expected '{' or '=' in a method declaration"
   where
     pSep :: Parser Bool
     pSep = do
@@ -35,12 +68,40 @@ pMethod = do
         return False
       else
         return True
+    toArg (Left quantor) = Left quantor
+    toArg (Right (Local _ t)) = Right t
 
-pBlock :: Parser Block
-pBlock = Block <$> pId <* pToken ':' <* pWhitespace <*> pInstruction <* pWhitespace
+pMethodArguments :: QuantorIndexing -> Parser ([Either Quantor Local], QuantorIndexing)
+pMethodArguments quantors = do
+  (arg, quantors') <- pMethodArgument quantors
+  pWhitespace
+  c <- lookahead
+  if c == ',' then do
+    pChar
+    pWhitespace
+    (args, quantors'') <- pMethodArguments quantors'
+    return (arg : args, quantors'')
+  else
+    return ([arg], quantors')
+
+pMethodArgument :: QuantorIndexing -> Parser (Either Quantor Local, QuantorIndexing)
+pMethodArgument quantors = do
+  c <- lookahead
+  case c of
+    '%' -> do
+      arg <- pLocal quantors
+      return (Right arg, quantors)
+    _ -> do
+      pSymbol "forall"
+      pWhitespace
+      (quantor, quantors') <- pQuantor quantors
+      return (Left quantor, quantors')
+
+pBlock :: QuantorIndexing -> Parser Block
+pBlock quantors = Block <$> pId <* pToken ':' <* pWhitespace <*> pInstruction quantors <* pWhitespace
 
 pAbstractMethod :: Parser AbstractMethod
-pAbstractMethod = AbstractMethod <$ pToken ':' <* pWhitespace <*> pFunctionType <* pWhitespace <*> pAnnotations
+pAbstractMethod = AbstractMethod <$ pToken '[' <* pWhitespace <*> pUnsignedInt <* pToken ']' <* pToken ':' <* pWhitespace <* pToken '{' <* pWhitespace <*> pType <* pToken '}' <* pWhitespace <*> pAnnotations
 
 pAnnotations :: Parser [Annotation]
 pAnnotations =

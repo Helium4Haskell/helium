@@ -8,14 +8,14 @@
 module LvmLang
     ( Bytes, Int, Float
     , Bool(True, False), '':[]''('':[]'', (:)), '':()''('':()'')
-    , IO, Char, Double, PackedString, String
+    , IO(..), IORes(..), Char, Double, PackedString, String
     
     , packedFromString, stringFromPacked, packedLength
     , ($!), seq, pseq
+    , ''$primUnsafeCast''
 
     -- IO
     , unsafePerformIO, unsafePerformStrictIO
-    , fmapIO, pureIO, apIO, bindIO, returnIO
     , ''$primPutStrLn''
     , putChar
     , getChar
@@ -90,8 +90,8 @@ data Bytes
 data Int
 data Float
 
-data '':[]'' v$0 = '':[]'' | (:) v$0 [v$0]
-data '':()''    = '':()''
+-- data '':[]'' v$0 = '':[]'' | (:) v$0 [v$0]
+-- data '':()''    = '':()''
 
 {----------------------------------------------------------
   Type definitions
@@ -116,110 +116,110 @@ pseq = forall v$0. forall v$1. \a: v$0 -> \b: v$1 -> primPseq {v$0} {v$1} a b
 {----------------------------------------------------------
   Basic arithmetic on Int's
 ----------------------------------------------------------}
-(+#) :: Int -> Int -> Int!
+(+#) :: Int -> Int -> Int
 (+#) = \x: Int -> \y: Int -> primAddInt x y
 
-(-#) :: Int -> Int -> Int!
+(-#) :: Int -> Int -> Int
 (-#) = \x: Int -> \y: Int -> primSubInt x y
 
-(*#) :: Int -> Int -> Int!
+(*#) :: Int -> Int -> Int
 (*#) = \x: Int -> \y: Int -> primMulInt x y
 
 -- TODO: Round to -inf instead of zero
-div :: Int -> Int -> Int!
+div :: Int -> Int -> Int
 div = \x: Int -> \y: Int -> quot x y -- primDivInt x y
 
 -- TODO: Round to -inf instead of zero
-mod :: Int -> Int -> Int!
+mod :: Int -> Int -> Int
 mod = \x: Int -> \y: Int -> rem x y -- primModInt x y
 
-quot :: Int -> Int -> Int!
+quot :: Int -> Int -> Int
 quot = \x: Int -> \y: Int -> primQuotInt x y
 
-rem :: Int -> Int -> Int!
+rem :: Int -> Int -> Int
 rem = \x: Int -> \y: Int -> primRemInt x y
 {-
-and :: Int -> Int -> Int!
+and :: Int -> Int -> Int
 and = \x: Int -> \y: Int -> primAndInt x y
 
-xor :: Int -> Int -> Int!
+xor :: Int -> Int -> Int
 xor = \x: Int -> \y: Int -> primXorInt x y
 
-or :: Int -> Int -> Int!
+or :: Int -> Int -> Int
 or = \x: Int -> \y: Int -> primOrInt x y
 -}
-shr :: Int -> Int -> Int!
+shr :: Int -> Int -> Int
 shr = \x: Int -> \y: Int -> primShrInt x y
 
-shl :: Int -> Int -> Int!
+shl :: Int -> Int -> Int
 shl = \x: Int -> \y: Int -> primShlInt x y
 
-shrNat :: Int -> Int -> Int!
+shrNat :: Int -> Int -> Int
 shrNat = \x: Int -> \y: Int -> primShrNat x y
 
-negInt :: Int -> Int!
+negInt :: Int -> Int
 negInt = \x: Int -> primNegInt x
 
 {----------------------------------------------------------
   Comparisons on Int's
 ----------------------------------------------------------}
-(==#) :: Int -> Int -> Bool!
+(==#) :: Int -> Int -> Bool
 (==#) = \x: Int -> \y: Int -> primEqInt x y
 
-(/=#) :: Int -> Int -> Bool!
+(/=#) :: Int -> Int -> Bool
 (/=#) = \x: Int -> \y: Int -> primNeInt x y
 
-(<#) :: Int -> Int -> Bool!
+(<#) :: Int -> Int -> Bool
 (<#) = \x: Int -> \y: Int -> primLtInt x y
 
-(>#) :: Int -> Int -> Bool!
+(>#) :: Int -> Int -> Bool
 (>#) = \x: Int -> \y: Int -> primGtInt x y
 
-(<=#) :: Int -> Int -> Bool!
+(<=#) :: Int -> Int -> Bool
 (<=#) = \x: Int -> \y: Int -> primLeInt x y
 
-(>=#) :: Int -> Int -> Bool!
+(>=#) :: Int -> Int -> Bool
 (>=#) = \x: Int -> \y: Int -> primGeInt x y
 
 {----------------------------------------------------------
   Basic arithmetic on Float's
 ----------------------------------------------------------}
 
-(+.) :: Float -> Float -> Float!
+(+.) :: Float -> Float -> Float
 (+.) = \x: Float -> \y: Float -> primAddFloat x y
 
-(-.) :: Float -> Float -> Float!
+(-.) :: Float -> Float -> Float
 (-.) = \x: Float -> \y: Float -> primSubFloat x y
 
-(*.) :: Float -> Float -> Float!
+(*.) :: Float -> Float -> Float
 (*.) = \x: Float -> \y: Float -> primMulFloat x y
 
-(/.) :: Float -> Float -> Float!
+(/.) :: Float -> Float -> Float
 (/.) = \x: Float -> \y: Float -> primDivFloat x y
 
-negFloat :: Float -> Float!
+negFloat :: Float -> Float
 negFloat = \x: Float -> primNegFloat x
 
 {----------------------------------------------------------
   Comparisons on Float's
 ----------------------------------------------------------}
 
-(==.) :: Float -> Float -> Bool!
+(==.) :: Float -> Float -> Bool
 (==.) = \x: Float -> \y: Float -> primEqFloat x y
 
-(/=.) :: Float -> Float -> Bool!
+(/=.) :: Float -> Float -> Bool
 (/=.) = \x: Float -> \y: Float -> primNeFloat x y
 
-(<.) :: Float -> Float -> Bool!
+(<.) :: Float -> Float -> Bool
 (<.) = \x: Float -> \y: Float -> primLtFloat x y
 
-(>.) :: Float -> Float -> Bool!
+(>.) :: Float -> Float -> Bool
 (>.) = \x: Float -> \y: Float -> primGtFloat x y
 
-(<=.) :: Float -> Float -> Bool!
+(<=.) :: Float -> Float -> Bool
 (<=.) = \x: Float -> \y: Float -> primLeFloat x y
 
-(>=.) :: Float -> Float -> Bool!
+(>=.) :: Float -> Float -> Bool
 (>=.) = \x: Float -> \y: Float -> primGeFloat x y
 
 {----------------------------------------------------------
@@ -273,59 +273,13 @@ foldlStrict f z xs
       []       -> z
 -}
 
-
-{----------------------------------------------------------
-  The IO monad
-----------------------------------------------------------}
-bindIO :: forall v$0. forall v$1. IO v$0 -> (v$0 -> IO v$1) -> IO v$1
-bindIO = forall v$0. \a: IO v$0 -> \f: (v$0 -> IO v$1) -> case a of
-  IO ioA ->
-    IO {v$1}
-      (
-        \world: RealWorld -> let! res: IORes v$0 = ioA world in case res of
-          IORes x world' ->
-            ( let! b: IO v$1 = f x in case b of
-                IO ioB -> ioB world'
-            )
-      )
-
-returnIO :: forall v$0. v$0 -> IO v$0
-returnIO = forall v$0. \x: v$0 -> IO {v$0} (\world: RealWorld -> IORes {v$0} x world)
-
-fmapIO :: forall v$0. (v$0 -> v$1) -> IO v$0 -> IO v$1
-fmapIO = forall v$0. forall v$1. \f: (v$0 -> v$1) -> \ioA: IO v$0 -> IO {v$1} (
-    \world: RealWorld ->
-      case ioA of
-        IO op ->
-          let! res: IORes v$0 = op world
-          in case res of
-            IORes x world' -> IORes {v$1} (f x) world'
-  )
-
-pureIO :: forall v$0. v$0 -> IO v$0
-pureIO = \x: v$0 -> returnIO x
-
-apIO :: forall v$0. forall v$1. IO (v$0 -> v$1) -> IO v$0 -> IO v$1
-apIO = forall v$0. forall v$1. \fIO: IO (v$0 -> v$1) -> \vIO: IO v$0 -> IO {v$1} (
-    \world: RealWorld ->
-      case fIO of
-        IO fOp -> case vIO of
-          IO vOp ->
-            let! fRes: IORes (v$0 -> v$1) = fOp world
-            in case fRes of
-              IORes f world' ->
-                let! vRes: IORes v$0 = vOp world'
-                in case vRes of
-                  IORes v world'' -> IORes {v$1} (f v) world''
-  )
-
 getChar :: IO Char
-getChar = IO (\world: RealWorld -> ''$primGetChar'' world)
+getChar = IO { Char } (\world: RealWorld -> ''$primGetChar'' world)
 
 putChar :: Char -> IO ()
-putChar = \char: Char -> IO
+putChar = \char: Char -> IO { () }
   (\world: RealWorld -> let! res: IORes Int = ''$primPutChar'' char world in case res of
-    IORes _ world2 -> IORes () world2
+    IORes { Int } _ world2 -> IORes { () } () world2
   )
 
 {-
