@@ -231,7 +231,7 @@ SEM Declaration
                                                 (constructFunctionMap @lhs.importEnv (length @superClasses) @name.self)
                                                 @where.whereDeclarations @name.self @loc.typeName (namesInType @loc.type)
                                             ] 
-                        loc .   typeName = showInstanceType $ makeTpFromType @typevariables @type
+                        loc .   typeName = showInstanceType $ convertTpToQualified (typeConstructors @lhs.importEnv) $ makeTpFromType @typevariables @type
                         loc .   err = error $ "Invalid class name " ++ getNameName @name.self
                         loc .   superClasses = fst (fromMaybe @err (M.lookup (getNameName @name.self) (classEnvironment @lhs.importEnv)))
                         loc .   typevariables = zip (namesInType @loc.type) [TVar n | n <- [0..]]
@@ -301,7 +301,7 @@ getSuperClasses = map (\(ContextItem_ContextItem _ n vs) -> (getNameName n, var 
         name _ = error "Type variable not a single name"
 
 predicateToId :: Predicate -> Id
-predicateToId (Predicate class_ tp) =
+predicateToId (Predicate class_ tp) = traceShowId $ 
     idFromString $ "$dict" ++ class_ ++ "$" ++ show tp
     
 dictionaryTreeToCore :: DictionaryTree -> Core.Expr
@@ -311,7 +311,7 @@ dictionaryTreeToCore theTree =
             Core.Var (predicateToId predicate)
         ByInstance className instanceName trees ->
             foldl Core.Ap
-                (Core.Var (idFromString ("$dict"++className++ "$" ++ (unQualifyName instanceName))))
+                (Core.Var (idFromString ("$dict"++className++ "$" ++ (instanceName))))
                (map dictionaryTreeToCore trees)
         BySuperClass subClass superClass tree -> 
             Core.Ap (Core.Var (idFromString ("$get" ++ superClass ++ "$" ++ subClass)))          
