@@ -18,29 +18,31 @@ import Lvm.Common.IdSet
 import Lvm.Core.Expr
 import Lvm.Core.Utils
 
+import Debug.Trace
+
 ----------------------------------------------------------------
 -- Environment: name supply, id's in scope & renamed identifiers
 ----------------------------------------------------------------
 data Env  = Env NameSupply IdSet (IdMap Id)
 
 renameBinders :: Env -> [Id] -> (Env, [Id])
-renameBinders env bs
-  = let (env',bs') = foldl (\(env1,ids) x1 -> renameBinder env1 x1 $ \env2 x2 -> (env2,x2:ids)) (env,[]) bs
-    in  (env',reverse bs')
+renameBinders env [] = (env, [])
+renameBinders env (x:xs) = renameBinder env x $ \env' x' ->
+  let (env'', xs') = renameBinders env' xs
+  in (env'', x' : xs')
 
 renameLetBinder :: Env -> Id -> (Env -> Id -> a) -> a
-renameLetBinder (Env supply inscope renaming) x cont
+renameLetBinder (Env supply vars renaming) x cont
     = let (x2,supply') = freshIdFromId x supply
-          inscope'      = insertSet x inscope
           renaming'     = extendMap x x2 renaming
-      in cont (Env supply' inscope' renaming') x2
+      in cont (Env supply' vars renaming') x2
 
 renameBinder :: Env -> Id -> (Env -> Id -> a) -> a
-renameBinder env@(Env supply set m) x cont
+renameBinder env@(Env _ set _) x cont
   | elemSet x set
-      = renameLetBinder env x cont
+    = renameLetBinder env x cont
   | otherwise
-      = cont (Env supply (insertSet x set) m) x
+    = cont env x
 
 renameVar :: Env -> Id -> Id
 renameVar (Env _ _ m) x
@@ -85,11 +87,11 @@ nsBinds env binds cont
       Rec _                -> rec_
   where
     nonrec make (Variable x1 t1) rhs
-      = renameLetBinder env x1 $ \env' x2 ->
+      = renameBinder env x1 $ \env' x2 ->
         cont env' (make (Bind (Variable x2 t1) (nsExpr env rhs)))
       
     rec_ 
-      = let (binds',env') = mapAccumBinds (\env1 (Variable x1 t1) rhs -> renameLetBinder env1 x1 $ \env2 x2 -> (Bind (Variable x2 t1) rhs,env2))
+      = let (binds',env') = mapAccumBinds (\env1 (Variable x1 t1) rhs -> renameBinder env1 x1 $ \env2 x2 -> (Bind (Variable x2 t1) rhs,env2))
                                            env binds
         in cont env' (zipBindsWith (\env1 (Variable x1 t1) rhs -> Bind (Variable x1 t1) (nsExpr env1 rhs)) (splitEnvs env') binds')
 
@@ -104,8 +106,9 @@ nsAlt env pat expr
 nsPat :: Env -> Pat -> (Pat, Env)
 nsPat env pat
   = case pat of
-      PatCon con tps ids -> let (env',ids') = renameBinders env ids
-                        in (PatCon con tps ids',env')
+      PatCon con tps ids ->
+        let (env',ids') = renameBinders env ids
+        in (PatCon con tps ids', env')
       other          -> (other,env)
 
 -- Analysis to find identifiers that have multiple definitions.
@@ -124,23 +127,16 @@ analyseDecl :: CoreDecl -> Analysis -> Analysis
 analyseDecl (DeclValue _ _ _ expr _) = dupUnion $ duplicateNames expr
 analyseDecl _ = id
 
-{-
-data Expr       = Let       !Binds Expr       
-                | Match     !Id Alts
-                | Ap        Expr Expr
-                | Lam       !Id Expr
-                | Con       !(Con Expr)
-                | Var       !Id
-                | Lit       !Literal
-                -}
 duplicateNames :: Expr -> Analysis
-duplicateNames (Let bs expr) = dupInserts (varsInBinds bs) $ duplicateNames expr
+duplicateNames (Let bs expr) = dupUnion (varsInBinds bs) $ duplicateNames expr
 duplicateNames (Match _ alts) = foldr1 dupUnion $ map duplicateNamesInAlt alts
 duplicateNames (Ap e1 e2) = dupUnion (duplicateNames e1) (duplicateNames e2)
 duplicateNames (Lam (Variable x _) expr) = dupInsert x $ duplicateNames expr
 duplicateNames (Forall _ _ expr) = duplicateNames expr
 duplicateNames (ApType expr _) = duplicateNames expr
-duplicateNames _ = emptyMap -- Con, Var or Lit
+duplicateNames (Con _) = emptyMap
+duplicateNames (Var _) = emptyMap
+duplicateNames (Lit _) = emptyMap
 
 duplicateNamesInAlt :: Alt -> Analysis
 duplicateNamesInAlt (Alt (PatCon _ _ args) expr) = dupInserts args $ duplicateNames expr
@@ -155,10 +151,10 @@ dupInsert name m = updateMap name (name `elemMap` m) m
 dupInserts :: [Id] -> Analysis -> Analysis
 dupInserts = flip $ foldr dupInsert
 
-varsInBinds :: Binds -> [Id]
-varsInBinds (Strict b) = return $ varInBind b
-varsInBinds (NonRec b) = return $ varInBind b
-varsInBinds (Rec bs) = map varInBind bs
+varsInBinds :: Binds -> Analysis
+varsInBinds (Strict b) = varsInBind b
+varsInBinds (NonRec b) = varsInBind b
+varsInBinds (Rec bs) = foldr (dupUnion . varsInBind) emptyMap bs
 
-varInBind :: Bind -> Id
-varInBind (Bind (Variable x _) _) = x
+varsInBind :: Bind -> Analysis
+varsInBind (Bind (Variable x _) expr) = dupInsert x $ duplicateNames expr
