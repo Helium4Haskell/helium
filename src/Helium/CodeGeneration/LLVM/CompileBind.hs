@@ -2,6 +2,7 @@ module Helium.CodeGeneration.LLVM.CompileBind (compileBinds, toStruct, thunkStru
 
 import Data.Bits(shiftL, (.|.), (.&.))
 import Data.Word(Word32)
+import Data.Either
 
 import Lvm.Common.Id(idFromString, Id, NameSupply, mapWithSupply, splitNameSupply)
 import Lvm.Common.IdMap(findMap)
@@ -36,31 +37,43 @@ compileBinds env supply binds = concat inits ++ concat assigns
 
 compileBind :: Env -> NameSupply -> Iridium.Bind -> ([Named Instruction], [Named Instruction])
 compileBind env supply b@(Iridium.Bind varId target args)
-  = compileBind' env supply b $ toStruct env target $ length args
+  = compileBind' env supply b $ toStruct env target $ length $ filter isRight args
 
 compileBind' :: Env -> NameSupply -> Iridium.Bind -> Either Int Struct -> ([Named Instruction], [Named Instruction])
 compileBind' env supply (Iridium.Bind varId target _) (Left tag) = 
-  ( [toName varId := AST.IntToPtr (ConstantOperand $ Constant.Int (fromIntegral $ targetWordSize $ envTarget env) value) (expectedType target) []]
+  ( [toName varId := AST.IntToPtr (ConstantOperand $ Constant.Int (fromIntegral $ targetWordSize $ envTarget env) value) voidPointer []]
   , [])
   where
     -- Put a '1' in the least significant bit to distinguish it from a pointer.
     value :: Integer
     value = fromIntegral tag * 2 + 1
-compileBind' env supply (Iridium.Bind varId target args) (Right struct) =
+compileBind' env supply bind@(Iridium.Bind varId target args) (Right struct) =
   ( concat splitInstructions
     ++ allocate env nameVoid nameStruct t struct
-    ++ [toName varId := BitCast (LocalReference voidPointer nameVoid) (expectedType target) []]
-  , initialize supplyInit env (LocalReference (pointer t) nameStruct) struct $ additionalArg ++ argOperands
+    ++ castBind
+  , concat additionalArgInstructions
+    ++ initialize supplyInit env (LocalReference (pointer t) nameStruct) struct (additionalArg ++ argOperands)
   )
   where
     t = structType env struct
-    additionalArg = bindArguments env target
+    (additionalArgInstructions, additionalArg) = unzip $ bindArguments env supplyAdditionalArgs target
     args' = [arg | Right arg <- args]
     (splitInstructions, argOperands) = unzip $ mapWithSupply (splitValueFlag env) supplyArgs (zip args' $ map fieldType $ drop (length additionalArg) $ fields struct)
     (supplyArgs, supply1) = splitNameSupply supply
     (supplyInit, supply2) = splitNameSupply supply1
-    (nameVoid, supply3) = freshName supply2
+    (supplyAdditionalArgs, supply3) = splitNameSupply supply2
+    (nameVoid, supply4) = freshName supply3
     (nameStruct, _) = freshNameFromId (nameSuggestion target) supply3
+    whnf = Iridium.typeIsStrict $ Iridium.bindType (envTypeEnv env) bind
+    castBind
+      | whnf = [toName varId := BitCast (LocalReference voidPointer nameVoid) voidPointer []]
+      | otherwise =
+        [toName varId := InsertValue
+          (ConstantOperand $ Constant.Struct Nothing True [Constant.Undef voidPointer, Constant.Int 1 0])
+          (LocalReference voidPointer nameVoid)
+          [0]
+          []
+        ]
 
 nameSuggestion :: Iridium.BindTarget -> Id
 nameSuggestion (Iridium.BindTargetConstructor _) = idCon
@@ -81,7 +94,7 @@ toStruct env target arity = Right $ Struct Nothing 32 tag fields
       Iridium.VarGlobal (Iridium.GlobalFunction _ fnArity _) -> fnArity - arity
       _ -> (1 `shiftL` 16) - 1 -- All 16 bits to 1
     targetType = case var of
-      Iridium.VarGlobal (Iridium.GlobalFunction _ _ _) -> Core.TCon $ Core.TConDataType $ idFromString "$Trampoline"
+      Iridium.VarGlobal (Iridium.GlobalFunction _ _ _) -> Core.TStrict $ Core.TCon $ Core.TConDataType $ idFromString "$Trampoline"
       _ -> Core.TVar (-1)
     fields = StructField targetType Nothing : map (\i -> StructField (Core.TVar i) (Just i)) [0..arity - 1] 
 
@@ -90,18 +103,23 @@ toTrampolineOperand _ (Iridium.VarGlobal (Iridium.GlobalFunction fn _ _)) = Cons
 toTrampolineOperand env local = toOperand env local
 
 -- A thunk has an additional argument, namely the function. We add that argument here
-bindArguments :: Env -> Iridium.BindTarget -> [(Operand, Operand)]
-bindArguments env (Iridium.BindTargetFunction var) = return (toTrampolineOperand env var, ConstantOperand $ Constant.Int 1 1)
-bindArguments env (Iridium.BindTargetThunk var) = return (toOperand env var, ConstantOperand $ Constant.Int 1 1)
-bindArguments env _ = []
-
-expectedType :: Iridium.BindTarget -> Type
-expectedType (Iridium.BindTargetConstructor cons) = NamedTypeReference $ toNamePrefixed "$data_" $ Iridium.constructorDataType cons
-expectedType _ = voidPointer
+bindArguments :: Env -> NameSupply -> Iridium.BindTarget -> [([Named Instruction], (Operand, Operand))]
+bindArguments env _ (Iridium.BindTargetFunction var) = return ([], (toTrampolineOperand env var, ConstantOperand $ Constant.Int 1 1))
+bindArguments env supply (Iridium.BindTargetThunk var)
+  | Iridium.typeIsStrict (Iridium.variableType var) = return ([], (toOperand env var, ConstantOperand $ Constant.Int 1 1))
+  | otherwise = return
+    ( [ name := ExtractValue (toOperand env var) [0] [] ]
+    , ( (LocalReference voidPointer name)
+      , ConstantOperand $ Constant.Int 1 1
+      )
+    )
+    where
+      (name, _) = freshName supply
+bindArguments env _ _ = []
 
 -- Gives a struct given an arity. Does not specify a tag, this is intended for purposes when the tag is not known / needed.
 thunkStruct :: Int -> Struct
 thunkStruct arity = Struct Nothing 32 0 fields
   where
     -- Function pointer & arguments
-    fields = StructField (Core.TCon $ Core.TConDataType $ idFromString "$UnsafePtr") Nothing : map (\i -> StructField (Core.TVar i) (Just i)) [0..arity - 1] 
+    fields = StructField (Core.TStrict $ Core.TCon $ Core.TConDataType $ idFromString "$UnsafePtr") Nothing : map (\i -> StructField Iridium.typeUnsafePtr (Just i)) [0..arity - 1] 

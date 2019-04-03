@@ -171,8 +171,6 @@ ret supply env x CReturn = Partial (Return $ VarLocal $ Local x $ Core.typeToStr
 ret _ _ x (CBind next) = next x
 
 toInstruction :: NameSupply -> TypeEnv -> Continue -> Core.Expr -> Partial
-toInstruction supply env continue (Core.Forall x k e) = toInstruction supply env continue e
-toInstruction supply env continue (Core.ApType e t) = toInstruction supply env continue e
 -- Let bindings
 toInstruction supply env continue (Core.Let (Core.NonRec b) expr)
   = LetAlloc [letbind]
@@ -251,8 +249,9 @@ toInstruction supply env continue (Core.Var var) = case variable of
       bind = Bind name (BindTargetFunction variable) []
     in
       LetAlloc [bind] +> ret supply' env name continue
-  _ ->
-    Let name (if typeIsStrict (variableType variable) then Var variable else Eval variable) +> ret supply' env name continue
+  _
+    | typeIsStrict (variableType variable) -> ret supply env var continue
+    | otherwise -> Let name (Eval variable) +> ret supply' env name continue
   where
     variable = resolve env var
     (name, supply') = freshId supply
@@ -279,8 +278,16 @@ toInstruction supply env continue expr = case getApplicationOrConstruction expr 
         +> ret supplyRet env x continue
   (Right fn, args)
     | all isLeft args && not (isGlobalFunction $ resolve env fn) ->
-      Let x (Instantiate (resolve env fn) $ map (fromLeft $ error "FromCore.toInstruction: expected Left") args)
-        +> ret supplyRet env x continue
+      let
+        e1 = (Instantiate (resolve env fn) $ map (fromLeft $ error "FromCore.toInstruction: expected Left") args)
+        t1 = typeOfExpr (teCoreEnv env) e1
+      in if Core.typeIsStrict t1 then
+        Let x e1
+          +> ret supplyRet env x continue
+      else
+        Let x e1
+          +> Let y (Eval $ VarLocal $ Local x t1)
+          +> ret supplyRet env y continue
     | otherwise ->
       let argsArity = length $ filter isRight args
       in case resolveFunction env fn of
@@ -322,7 +329,7 @@ toInstruction supply env continue expr = case getApplicationOrConstruction expr 
               castInstructions1
                 +> castInstructions2
                 +> Let x (Call (GlobalFunction qualifiedName arity fntype) args1')
-                +> LetAlloc [Bind y (BindTargetThunk $ VarLocal $ Local x tp1) args2']
+                +> LetAlloc [Bind y (BindTargetThunk $ VarLocal $ Local x $ Core.typeToStrict tp1) args2']
                 +> Let z (Eval $ VarLocal $ Local y tp2)
                 +> ret supplyRet env z continue
         Nothing ->
@@ -346,6 +353,7 @@ toInstruction supply env continue expr = case getApplicationOrConstruction expr 
 
 isGlobalFunction :: Variable -> Bool
 isGlobalFunction (VarGlobal (GlobalFunction _ _ _)) = True
+isGlobalFunction _ = False
 
 altJump :: Id -> Core.Type -> (Local, Id) -> Continue
 altJump toBlock resultType (Local toVar toType, intermediateBlockId) = CBind (\resultVar ->
@@ -361,6 +369,14 @@ maybeCast :: NameSupply -> TypeEnv -> Id -> Core.Type -> (Variable, Instruction 
 maybeCast supply env name expected = maybeCastVariable supply env (resolve env name) expected
 
 maybeCastVariable :: NameSupply -> TypeEnv -> Variable -> Core.Type -> (Variable, Instruction -> Instruction)
+maybeCastVariable supply env global@(VarGlobal (GlobalFunction name _ tp)) expected =
+  ( var
+  , LetAlloc [Bind name' (BindTargetFunction global) []]
+    . castInstruction
+  )
+  where
+    (name', supply') = freshIdFromId name supply
+    (var, castInstruction) = maybeCastVariable supply' env (VarLocal $ Local name' $ typeToStrict tp) expected
 maybeCastVariable supply env var expected
   | Core.typeEqual (teCoreEnv env) expected varType && Core.typeIsStrict expected == Core.typeIsStrict varType = (var, id) -- TODO: Remove typeIsStrict when typeEqual understands strictness
   | otherwise = castTo supply env var varType expected
@@ -515,7 +531,7 @@ getApplicationOrConstruction (Core.ApType expr tp) accum = getApplicationOrConst
 getApplicationOrConstruction e _ = error $ "getApplicationOrConstruction: expression is not properly normalized: " ++ show (pretty e)
 
 literal :: Core.Literal -> Literal
-literal (Core.LitInt x _) = LitInt x
+literal (Core.LitInt x tp) = LitInt tp x
 literal (Core.LitDouble x) = LitFloat Float64 x
 literal (Core.LitBytes x) = LitString $ stringFromBytes x 
 

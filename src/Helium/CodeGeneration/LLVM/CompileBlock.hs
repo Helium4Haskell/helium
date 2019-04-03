@@ -10,6 +10,7 @@ module Helium.CodeGeneration.LLVM.CompileBlock (compileBlock) where
 
 import Data.String(fromString)
 import Data.Word(Word32)
+import Data.Either
 
 import Helium.CodeGeneration.LLVM.Env
 import Helium.CodeGeneration.LLVM.Target
@@ -157,7 +158,7 @@ compileExpression env supply (Iridium.Literal literal) name = [toName name := Bi
   where
     constant :: Constant
     (constant, t) = case literal of
-      Iridium.LitInt value ->
+      Iridium.LitInt _ value ->
         ( Int (fromIntegral $ targetWordSize $ envTarget $ env) (fromIntegral $ value)
         , envValueType env
         )
@@ -169,8 +170,8 @@ compileExpression env supply (Iridium.Literal literal) name = [toName name := Bi
         ( Float $ Float.Double value
         , FloatingPointType DoubleFP
         )
-compileExpression env supply (Iridium.Call to@(Iridium.GlobalFunction global arity tp) args) name
-  | not fakeIO =
+compileExpression env supply expr@(Iridium.Call to@(Iridium.GlobalFunction global arity tp) args) name
+  | not fakeIO && all isRight args =
     [ toName name := Call
         { tailCallKind = Nothing
         , callingConvention = compileCallingConvention convention
@@ -181,23 +182,50 @@ compileExpression env supply (Iridium.Call to@(Iridium.GlobalFunction global ari
         , metadata = []
         }
     ]
-  | otherwise =
-    let Iridium.FunctionType argTypes _ = Iridium.extractFunctionTypeWithArity (envTypeEnv env) arity tp
+  | not fakeIO =
+    let
+      (name', supply') = freshName supply
+      fromType = Iridium.typeToStrict retType
+      toType = Iridium.typeOfExpr (envTypeEnv env) expr
+      castArgument s (var, argType) =
+        ( cast s' env (toOperand env var) argName (Iridium.variableType var) argType
+        , LocalReference (compileType env argType) argName)
+        where
+          (argName, s') = freshNameFromId (Iridium.variableName var) s
+      (castArgumentInstructions, argOperands) = unzip $ mapWithSupply castArgument supply' $ zip (rights args) $ rights argTypes
     in
-      [ toName nameValue := Call
+      concat castArgumentInstructions
+      ++
+        [ name' := Call
           { tailCallKind = Nothing
           , callingConvention = compileCallingConvention convention
           , returnAttributes = []
-          , function = Right $ toOperand env (Iridium.VarGlobal (Iridium.GlobalFunction global (arity - 1) $ Iridium.typeFromFunctionType $ Iridium.FunctionType (init argTypes) $ Core.TCon $ Core.TConDataType $ idFromString "Int"))
-          , arguments = [(toOperand env arg, []) | Right arg <- init args]
+          , function = Right $ toOperand env (Iridium.VarGlobal to)
+          , arguments = map (\arg -> (arg, [])) argOperands
           , functionAttributes = []
           , metadata = []
           }
-      ]
-      ++ [toName nameRealWorld := Select (ConstantOperand $ Int 1 1) (ConstantOperand $ Undef tRealWorld) (ConstantOperand $ Undef tRealWorld) []]
-      ++ compileBinds env supply'' [Iridium.Bind name (Iridium.BindTargetConstructor ioRes)
-          [Left Iridium.typeInt, Right $ Iridium.VarLocal $ Iridium.Local nameValue Iridium.typeInt, Right $ Iridium.VarLocal $ Iridium.Local nameRealWorld Iridium.typeRealWorld]]
+        ]
+      ++ cast supply env (LocalReference (compileType env fromType) name') (toName name) fromType toType
+    -- We might need to cast the returned value and argument values, if type arguments were passed.
+    -- Consider `%y = call @id: (forall a. !a -> a) $ {!Float} {%x: !Float}`
+    -- Function 'id' will return the value as `i8*`, which we thus need to cast to Float
+  | otherwise =
+    [ toName nameValue := Call
+        { tailCallKind = Nothing
+        , callingConvention = compileCallingConvention convention
+        , returnAttributes = []
+        , function = Right $ toOperand env (Iridium.VarGlobal (Iridium.GlobalFunction global (arity - 1) $ Iridium.typeFromFunctionType $ Iridium.FunctionType (init argTypes) $ Core.TCon $ Core.TConDataType $ idFromString "Int"))
+        , arguments = [(toOperand env arg, []) | Right arg <- init args]
+        , functionAttributes = []
+        , metadata = []
+        }
+    ]
+    ++ [toName nameRealWorld := Select (ConstantOperand $ Int 1 1) (ConstantOperand $ Undef tRealWorld) (ConstantOperand $ Undef tRealWorld) []]
+    ++ compileBinds env supply'' [Iridium.Bind name (Iridium.BindTargetConstructor ioRes)
+        [Left Iridium.typeInt, Right $ Iridium.VarLocal $ Iridium.Local nameValue Iridium.typeInt, Right $ Iridium.VarLocal $ Iridium.Local nameRealWorld Iridium.typeRealWorld]]
   where
+    Iridium.FunctionType argTypes retType = Iridium.extractFunctionTypeWithArity (envTypeEnv env) arity tp
     EnvMethodInfo convention fakeIO = findMap global (envMethodInfo env)
     (nameValue, supply') = freshId supply
     (nameRealWorld, supply'') = freshId supply'
@@ -209,6 +237,10 @@ compileExpression env supply (Iridium.Var var) name = cast supply env (toOperand
   where t = Iridium.variableType var
 compileExpression env supply (Iridium.Cast var toType) name = cast supply env (toOperand env var) (toName name) t toType
   where t = Iridium.variableType var
+compileExpression env supply expr@(Iridium.Instantiate var _) name = cast supply env (toOperand env var) (toName name) t toType
+  where
+    t = Iridium.variableType var
+    toType = Iridium.typeOfExpr (envTypeEnv env) expr
 compileExpression env supply (Iridium.Seq _ var) name = cast supply env (toOperand env var) (toName name) t t
   where t = Iridium.variableType var
 compileExpression env supply expr@(Iridium.Phi branches) name = [toName name := Phi (compileType env t) (map compileBranch branches) []]
@@ -222,6 +254,7 @@ compileExpression env supply (Iridium.PrimitiveExpr primName args) name = compil
 compileExpression env supply (Iridium.Undefined ty) name = [toName name := Select (ConstantOperand $ Int 1 1) (ConstantOperand $ Undef t) (ConstantOperand $ Undef t) []]
   where
     t = compileType env ty
+compileExpression _ _ expr _ = error (show expr)
 
 compileEval :: Env -> NameSupply -> Operand -> Core.Type -> Name -> [Named Instruction]
 compileEval env supply operand tp name
@@ -230,12 +263,13 @@ compileEval env supply operand tp name
     [ namePtr := ExtractValue operand [0] []
     , nameIsWHNF := ExtractValue operand [1] []
     , nameIsWHNFExt := ZExt (LocalReference bool nameIsWHNF) (envValueType env) []
-    , name := callEval (LocalReference voidPointer namePtr) (LocalReference (envValueType env) nameIsWHNFExt)
-    ]
+    , nameWHNF := callEval (LocalReference voidPointer namePtr) (LocalReference (envValueType env) nameIsWHNFExt)
+    ] ++ cast supply env (LocalReference voidPointer nameWHNF) name (Core.TStrict $ Core.TVar 0) (Core.typeToStrict tp) 
   where
     (namePtr, supply') = freshName supply
     (nameIsWHNF, supply'') = freshName supply'
-    (nameIsWHNFExt, _) = freshName supply''
+    (nameIsWHNFExt, supply''') = freshName supply''
+    (nameWHNF, _) = freshName supply'''
 
 callEval :: Operand -> Operand -> Instruction
 callEval pointer isWHNF =

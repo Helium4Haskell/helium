@@ -8,6 +8,7 @@ import Helium.CodeGeneration.Iridium.Data
 import Helium.CodeGeneration.Iridium.Type
 import Helium.CodeGeneration.Iridium.Utils
 import Lvm.Common.Id (Id, NameSupply, freshIdFromId, mapWithSupply, splitNameSupply)
+import Data.Either
 
 passThunkArity :: NameSupply -> Module -> Module
 passThunkArity supply mod = mapBlocksWithSupply (handleInstruction $ envWithSynonyms mod) supply mod
@@ -22,12 +23,12 @@ handleInstruction _ _ instr = instr -- Jump, Case, Return and Unreachable
 
 handleBind :: TypeEnvironment -> NameSupply -> Bind -> [Bind]
 handleBind env supply b@(Bind var target@(BindTargetFunction global@(VarGlobal (GlobalVariable _ _))) params)
-  | null params = error "passThunkArity: Cannot bind zero arguments to a global function"
+  | null (filter isRight params) = error "passThunkArity: Cannot bind zero arguments to a global function"
   | otherwise = handleBind env supply bindThunk
   where
     bindThunk = Bind var (BindTargetThunk global) params
 handleBind env supply (Bind var target@(BindTargetFunction (VarGlobal (GlobalFunction _ arity fnType))) params)
-  | length params > arity = bindFn : bindThunks
+  | length (filter isRight params) > arity = bindFn : bindThunks
   -- Too many arguments are passed, the thunk is oversaturated.
   where
   -- Saturate the call to `target`

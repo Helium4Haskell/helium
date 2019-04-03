@@ -78,7 +78,7 @@ typeNormalizeHead env = normalize False
   where
     normalize strict (TAp t1 t2) = case normalize False t1 of
       t1'@(TForall _ _ _) -> normalize strict $ typeApply t1' t2
-      t1' -> 
+      t1' ->
         let tp = TAp t1' t2
         in if strict then TStrict tp else tp
     normalize _ (TStrict t1) = normalize True t1
@@ -108,7 +108,7 @@ typeOfCoreExpression env (Match name (Alt pattern expr : _))
 
 -- Expression: e1 e2
 -- Resolve the type of e1, which should be a function type.
-typeOfCoreExpression env e@(Ap e1 e2) = case typeNormalizeHead env $ typeOfCoreExpression env e1 of
+typeOfCoreExpression env e@(Ap e1 e2) = case typeNotStrict $ typeNormalizeHead env $ typeOfCoreExpression env e1 of
   TAp (TAp (TCon TConFun) _) tReturn -> tReturn
   tp -> internalError "Core.TypeEnvironment" "typeOfCoreExpression" $ "expected a function type in the first argument of a function application, got " ++ showType [] tp ++ " in expression " ++ show (pretty e)
 

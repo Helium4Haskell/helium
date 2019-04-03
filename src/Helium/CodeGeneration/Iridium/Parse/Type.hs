@@ -156,3 +156,16 @@ pFloatPrecision = do
 pDataTypeConstructor :: Parser DataTypeConstructor
 pDataTypeConstructor = DataTypeConstructor
   <$ pToken '@' <*> pId <* pToken ':' <* pWhitespace <*> pTypeAtom
+
+pInstantiation :: QuantorIndexing -> Parser [Type]
+pInstantiation quantors = do
+  c <- lookahead
+  if c == '{' then do
+    pChar
+    pWhitespace
+    tp <- pType' quantors
+    pToken '}'
+    pWhitespace
+    tps <- pInstantiation quantors
+    return (tp : tps)
+  else return []

@@ -10,7 +10,8 @@ pLiteral :: Parser Literal
 pLiteral = do
   keyword <- pWord
   case keyword of
-    "int" -> LitInt <$ pWhitespace <*> pSignedInt
+    "int" -> LitInt IntTypeInt <$ pWhitespace <*> pSignedInt
+    "char" -> LitInt IntTypeChar <$ pWhitespace <*> pSignedInt
     "float" -> LitFloat <$> pFloatPrecision <* pWhitespace <*> pFloat
     "str" -> LitString <$ pWhitespace <*> pString
     _ -> pError "expected literal"
@@ -85,6 +86,7 @@ pExpression quantors = do
     "call" -> Call <$> pGlobal quantors <* pWhitespace <* pToken '$' <* pWhitespace <*> pCallArguments quantors
     "eval" -> Eval <$> pVariable quantors
     "var" -> Var <$> pVariable quantors
+    "instantiate" -> Instantiate <$> pVariable quantors <* pWhitespace <*> pInstantiation quantors
     "cast" -> Cast <$> pVariable quantors <* pWhitespace <* pSymbol "as" <* pWhitespace <*> pTypeAtom' quantors
     "phi" -> Phi <$> pArguments (pPhiBranch quantors)
     "prim" -> PrimitiveExpr <$> pId <* pWhitespace <*> pCallArguments quantors

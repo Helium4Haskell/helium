@@ -107,7 +107,7 @@ checkExpression env (Match name alts) = do
 checkExpression env (Ap e1 e2) = do
   t1 <- checkExpression env e1
   t2 <- checkExpression env e2
-  case typeNormalizeHead env t1 of
+  case typeNotStrict $ typeNormalizeHead env t1 of
     (TAp (TAp (TCon TConFun) tArg) tReturn) -> do
       assert env t2 tArg @@ "the argument of an application"
       return tReturn

@@ -23,7 +23,7 @@ eval' = builtin "_$helium_runtime_eval" [voidPointer, IntegerType 64] voidPointe
 alloc' = builtin "helium_global_alloc" [IntegerType 32] voidPointer
 -- Size, pointer to character (i32) array
 -- TODO: use target pointer size
-unpackString' = builtin "_$helium_runtime_unpack_string" [IntegerType 64, pointer $ IntegerType 8] (NamedTypeReference $ mkName "$data_[]")
+unpackString' = builtin "_$helium_runtime_unpack_string" [IntegerType 64, pointer $ IntegerType 8] voidPointer
 
 builtins :: Iridium.Module -> [Builtin]
 builtins iridium = filter (\(Builtin name _ _) -> not $ Iridium.declaresFunction iridium name) allBuiltins

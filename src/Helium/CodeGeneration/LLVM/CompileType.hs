@@ -26,7 +26,7 @@ compileType env tp = case skipApp $ skipForallAndStrict $ Iridium.typeNormalizeH
     | name == idFromString "Char" -> envValueType env
     | name == idFromString "$UnsafePtr" -> voidPointer
     | name == idFromString "$Trampoline" -> pointer $ FunctionType voidPointer [voidPointer] False
-    | otherwise -> NamedTypeReference $ toNamePrefixed "$data_" name
+    | otherwise -> voidPointer -- NamedTypeReference $ toNamePrefixed "$data_" name
   _ -> voidPointer
 
 skipApp :: Core.Type -> Core.Type
@@ -39,7 +39,7 @@ skipForallAndStrict (Core.TStrict t) = skipForallAndStrict t
 skipForallAndStrict tp = tp
 
 compileFunctionType :: Env -> Iridium.FunctionType -> Type
-compileFunctionType env (Iridium.FunctionType args returnType) = pointer $ FunctionType (compileType env returnType) argTypes False
+compileFunctionType env (Iridium.FunctionType args returnType) = pointer $ FunctionType (compileType env $ Core.typeToStrict returnType) argTypes False
   where
     argTypes = [ compileType env tp | Right tp <- args ]
 
@@ -64,7 +64,11 @@ voidPointer = pointer (IntegerType 8)
 
 toOperand :: Env -> Iridium.Variable -> Operand
 toOperand env (Iridium.VarLocal (Iridium.Local name t)) = LocalReference (compileType env t) (toName name)
-toOperand env (Iridium.VarGlobal (Iridium.GlobalVariable name t)) = ConstantOperand $ Constant.BitCast (GlobalReference (pointer emptyThunkType) (toNamePrefixed "thunk$" name)) (compileType env t)
+toOperand env (Iridium.VarGlobal (Iridium.GlobalVariable name t)) =
+  ConstantOperand $ Constant.Struct Nothing True
+    [ Constant.BitCast (GlobalReference (pointer emptyThunkType) (toNamePrefixed "thunk$" name)) voidPointer
+    , Constant.Int 1 0 -- false, as the value is not in WHNF
+    ]
 toOperand env (Iridium.VarGlobal (Iridium.GlobalFunction name arity tp)) = ConstantOperand $ GlobalReference (compileFunctionType env fntype) (toName name)
   where
     fntype = Iridium.extractFunctionTypeWithArity (envTypeEnv env) arity tp
@@ -102,7 +106,7 @@ splitValueFlag env supply (var, toType)
 
 copy :: Env -> Operand -> Name -> Core.Type -> [Named Instruction]
 copy env operand name tp =
-  [name := Call
+  {- [name := Call
     { tailCallKind = Nothing
     , callingConvention = CallingConvention.C
     , returnAttributes = []
@@ -111,11 +115,11 @@ copy env operand name tp =
     , functionAttributes = []
     , metadata = []
     }
-  ]
+  ] -}
+  [name := AST.Select (ConstantOperand $ Constant.Int 1 1) operand operand []]
   where
     compiledType = compileType env tp
 
--- TODO: Casts from / to int or double
 cast :: NameSupply -> Env -> Operand -> Name -> Core.Type -> Core.Type -> [Named Instruction]
 cast supply env fromOperand toName fromType' toType'
   -- Thunks to thunk - all thunks have the same type in LLVM, so this cast is a no-op
@@ -124,22 +128,22 @@ cast supply env fromOperand toName fromType' toType'
   -- Thunk to WHNF - not allowed in a Cast instruction. This should be done with an Eval statement
   | not fromStrict && toStrict
     = error ("cast: Cannot cast from thunk to WHNF: " ++ show fromOperand ++ ", " ++ show toName ++ show fromType ++ " to " ++ show toType)
-  -- Strict to strict - perform bitcast
-  | fromStrict && toStrict
-    = cast' supply toName
   -- Strict to thunk - perform bitcast from fromType to the strict variant of toType,
   -- then wrap the value in a thunk
   | fromStrict && not toStrict
     = let
         (name, supply') = freshName supply
       in
-        cast' supply' name
+        cast supply env fromOperand name fromType (Core.TStrict $ Core.TVar 0) -- Cast to voidPointer
          ++ [ toName := AST.InsertValue
               (ConstantOperand $ Struct Nothing True [Constant.Undef voidPointer, Constant.Int 1 1])
-              (LocalReference (compileType env $ Core.typeToStrict toType) name)
+              (LocalReference voidPointer name)
               [0]
               []
             ]
+  -- Strict to strict - perform bitcast
+  | fromStrict && toStrict
+    = cast' supply toName toType
   where
     fromType = Iridium.typeNormalizeHead (envTypeEnv env) fromType'
     toType = Iridium.typeNormalizeHead (envTypeEnv env) toType'
@@ -155,17 +159,27 @@ cast supply env fromOperand toName fromType' toType'
     isPointer _ = True
     fromPointer = isPointer fromBase
     toPointer = isPointer toBase
-    cast' supply name
+    cast' supply name to
       | fromPointer == toPointer =
-        [name := AST.BitCast fromOperand (compileType env toType) []]
+        [name := AST.BitCast fromOperand (compileType env $ Iridium.typeToStrict toType) []]
       | fromPointer =
         if toBase == Core.TCon (Core.TConDataType $ idFromString "Float") then
-          undefined
+          let
+            (nameInt, _) = freshName supply
+          in
+            [ nameInt := AST.PtrToInt fromOperand (envValueType env) []
+            , name := AST.BitCast (LocalReference (envValueType env) nameInt) (compileType env toType) []
+            ]
         else
           [name := AST.PtrToInt fromOperand (envValueType env) []]
       | toPointer =
         if fromBase == Core.TCon (Core.TConDataType $ idFromString "Float") then
-          undefined
+          let
+            (nameInt, _) = freshName supply
+          in
+            [ nameInt := AST.BitCast fromOperand (envValueType env) []
+            , name := AST.IntToPtr (LocalReference (envValueType env) nameInt) (compileType env toType) []
+            ]
         else
           [name := AST.IntToPtr fromOperand (compileType env toType) []]
 

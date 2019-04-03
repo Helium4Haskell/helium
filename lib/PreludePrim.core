@@ -69,7 +69,7 @@ import LvmLang
     , (<.), (<=.), (>=.), (>.)
     -}
 
-    , Int(), Float(), IO(), IORes()
+    , Int(), Float(), IO(), IORes(), RealWorld()
     , type String
     , Bool(True, False)
     , '':[]''('':[]'', (:))

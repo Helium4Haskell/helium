@@ -54,7 +54,7 @@ checkModule mod = errors
       fromList (map (analyseMethod typeEnv) $ moduleMethods mod)
       `AJoin` fromList (map analyseAbstractMethod $ moduleAbstractMethods mod)
     (Env occurrences errors1) = toEnv analysis emptyEnv
-    errors2 = listFromMap occurrences >>= uncurry checkOccurrences
+    errors2 = listFromMap occurrences >>= uncurry (checkOccurrences typeEnv)
     errors = errors1 ++ errors2
 
 checkModuleIO :: String -> FilePath-> Module -> IO ()
@@ -64,7 +64,6 @@ checkModuleIO name path mod = do
     return ()
   else do
     putStrLn ("Type errors in Iridium file after pass " ++ show name)
-    print mod
     mapM_ print errors
     putStrLn (show (length errors) ++ " type error(s) in Iridium file " ++ show path ++ " after pass " ++ show name)
     exitWith (ExitFailure 1)
@@ -113,7 +112,7 @@ analyseInstruction env returnType (LetAlloc binds next) =
     $ analyseInstruction env returnType next
 analyseInstruction env returnType (Match var target instantiation fields next)
   = variableToAnalysis var
-    `AJoin` aCheck env (variableType var) expectedType (TEReturn var expectedType)
+    `AJoin` aCheck env (variableType var) expectedType (TEMatch var expectedType)
     `AJoin` fromList (catMaybes $ zipWith analyseArg fields $ matchFieldTypes target instantiation)
     `AJoin` analyseInstruction env returnType next
   where
@@ -157,8 +156,8 @@ toEnv (ATypeError err) env = addError err env
 toEnv AEmpty env = env
 toEnv (AJoin a1 a2) env = toEnv a2 $ toEnv a1 env
 
-checkOccurrences :: Id -> [Occurrence] -> [TypeError]
-checkOccurrences name occurrences =
+checkOccurrences :: TypeEnvironment -> Id -> [Occurrence] -> [TypeError]
+checkOccurrences env name occurrences =
   case declarations of
     [] -> [TENotDeclared name]
     decl1 : decl2 : _
@@ -171,8 +170,8 @@ checkOccurrences name occurrences =
           _ -> Nothing
         check :: Occurrence -> Maybe TypeError
         check use
-          | var /= declaration && Just var /= alternative = Just $ TEVariable declaration var
-          | otherwise = Nothing
+          | variableEqual env declaration var = Nothing
+          | otherwise = Just $ TEVariable declaration var
           where
             var = toVariable name use
       in
@@ -191,3 +190,15 @@ toVariable name (Occurrence UseLocal tp) = VarLocal $ Local name tp
 toVariable name (Occurrence (DeclareGlobal arity) tp) = VarGlobal $ GlobalFunction name arity tp
 toVariable name (Occurrence (UseGlobalFunction arity) tp) = VarGlobal $ GlobalFunction name arity tp
 toVariable name (Occurrence UseGlobalVariable tp) = VarGlobal $ GlobalVariable name tp
+
+-- typeEqual does not understand strictness, so temp workaround to check strictness on the toplevel
+typeEqual' :: TypeEnvironment -> Type -> Type -> Bool
+typeEqual' env t1 t2 = typeEqual env t1 t2 && typeIsStrict t1 == typeIsStrict t2
+
+variableEqual :: TypeEnvironment -> Variable -> Variable -> Bool
+variableEqual env (VarLocal (Local n1 t1)) (VarLocal (Local n2 t2)) = n1 == n2 && typeEqual' env t1 t2
+variableEqual env (VarGlobal (GlobalVariable n1 t1)) (VarGlobal (GlobalVariable n2 t2)) = n1 == n2 && typeEqual' env t1 t2
+variableEqual env (VarGlobal (GlobalFunction n1 a1 t1)) (VarGlobal (GlobalFunction n2 a2 t2)) = n1 == n2 && typeEqual' env t1 t2 && a1 == a2
+variableEqual env (VarGlobal (GlobalVariable n1 t1)) (VarGlobal (GlobalFunction n2 0 t2)) = n1 == n2 && typeEqual' env t1 t2
+variableEqual env (VarGlobal (GlobalFunction n1 0 t1)) (VarGlobal (GlobalVariable n2 t2)) = n1 == n2 && typeEqual' env t1 t2
+variableEqual _ _ _ = False

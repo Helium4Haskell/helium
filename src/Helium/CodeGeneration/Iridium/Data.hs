@@ -200,13 +200,15 @@ matchArgumentType (MatchTargetConstructor (DataTypeConstructor _ tp)) instantiat
   where
     FunctionType _ ret = extractFunctionTypeNoSynonyms $ typeApplyList tp instantiation
 matchArgumentType (MatchTargetThunk _) _ = typeToStrict $ TCon $ TConDataType $ idFromString "$UnsafePtr"
-matchArgumentType (MatchTargetTuple arity) instantiation = foldr TAp (TCon $ TConTuple arity) instantiation
+matchArgumentType (MatchTargetTuple arity) instantiation = typeToStrict $ foldl TAp (TCon $ TConTuple arity) instantiation
 
 matchFieldTypes :: MatchTarget -> [Type] -> [Type]
 matchFieldTypes (MatchTargetConstructor (DataTypeConstructor _ tp)) instantiation =
   [ arg | Right arg <- args ]
   where
     FunctionType args _ = extractFunctionTypeNoSynonyms $ typeApplyList tp instantiation
+matchFieldTypes (MatchTargetThunk arity) _ = typeToStrict (TCon $ TConDataType $ idFromString "$UnsafePtr") : replicate arity (TCon $ TConDataType $ idFromString "$UnsafePtr")
+matchFieldTypes (MatchTargetTuple _) instantiation = instantiation
 
 typeApplyArguments :: TypeEnvironment -> Type -> [Either Type Variable] -> Type
 typeApplyArguments env t1@(TForall _ _ _) (Left t2 : args) = typeApplyArguments env t1' args
@@ -232,7 +234,10 @@ bindType :: TypeEnvironment -> Bind -> Type
 -- In case of a constructor application, we get a value in WHNF of the related data type.
 bindType env (Bind _ (BindTargetConstructor cons) args) = typeToStrict $ typeApplyArguments env (constructorType cons) args
 -- For a tuple, we get a value in WHNF of the given tuple size.
-bindType env (Bind _ (BindTargetTuple arity) args) = typeToStrict $ typeApplyArguments env (TCon $ TConTuple arity) args
+bindType env (Bind _ (BindTargetTuple arity) args) = typeToStrict $ foldl ap (TCon $ TConTuple arity) args
+  where
+    ap t1 (Right _) = t1
+    ap t1 (Left t2) = t1 `TAp` t2
 -- When binding to a global function, we get a thunk in WHNF (TypeFunction) if not enough arguments were passed,
 -- or TypeAnyThunk (not in WHNF) otherwise.
 bindType env (Bind _ (BindTargetFunction (VarGlobal (GlobalFunction fn arity fntype))) args)
@@ -241,7 +246,9 @@ bindType env (Bind _ (BindTargetFunction (VarGlobal (GlobalFunction fn arity fnt
   where
     tp = typeApplyArguments env fntype args
     valueArgCount = length $ filter isRight args
-bindType env (Bind _ (BindTargetFunction fn) args) = typeApplyArguments env (variableType fn) args
+bindType env (Bind _ (BindTargetFunction fn) args)
+  | variableType fn == typeUnsafePtr = typeUnsafePtr
+  | otherwise = typeApplyArguments env (variableType fn) args
 bindType env (Bind _ (BindTargetThunk fn) args) = typeApplyArguments env (variableType fn) args
 
 bindLocal :: TypeEnvironment -> Bind -> Local
@@ -278,7 +285,7 @@ data PhiBranch = PhiBranch { phiBlock :: !BlockName, phiVariable :: !Variable }
   deriving (Eq, Ord)
 
 data Literal
-  = LitInt !Int
+  = LitInt !IntType !Int
   | LitFloat !FloatPrecision !Double
   | LitString !String
   deriving (Eq, Ord)
@@ -286,7 +293,7 @@ data Literal
 typeOfExpr :: TypeEnvironment -> Expr -> Type
 typeOfExpr _ (Literal (LitFloat precision _)) = TStrict $ TCon $ TConDataType $ idFromString "Float" -- TODO: Precision
 typeOfExpr _ (Literal (LitString _)) = TStrict $ TAp (TCon $ TConDataType $ idFromString "[]") $ TCon $ TConDataType $ idFromString "Char"
-typeOfExpr _ (Literal _) = TStrict $ TCon $ TConDataType $ idFromString "Int" -- TODO: Distinguish int and char
+typeOfExpr _ (Literal (LitInt tp _)) = TStrict $ TCon $ TConDataType $ idFromString $ show tp
 typeOfExpr env (Call (GlobalFunction _ _ t) args) = typeToStrict $ typeApplyArguments env t args
 typeOfExpr env (Instantiate v args) = typeNormalizeHead env $ typeApplyList (variableType v) args
 typeOfExpr _ (Eval v) = typeToStrict $ variableType v
@@ -312,7 +319,8 @@ dependenciesOfExpr (Seq v1 v2) = [v1, v2]
 
 variableType :: Variable -> Type
 variableType (VarLocal (Local _ t)) = t
-variableType (VarGlobal (GlobalFunction _ _ t)) = t
+variableType (VarGlobal (GlobalFunction _ 0 t)) = t
+variableType (VarGlobal (GlobalFunction _ _ t)) = typeToStrict t
 variableType (VarGlobal (GlobalVariable _ t)) = t
 
 variableName :: Variable -> Id

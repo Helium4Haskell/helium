@@ -79,7 +79,8 @@ showDeclKind DeclKindExternType = "externtype"
 showDeclKind (DeclKindCustom id) = "@" ++ showId id []
 
 instance Show Literal where
-  show (LitInt x) = "int " ++ show x
+  show (LitInt IntTypeInt x) = "int " ++ show x
+  show (LitInt IntTypeChar x) = "char " ++ show x
   show (LitFloat precision x) = "float" ++ show precision ++ " " ++ show x
   show (LitString x) = "str " ++ show x
 

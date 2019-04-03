@@ -8,7 +8,7 @@
 module LvmLang
     ( Bytes, Int, Float
     , Bool(True, False), '':[]''('':[]'', (:)), '':()''('':()'')
-    , IO(..), IORes(..), Char, Double, PackedString, String
+    , IO(..), IORes(..), RealWorld(..), Char, Double, PackedString, String
     
     , packedFromString, stringFromPacked, packedLength
     , ($!), seq, pseq
@@ -19,7 +19,7 @@ module LvmLang
     , ''$primPutStrLn''
     , putChar
     , getChar
-    
+
     -- Int
     , (+#), (-#), (*#), div, mod, quot, rem
     , and, xor, or, shr, shl, shrNat, negInt
@@ -282,11 +282,9 @@ putChar = \char: Char -> IO { () }
     IORes { Int } _ world2 -> IORes { () } () world2
   )
 
-{-
 ''$primPutStrLn'' :: String -> IO ()
 ''$primPutStrLn'' = \str: String ->
-  let! newline = "\n" in
-  let! _1 = ''_$helium_runtime_print_string'' str in
-  let! _2 = ''_$helium_runtime_print_string'' newline in
-  IORes ()
--}
+  let! newline: String! = "\n" in
+  let! _1: Int! = ''_$helium_runtime_print_string'' str in
+  let! _2: Int! = ''_$helium_runtime_print_string'' newline in
+  IO {()} (\realworld: RealWorld! -> IORes {()} () realworld)

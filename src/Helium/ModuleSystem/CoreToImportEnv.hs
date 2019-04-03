@@ -34,7 +34,7 @@ import Data.Maybe
 import qualified Data.Map as M
 
 typeDictFromCustoms :: String -> [Custom] -> TpScheme
-typeDictFromCustoms n [] = internalError "CoreToImportEnv" "typeFromCustoms"
+typeDictFromCustoms n [] = internalError "CoreToImportEnv" "typeDictFromCustoms"
                 ("function import without type: " ++ n)
 typeDictFromCustoms n ( CustomDecl (DeclKindCustom ident) [CustomBytes bytes] : cs) 
     | stringFromId ident == "type" =
@@ -46,18 +46,6 @@ typeDictFromCustoms n ( CustomDecl (DeclKindCustom ident) [CustomBytes bytes] : 
     | otherwise =
         typeDictFromCustoms n cs
 
-typeFromCustoms :: String -> [Custom] -> TpScheme
-typeFromCustoms n [] =
-    internalError "CoreToImportEnv" "typeFromCustoms"
-        ("function import without type: " ++ n)
-typeFromCustoms n ( CustomDecl (DeclKindCustom ident) [CustomBytes bytes] : cs) 
-    | stringFromId ident == "type" =
-        let string = filter (/= '!') (stringFromBytes bytes) 
-        in makeTpSchemeFromType (parseFromString contextAndType string)
-    | otherwise =
-        typeFromCustoms n cs
-typeFromCustoms _ _ = error "Pattern match failure in ModuleSystem.CoreToImportEnv.typeFromCustoms"
-
 parseFromString :: HParser a -> String -> a
 parseFromString p string = 
     case lexer [] "CoreToImportEnv" string of 
@@ -66,6 +54,37 @@ parseFromString p string =
             case runHParser p "CoreToImportEnv" tokens True {- wait for EOF -} of
                 Left e  -> internalError "CoreToImportEnv" "parseFromString" ("parse error in " ++ string ++ ": " ++ show e)
                 Right x -> x
+
+typeSchemeFromCore :: Core.Type -> TpScheme
+typeSchemeFromCore quantifiedType =
+  Quantification (quantors, qmap, Qualification (predicates, fromCore tp))
+  where
+    splitForalls :: Core.Type -> ([Int], QuantorMap, Core.Type)
+    splitForalls (Core.TForall (Core.Quantor idx name) _ t) = (idx : idxs, qmap', t')
+      where
+        (idxs, qmap, t') = splitForalls t
+        qmap' = case name of
+          Nothing -> qmap
+          Just n -> (idx, n) : qmap
+    splitForalls t = ([], [], t)
+
+    splitPredicates :: Core.Type -> ([Predicate], Core.Type)
+    splitPredicates (Core.TAp (Core.TAp (Core.TCon Core.TConFun) (Core.TAp (Core.TCon (Core.TConTypeClassDictionary className)) instanceType)) t)
+      = ( Predicate (stringFromId className) (fromCore instanceType) : predicates, t' )
+      where
+        (predicates, t') = splitPredicates t
+    splitPredicates t = ([], t)
+
+    (quantors, qmap, qtype) = splitForalls quantifiedType
+    (predicates, tp) = splitPredicates qtype
+
+    fromCore :: Core.Type -> Tp
+    fromCore (Core.TCon c) = TCon $ show c
+    fromCore (Core.TAp t1 t2) = TApp (fromCore t1) (fromCore t2)
+    fromCore (Core.TVar x) = TVar x
+    fromCore (Core.TStrict t) = fromCore t
+    fromCore (Core.TAny) = internalError "CoreToImportEnv" "typeSynFromCore" ("Unexpected 'any' in type synonym")
+    fromCore (Core.TForall _ _ _) = internalError "CoreToImportEnv" "typeSynFromCore" ("Unexpected 'forall' in type scheme. Forall quantifiers may only occur on the top level of a type scheme. Type: " ++ Core.showType [] quantifiedType)
 
 typeSynFromCore :: Core.Type -> (Int, Tps -> Tp)
 typeSynFromCore quantifiedType = (length typeArgs, \args -> fromCore (zip typeArgs args) tp)
@@ -84,29 +103,6 @@ typeSynFromCore quantifiedType = (length typeArgs, \args -> fromCore (zip typeAr
       Nothing -> internalError "CoreToImportEnv" "typeSynFromCore" ("Type variable not found: v$" ++ show x)
     fromCore args (Core.TAny) = internalError "CoreToImportEnv" "typeSynFromCore" ("Unexpected 'any' in type synonym")
     fromCore args (Core.TForall _ _ _) = internalError "CoreToImportEnv" "typeSynFromCore" ("Unexpected 'forall' in type synonym")
-
-typeSynFromCustoms :: String -> [Custom] -> (Int, Tps -> Tp) -- !!! yuck
-typeSynFromCustoms n (CustomBytes bs:cs) =
-    let
-        typeSynDecl = stringFromBytes bs
-        -- (too?) simple parser; works because type variables in synonym decls are renamed to 1 letter
-        ids         = ( map (\x -> nameFromString [x])
-                      . filter    (' '/=)
-                      . takeWhile ('='/=)
-                      . drop (length n + 1)
-                      )
-                        typeSynDecl
-        rhsType     = ( drop 1
-                      . dropWhile ('='/=)
-                      )
-                        typeSynDecl
-    in
-        ( arityFromCustoms n cs
-        , \ts -> makeTpFromType (zip ids ts) (parseFromString type_ rhsType)
-        )
-typeSynFromCustoms n _ =
-    internalError "CoreToImportEnv" "typeSynFromCustoms"
-        ("type synonym import missing definition: " ++ n)
 
 -- in compiled Core files types have a kind (e.g. * -> *), 
 -- in Helium the have a number indicating the arity
@@ -217,18 +213,19 @@ getImportEnvironment importedInModule decls = foldr (insertDictionaries imported
            -- functions
            DeclAbstract { declName    = n
                         , declAccess  = Imported{importModule = importedFromModId}
+                        , declType    = tp
                         , declCustoms = cs
                         } ->
                 \env ->  
                     let
                         nEnv =  addType
                                     (makeImportName importedInModule importedFromModId n)
-                                    ((  
+                                    (
                                         if "$dict" `isPrefixOf` (stringFromId n) then 
-                                            typeDictFromCustoms
+                                            typeDictFromCustoms (stringFromId n) cs
                                         else 
-                                            typeFromCustoms) 
-                                        (stringFromId n) cs) env
+                                            typeSchemeFromCore tp) env
+                                        
                         
                     in nEnv 
                 
@@ -237,19 +234,23 @@ getImportEnvironment importedInModule decls = foldr (insertDictionaries imported
            DeclExtern { declName = n
                       , declAccess  = Imported{importModule = importedFromModId}
                       , declCustoms = cs
+                      , declType    = tp
                       } ->
               addType
                  (makeImportName importedInModule importedFromModId n)
-                 (typeFromCustoms (stringFromId n) cs)
+                 (typeSchemeFromCore tp)
             
            -- constructors
            DeclCon { declName    = n
                    , declAccess  = Imported{importModule = importedFromModId}
                    , declCustoms = cs
-                   } -> 
-              addValueConstructor
-                (makeImportName importedInModule importedFromModId n)
-                (typeFromCustoms (stringFromId n) cs)
+                   , declType    = tp
+                   } ->
+              if "Dict$" `isPrefixOf` stringFromId n then id
+              else
+                addValueConstructor
+                  (makeImportName importedInModule importedFromModId n)
+                  (typeSchemeFromCore tp)
 
            -- type constructor import
            DeclCustom { declName    = n

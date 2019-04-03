@@ -44,19 +44,6 @@ pMatchField = do
   else
     Just <$ pToken '%' <*> pId
 
-pInstantiation :: QuantorIndexing -> Parser [Type]
-pInstantiation quantors = do
-  c <- lookahead
-  if c == '{' then do
-    pChar
-    pWhitespace
-    tp <- pType' quantors
-    pToken '}'
-    pWhitespace
-    tps <- pInstantiation quantors
-    return (tp : tps)
-  else return []
-
 pCase :: Parser Case
 pCase = do
   key <- pKeyword

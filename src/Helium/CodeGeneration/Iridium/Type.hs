@@ -14,9 +14,9 @@
 
 module Helium.CodeGeneration.Iridium.Type
   ( typeFromFunctionType, FunctionType(..), extractFunctionTypeNoSynonyms, extractFunctionTypeWithArity
-  , FloatPrecision(..), EvaluationState(..), evaluationState, typeFromFunctionType
-  , Core.TypeEnvironment(..), Core.typeNormalizeHead, Core.typeEqual, typeIsStrict
-  , PrimitiveType(..)
+  , FloatPrecision(..), EvaluationState(..), evaluationState
+  , Core.TypeEnvironment(..), Core.typeNormalizeHead, Core.typeEqual, typeIsStrict, typeToStrict
+  , PrimitiveType(..), typeNotStrict
   , typeRealWorld, typeUnsafePtr, typeTrampoline, typeInt, typeChar, typeFloat, functionTypeArity
   ) where
 
@@ -27,12 +27,12 @@ import Lvm.Core.Type
 import Helium.CodeGeneration.Core.TypeEnvironment as Core
 
 typeRealWorld, typeUnsafePtr, typeTrampoline, typeInt, typeChar, typeFloat :: Type
-typeRealWorld = TCon $ TConDataType $ idFromString "$RealWorld"
-typeUnsafePtr = TCon $ TConDataType $ idFromString "$UnsafePtr"
-typeTrampoline = TCon $ TConDataType $ idFromString "$Trampoline"
-typeInt = TCon $ TConDataType $ idFromString "Int"
-typeChar = TCon $ TConDataType $ idFromString "Char"
-typeFloat = TCon $ TConDataType $ idFromString "Float"
+typeRealWorld = TStrict $ TCon $ TConDataType $ idFromString "$RealWorld"
+typeUnsafePtr = TStrict $ TCon $ TConDataType $ idFromString "$UnsafePtr"
+typeTrampoline = TStrict $ TCon $ TConDataType $ idFromString "$Trampoline"
+typeInt = TStrict $ TCon $ TConDataType $ idFromString "Int"
+typeChar = TStrict $ TCon $ TConDataType $ idFromString "Char"
+typeFloat = TStrict $ TCon $ TConDataType $ idFromString "Float"
 
 data PrimitiveType
   = TypeAny -- ^ Any value, possibly a non-evaluated thunk. Supertype of TypeAnyThunk and TypeAnyWHNF.

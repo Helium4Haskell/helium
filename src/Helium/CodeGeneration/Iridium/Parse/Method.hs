@@ -54,7 +54,7 @@ pMethod = do
       expr <- pExpression quantors
       annotations <- pAnnotations
       let result = idFromString "result"
-      let b = Block (idFromString "entry") (Let result expr $ Return $ VarLocal $ Local result returnType)
+      let b = Block (idFromString "entry") (Let result expr $ Return $ VarLocal $ Local result $ typeToStrict returnType)
       return $ Method tp' args returnType annotations b []
     _ -> pError "Expected '{' or '=' in a method declaration"
   where

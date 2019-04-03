@@ -17,87 +17,99 @@ data @"[]" {
 
 define @_$helium_runtime_concatThunk(%left: !$UnsafePtr, %right: !$UnsafePtr): $UnsafePtr {
 entry:
-  %left_tag = prim thunk_extract_tag(%left: $UnsafePtr)
+  %left_tag = prim thunk_extract_tag(%left: !$UnsafePtr)
 
   %16 = literal int 16
-  %left_remaining = prim int_lshr(%left_tag: Int, %16: Int)
+  %left_remaining = prim int_lshr(%left_tag: !Int, %16: !Int)
 
   %argcount_mask = literal int 65535
-  %left_arguments = prim int_and(%left_tag: Int, %argcount_mask: Int)
+  %left_arguments = prim int_and(%left_tag: !Int, %argcount_mask: !Int)
 
   match %right: !$UnsafePtr on thunk 1 (_, %right_argument)
+
+  %right_tag = prim thunk_extract_tag(%right: !$UnsafePtr)
+  %right_arguments = prim int_and(%right_tag: !Int, %argcount_mask: !Int)
 
   ; New tag has one argument more (so tag += 1)
   ; and thus one less remaining (so tag -= 65536)
   %tag_diff = literal int 65535
-  %newtag = prim int_sub(%left_tag: Int, %tag_diff: Int)
+  %newtag = prim int_sub(%left_tag: !Int, %tag_diff: !Int)
 
-  case %left_arguments: Int int ( 0 to 0, 1 to 1, 2 to 2, 3 to 3, 4 to 4, 5 to 5, 6 to 6, 7 to 7 ) otherwise unreachable
+  case %right_arguments: !Int int ( 0 to no_arguments, 1 to one_argument ) otherwise unreachable
+
+no_arguments:
+  return %left: !$UnsafePtr
+
+one_argument:
+  case %left_arguments: !Int int ( 0 to 0, 1 to 1, 2 to 2, 3 to 3, 4 to 4, 5 to 5, 6 to 6, 7 to 7 ) otherwise unreachable
 
 unreachable:
+  %err_unreachable = literal str "_$helium_runtime_concatThunk: invalid thunk"
+  %err_unreachable_thunk = cast %err_unreachable: (![Char]) as ([Char])
+  %err_unreachable_thunk_call = call @LvmException#error[1]: (forall a. [Char] -> a) $ ({ () }, %err_unreachable_thunk: [Char])
   unreachable
 
 0:
   match %left: !$UnsafePtr on thunk 0 (%0_target)
   letalloc %0_res = function %0_target: !$UnsafePtr $ (%right_argument: $UnsafePtr)
-  %0_ = prim thunk_write_tag(%0_res: !$UnsafePtr, %newtag: Int)
+  %0_ = prim thunk_write_tag(%0_res: !$UnsafePtr, %newtag: !Int)
   return %0_res: !$UnsafePtr
 
 1:
   match %left: !$UnsafePtr on thunk 1 (%1_target, %1_0)
   letalloc %1_res = function %1_target: !$UnsafePtr $ (%1_0: $UnsafePtr, %right_argument: $UnsafePtr)
-  %1_ = prim thunk_write_tag(%1_res: !$UnsafePtr, %newtag: Int)
+  %1_ = prim thunk_write_tag(%1_res: !$UnsafePtr, %newtag: !Int)
   return %1_res: !$UnsafePtr
 
 2:
   match %left: !$UnsafePtr on thunk 2 (%2_target, %2_0, %2_1)
   letalloc %2_res = function %2_target: !$UnsafePtr $ (%2_0: $UnsafePtr, %2_1: $UnsafePtr, %right_argument: $UnsafePtr)
-  %2_ = prim thunk_write_tag(%2_res: !$UnsafePtr, %newtag: Int)
+  %2_ = prim thunk_write_tag(%2_res: !$UnsafePtr, %newtag: !Int)
   return %2_res: !$UnsafePtr
 
 3:
   match %left: !$UnsafePtr on thunk 3 (%3_target, %3_0, %3_1, %3_2)
   letalloc %3_res = function %3_target: !$UnsafePtr $ (%3_0: $UnsafePtr, %3_1: $UnsafePtr, %3_2: $UnsafePtr, %right_argument: $UnsafePtr)
-  %3_ = prim thunk_write_tag(%3_res: !$UnsafePtr, %newtag: Int)
+  %3_ = prim thunk_write_tag(%3_res: !$UnsafePtr, %newtag: !Int)
   return %3_res: !$UnsafePtr
 
 4:
   match %left: !$UnsafePtr on thunk 4 (%4_target, %4_0, %4_1, %4_2, %4_3)
   letalloc %4_res = function %4_target: !$UnsafePtr $ (%4_0: $UnsafePtr, %4_1: $UnsafePtr, %4_2: $UnsafePtr, %4_3: $UnsafePtr, %right_argument: $UnsafePtr)
-  %4_ = prim thunk_write_tag(%4_unsafe: !$UnsafePtr, %newtag: Int)
+  %4_ = prim thunk_write_tag(%4_res: !$UnsafePtr, %newtag: !Int)
   return %4_res: !$UnsafePtr
 
 5:
   match %left: !$UnsafePtr on thunk 5 (%5_target, %5_0, %5_1, %5_2, %5_3, %5_4)
   letalloc %5_res = function %5_target: !$UnsafePtr $ (%5_0: $UnsafePtr, %5_1: $UnsafePtr, %5_2: $UnsafePtr, %5_3: $UnsafePtr, %5_4: $UnsafePtr, %right_argument: $UnsafePtr)
-  %5_ = prim thunk_write_tag(%5_res: !$UnsafePtr, %newtag: Int)
+  %5_ = prim thunk_write_tag(%5_res: !$UnsafePtr, %newtag: !Int)
   return %5_res: !$UnsafePtr
 
 6:
   match %left: !$UnsafePtr on thunk 6 (%6_target, %6_0, %6_1, %6_2, %6_3, %6_4, %6_5)
   letalloc %6_res = function %6_target: !$UnsafePtr $ (%6_0: $UnsafePtr, %6_1: $UnsafePtr, %6_2: $UnsafePtr, %6_3: $UnsafePtr, %6_4: $UnsafePtr, %6_5: $UnsafePtr, %right_argument: $UnsafePtr)
-  %6_ = prim thunk_write_tag(%6_res: !$UnsafePtr, %newtag: Int)
+  %6_ = prim thunk_write_tag(%6_res: !$UnsafePtr, %newtag: !Int)
   return %6_res: !$UnsafePtr
 
 7:
   match %left: !$UnsafePtr on thunk 7 (%7_target, %7_0, %7_1, %7_2, %7_3, %7_4, %7_5, %7_6)
   letalloc %7_res = function %7_target: !$UnsafePtr $ (%7_0: $UnsafePtr, %7_1: $UnsafePtr, %7_2: $UnsafePtr, %7_3: $UnsafePtr, %7_4: $UnsafePtr, %7_5: $UnsafePtr, %7_6: $UnsafePtr, %right_argument: $UnsafePtr)
-  %7_ = prim thunk_write_tag(%7_res: !$UnsafePtr, %newtag: Int)
+  %7_ = prim thunk_write_tag(%7_res: !$UnsafePtr, %newtag: !Int)
   return %7_res: !$UnsafePtr
 
 ; TODO: Allow more than 7 arguments
 }
 
 
-export_as @_$helium_runtime_eval define @_$helium_runtime_eval(%a: !$UnsafePtr, %b: Int): !$UnsafePtr {
+export_as @_$helium_runtime_eval define @_$helium_runtime_eval(%a: !$UnsafePtr, %b: !Int): !$UnsafePtr {
 eval.entry:
-  case %b: Int int ( 0 to eval.thunk) otherwise eval.whnf
+  case %b: !Int int ( 0 to eval.thunk) otherwise eval.whnf
 
 eval.whnf:
   return %a: !$UnsafePtr
 
 eval.thunk:
-  %res = call @eval_thunk[1]: (!$UnsafePtr -> $UnsafePtr) $ (%a: $UnsafePtr)
+  %res = call @eval_thunk[1]: (!$UnsafePtr -> $UnsafePtr) $ (%a: !$UnsafePtr)
   return %res: !$UnsafePtr
 }
 
@@ -108,25 +120,25 @@ eval_thunk.entry:
   %tag = prim thunk_extract_tag(%a: !$UnsafePtr)
 
   %16 = literal int 16
-  %remaining = prim int_lshr(%tag: Int, %16: Int)
+  %remaining = prim int_lshr(%tag: !Int, %16: !Int)
 
   %argcount_mask = literal int 65535
-  %argcount = prim int_and(%tag: Int, %argcount_mask: Int)
+  %argcount = prim int_and(%tag: !Int, %argcount_mask: !Int)
 
-  %target_ptr_offset = prim thunk_target_ptr_offset(%argcount: Int)
-  %target_ptr = prim $UnsafePtr_add(%a: !$UnsafePtr, %target_ptr_offset: Int)
-  %target = prim $UnsafePtr_read(%target_ptr: !$UnsafePtr)
+  %target_ptr_offset = prim thunk_target_ptr_offset(%argcount: !Int)
+  %target_ptr = prim unsafeptr_add(%a: !$UnsafePtr, %target_ptr_offset: !Int)
+  %target = prim unsafeptr_read(%target_ptr: !$UnsafePtr)
 
   ; Precalculate tags that we might need later on
   %blackhole = literal int 65533
-  %blackhole_shifted = prim int_shl(%blackhole: Int, %16: Int)
-  %tag_blackhole = prim int_or(%blackhole_shifted: Int, %argcount: Int)
+  %blackhole_shifted = prim int_shl(%blackhole: !Int, %16: !Int)
+  %tag_blackhole = prim int_or(%blackhole_shifted: !Int, %argcount: !Int)
 
   %evaluated = literal int 65534
-  %evaluated_shifted = prim int_shl(%evaluated: Int, %16: Int)
-  %tag_evaluated = prim int_or(%evaluated_shifted: Int, %argcount: Int)
+  %evaluated_shifted = prim int_shl(%evaluated: !Int, %16: !Int)
+  %tag_evaluated = prim int_or(%evaluated_shifted: !Int, %argcount: !Int)
 
-  case %remaining: Int int ( 0 to eval.go, 65533 to eval.is_blackhole, 65534 to eval.is_evaluated, 65535 to eval.target_is_thunk ) otherwise eval.whnf
+  case %remaining: !Int int ( 0 to eval.go, 65533 to eval.is_blackhole, 65534 to eval.is_evaluated, 65535 to eval.target_is_thunk ) otherwise eval.whnf
 
 eval.whnf:
   ; Thunk is an unsaturated function. It is already in WHNF
@@ -135,7 +147,7 @@ eval.whnf:
 eval.is_blackhole:
   %err_loop = literal str "Loop"
   %err_loop_thunk = cast %err_loop: (![Char]) as ([Char])
-  %_call = call @LvmException#error: (forall a. [Char] -> a) $ ({ () }, %err_loop_thunk: [Char])
+  %_call = call @LvmException#error[1]: (forall a. [Char] -> a) $ ({ () }, %err_loop_thunk: [Char])
   unreachable
 
 eval.is_evaluated:
@@ -143,32 +155,32 @@ eval.is_evaluated:
 
 eval.target_is_thunk:
   ; Mark the thunk as a blackhole
-  %_4 = prim thunk_write_tag(%a: !$UnsafePtr, %tag_blackhole: Int)
+  %_4 = prim thunk_write_tag(%a: !$UnsafePtr, %tag_blackhole: !Int)
 
-  %target_thunk = call @eval_thunk: (!$UnsafePtr -> $UnsafePtr) $ (%target: !$UnsafePtr)
-  %new_thunk = call @_$helium_runtime_concatThunk: (!$UnsafePtr -> !$UnsafePtr -> !$UnsafePtr) $ (%target_thunk: !$UnsafePtr, %a: !$UnsafePtr)
-  %new_thunk_eval = call @eval_thunk: (!$UnsafePtr -> $UnsafePtr) $ (%new_thunk_unsafe: !$UnsafePtr)
+  %target_thunk = call @eval_thunk[1]: (!$UnsafePtr -> $UnsafePtr) $ (%target: !$UnsafePtr)
+  %new_thunk = call @_$helium_runtime_concatThunk[2]: (!$UnsafePtr -> !$UnsafePtr -> !$UnsafePtr) $ (%target_thunk: !$UnsafePtr, %a: !$UnsafePtr)
+  %new_thunk_eval = call @eval_thunk[1]: (!$UnsafePtr -> $UnsafePtr) $ (%new_thunk: !$UnsafePtr)
 
   ; Mark the thunk as evaluated
-  %_5 = prim thunk_write_tag(%a: !$UnsafePtr, %tag_evaluated: Int)
+  %_5 = prim thunk_write_tag(%a: !$UnsafePtr, %tag_evaluated: !Int)
 
   ; Store the result in the thunk
-  %_6 = prim $UnsafePtr_write(%target_ptr: !$UnsafePtr, %new_thunk_eval: !$UnsafePtr)
+  %_6 = prim unsafeptr_write(%target_ptr: !$UnsafePtr, %new_thunk_eval: !$UnsafePtr)
 
   return %new_thunk_eval: !$UnsafePtr
 
 eval.go:
   ; Mark the thunk as a blackhole
-  %_1 = prim thunk_write_tag(%a: !$UnsafePtr, %tag_blackhole: Int)
+  %_1 = prim thunk_write_tag(%a: !$UnsafePtr, %tag_blackhole: !Int)
 
   ; Invoke the function
   %value = prim thunk_call(%target: !$UnsafePtr, %a: !$UnsafePtr)
 
   ; Mark the thunk as evaluated
-  %_2 = prim thunk_write_tag(%a: !$UnsafePtr, %tag_evaluated: Int)
+  %_2 = prim thunk_write_tag(%a: !$UnsafePtr, %tag_evaluated: !Int)
 
   ; Store the result in the thunk
-  %_3 = prim $UnsafePtr_write(%target_ptr: !$UnsafePtr, %value: !$UnsafePtr)
+  %_3 = prim unsafeptr_write(%target_ptr: !$UnsafePtr, %value: !$UnsafePtr)
 
   return %value: !$UnsafePtr
 }

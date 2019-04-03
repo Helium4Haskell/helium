@@ -38,7 +38,7 @@ structTypeNoAlias env struct = StructureType False (headerStruct : fieldTypes)
     headerStruct = StructureType False $ IntegerType (fromIntegral $ firstFieldSize $ envTarget env) : replicate (additionalHeaderFields env struct) (envValueType env)
     getFieldType :: StructField -> Type
     getFieldType (StructField t _) 
-      | Iridium.typeIsStrict t = voidPointer
+      | not (Iridium.typeIsStrict t) = voidPointer
       | otherwise = compileType env t
     fieldTypes = map getFieldType $ fields struct
 -- Example for a 32 bit system, with 48 gc bits. The first header element thus needs 64 bits (first multiple of 32, larger than 48).
@@ -151,7 +151,7 @@ writeField env operand struct supply fieldIdx (StructField fType fFlagIndex) (Ju
     -- Field
     (nameElementPtr, _) = freshNameFromId idFieldPtr supplyField
     fieldCompiledType
-      | Iridium.typeIsStrict fType = voidPointer -- The flag is stored in the header instead of in the field
+      | not (Iridium.typeIsStrict fType) = voidPointer -- The flag is stored in the header instead of in the field
       | otherwise = compileType env fType
     fieldInstructions :: [Named Instruction]
     fieldInstructions =
