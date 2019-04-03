@@ -4,8 +4,6 @@ import (IridiumLangEval, IridiumLangString)
 export_as @_$helium_runtime_error from IridiumLangString declare @_$helium_runtime_error[1]: { forall a. [Char] -> a }
 export_as @_$helium_runtime_print_string from IridiumLangString declare @_$helium_runtime_print_string[1]: { ![Char] -> Int }
 
-export_as @exit declare @exit[1]: { !Int -> Int }
-
 #[decl @kind [bytes "* -> *"]]
 export_as @"[]" data @"[]" {
   #[decl @type [bytes "[a]"]]
@@ -183,16 +181,16 @@ export_as @RealWorld data @RealWorld {}
 export_as @IO data @IO {
   #[decl @type [bytes "(RealWorld -> IORes a) -> IO a"]]
   #[link @"IO" @data]
-  export_as @IO constructor @"IO": { forall a. !(!RealWorld -> IORes a) -> IO a }
+  export_as @IO constructor @"IO": { forall a. (!RealWorld -> IORes a) -> IO a }
 }
 
 ; unsafePerformIO :: IO a -> a
 #[decl @type [bytes "IO a -> a"]]
 export_as @unsafePerformIO define @unsafePerformIO(forall a, %io: !(IO a)): a [trampoline] {
 entry:
-  match %io: !IO on @IO: (forall a. !(!RealWorld -> IORes a) -> IO a) { a } (%fn)
-  %world = undefined RealWorld
-  letalloc %thunk = thunk %fn: !(!RealWorld -> IORes a) $ (%world: RealWorld)
+  match %io: !IO on @IO: (forall a. (!RealWorld -> IORes a) -> IO a) { a } (%fn)
+  %world = undefined !RealWorld
+  letalloc %thunk = thunk %fn: (!RealWorld -> IORes a) $ (%world: !RealWorld)
   %res = eval %thunk: (IORes a)
   match %res: !(IORes a) on @IORes: (forall a. a -> !RealWorld -> IORes a) { a } (%value_any, %new_world)
   %value = eval %value_any: a
