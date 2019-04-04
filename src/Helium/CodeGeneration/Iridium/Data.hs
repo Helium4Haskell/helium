@@ -93,6 +93,9 @@ methodFunctionType (Method _ args returnType _ _ _) = FunctionType (map arg args
 methodType :: Method -> Type
 methodType (Method tp _ _ _ _ _) = tp
 
+methodArity :: Method -> Int
+methodArity (Method _ args _ _ _ _) = length $ filter isRight args
+
 -- Annotations on methods
 data Annotation
   -- * This method can be put in a thunk. An additional trampoline function is generated. We store a pointer to the trampoline in the thunk.

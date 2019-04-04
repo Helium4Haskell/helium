@@ -199,23 +199,26 @@ toInstruction supply env continue (Core.Let (Core.Rec bs) expr)
 
 -- Match
 toInstruction supply env continue match@(Core.Match x alts) =
-  blocks &> (case head alts of
-    Core.Alt Core.PatDefault expr -> toInstruction supply'' env (head continues) expr
-    -- We don't need to create a Case statement for tuples, we only Match on the elements of the tuple.
-    Core.Alt (Core.PatCon (Core.ConTuple arity) instantiation fields) expr ->
-      let
-        locals = zipWith Local fields instantiation
-        env' = expandEnvWithLocals locals env
-      in
-        Match (resolve env x) (MatchTargetTuple arity) instantiation (map Just fields)
-        +> toInstruction supply'' env' (head continues) expr
-    Core.Alt (Core.PatCon (Core.ConId con) _ _) _ ->
-      let ValueConstructor constructor = findMap con (teValues env)
-      in transformCaseConstructor supply'' env continues x (constructorDataType constructor) alts
-    Core.Alt (Core.PatLit (Core.LitInt _ _)) _ -> transformCaseInt supply'' env continues x alts
-    Core.Alt (Core.PatLit _) _ -> error "Match on float literals is not yet supported"
-    )
+  blocks &> partial
   where
+    (blockCount, partial) = case head alts of
+      Core.Alt Core.PatDefault expr -> (1, toInstruction supply'' env (head continues) expr)
+      -- We don't need to create a Case statement for tuples, we only Match on the elements of the tuple.
+      Core.Alt (Core.PatCon (Core.ConTuple arity) instantiation fields) expr ->
+        let
+          locals = zipWith Local fields instantiation
+          env' = expandEnvWithLocals locals env
+        in
+          ( 1,
+            Match (resolve env x) (MatchTargetTuple arity) instantiation (map Just fields)
+              +> toInstruction supply'' env' (head continues) expr
+          )
+      Core.Alt (Core.PatCon (Core.ConId con) _ _) _ ->
+        let ValueConstructor constructor = findMap con (teValues env)
+        in transformCaseConstructor supply'' env continues x (constructorDataType constructor) alts
+      Core.Alt (Core.PatLit (Core.LitInt _ _)) _ -> transformCaseInt supply'' env continues x alts
+      Core.Alt (Core.PatLit _) _ -> error "Match on float literals is not supported"
+
     (supply1, supply2) = splitNameSupply supply
     jumps :: [(Local, Id)] -- Names of intermediate blocks and names of the variables containing the result
     jumps = mapWithSupply (\s _ ->
@@ -223,16 +226,19 @@ toInstruction supply env continue match@(Core.Match x alts) =
         (blockName, s') = freshIdFromId idMatchCase s
         (varName, _) = freshId s'
       in (Local varName tp, blockName)) supply1 alts
-    phiBranches = map (\(loc, block) -> PhiBranch block $ VarLocal loc) jumps
+    phiBranches = take blockCount $ map (\(loc, block) -> PhiBranch block $ VarLocal loc) jumps
+    phi = case phiBranches of
+      [PhiBranch _ var] -> Var var
+      _ -> Phi phiBranches
     (blockId, supply') = freshIdFromId idMatchAfter supply2
     (result, supply'') = freshId supply'
-    tp = Core.typeOfCoreExpression (teCoreEnv env) match
+    tp = Core.typeToStrict $ Core.typeOfCoreExpression (teCoreEnv env) match
     blocks = case continue of
       CReturn -> []
       CBind next ->
         let
           Partial cInstr cBlocks = next result
-          resultBlock = Block blockId (Let result (Phi phiBranches) cInstr)
+          resultBlock = Block blockId (Let result phi cInstr)
         in resultBlock : cBlocks
     continues = case continue of
       CReturn -> repeat CReturn
@@ -422,12 +428,12 @@ maybeCasts supply env tp (Left tpArg : args) =
   in
     (Left tpArg : tailVars, tailInstr, returnType)
 
-transformCaseInt :: NameSupply -> TypeEnv -> [Continue] -> Id -> [Core.Alt] -> Partial
-transformCaseInt supply env continues name alts = Partial (Case var c) $ concat blocks
+transformCaseInt :: NameSupply -> TypeEnv -> [Continue] -> Id -> [Core.Alt] -> (Int, Partial)
+transformCaseInt supply env continues name alts = (length bs, Partial (Case var c) $ concat blocks)
   where
     (supply1, supply2) = splitNameSupply supply
     var = resolve env name
-    c = gatherCaseIntAlts branches
+    c@(CaseInt bs _) = gatherCaseIntAlts branches
     branches :: [(Maybe Int, BlockName)]
     blocks :: [[Block]]
     (branches, blocks) = unzip $ mapWithSupply (`transformAltInt` env) supply2 $ zip alts continues 
@@ -458,8 +464,8 @@ transformAlt supply env continue var con@(DataTypeConstructor _ tp) instantiatio
     Match var (MatchTargetConstructor con) instantiation (map Just args)
     +> toInstruction supply env' continue expr
 
-transformCaseConstructor :: NameSupply -> TypeEnv -> [Continue] -> Id -> Id -> [Core.Alt] -> Partial
-transformCaseConstructor supply env continues varName dataType alts = Partial (Case var c) blocks
+transformCaseConstructor :: NameSupply -> TypeEnv -> [Continue] -> Id -> Id -> [Core.Alt] -> (Int, Partial)
+transformCaseConstructor supply env continues varName dataType alts = (length alts', Partial (Case var c) blocks)
   where
     var = resolve env varName
     (supply1, supply2) = splitNameSupply supply

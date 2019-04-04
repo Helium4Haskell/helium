@@ -33,12 +33,12 @@ convertConstructor _ = Nothing
 
 convertMethod :: Declaration Method -> Maybe (Core.Decl v)
 convertMethod (Declaration _ (ExportedAs name) mod customs method) = Just $
-  Core.DeclAbstract name (toAccess name mod) (methodType method) customs
+  Core.DeclAbstract name (toAccess name mod) (methodArity method) (methodType method) customs
 convertMethod _ = Nothing
 
 convertAbstractMethod :: Declaration AbstractMethod -> Maybe (Core.Decl v)
-convertAbstractMethod (Declaration _ (ExportedAs name) mod customs (AbstractMethod _ tp _)) = Just $
-  Core.DeclAbstract name (toAccess name mod) tp customs
+convertAbstractMethod (Declaration _ (ExportedAs name) mod customs (AbstractMethod arity tp _)) = Just $
+  Core.DeclAbstract name (toAccess name mod) arity tp customs
 convertAbstractMethod _ = Nothing
 
 convertTypeSynonym :: Declaration TypeSynonym -> Maybe (Core.Decl v)

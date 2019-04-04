@@ -51,7 +51,7 @@ phaseCodeGeneratorIridium supply cache fullName coreModule options = do
   writeFile (fullNameNoExt ++ ".iridium") $ show iridium'
   checkModuleIO "fromCore" (fullNameNoExt ++ ".iridium") iridium'
 
-  let iridium = passTailRecursion supplyPassTailRecursion $ {- passDeadCode supplyPassDeadCode $ -} passThunkArity supplyPassThunkArity iridium'
+  let iridium = passTailRecursion supplyPassTailRecursion $ passDeadCode supplyPassDeadCode $ passThunkArity supplyPassThunkArity iridium'
 
   writeFile (fullNameNoExt ++ ".iridium") $ show iridium
   checkModuleIO "passTailRecursion" (fullNameNoExt ++ ".iridium") iridium'

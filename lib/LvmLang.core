@@ -116,28 +116,28 @@ pseq = forall v$0. forall v$1. \a: v$0 -> \b: v$1 -> primPseq {v$0} {v$1} a b
 {----------------------------------------------------------
   Basic arithmetic on Int's
 ----------------------------------------------------------}
-(+#) :: Int -> Int -> Int
-(+#) = \x: Int -> \y: Int -> primAddInt x y
+(+#) :: Int! -> Int! -> Int
+(+#) = \x: Int! -> \y: Int! -> primAddInt x y
 
-(-#) :: Int -> Int -> Int
-(-#) = \x: Int -> \y: Int -> primSubInt x y
+(-#) :: Int! -> Int! -> Int
+(-#) = \x: Int! -> \y: Int! -> primSubInt x y
 
-(*#) :: Int -> Int -> Int
-(*#) = \x: Int -> \y: Int -> primMulInt x y
-
--- TODO: Round to -inf instead of zero
-div :: Int -> Int -> Int
-div = \x: Int -> \y: Int -> quot x y -- primDivInt x y
+(*#) :: Int! -> Int! -> Int
+(*#) = \x: Int! -> \y: Int! -> primMulInt x y
 
 -- TODO: Round to -inf instead of zero
-mod :: Int -> Int -> Int
-mod = \x: Int -> \y: Int -> rem x y -- primModInt x y
+div :: Int! -> Int! -> Int
+div = \x: Int! -> \y: Int! -> quot x y -- primDivInt x y
 
-quot :: Int -> Int -> Int
-quot = \x: Int -> \y: Int -> primQuotInt x y
+-- TODO: Round to -inf instead of zero
+mod :: Int! -> Int! -> Int
+mod = \x: Int! -> \y: Int! -> rem x y -- primModInt x y
 
-rem :: Int -> Int -> Int
-rem = \x: Int -> \y: Int -> primRemInt x y
+quot :: Int! -> Int! -> Int
+quot = \x: Int! -> \y: Int! -> primQuotInt x y
+
+rem :: Int! -> Int! -> Int
+rem = \x: Int! -> \y: Int! -> primRemInt x y
 {-
 and :: Int -> Int -> Int
 and = \x: Int -> \y: Int -> primAndInt x y
@@ -148,38 +148,38 @@ xor = \x: Int -> \y: Int -> primXorInt x y
 or :: Int -> Int -> Int
 or = \x: Int -> \y: Int -> primOrInt x y
 -}
-shr :: Int -> Int -> Int
-shr = \x: Int -> \y: Int -> primShrInt x y
+shr :: Int! -> Int! -> Int
+shr = \x: Int! -> \y: Int! -> primShrInt x y
 
-shl :: Int -> Int -> Int
-shl = \x: Int -> \y: Int -> primShlInt x y
+shl :: Int! -> Int! -> Int
+shl = \x: Int! -> \y: Int! -> primShlInt x y
 
-shrNat :: Int -> Int -> Int
-shrNat = \x: Int -> \y: Int -> primShrNat x y
+shrNat :: Int! -> Int! -> Int
+shrNat = \x: Int! -> \y: Int! -> primShrNat x y
 
-negInt :: Int -> Int
-negInt = \x: Int -> primNegInt x
+negInt :: Int! -> Int
+negInt = \x: Int! -> primNegInt x
 
 {----------------------------------------------------------
   Comparisons on Int's
 ----------------------------------------------------------}
-(==#) :: Int -> Int -> Bool
-(==#) = \x: Int -> \y: Int -> primEqInt x y
+(==#) :: Int! -> Int! -> Bool
+(==#) = \x: Int! -> \y: Int! -> primEqInt x y
 
-(/=#) :: Int -> Int -> Bool
-(/=#) = \x: Int -> \y: Int -> primNeInt x y
+(/=#) :: Int! -> Int! -> Bool
+(/=#) = \x: Int! -> \y: Int! -> primNeInt x y
 
-(<#) :: Int -> Int -> Bool
-(<#) = \x: Int -> \y: Int -> primLtInt x y
+(<#) :: Int! -> Int! -> Bool
+(<#) = \x: Int! -> \y: Int! -> primLtInt x y
 
-(>#) :: Int -> Int -> Bool
-(>#) = \x: Int -> \y: Int -> primGtInt x y
+(>#) :: Int! -> Int! -> Bool
+(>#) = \x: Int! -> \y: Int! -> primGtInt x y
 
-(<=#) :: Int -> Int -> Bool
-(<=#) = \x: Int -> \y: Int -> primLeInt x y
+(<=#) :: Int! -> Int! -> Bool
+(<=#) = \x: Int! -> \y: Int! -> primLeInt x y
 
-(>=#) :: Int -> Int -> Bool
-(>=#) = \x: Int -> \y: Int -> primGeInt x y
+(>=#) :: Int! -> Int! -> Bool
+(>=#) = \x: Int! -> \y: Int! -> primGeInt x y
 
 {----------------------------------------------------------
   Basic arithmetic on Float's
@@ -283,8 +283,12 @@ putChar = \char: Char -> IO { () }
   )
 
 ''$primPutStrLn'' :: String -> IO ()
-''$primPutStrLn'' = \str: String ->
-  let! newline: String! = "\n" in
-  let! _1: Int! = ''_$helium_runtime_print_string'' str in
-  let! _2: Int! = ''_$helium_runtime_print_string'' newline in
-  IO {()} (\realworld: RealWorld! -> IORes {()} () realworld)
+''$primPutStrLn'' = 
+  let print: ([Char]! -> Int) = \str: [Char]! -> ''_$helium_runtime_print_string'' str
+  in
+    \str: String ->
+      IO {()} (\realworld: RealWorld! ->
+        seq {Int} {IORes ()}
+          (print str)
+          (seq {Int} {IORes ()}
+            (print "\n") (IORes {()} () realworld)))

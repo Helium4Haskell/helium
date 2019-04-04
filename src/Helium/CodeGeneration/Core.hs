@@ -20,6 +20,7 @@ import Helium.CodeGeneration.Core.ReduceThunks(coreReduceThunks)
 import Helium.CodeGeneration.Core.Rename(coreRename)
 import Helium.CodeGeneration.Core.RemoveAliases(coreRemoveAliases)
 import Helium.CodeGeneration.Core.Saturate(coreSaturate)
+import Helium.CodeGeneration.Core.Strictness(coreStrictness)
 
 pipeline :: [(String, NameSupply -> CoreModule -> CoreModule)]
 pipeline =
@@ -29,6 +30,8 @@ pipeline =
   , ("LetInline 1", const coreLetInline)
   , ("LetInline 2", const coreLetInline)
   , ("Normalize", coreNormalize)
+  , ("Strictness 1", coreStrictness)
+  , ("Strictness 2", coreStrictness)
   , ("RemoveAliases", const coreRemoveAliases)
   , ("ReduceThunks", const coreReduceThunks)
   , ("Lift", coreLift)

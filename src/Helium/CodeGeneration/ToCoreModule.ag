@@ -38,7 +38,7 @@ insertedMain classEnv tse toplevelTypes =
         d tp expr = Just $ decl False "main$" tp $ app_ (Core.ApType unsafePIO tp) expr
     in
         case maybeWrapMainAndType of 
-            Nothing -> 
+            Nothing ->
                 Nothing
             Just (name, tpScheme)
                 | not (null qs) ->

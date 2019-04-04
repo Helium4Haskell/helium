@@ -21,6 +21,7 @@ module Helium.CodeGeneration.Iridium.PassDeadCode(passDeadCode) where
 import Helium.CodeGeneration.Iridium.Type
 import Helium.CodeGeneration.Iridium.Data
 import Data.Maybe (catMaybes, fromMaybe, isNothing)
+import Data.Either (isRight)
 import Lvm.Common.Id
 import Lvm.Common.IdMap
 import Lvm.Common.IdSet
@@ -192,8 +193,9 @@ preservedArguments' (Result _ _ args) var = lookupMap var args
 transformMethod :: NameSupply -> Result -> Declaration Method -> Maybe (Declaration Method)
 transformMethod supply res (Declaration name vis mod customs (Method tp args retType annotations b bs))
   | not $ isLive res name = Nothing
-  | otherwise = Just $ Declaration name vis mod customs $ Method tp args' retType annotations b' bs'
+  | otherwise = Just $ Declaration name vis mod customs $ Method tp' args' retType annotations b' bs'
   where
+    (_, tp') = transformType res name (length $ filter isRight args) tp
     args' = map fst $ filter snd $ zip args $ preservedArguments res name
     b' : bs' = mapWithSupply transformBlock supply $ b : bs
     transformBlock s (Block blockName instr) = Block blockName $ transformInstruction s res instr
@@ -255,16 +257,19 @@ transformCall supply res fn args argTypes = (args', flip (foldr id) instrs)
     transformArgument s ((arg, _), True) = Just $ (arg, id)
 
 transformGlobal :: Result -> Global -> Global
-transformGlobal res (GlobalFunction name arity fnType) = GlobalFunction name arity $ transformType res name arity fnType
+transformGlobal res (GlobalFunction name arity fnType) = GlobalFunction name arity' fnType'
+  where
+    (arity', fnType') = transformType res name arity fnType
 transformGlobal _ g = g
 
-transformType :: Result -> Id -> Int -> Type -> Type
+transformType :: Result -> Id -> Int -> Type -> (Int, Type)
 transformType res@(Result env _ _) name arity fnType =
   case preservedArguments' res name of
-    Nothing -> fnType
-    Just bools ->
-      let
-        FunctionType args retType = extractFunctionTypeWithArity env arity fnType
-        args' = map fst $ filter snd $ zip args bools
-      in
-        typeFromFunctionType $ FunctionType args' retType
+    Just bools
+      | any not bools ->
+        let
+          FunctionType args retType = extractFunctionTypeWithArity env arity fnType
+          args' = map fst $ filter snd $ zip args bools
+        in
+          (length $ filter isRight args', typeFromFunctionType $ FunctionType args' retType)
+    _ -> (arity, fnType)

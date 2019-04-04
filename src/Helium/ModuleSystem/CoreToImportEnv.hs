@@ -73,6 +73,10 @@ typeSchemeFromCore quantifiedType =
       = ( Predicate (stringFromId className) (fromCore instanceType) : predicates, t' )
       where
         (predicates, t') = splitPredicates t
+    splitPredicates (Core.TAp (Core.TAp (Core.TCon Core.TConFun) (Core.TStrict (Core.TAp (Core.TCon (Core.TConTypeClassDictionary className)) instanceType))) t)
+      = ( Predicate (stringFromId className) (fromCore instanceType) : predicates, t' )
+      where
+        (predicates, t') = splitPredicates t
     splitPredicates t = ([], t)
 
     (quantors, qmap, qtype) = splitForalls quantifiedType
