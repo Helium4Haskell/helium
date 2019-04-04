@@ -614,7 +614,7 @@ undefined = error "undefined"
 {-----------------------------------------------
  -- IO
  -----------------------------------------------}
-{-}
+{-
 putChar :: Char -> IO ()
 putChar c = primPutChar c
 
@@ -890,11 +890,6 @@ class Show a where
     showList ls s  = "[" ++ intercalate "," (map (flip shows s) ls) ++ "]"
     showsPrec _ x s = show x ++ s
     show x          = shows x ""
-    {-showList []   s = "[]" ++ s
-    showList (l:ls) s = '[' : shows l (showl ls)
-        where
-            showl []     = ']' : s
-            showl (y:ys) = ',' : shows y (show ys)-}
 
 instance Show Int where
     show = showInt
@@ -1024,4 +1019,3 @@ instance Enum Char where
     fromEnum        = primOrd
     enumFrom        = enumFromChar
     enumFromThen    = enumFromThenChar
-

@@ -40,7 +40,7 @@ SEM Declaration
         lhs . decls  =
             let -- if we would have the collected type synonym information here, things could have been
                 -- done much easier.
-                (t1,[t2])   = convertFromSimpleTypeAndTypes @simpletype.self [@type.self]
+                (t1,[t2])   = convertFromSimpleTypeAndTypes @simpletype.self [@qualrhs]
                 allTypeVars = ftv [t1,t2]
                 (ts1,ts2)   = ( Quantification (allTypeVars, [], [] .=>. t1) :: TpScheme
                               , Quantification (allTypeVars, [], [] .=>. t2) :: TpScheme
@@ -51,6 +51,7 @@ SEM Declaration
                 , Core.declAccess  = Core.private
                 , Core.declKind    = Core.DeclKindCustom (idFromString "typedecl")
                 , Core.declCustoms =
+                    originCustoms @lhs.modulename @range.self ++
                     [ Core.CustomBytes
                         (Byte.bytesFromString
                             (  show ts1
@@ -219,7 +220,8 @@ SEM Declaration
                                                     Core.declName = idFromName @simpletype.name,
                                                     Core.declAccess = Core.public,
                                                     Core.declKind = Core.DeclKindCustom $ idFromString "ClassDefinition",
-                                                    Core.declCustoms = constructClassMemberCustomDecl @lhs.importEnv @simpletype.name (M.lookup @simpletype.name $ classMemberEnvironment @lhs.importEnv)
+                                                    Core.declCustoms = originCustoms @lhs.modulename @range.self ++ 
+                                                        constructClassMemberCustomDecl @lhs.importEnv @simpletype.name (M.lookup @simpletype.name $ classMemberEnvironment @lhs.importEnv)
                                                 }
                                         ] ++ convertDictionaries @lhs.importEnv @simpletype.name @where.functionNames @where.whereDeclarations 
                                          ++ (filter isInfix @where.decls)

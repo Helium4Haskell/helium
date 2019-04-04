@@ -21,6 +21,8 @@ import Helium.Parser.LexerMessage
 import Helium.Parser.LexerToken
 import Helium.StaticAnalysis.Messages.StaticErrors
 import Text.ParserCombinators.Parsec.Pos
+import Text.ParserCombinators.Parsec.Prim(Parser)
+import Text.Parsec
 import Helium.Utils.Utils(internalError, hole)
 
 import Control.Monad(when, liftM)
@@ -134,14 +136,31 @@ lexName predicate normal reserved reserveds cs = do
         lexerWarning CommentOperator pos
     returnToken lexeme (length name) mainLexer rest
 
+
+-- Parses any number of commas enclosed by parentheses
+tupleParser :: Parser String
+tupleParser = do
+    x <- char '('
+    y <- many (char ',')
+    z <- char ')'
+    return $ x : y ++ [z]
+
+-- Parses any number of letters, '$' signs or tuples using tupleParser
+qualOrConParser :: Parser String
+qualOrConParser = p
+    where p = fmap concat $ many (try tupleParser <|> many1 (satisfy isLetter <|> char '$'))
+
+parserParsedRest :: Parser String -> Parser (String, String)
+parserParsedRest p = do
+    x <- p
+    rest <- many anyChar
+    return (x, rest)
+
 lexQualOrCon :: Lexer
 lexQualOrCon input = let
-    firstLex = takeWhile (\c -> isLetter c || (c =='$')) input
-    correctInput = not ("$" `isPrefixOf` firstLex) && not ("$" `isSuffixOf` firstLex) && '$' `elem` firstLex
-    select  | correctInput = \c -> isLetter c || c == '$'
-            | otherwise = isLetter
+    firstLex = parse (parserParsedRest qualOrConParser) "" input
     in do
-    let (name@(first:_), rest) = span isLetter input
+    let (name@(first:_), rest) = either (const ("",input)) id firstLex
     when ((isSymbol first || first == ':') && name `contains` "--") $ do
         pos <- getPos
         lexerWarning CommentOperator pos

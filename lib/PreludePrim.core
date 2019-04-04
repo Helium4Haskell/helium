@@ -353,13 +353,6 @@ enumFromThenToDefault f1 f2 x y z = map f1 (enumFromThenToInt (f2 x) (f2 y) (f2 
 
 data Ordering = LT | EQ | GT 
 
-showOrdering :: Ordering -> String
-showOrdering x = 
-    case x of
-        LT -> primPackedToString "LT"
-        EQ -> primPackedToString "EQ"
-        GT -> primPackedToString "GT"
-
 compareList ''$dictElem'' xs ys =
     case xs of
         [] -> 
