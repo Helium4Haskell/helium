@@ -6,22 +6,18 @@ export_as @_$helium_runtime_print_string from IridiumLangString declare @_$heliu
 
 #[decl @kind [bytes "* -> *"]]
 export_as @"[]" data @"[]" {
-  #[decl @type [bytes "[a]"]]
   #[link @"[]" @data]
   export_as @"[]" constructor @"[]": { forall a. [a] }
 
-  #[decl @type [bytes "a -> [a] -> [a]"]]
   #[link @"[]" @data]
   export_as @":" constructor @":": { forall a. a -> [a] -> [a] }
 }
 
 #[decl @kind [bytes "*"]]
 export_as @Bool data @Bool {
-  #[decl @type [bytes "Bool"]]
   #[link @Bool @data]
   export_as @False constructor @False: { Bool }
 
-  #[decl @type [bytes "Bool"]]
   #[link @Bool @data]
   export_as @True constructor @True: { Bool }
 }
@@ -145,7 +141,6 @@ entry:
   return %result: !Bool
 }
 
-#[decl @type [bytes "a -> b -> b"]]
 export_as @primSeq define @primSeq(forall a, forall b, %a: a, %b: b): b [trampoline] {
 entry:
   %a_whnf = eval %a: a
@@ -154,7 +149,6 @@ entry:
   return %c: !b
 }
 
-#[decl @type [bytes "a -> b -> b"]]
 export_as @primPseq define @primPseq(forall a, forall b, %a: a, %b: b): b [trampoline] {
 entry:
   %a_whnf = eval %a: a
@@ -167,7 +161,6 @@ entry:
 ; data IORes a = IORes a !RealWorld
 #[decl @kind [bytes "* -> *"]]
 export_as @IORes data @IORes {
-  #[decl @type [bytes "a -> RealWorld -> IORes a"]]
   #[link @"IORes" @data]
   export_as @IORes constructor @IORes: { forall a. a -> !RealWorld -> IORes a }
 }
@@ -179,13 +172,11 @@ export_as @RealWorld data @RealWorld {}
 ; data IO a = IO !(!RealWorld -> IORes a)
 #[decl @kind [bytes "* -> *"]]
 export_as @IO data @IO {
-  #[decl @type [bytes "(RealWorld -> IORes a) -> IO a"]]
   #[link @"IO" @data]
   export_as @IO constructor @"IO": { forall a. (!RealWorld -> IORes a) -> IO a }
 }
 
 ; unsafePerformIO :: IO a -> a
-#[decl @type [bytes "IO a -> a"]]
 export_as @unsafePerformIO define @unsafePerformIO(forall a, %io: !(IO a)): a [trampoline] {
 entry:
   match %io: !IO on @IO: (forall a. (!RealWorld -> IORes a) -> IO a) { a } (%fn)
@@ -199,11 +190,9 @@ entry:
 }
 
 ; $primPutChar :: Char -> RealWorld -> IORes Int
-#[decl @type [bytes "Char -> RealWorld -> IORes Int"]]
 export_as @$primPutChar declare @putchar[2]: { !Char -> !RealWorld -> IORes Int } [callconvention:c fake_io]
 
 ; $primGetChar :: RealWorld -> IORes Char
-#[decl @type [bytes "RealWorld -> IORes Char"]]
 export_as @$primGetChar declare @getchar[1]: { RealWorld -> IORes Char } [callconvention:c fake_io]
 
 export_as @$primUnsafeCast define @$primUnsafeCast(forall a, forall b, %x: !a): b [trampoline] {

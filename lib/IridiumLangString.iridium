@@ -8,11 +8,9 @@ custom @"[]": @data
 
 #[decl @kind [bytes "* -> *"]]
 data @"[]" {
-  #[decl @type [bytes "[a]"]]
   #[link @"[]" @data]
   constructor @"[]": { forall a. [a] }
 
-  #[decl @type [bytes "a -> [a] -> [a]"]]
   #[link @"[]" @data]
   constructor @":": { forall a. a -> [a] -> [a] }
 }

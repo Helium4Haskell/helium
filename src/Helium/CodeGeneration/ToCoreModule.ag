@@ -108,13 +108,6 @@ localValuePrims cdecls
 -- Since the parser cannot distinguish between types or constructors,
 -- or between types and type classes, we do not have different cases (yet?).
 
-ATTR Declarations Declaration
-    [   isTopLevel : Bool
-    |
-    |
-    ]   
-    
-
 ATTR MaybeExports Export Exports
     [
     |
@@ -157,7 +150,6 @@ ATTR Body Declarations Declaration MaybeDeclarations
 SEM Body
     | Body             lhs.decls    = @declarations.decls
                        declarations.patBindNr = 0
-                       declarations.isTopLevel = True
                        declarations.instanceName = Nothing
     --  range                    : Range
     --  importdeclarations       : ImportDeclarations

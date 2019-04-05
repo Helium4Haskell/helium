@@ -33,19 +33,6 @@ import Data.Char
 import Data.Maybe
 import qualified Data.Map as M
 
-typeDictFromCustoms :: String -> [Custom] -> TpScheme
-typeDictFromCustoms n [] = internalError "CoreToImportEnv" "typeDictFromCustoms"
-                ("function import without type: " ++ n)
-typeDictFromCustoms n ( CustomDecl (DeclKindCustom ident) [CustomBytes bytes] : cs) 
-    | stringFromId ident == "type" =
-        let 
-            string = filter (/= '!') (stringFromBytes bytes) 
-            dictName = takeWhile (/= ' ')
-            dictType = tail $ dropWhile (/= ' ') string
-        in makeTpSchemeFromType (parseFromString contextAndType dictType)
-    | otherwise =
-        typeDictFromCustoms n cs
-
 parseFromString :: HParser a -> String -> a
 parseFromString p string = 
     case lexer [] "CoreToImportEnv" string of 
@@ -221,19 +208,11 @@ getImportEnvironment importedInModule decls = foldr (insertDictionaries imported
                         , declCustoms = cs
                         } ->
                 \env ->  
-                    let
-                        nEnv =  addType
-                                    (makeImportName importedInModule importedFromModId n)
-                                    (
-                                        if "$dict" `isPrefixOf` (stringFromId n) then 
-                                            typeDictFromCustoms (stringFromId n) cs
-                                        else 
-                                            typeSchemeFromCore tp) env
-                                        
-                        
-                    in nEnv 
-                
-          
+                    if "$dict" `isPrefixOf` (stringFromId n) then env else
+                        addType
+                            (makeImportName importedInModule importedFromModId n)
+                            (typeSchemeFromCore tp) env
+
            -- functions from non-core/non-lvm libraries and lvm-instructions
            DeclExtern { declName = n
                       , declAccess  = Imported{importModule = importedFromModId}

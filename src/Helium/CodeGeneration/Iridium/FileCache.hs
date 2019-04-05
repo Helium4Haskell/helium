@@ -42,10 +42,10 @@ readIridiumFile cache@(FileCache paths ref) name = do
       file <- parseIridium cache name fileName contents
       return (fileName, file)
 
-writeIridium :: FileCache -> Id -> FilePath -> Module -> IO ()
-writeIridium (FileCache _ ref) name fileName iridium = do
+writeIridium :: FileCache -> FilePath -> Module -> IO ()
+writeIridium (FileCache _ ref) fileName iridium = do
   writeFile fileName $ show iridium
-  modifyIORef' ref $ insertMap name $ CachedFile fileName iridium
+  modifyIORef' ref $ insertMap (moduleName iridium) $ CachedFile fileName iridium
 
 parseIridium :: FileCache -> Id -> FilePath -> String -> IO Module
 parseIridium (FileCache _ ref) name fileName contents = do

@@ -82,9 +82,7 @@ classFunctions typeOutput className typeVar combinedNames = [DeclCon -- Declare 
                                                     , declAccess  = public
                                                     , declType    = constructorType typeVar (map (\(_, _, _, t) -> t) superclasses) (map (\(_, _, _, t) -> t) combinedNames) classType
                                                     , declCustoms = 
-                                                        -- Types of constructors are not enforced
-                                                        [ custom "type" ("whatever")
-                                                        , CustomLink dictName (DeclKindCustom $ idFromString "data") ]
+                                                        [ CustomLink dictName (DeclKindCustom $ idFromString "data") ]
                                                     }
                                                    ,DeclCustom -- Declare the data type for the dictionary
                                                     { declName = dictName
@@ -115,7 +113,7 @@ classFunctions typeOutput className typeVar combinedNames = [DeclCon -- Declare 
                         , declAccess  = public
                         , declType    = declType
                         , valueValue  = declValue
-                        , declCustoms = [custom "type" ("Dict$" ++ className ++" a -> Dict$" ++ superName ++ " a")]
+                        , declCustoms = []
                         }
                 in val
             classFunction :: (Name, Int, DictLabel, Core.Type) -> [CoreDecl]
@@ -143,7 +141,7 @@ classFunctions typeOutput className typeVar combinedNames = [DeclCon -- Declare 
                                     Alt (PatCon (ConId $ idFromString ("Dict$" ++ className)) [typeArg] (map idFromString labels)) 
                                         (Ap (foldl (\e (Core.Quantor idx _) -> ApType e (Core.TVar idx)) (Var $ idFromString label) quantors) $ Var dictParam)
                                 ]
-                        , declCustoms = toplevelType name (importEnv typeOutput) True
+                        , declCustoms = []
                         }
                 in  if getNameName name == "negate" && className == "Num" then 
                         [val, val{
@@ -166,8 +164,7 @@ constructDictionary typeOutput instanceSuperClass combinedNames whereDecls class
     , declAccess  = public
     , declType    = declType
     , valueValue  = declValue
-    , declCustoms = custom "type" ("Dict$" ++ getNameName className ++ " " ++ insName)
-                :    map (custom "typeVariable" . getNameName . fst) typeVariables 
+    , declCustoms =  map (custom "typeVariable" . getNameName . fst) typeVariables 
                 ++   map (\(superName, superVar) -> custom "superInstance" $ superName ++ "-" ++ getNameName superVar) instanceSuperClass
     }
     where
@@ -321,7 +318,7 @@ convertDictionaries typeOutput className functions defaults = map makeFunction f
                             , declAccess  = public 
                             , declType    = tp
                             , valueValue  = ApType (Var (idFromString "undefined")) tp
-                            , declCustoms = toplevelType fname (importEnv typeOutput) True
+                            , declCustoms = []
                             }
                     in maybe fDefault updateName (lookup fname defaults)
                 

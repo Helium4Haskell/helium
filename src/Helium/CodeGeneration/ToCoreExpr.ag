@@ -85,7 +85,6 @@ SEM Expression [ | | core : { Core.Expr } ]
     --  alternatives             : Alternatives
 
     | Let                declarations.patBindNr = 0
-                         declarations.isTopLevel = False
                          lhs.core =
         letrec_ @declarations.decls @expression.core
     --  range                    : Range
@@ -195,7 +194,6 @@ SEM Statement [ | | core : { Maybe Core.Expr -> Core.Expr } ]
     --  expression               : Expression
 
     | Let                 declarations.patBindNr = 0
-                          declarations.isTopLevel = False
                           lhs.core =
             \theRest ->
                 case theRest of
@@ -238,7 +236,6 @@ SEM Qualifier [ | | core : { Core.Expr -> Core.Expr } ]
     --  guard                    : Expression -- type: Boolean
 
     | Let                 declarations.patBindNr = 0
-                          declarations.isTopLevel = False
                           lhs.core = \continue -> letrec_ @declarations.decls continue
     --  range                    : Range
     --  declarations             : Declarations

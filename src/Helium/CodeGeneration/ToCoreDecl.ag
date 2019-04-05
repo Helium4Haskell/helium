@@ -43,7 +43,6 @@ SEM MaybeDeclarations [ | |   core : { Core.Expr -> Core.Expr } ]
     | Nothing     lhs.core = \continue -> continue
                   lhs.whereDeclarations = []
     | Just        declarations.patBindNr = 0
-                  declarations.isTopLevel = False
                   declarations.importEnv = @lhs.importEnv
                   lhs.whereDeclarations = zip @declarations.declNames @declarations.decls
                   lhs.core = \continue -> letrec_ @declarations.decls continue  
@@ -114,7 +113,7 @@ SEM Declaration
             , Core.declAccess  = Core.private
             , Core.declType    = @loc.declType
             , Core.valueValue  = addLambdas @lhs.typeOutput @lhs.typeClassContext @lhs.betaDeclUnique @bindings.name (@dictionaries ++ @ids) @bindings.core
-            , Core.declCustoms = toplevelType @bindings.name @lhs.importEnv (@lhs.isTopLevel || isJust @lhs.instanceName)
+            , Core.declCustoms = []
             }
         ]
     --  range                    : Range          
@@ -141,7 +140,7 @@ SEM Declaration
                                 nextClauseId retType (patternMatchFail "pattern binding" retType @range.self)
                                 @righthandside.core
                             )
-                    , Core.declCustoms = toplevelType n @lhs.importEnv @lhs.isTopLevel
+                    , Core.declCustoms = []
                     }
                ]
             _ ->
@@ -155,7 +154,7 @@ SEM Declaration
                         let_ -- because guards can fail
                             nextClauseId patBindTp (patternMatchFail "pattern binding" patBindTp @range.self)
                             @righthandside.core
-                    , Core.declCustoms = [custom "type" "patternbinding"]
+                    , Core.declCustoms = []
                     }
                 :
                 [ Core.DeclValue
@@ -166,7 +165,7 @@ SEM Declaration
                         (let_ nextClauseId tp (patternMatchFail "pattern binding" tp @range.self)
                             (patternToCore @lhs.importEnv @pattern.patternTypes (patBindId, patBindTp, @pattern.self) (Core.Var (idFromName v)))
                         )
-                    , Core.declCustoms = toplevelType v @lhs.importEnv @lhs.isTopLevel
+                    , Core.declCustoms = []
                     }
                 | (v, tp) <- M.assocs @pattern.patternTypes
                 ]
@@ -471,8 +470,7 @@ constructorCustoms dataTypeName name env =
     maybe 
         (internalError "ToCoreDecl" "Constructor" ("no type found for " ++ show name))
         (\tpScheme -> 
-            [ custom "type" (show tpScheme)
-            , Core.CustomLink 
+            [ Core.CustomLink 
                     (idFromName dataTypeName) 
                     (Core.DeclKindCustom (idFromString "data"))
             ]

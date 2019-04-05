@@ -13,7 +13,7 @@ module Helium.CodeGeneration.CoreUtils
     ,   cons, nil
     ,   var, decl
     ,   float, packedString, declarationConstructorType
-    ,   toplevelType, declarationType, declarationTypeInPattern, addToTypeEnv
+    ,   declarationType, declarationTypeInPattern, addToTypeEnv
     ,   toCoreType, toCoreTypeNotQuantified, typeToCoreType, typeToCoreTypeMapped
     ,   addLambdas, addLambdasForLambdaExpression, TypeClassContext(..)
     ,   findCoreType, createInstantiation, TypeInferenceOutput(TypeInferenceOutput, importEnv), lookupBeta
@@ -256,16 +256,6 @@ typeToCoreTypeMapped _ _ (Top.TCon name) = Core.TCon c
           | dropWhile (==',') str == ")" -> Core.TConTuple (length str)
         _ -> Core.TConDataType $ idFromString name
 typeToCoreTypeMapped qmap f (Top.TApp t1 t2) = Core.TAp (typeToCoreTypeMapped qmap f t1) (typeToCoreTypeMapped qmap f t2)
-
-toplevelType :: Name -> ImportEnvironment -> Bool -> [Custom]
-toplevelType name ie isTopLevel
-    | isTopLevel = [custom "type" typeString]
-    | otherwise  = []
-    where
-        typeString = maybe
-            (internalError "ToCoreDecl" "Declaration" ("no type found for " ++ getNameName name))
-            show
-            (M.lookup name (typeEnvironment ie))
 
 addLambdasForLambdaExpression :: TypeInferenceOutput -> Int -> [Id] -> ([Core.Type] -> Core.Type -> Core.Expr) -> Core.Expr
 addLambdasForLambdaExpression typeOutput beta args expr = addLambdasForType (importEnv typeOutput) [] tp id args [] expr
