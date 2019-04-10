@@ -2,6 +2,7 @@ module Helium.Utils.QualifiedTypes where
 
 import Helium.Syntax.UHA_Syntax
 import Helium.Syntax.UHA_Utils
+import Data.Maybe (fromMaybe)
 
 import Top.Types
 
@@ -14,6 +15,9 @@ toQualTyCon _ n@(Name_Special _ _ _ _) = n
 toQualTyCon env n = case M.lookup n env of
     Nothing         -> n
     Just (_, qualn) -> qualn
+
+convertClassNameToQualified :: M.Map Name Name -> Name -> Name
+convertClassNameToQualified env n = fromMaybe n (M.lookup n env)
 
 convertSimpleTypeToQualified :: M.Map Name (Int, Name) -> SimpleType -> SimpleType
 convertSimpleTypeToQualified env (SimpleType_SimpleType range name tv) = SimpleType_SimpleType range (toQualTyCon env name) tv

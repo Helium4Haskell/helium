@@ -54,17 +54,17 @@ SEM Declaration
                          context . classMemberEnv = @lhs.classMemberEnv
     | Instance           lhs . miscerrors = @where.miscerrors ++ @loc.uniqueTypeVarErrors ++ @loc.undefinedClassErrors ++ @loc.validInstanceType ++ @loc.contextErrors
                          loc . foundClasses =[]
-                         loc . uniqueTypeVarErrors = if (length  (nonUniqueTypeVars @types.typevariables) > 0)
-                                                       then [ DefNonUniqueInstanceVars @name.self (nonUniqueTypeVars @types.typevariables) ]
-                                                       else []
-                         loc . validInstanceType = case (validInstanceType $ head @types.self) of
-                                                      True -> []
-                                                      False -> [InvalidInstanceType @name.self]
-                         loc . classDefinition = classExists @name.self @lhs.classMemberEnv
-                         loc . undefinedClassErrors = case (@loc.classDefinition) of
+                         loc . uniqueTypeVarErrors  = if (length  (nonUniqueTypeVars @types.typevariables) > 0)
+                                                        then [ DefNonUniqueInstanceVars @name.self (nonUniqueTypeVars @types.typevariables) ]
+                                                        else []
+                             . validInstanceType    = case (validInstanceType $ head @types.self) of
+                                                        True -> []
+                                                        False -> [InvalidInstanceType @name.self]
+                             . classDefinition      = classExists @qualifiedName @lhs.classMemberEnv
+                             . undefinedClassErrors = case (@loc.classDefinition) of
                                                            Nothing -> [UndefinedClass @name.self (M.keys @lhs.classMemberEnv)]
                                                            (Just decl) -> instanceMembers @where.self decl
-                         loc . contextErrors = checkInstanceSignature @name.self @context.self (head @types.self)
+                             . contextErrors        = checkInstanceSignature @name.self @context.self (head @types.self)
     | FunctionBindings   lhs . miscerrors  = @arityErrors ++ @bindings.miscerrors
                          loc . arityErrors = if all (== head @bindings.arities) @bindings.arities
                                                then []
@@ -435,10 +435,11 @@ SEM Type -- does every type variable in the contexts appear in the type?
 ATTR ContextItems ContextItem [  | | contextVars USE { ++ } { [] } : {[Name]} ]
 
 SEM ContextItem
-  | ContextItem lhs.contextVars = @types.typevariables
-                lhs.miscerrors = if elem (getNameName @name.self) (map getNameName $ M.keys @lhs.classMemberEnv)
-                                    then @types.miscerrors
-                                    else UnknownClass @name.self : @types.miscerrors
+  | ContextItem lhs . contextVars   = @types.typevariables
+                lhs . miscerrors    = if elem (getNameName @qualifiedName) (map getNameName $ M.keys @lhs.classMemberEnv)
+                                      then @types.miscerrors
+                                      else UnknownClass @name.self : @types.miscerrors
+                loc . qualifiedName = convertClassNameToQualified @lhs.classNamesEnv @name.self
 
 -- context for restricted pattern error
 ATTR Declaration Declarations [ | | restrictedNames USE { ++ } { [] } : Names ]

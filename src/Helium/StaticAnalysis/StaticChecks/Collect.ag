@@ -32,6 +32,7 @@ SEM Module
                                         . setTypeSynonyms      (M.fromList @body.collectTypeSynonyms)
                                         . setOperatorTable     (M.fromList @body.operatorFixities)
                                         . addToTypeEnvironment  (insertClassMembers @body.collectClassMemberEnv (M.fromList @derivedFunctions))
+                                        . setClassNameEnvironment @classNamesEnv
                                         . setClassEnvironment (insertInstances @body.classInstances
                                             (M.unionWith combineClassDecls @body.classEnv (classEnvironment $ combineImportEnvironmentList @importEnvironments)))
                                         . setInstanceEnvironment @body.instanceEnv
@@ -354,17 +355,22 @@ insertClassMembers classMemberEnv valueEnv = M.foldrWithKey insert valueEnv clas
 }
 
 ATTR Declarations Declaration [ | | collectTypeClasses  USE { ++ } { [] } : { [(Name, [(Name, TpScheme)])] } ]
-ATTR Body Declarations Declaration [ | | collectClassMemberEnv USE { `M.union` } { M.empty } : {ClassMemberEnvironment} ]
+ATTR Body Declarations Declaration [ | | collectClassMemberEnv USE { `M.union` } { M.empty } : {ClassMemberEnvironment}
+                                         collectClassNames USE { M.union } { M.empty } : { ClassNameEnvironment } ]
 
 SEM Module
     | Module body . classMemberEnv = foldr exclusiveUnion @body.collectClassMemberEnv (map classMemberEnvironment @importEnvironments)
+                  . classNamesEnv  = @classNamesEnv
+             loc  . classNamesEnv  = foldr exclusiveUnion @body.collectClassNames (map classNameEnvironment @importEnvironments)
 
 SEM Declaration
-    | Class lhs . collectTypeClasses    = [(@simpletype.name, @where.typeSignatures)]
-            lhs . collectClassMemberEnv = insertDefaults @simpletype.name @where.functionDefaults @qualifiedClassDef
-            loc . classDef              = createClassDef @simpletype.name @where.self @simpletype.typevariables
-                . qualifiedClassDef          = convertClassMemberEnvironmentTypes (convertTpSchemeToQualified @lhs.typeConstructorsWithDefined) @classDef
-            
+    | Class lhs . collectClassNames     = M.fromList [(@simpletype.name, @qualifiedName), (@qualifiedName, @qualifiedName)]
+            lhs . collectTypeClasses    = [(@qualifiedName, @where.typeSignatures)]
+            lhs . collectClassMemberEnv = insertDefaults @qualifiedName @where.functionDefaults @qualifiedClassDef
+            loc . classDef              = createClassDef @qualifiedName @where.self @simpletype.typevariables
+                . qualifiedClassDef     = convertClassMemberEnvironmentTypes (convertTpSchemeToQualified @lhs.typeConstructorsWithDefined) @classDef
+                . qualifiedName         = addQualified @lhs.moduleQual @simpletype.name
+
 
 SEM Declarations
     | Cons     lhs . collectTypeClasses = @hd.collectTypeClasses  ++ @tl.collectTypeClasses
@@ -420,17 +426,23 @@ ATTR Body Declaration Declarations [
 ]
 
 SEM Declaration
-    | Class
-        lhs . classEnv = M.singleton (getClassName @simpletype.self) ((map fst $ getSuperClasses @context.self), [])
+    | Class --TODO: Klopt dit? Zie git
+        lhs . classEnv = M.singleton (getNameName $ convertClassNameToQualified @lhs.classNamesEnv $ @simpletype.name) 
+                          ((map (getNameName . convertClassNameToQualified @lhs.classNamesEnv . fst) $ getSuperClasses @context.self), [])
     | Instance
-       loc . qualifiedType  = convertTypeToQualified @lhs.typeConstructorsWithDefined $ head @types.self
+       loc . qualifiedType  = convertTypeToQualified @qualifiedEnv $ head @types.self
+       loc . qualifiedEnv   = @lhs.typeConstructorsWithDefined `M.union` (M.map ((,) 0) @lhs.classNamesEnv)
        loc . qualifiedTp    = makeTpFromType' @qualifiedType
+       loc . qualifiedName  = convertClassNameToQualified @lhs.classNamesEnv @name.self
+       loc . superClasses   = map (\(c, tps) -> (getNameName $convertClassNameToQualified @lhs.classNamesEnv c, tps)) 
+                                                      $ getSuperClasses @context.self
        lhs . classInstances = let
                                 superClasses :: [(String, Tp)]
-                                superClasses = map (\(c, tpss)-> (c, unqualify  $ unquantify $ head tpss)) $ getSuperClasses (map (convertContextItemToQualified @lhs.typeConstructorsWithDefined) @context.self)
-                              in [(getNameName @name.self, @qualifiedTp, superClasses)]
+                                superClasses = map (fmap $ unqualify . unquantify . head) @superClasses
+                              in [(getNameName @qualifiedName, @qualifiedTp, superClasses)]
 
-       lhs . instanceEnv = M.singleton (@name.self, @qualifiedTp) (namesInType @qualifiedType, map (\(n, tp) -> (n, show $ head tp)) $ getSuperClasses @context.self)
+       lhs . instanceEnv = M.singleton (addQualified @lhs.moduleQual @name.self, @qualifiedTp) 
+                            (namesInType @qualifiedType, map (fmap (show . head)) @superClasses)
     | Data  lhs . instanceEnv = M.fromList 
                                     [
                                         let className = dn
@@ -464,11 +476,8 @@ getTypeOfInstanceFunction instanceName name env = case M.lookup instanceName env
         lookupFunc n (f@(nf, _, _, _):fs)  | n == nf   = Just f
                                         | otherwise = lookupFunc n fs
 
-getClassName :: SimpleType -> String
-getClassName (SimpleType_SimpleType _ n _) = getNameName n
-
-getSuperClasses ::  ContextItems -> [(String, [TpScheme])]
-getSuperClasses = map (\(ContextItem_ContextItem _ n vs) -> (getNameName n, (map makeTpSchemeFromType vs)))
+getSuperClasses ::  ContextItems -> [(Name, [TpScheme])]
+getSuperClasses = map (\(ContextItem_ContextItem _ n vs) -> (n, map makeTpSchemeFromType vs))
 
 getInstanceFunctionNames :: MaybeDeclarations -> [Name]
 getInstanceFunctionNames (MaybeDeclarations_Nothing) = []

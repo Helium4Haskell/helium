@@ -238,6 +238,7 @@ SEM Declaration
                                                     ((@loc.instBeta .==. @loc.instsType) @loc.cinfo)
                                                 ]) .>. Node []
                                             ]
+        loc     . qualifiedName         = convertClassNameToQualified @lhs.classNamesEnv @name.self
         loc     . instBeta              = TVar      @lhs.betaUnique
         loc     . typeVariabeles        = namesInType (chead $ @types.self)
         loc     . instanceBetas         = (zip @typeVariabeles [TVar n | n <- [@lhs.betaUnique + 2..]])
@@ -246,7 +247,7 @@ SEM Declaration
         loc     . superClasses          = getSuperClasses @context.self
         loc     . memberSuperClassBeta  = [TVar v | v <- [(@lhs.betaUnique + 2 + length @typeVariabeles)..]]
         loc     . memberBetas           = matchClassDefinitionToInstanceDefinition 
-                                                (maybe (error "Unknown class") (map (\(n, tp, _, _) -> (n, tp)).snd) $ M.lookup @name.self $ classMemberEnvironment @lhs.importEnvironment) $ 
+                                                (maybe (error "Unknown class") (map (\(n, tp, _, _) -> (n, tp)).snd) $ M.lookup @qualifiedName $ classMemberEnvironment @lhs.importEnvironment) $ 
                                                 map (\(n, b, _) -> (n, b)) @where.boundBetas
         loc     . cinfo                 = resultConstraint "instance definition" @parentTree [SkolemizedTypeScheme ([], @instanceTpScheme), TypeSignatureLocation @range.self]
  

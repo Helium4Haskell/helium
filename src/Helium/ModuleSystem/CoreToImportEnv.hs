@@ -42,8 +42,7 @@ typeDictFromCustoms n ( CustomDecl (DeclKindCustom ident) [CustomBytes bytes] : 
             dictName = takeWhile (/= '$') string
             dictType = drop 1 $ dropWhile (/= '$') string
         in makeTpSchemeFromType (parseFromString contextAndType dictType)
-    | otherwise =
-        typeDictFromCustoms n cs
+    | otherwise = typeDictFromCustoms n cs
 
 typeFromCustoms :: String -> [Custom] -> TpScheme
 typeFromCustoms n [] =
@@ -225,10 +224,10 @@ getImportEnvironment importedInModule decls = foldr (insertDictionaries imported
                         } ->
                 \env ->  
                     let
-                        nEnv =  addType
+                        nEnv = addType
                                     (makeImportName importedInModule importedFromModId (originFromCustoms cs) n)
                                     ((  
-                                        if "$dict" `isPrefixOf` (stringFromId n) then 
+                                        if "$dict" `isInfixOf` (stringFromId n) then 
                                             typeDictFromCustoms
                                         else 
                                             typeFromCustoms) 
@@ -263,7 +262,7 @@ getImportEnvironment importedInModule decls = foldr (insertDictionaries imported
                       , declCustoms = cs 
                       } 
                       | stringFromId ident == "data" ->
-              let origin = (originFromCustoms cs)
+              let origin = originFromCustoms cs
                   typename = makeImportName importedInModule importedFromModId origin n
                   fullname = makeFullQualifiedImportName origin typename
                   pair     = (arityFromCustoms (stringFromId n) cs, fullname)
@@ -278,7 +277,7 @@ getImportEnvironment importedInModule decls = foldr (insertDictionaries imported
                       , declCustoms = cs
                       }
                       | stringFromId ident == "typedecl" ->
-              let origin = (originFromCustoms cs)
+              let origin = originFromCustoms cs
                   typename = makeImportName importedInModule importedFromModId origin n
                   fullname = makeFullQualifiedImportName origin typename
                   pair = typeSynFromCustoms (stringFromId n) cs

@@ -79,7 +79,8 @@ SEM Qualifier
 SEM Declaration 
   | Class   loc . (namesInScope, unboundNames, scopeInfo) = changeOfScope (@where.declVarNames) @where.unboundNames @lhs.namesInScope
             lhs . classMemberNames = @loc.classMemberNames
-            loc . classMemberNames = getClassMemberNames @simpletype.name @lhs.classMemberEnv
+            loc . classMemberNames = getClassMemberNames @qualifiedClassName @lhs.classMemberEnv
+                . qualifiedClassName    = convertClassNameToQualified @lhs.classNamesEnv @simpletype.name
 
 -- monomorphic binding constructs
 
@@ -221,8 +222,9 @@ nextUnique n = (n+1, n)
 
 includeQualifiedName :: [String] -> Name -> [Name]
 includeQualifiedName qual n = addQualified qual n : [n]
+
 getClassMemberNames :: Name -> M.Map Name (Names, [(Name, TpScheme, Bool, HasDefault)]) -> [Name]
-getClassMemberNames name env =  let err = internalError "Scope.ag" "getClassMemberNames" "Unknown class in environment"
+getClassMemberNames name env =  let err = internalError "Scope.ag" "getClassMemberNames" $ "Unknown class in environment: " ++ show name
                                 in maybe err (map (\(fn, _, _, _) -> fn) . snd) (M.lookup name env)
 }
 

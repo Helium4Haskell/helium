@@ -35,6 +35,7 @@ SEM Module
        body . dictionaryEnvironment = emptyDictionaryEnvironment
             . classEnvironment      = @classEnv
             . classMemberEnv        = classMemberEnvironment @lhs.importEnvironment
+            . classNamesEnv         = classNameEnvironment @lhs.importEnvironment
             . availablePredicates   = []
             . instanceName          = Nothing
             . classPredicate        = Nothing
@@ -90,11 +91,13 @@ SEM Declaration
                                                   Just (n, ps) -> addForDeclaration n ps @righthandside.dictionaryEnvironment
                                                   Nothing      -> @righthandside.dictionaryEnvironment
   | Instance
-      where . instanceName  = Just @name.self
+      where . instanceName  = Just @qualName
       where . availablePredicates = @superPredicates ++ @lhs.availablePredicates
+      loc   . qualName      = convertClassNameToQualified (classNameEnvironment @lhs.importEnvironment) @name.self
   | Class
-      where . curClassPred = Just $ Predicate (getNameName @simpletype.name) @classBeta
-      where . instanceName = Just @simpletype.name
+      where . curClassPred = Just $ Predicate (getNameName @qualName) @classBeta
+      where . instanceName = Just $ @qualName
+      loc   . qualName     = convertClassNameToQualified (classNameEnvironment @lhs.importEnvironment) @simpletype.name
    
 SEM Expression 
 
@@ -123,7 +126,7 @@ SEM Expression
                                                                   (@lhs.substitution |-> @usedAsType)
                                                                   (@lhs.substitution |-> scheme)
                    . newDEnv               = resolveOverloading (@lhs.classEnvironment)
-                                                                @name.self 
+                                                                (convertClassNameToQualified (classNameEnvironment @lhs.importEnvironment) @name.self)
                                                                 (@lhs.substitution |-> @lhs.availablePredicates)
                                                                 (@lhs.substitution |-> @requiredDictionaries)
                                                                 (fmap getNameName @lhs.instanceName)

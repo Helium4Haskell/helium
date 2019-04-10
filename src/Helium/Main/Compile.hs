@@ -38,6 +38,7 @@ compile basedir fullName options lvmPath doneModules =
         contents <- readSourceFile fullName
 
         -- Phase 1: Lexing
+        -- putStrLn "===== Phase 1 ====="
         (lexerWarnings, tokens) <-
             doPhaseWithExit 20 (const "L") compileOptions $
                phaseLexer fullName contents options
@@ -47,16 +48,19 @@ compile basedir fullName options lvmPath doneModules =
 
 
         -- Phase 2: Parsing
+        -- putStrLn "===== Phase 2 ====="
         parsedModule <-
             doPhaseWithExit 20 (const "P") compileOptions $
                phaseParser fullName tokens options
 
         -- Phase 3: Importing
+        putStrLn "===== Phase 3 ====="
         (indirectionDecls, importEnvsWithMod) <-
             phaseImport fullName parsedModule lvmPath options
         let importEnvs = map (\(_,b,_) -> b) importEnvsWithMod
         
         -- Phase 4: Resolving operators
+        putStrLn "===== Phase 4 ====="
         resolvedModule <-
             doPhaseWithExit 20 (const "R") compileOptions $
                phaseResolveOperators parsedModule importEnvs options
@@ -64,26 +68,32 @@ compile basedir fullName options lvmPath doneModules =
         stopCompilingIf (StopAfterParser `elem` options)
 
         -- Phase 5: Static checking
+        putStrLn "===== Phase 5 ====="
         (localEnv, typeSignatures, staticWarnings) <-
             doPhaseWithExit 20 (("S"++) . errorsLogCode) compileOptions $
-               phaseStaticChecks fullName resolvedModule importEnvsWithMod options        
-
+               phaseStaticChecks fullName resolvedModule importEnvsWithMod options    
+               
         unless (NoWarnings `elem` options) $
             showMessages staticWarnings
 
         stopCompilingIf (StopAfterStaticAnalysis `elem` options)
 
         -- Phase 6: Kind inferencing (by default turned off)
+        putStrLn "===== Phase 6 ====="
         let combinedEnv = combineImportEnvironmentList (localEnv:importEnvs)
         when (KindInferencing `elem` options) $
            doPhaseWithExit maximumNumberOfKindErrors (const "K") compileOptions $
               phaseKindInferencer combinedEnv resolvedModule options
 
         -- Phase 7: Type Inference Directives
+        putStrLn "===== Phase 7 ====="
         (beforeTypeInferEnv, typingStrategiesDecls) <-
             phaseTypingStrategies fullName combinedEnv typeSignatures options
 
+        -- print localEnv
+
         -- Phase 8: Type inferencing
+        putStrLn "===== Phase 8 ====="
         (dictionaryEnv, afterTypeInferEnv, toplevelTypes, typeWarnings) <-
             doPhaseWithExit maximumNumberOfTypeErrors (const "T") compileOptions $
                phaseTypeInferencer basedir fullName resolvedModule {-doneModules-} localEnv beforeTypeInferEnv options
@@ -94,6 +104,7 @@ compile basedir fullName options lvmPath doneModules =
         stopCompilingIf (StopAfterTypeInferencing `elem` options)
 
         -- Phase 9: Desugaring
+        putStrLn "===== Phase 9 ====="
         coreModule <-
             phaseDesugarer dictionaryEnv
                            fullName resolvedModule
@@ -105,6 +116,7 @@ compile basedir fullName options lvmPath doneModules =
         stopCompilingIf (StopAfterDesugar `elem` options)
 
         -- Phase 10: Code generation
+        putStrLn "===== Phase 10 ====="
         phaseCodeGenerator fullName coreModule options
 
         sendLog "C" fullName doneModules options

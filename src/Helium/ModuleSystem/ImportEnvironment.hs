@@ -36,9 +36,10 @@ type HasDefault = Bool
 
 type TypeEnvironment             = M.Map Name TpScheme {- Type scheme-}
 type ValueConstructorEnvironment = M.Map Name (Name, TpScheme) {-Parent, Type scheme-}
-type TypeConstructorEnvironment  = M.Map Name (Int, Name) {-Arity, Original qualified name -}
+type TypeConstructorEnvironment  = M.Map Name (Int, Name) {-Arity, Original qualified name-}
 type TypeSynonymEnvironment      = M.Map Name (Int, Tps -> Tp) {-Arity, function-}
 type ClassMemberEnvironment      = M.Map Name (Names, [(Name, TpScheme, Bool, HasDefault)]) {-Member, original module-}
+type ClassNameEnvironment        = M.Map Name Name {-Name to original qualified name-}
 type InstanceEnvironment         = M.Map (Name, Tp) (Names, [(String, String)])
 
 type ImportEnvironments = [ImportEnvironment]
@@ -51,7 +52,8 @@ data ImportEnvironment  =
                        , valueConstructors :: ValueConstructorEnvironment
                        , operatorTable     :: OperatorTable
                          -- type classes
-                       , classEnvironment  :: ClassEnvironment
+                       , classNameEnvironment   :: ClassNameEnvironment
+                       , classEnvironment       :: ClassEnvironment
                        , classMemberEnvironment :: ClassMemberEnvironment
                          -- other
                        , instanceEnvironment :: InstanceEnvironment
@@ -66,6 +68,7 @@ emptyEnvironment = ImportEnvironment
    , typeEnvironment   = M.empty
    , valueConstructors = M.empty
    , operatorTable     = M.empty
+   , classNameEnvironment = M.empty
    , classEnvironment  = emptyClassEnvironment
    , classMemberEnvironment = M.empty
    , instanceEnvironment = M.empty
@@ -120,6 +123,16 @@ getOrderedTypeSynonyms importEnvironment =
                   in M.foldrWithKey insertIt M.empty (typeSynonyms importEnvironment)
        ordering = fst (getTypeSynonymOrdering synonyms)
    in (ordering, synonyms)
+   
+-- Change the classNameEnvironment in an importEnvironment
+setClassNameEnvironment :: ClassNameEnvironment -> ImportEnvironment -> ImportEnvironment
+setClassNameEnvironment cs env = env { classNameEnvironment = cs }
+
+-- Add a class and its fully qualified name to the classNameEnvironment of an importEnvironment
+addClassName :: Name -> Name -> ImportEnvironment -> ImportEnvironment
+addClassName name qualifiedname env = 
+   let newClassNameEnv = (M.insert name qualifiedname (classNameEnvironment env))
+   in setClassNameEnvironment newClassNameEnv env
 
 setClassMemberEnvironment :: ClassMemberEnvironment -> ImportEnvironment -> ImportEnvironment
 setClassMemberEnvironment new importenv = importenv { classMemberEnvironment = new }
@@ -223,13 +236,14 @@ getDefaultDirectives importEnv = let
 -- The Value Constuctors are unioned normally (takes left if same). Because it is allowed to create a value constructor, that is also imported. As long as it is not used.
 -- But when you do this, it does need to check the type, when declared. Thus the normal union. We assume that the original module is always used as first argument.
 combineImportEnvironments :: ImportEnvironment -> ImportEnvironment -> ImportEnvironment
-combineImportEnvironments (ImportEnvironment tcs1 tss1 te1 vcs1 ot1 ce1 cm1 ins1 xs1) (ImportEnvironment tcs2 tss2 te2 vcs2 ot2 ce2 cm2 ins2 xs2) =
+combineImportEnvironments (ImportEnvironment tcs1 tss1 te1 vcs1 ot1 cn1 ce1 cm1 ins1 xs1) (ImportEnvironment tcs2 tss2 te2 vcs2 ot2 cn2 ce2 cm2 ins2 xs2) =
     insertMissingInstances $ ImportEnvironment
       (tcs1 `M.union` tcs2)
       (tss1 `M.union` tss2)
       (te1  `M.union` te2 )
       (vcs1 `M.union` vcs2)
       (ot1  `M.union` ot2)
+      (cn1  `M.union` cn2)
       (M.unionWith combineClassDecls ce1 ce2)
       (cm1  `M.union` cm2)
       (ins1 `M.union` ins2)
@@ -309,7 +323,7 @@ makeInstance className nrOfArgs tp isDict =
 
 -- added for holmes
 holmesShowImpEnv :: Module -> ImportEnvironment -> String
-holmesShowImpEnv module_ (ImportEnvironment _ _ te _ _ _ _ _ _) =
+holmesShowImpEnv module_ (ImportEnvironment _ _ te _ _ _ _ _ _ _) =
       concat functions
     where
        localName = getModuleName module_
@@ -319,12 +333,13 @@ holmesShowImpEnv module_ (ImportEnvironment _ _ te _ _ _ _ _ _) =
           in map (++ ";") list
 
 instance Show ImportEnvironment where
-   show (ImportEnvironment tcs tss te vcs ot ce cm ins _) =
+   show (ImportEnvironment tcs tss te vcs ot cn ce cm ins _) =
       unlines (concat [ fixities
                       , datatypes
                       , typesynonyms
                       , theValueConstructors
                       , functions
+                      , classNames
                       , classes
                       , classmembers
                       , sinstances
@@ -363,6 +378,10 @@ instance Show ImportEnvironment where
        functions =
           let f (n,t) = showNameAsVariable n ++ " :: "++show t
           in showWithTitle "Functions" (showEm f (M.assocs te))
+
+       classNames =
+          let f (n, q) = show n ++ " => " ++ show q
+          in showWithTitle "Class names" (showEm f (M.assocs cn))
 
        classes =
           let f (n, s) = n ++ show s
