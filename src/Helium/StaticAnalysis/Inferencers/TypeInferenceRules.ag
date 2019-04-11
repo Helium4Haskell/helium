@@ -177,13 +177,13 @@ SEM Declaration
         where       . constraints   = emptyTree
         where       . betaUnique    = @lhs.betaUnique + 1 + (length @where.typeMemberBindings)
         where       . classMemberTypeSchemes = appendClasses @where.typeMemberBindings @lhs.allTypeSchemes
-        where       . classPredicate = Just (@simpletype.name, @simpletype.typevariables)
+        where       . classPredicate = Just (@qualName, @simpletype.typevariables)
         loc         . environment   = M.fromList $ map (\((n, _), tp)->(n, tp)) @members
         loc         . classBeta     = TVar @lhs.betaUnique
         loc         . classMembers  = (map (\((_, tpscheme), tp) -> 
                                             let 
                                                 typeVars = @simpletype.typevariables
-                                                className = @simpletype.name
+                                                className = @qualName
                                                 typeIndices = filter (\(_, s) -> s `elem` (map getNameName typeVars)) (getQuantorMap tpscheme)
                                                 typeVariablesMapped = map (\(n, s) -> (fromJust $ find (\tv -> getNameName tv == s) typeVars, TVar n)) typeIndices
                                                 tpWContext = addContextToType className typeVariablesMapped tpscheme
@@ -197,7 +197,7 @@ SEM Declaration
                                             checkPredicate :: Predicate -> [TypeError]
                                             checkPredicate p@(Predicate n v) 
                                                 | p `elem` map (superClassToPredicate @instanceBetas) @superClasses = []
-                                                | v `elem` map snd @instanceBetas = [makeMissingInstancePredicateError @range.self @name.self (show $ makeTpSchemeFromType (chead $ @types.self)) p (@superClasses) @instanceBetas]
+                                                | v `elem` map snd @instanceBetas = [makeMissingInstancePredicateError @range.self @qualName (show $ makeTpSchemeFromType (chead $ @types.self)) p (@superClasses) @instanceBetas]
                                                 | otherwise = []
                                           in (concatMap checkPredicate @lhs.requiredPredicates) ++ @lhs.collectErrors
         where   . betaUnique            = @lhs.betaUnique + 2 + length(@typeVariabeles) + length (@memberBetas) * (length (@superClasses) + 1)
@@ -205,17 +205,17 @@ SEM Declaration
         where   . constraints           = emptyTree
         where   . variableMapping       = Just [(chead $ fst $ @classMembers, @instBeta)]
         where   . classMemberTypeSchemes = appendClasses ((maybe (error "Invalid class name") ((map (\(n, tps, _, _)->(n, tps))).snd)
-                                            $ M.lookup @name.self (classMemberEnvironment @lhs.importEnvironment))) @lhs.allTypeSchemes
+                                            $ M.lookup @qualName (classMemberEnvironment @lhs.importEnvironment))) @lhs.allTypeSchemes
         where   . instanceTypes         = maybe [] ((map (\(n, tps, _, _)->(n, let
                                                     typeVars = fst @classMembers
-                                                    className = @name.self
+                                                    className = @qualName
                                                     typeIndices = filter (\(_, s) -> s `elem` (map getNameName typeVars)) (getQuantorMap tps)
                                                     typeVariablesMapped = map (\(n, s) -> (fromJust $ find (\tv -> getNameName tv == s) typeVars, TVar n)) typeIndices
                                                     tpWContext = addContextToType className typeVariablesMapped tps
-                                                in tpWContext))).snd) $ M.lookup @name.self (classMemberEnvironment @lhs.importEnvironment)
-        loc     . classMembers          = selectClass @lhs.importEnvironment @name.self
+                                                in tpWContext))).snd) $ M.lookup @qualName (classMemberEnvironment @lhs.importEnvironment)
+        loc     . classMembers          = selectClass @lhs.importEnvironment @qualName
         lhs     . bindingGroups         = (noAssumptions,  @where.assumptions, @loc.constraints) : @lhs.bindingGroups
-        loc     . constraints           = (if null @superPredicates then id else traceShowId) $ [Node $ [@where.constraints] ++ @instanceConstraints]
+        loc     . constraints           = (if null @superPredicates then id else id) $ [Node $ [@where.constraints] ++ @instanceConstraints]
         loc     . superPredicates       = map (
                                                 (\s -> 
                                                     let 
@@ -238,7 +238,6 @@ SEM Declaration
                                                     ((@loc.instBeta .==. @loc.instsType) @loc.cinfo)
                                                 ]) .>. Node []
                                             ]
-        loc     . qualifiedName         = convertClassNameToQualified @lhs.importEnvironment @name.self
         loc     . instBeta              = TVar      @lhs.betaUnique
         loc     . typeVariabeles        = namesInType (chead $ @types.self)
         loc     . instanceBetas         = (zip @typeVariabeles [TVar n | n <- [@lhs.betaUnique + 2..]])
@@ -247,7 +246,7 @@ SEM Declaration
         loc     . superClasses          = getSuperClasses @contextQual
         loc     . memberSuperClassBeta  = [TVar v | v <- [(@lhs.betaUnique + 2 + length @typeVariabeles)..]]
         loc     . memberBetas           = matchClassDefinitionToInstanceDefinition 
-                                                (maybe (error "Unknown class") (map (\(n, tp, _, _) -> (n, tp)).snd) $ M.lookup @qualifiedName $ classMemberEnvironment @lhs.importEnvironment) $ 
+                                                (maybe (error "Unknown class") (map (\(n, tp, _, _) -> (n, tp)).snd) $ M.lookup @qualName $ classMemberEnvironment @lhs.importEnvironment) $ 
                                                 map (\(n, b, _) -> (n, b)) @where.boundBetas
         loc     . cinfo                 = resultConstraint "instance definition" @parentTree [SkolemizedTypeScheme ([], @instanceTpScheme), TypeSignatureLocation @range.self]
  
