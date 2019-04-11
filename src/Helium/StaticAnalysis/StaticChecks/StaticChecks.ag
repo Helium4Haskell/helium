@@ -34,6 +34,7 @@ INCLUDE "HeliumPartialSyntax.ag"
 INCLUDE "ScopeErrors.ag"
 
 imports {
+import Debug.Trace
 import Helium.Utils.Similarity ( similar )
 import Helium.Main.Args
 import Helium.Syntax.UHA_Syntax
@@ -124,6 +125,7 @@ ATTR Body Declaration Declarations Expression Expressions
      Statements AnnotatedType Types Constructor AnnotatedTypes 
      ContextItem FieldDeclaration Constructors ContextItems 
      FieldDeclarations Type 
-               [ classMemberEnv     : {ClassMemberEnvironment}
-                 classNamesEnv      : {ClassNameEnvironment}
-                 importEnvironments : ImportEnvironments| | ]
+               [ classMemberEnv       : {ClassMemberEnvironment}
+                 classNamesEnv        : {ClassNameEnvironment}
+                 importEnvironments   : ImportEnvironments
+                 qualifiedEnvironment : ImportEnvironment| | ]

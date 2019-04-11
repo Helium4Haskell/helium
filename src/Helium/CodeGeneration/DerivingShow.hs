@@ -26,7 +26,7 @@ import Top.Types
 import qualified Data.Map as M
 import Data.Maybe
 import Data.List
-import Helium.Utils.QualifiedTypes
+import Helium.Utils.QualifiedTypes.Constants
 
 -- Show function for a data type declaration
 dataShowFunction :: ClassEnvironment -> TypeSynonymEnvironment -> UHA.Declaration -> [String] -> [Custom] -> Expr

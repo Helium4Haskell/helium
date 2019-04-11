@@ -29,12 +29,13 @@ import Top.Solver.SwitchCombinator
 import Top.Constraint.Information
 import Top.Implementation.TypeClassDirectives
 import Top.Interface.Substitution (makeSubstConsistent)
+import Debug.Trace
 
 type TreeSolver = ClassEnvironment -> OrderedTypeSynonyms -> Int 
                        -> Tree (TypeConstraint ConstraintInfo) -> (SolveResult ConstraintInfo, LogEntries)
 
 selectConstraintSolver :: [Option] -> ImportEnvironment -> TreeSolver
-selectConstraintSolver options importenv classEnv synonyms unique constraintTree =
+selectConstraintSolver options importenv classEnv synonyms unique constraintTree = traceShowId $
    solve selectedOptions constraints selectedSolver
 
  where   

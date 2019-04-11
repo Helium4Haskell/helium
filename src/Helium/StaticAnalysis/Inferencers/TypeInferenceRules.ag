@@ -170,7 +170,7 @@ SEM Declaration
                                     
   | TypeSignature
         lhs         . betaUnique = @lhs.betaUnique + 1
-        lhs         . typeMemberBindings = map (\name -> (name, makeTpSchemeFromType $ convertTypeToQualified @lhs.typeConstructors @type.self)) @names.self
+        lhs         . typeMemberBindings = map (\name -> (name, makeTpSchemeFromType $ convertTypeToQualified @lhs.importEnvironment @type.self)) @names.self
   | Class
         lhs         . bindingGroups = (@loc.environment, @where.assumptions, @loc.classMembers) : @lhs.bindingGroups
         where       . assumptions   = noAssumptions
@@ -215,7 +215,7 @@ SEM Declaration
                                                 in tpWContext))).snd) $ M.lookup @name.self (classMemberEnvironment @lhs.importEnvironment)
         loc     . classMembers          = selectClass @lhs.importEnvironment @name.self
         lhs     . bindingGroups         = (noAssumptions,  @where.assumptions, @loc.constraints) : @lhs.bindingGroups
-        loc     . constraints           = [Node $ [@where.constraints] ++ @instanceConstraints]
+        loc     . constraints           = (if null @superPredicates then id else traceShowId) $ [Node $ [@where.constraints] ++ @instanceConstraints]
         loc     . superPredicates       = map (
                                                 (\s -> 
                                                     let 
@@ -224,7 +224,7 @@ SEM Declaration
                                                         tv = (getNameName . fst . fromJust $ find (\ib -> tvar == snd ib) @instanceBetas)
                                                     in superClassToPredicateWithSource 
                                                         predicate
-                                                        (getNameName @name.self)
+                                                        (getNameName @qualName)
                                                         tv
                                                 )
                                             ) @superClasses
@@ -238,13 +238,13 @@ SEM Declaration
                                                     ((@loc.instBeta .==. @loc.instsType) @loc.cinfo)
                                                 ]) .>. Node []
                                             ]
-        loc     . qualifiedName         = convertClassNameToQualified @lhs.classNamesEnv @name.self
+        loc     . qualifiedName         = convertClassNameToQualified @lhs.importEnvironment @name.self
         loc     . instBeta              = TVar      @lhs.betaUnique
         loc     . typeVariabeles        = namesInType (chead $ @types.self)
         loc     . instanceBetas         = (zip @typeVariabeles [TVar n | n <- [@lhs.betaUnique + 2..]])
-        loc     . instsType             = convertTpToQualified @lhs.typeConstructors $ makeTpFromType @instanceBetas (chead $ @types.self)
-        loc     . instanceTpScheme      = addPredicatesToTpScheme (@superClasses) $ convertTpSchemeToQualified @lhs.typeConstructors $ makeTpSchemeFromType (chead @types.self)
-        loc     . superClasses          = getSuperClasses @context.self
+        loc     . instsType             = convertTpToQualified @lhs.importEnvironment $ makeTpFromType @instanceBetas (chead $ @types.self)
+        loc     . instanceTpScheme      = convertTpSchemeToQualified @lhs.importEnvironment $ addPredicatesToTpScheme (@superClasses) $ makeTpSchemeFromType (chead @types.self)
+        loc     . superClasses          = getSuperClasses @contextQual
         loc     . memberSuperClassBeta  = [TVar v | v <- [(@lhs.betaUnique + 2 + length @typeVariabeles)..]]
         loc     . memberBetas           = matchClassDefinitionToInstanceDefinition 
                                                 (maybe (error "Unknown class") (map (\(n, tp, _, _) -> (n, tp)).snd) $ M.lookup @qualifiedName $ classMemberEnvironment @lhs.importEnvironment) $ 
@@ -345,6 +345,24 @@ instanceEq x y = False
 getInstanceFunctions :: (Instance, Types, [(Name, TpScheme)]) -> [(Name, TpScheme)]
 getInstanceFunctions (_, _, funcs) = funcs
 
+
+convertTypeError :: (Name -> Name) -> TypeError -> TypeError
+convertTypeError f (TypeError ran lines table hints) = 
+   let newtab = map (\(b, block1, block2) -> (b, changeMessageBlock f block1, changeMessageBlock f block2)) table
+       newlines = map (changeMessageLine f) lines
+       newhints = map (\(str, block) -> (str, changeMessageBlock f block)) hints
+   in TypeError ran newlines newtab newhints
+
+changeMessageLine :: (Name -> Name) -> MessageLine -> MessageLine
+changeMessageLine f (MessageOneLiner block) = MessageOneLiner (changeMessageBlock f block)
+changeMessageLine f (MessageTable table) = MessageTable $ map (\(indent, block1, block2) -> (indent, changeMessageBlock f block1, changeMessageBlock f block2)) table
+changeMessageLine f (MessageHints str blocks) = MessageHints str (map (changeMessageBlock f) blocks)
+
+changeMessageBlock :: (Name -> Name) -> MessageBlock -> MessageBlock
+changeMessageBlock f (MessageType tps) = MessageType (convertTpScheme f tps)
+changeMessageBlock f (MessagePredicate (Predicate str tp)) = MessagePredicate (Predicate str (convertTp f tp))
+changeMessageBlock f (MessageCompose blocks) = MessageCompose (map (changeMessageBlock f) blocks)
+changeMessageBlock _ block = block
 }
 
 SEM MaybeDeclarations
@@ -600,7 +618,7 @@ SEM Expression
                  . constraints = @conResult .>.
                                  Node [ @conExpr .<. @expression.constraints ]
                  . beta        = TVar @lhs.betaUnique
-                 . qualType    = convertTypeToQualified @lhs.typeConstructors @type.self
+                 . qualType    = convertTypeToQualified @lhs.importEnvironment @type.self
                  . typeScheme  = makeTpSchemeFromType @qualType 
                  . conResult   = [ (@beta            .::. @typeScheme) @cinfoResult          ]
                  . conExpr     = [ (@expression.beta !::! @typeScheme) @lhs.monos @cinfoExpr ]
@@ -629,7 +647,7 @@ SEM Expression
                                 Just scheme -> isOverloaded scheme
                                 Nothing     -> False
             . elementType  = if @overloaded then TVar (@lhs.betaUnique + 1) else intQualType
-            . conPredicate = if @overloaded then [predicate (Predicate "Enum" @elementType) @cinfoPred] else []
+            . conPredicate = if @overloaded then [predicate (Predicate "Prelude.Enum" @elementType) @cinfoPred] else []
             . conList      = [ (listType @elementType .==. @beta) @cinfoResult ]
             . conFrom      = [ (@from.beta .==. @elementType) @cinfoFrom ]
             . conThen      = [ (@then.beta .==. @elementType) @cinfoThen ]

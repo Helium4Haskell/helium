@@ -15,7 +15,6 @@ module Helium.StaticAnalysis.Messages.Messages where
 import Helium.Syntax.UHA_Syntax
 import Helium.Syntax.UHA_Range
 import Helium.Syntax.UHA_Utils ()
-import Helium.Utils.QualifiedTypes
 import Top.Types 
 
 import Helium.Utils.OneLiner
@@ -191,18 +190,3 @@ instance Show Entity where
          ImportTypeConstructorOrClass
                          -> "imported type constructor, type synonym or class"
          Fixity          -> "infix declaration"
-
-
-changeMessage :: (Name -> Name) -> Message -> Message
-changeMessage f = map (changeMessageLine f)
-
-changeMessageLine :: (Name -> Name) -> MessageLine -> MessageLine
-changeMessageLine f (MessageOneLiner block) = MessageOneLiner (changeMessageBlock f block)
-changeMessageLine f (MessageTable table) = MessageTable $ map (\(indent, block1, block2) -> (indent, changeMessageBlock f block1, changeMessageBlock f block2)) table
-changeMessageLine f (MessageHints str blocks) = MessageHints str (map (changeMessageBlock f) blocks)
-
-changeMessageBlock :: (Name -> Name) -> MessageBlock -> MessageBlock
-changeMessageBlock f (MessageType tps) = MessageType (convertTpScheme f tps)
-changeMessageBlock f (MessagePredicate (Predicate str tp)) = MessagePredicate (Predicate str (convertTp f tp))
-changeMessageBlock f (MessageCompose blocks) = MessageCompose (map (changeMessageBlock f) blocks)
-changeMessageBlock _ block = block

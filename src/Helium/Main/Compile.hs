@@ -72,6 +72,7 @@ compile basedir fullName options lvmPath doneModules =
         (localEnv, typeSignatures, staticWarnings) <-
             doPhaseWithExit 20 (("S"++) . errorsLogCode) compileOptions $
                phaseStaticChecks fullName resolvedModule importEnvsWithMod options    
+
                
         unless (NoWarnings `elem` options) $
             showMessages staticWarnings

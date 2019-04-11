@@ -439,7 +439,7 @@ SEM ContextItem
                 lhs . miscerrors    = if elem (getNameName @qualifiedName) (map getNameName $ M.keys @lhs.classMemberEnv)
                                       then @types.miscerrors
                                       else UnknownClass @name.self : @types.miscerrors
-                loc . qualifiedName = convertClassNameToQualified @lhs.classNamesEnv @name.self
+                loc . qualifiedName = convertClassNameToQualified @lhs.qualifiedEnvironment @name.self
 
 -- context for restricted pattern error
 ATTR Declaration Declarations [ | | restrictedNames USE { ++ } { [] } : Names ]

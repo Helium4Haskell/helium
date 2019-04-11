@@ -35,6 +35,7 @@ SEM Module
        body . dictionaryEnvironment = emptyDictionaryEnvironment
             . classEnvironment      = @classEnv
             . classMemberEnv        = classMemberEnvironment @lhs.importEnvironment
+            . qualifiedEnvironment  = @lhs.importEnvironment
             . classNamesEnv         = classNameEnvironment @lhs.importEnvironment
             . availablePredicates   = []
             . instanceName          = Nothing
@@ -93,11 +94,11 @@ SEM Declaration
   | Instance
       where . instanceName  = Just @qualName
       where . availablePredicates = @superPredicates ++ @lhs.availablePredicates
-      loc   . qualName      = convertClassNameToQualified (classNameEnvironment @lhs.importEnvironment) @name.self
+      loc   . qualName      = convertClassNameToQualified @lhs.importEnvironment @name.self
   | Class
       where . curClassPred = Just $ Predicate (getNameName @qualName) @classBeta
       where . instanceName = Just $ @qualName
-      loc   . qualName     = convertClassNameToQualified (classNameEnvironment @lhs.importEnvironment) @simpletype.name
+      loc   . qualName     = convertClassNameToQualified @lhs.importEnvironment @simpletype.name
    
 SEM Expression 
 
@@ -126,7 +127,7 @@ SEM Expression
                                                                   (@lhs.substitution |-> @usedAsType)
                                                                   (@lhs.substitution |-> scheme)
                    . newDEnv               = resolveOverloading (@lhs.classEnvironment)
-                                                                (convertClassNameToQualified (classNameEnvironment @lhs.importEnvironment) @name.self)
+                                                                (convertClassNameToQualified @lhs.importEnvironment @name.self)
                                                                 (@lhs.substitution |-> @lhs.availablePredicates)
                                                                 (@lhs.substitution |-> @requiredDictionaries)
                                                                 (fmap getNameName @lhs.instanceName)

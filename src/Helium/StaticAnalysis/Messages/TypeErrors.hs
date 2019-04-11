@@ -128,13 +128,6 @@ makeRestrictedButOverloadedError name scheme =
                  ]
        hint    = "Only functions and simple patterns can have an overloaded type"
    in TypeError [getNameRange name] [message] table [("hint", MessageString hint)]
-
-convertTypeError :: (Name -> Name) -> TypeError -> TypeError
-convertTypeError f (TypeError ran lines table hints) = 
-   let newtab = map (\(b, block1, block2) -> (b, changeMessageBlock f block1, changeMessageBlock f block2)) table
-       newlines = map (changeMessageLine f) lines
-       newhints = map (\(str, block) -> (str, changeMessageBlock f block)) hints
-   in TypeError ran newlines newtab newhints
    
 makeMissingInstancePredicateError :: Range -> Name -> String -> Predicate -> [(String, Name)] -> [(Name, Tp)] -> TypeError
 makeMissingInstancePredicateError source className instanceName (Predicate predName tp) definedPredicates mapping =

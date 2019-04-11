@@ -78,9 +78,9 @@ SEM Qualifier
 
 SEM Declaration 
   | Class   loc . (namesInScope, unboundNames, scopeInfo) = changeOfScope (@where.declVarNames) @where.unboundNames @lhs.namesInScope
-            lhs . classMemberNames = @loc.classMemberNames
-            loc . classMemberNames = getClassMemberNames @qualifiedClassName @lhs.classMemberEnv
-                . qualifiedClassName    = convertClassNameToQualified @lhs.classNamesEnv @simpletype.name
+            lhs . classMemberNames   = @loc.classMemberNames
+            loc . classMemberNames   = getClassMemberNames @qualifiedClassName @lhs.classMemberEnv
+                . qualifiedClassName = M.findWithDefault @simpletype.name @simpletype.name @lhs.classNamesEnv
 
 -- monomorphic binding constructs
 

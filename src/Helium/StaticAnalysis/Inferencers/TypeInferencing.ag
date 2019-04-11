@@ -81,6 +81,7 @@ imports {
 
 -- types
 import Top.Types
+import Debug.Trace
 import Helium.StaticAnalysis.Miscellaneous.TypeConversion
 
 -- error messages and warnings
@@ -112,6 +113,7 @@ import Helium.Syntax.UHA_Utils
 
 import Helium.Utils.Utils (internalError, hole)
 import Helium.Utils.QualifiedTypes
+import Helium.Utils.QualifiedTypes.Constants
 import Helium.ModuleSystem.ImportEnvironment  hiding (setTypeSynonyms)
 import Helium.ModuleSystem.DictionaryEnvironment
 import Helium.Main.Args

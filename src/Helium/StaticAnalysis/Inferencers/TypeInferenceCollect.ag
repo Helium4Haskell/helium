@@ -209,13 +209,13 @@ SEM Declaration
       loc . typeScheme     =  if isJust @lhs.classPredicate then
                                 let
                                   Just (className, typeVars) = @lhs.classPredicate
-                                  tpscheme = makeTpSchemeFromType (convertTypeToQualified @lhs.typeConstructors @type.self)
+                                  tpscheme = makeTpSchemeFromType (convertTypeToQualified @lhs.importEnvironment @type.self)
                                   typeIndices = filter (\(_, s) -> s `elem` (map getNameName typeVars)) (getQuantorMap tpscheme)
                                   typeVariablesMapped = map (\(n, s) -> (fromJust $ find (\tv -> getNameName tv == s) typeVars, TVar n)) typeIndices
                                   tpWContext = addContextToType className typeVariablesMapped tpscheme
                                 in tpWContext
                               else
-                                makeTpSchemeFromType (convertTypeToQualified @lhs.typeConstructors @type.self)
+                                makeTpSchemeFromType (convertTypeToQualified @lhs.importEnvironment @type.self)
 
 --------------------------------
 -- Derived instances
@@ -228,7 +228,9 @@ SEM Declaration
                                     | cl <- @derivings.self
                                   ]
   | Instance
-        lhs . collectInstances  = [(@name.self, updateSuperclasses @typevariables (getSuperClasses @context.self) $ makeInstance (show @name.self) (length @typevariables) @stype False)]
+        lhs . collectInstances  = [(@qualName, updateSuperclasses @typevariables (getSuperClasses @contextQual) $ makeInstance 
+                                      (show @qualName) (length @typevariables) @stype False)]
+        loc . contextQual       = map (convertContextItemToQualified @lhs.importEnvironment) @context.self
         loc . type              = head @types.self
         loc . stype             = showInstanceType $ makeTpFromType @typevariables @type
         loc . typevariables     = zip (namesInType @type) [TVar n | n <- [0..]]

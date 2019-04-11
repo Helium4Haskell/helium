@@ -17,7 +17,7 @@ import Top.Implementation.TypeGraph.Heuristic
 import Top.Interface.TypeInference
 import Top.Types
 import Helium.StaticAnalysis.Miscellaneous.UHA_Source
-import Helium.Utils.QualifiedTypes
+import Helium.Utils.QualifiedTypes.Constants
       
 -----------------------------------------------------------------------------
 

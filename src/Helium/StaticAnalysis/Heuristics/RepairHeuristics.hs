@@ -18,7 +18,7 @@ import Top.Interface.TypeInference
 import Top.Interface.Qualification hiding (contextReduction)
 import Helium.Syntax.UHA_Syntax (Range)
 import Helium.Utils.OneLiner (OneLineTree)
-import Helium.Utils.QualifiedTypes
+import Helium.Utils.QualifiedTypes.Constants
 import Top.Implementation.TypeGraph.Heuristic
 import Top.Implementation.TypeGraph.Basics
 import Top.Implementation.TypeGraph.ClassMonadic

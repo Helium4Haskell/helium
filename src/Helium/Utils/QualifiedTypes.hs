@@ -1,8 +1,10 @@
 module Helium.Utils.QualifiedTypes where
 
+import Debug.Trace
 import Helium.Syntax.UHA_Syntax
 import Helium.Syntax.UHA_Utils
 import Data.Maybe (fromMaybe)
+import Helium.ModuleSystem.ImportEnvironment
 
 import Top.Types
 
@@ -10,19 +12,21 @@ import Top.Types
 import qualified Data.Map as M
 ---------------------------------------------------------
 -- Convert UHA types to qualified
-toQualTyCon :: M.Map Name (Int, Name) -> Name -> Name
+
+getNameEnvironment :: ImportEnvironment -> M.Map Name Name
+getNameEnvironment env = M.union (classNameEnvironment env) (fmap snd $ typeConstructors env)
+
+toQualTyCon :: ImportEnvironment -> Name -> Name
 toQualTyCon _ n@(Name_Special _ _ _ _) = n
-toQualTyCon env n = case M.lookup n env of
-    Nothing         -> n
-    Just (_, qualn) -> qualn
+toQualTyCon env n = M.findWithDefault n n (getNameEnvironment env)
 
-convertClassNameToQualified :: M.Map Name Name -> Name -> Name
-convertClassNameToQualified env n = fromMaybe n (M.lookup n env)
+convertClassNameToQualified :: ImportEnvironment -> Name -> Name
+convertClassNameToQualified env n = M.findWithDefault n n (getNameEnvironment env)
 
-convertSimpleTypeToQualified :: M.Map Name (Int, Name) -> SimpleType -> SimpleType
+convertSimpleTypeToQualified :: ImportEnvironment -> SimpleType -> SimpleType
 convertSimpleTypeToQualified env (SimpleType_SimpleType range name tv) = SimpleType_SimpleType range (toQualTyCon env name) tv
 
-convertTypeToQualified :: M.Map Name (Int, Name) -> Type -> Type
+convertTypeToQualified :: ImportEnvironment -> Type -> Type
 convertTypeToQualified env = convertType (toQualTyCon env)
 
 convertType :: (Name -> Name) -> Type -> Type
@@ -40,16 +44,16 @@ convertType f (Type_Parenthesized ran ty)
 convertType f (Type_Constructor ran na) = 
     Type_Constructor ran (f na)
 
-convertContextItemToQualified :: M.Map Name (Int, Name) -> ContextItem -> ContextItem
+convertContextItemToQualified :: ImportEnvironment-> ContextItem -> ContextItem
 convertContextItemToQualified env (ContextItem_ContextItem ran name types)
-    = ContextItem_ContextItem ran name (map (convertTypeToQualified env) types)
+    = ContextItem_ContextItem ran (convertClassNameToQualified env name) (map (convertTypeToQualified env) types)
 
 ---------------------------------------------------------
 -- Convert Top types to qualified
-convertTpToQualified :: M.Map Name (Int, Name) -> Tp -> Tp
+convertTpToQualified :: ImportEnvironment -> Tp -> Tp
 convertTpToQualified env = convertTp (toQualTyCon env)
 
-convertTpSchemeToQualified :: M.Map Name (Int, Name) -> TpScheme -> TpScheme
+convertTpSchemeToQualified :: ImportEnvironment -> TpScheme -> TpScheme
 convertTpSchemeToQualified env = convertTpScheme (toQualTyCon env)
 
 convertTp :: (Name -> Name) -> Tp -> Tp
@@ -82,16 +86,6 @@ unqualifyTpScheme env = convertTpScheme (fromQualName $ convertMap env)
 
 unqualifyTp :: M.Map Name (Int, Name) -> Tp -> Tp
 unqualifyTp env = convertTp (fromQualName $ convertMap env)
----------------------------------------------------------
--- Qualified base types which are defined in LvmLang.core
-     
-{-Since we use qualified types now, all references to intType, charType, stringType, floatType and boolType should be changed to these-}
-intQualType, charQualType, stringQualType, floatQualType, boolQualType :: Tp
-intQualType    = TCon "LvmLang.Int"
-charQualType   = TCon "LvmLang.Char"
-stringQualType = TCon "LvmLang.String"
-floatQualType  = TCon "LvmLang.Float"
-boolQualType   = TCon "LvmLang.Bool"
 
 isQualIOType :: Tp -> Bool
 isQualIOType (TApp (TCon "LvmLang.IO") _) = True 

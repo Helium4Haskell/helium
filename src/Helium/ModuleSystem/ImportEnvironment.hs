@@ -21,6 +21,7 @@ import Helium.StaticAnalysis.Directives.TS_Syntax
 import Helium.StaticAnalysis.Miscellaneous.TypeConversion
 import Helium.StaticAnalysis.Miscellaneous.ConstraintInfo
 import Helium.StaticAnalysis.Messages.Messages
+import Debug.Trace
 import Top.Types
 
 
@@ -197,7 +198,7 @@ getNeverDirectives importEnv = let
     tps = typingStrategies importEnv
     convertNever :: Core_TypingStrategy -> [(Predicate, ConstraintInfo)]
     convertNever (Never predicateName predicateType message) = let
-            predicate = Predicate predicateName predicateType
+            predicate = trace "GETNEVERDIRECTIVES" $ traceShow predicateName $ Predicate predicateName predicateType
             info = addProperty (CustomError message) standardConstraintInfo
         in [(predicate, info)]
     convertNever _ = []
