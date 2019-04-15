@@ -86,7 +86,7 @@ classFunctions importEnv className combinedNames = [DeclCon
                                 )
                         , declCustoms = toplevelType name importEnv True
                         }
-                in  if getNameName name == "negate" && className == "Num" then 
+                in  if getNameName name == "negate" && className == "Prelude.Num" then 
                         [val, val{
                             declName = idFromString "$negate"
                         }]

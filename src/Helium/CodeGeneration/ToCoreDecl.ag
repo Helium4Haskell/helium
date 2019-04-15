@@ -208,13 +208,13 @@ SEM Declaration
     --  operators                : Names
     | Class             loc . superClasses = getSuperClasses @contextQual
                             . contextQual  = map (convertContextItemToQualified @lhs.importEnv) @context.self
-                            . qualName     = traceShowId @simpletype.name --convertClassNameToQualified @lhs.importEnv @simpletype.
+                            . qualName     = convertClassNameToQualified @lhs.importEnv @simpletype.name
                         lhs.decls    = let 
                                             isInfix (Module.DeclCustom{
                                                 Core.declKind = (Core.DeclKindCustom n)
                                             }) = stringFromId n `isSuffixOf` " infix"
                                             isInfix _ = False
-                                        in (classFunctions @lhs.importEnv (getNameName @qualName) $ constructFunctionMap @lhs.importEnv (length @superClasses) @simpletype.name) ++ 
+                                        in (classFunctions @lhs.importEnv (getNameName @qualName) $ constructFunctionMap @lhs.importEnv (length @superClasses) @qualName) ++ 
                                         [
                                             Core.DeclCustom
                                                 {

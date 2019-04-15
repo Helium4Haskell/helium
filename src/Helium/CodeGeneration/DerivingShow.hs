@@ -51,11 +51,11 @@ dataShowFunction _ _ _ _ _ = error "not supported"
 dataDictionary :: ClassEnvironment -> TypeSynonymEnvironment -> UHA.Declaration -> [String] -> [Custom] -> CoreDecl
 dataDictionary classEnv tse decl@(UHA.Declaration_Data _ _ (UHA.SimpleType_SimpleType _ name names) _ _) qual origin =
     DeclValue 
-    { declName    = idFromString ("$dictShow$" ++ getNameName name)
+    { declName    = idFromString ("$dictPrelude.Show$" ++ getNameName name)
     , declAccess  = public
     , valueEnc    = Nothing
     , valueValue  = makeShowDictionary (length names)
-    , declCustoms = [ custom "type" ("DictShow$" ++ getNameName name)] 
+    , declCustoms = [ custom "type" ("DictPrelude.Show$" ++ getNameName name)] 
                 ++ map (custom "typeVariable" . getNameName) names
                 ++ map (\n -> custom "superInstance" ("Show-" ++ getNameName n)) names
                 ++ origin
@@ -67,7 +67,7 @@ dataDictionary classEnv tse decl@(UHA.Declaration_Data _ _ (UHA.SimpleType_Simpl
            showBody = dataShowFunction classEnv tse decl qual origin
            ids  = map idFromName names
            list = map idFromString ["showsPred", "showList", "showDef"]
-           declarations = zipWith Bind list [Var $ idFromString "default$Show$showsPrec", Var $ idFromString "default$Show$showList", showBody]
+           declarations = zipWith Bind list [Var $ idFromString "default$Prelude.Show$showsPrec", Var $ idFromString "default$Prelude.Show$showList", showBody]
            body = Let (Rec declarations) (foldl Ap (Con $ ConId $ idFromString "DictShow") $ map Var list)
        in foldr Lam body ids
 dataDictionary _ _ _ _ _ = error "not supported"
@@ -151,12 +151,12 @@ showFunctionOfType classEnv tse isMainType = sFOT 0
             t = expandTS tp
         in 
       case t of
-        UHA.Type_Variable _ n             -> if isMainType then var "$dictShow$Int" else Var (idFromName n) 
+        UHA.Type_Variable _ n             -> if isMainType then var "$dictPrelude.Show$Int" else Var (idFromName n) 
         -- show Strings not as List of Char but using showString
         UHA.Type_Application _ _ 
                     ( UHA.Type_Constructor _ (UHA.Name_Special    _ _ _ "[]") ) -- !!!Name
                     [ UHA.Type_Constructor _ (UHA.Name_Identifier _ _ _ "Char") ] -- !!!Name
-                ->  Ap (var "$dictShow$[]") (var "$dictShow$Char" )
+                ->  Ap (var "$dictPrelude.Show$[]") (var "$dictPrelude.Show$Char" )
         UHA.Type_Constructor _ n         -> 
             let conname = (unQualifyName . getNameName) n
             in checkForPrimitiveDict nrOfArguments classEnv conname
@@ -168,23 +168,23 @@ showFunctionOfType classEnv tse isMainType = sFOT 0
 checkForPrimitiveDict :: Int -> ClassEnvironment -> String -> Expr
 checkForPrimitiveDict nrOfArguments classEnv name =
     case name of 
-        "[]" -> var "$dictShow$[]"
-        "()" -> var "$dictShow$()"
-        "->" -> let dict = foldl Ap (Con $ ConId $ idFromString "DictShow") functions
+        "[]" -> var "$dictPrelude.Show$[]"
+        "()" -> var "$dictPrelude.Show$()"
+        "->" -> let dict = foldl Ap (Con $ ConId $ idFromString "DictPrelude.Show") functions
                     showFunction = Lam (idFromString "d") $ Lam (idFromString "p") $ stringToCore "<<function>>"
-                    functions = [Var $ idFromString "default$Show$showsPrec", Var $ idFromString "default$Show$showList", showFunction]
+                    functions = [Var $ idFromString "default$Prelude.Show$showsPrec", Var $ idFromString "default$Prelude.Show$showList", showFunction]
                 in Lam (idFromString "d1") $ Lam (idFromString "d2") dict
         ('(':commasAndClose) -> 
             let arity = length commasAndClose in 
                 if arity > 10 then
                     internalError "DerivingShow" "checkForPrimitive" "No show functions for tuples with more than 10 elements"
                 else
-                    var $ "$dictShow$(" ++ replicate (arity-1) ',' ++ ")"
+                    var $ "$dictPrelude.Show$(" ++ replicate (arity-1) ',' ++ ")"
         _ -> 
             let 
                 showInstances :: Instances
-                showInstances = snd $ fromJust $ M.lookup "Show" classEnv
-                dict = var $ "$dictShow$" ++ name 
+                showInstances = snd $ fromJust $ M.lookup "Prelude.Show" classEnv
+                dict = var $ "$dictPrelude.Show$" ++ name 
                 isTCon :: Tp -> String -> Bool
                 isTCon (TCon n) s = n == s
                 isTCon (TApp t _) s = isTCon t s 
@@ -193,9 +193,9 @@ checkForPrimitiveDict nrOfArguments classEnv name =
             in if isJust pred then 
                     dict 
                 else 
-                    let dict = foldr Lam (foldl Ap (Con $ ConId $ idFromString "DictShow") functions) $ take nrOfArguments [idFromString ("d" ++ show i) | i <- [0..]]
+                    let dict = foldr Lam (foldl Ap (Con $ ConId $ idFromString "DictPrelude.Show") functions) $ take nrOfArguments [idFromString ("d" ++ show i) | i <- [0..]]
                         showFunction = Lam (idFromString "d") $ Lam (idFromString "p") $ stringToCore ("<<type " ++ name ++ ">>")              
-                        functions = [Var $ idFromString "default$Show$showsPrec", Var $ idFromString "default$Show$showList", showFunction]
+                        functions = [Var $ idFromString "default$Prelude.Show$showsPrec", Var $ idFromString "default$Prelude.Show$showList", showFunction]
                     in dict
         
 idFromNumber :: Int -> Id
