@@ -23,6 +23,7 @@ import Helium.Syntax.UHA_Utils (NameWithRange(..) )
 import Helium.Utils.Utils (internalError)
 
 import Top.Types
+import Debug.Trace
 
 data DictionaryEnvironment = 
      DEnv { declMap :: M.Map NameWithRange Predicates
@@ -93,7 +94,7 @@ makeDictionaryTrees :: ClassEnvironment -> [PredicateWithSource] -> Maybe String
 makeDictionaryTrees classEnv ps currentClass curPred x = mapM (makeDictionaryTree classEnv ps currentClass curPred) x
 
 makeDictionaryTree :: ClassEnvironment -> [PredicateWithSource] -> Maybe String -> Maybe Predicate -> PredicateWithSource -> Maybe DictionaryTree
-makeDictionaryTree classEnv availablePredicates currentClass curPred ps = 
+makeDictionaryTree classEnv availablePredicates currentClass curPred ps =
     let
         p@(Predicate className tp) = getPredicateFromPredicateWithSource ps
         bareAvailablePredicates = map getPredicateFromPredicateWithSource availablePredicates

@@ -209,13 +209,14 @@ SEM Declaration
       loc . typeScheme     =  if isJust @lhs.classPredicate then
                                 let
                                   Just (className, typeVars) = @lhs.classPredicate
+                                  qualName = convertClassNameToQualified @lhs.importEnvironment className
                                   tpscheme = makeTpSchemeFromType (convertTypeToQualified @lhs.importEnvironment @type.self)
                                   typeIndices = filter (\(_, s) -> s `elem` (map getNameName typeVars)) (getQuantorMap tpscheme)
                                   typeVariablesMapped = map (\(n, s) -> (fromJust $ find (\tv -> getNameName tv == s) typeVars, TVar n)) typeIndices
-                                  tpWContext = addContextToType className typeVariablesMapped tpscheme
+                                  tpWContext = addContextToType qualName typeVariablesMapped tpscheme
                                 in tpWContext
                               else
-                                makeTpSchemeFromType (convertTypeToQualified @lhs.importEnvironment @type.self)
+                                convertTpSchemeToQualified @lhs.importEnvironment (makeTpSchemeFromType @type.self)
 
 --------------------------------
 -- Derived instances

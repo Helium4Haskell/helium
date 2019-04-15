@@ -589,7 +589,7 @@ SEM Expression
                  . betaMonad     = TVar $ @lhs.betaUnique + 1
                  . betaVar       = TVar $ @lhs.betaUnique + 2
                  . betaReturn    = TVar $ @lhs.betaUnique + 3
-                 . monadPredicate = Predicate "Monad" @betaMonad
+                 . monadPredicate = Predicate "Prelude.Monad" @betaMonad
                  . monadType     = TApp @betaMonad @betaVar
                  . monadBeta     = quantify [] ([@monadPredicate] .=>. @monadType)
                  . newcon        = case @statements.generatorBeta of

@@ -225,7 +225,7 @@ round x
  
 
 -- not exported
-showAList :: "Show a => [a] -> String"
+showAList :: "Prelude.Show a => [a] -> String"
 showAList dShow = 
   case dShow of
      (@0, 2) x1 x2 -> x2
@@ -455,7 +455,7 @@ catchEof io onEof
                 _             -> raise exn
      )
 
-compare :: "Ord a => a -> a -> Ordering"
+compare :: "Prelude.Ord a => a -> a -> Ordering"
 compare dOrd =
     case dOrd of
         (@0, 2) eq cmp -> cmp

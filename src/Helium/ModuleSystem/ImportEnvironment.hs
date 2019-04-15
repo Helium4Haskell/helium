@@ -198,7 +198,7 @@ getNeverDirectives importEnv = let
     tps = typingStrategies importEnv
     convertNever :: Core_TypingStrategy -> [(Predicate, ConstraintInfo)]
     convertNever (Never predicateName predicateType message) = let
-            predicate = trace "GETNEVERDIRECTIVES" $ traceShow predicateName $ Predicate predicateName predicateType
+            predicate = Predicate predicateName predicateType
             info = addProperty (CustomError message) standardConstraintInfo
         in [(predicate, info)]
     convertNever _ = []

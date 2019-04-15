@@ -33,7 +33,7 @@ constructFunctionMap env nrOfSuperclasses name =
 constructSuperClassMap :: ImportEnvironment -> String -> [(String, Int, DictLabel)]
 constructSuperClassMap env name =
     let 
-        err = error $ "Invalid class name" ++ show name ++ " in " ++ show (classEnvironment env)
+        err = error $ "Invalid class name " ++ show name ++ " in " ++ show (classEnvironment env)
         f :: Class -> [(String, Int, DictLabel)]
         f (ns, _) = zipWith (\n i -> (n, i, "superC$" ++ n)) ns [0..]
     in maybe err f (M.lookup name $ classEnvironment env)

@@ -91,7 +91,7 @@ compile basedir fullName options lvmPath doneModules =
         (beforeTypeInferEnv, typingStrategiesDecls) <-
             phaseTypingStrategies fullName combinedEnv typeSignatures options
 
-        -- print localEnv
+        -- print beforeTypeInferEnv
 
         -- Phase 8: Type inferencing
         putStrLn "===== Phase 8 ====="

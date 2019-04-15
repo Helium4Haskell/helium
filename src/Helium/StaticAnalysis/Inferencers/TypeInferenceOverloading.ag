@@ -60,7 +60,7 @@ SEM Declaration
                                                 err name = internalError "TypeInferenceOverloading.ag" "n/a" 
                                                     ("could not find type for function binding for " ++ show name ++ " in " ++ "")
         
-                                            in M.findWithDefault (searchClasses @bindings.name) (NameWithRange @bindings.name) (@lhs.allTypeSchemes)
+                                            in  M.findWithDefault (searchClasses @bindings.name) (NameWithRange @bindings.name) (@lhs.allTypeSchemes)
         loc . originalFunctionType       =   fmap 
                                                     (\cname -> (\(_, tp, _, _) -> tp) $ fromJust $ find (\(n, _, _, _)-> n == @bindings.name) $ snd $ fromJust $ M.lookup cname (classMemberEnvironment @lhs.importEnvironment)) 
                                                 @lhs.instanceName
@@ -92,9 +92,9 @@ SEM Declaration
                                                   Just (n, ps) -> addForDeclaration n ps @righthandside.dictionaryEnvironment
                                                   Nothing      -> @righthandside.dictionaryEnvironment
   | Instance
-      where . instanceName  = Just @qualName
+      where . instanceName        = Just @qualName
       where . availablePredicates = @superPredicates ++ @lhs.availablePredicates
-      loc   . qualName      = convertClassNameToQualified @lhs.importEnvironment @name.self
+      loc   . qualName            = convertClassNameToQualified @lhs.importEnvironment @name.self
   | Class
       where . curClassPred = Just $ Predicate (getNameName @qualName) @classBeta
       where . instanceName = Just $ @qualName
@@ -127,7 +127,7 @@ SEM Expression
                                                                   (@lhs.substitution |-> @usedAsType)
                                                                   (@lhs.substitution |-> scheme)
                    . newDEnv               = resolveOverloading (@lhs.classEnvironment)
-                                                                (convertClassNameToQualified @lhs.importEnvironment @name.self)
+                                                                @name.self
                                                                 (@lhs.substitution |-> @lhs.availablePredicates)
                                                                 (@lhs.substitution |-> @requiredDictionaries)
                                                                 (fmap getNameName @lhs.instanceName)
@@ -143,7 +143,7 @@ SEM Expression
                                               (False, True ) -> enumFromThenName 
                                               (True , False) -> enumFromToName 
                                               (True , True ) -> enumFromName 
-                 . requiredDictionaries  = if @overloaded then @lhs.substitution |-> [PredicateFunction $ Predicate "Enum" @elementType] else []
+                 . requiredDictionaries  = if @overloaded then @lhs.substitution |-> [PredicateFunction $ Predicate "Prelude.Enum" @elementType] else []
                  . newDEnv               = resolveOverloading (@lhs.classEnvironment)  @localName 
                                                               (@lhs.substitution |-> @lhs.availablePredicates) 
                                                               (@lhs.substitution |-> @requiredDictionaries) 
@@ -156,7 +156,7 @@ SEM Expression
              loc . localName             = setNameRange intUnaryMinusName @range.self
                  . negateTypeScheme      = case M.lookup @localName (typeEnvironment @lhs.importEnvironment) of 
                                               Just scheme -> scheme
-                                              Nothing     -> generalizeAll ([Predicate "Num" (TVar 0)] .=>. TVar 0 .->. TVar 0)
+                                              Nothing     -> generalizeAll ([Predicate "Prelude.Num" (TVar 0)] .=>. TVar 0 .->. TVar 0)
                  . requiredDictionaries  = map PredicateFunction $ getRequiredDictionaries 
                                               (getOrderedTypeSynonyms @lhs.importEnvironment) 
                                               (@lhs.substitution |-> @usedAsType)

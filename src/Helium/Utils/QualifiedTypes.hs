@@ -61,8 +61,11 @@ convertTp _ t@(TVar _) = t
 convertTp f (TCon str) = TCon . getNameName . f . nameFromString $ str
 convertTp f (TApp t1 t2) = TApp (convertTp f t1) (convertTp f t2)
 
+convertPredicate :: (Name -> Name) -> Predicate -> Predicate
+convertPredicate f (Predicate n tp) = Predicate (getNameName $ f $ nameFromString n) (convertTp f tp)
+
 convertTpScheme :: (Name -> Name) -> TpScheme -> TpScheme
-convertTpScheme f (Quantification (xs, qm, (Qualification (pre, ty)))) = Quantification (xs, qm, (Qualification (pre,convertTp f ty)))
+convertTpScheme f (Quantification (xs, qm, (Qualification (pre, ty)))) = Quantification (xs, qm, (Qualification (map (convertPredicate f) pre,convertTp f ty)))
 
 ---------------------------------------------------------
 -- Unqualify types

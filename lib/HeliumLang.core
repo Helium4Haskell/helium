@@ -60,28 +60,28 @@ custom infix (:) : public [5,"right"]
 {--------------------------------------------------------------------------
   Built into the language
 --------------------------------------------------------------------------}
-''$negate'' :: "Num a => a -> a"
+''$negate'' :: "Prelude.Num a => a -> a"
 ''$negate'' dNum = 
     case dNum of
      (@0, 7) x1 x2 x3 x4 x5 x6 x7 -> x6
 
 
-''$enumFrom'' :: "Enum a => a -> [a]"
+''$enumFrom'' :: "Prelude.Enum a => a -> [a]"
 ''$enumFrom'' dEnum = 
     case dEnum of
         (@0, 8) x1 x2 x3 x4 x5 x6 x7 x8 -> x3
 		
-''$enumFromThen'' :: "Enum a => a -> a -> [a]"
+''$enumFromThen'' :: "Prelude.Enum a => a -> a -> [a]"
 ''$enumFromThen'' dEnum = 
     case dEnum of
         (@0, 8) x1 x2 x3 x4 x5 x6 x7 x8 -> x4
 
-''$enumFromTo'' :: "Enum a => a -> a -> [a]"
+''$enumFromTo'' :: "Prelude.Enum a => a -> a -> [a]"
 ''$enumFromTo'' dEnum = 
     case dEnum of
         (@0, 8) x1 x2 x3 x4 x5 x6 x7 x8 -> x7
 		
-''$enumFromThenTo'' :: "Enum a => a -> a -> a -> [a]"
+''$enumFromThenTo'' :: "Prelude.Enum a => a -> a -> a -> [a]"
 ''$enumFromThenTo'' dEnum = 
     case dEnum of
         (@0, 8) x1 x2 x3 x4 x5 x6 x7 x8 -> x8
@@ -90,7 +90,7 @@ custom infix (:) : public [5,"right"]
 ''$floatUnaryMinus'' f
   = ''$primNegFloat'' f
 
-''$show'' :: "Show a => a -> LvmLang.String"
+''$show'' :: "Prelude.Show a => a -> LvmLang.String"
 ''$show'' dShow = 
     case dShow of
         (@0, 2) x1 x2 -> x1
