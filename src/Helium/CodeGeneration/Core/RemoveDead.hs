@@ -98,7 +98,7 @@ usageExpr locals used expr
       Let binds e     -> let used'   = usageBinds locals used binds 
                              locals' = unionSet locals (binder binds)
                          in usageExpr locals' used' e
-      Lam (Variable x _) e -> usageExpr (insertSet x locals) used e
+      Lam _ (Variable x _) e -> usageExpr (insertSet x locals) used e
       Match x alts    -> usageAlts locals (usageVar locals used x) alts
       Ap e1 e2        -> usageExpr locals (usageExpr locals used e1) e2
       Var x           -> usageVar locals used x

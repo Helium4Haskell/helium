@@ -88,6 +88,7 @@ pExpression quantors = do
     "var" -> Var <$> pVariable quantors
     "instantiate" -> Instantiate <$> pVariable quantors <* pWhitespace <*> pInstantiation quantors
     "cast" -> Cast <$> pVariable quantors <* pWhitespace <* pSymbol "as" <* pWhitespace <*> pTypeAtom' quantors
+    "castthunk" -> CastThunk <$> pVariable quantors
     "phi" -> Phi <$> pArguments (pPhiBranch quantors)
     "prim" -> PrimitiveExpr <$> pId <* pWhitespace <*> pCallArguments quantors
     "undefined" -> Undefined <$ pWhitespace <*> pTypeAtom' quantors

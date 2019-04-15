@@ -70,8 +70,8 @@ nsExpr env expr
       Let binds e       -> nsBinds env binds $ \env' binds' ->
                            Let binds' (nsExpr env' e)
       Match x alts      -> Match (renameVar env x) (nsAlts env alts)
-      Lam (Variable x t) e -> renameBinder env x $ \env2 x2 ->
-                           Lam (Variable x2 t) (nsExpr env2 e)
+      Lam strict (Variable x t) e -> renameBinder env x $ \env2 x2 ->
+                           Lam strict (Variable x2 t) (nsExpr env2 e)
       Ap expr1 expr2    -> let (env1,env2) = splitEnv env
                            in  Ap (nsExpr env1 expr1) (nsExpr env2 expr2)
       Var x             -> Var (renameVar env x)
@@ -131,7 +131,7 @@ duplicateNames :: Expr -> Analysis
 duplicateNames (Let bs expr) = dupUnion (varsInBinds bs) $ duplicateNames expr
 duplicateNames (Match _ alts) = foldr1 dupUnion $ map duplicateNamesInAlt alts
 duplicateNames (Ap e1 e2) = dupUnion (duplicateNames e1) (duplicateNames e2)
-duplicateNames (Lam (Variable x _) expr) = dupInsert x $ duplicateNames expr
+duplicateNames (Lam _ (Variable x _) expr) = dupInsert x $ duplicateNames expr
 duplicateNames (Forall _ _ expr) = duplicateNames expr
 duplicateNames (ApType expr _) = duplicateNames expr
 duplicateNames (Con _) = emptyMap

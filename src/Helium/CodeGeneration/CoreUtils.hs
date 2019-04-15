@@ -189,8 +189,14 @@ declarationConstructorTypeScheme importEnv name = case M.lookup name $ valueCons
     in Quantification (quantors', qmap, qtp)
   Nothing -> internalError "CodeGeneration" "declarationConstructorTypeScheme" ("Constructor not found: " ++ show name)
 
-declarationConstructorType :: ImportEnvironment -> Name -> Core.Type
-declarationConstructorType importEnv name = toCoreType $ declarationConstructorTypeScheme importEnv name
+declarationConstructorType :: ImportEnvironment -> Name -> [Bool] -> Core.Type
+declarationConstructorType importEnv name strictness = setStrictness strictness $ toCoreType $ declarationConstructorTypeScheme importEnv name
+  where
+    setStrictness :: [Bool] -> Core.Type -> Core.Type
+    setStrictness stricts (TForall quantor kind tp) = TForall quantor kind $ setStrictness stricts tp
+    setStrictness (strict : stricts) (Core.TAp (Core.TAp (Core.TCon Core.TConFun) t1) t2) =
+      Core.TAp (Core.TAp (Core.TCon Core.TConFun) $ Core.typeSetStrict strict t1) $ setStrictness stricts t2
+    setStrictness _ tp = tp
 
 declarationType :: TypeInferenceOutput -> TypeClassContext -> Name -> (Top.TpScheme, Core.Type)
 declarationType typeOutput context name =
@@ -283,12 +289,12 @@ addLambdas typeOutput context beta name args expr = case declarationTpScheme typ
 addLambdasForQType :: ImportEnvironment -> QuantorMap -> Top.QType -> (Core.Type -> Core.Type) -> [Id] -> ([Core.Type] -> Core.Type -> Core.Expr) -> Core.Expr
 addLambdasForQType env qmap (Top.Qualification ([], t)) substitute args expr = addLambdasForType env qmap t substitute args [] expr
 addLambdasForQType env qmap (Top.Qualification (p : ps, t)) substitute (arg:args) expr =
-  Core.Lam (Core.Variable arg $ substitute $ predicateToCoreType qmap p) $ addLambdasForQType env qmap (Top.Qualification (ps, t)) substitute args expr
+  Core.Lam False (Core.Variable arg $ substitute $ predicateToCoreType qmap p) $ addLambdasForQType env qmap (Top.Qualification (ps, t)) substitute args expr
 
 addLambdasForType :: ImportEnvironment -> QuantorMap -> Top.Tp -> (Core.Type -> Core.Type) -> [Id] -> [Core.Type] -> ([Core.Type] -> Core.Type -> Core.Expr) -> Core.Expr
 addLambdasForType _ qmap retType substitute [] accumArgTypes expr = expr (reverse accumArgTypes) $ substitute $ typeToCoreType' qmap retType
 addLambdasForType env qmap (Top.TApp (Top.TApp (Top.TCon "->") argType) retType) substitute (arg:args) accumArgTypes expr =
-  Core.Lam (Core.Variable arg tp)
+  Core.Lam False (Core.Variable arg tp)
     $ addLambdasForType env qmap retType substitute args (tp : accumArgTypes) expr
   where
     tp = substitute $ typeToCoreType' qmap argType

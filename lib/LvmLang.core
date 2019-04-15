@@ -36,27 +36,27 @@ import IridiumLang
 {----------------------------------------------------------
   Instructions
 ----------------------------------------------------------}
-{- instruction primAddInt  "addint" :: Int! -> Int! -> Int!
-instruction primSubInt  "subint" :: Int! -> Int! -> Int!
-instruction primMulInt  "mulint" :: Int! -> Int! -> Int!
-instruction primDivInt  "divint" :: Int! -> Int! -> Int!
-instruction primModInt  "modint" :: Int! -> Int! -> Int!
-instruction primQuotInt "quotint":: Int! -> Int! -> Int!
-instruction primRemInt  "remint" :: Int! -> Int! -> Int!
-instruction primAndInt  "andint" :: Int! -> Int! -> Int!
-instruction primXorInt  "xorint" :: Int! -> Int! -> Int!
-instruction primOrInt   "orint"  :: Int! -> Int! -> Int!
-instruction primShrInt  "shrint" :: Int! -> Int! -> Int!
-instruction primShlInt  "shlint" :: Int! -> Int! -> Int!
-instruction primShrNat  "shrnat" :: Int! -> Int! -> Int!
+{- instruction primAddInt  "addint" :: Int -> Int -> Int!
+instruction primSubInt  "subint" :: Int -> Int -> Int!
+instruction primMulInt  "mulint" :: Int -> Int -> Int!
+instruction primDivInt  "divint" :: Int -> Int -> Int!
+instruction primModInt  "modint" :: Int -> Int -> Int!
+instruction primQuotInt "quotint":: Int -> Int -> Int!
+instruction primRemInt  "remint" :: Int -> Int -> Int!
+instruction primAndInt  "andint" :: Int -> Int -> Int!
+instruction primXorInt  "xorint" :: Int -> Int -> Int!
+instruction primOrInt   "orint"  :: Int -> Int -> Int!
+instruction primShrInt  "shrint" :: Int -> Int -> Int!
+instruction primShlInt  "shlint" :: Int -> Int -> Int!
+instruction primShrNat  "shrnat" :: Int -> Int -> Int!
 instruction primNegInt  "negint" :: Int! -> Int!
 
-instruction primEqInt   "eqint"  :: Int! -> Int! -> Bool!
-instruction primNeInt   "neint"  :: Int! -> Int! -> Bool!
-instruction primLtInt   "ltint"  :: Int! -> Int! -> Bool!
-instruction primGtInt   "gtint"  :: Int! -> Int! -> Bool!
-instruction primLeInt   "leint"  :: Int! -> Int! -> Bool!
-instruction primGeInt   "geint"  :: Int! -> Int! -> Bool!
+instruction primEqInt   "eqint"  :: Int -> Int -> Bool!
+instruction primNeInt   "neint"  :: Int -> Int -> Bool!
+instruction primLtInt   "ltint"  :: Int -> Int -> Bool!
+instruction primGtInt   "gtint"  :: Int -> Int -> Bool!
+instruction primLeInt   "leint"  :: Int -> Int -> Bool!
+instruction primGeInt   "geint"  :: Int -> Int -> Bool!
 
 instruction primAddFloat  "addfloat" :: Float! -> Float! -> Float!
 instruction primSubFloat  "subfloat" :: Float! -> Float! -> Float!
@@ -105,39 +105,33 @@ type String       = [Char]
   Strictness
 ----------------------------------------------------------}
 ($!) :: forall v$0. forall v$1. (v$0 -> v$1) -> v$0 -> v$1
-($!) = forall v$0. forall v$1. \f: (v$0 -> v$1) -> \x: v$0 -> let! x: v$0! = x in f x
-
-seq :: forall v$0. forall v$1. v$0 -> v$1 -> v$1
-seq = forall v$0. forall v$1. \a: v$0 -> \b: v$1 -> primSeq {v$0} {v$1} a b
-
-pseq :: forall v$0. forall v$1. v$0 -> v$1 -> v$1
-pseq = forall v$0. forall v$1. \a: v$0 -> \b: v$1 -> primPseq {v$0} {v$1} a b
+($!) = forall v$0. forall v$1. \ !f: (v$0 -> v$1) -> \ !x: v$0 -> f x
 
 {----------------------------------------------------------
   Basic arithmetic on Int's
 ----------------------------------------------------------}
-(+#) :: Int! -> Int! -> Int
-(+#) = \x: Int! -> \y: Int! -> primAddInt x y
+(+#) :: Int -> Int -> Int
+(+#) = \ !x: Int -> \ !y: Int -> primAddInt x y
 
-(-#) :: Int! -> Int! -> Int
-(-#) = \x: Int! -> \y: Int! -> primSubInt x y
+(-#) :: Int -> Int -> Int
+(-#) = \ !x: Int -> \ !y: Int -> primSubInt x y
 
-(*#) :: Int! -> Int! -> Int
-(*#) = \x: Int! -> \y: Int! -> primMulInt x y
-
--- TODO: Round to -inf instead of zero
-div :: Int! -> Int! -> Int
-div = \x: Int! -> \y: Int! -> quot x y -- primDivInt x y
+(*#) :: Int -> Int -> Int
+(*#) = \ !x: Int -> \ !y: Int -> primMulInt x y
 
 -- TODO: Round to -inf instead of zero
-mod :: Int! -> Int! -> Int
-mod = \x: Int! -> \y: Int! -> rem x y -- primModInt x y
+div :: Int -> Int -> Int
+div = \ !x: Int -> \ !y: Int -> quot x y -- primDivInt x y
 
-quot :: Int! -> Int! -> Int
-quot = \x: Int! -> \y: Int! -> primQuotInt x y
+-- TODO: Round to -inf instead of zero
+mod :: Int -> Int -> Int
+mod = \ !x: Int -> \ !y: Int -> rem x y -- primModInt x y
 
-rem :: Int! -> Int! -> Int
-rem = \x: Int! -> \y: Int! -> primRemInt x y
+quot :: Int -> Int -> Int
+quot = \ !x: Int -> \ !y: Int -> primQuotInt x y
+
+rem :: Int -> Int -> Int
+rem = \ !x: Int -> \ !y: Int -> primRemInt x y
 {-
 and :: Int -> Int -> Int
 and = \x: Int -> \y: Int -> primAndInt x y
@@ -148,38 +142,38 @@ xor = \x: Int -> \y: Int -> primXorInt x y
 or :: Int -> Int -> Int
 or = \x: Int -> \y: Int -> primOrInt x y
 -}
-shr :: Int! -> Int! -> Int
-shr = \x: Int! -> \y: Int! -> primShrInt x y
+shr :: Int -> Int -> Int
+shr = \ !x: Int -> \ !y: Int -> primShrInt x y
 
-shl :: Int! -> Int! -> Int
-shl = \x: Int! -> \y: Int! -> primShlInt x y
+shl :: Int -> Int -> Int
+shl = \ !x: Int -> \ !y: Int -> primShlInt x y
 
-shrNat :: Int! -> Int! -> Int
-shrNat = \x: Int! -> \y: Int! -> primShrNat x y
+shrNat :: Int -> Int -> Int
+shrNat = \ !x: Int -> \ !y: Int -> primShrNat x y
 
-negInt :: Int! -> Int
-negInt = \x: Int! -> primNegInt x
+negInt :: Int -> Int
+negInt = \ !x: Int -> primNegInt x
 
 {----------------------------------------------------------
   Comparisons on Int's
 ----------------------------------------------------------}
-(==#) :: Int! -> Int! -> Bool
-(==#) = \x: Int! -> \y: Int! -> primEqInt x y
+(==#) :: Int -> Int -> Bool
+(==#) = \ !x: Int -> \ !y: Int -> primEqInt x y
 
-(/=#) :: Int! -> Int! -> Bool
-(/=#) = \x: Int! -> \y: Int! -> primNeInt x y
+(/=#) :: Int -> Int -> Bool
+(/=#) = \ !x: Int -> \ !y: Int -> primNeInt x y
 
-(<#) :: Int! -> Int! -> Bool
-(<#) = \x: Int! -> \y: Int! -> primLtInt x y
+(<#) :: Int -> Int -> Bool
+(<#) = \ !x: Int -> \ !y: Int -> primLtInt x y
 
-(>#) :: Int! -> Int! -> Bool
-(>#) = \x: Int! -> \y: Int! -> primGtInt x y
+(>#) :: Int -> Int -> Bool
+(>#) = \ !x: Int -> \ !y: Int -> primGtInt x y
 
-(<=#) :: Int! -> Int! -> Bool
-(<=#) = \x: Int! -> \y: Int! -> primLeInt x y
+(<=#) :: Int -> Int -> Bool
+(<=#) = \ !x: Int -> \ !y: Int -> primLeInt x y
 
-(>=#) :: Int! -> Int! -> Bool
-(>=#) = \x: Int! -> \y: Int! -> primGeInt x y
+(>=#) :: Int -> Int -> Bool
+(>=#) = \ !x: Int -> \ !y: Int -> primGeInt x y
 
 {----------------------------------------------------------
   Basic arithmetic on Float's
@@ -284,10 +278,10 @@ putChar = \char: Char -> IO { () }
 
 ''$primPutStrLn'' :: String -> IO ()
 ''$primPutStrLn'' = 
-  let print: ([Char]! -> Int) = \str: [Char]! -> ''_$helium_runtime_print_string'' str
+  let print: ([Char] -> Int) = \str: [Char] -> ''_$helium_runtime_print_string'' str
   in
     \str: String ->
-      IO {()} (\realworld: RealWorld! ->
+      IO {()} (\realworld: RealWorld ->
         seq {Int} {IORes ()}
           (print str)
           (seq {Int} {IORes ()}

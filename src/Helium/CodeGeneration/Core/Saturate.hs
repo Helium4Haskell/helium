@@ -74,8 +74,8 @@ satExpr env expr
            in  Let (satBinds env0 binds) (satExpr env1 e)
       Match x alts
         -> Match x (satAlts env alts)
-      Lam var e
-        -> Lam var (satExpr env e)
+      Lam strict var e
+        -> Lam strict var (satExpr env e)
       Forall x k e
         -> Forall x k $ satExpr env e
       _
@@ -98,7 +98,7 @@ satExprSimple env expr
   = case expr of
       Let _ _     -> satExpr env expr
       Match _ _   -> satExpr env expr
-      Lam _ _     -> satExpr env expr
+      Lam _ _ _   -> satExpr env expr
       Forall _ _ _ -> satExpr env expr
       ApType e t  -> ApType (satExprSimple env e) t
       Ap e1 e2    -> let (env1,env2) = splitEnv env
@@ -112,7 +112,7 @@ satExprSimple env expr
 addLam :: Env -> [Type] -> Expr -> Expr
 addLam env args expr
   = let (_, vars) = mapAccumR (\env2 t -> let (x,env') = uniqueId env2 in (env', Variable x t)) env args
-    in  foldr Lam (foldl Ap expr (map (Var . variableName) vars)) vars
+    in  foldr (Lam False) (foldl Ap expr (map (Var . variableName) vars)) vars
 
 -- Returns the function type containing the remaining required types
 requiredArgs :: Env -> Expr -> Maybe Type

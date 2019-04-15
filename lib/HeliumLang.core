@@ -108,21 +108,21 @@ data Char
 -}
 
 ''$primConcat'' :: forall v$0. [[v$0]] -> [v$0]
-''$primConcat'' = forall v$0. \xss: [[v$0]]! ->
+''$primConcat'' = forall v$0. \ !xss: [[v$0]] ->
     case xss of 
     {   '':[]'' {[v$0]} -> [] {v$0}
     ;   (:) {[v$0]} ys yss -> ''$primAppend'' {v$0} ys (''$primConcat'' {v$0} yss)
     }
 
-''$primConcatMap'' :: forall v$0. forall v$1. (v$0 -> [v$1]) -> ([v$0])! -> [v$1]
-''$primConcatMap'' = forall v$0. forall v$1. \f: (v$0 -> [v$1]) -> \xs: ([v$0])! ->
+''$primConcatMap'' :: forall v$0. forall v$1. (v$0 -> [v$1]) -> ([v$0]) -> [v$1]
+''$primConcatMap'' = forall v$0. forall v$1. \f: (v$0 -> [v$1]) -> \ !xs: ([v$0]) ->
     case xs of
     {   '':[]'' {v$0}  -> [] {v$1}
     ;   (:) {v$0} y ys -> ''$primAppend'' {v$1} (f y) (''$primConcatMap'' {v$0} {v$1} f ys)
     }
     
-''$primAppend'' :: forall v$0. [v$0]! -> [v$0] -> [v$0] -- is '++'
-''$primAppend'' = forall v$0. \xs: [v$0]! -> \ys: [v$0] ->
+''$primAppend'' :: forall v$0. [v$0] -> [v$0] -> [v$0] -- is '++'
+''$primAppend'' = forall v$0. \ !xs: [v$0] -> \ys: [v$0] ->
     case xs of 
     {   '':[]'' { v$0 } -> ys
     ;   (:) {v$0} z zs -> (:) {v$0} z (''$primAppend'' {v$0} zs ys)
@@ -130,15 +130,15 @@ data Char
 
 -- Show
 
-showBool :: Bool! -> String
-showBool = \b: Bool! -> 
+showBool :: Bool -> String
+showBool = \ !b: Bool -> 
     case b of
     {   True -> "True"
     ;   default -> "False"
     }
 
-showUnit :: ()! -> String
-showUnit = \u: ()! -> 
+showUnit :: () -> String
+showUnit = \ !u: () -> 
     case u of
     {   () -> "()"
     }
@@ -148,8 +148,8 @@ showChar = \c: Char ->
     (:) {Char} '\'' (''$primAppend'' {Char} (safeShowChar True c) 
                          "\'")
 
-safeShowChar :: Bool! -> Char! -> String
-safeShowChar = \inChar: Bool! -> \c: Char! -> case c of
+safeShowChar :: Bool -> Char -> String
+safeShowChar = \ !inChar: Bool -> \ !c: Char -> case c of
     { '\a' -> "\\a"
     ; '\b' -> "\\b"
     ; '\f' -> "\\f"
@@ -179,7 +179,7 @@ showString = \s: String ->
     (:) {Char} '\"' (''$primAppend'' {Char} (''$primConcatMap'' {Char} {Char} (safeShowChar False) s) "\"")
 
 showInt :: Int -> String
-showInt = \n: Int ->
+showInt = \ !n: Int ->
     let! isNeg: Bool = (<#) n 0 in case isNeg of
     {   True -> (:) {Char} '(' ((:) {Char} '-' 
                     (''$primAppend'' {Char}

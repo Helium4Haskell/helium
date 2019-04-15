@@ -40,8 +40,8 @@ lsExpr expr
            in foldr Let (lsExpr e) bindss
       Match x alts
         -> Match x (lsAlts alts)
-      Lam x e
-        -> Lam x (lsExpr e)
+      Lam strict x e
+        -> Lam strict x (lsExpr e)
       Ap e1 e2
         -> Ap (lsExpr e1) (lsExpr e2)
       Forall x k e

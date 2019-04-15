@@ -60,9 +60,9 @@ liftExprInDecl typeEnv supply (DeclValue name access enc expr customs) = DeclVal
 liftExprInDecl _ _ decl = [decl]
 
 liftExprIgnoreLambdas :: NameSupply -> [Either Quantor Variable] -> Expr -> Env -> (Expr, [CoreDecl])
-liftExprIgnoreLambdas supply scope (Lam x expr) env = (Lam x expr', decls)
+liftExprIgnoreLambdas supply scope (Lam strict x expr) env = (Lam strict x expr', decls)
   where
-    (expr', decls) = liftExprIgnoreLambdas supply (Right x : scope) expr env'
+    (expr', decls) = liftExprIgnoreLambdas supply (Right (variableSetStrict strict x) : scope) expr env'
     env' = modifyTypeEnv (typeEnvAddVariable x) env
 liftExprIgnoreLambdas supply scope (Forall x k expr) env = (Forall x k expr', decls)
   where
@@ -82,7 +82,7 @@ liftExpr supply scope (Let (Strict b) e) env =
     (b', decls1, envMap) = strictBind supply1 scope b env
     scope' = case b' of
       Nothing -> scope
-      Just _ -> Right (boundVar b) : scope
+      Just _ -> Right (variableSetStrict True $ boundVar' b) : scope
     (e', decls2) = liftExpr supply2 (scope') e (envMap env')
     env' = modifyTypeEnv (typeEnvAddBind b) env
 liftExpr supply scope (Let (NonRec b) e) env =
@@ -96,12 +96,12 @@ liftExpr supply scope (Let (NonRec b) e) env =
     (b', decls1, envMap) = lazyBind False supply1 scope b env
     scope' = case b' of
       Nothing -> scope
-      Just _ -> Right (boundVar b) : scope
+      Just _ -> Right (boundVar' b) : scope
     (e', decls2) = liftExpr supply2 scope' e (envMap env')
     env' = modifyTypeEnv (typeEnvAddBind b) env
 liftExpr supply scope (Let binds@(Rec bs) e) env = (Let (Rec $ catMaybes bs') e', concat decls1 ++ decls2)
   where
-    scope' = map (Right . boundVar) bs ++ scope
+    scope' = map (Right . boundVar') bs ++ scope
     (supply1, supply2) = splitNameSupply supply
     (bs', decls1, envMaps) = unzip3 $ mapWithSupply (\s b -> lazyBind True s scope' b env) supply1 bs
     (e', decls2) = liftExpr supply2 scope' e (foldr id env' envMaps)
@@ -110,7 +110,7 @@ liftExpr supply scope (Match name alts) env = (Match (rename env name) alts', co
   where
     (alts', decls) = unzip $ mapWithSupply (\s a -> liftAlt s scope a env) supply alts
 -- Convert `\x -> expr` to `let y = \x -> expr in y
-liftExpr supply scope expr@(Lam _ _) env = liftExpr supply' scope (Let (NonRec bind) (Var name)) env
+liftExpr supply scope expr@(Lam _ _ _) env = liftExpr supply' scope (Let (NonRec bind) (Var name)) env
   where
     (name, supply') = freshId supply
     bind = Bind (Variable name $ typeOfCoreExpression (typeEnv env) expr) expr
@@ -140,7 +140,7 @@ rename env@(Env _ mapping) name = case lookupMap name mapping of
 
 isQuantifiedLambda :: Expr -> Bool
 isQuantifiedLambda (Forall _ _ expr) = isQuantifiedLambda expr
-isQuantifiedLambda (Lam _ _) = True
+isQuantifiedLambda (Lam _ _ _) = True
 isQuantifiedLambda _ = False
 
 strictBind :: NameSupply -> [Either Quantor Variable] -> Bind -> Env -> (Maybe Bind, [CoreDecl], Env -> Env)
@@ -156,8 +156,9 @@ lazyBind isRec supply scope b@(Bind var@(Variable x t) expr) env
   | isValidThunk expr = (Just (Bind var $ renameInSimpleExpr env expr), [], id)
   -- Do not construct a Bind if the value is placed in a toplevel value which is not a Lambda
   | null scope = (Nothing, decl : decls, insertSubstitution x name)
-  | otherwise = (Just $ Bind var ap, decl : decls, id)
+  | otherwise = (Just $ Bind var' ap, decl : decls, id)
   where
+    var' = (Variable x $ typeRemoveArgumentStrictness t)
     ap = foldr addAp (Var name) scope
       where
         addAp (Left (Quantor idx _)) e = ApType e $ TVar idx
@@ -179,7 +180,7 @@ lazyBind isRec supply scope b@(Bind var@(Variable x t) expr) env
     value = foldl addArg expr' argNames
       where
         addArg e (_, Left quantor) = Forall quantor KStar e
-        addArg e (_, Right var) = Lam var e
+        addArg e (_, Right (Variable name tp)) = Lam (typeIsStrict tp) (Variable name $ typeNotStrict tp) e
     decl :: CoreDecl
     decl = DeclValue
       { declName = name
@@ -191,7 +192,7 @@ lazyBind isRec supply scope b@(Bind var@(Variable x t) expr) env
     functionType :: [Either Quantor Variable] -> Type
     functionType [] = t
     functionType (Left quantor : args) = TForall quantor KStar $ functionType args
-    functionType (Right (Variable name tArg) : args) = TAp (TAp (TCon TConFun) tArg) $ functionType args
+    functionType (Right (Variable name tArg) : args) = TAp (TAp (TCon TConFun) $ typeNotStrict tArg) $ functionType args
 
 liftAlt :: NameSupply -> [Either Quantor Variable] -> Alt -> Env -> (Alt, [CoreDecl])
 liftAlt supply scope (Alt pat expr) env = (Alt pat expr', decls)
@@ -205,3 +206,9 @@ isValidThunk (Ap _ _) = True
 isValidThunk (Forall _ _ e) = isValidThunk e
 isValidThunk (ApType e _) = isValidThunk e
 isValidThunk _ = False
+
+boundVar' :: Bind -> Variable
+boundVar' (Bind (Variable name tp) _) = Variable name $ typeRemoveArgumentStrictness tp
+
+variableSetStrict :: Bool -> Variable -> Variable
+variableSetStrict strict (Variable name tp) = Variable name $ typeSetStrict strict tp

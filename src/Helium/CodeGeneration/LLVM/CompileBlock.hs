@@ -237,6 +237,10 @@ compileExpression env supply (Iridium.Var var) name = cast supply env (toOperand
   where t = Iridium.variableType var
 compileExpression env supply (Iridium.Cast var toType) name = cast supply env (toOperand env var) (toName name) t toType
   where t = Iridium.variableType var
+compileExpression env supply (Iridium.CastThunk var) name = cast supply env (toOperand env var) (toName name) t toType
+  where
+    t = Iridium.variableType var
+    toType = Iridium.typeNotStrict t
 compileExpression env supply expr@(Iridium.Instantiate var _) name = cast supply env (toOperand env var) (toName name) t toType
   where
     t = Iridium.variableType var

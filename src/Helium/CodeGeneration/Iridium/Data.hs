@@ -247,7 +247,7 @@ bindType env (Bind _ (BindTargetFunction (VarGlobal (GlobalFunction fn arity fnt
   | arity > valueArgCount = typeToStrict $ tp
   | otherwise = tp
   where
-    tp = typeApplyArguments env fntype args
+    tp = typeRemoveArgumentStrictness $ typeApplyArguments env fntype args
     valueArgCount = length $ filter isRight args
 bindType env (Bind _ (BindTargetFunction fn) args)
   | variableType fn == typeUnsafePtr = typeUnsafePtr
@@ -271,6 +271,8 @@ data Expr
   | Var !Variable
   -- Casts a variable to a (possibly) different type.
   | Cast !Variable !Type
+  -- Casts type `!a` to `a`
+  | CastThunk !Variable
   -- Represents a phi node in the control flow of the method. Gets a value, based on the previous block.
   | Phi ![PhiBranch]
   -- Calls a primitive instruction, like integer addition. The number of arguments should be equal to the number of parameters
@@ -302,6 +304,7 @@ typeOfExpr env (Instantiate v args) = typeNormalizeHead env $ typeApplyList (var
 typeOfExpr _ (Eval v) = typeToStrict $ variableType v
 typeOfExpr _ (Var v) = variableType v
 typeOfExpr _ (Cast _ t) = t
+typeOfExpr _ (CastThunk var) = typeNotStrict $ variableType var
 typeOfExpr _ (Phi []) = error "typeOfExpr: Empty phi node. A phi expression should have at least 1 branch."
 typeOfExpr _ (Phi (PhiBranch _ var : _)) = variableType var
 typeOfExpr env (PrimitiveExpr name args) = typeApplyArguments env (typeFromFunctionType $ primType $ findPrimitive name) args
@@ -315,6 +318,7 @@ dependenciesOfExpr (Instantiate var _) = [var]
 dependenciesOfExpr (Eval var) = [var]
 dependenciesOfExpr (Var var) = [var]
 dependenciesOfExpr (Cast var _) = [var]
+dependenciesOfExpr (CastThunk var) = [var]
 dependenciesOfExpr (Phi branches) = map phiVariable branches
 dependenciesOfExpr (PrimitiveExpr _ args) = [arg | Right arg <- args]
 dependenciesOfExpr (Undefined _) = []

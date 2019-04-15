@@ -33,7 +33,7 @@ typeEnvForModule (Module _ _ _ decls) = TypeEnvironment (mapFromList synonyms) (
     values = mapMaybe findValue decls
     findValue :: CoreDecl -> Maybe (Id, Type)
     findValue decl
-      | isValue decl = Just (declName decl, declType decl)
+      | isValue decl = Just (declName decl, typeRemoveArgumentStrictness $ declType decl)
       | otherwise = Nothing
     isValue :: CoreDecl -> Bool
     isValue DeclValue{} = True
@@ -42,7 +42,7 @@ typeEnvForModule (Module _ _ _ decls) = TypeEnvironment (mapFromList synonyms) (
     isValue _ = False
 
 typeEnvAddVariable :: Variable -> TypeEnvironment -> TypeEnvironment
-typeEnvAddVariable (Variable name tp) env = env{ typeEnvValues = updateMap name tp $ typeEnvValues env }
+typeEnvAddVariable (Variable name tp) env = env{ typeEnvValues = updateMap name (typeNotStrict $ typeRemoveArgumentStrictness tp) $ typeEnvValues env }
 
 typeEnvAddVariables :: [Variable] -> TypeEnvironment -> TypeEnvironment
 typeEnvAddVariables vars env = foldr typeEnvAddVariable env vars
@@ -120,7 +120,7 @@ typeOfCoreExpression env (ApType e1 tp1) = case typeNormalizeHead env $ typeOfCo
 
 -- Expression: \x: t1 -> e
 -- If e has type t2, then the lambda has type t1 -> t2
-typeOfCoreExpression env (Lam var@(Variable _ tp) expr) =
+typeOfCoreExpression env (Lam _ var@(Variable _ tp) expr) =
   typeFunction [tp] $ typeOfCoreExpression env' expr
   where
     env' = typeEnvAddVariable var env
@@ -148,31 +148,38 @@ typeTuple arity = foldr (\var -> TForall (Quantor var Nothing) KStar) (typeFunct
     tp = foldl (\t var -> TAp t $ TVar var) (TCon $ TConTuple arity) vars
     vars = [0 .. arity - 1]
 
--- Checks type equivalence
 typeEqual :: TypeEnvironment -> Type -> Type -> Bool
-typeEqual env TAny TAny = True
-typeEqual env (TStrict t1) t2 = typeEqual env t1 t2 -- Ignore strictness
-typeEqual env t1 (TStrict t2) = typeEqual env t1 t2 -- Ignore strictness
-typeEqual env (TVar x1) (TVar x2) = x1 == x2
-typeEqual env t1@(TCon _) t2 = typeEqualNoTypeSynonym env (typeNormalizeHead env t1) (typeNormalizeHead env t2)
-typeEqual env t1 t2@(TCon _) = typeEqualNoTypeSynonym env (typeNormalizeHead env t1) (typeNormalizeHead env t2)
-typeEqual env t1@(TAp _ _) t2 = typeEqualNoTypeSynonym env (typeNormalizeHead env t1) (typeNormalizeHead env t2)
-typeEqual env t1 t2@(TAp _ _) = typeEqualNoTypeSynonym env (typeNormalizeHead env t1) (typeNormalizeHead env t2)
-typeEqual env (TForall (Quantor x _) _ t1) (TForall (Quantor y _) _ t2) =
-  typeEqual env t1 (typeSubstitute y (TVar x) t2)
-typeEqual env _ _ = False
+typeEqual env = typeEqual' env True
+
+typeEqualIgnoreStrictness :: TypeEnvironment -> Type -> Type -> Bool
+typeEqualIgnoreStrictness env = typeEqual' env False
+
+-- Checks type equivalence
+typeEqual' :: TypeEnvironment -> Bool -> Type -> Type -> Bool
+typeEqual' env _ TAny TAny = True
+typeEqual' env False (TStrict t1) t2 = typeEqual' env False t1 t2 -- Ignore strictness
+typeEqual' env False t1 (TStrict t2) = typeEqual' env False t1 t2 -- Ignore strictness
+typeEqual' env True (TStrict t1) (TStrict t2) = typeEqual' env True t1 t2 -- Do use strictness
+typeEqual' env _ (TVar x1) (TVar x2) = x1 == x2
+typeEqual' env checkStrict t1@(TCon _) t2 = typeEqualNoTypeSynonym env checkStrict (typeNormalizeHead env t1) (typeNormalizeHead env t2)
+typeEqual' env checkStrict t1 t2@(TCon _) = typeEqualNoTypeSynonym env checkStrict (typeNormalizeHead env t1) (typeNormalizeHead env t2)
+typeEqual' env checkStrict t1@(TAp _ _) t2 = typeEqualNoTypeSynonym env checkStrict (typeNormalizeHead env t1) (typeNormalizeHead env t2)
+typeEqual' env checkStrict t1 t2@(TAp _ _) = typeEqualNoTypeSynonym env checkStrict (typeNormalizeHead env t1) (typeNormalizeHead env t2)
+typeEqual' env checkStrict (TForall (Quantor x _) _ t1) (TForall (Quantor y _) _ t2) =
+  typeEqual' env checkStrict t1 (typeSubstitute y (TVar x) t2)
+typeEqual' env _ _ _ = False
 
 -- Checks type equivalence, assuming that there is no synonym at the head of the type
-typeEqualNoTypeSynonym :: TypeEnvironment -> Type -> Type -> Bool
-typeEqualNoTypeSynonym env (TAp tl1 tl2) (TAp tr1 tr2)
-  = typeEqualNoTypeSynonym env tl1 tr1
-  && typeEqual env tl2 tr2
-typeEqualNoTypeSynonym _ (TAp _ _) _ = False
-typeEqualNoTypeSynonym _ _ (TAp _ _) = False
-typeEqualNoTypeSynonym _ (TCon c1) (TCon c2) = c1 == c2
-typeEqualNoTypeSynonym _ (TCon _) _ = False
-typeEqualNoTypeSynonym _ _ (TCon _) = False
-typeEqualNoTypeSynonym env t1 t2 = typeEqual env t1 t2
+typeEqualNoTypeSynonym :: TypeEnvironment -> Bool -> Type -> Type -> Bool
+typeEqualNoTypeSynonym env checkStrict (TAp tl1 tl2) (TAp tr1 tr2)
+  = typeEqualNoTypeSynonym env checkStrict tl1 tr1
+  && typeEqual' env checkStrict tl2 tr2
+typeEqualNoTypeSynonym _ _ (TAp _ _) _ = False
+typeEqualNoTypeSynonym _ _ _ (TAp _ _) = False
+typeEqualNoTypeSynonym _ _ (TCon c1) (TCon c2) = c1 == c2
+typeEqualNoTypeSynonym _ _ (TCon _) _ = False
+typeEqualNoTypeSynonym _ _ _ (TCon _) = False
+typeEqualNoTypeSynonym env checkStrict t1 t2 = typeEqual' env checkStrict t1 t2
 
 typeOfLiteral :: Literal -> Type
 typeOfLiteral (LitInt _ tp) = TCon $ TConDataType $ idFromString $ show tp
@@ -208,3 +215,18 @@ extractFunctionTypeWithArity env arity tp = case typeNormalizeHead env tp of
     let FunctionType args ret = extractFunctionTypeWithArity env (arity - 1) tReturn
     in FunctionType (Right tArg : args) ret
   _ -> error ("extractFunctionTypeWithArity: expected function type or forall type, got " ++ showType [] tp)
+
+updateFunctionTypeStrictness :: TypeEnvironment -> [Bool] -> Type -> Type
+updateFunctionTypeStrictness _ strictness tp
+  | all not strictness = tp -- No arguments are strict, type does not change
+updateFunctionTypeStrictness env (strict : strictness) tp = case typeNormalizeHead env tp of
+  TForall quantor kind tp' -> TForall quantor kind $ updateFunctionTypeStrictness env (strict : strictness) tp'
+  TAp (TAp (TCon TConFun) tArg) tReturn ->
+    let
+      tArg'
+        | strict = typeToStrict tArg
+        | otherwise = tArg
+    in
+      TAp (TAp (TCon TConFun) tArg')
+        $ updateFunctionTypeStrictness env strictness tReturn
+  _ -> error "updateFunctionTypeStrictness: expected function type"

@@ -22,7 +22,7 @@ module PreludePrim
 
     -- Int
     , (+#), (-#), (*#), (/#), (%#)
-    , and, xor, or, shr, shl, shrNat, quot, rem
+    , and, xor, or, shr, shl, shrNat, quot, rem, mod, div
     , (==#), (/=#), (<#), (>#), (<=#), (>=#)
 
     -- Float

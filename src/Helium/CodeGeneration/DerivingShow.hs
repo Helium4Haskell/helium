@@ -43,9 +43,9 @@ typeString = Core.TAp (Core.TCon $ Core.TConDataType $ idFromString "[]") char
 -- Show function for a data type declaration
 dataShowFunction :: Core.Type -> Core.Type -> ClassEnvironment -> TypeSynonymEnvironment -> UHA.Declaration -> Expr
 dataShowFunction dictType dataType classEnv tse (UHA.Declaration_Data _ _ (UHA.SimpleType_SimpleType _ name names) constructors _) =
-    foldr Lam
+    foldr (Lam False)
         (Let
-            (Strict (Bind (Variable valueId $ Core.typeToStrict dataType) (Var valueId)))
+            (Strict (Bind (Variable valueId dataType) (Var valueId)))
             (Match valueId
                 (map (makeAlt classEnv tse names) constructors)
             )
@@ -82,7 +82,7 @@ dataDictionary classEnv tse decl@(UHA.Declaration_Data _ _ (UHA.SimpleType_Simpl
            list = map idFromString ["showsPred", "showList", "showDef"]
            fields = [Var $ idFromString "default$Show$showsPrec", Var $ idFromString "default$Show$showList", showBody]
            body = foldl Ap (Con $ ConId $ idFromString "Dict$Show") fields
-       in foldr Lam body ids
+       in foldr (Lam False) body ids
 dataDictionary _ _ _ = error "not supported"
 
 -- Convert a data type constructor to a Core alternative
@@ -166,9 +166,9 @@ checkForPrimitiveDict typeArgs classEnv name =
         "->" -> let t1:t2:_ = typeArgs
                     t = Core.typeFunction [typeFromUHA t1] $ typeFromUHA t2
                     dict = foldl Ap (Con $ ConId $ idFromString "Dict$Show") functions
-                    showFunction = Lam (Variable (idFromString "d") $ typeDictFor t) $ Lam (Variable (idFromString "p") t) $ stringToCore "<<function>>"
+                    showFunction = Lam False (Variable (idFromString "d") $ typeDictFor t) $ Lam False (Variable (idFromString "p") t) $ stringToCore "<<function>>"
                     functions = [Var $ idFromString "default$Show$showsPrec", Var $ idFromString "default$Show$showList", showFunction]
-                in Lam (Variable (idFromString "d1") $ typeDictFor $ typeFromUHA t1) $ Lam (Variable (idFromString "d2") $ typeDictFor $ typeFromUHA t2) dict
+                in Lam False (Variable (idFromString "d1") $ typeDictFor $ typeFromUHA t1) $ Lam False (Variable (idFromString "d2") $ typeDictFor $ typeFromUHA t2) dict
         ('(':commasAndClose) -> 
             let arity = length commasAndClose in 
                 if arity > 10 then
@@ -190,9 +190,9 @@ checkForPrimitiveDict typeArgs classEnv name =
             in if isJust pred then 
                     dict 
                 else 
-                    let dict = foldr Lam (foldl Ap (Con $ ConId $ idFromString "Dict$Show") functions)
+                    let dict = foldr (Lam False) (foldl Ap (Con $ ConId $ idFromString "Dict$Show") functions)
                             $ zipWith (\arg tp -> Variable arg $ typeDictFor tp) [idFromString ("d" ++ show i) | i <- [0..]] coreTypeArgs
-                        showFunction = Lam (Variable (idFromString "d") $ typeDictFor tp) $ Lam (Variable (idFromString "p") tp) $ stringToCore ("<<type " ++ name ++ ">>")              
+                        showFunction = Lam False (Variable (idFromString "d") $ typeDictFor tp) $ Lam False (Variable (idFromString "p") tp) $ stringToCore ("<<type " ++ name ++ ">>")              
                         functions = [Var $ idFromString "default$Show$showsPrec", Var $ idFromString "default$Show$showList", showFunction]
                     in dict
         

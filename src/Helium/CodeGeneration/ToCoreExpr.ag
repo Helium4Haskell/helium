@@ -189,7 +189,7 @@ SEM Statement [ | | core : { Maybe Core.Expr -> Core.Expr } ]
             \theRest -> 
                 case theRest of
                     Nothing   -> @expression.core
-                    Just rest -> bind @lhs.monadType @argType @lhs.returnType (Core.Var $ idFromString "$monadDict") @expression.core (Core.Lam (Core.Variable dummyId @loc.argType) rest)
+                    Just rest -> bind @lhs.monadType @argType @lhs.returnType (Core.Var $ idFromString "$monadDict") @expression.core (Core.Lam False (Core.Variable dummyId @loc.argType) rest)
     --  range                    : Range
     --  expression               : Expression
 
@@ -210,8 +210,8 @@ SEM Statement [ | | core : { Maybe Core.Expr -> Core.Expr } ]
         \theRest -> case theRest of
             Nothing   -> internalError "ToCoreExpr" "Statement" "generator can't be last in 'do'"
             Just rest ->
-                bind @lhs.monadType @argType @lhs.returnType (Core.Var $ idFromString "$monadDict") @expression.core (Core.Lam (Core.Variable parameterId @loc.argType) (patternToCore @lhs.importEnv @pattern.patternTypes (parameterId, @loc.argType, @pattern.self) rest))
-               -- Core.Ap (Core.Ap (Core.Ap (Core.Var $ idFromString ">>=") (Core.Var $ idFromString "$monadDict")) @expression.core) (Core.Lam (Core.Variable parameterId @loc.argType) 
+                bind @lhs.monadType @argType @lhs.returnType (Core.Var $ idFromString "$monadDict") @expression.core (Core.Lam False (Core.Variable parameterId @loc.argType) (patternToCore @lhs.importEnv @pattern.patternTypes (parameterId, @loc.argType, @pattern.self) rest))
+               -- Core.Ap (Core.Ap (Core.Ap (Core.Var $ idFromString ">>=") (Core.Var $ idFromString "$monadDict")) @expression.core) (Core.Lam False (Core.Variable parameterId @loc.argType) 
 
     --  range                    : Range
     --  pattern                  : Pattern
@@ -251,7 +251,7 @@ SEM Qualifier [ | | core : { Core.Expr -> Core.Expr } ]
             let_ nextClauseId @lhs.coreType (nil @lhs.coreType)
                 (let_ 
                     okId (Core.typeFunction [@loc.argType] @lhs.coreType)
-                    (Core.Lam (Core.Variable parameterId @loc.argType)
+                    (Core.Lam False (Core.Variable parameterId @loc.argType)
                         (patternToCore @lhs.importEnv @pattern.patternTypes (parameterId, @loc.argType, @pattern.self) continue)
                     )
                     (var "$primConcatMap"

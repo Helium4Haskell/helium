@@ -33,6 +33,7 @@ Simplified:
 -}
 
 import Control.Monad
+import Data.Maybe (isJust)
 import Helium.Parser.ParseLibrary hiding (satisfy)
 import Data.Functor.Identity (Identity)
 import Text.ParserCombinators.Parsec
@@ -1289,8 +1290,9 @@ atype = addRange (
 annotatedType :: HParser Type -> HParser AnnotatedType
 annotatedType p = addRange $
     do
+        strict <- isJust <$> optionMaybe (lexeme (LexVarSym "!"))
         t <- p
-        return (\r -> AnnotatedType_AnnotatedType r False t)
+        return (\r -> AnnotatedType_AnnotatedType r strict t)
 
 literal :: ParsecT [Token] SourcePos Identity Literal
 literal = addRange (

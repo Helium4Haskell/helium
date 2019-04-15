@@ -21,11 +21,6 @@ data Env = Env
   , envFunctionArguments :: !(IdMap [Bool])
   }
 
-getStrictness :: Expr -> [Bool]
-getStrictness (Forall _ _ expr) = getStrictness expr
-getStrictness (Lam (Variable _ t) expr) = typeIsStrict t : getStrictness expr
-getStrictness _ = []
-
 getAbstractStrictness :: TypeEnvironment -> Int -> Type -> [Bool]
 getAbstractStrictness typeEnv arity tp = [ typeIsStrict tArg | Right tArg <- args ]
   where
@@ -40,17 +35,16 @@ envForModule :: CoreModule -> Env
 envForModule mod@(Module _ _ _ decls) = Env typeEnv (mapFromList $ argsValues ++ argsAbstracts ++ argsConstructors)
   where
     typeEnv = typeEnvForModule mod
-    argsValues = [ (name, getStrictness expr) | DeclValue name _ _ expr _ <- decls ]
+    argsValues = [ (name, getExpressionStrictness expr) | DeclValue name _ _ expr _ <- decls ]
     argsAbstracts = [ (name, getAbstractStrictness typeEnv arity tp) | DeclAbstract name _ arity tp _ <- decls ]
     argsConstructors = [ (name, getConstructorStrictness tp) | DeclCon name _ tp _ <- decls ]
 
 data Analysis a = Analysis IdSet !a
 
 transformDeclaration :: Env -> NameSupply -> CoreDecl -> CoreDecl
-transformDeclaration env supply decl@DeclValue{} = decl{ valueValue = expr, declType = tp }
+transformDeclaration env supply decl@DeclValue{} = decl{ valueValue = expr }
   where
     Analysis _ expr = analyseExpression env supply $ valueValue decl
-    tp = updateFunctionTypeStrictness (envTypeEnv env) (getStrictness expr) $ declType decl
 transformDeclaration _ _ decl = decl
 
 analyseExpression :: Env -> NameSupply -> Expr -> Analysis Expr
@@ -60,7 +54,7 @@ analyseExpression env supply (Let (Strict bind@(Bind (Variable name tp) _)) expr
     strict = strict1 `unionSet` (deleteSet name strict2)
     Analysis strict1 bind' = analyseBind env supply1 bind
     Analysis strict2 expr' = analyseExpression env supply2 expr
-analyseExpression env supply (Let (NonRec bind@(Bind (Variable name _) _)) expr)
+analyseExpression env supply (Let (NonRec bind@(Bind var@(Variable name _) _)) expr)
   -- Bind is strict. Create a strict bind and propagate the strictness information from the bind in `strict2`.
   | name `elemSet` strict1 = Analysis (unionSet strict strict2) $ Let (Strict bind'') expr'
   -- Bind is not strict. Do not propagate the derived strictness information from the bind in `strict2`.
@@ -69,8 +63,8 @@ analyseExpression env supply (Let (NonRec bind@(Bind (Variable name _) _)) expr)
     (supply1, supply2) = splitNameSupply supply
     strict = deleteSet name strict1
     Analysis strict1 expr' = analyseExpression env supply1 expr
-    Analysis strict2 bind'@(Bind (Variable _ tp') bindExpr) = analyseBind env supply2 bind
-    bind'' = Bind (Variable name $ typeToStrict tp') bindExpr
+    Analysis strict2 bind'@(Bind _ bindExpr) = analyseBind env supply2 bind
+    bind'' = Bind var bindExpr
 analyseExpression env supply (Let (Rec binds) expr) = Analysis (unionSet strictExpr strictBinds) $ Let (Rec binds') expr'
   where
     (supplyExpr, supplyBinds) = splitNameSupply supply
@@ -80,7 +74,7 @@ analyseExpression env supply (Match var alts) = Analysis (foldr1 intersectionSet
   where
     (stricts, alts') = unzip $ map (\(Analysis s a) -> (s, a)) $ mapWithSupply (analyseAlt env) supply alts
 analyseExpression _ _ expr@(Lit _) = Analysis emptySet expr
-analyseExpression env supply expr@(Lam _ _) = Analysis emptySet expr'
+analyseExpression env supply expr@(Lam _ _ _) = Analysis emptySet expr'
   where
     -- Do not propagate the strictness information from the function, as it may not be invoked
     Analysis _ expr' = analyseFunction env supply expr
@@ -115,21 +109,17 @@ analyseApplication _ (Con _) _ = Analysis emptySet []
 analyseApplication _ expr _ = error ("Strictness.analyseApplication: expected application, got " ++ show (pretty expr))
 
 analyseFunction :: Env -> NameSupply -> Expr -> Analysis Expr
-analyseFunction env supply (Lam (Variable name tp) expr) = Analysis strict $ Lam (Variable name tp') expr'
+analyseFunction env supply (Lam s var@(Variable name _) expr) = Analysis strict $ Lam (s || name `elemSet` strict) var expr'
   where
     Analysis strict expr' = analyseFunction env supply expr
-    tp'
-      | name `elemSet` strict = typeToStrict tp
-      | otherwise = tp
 analyseFunction env supply (Forall quantor kind expr) = Analysis strict $ Forall quantor kind expr'
   where
     Analysis strict expr' = analyseFunction env supply expr
 analyseFunction env supply expr = analyseExpression env supply expr
 
 analyseBind :: Env -> NameSupply -> Bind -> Analysis Bind
-analyseBind env supply (Bind (Variable name tp) expr) = Analysis strict $ Bind var expr'
+analyseBind env supply (Bind var expr) = Analysis strict $ Bind var expr'
   where
-    var = Variable name $ updateFunctionTypeStrictness (envTypeEnv env) (getStrictness expr') tp
     Analysis strict expr' = analyseExpression env supply expr
 
 -- TODO: Remove declared variables from IdSet
@@ -158,18 +148,3 @@ analyseAlt :: Env -> NameSupply -> Alt -> Analysis Alt
 analyseAlt env supply (Alt pat expr) = Analysis strict $ Alt pat expr'
   where
     Analysis strict expr' = analyseExpression env supply expr
-
-updateFunctionTypeStrictness :: TypeEnvironment -> [Bool] -> Type -> Type
-updateFunctionTypeStrictness _ strictness tp
-  | all not strictness = tp -- No arguments are strict, type does not change
-updateFunctionTypeStrictness env (strict : strictness) tp = case typeNormalizeHead env tp of
-  TForall quantor kind tp' -> TForall quantor kind $ updateFunctionTypeStrictness env (strict : strictness) tp'
-  TAp (TAp (TCon TConFun) tArg) tReturn ->
-    let
-      tArg'
-        | strict = typeToStrict tArg
-        | otherwise = tArg
-    in
-      TAp (TAp (TCon TConFun) tArg')
-        $ updateFunctionTypeStrictness env strictness tReturn
-  _ -> error "updateFunctionTypeStrictness: expected function type"

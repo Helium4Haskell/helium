@@ -60,7 +60,7 @@ analyse (Let (Strict (Bind (Variable name _) e1)) e2) = ASequence (analyse e1) $
 analyse (Var name) = AValue name Inline
 analyse (Match name alts) = ASequence (AValue name DontInline) (aAlts (map analyseAlt alts))
 analyse (Ap e1 e2) = ASequence (analyse e1) (analyse e2)
-analyse (Lam (Variable name _) e) = ALambda $ AIgnore name $ analyse e
+analyse (Lam _ (Variable name _) e) = ALambda $ AIgnore name $ analyse e
 analyse (Forall _ _ e) = analyse e
 analyse (ApType e1 _) = analyse e1
 analyse (Con _) = ANil
@@ -155,7 +155,7 @@ inlineInExpr :: Env -> Expr -> Expr
 inlineInExpr env e@(Lit _) = e
 inlineInExpr env e@(Var name) = fromMaybe e $ lookupMap name $ values env
 inlineInExpr env e@(Con _) = e
-inlineInExpr env (Lam x e) = Lam x $ inlineInExpr env e
+inlineInExpr env (Lam strict x e) = Lam strict x $ inlineInExpr env e
 inlineInExpr env (Ap e1 e2) = Ap (inlineInExpr env e1) (inlineInExpr env e2)
 inlineInExpr env (Forall x k e) = Forall x k $ inlineInExpr env e
 inlineInExpr env (ApType e t) = ApType (inlineInExpr env e) t

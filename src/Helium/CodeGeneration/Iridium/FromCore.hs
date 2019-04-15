@@ -143,7 +143,7 @@ toMethod supply env name expr = Method tp args returnType [AnnotateTrampoline] (
 
 -- Removes all lambda expression, returns a list of arguments and the remaining expression.
 consumeLambdas :: Core.Expr -> ([Either Core.Quantor Local], Core.Expr)
-consumeLambdas (Core.Lam (Core.Variable name tp) expr) = (Right (Local name tp) : args, expr')
+consumeLambdas (Core.Lam strict (Core.Variable name tp) expr) = (Right (Local name $ Core.typeSetStrict strict tp) : args, expr')
   where
     (args, expr') = consumeLambdas expr
 consumeLambdas (Core.Forall x k expr) = (Left x : args, expr')
@@ -382,9 +382,9 @@ maybeCastVariable supply env global@(VarGlobal (GlobalFunction name _ tp)) expec
   )
   where
     (name', supply') = freshIdFromId name supply
-    (var, castInstruction) = maybeCastVariable supply' env (VarLocal $ Local name' $ typeToStrict tp) expected
+    (var, castInstruction) = maybeCastVariable supply' env (VarLocal $ Local name' $ typeToStrict $ typeRemoveArgumentStrictness tp) expected
 maybeCastVariable supply env var expected
-  | Core.typeEqual (teCoreEnv env) expected varType && Core.typeIsStrict expected == Core.typeIsStrict varType = (var, id) -- TODO: Remove typeIsStrict when typeEqual understands strictness
+  | Core.typeEqual (teCoreEnv env) expected varType = (var, id)
   | otherwise = castTo supply env var varType expected
   where
     varType = variableType var
@@ -404,9 +404,11 @@ castTo supply env var from to
   where
     (nameWhnf, supply') = freshIdFromId (variableName var) supply
     (newVar, instructions) = maybeCastVariable supply' env (VarLocal $ Local nameWhnf (Core.typeToStrict from)) to
-castTo supply env var _ to = (VarLocal $ Local casted to, Let casted $ Cast var to)
+castTo supply env var from to
+  | Core.typeIsStrict from && not (Core.typeIsStrict to) = (VarLocal $ Local casted to, Let casted $ CastThunk var)
   where
     (casted, _) = freshIdFromId (variableName var) supply
+castTo supply env var _ to = (var, id)
 
 maybeCasts :: NameSupply -> TypeEnv -> Core.Type -> [Either Core.Type Id] -> ([Either Core.Type Variable], Instruction -> Instruction, Core.Type)
 maybeCasts _ _ tp [] = ([], id, tp)

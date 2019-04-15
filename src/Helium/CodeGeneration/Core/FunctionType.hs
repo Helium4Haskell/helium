@@ -18,6 +18,7 @@ import Lvm.Core.Expr
 import Lvm.Core.Module
 import Lvm.Core.Type
 
+import Helium.CodeGeneration.Core.TypeEnvironment
 import Helium.CodeGeneration.Iridium.Type
 
 functionsList :: TypeEnvironment -> CoreModule -> [(Id, (Type, FunctionType))]
@@ -27,13 +28,14 @@ functionsMap :: TypeEnvironment -> CoreModule -> IdMap (Type, FunctionType)
 functionsMap env = mapFromList . functionsList env
 
 functionInDecl :: TypeEnvironment -> CoreDecl -> Maybe (Id, (Type, FunctionType))
-functionInDecl env (DeclValue name _ tp expr _) = Just (name, (tp, fnType))
+functionInDecl env (DeclValue name _ tp expr _) = Just (name, (tp', fnType))
   where
     arity = arityOfExpr expr 0
-    fnType = extractFunctionTypeWithArity env arity tp
+    tp' = updateFunctionTypeStrictness env (getExpressionStrictness expr) tp
+    fnType = extractFunctionTypeWithArity env arity tp'
 functionInDecl env decl = Nothing
 
 arityOfExpr :: Expr -> Int -> Int
 arityOfExpr (Forall _ _ expr) accum = arityOfExpr expr accum
-arityOfExpr (Lam _ expr) accum = arityOfExpr expr $ accum + 1
+arityOfExpr (Lam _ _ expr) accum = arityOfExpr expr $ accum + 1
 arityOfExpr _ accum = accum

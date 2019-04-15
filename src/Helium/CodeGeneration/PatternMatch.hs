@@ -232,7 +232,7 @@ wildcardId, nextClauseId :: Id
 case_ :: Id -> Core.Type -> [Core.Alt] -> Core.Expr
 case_ ident tp alts = 
     Core.Let 
-        (Core.Strict (Core.Bind (Core.Variable ident $ Core.typeToStrict tp) (Core.Var ident)))      -- let! id = id in
+        (Core.Strict (Core.Bind (Core.Variable ident tp) (Core.Var ident)))      -- let! id = id in
         (Core.Match ident (alts++[nextClauseAlternative]))    -- match id { alt; ...; alt; _ -> _nextClause }
 
 toTp (Top.Quantification (_, _, tp)) = tp

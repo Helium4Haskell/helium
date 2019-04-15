@@ -91,6 +91,7 @@ instance ShowWithQuantors Expr where
   showsQ quantors (Eval var) = text "eval " . showsQ quantors var
   showsQ quantors (Var var) = text "var " . showsQ quantors var
   showsQ quantors (Cast var t) = text "cast " . showsQ quantors var . text " as " . showsQ quantors t
+  showsQ quantors (CastThunk var) = text "castthunk " . showsQ quantors var
   showsQ quantors (Phi branches) = text "phi " . showArguments quantors branches
   showsQ quantors (PrimitiveExpr prim args) = text "prim " . text (stringFromId prim) . showCallArguments quantors args
   showsQ quantors (Undefined t) = text "undefined " . showsQ quantors t

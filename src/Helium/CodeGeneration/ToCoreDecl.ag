@@ -419,7 +419,7 @@ SEM Constructor [ dataTypeName : Name typevariables : Names dataTypeCoreType : {
         [ (idFromName @constructor.self, Core.DeclCon
             { Core.declName    = idFromName @constructor.self
             , Core.declAccess  = Core.private
-            , Core.declType    = declarationConstructorType @lhs.importEnv @constructor.self
+            , Core.declType    = declarationConstructorType @lhs.importEnv @constructor.self @types.strictness
             , Core.declCustoms = constructorCustoms 
                                     @lhs.dataTypeName
                                     @constructor.self 
@@ -435,7 +435,7 @@ SEM Constructor [ dataTypeName : Name typevariables : Names dataTypeCoreType : {
         [ (idFromName @constructorOperator.self, Core.DeclCon
             { Core.declName    = idFromName @constructorOperator.self
             , Core.declAccess  = Core.private
-            , Core.declType    = declarationConstructorType @lhs.importEnv @constructorOperator.self
+            , Core.declType    = declarationConstructorType @lhs.importEnv @constructorOperator.self [@leftType.strictness, @rightType.strictness]
             , Core.declCustoms = constructorCustoms
                                     @lhs.dataTypeName
                                     @constructorOperator.self 
@@ -455,15 +455,12 @@ SEM Constructor [ dataTypeName : Name typevariables : Names dataTypeCoreType : {
     --  constructor              : Name
     --  fieldDeclarations        : FieldDeclarations
 
-SEM AnnotatedTypes [ typevariables : Names | | coreTypes : { [Core.Type] } ]
-    | Cons lhs.coreTypes = @hd.coreType : @tl.coreTypes
-    | Nil  lhs.coreTypes = []
+SEM AnnotatedTypes [ | | strictness : { [Bool] } ]
+    | Cons lhs.strictness = @hd.strictness : @tl.strictness
+    | Nil  lhs.strictness = []
 
-SEM AnnotatedType [ typevariables : Names | | coreType : { Core.Type } ]
-    | AnnotatedType lhs.coreType =
-        let
-            tp = toCoreTypeNotQuantified $ makeTpSchemeFromType @type.self
-        in if @strict then Core.TStrict tp else tp
+SEM AnnotatedType [ | | strictness : { Bool } ]
+    | AnnotatedType lhs.strictness = @strict
 {
 constructorCustoms :: Name -> Name -> ValueConstructorEnvironment -> [Core.Custom]
 constructorCustoms dataTypeName name env =

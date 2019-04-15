@@ -101,7 +101,7 @@ classFunctions typeOutput className typeVar combinedNames = [DeclCon -- Declare 
             superDict (superName, tag, label, t) =
                 let dictParam = idFromString "dict"
                     (declValue, declType) = createFunction [Core.Quantor 0 $ Just typeVar] [Variable dictParam classType] body t
-                    body = Let (Strict $ Bind (Variable dictParam $ Core.typeToStrict classType) (Var dictParam))
+                    body = Let (Strict $ Bind (Variable dictParam classType) (Var dictParam))
                         $ Match dictParam 
                             [
                                 Alt (PatCon (ConId $ idFromString ("Dict$" ++ className)) [typeArg] (map idFromString labels)) 
@@ -134,8 +134,7 @@ classFunctions typeOutput className typeVar combinedNames = [DeclCon -- Declare 
                         , declType    = declType
                         , valueValue  = Forall (Core.Quantor 0 $ Just typeVar) Core.KStar
                             $ flip (foldr (\q e -> Forall q Core.KStar e)) quantors
-                            $ Lam (Variable dictParam classType)
-                            $ Let (Strict $ Bind (Variable dictParam $ Core.typeToStrict classType) (Var dictParam))
+                            $ Lam True (Variable dictParam classType)
                             $ Match dictParam 
                                 [
                                     Alt (PatCon (ConId $ idFromString ("Dict$" ++ className)) [typeArg] (map idFromString labels)) 

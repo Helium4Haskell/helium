@@ -40,7 +40,7 @@ dataDictionary  (UHA.Declaration_Data _ _ (UHA.SimpleType_SimpleType _ name name
 dataDictionary _ = error "pattern match failure in CodeGeneration.Deriving.dataDictionary"
 
 eqDict :: Core.Type -> Core.Type -> [UHA.Name] -> [UHA.Constructor] -> Expr
-eqDict dictType dataType names constructors = foldr Lam dictBody (zipWith (\name idx -> Variable (idFromName name) $ Core.TAp typeDictEq $ Core.TVar idx) names [1..])
+eqDict dictType dataType names constructors = foldr (Lam False) dictBody (zipWith (\name idx -> Variable (idFromName name) $ Core.TAp typeDictEq $ Core.TVar idx) names [1..])
     where
         dictBody = let_ (idFromString "func$eq") (Core.typeFunction [dataType, dataType] Core.typeBool) (eqFunction dictType dataType typeArgs constructors) (Ap (Ap (Con $ ConId $ idFromString $ "Dict$Eq") (var "default$Eq$/=")) (var "func$eq"))
         typeArgs = zipWith (\_ idx -> Core.TVar idx) names [1..]
@@ -50,12 +50,12 @@ eqFunction :: Core.Type -> Core.Type -> [Core.Type] -> [UHA.Constructor] -> Expr
 eqFunction dictType dataType typeArgs constructors = 
     let 
         body = 
-            Let (Strict (Bind (Variable fstArg $ Core.typeToStrict dataType) (Var fstArg))) -- evaluate both
-                (Let (Strict (Bind (Variable sndArg $ Core.typeToStrict dataType) (Var sndArg)))
+            Let (Strict (Bind (Variable fstArg dataType) (Var fstArg))) -- evaluate both
+                (Let (Strict (Bind (Variable sndArg dataType) (Var sndArg)))
                     (Match fstArg -- case $fstArg of ...
                         (map (makeAlt typeArgs) constructors))) 
     in
-        foldr Lam body ([Variable (idFromString "dict") dictType, Variable fstArg dataType, Variable sndArg dataType]) -- \$fstArg $sndArg ->
+        foldr (Lam False) body ([Variable (idFromString "dict") dictType, Variable fstArg dataType, Variable sndArg dataType]) -- \$fstArg $sndArg ->
 
 fstArg, sndArg :: Id
 [fstArg, sndArg] = map idFromString ["$fstArg", "$sndArg"] 
