@@ -17,7 +17,7 @@ module Helium.CodeGeneration.Iridium.Type
   , FloatPrecision(..), EvaluationState(..), evaluationState
   , Core.TypeEnvironment(..), Core.typeNormalizeHead, Core.typeEqual, typeIsStrict, typeToStrict
   , PrimitiveType(..), typeNotStrict, typeRemoveArgumentStrictness
-  , typeRealWorld, typeUnsafePtr, typeTrampoline, typeInt, typeChar, typeFloat, functionTypeArity
+  , typeRealWorld, typeUnsafePtr, typeTrampoline, typeInt, typeInt16, typeChar, typeFloat, functionTypeArity
   ) where
 
 import Lvm.Common.Id(Id, stringFromId, idFromString)
@@ -26,11 +26,12 @@ import Data.Either(isRight)
 import Lvm.Core.Type
 import Helium.CodeGeneration.Core.TypeEnvironment as Core
 
-typeRealWorld, typeUnsafePtr, typeTrampoline, typeInt, typeChar, typeFloat :: Type
+typeRealWorld, typeUnsafePtr, typeTrampoline, typeInt, typeInt16, typeChar, typeFloat :: Type
 typeRealWorld = TStrict $ TCon $ TConDataType $ idFromString "$RealWorld"
 typeUnsafePtr = TStrict $ TCon $ TConDataType $ idFromString "$UnsafePtr"
 typeTrampoline = TStrict $ TCon $ TConDataType $ idFromString "$Trampoline"
 typeInt = TStrict $ TCon $ TConDataType $ idFromString "Int"
+typeInt16 = TStrict $ TCon $ TConDataType $ idFromString "Int16"
 typeChar = TStrict $ TCon $ TConDataType $ idFromString "Char"
 typeFloat = TStrict $ TCon $ TConDataType $ idFromString "Float"
 

@@ -10,6 +10,7 @@ module Helium.CodeGeneration.LLVM.CompileModule (compileModule) where
 
 import Helium.CodeGeneration.LLVM.CompileMethod(compileMethod, compileAbstractMethod)
 import Helium.CodeGeneration.LLVM.CompileConstructor(dataTypeType, constructorType)
+import Helium.CodeGeneration.LLVM.CompileType
 import Helium.CodeGeneration.LLVM.Env
 import Helium.CodeGeneration.LLVM.Builtins(builtinDefinitions)
 import Helium.CodeGeneration.LLVM.Utils
@@ -33,7 +34,7 @@ compileModule env supply iridium@(Iridium.Module name _ _ datas _ abstracts meth
   (fromString "<TODO: Filename.hs>")
   Nothing
   Nothing
-  (dataTypes ++ constructors ++ builtinDefinitions iridium ++ abstractFunctions ++ functions)
+  (typeDeclarations ++ dataTypes ++ constructors ++ builtinDefinitions iridium ++ abstractFunctions ++ functions)
   where
     dataTypes = map (\d@(Iridium.Declaration dataId _ _ _ _) -> TypeDefinition (toNamePrefixed "$data_" dataId) $ Just $ dataTypeType env d $ map (\con@(Iridium.DataTypeConstructor name _) -> (name, findMap name $ envConstructors env)) $ Iridium.getConstructors d) datas
     constructors = map (\(name, con) -> TypeDefinition (toName name) $ Just $ constructorType env con) $ listFromMap $ envConstructors env
@@ -41,3 +42,9 @@ compileModule env supply iridium@(Iridium.Module name _ _ datas _ abstracts meth
     functions = concat $ mapWithSupply (compileMethod env) supply2 methods
     (supply1, supply2) = splitNameSupply supply
     abstracts' = map snd $ listFromMap $ mapFromList $ map (\a -> (Iridium.declarationName a, a)) abstracts
+
+typeDeclarations :: [Definition]
+typeDeclarations = 
+  [ TypeDefinition (mkName "thunk") $ Just tp ]
+  where
+    tp = StructureType False [IntegerType 64, thunkType, trampolineType, IntegerType 16, IntegerType 16, ArrayType 0 taggedThunkPointer]

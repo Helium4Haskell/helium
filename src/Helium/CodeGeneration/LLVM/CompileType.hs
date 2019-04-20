@@ -1,4 +1,4 @@
-module Helium.CodeGeneration.LLVM.CompileType (compileType, toOperand, taggedThunkPointer, bool, pointer, trampolineType, voidPointer, splitValueFlag, cast, copy, compileCallingConvention, emptyThunkType) where
+module Helium.CodeGeneration.LLVM.CompileType (compileType, typeSize, toOperand, taggedThunkPointer, splitValueFlag, cast, copy, compileCallingConvention) where
 
 import Lvm.Common.Id(Id, freshId, stringFromId, idFromString, NameSupply)
 import qualified Lvm.Core.Type as Core
@@ -23,11 +23,18 @@ compileType env tp = case skipApp $ skipForallAndStrict $ Iridium.typeNormalizeH
   Core.TCon (Core.TConDataType name)
     | name == idFromString "Float" -> FloatingPointType DoubleFP
     | name == idFromString "Int" -> envValueType env
+    | name == idFromString "Int16" -> IntegerType 16
     | name == idFromString "Char" -> envValueType env
     | name == idFromString "$UnsafePtr" -> voidPointer
-    | name == idFromString "$Trampoline" -> pointer $ FunctionType voidPointer [voidPointer] False
+    | name == idFromString "$Trampoline" -> pointer $ FunctionType voidPointer [thunkType, pointer taggedThunkPointer, IntegerType 16] False
     | otherwise -> voidPointer -- NamedTypeReference $ toNamePrefixed "$data_" name
   _ -> voidPointer
+
+typeSize :: Target -> Core.Type -> Int
+typeSize target tp
+  | tp == Iridium.typeInt16 = 16
+  | Iridium.typeIsStrict tp = targetWordSize target
+  | otherwise = 8 + targetWordSize target
 
 skipApp :: Core.Type -> Core.Type
 skipApp (Core.TAp t _) = skipApp t
@@ -43,30 +50,11 @@ compileFunctionType env (Iridium.FunctionType args returnType) = pointer $ Funct
   where
     argTypes = [ compileType env tp | Right tp <- args ]
 
-trampolineType :: Type
-trampolineType = pointer $ FunctionType voidPointer [voidPointer] False
-
-emptyThunkType :: Type
-emptyThunkType = StructureType False [IntegerType 64, IntegerType 64, trampolineType]
-
-bool :: Type
-bool = IntegerType 1
-
--- Bool denotes whether the value is in WHNF
-taggedThunkPointer :: Type
-taggedThunkPointer = StructureType True [voidPointer, bool]
-
-pointer :: Type -> Type
-pointer t = Type.PointerType t (AddrSpace 0)
-
-voidPointer :: Type
-voidPointer = pointer (IntegerType 8)
-
 toOperand :: Env -> Iridium.Variable -> Operand
 toOperand env (Iridium.VarLocal (Iridium.Local name t)) = LocalReference (compileType env t) (toName name)
 toOperand env (Iridium.VarGlobal (Iridium.GlobalVariable name t)) =
   ConstantOperand $ Constant.Struct Nothing True
-    [ Constant.BitCast (GlobalReference (pointer emptyThunkType) (toNamePrefixed "thunk$" name)) voidPointer
+    [ Constant.BitCast (GlobalReference thunkType (toNamePrefixed "thunk$" name)) voidPointer
     , Constant.Int 1 0 -- false, as the value is not in WHNF
     ]
 toOperand env (Iridium.VarGlobal (Iridium.GlobalFunction name arity tp)) = ConstantOperand $ GlobalReference (compileFunctionType env fntype) (toName name)
@@ -82,7 +70,7 @@ splitValueFlag env supply (var, toType)
       ]
       -- toType should be non-strict, as it is only allowed to cast to a less-precise type
     , ( LocalReference voidPointer nameValue
-      , LocalReference bool nameIsWHNF
+      , LocalReference boolType nameIsWHNF
       )
     )
   | t == toType' =

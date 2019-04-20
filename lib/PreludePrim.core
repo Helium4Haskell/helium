@@ -77,7 +77,8 @@ import LvmLang
     , unsafePerformIO
     , putChar, getChar
     , ($!), seq
-    , ''$primUnsafeCast''
+    , ''$primIntToChar''
+    , ''$primCharToInt''
     )
 
 {-
@@ -111,10 +112,10 @@ custom infix (**.) : public [8,"right"]
 custom infix ($!)  : public [0,"right"]
 
 primOrd :: Char -> Int
-primOrd = \x: Char -> ''$primUnsafeCast'' {Char} {Int} x
+primOrd = \x: Char -> ''$primCharToInt'' x
 
 primChr :: Int -> Char
-primChr = \x: Int -> ''$primUnsafeCast'' {Int} {Char} x
+primChr = \x: Int -> ''$primIntToChar'' x
 
 
 {--------------------------------------------------------------------------

@@ -192,8 +192,6 @@ export_as @$primPutChar declare @putchar[2]: { !Char -> !RealWorld -> IORes Int 
 ; $primGetChar :: RealWorld -> IORes Char
 export_as @$primGetChar declare @getchar[1]: { RealWorld -> IORes Char } [callconvention:c fake_io]
 
-export_as @$primUnsafeCast define @$primUnsafeCast(forall a, forall b, %x: !a): b [trampoline] {
-entry:
-  %res = cast %x: !a as !b
-  return %res: !b
-}
+export_as @$primIntToChar define @$primIntToChar(%x: !Int): Char [trampoline] = prim int_to_char(%x: !Int)
+
+export_as @$primCharToInt define @$primCharToInt(%x: !Char): Int [trampoline] = prim char_to_int(%x: !Int)

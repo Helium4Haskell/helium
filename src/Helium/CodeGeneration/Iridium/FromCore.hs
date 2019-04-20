@@ -242,7 +242,7 @@ toInstruction supply env continue match@(Core.Match x alts) =
         in resultBlock : cBlocks
     continues = case continue of
       CReturn -> repeat CReturn
-      CBind _ -> map (altJump blockId tp) jumps
+      CBind _ -> map (altJump blockId) jumps
 
 -- Non-branching expressions
 toInstruction supply env continue (Core.Lit lit) = Let name expr +> ret supply' env name continue
@@ -361,11 +361,11 @@ isGlobalFunction :: Variable -> Bool
 isGlobalFunction (VarGlobal (GlobalFunction _ _ _)) = True
 isGlobalFunction _ = False
 
-altJump :: Id -> Core.Type -> (Local, Id) -> Continue
-altJump toBlock resultType (Local toVar toType, intermediateBlockId) = CBind (\resultVar ->
+altJump :: Id -> (Local, Id) -> Continue
+altJump toBlock (Local toVar toType, intermediateBlockId) = CBind (\resultVar ->
     let
       intermediateBlock = Block intermediateBlockId
-        $ Let toVar (Cast (VarLocal $ Local resultVar resultType) toType)
+        $ Let toVar (Var $ VarLocal $ Local resultVar toType)
         $ Jump toBlock
     in
       Partial (Jump intermediateBlockId) [intermediateBlock]

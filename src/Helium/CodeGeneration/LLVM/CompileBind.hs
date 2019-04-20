@@ -1,4 +1,4 @@
-module Helium.CodeGeneration.LLVM.CompileBind (compileBinds, toStruct, thunkStruct) where
+module Helium.CodeGeneration.LLVM.CompileBind (compileBinds, toStruct) where
 
 import Data.Bits(shiftL, (.|.), (.&.))
 import Data.Word(Word32)
@@ -51,26 +51,44 @@ compileBind' env supply bind@(Iridium.Bind varId target args) (Right struct) =
   ( concat splitInstructions
     ++ allocate env nameVoid nameStruct t struct
     ++ castBind
-  , concat additionalArgInstructions
-    ++ initialize supplyInit env (LocalReference (pointer t) nameStruct) struct (additionalArg ++ argOperands)
+  , additionalArgInstructions
+    ++ initialize supplyInit env (LocalReference (pointer t) nameStruct) struct (additionalArgs ++ if shouldReverse then reverse argOperands else argOperands)
   )
   where
     t = structType env struct
-    (additionalArgInstructions, additionalArg) = unzip $ bindArguments env supplyAdditionalArgs target
+    (shouldReverse, additionalArgInstructions, additionalArgs) = bindArguments env supplyAdditionalArgs target (length args') operandVoid
     args' = [arg | Right arg <- args]
-    (splitInstructions, argOperands) = unzip $ mapWithSupply (splitValueFlag env) supplyArgs (zip args' $ map fieldType $ drop (length additionalArg) $ fields struct)
+    (splitInstructions, argOperands) = unzip $ mapWithSupply splitValueFlag' supplyArgs (zip args' $ drop (length additionalArgs) $ fields struct)
+    splitValueFlag' :: NameSupply -> (Iridium.Variable, StructField) -> ([Named Instruction], (Operand, Operand))
+    splitValueFlag' s (var, StructField tp Nothing)
+      | not (Iridium.typeEqual (envTypeEnv env) (Iridium.variableType var) tp) =
+        let
+          (nameThunk, s1) = freshName s
+        in
+          ( cast s1 env (toOperand env var) nameThunk (Iridium.variableType var) tp
+          , ( LocalReference (compileType env tp) nameThunk
+            , operandTrue
+            )
+          )
+      | otherwise = 
+        ( []
+        , ( toOperand env var, operandTrue )
+        )
+    -- Flag is stored in header
+    splitValueFlag' s (var, StructField tp _) = splitValueFlag env s (var, tp)
     (supplyArgs, supply1) = splitNameSupply supply
     (supplyInit, supply2) = splitNameSupply supply1
     (supplyAdditionalArgs, supply3) = splitNameSupply supply2
     (nameVoid, supply4) = freshName supply3
     (nameStruct, _) = freshNameFromId (nameSuggestion target) supply3
     whnf = Iridium.typeIsStrict $ Iridium.bindType (envTypeEnv env) bind
+    operandVoid = LocalReference voidPointer nameVoid
     castBind
-      | whnf = [toName varId := BitCast (LocalReference voidPointer nameVoid) voidPointer []]
+      | whnf = [toName varId := BitCast operandVoid voidPointer []]
       | otherwise =
         [toName varId := InsertValue
           (ConstantOperand $ Constant.Struct Nothing True [Constant.Undef voidPointer, Constant.Int 1 0])
-          (LocalReference voidPointer nameVoid)
+          operandVoid
           [0]
           []
         ]
@@ -84,42 +102,65 @@ toStruct env (Iridium.BindTargetConstructor (Iridium.DataTypeConstructor conId _
   LayoutInline value -> Left value
   LayoutPointer struct -> Right struct
 toStruct env (Iridium.BindTargetTuple arity) _ = Right $ tupleStruct arity
-toStruct env target arity = Right $ Struct Nothing 32 tag fields
+toStruct env target arity = Right $ Struct Nothing 0 0 fields
   where
     var = case target of
       Iridium.BindTargetFunction v -> v
-      Iridium.BindTargetThunk v -> v
-    tag = arity .|. (remaining `shiftL` 16)
-    remaining = case var of
-      Iridium.VarGlobal (Iridium.GlobalFunction _ fnArity _) -> fnArity - arity
-      _ -> (1 `shiftL` 16) - 1 -- All 16 bits to 1
-    targetType = case var of
-      Iridium.VarGlobal (Iridium.GlobalFunction _ _ _) -> Core.TStrict $ Core.TCon $ Core.TConDataType $ idFromString "$Trampoline"
-      _ -> Core.TVar (-1)
-    fields = StructField targetType Nothing : map (\i -> StructField (Core.TVar i) (Just i)) [0..arity - 1] 
+      Iridium.BindTargetThunk v -> if arity == 0 then error "Secondary thunks with arity 0 are not supported" else v
+    fields =
+      StructField Iridium.typeUnsafePtr Nothing -- Thunk* next
+      : StructField Iridium.typeTrampoline Nothing -- functionpointer to trampoline
+      : StructField Iridium.typeInt16 Nothing -- i16 remaining
+      : StructField Iridium.typeInt16 Nothing -- i16 given
+      : replicate arity (StructField (Iridium.typeNotStrict $ Iridium.typeUnsafePtr) Nothing)
 
-toTrampolineOperand :: Env -> Iridium.Variable -> Operand
-toTrampolineOperand _ (Iridium.VarGlobal (Iridium.GlobalFunction fn _ _)) = ConstantOperand $ Constant.GlobalReference trampolineType $ toNamePrefixed "trampoline$" fn
-toTrampolineOperand env local = toOperand env local
+operandTrue :: Operand
+operandTrue = ConstantOperand $ Constant.Int 1 1
 
 -- A thunk has an additional argument, namely the function. We add that argument here
-bindArguments :: Env -> NameSupply -> Iridium.BindTarget -> [([Named Instruction], (Operand, Operand))]
-bindArguments env _ (Iridium.BindTargetFunction var) = return ([], (toTrampolineOperand env var, ConstantOperand $ Constant.Int 1 1))
-bindArguments env supply (Iridium.BindTargetThunk var)
-  | Iridium.typeIsStrict (Iridium.variableType var) = return ([], (toOperand env var, ConstantOperand $ Constant.Int 1 1))
-  | otherwise = return
-    ( [ name := ExtractValue (toOperand env var) [0] [] ]
-    , ( (LocalReference voidPointer name)
-      , ConstantOperand $ Constant.Int 1 1
-      )
-    )
-    where
-      (name, _) = freshName supply
-bindArguments env _ _ = []
-
--- Gives a struct given an arity. Does not specify a tag, this is intended for purposes when the tag is not known / needed.
-thunkStruct :: Int -> Struct
-thunkStruct arity = Struct Nothing 32 0 fields
+bindArguments :: Env -> NameSupply -> Iridium.BindTarget -> Int -> Operand -> (Bool, [Named Instruction], [(Operand, Operand)])
+bindArguments env _ target@(Iridium.BindTargetFunction (Iridium.VarGlobal (Iridium.GlobalFunction fn arity _))) givenArgs self
+  | arity - givenArgs < 0 = error ("Negative 'remaining', thunk is oversaturated: " ++ show target)
+  | otherwise =
+  ( True
+  , []
+  , [ (self, operandTrue)
+    , (ConstantOperand $ Constant.GlobalReference trampolineType $ toNamePrefixed "trampoline$" fn, operandTrue)
+    , (ConstantOperand $ Constant.Int 16 $ fromIntegral $ arity - givenArgs, operandTrue)
+    , (ConstantOperand $ Constant.Int 16 $ fromIntegral $ givenArgs, operandTrue)
+    ]
+  )
+bindArguments env supply (Iridium.BindTargetThunk var) givenArgs _ =
+  ( True
+  , instrNext
+    ++ -- Extract function pointer and 'remaining' from next thunk
+      [ nameNextThunk := BitCast operandNext thunkType []
+      , nameFnPtrPtr := getElementPtr operandNextThunk [0, 2]
+      , nameNextRemainingPtr := getElementPtr operandNextThunk [0, 3]
+      , nameFnPtr := Load False (LocalReference (pointer trampolineType) nameFnPtrPtr) Nothing 0 []
+      , nameNextRemaining := Load False (LocalReference (pointer $ IntegerType 16) nameNextRemainingPtr) Nothing 0 []
+      , nameRemaining := Sub False False (LocalReference (IntegerType 16) nameNextRemaining) (ConstantOperand $ Constant.Int 16 $ fromIntegral givenArgs) []
+      ]
+  , [ (operandNext, operandTrue)
+    , (LocalReference trampolineType nameFnPtr, operandTrue)
+    , (LocalReference (IntegerType 16) nameRemaining, operandTrue)
+    , (ConstantOperand $ Constant.Int 16 $ fromIntegral $ givenArgs, operandTrue)
+    ]
+  )
   where
-    -- Function pointer & arguments
-    fields = StructField (Core.TStrict $ Core.TCon $ Core.TConDataType $ idFromString "$UnsafePtr") Nothing : map (\i -> StructField Iridium.typeUnsafePtr (Just i)) [0..arity - 1] 
+    operandNextThunk = LocalReference thunkType nameNextThunk
+    (nameNext, supply0) = freshName supply
+    (nameNextThunk, supply1) = freshName supply0
+    (nameFnPtrPtr, supply2) = freshName supply1
+    (nameFnPtr, supply3) = freshName supply2
+    (nameNextRemainingPtr, supply4) = freshName supply3
+    (nameNextRemaining, supply5) = freshName supply4
+    (nameRemaining, supply6) = freshName supply5
+
+    (instrNext, operandNext)
+      | Iridium.typeIsStrict (Iridium.variableType var) = ([], toOperand env var)
+      | otherwise = 
+        ( [ nameNext := ExtractValue (toOperand env var) [0] [] ]
+        , LocalReference voidPointer nameNext
+        )
+bindArguments env _ _ _ _ = (False, [], [])

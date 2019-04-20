@@ -82,7 +82,7 @@ liftExpr supply scope (Let (Strict b) e) env =
     (b', decls1, envMap) = strictBind supply1 scope b env
     scope' = case b' of
       Nothing -> scope
-      Just _ -> Right (variableSetStrict True $ boundVar' b) : scope
+      Just _ -> Right (variableSetStrict True $ boundVar b) : scope
     (e', decls2) = liftExpr supply2 (scope') e (envMap env')
     env' = modifyTypeEnv (typeEnvAddBind b) env
 liftExpr supply scope (Let (NonRec b) e) env =
@@ -96,12 +96,12 @@ liftExpr supply scope (Let (NonRec b) e) env =
     (b', decls1, envMap) = lazyBind False supply1 scope b env
     scope' = case b' of
       Nothing -> scope
-      Just _ -> Right (boundVar' b) : scope
+      Just _ -> Right (boundVar b) : scope
     (e', decls2) = liftExpr supply2 scope' e (envMap env')
     env' = modifyTypeEnv (typeEnvAddBind b) env
 liftExpr supply scope (Let binds@(Rec bs) e) env = (Let (Rec $ catMaybes bs') e', concat decls1 ++ decls2)
   where
-    scope' = map (Right . boundVar') bs ++ scope
+    scope' = map (Right . boundVar) bs ++ scope
     (supply1, supply2) = splitNameSupply supply
     (bs', decls1, envMaps) = unzip3 $ mapWithSupply (\s b -> lazyBind True s scope' b env) supply1 bs
     (e', decls2) = liftExpr supply2 scope' e (foldr id env' envMaps)
@@ -156,9 +156,8 @@ lazyBind isRec supply scope b@(Bind var@(Variable x t) expr) env
   | isValidThunk expr = (Just (Bind var $ renameInSimpleExpr env expr), [], id)
   -- Do not construct a Bind if the value is placed in a toplevel value which is not a Lambda
   | null scope = (Nothing, decl : decls, insertSubstitution x name)
-  | otherwise = (Just $ Bind var' ap, decl : decls, id)
+  | otherwise = (Just $ Bind var ap, decl : decls, id)
   where
-    var' = (Variable x $ typeRemoveArgumentStrictness t)
     ap = foldr addAp (Var name) scope
       where
         addAp (Left (Quantor idx _)) e = ApType e $ TVar idx
@@ -206,9 +205,6 @@ isValidThunk (Ap _ _) = True
 isValidThunk (Forall _ _ e) = isValidThunk e
 isValidThunk (ApType e _) = isValidThunk e
 isValidThunk _ = False
-
-boundVar' :: Bind -> Variable
-boundVar' (Bind (Variable name tp) _) = Variable name $ typeRemoveArgumentStrictness tp
 
 variableSetStrict :: Bool -> Variable -> Variable
 variableSetStrict strict (Variable name tp) = Variable name $ typeSetStrict strict tp

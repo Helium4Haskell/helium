@@ -40,8 +40,9 @@ import LvmLang
     , unsafePerformIO  
     , negInt --, negFloat  
     , seq
-    , ''$primUnsafeCast''
     , ''$primPutStrLn''
+    , ''$primIntToChar''
+    , ''$primCharToInt''
     )
 {- import LvmIO
     ( stdin, stdout, stderr, flush, outputChar, outputPacked
@@ -164,7 +165,7 @@ safeShowChar = \ !inChar: Bool -> \ !c: Char -> case c of
                              ; default -> "\\\""
                              }
     ; default -> 
-        let! cInt: Int = ''$primUnsafeCast'' {Char} {Int} c in
+        let! cInt: Int = ''$primCharToInt'' c in
         let! geq32: Bool = (>=#) cInt 32 in case geq32 of
         {   True -> let! lt127: Bool = (<#) cInt 127 in case lt127 of
             {   True -> (:) { Char } c ([] { Char })
@@ -193,7 +194,7 @@ showPositiveInt :: Int -> String
 showPositiveInt = \i: Int ->
     let! rest: Int = quot i 10
     in let! digitInt: Int = (+#) 48 (rem i 10) -- 48 is '0'
-    in let! digit: Char = ''$primUnsafeCast'' {Int} {Char} digitInt
+    in let! digit: Char = ''$primIntToChar'' digitInt
     in let! digits: [Char] = (:) {Char} digit ('':[]'' {Char})
     in let! done: Bool = (==#) rest 0
     in

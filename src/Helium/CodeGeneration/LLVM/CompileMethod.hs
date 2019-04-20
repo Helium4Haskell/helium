@@ -13,10 +13,9 @@ import Data.Either
 
 import Helium.CodeGeneration.LLVM.Env
 import Helium.CodeGeneration.LLVM.Utils
-import Helium.CodeGeneration.LLVM.CompileType(compileType, compileCallingConvention, voidPointer, toOperand, pointer, taggedThunkPointer, trampolineType, emptyThunkType)
+import Helium.CodeGeneration.LLVM.CompileType(compileType, compileCallingConvention, toOperand)
 import Helium.CodeGeneration.LLVM.CompileBlock(compileBlock)
 import Helium.CodeGeneration.LLVM.Struct(Struct(..), StructField(..))
-import Helium.CodeGeneration.LLVM.CompileBind(thunkStruct)
 import Helium.CodeGeneration.LLVM.CompileStruct(structType, extractField)
 
 import Lvm.Common.Id(Id, NameSupply, freshId, freshIdFromId, splitNameSupply, mapWithSupply, idFromString)
@@ -31,6 +30,7 @@ import LLVM.AST.CallingConvention
 import LLVM.AST.Linkage
 import LLVM.AST.AddrSpace
 import qualified LLVM.AST.Constant as Constant
+import qualified LLVM.AST.IntegerPredicate as IntegerPredicate
 
 -- llvm-hs-pure requires to set a name on the argument of a declared (abstract) function. However, when pretty printing / exporting the
 -- IR this is not used. We thus can use a non-unique name.
@@ -108,24 +108,28 @@ toFunction env supply name visible annotations args fnType retType basicBlocks =
         , Global.returnAttributes = []
         , Global.returnType = voidPointer
         , Global.name = toNamePrefixed "trampoline$" name
-        , Global.parameters = ([Parameter voidPointer (mkName "$_thunk_void") []], {- varargs: -} False)
+        , Global.parameters =
+          (
+            [ Parameter thunkType (mkName "thunk") []
+            , Parameter (pointer taggedThunkPointer) (mkName $ "ptr_" ++ show (arity - 1)) []
+            , Parameter (IntegerType 16) (mkName $ "remaining_" ++ show (arity - 1)) []
+            ]
+          , {- varargs: -} False
+          )
         , Global.functionAttributes = []
         , Global.section = Nothing
         , Global.comdat = Nothing
         , Global.alignment = 0
         , Global.garbageCollectorName = Nothing
         , Global.prefix = Nothing
-        , Global.basicBlocks = if null basicBlocks then [] else --[trampolineBlock supply env name callConv args]
+        , Global.basicBlocks = if null basicBlocks then [] else
           [ BasicBlock
               (mkName "entry")
               (
-                [ nameThunk := BitCast (LocalReference voidPointer $ mkName "$_thunk_void") (pointer structTy) [] ]
-                ++ concat (
-                  mapWithSupply
-                    (\s (Iridium.Local arg _, index) -> extractField s env (LocalReference (pointer structTy) nameThunk) struct (index + 1) (StructField (Iridium.typeNotStrict Iridium.typeUnsafePtr) (Just index)) $ toName arg)
-                    supplyTrampoline1
-                    $ zip args [0..arity - 1]
-                  )
+                [ mkName "next_thunk_ptr" := getElementPtr (LocalReference thunkType $ mkName "thunk") [0, 1]
+                , mkName ("next_thunk_" ++ show (arity - 1)) := Load False (LocalReference (pointer thunkType) $ mkName "next_thunk_ptr") Nothing 0 []
+                ]
+                ++ (if arity /= 0 then trampolineExtractArguments (arity - 1) else [])
                 ++ trampolineInstructions
               )
               trampolineTerminator
@@ -134,10 +138,7 @@ toFunction env supply name visible annotations args fnType retType basicBlocks =
         , Global.metadata = []
         }
     [BasicBlock _ trampolineInstructions trampolineTerminator] = compileBlock env supplyTrampoline1 $ Iridium.Block (idFromString "entry") $ trampolineBody supplyTrampoline2 name args fnType $ Core.typeToStrict retType
-    struct = thunkStruct arity
-    structTy = structType env struct
-    nameThunk = mkName "$_thunk"
-
+    
     thunk :: [Definition]
     thunk
       | not (null args) || Iridium.AnnotateTrampoline `notElem` annotations = []
@@ -149,14 +150,17 @@ toFunction env supply name visible annotations args fnType retType basicBlocks =
         , Global.threadLocalMode = Nothing
         , Global.unnamedAddr = Nothing
         , Global.isConstant = False
-        , Global.type' = emptyThunkType
+        , Global.type' = thunkStructType
         , Global.addrSpace = AddrSpace 0
         , Global.initializer =
           if null basicBlocks then Nothing else
             Just $ Constant.Struct Nothing False
-                [ Constant.Int 64 0 -- GC bits
-                , Constant.Int 64 0 -- Given & remaining argument count
-                , Constant.GlobalReference trampolineType $ toNamePrefixed "trampoline$" name
+                [ Constant.Int 64 0 -- Header (GC)
+                , Constant.GlobalReference thunkType $ toNamePrefixed "thunk$" name -- 'next' points to self
+                , Constant.GlobalReference trampolineType $ toNamePrefixed "trampoline$" name -- function pointer
+                , Constant.Int 16 0 -- remaining: 0 arguments remaining
+                , Constant.Int 16 0 -- given: 0 arguments given
+                , Constant.Array taggedThunkPointer []
                 ]
         , Global.section = Nothing
         , Global.comdat = Nothing
@@ -169,54 +173,76 @@ trampolineBody supply fn params fnType retType = foldr id call instrs
   where
     res = idFromString "$_result"
     res' = idFromString "$_result_any"
-    (args, instrs) = unzip $ mapWithSupply trampolineCastArgument supply params
+    (args, instrs) = unzip $ zipWith trampolineCastArgument [0..] params
     retType' = Core.typeToStrict $ Core.TVar 0 -- Return type must be a pointer in LLVM
     call = Iridium.Let res (Iridium.Call (Iridium.GlobalFunction fn (length params) fnType) $ map (Right . Iridium.VarLocal) args)
       $ Iridium.Let res' (Iridium.Cast (Iridium.VarLocal $ Iridium.Local res retType) retType')
       $ Iridium.Return $ Iridium.VarLocal $ Iridium.Local res' retType'
 
-trampolineCastArgument :: NameSupply -> Iridium.Local -> (Iridium.Local, Iridium.Instruction -> Iridium.Instruction)
-trampolineCastArgument supply local@(Iridium.Local name tp)
+trampolineCastArgument :: Int -> Iridium.Local -> (Iridium.Local, Iridium.Instruction -> Iridium.Instruction)
+trampolineCastArgument index (Iridium.Local _ tp)
   | Core.typeIsStrict tp =
-    let (nameWhnf, _) = freshIdFromId name supply
+    let nameWhnf = idFromString $ "argument_whnf_" ++ show index
     in
       ( Iridium.Local nameWhnf tp
-      , Iridium.Let nameWhnf (Iridium.Eval $ Iridium.VarLocal $ Iridium.Local name $ Core.typeNotStrict tp)
+      , Iridium.Let nameWhnf (Iridium.Eval $ Iridium.VarLocal $ Iridium.Local nameThunk $ Core.typeNotStrict tp)
       )
-  | otherwise = (local, id)
-trampolineBlock :: NameSupply -> Env -> Id -> Core.Type -> Iridium.FunctionType -> CallingConvention -> [Iridium.Local] -> BasicBlock
-trampolineBlock supply env fn tp (Iridium.FunctionType argTypes _) callConv args = BasicBlock (mkName "trampoline_entry") instructions ret
+  | otherwise = (Iridium.Local nameThunk tp, id)
   where
-    instructions :: [Named Instruction]
-    instructions =
-      [ nameThunk := BitCast (LocalReference voidPointer $ mkName "$_thunk_void") (pointer t) []
-      ]
-      ++ concat (
-        mapWithSupply
-          (\s (index, argType) -> extractField s env (LocalReference (pointer t) nameThunk) struct (index + 1) (StructField argType (Just index)) $ mkName $ "$_arg" ++ show index)
-          supply
-          $ zip [0..] [t | Right t <- argTypes]
-        )
-      ++
-        [ nameResult :=
-          Call
-            { tailCallKind = Nothing
-            , callingConvention = callConv
-            , returnAttributes = []
-            , function = Right $ toOperand env (Iridium.VarGlobal $ Iridium.GlobalFunction fn arity tp)
-            , arguments = map (\index -> (LocalReference taggedThunkPointer $ mkName $ "$_arg" ++ show index, [])) [0..arity - 1]
-            , functionAttributes = []
-            , metadata = []
-            }
-        ]
-    ret :: Named Terminator
-    ret = Do $ Ret (Just $ LocalReference voidPointer nameResult) []
-    nameThunk = mkName "$_thunk"
-    nameResult = mkName "$_result"
+    nameThunk = idFromString $ "argument_" ++ show index
 
-    arity = length args
+-- Variables:
+--
+-- Input:
+-- i16 %remaining_i - Number of remaining arguments in the current thunk, before extracting argument i
+-- <{i8*, i1}>* %ptr_i - Pointer to argument i
+-- thunk* %next_thunk_i - Pointer to the next thunk, before extracting argument i
+--
+-- Output:
+-- %remaining_{i-1}, %ptr_{i-1}, %next_thunk_{i-1} - For the next iteration
+-- <{i8*, i1}> %{argument}
+trampolineExtractArguments :: Int -> [Named Instruction]
+trampolineExtractArguments 0 =
+  [ mkName "argument_0" := Load False (LocalReference (pointer taggedThunkPointer) $ mkName "ptr_0") Nothing 0 []
+  ]
+trampolineExtractArguments i =
+  -- argument_i = load ptr_i
+  [ name "argument" := Load False (LocalReference (pointer taggedThunkPointer) $ name "ptr") Nothing 0 []
+  -- Check whether this is the last element of the thunk object
+  -- to_next_i = remaining_i == 1
+  , name "to_next" := ICmp IntegerPredicate.EQ (LocalReference int16 $ name "remaining") (ConstantOperand $ Constant.Int 16 1) []
 
-    -- Struct representing a thunk for this function
-    -- Note that we ignore the value for the tag and the type for the function pointer, as we don't need those
-    struct = thunkStruct arity
-    t = structType env struct
+  -- Extract 'given' of next thunk
+  , name "next_given_ptr" := getElementPtr (LocalReference thunkType $ name "next_thunk") [0, 4]
+  , name "next_given" := Load False (LocalReference (pointer int16) $ name "next_given_ptr") Nothing 0 []
+
+  -- Extract 'next' of next thunk
+  , name "next_next_thunk_ptr" := getElementPtr (LocalReference thunkType $ name "next_thunk") [0, 1]
+  , name "next_next_thunk" := Load False (LocalReference (pointer thunkType) $ name "next_next_thunk_ptr") Nothing 0 []
+
+  -- remaining_{i-1} = to_next_i ? next_given_i : remaining_i - 1
+  , name "remaining_decrement" := Sub False False (LocalReference int16 $ name "remaining") (ConstantOperand $ Constant.Int 16 1) []
+  , next "remaining" := Select operandToNext
+      (LocalReference int16 $ name "next_given")
+      (LocalReference int16 $ name "remaining_decrement")
+      []
+  
+  -- ptr_{i-1} = to_next_i ? {pointer to first argument of next_thunk} : &ptr_i[1]
+  , name "next_thunk_first_arg" := getElementPtr (LocalReference thunkType $ name "next_thunk") [0, 5, 0]
+  , name "ptr_increment" := getElementPtr (LocalReference (pointer taggedThunkPointer) $ name "ptr") [1]
+  , next "ptr" := Select operandToNext
+      (LocalReference (pointer taggedThunkPointer) $ name "next_thunk_first_arg")
+      (LocalReference (pointer taggedThunkPointer) $ name "ptr_increment")
+      []
+
+  -- next_thunk_{i-1} = to_next_i ? next_next_thunk : next_thunk
+  , next "next_thunk" := Select operandToNext
+      (LocalReference thunkType $ name "next_next_thunk")
+      (LocalReference thunkType $ name "next_thunk")
+      []
+  ] ++ trampolineExtractArguments (i - 1)
+  where
+    operandToNext = LocalReference boolType $ name "to_next"
+    name str = mkName (str ++ "_" ++ show i)
+    next str = mkName (str ++ "_" ++ show (i - 1))
+    int16 = IntegerType 16

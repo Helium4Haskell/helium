@@ -12,7 +12,8 @@ module LvmLang
     
     , packedFromString, stringFromPacked, packedLength
     , ($!), seq, pseq
-    , ''$primUnsafeCast''
+    , ''$primIntToChar''
+    , ''$primCharToInt''
 
     -- IO
     , unsafePerformIO, unsafePerformStrictIO

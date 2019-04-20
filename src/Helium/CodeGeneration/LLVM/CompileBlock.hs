@@ -77,7 +77,7 @@ compileInstruction env supply (Iridium.Match var target _ args next)
     (supply'', supply''') = splitNameSupply supply'
     LayoutPointer struct = case target of
       Iridium.MatchTargetConstructor (Iridium.DataTypeConstructor conId _) -> findMap conId (envConstructors env)
-      Iridium.MatchTargetThunk arity -> LayoutPointer $ thunkStruct arity
+      Iridium.MatchTargetThunk arity -> error "MatchTargetThunk not supported"-- LayoutPointer $ thunkStruct arity
       Iridium.MatchTargetTuple arity -> LayoutPointer $ tupleStruct arity
 compileInstruction env supply (Iridium.Case var (Iridium.CaseConstructor alts))
   -- All constructors are pointers
@@ -266,7 +266,7 @@ compileEval env supply operand tp name
   | otherwise =
     [ namePtr := ExtractValue operand [0] []
     , nameIsWHNF := ExtractValue operand [1] []
-    , nameIsWHNFExt := ZExt (LocalReference bool nameIsWHNF) (envValueType env) []
+    , nameIsWHNFExt := ZExt (LocalReference boolType nameIsWHNF) (envValueType env) []
     , nameWHNF := callEval (LocalReference voidPointer namePtr) (LocalReference (envValueType env) nameIsWHNFExt)
     ] ++ cast supply env (LocalReference voidPointer nameWHNF) name (Core.TStrict $ Core.TVar 0) (Core.typeToStrict tp) 
   where

@@ -1,7 +1,6 @@
 module Helium.CodeGeneration.LLVM.Builtins (builtinDefinitions, eval, alloc, unpackString) where
 
 import Helium.CodeGeneration.Iridium.Data as Iridium
-import Helium.CodeGeneration.LLVM.CompileType (pointer, voidPointer, bool)
 import Helium.CodeGeneration.LLVM.Utils
 import LLVM.AST
 import LLVM.AST.Type
@@ -17,10 +16,11 @@ data Builtin = Builtin Id [Type] Type
 builtin :: String -> [Type] -> Type -> Builtin
 builtin = Builtin . idFromString
 
-eval', alloc', unpackString' :: Builtin
+eval', alloc', memcpy', unpackString' :: Builtin
 eval' = builtin "_$helium_runtime_eval" [voidPointer, IntegerType 64] voidPointer
 -- Alignment, size (number of bytes)
 alloc' = builtin "helium_global_alloc" [IntegerType 32] voidPointer
+memcpy' = builtin "memcpy" [voidPointer, voidPointer, IntegerType 32] voidPointer
 -- Size, pointer to character (i32) array
 -- TODO: use target pointer size
 unpackString' = builtin "_$helium_runtime_unpack_string" [IntegerType 64, pointer $ IntegerType 8] voidPointer
@@ -29,7 +29,7 @@ builtins :: Iridium.Module -> [Builtin]
 builtins iridium = filter (\(Builtin name _ _) -> not $ Iridium.declaresFunction iridium name) allBuiltins
   
 allBuiltins :: [Builtin]
-allBuiltins = [eval', alloc', unpackString']
+allBuiltins = [eval', alloc', memcpy', unpackString']
 
 builtinDefinitions :: Iridium.Module -> [Definition]
 builtinDefinitions iridium = map definition $ builtins iridium

@@ -42,7 +42,7 @@ typeEnvForModule (Module _ _ _ decls) = TypeEnvironment (mapFromList synonyms) (
     isValue _ = False
 
 typeEnvAddVariable :: Variable -> TypeEnvironment -> TypeEnvironment
-typeEnvAddVariable (Variable name tp) env = env{ typeEnvValues = updateMap name (typeNotStrict $ typeRemoveArgumentStrictness tp) $ typeEnvValues env }
+typeEnvAddVariable (Variable name tp) env = env{ typeEnvValues = updateMap name (typeNotStrict tp) $ typeEnvValues env }
 
 typeEnvAddVariables :: [Variable] -> TypeEnvironment -> TypeEnvironment
 typeEnvAddVariables vars env = foldr typeEnvAddVariable env vars

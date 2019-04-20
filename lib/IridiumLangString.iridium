@@ -25,8 +25,9 @@ unpack.cons:
   %4 = literal int 4
   %pointer_plus_four = prim unsafeptr_add(%pointer: !$UnsafePtr, %4: !Int)
   %tail = call @_$helium_runtime_unpack_string[2]: (!Int -> !$UnsafePtr -> [Char]) $ (%length_minus_one: !Int, %pointer_plus_four: !$UnsafePtr)
-  %tail_as_any = cast %tail: ![Char] as [Char]
-  %c_as_any = cast %c: !Int as Char
+  %tail_as_any = castthunk %tail: ![Char]
+  %c_char = prim int_to_char(%c: !Int)
+  %c_as_any = castthunk %c_char: !Char
   letalloc %list = constructor @":": (forall a. a -> [a] -> [a]) $ ({Char}, %c_as_any: Char, %tail_as_any: [Char])
   return %list: ![Char]
 unpack.nil:
@@ -53,7 +54,7 @@ print.nil:
 print.cons:
   match %list: ![Char] on @":": (forall a. a -> [a] -> [a]) {Char} (%c_thunk, %cons_as_any)
   %c_whnf = eval %c_thunk: Char
-  %c = cast %c_whnf: !Char as !Int
+  %c = prim char_to_int(%c_whnf: !Char)
   %c2 = seq %res: !Int, %c: !Int ; Prevent reordering of @putchar calls
   %_ = call @putchar[1]: (!Int -> Int) $ (%c2: !Int)
   %cons = eval %cons_as_any: [Char]

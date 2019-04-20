@@ -41,15 +41,4 @@ handleBind env supply (Bind var target@(BindTargetFunction (VarGlobal (GlobalFun
   -- as a secondary thunk should have exactly one argument
   bindThunks = handleBind env supply' bindThunk
   (varTemp, supply') = freshIdFromId var supply
-handleBind env supply (Bind var target@(BindTargetThunk _) params)
-  | remaining /= [] = bindThunk : handleBind env supply' bindRemaining
-  -- | length params == 0 = error "Secondary thunk must have at least 1 argument"
-  -- | length params > 1 = -- A secondary thunk should have exactly one argument.
-  -- zipWith3 Bind names targets $ map return params
-  where
-    (params', remaining) = paramsTakeValues 1 params
-    (temp, supply') = freshIdFromId var supply
-    bindThunk = Bind temp target params'
-    bindThunkType = bindType env bindThunk
-    bindRemaining = Bind var (BindTargetThunk $ VarLocal $ Local temp bindThunkType) remaining
 handleBind _ _ b = [b]

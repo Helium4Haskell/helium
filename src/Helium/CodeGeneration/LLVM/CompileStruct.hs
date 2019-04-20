@@ -37,9 +37,8 @@ structTypeNoAlias env struct = StructureType False (headerStruct : fieldTypes)
   where
     headerStruct = StructureType False $ IntegerType (fromIntegral $ firstFieldSize $ envTarget env) : replicate (additionalHeaderFields env struct) (envValueType env)
     getFieldType :: StructField -> Type
-    getFieldType (StructField t _) 
-      | not (Iridium.typeIsStrict t) = voidPointer
-      | otherwise = compileType env t
+    getFieldType (StructField t Nothing) = compileType env t
+    getFieldType _ = voidPointer
     fieldTypes = map getFieldType $ fields struct
 -- Example for a 32 bit system, with 48 gc bits. The first header element thus needs 64 bits (first multiple of 32, larger than 48).
 -- If the tag is large or if there are many flags needed, we need additional 32-bit sized fields.
@@ -48,13 +47,15 @@ structTypeNoAlias env struct = StructureType False (headerStruct : fieldTypes)
 flagCount :: Struct -> Int
 flagCount struct = length (filter (\f -> isJust $ fieldFlagIndex f) $ fields struct)
 
-sizeOf :: Target -> Struct -> Int
-sizeOf target struct = words * wordSize `div` 8
+sizeOf :: Env -> Struct -> Int
+sizeOf env struct = (headerWords * wordSize + sum (map fieldSize $ fields struct))
   where
+    target = envTarget env
     headerBits = targetGarbageCollectorBits target + tagSize struct + flagCount struct
-    headerWords = headerBits `divCeiling` wordSize
-    wordSize = targetWordSize target
-    words = headerWords + length (fields struct)
+    headerWords = headerBits `divCeiling` (wordSize * 8)
+    wordSize = targetWordSize target `div` 8
+    fieldSize (StructField tp Nothing) = typeSize target tp `div` 8
+    fieldSize _ = wordSize
 
 additionalHeaderFields :: Env -> Struct -> Int
 additionalHeaderFields env struct
@@ -93,7 +94,7 @@ tagInFirstElement env struct = tagSize struct + targetGarbageCollectorBits targe
 
 allocate :: Env -> Name -> Name -> Type -> Struct -> [Named Instruction]
 allocate env nameVoid name t struct =
-  [ nameVoid := Call Nothing C [] (Right Builtins.alloc) [(ConstantOperand $ Constant.Int 32 $ fromIntegral $ sizeOf (envTarget env) struct, [])] [] []
+  [ nameVoid := Call Nothing C [] (Right Builtins.alloc) [(ConstantOperand $ Constant.Int 32 $ fromIntegral $ sizeOf env struct, [])] [] []
   , name := BitCast (LocalReference voidPointer nameVoid) (pointer t) []
   ]
 
@@ -131,7 +132,6 @@ writeHeaderFields supply env reference fields = concat $ mapWithSupply writeHead
       where
         (namePtr, _) = freshNameFromId idHeaderPtr s
 
--- TODO: For updates, also use a bit mask to reset the flags in the header, of the fields 
 writeFields :: NameSupply -> Env -> Operand -> Struct -> [Maybe (Operand, Operand)] -> [Operand] -> ([Operand], [Named Instruction])
 writeFields supply env operand struct values headers = foldr f (headers, []) compiledFields
   where
@@ -150,9 +150,9 @@ writeField env operand struct supply fieldIdx (StructField fType fFlagIndex) (Ju
 
     -- Field
     (nameElementPtr, _) = freshNameFromId idFieldPtr supplyField
-    fieldCompiledType
-      | not (Iridium.typeIsStrict fType) = voidPointer -- The flag is stored in the header instead of in the field
-      | otherwise = compileType env fType
+    fieldCompiledType = case fFlagIndex of
+      Nothing -> compileType env fType
+      _ -> voidPointer -- The flag is stored in the header instead of in the field
     fieldInstructions :: [Named Instruction]
     fieldInstructions =
       [ nameElementPtr := getElementPtr operand [0, fieldIdx + 1]
@@ -215,16 +215,16 @@ extractField supply env reference struct index (StructField t (Just flagIndex)) 
   , headerPtr := getElementPtr reference [0, 0, headerIdx]
   , headerValue := Load False (LocalReference (pointer $ headerType) headerPtr) Nothing 0 []
   , headerShifted := LShr False (LocalReference headerType headerValue) (ConstantOperand $ Constant.Int (fromIntegral headerBits) $ fromIntegral bitIdx) []
-  , isWhnf := Trunc (LocalReference headerType headerShifted) bool []
+  , isWhnf := Trunc (LocalReference headerType headerShifted) boolType []
   , nameStruct := InsertValue (ConstantOperand emptyStruct) (LocalReference voidPointer nameValue) [0] []
-  , name := InsertValue (LocalReference taggedThunkPointer nameStruct) (LocalReference bool isWhnf) [1] []
+  , name := InsertValue (LocalReference taggedThunkPointer nameStruct) (LocalReference boolType isWhnf) [1] []
   ]
   where
     (headerIdx, bitIdx) = findFlagInHeader env struct flagIndex
     headerBits = headerElementSize env headerIdx
     headerType = IntegerType $ fromIntegral headerBits
     emptyStruct :: Constant.Constant
-    emptyStruct = Constant.Struct Nothing True [Constant.Undef voidPointer, Constant.Undef bool]
+    emptyStruct = Constant.Struct Nothing True [Constant.Undef voidPointer, Constant.Undef boolType]
     -- Names
     (namePtr, supply1) = freshNameFromId idFieldPtr supply
     (nameValue, supply2) = freshName supply1
