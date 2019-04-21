@@ -206,7 +206,7 @@ toInstruction supply env continue match@(Core.Match x alts) =
           env' = expandEnvWithLocals locals env
         in
           ( 1,
-            Match (resolve env x) (MatchTargetTuple arity) instantiation (map Just fields)
+            Match (resolveVariable env x) (MatchTargetTuple arity) instantiation (map Just fields)
               +> toInstruction supply'' env' (head continues) expr
           )
       Core.Alt (Core.PatCon (Core.ConId con) _ _) _ ->
@@ -245,17 +245,16 @@ toInstruction supply env continue (Core.Lit lit) = Let name expr +> ret supply' 
   where
     (name, supply') = freshId supply
     expr = (Literal $ literal lit)
-toInstruction supply env continue (Core.Var var) = case variable of
-  VarGlobal (GlobalFunction _ _ _) ->
+toInstruction supply env continue (Core.Var var) = case resolve env var of
+  Right global ->
     let
-      bind = Bind name (BindTargetFunction variable) []
+      bind = Bind name (BindTargetFunction global) []
     in
       LetAlloc [bind] +> ret supply' env name continue
-  _
+  Left variable
     | typeIsStrict (variableType variable) -> ret supply env var continue
     | otherwise -> Let name (Eval variable) +> ret supply' env name continue
   where
-    variable = resolve env var
     (name, supply') = freshId supply
     (nameThunk, supply'') = freshId supply'
 
@@ -281,7 +280,7 @@ toInstruction supply env continue expr = case getApplicationOrConstruction expr 
   (Right fn, args)
     | all isLeft args && not (isGlobalFunction $ resolve env fn) ->
       let
-        e1 = (Instantiate (resolve env fn) $ map (fromLeft $ error "FromCore.toInstruction: expected Left") args)
+        e1 = (Instantiate (resolveVariable env fn) $ map (fromLeft $ error "FromCore.toInstruction: expected Left") args)
         t1 = typeOfExpr (teCoreEnv env) e1
       in if Core.typeIsStrict t1 then
         Let x e1
@@ -316,7 +315,7 @@ toInstruction supply env continue expr = case getApplicationOrConstruction expr 
               (args', castInstructions, tp) = maybeCasts supply''' env fntype args
             in
               castInstructions
-                +> LetAlloc [Bind x (BindTargetFunction $ VarGlobal $ GlobalFunction qualifiedName arity fntype) args']
+                +> LetAlloc [Bind x (BindTargetFunction $ GlobalFunction qualifiedName arity fntype) args']
                 +> ret supplyRet env x continue
           | otherwise ->
             -- Too many arguments. Evaluate the function with the first `length params` arguments,
@@ -341,7 +340,7 @@ toInstruction supply env continue expr = case getApplicationOrConstruction expr 
             (supplyCast1, supplyCast2) = splitNameSupply supply'''
             (args', castInstructions, tp) = maybeCasts supplyCast1 env (variableType var) args
             bind = Bind x (BindTargetThunk var) args'
-            var = resolve env fn
+            var = resolveVariable env fn
           in
             castInstructions
               +> LetAlloc [bind]
@@ -353,9 +352,8 @@ toInstruction supply env continue expr = case getApplicationOrConstruction expr 
     (y, supply'') = freshId supply'
     (z, supply''') = freshId supply''
 
-isGlobalFunction :: Variable -> Bool
-isGlobalFunction (VarGlobal (GlobalFunction _ _ _)) = True
-isGlobalFunction _ = False
+isGlobalFunction :: Either Variable GlobalFunction -> Bool
+isGlobalFunction = isRight
 
 altJump :: Id -> (Local, Id) -> Continue
 altJump toBlock (Local toVar toType, intermediateBlockId) = CBind (\resultVar ->
@@ -368,17 +366,9 @@ altJump toBlock (Local toVar toType, intermediateBlockId) = CBind (\resultVar ->
   )
 
 maybeCast :: NameSupply -> TypeEnv -> Id -> Core.Type -> (Variable, Instruction -> Instruction)
-maybeCast supply env name expected = maybeCastVariable supply env (resolve env name) expected
+maybeCast supply env name expected = maybeCastVariable supply env (resolveVariable env name) expected
 
 maybeCastVariable :: NameSupply -> TypeEnv -> Variable -> Core.Type -> (Variable, Instruction -> Instruction)
-maybeCastVariable supply env global@(VarGlobal (GlobalFunction name _ tp)) expected =
-  ( var
-  , LetAlloc [Bind name' (BindTargetFunction global) []]
-    . castInstruction
-  )
-  where
-    (name', supply') = freshIdFromId name supply
-    (var, castInstruction) = maybeCastVariable supply' env (VarLocal $ Local name' $ typeToStrict $ typeRemoveArgumentStrictness tp) expected
 maybeCastVariable supply env var expected
   | Core.typeEqual (teCoreEnv env) expected varType = (var, id)
   | otherwise = castTo supply env var varType expected
@@ -387,14 +377,6 @@ maybeCastVariable supply env var expected
 
 -- A cast should only change the strictness of a type
 castTo :: NameSupply -> TypeEnv -> Variable -> Core.Type -> Core.Type -> (Variable, Instruction -> Instruction)
--- A function type with at least one argument is casted using a `letalloc`.
--- A function type with no arguments is handled using a normal `Cast` instruction.
-castTo supply env var@(VarGlobal (GlobalFunction _ arity tp)) _ to
-  | arity == 0 = error "castTo: Should not use a GlobalFunction for a function with arity 0. Use GlobalVariable instead"
-  | otherwise = (newVar, LetAlloc [Bind nameFunc (BindTargetFunction var) []] . instructions)
-  where
-    (nameFunc, supply') = freshIdFromId (variableName var) supply
-    (newVar, instructions) = maybeCastVariable supply' env (VarLocal $ Local nameFunc $ Core.typeToStrict tp) to
 castTo supply env var from to
   | not (Core.typeIsStrict from) && Core.typeIsStrict to = (newVar, Let nameWhnf (Eval var) . instructions)
   where
@@ -430,7 +412,7 @@ transformCaseInt :: NameSupply -> TypeEnv -> [Continue] -> Id -> [Core.Alt] -> (
 transformCaseInt supply env continues name alts = (length bs, Partial (Case var c) $ concat blocks)
   where
     (supply1, supply2) = splitNameSupply supply
-    var = resolve env name
+    var = resolveVariable env name
     c@(CaseInt bs _) = gatherCaseIntAlts branches
     branches :: [(Maybe Int, BlockName)]
     blocks :: [[Block]]
@@ -465,7 +447,7 @@ transformAlt supply env continue var con@(DataTypeConstructor _ tp) instantiatio
 transformCaseConstructor :: NameSupply -> TypeEnv -> [Continue] -> Id -> Id -> [Core.Alt] -> (Int, Partial)
 transformCaseConstructor supply env continues varName dataType alts = (length alts', Partial (Case var c) blocks)
   where
-    var = resolve env varName
+    var = resolveVariable env varName
     (supply1, supply2) = splitNameSupply supply
     c = CaseConstructor alts'
     constructors = findMap dataType (teDataTypes env)
@@ -492,7 +474,7 @@ bind supply env (Core.Bind (Core.Variable x _) val) = Bind x target $ map toArg 
     (apOrCon, args) = getApplicationOrConstruction val []
     (supply1, supply2) = splitNameSupply supply
     toArg (Left tp) = Left tp
-    toArg (Right var) = Right $ resolve env var
+    toArg (Right var) = Right $ resolveVariable env var
     target :: BindTarget
     target = case apOrCon of
       Left (Core.ConId con) ->
@@ -501,11 +483,11 @@ bind supply env (Core.Bind (Core.Variable x _) val) = Bind x target $ map toArg 
       Left (Core.ConTuple arity) -> BindTargetTuple arity
       Right fn -> case resolveFunction env fn of
         Just (qualifiedName, arity, fntype) ->
-          BindTargetFunction $ VarGlobal $ GlobalFunction qualifiedName arity fntype
+          BindTargetFunction $ GlobalFunction qualifiedName arity fntype
         _
           | null args -> error $ "bind: a secondary thunk cannot have zero arguments"
         _ ->
-          BindTargetThunk $ resolve env fn
+          BindTargetThunk $ resolveVariable env fn
 
 coreBindLocal :: TypeEnv -> Core.Bind -> Local
 coreBindLocal env (Core.Bind (Core.Variable name tp) expr) = 
@@ -539,15 +521,18 @@ literal (Core.LitInt x tp) = LitInt tp x
 literal (Core.LitDouble x) = LitFloat Float64 x
 literal (Core.LitBytes x) = LitString $ stringFromBytes x 
 
-resolve :: TypeEnv -> Id -> Variable
+resolve :: TypeEnv -> Id -> Either Variable GlobalFunction
 resolve env name = case valueDeclaration env name of
   ValueConstructor _ -> error "resolve: Constructor cannot be used as a value."
-  ValueFunction qualifiedName 0 fntype _ -> VarGlobal $ GlobalVariable qualifiedName fntype
-  ValueFunction qualifiedName arity fntype _ -> VarGlobal $ GlobalFunction qualifiedName arity fntype
-  ValueVariable t -> VarLocal $ Local name t
+  ValueFunction qualifiedName 0 fntype _ -> Left $ VarGlobal $ GlobalVariable qualifiedName fntype
+  ValueFunction qualifiedName arity fntype _ -> Right $ GlobalFunction qualifiedName arity fntype
+  ValueVariable t -> Left $ VarLocal $ Local name t
 
-resolveList :: TypeEnv -> [Id] -> [Variable]
-resolveList env = map (resolve env)
+resolveVariable :: TypeEnv -> Id -> Variable
+resolveVariable env name = case resolve env name of
+  Left var -> var
+  Right (GlobalFunction name 0 tp) -> VarGlobal $ GlobalVariable name $ typeRemoveArgumentStrictness tp
+  Right (GlobalFunction name _ tp) -> VarGlobal $ GlobalVariable name $ typeToStrict $ typeRemoveArgumentStrictness tp
 
 origin :: Core.CoreDecl -> Maybe Id
 origin decl = case Core.declAccess decl of

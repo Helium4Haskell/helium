@@ -62,7 +62,7 @@ pBindTarget :: QuantorIndexing -> Parser BindTarget
 pBindTarget quantors = do
   key <- pKeyword
   case key of
-    "function" -> BindTargetFunction <$> pVariable quantors
+    "function" -> BindTargetFunction <$> pGlobalFunction quantors
     "thunk" -> BindTargetThunk <$> pVariable quantors
     "constructor" -> BindTargetConstructor <$> pDataTypeConstructor
     "tuple" -> BindTargetTuple <$> pUnsignedInt
@@ -76,6 +76,5 @@ pMatchTarget = do
   else do
     key <- pKeyword
     case key of
-      "thunk" -> MatchTargetThunk <$> pUnsignedInt
       "tuple" -> MatchTargetTuple <$> pUnsignedInt
       _ -> pError "Expected match target"

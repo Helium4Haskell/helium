@@ -138,10 +138,10 @@ toFunction env supply name visible annotations args fnType retType basicBlocks =
         , Global.metadata = []
         }
     [BasicBlock _ trampolineInstructions trampolineTerminator] = compileBlock env supplyTrampoline1 $ Iridium.Block (idFromString "entry") $ trampolineBody supplyTrampoline2 name args fnType $ Core.typeToStrict retType
-    
+
     thunk :: [Definition]
     thunk
-      | not (null args) || Iridium.AnnotateTrampoline `notElem` annotations = []
+      | Iridium.AnnotateTrampoline `notElem` annotations = []
       | otherwise = return $ GlobalDefinition $ GlobalVariable
         { Global.name = toNamePrefixed "thunk$" name
         , Global.linkage = linkage
@@ -158,7 +158,7 @@ toFunction env supply name visible annotations args fnType retType basicBlocks =
                 [ Constant.Int 64 0 -- Header (GC)
                 , Constant.GlobalReference thunkType $ toNamePrefixed "thunk$" name -- 'next' points to self
                 , Constant.GlobalReference trampolineType $ toNamePrefixed "trampoline$" name -- function pointer
-                , Constant.Int 16 0 -- remaining: 0 arguments remaining
+                , Constant.Int 16 $ fromIntegral $ length args -- remaining: (length args) arguments remaining
                 , Constant.Int 16 0 -- given: 0 arguments given
                 , Constant.Array taggedThunkPointer []
                 ]

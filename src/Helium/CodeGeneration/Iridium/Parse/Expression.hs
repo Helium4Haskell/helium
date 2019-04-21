@@ -49,13 +49,25 @@ pGlobal :: QuantorIndexing -> Parser Global
 pGlobal quantors = do
   pToken '@'
   name <- pId
-  c <- lookahead
-  case c of
-    '[' -> GlobalFunction name <$ pChar <*> pUnsignedInt <* pToken ']' <* pToken ':' <* pWhitespace <*> pTypeAtom' quantors
-    _ -> do
-      pToken ':'
-      pWhitespace
-      GlobalVariable name <$> pTypeAtom
+  pToken ':'
+  pWhitespace
+  GlobalVariable name <$> pTypeAtom
+
+pGlobalFunction :: QuantorIndexing -> Parser GlobalFunction
+pGlobalFunction quantors = do
+  pToken '@'
+  name <- pId
+  pWhitespace
+  pToken '['
+  pWhitespace
+  arity <- pUnsignedInt
+  pWhitespace
+  pToken ']'
+  pWhitespace
+  pToken ':'
+  pWhitespace
+  tp <- pTypeAtom' quantors
+  return $ GlobalFunction name arity tp
 
 pLocal :: QuantorIndexing -> Parser Local
 pLocal quantors = Local <$ pToken '%' <*> pId <* pToken ':' <* pWhitespace <*> pTypeAtom' quantors
@@ -83,11 +95,11 @@ pExpression quantors = do
   keyword <- pKeyword
   case keyword of
     "literal" -> Literal <$> pLiteral
-    "call" -> Call <$> pGlobal quantors <* pWhitespace <* pToken '$' <* pWhitespace <*> pCallArguments quantors
+    "call" -> Call <$> pGlobalFunction quantors <* pWhitespace <* pToken '$' <* pWhitespace <*> pCallArguments quantors
     "eval" -> Eval <$> pVariable quantors
     "var" -> Var <$> pVariable quantors
     "instantiate" -> Instantiate <$> pVariable quantors <* pWhitespace <*> pInstantiation quantors
-    "cast" -> Cast <$> pVariable quantors <* pWhitespace <* pSymbol "as" <* pWhitespace <*> pTypeAtom' quantors
+    -- "cast" -> Cast <$> pVariable quantors <* pWhitespace <* pSymbol "as" <* pWhitespace <*> pTypeAtom' quantors
     "castthunk" -> CastThunk <$> pVariable quantors
     "phi" -> Phi <$> pArguments (pPhiBranch quantors)
     "prim" -> PrimitiveExpr <$> pId <* pWhitespace <*> pCallArguments quantors

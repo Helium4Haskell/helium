@@ -1,4 +1,4 @@
-module Helium.CodeGeneration.LLVM.CompileType (compileType, typeSize, toOperand, taggedThunkPointer, splitValueFlag, cast, copy, compileCallingConvention) where
+module Helium.CodeGeneration.LLVM.CompileType (compileType, typeSize, toOperand, globalFunctionToOperand, taggedThunkPointer, splitValueFlag, cast, copy, compileCallingConvention) where
 
 import Lvm.Common.Id(Id, freshId, stringFromId, idFromString, NameSupply)
 import qualified Lvm.Core.Type as Core
@@ -52,12 +52,16 @@ compileFunctionType env (Iridium.FunctionType args returnType) = pointer $ Funct
 
 toOperand :: Env -> Iridium.Variable -> Operand
 toOperand env (Iridium.VarLocal (Iridium.Local name t)) = LocalReference (compileType env t) (toName name)
-toOperand env (Iridium.VarGlobal (Iridium.GlobalVariable name t)) =
-  ConstantOperand $ Constant.Struct Nothing True
-    [ Constant.BitCast (GlobalReference thunkType (toNamePrefixed "thunk$" name)) voidPointer
-    , Constant.Int 1 0 -- false, as the value is not in WHNF
-    ]
-toOperand env (Iridium.VarGlobal (Iridium.GlobalFunction name arity tp)) = ConstantOperand $ GlobalReference (compileFunctionType env fntype) (toName name)
+toOperand env (Iridium.VarGlobal (Iridium.GlobalVariable name t))
+  | Iridium.typeIsStrict t = ConstantOperand $ Constant.BitCast (GlobalReference thunkType (toNamePrefixed "thunk$" name)) voidPointer
+  | otherwise =
+    ConstantOperand $ Constant.Struct Nothing True
+      [ Constant.BitCast (GlobalReference thunkType (toNamePrefixed "thunk$" name)) voidPointer
+      , Constant.Int 1 0 -- false, as the value is not in WHNF
+      ]
+
+globalFunctionToOperand :: Env -> Iridium.GlobalFunction -> Operand
+globalFunctionToOperand env (Iridium.GlobalFunction name arity tp) = ConstantOperand $ GlobalReference (compileFunctionType env fntype) (toName name)
   where
     fntype = Iridium.extractFunctionTypeWithArity (envTypeEnv env) arity tp
 

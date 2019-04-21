@@ -21,7 +21,7 @@ module Helium.CodeGeneration.Iridium.PassDeadCode(passDeadCode) where
 import Helium.CodeGeneration.Iridium.Type
 import Helium.CodeGeneration.Iridium.Data
 import Data.Maybe (catMaybes, fromMaybe, isNothing)
-import Data.Either (isRight)
+import Data.Either (rights, isRight)
 import Lvm.Common.Id
 import Lvm.Common.IdMap
 import Lvm.Common.IdSet
@@ -45,6 +45,10 @@ data Constraint
 fromList :: [Constraint] -> Constraint
 fromList [] = CEmpty
 fromList (c : cs) = foldr CSequence c cs
+
+bindCountInVariable :: Variable -> Constraint
+bindCountInVariable (VarGlobal (GlobalVariable name _)) = CBindCount name 0
+bindCountInVariable _ = CEmpty
 
 data Env = Env { envFunction :: !Id }
 -- Set of live variables, bools denoting whether the argument of a variable should be preserved
@@ -89,11 +93,14 @@ analyseBlock env (Block _ instr) = analyseInstruction env instr
 
 analyseInstruction :: Env -> Instruction -> Constraint
 analyseInstruction env (Let var (Call fn args) next) = CSequence
-  (analyseCall var (variableName $ VarGlobal fn) args)
+  (analyseCall var (globalFunctionName fn) args)
   $ analyseInstruction env next
 analyseInstruction env (Let var expr next) = CSequence
-  (CImplies var (map variableName $ dependenciesOfExpr expr))
+  (fromList $ map bindCountInVariable vars)
+  $ CSequence (CImplies var (map variableName vars))
   $ analyseInstruction env next
+  where
+    vars = dependenciesOfExpr expr
 analyseInstruction env (LetAlloc binds next) = CSequence
   (fromList $ map analyseBind binds)
   $ analyseInstruction env next
@@ -106,20 +113,23 @@ analyseInstruction env (Return var) = CImplies (envFunction env) [variableName v
 analyseInstruction env Unreachable = CEmpty
 
 analyseCall :: Id -> Id -> [Either Type Variable] -> Constraint
-analyseCall var fn args = fromList $
+analyseCall var fn args = CSequence argumentConstraints $ fromList $
   CImplies var [fn]
   : CBindCount fn (length args)
   : zipWith constraintArgument args [0..]
   where
     constraintArgument (Right arg) index = CArgument var fn index $ variableName arg
     constraintArgument (Left tp) index = CEmpty
+    argumentConstraints = fromList $ map bindCountInVariable $ rights args
 
 analyseBind :: Bind -> Constraint
-analyseBind (Bind var (BindTargetFunction fn@(VarGlobal _)) args) = analyseCall var (variableName fn) args
-analyseBind (Bind var target args) = CImplies var $ targetVars ++ [variableName arg | Right arg <- args]
+analyseBind (Bind var (BindTargetFunction fn) args) = analyseCall var (globalFunctionName fn) args
+analyseBind (Bind var target args) = CSequence
+  (fromList $ map bindCountInVariable args')
+  $ CImplies var $ targetVars ++ map variableName args'
   where
+    args' = rights args
     targetVars = case target of
-      BindTargetFunction var -> [variableName var]
       BindTargetThunk var -> [variableName var]
       _ -> []
 
@@ -227,7 +237,7 @@ transformInstruction supply res (Match var t instantiation fields next)
 transformExpr :: NameSupply -> Result -> Expr -> (Expr, Instruction -> Instruction)
 transformExpr supply res (Call fn args) = (Call (transformGlobal res fn) args', instr)
   where
-    (args', instr) = transformCall supply res (VarGlobal fn) args (getArgTypes args)
+    (args', instr) = transformCall supply res fn args (getArgTypes args)
 transformExpr _ _ expr = (expr, id)
 
 getArgTypes :: [Either Type Variable] -> [Either () Type]
@@ -237,22 +247,22 @@ getArgTypes = map argType
     argType (Left _) = Left ()
 
 transformBind :: NameSupply -> Result -> Bind -> (Bind, Instruction -> Instruction)
-transformBind supply res@(Result env _ _) (Bind var (BindTargetFunction fn@(VarGlobal global@(GlobalFunction _ _ _))) args) =
+transformBind supply res@(Result env _ _) (Bind var (BindTargetFunction global@(GlobalFunction _ _ _)) args) =
   (Bind var target args', instr)
   where
-    (args', instr) = transformCall supply res fn args (getArgTypes args)
+    (args', instr) = transformCall supply res global args (getArgTypes args)
     target
       | arity == 0 = BindTargetThunk $ VarGlobal $ GlobalVariable name tp
-      | otherwise = BindTargetFunction $ VarGlobal global
+      | otherwise = BindTargetFunction global'
     global'@(GlobalFunction name arity tp) = transformGlobal res global
 transformBind _ _ bind = (bind, id)
 
-transformCall :: NameSupply -> Result -> Variable -> [Either Type Variable] -> [Either () Type] -> ([Either Type Variable], Instruction -> Instruction)
+transformCall :: NameSupply -> Result -> GlobalFunction -> [Either Type Variable] -> [Either () Type] -> ([Either Type Variable], Instruction -> Instruction)
 transformCall supply res fn args argTypes = (args', flip (foldr id) instrs)
   where
     (args', instrs) = unzip $ catMaybes $ mapWithSupply transformArgument supply $ zip (zip args argTypes)
       -- In case of a LetAlloc bind, the function may be oversaturated. Those oversaturated arguments must always be preserved
-      $ preservedArguments res (variableName fn) ++ repeat True
+      $ preservedArguments res (globalFunctionName fn) ++ repeat True
     
     transformArgument :: NameSupply -> ((Either Type Variable, Either () Type), Bool) -> Maybe (Either Type Variable, Instruction -> Instruction)
     transformArgument _ (_, False) = Nothing
@@ -262,11 +272,10 @@ transformCall supply res fn args argTypes = (args', flip (foldr id) instrs)
         (name, _) = freshIdFromId (variableName arg) s
     transformArgument s ((arg, _), True) = Just $ (arg, id)
 
-transformGlobal :: Result -> Global -> Global
+transformGlobal :: Result -> GlobalFunction -> GlobalFunction
 transformGlobal res (GlobalFunction name arity fnType) = GlobalFunction name arity' fnType'
   where
     (arity', fnType') = transformType res name arity fnType
-transformGlobal _ g = g
 
 transformType :: Result -> Id -> Int -> Type -> (Int, Type)
 transformType res@(Result env _ _) name arity fnType =

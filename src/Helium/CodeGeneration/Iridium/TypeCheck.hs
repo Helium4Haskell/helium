@@ -18,25 +18,31 @@ data Location
   | UseGlobalVariable
   deriving (Eq, Show)
 
+type VariableOrGlobal = Either Variable GlobalFunction
+
+showVar :: VariableOrGlobal -> String
+showVar (Left var) = show var
+showVar (Right global) = show global
+
 data TypeError
   -- The type of the MatchTarget does not match the variable
-  = TEMatch !Variable !Type
+  = TEMatch !VariableOrGlobal !Type
   -- The type of the variable of a Case instruction does not match with a type of a pattern
-  | TECase !Variable !Type
-  | TEReturn !Variable !Type
+  | TECase !VariableOrGlobal !Type
+  | TEReturn !VariableOrGlobal !Type
   -- Type at declaration does not match type at use
-  | TEVariable !Variable !Variable
-  | TEMultipleDeclarations ![Variable]
+  | TEVariable !VariableOrGlobal !VariableOrGlobal
+  | TEMultipleDeclarations ![VariableOrGlobal]
   | TENotDeclared !Id
   -- The annotated type of a method does not match the given argument types and return type
   | TEMethod !Id !Type !Type
 
 instance Show TypeError where
-  show (TEMatch var tp) = "Variable " ++ show var ++ " should have type " ++ show tp ++ " in a match instruction"
-  show (TECase var tp) = "Variable " ++ show var ++ " should have type " ++ show tp ++ " in a case instruction"
-  show (TEReturn var tp) = "Variable " ++ show var ++ " should have type " ++ show tp ++ " in a return instruction"
-  show (TEVariable var1 var2) = "Variable declared as " ++ show var1 ++ " is used as " ++ show var2
-  show (TEMultipleDeclarations vars) = "Variable has multiple declarations: " ++ show vars
+  show (TEMatch var tp) = "Variable " ++ showVar var ++ " should have type " ++ show tp ++ " in a match instruction"
+  show (TECase var tp) = "Variable " ++ showVar var ++ " should have type " ++ show tp ++ " in a case instruction"
+  show (TEReturn var tp) = "Variable " ++ showVar var ++ " should have type " ++ show tp ++ " in a return instruction"
+  show (TEVariable var1 var2) = "Variable declared as " ++ showVar var1 ++ " is used as " ++ showVar var2
+  show (TEMultipleDeclarations vars) = "Variable has multiple declarations: " ++ intercalate ", " (map showVar vars)
   show (TENotDeclared name) = "Variable " ++ show name ++ " is not declared"
   show (TEMethod name t1 t2) = "Method " ++ show name ++ " was declared with type " ++ show t1 ++ ", which does not match the type inferred from the arguments and return type: " ++ show t2
 
@@ -96,8 +102,10 @@ analyseBlock env tp (Block _ instr) = analyseInstruction env tp instr
 
 variableToAnalysis :: Variable -> Analysis
 variableToAnalysis (VarLocal (Local name tp)) = AVar name UseLocal tp
-variableToAnalysis (VarGlobal (GlobalFunction name arity tp)) = AVar name (UseGlobalFunction arity) tp
 variableToAnalysis (VarGlobal (GlobalVariable name tp)) = AVar name UseGlobalVariable tp
+
+globalFunctionToAnalysis :: GlobalFunction -> Analysis
+globalFunctionToAnalysis (GlobalFunction name arity tp) = AVar name (UseGlobalFunction arity) tp
 
 analyseInstruction :: TypeEnvironment -> Type -> Instruction -> Analysis
 analyseInstruction env returnType (Let name expr next) =
@@ -112,7 +120,7 @@ analyseInstruction env returnType (LetAlloc binds next) =
     $ analyseInstruction env returnType next
 analyseInstruction env returnType (Match var target instantiation fields next)
   = variableToAnalysis var
-    `AJoin` aCheck env (variableType var) expectedType (TEMatch var expectedType)
+    `AJoin` aCheck env (variableType var) expectedType (TEMatch (Left var) expectedType)
     `AJoin` fromList (catMaybes $ zipWith analyseArg fields $ matchFieldTypes target instantiation)
     `AJoin` analyseInstruction env returnType next
   where
@@ -120,7 +128,7 @@ analyseInstruction env returnType (Match var target instantiation fields next)
     analyseArg Nothing _ = Nothing
     analyseArg (Just name) tp = Just $ AVar name DeclareLocal tp
 analyseInstruction env returnType (Return var) =
-  aCheck env (variableType var) returnType (TEReturn var returnType)
+  aCheck env (variableType var) returnType (TEReturn (Left var) returnType)
   `AJoin` variableToAnalysis var
 analyseInstruction env _ (Case var _) = variableToAnalysis var
   -- TODO: Check whether the types of the alts/branches match with the type of 'var'
@@ -134,7 +142,7 @@ analyseBind env bind@(Bind var target args) =
   where
     tp = bindType env bind
     aTarget = case target of
-      BindTargetFunction var -> variableToAnalysis var
+      BindTargetFunction var -> globalFunctionToAnalysis var
       BindTargetThunk var -> variableToAnalysis var
       _ -> AEmpty
 
@@ -184,21 +192,26 @@ isDeclaration DeclareLocal = True
 isDeclaration (DeclareGlobal _) = True
 isDeclaration _ = False
 
-toVariable :: Id -> Occurrence -> Variable
-toVariable name (Occurrence DeclareLocal tp) = VarLocal $ Local name tp
-toVariable name (Occurrence UseLocal tp) = VarLocal $ Local name tp
-toVariable name (Occurrence (DeclareGlobal arity) tp) = VarGlobal $ GlobalFunction name arity tp
-toVariable name (Occurrence (UseGlobalFunction arity) tp) = VarGlobal $ GlobalFunction name arity tp
-toVariable name (Occurrence UseGlobalVariable tp) = VarGlobal $ GlobalVariable name tp
+toVariable :: Id -> Occurrence -> Either Variable GlobalFunction
+toVariable name (Occurrence DeclareLocal tp) = Left $ VarLocal $ Local name tp
+toVariable name (Occurrence UseLocal tp) = Left $ VarLocal $ Local name tp
+toVariable name (Occurrence (DeclareGlobal arity) tp) = Right $ GlobalFunction name arity tp
+toVariable name (Occurrence (UseGlobalFunction arity) tp) = Right $ GlobalFunction name arity tp
+toVariable name (Occurrence UseGlobalVariable tp) = Left $ VarGlobal $ GlobalVariable name tp
 
 -- typeEqual does not understand strictness, so temp workaround to check strictness on the toplevel
 typeEqual' :: TypeEnvironment -> Type -> Type -> Bool
 typeEqual' env t1 t2 = typeEqual env t1 t2 && typeIsStrict t1 == typeIsStrict t2
 
-variableEqual :: TypeEnvironment -> Variable -> Variable -> Bool
-variableEqual env (VarLocal (Local n1 t1)) (VarLocal (Local n2 t2)) = n1 == n2 && typeEqual' env t1 t2
-variableEqual env (VarGlobal (GlobalVariable n1 t1)) (VarGlobal (GlobalVariable n2 t2)) = n1 == n2 && typeEqual' env t1 t2
-variableEqual env (VarGlobal (GlobalFunction n1 a1 t1)) (VarGlobal (GlobalFunction n2 a2 t2)) = n1 == n2 && typeEqual' env t1 t2 && a1 == a2
-variableEqual env (VarGlobal (GlobalVariable n1 t1)) (VarGlobal (GlobalFunction n2 0 t2)) = n1 == n2 && typeEqual' env t1 t2
-variableEqual env (VarGlobal (GlobalFunction n1 0 t1)) (VarGlobal (GlobalVariable n2 t2)) = n1 == n2 && typeEqual' env t1 t2
+variableEqual :: TypeEnvironment -> VariableOrGlobal -> VariableOrGlobal -> Bool
+variableEqual env (Left (VarLocal (Local n1 t1))) (Left (VarLocal (Local n2 t2)))
+  = n1 == n2 && typeEqual' env t1 t2
+variableEqual env (Left (VarGlobal (GlobalVariable n1 t1))) (Left (VarGlobal (GlobalVariable n2 t2)))
+  = n1 == n2 && typeEqual' env t1 t2
+variableEqual env (Right (GlobalFunction n1 a1 t1)) (Right (GlobalFunction n2 a2 t2))
+  = n1 == n2 && typeEqual' env t1 t2 && a1 == a2
+variableEqual env (Left (VarGlobal (GlobalVariable n1 t1))) (Right (GlobalFunction n2 a2 t2))
+  = n1 == n2 && typeEqual' env t1 (typeSetStrict (a2 /= 0) $ typeRemoveArgumentStrictness t2)
+variableEqual env (Right (GlobalFunction n1 a1 t1)) (Left (VarGlobal (GlobalVariable n2 t2)))
+  = n1 == n2 && typeEqual' env (typeSetStrict (a1 /= 0) $ typeRemoveArgumentStrictness t1) t2
 variableEqual _ _ _ = False

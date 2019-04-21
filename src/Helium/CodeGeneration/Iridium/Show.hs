@@ -114,7 +114,6 @@ instance ShowWithQuantors BindTarget where
 
 instance Show MatchTarget where
   showsPrec _ (MatchTargetConstructor con) = shows con
-  showsPrec _ (MatchTargetThunk arity) = text "thunk " . shows arity
   showsPrec _ (MatchTargetTuple arity) = text "tuple " . shows arity
 
 instance Show Case where
@@ -151,8 +150,10 @@ instance ShowWithQuantors Local where
   showsQ quantors (Local name t) = ('%' :) . showId name . text ": " . showsQ quantors t
 
 instance Show Global where
-  showsPrec _ (GlobalFunction name arity fntype) = ('@' :) . showId name . text "[" . shows arity . text "]: " . shows fntype
   showsPrec _ (GlobalVariable name t) = ('@' :) . showId name . text ": " . shows t
+
+instance Show GlobalFunction where
+  showsPrec _ (GlobalFunction name arity fntype) = ('@' :) . showId name . text "[" . shows arity . text "]: " . shows fntype
 
 instance ShowWithQuantors Variable where
   showsQ quantors (VarLocal local) = showsQ quantors local

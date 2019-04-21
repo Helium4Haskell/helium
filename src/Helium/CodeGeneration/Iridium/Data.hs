@@ -122,8 +122,14 @@ data Local = Local { localName :: !Id, localType :: !Type }
   deriving (Eq, Ord)
 
 data Global
-  = GlobalFunction !Id !Arity !Type
-  | GlobalVariable !Id !Type
+  = GlobalVariable !Id !Type
+  deriving (Eq, Ord)
+
+data GlobalFunction = GlobalFunction
+  { globalFunctionName :: !Id
+  , globalFunctionArity :: !Arity
+  , globalFunctionType :: !Type
+  }
   deriving (Eq, Ord)
 
 data Variable
@@ -178,7 +184,7 @@ data Bind = Bind { bindVar :: !Id, bindTarget :: !BindTarget, bindArguments :: !
 -- primary thunks, which contain a function pointer, and secondary thunks, which point to other thunks.
 data BindTarget
   -- * The object points at a function. The object is thus a primary thunk.
-  = BindTargetFunction !Variable
+  = BindTargetFunction !GlobalFunction
   -- * The object points at another thunk and is thus a secondary thunk.
   | BindTargetThunk !Variable
   -- * The bind represents a constructor invocation.
@@ -192,8 +198,6 @@ data BindTarget
 data MatchTarget
   -- * Match on a constructor.
   = MatchTargetConstructor !DataTypeConstructor
-  -- * Match on a thunk (either primary or secondary) with a given number of arguments.
-  | MatchTargetThunk !Arity
   -- * Match on a tuple with a given number of fields.
   | MatchTargetTuple !Arity
   deriving (Eq, Ord)
@@ -202,7 +206,6 @@ matchArgumentType :: MatchTarget -> [Type] -> Type
 matchArgumentType (MatchTargetConstructor (DataTypeConstructor _ tp)) instantiation = typeToStrict ret
   where
     FunctionType _ ret = extractFunctionTypeNoSynonyms $ typeApplyList tp instantiation
-matchArgumentType (MatchTargetThunk _) _ = typeToStrict $ TCon $ TConDataType $ idFromString "$UnsafePtr"
 matchArgumentType (MatchTargetTuple arity) instantiation = typeToStrict $ foldl TAp (TCon $ TConTuple arity) instantiation
 
 matchFieldTypes :: MatchTarget -> [Type] -> [Type]
@@ -210,7 +213,6 @@ matchFieldTypes (MatchTargetConstructor (DataTypeConstructor _ tp)) instantiatio
   [ arg | Right arg <- args ]
   where
     FunctionType args _ = extractFunctionTypeNoSynonyms $ typeApplyList tp instantiation
-matchFieldTypes (MatchTargetThunk arity) _ = typeToStrict (TCon $ TConDataType $ idFromString "$UnsafePtr") : replicate arity (TCon $ TConDataType $ idFromString "$UnsafePtr")
 matchFieldTypes (MatchTargetTuple _) instantiation = instantiation
 
 typeApplyArguments :: TypeEnvironment -> Type -> [Either Type Variable] -> Type
@@ -243,15 +245,12 @@ bindType env (Bind _ (BindTargetTuple arity) args) = typeToStrict $ foldl ap (TC
     ap t1 (Left t2) = t1 `TAp` t2
 -- When binding to a global function, we get a thunk in WHNF (TypeFunction) if not enough arguments were passed,
 -- or TypeAnyThunk (not in WHNF) otherwise.
-bindType env (Bind _ (BindTargetFunction (VarGlobal (GlobalFunction fn arity fntype))) args)
+bindType env (Bind _ (BindTargetFunction (GlobalFunction fn arity fntype)) args)
   | arity > valueArgCount = typeToStrict $ tp
   | otherwise = tp
   where
     tp = typeRemoveArgumentStrictness $ typeApplyArguments env fntype args
     valueArgCount = length $ filter isRight args
-bindType env (Bind _ (BindTargetFunction fn) args)
-  | variableType fn == typeUnsafePtr = typeUnsafePtr
-  | otherwise = typeApplyArguments env (variableType fn) args
 bindType env (Bind _ (BindTargetThunk fn) args) = typeApplyArguments env (variableType fn) args
 
 bindLocal :: TypeEnvironment -> Bind -> Local
@@ -263,7 +262,7 @@ data Expr
   -- A literal value. Note that strings are allocated, integers and floats not.
   = Literal !Literal
   -- Calls a function. The number of arguments should be equal to the number of parameters of the specified function.
-  | Call !Global ![Either Type Variable]
+  | Call !GlobalFunction ![Either Type Variable]
   | Instantiate !Variable ![Type]
   -- Evaluates a value to WHNF or returns the value if it is already in WHNF.
   | Eval !Variable
@@ -313,7 +312,7 @@ typeOfExpr _ (Seq _ v) = variableType v
 
 dependenciesOfExpr :: Expr -> [Variable]
 dependenciesOfExpr (Literal _) = []
-dependenciesOfExpr (Call g args) = VarGlobal g : [arg | Right arg <- args]
+dependenciesOfExpr (Call g args) = [arg | Right arg <- args]
 dependenciesOfExpr (Instantiate var _) = [var]
 dependenciesOfExpr (Eval var) = [var]
 dependenciesOfExpr (Var var) = [var]
@@ -326,13 +325,10 @@ dependenciesOfExpr (Seq v1 v2) = [v1, v2]
 
 variableType :: Variable -> Type
 variableType (VarLocal (Local _ t)) = t
-variableType (VarGlobal (GlobalFunction _ 0 t)) = t
-variableType (VarGlobal (GlobalFunction _ _ t)) = typeToStrict t
 variableType (VarGlobal (GlobalVariable _ t)) = t
 
 variableName :: Variable -> Id
 variableName (VarLocal (Local x _)) = x
-variableName (VarGlobal (GlobalFunction x _ _)) = x
 variableName (VarGlobal (GlobalVariable x _)) = x
 
 callingConvention :: [Annotation] -> CallingConvention

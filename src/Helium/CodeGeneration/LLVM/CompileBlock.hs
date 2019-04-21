@@ -77,7 +77,6 @@ compileInstruction env supply (Iridium.Match var target _ args next)
     (supply'', supply''') = splitNameSupply supply'
     LayoutPointer struct = case target of
       Iridium.MatchTargetConstructor (Iridium.DataTypeConstructor conId _) -> findMap conId (envConstructors env)
-      Iridium.MatchTargetThunk arity -> error "MatchTargetThunk not supported"-- LayoutPointer $ thunkStruct arity
       Iridium.MatchTargetTuple arity -> LayoutPointer $ tupleStruct arity
 compileInstruction env supply (Iridium.Case var (Iridium.CaseConstructor alts))
   -- All constructors are pointers
@@ -176,7 +175,7 @@ compileExpression env supply expr@(Iridium.Call to@(Iridium.GlobalFunction globa
         { tailCallKind = Nothing
         , callingConvention = compileCallingConvention convention
         , returnAttributes = []
-        , function = Right $ toOperand env (Iridium.VarGlobal to)
+        , function = Right $ globalFunctionToOperand env to
         , arguments = [(toOperand env arg, []) | Right arg <- args]
         , functionAttributes = []
         , metadata = []
@@ -200,7 +199,7 @@ compileExpression env supply expr@(Iridium.Call to@(Iridium.GlobalFunction globa
           { tailCallKind = Nothing
           , callingConvention = compileCallingConvention convention
           , returnAttributes = []
-          , function = Right $ toOperand env (Iridium.VarGlobal to)
+          , function = Right $ globalFunctionToOperand env to
           , arguments = map (\arg -> (arg, [])) argOperands
           , functionAttributes = []
           , metadata = []
@@ -215,7 +214,7 @@ compileExpression env supply expr@(Iridium.Call to@(Iridium.GlobalFunction globa
         { tailCallKind = Nothing
         , callingConvention = compileCallingConvention convention
         , returnAttributes = []
-        , function = Right $ toOperand env (Iridium.VarGlobal (Iridium.GlobalFunction global (arity - 1) $ Iridium.typeFromFunctionType $ Iridium.FunctionType (init argTypes) $ Core.TCon $ Core.TConDataType $ idFromString "Int"))
+        , function = Right $ globalFunctionToOperand env (Iridium.GlobalFunction global (arity - 1) $ Iridium.typeFromFunctionType $ Iridium.FunctionType (init argTypes) $ Core.TCon $ Core.TConDataType $ idFromString "Int")
         , arguments = [(toOperand env arg, []) | Right arg <- init args]
         , functionAttributes = []
         , metadata = []
@@ -258,7 +257,6 @@ compileExpression env supply (Iridium.PrimitiveExpr primName args) name = compil
 compileExpression env supply (Iridium.Undefined ty) name = [toName name := Select (ConstantOperand $ Int 1 1) (ConstantOperand $ Undef t) (ConstantOperand $ Undef t) []]
   where
     t = compileType env ty
-compileExpression _ _ expr _ = error (show expr)
 
 compileEval :: Env -> NameSupply -> Operand -> Core.Type -> Name -> [Named Instruction]
 compileEval env supply operand tp name
