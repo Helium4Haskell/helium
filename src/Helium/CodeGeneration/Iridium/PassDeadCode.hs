@@ -237,16 +237,22 @@ getArgTypes = map argType
     argType (Left _) = Left ()
 
 transformBind :: NameSupply -> Result -> Bind -> (Bind, Instruction -> Instruction)
-transformBind supply res@(Result env _ _) (Bind var (BindTargetFunction fn@(VarGlobal global@(GlobalFunction _ arity fnType))) args) =
-  (Bind var (BindTargetFunction $ VarGlobal $ transformGlobal res global) args', instr)
+transformBind supply res@(Result env _ _) (Bind var (BindTargetFunction fn@(VarGlobal global@(GlobalFunction _ _ _))) args) =
+  (Bind var target args', instr)
   where
     (args', instr) = transformCall supply res fn args (getArgTypes args)
+    target
+      | arity == 0 = BindTargetThunk $ VarGlobal $ GlobalVariable name tp
+      | otherwise = BindTargetFunction $ VarGlobal global
+    global'@(GlobalFunction name arity tp) = transformGlobal res global
 transformBind _ _ bind = (bind, id)
 
 transformCall :: NameSupply -> Result -> Variable -> [Either Type Variable] -> [Either () Type] -> ([Either Type Variable], Instruction -> Instruction)
 transformCall supply res fn args argTypes = (args', flip (foldr id) instrs)
   where
-    (args', instrs) = unzip $ catMaybes $ mapWithSupply transformArgument supply $ zip (zip args argTypes) $ preservedArguments res $ variableName fn
+    (args', instrs) = unzip $ catMaybes $ mapWithSupply transformArgument supply $ zip (zip args argTypes)
+      -- In case of a LetAlloc bind, the function may be oversaturated. Those oversaturated arguments must always be preserved
+      $ preservedArguments res (variableName fn) ++ repeat True
     
     transformArgument :: NameSupply -> ((Either Type Variable, Either () Type), Bool) -> Maybe (Either Type Variable, Instruction -> Instruction)
     transformArgument _ (_, False) = Nothing

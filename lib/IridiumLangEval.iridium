@@ -73,7 +73,8 @@ oversaturated_self:
   ; Compute values for the new thunk object
   %new_header = literal int 0
   ; new_remaining = o_target_remaining - new_given
-  %new_remaining = prim int16_add(%o_target_remaining: !Int16, %new_given: !Int16)
+  %minus_new_given = prim int16_neg(%new_given: !Int16)
+  %new_remaining = prim int16_add(%o_target_remaining: !Int16, %minus_new_given: !Int16)
   %new_fn = prim thunk_extract_value(%o_target: !$UnsafePtr)
 
   ; Compute the number of oversaturated arguments
@@ -127,5 +128,7 @@ oversaturated_target:
     %target_fn: !$UnsafePtr,
     %ota_new_remaining: !Int16,
     %given: !Int16)
-  jump entry
+
+  %ota_value = call @eval_thunk[1]: (!$UnsafePtr -> $UnsafePtr) $ (%a: !$UnsafePtr)
+  return %ota_value: !$UnsafePtr
 }

@@ -72,12 +72,8 @@ isImported decl = case Core.declAccess decl of
 seqString :: String -> a -> a
 seqString str a = foldr seq a str
 
--- We currently need to fully evaluate string q before calling idFromString. This is caused by the unsafe IO which idFromString does.
--- I think that if idFromString is called with a string which is not yet evaluated, idFromString will be called recursively
--- while evaluating the argument. This causes that there are two unsafe calls at the same time, which probably cause some conflict.
--- I don't know what exactly happens, but the compiler loops.
 qualifiedName :: Id -> Id -> Id
-qualifiedName moduleName name = seqString q $ idFromString q
+qualifiedName moduleName name = idFromString q
   where
     q
       | stringFromId name == "main$" = "main"

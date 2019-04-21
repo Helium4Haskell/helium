@@ -105,7 +105,9 @@ toStruct env (Iridium.BindTargetTuple arity) _ = Right $ tupleStruct arity
 toStruct env target arity = Right $ Struct Nothing 0 0 fields
   where
     var = case target of
-      Iridium.BindTargetFunction v -> v
+      Iridium.BindTargetFunction v@(Iridium.VarGlobal (Iridium.GlobalFunction _ fnarity _))
+        | fnarity == 0 && arity /= 0 -> error "Cannot bind arguments to a global function with 0 arguments"
+        | otherwise -> v
       Iridium.BindTargetThunk v -> if arity == 0 then error "Secondary thunks with arity 0 are not supported" else v
     fields =
       StructField Iridium.typeUnsafePtr Nothing -- Thunk* next
@@ -119,9 +121,7 @@ operandTrue = ConstantOperand $ Constant.Int 1 1
 
 -- A thunk has an additional argument, namely the function. We add that argument here
 bindArguments :: Env -> NameSupply -> Iridium.BindTarget -> Int -> Operand -> (Bool, [Named Instruction], [(Operand, Operand)])
-bindArguments env _ target@(Iridium.BindTargetFunction (Iridium.VarGlobal (Iridium.GlobalFunction fn arity _))) givenArgs self
-  | arity - givenArgs < 0 = error ("Negative 'remaining', thunk is oversaturated: " ++ show target)
-  | otherwise =
+bindArguments env _ target@(Iridium.BindTargetFunction (Iridium.VarGlobal (Iridium.GlobalFunction fn arity _))) givenArgs self =
   ( True
   , []
   , [ (self, operandTrue)
