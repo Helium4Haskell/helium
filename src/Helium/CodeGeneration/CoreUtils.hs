@@ -136,8 +136,11 @@ setExportsPublic implicit (exports,exportCons,exportData,exportDataCon,exportMod
   where
     setPublic decl_ | isQual decl_ && (isInstance decl_ || isTypeSynonym decl_ || declPublic decl_) = 
                         let name = stringFromId $! declName decl_
-                            newname = idFromString $! unQualifyName name
-                        in [decl_{ declName = newname, declAccess = (declAccess decl_){ accessPublic = True } }, decl_{declAccess = (declAccess decl_){ accessPublic = False }}]
+                            newname = idFromString $! (unQualifyName name)
+                        in if not ("Dict" `isPrefixOf` name) then
+                            [decl_{ declName = newname, declAccess = (declAccess decl_){ accessPublic = True } }, decl_{declAccess = (declAccess decl_){ accessPublic = False }}]
+                           else
+                            [decl_]
                     | isQual decl_ = 
                         [decl_{declAccess = (declAccess decl_){ accessPublic = False }}]
                     | isInstance decl_ || isTypeSynonym decl_ || declPublic decl_ =

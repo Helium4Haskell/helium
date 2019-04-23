@@ -13,12 +13,16 @@ SEM Module
   | Module  exports . namesInScope    = @scopeNoConflicts ++ map head @declDouble
                     . ambiguousNames  = @ambiguousConflicts
                     . modulesInScope  = (@moduleName : @fileName : @body.importedModules)
-                    . tyconsInScope   = map fst @uniqueTypeConstructors ++ map head @duplicatedTypeConstructors
+                    . tyconsInScope   = @allTycons
+                    . consAndClasses  = @allTycons ++ @allClassNames 
                     . ambiguousTyCons = @ambiguousTypeConstructors
                     . consInScope     = @valueConstructorsWithParents
                     . allConsInScope  = @valueConstructorsWithParents ++ concat @ambiguousValueConstructorsWithParents
                     . duplicatedCons  = @duplicatedValueConstructors
                     . ambiguousCons   = @ambiguousValueConstructors
+            loc     . allClassNames   = M.keys @classNamesEnv
+                    . allTycons       = map fst @uniqueTypeConstructors
+                                        ++ map head @duplicatedTypeConstructors
 
 SEM Module 
   | Module    loc . exportErrors = let importErrors = @body.importErrors
@@ -42,6 +46,7 @@ ATTR MaybeExports Exports Export
       ambiguousNames    : { [[Name]] }
       modulesInScope    : Names
       tyconsInScope     : Names
+      consAndClasses    : Names
       ambiguousTyCons   : { [[Name]] }
       consInScope       : { [(Name, Name)] }
       allConsInScope    : { [(Name, Name)] }
@@ -108,11 +113,11 @@ SEM Export
     | Variable    lhs . exportErrors =  checkExport ExportVariable @name.self @lhs.namesInScope @lhs.ambiguousNames
                   lhs . totalExports = setTotal @name.self @lhs.namesInScope (show @name.self)
     | TypeOrClassComplete
-                  lhs . exportErrors =  checkExport ExportTypeConstructorOrClass @name.self @lhs.tyconsInScope @lhs.ambiguousTyCons
-                  lhs . totalExports = setTotal @name.self @lhs.tyconsInScope @showExp ++ setTotalCons @name.self @lhs.allConsInScope @showExp
+                  lhs . exportErrors = checkExport ExportTypeConstructorOrClass @name.self @lhs.consAndClasses @lhs.ambiguousTyCons
+                  lhs . totalExports = setTotal @name.self @lhs.consAndClasses @showExp ++ setTotalCons @name.self @lhs.allConsInScope @showExp
                   loc . showExp      = (show @name.self) ++ "(..)"
     | TypeOrClass lhs . exportErrors =  checkExport ExportTypeConstructorOrClass @name.self
-                                           @lhs.tyconsInScope @lhs.ambiguousTyCons
+                                           @lhs.consAndClasses @lhs.ambiguousTyCons
                                             ++
                                             concatMap
                                                 (\name ->
@@ -120,7 +125,7 @@ SEM Export
                                                         @lhs.consInScope @lhs.duplicatedCons @lhs.ambiguousCons
                                                 )
                                                 @names.toList
-                  lhs . totalExports = setTotal @name.self @lhs.tyconsInScope @showExp ++ concatMap (\n -> setTotal n (map fst @lhs.consInScope) @showExp) @names.toList
+                  lhs . totalExports = setTotal @name.self @lhs.consAndClasses @showExp ++ concatMap (\n -> setTotal n (map fst @lhs.consInScope) @showExp) @names.toList
                   loc . showExp      = (show @name.self) ++ "(" ++ intercalate "," (map show @names.toList) ++ ")"
     | Module      lhs . exportErrors =  checkExport ExportModule @name.self
                                            @lhs.modulesInScope []

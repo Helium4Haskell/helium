@@ -20,20 +20,20 @@ import Helium.Utils.Utils
 dataDictionary :: UHA.Declaration -> [Custom] -> CoreDecl
 dataDictionary  (UHA.Declaration_Data _ _ (UHA.SimpleType_SimpleType _ name names) constructors _) origin =
     DeclValue 
-    { declName    = idFromString ("$dictEq$" ++ getNameName name)
+    { declName    = idFromString ("$dictPrelude.Eq$" ++ getNameName name)
     , declAccess  = public
     , valueEnc    = Nothing
     , valueValue  = eqDict names constructors
-    , declCustoms = [ custom "type" ("DictEq$" ++ getNameName name) ] 
+    , declCustoms = [ custom "type" ("DictPrelude.Eq$" ++ getNameName name) ] 
         ++ map (custom "typeVariable" . getNameName) names
-        ++ map (\n -> custom "superInstance" ("Eq-" ++ getNameName n)) names
+        ++ map (\n -> custom "superInstance" ("Prelude.Eq-" ++ getNameName n)) names
     }
 dataDictionary _ _ = error "pattern match failure in CodeGeneration.Deriving.dataDictionary"
 
 eqDict :: [UHA.Name] -> [UHA.Constructor] -> Expr
 eqDict names constructors = foldr Lam dictBody (map idFromName names)
     where
-        dictBody = let_ (idFromString "func$eq") (eqFunction constructors) (Ap (Ap (Con $ ConId $ idFromString $ "DictEq") (var "default$Eq$/=")) (var "func$eq"))
+        dictBody = let_ (idFromString "func$eq") (eqFunction constructors) (Ap (Ap (Con $ ConId $ idFromString $ "DictPrelude.Eq") (var "default$Prelude.Eq$/=")) (var "func$eq"))
 -- Example: data X a b = C a b Int | D Char b
 eqFunction :: [UHA.Constructor] -> Expr
 eqFunction constructors = 
@@ -95,7 +95,7 @@ eqFunForType :: UHA.Type -> Expr
 eqFunForType t = 
     case t of
         UHA.Type_Variable _ n             -> Var (idFromName n) 
-        UHA.Type_Constructor _ n          -> var ("$dictEq$" ++ show n)
+        UHA.Type_Constructor _ n          -> var ("$dictPrelude.Eq$" ++ show n)
         UHA.Type_Application _ _ f xs     -> foldl Ap (eqFunForType f) (map eqFunForType xs)
         UHA.Type_Parenthesized _ ty       -> eqFunForType  ty
         _ -> internalError "DerivingEq" "eqFunForType" "unsupported type"

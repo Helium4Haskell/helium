@@ -43,7 +43,7 @@ dataShowFunction classEnv tse (UHA.Declaration_Data _ _ (UHA.SimpleType_SimpleTy
             )
         )   
         ( (map idFromName names ++ [valueId])
-        ++ [idFromString "$instanceDictShow", valueId])
+        ++ [idFromString "$instanceDictPrelude.Show", valueId])
 dataShowFunction _ _ _ _ _ = error "not supported"
 
 --TODO Fix qual
@@ -57,7 +57,7 @@ dataDictionary classEnv tse decl@(UHA.Declaration_Data _ _ (UHA.SimpleType_Simpl
     , valueValue  = makeShowDictionary (length names)
     , declCustoms = [ custom "type" ("DictPrelude.Show$" ++ getNameName name)] 
                 ++ map (custom "typeVariable" . getNameName) names
-                ++ map (\n -> custom "superInstance" ("Show-" ++ getNameName n)) names
+                ++ map (\n -> custom "superInstance" ("Prelude.Show-" ++ getNameName n)) names
                 ++ origin
     }
   where
@@ -68,7 +68,7 @@ dataDictionary classEnv tse decl@(UHA.Declaration_Data _ _ (UHA.SimpleType_Simpl
            ids  = map idFromName names
            list = map idFromString ["showsPred", "showList", "showDef"]
            declarations = zipWith Bind list [Var $ idFromString "default$Prelude.Show$showsPrec", Var $ idFromString "default$Prelude.Show$showList", showBody]
-           body = Let (Rec declarations) (foldl Ap (Con $ ConId $ idFromString "DictShow") $ map Var list)
+           body = Let (Rec declarations) (foldl Ap (Con $ ConId $ idFromString "DictPrelude.Show") $ map Var list)
        in foldr Lam body ids
 dataDictionary _ _ _ _ _ = error "not supported"
 

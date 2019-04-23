@@ -61,7 +61,7 @@ SEM Declaration
                     , Core.CustomInt
                         (length @simpletype.typevariables)
                     ]
-                    ++ originCustoms @lhs.modulename @range.self
+                    ++ @origin
                 }
             ]
             ++
@@ -81,12 +81,12 @@ SEM Declaration
                     , Core.declCustoms = [ Core.CustomInt (length @simpletype.typevariables) ] ++ @origin})
             [@simpletype.name, @qualname]
         ++ 
-        (if "Show" `elem` map show @derivings.self 
+        (if "Prelude.Show" `elem` map show @derivings.self 
          then [ DerivingShow.dataDictionary (classEnvironment @lhs.importEnv) (typeSynonyms @lhs.importEnv) @self @lhs.moduleQual @origin ]
          else []
         )
         ++
-        (if "Eq" `elem` map show @derivings.self 
+        (if "Prelude.Eq" `elem` map show @derivings.self 
          then [ DerivingEq.dataDictionary @self @origin]
          else []
         )
@@ -209,12 +209,13 @@ SEM Declaration
     | Class             loc . superClasses = getSuperClasses @contextQual
                             . contextQual  = map (convertContextItemToQualified @lhs.importEnv) @context.self
                             . qualName     = convertClassNameToQualified @lhs.importEnv @simpletype.name
+                            . origin       = originCustoms @lhs.modulename @range.self
                         lhs.decls    = let 
                                             isInfix (Module.DeclCustom{
                                                 Core.declKind = (Core.DeclKindCustom n)
                                             }) = stringFromId n `isSuffixOf` " infix"
                                             isInfix _ = False
-                                        in (classFunctions @lhs.importEnv (getNameName @qualName) $ constructFunctionMap @lhs.importEnv (length @superClasses) @qualName) ++ 
+                                        in (classFunctions @lhs.importEnv (getNameName @qualName) @origin $ constructFunctionMap @lhs.importEnv (length @superClasses) @qualName) ++ 
                                         [
                                             Core.DeclCustom
                                                 {

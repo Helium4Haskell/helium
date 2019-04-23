@@ -39,16 +39,17 @@ constructSuperClassMap env name =
     in maybe err f (M.lookup name $ classEnvironment env)
 
 --returns for every function in a class the function that retrieves that class from a dictionary
-classFunctions :: ImportEnvironment -> String -> [(Name, Int, DictLabel)] -> [CoreDecl]
-classFunctions importEnv className combinedNames = [DeclCon
+classFunctions :: ImportEnvironment -> String -> [Custom] -> [(Name, Int, DictLabel)] -> [CoreDecl]
+classFunctions importEnv className origin combinedNames = [DeclCon
                                                     { declName = idFromString ("Dict" ++ className)
                                                     , declAccess  = public
                                                     , declArity   = length superclasses + length combinedNames
                                                     , conTag      = 0
-                                                    , declCustoms = [ custom "type" ("Dict$" ++ className) ]       
+                                                    , declCustoms = [ custom "type" ("Dict$" ++ className) ] ++ origin  
                                                     }]
                                                     ++ map superDict superclasses ++ concatMap classFunction combinedNames
         where
+            custom' = CustomLink (idFromString "dict") (DeclKindCustom (idFromString "data"))
             labels = map (\(_, _, l)->l) superclasses ++ map (\(_, _, l)->l) combinedNames
             superclasses = constructSuperClassMap importEnv className
             superDict :: (String, Int, DictLabel) -> CoreDecl

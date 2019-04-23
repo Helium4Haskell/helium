@@ -59,7 +59,7 @@ typeFromCustoms _ _ = error "Pattern match failure in ModuleSystem.CoreToImportE
 nameFromCustoms :: String -> Id -> String -> [Custom] -> Name
 nameFromCustoms _ _ conName [] =
     internalError "CoreToImportEnv" "nameFromCustoms"
-        ("constuctor import without name: " ++ conName)
+        ("constructor import without name: " ++ conName)
 nameFromCustoms importedInModule importedFromModId conName ( CustomLink parentid (DeclKindCustom ident) : cs) 
     | stringFromId ident == "data" = makeImportName importedInModule importedFromModId "" parentid
     | otherwise =
@@ -146,9 +146,13 @@ makeOperatorTable oper _ =
         ("infix decl missing priority or associativity: " ++ show oper)
 
 makeImportName :: String -> Id -> String -> Id -> Name
-makeImportName importedInMod importedFromMod origin n = setNameOrigin origin $
+makeImportName importedInMod importedFromMod origin n =
+    makeImportNameName importedInMod importedFromMod origin (nameFromId n)
+
+makeImportNameName :: String -> Id -> String -> Name -> Name
+makeImportNameName importedInMod importedFromMod origin n = setNameOrigin origin $
     setNameRange 
-        (nameFromId n)
+        n
         (makeImportRange (idFromString importedInMod) importedFromMod)
 
 makeFullQualifiedImportName:: String -> Name -> Name
@@ -222,7 +226,7 @@ getImportEnvironment importedInModule decls = foldr (insertDictionaries imported
                         , declAccess  = Imported{importModule = importedFromModId}
                         , declCustoms = cs
                         } ->
-                \env ->  
+                \env ->
                     let
                         nEnv = addType
                                     (makeImportName importedInModule importedFromModId (originFromCustoms cs) n)
@@ -249,11 +253,17 @@ getImportEnvironment importedInModule decls = foldr (insertDictionaries imported
            DeclCon { declName    = n
                    , declAccess  = Imported{importModule = importedFromModId}
                    , declCustoms = cs
-                   } -> 
+                   } -> let name       = stringFromId n
+                            makeName x = makeImportName importedInModule importedFromModId (originFromCustoms cs) x
+                            typename   = if "Dict" `isPrefixOf` name 
+                                         then makeImportNameName importedInModule importedFromModId "" 
+                                                (nameFromString $ "Dict$" ++ drop 4 name)
+                                         else nameFromCustoms importedInModule importedFromModId name cs 
+                        in
               addValueConstructor
-                (makeImportName importedInModule importedFromModId (originFromCustoms cs) n)
+                (makeName n)
                 (typeFromCustoms (stringFromId n) cs)
-                (nameFromCustoms importedInModule importedFromModId (stringFromId n) cs)
+                typename
 
            -- type constructor import
            DeclCustom { declName    = n
