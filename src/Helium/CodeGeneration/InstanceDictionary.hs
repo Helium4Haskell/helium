@@ -100,8 +100,8 @@ combineDeclIndex [] _ = error "Inconsistent mapping"
 combineDeclIndex names decls = map (\(name, _, label) -> (label, name, lookup name decls)) names
 
 --returns a dictionary with specific implementations for every instance
-constructDictionary :: ImportEnvironment -> [(String, Name)] -> [(Name, Int, DictLabel)] -> [(Name, CoreDecl)] -> Name -> String -> [Name] -> CoreDecl
-constructDictionary importEnv instanceSuperClass combinedNames whereDecls className insName typeVariables =
+constructDictionary :: ImportEnvironment -> [(String, Name)] -> [(Name, Int, DictLabel)] -> [(Name, CoreDecl)] -> Name -> String -> [Name] -> [Custom] -> CoreDecl
+constructDictionary importEnv instanceSuperClass combinedNames whereDecls className insName typeVariables origin =
         let 
             
             val = DeclValue 
@@ -112,6 +112,7 @@ constructDictionary importEnv instanceSuperClass combinedNames whereDecls classN
                 , declCustoms = custom "type" ("Dict" ++ getNameName className ++ "$" ++ insName)
                             :    map (custom "typeVariable" . getNameName) typeVariables 
                             ++   map (\(superName, superVar) -> custom "superInstance" $ superName ++ "-" ++ getNameName superVar) instanceSuperClass
+                            ++ origin
                 }
             in val
         where 

@@ -238,6 +238,7 @@ SEM Declaration
                                                 @where.whereDeclarations 
                                                 (addQualified @lhs.moduleQual @qualName)
                                                 @loc.typeName (namesInType @loc.type)
+                                                (originCustoms @lhs.modulename @range.self)
                                             ]
                         loc .   contextQual = map (convertContextItemToQualified @lhs.importEnv) @context.self
                         loc .   qualName    = convertClassNameToQualified @lhs.importEnv @name.self
