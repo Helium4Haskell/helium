@@ -332,6 +332,9 @@ getImportEnvironment importedInModule decls = foldr (insertDictionaries imported
                             className = nameFromString $ stringFromId n
                             classVariables = getTypeVariable $ head (selectCustom "ClassTypeVariables" cs)
                             superClasses = selectCustom "SuperClass" cs
+                            origin = originFromCustoms cs
+                            originModule = takeWhile (/=':') origin
+                            qualifiedName = nameFromString $ originModule ++ "." ++ unQualifyName (stringFromId n)
                             addClass :: Name -> [Custom] -> ImportEnvironment -> ImportEnvironment
                             addClass className superClasses env = let
                                     classEnv = classEnvironment env
@@ -347,7 +350,7 @@ getImportEnvironment importedInModule decls = foldr (insertDictionaries imported
                                     CustomInt n
                                 ]) = (nameFromString $ stringFromId fname, makeTpSchemeFromType $ parseFromString type_ $ stringFromBytes tps, False, n == 1)
                             classMembers = (classVariables, map getFunction $ selectCustom "Function" cs)
-                        in addClass className superClasses . addClassMember className classMembers 
+                        in addClassName className qualifiedName . addClass className superClasses . addClassMember className classMembers 
            -- !!! Print importedFromModId from "declAccess = Imported{importModule = importedFromModId}" as well
            DeclAbstract{ declName = n } ->
               intErr  ("don't know how to handle declared DeclAbstract: " ++ stringFromId n)
