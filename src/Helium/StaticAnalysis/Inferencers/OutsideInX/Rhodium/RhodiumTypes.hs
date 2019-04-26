@@ -274,7 +274,8 @@ instance UB.Rep ConstraintInfo
 
 instance (UB.Rep1 UB.AlphaD ConstraintInfo)
 
-instance UB.Subst MonoType ConstraintInfo
+instance UB.Subst MonoType ConstraintInfo where
+    substs _ = id
 
 instance UB.Rep1 (UB.SubstD MonoType) ConstraintInfo
 

@@ -383,6 +383,7 @@ instance (IsTouchable m TyVar, HasGraph m TyVar RType Constraint ConstraintInfo,
         (vars, (given, wanted)) <- unbind b
         ug <- uniqueGroup
         given' <- mapM (convertConstraint basedOn isOriginal True (ug : groups) (priority + 1)) given
+        setGivenTouchables (concatMap getFreeVariables given)
         wanted' <- mapM (convertConstraint basedOn isOriginal False (ug : groups) (priority + 2)) wanted
         return $ markTouchables (map (\v -> (v, priority + 2)) vars) (insertGraphs emptyTGGraph (given' ++ wanted'))
         --error $ show (vars, given, wanted)

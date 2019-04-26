@@ -139,7 +139,7 @@ tpSchemeToMonoType fams tps =
         convertPred :: Predicate -> Constraint
         convertPred (Predicate c v) = case lookup v tyvars of
             Nothing -> internalError "TopConversion" "tpSchemeToMonoType" "Type variable not found"
-            Just tv -> Constraint_Class c [var tv] Nothing
+            Just tv -> Constraint_Class c [var tv] (Just emptyConstraintInfo)
         in (map convertPred qs , qmap, monoType)
 
 tpToMonoType :: TypeFamilies -> Tp -> MonoType

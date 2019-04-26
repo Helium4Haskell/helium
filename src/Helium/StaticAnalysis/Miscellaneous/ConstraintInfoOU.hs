@@ -338,8 +338,9 @@ functionSpineOfLength i tp =
    in (bs, foldr (:-->:) a cs)
 
 modCi :: (ConstraintInfo -> ConstraintInfo) -> Constraint -> Constraint
-modCi f (Constraint_Unify m1 m2 ci) = (Constraint_Unify m1 m2 (f <$> ci))
-modCi f (Constraint_Inst m1 m2 ci) = (Constraint_Inst m1 m2 (f <$> ci))
+modCi f (Constraint_Unify m1 m2 ci) = Constraint_Unify m1 m2 (f <$> ci)
+modCi f (Constraint_Inst m1 m2 ci) = Constraint_Inst m1 m2 (f <$> ci)
+modCi f (Constraint_Class s cs ci) = Constraint_Class s cs (f <$> ci)
 
   
 isTupleConstructor :: String -> Bool
