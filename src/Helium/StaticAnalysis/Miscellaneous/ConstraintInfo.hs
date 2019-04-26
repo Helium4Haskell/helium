@@ -40,6 +40,8 @@ import Control.Applicative
 
 import Helium.Utils.OneLiner
 
+ 
+import Debug.Trace
 
 data ConstraintInfo =
    CInfo_ { location      :: String
@@ -50,7 +52,7 @@ data ConstraintInfo =
           }
      
 instance Show ConstraintInfo where
-   show = location
+   show x = location x ++ show (properties x)
 
 -------------------------------------------------------------------------
 -- Properties
@@ -80,7 +82,29 @@ data Property
    | NeverDirectiveProperty (Predicate, ConstraintInfo)
    | CloseDirectiveProperty (String, ConstraintInfo)
    | DisjointDirectiveProperty (String, ConstraintInfo) (String, ConstraintInfo)
- 
+
+instance Show Property where
+   show FolkloreConstraint = "FolkloreConstraint"
+   show (ConstraintPhaseNumber _) = "ConstraintPhaseNumber"
+   show (HasTrustFactor _) = "HasTrustFactor"
+   show (FuntionBindingEdge _) = "FuntionBindingEdge"
+   show (InstantiatedTypeScheme _) = "InstantiatedTypeScheme"
+   show (SkolemizedTypeScheme _) = "SkolemizedTypeScheme"
+   show (IsUserConstraint _ _) = "IsUserConstraint"
+   show (WithHint _ ) = "WithHint"
+   show (ReductionErrorInfo _) = "ReductionErrorInfo"
+   show (FromBindingGroup) = "FromBindingGroup"
+   show (IsImported _) = "IsImported"
+   show (ApplicationEdge _ lc) = "ApplicationEdge" ++ show (map assignedType lc)
+   show ExplicitTypedBinding = "ExplicitTypedBinding"
+   show (ExplicitTypedDefinition _ _) = "ExplicitTypedDefinition"
+   show (Unifier _ _) = "Unifier"
+   show (EscapedSkolems _) = "EscapedSkolems"
+   show (PredicateArisingFrom _) = "PredicateArisingFrom"
+   show (TypeSignatureLocation _) = "TypeSignatureLocation"
+   show (TypePair (t1, t2)) = "TypePair (" ++ show t1 ++ ", " ++ show t2 ++ ")" 
+
+
 class HasProperties a where
    getProperties :: a -> Properties
    addProperty   :: Property   -> a -> a
@@ -299,7 +323,7 @@ isHighlyTrusted info =
    product [ i | HasTrustFactor i <- properties info ] >= highlyTrustedFactor
 
 setTypePair :: (Tp, Tp) -> ConstraintInfo -> ConstraintInfo
-setTypePair pair = addProperty (TypePair pair)
+setTypePair pair ci = addProperty (TypePair pair) ci
 
 typepair :: ConstraintInfo -> (Tp, Tp)
 typepair info = fromJust (maybeHead [ pair | TypePair pair <- getProperties info ])

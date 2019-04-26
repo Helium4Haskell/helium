@@ -26,9 +26,14 @@ ATTR Module
 -------------------------------------------------------------------------------
 -- Includes
 
+INCLUDE "LocalInfo.ag"
+INCLUDE "GlobalInfo.ag"
+INCLUDE "TypeInferenceInfo.ag"
 INCLUDE "TypeInferenceRules.ag"
 INCLUDE "HeliumPartialSyntax.ag"
 INCLUDE "UHA_Syntax.ag"
+
+-- INCLUDE "TS_PatternMatching.ag"
 
 
   
@@ -41,11 +46,14 @@ imports {
 import Helium.StaticAnalysis.Messages.Messages
 import Helium.StaticAnalysis.Messages.TypeErrors
 import Helium.StaticAnalysis.Messages.Warnings
-import Helium.StaticAnalysis.Miscellaneous.ConstraintInfo
+import Helium.StaticAnalysis.Miscellaneous.ConstraintInfoOU
 import Helium.StaticAnalysis.Inferencers.OutsideInX.TopConversion
 import Helium.StaticAnalysis.Inferencers.OutsideInX.BindingGroupAnalysis
 import Helium.StaticAnalysis.Inferencers.OutsideInX.ConstraintHelper
 import Helium.StaticAnalysis.Miscellaneous.TypeConversion
+import Helium.StaticAnalysis.Miscellaneous.UHA_Source
+import Helium.StaticAnalysis.Miscellaneous.DoublyLinkedTree
+import Helium.StaticAnalysis.HeuristicsOU.HeuristicsInfo
 
 -- UHA syntax
 import Helium.Syntax.UHA_Syntax
@@ -68,9 +76,10 @@ import qualified Unbound.LocallyNameless as UL
 import Unbound.LocallyNameless(integer2Name)
 import Unbound.LocallyNameless.Fresh
 
-import Cobalt.Core
-import Cobalt.OutsideIn
+import Helium.StaticAnalysis.Inferencers.OutsideInX.Rhodium.RhodiumTypes
+import Helium.StaticAnalysis.Inferencers.OutsideInX.Rhodium.RhodiumSolver
 
+import qualified Rhodium.Solver.SolveResult as SR
 
 import Top.Types.Schemes
 import Top.Types.Quantification hiding (bindTypeVariables)

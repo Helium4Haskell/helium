@@ -107,6 +107,7 @@ Executable helium
                     , lvmlib >= 1.2
                     , cobalt >= 0.1.0.1
                     , unbound
+                    , rhodium
                     , helium 
   ghc-options:       -Wall
   default-language:  Haskell98

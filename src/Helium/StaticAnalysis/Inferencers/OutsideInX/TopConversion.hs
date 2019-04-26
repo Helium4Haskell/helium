@@ -5,9 +5,9 @@
 module Helium.StaticAnalysis.Inferencers.OutsideInX.TopConversion(
         monoTypeToTp
     ,   tpSchemeListDifference
+    ,   bindVariables
     ,   typeToPolytype
     ,   typeToMonoType
-    ,   getMonoFromPoly
     ,   getTypeVariablesFromMonoType
     ,   tpSchemeToMonoType
     ,   tpSchemeToPolyType
@@ -27,7 +27,6 @@ module Helium.StaticAnalysis.Inferencers.OutsideInX.TopConversion(
 
 import Unbound.LocallyNameless hiding (Name, freshen)
 import Unbound.LocallyNameless.Types (GenBind(..))
-import Cobalt.Core hiding (split)
 import Top.Types.Classes
 import Top.Types.Primitive
 import Top.Types.Quantification
@@ -38,6 +37,8 @@ import Helium.Syntax.UHA_Syntax
 import Helium.Syntax.UHA_Utils
 import Helium.Utils.Utils
 import Helium.StaticAnalysis.Miscellaneous.TypeConversion
+import Helium.StaticAnalysis.Miscellaneous.ConstraintInfoOU
+import Helium.StaticAnalysis.Inferencers.OutsideInX.Rhodium.RhodiumTypes
 import Helium.ModuleSystem.ImportEnvironment
 import qualified Data.Map as M
 import Control.Monad.State
@@ -57,12 +58,15 @@ deriving instance Show ContextItem
 type TypeFamilies = [(String, Int)]
 
 bindVariables :: [TyVar] -> PolyType -> PolyType
-bindVariables = flip (foldr ((PolyType_Bind .) . bind))
+bindVariables = flip (foldr ((PolyType_Bind "0" .) . bind))
+
+bindVariables' :: [(String, TyVar)] -> PolyType -> PolyType
+bindVariables' = flip (foldr (\(s, t) p -> PolyType_Bind s (bind t p)))
 
 
 monoTypeToTp :: MonoType -> Tp
 monoTypeToTp (MonoType_App (MonoType_Con "[]") (MonoType_Con "Char")) = TCon "String"
-monoTypeToTp (MonoType_Var n)   = TVar (fromInteger (name2Integer n))
+monoTypeToTp (MonoType_Var _ n) = TVar (fromInteger (name2Integer n))
 monoTypeToTp (MonoType_Con n)   = TCon n
 monoTypeToTp (MonoType_App f a) = TApp (monoTypeToTp f) (monoTypeToTp a)
 monoTypeToTp (MonoType_Fam s a) = foldl TApp (TCon s) (map monoTypeToTp a)
@@ -74,9 +78,9 @@ polyTypeToTypeScheme p = let
         in bindTypeVariables quant qualifiedType
     where
         constraintToPredicate :: Constraint -> [Predicate]
-        constraintToPredicate (Constraint_Class c mts) = map (\m -> Predicate c $ monoTypeToTp m) mts
+        constraintToPredicate (Constraint_Class c mts _) = map (\m -> Predicate c $ monoTypeToTp m) mts
         ptHelper :: PolyType -> FreshM ([Int], [Predicate], Tp)
-        ptHelper (PolyType_Bind b) = do
+        ptHelper (PolyType_Bind s b) = do
             (t, p) <- unbind b
             (qs, ps, tp) <- ptHelper p
             return (fromInteger (name2Integer t) : qs, ps, tp)
@@ -108,9 +112,9 @@ typeToPolytype fams bu t = let
     mapping' :: [(String, TyVar)]
     mapping' = map (\(o, s) -> (fromMaybe (internalError "TopConversion.hs" "typeToPolytype" "Type variable not found") $ lookup (fromInteger o) qmap, integer2Name s)) mapping
     vars = getTypeVariablesFromMonoType mt'
-    in (foldr (\b p -> PolyType_Bind (bind b p)) (PolyType_Mono cs' mt') vars, bu', mapping')
+    in (foldr (\(s, b) p -> PolyType_Bind s (bind b p)) (PolyType_Mono cs' mt') mapping', bu', mapping')
 
-typeToMonoType :: TypeFamilies -> Type -> ([Constraint], [(String, TyVar)], MonoType)
+typeToMonoType :: TypeFamilies -> Type -> ([Constraint ], [(String, TyVar)], MonoType)
 typeToMonoType fams = tpSchemeToMonoType fams . makeTpSchemeFromType
 
 tpSchemeToPolyType :: TypeFamilies -> TpScheme -> PolyType
@@ -120,7 +124,7 @@ tpSchemeToPolyType' :: TypeFamilies -> [String] -> TpScheme -> (PolyType, [(Stri
 tpSchemeToPolyType' fams restricted tps = let 
         (cs, tv, mt) = tpSchemeToMonoType fams tps
         pt' = PolyType_Mono cs mt
-        pt = bindVariables (map snd tv) pt'
+        pt = bindVariables' tv pt'
         --pt = bindVariables (map snd tv) pt'
     in (pt, tv) 
 
@@ -135,11 +139,11 @@ tpSchemeToMonoType fams tps =
         convertPred :: Predicate -> Constraint
         convertPred (Predicate c v) = case lookup v tyvars of
             Nothing -> internalError "TopConversion" "tpSchemeToMonoType" "Type variable not found"
-            Just tv -> Constraint_Class c [var tv]
+            Just tv -> Constraint_Class c [var tv] Nothing
         in (map convertPred qs , qmap, monoType)
 
 tpToMonoType :: TypeFamilies -> Tp -> MonoType
-tpToMonoType fams (TVar v) = MonoType_Var (integer2Name $ toInteger v)
+tpToMonoType fams (TVar v) = var (integer2Name $ toInteger v)
 tpToMonoType fams (TCon n) | isTypeFamily fams (TCon n) = MonoType_Fam n []
                            | otherwise = MonoType_Con n
 tpToMonoType fams ta@(TApp f a) | isTypeFamily fams ta = let 
@@ -167,33 +171,29 @@ isTypeFamily fams tp = let
     in any (\(x, _) -> Just x == cons) fFams
 
 getTypeVariablesFromPolyType :: PolyType -> [TyVar]
-getTypeVariablesFromPolyType (PolyType_Bind (B p t)) = p : getTypeVariablesFromPolyType t
+getTypeVariablesFromPolyType (PolyType_Bind _ (B p t)) = p : getTypeVariablesFromPolyType t
 getTypeVariablesFromPolyType _ = []
 
 getTypeVariablesFromPolyType' :: PolyType -> [TyVar]
-getTypeVariablesFromPolyType' (PolyType_Mono _ m) = getTypeVariablesFromMonoType m
+getTypeVariablesFromPolyType' (PolyType_Mono _ m) = fv m
 getTypeVariablesFromPolyType' _ = []
 
 getTypeVariablesFromMonoType :: MonoType -> [TyVar]
-getTypeVariablesFromMonoType (MonoType_Var v) = [v]
+getTypeVariablesFromMonoType (MonoType_Var _ v) = [v]
 getTypeVariablesFromMonoType (MonoType_Fam _ ms) = nub $ concatMap getTypeVariablesFromMonoType ms
 getTypeVariablesFromMonoType (MonoType_Con _) = []
 getTypeVariablesFromMonoType (MonoType_App f a) = nub $ getTypeVariablesFromMonoType f ++ getTypeVariablesFromMonoType a
 
 getTypeVariablesFromConstraints :: Constraint -> [TyVar]
-getTypeVariablesFromConstraints (Constraint_Unify v1 v2) = nub $ getTypeVariablesFromMonoType v1 ++ getTypeVariablesFromMonoType v2
-getTypeVariablesFromConstraints (Constraint_Class _ vs) = nub $ concatMap getTypeVariablesFromMonoType vs
-
-getMonoFromPoly :: PolyType -> MonoType
-getMonoFromPoly (PolyType_Bind (B p t)) = getMonoFromPoly t
-getMonoFromPoly (PolyType_Mono _ m) = m
+getTypeVariablesFromConstraints (Constraint_Unify v1 v2 _) = nub $ getTypeVariablesFromMonoType v1 ++ getTypeVariablesFromMonoType v2
+getTypeVariablesFromConstraints (Constraint_Class _ vs _) = nub $ concatMap getTypeVariablesFromMonoType vs
 
 getConstraintFromPoly :: PolyType -> [Constraint]
-getConstraintFromPoly (PolyType_Bind (B _ t)) = getConstraintFromPoly t
+getConstraintFromPoly (PolyType_Bind _ (B _ t)) = getConstraintFromPoly t
 getConstraintFromPoly (PolyType_Mono cs _) = cs
 
 polytypeToMonoType :: [(Integer, Integer)] -> Integer -> PolyType -> ([(Integer, Integer)], ((MonoType, [Constraint]), Integer))
-polytypeToMonoType mapping bu (PolyType_Bind b) = let
+polytypeToMonoType mapping bu (PolyType_Bind s b) = let
     ((_, x), bu') = contFreshMRes (unbind b) bu
     in polytypeToMonoType mapping bu' x
 polytypeToMonoType mapping bu (PolyType_Mono cs m) = freshenWithMapping mapping bu (m, cs)
@@ -206,7 +206,7 @@ classEnvironmentToAxioms fams env = concatMap (uncurry classToAxioms) (M.toList 
         instanceToAxiom :: Instance -> Axiom
         instanceToAxiom ((Predicate cn v), supers) = let
                 vars = map (integer2Name  . toInteger) (ftv v ++ concatMap (\(Predicate _ v) -> ftv v) supers)
-                superCons = map (\(Predicate c v) -> Constraint_Class c [tpToMonoType fams v]) supers
+                superCons = map (\(Predicate c v) -> Constraint_Class c [tpToMonoType fams v] Nothing) supers
             in Axiom_Class (bind vars (superCons, cn, [tpToMonoType fams v]))
 
            -- type TypeSynonymEnvironment      = M.Map Name (Int, Tps -> Tp)
@@ -232,7 +232,7 @@ instance Freshen MonoType Integer where
         runState (freshenHelperMT mt) (n, map (integer2Name *** integer2Name) mapping) 
         
 freshenHelperMT :: MonoType -> State (Integer, [(TyVar, TyVar)]) MonoType
-freshenHelperMT (MonoType_Var v') =  
+freshenHelperMT (MonoType_Var _ v') =  
     do
         (uniq, mapping) <- get
         case lookup v' mapping of
@@ -259,13 +259,13 @@ instance Freshen PolyType Integer where
                 (uniq, mapping) <- get
                 let cs' = map (substs (map (\(t, v) -> (t, var v)) mapping)) cs
                 return (PolyType_Mono cs' m')
-            freshenHelper (PolyType_Bind b) = do
+            freshenHelper (PolyType_Bind s b) = do
                 (uniq, mapping) <- get
                 let ((p, t), uniq') = contFreshMRes (unbind b) uniq
                 let p' = integer2Name $ uniq' + 1
                 put (uniq' + 2, (p, p') : mapping)
                 t' <- freshenHelper t
-                return (PolyType_Bind (bind p' t'))
+                return (PolyType_Bind s (bind p' t'))
 
 instance Freshen TyVar Integer where
     freshenWithMapping mapping n v = let 
@@ -292,13 +292,13 @@ instance (Freshen a d, Freshen b d, Freshen c d) => Freshen (a, b, c) d where
 
 
 instance Freshen Constraint Integer where
-    freshenWithMapping mapping n (Constraint_Class cn vs) = let 
+    freshenWithMapping mapping n (Constraint_Class cn vs ci) = let 
         (mapping', (vs', n')) = freshenWithMapping mapping n vs
-        in (mapping', (Constraint_Class cn vs', n'))
-    freshenWithMapping mapping n (Constraint_Unify v1 v2) = let
+        in (mapping', (Constraint_Class cn vs' ci, n'))
+    freshenWithMapping mapping n (Constraint_Unify v1 v2 ci) = let
         (mapping', (v1', n')) = freshenWithMapping mapping n v1
         (mapping'', (v2', n'')) = freshenWithMapping mapping' n' v2
-        in (mapping'', (Constraint_Unify v1' v2', n''))
+        in (mapping'', (Constraint_Unify v1' v2' ci, n''))
 
 
 contFreshMRes :: FreshM a -> Integer -> (a, Integer)
@@ -311,5 +311,5 @@ unbindPolyType :: PolyType -> PolyType
 unbindPolyType = runFreshM . unbindPolyType'
 
 unbindPolyType' :: PolyType -> FreshM PolyType
-unbindPolyType' (PolyType_Bind b) = snd <$> unbind b >>= unbindPolyType'
-unbindPolyType'  pt = return pt
+unbindPolyType' (PolyType_Bind s b) = snd <$> unbind b >>= unbindPolyType'
+unbindPolyType' pt = return pt

@@ -32,6 +32,8 @@ import Data.Maybe
 import Data.Char
 import qualified Data.Map as M
 
+import Debug.Trace
+
 instance HasTrustFactor ConstraintInfo where
    trustFactor cinfo =
       let ntFactor = case (self . attribute . localInfo) cinfo of

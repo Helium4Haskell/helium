@@ -26,6 +26,10 @@ import Helium.StaticAnalysis.Messages.Messages (showNumber, ordinal, prettyAndLi
 import Helium.StaticAnalysis.Heuristics.OnlyResultHeuristics
 import Data.List
 import Helium.StaticAnalysis.Miscellaneous.UHA_Source
+import Helium.Utils.OneLiner
+
+
+import Debug.Trace
 
 -----------------------------------------------------------------------------
 
@@ -412,7 +416,7 @@ fbHasTooManyArguments =
              tvar            = if null (ftv t2) then (-1) else head (ftv t2) -- !!!!!!!!!!!!!!!!!!!
    
          edgeList <- edgesFrom (VertexId tvar)      
-         let maybeNumberOfPatterns = 
+         let maybeNumberOfPatterns =
                 case mapMaybe (maybeFunctionBinding . snd) edgeList of 
                    [i] -> Just i
                    _   -> Nothing
