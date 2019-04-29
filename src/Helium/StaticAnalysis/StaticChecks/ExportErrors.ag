@@ -15,6 +15,8 @@ SEM Module
                     . modulesInScope  = (@moduleName : @fileName : @body.importedModules)
                     . tyconsInScope   = @allTycons
                     . consAndClasses  = @allTycons ++ @allClassNames 
+                    . classNamesEnv   = @classNamesEnv
+                    . classMemberEnv  = classMemberEnvironment @combinedEnv
                     . ambiguousTyCons = @ambiguousTypeConstructors
                     . consInScope     = @valueConstructorsWithParents
                     . allConsInScope  = @valueConstructorsWithParents ++ concat @ambiguousValueConstructorsWithParents
@@ -47,6 +49,8 @@ ATTR MaybeExports Exports Export
       modulesInScope    : Names
       tyconsInScope     : Names
       consAndClasses    : Names
+      classNamesEnv     : ClassNameEnvironment
+      classMemberEnv    : ClassMemberEnvironment
       ambiguousTyCons   : { [[Name]] }
       consInScope       : { [(Name, Name)] }
       allConsInScope    : { [(Name, Name)] }
@@ -92,6 +96,10 @@ setTotal export inScope exportString = [(removeQualified decl, (export, exportSt
 setTotalCons :: Name -> [(Name, Name)] -> String -> [(Name, (Name, String))]
 setTotalCons exportPar inScopePairs exportString = [(removeQualified child, (exportPar, exportString)) | (child, par) <- inScopePairs, par == exportPar ]
 
+setTotalClassMembers :: Name -> Maybe (Names, [(Name, TpScheme, Bool, HasDefault)]) -> String -> [(Name, (Name, String))]
+setTotalClassMembers _ Nothing _                             = []
+setTotalClassMembers exportPar (Just (_, mems)) exportString = map (\(x,_,_,_) -> (x, (exportPar, exportString))) mems
+
 getConflicts :: [(Name, a)] -> [[(Name, a)]]
 getConflicts = let comp (x,_) (y,_) = compare x y
                    eq   (x,_) (y,_) = x == y
@@ -110,27 +118,31 @@ SEM MaybeNames
 
 -- If classes are added, this should be updated aswell
 SEM Export
-    | Variable    lhs . exportErrors =  checkExport ExportVariable @name.self @lhs.namesInScope @lhs.ambiguousNames
-                  lhs . totalExports = setTotal @name.self @lhs.namesInScope (show @name.self)
+    | Variable    lhs . exportErrors    =  checkExport ExportVariable @name.self @lhs.namesInScope @lhs.ambiguousNames
+                  lhs . totalExports    = setTotal @name.self @lhs.namesInScope (show @name.self)
     | TypeOrClassComplete
-                  lhs . exportErrors = checkExport ExportTypeConstructorOrClass @name.self @lhs.consAndClasses @lhs.ambiguousTyCons
-                  lhs . totalExports = setTotal @name.self @lhs.consAndClasses @showExp ++ setTotalCons @name.self @lhs.allConsInScope @showExp
-                  loc . showExp      = (show @name.self) ++ "(..)"
-    | TypeOrClass lhs . exportErrors =  checkExport ExportTypeConstructorOrClass @name.self
-                                           @lhs.consAndClasses @lhs.ambiguousTyCons
-                                            ++
-                                            concatMap
-                                                (\name ->
-                                                    checkConstructorExport ExportConstructor (name, @name.self) 
-                                                        @lhs.consInScope @lhs.duplicatedCons @lhs.ambiguousCons
-                                                )
-                                                @names.toList
-                  lhs . totalExports = setTotal @name.self @lhs.consAndClasses @showExp ++ concatMap (\n -> setTotal n (map fst @lhs.consInScope) @showExp) @names.toList
-                  loc . showExp      = (show @name.self) ++ "(" ++ intercalate "," (map show @names.toList) ++ ")"
-    | Module      lhs . exportErrors =  checkExport ExportModule @name.self
-                                           @lhs.modulesInScope []
-                  lhs . totalExports = [(removeQualified decl, (@name.self, @showExp)) | (m, decls) <- @lhs.exportModuleScope, m == @name.self, decl <- decls]
-                  loc . showExp      = "module " ++ show @name.self
+                  lhs . exportErrors    = checkExport ExportTypeConstructorOrClass @name.self @lhs.consAndClasses @lhs.ambiguousTyCons
+                  lhs . totalExports    = traceShowId $ setTotal @name.self @lhs.consAndClasses @showExp ++ @allCons ++ @allClassMembers
+                  loc . showExp         = (show @name.self) ++ "(..)"
+                  loc . allCons         = setTotalCons @name.self @lhs.allConsInScope @showExp
+                  loc . allClassMembers = setTotalClassMembers @name.self @classMems @showExp
+                  loc . qualName        = M.findWithDefault @name.self @name.self @lhs.classNamesEnv
+                  loc . classMems       = M.lookup @qualName @lhs.classMemberEnv
+    | TypeOrClass lhs . exportErrors    =  checkExport ExportTypeConstructorOrClass @name.self
+                                              @lhs.consAndClasses @lhs.ambiguousTyCons
+                                               ++
+                                               concatMap
+                                                   (\name ->
+                                                       checkConstructorExport ExportConstructor (name, @name.self) 
+                                                           @lhs.consInScope @lhs.duplicatedCons @lhs.ambiguousCons
+                                                   )
+                                                   @names.toList
+                  lhs . totalExports    = setTotal @name.self @lhs.consAndClasses @showExp ++ concatMap (\n -> setTotal n (map fst @lhs.consInScope) @showExp) @names.toList
+                  loc . showExp         = (show @name.self) ++ "(" ++ intercalate "," (map show @names.toList) ++ ")"
+    | Module      lhs . exportErrors    =  checkExport ExportModule @name.self
+                                              @lhs.modulesInScope []
+                  lhs . totalExports    = [(removeQualified decl, (@name.self, @showExp)) | (m, decls) <- @lhs.exportModuleScope, m == @name.self, decl <- decls]
+                  loc . showExp         = "module " ++ show @name.self
 -------------------------------------------
 -- Collecting the imported modules
 
