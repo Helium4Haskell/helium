@@ -145,7 +145,7 @@ setExportsPublic implicit (exports,exportCons,exportData,exportDataCon,exportMod
                             [decl_{ declName = newname, declAccess = (declAccess decl_){ accessPublic = True } }, decl_{declAccess = (declAccess decl_){ accessPublic = False }}]
                            else
                             [decl_]
-                    | isQual decl_ = 
+                    | isQual decl_ =
                         [decl_{declAccess = (declAccess decl_){ accessPublic = False }}]
                     | isInstance decl_ || isTypeSynonym decl_ || declPublic decl_ =
                         [decl_{declAccess = (declAccess decl_){ accessPublic = True } }]
@@ -183,8 +183,9 @@ setExportsPublic implicit (exports,exportCons,exportData,exportDataCon,exportMod
                                     (  elemSet name exportCons
                                     || (elemSet (conTypeName decl_) exportDataCon)
                                     )
-            DeclCustom{}    ->   isExported decl_
-                                    (declKind decl_ `elem` [customData, customTypeDecl] && (elemSet name exportData || elemSet name exportDataCon)
+            DeclCustom{}    ->  isExported decl_
+                                    (declKind decl_ `elem` [customData, customTypeDecl, customClassDefinition] 
+                                                && (elemSet name exportData || elemSet name exportDataCon)
                                     || (declKind decl_ `elem` [customInfix] && elemSet name exports)
                                     )
             _               -> internalError "CoreUtils" "setExportsPublic" "We can only deal with Custom, Value, and Con Core.Decl"
