@@ -68,7 +68,7 @@ SEM Module
                 loc.modulename = maybe "Main" getNameName @name.name
                 loc.moduleQual = maybe ["Main"] getQualified @name.name
                 loc.module_ = 
-                    setExportsPublic @exports.isImplicit @loc.exportlists
+                    setExportsPublic @exports.isImplicit @loc.exportlists @lhs.importEnv
                         (makeCoreModule (Just $ idFromString @modulename)
                             ( @body.decls ++ @lhs.extraDecls
                             ))
@@ -159,11 +159,11 @@ SEM Export
     --  range                    : Range
     --  name                     : Name
     | TypeOrClass            lhs.typeorclasses      = singleSet (idFromName @name.self)
-                                .confieldormethods  = setFromList (maybe [] (map idFromName) @names.names)
+                                .confieldormethods  = traceShow @names.names $ setFromList (maybe [] (map idFromName) @names.names)
     --  range                    : Range
     --  name                     : Name
     --  names                    : MaybeNames  -- constructors or field names or class methods
-    | TypeOrClassComplete    lhs.typeorclassesCompl = singleSet (idFromName @name.self)
+    | TypeOrClassComplete    lhs.typeorclassesCompl = traceShowId $ singleSet (idFromName @name.self)
     --  range                    : Range
     --  name                     : Name
     | Module                 lhs.modules            = singleSet (idFromName @name.self)

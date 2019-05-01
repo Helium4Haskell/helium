@@ -25,11 +25,13 @@ import Data.Char
 import Lvm.Common.Byte(bytesFromString)
 import qualified Lvm.Core.Expr as Core
 import qualified Data.Map as M
-import Data.List(isPrefixOf)
+import Helium.Utils.QualifiedTypes (convertClassNameToQualified)
+import Data.List(isPrefixOf, isInfixOf)
 import Helium.ModuleSystem.ImportEnvironment
 import Helium.Syntax.UHA_Utils
 import Helium.Utils.Utils
 import Helium.Syntax.UHA_Syntax ( Name )
+import Text.PrettyPrint.Leijen (pretty)
 
 infixl `app_`
 
@@ -130,8 +132,10 @@ packedString s = Lit (LitBytes (bytesFromString s))
 customInfix :: DeclKind
 customInfix = customDeclKind "infix"
 
-setExportsPublic :: Bool -> (IdSet,IdSet,IdSet,IdSet,IdSet) -> Module v -> Module v
-setExportsPublic implicit (exports,exportCons,exportData,exportDataCon,exportMods) m
+
+
+setExportsPublic :: Show v => Bool -> (IdSet,IdSet,IdSet,IdSet,IdSet) -> ImportEnvironment -> Module v -> Module v
+setExportsPublic implicit (exports,exportCons,exportData,exportDataCon,exportMods) env m
   = m { moduleDecls = concatMap setPublic (moduleDecls m) }
   where
     setPublic decl_ | isQual decl_ && (isInstance decl_ || isTypeSynonym decl_ || declPublic decl_) = 
@@ -170,22 +174,30 @@ setExportsPublic implicit (exports,exportCons,exportData,exportDataCon,exportMod
         in
         case decl_ of
             DeclValue{}     ->  isExported decl_ (elemSet name exports)
-            DeclAbstract{}  ->  isExported decl_ (elemSet name exports)
+            DeclAbstract{}  ->  isExported decl_ 
+                                    (  elemSet name exports
+                                    || elem (stringFromId name) classMembers
+                                    )
             DeclExtern{}    ->  isExported decl_ (elemSet name exports)
             DeclCon{}       ->  isExported decl_
                                     (  elemSet name exportCons
-                                    || elemSet (conTypeName decl_) exportDataCon
+                                    || (elemSet (conTypeName decl_) exportDataCon)
                                     )
-            DeclCustom{}    ->  isExported decl_
+            DeclCustom{}    ->   isExported decl_
                                     (declKind decl_ `elem` [customData, customTypeDecl] && (elemSet name exportData || elemSet name exportDataCon)
                                     || (declKind decl_ `elem` [customInfix] && elemSet name exports)
                                     )
             _               -> internalError "CoreUtils" "setExportsPublic" "We can only deal with Custom, Value, and Con Core.Decl"
     
     isQual decl_ = let name = stringFromId $ declName decl_ in isQualifiedString name
+
+    classMembers     = concat $ map (map (\(n,_,_,_) -> getNameName n) . snd) $ M.elems exportClasses
+    exportClasses    = M.filterWithKey (const . (`elem` exportClassNames)) classMemberEnv
+    exportClassNames = map (convertClassNameToQualified env . nameFromString . stringFromId) (listFromSet exportDataCon)
+    classMemberEnv   = classMemberEnvironment env 
     
-            -- Always export dictionaries and functions that start with "show" (because used)
-    isInstance decl_ = let name = stringFromId $ declName decl_ in "$dict" `isPrefixOf` name || "show" `isPrefixOf` name
+            -- Always export dictionaries
+    isInstance decl_ = let name = stringFromId $ declName decl_ in "$dict" `isPrefixOf` name
     
     --For now we always export type synonyms
     isTypeSynonym decl_ =case decl_ of
