@@ -158,7 +158,7 @@ showFunctionOfType classEnv tse isMainType = sFOT 0
                     [ UHA.Type_Constructor _ (UHA.Name_Identifier _ _ _ "Char") ] -- !!!Name
                 ->  Ap (var "$dictPrelude.Show$[]") (var "$dictPrelude.Show$Char" )
         UHA.Type_Constructor _ n         -> 
-            let conname = (unQualifyName . getNameName) n
+            let conname = getNameName n
             in checkForPrimitiveDict nrOfArguments classEnv conname
         UHA.Type_Application _ _ f xs    -> foldl Ap (sFOT (length xs) f) (map (sFOT 0) xs )
         UHA.Type_Parenthesized _ t'      -> showFunctionOfType classEnv tse isMainType t'
@@ -191,10 +191,10 @@ checkForPrimitiveDict nrOfArguments classEnv name =
                 isTCon (TVar _) _ = False
                 pred = find (\((Predicate n t), _)-> isTCon t name ) showInstances
             in if isJust pred then 
-                    dict 
-                else 
+                    dict
+                else
                     let dict = foldr Lam (foldl Ap (Con $ ConId $ idFromString "DictPrelude.Show") functions) $ take nrOfArguments [idFromString ("d" ++ show i) | i <- [0..]]
-                        showFunction = Lam (idFromString "d") $ Lam (idFromString "p") $ stringToCore ("<<type " ++ name ++ ">>")              
+                        showFunction = Lam (idFromString "d") $ Lam (idFromString "p") $ stringToCore ("<<type " ++ name ++ ">>")
                         functions = [Var $ idFromString "default$Prelude.Show$showsPrec", Var $ idFromString "default$Prelude.Show$showList", showFunction]
                     in dict
         
