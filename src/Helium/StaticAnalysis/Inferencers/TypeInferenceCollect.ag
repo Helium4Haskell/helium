@@ -43,7 +43,8 @@ SEM Module
 
 SEM Body
   | Body   loc . inferredTypes      = findInferredTypes @lhs.typeschemeMap @implicitsFM
-           lhs . collectWarnings    = map (convertWarnings (typeConstructors @lhs.importEnvironment)) . filter notQualifiedWarnings $ 
+               . env                = typeConstructors @lhs.importEnvironment `M.union` M.map ((,) 0) (classNameEnvironment @lhs.importEnvironment)
+           lhs . collectWarnings    = map (convertWarnings @env) . filter notQualifiedWarnings $ 
                                       missingTypeSignature True @declarations.simplePatNames @inferredTypes @lhs.importEnvironment
                                       ++ @declarations.collectWarnings
                . collectErrors      = restrictedNameErrors @inferredTypes @declarations.restrictedNames
