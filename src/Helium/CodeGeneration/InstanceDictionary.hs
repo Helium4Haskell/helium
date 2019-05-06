@@ -45,7 +45,7 @@ classFunctions importEnv className origin combinedNames = [DeclCon
                                                     , declAccess  = public
                                                     , declArity   = length superclasses + length combinedNames
                                                     , conTag      = 0
-                                                    , declCustoms = [ custom "type" ("Dict$" ++ className) ] ++ origin  
+                                                    , declCustoms = [ custom "type" ("Dict$" ++ className) ]  
                                                     }]
                                                     ++ map superDict superclasses ++ concatMap classFunction combinedNames
         where
@@ -85,7 +85,7 @@ classFunctions importEnv className origin combinedNames = [DeclCon
                                             (Ap (Var $ idFromString label) (Var dictParam))
                                     ]
                                 )
-                        , declCustoms = toplevelType name importEnv True
+                        , declCustoms = toplevelType name importEnv True ++ origin
                         }
                 in  if getNameName name == "negate" && className == "Prelude.Num" then 
                         [val, val{
@@ -210,9 +210,9 @@ getCoreName cd = stringFromId $ declName cd
 getCoreValue :: CoreDecl -> Expr 
 getCoreValue = valueValue
 
-constructClassMemberCustomDecl :: ImportEnvironment -> Name -> Maybe (Names, [(Name, TpScheme, Bool, HasDefault)]) -> [Custom]
-constructClassMemberCustomDecl _ _ Nothing =  internalError "InstanceDictionary" "constructClassMemberCustomDecl" "Unknown class" 
-constructClassMemberCustomDecl env name (Just (typevars, members)) = typeVarsDecl : superClassesDecl ++ map functionToCustom members
+constructClassMemberCustomDecl :: ImportEnvironment -> Name -> Maybe (Names, [(Name, TpScheme, Bool, HasDefault)]) -> [Custom] -> [Custom]
+constructClassMemberCustomDecl _ _ Nothing _ =  internalError "InstanceDictionary" "constructClassMemberCustomDecl" "Unknown class" 
+constructClassMemberCustomDecl env name (Just (typevars, members)) origin = typeVarsDecl : superClassesDecl ++ map functionToCustom members
                         where
                             superClassesDecl :: [Custom]
                             superClassesDecl = 

@@ -159,11 +159,11 @@ SEM Export
     --  range                    : Range
     --  name                     : Name
     | TypeOrClass            lhs.typeorclasses      = singleSet (idFromName @name.self)
-                                .confieldormethods  = traceShow @names.names $ setFromList (maybe [] (map idFromName) @names.names)
+                                .confieldormethods  = setFromList (maybe [] (map idFromName) @names.names)
     --  range                    : Range
     --  name                     : Name
     --  names                    : MaybeNames  -- constructors or field names or class methods
-    | TypeOrClassComplete    lhs.typeorclassesCompl = traceShowId $ singleSet (idFromName @name.self)
+    | TypeOrClassComplete    lhs.typeorclassesCompl = singleSet (idFromName @name.self)
     --  range                    : Range
     --  name                     : Name
     | Module                 lhs.modules            = singleSet (idFromName @name.self)

@@ -110,11 +110,11 @@ getRightImports importspec qualified asName (values, confieldormethods, typeorcl
     -- I really have no clue why, but if you remove it, helium will loop and crash.
     addQualified :: Bool -> Name -> Core.CoreDecl -> [Core.CoreDecl] -> [Core.CoreDecl]
     addQualified qual as decl decls = 
-        let oldname   = stringFromId $ (Core.declName decl)
-            newnameid = idFromString $! (toQualified as oldname)
-            newdecl   = decl {Core.declName = newnameid }
-            isDict    = "Dict" `isPrefixOf` oldname
-        in if isDict then decl : decls else if qual then newdecl : decls else decl : newdecl : decls
+        let oldname    = stringFromId $ (Core.declName decl)
+            newnameid  = idFromString $! (toQualified as oldname)
+            newdecl    = decl {Core.declName = newnameid }
+            isReserved = any (`isPrefixOf` oldname) ["Dict", "$dict", "$Dict", "default$"]
+        in if isReserved then decl : decls else if qual then newdecl : decls else decl : newdecl : decls
 
     toQualified :: Name -> String -> String
     toQualified (Name_Identifier _ qs _ n) declname = seq declname $ intercalate "." $ qs ++ [n, declname]

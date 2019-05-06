@@ -224,8 +224,8 @@ SEM Declaration
                                                     Core.declAccess = Core.public,
                                                     Core.declKind = Core.DeclKindCustom $ idFromString "ClassDefinition",
                                                     Core.declCustoms =
-                                                        constructClassMemberCustomDecl @lhs.importEnv @qualName (M.lookup @qualName $ classMemberEnvironment @lhs.importEnv)
-                                                        ++ originCustoms @lhs.modulename @range.self
+                                                        constructClassMemberCustomDecl @lhs.importEnv @qualName (M.lookup @qualName $ classMemberEnvironment @lhs.importEnv) @origin
+                                                        ++ @origin
                                                 }
                                         ] ++ convertDictionaries @lhs.importEnv @qualName @where.functionNames @where.whereDeclarations 
                                          ++ (filter isInfix @where.decls)

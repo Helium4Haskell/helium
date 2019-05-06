@@ -31,7 +31,6 @@ import Helium.ModuleSystem.ImportEnvironment
 import Helium.Syntax.UHA_Utils
 import Helium.Utils.Utils
 import Helium.Syntax.UHA_Syntax ( Name )
-import Text.PrettyPrint.Leijen (pretty)
 
 infixl `app_`
 
@@ -192,6 +191,7 @@ setExportsPublic implicit (exports,exportCons,exportData,exportDataCon,exportMod
     
     isQual decl_ = let name = stringFromId $ declName decl_ in isQualifiedString name
 
+    -- Get all class members that should be exported
     classMembers     = concat $ map (map (\(n,_,_,_) -> getNameName n) . snd) $ M.elems exportClasses
     exportClasses    = M.filterWithKey (const . (`elem` exportClassNames)) classMemberEnv
     exportClassNames = map (convertClassNameToQualified env . nameFromString . stringFromId) (listFromSet exportDataCon)

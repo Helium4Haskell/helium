@@ -166,7 +166,7 @@ insertDictionaries importedInModule
                     , declAccess  = Imported{importModule = importedFromModId}
                     , declCustoms = cs
                     } env 
-                        | "$dict" `isPrefixOf` stringFromId n = 
+                        | "$dict" `isPrefixOf` stringFromId n =
                             let
                                 dictPrefix = "$dict"
                                 splitDictName dict = (getClassName dict, getTypeName dict) 
@@ -350,7 +350,7 @@ getImportEnvironment importedInModule decls = foldr (insertDictionaries imported
                                     CustomInt n
                                 ]) = (nameFromString $ stringFromId fname, makeTpSchemeFromType $ parseFromString type_ $ stringFromBytes tps, False, n == 1)
                             classMembers = (classVariables, map getFunction $ selectCustom "Function" cs)
-                        in addClassName className qualifiedName . addClass className superClasses . addClassMember className classMembers 
+                        in addClassName className qualifiedName . addClass qualifiedName superClasses . addClassMember className classMembers 
            -- !!! Print importedFromModId from "declAccess = Imported{importModule = importedFromModId}" as well
            DeclAbstract{ declName = n } ->
               intErr  ("don't know how to handle declared DeclAbstract: " ++ stringFromId n)

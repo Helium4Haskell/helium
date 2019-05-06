@@ -139,7 +139,7 @@ SEM Export
                                                    @names.toList
                   lhs . totalExports    = setTotal @name.self @lhs.consAndClasses @showExp ++ concatMap (\n -> setTotal n (map fst @lhs.consInScope) @showExp) @names.toList
                   loc . showExp         = (show @name.self) ++ "(" ++ intercalate "," (map show @names.toList) ++ ")"
-    | Module      lhs . exportErrors    =  checkExport ExportModule @name.self
+    | Module      lhs . exportErrors    = checkExport ExportModule @name.self
                                               @lhs.modulesInScope []
                   lhs . totalExports    = [(removeQualified decl, (@name.self, @showExp)) | (m, decls) <- @lhs.exportModuleScope, m == @name.self, decl <- decls]
                   loc . showExp         = "module " ++ show @name.self
