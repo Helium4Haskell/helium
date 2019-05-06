@@ -34,7 +34,6 @@ INCLUDE "HeliumPartialSyntax.ag"
 INCLUDE "ScopeErrors.ag"
 
 imports {
-import Debug.Trace
 import Helium.Utils.Similarity ( similar )
 import Helium.Main.Args
 import Helium.Syntax.UHA_Syntax

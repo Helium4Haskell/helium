@@ -23,7 +23,6 @@ import Helium.Syntax.UHA_Utils (NameWithRange(..) )
 import Helium.Utils.Utils (internalError)
 
 import Top.Types
-import Debug.Trace
 
 data DictionaryEnvironment = 
      DEnv { declMap :: M.Map NameWithRange Predicates

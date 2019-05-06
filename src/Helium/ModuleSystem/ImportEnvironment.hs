@@ -21,7 +21,6 @@ import Helium.StaticAnalysis.Directives.TS_Syntax
 import Helium.StaticAnalysis.Miscellaneous.TypeConversion
 import Helium.StaticAnalysis.Miscellaneous.ConstraintInfo
 import Helium.StaticAnalysis.Messages.Messages
-import Debug.Trace
 import Top.Types
 
 

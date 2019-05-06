@@ -1,6 +1,5 @@
 module Helium.Utils.QualifiedTypes where
 
-import Debug.Trace
 import Helium.Syntax.UHA_Syntax
 import Helium.Syntax.UHA_Utils
 import Data.Maybe (fromMaybe)

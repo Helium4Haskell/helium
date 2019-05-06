@@ -50,7 +50,6 @@ import qualified Lvm.Core.Expr as Core
 import qualified Lvm.Core.Module as Core
 import qualified Lvm.Core.Module as Module
 import qualified Lvm.Common.Byte as Byte
-import Debug.Trace
 }
 
 {

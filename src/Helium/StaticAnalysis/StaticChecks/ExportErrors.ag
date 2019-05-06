@@ -122,7 +122,7 @@ SEM Export
                   lhs . totalExports    = setTotal @name.self @lhs.namesInScope (show @name.self)
     | TypeOrClassComplete
                   lhs . exportErrors    = checkExport ExportTypeConstructorOrClass @name.self @lhs.consAndClasses @lhs.ambiguousTyCons
-                  lhs . totalExports    = traceShowId $ setTotal @name.self @lhs.consAndClasses @showExp ++ @allCons ++ @allClassMembers
+                  lhs . totalExports    = setTotal @name.self @lhs.consAndClasses @showExp ++ @allCons ++ @allClassMembers
                   loc . showExp         = (show @name.self) ++ "(..)"
                   loc . allCons         = setTotalCons @name.self @lhs.allConsInScope @showExp
                   loc . allClassMembers = setTotalClassMembers @name.self @classMems @showExp
