@@ -23,6 +23,10 @@ import Helium.Utils.Utils      (internalError)
 import Data.List       (sortBy, partition)
 import Data.Char       (toUpper)
 import Data.Function
+import Helium.StaticAnalysis.Inferencers.OutsideInX.Rhodium.RhodiumTypes 
+
+import Unbound.LocallyNameless hiding (Name)
+import Unbound.LocallyNameless.Alpha
 
 type Message       = [MessageLine] 
 
@@ -34,6 +38,8 @@ type MessageBlocks = [MessageBlock]
 data MessageBlock  = MessageString       String
                    | MessageRange        Range
                    | MessageType         TpScheme
+                   | MessageMonoType     MonoType
+                   | forall ci. (Subst MonoType ci, Alpha ci) => MessagePolyType (PolyType ci)
                    | MessagePredicate    Predicate                                      
                    | MessageOneLineTree  OneLineTree
                    | MessageCompose      MessageBlocks                   

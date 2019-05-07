@@ -1,4 +1,5 @@
 {-# OPTIONS_GHC -fno-warn-orphans #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 {-| Module      :  HeliumMessages
     License     :  GPL
 
@@ -10,7 +11,7 @@
         (For instance, one could define another layout, or produce XML-like output).
 -}
 
-module Helium.StaticAnalysis.Messages.HeliumMessages (sortMessages,sortAndShowMessages) where
+module Helium.StaticAnalysis.Messages.HeliumMessages (sortMessages,sortAndShowMessages, freshenRepresentation, nextVariableRep) where
 
 
 import Helium.StaticAnalysis.Messages.Messages 
@@ -18,18 +19,26 @@ import Top.Types
 import qualified Text.PrettyPrint.Leijen as PPrint
 import qualified Helium.Utils.OneLiner as OneLiner
 import Data.List
-import Helium.StaticAnalysis.Miscellaneous.TypesToAlignedDocs  (qualifiedTypesToAlignedDocs)
+import Helium.StaticAnalysis.Miscellaneous.TypesToAlignedDocs  (qualifiedTypesToAlignedDocs, qualifiedPolyTypesToAlignedDocs)
 import Helium.Syntax.UHA_Range           (isImportRange, showRanges)
 import Data.Char                (isSpace)
+import Helium.StaticAnalysis.Inferencers.OutsideInX.Rhodium.RhodiumTypes
+
+import Unbound.LocallyNameless
+
+import Control.Monad
+import Control.Monad.Trans.State.Lazy
+
+import Debug.Trace
 
 ----------------------------------------------------------
 -- message parameters
 
 lineLength :: Int
-lineLength = 80
+lineLength = 100
 
 tableWidthLeft :: Int
-tableWidthLeft = 16
+tableWidthLeft = 25
 
 tablePrefix :: String
 tablePrefix = " "
@@ -58,6 +67,8 @@ instance Show MessageBlock where
    show (MessageString s     ) = s
    show (MessageRange r      ) = show r
    show (MessageType tp      ) = show tp
+   show (MessageMonoType m   ) = show m
+   show (MessagePolyType p   ) = show p
    show (MessagePredicate p  ) = show p
    show (MessageOneLineTree t) = OneLiner.showOneLine tableWidthRight t
    show (MessageCompose ms   ) = concatMap show ms
@@ -121,12 +132,30 @@ renderTypesInRight table =
                  in (q1, l1, MessageType (toTpScheme (TCon (render doc1))))
                   : (q2, l2, MessageType (toTpScheme (TCon (render doc2))))
                   : renderTypesInRight rest
-              _ -> hd : renderTypesInRight tl
+              _ -> case (maybeRType r1, maybeRType r2) of
+                     (Just p1, Just p2) -> 
+                        let
+                           [doc1, doc2] = qualifiedPolyTypesToAlignedDocs [p1, p2]
+                           render = flip PPrint.displayS [] . PPrint.renderPretty 1.0 tableWidthRight
+                        in    (q1, l1, MessageString (render doc1))
+                           :  (q2, l2, MessageString (render doc2))
+                           :  renderTypesInRight rest
+                     _  -> hd : renderTypesInRight tl
       _ -> table
 
   where maybeQType :: MessageBlock -> Maybe QType
         maybeQType (MessageType qtype) = Just (unquantify qtype) -- unsafe?
         maybeQType _                   = Nothing
+        maybeRType :: MessageBlock -> Maybe (PolyType ci)
+        maybeRType (MessagePolyType p) = Just (clearCi p)
+        maybeRType (MessageMonoType m) = Just (PolyType_Mono [] m)
+        maybeRType _ = Nothing
+        --clearCi :: Alpha ci => PolyType a -> PolyType b
+        clearCi (PolyType_Mono cs m) = PolyType_Mono (map clearC cs) m
+        clearCi (PolyType_Bind _ b) = runFreshM $ do
+            (t, p) <- unbind b
+            return (clearCi p)
+        clearC (Constraint_Class cn ms _) = Constraint_Class cn ms Nothing
 
 -- make sure that a string does not exceed a certain width.
 -- Two extra features:
@@ -199,3 +228,44 @@ prepareTypesAndTypeSchemes messageLine = newMessageLine
            MessageType ts     -> let (unique', ps, its) = instantiateWithNameMap unique ts
                                  in (MessageType (toTpScheme (ps .=>. its)), unique', constantsInType its)                                   
            _                  -> (messageBlock, unique, [])
+
+
+freshenRepresentation :: (Subst MonoType ci, Alpha ci) => [RType ci] -> [RType ci]
+freshenRepresentation rs = fst $ runState (mapM freshenHelper rs)  (maximum (map snd rep), rep) 
+         where
+            rep = concatMap collectRepresentation rs
+            collectRepresentation :: (Subst MonoType ci, Alpha ci) => RType ci -> [(TyVar, String)]
+            collectRepresentation (MType mt) = collectRepresentationM mt
+            collectRepresentation (PType pt) = runFreshM (collectRepresentationP pt)
+            collectRepresentationM (MonoType_Var (Just s) v) = [(v, s)]
+            collectRepresentationM (MonoType_App f a) = collectRepresentationM f ++ collectRepresentationM a
+            collectRepresentationM (MonoType_Fam f ms) = concatMap collectRepresentationM ms
+            collectRepresentationM _ = []
+            collectRepresentationP :: (Subst MonoType ci, Alpha ci, Fresh m) => PolyType ci -> m [(TyVar, String)]
+            collectRepresentationP (PolyType_Mono cs m) = return (collectRepresentationM m)
+            collectRepresentationP (PolyType_Bind s b) = do
+               (t, p) <- unbind b
+               res <- collectRepresentationP p
+               return (filter (\r -> fst r /= t) res)
+            freshenHelper (MType m) = MType <$> freshenHelperM m
+            freshenHelper (PType p) = PType <$> freshenHelperP p
+            freshenHelperC (Constraint_Class c ms ci) = Constraint_Class c <$> mapM freshenHelperM ms <*> pure ci
+            freshenHelperP (PolyType_Mono cs m) = PolyType_Mono <$> mapM freshenHelperC cs <*> freshenHelperM m
+            freshenHelperM (MonoType_Con s) = return (MonoType_Con s)
+            freshenHelperM (MonoType_Var _ v) = do
+                  (n, rep) <- get
+                  case lookup v rep of
+                     Just r -> return (MonoType_Var (Just r) v)
+                     Nothing -> do
+                        let n' = nextVariableRep n
+                        let rep' = (v, n') : rep
+                        put (n', rep')
+                        return (MonoType_Var (Just n') v)
+            freshenHelperM (MonoType_App f a) = MonoType_App <$> freshenHelperM f <*> freshenHelperM a 
+            freshenHelperM (MonoType_Fam f ms) = MonoType_Fam f <$> mapM freshenHelperM ms
+
+                        
+nextVariableRep :: String -> String
+nextVariableRep []      = "a"
+nextVariableRep ('z':s) = 'a' : nextVariableRep s
+nextVariableRep (c : s) = succ c : s

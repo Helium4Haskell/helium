@@ -55,17 +55,17 @@ import Debug.Trace
 type Assumptions = M.Map Name [(Name, TyVar)]
 type Environment = M.Map Name TyVar
 
-type TypeSignatures = M.Map Name (TyVar, PolyType)
+type TypeSignatures = M.Map Name (TyVar, PolyType ConstraintInfo)
 type Touchables = [TyVar]
-type Constraints = [Constraint]
+type Constraints = [Constraint ConstraintInfo]
 type BindingGroup = (Environment, Assumptions, Constraints, Constraints, GADTConstraints)
 type Substitution = [(TyVar, MonoType)]
 
 data GADTConstraint = GADTConstraint 
       {  caseArmIndex :: Int
       ,  gadtTouchables :: [TyVar]
-      ,  gadtCondition :: [Constraint]
-      ,  gadtImplication :: [Constraint]
+      ,  gadtCondition :: [Constraint ConstraintInfo]
+      ,  gadtImplication :: [Constraint ConstraintInfo]
       ,  gadtAssumptions :: Assumptions
       ,  gadtSubGADTConstraints :: GADTConstraints
       ,  gadtConstraintInfo :: ConstraintInfo
@@ -103,12 +103,12 @@ concatBindingGroups = foldr combineBindingGroup emptyBindingGroup
 gadtConstraintsAssumptions :: [GADTConstraint] -> Assumptions
 gadtConstraintsAssumptions = foldr (combineAssumptions . gadtAssumptions) M.empty
 
-instanceTS :: ImportEnvironment -> Integer -> Environment -> Assumptions -> TypeSignatures -> (Integer, [Constraint])
+instanceTS :: ImportEnvironment -> Integer -> Environment -> Assumptions -> TypeSignatures -> (Integer, [Constraint ConstraintInfo])
 instanceTS importenv bu env ass ts = foldr combineTS (bu, []) $ concat $ M.elems $ M.intersectionWith (\(n1, a) (n2, (_, t)) -> [(n1, n2, a', t) | (_, a') <- a]) 
       (M.mapWithKey (\n a -> (n, a)) ass) 
       (M.mapWithKey (\n t -> (n, t)) ts)
    where
-      combineTS :: (Name, Name, TyVar, PolyType) -> (Integer, Constraints) -> (Integer, [Constraint])
+      combineTS :: (Name, Name, TyVar, PolyType  ConstraintInfo) -> (Integer, Constraints) -> (Integer, [Constraint ConstraintInfo])
       combineTS (n1, n2, a, t) (bu, cs) = let
          (_, (t', bu')) = freshenWithMapping [] bu t
          ci = Just (cinfoBindingGroupExplicit [] (M.keys env) n1 importenv)
@@ -117,7 +117,7 @@ instanceTS importenv bu env ass ts = foldr combineTS (bu, []) $ concat $ M.elems
 equalASENV :: Assumptions -> Environment -> Constraints
 equalASENV ass env = concat $ M.elems $ M.intersectionWith (\a e -> [Constraint_Unify (var a') (var e) undefined | (_, a') <- a]) ass env
 
-bindingGroupAnalysis ::   (ImportEnvironment, Bool, [Axiom], TypeSignatures, Touchables, Maybe (Assumptions, Constraints, GADTConstraints), TypeErrors, [Constraint], Integer) -> 
+bindingGroupAnalysis ::   (ImportEnvironment, Bool, [Axiom ConstraintInfo], TypeSignatures, Touchables, Maybe (Assumptions, Constraints, GADTConstraints), TypeErrors, [Constraint ConstraintInfo], Integer) -> 
                            [BindingGroup] -> 
                            (Touchables, Assumptions, TypeSignatures, Constraints, Integer, Substitution, TypeErrors, Constraints)
 bindingGroupAnalysis input@(importenv, isTopLevel, axioms, typeSignatures, touchables, body, ierrors, resolvedConstraints, betaUnique) groups =
@@ -144,7 +144,7 @@ bindingGroupAnalysis input@(importenv, isTopLevel, axioms, typeSignatures, touch
                      variableDependencies = foldr' op initial sortedGroups
                         where
                            
-                           instanceTSE :: Integer -> Environment -> TypeSignatures -> (Integer, [Constraint])
+                           instanceTSE :: Integer -> Environment -> TypeSignatures -> (Integer, [Constraint ConstraintInfo])
                            instanceTSE bu env1 ts = foldr (\(n1, n2, e, t) (cbu, cons) -> 
                                  let 
                                     (bu', classFixConstraint) =
@@ -225,11 +225,11 @@ resolveGADTAssumptions importenv ts env bu = foldr (\c@(GADTConstraint index gTo
 residualConstraintsCheck :: Environment -> Constraints -> [TypeError]
 residualConstraintsCheck env = concatMap constraintCheck
                      where
-                        constraintCheck :: Constraint -> [TypeError]
+                        constraintCheck :: Constraint  ConstraintInfo -> [TypeError]
                         constraintCheck (Constraint_Inst (MonoType_Var _ v) p _) | v `elem` (M.elems env) = createTypeError $ "Type of " ++ show v ++ " should be " ++  show p
                         constraintCheck c = createTypeError $ "Residual constraint " ++ show c
 
-replacePolytype :: [Constraint] -> PolyType -> PolyType
+replacePolytype :: [Constraint ConstraintInfo] -> PolyType ConstraintInfo -> PolyType ConstraintInfo
 replacePolytype [] p = p
 replacePolytype (Constraint_Inst (MonoType_Var _ v) pt _:cs) p  | var v == p = pt
                                                             | otherwise =  replacePolytype cs p
@@ -241,7 +241,7 @@ escapeVariableCheck ass env ts   | null ass = []
                                           ftv = concatMap (getTypeVariablesFromPolyType . snd) $ M.filter (\(_, pt) -> pt /= PolyType_Bind "" (bind (integer2Name 0) (var $ integer2Name 0))) $ (M.intersection ts env)
                                        in concatMap (\v -> createTypeError $ "Variable " ++ show v ++ " is too general in " ++ show (M.intersection ts env) ) ftv
 
-makeTypeError :: [TyVar] -> Constraint -> [TypeError]
+makeTypeError :: [TyVar] -> Constraint ConstraintInfo -> [TypeError]
 makeTypeError _ (Constraint_Class s v _) = createTypeError ("Missing instance (" ++ s ++ " " ++ show (head v) ++ ")")
 makeTypeError touchables (Constraint_Inst (MonoType_Var _ v) p _) | v `notElem` touchables = createTypeError ("Variable " ++ show v ++ " should not be unified")
                                                                | otherwise = []
@@ -279,10 +279,10 @@ right :: (b -> c) -> c -> Either a b -> c
 right f d (Left _) = d
 right f d (Right x) = f x
 
-gadtConstraintToConstraint :: GADTConstraint -> Constraint 
+gadtConstraintToConstraint :: GADTConstraint -> Constraint ConstraintInfo
 gadtConstraintToConstraint = gadtConstraintToConstraint' [] []
 
-gadtConstraintToConstraint' :: [TyVar] -> [Constraint] -> GADTConstraint -> Constraint
+gadtConstraintToConstraint' :: [TyVar] -> [Constraint ConstraintInfo] -> GADTConstraint -> Constraint ConstraintInfo
 gadtConstraintToConstraint' extraT extraC g  | not (null $ gadtAssumptions g) = error ("Unresolved assumptions" ++ show g)
                                              | otherwise = Constraint_Exists (bind 
                                                   (gadtTouchables g ++ extraT)
@@ -297,7 +297,7 @@ insertGADTTouchable tyvars gadtConstraint = gadtConstraint{
                                                 gadtTouchables = gadtTouchables gadtConstraint ++ tyvars
                                                 }
 
-appendGADTInfo :: [GADTConstraint] -> Constraint -> Constraint
+appendGADTInfo :: [GADTConstraint] -> Constraint ConstraintInfo -> Constraint ConstraintInfo
 appendGADTInfo gadtCons c = let
    ci = fromMaybe (error "No constraint info present") (getConstraintInfo c)
    maybePM = maybePatternMatch ci

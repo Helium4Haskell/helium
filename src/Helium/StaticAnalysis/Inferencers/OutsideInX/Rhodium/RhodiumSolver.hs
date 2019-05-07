@@ -28,10 +28,10 @@ import Data.List
 
 import Debug.Trace
 
-rhodiumSolve :: [Axiom] -> [Constraint] -> [Constraint] -> [TyVar] -> SolveResult TyVar RType Constraint ConstraintInfo
+rhodiumSolve :: [Axiom ConstraintInfo] -> [Constraint ConstraintInfo] -> [Constraint ConstraintInfo] -> [TyVar] -> SolveResult TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo
 rhodiumSolve axioms given wanted touchables = contFreshM (runTG (solve (solveOptions []) axioms given wanted touchables)) 20
 
-solveOU :: Sibblings -> [Axiom] -> [Constraint] -> [Constraint] -> [TyVar] -> FreshM (SolveResult TyVar MonoType Constraint ConstraintInfo)
+solveOU :: Sibblings -> [Axiom ConstraintInfo] -> [Constraint ConstraintInfo] -> [Constraint ConstraintInfo] -> [TyVar] -> FreshM (SolveResult TyVar MonoType (Constraint ConstraintInfo) ConstraintInfo)
 solveOU sibblings axioms given wanted tchs = trace (unlines $ map (\e -> show (e, getConstraintInfo e)) wanted) $ traceShow (given, tchs) $ let
     in do 
         
@@ -74,7 +74,9 @@ listOfResidualHeuristics path = [
         avoidForbiddenResidualConstraints,
         VotingResidual [
             typeSignatureTooGeneral,
-            missingPredicate path
+            missingPredicate path,
+            missingGADTSignature path,
+            escapingGADTVariableHeuristic path
         ],
         avoidTrustedResidualConstraints
     ]

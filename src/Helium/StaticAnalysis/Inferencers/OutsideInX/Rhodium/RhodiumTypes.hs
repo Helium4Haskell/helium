@@ -21,15 +21,26 @@ import Helium.Syntax.UHA_Syntax
 import Helium.Syntax.UHA_Range
 import Helium.StaticAnalysis.Miscellaneous.UHA_Source
 import Helium.StaticAnalysis.Miscellaneous.DoublyLinkedTree
-import Helium.StaticAnalysis.Messages.TypeErrors
-import Helium.StaticAnalysis.Messages.Messages
+
+
+
+data RType ci = PType (PolyType ci) | MType MonoType
+
+
+
+fromMType :: RType ci -> MonoType
+fromMType (MType m) = m
+
+deriving instance (Subst MonoType ci, Alpha ci) => Eq (RType ci)
+deriving instance (Subst MonoType ci, Alpha ci) => Ord (RType ci)
+deriving instance (Subst MonoType ci, Alpha ci) => Show (RType ci)
 
 type TyVar = UB.Name MonoType
 
 class VariableInjection v where
     var :: TyVar -> v
   
-instance VariableInjection PolyType where
+instance VariableInjection (PolyType ci) where
     var = PolyType_Mono [] . var
   
 instance VariableInjection MonoType where
@@ -40,7 +51,14 @@ data MonoType
     | MonoType_Var   (Maybe String) TyVar
     | MonoType_Con   String 
     | MonoType_App   MonoType MonoType
-    deriving (Eq, Ord)
+    deriving (Ord)
+
+instance Eq MonoType where
+    MonoType_Fam s1 ms1 == MonoType_Fam s2 ms2 = s1 == s2 && ms1 == ms2
+    MonoType_Var _ v1 == MonoType_Var _ v2 = v1 == v2
+    MonoType_Con s1 == MonoType_Con s2 = s1 == s2
+    MonoType_App f1 a1 == MonoType_App f2 a2 = f1 == f2 && a1 == a2
+    _ == _ = False
 
 isFamilyFree :: MonoType -> Bool
 isFamilyFree (MonoType_Con _)       = True
@@ -61,7 +79,7 @@ showMT mp (MonoType_Tuple t1 t2) = "(" ++ showMT mp t1 ++ "," ++ showMT mp t2 ++
 showMT mp (MonoType_Con c)       = c 
 showMT mp (MonoType_Fam c a)     = '^':c ++ concatMap (\x -> " " ++ doParens (showMT mp x)) a
 showMT mp (s :-->: t)            = doParens (showMT mp s) ++ " -> " ++ showMT mp t
-showMT mp (MonoType_Var s v)     = fromMaybe (fromMaybe (show v) s) (lookup v mp)
+showMT mp (MonoType_Var s v)     = show v -- fromMaybe (fromMaybe (show v) s) (lookup v mp)
 showMT mp (MonoType_App f a)     = showMT mp f ++ " " ++ showMT mp a
 showMT mp _                      = error "Pattern matching check is not that good"
 
@@ -69,42 +87,6 @@ doParens :: String -> String
 doParens s  | ' ' `elem` s = '(' : s ++ ")"
             | otherwise    = s
 
-type Properties = [Property]
-data Property   
-    = FolkloreConstraint
-    | ConstraintPhaseNumber Int
-    | HasTrustFactor Float
-    | FuntionBindingEdge Int{-number of patterns-}
-    | InstantiatedTypeScheme PolyType
-    | SkolemizedTypeScheme ([MonoType], PolyType)
-    | IsUserConstraint Int{-user-constraint-group unique number-} Int{-constraint number within group-}
-    | WithHint (String, MessageBlock)
-    | ReductionErrorInfo Constraint
-    | FromBindingGroup 
-    | IsImported Name 
-    | ApplicationEdge Bool{-is binary-} [LocalInfo]{-info about terms-}
-    | ExplicitTypedBinding -- superfluous?
-    | ExplicitTypedDefinition [MonoType]{- monos-} Name{- function name -}
-    | Unifier TyVar{-type variable-} (String{-location-}, LocalInfo, String{-description-})
-    | EscapedSkolems [Int]
-    | PredicateArisingFrom (Constraint, ConstraintInfo)
-    | TypeSignatureLocation Range
-    | TypePair (MonoType, MonoType)
-    | CustomError String
-    | NeverDirectiveProperty (Constraint, ConstraintInfo)
-    | CloseDirectiveProperty (String, ConstraintInfo)
-    | DisjointDirectiveProperty (String, ConstraintInfo) (String, ConstraintInfo)
-    | MissingConcreteInstance String MonoType
-    | AddConstraintToTypeSignature (Maybe (Constraint, EdgeId, ConstraintInfo)) Constraint
-    | RelevantFunctionBinding Constraint
-    | ClassUsages [(Constraint, EdgeId, ConstraintInfo)]
-    | AmbigiousClass Constraint
-    | FromGADT
-    | UnreachablePattern MonoType MonoType
-    | GADTPatternApplication
-    | PatternMatch TyVar Int {- Case index arm -} (Maybe Constraint)
-    | PossibleTypeSignature PolyType
-    
 
 type InfoTrees = [InfoTree]
 type InfoTree = DoublyLinkedTree LocalInfo
@@ -114,23 +96,13 @@ data LocalInfo =
                 , assignedType   :: Maybe TyVar
                     }
 
-data ConstraintInfo =
-    CInfo_ { location      :: String
-            , sources       :: (UHA_Source, Maybe UHA_Source{- term -})
-            , localInfo     :: InfoTree
-            , properties    :: Properties
-            , errorMessage  :: Maybe TypeError
-            }
+data Constraint ci
+    = Constraint_Unify MonoType MonoType (Maybe ci)
+    | Constraint_Inst  MonoType (PolyType ci) (Maybe ci)
+    | Constraint_Class String [MonoType] (Maybe ci)
+    | Constraint_Exists (UB.Bind [TyVar] ([Constraint ci],[Constraint ci])) (Maybe ci)
 
-type MCI = Maybe ConstraintInfo
-
-data Constraint 
-    = Constraint_Unify MonoType MonoType (Maybe ConstraintInfo)
-    | Constraint_Inst  MonoType PolyType (Maybe ConstraintInfo)
-    | Constraint_Class String [MonoType] (Maybe ConstraintInfo)
-    | Constraint_Exists (UB.Bind [TyVar] ([Constraint],[Constraint])) (Maybe ConstraintInfo)
-
-instance Eq Constraint where
+instance (Alpha ci, Subst MonoType ci) => Eq (Constraint ci) where
     Constraint_Unify m1 m2 _ == Constraint_Unify n1 n2 _ = m1 == n1 && m2 == n2
     Constraint_Inst  m1 m2 _ == Constraint_Inst  n1 n2 _ = m1 == n1 && m2 == n2
     Constraint_Class c1 a1 _ == Constraint_Class c2 a2 _ = c1 == c2 && a1 == a2
@@ -141,10 +113,10 @@ instance Eq Constraint where
             Nothing          -> return False
     _ == _ = False
 
-instance Show Constraint where
+instance (Alpha ci, Subst MonoType ci) => Show (Constraint ci) where
     show = runFreshM . showConstraint
 
-showConstraint :: (UB.Fresh m, Functor m) => Constraint -> m String
+showConstraint :: (UB.Fresh m, Functor m, Alpha ci, Subst MonoType ci) => Constraint ci -> m String
 showConstraint (Constraint_Unify t p s) = return $ show t ++ " ~ " ++ show p
 showConstraint (Constraint_Inst  t p _) = do    p' <- showPolyType' [] p
                                                 return $ show t ++ " > " ++ p'
@@ -155,11 +127,11 @@ showConstraint (Constraint_Exists b _)  = do    (x, (q,c)) <- UB.unbind b
                                                 c' <- showConstraintList' c
                                                 return $ "∃" ++ show x ++ "(" ++ q' ++ " => " ++ c' ++ ")" 
 
-data PolyType 
-    = PolyType_Bind String (UB.Bind TyVar PolyType)
-    | PolyType_Mono [Constraint] MonoType
+data PolyType ci
+    = PolyType_Bind String (UB.Bind TyVar (PolyType ci))
+    | PolyType_Mono [Constraint ci] MonoType
 
-instance Eq PolyType where
+instance (Alpha ci, Subst MonoType ci) => Eq (PolyType ci) where
     PolyType_Bind s1 b1   == PolyType_Bind s2 b2 = UB.runFreshM $ do
         s <- UB.unbind2 b1 b2
         case s of
@@ -168,10 +140,10 @@ instance Eq PolyType where
     PolyType_Mono c1 m1 == PolyType_Mono c2 m2 = c1 == c2 && m1 == m2
     _                   == _                   = False
 
-instance Ord PolyType where
+instance (Alpha ci, Subst MonoType ci) => Ord (PolyType ci) where
     p1 <= p2 = UB.runFreshM (se p1 p2)
         where
-        se :: UB.Fresh m => PolyType -> PolyType -> m Bool
+        se :: UB.Fresh m => PolyType ci -> PolyType ci -> m Bool
         se (PolyType_Mono cs1 m1) (PolyType_Mono cs2 m2) = return $ cs1 <= cs2 && m1 <= m2
         se (PolyType_Mono _ _) _ = return True
         se (PolyType_Bind s1 b1) (PolyType_Bind s2 b2) = do
@@ -180,26 +152,26 @@ instance Ord PolyType where
                 Just (_, p1, _, p2) -> se p1 p2
         se (PolyType_Bind _ _) _ = return True
 
-instance Show PolyType where
+instance (Alpha ci, Subst MonoType ci) => Show (PolyType ci) where
     show = UB.runFreshM . showPolyType' []
           
-showPolyType' :: UB.Fresh m => [(TyVar, String)] -> PolyType -> m String
+showPolyType' :: (Alpha ci, Subst MonoType ci, UB.Fresh m) => [(TyVar, String)] -> PolyType ci -> m String
 showPolyType' mp (PolyType_Bind s b@(UB.B t p)) = do
     (x, r) <- UB.unbind b
     showR <- showPolyType' ((x, s) : mp) r
-    return showR
+    return $ "{" ++ show x ++ "}" ++ showR
 showPolyType' mp (PolyType_Mono [] m) = return $ "[] => " ++ showMT mp m
 showPolyType' mp (PolyType_Mono cs m) = return $ showConstraintList cs ++ " => " ++ showMT mp m
 
 
-showConstraintList :: [Constraint] -> String
+showConstraintList :: (Alpha ci, Subst MonoType ci) => [Constraint ci] -> String
 showConstraintList = UB.runFreshM . showConstraintList'
 
-showConstraintList' :: (UB.Fresh m, Functor m) => [Constraint] -> m String
+showConstraintList' :: (Alpha ci, Subst MonoType ci, UB.Fresh m, Functor m) => [Constraint ci] -> m String
 showConstraintList' [] = return "∅"
 showConstraintList' l  = intercalate " ∧ " <$> mapM showConstraint l
 
-instance Ord Constraint where
+instance (Alpha ci, Subst MonoType ci) => Ord (Constraint ci) where
     Constraint_Unify m1 m2 _ <= Constraint_Unify n1 n2 _ = m1 <= n1 && m2 <= n2
     Constraint_Unify _ _ _ <= _ = True
     Constraint_Inst  m1 m2 _ <= Constraint_Inst  n1 n2 _ = m1 <= n1 && m2 <= n2
@@ -214,16 +186,16 @@ instance Ord Constraint where
     Constraint_Exists _ _ <= _ = True
     _ <= _ = False
 
-data Axiom
+data Axiom ci
     = Axiom_Unify (UB.Bind [TyVar] (MonoType, MonoType))
-    | Axiom_Class (UB.Bind [TyVar] ([Constraint], String, [MonoType]))
+    | Axiom_Class (UB.Bind [TyVar] ([Constraint ci], String, [MonoType]))
     | Axiom_Injective String  -- Injective type families
     | Axiom_Defer     String  -- Deferred type families
 
-instance Show Axiom where
+instance (Alpha ci, Subst MonoType ci) => Show (Axiom ci) where
     show = runFreshM . showAxiom
     
-showAxiom :: (Fresh m, Functor m) => Axiom -> m String
+showAxiom :: (Fresh m, Functor m, Alpha ci, Subst MonoType ci) => Axiom ci -> m String
 showAxiom (Axiom_Unify b) = do  (xs, (lhs,rhs)) <- unbind b
                                 return $ "∀" ++ show xs ++ " " ++ show lhs ++ " ~ " ++ show rhs
 showAxiom (Axiom_Class b) = do  (xs, (ctx,c,ms)) <- unbind b
@@ -235,91 +207,21 @@ showAxiom (Axiom_Defer f) = return $ "defer ^" ++ f
 
 $(UB.derive [''PolyType, ''MonoType, ''Constraint, ''Axiom])
 
-instance Alpha PolyType
-instance Subst MonoType PolyType
+instance (Alpha ci, Subst MonoType ci, Rep ci) => Alpha (PolyType ci)
+instance (Alpha ci, Subst MonoType ci, Rep ci) => Subst MonoType (PolyType ci)
 
 instance Alpha MonoType
 instance Subst MonoType MonoType where
   isvar (MonoType_Var _ v)  = Just (SubstName v)
   isvar _                   = Nothing
 
-instance Alpha Constraint
-instance Subst MonoType Constraint
+instance (Alpha ci, Subst MonoType ci, Rep ci) => Alpha (Constraint ci)
+instance (Alpha ci, Subst MonoType ci, Rep ci) => Subst MonoType (Constraint ci)
   
-instance Alpha Axiom
-instance Subst MonoType Axiom 
-
-data RType = PType PolyType | MType MonoType
-
-fromMType :: RType -> MonoType
-fromMType (MType m) = m
-
-deriving instance Eq RType
-deriving instance Ord RType
-
-instance UB.Alpha ConstraintInfo where
-    fv' _ _ = UB.emptyC
-    swaps' = error "swaps'"
-    lfreshen' = error "lfreshen'"
-    freshen' = error "freshen'"
-    aeq' = error "aeq'"
-    acompare' = error "acompare'"
-    close _ _ x = x
-    open _ _ x = x
-    isPat = error "isPat"
-    isTerm = error "isTerm"
-    isEmbed = error "isEmbed"
-
-instance UB.Rep ConstraintInfo
-
-instance (UB.Rep1 UB.AlphaD ConstraintInfo)
-
-instance UB.Subst MonoType ConstraintInfo where
-    substs _ = id
-
-instance UB.Rep1 (UB.SubstD MonoType) ConstraintInfo
-
-instance Show RType where
-    show (PType pt) = show pt
-    show (MType mt) = show mt
-         
-instance Show ConstraintInfo where
-    show x = location x ++ show (properties x) -- ++ fromMaybe [] (sortAndShowMessages . (:[]) <$> errorMessage x)
-
--------------------------------------------------------------------------
--- Properties
+instance (Alpha ci, Subst MonoType ci, Rep ci) => Alpha (Axiom ci)
+instance (Alpha ci, Subst MonoType ci, Rep ci) => Subst MonoType (Axiom ci) 
 
 
-instance Show Property where
-    show FolkloreConstraint = "FolkloreConstraint"
-    show (ConstraintPhaseNumber _) = "ConstraintPhaseNumber"
-    show (HasTrustFactor f) = "HasTrustFactor: " ++ show f
-    show (FuntionBindingEdge _) = "FuntionBindingEdge"
-    show (InstantiatedTypeScheme _) = "InstantiatedTypeScheme"
-    show (SkolemizedTypeScheme _) = "SkolemizedTypeScheme"
-    show (IsUserConstraint _ _) = "IsUserConstraint"
-    show (WithHint (s, _) ) = "WithHint: " ++ s
-    show (ReductionErrorInfo _) = "ReductionErrorInfo"
-    show (FromBindingGroup) = "FromBindingGroup"
-    show (IsImported _) = "IsImported"
-    show (ApplicationEdge _ lc) = "ApplicationEdge" ++ show (map assignedType lc)
-    show ExplicitTypedBinding = "ExplicitTypedBinding"
-    show (ExplicitTypedDefinition _ _) = "ExplicitTypedDefinition"
-    show (Unifier _ _) = "Unifier"
-    show (EscapedSkolems _) = "EscapedSkolems"
-    show (PredicateArisingFrom _) = "PredicateArisingFrom"
-    show (TypeSignatureLocation _) = "TypeSignatureLocation"
-    show (TypePair (t1, t2)) = "TypePair (" ++ show t1 ++ ", " ++ show t2 ++ ")" 
-    show (MissingConcreteInstance n ms) = "MissingConcreteInstance(" ++ show n ++ " " ++ show ms ++ ")" 
-    show (AddConstraintToTypeSignature ms cc) = "AddConstraintToTypeSignature " ++ show cc ++ " => " ++ show ms
-    show (RelevantFunctionBinding fb) = "RelevantFunctionBinding: " ++ show fb
-    show (ClassUsages cis) = "ClassUsages " ++ show cis
-    show (AmbigiousClass c) = "AmbigiousClass " ++ show c
-    show (FromGADT) = "FromGADT"
-    show (UnreachablePattern m1 m2) = "UnreachablePattern(" ++ show m1 ++ ", " ++ show m2 ++ ")"
-    show GADTPatternApplication = "GADTPatternApplication"
-    show (PatternMatch v i mc) = "PatternMatch(" ++ show v ++ ", " ++ show i ++ "," ++ show mc ++ ")"
-    show (PossibleTypeSignature ps) = "PossibleTypeSignature " ++ show ps
 
 
 conApply :: String -> [MonoType] -> MonoType
@@ -337,3 +239,21 @@ conList m = error $ "No conList possible for " ++ show m
 getMonotypeAppList :: MonoType -> [MonoType]
 getMonotypeAppList (MonoType_App f a) = getMonotypeAppList f ++ getMonotypeAppList a
 getMonotypeAppList x = [x]
+
+
+isClassConstraint :: Constraint a -> Bool
+isClassConstraint (Constraint_Class _ [_] _) = True
+isClassConstraint _ = False
+
+isUnifyConstraint :: Constraint a -> Bool
+isUnifyConstraint (Constraint_Unify _ _ _) = True
+isUnifyConstraint _ = False
+
+isInstConstraint :: Constraint a -> Bool
+isInstConstraint (Constraint_Inst _ _ _) = True
+isInstConstraint _ = False
+
+firstConstraintElement :: (Constraint a) -> MonoType
+firstConstraintElement (Constraint_Unify m1 _ _) = m1
+firstConstraintElement (Constraint_Inst m1 _ _) = m1
+firstConstraintElement c = error "No first constraint element"

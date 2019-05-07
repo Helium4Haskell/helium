@@ -7,6 +7,7 @@ import Control.Monad
 
 import Data.List
 import Data.Maybe
+
 import qualified Data.Map.Strict as M
 
 import Rhodium.Core
@@ -21,20 +22,27 @@ import Rhodium.TypeGraphs.Touchables
 import Unbound.LocallyNameless hiding (to, from)
 import Unbound.LocallyNameless.Fresh
 import Unbound.LocallyNameless.Name
+import qualified Unbound.LocallyNameless as UB
+import qualified Unbound.LocallyNameless.Fresh as UB
+import qualified Unbound.LocallyNameless.Alpha as UB
+import qualified Unbound.LocallyNameless.Types as UB
+import qualified Unbound.LocallyNameless.Subst as UB
 
 import Helium.StaticAnalysis.Miscellaneous.ConstraintInfoOU
-import Helium.StaticAnalysis.Miscellaneous.UHA_Source
-import Helium.StaticAnalysis.Messages.TypeErrors hiding (makeNotGeneralEnoughTypeError, makeReductionError, makeMissingConstraintTypeError, makeUnresolvedOverloadingError)
-import Helium.StaticAnalysis.Messages.Messages
-import Helium.Syntax.UHA_Range
-import Helium.Syntax.UHA_Syntax
-
-import Rhodium.Blamer.HeuristicProperties
 
 import Helium.StaticAnalysis.Inferencers.OutsideInX.Rhodium.RhodiumTypes
+import Helium.StaticAnalysis.Inferencers.OutsideInX.Rhodium.RhodiumErrors
 import Helium.StaticAnalysis.Inferencers.OutsideInX.ConstraintHelper
+import Helium.StaticAnalysis.Inferencers.OutsideInX.Rhodium.RhodiumGenerics
 
 import Debug.Trace
+
+
+instance Show (RType ConstraintInfo) where
+    show (PType pt) = show pt
+    show (MType mt) = show mt
+
+          
 
 instance FreshVariable FreshM TyVar where
     freshVariable = error "try not using fresh" -- fresh (string2Name "a")
@@ -43,15 +51,15 @@ instance (Fresh m, Monad m) => FreshVariable m TyVar where
     -- freshVariable :: m a
     freshVariable = error "try not using fresh" -- fresh (string2Name "a")
 
-instance (CompareTypes m RType, IsTouchable m TyVar, HasAxioms m Axiom, IsTouchable m TyVar, Fresh m, Monad m) => CanCanon m TyVar RType Constraint where 
+instance (CompareTypes m (RType ConstraintInfo), IsTouchable m TyVar, HasAxioms m (Axiom ConstraintInfo), IsTouchable m TyVar, Fresh m, Monad m) => CanCanon m TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) where 
     -- canon :: Bool -> constraint -> m (Maybe ([touchable], [(touchable, types)], constraint))
     canon isGiven c = do 
         axs <- getAxioms
         canon' axs c 
             where
-                canon' :: [Axiom] -> Constraint -> m (RuleResult ([TyVar], [(TyVar, RType)], [Constraint]))
+                canon' :: [Axiom ConstraintInfo] -> Constraint ConstraintInfo -> m (RuleResult ([TyVar], [(TyVar, RType ConstraintInfo)], [Constraint ConstraintInfo]))
                 canon' axs (Constraint_Unify m1 m2 _) = do
-                  ig <- greaterType (MType m1) (MType m2)
+                  ig <- greaterType (MType m1) (MType m2 :: RType ConstraintInfo)
                   if ig then 
                         return $ Applied ([], [], [Constraint_Unify m2 m1 Nothing])
                   else
@@ -108,28 +116,19 @@ instance (CompareTypes m RType, IsTouchable m TyVar, HasAxioms m Axiom, IsToucha
                                     return (Applied (vars, [], Constraint_Unify (MonoType_Fam f ts2) m2 Nothing : cons))
                         (_, _)
                             | m1 == m2, isFamilyFree m1, isFamilyFree m2 -> return $ Applied ([], [], [])
-                            | otherwise -> do
-                                    {-gt <- MType m1 `greaterType` MType m2
-                                    if gt then 
-                                        return $ Applied ([], [], [Constraint_Unify m2 m1])
-                                    else -}
-                                        return NotApplicable
+                            | otherwise -> return NotApplicable
                 canon' axs (Constraint_Inst m (PolyType_Mono cs pm) _) = return $ Applied ([], [], Constraint_Unify m pm Nothing : cs)                                  
-                {-canon' axs (Constraint_Inst (MonoType_Var v) p)  =
-                    let nfP = nf p
-                     in if nfP `aeq` p then return NotApplicable
-                                       else return $ Applied ([], [], [Constraint_Inst (MonoType_Var v) nfP])-}
-                canon' axs (Constraint_Inst m p _) = do
+                canon' axs (Constraint_Inst m p ci) = do 
                     (vs, c,t) <- instantiate p True
-                    return $ Applied (vs, [], Constraint_Unify m t Nothing : c)
+                    return $ Applied (vs, [], Constraint_Unify m t ci : c)
                 canon' axs (Constraint_Class _ _ _) = return NotApplicable
                 canon' axs c = error $ "Unknown canon constraint: " ++ show c
 
 
-instantiate :: Fresh m => PolyType -> Bool -> m ([TyVar], [Constraint], MonoType)
+instantiate :: Fresh m => PolyType ConstraintInfo -> Bool -> m ([TyVar], [Constraint ConstraintInfo], MonoType)
 instantiate (PolyType_Bind s b) tch = do
     (v,i) <- unbind b
-    (vs, c,t) <- instantiate i tch
+    (vs, c,t) <- traceShowId <$> instantiate i tch
     
     let t' = fixVariableMapping s v t
     if tch then 
@@ -139,9 +138,7 @@ instantiate (PolyType_Bind s b) tch = do
 instantiate (PolyType_Mono cs m) _tch = return ([], cs,m)
 
 fixVariableMapping :: String -> TyVar -> MonoType -> MonoType
-fixVariableMapping s v (MonoType_Var ms v') | v == v' = case ms of
-                                                        Just m -> if m == s then (MonoType_Var ms v') else error "Conflicing variables"
-                                                        Nothing -> (MonoType_Var (Just s) v')
+fixVariableMapping s v (MonoType_Var ms v') | v == v' = MonoType_Var (Just s) v'
                                         | otherwise = MonoType_Var ms v'
 fixVariableMapping s v m@(MonoType_Con _) = m
 fixVariableMapping s v m@(MonoType_App f a) = MonoType_App (fixVariableMapping s v f) (fixVariableMapping s v a)
@@ -149,7 +146,7 @@ fixVariableMapping s v m@(MonoType_Fam f ms) = MonoType_Fam f (map (fixVariableM
 
 
 
-instance (HasGraph m touchable types constraint ci, CompareTypes m RType, IsTouchable m TyVar, Fresh m, Monad m) => CanInteract m TyVar RType Constraint ConstraintInfo where
+instance (HasGraph m touchable types constraint ci, CompareTypes m (RType ConstraintInfo), IsTouchable m TyVar, Fresh m, Monad m) => CanInteract m TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo where
     --interact :: Bool -> constraint -> constraint -> m (RuleResult [constraint])
     interact isGiven c1 c2
         | c1 == c2 = return $ Applied [c1]
@@ -158,20 +155,20 @@ instance (HasGraph m touchable types constraint ci, CompareTypes m RType, IsTouc
                 return $ Applied [c1, Constraint_Unify (subst v1 m1 t2) (subst v1 m1 m2) Nothing]
     interact isGiven c1@(Constraint_Unify mv1@(MonoType_Var _ v1) m1 _) c2@(Constraint_Unify mv2@(MonoType_Var _ v2) m2 _) 
         | v1 == v2, isFamilyFree m1, isFamilyFree m2 = do
-            ig <- greaterType (MType mv1) (MType m1)
+            ig <- greaterType (MType mv1) (MType m1 :: RType ConstraintInfo)
             if ig then 
                 return NotApplicable
             else
                 return $ Applied [c1, Constraint_Unify m1 m2 Nothing]
         | v1 `elem` (fv m2 :: [TyVar]), isFamilyFree m1, isFamilyFree m2 = do 
-            ig <- greaterType (MType mv1) (MType m1)
+            ig <- greaterType (MType mv1) (MType m1 :: RType ConstraintInfo)
             if ig then 
                 return NotApplicable
             else
                 return $ Applied [c1, Constraint_Unify (var v2) (subst v1 m1 m2) Nothing]
     interact isGiven c1@(Constraint_Unify mv1@(MonoType_Var _ v1) m1 _) c2@(Constraint_Class n ms2 _)
         | v1 `elem` (fv ms2 :: [TyVar]), all isFamilyFree ms2 = do 
-            ig <- greaterType (MType mv1) (MType m1)
+            ig <- greaterType (MType mv1) (MType m1 :: RType ConstraintInfo)
             if ig then 
                 return NotApplicable
             else
@@ -180,13 +177,11 @@ instance (HasGraph m touchable types constraint ci, CompareTypes m RType, IsTouc
         | c1 == c2 = return $ Applied [c1]
     interact isGiven c1 c2 = return NotApplicable
 
-instance (CompareTypes m RType, HasAxioms m Axiom, Fresh m) => CanSimplify m TyVar RType Constraint ConstraintInfo where
-    simplify c1 c2 
-        | c1 == c2 = return $ Applied []
+instance (CompareTypes m (RType ConstraintInfo), HasAxioms m (Axiom ConstraintInfo), Fresh m) => CanSimplify m TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo where
     simplify c1@(Constraint_Unify mv1@(MonoType_Var _ v1) m1 _) c2@(Constraint_Unify mv2@(MonoType_Var _ v2) m2 _) 
         | mv1 == m1 || mv2 == m2 = return NotApplicable
         | v1 == v2 = do 
-            gt <- greaterType (MType mv1) (MType m1)
+            gt <- greaterType (MType mv1) (MType m1 :: RType ConstraintInfo)
             if gt then 
                 return NotApplicable
             else 
@@ -194,7 +189,7 @@ instance (CompareTypes m RType, HasAxioms m Axiom, Fresh m) => CanSimplify m TyV
     simplify c1@(Constraint_Unify m1 mv1@(MonoType_Var _ v1) _) c2@(Constraint_Unify mv2@(MonoType_Var _ v2) m2 _) 
         | mv1 == m1 || mv2 == m2 = return NotApplicable
         | v1 == v2 = do 
-            gt <- greaterType (MType mv1) (MType m1)
+            gt <- greaterType (MType mv1) (MType m1 :: RType ConstraintInfo)
             if gt then 
                 return NotApplicable
             else 
@@ -202,20 +197,16 @@ instance (CompareTypes m RType, HasAxioms m Axiom, Fresh m) => CanSimplify m TyV
     simplify c1@(Constraint_Class _ _ _) c2@(Constraint_Class _ _ _) 
         | c1 == c2 = return $ Applied []
     simplify c1@(Constraint_Unify mv1@(MonoType_Var _ v1) m1 _) c2@(Constraint_Class _ ms _) 
+        | mv1 == m1 = return NotApplicable
         | v1 `elem` (fv ms :: [TyVar]), isFamilyFree m1, all isFamilyFree ms = do
-            gt <- greaterType (MType mv1) (MType m1)
+            gt <- greaterType (MType mv1) (MType m1 :: RType ConstraintInfo)
             if gt then 
                 return NotApplicable
             else
                 return $ Applied [subst v1 m1 c2]
     simplify c1 c2 = return NotApplicable
-    {-getSimplificationCandidates edge graph = let
-        v1 = from edge
-        v2 = to edge
-        ns = nub $ getNeighbours graph v1 ++ getNeighbours graph v2
-        in return ns-}
 
-loopAxioms :: Monad m => (Axiom -> m (RuleResult a)) -> [Axiom] -> m (RuleResult a)
+loopAxioms :: Monad m => (Axiom ConstraintInfo -> m (RuleResult a)) -> [Axiom ConstraintInfo] -> m (RuleResult a)
 loopAxioms f [] = return NotApplicable
 loopAxioms f (x:xs) = do
     res <- f x
@@ -224,13 +215,13 @@ loopAxioms f (x:xs) = do
     else 
         return res
 
-isInjective :: [Axiom] -> String -> Bool
+isInjective :: [Axiom ConstraintInfo] -> String -> Bool
 isInjective axioms s = any isInjective' axioms
     where 
         isInjective' (Axiom_Injective n) = n == s
         isInjective' _ = False
 
-instance (HasTypeGraph m Axiom TyVar RType Constraint ConstraintInfo, HasAxioms m Axiom, Fresh m) => CanTopLevelReact m Axiom TyVar RType Constraint where
+instance (HasTypeGraph m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo, HasAxioms m (Axiom ConstraintInfo), Fresh m) => CanTopLevelReact m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) where
     topLevelReact isGiven c@(Constraint_Class n cs _) = getAxioms >>= loopAxioms topLevelReact'
         where
             topLevelReact' ax@(Axiom_Class b) = do
@@ -259,10 +250,10 @@ instance (HasTypeGraph m Axiom TyVar RType Constraint ConstraintInfo, HasAxioms 
             topLevelReact' _ = return NotApplicable
     topLevelReact isGiven constraint = return NotApplicable
 
-convertSubstitution :: [(TyVar, RType)] -> [(TyVar, MonoType)]
+convertSubstitution :: [(TyVar, RType ConstraintInfo)] -> [(TyVar, MonoType)]
 convertSubstitution = map (\(t, MType m) -> (t, m))
 
-instance (IsTouchable m TyVar, Monad m, UniqueEdge m, UniqueVertex m, UniqueGroup m, Fresh m, HasGraph m TyVar RType Constraint ConstraintInfo) => CanConvertType m TyVar RType Constraint ConstraintInfo where
+instance (IsTouchable m TyVar, Monad m, UniqueEdge m, UniqueVertex m, UniqueGroup m, Fresh m, HasGraph m TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo) => CanConvertType m TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo where
     convertType isOriginal groups priority (MType m) = do 
             mv <- getVertexFromGraph (MType m)
             g <- getGraph
@@ -313,7 +304,6 @@ instance (IsTouchable m TyVar, Monad m, UniqueEdge m, UniqueVertex m, UniqueGrou
                     ) vg (zip ms' typeEdges), v)
     convertType isOriginal groups priority (PType pt) = convertTypeP' pt
         where
-            convertTypeP' :: PolyType ->  m (TGGraph TyVar RType Constraint ConstraintInfo, VertexId) 
             convertTypeP' (PolyType_Mono cs m) = do
                 (m', v) <- convertType isOriginal groups priority (MType m)
                 cs' <- mapM (convertConstraint [] isOriginal False groups priority) cs
@@ -331,25 +321,9 @@ instance (IsTouchable m TyVar, Monad m, UniqueEdge m, UniqueVertex m, UniqueGrou
                         variable = f
                     }
                 return (vg, v)
-                {-}
-                return ()
-                (t, p) <- unbind b
-                v <- uniqueVertex
-                let vg = singletonGraph v TGScopedVariable{
-                        typeRep = PType p,
-                        variable = t
-                    }
-                (pg, pv') <- convertType isOriginal (PType p)
-                ei <- uniqueEdge
-                let edge = typeEdge ei 0 isOriginal v pv'
-                return (mergeGraphsWithEdges False [edge] vg pg, v)
-                -}
-
-
-
                 
 
-instance (IsTouchable m TyVar, HasGraph m TyVar RType Constraint ConstraintInfo, Fresh m, Monad m, UniqueVertex m, UniqueGroup m, UniqueEdge m) => CanConvertConstraint m TyVar RType Constraint ConstraintInfo where
+instance (IsTouchable m TyVar, HasGraph m TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo, Fresh m, Monad m, UniqueVertex m, UniqueGroup m, UniqueEdge m) => CanConvertConstraint m TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo where
     -- convertConstraint :: constraint -> m (TGGraph touchable constraint types)
     convertConstraint basedOn isOriginal isGiven groups priority c@(Constraint_Unify m1 m2 _) = do
         t1@(v1Node, v1) <- convertType isOriginal groups priority (MType m1)
@@ -385,10 +359,11 @@ instance (IsTouchable m TyVar, HasGraph m TyVar RType Constraint ConstraintInfo,
         given' <- mapM (convertConstraint basedOn isOriginal True (ug : groups) (priority + 1)) given
         setGivenTouchables (concatMap getFreeVariables given)
         wanted' <- mapM (convertConstraint basedOn isOriginal False (ug : groups) (priority + 2)) wanted
+        traceShowM (vars, given, wanted)
         return $ markTouchables (map (\v -> (v, priority + 2)) vars) (insertGraphs emptyTGGraph (given' ++ wanted'))
         --error $ show (vars, given, wanted)
 
-instance IsEquality RType Constraint TyVar where
+instance IsEquality (RType ConstraintInfo) (Constraint ConstraintInfo) TyVar where
     -- isEquality :: constraint -> Bool
     isEquality (Constraint_Unify _ _ _) = True
     isEquality _    = False
@@ -398,7 +373,7 @@ instance IsEquality RType Constraint TyVar where
     allowInSubstitution _ = False
 
 
-instance CanCompareTouchable TyVar RType where
+instance CanCompareTouchable TyVar (RType ConstraintInfo) where
     compareTouchable tyvar (MType v) = var tyvar == v
     compareTouchable tyvar (PType v) = var tyvar == v
     convertTouchable v = MType (var v) 
@@ -407,33 +382,70 @@ instance CanCompareTouchable TyVar RType where
     extractTouchable (MType (MonoType_Var _ v)) = Just v
     extractTouchable _ = Nothing
 
-instance ConstraintSymbol Constraint where
+instance ConstraintSymbol (Constraint ConstraintInfo) where
     showConstraintSymbol (Constraint_Unify _ _ _) = "~"
     showConstraintSymbol (Constraint_Class s _ _) = "$" ++ s
     showConstraintSymbol (Constraint_Inst _ _ _) = ">"
 
-instance ConvertConstructor RType where
+instance ConvertConstructor (RType ConstraintInfo) where
     convertConstructor s = MType (MonoType_Con s)
 
-instance (Monad m, IsTouchable m TyVar) => CompareTypes m RType where
-    greaterType (MType (MonoType_Var _ v1)) (MType (MonoType_Var _ v2)) = greaterTouchable v1 v2
+instance (Fresh m, IsTouchable m TyVar) => CompareTypes m (RType ConstraintInfo) where
+    greaterType (MType (MonoType_Var _ v1)) (MType (MonoType_Var  _ v2)) = greaterTouchable v1 v2
     greaterType m1 m2 = return $ m1 > m2
+    mgu ms = MType <$> mostGeneralUnifier (map (\(MType m) -> m) ms)
+
+mostGeneralUnifier :: Fresh m => [MonoType] -> m MonoType
+mostGeneralUnifier ms = (\(sub, m) -> substs (mapMaybe convSub sub) m) <$> (empty >>= \e -> foldM mgu e ms)
+    where
+        empty :: Fresh m => m ([(MonoType, MonoType)], MonoType)
+        empty =  (\v -> ([], var v)) <$> fresh (integer2Name 0)
+        mgu :: Fresh m => ([(MonoType, MonoType)], MonoType) -> MonoType -> m ([(MonoType, MonoType)], MonoType)
+        mgu (mapping, f1 :-->: a1) (f2 :-->: a2) = do 
+            (mapping', fr) <- mgu (mapping, f1) f2
+            (mapping'', ar) <- mgu (mapping', a1) a2
+            return (mapping'', fr :-->: ar)
+        mgu (mapping, MonoType_Var _ v1) mt = case lookup (var v1) mapping  of
+                Nothing -> return ((var v1, mt) : mapping, mt)
+                Just mtv -> case lookup mt mapping of
+                    Nothing     | mt == mtv -> return ((mt, mt) : mapping, mt)
+                                | otherwise -> fresh (integer2Name 0) >>= (\v -> return ((mt, var v) : mapping, var v))
+                    Just mtv'   | mtv == mtv' -> return (mapping, mtv)
+                                | otherwise -> (\v -> ((mtv, var v) : (mtv', var v) : (var v, var v) : mapping, var v)) <$> fresh (integer2Name 0) 
+        mgu (mapping, m1@(MonoType_Con s1)) m2@(MonoType_Con s2) =
+            case lookup m1 mapping of
+                Nothing | s1 == s2 -> return (mapping, MonoType_Con s1)
+                        | otherwise -> (\v -> ((m1, var v) : (m2, var v) : (var v, var v) : mapping, var v)) <$> fresh (integer2Name 0) 
+                Just mv -> return (mapping, mv)
+        mgu (mapping, MonoType_App f1 a1) (MonoType_App f2 a2) = do
+            (mapping', fr) <- mgu (mapping, f1) f2
+            (mapping'', ar) <- mgu (mapping', a1) a2
+            return (mapping'', MonoType_App fr ar)
+        mgu (mapping, mt) mv@(MonoType_Var _ v) = case lookup mv mapping of
+            Nothing | mt == mv -> return ((mv, mv) : mapping, mv)
+                    | otherwise -> fresh (integer2Name 0) >>= (\v' -> return ((mv, var v') : mapping, var v'))
+        mgu mapping v = error $ show (mapping, v)
+        convSub :: (MonoType, MonoType) -> Maybe (TyVar, MonoType)
+        convSub (MonoType_Var _ v, m) = Just (v, m)
+        convSub _ = Nothing
 
 getTLVariableFromMonoType :: MonoType -> [TyVar]
 getTLVariableFromMonoType (MonoType_Var _ v) = [v]
 getTLVariableFromMonoType _ = []
 
-instance FreeVariables Constraint TyVar where
+instance FreeVariables (Constraint ConstraintInfo) TyVar where
     getFreeVariables = fv
     getFreeTopLevelVariables (Constraint_Unify m1 m2 _) = getTLVariableFromMonoType m1 ++ getTLVariableFromMonoType m2
     getFreeTopLevelVariables (Constraint_Inst m1 _ _) = getTLVariableFromMonoType m1
+    getFreeTopLevelVariables (Constraint_Class _ _ _) = []
     getFreeTopLevelVariables c = error (show c)
 
-instance FreeVariables RType TyVar where
+instance FreeVariables (RType ConstraintInfo) TyVar where
     getFreeVariables (MType m) = fv m
     getFreeVariables (PType p) = fv p
+    getFreeTopLevelVariables (MType m) = getTLVariableFromMonoType m
 
-instance HasConstraintInfo Constraint ConstraintInfo where
+instance HasConstraintInfo (Constraint ConstraintInfo) ConstraintInfo where
     getConstraintInfo (Constraint_Unify _ _ ci) = ci
     getConstraintInfo (Constraint_Inst _ _ ci) = ci
     getConstraintInfo (Constraint_Exists _ ci) = ci
@@ -441,246 +453,64 @@ instance HasConstraintInfo Constraint ConstraintInfo where
     getConstraintInfo c = error ("No constraint info for " ++ show c)
     setConstraintInfo ci (Constraint_Unify m1 m2 _) = Constraint_Unify m1 m2 (Just ci)
 
-firstConstraintElement :: Constraint -> MonoType
-firstConstraintElement (Constraint_Unify m1 _ _) = m1
-firstConstraintElement (Constraint_Inst m1 _ _) = m1
 
-instance (Fresh m, HasTypeGraph m Axiom TyVar RType Constraint ConstraintInfo) => TypeErrorInfo m Constraint ConstraintInfo where
-    createTypeError li constraint ci = maybe nError (return . const ci) (errorMessage ci)
-        where
-            nError 
-                | li == labelIncorrectConstructors && isJust (maybeUnreachablePattern ci) =
-                    do
-                        let Just (expected, function) = maybeUnreachablePattern ci
-                        let Just tsLoc = maybeTypeSignatureLocation ci
-                        return ci{
-                            errorMessage = Just $ makeUnreachablePatternError (fst $ sources ci) tsLoc expected function (maybePossibleTypeSignature ci)
-                        }
-                        --error $ show (expected, function)
-                | li == labelIncorrectConstructors || li == labelInfiniteType = 
-                    do
-                        te <- makeUnificationTypeError constraint ci
-                        return ci{
-                            errorMessage = Just te
-                        }
-                | li == labelResidual && isJust (maybeMissingConcreteInstance ci) =
-                        case constraint of
-                            Constraint_Inst m1 p2 _ -> do
-                                axioms <- getAxioms
-                                MType m1' <- getSubstType (MType m1)
-                                let Just m = maybeMissingConcreteInstance ci
-                                    source = fst (sources ci)
-                                    extra  = (m1', Just p2)
-                                return ci{
-                                            errorMessage = Just $ makeReductionError source Nothing extra axioms m 
-                                        }
-                | li == labelResidual && isJust (maybeAmbigiousClass ci) = 
-                        case constraint of
-                            Constraint_Inst m1 p2 _ -> do
-                                let Just cc = maybeAmbigiousClass ci
-                                PType scheme1 <- getSubstType (PType p2)
-                                MType scheme2 <- getSubstType (MType m1)
-                                let Just classConstraint = maybeAmbigiousClass ci
-                                return ci{
-                                    errorMessage = Just $ makeUnresolvedOverloadingError (fst $ sources ci) classConstraint (scheme1, scheme2)
-                                }
-                | li == labelResidual && isJust (maybeAddConstraintToTypeSignature ci) =
-                        case constraint of
-                            Constraint_Inst m1 p2 _ -> do
-                                let Just (m, cc) = maybeAddConstraintToTypeSignature ci
-                                case m of
-                                    Nothing -> do
-                                        axioms <- getAxioms
-                                        MType m1' <- getSubstType (MType m1)
-                                        PType p2' <- getSubstType (PType $ addConstraint cc p2)
-                                        let fbType = fromMaybe (error "No relevant function binding present") (maybeRelevantFunctionBinding ci)
-                                        let Just fbci = getConstraintInfo fbType
-                                        let fb = firstConstraintElement fbType
-                                        --let Constraint_Unify fb _ (Just fbci) = error $ show fbType
-                                        let source = fst (sources fbci)
-                                        MType fb' <- getSubstType $ MType fb
-                                        let extra = (fb', Nothing)
-                                        let Constraint_Class nc [mt] _ = cc
-                                        return ci{
-                                            errorMessage = Just $ makeReductionError source (Just $ fst (sources ci)) extra axioms (nc, mt)
-                                        } 
-                                    Just (cts, eid, cits) -> do
-                                        let err    = error "unknown type signature location"
-                                        let range   = fromMaybe err (maybeTypeSignatureLocation ci)
-                                        let mSource = if isExprTyped ci then Nothing else Just (fst $ sources ci)
-                                        MType m1' <- getSubstType (MType m1)
-                                        PType p2' <- getSubstType (PType $ addConstraint cc p2)
-                                        let source = fst (sources ci)
-                                        let extra = (m1', Just p2')
-                                        let Constraint_Class nc [mt] _ = cc
-                                        axioms <- getAxioms
-                                        let Just usages = maybeClassUsages ci
-                                        return ci{
-                                            errorMessage = Just $ makeMissingConstraintTypeError range mSource m1' (True, cc) (map (fst . sources . (\(_, _, c) -> c)) usages)
-                                        }
-                | li == labelResidual = 
-                        case constraint of
-                            Constraint_Inst m1 scheme2 _ -> do
-                                MType scheme1 <- getSubstType (MType m1)
-                                graph <- getGraph
-                                
-                                let 
-                                    range   = fromMaybe err (maybeTypeSignatureLocation ci)
-                                    source  = uncurry fromMaybe (sources ci)
-                                    err     = noRange -- error "unknown original type scheme"
-                                    
-                                    te = makeNotGeneralEnoughTypeError (isExprTyped ci) range source scheme1 scheme2
-                                return ci{
-                                    errorMessage = Just te
-                                }
-                            c -> return ci{
-                                    errorMessage = Just $ TypeError [] [MessageOneLiner (MessageString ("Unknown residual constraint: " ++ show c))] [] []
-                                }
-                | isPrefixOf "Touchable touched:" (show li)   =
-                    return ci{
-                            errorMessage = Just $ TypeError [] [MessageOneLiner (MessageString ("Unknown residual constraint: " ++ show constraint))] [] []
-                            }
-                | otherwise = error ("Unknown error label: " ++ show li)
-
-
-makeUnreachablePatternError :: UHA_Source -> Range -> MonoType -> MonoType -> Maybe PolyType -> TypeError
-makeUnreachablePatternError source functionRange expected inferred possibleTS= 
-    let 
-        range = rangeOfSource source
-        oneliner = MessageOneLiner (MessageString "Pattern is not accessible")
-        table = [
-                    "Pattern" <:> MessageOneLineTree (oneLinerSource source)
-                ,   "constructor type" >:> MessageString (show expected)
-                ,   "defined at" >:> MessageRange functionRange
-                ,   "inferred type" >:> MessageString (show inferred)
-            ]
-        hints = ("hint", MessageString "change the type signature, remove the branch or change the branch")
-                :  
-                [
-                    ("possible type signature", MessageString (show ps)) | Just ps <- [possibleTS]
-                ]
-    in TypeError [range] [oneliner] table hints
-
-makeNotGeneralEnoughTypeError :: Bool -> Range -> UHA_Source -> MonoType -> PolyType -> TypeError
-makeNotGeneralEnoughTypeError isAnnotation range source tpscheme1 tpscheme2 =
-    let 
-        ts1      = show tpscheme1
-        ts2      = show tpscheme2
-        special  = if isAnnotation then "Type annotation" else "Type signature"
-        oneliner = MessageOneLiner (MessageString (special ++ " is too general"))
-        descr    = if isAnnotation then "expression" else "function"
-        table    = [ descr           <:> MessageOneLineTree (oneLinerSource source)
-                    , "declared type" >:> MessageString ts2
-                    , "inferred type" >:> MessageString ts1
-                    ]
-        hints    = [ ("hint", MessageString "try removing the type signature") | not (null (fv tpscheme1 :: [TyVar])) ] 
-    in TypeError [range] [oneliner] table hints
-
-
-makeUnificationTypeError :: (Fresh m, HasTypeGraph m Axiom TyVar RType Constraint ConstraintInfo) => Constraint -> ConstraintInfo -> m TypeError
-makeUnificationTypeError constraint info =
-    do
-    let (source, term) = sources info
-        range    = maybe (rangeOfSource source) rangeOfSource term
-        oneliner = MessageOneLiner (MessageString ("Type error in " ++ location info))
-        (t1, t2) = case constraint of
-            Constraint_Unify t1 t2 _ -> (MType t1, MType t2)
-            Constraint_Inst t1 t2 _ -> (MType t1, PType t2)
-    --let    Constraint_Unify t1 t2 _ = constraint
-   
-    msgtp1   <- getSubstType t1
-    msgtp2   <- getSubstType t2
-    let (reason1, reason2)   
-            | isJust (maybeSkolemizedTypeScheme info) = ("inferred type", "declared type")
-            | isFolkloreConstraint info               = ("type"         , "expected type")
-            | otherwise                                = ("type"         , "does not match")
-        table = [ s <:> MessageOneLineTree (oneLinerSource source') | (s, source') <- convertSources (sources info)] 
-                ++
-                [ reason1 >:> MessageString (show msgtp1)
-                , reason2 >:> MessageString (show msgtp2)
-                ]
-        hints      = [ hint | WithHint hint <- properties info ]
-    return $ TypeError [range] [oneliner] table hints
-
-makeReductionError :: UHA_Source -> Maybe UHA_Source -> (MonoType, Maybe PolyType) -> [Axiom] -> (String, MonoType) -> TypeError
-makeReductionError source usage extra axioms (className, predicateTp) =
-    let location = "function"
-        message  = [ MessageOneLiner $ MessageString $ "Type error in overloaded " ++ show location ]
-        tab1     = case extra of 
-                        (scheme, Just tp) -> -- overloaded function
-                            [ "function" <:> MessageOneLineTree (oneLinerSource source)
-                            , "type"     >:> MessageString (show tp)
-                            , "used as"  >:> MessageString (show scheme)
-                            ]
-                        (scheme, Nothing) ->
-                            [ 
-                                    "function" <:> MessageOneLineTree (oneLinerSource source)
-                                ,   "inferred type"  >:> MessageString (show scheme)
-                                   
-                            ] ++ maybe [] (\u -> ["arising from" >:> MessageOneLineTree (oneLinerSource u)]) usage
-        tab2     =  [ "problem"  <:> MessageCompose [ MessageString (show predicateTp)
-                                                    , MessageString (" is not an instance of class "++className)
-                                                    ]
-                    ]
-    in TypeError [rangeOfSource source] message (tab1 ++ tab2) [case snd extra of
-        Just _ -> ("hint", MessageString hint)
-        Nothing -> ("hint", MessageString "add a type signature to the function")
-        ]
-    where  
-        hint :: String
-        hint = case valids of
-                  []  -> "there are no valid instances of "++className
-                  [x] -> "valid instance of "++className++" is "++show x
-                  _   -> "valid instances of "++className++" are "++prettyAndList (nub valids)
-             
-        valids :: [String]
-        valids = let    
-                        tps              = mapMaybe (instances className) axioms
-                        (tuples, others) =  let     p (MonoType_Con s) = isTupleConstructor s
-                                                    p _        = False
-                                            in partition (p . fst . leftSpine) tps
-                 in if length tuples > 4 -- magic number!
-                      then map (show) others ++ ["tuples"]
-                      else map (show) tps
-
-        instances :: String -> Axiom -> Maybe MonoType
-        instances s (Axiom_Class b) = let (vars, (cond, cn, [mt])) = runFreshM $ unbind b
-                                        in  if s == cn then 
-                                                Just mt
-                                            else
-                                                Nothing 
-        instances s _ = Nothing
-                    
-makeMissingConstraintTypeError :: Range -> Maybe UHA_Source -> MonoType -> (Bool, Constraint) -> [UHA_Source] -> TypeError
-makeMissingConstraintTypeError range mSource scheme (original, predicate) arisingFrom =
-    let special  = if isJust mSource then "signature" else "annotation"
-        oneliner = MessageOneLiner (MessageString ("Missing class constraint in type "++special))
-        table    = maybe [] (\source -> ["function" <:> MessageOneLineTree (oneLinerSource source)]) mSource ++
-                    [ (isJust mSource, MessageString "declared type", MessageString $ show scheme)
-                    , "class constraint" <:> MessageString (show predicate)
-                    ]
-        hints    = [ ("hint", MessageString "add the class constraint to the type signature") | original ]
-    in TypeError [range] [oneliner] table hints
-
-makeUnresolvedOverloadingError :: UHA_Source -> Constraint -> (PolyType, MonoType) -> TypeError
-makeUnresolvedOverloadingError source (Constraint_Class description _ _) (functionType, usedAsType) =
-    let message = [ MessageOneLiner (MessageString ("Don't know which instance to choose for " ++ description)) ]
-        table   = [ "function" <:> MessageOneLineTree (oneLinerSource source)
-                    , "type"     >:> MessageString (show functionType)
-                    , "used as"  >:> MessageString (show usedAsType)
-                    , "hint"     <:> MessageString ( "write an explicit type for this function" ++ 
-                                "\n   e.g. (show :: [Int] -> String)")
-                    ]
-    in TypeError [rangeOfSource source] message table []
-
-unfamilys :: Fresh m => [MonoType] -> m ([MonoType], [Constraint], [TyVar])
+unfamilys :: Fresh m => [MonoType] -> m ([MonoType], [Constraint ConstraintInfo], [TyVar])
 unfamilys ts = do   (args,cons,vars) <- unzip3 <$> mapM unfamily ts
                     return (args, concat cons, concat vars)
 
-unfamily :: Fresh m => MonoType -> m (MonoType, [Constraint], [TyVar])
+unfamily :: Fresh m => MonoType -> m (MonoType, [Constraint ConstraintInfo], [TyVar])
 unfamily (MonoType_Fam f vs) = do   v <- fresh (string2Name "beta")
                                     return (var v, [Constraint_Unify (var v) (MonoType_Fam f vs) Nothing], [v])
 unfamily (MonoType_App s t)  = do   (s',c1,v1) <- unfamily s
                                     (t',c2,v2) <- unfamily t
                                     return (MonoType_App s' t', c1 ++ c2, v1 ++ v2)
 unfamily t                   = return (t, [], [])
+
+
+functionSpineP :: Fresh m => PolyType ConstraintInfo -> m ([MonoType], MonoType)
+functionSpineP (PolyType_Bind _ b) = unbind b >>= functionSpineP . snd
+functionSpineP (PolyType_Mono _ m) = return (functionSpine m)
+
+arityOfPolyType :: Fresh m => (PolyType ConstraintInfo) -> m Int
+arityOfPolyType x = length . fst <$> functionSpineP x
+
+
+instance Show Property where
+    show FolkloreConstraint = "FolkloreConstraint"
+    show (ConstraintPhaseNumber _) = "ConstraintPhaseNumber"
+    show (HasTrustFactor f) = "HasTrustFactor: " ++ show f
+    show (FuntionBindingEdge fb) = "FuntionBindingEdge" ++ show fb
+    show (InstantiatedTypeScheme _) = "InstantiatedTypeScheme"
+    show (SkolemizedTypeScheme _) = "SkolemizedTypeScheme"
+    show (IsUserConstraint _ _) = "IsUserConstraint"
+    show (WithHint (s, _) ) = "WithHint: " ++ s
+    show (ReductionErrorInfo _) = "ReductionErrorInfo"
+    show (FromBindingGroup) = "FromBindingGroup"
+    show (IsImported _) = "IsImported"
+    show (ApplicationEdge _ lc) = "ApplicationEdge" ++ show (map assignedType lc)
+    show ExplicitTypedBinding = "ExplicitTypedBinding"
+    show (ExplicitTypedDefinition _ _) = "ExplicitTypedDefinition"
+    show (Unifier _ _) = "Unifier"
+    show (EscapedSkolems _) = "EscapedSkolems"
+    show (PredicateArisingFrom _) = "PredicateArisingFrom"
+    show (TypeSignatureLocation _) = "TypeSignatureLocation"
+    show (TypePair (t1, t2)) = "TypePair (" ++ show t1 ++ ", " ++ show t2 ++ ")" 
+    show (MissingConcreteInstance n ms) = "MissingConcreteInstance(" ++ show n ++ " " ++ show ms ++ ")" 
+    show (AddConstraintToTypeSignature ms cc) = "AddConstraintToTypeSignature " ++ show cc ++ " => " ++ show ms
+    show (RelevantFunctionBinding fb) = "RelevantFunctionBinding: " ++ show fb
+    show (ClassUsages cis) = "ClassUsages " ++ show cis
+    show (AmbigiousClass c) = "AmbigiousClass " ++ show c
+    show (FromGADT) = "FromGADT"
+    show (UnreachablePattern m1 m2) = "UnreachablePattern(" ++ show m1 ++ ", " ++ show m2 ++ ")"
+    show GADTPatternApplication = "GADTPatternApplication"
+    show (PatternMatch v i mc) = "PatternMatch(" ++ show v ++ ", " ++ show i ++ "," ++ show mc ++ ")"
+    show (PossibleTypeSignature ps) = "PossibleTypeSignature " ++ show ps
+    show (GADTTypeSignature) = "GADTTypeSignature"
+    show (MissingGADTTypeSignature mpt f bs) = "MissingGADTTypeSignature " ++ show mpt ++ ", " ++ show bs
+    show (EscapingExistentital mt c) = "EscapingExistentital " ++ show mt ++ ", " ++ show c
+
+    
+instance Show ConstraintInfo where
+    show x = location x ++ show (properties x) -- ++ fromMaybe [] (sortAndShowMessages . (:[]) <$> errorMessage x)
+
+    

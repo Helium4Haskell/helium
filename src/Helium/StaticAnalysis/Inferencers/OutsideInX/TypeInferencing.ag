@@ -78,6 +78,7 @@ import Unbound.LocallyNameless.Fresh
 
 import Helium.StaticAnalysis.Inferencers.OutsideInX.Rhodium.RhodiumTypes
 import Helium.StaticAnalysis.Inferencers.OutsideInX.Rhodium.RhodiumSolver
+import Helium.StaticAnalysis.Inferencers.OutsideInX.Rhodium.RhodiumGenerics
 
 import qualified Rhodium.Solver.SolveResult as SR
 

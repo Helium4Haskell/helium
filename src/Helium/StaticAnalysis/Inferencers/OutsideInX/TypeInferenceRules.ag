@@ -13,51 +13,51 @@ ATTR Module Body Declaration Declarations Expression Expressions
      FieldDeclarations Type Literal LeftHandSide RightHandSide
      Pattern Patterns
         [ 
-                typeSignatures : {M.Map Name (TyVar, PolyType)}
+                typeSignatures : {M.Map Name (TyVar, PolyType ConstraintInfo)}
                 importEnvironment : ImportEnvironment
-                axioms : {[Axiom]}
-                typeSignatureConstraints : {[Constraint]}
+                axioms : {[Axiom ConstraintInfo]}
+                typeSignatureConstraints : {[Constraint ConstraintInfo]}
                 typeVariableReplace : {[(String, MonoType)]}
                 className : {Maybe Name}
 
             |   betaUnique : Integer
             |   assumptions USE {M.unionWith (++)} {M.empty} : {M.Map Name [(Name, TyVar)]}
                 environment USE {M.union} {M.empty} : {M.Map Name TyVar}
-                constraints USE {(++)} {[]} : {[Constraint]}
-                givenConstraints USE {(++)} {[]} : {[Constraint]}
+                constraints USE {(++)} {[]} : {[Constraint ConstraintInfo]}
+                givenConstraints USE {(++)} {[]} : {[Constraint  ConstraintInfo]}
                 bindingGroups USE {(++)} {[]} : {[BindingGroup]}
                 touchables USE {(++)} {[]} : {[TyVar]}
                 
-                typeSignaturesCollect USE {M.union} {M.empty} : {M.Map Name (TyVar, PolyType)}
+                typeSignaturesCollect USE {M.union} {M.empty} : {M.Map Name (TyVar, PolyType ConstraintInfo)}
                 typeErrors USE {(++)} {[]} : TypeErrors
 
                 tlEnvironment USE {M.union} {M.empty} : {M.Map Name TyVar}
-                resolvedContraints USE {(++)} {[]} : {[Constraint]}
+                resolvedContraints USE {(++)} {[]} : {[Constraint ConstraintInfo]}
                 gadtConstraints USE {(++)} {[]} : GADTConstraints
                 gadtUsed USE {(||)} {False} : Bool
         ]
 
 ATTR MaybeDeclarations Qualifier Qualifiers Statement Statements
         [ 
-                typeSignatures : {M.Map Name (TyVar, PolyType)}
+                typeSignatures : {M.Map Name (TyVar, PolyType ConstraintInfo)}
                 importEnvironment : ImportEnvironment
-                axioms : {[Axiom]}
-                typeSignatureConstraints : {[Constraint]}
+                axioms : {[Axiom ConstraintInfo]}
+                typeSignatureConstraints : {[Constraint ConstraintInfo]}
                 typeVariableReplace : {[(String, MonoType)]}
                 className : {Maybe Name}
             |   betaUnique : Integer
             |   environment USE {M.union} {M.empty} : {M.Map Name TyVar}
                 bindingGroups USE {(++)} {[]} : {[BindingGroup]}
-                typeSignaturesCollect USE {M.union} {M.empty} : {M.Map Name (TyVar, PolyType)}
+                typeSignaturesCollect USE {M.union} {M.empty} : {M.Map Name (TyVar, PolyType ConstraintInfo)}
                 typeErrors USE {(++)} {[]} : TypeErrors
-                resolvedContraints USE {(++)} {[]} : {[Constraint]}
+                resolvedContraints USE {(++)} {[]} : {[Constraint ConstraintInfo]}
         ]
 
 ATTR Body [  | |               substitutionCollect : {[(TyVar, MonoType)]}]
 
 {
 
-unifyVar :: TyVar -> TyVar -> ConstraintInfo -> Constraint
+unifyVar :: TyVar -> TyVar -> ConstraintInfo -> Constraint ConstraintInfo
 unifyVar v1 v2 ci = Constraint_Unify (var v1) (var v2) (Just ci)
 
 substitutePoly :: TyVar -> [(TyVar, MonoType)] -> MonoType
@@ -67,7 +67,7 @@ substitutePoly v env = case lookup v env of
 
 type SolveResult = ([TypeError], [Warning], [(TyVar, MonoType)], Constraints)
 
-constructErrors :: SR.SolveResult TyVar MonoType Constraint ConstraintInfo -> SolveResult
+constructErrors :: SR.SolveResult TyVar MonoType (Constraint ConstraintInfo) ConstraintInfo -> SolveResult
 constructErrors sr = (mapMaybe (errorMessage . fst) (SR.errors sr), [], SR.substitution sr, [])
 
 getTypeErrors :: SolveResult -> [TypeError]
@@ -79,16 +79,16 @@ getWarnings (_, wa, _, _) = wa
 getSubstitution :: SolveResult -> [(TyVar, MonoType)]
 getSubstitution (_, _, subs, _) = subs
 
-getResidualConstraints :: SolveResult -> [Constraint]
+getResidualConstraints :: SolveResult -> [Constraint ConstraintInfo]
 getResidualConstraints (_, _, _, cs) = cs
 
-lookupType :: M.Map Name (TyVar, PolyType) -> Name -> TyVar -> TpScheme
+lookupType :: M.Map Name (TyVar, PolyType ConstraintInfo) -> Name -> TyVar -> TpScheme
 lookupType env name _ = 
     case M.lookup name env of
         Nothing -> internalError "TypeInferenceRules" "lookupType" "Top level type not found"
         Just (_, p) -> polyTypeToTypeScheme p
 
-eqAssEnv :: Assumptions -> Environment -> (Name -> ConstraintInfo) -> ([Constraint], Assumptions)
+eqAssEnv :: Assumptions -> Environment -> (Name -> ConstraintInfo) -> ([Constraint ConstraintInfo], Assumptions)
 eqAssEnv ass env cinfo = 
     (
         concat $ M.elems (M.intersectionWith (\a' e -> [unifyVar a e (cinfo n) | (n, a) <- a']) ass env),
@@ -279,19 +279,20 @@ SEM Pattern
         loc         . elemBeta          = integer2Name (@lhs.betaUnique + 1)
         loc         . lstConstraints    = Constraint_Unify (var @beta) (monotypeList (var @elemBeta)) (Just @cinfoResult) : map (\v -> unifyVar @elemBeta v (@cinfoElem $ fromInteger $ UL.name2Integer v)) @patterns.betas
     | Constructor
-        patterns    . betaUnique        = @bu2
+        patterns    . betaUnique        = @bu3
         lhs . gadtUsed                  = @ct == ConstructorGADT || @patterns.gadtUsed
         lhs . touchables                = @beta : @betaCon : (
                                              if @ct == ConstructorRegular then 
                                                 []
                                              else
-                                                UL.fv @rt 
-                                            ) ++ getTypeVariablesFromPolyType' @tp ++ @patterns.touchables
+                                                [] -- UL.fv @rt 
+                                            ) ++ UL.fv (getRHSPT @tp) ++ @patterns.touchables
         lhs . constraints               =   if @ct == ConstructorRegular then 
                                                 @conApply : @conConstraints ++ @patterns.constraints
                                             else
                                                 [] -- [Constraint_Unify (var @beta) @rt (Just @cinfoConstructor)]
-        lhs . gadtCondition             = []
+        lhs . gadtCondition             = [modCi (addProperty FolkloreConstraint) @conApply, Constraint_Inst (var @betaCon) (bindVariables (UL.fv (getRHSPT @tpW)) @tpW) (Just $ addProperty (TypeSignatureLocation @origTpschemeRange) @cinfoConstructor)]
+        loc . (tpW, bu3)                = freshen @bu2 @tp
         loc . beta                      = integer2Name @lhs.betaUnique
         loc . betaCon                   = integer2Name (@lhs.betaUnique + 1)
         loc . conApply                  = Constraint_Unify (var @betaCon) (foldr (:-->:) (var @beta) (map var @patterns.betas) ) 
@@ -302,7 +303,7 @@ SEM Pattern
                                                     noRange
                                                 else
                                                     getNameRange $ head (M.keys nameList)
-        loc . conConstraints            = [Constraint_Inst (var @betaCon) (bindVariables (UL.fv (getRHSPT @tp)) @tp) (Just @cinfoConstructor)]
+        loc . conConstraints            = [Constraint_Inst (var @betaCon) (bindVariables (UL.fv (@tp)) @tp) (Just $ addProperty (TypeSignatureLocation @origTpschemeRange) @cinfoConstructor)]
         loc . gadtVariables             =   if @ct == ConstructorRegular then 
                                                 []
                                             else
@@ -310,7 +311,7 @@ SEM Pattern
         loc . gadtAssumeConstraints     =   if @ct == ConstructorRegular then 
                                                 []
                                             else
-                                                modCi (addProperty FolkloreConstraint) @conApply : @conConstraints ++ @resConstraints ++ @patterns.constraints
+                                                @conConstraints ++ @resConstraints ++ @patterns.constraints
         loc . ((tp, bu), ct)            = case M.lookup @name.self (valueConstructors @lhs.importEnvironment) of
                                             Nothing  -> internalError "TypeInferenceRules" "n/a" "Constructor not found"
                                             Just (ctp, ct) -> (freshen (@lhs.betaUnique + 2) $ unbindPolyType $ tpSchemeToPolyType (importEnvironmentToTypeFamilies @lhs.importEnvironment) ctp, ct)
@@ -349,21 +350,21 @@ SEM Pattern
 
 {
 
-getRHSPT :: PolyType -> MonoType
+getRHSPT :: PolyType ConstraintInfo -> MonoType
 getRHSPT (PolyType_Mono _ m) = getRHS m
 
 getRHS :: MonoType -> MonoType
 getRHS (f :-->: a) = getRHS a
 getRHS x = x
 
-getResultType :: PolyType -> (MonoType, MonoType, [Constraint])
+getResultType :: PolyType ConstraintInfo -> (MonoType, MonoType, [Constraint ConstraintInfo])
 getResultType x = getResultTypeHelper 0 x
 
-getResultTypeHelper :: Integer -> PolyType -> (MonoType, MonoType, [Constraint])
+getResultTypeHelper :: Integer -> PolyType ConstraintInfo -> (MonoType, MonoType, [Constraint  ConstraintInfo])
 getResultTypeHelper i (PolyType_Mono cs m) = (\(mr, m, c, _) -> (mr, m, c ++ cs)) (getResultTypeM i m)
 getResultTypeHelper i (PolyType_Bind _ b) = contFreshM (UL.unbind b >>= (\(t, x) -> return $ getResultTypeHelper (UL.name2Integer t + 1) x)) i
 
-getResultTypeM :: Integer -> MonoType -> (MonoType, MonoType, [Constraint], Integer)
+getResultTypeM :: Integer -> MonoType -> (MonoType, MonoType, [Constraint  ConstraintInfo], Integer)
 getResultTypeM i (f :-->: a) = let 
                                     (_, m1, cs1, i1) = getResultTypeM i f
                                     (r, m2, cs2, i2) = getResultTypeM i1 a
@@ -376,7 +377,7 @@ getResultTypeM i (MonoType_Con s)   = (MonoType_Con s, MonoType_Con s, [], i) --
 getResultTypeM i f@(MonoType_Fam _ _) = (f, f, [], i)
 getResultTypeM i (MonoType_Var s v)   = (internalError "TypeInferenceRules" "getResultTypeM" "Return type of a GADT can never be a type variable", MonoType_Var s v, [], i)
 
-getResultTypeM' :: Integer -> MonoType -> (MonoType, [Constraint], Integer)
+getResultTypeM' :: Integer -> MonoType -> (MonoType, [Constraint ConstraintInfo], Integer)
 getResultTypeM' i (MonoType_Var s v) = (MonoType_Var s v, [], i)
 getResultTypeM' i (MonoType_Con "->") = (MonoType_Con "->", [], i)
 getResultTypeM' i (MonoType_Con c) = (MonoType_Con c, [], i) -- (var (integer2Name i), [Constraint_Unify (var $ integer2Name i) (MonoType_Con c) $ Just emptyConstraintInfo], i + 1) 
@@ -429,8 +430,8 @@ ATTR FunctionBinding LeftHandSide Pattern Patterns
     | 
     |
         gadtVariables USE {(++)} {[]} : {[TyVar]}
-        gadtCondition USE {(++)} {[]} : {[Constraint]}
-        gadtAssumeConstraints USE {(++)} {[]} : {[Constraint]}
+        gadtCondition USE {(++)} {[]} : {[Constraint ConstraintInfo]}
+        gadtAssumeConstraints USE {(++)} {[]} : {[Constraint ConstraintInfo]}
     ]        
 
 SEM FunctionBindings
@@ -749,7 +750,14 @@ SEM Statements
             . touchables = @lhs.touchables
             . betaUnique = @lhs.betaUnique
 
-ATTR Alternative Alternatives [ betaLeft:TyVar betaRight:TyVar | | ]
+ATTR Alternative Alternatives [ betaLeft:TyVar betaRight:TyVar | caseArmIndex:Int | ]
+
+SEM Alternatives
+    | Cons
+        hd  . caseArmIndex      = @tl.caseArmIndex
+        lhs . caseArmIndex      = @hd.caseArmIndex + 1
+    | Nil
+        lhs . caseArmIndex = 0
 
 SEM Alternative
     | Alternative
@@ -762,7 +770,7 @@ SEM Alternative
         lhs . gadtConstraints = if null @pattern.gadtVariables then 
                                     @subGADTConstraints 
                                 else
-                                    [GADTConstraint (error "No index")
+                                    [GADTConstraint @lhs.caseArmIndex
                                         (@righthandside.touchables ++ @pattern.gadtVariables)
                                         @pattern.gadtAssumeConstraints
                                         (@pattern.gadtCondition ++ @righthandside.constraints ++ @envConstraints)

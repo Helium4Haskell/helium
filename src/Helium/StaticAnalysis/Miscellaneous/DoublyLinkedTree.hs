@@ -18,6 +18,7 @@ data DoublyLinkedTree attributes =
                       , attribute :: attributes
                       , children  :: [DoublyLinkedTree attributes]
                       }
+         deriving Eq
                       
 root :: a -> [DoublyLinkedTree a] -> DoublyLinkedTree a
 root = DoublyLinkedTree Nothing

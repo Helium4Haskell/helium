@@ -69,21 +69,21 @@ highParticipation ratio path =
                 logMsg mymsg
                 return $ if null bestEdges then es else bestEdges
                         
-avoidForbiddenConstraints :: Monad m => Heuristic m axiom touchable types Constraint ConstraintInfo
+avoidForbiddenConstraints :: Monad m => Heuristic m axiom touchable types (Constraint ConstraintInfo) ConstraintInfo
 avoidForbiddenConstraints = 
     edgeFilter "Avoid forbidden constraints" f
         where 
             f (_, _, info) = return (not (isHighlyTrusted info))
 
 
-phaseFilter :: Monad m => Heuristic m axiom touchable types Constraint ConstraintInfo
+phaseFilter :: Monad m => Heuristic m axiom touchable types (Constraint ConstraintInfo) ConstraintInfo
 phaseFilter =  let f (_, _, info) = return (phaseOfConstraint info)
                in maximalEdgeFilter "Highest phase number" f
 
 trustFactor :: ConstraintInfo -> Float
 trustFactor info = fromMaybe 0 (maybeHead [f | (HasTrustFactor f) <- properties info])
 
-avoidTrustedConstraints :: Monad m => Heuristic m axiom touchable types Constraint ConstraintInfo
+avoidTrustedConstraints :: Monad m => Heuristic m axiom touchable types (Constraint ConstraintInfo) ConstraintInfo
 avoidTrustedConstraints = 
         let f (_, _, info) = return (trustFactor info)
         in minimalEdgeFilter "Trust factor of edge" f
@@ -108,7 +108,7 @@ instance MaybeApplication ConstraintInfo where
                 tuple:_ -> Just tuple
 
 
-avoidApplicationConstraints :: (Fresh m, HasTypeGraph m Axiom TyVar RType Constraint ConstraintInfo) => Heuristic m Axiom TyVar RType Constraint ConstraintInfo
+avoidApplicationConstraints :: (Fresh m, HasTypeGraph m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo) => Heuristic m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo
 avoidApplicationConstraints = 
     edgeFilter "Avoid application constraints" f
     where
@@ -146,7 +146,7 @@ instance MaybeNegation ConstraintInfo where
             _                                     -> Nothing
      
 
-avoidNegationConstraints :: (Fresh m, HasTypeGraph m Axiom TyVar RType Constraint ConstraintInfo) => Heuristic m Axiom TyVar RType Constraint ConstraintInfo
+avoidNegationConstraints :: (Fresh m, HasTypeGraph m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo) => Heuristic m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo
 avoidNegationConstraints = 
     edgeFilter "Avoid negation constraints" f
     where

@@ -14,7 +14,7 @@ import Helium.StaticAnalysis.Inferencers.OutsideInX.Rhodium.RhodiumTypes
 import Helium.StaticAnalysis.Miscellaneous.ConstraintInfoOU
 import Helium.StaticAnalysis.HeuristicsOU.FilterHeuristics
 
-import Unbound.LocallyNameless hiding (from, to)
+import Unbound.LocallyNameless hiding (from, to, join)
 import Unbound.LocallyNameless.Fresh
 
 import Data.Maybe
@@ -25,7 +25,7 @@ import Control.Monad
 
 import Debug.Trace
 
-typeSignatureTooGeneral :: Fresh m => VotingResidualHeuristic m Axiom TyVar RType Constraint ConstraintInfo
+typeSignatureTooGeneral :: Fresh m => VotingResidualHeuristic m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo
 typeSignatureTooGeneral = SingleVotingResidual "Type signature too general" f
     where
         f (constraint, eid, ci, ogm) =
@@ -47,16 +47,13 @@ typeSignatureTooGeneral = SingleVotingResidual "Type signature too general" f
             let g' = (markTouchables (map (\v -> (v, 0)) fvs) g)
             return $ removedUnresolvedTried g'
 
-isClassConstraint :: Constraint -> Bool
-isClassConstraint (Constraint_Class _ [_] _) = True
-isClassConstraint _ = False
 
-classSubst :: (HasTypeGraph m Axiom TyVar RType Constraint ConstraintInfo, Fresh m) => Constraint -> m Constraint
+classSubst :: (HasTypeGraph m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo, Fresh m) => (Constraint ConstraintInfo) -> m (Constraint ConstraintInfo)
 classSubst (c@(Constraint_Class n [m] ci)) = do
     MType m' <- getSubstType $ MType m
     return (Constraint_Class n [m'] ci)
 
-missingPredicate :: Fresh m => Path m Axiom TyVar RType Constraint ConstraintInfo -> VotingResidualHeuristic m Axiom TyVar RType Constraint ConstraintInfo            
+missingPredicate :: Fresh m => Path m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo -> VotingResidualHeuristic m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo            
 missingPredicate path = SingleVotingResidual "Missing predicate" f
     where
         f (constraint, eid, ci, ogm) = 
@@ -74,18 +71,27 @@ missingPredicate path = SingleVotingResidual "Missing predicate" f
                                     nedges1 <- getNeighbours (from cedge)
                                     nedges2 <- getNeighbours (to cedge)
                                     let anconstraints = filter (\e -> isConstraintEdge e && original e) $ nub (nedges1 ++ nedges2) 
-                                    let fbEdges = filter (\e -> isConstraintEdge e && isJust (maybeFunctionBinding <$> getConstraintInfo (getConstraintFromEdge e))) $ M.elems $ edges graph
-                                    let fbEdgesVars = map (\e -> (e, fv $ getConstraintFromEdge e)) fbEdges
-                                    --let fbTypes <- mapM (getSubstType . MType . var) $ 
-                                    let sub = map (\(v, MType t) -> (v, t)) $ graphToSubstition [] graph
-                                    let fbTypes = map (\(e, vs) -> (e, map (\v -> substs sub (var v)) vs)) fbEdgesVars
-                                    MType cType <- getSubstType $ MType $ var v
-                                    let fbTypes' = filter ((cType `elem`) . snd) fbTypes
+                                    let fbEdges = filter (\e -> isConstraintEdge e && isJust (join $ maybeFunctionBinding <$> getConstraintInfo (getConstraintFromEdge e))) $ M.elems $ edges graph
+                                    let fbEdgesVars = map (\e -> (e, fv $ getConstraintFromEdge e :: [TyVar])) fbEdges
+                                   
+                                    fbTypes <- mapM (\(e, vs) -> (mapM (getSubstType . MType . var) vs >>= (\ vs' -> return (e, vs')))) fbEdgesVars {-(e, map (\v -> substs sub (var v)) vs)) -}
+                                    cType <- getSubstType $ MType $ var v
+                                    let fbTypes' = filter ((cType `elem`) . map (MType . var) . concatMap getFreeVariables . snd) fbTypes
                                     let nconstraints = filter isEdgeGiven anconstraints
-                                    if null fbTypes' then 
-                                        return $ Just (1, "Ambigious type: " ++ show cc, constraint, eid, addProperty (AmbigiousClass cc) ci, gm)--error $ show ("Ambigious type", cc)
+                                    if null fbTypes' then do
+                                        let possibleRelevantEdges = filter (\e -> isConstraintEdge e && getPriorityFromEdge e > 1 && even (getPriorityFromEdge e) && isUnifyConstraint (getConstraintFromEdge e) && Just False == (isGADTPatternApplication <$> getConstraintInfo (getConstraintFromEdge e))) $ M.elems $ edges graph
+                                        substReleventEdges <- mapM (\e -> ((\(Constraint_Unify _ p _) -> getSubstType (MType p)) $ getConstraintFromEdge e) >>= \v -> return (v, e)) possibleRelevantEdges -- (((\(Constraint_Inst _ p _) -> getSubstType (PType p)) getConstraintFromEdge e), e)
+                                        let releventEdges = filter ((cType `elem`) . map (MType . var) . getFreeVariables . fst) substReleventEdges
+                                        if null releventEdges then  
+                                            return $ Just (1, "Ambigious type: " ++ show cc, constraint, eid, addProperty (AmbigiousClass cc) ci, gm)
+                                        else do
+                                            let tscons = snd $ head releventEdges
+                                            let ts = getConstraintFromEdge tscons
+                                            return $ Just (4, "Add constraint " ++ show cc ++ " to gadt constructor " ++ show ts, constraint, eid, addProperties [GADTTypeSignature, AddConstraintToTypeSignature (Just (ts, edgeId tscons, fromJust $ getConstraintInfo ts)) cc] ci, gm)
+                                            --error (show $ (map (\e -> (getConstraintFromEdge e, getConstraintInfo (getConstraintFromEdge e))) possibleRelevantEdges, cType, releventEdges))
                                     else if null nconstraints then do
-                                        let fbType' = getConstraintFromEdge $ fst $ head fbTypes'     
+                                        let fbType' = getConstraintFromEdge $ fst $ head fbTypes'
+                                        --error (show fbTypes' ++ (unlines $ map show $ map (\e -> (getConstraintFromEdge e, getConstraintInfo (getConstraintFromEdge e), maybeFunctionBinding <$> getConstraintInfo (getConstraintFromEdge e))) $ filter isConstraintEdge $ M.elems $ edges graph))
                                         return $ Just (3, "No type signature present", constraint, eid, 
                                             addProperties [RelevantFunctionBinding fbType', AddConstraintToTypeSignature Nothing cc] ci, gm)
                                     else do
@@ -116,12 +122,12 @@ missingPredicate path = SingleVotingResidual "Missing predicate" f
             return (mergeGraph g ng)
 
 
-avoidTrustedResidualConstraints :: Monad m => ResidualHeuristic m axiom touchable types Constraint ConstraintInfo
+avoidTrustedResidualConstraints :: Monad m => ResidualHeuristic m axiom touchable types (Constraint ConstraintInfo) ConstraintInfo
 avoidTrustedResidualConstraints = 
         let f (_, _, info, _) = return (trustFactor info)
         in minimalResidualEdgeFilter "Trust factor of edge" f
 
-avoidForbiddenResidualConstraints :: Monad m => ResidualHeuristic m axiom touchable types Constraint ConstraintInfo
+avoidForbiddenResidualConstraints :: Monad m => ResidualHeuristic m axiom touchable types (Constraint ConstraintInfo) ConstraintInfo
 avoidForbiddenResidualConstraints = 
     residualEdgeFilter "Avoid forbidden constraints" f
         where 

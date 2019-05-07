@@ -89,7 +89,7 @@ instance IsPattern ConstraintInfo where
          _         -> False
 
 
-applicationHeuristic :: Fresh m => VotingHeuristic m Axiom TyVar RType Constraint ConstraintInfo
+applicationHeuristic :: Fresh m => VotingHeuristic m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo
 applicationHeuristic = SingleVoting "Application heuristic" f
    where
       f e@(constraint, eid, ci) = 
@@ -224,7 +224,7 @@ zipWithHoles = rec_ 0 where
          GT -> [ (  is,(a,b):zl) | (is,zl) <- rec_ (i+1) as bs     ]
             ++ [ (i:is,      zl) | (is,zl) <- rec_ (i+1) as (b:bs) ]
 
-type Sibblings = [[(String, PolyType)]]
+type Sibblings = [[(String, PolyType ConstraintInfo)]]
 
 maybeImportedName :: ConstraintInfo -> Maybe String
 maybeImportedName cinfo = 
@@ -232,7 +232,7 @@ maybeImportedName cinfo =
          []  -> Nothing
          n:_ -> Just (show n)
 
-sibblingsHeuristic :: Fresh m => Sibblings -> VotingHeuristic m (Axiom) TyVar RType (Constraint) ConstraintInfo
+sibblingsHeuristic :: Fresh m => Sibblings -> VotingHeuristic m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo
 sibblingsHeuristic siblings = 
    SingleVoting "Sibling functions" f
    where
@@ -267,7 +267,7 @@ sibblingsHeuristic siblings =
                   orList (x:xs) = foldr (\y1 y2-> y1 ++ ", " ++ y2) ("or "++x) xs
                   orList []     = "this should never occur"
                   
-                  candidates :: [(String, PolyType)]
+                  candidates :: [(String, PolyType ConstraintInfo)]
                   candidates = 
                      let 
                         fn list 
@@ -300,7 +300,7 @@ instance MaybeLiteral ConstraintInfo where
             x                                        -> Nothing
 
 
-siblingLiterals :: Fresh m => VotingHeuristic m Axiom TyVar RType Constraint ConstraintInfo
+siblingLiterals :: Fresh m => VotingHeuristic m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo
 siblingLiterals = 
    SingleVoting "Sibling literals" f 
    where
@@ -356,7 +356,7 @@ instance IsExprVariable ConstraintInfo where -- misleading name?
          UHA_Expr (Expression_InfixApplication _ MaybeExpression_Nothing _ MaybeExpression_Nothing) -> True
          x  -> False
 
-variableFunction :: Fresh m => VotingHeuristic m Axiom TyVar RType Constraint ConstraintInfo
+variableFunction :: Fresh m => VotingHeuristic m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo
 variableFunction = SingleVoting "Variable function" f 
    where
       f pair@(constraint, eid, info) =  
@@ -408,7 +408,7 @@ instance IsTupleEdge ConstraintInfo where
          UHA_Pat  (Pattern_Tuple _ _)    -> True
          _                               -> False
 
-tupleHeuristic :: Fresh m => VotingHeuristic m Axiom TyVar RType Constraint ConstraintInfo
+tupleHeuristic :: Fresh m => VotingHeuristic m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo
 tupleHeuristic = SingleVoting "Tuple heuristics" f
       where      
          f pair@(constraint , eid, info)    
@@ -464,7 +464,7 @@ tupleHeuristic = SingleVoting "Tuple heuristics" f
                   _ -> return Nothing
 
 
-fbHasTooManyArguments :: Fresh m => VotingHeuristic m Axiom TyVar RType Constraint ConstraintInfo
+fbHasTooManyArguments :: Fresh m => VotingHeuristic m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo
 fbHasTooManyArguments = SingleVoting "Function binding heuristics" f
    where
       f (constraint, eid, info)   
@@ -498,7 +498,7 @@ fbHasTooManyArguments = SingleVoting "Function binding heuristics" f
                _ -> return Nothing
 
 
-constraintFromUser :: Fresh m => Path m Axiom TyVar RType Constraint ConstraintInfo -> VotingHeuristic m Axiom TyVar RType Constraint ConstraintInfo
+constraintFromUser :: Fresh m => Path m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo -> VotingHeuristic m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo
 constraintFromUser (Path _ path) = MultiVoting "Constraints from .type file" (helper $ map ignoreGraphModifier path)
    where
       helper path' edges = 
@@ -506,7 +506,7 @@ constraintFromUser (Path _ path) = MultiVoting "Constraints from .type file" (he
             bestEdge = let lst = selectBestEdge path' in if null lst then Nothing else Just (maximum lst)
             edgeNrs  = [ i | (_, i, _) <- edges ]
             
-            selectBestEdge :: [(Constraint, EdgeId, ConstraintInfo)] -> [EdgeId]
+            selectBestEdge :: [(Constraint ConstraintInfo, EdgeId, ConstraintInfo)] -> [EdgeId]
             selectBestEdge path' = [eid | (constraint, eid, ci) <- path', isJust (maybeUserConstraint ci), eid `elem` edgeNrs]
 
             f :: (a -> a -> a) -> Maybe a -> Maybe a -> Maybe a            

@@ -8,12 +8,45 @@
     Functions to align and show types.
 -}
 
-module Helium.StaticAnalysis.Miscellaneous.TypesToAlignedDocs (qualifiedTypesToAlignedDocs, typesToAlignedDocs) where
+module Helium.StaticAnalysis.Miscellaneous.TypesToAlignedDocs (qualifiedTypesToAlignedDocs, typesToAlignedDocs, qualifiedPolyTypesToAlignedDocs) where
 
-import Data.List     ( transpose )
+import Data.List     ( transpose, intercalate )
 import Top.Types
 import Text.PrettyPrint.Leijen
 import qualified Text.PrettyPrint.Leijen as PPrint
+
+import Helium.StaticAnalysis.Inferencers.OutsideInX.Rhodium.RhodiumTypes
+
+import Unbound.LocallyNameless
+import Unbound.LocallyNameless.Alpha
+
+import Debug.Trace
+
+qualifiedPolyTypesToAlignedDocs :: [PolyType ci] -> [PPrint.Doc]
+qualifiedPolyTypesToAlignedDocs pts = let
+        (css, ms) = unzip $ map extractPolyType pts
+        docContexts = map text . sameLengthRight . map showContext $ css
+        docTypes = typesToAlignedDocs (map monoTypeToTp ms)
+      in if null (concat css)
+        then docTypes
+        else zipWith (<>) docContexts docTypes
+    where
+      extractPolyType (PolyType_Mono cs m) = (cs, m)
+      showContext :: [Constraint ci] -> String
+      showContext [] = ""
+      showContext [c] = showClassConstraint c ++ " => "
+      showContext cs = "(" ++ intercalate ", " (map showClassConstraint cs) ++ ") => "
+      showClassConstraint :: Constraint ci -> String
+      showClassConstraint (Constraint_Class cn [m] _) = cn ++ " " ++ show m
+
+monoTypeToTp :: MonoType -> Tp
+monoTypeToTp (MonoType_App (MonoType_Con "[]") (MonoType_Con "Char")) = TCon "String"
+monoTypeToTp (MonoType_Var (Just s) n) = TCon s
+monoTypeToTp (MonoType_Var Nothing n) = TVar (fromInteger (name2Integer n))
+monoTypeToTp (MonoType_Con n)   = TCon n
+monoTypeToTp (MonoType_App f a) = TApp (monoTypeToTp f) (monoTypeToTp a)
+monoTypeToTp (MonoType_Fam s a) = foldl TApp (TCon s) (map monoTypeToTp a)
+
 
 qualifiedTypesToAlignedDocs :: [QType] -> [PPrint.Doc]
 qualifiedTypesToAlignedDocs qtps = 
