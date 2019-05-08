@@ -60,7 +60,7 @@ compile basedir fullName options lvmPath doneModules =
         let importEnvs = map (\(_,b,_) -> b) importEnvsWithMod
         
         -- Phase 4: Resolving operators
-        putStrLn "===== Phase 4 ====="
+        -- putStrLn "===== Phase 4 ====="
         resolvedModule <-
             doPhaseWithExit 20 (const "R") compileOptions $
                phaseResolveOperators parsedModule importEnvs options

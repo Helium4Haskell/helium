@@ -133,7 +133,7 @@ customInfix = customDeclKind "infix"
 
 
 
-setExportsPublic :: Show v => Bool -> (IdSet,IdSet,IdSet,IdSet,IdSet) -> ImportEnvironment -> Module v -> Module v
+setExportsPublic :: Bool -> (IdSet,IdSet,IdSet,IdSet,IdSet) -> ImportEnvironment -> Module v -> Module v
 setExportsPublic implicit (exports,exportCons,exportData,exportDataCon,exportMods) env m
   = m { moduleDecls = concatMap setPublic (moduleDecls m) }
   where
