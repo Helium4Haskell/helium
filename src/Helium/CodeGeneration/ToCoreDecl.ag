@@ -65,7 +65,7 @@ SEM Declaration
                 }
             ]
             ++
-            [ DerivingShow.typeShowFunction (classEnvironment @lhs.importEnv) (typeSynonyms @lhs.importEnv) @self @lhs.moduleQual @origin ]
+            [ DerivingShow.typeShowFunction @lhs.importEnv @self @lhs.moduleQual @origin ]
     
     | Data    constructors.tag = 0
               constructors.dataTypeName = @simpletype.name
@@ -83,7 +83,7 @@ SEM Declaration
             [@simpletype.name, @qualname]
         ++ 
         (if "Prelude.Show" `elem` map show @qualDers
-         then [ DerivingShow.dataDictionary (classEnvironment @lhs.importEnv) (typeSynonyms @lhs.importEnv) @self @lhs.moduleQual @origin @qualname ]
+         then [ DerivingShow.dataDictionary @lhs.importEnv @self @lhs.moduleQual @origin @qualname ]
          else []
         )
         ++
@@ -237,7 +237,7 @@ SEM Declaration
                                                 (getSuperClasses @contextQual)
                                                 (constructFunctionMap @lhs.importEnv (length @superClasses) @qualName)
                                                 @where.whereDeclarations 
-                                                (addQualified @lhs.moduleQual @qualName)
+                                                @qualName
                                                 @loc.typeName (namesInType @loc.type)
                                                 (originCustoms @lhs.modulename @range.self)
                                             ]

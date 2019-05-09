@@ -26,8 +26,8 @@ interpreterMain = "interpreter_main"
 -- The interpreter_main has te be wrapped inside unsafePerformIO etcetera, too
 -- We can't just call it main because we'll get import clashes.  Sigh!
 
-insertedMain :: ClassEnvironment -> TypeSynonymEnvironment -> TypeEnvironment -> CoreDecl
-insertedMain classEnv tse toplevelTypes = 
+insertedMain :: ImportEnvironment -> TypeEnvironment -> CoreDecl
+insertedMain env toplevelTypes = 
     let maybeWrapMainAndType = 
             case (M.lookup (Name_Identifier noRange [] [] "main") $! toplevelTypes) of -- !!!Name
                 Just t -> Just ("main", t)
@@ -52,7 +52,7 @@ insertedMain classEnv tse toplevelTypes =
                         var name
                     | otherwise ->
                         var "$primPutStrLn" `app_` 
-                            (Core.Ap (var "show")  (DerivingShow.showFunctionOfType classEnv tse True (makeTypeFromTp tp)) `app_` 
+                            (Core.Ap (var "show")  (DerivingShow.showFunctionOfType env True (makeTypeFromTp tp)) `app_` 
                                 var name)
                     where                        
                         (qs, tp) = split (snd (instantiate 123456789 tpScheme))
@@ -64,7 +64,7 @@ insertedMain classEnv tse toplevelTypes =
 SEM Module
     | Module    -- insert "insertedMain" after modulePublic so that it remains private
                 lhs.core = @module_ { Module.moduleDecls = 
-                                insertedMain (classEnvironment @lhs.importEnv) (typeSynonyms @lhs.importEnv) @lhs.toplevelTypes : Module.moduleDecls @module_ }
+                                insertedMain @lhs.importEnv @lhs.toplevelTypes : Module.moduleDecls @module_ }
                 loc.modulename = maybe "Main" getNameName @name.name
                 loc.moduleQual = maybe ["Main"] getQualified @name.name
                 loc.module_ = 
