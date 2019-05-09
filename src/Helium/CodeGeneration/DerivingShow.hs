@@ -43,7 +43,7 @@ dataShowFunction classEnv tse (UHA.Declaration_Data _ _ (UHA.SimpleType_SimpleTy
                 (map (makeAlt classEnv tse) constructors)
             )
         )   
-        ( (map idFromName names ++ [valueId])
+        ( (map idFromName names)
         ++ [idFromString "$instanceDictPrelude.Show", valueId])
 dataShowFunction _ _ _ _ _ = error "not supported"
 
