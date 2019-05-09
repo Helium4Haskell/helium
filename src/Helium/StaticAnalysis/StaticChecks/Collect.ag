@@ -204,7 +204,7 @@ ATTR Module -> Declaration [ classEnvironment:ClassEnvironment | | collectInstan
 
 SEM Module
   | Module
-       body.classEnvironment =
+       body.classEnvironment = 
           let importEnv = foldr combineImportEnvironments emptyEnvironment @importEnvironments
           in foldr (\(n, i) -> insertInstance (show n) i)
                    (classEnvironment importEnv)
@@ -212,8 +212,8 @@ SEM Module
 
 SEM Declaration
   | Data
-       lhs . collectInstances = [ (cl, makeInstance (show cl) (length @simpletype.typevariables) (show @simpletype.name) True)
-                                | cl <- @derivings.self
+       lhs . collectInstances = [ (cl, makeInstance (show cl) (length @simpletype.typevariables) (getNameName @fullname) True)
+                                | cl <- @qualDers
                                 ]
 
 
@@ -454,7 +454,7 @@ SEM Declaration
                                             tVars = zip tvs (map TVar [0..])
                                             key = (dn, foldl TApp (TCon $ show dataName) $ map snd tVars)
                                             value = (tvs, [(show dn, tv) | tv <- map show tvs])
-                                        in (key, value) | dn <- @derivings.self
+                                        in (key, value) | dn <- @qualDers
                                     ]
             lhs . classInstances =  [
                                         let 
@@ -462,7 +462,7 @@ SEM Declaration
                                             tVars = zip tvs (map TVar [0..])
                                             typeClass = foldl TApp (TCon $ show @simpletype.name) $ map snd tVars
                                         in (show dn, typeClass, map (\x -> (show dn, snd x)) tVars)
-                                        | dn <- @derivings.self
+                                        | dn <- @qualDers
                                     ]
         
 {
@@ -510,9 +510,10 @@ SEM Declaration
   | Instance
      lhs . instances   = [createInstance @range.self @qualifiedName @qualifiedType @contextQual]
   | Data
-    lhs. instances = [ (@range.self, makeInstance (show cl) (length @simpletype.typevariables) (show @simpletype.name) True)
-                                | cl <- @derivings.self
+    lhs . instances = [ (@range.self, makeInstance (show cl) (length @simpletype.typevariables) (getNameName @fullname) True)
+                                | cl <- @qualDers
                                 ]
+    loc . qualDers  = map (convertClassNameToQualified @lhs.qualifiedEnvironment) @derivings.self
     
 
 {

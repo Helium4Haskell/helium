@@ -17,18 +17,18 @@ import Lvm.Common.Id
 import Helium.Utils.Utils
 
 -- Eq Dictionary for a data type declaration
-dataDictionary :: UHA.Declaration -> [Custom] -> CoreDecl
-dataDictionary  (UHA.Declaration_Data _ _ (UHA.SimpleType_SimpleType _ name names) constructors _) origin =
+dataDictionary :: UHA.Declaration -> [Custom] -> UHA.Name -> CoreDecl
+dataDictionary  (UHA.Declaration_Data _ _ (UHA.SimpleType_SimpleType _ name names) constructors _) origin qualname =
     DeclValue 
-    { declName    = idFromString ("$dictPrelude.Eq$" ++ getNameName name)
+    { declName    = idFromString ("$dictPrelude.Eq$" ++ getNameName qualname)
     , declAccess  = public
     , valueEnc    = Nothing
     , valueValue  = eqDict names constructors
-    , declCustoms = [ custom "type" ("DictPrelude.Eq$" ++ getNameName name) ] 
+    , declCustoms = [ custom "type" ("DictPrelude.Eq$" ++ getNameName qualname) ] 
         ++ map (custom "typeVariable" . getNameName) names
         ++ map (\n -> custom "superInstance" ("Prelude.Eq-" ++ getNameName n)) names
     }
-dataDictionary _ _ = error "pattern match failure in CodeGeneration.Deriving.dataDictionary"
+dataDictionary _ _ _ = error "pattern match failure in CodeGeneration.Deriving.dataDictionary"
 
 eqDict :: [UHA.Name] -> [UHA.Constructor] -> Expr
 eqDict names constructors = foldr Lam dictBody (map idFromName names)

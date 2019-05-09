@@ -27,12 +27,13 @@ import qualified Data.Map as M
 import Data.Maybe
 import Data.List
 import Helium.Utils.QualifiedTypes.Constants
+import Debug.Trace
 
 -- Show function for a data type declaration
 dataShowFunction :: ClassEnvironment -> TypeSynonymEnvironment -> UHA.Declaration -> [String] -> [Custom] -> Expr
 dataShowFunction classEnv tse (UHA.Declaration_Data _ _ (UHA.SimpleType_SimpleType _ name names) constructors _) qual origin =
     let typeString = show (typeOfShowFunction name qual names)
-        nameId     = idFromString ("show" ++ (unQualifyName . getNameName) name)
+        nameId     = idFromString ("show" ++ (getNameName) name)
         valueId    = idFromString "value$"
         in
         foldr Lam 
@@ -46,18 +47,17 @@ dataShowFunction classEnv tse (UHA.Declaration_Data _ _ (UHA.SimpleType_SimpleTy
         ++ [idFromString "$instanceDictPrelude.Show", valueId])
 dataShowFunction _ _ _ _ _ = error "not supported"
 
---TODO Fix qual
 -- Show Dictionary for a data type declaration
-dataDictionary :: ClassEnvironment -> TypeSynonymEnvironment -> UHA.Declaration -> [String] -> [Custom] -> CoreDecl
-dataDictionary classEnv tse decl@(UHA.Declaration_Data _ _ (UHA.SimpleType_SimpleType _ name names) _ _) qual origin =
+dataDictionary :: ClassEnvironment -> TypeSynonymEnvironment -> UHA.Declaration -> [String] -> [Custom] -> UHA.Name -> CoreDecl
+dataDictionary classEnv tse decl@(UHA.Declaration_Data _ _ (UHA.SimpleType_SimpleType _ name names) _ _) qual origin qualname =
     DeclValue 
-    { declName    = idFromString ("$dictPrelude.Show$" ++ getNameName name)
+    { declName    = traceShow classEnv $ idFromString ("$dictPrelude.Show$" ++ getNameName qualname)
     , declAccess  = public
     , valueEnc    = Nothing
     , valueValue  = makeShowDictionary (length names)
-    , declCustoms = [ custom "type" ("DictPrelude.Show$" ++ getNameName name)] 
+    , declCustoms = [ custom "type" ("DictPrelude.Show$" ++ getNameName qualname)] 
                 ++ map (custom "typeVariable" . getNameName) names
-                ++ map (\n -> custom "superInstance" ("Prelude.Show-" ++ getNameName n)) names
+                ++ map (\n -> custom "superInstance" ("Prelude.Show-" ++ getNameName qualname)) names
                 ++ origin
     }
   where
@@ -70,7 +70,7 @@ dataDictionary classEnv tse decl@(UHA.Declaration_Data _ _ (UHA.SimpleType_Simpl
            declarations = zipWith Bind list [Var $ idFromString "default$Prelude.Show$showsPrec", Var $ idFromString "default$Prelude.Show$showList", showBody]
            body = Let (Rec declarations) (foldl Ap (Con $ ConId $ idFromString "DictPrelude.Show") $ map Var list)
        in foldr Lam body ids
-dataDictionary _ _ _ _ _ = error "not supported"
+dataDictionary _ _ _ _ _ _ = error "not supported"
 
 -- Show function for a type synonym
 -- type T a b = (b, a) 
@@ -81,7 +81,7 @@ typeShowFunction :: ClassEnvironment -> TypeSynonymEnvironment -> UHA.Declaratio
 typeShowFunction classEnv tse (UHA.Declaration_Type _ (UHA.SimpleType_SimpleType _ name names) type_) qual origin =
     let typeString = show (typeOfShowFunction name qual names) in
     DeclValue 
-    { declName    = idFromString ("show" ++ (unQualifyName . getNameName) name)
+    { declName    = idFromString ("show" ++ (getNameName) name)
     , declAccess  = public
     , valueEnc    = Nothing
     , valueValue  = foldr (Lam . idFromName) (showFunctionOfType classEnv tse False type_) names

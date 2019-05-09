@@ -226,9 +226,10 @@ ATTR Module -> Declaration [ | | collectInstances USE { ++ } { [] } : {[(Name, I
 
 SEM Declaration
   | Data
-        lhs . collectInstances =  [ (cl, makeInstance (show cl) (length @simpletype.typevariables) (show $ addQualified @lhs.moduleQual @simpletype.name) True)
-                                    | cl <- @derivings.self
+        lhs . collectInstances =  [ (cl, makeInstance (show cl) (length @simpletype.typevariables) (getNameName $ addQualified @lhs.moduleQual @simpletype.name) True)
+                                    | cl <- @qualDers
                                   ]
+        loc . qualDers         = map (convertClassNameToQualified @lhs.importEnvironment) @derivings.self
   | Instance
         lhs . collectInstances  = [(@qualName, updateSuperclasses @typevariables (getSuperClasses @contextQual) $ makeInstance 
                                       (show @qualName) (length @typevariables) @stype False)]

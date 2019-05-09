@@ -84,18 +84,19 @@ SEM Declaration
              loc . unused  = filter (`notElem` @constructors.typevariables) @simpletype.typevariables
                  . doubles = filter ((>1) . length) . group . sort $        @simpletype.typevariables
                  . undef   = filter (`notElem` @simpletype.typevariables)   @constructors.typevariables
-                 . unknCls = [ if className `elem` [ "Num", "Enum", "Ord" ]
+                 . unknCls = [ if className `elem` [ "Prelude.Num", "Prelude.Enum", "Prelude.Ord" ]
                                 then NonDerivableClass c
                                 else UnknownClass c
-                             | c <- @derivings.self, let className = show c
-                             , className `notElem` ["Show", "Eq"]
+                             | c <- @qualDers, let className = show c
+                             , className `notElem` ["Prelude.Show", "Prelude.Eq"]
                              ]
                  . cantDer = [ CannotDerive c [ tp | ReductionError (Predicate _ tp) <- errs ]
-                             | c <- @derivings.self
-                             , let preds     = map (Predicate (show c)) @constructors.parameterTypes
+                             | c <- @qualDers
+                             , let preds     = map (Predicate (getNameName c)) @constructors.parameterTypes
                                    (_, errs) = contextReduction @lhs.orderedTypeSynonyms @lhs.classEnvironment preds
                              , not (null errs)
                              ]
+                 
 
     | Type   lhs . miscerrors = concat [ makeDuplicated TypeVariable @doubles
                                        , makeUndefined TypeVariable @undef @simpletype.typevariables

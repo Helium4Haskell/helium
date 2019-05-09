@@ -71,6 +71,7 @@ SEM Declaration
               constructors.dataTypeName = @simpletype.name
               loc . origin      = originCustoms @lhs.modulename @range.self
                   . qualname    = addQualified @lhs.moduleQual @simpletype.name
+                  . qualDers    = map (convertClassNameToQualified @lhs.importEnv) @derivings.self
               lhs.decls  =
         map snd @constructors.cons
         ++
@@ -81,13 +82,13 @@ SEM Declaration
                     , Core.declCustoms = [ Core.CustomInt (length @simpletype.typevariables) ] ++ @origin})
             [@simpletype.name, @qualname]
         ++ 
-        (if "Prelude.Show" `elem` map show @derivings.self 
-         then [ DerivingShow.dataDictionary (classEnvironment @lhs.importEnv) (typeSynonyms @lhs.importEnv) @self @lhs.moduleQual @origin ]
+        (if "Prelude.Show" `elem` map show @qualDers
+         then [ DerivingShow.dataDictionary (classEnvironment @lhs.importEnv) (typeSynonyms @lhs.importEnv) @self @lhs.moduleQual @origin @qualname ]
          else []
         )
         ++
-        (if "Prelude.Eq" `elem` map show @derivings.self 
-         then [ DerivingEq.dataDictionary @self @origin]
+        (if "Prelude.Eq" `elem` map show @qualDers
+         then [ DerivingEq.dataDictionary @self @origin @qualname]
          else []
         )
         
