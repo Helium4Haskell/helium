@@ -88,7 +88,7 @@ SEM Declaration
                                 then NonDerivableClass unQualName
                                 else UnknownClass unQualName
                              | c <- @qualDers, let className = getNameName c
-                             , let unQualName = setNameRange (unQualifyName @lhs.qualifiedEnvironment c) @range.self
+                             , let unQualName = setNameRange (unQualifyName @lhs.qualifiedEnvironment c) (getNameRange c)
                              , className `notElem` ["Prelude.Show", "Prelude.Eq"]
                              ]
                  . cantDer = [ CannotDerive c [ tp | ReductionError (Predicate _ tp) <- errs ]

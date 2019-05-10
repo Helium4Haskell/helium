@@ -513,7 +513,7 @@ SEM Declaration
     lhs . instances = [ (@range.self, makeInstance (show cl) (length @simpletype.typevariables) (getNameName @fullname) True)
                                 | cl <- @qualDers
                                 ]
-    loc . qualDers  = map (convertClassNameToQualified @lhs.qualifiedEnvironment) @derivings.self
+    loc . qualDers  = map (\x -> setNameRange (convertClassNameToQualified @lhs.qualifiedEnvironment x) (getNameRange x)) @derivings.self
     
 
 {
