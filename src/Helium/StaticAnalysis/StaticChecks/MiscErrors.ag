@@ -27,7 +27,7 @@ SEM Module
             loc .  typeSynonyms = getOrderedTypeSynonyms @loc.imports
             loc  . typeSynonymErrors = noTypeSynonymsInInstance @loc.typeSynonyms @body.instances
             loc  . instanceErrors = makeClassEnvironmentErrors $ checkClassEnvironment @loc.typeSynonyms (M.unionWith combineClassDecls @body.classEnv $ classEnvironment $ combineImportEnvironmentList @importEnvironments) @body.instances
-            loc  . overlappingInstances = overlappingInstances $ foldr insertInst @body.classEnv (getInstanceNames @importEnvironments ++ @body.instances)
+            loc  . overlappingInstances = overlappingInstances @classNamesEnv $ foldr insertInst @body.classEnv (getInstanceNames @importEnvironments ++ @body.instances)
 
 -----------------------------------------
 -- Body
@@ -524,11 +524,11 @@ makeClassEnvironmentErrors ((r, c, pr):insts) | pr == []  = makeClassEnvironment
 makeClassEnvironmentErrors []                             = []
 
 
-overlappingInstances :: ClassEnvironment -> Errors
-overlappingInstances = M.foldrWithKey (\k (_, i) b -> (overlappingInstances' k i) ++ b) []
+overlappingInstances :: ClassNameEnvironment -> ClassEnvironment -> Errors
+overlappingInstances env = M.foldrWithKey (\k (_, i) b -> (overlappingInstances' k i) ++ b) []
    where
     overlappingInstances' :: String -> Instances -> Errors
-    overlappingInstances' name insts = [OverlappingInstance name ty |
+    overlappingInstances' name insts = [OverlappingInstance (getNameName $ unQualifyClassName env (nameFromString name)) ty |
                             ty <- map head $ filter (\l -> length l > 1) $ group . sort $ map ((\(Predicate _ ty) -> fst $ leftSpine ty) . fst) insts]
 
 noTypeSynonymsInInstance :: OrderedTypeSynonyms -> [(Range, Instance)] -> Errors

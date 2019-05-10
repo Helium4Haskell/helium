@@ -13,7 +13,6 @@ import Helium.Syntax.UHA_Utils
 import Helium.Utils.Utils
 import Top.Types
 import Control.Arrow
-import Debug.Trace
 
 import qualified Data.Map as M
 
