@@ -444,7 +444,7 @@ SEM Declaration
                                 superClasses = map (fmap $ unqualify . unquantify . head) @superClasses
                               in [(getNameName @qualifiedName, @qualifiedTp, superClasses)]
 
-       lhs . instanceEnv = M.singleton (addQualified @lhs.moduleQual @name.self, @qualifiedTp) 
+       lhs . instanceEnv = M.singleton (convertClassNameToQualified @lhs.qualifiedEnvironment @name.self, @qualifiedTp) 
                             (namesInType @qualifiedType, map (fmap (show . head)) @superClasses)
     | Data  lhs . instanceEnv = M.fromList 
                                     [
