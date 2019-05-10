@@ -85,9 +85,10 @@ SEM Declaration
                  . doubles = filter ((>1) . length) . group . sort $        @simpletype.typevariables
                  . undef   = filter (`notElem` @simpletype.typevariables)   @constructors.typevariables
                  . unknCls = [ if className `elem` [ "Prelude.Num", "Prelude.Enum", "Prelude.Ord" ]
-                                then NonDerivableClass (setNameRange c @range.self)
-                                else UnknownClass c
-                             | c <- @qualDers, let className = show c
+                                then NonDerivableClass unQualName
+                                else UnknownClass unQualName
+                             | c <- @qualDers, let className = getNameName c
+                             , let unQualName = setNameRange (unQualifyName @lhs.qualifiedEnvironment c) @range.self
                              , className `notElem` ["Prelude.Show", "Prelude.Eq"]
                              ]
                  . cantDer = [ CannotDerive c [ tp | ReductionError (Predicate _ tp) <- errs ]

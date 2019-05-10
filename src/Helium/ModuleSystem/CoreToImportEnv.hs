@@ -334,7 +334,7 @@ getImportEnvironment importedInModule decls = foldr (insertDictionaries imported
                             superClasses = selectCustom "SuperClass" cs
                             origin = originFromCustoms cs
                             originModule = takeWhile (/=':') origin
-                            qualifiedName = nameFromString $ originModule ++ "." ++ unQualifyName (stringFromId n)
+                            qualifiedName = nameFromString $ originModule ++ "." ++ unQualifyString (stringFromId n)
                             addClass :: Name -> [Custom] -> ImportEnvironment -> ImportEnvironment
                             addClass className superClasses env = let
                                     classEnv = classEnvironment env

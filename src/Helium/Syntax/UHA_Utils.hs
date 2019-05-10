@@ -206,8 +206,8 @@ getQualifier = getQualifier' []
             | otherwise = (quals, s)
         getQualifier' _ _ = ([],"")
 
-unQualifyName :: String -> String
-unQualifyName = snd . getQualifier
+unQualifyString :: String -> String
+unQualifyString = snd . getQualifier
 
 removeQualified :: Name -> Name
 removeQualified = addQualified []

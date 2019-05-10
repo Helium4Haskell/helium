@@ -75,6 +75,9 @@ fromQualName env n = case M.lookup n env of
     Nothing   -> n
     Just newn -> newn
 
+unQualifyName :: ImportEnvironment -> Name -> Name
+unQualifyName = fromQualName . convertMap . getNameEnvironmentInts
+
 unqualifyTpScheme :: M.Map Name (Int, Name) -> TpScheme -> TpScheme
 unqualifyTpScheme env = convertTpScheme (fromQualName $ convertMap env)
 
