@@ -85,7 +85,7 @@ SEM Declaration
                  . doubles = filter ((>1) . length) . group . sort $        @simpletype.typevariables
                  . undef   = filter (`notElem` @simpletype.typevariables)   @constructors.typevariables
                  . unknCls = [ if className `elem` [ "Prelude.Num", "Prelude.Enum", "Prelude.Ord" ]
-                                then NonDerivableClass c
+                                then NonDerivableClass (setNameRange c @range.self)
                                 else UnknownClass c
                              | c <- @qualDers, let className = show c
                              , className `notElem` ["Prelude.Show", "Prelude.Eq"]
