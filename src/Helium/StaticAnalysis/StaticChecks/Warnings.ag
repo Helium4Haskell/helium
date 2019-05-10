@@ -156,16 +156,18 @@ SEM Declaration
 {
 simplifyContext :: OrderedTypeSynonyms -> Range -> [(Int, Name)] -> TpScheme -> ImportEnvironment -> Warnings
 simplifyContext synonyms range intMap typescheme importEnv =
-   let predicates = qualifiers (unquantify typescheme)
+   let qualScheme = convertTpSchemeToQualified importEnv typescheme
+       predicates = qualifiers (unquantify qualScheme)
        reduced    = f predicates []
           where f [] as = reverse as -- reverse to original order
                 f (p:ps) as
                    | entail synonyms (classEnvironment importEnv) (ps++as) p = f ps as
                    | otherwise = f ps (p:as)
        sub = listToSubstitution [ (i, TCon (show n)) | (i, n) <- intMap ]
+       unQualPred = map (convertPredicate removeQualified)
    in if length reduced == length predicates
         then []
-        else [ ReduceContext range (sub |-> predicates) (sub |-> reduced) ]
+        else [ ReduceContext range (unQualPred $ sub |-> predicates) (unQualPred $ sub |-> reduced) ]
 }
 
 

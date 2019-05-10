@@ -31,7 +31,7 @@ SEM Module
                                          @body.collectInstances
            . tyConEnv            = typeConstructors @lhs.importEnvironment
            . typeErrors          = map (convertTypeError (fromQualName (convertMap @tyConEnv))) @typeErrorsBase
-           . typeErrorsBase      =  let unqualifier = unqualifyTp (typeConstructors @lhs.importEnvironment) 
+           . typeErrorsBase      =  let unqualifier = fromQualName (convertMap $ getNameEnvironmentInts @lhs.importEnvironment)
                                     in case makeTypeErrors @lhs.options @classEnv unqualifier @orderedTypeSynonyms @substitution @solveErrors of
                                         []   -> if NoOverloadingTypeCheck `elem` @lhs.options
                                                    then filter (\(TypeError _ ms _ _) -> not $ isInfixOf "Illegal overloaded type" $ show ms) @body.collectErrors

@@ -20,7 +20,7 @@ import Lvm.Common.Id(Id, idFromString, stringFromId)
 --import Data.Char
 import Data.List(intercalate)
 
-import Top.Types(isTupleConstructor)
+import Top.Types
 import Helium.Utils.Utils(internalError)
 
 
@@ -245,6 +245,19 @@ isQualifiedString s@(fir:_)
                                 _         -> False
             | otherwise = False
 
+convertTpScheme :: (Name -> Name) -> TpScheme -> TpScheme
+convertTpScheme f (Quantification (xs, qm, (Qualification (pre, ty)))) = Quantification (xs, qm, (Qualification (map (convertPredicate f) pre,convertTp f ty)))
+
+convertTpInScheme :: (Tp -> Tp) -> TpScheme -> TpScheme
+convertTpInScheme f (Quantification (xs, qm, (Qualification (pre, ty)))) = (Quantification (xs, qm, (Qualification (pre, f ty))))
+
+convertTp :: (Name -> Name) -> Tp -> Tp
+convertTp _ t@(TVar _) = t
+convertTp f (TCon str) = TCon . getNameName . f . nameFromString $ str
+convertTp f (TApp t1 t2) = TApp (convertTp f t1) (convertTp f t2)
+
+convertPredicate :: (Name -> Name) -> Predicate -> Predicate
+convertPredicate f (Predicate n tp) = Predicate (getNameName $ f $ nameFromString n) (convertTp f tp)
 -------------------------------------
 -- Got these from the lexer.
 isLetter :: Char -> Bool

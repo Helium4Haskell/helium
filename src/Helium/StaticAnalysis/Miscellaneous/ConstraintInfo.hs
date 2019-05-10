@@ -17,6 +17,7 @@ import Helium.Main.Args (Option(..))
 import Top.Types
 import Top.Ordering.Tree
 import Helium.Syntax.UHA_Syntax
+import Helium.Syntax.UHA_Utils
 import Helium.StaticAnalysis.Miscellaneous.UHA_Source
 import Helium.Syntax.UHA_Range
 import Helium.StaticAnalysis.Messages.TypeErrors
@@ -316,7 +317,7 @@ tooGeneralLabels = [skolemVersusConstantLabel, skolemVersusSkolemLabel, escaping
 -- TODO: get rid of the TypeError and TypeErrorHint data types, and move the following two functions
 -- to the module TypeErrors
     
-makeTypeErrors :: Substitution sub => [Option] -> ClassEnvironment -> (Tp -> Tp) -> OrderedTypeSynonyms -> sub -> [(ConstraintInfo, ErrorLabel)] -> TypeErrors
+makeTypeErrors :: Substitution sub => [Option] -> ClassEnvironment -> (Name -> Name) -> OrderedTypeSynonyms -> sub -> [(ConstraintInfo, ErrorLabel)] -> TypeErrors
 makeTypeErrors options classEnv unqualifier synonyms sub errors =
    let --comp l1 l2
        --   | l1 `elem` tooGeneralLabels && l2 `elem` tooGeneralLabels = EQ
@@ -382,9 +383,11 @@ makeTypeErrors options classEnv unqualifier synonyms sub errors =
                       range   = fromMaybe err (maybeTypeSignatureLocation info)
                       scheme1 = generalize monoset ([] .=>. sub |->  snd (typepair info))
                       (ms, scheme2) = fromMaybe err (maybeSkolemizedTypeScheme info)
+                      us1     = convertTpScheme unqualifier scheme1
+                      us2     = convertTpScheme unqualifier scheme2
                       source  = uncurry fromMaybe (sources info)
                       err     = internalError "ConstraintInfo" "makeTypeErrors" "unknown original type scheme"
-                  in special info (makeNotGeneralEnoughTypeError (isExprTyped info) range source scheme1 scheme2)
+                  in special info (makeNotGeneralEnoughTypeError (isExprTyped info) range source us1 us2)
            in (if label == escapingSkolemLabel then 3 else 2, map f infos)
 
       -- a reduction error
@@ -403,7 +406,7 @@ makeTypeErrors options classEnv unqualifier synonyms sub errors =
                       pred' = let err = internalError "ConstraintInfo" "makeTypeErrors" 
                                                        "unknown predicate which resulted in a reduction error"
                                in maybe (fromMaybe err $ maybeReductionErrorPredicate info) fst maybeNever
-                  in maybe (special info (sub |-> makeReductionError source extra classEnv unqualifier pred'))
+                  in maybe (special info (sub |-> makeReductionError source extra classEnv (convertTp unqualifier) pred'))
                         (\m -> TypeError [rangeOfSource source] ([MessageOneLiner $ MessageString m]) [] []) customMessage
            in (4, map f infos)     
   

@@ -15,6 +15,9 @@ import qualified Data.Map as M
 getNameEnvironment :: ImportEnvironment -> M.Map Name Name
 getNameEnvironment env = M.union (classNameEnvironment env) (fmap snd $ typeConstructors env)
 
+getNameEnvironmentInts :: ImportEnvironment -> M.Map Name (Int, Name)
+getNameEnvironmentInts env = M.union (M.map ((,) 0) $ classNameEnvironment env) (typeConstructors env)
+
 toQualTyCon :: ImportEnvironment -> Name -> Name
 toQualTyCon _ n@(Name_Special _ _ _ _) = n
 toQualTyCon env n = M.findWithDefault n n (getNameEnvironment env)
@@ -55,17 +58,6 @@ convertTpToQualified env = convertTp (toQualTyCon env)
 convertTpSchemeToQualified :: ImportEnvironment -> TpScheme -> TpScheme
 convertTpSchemeToQualified env = convertTpScheme (toQualTyCon env)
 
-convertTp :: (Name -> Name) -> Tp -> Tp
-convertTp _ t@(TVar _) = t
-convertTp f (TCon str) = TCon . getNameName . f . nameFromString $ str
-convertTp f (TApp t1 t2) = TApp (convertTp f t1) (convertTp f t2)
-
-convertPredicate :: (Name -> Name) -> Predicate -> Predicate
-convertPredicate f (Predicate n tp) = Predicate (getNameName $ f $ nameFromString n) (convertTp f tp)
-
-convertTpScheme :: (Name -> Name) -> TpScheme -> TpScheme
-convertTpScheme f (Quantification (xs, qm, (Qualification (pre, ty)))) = Quantification (xs, qm, (Qualification (map (convertPredicate f) pre,convertTp f ty)))
-
 ---------------------------------------------------------
 -- Unqualify types
 convertMap :: M.Map Name (Int, Name) -> M.Map Name Name
@@ -80,7 +72,7 @@ convertMap env =
 fromQualName :: M.Map Name Name -> Name -> Name
 fromQualName _ n@(Name_Special _ _ _ _) = n
 fromQualName env n = case M.lookup n env of
-    Nothing         -> n
+    Nothing   -> n
     Just newn -> newn
 
 unqualifyTpScheme :: M.Map Name (Int, Name) -> TpScheme -> TpScheme
@@ -92,6 +84,3 @@ unqualifyTp env = convertTp (fromQualName $ convertMap env)
 isQualIOType :: Tp -> Bool
 isQualIOType (TApp (TCon "LvmLang.IO") _) = True 
 isQualIOType _ = False
-
-
-
