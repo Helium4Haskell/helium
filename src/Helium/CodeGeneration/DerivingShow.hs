@@ -156,12 +156,12 @@ showFunctionOfType env isMainType = sFOT 0
             t = expandTS tp
         in 
       case t of
-        UHA.Type_Variable _ n             -> if isMainType then var "$dictPrelude.Show$Int" else Var (idFromName n) 
+        UHA.Type_Variable _ n             -> if isMainType then var "$dictPrelude.Show$LvmLang.Int" else Var (idFromName n) 
         -- show Strings not as List of Char but using showString
         UHA.Type_Application _ _ 
                     ( UHA.Type_Constructor _ (UHA.Name_Special    _ _ _ "[]") ) -- !!!Name
                     [ UHA.Type_Constructor _ (UHA.Name_Identifier _ _ _ "Char") ] -- !!!Name
-                ->  Ap (var "$dictPrelude.Show$[]") (var "$dictPrelude.Show$Char" )
+                ->  Ap (var "$dictPrelude.Show$[]") (var "$dictPrelude.Show$LvmLang.Char" )
         UHA.Type_Constructor _ n         -> 
             let conname = getNameName n
             in checkForPrimitiveDict nrOfArguments env conname
