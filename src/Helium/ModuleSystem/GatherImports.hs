@@ -71,7 +71,7 @@ addImplicitImports (Module_Module moduleRange maybeName exports
             ( case maybeName of
                 MaybeName_Just n
                     | getNameName n == "Prelude" -> []
-                _ -> if "Prelude" `elem` map stringFromImportDeclaration explicitImportDecls
+                _ -> if "Prelude" `elem` map (getNameName . nameFromImportDeclaration) explicitImportDecls
                         then []
                         else [ implicitImportDecl "Prelude" ]
             ++ [ implicitImportDecl "HeliumLang" ]

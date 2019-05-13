@@ -123,12 +123,12 @@ showNameAsVariable name
    | isOperatorName name = "("++show name++")"
    | otherwise           = show name
 
-stringFromImportDeclaration :: ImportDeclaration -> String
-stringFromImportDeclaration importDecl =
+nameFromImportDeclaration :: ImportDeclaration -> Name
+nameFromImportDeclaration importDecl =
     case importDecl of
-        ImportDeclaration_Import _ _ n _ _ -> getNameName n
+        ImportDeclaration_Import _ _ n _ _ -> n
         ImportDeclaration_Empty _ -> 
-            internalError "UHA_Utils" "stringFromImportDeclaration" "empty import declaration"
+            internalError "UHA_Utils" "nameFromImportDeclaration" "empty import declaration"
 
 -- TODO: daan
 intUnaryMinusName, floatUnaryMinusName, enumFromName, enumFromToName, enumFromThenName, enumFromThenToName :: Name

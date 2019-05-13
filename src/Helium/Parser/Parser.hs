@@ -48,7 +48,7 @@ import Helium.Syntax.UHA_Range
 import qualified Helium.Parser.CollectFunctionBindings as CollectFunctionBindings
 import Helium.Utils.Utils
 
-parseOnlyImports :: String -> IO [String]
+parseOnlyImports :: String -> IO [Name]
 parseOnlyImports fullName = do
     contents <- readSourceFile fullName    
     return $ case lexer [] fullName contents of
@@ -56,7 +56,7 @@ parseOnlyImports fullName = do
                Right (toks, _) ->
                  case runHParser onlyImports fullName (layout toks) False {- no EOF -} of
                    Left _ -> []
-                   Right imports -> map stringFromImportDeclaration imports
+                   Right imports -> map nameFromImportDeclaration imports
 
 {-
 module  

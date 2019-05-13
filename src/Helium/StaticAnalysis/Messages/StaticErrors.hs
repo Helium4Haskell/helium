@@ -17,7 +17,7 @@ import Helium.StaticAnalysis.Messages.Messages
 import Data.List        (nub, intersperse, sort, partition, intercalate)
 import Data.Maybe
 import Helium.Utils.Utils       (commaList, internalError, maxInt)
-import Helium.Syntax.UHA_Utils (getNameOrigin)
+import Helium.Syntax.UHA_Utils (getNameOrigin, nameFromString)
 
 import Top.Types
 
@@ -65,7 +65,9 @@ data Error  = NoFunDef Entity Name {-names in scope-}Names
             | ClassesAndInstancesNotAllowed Range
             | ExportWrongParent Entity Name {-Value Construct-} Name {-Wrong Parent-} Name {-Right Parent-} Names {-Right Childs-}
             | ExportConflict [(Name, (Name, String))] {-(declaration, export list entry, exact declaration entry)-}
-            | NotExportedByModule Name {-The thing -} Name {-The module-} Names {-Similair names-}
+            | NotExportedByModule Name {-The thing-} Name {-The module-} Names {-Similair names-}
+            | CircularImport [Name]
+            | UnknownModule Name {-The module-} Names {-The import chain-} [String] {-The searched paths-}
             
 instance HasMessage Error where
    getMessage x = let (oneliner, hints) = showError x
@@ -112,6 +114,8 @@ instance HasMessage Error where
       ExportWrongParent _ name _ _ _ -> [getNameRange name]
       ExportConflict conflicts    -> [getNameRange name | (_, (name, _)) <- conflicts]
       NotExportedByModule name _ _ -> [getNameRange name]
+      CircularImport names        -> map getNameRange names
+      UnknownModule name _ _      -> [getNameRange name]
  
 sensiblySimilar :: Name -> Names -> [Name]   
 sensiblySimilar name inScope = 
@@ -272,13 +276,6 @@ showError anError = case anError of
       | otherwise ->
            ( MessageString ("Duplicated " ++ show entity ++ " " ++ (show . show . head) names), [])    
        where
-{-        fromRanges = [ if isImportRange range then
-                         Range_Range position position
-                       else
-                         range
-                     | range <- nameRanges
-                     , let position = getRangeEnd range
-                     ] -}
         nameRanges   = sort (map getNameRange names)
 
    Ambiguous entity name names ->
@@ -420,6 +417,12 @@ showError anError = case anError of
       in
         (MessageString ("The module " ++ (show.show) importMod ++ " doesn't export " ++ (show.show) name) , hints)
 
+   CircularImport names -> (MessageString ("Circular import chain: \n\t" ++ showImportChain (map show names)), [])
+
+   UnknownModule name chain paths -> (MessageString $ "Can't find module '" ++ show name ++ "'\n" ++
+                                      "Import chain: \n\t" ++ showImportChain (map show $ chain ++ [name]) ++
+                                      "\nSearch path:\n" ++ showSearchPath paths, [])
+
    _ -> internalError "StaticErrors.hs" "showError" "unknown type of Error"
 
 ambiguousOrUndefinedErrors :: Entity -> Name -> Names -> [[Name]] -> [String] -> Errors
@@ -520,3 +523,9 @@ convertError :: (Tp -> Tp) -> Error -> Error
 convertError f (CannotDerive n tps) = CannotDerive n (map f tps)
 convertError f (OverlappingInstance str tp) = OverlappingInstance str (f tp)
 convertError _ err = err
+
+showImportChain :: [String] -> String
+showImportChain = intercalate " imports "
+
+showSearchPath :: [String] -> String
+showSearchPath = unlines . map ("\t" ++)

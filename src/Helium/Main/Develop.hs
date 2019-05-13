@@ -8,6 +8,8 @@ import Control.Monad
 
 import Helium.Main.Compile
 import Helium.Main.Args
+import Helium.Main.Make
+import Data.IORef
 
 compileFile :: String -> IO ()
 compileFile = compileFile' "../lib" "../develop"
@@ -19,7 +21,9 @@ compileFile' preludePath developLocation s = do
     
     let file = developLocation ++ "/" ++ s
     let lvmFile = fst (splitExtension file) ++ ".lvm"
-    compile developLocation file [Overloading] [preludePath, developLocation] []
+    -- compile developLocation file [Overloading, DisableLogging, LvmPath ""] [preludePath, developLocation] []
+    doneRef <- newIORef []
+    make developLocation file [preludePath] [] [Overloading, DisableLogging, LvmPath ""] doneRef
     print $ "-P../lib:"++developLocation++":../test/make"
     (x, res, err) <- readProcessWithExitCode "lvmrun" ["-P../lib:"++developLocation, lvmFile] "abc\r\n"
     putStrLn("Exit code: " ++ show x)
