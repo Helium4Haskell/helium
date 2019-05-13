@@ -49,7 +49,6 @@ data Error  = NoFunDef Entity Name {-names in scope-}Names
             | Ambiguous Entity Name {-the name what is ambiguous-} Names {- (Names of declarations)-}
             | LastStatementNotExpr Range
             | WrongFileName {-file name-}String {-module name-}String Range {- of module name -}
-            | TypeVarApplication Name
             | ArityMismatch {-type constructor-}Entity Name {-verwacht aantal parameters-}Int {-aangetroffen aantal parameters-}Int
             | DefArityMismatch Name (Maybe Int) {- verwacht -} Range
             | RecursiveTypeSynonyms Names
@@ -95,7 +94,6 @@ instance HasMessage Error where
       Ambiguous _ name _          -> [getNameRange name]
       LastStatementNotExpr range  -> [range]
       WrongFileName _ _ range     -> [range]
-      TypeVarApplication name     -> [getNameRange name]
       ArityMismatch _ name _ _    -> [getNameRange name]
       DefArityMismatch _ _ range  -> [range]
       RecursiveTypeSynonyms names -> sortRanges (map getNameRange names)
@@ -298,9 +296,6 @@ showError anError = case anError of
    LastStatementNotExpr _ ->
       ( MessageString "Last generator in do {...} must be an expression ", [])
 
-   TypeVarApplication name ->
-      ( MessageString ("Type variable " ++ show (show name) ++ " cannot be applied to another type"), [])
-
    ArityMismatch entity name expected actual ->
       ( MessageString ( capitalize (show entity) ++ " " ++show (show name) ++
            " should have " ++ prettyNumberOfParameters expected ++
@@ -477,7 +472,6 @@ errorLogCode anError = case anError of
           Ambiguous entity _ _                    -> "ab" ++ code entity
           LastStatementNotExpr _                  -> "ls"
           WrongFileName _ _ _                     -> "wf"
-          TypeVarApplication _                    -> "tv"
           ArityMismatch _ _ _ _                   -> "am"
           DefArityMismatch _ _ _                  -> "da"
           RecursiveTypeSynonyms _                 -> "ts"
