@@ -91,10 +91,11 @@ SEM Declaration
                              , let unQualName = setNameRange (unQualifyName @lhs.qualifiedEnvironment c) (getNameRange c)
                              , className `notElem` ["Prelude.Show", "Prelude.Eq"]
                              ]
-                 . cantDer = [ CannotDerive c [ tp | ReductionError (Predicate _ tp) <- errs ]
+                 . cantDer = [ CannotDerive unQualName [ tp | ReductionError (Predicate _ tp) <- errs ]
                              | c <- @qualDers
-                             , let preds     = map (Predicate (getNameName c)) @constructors.parameterTypes
-                                   (_, errs) = contextReduction @lhs.orderedTypeSynonyms @lhs.classEnvironment preds
+                             , let preds      = map (Predicate (getNameName c)) @constructors.parameterTypes
+                                   (_, errs)  = contextReduction @lhs.orderedTypeSynonyms @lhs.classEnvironment preds
+                                   unQualName = setNameRange (unQualifyName @lhs.qualifiedEnvironment c) (getNameRange c)
                              , not (null errs)
                              ]
                  
@@ -155,7 +156,7 @@ frequencies = map (\ys -> (head ys, length ys)) . group . sort
 SEM Expression
   | Variable     lhs . miscerrors     = @undefinedErrors ++ @lhs.miscerrors 
                  loc . undefinedErrors = ambiguousOrUndefinedErrors Variable @name.self @lhs.namesInScope @lhs.ambiguousConflicts []
-  | Do           lhs . misdeclVarNamescerrors = @lastStatementErrors ++ @statements.miscerrors
+  | Do           lhs . miscerrors = @lastStatementErrors ++ @statements.miscerrors
                  loc . lastStatementErrors = if @statements.lastStatementIsExpr
                                                then []
                                                else let range = getStatementRange (last @statements.self)

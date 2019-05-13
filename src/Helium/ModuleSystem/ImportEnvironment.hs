@@ -302,15 +302,6 @@ combineClassDecls (super1, inst1) (super2, inst2)
    | super1 == super2 = (super1, nub $ inst1 ++ inst2)
    | otherwise        = internalError "ImportEnvironment.hs" "combineClassDecls" "cannot combine class environments"
 
-superClassRelation :: ClassEnvironment
-superClassRelation = M.fromList
-   [ ("Num",  ( ["Eq","Show"],   []))
-   , ("Enum", ( [],              []))
-   , ("Eq" ,  ( [],              []))
-   , ("Ord",  ( ["Eq"],          []))
-   , ("Show", ( [],              []))
-   ]
-
 getInstanceNames :: [ImportEnvironment] -> [(Range, Instance)]
 getInstanceNames c = concatMap (map (\x -> (noRange, x)) . snd . snd) $  M.toList $ classEnvironment (combineImportEnvironmentList c)
 
