@@ -18,6 +18,7 @@ import System.Directory(doesFileExist, getModificationTime,
 import Helium.Main.Args
 import Helium.Main.Make
 import Helium.Main.CompileUtils
+import Data.IORef
 import Paths_helium
 
 -- Prelude will be treated specially
