@@ -33,7 +33,7 @@ module PreludePrim
     --, sqrt, (**.), exp, log, sin, cos, tan
 
     -- IO monad
-    , IO, IORes
+    , IO, IORes, RealWorld
     , unsafePerformIO
     , putChar, putStr, putStrLn
 
@@ -69,7 +69,7 @@ import LvmLang
     , (<.), (<=.), (>=.), (>.)
     -}
 
-    , Int(), Float(), IO(), IORes(), RealWorld()
+    , Int(), Char(), Float(), IO(), IORes(), RealWorld()
     , type String
     , Bool(True, False)
     , '':[]''('':[]'', (:))

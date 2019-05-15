@@ -46,5 +46,5 @@ envForModule target mod = Env
 
 data EnvMethodInfo = EnvMethodInfo { envMethodConvention :: !Iridium.CallingConvention, envMethodFakeIO :: !Bool }
 
-methodInfo :: [Iridium.Annotation] -> EnvMethodInfo
-methodInfo annotations = EnvMethodInfo (Iridium.callingConvention annotations) (Iridium.AnnotateFakeIO `elem` annotations)
+methodInfo :: [Iridium.MethodAnnotation] -> EnvMethodInfo
+methodInfo annotations = EnvMethodInfo (Iridium.callingConvention annotations) (Iridium.MethodAnnotateFakeIO `elem` annotations)

@@ -74,7 +74,6 @@ typeSchemeFromCore quantifiedType =
     fromCore (Core.TAp t1 t2) = TApp (fromCore t1) (fromCore t2)
     fromCore (Core.TVar x) = TVar x
     fromCore (Core.TStrict t) = fromCore t
-    fromCore (Core.TAny) = internalError "CoreToImportEnv" "typeSynFromCore" ("Unexpected 'any' in type synonym")
     fromCore (Core.TForall _ _ _) = internalError "CoreToImportEnv" "typeSynFromCore" ("Unexpected 'forall' in type scheme. Forall quantifiers may only occur on the top level of a type scheme. Type: " ++ Core.showType [] quantifiedType)
 
 typeSynFromCore :: Core.Type -> (Int, Tps -> Tp)
@@ -92,7 +91,6 @@ typeSynFromCore quantifiedType = (length typeArgs, \args -> fromCore (zip typeAr
     fromCore args (Core.TVar x) = case lookup x args of
       Just t -> t
       Nothing -> internalError "CoreToImportEnv" "typeSynFromCore" ("Type variable not found: v$" ++ show x)
-    fromCore args (Core.TAny) = internalError "CoreToImportEnv" "typeSynFromCore" ("Unexpected 'any' in type synonym")
     fromCore args (Core.TForall _ _ _) = internalError "CoreToImportEnv" "typeSynFromCore" ("Unexpected 'forall' in type synonym")
 
 -- in compiled Core files types have a kind (e.g. * -> *), 

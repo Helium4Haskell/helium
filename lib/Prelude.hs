@@ -590,9 +590,6 @@ putStr s = primPutStr s
 
 putStrLn :: String -> IO ()
 putStrLn s = primPutStrLn s
-
-unsafePerformIO :: IO a -> a 
-unsafePerformIO = primUnsafePerformIO
 -}
 
 getLine :: IO String

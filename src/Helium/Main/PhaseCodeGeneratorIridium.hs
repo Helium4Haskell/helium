@@ -20,6 +20,7 @@ import Helium.CodeGeneration.Iridium.FileCache
 import Helium.CodeGeneration.Iridium.PassDeadCode(passDeadCode)
 import Helium.CodeGeneration.Iridium.PassTailRecursion(passTailRecursion)
 import Helium.CodeGeneration.Iridium.ResolveDependencies(resolveDependencies, IridiumFile(..))
+import Helium.CodeGeneration.Iridium.Region.PassRegionInference(passRegionInference)
 import Helium.CodeGeneration.Iridium.TypeCheck
 import Helium.CodeGeneration.LLVM.CompileModule(compileModule)
 import Helium.CodeGeneration.LLVM.Target(Target(..))
@@ -34,7 +35,7 @@ phaseCodeGeneratorIridium :: NameSupply -> FileCache -> String -> Core.CoreModul
 phaseCodeGeneratorIridium supply cache fullName coreModule options = do
   enterNewPhase "Code generation for Iridium" options
 
-  let supplyDesugar : supplyFromCore : supplyPassDeadCode : supplyPassTailRecursion : _ = splitNameSupplies supply
+  let supplyDesugar : supplyFromCore : supplyPassDeadCode : supplyPassTailRecursion : supplyPassRegionInference : _ = splitNameSupplies supply
 
   simplified <- desugarCore supplyDesugar coreModule
 
@@ -49,7 +50,7 @@ phaseCodeGeneratorIridium supply cache fullName coreModule options = do
   iridium' <- fromCore cache supplyFromCore simplified
   checkModuleIO "fromCore" (fullNameNoExt ++ ".iridium") iridium'
 
-  let iridium = passTailRecursion supplyPassTailRecursion $ passDeadCode supplyPassDeadCode iridium'
+  let iridium = passRegionInference supplyPassRegionInference $ passTailRecursion supplyPassTailRecursion $ passDeadCode supplyPassDeadCode iridium'
 
   writeIridium cache (fullNameNoExt ++ ".iridium") iridium
   checkModuleIO "passTailRecursion" (fullNameNoExt ++ ".iridium") iridium

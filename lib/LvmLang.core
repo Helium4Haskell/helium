@@ -90,6 +90,7 @@ extern prim_string_length   :: "la"
 data Bytes
 data Int
 data Float
+data Char
 
 -- data '':[]'' v$0 = '':[]'' | (:) v$0 [v$0]
 -- data '':()''    = '':()''

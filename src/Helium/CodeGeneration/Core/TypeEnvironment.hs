@@ -26,6 +26,9 @@ data TypeEnvironment = TypeEnvironment
   , typeEnvValues :: IdMap Type
   }
 
+typeEnvEmpty :: TypeEnvironment
+typeEnvEmpty = TypeEnvironment emptyMap emptyMap
+
 typeEnvForModule :: CoreModule -> TypeEnvironment
 typeEnvForModule (Module _ _ _ decls) = TypeEnvironment (mapFromList synonyms) (mapFromList values)
   where
@@ -85,6 +88,24 @@ typeNormalizeHead env = normalize False
     normalize strict t1@(TCon (TConDataType name)) = case lookupMap name $ typeEnvSynonyms env of
       Just t2 -> normalize strict t2
       Nothing -> if strict then TStrict t1 else t1
+    normalize True t1 = TStrict t1
+    normalize False t1 = t1
+
+typeNormalize :: TypeEnvironment -> Type -> Type
+typeNormalize env = normalize False
+  where
+    normalize strict (TAp t1 t2) = case normalize False t1 of
+      t1'@(TForall _ _ _) -> normalize strict $ typeApply t1' t2'
+      t1' ->
+        let tp = TAp t1' t2'
+        in if strict then TStrict tp else tp
+      where
+        t2' = normalize False t2
+    normalize _ (TStrict t1) = normalize True t1
+    normalize strict t1@(TCon (TConDataType name)) = case lookupMap name $ typeEnvSynonyms env of
+      Just t2 -> normalize strict t2
+      Nothing -> if strict then TStrict t1 else t1
+    normalize strict (TForall quantor kind t1) = TForall quantor kind $ normalize strict t1 
     normalize True t1 = TStrict t1
     normalize False t1 = t1
 
@@ -156,7 +177,6 @@ typeEqualIgnoreStrictness env = typeEqual' env False
 
 -- Checks type equivalence
 typeEqual' :: TypeEnvironment -> Bool -> Type -> Type -> Bool
-typeEqual' env _ TAny TAny = True
 typeEqual' env False (TStrict t1) t2 = typeEqual' env False t1 t2 -- Ignore strictness
 typeEqual' env False t1 (TStrict t2) = typeEqual' env False t1 t2 -- Ignore strictness
 typeEqual' env True (TStrict t1) (TStrict t2) = typeEqual' env True t1 t2 -- Do use strictness

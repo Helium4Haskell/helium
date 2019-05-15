@@ -110,7 +110,8 @@ analyseInstruction env (Match var _ _ args next) = CSequence
   $ analyseInstruction env next
 analyseInstruction env (Case var _) = CImplies (envFunction env) [variableName var]
 analyseInstruction env (Return var) = CImplies (envFunction env) [variableName var]
-analyseInstruction env Unreachable = CEmpty
+analyseInstruction env (Unreachable (Just var)) = CImplies (envFunction env) [variableName var]
+analyseInstruction env (Unreachable Nothing) = CEmpty
 
 analyseCall :: Id -> Id -> [Either Type Variable] -> Constraint
 analyseCall var fn args = CSequence argumentConstraints $ fromList $
@@ -226,7 +227,7 @@ transformInstruction supply res (LetAlloc binds next)
     (supply1, supply2) = splitNameSupply supply
 transformInstruction _ _ instr@(Jump _) = instr
 transformInstruction _ _ instr@(Return _) = instr
-transformInstruction _ _ instr@Unreachable = instr
+transformInstruction _ _ instr@(Unreachable _) = instr
 transformInstruction _ _ instr@(Case _ _) = instr
 transformInstruction supply res (Match var t instantiation fields next)
   | all isNothing fields' = transformInstruction supply res next

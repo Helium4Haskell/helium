@@ -19,7 +19,8 @@ import Lvm.Common.IdMap(mapFromList, emptyMap)
 import Lvm.Core.Module(Custom(..), DeclKind, Arity)
 import Lvm.Core.Type
 import Data.List(intercalate)
-import Data.Either (isLeft, isRight)
+import Data.Maybe(catMaybes)
+import Data.Either(isLeft, isRight, rights)
 
 import Helium.CodeGeneration.Iridium.Type
 import Helium.CodeGeneration.Iridium.Primitive(findPrimitive, primType)
@@ -75,13 +76,13 @@ instance Functor Declaration where
   fmap f (Declaration name visibility mod customs a) = Declaration name visibility mod customs $ f a
 
 -- Imported method, eg a method without a definition. The implementation is in some other file.
-data AbstractMethod = AbstractMethod !Arity !Type ![Annotation]
+data AbstractMethod = AbstractMethod !Arity !Type ![MethodAnnotation]
   deriving (Eq, Ord)
 
 abstractFunctionType :: TypeEnvironment -> AbstractMethod -> FunctionType
 abstractFunctionType env (AbstractMethod arity tp _) = extractFunctionTypeWithArity env arity tp
 
-data Method = Method !Type ![Either Quantor Local] !Type ![Annotation] !Block ![Block]
+data Method = Method !Type ![Either Quantor Local] !Type ![MethodAnnotation] !Block ![Block]
   deriving (Eq, Ord)
 
 methodFunctionType :: Method -> FunctionType
@@ -96,17 +97,17 @@ methodType (Method tp _ _ _ _ _) = tp
 methodArity :: Method -> Int
 methodArity (Method _ args _ _ _ _) = length $ filter isRight args
 
--- Annotations on methods
-data Annotation
+-- MethodAnnotations on methods
+data MethodAnnotation
   -- * This method can be put in a thunk. An additional trampoline function is generated. We store a pointer to the trampoline in the thunk.
-  = AnnotateTrampoline
+  = MethodAnnotateTrampoline
   -- * Marks that this function uses a custom calling convention. When none is given, it is assumed to use CCFast
-  | AnnotateCallConvention !CallingConvention
+  | MethodAnnotateCallConvention !CallingConvention
   -- * The type of the method ends in RealWorld -> IORes, but in reality the fuction does not take RealWorld as an argument and only produces
   -- the value in the IORes object (not the 'next' real world). This is used to declare extern functions like putchar and getchar.
   -- We currently assume that the return type of the function is 'int'.
-  -- Cannot be used in combination with 'AnnotateTrampoline'.
-  | AnnotateFakeIO
+  -- Cannot be used in combination with 'MethodAnnotateTrampoline'.
+  | MethodAnnotateFakeIO
   deriving (Eq, Ord)
 
 data CallingConvention
@@ -158,20 +159,20 @@ data Instruction
   | LetAlloc ![Bind] !Instruction
   -- * Uncoditionally jumps to a block
   | Jump !BlockName
-  -- * Asserts that the variable matches with the specified MatchTarget. Can be used to match on constructors,
-  -- tuples and thunks. Pattern matching on thunks is not possible from Haskell code, but is used to write the
-  -- runtime library. If the variable does not match with the specified MatchTarget, the behaviour is undefined.
+  -- * Asserts that the variable matches with the specified MatchTarget. Can be used to match on constructors
+  -- and tuples. If the variable does not match with the specified MatchTarget, the behaviour is undefined.
   -- Extracts fields out of the object.
   | Match !Variable !MatchTarget ![Type] ![Maybe Id] !Instruction
   -- * Conditionally jumps to a block, depending on the value of the variable. Can be used to distinguish
   -- different constructors of a data type, or on integers.
-  | Case !Variable Case
+  | Case !Variable !Case
   -- * Returns a value from the function. The type of the variable should match with the return type of the
   -- containing method.
   | Return !Variable
   -- * Denotes that the current location is unreachable. Can be used after a call to a diverging function like 'error'.
-  -- No semantics are defined for this instruction.
-  | Unreachable
+  -- The control flow or the argument should guarantee that this location is unreachable. In the case of calling 'error',
+  -- the argument should be the returned value of 'error'.
+  | Unreachable !(Maybe Variable)
   deriving (Eq, Ord)
 
 -- * A bind describes the construction of an object in a 'letalloc' instruction. It consists of the
@@ -214,6 +215,12 @@ matchFieldTypes (MatchTargetConstructor (DataTypeConstructor _ tp)) instantiatio
   where
     FunctionType args _ = extractFunctionTypeNoSynonyms $ typeApplyList tp instantiation
 matchFieldTypes (MatchTargetTuple _) instantiation = instantiation
+
+matchFieldLocals :: MatchTarget -> [Type] -> [Maybe Id] -> [Maybe Local]
+matchFieldLocals target instantiation fields = zipWith f fields $ matchFieldTypes target instantiation
+  where
+    f Nothing _ = Nothing
+    f (Just name) tp = Just $ Local name tp
 
 typeApplyArguments :: TypeEnvironment -> Type -> [Either Type Variable] -> Type
 typeApplyArguments env t1@(TForall _ _ _) (Left t2 : args) = typeApplyArguments env t1' args
@@ -331,9 +338,9 @@ variableName :: Variable -> Id
 variableName (VarLocal (Local x _)) = x
 variableName (VarGlobal (GlobalVariable x _)) = x
 
-callingConvention :: [Annotation] -> CallingConvention
+callingConvention :: [MethodAnnotation] -> CallingConvention
 callingConvention [] = CCFast -- Default
-callingConvention (AnnotateCallConvention c : _) = c
+callingConvention (MethodAnnotateCallConvention c : _) = c
 callingConvention (_ : as) = callingConvention as
 
 -- Checks whether this module has a declaration or definition for this function
@@ -344,3 +351,20 @@ envWithSynonyms :: Module -> TypeEnvironment
 envWithSynonyms (Module _ _ _ _ synonyms _ _) = TypeEnvironment (mapFromList synonymsList) emptyMap
   where
     synonymsList = map (\(Declaration name _ _ _ (TypeSynonym tp)) -> (name, tp)) synonyms
+
+methodLocals :: TypeEnvironment -> Method -> [Local]
+methodLocals env (Method _ args _ _ block blocks) = foldr blockLocals (blockLocals block argLocals) blocks
+  where
+    argLocals = rights args
+
+    blockLocals :: Block -> [Local] -> [Local]
+    blockLocals (Block _ instruction) = instructionLocals instruction
+
+    instructionLocals :: Instruction -> [Local] -> [Local]
+    instructionLocals (Let name expr next) accum =
+      instructionLocals next $ Local name (typeOfExpr env expr) : accum
+    instructionLocals (LetAlloc binds next) accum =
+      instructionLocals next $ map (bindLocal env) binds ++ accum
+    instructionLocals (Match _ target instantiation fields next) accum =
+      instructionLocals next $ catMaybes (matchFieldLocals target instantiation fields) ++ accum
+    instructionLocals _ accum = accum

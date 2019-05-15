@@ -103,7 +103,7 @@ pBlock quantors = Block <$> pId <* pToken ':' <* pWhitespace <*> pInstruction qu
 pAbstractMethod :: Parser AbstractMethod
 pAbstractMethod = AbstractMethod <$ pToken '[' <* pWhitespace <*> pUnsignedInt <* pToken ']' <* pToken ':' <* pWhitespace <* pToken '{' <* pWhitespace <*> pType <* pToken '}' <* pWhitespace <*> pAnnotations
 
-pAnnotations :: Parser [Annotation]
+pAnnotations :: Parser [MethodAnnotation]
 pAnnotations =
   do
     eof <- isEndOfFile
@@ -119,19 +119,19 @@ pAnnotations =
       c <- lookahead
       return $ c /= ']'
 
-pAnnotation :: Parser Annotation
+pAnnotation :: Parser MethodAnnotation
 pAnnotation = do
   word <- pWord
   pWhitespace
   case word of
-    "trampoline" -> return AnnotateTrampoline
+    "trampoline" -> return MethodAnnotateTrampoline
     "callconvention" -> do
       pToken ':'
       conv <- pWord
       case conv of
-        "c" -> return $ AnnotateCallConvention CCC
-        "fast" -> return $ AnnotateCallConvention CCFast
-        "preserve_most" -> return $ AnnotateCallConvention CCPreserveMost
+        "c" -> return $ MethodAnnotateCallConvention CCC
+        "fast" -> return $ MethodAnnotateCallConvention CCFast
+        "preserve_most" -> return $ MethodAnnotateCallConvention CCPreserveMost
         _ -> pError $ "Unknown calling convention: " ++ show conv
-    "fake_io" -> return AnnotateFakeIO
+    "fake_io" -> return MethodAnnotateFakeIO
     _ -> pError $ "Unknown annotation: " ++ show word

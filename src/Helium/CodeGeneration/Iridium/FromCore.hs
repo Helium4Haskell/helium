@@ -126,7 +126,7 @@ idMatchCase = idFromString "match_case"
 idMatchDefault = idFromString "match_default"
 
 toMethod :: NameSupply -> TypeEnv -> Id -> Core.Expr -> Method
-toMethod supply env name expr = Method tp args returnType [AnnotateTrampoline] (Block entryName entry) blocks
+toMethod supply env name expr = Method tp args returnType [MethodAnnotateTrampoline] (Block entryName entry) blocks
   where
     (entryName, supply') = freshIdFromId idEntry supply
     (_, arity, tp) = fromMaybe (error "toMethod: could not find function signature") $ resolveFunction env name

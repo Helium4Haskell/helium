@@ -29,7 +29,7 @@ module HeliumLang
     ) where
 
 import LvmLang
-    ( Int(), Float(), IO(IO)
+    ( Int(), Char(), Float(), IO(IO), IORes(), RealWorld()
     , type String
     , type PackedString
     , Bool(True, False)
@@ -65,8 +65,6 @@ custom infix (:) : public [5,"right"]
   Basic data types
 ----------------------------------------------------------}
 data '':->'' v$0 v$1
--- Daan has type Char = Int
-data Char
 
 ''$primPackedToString'' :: String -> String
 ''$primPackedToString'' = \p: String -> p

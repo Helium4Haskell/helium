@@ -55,7 +55,7 @@ compileMethod env supply (Iridium.Declaration name visible _ _ method@(Iridium.M
     basicBlocks = concat $ mapWithSupply (compileBlock env) supply1 (entry : blocks)
     (supply1, supply2) = splitNameSupply supply
 
-toFunction :: Env -> NameSupply -> Id -> Iridium.Visibility -> [Iridium.Annotation] -> [Iridium.Local] -> Core.Type -> Core.Type -> [BasicBlock] -> [Definition]
+toFunction :: Env -> NameSupply -> Id -> Iridium.Visibility -> [Iridium.MethodAnnotation] -> [Iridium.Local] -> Core.Type -> Core.Type -> [BasicBlock] -> [Definition]
 toFunction env supply name visible annotations args fnType retType basicBlocks = trampoline ++ thunk ++ [def]
   where
     def = GlobalDefinition $ Function
@@ -95,11 +95,11 @@ toFunction env supply name visible annotations args fnType retType basicBlocks =
 
     arity = length args
 
-    fake_io = Iridium.AnnotateFakeIO `elem` annotations
+    fake_io = Iridium.MethodAnnotateFakeIO `elem` annotations
 
     trampoline :: [Definition]
     trampoline
-      | Iridium.AnnotateTrampoline `notElem` annotations = []
+      | Iridium.MethodAnnotateTrampoline `notElem` annotations = []
       | otherwise = return $ GlobalDefinition $ Function
         { Global.linkage = linkage
         , Global.visibility = Default
@@ -141,7 +141,7 @@ toFunction env supply name visible annotations args fnType retType basicBlocks =
 
     thunk :: [Definition]
     thunk
-      | Iridium.AnnotateTrampoline `notElem` annotations = []
+      | Iridium.MethodAnnotateTrampoline `notElem` annotations = []
       | otherwise = return $ GlobalDefinition $ GlobalVariable
         { Global.name = toNamePrefixed "thunk$" name
         , Global.linkage = linkage
@@ -235,7 +235,7 @@ trampolineExtractArguments i =
       (LocalReference (pointer taggedThunkPointer) $ name "ptr_increment")
       []
 
-  -- next_thunk_{i-1} = to_next_i ? next_next_thunk : next_thunk
+  -- next_thunk_{i-1} = to_next_i ? next_next_thunk[i] : next_thunk[i]
   , next "next_thunk" := Select operandToNext
       (LocalReference thunkType $ name "next_next_thunk")
       (LocalReference thunkType $ name "next_thunk")

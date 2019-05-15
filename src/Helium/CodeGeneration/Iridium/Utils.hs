@@ -1,6 +1,7 @@
 module Helium.CodeGeneration.Iridium.Utils where
 
 import Helium.CodeGeneration.Iridium.Data
+import Helium.CodeGeneration.Iridium.Type
 import Lvm.Common.Id (NameSupply, mapWithSupply, splitNameSupply, idFromString)
 
 mapMethodsWithSupply :: (NameSupply -> Declaration Method -> Declaration Method) -> NameSupply -> Module -> Module
@@ -37,3 +38,11 @@ paramsTakeValues n (Right local : params) = (Right local : taken, remaining)
   where
     (taken, remaining) = paramsTakeValues (n - 1) params
 paramsTakeValues _ _ = ([], [])
+
+normalizedDataTypes :: TypeEnvironment -> Module -> [Declaration DataType]
+normalizedDataTypes env = map normalize . moduleDataTypes
+  where
+    normalize (Declaration name vis mod customs (DataType constructors))
+      = Declaration name vis mod customs $ DataType $ map normalizeConstructor constructors
+    normalizeConstructor (Declaration name vis mod customs (DataTypeConstructorDeclaration tp))
+      = Declaration name vis mod customs $ DataTypeConstructorDeclaration $ typeNormalize env tp

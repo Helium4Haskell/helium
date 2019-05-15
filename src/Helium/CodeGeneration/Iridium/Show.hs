@@ -143,7 +143,9 @@ instance ShowWithQuantors Instruction where
     text instructionIndent . text "case " . showsQ quantors var . text " " . shows branches
   showsQ quantors (Return var) =
     text instructionIndent . text "return " . showsQ quantors var
-  showsQ quantors Unreachable =
+  showsQ quantors (Unreachable (Just var)) =
+    text instructionIndent . text "unreachable " . showsQ quantors var
+  showsQ quantors (Unreachable Nothing) =
     text instructionIndent . text "unreachable"
 
 instance ShowWithQuantors Local where
@@ -162,31 +164,31 @@ instance ShowWithQuantors Variable where
 instance ShowWithQuantors Block where
   showsQ quantors (Block name instruction) = text (stringFromId name) . text ":\n" . showsQ quantors instruction
 
-instance Show Annotation where
-  show AnnotateTrampoline = "trampoline"
-  show (AnnotateCallConvention conv) = "callconvention:" ++ show conv
-  show AnnotateFakeIO = "fake_io"
+instance Show MethodAnnotation where
+  show MethodAnnotateTrampoline = "trampoline"
+  show (MethodAnnotateCallConvention conv) = "callconvention:" ++ show conv
+  show MethodAnnotateFakeIO = "fake_io"
 
 instance Show CallingConvention where
   show CCC = "c"
   show CCFast = "fast"
   show CCPreserveMost = "preserve_most"
 
-showAnnotations :: [Annotation] -> String
-showAnnotations [] = ""
-showAnnotations annotations = "[" ++ intercalate " " (map show annotations) ++ "]"
+showMethodAnnotations :: [MethodAnnotation] -> String
+showMethodAnnotations [] = ""
+showMethodAnnotations annotations = "[" ++ intercalate " " (map show annotations) ++ "]"
 
 instance ShowDeclaration AbstractMethod where
   showDeclaration (AbstractMethod arity fntype annotations) =
     ( "declare"
-    , "[" ++ show arity ++ "]: { " ++ show fntype ++ " } " ++ showAnnotations annotations ++ "\n"
+    , "[" ++ show arity ++ "]: { " ++ show fntype ++ " } " ++ showMethodAnnotations annotations ++ "\n"
     )
 
 instance ShowDeclaration Method where
   showDeclaration (Method tp args rettype annotations entry blocks) =
     ( "define"
     , ": { " ++ show tp ++ " } $ (" ++ intercalate ", " args' ++ "): "
-      ++ showQ quantors rettype ++ " " ++ showAnnotations annotations ++ " {\n" ++ showQ quantors entry ++ (blocks >>= ('\n' :) . showQ quantors) ++ "\n}\n"
+      ++ showQ quantors rettype ++ " " ++ showMethodAnnotations annotations ++ " {\n" ++ showQ quantors entry ++ (blocks >>= ('\n' :) . showQ quantors) ++ "\n}\n"
     )
     where
       (args', quantors) = showMethodArguments [] args
