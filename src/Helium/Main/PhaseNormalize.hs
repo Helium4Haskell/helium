@@ -16,9 +16,12 @@ import Lvm.Core.Module(Decl(..),moduleDecls)
 import Lvm.Core.Expr(Expr(..),Binds(..),Bind(..),Alts,Alt(..),Pat(..),Con(..))
 import Data.Map(Map)
 import qualified Data.Map as Map
+import Data.Either(Either)
+import qualified Data.Either as Either
 import Data.Set(Set)
 import qualified Data.Set as Set
 --import qualified Data.Maybe as Maybe
+import System.IO.Unsafe(unsafePerformIO)
 
 
 import Lvm.Common.Id              (Id, NameSupply, newNameSupply, splitNameSupplies)
@@ -36,15 +39,30 @@ tracePretty s t = trace (s ++ ": \n" ++ (show $ pretty t)) t
 traceShow :: Show a => String -> a -> a
 traceShow s t = trace (s ++ ": \n" ++ show t) t
 
-phaseNormalize :: CoreModule -> [Option] -> IO CoreModule
-phaseNormalize coreModule options = do
+phaseNormalize :: String -> CoreModule -> [Option] -> IO CoreModule
+phaseNormalize fullName coreModule options = do
     enterNewPhase "Code normalization" options
+
+    let (path, baseName, _) = splitFilePath fullName
+        fullNameNoExt = combinePathAndFile path baseName
+    when (DumpCoreToFile `elem` options) $ do
+        writeFile (fullNameNoExt ++ ".core.beforenormalize") $ show . pretty $ coreModule
+
+
 
     nameSupply <- newNameSupply
 
-    return (normalize nameSupply coreModule)
+    let (coreModule', dbgs) = (normalize nameSupply coreModule)
+    writeFile (fullNameNoExt ++ ".core.duringnormalize") (unwords dbgs)
 
-normalize :: NameSupply -> CoreModule -> CoreModule
+    when (DumpCoreToFile `elem` options) $ do
+        writeFile (fullNameNoExt ++ ".core.afternormalize") $ show . pretty $ coreModule'
+
+    return coreModule'
+
+type DBGS a = (a, [String])
+
+normalize :: NameSupply -> CoreModule -> DBGS CoreModule
 normalize supply =
     coreSimplify
   . coreLift
@@ -56,49 +74,150 @@ normalize supply =
     (supply0:supply1:supply2:_) = splitNameSupplies supply
 
 {- CoreSimplify -}
-coreSimplify :: CoreModule -> CoreModule
-coreSimplify m = t
+coreSimplify :: CoreModule -> DBGS CoreModule
+coreSimplify m = (t, dbgs)
     where
-    t = m{moduleDecls = map (\decl -> case decl of
-            DeclValue _{-name-} _ _ expr _ -> decl{valueValue = {-tracePretty ("\nnew: " ++ stringFromId name) $-} {-exprRemoveRenames emptyRenames $ exprSimplify-} exprRemoveDeadLet ( {-tracePretty ("\nold: " ++ stringFromId name)-} expr)}
-            _ -> decl) $ moduleDecls m}
+    t = m{moduleDecls = mds}
+    (mds,dbgs) = foldr (\decl (mds,dbgs) -> case decl of
+                    DeclValue _ _ _ expr _ ->
+                        let (expr', dbgs') = exprRemoveDeadLet expr
+                            (expr'', dbgs'') = exprRemoveRename Map.empty expr'
+                        in (mds ++ [decl{valueValue = expr''}], dbgs ++ dbgs' ++ dbgs'')
+                    _ -> (mds ++ [decl], dbgs)) ([],[]) $ moduleDecls m
 
-exprRemoveDeadLet :: Expr -> Expr
-exprRemoveDeadLet expr = case expr of
-    Let (Strict bind) expr1 ->
-        let bind' = bindRemoveDeadLet bind
-            expr1' = exprRemoveDeadLet expr1
-        in  Let (Strict bind') expr1'
-    Let binds expr1 ->
-        let binds' = bindsRemoveDeadLet binds
-            expr1' = exprRemoveDeadLet expr1
-            bindNames = snd $ bindsOcc binds'
-            occ = exprOcc expr1'
-            simplify = Let binds' expr1'
-        in  if anyMember occ bindNames -- Only removes complete let bindings (which are already split for mutual recursion)
-             then simplify -- Not a dead let
-             else expr1' -- Dead let removal
-    Match name alts -> Match name (altsRemoveDeadLet alts)
-    Ap expr1 expr2 -> Ap (exprRemoveDeadLet expr1) (exprRemoveDeadLet expr2)
-    Lam name expr1 -> Lam name (exprRemoveDeadLet expr1)
-    Con _ -> expr
-    Var _ -> expr
-    Lit _ -> expr
+exprRemoveDeadLet :: Expr -> DBGS Expr
+exprRemoveDeadLet expr =
+    let (after, dbgs) = case expr of
+            Let (Strict bind) expr1 ->
+                let (bind', dbgs) = bindRemoveDeadLet bind
+                    (expr1', dbgs') = exprRemoveDeadLet expr1
+                in  (Let (Strict bind') expr1', dbgs ++ dbgs')
+            Let binds expr1 ->
+                let (binds', dbgs) = bindsRemoveDeadLet binds
+                    (expr1', dbgs') = exprRemoveDeadLet expr1
+                    bindNames = snd $ bindsOcc binds'
+                    occ = exprOcc expr1'
+                    simplify = Let binds' expr1'
+                in  if anyMember occ bindNames -- Only removes complete let bindings (which are already split for mutual recursion)
+                     then (simplify, dbgs ++ dbgs') -- Not a dead let
+                     else (expr1', dbgs ++ dbgs') -- Dead let removal
+            Match name alts ->
+                let (alts', dbgs) = altsRemoveDeadLet alts
+                in (Match name alts', dbgs)
+            Ap expr1 expr2 ->
+                let (expr1', dbgs) = exprRemoveDeadLet expr1
+                    (expr2', dbgs') = exprRemoveDeadLet expr2
+                in (Ap expr1' expr2', dbgs ++ dbgs')
+            Lam name expr1 ->
+                let (expr1', dbgs) = exprRemoveDeadLet expr1
+                in (Lam name expr1', dbgs)
+            Con _ -> (expr, [])
+            Var _ -> (expr, [])
+            Lit _ -> (expr, [])
+    in (after, (if expr == after then "" else ("\nDeadLet:\nbefore:\n" ++ (show . pretty) expr ++ "\nafter:\n" ++ (show . pretty) after )):dbgs)
 
-bindsRemoveDeadLet :: Binds -> Binds
+bindsRemoveDeadLet :: Binds -> DBGS Binds
 bindsRemoveDeadLet binds = case binds of
-    NonRec bind -> NonRec $ bindRemoveDeadLet bind
-    Strict bind -> Strict $ bindRemoveDeadLet bind
-    Rec binds' -> Rec $ map bindRemoveDeadLet binds'
+    NonRec bind ->
+        let (bind', dbgs) = bindRemoveDeadLet bind
+        in (NonRec bind', dbgs)
+    Strict bind ->
+        let (bind', dbgs) = bindRemoveDeadLet bind
+        in (Strict bind', dbgs)
+    Rec binds' ->
+        let (binds'', dbgs) = unpackdbgs $ map bindRemoveDeadLet binds'
+        in (Rec binds'', dbgs)
 
-bindRemoveDeadLet :: Bind -> Bind
-bindRemoveDeadLet (Bind name expr) = Bind name (exprRemoveDeadLet expr)
+bindRemoveDeadLet :: Bind -> DBGS Bind
+bindRemoveDeadLet (Bind name expr) =
+    let (expr', dbgs) = exprRemoveDeadLet expr
+    in (Bind name expr', dbgs)
 
-altsRemoveDeadLet :: Alts -> Alts
-altsRemoveDeadLet = map altRemoveDeadLet
+altsRemoveDeadLet :: Alts -> DBGS Alts
+altsRemoveDeadLet alts = unpackdbgs $ map (altRemoveDeadLet) alts
 
-altRemoveDeadLet :: Alt -> Alt
-altRemoveDeadLet (Alt pat expr) = Alt pat (exprRemoveDeadLet expr)
+altRemoveDeadLet :: Alt -> DBGS Alt
+altRemoveDeadLet(Alt pat expr) =
+    let (expr', dbgs) = exprRemoveDeadLet expr
+    in (Alt pat expr', dbgs)
+
+{- Remove Renames -}
+type Rename = Map.Map Id Id
+exprRemoveRename :: Rename -> Expr -> DBGS Expr
+exprRemoveRename renames expr =
+    let (after, dbgs) = case expr of
+            Let (Strict bind) expr1 ->
+                let (renameORbind', dbgs) = bindRename renames bind
+                    (expr1', dbgs') = exprRemoveRename renames expr1
+                in  case renameORbind' of
+                    Left renames' ->
+                        let (expr1'', dbgs') = exprRemoveRename renames' expr1
+                        in (expr1'', dbgs ++ dbgs')
+                    Right bind' -> (Let (Strict bind') expr1', dbgs ++ dbgs')
+            Let binds expr1 ->
+                let (renamesANDMbinds', dbgs) = bindsRemoveRename renames binds
+                    (renames', binds') = case renamesANDMbinds' of
+                        Left renames -> (renames, Nothing)
+                        Right (binds,renames) -> (renames, (Just binds))
+                    (expr1', dbgs') = exprRemoveRename renames' expr1
+                in  case binds' of
+                    Just binds'' -> (Let binds'' expr1', dbgs ++ dbgs')
+                    Nothing -> (expr1', dbgs ++ dbgs')
+            Match name alts ->
+                let name' = Map.findWithDefault name name renames
+                    (alts', dbgs) = altsRemoveRename renames alts
+                in  (Match name' alts', dbgs)
+            Ap expr1 expr2 ->
+                let (expr1', dbgs') = exprRemoveRename renames expr1
+                    (expr2', dbgs'') = exprRemoveRename renames expr2
+                in (Ap expr1' expr2', dbgs' ++ dbgs'')
+            Lam name expr1 ->
+                let (expr1', dbgs) = exprRemoveRename renames expr1
+                in (Lam name expr1', dbgs)
+            Con _ -> (expr, [])
+            Var name -> (Var $ Map.findWithDefault name name renames, [])
+            Lit _ -> (expr, [])
+    in (after, (if expr == after then "" else ("\nRename:\nbefore:\n" ++ (show . pretty) expr ++ "\nafter:\n" ++ (show . pretty) after )):dbgs)
+
+bindsRemoveRename :: Rename -> Binds -> DBGS (Either Rename (Binds, Rename))
+bindsRemoveRename renames binds = case binds of
+    NonRec bind -> case bindRemoveRename renames bind of
+        (Left rename, dbgs) -> (Left rename, dbgs)
+        (Right bind', dbgs) -> (Right (NonRec bind', renames), dbgs)
+    Strict bind -> case bindRename renames bind of
+        (Left rename, dbgs) -> (Left rename, dbgs)
+        (Right bind', dbgs) -> (Right (Strict bind', renames), dbgs)
+    Rec binds' ->
+        let (binds'', dbgs) = unpackdbgs $ map (bindRename renames) binds'
+            (renames', binds''') = Either.partitionEithers binds''
+            rename = Map.unions (renames:renames')
+        in if length binds''' == 0
+            then (Left rename, dbgs)
+            else (Right (Rec binds''', rename), dbgs)
+
+
+bindRemoveRename :: Rename -> Bind -> DBGS (Either Rename Bind)
+bindRemoveRename renames (Bind name rename@(Var name')) = (Left $ Map.union renames $  Map.singleton name (Map.findWithDefault name' name' renames), [])
+bindRemoveRename renames bind = bindRename renames bind
+
+bindRename :: Rename -> Bind -> DBGS (Either Rename Bind)
+bindRename renames (Bind name expr) =
+    let (expr', dbgs) = (exprRemoveRename renames expr)
+    in  (Right $ Bind name expr', dbgs )
+
+altsRemoveRename :: Rename -> Alts -> DBGS Alts
+altsRemoveRename renames alts = unpackdbgs $ map (altRemoveRename renames) alts
+
+altRemoveRename :: Rename -> Alt -> DBGS Alt
+altRemoveRename renames (Alt pat expr) =
+    let (expr', dbgs) = exprRemoveRename renames expr
+    in  (Alt pat expr', dbgs)
+
+unpackdbgs :: [DBGS a] -> DBGS [a]
+unpackdbgs [] = ([],[])
+unpackdbgs ((a,dbgs):dbgsas) =
+    let (as, dbgs') = unpackdbgs dbgsas
+    in  (a:as, dbgs ++ dbgs')
 
 
 {-

@@ -1,23 +1,23 @@
 module PreludePrim
-    ( 
+    (
     -- Conversion
-      ord, chr, intToFloat, ceiling, floor, truncate, round
-    
+      ord, primOrd, chr, primChr, intToFloat, ceiling, floor, truncate, round
+
     -- Int
     , (+), (-), (*), div, mod, quot, rem, negate
     , (==), (/=), (<), (>), (<=), (>=)
-    
+
     -- Float
     , (+.), (-.), (*.), (/.)
     , (==.), (/=.), (<.), (>.), (<=.), (>=.)
     , sqrt, (**.), exp, log, sin, cos, tan
-	
+
 
     -- Enum
     , enumFrom, enumFromThen, enumFromTo, enumFromThenTo
 
     -- IO monad
-    , return 
+    , return
     , unsafePerformIO
     , putChar, putStr, putStrLn
 
@@ -26,15 +26,15 @@ module PreludePrim
     , Handle, stdin, stdout, stderr
     , IOMode(..), openFile, hClose
     , hGetChar, hPutChar, hPutString
-    
+
     -- strictness
     , ($!), seq
-    
+
     -- misc
     , error, catch, catchEof, raise
     ) where
 
-import LvmLang 
+import LvmLang
     ( return = returnIO, bindIO
 
     , (+), (-), (*), div = (/), mod = (%), quot, rem, negInt
@@ -42,7 +42,7 @@ import LvmLang
 
     , (+.), (-.), (*.), (/.)
     , (==.), (/=.), (<.), (>.), (<=.), (>=.)
-    
+
     , ($!), seq
     , True -- hack
     )
@@ -55,12 +55,12 @@ import LvmIO
     , inputChar, outputChar, outputString
     )
 import LvmException
-    ( error, errorPacked {- hack -}, catch, raise 
+    ( error, errorPacked {- hack -}, catch, raise
     , Exception(System), SystemException(EndOfFile)
     )
 
 import HeliumLang
-    ( ''$negate'' 
+    ( ''$negate''
     , ''$enumFrom'', ''$enumFromThen'', ''$enumFromTo'', ''$enumFromThenTo''
     , ''$primPutChar'', ''$primPutStr'', ''$primPutStrLn'', ''$primUnsafePerformIO''
     )
@@ -98,8 +98,14 @@ custom infix ($!)  : public [0,"right"]
 ord :: Char -> Int
 ord x = x
 
+primOrd :: Char -> Int
+primOrd = ord
+
 chr :: Int -> Char
 chr x = x
+
+primChr :: Int -> Char
+primChr = chr
 
 {--------------------------------------------------------------------------
   IO
@@ -108,13 +114,13 @@ putChar :: Char -> IO ()
 putChar c = ''$primPutChar''c
 
 putStr :: String -> IO ()
-putStr s = ''$primPutStr'' s 
+putStr s = ''$primPutStr'' s
 
 putStrLn :: String -> IO ()
 putStrLn s = ''$primPutStrLn'' s
 
-unsafePerformIO :: IO a -> a 
-unsafePerformIO io 
+unsafePerformIO :: IO a -> a
+unsafePerformIO io
   = ''$primUnsafePerformIO'' io
 
 
@@ -124,7 +130,7 @@ extern primFloatSqrt "fp_sqrt" :: "FF"
 extern float_of_string_extern "float_of_string" :: "Fz"
 
 sqrt :: Float -> Float
-sqrt x = let! x = x 
+sqrt x = let! x = x
               y = float_of_string_extern "0.0"
          in
             case (>=.) x y of
@@ -170,14 +176,14 @@ intToFloat x = let! x = x in primIntToFloat x
 extern primFloatCeil "fp_ceil" :: "FF"
 
 ceiling :: Float -> Int
-ceiling x = let! x = x 
+ceiling x = let! x = x
                  y = primFloatCeil x
             in primFloatTruncateInt y
 
 extern primFloatFloor "fp_floor" :: "FF"
 
 floor :: Float -> Int
-floor x = let! x = x 
+floor x = let! x = x
                y = primFloatFloor x
           in primFloatTruncateInt y
 
@@ -190,7 +196,7 @@ extern primFloatNear     "fp_near"      :: "FF"
 extern primFloatRoundInt "fp_round_int" :: "IF"
 
 round :: Float -> Int
-round x 
+round x
     = let! y = x
            z = primFloatNear     y
            i = primFloatRoundInt z
@@ -213,7 +219,7 @@ enumFromThen n a = ''$enumFromThen'' n a
 
 enumFromThenTo :: Int -> Int -> Int -> [Int]
 enumFromThenTo n a m =
-    ''$enumFromThenTo'' n a m 
+    ''$enumFromThenTo'' n a m
 
 {--------------------------------------------------------------------------
   IO
@@ -240,7 +246,7 @@ stderr
   = HandleWrite stderrChannel
 
 getChar :: IO Char
-getChar 
+getChar
   = inputChar stdinChannel  -- hGetChar stdin
 
 openFile :: String -> IOMode -> IO Handle
@@ -255,7 +261,7 @@ hClose handle
   = case handle of
       HandleRead ch   -> close ch
       HandleWrite ch  -> -- FUUCCKK: alleen maar om altijd geflushed te closen..
-                         catch (bindIO (flush ch) (\_ -> close ch)) 
+                         catch (bindIO (flush ch) (\_ -> close ch))
                                (\exn -> bindIO (catch (close ch) (\_ -> raise exn))
                                                (\_ -> raise exn))
 

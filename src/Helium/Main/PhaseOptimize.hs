@@ -32,21 +32,22 @@ phaseOptimize fullName coreModule options isTopMostModule = do
     if (CountingAnalysisAll `elem` options) || (CountingAnalysisOne `elem` options && isTopMostModule)
      then do
     {- Handle Counting Analysis after here -}
-    --let constraints = LVM_Syntax.constraints optimizeModule
-    --putStrLn $ show $ constraints
     --putStrLn "Solved =>"
     --putStrLn $ show $ Types.solveConstraints constraints
     --let optimizeModule' = countingAnalysis optimizeModule
         let wrapped_module = LVM_Syntax.wrap_module optimizeModule
+        let constraints = LVM_Syntax.constraints wrapped_module
+        mapM (putStrLn . show . pretty) constraints
+
         let showIt = LVM_Syntax.showIt wrapped_module
         let letBangs = getLetBangs optimizeModule
 
-        putStrLn $ "Do counting analysis for: " ++ fullName
-        print $ length $ show showIt -- Shows the types of the functions and their corresponding top types
+        --putStrLn $ "Do counting analysis for: " ++ fullName
+        mapM (putStrLn . show) {-print-} {-$ length $ show-} $ LVM_Syntax.filterShowIt showIt -- Shows the types of the functions and their corresponding top types
         -- {Important: This forces the typesystem on core}
         --putStrLn $ showLetBangs letBangs -- For comparison after added strictness
         let optimizeModule' = LVM_Syntax.optimizeModule wrapped_module
-        putStrLn $ "Done counting analysis for: " ++ fullName
+        --putStrLn $ "Done counting analysis for: " ++ fullName
         when (DumpCoreToFile `elem` options) $ do
             writeFile (fullNameNoExt ++ ".core.afteroptimize") $ show . pretty $ optimizeModule'
      else do

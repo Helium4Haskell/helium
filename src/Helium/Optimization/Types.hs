@@ -260,10 +260,11 @@ instance Subs Constraint where
     (-$-) subs (EqT d t1 t2) = EqT d ((-$-) subs t1) ((-$-) subs t2)
     (-$-) subs (EqTs d ts1 ts2) = EqTs d ((-$-) subs ts1) ((-$-) subs ts2)
     (-$-) subs (EqInst d t ts) = EqInst d ((-$-) subs t) ((-$-) subs ts)
-    (-$-) subs (EqGen d ts (t,ct,env)) =
+    (-$-) subs eqgen@(EqGen d ts (t,ct,env)) =
         let without = (Set.union (freevars t) (freevars ct)) Set.\\ (Set.union (freevars env) (Set.empty))
-            subs' = withoutSub without subs
-        in EqGen d ((-$-) subs ts) ((-$-) subs' t, (-$-) subs' ct, (-$-) subs env) -- TODO: TAnn will need to be handled
+            subs' = subs --withoutSub without subs -- all subs are created uniquely (don't filter?)
+        in  {- traceShow ("    {{subs: " ++ show subs ++ "}\n    {without: " ++ show without ++ "}\n    {subs': " ++ show subs' ++ "}\n    {eqgen: " ++ show eqgen ++ "}}\n    ")
+                $ -} EqGen d ((-$-) subs ts) ((-$-) subs' t, (-$-) subs' ct, (-$-) subs env) -- TODO: TAnn will need to be handled
     (-$-) subs (EqAnn d ann1 ann2) = EqAnn d ((-$-) subs ann1) ((-$-) subs ann2)
     (-$-) subs (EqPlus d ann1 ann2 ann3) = EqPlus d ((-$-) subs ann1) ((-$-) subs ann2) ((-$-) subs ann3)
     (-$-) subs (EqUnion d ann1 ann2 ann3) = EqUnion d ((-$-) subs ann1) ((-$-) subs ann2) ((-$-) subs ann3)
@@ -302,12 +303,12 @@ unionExport :: Map Id Ts -> GlobalEnv -> GlobalEnv
 unionExport extendExport (GlobalEnv import_ export_) = GlobalEnv import_ (Map.union extendExport export_)
 
 infixr 5 |?|
-(|?|) :: (Int, GlobalEnv) -> (Id, String) -> (Int, T, Constraints)
-(uniqueId, env@(GlobalEnv global local)) |?| (key, err) = case Map.lookup key local of
-    Just x -> instTs2T err uniqueId x
-    Nothing -> case Map.lookup key global of
-        Just x -> instTs2T err uniqueId x
-        Nothing -> internalError "LVM_Syntax.ag" "|?|" ("key : " ++ show key ++ " : not found in env : " ++ show env ++ " : " ++ err )
+(|?|) :: (Int, GlobalEnv) -> (Id, String) -> Maybe (Int, T, Constraints)
+(uniqueId, env@(GlobalEnv import_ export_)) |?| (key, err) = case Map.lookup key export_ of
+    Just x -> Just $ instTs2T err uniqueId x
+    Nothing -> case Map.lookup key import_ of
+        Just x -> Just $ instTs2T err uniqueId x
+        Nothing -> Nothing --internalError "LVM_Syntax.ag" "|?|" ("key : " ++ show key ++ " : not found in env : " ++ show env ++ " : " ++ err )
 
 {- Constraints -}
 type Constraints = [Constraint]
@@ -400,9 +401,9 @@ solveConstraints' (c:cs) = do
     mapSnd (ct ++) <$> (mapFst (-$- subs') <$> (solveConstraints' cs'))
 
 solveConstraint :: Constraint -> Fresh (Sub,Constraints)
-solveConstraint (EqT d t1 t2) = return (throwPossibleErr ("EqT:" ++ d) $ tryUnify t1 t2,[])
-solveConstraint (EqTs d ts1 ts2) = return (throwPossibleErr ("EqTs:" ++ d) $ tryUnifyTs ts1 ts2,[])
-solveConstraint (EqGen d ts (t,ct,env)) = do
+solveConstraint (EqT d t1 t2) = return (throwPossibleErr ("EqT:" ++ d) {- $ traceShow ("solveConstraint: {EqT d: " ++ d ++ " t1: " ++ show t1 ++ " t2: " ++ show t2 ++ " }") -} $ tryUnify t1 t2,[])
+solveConstraint (EqTs d ts1 ts2) = return (throwPossibleErr ("EqTs:" ++ d) {- $ traceShow ("solveConstraint: {EqTs d: " ++ d ++ " ts1: " ++ show ts1 ++ " ts2: " ++ show ts2 ++ " }") -} $ tryUnifyTs ts1 ts2,[])
+solveConstraint (EqGen d ts (t,ct,env)) = {- traceShow ("solveConstraint: {EqGen d: " ++ d ++ " ts: " ++ show ts  ++ " (t, ct, env): " ++ show (t,ct,env) ++"}") <$> -} do
     (subs,ct') <- solveConstraints ct
     let t' = subs -$- t
         env' = subs -$- env
@@ -464,7 +465,9 @@ tryUnify t1 t2 = traceUnify t1 t2 $ case (t1, t2) of
 
 tryUnifyTs :: Ts -> Ts -> Either String Sub
 tryUnifyTs ts1 ts2 = traceUnify ts1 ts2 $ case (ts1,ts2) of
-    (TsVar a1, t) -> if not $ a1 `isfreein` t then Right $ sub a1 t else failUnify "Not free" ts1 ts2
+    (TsVar a1, t) -> {- traceShow ("tryUnifyTsVar" ++ show (a1, t)) $ -} if not $ a1 `isfreein` t then Right $ sub a1 t else failUnify "Not free" ts1 ts2
+    (Ts gen1 cs1 t1, Ts gen2 cs2 t2) -> {- traceShow ("tryUnifyTs" ++ show (ts1, ts2)) $ -} tryUnify t1 t2
+    --TODO: SO MUCH MORE
     _ -> failUnify "?" ts1 ts2
 
 failUnify :: Show a => String -> a -> a -> Either String b

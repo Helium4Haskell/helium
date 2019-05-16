@@ -1,3 +1,5 @@
+{-# LANGUAGE FlexibleInstances #-}
+
 module Helium.Optimization.Pretty where
 
 import Prelude hiding ((<$>))
@@ -15,6 +17,7 @@ import Lvm.Common.Id(Id, stringFromId)
 import Text.PrettyPrint.Leijen
 
 {-
+
 Pretty print:
 combinators:
 <+> Horizontal concat
@@ -25,7 +28,6 @@ literals:
 empty
 char 'c'
 text "cs"
-
 
 -}
 
@@ -83,7 +85,7 @@ instance Pretty Expr where
     pretty (Expr_ConTag tag arity t) =
         pt t $ parens (char '@' <> pretty tag <> comma <> pretty arity)
     pretty (Expr_Var name t) =
-        text (stringFromId name)
+        pt t $ text (stringFromId name)
     pretty (Expr_Lit lit t) =
         pretty lit
 
@@ -165,13 +167,20 @@ instance Pretty Ts where
     pretty (TsAnn ann ts) = char '(' <> pretty ts <> text ")^" <> text (show ann)
 
 {-Constraints-}
+instance Pretty [Constraint] where
+    pretty [] = empty
+    pretty (x:xs) = pretty x <> char ',' <+> pretty xs
 instance Pretty Constraint where
-    pretty (EqT d t1 t2) = pretty t1 <+> text "==" <+> pretty t2                            -- t1   == t2
-    pretty (EqTs d ts1 ts2) = pretty ts1 <+> text "==" <+> pretty ts2                         -- ts1   == ts2
+    pretty (EqT d t1 t2) = text d <+> pretty t1 <+> text "==" <+> pretty t2                            -- t1   == t2
+    pretty (EqTs d ts1 ts2) = text d <+> pretty ts1 <+> text "==" <+> pretty ts2                         -- ts1   == ts2
     pretty (EqInst d t ts) = pretty t <+> text "==" <+> text "Inst" <+> pretty ts                        -- t1 == Inst(ts2)
-    pretty (EqGen d ts (t, ct, env)) = pretty ts <+> text "==" <+> text "Gen" <> parens (pretty t <> char ',' <+> pretty ct <> char ',' <+> text "{...env...}")    -- ts1 == Gen(t2,ct,env)
+    pretty (EqGen d ts (t, ct, env)) = pretty ts <+> text "==" <+> text "Gen" <> parens (pretty t <> char ',' <+> char '[' <> pretty ct <> char ']' <> char ',' <+> pretty env) --text "{...env...}")    -- ts1 == Gen(t2,ct,env)
     pretty (EqAnn d ann1 ann2) = text "EqAnn"                     -- phi1 == phi2
     pretty (EqPlus d ann1 ann2 ann3) = text "EqPlusAnn"              -- phi1 == phi2 (+) phi3
     pretty (EqUnion d ann1 ann2 ann3) = text "EqUnionAnn"              -- phi1 == phi2 (U) phi3
     pretty (EqTimes d ann1 ann2 ann3) = text "EqTimesAnn"              -- phi1 == phi2 (*) phi3
     pretty (EqCond d ann1 ann2 ann3) = text "EqCondAnn"              -- phi1 == phi2 |> phi3
+
+{-GlobalEnv-}
+instance Pretty GlobalEnv where
+    pretty (GlobalEnv im ex) = nest 2 $ text "GlobalEnv" <$> text (show im){-(vsep (map pretty . toList im))-} <$> text (show ex)

@@ -118,7 +118,7 @@ compile basedir fullName options lvmPath doneModules isTopMostModule =
         stopCompilingIf (StopAfterDesugar `elem` options)
 
         -- Phase 10: Normalization
-        normalizedCoreModule <- phaseNormalize coreModule options
+        normalizedCoreModule <- phaseNormalize fullName coreModule options
         -- Phase 11: Optimization
         optimizedCoreModule <- phaseOptimize fullName normalizedCoreModule options isTopMostModule
         -- Phase 12: Code generation
