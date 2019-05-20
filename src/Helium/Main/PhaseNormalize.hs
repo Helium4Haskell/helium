@@ -65,13 +65,14 @@ type DBGS a = (a, [String])
 normalize :: NameSupply -> CoreModule -> DBGS CoreModule
 normalize supply =
     coreSimplify
+  . coreRename supply3
   . coreLift
   . coreLetSort
   . coreNormalize supply2
   . coreSaturate supply1
   . coreRename supply0
   where
-    (supply0:supply1:supply2:_) = splitNameSupplies supply
+    (supply0:supply1:supply2:supply3:_) = splitNameSupplies supply
 
 {- CoreSimplify -}
 coreSimplify :: CoreModule -> DBGS CoreModule

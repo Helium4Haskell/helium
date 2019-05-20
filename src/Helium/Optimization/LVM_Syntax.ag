@@ -538,7 +538,9 @@ SEM Bind
                 loc.t = TVar @lhs.uniqueIdEnv
                 loc.ts = TsVar $ @lhs.uniqueIdEnv + 1
                 lhs.bindupct = [ EqT "Bind" @loc.t @expr.t ] ++ @expr.ct
-                lhs.ct = [ EqGen "Bind" @loc.ts (@loc.t,@lhs.binddownct,@lhs.globalEnv) ]
+                lhs.ct = [ EqTs "Bind" @loc.ts (t2ts @loc.t) ] ++ @lhs.binddownct
+                    --TODO: Polymorphisme
+                    --[ EqGen "Bind" @loc.ts (@loc.t,@lhs.binddownct,@lhs.globalEnv) ]
                 expr.uniqueId = @lhs.uniqueId
                 lhs.uniqueId = @expr.uniqueId
                 -- expr uses uniqueId and env.
