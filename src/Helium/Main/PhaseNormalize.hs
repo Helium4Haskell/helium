@@ -81,11 +81,13 @@ coreSimplify m = (t, dbgs)
     t = m{moduleDecls = mds}
     (mds,dbgs) = foldr (\decl (mds,dbgs) -> case decl of
                     DeclValue _ _ _ expr _ ->
-                        let (expr', dbgs') = exprRemoveDeadLet expr
-                            (expr'', dbgs'') = exprRemoveRename Map.empty expr'
-                        in (mds ++ [decl{valueValue = expr''}], dbgs ++ dbgs' ++ dbgs'')
+                        let expr' = exprSolidifyMatches expr
+                            (expr'', dbgs') = exprRemoveDeadLet expr'
+                            (expr''', dbgs'') = exprRemoveRename Map.empty expr''
+                        in (mds ++ [decl{valueValue = expr'''}], dbgs ++ dbgs' ++ dbgs'')
                     _ -> (mds ++ [decl], dbgs)) ([],[]) $ moduleDecls m
 
+{- Remove Dead Let -}
 exprRemoveDeadLet :: Expr -> DBGS Expr
 exprRemoveDeadLet expr =
     let (after, dbgs) = case expr of
@@ -218,6 +220,36 @@ unpackdbgs [] = ([],[])
 unpackdbgs ((a,dbgs):dbgsas) =
     let (as, dbgs') = unpackdbgs dbgsas
     in  (a:as, dbgs ++ dbgs')
+
+{- Solidify Matches-}
+exprSolidifyMatches :: Expr -> Expr
+exprSolidifyMatches expr = case expr of
+            Let (NonRec (Bind 'c':'a':'s':'e':'E':'x':'p':'r':'$':nameB exprB)) exprL -> traceShow "" expr
+            _ -> expr
+            {-Let (Strict (Bind nameB exprB)) (Match nameM alts) ->
+                
+            Let binds expr1 ->
+                let (binds', dbgs) = bindsRemoveDeadLet binds
+                    (expr1', dbgs') = exprRemoveDeadLet expr1
+                    bindNames = snd $ bindsOcc binds'
+                    occ = exprOcc expr1'
+                    simplify = Let binds' expr1'
+                in  if anyMember occ bindNames -- Only removes complete let bindings (which are already split for mutual recursion)
+                     then (simplify, dbgs ++ dbgs') -- Not a dead let
+                     else (expr1', dbgs ++ dbgs') -- Dead let removal
+            Match name alts ->
+                let (alts', dbgs) = altsRemoveDeadLet alts
+                in (Match name alts', dbgs)
+            Ap expr1 expr2 ->
+                let (expr1', dbgs) = exprRemoveDeadLet expr1
+                    (expr2', dbgs') = exprRemoveDeadLet expr2
+                in (Ap expr1' expr2', dbgs ++ dbgs')
+            Lam name expr1 ->
+                let (expr1', dbgs) = exprRemoveDeadLet expr1
+                in (Lam name expr1', dbgs)
+            Con _ -> (expr, [])
+            Var _ -> (expr, [])
+            Lit _ -> (expr, [])-}
 
 {- Occurences -}
 exprOcc :: Expr -> Occ
