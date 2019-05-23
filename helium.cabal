@@ -150,6 +150,7 @@ Library
     Helium.Main.Args
     Helium.Main.Compile
     Helium.Main.CompileUtils
+    Helium.Main.Make
     Helium.Main.PhaseCodeGenerator
     Helium.Main.PhaseDesugarer
     Helium.Main.PhaseImport
