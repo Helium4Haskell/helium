@@ -29,7 +29,7 @@ ATTR Declarations Declaration Expressions Expression Statements Statement
 SEM Module
   | Module
        -- return an empty dictionary environment for the non-overloading setting, or if there are type errors
-       lhs  . dictionaryEnvironment = if Overloading `elem` @lhs.options && null @typeErrors
+       lhs  . dictionaryEnvironment = if Overloading `elem` @lhs.options
                                         then @body.dictionaryEnvironment
                                         else emptyDictionaryEnvironment
        body . dictionaryEnvironment = emptyDictionaryEnvironment
