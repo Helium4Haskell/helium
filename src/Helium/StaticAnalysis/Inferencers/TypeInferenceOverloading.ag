@@ -196,7 +196,7 @@ matchTypeWithScheme :: OrderedTypeSynonyms -> Tp -> TpScheme -> Predicates
 matchTypeWithScheme synonyms tp scheme =
    let (ips, itp) = split . snd . instantiate 0 . freezeFTV $ scheme
    in case mguWithTypeSynonyms synonyms itp (freezeVariablesInType tp) of
-         Left _ -> internalError "TypeInferenceOverloading.ag" "matchTypeWithScheme" ("no unification on " ++ show tp ++ " and " ++ show scheme)
+         Left _         -> []
          Right (_, sub) -> 
             let f (Predicate s typ) = Predicate s (unfreezeVariablesInType $ sub |-> typ)
             in map f ips
