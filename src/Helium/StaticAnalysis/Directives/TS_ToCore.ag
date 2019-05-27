@@ -112,9 +112,9 @@ SEM TypingStrategy
               monoType = unqualify (unquantify inferredType)
               synonyms = getOrderedTypeSynonyms @lhs.importEnvironment
               sub = case mguWithTypeSynonyms synonyms monoType (freezeVariablesInType @typerule.conclusionType) of
-                       Left _       -> internalError "TS_ToCore.ag" "n/a" "no unification possible" 
-                       Right (_, s) -> s
-          in [ (show name, unfreezeVariablesInType (sub |-> tp))
+                       Left _       -> id
+                       Right (_, s) -> (s |->)
+          in [ (show name, unfreezeVariablesInType (sub tp))
              | (name, tp) <- concat (M.elems freeVariables) 
              ]
              
