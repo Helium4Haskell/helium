@@ -126,7 +126,7 @@ makeDictionaryTree classEnv availablePredicates currentClass curPred ps =
                                     in if fromPredicate `elem` baseSuperClassPredicates then Just (foldr (uncurry BySuperClass) (convertPredicate ByPredicate (getSuperClassPredicate fromPredicate)) list) else Just tree 
                                 
         _      -> case byInstance noOrderedTypeSynonyms classEnv p of
-                    Nothing -> internalError "DictionaryEnvironment" "makeDictionaryTree" ("reduction error: Looking for \"" ++ show p ++ "\" in " ++ show (M.assocs classEnv))
+                    Nothing -> Nothing
                     Just predicates -> 
                         do 
                             let (TCon instanceName, _) = leftSpine tp

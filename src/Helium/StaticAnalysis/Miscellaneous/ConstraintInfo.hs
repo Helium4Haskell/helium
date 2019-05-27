@@ -406,7 +406,7 @@ makeTypeErrors options classEnv unqualifier synonyms sub errors =
                       pred' = let err = internalError "ConstraintInfo" "makeTypeErrors" 
                                                        "unknown predicate which resulted in a reduction error"
                                in maybe (fromMaybe err $ maybeReductionErrorPredicate info) fst maybeNever
-                  in maybe (special info (sub |-> makeReductionError source extra classEnv (convertTp unqualifier) pred'))
+                  in maybe (special info (sub |-> makeReductionError source extra classEnv unqualifier pred'))
                         (\m -> TypeError [rangeOfSource source] ([MessageOneLiner $ MessageString m]) [] []) customMessage
            in (4, map f infos)     
   

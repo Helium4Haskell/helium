@@ -207,7 +207,7 @@ resolveOverloading classEnv name availablePredicates predicates currentClass cur
    let maybeTrees = map (makeDictionaryTree classEnv availablePredicates currentClass curPred) predicates
    in if all isJust maybeTrees
         then addForVariable name (map fromJust maybeTrees) dEnv
-    else internalError "TypeInferenceOverloading.ag" "resolveOverloading" ("cannot resolve overloading (" ++ show (NameWithRange name) ++ ")" ++ show predicates) 
+    else dEnv
    
 expandPredicates :: OrderedTypeSynonyms -> Predicates -> Predicates
 expandPredicates synonyms = map (expandPredicate synonyms)

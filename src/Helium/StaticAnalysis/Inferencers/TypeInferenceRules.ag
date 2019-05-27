@@ -197,7 +197,8 @@ SEM Declaration
                                             checkPredicate :: Predicate -> [TypeError]
                                             checkPredicate p@(Predicate n v) 
                                                 | p `elem` map (superClassToPredicate @instanceBetas) @superClasses = []
-                                                | v `elem` map snd @instanceBetas = [makeMissingInstancePredicateError @range.self @qualName (show $ makeTpSchemeFromType (chead $ @types.self)) p (@superClasses) @instanceBetas]
+                                                | v `elem` map snd @instanceBetas = [makeMissingInstancePredicateError @range.self @qualName
+                                                                                    (show $ makeTpSchemeFromType (chead $ @types.self)) p (@superClasses) @instanceBetas]
                                                 | otherwise = []
                                           in (concatMap checkPredicate @lhs.requiredPredicates) ++ @lhs.collectErrors
         where   . betaUnique            = @lhs.betaUnique + 2 + length(@typeVariabeles) + length (@memberBetas) * (length (@superClasses) + 1)

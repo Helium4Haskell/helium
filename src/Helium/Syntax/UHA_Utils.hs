@@ -245,6 +245,9 @@ isQualifiedString s@(fir:_)
                                 _         -> False
             | otherwise = False
 
+convertString :: (Name -> Name) -> String -> String
+convertString f = getNameName . f . nameFromString 
+
 convertTpScheme :: (Name -> Name) -> TpScheme -> TpScheme
 convertTpScheme f (Quantification (xs, qm, (Qualification (pre, ty)))) = Quantification (xs, qm, (Qualification (map (convertPredicate f) pre,convertTp f ty)))
 
@@ -253,7 +256,7 @@ convertTpInScheme f (Quantification (xs, qm, (Qualification (pre, ty)))) = (Quan
 
 convertTp :: (Name -> Name) -> Tp -> Tp
 convertTp _ t@(TVar _) = t
-convertTp f (TCon str) = TCon . getNameName . f . nameFromString $ str
+convertTp f (TCon str) = TCon $ convertString f str
 convertTp f (TApp t1 t2) = TApp (convertTp f t1) (convertTp f t2)
 
 convertPredicate :: (Name -> Name) -> Predicate -> Predicate
