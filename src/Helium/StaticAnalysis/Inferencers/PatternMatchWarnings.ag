@@ -451,7 +451,7 @@ unreachable env tps ps = let reach = reachable env tps ps
 -- determines which patterns are reachable
 -- possibly multiple occurances of indices
 reachable :: ImportEnvironment -> [Tp] -> [([PatternElement], Int)] -> [Int]
-reachable _   []       _  = pmError "reachable" "empty type list!"
+reachable _   []       _  = []
 reachable env (tp:tps) ps 
   | all ((== WildcardElement).head.fst) ps = conReachable ps
   | otherwise                              = concat $ map (conReachable.conPats) $ stop cons
