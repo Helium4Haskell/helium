@@ -6,7 +6,7 @@
     Portability :  portable
 -}
 
-module Helium.CodeGeneration.PatternMatch(patternToCore, patternsToCore, nextClauseId, freshIds, traceShow) where
+module Helium.CodeGeneration.PatternMatch(patternToCore, patternsToCore, nextClauseId, freshIds) where
 
 import qualified Lvm.Core.Expr as Core
 import Helium.Syntax.UHA_Syntax
@@ -16,12 +16,6 @@ import Lvm.Common.Id
 import Data.Char
 import Helium.Utils.Utils
 import Helium.CodeGeneration.CoreUtils
-
-
-{- Debug imports -}
-import Text.PrettyPrint.Leijen (Pretty, pretty)
-import qualified Debug.Trace as Trace(trace)
-
 
 patternsToCore :: [(Id, Pattern)] -> Core.Expr -> Core.Expr
 patternsToCore nps continue = fst (patternsToCore' nps continue 0)
@@ -222,10 +216,3 @@ caseChar_ :: Id -> [Core.Alt] -> Core.Expr
 caseChar_ ident alts =
     letstrict_ ident (charOrd (Core.Var ident))      -- let! id = primOrd id in
         (Core.Match ident (alts++[nextClauseAlternative]))    -- match id { alt; ...; alt; _ -> _nextClause }
-
-
-trace :: String -> a -> a
-trace = Trace.trace
-
-traceShow :: Show a => String -> a -> a
-traceShow s x = trace (s ++ ":" ++ show x) x

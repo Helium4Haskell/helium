@@ -14,7 +14,7 @@ import Helium.Main.CompileUtils
 import qualified Helium.Optimization.LVM_Syntax as LVM_Syntax
 import Helium.Optimization.Pretty()
 --import Helium.Optimization.CountingAnalysis(countingAnalysis)
-import Helium.Optimization.StrictnessInfo(getLetBangs, showLetBangs)
+--import Helium.Optimization.StrictnessInfo(getLetBangs, showLetBangs)
 --import qualified Helium.Optimization.Types as Types
 import Text.PrettyPrint.Leijen(pretty)
 
@@ -36,11 +36,11 @@ phaseOptimize fullName coreModule options isTopMostModule = do
     --putStrLn $ show $ Types.solveConstraints constraints
     --let optimizeModule' = countingAnalysis optimizeModule
         let wrapped_module = LVM_Syntax.wrap_module optimizeModule
-        let constraints = LVM_Syntax.constraints wrapped_module
+        --let constraints = LVM_Syntax.constraints wrapped_module
         --mapM (putStrLn . show . pretty) constraints
 
         let showIt = LVM_Syntax.showIt wrapped_module
-        let letBangs = getLetBangs optimizeModule
+        --let letBangs = getLetBangs optimizeModule
 
         --putStrLn $ "Do counting analysis for: " ++ fullName
         mapM (putStrLn . show) {-print-} {-$ length $ show-} $ LVM_Syntax.filterShowIt showIt -- Shows the types of the functions and their corresponding top types
