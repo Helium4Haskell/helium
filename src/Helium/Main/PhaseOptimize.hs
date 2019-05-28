@@ -37,7 +37,7 @@ phaseOptimize fullName coreModule options isTopMostModule = do
     --let optimizeModule' = countingAnalysis optimizeModule
         let wrapped_module = LVM_Syntax.wrap_module optimizeModule
         let constraints = LVM_Syntax.constraints wrapped_module
-        mapM (putStrLn . show . pretty) constraints
+        --mapM (putStrLn . show . pretty) constraints
 
         let showIt = LVM_Syntax.showIt wrapped_module
         let letBangs = getLetBangs optimizeModule

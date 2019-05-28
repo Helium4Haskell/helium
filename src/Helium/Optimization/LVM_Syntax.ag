@@ -266,7 +266,7 @@ SEM OptimizeModule
                     decls.globalEnv = @decls.genEnv
                     loc.solved = runFreshFrom @decls.uniqueId $ solveConstraints @decls.ct
                     loc.uniqueId = snd $ @loc.solved -- the next free id
-                    decls.sub = fst $ {-(\t -> trace ("decls.sub:" ++ ((\(Sub subt subts subann) -> "Sub " ++ show (Map.size subt) ++ " " ++ show (Map.size subts) ++ " " ++ show (Map.size subann)) $ fst t) ++ ":ct:" ++ show (snd t)++ " <= decls.ct:" ++ show @decls.ct) t) $-} (\t -> trace ("decls.sub:" ++ ((\(Sub subt subts subann) -> "Sub " ++ show (Map.size subt) ++ " " ++ show (Map.size subts) ++ " " ++ show (Map.size subann)) $ fst t) ++ ":ct:" ++ show (countCt $ snd t) ++ " <= decls.ct:" ++ show (countCt @decls.ct)) t) $ fst $ traceShow "decls.sub all:" $ @loc.solved
+                    decls.sub = fst $ {-(\t -> trace ("decls.sub:" ++ ((\(Sub subt subts subann) -> "Sub " ++ show (Map.size subt) ++ " " ++ show (Map.size subts) ++ " " ++ show (Map.size subann)) $ fst t) ++ ":ct:" ++ show (snd t)++ " <= decls.ct:" ++ show @decls.ct) t) $-} (\t -> trace ("decls.sub:" ++ ((\(Sub subt subts subann) -> "Sub " ++ show (Map.size subt) ++ " " ++ show (Map.size subts) ++ " " ++ show (Map.size subann)) $ fst t) ++ ":ct:" ++ show (countCt $ snd t) ++ " <= decls.ct:" ++ show (countCt @decls.ct)) t) $ fst $ {-traceShow "decls.sub all:" $-} @loc.solved
                     lhs.optimizeModule = OptimizeModule_Module @name @majorV @minorV @decls.decls
 
 
@@ -441,7 +441,7 @@ SEM Expr
                 --lhs.uniqueId = @expr.uniqueId
                 lhs.localEnv = Map.delete @name @expr.localEnv
                 loc.lookup = Map.lookup @name @expr.localEnv
-                lhs.ct = if M.isJust @loc.lookup then traceShow "lam.ct1" $ (unify "Lam" (t2ts @loc.nameT) $ M.fromJust @loc.lookup) ++ @expr.ct else traceShow "lam.ct2" $  @expr.ct
+                lhs.ct = if M.isJust @loc.lookup then {-traceShow "lam.ct1" $-} (unify "Lam" (t2ts @loc.nameT) $ M.fromJust @loc.lookup) ++ @expr.ct else {-traceShow "lam.ct2" $-}  @expr.ct
                 --DONE: remove from localEnv
                 --DONE: add constraints
     | ConId     lhs.expr = Expr_ConId @name (Just $ @lhs.sub -$- @loc.t)
