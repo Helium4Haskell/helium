@@ -167,6 +167,11 @@ Library
     Helium.ModuleSystem.DictionaryEnvironment
     Helium.ModuleSystem.ExtractImportDecls
     Helium.ModuleSystem.ImportEnvironment
+    Helium.Normalization.NormalizeMatches
+    Helium.Normalization.RemoveDeadLet
+    Helium.Normalization.RemoveRenames
+    Helium.Normalization.Simplify
+    Helium.Normalization.Utils
     Helium.Optimization.Annotations
     Helium.Optimization.CountingAnalysis
     Helium.Optimization.StrictnessInfo
