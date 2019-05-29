@@ -44,6 +44,7 @@ import Helium.StaticAnalysis.Directives.TS_Messages
 import Helium.ModuleSystem.ImportEnvironment hiding (setTypeSynonyms, classEnvironment)
 import qualified  Helium.ModuleSystem.ImportEnvironment as IE
 import Helium.Utils.Utils (internalError)
+import Helium.Utils.QualifiedTypes
 import qualified Helium.Syntax.UHA_Pretty as PP
 }
 
@@ -70,7 +71,10 @@ SEM TypingStrategy
         lhs . errors    = []
             . warnings  = []
   | TypingStrategy  
-       loc . name         = show (PP.text_Syn_Expression $ PP.wrap_Expression (PP.sem_Expression @typerule.conclusionExpression) PP.Inh_Expression)
+       typerule   . qualifier = @qualifier
+       statements . qualifier = @qualifier
+       loc . qualifier    = convertTpToQualified @lhs.importEnvironment
+           . name         = show (PP.text_Syn_Expression $ PP.wrap_Expression (PP.sem_Expression @typerule.conclusionExpression) PP.Inh_Expression)
            . nameMap      = zip @uniqueTypevariables (map TVar [0..])
            . errors       = @staticErrors ++ @soundnessErrors 
            . staticErrors = [ InconsistentConstraint @name x | (x, _) <- @solveErrors ] ++
@@ -108,7 +112,7 @@ SEM TypingStrategy
                       
            . classEnv = IE.classEnvironment @lhs.importEnvironment
            
-           . soundnessErrors = 
+           . soundnessErrors =
                 if not (null @staticErrors)
                   then []
                   else let orderedMetaList = -- consistent ordering of meta variables for soundness check!
@@ -138,7 +142,11 @@ SEM Expression
   | Constructor   lhs . allVariables = [(@name.self, Constructor)]
 
 ATTR TypeRule  [ | | conclusionAllVariables : {[(Name,Entity)]} ]
-SEM TypeRule | TypeRule lhs . conclusionAllVariables = @conclusion.allVariables
+SEM TypeRule 
+  | TypeRule 
+    lhs . conclusionAllVariables = @conclusion.allVariables
+    conclusion . qualifier = @lhs.qualifier
+    premises   . qualifier = @lhs.qualifier
 
 SEM TypingStrategy 
   | TypingStrategy  

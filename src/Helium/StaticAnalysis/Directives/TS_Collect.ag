@@ -17,7 +17,7 @@ import qualified Data.Map as M
 -- Collect all type variables 
 
 ATTR UserStatement UserStatements TypeRule Judgement SimpleJudgement SimpleJudgements 
-     Type Types [ | | typevariables USE { ++ } { [] } : Names ]
+     Type Types [ qualifier : {Tp -> Tp} | | typevariables USE { ++ } { [] } : Names ]
 
 SEM Type
   | Variable  lhs . typevariables = [ @name.self ]
@@ -42,7 +42,7 @@ SEM TypingStrategy
 SEM UserStatement
   | Equal 
        lhs . userConstraints = @newConstraint : @lhs.userConstraints
-       loc . newConstraint   = (makeTpFromType @lhs.nameMap @leftType.self .==. makeTpFromType @lhs.nameMap @rightType.self) @lhs.standardConstraintInfo
+       loc . newConstraint   = (makeTpFromType @lhs.nameMap @leftType.self .==. (@lhs.qualifier $ makeTpFromType @lhs.nameMap @rightType.self)) @lhs.standardConstraintInfo
   | Pred
        lhs . userPredicates = @newPredicate : @lhs.userPredicates
        loc . newPredicate   = Predicate (show @predClass.self) (makeTpFromType @lhs.nameMap @predType.self)
@@ -58,12 +58,12 @@ SEM TypingStrategy
 SEM SimpleJudgement
   | SimpleJudgement   
        lhs . simpleJudgements = @newJudgement : @lhs.simpleJudgements       
-       loc . newJudgement  = (show @name.self, makeTpFromType @lhs.nameMap @type.self)
+       loc . newJudgement  = (show @name.self, @lhs.qualifier $ makeTpFromType @lhs.nameMap @type.self)
                 
 ATTR Judgement TypeRule [ | | conclusionType : Tp ]
 
 SEM Judgement
-  | Judgement   lhs . conclusionType = makeTpFromType @lhs.nameMap @type.self
+  | Judgement   lhs . conclusionType = @lhs.qualifier $ makeTpFromType @lhs.nameMap @type.self
 
 -- Collecting MetaVariableConstraints
 
