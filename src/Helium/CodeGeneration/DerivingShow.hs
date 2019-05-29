@@ -28,6 +28,7 @@ import qualified Data.Map as M
 import Data.Maybe
 import Data.List
 import Helium.Utils.QualifiedTypes.Constants
+import Debug.Trace
 
 -- Show function for a data type declaration
 dataShowFunction :: ImportEnvironment -> UHA.Declaration -> [String] -> [Custom] -> Expr
@@ -147,7 +148,7 @@ showFunctionOfType env isMainType = sFOT 0
     classEnv = classEnvironment env
     tse      = typeSynonyms env
     expandTS :: UHA.Type -> UHA.Type
-    expandTS t@(UHA.Type_Constructor _ n) = case M.lookup n tse of
+    expandTS t@(UHA.Type_Constructor _ n) = case M.lookup (toQualTyCon env n) tse of
         Just (i, g) -> makeTypeFromTp (g $ take i (map TCon variableList))
         Nothing -> t
     expandTS t = t
