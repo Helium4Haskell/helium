@@ -47,35 +47,35 @@ SEM Body
            lhs . collectWarnings    = map (convertWarnings @env) . filter notQualifiedWarnings $ 
                                       missingTypeSignature True @declarations.simplePatNames @inferredTypes @lhs.importEnvironment
                                       ++ @declarations.collectWarnings
-               . collectErrors      = restrictedNameErrors @inferredTypes @declarations.restrictedNames
+               . collectErrors      = restrictedNameErrors @lhs.importEnvironment @inferredTypes @declarations.restrictedNames
                                       ++ @declarations.collectErrors
 
 SEM MaybeDeclarations
   | Just   loc . inferredTypes      = findInferredTypes @lhs.typeschemeMap @implicitsFM
            lhs . collectWarnings    = missingTypeSignature False @declarations.simplePatNames @inferredTypes @lhs.importEnvironment
                                       ++ @declarations.collectWarnings
-               . collectErrors      = restrictedNameErrors @inferredTypes @declarations.restrictedNames
+               . collectErrors      = restrictedNameErrors @lhs.importEnvironment @inferredTypes @declarations.restrictedNames
                                       ++ @declarations.collectErrors
 
 SEM Expression
   | Let    loc . inferredTypes      = findInferredTypes @lhs.typeschemeMap @implicitsFM
            lhs . collectWarnings    = missingTypeSignature False @declarations.simplePatNames  @inferredTypes @lhs.importEnvironment
                                       ++ @expression.collectWarnings
-               . collectErrors      = restrictedNameErrors @inferredTypes @declarations.restrictedNames
+               . collectErrors      = restrictedNameErrors @lhs.importEnvironment @inferredTypes @declarations.restrictedNames
                                       ++ @declarations.collectErrors
 
 SEM Statement
   | Let    loc . inferredTypes      = findInferredTypes @lhs.typeschemeMap @implicitsFM
            lhs . collectWarnings    = missingTypeSignature False @declarations.simplePatNames @inferredTypes @lhs.importEnvironment
                                       ++ @declarations.collectWarnings
-               . collectErrors      = restrictedNameErrors @inferredTypes @declarations.restrictedNames
+               . collectErrors      = restrictedNameErrors @lhs.importEnvironment @inferredTypes @declarations.restrictedNames
                                       ++ @declarations.collectErrors
 
 SEM Qualifier
   | Let    loc . inferredTypes      = findInferredTypes @lhs.typeschemeMap @implicitsFM
            lhs . collectWarnings    = missingTypeSignature False @declarations.simplePatNames @inferredTypes @lhs.importEnvironment
                                       ++ @declarations.collectWarnings
-               . collectErrors      = restrictedNameErrors @inferredTypes @declarations.restrictedNames
+               . collectErrors      = restrictedNameErrors @lhs.importEnvironment @inferredTypes @declarations.restrictedNames
                                       ++ @declarations.collectErrors
 
 {
@@ -99,10 +99,10 @@ missingTypeSignature topLevel simplePats typeenv importEnvironment =
               && (not topLevel || not (name `elem` classFunctions))]
    in concatMap makeWarning . M.assocs $ typeenv
 
-restrictedNameErrors :: TypeEnvironment -> Names -> TypeErrors
-restrictedNameErrors env =
-   let f name = case M.lookup name env of
-                   Just scheme -> [ makeRestrictedButOverloadedError name scheme | isOverloaded scheme ]
+restrictedNameErrors :: ImportEnvironment -> TypeEnvironment -> Names -> TypeErrors
+restrictedNameErrors ienv tenv =
+   let f name = case M.lookup name tenv of
+                   Just scheme -> [ makeRestrictedButOverloadedError name (convertTpScheme (unQualifyName ienv) scheme) | isOverloaded scheme ]
                    Nothing     -> []
    in concatMap f
 
