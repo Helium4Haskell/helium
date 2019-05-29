@@ -79,7 +79,7 @@ make basedir fullName lvmPath chain options doneRef =
             isRecompiled <-
                 if or compileResults ||
                     BuildAll `elem` options ||
-                    (BuildOne `elem` options && moduleName == head chain) ||
+                    (BuildOne `elem` options && length chain > 0 && moduleName == head chain) ||
                     not upToDate
                     then do
                         compile basedir fullName options lvmPath (map fst newDone)
