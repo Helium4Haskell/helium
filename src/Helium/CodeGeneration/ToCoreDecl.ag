@@ -88,7 +88,7 @@ SEM Declaration
         )
         ++
         (if "Prelude.Eq" `elem` map show @qualDers
-         then [ DerivingEq.dataDictionary @self @origin @qualname]
+         then [ DerivingEq.dataDictionary @lhs.importEnv @self @origin @qualname]
          else []
         )
         

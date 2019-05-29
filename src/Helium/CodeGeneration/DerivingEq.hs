@@ -15,42 +15,44 @@ import Lvm.Core.Expr
 import Lvm.Core.Utils
 import Lvm.Common.Id
 import Helium.Utils.Utils
+import Helium.Utils.QualifiedTypes
+import Helium.ModuleSystem.ImportEnvironment
 
 -- Eq Dictionary for a data type declaration
-dataDictionary :: UHA.Declaration -> [Custom] -> UHA.Name -> CoreDecl
-dataDictionary  (UHA.Declaration_Data _ _ (UHA.SimpleType_SimpleType _ name names) constructors _) origin qualname =
+dataDictionary :: ImportEnvironment -> UHA.Declaration -> [Custom] -> UHA.Name -> CoreDecl
+dataDictionary  env (UHA.Declaration_Data _ _ (UHA.SimpleType_SimpleType _ name names) constructors _) origin qualname =
     DeclValue 
     { declName    = idFromString ("$dictPrelude.Eq$" ++ getNameName qualname)
     , declAccess  = public
     , valueEnc    = Nothing
-    , valueValue  = eqDict names constructors
+    , valueValue  = eqDict env names constructors
     , declCustoms = [ custom "type" ("DictPrelude.Eq$" ++ getNameName qualname) ] 
         ++ map (custom "typeVariable" . getNameName) names
         ++ map (\n -> custom "superInstance" ("Prelude.Eq-" ++ getNameName n)) names
     }
-dataDictionary _ _ _ = error "pattern match failure in CodeGeneration.Deriving.dataDictionary"
+dataDictionary _ _ _ _ = error "pattern match failure in CodeGeneration.Deriving.dataDictionary"
 
-eqDict :: [UHA.Name] -> [UHA.Constructor] -> Expr
-eqDict names constructors = foldr Lam dictBody (map idFromName names)
+eqDict :: ImportEnvironment -> [UHA.Name] -> [UHA.Constructor] -> Expr
+eqDict env names constructors = foldr Lam dictBody (map idFromName names)
     where
-        dictBody = let_ (idFromString "func$eq") (eqFunction constructors) (Ap (Ap (Con $ ConId $ idFromString $ "DictPrelude.Eq") (var "default$Prelude.Eq$/=")) (var "func$eq"))
+        dictBody = let_ (idFromString "func$eq") (eqFunction env constructors) (Ap (Ap (Con $ ConId $ idFromString $ "DictPrelude.Eq") (var "default$Prelude.Eq$/=")) (var "func$eq"))
 -- Example: data X a b = C a b Int | D Char b
-eqFunction :: [UHA.Constructor] -> Expr
-eqFunction constructors = 
+eqFunction :: ImportEnvironment -> [UHA.Constructor] -> Expr
+eqFunction env constructors = 
     let 
         body = 
             Let (Strict (Bind fstArg (Var fstArg))) -- evaluate both
                 (Let (Strict (Bind sndArg (Var sndArg)))
                     (Match fstArg  -- case $fstArg of ...
-                        (map makeAlt constructors))) 
+                        (map (makeAlt env) constructors))) 
     in
         foldr Lam body ([idFromString "dict", fstArg, sndArg]) -- \$fstArg $sndArg ->
 
 fstArg, sndArg :: Id        
 [fstArg, sndArg] = map idFromString ["$fstArg", "$sndArg"] 
 
-makeAlt :: UHA.Constructor -> Alt
-makeAlt constructor =
+makeAlt :: ImportEnvironment -> UHA.Constructor -> Alt
+makeAlt env constructor =
         -- C $v0 $v1 $v2 -> ...
         Alt (PatCon (ConId ident) vs)
             --             case $sndArg of
@@ -63,7 +65,7 @@ makeAlt constructor =
                 [ Alt (PatCon (ConId ident) ws)
                       ( if null types then Con (ConId (idFromString "True"))
                         else
-                            foldr1 andCore [ Ap (Ap (Ap (var "==") $ eqFunForType tp) (Var v)) (Var w)
+                            foldr1 andCore [ Ap (Ap (Ap (var "==") $ eqFunForType $ convertTypeToQualified env tp) (Var v)) (Var w)
                                            | (v, w, tp) <- zip3 vs ws types
                                            ]
                       )
