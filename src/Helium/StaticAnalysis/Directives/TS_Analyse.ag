@@ -37,7 +37,7 @@ import Helium.StaticAnalysis.Miscellaneous.ConstraintInfo
 import Helium.StaticAnalysis.Directives.TS_Syntax
 import Helium.StaticAnalysis.Miscellaneous.TypeConversion
 import Data.List
-import Helium.Syntax.UHA_Utils (nameFromString, convertTp)
+import Helium.Syntax.UHA_Utils (nameFromString, convertTp, convertTpScheme)
 import Helium.Syntax.UHA_Range (noRange)
 import Helium.StaticAnalysis.Messages.Messages
 import Helium.StaticAnalysis.Directives.TS_Messages
@@ -74,6 +74,7 @@ SEM TypingStrategy
        typerule   . qualifier = @qualifier
        statements . qualifier = @qualifier
        loc . qualifier    = convertTpToQualified @lhs.importEnvironment
+           . unqualifier  = convertTpScheme (unQualifyName @lhs.importEnvironment)
            . name         = show (PP.text_Syn_Expression $ PP.wrap_Expression (PP.sem_Expression @typerule.conclusionExpression) PP.Inh_Expression)
            . nameMap      = zip @uniqueTypevariables (map TVar [0..])
            . errors       = @staticErrors ++ @soundnessErrors 
@@ -132,7 +133,7 @@ SEM TypingStrategy
                                         &&
                                     genericInstanceOf synonyms @classEnv constraintsTpScheme inferredTpScheme 
                                       then []
-                                      else [ Soundness @name inferredTpScheme constraintsTpScheme ]
+                                      else [ Soundness @name (@loc.unqualifier inferredTpScheme) (@loc.unqualifier constraintsTpScheme) ]
                                       
 -- cheching the names
 ATTR Judgement Expression Expressions MaybeExpression [ | | allVariables USE { ++ } { [] } : {[(Name,Entity)]} ]
