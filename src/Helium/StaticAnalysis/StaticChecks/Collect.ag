@@ -460,7 +460,7 @@ SEM Declaration
                                         let 
                                             tvs = @simpletype.typevariables
                                             tVars = zip tvs (map TVar [0..])
-                                            typeClass = foldl TApp (TCon $ show @simpletype.name) $ map snd tVars
+                                            typeClass = foldl TApp (TCon $ getNameName @fullname) $ map snd tVars
                                         in (show dn, typeClass, map (\x -> (show dn, snd x)) tVars)
                                         | dn <- @qualDers
                                     ]
