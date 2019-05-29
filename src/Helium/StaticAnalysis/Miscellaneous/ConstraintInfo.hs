@@ -303,7 +303,7 @@ setTypePair :: (Tp, Tp) -> ConstraintInfo -> ConstraintInfo
 setTypePair pair = addProperty (TypePair pair)
 
 typepair :: ConstraintInfo -> (Tp, Tp)
-typepair info = fromJust (maybeHead [ pair | TypePair pair <- getProperties info ])
+typepair info = head [ pair | TypePair pair <- getProperties info ]
 
 isExprTyped :: ConstraintInfo -> Bool
 isExprTyped info = 
