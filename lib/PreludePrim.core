@@ -1,7 +1,7 @@
 module PreludePrim
     (
     -- Conversion
-      primOrd, primChr, intToFloat, ceiling, floor, truncate, round
+      primOrd, primChr, intToFloat, ceiling, floor, truncate, round, readFloat
 
     -- Num
     , (+), (-), (*), negate, fromInt
@@ -92,6 +92,7 @@ import LvmLang
     , '':()''('':()'')
     , bindIO, return = returnIO
     , primPackedToString = stringFromPacked
+    , primStringToPacked = packedFromString
     , primUnsafePerformIO = unsafePerformIO
 
     , ($!), seq
@@ -157,11 +158,16 @@ unsafePerformIO :: IO a -> a
 unsafePerformIO io
   = ''$primUnsafePerformIO'' io
 
-
 -- Float
 
-extern primFloatSqrt "fp_sqrt" :: "FF"
 extern float_of_string_extern "float_of_string" :: "Fz"
+
+readFloat :: String -> Float
+readFloat s =
+    let! p = primStringToPacked s
+    in   float_of_string_extern p
+
+extern primFloatSqrt "fp_sqrt" :: "FF"
 
 sqrt :: Float -> Float
 sqrt x = let! x = x

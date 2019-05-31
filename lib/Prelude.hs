@@ -517,6 +517,7 @@ round      :: Float -> Int
 floor      :: Float -> Int
 ceiling    :: Float -> Int
 truncate   :: Float -> Int
+readFloat  :: String -> Float
 -}
 
 {-----------------------------------------------
