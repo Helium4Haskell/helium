@@ -28,6 +28,7 @@ import qualified Data.Map as M
 import Data.Maybe
 import Data.List
 import Helium.Utils.QualifiedTypes.Constants
+import Debug.Trace
 
 -- Show function for a data type declaration
 dataShowFunction :: ImportEnvironment -> UHA.Declaration -> [String] -> [Custom] -> Expr
@@ -43,13 +44,12 @@ dataShowFunction env (UHA.Declaration_Data _ _ (UHA.SimpleType_SimpleType _ name
                 (map (makeAlt env) constructors)
             )
         )   
-        ( (map idFromName names)
-        ++ [idFromString "$instanceDictPrelude.Show", valueId])
+        ( [idFromString "$instanceDictPrelude.Show", valueId])
 dataShowFunction _ _ _ _ = error "not supported"
 
 -- Show Dictionary for a data type declaration
 dataDictionary :: ImportEnvironment -> UHA.Declaration -> [String] -> [Custom] -> UHA.Name -> CoreDecl
-dataDictionary env decl@(UHA.Declaration_Data _ _ (UHA.SimpleType_SimpleType _ name names) _ _) qual origin qualname =
+dataDictionary env decl@(UHA.Declaration_Data _ _ (UHA.SimpleType_SimpleType _ name names) _ _) qual origin qualname = 
     DeclValue 
     { declName    = idFromString ("$dictPrelude.Show$" ++ getNameName qualname)
     , declAccess  = public
@@ -64,7 +64,7 @@ dataDictionary env decl@(UHA.Declaration_Data _ _ (UHA.SimpleType_SimpleType _ n
     makeShowDictionary :: Int -> Expr
     makeShowDictionary nrOfArgs =
        let 
-           showBody = dataShowFunction env decl qual origin
+           showBody = traceShowId $ dataShowFunction env decl qual origin
            ids  = map idFromName names
            list = map idFromString ["showsPred", "showList", "showDef"]
            declarations = zipWith Bind list [Var $ idFromString "default$Prelude.Show$showsPrec", Var $ idFromString "default$Prelude.Show$showList", showBody]
@@ -189,7 +189,7 @@ checkForPrimitiveDict nrOfArguments env name =
             let 
                 classEnv = classEnvironment env
                 showInstances :: Instances
-                showInstances = snd $ fromJust $ M.lookup "Prelude.Show" classEnv
+                showInstances = snd $ (maybe (error "NIETS") id)$ M.lookup "Prelude.Show" classEnv
                 qualname = getNameName $ toQualTyCon env (nameFromString name)
                 dict = var $ "$dictPrelude.Show$" ++ qualname 
                 isTCon :: Tp -> String -> Bool
