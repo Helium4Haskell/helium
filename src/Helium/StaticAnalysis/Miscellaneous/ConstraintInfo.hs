@@ -373,7 +373,7 @@ makeTypeErrors options classEnv unqualifier synonyms sub errors =
                                           sub' = listToSubstitution [ (i, TCon s) | (i, s) <- getQuantorMap scheme ]
                                       in (True, Predicate className (sub' |-> unfreezeVariablesInType tp))
                       err    = internalError "ConstraintInfo" "makeTypeErrors" "unknown class predicate"
-                  in special info (makeMissingConstraintTypeError range mSource scheme tuple (fst $ sources infoArising))
+                  in special info (makeMissingConstraintTypeError unqualifier range mSource scheme tuple (fst $ sources infoArising))
            in (2, map f infos)
       
       -- declared type is too general
