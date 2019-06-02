@@ -300,7 +300,7 @@ checkClass typeClasses declVarNames restrictedNames declTypes imported =
                , (length errMethod > 0)
                ]
                ++
-               [DuplicateClassName ns
+               [DuplicateClassName (map removeQualified ns)
                | ns <- filter (\x -> (length x) > 1) $ group . sort $ map fst typeClasses ]
                ++
                [DuplicatedClassImported x
