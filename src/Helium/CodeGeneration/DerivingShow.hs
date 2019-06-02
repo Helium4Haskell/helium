@@ -57,14 +57,14 @@ dataDictionary env decl@(UHA.Declaration_Data _ _ (UHA.SimpleType_SimpleType _ n
     , valueValue  = makeShowDictionary (length names)
     , declCustoms = [ custom "type" ("DictPrelude.Show$" ++ getNameName qualname)] 
                 ++ map (custom "typeVariable" . getNameName) names
-                ++ map (\n -> custom "superInstance" ("Prelude.Show-" ++ getNameName qualname)) names
+                ++ map (\n -> custom "superInstance" ("Prelude.Show-" ++ getNameName n)) names
                 ++ origin
     }
   where
     makeShowDictionary :: Int -> Expr
     makeShowDictionary nrOfArgs =
        let 
-           showBody = traceShowId $ dataShowFunction env decl qual origin
+           showBody = dataShowFunction env decl qual origin
            ids  = map idFromName names
            list = map idFromString ["showsPred", "showList", "showDef"]
            declarations = zipWith Bind list [Var $ idFromString "default$Prelude.Show$showsPrec", Var $ idFromString "default$Prelude.Show$showList", showBody]
@@ -189,7 +189,7 @@ checkForPrimitiveDict nrOfArguments env name =
             let 
                 classEnv = classEnvironment env
                 showInstances :: Instances
-                showInstances = snd $ (maybe (error "NIETS") id)$ M.lookup "Prelude.Show" classEnv
+                showInstances = snd $ fromJust $ M.lookup "Prelude.Show" classEnv
                 qualname = getNameName $ toQualTyCon env (nameFromString name)
                 dict = var $ "$dictPrelude.Show$" ++ qualname 
                 isTCon :: Tp -> String -> Bool
