@@ -63,7 +63,7 @@ SEM Declaration
                              . classDefinition      = classExists @qualifiedName @lhs.classMemberEnv
                              . undefinedClassErrors = case (@loc.classDefinition) of
                                                            Nothing -> [UndefinedClass @name.self (M.keys @lhs.classMemberEnv)]
-                                                           (Just decl) -> instanceMembers @where.self decl
+                                                           (Just decl) -> instanceMembers @lhs.qualifiedEnvironment @where.self decl
                              . contextErrors        = checkInstanceSignature @name.self @context.self (head @types.self)
     | FunctionBindings   lhs . miscerrors  = @arityErrors ++ @bindings.miscerrors
                          loc . arityErrors = if all (== head @bindings.arities) @bindings.arities
@@ -495,19 +495,19 @@ classExists n cm = case (M.lookup n cm) of
                     (Just m) -> Just (n, m)
                     Nothing  -> Nothing
 
-instanceMembers :: MaybeDeclarations -> ClassDef -> Errors
-instanceMembers MaybeDeclarations_Nothing _ = []
-instanceMembers (MaybeDeclarations_Just decls) d = instanceMembers' decls d
+instanceMembers :: ImportEnvironment -> MaybeDeclarations -> ClassDef -> Errors
+instanceMembers _ MaybeDeclarations_Nothing _ = []
+instanceMembers nenv (MaybeDeclarations_Just decls) d = instanceMembers' nenv decls d
   -- where n = concatMap nameOfDeclaration decls
 
-instanceMembers' :: Declarations -> ClassDef -> Errors
-instanceMembers' (d:ds) c@(n, members) = let fn = head $ nameOfDeclaration d
-                                             cm = map (\(x, _, _, _) -> x) (snd members)
+instanceMembers' :: ImportEnvironment -> Declarations -> ClassDef -> Errors
+instanceMembers' nenv (d:ds) c@(n, members) = let fn = head $ nameOfDeclaration d
+                                                  cm = map (\(x, _, _, _) -> x) (snd members)
                                           in
                                              case elem fn cm of
-                                              True -> instanceMembers' ds c
-                                              False -> UndefinedFunctionForClass n fn cm : instanceMembers' ds c
-instanceMembers' []     _       = []
+                                              True -> instanceMembers' nenv ds c
+                                              False -> UndefinedFunctionForClass (unQualifyName nenv n) fn cm : instanceMembers' nenv ds c
+instanceMembers' _ []     _       = []
 
 --Check all instance declarations, check if their superclass relations hold, return those predicates that fail to check.
 checkClassEnvironment :: OrderedTypeSynonyms -> ClassEnvironment -> [(Range, Instance)] -> [(Range, Predicate, Predicates)]

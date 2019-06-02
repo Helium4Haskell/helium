@@ -17,7 +17,7 @@ import Helium.StaticAnalysis.Messages.Messages
 import Data.List        (nub, intersperse, sort, partition, intercalate)
 import Data.Maybe
 import Helium.Utils.Utils       (commaList, internalError, maxInt)
-import Helium.Syntax.UHA_Utils (getNameOrigin, nameFromString)
+import Helium.Syntax.UHA_Utils (getNameOrigin, nameFromString, removeQualified, convertPredicate)
 
 import Top.Types
 
@@ -200,13 +200,13 @@ showError anError = case anError of
       )
 
    TypeClassOverloadRestr className members ->
-      ( MessageString ("Class members may not have names occoring at top level, in class:  " ++ show className ++ ".")
+      ( MessageString ("Class members may not have names occurring at top level, in class:  " ++ show  (removeQualified className) ++ ".")
       , [MessageString ("Name: " ++ show member ++ " also used at top level.")
         | member <- members]
       )
 
    TypeSynonymInInstance _ inst ->
-      ( MessageString ("Type synonyms are not allowed as types for instances, in : "  ++ show inst ++ ".")
+      ( MessageString ("Type synonyms are not allowed as types for instances, in : "  ++ show (convertPredicate removeQualified inst) ++ ".")
       , []
       )
 
