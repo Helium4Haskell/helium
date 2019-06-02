@@ -521,7 +521,7 @@ insertInst (_, inst@((Predicate n _), _)) env = insertInstance n inst env
 
 makeClassEnvironmentErrors :: ImportEnvironment -> [(Range, Predicate, Predicates)] -> Errors
 makeClassEnvironmentErrors env ((r, c, pr):insts) | pr == []  = makeClassEnvironmentErrors env insts
-                                                   | otherwise = traceShow c $ foldr (\p -> (:)(MissingSuperClass r (unqualifier c) (unqualifier p))) (makeClassEnvironmentErrors env insts) pr
+                                                   | otherwise = foldr (\p -> (:)(MissingSuperClass r (unqualifier c) (unqualifier p))) (makeClassEnvironmentErrors env insts) pr
   where unqualifier = convertPredicate (unQualifyName env)
 makeClassEnvironmentErrors _ []                                = []
 
