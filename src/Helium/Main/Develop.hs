@@ -23,7 +23,7 @@ compileFile' preludePath developLocation s = do
     let lvmFile = fst (splitExtension file) ++ ".lvm"
     -- compile developLocation file [Overloading, DisableLogging, LvmPath ""] [preludePath, developLocation] []
     doneRef <- newIORef []
-    make developLocation file [preludePath] [] [Overloading, DisableLogging, LvmPath ""] doneRef
+    make developLocation file [preludePath, developLocation] [] [Overloading, DisableLogging, LvmPath "", BuildAll] doneRef
     print $ "-P../lib:"++developLocation++":../test/make"
     (x, res, err) <- readProcessWithExitCode "lvmrun" ["-P../lib:"++developLocation, lvmFile] "abc\r\n"
     putStrLn("Exit code: " ++ show x)
