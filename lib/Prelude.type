@@ -56,5 +56,5 @@ siblings   + , ++ ;
 -- Char, Int conversions
 siblings   ord , chr ;
 
-default Num (Int, Integer, Float, Double)
+default Num (Int, Integer, Float)
 default Show (String, Bool, Int)

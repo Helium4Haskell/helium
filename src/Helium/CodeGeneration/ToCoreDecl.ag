@@ -303,7 +303,7 @@ SEM FunctionBinding [ | | core : { Core.Expr -> Core.Expr } ]
     --  lefthandside             : LeftHandSide
     --  righthandside            : RightHandSide
 {
-
+-- Get superclasses for contextitems. Result looks like [("Prelude.Eq", v0), ("Prelude.Num", v1)]
 getSuperClasses ::  ContextItems -> [(String, Name)]
 getSuperClasses = map (\(ContextItem_ContextItem _ n vs) -> (getNameName n, var vs))
     where
@@ -407,7 +407,7 @@ SEM Constructors [ dataTypeName : Name | | ]
 
 SEM Constructor [ dataTypeName : Name | | ]
     | Constructor       
-        loc.qualname = @lhs.dataTypeName --addQualified (getQualifiedFromString @lhs.modulename) @lhs.dataTypeName
+        loc.qualname = @lhs.dataTypeName
         lhs.cons = map (\n ->
                         (idFromName n, Core.DeclCon
                             { Core.declName    = idFromName n

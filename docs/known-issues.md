@@ -99,13 +99,13 @@ The error message has changed.
 
 The shadowing of `(+)` is not handled correctly.
 
-# Type classes
+## Type classes
 
 * typeClassesStatic/Import
 
 Importing a module that is located in another directory, i.e. importing A.B, which should be located in A/B.hs, does not always seems to work.
 
-# Exports
+## Exports
 
 * exports/Export15
 * exports/Export7
@@ -120,7 +120,7 @@ These tests all fail, but the causes are not clear at the time of writing.
 
 ## Overloading
 
-* typeerrors/Exapmle/Body
+* typeerrors/Examples/Body
 * typeerrors/Examples/StatVarBind
 * typeerrors/Heuristics/AppNotEnough1
 * typeerrors/Heuristics/AppReorder2
@@ -130,6 +130,39 @@ These tests all fail, but the causes are not clear at the time of writing.
 * thompson/Thompson14
 * thompson/Thompson15
 * thompson/Thompson28
+
+When a type error occurs within an expression that contains a class member,
+the overloading of this expression fails, which results in unsatisfactory error messages.
+
+For example, take Body.hs
+
+```haskell
+f :: Int
+f = (+)
+```
+
+This is obviously incorrect. The current error message looks like 
+
+```
+(4,5): Type error in right-hand side
+ expression       : (+)
+   type           : a -> a -> a
+   does not match : Int
+```
+
+But we would like something similar to
+
+```
+   type           : Num a => a -> a -> a
+   does not match : Int        
+```
+
+or
+
+```
+   type           : Int -> Int -> Int
+   does not match : Int        
+```
 
 ## `show []`
 
@@ -194,3 +227,9 @@ This does not happen, though, and Helium is able to differentiate between these 
 
 Likely issue: Helium only compares the qualified names, meaning `ClassA.A` and `DataClassName.A` are compared. Since these
 are not equal, the ambiguity is not detected.
+
+## Hiding Classes
+
+* classesQualified/HidingClass
+
+Importing a module but hiding a class currently throws an internal error.

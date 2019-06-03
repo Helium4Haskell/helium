@@ -361,9 +361,13 @@ ATTR Body Declarations Declaration [ | | collectClassMemberEnv USE { `M.union` }
 SEM Module
     | Module body . classMemberEnv       = exclusiveUnion @body.collectClassMemberEnv (classMemberEnvironment @combinedEnv)
                   . classNamesEnv        = @classNamesEnv
-                  . qualifiedEnvironment = setClassNameEnvironment @classNamesEnv $ setTypeConstructors @typeConstructorsWithDefined $ @combinedEnv
-             loc  . classNamesEnv        = exclusiveUnion @body.collectClassNames (classNameEnvironment @combinedEnv)
-                  . combinedEnv          = combineImportEnvironmentList @importEnvironments
+                  . qualifiedEnvironment = -- Create an ImportEnvironment that contains all qualified class names and type constructors.
+                                           -- Can be used to qualify names of all kinds.
+                                           setClassNameEnvironment @classNamesEnv $ setTypeConstructors @typeConstructorsWithDefined $ @combinedEnv
+             loc  . classNamesEnv        = -- Insert all collected class names into the imported ClassNameEnvironment
+                                           exclusiveUnion @body.collectClassNames (classNameEnvironment @combinedEnv)
+                  . combinedEnv          = -- Combine all imported envrionments into one single environment
+                                           combineImportEnvironmentList @importEnvironments
 
 SEM Declaration
     | Class lhs . collectClassNames     = M.fromList [(@simpletype.name, @qualifiedName), (@qualifiedName, @qualifiedName)]

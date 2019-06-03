@@ -28,7 +28,6 @@ import qualified Data.Map as M
 import Data.Maybe
 import Data.List
 import Helium.Utils.QualifiedTypes.Constants
-import Debug.Trace
 
 -- Show function for a data type declaration
 dataShowFunction :: ImportEnvironment -> UHA.Declaration -> [String] -> [Custom] -> Expr

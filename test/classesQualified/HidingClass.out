@@ -1,0 +1,6 @@
+Prelude is up to date
+Compiling classesQualified/ClassA.hs
+Compilation successful
+Compiling classesQualified/HidingClass.hs
+(5,10): Trying to instantiate unknown class A.
+No 'main' function defined in this module
