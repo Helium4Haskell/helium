@@ -198,6 +198,7 @@ optionDescription moreOptions experimentalOptions =
       , Option "" [flag NoPrelude]                      (NoArg NoPrelude)  "do not import the prelude (experimental)"
       , Option "" [flag CountingAnalysisOne]            (NoArg CountingAnalysisOne) "do counting analysis for module"
       , Option "" [flag CountingAnalysisAll]            (NoArg CountingAnalysisAll) "do counting analysis for all modules"
+      , Option "" [flag DisableSimplify]                (NoArg DisableSimplify) "disable simlpification during the normalization pass"
       ]
 
 
@@ -218,6 +219,7 @@ data Option
    | SolverTypeGraph | SolverCombination | SolverChunks | UnifierHeuristics
    | SelectConstraintNumber Int | NoOverloadingTypeCheck | NoPrelude | UseTutor
    | CountingAnalysisOne | CountingAnalysisAll
+   | DisableSimplify
  deriving (Eq)
 
 stripShow :: String -> String
@@ -282,6 +284,7 @@ instance Show Option where
  show UseTutor                           = "--use-tutor"
  show CountingAnalysisOne                = "--counting-analysis-one"
  show CountingAnalysisAll                = "--counting-analysis-all"
+ show DisableSimplify                    = "--disable-simplify"
 
 
 basePathFromOptions :: [Option] -> Maybe String

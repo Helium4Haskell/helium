@@ -31,24 +31,30 @@ phaseNormalize fullName coreModule options = do
     when (DumpCoreToFile `elem` options) $ do
         writeFile (fullNameNoExt ++ ".core.beforenormalize") $ show . pretty $ coreModule
 
-
-
     nameSupply <- newNameSupply
 
-    let (coreModule', dbgs) = (normalize nameSupply coreModule)
-    writeFile (fullNameNoExt ++ ".core.duringnormalize") (unwords dbgs)
+    let (coreModule', dbgs) = if (DisableSimplify `elem` options)
+                               then (normalizeWithoutSimplify nameSupply coreModule)
+                               else (normalizeAndSimplify nameSupply coreModule)
 
     when (DumpCoreToFile `elem` options) $ do
+        when (DisableSimplify `notelem` options)
+            writeFile (fullNameNoExt ++ ".core.duringnormalize") (unwords dbgs)
         writeFile (fullNameNoExt ++ ".core.afternormalize") $ show . pretty $ coreModule'
 
     return coreModule'
 
 type DBGS a = (a, [String])
 
+normalizeAndSimplify :: NameSupply -> CoreModule -> DBGS CoreModule
+normalizeAndSimplify = coreSimplify . normalize
+
+normalizeAndSimplify :: NameSupply -> CoreModule -> DBGS CoreModule
+normalizeWithoutSimplify = (\cm -> (cm,[])) . normalize
+
 normalize :: NameSupply -> CoreModule -> DBGS CoreModule
 normalize supply =
-    coreSimplify
-  . coreLift
+    coreLift
   . coreLetSort
   . coreNormalize supply2
   . coreSaturate supply1
