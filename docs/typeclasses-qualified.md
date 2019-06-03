@@ -31,3 +31,29 @@
 * Type error messages involving classes and/or instances get unqualified.
 
 # Installation
+
+Prerequistes: Have GHC >= 7.8, cabal and uuagc installed.
+
+1. Open a terminal and navigate to a directory where you wish to clone this repository
+2. `git clone git@github.com:Helium4Haskell/helium.git`
+3. `git clone git@github.com:Helium4Haskell/Top.git`
+4. `git clone git@github.com:Helium4Haskell/lvm.git`
+5. `cd lvm/src/lib`
+6. `cabal install`
+7. `cd ../runtime`
+8. `cabal install`
+9. `cd ../../../helium`
+10. `cabal sandbox init`
+11. `cabal sandbox add-source ../Top/`
+12. `cabal sandbox add-source ../lvm/src/lib/`
+13. `./compile`
+14. `cd lib`
+15. `coreasm LvmLang`
+16. `coreasm LvmIO`
+17. `coreasm LvmException`
+18. `coreasm HeliumLang`
+19. `coreasm PreludePrim`
+20. `../dist/dist-sandbox-*/build/helium/helium Prelude.hs`
+21. `../dist/dist-sandbox-*/build/helium/helium List.hs`
+22. `../dist/dist-sandbox-*/build/helium/helium Maybe.hs`
+23. `../dist/dist-sandbox-*/build/helium/helium Char.hs`
