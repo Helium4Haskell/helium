@@ -38,7 +38,7 @@ phaseNormalize fullName coreModule options = do
                                else (normalizeAndSimplify nameSupply coreModule)
 
     when (DumpCoreToFile `elem` options) $ do
-        when (DisableSimplify `notelem` options)
+        when (DisableSimplify `notElem` options) $ do
             writeFile (fullNameNoExt ++ ".core.duringnormalize") (unwords dbgs)
         writeFile (fullNameNoExt ++ ".core.afternormalize") $ show . pretty $ coreModule'
 
@@ -47,12 +47,12 @@ phaseNormalize fullName coreModule options = do
 type DBGS a = (a, [String])
 
 normalizeAndSimplify :: NameSupply -> CoreModule -> DBGS CoreModule
-normalizeAndSimplify = coreSimplify . normalize
+normalizeAndSimplify supply = coreSimplify . normalize supply
 
-normalizeAndSimplify :: NameSupply -> CoreModule -> DBGS CoreModule
-normalizeWithoutSimplify = (\cm -> (cm,[])) . normalize
+normalizeWithoutSimplify :: NameSupply -> CoreModule -> DBGS CoreModule
+normalizeWithoutSimplify supply = (\cm -> (cm,[])) . normalize supply
 
-normalize :: NameSupply -> CoreModule -> DBGS CoreModule
+normalize :: NameSupply -> CoreModule -> CoreModule
 normalize supply =
     coreLift
   . coreLetSort

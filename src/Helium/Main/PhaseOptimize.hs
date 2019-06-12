@@ -51,7 +51,8 @@ phaseOptimize fullName coreModule options isTopMostModule = do
         when (DumpCoreToFile `elem` options) $ do
             writeFile (fullNameNoExt ++ ".core.afteroptimize") $ show . pretty $ optimizeModule'
      else do
-        putStrLn $ "Skip counting analysis for: " ++ fullName
+        return ()
+        --putStrLn $ "Skip counting analysis for: " ++ fullName
 
     {- Back to normal coreModule -}
     let coreModule' = LVM_Syntax.optimizeModule2CoreModule optimizeModule
