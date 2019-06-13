@@ -58,11 +58,8 @@ deriving instance Show ContextItem
 
 type TypeFamilies = [(String, Int)]
 
-bindVariables :: [TyVar] -> PolyType ConstraintInfo -> PolyType ConstraintInfo
-bindVariables = flip (foldr ((PolyType_Bind "0" .) . bind))
-
-bindVariables' :: [(String, TyVar)] -> PolyType ConstraintInfo -> PolyType ConstraintInfo
-bindVariables' = flip (foldr (\(s, t) p -> PolyType_Bind s (bind t p)))
+bindVariables :: [(String, TyVar)] -> PolyType ConstraintInfo -> PolyType ConstraintInfo
+bindVariables = flip (foldr (\(s, t) p -> PolyType_Bind s (bind t p)))
 
 
 monoTypeToTp :: MonoType -> Tp
@@ -125,7 +122,7 @@ tpSchemeToPolyType' :: TypeFamilies -> [String] -> TpScheme -> (PolyType Constra
 tpSchemeToPolyType' fams restricted tps = let 
         (cs, tv, mt) = tpSchemeToMonoType fams tps
         pt' = PolyType_Mono cs mt
-        pt = bindVariables' tv pt'
+        pt = bindVariables tv pt'
         --pt = bindVariables (map snd tv) pt'
     in (pt, tv) 
 
@@ -136,11 +133,11 @@ tpSchemeToMonoType fams tps =
         tyvars = map (\x -> (TVar x, integer2Name (toInteger x))) $ quantifiers tps
         qs :: [Predicate]
         (qs, tp) = split $ unquantify tps
-        monoType = traceShow ("QM", getQuantorMap tps) $ tpToMonoType fams (getQuantorMap tps) tp
+        monoType = tpToMonoType fams (getQuantorMap tps) tp
         convertPred (Predicate c v) = case lookup v tyvars of
             Nothing -> internalError "TopConversion" "tpSchemeToMonoType" "Type variable not found"
-            Just tv -> Constraint_Class c [var tv] (Just emptyConstraintInfo)
-        in traceShowId $ (map convertPred qs , qmap, monoType)
+            Just tv -> traceShowId $ Constraint_Class c [var tv] (Just emptyConstraintInfo)
+        in (map convertPred qs , qmap, monoType)
 
 tpToMonoType :: TypeFamilies -> [(Int, String)] -> Tp -> MonoType
 tpToMonoType fams qm (TVar v) = case lookup v qm of 
@@ -310,7 +307,7 @@ contFreshMTRes :: Monad m => FreshMT m a -> Integer -> m (a, Integer)
 contFreshMTRes (FreshMT m) = runStateT m
 
 unbindPolyType :: PolyType ConstraintInfo -> (PolyType ConstraintInfo)
-unbindPolyType x = (\x -> traceShow (x, freshen (0 :: Integer) x) x) $ runFreshM $ unbindPolyType' x
+unbindPolyType x = runFreshM $ unbindPolyType' x
 
 unbindPolyType' :: PolyType ConstraintInfo -> FreshM (PolyType ConstraintInfo)
 unbindPolyType' (PolyType_Bind s b) = do

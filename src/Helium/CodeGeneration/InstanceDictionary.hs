@@ -135,7 +135,7 @@ constructDictionary importEnv instanceSuperClass combinedNames whereDecls classN
                             | otherwise = let
                                     -- get all the available super classes
                                     repInstanceSuperClass = filter (\(_, v) -> getNameName v == rVar) instanceSuperClass
-                                    rVar = fst $ fromJust $find (\(_, cn) -> cn == var) parentMapping
+                                    rVar = fst $ fromJust $ find (\(_, cn) -> cn == var) parentMapping
                                     shortestPath :: [[a]] -> [a]
                                     shortestPath [x] = x
                                     shortestPath (x:xs) = let 

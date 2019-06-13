@@ -1,5 +1,11 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE AllowAmbiguousTypes #-}
+{-# LANGUAGE DoAndIfThenElse #-}
+{-# LANGUAGE TypeSynonymInstances #-}
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE UndecidableInstances #-}
 module Helium.StaticAnalysis.Inferencers.OutsideInX.Rhodium.RhodiumInstances where
 
 import Control.Monad.Trans.State
@@ -38,7 +44,7 @@ import Helium.StaticAnalysis.Inferencers.OutsideInX.Rhodium.RhodiumGenerics
 import Debug.Trace
 
 
-instance Show (RType ConstraintInfo) where
+instance {-# Overlaps #-} Show (RType ConstraintInfo) where
     show (PType pt) = show pt
     show (MType mt) = show mt
 
@@ -84,7 +90,7 @@ instance (CompareTypes m (RType ConstraintInfo), IsTouchable m TyVar, HasAxioms 
                                         isGreater <- greaterTouchable v1 v2
                                         if isGreater then 
                                             return $ Applied ([], [], [Constraint_Unify m2 m1 Nothing]) 
-                                        else return NotApplicable
+                                            else return NotApplicable
                                     --(False, True) -> return $ Applied ([], [], [Constraint_Unify m2 m1])
                                     _ -> return NotApplicable
                         (MonoType_Var _ v, _)
@@ -95,7 +101,7 @@ instance (CompareTypes m (RType ConstraintInfo), IsTouchable m TyVar, HasAxioms 
                                 MonoType_App c a  -> do (a2, con1, vars1) <- unfamily a
                                                         (c2, con2, vars2) <- unfamily c
                                                         
-                                                        return $ Applied ([], [], Constraint_Unify (var v) (MonoType_App c2 a2) Nothing : con1 ++ con2)
+                                                        return $ Applied (vars1 ++ vars2, [], Constraint_Unify (var v) (MonoType_App c2 a2) Nothing : con1 ++ con2)
                                 _ -> {-do 
                                     gt <- MType m1 `greaterType` MType m2
                                     if gt then 
@@ -108,7 +114,7 @@ instance (CompareTypes m (RType ConstraintInfo), IsTouchable m TyVar, HasAxioms 
                             | f1 == f2, isInjective axs f1, length ts1 /= length ts2 -> return $ Error $ ErrorLabel $ "Different Number of arguments for " ++ show ts1 ++ " and " ++ show ts2
                             | f1 == f2, length ts1 == 0 && length ts2 == 0 -> return $ Applied ([], [], [])
                             | f1 == f2, length ts1 == length ts2 -> return NotApplicable  
-                            | otherwise -> error $ show (f1, f2, isInjective axs f1, axs)
+                            | otherwise -> return NotApplicable
                         (MonoType_Fam f ts, _)
                             | any (not . isFamilyFree) ts -> 
                                 do
@@ -128,7 +134,7 @@ instance (CompareTypes m (RType ConstraintInfo), IsTouchable m TyVar, HasAxioms 
 instantiate :: Fresh m => PolyType ConstraintInfo -> Bool -> m ([TyVar], [Constraint ConstraintInfo], MonoType)
 instantiate (PolyType_Bind s b) tch = do
     (v,i) <- unbind b
-    (vs, c,t) <- traceShowId <$> instantiate i tch
+    (vs, c,t) <- instantiate i tch
     
     let t' = fixVariableMapping s v t
     if tch then 
@@ -179,7 +185,7 @@ instance (HasGraph m touchable types constraint ci, CompareTypes m (RType Constr
 
 instance (CompareTypes m (RType ConstraintInfo), HasAxioms m (Axiom ConstraintInfo), Fresh m) => CanSimplify m TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo where
     simplify c1@(Constraint_Unify mv1@(MonoType_Var _ v1) m1 _) c2@(Constraint_Unify mv2@(MonoType_Var _ v2) m2 _) 
-        | mv1 == m1 || mv2 == m2 = return NotApplicable
+        | mv1 == m1 || mv2 == m2 || not (isFamilyFree m1) || not (isFamilyFree m2) = return NotApplicable
         | v1 == v2 = do 
             gt <- greaterType (MType mv1) (MType m1 :: RType ConstraintInfo)
             if gt then 
@@ -199,6 +205,14 @@ instance (CompareTypes m (RType ConstraintInfo), HasAxioms m (Axiom ConstraintIn
     simplify c1@(Constraint_Unify mv1@(MonoType_Var _ v1) m1 _) c2@(Constraint_Class _ ms _) 
         | mv1 == m1 = return NotApplicable
         | v1 `elem` (fv ms :: [TyVar]), isFamilyFree m1, all isFamilyFree ms = do
+            gt <- greaterType (MType mv1) (MType m1 :: RType ConstraintInfo)
+            if gt then 
+                return NotApplicable
+            else
+                return $ Applied [subst v1 m1 c2]
+    simplify c1@(Constraint_Unify mv1@(MonoType_Var _ v1) m1 _) c2@(Constraint_Unify mv2@(MonoType_Var _ v2) m2 _) 
+        | mv1 == m1 = return NotApplicable
+        | v1 `elem` (fv m2 :: [TyVar]), isFamilyFree m1, isFamilyFree m2 = do
             gt <- greaterType (MType mv1) (MType m1 :: RType ConstraintInfo)
             if gt then 
                 return NotApplicable
@@ -296,12 +310,16 @@ instance (IsTouchable m TyVar, Monad m, UniqueEdge m, UniqueVertex m, UniqueGrou
                 let vg = singletonGraph v TGApplication{
                     typeRep = MType m
                 }
-                edgeIds <- replicateM (length ms) uniqueEdge
+                constId <- uniqueVertex
+                let cg = (singletonGraph constId TGConstant{
+                    constant = s
+                }, constId)
+                edgeIds <- replicateM (length ms + 1) uniqueEdge
                 let typeEdges = zipWith3 (\eid (_, vc) i -> typeEdge eid i isOriginal v vc) 
-                                    edgeIds ms' [0..]
+                                    edgeIds (cg : ms') [0..]
                 return (foldr (\((ng, _), te) og -> 
                     mergeGraphsWithEdges False [te] og ng
-                    ) vg (zip ms' typeEdges), v)
+                    ) vg (zip (cg : ms') typeEdges), v)
     convertType isOriginal groups priority (PType pt) = convertTypeP' pt
         where
             convertTypeP' (PolyType_Mono cs m) = do
@@ -359,7 +377,6 @@ instance (IsTouchable m TyVar, HasGraph m TyVar (RType ConstraintInfo) (Constrai
         given' <- mapM (convertConstraint basedOn isOriginal True (ug : groups) (priority + 1)) given
         setGivenTouchables (concatMap getFreeVariables given)
         wanted' <- mapM (convertConstraint basedOn isOriginal False (ug : groups) (priority + 2)) wanted
-        traceShowM (vars, given, wanted)
         return $ markTouchables (map (\v -> (v, priority + 2)) vars) (insertGraphs emptyTGGraph (given' ++ wanted'))
         --error $ show (vars, given, wanted)
 
@@ -445,14 +462,6 @@ instance FreeVariables (RType ConstraintInfo) TyVar where
     getFreeVariables (PType p) = fv p
     getFreeTopLevelVariables (MType m) = getTLVariableFromMonoType m
 
-instance HasConstraintInfo (Constraint ConstraintInfo) ConstraintInfo where
-    getConstraintInfo (Constraint_Unify _ _ ci) = ci
-    getConstraintInfo (Constraint_Inst _ _ ci) = ci
-    getConstraintInfo (Constraint_Exists _ ci) = ci
-    getConstraintInfo (Constraint_Class _ _ ci) = ci
-    getConstraintInfo c = error ("No constraint info for " ++ show c)
-    setConstraintInfo ci (Constraint_Unify m1 m2 _) = Constraint_Unify m1 m2 (Just ci)
-
 
 unfamilys :: Fresh m => [MonoType] -> m ([MonoType], [Constraint ConstraintInfo], [TyVar])
 unfamilys ts = do   (args,cons,vars) <- unzip3 <$> mapM unfamily ts
@@ -493,7 +502,7 @@ instance Show Property where
     show (Unifier _ _) = "Unifier"
     show (EscapedSkolems _) = "EscapedSkolems"
     show (PredicateArisingFrom _) = "PredicateArisingFrom"
-    show (TypeSignatureLocation _) = "TypeSignatureLocation"
+    show (TypeSignatureLocation tsl) = "TypeSignatureLocation " ++ show tsl
     show (TypePair (t1, t2)) = "TypePair (" ++ show t1 ++ ", " ++ show t2 ++ ")" 
     show (MissingConcreteInstance n ms) = "MissingConcreteInstance(" ++ show n ++ " " ++ show ms ++ ")" 
     show (AddConstraintToTypeSignature ms cc) = "AddConstraintToTypeSignature " ++ show cc ++ " => " ++ show ms
@@ -508,7 +517,11 @@ instance Show Property where
     show (GADTTypeSignature) = "GADTTypeSignature"
     show (MissingGADTTypeSignature mpt f bs) = "MissingGADTTypeSignature " ++ show mpt ++ ", " ++ show bs
     show (EscapingExistentital mt c) = "EscapingExistentital " ++ show mt ++ ", " ++ show c
-
+    show (IsTypeError) = "IsTypeError"
+    show (EdgeGroupPriority p g) = "EdgeGroupPriority " ++ show p ++ show g
+    show (ApplicationTypeSignature ps) = "ApplicationTypeSignature " ++ show ps
+    show TooManyFBArgs = "TooManyFBArgs"
+    show (PatternTypeSignature ps) = "PatternTypeSignature" ++ show ps
     
 instance Show ConstraintInfo where
     show x = location x ++ show (properties x) -- ++ fromMaybe [] (sortAndShowMessages . (:[]) <$> errorMessage x)

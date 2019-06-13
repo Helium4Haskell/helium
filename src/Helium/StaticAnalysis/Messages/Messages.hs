@@ -9,7 +9,8 @@
     MessageBlock, which contains (atomic) pieces of information that are
     reported in the error messages such as types, ranges and code fragments.
 -}
-
+{-# LANGUAGE ExistentialQuantification #-}
+{-# LANGUAGE FlexibleContexts #-}
 module Helium.StaticAnalysis.Messages.Messages where
 
 import Helium.Syntax.UHA_Syntax
@@ -24,6 +25,8 @@ import Data.List       (sortBy, partition)
 import Data.Char       (toUpper)
 import Data.Function
 import Helium.StaticAnalysis.Inferencers.OutsideInX.Rhodium.RhodiumTypes 
+
+import Rhodium.TypeGraphs.GraphProperties
 
 import Unbound.LocallyNameless hiding (Name)
 import Unbound.LocallyNameless.Alpha

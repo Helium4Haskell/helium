@@ -1,5 +1,11 @@
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE PatternSynonyms #-}
+{-# LANGUAGE StandaloneDeriving #-}
+{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE UndecidableInstances #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE FlexibleInstances #-}
+{-# lANGUAGE ScopedTypeVariables #-}
 module Helium.StaticAnalysis.Inferencers.OutsideInX.Rhodium.RhodiumTypes where
 
 import Control.Monad.Trans.State
@@ -9,6 +15,7 @@ import Data.Maybe
 
 import Rhodium.Core
 import Rhodium.TypeGraphs.Graph
+import Rhodium.TypeGraphs.GraphProperties
 
 import qualified Unbound.LocallyNameless as UB
 import qualified Unbound.LocallyNameless.Fresh as UB
@@ -22,7 +29,7 @@ import Helium.Syntax.UHA_Range
 import Helium.StaticAnalysis.Miscellaneous.UHA_Source
 import Helium.StaticAnalysis.Miscellaneous.DoublyLinkedTree
 
-
+import Debug.Trace
 
 data RType ci = PType (PolyType ci) | MType MonoType
 
@@ -77,11 +84,13 @@ showMT mp (MonoType_List t)      = "[" ++ showMT mp t ++ "]"
 showMT mp (MonoType_App (MonoType_Con "[]") t) = "[" ++ showMT mp t ++ "]"
 showMT mp (MonoType_Tuple t1 t2) = "(" ++ showMT mp t1 ++ "," ++ showMT mp t2 ++ ")"
 showMT mp (MonoType_Con c)       = c 
-showMT mp (MonoType_Fam c a)     = '^':c ++ concatMap (\x -> " " ++ doParens (showMT mp x)) a
+showMT mp (MonoType_Fam c a)     = c ++ concatMap (\x -> " " ++ doParens (showMT mp x)) a
 showMT mp (s :-->: t)            = doParens (showMT mp s) ++ " -> " ++ showMT mp t
-showMT mp (MonoType_Var s v)     = show v -- fromMaybe (fromMaybe (show v) s) (lookup v mp)
-showMT mp (MonoType_App f a)     = showMT mp f ++ " " ++ showMT mp a
-showMT mp _                      = error "Pattern matching check is not that good"
+showMT mp (MonoType_Var s v)     = let r = fromMaybe (fromMaybe (show v) s) (lookup v mp) in if r == "" then show v else r
+showMT mp ma@(MonoType_App f a)  = case conList ma of 
+                                    (MonoType_Con s, tp) | length s > 2 && head s == '(' && last s == ')' && all (==',') (tail (init s)) ->
+                                       "(" ++ intercalate ", " (map show tp) ++ ")"
+                                    _ -> showMT mp f ++ " " ++ showMT mp a
 
 doParens :: String -> String
 doParens s  | ' ' `elem` s = '(' : s ++ ")"
@@ -121,7 +130,7 @@ showConstraint (Constraint_Unify t p s) = return $ show t ++ " ~ " ++ show p
 showConstraint (Constraint_Inst  t p _) = do    p' <- showPolyType' [] p
                                                 return $ show t ++ " > " ++ p'
 showConstraint (Constraint_Class c t _) = do    let ps = map (doParens . show) t
-                                                return $ "$" ++ c ++ " |[" ++ intercalate ", " ps ++ "]|"
+                                                return $ c ++ " " ++ intercalate ", " ps
 showConstraint (Constraint_Exists b _)  = do    (x, (q,c)) <- UB.unbind b
                                                 q' <- showConstraintList' q
                                                 c' <- showConstraintList' c
@@ -160,9 +169,13 @@ showPolyType' mp (PolyType_Bind s b@(UB.B t p)) = do
     (x, r) <- UB.unbind b
     showR <- showPolyType' ((x, s) : mp) r
     return $ "{" ++ show x ++ "}" ++ showR
-showPolyType' mp (PolyType_Mono [] m) = return $ "[] => " ++ showMT mp m
-showPolyType' mp (PolyType_Mono cs m) = return $ showConstraintList cs ++ " => " ++ showMT mp m
+showPolyType' mp (PolyType_Mono [] m) = return $ showMT mp m
+showPolyType' mp (PolyType_Mono cs m) = return $ showConstraintList (filter hasConstraintInformation cs) ++ " => " ++ showMT mp m
 
+
+hasConstraintInformation :: Constraint ci -> Bool
+hasConstraintInformation (Constraint_Class c ms Nothing) = False
+hasConstraintInformation (Constraint_Class _ _ _) = True
 
 showConstraintList :: (Alpha ci, Subst MonoType ci) => [Constraint ci] -> String
 showConstraintList = UB.runFreshM . showConstraintList'
@@ -184,7 +197,6 @@ instance (Alpha ci, Subst MonoType ci) => Ord (Constraint ci) where
             Just (_,c1,_,c2) -> return $ c1 <= c2
             Nothing          -> return False
     Constraint_Exists _ _ <= _ = True
-    _ <= _ = False
 
 data Axiom ci
     = Axiom_Unify (UB.Bind [TyVar] (MonoType, MonoType))
@@ -205,7 +217,7 @@ showAxiom (Axiom_Class b) = do  (xs, (ctx,c,ms)) <- unbind b
 showAxiom (Axiom_Injective f) = return $ "injective ^" ++ f
 showAxiom (Axiom_Defer f) = return $ "defer ^" ++ f
 
-$(UB.derive [''PolyType, ''MonoType, ''Constraint, ''Axiom])
+
 
 instance (Alpha ci, Subst MonoType ci, Rep ci) => Alpha (PolyType ci)
 instance (Alpha ci, Subst MonoType ci, Rep ci) => Subst MonoType (PolyType ci)
@@ -257,3 +269,6 @@ firstConstraintElement :: (Constraint a) -> MonoType
 firstConstraintElement (Constraint_Unify m1 _ _) = m1
 firstConstraintElement (Constraint_Inst m1 _ _) = m1
 firstConstraintElement c = error "No first constraint element"
+
+
+$(UB.derive [''PolyType, ''MonoType, ''Constraint, ''Axiom])

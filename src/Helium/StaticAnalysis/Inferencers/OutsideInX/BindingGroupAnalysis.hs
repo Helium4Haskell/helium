@@ -26,6 +26,7 @@ import Helium.StaticAnalysis.Messages.HeliumMessages
 import Helium.StaticAnalysis.Inferencers.OutsideInX.Rhodium.RhodiumSolver
 import Helium.StaticAnalysis.Inferencers.OutsideInX.Rhodium.RhodiumTypes
 import Helium.StaticAnalysis.Inferencers.OutsideInX.Rhodium.RhodiumInstances
+import Helium.StaticAnalysis.Inferencers.OutsideInX.Rhodium.RhodiumGenerics
 import Helium.StaticAnalysis.Miscellaneous.ConstraintInfoOU
 import Rhodium.Solver.SolveResult as SR
 import Rhodium.TypeGraphs.GraphProperties
@@ -115,7 +116,7 @@ instanceTS importenv bu env ass ts = foldr combineTS (bu, []) $ concat $ M.elems
          in (bu', Constraint_Inst (var a) t' ci : cs)
 
 equalASENV :: Assumptions -> Environment -> Constraints
-equalASENV ass env = concat $ M.elems $ M.intersectionWith (\a e -> [Constraint_Unify (var a') (var e) undefined | (_, a') <- a]) ass env
+equalASENV ass env = concat $ M.elems $ M.intersectionWithKey (\n a e -> [Constraint_Unify (var a') (var e) (Just $ cinfoSameBindingGroup n) | (_, a') <- a]) ass env
 
 bindingGroupAnalysis ::   (ImportEnvironment, Bool, [Axiom ConstraintInfo], TypeSignatures, Touchables, Maybe (Assumptions, Constraints, GADTConstraints), TypeErrors, [Constraint ConstraintInfo], Integer) -> 
                            [BindingGroup] -> 
@@ -168,7 +169,7 @@ bindingGroupAnalysis input@(importenv, isTopLevel, axioms, typeSignatures, touch
                                  (sbu1, c1) = instanceTS importenv bu env1 ass1 ts2
                                  (sbu2, c2) = instanceTSE sbu1 env1 ts2
                                  env1' = env1 M.\\ ts2
-                                 c3 = equalASENV (ass1 M.\\ ts2) env1'
+                                 c3 = equalASENV (ass1 M.\\ ts2) env1' 
                                  c4 = concatMap (\(a', e) -> [Constraint_Unify (var a) (var e) (Just emptyConstraintInfo) | (_, a) <- a']) $ M.elems $ M.intersectionWith (,) ass2 env1'
                                  (sbu3, c5) = instanceTS importenv sbu2 env1 ass2 ts2
                                  
@@ -209,7 +210,7 @@ bindingGroupAnalysis input@(importenv, isTopLevel, axioms, typeSignatures, touch
                                  resSubstitution   | isTopLevel = nub $ substitution solverResult ++ subsOrig
                                                    | otherwise = [] 
                                  resResolvedConstraints = concatMap (snd . snd) (M.elems newTS) ++ resolvedConstraints
-                                 resTypeErrors  | isTopLevel = escapeVariableCheck (resAssumptions M.\\ bodyAssumptions) env1 ts2 ++ mapMaybe (errorMessage . fst) (errors solverResult) ++ typeErrors
+                                 resTypeErrors  | isTopLevel = escapeVariableCheck (resAssumptions M.\\ bodyAssumptions) env1 ts2 ++ mapMaybe (errorMessage . (\(ci, _, _) -> ci)) (errors solverResult) ++ typeErrors
                                                 | otherwise = escapeVariableCheck (resAssumptions M.\\ bodyAssumptions) env1 ts2 ++ typeErrors
                               in (resTouchables, resAssumptions, resTypeSignatures, residualConstraints, resBetaUnique, resSubstitution, resTypeErrors, resResolvedConstraints)
 

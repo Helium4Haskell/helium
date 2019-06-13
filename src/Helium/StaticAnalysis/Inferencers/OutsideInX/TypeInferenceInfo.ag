@@ -35,7 +35,7 @@ SEM Declaration | PatternBinding loc . cinfo =
 SEM FunctionBinding | FunctionBinding loc . cinfoLeft =
   \num  -> 
   orphanConstraint num "pattern of function binding" @parentTree
-     [ Unifier (@lhs.betasLeft !! num) (ordinal True (num+1)++" pattern of function bindings", attribute @lhs.parentTree, "pattern"), PatternMatch (@lhs.betasLeft !! num) @lhs.caseArmIndex Nothing]                      
+     [ Unifier (@lhs.betasLeft !! num) (ordinal True (num+1)++" pattern of function bindings", attribute @lhs.parentTree, "pattern"), FolkloreConstraint, PatternMatch (@lhs.betasLeft !! num) @lhs.caseArmIndex Nothing]                      
 
 SEM FunctionBinding | FunctionBinding loc . cinfoBind =
   \name -> variableConstraint "variable" (nameToUHA_Expr name) 
@@ -43,7 +43,7 @@ SEM FunctionBinding | FunctionBinding loc . cinfoBind =
      ]
 
 SEM FunctionBinding | FunctionBinding loc . cinfoRight = 
-  resultConstraint "function binding" @parentTree $  [ FolkloreConstraint, highlyTrusted ]
+  resultConstraint "function binding" @parentTree $  [ FolkloreConstraint ]
 
 ---------------------------------------------------------------------------------------
 -- Type Inferencing : RightHandSide
@@ -165,7 +165,7 @@ SEM Expression | Typed loc . cinfoExpr =
 
 SEM Expression | Typed loc . cinfoResult =
   resultConstraint "type annotation" @parentTree 
-     [ FolkloreConstraint ]     {- ??? -}
+     [ FolkloreConstraint, TypeSignatureLocation (getTypeRange @type.self) ]     {- ??? -}
        
 -- Expression.Enum
 SEM Expression | Enum loc . cinfoFrom =

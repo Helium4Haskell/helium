@@ -1,4 +1,5 @@
 {-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 
 {-| Module      :  RepairHeuristics
     License     :  GPL
@@ -22,6 +23,8 @@ import Rhodium.Blamer.Heuristics
 import Rhodium.Blamer.HeuristicProperties
 import Rhodium.Blamer.HeuristicsUtils
 import Rhodium.TypeGraphs.GraphUtils
+import Rhodium.TypeGraphs.GraphReset
+import Rhodium.TypeGraphs.Touchables
 import Rhodium.Blamer.Path
 
 import Helium.Syntax.UHA_Syntax
@@ -33,7 +36,7 @@ import Helium.StaticAnalysis.Miscellaneous.DoublyLinkedTree
 import Helium.StaticAnalysis.Inferencers.OutsideInX.ConstraintHelper
 import Helium.StaticAnalysis.Inferencers.OutsideInX.Rhodium.RhodiumTypes
 import Helium.StaticAnalysis.Inferencers.OutsideInX.Rhodium.RhodiumInstances
-import Helium.StaticAnalysis.Miscellaneous.UHA_Source
+import Helium.StaticAnalysis.Inferencers.OutsideInX.TopConversion
 import Helium.Utils.OneLiner
 import Helium.StaticAnalysis.Messages.TypeErrors
 import Helium.StaticAnalysis.Messages.Messages (showNumber, ordinal, prettyAndList)
@@ -45,13 +48,9 @@ import Debug.Trace
    
 import Data.List
 import Data.Maybe
+import qualified Data.Map as M
 
 import Control.Monad
-
-import Helium.StaticAnalysis.Inferencers.OutsideInX.Rhodium.RhodiumTypes
-
-
-
 -----------------------------------------------------------------------------
 
 fixHint, becauseHint, possibleHint :: WithHints a => String -> a -> a
@@ -82,28 +81,29 @@ permute is as = map (as !!) is
 
 
 
-instance IsPattern ConstraintInfo where
-   isPattern cinfo = 
-      case (self . attribute . localInfo) cinfo of 
-         UHA_Pat _ -> True
-         _         -> False
 
 
 applicationHeuristic :: Fresh m => VotingHeuristic m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo
 applicationHeuristic = SingleVoting "Application heuristic" f
    where
-      f e@(constraint, eid, ci) = 
+      f e@(constraint, eid, ci, gm) = 
          case maybeApplicationEdge ci of
             Nothing -> return Nothing
             Just (isBinary, tuplesForArguments) -> 
                if isGADTPatternApplication ci then
                   return Nothing
-               else  
+               else do
+               graph <- getGraph
+               let edge = getEdgeFromId graph eid
                doWithoutEdge eid $ do
                axioms <- getAxioms 
                let Constraint_Unify t1 t2 _ = constraint
-               maybeExpectedType <- getSubstType $ MType t1
-               maybeFunctionType <- getSubstType $ MType t2
+               maybeExpectedType <- getSubstTypeFull (getGroupFromEdge edge) $ MType t1
+               maybeFunctionType <- getSubstTypeFull (getGroupFromEdge edge) $ MType t2
+               graph <- getGraph
+               let   isTs (Constraint_Inst m _ _) = m == t1
+                     isTs _ = False
+               let providedTs = map (\(Constraint_Inst _ p _) -> p) $ filter isTs $ map getConstraintFromEdge $ filter isConstraintEdge $ M.elems (edges graph)
                case (maybeFunctionType, maybeExpectedType) of 
                   (MType functionType, MType expectedType)
                      | length tuplesForArguments > length functionArguments -> error $ show ("Length not correct", functionType, expectedType, constraint, ci)
@@ -114,11 +114,11 @@ applicationHeuristic = SingleVoting "Application heuristic" f
                            then 
                                  let hint = setTypePair (expectedType, functionType) . fixHint "swap the two arguments"
                                  in return $ Just
-                                       (3, "swap the two arguments", constraint, eid, hint ci)
+                                       (3, "swap the two arguments", constraint, eid, addProperties (IsTypeError : map ApplicationTypeSignature providedTs) $ hint ci, removeEdgeAndTsModifier)
                            else         
                                  let hint = setTypePair (expectedType, functionType) . fixHint "re-order arguments"                              
                                  in return $ Just
-                                       (1, "application: permute with "++show p, constraint, eid, hint ci)
+                                       (1, "application: permute with "++show p, constraint, eid,  addProperties (IsTypeError : map ApplicationTypeSignature providedTs) $ hint ci, removeEdgeAndTsModifier)
                      | length incorrectArguments == 1  ->
                         do 
                            let   
@@ -126,37 +126,37 @@ applicationHeuristic = SingleVoting "Application heuristic" f
                                  (source,tp) = tuplesForArguments !! i
                                  range       = rangeOfSource source
                                  oneLiner    = oneLinerSource source
-                           MType tp'         <- getSubstType $ MType tp
+                           MType tp'         <- getSubstTypeFull (getGroupFromEdge edge) $ MType tp
                            let expargtp      = fst (functionSpine expectedType) !! i
                            let infoFun       = typeErrorForTerm (isBinary,isPatternApplication) i oneLiner expectedType (tp',expargtp) range
                            return $ Just 
-                                 (3, "incorrect argument of application="++show i, constraint, eid, infoFun ci)
+                                 (3, "incorrect argument of application="++show i, constraint, eid, addProperty IsTypeError $ infoFun ci, gm)
                      | maybe False (< numberOfArguments) maximumForFunction && not isPatternApplication ->
                         case typesZippedWithHoles of
                            -- there is only one possible set to remove arguments 
                            [is] | not isBinary && maybe True (>= 1) maximumForFunction
                                  -> let hint = fixHint ("remove "++prettyAndList (map (ordinal True . (+1)) is)++" argument")
                                     in return $ Just
-                                          (4, "too many arguments are given: "++show is, constraint, eid, hint ci)
+                                          (4, "too many arguments are given: "++show is, constraint, eid,  addProperties (IsTypeError : map ApplicationTypeSignature providedTs) $ hint ci, removeEdgeAndTsModifier)
    
    
                            _    -- the expression to which arguments are given does not have a function type
                                  | maybe False (<= 0) maximumForFunction && not isBinary && not (isPattern ci) ->                       
                                        let hint = becauseHint "it is not a function"
                                        in return $ Just
-                                             (6, "not a function", constraint, eid, hint ci)
+                                             (6, "not a function", constraint, eid,  addProperties (IsTypeError : map ApplicationTypeSignature providedTs) $ hint ci, removeEdgeAndTsModifier)
    
                                  -- function used as infix that expects < 2 arguments
                                  | maybe False (<= 1) maximumForFunction && isBinary && not (isPattern ci) ->
                                        let hint = becauseHint "it is not a binary function"
                                        in return $ Just
-                                             (6, "no binary function", constraint, eid, hint ci)
+                                             (6, "no binary function", constraint, eid,  addProperties (IsTypeError : map ApplicationTypeSignature providedTs) $ hint ci, removeEdgeAndTsModifier)
    
                            -- more than one or no possible set of arguments to be removed
                                  | otherwise -> 
                                        let hint = becauseHint "too many arguments are given"
                                        in return $ Just
-                                             (2, "too many arguments are given", constraint, eid, hint ci)
+                                             (2, "too many arguments are given", constraint, eid,  addProperties (IsTypeError : map ApplicationTypeSignature providedTs) $ hint ci, removeEdgeAndTsModifier)
                                        
                      -- not enough arguments are given
                      | minimumForContext > numberOfArguments && not isPatternApplication && contextIsUnifiable ->
@@ -165,11 +165,11 @@ applicationHeuristic = SingleVoting "Application heuristic" f
                            [is] | not isBinary 
                                  -> let hint = fixHint ("insert a "++prettyAndList (map (ordinal True . (+1)) is)++" argument")
                                     in return $ Just
-                                          (4, "not enough arguments are given"++show is, constraint, eid, hint ci)
+                                          (4, "not enough arguments are given"++show is, constraint, eid,  addProperties (IsTypeError : map ApplicationTypeSignature providedTs) $ hint ci, removeEdgeAndTsModifier)
    
                            _   -> let hint = becauseHint "not enough arguments are given"
                                     in return $ Just
-                                          (2, "not enough arguments are given", constraint, eid, hint ci)
+                                          (2, "not enough arguments are given", constraint, eid,  addProperties (IsTypeError : map ApplicationTypeSignature providedTs) $ hint ci, removeEdgeAndTsModifier)
                
                      | otherwise -> return Nothing
          
@@ -190,7 +190,7 @@ applicationHeuristic = SingleVoting "Application heuristic" f
                      incorrectArguments = [ i 
                         | length functionArguments == length expectedArguments 
                         , i <- [0..numberOfArguments-1]
-                        , isNothing (unifiableTypeLists [(functionArguments !! i)] [(expectedArguments !! i)])
+                        , isNothing (unifiableTypeLists [functionArguments !! i] [expectedArguments !! i])
                         , isJust (unifiableTypeLists (functionResult : deleteIndex i functionArguments) 
                                              (expectedResult : deleteIndex i expectedArguments))
                         ]
@@ -232,35 +232,37 @@ maybeImportedName cinfo =
          []  -> Nothing
          n:_ -> Just (show n)
 
-sibblingsHeuristic :: Fresh m => Sibblings -> VotingHeuristic m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo
-sibblingsHeuristic siblings = 
+siblingsHeuristic :: Fresh m => Sibblings -> VotingHeuristic m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo
+siblingsHeuristic siblings = 
    SingleVoting "Sibling functions" f
    where
-      f pair@(constraint, edgeId, info) =
+      f pair@(constraint, edgeId, info, gm) =
          case maybeImportedName info of 
             Nothing   ->  return Nothing
             Just name
                | null candidates -> return Nothing
-               | otherwise -> 
+               | otherwise -> do
+                  graph <- getGraph
+                  let edge = getEdgeFromId graph edgeId
                   doWithoutEdge edgeId $ 
-                  do 
-                     let mtp = case constraint of
-                           Constraint_Unify t1 t2 _ -> Nothing
-                           Constraint_Inst t1 t2 _ -> Just (t1, t2)
-                           _ -> Nothing
-                     case mtp of
-                        Nothing -> return Nothing
-                        Just (t1, t2) -> do
-                           MType contextTp <- getSubstType $ MType t1
-                           fits <- mapM (schemeFits contextTp . snd) candidates
-                           case [ s | (True, (s, _)) <- zip fits candidates ] of
-                              []          -> return Nothing
-                              siblings'   ->    -- TODO: put all siblings in the message
-                                       let   siblingsTextual = orList siblings'
-                                             hint = fixHint ("use " ++ siblingsTextual ++ " instead")
-                                       in return $ Just
-                                                (10, "Sibling(s) "++siblingsTextual++" instead of "++show name, constraint, edgeId, hint info)
-                                       
+                     do 
+                        let mtp = case constraint of
+                              Constraint_Unify t1 t2 _ -> Nothing
+                              Constraint_Inst t1 t2 _ -> Just (t1, t2)
+                              _ -> Nothing
+                        case mtp of
+                           Nothing -> return Nothing
+                           Just (t1, t2) -> do
+                              MType contextTp <- getSubstTypeFull (getGroupFromEdge edge) $ MType t1
+                              fits <- mapM (schemeFits contextTp . snd) candidates
+                              case [ s | (True, (s, _)) <- zip fits candidates ] of
+                                 []          -> return Nothing
+                                 siblings'   ->
+                                          let   siblingsTextual = orList siblings'
+                                                hint = fixHint ("use " ++ siblingsTextual ++ " instead")
+                                          in return $ Just
+                                                   (10, "Sibling(s) "++siblingsTextual++" instead of "++show name, constraint, edgeId, addProperty IsTypeError $ hint info, gm)
+                                          
                where
                   orList :: [String] -> String
                   orList [s]    = s
@@ -275,16 +277,17 @@ sibblingsHeuristic siblings =
                               | otherwise = filter ( (name /=) . fst) list
                      in concatMap fn siblings
                      
+                  schemeFits (MonoType_Var _ _) _ = return False   
                   schemeFits contextTp scheme = do
+                     
                      freshIdentifier <- fresh (string2Name "a")
                      axioms <- getAxioms
-                     sub <- unifyTypes axioms [] [Constraint_Unify (var freshIdentifier) contextTp Nothing, Constraint_Inst (var freshIdentifier) scheme Nothing] [freshIdentifier]
+                     sub <- runTG (unifyTypes axioms [] [Constraint_Unify (var freshIdentifier) contextTp Nothing, Constraint_Inst (var freshIdentifier) (unbindPolyType scheme) Nothing] (freshIdentifier : fv contextTp))
                      return $ isJust sub
 
 
 class MaybeLiteral a where
    maybeLiteral :: a -> Maybe String  
-
 
 instance MaybeLiteral ConstraintInfo where
    maybeLiteral cinfo = 
@@ -299,44 +302,44 @@ instance MaybeLiteral ConstraintInfo where
             UHA_Pat  (Pattern_Literal    _ literal ) -> Just (literalType literal)
             x                                        -> Nothing
 
-
 siblingLiterals :: Fresh m => VotingHeuristic m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo
 siblingLiterals = 
    SingleVoting "Sibling literals" f 
    where
-      f pair@(constraint, eid, info) =
+      f pair@(constraint, eid, info, gm) =
          case maybeLiteral info of 
             Nothing      -> return Nothing
             Just literal -> case constraint of
-               Constraint_Unify t1 t2 _ ->
+               Constraint_Unify t1 t2 _ -> do
+                  graph <- getGraph
+                  let edge = getEdgeFromId graph eid
                   doWithoutEdge eid $
                      do 
-                        MType tp <- getSubstType $ MType t1
-                        --MType tp2 <- getSubstType $ MType t2
+                        MType tp <- getSubstTypeFull (getGroupFromEdge edge) $ MType t1
                         case (literal,tp) of
 
                            ("Int", MonoType_Con "Float")
                                  -> let hint = fixHint "use a float literal instead"
                                     in return $ Just
-                                          (5, "Int literal should be a Float", constraint, eid, hint info)
+                                          (5, "Int literal should be a Float", constraint, eid, hint info, gm)
 
                            ("Float", MonoType_Con "Int" )
                                  -> let hint = fixHint "use an int literal instead"
                                     in return $ Just
-                                          (5, "Float literal should be an Int", constraint, eid, hint info)
+                                          (5, "Float literal should be an Int", constraint, eid, hint info, gm)
 
                            ("Char", MonoType_App (MonoType_Con "[]") (MonoType_Con "Char"))
                                  -> let hint = fixHint "use a string literal instead"
                                     in return $ Just
-                                          (5, "Char literal should be a String", constraint, eid, hint info)
+                                          (5, "Char literal should be a String", constraint, eid, hint info, gm)
                            ("Char", MonoType_Fam "String" [])
                                  -> let hint = fixHint "use a string literal instead"
                                     in return $ Just
-                                          (5, "Char literal should be a String", constraint, eid, hint info)
+                                          (5, "Char literal should be a String", constraint, eid, hint info, gm)
                            ("String", MonoType_Con "Char")   
                                  -> let hint = fixHint "use a char literal instead"
                                     in return $ Just
-                                          (5, "String literal should be a Char", constraint, eid, hint info)
+                                          (5, "String literal should be a Char", constraint, eid, hint info, gm)
 
                            _ -> return Nothing 
                _ -> return Nothing
@@ -346,7 +349,7 @@ class IsExprVariable a where
    isExprVariable          :: a -> Bool
    isEmptyInfixApplication :: a -> Bool
 
-instance IsExprVariable ConstraintInfo where -- misleading name?
+instance IsExprVariable ConstraintInfo where
    isExprVariable cinfo =
       case (self . attribute . localInfo) cinfo of
          UHA_Expr (Expression_Variable _ _) -> True
@@ -359,7 +362,7 @@ instance IsExprVariable ConstraintInfo where -- misleading name?
 variableFunction :: Fresh m => VotingHeuristic m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo
 variableFunction = SingleVoting "Variable function" f 
    where
-      f pair@(constraint, eid, info) =  
+      f pair@(constraint, eid, info, gm) =  
          case constraint of 
             Constraint_Inst m1 p2 _ 
                | not (isExprVariable info)
@@ -369,14 +372,14 @@ variableFunction = SingleVoting "Variable function" f
                            doWithoutEdge eid $ 
                               do 
                                  let edge = getEdgeFromId graph eid
-                                 mt1 <- getSubstType $ MType m1
-                                 pt2 <- getSubstType $ PType p2
+                                 mt1 <- getSubstTypeFull (getGroupFromEdge edge) $ MType m1
+                                 pt2 <- getSubstTypeFull (getGroupFromEdge edge) $ PType p2
                                  edges1 <- getNeighbours (from edge)
                                  edges2 <- getNeighbours (to edge) 
                                  let special = filter (\e -> isConstraintEdge e && original e && maybe False isEmptyInfixApplication (getConstraintInfo (getConstraintFromEdge e))) (edges1 ++ edges2)
                                  edges3 <- mapM (\e -> (++) <$> getNeighbours (from e) <*> getNeighbours (to e)) special
                                  let   isApplicationEdge = isJust . maybeApplicationEdge
-                                       application = any (maybe False isApplicationEdge . getConstraintInfo . getConstraintFromEdge) (edges1 ++ edges2 ++ concat edges3)  
+                                       application = any (maybe False isApplicationEdge . getConstraintInfo . getConstraintFromEdge) $ filter isConstraintEdge (edges1 ++ edges2 ++ concat edges3)  
                                  case (mt1, pt2) of
                                     (MType functionType, PType expectedType) | not application -> 
                                        do 
@@ -385,7 +388,7 @@ variableFunction = SingleVoting "Variable function" f
                                           axioms <- getAxioms
                                           let   maxArgumentsForFunction = length (fst expectedArgs)
                                                 minArgumentsForContext  = maxArgumentsForFunction - length (fst functionArgs) 
-                                          contextIsUnifiable <- 
+                                          contextIsUnifiable <- runTG $ 
                                              unifyTypes axioms [] 
                                                 [Constraint_Inst (snd $ functionSpineOfLength minArgumentsForContext functionType) expectedType Nothing] 
                                                    []
@@ -394,7 +397,7 @@ variableFunction = SingleVoting "Variable function" f
                                              else let hint = fixHint ("insert "++showNumber minArgumentsForContext++" argument"++
                                                                   if minArgumentsForContext <= 1 then "" else "s")
                                                    in return $ Just 
-                                                         (4, "insert arguments to function variable", constraint, eid, hint info)
+                                                         (4, "insert arguments to function variable", constraint, eid, hint info, defaultRemoveModifier)
                                     _ -> return Nothing
             _ -> return Nothing
 
@@ -411,16 +414,19 @@ instance IsTupleEdge ConstraintInfo where
 tupleHeuristic :: Fresh m => VotingHeuristic m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo
 tupleHeuristic = SingleVoting "Tuple heuristics" f
       where      
-         f pair@(constraint , eid, info)    
+         f pair@(constraint , eid, info, gm)    
             | not (isTupleEdge info) = return Nothing
             | otherwise              =
                case constraint of
-                  Constraint_Unify t1 t2 _ ->
+                 
+                  Constraint_Unify t1 t2 _ -> do
+                     graph <- getGraph
+                     let edge = getEdgeFromId graph eid
                      doWithoutEdge eid $ 
                   
                         do   
-                           MType mTupleTp <- getSubstType $ MType t1
-                           MType mExpectedTp <- getSubstType $ MType t2        
+                           MType mTupleTp <- getSubstTypeFull (getGroupFromEdge edge) $ MType t1
+                           MType mExpectedTp <- getSubstTypeFull (getGroupFromEdge edge) $ MType t2        
                            axioms <- getAxioms            
                            case (leftSpine mTupleTp,leftSpine mExpectedTp) of 
                               ((MonoType_Con s,tupleTps), (MonoType_Con t,expectedTps))
@@ -435,31 +441,31 @@ tupleHeuristic = SingleVoting "Tuple heuristics" f
                                                       let   t1 = monotypeTuple tupleTps
                                                             t2 = monotypeTuple (permute perm expectedTps)
                                                       in isJust <$> unifyTypes axioms [] [Constraint_Unify t1 t2 Nothing] []
-                                             testList <- filterM test perms
+                                             testList <- filterM (runTG . test) perms
                                              case testList of
                                                 p:_ | notUnifiable -> -- a permutation is possible!
                                                       let hint = fixHint "re-order elements of tuple"
                                                       in return $ Just 
-                                                            (4, "tuple: permute with "++show p ++ show (mTupleTp, mExpectedTp), constraint, eid, hint info)
+                                                            (4, "tuple: permute with "++show p ++ show (mTupleTp, mExpectedTp), constraint, eid, addProperty IsTypeError $ hint info, gm)
                                                 _ -> return Nothing
                                                          
                                        compareVal -> do 
                                                    let cLst = take heuristicsMAX (zipWithHoles tupleTps expectedTps)
                                                    let wantedC = map (\(is, zl) -> (is, let (xs, ys) = unzip zl in Constraint_Unify (monotypeTuple xs) (monotypeTuple ys) Nothing)) cLst
-                                                   lst <- mapM (\(is, c) -> (unifyTypes axioms [] [c] (getFreeVariables c)) >>= \r -> return (is, r)) wantedC
+                                                   lst <- mapM (\(is, c) -> runTG (unifyTypes axioms [] [c] (getFreeVariables c)) >>= \r -> return (is, r)) wantedC
                                                    case lst of
                                                       [(is, _)] 
                                                             -> case compareVal of
                                                                   LT -> let hint = fixHint ("insert a "++prettyAndList (map (ordinal True. (+1)) is)++" element to the tuple")
                                                                         in return $ Just 
-                                                                              (4, "tuple:insert "++show is, constraint, eid, hint info)
+                                                                              (4, "tuple:insert "++show is, constraint, eid, hint info, gm)
                                                                   GT -> let hint = fixHint ("remove "++prettyAndList (map (ordinal True . (+1)) is)++" element of tuple")
                                                                         in return $ Just 
-                                                                              (4, "tuple:remove "++show is, constraint, eid, hint info)
+                                                                              (4, "tuple:remove "++show is, constraint, eid, hint info, gm)
                                                                   EQ -> error "this cannot occur"            
                                                       _    -> let hint = becauseHint ("a "++show (length tupleTps)++"-tuple does not match a "++show (length expectedTps)++"-tuple")
                                                                in return $ Just 
-                                                                     (2, "different sizes of tuple", constraint, eid, hint info)
+                                                                     (2, "different sizes of tuple", constraint, eid, hint info, gm)
                               _ -> return Nothing  
                   _ -> return Nothing
 
@@ -467,7 +473,7 @@ tupleHeuristic = SingleVoting "Tuple heuristics" f
 fbHasTooManyArguments :: Fresh m => VotingHeuristic m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo
 fbHasTooManyArguments = SingleVoting "Function binding heuristics" f
    where
-      f (constraint, eid, info)   
+      f (constraint, eid, info, gm)   
          | not (isExplicitlyTyped info) = return Nothing
          | otherwise                    =  
             case constraint of
@@ -476,8 +482,8 @@ fbHasTooManyArguments = SingleVoting "Function binding heuristics" f
                   let edge = getEdgeFromId graph eid
                   doWithoutEdge eid $ 
                      do 
-                        MType m1 <- getSubstType $ MType t1
-                        PType p2 <- getSubstType $ PType t2
+                        MType m1 <- getSubstTypeFull (getGroupFromEdge edge) $ MType t1
+                        PType p2 <- getSubstTypeFull (getGroupFromEdge edge) $ PType t2
                         maximumExplicit <- arityOfPolyType p2
                         edgeList <- getNeighbours (from edge) 
                         let maybeNumberOfPatterns = 
@@ -493,21 +499,30 @@ fbHasTooManyArguments = SingleVoting "Function binding heuristics" f
                                     prettyArg x = "allows at most "++show x
                                     hint = becauseHint msg
                               in return $ Just 
-                                    (8, "function binding has too many arguments", constraint, eid, hint info)
+                                    (8, "function binding has too many arguments", constraint, eid, addProperty TooManyFBArgs $ hint info, gm')
                            _ -> return Nothing
                _ -> return Nothing
+      gm' (eid, constraint, ci) g = do
+         let g' = resetAll g
+         let cedge = getEdgeFromId g eid
+         let g'' = g'{
+                 edges = M.filter (\e -> not (isConstraintEdge e) || getConstraintFromEdge cedge /= getConstraintFromEdge e) (edges g'),
+                 unresolvedConstraints = [],
+                 nextUnresolvedConstraints = []
+             }
+         return (g'', ci)
 
 
 constraintFromUser :: Fresh m => Path m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo -> VotingHeuristic m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo
-constraintFromUser (Path _ path) = MultiVoting "Constraints from .type file" (helper $ map ignoreGraphModifier path)
+constraintFromUser (Path _ path) = MultiVoting "Constraints from .type file" (helper path)
    where
       helper path' edges = 
          let
             bestEdge = let lst = selectBestEdge path' in if null lst then Nothing else Just (maximum lst)
-            edgeNrs  = [ i | (_, i, _) <- edges ]
+            edgeNrs  = [ i | (_, i, _, _) <- edges ]
             
-            selectBestEdge :: [(Constraint ConstraintInfo, EdgeId, ConstraintInfo)] -> [EdgeId]
-            selectBestEdge path' = [eid | (constraint, eid, ci) <- path', isJust (maybeUserConstraint ci), eid `elem` edgeNrs]
+            selectBestEdge :: [(Constraint ConstraintInfo, EdgeId, ConstraintInfo, GraphModifier m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo)] -> [EdgeId]
+            selectBestEdge path' = [eid | (constraint, eid, ci, gm) <- path', isJust (maybeUserConstraint ci), eid `elem` edgeNrs]
 
             f :: (a -> a -> a) -> Maybe a -> Maybe a -> Maybe a            
             f g ma mb = 
@@ -516,14 +531,25 @@ constraintFromUser (Path _ path) = MultiVoting "Constraints from .type file" (he
                   (Nothing, _    ) -> mb
                   _                -> ma
          in 
-            case [ tuple | tuple@(_, cNR, _) <- edges, Just cNR == bestEdge ] of
+            case [ tuple | tuple@(_, cNR, _, _) <- edges, Just cNR == bestEdge ] of
                [] -> return Nothing
-               (constraint, edgeID, info):_ -> 
+               (constraint, edgeID, info, gm):_ -> 
                   let   (groupID, number) = fromMaybe (0, 0) (maybeUserConstraint info)
                         otherEdges = let p info' =
                                           case maybeUserConstraint info' of
                                              Just (a, b) -> a == groupID && b > number
                                              Nothing     -> False
-                                    in [ e | (c, e, i) <- edges, p i ] -- perhaps over all edges!
+                                    in [ e | (c, e, i, gm) <- edges, p i ] -- perhaps over all edges!
                   in return . Just $
-                        (8, "constraints from .type file", [], edgeID:otherEdges, info)
+                        (8, "constraints from .type file", [], edgeID:otherEdges, info, gm)
+
+
+removeEdgeAndTsModifier :: (Fresh m, HasTypeGraph m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo) => GraphModifier m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo
+removeEdgeAndTsModifier (eid, constraint, ci) graph = do
+   let cedge = getEdgeFromId graph eid 
+   case getConstraintFromEdge cedge of
+      Constraint_Unify mv _ _ -> do
+         let es' = filter (\e -> isConstraintEdge e && isInstConstraint (getConstraintFromEdge e)  && firstConstraintElement (getConstraintFromEdge e) == mv ) $ M.elems (edges graph) --
+         (\g -> (g, ci)) <$> foldM (flip removeEdge) graph (eid : map edgeId es')
+      _ -> (\g -> (g, ci)) <$> removeEdge eid graph
+   

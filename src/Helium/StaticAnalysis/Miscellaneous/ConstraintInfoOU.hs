@@ -1,4 +1,4 @@
-{-# LANGUAGE TypeSynonymInstances, FlexibleInstances #-}
+{-# LANGUAGE TypeSynonymInstances, FlexibleInstances, MultiParamTypeClasses #-}
 
 {-| Module      :  ConstraintInfo
     License     :  GPL
@@ -122,6 +122,11 @@ data Property
     | GADTTypeSignature
     | MissingGADTTypeSignature (Maybe (PolyType ConstraintInfo)) UHA_Source [UHA_Source]
     | EscapingExistentital (Either MonoType MonoType) (Constraint ConstraintInfo)
+    | EdgeGroupPriority Int Groups
+    | IsTypeError
+    | ApplicationTypeSignature (PolyType ConstraintInfo)
+    | TooManyFBArgs 
+    | PatternTypeSignature (PolyType ConstraintInfo)
 
 
 class HasProperties a where
@@ -255,6 +260,23 @@ maybeEscapingExistentital :: HasProperties a => a -> Maybe (Either MonoType Mono
 maybeEscapingExistentital a =
    maybeHead [ (pt, c) | EscapingExistentital pt c <- getProperties a]
 
+isTypeError :: HasProperties a => a -> Bool
+isTypeError a = not $ null [ () | IsTypeError <- getProperties a]
+
+isTooManyFBArgs :: HasProperties a => a -> Bool
+isTooManyFBArgs a = not $ null [ () | TooManyFBArgs <- getProperties a]
+
+
+maybeEdgeGroupPriority :: HasProperties a => a -> Maybe (Priority, Groups)
+maybeEdgeGroupPriority a = maybeHead [(p, gs) | EdgeGroupPriority p gs <- getProperties a]
+
+
+maybeApplicationTypeSignature :: HasProperties a => a -> Maybe (PolyType ConstraintInfo)
+maybeApplicationTypeSignature a = maybeHead [ ps | ApplicationTypeSignature ps <- getProperties a]
+
+maybePatternTypeSignature :: HasProperties a => a -> Maybe (PolyType ConstraintInfo)
+maybePatternTypeSignature a = maybeHead [ ps | PatternTypeSignature ps <- getProperties a]
+
 
 -----------------------------------------------------------------
 -- Smart constructors
@@ -318,7 +340,7 @@ cinfoGeneralize                       :: Name ->                 ConstraintInfo
 
 cinfoBindingGroupExplicitTypedBinding ms name nameTS importEnv = 
    let props = [ FromBindingGroup, ExplicitTypedBinding, ExplicitTypedDefinition ms name, 
-                 HasTrustFactor 10.0, TypeSignatureLocation (getNameRange nameTS) ] ++
+                 HasTrustFactor 10.0, TypeSignatureLocation (getNameRange name) ] ++
             [IsImported name | let ns = M.keys (valueConstructors importEnv) ++ M.keys (typeEnvironment importEnv), name `elem` ns]
    in variableConstraint "explicitly typed binding" (nameToUHA_Def name) props
 cinfoSameBindingGroup name = 
@@ -425,8 +447,9 @@ modCi :: (ConstraintInfo -> ConstraintInfo) -> Constraint ConstraintInfo -> Cons
 modCi f (Constraint_Unify m1 m2 ci) = Constraint_Unify m1 m2 (f <$> ci)
 modCi f (Constraint_Inst m1 m2 ci) = Constraint_Inst m1 m2 (f <$> ci)
 modCi f (Constraint_Class s cs ci) = Constraint_Class s cs (f <$> ci)
+modCi f (Constraint_Exists (UB.B t (c1, c2)) mci) = Constraint_Exists (UB.B t (map (modCi f) c1, map (modCi f) c2)) (f <$> mci)
 
-  
+   
 isTupleConstructor :: String -> Bool
 isTupleConstructor ('(':[]) = False
 isTupleConstructor ('(':cs) = all (','==) (init cs) && last cs == ')'

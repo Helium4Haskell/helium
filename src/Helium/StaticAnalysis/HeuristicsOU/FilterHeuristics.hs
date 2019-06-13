@@ -1,5 +1,6 @@
-
-
+{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE RankNTypes #-}
+{-# LANGUAGE FlexibleContexts #-}
 module Helium.StaticAnalysis.HeuristicsOU.FilterHeuristics where
 
 
@@ -17,6 +18,7 @@ import Rhodium.Core
 import Rhodium.TypeGraphs.Graph
 import Rhodium.TypeGraphs.GraphProperties
 import Rhodium.TypeGraphs.GraphUtils
+import Rhodium.TypeGraphs.GraphReset 
 import Helium.Syntax.UHA_Syntax
 import Helium.StaticAnalysis.Miscellaneous.DoublyLinkedTree
 
@@ -38,46 +40,32 @@ isFolklore cinfo = or [ True | FolkloreConstraint <- properties cinfo ]
 avoidFolkloreHeuristic :: Monad m => Heuristic m axiom touchable types constraint ConstraintInfo
 avoidFolkloreHeuristic = edgeFilter "Avoid folklore constraint" f
     where
-        f (_, _, ci) = return (not (isFolklore ci))
+        f (_, _, ci, _) = return (not (isFolklore ci))
 
 
---highParticipation :: (HasTypeGraph FreshM Axiom TyVar RType Constraint ConstraintInfo, HasLogInfo FreshM) => Double -> Path FreshM Axiom TyVar RType Constraint ConstraintInfo -> Heuristic FreshM Axiom TyVar RType Constraint ConstraintInfo
-highParticipation ratio path =
-    Filter ("Participation ratio [ratio="++show ratio++"]") selectTheBest
-        where
-            selectTheBest es = do
-                graph <- getGraph
-                let (nrOfPaths, fm)   = participationMap (getProblemEdges graph [])
-                    participationList = M.filterWithKey p fm
-                    p cnr _    = cnr `elem` activeCNrs
-                    activeCNrs = [ cnr | (_, cnr, _) <- es ]
-                    maxInList  = maximum (M.elems participationList)
-                    limit     -- test if one edge can solve it completely
-                        | maxInList == nrOfPaths = maxInList 
-                        | otherwise              = round (fromIntegral maxInList * ratio) `max` 1
-                    goodCNrs   = M.keys (M.filter (>= limit) participationList)
-                    bestEdges  = filter (\(_, cnr,_) -> cnr `elem` goodCNrs) es
-            
-                    -- prints a nice report
-                    mymsg  = unlines ("" : title : replicate 100 '-' : map f es)
-                    title  = "cnr  constraint                                                                ratio   info"
-                    f ((cons, cnr, info)) = 
-                        take 5  (show cnr++(if cnr `elem` goodCNrs then "*" else "")++repeat ' ') ++
-                        take 74 (show cons++repeat ' ') ++
-                        take 8  (show (M.findWithDefault 0 cnr fm * 100 `div` nrOfPaths)++"%"++repeat ' ') ++
-                        "{"++show info++"}"
-                logMsg mymsg
-                return $ if null bestEdges then es else bestEdges
-                        
-avoidForbiddenConstraints :: Monad m => Heuristic m axiom touchable types (Constraint ConstraintInfo) ConstraintInfo
+removeEdgeAndTsModifier :: (Fresh m, HasTypeGraph m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo) => GraphModifier m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo
+removeEdgeAndTsModifier (eid, constraint, ci) graph = do
+    let cedge = getEdgeFromId graph eid 
+    case getConstraintFromEdge cedge of
+        Constraint_Unify mv _ _ -> do
+            let es' = filter (\e -> isConstraintEdge e && isInstConstraint (getConstraintFromEdge e)  && firstConstraintElement (getConstraintFromEdge e) == mv ) $ M.elems (edges graph) --
+            (\g -> (g, foldr (\e ci -> let 
+                    Constraint_Inst _ ts _ = getConstraintFromEdge e
+                in addProperty (ApplicationTypeSignature ts) ci ) ci es')) <$> foldM (flip removeEdge) graph (eid : map edgeId es')
+        _ -> (\g -> (g, ci)) <$> removeEdge eid graph
+           
+
+
+avoidForbiddenConstraints :: (Fresh m, Monad m) => Heuristic m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo
 avoidForbiddenConstraints = 
-    edgeFilter "Avoid forbidden constraints" f
+    Filter "Avoid forbidden constraints" (return . mapMaybe f)
         where 
-            f (_, _, info) = return (not (isHighlyTrusted info))
+            f (eid, c, info, gm) | isHighlyTrusted info = Nothing
+                                 | otherwise = Just (eid, c, info, removeEdgeAndTsModifier) 
 
 
 phaseFilter :: Monad m => Heuristic m axiom touchable types (Constraint ConstraintInfo) ConstraintInfo
-phaseFilter =  let f (_, _, info) = return (phaseOfConstraint info)
+phaseFilter =  let f (_, _, info, gm) = return (phaseOfConstraint info)
                in maximalEdgeFilter "Highest phase number" f
 
 trustFactor :: ConstraintInfo -> Float
@@ -85,7 +73,7 @@ trustFactor info = fromMaybe 0 (maybeHead [f | (HasTrustFactor f) <- properties 
 
 avoidTrustedConstraints :: Monad m => Heuristic m axiom touchable types (Constraint ConstraintInfo) ConstraintInfo
 avoidTrustedConstraints = 
-        let f (_, _, info) = return (trustFactor info)
+        let f (_, _, info, gm) = return (trustFactor info)
         in minimalEdgeFilter "Trust factor of edge" f
 
 
@@ -112,17 +100,19 @@ avoidApplicationConstraints :: (Fresh m, HasTypeGraph m (Axiom ConstraintInfo) T
 avoidApplicationConstraints = 
     edgeFilter "Avoid application constraints" f
     where
-        f pair@(constraint, edgeId, info) = 
+        f pair@(constraint, edgeId, info, gm) = 
             case constraint of
-                Constraint_Inst _ _ _ -> return True
+                Constraint_Inst{} -> return True
                 Constraint_Unify t1 t2 _ ->
                     case maybeNumberOfArguments info of
                         Nothing -> return True
-                        Just nrArgs ->
+                        Just nrArgs -> do
+                            graph <- getGraph
+                            let edge = getEdgeFromId graph edgeId
                             doWithoutEdge edgeId $
                                 do              
-                                    maybeFunctionType <- getSubstType $ MType t1
-                                    maybeExpectedType <- getSubstType $ MType t2
+                                    maybeFunctionType <- getSubstTypeFull (getGroupFromEdge edge) $ MType t1
+                                    maybeExpectedType <- getSubstTypeFull (getGroupFromEdge edge) $ MType t2
                                     
                                     case (maybeFunctionType,maybeExpectedType) of    
                                         (MType functionType, MType expectedType) -> do
@@ -150,22 +140,24 @@ avoidNegationConstraints :: (Fresh m, HasTypeGraph m (Axiom ConstraintInfo) TyVa
 avoidNegationConstraints = 
     edgeFilter "Avoid negation constraints" f
     where
-        f pair@(constraint, eid, info) =
+        f pair@(constraint, eid, info, gm) =
             case maybeNegation info of
                 Nothing -> return True
                 Just isIntNegation -> case constraint of
-                    Constraint_Inst t1 t2 _ ->
+                    Constraint_Inst t1 t2 _ -> do
+                        graph <- getGraph
+                        let edge = getEdgeFromId graph eid
                         doWithoutEdge eid $  
                             do  
-                                PType t2' <- getSubstType $ PType t2                  
+                                PType t2' <- getSubstTypeFull (getGroupFromEdge edge) $ PType t2                  
                                 axioms <- getAxioms
                                 freshV <- fresh (string2Name "a")
-                                let testtp = (if isIntNegation then MonoType_Con "Int" else MonoType_Con "Float") :-->: var freshV
-                                unif <- runTG (unifyTypes axioms [] [Constraint_Inst testtp t2' Nothing] (freshV : (fv t2')))    
+                                let testtp = (MonoType_Con $ if isIntNegation then "Int" else "Float") :-->: var freshV
+                                unif <- runTG (unifyTypes axioms [] [Constraint_Inst testtp t2' Nothing] (freshV : fv t2'))
                                 return (isNothing unif)
                     _ -> return True
 
-resultsEdgeFilter :: (Eq a, Monad m) => ([a] -> a) -> String -> ((constraint, EdgeId, info) -> m a) -> Heuristic m axiom touchable types constraint info
+resultsEdgeFilter :: (Eq a, Monad m) => ([a] -> a) -> String -> ((constraint, EdgeId, info, GraphModifier m axiom touchable types constraint info) -> m a) -> Heuristic m axiom touchable types constraint info
 resultsEdgeFilter selector description function =
     Filter description $ \es -> 
             do 
@@ -178,15 +170,17 @@ resultsEdgeFilter selector description function =
                         | otherwise       = selector (map fst tupledList)
                 return (map snd (filter ((maximumResult ==) . fst) tupledList))
 
-maximalEdgeFilter :: (Ord a, Monad m) => String -> ((constraint, EdgeId, info) -> m a) -> Heuristic m axiom touchable types constraint info
+maximalEdgeFilter :: (Ord a, Monad m) => String -> ((constraint, EdgeId, info, GraphModifier m axiom touchable types constraint info) -> m a) -> Heuristic m axiom touchable types constraint info
 maximalEdgeFilter = resultsEdgeFilter maximum
 
-minimalEdgeFilter :: (Ord a, Monad m) => String -> ((constraint, EdgeId, info) -> m a) -> Heuristic m axiom touchable types constraint info
+minimalEdgeFilter :: (Ord a, Monad m) => String -> ((constraint, EdgeId, info, GraphModifier m axiom touchable types constraint info) -> m a) -> Heuristic m axiom touchable types constraint info
 minimalEdgeFilter = resultsEdgeFilter minimum
-
-edgeFilter :: Monad m => String -> ((constraint, EdgeId, info) -> m Bool) -> Heuristic m axiom touchable types constraint info
+                        
+edgeFilter :: (Monad m) => String -> ((constraint, EdgeId, info, GraphModifier m axiom touchable types constraint info) -> m Bool) -> Heuristic m axiom touchable types constraint info
 edgeFilter description function = 
-    Filter description $ \es -> 
-        do  xs <- filterM function es
-            return (if null xs then es else xs)
+    Filter description g
+        where 
+            g es = do  
+                xs <- filterM function es
+                return (if null xs then es else xs)
 

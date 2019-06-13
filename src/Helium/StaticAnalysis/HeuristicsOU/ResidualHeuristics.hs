@@ -1,6 +1,8 @@
+{-# LANGUAGE DoAndIfThenElse #-}
+{-# LANGUAGE FlexibleContexts #-}
 module Helium.StaticAnalysis.HeuristicsOU.ResidualHeuristics where
 
-import Rhodium.Blamer.ResidualHeuristics
+import Rhodium.Blamer.Heuristics
 import Rhodium.Blamer.Path
 import Rhodium.Core
 import Rhodium.TypeGraphs.Touchables
@@ -8,11 +10,17 @@ import Rhodium.TypeGraphs.GraphUtils
 import Rhodium.TypeGraphs.Graph
 import Rhodium.TypeGraphs.GraphProperties
 import Rhodium.TypeGraphs.GraphReset
-
+import Rhodium.Solver.Rules
 
 import Helium.StaticAnalysis.Inferencers.OutsideInX.Rhodium.RhodiumTypes
 import Helium.StaticAnalysis.Miscellaneous.ConstraintInfoOU
 import Helium.StaticAnalysis.HeuristicsOU.FilterHeuristics
+import Helium.StaticAnalysis.HeuristicsOU.OnlyResultHeuristics
+import Helium.StaticAnalysis.Heuristics.HeuristicsInfo
+import Helium.StaticAnalysis.Miscellaneous.UHA_Source
+import Helium.Syntax.UHA_Syntax
+import Helium.StaticAnalysis.Miscellaneous.DoublyLinkedTree
+
 
 import Unbound.LocallyNameless hiding (from, to, join)
 import Unbound.LocallyNameless.Fresh
@@ -25,38 +33,54 @@ import Control.Monad
 
 import Debug.Trace
 
-typeSignatureTooGeneral :: Fresh m => VotingResidualHeuristic m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo
-typeSignatureTooGeneral = SingleVotingResidual "Type signature too general" f
+typeSignatureTooGeneral :: Fresh m => Path m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo -> VotingHeuristic m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo
+typeSignatureTooGeneral path = SingleVoting "Type signature too general" f
     where
-        f (constraint, eid, ci, ogm) =
-           -- error (show constraint)
-            case maybeExplicitTypedDefinition ci of 
-                Nothing -> return Nothing
-                Just (ms, n) -> do
-                    graph <- getGraph
-                    let edge = getEdgeFromId graph eid
-                    if isEdgeGiven edge then
-                        return Nothing
-                    else
-                        return $ Just (2, "Type signature too general", constraint, eid, ci, gm) --error $ show (constraint, eid, ci, ms, n)
-            --return Nothing
-            --m (Maybe (Int, String, constraint, EdgeId, ci, GraphModifier touchable types constraint ci)))
+        f (constraint, eid, ci, ogm) 
+            | labelFromPath path /= labelResidual = return Nothing
+            | isTypeAnnotation ci =
+                return $ if any (`elem` (fv constraint :: [TyVar])) (fv (constraintFromPath path) :: [TyVar]) then
+                    Just (2, "Type signature too general", constraint, eid, ci, gm) 
+                else
+                    Nothing
+            | otherwise = 
+                case maybeExplicitTypedDefinition ci of 
+                    Nothing -> return Nothing
+                    Just (ms, n) -> do
+                        graph <- getGraph
+                        let edge = getEdgeFromId graph eid
+                        let eedge = constraintFromPath path
+                        return $ if Just True /= (isExplicitTypedBinding <$> getConstraintInfo constraint) || not (any (`elem` (fv constraint :: [TyVar])) (fv eedge :: [TyVar] )) then
+                            Nothing
+                        else
+                            Just (2, "Type signature too general", constraint, eid, ci, gm)
         gm (eid, constraint, ci) g = do
-            --let (Constraint_Unify m1 m2 _) = constraint
-            let fvs = fv constraint :: [TyVar]
-            let g' = (markTouchables (map (\v -> (v, 0)) fvs) g)
-            return $ removedUnresolvedTried g'
+                let g' = resetAll g
+                let cedge = getEdgeFromId g eid
+                let g'' = g'{
+                        edges = M.filter (\e -> not (isConstraintEdge e) || getConstraintFromEdge cedge /= getConstraintFromEdge e) (edges g'),
+                        unresolvedConstraints = [],
+                        nextUnresolvedConstraints = []
+                    }
+                return (g'', ci)
+
+                
+isTypeAnnotation :: ConstraintInfo -> Bool
+isTypeAnnotation cinfo =
+   case (self . attribute . localInfo) cinfo of
+      UHA_Expr Expression_Typed{} -> True
+      _ -> False
 
 
-classSubst :: (HasTypeGraph m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo, Fresh m) => (Constraint ConstraintInfo) -> m (Constraint ConstraintInfo)
-classSubst (c@(Constraint_Class n [m] ci)) = do
-    MType m' <- getSubstType $ MType m
+classSubst :: (HasTypeGraph m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo, Fresh m) => TGEdge (Constraint ConstraintInfo) -> Constraint ConstraintInfo -> m (Constraint ConstraintInfo)
+classSubst edge (c@(Constraint_Class n [m] ci)) = do
+    MType m' <- getSubstTypeFull (getGroupFromEdge edge) $ MType m
     return (Constraint_Class n [m'] ci)
 
-missingPredicate :: Fresh m => Path m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo -> VotingResidualHeuristic m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo            
-missingPredicate path = SingleVotingResidual "Missing predicate" f
+missingPredicate :: Fresh m => Path m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo -> VotingHeuristic m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo            
+missingPredicate path = SingleVoting "Missing predicate" f
     where
-        f (constraint, eid, ci, ogm) = 
+        f (constraint, eid, ci, gm) = 
             case constraintFromPath path of
                 cc@(Constraint_Class cname [ms] _) -> 
                     case constraint of
@@ -64,7 +88,7 @@ missingPredicate path = SingleVotingResidual "Missing predicate" f
                             graph <- getGraph
                             axioms <- getAxioms
                             let cedge = getEdgeFromId graph eid
-                            MType ms' <- getSubstType $ MType ms
+                            MType ms' <- getSubstTypeFull (getGroupFromEdge cedge) $ MType ms
                             case ms' of 
                                 MonoType_Var _ v -> do
                                     graph <- getGraph
@@ -74,26 +98,37 @@ missingPredicate path = SingleVotingResidual "Missing predicate" f
                                     let fbEdges = filter (\e -> isConstraintEdge e && isJust (join $ maybeFunctionBinding <$> getConstraintInfo (getConstraintFromEdge e))) $ M.elems $ edges graph
                                     let fbEdgesVars = map (\e -> (e, fv $ getConstraintFromEdge e :: [TyVar])) fbEdges
                                    
-                                    fbTypes <- mapM (\(e, vs) -> (mapM (getSubstType . MType . var) vs >>= (\ vs' -> return (e, vs')))) fbEdgesVars {-(e, map (\v -> substs sub (var v)) vs)) -}
-                                    cType <- getSubstType $ MType $ var v
+                                    fbTypes <- mapM (\(e, vs) -> (mapM (getSubstTypeFull (getGroupFromEdge cedge) . MType . var) vs >>= (\ vs' -> return (e, vs')))) fbEdgesVars {-(e, map (\v -> substs sub (var v)) vs)) -}
+                                    cType <- getSubstTypeFull (getGroupFromEdge cedge) $ MType $ var v
                                     let fbTypes' = filter ((cType `elem`) . map (MType . var) . concatMap getFreeVariables . snd) fbTypes
                                     let nconstraints = filter isEdgeGiven anconstraints
                                     if null fbTypes' then do
                                         let possibleRelevantEdges = filter (\e -> isConstraintEdge e && getPriorityFromEdge e > 1 && even (getPriorityFromEdge e) && isUnifyConstraint (getConstraintFromEdge e) && Just False == (isGADTPatternApplication <$> getConstraintInfo (getConstraintFromEdge e))) $ M.elems $ edges graph
-                                        substReleventEdges <- mapM (\e -> ((\(Constraint_Unify _ p _) -> getSubstType (MType p)) $ getConstraintFromEdge e) >>= \v -> return (v, e)) possibleRelevantEdges -- (((\(Constraint_Inst _ p _) -> getSubstType (PType p)) getConstraintFromEdge e), e)
+                                        substReleventEdges <- mapM (\e -> (\(Constraint_Unify _ p _) -> getSubstTypeFull (getGroupFromEdge e) (MType p)) (getConstraintFromEdge e) >>= \v -> return (v, e)) possibleRelevantEdges -- (((\(Constraint_Inst _ p _) -> getSubstType (PType p)) getConstraintFromEdge e), e)
                                         let releventEdges = filter ((cType `elem`) . map (MType . var) . getFreeVariables . fst) substReleventEdges
-                                        if null releventEdges then  
-                                            return $ Just (1, "Ambigious type: " ++ show cc, constraint, eid, addProperty (AmbigiousClass cc) ci, gm)
-                                        else do
+                                        if null releventEdges then  do 
+                                            let fconstraints = runFreshM $ getConstraintsFromPolyType p2
+                                            return $ if cname `elem` map getNameFromConstraint fconstraints then
+                                                Just (1, "Ambigious type: " ++ show cc, constraint, eid, addProperty (AmbigiousClass cc) ci, gm)
+                                            else
+                                                Nothing
+                                        else do 
                                             let tscons = snd $ head releventEdges
                                             let ts = getConstraintFromEdge tscons
-                                            return $ Just (4, "Add constraint " ++ show cc ++ " to gadt constructor " ++ show ts, constraint, eid, addProperties [GADTTypeSignature, AddConstraintToTypeSignature (Just (ts, edgeId tscons, fromJust $ getConstraintInfo ts)) cc] ci, gm)
-                                            --error (show $ (map (\e -> (getConstraintFromEdge e, getConstraintInfo (getConstraintFromEdge e))) possibleRelevantEdges, cType, releventEdges))
+                                            let (Constraint_Unify m _ _) = getConstraintFromEdge tscons
+                                            let instConstraint = filter ((\(Constraint_Inst m' _ _) -> m' == m) . getConstraintFromEdge) $ filter (\e -> isConstraintEdge e && isInstConstraint (getConstraintFromEdge e) && odd (getPriorityFromEdge e)) $ M.elems (edges graph)
+                                            ts <- if null instConstraint then return ts else do
+                                                let Constraint_Inst m1 p2 ci = getConstraintFromEdge $ head instConstraint
+                                                PType p2' <- getSubstTypeFull (getGroupFromEdge cedge) (PType p2)
+                                                return (Constraint_Inst m1 p2' ci)
+                                            return $ if isJust (maybeExplicitTypedDefinition ci) || isPattern ci then
+                                                Nothing
+                                            else
+                                                Just (4, "Add constraint " ++ show cc ++ " to gadt constructor " ++ show ts, constraint, eid, addProperties [GADTTypeSignature, AddConstraintToTypeSignature (Just (ts, edgeId tscons, fromJust $ getConstraintInfo ts)) cc] ci, gm)
                                     else if null nconstraints then do
                                         let fbType' = getConstraintFromEdge $ fst $ head fbTypes'
-                                        --error (show fbTypes' ++ (unlines $ map show $ map (\e -> (getConstraintFromEdge e, getConstraintInfo (getConstraintFromEdge e), maybeFunctionBinding <$> getConstraintInfo (getConstraintFromEdge e))) $ filter isConstraintEdge $ M.elems $ edges graph))
                                         return $ Just (3, "No type signature present", constraint, eid, 
-                                            addProperties [RelevantFunctionBinding fbType', AddConstraintToTypeSignature Nothing cc] ci, gm)
+                                            addProperties [RelevantFunctionBinding fbType', AddConstraintToTypeSignature Nothing cc] ci, addConstraintModifier True [0] 0 cc)
                                     else do
                                         let tscons = head nconstraints
                                         let ts = getConstraintFromEdge tscons
@@ -102,58 +137,32 @@ missingPredicate path = SingleVotingResidual "Missing predicate" f
                                         let resEdges = map (getEdgeFromId graph) res
                                         
                                         return $ Just (4, "Add constraint " ++ show cc ++ " to " ++ show ts, constraint, eid, 
-                                            addProperties [ClassUsages (map (\e -> (getConstraintFromEdge e, edgeId e, fromJust $ getConstraintInfo (getConstraintFromEdge e))) resEdges),AddConstraintToTypeSignature (Just (ts, edgeId tscons, fromJust $ getConstraintInfo ts)) cc] ci, gm)
+                                            addProperties [ClassUsages (map (\e -> (getConstraintFromEdge e, edgeId e, fromJust $ getConstraintInfo (getConstraintFromEdge e))) resEdges),AddConstraintToTypeSignature (Just (ts, edgeId tscons, fromJust $ getConstraintInfo ts)) cc] ci, 
+                                                addConstraintModifier True (getGroupFromEdge tscons)  (getPriorityFromEdge tscons) cc)
                                 _ -> do
                                     let inf = influences (edgeCategory cedge)
                                     let infEdges = filter (isClassConstraint . getConstraintFromEdge) $ map (getEdgeFromId graph) inf
-                                    repCons <- mapM (classSubst . getConstraintFromEdge) infEdges
+                                    repCons <- mapM (\e -> classSubst e $ getConstraintFromEdge e) infEdges
                                     isUsed <- or <$> mapM (\c -> isJust <$> runTG (unifyTypes axioms [cc] [c] (fv c))) repCons 
-                                    if isUsed then
-                                        
-                                        return $ Just (4, "Missing instance: " ++ show cname ++ " " ++ show ms', constraint, eid, addProperty (MissingConcreteInstance cname ms') ci, gm)
+                                    return $ if isUsed then
+                                        Just (4, "Missing instance: " ++ show cname ++ " " ++ show ms', constraint, eid, addProperty (MissingConcreteInstance cname ms') ci, gm)
                                     else
-                                        return Nothing
+                                        Nothing
                         _ -> return Nothing
                     
                 _ -> return Nothing
-        gm (eid, c, ci) g = do
-            let edge = getEdgeFromId g eid
-            ng <- convertConstraint [] True True (getGroupFromEdge edge) (getPriorityFromEdge edge) c
-            return (mergeGraph g ng)
 
+getConstraintsFromPolyType :: PolyType ConstraintInfo -> FreshM [Constraint ConstraintInfo]
+getConstraintsFromPolyType (PolyType_Mono cs _) = return cs
+getConstraintsFromPolyType (PolyType_Bind _ b) = (snd <$> unbind b) >>= getConstraintsFromPolyType
+getConstraintsFromPolyType _ = return []
 
-avoidTrustedResidualConstraints :: Monad m => ResidualHeuristic m axiom touchable types (Constraint ConstraintInfo) ConstraintInfo
-avoidTrustedResidualConstraints = 
-        let f (_, _, info, _) = return (trustFactor info)
-        in minimalResidualEdgeFilter "Trust factor of edge" f
+getNameFromConstraint :: Constraint ConstraintInfo -> String
+getNameFromConstraint (Constraint_Class cname _ _) = cname
+getNameFromConstraint _ = error "Only class constraints have a name"
 
-avoidForbiddenResidualConstraints :: Monad m => ResidualHeuristic m axiom touchable types (Constraint ConstraintInfo) ConstraintInfo
-avoidForbiddenResidualConstraints = 
-    residualEdgeFilter "Avoid forbidden constraints" f
-        where 
-            f (_, _, info, _) = return (not (isHighlyTrusted info))
-
-resultsResidualEdgeFilter :: (Eq a, Monad m) => ([a] -> a) -> String -> ((constraint, EdgeId, ci, GraphModifier m axiom touchable types constraint ci) -> m a) -> ResidualHeuristic m axiom touchable types constraint ci
-resultsResidualEdgeFilter selector description function =
-    FilterResidual description $ \es -> 
-            do 
-                tupledList <-    let f tuple = 
-                                        do  result <- function tuple
-                                            return (result, tuple)
-                                in mapM f es
-                let maximumResult 
-                        | null tupledList = error "resultsEdgeFilter, unexpected empty list" 
-                        | otherwise       = selector (map fst tupledList)
-                return (map snd (filter ((maximumResult ==) . fst) tupledList))
-
-maximalResidualEdgeFilter :: (Ord a, Monad m) => String -> ((constraint, EdgeId, ci, GraphModifier m axiom touchable types constraint ci) -> m a) -> ResidualHeuristic m axiom touchable types constraint ci
-maximalResidualEdgeFilter = resultsResidualEdgeFilter maximum
-
-minimalResidualEdgeFilter :: (Ord a, Monad m) => String -> ((constraint, EdgeId, ci, GraphModifier m axiom touchable types constraint ci) -> m a) -> ResidualHeuristic m axiom touchable types constraint ci
-minimalResidualEdgeFilter = resultsResidualEdgeFilter minimum        
-
-residualEdgeFilter :: Monad m => String -> ((constraint, EdgeId, ci, GraphModifier m axiom touchable types constraint ci) -> m Bool) -> ResidualHeuristic m axiom touchable types constraint ci
-residualEdgeFilter description function = 
-    FilterResidual description $ \es -> 
-        do  xs <- filterM function es
-            return (if null xs then es else xs)
+addConstraintModifier :: HasTypeGraph m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo => Bool -> Groups -> Priority -> Constraint ConstraintInfo -> GraphModifier m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo
+addConstraintModifier isGiven group prior constraint (_, _, ci) graph = do
+    let g' = resetAll graph
+    cC <- convertConstraint [] True isGiven group prior constraint
+    return (markEdgesUnresolved [0] $ mergeGraphs g' [cC], ci)

@@ -1,5 +1,6 @@
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE FlexibleContexts #-}
 {-| Module      :  HeliumMessages
     License     :  GPL
 
@@ -27,6 +28,7 @@ import Helium.StaticAnalysis.Inferencers.OutsideInX.Rhodium.RhodiumTypes
 import Unbound.LocallyNameless
 
 import Control.Monad
+import Control.Arrow
 import Control.Monad.Trans.State.Lazy
 
 import Debug.Trace
@@ -132,7 +134,7 @@ renderTypesInRight table =
                  in (q1, l1, MessageType (toTpScheme (TCon (render doc1))))
                   : (q2, l2, MessageType (toTpScheme (TCon (render doc2))))
                   : renderTypesInRight rest
-              _ -> case (maybeRType r1, maybeRType r2) of
+              _ -> case (maybeRType r1 :: Maybe (PolyType ci), maybeRType r2) of
                      (Just p1, Just p2) -> 
                         let
                            [doc1, doc2] = qualifiedPolyTypesToAlignedDocs [p1, p2]
@@ -155,7 +157,8 @@ renderTypesInRight table =
         clearCi (PolyType_Bind _ b) = runFreshM $ do
             (t, p) <- unbind b
             return (clearCi p)
-        clearC (Constraint_Class cn ms _) = Constraint_Class cn ms Nothing
+        clearC (Constraint_Class cn ms Nothing) = Constraint_Class cn ms Nothing
+        clearC (Constraint_Class cn ms (Just _)) = Constraint_Class cn ms (Just undefined)
 
 -- make sure that a string does not exceed a certain width.
 -- Two extra features:
@@ -231,13 +234,16 @@ prepareTypesAndTypeSchemes messageLine = newMessageLine
 
 
 freshenRepresentation :: (Subst MonoType ci, Alpha ci) => [RType ci] -> [RType ci]
-freshenRepresentation rs = fst $ runState (mapM freshenHelper rs)  (maximum (map snd rep), rep) 
+freshenRepresentation rs = fst $ runState (mapM freshenHelper rs) (maximumString (map snd rep), rep) 
          where
             rep = concatMap collectRepresentation rs
+            maximumString [] = [pred 'a']
+            maximumString r = maximum r
             collectRepresentation :: (Subst MonoType ci, Alpha ci) => RType ci -> [(TyVar, String)]
             collectRepresentation (MType mt) = collectRepresentationM mt
             collectRepresentation (PType pt) = runFreshM (collectRepresentationP pt)
-            collectRepresentationM (MonoType_Var (Just s) v) = [(v, s)]
+            collectRepresentationM (MonoType_Var (Just s) v) | s == "" = [] 
+                                                             | otherwise = [(v, s)]
             collectRepresentationM (MonoType_App f a) = collectRepresentationM f ++ collectRepresentationM a
             collectRepresentationM (MonoType_Fam f ms) = concatMap collectRepresentationM ms
             collectRepresentationM _ = []
@@ -248,9 +254,13 @@ freshenRepresentation rs = fst $ runState (mapM freshenHelper rs)  (maximum (map
                res <- collectRepresentationP p
                return (filter (\r -> fst r /= t) res)
             freshenHelper (MType m) = MType <$> freshenHelperM m
-            freshenHelper (PType p) = PType <$> freshenHelperP p
+            freshenHelper (PType p) = PType <$> (runFreshM $ freshenHelperP p)
             freshenHelperC (Constraint_Class c ms ci) = Constraint_Class c <$> mapM freshenHelperM ms <*> pure ci
-            freshenHelperP (PolyType_Mono cs m) = PolyType_Mono <$> mapM freshenHelperC cs <*> freshenHelperM m
+            freshenHelperP (PolyType_Mono cs m) = return $ PolyType_Mono <$> mapM freshenHelperC cs <*> freshenHelperM m
+            freshenHelperP (PolyType_Bind s b) = do
+               (t, p) <- unbind b
+               freshenHelperP p
+               --unbind b >>= (\(t, p) -> return (freshenHelperP p))--return (get >>= (\rep -> put (second ((t, s):) rep) >> freshenHelperP p)))
             freshenHelperM (MonoType_Con s) = return (MonoType_Con s)
             freshenHelperM (MonoType_Var _ v) = do
                   (n, rep) <- get

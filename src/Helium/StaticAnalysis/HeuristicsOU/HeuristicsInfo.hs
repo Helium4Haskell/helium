@@ -19,13 +19,15 @@ import Helium.Utils.OneLiner
 import Helium.StaticAnalysis.Miscellaneous.UHA_Source
 import Helium.Syntax.UHA_Syntax
 import Helium.StaticAnalysis.Messages.Messages
-import Helium.StaticAnalysis.Messages.HeliumMessages ()
+import Helium.StaticAnalysis.Messages.HeliumMessages (freshenRepresentation)
 import Helium.StaticAnalysis.Messages.TypeErrors
 import Helium.Utils.Utils (internalError)
 import Rhodium.Blamer.HeuristicProperties
 import Data.Maybe
 import Data.Char
 import Helium.StaticAnalysis.Inferencers.OutsideInX.Rhodium.RhodiumTypes
+import Helium.StaticAnalysis.Inferencers.OutsideInX.Rhodium.RhodiumGenerics
+
 import qualified Data.Map as M
 
 import Debug.Trace
@@ -38,14 +40,15 @@ instance WithHints ConstraintInfo where
    addHint descr str = addProperty (WithHint (descr, MessageString str))
    typeErrorForTerm (isInfixApplication,isPatternApplication) argumentNumber termOneLiner functionType (t1, t2) range cinfo =
          let 
+            [MType functionType', MType t1', MType t2'] = freshenRepresentation [MType functionType :: RType ConstraintInfo, MType t1, MType t2]
             typeError = TypeError [range] [oneLiner] table []
             oneLiner  = MessageOneLiner (MessageString ("Type error in " ++ location cinfo))
             table     = [ description1     <:> MessageOneLineTree (oneLinerSource source1)
                         , description2     <:> MessageOneLineTree (oneLinerSource source2)
-                        , "type"           >:> MessageString (show functionType)
+                        , "type"           >:> MessageMonoType functionType'
                         , description3     <:> MessageOneLineTree termOneLiner
-                        , "type"           >:> MessageString (show t1)
-                        , "does not match" >:> MessageString (show t2)
+                        , "type"           >:> MessageMonoType t1'
+                        , "does not match" >:> MessageMonoType t2'
                         ]
             (description1, source1, source2) =
                case convertSources (sources cinfo) of
@@ -62,7 +65,7 @@ instance WithHints ConstraintInfo where
             description3
                | isInfixApplication = if argumentNumber == 0 then "left operand" else "right operand"
                | otherwise          = ordinal False (argumentNumber + 1) ++ " argument"
-         in setTypeError typeError (cinfo)
+         in setTypeError typeError cinfo
     
 
 skip_UHA_FB_RHS :: InfoTree -> InfoTree

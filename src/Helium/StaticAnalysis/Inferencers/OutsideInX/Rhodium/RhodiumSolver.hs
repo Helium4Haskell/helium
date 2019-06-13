@@ -1,3 +1,4 @@
+{-# LANGUAGE FlexibleContexts #-}
 module Helium.StaticAnalysis.Inferencers.OutsideInX.Rhodium.RhodiumSolver(rhodiumSolve, solveOU) where
 
 import Rhodium.Core
@@ -44,8 +45,7 @@ solveOU sibblings axioms given wanted tchs = trace (unlines $ map (\e -> show (e
         }
 
 solveOptions sibblings = emptySolveOptions{
-        typeHeuristics = listOfTypeHeuristics sibblings,
-        residualHeuristics = listOfResidualHeuristics
+        typeHeuristics = listOfTypeHeuristics sibblings
         }
         
 
@@ -54,29 +54,22 @@ listOfTypeHeuristics sibblings path = [
         highParticipation 0.95 path,
         phaseFilter,
         Voting [
-            sibblingsHeuristic sibblings,
+           
+            siblingsHeuristic sibblings,
             siblingLiterals, 
             applicationHeuristic,
             variableFunction,
             tupleHeuristic,
             fbHasTooManyArguments,
             constraintFromUser path,
-            unreachablePatternHeuristic
-
+            unreachablePatternHeuristic path,
+            typeSignatureTooGeneral path,
+            missingPredicate path,
+            missingGADTSignature path,
+            escapingGADTVariableHeuristic path
         ],
         avoidNegationConstraints,
         avoidApplicationConstraints,
         avoidFolkloreHeuristic,
         avoidTrustedConstraints
-    ]
-
-listOfResidualHeuristics path = [
-        avoidForbiddenResidualConstraints,
-        VotingResidual [
-            typeSignatureTooGeneral,
-            missingPredicate path,
-            missingGADTSignature path,
-            escapingGADTVariableHeuristic path
-        ],
-        avoidTrustedResidualConstraints
     ]

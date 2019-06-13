@@ -148,7 +148,7 @@ Executable heliumpath
 --------------------------------------------------------------------------------
   
 Library
-  Build-Depends:     base >= 3 && < 5, containers, mtl, parsec, network, process, transformers, filepath, directory, wl-pprint, Top >= 1.7, lvmlib >= 1.1, cobalt >= 0.1.0.1, unbound
+  Build-Depends:     base >= 3 && < 5, containers, mtl, parsec, network, process, transformers, filepath, directory, wl-pprint, Top >= 1.7, lvmlib >= 1.1, cobalt >= 0.1.0.1, rhodium, unbound
   ghc-options:       -Wall
   default-language:  Haskell98
   hs-source-dirs:    src dist/build/autogen/uuagc
@@ -240,6 +240,18 @@ Library
     Helium.Utils.Similarity
     Helium.Utils.Texts
     Helium.Utils.Utils
+    Helium.StaticAnalysis.HeuristicsOU.FilterHeuristics
+    Helium.StaticAnalysis.HeuristicsOU.GADTHeuristics
+    Helium.StaticAnalysis.HeuristicsOU.HeuristicsInfo
+    Helium.StaticAnalysis.HeuristicsOU.OnlyResultHeuristics
+    Helium.StaticAnalysis.HeuristicsOU.RepairHeuristics
+    Helium.StaticAnalysis.HeuristicsOU.ResidualHeuristics
+    Helium.StaticAnalysis.Inferencers.OutsideInX.Rhodium.RhodiumErrors
+    Helium.StaticAnalysis.Inferencers.OutsideInX.Rhodium.RhodiumGenerics
+    Helium.StaticAnalysis.Inferencers.OutsideInX.Rhodium.RhodiumInstances
+    Helium.StaticAnalysis.Inferencers.OutsideInX.Rhodium.RhodiumSolver
+    Helium.StaticAnalysis.Inferencers.OutsideInX.Rhodium.RhodiumTypes
+    Helium.StaticAnalysis.Miscellaneous.ConstraintInfoOU
   Other-modules:
     
 

@@ -36,7 +36,7 @@ SEM Module
                                             (M.unionWith combineClassDecls @body.classEnv (classEnvironment $ combineImportEnvironmentList @lhs.importEnvironments)))
                                         . setInstanceEnvironment @body.instanceEnv
                                         . setClassMemberEnvironment @body.collectClassMemberEnv
-                                        $emptyEnvironment
+                                        $ emptyEnvironment
                                         -- the type environment will be added after type inferencing.
                  . derivedFunctions = []
 

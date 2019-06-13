@@ -16,6 +16,7 @@ module Helium.StaticAnalysis.HeuristicsOU.OnlyResultHeuristics where
 import Helium.StaticAnalysis.Inferencers.OutsideInX.Rhodium.RhodiumTypes
 import Helium.StaticAnalysis.Miscellaneous.UHA_Source
 import Helium.StaticAnalysis.Miscellaneous.ConstraintInfoOU
+import Helium.StaticAnalysis.Miscellaneous.DoublyLinkedTree
 
 import Data.Maybe
 
@@ -42,6 +43,13 @@ instance MaybeApplication ConstraintInfo where
 
 class IsPattern a where
    isPattern :: a -> Bool
+
+instance IsPattern ConstraintInfo where
+   isPattern cinfo = 
+      case (self . attribute . localInfo) cinfo of 
+         UHA_Pat _ -> True
+         _         -> False
+   
    
 -----------------------------------------------------------------------------
 

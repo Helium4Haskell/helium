@@ -16,6 +16,7 @@ import Text.PrettyPrint.Leijen
 import qualified Text.PrettyPrint.Leijen as PPrint
 
 import Helium.StaticAnalysis.Inferencers.OutsideInX.Rhodium.RhodiumTypes
+import Rhodium.TypeGraphs.GraphProperties
 
 import Unbound.LocallyNameless
 import Unbound.LocallyNameless.Alpha
@@ -31,7 +32,7 @@ qualifiedPolyTypesToAlignedDocs pts = let
         then docTypes
         else zipWith (<>) docContexts docTypes
     where
-      extractPolyType (PolyType_Mono cs m) = (cs, m)
+      extractPolyType (PolyType_Mono cs m) = (filter hasConstraintInformation cs, m)
       showContext :: [Constraint ci] -> String
       showContext [] = ""
       showContext [c] = showClassConstraint c ++ " => "
