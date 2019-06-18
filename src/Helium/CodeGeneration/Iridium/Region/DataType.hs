@@ -19,10 +19,8 @@ import Helium.CodeGeneration.Iridium.Region.Relation
 import Helium.CodeGeneration.Iridium.Region.Containment
 import Helium.CodeGeneration.Iridium.Region.Utils
 
-import Debug.Trace
-
 effectDataTypes :: TypeEnvironment -> Module -> EffectEnvironment
-effectDataTypes env mod = traceShow (moduleDataTypes mod) $ envWithAnnotations
+effectDataTypes env mod = envWithAnnotations
   where
     emptyEffectEnvironment :: EffectEnvironment
     emptyEffectEnvironment = foldr initializeDataType (EffectEnvironment emptyMap emptyMap emptyMap) datas
@@ -30,9 +28,9 @@ effectDataTypes env mod = traceShow (moduleDataTypes mod) $ envWithAnnotations
     envWithRegionArguments =
       writeArguments
         False
-        RegionVar
+        (variableFromIndices 0)
         typeRegionSort
-        (\regions relation (EffectDataType typeVars annotations _ _) -> EffectDataType typeVars annotations regions $ fromMaybe [] relation)
+        (\regions relation (EffectDataType annotations _ _) -> EffectDataType annotations regions $ fromMaybe [] relation)
         (\regions (EffectConstructor annotations _) -> EffectConstructor annotations regions)
         (flip const)
         relationForDataTypes
@@ -42,9 +40,9 @@ effectDataTypes env mod = traceShow (moduleDataTypes mod) $ envWithAnnotations
     envWithAnnotations = 
       writeArguments
         True
-        (AnnotationVar)
+        (variableFromIndices 0)
         (\ee tp -> typeAnnotationSortArgument ee tp [])
-        (\annotations _ (EffectDataType typeVars _ regions relation) -> EffectDataType typeVars annotations regions relation)
+        (\annotations _ (EffectDataType _ regions relation) -> EffectDataType annotations regions relation)
         (\annotations (EffectConstructor _ regions) -> EffectConstructor annotations regions)
         (flip const) -- TODO
         (\_ _ -> ())
@@ -58,9 +56,10 @@ effectDataTypes env mod = traceShow (moduleDataTypes mod) $ envWithAnnotations
     relationForDataType env (Declaration _ _ _ _ (DataType constructors)) = constructors >>= relationForConstructor env
 
     relationForConstructor :: EffectEnvironment -> Declaration DataTypeConstructorDeclaration -> [RelationConstraint]
-    relationForConstructor env (Declaration name _ _ _ (DataTypeConstructorDeclaration tp)) = concat $ zipWith (containment env) (rights fields) regionArgs
+    relationForConstructor env (Declaration name _ _ _ (DataTypeConstructorDeclaration tp)) = concat $ zipWith (\tp arg -> containment env (tpFromType quantors tp) arg) (rights args) regionArgs
       where
-        FunctionType fields _ = extractFunctionTypeNoSynonyms tp
+        FunctionType args _ = extractFunctionTypeNoSynonyms tp
+        quantors = reverse [idx | Left (Quantor idx _) <- args]
         EffectConstructor _ regionArgs = eeLookupConstructor env name
 
     datas = normalizedDataTypes env mod
@@ -68,13 +67,9 @@ effectDataTypes env mod = traceShow (moduleDataTypes mod) $ envWithAnnotations
     initializeDataType (Declaration name _ _ _ (DataType constructors)) effectEnv =
       effectEnv{
         -- Assign sortUnassigned to all data types, such that we can find recursion.
-        eeDataTypes = insertMap name (EffectDataType typeVars sortUnassigned sortUnassigned []) $ eeDataTypes effectEnv,
+        eeDataTypes = insertMap name (EffectDataType sortUnassigned sortUnassigned []) $ eeDataTypes effectEnv,
         eeConstructors = foldr initializeConstructor (eeConstructors effectEnv) constructors
       }
-      where
-        typeVars = case constructors of
-          [] -> []
-          Declaration _ _ _ _ (DataTypeConstructorDeclaration tp) : _ -> map (\(Quantor idx _) -> TypeVar idx) $ lefts $ functionArguments $ extractFunctionTypeNoSynonyms tp
     initializeConstructor :: Declaration DataTypeConstructorDeclaration -> IdMap EffectConstructor -> IdMap EffectConstructor
     initializeConstructor (Declaration name _ _ _ _) constructors = insertMap name (EffectConstructor [] []) constructors
 
@@ -84,7 +79,7 @@ sortUnassigned = SortArgumentPolymorphic (TypeVar (-1)) []
 writeArguments ::
   Bool -- Should we look in function types for type dependencies
   -> (Int -> argument) -- Converts an int to an argument (as stored in the constructor)
-  -> (EffectEnvironment -> Type -> SortArgument a) -- Generates the argument sorts for types
+  -> (EffectEnvironment -> Tp -> SortArgument a) -- Generates the argument sorts for types
   -> (SortArgument a -> Maybe b -> EffectDataType -> EffectDataType) -- Updates the arguments in a DataType
   -> ([Argument argument] -> EffectConstructor -> EffectConstructor) -- Updates the arguments in a Constructor
   -> (SortArgument a -> a -> a) -- Apply / instantiate a field
@@ -134,9 +129,10 @@ writeArguments inFunctions var arguments update updateCon instantiate additional
           sorts
         vars = sorts >>= (\(_, sort) -> sort >>= sortArgumentFlatten)
         dataTypeSort (Declaration _ _ _ _ (DataType cons)) = map constructorSort cons
-        constructorSort (Declaration name _ _ _ (DataTypeConstructorDeclaration tp)) = (name, map (\tp -> arguments e tp) $ rights args)
+        constructorSort (Declaration name _ _ _ (DataTypeConstructorDeclaration tp)) = (name, map (\tp -> arguments e $ tpFromType quantors tp) $ rights args)
           where
             FunctionType args _ = extractFunctionTypeNoSynonyms tp
+            quantors = reverse [idx | Left (Quantor idx _) <- args]
 
     groups = bindingGroups (\(DataType constructors) -> constructors >>= constructorDependencies) declarations
 

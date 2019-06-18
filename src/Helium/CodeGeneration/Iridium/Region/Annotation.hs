@@ -1,39 +1,31 @@
 module Helium.CodeGeneration.Iridium.Region.Annotation where
 
-import qualified Data.IntMap as IntMap
+import Data.IntMap.Strict (IntMap)
+import qualified Data.IntMap.Strict as IntMap
+import Data.IntSet (IntSet)
+import qualified Data.IntSet as IntSet
 import Data.List
+import Data.Maybe
 import qualified Data.Graph as Graph
 
 import Lvm.Core.Type
 import Helium.CodeGeneration.Iridium.Region.Sort
 import Helium.CodeGeneration.Iridium.Region.Relation
 
-newtype AnnotationVar = AnnotationVar Int
+newtype AnnotationVar = AnnotationVar { unAnnotationVar :: Int }
   deriving (Eq, Ord)
 
+instance IndexVariable AnnotationVar where
+  variableToInt (AnnotationVar i) = i
+  variableFromInt i = AnnotationVar i
+
 instance Show AnnotationVar where
-  show (AnnotationVar idx) = 'ψ' : showSubscript idx
-
-data Parameter var a
-  = ParameterMonomorphic !var !a
-  | ParameterPolymorphic !var !TypeVar ![Type]
-  | ParameterList ![Parameter var a]
-
-parameterNames :: Parameter var a -> [var]
-parameterNames (ParameterMonomorphic var _) = [var]
-parameterNames (ParameterPolymorphic var _ _) = [var]
-parameterNames (ParameterList params) = params >>= parameterNames
-
-instance (Show var, Show a) => Show (Parameter var a) where
-  show (ParameterMonomorphic r1 a) = show r1 ++ ": " ++ show a
-  show (ParameterPolymorphic r1 tvar tps) = show r1 ++ "<" ++ show tvar ++ (tps >>= (\tp -> " " ++ showType [] tp)) ++ ">"
-  show (ParameterList params) = show params
-
-  showList params = ('(' :) . (intercalate ", " (map show params) ++) . (')' :)
+  show var = 'ψ' : showIndexVariable var
 
 data Argument a
   = ArgumentValue !a
   | ArgumentList ![Argument a]
+  deriving (Eq, Ord)
 
 argumentFlatten :: Argument a -> [a]
 argumentFlatten (ArgumentValue a) = [a]
@@ -49,33 +41,70 @@ instance Functor Argument where
   fmap f (ArgumentValue a) = ArgumentValue $ f a
   fmap f (ArgumentList args) = ArgumentList $ fmap (fmap f) args
 
+instance Applicative Argument where
+  pure = ArgumentValue
+  ArgumentValue f <*> b = fmap f b
+  ArgumentList as <*> b = ArgumentList $ map (<*> b) as
+
+instance Monad Argument where
+  return = ArgumentValue
+  ArgumentValue a >>= f = f a
+  ArgumentList as >>= f = ArgumentList $ map (>>= f) as
+
+instance Foldable Argument where
+  foldMap f (ArgumentValue a) = f a
+  foldMap f (ArgumentList as) = foldMap (foldMap f) as
+
+instance Traversable Argument where
+  sequenceA (ArgumentValue a) = ArgumentValue <$> a
+  sequenceA (ArgumentList as) = ArgumentList <$> traverse sequenceA as
+
 data Annotation
-  = AForall !TypeVar !Annotation
-  | ALam !(Parameter AnnotationVar Sort) !(Parameter RegionVar SortArgumentRegion) !Annotation
+  = AFix !(Maybe Int) !FixRegions !Annotation !Annotation
+
+  | AForall !Annotation
+  | ALam !(SortArgument Sort) !(SortArgument SortArgumentRegion) !Annotation
 
   | AApp !Annotation !(Argument Annotation) !(Argument RegionVar)
+  | AInstantiate !Annotation !Tp
 
   -- Leaf
   | AVar !AnnotationVar
-  | AThunk !RegionVar ![RegionVar] -- Arguments must be monomorphic
   | ARelation ![RelationConstraint]
   | ABottom
 
   | AJoin !Annotation !Annotation
+  deriving (Eq, Ord)
+
+data FixRegions
+  = FixRegionsNone
+  | FixRegionsEscape !(SortArgument SortArgumentRegion)
+  deriving (Eq, Ord)
 
 instance Show Annotation where
-  show (AForall tvar annotation) = "forall " ++ show tvar ++ ". " ++ show annotation
+  show (AFix identifier fixRegions lowerBound annotation) = "fix" ++ identifierString ++ keyword ++ " " ++ lowerBoundString ++ show annotation
+    where
+      identifierString = case identifier of
+        Nothing -> ""
+        Just idx -> "[" ++ show idx ++ "]"
+      keyword = case fixRegions of 
+        FixRegionsNone -> ""
+        FixRegionsEscape s -> " escape " ++ show s ++ " "
+      lowerBoundString = case lowerBound of
+        ABottom -> ". "
+        _ -> "⊐ " ++ show lowerBound ++ ". "
+  show (AForall annotation) = "forall " ++ show annotation
   show (ALam annotationParams regionParams annotation) = "λ[" ++ show annotationParams ++ "; " ++ show regionParams ++ "] -> " ++ show annotation
   show annotation = showAnnotationJoin annotation
 
 showAnnotationJoin :: Annotation -> String
-showAnnotationJoin (AJoin a1 a2) = showAnnotationJoin a1 ++ " ⊔ " ++ showAnnotationJoin a2
+showAnnotationJoin (AJoin a1 a2) = showAnnotationApp a1 ++ " ⊔ " ++ showAnnotationJoin a2
 showAnnotationJoin annotation = showAnnotationApp annotation
 
 showAnnotationApp :: Annotation -> String
 showAnnotationApp (AApp annotation annotationArgs regionArgs) =
   showAnnotationApp annotation ++ " " ++ show annotationArgs ++ " " ++ show regionArgs
-showAnnotationApp (AThunk r1 rs) = "ψ_thunk " ++ show r1 ++ " " ++ show rs
+showAnnotationApp (AInstantiate a tp) = showAnnotationApp a ++ " {" ++ show tp ++ "}"
 showAnnotationApp annotation = showAnnotationLow annotation
 
 showAnnotationLow :: Annotation -> String
@@ -84,28 +113,137 @@ showAnnotationLow (ARelation rel) = show rel
 showAnnotationLow ABottom = "⊥"
 
 annotationExpandBottom :: Sort -> Annotation
-annotationExpandBottom (SortForall tvar sort) = AForall tvar $ annotationExpandBottom sort
-annotationExpandBottom (SortFun annotationArgs regionArgs sort) = ALam
-  (snd $ sortArgumentToParameter (map AnnotationVar [0..]) annotationArgs)
-  (snd $ sortArgumentToParameter (map RegionVar [0..]) regionArgs)
-  $ annotationExpandBottom sort
+annotationExpandBottom (SortForall sort) = AForall $ annotationExpandBottom sort
+annotationExpandBottom (SortFun annotationArgs regionArgs sort) =
+  ALam annotationArgs regionArgs $ annotationExpandBottom sort
 annotationExpandBottom SortRelation = ARelation []
 
-sortArgumentToParameter :: [var] -> SortArgument a -> ([var], Parameter var a)
-sortArgumentToParameter (freshVar:freshVars) (SortArgumentMonomorphic a) = (freshVars, ParameterMonomorphic freshVar a)
-sortArgumentToParameter (freshVar:freshVars) (SortArgumentPolymorphic tvar tps) = (freshVars, ParameterPolymorphic freshVar tvar tps)
-sortArgumentToParameter freshVars (SortArgumentList args) = (freshVars', ParameterList params)
+sortArgumentToArgument :: IndexVariable var => Int -> SortArgument a -> Argument var
+sortArgumentToArgument lambdaBound arg = snd $ sortArgumentToArgument' lambdaBound 0 arg
+
+sortArgumentToArgument' :: IndexVariable var => Int -> Int -> SortArgument a -> (Int, Argument var)
+sortArgumentToArgument' lambdaBound idx (SortArgumentMonomorphic a) = (idx + 1, ArgumentValue $ variableFromIndices lambdaBound idx)
+sortArgumentToArgument' lambdaBound idx (SortArgumentPolymorphic _ _) = (idx + 1, ArgumentValue $ variableFromIndices lambdaBound idx)
+sortArgumentToArgument' lambdaBound idx (SortArgumentList args) = (idx', ArgumentList params)
   where
-    (freshVars', params) = mapAccumL sortArgumentToParameter freshVars args
+    (idx', params) = mapAccumL (sortArgumentToArgument' lambdaBound) idx args
 
-parameterToArgument :: Parameter var a -> Argument var
-parameterToArgument (ParameterMonomorphic var _) = ArgumentValue var
-parameterToArgument (ParameterPolymorphic var _ _ ) = ArgumentValue var
-parameterToArgument (ParameterList params) = ArgumentList $ map parameterToArgument params
-
-zipFlattenArgument :: (a -> b -> c) -> Argument a -> Argument b -> [c]
+zipFlattenArgument :: (Show a, Show b) => (a -> b -> c) -> Argument a -> Argument b -> [c]
 zipFlattenArgument f argLeft argRight = zipFlattenArgument' argLeft argRight []
   where
     zipFlattenArgument' (ArgumentValue a) (ArgumentValue b) accum = f a b : accum
     zipFlattenArgument' (ArgumentList as) (ArgumentList bs) accum = foldr (\(a, b) -> zipFlattenArgument' a b) accum $ zip as bs
-    zipFlattenArgument' _ _ accum = error "zipFlattenArgument: Arguments do not have the same kind"
+    zipFlattenArgument' a b accum = error $ "zipFlattenArgument: Arguments do not have the same sort: " ++ show a ++ "; " ++ show b
+
+zipArgument :: (a -> b -> c) -> Argument a -> Argument b -> Argument c
+zipArgument f (ArgumentValue a) (ArgumentValue b) = ArgumentValue $ f a b
+zipArgument f (ArgumentList as) (ArgumentList bs) = ArgumentList $ zipWith (zipArgument f) as bs
+zipArgument _ _ _ = error "zipArgument: Arguments do not have the same sort"
+
+zipFlattenArgumentWithSort :: (Show a, Show b, Show s) => (SortArgument s -> a -> b -> c) -> SortArgument s -> Argument a -> Argument b -> [c]
+zipFlattenArgumentWithSort f sort argLeft argRight = zipFlattenArgumentWithSort' sort argLeft argRight []
+  where
+    zipFlattenArgumentWithSort' s (ArgumentValue a) (ArgumentValue b) accum = f s a b : accum
+    zipFlattenArgumentWithSort' (SortArgumentList sorts) (ArgumentList as) (ArgumentList bs) accum = foldr (\(s, a, b) -> zipFlattenArgumentWithSort' s a b) accum $ zip3 sorts as bs
+    zipFlattenArgumentWithSort' sorts a b accum = error $ "zipFlattenArgumentWithSort: Arguments do not have the same sort: " ++ show sorts ++ "; " ++ show a ++ "; " ++ show b
+
+annotationEscapes :: Annotation -> IntSet
+annotationEscapes annotation = IntSet.map (indexInArgument . RegionVar) $ IntSet.filter isFirstScope escapes
+  where
+    (annotationRelation, annotationRoots) = gather 1 annotation
+
+    escapes = case annotationRelation of
+      Nothing -> annotationRoots
+      Just rel -> IntSet.foldr (relationDFS' (const False) rel . RegionVar) IntSet.empty annotationRoots
+
+    gather :: Int -> Annotation -> (Maybe Relation, IntSet)
+    gather scope (AFix _ _ a1 _) = gather scope a1
+    gather scope (AForall a) = gather scope a
+    gather scope (ALam _ _ a) = decrement $ gather (scope + 1) a
+    -- TODO: Don't add region arguments of last argument in a call (eg the return regions)
+    gather scope (AApp a argA argR) = addVars scope (argumentFlatten argR) (gather scope a) `join` joins (map (gather scope) $ argumentFlatten argA)
+    gather scope (AInstantiate a _) = gather scope a
+    gather scope (AJoin a1 a2) = gather scope a1 `join` gather scope a2
+    gather scope (ARelation constraints) = (Just $ relationFromTransitiveConstraints constraints, IntSet.empty)
+    gather _ _ = (Nothing, IntSet.empty)
+
+    joins :: [(Maybe Relation, IntSet)] -> (Maybe Relation, IntSet)
+    joins (r:rs) = foldr join r rs
+    joins [] = (Nothing, IntSet.empty)
+
+    join :: (Maybe Relation, IntSet) -> (Maybe Relation, IntSet) -> (Maybe Relation, IntSet)
+    join (relation1, set1) (relation2, set2) = (relation, IntSet.union set1 set2)
+      where
+        relation = case relation1 of
+          Nothing -> relation2
+          Just r1 -> case relation2 of
+            Just r2 -> Just $ relationUnion r1 r2
+            Nothing -> Just r1
+
+    addVar :: Int -> RegionVar -> (Maybe Relation, IntSet) -> (Maybe Relation, IntSet)
+    addVar scope var tuple@(relation, set)
+      | indexBoundLambda var == scope = (relation, IntSet.insert (indexInArgument var) set)
+      | otherwise = tuple
+
+    addVars scope = flip $ foldr $ addVar scope
+
+    decrement :: (Maybe Relation, IntSet) -> (Maybe Relation, IntSet)
+    decrement (Nothing, roots) = (Nothing, decrementSet $ IntSet.filter (not . isFirstScope) roots)
+    decrement (Just r, roots) = (Just $ relationDecrementScope r, dfsFirstScope r roots)
+
+    decrementSet :: IntSet -> IntSet
+    decrementSet set = IntSet.map dec set
+      where
+        dec r = let RegionVar r' = variableIncrementLambdaBound 1 (-1) $ RegionVar r in r'
+
+    isFirstScope :: Int -> Bool
+    isFirstScope idx = indexBoundLambda (RegionVar idx) == 1
+
+    -- Apply DFS until we reach a variable outside of the first scope
+    dfsFirstScope :: Relation -> IntSet -> IntSet
+    dfsFirstScope relation roots = decrementSet $ IntSet.filter (not . isFirstScope) $ IntSet.foldr f first rest
+      where
+        f idx = relationDFS' (\(RegionVar r) -> not $ isFirstScope r) relation (RegionVar idx)
+        (first, rest) = IntSet.partition isFirstScope roots
+
+annotationRemoveInternalRegions :: SortArgument SortArgumentRegion -> Annotation -> (SortArgument SortArgumentRegion, Annotation)
+annotationRemoveInternalRegions (SortArgumentList regionArgs) a = (SortArgumentList regionArgs', substitute 1 a)
+  where
+    argCount = length regionArgs
+
+    escapes = annotationEscapes a
+
+    regionArgs' = map snd $ filter (isJust . fst) $ zip mapping regionArgs
+
+    mapping :: [Maybe Int]
+    mapping = assignIndices 0 0
+
+    assignIndices :: Int -> Int -> [Maybe Int]
+    assignIndices var fresh
+      | var == argCount = []
+      | var `IntSet.notMember` escapes = Nothing : assignIndices (var + 1) fresh
+      | otherwise = Just fresh : assignIndices (var + 1) (fresh + 1)
+
+    substitute :: Int -> Annotation -> Annotation
+    substitute scope (AFix identifier fixRegions a1 a2) = AFix identifier fixRegions (substitute scope a1) (substitute scope a2)
+    substitute scope (AForall a) = AForall $ substitute scope a
+    substitute scope (ALam argA argR a) = ALam argA argR $ substitute (scope + 1) a
+    substitute scope (AApp a argA argR) = AApp (substitute scope a) (substitute scope <$> argA) (substituteVar scope <$> argR)
+    substitute scope (AInstantiate a tp) = AInstantiate (substitute scope a) tp
+    substitute scope (ARelation constraints) = ARelation $ mapMaybe (substituteRelationConstraint scope) constraints
+    substitute scope (AJoin a1 a2) = AJoin (substitute scope a1) (substitute scope a2)
+    substitute _ a = a
+
+    substituteRelationConstraint :: Int -> RelationConstraint -> Maybe RelationConstraint
+    substituteRelationConstraint scope (Outlives r1 r2) =
+      Outlives <$> substituteVarMaybe scope r1 <*> substituteVarMaybe scope r2
+
+    substituteVar :: Int -> RegionVar -> RegionVar
+    substituteVar scope var = case substituteVarMaybe scope var of
+      Nothing -> error "annotationRemoveInternalRegions: forced substitution failed: variable was needed, but was also removed (internal)"
+      Just var' -> var'
+
+    substituteVarMaybe :: Int -> RegionVar -> Maybe RegionVar
+    substituteVarMaybe scope var
+      | indexBoundLambda var /= scope = Just var
+      | otherwise = variableFromIndices scope <$> mapping !! indexInArgument var

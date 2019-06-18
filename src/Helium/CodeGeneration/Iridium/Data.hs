@@ -352,10 +352,12 @@ envWithSynonyms (Module _ _ _ _ synonyms _ _) = TypeEnvironment (mapFromList syn
   where
     synonymsList = map (\(Declaration name _ _ _ (TypeSynonym tp)) -> (name, tp)) synonyms
 
-methodLocals :: TypeEnvironment -> Method -> [Local]
-methodLocals env (Method _ args _ _ block blocks) = foldr blockLocals (blockLocals block argLocals) blocks
+methodLocals :: Bool -> TypeEnvironment -> Method -> [Local]
+methodLocals withArguments env (Method _ args _ _ block blocks) = foldr blockLocals (blockLocals block argLocals) blocks
   where
-    argLocals = rights args
+    argLocals
+      | withArguments = rights args
+      | otherwise = []
 
     blockLocals :: Block -> [Local] -> [Local]
     blockLocals (Block _ instruction) = instructionLocals instruction

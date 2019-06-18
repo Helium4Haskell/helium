@@ -21,3 +21,8 @@ typeDependencies inFunctions tp = dependencies tp []
 debugLog :: Maybe Handle -> String -> IO ()
 debugLog Nothing _ = return ()
 debugLog (Just h) string = hPutStrLn h string
+
+tryIndex :: [a] -> Int -> Maybe a
+tryIndex [] _ = Nothing
+tryIndex (a:_) 0 = Just a
+tryIndex (_:as) n = tryIndex as (n - 1)
