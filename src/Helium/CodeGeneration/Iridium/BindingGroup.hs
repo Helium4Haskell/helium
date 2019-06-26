@@ -50,6 +50,7 @@ methodBindingGroups = bindingGroups methodDependencies
     instructionDependencies (Return var) = variableDependencies var
     instructionDependencies (Unreachable (Just var)) = variableDependencies var
     instructionDependencies (Unreachable Nothing) = []
+    instructionDependencies (RegionRelease var) = []
 
     expressionDependencies (Literal _) = []
     expressionDependencies (Call (GlobalFunction fn _ _) args) = fn : [name | Right (VarGlobal (GlobalVariable name _)) <- args]
@@ -62,9 +63,14 @@ methodBindingGroups = bindingGroups methodDependencies
     expressionDependencies (PrimitiveExpr _ args) = [name | Right (VarGlobal (GlobalVariable name _)) <- args]
     expressionDependencies (Undefined _) = []
     expressionDependencies (Seq a b) = variableDependencies a ++ variableDependencies b
+    expressionDependencies RegionAllocate = []
 
-    bindDependencies (Bind _ target args) = bindTargetDependencies target ++ [name | Right (VarGlobal (GlobalVariable name _)) <- args]
+    bindDependencies (Bind _ target args _) = bindTargetDependencies target ++ [name | Right (VarGlobal (GlobalVariable name _)) <- args]
 
     bindTargetDependencies (BindTargetFunction (GlobalFunction name _ _)) = [name]
     bindTargetDependencies (BindTargetThunk var) = variableDependencies var
     bindTargetDependencies _ = []
+
+mapBindingGroup :: (Declaration a -> Declaration b) -> BindingGroup a -> BindingGroup b
+mapBindingGroup f (BindingNonRecursive a) = BindingNonRecursive $ f a
+mapBindingGroup f (BindingRecursive as) = BindingRecursive $ map f as

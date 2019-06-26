@@ -14,10 +14,10 @@
 
 module Helium.CodeGeneration.Iridium.Type
   ( typeFromFunctionType, FunctionType(..), extractFunctionTypeNoSynonyms, extractFunctionTypeWithArity
-  , Type(..)
+  , Type(..), TypeConstant(..)
   , FloatPrecision(..), Core.TypeEnvironment(..), Core.typeEnvEmpty, Core.typeNormalizeHead, Core.typeEqual, typeIsStrict, typeToStrict
   , typeNotStrict, typeRemoveArgumentStrictness, Core.typeNormalize
-  , typeRealWorld, typeUnsafePtr, typeTrampoline, typeInt, typeInt16, typeChar, typeFloat, functionTypeArity
+  , typeRealWorld, typeUnsafePtr, typeTrampoline, typeRegion, typeInt, typeInt16, typeChar, typeFloat, functionTypeArity
   ) where
 
 import Lvm.Common.Id(Id, stringFromId, idFromString)
@@ -30,6 +30,7 @@ typeRealWorld, typeUnsafePtr, typeTrampoline, typeInt, typeInt16, typeChar, type
 typeRealWorld = TStrict $ TCon $ TConDataType $ idFromString "$RealWorld"
 typeUnsafePtr = TStrict $ TCon $ TConDataType $ idFromString "$UnsafePtr"
 typeTrampoline = TStrict $ TCon $ TConDataType $ idFromString "$Trampoline"
+typeRegion = TStrict $ TCon $ TConDataType $ idFromString "$Region"
 typeInt = TStrict $ TCon $ TConDataType $ idFromString "Int"
 typeInt16 = TStrict $ TCon $ TConDataType $ idFromString "Int16"
 typeChar = TStrict $ TCon $ TConDataType $ idFromString "Char"

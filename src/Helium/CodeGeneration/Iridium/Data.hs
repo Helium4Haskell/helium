@@ -25,6 +25,8 @@ import Data.Either(isLeft, isRight, rights)
 import Helium.CodeGeneration.Iridium.Type
 import Helium.CodeGeneration.Iridium.Primitive(findPrimitive, primType)
 
+import qualified Helium.CodeGeneration.Iridium.Region.Annotation as Region
+
 type BlockName = Id
 
 data Module = Module
@@ -108,6 +110,7 @@ data MethodAnnotation
   -- We currently assume that the return type of the function is 'int'.
   -- Cannot be used in combination with 'MethodAnnotateTrampoline'.
   | MethodAnnotateFakeIO
+  | MethodAnnotateRegion !(Region.Argument Region.Annotation)
   deriving (Eq, Ord)
 
 data CallingConvention
@@ -173,12 +176,18 @@ data Instruction
   -- The control flow or the argument should guarantee that this location is unreachable. In the case of calling 'error',
   -- the argument should be the returned value of 'error'.
   | Unreachable !(Maybe Variable)
+  | RegionRelease !Local
   deriving (Eq, Ord)
 
 -- * A bind describes the construction of an object in a 'letalloc' instruction. It consists of the
 -- variable to which the object is bound, the target and argument. A target represents what kind of object
 -- is created.
-data Bind = Bind { bindVar :: !Id, bindTarget :: !BindTarget, bindArguments :: ![Either Type Variable] }
+data Bind = Bind { bindVar :: !Id, bindTarget :: !BindTarget, bindArguments :: ![Either Type Variable], bindRegion :: !RegionVariable }
+  deriving (Eq, Ord)
+
+data RegionVariable
+  = RegionGlobal
+  | RegionLocal !Local
   deriving (Eq, Ord)
 
 -- * A bind can either construct a thunk, a constructor or a tuple. For thunks, we distinguish
@@ -244,24 +253,24 @@ typeApplyArguments env tp args = case tp' of
 -- * Find the type of the constructed object in a Bind
 bindType :: TypeEnvironment -> Bind -> Type
 -- In case of a constructor application, we get a value in WHNF of the related data type.
-bindType env (Bind _ (BindTargetConstructor cons) args) = typeToStrict $ typeApplyArguments env (constructorType cons) args
+bindType env (Bind _ (BindTargetConstructor cons) args _) = typeToStrict $ typeApplyArguments env (constructorType cons) args
 -- For a tuple, we get a value in WHNF of the given tuple size.
-bindType env (Bind _ (BindTargetTuple arity) args) = typeToStrict $ foldl ap (TCon $ TConTuple arity) args
+bindType env (Bind _ (BindTargetTuple arity) args _) = typeToStrict $ foldl ap (TCon $ TConTuple arity) args
   where
     ap t1 (Right _) = t1
     ap t1 (Left t2) = t1 `TAp` t2
 -- When binding to a global function, we get a thunk in WHNF (TypeFunction) if not enough arguments were passed,
 -- or TypeAnyThunk (not in WHNF) otherwise.
-bindType env (Bind _ (BindTargetFunction (GlobalFunction fn arity fntype)) args)
+bindType env (Bind _ (BindTargetFunction (GlobalFunction fn arity fntype)) args _)
   | arity > valueArgCount = typeToStrict $ tp
   | otherwise = tp
   where
     tp = typeRemoveArgumentStrictness $ typeApplyArguments env fntype args
     valueArgCount = length $ filter isRight args
-bindType env (Bind _ (BindTargetThunk fn) args) = typeApplyArguments env (variableType fn) args
+bindType env (Bind _ (BindTargetThunk fn) args _) = typeApplyArguments env (variableType fn) args
 
 bindLocal :: TypeEnvironment -> Bind -> Local
-bindLocal env b@(Bind var _ _) = Local var $ bindType env b
+bindLocal env b@(Bind var _ _ _) = Local var $ bindType env b
 
 -- * Expressions are used to bind values to variables in 'let' instructions.
 -- Those binds cannot be recursive.
@@ -290,6 +299,7 @@ data Expr
   -- `%c = seq %a %b` marks a dependency between variables %a and %b. Assigns %b to %c and ignores the value of %a. 
   -- Prevents that variable %a is removed by dead code removal. Can be used to compile the Haskell functions `seq` and `pseq`.
   | Seq !Variable !Variable
+  | RegionAllocate
   deriving (Eq, Ord)
 
 data PhiBranch = PhiBranch { phiBlock :: !BlockName, phiVariable :: !Variable }
@@ -316,6 +326,7 @@ typeOfExpr _ (Phi (PhiBranch _ var : _)) = variableType var
 typeOfExpr env (PrimitiveExpr name args) = typeApplyArguments env (typeFromFunctionType $ primType $ findPrimitive name) args
 typeOfExpr _ (Undefined t) = t
 typeOfExpr _ (Seq _ v) = variableType v
+typeOfExpr _ RegionAllocate = typeRegion
 
 dependenciesOfExpr :: Expr -> [Variable]
 dependenciesOfExpr (Literal _) = []
@@ -329,6 +340,7 @@ dependenciesOfExpr (Phi branches) = map phiVariable branches
 dependenciesOfExpr (PrimitiveExpr _ args) = [arg | Right arg <- args]
 dependenciesOfExpr (Undefined _) = []
 dependenciesOfExpr (Seq v1 v2) = [v1, v2]
+dependenciesOfExpr RegionAllocate = []
 
 variableType :: Variable -> Type
 variableType (VarLocal (Local _ t)) = t

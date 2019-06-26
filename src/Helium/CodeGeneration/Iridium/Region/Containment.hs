@@ -55,7 +55,7 @@ containment env = containment' [] Nothing
     containmentDataType parent name typeArgs regionArgs = constraintsDataType ++ constraintsFields
       where
         EffectDataType _ argSort constraints = eeLookupDataType env name
-        constraintsDataType = instantiateRelationConstraints (\(RegionVar idx) -> Just $ argumentFlatten (regionArgs !! idx)) constraints
+        constraintsDataType = instantiateRelationConstraints (\(RegionVar idx) -> Just $ argumentFlatten (regionArgs !!! idx)) constraints
         constraintsFields = case argSort of
           SortArgumentList argSorts ->
             concat $ zipWith fieldConstraints argSorts regionArgs

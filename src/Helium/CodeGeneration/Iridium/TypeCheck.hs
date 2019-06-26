@@ -144,7 +144,7 @@ analyseInstruction env _ (Case var _) = variableToAnalysis var
 analyseInstruction _ _ _ = AEmpty
 
 analyseBind :: TypeEnvironment -> Bind -> Analysis
-analyseBind env bind@(Bind var target args) =
+analyseBind env bind@(Bind var target args _) =
   AVar var DeclareLocal tp
   `AJoin` aTarget
   `AJoin` fromList [ variableToAnalysis arg | Right arg <- args ]

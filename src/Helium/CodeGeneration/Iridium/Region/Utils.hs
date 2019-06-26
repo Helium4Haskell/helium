@@ -3,6 +3,8 @@ module Helium.CodeGeneration.Iridium.Region.Utils where
 import System.IO
 import Lvm.Common.Id
 import Lvm.Core.Type
+import Data.IntMap (IntMap)
+import qualified Data.IntMap.Strict as IntMap
 
 typeDependencies :: Bool -> Type -> [Id]
 typeDependencies inFunctions tp = dependencies tp []
@@ -26,3 +28,13 @@ tryIndex :: [a] -> Int -> Maybe a
 tryIndex [] _ = Nothing
 tryIndex (a:_) 0 = Just a
 tryIndex (_:as) n = tryIndex as (n - 1)
+
+(!!!) :: Show a => [a] -> Int -> a
+(!!!) as idx = case tryIndex as idx of
+  Just a -> a
+  Nothing -> error $ "index: cannot find index " ++ show idx ++ " in " ++ show as
+
+showIntMap :: Show a => IntMap a -> String
+showIntMap m = IntMap.toList m >>= showElem
+  where
+    showElem (key, value) = "\n" ++ show key ++ " = " ++ show value

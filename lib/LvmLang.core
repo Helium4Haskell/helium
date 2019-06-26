@@ -221,10 +221,10 @@ negFloat = \x: Float -> primNegFloat x
 {----------------------------------------------------------
   Packed strings
 ----------------------------------------------------------}
-stringFromPacked :: PackedString -> String
+stringFromPacked :: String -> String
 stringFromPacked = \p: String -> p
 
-packedFromString :: String -> PackedString
+packedFromString :: String -> String
 packedFromString = \s: String -> s
   {- = let forced s = case s of
                      []       -> []
@@ -249,7 +249,7 @@ packedFromString = \s: String -> s
        in prim_string_of_chars len t
     -}
 
-{- packedLength :: PackedString -> Int
+{- packedLength :: String -> Int
 packedLength s
   = let! s = s in prim_string_length s
 -}

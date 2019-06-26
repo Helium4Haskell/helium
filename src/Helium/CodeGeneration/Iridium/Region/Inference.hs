@@ -17,6 +17,7 @@ import Helium.CodeGeneration.Iridium.Region.AnnotationNormalize
 import Helium.CodeGeneration.Iridium.Region.MethodInitialize
 import Helium.CodeGeneration.Iridium.Region.MethodRegionArguments
 import Helium.CodeGeneration.Iridium.Region.MethodSolveConstraints
+import Helium.CodeGeneration.Iridium.Region.MethodTransform
 import Helium.CodeGeneration.Iridium.Region.EffectEnvironment
 import Helium.CodeGeneration.Iridium.Region.Utils
 
@@ -40,7 +41,11 @@ regionInference supply log typeEnv effectEnv group = do
   let withRegions = methodsAddRegionArguments effectEnv' initialized
   logStates withRegions
 
-  let effectEnv'' = foldr updateGlobal effectEnv' methods
+  (effectEnv'', solution) <- methodsSolveConstraints log effectEnv' withRegions
+  
+  logStates solution
+
+  let group' = mapBindingGroup (methodTransform solution) group
 
   return (effectEnv'', group)
   where
@@ -52,10 +57,7 @@ regionInference supply log typeEnv effectEnv group = do
         (idx', arg) = sortArgumentToArgument' 0 idx sort
         global = EffectGlobal (length $ rights args) tp $ fmap AVar arg
 
-    updateGlobal :: Declaration Method -> EffectEnvironment -> EffectEnvironment
-    updateGlobal (Declaration name _ _ _ _) = eeUpdateGlobal name (\(EffectGlobal arity tp a) -> EffectGlobal arity tp $ fmap (const ABottom) a)
-
-    logStates :: IdMap MethodState -> IO ()
+    logStates :: Show a => IdMap a -> IO ()
     logStates m
       | isJust log = sequence_ $ fmap (\(name, state) -> debugLog log ("%" ++ showId name ":") >> debugLog log (show state)) $ listFromMap m
       | otherwise = return ()

@@ -129,6 +129,8 @@ compileInstruction env supply (Iridium.Case var (Iridium.CaseInt alts defaultBra
 
 compileInstruction _ _ (Iridium.Unreachable _) = Partial [] (Do $ Unreachable []) []
 
+compileInstruction _ _ (Iridium.RegionRelease _) = error "compileInstruction: TODO: compile RegionRelease"
+
 compileExpression :: Env -> NameSupply -> Iridium.Expr -> Id -> [Named Instruction]
 compileExpression env supply (Iridium.Literal (Iridium.LitString value)) name =
   [ namePtr := Alloca vectorType Nothing 0 []
@@ -221,8 +223,11 @@ compileExpression env supply expr@(Iridium.Call to@(Iridium.GlobalFunction globa
         }
     ]
     ++ [toName nameRealWorld := Select (ConstantOperand $ Int 1 1) (ConstantOperand $ Undef tRealWorld) (ConstantOperand $ Undef tRealWorld) []]
-    ++ compileBinds env supply'' [Iridium.Bind name (Iridium.BindTargetConstructor ioRes)
-        [Left Iridium.typeInt, Right $ Iridium.VarLocal $ Iridium.Local nameValue Iridium.typeInt, Right $ Iridium.VarLocal $ Iridium.Local nameRealWorld Iridium.typeRealWorld]]
+    ++ compileBinds env supply'' [
+      Iridium.Bind name (Iridium.BindTargetConstructor ioRes)
+        [Left Iridium.typeInt, Right $ Iridium.VarLocal $ Iridium.Local nameValue Iridium.typeInt, Right $ Iridium.VarLocal $ Iridium.Local nameRealWorld Iridium.typeRealWorld]
+        Iridium.RegionGlobal
+      ]
   where
     Iridium.FunctionType argTypes retType = Iridium.extractFunctionTypeWithArity (envTypeEnv env) arity tp
     EnvMethodInfo convention fakeIO = findMap global (envMethodInfo env)
@@ -257,6 +262,7 @@ compileExpression env supply (Iridium.PrimitiveExpr primName args) name = compil
 compileExpression env supply (Iridium.Undefined ty) name = [toName name := Select (ConstantOperand $ Int 1 1) (ConstantOperand $ Undef t) (ConstantOperand $ Undef t) []]
   where
     t = compileType env ty
+compileExpression env supply Iridium.RegionAllocate name = error "compileExpression: TODO: Compile RegionAllocate expression"
 
 compileEval :: Env -> NameSupply -> Operand -> Core.Type -> Name -> [Named Instruction]
 compileEval env supply operand tp name

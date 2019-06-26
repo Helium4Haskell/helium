@@ -37,18 +37,18 @@ compileBinds env supply binds = concat inits ++ concat assigns
     (inits, assigns) = unzip $ mapWithSupply (compileBind env) supply $ sortBinds binds
 
 compileBind :: Env -> NameSupply -> Iridium.Bind -> ([Named Instruction], [Named Instruction])
-compileBind env supply b@(Iridium.Bind varId target args)
+compileBind env supply b@(Iridium.Bind varId target args atRegion)
   = compileBind' env supply b $ toStruct env target $ length $ filter isRight args
 
 compileBind' :: Env -> NameSupply -> Iridium.Bind -> Either Int Struct -> ([Named Instruction], [Named Instruction])
-compileBind' env supply (Iridium.Bind varId target _) (Left tag) = 
+compileBind' env supply (Iridium.Bind varId target _ _) (Left tag) = 
   ( [toName varId := AST.IntToPtr (ConstantOperand $ Constant.Int (fromIntegral $ targetWordSize $ envTarget env) value) voidPointer []]
   , [])
   where
     -- Put a '1' in the least significant bit to distinguish it from a pointer.
     value :: Integer
     value = fromIntegral tag * 2 + 1
-compileBind' env supply bind@(Iridium.Bind varId target args) (Right struct) =
+compileBind' env supply bind@(Iridium.Bind varId target args atRegion) (Right struct) =
   ( concat splitInstructions
     ++ allocate env nameVoid nameStruct t struct
     ++ castBind
@@ -169,9 +169,9 @@ sortBinds :: [Iridium.Bind] -> [Iridium.Bind]
 sortBinds = map getBind . Graph.stronglyConnComp . map node
   where
     node :: Iridium.Bind -> (Iridium.Bind, Id, [Id])
-    node bind@(Iridium.Bind name (Iridium.BindTargetThunk target) _) =
+    node bind@(Iridium.Bind name (Iridium.BindTargetThunk target) _ _) =
       (bind, name, [Iridium.variableName target])
-    node bind@(Iridium.Bind name _ _) =
+    node bind@(Iridium.Bind name _ _ _) =
       (bind, name, [])
     getBind :: Graph.SCC Iridium.Bind -> Iridium.Bind
     getBind (Graph.AcyclicSCC bind) = bind

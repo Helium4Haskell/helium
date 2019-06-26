@@ -19,6 +19,7 @@ import Data.Either(isRight)
 import Helium.CodeGeneration.Iridium.Data
 import Helium.CodeGeneration.Iridium.Type
 import qualified Text.PrettyPrint.Leijen as Pretty
+import Helium.CodeGeneration.Iridium.Region.Annotation ()
 
 class ShowDeclaration a where
   showDeclaration :: a -> (String, String)
@@ -96,6 +97,7 @@ instance ShowWithQuantors Expr where
   showsQ quantors (PrimitiveExpr prim args) = text "prim " . text (stringFromId prim) . showCallArguments quantors args
   showsQ quantors (Undefined t) = text "undefined " . showsQ quantors t
   showsQ quantors (Seq v1 v2) = text "seq " . showsQ quantors v1 . text ", " . showsQ quantors v2
+  showsQ quantors RegionAllocate = text "regionallocate"
 
 instance ShowWithQuantors PhiBranch where
   showsQ quantors (PhiBranch branch var) = text (stringFromId branch) . text " => " . showsQ quantors var
@@ -103,8 +105,12 @@ instance ShowWithQuantors PhiBranch where
 instructionIndent :: String
 instructionIndent = "  "
 
+instance ShowWithQuantors RegionVariable where
+  showsQ quantors (RegionGlobal) = text "global"
+  showsQ quantors (RegionLocal var) = showsQ quantors var
+
 instance ShowWithQuantors Bind where
-  showsQ quantors (Bind var target args) = text "%" . showId var . text " = " . showsQ quantors target . text " $ " . showCallArguments quantors args
+  showsQ quantors (Bind var target args at) = text "%" . showId var . text " = " . showsQ quantors target . text " $ " . showCallArguments quantors args . text " at " . showsQ quantors at
 
 instance ShowWithQuantors BindTarget where
   showsQ quantors (BindTargetFunction global) = text "function " . shows global
@@ -147,6 +153,7 @@ instance ShowWithQuantors Instruction where
     text instructionIndent . text "unreachable " . showsQ quantors var
   showsQ quantors (Unreachable Nothing) =
     text instructionIndent . text "unreachable"
+  showsQ quantors (RegionRelease var) = text "regionrelease " . showsQ quantors var
 
 instance ShowWithQuantors Local where
   showsQ quantors (Local name t) = ('%' :) . showId name . text ": " . showsQ quantors t
@@ -168,6 +175,7 @@ instance Show MethodAnnotation where
   show MethodAnnotateTrampoline = "trampoline"
   show (MethodAnnotateCallConvention conv) = "callconvention:" ++ show conv
   show MethodAnnotateFakeIO = "fake_io"
+  show (MethodAnnotateRegion annotation) = "region:" ++ show annotation
 
 instance Show CallingConvention where
   show CCC = "c"

@@ -142,11 +142,6 @@ writeArguments inFunctions var arguments update updateCon instantiate additional
       where
         FunctionType args _ = extractFunctionTypeNoSynonyms tp
 
-sortArgumentFlatten :: SortArgument a -> [SortArgument a] -- Result does not contain SortArgumentList
-sortArgumentFlatten (SortArgumentList args) = args >>= sortArgumentFlatten
-sortArgumentFlatten (SortArgumentPolymorphic (TypeVar (-1)) []) = [] -- Type variable for recursion. Does not add additional region/annotation variables, so we can ignore this.
-sortArgumentFlatten arg = [arg]
-
 sortToArgument :: (Int -> b) -> Argument b -> Int -> SortArgument a -> (Int, Argument b)
 sortToArgument var arguments next (SortArgumentList sorts)
   = (next', ArgumentList as)

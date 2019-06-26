@@ -28,13 +28,31 @@ methodsAddRegionArguments env states = mapMapWithId (methodAddRegionArguments en
     methods = mapMap (methodRegions env) states
 
 methodAddRegionArguments :: EffectEnvironment -> IdMap MethodRegions -> Id -> MethodState -> MethodState
-methodAddRegionArguments env methods name state = assignAdditionalRegionVariables count (applyCallRegions methods name methodRegions) state
+methodAddRegionArguments env methods name state = assignAdditionalRegionVariables count addOwnRegionArguments state
   where
     methodRegionCount = countCallRegions methods [] name
     methodRegions = map (variableFromIndices (msAdditionalArgumentScope state)) [0 .. methodRegionCount - 1]
+
     count :: Constraint -> Int
-    count CCall{cCallTarget = Left target} = countCallRegions methods [name] target
+    count CCall{cCallIdentifier = identifier, cCallTarget = Left target} = case findMap identifier callRegionsMap of
+      MethodCallRegions _ _ (Just c) -> c -- Method is declared in another binding group. We already know the number of regions
+      _ -> countCallRegions methods [name] target -- Method is declared in the same binding group.
     count _ = 0
+
+    callRegionsMap
+      = mapFromList
+      $ map (\mcr@(MethodCallRegions identifier _ _) -> (identifier, mcr))
+      $ mrCallRegions
+      $ findMap name methods
+
+    -- If we call a method in the same binding group, we must add our own region arguments in the recursive positions
+    -- in the list of additional region arguments to the call.
+    addOwnRegionArguments :: Constraint -> [RegionVar] -> [RegionVar]
+    addOwnRegionArguments call@CCall{cCallIdentifier = identifier, cCallTarget = Left _} = case findMap identifier callRegionsMap of
+      MethodCallRegions _ _ (Just _) -> id -- Other binding group, don't add own region arguments
+      _ -> applyCallRegions methods name methodRegions call
+    addOwnRegionArguments call = id
+
 
 data MethodRegions = MethodRegions { mrRegionCount :: !Int, mrCallRegions :: ![MethodCallRegions] }
 type MethodRegionsMap = IdMap MethodRegions
@@ -52,6 +70,7 @@ constraintRegions env (CCall lhs _ _ _ (Left target) _ _ _ _) = Just $ MethodCal
     arguments = case annotation of
       ArgumentList [] -> Just 0
       ArgumentList (ArgumentValue (ALam _ (SortArgumentList args) _) : _) -> Just $ length args
+      ArgumentList (ArgumentValue ABottom : _) -> Just 0
       _ -> Nothing
 constraintRegions _ _ = Nothing
 
@@ -69,6 +88,7 @@ countCallRegions methods = count
     countCall _ (MethodCallRegions _ _ (Just c)) = c
     countCall stack (MethodCallRegions _ target _) = count stack target
 
+-- Inserts the region arguments for recursive positions in the additional region argument list of a function call
 applyCallRegions :: MethodRegionsMap -> Id -> [RegionVar] -> Constraint -> [RegionVar] -> [RegionVar]
 applyCallRegions methods root recursive CCall{ cCallTarget = Left name } allRegions = snd $ apply [] allRegions name
   where
@@ -88,4 +108,3 @@ applyCallRegions methods root recursive CCall{ cCallTarget = Left name } allRegi
         (regions, freshRegions') = splitAt count freshRegions
     applyCall stack freshRegions (MethodCallRegions _ target _) = apply stack freshRegions target
 applyCallRegions _ _ _ _ _ = []
-

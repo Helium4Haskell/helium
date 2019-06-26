@@ -105,6 +105,7 @@ pExpression quantors = do
     "prim" -> PrimitiveExpr <$> pId <* pWhitespace <*> pCallArguments quantors
     "undefined" -> Undefined <$ pWhitespace <*> pTypeAtom' quantors
     "seq" -> Seq <$> pVariable quantors <* pWhitespace <* pToken ',' <* pWhitespace <*> pVariable quantors
+    "regionallocate" -> return RegionAllocate
     _ -> pError "expected expression"
 
 pPhiBranch :: QuantorIndexing -> Parser PhiBranch

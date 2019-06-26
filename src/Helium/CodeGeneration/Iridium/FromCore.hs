@@ -248,7 +248,7 @@ toInstruction supply env continue (Core.Lit lit) = Let name expr +> ret supply' 
 toInstruction supply env continue (Core.Var var) = case resolve env var of
   Right global ->
     let
-      bind = Bind name (BindTargetFunction global) []
+      bind = Bind name (BindTargetFunction global) [] RegionGlobal
     in
       LetAlloc [bind] +> ret supply' env name continue
   Left variable
@@ -267,7 +267,7 @@ toInstruction supply env continue expr = case getApplicationOrConstruction expr 
       (casted, castInstructions, _) = maybeCasts supply''' env fntype args
     in
       castInstructions
-        +> LetAlloc [Bind x (BindTargetConstructor dataTypeCon) casted]
+        +> LetAlloc [Bind x (BindTargetConstructor dataTypeCon) casted RegionGlobal]
         +> ret supplyRet env x continue
   (Left con@(Core.ConTuple arity), args) ->
     let
@@ -275,7 +275,7 @@ toInstruction supply env continue expr = case getApplicationOrConstruction expr 
       (args', castInstructions, _) = maybeCasts supply''' env fntype args
     in
       castInstructions
-        +> LetAlloc [Bind x (BindTargetTuple arity) args']
+        +> LetAlloc [Bind x (BindTargetTuple arity) args' RegionGlobal]
         +> ret supplyRet env x continue
   (Right fn, args)
     | all isLeft args && not (isGlobalFunction $ resolve env fn) ->
@@ -299,7 +299,7 @@ toInstruction supply env continue expr = case getApplicationOrConstruction expr 
               (args', castInstructions, tp) = maybeCasts supply''' env fntype args
             in
               castInstructions
-                +> LetAlloc [Bind y (BindTargetThunk $ VarGlobal $ GlobalVariable qualifiedName fntype) args']
+                +> LetAlloc [Bind y (BindTargetThunk $ VarGlobal $ GlobalVariable qualifiedName fntype) args' RegionGlobal]
                 +> Let z (Eval $ VarLocal $ Local y tp)
                 +> ret supplyRet env z continue
           | arity == argsArity ->
@@ -315,7 +315,7 @@ toInstruction supply env continue expr = case getApplicationOrConstruction expr 
               (args', castInstructions, tp) = maybeCasts supply''' env fntype args
             in
               castInstructions
-                +> LetAlloc [Bind x (BindTargetFunction $ GlobalFunction qualifiedName arity fntype) args']
+                +> LetAlloc [Bind x (BindTargetFunction $ GlobalFunction qualifiedName arity fntype) args' RegionGlobal]
                 +> ret supplyRet env x continue
           | otherwise ->
             -- Too many arguments. Evaluate the function with the first `length params` arguments,
@@ -330,7 +330,7 @@ toInstruction supply env continue expr = case getApplicationOrConstruction expr 
               castInstructions1
                 +> castInstructions2
                 +> Let x (Call (GlobalFunction qualifiedName arity fntype) args1')
-                +> LetAlloc [Bind y (BindTargetThunk $ VarLocal $ Local x $ Core.typeToStrict tp1) args2']
+                +> LetAlloc [Bind y (BindTargetThunk $ VarLocal $ Local x $ Core.typeToStrict tp1) args2' RegionGlobal]
                 +> Let z (Eval $ VarLocal $ Local y tp2)
                 +> ret supplyRet env z continue
         Nothing ->
@@ -339,7 +339,7 @@ toInstruction supply env continue expr = case getApplicationOrConstruction expr 
           let
             (supplyCast1, supplyCast2) = splitNameSupply supply'''
             (args', castInstructions, tp) = maybeCasts supplyCast1 env (variableType var) args
-            bind = Bind x (BindTargetThunk var) args'
+            bind = Bind x (BindTargetThunk var) args' RegionGlobal
             var = resolveVariable env fn
           in
             castInstructions
@@ -469,7 +469,7 @@ gatherCaseConstructorAlts supply env (continue:continues) remaining var (Core.Al
     (nextAlts, nextBlocks) = gatherCaseConstructorAlts supply2 env continues remaining' var alts
 
 bind :: NameSupply -> TypeEnv -> Core.Bind -> Bind
-bind supply env (Core.Bind (Core.Variable x _) val) = Bind x target $ map toArg args
+bind supply env (Core.Bind (Core.Variable x _) val) = Bind x target (map toArg args) RegionGlobal
   where
     (apOrCon, args) = getApplicationOrConstruction val []
     (supply1, supply2) = splitNameSupply supply

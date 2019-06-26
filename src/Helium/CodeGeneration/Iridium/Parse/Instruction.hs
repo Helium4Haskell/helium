@@ -1,5 +1,6 @@
 module Helium.CodeGeneration.Iridium.Parse.Instruction where
 
+import Data.Maybe
 import Helium.CodeGeneration.Iridium.Parse.Parser
 import Helium.CodeGeneration.Iridium.Parse.Type
 import Helium.CodeGeneration.Iridium.Parse.Expression
@@ -33,6 +34,7 @@ pInstruction quantors = do
         "case" -> Case <$> pVariable quantors <* pWhitespace <*> pCase
         "return" -> Return <$> pVariable quantors
         "unreachable" -> Unreachable <$> pMaybe (pVariable quantors)
+        "regionrelease" -> RegionRelease <$> (pLocal quantors)
         _ -> pError "expected instruction"
 
 pMatchField :: Parser (Maybe Id)
@@ -56,7 +58,24 @@ pCaseAlt :: Parser a -> Parser (a, BlockName)
 pCaseAlt pPattern = (\pat to -> (pat, to)) <$> pPattern <* pWhitespace <* pSymbol "to" <* pWhitespace <*> pId
 
 pBind :: QuantorIndexing -> Parser Bind
-pBind quantors = Bind <$ pToken '%' <*> pId <* pWhitespace <* pToken '=' <* pWhitespace <*> pBindTarget quantors <* pWhitespace <* pToken '$' <* pWhitespace <*> pCallArguments quantors
+pBind quantors = Bind <$ pToken '%'
+  <*> pId <* pWhitespace
+  <* pToken '=' <* pWhitespace <*> pBindTarget quantors
+  <* pWhitespace <* pToken '$' <* pWhitespace
+  <*> pCallArguments quantors
+  <* pWhitespace
+  <*> pAt
+  where
+    pAt :: Parser RegionVariable
+    pAt = fromMaybe RegionGlobal <$> pMaybe (pSymbol "at" *> pRegionVariable quantors)
+
+pRegionVariable :: QuantorIndexing -> Parser RegionVariable
+pRegionVariable quantors = do
+  c <- lookahead
+  if c == '%' then do
+    RegionLocal <$> pLocal quantors
+  else do
+    RegionGlobal <$ pSymbol "global"
 
 pBindTarget :: QuantorIndexing -> Parser BindTarget
 pBindTarget quantors = do

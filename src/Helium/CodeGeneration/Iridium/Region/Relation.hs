@@ -9,6 +9,7 @@ module Helium.CodeGeneration.Iridium.Region.Relation
   , emptyRelation
   , relationFromTransitiveConstraints
   , relationFromConstraints
+  , relationToConstraints
   , relationUnion
   , relationDecrementScope
   , relationDFS
@@ -26,11 +27,17 @@ import qualified Data.IntMap.Strict as IntMap
 
 import Helium.CodeGeneration.Iridium.Region.Sort
 
-import Debug.Trace
-
 newtype RegionVar = RegionVar { unRegionVar :: Int } deriving (Eq, Ord)
 newtype Vertex = Vertex Int deriving (Eq, Show)
-newtype Relation = Relation (IntMap (IntSet)) -- Map from vertex to the vertices it outlives
+
+-- Map from vertex x to the vertices y such that y outlives x
+-- Example in pseudo code:
+-- Relation { 1 => {2, 3}, 2 => {3} }
+-- Corresponds to the constraints:
+-- r_2 outlives r_1
+-- r_3 outlives r_1
+-- r_3 outlives r_2
+newtype Relation = Relation (IntMap (IntSet))
 
 instance IndexVariable RegionVar where
   variableToInt (RegionVar i) = i
@@ -50,7 +57,10 @@ emptyRelation = Relation IntMap.empty
 -- are polymorphic on the same type, or if only the left argument is polymorphic
 data RelationConstraint
   = Outlives !RegionVar !RegionVar
-  deriving (Eq, Ord)
+  deriving (Eq)
+
+instance Ord RelationConstraint where
+  Outlives r1 r2 <= Outlives r1' r2' = r2 < r2' || (r2 == r2' && r1 <= r1')
 
 instantiateRelationConstraints :: (RegionVar -> Maybe [RegionVar]) -> [RelationConstraint] -> [RelationConstraint]
 instantiateRelationConstraints f constraints = constraints >>= instantiateRelationConstraint f
@@ -76,10 +86,10 @@ substitute mapping (RegionVar r1) = case IntMap.lookup r1 mapping of
   Nothing -> RegionVar r1
 
 graphFromConstraints :: [RelationConstraint] -> IntMap IntSet
-graphFromConstraints constraints = IntMap.fromList $ map fromGroup $ groupBy (\(Outlives r1 _) (Outlives r2 _) -> r1 == r2) $ sort constraints
+graphFromConstraints constraints = IntMap.fromList $ map fromGroup $ groupBy (\(Outlives _ r1) (Outlives _ r2) -> r1 == r2) $ sort constraints
   where
     fromGroup :: [RelationConstraint] -> (Int, IntSet)
-    fromGroup cs@(Outlives (RegionVar r1) _ : _) = (r1, IntSet.fromAscList $ map (\(Outlives _ (RegionVar r2)) -> r2) cs)
+    fromGroup cs@(Outlives _ (RegionVar r1) : _) = (r1, IntSet.fromAscList $ map (\(Outlives (RegionVar r2) _) -> r2) cs)
 
 relationFromTransitiveConstraints :: [RelationConstraint] -> Relation
 relationFromTransitiveConstraints = Relation . graphFromConstraints
@@ -89,21 +99,21 @@ relationFromConstraints lambdaBound regionCount externalRegions constraints = tr
   where
     graph = graphFromConstraints constraints
 
-constraintsFromRelation :: Relation -> [RelationConstraint]
-constraintsFromRelation (Relation graph) = IntMap.foldrWithKey constraintsForVertex [] graph
-  where
-    constraintsForVertex :: Int -> IntSet -> [RelationConstraint] -> [RelationConstraint]
-    constraintsForVertex r1 set accum = map (\r2 -> Outlives (RegionVar r1) (RegionVar r2)) (IntSet.toList set) ++ accum
+relationFoldr :: (RegionVar -> RegionVar -> a -> a) -> a -> Relation -> a
+relationFoldr f init (Relation graph) = IntMap.foldrWithKey (\r1 r2s a -> IntSet.foldr (\r2 -> f (RegionVar r1) (RegionVar r2)) a r2s) init graph
+
+relationToConstraints :: Relation -> [RelationConstraint]
+relationToConstraints = relationFoldr (\r1 r2 -> (Outlives r2 r1 :)) []
 
 instance Show Relation where
-  show rel = show (constraintsFromRelation rel)
+  show rel = show (relationToConstraints rel)
 
 outlives :: Relation -> RegionVar -> RegionVar -> Bool
 outlives (Relation graph) (RegionVar r1) (RegionVar r2)
   | r1 == r2 = True
-  | otherwise = case IntMap.lookup r1 graph of
+  | otherwise = case IntMap.lookup r2 graph of
     Nothing -> False
-    Just rs -> r2 `IntSet.member` rs
+    Just rs -> r1 `IntSet.member` rs
 
 newtype Component = Component { unComponent :: Int } deriving (Eq, Ord, Show)
 
@@ -148,8 +158,8 @@ transitiveClosure lambdaBound internalCount externalRegions (Relation graph) =
 
     finalState = foldr visitIfNew initialState $ map (variableFromIndices lambdaBound) [0..internalCount] ++ externalRegions
 
-    predecessors :: Vertex -> IntSet
-    predecessors (Vertex v) = case IntMap.lookup v graph of
+    successors :: Vertex -> IntSet
+    successors (Vertex v) = case IntMap.lookup v graph of
       Nothing -> IntSet.empty
       Just set -> set
 
@@ -167,8 +177,8 @@ transitiveClosure lambdaBound internalCount externalRegions (Relation graph) =
         state2 = state1{ tcVStack = v : tcVStack state1, tcFreshTraversalIndex = tcFreshTraversalIndex state + 1 }
         savedHeight = tcCStackHeight state
 
-        -- for each vertex w such that (w, v) ∈ E do
-        state3 = IntSet.foldr' (\w -> visitEdge v (Vertex w)) state2 $ predecessors v
+        -- for each vertex w such that (v, w) ∈ E (thus w outlives v) do
+        state3 = IntSet.foldr' (\w -> visitEdge v (Vertex w)) state2 $ successors v
 
         final = fromMaybe (error "transitiveClosure: couldn't find nodes") $ tcGetVertex v state3
       in
@@ -203,7 +213,7 @@ transitiveClosure lambdaBound internalCount externalRegions (Relation graph) =
                 predsX = fromMaybe IntSet.empty $ IntMap.lookup x $ tcComponents state3
             preds = foldr unionComponent IntSet.empty components'
 
-            state4 = state3{ tcFreshComponent = cIndex + 1, tcCStack = rest, tcCStackHeight = savedHeight, tcVStack = tail vRest, tcComponents = IntMap.insert cIndex preds $ tcComponents state3 }
+            state4 = state3{ tcFreshComponent = freshComponent, tcCStack = rest, tcCStackHeight = savedHeight, tcVStack = tail vRest, tcComponents = IntMap.insert cIndex preds $ tcComponents state3 }
 
             {-
             repeat
@@ -252,8 +262,7 @@ transitiveClosure lambdaBound internalCount externalRegions (Relation graph) =
 
 topologicalSort :: IntMap IntSet -> [Component] -> [Component]
 topologicalSort _ [] = []
-topologicalSort graph cs = let x = snd $ foldr (\(Component c) -> topologicalSort' graph c) (IntSet.empty, []) cs
-        in trace (show (map unComponent cs) ++ " => " ++ show (map unComponent x)) $ x
+topologicalSort graph cs = snd $ foldr (\(Component c) -> topologicalSort' graph c) (IntSet.empty, []) cs
 
 topologicalSort' :: IntMap IntSet -> Int -> (IntSet, [Component]) -> (IntSet, [Component])
 topologicalSort' graph c (visited, accum)
@@ -265,7 +274,28 @@ topologicalSort' graph c (visited, accum)
     (visited'', accum') = IntSet.foldr (topologicalSort' graph) (visited', accum) preds
 
 relationUnion :: Relation -> Relation -> Relation
-relationUnion (Relation g1) (Relation g2) = undefined
+relationUnion relLeft@(Relation gLeft) relRight@(Relation gRight) = iterate (unionWithoutClosure rel relHops)
+  where
+    rel = unionWithoutClosure relLeft relRight
+    relHops = unionWithoutClosure (twoHops relLeft relRight) (twoHops relRight relLeft)
+
+    iterate :: Relation -> Relation
+    iterate current
+      | didChange = iterate next
+      | otherwise = current
+      where
+        (didChange, next) = relationFoldr edgeAddHops (False, current) relHops
+
+    -- For an edge (v, w) performs successors(v) := (successors(v) union successors(w)) - {v}
+    edgeAddHops :: RegionVar -> RegionVar -> (Bool, Relation) -> (Bool, Relation)
+    edgeAddHops (RegionVar v) (RegionVar w) (change, Relation g) = case IntMap.lookup v g of
+      Nothing -> error "relationUnion: couldn't find vertex v, whereas edge (v,w) exists"
+      Just succVs -> case IntMap.lookup w g of
+        Nothing -> (change, Relation g)
+        Just succWs ->
+          let
+            new = v `IntSet.delete` IntSet.union succVs succWs
+          in if new == succVs then (change, Relation g) else (True, Relation $ IntMap.insert v new g)
 
 relationFilter :: (RegionVar -> Bool) -> Relation -> Relation
 relationFilter f (Relation graph) = Relation $ IntMap.map (IntSet.filter (f . RegionVar)) $ IntMap.filterWithKey (\key _ -> f (RegionVar key)) graph
@@ -294,3 +324,47 @@ relationDFS' stop relation@(Relation graph) (RegionVar node) visited
     Just neighbours -> IntSet.foldr (relationDFS' stop relation . RegionVar) visited neighbours
   where
     visited' = IntSet.insert node visited
+
+-- Internal utility functions. Note that these functions on their own do not assure that the
+-- transitivity property is preserved.
+
+hasEdge :: Relation -> Vertex -> Vertex -> Bool
+hasEdge (Relation graph) (Vertex r1) (Vertex r2)
+  | r1 == r2 = True
+  | otherwise = case IntMap.lookup r1 graph of
+    Nothing -> False
+    Just rs -> r2 `IntSet.member` rs
+
+addEdge :: Vertex -> Vertex -> Relation -> (Bool, Relation)
+addEdge (Vertex v) (Vertex w) (Relation g)
+  = (wasPresent, Relation g')
+  where
+    (old, g') = IntMap.insertLookupWithKey (\_ _ old -> IntSet.insert w old) v (IntSet.singleton w) g
+    wasPresent = case old of
+      Nothing -> False
+      Just set -> w `IntSet.member` set
+
+-- Creates a graph with edges for all two hops, eg. creates edge (v,w)
+-- if edge (v,u) exists in graph g1 and (u, w) in graph g2
+-- First element is the set of all vertices v for which an edge (v,w)
+-- was added, the second is the resulting graph (relation)
+twoHops :: Relation -> Relation -> Relation
+twoHops (Relation g1) (Relation g2) = IntMap.foldrWithKey handleVertex emptyRelation g1
+  where
+    handleVertex :: Int -> IntSet -> Relation -> Relation
+    handleVertex v us relationOut'
+      = IntSet.foldr (handleEdge (Vertex v) . Vertex) relationOut' us
+
+    handleEdge :: Vertex -> Vertex -> Relation -> Relation
+    handleEdge (Vertex v) (Vertex u) relationOut' = case IntMap.lookup u g2 of
+      Nothing -> relationOut'
+      Just ws -> IntSet.foldr (addEdge' v u) relationOut' ws
+
+    addEdge' :: Int -> Int -> Int -> Relation -> Relation
+    addEdge' v u w relationOut'
+      | v == w || hasEdge (Relation g1) (Vertex v) (Vertex w) || hasEdge (Relation g2) (Vertex v) (Vertex w) = relationOut'
+      | otherwise = snd $ addEdge (Vertex v) (Vertex w) relationOut'
+
+-- Gives the union of two relation, without computing the transitive closure
+unionWithoutClosure :: Relation -> Relation -> Relation
+unionWithoutClosure (Relation g1) (Relation g2) = Relation $ IntMap.unionWith (IntSet.union) g1 g2

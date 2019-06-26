@@ -112,6 +112,7 @@ analyseInstruction env (Case var _) = CImplies (envFunction env) [variableName v
 analyseInstruction env (Return var) = CImplies (envFunction env) [variableName var]
 analyseInstruction env (Unreachable (Just var)) = CImplies (envFunction env) [variableName var]
 analyseInstruction env (Unreachable Nothing) = CEmpty
+analyseInstruction env (RegionRelease _) = CEmpty
 
 analyseCall :: Id -> Id -> [Either Type Variable] -> Constraint
 analyseCall var fn args = CSequence argumentConstraints $ fromList $
@@ -123,11 +124,18 @@ analyseCall var fn args = CSequence argumentConstraints $ fromList $
     constraintArgument (Left tp) index = CEmpty
     argumentConstraints = fromList $ map bindCountInVariable $ rights args
 
+analyseRegion :: Id -> RegionVariable -> Constraint
+analyseRegion var (RegionLocal (Local r _)) = CImplies var [r]
+analyseRegion var RegionGlobal = CEmpty
+
 analyseBind :: Bind -> Constraint
-analyseBind (Bind var (BindTargetFunction fn) args) = analyseCall var (globalFunctionName fn) args
-analyseBind (Bind var target args) = CSequence
-  (fromList $ map bindCountInVariable args')
-  $ CImplies var $ targetVars ++ map variableName args'
+analyseBind (Bind var (BindTargetFunction fn) args region) =
+  CSequence (analyseRegion var region)
+    $ analyseCall var (globalFunctionName fn) args
+analyseBind (Bind var target args region) =
+  CSequence (analyseRegion var region)
+    $ CSequence (fromList $ map bindCountInVariable args')
+    $ CImplies var $ targetVars ++ map variableName args'
   where
     args' = rights args
     targetVars = case target of
@@ -228,6 +236,7 @@ transformInstruction supply res (LetAlloc binds next)
 transformInstruction _ _ instr@(Jump _) = instr
 transformInstruction _ _ instr@(Return _) = instr
 transformInstruction _ _ instr@(Unreachable _) = instr
+transformInstruction _ _ instr@(RegionRelease _) = instr
 transformInstruction _ _ instr@(Case _ _) = instr
 transformInstruction supply res (Match var t instantiation fields next)
   | all isNothing fields' = transformInstruction supply res next
@@ -248,8 +257,8 @@ getArgTypes = map argType
     argType (Left _) = Left ()
 
 transformBind :: NameSupply -> Result -> Bind -> (Bind, Instruction -> Instruction)
-transformBind supply res@(Result env _ _) (Bind var (BindTargetFunction global@(GlobalFunction _ _ _)) args) =
-  (Bind var target args', instr)
+transformBind supply res@(Result env _ _) (Bind var (BindTargetFunction global@(GlobalFunction _ _ _)) args region) =
+  (Bind var target args' region, instr)
   where
     (args', instr) = transformCall supply res global args (getArgTypes args)
     target

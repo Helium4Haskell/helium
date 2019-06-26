@@ -28,6 +28,7 @@ import Helium.CodeGeneration.Iridium.Region.EffectEnvironment
 import Helium.CodeGeneration.Iridium.Region.Annotation
 import Helium.CodeGeneration.Iridium.Region.Containment
 import Helium.CodeGeneration.Iridium.Region.Relation
+import Helium.CodeGeneration.Iridium.Region.Utils
 
 import Debug.Trace
 
@@ -105,6 +106,8 @@ instance Show Constraint where
         Left name -> "@" ++ showId name ""
         Right (annotations, rThunk, rValue) -> "[" ++ show annotations ++ ": " ++ show resASort ++ "; (" ++ show rThunk ++ ", " ++ show rValue ++ ");"
       argsString = "(" ++ intercalate ", " (map show additionalRegions) ++ "; " ++ intercalate ", " (map show args) ++ ")"
+  show (CReturn (Left annotations)) = "return " ++ show annotations
+  show (CReturn (Right annotations)) = "return " ++ show annotations
 
 instance Show CallArgument where
   show (CAType tp) = "{ " ++ show tp ++ " }"
@@ -250,8 +253,8 @@ assignVariables typeEnv effectEnv method@(Method _ args' retType _ _ _) =
         tp' = tpFromType quantors $ typeNormalize typeEnv tp
         sortAnnotation = typeAnnotationSortArgument effectEnv tp' []
         sortRegion = typeRegionSort effectEnv tp'
-        annotation = sortArgumentToArgument lambdaBound sortAnnotation
-        region = sortArgumentToArgument lambdaBound sortRegion
+        annotation = sortArgumentToArgument lambdaBound' sortAnnotation
+        region = sortArgumentToArgument lambdaBound' sortRegion
 
 gather :: EffectEnvironment -> MethodState -> Method -> [RelationConstraint]
 gather env state (Method _ _ _ _ block blocks)
@@ -309,12 +312,13 @@ gather env state (Method _ _ _ _ block blocks)
           = zipWith Outlives (argumentFlatten conRegion) (argumentFlatten dataRegion)
           ++ zipWith Outlives (argumentFlatten dataRegion) (argumentFlatten conRegion)
           where
-            dataRegion = regions !! index
+            dataRegion = regions !!! index
     gatherInInstruction (Case _ _) = []
     gatherInInstruction (Unreachable _) = []
+    gatherInInstruction (RegionRelease _) = []
 
     gatherInBind :: Bind -> [RelationConstraint]
-    gatherInBind (Bind name target args) =
+    gatherInBind (Bind name target args _) =
       containment env tp regions ++ gatherInBindTarget regions target args
       where
         (VariableInfo tp _ regions) = lookupLocal state name
@@ -350,7 +354,7 @@ gather env state (Method _ _ _ _ block blocks)
         argumentConstraints :: (RegionVar, Argument RegionVar) -> [RelationConstraint]
         argumentConstraints (RegionVar index, conRegion) = zipWith Outlives (argumentFlatten conRegion) (argumentFlatten dataRegion)
           where
-            dataRegion = regions !! index
+            dataRegion = regions !!! index
     -- BindTargetFunction or BindTargetThunk
     gatherInBindTarget (ArgumentList (ArgumentValue rThunk : _)) target args
       = targetConstraint ++ argumentConstraints
@@ -397,6 +401,7 @@ gather env state (Method _ _ _ _ block blocks)
     gatherInExpression regions (Cast _ _) = error "gather: Cast expression is not supported"
     gatherInExpression regions (PrimitiveExpr _ _) = [] -- Assumes that primitives do not operate on objects
     gatherInExpression regions (Undefined _) = []
+    gatherInExpression regions RegionAllocate = error "methodInitialize: method was already region-annnotated"
 
 constraints :: EffectEnvironment -> MethodState -> Method -> [Constraint]
 constraints env state (Method _ _ _ _ block blocks)
@@ -437,9 +442,10 @@ constraints env state (Method _ _ _ _ block blocks)
     constraintsInInstruction (Case _ _) = []
     constraintsInInstruction (Return var) = [CReturn $ lookupVariableAnnotation env state var]
     constraintsInInstruction (Unreachable _) = []
+    constraintsInInstruction (RegionRelease _) = []
 
     constraintsInBind :: Bind -> [Constraint]
-    constraintsInBind bind@(Bind name target args) = constraintsInBindTarget name result target args
+    constraintsInBind bind@(Bind name target args _) = constraintsInBindTarget name result target args
       where
         result = lookupLocal state name
 
@@ -491,8 +497,8 @@ constraints env state (Method _ _ _ _ block blocks)
             let
               VariableInfo _ annotation (ArgumentList regions) = lookupLocal state name
               (rThunk, rValue) = case regions of
-                [ArgumentValue r] -> (r, r)
-                [ArgumentValue r1, ArgumentValue r2] -> (r1, r2)
+                [ArgumentValue r, _] -> (r, r)
+                [ArgumentValue r1, ArgumentValue r2, _] -> (r1, r2)
             in (Right (annotation, rThunk, rValue), 0)
         args' = map argumentAnnotationRegion args
         argumentAnnotationRegion :: Either Type Variable -> CallArgument
@@ -509,7 +515,7 @@ constructorConstraints constructor (ArgumentList dataType) fields index f g = co
   where
     handleField arg (Left c) = g c arg
     handleField arg (Right (sort, arg')) = fieldConstraints arg sort arg'
-    fieldConstraints (ArgumentValue var) sort field = concat $ zipFlattenArgumentWithSort f sort (dataType !! index var) field
+    fieldConstraints (ArgumentValue var) sort field = concat $ zipFlattenArgumentWithSort f sort (dataType !!! index var) field
     fieldConstraints (ArgumentList as) (SortArgumentList sorts) (ArgumentList bs) = concat $ zipWith3 fieldConstraints as sorts bs
 
 methodApplyRelationConstraints :: [RelationConstraint] -> MethodState -> MethodState
@@ -535,6 +541,7 @@ methodApplyRelationConstraints relationConstraints state@(MethodState methodType
           Left global -> Left global
           Right (annotation, rThunk, rValue) -> Right (annotation, substitute rThunk, substitute rValue)
     substituteConstraint (CJoin aSort a as) = CJoin aSort a as
+    substituteConstraint c = c -- CReturn
 
     substituteCallArgument :: CallArgument -> CallArgument
     substituteCallArgument (CALocal argAnnotation argRegion) = CALocal argAnnotation $ fmap substitute argRegion
@@ -613,7 +620,7 @@ hoistGlobalVariables env nameSupply (Method tp args ret annotations b bs) = Meth
     hoistInExpr supply (Eval var) = ([], instr, Eval var')
       where
         (instr, var') = hoistVariable supply var
-    hoistInExpr supply (CastThunk var) = ([], instr, Eval var')
+    hoistInExpr supply (CastThunk var) = ([], instr, CastThunk var')
       where
         (instr, var') = hoistVariable supply var
     hoistInExpr supply (Phi branches) = (concat branchInstructions, id, Phi branches')
@@ -625,7 +632,7 @@ hoistGlobalVariables env nameSupply (Method tp args ret annotations b bs) = Meth
     hoistInExpr supply expr = ([], id, expr) -- Literal, Undefined, Var, Instantiate
 
     hoistInBind :: NameSupply -> Bind -> (Instruction -> Instruction, Bind)
-    hoistInBind supply (Bind local target arguments) = (instrTarget . flip (foldr id) instrsArguments, Bind local target' arguments')
+    hoistInBind supply (Bind local target arguments region) = (instrTarget . flip (foldr id) instrsArguments, Bind local target' arguments' region)
       where
         (supplyTarget, supplyArguments) = splitNameSupply supply
         (instrTarget, target') = case target of
@@ -668,18 +675,22 @@ assignAdditionalRegionVariables count f state
   where
     (regionCount, constraints) = mapAccumL assign (msRegionCount state) (msConstraints state)
     assign :: Int -> Constraint -> (Int, Constraint)
-    assign fresh constraint@(CCall{}) =
+    assign fresh constraint@CCall{} =
       ( fresh + regionCount
       , constraint{ cCallAdditionalRegions = cCallAdditionalRegions constraint ++ f constraint regions }
       )
       where
         regionCount = count constraint
         regions = map (variableFromIndices (msAdditionalArgumentScope state)) $ take regionCount [fresh..]
+    assign fresh constraint = (fresh, constraint)
 
 assignIntermediateThunkRegions :: MethodState -> MethodState
 assignIntermediateThunkRegions = assignAdditionalRegionVariables count (const id)
   where
-    count call = max 0 $ length (filter isValueArgument $ cCallArguments call) - cCallTargetArity call - 1
+    count call = max 0 $ values - arity - 1
+      where
+        values = length (filter isValueArgument $ cCallArguments call)
+        arity = cCallTargetArity call
 
 isValueArgument :: CallArgument -> Bool
 isValueArgument (CAGlobal _ _) = True

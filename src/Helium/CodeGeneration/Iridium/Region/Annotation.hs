@@ -11,6 +11,7 @@ import qualified Data.Graph as Graph
 import Lvm.Core.Type
 import Helium.CodeGeneration.Iridium.Region.Sort
 import Helium.CodeGeneration.Iridium.Region.Relation
+import Helium.CodeGeneration.Iridium.Region.Utils
 
 newtype AnnotationVar = AnnotationVar { unAnnotationVar :: Int }
   deriving (Eq, Ord)
@@ -78,7 +79,7 @@ data Annotation
 
 data FixRegions
   = FixRegionsNone
-  | FixRegionsEscape !(SortArgument SortArgumentRegion)
+  | FixRegionsEscape !Int !(SortArgument SortArgumentRegion)
   deriving (Eq, Ord)
 
 instance Show Annotation where
@@ -89,11 +90,11 @@ instance Show Annotation where
         Just idx -> "[" ++ show idx ++ "]"
       keyword = case fixRegions of 
         FixRegionsNone -> ""
-        FixRegionsEscape s -> " escape " ++ show s ++ " "
+        FixRegionsEscape arity s -> " escape[" ++ show arity ++ "; " ++ show s ++ "] "
       lowerBoundString = case lowerBound of
         ABottom -> ". "
         _ -> "⊐ " ++ show lowerBound ++ ". "
-  show (AForall annotation) = "forall " ++ show annotation
+  show (AForall annotation) = "∀ " ++ show annotation
   show (ALam annotationParams regionParams annotation) = "λ[" ++ show annotationParams ++ "; " ++ show regionParams ++ "] -> " ++ show annotation
   show annotation = showAnnotationJoin annotation
 
@@ -103,7 +104,7 @@ showAnnotationJoin annotation = showAnnotationApp annotation
 
 showAnnotationApp :: Annotation -> String
 showAnnotationApp (AApp annotation annotationArgs regionArgs) =
-  showAnnotationApp annotation ++ " " ++ show annotationArgs ++ " " ++ show regionArgs
+  showAnnotationApp annotation ++ " [" ++ show annotationArgs ++ "; " ++ show regionArgs ++ "]"
 showAnnotationApp (AInstantiate a tp) = showAnnotationApp a ++ " {" ++ show tp ++ "}"
 showAnnotationApp annotation = showAnnotationLow annotation
 
@@ -111,6 +112,7 @@ showAnnotationLow :: Annotation -> String
 showAnnotationLow (AVar var) = show var
 showAnnotationLow (ARelation rel) = show rel
 showAnnotationLow ABottom = "⊥"
+showAnnotationLow annotation = "(" ++ show annotation ++ ")"
 
 annotationExpandBottom :: Sort -> Annotation
 annotationExpandBottom (SortForall sort) = AForall $ annotationExpandBottom sort
@@ -147,8 +149,8 @@ zipFlattenArgumentWithSort f sort argLeft argRight = zipFlattenArgumentWithSort'
     zipFlattenArgumentWithSort' (SortArgumentList sorts) (ArgumentList as) (ArgumentList bs) accum = foldr (\(s, a, b) -> zipFlattenArgumentWithSort' s a b) accum $ zip3 sorts as bs
     zipFlattenArgumentWithSort' sorts a b accum = error $ "zipFlattenArgumentWithSort: Arguments do not have the same sort: " ++ show sorts ++ "; " ++ show a ++ "; " ++ show b
 
-annotationEscapes :: Annotation -> IntSet
-annotationEscapes annotation = IntSet.map (indexInArgument . RegionVar) $ IntSet.filter isFirstScope escapes
+annotationEscapes :: Int -> Annotation -> IntSet
+annotationEscapes arity annotation = IntSet.map (indexInArgument . RegionVar) $ IntSet.filter isFirstScope escapes
   where
     (annotationRelation, annotationRoots) = gather 1 annotation
 
@@ -159,7 +161,15 @@ annotationEscapes annotation = IntSet.map (indexInArgument . RegionVar) $ IntSet
     gather :: Int -> Annotation -> (Maybe Relation, IntSet)
     gather scope (AFix _ _ a1 _) = gather scope a1
     gather scope (AForall a) = gather scope a
-    gather scope (ALam _ _ a) = decrement $ gather (scope + 1) a
+    gather scope (ALam _ sortArgR a) = decrement $ addVars scope vars $ gather (scope + 1) a
+      where
+        argR = sortArgumentToArgument 1 sortArgR
+        vars
+          -- Don't add the arguments, corresponding with the method arguments, to the root set
+          | scope <= arity = []
+          -- Add these arguments to the root set. They origin from the return value of a method, returning
+          -- a function or an object containing functions.
+          | otherwise = argumentFlatten argR
     -- TODO: Don't add region arguments of last argument in a call (eg the return regions)
     gather scope (AApp a argA argR) = addVars scope (argumentFlatten argR) (gather scope a) `join` joins (map (gather scope) $ argumentFlatten argA)
     gather scope (AInstantiate a _) = gather scope a
@@ -201,17 +211,44 @@ annotationEscapes annotation = IntSet.map (indexInArgument . RegionVar) $ IntSet
 
     -- Apply DFS until we reach a variable outside of the first scope
     dfsFirstScope :: Relation -> IntSet -> IntSet
-    dfsFirstScope relation roots = decrementSet $ IntSet.filter (not . isFirstScope) $ IntSet.foldr f first rest
+    dfsFirstScope relation roots
+      = decrementSet
+      $ IntSet.filter (not . isFirstScope)
+      $ IntSet.foldr f first rest
       where
         f idx = relationDFS' (\(RegionVar r) -> not $ isFirstScope r) relation (RegionVar idx)
         (first, rest) = IntSet.partition isFirstScope roots
 
-annotationRemoveInternalRegions :: SortArgument SortArgumentRegion -> Annotation -> (SortArgument SortArgumentRegion, Annotation)
-annotationRemoveInternalRegions (SortArgumentList regionArgs) a = (SortArgumentList regionArgs', substitute 1 a)
+annotationFilterInternalRegions :: Int -> Annotation -> Annotation
+annotationFilterInternalRegions arity annotation = filter 1 annotation
+  where
+    escapes = annotationEscapes arity annotation
+
+    filter :: Int -> Annotation -> Annotation
+    filter scope (AFix identifier fixRegions a1 a2) = AFix identifier fixRegions (filter scope a1) (filter scope a2)
+    filter scope (AForall a) = AForall $ filter scope a
+    filter scope (ALam argA argR a) = ALam argA argR $ filter (scope + 1) a
+    filter scope (AApp a argA argR) = AApp (filter scope a) (filter scope <$> argA) argR
+    filter scope (AInstantiate a tp) = AInstantiate (filter scope a) tp
+    filter scope (ARelation constraints) = ARelation $ mapMaybe (filterRelationConstraint scope) constraints
+    filter scope (AJoin a1 a2) = AJoin (filter scope a1) (filter scope a2)
+    filter _ a = a
+
+    filterRelationConstraint scope c@(Outlives r1 r2)
+      | preserve scope r1 && preserve scope r2 = Just c
+      | otherwise = Nothing
+
+    -- A variable is preserved if it is either from a different scope,
+    -- or it is the scope of additional region args and the region escapes according to annotationEscapes
+    preserve :: Int -> RegionVar -> Bool
+    preserve scope var = indexBoundLambda var /= scope || indexInArgument var `IntSet.member` escapes
+
+annotationRemoveInternalRegions :: Int -> SortArgument SortArgumentRegion -> Annotation -> (SortArgument SortArgumentRegion, Annotation)
+annotationRemoveInternalRegions arity (SortArgumentList regionArgs) a = (SortArgumentList regionArgs', substitute 1 a)
   where
     argCount = length regionArgs
 
-    escapes = annotationEscapes a
+    escapes = annotationEscapes arity a
 
     regionArgs' = map snd $ filter (isJust . fst) $ zip mapping regionArgs
 
@@ -246,4 +283,4 @@ annotationRemoveInternalRegions (SortArgumentList regionArgs) a = (SortArgumentL
     substituteVarMaybe :: Int -> RegionVar -> Maybe RegionVar
     substituteVarMaybe scope var
       | indexBoundLambda var /= scope = Just var
-      | otherwise = variableFromIndices scope <$> mapping !! indexInArgument var
+      | otherwise = variableFromIndices scope <$> mapping !!! indexInArgument var

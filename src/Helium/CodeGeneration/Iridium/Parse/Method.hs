@@ -6,6 +6,7 @@ import Helium.CodeGeneration.Iridium.Parse.Instruction
 import Helium.CodeGeneration.Iridium.Parse.Expression
 import Helium.CodeGeneration.Iridium.Data
 import Helium.CodeGeneration.Iridium.Type
+import qualified Helium.CodeGeneration.Iridium.Region.AnnotationParser as Region
 import Lvm.Common.Id(Id, idFromString)
 import Lvm.Core.Type
 import Data.Maybe
@@ -111,7 +112,7 @@ pAnnotations =
       return []
     else do
       c <- lookahead
-      if c == '[' then pToken '[' *> pSome pAnnotation pSep <* pToken ']' else return []
+      if c == '[' then pToken '[' *> pSome pMethodAnnotation pSep <* pToken ']' else return []
   where
     pSep :: Parser Bool
     pSep = do
@@ -119,8 +120,8 @@ pAnnotations =
       c <- lookahead
       return $ c /= ']'
 
-pAnnotation :: Parser MethodAnnotation
-pAnnotation = do
+pMethodAnnotation :: Parser MethodAnnotation
+pMethodAnnotation = do
   word <- pWord
   pWhitespace
   case word of
@@ -134,4 +135,5 @@ pAnnotation = do
         "preserve_most" -> return $ MethodAnnotateCallConvention CCPreserveMost
         _ -> pError $ "Unknown calling convention: " ++ show conv
     "fake_io" -> return MethodAnnotateFakeIO
+    "region" -> MethodAnnotateRegion <$ pToken ':' <*> Region.pArgument Region.pAnnotation
     _ -> pError $ "Unknown annotation: " ++ show word
