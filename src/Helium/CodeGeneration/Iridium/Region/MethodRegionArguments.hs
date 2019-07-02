@@ -69,7 +69,7 @@ constraintRegions env (CCall lhs _ _ _ (Left target) _ _ _ _) = Just $ MethodCal
     EffectGlobal _ _ annotation = eeLookupGlobal env target
     arguments = case annotation of
       ArgumentList [] -> Just 0
-      ArgumentList (ArgumentValue (ALam _ (SortArgumentList args) _) : _) -> Just $ length args
+      ArgumentList (ArgumentValue (ALam _ (ArgumentList args) _) : _) -> Just $ length args
       ArgumentList (ArgumentValue ABottom : _) -> Just 0
       _ -> Nothing
 constraintRegions _ _ = Nothing

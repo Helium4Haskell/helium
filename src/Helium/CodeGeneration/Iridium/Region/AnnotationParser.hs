@@ -23,10 +23,10 @@ pAnnotation = do
     'λ' -> do -- Lambda
       pChar
       pToken '['
-      argA <- pSortArgument pSort
+      argA <- pArgument pSort
       pToken ';'
       pWhitespace
-      argR <- pSortArgument pSortArgumentRegion
+      argR <- pArgument pSortArgumentRegion
       pToken ']'
       pWhitespace
       pSymbol "->"
@@ -36,7 +36,7 @@ pAnnotation = do
       pSymbol "fix"
       identifier <- pMaybe (pToken '[' *> pUnsignedInt <* pToken ']')
       pWhitespace
-      escape <- pMaybe (FixRegionsEscape <$ pSymbol "escape[" <*> pUnsignedInt <* pToken ';' <* pWhitespace <*> pSortArgument pSortArgumentRegion <* pToken ']')
+      escape <- pMaybe (FixRegionsEscape <$ pSymbol "escape[" <*> pUnsignedInt <* pToken ';' <* pWhitespace <*> pArgument pSortArgumentRegion <* pToken ']')
       let fixRegions = fromMaybe FixRegionsNone escape
       lowerBoundMaybe <- pMaybe (pToken '⊐' *> pWhitespace *> pAnnotation <* pWhitespace)
       let lowerBound = fromMaybe ABottom lowerBoundMaybe
@@ -141,32 +141,37 @@ pSort = do
     '∀' -> SortForall <$ pChar <* pWhitespace <*> pSort
     '[' ->
       SortFun
-        <$ pChar <* pWhitespace <*> pSortArgument pSort
-        <* pToken ';' <* pWhitespace <*> pSortArgument pSortArgumentRegion <* pToken ']'
+        <$ pChar <* pWhitespace <*> pArgument pSort
+        <* pToken ';' <* pWhitespace <*> pArgument pSortArgumentRegion <* pToken ']'
         <* pWhitespace <* pSymbol "->" <* pWhitespace <*> pSort
+    'Ψ' -> do
+      pChar
+      pToken '⟨'
+      tvar <- pTypeVar
+      tps <- pTpAppInPolymorphicSort
+      pToken '⟩'
+      return $ SortPolymorphic tvar tps
     _ -> SortRelation <$ pToken 'R' <* pWhitespace
 
-pSortArgument :: Parser a -> Parser (SortArgument a)
-pSortArgument pMono = do
-  c <- lookahead
-  case c of
-    '(' -> SortArgumentList <$> pList (pSortArgument pMono)
-    '<' -> do -- Polymorphic argument
-      pChar
-      pWhitespace
-      tvar <- pTypeVar
-      instantiations <- pManyMaybe pTypeArg
-      pToken '>'
-      return $ SortArgumentPolymorphic tvar instantiations
-    _ -> SortArgumentMonomorphic <$> pMono
-  where
-    pTypeArg = do
-      pWhitespace
-      c <- lookahead
-      if c == '>' then return Nothing else Just <$> pTpAtom
-
 pSortArgumentRegion :: Parser SortArgumentRegion
-pSortArgumentRegion = SortArgumentRegion <$ pToken 'Ρ'
+pSortArgumentRegion = do
+  pToken 'Ρ'
+  c <- lookahead
+  if c == '⟨' then do
+    pChar
+    tvar <- pTypeVar
+    tps <- pTpAppInPolymorphicSort
+    pToken '⟩'
+    return $ SortArgumentRegionPolymorphic tvar tps
+  else
+    return SortArgumentRegionMonomorphic
+
+pTpAppInPolymorphicSort :: Parser [Tp]
+pTpAppInPolymorphicSort = pWhitespace *> pManyMaybe pTpArg
+  where
+    pTpArg = do
+      c <- lookahead
+      if c == '⟩' then return Nothing else Just <$> pTpAtom
 
 pTp :: Parser Tp
 pTp = do

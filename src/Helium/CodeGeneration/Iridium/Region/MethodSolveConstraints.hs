@@ -63,7 +63,7 @@ solveEquations env initialEquations = IntMap.foldr f initialEquations initialEqu
     f :: Equation -> Equations -> Equations
     f (Equation var fixRegions sort _ annotation) equations = IntMap.insert (indexInArgument var) (Equation var FixRegionsNone sort (not True) annotation') equations
       where
-        annotation' = annotationNormalize env $ annotationSaturate env $ solve equations 0 annotation
+        annotation' = annotationNormalize env [] $ annotationSaturate env $ solve equations 0 annotation
 
 methodsToEquations :: Maybe Handle -> EffectEnvironment -> IdMap MethodState -> IO Equations
 methodsToEquations log env methods = do
@@ -78,8 +78,8 @@ methodToInterproceduralEquations log env name state = do
   return $ zipFlattenArgumentWithSort equation sort argumentVars argumentSolved
   where
     sort = typeAnnotationSortArgument env tp []
-    sortArgRegions = SortArgumentList $ replicate (msRegionCount state) $ SortArgumentMonomorphic SortArgumentRegion
-    equation s (AVar var) annotation = Equation var (FixRegionsEscape arity sortArgRegions) (fmap (SortFun sortArgumentEmpty sortArgRegions) s) False annotation
+    sortArgRegions = ArgumentList $ replicate (msRegionCount state) $ ArgumentValue SortArgumentRegionMonomorphic
+    equation s (AVar var) annotation = Equation var (FixRegionsEscape arity sortArgRegions) (SortFun argumentEmpty sortArgRegions s) False annotation
     EffectGlobal arity tp argumentVars = eeLookupGlobal env name
 
 methodSolveConstraints :: Maybe Handle -> EffectEnvironment -> MethodState -> IO (Argument Annotation)
@@ -91,7 +91,7 @@ methodSolveConstraints log env state = do
 
     solve' = solve equations (msAdditionalArgumentScope state)
 
-    returnAnnotations :: SortArgument Sort -> Argument Annotation
+    returnAnnotations :: Argument Sort -> Argument Annotation
     returnAnnotations sort = case returnAnnotationList of
       [] -> ABottom <$ (sortArgumentToArgument 0 sort :: Argument AnnotationVar)
       _ -> foldr1 (zipArgument AJoin) $ map (fmap solve') returnAnnotationList
@@ -106,7 +106,7 @@ methodSolveConstraints log env state = do
 equationsFromList :: [Equation] -> Equations
 equationsFromList = IntMap.fromList . map (\eq@(Equation var _ _ _ _) -> (indexInArgument var, eq))
 
-methodAnnotations :: EffectEnvironment -> Annotation -> (SortArgument Sort -> Argument Annotation) -> Int -> Tp -> Argument Annotation
+methodAnnotations :: EffectEnvironment -> Annotation -> (Argument Sort -> Argument Annotation) -> Int -> Tp -> Argument Annotation
 methodAnnotations env annotationBody f functionLambdaCount functionType
   | functionLambdaCount == 0 = consumeForalls functionType annotationGlobal
   | otherwise = consumeForalls functionType $ annotations functionLambdaCount
@@ -116,8 +116,8 @@ methodAnnotations env annotationBody f functionLambdaCount functionType
       fmap (ALam sortArgAnnotations sortArgRegions)
         $ ArgumentList 
           [ ArgumentValue
-            $ ALam (SortArgumentList []) (SortArgumentMonomorphic SortArgumentRegion)
-            $ ALam (SortArgumentList []) (SortArgumentList [SortArgumentMonomorphic SortArgumentRegion])
+            $ ALam (ArgumentList []) (ArgumentValue SortArgumentRegionMonomorphic)
+            $ ALam (ArgumentList []) (ArgumentList [ArgumentValue SortArgumentRegionMonomorphic])
             $ annotationOwn
           , annotationsRest
           ]
@@ -150,7 +150,7 @@ methodAnnotations env annotationBody f functionLambdaCount functionType
 
 constraintGatherReturns :: [Constraint] -> ([Argument Annotation], [Constraint])
 constraintGatherReturns constraints =
-  ( map (either id (fmap AVar)) returnArgs
+  ( returnArgs
   , filter isNotReturn constraints
   )
   where
@@ -159,7 +159,7 @@ constraintGatherReturns constraints =
     returnArgs = [arg | CReturn arg <- constraints]
 
 -- SortArgument cannot be SortArgumentList
-data Equation = Equation !AnnotationVar !FixRegions !(SortArgument Sort) !Bool !Annotation
+data Equation = Equation !AnnotationVar !FixRegions !Sort !Bool !Annotation
 
 instance Show Equation where
   show (Equation var fixRegions sort solved annotation) =
@@ -173,16 +173,15 @@ instance Show Equation where
 constraintToEquations :: EffectEnvironment -> Constraint -> ([Annotation], [Equation])
 constraintToEquations _ (CJoin sort left []) =
   ( []
-  , zipFlattenArgumentWithSort (\s var _ -> Equation var FixRegionsNone sort False ABottom) sort left left
+  , zipFlattenArgumentWithSort (\s var _ -> Equation var FixRegionsNone s False ABottom) sort left left
   )
 constraintToEquations _ (CJoin sort left right) =
   ( []
   , zipFlattenArgumentWithSort (\s var def -> Equation var FixRegionsNone s False def) sort left joined
   )
   where
-    right' = fmap (either id (fmap AVar)) right
     joined :: Argument Annotation
-    joined = foldr1 (zipArgument AJoin) right'
+    joined = foldr1 (zipArgument AJoin) right
 constraintToEquations env (CCall lhs resultAnnotationSort resultAnnotationNames resultRegion target arity additionalRegions arguments kind) =
   ( baseAnnotations
   , zipFlattenArgumentWithSort (\s var def -> Equation var FixRegionsNone s False def) resultAnnotationSort resultAnnotationNames resultAnnotation
@@ -272,12 +271,9 @@ solve equations initialEquationScope = solve' [] 0 0
         let
           Equation _ fixRegions sort solved annotation = equations IntMap.! var
           annotation' = solve' (Just var : scope) (lambdaCount + 1) forallCount $ annotationIncrementScope (lambdaCount + 1) forallCount annotation
-          annotation'' = AFix Nothing fixRegions ABottom (ALam sort sortArgumentEmpty annotation')
+          annotation'' = AFix Nothing fixRegions ABottom (ALam (ArgumentValue sort) argumentEmpty annotation')
         in
-          case sort of
-            _ | solved -> annotationIncrementScope lambdaCount forallCount annotation
-            SortArgumentMonomorphic s -> annotationSaturateWithSort s annotation''
-            _ -> annotation''
+          if solved then annotationIncrementScope lambdaCount forallCount annotation else annotationSaturateWithSort sort annotation''
 
     equationScope :: Int -> Int
     equationScope increment = if initialEquationScope == 0 then 0 else initialEquationScope + increment

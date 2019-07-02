@@ -28,11 +28,10 @@ effectDataTypes env mod = envWithAnnotations
     envWithRegionArguments =
       writeArguments
         False
-        (variableFromIndices 0)
         typeRegionSort
         (\regions relation (EffectDataType annotations _ _) -> EffectDataType annotations regions $ fromMaybe [] relation)
-        (\regions (EffectConstructor annotations _) -> EffectConstructor annotations regions)
-        (flip const)
+        assignRegionArguments
+        removeRecursiveRegions
         relationForDataTypes
         datas
         emptyEffectEnvironment
@@ -40,11 +39,10 @@ effectDataTypes env mod = envWithAnnotations
     envWithAnnotations = 
       writeArguments
         True
-        (variableFromIndices 0)
         (\ee tp -> typeAnnotationSortArgument ee tp [])
         (\annotations _ (EffectDataType _ regions relation) -> EffectDataType annotations regions relation)
-        (\annotations (EffectConstructor _ regions) -> EffectConstructor annotations regions)
-        (flip const) -- TODO
+        assignAnnotationArguments
+        removeRecursiveAnnotations
         (\_ _ -> ())
         datas
         envWithRegionArguments
@@ -60,42 +58,44 @@ effectDataTypes env mod = envWithAnnotations
       where
         FunctionType args _ = extractFunctionTypeNoSynonyms tp
         quantors = reverse [idx | Left (Quantor idx _) <- args]
-        EffectConstructor _ regionArgs = eeLookupConstructor env name
+        EffectConstructor _ _ regionArgs = eeLookupConstructor env name
 
     datas = normalizedDataTypes env mod
     initializeDataType :: Declaration DataType -> EffectEnvironment -> EffectEnvironment
     initializeDataType (Declaration name _ _ _ (DataType constructors)) effectEnv =
       effectEnv{
-        -- Assign sortUnassigned to all data types, such that we can find recursion.
-        eeDataTypes = insertMap name (EffectDataType sortUnassigned sortUnassigned []) $ eeDataTypes effectEnv,
+        -- Assign sortUnassignedX to all data types, such that we can find recursion.
+        eeDataTypes = insertMap name (EffectDataType sortUnassignedAnnotation sortUnassignedRegion []) $ eeDataTypes effectEnv,
         eeConstructors = foldr initializeConstructor (eeConstructors effectEnv) constructors
       }
     initializeConstructor :: Declaration DataTypeConstructorDeclaration -> IdMap EffectConstructor -> IdMap EffectConstructor
-    initializeConstructor (Declaration name _ _ _ _) constructors = insertMap name (EffectConstructor [] []) constructors
+    initializeConstructor (Declaration name _ _ _ _) constructors = insertMap name (EffectConstructor [] [] []) constructors
 
-sortUnassigned :: SortArgument a
-sortUnassigned = SortArgumentPolymorphic (TypeVar (-1)) []
+sortUnassignedAnnotation :: [Sort]
+sortUnassignedAnnotation = [SortPolymorphic (TypeVar (-1)) []]
+
+sortUnassignedRegion :: [SortArgumentRegion]
+sortUnassignedRegion = [SortArgumentRegionPolymorphic (TypeVar (-1)) []]
 
 writeArguments ::
   Bool -- Should we look in function types for type dependencies
-  -> (Int -> argument) -- Converts an int to an argument (as stored in the constructor)
-  -> (EffectEnvironment -> Tp -> SortArgument a) -- Generates the argument sorts for types
-  -> (SortArgument a -> Maybe b -> EffectDataType -> EffectDataType) -- Updates the arguments in a DataType
-  -> ([Argument argument] -> EffectConstructor -> EffectConstructor) -- Updates the arguments in a Constructor
-  -> (SortArgument a -> a -> a) -- Apply / instantiate a field
-  -> (EffectEnvironment -> [Declaration DataType] -> b) -- Additional computations, used for computing the relation of 
+  -> (EffectEnvironment -> Tp -> Argument sort) -- Generates the argument sorts for types
+  -> ([sort] -> Maybe b -> EffectDataType -> EffectDataType) -- Updates the arguments in a DataType
+  -> (recursiveInfo -> [sort] -> [Argument sort] -> (Int, EffectConstructor) -> (Int, EffectConstructor)) -- Updates the arguments in a Constructor
+  -> ([sort] -> ([sort], recursiveInfo)) -- Modifies sorts to remove recursive sorts, gathers info on recursive sorts
+  -> (EffectEnvironment -> [Declaration DataType] -> b) -- Additional computations, used for computing the relation of the region variables
   -> [Declaration DataType]
   -> EffectEnvironment
   -> EffectEnvironment -- Resulting effect environment
-writeArguments inFunctions var arguments update updateCon instantiate additional declarations initialEnv = foldl handleGroup initialEnv groups
+writeArguments inFunctions arguments update updateCon removeRecursion additional declarations initialEnv = foldl handleGroup initialEnv groups
   where
     handleGroup :: EffectEnvironment -> BindingGroup DataType -> EffectEnvironment
-    handleGroup e group = updateDataTypes (SortArgumentList vars) (Just additionalData) e'
+    handleGroup e group = updateDataTypes sortNoRecursion (Just additionalData) e'
       where
-        e' = foldr updateConstructor e constructorArguments
+        (_, e') = foldr updateConstructor (0, e) sorts
 
         -- Temp environment, used to compute additionalData
-        e'' = updateDataTypes (SortArgumentList vars) Nothing e'
+        e'' = updateDataTypes sortNoRecursion Nothing e'
         additionalData = additional e'' list
         updateDataTypes sort additionalData e = foldr (updateDataType sort additionalData) e list
         updateDataType sort additionalData (Declaration name _ _ _ _) env =
@@ -105,29 +105,25 @@ writeArguments inFunctions var arguments update updateCon instantiate additional
             (update sort additionalData)
             $ eeDataTypes env
           }
-        updateConstructor (name, sort) env =
-          env{ eeConstructors = insertMapWith
-            name
-            (error "Region.DataType: constructor not found in environment")
-            (updateCon sort)
-            $ eeConstructors env
-          }
+        updateConstructor (name, sort) (var, env) =
+          ( var'
+          , env{ eeConstructors = updateMap
+              name
+              con'
+              $ eeConstructors env
+            }
+          )
           where
+            con = findMap name $ eeConstructors env
+            (var', con') = updateCon recursiveInfo sortNoRecursion sort (var, con)
 
         list :: [Declaration DataType]
         list = bindingGroupToList group
         sorts = list >>= dataTypeSort
-        argumentRecursion = ArgumentList $ zipWith (\_ idx -> ArgumentValue $ var idx) vars [0..]
-        (_, constructorArguments) = mapAccumL
-          (\next (name, argSorts) ->
-            let
-              (next', args) = mapAccumL (sortToArgument var argumentRecursion) next argSorts
-            in
-              (next', (name, args))
-          )
-          0
-          sorts
-        vars = sorts >>= (\(_, sort) -> sort >>= sortArgumentFlatten)
+        argumentRecursion :: [Int]
+        argumentRecursion = zipWith (\_ idx -> idx) sortNoRecursion [0..]
+
+        (sortNoRecursion, recursiveInfo) = removeRecursion $ sorts >>= (\(_, sort) -> sort >>= argumentFlatten)
         dataTypeSort (Declaration _ _ _ _ (DataType cons)) = map constructorSort cons
         constructorSort (Declaration name _ _ _ (DataTypeConstructorDeclaration tp)) = (name, map (\tp -> arguments e $ tpFromType quantors tp) $ rights args)
           where
@@ -142,15 +138,29 @@ writeArguments inFunctions var arguments update updateCon instantiate additional
       where
         FunctionType args _ = extractFunctionTypeNoSynonyms tp
 
-sortToArgument :: (Int -> b) -> Argument b -> Int -> SortArgument a -> (Int, Argument b)
-sortToArgument var arguments next (SortArgumentList sorts)
-  = (next', ArgumentList as)
+assignRegionArguments :: () -> [SortArgumentRegion] -> [Argument SortArgumentRegion] -> (Int, EffectConstructor) -> (Int, EffectConstructor)
+assignRegionArguments _ recursion args (freshInitial, EffectConstructor conAnnotation1 conAnnotation2 _) = (freshFinal, EffectConstructor conAnnotation1 conAnnotation2 conRegion)
   where
-    (as, next') = toArguments next sorts
-    toArguments n [] = ([], n)
-    toArguments n (x:xs) = (y:ys, n'')
-      where
-        (n', y) = sortToArgument var arguments n x
-        (ys, n'') = toArguments n' xs
-sortToArgument var arguments next (SortArgumentPolymorphic (TypeVar (-1)) []) = (next, arguments) -- Recursion - apply with the same arguments
-sortToArgument var arguments next _ = (next + 1, ArgumentValue $ var next)
+    recursion' = zipWith (\_ idx -> ArgumentValue $ variableFromIndices 1 idx) recursion [0..]
+    (freshFinal, conRegion) = mapAccumL assign freshInitial args
+    assign :: Int -> Argument SortArgumentRegion -> (Int, Argument RegionVar)
+    assign fresh (ArgumentList [ArgumentValue (SortArgumentRegionPolymorphic (TypeVar (-1)) _)])
+      -- Recursion
+      = (fresh, ArgumentList $ recursion')
+    assign fresh (ArgumentValue _) = (fresh + 1, ArgumentValue $ variableFromIndices 1 fresh)
+    assign fresh (ArgumentList args) = ArgumentList <$> mapAccumL assign fresh args
+
+removeRecursiveRegions :: [SortArgumentRegion] -> ([SortArgumentRegion], ())
+removeRecursiveRegions args = (filter isNonRec args, ())
+  where
+    isNonRec (SortArgumentRegionPolymorphic (TypeVar (-1)) _) = False
+    isNonRec _ = True
+
+assignAnnotationArguments :: () -> [Sort] -> [Argument Sort] -> (Int, EffectConstructor) -> (Int, EffectConstructor)
+assignAnnotationArguments _ recursion args (freshInitial, EffectConstructor _ _ conRegion) = (freshInitial, EffectConstructor ((ABottom <$) <$> args) (ABottom <$ recursion) conRegion)
+
+removeRecursiveAnnotations :: [Sort] -> ([Sort], ())
+removeRecursiveAnnotations args = (filter isNonRec args, ())
+  where -- TODO: Recursion may be nested in the sort
+    isNonRec (SortPolymorphic (TypeVar (-1)) _) = False
+    isNonRec _ = True

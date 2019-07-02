@@ -23,48 +23,11 @@ instance IndexVariable AnnotationVar where
 instance Show AnnotationVar where
   show var = 'ψ' : showIndexVariable var
 
-data Argument a
-  = ArgumentValue !a
-  | ArgumentList ![Argument a]
-  deriving (Eq, Ord)
-
-argumentFlatten :: Argument a -> [a]
-argumentFlatten (ArgumentValue a) = [a]
-argumentFlatten (ArgumentList args) = args >>= argumentFlatten
-
-instance (Show a) => Show (Argument a) where
-  show (ArgumentValue r1) = show r1
-  show (ArgumentList args) = show args
-
-  showList args = ('(' :) . (intercalate ", " (map show args) ++) . (')' :)
-
-instance Functor Argument where
-  fmap f (ArgumentValue a) = ArgumentValue $ f a
-  fmap f (ArgumentList args) = ArgumentList $ fmap (fmap f) args
-
-instance Applicative Argument where
-  pure = ArgumentValue
-  ArgumentValue f <*> b = fmap f b
-  ArgumentList as <*> b = ArgumentList $ map (<*> b) as
-
-instance Monad Argument where
-  return = ArgumentValue
-  ArgumentValue a >>= f = f a
-  ArgumentList as >>= f = ArgumentList $ map (>>= f) as
-
-instance Foldable Argument where
-  foldMap f (ArgumentValue a) = f a
-  foldMap f (ArgumentList as) = foldMap (foldMap f) as
-
-instance Traversable Argument where
-  sequenceA (ArgumentValue a) = ArgumentValue <$> a
-  sequenceA (ArgumentList as) = ArgumentList <$> traverse sequenceA as
-
 data Annotation
   = AFix !(Maybe Int) !FixRegions !Annotation !Annotation
 
   | AForall !Annotation
-  | ALam !(SortArgument Sort) !(SortArgument SortArgumentRegion) !Annotation
+  | ALam !(Argument Sort) !(Argument SortArgumentRegion) !Annotation
 
   | AApp !Annotation !(Argument Annotation) !(Argument RegionVar)
   | AInstantiate !Annotation !Tp
@@ -79,7 +42,7 @@ data Annotation
 
 data FixRegions
   = FixRegionsNone
-  | FixRegionsEscape !Int !(SortArgument SortArgumentRegion)
+  | FixRegionsEscape !Int !(Argument SortArgumentRegion)
   deriving (Eq, Ord)
 
 instance Show Annotation where
@@ -120,13 +83,12 @@ annotationExpandBottom (SortFun annotationArgs regionArgs sort) =
   ALam annotationArgs regionArgs $ annotationExpandBottom sort
 annotationExpandBottom SortRelation = ARelation []
 
-sortArgumentToArgument :: IndexVariable var => Int -> SortArgument a -> Argument var
+sortArgumentToArgument :: IndexVariable var => Int -> Argument a -> Argument var
 sortArgumentToArgument lambdaBound arg = snd $ sortArgumentToArgument' lambdaBound 0 arg
 
-sortArgumentToArgument' :: IndexVariable var => Int -> Int -> SortArgument a -> (Int, Argument var)
-sortArgumentToArgument' lambdaBound idx (SortArgumentMonomorphic a) = (idx + 1, ArgumentValue $ variableFromIndices lambdaBound idx)
-sortArgumentToArgument' lambdaBound idx (SortArgumentPolymorphic _ _) = (idx + 1, ArgumentValue $ variableFromIndices lambdaBound idx)
-sortArgumentToArgument' lambdaBound idx (SortArgumentList args) = (idx', ArgumentList params)
+sortArgumentToArgument' :: IndexVariable var => Int -> Int -> Argument a -> (Int, Argument var)
+sortArgumentToArgument' lambdaBound idx (ArgumentValue a) = (idx + 1, ArgumentValue $ variableFromIndices lambdaBound idx)
+sortArgumentToArgument' lambdaBound idx (ArgumentList args) = (idx', ArgumentList params)
   where
     (idx', params) = mapAccumL (sortArgumentToArgument' lambdaBound) idx args
 
@@ -142,11 +104,11 @@ zipArgument f (ArgumentValue a) (ArgumentValue b) = ArgumentValue $ f a b
 zipArgument f (ArgumentList as) (ArgumentList bs) = ArgumentList $ zipWith (zipArgument f) as bs
 zipArgument _ _ _ = error "zipArgument: Arguments do not have the same sort"
 
-zipFlattenArgumentWithSort :: (Show a, Show b, Show s) => (SortArgument s -> a -> b -> c) -> SortArgument s -> Argument a -> Argument b -> [c]
+zipFlattenArgumentWithSort :: (Show a, Show b, Show s) => (s -> a -> b -> c) -> Argument s -> Argument a -> Argument b -> [c]
 zipFlattenArgumentWithSort f sort argLeft argRight = zipFlattenArgumentWithSort' sort argLeft argRight []
   where
-    zipFlattenArgumentWithSort' s (ArgumentValue a) (ArgumentValue b) accum = f s a b : accum
-    zipFlattenArgumentWithSort' (SortArgumentList sorts) (ArgumentList as) (ArgumentList bs) accum = foldr (\(s, a, b) -> zipFlattenArgumentWithSort' s a b) accum $ zip3 sorts as bs
+    zipFlattenArgumentWithSort' (ArgumentValue s) (ArgumentValue a) (ArgumentValue b) accum = f s a b : accum
+    zipFlattenArgumentWithSort' (ArgumentList sorts) (ArgumentList as) (ArgumentList bs) accum = foldr (\(s, a, b) -> zipFlattenArgumentWithSort' s a b) accum $ zip3 sorts as bs
     zipFlattenArgumentWithSort' sorts a b accum = error $ "zipFlattenArgumentWithSort: Arguments do not have the same sort: " ++ show sorts ++ "; " ++ show a ++ "; " ++ show b
 
 annotationEscapes :: Int -> Annotation -> IntSet
@@ -243,8 +205,8 @@ annotationFilterInternalRegions arity annotation = filter 1 annotation
     preserve :: Int -> RegionVar -> Bool
     preserve scope var = indexBoundLambda var /= scope || indexInArgument var `IntSet.member` escapes
 
-annotationRemoveInternalRegions :: Int -> SortArgument SortArgumentRegion -> Annotation -> (SortArgument SortArgumentRegion, Annotation)
-annotationRemoveInternalRegions arity (SortArgumentList regionArgs) a = (SortArgumentList regionArgs', substitute 1 a)
+annotationRemoveInternalRegions :: Int -> Argument SortArgumentRegion -> Annotation -> (Argument SortArgumentRegion, Annotation)
+annotationRemoveInternalRegions arity (ArgumentList regionArgs) a = (ArgumentList regionArgs', substitute 1 a)
   where
     argCount = length regionArgs
 

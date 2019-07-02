@@ -25,6 +25,7 @@ import Data.Either(isLeft, isRight, rights)
 import Helium.CodeGeneration.Iridium.Type
 import Helium.CodeGeneration.Iridium.Primitive(findPrimitive, primType)
 
+import qualified Helium.CodeGeneration.Iridium.Region.Sort as Region
 import qualified Helium.CodeGeneration.Iridium.Region.Annotation as Region
 
 type BlockName = Id

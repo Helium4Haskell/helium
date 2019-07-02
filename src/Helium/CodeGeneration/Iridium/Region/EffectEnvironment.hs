@@ -9,12 +9,17 @@ import Helium.CodeGeneration.Iridium.Region.Annotation
 import Helium.CodeGeneration.Iridium.Region.Relation
 
 data EffectDataType = EffectDataType
-  !(SortArgument Sort) -- Annotation variables of the data type
-  !(SortArgument SortArgumentRegion) -- The region variables of the data type
+  ![Sort] -- Annotation variables of the data type
+  ![SortArgumentRegion] -- The region variables of the data type
   ![RelationConstraint]
 
 data EffectConstructor = EffectConstructor
-  ![Argument AnnotationVar] -- Instantiation of the region and annotation variables per field of the constructor
+  -- The annotations per field of the constructor
+  -- Contains functions taking the type arguments and annotation arguments of the data type and returns the annotations on the 
+  ![Argument Annotation]
+  -- Annotation functions taking the arguments of the constructor, returning the annotations on the data type
+  ![Annotation]
+  -- Instantiation of the region variables per field of the constructor
   ![Argument RegionVar]
 
 data EffectGlobal = EffectGlobal !Int !Tp !(Argument Annotation)
@@ -50,7 +55,7 @@ globalHasAdditionalRegions :: EffectGlobal -> Bool
 globalHasAdditionalRegions (EffectGlobal _ _ annotations) = case argumentFlatten annotations of
   [] -> False
   -- All annotation of a global should have the same additional arguments, so we only need to check the first one
-  ALam _ (SortArgumentList []) _ : _ -> False
+  ALam _ (ArgumentList []) _ : _ -> False
   _ -> True
 
 instance Show EffectEnvironment where
@@ -60,45 +65,45 @@ instance Show EffectEnvironment where
     ++ "\n\nGLOBALS\n" ++ (listFromMap values >>= showGlobal)
     where
       showDataType (name, EffectDataType s1 s2 constraints) = show name ++ ": " ++ show s1 ++ "; " ++ show s2 ++ "; " ++ show constraints ++ "\n"
-      showConstructor (name, EffectConstructor a1 a2) = show name ++ ": " ++ show a1 ++ "; " ++ show a2 ++ "\n"
+      showConstructor (name, EffectConstructor a1 a2 a3) = show name ++ ": " ++ show a1 ++ " <=> " ++ show a2 ++ "; " ++ show a3 ++ "\n"
       showGlobal (name, EffectGlobal arity tp args) = show name ++ "[" ++ show arity ++ "]: " ++ show tp ++ "; " ++ show args ++ "\n"
 
-typeRegionSort :: EffectEnvironment -> Tp -> SortArgument SortArgumentRegion
+typeRegionSort :: EffectEnvironment -> Tp -> Argument SortArgumentRegion
 typeRegionSort env tp
-  | tpIsStrict tp = SortArgumentList
-    [ SortArgumentMonomorphic SortArgumentRegion -- Region for the value
+  | tpIsStrict tp = ArgumentList
+    [ ArgumentValue SortArgumentRegionMonomorphic -- Region for the value
     , typeRegionChildSort env (tpNotStrict tp) []
     ]
-  | otherwise = SortArgumentList
-    [ SortArgumentMonomorphic SortArgumentRegion -- Region for the thunk
-    , SortArgumentMonomorphic SortArgumentRegion -- Region for the value
+  | otherwise = ArgumentList
+    [ ArgumentValue SortArgumentRegionMonomorphic -- Region for the thunk
+    , ArgumentValue SortArgumentRegionMonomorphic -- Region for the value
     , typeRegionChildSort env tp []
     ]
 
-typeRegionChildSort :: EffectEnvironment -> Tp -> [Tp] -> SortArgument SortArgumentRegion
-typeRegionChildSort env (TpCon TConFun) _ = SortArgumentList []
+typeRegionChildSort :: EffectEnvironment -> Tp -> [Tp] -> Argument SortArgumentRegion
+typeRegionChildSort env (TpCon TConFun) _ = ArgumentList []
 typeRegionChildSort env (TpStrict _) _ = error "typeRegionChildSort: Did not expect a strictness annotation on this position"
-typeRegionChildSort env (TpVar tvar) tps = SortArgumentPolymorphic tvar tps
+typeRegionChildSort env (TpVar tvar) tps = ArgumentValue $ SortArgumentRegionPolymorphic tvar tps
 typeRegionChildSort env (TpForall tp) [] = typeRegionChildSort env tp []
 typeRegionChildSort env (TpCon (TConDataType name)) tps = snd $ eeDataTypeArguments env name tps
 typeRegionChildSort env (TpCon (TConTypeClassDictionary name)) tps = snd $ eeDataTypeArguments env (dictionaryDataTypeName name) tps
 typeRegionChildSort env (TpCon (TConTuple _)) tps = sort
   where
-    sort = SortArgumentList $
+    sort = ArgumentList $
       -- For each field, a region for the thunk, a region for the value and region variables for the fields / children of the element
-      tps >>= (\tp -> [SortArgumentMonomorphic SortArgumentRegion, SortArgumentMonomorphic SortArgumentRegion, typeRegionChildSort env tp []])
+      tps >>= (\tp -> [ArgumentValue SortArgumentRegionMonomorphic, ArgumentValue SortArgumentRegionMonomorphic, typeRegionChildSort env tp []])
 typeRegionChildSort env (TpApp t1 t2) tps = typeRegionChildSort env t1 (t2 : tps)
 
-typeAnnotationSortArgument :: EffectEnvironment -> Tp -> [Tp] -> SortArgument Sort
+typeAnnotationSortArgument :: EffectEnvironment -> Tp -> [Tp] -> Argument Sort
 typeAnnotationSortArgument env (TpStrict tp) [] = typeAnnotationSortArgument env tp []
 typeAnnotationSortArgument env (TpForall tp) [] = fmap SortForall $ typeAnnotationSortArgument env tp []
-typeAnnotationSortArgument env (TpVar tvar) tps = SortArgumentPolymorphic tvar tps
+typeAnnotationSortArgument env (TpVar tvar) tps = ArgumentValue $ SortPolymorphic tvar tps
 typeAnnotationSortArgument env (TpCon TConFun) [tArg, tReturn] =
   fmap (SortFun annotationArg regionArg) $
-    SortArgumentList
-      [ SortArgumentMonomorphic
-        $ SortFun sortArgumentEmpty (SortArgumentMonomorphic SortArgumentRegion)
-        $ SortFun sortArgumentEmpty regionReturn SortRelation
+    ArgumentList
+      [ ArgumentValue
+        $ SortFun argumentEmpty (ArgumentValue SortArgumentRegionMonomorphic)
+        $ SortFun argumentEmpty regionReturn SortRelation
       , annotationReturn
       ]
   where
@@ -111,48 +116,55 @@ typeAnnotationSortArgument env (TpCon con) tps = case con of
   TConFun -> error "typeAnnotationSortArgument: Expected a type of kind *"
   TConDataType name -> fst $ eeDataTypeArguments env name tps
   TConTypeClassDictionary name -> fst $ eeDataTypeArguments env (dictionaryDataTypeName name) tps
-  TConTuple _ -> SortArgumentList $ map (\tp -> typeAnnotationSortArgument env tp []) tps
+  TConTuple _ -> ArgumentList $ map (\tp -> typeAnnotationSortArgument env tp []) tps
 
-eeDataTypeArguments :: EffectEnvironment -> Id -> [Tp] -> (SortArgument Sort, SortArgument SortArgumentRegion)
+eeDataTypeArguments :: EffectEnvironment -> Id -> [Tp] -> (Argument Sort, Argument SortArgumentRegion)
 eeDataTypeArguments env name [] =
   -- Fast variant, if the data type does not have type arguments then we do not have to perform a substitution
-  (annotationSort, regionSort)
+  (ArgumentList $ fmap ArgumentValue annotationSort, ArgumentList $ fmap ArgumentValue regionSort)
   where
     (EffectDataType annotationSort regionSort _) = eeLookupDataType env name
 eeDataTypeArguments env name types =
-  ( sortArgumentAnnotationSubstitute env (TypeSubstitution 1 types) annotationSort
-  , sortArgumentRegionSubstitute env (TypeSubstitution 1 types) regionSort
+  ( instantiateArgumentTypes env types $ ArgumentList $ fmap ArgumentValue annotationSort
+  , instantiateArgumentTypes env types $ ArgumentList $ fmap ArgumentValue regionSort
   )
   where
     (EffectDataType annotationSort regionSort _) = eeLookupDataType env name
 
-sortArgumentRegionSubstitute :: EffectEnvironment -> TypeSubstitution -> SortArgument SortArgumentRegion -> SortArgument SortArgumentRegion
-sortArgumentRegionSubstitute env substitution = sortArgumentSubstitute substitution (typeRegionChildSort env) id
+class Instantiatable a where
+  instantiateType' :: EffectEnvironment -> TypeInstantiation -> a -> Argument a
 
-sortArgumentAnnotationSubstitute :: EffectEnvironment -> TypeSubstitution -> SortArgument Sort -> SortArgument Sort
-sortArgumentAnnotationSubstitute env substitution = sortArgumentSubstitute substitution (typeAnnotationSortArgument env) (sortSubstitute env substitution)
+instantiateType :: Instantiatable a => EffectEnvironment -> Tp -> a -> Argument a
+instantiateType env tp = instantiateType' env (TypeInstantiation 0 tp)
 
-sortSubstitute :: EffectEnvironment -> TypeSubstitution -> Sort -> Sort
-sortSubstitute env substitution SortRelation = SortRelation
-sortSubstitute env (TypeSubstitution first tps) (SortForall sort)
-  = SortForall $ sortSubstitute env substitution sort
-  where
-    substitution = TypeSubstitution (first + 1) tps
-sortSubstitute env substitution (SortFun argumentAnnotation argumentRegion sort) = SortFun argumentAnnotation' argumentRegion' sort'
-  where
-    argumentAnnotation' = sortArgumentAnnotationSubstitute env substitution argumentAnnotation
-    argumentRegion' = sortArgumentRegionSubstitute env substitution argumentRegion
-    sort' = sortSubstitute env substitution sort
+instantiateArgumentTypes :: Instantiatable a => EffectEnvironment -> [Tp] -> Argument a -> Argument a
+instantiateArgumentTypes env tps arg = foldr (instantiateArgumentType env) arg tps
 
-sortInstantiate :: EffectEnvironment -> Sort -> [Tp] -> Sort
-sortInstantiate env = instantiate []
-  where
-    instantiate :: [Tp] -> Sort -> [Tp] -> Sort
-    instantiate substitution sort [] = sortSubstitute env (TypeSubstitution 0 substitution) sort
-    instantiate substitution (SortForall sort) (tp : tps) = instantiate (tp : substitution) sort tps
-    instantiate _ _ _ = error "sortInstantiate: Expected SortForall"
+instantiateArgumentType :: Instantiatable a => EffectEnvironment -> Tp -> Argument a -> Argument a
+instantiateArgumentType env tp = instantiateArgumentType' env (TypeInstantiation 0 tp)
 
-type RegionInstantiation = [(RegionVar, ([RegionVar], Argument RegionVar))]
+instantiateArgumentType' :: Instantiatable a => EffectEnvironment -> TypeInstantiation -> Argument a -> Argument a
+instantiateArgumentType' env subst arg = arg >>= instantiateType' env subst
+
+instance Instantiatable SortArgumentRegion where
+  instantiateType' env (TypeInstantiation foralls tp) (SortArgumentRegionPolymorphic tvar tps)
+    | TypeVar foralls == tvar = typeRegionChildSort env tp tps
+  instantiateType' _ _ arg = ArgumentValue arg
+
+instance Instantiatable Sort where
+  instantiateType' env subst (SortForall s) = SortForall <$> instantiateType' env (typeInstantiationIncrement subst) s
+  instantiateType' env subst (SortFun argA argR s) = SortFun argA' argR' <$> instantiateType' env subst s
+    where
+      argA' = instantiateArgumentType' env subst argA
+      argR' = instantiateArgumentType' env subst argR
+  instantiateType' env subst (SortPolymorphic tvar tps) = case typeInstantiationTry subst tvar of
+    Left tvar' -> ArgumentValue $ SortPolymorphic tvar' tps'
+    Right tp -> typeAnnotationSortArgument env tp tps'
+    where
+      tps' = tpInstantiate' subst <$> tps
+  instantiateType' env subst s = ArgumentValue s
+
+  type RegionInstantiation = [(RegionVar, ([RegionVar], Argument RegionVar))]
 
 -- The sort of the second argument must be the same or an instantiation of the sort of the first argument.
 findArgumentSubstitution :: Argument a -> Argument a -> [(a, Argument a)]

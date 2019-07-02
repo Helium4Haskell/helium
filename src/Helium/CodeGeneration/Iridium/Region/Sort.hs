@@ -1,10 +1,10 @@
 module Helium.CodeGeneration.Iridium.Region.Sort
   ( TypeVar(..), showSubscript
-  , Sort(..), SortArgument(..), sortArgumentEmpty, SortArgumentRegion(..)
-  , sortArgumentSubstitute, variableIncrementLambdaBound
+  , Sort(..), Argument(..), argumentEmpty, SortArgumentRegion(..)
+  , variableIncrementLambdaBound, argumentFlatten
   , IndexVariable(..), indexBoundLambda, indexInArgument, showIndexVariable, variableFromIndices
-  , TypeSubstitution(..)
-  , Tp(..), tpFromType, tpSubstitute, tpStrict, tpNotStrict, tpIsStrict
+  , Tp(..), tpFromType, tpStrict, tpNotStrict, tpIsStrict
+  , tpIncreaseScope, tpInstantiate, tpInstantiate', TypeInstantiation(..), typeInstantiationTry, typeInstantiationIncrement
   ) where
 
 import Lvm.Core.Type
@@ -46,7 +46,7 @@ tpFromType quantors (TForall (Quantor idx _) _ tp) = TpForall $ tpFromType (idx 
 tpFromType quantors (TStrict tp) = TpStrict $ tpFromType quantors tp
 tpFromType quantors (TVar var) = case elemIndex var quantors of
   Nothing -> error "tpFromType: Type variable not found"
-  Just idx -> TpVar $ TypeVar $ idx + 1
+  Just idx -> TpVar $ TypeVar $ idx
 tpFromType quantors (TCon tcon) = TpCon tcon
 
 tpStrict :: Tp -> Tp
@@ -75,15 +75,30 @@ tpIncreaseScope inc = increment
     increment minScope (TpStrict tp) = TpStrict $ increment minScope tp
     increment _ tp = tp
 
-tpSubstitute :: Int -> Tp -> Tp -> Tp
-tpSubstitute index substitution = substitute 0
-  where
-    substitute nesting (TpVar (TypeVar tvar))
-      | tvar == index + nesting = tpIncreaseScope nesting 1 substitution
-    substitute nesting (TpApp t1 t2) = substitute nesting t1 `TpApp` substitute nesting t2
-    substitute nesting (TpForall tp) = TpForall $ substitute (nesting + 1) tp
-    substitute nesting (TpStrict tp) = TpStrict $ substitute nesting tp
-    substitute _ t = t
+-- Instantiation of a sort / annotation / argument / type
+-- Int represents the number of foralls that we found during the traversal of the AST
+data TypeInstantiation = TypeInstantiation !Int !Tp
+
+typeInstantiationTry :: TypeInstantiation -> TypeVar -> Either TypeVar Tp
+typeInstantiationTry (TypeInstantiation foralls tp) (TypeVar index)
+  | foralls == index = Right $ tpIncreaseScope foralls 0 tp
+  | index < foralls = Left $ TypeVar index
+  | otherwise = Left $ TypeVar $ index + 1
+
+typeInstantiationIncrement :: TypeInstantiation -> TypeInstantiation
+typeInstantiationIncrement (TypeInstantiation foralls tp) = TypeInstantiation (foralls + 1) tp
+
+tpInstantiate :: Tp -> Tp -> Tp
+tpInstantiate = tpInstantiate' . TypeInstantiation 0
+
+tpInstantiate' :: TypeInstantiation -> Tp -> Tp
+tpInstantiate' inst (TpVar tvar) = case typeInstantiationTry inst tvar of
+  Left tvar' -> TpVar tvar'
+  Right tp -> tp
+tpInstantiate' inst (TpApp t1 t2) = tpInstantiate' inst t1 `TpApp` tpInstantiate' inst t2
+tpInstantiate' inst (TpForall tp) = TpForall $ tpInstantiate' (typeInstantiationIncrement inst) tp
+tpInstantiate' inst (TpStrict tp) = TpStrict $ tpInstantiate' inst tp
+tpInstantiate' _ t = t
 
 showSubscript :: Int -> String
 showSubscript idx
@@ -98,7 +113,7 @@ showSubscript idx
       where
         accum' = char : accum
         digit = value `mod` 10
-        char = numbersSubscript !! digit
+        char = numbersSubscript !!! digit
         rest = value `div` 10
 
 class IndexVariable a where
@@ -130,25 +145,52 @@ instance Show TypeVar where
 
 data Sort
   = SortForall !Sort
-  | SortFun !(SortArgument Sort) !(SortArgument SortArgumentRegion) !Sort
+  | SortFun !(Argument Sort) !(Argument SortArgumentRegion) !Sort
   | SortRelation
+  | SortPolymorphic !TypeVar ![Tp]
   deriving (Eq, Ord)
 
-data SortArgument a
-  = SortArgumentMonomorphic !a
-  | SortArgumentPolymorphic !TypeVar ![Tp]
-  | SortArgumentList ![SortArgument a]
+data Argument a
+  = ArgumentValue !a
+  | ArgumentList ![Argument a]
   deriving (Eq, Ord)
 
-sortArgumentEmpty :: SortArgument a
-sortArgumentEmpty = SortArgumentList []
+argumentFlatten :: Argument a -> [a]
+argumentFlatten (ArgumentValue a) = [a]
+argumentFlatten (ArgumentList args) = args >>= argumentFlatten
 
-instance Functor SortArgument where
-  fmap f (SortArgumentMonomorphic a) = SortArgumentMonomorphic $ f a
-  fmap _ (SortArgumentPolymorphic x tps) = SortArgumentPolymorphic x tps
-  fmap f (SortArgumentList args) = SortArgumentList $ fmap (fmap f) args
+instance (Show a) => Show (Argument a) where
+  show (ArgumentValue r1) = show r1
+  show (ArgumentList args) = show args
 
-data SortArgumentRegion = SortArgumentRegion
+  showList args = ('(' :) . (intercalate ", " (map show args) ++) . (')' :)
+
+instance Functor Argument where
+  fmap f (ArgumentValue a) = ArgumentValue $ f a
+  fmap f (ArgumentList args) = ArgumentList $ fmap (fmap f) args
+
+instance Applicative Argument where
+  pure = ArgumentValue
+  ArgumentValue f <*> b = fmap f b
+  ArgumentList as <*> b = ArgumentList $ map (<*> b) as
+
+instance Monad Argument where
+  return = ArgumentValue
+  ArgumentValue a >>= f = f a
+  ArgumentList as >>= f = ArgumentList $ map (>>= f) as
+
+instance Foldable Argument where
+  foldMap f (ArgumentValue a) = f a
+  foldMap f (ArgumentList as) = foldMap (foldMap f) as
+
+instance Traversable Argument where
+  sequenceA (ArgumentValue a) = ArgumentValue <$> a
+  sequenceA (ArgumentList as) = ArgumentList <$> traverse sequenceA as
+
+argumentEmpty :: Argument a
+argumentEmpty = ArgumentList []
+
+data SortArgumentRegion = SortArgumentRegionMonomorphic | SortArgumentRegionPolymorphic !TypeVar ![Tp]
   deriving (Eq, Ord)
 
 sortIncreaseScope :: Int -> Int -> Sort -> Sort
@@ -158,12 +200,27 @@ sortIncreaseScope inc = increment
     increment minScope (SortForall sort) = SortForall $ increment (minScope + 1) sort
     increment minScope (SortFun argAnnotation argRegion a) =
       SortFun
-        (sortArgumentIncreaseScope inc minScope (increment minScope) argAnnotation)
-        (sortArgumentIncreaseScope inc minScope id argRegion)
+        (increment minScope <$> argAnnotation)
+        (incrementRegion minScope <$> argRegion)
         $ increment minScope a
     increment minScope SortRelation = SortRelation
+    increment minScope (SortPolymorphic (TypeVar idx) tps) =
+      SortPolymorphic tvar $ map (tpIncreaseScope inc minScope) tps
+      where
+        tvar
+          | idx < minScope = TypeVar idx
+          | otherwise = TypeVar (idx + minScope)
 
-sortArgumentIncreaseScope :: Int -> Int -> (a -> a) -> SortArgument a -> SortArgument a
+    incrementRegion :: Int -> SortArgumentRegion -> SortArgumentRegion
+    incrementRegion minScope SortArgumentRegionMonomorphic = SortArgumentRegionMonomorphic
+    incrementRegion minScope (SortArgumentRegionPolymorphic (TypeVar idx) tps) =
+      SortArgumentRegionPolymorphic tvar $ map (tpIncreaseScope inc minScope) tps
+      where
+        tvar
+          | idx < minScope = TypeVar idx
+          | otherwise = TypeVar (idx + minScope)
+
+{- sortArgumentIncreaseScope :: Int -> Int -> (a -> a) -> SortArgument a -> SortArgument a
 sortArgumentIncreaseScope inc minScope f (SortArgumentMonomorphic a) = SortArgumentMonomorphic $ f a
 sortArgumentIncreaseScope inc minScope f (SortArgumentPolymorphic (TypeVar idx) tps) =
   SortArgumentPolymorphic tvar $ map (tpIncreaseScope inc minScope) tps
@@ -172,30 +229,14 @@ sortArgumentIncreaseScope inc minScope f (SortArgumentPolymorphic (TypeVar idx) 
       | idx < minScope = TypeVar idx
       | otherwise = TypeVar (idx + minScope)
 sortArgumentIncreaseScope inc minScope f (SortArgumentList as) =
-  SortArgumentList $ map (sortArgumentIncreaseScope inc minScope f) as
+  SortArgumentList $ map (sortArgumentIncreaseScope inc minScope f) as -}
 
 instance Show Sort where
-  show (SortForall sort) = "forall " ++ show sort
+  show (SortForall sort) = "∀ " ++ show sort
   show (SortFun sortArgs regionArgs s1) = "[" ++ show sortArgs ++ "; " ++ show regionArgs ++ "] -> " ++ show s1
   show SortRelation = "R"
+  show (SortPolymorphic tvar tps) = "Ψ⟨" ++ show tvar ++ (tps >>= (\tp -> " " ++ showTpAtom tp)) ++ "⟩"
 
 instance Show SortArgumentRegion where
-  show SortArgumentRegion = "Ρ"
-
-instance Show a => Show (SortArgument a) where
-  show (SortArgumentMonomorphic a) = show a
-  show (SortArgumentPolymorphic tvar tps) = "<" ++ show tvar ++ (tps >>= (\tp -> " " ++ show tp)) ++ ">"
-  show (SortArgumentList args) = show args
-
-  showList args = ('(' :) . (intercalate ", " (map show args) ++) . (')' :)
-
-data TypeSubstitution = TypeSubstitution !Int ![Tp]
-
-sortArgumentSubstitute :: TypeSubstitution -> (Tp -> [Tp] -> SortArgument a) -> (a -> a) -> SortArgument a -> SortArgument a
-sortArgumentSubstitute substitution f mapValue (SortArgumentMonomorphic a) = SortArgumentMonomorphic $ mapValue a
-sortArgumentSubstitute (TypeSubstitution first substitution) f mapValue sort@(SortArgumentPolymorphic (TypeVar tvar) tps)
-  | tvar >= first = case tryIndex substitution (tvar - first) of
-    Nothing -> sort
-    Just tp -> f tp tps
-  | otherwise = sort
-sortArgumentSubstitute substitution f mapValue (SortArgumentList sorts) = SortArgumentList $ map (sortArgumentSubstitute substitution f mapValue) sorts
+  show SortArgumentRegionMonomorphic = "Ρ"
+  show (SortArgumentRegionPolymorphic tvar tps) = "Ρ⟨" ++ show tvar ++ (tps >>= (\tp -> " " ++ showTpAtom tp)) ++ "⟩"

@@ -55,18 +55,16 @@ containment env = containment' [] Nothing
     containmentDataType parent name typeArgs regionArgs = constraintsDataType ++ constraintsFields
       where
         EffectDataType _ argSort constraints = eeLookupDataType env name
-        constraintsDataType = instantiateRelationConstraints (\(RegionVar idx) -> Just $ argumentFlatten (regionArgs !!! idx)) constraints
-        constraintsFields = case argSort of
-          SortArgumentList argSorts ->
-            concat $ zipWith fieldConstraints argSorts regionArgs
-          s -> error ("containment: data type " ++ show name ++ " has wrong region argument sort: " ++ show s)
+        constraintsDataType = instantiateRelationConstraints (\var -> Just $ argumentFlatten (regionArgs !!! indexInArgument var)) constraints
+        constraintsFields = concat $ zipWith fieldConstraints argSort regionArgs
 
         -- Gather constraints per region argument of the data type. Any region argument should outlive the region variable of the object.
         -- Furthermore, polymorphic arguments may give more constraints when we instantiate them.
-        fieldConstraints :: SortArgument SortArgumentRegion -> Argument RegionVar -> [RelationConstraint]
-        fieldConstraints (SortArgumentPolymorphic (TypeVar tvar) tvarTypeArgs) arg = containmentFields [] parent tp tvarTypeArgs arg
+        fieldConstraints :: SortArgumentRegion -> Argument RegionVar -> [RelationConstraint]
+        fieldConstraints (SortArgumentRegionPolymorphic (TypeVar tvar) tvarTypeArgs) arg = containmentFields [] parent tp tvarTypeArgs arg
           where
-            tp = case tryIndex typeArgs (length typeArgs - tvar) of
+            tp = case tryIndex typeArgs (length typeArgs - tvar - 1) of
               Nothing -> error $ "containment: type variable not found. " ++ show typeArgs ++ "; " ++ show tvar
               Just tp -> tp
         fieldConstraints _ (ArgumentValue region) = [region `Outlives` parent]
+        fieldConstraints s a = error $ "fieldConstraints: Illegal arguments: " ++ show s ++ "; " ++ show a
