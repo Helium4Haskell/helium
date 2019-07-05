@@ -55,7 +55,7 @@ exprNormalizeMatches expr =
                     (exprL', dbgs') = exprNormalizeMatches exprL
                 in (Let (NonRec (Bind nameB exprB')) exprL', dbgs ++ dbgs')
             Let (Rec binds) exprL ->
-                let (binds', dbgs') =  unpackdbgs $ map (\(Bind nameB exprB) ->
+                let (binds', dbgs') = unpackdbgs $ map (\(Bind nameB exprB) ->
                         let (exprB', dbgs) = exprNormalizeMatches exprB
                         in (Bind nameB exprB', dbgs)) binds
                     (exprL', dbgs'') = exprNormalizeMatches exprL

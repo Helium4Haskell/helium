@@ -26,6 +26,6 @@ coreSimplify m = (t, dbgs)
                             , dbgs''''
                                 ++ (if expr == expr' then [] else ["\nRemove Renames(only diff):\nbefore:\n" ++ (show . pretty) expr ++ "\nafter:\n" ++ (show . pretty) expr' ++ "\n"])
                                 ++ (if expr' == expr'' then [] else ["\nNormalize Matches(only diff):\nbefore:\n" ++ (show . pretty) expr' ++ "\nafter:\n" ++ (show . pretty) expr'' ++ "\n"])
-                                ++ (if expr' == expr'' then [] else ["\nRemove Dead Let(only diff):\nbefore:\n" ++ (show . pretty) expr'' ++ "\nafter:\n" ++ (show . pretty) expr''' ++ "\n"])
+                                ++ (if expr'' == expr''' then [] else ["\nRemove Dead Let(only diff):\nbefore:\n" ++ (show . pretty) expr'' ++ "\nafter:\n" ++ (show . pretty) expr''' ++ "\n"])
                                 ++ dbgs'' ++ dbgs' ++ dbgs''')
                     _ -> (mds' ++ [decl], dbgs'''')) ([],[]) $ moduleDecls m
