@@ -57,7 +57,7 @@ exprNormalizeMatches expr =
         Let (Rec binds) exprL ->
             let binds' = map (\(Bind nameB exprB) ->
                     let exprB' = exprNormalizeMatches exprB
-                    in (Bind nameB exprB') binds
+                    in Bind nameB exprB') binds
                 exprL' = exprNormalizeMatches exprL
             in Let (Rec binds') exprL'
         Match name alts ->

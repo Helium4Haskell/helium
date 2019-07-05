@@ -4,8 +4,6 @@ import Helium.Normalization.Utils
 
 import Lvm.Core.Expr(Expr(..),Binds(..),Bind(..),Alts,Alt(..))
 
-import Text.PrettyPrint.Leijen
-
 {- Remove Dead Let -}
 exprRemoveDeadLet :: Expr -> Expr
 exprRemoveDeadLet expr =

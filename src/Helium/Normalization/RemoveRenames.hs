@@ -1,15 +1,11 @@
 module Helium.Normalization.RemoveRenames where
 
-import Helium.Normalization.Utils
-
 import qualified Data.Map as Map
 import Data.Either(Either)
 import qualified Data.Either as Either
 
 import Lvm.Common.Id(Id)
 import Lvm.Core.Expr(Expr(..),Binds(..),Bind(..),Alts,Alt(..))
-
-import Text.PrettyPrint.Leijen
 
 {- Remove Renames -}
 type Rename = Map.Map Id Id
