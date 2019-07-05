@@ -63,7 +63,7 @@ exprNormalizeMatches expr =
         Match name alts ->
             let alts' = map (\(Alt pat exprA) ->
                     let exprA' = exprNormalizeMatches exprA
-                    in (Alt pat exprA') alts
+                    in Alt pat exprA') alts
             in Match name alts'
         Ap expr1 expr2 ->
             let expr1' = exprNormalizeMatches expr1
