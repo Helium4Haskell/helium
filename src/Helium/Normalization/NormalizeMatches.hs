@@ -39,12 +39,11 @@ exprNormalizeMatches expr =
                     let exprA' = exprNormalizeMatches exprA
                     in Alt pat exprA') alts
 
-                (expr'', dbgs'''') = case exprNormalize exprSB' exprNB' of
+                expr'' = case exprNormalize exprSB' exprNB' of
                     Just (alts'',bindss) ->
                         let combAlts = combineAlts nameNB alts' alts''
-                        in foldr (Let) (Let bindS (Match nameM combAlts)) bindss
+                        in foldr Let (Let bindS (Match nameM combAlts)) bindss
                     Nothing -> expr'
-
             in expr''
         Let (Strict (Bind nameB exprB)) exprL ->
             let exprB' = exprNormalizeMatches exprB
@@ -82,11 +81,9 @@ exprNormalize exprName expr = case expr of
         | nameSB == nameM
         && exprName == exprSB -> Just (alts,[])
     Let binds exprL -> case exprNormalize exprName exprL of
-        (Just (alts,bindss),dbgs) -> Just (alts,binds:bindss)
-        (Nothing,dbgs) -> Nothing
-    Lam name exprL ->
-        let m = exprNormalize exprName exprL
-        in m
+        Just (alts,bindss) -> Just (alts,binds:bindss)
+        Nothing -> Nothing
+    Lam name exprL -> exprNormalize exprName exprL
     _ -> Nothing
     where namesFromBinds :: Binds -> String
           namesFromBinds (Strict (Bind nameB _)) = show nameB
