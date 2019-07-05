@@ -7,58 +7,57 @@ import Lvm.Core.Expr(Expr(..),Binds(..),Bind(..),Alts,Alt(..))
 import Text.PrettyPrint.Leijen
 
 {- Remove Dead Let -}
-exprRemoveDeadLet :: Expr -> DBGS Expr
+exprRemoveDeadLet :: Expr -> Expr
 exprRemoveDeadLet expr =
-    let (after, dbgs) = case expr of
-            Let (Strict bind) expr1 ->
-                let (bind', dbgs') = bindRemoveDeadLet bind
-                    (expr1', dbgs'') = exprRemoveDeadLet expr1
-                in  (Let (Strict bind') expr1', dbgs' ++ dbgs'')
-            Let binds expr1 ->
-                let (binds', dbgs') = bindsRemoveDeadLet binds
-                    (expr1', dbgs'') = exprRemoveDeadLet expr1
-                    bindNames = snd $ bindsOcc binds'
-                    occ = exprOcc expr1'
-                    simplify = Let binds' expr1'
-                in  if anyMember occ bindNames -- Only removes complete let bindings (which are already split for mutual recursion)
-                     then (simplify, dbgs' ++ dbgs'') -- Not a dead let
-                     else (expr1', dbgs' ++ dbgs'') -- Dead let removal
-            Match name alts ->
-                let (alts', dbgs') = altsRemoveDeadLet alts
-                in (Match name alts', dbgs')
-            Ap expr1 expr2 ->
-                let (expr1', dbgs') = exprRemoveDeadLet expr1
-                    (expr2', dbgs'') = exprRemoveDeadLet expr2
-                in (Ap expr1' expr2', dbgs' ++ dbgs'')
-            Lam name expr1 ->
-                let (expr1', dbgs') = exprRemoveDeadLet expr1
-                in (Lam name expr1', dbgs')
-            Con _ -> (expr, [])
-            Var _ -> (expr, [])
-            Lit _ -> (expr, [])
-    in (after, (if expr == after then dbgs else ("\nDeadLet:\nbefore:\n" ++ (show . pretty) expr ++ "\nafter:\n" ++ (show . pretty) after ):dbgs))
+    case expr of
+        Let (Strict bind) expr1 ->
+            let bind' = bindRemoveDeadLet bind
+                expr1' = exprRemoveDeadLet expr1
+            in  Let (Strict bind') expr1'
+        Let binds expr1 ->
+            let binds' = bindsRemoveDeadLet binds
+                expr1' = exprRemoveDeadLet expr1
+                bindNames = snd $ bindsOcc binds'
+                occ = exprOcc expr1'
+                simplify = Let binds' expr1'
+            in  if anyMember occ bindNames -- Only removes complete let bindings (which are already split for mutual recursion)
+                    then simplify -- Not a dead let
+                    else expr1' -- Dead let removal
+        Match name alts ->
+            let alts' = altsRemoveDeadLet alts
+            in Match name alts'
+        Ap expr1 expr2 ->
+            let expr1' = exprRemoveDeadLet expr1
+                expr2' = exprRemoveDeadLet expr2
+            in Ap expr1' expr2'
+        Lam name expr1 ->
+            let expr1' = exprRemoveDeadLet expr1
+            in Lam name expr1'
+        Con _ -> expr
+        Var _ -> expr
+        Lit _ -> expr
 
-bindsRemoveDeadLet :: Binds -> DBGS Binds
+bindsRemoveDeadLet :: Binds -> Binds
 bindsRemoveDeadLet binds = case binds of
     NonRec bind ->
-        let (bind', dbgs) = bindRemoveDeadLet bind
-        in (NonRec bind', dbgs)
+        let bind' = bindRemoveDeadLet bind
+        in NonRec bind'
     Strict bind ->
-        let (bind', dbgs) = bindRemoveDeadLet bind
-        in (Strict bind', dbgs)
+        let bind' = bindRemoveDeadLet bind
+        in Strict bind'
     Rec binds' ->
-        let (binds'', dbgs) = unpackdbgs $ map bindRemoveDeadLet binds'
-        in (Rec binds'', dbgs)
+        let binds'' = map bindRemoveDeadLet binds'
+        in Rec binds''
 
-bindRemoveDeadLet :: Bind -> DBGS Bind
+bindRemoveDeadLet :: Bind -> Bind
 bindRemoveDeadLet (Bind name expr) =
-    let (expr', dbgs) = exprRemoveDeadLet expr
-    in (Bind name expr', dbgs)
+    let expr' = exprRemoveDeadLet expr
+    in Bind name expr'
 
-altsRemoveDeadLet :: Alts -> DBGS Alts
-altsRemoveDeadLet alts = unpackdbgs $ map (altRemoveDeadLet) alts
+altsRemoveDeadLet :: Alts -> Alts
+altsRemoveDeadLet alts = map (altRemoveDeadLet) alts
 
-altRemoveDeadLet :: Alt -> DBGS Alt
+altRemoveDeadLet :: Alt -> Alt
 altRemoveDeadLet(Alt pat expr) =
-    let (expr', dbgs) = exprRemoveDeadLet expr
-    in (Alt pat expr', dbgs)
+    let expr' = exprRemoveDeadLet expr
+    in Alt pat expr'

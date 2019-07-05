@@ -19,13 +19,12 @@ coreSimplify m = (t, dbgs)
     t = m{moduleDecls = mds}
     (mds,dbgs) = foldr (\decl (mds',dbgs'''') -> case decl of
                     DeclValue _ _ _ expr _ ->
-                        let (expr', dbgs') = exprRemoveRename Map.empty expr
-                            (expr'', dbgs'') = exprNormalizeMatches expr'
-                            (expr''', dbgs''') = exprRemoveDeadLet expr''
+                        let expr' = exprRemoveRename Map.empty expr
+                            expr'' = exprNormalizeMatches expr'
+                            expr''' = exprRemoveDeadLet expr''
                         in (mds' ++ [decl{valueValue = expr'''}]
                             , dbgs''''
-                                ++ (if expr == expr' then [] else ["\nRemove Renames(only diff):\nbefore:\n" ++ (show . pretty) expr ++ "\nafter:\n" ++ (show . pretty) expr' ++ "\n"])
-                                ++ (if expr' == expr'' then [] else ["\nNormalize Matches(only diff):\nbefore:\n" ++ (show . pretty) expr' ++ "\nafter:\n" ++ (show . pretty) expr'' ++ "\n"])
-                                ++ (if expr' == expr'' then [] else ["\nRemove Dead Let(only diff):\nbefore:\n" ++ (show . pretty) expr'' ++ "\nafter:\n" ++ (show . pretty) expr''' ++ "\n"])
-                                ++ dbgs'' ++ dbgs' ++ dbgs''')
+                                ++ (if expr == expr' then [] else ["\nRemove Renames:\nbefore:\n" ++ (show . pretty) expr ++ "\nafter:\n" ++ (show . pretty) expr' ++ "\n"])
+                                ++ (if expr' == expr'' then [] else ["\nNormalize Matches:\nbefore:\n" ++ (show . pretty) expr' ++ "\nafter:\n" ++ (show . pretty) expr'' ++ "\n"])
+                                ++ (if expr'' == expr''' then [] else ["\nRemove Dead Let:\nbefore:\n" ++ (show . pretty) expr'' ++ "\nafter:\n" ++ (show . pretty) expr''' ++ "\n"]))
                     _ -> (mds' ++ [decl], dbgs'''')) ([],[]) $ moduleDecls m

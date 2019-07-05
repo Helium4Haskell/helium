@@ -20,75 +20,74 @@ leadingNextClause = leading "\"nextClause$"
 leadingGuard :: String -> Bool
 leadingGuard = leading "\"guard$"
 
-exprNormalizeMatches :: Expr -> DBGS Expr
+exprNormalizeMatches :: Expr -> Expr
 exprNormalizeMatches expr =
-    let (after, dbg) = case expr of
-            Let (Strict (Bind nameB exprB)) (Match nameM (Alt (PatCon (ConId trueId) []) exprA:_))
-                | nameB == nameM --leadingGuard (show nameB) &&
-                && show trueId == "\"True\""
-                && exprB == Var (idFromString "otherwise") -> (exprA, ["\nNormalize useless otherwise removed"])
-            Let (NonRec (Bind nameNB exprNB)) exprN@(Let bindS@(Strict (Bind nameSB exprSB)) (Match nameM alts))
-                | leadingNextClause (show nameNB)
-                && nameSB == nameM ->
-                let (exprNB', dbgs) = exprNormalizeMatches exprNB
-                    (exprN', dbgs') = exprNormalizeMatches exprN
-                    expr' = Let (NonRec (Bind nameNB exprNB')) exprN'
+    case expr of
+        Let (Strict (Bind nameB exprB)) (Match nameM (Alt (PatCon (ConId trueId) []) exprA:_))
+            | nameB == nameM --leadingGuard (show nameB) &&
+            && show trueId == "\"True\""
+            && exprB == Var (idFromString "otherwise") -> exprA
+        Let (NonRec (Bind nameNB exprNB)) exprN@(Let bindS@(Strict (Bind nameSB exprSB)) (Match nameM alts))
+            | leadingNextClause (show nameNB)
+            && nameSB == nameM ->
+            let exprNB' = exprNormalizeMatches exprNB
+                exprN' = exprNormalizeMatches exprN
+                expr' = Let (NonRec (Bind nameNB exprNB')) exprN'
 
-                    (exprSB', dbgs'') = exprNormalizeMatches exprSB
-                    (alts', dbgs''') = unpackdbgs $ map (\(Alt pat exprA) ->
-                        let (exprA', dbgs''''') = exprNormalizeMatches exprA
-                        in (Alt pat exprA', dbgs''''')) alts
+                exprSB' = exprNormalizeMatches exprSB
+                alts' = map (\(Alt pat exprA) ->
+                    let exprA' = exprNormalizeMatches exprA
+                    in Alt pat exprA') alts
 
-                    (expr'', dbgs'''') = case exprNormalize exprSB' exprNB' of
-                        (Just (alts'',bindss), dbgs''''') ->
-                            let combAlts = combineAlts nameNB alts' alts''
-                            in (foldr (Let) (Let bindS (Match nameM combAlts)) bindss, ("\ncombining alts:\n" ++ (show . pretty) alts' ++ "\nand alts':\n" ++ (show . pretty) alts'' ++ "\ncombAlts:\n" ++ (show . pretty) combAlts):dbgs''''')
-                        (Nothing, dbgs''''') -> (expr', dbgs''''')
+                (expr'', dbgs'''') = case exprNormalize exprSB' exprNB' of
+                    Just (alts'',bindss) ->
+                        let combAlts = combineAlts nameNB alts' alts''
+                        in foldr (Let) (Let bindS (Match nameM combAlts)) bindss
+                    Nothing -> expr'
 
-                in (expr'', dbgs ++ dbgs' ++ dbgs'' ++ dbgs''' ++ dbgs'''' ++ [("\nNormalize: nextclause encountered" ++ (if expr' /= expr'' then "\nbefore:\n" ++ ((show . pretty) expr') ++ "\nafter:\n" ++ ((show . pretty) expr'') else "\nnot solidified:\n" ++ (show.pretty) expr''))])
-            Let (Strict (Bind nameB exprB)) exprL ->
-                let (exprB', dbgs) = exprNormalizeMatches exprB
-                    (exprL', dbgs') = exprNormalizeMatches exprL
-                in (Let (Strict (Bind nameB exprB')) exprL', dbgs ++ dbgs')
-            Let (NonRec (Bind nameB exprB)) exprL ->
-                let (exprB', dbgs) = exprNormalizeMatches exprB
-                    (exprL', dbgs') = exprNormalizeMatches exprL
-                in (Let (NonRec (Bind nameB exprB')) exprL', dbgs ++ dbgs')
-            Let (Rec binds) exprL ->
-                let (binds', dbgs') =  unpackdbgs $ map (\(Bind nameB exprB) ->
-                        let (exprB', dbgs) = exprNormalizeMatches exprB
-                        in (Bind nameB exprB', dbgs)) binds
-                    (exprL', dbgs'') = exprNormalizeMatches exprL
-                in (Let (Rec binds') exprL', dbgs' ++ dbgs'')
-            Match name alts ->
-                let (alts', dbgs') = unpackdbgs $ map (\(Alt pat exprA) ->
-                        let (exprA', dbgs) = exprNormalizeMatches exprA
-                        in (Alt pat exprA', dbgs)) alts
-                in (Match name alts', dbgs')
-            Ap expr1 expr2 ->
-                let (expr1', dbgs) = exprNormalizeMatches expr1
-                    (expr2', dbgs') = exprNormalizeMatches expr2
-                in (Ap expr1' expr2', dbgs ++ dbgs')
-            Lam name expr1 ->
-                let (expr1', dbgs) = exprNormalizeMatches expr1
-                in (Lam name expr1', dbgs)
-            Con _ -> (expr, [])
-            Var _ -> (expr, [])
-            Lit _ -> (expr, [])
-    in (after, (if True{-expr == after-} then dbg else ("\nNormalize:\nbefore:\n" ++ (show . pretty) expr ++ "\nafter:\n" ++ (show . pretty) after ):dbg))
+            in expr''
+        Let (Strict (Bind nameB exprB)) exprL ->
+            let exprB' = exprNormalizeMatches exprB
+                exprL' = exprNormalizeMatches exprL
+            in Let (Strict (Bind nameB exprB')) exprL'
+        Let (NonRec (Bind nameB exprB)) exprL ->
+            let exprB' = exprNormalizeMatches exprB
+                exprL' = exprNormalizeMatches exprL
+            in Let (NonRec (Bind nameB exprB')) exprL'
+        Let (Rec binds) exprL ->
+            let binds' = map (\(Bind nameB exprB) ->
+                    let exprB' = exprNormalizeMatches exprB
+                    in (Bind nameB exprB') binds
+                exprL' = exprNormalizeMatches exprL
+            in Let (Rec binds') exprL'
+        Match name alts ->
+            let alts' = map (\(Alt pat exprA) ->
+                    let exprA' = exprNormalizeMatches exprA
+                    in (Alt pat exprA') alts
+            in Match name alts'
+        Ap expr1 expr2 ->
+            let expr1' = exprNormalizeMatches expr1
+                expr2' = exprNormalizeMatches expr2
+            in Ap expr1' expr2'
+        Lam name expr1 ->
+            let expr1' = exprNormalizeMatches expr1
+            in Lam name expr1'
+        Con _ -> expr
+        Var _ -> expr
+        Lit _ -> expr
 
-exprNormalize :: Expr -> Expr -> DBGS (Maybe (Alts,[Binds]))
+exprNormalize :: Expr -> Expr -> Maybe (Alts,[Binds])
 exprNormalize exprName expr = case expr of
     Let (Strict (Bind nameSB exprSB)) (Match nameM alts)
         | nameSB == nameM
-        && exprName == exprSB -> (Just (alts,[]), ["\nFound match: " ++ show nameM])
+        && exprName == exprSB -> Just (alts,[])
     Let binds exprL -> case exprNormalize exprName exprL of
-        (Just (alts,bindss),dbgs) -> (Just (alts,binds:bindss),("\nFound let: " ++ namesFromBinds binds ++ ": solidifying"):dbgs)
-        (Nothing,dbgs) -> (Nothing,("\nFound let: " ++ namesFromBinds binds ++ ": not solidifying"):dbgs)
+        (Just (alts,bindss),dbgs) -> Just (alts,binds:bindss)
+        (Nothing,dbgs) -> Nothing
     Lam name exprL ->
-        let (m, dbgs) = exprNormalize exprName exprL
-        in (m, ("\nLam: " ++ show name):dbgs)
-    _ -> (Nothing, ["\nNot a let"])
+        let m = exprNormalize exprName exprL
+        in m
+    _ -> Nothing
     where namesFromBinds :: Binds -> String
           namesFromBinds (Strict (Bind nameB _)) = show nameB
           namesFromBinds (NonRec (Bind nameB _)) = show nameB
