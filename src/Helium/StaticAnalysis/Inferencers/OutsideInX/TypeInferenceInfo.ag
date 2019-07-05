@@ -59,7 +59,10 @@ SEM RightHandSide | Expression loc . cinfo =
 -- Expression.Literal
 SEM Expression | Literal loc . cinfo =
   resultConstraint "literal" @parentTree
-     [ FolkloreConstraint, HasTrustFactor 10.0 ]
+     ([ FolkloreConstraint, HasTrustFactor 10.0 ]  ++ case @literal.literalType of
+          MonoType_Con "Float" -> [LiteralFloat @literal.floatValue]
+          _ -> []     
+     )
 
 -- Expression.Constructor
 SEM Expression | Constructor loc . cinfo =
@@ -222,7 +225,10 @@ SEM GuardedExpression | GuardedExpression loc . cinfoExpr =
 -- Pattern.Literal
 SEM Pattern | Literal loc . cinfo =
   resultConstraint "literal pattern" @parentTree
-     [ FolkloreConstraint, HasTrustFactor 10.0 ]        
+     ([ FolkloreConstraint, HasTrustFactor 10.0 ] ++ case @literal.literalType of
+          MonoType_Con "Float" -> [LiteralFloat @literal.floatValue]
+          _ -> []     
+     )
 
 -- Pattern.Constructor
 SEM Pattern | Constructor loc . cinfoConstructor =

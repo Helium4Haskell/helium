@@ -843,13 +843,14 @@ SEM MaybeExpression
       
 
 
-ATTR Literal [ | | literalType : MonoType]
+ATTR Literal [ | | literalType : MonoType floatValue : Float]
 
 SEM Literal
     | Int
         lhs . literalType   = MonoType_Con "Int"
     | Float
         lhs . literalType   = MonoType_Con "Float"
+        lhs . floatValue    = read @value
     | String
         lhs . literalType   = MonoType_Fam "String" []
     | Char

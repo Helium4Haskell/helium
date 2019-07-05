@@ -127,6 +127,7 @@ data Property
     | ApplicationTypeSignature (PolyType ConstraintInfo)
     | TooManyFBArgs 
     | PatternTypeSignature (PolyType ConstraintInfo)
+    | LiteralFloat Float
 
 
 class HasProperties a where
@@ -277,7 +278,8 @@ maybeApplicationTypeSignature a = maybeHead [ ps | ApplicationTypeSignature ps <
 maybePatternTypeSignature :: HasProperties a => a -> Maybe (PolyType ConstraintInfo)
 maybePatternTypeSignature a = maybeHead [ ps | PatternTypeSignature ps <- getProperties a]
 
-
+maybeLiteralFloat :: HasProperties a => a -> Maybe Float
+maybeLiteralFloat a = maybeHead [ f | LiteralFloat f <- getProperties a]
 -----------------------------------------------------------------
 -- Smart constructors
 

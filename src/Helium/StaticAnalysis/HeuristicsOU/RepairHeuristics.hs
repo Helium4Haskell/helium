@@ -279,10 +279,10 @@ siblingsHeuristic siblings =
                      
                   schemeFits (MonoType_Var _ _) _ = return False   
                   schemeFits contextTp scheme = do
-                     
+                     let ups = unbindPolyType scheme
                      freshIdentifier <- fresh (string2Name "a")
                      axioms <- getAxioms
-                     sub <- runTG (unifyTypes axioms [] [Constraint_Unify (var freshIdentifier) contextTp Nothing, Constraint_Inst (var freshIdentifier) (unbindPolyType scheme) Nothing] (freshIdentifier : fv contextTp))
+                     sub <- runTG (unifyTypes axioms [] [Constraint_Unify (var freshIdentifier) contextTp Nothing, Constraint_Inst (var freshIdentifier) ups Nothing] (freshIdentifier : fv contextTp ++ fv ups))
                      return $ isJust sub
 
 
@@ -324,8 +324,12 @@ siblingLiterals =
                                           (5, "Int literal should be a Float", constraint, eid, hint info, gm)
 
                            ("Float", MonoType_Con "Int" )
-                                 -> let hint = fixHint "use an int literal instead"
-                                    in return $ Just
+                                 -> let 
+                                       hint = fixHint "use an int literal instead"
+                                       literalFloat = maybeLiteralFloat info
+                                    in return $ if maybe False (\f -> fromIntegral (round f) /= f) literalFloat then
+                                          Nothing
+                                       else Just
                                           (5, "Float literal should be an Int", constraint, eid, hint info, gm)
 
                            ("Char", MonoType_App (MonoType_Con "[]") (MonoType_Con "Char"))

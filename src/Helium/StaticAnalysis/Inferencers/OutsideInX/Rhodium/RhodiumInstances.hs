@@ -132,7 +132,7 @@ instance (CompareTypes m (RType ConstraintInfo), IsTouchable m TyVar, HasAxioms 
 
 
 instantiate :: Fresh m => PolyType ConstraintInfo -> Bool -> m ([TyVar], [Constraint ConstraintInfo], MonoType)
-instantiate (PolyType_Bind s b) tch = do
+instantiate pb@(PolyType_Bind s b) tch = do
     (v,i) <- unbind b
     (vs, c,t) <- instantiate i tch
     
@@ -522,6 +522,7 @@ instance Show Property where
     show (ApplicationTypeSignature ps) = "ApplicationTypeSignature " ++ show ps
     show TooManyFBArgs = "TooManyFBArgs"
     show (PatternTypeSignature ps) = "PatternTypeSignature" ++ show ps
+    show (LiteralFloat f) = "LiteralFloat " ++ show f
     
 instance Show ConstraintInfo where
     show x = location x ++ show (properties x) -- ++ fromMaybe [] (sortAndShowMessages . (:[]) <$> errorMessage x)

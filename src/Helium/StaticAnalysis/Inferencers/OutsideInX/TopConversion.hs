@@ -136,7 +136,7 @@ tpSchemeToMonoType fams tps =
         monoType = tpToMonoType fams (getQuantorMap tps) tp
         convertPred (Predicate c v) = case lookup v tyvars of
             Nothing -> internalError "TopConversion" "tpSchemeToMonoType" "Type variable not found"
-            Just tv -> traceShowId $ Constraint_Class c [var tv] (Just emptyConstraintInfo)
+            Just tv -> Constraint_Class c [var tv] (Just emptyConstraintInfo)
         in (map convertPred qs , qmap, monoType)
 
 tpToMonoType :: TypeFamilies -> [(Int, String)] -> Tp -> MonoType

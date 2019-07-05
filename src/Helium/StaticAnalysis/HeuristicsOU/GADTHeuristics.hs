@@ -141,7 +141,7 @@ unreachablePatternHeuristic path = SingleVoting "Unreachable GADT pattenr" f
                 let cedge = getEdgeFromId graph eid
                 let priority = getPriorityFromEdge cedge
                 case constraint of
-                    Constraint_Unify m1 m2 _ 
+                    Constraint_Inst m1 (PolyType_Mono _ m2) _ 
                         | priority > 1 && even priority -> doWithoutConstraint constraint $ do
                             MType m1' <- getSubstTypeFull (getGroupFromEdge cedge) (MType m1)
                             MType m2' <- getSubstTypeFull (drop 1 $ getGroupFromEdge cedge) (MType m2)
@@ -151,7 +151,7 @@ unreachablePatternHeuristic path = SingleVoting "Unreachable GADT pattenr" f
                             resSubs <- runTG (unifyTypes axioms [] [Constraint_Unify patternRes typeSigRes Nothing] (getFreeVariables (MType typeSigRes :: RType ConstraintInfo)))
                             let (conPattern, _) = conList patternRes
                             let (conTypeSig, _) = conList typeSigRes
-                            if isNothing resSubs && conPattern == conTypeSig then do
+                            if isNothing resSubs then do
                                 let spp = selectPriorityPatterns graph (getPriorityFromEdge cedge)
                                 if null spp then    
                                     return $ Just (1, "Unreachable pattern", constraint, eid, addProperty (UnreachablePattern m1' m2') ci, removePriorGM (getGroupFromEdge cedge))
