@@ -77,7 +77,7 @@ data Constraint
   = CCall
     { cCallIdentifier :: !Id -- The variable on the left hand side of the call expression or bind. Uniquely identifies the constraint.
     , cCallResultAnnotationSort :: !(Argument Sort)
-    , cCallResultAnnotation :: !(Argument AnnotationVar)
+    , cCallResultAnnotation :: !AnnotationVar
     , cCallResultRegion :: !(Argument RegionVar)
     , cCallTarget :: !(Either Id (Argument AnnotationVar, RegionVar, RegionVar)) -- Left for a call to a global function, right for a higher order call
     , cCallTargetArity :: !Int -- Arity of the target function. Zero for a higher order call
@@ -86,7 +86,7 @@ data Constraint
     , cCallKind :: !CallKind
     }
   -- Note that CJoin and CReturn may not contain regions from the arguments, return type or additional regions of a method.
-  | CJoin !(Argument Sort) !(Argument AnnotationVar) ![Argument Annotation]
+  | CJoin !(Argument Sort) !AnnotationVar ![Argument Annotation]
   | CReturn !(Argument Annotation)
 
 data CallArgument
@@ -150,10 +150,9 @@ methodInitialize typeEnv effectEnv supply method@(Method methodType _ _ _ _ _) =
       Just a' -> AnnotationVar a'
   
     substituteAnnotation :: Int -> Annotation -> Annotation
-    substituteAnnotation lambdas (AFix identifier fixRegions a1 a2) = AFix identifier fixRegions a1' a2'
+    substituteAnnotation lambdas (AFix fixRegions s a) = AFix fixRegions s a'
       where
-        a1' = substituteAnnotation lambdas a1
-        a2' = substituteAnnotation lambdas a2
+        a' = substituteAnnotation lambdas <$> a
     substituteAnnotation lambdas (AForall a) = AForall $ substituteAnnotation lambdas a
     substituteAnnotation lambdas (ALam argA argR a) = ALam argA argR $ substituteAnnotation (lambdas + 1) a
     substituteAnnotation lambdas (AApp a argA argR) = AApp a' argA' argR
@@ -169,24 +168,7 @@ methodInitialize typeEnv effectEnv supply method@(Method methodType _ _ _ _ _) =
         a1' = substituteAnnotation lambdas a1
         a2' = substituteAnnotation lambdas a2
     substituteAnnotation lambdas a = a
-    {-
-    
-data Annotation
-  = AFix !(Maybe Int) !FixRegions !Annotation !Annotation
 
-  | AForall !Annotation
-  | ALam !(Argument Sort) !(Argument SortArgumentRegion) !Annotation
-
-  | AApp !Annotation !(Argument Annotation) !(Argument RegionVar)
-  | AInstantiate !Annotation !Tp
-
-  -- Leaf
-  | AVar !AnnotationVar
-  | ARelation ![RelationConstraint]
-  | ABottom
-
-  | AJoin !Annotation !Annotation
-  deriving (Eq, Ord)-}
     variables' = mapMap substituteVariableInfo variables
     annotationConstraints' = mapMaybe substituteConstraint annotationConstraints
 
@@ -194,17 +176,13 @@ data Annotation
     substituteVariableInfo (VariableInfo tp annotations regions) = VariableInfo tp (fmap substitute annotations) regions
 
     substituteConstraint :: Constraint -> Maybe Constraint
-    substituteConstraint (CJoin _ _ [arg])
-      | all isVar $ argumentFlatten arg = Nothing
-      where
-        isVar (AVar _) = True
-        isVar _ = False
-    substituteConstraint (CCall lhs resASort resA resR target arity additionalRegions args kind) = Just $ CCall lhs resASort (fmap substitute resA) resR target' arity additionalRegions (map substituteCallArgument args) kind
+    substituteConstraint (CJoin _ _ [ArgumentValue (AVar _)]) = Nothing
+    substituteConstraint (CCall lhs resASort resA resR target arity additionalRegions args kind) = Just $ CCall lhs resASort (substitute resA) resR target' arity additionalRegions (map substituteCallArgument args) kind
       where
         target' = case target of
           Left global -> Left global
           Right (annotation, rThunk, rValue) -> Right (fmap substitute annotation, rThunk, rValue) 
-    substituteConstraint (CJoin aSort a as) = Just $ CJoin aSort (fmap substitute a) (map (fmap $ substituteAnnotation 0) as)
+    substituteConstraint (CJoin aSort a as) = Just $ CJoin aSort (substitute a) (map (fmap $ substituteAnnotation 0) as)
     substituteConstraint (CReturn annotations) = Just $ CReturn $ fmap (substituteAnnotation 0) annotations
 
     substituteCallArgument :: CallArgument -> CallArgument
@@ -232,6 +210,14 @@ lookupVariableAnnotation env _ (VarGlobal (GlobalVariable name _)) = annotation'
     regionSort = typeRegionSort env (if arity == 0 then tp else tpStrict tp)
     region :: Argument RegionVar
     region = fmap (const regionGlobal) $ (sortArgumentToArgument 1 regionSort :: Argument RegionVar)
+
+lookupVariableType :: EffectEnvironment -> MethodState -> Variable -> Tp
+lookupVariableType env state (VarLocal (Local name _)) = tp
+  where
+    VariableInfo tp _ _ = lookupLocal state name
+lookupVariableType env state (VarGlobal (GlobalVariable name _)) = if arity == 0 then tp else tpStrict tp
+  where
+    EffectGlobal arity tp _ = eeLookupGlobal env name
 
 lookupVariableRegion :: EffectEnvironment -> MethodState -> Variable -> Argument RegionVar
 lookupVariableRegion _ state (VarLocal (Local name _)) = region
@@ -280,30 +266,39 @@ assignVariables typeEnv effectEnv method@(Method _ args' retType _ _ _) =
 
     assign :: (Int, Int) -> Local -> ((Int, Int), (Id, VariableInfo))
     assign (freshAnnotation, freshRegion) (Local name tp)
-      = ((freshAnnotation', freshRegion'), (name, VariableInfo tp' annotation region))
+      = ((freshAnnotation + 1, freshRegion'), (name, VariableInfo tp' (ArgumentValue $ variableFromIndices lambdaBound freshAnnotation) region))
       where
         tp' = tpFromType quantors $ typeNormalize typeEnv tp
         sortAnnotation = typeAnnotationSortArgument effectEnv tp' []
         sortRegion = typeRegionSort effectEnv tp'
-        (freshAnnotation', annotation) = sortArgumentToArgument' lambdaBound freshAnnotation sortAnnotation
         (freshRegion', region) = sortArgumentToArgument' lambdaBound freshRegion sortRegion
 
     assignArgument :: Int -> Local -> (Id, VariableInfo)
     assignArgument lambdaBound' (Local name tp)
-      = (name, VariableInfo tp' annotation region)
+      = (name, VariableInfo tp' annotation region')
       where
         tp' = tpFromType quantors $ typeNormalize typeEnv tp
         sortAnnotation = typeAnnotationSortArgument effectEnv tp' []
-        sortRegion = typeRegionSort effectEnv tp'
+        sortRegion = typeRegionSort effectEnv (tpNotStrict tp')
         annotation = sortArgumentToArgument lambdaBound' sortAnnotation
         region = sortArgumentToArgument lambdaBound' sortRegion
+        region'
+          | tpIsStrict tp' =
+            let ArgumentList [r1, r2, r3] = region in ArgumentList [r2, r3]
+          | otherwise = region
 
 gather :: EffectEnvironment -> MethodState -> Method -> [RelationConstraint]
-gather env state (Method _ _ _ _ block blocks)
-  = gatherInBlock block ++ (blocks >>= gatherInBlock)
+gather env state (Method _ args _ _ block blocks)
+  = (args >>= gatherInArgument) ++ gatherInBlock block ++ (blocks >>= gatherInBlock)
   where
     gatherInBlock :: Block -> [RelationConstraint]
     gatherInBlock (Block _ instruction) = gatherInInstruction instruction
+
+    gatherInArgument :: Either Quantor Local -> [RelationConstraint]
+    gatherInArgument (Left _) = []
+    gatherInArgument (Right (Local name _)) = containment env tp regions
+      where
+        (VariableInfo tp _ regions) = lookupLocal state name
 
     gatherInInstruction :: Instruction -> [RelationConstraint]
     gatherInInstruction (Let name expr next)
@@ -314,8 +309,7 @@ gather env state (Method _ _ _ _ block blocks)
         (VariableInfo tp annotations regions) = lookupLocal state name
     gatherInInstruction (LetAlloc binds next) = (binds >>= gatherInBind) ++ gatherInInstruction next
     gatherInInstruction (Jump _) = []
-    gatherInInstruction (Return var)
-      = zipWith Outlives (argumentFlatten regions) (argumentFlatten regions')
+    gatherInInstruction (Return var) = zipWith Outlives (argumentFlatten regions) (argumentFlatten regions')
       where
         regions = lookupVariableRegion env state var
         regions' = msReturnRegion state
@@ -459,20 +453,33 @@ constraints env state (Method _ _ _ _ block blocks)
 
     constraintsInInstruction (LetAlloc binds next) = (binds >>= constraintsInBind) ++ constraintsInInstruction next
     constraintsInInstruction (Jump _) = []
-    constraintsInInstruction (Match (VarLocal (Local var _)) (MatchTargetTuple arity) _ args next)
-      = concat (zipWith fieldConstraints objectAnnotations args) ++ constraintsInInstruction next
+    constraintsInInstruction (Match var (MatchTargetTuple arity) _ args next)
+      = tupleConstraints ++ constraintsInInstruction next
       where
-        VariableInfo _ (ArgumentList objectAnnotations) _ = lookupLocal state var
-        fieldConstraints _ Nothing = []
-        fieldConstraints objectAnnotation (Just name) = [CJoin annotationSort annotations [AVar <$> objectAnnotation]]
+        objectAnnotation = lookupVariableAnnotation env state var
+
+        tupleConstraints = catMaybes $ zipWith fieldConstraint [0..] args
+
+        fieldConstraint :: Int -> Maybe Id -> Maybe Constraint
+        fieldConstraint idx (Just name) =
+          Just $ CJoin annotationSort annotation [value]
           where
-            VariableInfo tp annotations _ = lookupLocal state name
+            VariableInfo tp (ArgumentValue annotation) _ = lookupLocal state name
             annotationSort = typeAnnotationSortArgument env tp []
-    constraintsInInstruction (Match (VarLocal (Local var _)) (MatchTargetConstructor (DataTypeConstructor name _)) _ args next)
-      = {- constructorConstraints constructor objectAnnotations argAnnotations (\(AnnotationVar i) -> i) constraintField (\_ _ -> [])
-      ++ constraintsInInstruction next -}
-      [] -- TODO: constraints for constructor match
+            value = case objectAnnotation of
+              ArgumentList as -> as !!! idx
+              ArgumentValue a -> ArgumentValue $ AProject a idx
+        fieldConstraint _ Nothing = Nothing
+    constraintsInInstruction (Match var (MatchTargetConstructor (DataTypeConstructor name _)) _ args next)
+      = {- constructorConstraints constructor objectAnnotations argAnnotations (\(AnnotationVar i) -> i) constraintField (\_ _ -> []) -}
+      -- TODO: constraints for constructor match
+      mapMaybe (fmap fieldConstraint) args ++ constraintsInInstruction next
       where
+        fieldConstraint name = CJoin s avar []
+          where
+            s = typeAnnotationSortArgument env tp []
+            VariableInfo tp (ArgumentValue avar) _ = lookupLocal state name
+
         {- VariableInfo _ objectAnnotations _ = lookupLocal state var
         EffectConstructor constructor _ _ = eeLookupConstructor env name
         argAnnotations = map argAnnotation args
@@ -495,7 +502,12 @@ constraints env state (Method _ _ _ _ block blocks)
     constraintsInBindTarget :: Id -> VariableInfo -> BindTarget -> [Either Type Variable] -> [Constraint]
     constraintsInBindTarget lhs result (BindTargetFunction fn) args = call lhs result (Left fn) args CKAllocThunk
     constraintsInBindTarget lhs result (BindTargetThunk var) args = call lhs result (Right var) args CKAllocThunk
-    constraintsInBindTarget _ (VariableInfo _ resultAnnotations _) (BindTargetConstructor (DataTypeConstructor name _)) args = [] -- TODO: constructor constraints
+    constraintsInBindTarget _ (VariableInfo tp (ArgumentValue resultAnnotation) _) (BindTargetConstructor (DataTypeConstructor name _)) args = 
+      let
+        s = typeAnnotationSortArgument env tp []
+      in
+        [CJoin s resultAnnotation []]
+      -- TODO: constructor constraints
       {-constructorConstraints constructor resultAnnotations argAnnotations (\(AnnotationVar i) -> i) constraintVar (\_ _ -> [])
       where
         EffectConstructor _ constructorToData _ = eeLookupConstructor env name
@@ -506,10 +518,10 @@ constraints env state (Method _ _ _ _ block blocks)
             VariableInfo tp annotation _ = lookupLocal state name
         argAnnotation (VarGlobal (GlobalVariable name _)) = Left name
         constraintVar sort resultVar fieldVar = [CJoin (ArgumentValue sort) (ArgumentValue resultVar) [ArgumentValue fieldVar]] -}
-    constraintsInBindTarget _ (VariableInfo tp (ArgumentList resultAnnotations) _) (BindTargetTuple arity) args
-      = concat $ zipWith3 fieldConstraint (rights args) resultAnnotationSorts resultAnnotations
+    constraintsInBindTarget _ (VariableInfo tp (ArgumentValue resultAnnotation) _) (BindTargetTuple arity) args
+      = [CJoin resultAnnotationSorts resultAnnotation $ fmap (lookupVariableAnnotation env state) $ rights args]
       where
-        ArgumentList resultAnnotationSorts = typeAnnotationSortArgument env tp []
+        resultAnnotationSorts = typeAnnotationSortArgument env tp []
         fieldConstraint var resultAnnotationSort resultAnnotation = [CJoin resultAnnotationSort resultAnnotation [lookupVariableAnnotation env state var]]
 
     constraintsInExpression :: Id -> VariableInfo -> Expr -> [Constraint]
@@ -519,15 +531,22 @@ constraints env state (Method _ _ _ _ block blocks)
     constraintsInExpression lhs result (CastThunk var) = call lhs result (Right var) [] CKInstantiate
     constraintsInExpression lhs result (Instantiate var tps) = call lhs result (Right var) (map Left tps) CKInstantiate
     constraintsInExpression lhs result (Call fn args) = call lhs result (Left fn) args CKCall
-    constraintsInExpression lhs (VariableInfo tp resultAnnotations _) (Phi branches) =
+    constraintsInExpression lhs (VariableInfo tp (ArgumentValue resultAnnotations) _) (Phi branches) =
       [CJoin resultSort resultAnnotations $ map branchAnnotations branches]
       where
         resultSort = typeAnnotationSortArgument env tp []
         branchAnnotations (PhiBranch _ var) = lookupVariableAnnotation env state var
-    constraintsInExpression _ _ _ = []
+    constraintsInExpression lhs (VariableInfo _ (ArgumentValue resultAnnotation) _) (Literal (LitString _))
+      = [CJoin (ArgumentList [argumentEmpty]) resultAnnotation []]
+    constraintsInExpression lhs (VariableInfo _ (ArgumentValue resultAnnotation) _) (Literal _)
+      = [CJoin argumentEmpty resultAnnotation []]
+    constraintsInExpression lhs (VariableInfo tp (ArgumentValue resultAnnotation) _) _
+      = [CJoin resultSort resultAnnotation []]
+      where
+        resultSort = typeAnnotationSortArgument env tp []
 
     call :: Id -> VariableInfo -> Either GlobalFunction Variable -> [Either Type Variable] -> CallKind -> [Constraint]
-    call lhs (VariableInfo tp resultAnnotation resultRegion) target args callKind
+    call lhs (VariableInfo tp (ArgumentValue resultAnnotation) resultRegion) target args callKind
       = case callTarget of
           Right (annotations, _, _)
             | null args && callKind == CKInstantiate -> [CJoin resultAnnotationSort resultAnnotation [fmap AVar annotations]]
@@ -549,7 +568,7 @@ constraints env state (Method _ _ _ _ block blocks)
         argumentAnnotationRegion (Left tp) = CAType $ tpFromType (msQuantors state) tp
         argumentAnnotationRegion (Right (VarLocal (Local name _))) = CALocal annotation region
           where
-            VariableInfo _ annotation region = lookupLocal state name
+            VariableInfo tp annotation region = lookupLocal state name
         argumentAnnotationRegion (Right var) = CAGlobal annotation $ lookupVariableRegion env state var
           where
             annotation = lookupVariableAnnotation env state var
@@ -593,9 +612,9 @@ methodApplyRelationConstraints relationConstraints state@(MethodState methodType
     substituteCallArgument ca = ca
 
 constraintSimpleUnifications :: [Constraint] -> [(Int, Int)]
-constraintSimpleUnifications (CJoin _ argLeft [argRight] : cs) = unifications ++ constraintSimpleUnifications cs
+constraintSimpleUnifications (CJoin _ (AnnotationVar a) [ArgumentValue (AVar (AnnotationVar b))] : cs) = unification : constraintSimpleUnifications cs
   where
-    unifications = zipFlattenArgument (\(AnnotationVar a) (AVar (AnnotationVar b)) -> if a < b then (a, b) else (b, a)) argLeft argRight
+    unification = if a < b then (a, b) else (b, a)
 constraintSimpleUnifications (_ : cs) = constraintSimpleUnifications cs
 constraintSimpleUnifications [] = []
 

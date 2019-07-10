@@ -34,14 +34,15 @@ pAnnotation = do
       ALam argA argR <$> pAnnotation
     'f' -> do -- Fix
       pSymbol "fix"
-      identifier <- pMaybe (pToken '[' *> pUnsignedInt <* pToken ']')
       pWhitespace
       escape <- pMaybe (FixRegionsEscape <$ pSymbol "escape[" <*> pUnsignedInt <* pToken ';' <* pWhitespace <*> pArgument pSortArgumentRegion <* pToken ']')
       let fixRegions = fromMaybe FixRegionsNone escape
-      lowerBoundMaybe <- pMaybe (pToken '⊐' *> pWhitespace *> pAnnotation <* pWhitespace)
-      let lowerBound = fromMaybe ABottom lowerBoundMaybe
+      pWhitespace
+      pToken ':'
+      pWhitespace
+      s <- pArgument pSort
       pToken '.'
-      AFix identifier fixRegions lowerBound <$> pAnnotation
+      AFix fixRegions s <$> pArgument pAnnotation
     '∀' -> do -- Forall
       pChar
       pWhitespace
@@ -86,7 +87,9 @@ pAnnotationLow = do
     '⊥' -> ABottom <$ pChar <* pWhitespace
     'ψ' -> AVar <$> pAnnotationVar <* pWhitespace
     '⟦' -> ARelation <$> pRelationConstraint <* pWhitespace
-    _ -> pToken '(' *> pWhitespace *> pAnnotation <* pToken ')' <* pWhitespace
+    't' -> ATuple <$ pSymbol "tuple" <*> pList pAnnotation <* pWhitespace
+    'p' -> AProject <$ pSymbol "project(" <*> pAnnotation <* pToken ',' <* pWhitespace <*> pUnsignedInt <* pWhitespace <* pToken ')' <* pWhitespace
+    _ -> pToken '⦅' *> pWhitespace *> pAnnotation <* pToken '⦆' <* pWhitespace
 
 pRelationConstraint :: Parser [RelationConstraint]
 pRelationConstraint = do
@@ -111,7 +114,10 @@ pRelationConstraint = do
 
 -- Parses a parenthesized comma separated list
 pList :: Parser a -> Parser [a]
-pList pElem = do
+pList = pList'  '(' ')'
+
+pList' :: Char -> Char -> Parser a -> Parser [a]
+pList' open close pElem = do
   pToken '('
   pWhitespace
   c <- lookahead
@@ -130,7 +136,7 @@ pArgument :: Parser a -> Parser (Argument a)
 pArgument pValue = do
   c1 <- lookahead
   if c1 == '(' then do
-    ArgumentList <$> pList (pArgument pValue) <* pWhitespace
+    ArgumentList <$> pList'  '(' ')' (pArgument pValue) <* pWhitespace
   else do
     ArgumentValue <$> pValue
 

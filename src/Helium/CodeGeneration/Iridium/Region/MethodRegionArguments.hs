@@ -67,10 +67,9 @@ constraintRegions :: EffectEnvironment -> Constraint -> Maybe MethodCallRegions
 constraintRegions env (CCall lhs _ _ _ (Left target) _ _ _ _) = Just $ MethodCallRegions lhs target arguments
   where
     EffectGlobal _ _ annotation = eeLookupGlobal env target
-    arguments = case annotation of
-      ArgumentList [] -> Just 0
-      ArgumentList (ArgumentValue (ALam _ (ArgumentList args) _) : _) -> Just $ length args
-      ArgumentList (ArgumentValue ABottom : _) -> Just 0
+    arguments = case filter (/= ABottom) $ argumentFlatten annotation of
+      [] -> Just 0
+      (ALam _ (ArgumentList args) _) : _ -> Just $ length args
       _ -> Nothing
 constraintRegions _ _ = Nothing
 

@@ -52,7 +52,7 @@ eeUpdateGlobal :: Id -> (EffectGlobal -> EffectGlobal) -> EffectEnvironment -> E
 eeUpdateGlobal name fn env = env{ eeGlobals = insertMapWith name (error "eeUpdateGlobal: name not found") fn $ eeGlobals env }
 
 globalHasAdditionalRegions :: EffectGlobal -> Bool
-globalHasAdditionalRegions (EffectGlobal _ _ annotations) = case argumentFlatten annotations of
+globalHasAdditionalRegions (EffectGlobal _ _ annotations) = case filter (/= ABottom) $ argumentFlatten annotations of
   [] -> False
   -- All annotation of a global should have the same additional arguments, so we only need to check the first one
   ALam _ (ArgumentList []) _ : _ -> False
@@ -147,8 +147,11 @@ instantiateArgumentType' :: Instantiatable a => EffectEnvironment -> TypeInstant
 instantiateArgumentType' env subst arg = arg >>= instantiateType' env subst
 
 instance Instantiatable SortArgumentRegion where
-  instantiateType' env (TypeInstantiation foralls tp) (SortArgumentRegionPolymorphic tvar tps)
-    | TypeVar foralls == tvar = typeRegionChildSort env tp tps
+  instantiateType' env subst (SortArgumentRegionPolymorphic tvar tps) = case typeInstantiationTry subst tvar of
+    Left tvar' -> ArgumentValue $ SortArgumentRegionPolymorphic tvar' tps'
+    Right tp -> typeRegionChildSort env tp tps'
+    where
+      tps' = tpInstantiate' subst <$> tps
   instantiateType' _ _ arg = ArgumentValue arg
 
 instance Instantiatable Sort where
@@ -164,7 +167,7 @@ instance Instantiatable Sort where
       tps' = tpInstantiate' subst <$> tps
   instantiateType' env subst s = ArgumentValue s
 
-  type RegionInstantiation = [(RegionVar, ([RegionVar], Argument RegionVar))]
+type RegionInstantiation = [(RegionVar, ([RegionVar], Argument RegionVar))]
 
 -- The sort of the second argument must be the same or an instantiation of the sort of the first argument.
 findArgumentSubstitution :: Argument a -> Argument a -> [(a, Argument a)]
@@ -174,4 +177,3 @@ findArgumentSubstitution argLeft argRight = substitution (argLeft, argRight) []
     substitution (ArgumentValue a, arg) accum = (a, arg) : accum
     substitution (ArgumentList listLeft, ArgumentList listRight) accum = foldr substitution accum $ zip listLeft listRight
     substitution _ _ = error "findArgumentSubstitution: Illegal arguments"
-

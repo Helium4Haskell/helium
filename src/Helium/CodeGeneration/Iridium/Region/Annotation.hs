@@ -24,13 +24,16 @@ instance Show AnnotationVar where
   show var = 'ψ' : showIndexVariable var
 
 data Annotation
-  = AFix !(Maybe Int) !FixRegions !Annotation !Annotation
+  = AFix !FixRegions !(Argument Sort) !(Argument Annotation)
 
   | AForall !Annotation
   | ALam !(Argument Sort) !(Argument SortArgumentRegion) !Annotation
 
   | AApp !Annotation !(Argument Annotation) !(Argument RegionVar)
   | AInstantiate !Annotation !Tp
+
+  | ATuple ![Annotation]
+  | AProject !Annotation !Int
 
   -- Leaf
   | AVar !AnnotationVar
@@ -46,17 +49,11 @@ data FixRegions
   deriving (Eq, Ord)
 
 instance Show Annotation where
-  show (AFix identifier fixRegions lowerBound annotation) = "fix" ++ identifierString ++ keyword ++ " " ++ lowerBoundString ++ show annotation
+  show (AFix fixRegions sort annotation) = "fix" ++ keyword ++ show sort ++ ". " ++ show annotation
     where
-      identifierString = case identifier of
-        Nothing -> ""
-        Just idx -> "[" ++ show idx ++ "]"
       keyword = case fixRegions of 
-        FixRegionsNone -> ""
-        FixRegionsEscape arity s -> " escape[" ++ show arity ++ "; " ++ show s ++ "] "
-      lowerBoundString = case lowerBound of
-        ABottom -> ". "
-        _ -> "⊐ " ++ show lowerBound ++ ". "
+        FixRegionsNone -> ": "
+        FixRegionsEscape arity s -> " escape[" ++ show arity ++ "; " ++ show s ++ "]: "
   show (AForall annotation) = "∀ " ++ show annotation
   show (ALam annotationParams regionParams annotation) = "λ[" ++ show annotationParams ++ "; " ++ show regionParams ++ "] -> " ++ show annotation
   show annotation = showAnnotationJoin annotation
@@ -75,7 +72,9 @@ showAnnotationLow :: Annotation -> String
 showAnnotationLow (AVar var) = show var
 showAnnotationLow (ARelation rel) = show rel
 showAnnotationLow ABottom = "⊥"
-showAnnotationLow annotation = "(" ++ show annotation ++ ")"
+showAnnotationLow (ATuple as) = "tuple(" ++ intercalate ", " (map show as) ++ ")"
+showAnnotationLow (AProject a idx) = "project(" ++ show a ++ ", " ++ show idx ++ ")"
+showAnnotationLow annotation = "⦅" ++ show annotation ++ "⦆"
 
 annotationExpandBottom :: Sort -> Annotation
 annotationExpandBottom (SortForall sort) = AForall $ annotationExpandBottom sort
@@ -99,10 +98,12 @@ zipFlattenArgument f argLeft argRight = zipFlattenArgument' argLeft argRight []
     zipFlattenArgument' (ArgumentList as) (ArgumentList bs) accum = foldr (\(a, b) -> zipFlattenArgument' a b) accum $ zip as bs
     zipFlattenArgument' a b accum = error $ "zipFlattenArgument: Arguments do not have the same sort: " ++ show a ++ "; " ++ show b
 
-zipArgument :: (a -> b -> c) -> Argument a -> Argument b -> Argument c
+zipArgument :: (Show a, Show b) => (a -> b -> c) -> Argument a -> Argument b -> Argument c
 zipArgument f (ArgumentValue a) (ArgumentValue b) = ArgumentValue $ f a b
-zipArgument f (ArgumentList as) (ArgumentList bs) = ArgumentList $ zipWith (zipArgument f) as bs
-zipArgument _ _ _ = error "zipArgument: Arguments do not have the same sort"
+zipArgument f (ArgumentList as) (ArgumentList bs)
+  | length as /= length bs = error $ "zipArgument: Arguments do not have the same sort:\n" ++ show as ++ "\n" ++ show bs
+  | otherwise = ArgumentList $ zipWith (zipArgument f) as bs
+zipArgument _ as bs = error $ "zipArgument: Arguments do not have the same sort:\n" ++ show as ++ "\n" ++ show bs
 
 zipFlattenArgumentWithSort :: (Show a, Show b, Show s) => (s -> a -> b -> c) -> Argument s -> Argument a -> Argument b -> [c]
 zipFlattenArgumentWithSort f sort argLeft argRight = zipFlattenArgumentWithSort' sort argLeft argRight []
@@ -121,7 +122,9 @@ annotationEscapes arity annotation = IntSet.map (indexInArgument . RegionVar) $ 
       Just rel -> IntSet.foldr (relationDFS' (const False) rel . RegionVar) IntSet.empty annotationRoots
 
     gather :: Int -> Annotation -> (Maybe Relation, IntSet)
-    gather scope (AFix _ _ a1 _) = gather scope a1
+    gather scope (AFix _ _ a1) = joins $ gather scope <$> argumentFlatten a1
+    gather scope (ATuple as) = joins $ gather scope <$> as
+    gather scope (AProject a _) = gather scope a
     gather scope (AForall a) = gather scope a
     gather scope (ALam _ sortArgR a) = decrement $ addVars scope vars $ gather (scope + 1) a
       where
@@ -187,8 +190,10 @@ annotationFilterInternalRegions arity annotation = filter 1 annotation
     escapes = annotationEscapes arity annotation
 
     filter :: Int -> Annotation -> Annotation
-    filter scope (AFix identifier fixRegions a1 a2) = AFix identifier fixRegions (filter scope a1) (filter scope a2)
+    filter scope (AFix fixRegions sort a) = AFix fixRegions sort (filter scope <$> a)
     filter scope (AForall a) = AForall $ filter scope a
+    filter scope (ATuple as) = ATuple $ map (filter scope) as
+    filter scope (AProject a idx) = AProject (filter scope a) idx
     filter scope (ALam argA argR a) = ALam argA argR $ filter (scope + 1) a
     filter scope (AApp a argA argR) = AApp (filter scope a) (filter scope <$> argA) argR
     filter scope (AInstantiate a tp) = AInstantiate (filter scope a) tp
@@ -224,8 +229,10 @@ annotationRemoveInternalRegions arity (ArgumentList regionArgs) a = (ArgumentLis
       | otherwise = Just fresh : assignIndices (var + 1) (fresh + 1)
 
     substitute :: Int -> Annotation -> Annotation
-    substitute scope (AFix identifier fixRegions a1 a2) = AFix identifier fixRegions (substitute scope a1) (substitute scope a2)
+    substitute scope (AFix fixRegions sort a) = AFix fixRegions sort $ substitute scope <$> a
     substitute scope (AForall a) = AForall $ substitute scope a
+    substitute scope (AProject a idx) = AProject (substitute scope a) idx
+    substitute scope (ATuple as) = ATuple $ fmap (substitute scope) as
     substitute scope (ALam argA argR a) = ALam argA argR $ substitute (scope + 1) a
     substitute scope (AApp a argA argR) = AApp (substitute scope a) (substitute scope <$> argA) (substituteVar scope <$> argR)
     substitute scope (AInstantiate a tp) = AInstantiate (substitute scope a) tp
@@ -246,3 +253,9 @@ annotationRemoveInternalRegions arity (ArgumentList regionArgs) a = (ArgumentLis
     substituteVarMaybe scope var
       | indexBoundLambda var /= scope = Just var
       | otherwise = variableFromIndices scope <$> mapping !!! indexInArgument var
+
+argumentShapeEqual :: Argument a -> Argument b -> Bool
+argumentShapeEqual (ArgumentValue _) (ArgumentValue _) = True
+argumentShapeEqual (ArgumentList as) (ArgumentList bs)
+  | length as == length bs = all (uncurry argumentShapeEqual) $ zip as bs
+argumentShapeEqual _ _ = False

@@ -1,10 +1,11 @@
 module Helium.CodeGeneration.Iridium.Region.Sort
   ( TypeVar(..), showSubscript
-  , Sort(..), Argument(..), argumentEmpty, SortArgumentRegion(..)
+  , Sort(..), Argument(..), argumentEmpty, SortArgumentRegion(..), sortIncreaseScope
   , variableIncrementLambdaBound, argumentFlatten
   , IndexVariable(..), indexBoundLambda, indexInArgument, showIndexVariable, variableFromIndices
   , Tp(..), tpFromType, tpStrict, tpNotStrict, tpIsStrict
   , tpIncreaseScope, tpInstantiate, tpInstantiate', TypeInstantiation(..), typeInstantiationTry, typeInstantiationIncrement
+  , regionIncreaseScope
   ) where
 
 import Lvm.Core.Type
@@ -41,7 +42,7 @@ showTpApp (TpApp t1 t2) = showTpApp t1 ++ " " ++ showTpAtom t2
 showTpApp tp = showTpAtom tp
 
 tpFromType :: [Int] -> Type -> Tp
-tpFromType quantors (TAp t1 t2) = tpFromType quantors t1 `TpApp` tpFromType quantors t2
+tpFromType quantors (TAp t1 t2) = tpFromType quantors t1 `TpApp` tpNotStrict (tpFromType quantors t2)
 tpFromType quantors (TForall (Quantor idx _) _ tp) = TpForall $ tpFromType (idx : quantors) tp
 tpFromType quantors (TStrict tp) = TpStrict $ tpFromType quantors tp
 tpFromType quantors (TVar var) = case elemIndex var quantors of
@@ -83,7 +84,7 @@ typeInstantiationTry :: TypeInstantiation -> TypeVar -> Either TypeVar Tp
 typeInstantiationTry (TypeInstantiation foralls tp) (TypeVar index)
   | foralls == index = Right $ tpIncreaseScope foralls 0 tp
   | index < foralls = Left $ TypeVar index
-  | otherwise = Left $ TypeVar $ index + 1
+  | otherwise = Left $ TypeVar $ index - 1
 
 typeInstantiationIncrement :: TypeInstantiation -> TypeInstantiation
 typeInstantiationIncrement (TypeInstantiation foralls tp) = TypeInstantiation (foralls + 1) tp
@@ -163,7 +164,7 @@ instance (Show a) => Show (Argument a) where
   show (ArgumentValue r1) = show r1
   show (ArgumentList args) = show args
 
-  showList args = ('(' :) . (intercalate ", " (map show args) ++) . (')' :)
+  showList args = ("( " ++) . (intercalate ", " (map show args) ++) . (" )" ++)
 
 instance Functor Argument where
   fmap f (ArgumentValue a) = ArgumentValue $ f a
@@ -201,7 +202,7 @@ sortIncreaseScope inc = increment
     increment minScope (SortFun argAnnotation argRegion a) =
       SortFun
         (increment minScope <$> argAnnotation)
-        (incrementRegion minScope <$> argRegion)
+        (regionIncreaseScope inc minScope <$> argRegion)
         $ increment minScope a
     increment minScope SortRelation = SortRelation
     increment minScope (SortPolymorphic (TypeVar idx) tps) =
@@ -209,27 +210,16 @@ sortIncreaseScope inc = increment
       where
         tvar
           | idx < minScope = TypeVar idx
-          | otherwise = TypeVar (idx + minScope)
+          | otherwise = TypeVar (idx + inc)
 
-    incrementRegion :: Int -> SortArgumentRegion -> SortArgumentRegion
-    incrementRegion minScope SortArgumentRegionMonomorphic = SortArgumentRegionMonomorphic
-    incrementRegion minScope (SortArgumentRegionPolymorphic (TypeVar idx) tps) =
-      SortArgumentRegionPolymorphic tvar $ map (tpIncreaseScope inc minScope) tps
-      where
-        tvar
-          | idx < minScope = TypeVar idx
-          | otherwise = TypeVar (idx + minScope)
-
-{- sortArgumentIncreaseScope :: Int -> Int -> (a -> a) -> SortArgument a -> SortArgument a
-sortArgumentIncreaseScope inc minScope f (SortArgumentMonomorphic a) = SortArgumentMonomorphic $ f a
-sortArgumentIncreaseScope inc minScope f (SortArgumentPolymorphic (TypeVar idx) tps) =
-  SortArgumentPolymorphic tvar $ map (tpIncreaseScope inc minScope) tps
+regionIncreaseScope :: Int -> Int -> SortArgumentRegion -> SortArgumentRegion
+regionIncreaseScope inc minScope SortArgumentRegionMonomorphic = SortArgumentRegionMonomorphic
+regionIncreaseScope inc minScope (SortArgumentRegionPolymorphic (TypeVar idx) tps) =
+  SortArgumentRegionPolymorphic tvar $ map (tpIncreaseScope inc minScope) tps
   where
     tvar
       | idx < minScope = TypeVar idx
-      | otherwise = TypeVar (idx + minScope)
-sortArgumentIncreaseScope inc minScope f (SortArgumentList as) =
-  SortArgumentList $ map (sortArgumentIncreaseScope inc minScope f) as -}
+      | otherwise = TypeVar (idx + inc)
 
 instance Show Sort where
   show (SortForall sort) = "∀ " ++ show sort

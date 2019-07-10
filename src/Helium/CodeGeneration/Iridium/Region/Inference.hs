@@ -47,15 +47,13 @@ regionInference supply log typeEnv effectEnv group = do
 
   let group' = mapBindingGroup (methodTransform solution) group
 
-  return (effectEnv'', group)
+  return (effectEnv'', group')
   where
     assignVar :: Declaration Method -> (Int, EffectEnvironment) -> (Int, EffectEnvironment)
-    assignVar (Declaration name _ _ _ (Method t args _ _ _ _)) (idx, env) = (idx', eeInsertGlobal name global env)
+    assignVar (Declaration name _ _ _ (Method t args _ _ _ _)) (idx, env) = (idx + 1, eeInsertGlobal name global env)
       where
         tp = tpFromType [] $ typeNormalize typeEnv t
-        sort = typeAnnotationSortArgument effectEnv tp []
-        (idx', arg) = sortArgumentToArgument' 0 idx sort
-        global = EffectGlobal (length $ rights args) tp $ fmap AVar arg
+        global = EffectGlobal (length $ rights args) tp $ ArgumentValue $ AVar $ AnnotationVar idx
 
     logStates :: Show a => IdMap a -> IO ()
     logStates m

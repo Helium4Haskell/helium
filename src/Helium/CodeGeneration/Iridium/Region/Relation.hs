@@ -185,7 +185,9 @@ transitiveClosure lambdaBound internalCount externalRegions (Relation graph) =
         if vsRoot final /= v then (final, state3)
         else
           let
-            (vertices, vRest) = span (v /=) $ tcVStack state3
+            (vertices', vRest') = span (v /=) $ tcVStack state3
+            vertices = v : vertices'
+            vRest = tail vRest'
             external = filter notTouchable vertices
             (c@(Component cIndex), freshComponent) = case external of
               [] ->
@@ -213,7 +215,7 @@ transitiveClosure lambdaBound internalCount externalRegions (Relation graph) =
                 predsX = fromMaybe IntSet.empty $ IntMap.lookup x $ tcComponents state3
             preds = foldr unionComponent IntSet.empty components'
 
-            state4 = state3{ tcFreshComponent = freshComponent, tcCStack = rest, tcCStackHeight = savedHeight, tcVStack = tail vRest, tcComponents = IntMap.insert cIndex preds $ tcComponents state3 }
+            state4 = state3{ tcFreshComponent = freshComponent, tcCStack = rest, tcCStackHeight = savedHeight, tcVStack = vRest, tcComponents = IntMap.insert cIndex preds $ tcComponents state3 }
 
             {-
             repeat
