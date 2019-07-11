@@ -112,13 +112,14 @@ lcm 0 _ = 0
 lcm x y = abs ((x `quot` gcd x y) * y)
 
 (^) :: Num a => a -> Int -> a
-_ ^ 0           = fromInteger 1
+(^) = undefined
+{- _ ^ 0           = fromInteger 1
 i ^ n  | n > 0  = f i (n-1) i
        | otherwise = error "Prelude.^: negative exponent"
           where f _ 0 y = y
                 f x m y = g x m
                           where g x' m' | even m'    = g (x' * x') (m' `quot` 2)
-                                        | otherwise  = f x' (m' - 1) (x' * y)
+                                        | otherwise  = f x' (m' - 1) (x' * y) -}
 
 instance Eq Int where
     (==) = (==#)
@@ -264,10 +265,10 @@ uncurry        :: (a -> b -> c) -> ((a,b) -> c)
 uncurry f p     = f (fst p) (snd p)
 
 zip :: [a] -> [b] -> [(a,b)]
-zip = zipWith  (\a b -> (a,b))
+zip = undefined -- zipWith  (\a b -> (a,b))
 
 zip3 :: [a] -> [b] -> [c] -> [(a,b,c)]
-zip3 = zipWith3 (\a b c -> (a,b,c))
+zip3 = undefined -- zipWith3 (\a b c -> (a,b,c))
 
 zipWith :: (a -> b -> c) -> [a] -> [b] -> [c]
 zipWith z (a:as) (b:bs)   = z a b : zipWith z as bs
@@ -308,20 +309,21 @@ localIsDigit c = primOrd c >= primOrd '0' && primOrd c <= primOrd '9'
 head :: [a] -> a
 head (x:_) = x
 head _ = error "Prelude.head: empty list"
-
+{-
 last :: [a] -> a
 last [x] = x
 last (_:xs) = last xs
-last _ = error "Prelude.last: empty list"
+last _ = error "Prelude.last: empty list"-}
 
 tail :: [a] -> [a]
 tail (_:xs) = xs
 tail _ = error "Prelude.tail: empty list"
 
+{-
 init :: [a] -> [a]
 init [_] = []
 init (x:xs) = x : init xs
-init _ = error "Prelude.init: empty list"
+init _ = error "Prelude.init: empty list" -}
 
 null :: [a] -> Bool
 null [] = True
@@ -364,17 +366,20 @@ xs !! n | n < 0     = error "Prelude.(!!): negative index"
         | otherwise = tail xs !! (n - 1)
 
 foldl            :: (a -> b -> a) -> a -> [b] -> a
-foldl _ z []      = z
-foldl f z (x:xs)  = foldl f (f z x) xs
+foldl = undefined
+--foldl _ z []      = z
+--foldl f z (x:xs)  = foldl f (f z x) xs
 
 foldl'           :: (a -> b -> a) -> a -> [b] -> a
-foldl' _ a []     = a
-foldl' f a (x:xs) = (foldl' f $! f a x) xs
+foldl' = undefined
+--foldl' _ a []     = a
+--foldl' f a (x:xs) = (foldl' f $! f a x) xs
 
 foldl1           :: (a -> a -> a) -> [a] -> a
-foldl1 f (x:xs)   = foldl f x xs
-foldl1 _ []       = error "Prelude.foldl1: empty list"
-
+foldl1 = undefined
+--foldl1 f (x:xs)   = foldl f x xs
+--foldl1 _ []       = error "Prelude.foldl1: empty list"
+{-
 scanl            :: (a -> b -> a) -> a -> [b] -> [a]
 scanl f q xs      = q : 
     ( case xs of
@@ -384,16 +389,18 @@ scanl f q xs      = q :
 
 scanl1           :: (a -> a -> a) -> [a] -> [a]
 scanl1 _ []       = []
-scanl1 f (x:xs)   = scanl f x xs
+scanl1 f (x:xs)   = scanl f x xs -}
 
 foldr            :: (a -> b -> b) -> b -> [a] -> b
-foldr _ z []      = z
-foldr f z (x:xs)  = f x (foldr f z xs)
+foldr = undefined
+-- foldr _ z []      = z
+-- foldr f z (x:xs)  = f x (foldr f z xs)
 
 foldr1           :: (a -> a -> a) -> [a] -> a
-foldr1 _ [x]      = x
-foldr1 f (x:xs)   = f x (foldr1 f xs)
-foldr1 _ []       = error "Prelude.foldr1: empty list"
+foldr1 = undefined
+-- foldr1 _ [x]      = x
+-- foldr1 f (x:xs)   = f x (foldr1 f xs)
+-- foldr1 _ []       = error "Prelude.foldr1: empty list"
 
 scanr            :: (a -> b -> b) -> b -> [a] -> [b]
 scanr _ q0 []     = [q0]
@@ -403,15 +410,16 @@ scanr f q0 (x:xs) =
         _        -> error "Prelude.scanr"
 
 scanr1           :: (a -> a -> a) -> [a] -> [a]
+scanr1 = undefined {-
 scanr1 _ []       = []
 scanr1 _ [x]      = [x]
 scanr1 f (x:xs)   = 
     case scanr1 f xs of
         qs@(q:_) -> f x q : qs
-        _        -> error "Prelude.scanr"
+        _        -> error "Prelude.scanr" -}
 
 iterate :: (a -> a) -> a -> [a]
-iterate f x = x : iterate f (f x)
+iterate f x = undefined -- x : iterate f (f x)
 
 repeat :: a -> [a]
 repeat x = xs where xs = x:xs
@@ -424,12 +432,12 @@ cycle [] = error "Prelude.cycle: empty list"
 cycle xs = xs' where xs'=xs++xs'
 
 take :: Int -> [a] -> [a]
-take n xs 
+take n xs = undefined {-
     | n <= 0   = []
     | otherwise = 
         case xs of 
             [] -> []
-            (y:ys) -> y : take (n-1) ys
+            (y:ys) -> y : take (n-1) ys -}
           
 drop :: Int -> [a] -> [a]
 drop n xs 
@@ -440,12 +448,12 @@ drop n xs
             (_:ys) -> drop (n-1) ys
 
 splitAt :: Int -> [a] -> ([a], [a])
-splitAt n xs 
+splitAt n xs = undefined {-
     | n <= 0 = ([],xs)
     | otherwise = 
         case xs of 
             [] -> ([],[])
-            (y:ys) -> (y:as,bs) where (as,bs) = splitAt (n-1) ys
+            (y:ys) -> (y:as,bs) where (as,bs) = splitAt (n-1) ys -}
 
 takeWhile :: (a -> Bool) -> [a] -> [a]
 takeWhile _ [] = []
@@ -460,11 +468,12 @@ dropWhile p l@(x:xs)
     | otherwise = l
 
 span :: (a -> Bool) -> [a] -> ([a],[a])
+span = undefined {-
 span _ []            = ([],[])
 span p xs@(x:xs')
      | p x       = (x:ys, zs)
      | otherwise = ([],xs)
-                       where (ys,zs) = span p xs'
+                       where (ys,zs) = span p xs' -}
 
 break :: (a -> Bool) -> [a] -> ([a],[a])
 break p = span (not . p)
@@ -493,8 +502,10 @@ unwords [] = ""
 unwords [w] = w
 unwords (w:ws) = w ++ ' ' : unwords ws
 
+{-
 reverse :: [a] -> [a]
 reverse = foldl (flip (:)) []
+-}
 
 and :: [Bool] -> Bool
 and = foldr (&&) True
@@ -503,13 +514,13 @@ or :: [Bool] -> Bool
 or = foldr (||) False
 
 any :: (a -> Bool) -> [a] -> Bool
-any p = or . map p
+any p = undefined -- or . map p
 
 all :: (a -> Bool) -> [a] -> Bool
-all p = and . map p
+all p = undefined -- and . map p
 
 concatMap :: (a -> [b]) -> [a] -> [b]
-concatMap f = concat . map f
+concatMap f x = concat (map f x)
 
 {-----------------------------------------------
  -- Conversion
@@ -538,17 +549,18 @@ type ShowS = String -> String
 
 
 intercalate :: [a] -> [[a]] -> [a]
+intercalate = undefined {-
 intercalate _ [] = []
 intercalate _ [x] = x
-intercalate y (x:xs) = x ++ y ++ intercalate y xs
+intercalate y (x:xs) = x ++ y ++ intercalate y xs -}
 
 {-----------------------------------------------
  -- Some standard functions
  -----------------------------------------------}
-
+{-
 fix :: (a -> a) -> a
 fix f = x where x = f x 
-
+-}
 id :: a -> a
 id x = x
 
@@ -573,7 +585,7 @@ error :: String -> a
 -}
 
 until :: (a -> Bool) -> (a -> a) -> a -> a
-until p f x = if p x then x else until p f (f x)
+until p f x = undefined -- if p x then x else until p f (f x)
 
 undefined :: a
 undefined = error "undefined"
@@ -593,11 +605,11 @@ putStrLn s = primPutStrLn s
 -}
 
 getLine :: IO String
-getLine = do 
+getLine = undefined {- do 
         c <- getChar
         if c == '\n' 
             then return ""
-            else getLine >>= (return . (c :))
+            else getLine >>= (return . (c :)) -}
 
 sequence_ :: [IO a] -> IO ()
 sequence_ = foldr (>>) (return ())
@@ -643,12 +655,12 @@ readInt ('-':s) = - readUnsigned s
 readInt s = readUnsigned s
 
 readUnsigned :: String -> Int
-readUnsigned = 
+readUnsigned = undefined {-
     foldl (\a b -> a * 10 + b) 0
     .
     map (\c -> primOrd c - primOrd '0')
     .
-    takeWhile localIsDigit
+    takeWhile localIsDigit -}
 
 -- Functor --
 
@@ -851,7 +863,7 @@ class Show a where
     show :: a -> String
     showList :: [a] -> ShowS
     showsPrec :: Int -> a -> ShowS
-    showList ls s  = "[" ++ intercalate "," (map (flip shows s) ls) ++ "]"
+    showList ls s  = undefined -- "[" ++ intercalate "," (map (flip shows s) ls) ++ "]"
     showsPrec _ x s = show x ++ s
     show x          = shows x ""
     {-showList []   s = "[]" ++ s

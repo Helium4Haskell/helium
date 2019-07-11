@@ -1,4 +1,4 @@
-module Helium.CodeGeneration.Iridium.Region.AnnotationNormalize (annotationNormalize, annotationArgumentNormalize, annotationIncrementScope, annotationArgumentRemoveUnusedRegionArguments) where
+module Helium.CodeGeneration.Iridium.Region.AnnotationNormalize (annotationNormalize, annotationArgumentNormalize, annotationIncrementScope, annotationArgumentRemoveUnusedRegionArguments, annotationArgumentCheckSort, sortCompare) where
 
 import Data.List
 import Data.Maybe
@@ -165,10 +165,10 @@ annotationIncrementScope incLambda incForall = increment 1 0
 
 annotationApply :: EffectEnvironment -> SortEnv -> Bool -> Sort -> Annotation -> [ApplicationOrInstantiation] -> ArgumentAnnotations
 annotationApply env sortEnv _ _ ABottom _ = ArgumentValue Nothing
-annotationApply env sortEnv False _ a []
+annotationApply env sortEnv False _ a [] -- All arguments consumed, but target is not yet normalized
   = annotationNormalize'' env sortEnv a
-annotationApply env sortEnv True s a [] = ArgumentValue $ Just (s, [a])
-annotationApply env sortEnv _ s (AJoin a1 a2) args
+annotationApply env sortEnv True s a [] = ArgumentValue $ Just (s, [a]) -- All arguments consumed, target is normalized
+annotationApply env sortEnv _ s (AJoin a1 a2) args -- Join, apply both branches and join the results
   = joinArgumentAnnotations (annotationApply env sortEnv False s a1 args) (annotationApply env sortEnv False s a2 args)
 annotationApply env sortEnv False s (AFix fixRegions sort body) args
   = annotationIterate env sortEnv fixRegions sort body args >>= f
@@ -181,17 +181,14 @@ annotationApply env sortEnv _ s1 a1@(ALam _ _ _) args@(AOIApplication _ _ : _)
   | otherwise = case annotationApplyLambda env sortEnv s1 a1 args [] [] of
   Nothing -> ArgumentValue Nothing
   Just (s2, a2, args')
-    | not $ sortCompare (ArgumentValue s2) $ annotationCheckSort env sortEnv [] a2 -> error "annotationApplyLambda: sort error"
+    | not $ sortCompare (ArgumentValue s2) $ annotationCheckSort env sortEnv [] a2 -> error "annotationApplyLambda: output sort error"
     | otherwise -> annotationApply env sortEnv False s2 a2 args'
 annotationApply env sortEnv False s a args = annotationNormalize'' env sortEnv a >>~ (\s' a' -> annotationApply env sortEnv True s' a' args)
 annotationApply env sortEnv True s a args = (\(s', a') -> Just (s', [a'])) <$> (annotationAddApplications' env sortEnv s a args)
 
 annotationAddApplications' :: EffectEnvironment -> SortEnv -> Sort -> Annotation -> [ApplicationOrInstantiation] -> Argument (Sort, Annotation)
-annotationAddApplications' effectEnv sortEnv (SortForall sort) a (AOIInstantiation tp : args) = case instantiateType effectEnv tp sort of
-  ArgumentValue s -> annotationAddApplications' effectEnv sortEnv s (AInstantiate a tp) args
-  sorts ->
-    zipArgument (\s var -> (s, AApp (ALam sorts argumentEmpty $ AVar var) (ArgumentValue $ AInstantiate a tp) argumentEmpty)) sorts (sortArgumentToArgument 1 sorts)
-    >>= (\(s, a') -> annotationAddApplications' effectEnv sortEnv s a' args)
+annotationAddApplications' effectEnv sortEnv (SortForall sort) a (AOIInstantiation tp : args) =
+  annotationToArgument (instantiateType effectEnv tp sort) (AInstantiate a tp) >>= (\(s, a') -> annotationAddApplications' effectEnv sortEnv s a' args)
 annotationAddApplications' effectEnv sortEnv (SortFun sortA _ sort) a (AOIApplication argA argR : args) = annotationAddApplications' effectEnv sortEnv sort (AApp a argA' argR) args
   where
     argA' = snd <$> annotationArgumentNormalize effectEnv sortEnv sortA argA
@@ -282,7 +279,9 @@ annotationSubstitute' substitutionAnnotation substitutionRegion = \x y a -> subs
         argumentIndex = indexInArgument var
 
 annotationInstantiate :: EffectEnvironment -> SortEnv -> TypeInstantiation -> Sort -> Annotation -> Argument (Sort, Annotation)
-annotationInstantiate env sortEnv inst sort annotation = annotationArgumentInstantiate env sortEnv inst [] $ ArgumentValue (sort, annotation)
+annotationInstantiate env sortEnv inst sort annotation
+  | not $ sortCompare (ArgumentValue sort) $ annotationCheckSort env sortEnv [] annotation = error "annotationInstantiate: input not correct"
+  | otherwise = annotationArgumentInstantiate env sortEnv inst [] $ ArgumentValue (sort, annotation)
 
 type InstantiateVariableSubstitution = [([Argument (Sort, Int)], [Argument Int])]
 annotationInstantiate' :: EffectEnvironment -> SortEnv -> TypeInstantiation -> InstantiateVariableSubstitution -> Annotation -> Maybe (Argument (Sort, Annotation))
@@ -327,7 +326,9 @@ annotationInstantiate' env sortEnv inst args (AInstantiate a tp) = (>>= f) <$> a
     tp' = tpInstantiate' inst tp
 
     f :: (Sort, Annotation) -> Argument (Sort, Annotation)
-    f (SortForall s, AForall a) = annotationInstantiate env sortEnv (TypeInstantiation 0 tp') s a
+    f (SortForall s, AForall a') = annotationInstantiate env sortEnv (TypeInstantiation 0 tp') s a'
+    f (SortForall s, a') = annotationToArgument (instantiateType env tp' s) (AInstantiate a' tp')
+    f sa = error $ "annotationInstantiate': illegal arguments: " ++ show sa
 annotationInstantiate' env sortEnv inst args (AVar var) = case tryIndex args $ indexBoundLambda var - 1 of
   Just (annotations, _) ->
     let
@@ -343,9 +344,8 @@ annotationInstantiate' env sortEnv inst args (ARelation constraints)
     constraints' = instantiateRelationConstraints f constraints
     f var = case tryIndex args $ indexBoundLambda var - 1 of
       Just (_, regions) -> case regions !!! indexInArgument var of
-        ArgumentValue _ -> Nothing
-        args -> Just $ map (variableFromIndices $ indexBoundLambda var) $ argumentFlatten args
-      Nothing -> Nothing
+        args -> map (variableFromIndices $ indexBoundLambda var) $ argumentFlatten args
+      Nothing -> [var]
 annotationInstantiate' env sortEnv inst args ABottom = Nothing
 annotationInstantiate' env sortEnv inst args (AJoin a1 a2) = case annotationInstantiate' env sortEnv inst args a1 of
   Nothing -> annotationInstantiate' env sortEnv inst args a2
@@ -359,6 +359,12 @@ annotationArgumentInstantiate env sortEnv inst args annotationArgs = annotationA
     f (sort, annotation) = case annotationInstantiate' env sortEnv inst args annotation of
       Just annotations -> annotations
       Nothing -> (\s -> (s, ABottom)) <$> instantiateType' env inst sort
+
+annotationToArgument :: Argument Sort -> Annotation -> Argument (Sort, Annotation)
+annotationToArgument (ArgumentValue s) a = ArgumentValue (s, a)
+annotationToArgument (ArgumentList sorts) a = ArgumentList $ zipWith f sorts [0..]
+  where
+    f s idx = annotationToArgument s $ AProject a idx
 
 -- Returns a list of annotations representing (multivariate) applications (or instantiations)
 -- The target of the application is psi_1_0
@@ -401,7 +407,7 @@ aoiFlattenAnnotations _ = []
 -- Bool in return type denotes whether the result is a higher order fixpoint
 annotationIterate :: EffectEnvironment -> SortEnv -> FixRegions -> Argument Sort -> Argument Annotation -> [ApplicationOrInstantiation] -> Argument (Bool, Sort, Annotation)
 annotationIterate _ _ _ _ (ArgumentList []) _ = ArgumentList []
-annotationIterate env sortEnv fixRegions sorts initial application = zipArgument (\s (h, a) -> (h, s, a)) sorts $ iterate initial
+annotationIterate env sortEnv fixRegions sorts initial application = zipArgument (\s (h, a) -> (h, s, a)) sorts $ iterate 0 initial
   where
     bottom = ABottom <$ sorts
 
@@ -412,8 +418,9 @@ annotationIterate env sortEnv fixRegions sorts initial application = zipArgument
 
     -- TODO: Escape check
 
-    iterate :: Argument Annotation -> Argument (Bool, Annotation)
-    iterate current
+    iterate :: Int -> Argument Annotation -> Argument (Bool, Annotation)
+    iterate 4 _ = error "annotationIterate: probably infinite recursion"
+    iterate iteration current
       | not $ sortCompare sortsTest $ annotationArgumentCheckSort env sortEnv [] current = error $ "iterate: current not correct\n" ++ show sortsTest ++ "\n" ++ show (annotationArgumentCheckSort env sortEnv [] current)
       | not $ sortCompare sortsTest $ annotationArgumentCheckSort env sortEnv [] next = error $ "iterate: next not correct"
       | otherwise = 
@@ -422,7 +429,7 @@ annotationIterate env sortEnv fixRegions sorts initial application = zipArgument
         FirstOrderFixpoint -> undefined -- TODO: Rewrite to element-wise fixpoint
         NoFixpoint
           | sortCompare (SortFun sorts argumentEmpty <$> sorts) $ annotationArgumentCheckSort env sortEnv [] next
-              -> iterate next
+              -> iterate (iteration + 1) next
           | otherwise -> error "sort error in iteration"
       where
         next = bindWithSort (iterateNext current) sorts current
@@ -516,33 +523,6 @@ handleFixpointArgumentIncrement HandleFixpointArgumentNone = HandleFixpointArgum
 handleFixpointArgumentIncrement (HandleFixpointArgumentIterateNested idx) = HandleFixpointArgumentIterateNested $ idx + 1
 handleFixpointArgumentIncrement (HandleFixpointArgumentSubstitutute idx increment incrementForall a) = HandleFixpointArgumentSubstitutute (idx + 1) (increment + 1) incrementForall a
 -}
-annotationUsedRegionVariables :: Annotation -> IntSet
-annotationUsedRegionVariables (ALam _ _ annotation) = used 1 annotation
-  where
-    used :: Int -> Annotation -> IntSet
-    used scope (AFix _ _ a) = IntSet.unions $ used scope <$> argumentFlatten a
-    used scope (ATuple as) = IntSet.unions $ used scope <$> as
-    used scope (AProject a idx) = used scope a
-    used scope (AForall a) = used scope a
-    used scope (ALam _ _ a) = used (scope + 1) a
-    used scope (AApp a argA argR) = u'
-      where
-        u = foldr IntSet.union (used scope a) $ map (used scope) (argumentFlatten argA)
-        u' = addVars scope (argumentFlatten argR) u
-    used scope (AInstantiate a _) = used scope a
-    used scope (ARelation constraints) = IntSet.fromList (constraints >>= (\(Outlives (RegionVar r1) (RegionVar r2)) -> [r1, r2]))
-    used scope (AJoin a1 a2) = IntSet.union (used scope a1) (used scope a2)
-    used _ _ = IntSet.empty
-    
-    addVar :: Int -> RegionVar -> IntSet -> IntSet
-    addVar scope var
-      | indexBoundLambda var /= scope = id
-      | otherwise = IntSet.insert $ indexInArgument var
-
-    addVars :: Int -> [RegionVar] -> IntSet -> IntSet
-    addVars scope = flip $ foldr (addVar scope)
-annotationUsedRegionVariables ABottom = IntSet.empty
-annotationUsedRegionVariables a = error $ "annotationUsedRegionVariables: expected lambda, got " ++ show a
 
 annotationArgumentRemoveUnusedRegionArguments :: Argument Annotation -> ([Maybe Int], Argument Annotation)
 annotationArgumentRemoveUnusedRegionArguments arguments@(ArgumentList []) = ([], arguments)
@@ -587,6 +567,8 @@ sortEnvLookup env var = case tryIndex env $ indexBoundLambda var - 1 of
     Just s -> s
 
 annotationSaturateHead :: Sort -> Annotation -> Annotation
+annotationSaturateHead _ a@ALam{} = a
+annotationSaturateHead _ a@AInstantiate{} = a
 annotationSaturateHead annotationSort annotation = addForallsLambdas 0 0 annotationSort
   where
     -- Adds foralls and lambdas for all remaining arguments
@@ -596,8 +578,8 @@ annotationSaturateHead annotationSort annotation = addForallsLambdas 0 0 annotat
     addForallsLambdas lambdas foralls _ = applications lambdas foralls annotationSort (annotationIncrementScope lambdas foralls annotation)
 
     applications :: Int -> Int -> Sort -> Annotation -> Annotation
-    applications lambdas foralls (SortForall s) a = applications lambdas (foralls - 1) s $ AInstantiate a (TpVar $ TypeVar foralls)
-    applications lambdas foralls (SortFun sortA sortR s) a = applications (lambdas - 1) foralls s $ AApp a (AVar <$> sortArgumentToArgument (lambdas + 1) sortA) (sortArgumentToArgument lambdas sortR)
+    applications lambdas foralls (SortForall s) a = applications lambdas (foralls - 1) s $ AInstantiate a (TpVar $ TypeVar $ foralls - 1)
+    applications lambdas foralls (SortFun sortA sortR s) a = applications (lambdas - 1) foralls s $ AApp a (AVar <$> sortArgumentToArgument lambdas sortA) (sortArgumentToArgument lambdas sortR)
     applications 0 0 _ a = a
     applications _ _ _ _ = error "annotationSaturateWithSort: error in lambda and forall count"
 
@@ -628,7 +610,7 @@ annotationCheckSort env sortEnv regionEnv (AApp a argA argR) = fmap f <$> annota
   where
     f (SortFun sortA sortR s)
       | not $ sortCompare sortA argSort = error $ "Sort of argument in application does not match.\nFunction sort: " ++ show sortA ++ "\nArgument sort: " ++ show argSort
-      | not $ regionArgumentCompare (show (length sortEnv, length regionEnv)) regionEnv sortR argR = error $ "Sort of region argument in application does not match.\nFunction sort: " ++ show sortR ++ "\nArgument: " ++ show argR
+      | not $ regionArgumentCompare (show (length sortEnv, length regionEnv)) regionEnv sortR argR = error $ "Sort of region argument in application does not match.\nFunction sort: " ++ show sortR ++ "\nArgument: " ++ show argR ++ "\nRegion env: " ++ show regionEnv ++ "\n" ++ show (length sortEnv, length regionEnv)
       | otherwise = s
       where
         argSort = annotationArgumentCheckSort env sortEnv regionEnv argA
@@ -645,16 +627,17 @@ annotationCheckSort env sortEnv regionEnv (AProject a idx) = case annotationChec
 annotationCheckSort env sortEnv regionEnv (AVar var) = ArgumentValue $ Just $ sortEnvLookup sortEnv var
 annotationCheckSort env sortEnv regionEnv (ARelation cs)
   | all exist2 cs = ArgumentValue $ Just SortRelation
-  | otherwise = error $ "Relation has undeclared region variables: " ++ show cs
+  | otherwise = error $ "Relation has undeclared region variables: " ++ show cs ++ "\n" ++ show regionEnv ++ "\n" ++ show (filter (not . exist2) cs)
   where
     exist2 (Outlives r1 r2) = exist r1 && exist r2
+    exist (RegionVar 0) = True
     exist r = case tryIndex regionEnv (indexBoundLambda r - 1) of
       Nothing -> indexBoundLambda r >= 1 -- Ignore, we do not have a region environment available in annotationNormalize
       Just rs -> indexInArgument r >= 0 && indexInArgument r < length rs
 annotationCheckSort env sortEnv regionEnv ABottom = ArgumentValue Nothing
 annotationCheckSort env sortEnv regionEnv (AJoin a1 a2)
   | sortCompare' s1 s2 = sortJoin s1 s2
-  | otherwise = error $ "Sorts in a join are not the same:\n" ++ show s1 ++ "\n" ++ show s2
+  | otherwise = error $ "Sorts in a join are not the same:\n" ++ show s1 ++ "\n" ++ show s2 ++ "\n" ++ show a1 ++ "\n" ++ show a2
   where
     s1 = annotationCheckSort env sortEnv regionEnv a1
     s2 = annotationCheckSort env sortEnv regionEnv a2
@@ -683,11 +666,12 @@ regionEnvLookup str env var = case tryIndex env (indexBoundLambda var - 1) of
 
 sortCompare' :: Argument (Maybe Sort) -> Argument (Maybe Sort) -> Bool
 sortCompare' (ArgumentList as) (ArgumentList bs)
-  = length as == length bs && all (uncurry sortCompare') (zip as bs)
-sortCompare' (ArgumentValue (Just s1)) (ArgumentValue (Just s2)) = s1 == s2
+  | length as == length bs = all (uncurry sortCompare') (zip as bs)
+  | otherwise = error $ "Wrong lengths\n" ++ show as ++ "\n" ++ show bs
+sortCompare' (ArgumentValue (Just s1)) (ArgumentValue (Just s2)) = if s1 == s2 then True else error $ "Wrong2\n" ++ show s1 ++ "\n" ++ show s2
 sortCompare' (ArgumentValue Nothing) _ = True
 sortCompare' _ (ArgumentValue Nothing) = True
-sortCompare' _ _ = False
+sortCompare' s1 s2 = error $ "Wrong\n" ++ show s1 ++ "\n" ++ show s2 -- _ _ = False
 
 sortCompare :: Argument Sort -> Argument (Maybe Sort) -> Bool
 sortCompare = sortCompare' . fmap Just
@@ -697,3 +681,8 @@ sortJoin (ArgumentList as) (ArgumentList bs) = ArgumentList $ uncurry sortJoin <
 sortJoin (ArgumentValue (Just s1)) _ = ArgumentValue $ Just s1
 sortJoin _ (ArgumentValue (Just s2)) = ArgumentValue $ Just s2
 sortJoin _ _ = ArgumentValue Nothing
+
+annotationEscapeCheck :: Int -> Argument Annotation -> (IntMap Int, IntSet)
+annotationEscapeCheck arity arguments
+  where
+    argumentMain : argumentsRest = drop (arity - 1) $ argumentFlatten arguments

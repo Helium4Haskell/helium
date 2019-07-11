@@ -163,4 +163,5 @@ removeRecursiveAnnotations :: [Sort] -> ([Sort], ())
 removeRecursiveAnnotations args = (filter isNonRec args, ())
   where -- TODO: Recursion may be nested in the sort
     isNonRec (SortPolymorphic (TypeVar (-1)) _) = False
-    isNonRec _ = True
+    isNonRec (SortPolymorphic _ _) = True
+    isNonRec _ = False

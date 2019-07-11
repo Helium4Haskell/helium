@@ -62,17 +62,20 @@ data RelationConstraint
 instance Ord RelationConstraint where
   Outlives r1 r2 <= Outlives r1' r2' = r2 < r2' || (r2 == r2' && r1 <= r1')
 
-instantiateRelationConstraints :: (RegionVar -> Maybe [RegionVar]) -> [RelationConstraint] -> [RelationConstraint]
+instantiateRelationConstraints :: (RegionVar -> [RegionVar]) -> [RelationConstraint] -> [RelationConstraint]
 instantiateRelationConstraints f constraints = constraints >>= instantiateRelationConstraint f
 
-instantiateRelationConstraint :: (RegionVar -> Maybe [RegionVar]) -> RelationConstraint -> [RelationConstraint]
+instantiateRelationConstraint :: (RegionVar -> [RegionVar]) -> RelationConstraint -> [RelationConstraint]
 instantiateRelationConstraint f c@(Outlives r1 r2) = case f r1  of
-  Nothing -> [c]
-  Just rs1 -> case f r2 of
-    Nothing ->
+  [r1'] -> case f r2 of
+    [r2'] -> [Outlives r1' r2']
+    rs2 -> map (Outlives r1') rs2
+      -- error $ "Outlives constraint has polymorphic argument on right, which does not match left argument: " ++ show c ++ "\nLeft instantiates to " ++ show r1' ++ ", right instantiates to " ++ show rs2
+  rs1 -> case f r2 of
+    [r2'] ->
       -- Only the left argument is polymorphic.
-      map (\r1' -> Outlives r1' r2) rs1
-    Just rs2 ->
+      map (\r1' -> Outlives r1' r2') rs1
+    rs2 ->
       -- Both arguments are polymorphic. Extend element-wise
       zipWith Outlives rs1 rs2
 
@@ -370,3 +373,54 @@ twoHops (Relation g1) (Relation g2) = IntMap.foldrWithKey handleVertex emptyRela
 -- Gives the union of two relation, without computing the transitive closure
 unionWithoutClosure :: Relation -> Relation -> Relation
 unionWithoutClosure (Relation g1) (Relation g2) = Relation $ IntMap.unionWith (IntSet.union) g1 g2
+
+relationFindCycleUnifications :: Relation -> IntMap Int
+relationFindCycleUnifications relation@(Relation graph) = IntMap.foldrWithKey unificationsForVertex IntMap.empty graph
+  where
+    unificationsForVertex :: Int -> IntSet -> IntMap Int -> IntMap Int
+    unificationsForVertex v neighbours m =
+      foldr (\w -> IntMap.insert w v) m ws 
+      where
+        ws = filter (\w -> hasEdge relation (Vertex w) (Vertex v)) $ takeWhile (> v) $ IntSet.toDescList neighbours
+
+relationFindCollapseUnifications :: (RegionVar -> RegionVar -> Bool) -> Relation -> IntMap Int
+relationFindCollapseUnifications canCollapse relation@(Relation graph) =
+  snd $ IntMap.foldrWithKey visitVertex (IntSet.empty, IntMap.empty) graph
+  -- The graph should be acyclic.
+  where
+    visitVertex' :: Int -> (IntSet, IntMap Int) -> (IntSet, IntMap Int)
+    visitVertex' u (visited, m) = visitVertex u (fromMaybe IntSet.empty $ IntMap.lookup u graph) (visited, m)
+
+    visitVertex :: Int -> IntSet -> (IntSet, IntMap Int) -> (IntSet, IntMap Int)
+    visitVertex u neighbours (visited, m)
+      | u `IntSet.member` visited = (visited, m)
+      -- Find successor v for which holds succ(u) = (succ(v) union {v})
+      | otherwise = case find isDirect $ IntSet.toList neighbours of
+        Nothing -> (IntSet.insert u visited', m') -- No collapsing
+        Just v -> (IntSet.insert u visited', IntMap.insert u (fromMaybe v $ IntMap.lookup v m') m')
+      where
+        -- Recurse
+        (visited', m') = IntSet.foldr visitVertex' (visited, m) neighbours
+
+        isDirect v = indexBoundLambda (RegionVar v) == canCollapse && neighbours == IntSet.insert v (fromMaybe IntSet.empty $ IntMap.lookup u graph)
+
+relationRestrictWithUnification :: IntMap Int -> Relation -> Relation
+relationRestrictWithUnification m (Relation graph) = Relation graph'
+  where
+    removed = IntMap.keysSet m
+    graph' = IntMap.withoutKeys (IntMap.map (IntSet.\\ removed) graph) removed
+
+-- Returns a map representing the unifications applied by cycles and collapsing
+-- The regions which are present (as key) in the map can thus be removed from the function
+-- by substituting them according to the map.
+relationEscapeCheck :: (RegionVar -> RegionVar -> Bool) -> Relation -> (IntSet, IntMap Int)
+relationEscapeCheck canCollapse relation =
+  where
+    cycleUnifications = relationFindCycleUnifications relation
+    relation1 = relationRestrictWithUnification cycleUnifications
+
+    collapseUnifications = relationFindCollapseUnifications lambdaBound relation1
+    relation2 = relationRestrictWithUnification collapseUnifications
+
+    unifications = IntMap.union cycleUnifications collapseUnifications
+

@@ -112,6 +112,34 @@ zipFlattenArgumentWithSort f sort argLeft argRight = zipFlattenArgumentWithSort'
     zipFlattenArgumentWithSort' (ArgumentList sorts) (ArgumentList as) (ArgumentList bs) accum = foldr (\(s, a, b) -> zipFlattenArgumentWithSort' s a b) accum $ zip3 sorts as bs
     zipFlattenArgumentWithSort' sorts a b accum = error $ "zipFlattenArgumentWithSort: Arguments do not have the same sort: " ++ show sorts ++ "; " ++ show a ++ "; " ++ show b
 
+annotationUsedRegionVariables :: Annotation -> IntSet
+annotationUsedRegionVariables (ALam _ _ annotation) = used 1 annotation
+  where
+    used :: Int -> Annotation -> IntSet
+    used scope (AFix _ _ a) = IntSet.unions $ used scope <$> argumentFlatten a
+    used scope (ATuple as) = IntSet.unions $ used scope <$> as
+    used scope (AProject a idx) = used scope a
+    used scope (AForall a) = used scope a
+    used scope (ALam _ _ a) = used (scope + 1) a
+    used scope (AApp a argA argR) = u'
+      where
+        u = foldr IntSet.union (used scope a) $ map (used scope) (argumentFlatten argA)
+        u' = addVars scope (argumentFlatten argR) u
+    used scope (AInstantiate a _) = used scope a
+    used scope (ARelation constraints) = IntSet.fromList (constraints >>= (\(Outlives (RegionVar r1) (RegionVar r2)) -> [r1, r2]))
+    used scope (AJoin a1 a2) = IntSet.union (used scope a1) (used scope a2)
+    used _ _ = IntSet.empty
+    
+    addVar :: Int -> RegionVar -> IntSet -> IntSet
+    addVar scope var
+      | indexBoundLambda var /= scope = id
+      | otherwise = IntSet.insert $ indexInArgument var
+
+    addVars :: Int -> [RegionVar] -> IntSet -> IntSet
+    addVars scope = flip $ foldr (addVar scope)
+annotationUsedRegionVariables ABottom = IntSet.empty
+annotationUsedRegionVariables a = error $ "annotationUsedRegionVariables: expected lambda, got " ++ show a
+
 annotationEscapes :: Int -> Annotation -> IntSet
 annotationEscapes arity annotation = IntSet.map (indexInArgument . RegionVar) $ IntSet.filter isFirstScope escapes
   where
@@ -183,6 +211,21 @@ annotationEscapes arity annotation = IntSet.map (indexInArgument . RegionVar) $ 
       where
         f idx = relationDFS' (\(RegionVar r) -> not $ isFirstScope r) relation (RegionVar idx)
         (first, rest) = IntSet.partition isFirstScope roots
+
+annotationBaseRelation :: Annotation -> [RelationConstraint]
+annotationBaseRelation (AForall a) = annotationBaseRelation a
+annotationBaseRelation (ALam _ _ a) = annotationBaseRelation a
+annotationBaseRelation (AJoin (ARelation cs) _) = cs
+annotationBaseRelation (AJoin _ a) = annotationBaseRelation a
+annotationBaseRelation (ARelation cs) = cs
+annotationBaseRelation _ = []
+
+annotationRemoveBaseRelation :: Annnotation -> Annotation
+annotationRemoveBaseRelation (AForall a) = AForall $ annotationRemoveBaseRelation a
+annotationRemoveBaseRelation (AForall argA argR a) = ALam argA argR $ annotationRemoveBaseRelation a
+annotationRemoveBaseRelation (AJoin a1 a2) = AJoin (annotationRemoveBaseRelation a1) (annotationRemoveBaseRelation a2)
+annotationRemoveBaseRelation (ARelation a) = ABottom
+annotationRemoveBaseRelation a = a
 
 annotationFilterInternalRegions :: Int -> Annotation -> Annotation
 annotationFilterInternalRegions arity annotation = filter 1 annotation

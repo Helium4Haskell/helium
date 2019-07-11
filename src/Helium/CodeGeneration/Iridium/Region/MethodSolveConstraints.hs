@@ -60,10 +60,14 @@ solveEquations :: EffectEnvironment -> Equations -> Equations
 solveEquations env initialEquations = IntMap.foldr f initialEquations initialEquations
   where
     f :: Equation -> Equations -> Equations
-    f (Equation var fixRegions sort _ annotation) equations = IntMap.insert (indexInArgument var) (Equation var FixRegionsNone sort True annotation') equations
+    f (Equation var fixRegions sort _ annotation) equations
+      | not $ sortCompare sort $ annotationArgumentCheckSort env [] [] annotation' = error "Normalized annotation has sort error"
+      | otherwise = IntMap.insert (indexInArgument var) (Equation var FixRegionsNone sort True annotation') equations
       where
-        annotation' = snd <$>
-          annotationArgumentNormalize env [] sort (annotation >>= solve equations 0)
+        annotation'
+          | not $ sortCompare sort $ annotationArgumentCheckSort env [] [] (annotation >>= solve equations 0)
+            = error $ "Illegal annotation generated:\n" -- ++ show sort ++ "\n" ++ show (annotationArgumentCheckSort env [] [] (annotation >>= solve equations 0))
+          | otherwise = snd <$> annotationArgumentNormalize env [] sort (annotation >>= solve equations 0)
 
 methodsToEquations :: Maybe Handle -> EffectEnvironment -> IdMap MethodState -> IO Equations
 methodsToEquations log env methods = do
@@ -85,7 +89,7 @@ methodToInterproceduralEquations log env name state = do
 methodSolveConstraints :: Maybe Handle -> EffectEnvironment -> MethodState -> IO (Argument Annotation)
 methodSolveConstraints log env state = do
   debugLog log $ "Equations:\n" ++ show equations
-  return $ methodAnnotations env bodyAnnotation returnAnnotations (msAdditionalArgumentScope state - 3) (msType state)
+  return $ methodAnnotations env bodyAnnotation returnAnnotations (msAdditionalArgumentScope state - 3) (msType state) (msReturnType state)
   where
     (returnAnnotationList, constraints) = constraintGatherReturns $ msConstraints state
 
@@ -105,9 +109,9 @@ methodSolveConstraints log env state = do
 equationsFromList :: [Equation] -> Equations
 equationsFromList = IntMap.fromList . map (\eq@(Equation var _ _ _ _) -> (indexInArgument var, eq))
 
-methodAnnotations :: EffectEnvironment -> Annotation -> (Argument Sort -> Argument Annotation) -> Int -> Tp -> Argument Annotation
-methodAnnotations env annotationBody f functionLambdaCount functionType
-  | functionLambdaCount == 0 = consumeForalls functionType annotationGlobal
+methodAnnotations :: EffectEnvironment -> Annotation -> (Argument Sort -> Argument Annotation) -> Int -> Tp -> Tp -> Argument Annotation
+methodAnnotations env annotationBody f functionLambdaCount functionType returnType
+  | functionLambdaCount == 0 = consumeForalls functionType $ const $ addInstantiations 0 returnType <$> annotationGlobal
   | otherwise = consumeForalls functionType $ annotations functionLambdaCount
   where
     annotations :: Int -> Tp -> Argument Annotation
@@ -129,9 +133,9 @@ methodAnnotations env annotationBody f functionLambdaCount functionType
         (annotationOwn, sortRegionOwn, annotationsRest)
           | lambdas == 1 =
             -- Last lambda, get the annotation of the body of the method
-            ( annotationBody
+            ( addInstantiations 0 returnType $ annotationBody
             , typeRegionSort env (tpStrict tRet)
-            , annotationIncrementScope (-2) 0 <$> f (typeAnnotationSortArgument env tRet [])
+            , addInstantiations 0 returnType <$> annotationIncrementScope (-2) 0 <$> f (typeAnnotationSortArgument env returnType [])
             )
           | otherwise =
             ( ARelation
@@ -142,12 +146,22 @@ methodAnnotations env annotationBody f functionLambdaCount functionType
             )
     annotations lambdas tp = error $ "methodAnnotation: Illegal case. lambdas = " ++ show lambdas ++ ", type = " ++ show tp
 
-    annotationGlobal :: Tp -> Argument Annotation
-    annotationGlobal tp = f (typeAnnotationSortArgument env tp [])
+    annotationGlobal :: Argument Annotation
+    annotationGlobal = f (typeAnnotationSortArgument env returnType [])
 
     consumeForalls :: Tp -> (Tp -> Argument Annotation) -> Argument Annotation
     consumeForalls (TpForall tp) a = AForall <$> consumeForalls tp a
     consumeForalls tp a = a tp
+
+    -- When analyzing a function whose return type starts with a forall quantifier, we will add those forall quantifiers twice:
+    -- First in `consumeForalls`, second in the body (as body has sort Psi(returnType)).
+    -- This does not occur often luckily. We fix this by adding instantiations to the annotation.
+    -- Example:
+    -- Return type has two quantifiers. Then we will generate an annotation of the form:
+    -- forall. forall. ((forall. forall. body) { a_1 } { a_0 }
+    addInstantiations :: Int -> Tp -> Annotation -> Annotation
+    addInstantiations forallIndex (TpForall tp) a = AInstantiate (addInstantiations (forallIndex + 1) tp a) (TpVar $ TypeVar forallIndex)
+    addInstantiations _ _ a = a
 
 constraintGatherReturns :: [Constraint] -> ([Argument Annotation], [Constraint])
 constraintGatherReturns constraints =

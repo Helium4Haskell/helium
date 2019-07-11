@@ -34,6 +34,7 @@ import Debug.Trace
 
 data MethodState = MethodState 
   { msType :: !Tp
+  , msReturnType :: !Tp
   , msArity :: !Int
   , msQuantors :: ![Int]
   , msVariables :: !VariablesMap
@@ -61,7 +62,7 @@ msAdditionalArgumentScope :: MethodState -> Int
 msAdditionalArgumentScope = (3 +) . msArity
 
 instance Show MethodState where
-  show (MethodState _ lambdaCount _ vars exposedRegions retRegion regionCount relation constraints) = unlines $ map ("  " ++)
+  show (MethodState _ _ lambdaCount _ vars exposedRegions retRegion regionCount relation constraints) = unlines $ map ("  " ++)
     [ "Lambda count: " ++ show lambdaCount
     , "Variable mapping:\n" ++ showVariablesMap vars
     , "Exposed regions: " ++ show exposedRegions
@@ -129,31 +130,36 @@ showAnnotationsMap m = IntMap.toList m >>= showAnnotation
     showAnnotation (idx, annotation) = "\n    " ++ show (AnnotationVar idx) ++ " = " ++ show annotation
 
 methodInitialize :: TypeEnvironment -> EffectEnvironment -> NameSupply -> Method -> (Method, MethodState)
-methodInitialize typeEnv effectEnv supply method@(Method methodType _ _ _ _ _) =
+methodInitialize typeEnv effectEnv supply method@(Method methodType args methodReturnType _ _ _) =
   (method', assignIntermediateThunkRegions $ methodApplyRelationConstraints relationConstraints stateWithConstraints)
   where
     methodTp = tpFromType [] $ typeNormalize typeEnv methodType
+    methodReturnTp = tpFromType (reverse [idx | Left (Quantor idx _) <- args]) $ typeNormalize typeEnv methodReturnType
 
     method' = hoistGlobalVariables effectEnv supply method
     (arity, quantors, variables, initialReturnRegions, initialExposedRegions, regionCount) = assignVariables typeEnv effectEnv method'
 
-    initialState = MethodState methodTp arity quantors variables initialExposedRegions initialReturnRegions regionCount emptyRelation []
+    initialState = MethodState methodTp methodReturnTp arity quantors variables initialExposedRegions initialReturnRegions regionCount emptyRelation []
 
     relationConstraints = gather effectEnv initialState method'
-    annotationConstraints = constraints effectEnv initialState method'
+    annotationConstraints = constraints typeEnv effectEnv initialState method'
 
     annotationUnification = constraintSimpleUnificationsMap annotationConstraints
 
     substitute :: AnnotationVar -> AnnotationVar
     substitute (AnnotationVar a) = case IntMap.lookup a annotationUnification of
       Nothing -> AnnotationVar a
-      Just a' -> AnnotationVar a'
-  
+      Just a'
+        | a == a' -> AnnotationVar a
+        | otherwise -> substitute $ AnnotationVar a'
+
     substituteAnnotation :: Int -> Annotation -> Annotation
     substituteAnnotation lambdas (AFix fixRegions s a) = AFix fixRegions s a'
       where
         a' = substituteAnnotation lambdas <$> a
     substituteAnnotation lambdas (AForall a) = AForall $ substituteAnnotation lambdas a
+    substituteAnnotation lambdas (ATuple as) = ATuple $ substituteAnnotation lambdas <$> as
+    substituteAnnotation lambdas (AProject a idx) = AProject (substituteAnnotation lambdas a) idx
     substituteAnnotation lambdas (ALam argA argR a) = ALam argA argR $ substituteAnnotation (lambdas + 1) a
     substituteAnnotation lambdas (AApp a argA argR) = AApp a' argA' argR
       where
@@ -189,7 +195,7 @@ methodInitialize typeEnv effectEnv supply method@(Method methodType _ _ _ _ _) =
     substituteCallArgument (CALocal annotations regions) = CALocal (fmap substitute annotations) regions
     substituteCallArgument ca = ca
 
-    stateWithConstraints = MethodState methodTp arity quantors variables' initialExposedRegions initialReturnRegions regionCount emptyRelation annotationConstraints'
+    stateWithConstraints = MethodState methodTp methodReturnTp arity quantors variables' initialExposedRegions initialReturnRegions regionCount emptyRelation annotationConstraints'
 
 lookupLocal :: MethodState -> Id -> VariableInfo
 lookupLocal state name = case lookupMap name $ msVariables state of
@@ -439,8 +445,8 @@ gather env state (Method _ args _ _ block blocks)
     gatherInExpression regions (Undefined _) = []
     gatherInExpression regions RegionAllocate = error "methodInitialize: method was already region-annnotated"
 
-constraints :: EffectEnvironment -> MethodState -> Method -> [Constraint]
-constraints env state (Method _ _ _ _ block blocks)
+constraints :: TypeEnvironment -> EffectEnvironment -> MethodState -> Method -> [Constraint]
+constraints typeEnv env state (Method _ _ _ _ block blocks)
   = constraintsInBlock block ++ (blocks >>= constraintsInBlock)
   where
     constraintsInBlock :: Block -> [Constraint]
@@ -519,7 +525,7 @@ constraints env state (Method _ _ _ _ block blocks)
         argAnnotation (VarGlobal (GlobalVariable name _)) = Left name
         constraintVar sort resultVar fieldVar = [CJoin (ArgumentValue sort) (ArgumentValue resultVar) [ArgumentValue fieldVar]] -}
     constraintsInBindTarget _ (VariableInfo tp (ArgumentValue resultAnnotation) _) (BindTargetTuple arity) args
-      = [CJoin resultAnnotationSorts resultAnnotation $ fmap (lookupVariableAnnotation env state) $ rights args]
+      = [CJoin resultAnnotationSorts resultAnnotation [ArgumentList $ fmap (lookupVariableAnnotation env state) $ rights args]]
       where
         resultAnnotationSorts = typeAnnotationSortArgument env tp []
         fieldConstraint var resultAnnotationSort resultAnnotation = [CJoin resultAnnotationSort resultAnnotation [lookupVariableAnnotation env state var]]
@@ -547,7 +553,8 @@ constraints env state (Method _ _ _ _ block blocks)
 
     call :: Id -> VariableInfo -> Either GlobalFunction Variable -> [Either Type Variable] -> CallKind -> [Constraint]
     call lhs (VariableInfo tp (ArgumentValue resultAnnotation) resultRegion) target args callKind
-      = case callTarget of
+      | null $ argumentFlatten resultAnnotationSort = [CJoin resultAnnotationSort resultAnnotation []]
+      | otherwise = case callTarget of
           Right (annotations, _, _)
             | null args && callKind == CKInstantiate -> [CJoin resultAnnotationSort resultAnnotation [fmap AVar annotations]]
           _ -> [CCall lhs resultAnnotationSort resultAnnotation resultRegion callTarget callTargetArity [] args' callKind]
@@ -565,7 +572,7 @@ constraints env state (Method _ _ _ _ block blocks)
             in (Right (annotation, rThunk, rValue), 0)
         args' = map argumentAnnotationRegion args
         argumentAnnotationRegion :: Either Type Variable -> CallArgument
-        argumentAnnotationRegion (Left tp) = CAType $ tpFromType (msQuantors state) tp
+        argumentAnnotationRegion (Left tp) = CAType $ tpFromType (msQuantors state) $ typeNormalize typeEnv tp
         argumentAnnotationRegion (Right (VarLocal (Local name _))) = CALocal annotation region
           where
             VariableInfo tp annotation region = lookupLocal state name
@@ -582,8 +589,8 @@ constructorConstraints constructor (ArgumentList dataType) fields index f g = co
     fieldConstraints (ArgumentList as) (ArgumentList sorts) (ArgumentList bs) = concat $ zipWith3 fieldConstraints as sorts bs
 
 methodApplyRelationConstraints :: [RelationConstraint] -> MethodState -> MethodState
-methodApplyRelationConstraints relationConstraints state@(MethodState methodType arity quantors varMap exposedRegions returnRegion regionCount _ constraints) =
-  MethodState methodType arity quantors (mapMap substituteVariableInfo varMap) exposedRegions returnRegion regionCount' relation (map substituteConstraint constraints)
+methodApplyRelationConstraints relationConstraints state@(MethodState methodType methodReturnTp arity quantors varMap exposedRegions returnRegion regionCount _ constraints) =
+  MethodState methodType methodReturnTp arity quantors (mapMap substituteVariableInfo varMap) exposedRegions returnRegion regionCount' relation (map substituteConstraint constraints)
   where
     (substitution, relation, regionCount') = relationFromConstraints (msAdditionalArgumentScope state) regionCount exposedRegions relationConstraints
 
@@ -612,24 +619,12 @@ methodApplyRelationConstraints relationConstraints state@(MethodState methodType
     substituteCallArgument ca = ca
 
 constraintSimpleUnifications :: [Constraint] -> [(Int, Int)]
-constraintSimpleUnifications (CJoin _ (AnnotationVar a) [ArgumentValue (AVar (AnnotationVar b))] : cs) = unification : constraintSimpleUnifications cs
-  where
-    unification = if a < b then (a, b) else (b, a)
+constraintSimpleUnifications (CJoin _ (AnnotationVar a) [ArgumentValue (AVar (AnnotationVar b))] : cs) = (a, b) : constraintSimpleUnifications cs
 constraintSimpleUnifications (_ : cs) = constraintSimpleUnifications cs
 constraintSimpleUnifications [] = []
 
 constraintSimpleUnificationsMap :: [Constraint] -> IntMap Int
-constraintSimpleUnificationsMap cs = insertUnifications list IntMap.empty
-  where
-    insertUnifications :: [(Int, Int)] -> IntMap Int -> IntMap Int
-    insertUnifications ((a, b) : us) m = insertUnifications rest $! m'
-      where
-        m' = foldr (\b' -> IntMap.insert b' a') m bs
-        a' = fromMaybe a $ IntMap.lookup a m
-        bs = b : map snd groupUnifications
-        (groupUnifications, rest) = span (\(a'', _) -> a == a'') us
-    insertUnifications [] m = m
-    list = sort $ constraintSimpleUnifications cs
+constraintSimpleUnificationsMap cs = IntMap.fromList $ constraintSimpleUnifications cs
 
 type BlockInstructions = [(Id, Instruction -> Instruction)]
 

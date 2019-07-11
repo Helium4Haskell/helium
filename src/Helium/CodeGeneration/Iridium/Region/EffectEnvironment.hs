@@ -138,7 +138,12 @@ instantiateType :: Instantiatable a => EffectEnvironment -> Tp -> a -> Argument 
 instantiateType env tp = instantiateType' env (TypeInstantiation 0 tp)
 
 instantiateArgumentTypes :: Instantiatable a => EffectEnvironment -> [Tp] -> Argument a -> Argument a
-instantiateArgumentTypes env tps arg = foldr (instantiateArgumentType env) arg tps
+instantiateArgumentTypes env tps arg = foldl (flip $ instantiateArgumentType env) arg tps'
+  where
+    -- When instantiating a type variable with a type which has free type variables,
+    -- we must increase those type variables with the number of other remaining instantiations.
+    -- This prevents that a later instantiation will substitute the newly introduced type variable.
+    tps' = zipWith (`tpIncreaseScope` 0) [length tps - 1, length tps - 2 ..] tps
 
 instantiateArgumentType :: Instantiatable a => EffectEnvironment -> Tp -> Argument a -> Argument a
 instantiateArgumentType env tp = instantiateArgumentType' env (TypeInstantiation 0 tp)

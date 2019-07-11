@@ -55,7 +55,7 @@ containment env = containment' [] Nothing
     containmentDataType parent name typeArgs regionArgs = constraintsDataType ++ constraintsFields
       where
         EffectDataType _ argSort constraints = eeLookupDataType env name
-        constraintsDataType = instantiateRelationConstraints (\var -> Just $ argumentFlatten (regionArgs !!! indexInArgument var)) constraints
+        constraintsDataType = instantiateRelationConstraints (\var -> argumentFlatten (regionArgs !!! indexInArgument var)) constraints
         constraintsFields = concat $ zipWith fieldConstraints argSort regionArgs
 
         -- Gather constraints per region argument of the data type. Any region argument should outlive the region variable of the object.
@@ -63,7 +63,7 @@ containment env = containment' [] Nothing
         fieldConstraints :: SortArgumentRegion -> Argument RegionVar -> [RelationConstraint]
         fieldConstraints (SortArgumentRegionPolymorphic (TypeVar tvar) tvarTypeArgs) arg = containmentFields [] parent tp tvarTypeArgs arg
           where
-            tp = case tryIndex typeArgs (length typeArgs - tvar - 1) of
+            tp = case tryIndex typeArgs tvar of
               Nothing -> error $ "containment: type variable not found. " ++ show typeArgs ++ "; " ++ show tvar
               Just tp -> tp
         fieldConstraints _ (ArgumentValue region) = [region `Outlives` parent]
