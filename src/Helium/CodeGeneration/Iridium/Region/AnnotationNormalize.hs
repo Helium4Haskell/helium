@@ -321,14 +321,15 @@ annotationInstantiate' env sortEnv inst args (ALam argA argR a) = fmap f <$> ann
     argumentIndex fresh (ArgumentList args) = ArgumentList <$> mapAccumL argumentIndex fresh args
 annotationInstantiate' env sortEnv inst args (AApp a argA argR) = fmap f <$> annotationInstantiate' env sortEnv inst args a
   where
-    f (SortFun sortA sortR s, a') = (s, AApp a' (fmap snd argA'') argR')
+    f (SortFun sortA sortR s, a') = (s, AApp a' argA'' argR')
       where
         -- argA is not normalized, so may have a shape which does not match sortA.
         -- We need to convert argA such that its form matches with sortA.
         argA' = annotationsToArgument sortA argA
 
-        argA'' = annotationArgumentInstantiate env sortEnv inst args argA'
+        argA'' = (\(_, arg) -> maybe ABottom g $ annotationInstantiate' env sortEnv inst args arg) <$> argA'
         argR' = argR >>= lookupRegionVar
+    g (ArgumentValue (_, a)) = a
     lookupRegionVar var = case tryIndex args $ indexBoundLambda var - 1 of
       Just (_, regions) -> fmap (variableFromIndices $ indexBoundLambda var) $ regions !!! indexInArgument var
       Nothing -> ArgumentValue var

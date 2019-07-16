@@ -281,10 +281,10 @@ zipWith1 z (a:as) (b:bs)   = z a b : zipWith1 z as bs
 zipWith1 _ _      _        = []
 
 zip :: [a] -> [b] -> [(a,b)]
-zip = undefined -- zipWith  (\a b -> (a,b))
+zip = zipWith (\a b -> (a,b))
 
 zip3 :: [a] -> [b] -> [c] -> [(a,b,c)]
-zip3 = undefined -- zipWith3 (\a b c -> (a,b,c))
+zip3 = zipWith3 (\a b c -> (a,b,c))
 
 zipWith :: (a -> b -> c) -> [a] -> [b] -> [c]
 zipWith z (a:as) (b:bs)   = z a b : zipWith z as bs
@@ -1073,4 +1073,12 @@ instance Enum Char where
     fromEnum        = primOrd
     enumFrom        = enumFromChar
     enumFromThen    = enumFromThenChar
+-}
+
+{-
+pair x y = (x, y)
+tuple x y = pair [x] y 
+
+hoi f a b = f a b
+hallo a b = hoi pair a b
 -}
