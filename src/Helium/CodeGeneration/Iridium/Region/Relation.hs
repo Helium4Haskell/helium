@@ -14,6 +14,7 @@ module Helium.CodeGeneration.Iridium.Region.Relation
   , relationDecrementScope
   , relationDFS
   , relationDFS'
+  , relationCollapse
   )
   where
 
@@ -107,6 +108,12 @@ relationFoldr f init (Relation graph) = IntMap.foldrWithKey (\r1 r2s a -> IntSet
 
 relationToConstraints :: Relation -> [RelationConstraint]
 relationToConstraints = relationFoldr (\r1 r2 -> (Outlives r2 r1 :)) []
+
+-- Creates a graph in the reverse direction
+relationReverse :: Relation -> IntMap IntSet
+relationReverse relation = graph
+  where
+    Relation graph = relationFoldr (\(RegionVar u) (RegionVar v) -> snd . addEdge (Vertex v) (Vertex u)) emptyRelation relation
 
 instance Show Relation where
   show rel = show (relationToConstraints rel)
@@ -383,18 +390,21 @@ relationFindCycleUnifications relation@(Relation graph) = IntMap.foldrWithKey un
       where
         ws = filter (\w -> hasEdge relation (Vertex w) (Vertex v)) $ takeWhile (> v) $ IntSet.toDescList neighbours
 
-relationFindCollapseUnifications :: (RegionVar -> RegionVar -> Bool) -> Relation -> IntMap Int
-relationFindCollapseUnifications canCollapse relation@(Relation graph) =
+relationFindCollapseUnifications :: (RegionVar -> Bool) -> Relation -> IntMap Int
+relationFindCollapseUnifications canCollapse relation =
   snd $ IntMap.foldrWithKey visitVertex (IntSet.empty, IntMap.empty) graph
   -- The graph should be acyclic.
   where
+    graph = relationReverse relation
+
     visitVertex' :: Int -> (IntSet, IntMap Int) -> (IntSet, IntMap Int)
     visitVertex' u (visited, m) = visitVertex u (fromMaybe IntSet.empty $ IntMap.lookup u graph) (visited, m)
 
     visitVertex :: Int -> IntSet -> (IntSet, IntMap Int) -> (IntSet, IntMap Int)
     visitVertex u neighbours (visited, m)
       | u `IntSet.member` visited = (visited, m)
-      -- Find successor v for which holds succ(u) = (succ(v) union {v})
+      | not $ canCollapse $ RegionVar u = (IntSet.insert u visited', m')
+      -- Find predecessor v for which holds pred(u) = (pred(v) union {v})
       | otherwise = case find isDirect $ IntSet.toList neighbours of
         Nothing -> (IntSet.insert u visited', m') -- No collapsing
         Just v -> (IntSet.insert u visited', IntMap.insert u (fromMaybe v $ IntMap.lookup v m') m')
@@ -402,7 +412,7 @@ relationFindCollapseUnifications canCollapse relation@(Relation graph) =
         -- Recurse
         (visited', m') = IntSet.foldr visitVertex' (visited, m) neighbours
 
-        isDirect v = indexBoundLambda (RegionVar v) == canCollapse && neighbours == IntSet.insert v (fromMaybe IntSet.empty $ IntMap.lookup u graph)
+        isDirect v = neighbours == IntSet.insert v (fromMaybe IntSet.empty $ IntMap.lookup u graph)
 
 relationRestrictWithUnification :: IntMap Int -> Relation -> Relation
 relationRestrictWithUnification m (Relation graph) = Relation graph'
@@ -413,14 +423,11 @@ relationRestrictWithUnification m (Relation graph) = Relation graph'
 -- Returns a map representing the unifications applied by cycles and collapsing
 -- The regions which are present (as key) in the map can thus be removed from the function
 -- by substituting them according to the map.
-relationEscapeCheck :: (RegionVar -> RegionVar -> Bool) -> Relation -> (IntSet, IntMap Int)
-relationEscapeCheck canCollapse relation =
+relationCollapse :: (RegionVar -> Bool) -> Relation -> IntMap Int
+relationCollapse canCollapse relation = IntMap.union cycleUnifications collapseUnifications
   where
     cycleUnifications = relationFindCycleUnifications relation
-    relation1 = relationRestrictWithUnification cycleUnifications
+    relation1 = relationRestrictWithUnification cycleUnifications relation
 
-    collapseUnifications = relationFindCollapseUnifications lambdaBound relation1
+    collapseUnifications = relationFindCollapseUnifications canCollapse relation1
     relation2 = relationRestrictWithUnification collapseUnifications
-
-    unifications = IntMap.union cycleUnifications collapseUnifications
-

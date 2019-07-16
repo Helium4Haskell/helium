@@ -212,7 +212,8 @@ lookupVariableAnnotation env _ (VarGlobal (GlobalVariable name _)) = annotation'
     EffectGlobal arity tp annotation = eeLookupGlobal env name
     annotation' = fmap stripFirstArgument annotation
     stripFirstArgument (ALam (ArgumentList []) (ArgumentList []) a) = a
-    stripFirstArgument _ = error "lookupVariableAnnotation: variable has additional region arguments"
+    stripFirstArgument ABottom = ABottom
+    stripFirstArgument a = error $ "lookupVariableAnnotation: variable has additional region arguments: " ++ show a
     regionSort = typeRegionSort env (if arity == 0 then tp else tpStrict tp)
     region :: Argument RegionVar
     region = fmap (const regionGlobal) $ (sortArgumentToArgument 1 regionSort :: Argument RegionVar)

@@ -264,6 +264,22 @@ curry f x y     = f (x,y)
 uncurry        :: (a -> b -> c) -> ((a,b) -> c)
 uncurry f p     = f (fst p) (snd p)
 
+-- zipI works, while zip fails. So something breaks when instantiating the type arguments
+zipI :: [Int] -> [Int] -> [(Int,Int)]
+zipI = zipWithI  (\a b -> (a,b))
+
+-- This may be a bit easier to debug as the consumer is not polymorphic:
+zipI' :: [Int] -> [Int] -> [(Int,Int)]
+zipI' = zipWith1  (\a b -> (a,b))
+
+zipWithI :: (Int -> Int -> (Int, Int)) -> [Int] -> [Int] -> [(Int, Int)]
+zipWithI z (a:as) (b:bs)   = z a b : zipWithI z as bs
+zipWithI _ _      _        = []
+
+zipWith1 :: (a -> a -> (a, a)) -> [a] -> [a] -> [(a, a)]
+zipWith1 z (a:as) (b:bs)   = z a b : zipWith1 z as bs
+zipWith1 _ _      _        = []
+
 zip :: [a] -> [b] -> [(a,b)]
 zip = undefined -- zipWith  (\a b -> (a,b))
 
@@ -476,7 +492,7 @@ span p xs@(x:xs')
                        where (ys,zs) = span p xs' -}
 
 break :: (a -> Bool) -> [a] -> ([a],[a])
-break p = span (not . p)
+break p = span (\a -> not (p a))
 
 lines :: String -> [String]
 lines ""   = []
@@ -605,11 +621,11 @@ putStrLn s = primPutStrLn s
 -}
 
 getLine :: IO String
-getLine = undefined {- do 
+getLine = do 
         c <- getChar
         if c == '\n' 
             then return ""
-            else getLine >>= (return . (c :)) -}
+            else getLine >>= (return . (c :))
 
 sequence_ :: [IO a] -> IO ()
 sequence_ = foldr (>>) (return ())

@@ -143,7 +143,7 @@ annotationUsedRegionVariables a = error $ "annotationUsedRegionVariables: expect
 annotationEscapes :: Int -> Annotation -> IntSet
 annotationEscapes arity annotation = IntSet.map (indexInArgument . RegionVar) $ IntSet.filter isFirstScope escapes
   where
-    (annotationRelation, annotationRoots) = gather 1 annotation
+    (annotationRelation, annotationRoots) = gather 0 annotation
 
     escapes = case annotationRelation of
       Nothing -> annotationRoots
@@ -220,17 +220,17 @@ annotationBaseRelation (AJoin _ a) = annotationBaseRelation a
 annotationBaseRelation (ARelation cs) = cs
 annotationBaseRelation _ = []
 
-annotationRemoveBaseRelation :: Annnotation -> Annotation
+annotationRemoveBaseRelation :: Annotation -> Annotation
 annotationRemoveBaseRelation (AForall a) = AForall $ annotationRemoveBaseRelation a
-annotationRemoveBaseRelation (AForall argA argR a) = ALam argA argR $ annotationRemoveBaseRelation a
+annotationRemoveBaseRelation (ALam argA argR a) = ALam argA argR $ annotationRemoveBaseRelation a
 annotationRemoveBaseRelation (AJoin a1 a2) = AJoin (annotationRemoveBaseRelation a1) (annotationRemoveBaseRelation a2)
 annotationRemoveBaseRelation (ARelation a) = ABottom
 annotationRemoveBaseRelation a = a
 
-annotationFilterInternalRegions :: Int -> Annotation -> Annotation
-annotationFilterInternalRegions arity annotation = filter 1 annotation
+annotationFilterInternalRegions :: Int -> Argument Annotation -> Argument Annotation
+annotationFilterInternalRegions arity annotation = filter 0 <$> annotation
   where
-    escapes = annotationEscapes arity annotation
+    escapes = IntSet.unions $ annotationEscapes arity <$> argumentFlatten annotation
 
     filter :: Int -> Annotation -> Annotation
     filter scope (AFix fixRegions sort a) = AFix fixRegions sort (filter scope <$> a)
