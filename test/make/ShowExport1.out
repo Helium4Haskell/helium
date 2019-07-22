@@ -5,6 +5,6 @@ Compiling make/ShowExport2.hs
 (5,1): Warning: Missing type signature: x :: A
 Compilation successful with 1 warning
 Compiling make/ShowExport1.hs
-(5,1): Warning: Missing type signature: main :: A
+(5,1): Warning: Missing type signature: main :: ShowExport3.A
 Compilation successful with 1 warning
-A
+<<type ShowExport3.A>>

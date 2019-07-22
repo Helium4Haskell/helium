@@ -1,3 +1,5 @@
+module SynExportB where
+
 import SynExportC
 
 f :: P

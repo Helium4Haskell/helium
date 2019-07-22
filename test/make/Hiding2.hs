@@ -6,4 +6,5 @@ y = 200
 z = 300
 
 data X = X
+    deriving Show
 

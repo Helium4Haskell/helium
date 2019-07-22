@@ -22,15 +22,9 @@
 
 module Helium.Parser.LayoutRule(layout) where
 
---import Debug.Trace
 import Helium.Parser.LexerToken(Token, Lexeme(..), lexemeLength)
 import Text.ParserCombinators.Parsec.Pos
 
---trS :: Show a => a -> b -> b
---trS = traceShow
-
---trc :: String -> a -> a
---trc _ = id
 
 layout :: [Token] -> [Token]
 layout [] = []

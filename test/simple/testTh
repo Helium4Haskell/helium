@@ -2,6 +2,6 @@
 
 ERRORS=0
 
-for f in thompson/*.hs          ; do bash testOne ${f%.hs}; ERRORS=$[$ERRORS+$?] ; done
+for f in thompson/*.hs          ; do bash testOne ${f%.hs}; ERRORS=$(($ERRORS+$?)) ; done
 
 exit $ERRORS

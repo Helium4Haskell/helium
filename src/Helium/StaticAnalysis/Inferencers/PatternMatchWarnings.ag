@@ -87,8 +87,8 @@ SEM Pattern
   | Hole             lhs . elements  = [FiniteElement hole]
   | Variable         lhs . elements  = [WildcardElement]
   | Wildcard         lhs . elements  = [WildcardElement]
-  | Constructor      lhs . elements  = FiniteElement (getNameName @name.self) : concat @patterns.elementss
-  | InfixConstructor lhs . elements  = FiniteElement (getNameName @constructorOperator.self) : @leftPattern.elements ++ @rightPattern.elements
+  | Constructor      lhs . elements  = FiniteElement (getOnlyName @name.self) : concat @patterns.elementss
+  | InfixConstructor lhs . elements  = FiniteElement (getOnlyName @constructorOperator.self) : @leftPattern.elements ++ @rightPattern.elements
   | Record           lhs . elements  = pmError "Pattern_Record.elements" "Records are not supported"
   | Successor        lhs . elements  = pmError "Pattern_Successor.elements" "Successors are not supported"
   | Tuple            lhs . elements  = FiniteElement ("(" ++ replicate (length $ tail @patterns.self) ',' ++ ")") : concat @patterns.elementss
@@ -151,7 +151,7 @@ SEM Expression
                                                                        (take (length @patterns.self) . fst . functionSpine)
                                                                        [(concat @patterns.elementss, False)]
                                                                        @range.self
-                                                                       (Just $ Name_Special noRange [] "\\") -- !!!Name
+                                                                       (Just $ Name_Special noRange [] [] "\\") -- !!!Name
                                                                        True
                                                                        []
                                                                        "lambda expression"
@@ -159,7 +159,10 @@ SEM Expression
                                                   ++ @expression.patternMatchWarnings                     
 
 SEM Declaration
-  | FunctionBindings lhs . patternMatchWarnings = patternMatchWarnings @lhs.importEnvironment
+  | FunctionBindings lhs . patternMatchWarnings = ( if @bindings.argcount == 0 then 
+                                                      [] 
+                                                    else
+                                                      patternMatchWarnings @lhs.importEnvironment
                                                                        @lhs.substitution
                                                                        @loc.beta
                                                                        (take @bindings.argcount . fst . functionSpine)
@@ -170,7 +173,7 @@ SEM Declaration
                                                                        @bindings.unrwars
                                                                        "function bindings"
                                                                        "="
-                                                  ++ @bindings.patternMatchWarnings 
+                                                  ) ++ @bindings.patternMatchWarnings 
   | PatternBinding   lhs . patternMatchWarnings = patternMatchWarnings @lhs.importEnvironment
                                                                        @lhs.substitution
                                                                        @pattern.beta
@@ -233,8 +236,8 @@ SEM GuardedExpressions
 
 SEM GuardedExpression
   | GuardedExpression lhs . fallthrough = case @guard.self
-                                          of Expression_Variable    _ (Name_Identifier _ _ "otherwise") -> False -- !!!Name
-                                             Expression_Constructor _ (Name_Identifier _ _ "True"     ) -> False -- !!!Name
+                                          of Expression_Variable    _ (Name_Identifier _ _ _ "otherwise") -> False -- !!!Name
+                                             Expression_Constructor _ (Name_Identifier _ _ _ "True"     ) -> False -- !!!Name
                                              _                                                          -> True
                       lhs . unrwar = UnreachableGuard @range.self @guard.self
 
@@ -259,7 +262,9 @@ SEM GuardedExpression
 type Env = [(Tp, (Name, [Tp]))]
 
 importEnvironmentToEnv :: ImportEnvironment -> [(Tp, (Name, [Tp]))]
-importEnvironmentToEnv = map rearrange . M.assocs . valueConstructors
+importEnvironmentToEnv = map rearrange . M.assocs .toSchemeMap . valueConstructors
+  where
+    toSchemeMap = M.map (\(_, scheme) -> scheme)
 
 -- return the number of arguments of a constructor
 -- tuples ar not in the Env so they require special treatment
@@ -279,7 +284,7 @@ rearrange (name, tpscheme) = let (args, res) = functionSpine $ unqualify $ unqua
 constructors :: ImportEnvironment -> Tp -> [(Name, [Tp])]
 constructors _ (TVar _) = []
 constructors impenv tp | isTupleConstructor name = [tupleconstructor]
-                       | otherwise               = map expand $ concatMap (substitute tp) $ importEnvironmentToEnv impenv
+                       | otherwise               = (map expand . removeDoubles . removeQual . concatMap (substitute tp) . importEnvironmentToEnv) impenv
   where
     name :: String
     name = unTCon $ fst $ leftSpine tp
@@ -287,9 +292,15 @@ constructors impenv tp | isTupleConstructor name = [tupleconstructor]
     tupleconstructor = (nameFromString name, snd $ leftSpine tp)
     unTCon :: Tp -> String
     unTCon (TCon c) = c
-    unTCon tp' = pmError "unTCon" $ "type " ++ show tp' ++ " is not a TCon"
+    unTCon tp' = show tp'
     expand :: (Name, [Tp]) -> (Name, [Tp])
     expand (n, ts) = (n, map (expandTypeFromImportEnvironment impenv) ts)
+
+    removeQual :: [(Name, [Tp])] -> [(Name, [Tp])]
+    removeQual = map (\(n,tps) -> (addQualified [] n, tps))
+
+    removeDoubles :: [(Name, [Tp])] -> [(Name, [Tp])]
+    removeDoubles = nubBy (\(x,_) (y,_) -> x == y)
 
 -- check of an entry in an Env is a constructor for the given type
 -- if so, return this constructor, but with variables substituted for whatever is in the given type
@@ -364,14 +375,14 @@ nicePattern b env = map (parensPattern b) . nice
           name = nameFromString con
           n    = nrOfArguments env con
       in case name 
-         of Name_Identifier _ _ _                          -> Pattern_Constructor noRange name (take n rest) : drop n rest -- !!!Name
-            Name_Operator   _ _ _ | con == ":"             -> case head $ tail rest -- !!!Name
-                                                              of Pattern_List _ pats -> Pattern_List noRange (head rest:pats) : (tail $ tail rest)
-                                                                 _ -> Pattern_InfixConstructor noRange (head rest) name (head $ tail rest) : (tail $ tail rest)
-                                  | otherwise              -> Pattern_InfixConstructor noRange (head rest) name (head $ tail rest) : (tail $ tail rest)
-            Name_Special    _ _ _ | isTupleConstructor con -> Pattern_Tuple noRange (take n rest) : drop n rest -- !!!Name
-                                  | con == "[]"            -> Pattern_List  noRange [] : rest
-                                  | otherwise              -> Pattern_Constructor noRange name (take n rest) : drop n rest
+         of Name_Identifier _ _ _ _                          -> Pattern_Constructor noRange name (take n rest) : drop n rest -- !!!Name
+            Name_Operator   _ _ _ _ | con == ":"             -> case head $ tail rest -- !!!Name
+                                                                of Pattern_List _ pats -> Pattern_List noRange (head rest:pats) : (tail $ tail rest)
+                                                                   _ -> Pattern_InfixConstructor noRange (head rest) name (head $ tail rest) : (tail $ tail rest)
+                                    | otherwise              -> Pattern_InfixConstructor noRange (head rest) name (head $ tail rest) : (tail $ tail rest)
+            Name_Special    _ _ _ _ | isTupleConstructor con -> Pattern_Tuple noRange (take n rest) : drop n rest -- !!!Name
+                                    | con == "[]"            -> Pattern_List  noRange [] : rest
+                                    | otherwise              -> Pattern_Constructor noRange name (take n rest) : drop n rest
 
 -- add parentheses to a pattern in the correct places
 -- bool means: if needed, should there be parenthesis around the complete pattern?
@@ -418,11 +429,11 @@ complement env (tp:tps) pss    | null $ unMissing anyComplement                 
     anyComplement :: PatternsMissing
     anyComplement = patComplement (filter ((== WildcardElement).head) pss) WildcardElement tps
     conComplement :: (Name, [Tp]) -> PatternsMissing
-    conComplement (con, args) = patComplement (  filter ((== FiniteElement (getNameName con)).head) pss
-                                              ++ map (\ps -> FiniteElement (getNameName con) : replicate (length args) WildcardElement ++ tail ps)
+    conComplement (con, args) = patComplement (  filter ((== FiniteElement (getOnlyName con)).head) pss
+                                              ++ map (\ps -> FiniteElement (getOnlyName con) : replicate (length args) WildcardElement ++ tail ps)
                                                      (filter ((== WildcardElement).head) pss)
                                               )
-                                              (FiniteElement (getNameName con)) (args ++ tps)
+                                              (FiniteElement (getOnlyName con)) (args ++ tps)
     finComplement :: PatternsMissing
     finComplement = case constructors env tp
                     of []   -> wildMissing $ 1 + length tps
@@ -440,7 +451,7 @@ unreachable env tps ps = let reach = reachable env tps ps
 -- determines which patterns are reachable
 -- possibly multiple occurances of indices
 reachable :: ImportEnvironment -> [Tp] -> [([PatternElement], Int)] -> [Int]
-reachable _   []       _  = pmError "reachable" "empty type list!"
+reachable _   []       _  = []
 reachable env (tp:tps) ps 
   | all ((== WildcardElement).head.fst) ps = conReachable ps
   | otherwise                              = concat $ map (conReachable.conPats) $ stop cons
@@ -464,7 +475,7 @@ reachable env (tp:tps) ps
       | otherwise                 = reachable env (arguments (elementString.head.fst.head $ pats) ++ tps) 
                                             $ map (\(es, i) -> (tail es, i)) pats
     arguments :: String -> [Tp]
-    arguments c = maybe [] id $ lookup c $ map (\(n, typs) -> (getNameName n, typs)) $ constructors env tp
+    arguments c = maybe [] id $ lookup c $ map (\(n, typs) -> (getOnlyName n, typs)) $ constructors env tp
 
 -- remove double occurances and wildcards
 thin :: [PatternElement] -> [PatternElement]

@@ -1,7 +1,7 @@
 #!/bin/sh
 
-for f in $1/*.hs ; 
-do 
+for f in $1/*.hs ;
+do
 diff $f ../$f 2>/dev/null >/dev/null
 hs=$?
 diff ${f%.hs}.out ../${f%.hs}.out 2>/dev/null >/dev/null

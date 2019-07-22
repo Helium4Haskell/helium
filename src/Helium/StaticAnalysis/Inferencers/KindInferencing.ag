@@ -256,7 +256,7 @@ performBindingGroup = glueGroups . bindingGroupAnalysis
                   )             
 
 getKindsFromImportEnvironment :: ImportEnvironment -> KindEnvironment
-getKindsFromImportEnvironment = M.map f . typeConstructors
+getKindsFromImportEnvironment = M.map (f . fst) . typeConstructors
    where f i = generalizeAll ([] .=>. foldr (.->.) star (replicate i star))
 
 getTypeVariables :: Assumptions -> Names

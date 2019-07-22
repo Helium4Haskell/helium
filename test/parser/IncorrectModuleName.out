@@ -1,6 +1,6 @@
 Prelude is up to date
 Compiling parser/IncorrectModuleName.hs
-(1,11): Syntax error: 
-    unexpected operator '.'
-    expecting keyword 'where'
+(1,12): Syntax error: 
+    unexpected integer literal '1'
+    expecting module name
 Compilation failed with 1 error

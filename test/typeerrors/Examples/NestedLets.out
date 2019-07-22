@@ -1,6 +1,6 @@
 Prelude is up to date
 Compiling typeerrors/Examples/NestedLets.hs
 (5,11): Warning: Definition "c" is not used
-(3,1): Warning: Missing type signature: main :: a -> a
+(3,1): Warning: Missing type signature: main :: Show a => a -> String
 Compilation successful with 2 warnings
-<<function>>
+<<overloaded function>>

@@ -1,0 +1,10 @@
+Prelude is up to date
+Compiling exports/Qual1.hs
+Compilation successful
+Compiling exports/Qual9.hs
+Compilation successful
+Compiling exports/Qual10.hs
+(6,1): Warning: Missing type signature: f :: Listt3 Int
+(8,1): Warning: Missing type signature: z :: String
+Compilation successful with 2 warnings
+"Hello! This should be sensible text"

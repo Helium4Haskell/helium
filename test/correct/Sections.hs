@@ -4,6 +4,7 @@ data Expr
     = Num Int
     | Expr :+: Expr
     | (:-) Int
+    deriving Show
     
 main = 
     (   [   (+1) 2

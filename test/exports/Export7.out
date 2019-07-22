@@ -1,0 +1,5 @@
+Prelude is up to date
+Compiling exports/Export7.hs
+Compilation successful
+(1,16): Warning: The value 'f' occurs multiple times in the export list
+3

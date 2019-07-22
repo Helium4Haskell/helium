@@ -1,0 +1,10 @@
+Prelude is up to date
+Compiling typeClasses/ClassInstaneError12.hs
+(5,5): Missing class constraint in type signature
+ function         : g
+   declared type  : Y a => a -> Bool
+ class constraint : X a
+   arising from   : f
+ hint             : add the class constraint to the type signature
+
+Compilation failed with 1 error

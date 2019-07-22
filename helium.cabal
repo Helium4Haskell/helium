@@ -93,7 +93,7 @@ source-repository head
 --------------------------------------------------------------------------------
 
 Executable helium
-  Build-Depends:     base >= 3 && < 5, containers, mtl, parsec, network, process, transformers, filepath, directory, wl-pprint, Top >= 1.8, lvmlib >= 1.2, helium
+  Build-Depends:     base >= 3 && < 5, containers, mtl, parsec, network < 2.7, process, transformers, filepath, directory, wl-pprint, Top >= 1.8, lvmlib >= 1.2, helium
   ghc-options:       -Wall
   default-language:  Haskell98
   hs-source-dirs:    src/commands/helium
@@ -133,7 +133,7 @@ Executable heliumpath
 --------------------------------------------------------------------------------
   
 Library
-  Build-Depends:     base >= 3 && < 5, containers, mtl, parsec, network, process, transformers, filepath, directory, wl-pprint, Top >= 1.7, lvmlib >= 1.1
+  Build-Depends:     base >= 3 && < 5, containers, mtl, parsec, network < 2.7, process, transformers, filepath, directory, wl-pprint, Top >= 1.7, lvmlib >= 1.1
   ghc-options:       -Wall
   default-language:  Haskell98
   hs-source-dirs:    src dist/build/autogen/uuagc
@@ -146,9 +146,11 @@ Library
     Helium.CodeGeneration.DerivingEq
     Helium.CodeGeneration.DerivingShow
     Helium.CodeGeneration.PatternMatch
+    Helium.CodeGeneration.InstanceDictionary
     Helium.Main.Args
     Helium.Main.Compile
     Helium.Main.CompileUtils
+    Helium.Main.Make
     Helium.Main.PhaseCodeGenerator
     Helium.Main.PhaseDesugarer
     Helium.Main.PhaseImport
@@ -163,6 +165,7 @@ Library
     Helium.ModuleSystem.CoreToImportEnv
     Helium.ModuleSystem.DictionaryEnvironment
     Helium.ModuleSystem.ExtractImportDecls
+    Helium.ModuleSystem.GatherImports
     Helium.ModuleSystem.ImportEnvironment
     Helium.Parser.CollectFunctionBindings
     Helium.Parser.LayoutRule
@@ -220,6 +223,8 @@ Library
     Helium.Utils.Similarity
     Helium.Utils.Texts
     Helium.Utils.Utils
+    Helium.Utils.QualifiedTypes
+    Helium.Utils.QualifiedTypes.Constants
   Other-modules:
     
 

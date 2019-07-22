@@ -44,7 +44,7 @@ DATA Export
 DATA Body
     | Hole
         range                    : Range
-        id                       : Integer
+        id                       : String
     | Body
         range                    : Range
         importdeclarations       : ImportDeclarations
@@ -103,7 +103,7 @@ TYPE Declarations                = [ Declaration ]
 DATA Declaration                                  {- *** -}
     | Hole
         range                    : Range
-        id                       : Integer
+        id                       : String
     | Type
         range                    : Range
         simpletype               : SimpleType
@@ -306,13 +306,17 @@ DATA MaybeExpression
 DATA Expression                                   {- *** -}
     | Hole
         range                    : Range
-        id                       : Integer
+        id                       : String
     | Feedback
         range                    : Range
         feedback                 : String
         expression               : Expression
     | MustUse
         range                    : Range
+        expression               : Expression
+    | Eta
+        range                    : Range
+        expansion                : Int
         expression               : Expression
     | Literal                          {- *** -}
         range                    : Range
@@ -397,7 +401,7 @@ DATA Expression                                   {- *** -}
 --     
 --     Expression_NormalApplication
 --       (Expression_InfixApplication 
---          Nothing (Name_Operator [] "+") Nothing)
+--          Nothing (Name_Operator [] [] "+") Nothing)
 --       [Expression_Literal (Literal_Int "2")
 --       ,Expression_Literal (Literal_Int "3")]
 --
@@ -405,7 +409,7 @@ DATA Expression                                   {- *** -}
 -- there a good reason not to say
 --
 --     Expression_NormalApplication
---       (Expression_Variable (Name_Operator [] "+"))
+--       (Expression_Variable (Name_Operator [] [] "+"))
 --       [Expression_Literal (Literal_Int "2")
 --       ,Expression_Literal (Literal_Int "3")]
 --
@@ -413,7 +417,7 @@ DATA Expression                                   {- *** -}
 --
 --     Expression_NormalApplication
 --       (Expression_InfixApplication
---          Nothing (Name_Operator [] "+") 
+--          Nothing (Name_Operator [] [] "+") 
 --          (Just (Expression_Literal (Literal_Int "3"))))
 --       [Expression_Literal (Literal_Int "2")]
 --
@@ -422,14 +426,14 @@ DATA Expression                                   {- *** -}
 --     Expression_NormalApplication
 --       (Expression_InfixApplication
 --          (Just (Expression_Literal (Literal_Int "2")))
---          (Name_Operator [] "+") Nothing)
+--          (Name_Operator [] [] "+") Nothing)
 --       [Expression_Literal (Literal_Int "3")]
 --
 --   o "2 + 3" as
 -- 
 --     Expression_InfixApplication
 --       (Just (Expression_Literal (Literal_Int "2")))
---       (Name_Operator [] "+")
+--       (Name_Operator [] [] "+")
 --       (Just (Expression_Literal (Literal_Int "3")))
 --
 --   o "mod 5 2" as
@@ -484,7 +488,7 @@ DATA Expression                                   {- *** -}
 --
 --     Expression_InfixApplication
 --       (Just (Expression_Literal (Literal_Int "2")))
---       (Name_Operator [] "-") Nothing
+--       (Name_Operator [] [] "-") Nothing
 --
 -- Summary: 
 -- Sections are represented as partial infix applications. Backquotes
@@ -528,7 +532,7 @@ TYPE Alternatives                = [ Alternative ]
 DATA Alternative
     | Hole
         range                    : Range
-        id                       : Integer
+        id                       : String
     | Feedback
         range                    : Range
         feedback                 : String
@@ -569,7 +573,7 @@ TYPE FunctionBindings            = [ FunctionBinding ]
 DATA FunctionBinding
     | Hole
         range                    : Range
-        id                       : Integer
+        id                       : String
     | Feedback
         range                    : Range
         feedback                 : String
@@ -613,7 +617,7 @@ TYPE Patterns                    = [ Pattern ]
 DATA Pattern
     | Hole
         range                    : Range
-        id                       : Integer
+        id                       : String
     | Literal                             {- *** -}
         range                    : Range
         literal                  : Literal
@@ -697,14 +701,17 @@ DATA Name                                         {- *** -}
     | Identifier                             {- *** -}
         range                    : Range
         module                   : Strings
+        origin                   : String
         name                     : String
     | Operator
         range                    : Range
         module                   : Strings
+        origin                   : String
         name                     : String
     | Special
         range                    : Range
         module                   : Strings
+        origin                   : String
         name                     : String
 
 -- Normal identifiers should be stored as "Name_Identifier".
@@ -719,6 +726,7 @@ DATA Name                                         {- *** -}
 -- name occurs unqualified, the empty list is used. Multiple list
 -- entries can be used to support a hierarchical module space
 -- (as supported in recent versions of GHC).
+-- The field "origin" is used to tell where the name was defined (if it is imported).
 
 TYPE Strings                     = [ String ]
 

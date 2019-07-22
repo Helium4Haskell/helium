@@ -1,4 +1,5 @@
 Prelude is up to date
+Maybe is up to date
 Compiling parser/ImportListError.hs
 (1,9): Syntax error: 
     unexpected '('

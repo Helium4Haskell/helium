@@ -26,13 +26,13 @@ interpreterMain = "interpreter_main"
 -- The interpreter_main has te be wrapped inside unsafePerformIO etcetera, too
 -- We can't just call it main because we'll get import clashes.  Sigh!
 
-insertedMain :: TypeEnvironment -> CoreDecl
-insertedMain toplevelTypes =
+insertedMain :: ImportEnvironment -> TypeEnvironment -> CoreDecl
+insertedMain env toplevelTypes = 
     let maybeWrapMainAndType = 
-            case M.lookup (Name_Identifier noRange [] "main") toplevelTypes of -- !!!Name
+            case (M.lookup (Name_Identifier noRange [] [] "main") $! toplevelTypes) of -- !!!Name
                 Just t -> Just ("main", t)
                 Nothing ->
-                    case M.lookup (Name_Identifier noRange [] interpreterMain) toplevelTypes of -- !!!Name
+                    case (M.lookup (Name_Identifier noRange [] [] interpreterMain) $! toplevelTypes) of -- !!!Name
                         Just t -> Just (interpreterMain, t)
                         Nothing -> Nothing
     in
@@ -48,11 +48,11 @@ insertedMain toplevelTypes =
                         var "$primPutStrLn" `app_` 
                             (var "$primPackedToString" `app_`
                                 packedString "<<overloaded function>>")
-                    | isIOType tp -> 
+                    | (isIOType tp || isQualIOType tp) -> 
                         var name
                     | otherwise ->
                         var "$primPutStrLn" `app_` 
-                            (DerivingShow.showFunctionOfType True (makeTypeFromTp tp) `app_` 
+                            (Core.Ap (var "show")  (DerivingShow.showFunctionOfType env True (makeTypeFromTp tp)) `app_` 
                                 var name)
                     where                        
                         (qs, tp) = split (snd (instantiate 123456789 tpScheme))
@@ -64,13 +64,24 @@ insertedMain toplevelTypes =
 SEM Module
     | Module    -- insert "insertedMain" after modulePublic so that it remains private
                 lhs.core = @module_ { Module.moduleDecls = 
-                                insertedMain @lhs.toplevelTypes : Module.moduleDecls @module_ }
+                                insertedMain @lhs.importEnv @lhs.toplevelTypes : Module.moduleDecls @module_ }
+                loc.modulename = maybe "Main" getNameName @name.name
+                loc.moduleQual = maybe ["Main"] getQualified @name.name
                 loc.module_ = 
-
-                    everythingPublicButPrelude
-                        (makeCoreModule (fmap idFromName @name.name)
+                    setExportsPublic @exports.isImplicit @loc.exportlists @lhs.importEnv
+                        (makeCoreModule (Just $ idFromString @modulename)
                             ( @body.decls ++ @lhs.extraDecls
                             ))
+                body . instanceName = Nothing
+                loc.exportlists = (@exports.values
+                                  , @exports.confieldormethods
+                                  , @exports.typeorclasses
+                                  , @exports.typeorclassesCompl
+                                  , @exports.modules)
+    --  range                    : Range
+    --  name                     : MaybeName
+    --  exports                  : MaybeExports
+    --  body                     : Body
 
 {
 -- set the public bit of all declarations except those that are imported from
@@ -78,14 +89,29 @@ SEM Module
 everythingPublicButPrelude :: Core.CoreModule -> Core.CoreModule
 everythingPublicButPrelude theModule = theModule { Core.moduleDecls = map setPublic (Core.moduleDecls theModule) }
   where
-    setPublic declaration = 
+    setPublic declaration =
         let -- accessRecord = Core.declAccess decl
-            public = case Core.declAccess declaration of 
+            public = case Core.declAccess declaration of
                     Core.Defined _ -> True
                     Core.Imported { Core.importModule = m } -> 
-                        stringFromId m `notElem` ["Prelude", "HeliumLang"] 
-        in 
-        declaration{ Core.declAccess = 
+                      stringFromId m `notElem` ["Prelude", "HeliumLang"]
+
+        in
+        declaration{ Core.declAccess =
+                  (Core.declAccess declaration){ Core.accessPublic = public } }
+
+-- Set all imported modules to private, and export the normal declarations.
+everythingPublicButImported :: Core.CoreModule -> Core.CoreModule
+everythingPublicButImported theModule = theModule { Core.moduleDecls = map setPublic (Core.moduleDecls theModule) }
+  where
+    setPublic declaration =
+        let -- accessRecord = Core.declAccess decl
+            public = case Core.declAccess declaration of
+                    Core.Defined _ -> True
+                    Core.Imported { Core.importModule = m } ->
+                      stringFromId m `elem` ["PreludePrim"]
+        in
+        declaration{ Core.declAccess =
                   (Core.declAccess declaration){ Core.accessPublic = public } }
 }
 
@@ -116,50 +142,48 @@ ATTR Declarations Declaration
     |
     ]   
     
+ATTR MaybeExports[|| isImplicit : Bool]
+
+SEM MaybeExports
+    | Nothing lhs.isImplicit = True
+    | Just    lhs.isImplicit = False
 
 ATTR MaybeExports Export Exports
     [
     |
-    | values, types, cons, mods USE { `unionSet` } { emptySet } : {IdSet}
+    | values, typeorclasses, confieldormethods, typeorclassesCompl, modules USE { `unionSet` } { emptySet } : {IdSet}
     ]
 
 SEM Export
-    | Variable               lhs.values = singleSet (idFromName @name.self)
-                                .types  = emptySet
-                                .cons   = emptySet
-                                .mods   = emptySet
+    | Variable               lhs.values             = singleSet (idFromName @name.self)
     --  range                    : Range
     --  name                     : Name
-    | TypeOrClass            lhs.values = emptySet
-                                .types  = singleSet (idFromName @name.self)
-                                .cons   = setFromList (maybe [] (map idFromName) @names.names)
-                                .mods   = emptySet
+    | TypeOrClass            lhs.typeorclasses      = singleSet (idFromName @name.self)
+                                .confieldormethods  = setFromList (maybe [] (map idFromName) @names.names)
     --  range                    : Range
     --  name                     : Name
     --  names                    : MaybeNames  -- constructors or field names or class methods
-    | TypeOrClassComplete    lhs.values = internalError "ToCoreModule" "exports.tocc" "Unsupported export declaration"
-                                .types  = internalError "ToCoreModule" "exports.tocc" "Unsupported export declaration"
-                                .cons   = internalError "ToCoreModule" "exports.tocc" "Unsupported export declaration"
-                                .mods   = internalError "ToCoreModule" "exports.tocc" "Unsupported export declaration"
+    | TypeOrClassComplete    lhs.typeorclassesCompl = singleSet (idFromName @name.self)
     --  range                    : Range
     --  name                     : Name
-    | Module                 lhs.values = emptySet
-                                .types  = emptySet
-                                .cons   = emptySet
-                                .mods   = singleSet (idFromName @name.self)
+    | Module                 lhs.modules            = singleSet (idFromName @name.self)
     --  range                    : Range
     --  name                     : Name   -- this is a module name
 
-ATTR Body Declarations Declaration
-    [ 
+ATTR Body Declarations Declaration MaybeDeclarations
+    [   moduleQual : { [String] }
     | 
     |   decls USE { ++ } { [] } : { [CoreDecl] }
     ]
+
+ATTR Constructors Constructor
+    [ moduleQual : { [String] } | | ]
 
 SEM Body
     | Body             lhs.decls    = @declarations.decls
                        declarations.patBindNr = 0
                        declarations.isTopLevel = True
+                       declarations.instanceName = Nothing
     --  range                    : Range
     --  importdeclarations       : ImportDeclarations
     --  declarations             : Declarations

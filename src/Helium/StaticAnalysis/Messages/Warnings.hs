@@ -4,7 +4,7 @@
     Maintainer  :  helium@cs.uu.nl
     Stability   :  experimental
     Portability :  portable
-    
+
     Warnings that are reported during static analysis.
         (the phase before type inference, as well as during type inference)
 -}
@@ -35,9 +35,9 @@ data Warning  = NoTypeDef Name TpScheme Bool{- toplevel? -} Bool{- simple pat an
               | UnreachablePatternLHS  LeftHandSide
               | UnreachableGuard Range Expression
               | FallThrough Range
-              | SignatureTooSpecific Name TpScheme TpScheme 
+              | SignatureTooSpecific Name TpScheme TpScheme
               | MissingClassMember Name Name
-              
+
 instance HasMessage Warning where
    getMessage x = let (oneliner, hints) = showWarning x
                       firstLine = MessageOneLiner (MessageCompose [MessageString "Warning: ", oneliner])
@@ -91,53 +91,53 @@ showWarning warning = case warning of
       )
 
    ReduceContext _ predicates reduced ->
-      let showPredicates ps = "(" ++ intercalate ", " (map show ps) ++ ")"  
+      let showPredicates ps = "(" ++ intercalate ", " (map show ps) ++ ")"
       in ( MessageString ( "The context " ++ showPredicates predicates ++ " has superfluous predicates." )
          , [ MessageString ("You may change it into " ++ showPredicates reduced ++ ".") ]
          )
 
-   
+
    MissingPatterns _ Nothing _ pss place sym ->
       let text   = "Missing " ++ plural pss "pattern" ++ " in " ++ place ++ ": "
                    ++ concatMap (("\n  " ++).(++ (sym ++ " ...")).concatMap ((++ " ").show.semP)) pss
       in (MessageString text, [])
-   
+
    MissingPatterns _ (Just n) _ pss place sym
-     | isOperatorName n -> 
-          let name = getNameName n 
+     | isOperatorName n ->
+          let name = getNameName n
               text = "Missing " ++ plural pss "pattern" ++ " in " ++ place ++ ": "
-                     ++ concatMap (\[l, r] -> "\n  " ++ (show.semP) l ++ " " ++ name ++ " " 
+                     ++ concatMap (\[l, r] -> "\n  " ++ (show.semP) l ++ " " ++ name ++ " "
                      ++ (show.semP) r ++ " " ++ sym ++ " ...") pss
           in (MessageString text, [])
-          
-     | otherwise -> 
+
+     | otherwise ->
           let name = getNameName n
               text =  "Missing " ++ plural pss "pattern" ++ " in " ++ place ++ ": "
                       ++ concatMap (("\n  " ++).(name ++).(' ' :).(++ (sym ++ " ...")).concatMap ((++ " ").show.semP)) pss
           in (MessageString text, [])
 
-   UnreachablePatternLHS  lhs -> 
+   UnreachablePatternLHS  lhs ->
       ( MessageString ("Unreachable pattern: " ++ show (PP.text_Syn_LeftHandSide (PP.wrap_LeftHandSide (PP.sem_LeftHandSide lhs) PP.Inh_LeftHandSide)))
       , []
       )
-   
-   UnreachablePatternCase _ p -> 
+
+   UnreachablePatternCase _ p ->
       ( MessageString ("Unreachable pattern: " ++ (show.semP ) p)
       , []
       )
 
-   UnreachableGuard _ e -> 
+   UnreachableGuard _ e ->
       ( MessageString ("Unreachable guard: | " ++ show (PP.text_Syn_Expression (PP.wrap_Expression (PP.sem_Expression e) PP.Inh_Expression)))
       , []
       )
 
-   FallThrough _ -> 
+   FallThrough _ ->
       ( MessageString "It is good practise to have 'otherwise' as the last guard"
       , []
       )
 
-   SignatureTooSpecific name signature scheme -> 
-      ( MessageCompose 
+   SignatureTooSpecific name signature scheme ->
+      ( MessageCompose
            [ MessageString (
                 "Declared type signature for "++show (show name)++" could be more general\n"++
                 "   declared type : ")

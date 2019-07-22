@@ -13,12 +13,14 @@ module Helium.StaticAnalysis.Messages.TypeErrors where
 import Helium.StaticAnalysis.Messages.Messages
 import Top.Types
 
-import Data.List       (union, partition)
+import Data.List       (union, partition,find, intercalate)
 import Helium.Syntax.UHA_Syntax (Range, Name)
 import Helium.Syntax.UHA_Range  (getNameRange)
+import Helium.Syntax.UHA_Utils
 import Helium.StaticAnalysis.Miscellaneous.UHA_Source
 
 import Data.Maybe
+import Data.List
 
 type TypeErrors = [TypeError]
 data TypeError  = TypeError
@@ -60,13 +62,13 @@ makeNotGeneralEnoughTypeError isAnnotation range source tpscheme1 tpscheme2 =
        hints    = [ ("hint", MessageString "try removing the type signature") | not (null (ftv tpscheme1)) ] 
    in TypeError [range] [oneliner] table hints
    
-makeMissingConstraintTypeError :: Range -> Maybe UHA_Source -> TpScheme -> (Bool, Predicate) -> UHA_Source -> TypeError
-makeMissingConstraintTypeError range mSource scheme (original, predicate) arisingFrom =
+makeMissingConstraintTypeError :: (Name -> Name) -> Range -> Maybe UHA_Source -> TpScheme -> (Bool, Predicate) -> UHA_Source -> TypeError
+makeMissingConstraintTypeError unqualifier range mSource scheme (original, predicate) arisingFrom =
    let special  = if isJust mSource then "signature" else "annotation"
        oneliner = MessageOneLiner (MessageString ("Missing class constraint in type "++special))
        table    = maybe [] (\source -> ["function" <:> MessageOneLineTree (oneLinerSource source)]) mSource ++
-                  [ (isJust mSource, MessageString "declared type", MessageType scheme)
-                  , "class constraint" <:> MessagePredicate predicate
+                  [ (isJust mSource, MessageString "declared type", MessageType (convertTpScheme unqualifier scheme))
+                  , "class constraint" <:> MessagePredicate (convertPredicate unqualifier predicate)
                   , "arising from"     >:> MessageOneLineTree (oneLinerSource arisingFrom)
                   ]
        hints    = [ ("hint", MessageString "add the class constraint to the type signature") | original ]
@@ -83,34 +85,35 @@ makeUnresolvedOverloadingError source description (functionType, usedAsType) =
                  ]
    in TypeError [rangeOfSource source] message table []
       
-makeReductionError :: UHA_Source -> Either (TpScheme, Tp) (String, Maybe Tp) -> ClassEnvironment -> Predicate -> TypeError
-makeReductionError source extra classEnvironment (Predicate className predicateTp) =
+makeReductionError :: UHA_Source -> Either (TpScheme, Tp) (String, Maybe Tp) -> ClassEnvironment -> (Name -> Name) -> Predicate -> TypeError
+makeReductionError source extra classEnvironment unqualifier (Predicate className predicateTp) =
    let location = either (const "function") fst extra
        message  = [ MessageOneLiner $ MessageString $ "Type error in overloaded " ++ location ]
        tab1     = case extra of 
                      Left (scheme, tp) -> -- overloaded function
                         [ "function" <:> MessageOneLineTree (oneLinerSource source)
-                        , "type"     >:> MessageType scheme
+                        , "type"     >:> MessageType (convertTpScheme unqualifier scheme)
                         , "used as"  >:> MessageType (toTpScheme tp)
                         ]
                      Right (_, mtp) -> -- overloaded language construct
                         (descriptionOfSource source <:> MessageOneLineTree (oneLinerSource source)) :
                         maybe [] (\tp -> ["type" >:> MessageType (toTpScheme tp)]) mtp
        tab2     = [ "problem"  <:> MessageCompose [ MessageType (toTpScheme predicateTp)
-                                                  , MessageString (" is not an instance of class "++className)
+                                                  , MessageString (" is not an instance of class "++ unqualifierString className)
                                                   ]
                   ]
    in TypeError [rangeOfSource source] message (tab1 ++ tab2) [("hint", MessageString hint)]
    
   where  
-    hint :: String
+    unqualifierTp     = convertTp unqualifier
+    unqualifierString = convertString unqualifier
     hint = case valids of
-              []  -> "there are no valid instances of "++className
-              [x] -> "valid instance of "++className++" is "++show x
-              _   -> "valid instances of "++className++" are "++prettyAndList valids
+              []  -> "there are no valid instances of "++unqualifierString className
+              [x] -> "valid instance of "++unqualifierString className++" is "++show x
+              _   -> "valid instances of "++unqualifierString className++" are "++prettyAndList (nub valids)
          
     valids :: [String]
-    valids = let tps              = [ tp | (Predicate _ tp, _) <- instances className classEnvironment ]
+    valids = let tps              = [ unqualifierTp tp | (Predicate _ tp, _) <- instances className classEnvironment ]
                  (tuples, others) = let p (TCon s) = isTupleConstructor s
                                         p _        = False
                                     in partition (p . fst . leftSpine) tps
@@ -127,3 +130,14 @@ makeRestrictedButOverloadedError name scheme =
                  ]
        hint    = "Only functions and simple patterns can have an overloaded type"
    in TypeError [getNameRange name] [message] table [("hint", MessageString hint)]
+   
+makeMissingInstancePredicateError :: Range -> Name -> String -> Predicate -> [(String, Name)] -> [(Name, Tp)] -> TypeError
+makeMissingInstancePredicateError source className instanceName (Predicate predName tp) definedPredicates mapping =
+    let 
+        predicate = predName ++ " " ++ show (maybe (error "Invalid mapping") fst $ find (\x -> snd x == tp) mapping)
+        message = MessageOneLiner $ MessageString $ "Missing predicate " ++ show predicate ++ " for instance definition of " ++ show className ++ " " ++ instanceName
+        table = [
+            "Predicates" <:> MessageString (intercalate ", " $ map (\(name, var) -> name ++ " " ++ show var) definedPredicates)
+            ]
+        hint = "Add the missing predicate to the instance definition"
+    in TypeError [source] [message] table [("hint", MessageString hint)]

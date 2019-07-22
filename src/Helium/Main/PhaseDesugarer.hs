@@ -11,12 +11,14 @@ module Helium.Main.PhaseDesugarer(phaseDesugarer) where
 import Helium.Main.CompileUtils
 import Text.PrettyPrint.Leijen
 import Lvm.Core.Expr(CoreModule, CoreDecl)
+import Lvm.Core.Module(moduleDecls, declName, shallowKindFromDecl, declCustoms)
 import Lvm.Core.RemoveDead( coreRemoveDead ) -- remove dead (import) declarations
-import Helium.Syntax.UHA_Syntax(Name(..), MaybeName(..))
-import Helium.Syntax.UHA_Range(noRange)
 import Helium.ModuleSystem.ImportEnvironment()
 import Helium.ModuleSystem.DictionaryEnvironment (DictionaryEnvironment)
+import Helium.ModuleSystem.CoreToImportEnv(originFromCustoms)
 import qualified Helium.CodeGeneration.CodeGeneration as CodeGeneration
+import Data.List(nubBy)
+
 
 phaseDesugarer :: DictionaryEnvironment -> 
                   String -> Module -> [CoreDecl] -> 
@@ -34,17 +36,16 @@ en eigenlijk is afterTypeInferEnv te groot. alleen locale types en constructoren
 
 -}
 
-        moduleWithName = fixModuleName module_ baseName
 
         coreModule = CodeGeneration.core_Syn_Module $
-            CodeGeneration.wrap_Module (CodeGeneration.sem_Module moduleWithName)
+            CodeGeneration.wrap_Module (CodeGeneration.sem_Module module_)
                 CodeGeneration.Inh_Module {
                     CodeGeneration.dictionaryEnv_Inh_Module = dictionaryEnv,
                     CodeGeneration.extraDecls_Inh_Module    = extraDecls,
                     CodeGeneration.importEnv_Inh_Module     = afterTypeInferEnv,
                     CodeGeneration.toplevelTypes_Inh_Module = toplevelTypes }
 
-        strippedCoreModule = coreRemoveDead coreModule
+        strippedCoreModule = removeDoubleDecls $ coreRemoveDead coreModule
 
     when (DumpCore `elem` options) $
         print . pretty $ strippedCoreModule
@@ -55,13 +56,11 @@ en eigenlijk is afterTypeInferEnv te groot. alleen locale types en constructoren
    
     return strippedCoreModule
 
--- | Make sure the module has a name. If there is no name (module without
---   header) insert the base name of the file name as name.
-fixModuleName :: Module -> String -> Module
-fixModuleName original@(Module_Module r name es b) baseName =
-    case name of
-        MaybeName_Nothing ->
-            Module_Module r (MaybeName_Just (Name_Identifier noRange [] baseName)) es b -- !!!Name
-        _ -> original
-
-
+-- It is possible to get double declarations, because we import the same value twice (but has the same origin). We simply remove doubles with same origins and kinds
+removeDoubleDecls :: CoreModule -> CoreModule
+removeDoubleDecls m =
+    let olddecls = moduleDecls m
+        newdecls = nubBy cmp olddecls
+        getOrigin = originFromCustoms . declCustoms
+        cmp x y = shallowKindFromDecl x == shallowKindFromDecl y && declName x == declName y && getOrigin x == getOrigin y 
+    in m {moduleDecls = newdecls}

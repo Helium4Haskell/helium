@@ -1,0 +1,7 @@
+Prelude is up to date
+Compiling exports/ExportBasic2.hs
+Compilation successful
+Compiling exports/Export6.hs
+(1,16): Undefined exported type constructor, type synonym or class "FFalse"
+(1,31): Undefined exported module "NotHere"
+Compilation failed with 2 errors

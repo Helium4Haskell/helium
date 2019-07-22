@@ -1,17 +1,18 @@
 {- The overloaded Standard Prelude for the Helium Compiler -}
 
-module Prelude where 
+module Prelude(module Prelude, module PreludePrim, module HeliumLang) where 
 
 import PreludePrim
+import HeliumLang
 
 infixr 9  .
 infixl 9  !!
 infixr 8  ^ -- , **.
--- infixl 7  *, `quot`, `rem`, `div`, `mod`,  /                [PreludePrim]
--- infixl 6  +, -                                              [PreludePrim]
+--infixl 7   `quot`, `rem`, `div`, `mod`,  /                
+--infixl 6  +, -                                              
 infixr 5  ++
 -- infixr 5 :                                                  [HeliumLang]
--- infix  4  ==, /=, <=, <, >, >=                              [PreludePrim]
+infix  4  ==, /=, <=, <, >, >=                                 
 infixr 3  &&
 infixr 2  ||
 infixr 0  $ --, $!                                             [PreludePrim]
@@ -39,11 +40,14 @@ product = foldl' (*) (fromInt 1)
  -- Eq
  -----------------------------------------------}
 
+
 {- imported from PreludePrim
 
 (==) :: Eq a => a -> a -> Bool
 (/=) :: Eq a => a -> a -> Bool
 -}
+
+
 
 elem :: Eq a => a -> [a] -> Bool
 elem _ [] = False
@@ -64,6 +68,8 @@ lookup k ((x,y):xys)
  -- Ord
  -----------------------------------------------}
 
+
+
 {- imported from PreludePrim
 
 (<)     :: Ord a => a -> a -> Bool
@@ -72,6 +78,8 @@ lookup k ((x,y):xys)
 (>=)    :: Ord a => a -> a -> Bool
 compare :: Ord a => a -> a -> Ordering
 -}
+
+
 
 max :: Ord a => a -> a -> a
 max x y = if x < y then y else x
@@ -105,6 +113,19 @@ enumFromThen   :: Enum a => a -> a -> [a]
  -- Int
  -----------------------------------------------}
 
+class Ord a => Num a where
+    (+) :: a -> a -> a
+    (-) :: a -> a -> a
+    (*) :: a -> a -> a
+    negate :: a -> a
+    abs :: a -> a
+    signum :: a -> a
+    fromInt :: Integer -> a
+
+infixl 6 +, -
+infixl 7 *
+val = 2 + 3 * 4
+
 {- imported from PreludePrim
 rem  :: Int -> Int -> Int
 div  :: Int -> Int -> Int
@@ -115,18 +136,8 @@ quot :: Int -> Int -> Int
 -- for compatibility with Haskell textbooks
 type Integer = Int
 
-abs :: Int -> Int
-abs x = if x < 0 then - x else x
-
-signum :: Int -> Int
-signum x =
-    case compare x 0 of
-        LT -> -1
-        EQ ->  0
-        GT ->  1
-
 even :: Int -> Bool
-even n = n `rem` 2 == 0
+even n = (n `rem` 2) == 0
 
 odd :: Int -> Bool
 odd  n = not (even n)
@@ -154,6 +165,23 @@ i ^ n  | n > 0  = f i (n-1) i
                 f x m y = g x m
                           where g x' m' | even m'    = g (x' * x') (m' `quot` 2)
                                         | otherwise  = f x' (m' - 1) (x' * y)
+
+instance Eq Int where
+    (==) = (==#)
+
+instance Ord Int where
+    (<) = (<#)
+    (>) = (>#)
+    (<=) = (<=#)
+    (>=) = (>=#)
+
+instance Num Int where
+    (+) = (+#)
+    (-) = (-#)
+    (*) = (*#)
+    negate = negInt
+    fromInt = id
+    abs n = if n < 0 then negate n else n
 
 {-----------------------------------------------
  -- Float
@@ -184,6 +212,22 @@ signumFloat x =
 pi :: Float
 pi = 3.141592653589793
 
+instance Eq Float where
+    (==) = (==.)
+
+instance Ord Float where
+    (<) = (<.)
+    (>) = (>.)
+    (<=) = (<=.)
+    (>=) = (>=.)
+
+instance Num Float where
+    (+) = (+.)
+    (-) = (-.)
+    (*) = (*.)
+    negate = negFloat
+    abs n = if n < 0.0 then negate n else n
+
 {-----------------------------------------------
  -- Bool
  -----------------------------------------------}
@@ -208,7 +252,6 @@ otherwise = True
 data Maybe a
     = Nothing
     | Just a
-    deriving (Eq, Show)
  
 maybe :: b -> (a -> b) -> Maybe a -> b
 maybe e f m =
@@ -220,7 +263,7 @@ maybe e f m =
  -- Either
  -----------------------------------------------}
 
-data Either a b = Left a | Right b deriving (Eq, Show)
+data Either a b = Left a | Right b
 
 either :: (a -> c) -> (b -> c) -> Either a b -> c
 either l r e =
@@ -519,6 +562,19 @@ ceiling    :: Float -> Int
 truncate   :: Float -> Int
 -}
 
+instance Eq Char where
+    c1 == c2 = primOrd c1 ==# primOrd c2
+
+type ShowS = String -> String
+
+
+
+
+intercalate :: [a] -> [[a]] -> [a]
+intercalate _ [] = []
+intercalate _ [x] = x
+intercalate y (x:xs) = x ++ y ++ intercalate y xs
+
 {-----------------------------------------------
  -- Some standard functions
  -----------------------------------------------}
@@ -558,17 +614,7 @@ undefined = error "undefined"
 {-----------------------------------------------
  -- IO
  -----------------------------------------------}
-
-(>>=) :: IO a -> (a -> IO b) -> IO b
-(>>=) io f = do x <- io
-                f x
-
-(>>) :: IO a -> IO b -> IO b
-p >> q = p >>= \ _ -> q
-
-{- imported from PreludePrim 
-return :: a -> IO a
-
+{-
 putChar :: Char -> IO ()
 putChar c = primPutChar c
 
@@ -582,19 +628,18 @@ unsafePerformIO :: IO a -> a
 unsafePerformIO = primUnsafePerformIO
 -}
 
+getLine :: IO String
+getLine = do 
+        c <- getChar
+        if c == '\n' 
+            then return ""
+            else getLine >>= (return . (c :))
+
 sequence_ :: [IO a] -> IO ()
 sequence_ = foldr (>>) (return ())
 
 print :: Show a => a -> IO ()
 print e = putStrLn (show e)
-
-getLine   :: IO String
-getLine = do 
-    c <- getChar
-    if c == '\n' 
-        then return ""
-        else do cs <- getLine
-                return (c:cs)
 
 writeFile :: String -> String -> IO ()
 writeFile fname s
@@ -640,3 +685,337 @@ readUnsigned =
     map (\c -> primOrd c - primOrd '0')
     .
     takeWhile localIsDigit
+
+-- Functor --
+
+(<$>) :: Functor f => (a -> b) -> f a -> f b
+(<$>) = fmap
+
+class Functor f where
+    fmap :: (a -> b) -> f a -> f b
+
+
+instance Functor Maybe where
+    fmap f Nothing = Nothing
+    fmap f (Just x) = Just (f x)
+
+    
+instance Functor (Either a) where
+    fmap _ (Left x) = Left x
+    fmap f (Right y) = Right (f y)
+        
+instance Functor [] where
+    fmap = map
+
+instance Functor IO where
+    fmap = fmapIO
+
+-- Applicative --
+
+class Functor f => Applicative f where
+    pure :: a -> f a
+    (<*>) :: f (a -> b) -> f a -> f b
+
+instance Applicative Maybe where
+    pure = Just
+    (<*>) (Just f) (Just x) = Just (f x)
+    (<*>) _ _ = Nothing
+
+instance Applicative (Either a) where
+    pure = Right
+    (<*>) (Left e) x = Left e
+    (<*>) (Right f) r = fmap f r
+
+instance Applicative IO where
+    pure = pureIO
+    (<*>) = apIO
+
+-- Monad --
+
+class Applicative m => Monad m where
+    return :: a -> m a
+    (>>=) :: m a -> (a -> m b) -> m b
+    (>>) :: m a -> m b -> m b
+    return = pure
+    m >> k = m >>= (\_ -> k)
+
+instance Monad IO where
+    return = returnIO
+    (>>=) = bindIO
+
+instance Monad Maybe where
+    return = Just 
+    (>>=) Nothing f = Nothing
+    (>>=) (Just x) f = f x
+
+class Eq a where
+    (==) :: a -> a -> Bool
+    (/=) :: a -> a -> Bool
+    (==) x y = not (x /= y)
+    (/=) x y = not ( x == y)
+
+instance Eq Bool where
+    (==) True True = True
+    (==) False False = True
+    (==) _ _ = False
+
+instance Eq a => Eq (Maybe a) where 
+    (==) Nothing Nothing = True
+    (==) (Just x) (Just y) = x == y
+    (==) _ _ = False
+
+instance (Eq a, Eq b) => Eq (Either a b) where
+    (==) (Left x) (Left y) = x == y
+    (==) (Right x) (Right y) = x == y
+    (==) _ _ = False
+
+instance Eq a => Eq [a] where
+    (==) [] [] = True
+    (==) (x:xs) (y:ys) = x == y && xs == ys
+    (==) _ _ = False    
+
+instance Eq () where
+    () == () = True
+
+instance (Eq a, Eq b) => Eq (a, b) where
+    (x1, y1) == (x2, y2) = x1 == x2 && y1 == y2
+
+instance (Eq a, Eq b, Eq c) => Eq (a, b, c) where
+    (x1, y1, z1) == (x2, y2, z2) = x1 == x2 && y1 == y2 && z1 == z2
+
+instance (Eq a, Eq b, Eq c, Eq d) => Eq (a, b, c, d) where
+    (x1, y1, z1, a1) == (x2, y2, z2, a2) = x1 == x2 && y1 == y2 && z1 == z2 && a1 == a2
+
+instance (Eq a, Eq b, Eq c, Eq d, Eq e) => Eq (a, b, c, d, e) where
+    (x1, y1, z1, a1, b1) == (x2, y2, z2, a2, b2) = x1 == x2 && y1 == y2 && z1 == z2 && a1 == a2 && b1 == b2
+
+instance (Eq a, Eq b, Eq c, Eq d, Eq e, Eq f) => Eq (a, b, c, d, e, f) where
+    (x1, y1, z1, a1, b1, c1) == (x2, y2, z2, a2, b2, c2) = x1 == x2 && y1 == y2 && z1 == z2 && a1 == a2 && b1 == b2 && c1 == c2
+
+instance (Eq a, Eq b, Eq c, Eq d, Eq e, Eq f, Eq g) => Eq (a, b, c, d, e, f, g) where
+    (x1, y1, z1, a1, b1, c1, d1) == (x2, y2, z2, a2, b2, c2, d2) = x1 == x2 && y1 == y2 && z1 == z2 && a1 == a2 && b1 == b2 && c1 == c2 && d1 == d2
+    
+instance (Eq a, Eq b, Eq c, Eq d, Eq e, Eq f, Eq g, Eq h) => Eq (a, b, c, d, e, f, g, h) where
+    (x1, y1, z1, a1, b1, c1, d1, e1) == (x2, y2, z2, a2, b2, c2, d2, e2) = x1 == x2 && y1 == y2 && z1 == z2 && a1 == a2 && b1 == b2 && c1 == c2 && d1 == d2 && e1 == e2
+
+instance (Eq a, Eq b, Eq c, Eq d, Eq e, Eq f, Eq g, Eq h, Eq i) => Eq (a, b, c, d, e, f, g, h, i) where
+    (x1, y1, z1, a1, b1, c1, d1, e1, f1) == (x2, y2, z2, a2, b2, c2, d2, e2, f2) = x1 == x2 && y1 == y2 && z1 == z2 && a1 == a2 && b1 == b2 && c1 == c2 && d1 == d2 && e1 == e2 && f1 == f2
+    
+instance (Eq a, Eq b, Eq c, Eq d, Eq e, Eq f, Eq g, Eq h, Eq i, Eq j) => Eq (a, b, c, d, e, f, g, h, i, j) where
+    (x1, y1, z1, a1, b1, c1, d1, e1, f1, g1) == (x2, y2, z2, a2, b2, c2, d2, e2, f2, g2) = x1 == x2 && y1 == y2 && z1 == z2 && a1 == a2 && b1 == b2 && c1 == c2 && d1 == d2 && e1 == e2 && f1 == f2 && g1 == g2
+        
+    
+
+class Eq a => Ord a where
+    (<)     :: a -> a -> Bool
+    (<=)    :: a -> a -> Bool
+    (>)     :: a -> a -> Bool
+    (>=)    :: a -> a -> Bool
+    compare :: a -> a -> Ordering
+    (<) x y = x <= y && x /= y
+    (>) x y = x >= y && x /= y
+    (<=) x y = not (x > y)
+    (>=) x y = not (x < y)
+    compare x y | x == y = EQ
+                | x < y = LT
+                | x > y = GT
+
+instance Ord a => Ord [a] where
+    [] < [] = False
+    [] < (_:_) = True
+    (x:xs) < (y:ys) | x == y = xs < ys
+                    | otherwise = x < y
+    (x:xs) < [] = False
+
+instance (Ord a, Ord b) => Ord (a, b) where
+    (x1, y1) < (x2, y2) | x1 /= x2 = x1 < x2
+                        | otherwise = y1 < y2
+
+instance (Ord a, Ord b, Ord c) => Ord (a, b, c) where
+    (x1, y1, z1) < (x2, y2, z2) | x1 /= x2 = x1 < x2
+                                | otherwise = (y1, z1) < (y2, z2)
+
+instance (Ord a, Ord b, Ord c, Ord d) => Ord (a, b, c, d) where
+    (x1, y1, z1, a1) < (x2, y2, z2, a2) | x1 /= x2 = x1 < x2
+                                        | otherwise = (y1, z1, a1) < (y2, z2, a2)
+
+instance (Ord a, Ord b, Ord c, Ord d, Ord e) => Ord (a, b, c, d, e) where
+    (x1, y1, z1, a1, b1) < (x2, y2, z2, a2, b2) | x1 /= x2 = x1 < x2
+                                                | otherwise = (y1, z1, a1, b1) < (y2, z2, a2, b2)
+
+instance (Ord a, Ord b, Ord c, Ord d, Ord e, Ord f) => Ord (a, b, c, d, e, f) where
+    (x1, y1, z1, a1, b1, c1) < (x2, y2, z2, a2, b2, c2) | x1 /= x2 = x1 < x2
+                                                        | otherwise = (y1, z1, a1, b1, c1) < (y2, z2, a2, b2, c2)
+
+instance (Ord a, Ord b, Ord c, Ord d, Ord e, Ord f, Ord g) => Ord (a, b, c, d, e, f, g) where
+    (x1, y1, z1, a1, b1, c1, d1) < (x2, y2, z2, a2, b2, c2, d2)     | x1 /= x2 = x1 < x2
+                                                                    | otherwise = (y1, z1, a1, b1, c1, d1) < (y2, z2, a2, b2, c2, d2)
+    
+instance (Ord a, Ord b, Ord c, Ord d, Ord e, Ord f, Ord g, Ord h) => Ord (a, b, c, d, e, f, g, h) where
+    (x1, y1, z1, a1, b1, c1, d1, e1) < (x2, y2, z2, a2, b2, c2, d2, e2) | x1 /= x2 = x1 < x2
+                                                                        | otherwise = (y1, z1, a1, b1, c1, d1, e1) < (y2, z2, a2, b2, c2, d2, e2)
+
+instance (Ord a, Ord b, Ord c, Ord d, Ord e, Ord f, Ord g, Ord h, Ord i) => Ord (a, b, c, d, e, f, g, h, i) where
+    (x1, y1, z1, a1, b1, c1, d1, e1, f1) < (x2, y2, z2, a2, b2, c2, d2, e2, f2) | x1 /= x2 = x1 < x2
+                                                                                | otherwise = (y1, z1, a1, b1, c1, d1, e1, f1) < (y2, z2, a2, b2, c2, d2, e2, f2)
+    
+instance (Ord a, Ord b, Ord c, Ord d, Ord e, Ord f, Ord g, Ord h, Ord i, Ord j) => Ord (a, b, c, d, e, f, g, h, i, j) where
+    (x1, y1, z1, a1, b1, c1, d1, e1, f1, g1) < (x2, y2, z2, a2, b2, c2, d2, e2, f2, g2) | x1 /= x2 = x1 < x2
+                                                                                        | otherwise = (y1, z1, a1, b1, c1, d1, e1, f1, g1) < (y2, z2, a2, b2, c2, d2, e2, f2, g2)
+    
+instance Ord Char where
+    c1 < c2 = primOrd c1 < primOrd c2
+    c1 > c2 = primOrd c1 > primOrd c2
+
+instance Ord Bool where
+    False < False = False
+    False < True = True
+    True < False = False
+    True < True = False
+    False > False = False
+    False > True = False
+    True > False = True
+    True > True = False
+
+instance Ord () where
+    () < () = False
+
+shows :: Show a => a -> ShowS
+shows = showsPrec 0
+
+class Show a where
+    show :: a -> String
+    showList :: [a] -> ShowS
+    showsPrec :: Int -> a -> ShowS
+    showList ls s  = "[" ++ intercalate "," (map (flip shows s) ls) ++ "]"
+    showsPrec _ x s = show x ++ s
+    show x          = shows x ""
+
+instance Show Int where
+    show = showInt
+
+instance Show Bool where
+    show True = "True"
+    show False = "False"
+
+instance Show Float where
+    show = showFloat
+
+instance Show () where
+    show () = "()"
+
+instance Show Ordering where
+    show LT = "LT"
+    show GT = "GT"
+    show EQ = "EQ"
+
+instance Show Char where
+    show = showChar
+    showList ls s = "\"" ++ concatMap escapeChar ls ++ "\"" ++ s
+
+escapeChar :: Char -> String
+escapeChar '\\' = "\\"
+escapeChar '"' = "\""
+escapeChar c = [c]
+
+instance (Show a, Show b) => Show (Either a b) where
+    show (Left x) = "Left " ++ show x
+    show (Right x) = "Right " ++ show x
+
+instance Show a => Show (Maybe a) where
+    show Nothing = "Nothing"
+    show (Just x) = "Just " ++ show x
+
+instance (Show a, Show b) => Show (a, b) where
+    show (x, y) = "(" ++ show x ++ "," ++ show y ++ ")"
+
+instance (Show a, Show b, Show c) => Show (a, b, c) where
+    show (x, y, z) = "(" ++ show x ++ "," ++ show y ++ "," ++ show z ++ ")"
+
+instance (Show a, Show b, Show c, Show d) => Show (a, b, c, d) where
+    show (a, b, c, d) = "(" ++ show a ++ "," ++ show b ++ "," ++ show c ++ "," ++ show d ++ ")"
+
+instance (Show a, Show b, Show c, Show d, Show e) => Show (a, b, c, d, e) where
+    show (a, b, c, d, e) = "(" ++ show a ++ "," ++ show b ++ "," ++ show c ++ "," ++ show d ++ "," ++ show e ++ ")"
+ 
+instance (Show a, Show b, Show c, Show d, Show e, Show f) => Show (a, b, c, d, e, f) where
+    show (a, b, c, d, e, f) = "(" ++ show a ++ "," ++ show b ++ "," ++ show c ++ "," ++ show d ++ "," ++ show e ++ "," ++ show f ++ ")"
+
+instance (Show a, Show b, Show c, Show d, Show e, Show f, Show g) => Show (a, b, c, d, e, f, g) where
+    show (a, b, c, d, e, f, g) = "(" ++ show a ++ "," ++ show b ++ "," ++ show c ++ "," ++ show d ++ "," ++ show e ++ "," ++ show f ++ "," ++ show g ++ ")"
+ 
+instance (Show a, Show b, Show c, Show d, Show e, Show f, Show g, Show h) => Show (a, b, c, d, e, f, g, h) where
+    show (a, b, c, d, e, f, g, h) = "(" ++ show a ++ "," ++ show b ++ "," ++ show c ++ "," ++ show d ++ "," ++ show e ++ "," ++ show f ++ "," ++ show g ++ "," ++ show h ++ ")"
+ 
+instance (Show a, Show b, Show c, Show d, Show e, Show f, Show g, Show h, Show i) => Show (a, b, c, d, e, f, g, h, i) where
+    show (a, b, c, d, e, f, g, h, i) = "(" ++ show a ++ "," ++ show b ++ "," ++ show c ++ "," ++ show d ++ "," ++ show e ++ "," ++ show f ++ "," ++ show g ++ "," ++ show h ++ "," ++ show i ++ ")"
+    
+instance (Show a, Show b, Show c, Show d, Show e, Show f, Show g, Show h, Show i, Show j) => Show (a, b, c, d, e, f, g, h, i, j) where
+    show (a, b, c, d, e, f, g, h, i, j) = "(" ++ show a ++ "," ++ show b ++ "," ++ show c ++ "," ++ show d ++ "," ++ show e ++ "," ++ show f ++ "," ++ show g ++ "," ++ show h ++ "," ++ show i ++ "," ++ show j ++ ")"
+            
+
+instance Show a => Show [a] where
+    show ls = showList ls ""
+
+-- Enum
+
+class Enum a where
+    succ, pred :: a -> a
+    toEnum :: Int -> a
+    fromEnum :: a -> Int
+    enumFrom :: a -> [a]
+    enumFromThen :: a -> a -> [a]
+    enumFromTo :: a -> a -> [a]
+    enumFromThenTo :: a -> a -> a -> [a] 
+    enumFromTo x y = map toEnum [fromEnum x .. fromEnum y]
+    enumFromThenTo x y z = map toEnum [fromEnum x, fromEnum y .. fromEnum z]
+
+
+instance Enum Int where
+    succ            = enumSuccInt
+    pred            = enumPredInt
+    toEnum          = id
+    fromEnum        = id
+    enumFrom        = enumFromInt
+    enumFromThen    = enumFromThenInt
+    enumFromTo      = enumFromToInt
+    enumFromThenTo  = enumFromThenToInt
+
+instance Enum Float where
+    succ            = enumSuccFloat
+    pred            = enumPredFloat
+    toEnum          = toEnumFloat
+    fromEnum        = truncate
+    enumFrom        = enumFromFloat
+    enumFromThen    = enumFromThenFloat
+    enumFromTo      = enumFromToFloat
+    enumFromThenTo  = enumFromThenToFloat
+
+instance Enum () where
+    succ            = error "There is no successor for ()"
+    pred            = error "There is no predecessor for ()"
+    fromEnum        = fromEnumVoid
+    toEnum          = toEnumVoid
+    enumFrom        = enumFromVoid
+    enumFromThen    = enumFromThenVoid
+    enumFromTo _ _  = [()]
+    enumFromThenTo _ _ _ = repeat ()
+
+instance Enum Bool where
+    succ False              = True
+    succ _                  = error "There is no successor for False"
+    pred True               = False
+    pred _                  = error "There is no predecessor for True"
+    toEnum                  = toEnumBool
+    fromEnum                = fromEnumBool
+    enumFrom                = enumFromBool
+    enumFromThen            = enumFromThen
+
+instance Enum Char where
+    --primChr primOrd enumFromChar enumFromThenChar
+    succ c          = primChr (primOrd c + 1)
+    pred c          = primChr (primOrd c - 1)
+    toEnum          = primChr
+    fromEnum        = primOrd
+    enumFrom        = enumFromChar
+    enumFromThen    = enumFromThenChar

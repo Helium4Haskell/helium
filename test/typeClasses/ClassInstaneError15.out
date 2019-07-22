@@ -1,0 +1,4 @@
+Prelude is up to date
+Compiling typeClasses/ClassInstaneError15.hs
+(1,10): Trying to instantiate unknown class X.
+Compilation failed with 1 error

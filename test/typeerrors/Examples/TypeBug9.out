@@ -1,8 +1,8 @@
 Prelude is up to date
 Compiling typeerrors/Examples/TypeBug9.hs
-(18,45): Type error in infix application
- expression       : h <$> many (j <$> pe <*> po) <*> pe
- operator         : <*>
+(18,48): Type error in infix application
+ expression       : h <$!> many (j <$!> pe <*!> po) <*!> pe
+ operator         : <*!>
    type           : Parser a (b                      -> c       )
                     -> Parser a b
                     -> Parser a c

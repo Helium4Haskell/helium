@@ -10,9 +10,9 @@
 -----------------------------------------------------------------------------
 
 ATTR Module
-   [ baseName              : String
-     importEnvironments    : ImportEnvironments
-     options               : {[Option]}
+   [ baseName                  : String
+     importEnvironmentsWithMod : {[(Name,ImportEnvironment, ModuleDecls)]}
+     options                   : {[Option]}
    |
    | collectEnvironment    : ImportEnvironment  
      errors                : Errors
@@ -44,17 +44,19 @@ import Top.Types
 import Helium.StaticAnalysis.Messages.StaticErrors
 import Helium.StaticAnalysis.Messages.Warnings
 import Helium.StaticAnalysis.Messages.Messages
-import Data.List
 import Helium.Utils.Utils ( internalError, minInt, maxInt )
+import Helium.Utils.QualifiedTypes
 import Helium.StaticAnalysis.Miscellaneous.TypeConversion
 import Helium.CodeGeneration.DerivingShow
 
 import qualified Data.Map as M
 
 import Helium.ModuleSystem.ImportEnvironment
+import Helium.ModuleSystem.GatherImports (ModuleDecls)
 import Helium.Parser.OperatorTable
 import Data.Char ( isUpper )
-
+import Data.List
+import Data.Maybe (fromMaybe)
 }
 
 -- combine all the collected errors, then filter out the "entity is undefined" 
@@ -63,7 +65,8 @@ SEM Module
   | Module   lhs . errors = filter (\err -> filterRemovedNames @removedEntities err 
                                          && filterDerivedNames @derivedRanges err) @allErrors
                  . warnings  = @scopeWarnings ++ @warnings                                        
-             loc . allErrors = concat [ @exportErrors
+             loc . allErrors = map (convertError (unqualifyTp @typeConstructors)) $ concat 
+                                      [ @exportErrors
                                       , @scopeErrors
                                       , @miscerrors
                                       , if KindInferencing `elem` @lhs.options then [] else @kindErrors
@@ -73,7 +76,8 @@ SEM Module
                                      [ (name,Constructor    ) | name:_ <- @duplicatedValueConstructors ]
                  . derivedRanges   = map getNameRange (map fst @derivedFunctions)
                  . initialScope    = map fst @derivedFunctions ++ 
-                                     concatMap (M.keys . typeEnvironment) @lhs.importEnvironments                 
+                                     (concatMap (M.keys . typeEnvironment) @importEnvironments)
+                 . importEnvironments = map (\(_,b,_) -> b) @lhs.importEnvironmentsWithMod                 
 {
 -- filter undefined errors that are caused by the removal of a duplicate definition
 filterRemovedNames :: [(Name,Entity)] -> Error -> Bool
@@ -108,3 +112,19 @@ SEM LeftHandSide
 SEM Patterns
   | Cons  lhs . numberOfPatterns = 1 + @tl.numberOfPatterns
   | Nil   lhs . numberOfPatterns = 0
+
+SEM MaybeName [ | | name : { Maybe Name } ]
+    | Nothing             lhs.name      = Nothing
+    | Just                lhs.name      = Just @name.self
+ATTR Body Declaration Declarations Expression Expressions
+     GuardedExpression GuardedExpressions MaybeDeclarations
+     MaybeExpression Qualifier Qualifiers RecordExpressionBinding
+     RightHandSide Alternative Alternatives FunctionBinding
+     FunctionBindings Statement RecordExpressionBindings
+     Statements AnnotatedType Types Constructor AnnotatedTypes 
+     ContextItem FieldDeclaration Constructors ContextItems 
+     FieldDeclarations Type 
+               [ classMemberEnv       : {ClassMemberEnvironment}
+                 classNamesEnv        : {ClassNameEnvironment}
+                 importEnvironments   : ImportEnvironments
+                 qualifiedEnvironment : ImportEnvironment| | ]

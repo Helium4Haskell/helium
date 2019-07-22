@@ -23,6 +23,7 @@ data Lexeme
     | LexVarSym          String
     | LexCon             String
     | LexConSym          String
+    | LexQual            String
 
     | LexKeyword         String
     | LexResVarSym       String
@@ -33,6 +34,8 @@ data Lexeme
     | LexCaseFeedback    String
     | LexMustUse
     | LexHole
+    | LexNamedHole       String
+    | LexEta             Char
 
     | LexInsertedOpenBrace  -- { inserted because of layout
     | LexInsertedCloseBrace -- }
@@ -52,6 +55,7 @@ instance Show Lexeme where
         LexVarSym  o        -> Texts.parserOperator              ++ " '" ++ o      ++ "'"
         LexCon     c        -> Texts.parserConstructor           ++ " '" ++ c      ++ "'"
         LexConSym  o        -> Texts.parserConstructorOperator   ++ " '" ++ o      ++ "'"
+        LexQual    q        -> Texts.parserQualified             ++ " '" ++ q      ++ "'"
         
         LexKeyword kwd      -> Texts.parserKeyword ++ " '" ++ kwd ++ "'"
         LexResVarSym s      -> "'" ++ s ++ "'"
@@ -62,6 +66,8 @@ instance Show Lexeme where
         LexCaseFeedback f   -> "Case feedback \"" ++ f ++ "\""
         LexMustUse          -> "Must Use"
         LexHole             -> "Hole"
+        LexNamedHole h      -> "Hole \"" ++ h ++ "\""
+        LexEta n            -> "Eta \"" ++ n : "\""
         
         LexInsertedOpenBrace  -> Texts.parserInsertedLBrace 
         LexInsertedCloseBrace -> Texts.parserEndOfBlock
@@ -80,6 +86,10 @@ lexemeLength l = case l of
     LexVarSym          s     -> length s
     LexCon             s     -> length s
     LexConSym          s     -> length s
+    LexQual            s     -> length s + 1 -- count the dot that is not in the string
+
+    LexHole                  -> 1
+    LexNamedHole       s     -> 1 + length s
 
     LexSpecial         _     -> 1
     LexKeyword         s     -> length s

@@ -1,0 +1,23 @@
+Prelude is up to date
+Compiling exports/ExportBasic2.hs
+Compilation successful
+Compiling exports/Export18.hs
+(1,24), (1,41): There is an export conflict for  "/**":
+	"module Export18" exports: "/**" defined at (10,3)
+	"module ExportBasic2" exports: "/**" imported from module ExportBasic2 (orignally defined in "ExportBasic2:(7,1)-(11,14)")
+(1,24), (1,41): There is an export conflict for  ":>":
+	"module Export18" exports: ":>" defined at (18,18)
+	"module ExportBasic2" exports: ":>" imported from module ExportBasic2 (orignally defined in "ExportBasic2:(15,16)-(15,30)")
+(1,24), (1,41): There is an export conflict for  "Empty":
+	"module Export18" exports: "Empty" defined at (18,25)
+	"module ExportBasic2" exports: "Empty" imported from module ExportBasic2 (orignally defined in "ExportBasic2:(17,36)-(17,41)")
+(1,24), (1,41): There is an export conflict for  "Hello":
+	"module Export18" exports: "Hello" defined at (20,6)
+	"module ExportBasic2" exports: "Hello" imported from module ExportBasic2 (orignally defined in "ExportBasic2:(24,1)-(24,18)")
+(1,24), (1,41): There is an export conflict for  "Listt":
+	"module Export18" exports: "Listt" defined at (18,6)
+	"module ExportBasic2" exports: "Listt" imported from module ExportBasic2 (orignally defined in "ExportBasic2:(15,1)-(15,37)")
+(1,24), (1,41): There is an export conflict for  "f":
+	"module Export18" exports: "f" defined at (7,1)
+	"module ExportBasic2" exports: "f" imported from module ExportBasic2 (orignally defined in "ExportBasic2:(4,1)-(4,6)")
+Compilation failed with 6 errors

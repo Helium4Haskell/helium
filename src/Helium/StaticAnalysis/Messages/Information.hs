@@ -38,7 +38,7 @@ showInformation reportNotFound options importEnv =
           
           constructor = 
              case lookupWithKey (nameFromString string) (valueConstructors importEnv) of
-                Just (name, scheme) -> 
+                Just (name, (_, scheme)) -> 
                    [ValueConstructor name scheme (M.lookup name (operatorTable importEnv))]
                 Nothing     -> []
 
@@ -50,12 +50,12 @@ showInformation reportNotFound options importEnv =
       
           datatypeconstructor =
              case lookupWithKey (nameFromString string) (typeConstructors importEnv) of
-                Just (name, i) | not (M.member name (typeSynonyms importEnv))  
+                Just (name, (i,_)) | not (M.member name (typeSynonyms importEnv))  
                    -> [DataTypeConstructor name i (findValueConstructors name importEnv)]
                 _  -> []
       
           typeclass = 
-             case M.lookup string standardClasses of
+             case M.lookup string (classEnvironment importEnv) of
                 Just cl -> [TypeClass string cl]
                 Nothing -> []
       in 
@@ -150,7 +150,8 @@ findValueConstructors name =
    let test = isName . fst . leftSpine . snd . functionSpine . unqualify . unquantify
        isName (TCon s) = s == show name
        isName _        = False
-   in M.assocs . M.filter test . valueConstructors
+       toSchemeMap = M.map (\(_, scheme) -> scheme)
+   in M.assocs . M.filter test . toSchemeMap . valueConstructors
 
 lookupWithKey :: Ord key => key -> M.Map key a -> Maybe (key, a)
 lookupWithKey key = M.lookup key . M.mapWithKey (,)

@@ -1,6 +1,6 @@
 -----------------------------------------------------------------------------
 -- |The Helium Compiler : Static Analysis
--- 
+--
 -- Maintainer  :  bastiaan@cs.uu.nl
 -- Stability   :  experimental
 -- Portability :  unknown
@@ -8,58 +8,63 @@
 -- Miscellaneous errors
 --
 -------------------------------------------------------------------------------
- 
+
+
 ATTR Expression Expressions MaybeExpression Pattern Patterns Alternative Alternatives
      Statement Statements Declaration Declarations MaybeDeclarations LeftHandSide RightHandSide
-     FunctionBinding FunctionBindings Body Qualifier Qualifiers          
-     GuardedExpression GuardedExpressions Literal 
+     FunctionBinding FunctionBindings Body Qualifier Qualifiers
+     GuardedExpression GuardedExpressions Literal
      Type Types AnnotatedTypes AnnotatedType ContextItem ContextItems Constructors Constructor FieldDeclaration
-     FieldDeclarations  
-     [ | miscerrors : {[Error]} | ]
+     FieldDeclarations
+     [  | miscerrors : {[Error]} | ]
 
 SEM Module
   | Module  body . miscerrors = []
             loc  . miscerrors = if length (@body.miscerrors ++ @loc.typeSynonymErrors ++ @loc.overlappingInstances) == 0
                                  then @loc.instanceErrors
                                  else @body.miscerrors ++ @loc.typeSynonymErrors ++ @loc.overlappingInstances
-            loc  . imports = foldr combineImportEnvironments emptyEnvironment ( @loc.collectEnvironment : @lhs.importEnvironments)
+            loc  . imports = combineImportEnvironmentList (@loc.collectEnvironment : @importEnvironments)
             loc .  typeSynonyms = getOrderedTypeSynonyms @loc.imports
             loc  . typeSynonymErrors = noTypeSynonymsInInstance @loc.typeSynonyms @body.instances
-            loc  . instanceErrors = makeClassEnvironmentErrors $ checkClassEnvironment @loc.typeSynonyms @body.classEnv @body.instances
-            loc  . overlappingInstances = overlappingInstances $ foldr insertInst @body.classEnv @body.instances             
+            loc  . instanceErrors = makeClassEnvironmentErrors (setClassNameEnvironment @classNamesEnv @combinedEnv) $ checkClassEnvironment @loc.typeSynonyms (M.unionWith combineClassDecls @body.classEnv $ classEnvironment $ combineImportEnvironmentList @importEnvironments) @body.instances
+            loc  . overlappingInstances = overlappingInstances @classNamesEnv $ foldr insertInst @body.classEnv (getInstanceNames @importEnvironments ++ @body.instances)
+
 -----------------------------------------
 -- Body
 
-SEM Body 
+SEM Body
   | Body   lhs . miscerrors = @typeSignatureErrors ++ @classErrors ++ @declarations.miscerrors
            loc . typeSignatureErrors = checkTypeSignatures @declarations.declVarNames @declarations.restrictedNames @declarations.typeSignatures
            loc . classErrors = checkClass @declarations.collectTypeClasses @declarations.declVarNames @declarations.restrictedNames @declarations.typeSignatures @lhs.importedClassEnv
            lhs . classEnv = @declarations.classEnv
            lhs . instances = @declarations.instances
 
+
 -----------------------------------------
 -- Declaration
 
 SEM Declaration
-    | Class              lhs . miscerrors = deleteNoFunDefErrors @where.miscerrors ++ (checkClassFunctions @loc.declVarNames @loc.types) ++ @contextErrors
+    | Class              lhs . miscerrors = deleteClassErrors (@where.miscerrors ++ (checkClassFunctions @loc.declVarNames @loc.types) ++ @contextErrors)
+                         lhs . typeSignatures = []
                          loc . types = @where.typeSignatures
                          loc . declVarNames = @where.declVarNames
                          loc . typeVars = @simpletype.self
                          loc . contextVars = @context.typeVariables
                          loc . contextErrors = checkClassContext @typeVars @contextVars  ++ checkClassMethods @self
+                         context . classMemberEnv = @lhs.classMemberEnv
     | Instance           lhs . miscerrors = @where.miscerrors ++ @loc.uniqueTypeVarErrors ++ @loc.undefinedClassErrors ++ @loc.validInstanceType ++ @loc.contextErrors
                          loc . foundClasses =[]
-                         loc . uniqueTypeVarErrors = if (length  (nonUniqueTypeVars @types.typevariables) > 0)
-                                                       then [ DefNonUniqueInstanceVars @name.self (nonUniqueTypeVars @types.typevariables) ]
-                                                       else []
-                         loc . validInstanceType = case (validInstanceType $ head @types.self) of
-                                                      True -> []
-                                                      False -> [InvalidInstanceType @name.self]
-                         loc . classDefinition = classExists @name.self @lhs.classMemberEnv
-                         loc . undefinedClassErrors = case (@loc.classDefinition) of
+                         loc . uniqueTypeVarErrors  = if (length  (nonUniqueTypeVars @types.typevariables) > 0)
+                                                        then [ DefNonUniqueInstanceVars @name.self (nonUniqueTypeVars @types.typevariables) ]
+                                                        else []
+                             . validInstanceType    = case (validInstanceType $ head @types.self) of
+                                                        True -> []
+                                                        False -> [InvalidInstanceType @name.self]
+                             . classDefinition      = classExists @qualifiedName @lhs.classMemberEnv
+                             . undefinedClassErrors = case (@loc.classDefinition) of
                                                            Nothing -> [UndefinedClass @name.self (M.keys @lhs.classMemberEnv)]
-                                                           (Just decl) -> instanceMembers @where.self decl
-                         loc . contextErrors = checkInstanceSignature @name.self @context.self (head @types.self)
+                                                           (Just decl) -> instanceMembers @lhs.qualifiedEnvironment @where.self decl
+                             . contextErrors        = checkInstanceSignature @name.self @context.self (head @types.self)
     | FunctionBindings   lhs . miscerrors  = @arityErrors ++ @bindings.miscerrors
                          loc . arityErrors = if all (== head @bindings.arities) @bindings.arities
                                                then []
@@ -79,18 +84,21 @@ SEM Declaration
              loc . unused  = filter (`notElem` @constructors.typevariables) @simpletype.typevariables
                  . doubles = filter ((>1) . length) . group . sort $        @simpletype.typevariables
                  . undef   = filter (`notElem` @simpletype.typevariables)   @constructors.typevariables
-                 . unknCls = [ if className `elem` [ "Num", "Enum", "Ord" ]
-                                then NonDerivableClass c
-                                else UnknownClass c
-                             | c <- @derivings.self, let className = show c
-                             , className `notElem` ["Show", "Eq"]
+                 . unknCls = [ if className `elem` [ "Prelude.Num", "Prelude.Enum", "Prelude.Ord" ]
+                                then NonDerivableClass unQualName
+                                else UnknownClass unQualName
+                             | c <- @qualDers, let className = getNameName c
+                             , let unQualName = setNameRange (unQualifyName @lhs.qualifiedEnvironment c) (getNameRange c)
+                             , className `notElem` ["Prelude.Show", "Prelude.Eq"]
                              ]
-                 . cantDer = [ CannotDerive c [ tp | ReductionError (Predicate _ tp) <- errs ]
-                             | c <- @derivings.self
-                             , let preds     = map (Predicate (show c)) @constructors.parameterTypes
-                                   (_, errs) = contextReduction @lhs.orderedTypeSynonyms @lhs.classEnvironment preds
+                 . cantDer = [ CannotDerive unQualName [ tp | ReductionError (Predicate _ tp) <- errs ]
+                             | c <- @qualDers
+                             , let preds      = map (Predicate (getNameName c)) @constructors.parameterTypes
+                                   (_, errs)  = contextReduction @lhs.orderedTypeSynonyms @lhs.classEnvironment preds
+                                   unQualName = setNameRange (unQualifyName @lhs.qualifiedEnvironment c) (getNameRange c)
                              , not (null errs)
                              ]
+                 
 
     | Type   lhs . miscerrors = concat [ makeDuplicated TypeVariable @doubles
                                        , makeUndefined TypeVariable @undef @simpletype.typevariables
@@ -147,19 +155,19 @@ frequencies = map (\ys -> (head ys, length ys)) . group . sort
 
 SEM Expression
   | Variable     lhs . miscerrors     = @undefinedErrors ++ @lhs.miscerrors 
-                 loc . undefinedErrors = if @name.self `elem` @lhs.namesInScope
-                                           then []
-                                           else [ Undefined Variable @name.self @lhs.namesInScope [] ]
+                 loc . undefinedErrors = ambiguousOrUndefinedErrors Variable @name.self @lhs.namesInScope @lhs.ambiguousConflicts []
   | Do           lhs . miscerrors = @lastStatementErrors ++ @statements.miscerrors
                  loc . lastStatementErrors = if @statements.lastStatementIsExpr
                                                then []
                                                else let range = getStatementRange (last @statements.self)
-                                                    in [ LastStatementNotExpr range ]  
-                                                
+                                                    in [ LastStatementNotExpr range ]
+
   | Constructor  lhs . miscerrors = @undefinedConstructorErrors ++ @lhs.miscerrors
                  loc . undefinedConstructorErrors = case M.lookup @name.self @lhs.valueConstructors of
                                                        Nothing -> [ undefinedConstructorInExpr @name.self (@lhs.namesInScope ++ @lhs.allValueConstructors) @lhs.allTypeConstructors ]
                                                        Just _  -> []
+                 loc . constructorErrors = 
+                        constructorErrors @name.self @lhs.valueConstructors @lhs.ambiguousValueConstructors @lhs.namesInScope @lhs.allValueConstructors @lhs.allTypeConstructors
 
   | Let          lhs . miscerrors = @typeSignatureErrors ++ @expression.miscerrors
                  loc . (_,doubles) = uniqueAppearance (map fst @declarations.typeSignatures)
@@ -171,25 +179,39 @@ SEM Expression
                         | length @expressions.self > 10
                         ]
 
+{
+constructorErrors :: Name -> M.Map Name TpScheme -> [[Name]] -> Names -> Names -> Names -> Errors
+constructorErrors name valCons ambiguousValueConstructors namesInScope allValueConstructors allTypeConstructors =
+    case M.lookup name valCons of
+        Just _ -> []
+        Nothing -> let amb = [a | a <- ambiguousValueConstructors, head a == name] in
+                    case amb of
+                        []   -> [undefinedConstructorInExpr name (namesInScope ++ allValueConstructors) allTypeConstructors ]
+                        y:[] -> [Ambiguous Constructor name y]
+                        _    -> internalError "MiscErrors.ag" "n/a" "constructorErrors"
+}
 -----------------------------------------
 -- Pattern
 
 SEM Pattern
     | Constructor        lhs . miscerrors = @patConstructorErrors ++ @patterns.miscerrors
-                         loc . patConstructorErrors = patternConstructorErrors @maybetp @name.self @lhs.allValueConstructors @patterns.numberOfPatterns @lhs.lhsPattern @lhs.allTypeConstructors
+                         loc . patConstructorErrors = patternConstructorErrors @maybetp @name.self @lhs.ambiguousValueConstructors @lhs.allValueConstructors @patterns.numberOfPatterns @lhs.lhsPattern @lhs.allTypeConstructors
                              . maybetp    = M.lookup @name.self @lhs.valueConstructors
 
     | InfixConstructor   lhs . miscerrors = @patConstructorErrors ++ @rightPattern.miscerrors
-                         loc . patConstructorErrors = patternConstructorErrors @maybetp @constructorOperator.self @lhs.allValueConstructors 2 False @lhs.allTypeConstructors
+                         loc . patConstructorErrors = patternConstructorErrors @maybetp @constructorOperator.self @lhs.ambiguousValueConstructors @lhs.allValueConstructors 2 False @lhs.allTypeConstructors
                              . maybetp    = M.lookup @constructorOperator.self @lhs.valueConstructors
 
 
 {
-patternConstructorErrors :: Maybe TpScheme -> Name -> Names -> Int -> Bool -> Names -> [Error]
-patternConstructorErrors maybetparity name env useArity lhsPattern namesTyconEnv =
+patternConstructorErrors :: Maybe TpScheme -> Name -> [[Name]] -> Names -> Int -> Bool -> Names -> [Error]
+patternConstructorErrors maybetparity name ambiguousValueConstructors env useArity lhsPattern namesTyconEnv =
     case maybetparity of
-        Nothing ->
-            [ undefinedConstructorInPat lhsPattern name env namesTyconEnv ]
+        Nothing -> let amb = [a | a <- ambiguousValueConstructors, head a == name] in
+                    case amb of
+                        []   -> [undefinedConstructorInPat lhsPattern name env namesTyconEnv ]
+                        y:[] -> [Ambiguous Constructor name y]
+                        _    -> internalError "MiscErrors.ag" "n/a" "patternConstructorErrors"            
         Just tpScheme ->
             let arity = arityOfTpScheme tpScheme
             in if arity /= useArity
@@ -217,23 +239,23 @@ SEM RecordPatternBinding | RecordPatternBinding   pattern . lhsPattern = False
 simplePattern :: Pattern -> Bool
 simplePattern pattern =
    case pattern of
-      Pattern_Constructor _ name _ -> case show name of 
+      Pattern_Constructor _ name _ -> case show name of
                                          x:_ -> isUpper x
                                          _   -> False
       _                            -> False
 }
-  
+
 -----------------------------------------
--- Statement  
+-- Statement
 
  SEM Statement
-   | Let        lhs . miscerrors = @typeSignatureErrors ++ @declarations.miscerrors 
+   | Let        lhs . miscerrors = @typeSignatureErrors ++ @declarations.miscerrors
                 loc . (_,doubles) = uniqueAppearance (map fst @declarations.typeSignatures)
                     . typeSignatureErrors = checkTypeSignatures @declarations.declVarNames @declarations.restrictedNames @declarations.typeSignatures
-                       
+
 -----------------------------------------
--- Qualifier    
-       
+-- Qualifier
+
 SEM Qualifier
   | Let       lhs . miscerrors = @typeSignatureErrors ++ @declarations.miscerrors
               loc . (_,doubles) = uniqueAppearance (map fst @declarations.typeSignatures)
@@ -270,7 +292,7 @@ checkClass :: [(Name, [(Name, TpScheme)])] -> Names -> Names -> [(Name, TpScheme
 checkClass typeClasses declVarNames restrictedNames declTypes imported =
            let inMultipleClasses = filter (\(_,y) -> (length y) > 1) $ declaredInMultipleClasses typeClasses
                overload = map (declaredAtTopLevel (declVarNames ++ restrictedNames ++ (map fst declTypes))) typeClasses
-           in  [FunctionInMultipleClasses Definition name names
+           in  [FunctionInMultipleClasses Definition name (map removeQualified names)
                | (name, names) <- inMultipleClasses ]
                ++
                [TypeClassOverloadRestr className errMethod
@@ -278,15 +300,15 @@ checkClass typeClasses declVarNames restrictedNames declTypes imported =
                , (length errMethod > 0)
                ]
                ++
-               [DuplicateClassName ns
+               [DuplicateClassName (map removeQualified ns)
                | ns <- filter (\x -> (length x) > 1) $ group . sort $ map fst typeClasses ]
                ++
                [DuplicatedClassImported x
-               | x <- filter (containsClass imported) $ map fst typeClasses  ] 
-           
+               | x <- filter (containsClass imported) $ map fst typeClasses  ]
+
 declaredInMultipleClasses :: [(Name, [(Name, TpScheme)])] -> [(Name, [Name])]
 declaredInMultipleClasses dicts = buildTypes (map (\(n, l) -> (n, map fst l)) dicts) []
-                          where 
+                          where
                            buildTypes ((tClass, decls):xs) ls = buildTypes xs (forClass (tClass, decls) ls)
                            buildTypes []                   ls = ls
 
@@ -342,7 +364,7 @@ checkInstanceSignature instanceName ((ContextItem_ContextItem _ n tys):cts) ty =
 checkInstanceSignature _            []                                      _  = []
 
 checkInstanceSignature' :: Name -> Name -> Names -> Names -> Errors
-checkInstanceSignature' className contextName contextVars instanceVars = 
+checkInstanceSignature' className contextName contextVars instanceVars =
                         [ InvalidInstanceConstraint className contextName var
                         | var <- contextVars
                         , var `notElem` instanceVars ]
@@ -372,57 +394,61 @@ checkTypeSignatures :: Names -> Names -> [(Name,TpScheme)] -> Errors
 checkTypeSignatures declVarNames restrictedNames xs =
    let (unique, doubles) = uniqueAppearance (map fst xs)
    in [ Duplicated TypeSignature names
-      | names <- doubles 
-      ] 
+      | names <- doubles
+      ]
    ++ [ NoFunDef TypeSignature name declVarNames
       | name <- unique
       , name `notElem` declVarNames
       ]
    ++ [ OverloadedRestrPat name
       | (name, scheme) <- xs
-      , name `elem` unique 
-      , name `elem` restrictedNames     
+      , name `elem` unique
+      , name `elem` restrictedNames
       , isOverloaded scheme
-      ] 
+      ]
+
 }
 
 -----------------------------------------
 -- Literal
 
 SEM Literal
-  | Int loc . intLiteralTooBigErrors = 
+  | Int loc . intLiteralTooBigErrors =
                  let val = read @value :: Integer in
                  if length @value > 9 && (val > maxInt || val < minInt)  then
                     [ IntLiteralTooBig @range.self @value ]
-                 else 
+                 else
                     []
         lhs . miscerrors = @intLiteralTooBigErrors ++ @lhs.miscerrors
-        
+
 -- Qualified types
 
 SEM Type -- does every type variable in the contexts appear in the type?
-  | Qualified lhs.miscerrors =
+  | Qualified 
+        context.classMemberEnv = @lhs.classMemberEnv
+        lhs.miscerrors =
         ( if Overloading `elem` @lhs.options then
             [ AmbiguousContext v | v <-  @context.contextVars, v `notElem` @type.typevariables ]
-          else 
+          else
             [ OverloadingDisabled @range.self ]
         )
         ++
         @type.miscerrors
-                
-ATTR ContextItems ContextItem [ | | contextVars USE { ++ } { [] } : {[Name]} ]
+
+ATTR ContextItems ContextItem [  | | contextVars USE { ++ } { [] } : {[Name]} ]
 
 SEM ContextItem
-  | ContextItem lhs.contextVars = @types.typevariables
-                lhs.miscerrors = if elem (getNameName @name.self) (M.keys standardClasses)
-                                    then @types.miscerrors  
-                                    else UnknownClass @name.self : @types.miscerrors
+  | ContextItem lhs . contextVars   = @types.typevariables
+                lhs . miscerrors    = if elem (getNameName @qualifiedName) (map getNameName $ M.keys @lhs.classMemberEnv)
+                                      then @types.miscerrors
+                                      else UnknownClass @name.self : @types.miscerrors
+                loc . qualifiedName = convertClassNameToQualified @lhs.qualifiedEnvironment @name.self
 
 -- context for restricted pattern error
 ATTR Declaration Declarations [ | | restrictedNames USE { ++ } { [] } : Names ]
 
 SEM Declaration
-  | PatternBinding   
+  | PatternBinding
        lhs . restrictedNames = if isSimplePattern @pattern.self
                                  then []
                                  else @pattern.patVarNames
@@ -452,9 +478,9 @@ validApplyType (Type_Constructor _ n) ts = validInstanceConstrName n ts
 validApplyType _                      _  =  False
 
 validInstanceConstrName :: Name -> Types -> Bool
-validInstanceConstrName (Name_Special _ _ s) ts = s == "(" ++ replicate (length ts - 1) ',' ++ ")" || s == "[]"
+validInstanceConstrName (Name_Special _ _ _ s) ts = s == "(" ++ replicate (length ts - 1) ',' ++ ")" || s == "[]"
     --We just want to know if it was a tuple
-validInstanceConstrName (Name_Identifier _ _ _) _ = True
+validInstanceConstrName (Name_Identifier _ _ _ _) _ = True
 validInstanceConstrName _ _ = False
 
 -- All type variables in an instance declaration have to be unique
@@ -469,19 +495,19 @@ classExists n cm = case (M.lookup n cm) of
                     (Just m) -> Just (n, m)
                     Nothing  -> Nothing
 
-instanceMembers :: MaybeDeclarations -> ClassDef -> Errors
-instanceMembers MaybeDeclarations_Nothing _ = []
-instanceMembers (MaybeDeclarations_Just decls) d = instanceMembers' decls d
+instanceMembers :: ImportEnvironment -> MaybeDeclarations -> ClassDef -> Errors
+instanceMembers _ MaybeDeclarations_Nothing _ = []
+instanceMembers nenv (MaybeDeclarations_Just decls) d = instanceMembers' nenv decls d
   -- where n = concatMap nameOfDeclaration decls
 
-instanceMembers' :: Declarations -> ClassDef -> Errors
-instanceMembers' (d:ds) c@(n, members) = let fn = head $ nameOfDeclaration d
-                                             cm = map (\(x, _) -> x) members
+instanceMembers' :: ImportEnvironment -> Declarations -> ClassDef -> Errors
+instanceMembers' nenv (d:ds) c@(n, members) = let fn = head $ nameOfDeclaration d
+                                                  cm = map (\(x, _, _, _) -> x) (snd members)
                                           in
                                              case elem fn cm of
-                                              True -> instanceMembers' ds c
-                                              False -> UndefinedFunctionForClass n fn cm : instanceMembers' ds c 
-instanceMembers' []     _       = []
+                                              True -> instanceMembers' nenv ds c
+                                              False -> UndefinedFunctionForClass (unQualifyName nenv n) fn cm : instanceMembers' nenv ds c
+instanceMembers' _ []     _       = []
 
 --Check all instance declarations, check if their superclass relations hold, return those predicates that fail to check.
 checkClassEnvironment :: OrderedTypeSynonyms -> ClassEnvironment -> [(Range, Instance)] -> [(Range, Predicate, Predicates)]
@@ -490,35 +516,39 @@ checkClassEnvironment env cEnv allInstances = map (\(r, (i, ctxt)) -> let
                                                                      classEnv = foldr insertInst cEnv allInstances
                                                                      in (r, i, filter  (\p -> not $ (entail env classEnv ctxt p)) proves)) allInstances
 
-insertInst :: (t, (Predicate, Predicates)) -> ClassEnvironment -> ClassEnvironment                                                                     
+insertInst :: (t, (Predicate, Predicates)) -> ClassEnvironment -> ClassEnvironment
 insertInst (_, inst@((Predicate n _), _)) env = insertInstance n inst env
 
-makeClassEnvironmentErrors :: [(Range, Predicate, Predicates)] -> Errors
-makeClassEnvironmentErrors ((r, c, pr):insts) | pr == []  = makeClassEnvironmentErrors insts
-                                              | otherwise = foldr (\p -> (:)(MissingSuperClass r c p)) (makeClassEnvironmentErrors insts) pr
-makeClassEnvironmentErrors []                             = []             
+makeClassEnvironmentErrors :: ImportEnvironment -> [(Range, Predicate, Predicates)] -> Errors
+makeClassEnvironmentErrors env ((r, c, pr):insts) | pr == []  = makeClassEnvironmentErrors env insts
+                                                   | otherwise = foldr (\p -> (:)(MissingSuperClass r (unqualifier c) (unqualifier p))) (makeClassEnvironmentErrors env insts) pr
+  where unqualifier = convertPredicate (unQualifyName env)
+makeClassEnvironmentErrors _ []                                = []
 
 
-overlappingInstances :: ClassEnvironment -> Errors
-overlappingInstances = M.foldWithKey (\k (_, i) b -> (overlappingInstances' k i) ++ b) []
+overlappingInstances :: ClassNameEnvironment -> ClassEnvironment -> Errors
+overlappingInstances env = M.foldrWithKey (\k (_, i) b -> (overlappingInstances' k i) ++ b) []
    where
     overlappingInstances' :: String -> Instances -> Errors
-    overlappingInstances' name insts = [OverlappingInstance name ty | 
+    overlappingInstances' name insts = [OverlappingInstance (getNameName $ unQualifyClassName env (nameFromString name)) ty |
                             ty <- map head $ filter (\l -> length l > 1) $ group . sort $ map ((\(Predicate _ ty) -> fst $ leftSpine ty) . fst) insts]
 
 noTypeSynonymsInInstance :: OrderedTypeSynonyms -> [(Range, Instance)] -> Errors
 noTypeSynonymsInInstance typeSyn ((r, (p, _)):insts)  = if (typeSynonymInPredicate typeSyn p)
                                                          then (TypeSynonymInInstance r p) : (noTypeSynonymsInInstance typeSyn insts)
                                                          else noTypeSynonymsInInstance typeSyn insts
-noTypeSynonymsInInstance _      []                    = []  
+noTypeSynonymsInInstance _      []                    = []
 
 typeSynonymInPredicate :: OrderedTypeSynonyms -> Predicate -> Bool
 typeSynonymInPredicate typeSyn (Predicate _ ty) = case (expandToplevelTC typeSyn ty) of
                                                     Nothing -> False
                                                     _       -> True
-deleteNoFunDefErrors :: Errors -> Errors 
-deleteNoFunDefErrors errs = filter p errs where
-    p (NoFunDef TypeSignature _ _) = False
-    p _              = True
+deleteClassErrors :: Errors -> Errors
+deleteClassErrors errs = filter p errs where
+    p (NoFunDef TypeSignature _ _)  = False
+    p _                             = True
+
+
+   
 }
 

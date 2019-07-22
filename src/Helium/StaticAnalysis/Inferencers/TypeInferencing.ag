@@ -101,15 +101,18 @@ import Helium.StaticAnalysis.Inferencers.SelectConstraintSolver (selectConstrain
 import Top.Solver (SolveResult(..), LogEntries)
 import Helium.StaticAnalysis.Heuristics.HeuristicsInfo (makeUnifier, skip_UHA_FB_RHS)
 import Helium.StaticAnalysis.Inferencers.BindingGroupAnalysis
-
+import Helium.StaticAnalysis.Miscellaneous.TypeConstraints
 
 -- UHA syntax
 import Helium.Syntax.UHA_Syntax
-import Helium.Syntax.UHA_Range                 
+import Helium.Syntax.UHA_Range
+import Helium.Syntax.UHA_Utils                
          
 -- other
 
 import Helium.Utils.Utils (internalError, hole)
+import Helium.Utils.QualifiedTypes
+import Helium.Utils.QualifiedTypes.Constants
 import Helium.ModuleSystem.ImportEnvironment  hiding (setTypeSynonyms)
 import Helium.ModuleSystem.DictionaryEnvironment
 import Helium.Main.Args
@@ -118,3 +121,28 @@ import Helium.Main.Args
 import qualified Data.Map as M
 import Data.Maybe 
 }
+
+SEM Module | Module loc . moduleQual = maybe ["Main"] getQualified @name.name
+                    loc . isTopLevel = True
+
+SEM Body Declarations Declaration [moduleQual : { [String] } isTopLevel : Bool | | ]
+
+SEM Statement
+  | Let   loc . isTopLevel = False
+SEM Expression
+  | Let  loc . isTopLevel = False
+SEM MaybeDeclarations
+  | Just  loc . isTopLevel = False
+SEM Qualifier
+  | Let   loc . isTopLevel = False
+  
+ATTR Body Declaration Declarations Expression Expressions
+     GuardedExpression GuardedExpressions MaybeDeclarations
+     MaybeExpression Qualifier Qualifiers RecordExpressionBinding
+     RightHandSide Alternative Alternatives FunctionBinding
+     FunctionBindings Statement RecordExpressionBindings
+     Statements AnnotatedType Types Constructor AnnotatedTypes 
+     ContextItem FieldDeclaration Constructors ContextItems 
+     FieldDeclarations Type 
+               [ classMemberEnv : {ClassMemberEnvironment}
+                 classNamesEnv   : {ClassNameEnvironment} | | ]
