@@ -1,7 +1,7 @@
 name:                   helium
-version:                1.8.4
+version:                1.9
 synopsis:               The Helium Compiler.
-homepage:               http://www.cs.uu.nl/wiki/bin/view/Helium/WebHome
+homepage:               https://github.com/Helium4Haskell/helium
 description:
 
   Helium is a compiler for a subset of Haskell that aims at delivering high
@@ -11,7 +11,7 @@ description:
   to define new type classes and instances.
 
 category:               Compiler
-copyright:              (c) 2014-2016
+copyright:              (c) 2014-2019
 license:                GPL
 license-file:           LICENSE.txt
 author:                 Bastiaan Heeren, Jurriaan Hage
@@ -59,8 +59,8 @@ extra-source-files:
   src/Helium/Syntax/UHA_Pretty.ag
   src/Helium/Syntax/UHA_Syntax.ag
 build-type:             Simple
-cabal-version:          >= 1.10.1.0
-tested-with:            GHC == 7.6.3
+cabal-version:          >= 2
+tested-with:            GHC == 8.4.4
 data-files:
   lib/Char.hs
   lib/HeliumLang.core
@@ -93,7 +93,7 @@ source-repository head
 --------------------------------------------------------------------------------
 
 Executable helium
-  Build-Depends:     base >= 3 && < 5, containers, mtl, parsec, network < 2.7, process, transformers, filepath, directory, wl-pprint, Top >= 1.8, lvmlib >= 1.2, helium
+  Build-Depends:     base >= 3 && < 5, containers, mtl, parsec, network < 2.7, process, transformers, filepath, directory, wl-pprint, Top >= 1.9, lvmlib >= 1.9, helium
   ghc-options:       -Wall
   default-language:  Haskell98
   hs-source-dirs:    src/commands/helium
@@ -133,7 +133,7 @@ Executable heliumpath
 --------------------------------------------------------------------------------
   
 Library
-  Build-Depends:     base >= 3 && < 5, containers, mtl, parsec, network < 2.7, process, transformers, filepath, directory, wl-pprint, Top >= 1.7, lvmlib >= 1.1
+  Build-Depends:     base >= 3 && < 5, containers, mtl, parsec, network < 2.7, process, transformers, filepath, directory, wl-pprint, Top >= 1.9, lvmlib >= 1.9
   ghc-options:       -Wall
   default-language:  Haskell98
   hs-source-dirs:    src dist/build/autogen/uuagc
