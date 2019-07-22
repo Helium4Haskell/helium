@@ -29,7 +29,7 @@ passToHelium   :: [String]
 passToHelium   = ["overloadingon", "loggingon", "host", "port",
                   "lvmpaths", "additionalheliumparameters"]
                  
--- Thanks to Bryan OÕSullivan, I might upgrade this later to something more in
+-- Thanks to Bryan OOSullivan, I might upgrade this later to something more in
 -- the style of the Helium parser.
 -- TODO deal with empty lines AT THE END of the config file.
 ident :: Parser String

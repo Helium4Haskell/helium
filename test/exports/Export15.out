@@ -1,0 +1,23 @@
+Prelude is up to date
+Compiling exports/ExportBasic2.hs
+Compilation successful
+Compiling exports/Export15.hs
+(1,17): The occurence of exported variable "f" is ambiguous. It could refer to:
+	"f" imported from module ExportBasic2 (originally defined in "ExportBasic2:(4,1)-(4,6)")
+	"f" defined at (7,1)
+(1,21): The occurence of exported variable "/**" is ambiguous. It could refer to:
+	"/**" imported from module ExportBasic2 (originally defined in "ExportBasic2:(7,1)-(11,14)")
+	"/**" defined at (10,3)
+(1,27): The occurence of exported type constructor, type synonym or class "Listt" is ambiguous. It could refer to:
+	"Listt" defined at (18,6)
+	"Listt" imported from module ExportBasic2 (originally defined in "ExportBasic2:(15,1)-(15,37)")
+(1,38): The occurence of exported type constructor, type synonym or class "Hello" is ambiguous. It could refer to:
+	"Hello" defined at (24,6)
+	"Hello" imported from module ExportBasic2 (originally defined in "ExportBasic2:(24,1)-(24,18)")
+(1,45): The occurence of exported type constructor, type synonym or class "Listt2" is ambiguous. It could refer to:
+	"Listt2" defined at (20,6)
+	"Listt2" imported from module ExportBasic2 (originally defined in "ExportBasic2:(17,1)-(17,41)")
+(1,55): The occurence of exported type constructor, type synonym or class "Listt3" is ambiguous. It could refer to:
+	"Listt3" defined at (22,6)
+	"Listt3" imported from module ExportBasic2 (originally defined in "ExportBasic2:(19,1)-(19,43)")
+Compilation failed with 6 errors

@@ -27,7 +27,10 @@ findIndex               :: (a -> Bool) -> [a] -> Maybe Int
 findIndex p              = listToMaybe . findIndices p
 
 findIndices             :: (a -> Bool) -> [a] -> [Int]
-findIndices p xs         = [ i | (x,i) <- zip xs [0..], p x ]
+findIndices p xs         = [ i | (x,i) <- zip xs zeroList, p x ]
+    where 
+        zeroList = f 0
+        f n = n : f (n + 1)
 
 nub                     :: (Eq a) => [a] -> [a]
 nub                      = nubBy (==)

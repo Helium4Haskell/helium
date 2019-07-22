@@ -7,10 +7,8 @@ exception: Can't apply sqrt to negative floating-point number.
 
 trace:
   demanded from "LvmLang.<."
-  demanded from "PreludePrim.compareFloat"
-  demanded from "PreludePrim.<"
   demanded from "PMCFloat.f"
-  demanded from "LvmLang.<"
+  demanded from "LvmLang.<#"
   demanded from "HeliumLang.showInt"
   demanded from "HeliumLang.$primPutChars"
   demanded from "LvmLang.bindIO"

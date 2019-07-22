@@ -5,68 +5,144 @@
 -- Stability   :  experimental
 -- Portability :  unknown
 --
--- !!! CLEAN UP THIS CODE !!!
 --
 -------------------------------------------------------------------------------
 
-{-
-SEM Export
-    | TypeOrClassComplete
-                  lhs . errors =  checkExport ExportTypeConstructor @name.self
-                                    @lhs.tyconsInScope
-    | TypeOrClass lhs . errors =  checkExport ExportTypeConstructor @name.self
-                                    @lhs.tyconsInScope
-                                ++
-                                concatMap
-                                    (\name ->
-                                        checkExport ExportConstructor name
-                                            @lhs.consInScope
-                                    )
-                                    @names.toList
--}
+--The double declarations/type constructors are added, because we don't want extra errors for these.
 SEM Module
-  | Module  exports . namesInScop   = concat [ @body.declVarNames
-                                              , concatMap (M.keys . typeEnvironment) @lhs.importEnvironments
-                                              , map fst @derivedFunctions
-                                              ]
-                    . modulesInScope = (@moduleName : @fileName : @body.importedModules)
-                    . tyconsInScope  = @allTypeConstructors
-                    . consInScope    = @allValueConstructors
+  | Module  exports . namesInScope    = @scopeNoConflicts ++ map head @declDouble
+                    . ambiguousNames  = @ambiguousConflicts
+                    . modulesInScope  = (@moduleName : @fileName : @body.importedModules)
+                    . tyconsInScope   = @allTycons
+                    . consAndClasses  = @allTycons ++ @allClassNames 
+                    . classNamesEnv   = @classNamesEnv
+                    . classMemberEnv  = classMemberEnvironment @combinedEnv
+                    . ambiguousTyCons = @ambiguousTypeConstructors
+                    . consInScope     = @valueConstructorsWithParents
+                    . allConsInScope  = @valueConstructorsWithParents ++ concat @ambiguousValueConstructorsWithParents
+                    . duplicatedCons  = @duplicatedValueConstructors
+                    . ambiguousCons   = @ambiguousValueConstructors
+            loc     . allClassNames   = M.keys @classNamesEnv
+                    . allTycons       = map fst @uniqueTypeConstructors
+                                        ++ map head @duplicatedTypeConstructors
 
 SEM Module 
-  | Module    loc . exportErrors = @exports.exportErrors
+  | Module    loc . exportErrors = let importErrors = @body.importErrors
+                                       firstErrors = @exports.exportErrors 
+                                   in case importErrors of
+                                        [] -> case firstErrors of
+                                                [] -> @exportNameClashes 
+                                                er -> er
+                                        err -> err
+              loc . modulename = fromMaybe (nameFromString "Main") @name.name
+              loc . exportModuleScope = [(@modulename, @declNoConflicts 
+                                                        ++ map fst @declNoConflictsTyCon
+                                                        ++ map fst @declNoConflictsValCon)] 
+                                            ++ getModuleList @lhs.importEnvironmentsWithMod
+              loc . exportNameClashes = (map ExportConflict . getConflicts.mergeSameOrigins) (@exports.totalExports)
+              body . modDecls = map (\(m,_,decls) -> (m, decls)) @lhs.importEnvironmentsWithMod
+              
                     
 ATTR MaybeExports Exports Export
-    [ namesInScop   : Names
-      modulesInScope : Names
-      tyconsInScope  : Names
-      consInScope    : Names
+    [ namesInScope      : Names
+      ambiguousNames    : { [[Name]] }
+      modulesInScope    : Names
+      tyconsInScope     : Names
+      consAndClasses    : Names
+      classNamesEnv     : ClassNameEnvironment
+      classMemberEnv    : ClassMemberEnvironment
+      ambiguousTyCons   : { [[Name]] }
+      consInScope       : { [(Name, Name)] }
+      allConsInScope    : { [(Name, Name)] }
+      duplicatedCons    : { [[Name]] }
+      ambiguousCons     : { [[Name]] }
+      exportModuleScope : { [(Name, Names)] }
     |
-    | exportErrors USE { ++ } { [] } : {[Error]}
+    | exportErrors USE { ++ } { [] } : { [Error] }
+      exportList   USE { ++ } { [] } : { [(Name, String)] }
+      totalExports USE { ++ } { [] } : { [(Name, (Name,String))] }
     ]                    
     
 {
 
-checkExport :: Entity -> Name -> [Name] -> [Error]
-checkExport entity name inScope =
-    makeUndefined entity
-        (if name `elem` inScope then
-            []
-         else
-            [name]
-        )
-        (nubBy equalName inScope)
+checkExport :: Entity -> Name -> [Name] -> [[Name]]-> [Error]
+checkExport entity name inScope ambiguous = ambiguousOrUndefinedErrors entity name inScope ambiguous []
 
-equalName :: Name -> Name -> Bool       
-equalName x y =
-    getNameName x == getNameName y        
+
+checkConstructorExport :: Entity -> (Name, Name) -> [(Name, Name)] -> [[Name]] -> [[Name]] -> [Error]
+checkConstructorExport entity (constructor, parent) inScopePairs duplicated ambiguous =
+    case lookup constructor inScopePairs of
+        Just realparent  -> if parent == realparent then 
+                                []
+                            else
+                                [ExportWrongParent entity constructor parent realparent [child | (child, par) <- inScopePairs, par == parent ]]
+        Nothing          -> if constructor `elem` map head duplicated then
+                                []
+                            else
+                                ambiguousOrUndefinedErrors entity constructor (map fst inScopePairs) ambiguous []
+
+getModuleList :: [(Name, ImportEnvironment, ModuleDecls)] -> [(Name, Names)]
+getModuleList = map getNames
+    where
+        getNames (m,env, _) = (m,
+            (M.keys . typeEnvironment  ) env ++
+            (M.keys . typeConstructors )  env ++
+            (M.keys . valueConstructors)  env
+            )
+
+setTotal :: Name -> Names -> String-> [(Name, (Name, String))]
+setTotal export inScope exportString = [(removeQualified decl, (export, exportString)) | decl <- inScope, decl == export]
+
+setTotalCons :: Name -> [(Name, Name)] -> String -> [(Name, (Name, String))]
+setTotalCons exportPar inScopePairs exportString = [(removeQualified child, (exportPar, exportString)) | (child, par) <- inScopePairs, par == exportPar ]
+
+setTotalClassMembers :: Name -> Maybe (Names, [(Name, TpScheme, Bool, HasDefault)]) -> String -> [(Name, (Name, String))]
+setTotalClassMembers _ Nothing _                             = []
+setTotalClassMembers exportPar (Just (_, mems)) exportString = map (\(x,_,_,_) -> (x, (exportPar, exportString))) mems
+
+getConflicts :: [(Name, a)] -> [[(Name, a)]]
+getConflicts = let comp (x,_) (y,_) = compare x y
+                   eq   (x,_) (y,_) = x == y
+                   predicate xs = length xs > 1
+               in filter predicate
+                . groupBy eq 
+                . sortBy comp
 }
 
+
+ATTR MaybeNames [ | | toList USE { ++ } { [] } : Names ]
+
+SEM MaybeNames
+    | Nothing lhs.toList = []
+    | Just    lhs.toList = @names.self
+
+-- If classes are added, this should be updated aswell
 SEM Export
-    | Variable    lhs . exportErrors =  checkExport ExportVariable @name.self
-                                           @lhs.namesInScop
-    | Module      lhs . exportErrors =  checkExport ExportModule @name.self
-                                           @lhs.modulesInScope    
+    | Variable    lhs . exportErrors    =  checkExport ExportVariable @name.self @lhs.namesInScope @lhs.ambiguousNames
+                  lhs . totalExports    = setTotal @name.self @lhs.namesInScope (show @name.self)
+    | TypeOrClassComplete
+                  lhs . exportErrors    = checkExport ExportTypeConstructorOrClass @name.self @lhs.consAndClasses @lhs.ambiguousTyCons
+                  lhs . totalExports    = setTotal @name.self @lhs.consAndClasses @showExp ++ @allCons ++ @allClassMembers
+                  loc . showExp         = (show @name.self) ++ "(..)"
+                  loc . allCons         = setTotalCons @name.self @lhs.allConsInScope @showExp
+                  loc . allClassMembers = setTotalClassMembers @name.self @classMems @showExp
+                  loc . qualName        = M.findWithDefault @name.self @name.self @lhs.classNamesEnv
+                  loc . classMems       = M.lookup @qualName @lhs.classMemberEnv
+    | TypeOrClass lhs . exportErrors    =  checkExport ExportTypeConstructorOrClass @name.self
+                                              @lhs.consAndClasses @lhs.ambiguousTyCons
+                                               ++
+                                               concatMap
+                                                   (\name ->
+                                                       checkConstructorExport ExportConstructor (name, @name.self) 
+                                                           @lhs.consInScope @lhs.duplicatedCons @lhs.ambiguousCons
+                                                   )
+                                                   @names.toList
+                  lhs . totalExports    = setTotal @name.self @lhs.consAndClasses @showExp ++ concatMap (\n -> setTotal n (map fst @lhs.consInScope) @showExp) @names.toList
+                  loc . showExp         = (show @name.self) ++ "(" ++ intercalate "," (map show @names.toList) ++ ")"
+    | Module      lhs . exportErrors    = checkExport ExportModule @name.self
+                                              @lhs.modulesInScope []
+                  lhs . totalExports    = [(removeQualified decl, (@name.self, @showExp)) | (m, decls) <- @lhs.exportModuleScope, m == @name.self, decl <- decls]
+                  loc . showExp         = "module " ++ show @name.self
 -------------------------------------------
 -- Collecting the imported modules
 
@@ -79,3 +155,48 @@ SEM Body
     
 SEM ImportDeclaration
   | Import   lhs . importedModules = @name.self : @lhs.importedModules
+
+
+-------------------------------------------
+-- Collecting import specification errors
+
+ATTR Body ImportDeclarations ImportDeclaration MaybeImportSpecification
+     ImportSpecification Imports Import
+     [ modDecls : { [(Name, ModuleDecls)] } | | importErrors USE { ++ } { [] } : { [Error] } ]
+
+ATTR MaybeImportSpecification ImportSpecification Imports Import [theModule : Name | | ]
+
+SEM ImportDeclaration 
+    | Import importspecification.theModule = @name.self
+
+SEM ImportSpecification
+    | Import lhs.importErrors = @imports.importErrors
+
+SEM Import
+    | Variable                lhs.importErrors = checkImportListVal @lhs.modDecls @lhs.theModule @name.self
+    | TypeOrClass             lhs.importErrors = checkImportListTyCon @lhs.modDecls @lhs.theModule @name.self
+                                                  ++ concatMap (checkImportListValCon @lhs.modDecls @lhs.theModule @name.self) @names.toList
+    | TypeOrClassComplete     lhs.importErrors = checkImportListTyCon @lhs.modDecls @lhs.theModule @name.self
+
+{
+checkImportListVal :: [(Name, ModuleDecls)] -> Name -> Name -> [Error]
+checkImportListVal modDecls m name = case lookup m modDecls of
+    Nothing -> internalError "StaticChecks.ag" "checkImportListVal" ("couldn't find module " ++ show m ++ " in our lookup list")
+    Just (values, _, _) -> if name `elem` values then []
+                            else [ NotExportedByModule name m values ]
+
+checkImportListTyCon :: [(Name, ModuleDecls)] -> Name -> Name -> [Error]
+checkImportListTyCon modDecls m name = case lookup m modDecls of
+    Nothing -> internalError "StaticChecks.ag" "checkImportListVal" ("couldn't find module " ++ show m ++ " in our lookup list")
+    Just (_, tycons, _) -> if name `elem` tycons then []
+                            else [ NotExportedByModule name m tycons ]
+
+
+checkImportListValCon :: [(Name, ModuleDecls)] -> Name -> Name -> Name -> [Error]
+checkImportListValCon modDecls m parent name = case lookup m modDecls of
+    Nothing -> internalError "StaticChecks.ag" "checkImportListVal" ("couldn't find module " ++ show m ++ " in our lookup list")
+    Just (_, _, valcons) -> if (name, parent) `elem` valcons then []
+                            else case lookup name valcons of
+                                    Nothing -> [ NotExportedByModule name m (map fst valcons) ]
+                                    Just realparent -> [ExportWrongParent ImportConstructor name parent realparent [child | (child, par) <- valcons, par == parent] ]            
+}

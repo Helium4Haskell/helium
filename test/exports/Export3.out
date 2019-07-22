@@ -1,0 +1,8 @@
+Prelude is up to date
+Compiling exports/ExportBasic.hs
+Compilation successful
+Compiling exports/Export3.hs
+(1,16): The occurence of exported variable "f" is ambiguous. It could refer to:
+      "f" imported from module ExportBasic (originally defined in "ExportBasic:(4,1)-(4,6)")
+      "f" defined at (6,1)
+Compilation failed with 1 error

@@ -1,0 +1,15 @@
+Prelude is up to date
+Compiling exports/ExportBasic2.hs
+Compilation successful
+Compiling exports/ExportBasic3.hs
+Compilation successful
+Compiling exports/ExportBasic6.hs
+Compilation successful
+Compiling exports/Export22.hs
+(9,15): The occurence of variable "+" is ambiguous. It could refer to:
+	"+" imported from module ExportBasic6 (originally defined in "ExportBasic6:(23,1)-(23,10)")
+	"+" imported from module Prelude (originally defined in "PreludePrim")
+(12,6): The occurence of constructor "True" is ambiguous. It could refer to:
+	"True" imported from module ExportBasic3 (originally defined in "ExportBasic3:(8,14)-(8,18)")
+	"True" imported from module Prelude (originally defined in "LvmLang")
+Compilation failed with 2 errors

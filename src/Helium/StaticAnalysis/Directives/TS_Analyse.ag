@@ -37,12 +37,14 @@ import Helium.StaticAnalysis.Miscellaneous.ConstraintInfo
 import Helium.StaticAnalysis.Directives.TS_Syntax
 import Helium.StaticAnalysis.Miscellaneous.TypeConversion
 import Data.List
-import Helium.Syntax.UHA_Utils (nameFromString)
+import Helium.Syntax.UHA_Utils (nameFromString, convertTp, convertTpScheme)
 import Helium.Syntax.UHA_Range (noRange)
 import Helium.StaticAnalysis.Messages.Messages
 import Helium.StaticAnalysis.Directives.TS_Messages
 import Helium.ModuleSystem.ImportEnvironment hiding (setTypeSynonyms, classEnvironment)
+import qualified  Helium.ModuleSystem.ImportEnvironment as IE
 import Helium.Utils.Utils (internalError)
+import Helium.Utils.QualifiedTypes
 import qualified Helium.Syntax.UHA_Pretty as PP
 }
 
@@ -56,12 +58,27 @@ SEM TypingStrategy
   | Siblings             -- no analysis for siblings (yet)
        lhs . errors       = []
            . warnings     = []
-           
+  | Never
+        lhs . errors    = []
+            . warnings  = []
+  | Close
+        lhs . errors    = []
+            . warnings  = []
+  | Disjoint
+        lhs . errors    = []
+            . warnings  = []
+  | Default
+        lhs . errors    = []
+            . warnings  = []
   | TypingStrategy  
-       loc . name         = show (PP.text_Syn_Expression $ PP.wrap_Expression (PP.sem_Expression @typerule.conclusionExpression) PP.Inh_Expression)
+       typerule   . qualifier = @qualifier
+       statements . qualifier = @qualifier
+       loc . qualifier    = convertTpToQualified @lhs.importEnvironment
+           . unqualifier  = convertTpScheme (unQualifyName @lhs.importEnvironment)
+           . name         = show (PP.text_Syn_Expression $ PP.wrap_Expression (PP.sem_Expression @typerule.conclusionExpression) PP.Inh_Expression)
            . nameMap      = zip @uniqueTypevariables (map TVar [0..])
            . errors       = @staticErrors ++ @soundnessErrors 
-           . staticErrors = [ InconsistentConstraint @name x | (x, _) <- @solveErrors ] ++
+           . staticErrors = [ InconsistentConstraint @name (unQualifyTypePair @lhs.importEnvironment x) | (x, _) <- @solveErrors ] ++
                             [ UndefinedTS @name name entity 
                             | (name, entity) <- @typerule.conclusionAllVariables 
                             , show name `notElem` (@allMetaVariables ++ map show @allImportedVariables)
@@ -94,9 +111,9 @@ SEM TypingStrategy
                                            } 
                 in fst (solve options (reverse @statements.userConstraints) greedyConstraintSolver)
                       
-           . classEnv = createClassEnvironment @lhs.importEnvironment
+           . classEnv = IE.classEnvironment @lhs.importEnvironment
            
-           . soundnessErrors = 
+           . soundnessErrors =
                 if not (null @staticErrors)
                   then []
                   else let orderedMetaList = -- consistent ordering of meta variables for soundness check!
@@ -116,7 +133,7 @@ SEM TypingStrategy
                                         &&
                                     genericInstanceOf synonyms @classEnv constraintsTpScheme inferredTpScheme 
                                       then []
-                                      else [ Soundness @name inferredTpScheme constraintsTpScheme ]
+                                      else [ Soundness @name (@loc.unqualifier inferredTpScheme) (@loc.unqualifier constraintsTpScheme) ]
                                       
 -- cheching the names
 ATTR Judgement Expression Expressions MaybeExpression [ | | allVariables USE { ++ } { [] } : {[(Name,Entity)]} ]
@@ -126,7 +143,11 @@ SEM Expression
   | Constructor   lhs . allVariables = [(@name.self, Constructor)]
 
 ATTR TypeRule  [ | | conclusionAllVariables : {[(Name,Entity)]} ]
-SEM TypeRule | TypeRule lhs . conclusionAllVariables = @conclusion.allVariables
+SEM TypeRule 
+  | TypeRule 
+    lhs . conclusionAllVariables = @conclusion.allVariables
+    conclusion . qualifier = @lhs.qualifier
+    premises   . qualifier = @lhs.qualifier
 
 SEM TypingStrategy 
   | TypingStrategy  
@@ -144,5 +165,11 @@ SEM TypingStrategies | Cons  loc . importEnvironment =
 findDuplicates :: Ord a => [a] -> [[a]]
 findDuplicates = filter (not . isSingleton) . group . sort
    where isSingleton [_] = True
-         isSingleton _   = False        
+         isSingleton _   = False    
+
+unQualifyTypePair :: ImportEnvironment -> ConstraintInfo -> ConstraintInfo
+unQualifyTypePair env cinfo = let f (TypePair (t1, t2)) = TypePair (unqualifier t1, unqualifier t2)
+                                  f x                   = x
+                                  unqualifier           = convertTp (unQualifyName env)
+                              in cinfo { properties = map f (properties cinfo)}    
 }

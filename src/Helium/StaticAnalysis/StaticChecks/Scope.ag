@@ -41,10 +41,25 @@ ATTR Expression RightHandSide
      Alternatives GuardedExpressions RecordPatternBinding
      Patterns Pattern LeftHandSide RecordPatternBindings AnnotatedType
      AnnotatedTypes Constructor Constructors FieldDeclaration FieldDeclarations Body
-     [ namesInScope : Names | counter : Int | unboundNames USE {++} {[]} : Names ]
+     [ namesInScope : Names | counter : Int | unboundNames USE {(++)} {[]} : Names ]
+
+ATTR Declaration Declarations Body
+    [ | | classMemberNames USE {(++)} {[]}: Names ]
+
+ATTR Expression RightHandSide
+     RecordExpressionBinding RecordExpressionBindings
+     MaybeExpression GuardedExpression FunctionBinding
+     Expressions Declaration Declarations Alternative FunctionBindings
+     Alternatives GuardedExpressions RecordPatternBinding
+     Patterns Pattern LeftHandSide RecordPatternBindings AnnotatedType
+     AnnotatedTypes Constructor Constructors FieldDeclaration FieldDeclarations Body
+     MaybeDeclarations Expression Statement Statements Qualifier Qualifiers
+     [ambiguousConflicts : {[[Name]]} | | ]
 
 SEM Module
-  | Module   loc . (namesInScope, unboundNames, scopeInfo) = changeOfScope (@initialScope ++ @body.declVarNames) @body.unboundNames []
+  | Module   loc . (namesInScope, unboundNames, scopeInfo) = changeOfScope (@scopeNoConflicts) @body.unboundNames []
+             loc . (scopeNoConflicts, ambiguousConflicts) = uniqueAppearance (mergeSameOriginName (@initialScope ++ @declNoConflicts))
+             loc . (declNoConflicts , declDouble) = (\(x,y) -> (concatMap (includeQualifiedName @moduleQual) x, y)) $ uniqueAppearance (@body.declVarNames ++ @body.classMemberNames)
              body . counter = 0
                  
 SEM MaybeDeclarations
@@ -60,7 +75,13 @@ SEM Statement
            
 SEM Qualifier
   | Let    loc . (namesInScope, unboundNames, scopeInfo) = changeOfScope @declarations.declVarNames (@declarations.unboundNames ++ @lhs.unboundNames) @lhs.namesInScope
-           
+
+SEM Declaration 
+  | Class   loc . (namesInScope, unboundNames, scopeInfo) = changeOfScope (@where.declVarNames) @where.unboundNames @lhs.namesInScope
+            lhs . classMemberNames   = @loc.classMemberNames
+            loc . classMemberNames   = getClassMemberNames @qualifiedClassName @lhs.classMemberEnv
+                . qualifiedClassName = M.findWithDefault @simpletype.name @simpletype.name @lhs.classNamesEnv
+
 -- monomorphic binding constructs
 
 SEM FunctionBinding
@@ -96,7 +117,7 @@ SEM RightHandSide
                  where              . unboundNames = @guardedexpressions.unboundNames
 
 SEM Declaration 
-  | Class    where . unboundNames = []  
+  | Class    where . unboundNames = []
   | Instance where . unboundNames = []
   
 -- correct scope for Statements/Qualifiers
@@ -146,7 +167,7 @@ ATTR Pattern Patterns
 SEM Pattern 
   | Variable   lhs . patVarNames = [ @name.self ]
   | As         lhs . patVarNames = @name.self : @pattern.patVarNames
-  | Hole       lhs . patVarNames = [ Name_Special noRange [] ("hole" ++ show @loc.i) ]
+  | Hole       lhs . patVarNames = [ Name_Special noRange [] [] ("hole" ++ show @loc.i) ]
                loc . i : UNIQUEREF counter
 
 SEM Expression 
@@ -185,7 +206,25 @@ uniqueAppearance :: Ord a => [a] -> ([a],[[a]])
 uniqueAppearance = Prelude.foldr myInsert ([],[]) . group . sort
    where myInsert [x] (as,bs) = (x:as,bs)
          myInsert xs  (as,bs) = (as,xs:bs)
+
+mergeSameOriginName :: [Name] -> [Name]
+mergeSameOriginName = map head
+                   . groupBy eq 
+                   . sortBy comp
+    where
+        comp x y = case compare x y of
+            EQ -> compare (getNameOrigin x) (getNameOrigin y)
+            cp -> cp
+        eq   x y = x == y && (getNameOrigin x) == (getNameOrigin y)
        
 nextUnique :: Num a => a -> (a, a)         
 nextUnique n = (n+1, n)
+
+includeQualifiedName :: [String] -> Name -> [Name]
+includeQualifiedName qual n = addQualified qual n : [n]
+
+getClassMemberNames :: Name -> M.Map Name (Names, [(Name, TpScheme, Bool, HasDefault)]) -> [Name]
+getClassMemberNames name env =  let err = internalError "Scope.ag" "getClassMemberNames" $ "Unknown class in environment: " ++ show name
+                                in maybe err (map (\(fn, _, _, _) -> fn) . snd) (M.lookup name env)
 }
+

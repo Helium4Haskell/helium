@@ -36,18 +36,29 @@ import Helium.StaticAnalysis.Miscellaneous.TypeConversion
 import Helium.Utils.Utils (internalError)
 import Data.List
 import Helium.Utils.OneLiner
+import Helium.Utils.QualifiedTypes
 import Helium.StaticAnalysis.Directives.TS_Attributes
 import Helium.StaticAnalysis.Miscellaneous.TypeConstraints
-
 }
 ATTR TypingStrategies TypingStrategy [ importEnvironment : ImportEnvironment | | ]
 
 SEM TypingStrategy [ | | core : Core_TypingStrategy ]
+  | Never
+      lhs . core = Never (getNameName @predName.self) (makeTpFromType [] @predType.self) @message
+  | Close
+      lhs . core = Close (getNameName @name) @message
+  | Disjoint
+      lhs . core = Disjoint (map getNameName @names) @message
+  | Default 
+      lhs . core = Default (getNameName @className) (map (makeTpFromType []) @constructors)
   | Siblings
       lhs . core = Siblings (map getNameName @names.self)
   | TypingStrategy
-      lhs . core = TypingStrategy @typeEnv @typerule.core @statements.core    
-      loc . nameMap = zip @uniqueTypevariables (map TVar [0..])
+      typerule   . qualifier = @qualifier
+      statements . qualifier = @qualifier
+      lhs . core      = TypingStrategy @typeEnv @typerule.core @statements.core    
+      loc . nameMap   = zip @uniqueTypevariables (map TVar [0..])
+          . qualifier = convertTpToQualified @lhs.importEnvironment
 
 SEM TypeRule [ | | core : Core_TypeRule ]
   | TypeRule 
@@ -63,7 +74,7 @@ SEM SimpleJudgements [ | | core : Core_Judgements ]
 
 SEM SimpleJudgement [ | | core : Core_Judgement ] 
   | SimpleJudgement 
-       lhs . core = Judgement (show @name.self) (makeTpFromType @lhs.nameMap @type.self)              
+       lhs . core = Judgement (show @name.self) (@lhs.qualifier $ makeTpFromType @lhs.nameMap @type.self)              
        
 SEM UserStatements [ | | core : Core_UserStatements ]
   | Cons  lhs . core = @hd.core : @tl.core
@@ -71,8 +82,8 @@ SEM UserStatements [ | | core : Core_UserStatements ]
 
 SEM UserStatement [ | | core : Core_UserStatement ]
   | Equal                     lhs . core = Equal 
-                                             (makeTpFromType @lhs.nameMap @leftType.self) 
-                                             (makeTpFromType @lhs.nameMap @rightType.self) 
+                                             (@lhs.qualifier $ makeTpFromType @lhs.nameMap @leftType.self) 
+                                             (@lhs.qualifier $ makeTpFromType @lhs.nameMap @rightType.self) 
                                              (changeAttributes (useNameMap @lhs.nameMap) @message)
   | Pred                      lhs . core = Pred
                                              (show @predClass.self)
@@ -105,9 +116,9 @@ SEM TypingStrategy
               monoType = unqualify (unquantify inferredType)
               synonyms = getOrderedTypeSynonyms @lhs.importEnvironment
               sub = case mguWithTypeSynonyms synonyms monoType (freezeVariablesInType @typerule.conclusionType) of
-                       Left _       -> internalError "TS_ToCore.ag" "n/a" "no unification possible" 
-                       Right (_, s) -> s
-          in [ (show name, unfreezeVariablesInType (sub |-> tp))
+                       Left _       -> id
+                       Right (_, s) -> (s |->)
+          in [ (show name, unfreezeVariablesInType (sub tp))
              | (name, tp) <- concat (M.elems freeVariables) 
              ]
              

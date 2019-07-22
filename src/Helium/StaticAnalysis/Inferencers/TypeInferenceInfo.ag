@@ -19,10 +19,18 @@ SEM Body | Body loc . cinfo =
 ---------------------------------------------------------------------------------------
 -- Constraint Information : Declaration
 
-SEM Declaration | FunctionBindings loc . cinfo =
-  resultConstraint "function bindings (INTERNAL ERROR)" @parentTree
-     [ FolkloreConstraint, highlyTrusted, FuntionBindingEdge @bindings.numberOfPatterns ]
+SEM Declaration 
+  | FunctionBindings loc . cinfo =
+  resultConstraint "function bindings (INTERNAL ERROR)" @parentTree $
+     [ FolkloreConstraint, highlyTrusted, FuntionBindingEdge @bindings.numberOfPatterns ] ++
+    if isJust @lhs.instanceName then 
+      let 
+        functionType = lookup @bindings.name @lhs.instanceTypes
+      in maybe [] (\ft -> [SkolemizedTypeScheme ([], ft), TypeSignatureLocation noRange]) functionType
+    else []
+      
 
+     
 SEM Declaration | PatternBinding loc . cinfo =
   orphanConstraint 1 "right hand side" @parentTree
      []
@@ -189,13 +197,18 @@ SEM Expression | Enum loc . cinfoPred =
 -- Expression.Negate
 SEM Expression | Negate loc . cinfo =
   specialConstraint "negation" @parentTree 
-     (self @localInfo, Just $ nameToUHA_Expr (Name_Operator @range.self [] "-")) 
+     (self @localInfo, Just $ nameToUHA_Expr (Name_Operator @range.self [] [] "-")) 
      []
 
 SEM Expression | NegateFloat loc . cinfo =
   specialConstraint "negation" @parentTree 
-     (self @localInfo, Just $ nameToUHA_Expr (Name_Operator @range.self [] "-."))
-     []        
+     (self @localInfo, Just $ nameToUHA_Expr (Name_Operator @range.self [] [] "-."))
+     []    
+
+SEM Expression | Variable loc . cinfo =
+  variableConstraint "variable" (nameToUHA_Expr @name.self)
+     [ FolkloreConstraint
+     ]
 
 ---------------------------------------------------------------------------------------
 -- Type Inferencing : GuardedExpression

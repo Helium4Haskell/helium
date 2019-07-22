@@ -46,7 +46,7 @@ siblings   map   , concatMap ;
 siblings   == , eqChar, eqMaybe, eqBool, eqList, eqTuple2, eqString ;
 siblings   ordString, ordChar, ordInt, ordList ;
 siblings   showBool , showChar , showFloat , showInt  ;
-siblings   showString , showList , showMaybe , showEither , showOrdering ,
+siblings   showString , showList , showMaybe , showEither ,
            howUnit , showTuple2 , showTuple3 , showTuple4 , showTuple5 ,
            showTuple6 , showTuple7 , showTuple8, showTuple9, showTuple10 ;
 
@@ -55,3 +55,6 @@ siblings   + , ++ ;
 
 -- Char, Int conversions
 siblings   ord , chr ;
+
+default Num (Int, Integer, Float)
+default Show (String, Bool, Int)

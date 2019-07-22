@@ -1,8 +1,9 @@
 Prelude is up to date
 Compiling typeerrors/Examples/StatExpr.hs
-(3,8): Type error in generator
- expression       : "koe"
+(3,5): Type error in overloaded do-expression
+ expression       : do "koe"
    type           : String
-   does not match : IO a  
+ problem          : [] is not an instance of class Monad
+ hint             : valid instances of Monad are IO and Maybe
 
 Compilation failed with 1 error

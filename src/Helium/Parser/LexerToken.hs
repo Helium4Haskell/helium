@@ -23,6 +23,7 @@ data Lexeme
     | LexVarSym          String
     | LexCon             String
     | LexConSym          String
+    | LexQual            String
 
     | LexKeyword         String
     | LexResVarSym       String
@@ -54,6 +55,7 @@ instance Show Lexeme where
         LexVarSym  o        -> Texts.parserOperator              ++ " '" ++ o      ++ "'"
         LexCon     c        -> Texts.parserConstructor           ++ " '" ++ c      ++ "'"
         LexConSym  o        -> Texts.parserConstructorOperator   ++ " '" ++ o      ++ "'"
+        LexQual    q        -> Texts.parserQualified             ++ " '" ++ q      ++ "'"
         
         LexKeyword kwd      -> Texts.parserKeyword ++ " '" ++ kwd ++ "'"
         LexResVarSym s      -> "'" ++ s ++ "'"
@@ -84,6 +86,7 @@ lexemeLength l = case l of
     LexVarSym          s     -> length s
     LexCon             s     -> length s
     LexConSym          s     -> length s
+    LexQual            s     -> length s + 1 -- count the dot that is not in the string
 
     LexHole                  -> 1
     LexNamedHole       s     -> 1 + length s

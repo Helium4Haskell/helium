@@ -13,7 +13,7 @@ module LvmIO( Input, Output, Channel, Descriptor
             , CreateMode(..), openInputFile, openOutputFile
             ) where
 
-import LvmLang( primIO, packedLength, packedFromString, bindIO, unsafePerformStrictIO, False, True )
+import LvmLang --( primIO, packedLength, packedFromString, bindIO, unsafePerformStrictIO, False, True )
 
 {----------------------------------------------------------
   Primitive I/O operations

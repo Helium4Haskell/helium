@@ -1,0 +1,7 @@
+Prelude is up to date
+Compiling typeClasses/ClassInstaneError10.hs
+(4,1): Missing predicate "X a" for instance definition of X Maybe a
+ Predicates       : Num a
+ hint             : Add the missing predicate to the instance definition
+
+Compilation failed with 1 error

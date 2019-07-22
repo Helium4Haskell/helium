@@ -5,10 +5,14 @@ infixr 5 `C`
 infix  3 `Mix`
 
 data A = A A A | AInt Int
+    deriving Show
 data B = B B B | BInt Int
+    deriving Show
 data C = C C C | CInt Int
+    deriving Show
 
 data Mix = Mix B C
+    deriving Show
 
 main :: (A, B, C, Mix)
 main = ( AInt 1 `A` AInt 2 `A` AInt 3    -- left by default

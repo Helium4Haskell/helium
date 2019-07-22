@@ -1,0 +1,19 @@
+Prelude is up to date
+Compiling exports/ExportBasic.hs
+Compilation successful
+Compiling exports/ExportBasic2.hs
+Compilation successful
+Compiling exports/Export14.hs
+(6,14): The occurence of type constructor "Hello" is ambiguous. It could refer to:
+	"Hello" imported from module ExportBasic2 (originally defined in "ExportBasic2:(24,1)-(24,18)")
+	"Hello" imported from module ExportBasic (originally defined in "ExportBasic:(27,1)-(27,18)")
+(7,13): The occurence of variable "f" is ambiguous. It could refer to:
+	"f" imported from module ExportBasic2 (originally defined in "ExportBasic2:(4,1)-(4,6)")
+	"f" imported from module ExportBasic (originally defined in "ExportBasic:(4,1)-(4,6)")
+(7,15): The occurence of variable "/**" is ambiguous. It could refer to:
+	"/**" imported from module ExportBasic2 (originally defined in "ExportBasic2:(7,1)-(11,14)")
+	"/**" imported from module ExportBasic (originally defined in "ExportBasic:(7,1)-(11,14)")
+(9,15): The occurence of constructor ":>" is ambiguous. It could refer to:
+	":>" imported from module ExportBasic2 (originally defined in "ExportBasic2:(15,16)-(15,30)")
+	":>" imported from module ExportBasic (originally defined in "ExportBasic:(15,16)-(15,30)")
+Compilation failed with 4 errors

@@ -23,7 +23,7 @@ import Helium.Parser.ParseLibrary hiding (satisfy)
 import Helium.Parser.Parser (exp0, type_, atype)
 import qualified Helium.Parser.ResolveOperators as ResolveOperators
 import Text.ParserCombinators.Parsec
-
+import Top.Types.Classes
 import Data.List (intersperse, intercalate)
 import Helium.Parser.OperatorTable
 import Helium.Utils.Utils (internalError)
@@ -41,6 +41,33 @@ parseTypingStrategies operatorTable filename toks =
          lexSEMI         
          return (TypingStrategy_Siblings names)
       <|>   
+      do    lexNEVER
+            predClass <- con
+            predType <- atype
+            lexCOL
+            message <- lexString
+            return (TypingStrategy_Never predClass predType message)
+      <|>
+      do    lexCLOSE
+            className <- con
+            lexCOL
+            message <- lexString
+            return (TypingStrategy_Close className message)
+      <|>
+      do    lexDISJOINT
+            class1 <- con
+            class2 <- con
+            lexCOL
+            message <- lexString
+            return (TypingStrategy_Disjoint [class1, class2] message)
+      <|>
+      do    lexDEFAULT
+            className <- con
+            lexLPAREN
+            types <- commas type_
+            lexRPAREN
+            return (TypingStrategy_Default className types)
+      <|>
       do typerule    <- parseTypeRule 
          constraints <- many parseConstraint
          lexSEMI  

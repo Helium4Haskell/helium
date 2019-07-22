@@ -1,0 +1,8 @@
+Prelude is up to date
+Compiling exports/ExportBasic2.hs
+Compilation successful
+Compiling exports/Export19.hs
+(1,17), (1,29): There is an export conflict for  "Empty":
+	"Listt4(..)" exports: "Empty" defined at (5,26)
+	"Listt2(..)" exports: "Empty" imported from module ExportBasic2 (orignally defined in "ExportBasic2:(17,36)-(17,41)")
+Compilation failed with 1 error

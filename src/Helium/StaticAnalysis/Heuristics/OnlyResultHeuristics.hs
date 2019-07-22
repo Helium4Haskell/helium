@@ -17,6 +17,7 @@ import Top.Implementation.TypeGraph.Heuristic
 import Top.Interface.TypeInference
 import Top.Types
 import Helium.StaticAnalysis.Miscellaneous.UHA_Source
+import Helium.Utils.QualifiedTypes.Constants
       
 -----------------------------------------------------------------------------
 
@@ -69,7 +70,7 @@ avoidNegationConstraints =
                case mtp of                   
                   Just tp -> 
                      let newtvar = TVar (nextFTV tp)
-                         testtp = (if isIntNegation then intType else floatType) .->. newtvar
+                         testtp = (if isIntNegation then intQualType else floatQualType) .->. newtvar
                      in return (not (unifiable synonyms tp testtp))
                   _ -> return True                          
 

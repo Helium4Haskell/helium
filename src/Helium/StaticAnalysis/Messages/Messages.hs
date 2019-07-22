@@ -101,7 +101,10 @@ data Entity = TypeSignature
             | ExportVariable
             | ExportModule
             | ExportConstructor
-            | ExportTypeConstructor
+            | ExportTypeConstructorOrClass
+            | ImportVariable
+            | ImportConstructor
+            | ImportTypeConstructorOrClass
             | Fixity
     deriving Eq
 
@@ -179,6 +182,11 @@ instance Show Entity where
          ExportModule    -> "exported module"
          ExportConstructor
                          -> "exported constructor"
-         ExportTypeConstructor
-                         -> "exported type constructor"
+         ExportTypeConstructorOrClass
+                         -> "exported type constructor, type synonym or class"
+         ImportVariable  -> "imported variable"
+         ImportConstructor 
+                         -> "imported constructor"
+         ImportTypeConstructorOrClass
+                         -> "imported type constructor, type synonym or class"
          Fixity          -> "infix declaration"

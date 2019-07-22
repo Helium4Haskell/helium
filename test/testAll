@@ -1,10 +1,10 @@
 #!/bin/sh
 
 clear
-echo SIMPLE TEST. NO OVERLOADING
-cd simple
-/bin/sh testAll; X0=$?
-cd ..
+#echo SIMPLE TEST. NO OVERLOADING
+#cd simple/
+#/bin/sh testAll; X0=$?
+#cd ..
 echo OVERLOADING TEST SET
 /bin/sh testP  ; X1=$?
 /bin/sh testSE ; X2=$?
@@ -15,8 +15,11 @@ echo OVERLOADING TEST SET
 /bin/sh testSW ; X7=$?
 /bin/sh testR  ; X8=$?
 /bin/sh testTC ; X9=$?
+/bin/sh testEx ; X10=$?
+/bin/sh testTI ; X11=$?
+/bin/sh testCQ ; X12=$?
 
-TOTAL=$[$X0 + $X1 + $X2 + $X3 + $X4 + $X5 + $X6 + $X7 + $X8 + $X9]
+TOTAL=$(($X0 + $X1 + $X2 + $X3 + $X4 + $X5 + $X6 + $X7 + $X8 + $X9 + $X10 + $X11 + $X12))
 echo "Test failures: $TOTAL"
 
 if [ "$TOTAL" = "0" ];

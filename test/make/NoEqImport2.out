@@ -7,7 +7,7 @@ Compiling make/NoEqImport2.hs
    type           : Eq a => a -> a -> Bool
    used as        :         A -> A -> Bool
  problem          : A is not an instance of class Eq
- hint             : valid instances of Eq are Bool, Char, Either a b, Float,
-                    Int, Maybe a, [a] and tuples
+ hint             : valid instances of Eq are Int, Float, Char, Bool, Maybe a,
+                    Either a b, [a] and tuples
 
 Compilation failed with 1 error

@@ -3,19 +3,19 @@ Compiling typeerrors/Edinburgh/Ex16.hs
 (3,16): Type error in infix application
  expression       : x + 1
  operator         : +
-   type           : a    -> a   -> a     
-   does not match : Bool -> Int -> b -> c
+   type           : Int  -> Int -> Int     
+   does not match : Bool -> Int -> a -> b
 
 (3,32): Type error in infix application
  expression       : x + 1
  operator         : +
-   type           : a    -> a   -> a
-   does not match : Bool -> Int -> b
+   type           : Int  -> Int -> Int
+   does not match : Bool -> Int -> a
 
 (3,41): Type error in infix application
  expression       : x - 2.2
  operator         : -
-   type           : a    -> a     -> a
-   does not match : Bool -> Float -> b
+   type           : Int  -> Int   -> Int
+   does not match : Bool -> Float -> a
 
 Compilation failed with 3 errors

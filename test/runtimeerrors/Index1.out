@@ -5,7 +5,7 @@ Compilation successful with 1 warning
 exception: Prelude.(!!): negative index.
 
 trace:
-  demanded from "LvmLang.<"
+  demanded from "LvmLang.<#"
   demanded from "HeliumLang.showInt"
   demanded from "HeliumLang.$primPutChars"
   demanded from "LvmLang.bindIO"

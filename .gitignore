@@ -8,3 +8,7 @@ dist
 lib/*.lvm
 lib/simple/*.lvm
 *.temp
+
+Develop/
+develop/
+.cabal-sandbox/

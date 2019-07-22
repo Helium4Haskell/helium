@@ -21,11 +21,13 @@ import Helium.Parser.LexerMessage
 import Helium.Parser.LexerToken
 import Helium.StaticAnalysis.Messages.StaticErrors
 import Text.ParserCombinators.Parsec.Pos
+import Text.ParserCombinators.Parsec.Prim(Parser)
+import Text.Parsec
 import Helium.Utils.Utils(internalError, hole)
 
 import Control.Monad(when, liftM)
 import Data.Char(ord)
-import Data.List(isPrefixOf)
+import Data.List(isPrefixOf, isSuffixOf)
 
 lexer :: [Option] -> String -> [Char] -> Either LexerError ([Token], [LexerWarning])
 lexer opts fileName input = runLexerMonad opts fileName (mainLexer input)
@@ -100,7 +102,7 @@ mainLexer' useTutor input@(c:cs)
         nextPos c 
         mainLexer cs        
     | myIsUpper c = -- constructor
-        lexName isLetter LexCon (internalError "Lexer" "mainLexer'" "constructor") [] input
+            lexQualOrCon input
     | c == ':' = -- constructor operator
         lexName isSymbol LexConSym LexResConSym reservedConSyms input
     | useTutor, c == '?' = -- named hole
@@ -133,6 +135,40 @@ lexName predicate normal reserved reserveds cs = do
         pos <- getPos
         lexerWarning CommentOperator pos
     returnToken lexeme (length name) mainLexer rest
+
+
+-- Parses any number of commas enclosed by parentheses
+tupleParser :: Parser String
+tupleParser = do
+    x <- char '('
+    y <- many (char ',')
+    z <- char ')'
+    return $ x : y ++ [z]
+
+-- Parses any number of letters, '$' signs or tuples using tupleParser
+qualOrConParser :: Parser String
+qualOrConParser = p
+    where p = fmap concat $ many (try tupleParser <|> many1 (satisfy isLetter <|> char '$'))
+
+parserParsedRest :: Parser String -> Parser (String, String)
+parserParsedRest p = do
+    x <- p
+    rest <- many anyChar
+    return (x, rest)
+
+lexQualOrCon :: Lexer
+lexQualOrCon input = let
+    firstLex = parse (parserParsedRest qualOrConParser) "" input
+    in do
+    let (name@(first:_), rest) = either (const ("",input)) id firstLex
+    when ((isSymbol first || first == ':') && name `contains` "--") $ do
+        pos <- getPos
+        lexerWarning CommentOperator pos
+    case rest of
+        '.':x:rest' -> if myIsSpace x 
+            then returnToken (LexCon name) (length name) mainLexer rest
+            else returnToken (LexQual name) (length name + 1) mainLexer (x:rest')
+        _ -> returnToken (LexCon name) (length name) mainLexer rest
 
 contains :: Eq a => [a] -> [a] -> Bool
 [] `contains` _ = False
@@ -364,7 +400,7 @@ symbols = "!#$%&*+./<=>?@^|-~:\\"
 keywords :: [String]
 keywords = 
     [ "let", "in", "do", "where", "case", "of", "if"
-    , "then", "else", "data", "type", "module", "import", "hiding"
+    , "then", "else", "data", "type", "module", "import"
     , "infix", "infixl", "infixr", "_", "deriving"
     , "class", "instance", "default"
     , "newtype" -- not supported
@@ -392,7 +428,7 @@ reserveStrategyNames =
       )
 
 strategiesKeywords :: [String]
-strategiesKeywords = [ "phase", "constraints", "siblings" ]
+strategiesKeywords = [ "phase", "constraints", "siblings", "never", "close", "disjoint" ]
 
  
 checkTokenStreamForClassOrInstance :: [Token] -> Errors          

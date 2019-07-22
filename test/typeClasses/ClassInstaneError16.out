@@ -1,0 +1,4 @@
+Prelude is up to date
+Compiling typeClasses/ClassInstaneError16.hs
+(4,10): Unknown class "Y"
+Compilation failed with 1 error

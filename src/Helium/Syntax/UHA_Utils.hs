@@ -17,9 +17,10 @@ import Helium.Syntax.UHA_Range  --altered for Holmes
 import Data.Maybe     --added for Holmes
 import Helium.Syntax.UHA_Syntax --added for Holmes
 import Lvm.Common.Id(Id, idFromString, stringFromId)
-import Data.Char
+--import Data.Char
+import Data.List(intercalate)
 
-import Top.Types(isTupleConstructor)
+import Top.Types
 import Helium.Utils.Utils(internalError)
 
 
@@ -52,15 +53,20 @@ instance Ord NameWithRange where
 --------------------------------------------------------------
 
 getNameName :: Name -> String -- !!!Name
-getNameName (Name_Identifier _ _ name) = name
-getNameName (Name_Operator   _ _ name) = name
-getNameName (Name_Special    _ _ name) = name
+getNameName (Name_Identifier _ qs _ name) = intercalate "." (qs ++ [name])
+getNameName (Name_Operator   _ qs _ name) = intercalate "." (qs ++ [name])
+getNameName (Name_Special    _ qs _ name) = intercalate "." (qs ++ [name])
+
+getOnlyName :: Name -> String -- !!!Name
+getOnlyName (Name_Identifier _ _ _ name) = name
+getOnlyName (Name_Operator   _ _ _ name) = name
+getOnlyName (Name_Special    _ _ _ name) = name
 
 -- added for Holmes
 getHolmesName :: String -> Name -> String -- !!!Name
-getHolmesName altname (Name_Identifier range _ name) = getFrom range altname ++ "." ++ name
-getHolmesName altname (Name_Operator   range _ name) = getFrom range altname ++ "." ++ name
-getHolmesName altname (Name_Special    range _ name) = getFrom range altname ++ "." ++ name
+getHolmesName altname (Name_Identifier range _ _ name) = getFrom range altname ++ "." ++ name
+getHolmesName altname (Name_Operator   range _ _ name) = getFrom range altname ++ "." ++ name
+getHolmesName altname (Name_Special    range _ _ name) = getFrom range altname ++ "." ++ name
 
 getFrom :: Range -> [Char] -> [Char]
 getFrom range altname = if result == "" then altname else result
@@ -74,20 +80,21 @@ getModuleName (Module_Module _ MaybeName_Nothing _ _) = ""
 getModuleName (Module_Module _ (MaybeName_Just name) _ _) = show name
 
 idFromName :: Name -> Id -- !!!Name
-idFromName (Name_Special _ _ s) = idFromString s
-idFromName (Name_Identifier _ _ s) = idFromString s
-idFromName (Name_Operator _ _ s) = idFromString s
+idFromName = idFromString . getNameName
 
 nameFromId :: Id -> Name
 nameFromId = nameFromString . stringFromId
 
 nameFromString :: String -> Name -- !!!Name
-nameFromString str@(first:_) 
-    | isAlpha first = Name_Identifier noRange [] str 
-    | str == "[]" || isTupleConstructor str || str == "->" 
-                    = Name_Special noRange [] str
-    | otherwise     = Name_Operator noRange [] str
-nameFromString _ = internalError "UHA_Utils" "nameFromString" "empty string"
+nameFromString = nameFromBareString . getQualifier
+    where
+        nameFromBareString :: ([String], String) -> Name
+        nameFromBareString (quals, s@(first:_))
+            | myIsAlpha first = Name_Identifier noRange quals [] s 
+            | s == "[]" || isTupleConstructor s || s == "->" 
+                            = Name_Special noRange quals [] s
+            | otherwise     = Name_Operator noRange quals [] s
+        nameFromBareString _ = internalError "UHA_Utils" "nameFromString" "empty string"
 
 isOperatorName :: Name -> Bool -- !!!Name
 isOperatorName (Name_Operator{}) = True
@@ -96,11 +103,11 @@ isOperatorName _ = False
 isConstructor :: Name -> Bool -- !!!Name
 isConstructor name = 
     case name of
-        Name_Operator   _ _ (':':_)   -> True
-        Name_Identifier _ _ (first:_) -> isUpper first
-        Name_Special    _ _ "()"      -> True
-        Name_Special    _ _ "[]"      -> True
-        _                             -> False
+        Name_Operator   _ _ _ (':':_)   -> True
+        Name_Identifier _ _ _ (first:_) -> myIsUpper first
+        Name_Special    _ _ _ "()"      -> True
+        Name_Special    _ _ _ "[]"      -> True
+        _                               -> False
         
 isIdentifierName :: Name -> Bool -- !!!Name
 isIdentifierName (Name_Identifier{}) = True
@@ -116,21 +123,21 @@ showNameAsVariable name
    | isOperatorName name = "("++show name++")"
    | otherwise           = show name
 
-stringFromImportDeclaration :: ImportDeclaration -> String
-stringFromImportDeclaration importDecl =
+nameFromImportDeclaration :: ImportDeclaration -> Name
+nameFromImportDeclaration importDecl =
     case importDecl of
-        ImportDeclaration_Import _ _ n _ _ -> getNameName n
+        ImportDeclaration_Import _ _ n _ _ -> n
         ImportDeclaration_Empty _ -> 
-            internalError "UHA_Utils" "stringFromImportDeclaration" "empty import declaration"
+            internalError "UHA_Utils" "nameFromImportDeclaration" "empty import declaration"
 
 -- TODO: daan
 intUnaryMinusName, floatUnaryMinusName, enumFromName, enumFromToName, enumFromThenName, enumFromThenToName :: Name
 intUnaryMinusName   = nameFromString "$negate"
 floatUnaryMinusName = nameFromString "$floatUnaryMinus"
-enumFromName        = nameFromString "$enumFrom"
-enumFromToName      = nameFromString "$enumFromTo"
-enumFromThenName    = nameFromString "$enumFromThen"
-enumFromThenToName  = nameFromString "$enumFromThenTo"
+enumFromName        = nameFromString "enumFrom"
+enumFromToName      = nameFromString "enumFromTo"
+enumFromThenName    = nameFromString "enumFromThen"
+enumFromThenToName  = nameFromString "enumFromThenTo"
 
 patternVars :: Pattern -> [Name]
 patternVars p = case p of
@@ -174,4 +181,105 @@ nameOfLeftHandSide lhs = case lhs of
     LeftHandSide_Function _ n _      -> [n]
     LeftHandSide_Infix _ _ n _       -> [n]
     LeftHandSide_Parenthesized _ l _ -> nameOfLeftHandSide l
-    
+
+setNameOrigin :: String -> Name -> Name -- !!!Name
+setNameOrigin orig (Name_Identifier range qual _ name) = Name_Identifier range qual orig name
+setNameOrigin orig (Name_Operator   range qual _ name) = Name_Operator   range qual orig name
+setNameOrigin orig (Name_Special    range qual _ name) = Name_Special    range qual orig name
+
+getNameOrigin :: Name -> String
+getNameOrigin (Name_Identifier _ _ orig _) = orig
+getNameOrigin (Name_Operator   _ _ orig _) = orig
+getNameOrigin (Name_Special    _ _ orig _) = orig
+
+getIdOrigin :: Name -> Id
+getIdOrigin = idFromString . getNameOrigin
+
+getQualifier :: String -> ([String], String)
+getQualifier = getQualifier' []
+    where
+        getQualifier' quals s@(fir:_) 
+            | myIsUpper fir = let (qual, rest) = span isLetter s in
+                                case rest of
+                                    '.':rest' -> getQualifier' (qual : quals) rest' 
+                                    _         -> (quals, s)
+            | otherwise = (quals, s)
+        getQualifier' _ _ = ([],"")
+
+unQualifyString :: String -> String
+unQualifyString = snd . getQualifier
+
+removeQualified :: Name -> Name
+removeQualified = addQualified []
+
+addQualified :: [String] -> Name -> Name
+addQualified _      (Name_Identifier range _ orig []) = Name_Identifier range [] orig []
+addQualified _      (Name_Operator range _ orig [])   = Name_Operator range [] orig []
+addQualified _      (Name_Special range _ orig [])    = Name_Special range [] orig []
+addQualified qual (Name_Identifier range _ orig name) = Name_Identifier range qual orig name
+addQualified qual (Name_Operator range _ orig name)   = Name_Operator range qual orig name
+addQualified qual (Name_Special range _ orig name)    = Name_Special range qual orig name
+
+getQualified :: Name -> [String]
+getQualified (Name_Identifier _ qual _ name) = qual ++ [name]
+getQualified (Name_Operator   _ qual _ name) = qual ++ [name]
+getQualified (Name_Special    _ qual _ name) = qual ++ [name]
+
+getQualifiedFromString :: String -> [String]
+getQualifiedFromString str = qual ++ [name]
+    where
+        (qual, name) = getQualifier str
+
+isQualified :: Name -> Bool 
+isQualified (Name_Identifier _ [] _ _) = False
+isQualified (Name_Operator _ [] _ _)   = False
+isQualified (Name_Special _ [] _ _)    = False
+isQualified _ = True
+
+isQualifiedString :: String -> Bool
+isQualifiedString [] = False
+isQualifiedString s@(fir:_)
+            | myIsUpper fir = let (_, rest) = span isLetter s in
+                            case rest of
+                                '.':_ -> True
+                                _         -> False
+            | otherwise = False
+
+convertString :: (Name -> Name) -> String -> String
+convertString f = getNameName . f . nameFromString 
+
+convertTpScheme :: (Name -> Name) -> TpScheme -> TpScheme
+convertTpScheme f (Quantification (xs, qm, (Qualification (pre, ty)))) = Quantification (xs, qm, (Qualification (map (convertPredicate f) pre,convertTp f ty)))
+
+convertTpInScheme :: (Tp -> Tp) -> TpScheme -> TpScheme
+convertTpInScheme f (Quantification (xs, qm, (Qualification (pre, ty)))) = (Quantification (xs, qm, (Qualification (pre, f ty))))
+
+convertTp :: (Name -> Name) -> Tp -> Tp
+convertTp _ t@(TVar _) = t
+convertTp f (TCon str) = TCon $ convertString f str
+convertTp f (TApp t1 t2) = TApp (convertTp f t1) (convertTp f t2)
+
+convertPredicate :: (Name -> Name) -> Predicate -> Predicate
+convertPredicate f (Predicate n tp) = Predicate (getNameName $ f $ nameFromString n) (convertTp f tp)
+-------------------------------------
+-- Got these from the lexer.
+isLetter :: Char -> Bool
+isLetter '\'' = True
+isLetter '_'  = True
+isLetter c    = myIsAlphaNum c
+
+-- write our own isLower.. so that we don't accept funny symbols
+myIsLower :: Char -> Bool
+myIsLower c = c >= 'a' && c <= 'z'
+
+myIsUpper :: Char -> Bool
+myIsUpper c = c >= 'A' && c <= 'Z'
+
+myIsDigit :: Char -> Bool
+myIsDigit c = c >= '0' && c <= '9'
+
+myIsAlpha :: Char -> Bool
+myIsAlpha c = myIsLower c || myIsUpper c
+
+myIsAlphaNum :: Char -> Bool
+myIsAlphaNum c = myIsLower c || myIsUpper c || myIsDigit c

@@ -1,0 +1,20 @@
+Prelude is up to date
+Compiling exports/Qual1.hs
+Compilation successful
+Compiling exports/Qual3.hs
+(20,13): The occurence of type constructor "Listt3" is ambiguous. It could refer to:
+      "Listt3" defined at (17,6)
+      "Listt3" imported from module Qual1 (originally defined in "Qual1:(22,1)-(22,49)")
+(21,13): The occurence of variable "f" is ambiguous. It could refer to:
+      "f" imported from module Qual1 (originally defined in "Qual1:(4,1)-(4,6)")
+      "f" defined at (6,1)
+(21,15): The occurence of variable "/**" is ambiguous. It could refer to:
+      "/**" imported from module Qual1 (originally defined in "Qual1:(7,1)-(11,14)")
+      "/**" defined at (9,3)
+(22,17): The occurence of constructor ":>><" is ambiguous. It could refer to:
+      ":>><" defined at (17,19)
+      ":>><" imported from module Qual1 (originally defined in "Qual1:(22,17)-(22,40)")
+(23,13): The occurence of constructor "Emptyy" is ambiguous. It could refer to:
+      "Emptyy" defined at (18,17)
+      "Emptyy" imported from module Qual1 (originally defined in "Qual1:(22,43)-(22,49)")
+Compilation failed with 5 errors

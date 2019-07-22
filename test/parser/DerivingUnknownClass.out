@@ -1,4 +1,4 @@
 Prelude is up to date
 Compiling parser/DerivingUnknownClass.hs
-(3,14): Unknown class "Koe" (Helium only supports Eq, Ord, Num, Show, Enum)
+(3,14): Unknown class "Koe"
 Compilation failed with 1 error
