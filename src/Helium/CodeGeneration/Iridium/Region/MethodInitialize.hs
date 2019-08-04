@@ -160,8 +160,8 @@ methodInitialize typeEnv effectEnv supply method@(Method methodType args methodR
     substituteAnnotation lambdas (AForall a) = AForall $ substituteAnnotation lambdas a
     substituteAnnotation lambdas (ATuple as) = ATuple $ substituteAnnotation lambdas <$> as
     substituteAnnotation lambdas (AProject a idx) = AProject (substituteAnnotation lambdas a) idx
-    substituteAnnotation lambdas (ALam argA argR a) = ALam argA argR $ substituteAnnotation (lambdas + 1) a
-    substituteAnnotation lambdas (AApp a argA argR) = AApp a' argA' argR
+    substituteAnnotation lambdas (ALam argA argR dir a) = ALam argA argR dir $ substituteAnnotation (lambdas + 1) a
+    substituteAnnotation lambdas (AApp a argA argR dir) = AApp a' argA' argR dir
       where
         a' = substituteAnnotation lambdas a
         argA' = fmap (substituteAnnotation lambdas) argA
@@ -211,7 +211,7 @@ lookupVariableAnnotation env _ (VarGlobal (GlobalVariable name _)) = annotation'
   where
     EffectGlobal arity tp annotation = eeLookupGlobal env name
     annotation' = fmap stripFirstArgument annotation
-    stripFirstArgument (ALam (ArgumentList []) (ArgumentList []) a) = a
+    stripFirstArgument (ALam (ArgumentList []) (ArgumentList []) _ a) = a
     stripFirstArgument ABottom = ABottom
     stripFirstArgument a = error $ "lookupVariableAnnotation: variable has additional region arguments: " ++ show a
     regionSort = typeRegionSort env (if arity == 0 then tp else tpStrict tp)
@@ -425,8 +425,8 @@ gather env state (Method _ args _ _ block blocks)
       = Outlives regionValue regionValue' : Outlives regionValue' regionValue : concat (zipWith (\r1 r2 -> [Outlives r1 r2, Outlives r2 r1]) (argumentFlatten regions) (argumentFlatten regions'))
       where
         ArgumentList [_, ArgumentValue regionValue', regions'] = lookupVariableRegion env state var
-    gatherInExpression (ArgumentList [_, ArgumentValue regionValue, regions]) (CastThunk var)
-      = Outlives regionValue regionValue' : Outlives regionValue' regionValue : concat (zipWith (\r1 r2 -> [Outlives r1 r2, Outlives r2 r1]) (argumentFlatten regions) (argumentFlatten regions'))
+    gatherInExpression (ArgumentList [ArgumentValue regionThunk, ArgumentValue regionValue, regions]) (CastThunk var)
+      = Outlives regionThunk regionValue' : Outlives regionValue' regionThunk : Outlives regionValue regionValue' : Outlives regionValue' regionValue : concat (zipWith (\r1 r2 -> [Outlives r1 r2, Outlives r2 r1]) (argumentFlatten regions) (argumentFlatten regions'))
       where
         ArgumentList [ArgumentValue regionValue', regions'] = lookupVariableRegion env state var
     gatherInExpression regions (Var var)
@@ -553,12 +553,10 @@ constraints typeEnv env state (Method _ _ _ _ block blocks)
         resultSort = typeAnnotationSortArgument env tp []
 
     call :: Id -> VariableInfo -> Either GlobalFunction Variable -> [Either Type Variable] -> CallKind -> [Constraint]
-    call lhs (VariableInfo tp (ArgumentValue resultAnnotation) resultRegion) target args callKind
-      | null $ argumentFlatten resultAnnotationSort = [CJoin resultAnnotationSort resultAnnotation []]
-      | otherwise = case callTarget of
-          Right (annotations, _, _)
-            | null args && callKind == CKInstantiate -> [CJoin resultAnnotationSort resultAnnotation [fmap AVar annotations]]
-          _ -> [CCall lhs resultAnnotationSort resultAnnotation resultRegion callTarget callTargetArity [] args' callKind]
+    call lhs (VariableInfo tp (ArgumentValue resultAnnotation) resultRegion) target args callKind = case callTarget of
+      Right (annotations, _, _)
+        | null args && callKind == CKInstantiate -> [CJoin resultAnnotationSort resultAnnotation [fmap AVar annotations]]
+      _ -> [CCall lhs resultAnnotationSort resultAnnotation resultRegion callTarget callTargetArity [] args' callKind]
       where
         resultAnnotationSort = typeAnnotationSortArgument env tp []
         (callTarget, callTargetArity) = case target of

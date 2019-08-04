@@ -14,7 +14,13 @@ pRegionVar :: Parser RegionVar
 pRegionVar = do
   pToken 'ρ'
   c <- lookahead
-  if c == '_' then regionGlobal <$ pSymbol "_global" else pIndexVariable
+  if c == '_' then do
+    pChar
+    c2 <- lookahead
+    if c == 'g' then
+      regionGlobal <$ pSymbol "global" else regionBottom <$ pSymbol "bottom"
+    else
+      pIndexVariable
 
 pAnnotation :: Parser Annotation
 pAnnotation = do
@@ -28,10 +34,11 @@ pAnnotation = do
       pWhitespace
       argR <- pArgument pSortArgumentRegion
       pToken ']'
+      dir <- pRegionDirection
       pWhitespace
       pSymbol "->"
       pWhitespace
-      ALam argA argR <$> pAnnotation
+      ALam argA argR dir <$> pAnnotation
     'f' -> do -- Fix
       pSymbol "fix"
       pWhitespace
@@ -62,14 +69,14 @@ pAnnotationApp = do
   return $ foldl apply a1 args
   where
     apply a (Left tp) = AInstantiate a tp
-    apply a (Right (argA, argR)) = AApp a argA argR
+    apply a (Right (argA, argR, dir)) = AApp a argA argR dir
 
-    pArg :: Parser (Maybe (Either Tp (Argument Annotation, Argument RegionVar)))
+    pArg :: Parser (Maybe (Either Tp (Argument Annotation, Argument RegionVar, RegionDirection)))
     pArg = do
       c <- lookahead
       case c of
         '{' -> (Just . Left) <$ pChar <* pWhitespace <*> pTp <* pToken '}' <* pWhitespace
-        '[' -> (\a r -> Just $ Right (a, r))
+        '[' -> (\a r dir -> Just $ Right (a, r, dir))
           <$ pChar
           <* pWhitespace
           <*> pArgument pAnnotation
@@ -77,6 +84,7 @@ pAnnotationApp = do
           <* pWhitespace
           <*> pArgument pRegionVar
           <* pToken ']'
+          <*> pRegionDirection
           <* pWhitespace
         _ -> return Nothing
 
@@ -140,6 +148,14 @@ pArgument pValue = do
   else do
     ArgumentValue <$> pValue
 
+pRegionDirection :: Parser RegionDirection
+pRegionDirection = do
+  c <- lookahead
+  if c == '↓' then
+    RegionDirectionOutlives <$ pChar
+  else
+    return RegionDirectionAny
+
 pSort :: Parser Sort
 pSort = do
   c <- lookahead
@@ -149,6 +165,7 @@ pSort = do
       SortFun
         <$ pChar <* pWhitespace <*> pArgument pSort
         <* pToken ';' <* pWhitespace <*> pArgument pSortArgumentRegion <* pToken ']'
+        <*> pRegionDirection
         <* pWhitespace <* pSymbol "->" <* pWhitespace <*> pSort
     'Ψ' -> do
       pChar

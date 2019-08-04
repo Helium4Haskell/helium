@@ -1,6 +1,6 @@
 module Helium.CodeGeneration.Iridium.Region.Relation
   ( RegionVar(..)
-  , regionGlobal
+  , regionGlobal, regionBottom
   , RelationConstraint(..)
   , Relation
   , outlives
@@ -46,10 +46,14 @@ instance IndexVariable RegionVar where
 
 instance Show RegionVar where
   show (RegionVar 0) = "ρ_global"
+  show (RegionVar 1) = "ρ_bottom"
   show r = 'ρ' : showIndexVariable r
 
 regionGlobal :: RegionVar
 regionGlobal = RegionVar 0
+
+regionBottom :: RegionVar
+regionBottom = RegionVar 1
 
 emptyRelation :: Relation
 emptyRelation = Relation IntMap.empty
@@ -333,7 +337,7 @@ relationDFS' stop relation@(Relation graph) (RegionVar node) visited
   | stop (RegionVar node) = visited'
   | otherwise = case IntMap.lookup node graph of
     Nothing -> visited'
-    Just neighbours -> IntSet.foldr (relationDFS' stop relation . RegionVar) visited neighbours
+    Just neighbours -> IntSet.foldr (relationDFS' stop relation . RegionVar) visited' neighbours
   where
     visited' = IntSet.insert node visited
 
@@ -392,22 +396,23 @@ relationFindCycleUnifications relation@(Relation graph) = IntMap.foldrWithKey un
 
 relationFindCollapseUnifications :: (RegionVar -> Bool) -> Relation -> IntMap Int
 relationFindCollapseUnifications canCollapse relation =
-  snd $ IntMap.foldrWithKey visitVertex (IntSet.empty, IntMap.empty) graph
-  -- The graph should be acyclic.
+  fmap snd $ snd $ IntMap.foldrWithKey visitVertex (IntSet.empty, IntMap.empty) graph
   where
     graph = relationReverse relation
 
-    visitVertex' :: Int -> (IntSet, IntMap Int) -> (IntSet, IntMap Int)
+    -- Bool denotes whether the unification comes from the left or right side, left = True, right = False
+    -- For consistency, we namely need to specify an order, we prefer left unifications over right ones.
+    visitVertex' :: Int -> (IntSet, IntMap (Bool, Int)) -> (IntSet, IntMap (Bool, Int))
     visitVertex' u (visited, m) = visitVertex u (fromMaybe IntSet.empty $ IntMap.lookup u graph) (visited, m)
 
-    visitVertex :: Int -> IntSet -> (IntSet, IntMap Int) -> (IntSet, IntMap Int)
+    visitVertex :: Int -> IntSet -> (IntSet, IntMap (Bool, Int)) -> (IntSet, IntMap (Bool, Int))
     visitVertex u neighbours (visited, m)
       | u `IntSet.member` visited = (visited, m)
       | not $ canCollapse $ RegionVar u = (IntSet.insert u visited', m')
-      -- Find predecessor v for which holds pred(u) = (pred(v) union {v})
+      -- Find predecessor v for which holds pred(u) == (pred(v) union {v})
       | otherwise = case find isDirect $ IntSet.toList neighbours of
         Nothing -> (IntSet.insert u visited', m') -- No collapsing
-        Just v -> (IntSet.insert u visited', IntMap.insert u (fromMaybe v $ IntMap.lookup v m') m')
+        Just v -> (IntSet.insert u visited', IntMap.insert u (True, v) m')
       where
         -- Recurse
         (visited', m') = IntSet.foldr visitVertex' (visited, m) neighbours
@@ -424,10 +429,20 @@ relationRestrictWithUnification m (Relation graph) = Relation graph'
 -- The regions which are present (as key) in the map can thus be removed from the function
 -- by substituting them according to the map.
 relationCollapse :: (RegionVar -> Bool) -> Relation -> IntMap Int
-relationCollapse canCollapse relation = IntMap.union cycleUnifications collapseUnifications
+relationCollapse canCollapse relation = iterate (relation1, cycleUnifications)
   where
     cycleUnifications = relationFindCycleUnifications relation
     relation1 = relationRestrictWithUnification cycleUnifications relation
 
-    collapseUnifications = relationFindCollapseUnifications canCollapse relation1
-    relation2 = relationRestrictWithUnification collapseUnifications
+    iterate :: (Relation, IntMap Int) -> IntMap Int
+    iterate (r, m)
+      | m == m' = m
+      | otherwise = iterate (r', m')
+      where
+        (r', m') = iteration (r, m)
+
+    iteration :: (Relation, IntMap Int) -> (Relation, IntMap Int)
+    iteration (r, m) = (r2, IntMap.union m collapseUnifications)
+      where
+        collapseUnifications = relationFindCollapseUnifications canCollapse r
+        r2 = relationRestrictWithUnification collapseUnifications r

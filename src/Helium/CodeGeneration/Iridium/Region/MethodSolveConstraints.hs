@@ -43,8 +43,11 @@ methodsSolveConstraints log env states = do
       MethodStateSolution arguments mapping state
       where
         EffectGlobal _ _ argumentVars = eeLookupGlobal env name
-        (mapping, arguments) = {- annotationArgumentRemoveUnusedRegionArguments -} (\a -> ([], a))
-          $ argumentVars >>= solve equations 0
+        (mapping, arguments) = annotationArgumentRemoveUnusedRegionArguments
+          $ argumentVars >>= f
+        f (AVar var)
+          | indexBoundLambda var == 0 = let Just (Equation _ _ _ True a) = IntMap.lookup (indexInArgument var) equations in a
+        f a = ArgumentValue a
 
   let solution = mapMapWithId solveMethod states
 
@@ -60,14 +63,14 @@ solveEquations :: EffectEnvironment -> Equations -> Equations
 solveEquations env initialEquations = IntMap.foldr f initialEquations initialEquations
   where
     f :: Equation -> Equations -> Equations
-    f (Equation var fixRegions sort _ annotation) equations
-      | not $ sortCompare sort $ annotationArgumentCheckSort env [] [] annotation' = error "Normalized annotation has sort error"
+    f (Equation var fixRegions sort False annotation) equations
+      | not $ sortCompare sort $ annotationArgumentCheckSort env [] (replicate 20 []) annotation' = error "Normalized annotation has sort error"
       | otherwise = IntMap.insert (indexInArgument var) (Equation var FixRegionsNone sort True annotation') equations
       where
         annotation'
-          | not $ sortCompare sort $ annotationArgumentCheckSort env [] [] (annotation >>= solve equations 0)
+          | not $ sortCompare sort $ annotationArgumentCheckSort env [] (replicate 20 []) (annotation >>= solve equations 0)
             = error $ "Illegal annotation generated:\n" -- ++ show sort ++ "\n" ++ show (annotationArgumentCheckSort env [] [] (annotation >>= solve equations 0))
-          | otherwise = snd <$> annotationArgumentNormalize env [] sort (annotation >>= solve equations 0)
+          | otherwise = snd <$> annotationArgumentNormalize env [] sort (solve equations 0 $ AVar var)
 
 methodsToEquations :: Maybe Handle -> EffectEnvironment -> IdMap MethodState -> IO Equations
 methodsToEquations log env methods = do
@@ -79,21 +82,34 @@ methodToInterproceduralEquations log env name state = do
   debugLog log $ "### Solve annotation equations for " ++ show name
   argumentSolved <- methodSolveConstraints log env state
   debugLog log $ "Solution:\n" ++ show argumentSolved
-  return
-    [Equation methodVar (FixRegionsEscape arity sortArgRegions) (SortFun argumentEmpty sortArgRegions <$> sort) False $ ALam argumentEmpty sortArgRegions <$> argumentSolved]
+  if msArity state == 0 then
+    return
+      [Equation methodVar (FixRegionsEscape arity sortArgRegions) (SortFun argumentEmpty sortArgRegions RegionDirectionAny <$> sort) False
+        $ (\a -> ALam argumentEmpty sortArgRegions RegionDirectionAny $ AApp (ALam argumentEmpty sortArgRegions RegionDirectionAny a) argumentEmpty (ArgumentList $ replicate regionCount $ ArgumentValue regionGlobal) RegionDirectionAny) <$> argumentSolved]
+  else
+    return
+      [Equation methodVar (FixRegionsEscape arity sortArgRegions) (SortFun argumentEmpty sortArgRegions RegionDirectionAny <$> sort) False $ ALam argumentEmpty sortArgRegions RegionDirectionAny <$> argumentSolved]
   where
+
+    {- removeAdditionalRegionsIfGlobal a
+      | msArity state == 0 = ALam argumentEmpty (ArgumentList $ replicate (msRegionCount state) $ ArgumentValue SortArgumentRegionMonomorphic)
+          $ AApp a argumentEmpty (ArgumentList $ replicate (msRegionCount state) $ ArgumentValue regionGlobal)
+      | otherwise = a -}
+
+
     sort = typeAnnotationSortArgument env tp []
-    sortArgRegions = ArgumentList $ replicate (msRegionCount state) $ ArgumentValue SortArgumentRegionMonomorphic
+    regionCount = msRegionCount state
+    sortArgRegions = ArgumentList $ replicate regionCount $ ArgumentValue SortArgumentRegionMonomorphic
     EffectGlobal arity tp (ArgumentValue (AVar methodVar)) = eeLookupGlobal env name
 
 methodSolveConstraints :: Maybe Handle -> EffectEnvironment -> MethodState -> IO (Argument Annotation)
 methodSolveConstraints log env state = do
   debugLog log $ "Equations:\n" ++ show equations
-  return $ methodAnnotations env bodyAnnotation returnAnnotations (msAdditionalArgumentScope state - 3) (msType state) (msReturnType state)
+  return $ methodAnnotations env bodyAnnotation returnAnnotations (msRegionCount state) (msArity state) (msType state) (msReturnType state)
   where
     (returnAnnotationList, constraints) = constraintGatherReturns $ msConstraints state
 
-    solve' = solve equations (msAdditionalArgumentScope state)
+    solve' a = {-annotationRemoveUnusedFixpoints <$>-} solve equations (msAdditionalArgumentScope state) a
 
     returnAnnotations :: Argument Sort -> Argument Annotation
     returnAnnotations sort = case returnAnnotationList of
@@ -109,18 +125,18 @@ methodSolveConstraints log env state = do
 equationsFromList :: [Equation] -> Equations
 equationsFromList = IntMap.fromList . map (\eq@(Equation var _ _ _ _) -> (indexInArgument var, eq))
 
-methodAnnotations :: EffectEnvironment -> Annotation -> (Argument Sort -> Argument Annotation) -> Int -> Tp -> Tp -> Argument Annotation
-methodAnnotations env annotationBody f functionLambdaCount functionType returnType
-  | functionLambdaCount == 0 = consumeForalls functionType $ const $ addInstantiations 0 returnType <$> annotationGlobal
+methodAnnotations :: EffectEnvironment -> Annotation -> (Argument Sort -> Argument Annotation) -> Int -> Int -> Tp -> Tp -> Argument Annotation
+methodAnnotations env annotationBody f additionalRegions functionLambdaCount functionType returnType
+  | functionLambdaCount == 0 = consumeForalls functionType $ const $ addInstantiations 0 returnType <$> annotationIncrementScope (-2) 0 <$> annotationGlobal
   | otherwise = consumeForalls functionType $ annotations functionLambdaCount
   where
     annotations :: Int -> Tp -> Argument Annotation
     annotations lambdas (TpApp (TpApp (TpCon TConFun) tArg) tRet) =
-      fmap (ALam sortArgAnnotations sortArgRegions)
+      fmap (ALam sortArgAnnotations sortArgRegions RegionDirectionAny)
         $ ArgumentList 
           [ ArgumentValue
-            $ ALam argumentEmpty (ArgumentValue SortArgumentRegionMonomorphic)
-            $ ALam argumentEmpty sortRegionOwn
+            $ ALam argumentEmpty (ArgumentValue SortArgumentRegionMonomorphic) RegionDirectionAny
+            $ ALam argumentEmpty sortRegionOwn RegionDirectionOutlives
             $ annotationOwn
           , annotationsRest
           ]
@@ -141,6 +157,8 @@ methodAnnotations env annotationBody f functionLambdaCount functionType returnTy
             ( ARelation
               $ Outlives (variableFromIndices 2 0) regionThunk
               : map (`Outlives` regionThunk) argRegions
+              -- For the first argument, add outlives constraints for the additional region arguments (with scope 4)
+              ++ (if functionLambdaCount == lambdas then map ((`Outlives` regionThunk) . variableFromIndices 4) [0 .. additionalRegions - 1] else [])
             , (ArgumentList [ArgumentValue SortArgumentRegionMonomorphic, argumentEmpty])
             , consumeForalls tRet $ annotations (lambdas - 1)
             )
@@ -177,7 +195,7 @@ data Equation = Equation !AnnotationVar !FixRegions !(Argument Sort) !Bool !(Arg
 
 instance Show Equation where
   show (Equation var fixRegions sort solved annotation) =
-    show var ++ ": " ++ show sort ++ fixRegionsString ++ "\n    = " ++ show annotation ++ solvedString
+    show var ++ fixRegionsString ++ ": " ++ show sort ++ "\n    = " ++ show annotation ++ solvedString
     where
       solvedString = if solved then " (solved)" else ""
       fixRegionsString = case fixRegions of
@@ -195,10 +213,6 @@ joinArguments args
     values = [value | ArgumentValue value <- args]
     lists = [list | ArgumentList list <- args]
     args' = fmap joinArguments $ transpose lists
-
-argumentToAnnotation :: Argument Annotation -> Annotation
-argumentToAnnotation (ArgumentValue a) = a
-argumentToAnnotation (ArgumentList as) = ATuple $ map argumentToAnnotation as
 
 constraintToEquations :: EffectEnvironment -> Constraint -> ([Annotation], [Equation])
 constraintToEquations _ (CJoin sort left []) =
@@ -232,14 +246,14 @@ constraintToEquations env c@(CCall lhs resultAnnotationSort resultAnnotationVar 
           (thunkRegions, additionalCallRegions) = splitAt valueArgumentCount additionalRegions
           regionsArgument = ArgumentList $ map ArgumentValue additionalCallRegions
         in
-          (thunkRegions, regionGlobal, regionGlobal, targetArity, fmap (\a -> AApp a (ArgumentList []) regionsArgument) annotations)
+          (thunkRegions, regionGlobal, regionGlobal, targetArity, fmap (\a -> AApp a (ArgumentList []) regionsArgument RegionDirectionAny) annotations)
 
 apply :: EffectEnvironment -> Argument Annotation -> [CallArgument] -> Int -> [RegionVar] -> [Argument RegionVar] -> ([Annotation], Argument Annotation)
 apply env annotations [] _ _ _ = ([], annotations)
 apply env annotations (CAType tp : args) targetArity parents resultRegions =
   apply env (fmap (`AInstantiate` tp) annotations) args targetArity parents resultRegions
 apply env annotations (arg : args) 0 (parent : parents) (resultRegion : resultRegions) =
-  ( AApp (AApp annotation argumentEmpty (ArgumentValue parent)) argumentEmpty resultRegion
+  ( AApp (AApp annotation argumentEmpty (ArgumentValue parent) RegionDirectionAny) argumentEmpty resultRegion RegionDirectionOutlives
     : restAnnotations
   , restArguments
   )
@@ -250,7 +264,7 @@ apply env annotations (arg : args) 0 (parent : parents) (resultRegion : resultRe
     (annotation, annotations') = case fmap app annotations of
       ArgumentList [ArgumentValue a, as] -> (a, as)
       ArgumentValue a -> (AProject a 0, ArgumentValue $ AProject a 1)
-    app a = AApp a argAnnotation $ regionArgumentWithThunk argRegion
+    app a = AApp a argAnnotation (regionArgumentWithThunk argRegion) RegionDirectionAny
     (restAnnotations, restArguments) = apply env annotations' args 0 parents resultRegions
 apply env annotations (arg : args) targetArity parents resultRegions = apply env annotations' args (targetArity - 1) parents resultRegions
   where
@@ -260,7 +274,7 @@ apply env annotations (arg : args) targetArity parents resultRegions = apply env
     annotations' = case fmap app annotations of
       ArgumentList [ArgumentValue _, as] -> as
       ArgumentValue a -> ArgumentValue $ AProject a 1
-    app a = AApp a argAnnotation $ regionArgumentWithThunk argRegion
+    app a = AApp a argAnnotation (regionArgumentWithThunk argRegion) RegionDirectionAny
 
 regionArgumentWithThunk :: Argument RegionVar -> Argument RegionVar
 regionArgumentWithThunk (ArgumentList [r1, r2, r3]) = ArgumentList [r1, r2, r3]
@@ -291,11 +305,11 @@ solve equations initialEquationScope = solve' [] 0 0
       ArgumentValue a' -> ArgumentValue $ AProject a' idx
       ArgumentList as -> as !! idx
     solve' scope lambdaCount forallCount (AForall a) = AForall <$> solve' scope lambdaCount (forallCount + 1) a
-    solve' scope lambdaCount forallCount (ALam argAnnotation argRegion a) =
-      ALam argAnnotation argRegion
+    solve' scope lambdaCount forallCount (ALam argAnnotation argRegion dir a) =
+      ALam argAnnotation argRegion dir
         <$> solve' (Nothing : scope) (lambdaCount + 1) forallCount a
-    solve' scope lambdaCount forallCount (AApp a argAnnotation argRegion)
-      = AApp <$> a' <*> return argAnnotation' <*> return argRegion
+    solve' scope lambdaCount forallCount (AApp a argAnnotation argRegion dir)
+      = AApp <$> a' <*> return argAnnotation' <*> return argRegion <*> return dir
       where
         a' = solve' scope lambdaCount forallCount a
         argAnnotation' = argAnnotation >>= solve' scope lambdaCount forallCount
@@ -320,7 +334,7 @@ solve equations initialEquationScope = solve' [] 0 0
         let
           Equation _ fixRegions sort solved annotation = equations IntMap.! var
           annotation' = annotationIncrementScope (lambdaCount + 1) forallCount <$> annotation >>= solve' (Just (var, () <$ sort) : scope) (lambdaCount + 1) forallCount
-          annotation'' = AFix fixRegions sort (ALam sort argumentEmpty <$> annotation')
+          annotation'' = AFix fixRegions sort (ALam sort argumentEmpty RegionDirectionAny <$> annotation')
         in
           if solved then annotationIncrementScope lambdaCount forallCount <$> annotation else ArgumentValue annotation''
 

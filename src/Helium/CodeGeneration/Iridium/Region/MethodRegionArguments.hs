@@ -53,7 +53,6 @@ methodAddRegionArguments env methods name state = assignAdditionalRegionVariable
       _ -> applyCallRegions methods name methodRegions call
     addOwnRegionArguments call = id
 
-
 data MethodRegions = MethodRegions { mrRegionCount :: !Int, mrCallRegions :: ![MethodCallRegions] }
 type MethodRegionsMap = IdMap MethodRegions
 
@@ -69,7 +68,7 @@ constraintRegions env (CCall lhs _ _ _ (Left target) _ _ _ _) = Just $ MethodCal
     EffectGlobal _ _ annotation = eeLookupGlobal env target
     arguments = case filter (/= ABottom) $ argumentFlatten annotation of
       [] -> Just 0
-      (ALam _ (ArgumentList args) _) : _ -> Just $ length args
+      (ALam _ (ArgumentList args) _ _) : _ -> Just $ length args
       _ -> Nothing
 constraintRegions _ _ = Nothing
 

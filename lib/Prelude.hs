@@ -112,14 +112,13 @@ lcm 0 _ = 0
 lcm x y = abs ((x `quot` gcd x y) * y)
 
 (^) :: Num a => a -> Int -> a
-(^) = undefined
-{- _ ^ 0           = fromInteger 1
+_ ^ 0           = fromInteger 1
 i ^ n  | n > 0  = f i (n-1) i
        | otherwise = error "Prelude.^: negative exponent"
           where f _ 0 y = y
                 f x m y = g x m
                           where g x' m' | even m'    = g (x' * x') (m' `quot` 2)
-                                        | otherwise  = f x' (m' - 1) (x' * y) -}
+                                        | otherwise  = f x' (m' - 1) (x' * y)
 
 instance Eq Int where
     (==) = (==#)
@@ -136,7 +135,7 @@ instance Num Int where
     (*) = (*#)
     negate = negInt
     fromInteger = id
-    abs n = if n < 0 then negate n else n
+    abs n = undefined -- if n < 0 then negate n else n
     signum n
         | n < 0     = -1
         | n == 0    = 0
@@ -263,22 +262,6 @@ curry f x y     = f (x,y)
 
 uncurry        :: (a -> b -> c) -> ((a,b) -> c)
 uncurry f p     = f (fst p) (snd p)
-
--- zipI works, while zip fails. So something breaks when instantiating the type arguments
-zipI :: [Int] -> [Int] -> [(Int,Int)]
-zipI = zipWithI  (\a b -> (a,b))
-
--- This may be a bit easier to debug as the consumer is not polymorphic:
-zipI' :: [Int] -> [Int] -> [(Int,Int)]
-zipI' = zipWith1  (\a b -> (a,b))
-
-zipWithI :: (Int -> Int -> (Int, Int)) -> [Int] -> [Int] -> [(Int, Int)]
-zipWithI z (a:as) (b:bs)   = z a b : zipWithI z as bs
-zipWithI _ _      _        = []
-
-zipWith1 :: (a -> a -> (a, a)) -> [a] -> [a] -> [(a, a)]
-zipWith1 z (a:as) (b:bs)   = z a b : zipWith1 z as bs
-zipWith1 _ _      _        = []
 
 zip :: [a] -> [b] -> [(a,b)]
 zip = zipWith (\a b -> (a,b))
@@ -435,7 +418,7 @@ scanr1 f (x:xs)   =
         _        -> error "Prelude.scanr" -}
 
 iterate :: (a -> a) -> a -> [a]
-iterate f x = undefined -- x : iterate f (f x)
+iterate f x = x : iterate f (f x)
 
 repeat :: a -> [a]
 repeat x = xs where xs = x:xs
@@ -484,12 +467,11 @@ dropWhile p l@(x:xs)
     | otherwise = l
 
 span :: (a -> Bool) -> [a] -> ([a],[a])
-span = undefined {-
 span _ []            = ([],[])
 span p xs@(x:xs')
      | p x       = (x:ys, zs)
      | otherwise = ([],xs)
-                       where (ys,zs) = span p xs' -}
+                       where (ys,zs) = span p xs'
 
 break :: (a -> Bool) -> [a] -> ([a],[a])
 break p = span (\a -> not (p a))
@@ -518,10 +500,8 @@ unwords [] = ""
 unwords [w] = w
 unwords (w:ws) = w ++ ' ' : unwords ws
 
-{-
 reverse :: [a] -> [a]
 reverse = foldl (flip (:)) []
--}
 
 and :: [Bool] -> Bool
 and = foldr (&&) True
@@ -530,10 +510,10 @@ or :: [Bool] -> Bool
 or = foldr (||) False
 
 any :: (a -> Bool) -> [a] -> Bool
-any p = undefined -- or . map p
+any p = or . map p
 
 all :: (a -> Bool) -> [a] -> Bool
-all p = undefined -- and . map p
+all p = and . map p
 
 concatMap :: (a -> [b]) -> [a] -> [b]
 concatMap f x = concat (map f x)
@@ -573,10 +553,10 @@ intercalate y (x:xs) = x ++ y ++ intercalate y xs -}
 {-----------------------------------------------
  -- Some standard functions
  -----------------------------------------------}
-{-
+
 fix :: (a -> a) -> a
 fix f = x where x = f x 
--}
+
 id :: a -> a
 id x = x
 
@@ -601,7 +581,7 @@ error :: String -> a
 -}
 
 until :: (a -> Bool) -> (a -> a) -> a -> a
-until p f x = undefined -- if p x then x else until p f (f x)
+until p f x = if p x then x else until p f (f x)
 
 undefined :: a
 undefined = error "undefined"
@@ -671,12 +651,11 @@ readInt ('-':s) = - readUnsigned s
 readInt s = readUnsigned s
 
 readUnsigned :: String -> Int
-readUnsigned = undefined {-
-    foldl (\a b -> a * 10 + b) 0
-    .
-    map (\c -> primOrd c - primOrd '0')
-    .
-    takeWhile localIsDigit -}
+readUnsigned = foldl (\a b -> a * 10 + b) 0
+        .
+        map (\c -> primOrd c - primOrd '0')
+        .
+        takeWhile localIsDigit
 
 -- Functor --
 
@@ -879,7 +858,7 @@ class Show a where
     show :: a -> String
     showList :: [a] -> ShowS
     showsPrec :: Int -> a -> ShowS
-    showList ls s  = undefined -- "[" ++ intercalate "," (map (flip shows s) ls) ++ "]"
+    showList ls s  = "[" ++ intercalate "," (map (flip shows s) ls) ++ "]"
     showsPrec _ x s = show x ++ s
     show x          = shows x ""
     {-showList []   s = "[]" ++ s
@@ -1073,12 +1052,4 @@ instance Enum Char where
     fromEnum        = primOrd
     enumFrom        = enumFromChar
     enumFromThen    = enumFromThenChar
--}
-
-{-
-pair x y = (x, y)
-tuple x y = pair [x] y 
-
-hoi f a b = f a b
-hallo a b = hoi pair a b
 -}

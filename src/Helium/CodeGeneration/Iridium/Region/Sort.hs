@@ -1,5 +1,5 @@
 module Helium.CodeGeneration.Iridium.Region.Sort
-  ( TypeVar(..), showSubscript
+  ( TypeVar(..), showSubscript, RegionDirection(..)
   , Sort(..), Argument(..), argumentEmpty, SortArgumentRegion(..), sortIncreaseScope
   , variableIncrementLambdaBound, argumentFlatten
   , IndexVariable(..), indexBoundLambda, indexInArgument, showIndexVariable, variableFromIndices
@@ -17,6 +17,18 @@ import Helium.CodeGeneration.Iridium.Region.Utils
 
 newtype TypeVar = TypeVar Int
   deriving (Eq, Ord)
+
+data RegionDirection
+  -- Argument may only be used on the right hand side of the >=,
+  -- eg it may only be used to increase the life times of other regions.
+  = RegionDirectionOutlives
+  -- Argument may be used on both sides of >=.
+  | RegionDirectionAny
+  deriving (Eq, Ord)
+
+instance Show RegionDirection where
+  show RegionDirectionOutlives = "↓"
+  show RegionDirectionAny = ""
 
 data Tp
   = TpVar !TypeVar
@@ -146,7 +158,7 @@ instance Show TypeVar where
 
 data Sort
   = SortForall !Sort
-  | SortFun !(Argument Sort) !(Argument SortArgumentRegion) !Sort
+  | SortFun !(Argument Sort) !(Argument SortArgumentRegion) !RegionDirection !Sort
   | SortRelation
   | SortPolymorphic !TypeVar ![Tp]
   deriving (Eq, Ord)
@@ -199,10 +211,11 @@ sortIncreaseScope 0 = const id
 sortIncreaseScope inc = increment
   where
     increment minScope (SortForall sort) = SortForall $ increment (minScope + 1) sort
-    increment minScope (SortFun argAnnotation argRegion a) =
+    increment minScope (SortFun argAnnotation argRegion dir a) =
       SortFun
         (increment minScope <$> argAnnotation)
         (regionIncreaseScope inc minScope <$> argRegion)
+        dir
         $ increment minScope a
     increment minScope SortRelation = SortRelation
     increment minScope (SortPolymorphic (TypeVar idx) tps) =
@@ -223,7 +236,7 @@ regionIncreaseScope inc minScope (SortArgumentRegionPolymorphic (TypeVar idx) tp
 
 instance Show Sort where
   show (SortForall sort) = "∀ " ++ show sort
-  show (SortFun sortArgs regionArgs s1) = "[" ++ show sortArgs ++ "; " ++ show regionArgs ++ "] -> " ++ show s1
+  show (SortFun sortArgs regionArgs dir s1) = "[" ++ show sortArgs ++ "; " ++ show regionArgs ++ "]" ++ show dir ++ " -> " ++ show s1
   show SortRelation = "R"
   show (SortPolymorphic tvar tps) = "Ψ⟨" ++ show tvar ++ (tps >>= (\tp -> " " ++ showTpAtom tp)) ++ "⟩"
 

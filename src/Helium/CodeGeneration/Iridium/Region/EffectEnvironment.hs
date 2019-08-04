@@ -55,7 +55,7 @@ globalHasAdditionalRegions :: EffectGlobal -> Bool
 globalHasAdditionalRegions (EffectGlobal _ _ annotations) = case filter (/= ABottom) $ argumentFlatten annotations of
   [] -> False
   -- All annotation of a global should have the same additional arguments, so we only need to check the first one
-  ALam _ (ArgumentList []) _ : _ -> False
+  ALam _ (ArgumentList []) _ _ : _ -> False
   _ -> True
 
 instance Show EffectEnvironment where
@@ -99,11 +99,11 @@ typeAnnotationSortArgument env (TpStrict tp) [] = typeAnnotationSortArgument env
 typeAnnotationSortArgument env (TpForall tp) [] = fmap SortForall $ typeAnnotationSortArgument env tp []
 typeAnnotationSortArgument env (TpVar tvar) tps = ArgumentValue $ SortPolymorphic tvar tps
 typeAnnotationSortArgument env (TpCon TConFun) [tArg, tReturn] =
-  fmap (SortFun annotationArg regionArg) $
+  fmap (SortFun annotationArg regionArg RegionDirectionAny) $
     ArgumentList
       [ ArgumentValue
-        $ SortFun argumentEmpty (ArgumentValue SortArgumentRegionMonomorphic)
-        $ SortFun argumentEmpty regionReturn SortRelation
+        $ SortFun argumentEmpty (ArgumentValue SortArgumentRegionMonomorphic) RegionDirectionAny
+        $ SortFun argumentEmpty regionReturn RegionDirectionOutlives SortRelation
       , annotationReturn
       ]
   where
@@ -161,7 +161,7 @@ instance Instantiatable SortArgumentRegion where
 
 instance Instantiatable Sort where
   instantiateType' env subst (SortForall s) = SortForall <$> instantiateType' env (typeInstantiationIncrement subst) s
-  instantiateType' env subst (SortFun argA argR s) = SortFun argA' argR' <$> instantiateType' env subst s
+  instantiateType' env subst (SortFun argA argR dir s) = SortFun argA' argR' dir <$> instantiateType' env subst s
     where
       argA' = instantiateArgumentType' env subst argA
       argR' = instantiateArgumentType' env subst argR
