@@ -305,12 +305,12 @@ SEM FunctionBinding [ | | core : { Core.Expr -> Core.Expr } ]
 {
 -- Get superclasses for contextitems. Result looks like [("Prelude.Eq", v0), ("Prelude.Num", v1)]
 getSuperClasses ::  ContextItems -> [(String, Name)]
-getSuperClasses = map (\(ContextItem_ContextItem _ n vs) -> (getNameName n, var vs))
+getSuperClasses = map (\(ContextItem_ContextItem _ n vs) -> (getNameName n, locVar vs))
     where
-        var [vs] = name $ namesInType vs
-        var _ = error "Type variable not a single type"
-        name [n] = n
-        name _ = error "Type variable not a single name"
+        locVar [vs] = name $ namesInType vs
+        locVar _    =  error "Type variable not a single type"
+        name [n]    = n
+        name _      = error "Type variable not a single name"
 
 predicateToId :: Predicate -> Id
 predicateToId (Predicate class_ tp) =
@@ -330,7 +330,7 @@ dictionaryTreeToCore theTree =
                  (dictionaryTreeToCore tree)
         ByCurrentClass className ->
             Core.Var (idFromString $ "$instanceDict" ++ className)
-        BySuperInstance p className typeVariables -> 
+        BySuperInstance _ className typeVariables -> 
             Core.Var (idFromString $ "$instanceDict" ++ className ++ "$" ++ typeVariables )
     
 

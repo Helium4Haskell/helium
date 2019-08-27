@@ -26,7 +26,7 @@ import Lvm.Common.Byte(bytesFromString)
 import qualified Lvm.Core.Expr as Core
 import qualified Data.Map as M
 import Helium.Utils.QualifiedTypes (convertClassNameToQualified)
-import Data.List(isPrefixOf, isInfixOf)
+import Data.List(isPrefixOf)
 import Helium.ModuleSystem.ImportEnvironment
 import Helium.Syntax.UHA_Utils
 import Helium.Utils.Utils

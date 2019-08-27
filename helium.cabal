@@ -108,7 +108,8 @@ Executable texthint
   default-language:  Haskell98
   hs-source-dirs:    src/commands/texthint
   Main-is:           TextHint/Main.hs
-  other-modules:     Paths_helium, TextHint.ConfigFile                
+  other-modules:     Paths_helium
+                     TextHint.ConfigFile                
 
 --------------------------------------------------------------------------------
 
@@ -119,7 +120,8 @@ Executable runhelium
   hs-source-dirs:    src/commands/runhelium, src/commands/texthint
   Main-is:           RunHelium/Main.hs
   other-modules:     Paths_helium
-
+                     TextHint.ConfigFile
+                     
 --------------------------------------------------------------------------------
 
 Executable heliumpath

@@ -1,4 +1,4 @@
-{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE MonoLocalBinds, FlexibleContexts #-}
 
 {-| Module      :  RepairHeuristics
     License     :  GPL

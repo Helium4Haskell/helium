@@ -26,7 +26,7 @@ import Top.Solver.Greedy
 import Top.Solver.TypeGraph
 import Top.Solver.PartitionCombinator
 import Top.Solver.SwitchCombinator
-import Top.Constraint.Information
+import Top.Constraint.Information()
 import Top.Implementation.TypeClassDirectives
 import Top.Interface.Substitution (makeSubstConsistent)
 

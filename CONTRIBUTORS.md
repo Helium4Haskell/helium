@@ -17,6 +17,10 @@ If you think you can add something to the Helium experience, by all means, [cont
 The following list contains the names of people who have also contributed to 
 Helium. 
 
+   * Lars van den Haak (Haskell 2010 compliant import and export facilities)
+   * Joris Burgers (type checking and code generation for type classes and class instances)
+   * Rik van Toor (branch integration, testing)
+   * Ivo Gabe de Wolff (LLVM back-end, typed core, not yet integrated in master) 
    * Arie Middelkoop (testing Helium, developing Hint)
    * Jeroen Fokker (updating his lecture notes, testing, using Helium in the class room)
    * Andres Lšh (AG+UHA, portability, UNIX wizardry)

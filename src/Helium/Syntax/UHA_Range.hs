@@ -173,6 +173,7 @@ getExprRange (Expression_Enum               r _ _ _) = r
 getExprRange (Expression_Negate             r _    ) = r
 getExprRange (Expression_NegateFloat        r _    ) = r
 getExprRange (Expression_Feedback           r _ _  ) = r
+getExprRange (Expression_Eta                r _ _  ) = r 
 getExprRange (Expression_MustUse            _ _    ) = error "not supported"
 
 getRHSRange :: RightHandSide -> Range

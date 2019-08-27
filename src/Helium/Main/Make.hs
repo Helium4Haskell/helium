@@ -3,10 +3,9 @@ module Helium.Main.Make where
 import Helium.Main.Compile(compile)
 import Helium.Parser.Parser(parseOnlyImports)
 import Control.Monad
-import System.FilePath(joinPath)
-import Data.List(nub, elemIndex, isSuffixOf, intercalate)
+import Data.List(elemIndex, isSuffixOf)
 import Data.Maybe(fromJust)
-import Lvm.Path(explodePath,getLvmPath)
+import Lvm.Path()
 import System.Directory(doesFileExist, getModificationTime,
                         getPermissions, Permissions(writable))
 import Helium.Main.Args

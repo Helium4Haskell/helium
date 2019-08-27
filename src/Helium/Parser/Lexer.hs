@@ -1,3 +1,4 @@
+{-# LANGUAGE PatternGuards #-}
 {-| Module      :  Lexer
     License     :  GPL
 
@@ -27,7 +28,7 @@ import Helium.Utils.Utils(internalError, hole)
 
 import Control.Monad(when, liftM)
 import Data.Char(ord)
-import Data.List(isPrefixOf, isSuffixOf)
+import Data.List(isPrefixOf)
 
 lexer :: [Option] -> String -> [Char] -> Either LexerError ([Token], [LexerWarning])
 lexer opts fileName input = runLexerMonad opts fileName (mainLexer input)
@@ -36,7 +37,7 @@ strategiesLexer :: [Option] -> String -> [Char] -> Either LexerError ([Token], [
 strategiesLexer opts fileName input = 
     case lexer opts fileName input of
         Left err -> Left err
-        Right (tokens, warnings) -> Right (reserveStrategyNames tokens, warnings)
+        Right (thetokens, warnings) -> Right (reserveStrategyNames thetokens, warnings)
         
 type Lexer = [Char] -> LexerMonad [Token]
 
@@ -106,7 +107,7 @@ mainLexer' useTutor input@(c:cs)
     | c == ':' = -- constructor operator
         lexName isSymbol LexConSym LexResConSym reservedConSyms input
     | useTutor, c == '?' = -- named hole
-        lexName (\c -> isLetter c || c == '?') LexNamedHole
+        lexName (\c1 -> isLetter c1 || c1 == '?') LexNamedHole
                 (internalError "Lexer" "mainLexer'" "constructor") [] input
     | isSymbol c = -- variable operator
         lexName isSymbol LexVarSym LexResVarSym (if useTutor then hole : reservedVarSyms else reservedVarSyms) input
@@ -292,9 +293,9 @@ returnToken :: Lexeme -> Int -> Lexer -> Lexer
 returnToken lexeme width continue input = do
     pos <- getPos
     incPos width
-    let token = (pos, lexeme) 
-    tokens <- continue input
-    return (token:tokens)
+    let theToken = (pos, lexeme) 
+    theTokens <- continue input
+    return (theToken:theTokens)
        
 -----------------------------------------------------------
 -- Comment
@@ -420,11 +421,11 @@ specialsWithoutBrackets =
 
 reserveStrategyNames :: [Token] -> [Token]
 reserveStrategyNames = 
-  map (\token@(pos, lexeme) -> case lexeme of 
+  map (\theToken@(pos, lexeme) -> case lexeme of 
                    LexVar s    | s `elem` strategiesKeywords -> (pos, LexKeyword s)
                    LexVarSym s | s == "=="                   -> (pos, LexResVarSym s)
                    LexConSym s | s == ":"                    -> (pos, LexResConSym s)
-                   _ -> token
+                   _ -> theToken
       )
 
 strategiesKeywords :: [String]
@@ -432,7 +433,7 @@ strategiesKeywords = [ "phase", "constraints", "siblings", "never", "close", "di
 
  
 checkTokenStreamForClassOrInstance :: [Token] -> Errors          
-checkTokenStreamForClassOrInstance tokens = concatMap f tokens  
+checkTokenStreamForClassOrInstance theTokens = concatMap f theTokens  
   where f (pos, LexKeyword "class")    = [ClassesAndInstancesNotAllowed (sourcePosToRange pos)] 
         f (pos, LexKeyword "instance") = [ClassesAndInstancesNotAllowed (sourcePosToRange pos)]
         f _ = []

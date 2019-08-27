@@ -17,10 +17,10 @@ import Helium.Utils.Utils (internalError)
 import Helium.Syntax.UHA_Syntax -- (Name)
 import Helium.Syntax.UHA_Utils
 import Helium.Syntax.UHA_Range
-import Helium.StaticAnalysis.Directives.TS_Syntax
-import Helium.StaticAnalysis.Miscellaneous.TypeConversion
+import Helium.StaticAnalysis.Directives.TS_Syntax()
+import Helium.StaticAnalysis.Miscellaneous.TypeConversion()
 import Helium.StaticAnalysis.Miscellaneous.ConstraintInfo
-import Helium.StaticAnalysis.Messages.Messages
+import Helium.StaticAnalysis.Messages.Messages()
 import Top.Types
 
 
@@ -140,12 +140,12 @@ setClassMemberEnvironment new importenv = importenv { classMemberEnvironment = n
 addClassMember :: Name -> (Names, [(Name, TpScheme, Bool, HasDefault)]) -> ImportEnvironment -> ImportEnvironment
 addClassMember name members env = 
     let 
-        envMember =  setClassMemberEnvironment (M.insert name members (classMemberEnvironment env)) env
-        classEnv = classEnvironment envMember
-        classEntry =    if M.member (getNameName name) (classEnvironment envMember) then
-                            M.insert (getNameName name) ([], []) (classEnvironment envMember)
-                        else
-                            classEnvironment envMember -- update existing member with superclasses
+        envMember  = setClassMemberEnvironment (M.insert name members (classMemberEnvironment env)) env
+        classEnv   = classEnvironment envMember
+        classEntry = if M.member (getNameName name) classEnv then
+                       M.insert (getNameName name) ([], []) classEnv
+                     else
+                       classEnv -- update existing member with superclasses
         envClass = setClassEnvironment classEntry envMember
     in envClass
     
@@ -227,14 +227,18 @@ getDefaultDirectives :: ImportEnvironment -> [((String, Tps), ConstraintInfo)]
 getDefaultDirectives importEnv = let
     tps = typingStrategies importEnv
     convertDefault :: Core_TypingStrategy -> [((String, Tps), ConstraintInfo)]
-    convertDefault (Default n tps) = let
+    convertDefault (Default n locTps) = let
             info = standardConstraintInfo
-        in [((n, tps), info)]
+        in [((n, locTps), info)]
     convertDefault _ = []
     in concatMap convertDefault tps
 
--- The Value Constuctors are unioned normally (takes left if same). Because it is allowed to create a value constructor, that is also imported. As long as it is not used.
--- But when you do this, it does need to check the type, when declared. Thus the normal union. We assume that the original module is always used as first argument.
+-- The Value Constuctors are unioned normally (takes left if same). 
+-- Because it is allowed to create a value constructor, that is also imported.
+-- As long as it is not used.
+-- But when you do this, it does need to check the type, when declared.
+-- Thus the normal union. We assume that the original module is always used
+-- as first argument.
 combineImportEnvironments :: ImportEnvironment -> ImportEnvironment -> ImportEnvironment
 combineImportEnvironments (ImportEnvironment tcs1 tss1 te1 vcs1 ot1 cn1 ce1 cm1 ins1 xs1) (ImportEnvironment tcs2 tss2 te2 vcs2 ot2 cn2 ce2 cm2 ins2 xs2) =
     insertMissingInstances $ ImportEnvironment
@@ -255,11 +259,11 @@ insertMissingInstances env = setClassEnvironment nClassEnv env
         classEnv = classEnvironment env
         nClassEnv = foldr addMissingInstance classEnv (M.toList $ instanceEnvironment env)
         addMissingInstance :: ((Name, Tp), (Names, [(String, String)])) -> ClassEnvironment -> ClassEnvironment
-        addMissingInstance ((className, instanceType), (typeVariables, superClasses)) env = let
+        addMissingInstance ((className, instanceType), (typeVariables, superClasses)) locEnv = let
                 update :: ([String], Instances) -> ([String], Instances)
-                update (supers, instances) = let
+                update (supers, locInstances) = let
                         predicate = Predicate (getNameName className) instanceType
-                        existingInstance = find (\(p, _) -> p == predicate) instances
+                        existingInstance = find (\(p, _) -> p == predicate) locInstances
                         getTypeVariables :: Tp -> [Tp]
                         getTypeVariables v@(TVar _) = [v]
                         getTypeVariables (TApp t1 t2) = getTypeVariables t1 ++ getTypeVariables t2
@@ -269,11 +273,11 @@ insertMissingInstances env = setClassEnvironment nClassEnv env
                         nInstance = (predicate, pSuperClasses)
                         nInstances = 
                             if isJust existingInstance then
-                                instances
+                                locInstances
                             else 
-                                nInstance : instances
+                                nInstance : locInstances
                     in (supers, nInstances)
-            in M.adjust update (getNameName className) env
+            in M.adjust update (getNameName className) locEnv
 
 -- IMPORTANT: the local environment should ALWAYS be the head of the list. Otherwise errors with same named value constructors WILL occur.
 combineImportEnvironmentList :: ImportEnvironments -> ImportEnvironment

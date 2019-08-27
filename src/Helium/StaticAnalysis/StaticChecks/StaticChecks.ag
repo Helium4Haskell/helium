@@ -9,6 +9,11 @@
 --
 -----------------------------------------------------------------------------
 
+optpragmas
+{
+  {-# OPTIONS_GHC -fno-warn-unused-matches #-}
+}
+
 ATTR Module
    [ baseName                  : String
      importEnvironmentsWithMod : {[(Name,ImportEnvironment, ModuleDecls)]}
@@ -47,7 +52,7 @@ import Helium.StaticAnalysis.Messages.Messages
 import Helium.Utils.Utils ( internalError, minInt, maxInt )
 import Helium.Utils.QualifiedTypes
 import Helium.StaticAnalysis.Miscellaneous.TypeConversion
-import Helium.CodeGeneration.DerivingShow
+import Helium.CodeGeneration.DerivingShow()
 
 import qualified Data.Map as M
 

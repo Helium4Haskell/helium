@@ -14,10 +14,10 @@ module Helium.StaticAnalysis.Messages.StaticErrors where
 import Helium.Syntax.UHA_Syntax
 import Helium.Syntax.UHA_Range
 import Helium.StaticAnalysis.Messages.Messages
-import Data.List        (nub, intersperse, sort, partition, intercalate)
+import Data.List (nub, intersperse, sort, partition, intercalate)
 import Data.Maybe
-import Helium.Utils.Utils       (commaList, internalError, maxInt)
-import Helium.Syntax.UHA_Utils (getNameOrigin, nameFromString, removeQualified, convertPredicate)
+import Helium.Utils.Utils (commaList, internalError, maxInt)
+import Helium.Syntax.UHA_Utils (getNameOrigin, removeQualified, convertPredicate)
 
 import Top.Types
 
@@ -399,7 +399,7 @@ showError anError = case anError of
 
    ExportConflict conflicts ->
       let 
-        showline (name', (exportEntry, exportString))
+        showline (name', (_, exportString))
           | (isImportRange.getNameRange) name' = show exportString ++ " exports: " ++ (show.show) name' ++ " imported from module " ++ 
                                      (snd . fromJust . modulesFromImportRange . getNameRange) name' ++ " (orignally defined in " ++ (show.getNameOrigin) name' ++ ")"
           | otherwise = show exportString ++ " exports: " ++ (show.show) name' ++ " defined at " ++ (show.getNameRange) name'
@@ -510,6 +510,8 @@ errorLogCode anError = case anError of
           ExportWrongParent entity _ _ _ _        -> "wp" ++ code entity
           ExportConflict _                        -> "cf"
           NotExportedByModule _ _ _               -> "ne"
+          CircularImport _                        -> "cc"
+          UnknownModule _ _ _                     -> "um"
    where code entity = fromMaybe "??"
                      . lookup entity 
                      $ [ (TypeSignature    ,"ts"), (TypeVariable                ,"tv"), (TypeConstructor,"tc")

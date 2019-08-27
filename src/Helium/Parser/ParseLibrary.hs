@@ -38,7 +38,7 @@ waitForEOF p
 tycls, tycon, tyvar, varid, conid, consym, varsym :: ParsecT [Token] SourcePos Identity Name      
 tycls   = name   lexCon  <?> Texts.parserTypeClass
 tycon   = (opSpecial (try $ do { lexLBRACKET; lexRBRACKET; return "[]" })
-        <|> opSpecial (try $ do { commas <- parens (many pComma); if null commas then fail "() not allowed" else return $ "(" ++ commas ++ ")"})
+        <|> opSpecial (try $ do { theCommas <- parens (many pComma); if null theCommas then fail "() not allowed" else return $ "(" ++ theCommas ++ ")"})
         <|> (name  lexCon)  <?> Texts.parserTypeConstructor)
 tyvar   = name   lexVar  <?> Texts.parserTypeVariable
 varid   = name   lexVar  <?> Texts.parserVariable
@@ -145,9 +145,9 @@ parseList0 = addRange . try $
 parseTup :: ParsecT [Token] SourcePos Identity Name
 parseTup = addRange . try $ 
   do lexLPAREN
-     commas <- many lexCOMMA
+     theCommas <- many lexCOMMA
      lexRPAREN
-     return (\r -> Name_Special r [] [] ("(" ++ replicate (length commas) ',' ++  ")") )-- !!!Name
+     return (\r -> Name_Special r [] [] ("(" ++ replicate (length theCommas) ',' ++  ")") )-- !!!Name
 
 parseFuncCon :: ParsecT [Token] SourcePos Identity Name
 parseFuncCon = addRange . try $
@@ -289,7 +289,7 @@ lexAS         = lexeme (LexVar "as")
 
 
 -- Typing strategies
-lexPHASE, lexCONSTRAINTS, lexSIBLINGS, lexCOL, lexASGASG :: HParser ()
+lexPHASE, lexCONSTRAINTS, lexSIBLINGS, lexNEVER, lexCLOSE, lexDISJOINT, lexDEFAULT, lexCOL, lexASGASG :: HParser ()
 lexPHASE       = lexeme (LexKeyword "phase")
 lexCONSTRAINTS = lexeme (LexKeyword "constraints")
 lexSIBLINGS    = lexeme (LexKeyword "siblings")

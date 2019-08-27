@@ -33,7 +33,6 @@ import Helium.StaticAnalysis.Miscellaneous.ConstraintInfo
 import Helium.Syntax.UHA_Utils (getNameName, nameFromString)
 import qualified Helium.Syntax.UHA_OneLine as UHA_OneLine
 import Helium.StaticAnalysis.Miscellaneous.TypeConversion
-import Helium.Utils.Utils (internalError)
 import Data.List
 import Helium.Utils.OneLiner
 import Helium.Utils.QualifiedTypes

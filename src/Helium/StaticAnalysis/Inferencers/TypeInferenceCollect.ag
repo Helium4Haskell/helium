@@ -239,7 +239,7 @@ SEM Declaration
         loc . typevariables     = zip (namesInType @type) [TVar n | n <- [0..]]
 {
 updateSuperclasses :: [(Name, Tp)] -> [(String, Name)] -> Instance -> Instance
-updateSuperclasses typevars supers (pred, preds) = (pred, preds ++ superPreds)
+updateSuperclasses typevars supers (prd, preds) = (prd, preds ++ superPreds)
     where
       superPreds = [Predicate s tp | (s, tpss) <- supers, let tp = fromJust $ lookup tpss typevars ]
 }

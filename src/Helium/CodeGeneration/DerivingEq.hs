@@ -20,7 +20,7 @@ import Helium.ModuleSystem.ImportEnvironment
 
 -- Eq Dictionary for a data type declaration
 dataDictionary :: ImportEnvironment -> UHA.Declaration -> [Custom] -> UHA.Name -> CoreDecl
-dataDictionary  env (UHA.Declaration_Data _ _ (UHA.SimpleType_SimpleType _ name names) constructors _) origin qualname =
+dataDictionary  env (UHA.Declaration_Data _ _ (UHA.SimpleType_SimpleType _ _ names) constructors _) _ qualname =
     DeclValue 
     { declName    = idFromString ("$dictPrelude.Eq$" ++ getNameName qualname)
     , declAccess  = public

@@ -11,7 +11,7 @@ module Helium.ModuleSystem.GatherImports(chaseImports, ModuleDecls, ImportList, 
 --import Helium.Main.CompileUtils
 import qualified Lvm.Core.Expr as Core
 import qualified Lvm.Core.Utils as Core
-import Lvm.Common.Id(Id, stringFromId, idFromString, dummyId)
+import Lvm.Common.Id(stringFromId, idFromString, dummyId)
 import Lvm.Common.IdSet(IdSet, elemSet)
 import Helium.Syntax.UHA_Syntax
 import Helium.Syntax.UHA_Utils
@@ -22,8 +22,6 @@ import Lvm.Import(lvmImportDecls)
 --import Helium.ModuleSystem.CoreToImportEnv(getImportEnvironment)
 import qualified Helium.ModuleSystem.ExtractImportDecls as EID
 import Data.List(isPrefixOf, intercalate)
-import Data.Foldable(foldr')
-
 
 type ImportList = ( Core.CoreDecl -- The import declaration
                     , Maybe Bool    -- Nothing if there is no import specification. Then True if hiding, false if not.
@@ -97,8 +95,8 @@ getRightImports importspec qualified asName (values, confieldormethods, typeorcl
         Just hiding ->  filter (isImported hiding)
                 -}
     case importspec of
-        Nothing     -> foldr (addQualified qualified asName) []
-        Just hiding -> foldr (addQualified qualified asName) [] . filter (isImported hiding)
+        Nothing     -> foldr (localAddQualified qualified asName) []
+        Just hiding -> foldr (localAddQualified qualified asName) [] . filter (isImported hiding)
 
     where
     intErr = internalError "PhaseImport" "getRightImports"
@@ -108,8 +106,8 @@ getRightImports importspec qualified asName (values, confieldormethods, typeorcl
     
     -- Very weird. Had to add stictness everywhere where the oldname is used ($! and seq)
     -- I really have no clue why, but if you remove it, helium will loop and crash.
-    addQualified :: Bool -> Name -> Core.CoreDecl -> [Core.CoreDecl] -> [Core.CoreDecl]
-    addQualified qual as decl decls = 
+    localAddQualified :: Bool -> Name -> Core.CoreDecl -> [Core.CoreDecl] -> [Core.CoreDecl]
+    localAddQualified qual as decl decls = 
         let oldname    = stringFromId $ (Core.declName decl)
             newnameid  = idFromString $! (toQualified as oldname)
             newdecl    = decl {Core.declName = newnameid }
@@ -168,12 +166,12 @@ getAllModuleDecl = foldr addToResult ([], [], [])
 
         addToResult :: Core.CoreDecl -> ModuleDecls -> ModuleDecls
         addToResult decl imports@(values, tycons, valcons) = 
-            let id  = Core.declName decl
-                name = nameFromId id
+            let id' = Core.declName decl
+                name = nameFromId id'
             in
             case decl of
                 -- functions, record vield names or class functions
-                Core.DeclAbstract { } -> if "show" `isPrefixOf` stringFromId id then imports
+                Core.DeclAbstract { } -> if "show" `isPrefixOf` stringFromId id' then imports
                                             else (name:values, tycons, valcons)
                 -- functions from non-core/non-lvm libraries and lvm-instructions
                 Core.DeclExtern { }   -> (name:values, tycons, valcons)
@@ -185,3 +183,4 @@ getAllModuleDecl = foldr addToResult ([], [], [])
                                 -> (values, name:tycons, valcons)
                 --We don't care about others
                 _ -> imports
+              

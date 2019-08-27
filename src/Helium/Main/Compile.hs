@@ -19,7 +19,6 @@ import Helium.Main.PhaseTypeInferencer
 import Helium.Main.PhaseDesugarer
 import Helium.Main.PhaseCodeGenerator
 import Helium.Main.CompileUtils
-import Helium.Main.Args (overloadingFromOptions)
 import Helium.Utils.Utils
 import Data.IORef
 import Helium.StaticAnalysis.Messages.StaticErrors(errorsLogCode)

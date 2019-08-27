@@ -196,11 +196,11 @@ SEM Declaration
         lhs      . collectErrors        = let 
                                             unqualifier = unQualifyName @lhs.importEnvironment
                                             checkPredicate :: Predicate -> [TypeError]
-                                            checkPredicate p@(Predicate n v) 
+                                            checkPredicate p@(Predicate _ v) 
                                                 | p `elem` map (superClassToPredicate @instanceBetas) @superClasses = []
                                                 | v `elem` map snd @instanceBetas = [makeMissingInstancePredicateError @range.self (unqualifier @qualName)
                                                                                     (show $ makeTpSchemeFromType (chead $ @types.self)) (convertPredicate unqualifier p) 
-                                                                                    (map (\(n,v) -> (convertString unqualifier n, v)) @superClasses) @instanceBetas]
+                                                                                    (map (\(n,v') -> (convertString unqualifier n, v')) @superClasses) @instanceBetas]
                                                 | otherwise = []
                                           in (concatMap checkPredicate @lhs.requiredPredicates) ++ @lhs.collectErrors
         where   . betaUnique            = @lhs.betaUnique + 2 + length(@typeVariabeles) + length (@memberBetas) * (length (@superClasses) + 1)
@@ -213,7 +213,7 @@ SEM Declaration
                                                     typeVars = fst @classMembers
                                                     className = @qualName
                                                     typeIndices = filter (\(_, s) -> s `elem` (map getNameName typeVars)) (getQuantorMap tps)
-                                                    typeVariablesMapped = map (\(n, s) -> (fromJust $ find (\tv -> getNameName tv == s) typeVars, TVar n)) typeIndices
+                                                    typeVariablesMapped = map (\(n', s) -> (fromJust $ find (\tv -> getNameName tv == s) typeVars, TVar n')) typeIndices
                                                     tpWContext = addContextToType className typeVariablesMapped tps
                                                 in tpWContext))).snd) $ M.lookup @qualName (classMemberEnvironment @lhs.importEnvironment)
         loc     . classMembers          = selectClass @lhs.importEnvironment @qualName
@@ -222,17 +222,17 @@ SEM Declaration
         loc     . superPredicates       = map (
                                                 (\s -> 
                                                     let 
-                                                        Predicate _ tvar = predicate
-                                                        predicate = superClassToPredicate @instanceBetas s
+                                                        Predicate _ tvar = prd
+                                                        prd = superClassToPredicate @instanceBetas s
                                                         tv = (getNameName . fst . fromJust $ find (\ib -> tvar == snd ib) @instanceBetas)
                                                     in superClassToPredicateWithSource 
-                                                        predicate
+                                                        prd
                                                         (getNameName @qualName)
                                                         tv
                                                 )
                                             ) @superClasses
         loc     . instanceConstraints   = [     
-                                                (   [TC2 $ Assume pred @cinfo | pred <- map (superClassToPredicate @instanceBetas) @superClasses] ++
+                                                (   [TC2 $ Assume prd @cinfo | prd <- map (superClassToPredicate @instanceBetas) @superClasses] ++
                                                     [(!::!) 
                                                         @loc.instBeta 
                                                         @instanceTpScheme
@@ -255,8 +255,9 @@ SEM Declaration
  
 {
 
+chead :: [a] -> a
 chead [x] = x
-chead x = error "Not a singleton"
+chead _   = error "Not a singleton"
 
 appendClasses :: [(Name, TpScheme)] -> M.Map NameWithRange TpScheme -> Maybe [(Name, TpScheme)]
 appendClasses typeMemberBindings allTypeSchemes = Just (map lookupScheme typeMemberBindings)
@@ -274,17 +275,19 @@ getSuperClasses = map (\(ContextItem_ContextItem _ n vs) -> (getNameName n, var 
 
 
 addPredicatesToTpScheme :: [(String, Name)] -> TpScheme -> TpScheme
-addPredicatesToTpScheme preds (Quantification (nrs, map, q)) =
-    Quantification (nrs, map, foldr addPredicate q preds)
+addPredicatesToTpScheme preds (Quantification (nrs, theMap, q)) =
+    Quantification (nrs, theMap, foldr addPredicate q preds)
     where
         addPredicate :: (String, Name) -> QType -> QType
         addPredicate (className, var) qtype = let
-            (preds, tp) = split qtype
-            pred = Predicate className (maybe (error "Undefined type variable") (TVar . fst) $ find (\n -> snd n == getNameName var) map)
-            in (pred : preds) .=>. tp
+            (prds, tp) = split qtype
+            prd = Predicate className (maybe (error "Undefined type variable") (TVar . fst) $ find (\n -> snd n == getNameName var) theMap)
+            in (prd : prds) .=>. tp
 
 constructDictionaryName :: Name -> String -> Name
-constructDictionaryName (Name_Identifier range modules origin name) s = Name_Identifier range modules origin ("($dict" ++ name ++ "$" ++ s ++ ")")    
+constructDictionaryName (Name_Identifier range modules origin name) s = 
+      Name_Identifier range modules origin ("($dict" ++ name ++ "$" ++ s ++ ")")    
+constructDictionaryName _ _ = error "<unforseen situation in constructDictionaryName>"
 
 classVariablesToBeta :: Int -> Names -> [(Name, Tp)]
 classVariablesToBeta _ [] = []
@@ -341,17 +344,16 @@ instanceEq (TVar _) (TVar _) = True
 instanceEq (TVar _) (TCon "???") = True
 instanceEq (TCon "???") (TVar _) = True
 instanceEq (TApp f1 a1) (TApp f2 a2) = instanceEq f1 f2 && instanceEq a1 a2
-instanceEq x y = False
+instanceEq _            _            = False
 
 
 getInstanceFunctions :: (Instance, Types, [(Name, TpScheme)]) -> [(Name, TpScheme)]
 getInstanceFunctions (_, _, funcs) = funcs
 
-
 convertTypeError :: (Name -> Name) -> TypeError -> TypeError
-convertTypeError f (TypeError ran lines table hints) = 
+convertTypeError f (TypeError ran theLines table hints) = 
    let newtab = map (\(b, block1, block2) -> (b, changeMessageBlock f block1, changeMessageBlock f block2)) table
-       newlines = map (changeMessageLine f) lines
+       newlines = map (changeMessageLine f) theLines
        newhints = map (\(str, block) -> (str, changeMessageBlock f block)) hints
    in TypeError ran newlines newtab newhints
 

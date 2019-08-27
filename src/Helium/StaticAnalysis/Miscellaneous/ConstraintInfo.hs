@@ -25,9 +25,6 @@ import Helium.StaticAnalysis.Messages.Messages
 import Helium.StaticAnalysis.Miscellaneous.DoublyLinkedTree
 import Helium.StaticAnalysis.Miscellaneous.TypeConstraints
 
-import Data.Typeable
-import Data.Data
-
 import Top.Constraint.Information
 import Top.Implementation.Overloading
 import Top.Interface.Basic (ErrorLabel)
@@ -38,9 +35,6 @@ import Data.Maybe
 import Data.Function
 import Data.List
 import Control.Applicative
-
-import Helium.Utils.OneLiner
-
 
 data ConstraintInfo =
    CInfo_ { location      :: String

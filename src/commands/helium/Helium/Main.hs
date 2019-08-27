@@ -7,14 +7,11 @@
 -}
 module Main where
 
-import Helium.Main.Compile(compile)
 import Control.Monad
 import System.FilePath(joinPath)
-import Data.List(nub, elemIndex, isSuffixOf, intercalate)
-import Data.Maybe(fromJust)
+import Data.List(nub)
 import Lvm.Path(explodePath,getLvmPath)
-import System.Directory(doesFileExist, getModificationTime,
-                        getPermissions, Permissions(writable))
+import System.Directory(doesFileExist)
 import Helium.Main.Args
 import Helium.Main.Make
 import Helium.Main.CompileUtils

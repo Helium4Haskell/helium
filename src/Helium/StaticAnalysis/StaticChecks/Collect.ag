@@ -328,22 +328,22 @@ insertDefaults :: Name -> Names -> ClassMemberEnvironment -> ClassMemberEnvironm
 insertDefaults name defs env = M.mapWithKey (\n membs -> if n == name then (update defs membs) else membs) env 
       where
           update :: Names -> (Names, [(Name, TpScheme, Bool, HasDefault)]) -> (Names, [(Name, TpScheme, Bool, HasDefault)])
-          update defs (tvars, funcs) = (tvars, map (\(fname, tpscheme, b, _)->(fname, tpscheme, b, fname `elem` defs)) funcs)
+          update locDefs (tvars, funcs) = (tvars, map (\(fname, tpscheme, b, _)->(fname, tpscheme, b, fname `elem` locDefs)) funcs)
 
 insertInstances :: [(String, Tp, [(String, Tp)])] -> ClassEnvironment -> ClassEnvironment
-insertInstances instances classEnv = foldr (\inst@(n, _, _) -> M.update (insert inst) n) classEnv instances
+insertInstances theInstances classEnv = foldr (\inst@(n, _, _) -> M.update (locInsert inst) n) classEnv theInstances
     where
-        insert :: (String, Tp, [(String, Tp)]) -> Class -> Maybe Class
-        insert (className, instType, preds) (cn, instances) = 
+        locInsert :: (String, Tp, [(String, Tp)]) -> Class -> Maybe Class
+        locInsert (className, instType, preds) (cn, locInstances) = 
             let 
                curInstance = (Predicate className instType, [Predicate n v | (n, v) <- preds]) 
-            in Just (cn, nub $ curInstance : instances)
+            in Just (cn, nub $ curInstance : locInstances)
 
 insertClassMembers :: M.Map Name (Names, [(Name, TpScheme, Bool, HasDefault)]) -> M.Map Name TpScheme -> M.Map Name TpScheme
-insertClassMembers classMemberEnv valueEnv = M.foldrWithKey insert valueEnv classMemberEnv
+insertClassMembers classMemberEnv valueEnv = M.foldrWithKey locInsert valueEnv classMemberEnv
     where 
-        insert :: Name -> (Names, [(Name, TpScheme, Bool, HasDefault)]) -> M.Map Name TpScheme -> M.Map Name TpScheme
-        insert className (typeVars, funcs) env = foldr (insertFunc className typeVars)  env funcs
+        locInsert :: Name -> (Names, [(Name, TpScheme, Bool, HasDefault)]) -> M.Map Name TpScheme -> M.Map Name TpScheme
+        locInsert className (typeVars, funcs) env = foldr (insertFunc className typeVars)  env funcs
         insertFunc :: Name -> Names -> (Name, TpScheme, Bool, HasDefault) -> M.Map Name TpScheme -> M.Map Name TpScheme
         insertFunc className typeVars (name, tp, _, _) env = 
             let 
@@ -452,7 +452,7 @@ SEM Declaration
                             (namesInType @qualifiedType, map (fmap (show . head)) @superClasses)
     | Data  lhs . instanceEnv = M.fromList 
                                     [
-                                        let className = dn
+                                        let -- className = dn
                                             dataName = @simpletype.name
                                             tvs = @simpletype.typevariables
                                             tVars = zip tvs (map TVar [0..])
@@ -497,15 +497,16 @@ getDeclarationName (Declaration_FunctionBindings _ fb) =
         let names = map getFunctionBindingName fb 
             valid = all (==(head names)) names
         in if valid then head names else error "Inconsistent names in function bindings"
-
-getDeclarationName _ = error $ "Unknown declaration in instance"
+getDeclarationName _ = error "Unknown declaration in instance"
 
 getFunctionBindingName :: FunctionBinding -> Name
 getFunctionBindingName (FunctionBinding_FunctionBinding _ lhs _)= getLhsName lhs
+getFunctionBindingName _ = error "No function binding in getFunctionBindingName"
 
 getLhsName :: LeftHandSide -> Name
 getLhsName (LeftHandSide_Function _ name _) = name
 getLhsName (LeftHandSide_Infix _ _ name _) = name
+getLhsName _ = error "Uncovered argument case in getLhsName"
 }
 
 ATTR Body Declaration Declarations [ | | instances USE {++} {[]} : {[(Range, Instance)]} ]

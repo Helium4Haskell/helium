@@ -43,17 +43,17 @@ classFunctions :: ImportEnvironment -> String -> [Custom] -> [(Name, Int, DictLa
 classFunctions importEnv className origin combinedNames = [DeclCon
                                                     { declName = idFromString ("Dict" ++ className)
                                                     , declAccess  = public
-                                                    , declArity   = length superclasses + length combinedNames
+                                                    , declArity   = length locSuperclasses + length combinedNames
                                                     , conTag      = 0
                                                     , declCustoms = [ custom "type" ("Dict$" ++ className) ]  
                                                     }]
-                                                    ++ map superDict superclasses ++ concatMap classFunction combinedNames
+                                                    ++ map superDict locSuperclasses ++ concatMap classFunction combinedNames
         where
-            custom' = CustomLink (idFromString "dict") (DeclKindCustom (idFromString "data"))
-            labels = map (\(_, _, l)->l) superclasses ++ map (\(_, _, l)->l) combinedNames
-            superclasses = constructSuperClassMap importEnv className
+            -- What was this doinhg here: custom' = CustomLink (idFromString "dict") (DeclKindCustom (idFromString "data"))
+            labels = map (\(_, _, l)->l) locSuperclasses ++ map (\(_, _, l)->l) combinedNames
+            locSuperclasses = constructSuperClassMap importEnv className
             superDict :: (String, Int, DictLabel) -> CoreDecl
-            superDict (superName, tag, label) =
+            superDict (superName, _, label) =
                 let dictParam = idFromString "dict"
                     val = DeclValue 
                         { declName    = idFromString $ "$get" ++ superName ++ "$" ++ className
@@ -71,7 +71,7 @@ classFunctions importEnv className origin combinedNames = [DeclCon
                         }
                 in val
             classFunction :: (Name, Int, DictLabel) -> [CoreDecl]
-            classFunction (name, tag, label) = 
+            classFunction (name, _, label) = 
                 let dictParam = idFromString "dict"
                     val = DeclValue 
                         { declName    = idFromString $ getNameName name
@@ -117,47 +117,49 @@ constructDictionary importEnv instanceSuperClass combinedNames whereDecls classN
             in val
         where 
             functions = combineDeclIndex combinedNames whereDecls
-            idP = idFromString "index"
+            -- idP = idFromString "index"
             superClasses = constructSuperClassMap importEnv $ getNameName className
             dict = foldr Lam (Let (Rec binds) (Var $ idFromString "dict")) instanceSuperClassLabels
             binds = map makeBindSuper superClasses ++ map makeBindFunc functions ++ [dictCon]
             labels = map (\(_, _, l)->l) superClasses ++ map (\(l, _, _)->l) functions
-            instanceSuperClassLabels = map (\(className, tvar) -> idFromString $ "$instanceDict" ++ className ++ "$" ++ getNameName tvar) instanceSuperClass
+            instanceSuperClassLabels = map (\(locClassName, tvar) -> idFromString $ "$instanceDict" ++ locClassName ++ "$" ++ getNameName tvar) instanceSuperClass
             makeBindSuper :: (String, Int, DictLabel) -> Bind
-            makeBindSuper (cName, tag, label) = let
+            makeBindSuper (cName, _, label) = let
                     parentMapping :: [(String, String)]
                     parentMapping = map (getNameName *** getNameName) $ getTVMapping importEnv (getNameName className) insName cName
                     resolveSuperInstance :: (String, String) -> Expr
-                    resolveSuperInstance (n, var)
+                    resolveSuperInstance (n, theVar)
                             -- check if the required class is already an existing parameter
-                            | (n, fst $ fromJust (find (\x -> snd x == var) parentMapping)) `elem` map (second getNameName) instanceSuperClass && n == cName= let 
-                                        Just tvar = find (\(_, cn) -> cn == var) parentMapping
+                            | (n, fst $ fromJust (find (\x -> snd x == theVar) parentMapping)) `elem` map (second getNameName) instanceSuperClass && n == cName= let 
+                                        Just tvar = find (\(_, cn) -> cn == theVar) parentMapping
                                     in
                                             Var (idFromString $ "$instanceDict" ++ cName ++ "$" ++ fst tvar)
                             | otherwise = let
                                     -- get all the available super classes
                                     repInstanceSuperClass = filter (\(_, v) -> getNameName v == rVar) instanceSuperClass
-                                    rVar = fst $ fromJust $find (\(_, cn) -> cn == var) parentMapping
+                                    rVar = fst $ fromJust $find (\(_, cn) -> cn == theVar) parentMapping
                                     shortestPath :: [[a]] -> [a]
                                     shortestPath [x] = x
-                                    shortestPath (x:xs) = let 
-                                        sp = shortestPath xs
+                                    shortestPath (x:xs) = 
+                                        let 
+                                          sp = shortestPath xs
                                         in if length sp < length x then sp else x
+                                    shortestPath _ = error "Path should not be empty in shortestPath in InstanceDictionary.hs"     
                                     -- construct the path from a sub class to it's super class, e.g. ["Num", "Ord", "Eq"]
                                     constructPath :: String -> String -> [[String]]
                                     constructPath from to 
                                         | from == to = [[to]] 
                                         | otherwise = let
-                                                superClasses = getClassSuperClasses importEnv from
+                                                locSuperClasses = getClassSuperClasses importEnv from
                                                 paths :: [[[String]]]
-                                                paths = map (`constructPath` to) superClasses
+                                                paths = map (`constructPath` to) locSuperClasses
                                                 sPaths :: [[String]]
                                                 sPaths = map (shortestPath. filter (\x -> last x == to)) paths
                                             in map (from:) sPaths
                                     sPath = shortestPath (constructPath n cName)
                                     combinePath :: String -> [String] -> [(String, String)]
-                                    combinePath first [] = []
-                                    combinePath first (x:xs) = (first, x) : combinePath x xs
+                                    combinePath _ [] = []
+                                    combinePath theFirst (x:xs) = (theFirst, x) : combinePath x xs
                                     combinedPath = shortestPath $ map (\source -> filter (uncurry (/=)) $ combinePath (fst source) sPath) repInstanceSuperClass
                                 in
                                     foldl 
@@ -188,6 +190,7 @@ getTVMapping env className insName superClassName = let
         isInsTp :: Tp -> Bool
         isInsTp (TApp f _) = isInsTp f
         isInsTp (TCon c) = c == insName
+        isInsTp _ = error "Uncovered case in isInsTp in getTVMapping in InstanceDictionary.hs"
         cTV = fst $ snd $ fromMaybe (error "Nothing") $ find (\((n, tp), _) -> getNameName n == className && isInsTp tp) $ M.toList $ instanceEnvironment env
         iTV = fst $ snd $ fromMaybe (error "Nothing") $ find (\((n, tp), _) -> getNameName n == superClassName && isInsTp tp) $ M.toList $ instanceEnvironment env
     in zip cTV iTV
@@ -203,6 +206,7 @@ getInstanceSuperClasses env className insName = snd $ snd $ fromMaybe (error "No
         isInsTp :: Tp -> Bool
         isInsTp (TApp f _) = isInsTp f
         isInsTp (TCon c) = c == insName 
+        isInsTp _ = error "Uncovered case in isInsTp in getInstanceSuperClasses in InstanceDictionary.hs"
 
 getCoreName :: CoreDecl -> String 
 getCoreName cd = stringFromId $ declName cd
@@ -212,7 +216,7 @@ getCoreValue = valueValue
 
 constructClassMemberCustomDecl :: ImportEnvironment -> Name -> Maybe (Names, [(Name, TpScheme, Bool, HasDefault)]) -> [Custom] -> [Custom]
 constructClassMemberCustomDecl _ _ Nothing _ =  internalError "InstanceDictionary" "constructClassMemberCustomDecl" "Unknown class" 
-constructClassMemberCustomDecl env name (Just (typevars, members)) origin = typeVarsDecl : superClassesDecl ++ map functionToCustom members
+constructClassMemberCustomDecl env name (Just (typevars, members)) _ = typeVarsDecl : superClassesDecl ++ map functionToCustom members
                         where
                             superClassesDecl :: [Custom]
                             superClassesDecl = 
@@ -226,10 +230,10 @@ constructClassMemberCustomDecl env name (Just (typevars, members)) origin = type
                                 (DeclKindCustom $ idFromString "ClassTypeVariables")
                                 (map (CustomName . idFromString . getNameName) typevars)
                             functionToCustom :: (Name, TpScheme, Bool, HasDefault) -> Custom
-                            functionToCustom (name, tps, _, fDefault) = CustomDecl 
+                            functionToCustom (locName, tps, _, fDefault) = CustomDecl 
                                 (DeclKindCustom $ idFromString "Function") 
                                 [
-                                    CustomName $ idFromString $ getNameName name, 
+                                    CustomName $ idFromString $ getNameName locName, 
                                     CustomBytes $ bytesFromString $ show tps,
                                     if fDefault then CustomInt 1 else CustomInt 0
                                 ]

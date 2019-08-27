@@ -1,4 +1,4 @@
-{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE MonoLocalBinds, FlexibleContexts #-}
 
 {-| Module      :  UnifierHeuristics
     License     :  GPL

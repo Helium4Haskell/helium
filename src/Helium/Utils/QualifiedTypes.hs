@@ -2,11 +2,10 @@ module Helium.Utils.QualifiedTypes where
 
 import Helium.Syntax.UHA_Syntax
 import Helium.Syntax.UHA_Utils
-import Data.Maybe (fromMaybe)
+import Data.Maybe()
 import Helium.ModuleSystem.ImportEnvironment
 
 import Top.Types
-
 
 import qualified Data.Map as M
 ---------------------------------------------------------
@@ -42,7 +41,7 @@ convertTypeToQualified env = convertType (toQualTyCon env)
 convertType :: (Name -> Name) -> Type -> Type
 convertType f (Type_Application ran pref func arg)
     = Type_Application ran pref (convertType f func) (map (convertType f) arg)
-convertType f tv@(Type_Variable _ _) = tv
+convertType _ tv@(Type_Variable _ _) = tv
 convertType f (Type_Qualified ran con ty)
     = Type_Qualified ran con (convertType f ty)
 convertType f (Type_Forall ran tv ty )

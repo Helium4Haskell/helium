@@ -10,6 +10,11 @@
 -- (directives based on "Scripting the Type Inference Process", ICFP 2003)
 -----------------------------------------------------------------------------
 
+optpragmas
+{
+  {-# OPTIONS_GHC -fno-warn-unused-matches #-}
+}
+
 INCLUDE "TS_CoreSyntax.ag"
 
 imports {

@@ -21,7 +21,7 @@ phaseParser ::
    Phase ParseError Module
 phaseParser fullName tokens options = do
     enterNewPhase "Parsing" options
-    let (path, baseName, _) = splitFilePath fullName
+    let (_, baseName, _) = splitFilePath fullName
 
     case runHParser module_ fullName tokens True of
         Left parseError ->

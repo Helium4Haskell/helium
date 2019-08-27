@@ -181,14 +181,14 @@ SEM Declaration
 {
 
 noInstanceOrDefault :: Name -> Names -> Maybe ClassDef -> MaybeDeclarations -> Names
-noInstanceOrDefault _ _     Nothing             _                                       = []
-noInstanceOrDefault className imps  (Just (_, members)) MaybeDeclarations_Nothing       = 
+noInstanceOrDefault _ _ Nothing             _                               = []
+noInstanceOrDefault _ _ (Just (_, members)) MaybeDeclarations_Nothing       = 
                                                             [ n 
                                                             | (n, _, d, False) <- snd members
                                                             , not d
                                                            
                                                             ]
-noInstanceOrDefault className imps  (Just (_, members)) (MaybeDeclarations_Just decls)  = 
+noInstanceOrDefault _ _ (Just (_, members)) (MaybeDeclarations_Just decls)  = 
                                                             [ n 
                                                             | (n, _, d, False) <- snd members
                                                             , not d

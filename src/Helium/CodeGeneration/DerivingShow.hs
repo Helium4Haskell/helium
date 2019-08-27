@@ -29,11 +29,11 @@ import Data.Maybe
 import Data.List
 import Helium.Utils.QualifiedTypes.Constants
 
--- Show function for a data type declaration
+-- Show function for a data type declaration. For some reason, it uses only little information.
 dataShowFunction :: ImportEnvironment -> UHA.Declaration -> [String] -> [Custom] -> Expr
-dataShowFunction env (UHA.Declaration_Data _ _ (UHA.SimpleType_SimpleType _ name names) constructors _) qual origin =
-    let typeString = show (typeOfShowFunction name qual names)
-        nameId     = idFromString ("show" ++ (getNameName) name)
+dataShowFunction env (UHA.Declaration_Data _ _ (UHA.SimpleType_SimpleType _ _ _) constructors _) _ _ =
+    let -- typeString = show (typeOfShowFunction name qual names)
+        -- nameId     = idFromString ("show" ++ (getNameName) name)
         valueId    = idFromString "value$"
         in
         foldr Lam 
@@ -48,7 +48,7 @@ dataShowFunction _ _ _ _ = error "not supported"
 
 -- Show Dictionary for a data type declaration
 dataDictionary :: ImportEnvironment -> UHA.Declaration -> [String] -> [Custom] -> UHA.Name -> CoreDecl
-dataDictionary env decl@(UHA.Declaration_Data _ _ (UHA.SimpleType_SimpleType _ name names) _ _) qual origin qualname = 
+dataDictionary env declp@(UHA.Declaration_Data _ _ (UHA.SimpleType_SimpleType _ _ names) _ _) qual origin qualname = 
     DeclValue 
     { declName    = idFromString ("$dictPrelude.Show$" ++ getNameName qualname)
     , declAccess  = public
@@ -61,9 +61,9 @@ dataDictionary env decl@(UHA.Declaration_Data _ _ (UHA.SimpleType_SimpleType _ n
     }
   where
     makeShowDictionary :: Int -> Expr
-    makeShowDictionary nrOfArgs =
+    makeShowDictionary _ =
        let 
-           showBody = dataShowFunction env decl qual origin
+           showBody = dataShowFunction env declp qual origin
            ids  = map idFromName names
            list = map idFromString ["showsPred", "showList", "showDef"]
            declarations = zipWith Bind list [Var $ idFromString "default$Prelude.Show$showsPrec", Var $ idFromString "default$Prelude.Show$showList", showBody]
@@ -80,7 +80,7 @@ typeShowFunction :: ImportEnvironment -> UHA.Declaration -> [String] -> [Custom]
 typeShowFunction env (UHA.Declaration_Type _ (UHA.SimpleType_SimpleType _ name names) type_) qual origin =
     let 
         typeString = show (typeOfShowFunction name qual names)
-        classEnv = classEnvironment env
+        -- classEnv = classEnvironment env
     in
     DeclValue 
     { declName    = idFromString ("show" ++ (getNameName) name)
@@ -143,7 +143,7 @@ showConstructor env c ts -- name of constructor and paramater types
 showFunctionOfType :: ImportEnvironment -> Bool -> UHA.Type -> Expr
 showFunctionOfType env isMainType = sFOT 0
   where
-    classEnv = classEnvironment env
+    -- classEnv = classEnvironment env
     tse      = typeSynonyms env
     expandTS :: UHA.Type -> UHA.Type
     expandTS t@(UHA.Type_Constructor _ n) = case M.lookup (toQualTyCon env n) tse of
@@ -191,25 +191,27 @@ checkForPrimitiveDict nrOfArguments env name =
                 showInstances = snd $ fromJust $ M.lookup "Prelude.Show" classEnv
                 qualname = getNameName $ toQualTyCon env (nameFromString name)
                 dict = var $ "$dictPrelude.Show$" ++ qualname 
-                isTCon :: Tp -> String -> Bool
-                isTCon (TCon n) s = n == s
-                isTCon (TApp t _) s = isTCon t s 
-                isTCon (TVar _) _ = False
-                pred = find (\((Predicate n t), _)-> isTCon t qualname ) showInstances
-            in if isJust pred then 
+                locIsTCon :: Tp -> String -> Bool
+                locIsTCon (TCon n) s = n == s
+                locIsTCon (TApp t _) s = locIsTCon t s 
+                locIsTCon (TVar _) _ = False
+                prd = find (\((Predicate _ t), _)-> locIsTCon t qualname ) showInstances
+            in if isJust prd then 
                     dict
                 else
-                    let dict = foldr Lam (foldl Ap (Con $ ConId $ idFromString "DictPrelude.Show") functions) $ take nrOfArguments [idFromString ("d" ++ show i) | i <- [0..]]
+                    let locDict = foldr Lam (foldl Ap (Con $ ConId $ idFromString "DictPrelude.Show") functions) $ take nrOfArguments [idFromString ("d" ++ show i) | i <- [(0::Integer)..]]
                         showFunction = Lam (idFromString "d") $ Lam (idFromString "p") $ stringToCore ("<<type " ++ qualname ++ ">>")
                         functions = [Var $ idFromString "default$Prelude.Show$showsPrec", Var $ idFromString "default$Prelude.Show$showList", showFunction]
-                    in dict
+                    in locDict
         
 idFromNumber :: Int -> Id
 idFromNumber i = idFromString ("v$" ++ show i)
 
+{--
 nameOfShowFunction :: UHA.Name -> UHA.Name
 nameOfShowFunction (UHA.Name_Identifier r m o n) = UHA.Name_Identifier r m o ("show" ++ n) -- !!!Name
 nameOfShowFunction _ = internalError "DerivingShow" "nameOfShowFunction" "name of type must be an identifier"
+--}
 
 typeOfShowFunction :: UHA.Name -> [String] -> UHA.Names -> TpScheme
 typeOfShowFunction name qual names =

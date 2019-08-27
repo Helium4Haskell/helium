@@ -54,7 +54,7 @@ SEM Declaration
         loc . scheme                     =  let 
                                                 classFunctions :: Maybe Name -> [(Name, TpScheme)]
                                                 classFunctions Nothing = []
-                                                classFunctions (Just n) = fromJust @lhs.classMemberTypeSchemes
+                                                classFunctions (Just _) = fromJust @lhs.classMemberTypeSchemes
                                                 searchClasses :: Name -> TpScheme
                                                 searchClasses name = maybe (err name) snd $ find (\(n, _)->n == name) (classFunctions @lhs.instanceName)
                                                 err name = internalError "TypeInferenceOverloading.ag" "n/a" 
@@ -216,8 +216,8 @@ expandPredicate :: OrderedTypeSynonyms -> Predicate -> Predicate
 expandPredicate (_, synonyms) (Predicate className tp) = Predicate className (expandType synonyms tp)
 
 getCurrentClassPredicate :: Maybe (Name, Names) -> Tp -> Maybe TpScheme -> [Predicate] -> Maybe Predicate
-getCurrentClassPredicate Nothing _ _ predicates = Nothing
-getCurrentClassPredicate (Just (className, typeVars)) derivedType (Just classType) preds =    
+getCurrentClassPredicate Nothing _ _ _ = Nothing
+getCurrentClassPredicate (Just (className, typeVars)) derivedType (Just classType) _ =
     Just (Predicate (getNameName className) $ TVar tv)
     where
         tv = maybe (error "Invalid type variable") snd (find ((getNameName (chead typeVars) ==) . fst) typeVarMapping)
@@ -230,6 +230,7 @@ getCurrentClassPredicate (Just (className, typeVars)) derivedType (Just classTyp
         mapping (TCon _) (TCon _) = []
         mapping (TApp f1 a1) (TApp f2 a2) = nub (mapping f1 f2 ++ mapping a1 a2)
         mapping _ _ = error "Invalid type scheme"
+getCurrentClassPredicate _ _ Nothing _ = error "Pattern match failure in getCurrentClassPredicate"    
 
 
 }
