@@ -1,6 +1,6 @@
 ![Helium Logo](http://www.cs.uu.nl/people/jur/images/Helium_0300pix.jpg)
 
-<img href="http://www.cs.uu.nl/people/jur/images/Helium_0300pix.jpg"/>
+<img src="http://www.cs.uu.nl/people/jur/images/Helium_0300pix.jpg"/>
 
 [Contributors](CONTRIBUTORS.md) | [Helium Manual](HELIUM.md) | [Known Bugs](KNOWNBUGS.md)
 
