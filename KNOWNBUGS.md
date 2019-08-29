@@ -40,16 +40,7 @@ we would like to remedy this inconsistency.
 
 ### Bug 5: errors in dictionary passing/construction
 
-The code generation for a program like the following was shown to be buggy by _Erik Mulder_.
-<pre>test :: Ord a =&gt; a -&gt; a -&gt; String
-test x y
-   | x &lt; y = "smaller"
-   | x == y = "equal"
-   | x &gt; y = "larger"
-   | otherwise = "buggy"
-</pre>
-
-Now, running `test [3] [3]` will actually return `"buggy"`.
+Since Helium 1.9, this bug has been fixed (see resolved bugs listed at the bottom).
 
 ### Bug 6: UTF-8 encoding problems
 
@@ -83,4 +74,19 @@ dated later than Sep 30, 2010, or checkout the current head.
 If you have the same problem on another platform, please let us know, and we can fix that too.
 
 The above problem seems to have resurfaced, because recent versions of gcc on Macosx
-refuse to compile for 32 bit.
+refuse to compile for 32 bit at all.
+
+## Older resolved bugs
+
+### Bug 5: errors in dictionary passing/construction
+
+The code generation for a program like the following was shown to be buggy by _Erik Mulder_.
+<pre>test :: Ord a =&gt; a -&gt; a -&gt; String
+test x y
+   | x &lt; y = "smaller"
+   | x == y = "equal"
+   | x &gt; y = "larger"
+   | otherwise = "buggy"
+</pre>
+
+Now, running `test [3] [3]` will actually return `"buggy"`.

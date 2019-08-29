@@ -9,8 +9,9 @@ overview of the type inference innovations that have been implemented in Helium 
 
 ### Publications about the type inference process
 
-In descending order of publication. Much of this work can be found in extended form in the Ph D thesis of Bastiaan Heeren (listed below)
-
+The following publications are strongly related to Helium and its implementation of the type inference process.
+Much of this work can also be found in extended form in the Ph D thesis of Bastiaan Heeren (listed further below)
+   * Hage, J., & Heeren, B.J. (2009). _Strategies for Solving Constraints in Type and Effect Systems_. Electronic Notes in Theoretical Computer Science, 236, pp. 163-183. Journal version of the Proceedings of 3rd Views On Designing Complex Architectures (VODCA '08).
    * Hage, J., & Heeren, B.J.  (2007). _Heuristics for type error discovery and recovery_. In Z. Horv&aacute;th, V. Zs&oacute;k & A. Butterfield (Eds.), Proceedings of Implementation of Functional Languages (IFL '06), LNCS 4449 (pp. 199-216). Heidelberg: Springer-Verlag.
    * Heeren, B.J., & Hage, J. (2005). _Type class directives_. In M. Hermenegildo & D. Cabeza (Eds.), Proceedings of the 7th International Symposium on Practical Aspects of Declarative Languages (PADL '05), LNCS 3350  (pp. 253-267). Berlin: Springer-Verlag.
    * Heeren, B.J., Hage, J., & Swierstra, S.D. (2003). _Scripting the type inference process_. In Eighth ACM Sigplan International Conference on Functional Programming (ICFP '03) (pp. 3-13). New York: ACM Press.
