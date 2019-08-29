@@ -2,4 +2,4 @@ set -e # exit on error
 cd src
 make
 cd ..
-cabal install --disable-documentation
+cabal v1-install --disable-documentation
