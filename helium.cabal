@@ -133,36 +133,59 @@ Executable heliumpath
 --------------------------------------------------------------------------------
   
 Library
-  Build-Depends:     base >= 3 && < 5, containers, mtl, parsec, network, process, transformers, filepath, directory, wl-pprint, Top >= 1.7, lvmlib >= 1.1, llvm-hs-pure >= 6.0.0 && < 7, llvm-hs-pretty >= 0.5 && < 0.6
+  Build-Depends:     base >= 3 && < 5, containers, mtl, parsec, network, process, transformers, filepath, directory, wl-pprint, Top >= 1.7, lvmlib >= 1.1, llvm-hs-pure, llvm-hs-pretty, text
   ghc-options:       -Wall
   default-language:  Haskell98
   hs-source-dirs:    src dist/build/autogen/uuagc
+  extensions:        BangPatterns, DoAndIfThenElse
 
 
   Exposed-modules:
     Helium.CodeGeneration.CodeGeneration
-    Helium.CodeGeneration.CoreToLvm
     Helium.CodeGeneration.CoreUtils
     Helium.CodeGeneration.DerivingEq
     Helium.CodeGeneration.DerivingShow
     Helium.CodeGeneration.PatternMatch
     Helium.CodeGeneration.Core
     Helium.CodeGeneration.Core.FunctionType
+    Helium.CodeGeneration.Core.LetInline
     Helium.CodeGeneration.Core.LetSort
     Helium.CodeGeneration.Core.Lift
     Helium.CodeGeneration.Core.Normalize
-    Helium.CodeGeneration.Core.NoShadow
     Helium.CodeGeneration.Core.ReduceThunks
     Helium.CodeGeneration.Core.RemoveAliases
     Helium.CodeGeneration.Core.RemoveDead
+    Helium.CodeGeneration.Core.Rename
+    Helium.CodeGeneration.Core.Saturate
+    Helium.CodeGeneration.Core.Strictness
+    Helium.CodeGeneration.Core.TypeCheck
+    Helium.CodeGeneration.Core.TypeEnvironment
     Helium.CodeGeneration.Iridium.Data
     Helium.CodeGeneration.Iridium.FromCore
     Helium.CodeGeneration.Iridium.Type
     Helium.CodeGeneration.Iridium.TypeEnvironment
+    Helium.CodeGeneration.Iridium.FileCache
+    Helium.CodeGeneration.Iridium.FromCoreImports
+    Helium.CodeGeneration.Iridium.ImportAbstract
+    Helium.CodeGeneration.Iridium.Parse.Custom
+    Helium.CodeGeneration.Iridium.Parse.Expression
+    Helium.CodeGeneration.Iridium.Parse.Instruction
+    Helium.CodeGeneration.Iridium.Parse.Method
+    Helium.CodeGeneration.Iridium.Parse.Module
+    Helium.CodeGeneration.Iridium.Parse.Parser
+    Helium.CodeGeneration.Iridium.Parse.Type
+    Helium.CodeGeneration.Iridium.PassDeadCode
+    Helium.CodeGeneration.Iridium.PassTailRecursion
+    Helium.CodeGeneration.Iridium.Primitive
+    Helium.CodeGeneration.Iridium.ResolveDependencies
+    Helium.CodeGeneration.Iridium.Show
+    Helium.CodeGeneration.Iridium.TypeCheck
+    Helium.CodeGeneration.Iridium.Utils
     Helium.CodeGeneration.LLVM.Builtins
     Helium.CodeGeneration.LLVM.CompileBlock
     Helium.CodeGeneration.LLVM.CompileConstructor
     Helium.CodeGeneration.LLVM.CompileMethod
+    Helium.CodeGeneration.LLVM.CompileModule
     Helium.CodeGeneration.LLVM.CompileBind
     Helium.CodeGeneration.LLVM.CompileType
     Helium.CodeGeneration.LLVM.Struct
@@ -175,7 +198,9 @@ Library
     Helium.Main.Args
     Helium.Main.Compile
     Helium.Main.CompileUtils
-    Helium.Main.PhaseCodeGenerator
+    Helium.Main.Make
+    Helium.Main.PhaseCodeGeneratorIridium
+    Helium.Main.PhaseCodeGeneratorLlvm
     Helium.Main.PhaseDesugarer
     Helium.Main.PhaseImport
     Helium.Main.PhaseKindInferencer
