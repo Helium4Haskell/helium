@@ -153,7 +153,7 @@ instance ShowWithQuantors Instruction where
     text instructionIndent . text "unreachable " . showsQ quantors var
   showsQ quantors (Unreachable Nothing) =
     text instructionIndent . text "unreachable"
-  showsQ quantors (RegionRelease var) = text "regionrelease " . showsQ quantors var
+  showsQ quantors (RegionRelease var next) = text "regionrelease " . showsQ quantors var . text "\n" . showsQ quantors next
 
 instance ShowWithQuantors Local where
   showsQ quantors (Local name t) = ('%' :) . showId name . text ": " . showsQ quantors t

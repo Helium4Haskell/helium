@@ -101,10 +101,10 @@ subtract a b = b - a
 
 gcd :: Int -> Int -> Int
 gcd 0 0 = error "Prelude.gcd: gcd 0 0 is undefined"
-gcd x y = gcd' (abs x) (abs y)
+{- gcd x y = gcd' (abs x) (abs y)
    where gcd' :: Int -> Int -> Int
          gcd' x' 0  = x'
-         gcd' x' y' = gcd' y' (x' `rem` y')
+         gcd' x' y' = gcd' y' (x' `rem` y') -}
 
 lcm :: Int -> Int -> Int
 lcm _ 0 = 0
@@ -113,12 +113,12 @@ lcm x y = abs ((x `quot` gcd x y) * y)
 
 (^) :: Num a => a -> Int -> a
 _ ^ 0           = fromInteger 1
-i ^ n  | n > 0  = f i (n-1) i
+{-i ^ n  | n > 0  = f i (n-1) i
        | otherwise = error "Prelude.^: negative exponent"
           where f _ 0 y = y
                 f x m y = g x m
                           where g x' m' | even m'    = g (x' * x') (m' `quot` 2)
-                                        | otherwise  = f x' (m' - 1) (x' * y)
+                                        | otherwise  = f x' (m' - 1) (x' * y) -}
 
 instance Eq Int where
     (==) = (==#)
@@ -365,19 +365,16 @@ xs !! n | n < 0     = error "Prelude.(!!): negative index"
         | otherwise = tail xs !! (n - 1)
 
 foldl            :: (a -> b -> a) -> a -> [b] -> a
-foldl = undefined
---foldl _ z []      = z
---foldl f z (x:xs)  = foldl f (f z x) xs
+foldl _ z []      = z
+-- foldl f z (x:xs)  = foldl f (f z x) xs
 
 foldl'           :: (a -> b -> a) -> a -> [b] -> a
-foldl' = undefined
---foldl' _ a []     = a
---foldl' f a (x:xs) = (foldl' f $! f a x) xs
+foldl' _ a []     = a
+-- foldl' f a (x:xs) = (foldl' f $! f a x) xs
 
 foldl1           :: (a -> a -> a) -> [a] -> a
-foldl1 = undefined
---foldl1 f (x:xs)   = foldl f x xs
---foldl1 _ []       = error "Prelude.foldl1: empty list"
+foldl1 f (x:xs)   = foldl f x xs
+-- foldl1 _ []       = error "Prelude.foldl1: empty list"
 {-
 scanl            :: (a -> b -> a) -> a -> [b] -> [a]
 scanl f q xs      = q : 
@@ -391,15 +388,13 @@ scanl1 _ []       = []
 scanl1 f (x:xs)   = scanl f x xs -}
 
 foldr            :: (a -> b -> b) -> b -> [a] -> b
-foldr = undefined
--- foldr _ z []      = z
--- foldr f z (x:xs)  = f x (foldr f z xs)
+foldr _ z []      = z
+--foldr f z (x:xs)  = f x (foldr f z xs)
 
 foldr1           :: (a -> a -> a) -> [a] -> a
-foldr1 = undefined
--- foldr1 _ [x]      = x
+foldr1 _ [x]      = x
 -- foldr1 f (x:xs)   = f x (foldr1 f xs)
--- foldr1 _ []       = error "Prelude.foldr1: empty list"
+foldr1 _ []       = error "Prelude.foldr1: empty list"
 
 scanr            :: (a -> b -> b) -> b -> [a] -> [b]
 scanr _ q0 []     = [q0]
@@ -418,7 +413,7 @@ scanr1 f (x:xs)   =
         _        -> error "Prelude.scanr" -}
 
 iterate :: (a -> a) -> a -> [a]
-iterate f x = x : iterate f (f x)
+iterate f x = undefined -- x : iterate f (f x)
 
 repeat :: a -> [a]
 repeat x = xs where xs = x:xs
@@ -545,10 +540,9 @@ type ShowS = String -> String
 
 
 intercalate :: [a] -> [[a]] -> [a]
-intercalate = undefined {-
 intercalate _ [] = []
 intercalate _ [x] = x
-intercalate y (x:xs) = x ++ y ++ intercalate y xs -}
+-- intercalate y (x:xs) = x ++ y ++ intercalate y xs
 
 {-----------------------------------------------
  -- Some standard functions
@@ -581,7 +575,7 @@ error :: String -> a
 -}
 
 until :: (a -> Bool) -> (a -> a) -> a -> a
-until p f x = if p x then x else until p f (f x)
+until p f x = x -- if p x then x else until p f (f x)
 
 undefined :: a
 undefined = error "undefined"
@@ -1053,3 +1047,7 @@ instance Enum Char where
     enumFrom        = enumFromChar
     enumFromThen    = enumFromThenChar
 -}
+foo :: (a -> Bool) -> a -> Maybe a
+foo f a
+  | f a = Just a
+  | otherwise = Nothing

@@ -177,7 +177,7 @@ data Instruction
   -- The control flow or the argument should guarantee that this location is unreachable. In the case of calling 'error',
   -- the argument should be the returned value of 'error'.
   | Unreachable !(Maybe Variable)
-  | RegionRelease !Local
+  | RegionRelease !Local !Instruction
   deriving (Eq, Ord)
 
 -- * A bind describes the construction of an object in a 'letalloc' instruction. It consists of the

@@ -201,7 +201,7 @@ annotationAddApplications' effectEnv sortEnv (SortFun sortA _ _ sort) a (AOIAppl
   where
     argA' = snd <$> annotationArgumentNormalize effectEnv sortEnv sortA argA
 annotationAddApplications' effectEnv sortEnv sort a [] = ArgumentValue (sort, a)
-annotationAddApplications' _ sortEnv sort  a args = error $ "annotationAddApplications: Illegal arguments: " ++ show (sort, a, args)
+annotationAddApplications' _ sortEnv sort a args = error $ "annotationAddApplications: Illegal arguments: " ++ show (sort, a, args)
 {-
 f a b c
 
@@ -455,20 +455,23 @@ aoiIncrementLambdaScope _ (AOIInstantiation tp) = AOIInstantiation tp
 annotationIterate :: EffectEnvironment -> SortEnv -> FixRegions -> Argument Sort -> Argument Annotation -> [ApplicationOrInstantiation] -> Argument (Bool, Sort, Annotation)
 annotationIterate _ _ _ _ (ArgumentList []) _ = ArgumentList []
 annotationIterate env sortEnv (FixRegionsEscape arity regions) sorts initial application
-  = fmap f $ snd $ annotationIterateEscape env sortEnv arity regions sorts initial
+  = fmap f $ annotationFixpointElements $ snd $ annotationIterateEscape env sortEnv arity regions sorts initial
   where
     f (True, s, a) = (True, s, a)
-    f (False, s, AFix _ _ a) =
+    f (False, s, a) =
       -- First order fixpoint, continue using the fixpoint iteration
       -- With fix regions none, we might be able to evaluate the fixpoint further
       let
-        ArgumentValue res = annotationIterate env sortEnv FixRegionsNone (ArgumentValue s) a application
-      in
-        res
+        ArgumentValue a' = annotationNormalize env sortEnv (ArgumentValue s) a
+        -- ArgumentValue res = annotationIterate env sortEnv FixRegionsNone (ArgumentValue s) (ArgumentValue a) application
+      in if sortCompare (ArgumentValue s) (annotationCheckSort env sortEnv [] a) then
+        (True, s, a')
+        else error "sort error"
 annotationIterate env sortEnv FixRegionsNone (ArgumentValue sort) (ArgumentValue initial) application =
   let (h, a) = iterate 0 initial
   in ArgumentValue (h, sort, a)
   where
+    sort' = SortFun (ArgumentValue sort) argumentEmpty RegionDirectionAny sort
     bottom = ArgumentValue ABottom
 
     application' = aoiIncrementLambdaScope 1 <$> application
@@ -488,10 +491,10 @@ annotationIterate env sortEnv FixRegionsNone (ArgumentValue sort) (ArgumentValue
             then (False, AFix FixRegionsNone (ArgumentValue sort) $ ArgumentValue next)
             else iterate (iteration + 1) next'
           -- error "first order fixpoint"
-        NoFixpoint -> iterate (iteration + 1) next
-          -- | sortCompare (SortFun sorts argumentEmpty RegionDirectionAny <$> sorts) $ annotationArgumentCheckSort env sortEnv [] next
-          --    -> 
-          -- | otherwise -> error "sort error in iteration"
+        NoFixpoint
+          | sortCompare (ArgumentValue sort') $ annotationCheckSort env sortEnv [] next
+            -> iterate (iteration + 1) next
+          | otherwise -> error "sort error in iteration"
       where
         next = iterateNext current current
 
@@ -520,8 +523,9 @@ annotationIterate env sortEnv FixRegionsNone (ArgumentValue sort) (ArgumentValue
         a'
 annotationIterate env sortEnv FixRegionsNone sorts functions application = f <$> functions''
   where
-    functions' = snd <$> annotationArgumentNormalize env sortEnv sorts functions
-    functions'' = annotationFixpointElements (zipArgument g sorts functions')
+    sorts' = SortFun sorts argumentEmpty RegionDirectionAny <$> sorts
+    functions' = snd <$> annotationArgumentNormalize env sortEnv sorts' functions
+    functions'' = annotationFixpointElements $ zipArgument g sorts functions'
 
     g s ABottom = (True, s, ABottom)
     g s a@(ALam _ _ _ a')
@@ -569,9 +573,9 @@ annotationIterateEscape env sortEnv arity regions sorts functions = iterate 0 bo
         ( mapping'
         , zipArgument (\s a -> (True, s, a)) sorts current
         )
-      | fmap annotationToFirstOrder current == fmap annotationToFirstOrder next6 = error "ai"
+      | fmap annotationToFirstOrder current == fmap annotationToFirstOrder next6 =
         ( mapping'
-        , applyMapping mapping' arity sorts functions next6
+        , applyMapping mapping' arity sorts next6 functions
         )
       | otherwise = iterate (idx + 1) next6
       where
@@ -579,7 +583,7 @@ annotationIterateEscape env sortEnv arity regions sorts functions = iterate 0 bo
         next2 = annotationArgumentNormalize env sortEnv sorts next1
         (mapping, next3) = annotationCollapse regions arity $ fmap snd next2
         next4 = annotationArgumentNormalize env sortEnv sorts next3
-        (escapes, next5) = annotationFilterInternalRegions 0 $ fmap snd next4
+        (escapes, next5) = annotationFilterInternalRegions $ fmap snd next4
         next6 = snd <$> annotationArgumentNormalize env sortEnv sorts next5
 
         mapping' = map getRegionVar [0 .. regionCount - 1]
@@ -596,13 +600,13 @@ annotationIterateEscape env sortEnv arity regions sorts functions = iterate 0 bo
         saturateWithRegions :: Sort -> Annotation -> (Bool, Sort, Annotation)
         saturateWithRegions sort annotation = (False, sort, addForallsLambdas 0 0 sort)
           where
-            applied = AApp (annotationIncrementScope 1 0 annotation) argumentEmpty (ArgumentList $ ArgumentValue <$> mapping) RegionDirectionAny
+            applied = AApp annotation argumentEmpty (ArgumentList $ ArgumentValue <$> mapping) RegionDirectionAny
 
             -- Adds foralls and lambdas for all remaining arguments
             addForallsLambdas :: Int -> Int -> Sort -> Annotation
             addForallsLambdas lambdas foralls (SortForall s) = AForall $ addForallsLambdas lambdas (foralls + 1) s
             addForallsLambdas lambdas foralls (SortFun sortA sortR dir s) = ALam sortA sortR dir $ addForallsLambdas (lambdas + 1) foralls s
-            addForallsLambdas lambdas foralls _ = applications lambdas foralls sort applied
+            addForallsLambdas lambdas foralls _ = applications lambdas foralls sort $ annotationIncrementScope lambdas foralls applied
 
             applications :: Int -> Int -> Sort -> Annotation -> Annotation
             applications lambdas foralls (SortForall s) a = applications lambdas (foralls - 1) s $ AInstantiate a (TpVar $ TypeVar $ foralls - 1)
@@ -632,7 +636,6 @@ annotationFixpointElements args = zipArgument (\(higherOrder, s, _) a -> (higher
             a'' = AApp a' (inlineArgument (idx : stack)) argumentEmpty RegionDirectionAny
           in
             AFix FixRegionsNone (ArgumentValue s) $ ArgumentValue $ ALam (ArgumentValue s) argumentEmpty RegionDirectionAny $ a''
-
 
 data FixpointState = NoFixpoint | FirstOrderFixpoint | HigherOrderFixpoint
 
@@ -924,7 +927,6 @@ regionEnvLookup str env var = case tryIndex env (indexBoundLambda var - 1) of
     Just s -> Just s
 
 sortCompare' :: Argument (Maybe Sort) -> Argument (Maybe Sort) -> Bool
-sortCompare' _ _ = True
 sortCompare' (ArgumentList as) (ArgumentList bs)
   | length as == length bs = all (uncurry sortCompare') (zip as bs)
   | otherwise = error $ "Wrong lengths\n" ++ show as ++ "\n" ++ show bs

@@ -292,7 +292,7 @@ topologicalSort' graph c (visited, accum)
 relationUnion :: Relation -> Relation -> Relation
 relationUnion relLeft@(Relation gLeft) relRight@(Relation gRight) = iterate (unionWithoutClosure rel relHops)
   where
-    rel = unionWithoutClosure relLeft relRight
+    rel = unionWithoutClosure relLeft relRight `unionWithoutClosure` relHops
     relHops = unionWithoutClosure (twoHops relLeft relRight) (twoHops relRight relLeft)
 
     iterate :: Relation -> Relation
@@ -396,23 +396,23 @@ relationFindCycleUnifications relation@(Relation graph) = IntMap.foldrWithKey un
 
 relationFindCollapseUnifications :: (RegionVar -> Bool) -> Relation -> IntMap Int
 relationFindCollapseUnifications canCollapse relation =
-  fmap snd $ snd $ IntMap.foldrWithKey visitVertex (IntSet.empty, IntMap.empty) graph
+  snd $ IntMap.foldrWithKey visitVertex (IntSet.empty, IntMap.empty) graph
   where
     graph = relationReverse relation
 
     -- Bool denotes whether the unification comes from the left or right side, left = True, right = False
     -- For consistency, we namely need to specify an order, we prefer left unifications over right ones.
-    visitVertex' :: Int -> (IntSet, IntMap (Bool, Int)) -> (IntSet, IntMap (Bool, Int))
+    visitVertex' :: Int -> (IntSet, IntMap Int) -> (IntSet, IntMap Int)
     visitVertex' u (visited, m) = visitVertex u (fromMaybe IntSet.empty $ IntMap.lookup u graph) (visited, m)
 
-    visitVertex :: Int -> IntSet -> (IntSet, IntMap (Bool, Int)) -> (IntSet, IntMap (Bool, Int))
+    visitVertex :: Int -> IntSet -> (IntSet, IntMap Int) -> (IntSet, IntMap Int)
     visitVertex u neighbours (visited, m)
       | u `IntSet.member` visited = (visited, m)
       | not $ canCollapse $ RegionVar u = (IntSet.insert u visited', m')
       -- Find predecessor v for which holds pred(u) == (pred(v) union {v})
       | otherwise = case find isDirect $ IntSet.toList neighbours of
         Nothing -> (IntSet.insert u visited', m') -- No collapsing
-        Just v -> (IntSet.insert u visited', IntMap.insert u (True, v) m')
+        Just v -> (IntSet.insert u visited', IntMap.insert u v m')
       where
         -- Recurse
         (visited', m') = IntSet.foldr visitVertex' (visited, m) neighbours

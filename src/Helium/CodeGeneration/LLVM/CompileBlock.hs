@@ -129,7 +129,7 @@ compileInstruction env supply (Iridium.Case var (Iridium.CaseInt alts defaultBra
 
 compileInstruction _ _ (Iridium.Unreachable _) = Partial [] (Do $ Unreachable []) []
 
-compileInstruction _ _ (Iridium.RegionRelease _) = error "compileInstruction: TODO: compile RegionRelease"
+compileInstruction _ _ (Iridium.RegionRelease _ _) = error "compileInstruction: TODO: compile RegionRelease"
 
 compileExpression :: Env -> NameSupply -> Iridium.Expr -> Id -> [Named Instruction]
 compileExpression env supply (Iridium.Literal (Iridium.LitString value)) name =

@@ -34,7 +34,7 @@ pInstruction quantors = do
         "case" -> Case <$> pVariable quantors <* pWhitespace <*> pCase
         "return" -> Return <$> pVariable quantors
         "unreachable" -> Unreachable <$> pMaybe (pVariable quantors)
-        "regionrelease" -> RegionRelease <$> (pLocal quantors)
+        "regionrelease" -> RegionRelease <$> pLocal quantors <* pWhitespace <*> pInstruction quantors
         _ -> pError "expected instruction"
 
 pMatchField :: Parser (Maybe Id)

@@ -358,7 +358,7 @@ gather env state (Method _ args _ _ block blocks)
             dataRegion = regions !!! indexInArgument var
     gatherInInstruction (Case _ _) = []
     gatherInInstruction (Unreachable _) = []
-    gatherInInstruction (RegionRelease _) = []
+    gatherInInstruction (RegionRelease _ _) = []
 
     gatherInBind :: Bind -> [RelationConstraint]
     gatherInBind (Bind name target args _) =
@@ -499,7 +499,7 @@ constraints typeEnv env state (Method _ _ _ _ block blocks)
     constraintsInInstruction (Case _ _) = []
     constraintsInInstruction (Return var) = [CReturn $ lookupVariableAnnotation env state var]
     constraintsInInstruction (Unreachable _) = []
-    constraintsInInstruction (RegionRelease _) = []
+    constraintsInInstruction (RegionRelease _ _) = []
 
     constraintsInBind :: Bind -> [Constraint]
     constraintsInBind bind@(Bind name target args _) = constraintsInBindTarget name result target args

@@ -50,7 +50,7 @@ methodBindingGroups = bindingGroups methodDependencies
     instructionDependencies (Return var) = variableDependencies var
     instructionDependencies (Unreachable (Just var)) = variableDependencies var
     instructionDependencies (Unreachable Nothing) = []
-    instructionDependencies (RegionRelease var) = []
+    instructionDependencies (RegionRelease var next) = instructionDependencies next
 
     expressionDependencies (Literal _) = []
     expressionDependencies (Call (GlobalFunction fn _ _) args) = fn : [name | Right (VarGlobal (GlobalVariable name _)) <- args]

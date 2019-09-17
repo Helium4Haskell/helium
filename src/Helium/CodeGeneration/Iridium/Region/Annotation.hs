@@ -146,8 +146,8 @@ annotationUsedRegionVariables skipRegionDirectionOutlives (ALam _ _ _ annotation
 annotationUsedRegionVariables _ ABottom = IntSet.empty
 annotationUsedRegionVariables _ a = error $ "annotationUsedRegionVariables: expected lambda, got " ++ show a
 
-annotationEscapes :: Int -> Annotation -> IntSet
-annotationEscapes arity annotation = IntSet.map (indexInArgument . RegionVar) $ IntSet.filter isFirstScope escapes
+annotationEscapes :: Annotation -> IntSet
+annotationEscapes annotation = IntSet.map (indexInArgument . RegionVar) $ IntSet.filter isFirstScope escapes
   where
     (annotationRelation, annotationRoots) = gather 1 annotation
 
@@ -163,12 +163,7 @@ annotationEscapes arity annotation = IntSet.map (indexInArgument . RegionVar) $ 
     gather scope (ALam _ sortArgR _ a) = decrement $ addVars scope vars $ gather (scope + 1) a
       where
         argR = sortArgumentToArgument 1 sortArgR
-        vars
-          -- Don't add the arguments, corresponding with the method arguments, to the root set
-          | scope <= arity = []
-          -- Add these arguments to the root set. They origin from the return value of a method, returning
-          -- a function or an object containing functions.
-          | otherwise = argumentFlatten argR
+        vars = argumentFlatten argR
     -- Don't add region arguments of last argument in a call (eg the return regions)
     gather scope (AApp a argA argR dir) = case dir of
       RegionDirectionAny -> addVars scope (argumentFlatten argR) result
@@ -237,12 +232,12 @@ annotationRemoveBaseRelation (AJoin a1 a2) = AJoin (annotationRemoveBaseRelation
 annotationRemoveBaseRelation (ARelation a) = ABottom
 annotationRemoveBaseRelation a = a
 
-annotationFilterInternalRegions :: Int -> Argument Annotation -> (IntSet, Argument Annotation)
-annotationFilterInternalRegions arity annotation = (escapes, filterAnnotation 0 <$> annotation)
+annotationFilterInternalRegions :: Argument Annotation -> (IntSet, Argument Annotation)
+annotationFilterInternalRegions annotation = (escapes, filterAnnotation 0 <$> annotation)
   where
     escapes = IntSet.unions $ lambdaEscapes <$> argumentFlatten annotation
 
-    lambdaEscapes (ALam _ _ _ a) = annotationEscapes arity a
+    lambdaEscapes (ALam _ _ _ a) = annotationEscapes a
     lambdaEscapes ABottom = IntSet.empty
 
     filterAnnotation :: Int -> Annotation -> Annotation

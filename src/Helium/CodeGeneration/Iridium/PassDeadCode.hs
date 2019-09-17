@@ -112,7 +112,7 @@ analyseInstruction env (Case var _) = CImplies (envFunction env) [variableName v
 analyseInstruction env (Return var) = CImplies (envFunction env) [variableName var]
 analyseInstruction env (Unreachable (Just var)) = CImplies (envFunction env) [variableName var]
 analyseInstruction env (Unreachable Nothing) = CEmpty
-analyseInstruction env (RegionRelease _) = CEmpty
+analyseInstruction env (RegionRelease _ next) = analyseInstruction env next
 
 analyseCall :: Id -> Id -> [Either Type Variable] -> Constraint
 analyseCall var fn args = CSequence argumentConstraints $ fromList $
@@ -233,10 +233,10 @@ transformInstruction supply res (LetAlloc binds next)
     instr = flip (foldr id) instrs
     (binds', instrs) = unzip $ mapWithSupply (`transformBind` res) supply1 $ filter (isLive res . bindVar) binds
     (supply1, supply2) = splitNameSupply supply
+transformInstruction supply res (RegionRelease region next) = RegionRelease region $ transformInstruction supply res next
 transformInstruction _ _ instr@(Jump _) = instr
 transformInstruction _ _ instr@(Return _) = instr
 transformInstruction _ _ instr@(Unreachable _) = instr
-transformInstruction _ _ instr@(RegionRelease _) = instr
 transformInstruction _ _ instr@(Case _ _) = instr
 transformInstruction supply res (Match var t instantiation fields next)
   | all isNothing fields' = transformInstruction supply res next
