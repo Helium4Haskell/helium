@@ -8,7 +8,7 @@
 
 module Helium.Utils.Logger ( logger, logInternalError ) where
 
-import Network
+-- import Network
 import Control.Concurrent
 
 import Control.Monad
@@ -161,7 +161,7 @@ getContentOfFile loggerDEBUGMODE name =
 -- isInterpreterModule (Just (_, hsFile)) = fileNameWithoutPath hsFile == "Interpreter.hs"
 
 sendLogString :: String -> Int -> String -> Bool -> IO ()
-sendLogString hostName portNr message loggerDEBUGMODE = withSocketsDo (rec_ 0)
+sendLogString hostName portNr message loggerDEBUGMODE = return () {- withSocketsDo (rec_ 0)
  where
     rec_ i = do --installHandler sigPIPE Ignore Nothing
              handle <- connectTo hostName (PortNumber (fromIntegral portNr))
@@ -173,7 +173,7 @@ sendLogString hostName portNr message loggerDEBUGMODE = withSocketsDo (rec_ 0)
                    then debug ( "Could not make a connection: no send (" ++ show (exception :: CE.IOException) ++ ")" ) loggerDEBUGMODE
                    else do debug ( "Could not make a connection: sleeping (" ++ show exception ++ ")" ) loggerDEBUGMODE
                            threadDelay loggerDELAY
-                           rec_ (i+1)
+                           rec_ (i+1) -}
                 
 {- from Utils.hs.....because of the import-dependencies, it is not possible to import 
    this function directly -}

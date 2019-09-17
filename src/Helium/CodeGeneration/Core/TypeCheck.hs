@@ -101,7 +101,8 @@ checkExpression env (Let binds expr) = do
   checkExpression env' expr
 checkExpression env (Match name alts) = do
   scrutinee <- checkId env name
-  (tp:tps) <- traverse (\alt -> checkAlt env scrutinee alt @@ "match on variable " ++ show name) alts
+  tps' <- traverse (\alt -> checkAlt env scrutinee alt @@ "match on variable " ++ show name) alts
+  let (tp:tps) = tps'
   sequence_ $ map (\tp' -> assert env tp tp' @@ "the inferred types of the alts") tps
   return tp
 checkExpression env (Ap e1 e2) = do
