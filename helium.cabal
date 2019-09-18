@@ -93,7 +93,7 @@ source-repository head
 --------------------------------------------------------------------------------
 
 Executable helium
-  Build-Depends:     base >= 3 && < 5, containers, mtl, parsec, network, process, transformers, filepath, directory, wl-pprint, Top >= 1.8, lvmlib >= 1.2, helium
+  Build-Depends:     base >= 3 && < 5, containers, mtl, parsec, network >= 2.7 && < 3.1, process, transformers, filepath, directory, wl-pprint, Top >= 1.8, lvmlib >= 1.2, helium
   ghc-options:       -Wall
   default-language:  Haskell98
   hs-source-dirs:    src/commands/helium
@@ -133,7 +133,7 @@ Executable heliumpath
 --------------------------------------------------------------------------------
   
 Library
-  Build-Depends:     base >= 3 && < 5, containers, mtl, parsec, network, process, transformers, filepath, directory, wl-pprint, Top >= 1.7, lvmlib >= 1.1, llvm-hs-pure, llvm-hs-pretty, text
+  Build-Depends:     base >= 3 && < 5, containers, concurrent-supply, mtl, parsec, network >= 2.7 && < 3.1, process, transformers, filepath, directory, wl-pprint, Top >= 1.7, lvmlib >= 1.1, llvm-hs-pure, llvm-hs-pretty, text
   ghc-options:       -Wall
   default-language:  Haskell98
   hs-source-dirs:    src dist/build/autogen/uuagc
@@ -271,6 +271,7 @@ Library
     Helium.Utils.Similarity
     Helium.Utils.Texts
     Helium.Utils.Utils
+    Helium.Utils.Network
   Other-modules:
     
 
