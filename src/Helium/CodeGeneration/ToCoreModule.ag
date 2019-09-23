@@ -45,8 +45,8 @@ insertedMain classEnv tse toplevelTypes =
                     d (Core.TCon $ Core.TConTuple 0) $ var "$primPutStrLn" `app_` 
                         (var "$primPackedToString" `app_`
                             packedString "<<overloaded function>>")
-                | isIOType tp ->
-                    d (typeToCoreType tp) $ var name
+                | isJust (isIOType tp) -> 
+                    d (typeToCoreType $ fromJust $ isIOType tp) $ var name
                 | otherwise ->
                     d (Core.TCon $ Core.TConTuple 0) $ var "$primPutStrLn" `app_` 
                         (Core.Ap (var "show" `Core.ApType` typeToCoreType tp)  (DerivingShow.showFunctionOfType classEnv tse True (makeTypeFromTp tp)) `app_` 
