@@ -4,7 +4,7 @@ import Data.Bits(shiftL, (.|.), (.&.))
 import Data.Word(Word32)
 import Data.Either
 
-import Lvm.Common.Id(idFromString, Id, NameSupply, mapWithSupply, splitNameSupply)
+import Lvm.Common.Id(idFromString, Id, NameSupply, mapWithSupply, mapWithSupply', splitNameSupply)
 import Lvm.Common.IdMap(findMap)
 import qualified Lvm.Core.Type as Core
 import Helium.CodeGeneration.LLVM.Env (Env(..))
@@ -58,29 +58,34 @@ compileBind' env supply bind@(Iridium.Bind varId target args) (Right struct) =
     t = structType env struct
     (shouldReverse, additionalArgInstructions, additionalArgs) = bindArguments env supplyAdditionalArgs target (length args') operandVoid
     args' = [arg | Right arg <- args]
-    (splitInstructions, argOperands) = unzip $ mapWithSupply splitValueFlag' supplyArgs (zip args' $ drop (length additionalArgs) $ fields struct)
-    splitValueFlag' :: NameSupply -> (Iridium.Variable, StructField) -> ([Named Instruction], (Operand, Operand))
+    (splitInstructions, argOperands) = unzip $ fst $ mapWithSupply' splitValueFlag' supplyArgs (zip args' $ drop (length additionalArgs) $ fields struct)
+    splitValueFlag' :: NameSupply -> (Iridium.Variable, StructField) -> (([Named Instruction], (Operand, Operand)), NameSupply)
     splitValueFlag' s (var, StructField tp Nothing)
       | not (Iridium.typeEqual (envTypeEnv env) (Iridium.variableType var) tp) =
         let
           (nameThunk, s1) = freshName s
+          (s2, s3) = splitNameSupply s1
         in
-          ( cast s1 env (toOperand env var) nameThunk (Iridium.variableType var) tp
-          , ( LocalReference (compileType env tp) nameThunk
-            , operandTrue
+          ( ( cast s2 env (toOperand env var) nameThunk (Iridium.variableType var) tp
+            , ( LocalReference (compileType env tp) nameThunk
+              , operandTrue
+              )
             )
+          , s3
           )
       | otherwise = 
-        ( []
-        , ( toOperand env var, operandTrue )
+        ( ( []
+          , ( toOperand env var, operandTrue )
+          )
+        , s
         )
     -- Flag is stored in header
-    splitValueFlag' s (var, StructField tp _) = splitValueFlag env s (var, tp)
+    splitValueFlag' s (var, StructField tp _) = let (s1, s2) = splitNameSupply s in (splitValueFlag env s1 (var, tp), s2)
     (supplyArgs, supply1) = splitNameSupply supply
     (supplyInit, supply2) = splitNameSupply supply1
     (supplyAdditionalArgs, supply3) = splitNameSupply supply2
     (nameVoid, supply4) = freshName supply3
-    (nameStruct, _) = freshNameFromId (nameSuggestion target) supply3
+    (nameStruct, _) = freshNameFromId (nameSuggestion target) supply4
     whnf = Iridium.typeIsStrict $ Iridium.bindType (envTypeEnv env) bind
     operandVoid = LocalReference voidPointer nameVoid
     castBind
