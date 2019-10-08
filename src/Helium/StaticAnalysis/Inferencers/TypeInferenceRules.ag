@@ -558,13 +558,14 @@ SEM Expression
 
   | Comprehension
       expression . monos       = @qualifiers.monos
+                 . betaUnique  = @lhs.betaUnique + 1
       qualifiers . assumptions = @expression.assumptions
                  . constraints = @expression.constraints
                  . monos       = @lhs.monos
       loc        . assumptions = @qualifiers.assumptions
                  . constraints = @newcon .>. Node [ @qualifiers.constraints ]
-                 . beta        = TVar @lhs.betaDeclUnique
-                 . newcon      = [ (listType @expression.beta .==. @beta) @cinfo ]
+                 . beta        = TVar @lhs.betaUnique
+                 . newcon      = [ (listType @expression.beta .==. @beta) @cinfo, (@expression.beta .==. TVar @lhs.betaDeclUnique) @cinfo ]
 
   | Enum
        from . betaUnique   = @lhs.betaUnique + (if @overloaded then 1 else 0)
