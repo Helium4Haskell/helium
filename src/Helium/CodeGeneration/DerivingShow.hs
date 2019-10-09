@@ -81,7 +81,7 @@ dataDictionary classEnv tse decl@(UHA.Declaration_Data _ _ (UHA.SimpleType_Simpl
            ids  = zipWith (\n idx -> let arg = idFromName n in Variable arg $ typeDictFor $ Core.TVar idx) names [1..] -- take nrOfArgs [ idFromString ("d" ++ show i) | i <- [(1::Integer)..] ]
            list = map idFromString ["showsPred", "showList", "showDef"]
            fields = [Var $ idFromString "default$Show$showsPrec", Var $ idFromString "default$Show$showList", showBody]
-           body = foldl Ap (Con $ ConId $ idFromString "Dict$Show") fields
+           body = foldl Ap (ApType (Con $ ConId $ idFromString "Dict$Show") dataType) fields
        in foldr (Lam False) body ids
 dataDictionary _ _ _ = error "not supported"
 
@@ -206,4 +206,3 @@ typeOfShowFunction name names =
     let vars  = map TVar (take (length names) [0..])
         types = vars ++ [foldl TApp (TCon (getNameName name)) vars]
     in generalizeAll ([] .=>. foldr1 (.->.) (map (.->. stringType) types))
-
