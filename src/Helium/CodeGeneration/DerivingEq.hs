@@ -87,7 +87,7 @@ eqFunction dictType dataType typeArgs constructors =
             (Let
                 (Strict (Bind (Variable sndArg dataType) (Var sndArg)))
                 (Match fstArg -- case $fstArg of ...
-                       (map (makeAlt typeArgs) constructors)
+                       (map (makeAlt dataType typeArgs) constructors)
                 )
             )
     in  foldr
@@ -102,10 +102,10 @@ eqFunction dictType dataType typeArgs constructors =
 fstArg, sndArg :: Id
 [fstArg, sndArg] = map idFromString ["$fstArg", "$sndArg"]
 
-makeAlt :: [Core.Type] -> UHA.Constructor -> Alt
-makeAlt typeArgs constructor =
+makeAlt :: Core.Type -> [Core.Type] -> UHA.Constructor -> Alt
+makeAlt altType typeArgs constructor =
         -- C $v0 $v1 $v2 -> ...
-                               Alt
+                                       Alt
     (PatCon (ConId ident) typeArgs vs)
             --             case $sndArg of
             --                  C $w0 $w1 $w2 -> ...
@@ -121,7 +121,14 @@ makeAlt typeArgs constructor =
                 then Con (ConId (idFromString "True"))
                 else foldr1
                     andCore
-                    [ Ap (Ap (Ap (var "==") $ eqFunForType tp) (Var v)) (Var w)
+                    [ Ap
+                          (Ap
+                              ( Ap (ApType (var "==") (typeConstructor tp))
+                              $ eqFunForType tp
+                              )
+                              (Var v)
+                          )
+                          (Var w)
                     | (v, w, tp) <- zip3 vs ws types
                     ]
             )
@@ -151,6 +158,15 @@ nameAndTypes c = case c of
 
 --idFromNumber :: Int -> Id
 --idFromNumber i = idFromString ("v$" ++ show i)
+
+typeConstructor :: UHA.Type -> Core.Type
+typeConstructor t = case t of
+    UHA.Type_Variable _ n -> Core.TCon $ Core.TConDataType $ idFromName n
+    UHA.Type_Constructor _ n ->
+        Core.TCon $ Core.TConDataType $ idFromString (show n)
+    UHA.Type_Application _ _ f xs ->
+        foldl (Core.TAp) (typeConstructor f) (map typeConstructor xs)
+    _ -> internalError "DerivingEq" "typeConstructor" "unsupported type"
 
 eqFunForType :: UHA.Type -> Expr
 eqFunForType t = case t of

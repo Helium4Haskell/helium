@@ -35,10 +35,14 @@ typeFromUHA = typeToCoreType . makeTpFromType'
 typeDictFor :: Core.Type -> Core.Type
 typeDictFor = Core.TAp typeDictShow
 
+typeList :: Core.Type
+typeList = Core.TCon $ Core.TConDataType $ idFromString "[]"
+
 typeString :: Core.Type
-typeString = Core.TAp (Core.TCon $ Core.TConDataType $ idFromString "[]") char
-  where
-    char = Core.TCon $ Core.TConDataType $ idFromString "Char" 
+typeString = Core.TAp typeList typeChar
+    
+typeChar :: Core.Type
+typeChar = Core.TCon $ Core.TConDataType $ idFromString "Char"
 
 -- Show function for a data type declaration
 dataShowFunction :: Core.Type -> Core.Type -> ClassEnvironment -> TypeSynonymEnvironment -> UHA.Declaration -> Expr
@@ -80,7 +84,7 @@ dataDictionary classEnv tse decl@(UHA.Declaration_Data _ _ (UHA.SimpleType_Simpl
            showBody = dataShowFunction dictType dataType classEnv tse decl
            ids  = zipWith (\n idx -> let arg = idFromName n in Variable arg $ typeDictFor $ Core.TVar idx) names [1..] -- take nrOfArgs [ idFromString ("d" ++ show i) | i <- [(1::Integer)..] ]
            list = map idFromString ["showsPred", "showList", "showDef"]
-           fields = [Var $ idFromString "default$Show$showsPrec", Var $ idFromString "default$Show$showList", showBody]
+           fields = [ApType (Var $ idFromString "default$Show$showsPrec") dataType, ApType (Var $ idFromString "default$Show$showList") dataType, showBody]
            body = foldl Ap (ApType (Con $ ConId $ idFromString "Dict$Show") dataType) fields
        in foldr (Lam False) body ids
 dataDictionary _ _ _ = error "not supported"
@@ -108,27 +112,38 @@ makeAlt classEnv tse names c = Alt (constructorToPat ident types) (showConstruct
 showConstructor :: ClassEnvironment -> TypeSynonymEnvironment -> Id -> [UHA.Type] -> Expr
 showConstructor classEnv tse c ts -- name of constructor and paramater types
     | isConOp && length ts == 2 = 
-        Ap (Var (idFromString "$primConcat")) $ coreList typeString
+        Ap primconcat $ coreList typeString
             [   stringToCore "("
-            ,   Ap (Ap (var "show") (showFunctionOfType classEnv tse False (ts!!0))) (Var (idFromNumber 1))
+            ,   Ap (Ap (cshow $ ts!!0) (showFunctionOfType classEnv tse False (ts!!0))) (Var (idFromNumber 1))
             ,   stringToCore name
-            ,   Ap (Ap (var "show") (showFunctionOfType classEnv tse False (ts!!1))) (Var (idFromNumber 2))
+            ,   Ap (Ap (cshow $ ts!!1) (showFunctionOfType classEnv tse False (ts!!1))) (Var (idFromNumber 2))
             ,   stringToCore ")"
             ]
     | otherwise =
-        Ap (Var (idFromString "$primConcat")) $ coreList typeString
+        Ap primconcat $ coreList typeString
             (  (if null ts then [] else [stringToCore "("])
             ++ (if isConOp then parens else id) [stringToCore name]
             ++ concat
-                   [ [stringToCore " ", Ap (Ap (var "show") (showFunctionOfType classEnv tse False t)) (Var (idFromNumber i))]
+                   [ [stringToCore " ", Ap (Ap (cshow t) (showFunctionOfType classEnv tse False t)) (Var (idFromNumber i))]
                    | (t, i) <- zip ts [1..] 
                    ]
             ++ (if null ts then [] else [stringToCore ")"])
             )
   where
+    cshow ut = ApType (var "show" ) (typeConstructor ut)
+    primconcat = ApType (Var (idFromString "$primConcat")) typeChar
     name = stringFromId c
     isConOp = head name == ':'
     parens s = [ stringToCore "(" ] ++ s ++ [ stringToCore ")" ]
+
+typeConstructor :: UHA.Type -> Core.Type
+typeConstructor t = case t of
+    UHA.Type_Constructor _ n ->
+        Core.TCon $ Core.TConDataType $ idFromString (show n)
+    UHA.Type_Application _ _ f xs ->
+        foldl (Core.TAp) (typeConstructor f) (map typeConstructor xs)
+    _ -> internalError "DerivingEq" "typeConstructor" "unsupported type"
+
 
 -- What show function to call for a specific type. Returns a Core expression
 -- If this function is called for the main function, type variables are printed
@@ -151,7 +166,7 @@ showFunctionOfType classEnv tse isMainType = sFOT []
         UHA.Type_Application _ _ 
                     ( UHA.Type_Constructor _ (UHA.Name_Special    _ _ "[]") ) -- !!!Name
                     [ UHA.Type_Constructor _ (UHA.Name_Identifier _ _ "Char") ] -- !!!Name
-                ->  Ap (var "$dictShow$[]") (var "$dictShow$Char" )
+                ->  Ap (ApType (var "$dictShow$[]") typeChar) (var "$dictShow$Char" )
         UHA.Type_Constructor _ n         -> checkForPrimitiveDict argTypes classEnv (getNameName n)
         UHA.Type_Application _ _ f xs    -> foldl Ap (sFOT xs f) (map (sFOT []) xs )
         UHA.Type_Parenthesized _ t'      -> showFunctionOfType classEnv tse isMainType t'
