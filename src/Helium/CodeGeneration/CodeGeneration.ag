@@ -52,7 +52,9 @@ import Helium.StaticAnalysis.Miscellaneous.ConstraintInfo (ConstraintInfo)
 
 import Helium.CodeGeneration.PatternMatch
 import qualified Helium.CodeGeneration.DerivingShow as DerivingShow
+import qualified Helium.CodeGeneration.DerivingUtils as DerivingUtils
 import qualified Helium.CodeGeneration.DerivingEq as DerivingEq
+import qualified Data.Map as M
 
 -- Semi-Daan
 import Helium.CodeGeneration.CoreUtils
