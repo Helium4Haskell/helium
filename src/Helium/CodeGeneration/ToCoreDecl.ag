@@ -83,7 +83,7 @@ SEM Declaration
             }
         ] ++ 
         (if "Show" `elem` map show @derivings.self 
-         then [ DerivingShow.dataDictionary (classEnvironment @lhs.importEnv) (typeSynonyms @lhs.importEnv) @self ]
+         then [ DerivingShow.dataDictionary (typeSynonyms @lhs.importEnv) @self ]
          else []
         )
         ++
