@@ -145,6 +145,7 @@ Library
     Helium.CodeGeneration.CoreUtils
     Helium.CodeGeneration.DerivingEq
     Helium.CodeGeneration.DerivingShow
+    Helium.CodeGeneration.DerivingUtils
     Helium.CodeGeneration.PatternMatch
     Helium.CodeGeneration.Core
     Helium.CodeGeneration.Core.FunctionType
@@ -273,6 +274,3 @@ Library
     Helium.Utils.Utils
     Helium.Utils.Network
   Other-modules:
-    
-
- 
