@@ -11,31 +11,29 @@ module Helium.CodeGeneration.DerivingEq
     )
 where
 
-import qualified Data.Maybe                    as M
-import qualified Data.Map.Strict               as Map
-import           Data.List
+import qualified Data.Map.Strict               as M
 import qualified Helium.Syntax.UHA_Syntax      as UHA
 import           Helium.Syntax.UHA_Utils
 import           Helium.CodeGeneration.CoreUtils
-import           Helium.StaticAnalysis.Miscellaneous.TypeConversion
+import           Helium.ModuleSystem.ImportEnvironment
 import           Lvm.Core.Expr
 import qualified Lvm.Core.Type                 as Core
 import           Lvm.Core.Utils
 import           Lvm.Common.Id
-import           Helium.Utils.Utils
+import           Helium.CodeGeneration.DerivingUtils
 
 typeDictEq :: Core.Type
 typeDictEq = Core.TCon $ Core.TConTypeClassDictionary $ idFromString "Eq"
 
 -- Eq Dictionary for a data type declaration
-dataDictionary :: UHA.Declaration -> CoreDecl
-dataDictionary (UHA.Declaration_Data _ _ (UHA.SimpleType_SimpleType _ name names) constructors _) = DeclValue
-    { declName    = idFromString ("$dictEq$" ++ getNameName name)
+dataDictionary :: TypeSynonymEnvironment -> UHA.Declaration -> CoreDecl
+dataDictionary tse (UHA.Declaration_Data _ _ (UHA.SimpleType_SimpleType _ name names) constructors _) = DeclValue
+    { declName    = idFromString ("Eq$" ++ getNameName name)
     , declAccess  = public
     , declType    = foldr (\(typeArg, idx) -> Core.TForall (Core.Quantor idx $ Just $ getNameName typeArg) Core.KStar)
                           (Core.typeFunction argTypes dictType)
                         $ zip names [1 ..]
-    , valueValue  = eqDict dictType dataType names constructors
+    , valueValue  = eqDict dictType dataType tse names constructors
     , declCustoms = [custom "type" ("Dict$Eq " ++ getNameName name)]
                     ++ map (custom "typeVariable" . getNameName)                   names
                     ++ map (\n -> custom "superInstance" ("Eq-" ++ getNameName n)) names
@@ -46,10 +44,10 @@ dataDictionary (UHA.Declaration_Data _ _ (UHA.SimpleType_SimpleType _ name names
     dictType = Core.TAp typeDictEq dataType
     dataType = Core.typeApplyList (Core.TCon $ Core.typeConFromString $ getNameName name)
         $ zipWith (\_ idx -> Core.TVar idx) names [1 ..]
-dataDictionary _ = error "pattern match failure in CodeGeneration.Deriving.dataDictionary"
+dataDictionary _ _ = error "pattern match failure in CodeGeneration.Deriving.dataDictionary"
 
-eqDict :: Core.Type -> Core.Type -> [UHA.Name] -> [UHA.Constructor] -> Expr
-eqDict dictType dataType names constructors = foldr
+eqDict :: Core.Type -> Core.Type -> TypeSynonymEnvironment -> [UHA.Name] -> [UHA.Constructor] -> Expr
+eqDict dictType dataType tse names constructors = foldr
     (\(typeArg, idx) -> Forall (Core.Quantor idx $ Just $ getNameName typeArg) Core.KStar)
     dictBody'
     (zip names [1 ..])
@@ -62,21 +60,21 @@ eqDict dictType dataType names constructors = foldr
     dictBody  = let_
         (idFromString "func$eq")
         dictfType
-        (eqFunction dictType dataType typeArgs constructors)
+        (eqFunction dictType dataType tse typeArgs constructors)
         (Ap (Ap (ApType (Con $ ConId $ idFromString "Dict$Eq") dataType) (ApType (var "default$Eq$/=") dataType))
             (var "func$eq")
         )
-    typeArgs = Map.fromList (zipWith (\name idx -> (name, Core.TVar idx)) names [1 ..])
+    typeArgs = M.fromList (zipWith (\name idx -> (name, Core.TVar idx)) names [1 ..])
 
 -- Example: data X a b = C a b Int | D Char b
-eqFunction :: Core.Type -> Core.Type -> Map.Map UHA.Name Core.Type -> [UHA.Constructor] -> Expr
-eqFunction dictType dataType typeArgs constructors =
+eqFunction :: Core.Type -> Core.Type -> TypeSynonymEnvironment -> M.Map UHA.Name Core.Type -> [UHA.Constructor] -> Expr
+eqFunction dictType dataType tse typeArgs constructors =
     let body = Let
             (Strict (Bind (Variable fstArg dataType) (Var fstArg))) -- evaluate both
             (Let
                 (Strict (Bind (Variable sndArg dataType) (Var sndArg)))
                 (Match fstArg -- case $fstArg of ...
-                       (map (makeAlt dataType typeArgs) constructors)
+                       (map (makeAlt dataType tse typeArgs) constructors)
                 )
             )
     in  foldr (Lam False)
@@ -87,10 +85,10 @@ eqFunction dictType dataType typeArgs constructors =
 fstArg, sndArg :: Id
 [fstArg, sndArg] = map idFromString ["$fstArg", "$sndArg"]
 
-makeAlt :: Core.Type -> Map.Map UHA.Name Core.Type -> UHA.Constructor -> Alt
-makeAlt altType typeArgs constructor =
+makeAlt :: Core.Type -> TypeSynonymEnvironment -> M.Map UHA.Name Core.Type -> UHA.Constructor -> Alt
+makeAlt altType tse typeArgs constructor =
         -- C $v0 $v1 $v2 -> ...
-                                       Alt
+                                           Alt
     (PatCon (ConId ident) elems vs)
             --             case $sndArg of
             --                  C $w0 $w1 $w2 -> ...
@@ -114,36 +112,11 @@ makeAlt altType typeArgs constructor =
         ]
     )
   where
-    elems          = Map.elems typeArgs
-    (ident, types) = nameAndTypes typeArgs constructor
+    elems          = M.elems typeArgs
+    (ident, types) = nameAndTypes "Eq$" tse typeArgs constructor
     vs             = [ idFromString ("$r" ++ show i) | i <- [0 .. length types - 1] ]
     ws             = [ idFromString ("$w" ++ show i) | i <- [0 .. length types - 1] ]
 {-  constructorToPat :: Id -> [UHA.Type] -> Pat
     constructorToPat id ts =
         PatCon (ConId ident) [ idFromNumber i | i <- [1..length ts] ] -}
     andCore x y = Ap (Ap (Var (idFromString "&&")) x) y
-
-nameAndTypes :: Map.Map UHA.Name Core.Type -> UHA.Constructor -> (Id, [(Core.Type, Expr)])
-nameAndTypes m c = case c of
-    UHA.Constructor_Constructor _ n ts -> (idFromName n, map annotatedTypeToType ts)
-    UHA.Constructor_Infix _ t1 n t2    -> (idFromName n, map annotatedTypeToType [t1, t2])
-    UHA.Constructor_Record{}           -> error "pattern match failure in CodeGeneration.DerivingEq.nameAndTypes"
-  where
-    annotatedTypeToType :: UHA.AnnotatedType -> (Core.Type, Expr)
-    annotatedTypeToType (UHA.AnnotatedType_AnnotatedType _ _ t) = (typeConstructor m t, eqFunForType m t)
-
-typeConstructor :: Map.Map UHA.Name Core.Type -> UHA.Type -> Core.Type
-typeConstructor m t = case t of
-    UHA.Type_Variable    _ n      -> M.fromJust $ Map.lookup n m
-    UHA.Type_Constructor _ n      -> Core.TCon $ Core.TConDataType $ idFromName n
-    UHA.Type_Application _ _ f xs -> foldl Core.TAp (typeConstructor m f) (map (typeConstructor m) xs)
-    _                             -> internalError "DerivingEq" "typeConstructor" "unsupported type"
-
-eqFunForType :: Map.Map UHA.Name Core.Type -> UHA.Type -> Expr
-eqFunForType m t = case t of
-    UHA.Type_Constructor _ n      -> var ("$dictEq$" ++ show n)
-    UHA.Type_Application _ _ f xs -> foldl Ap (ApType (eqFunForType m f) test) (map (eqFunForType m) xs)
-        where test = foldl1 Core.TAp (map (typeConstructor m) xs)
-    UHA.Type_Variable    _ n -> var (show n)
-    -- UHA.Type_Parenthesized _ ty -> eqFunForType m ty
-    _                           -> internalError "DerivingEq" "eqFunForType" "unsupported type"

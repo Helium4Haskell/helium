@@ -88,7 +88,7 @@ SEM Declaration
         )
         ++
         (if "Eq" `elem` map show @derivings.self 
-         then [ DerivingEq.dataDictionary @self ]
+         then [ DerivingEq.dataDictionary (typeSynonyms @lhs.importEnv) @self ]
          else []
         )
         
