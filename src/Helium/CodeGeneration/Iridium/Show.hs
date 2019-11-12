@@ -146,7 +146,9 @@ instance ShowWithQuantors Instruction where
     text instructionIndent . text "case " . showsQ quantors var . text " " . shows branches
   showsQ quantors (Return var) =
     text instructionIndent . text "return " . showsQ quantors var
-  showsQ quantors Unreachable =
+  showsQ quantors (Unreachable (Just var)) =
+    text instructionIndent . text "unreachable " .showsQ quantors var
+  showsQ quantors (Unreachable Nothing) =
     text instructionIndent . text "unreachable"
 
 instance ShowWithQuantors Local where

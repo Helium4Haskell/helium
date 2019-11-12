@@ -14,9 +14,8 @@
 
 module Helium.CodeGeneration.Iridium.Type
   ( typeFromFunctionType, FunctionType(..), extractFunctionTypeNoSynonyms, extractFunctionTypeWithArity
-  , FloatPrecision(..), EvaluationState(..), evaluationState
-  , Core.TypeEnvironment(..), Core.typeNormalizeHead, Core.typeEqual, typeIsStrict, typeToStrict
-  , PrimitiveType(..), typeNotStrict, typeRemoveArgumentStrictness
+  , FloatPrecision(..), Core.TypeEnvironment(..), Core.typeNormalizeHead, Core.typeEqual, typeIsStrict, typeToStrict
+  , typeNotStrict, typeRemoveArgumentStrictness
   , typeRealWorld, typeUnsafePtr, typeTrampoline, typeInt, typeInt16, typeChar, typeFloat, functionTypeArity
   ) where
 
@@ -35,32 +34,7 @@ typeInt16 = TStrict $ TCon $ TConDataType $ idFromString "Int16"
 typeChar = TStrict $ TCon $ TConDataType $ idFromString "Char"
 typeFloat = TStrict $ TCon $ TConDataType $ idFromString "Float"
 
-data PrimitiveType
-  = TypeAny -- ^ Any value, possibly a non-evaluated thunk. Supertype of TypeAnyThunk and TypeAnyWHNF.
-  | TypeAnyThunk -- ^ A thunk, not in WHNF
-  | TypeAnyWHNF
-
-  -- Subtypes of TypeAnyWHNF
-  | TypeInt
-  | TypeFloat FloatPrecision
-  | TypeRealWorld
-  | TypeDataType !Id
-  | TypeTuple !Int
-  | TypeFunction -- ^ Pointer to a function or a thunk in WHNF (partially applied function)
-  | TypeGlobalFunction FunctionType -- ^ A global function
-
-  -- Types used for the runtime
-  | TypeUnsafePtr
-  deriving (Eq, Ord)
-
 data FloatPrecision = Float32 | Float64 deriving (Eq, Ord)
-
-data EvaluationState = Unevaluated | EvaluationUnknown | Evaluated deriving (Show, Eq, Ord)
-
-evaluationState :: PrimitiveType -> EvaluationState
-evaluationState TypeAny = EvaluationUnknown
-evaluationState TypeAnyThunk = Unevaluated
-evaluationState _ = Evaluated
 
 applyWithArity :: Int -> Type -> Type
 applyWithArity 0 tp = tp

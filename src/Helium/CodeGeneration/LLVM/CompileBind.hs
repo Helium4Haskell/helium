@@ -3,6 +3,7 @@ module Helium.CodeGeneration.LLVM.CompileBind (compileBinds, toStruct) where
 import Data.Bits(shiftL, (.|.), (.&.))
 import Data.Word(Word32)
 import Data.Either
+import qualified Data.Graph as Graph
 
 import Lvm.Common.Id(idFromString, Id, NameSupply, mapWithSupply, mapWithSupply', splitNameSupply)
 import Lvm.Common.IdMap(findMap)
@@ -33,7 +34,7 @@ idCon = idFromString "$alloc_con"
 compileBinds :: Env -> NameSupply -> [Iridium.Bind] -> [Named Instruction]
 compileBinds env supply binds = concat inits ++ concat assigns
   where
-    (inits, assigns) = unzip $ mapWithSupply (compileBind env) supply binds
+    (inits, assigns) = unzip $ mapWithSupply (compileBind env) supply $ sortBinds binds
 
 compileBind :: Env -> NameSupply -> Iridium.Bind -> ([Named Instruction], [Named Instruction])
 compileBind env supply b@(Iridium.Bind varId target args)
@@ -121,7 +122,9 @@ operandTrue = ConstantOperand $ Constant.Int 1 1
 
 -- A thunk has an additional argument, namely the function. We add that argument here
 bindArguments :: Env -> NameSupply -> Iridium.BindTarget -> Int -> Operand -> (Bool, [Named Instruction], [(Operand, Operand)])
-bindArguments env _ target@(Iridium.BindTargetFunction (Iridium.GlobalFunction fn arity _)) givenArgs self =
+bindArguments env _ target@(Iridium.BindTargetFunction (Iridium.GlobalFunction fn arity _)) givenArgs self
+  | arity == 0 && givenArgs /= 0 = error "Cannot bind arguments to a global function with 0 arguments"
+  | otherwise = 
   ( True
   , []
   , [ (self, operandTrue)
@@ -164,3 +167,19 @@ bindArguments env supply (Iridium.BindTargetThunk var) givenArgs _ =
         , LocalReference voidPointer nameNext
         )
 bindArguments env _ _ _ _ = (False, [], [])
+
+-- Sorts binds such that if a bind targets a thunk defined in the same block,
+-- then that thunk is declared before this bind
+-- Before: letalloc %a = thunk %b .., %b = ..
+-- After: letalloc %b = .., %a = thunk %b ..
+sortBinds :: [Iridium.Bind] -> [Iridium.Bind]
+sortBinds = map getBind . Graph.stronglyConnComp . map node
+  where
+    node :: Iridium.Bind -> (Iridium.Bind, Id, [Id])
+    node bind@(Iridium.Bind name (Iridium.BindTargetThunk target) _) =
+      (bind, name, [Iridium.variableName target])
+    node bind@(Iridium.Bind name _ _) =
+      (bind, name, [])
+    getBind :: Graph.SCC Iridium.Bind -> Iridium.Bind
+    getBind (Graph.AcyclicSCC bind) = bind
+    getBind _ = error "sortBinds: Found cyclic dependency in bind targets of thunks"

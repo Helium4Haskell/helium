@@ -127,7 +127,7 @@ compileInstruction env supply (Iridium.Case var (Iridium.CaseInt alts defaultBra
     altToDestination (value, to)
       = (Int (fromIntegral $ targetWordSize $ envTarget env) (fromIntegral value), toName to)
 
-compileInstruction _ _ Iridium.Unreachable = Partial [] (Do $ Unreachable []) []
+compileInstruction _ _ (Iridium.Unreachable _) = Partial [] (Do $ Unreachable []) []
 
 compileExpression :: Env -> NameSupply -> Iridium.Expr -> Id -> [Named Instruction]
 compileExpression env supply (Iridium.Literal (Iridium.LitString value)) name =
