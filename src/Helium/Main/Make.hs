@@ -119,7 +119,7 @@ circularityCheck [] _ = Nothing
 
 -- | upToDateCheck returns true if the .iridium is newer than the .hs
 upToDateCheck :: String -> String -> IO Bool
-upToDateCheck _ "iridium" = return True
+upToDateCheck _ "iridium" = return False
 upToDateCheck basePath ext = do
     let irPath = basePath ++ ".iridium"
         sourcePath = basePath ++ "." ++ ext

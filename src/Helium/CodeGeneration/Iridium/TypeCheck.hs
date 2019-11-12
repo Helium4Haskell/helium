@@ -30,6 +30,7 @@ data TypeError
   -- The type of the variable of a Case instruction does not match with a type of a pattern
   | TECase !VariableOrGlobal !Type
   | TEReturn !VariableOrGlobal !Type
+  | TEEval !Variable -- Variable is strict
   -- Type at declaration does not match type at use
   | TEVariable !VariableOrGlobal !VariableOrGlobal
   | TEMultipleDeclarations ![VariableOrGlobal]
@@ -41,6 +42,7 @@ instance Show TypeError where
   show (TEMatch var tp) = "Variable " ++ showVar var ++ " should have type " ++ show tp ++ " in a match instruction"
   show (TECase var tp) = "Variable " ++ showVar var ++ " should have type " ++ show tp ++ " in a case instruction"
   show (TEReturn var tp) = "Variable " ++ showVar var ++ " should have type " ++ show tp ++ " in a return instruction"
+  show (TEEval var) = "Variable " ++ show var ++ " should not be strict in an eval expression"
   show (TEVariable var1 var2) = "Variable declared as " ++ showVar var1 ++ " is used as " ++ showVar var2
   show (TEMultipleDeclarations vars) = "Variable has multiple declarations: " ++ intercalate ", " (map showVar vars)
   show (TENotDeclared name) = "Variable " ++ show name ++ " is not declared"
@@ -107,13 +109,20 @@ variableToAnalysis (VarGlobal (GlobalVariable name tp)) = AVar name UseGlobalVar
 globalFunctionToAnalysis :: GlobalFunction -> Analysis
 globalFunctionToAnalysis (GlobalFunction name arity tp) = AVar name (UseGlobalFunction arity) tp
 
+analyseExpression :: TypeEnvironment -> Expr -> Analysis
+analyseExpression env (Eval var)
+  | typeIsStrict $ variableType var = ATypeError $ TEEval var
+  | otherwise = AEmpty
+analyseExpression env _ = AEmpty
+
 analyseInstruction :: TypeEnvironment -> Type -> Instruction -> Analysis
 analyseInstruction env returnType (Let name expr next) =
   AJoin
     (AVar name DeclareLocal $ typeOfExpr env expr)
     $ AJoin
       (fromList $ map variableToAnalysis $ dependenciesOfExpr expr)
-      $ analyseInstruction env returnType next
+      $ AJoin (analyseExpression env expr)
+        $ analyseInstruction env returnType next
 analyseInstruction env returnType (LetAlloc binds next) =
   AJoin
     (fromList $ map (analyseBind env) binds)

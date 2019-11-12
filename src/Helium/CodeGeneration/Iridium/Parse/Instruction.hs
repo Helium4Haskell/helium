@@ -32,7 +32,7 @@ pInstruction quantors = do
         "match" -> Match <$> pVariable quantors <* pWhitespace <* pSymbol "on" <* pWhitespace <*> pMatchTarget <* pWhitespace <*> pInstantiation quantors <*> pArguments pMatchField <*> pInstruction quantors
         "case" -> Case <$> pVariable quantors <* pWhitespace <*> pCase
         "return" -> Return <$> pVariable quantors
-        "unreachable" -> return Unreachable
+        "unreachable" -> Unreachable <$> pMaybe (pVariable quantors)
         _ -> pError "expected instruction"
 
 pMatchField :: Parser (Maybe Id)

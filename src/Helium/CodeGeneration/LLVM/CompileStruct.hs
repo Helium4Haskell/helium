@@ -116,7 +116,7 @@ initialize supply env reference struct fieldValues
       | index == 1 && not (tagInFirstElement env struct) = fromIntegral $ tagValue struct
       | otherwise = 0
 
-    (finalHeader, writeInstructions) = writeFields supplyHeader env reference struct (map Just fieldValues) initialHeader
+    (finalHeader, writeInstructions) = writeFields supplyFields env reference struct (map Just fieldValues) initialHeader
 
     headerInstructions = writeHeaderFields supplyHeader env reference (map Just finalHeader)
 

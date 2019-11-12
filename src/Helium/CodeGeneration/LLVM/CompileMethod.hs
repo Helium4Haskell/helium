@@ -235,7 +235,7 @@ trampolineExtractArguments i =
       (LocalReference (pointer taggedThunkPointer) $ name "ptr_increment")
       []
 
-  -- next_thunk_{i-1} = to_next_i ? next_next_thunk : next_thunk
+  -- next_thunk_{i-1} = to_next_i ? next_next_thunk[i] : next_thunk[i]
   , next "next_thunk" := Select operandToNext
       (LocalReference thunkType $ name "next_next_thunk")
       (LocalReference thunkType $ name "next_thunk")

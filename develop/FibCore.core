@@ -1,0 +1,20 @@
+module FibCore (fibCore) where
+
+import Fib (fibIridium)
+
+
+custom ''data''  ''[]''  : private import ''data''  HeliumLang.''[]''  [custom kind ["* -> *"]];
+
+abstract '':[]''  : private import ''con''  HeliumLang.''[]''  [custom ''type''  ["[a]"]
+                                                               ,custom ''data''  ''[]'' ]
+  = HeliumLang.'':[]''  (@0,0);
+
+abstract ''::''  : private import ''con''  HeliumLang.'':''  [custom ''type''  ["a -> [a] -> [a]"]
+                                                             ,custom ''data''  ''[]'' ]
+  = HeliumLang.''::''  (@1,2);
+
+
+fibCore :: Int -> Int
+fibCore x = fibIridium x
+
+a = [1]

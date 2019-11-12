@@ -9,3 +9,6 @@ lib/*.lvm
 lib/simple/*.lvm
 *.temp
 *.ll
+*test.core
+*desugared.core
+*.iridium

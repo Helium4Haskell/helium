@@ -6,6 +6,9 @@
     Portability :  portable
 -}
 
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE UndecidableInstances #-}
+
 -- Show instances for Iridium
 
 module Helium.CodeGeneration.Iridium.Show where
@@ -39,7 +42,7 @@ class ShowWithQuantors a where
   showsQ :: QuantorNames -> a -> ShowS
   showsQ names value = (showQ names value ++)
 
-instance ShowWithQuantors a => Show a where
+instance {-# Overlaps #-} ShowWithQuantors a => Show a where
   show = showQ []
   showsPrec _ = showsQ []
 
@@ -143,7 +146,9 @@ instance ShowWithQuantors Instruction where
     text instructionIndent . text "case " . showsQ quantors var . text " " . shows branches
   showsQ quantors (Return var) =
     text instructionIndent . text "return " . showsQ quantors var
-  showsQ quantors Unreachable =
+  showsQ quantors (Unreachable (Just var)) =
+    text instructionIndent . text "unreachable " .showsQ quantors var
+  showsQ quantors (Unreachable Nothing) =
     text instructionIndent . text "unreachable"
 
 instance ShowWithQuantors Local where

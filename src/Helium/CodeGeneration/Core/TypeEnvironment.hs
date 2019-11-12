@@ -156,7 +156,6 @@ typeEqualIgnoreStrictness env = typeEqual' env False
 
 -- Checks type equivalence
 typeEqual' :: TypeEnvironment -> Bool -> Type -> Type -> Bool
-typeEqual' env _ TAny TAny = True
 typeEqual' env False (TStrict t1) t2 = typeEqual' env False t1 t2 -- Ignore strictness
 typeEqual' env False t1 (TStrict t2) = typeEqual' env False t1 t2 -- Ignore strictness
 typeEqual' env True (TStrict t1) (TStrict t2) = typeEqual' env True t1 t2 -- Do use strictness

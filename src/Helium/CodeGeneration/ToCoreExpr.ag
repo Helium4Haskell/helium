@@ -246,15 +246,16 @@ SEM Qualifier [ | | core : { Core.Expr -> Core.Expr } ]
     -- in concatMap _ok expression
 
     | Generator           loc.argType = let (TVar beta) = @pattern.beta in findCoreType @lhs.typeOutput beta
+                          loc.retType = (Core.TCon (Core.TConDataType $ idFromString "[]") `Core.TAp` @lhs.coreType)
                           lhs.core = 
         \continue ->  
-            let_ nextClauseId @lhs.coreType (nil @lhs.coreType)
+            let_ nextClauseId @loc.retType (nil @lhs.coreType)
                 (let_ 
-                    okId (Core.typeFunction [@loc.argType] @lhs.coreType)
+                    okId (Core.typeFunction [@loc.argType] @loc.retType)
                     (Core.Lam False (Core.Variable parameterId @loc.argType)
                         (patternToCore @lhs.importEnv @pattern.patternTypes (parameterId, @loc.argType, @pattern.self) continue)
                     )
-                    (var "$primConcatMap"
+                    (var "$primConcatMap" `Core.ApType` @loc.argType `Core.ApType` @lhs.coreType
                         `app_` Core.Var okId 
                         `app_` @expression.core
                     )

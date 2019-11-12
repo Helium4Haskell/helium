@@ -170,8 +170,9 @@ data Instruction
   -- containing method.
   | Return !Variable
   -- * Denotes that the current location is unreachable. Can be used after a call to a diverging function like 'error'.
-  -- No semantics are defined for this instruction.
-  | Unreachable
+  -- The control flow or the argument should guarantee that this location is unreachable. In the case of calling 'error',
+  -- the argument should be the returned value of 'error'.
+  | Unreachable !(Maybe Variable)
   deriving (Eq, Ord)
 
 -- * A bind describes the construction of an object in a 'letalloc' instruction. It consists of the

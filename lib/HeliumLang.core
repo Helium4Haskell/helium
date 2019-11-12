@@ -9,7 +9,7 @@ module HeliumLang
     , String, Int, Float, Char
     , PackedString
 
-    , showChar, showString, showInt, showBool, showUnit, showFloat
+    , showChar, showInt, showBool, showUnit, showFloat
 
     , ''$primPutStrLn'' -- inserted main
     , ''$primPutChar'', ''$primPutStr'' -- necessary for ''$primPutStrLn''
@@ -175,10 +175,10 @@ safeShowChar = \ !inChar: Bool -> \ !c: Char -> case c of
         }
     }
 
-showString :: String -> String
-showString = \s: String -> 
-    (:) {Char} '\"' (''$primAppend'' {Char} (''$primConcatMap'' {Char} {Char} (safeShowChar False) s) "\"")
-
+{- showString :: String -> String
+showString = \s: String -> (''$primConcatMap'' {Char} {Char} (safeShowChar False) s)
+    -- (:) {Char} '\"' (''$primAppend'' {Char} (''$primConcatMap'' {Char} {Char} (safeShowChar False) s) "\"")
+-}
 showInt :: Int -> String
 showInt = \ !n: Int ->
     let! isNeg: Bool = (<#) n 0 in case isNeg of

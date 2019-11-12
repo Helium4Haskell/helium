@@ -1,3 +1,5 @@
+{-# LANGUAGE RankNTypes #-}
+
 module Helium.CodeGeneration.Iridium.Parse.Module (parseModule, parseModuleIO, parseModuleIO') where
 
 import Lvm.Common.Id(Id)

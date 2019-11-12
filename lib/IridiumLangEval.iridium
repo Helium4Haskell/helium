@@ -81,7 +81,7 @@ oversaturated_self:
   %oversaturated = prim int16_add(%given: !Int16, %remaining: !Int16)
 
   %o_type = prim thunk_get_type(%new_remaining: !Int16, %new_given: !Int16)
-  
+
   case %o_type: !Int int ( 0 to o_unsaturated ) otherwise o_thunk
 
 o_unsaturated:
