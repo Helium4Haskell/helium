@@ -11,6 +11,7 @@ module Helium.Parser.Parser
     , parseOnlyImports
     ) where
 
+-- TODO: Check which of these still apply
 {-
 Absent:
 - records
@@ -135,11 +136,10 @@ importsThenTopdecls explicit =
 -- First try " class tycon tyvar [where cdecls]" as class constraints do not yet exist
 -- in a later phase add them then also data has to be changed to deal with typeclass constraints
 -- please note that in ghc already this has some strange behaviour, read semantics carefully...
-    
+
 {-
 topdecl  
-    ->  impdecl  
-     |  "data" simpletype "=" constrs derivings?
+    ->  "data" simpletype "=" constrs derivings?
      |  "type" simpletype "=" type
      |  infixdecl
      |  decl  
@@ -164,7 +164,9 @@ simpletype
         constructors             : Constructors
         derivings                : Names
 -}
-
+-- TODO: Add newtype
+-- TODO: Fix this doc to reflect that classes and instances are possible
+-- TODO: Add [context =>] to data, newtype, type
 topdecl :: HParser Declaration
 topdecl = addRange (
     do
@@ -287,11 +289,13 @@ constrs  ->  constr1 "|" ... "|" constrn  (n>=1)
 constrs :: HParser Constructors
 constrs = constr `sepBy1` lexBAR
 
+
 {-
 constr  ->  btype conop btype  (infix conop)  
+         |  con { fielddecl1, ..., fielddecln }  (n>=0)  
          |  con atype1 ... atypek  (arity con = k, k>=0)  
 -}
-
+-- TODO: Add records
 constr :: HParser Constructor
 constr = addRange $
     do 
@@ -303,10 +307,28 @@ constr = addRange $
         return (\r -> Constructor_Infix r t1 n t2)
     <|>
     do 
+        (n, ts) <- try $ do 
+            n <- con
+            ts <- braces (fielddecl `sepBy` lexCOMMA)
+            return (n, ts)
+        return (\r -> Constructor_Record r n ts)
+    <|>
+    do 
         n <- con 
         ts <- many (annotatedType atype)
         return (\r -> Constructor_Constructor r n ts)
-        
+
+{-
+fielddecl 	-> 	vars :: (type | ! atype) 
+-}
+
+fielddecl :: HParser FieldDeclaration
+fielddecl = addRange $
+    do
+        n <- vars
+        lexCOLCOL
+        t <- annotatedType type_
+        return (\r -> FieldDeclaration_FieldDeclaration r n t)
 
 {-
 Simplified import:
@@ -801,6 +823,7 @@ operatorAsExpression storeRange = (do
         Right c -> Expression_Constructor range c
      )) <?> Texts.parserOperator
                          
+-- TODO: Rewrite expression parser
 aexp :: HParser Expression    
 aexp = addRange (
     do 
