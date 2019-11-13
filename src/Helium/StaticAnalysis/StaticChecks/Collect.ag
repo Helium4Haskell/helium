@@ -81,6 +81,12 @@ SEM Constructor
        loc . typeScheme = generalizeAll ([] .=>. foldr (.->.) @tp @tps)
            . (tp,tps)   = convertFromSimpleTypeAndTypes @lhs.simpletype [@leftType.type,@rightType.type]
 
+  | Record
+       lhs . collectValueConstructors = (@constructor.self, @typeScheme) : @lhs.collectValueConstructors
+           . parameterTypes = @tps
+       loc . typeScheme = generalizeAll ([] .=>. foldr (.->.) @tp @tps)
+           . (tp,tps)   = convertFromSimpleTypeAndTypes @lhs.simpletype @fieldDeclarations.types
+
 -------------------------------------------
 -- 3) Collecting type synonyms
 
@@ -206,8 +212,8 @@ SEM Declaration
   | Data     constructors . simpletype = @simpletype.self
   | Newtype  constructor  . simpletype = @simpletype.self
 
-ATTR AnnotatedTypes [ | | types : Types ]
-ATTR AnnotatedType  [ | | type  : Type  ]
+ATTR AnnotatedTypes FieldDeclarations [ | | types : Types ]
+ATTR AnnotatedType FieldDeclaration  [ | | type  : Type  ]
 
 SEM AnnotatedTypes
   | Cons   lhs . types = @hd.type : @tl.types
@@ -215,6 +221,13 @@ SEM AnnotatedTypes
 
 SEM AnnotatedType
   | AnnotatedType  lhs . type = @type.self
+
+SEM FieldDeclarations
+  | Cons   lhs . types = @hd.type : @tl.types
+  | Nil    lhs . types = []
+
+SEM FieldDeclaration
+  | FieldDeclaration  lhs . type = @type.type
 
 {
 uniqueKeys :: Ord key => [(key,a)] -> ([(key,a)],[[key]])
@@ -462,5 +475,3 @@ createInstance r n ty ctx = (r, (makePredicate n ty , map (\(ContextItem_Context
          makePredicate nm typ = Predicate (getNameName nm) (makeTpFromType nameMap typ)
 
 }
-
-

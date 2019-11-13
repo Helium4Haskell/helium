@@ -295,7 +295,6 @@ constr  ->  btype conop btype  (infix conop)
          |  con { fielddecl1, ..., fielddecln }  (n>=0)  
          |  con atype1 ... atypek  (arity con = k, k>=0)  
 -}
--- TODO: Add records
 constr :: HParser Constructor
 constr = addRange $
     do 

@@ -448,12 +448,31 @@ SEM Constructor [ dataTypeName : Name typevariables : Names dataTypeCoreType : {
     --  constructorOperator      : Name
     --  rightType                : AnnotatedType
     
--- Not supported
-
-    | Record            lhs.cons = internalError "ToCoreDecl" "Constructor" "records not supported"
+    | Record            lhs.cons = 
+        [ (idFromName @constructor.self, Core.DeclCon
+            { Core.declName    = idFromName @constructor.self
+            , Core.declAccess  = Core.private
+            , Core.declType    = declarationConstructorType @lhs.importEnv @constructor.self @fieldDeclarations.strictness
+            , Core.declCustoms = constructorCustoms 
+                                    @lhs.dataTypeName
+                                    @constructor.self 
+                                    (valueConstructors @lhs.importEnv)
+            }
+          )
+        ]
     --  range                    : Range
     --  constructor              : Name
     --  fieldDeclarations        : FieldDeclarations
+
+SEM FieldDeclarations [ | | strictness : { [Bool] } ]
+    | Cons lhs.strictness = @hd.strictness : @tl.strictness
+    | Nil  lhs.strictness = []
+
+SEM FieldDeclaration [ | | strictness : { Bool } ]
+    | FieldDeclaration lhs.strictness = @type.strictness
+    --  range                    : Range
+    --  names                    : Names
+    --  type                     : AnnotatedType        
 
 SEM AnnotatedTypes [ | | strictness : { [Bool] } ]
     | Cons lhs.strictness = @hd.strictness : @tl.strictness
