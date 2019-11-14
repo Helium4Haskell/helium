@@ -11,14 +11,15 @@
 --    2) type synonyms
 --    3) (value) constructors from a data type
 --    4) fixity declarations
+--    5) record declarations
 --
 -- Distribute the collected environments
---    5) value constructors
---    6) type constructors
---    7) type synonyms
+--    6) value constructors
+--    7) type constructors
+--    8) type synonyms
 
 -- Collect the following information:
---    8) type classes and their declarations
+--    9) type classes and their declarations
 -------------------------------------------------------------------------------
 
 imports{
@@ -122,7 +123,41 @@ SEM Declaration
     | Class lhs . operatorFixities = @where.operatorFixities
 
 -------------------------------------------
--- 5) Distributing Value Constructors
+-- 5) Collecting Record Declarations
+
+-- Will collect them in the form of (data type, [(constructors, [fields])])
+ATTR Body Declarations Declaration Constructors Constructor [ | allRecordFields : {[(Name,[(Name,[(Name, AnnotatedType)])])]} | ]
+ATTR Constructor Constructors [ | | constrRecFields USE { ++ } { [] } : {[(Name,[(Name, AnnotatedType)])]} ]
+ATTR FieldDeclaration FieldDeclarations [ | | recFields USE { ++ } { [] } : {[(Name, AnnotatedType)]} ]
+
+SEM Module | Module   body . allRecordFields = []
+
+SEM Declaration
+    | Data
+        lhs . allRecordFields = ( @simpletype.name, @constructors.constrRecFields ) : @lhs.allRecordFields
+        -- range                    : Range
+        -- context                  : ContextItems
+        -- simpletype               : SimpleType
+        -- constructors             : Constructors
+        -- derivings                : Names
+    | Newtype             
+        lhs . allRecordFields = internalError "Collect" "Newtype" "newtype not supported"
+        -- range                    : Range
+        -- context                  : ContextItems
+        -- simpletype               : SimpleType
+        -- constructor              : Constructor
+        -- derivings                : Names
+
+SEM Constructor
+    | Record
+        loc . constrRecFields = [ (@constructor.self, @fieldDeclarations.recFields) ]
+
+SEM FieldDeclaration
+    | FieldDeclaration
+        lhs . recFields = map (\n -> (n, @type.self)) @names.self
+
+-------------------------------------------
+-- 6) Distributing Value Constructors
 
 SEM Module
   | Module   loc . (uniqueValueConstructors,duplicatedValueConstructors) =
@@ -140,7 +175,7 @@ ATTR Body Declarations Declaration Expressions Expression Patterns Pattern
      [ valueConstructors : {M.Map Name TpScheme} allValueConstructors : Names | | ]
 
 -------------------------------------------
--- 6) Distributing Type Constructors
+-- 7) Distributing Type Constructors
 
 SEM Module
   | Module loc . (uniqueTypeConstructors,duplicatedTypeConstructors) =
@@ -160,7 +195,7 @@ ATTR Body Declarations Declaration Expressions Expression Patterns Pattern
      [ typeConstructors : {M.Map Name Int} allTypeConstructors : Names | | ]
 
 -------------------------------------------
--- 7) Distributing Type Synonyms
+-- 8) Distributing Type Synonyms
 
 ATTR Module -> Declaration [ orderedTypeSynonyms:OrderedTypeSynonyms | | ]
 

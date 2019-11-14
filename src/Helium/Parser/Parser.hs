@@ -653,6 +653,17 @@ exp     ->  exp0 "::" type  (expression type signature)
          |  exp0  
 -}
 
+-- TODO: RecordBinding as patterns
+-- TODO: RecordUpdate
+-- do
+--     (e, rs) <- try $ do 
+--         e <- aexp
+--         rs <- braces (fbind `sepBy` lexCOMMA)
+--         return (e, rs)
+--     return $ \r -> Expression_RecordUpdate r e rs
+-- <|>
+
+
 exp_ :: ParsecT [Token] SourcePos Identity Expression
 exp_ = addRange (
     do
@@ -822,7 +833,6 @@ operatorAsExpression storeRange = (do
         Right c -> Expression_Constructor range c
      )) <?> Texts.parserOperator
                          
--- TODO: Rewrite expression parser
 aexp :: HParser Expression    
 aexp = addRange (
     do 
@@ -883,6 +893,13 @@ aexp = addRange (
         return $ \r -> Expression_Variable r n
     <|>
     do
+        (n, rs) <- try $ do 
+            n <- conid
+            rs <- braces (fbind `sepBy` lexCOMMA)
+            return (n, rs)
+        return $ \r -> Expression_RecordConstruction r n rs
+    <|>
+    do
         n <- conid
         return $ \r -> Expression_Constructor r n
     <|>
@@ -913,6 +930,13 @@ aexp = addRange (
         lexLBRACKET
         aexp1
     ) <?> Texts.parserExpression
+
+fbind :: HParser RecordExpressionBinding
+fbind = addRange $ do
+    n <- varid
+    lexASG
+    e <- exp_
+    return (\r -> RecordExpressionBinding_RecordExpressionBinding r n e )
 
 {-
 Last four cases, rewritten to eliminate backtracking
