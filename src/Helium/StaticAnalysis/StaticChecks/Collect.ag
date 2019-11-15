@@ -132,10 +132,10 @@ SEM Declaration
 -- Will collect them in the form of ((data type, constructors), [fieldPositions])
 -- 
 
-ATTR Body Declarations Declaration [ | | recordEnv USE { ++ } { [] } : {[((Name, Name), [(Name, Int)])]} ]
-ATTR Constructor Constructors [ | | constrRecFields : {[(Name,[(Name, Int)])]} ]
+ATTR Body Declarations Declaration [ | | recordEnv USE { ++ } { [] } : {[((Name, Name), [(Name, Int, Type)])]} ]
+ATTR Constructor Constructors [ | | constrRecFields : {[(Name,[(Name, Int, Type)])]} ]
 ATTR FieldDeclaration [ | | names : {[Name]} ]
-ATTR FieldDeclarations [ | | recFields USE { ++ } { [] } : {[(Name, Int)]} ]
+ATTR FieldDeclarations [ | | recFields USE { ++ } { [] } : {[(Name, Int, Type)]} ]
 
 SEM Declaration
     | Data
@@ -154,7 +154,8 @@ SEM Constructor
 
 SEM FieldDeclarations
     | Cons   
-        lhs . recFields = (zip @hd.names [0..]) ++ map (\(n, i) -> (n, i + length @hd.names)) @tl.recFields
+        lhs . recFields = @loc.current ++ map (\(n, i, t) -> (n, i + length @loc.current, t)) @tl.recFields
+        loc . current = zip3 @hd.names [0..] (repeat @hd.type)
 
 SEM FieldDeclaration
     | FieldDeclaration 
