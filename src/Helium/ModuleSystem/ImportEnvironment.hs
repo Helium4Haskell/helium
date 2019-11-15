@@ -40,6 +40,7 @@ type TypeConstructorEnvironment  = M.Map Name Int
 type TypeSynonymEnvironment      = M.Map Name (Int, Tps -> Tp)
 type ClassMemberEnvironment      = M.Map Name (Names, [(Name, TpScheme, Bool, HasDefault)])
 type InstanceEnvironment         = M.Map (Name, Tp) (Names, [(String, String)])
+type RecordEnvironment           = M.Map (Name, Name) [(Name, Int)]
 
 type ImportEnvironments = [ImportEnvironment]
 data ImportEnvironment  =
@@ -55,6 +56,7 @@ data ImportEnvironment  =
                        , classMemberEnvironment :: ClassMemberEnvironment
                          -- other
                        , instanceEnvironment :: InstanceEnvironment
+                       , recordEnvironment :: RecordEnvironment
 
                        , typingStrategies  :: Core_TypingStrategies
                        }
@@ -69,6 +71,7 @@ emptyEnvironment = ImportEnvironment
    , classEnvironment  = emptyClassEnvironment
    , classMemberEnvironment = M.empty
    , instanceEnvironment = M.empty
+   , recordEnvironment = M.empty
    , typingStrategies  = []
    }
 
@@ -156,6 +159,9 @@ setClassEnvironment new importenv = importenv { classEnvironment = new }
 setInstanceEnvironment :: InstanceEnvironment -> ImportEnvironment -> ImportEnvironment
 setInstanceEnvironment new importenv = importenv { instanceEnvironment = new }
 
+setRecordEnvironment :: RecordEnvironment -> ImportEnvironment -> ImportEnvironment
+setRecordEnvironment new importenv = importenv { recordEnvironment = new }
+
 addTypingStrategies :: Core_TypingStrategies -> ImportEnvironment -> ImportEnvironment
 addTypingStrategies new importenv = importenv {typingStrategies = new ++ typingStrategies importenv}
 
@@ -217,7 +223,7 @@ getDefaultDirectives importEnv = let
     in concatMap convertDefault tps
 
 combineImportEnvironments :: ImportEnvironment -> ImportEnvironment -> ImportEnvironment
-combineImportEnvironments (ImportEnvironment tcs1 tss1 te1 vcs1 ot1 ce1 cm1 ins1 xs1) (ImportEnvironment tcs2 tss2 te2 vcs2 ot2 ce2 cm2 ins2 xs2) =
+combineImportEnvironments (ImportEnvironment tcs1 tss1 te1 vcs1 ot1 ce1 cm1 ins1 rec1 xs1) (ImportEnvironment tcs2 tss2 te2 vcs2 ot2 ce2 cm2 ins2 rec2 xs2) =
     insertMissingInstances $ ImportEnvironment
       (tcs1 `exclusiveUnion` tcs2)
       (tss1 `exclusiveUnion` tss2)
@@ -227,6 +233,7 @@ combineImportEnvironments (ImportEnvironment tcs1 tss1 te1 vcs1 ot1 ce1 cm1 ins1
       (M.unionWith combineClassDecls ce1 ce2)
       (cm1 `exclusiveUnion` cm2)
       (ins1 `exclusiveUnion` ins2)
+      (M.unionWith (++) rec1 rec2)
       (xs1 ++ xs2)
 
 insertMissingInstances :: ImportEnvironment -> ImportEnvironment
@@ -295,7 +302,7 @@ makeInstance className nrOfArgs tp isDict =
 
 -- added for holmes
 holmesShowImpEnv :: Module -> ImportEnvironment -> String
-holmesShowImpEnv module_ (ImportEnvironment _ _ te _ _ _ _ _ _) =
+holmesShowImpEnv module_ (ImportEnvironment _ _ te _ _ _ _ _ _ _) =
       concat functions
     where
        localName = getModuleName module_
@@ -305,7 +312,7 @@ holmesShowImpEnv module_ (ImportEnvironment _ _ te _ _ _ _ _ _) =
           in map (++ ";") list
 
 instance Show ImportEnvironment where
-   show (ImportEnvironment tcs tss te vcs ot ce cm ins _) =
+   show (ImportEnvironment tcs tss te vcs ot ce cm ins rs _) =
       unlines (concat [ fixities
                       , datatypes
                       , typesynonyms
@@ -314,6 +321,7 @@ instance Show ImportEnvironment where
                       , classes
                       , classmembers
                       , sinstances
+                      , records
                       ])
     where
        fixities =
@@ -363,9 +371,16 @@ instance Show ImportEnvironment where
                 f ((className, instanceType),(variables, predicates)) = show className ++ " " ++ show instanceType ++ " - " ++ show variables ++ " <= " ++ show predicates
            in showWithTitle "Instances" (map (f) (M.assocs ins))
 
+       records =
+           let
+                f ((typeName, constructor),fields) = show typeName ++ " " ++ show constructor ++ " - " ++ sortedFields fields
+                sortedFields :: [(Name, Int)] -> String
+                sortedFields = unwords . map (show . fst) . sortOn snd
+           in showWithTitle "Records" (map (f) (M.assocs rs))
+
        showWithTitle title xs
-          | null xs   = []
-          | otherwise = (title++":") : map ("   "++) xs
+          | null xs   = [title++":", "   EMPTY"]
+          | otherwise = (title++":")  : map ("   "++) xs
 
        showEm showf aMap = map showf (part2 ++ part1)
          where

@@ -36,6 +36,7 @@ SEM Module
                                             (M.unionWith combineClassDecls @body.classEnv (classEnvironment $ combineImportEnvironmentList @lhs.importEnvironments)))
                                         . setInstanceEnvironment @body.instanceEnv
                                         . setClassMemberEnvironment @body.collectClassMemberEnv
+                                        . setRecordEnvironment (M.fromList @body.recordEnv)
                                         $emptyEnvironment
                                         -- the type environment will be added after type inferencing.
                  . derivedFunctions = []
@@ -124,37 +125,40 @@ SEM Declaration
 
 -------------------------------------------
 -- 5) Collecting Record Declarations
+-- 
+-- Collects the positions of each of the labels within their respective constructors t
+-- to determine how updates and constructions should be desugared.
+-- 
+-- Will collect them in the form of ((data type, constructors), [fieldPositions])
+-- 
 
--- Will collect them in the form of (data type, [(constructors, [fields])])
-ATTR Body Declarations Declaration Constructors Constructor [ | allRecordFields : {[(Name,[(Name,[(Name, AnnotatedType)])])]} | ]
-ATTR Constructor Constructors [ | | constrRecFields USE { ++ } { [] } : {[(Name,[(Name, AnnotatedType)])]} ]
-ATTR FieldDeclaration FieldDeclarations [ | | recFields USE { ++ } { [] } : {[(Name, AnnotatedType)]} ]
-
-SEM Module | Module   body . allRecordFields = []
+ATTR Body Declarations Declaration [ | | recordEnv USE { ++ } { [] } : {[((Name, Name), [(Name, Int)])]} ]
+ATTR Constructor Constructors [ | | constrRecFields : {[(Name,[(Name, Int)])]} ]
+ATTR FieldDeclaration [ | | names : {[Name]} ]
+ATTR FieldDeclarations [ | | recFields USE { ++ } { [] } : {[(Name, Int)]} ]
 
 SEM Declaration
     | Data
-        lhs . allRecordFields = ( @simpletype.name, @constructors.constrRecFields ) : @lhs.allRecordFields
-        -- range                    : Range
-        -- context                  : ContextItems
-        -- simpletype               : SimpleType
-        -- constructors             : Constructors
-        -- derivings                : Names
-    | Newtype             
-        lhs . allRecordFields = internalError "Collect" "Newtype" "newtype not supported"
-        -- range                    : Range
-        -- context                  : ContextItems
-        -- simpletype               : SimpleType
-        -- constructor              : Constructor
-        -- derivings                : Names
+        lhs . recordEnv = map (\(constr, fields) -> ((@simpletype.name, constr), fields)) @constructors.constrRecFields
+
+SEM Constructors
+    | Nil    lhs . constrRecFields = []
+    | Cons   lhs . constrRecFields = @hd.constrRecFields ++ @tl.constrRecFields 
+
 
 SEM Constructor
+    | Constructor
+        lhs . constrRecFields = []
     | Record
-        loc . constrRecFields = [ (@constructor.self, @fieldDeclarations.recFields) ]
+        lhs . constrRecFields = [ (@constructor.self, @fieldDeclarations.recFields) ]
+
+SEM FieldDeclarations
+    | Cons   
+        lhs . recFields = (zip @hd.names [0..]) ++ map (\(n, i) -> (n, i + length @hd.names)) @tl.recFields
 
 SEM FieldDeclaration
-    | FieldDeclaration
-        lhs . recFields = map (\n -> (n, @type.self)) @names.self
+    | FieldDeclaration 
+        lhs . names = @names.self
 
 -------------------------------------------
 -- 6) Distributing Value Constructors

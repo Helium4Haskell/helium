@@ -307,13 +307,13 @@ constr = addRange $
     <|>
     do 
         (n, ts) <- try $ do 
-            n <- con
-            ts <- braces (fielddecl `sepBy` lexCOMMA)
+            n <- conid
+            ts <- braces (commas fielddecl)
             return (n, ts)
         return (\r -> Constructor_Record r n ts)
     <|>
     do 
-        n <- con 
+        n <- conid
         ts <- many (annotatedType atype)
         return (\r -> Constructor_Constructor r n ts)
 
@@ -324,9 +324,11 @@ fielddecl 	-> 	vars :: (type | ! atype)
 fielddecl :: HParser FieldDeclaration
 fielddecl = addRange $
     do
-        n <- vars
-        lexCOLCOL
-        t <- annotatedType type_
+        (n, t) <- try $ do
+            n <- commas varid
+            lexCOLCOL
+            t <- annotatedType type_
+            return (n, t)
         return (\r -> FieldDeclaration_FieldDeclaration r n t)
 
 {-
