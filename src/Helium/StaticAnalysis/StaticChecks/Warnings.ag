@@ -19,6 +19,8 @@ ATTR Expression Expressions MaybeExpression Pattern Patterns Alternative Alterna
      Statement Statements Declaration Declarations MaybeDeclarations LeftHandSide RightHandSide
      FunctionBinding FunctionBindings Body Qualifier Qualifiers
      GuardedExpression GuardedExpressions
+     FieldDeclaration FieldDeclarations
+     RecordExpressionBinding RecordExpressionBindings
      Type Types AnnotatedType AnnotatedTypes Constructor Constructors ContextItem ContextItems
      [ | warnings : {[Warning]} | ]
 

@@ -170,7 +170,13 @@ SEM Expression [ | | core : { Core.Expr } ]
     --  then                     : MaybeExpression
     --  to                       : MaybeExpression
 
-    | RecordConstruction lhs.core = internalError "ToCoreExpr" "Expression" "records not supported"
+    | RecordConstruction lhs.core = createRecordInstantiation 
+                                        @lhs.typeOutput 
+                                        @lhs.typeEnv 
+                                        @name.self 
+                                        @recordExpressionBindings.bindings
+                                        True 
+                                        @lhs.betaDeclUnique
     --  range                    : Range
     --  name                     : Name
     --  recordExpressionBindings : RecordExpressionBindings
@@ -302,6 +308,18 @@ SEM GuardedExpression [ | | core : { Core.Expr -> Core.Expr } ]
     --  guard                    : Expression -- type: Boolean
     --  expression               : Expression
 
+---------------------------------
+-- Collect record construction information
+-- 'bingings' will be used to put the arguments in the right order
+--
+SEM RecordExpressionBindings [ | | bindings USE { : } { [] } : { [(Name, Core.Expr)] } ]
+    | Cons                  lhs.bindings = (@hd.name, @hd.core) : @tl.bindings
+
+SEM RecordExpressionBinding [ | | name : {Name} core : { Core.Expr } ]
+    | RecordExpressionBinding 
+        lhs.core = @expression.core
+        lhs.name = @name.self
+
 SEM Literal [ | | core : { Core.Expr } ]
     | Int                   lhs.core = Core.Lit (Core.LitInt (read @value) Core.IntTypeInt)
     --  range                    : Range
@@ -341,4 +359,3 @@ chainCode theCores =
         (core:cores) -> core (Just (chainCode cores))
         [] -> error "pattern match failure in CodeGeneration.ToCoreExpr.chainCode"
 }
-

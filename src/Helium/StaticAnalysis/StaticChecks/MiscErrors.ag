@@ -14,8 +14,8 @@ ATTR Expression Expressions MaybeExpression Pattern Patterns Alternative Alterna
      Statement Statements Declaration Declarations MaybeDeclarations LeftHandSide RightHandSide
      FunctionBinding FunctionBindings Body Qualifier Qualifiers
      GuardedExpression GuardedExpressions Literal
-     Type Types AnnotatedTypes AnnotatedType ContextItem ContextItems Constructors Constructor FieldDeclaration
-     FieldDeclarations
+     Type Types AnnotatedTypes AnnotatedType ContextItem ContextItems Constructors Constructor 
+     FieldDeclaration FieldDeclarations RecordExpressionBinding RecordExpressionBindings
      [  | miscerrors : {[Error]} | ]
 
 SEM Module
@@ -532,4 +532,3 @@ deleteClassErrors errs = filter p errs where
 
    
 }
-

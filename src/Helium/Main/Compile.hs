@@ -134,6 +134,8 @@ compileHaskellToCore basedir fullName contents options iridiumCache doneModules 
       doPhaseWithExit 20 (("S"++) . errorsLogCode) compileOptions $
           phaseStaticChecks fullName resolvedModule importEnvs options        
 
+  print localEnv
+
   unless (NoWarnings `elem` options) $
       showMessages staticWarnings
 

@@ -16,7 +16,8 @@ module Helium.CodeGeneration.CoreUtils
     ,   declarationType, declarationTypeInPattern, addToTypeEnv
     ,   toCoreType, toCoreTypeNotQuantified, typeToCoreType, typeToCoreTypeMapped
     ,   addLambdas, addLambdasForLambdaExpression, TypeClassContext(..)
-    ,   findCoreType, createInstantiation, TypeInferenceOutput(TypeInferenceOutput, importEnv), lookupBeta
+    ,   findCoreType, createInstantiation, createRecordInstantiation
+    ,   TypeInferenceOutput(TypeInferenceOutput, importEnv), lookupBeta
     ) where
 
 import Top.Types as Top
@@ -330,6 +331,13 @@ createInstantiation typeOutput typeEnv name isConstructor beta = case maybeSchem
     maybeScheme
       | isConstructor = Just $ declarationConstructorTypeScheme (importEnv typeOutput) name
       | otherwise = M.lookup name typeEnv
+
+-- TODO: 
+createRecordInstantiation :: TypeInferenceOutput -> TypeEnvironment -> Name -> [(Name, Core.Expr)] -> Bool -> Int -> Core.Expr
+createRecordInstantiation typeOutput typeEnv name bindings isConstructor beta 
+    = undefined 
+  where
+    recordEnv = recordEnvironment (importEnv typeOutput)
 
 findInstantiation :: ImportEnvironment -> Top.TpScheme -> Top.Tp -> [Top.Tp]
 findInstantiation importEnv (Top.Quantification (tvars, _, Top.Qualification (_, tLeft))) tRight

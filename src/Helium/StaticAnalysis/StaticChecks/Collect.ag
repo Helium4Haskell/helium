@@ -129,28 +129,17 @@ SEM Declaration
 -- Collects the positions of each of the labels within their respective constructors t
 -- to determine how updates and constructions should be desugared.
 -- 
--- Will collect them in the form of ((data type, constructors), [fieldPositions])
+-- Will collect them in the form of (constructors, [fieldPositions])
 -- 
 
-ATTR Body Declarations Declaration [ | | recordEnv USE { ++ } { [] } : {[((Name, Name), [(Name, Int, Type)])]} ]
-ATTR Constructor Constructors [ | | constrRecFields : {[(Name,[(Name, Int, Type)])]} ]
+ATTR Body Declarations Declaration [ | | recordEnv USE { ++ } { [] } : {[(Name, [(Name, Int, Type)])]} ]
+ATTR Constructor Constructors [ | | recordEnv USE { ++ } { [] } : {[(Name,[(Name, Int, Type)])]} ]
 ATTR FieldDeclaration [ | | names : {[Name]} ]
 ATTR FieldDeclarations [ | | recFields USE { ++ } { [] } : {[(Name, Int, Type)]} ]
 
-SEM Declaration
-    | Data
-        lhs . recordEnv = map (\(constr, fields) -> ((@simpletype.name, constr), fields)) @constructors.constrRecFields
-
-SEM Constructors
-    | Nil    lhs . constrRecFields = []
-    | Cons   lhs . constrRecFields = @hd.constrRecFields ++ @tl.constrRecFields 
-
-
 SEM Constructor
-    | Constructor
-        lhs . constrRecFields = []
     | Record
-        lhs . constrRecFields = [ (@constructor.self, @fieldDeclarations.recFields) ]
+        lhs . recordEnv = [ (@constructor.self, @fieldDeclarations.recFields) ]
 
 SEM FieldDeclarations
     | Cons   
@@ -165,7 +154,7 @@ SEM FieldDeclaration
 -- 6) Distributing Value Constructors
 
 SEM Module
-  | Module   loc . (uniqueValueConstructors,duplicatedValueConstructors) =
+  | Module   loc . (uniqueValueConstructors, duplicatedValueConstructors) =
                       uniqueKeys (  @body.collectValueConstructors
                                  ++ concatMap (M.assocs . valueConstructors) @lhs.importEnvironments
                                  )
@@ -176,7 +165,9 @@ ATTR Body Declarations Declaration Expressions Expression Patterns Pattern
      Statement Statements Qualifier Qualifiers
      Alternative Alternatives Constructor Constructors
      GuardedExpressions GuardedExpression FunctionBinding FunctionBindings
-     LeftHandSide RightHandSide MaybeDeclarations MaybeExpression AnnotatedType AnnotatedTypes
+     FieldDeclaration FieldDeclarations RecordExpressionBinding RecordExpressionBindings
+     LeftHandSide RightHandSide MaybeDeclarations MaybeExpression 
+     AnnotatedType AnnotatedTypes
      [ valueConstructors : {M.Map Name TpScheme} allValueConstructors : Names | | ]
 
 -------------------------------------------
@@ -195,8 +186,9 @@ ATTR Body Declarations Declaration Expressions Expression Patterns Pattern
      Statement Statements Qualifier Qualifiers
      Alternative Alternatives Constructor Constructors
      GuardedExpressions GuardedExpression FunctionBinding FunctionBindings
-     LeftHandSide RightHandSide MaybeDeclarations MaybeExpression
-     Type Types AnnotatedType AnnotatedTypes ContextItem ContextItems
+     FieldDeclaration FieldDeclarations RecordExpressionBinding RecordExpressionBindings
+     LeftHandSide RightHandSide MaybeDeclarations MaybeExpression Type Types 
+     AnnotatedType AnnotatedTypes ContextItem ContextItems
      [ typeConstructors : {M.Map Name Int} allTypeConstructors : Names | | ]
 
 -------------------------------------------

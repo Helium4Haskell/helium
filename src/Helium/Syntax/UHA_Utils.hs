@@ -174,4 +174,3 @@ nameOfLeftHandSide lhs = case lhs of
     LeftHandSide_Function _ n _      -> [n]
     LeftHandSide_Infix _ _ n _       -> [n]
     LeftHandSide_Parenthesized _ l _ -> nameOfLeftHandSide l
-    

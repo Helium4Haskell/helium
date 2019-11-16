@@ -81,7 +81,10 @@ SEM Declaration
             , Core.declKind    = Core.DeclKindCustom (idFromString "data")
             , Core.declCustoms = [Core.CustomInt (length @simpletype.typevariables)]
             }
-        ] ++ 
+        ] ++
+        -- TODO: Figure out how to generate selectors from field labels
+        -- concatMap (\(c, fdecls -> map () fdecls)) @constructors.constrRecFields 
+        -- ++
         (if "Show" `elem` map show @derivings.self 
          then [ DerivingShow.dataDictionary (typeSynonyms @lhs.importEnv) @self ]
          else []

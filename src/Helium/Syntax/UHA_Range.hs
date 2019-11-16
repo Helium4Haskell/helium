@@ -288,4 +288,3 @@ moduleFromPosition pos =
             moduleName
         _ -> 
             internalError "UHA_Range" "moduleFromPosition" "unknown position"
-            

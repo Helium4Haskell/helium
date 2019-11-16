@@ -17,6 +17,7 @@ ATTR Declarations MaybeDeclarations Declaration
      Expression Expressions MaybeExpression GuardedExpression GuardedExpressions
      Statement Statements Qualifier Qualifiers
      Alternative Alternatives 
+     FieldDeclaration FieldDeclarations RecordExpressionBinding RecordExpressionBindings
      Body RightHandSide FunctionBinding FunctionBindings 
      Constructor Constructors AnnotatedTypes AnnotatedType 
      [ | kindErrors : {[Error]} | ]

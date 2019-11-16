@@ -198,8 +198,9 @@ SEM Constructors
   | Nil    lhs . assumptions = noAssumptions
   
 
-SEM FieldDeclaration 
-  | FieldDeclaration    loc . constraints = internalError "KindInferencing.ag" "n/a" "Field decls are not supported"
+-- TODO:
+-- SEM FieldDeclaration 
+--   | FieldDeclaration    loc . constraints = internalError "KindInferencing.ag" "n/a" "Field decls are not supported"
 SEM Declaration 
   | Instance loc . constraints = internalError "KindInferencing.ag" "n/a" "instance decls are not supported"
   | Default  loc . constraints = internalError "KindInferencing.ag" "n/a" "default decls is not supported"
@@ -211,8 +212,9 @@ SEM Type
   | Qualified   loc . (assumptions, kappa) = internalError "KindInferencing.ag" "n/a" "Qualified types are not supported"
   | Forall      loc . (assumptions, kappa) = internalError "KindInferencing.ag" "n/a" "Universal types are not supported"
   | Exists      loc . (assumptions, kappa) = internalError "KindInferencing.ag" "n/a" "Existential types are not supported"
-SEM Constructor
-  | Record  lhs . assumptions = internalError "KindInferencing.ag" "n/a" "Record constructors are not supported"
+-- TODO:
+-- SEM Constructor
+--   | Record  lhs . assumptions = internalError "KindInferencing.ag" "n/a" "Record constructors are not supported"
 
 {
 

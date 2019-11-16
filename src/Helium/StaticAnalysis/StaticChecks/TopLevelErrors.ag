@@ -33,7 +33,12 @@ SEM Module
 
 SEM Module
   | Module   loc . valueConstructorErrors = makeDuplicated Constructor @duplicatedValueConstructors
-  
+
+------------------------------------------------------------------------------
+-- record labels in the same declaration but different types
+
+-- TODO:  Handle static 'fields are different types' check
+
 ------------------------------------------------------------------------------
 -- duplicated fixity declarations
 

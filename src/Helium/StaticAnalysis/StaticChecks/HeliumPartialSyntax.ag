@@ -12,23 +12,24 @@
 --
 -------------------------------------------------------------------------------
 
-
-
-SEM Expression
-  | RecordConstruction  loc . (assumptions,constraints,beta) = internalError "PartialSyntax.ag" "n/a" "Expression.RecordConstruction"
+-- TODO: DELETE
+-- SEM Expression
+--   | RecordConstruction  loc . (assumptions,constraints,beta) = internalError "PartialSyntax.ag" "n/a" "Expression.RecordConstruction"
 
 SEM Pattern
   | Record    loc . (constraints,environment) = internalError "PartialSyntax.ag" "n/a" "Pattern.Record"
   | Successor loc . (constraints,environment) = internalError "PartialSyntax.ag" "n/a" "Pattern.Successor"
 
-SEM RecordExpressionBinding
-  | RecordExpressionBinding  loc . (monos,constructorenv,betaUnique,miscerrors,warnings,kindErrors,valueConstructors,allValueConstructors,typeConstructors,allTypeConstructors,importEnvironment) = internalError "PartialSyntax.ag" "n/a" "RecordExpressionBinding.RecordExpressionBinding"
+-- TODO: DELETE
+-- SEM RecordExpressionBinding
+--   | RecordExpressionBinding  loc . (monos,constructorenv,betaUnique,miscerrors,warnings,kindErrors,valueConstructors,allValueConstructors,typeConstructors,allTypeConstructors,importEnvironment) = internalError "PartialSyntax.ag" "n/a" "RecordExpressionBinding.RecordExpressionBinding"
 
 SEM RecordPatternBinding
   | RecordPatternBinding    loc . (monos,constructorenv,betaUnique,miscerrors,warnings,valueConstructors,allValueConstructors,typeConstructors,allTypeConstructors,importEnvironment) = internalError "PartialSyntax.ag" "n/a" "RecordPatternBinding.RecordPatternBinding"
 
-SEM FieldDeclaration
-  | FieldDeclaration    loc . (kindErrors,tyconEnv,constructorenv,importEnvironment,valueConstructors,allValueConstructors,typeConstructors,allTypeConstructors,warnings) = internalError "PartialSyntax.ag" "n/a" "FieldDeclaration.FieldDeclaration"
+-- TODO: DELETE
+-- SEM FieldDeclaration
+--   | FieldDeclaration    loc . (kindErrors,tyconEnv,constructorenv,importEnvironment,valueConstructors,allValueConstructors,typeConstructors,allTypeConstructors,warnings) = internalError "PartialSyntax.ag" "n/a" "FieldDeclaration.FieldDeclaration"
 
 SEM ContextItem
   | ContextItem    loc . (tyconEnv) = internalError "PartialSyntax.ag" "n/a" "ContextItem.ContextItem"

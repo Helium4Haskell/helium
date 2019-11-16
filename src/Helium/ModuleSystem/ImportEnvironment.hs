@@ -40,7 +40,7 @@ type TypeConstructorEnvironment  = M.Map Name Int
 type TypeSynonymEnvironment      = M.Map Name (Int, Tps -> Tp)
 type ClassMemberEnvironment      = M.Map Name (Names, [(Name, TpScheme, Bool, HasDefault)])
 type InstanceEnvironment         = M.Map (Name, Tp) (Names, [(String, String)])
-type RecordEnvironment           = M.Map (Name, Name) [(Name, Int, Type)]
+type RecordEnvironment           = M.Map Name [(Name, Int, Type)]
 
 type ImportEnvironments = [ImportEnvironment]
 data ImportEnvironment  =
@@ -373,7 +373,7 @@ instance Show ImportEnvironment where
 
        records =
            let
-                f ((typeName, constructor),fields) = show typeName ++ " " ++ show constructor ++ " - " ++ sortedFields fields
+                f (constructor,fields) = show constructor ++ " - " ++ sortedFields fields
                 sortedFields :: [(Name, Int, Type)] -> String
                 sortedFields = unwords . map (show . fst) . sortOn snd . map (\(c, i, t) -> (c, i))
            in showWithTitle "Records" (map (f) (M.assocs rs))
