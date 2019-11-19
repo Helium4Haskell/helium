@@ -25,7 +25,8 @@ import Helium.StaticAnalysis.Directives.TS_Attributes
 
 ATTR Body Statement Qualifier Statements Qualifiers Expression RightHandSide MaybeExpression
      Expressions GuardedExpression GuardedExpressions FunctionBinding FunctionBindings
-     Declaration Declarations MaybeDeclarations Alternative Alternatives
+     RecordExpressionBindings RecordExpressionBinding Declaration Declarations 
+     MaybeDeclarations Alternative Alternatives
      [ | matchIO : {IO ()} | ]
 
 SEM Module | Module  body . matchIO = return ()
@@ -34,6 +35,7 @@ SEM Module | Module  body . matchIO = return ()
 
 ATTR Expressions Expression MaybeExpression 
      GuardedExpression GuardedExpressions 
+     RecordExpressionBinding RecordExpressionBindings 
      Qualifiers Qualifier 
      Statements Statement
      [ | uniqueSecondRound : Int | ]
@@ -52,7 +54,8 @@ SEM RightHandSide
 
 ATTR Body Expression Expressions MaybeExpression Statements Statement Qualifiers Qualifier
      GuardedExpression GuardedExpressions FunctionBinding FunctionBindings 
-     Declaration Declarations MaybeDeclarations RightHandSide Alternative Alternatives
+     RecordExpressionBindings RecordExpressionBinding Declaration Declarations 
+     MaybeDeclarations RightHandSide Alternative Alternatives
      [ allPatterns : {[((Expression, [String]), Core_TypingStrategy)]} | | ]
           
 SEM Module 
@@ -72,7 +75,8 @@ ATTR MaybeExpression [ tryPatterns : {[(MaybeExpression, [String])]} | | ]
                             
 ---------------------------------------------------------------------------------------------------------
 
-ATTR Expression Expressions MaybeExpression [ | | matches : {[Maybe MetaVariableTable]} ]
+ATTR Expression Expressions MaybeExpression RecordExpressionBinding RecordExpressionBindings 
+   [ | | matches : {[Maybe MetaVariableTable]} ]
                                 
 SEM Expression   
   | Literal 
@@ -106,6 +110,14 @@ SEM Expression
                     (match_Expression_Constructor @name.self) 
                     @lhs.tryPatterns @lhs.allPatterns 
                     []
+
+  | RecordConstruction 
+       (recordExpressionBindings.tryPatterns, lhs.matches, lhs.constraints, lhs.assumptions, lhs.uniqueSecondRound, loc.ioMatch) = 
+          let infoTuple = metaVarInfo @constraints @recordExpressionBindings.assumptions @localInfo
+          in match1 infoTuple @recordExpressionBindings.uniqueSecondRound
+                    match_Expression_RecordConstruction 
+                    @lhs.tryPatterns @lhs.allPatterns 
+                    [@recordExpressionBindings.matches]     
 
   | NormalApplication
        ( (function.tryPatterns, arguments.tryPatterns)
@@ -193,6 +205,16 @@ SEM MaybeExpression
   | Nothing
        ((), lhs.matches, _, _, _, _) = 
           match0' match_MaybeExpression_Nothing @lhs.tryPatterns [] []  
+
+SEM RecordExpressionBinding
+  | RecordExpressionBinding
+      lhs.matches = @expression.matches
+        
+SEM RecordExpressionBindings
+  | Cons
+       lhs.matches = @hd.matches ++ @tl.matches
+  | Nil
+       lhs.matches = []
 
 ---------------------------------------------------------------
 -- Expressions that can only match with a meta variable.
@@ -424,10 +446,11 @@ generalMatch exprVarMatcher converter metaInfo unique matcher tryPats allPats ch
    in (forChildren, result, constraintSet, assumptions, newUnique, debugIO)
 }
 
+-- TODO:  DELETE
 -- prevent ag-warnings
-SEM RecordExpressionBinding 
-  | RecordExpressionBinding   
-       loc . (allPatterns,tryPatterns,matchIO,uniqueSecondRound) = internalError "TS_PatternMatching.ag" "n/a" "RecordExpressionBinding is not supported"
-SEM Expression 
-  | RecordConstruction 
-       loc . matches = internalError "TS_PatternMatching.ag" "n/a" "RecordConstruction is not supported"
+-- SEM RecordExpressionBinding 
+--   | RecordExpressionBinding   
+--        loc . (allPatterns,tryPatterns,matchIO,uniqueSecondRound) = internalError "TS_PatternMatching.ag" "n/a" "RecordExpressionBinding is not supported"
+-- SEM Expression 
+--   | RecordConstruction 
+--        loc . matches = internalError "TS_PatternMatching.ag" "n/a" "RecordConstruction is not supported"

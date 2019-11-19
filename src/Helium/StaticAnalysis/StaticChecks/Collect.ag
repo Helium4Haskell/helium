@@ -132,10 +132,9 @@ SEM Declaration
 -- Will collect them in the form of (constructors, [fieldPositions])
 -- 
 
-ATTR Body Declarations Declaration [ | | recordEnv USE { ++ } { [] } : {[(Name, [(Name, Int, Type)])]} ]
-ATTR Constructor Constructors [ | | recordEnv USE { ++ } { [] } : {[(Name,[(Name, Int, Type)])]} ]
-ATTR FieldDeclaration [ | | names : {[Name]} ]
-ATTR FieldDeclarations [ | | recFields USE { ++ } { [] } : {[(Name, Int, Type)]} ]
+ATTR Body Declarations Declaration Constructor Constructors [ | | recordEnv USE { ++ } { [] } : {[(Name, [(Name, Int, TpScheme)])]} ]
+ATTR FieldDeclarations [ | | recFields USE { ++ } { [] } : {[(Name, Int, TpScheme)]} ]
+ATTR FieldDeclaration [ | | fieldSel : {[(Name, TpScheme)]} ]
 
 SEM Constructor
     | Record
@@ -144,11 +143,15 @@ SEM Constructor
 SEM FieldDeclarations
     | Cons   
         lhs . recFields = @loc.current ++ map (\(n, i, t) -> (n, i + length @loc.current, t)) @tl.recFields
-        loc . current = zip3 @hd.names [0..] (repeat @hd.type)
+        loc . current = map (\((n, t), i) -> (n, i, t)) (zip @hd.fieldSel [0..])
+    | Nil 
+        lhs . recFields = []
 
 SEM FieldDeclaration
     | FieldDeclaration 
-        lhs . names = @names.self
+        lhs . fieldSel = map (\n -> (n, @selectorType)) @names.self
+        loc . (tp, tps) = convertFromSimpleTypeAndTypes @lhs.simpletype [@type.type]
+            . selectorType = generalizeAll ([] .=>. foldl (.->.) @tp @tps)
 
 -------------------------------------------
 -- 6) Distributing Value Constructors
@@ -238,7 +241,7 @@ ATTR Type Types AnnotatedTypes AnnotatedType Constructors Constructor [ | | type
 SEM Type
   | Variable  lhs . typevariables = [ @name.self ]
 
-ATTR Constructors Constructor [ simpletype:SimpleType | | ]
+ATTR Constructors Constructor FieldDeclaration FieldDeclarations [ simpletype:SimpleType | | ]
 
 SEM Declaration
   | Data     constructors . simpletype = @simpletype.self

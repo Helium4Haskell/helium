@@ -45,6 +45,7 @@ ATTR
     Declaration
     Expression Statement
     Qualifier Alternative
+    RecordExpressionBinding
     FunctionBinding LeftHandSide
     Pattern Literal Name
     [
@@ -67,10 +68,11 @@ ATTR GuardedExpressions
 ATTR
     Declarations Expressions
     Statements Qualifiers Alternatives
+    RecordExpressionBindings
     FunctionBindings Patterns Names Strings
     [
     |
-    | oneLineTree USE { : } { [] } : { [ OneLineTree] }
+    | oneLineTree USE { : } { [] } : { [ OneLineTree ] }
     ]
 
 ATTR
@@ -189,6 +191,12 @@ SEM Expression                                   {- *** -}
     | Constructor       loc.oneLineTree = OneLineNode [@name.oneLineTree]
     --  range                    : Range
     --  name                     : Name
+
+    -- TODO: Expand with records
+    | RecordConstruction loc.oneLineTree = OneLineNode [@name.oneLineTree]
+    --  range                    : Range
+    --  name                     : Name
+    --  recordExpressionBindings : RecordExpressionBindings
     | Parenthesized     loc.oneLineTree = parens @expression.oneLineTree
     --  range                    : Range
     --  expression               : Expression
@@ -285,8 +293,9 @@ SEM Expression                                   {- *** -}
     --  range                    : Range
     --  expression               : Expression
     --  type                     : Type
-    | RecordConstruction
-            loc.oneLineTree = intErr "Expression" "record construction"
+    -- TODO: DELETE
+    -- | RecordConstruction
+    --         loc.oneLineTree = intErr "Expression" "record construction"
     --  range                    : Range
     --  name                     : Name
     --  recordExpressionBindings : RecordExpressionBindings

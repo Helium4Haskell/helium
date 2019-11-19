@@ -24,6 +24,16 @@ SEM FunctionBinding
                                     }
 
 ---------------------------------------------------------------------------------------
+-- RecordExpressionBinding
+
+SEM RecordExpressionBinding 
+  | RecordExpressionBinding 
+       loc . localInfo  = LocalInfo { self = UHA_RB @self
+                                    , assignedType = Nothing
+                                    , monos = @lhs.monos
+                                    }
+
+---------------------------------------------------------------------------------------
 -- Right-hand side expression
 
 
@@ -79,6 +89,11 @@ SEM Expression
                                     , monos = @lhs.monos
                                     }
   | Constructor         
+       loc . localInfo  = LocalInfo { self = UHA_Expr @self
+                                    , assignedType = Just @beta 
+                                    , monos = @lhs.monos
+                                    }
+  | RecordConstruction         
        loc . localInfo  = LocalInfo { self = UHA_Expr @self
                                     , assignedType = Just @beta 
                                     , monos = @lhs.monos

@@ -118,6 +118,9 @@ import Helium.Main.Args
 -- standard
 import qualified Data.Map as M
 import Data.Maybe 
+
+-- TODO: debug
+import Debug.Trace
 }
 
 ATTR Body Declaration Declarations Expression Expressions

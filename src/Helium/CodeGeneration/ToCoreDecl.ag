@@ -456,7 +456,7 @@ SEM Constructor [ dataTypeName : Name typevariables : Names dataTypeCoreType : {
             { Core.declName    = idFromName @constructor.self
             , Core.declAccess  = Core.private
             , Core.declType    = declarationConstructorType @lhs.importEnv @constructor.self @fieldDeclarations.strictness
-            , Core.declCustoms = constructorCustoms 
+            , Core.declCustoms = constructorCustoms
                                     @lhs.dataTypeName
                                     @constructor.self 
                                     (valueConstructors @lhs.importEnv)

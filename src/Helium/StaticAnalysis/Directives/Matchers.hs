@@ -36,6 +36,14 @@ match_Expression_Constructor n1 expr =
       Expression_Constructor _ n2 | n1 == n2 -> Just ()
       _                                      -> Nothing 
 
+match_Expression_RecordConstruction :: Expression -> Maybe Expressions
+match_Expression_RecordConstruction expr = 
+   case expr of
+      Expression_RecordConstruction _ _ es -> Just (map lift es)
+      _                                    -> Nothing 
+   where
+      lift (RecordExpressionBinding_RecordExpressionBinding _ _ e) = e
+
 match_Expression_NormalApplication :: Expression -> Maybe (Expression, Expressions)
 match_Expression_NormalApplication expr = 
    case expr of

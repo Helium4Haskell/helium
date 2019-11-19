@@ -70,6 +70,11 @@ SEM Expression | Constructor loc . cinfo =
   resultConstraint "constructor" @parentTree       
      [ FolkloreConstraint, HasTrustFactor 10.0, IsImported @name.self ]
 
+-- Expression.RecordConstruction
+SEM Expression | RecordConstruction loc . cinfo =
+  resultConstraint "record construction" @parentTree       
+     [ FolkloreConstraint, HasTrustFactor 10.0, IsImported @name.self ]
+
 -- Expression.NormalApplication
 SEM Expression | NormalApplication loc . cinfo =
   childConstraint 0 "application" @parentTree
@@ -221,6 +226,18 @@ SEM GuardedExpression | GuardedExpression loc . cinfoExpr =
   resultConstraint "guarded expression" @expression.infoTree $
      [ HasTrustFactor 10.0 | @lhs.numberOfGuards < 2 ] ++
      [ Unifier (head (ftv @lhs.betaRight)) ("right-hand sides", attribute (skip_UHA_FB_RHS @lhs.parentTree), "right-hand side") ]
+
+---------------------------------------------------------------------------------------
+-- Type Inferencing : RecordExpressionBinding
+
+SEM RecordExpressionBindings [ | | nr : Int ] 
+  | Cons hd  . constrInfo = \tree -> childConstraint @loc.nr "enumeration" tree []
+         loc . nr         = @tl.nr + 1
+  | Nil  loc . nr         = 0 
+
+SEM RecordExpressionBinding [ constrInfo : { InfoTree -> ConstraintInfo } | | ]
+  | RecordExpressionBinding loc . cinfo =
+    @lhs.constrInfo @expression.infoTree
 
 ---------------------------------------------------------------------------------------
 -- Type Inferencing : Pattern

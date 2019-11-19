@@ -214,6 +214,10 @@ getFBRange fb = case fb of
    FunctionBinding_FunctionBinding r _ _ -> r
    FunctionBinding_Feedback _ _ _        -> error "not supported"
    FunctionBinding_Hole _ _              -> error "not supported"
+
+getRBRange :: RecordExpressionBinding -> Range
+getRBRange rb = case rb of
+   RecordExpressionBinding_RecordExpressionBinding r _ _ -> r
                      
 getDeclarationRange :: Declaration -> Range
 getDeclarationRange decl = case decl of
