@@ -427,19 +427,19 @@ SEM Expression
 
   | RecordConstruction
       recordExpressionBindings . recConstr  = @name.self
-      recordExpressionBindings . betaConstr = @loc.beta
-      lhs . betaUnique   = @lhs.betaUnique + 1
+      recordExpressionBindings . betaConstr = @beta
       loc . assumptions  = @recordExpressionBindings.assumptions
-          . beta         = TVar @lhs.betaUnique
-          . constraints  = @conRecord .>. 
+          . beta         = TVar @lhs.betaDeclUnique
+          . constraints  = @conRecord .>.
                             Node @recordExpressionBindings.constraintslist
           . recordEnv    = recordEnvironment @lhs.importEnvironment
-          . recordFields = map (\(a, b, _) -> (a, b)) $ maybe undefined id (M.lookup @name.self @loc.recordEnv)
-          . sortedBetas  = sortOn (\(n, _) -> maybe undefined id (lookup n @loc.recordFields)) @recordExpressionBindings.betasMap
+          . recordFields = maybe undefined id (M.lookup @name.self @loc.recordEnv)
+          . sortedBetas  = sortOn (\(n, _) -> fst $ maybe undefined id (M.lookup n @loc.recordFields)) @recordExpressionBindings.betasMap
           . recordFunc   = foldr (.->.) @beta (map snd @loc.sortedBetas)
-          . conRecord    = case M.lookup @name.self (valueConstructors @lhs.importEnvironment) of
-                                Nothing  -> []
-                                Just ctp -> [ (@loc.recordFunc .::. ctp) @cinfo ]
+          . conRecord    = maybe [] id $ do 
+                            ctp <- M.lookup @name.self (valueConstructors @lhs.importEnvironment)
+                            t   <- M.lookup @name.self (typeEnvironment @lhs.importEnvironment)
+                            return [(@beta .::. t) @cinfo]
 
   | Variable
       lhs . betaUnique  = snd @updatedType
@@ -679,20 +679,28 @@ SEM RecordExpressionBinding
 
   | RecordExpressionBinding
       lhs . betaUnique   = @lhs.betaUnique + 1
-          . constraints  = emptyTree -- @newcon .>. Node [@expression.constraints]
+          . constraints  = @newcon .>. Node [@expression.constraints]
           . assumptions  = @expression.assumptions
       loc . beta         = TVar @lhs.betaUnique
-          . betaMap      = (@name.self, @expression.beta)
+          . betaMap      = (@name.self, @beta)
           . recordEnv    = recordEnvironment @lhs.importEnvironment
-          . recordFields = map (\(n, _, t) -> (n, t)) $ maybe (error "nonexisting record type") id (M.lookup @lhs.recConstr @loc.recordEnv)
-          . recordType   = maybe (error "nonexisting field") id (lookup @name.self @loc.recordFields)
-          . newcon       = [(@lhs.betaConstr .->. @beta .::. @recordType) @cinfo]
+          . recordFields = maybe (internalError 
+                            "TypeInferenceRules.ag" 
+                            "RecordExpressionBinding" 
+                            "Specified record could not be found") 
+                                id (M.lookup @lhs.recConstr @recordEnv)
+          . recordType   = snd $ maybe (internalError 
+                            "TypeInferenceRules.ag" 
+                            "RecordExpressionBinding" 
+                            "Specified record field could not be found") 
+                                id (M.lookup @name.self @recordFields)
+          . newcon       = [(@beta .==. @expression.beta) @cinfoExpr, 
+                            (@lhs.betaConstr .->. @beta .::. @recordType) @cinfoSel]
 
 SEM RecordExpressionBindings
 
   | Cons
-      lhs . betaUnique      = @lhs.betaUnique + 1
-          . assumptions     = @hd.assumptions `combine` @tl.assumptions
+      lhs . assumptions     = @hd.assumptions `combine` @tl.assumptions
           . constraintslist = @hd.constraints : @tl.constraintslist
           . betasMap        = @hd.betaMap : @tl.betasMap
 

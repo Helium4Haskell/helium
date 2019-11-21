@@ -80,6 +80,8 @@ SEM Expression
     lhs.betaDeclUnique = @lhs.betaDeclUnique + 1
   | Constructor
     lhs.betaDeclUnique = @lhs.betaDeclUnique + 1
+  | RecordConstruction
+    lhs.betaDeclUnique = @lhs.betaDeclUnique + 1
   | List
     -- One type variable for the elements of the list
     expressions.betaDeclUnique = @lhs.betaDeclUnique + 1

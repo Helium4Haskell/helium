@@ -36,7 +36,7 @@ SEM Module
                                             (M.unionWith combineClassDecls @body.classEnv (classEnvironment $ combineImportEnvironmentList @lhs.importEnvironments)))
                                         . setInstanceEnvironment @body.instanceEnv
                                         . setClassMemberEnvironment @body.collectClassMemberEnv
-                                        . setRecordEnvironment (M.fromList @body.recordEnv)
+                                        . setRecordEnvironment (M.map M.fromList (M.fromList @body.collectRecord))
                                         $emptyEnvironment
                                         -- the type environment will be added after type inferencing.
                  . derivedFunctions = []
@@ -129,23 +129,23 @@ SEM Declaration
 -- Collects the positions of each of the labels within their respective constructors t
 -- to determine how updates and constructions should be desugared.
 -- 
--- Will collect them in the form of (constructors, [fieldPositions])
+-- Will collect them in the form of (constructors, (field, typeAndPosition))
 -- 
 
-ATTR Body Declarations Declaration Constructor Constructors [ | | recordEnv USE { ++ } { [] } : {[(Name, [(Name, Int, TpScheme)])]} ]
-ATTR FieldDeclarations [ | | recFields USE { ++ } { [] } : {[(Name, Int, TpScheme)]} ]
+ATTR Body Declarations Declaration Constructor Constructors [ | | collectRecord USE { ++ } { [] } : {[(Name, [(Name, (Int, TpScheme))])]} ]
+ATTR FieldDeclarations [ | | collectFields USE { ++ } { [] } : {[(Name, (Int, TpScheme))]} ]
 ATTR FieldDeclaration [ | | fieldSel : {[(Name, TpScheme)]} ]
 
 SEM Constructor
     | Record
-        lhs . recordEnv = [ (@constructor.self, @fieldDeclarations.recFields) ]
+        lhs . collectRecord = [ (@constructor.self, @fieldDeclarations.collectFields) ]
 
 SEM FieldDeclarations
     | Cons   
-        lhs . recFields = @loc.current ++ map (\(n, i, t) -> (n, i + length @loc.current, t)) @tl.recFields
-        loc . current = map (\((n, t), i) -> (n, i, t)) (zip @hd.fieldSel [0..])
+        lhs . collectFields = @loc.current ++ map (\(n, (i, t)) -> (n, (i + length @loc.current, t))) @tl.collectFields
+        loc . current = map (\((n, t), i) -> (n, (i, t))) (zip @hd.fieldSel [0..])
     | Nil 
-        lhs . recFields = []
+        lhs . collectFields = []
 
 SEM FieldDeclaration
     | FieldDeclaration 

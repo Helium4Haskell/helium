@@ -73,7 +73,7 @@ SEM Expression | Constructor loc . cinfo =
 -- Expression.RecordConstruction
 SEM Expression | RecordConstruction loc . cinfo =
   resultConstraint "record construction" @parentTree       
-     [ FolkloreConstraint, HasTrustFactor 10.0, IsImported @name.self ]
+     [ FolkloreConstraint ]
 
 -- Expression.NormalApplication
 SEM Expression | NormalApplication loc . cinfo =
@@ -220,7 +220,7 @@ SEM Expression | Variable loc . cinfo =
 
 SEM GuardedExpression | GuardedExpression loc . cinfoGuard =
   resultConstraint "guard" @guard.infoTree
-     []       
+     []
 
 SEM GuardedExpression | GuardedExpression loc . cinfoExpr =
   resultConstraint "guarded expression" @expression.infoTree $
@@ -230,14 +230,15 @@ SEM GuardedExpression | GuardedExpression loc . cinfoExpr =
 ---------------------------------------------------------------------------------------
 -- Type Inferencing : RecordExpressionBinding
 
-SEM RecordExpressionBindings [ | | nr : Int ] 
-  | Cons hd  . constrInfo = \tree -> childConstraint @loc.nr "enumeration" tree []
-         loc . nr         = @tl.nr + 1
-  | Nil  loc . nr         = 0 
+SEM RecordExpressionBinding
+  | RecordExpressionBinding loc . cinfoExpr =
+    resultConstraint "record expression binding" @expression.infoTree
+     [ HasTrustFactor 10.0 ]
 
-SEM RecordExpressionBinding [ constrInfo : { InfoTree -> ConstraintInfo } | | ]
-  | RecordExpressionBinding loc . cinfo =
-    @lhs.constrInfo @expression.infoTree
+SEM RecordExpressionBinding
+  | RecordExpressionBinding loc . cinfoSel =
+    resultConstraint "record expression binding" @expression.infoTree
+     [ FolkloreConstraint, IsImported @name.self ]
 
 ---------------------------------------------------------------------------------------
 -- Type Inferencing : Pattern
