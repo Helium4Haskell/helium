@@ -30,6 +30,7 @@ import Lvm.Common.Id
 import Lvm.Core.Utils
 import Data.Char
 import Data.Maybe
+import Data.List
 import Lvm.Common.Byte(bytesFromString)
 import qualified Lvm.Core.Expr as Core
 import qualified Data.Map as M
@@ -332,13 +333,6 @@ createInstantiation typeOutput typeEnv name isConstructor beta = case maybeSchem
       | isConstructor = Just $ declarationConstructorTypeScheme (importEnv typeOutput) name
       | otherwise = M.lookup name typeEnv
 
--- TODO: 
-createRecordInstantiation :: TypeInferenceOutput -> TypeEnvironment -> Name -> [(Name, Core.Expr)] -> Bool -> Int -> Core.Expr
-createRecordInstantiation typeOutput typeEnv name bindings isConstructor beta 
-    = undefined 
-  where
-    recordEnv = recordEnvironment (importEnv typeOutput)
-
 findInstantiation :: ImportEnvironment -> Top.TpScheme -> Top.Tp -> [Top.Tp]
 findInstantiation importEnv (Top.Quantification (tvars, _, Top.Qualification (_, tLeft))) tRight
   = fmap (\a -> fromMaybe (Top.TCon "()") $ lookup a instantiations) tvars
@@ -352,3 +346,14 @@ findInstantiation importEnv (Top.Quantification (tvars, _, Top.Qualification (_,
     traverseNoTypeSynonym (Top.TApp tl1 tl2) (Top.TApp tr1 tr2) =
       traverseNoTypeSynonym tl1 tr1 . traverse tl2 tr2
     traverseNoTypeSynonym t1 t2 = traverse t1 t2
+
+-- Puts the fields in the correct order, and applies them in that order to the constructor expression.
+createRecordInstantiation :: TypeInferenceOutput -> TypeEnvironment -> Name -> [(Name, Core.Expr)] -> Bool -> Int -> Core.Expr
+createRecordInstantiation typeOutput typeEnv name bindings isConstructor beta
+    = foldl app_ constrExpr (map snd sortedBinds)
+  where
+    recordFields = fromMaybe notFound (M.lookup name recordEnv)
+    recordEnv = recordEnvironment (importEnv typeOutput)
+    constrExpr = createInstantiation typeOutput typeEnv name True beta
+    notFound = internalError "CoreUtils" "createRecordInstantiation" "constructor/record field not found"
+    sortedBinds = sortOn (\(n, _) -> maybe notFound fst (M.lookup n recordFields)) bindings

@@ -170,7 +170,7 @@ SEM Expression [ | | core : { Core.Expr } ]
     --  then                     : MaybeExpression
     --  to                       : MaybeExpression
 
-    | RecordConstruction lhs.core = createRecordInstantiation 
+    | RecordConstruction lhs.core = createRecordInstantiation
                                         @lhs.typeOutput 
                                         @lhs.typeEnv 
                                         @name.self 
@@ -310,8 +310,7 @@ SEM GuardedExpression [ | | core : { Core.Expr -> Core.Expr } ]
 
 ---------------------------------
 -- Collect record construction information
--- 'bingings' will be used to put the arguments in the right order
---
+-- Will be used to put the arguments in the right order
 SEM RecordExpressionBindings [ | | bindings USE { : } { [] } : { [(Name, Core.Expr)] } ]
     | Cons                  lhs.bindings = (@hd.name, @hd.core) : @tl.bindings
 
