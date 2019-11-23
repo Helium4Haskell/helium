@@ -36,7 +36,7 @@ SEM Module
                                             (M.unionWith combineClassDecls @body.classEnv (classEnvironment $ combineImportEnvironmentList @lhs.importEnvironments)))
                                         . setInstanceEnvironment @body.instanceEnv
                                         . setClassMemberEnvironment @body.collectClassMemberEnv
-                                        . setRecordEnvironment (M.map M.fromList (M.fromList @body.collectRecord))
+                                        . setRecordEnvironment @body.collectRecord
                                         $emptyEnvironment
                                         -- the type environment will be added after type inferencing.
                  . derivedFunctions = []
@@ -132,20 +132,21 @@ SEM Declaration
 -- Will collect them in the form of (constructors, (field, typeAndPosition))
 -- 
 
-ATTR Body Declarations Declaration Constructor Constructors [ | | collectRecord USE { ++ } { [] } : {[(Name, [(Name, (Int, TpScheme))])]} ]
-ATTR FieldDeclarations [ | | collectFields USE { ++ } { [] } : {[(Name, (Int, TpScheme))]} ]
-ATTR FieldDeclaration [ | | fieldSel : {[(Name, TpScheme)]} ]
+ATTR Body Declarations Declaration Constructor Constructors [ | 
+  | collectRecord USE { M.union } { M.empty } : { M.Map Name (M.Map Name (Int, TpScheme)) } ]
+ATTR FieldDeclarations [ | | collectFields USE { M.union } { M.empty } : { M.Map Name (Int, TpScheme) } ]
+ATTR FieldDeclaration [ | | fieldSel : { [(Name, TpScheme)] } ]
 
 SEM Constructor
     | Record
-        lhs . collectRecord = [ (@constructor.self, @fieldDeclarations.collectFields) ]
+        lhs . collectRecord = M.singleton @constructor.self @fieldDeclarations.collectFields
 
 SEM FieldDeclarations
     | Cons   
-        lhs . collectFields = @loc.current ++ map (\(n, (i, t)) -> (n, (i + length @loc.current, t))) @tl.collectFields
-        loc . current = map (\((n, t), i) -> (n, (i, t))) (zip @hd.fieldSel [0..])
+        lhs . collectFields = @loc.current `M.union` M.map (\(i, t) -> (i + length @loc.current, t)) @tl.collectFields
+        loc . current = M.fromList $ map (\((n, t), i) -> (n, (i, t))) (zip @hd.fieldSel [0..])
     | Nil 
-        lhs . collectFields = []
+        lhs . collectFields = M.empty
 
 SEM FieldDeclaration
     | FieldDeclaration 
@@ -236,7 +237,8 @@ SEM SimpleType
   | SimpleType  lhs . name          = @name.self
                     . typevariables = @typevariables.self
 
-ATTR Type Types AnnotatedTypes AnnotatedType Constructors Constructor [ | | typevariables USE { ++ } { [] } : Names ]
+ATTR Type Types AnnotatedTypes AnnotatedType Constructors Constructor 
+  FieldDeclarations FieldDeclaration [ | | typevariables USE { ++ } { [] } : Names ]
 
 SEM Type
   | Variable  lhs . typevariables = [ @name.self ]

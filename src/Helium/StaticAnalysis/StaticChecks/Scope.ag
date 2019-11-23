@@ -68,6 +68,10 @@ SEM Declaration
   | Class   loc . (namesInScope, unboundNames, scopeInfo) = changeOfScope (@where.declVarNames) @where.unboundNames @lhs.namesInScope
             lhs . classMemberNames = @loc.classMemberNames
             loc . classMemberNames = getClassMemberNames @simpletype.name @lhs.classMemberEnv
+  | Data    loc . (namesInScope, unboundNames, scopeInfo) = changeOfScope (@constructors.declVarNames) @constructors.unboundNames @lhs.namesInScope
+
+SEM Constructor 
+  | Record  lhs . declVarNames = @fieldDeclarations.declVarNames
 
 -- monomorphic binding constructs
 
@@ -160,7 +164,8 @@ SEM Pattern
 SEM Expression 
   | Variable   lhs . unboundNames = [ @name.self ]    
 
-ATTR Body Declaration Declarations MaybeDeclarations [ | | declVarNames USE {++} {[]} : Names ]
+ATTR Body Declaration Declarations MaybeDeclarations Constructor Constructors 
+      FieldDeclaration FieldDeclarations [ | | declVarNames USE {++} {[]} : Names ]
 
 SEM MaybeDeclarations | Just    lhs          . declVarNames = @declarations.declVarNames
                       | Nothing lhs          . declVarNames = []
@@ -170,6 +175,14 @@ SEM Declaration
   | PatternBinding    lhs . declVarNames = @pattern.patVarNames
   | Class             lhs . declVarNames = [] -- @where.declVarNames  
   | Instance          lhs . declVarNames = [] -- @where.declVarNames
+  | Data              lhs . declVarNames = @constructors.declVarNames
+
+SEM Constructors
+  | Cons   lhs . declVarNames = @hd.declVarNames ++ (@tl.declVarNames \\ @hd.declVarNames)
+  | Nil    lhs . declVarNames = []
+
+SEM FieldDeclaration
+  | FieldDeclaration lhs . declVarNames = @names.self
 
 -- utility function
 {                  
@@ -201,4 +214,3 @@ getClassMemberNames :: Name -> M.Map Name (Names, [(Name, TpScheme, Bool, HasDef
 getClassMemberNames name env =  let err = internalError "Scope.ag" "getClassMemberNames" "Unknown class in environment"
                                 in maybe err (map (\(fn, _, _, _) -> fn) . snd) (M.lookup name env)
 }
-
