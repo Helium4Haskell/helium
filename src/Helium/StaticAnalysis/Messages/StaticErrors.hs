@@ -14,8 +14,10 @@ module Helium.StaticAnalysis.Messages.StaticErrors where
 import Helium.Syntax.UHA_Syntax
 import Helium.Syntax.UHA_Range
 import Helium.StaticAnalysis.Messages.Messages
-import Data.List        (nub, intersperse, sort, partition)
+import Data.List        (nub, intersperse, sort, partition, intercalate)
 import Data.Maybe
+import qualified Data.Map as M
+import Debug.Trace
 import Helium.Utils.Utils       (commaList, internalError, maxInt)
 
 import Top.Types
@@ -61,6 +63,7 @@ data Error  = NoFunDef Entity Name {-names in scope-}Names
             | NonDerivableClass Name
             | CannotDerive Name Tps
             | TupleTooBig Range
+            | DuplicateRecordFieldWrongType Name [TpScheme]
 
 instance HasMessage Error where
    getMessage x = let (oneliner, hints) = showError x
@@ -103,6 +106,7 @@ instance HasMessage Error where
       NonDerivableClass name      -> [getNameRange name]
       CannotDerive name _         -> [getNameRange name]
       TupleTooBig r               -> [r]
+      DuplicateRecordFieldWrongType name _ -> [getNameRange name]
 
 sensiblySimilar :: Name -> Names -> [Name]
 sensiblySimilar name inScope =
@@ -369,6 +373,11 @@ showError anError = case anError of
       , []
       )
 
+   DuplicateRecordFieldWrongType _ tps ->
+      ( MessageString "Duplicate record fields within the same data type should have the same type signature"
+      , []
+      )
+
    _ -> internalError "StaticErrors.hs" "showError" "unknown type of Error"
 
 makeUndefined :: Entity -> Names -> Names -> [Error]
@@ -376,6 +385,12 @@ makeUndefined entity names inScope = [ Undefined entity name inScope [] | name <
 
 makeDuplicated :: Entity -> [Names] -> [Error]
 makeDuplicated entity nameslist = [ Duplicated entity names | names <- nameslist ]
+
+makeDuplicatedLabelWrongType :: M.Map Name [(Int, TpScheme)] -> [Error]
+makeDuplicatedLabelWrongType duplicated 
+   = [ DuplicateRecordFieldWrongType name (map snd xs)  | (name, xs) <- labels ]
+   where
+      labels = traceShowId $ M.assocs duplicated
 
 undefinedConstructorInExpr :: Name -> Names -> Names -> Error
 undefinedConstructorInExpr name sims tyconNames =
@@ -442,6 +457,7 @@ errorLogCode anError = case anError of
           DuplicatedClassImported _               -> "di"
           OverlappingInstance _ _                 -> "oi"
           MissingSuperClass _ _ _                 -> "ms"
+          DuplicateRecordFieldWrongType _ _       -> "rt"
    where code entity = fromMaybe "??"
                      . lookup entity
                      $ [ (TypeSignature    ,"ts"), (TypeVariable         ,"tv"), (TypeConstructor,"tc")

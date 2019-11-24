@@ -20,6 +20,7 @@ SEM Module
                                            , @wrongFlagErrors
                                            , @recursiveTypeSynonymErrors
                                            , @wrongFileNameErrors
+                                           , @wrongRecordLabelsType
                                            ]
                  
 ------------------------------------------------------------------------------
@@ -37,7 +38,8 @@ SEM Module
 ------------------------------------------------------------------------------
 -- record labels in the same declaration but different types
 
--- TODO:  Handle static 'fields are different types' check
+SEM Module
+  | Module    loc . wrongRecordLabelsType = makeDuplicatedLabelWrongType @body.duplicateLabelsWrongTypes
 
 ------------------------------------------------------------------------------
 -- duplicated fixity declarations

@@ -132,10 +132,17 @@ SEM Declaration
 -- Will collect them in the form of (constructors, (field, typeAndPosition))
 -- 
 
+ATTR Module Body Declarations Declaration Constructor Constructors [ | 
+  | duplicateLabelsWrongTypes USE { M.unionWith (++) } { M.empty } : {M.Map Name [(Int, TpScheme)]}]
 ATTR Body Declarations Declaration Constructor Constructors [ | 
   | collectRecord USE { M.union } { M.empty } : { M.Map Name (M.Map Name (Int, TpScheme)) } ]
 ATTR FieldDeclarations [ | | collectFields USE { M.union } { M.empty } : { M.Map Name (Int, TpScheme) } ]
 ATTR FieldDeclaration [ | | fieldSel : { [(Name, TpScheme)] } ]
+
+SEM Declaration 
+    | Data
+        lhs . duplicateLabelsWrongTypes = M.filter (\xs -> length xs > 1) (M.unionsWith (++) @allConFields)
+        loc . allConFields = map (M.map (:[])) (M.elems @constructors.collectRecord)
 
 SEM Constructor
     | Record
