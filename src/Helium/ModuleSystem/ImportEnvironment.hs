@@ -40,7 +40,7 @@ type TypeConstructorEnvironment  = M.Map Name Int
 type TypeSynonymEnvironment      = M.Map Name (Int, Tps -> Tp)
 type ClassMemberEnvironment      = M.Map Name (Names, [(Name, TpScheme, Bool, HasDefault)])
 type InstanceEnvironment         = M.Map (Name, Tp) (Names, [(String, String)])
-type RecordEnvironment           = M.Map Name (M.Map Name (Int, TpScheme))
+type RecordEnvironment           = M.Map Name (M.Map Name (Int, Tp))
 
 type ImportEnvironments = [ImportEnvironment]
 data ImportEnvironment  =

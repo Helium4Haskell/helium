@@ -71,7 +71,11 @@ SEM Expression | Constructor loc . cinfo =
      [ FolkloreConstraint, HasTrustFactor 10.0, IsImported @name.self ]
 
 -- Expression.RecordConstruction
-SEM Expression | RecordConstruction loc . cinfo =
+SEM Expression | RecordConstruction loc . cinfoFunc =
+  resultConstraint "record construction" @parentTree       
+     [ FolkloreConstraint ]
+
+SEM Expression | RecordConstruction loc . cinfoResult =
   resultConstraint "record construction" @parentTree       
      [ FolkloreConstraint ]
 

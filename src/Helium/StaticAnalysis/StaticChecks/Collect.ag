@@ -133,18 +133,20 @@ SEM Declaration
 -- 
 
 ATTR Module Body Declarations Declaration Constructor Constructors [ | 
-  | duplicateLabelsWrongTypes USE { M.unionWith (++) } { M.empty } : {M.Map Name [(Int, TpScheme)]}]
+  | duplicateLabelsWrongTypes USE { M.unionWith (++) } { M.empty } : {M.Map Name [(Int, Tp)]}]
 ATTR Body Declarations Declaration Constructor Constructors [ | 
-  | collectRecord USE { M.union } { M.empty } : { M.Map Name (M.Map Name (Int, TpScheme)) } ]
-ATTR FieldDeclarations [ | | collectFields USE { M.union } { M.empty } : { M.Map Name (Int, TpScheme) } ]
-ATTR FieldDeclaration [ | | fieldSel : { [(Name, TpScheme)] } ]
+  | collectRecord USE { M.union } { M.empty } : { M.Map Name (M.Map Name (Int, Tp)) } ]
+ATTR FieldDeclarations [ | | collectFields USE { M.union } { M.empty } : { M.Map Name (Int, Tp) } ]
+ATTR FieldDeclaration [ | | fieldSel : { [(Name, Tp)] } ]
 
 SEM Declaration 
     | Data
-        lhs . duplicateLabelsWrongTypes = M.filter (\xs -> length xs > 1) (M.unionsWith (++) @allConFields)
+        lhs . duplicateLabelsWrongTypes = M.filter (\xs -> length (nub xs) > 1) (M.unionsWith (++) @allConFields)
         loc . allConFields = map (M.map (:[])) (M.elems @constructors.collectRecord)
 
 SEM Constructor
+    -- TODO: SEE IF THIS IS NECESSARY
+    -- | Constructor lhs . collectRecord = M.singleton @constructor.self M.empty
     | Record
         lhs . collectRecord = M.singleton @constructor.self @fieldDeclarations.collectFields
 
@@ -157,9 +159,22 @@ SEM FieldDeclarations
 
 SEM FieldDeclaration
     | FieldDeclaration 
-        lhs . fieldSel = map (\n -> (n, @selectorType)) @names.self
-        loc . (tp, tps) = convertFromSimpleTypeAndTypes @lhs.simpletype [@type.type]
-            . selectorType = generalizeAll ([] .=>. foldl (.->.) @tp @tps)
+        lhs . fieldSel = map (\n -> (n, @fieldType)) @names.self
+        loc . fieldType = makeTpFromType' @type.type
+        -- loc . (tp, tps) = convertFromSimpleTypeAndTypes @lhs.simpletype [@type.type]
+        --     . selectorType = generalizeAll ([] .=>. foldl (.->.) @tp @tps)
+
+ATTR Body Declarations Declaration Expressions Expression Patterns Pattern
+     Statement Statements Qualifier Qualifiers
+     Alternative Alternatives Constructor Constructors
+     GuardedExpressions GuardedExpression FunctionBinding FunctionBindings
+     FieldDeclaration FieldDeclarations RecordExpressionBinding RecordExpressionBindings
+     LeftHandSide RightHandSide MaybeDeclarations MaybeExpression Type Types 
+     AnnotatedType AnnotatedTypes ContextItem ContextItems
+     [ recordFields : {M.Map Name (M.Map Name (Int, Tp))} | | ]
+
+SEM Module
+    | Module body.recordFields = @body.collectRecord
 
 -------------------------------------------
 -- 6) Distributing Value Constructors

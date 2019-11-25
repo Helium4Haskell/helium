@@ -103,6 +103,7 @@ data Entity = TypeSignature
             | ExportConstructor
             | ExportTypeConstructor
             | Fixity
+            | RecordField
     deriving Eq
 
 sortMessages :: HasMessage a => [a] -> [a]
@@ -182,3 +183,4 @@ instance Show Entity where
          ExportTypeConstructor
                          -> "exported type constructor"
          Fixity          -> "infix declaration"
+         RecordField     -> "record field"

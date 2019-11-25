@@ -671,11 +671,16 @@ exp_ :: ParsecT [Token] SourcePos Identity Expression
 exp_ = addRange (
     do
        e <- exp0
-       option (\_ -> e) $ 
+       e' <- option (const e) $ 
+            do
+                rs <- braces (fbind `sepBy` lexCOMMA)
+                return $ \r -> Expression_RecordUpdate r e rs
+       option (const e) $ 
             do 
                 lexCOLCOL
                 t <- contextAndType
-                return $ \r -> Expression_Typed r e t
+                return $ \r -> Expression_Typed r (e' r) t
+        
     )
     <?> Texts.parserExpression        
 

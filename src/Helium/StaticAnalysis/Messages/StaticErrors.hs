@@ -63,7 +63,7 @@ data Error  = NoFunDef Entity Name {-names in scope-}Names
             | NonDerivableClass Name
             | CannotDerive Name Tps
             | TupleTooBig Range
-            | DuplicateRecordFieldWrongType Name [TpScheme]
+            | DuplicateRecordFieldWrongType Name Tps
 
 instance HasMessage Error where
    getMessage x = let (oneliner, hints) = showError x
@@ -386,7 +386,7 @@ makeUndefined entity names inScope = [ Undefined entity name inScope [] | name <
 makeDuplicated :: Entity -> [Names] -> [Error]
 makeDuplicated entity nameslist = [ Duplicated entity names | names <- nameslist ]
 
-makeDuplicatedLabelWrongType :: M.Map Name [(Int, TpScheme)] -> [Error]
+makeDuplicatedLabelWrongType :: M.Map Name [(Int, Tp)] -> [Error]
 makeDuplicatedLabelWrongType duplicated 
    = [ DuplicateRecordFieldWrongType name (map snd xs)  | (name, xs) <- labels ]
    where

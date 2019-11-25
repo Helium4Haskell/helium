@@ -428,18 +428,21 @@ SEM Expression
   | RecordConstruction
       recordExpressionBindings . recConstr  = @name.self
       recordExpressionBindings . betaConstr = @beta
+      lhs . betaUnique   = @lhs.betaUnique + 1
       loc . assumptions  = @recordExpressionBindings.assumptions
-          . beta         = TVar @lhs.betaDeclUnique
+          . beta         = TVar @lhs.betaUnique
           . constraints  = @conRecord .>.
-                            Node @recordExpressionBindings.constraintslist
+                            Node ([listTree @conRecordFunc] ++ @recordExpressionBindings.constraintslist)
           . recordEnv    = recordEnvironment @lhs.importEnvironment
           . recordFields = maybe undefined id (M.lookup @name.self @loc.recordEnv)
           . sortedBetas  = sortOn (\(n, _) -> fst $ maybe undefined id (M.lookup n @loc.recordFields)) @recordExpressionBindings.betasMap
           . recordFunc   = foldr (.->.) @beta (map snd @loc.sortedBetas)
           . conRecord    = maybe [] id $ do 
-                            ctp <- M.lookup @name.self (valueConstructors @lhs.importEnvironment)
                             t   <- M.lookup @name.self (typeEnvironment @lhs.importEnvironment)
-                            return [(@beta .::. t) @cinfo]
+                            return [(@beta .::. t) @cinfoResult]
+          . conRecordFunc = maybe [] id $ do 
+                            ctp <- M.lookup @name.self (valueConstructors @lhs.importEnvironment)
+                            return [(@recordFunc .::. ctp) @cinfoFunc]
 
   | Variable
       lhs . betaUnique  = snd @updatedType
@@ -692,10 +695,11 @@ SEM RecordExpressionBinding
           . recordType   = snd $ maybe (internalError 
                             "TypeInferenceRules.ag" 
                             "RecordExpressionBinding" 
-                            "Specified record field could not be found") 
+                            "Specified record field could not be found")
                                 id (M.lookup @name.self @recordFields)
+            -- TODO: Handle data A a = A { unA :: a }
           . newcon       = [(@beta .==. @expression.beta) @cinfoExpr, 
-                            (@lhs.betaConstr .->. @beta .::. @recordType) @cinfoSel]
+                            (@beta .==. @recordType) @cinfoSel]
 
 SEM RecordExpressionBindings
 
