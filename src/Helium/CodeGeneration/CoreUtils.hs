@@ -347,7 +347,8 @@ findInstantiation importEnv (Top.Quantification (tvars, _, Top.Qualification (_,
       traverseNoTypeSynonym tl1 tr1 . traverse tl2 tr2
     traverseNoTypeSynonym t1 t2 = traverse t1 t2
 
--- Puts the fields in the correct order, and applies them in that order to the constructor expression.
+-- Puts the fields in the correct order, 
+-- and applies them in that order to the constructor expression.
 createRecordInstantiation :: TypeInferenceOutput -> TypeEnvironment -> Name -> [(Name, Core.Expr)] -> Bool -> Int -> Core.Expr
 createRecordInstantiation typeOutput typeEnv name bindings isConstructor beta
     = foldl app_ constrExpr (map snd sortedBinds)
@@ -356,4 +357,4 @@ createRecordInstantiation typeOutput typeEnv name bindings isConstructor beta
     recordEnv = recordEnvironment (importEnv typeOutput)
     constrExpr = createInstantiation typeOutput typeEnv name True beta
     notFound = internalError "CoreUtils" "createRecordInstantiation" "constructor/record field not found"
-    sortedBinds = sortOn (\(n, _) -> maybe notFound fst (M.lookup n recordFields)) bindings
+    sortedBinds = sortOn (\(n, _) -> maybe notFound fst3 (M.lookup n recordFields)) bindings

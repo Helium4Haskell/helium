@@ -55,6 +55,7 @@ import Helium.ModuleSystem.ImportEnvironment
 import Helium.Parser.OperatorTable
 import Data.Char ( isUpper )
 
+import Debug.Trace
 }
 
 -- combine all the collected errors, then filter out the "entity is undefined" 

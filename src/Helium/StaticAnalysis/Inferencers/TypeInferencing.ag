@@ -110,7 +110,7 @@ import Helium.Syntax.UHA_Range
          
 -- other
 
-import Helium.Utils.Utils (internalError, hole)
+import Helium.Utils.Utils
 import Helium.ModuleSystem.ImportEnvironment  hiding (setTypeSynonyms)
 import Helium.ModuleSystem.DictionaryEnvironment
 import Helium.Main.Args

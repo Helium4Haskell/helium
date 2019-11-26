@@ -72,6 +72,8 @@ SEM Declaration
     | Data    constructors.dataTypeName = @simpletype.name
               constructors.dataTypeCoreType = @simpletype.coreType
               constructors.typevariables = @simpletype.typevariables
+              constructors.range = @range.self
+              constructors.conNames = []
               lhs.decls  =
         map snd @constructors.cons
         ++
@@ -285,7 +287,7 @@ SEM FunctionBindings [ range : Range | | core : {[Core.Type] -> Core.Type -> Cor
     | Nil              lhs.core  = \_ retType -> patternMatchFail "function bindings" retType @lhs.range
                           .arity = internalError "ToCoreDecl" "FunctionBindings" "arity: empty list of function bindings"
 
-SEM FunctionBinding [ | | core : { [Core.Type] -> Core.Type -> Core.Expr -> Core.Expr } ]
+SEM FunctionBinding [ | | core : { [Core.Type] -> Core.Type -> Core.Expr -> Core.Expr} ]
     | Hole             lhs.arity = 0
                           . core = internalError "ToCoreDecl" "FunctionBinding" "holes not supported"
     | FunctionBinding  lhs.arity = @lefthandside.arity
@@ -406,6 +408,60 @@ SEM RightHandSide
     --  where                    : MaybeDeclarations
 
 -- ------------------------------------------------------------------------
+-- -- Record Field Selectors                                             --
+-- ------------------------------------------------------------------------
+{-
+Each field will correspond to a single top-level function where the constructors
+where it is present will all appear in the pattern of the function
+-}
+
+ATTR Constructors [ | | conNames : Names selectorCore : { M.Map Name ([Core.Type] -> Core.Type -> Core.Expr) } ] 
+ATTR Constructor [ | | conNames : Names selectorCore : { M.Map Name ([Core.Type] -> Core.Type -> Core.Expr -> Core.Expr) } ]
+
+SEM Constructors [ conNames : Names range : Range | | ]
+    | Nil  lhs.selectorCore = let matchFail = \_ retType -> patternMatchFail "function bindings" retType @lhs.range
+                                in M.map (const matchFail) @allFields
+           loc.recordEnv = recordEnvironment @lhs.importEnv
+              .allFields = M.unions $ catMaybes $ map (\n -> M.lookup n @recordEnv) @lhs.conNames
+    | Cons  tl.conNames = @hd.constructor : @lhs.conNames
+           lhs.selectorCore = let newFunc cur next = \args retType -> cur args retType $ next args retType
+                                  err = internalError "ToCoreDecl" "Constructors_Cons" "constructor not found"
+                                in M.foldrWithKey (\k a p -> M.insert k (newFunc a (fromJust err $ M.lookup k p)) p) 
+                                    @tl.selectorCore @hd.selectorCore
+           loc.recordEnv = recordEnvironment @lhs.importEnv
+
+-- For each field create the core to access that field
+SEM Constructor [ | | constructor : Name ]
+    | Constructor       lhs.selectorCore = M.empty
+                           .constructor = @constructor.self
+    | Infix             lhs.selectorCore = M.empty
+    | Record            fieldDeclarations.conName = @constructor.self
+                        loc.recordEnv = recordEnvironment @lhs.importEnv
+                           .recordFields = let err = internalError "ToCoreDecl" "Constructor_Record" "constructor not found"
+                                            in fromJust err $ M.lookup @constructor.self @recordEnv
+                        lhs.constructor = @constructor.self
+                           .selectorCore = undefined
+--         \args retType nextClause ->
+--             let thisClause = 
+--                     patternsToCore
+--                         @lhs.importEnv 
+--                         M.fromList [(@name.self)]
+--                         (zip3 @lhs.ids args @lefthandside.patterns)
+--                         @righthandside.core
+--                             in
+--             if all patternAlwaysSucceeds @lefthandside.patterns 
+--                &&
+--                not @righthandside.isGuarded
+--             then
+--                 thisClause
+--             else
+--                 let_ nextClauseId retType nextClause thisClause
+
+    --  range                    : Range
+    --  constructor              : Name
+    --  fieldDeclarations        : FieldDeclarations
+
+-- ------------------------------------------------------------------------
 -- -- Types                                                              --
 -- ------------------------------------------------------------------------
 
@@ -463,6 +519,7 @@ SEM Constructor [ dataTypeName : Name typevariables : Names dataTypeCoreType : {
             }
           )
         ]
+        
     --  range                    : Range
     --  constructor              : Name
     --  fieldDeclarations        : FieldDeclarations

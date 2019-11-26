@@ -237,12 +237,12 @@ SEM GuardedExpression | GuardedExpression loc . cinfoExpr =
 SEM RecordExpressionBinding
   | RecordExpressionBinding loc . cinfoExpr =
     resultConstraint "record expression binding" @expression.infoTree
-     [ HasTrustFactor 10.0 ]
+     [ FolkloreConstraint ]
 
 SEM RecordExpressionBinding
   | RecordExpressionBinding loc . cinfoSel =
     resultConstraint "record expression binding" @expression.infoTree
-     [ FolkloreConstraint, IsImported @name.self ]
+     [ ]
 
 ---------------------------------------------------------------------------------------
 -- Type Inferencing : Pattern

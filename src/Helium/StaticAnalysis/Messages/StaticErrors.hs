@@ -390,7 +390,7 @@ makeDuplicatedLabelWrongType :: M.Map Name [(Int, Tp)] -> [Error]
 makeDuplicatedLabelWrongType duplicated 
    = [ DuplicateRecordFieldWrongType name (map snd xs)  | (name, xs) <- labels ]
    where
-      labels = traceShowId $ M.assocs duplicated
+      labels = M.assocs duplicated
 
 undefinedConstructorInExpr :: Name -> Names -> Names -> Error
 undefinedConstructorInExpr name sims tyconNames =

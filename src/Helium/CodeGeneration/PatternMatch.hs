@@ -53,8 +53,7 @@ patternToCore' env types (name, tp, pat) continue nr =
         
         -- case _u1 of C _l1 _l2 -> ...
         --             _         -> _next
-        Pattern_Constructor range n ps
-          | otherwise ->
+        Pattern_Constructor range n ps ->
             let 
                 (ids, nr') =
                     if all isSimple ps then 
@@ -265,3 +264,11 @@ constructorFieldTypes env conName tp =
             getDataTypeArgs tp' remaining
     getDataTypeArgs (Core.TAp t1 t2) accum = getDataTypeArgs t1 (t2 : accum)
     getDataTypeArgs tp _ = internalError "ToCorePat" "Pattern" $ "Unexpected type " ++ Core.showType [] tp ++ ", expected a data type"
+
+-- recFieldsToPattern :: ImportEnvironment -> Name -> M.Map Name Core.Expr
+-- recFieldsToPattern env recName 
+--     = M.mapWithKey (\fieldName (i, typ) -> let_ i ) recordFields
+--   where
+--     recordEnv = recordEnvironment env
+--     consError = internalError "ToCorePat" "Pattern" $ "Could not find constructor " ++ show recName
+--     recordFields = fromMaybe consError $ M.lookup recName recordEnv
