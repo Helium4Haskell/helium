@@ -182,10 +182,7 @@ SEM Expression
 -----------------------------------------
 -- RecordExpressionBinding
 
-ATTR RecordExpressionBinding RecordExpressionBindings [ constructorName : Name | | ]
-
-SEM Expression
-    | RecordConstruction recordExpressionBindings . constructorName = @name.self
+ATTR RecordExpressionBinding RecordExpressionBindings [ | | ]
 
 SEM RecordExpressionBindings
     | Cons lhs . miscerrors = @hd.miscerrors ++ @tl.miscerrors
@@ -197,9 +194,7 @@ SEM RecordExpressionBinding
         loc . nonexistingFieldError = case M.lookup @name.self @availableFields of
                                         Just f  -> []
                                         Nothing -> [Undefined RecordField @name.self (M.keys @availableFields) []]
-            . availableFields = case M.lookup @lhs.constructorName @lhs.recordFields of
-                                  Nothing -> M.empty
-                                  Just m  -> m
+            . availableFields = @lhs.fieldLookup
 
 -----------------------------------------
 -- Pattern

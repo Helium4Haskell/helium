@@ -70,12 +70,19 @@ SEM Expression | Constructor loc . cinfo =
   resultConstraint "constructor" @parentTree       
      [ FolkloreConstraint, HasTrustFactor 10.0, IsImported @name.self ]
 
+
+-- TODO: Clean up unused infos
 -- Expression.RecordConstruction
 SEM Expression | RecordConstruction loc . cinfoFunc =
   resultConstraint "record construction" @parentTree       
      [ FolkloreConstraint ]
 
 SEM Expression | RecordConstruction loc . cinfoResult =
+  resultConstraint "record construction" @parentTree       
+     [ FolkloreConstraint ]
+
+-- Expression.RecordUpdate
+SEM Expression | RecordUpdate loc . cinfo =
   resultConstraint "record construction" @parentTree       
      [ FolkloreConstraint ]
 
@@ -237,12 +244,12 @@ SEM GuardedExpression | GuardedExpression loc . cinfoExpr =
 SEM RecordExpressionBinding
   | RecordExpressionBinding loc . cinfoExpr =
     resultConstraint "record expression binding" @expression.infoTree
-     [ FolkloreConstraint ]
+     [ ]
 
 SEM RecordExpressionBinding
   | RecordExpressionBinding loc . cinfoSel =
     resultConstraint "record expression binding" @expression.infoTree
-     [ ]
+     [ FolkloreConstraint ]
 
 ---------------------------------------------------------------------------------------
 -- Type Inferencing : Pattern

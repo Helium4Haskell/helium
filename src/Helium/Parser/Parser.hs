@@ -675,11 +675,12 @@ exp_ = addRange (
             do
                 rs <- braces (fbind `sepBy` lexCOMMA)
                 return $ \r -> Expression_RecordUpdate r e rs
-       option (const e) $ 
+       e'' <- option e' $ 
             do 
                 lexCOLCOL
                 t <- contextAndType
                 return $ \r -> Expression_Typed r (e' r) t
+       return $ \r -> e'' r
         
     )
     <?> Texts.parserExpression        

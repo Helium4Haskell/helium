@@ -40,6 +40,9 @@ SEM Expression [ parentTree : InfoTree | | infoTree : InfoTree ]
   | RecordConstruction  
        loc . parentTree = node @lhs.parentTree @localInfo @recordExpressionBindings.infoTrees
        lhs . infoTree   = @parentTree
+  | RecordUpdate  
+       loc . parentTree = node @lhs.parentTree @localInfo @recordExpressionBindings.infoTrees
+       lhs . infoTree   = @parentTree
   | NormalApplication  
        loc . parentTree = node @lhs.parentTree @localInfo (@function.infoTree : @arguments.infoTrees)
        lhs . infoTree   = @parentTree                  

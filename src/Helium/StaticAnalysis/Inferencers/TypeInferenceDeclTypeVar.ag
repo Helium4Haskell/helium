@@ -83,6 +83,10 @@ SEM Expression
   | RecordConstruction
     lhs.betaDeclUnique = @lhs.betaDeclUnique + 1
     recordExpressionBindings.betaDeclUnique = @lhs.betaDeclUnique + 1
+  | RecordUpdate
+    lhs.betaDeclUnique = @lhs.betaDeclUnique + 2
+    recordExpressionBindings.betaDeclUnique = @lhs.betaDeclUnique + 1
+    expression.betaDeclUnique = @lhs.betaDeclUnique + 2
   | List
     -- One type variable for the elements of the list
     expressions.betaDeclUnique = @lhs.betaDeclUnique + 1

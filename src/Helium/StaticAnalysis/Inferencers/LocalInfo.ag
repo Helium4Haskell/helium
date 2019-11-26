@@ -98,6 +98,11 @@ SEM Expression
                                     , assignedType = Just @beta 
                                     , monos = @lhs.monos
                                     }
+  | RecordUpdate         
+       loc . localInfo  = LocalInfo { self = UHA_Expr @self
+                                    , assignedType = Just @beta 
+                                    , monos = @lhs.monos
+                                    }
   | NormalApplication   
        loc . localInfo  = LocalInfo { self = UHA_Expr @self
                                     , assignedType = Just @beta 

@@ -173,10 +173,12 @@ ATTR Body Declarations Declaration Expressions Expression Patterns Pattern
      FieldDeclaration FieldDeclarations RecordExpressionBinding RecordExpressionBindings
      LeftHandSide RightHandSide MaybeDeclarations MaybeExpression Type Types 
      AnnotatedType AnnotatedTypes ContextItem ContextItems
-     [ recordFields : {M.Map Name (M.Map Name (Int, Tp, TpScheme))} | | ]
+     [ recordFields : { M.Map Name (M.Map Name (Int, Tp, TpScheme)) } 
+       fieldLookup : { M.Map Name [Name] } | | ]
 
 SEM Module
     | Module body.recordFields = @body.collectRecord
+                 .fieldLookup = fieldLookup @collectEnvironment
 
 -------------------------------------------
 -- 6) Distributing Value Constructors

@@ -430,7 +430,7 @@ SEM Expression
       recordExpressionBindings . betaConstr = @beta
       loc . assumptions  = @recordExpressionBindings.assumptions
           . beta         = TVar @lhs.betaDeclUnique
-          . constraints  = traceShowId $ @conRecord .>.
+          . constraints  = @conRecord .>.
                             Node ([listTree @conRecordFunc] ++ @recordExpressionBindings.constraintslist)
           . recordEnv    = recordEnvironment @lhs.importEnvironment
           . recordFields = maybe undefined id (M.lookup @name.self @loc.recordEnv)
@@ -442,6 +442,22 @@ SEM Expression
           . conRecordFunc = maybe [] id $ do 
                             ctp <- M.lookup @name.self (valueConstructors @lhs.importEnvironment)
                             return [(@recordFunc .::. ctp) @cinfoFunc]
+
+  | RecordUpdate
+      recordExpressionBindings . betaConstr = @beta
+      loc . assumptions  = @recordExpressionBindings.assumptions
+          . beta         = TVar @lhs.betaDeclUnique
+          . constraints  = @conRecord .>.
+                            Node (@recordExpressionBindings.constraintslist)
+          . recordEnv    = recordEnvironment @lhs.importEnvironment
+          . fieldsPresent = map fst @recordExpressionBindings.betasMap
+          . constructors = concat $ catMaybes $ map (\n -> M.lookup n (fieldLookup @lhs.importEnvironment)) @fieldsPresent
+          . conRecord    = maybe [] id $ do 
+                            let constructor = if length @constructors == 0
+                                                then internalError "TypeInferenceRules.ag" "RecordUpdate" "No constructor found with field"
+                                                else head @constructors
+                            t   <- M.lookup constructor (typeEnvironment @lhs.importEnvironment)
+                            return [(@beta .::. t) @cinfo, (@expression.beta .::. t) @cinfo]
 
   | Variable
       lhs . betaUnique  = snd @updatedType
@@ -684,20 +700,22 @@ SEM RecordExpressionBinding
           . assumptions  = @expression.assumptions
       loc . beta         = TVar @lhs.betaUnique
           . betaMap      = (@name.self, @expression.beta)
+          . constructors = fromMaybe (internalError "TypeInferenceRules.ag" 
+                                "RecordExpressionBinding" ("nonexistant field " ++ show @name.self))
+                            $ M.lookup @name.self (fieldLookup @lhs.importEnvironment)
           . recordEnv    = recordEnvironment @lhs.importEnvironment
           . recordFields = maybe (internalError 
                             "TypeInferenceRules.ag" 
                             "RecordExpressionBinding" 
                             "Specified record could not be found") 
-                                id (M.lookup @lhs.recConstr @recordEnv)
+                                id (M.lookup (head @constructors) @recordEnv)
           . recordType   = maybe (internalError 
                             "TypeInferenceRules.ag" 
                             "RecordExpressionBinding" 
                             "Specified record field could not be found")
                                 id (M.lookup @name.self @recordFields)
-            -- TODO: Handle data A a = A { unA :: a }
-          . newcon       = [-- ( .==. @beta) @cinfoExpr, 
-                            (@expression.beta .==. snd3 @recordType) @cinfoSel]
+          . newcon       = [(@expression.beta .==. @beta) @cinfoExpr, 
+                            (@lhs.betaConstr .->. @beta .::. thd3 @recordType) @cinfoSel]
 
 SEM RecordExpressionBindings
 
