@@ -17,6 +17,7 @@ module Helium.CodeGeneration.CoreUtils
     ,   toCoreType, toCoreTypeNotQuantified, typeToCoreType, typeToCoreTypeMapped
     ,   addLambdas, addLambdasForLambdaExpression, TypeClassContext(..)
     ,   findCoreType, createInstantiation, createRecordInstantiation
+    ,   createRecordUpdate, patternMatchFail, patternAlwaysSucceeds
     ,   TypeInferenceOutput(TypeInferenceOutput, importEnv), lookupBeta
     ) where
 
@@ -37,7 +38,10 @@ import qualified Data.Map as M
 import Helium.ModuleSystem.ImportEnvironment
 import Helium.Syntax.UHA_Syntax
 import Helium.Syntax.UHA_Utils
+import Helium.Syntax.UHA_Range
 import Helium.Utils.Utils
+import Debug.Trace
+import Text.PrettyPrint.Leijen (pretty)
 
 lookupBeta :: Int -> TypeInferenceOutput -> Top.Tp
 lookupBeta beta typeOutput = lookupInt beta $ substitutionFromResult $ solveResult typeOutput
@@ -347,14 +351,109 @@ findInstantiation importEnv (Top.Quantification (tvars, _, Top.Qualification (_,
       traverseNoTypeSynonym tl1 tr1 . traverse tl2 tr2
     traverseNoTypeSynonym t1 t2 = traverse t1 t2
 
--- Puts the fields in the correct order, 
--- and applies them in that order to the constructor expression.
-createRecordInstantiation :: TypeInferenceOutput -> TypeEnvironment -> Name -> [(Name, Core.Expr)] -> Bool -> Int -> Core.Expr
+{-
+Puts the fields in the correct order, 
+and applies them in that order to the constructor expression.
+-}
+createRecordInstantiation :: TypeInferenceOutput -> TypeEnvironment -> Name -> [(Name, Core.Expr, Int)] -> Bool -> Int -> Core.Expr
 createRecordInstantiation typeOutput typeEnv name bindings isConstructor beta
-    = foldl app_ constrExpr (map snd sortedBinds)
+    = foldl app_ constrExpr (map snd3 sortedBinds)
   where
     recordFields = fromMaybe notFound (M.lookup name recordEnv)
     recordEnv = recordEnvironment (importEnv typeOutput)
     constrExpr = createInstantiation typeOutput typeEnv name True beta
     notFound = internalError "CoreUtils" "createRecordInstantiation" "constructor/record field not found"
-    sortedBinds = sortOn (\(n, _) -> maybe notFound fst3 (M.lookup n recordFields)) bindings
+    sortedBinds = sortOn (\(n, _, _) -> maybe notFound fst3 (M.lookup n recordFields)) bindings
+
+{-
+Transforms
+
+>> data Foo = Foo { a :: Int, b :: Int }
+>>          | Bar { a :: Int }
+>> 
+>> f x = x { a = 1 }
+
+into
+
+>> f x = (\y a -> case y of
+                  Foo _ b -> Foo a b
+                  _ -> case y of
+                      Bar _ -> Bar a
+                      _     -> patternMatchFail)
+        x 1
+-}
+createRecordUpdate :: TypeInferenceOutput 
+                    -> ImportEnvironment 
+                    -> Core.Expr 
+                    -> Int 
+                    -> [(Name, Core.Expr, Int)] 
+                    -> Range
+                    -> Core.Expr
+createRecordUpdate typeOutput importEnv old beta bindings range
+    = foldl app_ (func `app_` old) (map thd4 args)
+  where
+    oldType              = traceShow (pretty (betaToType beta)) $ betaToType beta
+    func                 = setTopArgs (map (\(n, i, e, t) -> Variable i (betaToType t)) args) body
+    scrutineeVar         = Variable (idFromString "x") oldType
+    betaToType b         = typeToCoreType $ lookupBeta b typeOutput
+    recordEnv            = recordEnvironment importEnv
+    constructors         = mapMaybe (\n -> M.lookup n (fieldLookup importEnv)) fields
+    fields               = map fst3 bindings
+    args                 :: [(Name, Id, Core.Expr, Int)]
+    args                 = map (\(n, e, t) -> (n, idFromString (show n), e, t)) bindings
+    conNotFound          = internalError "CoreUtils" "createRecordUpdate" "no constructor could be found"
+    relevantConstructors = if null constructors
+      then conNotFound 
+      else foldr1 intersect constructors
+
+    body :: Core.Expr
+    body = body' relevantConstructors
+
+    body' :: [Name] -> Core.Expr
+    body' []     = patternMatchFail "record expression binding" oldType range
+    body' (c:cs) = constructorToCase (variableName scrutineeVar) c 
+                    (map (\x -> (fst4 x, snd4 x)) args) (body' cs)
+
+    -- Chain the arguments
+    setTopArgs :: [Variable] -> Core.Expr -> Core.Expr
+    setTopArgs xs e = Lam False scrutineeVar (foldr (Lam False) e xs)
+
+    constructorToCase :: Id -> Name -> [(Name, Id)] -> Core.Expr -> Core.Expr
+    constructorToCase scrutinee c fsNew next
+      = Match scrutinee 
+        [ Alt pat exec
+        , Alt PatDefault next
+        ]
+      where 
+        constr          = idFromString (show c)
+        pat             = PatCon (ConId constr) [] args
+        cFields         = fromMaybe conNotFound $ M.lookup c recordEnv
+        fieldsToReuse   = foldr (M.delete . fst) cFields fsNew
+        sortedFields    = sortOn (fst3 . snd) (M.assocs cFields)
+        args            = map (\(n, _) -> placeholder n fieldsToReuse) sortedFields
+        placeholder n m = fromMaybe (idFromString "_") $ do
+                            _ <- M.lookup n m
+                            return $ idFromString (show n)
+        constructorFunc = createInstantiation typeOutput (typeEnvironment importEnv) c True beta
+        exec            = foldl Ap constructorFunc (map (Var . idFromString . show . fst) sortedFields)
+        
+patternAlwaysSucceeds :: Pattern -> Bool
+patternAlwaysSucceeds p = 
+    case p of
+        Pattern_Variable _ _ -> True
+        Pattern_Wildcard _ -> True
+        Pattern_As _ _ pat -> patternAlwaysSucceeds pat
+        Pattern_Parenthesized _ pat -> patternAlwaysSucceeds pat
+        _ -> False
+
+patternMatchFail :: String -> Core.Type -> Range -> Core.Expr
+patternMatchFail nodeDescription tp range =
+    Core.ApType (var "$primPatternFailPacked") tp
+        `app_` packedString (
+                    nodeDescription ++ " ranging from " ++ 
+                    showPosition start ++ " to " ++ 
+                    showPosition (getRangeEnd range) ++ " in module " ++
+                    moduleFromPosition start
+               )
+    where
+        start = getRangeStart range

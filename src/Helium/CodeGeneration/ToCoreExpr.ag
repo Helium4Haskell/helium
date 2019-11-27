@@ -181,7 +181,13 @@ SEM Expression [ | | core : { Core.Expr } ]
     --  name                     : Name
     --  recordExpressionBindings : RecordExpressionBindings
 
-    | RecordUpdate       lhs.core = internalError "ToCoreExpr" "Expression" "records not supported"
+    | RecordUpdate       lhs.core = createRecordUpdate
+                                        @lhs.typeOutput 
+                                        @lhs.importEnv 
+                                        @expression.core
+                                        @lhs.betaDeclUnique
+                                        @recordExpressionBindings.bindings
+                                        @range.self
     --  range                    : Range
     --  expression               : Expression
     --  recordExpressionBindings : RecordExpressionBindings
@@ -311,13 +317,13 @@ SEM GuardedExpression [ | | core : { Core.Expr -> Core.Expr } ]
 ---------------------------------
 -- Collect record construction information
 -- Will be used to put the arguments in the right order
-SEM RecordExpressionBindings [ | | bindings USE { : } { [] } : { [(Name, Core.Expr)] } ]
-    | Cons                  lhs.bindings = (@hd.name, @hd.core) : @tl.bindings
 
-SEM RecordExpressionBinding [ | | name : {Name} core : { Core.Expr } ]
+SEM RecordExpressionBindings [ | | bindings USE { : } { [] } : { [(Name, Core.Expr, Int)] } ]
+    | Cons                  lhs.bindings = @hd.bind : @tl.bindings
+
+SEM RecordExpressionBinding [ | | bind : {(Name, Core.Expr, Int)} ]
     | RecordExpressionBinding 
-        lhs.core = @expression.core
-        lhs.name = @name.self
+        lhs.bind = (@name.self, @expression.core, @lhs.betaDeclUnique)
 
 SEM Literal [ | | core : { Core.Expr } ]
     | Int                   lhs.core = Core.Lit (Core.LitInt (read @value) Core.IntTypeInt)

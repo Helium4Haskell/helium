@@ -698,7 +698,7 @@ SEM RecordExpressionBinding
       lhs . betaUnique   = @lhs.betaUnique + 1
           . constraints  = @newcon .>. Node [@expression.constraints]
           . assumptions  = @expression.assumptions
-      loc . beta         = TVar @lhs.betaUnique
+      loc . beta         = TVar @lhs.betaDeclUnique
           . betaMap      = (@name.self, @expression.beta)
           . constructors = fromMaybe (internalError "TypeInferenceRules.ag" 
                                 "RecordExpressionBinding" ("nonexistant field " ++ show @name.self))

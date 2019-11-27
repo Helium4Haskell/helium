@@ -47,24 +47,31 @@ commaList (x:xs) = x ++ ", " ++ commaList xs
                 
 fst3 :: (a, b, c) -> a
 fst3 (a,_,_)   = a
+{-# INLINE fst3 #-}
 
 snd3 :: (a, b, c) -> b
 snd3 (_,a,_)   = a
+{-# INLINE snd3 #-}
 
 thd3 :: (a, b, c) -> c
 thd3 (_,_,a)   = a
+{-# INLINE thd3 #-}
 
 fst4 :: (a, b, c, d) -> a
 fst4 (a,_,_,_) = a
+{-# INLINE fst4 #-}
 
 snd4 :: (a, b, c, d) -> b
 snd4 (_,a,_,_) = a
+{-# INLINE snd4 #-}
 
 thd4 :: (a, b, c, d) -> c
 thd4 (_,_,a,_) = a
+{-# INLINE thd4 #-}
 
 fth4 :: (a, b, c, d) -> d
 fth4 (_,_,_,a) = a
+{-# INLINE fth4 #-}
 
 -------------------------------------------------------
 

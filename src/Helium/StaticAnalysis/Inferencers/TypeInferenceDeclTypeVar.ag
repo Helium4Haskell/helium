@@ -84,7 +84,7 @@ SEM Expression
     lhs.betaDeclUnique = @lhs.betaDeclUnique + 1
     recordExpressionBindings.betaDeclUnique = @lhs.betaDeclUnique + 1
   | RecordUpdate
-    lhs.betaDeclUnique = @lhs.betaDeclUnique + 2
+    lhs.betaDeclUnique = @lhs.betaDeclUnique + 3
     recordExpressionBindings.betaDeclUnique = @lhs.betaDeclUnique + 1
     expression.betaDeclUnique = @lhs.betaDeclUnique + 2
   | List
@@ -102,6 +102,11 @@ SEM Statement
   | Expression
     -- One type variable for the value in the monad (eg the 'a' in 'IO a')
     expression.betaDeclUnique = @lhs.betaDeclUnique + 1
+
+SEM RecordExpressionBinding
+  | RecordExpressionBinding   
+           lhs        . betaDeclUnique = @lhs.betaDeclUnique + 1
+           expression . betaDeclUnique = @lhs.betaDeclUnique + 1
 
 ATTR Pattern          [ | | beta:Tp ]
 
