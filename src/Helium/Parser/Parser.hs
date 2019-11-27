@@ -1207,6 +1207,13 @@ apat = addRange (
         return $ \r -> Pattern_Wildcard r
     <|>
     do
+        (n, bs) <- try $ do 
+            n <- con
+            bs <- braces (fpat `sepBy` lexCOMMA)
+            return (n, bs)
+        return $ \r -> Pattern_Record r n bs
+    <|>
+    do
         n <- con
         return $ \r -> Pattern_Constructor r n []
     <|>
@@ -1219,6 +1226,15 @@ apat = addRange (
         p <- apat
         return $ \r -> Pattern_Irrefutable r p
     ) <|> phole <?> Texts.parserPattern
+
+
+fpat :: HParser RecordPatternBinding
+fpat = addRange $ do
+    n <- varid
+    lexASG
+    p <- pat
+    return (\r -> RecordPatternBinding_RecordPatternBinding r n p )
+
 
 phole :: HParser Pattern
 phole = addRange (
