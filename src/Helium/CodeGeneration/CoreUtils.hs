@@ -356,16 +356,32 @@ findInstantiation importEnv (Top.Quantification (tvars, _, Top.Qualification (_,
 {-
 Puts the fields in the correct order, 
 and applies them in that order to the constructor expression.
+
+Fills the empty fields with `undefined`
 -}
-createRecordInstantiation :: TypeInferenceOutput -> TypeEnvironment -> Name -> [(Name, Core.Expr, Int)] -> Bool -> Int -> Core.Expr
+createRecordInstantiation :: TypeInferenceOutput 
+                            -> TypeEnvironment 
+                            -> Name 
+                            {- Field name, argument to pass to field, beta var for the argument -}
+                            -> [(Name, Core.Expr, Int)] 
+                            -> Bool 
+                            -> Int 
+                            -> Core.Expr
 createRecordInstantiation typeOutput typeEnv name bindings isConstructor beta
-    = foldl app_ constrExpr (map snd3 sortedBinds)
+    = foldl app_ constrExpr sortedBinds
   where
-    recordFields = fromMaybe notFound (M.lookup name recordEnv)
+    binds = map (\(i, expr, _) -> (i, expr)) bindings
+    recordFields = M.assocs $ fromMaybe notFound (M.lookup name recordEnv)
     recordEnv = recordEnvironment (importEnv typeOutput)
     constrExpr = createInstantiation typeOutput typeEnv name True beta
     notFound = coreUtilsError "createRecordInstantiation" "constructor/record field not found"
-    sortedBinds = sortOn (\(n, _, _) -> maybe notFound fst4 (M.lookup n recordFields)) bindings
+    sortedFields = sortOn (\(n, (i, s, _, _)) -> i) recordFields
+    sortedBinds 
+      = map (\(n, (i, s, t, _)) -> fromMaybe (strictOrUndefined s t) (lookup n binds)) sortedFields
+    strictOrUndefined strict tp = if strict
+      then coreUtilsError "createRecordInstantiation" "undefined strict field construction"
+      else coreUndefined (importEnv typeOutput) tp
+    -- sortedBinds = sortOn (\(n, _, _) -> maybe notFound fst4 (M.lookup n recordFields)) bindings
 
 {-
 Transforms
@@ -454,13 +470,12 @@ into
                       _     -> patternMatchFail)
         x
 -}
-createRecordSelector :: TypeInferenceOutput
-                    -> ImportEnvironment
+createRecordSelector :: ImportEnvironment
                     -> Range
                     -> Name
                     -> Tp
                     -> Core.Expr
-createRecordSelector typeOutput importEnv r field t
+createRecordSelector importEnv r field t
   = Lam True scrutVar select
   where
     select = constructorsToCase importEnv scrutId (typeToCoreType t) r atEachConstructor
@@ -535,6 +550,16 @@ patternMatchFail nodeDescription tp range =
                )
     where
         start = getRangeStart range
+
+coreUndefined :: ImportEnvironment -> Tp -> Core.Expr
+coreUndefined importEnv tp
+      = foldl (\e t -> Core.ApType e $ typeToCoreType t) undefinedExpr 
+          (findInstantiation importEnv undefinedScheme tp)
+    where
+      undefinedExpr = Var (idFromString "undefined") 
+      undefinedName = Name_Identifier (coreUtilsError "coreUndefined" "access non-existing range") ["Prelude"] "undefined"
+      undefinedScheme = fromMaybe (coreUtilsError "coreUndefined" "undefined not defined") $
+          M.lookup undefinedName (typeEnvironment importEnv)
 
 coreUtilsError :: String -> String -> a
 coreUtilsError = internalError "CoreUtils"

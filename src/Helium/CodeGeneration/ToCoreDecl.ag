@@ -421,7 +421,7 @@ SEM Declaration
                                     { Core.declName    = idFromName n
                                     , Core.declAccess  = Core.private
                                     , Core.declType    = toCoreType ts
-                                    , Core.valueValue  = createRecordSelector @lhs.typeOutput @lhs.importEnv @range.self n t
+                                    , Core.valueValue  = createRecordSelector @lhs.importEnv @range.self n t
                                     , Core.declCustoms = []
                                     }
               .recordEnv = recordEnvironment @lhs.importEnv

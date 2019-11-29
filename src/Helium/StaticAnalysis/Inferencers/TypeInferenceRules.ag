@@ -433,7 +433,7 @@ SEM Expression
       loc . assumptions  = @recordExpressionBindings.assumptions
           . beta         = TVar @lhs.betaDeclUnique
           . constraints  = @conRecord .>.
-                            Node ([listTree @conRecordFunc] ++ @recordExpressionBindings.constraintslist)
+                            Node (@recordExpressionBindings.constraintslist)
           . recordEnv    = recordEnvironment @lhs.importEnvironment
           . recordFields = maybe undefined id (M.lookup @name.self @loc.recordEnv)
           . sortedBetas  = sortOn (\(n, _) -> fst4 $ maybe undefined id (M.lookup n @loc.recordFields)) @recordExpressionBindings.betasMap
@@ -441,9 +441,6 @@ SEM Expression
           . conRecord    = maybe [] id $ do 
                             t   <- M.lookup @name.self (typeEnvironment @lhs.importEnvironment)
                             return [(@beta .::. t) @cinfoResult]
-          . conRecordFunc = maybe [] id $ do 
-                            ctp <- M.lookup @name.self (valueConstructors @lhs.importEnvironment)
-                            return [(@recordFunc .::. ctp) @cinfoFunc]
 
   | RecordUpdate
       recordExpressionBindings . betaConstr = @beta
@@ -697,8 +694,7 @@ ATTR                    RecordExpressionBinding [ | | betaMap:{(Name, Tp)} const
 SEM RecordExpressionBinding
 
   | RecordExpressionBinding
-      lhs . betaUnique   = @lhs.betaUnique + 1 -- TODO: Remove this (unneeded)
-          . constraints  = @newcon .>. Node [@expression.constraints]
+      lhs . constraints  = @newcon .>. Node [@expression.constraints]
           . assumptions  = @expression.assumptions
       loc . beta         = TVar @lhs.betaDeclUnique
           . betaMap      = (@name.self, @expression.beta)
