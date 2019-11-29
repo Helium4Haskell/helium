@@ -207,7 +207,16 @@ SEM Pattern
                          loc . patConstructorErrors = patternConstructorErrors @maybetp @name.self @lhs.allValueConstructors @patterns.numberOfPatterns @lhs.lhsPattern @lhs.allTypeConstructors
                              . maybetp    = M.lookup @name.self @lhs.valueConstructors
 
-    | Record             lhs . miscerrors = @recordPatternBindings.miscerrors
+    | Record             recordPatternBindings.possibleFields = fromMaybe M.empty @maybeFields
+                         lhs . miscerrors 
+                            = if null @undefinedConstructorErrors 
+                                  then @recordPatternBindings.miscerrors
+                                  else @undefinedConstructorErrors
+                         loc . undefinedConstructorErrors
+                            = case @maybeFields of
+                                Nothing -> makeUndefined Constructor [@name.self] (M.keys @lhs.recordFields)
+                                Just fields -> []
+                             . maybeFields = M.lookup @name.self @lhs.recordFields
 
     | InfixConstructor   lhs . miscerrors = @patConstructorErrors ++ @rightPattern.miscerrors
                          loc . patConstructorErrors = patternConstructorErrors @maybetp @constructorOperator.self @lhs.allValueConstructors 2 False @lhs.allTypeConstructors
@@ -252,6 +261,22 @@ simplePattern pattern =
                                          _   -> False
       _                            -> False
 }
+
+-----------------------------------------
+-- RecordPatternBinding
+
+ATTR RecordPatternBinding RecordPatternBindings [ possibleFields : { M.Map Name (Int, Bool, Tp, TpScheme) } | | ]
+
+SEM RecordPatternBindings
+    | Cons lhs . miscerrors = @hd.miscerrors ++ @tl.miscerrors
+    | Nil  lhs . miscerrors = []
+
+SEM RecordPatternBinding
+    | RecordPatternBinding 
+        lhs . miscerrors = @nonexistingFieldError
+        loc . nonexistingFieldError = case M.lookup @name.self @lhs.possibleFields of
+                                        Just f  -> [Undefined RecordField @name.self (M.keys @lhs.possibleFields) []]
+                                        Nothing -> [Undefined RecordField @name.self (M.keys @lhs.possibleFields) []]
 
 -----------------------------------------
 -- Statement

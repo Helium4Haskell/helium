@@ -83,9 +83,9 @@ SEM Expression
   | RecordConstruction
     recordExpressionBindings.betaDeclUnique = @lhs.betaDeclUnique + 1
   | RecordUpdate
-    lhs.betaDeclUnique = @lhs.betaDeclUnique + 3
-    recordExpressionBindings.betaDeclUnique = @lhs.betaDeclUnique + 1
-    expression.betaDeclUnique = @lhs.betaDeclUnique + 2
+    lhs.betaDeclUnique = @recordExpressionBindings.betaDeclUnique + 1
+    recordExpressionBindings.betaDeclUnique = @expression.betaDeclUnique + 1
+    expression.betaDeclUnique = @lhs.betaDeclUnique + 1
   | List
     -- One type variable for the elements of the list
     expressions.betaDeclUnique = @lhs.betaDeclUnique + 1
@@ -104,7 +104,7 @@ SEM Statement
 
 SEM RecordExpressionBinding
   | RecordExpressionBinding   
-           lhs        . betaDeclUnique = @lhs.betaDeclUnique + 1
+           lhs        . betaDeclUnique = @expression.betaDeclUnique + 1
            expression . betaDeclUnique = @lhs.betaDeclUnique + 1
 
 ATTR Pattern          [ | | beta:Tp ]
