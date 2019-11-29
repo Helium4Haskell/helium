@@ -272,6 +272,11 @@ SEM Pattern | Constructor loc . cinfoApply =
 SEM Pattern | Constructor loc . cinfoEmpty =
   resultConstraint "pattern constructor" @parentTree
      [ HasTrustFactor 10.0 ]
+
+-- Pattern.Record
+SEM Pattern | Record loc . cinfo =
+  resultConstraint "pattern record" @parentTree
+     [ FolkloreConstraint, HasTrustFactor 10.0 ]
                                 
 -- Pattern.InfixConstructor
 SEM Pattern | InfixConstructor loc . cinfoConstructor =
@@ -313,6 +318,13 @@ SEM Pattern |  As loc . cinfo =
 -- Pattern.NegateFloat
 SEM Pattern | NegateFloat loc . cinfo =
   resultConstraint "pattern negation" @parentTree
+     [ FolkloreConstraint ]
+
+---------------------------------------------------------------------------------------
+-- Type Inferencing : RecordPatternBinding
+
+SEM RecordPatternBinding | RecordPatternBinding loc . cinfo =
+  resultConstraint "record pattern" @pattern.infoTree
      [ FolkloreConstraint ]
 
 ---------------------------------------------------------------------------------------

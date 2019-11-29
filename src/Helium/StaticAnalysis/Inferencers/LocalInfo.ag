@@ -198,6 +198,11 @@ SEM Pattern
                                     , assignedType = Just @beta 
                                     , monos = @lhs.monos
                                     }
+  | Record       
+       loc . localInfo  = LocalInfo { self = UHA_Pat @self
+                                    , assignedType = Just @beta 
+                                    , monos = @lhs.monos
+                                    }
   | InfixConstructor  
        loc . localInfo  = LocalInfo { self = UHA_Pat @self
                                     , assignedType = Just @beta 
@@ -231,6 +236,16 @@ SEM Pattern
   | NegateFloat       
        loc . localInfo  = LocalInfo { self = UHA_Pat @self
                                     , assignedType = Just @beta 
+                                    , monos = @lhs.monos
+                                    }
+
+---------------------------------------------------------------------------------------
+-- RecordPatternBinding
+
+SEM RecordPatternBinding 
+  | RecordPatternBinding 
+       loc . localInfo  = LocalInfo { self = UHA_RPB @self
+                                    , assignedType = Nothing
                                     , monos = @lhs.monos
                                     }
 

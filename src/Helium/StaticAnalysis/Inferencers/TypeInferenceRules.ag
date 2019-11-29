@@ -87,9 +87,11 @@ SEM Body
 
 ---------------------------------------------------------------------------------------
 -- Type Inferencing : Declaration, Declarations, MaybeDeclarations
-ATTR Declaration Declarations MaybeDeclarations RightHandSide Qualifier Qualifiers Body Expression Expressions
-    FunctionBinding FunctionBindings Alternative Alternatives MaybeExpression GuardedExpression GuardedExpressions RecordExpressionBinding
-    RecordExpressionBindings Statement Statements[
+ATTR Declaration Declarations MaybeDeclarations RightHandSide Qualifier Qualifiers 
+    Body Expression Expressions FunctionBinding FunctionBindings Alternative Alternatives 
+    MaybeExpression GuardedExpression GuardedExpressions RecordExpressionBinding 
+    RecordExpressionBindings Statement Statements
+    [
         classMemberTypeSchemes : {Maybe [(Name, TpScheme)]}
         instanceTypes : {[(Name, TpScheme)]}
         moduleName : {Maybe Name}
@@ -434,7 +436,7 @@ SEM Expression
                             Node ([listTree @conRecordFunc] ++ @recordExpressionBindings.constraintslist)
           . recordEnv    = recordEnvironment @lhs.importEnvironment
           . recordFields = maybe undefined id (M.lookup @name.self @loc.recordEnv)
-          . sortedBetas  = sortOn (\(n, _) -> fst3 $ maybe undefined id (M.lookup n @loc.recordFields)) @recordExpressionBindings.betasMap
+          . sortedBetas  = sortOn (\(n, _) -> fst4 $ maybe undefined id (M.lookup n @loc.recordFields)) @recordExpressionBindings.betasMap
           . recordFunc   = foldr (.->.) @beta (map snd @loc.sortedBetas)
           . conRecord    = maybe [] id $ do 
                             t   <- M.lookup @name.self (typeEnvironment @lhs.importEnvironment)
@@ -695,7 +697,7 @@ ATTR                    RecordExpressionBinding [ | | betaMap:{(Name, Tp)} const
 SEM RecordExpressionBinding
 
   | RecordExpressionBinding
-      lhs . betaUnique   = @lhs.betaUnique + 1
+      lhs . betaUnique   = @lhs.betaUnique + 1 -- TODO: Remove this (unneeded)
           . constraints  = @newcon .>. Node [@expression.constraints]
           . assumptions  = @expression.assumptions
       loc . beta         = TVar @lhs.betaDeclUnique
@@ -704,18 +706,18 @@ SEM RecordExpressionBinding
                                 "RecordExpressionBinding" ("nonexistant field " ++ show @name.self))
                             $ M.lookup @name.self (fieldLookup @lhs.importEnvironment)
           . recordEnv    = recordEnvironment @lhs.importEnvironment
-          . recordFields = maybe (internalError 
+          . recordFields = fromMaybe (internalError 
                             "TypeInferenceRules.ag" 
                             "RecordExpressionBinding" 
                             "Specified record could not be found") 
-                                id (M.lookup (head @constructors) @recordEnv)
-          . recordType   = maybe (internalError 
+                                (M.lookup (head @constructors) @recordEnv)
+          . recordType   = fromMaybe (internalError 
                             "TypeInferenceRules.ag" 
                             "RecordExpressionBinding" 
                             "Specified record field could not be found")
-                                id (M.lookup @name.self @recordFields)
+                                (M.lookup @name.self @recordFields)
           . newcon       = [(@expression.beta .==. @beta) @cinfoExpr, 
-                            (@lhs.betaConstr .->. @beta .::. thd3 @recordType) @cinfoSel]
+                            (@lhs.betaConstr .->. @beta .::. fth4 @recordType) @cinfoSel]
 
 SEM RecordExpressionBindings
 
@@ -776,6 +778,13 @@ SEM Pattern
                                      Nothing  -> []
                                      Just ctp -> [ (@betaCon .::. ctp) @cinfoConstructor ]
 
+  | Record
+      recordPatternBindings . betaUnique  = @lhs.betaUnique + 1
+      recordPatternBindings . betaCon     = @beta
+      recordPatternBindings . nameCon     = @name.self
+      loc      . constraints    = [] .>.
+                                  Node @recordPatternBindings.constraintslist
+
   | As
       lhs     . environment = M.insert @name.self @beta @pattern.environment
       loc     . constraints = @newcon .>.
@@ -829,6 +838,43 @@ SEM Patterns
           . environment      = noAssumptions
           . numberOfPatterns = 0
           . constraintslist  = []
+
+---------------------------------------------------------------------------------------
+-- Type Inferencing : RecordPatternBinding, RecordPatternBindings
+ATTR RecordPatternBinding RecordPatternBindings [ nameCon:Name betaCon:Tp monos:Monos | betaUnique:Int | environment:PatternAssumptions ]
+ATTR RecordPatternBinding                       [ | | beta:{ (Int, Tp) } constraints:ConstraintSet ]
+ATTR                      RecordPatternBindings [ | | betas:{ [(Int, Tp)] } constraintslist:ConstraintSets numberOfPatterns:Int ]
+
+SEM RecordPatternBindings
+  | Cons
+      lhs . betas            = @hd.beta : @tl.betas
+          . environment      = @hd.environment `M.union` @tl.environment
+          . numberOfPatterns = 1 + @tl.numberOfPatterns
+          . constraintslist  = @hd.constraints : @tl.constraintslist
+  | Nil
+      lhs . betas            = []
+          . environment      = noAssumptions
+          . numberOfPatterns = 0
+          . constraintslist  = []
+
+SEM RecordPatternBinding
+  | RecordPatternBinding
+      lhs . environment = @pattern.environment
+          . constraints = @selCon .>. @pattern.constraints
+          . beta        = (@order, @pattern.beta)
+      loc . recordEnv   = recordEnvironment @lhs.importEnvironment
+          . selCon      = [ (@lhs.betaCon .->. @beta .::. fth4 @field) @cinfo ]
+          . order       = fst4 @field
+          . field       = fromMaybe (internalError
+                            "TypeInferenceRules.ag" 
+                            "RecordPatternBinding"
+                            ("Specified field could not be found: " ++ show @name.self)) 
+                                (M.lookup @name.self @recordFields)
+          . recordFields = fromMaybe (internalError
+                            "TypeInferenceRules.ag"
+                            "RecordPatternBinding"
+                            ("Specified constructor could not be found: " ++ show @lhs.nameCon)) 
+                                (M.lookup @lhs.nameCon @recordEnv)
 
 ---------------------------------------------------------------------------------------
 -- Type Inferencing : Alternative, Alternatives

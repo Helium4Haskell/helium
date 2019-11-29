@@ -12,6 +12,7 @@
 
 imports {
 import Helium.Syntax.UHA_Utils
+import Debug.Trace
 }
 
 {
@@ -27,7 +28,6 @@ ATTR Expression Expressions MaybeExpression Pattern Patterns Alternative Alterna
      FunctionBinding FunctionBindings Body Qualifier Qualifiers          
      GuardedExpression GuardedExpressions
      RecordExpressionBinding RecordExpressionBindings
-     RecordPatternBinding RecordPatternBindings
      [ | patternMatchWarnings : {[Warning]} | ]
 
 SEM Module
@@ -89,10 +89,19 @@ SEM Pattern
   | Wildcard         lhs . elements  = [WildcardElement]
   | Constructor      lhs . elements  = FiniteElement (getNameName @name.self) : concat @patterns.elementss
   | InfixConstructor lhs . elements  = FiniteElement (getNameName @constructorOperator.self) : @leftPattern.elements ++ @rightPattern.elements
-  | Record           lhs . elements  = pmError "Pattern_Record.elements" "Records are not supported"
+  | Record           lhs . elements  = FiniteElement (getNameName @name.self) : 
+                                          (rearrangeRecord @lhs.importEnvironment @name.self @recordPatternBindings.elementss)
   | Successor        lhs . elements  = pmError "Pattern_Successor.elements" "Successors are not supported"
   | Tuple            lhs . elements  = FiniteElement ("(" ++ replicate (length @patterns.self - 1) ',' ++ ")") : concat @patterns.elementss
   | List             lhs . elements  = listPat @patterns.elementss
+
+SEM RecordPatternBindings [ || elementss : {[(Name, [PatternElement])]}] 
+  | Nil              lhs . elementss = []
+  | Cons             lhs . elementss = @hd.elements : @tl.elementss
+
+SEM RecordPatternBinding [ || elements : {(Name, [PatternElement])}] 
+  | RecordPatternBinding
+                     lhs . elements = (@name.self, @pattern.elements)
 
 SEM Literal
   | Int              lhs . elements  = [InfiniteElement @value]
@@ -102,6 +111,19 @@ SEM Literal
 
 -- putting everything together
 {
+rearrangeRecord :: ImportEnvironment -> Name -> [(Name, [PatternElement])] -> [PatternElement]
+rearrangeRecord importEnv cons bs
+    = concatMap (\(n, (i, b, t, ts)) -> case (lookup n bs) of
+        Nothing -> [def]
+        Just ps -> ps) fields
+  where
+    fields = M.assocs recordEnv
+    def = WildcardElement -- TODO: Is this what the default element should be
+    recordEnv = fromMaybe 
+                  (pmError "rearrangeRecord" 
+                  "Constructor not found")
+                    (M.lookup cons (recordEnvironment importEnv))
+
 expandTypeFromImportEnvironment :: ImportEnvironment -> Tp -> Tp
 expandTypeFromImportEnvironment env = expandType (snd $ getOrderedTypeSynonyms env)
 
@@ -315,7 +337,7 @@ substitute t1 (t2, (con, args)) = let (c1, ts1) = leftSpine t1
 ---------------------------------------------------------------
 
 -- a pattern is a list of patternelements
-data PatternElement = WildcardElement | InfiniteElement String | FiniteElement String deriving Eq
+data PatternElement = WildcardElement | InfiniteElement String | FiniteElement String deriving (Eq, Show)
 isInfiniteElement :: PatternElement -> Bool
 isInfiniteElement (InfiniteElement _) = True
 isInfiniteElement _                   = False
@@ -389,7 +411,7 @@ parensPattern b = if b then rap . par else fst . par
     par   (Pattern_InfixConstructor r l n k) = (Pattern_InfixConstructor r (rap $ par l) n (rap $ par k), True)
     par   (Pattern_List             r ps   ) = (Pattern_List r $ map (fst.par) ps, False)
     par   (Pattern_Tuple            r ps   ) = (Pattern_Tuple r $ map (fst.par) ps, False)
-    par   (Pattern_Record           _ _ _  ) = pmError "parensPattern" "Records are not supported" 
+    par   (Pattern_Record           r n bs ) = (Pattern_Record r n $ map goRPB bs, length bs > 0)
     par p@(Pattern_Negate           _ _    ) = (p, True)
     par p@(Pattern_NegateFloat      _ _    ) = (p, True)
     par   (Pattern_As               r n p  ) = (Pattern_As r n (rap $ par p), False)
@@ -400,6 +422,9 @@ parensPattern b = if b then rap . par else fst . par
     rap :: (Pattern, Bool) -> Pattern
     rap (p, False) = p
     rap (p, True ) = Pattern_Parenthesized noRange p
+    goRPB :: RecordPatternBinding -> RecordPatternBinding
+    goRPB (RecordPatternBinding_RecordPatternBinding r n p) = 
+        (RecordPatternBinding_RecordPatternBinding r n (rap $ par p))
 
 --------------------------------------
 --- finally, the algorithm itself! ---

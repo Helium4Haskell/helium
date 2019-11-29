@@ -106,6 +106,9 @@ SEM Pattern [ parentTree : InfoTree | | infoTree : InfoTree ]
   | Constructor  
        loc . parentTree = node @lhs.parentTree @localInfo @patterns.infoTrees
        lhs . infoTree   = @parentTree 
+  | Record  
+       loc . parentTree = node @lhs.parentTree @localInfo @recordPatternBindings.infoTrees
+       lhs . infoTree   = @parentTree
   | InfixConstructor   
        loc . parentTree = node @lhs.parentTree @localInfo [@leftPattern.infoTree, @rightPattern.infoTree]
        lhs . infoTree   = @parentTree 
@@ -235,13 +238,21 @@ SEM Declaration [ parentTree : InfoTree | | infoTrees : InfoTrees ]
   | Instance       loc . parentTree = node @lhs.parentTree @localInfo @where.infoTrees
                    lhs . infoTrees  = [@parentTree]
     
+SEM RecordPatternBindings [ parentTree : InfoTree | | infoTrees : InfoTrees ]
+  | Cons   lhs . infoTrees = @hd.infoTree : @tl.infoTrees
+  | Nil    lhs . infoTrees = []
+    
+SEM RecordPatternBinding [ parentTree : InfoTree | | infoTree : InfoTree ]
+  | RecordPatternBinding  
+          lhs . infoTree   = @pattern.infoTree
+
 SEM RecordExpressionBindings [ parentTree : InfoTree | | infoTrees : InfoTrees ]
   | Cons   lhs . infoTrees = @hd.infoTree : @tl.infoTrees
   | Nil    lhs . infoTrees = []
 
 SEM RecordExpressionBinding [ parentTree : InfoTree | | infoTree : InfoTree ]
   | RecordExpressionBinding  
-          lhs . infoTree   = @expression.infoTree   
+          lhs . infoTree   = @expression.infoTree
     
 SEM FunctionBindings [ parentTree : InfoTree | | infoTrees : InfoTrees ]
   | Cons   lhs . infoTrees = @hd.infoTree : @tl.infoTrees
@@ -261,13 +272,12 @@ SEM LeftHandSide [ parentTree : InfoTree | | infoTrees : InfoTrees ]
 ---------------------------------------------------------------------------------------
 -- Prevent ag-warnings
 
-SEM RecordPatternBinding    | RecordPatternBinding     loc . parentTree = globalInfoError
 -- TODO: DELETE
+-- SEM RecordPatternBinding    | RecordPatternBinding     loc . parentTree = globalInfoError
 -- SEM RecordExpressionBinding | RecordExpressionBinding  loc . parentTree = globalInfoError
-SEM Pattern                 | Successor                loc . infoTree   = globalInfoError
-                            | Record                   loc . infoTree   = globalInfoError
--- TODO: DELETE
+-- SEM Pattern                 | Record                   loc . infoTree   = globalInfoError
 -- SEM Expression              | RecordConstruction       loc . infoTree   = globalInfoError
+SEM Pattern                 | Successor                loc . infoTree   = globalInfoError
 SEM Declaration             | Default                  loc . infoTrees  = globalInfoError
                             | Newtype                  loc . infoTrees  = globalInfoError
 

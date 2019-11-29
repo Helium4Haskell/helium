@@ -24,6 +24,7 @@ data UHA_Source =
    | UHA_Qual   Qualifier
    | UHA_FB     FunctionBinding
    | UHA_RB     RecordExpressionBinding
+   | UHA_RPB    RecordPatternBinding
    | UHA_RHS    RightHandSide
    | UHA_Decl   Declaration
    | UHA_Decls  Declarations
@@ -41,6 +42,7 @@ rangeOfSource source =
       UHA_Qual  qual  -> getQualifierRange qual
       UHA_FB    fb    -> getFBRange fb
       UHA_RB    rb    -> getRBRange rb
+      UHA_RPB   rpb   -> getRPBRange rpb
       UHA_RHS   rhs   -> getRHSRange rhs
       UHA_Decl  decl  -> getDeclarationRange decl
       UHA_Decls decls -> if null decls then noRange else foldr1 mergeRanges (map getDeclarationRange decls)
@@ -55,6 +57,7 @@ oneLinerSource source =
       UHA_Qual  qual  -> PP.oneLineTree_Syn_Qualifier (PP.wrap_Qualifier (PP.sem_Qualifier qual) PP.Inh_Qualifier)
       UHA_FB    fb    -> PP.oneLineTree_Syn_FunctionBinding (PP.wrap_FunctionBinding (PP.sem_FunctionBinding fb) PP.Inh_FunctionBinding)
       UHA_RB    rb    -> PP.oneLineTree_Syn_RecordExpressionBinding (PP.wrap_RecordExpressionBinding (PP.sem_RecordExpressionBinding rb) PP.Inh_RecordExpressionBinding)
+      UHA_RPB   rb    -> PP.oneLineTree_Syn_RecordPatternBinding (PP.wrap_RecordPatternBinding (PP.sem_RecordPatternBinding rb) PP.Inh_RecordPatternBinding)
       UHA_RHS   rhs   -> PP.oneLineTree_Syn_RightHandSide (PP.wrap_RightHandSide (PP.sem_RightHandSide rhs) PP.Inh_RightHandSide) ""
       UHA_Decl  decl  -> PP.oneLineTree_Syn_Declaration (PP.wrap_Declaration (PP.sem_Declaration decl) PP.Inh_Declaration)
       UHA_Decls decls -> PP.encloseSep "{" "; " "}" (PP.oneLineTree_Syn_Declarations (PP.wrap_Declarations (PP.sem_Declarations decls) PP.Inh_Declarations))
@@ -69,6 +72,7 @@ descriptionOfSource source =
       UHA_Qual  _ -> "qualifier"
       UHA_FB    _ -> "function binding"
       UHA_RB    _ -> "record expression binding"
+      UHA_RPB   _ -> "record pattern binding"
       UHA_RHS   _ -> "right-hand side"
       UHA_Decl  _ -> "declaration"
       UHA_Decls _ -> "declarations"

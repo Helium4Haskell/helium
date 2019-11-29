@@ -23,7 +23,13 @@ punctuate _ [t] = t
 punctuate s (t:ts) = OneLineNode (t : concatMap (\t' -> [OneLineText s,t']) ts)
     
 parens :: OneLineTree -> OneLineTree
-parens tree = OneLineNode [ OneLineText "(", tree, OneLineText ")" ]
+parens tree = surround "(" tree ")"
+    
+braces :: OneLineTree -> OneLineTree
+braces tree = surround "{" tree "}"
+
+surround :: String -> OneLineTree -> String -> OneLineTree
+surround l m r = OneLineNode [ OneLineText l, m, OneLineText r ]
 
 sepBy :: OneLineTree -> [OneLineTree] -> [OneLineTree]
 sepBy separator list =
@@ -45,7 +51,7 @@ ATTR
     Declaration
     Expression Statement
     Qualifier Alternative
-    RecordExpressionBinding
+    RecordExpressionBinding RecordPatternBinding
     FunctionBinding LeftHandSide
     Pattern Literal Name
     [
@@ -68,7 +74,7 @@ ATTR GuardedExpressions
 ATTR
     Declarations Expressions
     Statements Qualifiers Alternatives
-    RecordExpressionBindings
+    RecordExpressionBindings RecordPatternBindings
     FunctionBindings Patterns Names Strings
     [
     |
@@ -192,11 +198,25 @@ SEM Expression                                   {- *** -}
     --  range                    : Range
     --  name                     : Name
 
-    -- TODO: Expand with records
+    -- TODO: Expand with its records
     | RecordConstruction loc.oneLineTree = OneLineNode [@name.oneLineTree]
     --  range                    : Range
     --  name                     : Name
     --  recordExpressionBindings : RecordExpressionBindings
+    
+    | RecordUpdate loc.oneLineTree = 
+            OneLineNode $
+            [ @expression.oneLineTree
+            , OneLineText "{"
+            ] ++
+            @recordExpressionBindings.oneLineTree
+            ++ 
+            [ OneLineText "}"
+            ]
+    --  range                    : Range
+    --  expression               : Expression
+    --  recordExpressionBindings : RecordExpressionBindings
+
     | Parenthesized     loc.oneLineTree = parens @expression.oneLineTree
     --  range                    : Range
     --  expression               : Expression
@@ -299,8 +319,8 @@ SEM Expression                                   {- *** -}
     --  range                    : Range
     --  name                     : Name
     --  recordExpressionBindings : RecordExpressionBindings
-    | RecordUpdate
-            loc.oneLineTree = intErr "Expression" "record update"
+    -- | RecordUpdate
+    --         loc.oneLineTree = intErr "Expression" "record update"
     --  range                    : Range
     --  expression               : Expression
     --  recordExpressionBindings : RecordExpressionBindings
@@ -505,6 +525,13 @@ SEM Pattern
     --  range                    : Range
     --  name                     : Name
     --  literal                  : Literal -- only integers allowed here
+
+SEM RecordPatternBinding
+    | RecordPatternBinding
+            loc.oneLineTree = OneLineNode $ sepBy (OneLineText " ") [@name.oneLineTree, OneLineText "=", @pattern.oneLineTree]
+    -- range                    : Range
+    -- name                     : Name
+    -- pattern                  : Pattern
 
 -- ------------------------------------------------------------------------
 -- -- Basics                                                             --

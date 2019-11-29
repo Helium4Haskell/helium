@@ -166,6 +166,11 @@ SEM Pattern
   | Successor
     loc.beta = internalError "TypeInferenceDeclTypeVar.ag" "n/a" "Pattern.Successor"
 
+SEM RecordPatternBinding
+  | RecordPatternBinding
+    lhs.betaDeclUnique = @lhs.betaDeclUnique + 1
+    loc.beta = TVar @lhs.betaDeclUnique
+
 {
 chead [x] = x
 chead x = error "Not a singleton"

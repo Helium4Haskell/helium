@@ -20,7 +20,7 @@ ATTR Expression Expressions MaybeExpression Pattern Patterns Alternative Alterna
      FunctionBinding FunctionBindings Body Qualifier Qualifiers
      GuardedExpression GuardedExpressions
      FieldDeclaration FieldDeclarations
-     RecordExpressionBinding RecordExpressionBindings
+     RecordExpressionBinding RecordExpressionBindings RecordPatternBinding RecordPatternBindings
      Type Types AnnotatedType AnnotatedTypes Constructor Constructors ContextItem ContextItems
      [ | warnings : {[Warning]} | ]
 

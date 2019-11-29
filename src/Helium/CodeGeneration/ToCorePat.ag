@@ -4,7 +4,7 @@ ATTR Patterns
     |   length : Int
     ]
 
-ATTR Pattern Patterns
+ATTR Pattern Patterns RecordPatternBinding RecordPatternBindings
     [   
     | 
     |   vars USE { ++ } { [] } : { [(Name, TpScheme)] }
@@ -34,3 +34,10 @@ SEM Pattern
     --  range                    : Range
     --  name                     : Name
     --  pattern                  : Pattern
+    
+    | Record                (loc.tpScheme, loc.coreType) = declarationTypeInPattern @lhs.typeOutput @name.self @lhs.betaDeclUnique
+                            lhs.vars    = @recordPatternBindings.vars
+                            lhs.patternTypes = M.singleton @name.self $ findCoreType @lhs.typeOutput @lhs.betaDeclUnique
+    --  range                    : Range
+    --  name                     : Name
+    --  recordPatternBindings    : RecordPatternBindings

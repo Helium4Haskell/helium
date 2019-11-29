@@ -152,7 +152,7 @@ SEM Qualifiers
 
 -------------------------------------------------------------------------------------
 
-ATTR Pattern Patterns 
+ATTR Pattern Patterns RecordPatternBinding RecordPatternBindings
      LeftHandSide [ | | patVarNames USE {++} {[]} : Names ]
 
 SEM Pattern 
@@ -160,6 +160,7 @@ SEM Pattern
   | As         lhs . patVarNames = @name.self : @pattern.patVarNames
   | Hole       lhs . patVarNames = [ Name_Special noRange [] ("hole" ++ show @loc.i) ]
                loc . i : UNIQUEREF counter
+  | Record     lhs . patVarNames = @recordPatternBindings.patVarNames
 
 SEM Expression 
   | Variable   lhs . unboundNames = [ @name.self ]    

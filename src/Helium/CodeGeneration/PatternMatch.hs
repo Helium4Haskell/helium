@@ -16,6 +16,7 @@ import Helium.Syntax.UHA_Utils
 import Helium.Syntax.UHA_Range
 import Lvm.Common.Id
 import Data.Char
+import Data.List
 import Helium.Utils.Utils
 import Helium.ModuleSystem.ImportEnvironment
 import Helium.CodeGeneration.CoreUtils
@@ -69,6 +70,13 @@ patternToCore' env types (name, tp, pat) continue nr =
                     (Core.PatCon (Core.ConId (idFromName n)) instantiation ids) 
                     expr
                 ]
+        
+        -- case _u1 of C {_n1 = _l1, _n2 = _l2} -> ...
+        --             _         -> _next
+        Pattern_Record range n bs ->
+            let 
+                ps = rearrangeRecordPatterns env n range bs
+            in patternToCore' env types (name, tp, Pattern_Constructor range n ps) continue nr
 
         -- case _u1 of _l1 : _l2 -> ...
         --             _         -> _next
@@ -211,7 +219,21 @@ getIdOfSimplePattern p =
         Pattern_Variable _ n -> idFromName n
         Pattern_Wildcard _ -> wildcardId
         _ -> internalError "PatternMatch" "getIdOfSimplePattern" "not a simple pattern"
-        
+
+rearrangeRecordPatterns :: ImportEnvironment -> Name -> Range -> [RecordPatternBinding] -> [Pattern]
+rearrangeRecordPatterns importEnv cons range bs 
+        = map (\(n, _) -> fromMaybe defPattern $ lookup n writtenPatterns) sortedFields  
+    where
+        defPattern = Pattern_Wildcard range
+        writtenPatterns = map getPatternFromRecord bs
+        err = internalError "PatternMatch" "rearrangeRecordPatterns"
+        sortedFields = sortOn (\(_, (i, _, _, _)) -> i :: Int) $ M.assocs fields
+        fields = fromMaybe (err ("Record " ++ show cons ++ " not found")) 
+            (M.lookup cons (recordEnvironment importEnv))
+
+getPatternFromRecord :: RecordPatternBinding -> (Name, Pattern)
+getPatternFromRecord (RecordPatternBinding_RecordPatternBinding _ n p) = (n, p)
+
 freshIds :: String -> Int -> [Id]
 freshIds prefix number = fst (freshIds' prefix 0 number)
 

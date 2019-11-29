@@ -219,6 +219,10 @@ getRBRange :: RecordExpressionBinding -> Range
 getRBRange rb = case rb of
    RecordExpressionBinding_RecordExpressionBinding r _ _ -> r
                      
+getRPBRange :: RecordPatternBinding -> Range
+getRPBRange rb = case rb of
+   RecordPatternBinding_RecordPatternBinding r _ _ -> r
+                     
 getDeclarationRange :: Declaration -> Range
 getDeclarationRange decl = case decl of
    Declaration_Type r _ _           -> r

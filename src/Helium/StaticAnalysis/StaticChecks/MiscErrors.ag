@@ -16,6 +16,7 @@ ATTR Expression Expressions MaybeExpression Pattern Patterns Alternative Alterna
      GuardedExpression GuardedExpressions Literal
      Type Types AnnotatedTypes AnnotatedType ContextItem ContextItems Constructors Constructor 
      FieldDeclaration FieldDeclarations RecordExpressionBinding RecordExpressionBindings
+     RecordPatternBinding RecordPatternBindings
      [  | miscerrors : {[Error]} | ]
 
 SEM Module
@@ -178,6 +179,8 @@ SEM Expression
 
   | RecordConstruction        
                  lhs . miscerrors = @recordExpressionBindings.miscerrors
+
+  | RecordUpdate lhs . miscerrors = @expression.miscerrors ++ @recordExpressionBindings.miscerrors
                  
 -----------------------------------------
 -- RecordExpressionBinding
@@ -203,6 +206,8 @@ SEM Pattern
     | Constructor        lhs . miscerrors = @patConstructorErrors ++ @patterns.miscerrors
                          loc . patConstructorErrors = patternConstructorErrors @maybetp @name.self @lhs.allValueConstructors @patterns.numberOfPatterns @lhs.lhsPattern @lhs.allTypeConstructors
                              . maybetp    = M.lookup @name.self @lhs.valueConstructors
+
+    | Record             lhs . miscerrors = @recordPatternBindings.miscerrors
 
     | InfixConstructor   lhs . miscerrors = @patConstructorErrors ++ @rightPattern.miscerrors
                          loc . patConstructorErrors = patternConstructorErrors @maybetp @constructorOperator.self @lhs.allValueConstructors 2 False @lhs.allTypeConstructors

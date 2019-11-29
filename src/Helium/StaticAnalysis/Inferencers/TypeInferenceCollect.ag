@@ -33,7 +33,8 @@ ATTR Expression Expressions MaybeExpression Alternative Alternatives
         |
         ]
 
-ATTR LeftHandSide Pattern Patterns [ importEnvironment : ImportEnvironment | | ]
+ATTR LeftHandSide Pattern Patterns RecordPatternBinding RecordPatternBindings
+        [ importEnvironment : ImportEnvironment | | ]
 
 ----------------------------------------------------------------------------------------
 -- Collecting missing type signature warnings

@@ -39,8 +39,8 @@ SEM Module
                                         . setRecordEnvironment @body.collectRecord
                                         $emptyEnvironment
                                         -- the type environment will be added after type inferencing.
-                 . derivedFunctions = [] ++ traceShowId @selectorFunctions
-                 . selectorFunctions = map (\(n, (_, _, ts)) -> (n, ts)) $ concatMap M.assocs (M.elems @body.collectRecord)
+                 . derivedFunctions = [] ++ @selectorFunctions
+                 . selectorFunctions = map (\(n, (_, _, _, ts)) -> (n, ts)) $ concatMap M.assocs (M.elems @body.collectRecord)
 
 {-
                  . derivedInstances = let f (n,i) = makeInstance "Show" i (show n)
@@ -134,34 +134,35 @@ SEM Declaration
 -- 
 
 ATTR Module Body Declarations Declaration Constructor Constructors [ | 
+-- TODO: Fix equality checking here (strictness and type synonyms) 
   | duplicateLabelsWrongTypes USE { M.unionWith (++) } { M.empty } : {M.Map Name [(Int, Tp)]}]
 ATTR Body Declarations Declaration Constructor Constructors [ | 
-  | collectRecord USE { M.union } { M.empty } : { M.Map Name (M.Map Name (Int, Tp, TpScheme)) } ]
-ATTR FieldDeclarations [ | | collectFields USE { M.union } { M.empty } : { M.Map Name (Int, Tp, TpScheme) } ]
-ATTR FieldDeclaration [ | | fieldSel : { [(Name, Tp, TpScheme)] } ]
+  | collectRecord USE { M.union } { M.empty } : { M.Map Name (M.Map Name (Int, Bool, Tp, TpScheme)) } ]
+ATTR FieldDeclarations [ | | collectFields USE { M.union } { M.empty } : { M.Map Name (Int, Bool, Tp, TpScheme) } ]
+ATTR FieldDeclaration [ | | fieldSel : { [(Name, Bool, Tp, TpScheme)] } ]
 
 SEM Declaration 
     | Data
         lhs . duplicateLabelsWrongTypes = M.filter (\xs -> length (nub xs) > 1) @allConFields
-        loc . allConFields = let removeTps (i, t, _) = (i, t) 
-                              in M.unionsWith (++) $ map (M.map ((:[]) . removeTps)) (M.elems @constructors.collectRecord)
+        loc . allConFields = 
+          let removeTps (i, s, t, _) = (i, t) 
+            in M.unionsWith (++) $ map (M.map ((:[]) . removeTps)) (M.elems @constructors.collectRecord)
 
 SEM Constructor
-    -- TODO: SEE IF THIS IS NECESSARY
-    -- | Constructor lhs . collectRecord = M.singleton @constructor.self M.empty
+    | Constructor lhs . collectRecord = M.singleton @constructor.self M.empty
     | Record
         lhs . collectRecord = M.singleton @constructor.self @fieldDeclarations.collectFields
 
 SEM FieldDeclarations
     | Cons   
-        lhs . collectFields = @loc.current `M.union` M.map (\(i, t, ts) -> (i + length @loc.current, t, ts)) @tl.collectFields
-        loc . current = M.fromList $ map (\((n, t, ts), i) -> (n, (i, t, ts))) (zip @hd.fieldSel [0..])
+        lhs . collectFields = @loc.current `M.union` M.map (\(i, s, t, ts) -> (i + length @loc.current, s, t, ts)) @tl.collectFields
+        loc . current = M.fromList $ map (\((n, s, t, ts), i) -> (n, (i, s, t, ts))) (zip @hd.fieldSel [0..])
     | Nil 
         lhs . collectFields = M.empty
 
 SEM FieldDeclaration
     | FieldDeclaration 
-        lhs . fieldSel = map (\n -> (n, @fieldType, @selectorType)) @names.self
+        lhs . fieldSel = map (\n -> (n, head @type.stricts, @fieldType, @selectorType)) @names.self
         loc . fieldType = makeTpFromType' @type.type
             . (tp, tps) = convertFromSimpleTypeAndTypes @lhs.simpletype [@type.type]
             . selectorType = generalizeAll ([] .=>. foldl (.->.) @tp @tps)
@@ -172,8 +173,9 @@ ATTR Body Declarations Declaration Expressions Expression Patterns Pattern
      GuardedExpressions GuardedExpression FunctionBinding FunctionBindings
      FieldDeclaration FieldDeclarations RecordExpressionBinding RecordExpressionBindings
      LeftHandSide RightHandSide MaybeDeclarations MaybeExpression Type Types 
+     RecordPatternBinding RecordPatternBindings 
      AnnotatedType AnnotatedTypes ContextItem ContextItems
-     [ recordFields : { M.Map Name (M.Map Name (Int, Tp, TpScheme)) } 
+     [ recordFields : { M.Map Name (M.Map Name (Int, Bool, Tp, TpScheme)) } 
        fieldLookup : { M.Map Name [Name] } | | ]
 
 SEM Module
@@ -197,7 +199,7 @@ ATTR Body Declarations Declaration Expressions Expression Patterns Pattern
      GuardedExpressions GuardedExpression FunctionBinding FunctionBindings
      FieldDeclaration FieldDeclarations RecordExpressionBinding RecordExpressionBindings
      LeftHandSide RightHandSide MaybeDeclarations MaybeExpression 
-     AnnotatedType AnnotatedTypes
+     RecordPatternBinding RecordPatternBindings AnnotatedType AnnotatedTypes
      [ valueConstructors : {M.Map Name TpScheme} allValueConstructors : Names | | ]
 
 -------------------------------------------
@@ -218,6 +220,7 @@ ATTR Body Declarations Declaration Expressions Expression Patterns Pattern
      GuardedExpressions GuardedExpression FunctionBinding FunctionBindings
      FieldDeclaration FieldDeclarations RecordExpressionBinding RecordExpressionBindings
      LeftHandSide RightHandSide MaybeDeclarations MaybeExpression Type Types 
+     RecordPatternBinding RecordPatternBindings 
      AnnotatedType AnnotatedTypes ContextItem ContextItems
      [ typeConstructors : {M.Map Name Int} allTypeConstructors : Names | | ]
 
@@ -278,12 +281,17 @@ SEM Declaration
 ATTR AnnotatedTypes FieldDeclarations [ | | types : Types ]
 ATTR AnnotatedType FieldDeclaration  [ | | type  : Type  ]
 
+ATTR AnnotatedTypes AnnotatedType 
+     FieldDeclarations FieldDeclaration 
+      [ | | stricts USE { ++ } { [] } : { [Bool] } ]
+
 SEM AnnotatedTypes
   | Cons   lhs . types = @hd.type : @tl.types
   | Nil    lhs . types = []
 
 SEM AnnotatedType
   | AnnotatedType  lhs . type = @type.self
+                   lhs . stricts = [@strict]
 
 SEM FieldDeclarations
   | Cons   lhs . types = @hd.type : @tl.types
