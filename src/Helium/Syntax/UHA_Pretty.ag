@@ -428,13 +428,13 @@ SEM Constructor
     --  leftType                 : AnnotatedType
     --  constructorOperator      : Name
     --  rightType                : AnnotatedType
-    | Record            loc.text = text "{- !!! record constructor -}"
+    | Record            loc.text = @constructor.text <+> braces (commas @fieldDeclarations.text)
     --  range                    : Range
     --  constructor              : Name
     --  fieldDeclarations        : FieldDeclarations
 
 SEM FieldDeclaration
-    | FieldDeclaration loc.text = text "{- !!! field declaration -}"
+    | FieldDeclaration loc.text = commas (@names.text) <+> text "::" <+> @type.text
     --  range                    : Range
     --  names                    : Names
     --  type                     : AnnotatedType        
@@ -539,11 +539,11 @@ SEM Expression                                   {- *** -}
     --  range                    : Range
     --  expression               : Expression
     --  type                     : Type
-    | RecordConstruction loc.text = intErr "Expression" "record construction"
+    | RecordConstruction loc.text = @name.text <+> braces (commas @recordExpressionBindings.text)
     --  range                    : Range
     --  name                     : Name
     --  recordExpressionBindings : RecordExpressionBindings
-    | RecordUpdate       loc.text = intErr "Expression" "record update"
+    | RecordUpdate       loc.text = @expression.text <+> braces (commas @recordExpressionBindings.text)
     --  range                    : Range
     --  expression               : Expression
     --  recordExpressionBindings : RecordExpressionBindings
@@ -607,13 +607,13 @@ SEM GuardedExpression -- ToDo: or _Guard?
     --  expression               : Expression
 
 SEM RecordExpressionBinding
-    | RecordExpressionBinding loc.text = text "{- !!! record expression binding -}" -- ToDo: or _Binding?
+    | RecordExpressionBinding loc.text = @name.text <+> text "=" <+> @expression.text -- ToDo: or _Binding?
     --  range                    : Range
     --  name                     : Name
     --  expression               : Expression
 
 SEM RecordPatternBinding
-    | RecordPatternBinding loc.text = text "{- !!! record pattern binding -}" -- ToDo: or _Binding?
+    | RecordPatternBinding loc.text = @name.text <+> text "=" <+> @pattern.text -- ToDo: or _Binding?
     --  range                    : Range
     --  name                     : Name
     --  pattern                  : Pattern
@@ -707,7 +707,7 @@ SEM Pattern
     | Tuple                 loc.text = tupled @patterns.text
     --  range                    : Range
     --  patterns                 : Patterns
-    | Record                loc.text = text "{- !!! record pattern -}"
+    | Record                loc.text = @name.text <+> braces (commas @recordPatternBindings.text)
     --  range                    : Range
     --  name                     : Name
     --  recordPatternBindings    : RecordPatternBindings
