@@ -164,7 +164,6 @@ simpletype
         constructors             : Constructors
         derivings                : Names
 -}
--- TODO: Add newtype
 -- TODO: Fix this doc to reflect that classes and instances are possible
 -- TODO: Add [context =>] to data, newtype, type
 topdecl :: HParser Declaration
@@ -183,6 +182,14 @@ topdecl = addRange (
         lexASG
         t <- type_
         return $ \r -> Declaration_Type r st t
+    <|>
+    do
+        lexNEWTYPE
+        st <- simpleType
+        lexASG
+        t <- newconstr
+        ds <- option [] derivings
+        return $ \r -> Declaration_Newtype r [] st t ds
     <|>
 -- Declaration_Class (Range) (ContextItems) (SimpleType) (MaybeDeclarations)
 {-
@@ -282,6 +289,26 @@ fixity = addRange $
         lexINFIX 
         return $ \r -> Fixity_Infix r
     
+
+{-
+newconstr -> con atype
+           | con { var :: type }
+-}
+
+newconstr :: Constructor
+newconstr = addRange $
+    do 
+        (n, ts) <- try $ do 
+            n <- conid
+            ts <- braces fielddecl
+            return (n, ts)
+        return (\r -> Constructor_Record r n ts)
+    <|>
+    do 
+        n <- conid
+        ts <- annotatedType atype
+        return (\r -> Constructor_Constructor r n ts)
+
 {-
 constrs  ->  constr1 "|" ... "|" constrn  (n>=1)  
 -}
