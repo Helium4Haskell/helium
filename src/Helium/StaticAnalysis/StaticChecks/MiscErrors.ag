@@ -17,11 +17,10 @@ ATTR Expression Expressions MaybeExpression Pattern Patterns Alternative Alterna
      Type Types AnnotatedTypes AnnotatedType ContextItem ContextItems Constructors Constructor 
      FieldDeclaration FieldDeclarations RecordExpressionBinding RecordExpressionBindings
      RecordPatternBinding RecordPatternBindings
-     [  | miscerrors : {[Error]} | ]
+     [ | | miscerrors USE { ++ } { [] } : {[Error]} ]
 
 SEM Module
-  | Module  body . miscerrors = []
-            loc  . miscerrors = if length (@body.miscerrors ++ @loc.typeSynonymErrors ++ @loc.overlappingInstances) == 0
+  | Module  loc  . miscerrors = if length (@body.miscerrors ++ @loc.typeSynonymErrors ++ @loc.overlappingInstances) == 0
                                  then @loc.instanceErrors
                                  else @body.miscerrors ++ @loc.typeSynonymErrors ++ @loc.overlappingInstances
             loc  . imports = foldr combineImportEnvironments emptyEnvironment ( @loc.collectEnvironment : @lhs.importEnvironments)
@@ -78,7 +77,6 @@ SEM Declaration
 
     | Data   lhs . miscerrors = concat [ makeDuplicated TypeVariable @doubles
                                        , makeUndefined TypeVariable @undef @simpletype.typevariables
-                                       , @lhs.miscerrors
                                        , @unknCls
                                        , if null @unknCls then @cantDer else []
                                        ]
@@ -100,7 +98,6 @@ SEM Declaration
 
     | Type   lhs . miscerrors = concat [ makeDuplicated TypeVariable @doubles
                                        , makeUndefined TypeVariable @undef @simpletype.typevariables
-                                       , @lhs.miscerrors
                                        ]
              loc . unused  = filter (`notElem` @type.typevariables)       @simpletype.typevariables
                  . doubles = filter ((>1) . length) . group . sort $      @simpletype.typevariables
@@ -152,7 +149,7 @@ frequencies = map (\ys -> (head ys, length ys)) . group . sort
 -- Expression
 
 SEM Expression
-  | Variable     lhs . miscerrors     = @undefinedErrors ++ @lhs.miscerrors
+  | Variable     lhs . miscerrors     = @undefinedErrors
                  loc . undefinedErrors = if @name.self `elem` @lhs.namesInScope
                                            then []
                                            else [ Undefined Variable @name.self @lhs.namesInScope [] ]
@@ -162,7 +159,7 @@ SEM Expression
                                                else let range = getStatementRange (last @statements.self)
                                                     in [ LastStatementNotExpr range ]
 
-  | Constructor  lhs . miscerrors = @undefinedConstructorErrors ++ @lhs.miscerrors
+  | Constructor  lhs . miscerrors = @undefinedConstructorErrors
                  loc . undefinedConstructorErrors = case M.lookup @name.self @lhs.valueConstructors of
                                                        Nothing -> [ undefinedConstructorInExpr @name.self (@lhs.namesInScope ++ @lhs.allValueConstructors) @lhs.allTypeConstructors ]
                                                        Just _  -> []
@@ -185,15 +182,9 @@ SEM Expression
 -----------------------------------------
 -- RecordExpressionBinding
 
-ATTR RecordExpressionBinding RecordExpressionBindings [ | | ]
-
-SEM RecordExpressionBindings
-    | Cons lhs . miscerrors = @hd.miscerrors ++ @tl.miscerrors
-    | Nil  lhs . miscerrors = []
-
 SEM RecordExpressionBinding
     | RecordExpressionBinding 
-        lhs . miscerrors = @nonexistingFieldError
+        lhs . miscerrors = @nonexistingFieldError ++ @expression.miscerrors
         loc . nonexistingFieldError = case M.lookup @name.self @availableFields of
                                         Just f  -> []
                                         Nothing -> [Undefined RecordField @name.self (M.keys @availableFields) []]
@@ -208,12 +199,12 @@ SEM Pattern
                              . maybetp    = M.lookup @name.self @lhs.valueConstructors
 
     | Record             recordPatternBindings.possibleFields = fromMaybe M.empty @maybeFields
-                         lhs . miscerrors = traceShow "RECORD" $ @undefinedConstructorErrors ++ @recordPatternBindings.miscerrors
+                         lhs . miscerrors = @undefinedConstructorErrors ++ @recordPatternBindings.miscerrors
                          loc . undefinedConstructorErrors
                             = case @maybeFields of
                                 Nothing -> makeUndefined Constructor [@name.self] (M.keys @lhs.recordFields)
                                 Just fields -> []
-                             . maybeFields = traceShowId $ M.lookup @name.self @lhs.recordFields
+                             . maybeFields = M.lookup @name.self @lhs.recordFields
 
     | InfixConstructor   lhs . miscerrors = @patConstructorErrors ++ @rightPattern.miscerrors
                          loc . patConstructorErrors = patternConstructorErrors @maybetp @constructorOperator.self @lhs.allValueConstructors 2 False @lhs.allTypeConstructors
@@ -254,6 +245,9 @@ simplePattern :: Pattern -> Bool
 simplePattern pattern =
    case pattern of
       Pattern_Constructor _ name _ -> case show name of
+                                         x:_ -> isUpper x
+                                         _   -> False
+      Pattern_Record _ name _      -> case show name of
                                          x:_ -> isUpper x
                                          _   -> False
       _                            -> False
@@ -445,7 +439,7 @@ SEM Literal
                     [ IntLiteralTooBig @range.self @value ]
                  else
                     []
-        lhs . miscerrors = @intLiteralTooBigErrors ++ @lhs.miscerrors
+        lhs . miscerrors = @intLiteralTooBigErrors
 
 -- Qualified types
 

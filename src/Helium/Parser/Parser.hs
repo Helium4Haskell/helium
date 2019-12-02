@@ -295,19 +295,19 @@ newconstr -> con atype
            | con { var :: type }
 -}
 
-newconstr :: Constructor
+newconstr :: HParser Constructor
 newconstr = addRange $
     do 
         (n, ts) <- try $ do 
             n <- conid
             ts <- braces fielddecl
             return (n, ts)
-        return (\r -> Constructor_Record r n ts)
+        return (\r -> Constructor_Record r n [ts])
     <|>
     do 
         n <- conid
         ts <- annotatedType atype
-        return (\r -> Constructor_Constructor r n ts)
+        return (\r -> Constructor_Constructor r n [ts])
 
 {-
 constrs  ->  constr1 "|" ... "|" constrn  (n>=1)  
@@ -683,8 +683,6 @@ exp     ->  exp0 "::" type  (expression type signature)
          |  exp0  
 -}
 
--- TODO: RecordBinding as patterns
--- TODO: RecordUpdate
 -- do
 --     (e, rs) <- try $ do 
 --         e <- aexp
@@ -1183,6 +1181,13 @@ pat10   ->  con apat*
 
 pat10 :: HParser Pattern
 pat10 = addRange (
+    do
+        (n, bs) <- try $ do 
+            n <- con
+            bs <- braces (fpat `sepBy` lexCOMMA)
+            return (n, bs)
+        return $ \r -> Pattern_Record r n bs
+    <|>
     do  
         n  <- try con    
         ps <- many apat
