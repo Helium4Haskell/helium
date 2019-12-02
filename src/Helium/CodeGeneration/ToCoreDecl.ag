@@ -254,10 +254,20 @@ SEM Declaration
     
     -- Not supported
     
-    | Newtype           lhs.decls    = internalError "ToCoreDecl" "Declaration" "'newType' not supported"
-                        constructor.dataTypeName = @simpletype.name
+    | Newtype           constructor.dataTypeName = @simpletype.name
                         constructor.dataTypeCoreType = @simpletype.coreType
                         constructor.typevariables = @simpletype.typevariables
+                        lhs.decls    = 
+        map snd @constructor.cons
+        ++
+        [ Core.DeclCustom
+            { Core.declName    = idFromString (getNameName @simpletype.name)
+            , Core.declAccess  = Core.private
+            , Core.declKind    = Core.DeclKindCustom (idFromString "data")
+            , Core.declCustoms = [Core.CustomInt (length @simpletype.typevariables)]
+            }
+        ]
+                        
     --  range                    : Range
     --  context                  : ContextItems
     --  simpletype               : SimpleType

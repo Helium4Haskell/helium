@@ -61,7 +61,8 @@ ATTR Body Declarations Declaration [ | collectTypeConstructors : {[(Name,Int)]} 
 SEM Module | Module   body . collectTypeConstructors = []
 
 SEM Declaration
-  | Data   lhs . collectTypeConstructors = (@simpletype.name,length @simpletype.typevariables) : @lhs.collectTypeConstructors
+  | Data      lhs . collectTypeConstructors = (@simpletype.name,length @simpletype.typevariables) : @lhs.collectTypeConstructors
+  | Newtype   lhs . collectTypeConstructors = (@simpletype.name,length @simpletype.typevariables) : @lhs.collectTypeConstructors
 
 -------------------------------------------
 -- 2) Collecting value constructors
