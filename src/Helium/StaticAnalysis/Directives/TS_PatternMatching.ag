@@ -119,6 +119,14 @@ SEM Expression
                     @lhs.tryPatterns @lhs.allPatterns 
                     [@recordExpressionBindings.matches]     
 
+  | RecordUpdate 
+       (recordExpressionBindings.tryPatterns, lhs.matches, lhs.constraints, lhs.assumptions, lhs.uniqueSecondRound, loc.ioMatch) = 
+          let infoTuple = metaVarInfo @constraints @recordExpressionBindings.assumptions @localInfo
+          in match1 infoTuple @recordExpressionBindings.uniqueSecondRound
+                    match_Expression_RecordConstruction 
+                    @lhs.tryPatterns @lhs.allPatterns 
+                    [@recordExpressionBindings.matches]     
+
   | NormalApplication
        ( (function.tryPatterns, arguments.tryPatterns)
        , lhs.matches, lhs.constraints, lhs.assumptions, lhs.uniqueSecondRound, loc.ioMatch
@@ -271,6 +279,10 @@ SEM GuardedExpression
                         
 SEM RightHandSide
   | Expression          expression . tryPatterns = []  
+                        
+SEM RecordExpressionBinding
+  | RecordExpressionBinding 
+                        expression . tryPatterns = []  
          
 ---------------------------------------------------------------
 -- Debug IO: matches
