@@ -23,6 +23,7 @@ ATTR Declaration Declarations MaybeDeclarations
   Statements Statement Qualifiers Qualifier Alternatives Alternative
   GuardedExpressions GuardedExpression RecordExpressionBindings
   RecordExpressionBinding RecordPatternBindings RecordPatternBinding
+  Constructor Constructors FieldDeclarations FieldDeclaration
   FunctionBindings FunctionBinding LeftHandSide RightHandSide
   Patterns Pattern [ | betaDeclUnique:Int | ]
 
@@ -32,6 +33,9 @@ SEM Declaration
     bindings.betaDeclUnique = @lhs.betaDeclUnique + 1
   | PatternBinding
     pattern.betaDeclUnique = @lhs.betaDeclUnique + 1
+  | Data
+    constructors.betaDeclUnique = @lhs.betaDeclUnique + 1
+    lhs.betaDeclUnique = @constructors.betaDeclUnique + 1
   | Instance
     where   . betaDeclUnique            = @lhs.betaDeclUnique + 1 + length(@typeVariables)
     loc     . instBeta              = TVar @lhs.betaDeclUnique
@@ -40,6 +44,15 @@ SEM Declaration
     loc     . instsType             = makeTpFromType @instanceBetas (chead $ @types.self)
     loc     . instanceTpScheme      = addPredicatesToTpScheme (@superClasses) $ makeTpSchemeFromType (chead @types.self)
     loc     . superClasses          = getSuperClasses @context.self
+
+SEM Constructor
+  | Record 
+    fieldDeclarations . betaDeclUnique = @lhs.betaDeclUnique + 1
+    lhs . betaDeclUnique = @fieldDeclarations.betaDeclUnique + 1
+
+SEM FieldDeclaration
+  | FieldDeclaration
+    lhs . betaDeclUnique = @lhs.betaDeclUnique + (length @names.self)
 
 {
 getSuperClasses ::  ContextItems -> [(String, Name)]
@@ -140,6 +153,7 @@ SEM Pattern
 
   | Record
     recordPatternBindings.betaDeclUnique = @lhs.betaDeclUnique + 1
+    lhs.betaDeclUnique = @recordPatternBindings.betaDeclUnique + 1
     loc.beta = TVar @lhs.betaDeclUnique
 
   | Negate

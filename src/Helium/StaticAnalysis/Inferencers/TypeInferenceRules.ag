@@ -122,7 +122,6 @@ SEM Declaration
                . mybdggrp      = let 
                                     assumptions = filterAssumptions @bindings.assumptions
                                     filterAssumptions = M.filterWithKey (\k _ -> not $ k `elem` map fst @lhs.instanceTypes )
-
                                   in
                                  ( M.singleton @bindings.name @beta
                                  , assumptions
@@ -144,7 +143,7 @@ SEM Declaration
   | PatternBinding
       lhs           . bindingGroups = @mybdggrp : @lhs.bindingGroups
       pattern       . betaUnique    = @lhs.betaUnique + 1
-      righthandside . monos         = findMono (chead (M.keys @pattern.environment)) @lhs.inheritedBDG ++ @lhs.monos
+      righthandside . monos         = findMono (chead (M.keys (@pattern.environment))) @lhs.inheritedBDG ++ @lhs.monos
       loc           . betaRight     = TVar @lhs.betaDeclUnique
                     . newcon        = [ (@betaRight .==. @pattern.beta) @cinfo ]
                     . mybdggrp      = ( @pattern.environment
@@ -233,6 +232,35 @@ SEM Declaration
                                             ]
         loc     . cinfo                 = resultConstraint "instance definition" @parentTree [SkolemizedTypeScheme ([], @instanceTpScheme), TypeSignatureLocation @range.self]
  
+ATTR Constructors Constructor FieldDeclarations FieldDeclaration [ monos : Monos | bindingGroups : BindingGroups | ]
+ATTR                          FieldDeclarations FieldDeclaration [ conName : Name | | ]
+
+SEM Constructor 
+  | Record fieldDeclarations . conName = @constructor.self
+
+SEM FieldDeclaration
+  | FieldDeclaration
+      lhs . bindingGroups = @mybdggrp : @lhs.bindingGroups
+      loc . recordEnv     = recordEnvironment @lhs.importEnvironment
+          . fieldEnv      = fromMaybe (internalError 
+                                "TypeInferenceRules.ag" 
+                                "RecordExpressionBinding" 
+                                "Specified record could not be found") 
+                                    (M.lookup @lhs.conName @recordEnv)
+          . selTypes      = catMaybes $ map (\n -> do
+                                (_, _, _, ts) <- M.lookup n @fieldEnv
+                                return (n, ts)) @names.self
+          . zippedSelCon  = zip @selTypes [@lhs.betaDeclUnique..]
+          . newcon        = map (\((n, ts), beta) -> (TVar beta .::. ts) @loc.cinfo) @zippedSelCon
+          . mybdggrp      = ( foldr (\((n, _), beta) p -> M.insert n (TVar beta) p) M.empty @zippedSelCon
+                            , M.empty
+                            , [ Node $ [ Phase (-1) @newcon
+                                     , Receive @lhs.betaDeclUnique
+                                     , emptyTree
+                                     ] ++ map (Receive . snd) @zippedSelCon
+                              ]
+                            )
+
 {
 
 appendClasses :: [(Name, TpScheme)] -> M.Map NameWithRange TpScheme -> Maybe [(Name, TpScheme)]
@@ -857,9 +885,9 @@ SEM RecordPatternBinding
   | RecordPatternBinding
       lhs . environment = @pattern.environment
           . constraints = @selCon .>. @pattern.constraints
-          . beta        = (@order, @pattern.beta)
+          . beta        = (@order, @beta)
       loc . recordEnv   = recordEnvironment @lhs.importEnvironment
-          . selCon      = [ (@lhs.betaCon .->. @beta .::. fth4 @field) @cinfo ]
+          . selCon      = [ (@lhs.betaCon .->. @beta .::. fth4 @field) @cinfo, (@beta .==. @pattern.beta) @cinfo ]
           . order       = fst4 @field
           . field       = fromMaybe (internalError
                             "TypeInferenceRules.ag" 

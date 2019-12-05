@@ -17,6 +17,7 @@ ATTR Module [ | | fullTypeSchemes : {M.Map NameWithRange TpScheme} ]
 
 ATTR Expression Expressions MaybeExpression Alternative Alternatives
      Statement Statements Declaration Declarations MaybeDeclarations
+     Constructor Constructors FieldDeclaration FieldDeclarations
      RightHandSide Body Qualifier Qualifiers
      GuardedExpression GuardedExpressions  FunctionBinding FunctionBindings
      RecordExpressionBinding RecordExpressionBindings
@@ -98,7 +99,8 @@ missingTypeSignature topLevel simplePats typeenv importEnvironment =
          in [ NoTypeDef name scheme topLevel fromSimple 
               | null (ftv scheme) 
               && (topLevel || fromSimple) 
-              && (not topLevel || not (name `elem` classFunctions))]
+              && (not topLevel || not (name `elem` classFunctions))
+              && (not (name `M.member` fieldLookup importEnvironment))]
    in concatMap makeWarning . M.assocs $ typeenv
 
 restrictedNameErrors :: TypeEnvironment -> Names -> TypeErrors

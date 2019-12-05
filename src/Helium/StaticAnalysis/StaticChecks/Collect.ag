@@ -39,8 +39,8 @@ SEM Module
                                         . setRecordEnvironment @body.collectRecord
                                         $emptyEnvironment
                                         -- the type environment will be added after type inferencing.
-                 . derivedFunctions = [] ++ @selectorFunctions
-                 . selectorFunctions = map (\(n, (_, _, _, ts)) -> (n, ts)) $ concatMap M.assocs (M.elems @body.collectRecord)
+                 . derivedFunctions = [] -- ++ @selectorFunctions
+                 -- . selectorFunctions = map (\(n, (_, _, _, ts)) -> (n, ts)) $ concatMap M.assocs (M.elems @body.collectRecord)
 
 {-
                  . derivedInstances = let f (n,i) = makeInstance "Show" i (show n)

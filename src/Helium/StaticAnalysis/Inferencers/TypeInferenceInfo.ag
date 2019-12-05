@@ -36,6 +36,14 @@ SEM Declaration | PatternBinding loc . cinfo =
      []
 
 ---------------------------------------------------------------------------------------
+-- Constraint Information : FieldDeclaration
+
+SEM FieldDeclaration 
+  | FieldDeclaration loc . cinfo =
+  resultConstraint "field declaration" @parentTree 
+     [ FolkloreConstraint ]
+
+---------------------------------------------------------------------------------------
 -- Type Inferencing : FunctionBinding
 
 SEM FunctionBinding | FunctionBinding loc . cinfoLeft =

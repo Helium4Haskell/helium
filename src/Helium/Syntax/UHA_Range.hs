@@ -215,6 +215,16 @@ getFBRange fb = case fb of
    FunctionBinding_Feedback _ _ _        -> error "not supported"
    FunctionBinding_Hole _ _              -> error "not supported"
 
+getFDRange :: FieldDeclaration -> Range
+getFDRange fb = case fb of
+   FieldDeclaration_FieldDeclaration r _ _ -> r
+
+getCRange :: Constructor -> Range
+getCRange fb = case fb of
+   Constructor_Constructor r _ _ -> r
+   Constructor_Infix r _ _ _     -> r
+   Constructor_Record r _ _      -> r
+
 getRBRange :: RecordExpressionBinding -> Range
 getRBRange rb = case rb of
    RecordExpressionBinding_RecordExpressionBinding r _ _ -> r

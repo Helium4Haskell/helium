@@ -49,11 +49,12 @@ oneLineTreeAsOperator tree =
 
 ATTR
     Declaration
+    Constructor FieldDeclaration
     Expression Statement
     Qualifier Alternative
     RecordExpressionBinding RecordPatternBinding
     FunctionBinding LeftHandSide
-    Pattern Literal Name
+    Pattern Literal Name SimpleType AnnotatedType
     [
     |
     | oneLineTree :          OneLineTree
@@ -72,7 +73,7 @@ ATTR GuardedExpressions
     ]
 
 ATTR
-    Declarations Expressions
+    Declarations Expressions Constructors FieldDeclarations
     Statements Qualifiers Alternatives
     RecordExpressionBindings RecordPatternBindings
     FunctionBindings Patterns Names Strings
@@ -119,7 +120,12 @@ SEM Declaration                                  {- *** -}
     --  range                    : Range
     --  simpletype               : SimpleType
     --  type                     : Type
-    | Data              loc.oneLineTree = intErr "Declaration" "data"
+    | Data              loc.oneLineTree = 
+        OneLineNode $ 
+         [ OneLineText "data "
+         , @simpletype.oneLineTree
+         , OneLineText " = "
+         ] ++ sepBy (OneLineText " | ") @constructors.oneLineTree
     --  range                    : Range        {- *** -}
     --  context                  : ContextItems
     --  simpletype               : SimpleType
@@ -174,6 +180,42 @@ SEM Declaration                                  {- *** -}
     --  operators                : Names
     | Empty loc.oneLineTree = OneLineText ""
     --  range                    : Range
+
+-- ------------------------------------------------------------------------
+-- -- Constructor                                                        --
+-- ------------------------------------------------------------------------
+
+SEM Constructors
+    | Cons loc.oneLineTree = @hd.oneLineTree : @tl.oneLineTree
+    | Nil  loc.oneLineTree = []
+
+SEM Constructor
+    | Constructor  loc.oneLineTree = @constructor.oneLineTree
+    | Record       loc.oneLineTree = 
+        OneLineNode $
+        [ @constructor.oneLineTree
+        , OneLineText "{"
+        ] ++
+        @fieldDeclarations.oneLineTree
+        ++ 
+        [ OneLineText "}"
+        ]
+
+-- ------------------------------------------------------------------------
+-- -- FieldDeclaration                                                        --
+-- ------------------------------------------------------------------------
+
+SEM FieldDeclarations
+    | Cons loc.oneLineTree = @hd.oneLineTree : @tl.oneLineTree
+    | Nil  loc.oneLineTree = []
+
+SEM FieldDeclaration
+    | FieldDeclaration  loc.oneLineTree = 
+        OneLineNode $ 
+        sepBy (OneLineText ", ") @names.oneLineTree ++
+        [ OneLineText " :: "
+        , @type.oneLineTree
+        ]
 
 -- ------------------------------------------------------------------------
 -- -- Expressions                                                        --
@@ -313,17 +355,6 @@ SEM Expression                                   {- *** -}
     --  range                    : Range
     --  expression               : Expression
     --  type                     : Type
-    -- TODO: DELETE
-    -- | RecordConstruction
-    --         loc.oneLineTree = intErr "Expression" "record construction"
-    --  range                    : Range
-    --  name                     : Name
-    --  recordExpressionBindings : RecordExpressionBindings
-    -- | RecordUpdate
-    --         loc.oneLineTree = intErr "Expression" "record update"
-    --  range                    : Range
-    --  expression               : Expression
-    --  recordExpressionBindings : RecordExpressionBindings
     | Enum  loc.oneLineTree =
                 OneLineNode (
                     [ OneLineText "["
@@ -469,6 +500,11 @@ SEM Pattern
     --  range                    : Range
     --  name                     : Name
     --  patterns                 : Patterns
+    | Record
+             loc.oneLineTree = OneLineNode (sepBy (OneLineText " ") (@name.oneLineTree : @recordPatternBindings.oneLineTree))
+    --  range                    : Range
+    --  name                     : Name
+    --  patterns                 : Patterns
     | Parenthesized
              loc.oneLineTree = parens @pattern.oneLineTree
     --  range                    : Range
@@ -493,10 +529,6 @@ SEM Pattern
     | Tuple             loc.oneLineTree = encloseSep "(" ", " ")" @patterns.oneLineTree
     --  range                    : Range
     --  patterns                 : Patterns
-    | Record            loc.oneLineTree = intErr "pattern" "record"
-    --  range                    : Range
-    --  name                     : Name
-    --  recordPatternBindings    : RecordPatternBindings
     | Negate            loc.oneLineTree = OneLineNode [ OneLineText "-", @literal.oneLineTree ]
     --  range                    : Range
     --  literal                  : Literal -- only numbers allowed here
@@ -567,3 +599,18 @@ SEM Name                                         {- *** -}
     --  range                    : Range
     --  module                   : Strings
     --  name                     : String
+
+SEM AnnotatedType
+    | AnnotatedType lhs.oneLineTree = OneLineText $ show (makeTpSchemeFromType @type.self)
+    -- range                    : Range
+    -- strict                   : Bool
+    -- type                     : Type
+
+SEM SimpleType
+    | SimpleType lhs.oneLineTree = 
+        OneLineNode $
+        [ @name.oneLineTree
+        ] ++ sepBy (OneLineText " ") @typevariables.oneLineTree
+    -- range                    : Range
+    -- name                     : Name
+    -- typevariables            : Names

@@ -23,6 +23,8 @@ data UHA_Source =
    | UHA_Stat   Statement
    | UHA_Qual   Qualifier
    | UHA_FB     FunctionBinding
+   | UHA_FD     FieldDeclaration
+   | UHA_C      Constructor
    | UHA_RB     RecordExpressionBinding
    | UHA_RPB    RecordPatternBinding
    | UHA_RHS    RightHandSide
@@ -41,6 +43,8 @@ rangeOfSource source =
       UHA_Stat  stat  -> getStatementRange stat
       UHA_Qual  qual  -> getQualifierRange qual
       UHA_FB    fb    -> getFBRange fb
+      UHA_FD    fd    -> getFDRange fd
+      UHA_C     c     -> getCRange c
       UHA_RB    rb    -> getRBRange rb
       UHA_RPB   rpb   -> getRPBRange rpb
       UHA_RHS   rhs   -> getRHSRange rhs
@@ -56,6 +60,8 @@ oneLinerSource source =
       UHA_Stat  stat  -> PP.oneLineTree_Syn_Statement (PP.wrap_Statement (PP.sem_Statement stat) PP.Inh_Statement)
       UHA_Qual  qual  -> PP.oneLineTree_Syn_Qualifier (PP.wrap_Qualifier (PP.sem_Qualifier qual) PP.Inh_Qualifier)
       UHA_FB    fb    -> PP.oneLineTree_Syn_FunctionBinding (PP.wrap_FunctionBinding (PP.sem_FunctionBinding fb) PP.Inh_FunctionBinding)
+      UHA_FD    fd    -> PP.oneLineTree_Syn_FieldDeclaration (PP.wrap_FieldDeclaration (PP.sem_FieldDeclaration fd) PP.Inh_FieldDeclaration)
+      UHA_C     c     -> PP.oneLineTree_Syn_Constructor (PP.wrap_Constructor (PP.sem_Constructor c) PP.Inh_Constructor)
       UHA_RB    rb    -> PP.oneLineTree_Syn_RecordExpressionBinding (PP.wrap_RecordExpressionBinding (PP.sem_RecordExpressionBinding rb) PP.Inh_RecordExpressionBinding)
       UHA_RPB   rb    -> PP.oneLineTree_Syn_RecordPatternBinding (PP.wrap_RecordPatternBinding (PP.sem_RecordPatternBinding rb) PP.Inh_RecordPatternBinding)
       UHA_RHS   rhs   -> PP.oneLineTree_Syn_RightHandSide (PP.wrap_RightHandSide (PP.sem_RightHandSide rhs) PP.Inh_RightHandSide) ""
@@ -71,6 +77,8 @@ descriptionOfSource source =
       UHA_Stat  _ -> "statement"
       UHA_Qual  _ -> "qualifier"
       UHA_FB    _ -> "function binding"
+      UHA_FD    _ -> "field declaration"
+      UHA_C     _ -> "constructor"
       UHA_RB    _ -> "record expression binding"
       UHA_RPB   _ -> "record pattern binding"
       UHA_RHS   _ -> "right-hand side"

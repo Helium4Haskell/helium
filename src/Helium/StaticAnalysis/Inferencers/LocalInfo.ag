@@ -68,6 +68,41 @@ SEM Declaration
                                     , assignedType = Nothing 
                                     , monos = @lhs.monos
                                     }
+  | Data  
+       loc . localInfo  = LocalInfo { self = UHA_Decl @self
+                                    , assignedType = Nothing 
+                                    , monos = @lhs.monos
+                                    }
+
+---------------------------------------------------------------------------------------
+-- Constructor
+
+SEM Constructor 
+  | Record
+     loc . localInfo = LocalInfo { self = UHA_C @self
+                                 , assignedType = Nothing 
+                                 , monos = @lhs.monos
+                                 }
+  | Infix
+     loc . localInfo = LocalInfo { self = UHA_C @self
+                                 , assignedType = Nothing 
+                                 , monos = @lhs.monos
+                                 }
+  | Constructor
+     loc . localInfo = LocalInfo { self = UHA_C @self
+                                 , assignedType = Nothing 
+                                 , monos = @lhs.monos
+                                 }
+
+---------------------------------------------------------------------------------------
+-- FieldDeclaration
+
+SEM FieldDeclaration 
+  | FieldDeclaration
+     loc . localInfo = LocalInfo { self = UHA_FD @self
+                                 , assignedType = Nothing 
+                                 , monos = @lhs.monos
+                                 }
 
 ---------------------------------------------------------------------------------------
 -- Expression

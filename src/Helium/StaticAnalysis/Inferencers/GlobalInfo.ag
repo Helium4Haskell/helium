@@ -226,7 +226,8 @@ SEM Declarations [ parentTree : InfoTree | | infoTrees : InfoTrees ]
    
 SEM Declaration [ parentTree : InfoTree | | infoTrees : InfoTrees ]
   | Type     lhs . infoTrees = []
-  | Data     lhs . infoTrees = []
+  | Data     loc . parentTree = node @lhs.parentTree @localInfo @constructors.infoTrees
+             lhs . infoTrees = [@parentTree]
   | Hole     lhs . infoTrees = []
   | FunctionBindings    loc . parentTree = node @lhs.parentTree @localInfo @bindings.infoTrees
                         lhs . infoTrees  = [@parentTree]
@@ -238,6 +239,24 @@ SEM Declaration [ parentTree : InfoTree | | infoTrees : InfoTrees ]
   | Instance       loc . parentTree = node @lhs.parentTree @localInfo @where.infoTrees
                    lhs . infoTrees  = [@parentTree]
     
+SEM Constructors [ parentTree : InfoTree | | infoTrees : InfoTrees ]
+  | Cons lhs . infoTrees = @hd.infoTree : @tl.infoTrees
+  | Nil  lhs . infoTrees = []
+
+SEM Constructor [ parentTree : InfoTree | | infoTree : InfoTree ]
+  | Record      loc . parentTree = node @lhs.parentTree @localInfo @fieldDeclarations.infoTrees
+                lhs . infoTree  = @parentTree
+  | Constructor lhs . infoTree = node @lhs.parentTree @localInfo [] 
+  | Infix       lhs . infoTree = node @lhs.parentTree @localInfo [] 
+
+SEM FieldDeclarations [ parentTree : InfoTree | | infoTrees : InfoTrees ]
+  | Cons lhs . infoTrees = @hd.infoTree : @tl.infoTrees
+  | Nil  lhs . infoTrees = []
+
+SEM FieldDeclaration [ parentTree : InfoTree | | infoTree : InfoTree ]
+  | FieldDeclaration      loc . parentTree = node @lhs.parentTree @localInfo []
+                          lhs . infoTree  = @parentTree
+
 SEM RecordPatternBindings [ parentTree : InfoTree | | infoTrees : InfoTrees ]
   | Cons   lhs . infoTrees = @hd.infoTree : @tl.infoTrees
   | Nil    lhs . infoTrees = []
