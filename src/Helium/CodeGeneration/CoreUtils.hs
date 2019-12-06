@@ -476,14 +476,15 @@ createRecordSelector :: ImportEnvironment
                     -> Tp
                     -> Core.Expr
 createRecordSelector importEnv r field t
-  = Lam True scrutVar select
+  = Core.Forall (typeVarToQuantor qmap 0) Core.KStar (Lam True scrutVar select)
   where
     select = constructorsToCase importEnv scrutId (typeToCoreType t) r atEachConstructor
     fieldId = idFromString (show field)
     scrutId = idFromString "x$"
-    (_, scrutType) = Core.typeExtractFunction $ toCoreTypeNotQuantified $ case constructors of
+    constructorTps@(Top.Quantification (_, qmap, _)) = case constructors of
       [] -> notFound "1"
       (c:cs) -> fromMaybe (notFound c) $ M.lookup c (valueConstructors importEnv)
+    (_, scrutType) = Core.typeExtractFunction $ toCoreTypeNotQuantified constructorTps
     scrutVar = Variable scrutId scrutType
     constructors = fromMaybe (notFound field) $ field `M.lookup` fieldLookup importEnv
     atEachConstructor = map (\n -> (n, [(field, fieldId)], Var fieldId)) constructors
@@ -523,7 +524,9 @@ constructorToCase importEnv scrutinee c fs exec continue
     fields = fromMaybe (err "Constructor not found") (M.lookup c (recordEnvironment importEnv))
     sortedFields = sortOn (fst4 . snd) (M.assocs fields)
     fieldsToReuse = foldr (M.delete . fst) fields fs
-    patt = PatCon (ConId constructor) [] args
+    constrTps = fromMaybe (err "Constructor not found") $ M.lookup c (valueConstructors importEnv)
+    constrTp = unqualify (unquantify constrTps)
+    patt = PatCon (ConId constructor) (map typeToCoreType $ findInstantiation importEnv constrTps constrTp) args
     args = map (\(n, _) -> placeholder n fieldsToReuse) sortedFields
     placeholder n m 
       = case M.lookup n m of
