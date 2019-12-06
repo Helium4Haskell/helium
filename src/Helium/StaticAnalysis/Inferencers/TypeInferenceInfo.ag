@@ -87,7 +87,7 @@ SEM Expression | RecordConstruction loc . cinfoFunc =
 
 SEM Expression | RecordConstruction loc . cinfoResult =
   resultConstraint "record construction" @parentTree       
-     [ FolkloreConstraint ]
+     [ ]
 
 -- Expression.RecordUpdate
 SEM Expression | RecordUpdate loc . cinfo =

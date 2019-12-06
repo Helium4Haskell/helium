@@ -94,7 +94,9 @@ SEM Expression
   | Constructor
     lhs.betaDeclUnique = @lhs.betaDeclUnique + 1
   | RecordConstruction
-    recordExpressionBindings.betaDeclUnique = @lhs.betaDeclUnique + 1
+    recordExpressionBindings.betaDeclUnique = @lhs.betaDeclUnique + 2
+    loc.beta = TVar @lhs.betaDeclUnique
+    loc.betaFunc = TVar (@lhs.betaDeclUnique + 1)
   | RecordUpdate
     lhs.betaDeclUnique = @recordExpressionBindings.betaDeclUnique + 1
     recordExpressionBindings.betaDeclUnique = @expression.betaDeclUnique + 1

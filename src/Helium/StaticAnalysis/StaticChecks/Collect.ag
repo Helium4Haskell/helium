@@ -164,7 +164,7 @@ SEM FieldDeclarations
 SEM FieldDeclaration
     | FieldDeclaration 
         lhs . fieldSel = map (\n -> (n, head @type.stricts, @fieldType, @selectorType)) @names.self
-        loc . fieldType = makeTpFromType' @type.type
+        loc . fieldType = head @tps
             . (tp, tps) = convertFromSimpleTypeAndTypes @lhs.simpletype [@type.type]
             . selectorType = generalizeAll ([] .=>. foldl (.->.) @tp @tps)
 

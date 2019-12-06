@@ -458,17 +458,22 @@ SEM Expression
   | RecordConstruction
       recordExpressionBindings . recConstr  = @name.self
       recordExpressionBindings . betaConstr = @beta
+      lhs.betaUnique = @lhs.betaUnique + length @sortedFields
       loc . assumptions  = @recordExpressionBindings.assumptions
-          . beta         = TVar @lhs.betaDeclUnique
-          . constraints  = @conRecord .>.
-                            Node (@recordExpressionBindings.constraintslist)
+          . constraints  = @conRecord .>. @conFunc .>.
+                            Node @recordExpressionBindings.constraintslist
           . recordEnv    = recordEnvironment @lhs.importEnvironment
-          . recordFields = maybe undefined id (M.lookup @name.self @loc.recordEnv)
-          . sortedBetas  = sortOn (\(n, _) -> fst4 $ maybe undefined id (M.lookup n @loc.recordFields)) @recordExpressionBindings.betasMap
-          . recordFunc   = foldr (.->.) @beta (map snd @loc.sortedBetas)
+          . recordFields = maybe undefined id (M.lookup @name.self @recordEnv)
+          . sortedFields = sortOn (\(n, (i, _, _, _)) -> i) (M.assocs @recordFields)
+          . sortedBetas  = map (\(n, (i, _, _, _)) -> fromMaybe (TVar (@lhs.betaUnique + i)) 
+                            (lookup n @recordExpressionBindings.betasMap)) @sortedFields
+          . recordFunc   = foldr (.->.) @beta @sortedBetas
           . conRecord    = maybe [] id $ do 
                             t   <- M.lookup @name.self (typeEnvironment @lhs.importEnvironment)
                             return [(@beta .::. t) @cinfoResult]
+          . conFunc      = maybe [] id $ do 
+                            ctp <- M.lookup @name.self (valueConstructors @lhs.importEnvironment)
+                            return [(@betaFunc .==. @recordFunc) @cinfoFunc, (@recordFunc .::. ctp) @cinfoFunc]
 
   | RecordUpdate
       recordExpressionBindings . betaConstr = @beta

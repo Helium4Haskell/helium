@@ -176,7 +176,9 @@ SEM Expression [ | | core : { Core.Expr } ]
                                         @name.self 
                                         @recordExpressionBindings.bindings
                                         True 
-                                        @lhs.betaDeclUnique
+                                        (fromMaybe 
+                                            (internalError "ToCoreExpr" "RecordConstruction" "(n/a)") 
+                                            (getTVar @betaFunc))
     --  range                    : Range
     --  name                     : Name
     --  recordExpressionBindings : RecordExpressionBindings

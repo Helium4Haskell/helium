@@ -19,7 +19,7 @@ module Helium.CodeGeneration.CoreUtils
     ,   findCoreType, createInstantiation, createRecordInstantiation
     ,   createRecordUpdate, createRecordSelector
     ,   constructorsToCase, constructorToCase
-    ,   patternMatchFail, patternAlwaysSucceeds
+    ,   patternMatchFail, patternAlwaysSucceeds, getTVar
     ,   TypeInferenceOutput(TypeInferenceOutput, importEnv), lookupBeta
     ) where
 
@@ -149,6 +149,10 @@ decl isPublic x t e =
         , declCustoms = []
         }
 
+getTVar :: Top.Tp -> Maybe Int
+getTVar (Top.TVar idx) = Just idx
+getTVar _ = Nothing
+      
 packedString :: String -> Expr
 packedString s = Lit (LitBytes (bytesFromString s))
 
@@ -288,8 +292,6 @@ addLambdas typeOutput context beta name args expr = case declarationTpScheme typ
       -- for which the class is implemented. Eg `a -> String` becomes `Int -> String`.
       typeCorrectTVars = lookupBeta beta typeOutput
       instantiation = findInstantiation (importEnv typeOutput) ty typeCorrectTVars
-      getTVar (Top.TVar idx) = Just idx
-      getTVar _ = Nothing
       tvars' = mapMaybe getTVar instantiation
       substitute = Core.typeSubstitutions $ zipWith (\idx typeArg -> (idx, typeToCoreType typeArg)) tvars instantiation
     in foldr (\x e -> Core.Forall (typeVarToQuantor qmap x) Core.KStar e) (addLambdasForQType (importEnv typeOutput) [] t substitute args expr) tvars'
@@ -368,20 +370,36 @@ createRecordInstantiation :: TypeInferenceOutput
                             -> Int 
                             -> Core.Expr
 createRecordInstantiation typeOutput typeEnv name bindings isConstructor beta
-    = foldl app_ constrExpr sortedBinds
+    = foldl app_
+        (foldl (\e t -> Core.ApType e $ typeToCoreType t) constrExpr tvar)
+          sortedBinds
   where
+    impEnv = importEnv typeOutput
+    recordEnv = recordEnvironment impEnv
+    recordFields = M.assocs $ fromMaybe (err "constructor could not be found") (M.lookup name recordEnv)
+    err = internalError "CoreUtils" "createRecordInstantiation"
+
+    constrExpr = Core.Con $ Core.ConId $ idFromName name
+    -- Find an instantiation of the type variables using the type inferred for the
+    -- constructor and the defined typescheme of the constructor 
+    constrTps = declarationConstructorTypeScheme impEnv name
+    outputTp = lookupBeta beta typeOutput
+    tvar = findInstantiation impEnv constrTps outputTp
+
     binds = map (\(i, expr, _) -> (i, expr)) bindings
-    recordFields = M.assocs $ fromMaybe notFound (M.lookup name recordEnv)
-    recordEnv = recordEnvironment (importEnv typeOutput)
-    constrExpr = createInstantiation typeOutput typeEnv name True beta
-    notFound = coreUtilsError "createRecordInstantiation" "constructor/record field not found"
-    sortedFields = sortOn (\(n, (i, s, _, _)) -> i) recordFields
-    sortedBinds 
-      = map (\(n, (i, s, t, _)) -> fromMaybe (strictOrUndefined s t) (lookup n binds)) sortedFields
+    sortedFields = zip tvar (sortOn (\(n, (i, _, _, _)) -> i) recordFields)
+    sortedBinds
+      = map (\(t, (n, x)) -> fieldToExpr (snd4 x) t (lookup n binds)) sortedFields
+
+    strictOrUndefined :: Bool -> Tp -> Core.Expr
     strictOrUndefined strict tp = if strict
-      then coreUtilsError "createRecordInstantiation" "undefined strict field construction"
-      else coreUndefined (importEnv typeOutput) tp
-    -- sortedBinds = sortOn (\(n, _, _) -> maybe notFound fst4 (M.lookup n recordFields)) bindings
+      then err "undefined strict field construction"
+      else coreUndefined impEnv tp
+
+    fieldToExpr :: Bool -> Tp -> Maybe Core.Expr -> Core.Expr
+    fieldToExpr strict tp m = case m of
+      Nothing -> strictOrUndefined strict tp
+      Just expr -> expr
 
 {-
 Transforms
@@ -475,19 +493,28 @@ createRecordSelector :: ImportEnvironment
                     -> Name
                     -> Tp
                     -> Core.Expr
-createRecordSelector importEnv r field t
-  = Core.Forall (typeVarToQuantor qmap 0) Core.KStar (Lam True scrutVar select)
+createRecordSelector importEnv r field retTp
+  = foldr (\x e -> Core.Forall (typeVarToQuantor qmap x) Core.KStar e) (Lam True scrutVar select) tvars
   where
-    select = constructorsToCase importEnv scrutId (typeToCoreType t) r atEachConstructor
+    ty@(Top.Quantification (_, qmap, _)) = fromMaybe (notFound constr) $ do 
+      fields <- M.lookup constr (recordEnvironment importEnv)
+      (i, s, t, ts) <- M.lookup field fields
+      return ts
+    tvars = mapMaybe getTVar $ findInstantiation importEnv ty (unqualify (unquantify ty))
+
+    select = constructorsToCase importEnv scrutId (typeToCoreType retTp) r atEachConstructor
     fieldId = idFromString (show field)
     scrutId = idFromString "x$"
-    constructorTps@(Top.Quantification (_, qmap, _)) = case constructors of
+    atEachConstructor = map (\n -> (n, [(field, fieldId)], Var fieldId)) constrs
+
+    constrs = fromMaybe (notFound field) $ field `M.lookup` fieldLookup importEnv
+    constr = case constrs of
       [] -> notFound "1"
-      (c:cs) -> fromMaybe (notFound c) $ M.lookup c (valueConstructors importEnv)
-    (_, scrutType) = Core.typeExtractFunction $ toCoreTypeNotQuantified constructorTps
-    scrutVar = Variable scrutId scrutType
-    constructors = fromMaybe (notFound field) $ field `M.lookup` fieldLookup importEnv
-    atEachConstructor = map (\n -> (n, [(field, fieldId)], Var fieldId)) constructors
+      xs -> head xs
+    constrTps
+      = fromMaybe (notFound constr) $ M.lookup constr (valueConstructors importEnv)
+
+    scrutVar = Variable scrutId $ snd $ Core.typeExtractFunction $ toCoreTypeNotQuantified constrTps
     notFound f = coreUtilsError "createRecordSelector" 
       ("no appropriate constructor found for field " ++ show f)
 
@@ -499,11 +526,11 @@ constructorsToCase :: ImportEnvironment
                     {- (Constructor name, Fields to include, What to execute) -}
                     -> [(Name, [(Name, Id)], Core.Expr)]
                     -> Core.Expr
-constructorsToCase importEnv scrutId scutType r fs 
+constructorsToCase importEnv scrutId scrutType r fs 
   = case fs of
-    [] -> patternMatchFail "pattern binding" scutType r
+    [] -> patternMatchFail "pattern binding" scrutType r
     ((n, fields, exec):xs) -> constructorToCase importEnv scrutId n fields exec $ 
-                          constructorsToCase importEnv scrutId scutType r xs
+                          constructorsToCase importEnv scrutId scrutType r xs
 
 -- Helper function for executing code for a specific constructor
 constructorToCase :: ImportEnvironment 
@@ -513,22 +540,28 @@ constructorToCase :: ImportEnvironment
                     -> Core.Expr      {- What to execute if it matches -}
                     -> Core.Expr      {- What to execute otherwise -}
                     -> Core.Expr
-constructorToCase importEnv scrutinee c fs exec continue
+constructorToCase importEnv scrutinee constr fs exec continue
   = Match scrutinee
       [ Alt patt exec
-      , Alt PatDefault continue 
+      , Alt PatDefault continue
       ]
   where
-    err = coreUtilsError "constructorToCase"
-    constructor = idFromString (show c)
-    fields = fromMaybe (err "Constructor not found") (M.lookup c (recordEnvironment importEnv))
+    args = map (\(n, _) -> placeholder n fieldsToReuse) sortedFields
+    patt = PatCon (ConId constructor) (map typeToCoreType $
+      findInstantiation importEnv constrTps constrTp) args
+
+    constructor = idFromString (show constr)
+    (fields, constrTps) = fromMaybe (err "Constructor not found") $ do
+      fields <- M.lookup constr (recordEnvironment importEnv)
+      constrTps <- M.lookup constr (valueConstructors importEnv)
+      return (fields, constrTps)
+
     sortedFields = sortOn (fst4 . snd) (M.assocs fields)
     fieldsToReuse = foldr (M.delete . fst) fields fs
-    constrTps = fromMaybe (err "Constructor not found") $ M.lookup c (valueConstructors importEnv)
     constrTp = unqualify (unquantify constrTps)
-    patt = PatCon (ConId constructor) (map typeToCoreType $ findInstantiation importEnv constrTps constrTp) args
-    args = map (\(n, _) -> placeholder n fieldsToReuse) sortedFields
-    placeholder n m 
+
+    err = coreUtilsError "constructorToCase"
+    placeholder n m
       = case M.lookup n m of
           Nothing -> idFromString (show n)
           Just _ -> idFromString "_"
