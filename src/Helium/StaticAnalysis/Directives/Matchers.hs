@@ -44,10 +44,10 @@ match_Expression_RecordConstruction expr =
    where
       lift (RecordExpressionBinding_RecordExpressionBinding _ _ e) = e
 
-match_Expression_RecordUpdate :: Expression -> Maybe Expressions
+match_Expression_RecordUpdate :: Expression -> Maybe (Expression, Expressions)
 match_Expression_RecordUpdate expr = 
    case expr of
-      Expression_RecordUpdate _ _ es -> Just (map lift es)
+      Expression_RecordUpdate _ e es -> Just (e, map lift es)
       _                              -> Nothing 
    where
       lift (RecordExpressionBinding_RecordExpressionBinding _ _ e) = e

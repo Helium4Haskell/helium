@@ -94,13 +94,17 @@ SEM Expression
   | Constructor
     lhs.betaDeclUnique = @lhs.betaDeclUnique + 1
   | RecordConstruction
+    lhs.betaDeclUnique = @recordExpressionBindings.betaDeclUnique
     recordExpressionBindings.betaDeclUnique = @lhs.betaDeclUnique + 2
     loc.beta = TVar @lhs.betaDeclUnique
     loc.betaFunc = TVar (@lhs.betaDeclUnique + 1)
   | RecordUpdate
-    lhs.betaDeclUnique = @recordExpressionBindings.betaDeclUnique + 1
-    recordExpressionBindings.betaDeclUnique = @expression.betaDeclUnique + 1
-    expression.betaDeclUnique = @lhs.betaDeclUnique + 1
+    lhs.betaDeclUnique = @recordExpressionBindings.betaDeclUnique
+    recordExpressionBindings.betaDeclUnique = @expression.betaDeclUnique
+    expression.betaDeclUnique = @lhs.betaDeclUnique + 3
+    loc.beta = TVar @lhs.betaDeclUnique
+    loc.betaFunc = TVar (@lhs.betaDeclUnique + 1)
+    loc.oldBeta = TVar (@lhs.betaDeclUnique + 2)
   | List
     -- One type variable for the elements of the list
     expressions.betaDeclUnique = @lhs.betaDeclUnique + 1

@@ -90,9 +90,13 @@ SEM Expression | RecordConstruction loc . cinfoResult =
      [ ]
 
 -- Expression.RecordUpdate
-SEM Expression | RecordUpdate loc . cinfo =
+SEM Expression | RecordUpdate loc . cinfoFunc =
   resultConstraint "record construction" @parentTree       
      [ FolkloreConstraint ]
+
+SEM Expression | RecordUpdate loc . cinfo =
+  resultConstraint "record construction" @parentTree       
+     [ ]
 
 -- Expression.NormalApplication
 SEM Expression | NormalApplication loc . cinfo =

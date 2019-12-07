@@ -120,12 +120,13 @@ SEM Expression
                     [@recordExpressionBindings.matches]     
 
   | RecordUpdate 
-       (recordExpressionBindings.tryPatterns, lhs.matches, lhs.constraints, lhs.assumptions, lhs.uniqueSecondRound, loc.ioMatch) = 
+       ( (expression.tryPatterns, recordExpressionBindings.tryPatterns)
+       , lhs.matches, lhs.constraints, lhs.assumptions, lhs.uniqueSecondRound, loc.ioMatch) = 
           let infoTuple = metaVarInfo @constraints @recordExpressionBindings.assumptions @localInfo
-          in match1 infoTuple @recordExpressionBindings.uniqueSecondRound
-                    match_Expression_RecordConstruction 
+          in match2 infoTuple @recordExpressionBindings.uniqueSecondRound
+                    match_Expression_RecordUpdate 
                     @lhs.tryPatterns @lhs.allPatterns 
-                    [@recordExpressionBindings.matches]     
+                    [@expression.matches, @recordExpressionBindings.matches]
 
   | NormalApplication
        ( (function.tryPatterns, arguments.tryPatterns)

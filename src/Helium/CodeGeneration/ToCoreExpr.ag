@@ -172,10 +172,8 @@ SEM Expression [ | | core : { Core.Expr } ]
 
     | RecordConstruction lhs.core = createRecordInstantiation
                                         @lhs.typeOutput 
-                                        @lhs.typeEnv 
                                         @name.self 
                                         @recordExpressionBindings.bindings
-                                        True 
                                         (fromMaybe 
                                             (internalError "ToCoreExpr" "RecordConstruction" "(n/a)") 
                                             (getTVar @betaFunc))
@@ -184,10 +182,18 @@ SEM Expression [ | | core : { Core.Expr } ]
     --  recordExpressionBindings : RecordExpressionBindings
 
     | RecordUpdate       lhs.core = createRecordUpdate
-                                        @lhs.typeOutput 
-                                        @lhs.importEnv 
+                                        @lhs.typeOutput
+                                        @lhs.importEnv
                                         @expression.core
-                                        @lhs.betaDeclUnique
+                                        (fromMaybe 
+                                            (internalError "ToCoreExpr" "RecordUpdate" "(n/a)") 
+                                            (getTVar @oldBeta))
+                                        (fromMaybe 
+                                            (internalError "ToCoreExpr" "RecordUpdate" "(n/a)") 
+                                            (getTVar @beta))
+                                        (fromMaybe 
+                                            (internalError "ToCoreExpr" "RecordUpdate" "(n/a)") 
+                                            (getTVar @betaFunc))
                                         @recordExpressionBindings.bindings
                                         @range.self
     --  range                    : Range

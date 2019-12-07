@@ -469,7 +469,8 @@ SEM Expression
                             (lookup n @recordExpressionBindings.betasMap)) @sortedFields
           . recordFunc   = foldr (.->.) @beta @sortedBetas
           . conRecord    = maybe [] id $ do 
-                            t   <- M.lookup @name.self (typeEnvironment @lhs.importEnvironment)
+                            tps   <- M.lookup @name.self (valueConstructors @lhs.importEnvironment)
+                            let t = generalizeAll ([] .=>. snd (functionSpine (unqualify (unquantify tps))))
                             return [(@beta .::. t) @cinfoResult]
           . conFunc      = maybe [] id $ do 
                             ctp <- M.lookup @name.self (valueConstructors @lhs.importEnvironment)
@@ -477,19 +478,37 @@ SEM Expression
 
   | RecordUpdate
       recordExpressionBindings . betaConstr = @beta
-      loc . assumptions  = @recordExpressionBindings.assumptions
-          . beta         = TVar @lhs.betaDeclUnique
-          . constraints  = @conRecord .>.
-                            Node (@recordExpressionBindings.constraintslist)
+      lhs.betaUnique = @lhs.betaUnique + length @sortedFields + 1
+      loc . assumptions  = @expression.assumptions `combine` @recordExpressionBindings.assumptions
+          . constraints  = (@newcon ++ @conFunc) .>. 
+                                ( Node $ 
+                                    [ @conExpr .>. Node [@expression.constraints]
+                                    ] ++ @recordExpressionBindings.constraintslist
+                                )
           . recordEnv    = recordEnvironment @lhs.importEnvironment
+          . recordFields = maybe undefined id (M.lookup @constructor @recordEnv)
+          . sortedFields = sortOn (\(n, (i, _, _, _)) -> i) (M.assocs @recordFields)
+          . sortedBetas  = map (\(n, (i, _, _, _)) -> fromMaybe (TVar (@lhs.betaUnique + i + 1)) 
+                            (lookup n @recordExpressionBindings.betasMap)) @sortedFields
+          . recordFunc   = foldr (.->.) @beta @sortedBetas
           . fieldsPresent = map fst @recordExpressionBindings.betasMap
           . constructors = concat $ catMaybes $ map (\n -> M.lookup n (fieldLookup @lhs.importEnvironment)) @fieldsPresent
-          . conRecord    = maybe [] id $ do 
-                            let constructor = if length @constructors == 0
-                                                then internalError "TypeInferenceRules.ag" "RecordUpdate" "No constructor found with field"
-                                                else head @constructors
-                            t   <- M.lookup constructor (typeEnvironment @lhs.importEnvironment)
-                            return [(@beta .::. t) @cinfo, (@expression.beta .::. t) @cinfo]
+          . constructor  = if length @constructors == 0
+                            then (internalError "TypeInferenceRules.ag" "RecordUpdate" "No constructor found with field")
+                            else head @constructors
+      (loc.newcon, loc.conExpr, loc.conFunc) 
+                         = fromMaybe (internalError "TypeInferenceRules.ag" "RecordUpdate" ("No constructor found with fields: " ++ show @fieldsPresent))
+                            $ do
+                                ctp   <- M.lookup @constructor (valueConstructors @lhs.importEnvironment)
+                                let t = generalizeAll ([] .=>. snd (functionSpine (unqualify (unquantify ctp))))
+                                return ( [ (@beta .::. t) @cinfo ], 
+                                         [ (@expression.beta .::. t) @cinfo
+                                         , (@expression.beta .==. (traceShow ("ASKDJAKLSDJKSADJLADJ: " ++ show @oldBeta) @oldBeta)) @cinfo
+                                         ]
+                                       , [ (@betaFunc .==. @recordFunc) @cinfoFunc
+                                         , (@recordFunc .::. ctp) @cinfoFunc
+                                         ]
+                                       )
 
   | Variable
       lhs . betaUnique  = snd @updatedType
@@ -811,6 +830,8 @@ SEM Pattern
       recordPatternBindings . betaUnique  = @lhs.betaUnique + 1
       recordPatternBindings . betaCon     = @beta
       recordPatternBindings . nameCon     = @name.self
+      lhs      . environment    = @recordPatternBindings.environment 
+      lhs      . assumptions    = @recordPatternBindings.assumptions 
       loc      . constraints    = [] .>.
                                   Node @recordPatternBindings.constraintslist
 
