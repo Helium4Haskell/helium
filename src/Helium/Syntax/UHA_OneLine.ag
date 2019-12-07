@@ -478,6 +478,22 @@ SEM RightHandSide
     --  where                    : MaybeDeclarations
 
 -- ------------------------------------------------------------------------
+-- -- RecordExpressionBinding                                            --
+-- ------------------------------------------------------------------------
+
+SEM RecordExpressionBindings
+    | Cons loc.oneLineTree = @hd.oneLineTree : @tl.oneLineTree
+    | Nil  loc.oneLineTree = []
+
+SEM RecordExpressionBinding
+    | RecordExpressionBinding
+            loc.oneLineTree = OneLineNode
+                                [ OneLineText (show @name.self)
+                                , OneLineText " = "
+                                , @expression.oneLineTree
+                                ]
+
+-- ------------------------------------------------------------------------
 -- -- Patterns                                                           --
 -- ------------------------------------------------------------------------
 
