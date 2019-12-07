@@ -64,6 +64,7 @@ data Error  = NoFunDef Entity Name {-names in scope-}Names
             | CannotDerive Name Tps
             | TupleTooBig Range
             | DuplicateRecordFieldWrongType Name Tps
+            | AllFieldsPresent [Name]
 
 instance HasMessage Error where
    getMessage x = let (oneliner, hints) = showError x
@@ -107,6 +108,7 @@ instance HasMessage Error where
       CannotDerive name _         -> [getNameRange name]
       TupleTooBig r               -> [r]
       DuplicateRecordFieldWrongType name _ -> [getNameRange name]
+      AllFieldsPresent names      -> sortRanges (map getNameRange names)
 
 sensiblySimilar :: Name -> Names -> [Name]
 sensiblySimilar name inScope =
@@ -378,6 +380,12 @@ showError anError = case anError of
       , []
       )
 
+   AllFieldsPresent names ->
+      ( MessageString ("All fields mentioned should be present in atleast one constructor: " ++ 
+            prettyAndList (map (show . show) (sortNamesByRange names)))
+      , []
+      )
+
    _ -> internalError "StaticErrors.hs" "showError" "unknown type of Error"
 
 makeUndefined :: Entity -> Names -> Names -> [Error]
@@ -458,6 +466,7 @@ errorLogCode anError = case anError of
           OverlappingInstance _ _                 -> "oi"
           MissingSuperClass _ _ _                 -> "ms"
           DuplicateRecordFieldWrongType _ _       -> "rt"
+          AllFieldsPresent _                      -> "ra"
    where code entity = fromMaybe "??"
                      . lookup entity
                      $ [ (TypeSignature    ,"ts"), (TypeVariable         ,"tv"), (TypeConstructor,"tc")

@@ -177,14 +177,26 @@ SEM Expression
   | RecordConstruction        
                  lhs . miscerrors = @recordExpressionBindings.miscerrors
 
-  | RecordUpdate lhs . miscerrors = @expression.miscerrors ++ @recordExpressionBindings.miscerrors
+  | RecordUpdate lhs . miscerrors = @allPresentError ++ @expression.miscerrors ++ @recordExpressionBindings.miscerrors
+                 loc . allPresentError = if length @possibleConstrs == 0
+                                          then [AllFieldsPresent @recordExpressionBindings.names]
+                                          else []
+                     . relevantConstrs = concat $ mapMaybe (\n -> M.lookup n (@lhs.fieldLookup)) @recordExpressionBindings.names
+                     . possibleConstrs = filter @checkFieldsPresent @relevantConstrs
+                     . checkFieldsPresent = \c -> fromMaybe (internalError "MiscErrors.ag" "RecordUpdate" "(n/a)") $ 
+                                              do 
+                                                fieldMap <- M.lookup c (@lhs.recordFields)
+                                                return $ all (\n -> M.member n fieldMap) @recordExpressionBindings.names
                  
 -----------------------------------------
 -- RecordExpressionBinding
 
+ATTR RecordExpressionBindings RecordExpressionBinding [ | | names USE { ++ } { [] } : Names ]  
+
 SEM RecordExpressionBinding
     | RecordExpressionBinding 
         lhs . miscerrors = @nonexistingFieldError ++ @expression.miscerrors
+            . names      = [@name.self]
         loc . nonexistingFieldError = case M.lookup @name.self @availableFields of
                                         Just f  -> []
                                         Nothing -> [Undefined RecordField @name.self (M.keys @availableFields) []]

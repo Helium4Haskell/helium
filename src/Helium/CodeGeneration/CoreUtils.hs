@@ -444,7 +444,7 @@ createRecordUpdate typeOutput importEnv old oldBeta beta betaFunc bindings range
 
     func = setTopArgs (map (\(n, i, e, t) -> (strict n, Variable i (betaToType t))) args) body
     strict n = snd4 $ fromMaybe (coreUtilsError "createRecordUpdate" 
-      ("field could not be found" ++ show n)) (M.lookup n allFields)
+      ("field could not be found " ++ show n)) (M.lookup n allFields)
 
     constructors = mapMaybe (`M.lookup` fieldLookup importEnv) newFields
     relevantConstructors = if null constructors
@@ -524,8 +524,8 @@ createRecordSelector importEnv r field retTp
     atEachConstructor = map (\n -> (n, [(field, fieldId)], Var fieldId, instantiated n)) constrs
     instantiated n = fromMaybe (notFound n) $ do
       constrTps <- M.lookup n (valueConstructors importEnv)
-      return $ findInstantiation importEnv constrTps (unqualify (unquantify constrTps))
-
+      let constrTp = unqualify (unquantify constrTps)
+      return $ sort $ findInstantiation importEnv constrTps constrTp
 
     constrs = fromMaybe (notFound field) $ field `M.lookup` fieldLookup importEnv
     constr = case constrs of
