@@ -37,7 +37,7 @@ envForModule mod@(Module _ _ _ decls) = Env typeEnv (mapFromList $ argsValues ++
     typeEnv = typeEnvForModule mod
     argsValues = [ (name, getExpressionStrictness expr) | DeclValue name _ _ expr _ <- decls ]
     argsAbstracts = [ (name, getAbstractStrictness typeEnv arity tp) | DeclAbstract name _ arity tp _ <- decls ]
-    argsConstructors = [ (name, getConstructorStrictness tp) | DeclCon name _ tp _ <- decls ]
+    argsConstructors = [ (name, getConstructorStrictness tp) | DeclCon name _ tp _ _ <- decls ]
 
 data Analysis a = Analysis IdSet !a
 

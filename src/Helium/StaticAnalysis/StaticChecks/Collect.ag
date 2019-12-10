@@ -136,7 +136,7 @@ SEM Declaration
 
 ATTR Module Body Declarations Declaration Constructor Constructors [ | 
 -- TODO: Fix equality checking here (strictness and type synonyms) 
-  | duplicateLabelsWrongTypes USE { M.unionWith (++) } { M.empty } : {M.Map Name [(Int, Tp)]}]
+  | duplicateLabelsWrongTypes USE { M.unionWith (++) } { M.empty } : {M.Map Name [Tp]}]
 ATTR Body Declarations Declaration Constructor Constructors [ | 
   | collectRecord USE { M.union } { M.empty } : { M.Map Name (M.Map Name (Int, Bool, Tp, TpScheme)) } ]
 ATTR FieldDeclarations [ | | collectFields USE { M.union } { M.empty } : { M.Map Name (Int, Bool, Tp, TpScheme) } ]
@@ -146,8 +146,8 @@ SEM Declaration
     | Data
         lhs . duplicateLabelsWrongTypes = M.filter (\xs -> length (nub xs) > 1) @allConFields
         loc . allConFields = 
-          let removeTps (i, s, t, _) = (i, t) 
-            in M.unionsWith (++) $ map (M.map ((:[]) . removeTps)) (M.elems @constructors.collectRecord)
+          let getTp (_, _, t, _) = t
+            in M.unionsWith (++) $ map (M.map ((:[]) . getTp)) (M.elems @constructors.collectRecord)
 
 SEM Constructor
     | Constructor lhs . collectRecord = M.singleton @constructor.self M.empty

@@ -15,7 +15,7 @@ module Helium.CodeGeneration.Iridium.Show where
 
 import Lvm.Common.Byte(stringFromBytes)
 import Lvm.Common.Id(Id, stringFromId, idFromString)
-import Lvm.Core.Module(Custom(..), DeclKind(..))
+import Lvm.Core.Module(Custom(..), DeclKind(..), Field(..))
 import Lvm.Core.Type
 import Data.List(intercalate)
 import Data.Either(isRight)
@@ -224,13 +224,16 @@ instance ShowDeclaration CustomDeclaration where
   showDeclaration (CustomDeclaration kind) = ("custom", ": " ++ showDeclKind kind ++ "\n")
 
 instance ShowDeclaration DataTypeConstructorDeclaration where
-  showDeclaration (DataTypeConstructorDeclaration tp) =
+  showDeclaration (DataTypeConstructorDeclaration tp fs) =
     ( "constructor"
-    , ": { " ++ show tp ++ " }"
+    , ": { " ++ show tp ++ " }" ++ " [ " ++ intercalate ", " (map show fs) ++ " ]"
     )
 
 instance Show DataTypeConstructor where
   show (DataTypeConstructor name tp) = "@" ++ showId name "" ++ ": " ++ show tp
+
+instance Show Field where
+  show (Field name i ts) = showId name "" ++ "(" ++ show i ++ ")" ++ ": " ++ show ts
 
 instance ShowDeclaration DataType where
   showDeclaration (DataType cons) =

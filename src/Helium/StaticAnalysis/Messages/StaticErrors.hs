@@ -394,9 +394,9 @@ makeUndefined entity names inScope = [ Undefined entity name inScope [] | name <
 makeDuplicated :: Entity -> [Names] -> [Error]
 makeDuplicated entity nameslist = [ Duplicated entity names | names <- nameslist ]
 
-makeDuplicatedLabelWrongType :: M.Map Name [(Int, Tp)] -> [Error]
+makeDuplicatedLabelWrongType :: M.Map Name [Tp] -> [Error]
 makeDuplicatedLabelWrongType duplicated 
-   = [ DuplicateRecordFieldWrongType name (map snd xs)  | (name, xs) <- labels ]
+   = [ DuplicateRecordFieldWrongType name xs  | (name, xs) <- labels ]
    where
       labels = M.assocs duplicated
 

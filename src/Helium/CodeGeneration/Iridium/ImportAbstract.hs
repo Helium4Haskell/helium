@@ -27,8 +27,8 @@ convertData (Declaration _ (ExportedAs name) mod customs (DataType cons)) =
 convertData _ = []
 
 convertConstructor :: Declaration DataTypeConstructorDeclaration -> Maybe (Core.Decl v)
-convertConstructor (Declaration _ (ExportedAs name) mod customs (DataTypeConstructorDeclaration tp)) = Just $
-  Core.DeclCon name (toAccess name mod) tp customs
+convertConstructor (Declaration _ (ExportedAs name) mod customs (DataTypeConstructorDeclaration tp fs)) = Just $
+  Core.DeclCon name (toAccess name mod) tp fs customs
 convertConstructor _ = Nothing
 
 convertMethod :: Declaration Method -> Maybe (Core.Decl v)

@@ -12,8 +12,8 @@ module Helium.CodeGeneration.CoreUtils
     ,   let_, if_, app_, letrec_
     ,   cons, nil
     ,   var, decl
-    ,   float, packedString, declarationConstructorType
-    ,   declarationType, declarationTypeInPattern, addToTypeEnv
+    ,   float, packedString, declarationConstructorType, addToTypeEnv
+    ,   declarationType, declarationTypeInPattern, declarationConstructorTypeScheme
     ,   toCoreType, toCoreTypeNotQuantified, typeToCoreType, typeToCoreTypeMapped
     ,   addLambdas, addLambdasForLambdaExpression, TypeClassContext(..)
     ,   findCoreType, createInstantiation, createRecordInstantiation
@@ -345,7 +345,8 @@ findInstantiation :: ImportEnvironment -> Top.TpScheme -> Top.Tp -> [Top.Tp]
 findInstantiation importEnv t@(Top.Quantification (tvars, _, Top.Qualification (_, tLeft))) tRight
   = fmap (\a -> fromMaybe (Top.TCon "()") $ lookup a instantiations) tvars
   where
-    instantiations = traverse (traceShow ("instantiating " ++ show t ++ " with " ++ show tRight) $ tLeft) tRight []
+    -- instantiations = traverse (traceShow ("instantiating " ++ show t ++ " with " ++ show tRight) $ tLeft) tRight []
+    instantiations = traverse tLeft tRight []
     traverse :: Top.Tp -> Top.Tp -> [(Int, Top.Tp)] -> [(Int, Top.Tp)]
     traverse (Top.TVar a) t2 = ((a, t2) :)
     traverse (Top.TCon _) _ = id
@@ -365,9 +366,10 @@ createRecordInstantiation :: TypeInferenceOutput
                             -> Name 
                             {- Field name, argument to pass to field, beta var for the argument -}
                             -> [(Name, Core.Expr, Int)] 
-                            -> Int 
+                            -> TpScheme   {- Typescheme corresponding to the beta variable -}
+                            -> Int        {- Beta var containing the typeoutput -}
                             -> Core.Expr
-createRecordInstantiation typeOutput name bindings beta
+createRecordInstantiation typeOutput name bindings tps beta
     = foldl app_
         (foldl (\e t -> Core.ApType e $ typeToCoreType t) constrExpr tvar)
           sortedBinds
@@ -380,14 +382,13 @@ createRecordInstantiation typeOutput name bindings beta
     constrExpr = Core.Con $ Core.ConId $ idFromName name
     -- Find an instantiation of the type variables using the type inferred for the
     -- constructor and the defined typescheme of the constructor 
-    constrTps = declarationConstructorTypeScheme impEnv name
     outputTp = lookupBeta beta typeOutput
-    tvar = findInstantiation impEnv constrTps outputTp
+    tvar = findInstantiation impEnv tps outputTp
 
     binds = map (\(i, expr, _) -> (i, expr)) bindings
-    sortedFields = zip tvar (sortOn (\(n, (i, _, _, _)) -> i) recordFields)
+    sortedFields = sortOn (\(n, (i, _, _, _)) -> i) recordFields
     sortedBinds
-      = map (\(t, (n, x)) -> fieldToExpr (snd4 x) t (lookup n binds)) sortedFields
+      = map (\(n, x) -> fieldToExpr (snd4 x) (thd4 x) (lookup n binds)) sortedFields
 
     strictOrUndefined :: Bool -> Tp -> Core.Expr
     strictOrUndefined strict tp = if strict
@@ -435,14 +436,11 @@ createRecordUpdate :: TypeInferenceOutput
 createRecordUpdate typeOutput importEnv old oldBeta beta betaFunc bindings range
     = foldl app_ (func `app_` old) (map thd4 args)
   where
-    betaToType :: Int -> Core.Type
-    betaToType b = typeToCoreType $ lookupBeta b typeOutput
-
     oldTp = lookupBeta oldBeta typeOutput
-    newTp = betaToType beta
+    newTp = lookupBeta beta typeOutput
     scrutineeVar = Variable (idFromString "x$") (typeToCoreType oldTp)
 
-    func = setTopArgs (map (\(n, i, e, t) -> (strict n, Variable i (betaToType t))) args) body
+    func = setTopArgs (map (\(n, i, e, t) -> (strict n, Variable i (findCoreType typeOutput t))) args) body
     strict n = snd4 $ fromMaybe (coreUtilsError "createRecordUpdate" 
       ("field could not be found " ++ show n)) (M.lookup n allFields)
 
@@ -464,7 +462,7 @@ createRecordUpdate typeOutput importEnv old oldBeta beta betaFunc bindings range
     body = body' relevantConstructors
 
     body' :: [Name] -> Core.Expr
-    body' []     = patternMatchFail "record expression binding" newTp range
+    body' []     = patternMatchFail "record expression binding" (typeToCoreType newTp) range
     body' (c:cs) = constructorToCase' (variableName scrutineeVar) c oldFields (body' cs)
 
     -- Chain the arguments
@@ -475,16 +473,17 @@ createRecordUpdate typeOutput importEnv old oldBeta beta betaFunc bindings range
     constructorToCase' scrutinee c fs
       = constructorToCase importEnv c scrutinee tvars fs exec
       where 
-        tvars           = findInstantiation importEnv (generalizeAll $ [] .=>. constrTp) oldTp
+        tvars           = findInstantiation importEnv tps oldTp
         constrTps       = fromMaybe err $ M.lookup c (valueConstructors importEnv)
         constrTp        = snd $ functionSpine $ unqualify $ unquantify constrTps
+        tps             = generalizeAll ([] .=>. constrTp)
         err             = coreUtilsError "constructorToCase'" "non-existing constructor"
         fields          = fromMaybe conNotFound $ M.lookup c recordEnv
         sortedFields    = sortOn (fst4 . snd) (M.assocs fields)
         -- constructorFunc = createInstantiation typeOutput (typeEnvironment importEnv) c True beta
         exec            =
           createRecordInstantiation typeOutput c
-            (map (\x -> (fst x, Var (idFromString (show (fst x))), undefined)) sortedFields) betaFunc
+            (map (\x -> (fst x, Var (idFromString (show (fst x))), undefined)) sortedFields) tps beta
           -- foldl Ap constructorFunc (map (Var . idFromString . show . fst) sortedFields)
 
 {-
@@ -558,7 +557,7 @@ constructorsToCase importEnv scrutId resType r fs
 constructorToCase :: ImportEnvironment 
                     -> Name           {- Constructor name -}
                     -> Id             {- Scrutinee -}
-                    -> [Tp]           {- Typevariables to instantiate the constructor to -} 
+                    -> [Tp]           {- Typevariables to instantiate the pattern to -}
                     -> [(Name, Id)]   {- Fields to include -}
                     -> Core.Expr      {- What to execute if it matches -}
                     -> Core.Expr      {- What to execute otherwise -}

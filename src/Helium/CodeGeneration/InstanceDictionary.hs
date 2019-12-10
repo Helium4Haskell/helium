@@ -83,6 +83,7 @@ classFunctions typeOutput className typeVar combinedNames = [DeclCon -- Declare 
                                                     , declType    = constructorType typeVar (map (\(_, _, _, t) -> t) superclasses) (map (\(_, _, _, t) -> t) combinedNames) classType
                                                     , declCustoms = 
                                                         [ CustomLink dictName (DeclKindCustom $ idFromString "data") ]
+                                                    , declFields = []
                                                     }
                                                    ,DeclCustom -- Declare the data type for the dictionary
                                                     { declName = dictName
@@ -320,6 +321,3 @@ convertDictionaries typeOutput className functions defaults = map makeFunction f
                             , declCustoms = []
                             }
                     in maybe fDefault updateName (lookup fname defaults)
-                
-
-                            

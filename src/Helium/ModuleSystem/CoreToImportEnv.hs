@@ -192,6 +192,7 @@ selectCustoms :: String -> [Custom] -> [Custom]
 selectCustoms n = filter (\(CustomDecl (DeclKindCustom n') _) -> n == stringFromId n')
 
 
+--TODO: Add records
 getImportEnvironment :: String -> [CoreDecl] -> ImportEnvironment
 getImportEnvironment importedInModule decls = foldr (insertDictionaries importedInModule) (foldr insert emptyEnvironment decls) decls
    where
@@ -225,6 +226,7 @@ getImportEnvironment importedInModule decls = foldr (insertDictionaries imported
            DeclCon { declName    = n
                    , declAccess  = Imported{importModule = importedFromModId}
                    , declCustoms = cs
+                   , declFields  = fs
                    , declType    = tp
                    } ->
               if "Dict$" `isPrefixOf` stringFromId n then id

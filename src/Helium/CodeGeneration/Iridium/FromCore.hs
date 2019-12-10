@@ -62,7 +62,7 @@ fromCoreAfterImports (importedCustoms, importedDatas, importTypes, importedAbstr
     valuesAbstracts = mapFromList $ map (\(fnName, Declaration qualified _ _ _ (AbstractMethod arity fnType annotations)) -> (fnName, ValueFunction qualified arity fnType $ callingConvention annotations)) importedAbstracts
 
     allConsList = map (\(name, Declaration qualified _ _ _ (DataType cons)) -> (name, cons)) importedDatas ++ listFromMap consMap
-    valuesCons = mapFromList $ allConsList >>= (\(dataName, cons) -> map (\(Declaration conName _ _ _ (DataTypeConstructorDeclaration tp)) -> (conName, ValueConstructor (DataTypeConstructor conName tp))) cons)
+    valuesCons = mapFromList $ allConsList >>= (\(dataName, cons) -> map (\(Declaration conName _ _ _ (DataTypeConstructorDeclaration tp fs)) -> (conName, ValueConstructor (DataTypeConstructor conName tp))) cons)
 
 isImported :: Core.CoreDecl -> Bool
 isImported decl = case Core.declAccess decl of
@@ -108,7 +108,7 @@ dataTypeConFromCoreDecl decl@Core.DeclCon{} = case find isDataName (Core.declCus
     isDataName (Core.CustomLink _ (Core.DeclKindCustom name)) = name == idFromString "data"
     isDataName _ = False
     -- When adding strictness annotations to data types, `TypeAny` on the following line should be changed.
-    con = Declaration (Core.declName decl) (visibility decl) (origin decl) (Core.declCustoms decl) (DataTypeConstructorDeclaration $ Core.declType decl)
+    con = Declaration (Core.declName decl) (visibility decl) (origin decl) (Core.declCustoms decl) (DataTypeConstructorDeclaration (Core.declType decl) (Core.declFields decl))
 dataTypeConFromCoreDecl _ = id
 
 fromCoreDecl :: NameSupply -> TypeEnv -> Core.CoreDecl -> [Either (Id, Declaration Method) (Id, Declaration AbstractMethod)]

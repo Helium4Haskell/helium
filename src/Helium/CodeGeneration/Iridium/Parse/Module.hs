@@ -1,8 +1,9 @@
-{-# LANGUAGE RankNTypes #-}
+{-# LANGUAGE RankNTypes, ApplicativeDo #-}
 
 module Helium.CodeGeneration.Iridium.Parse.Module (parseModule, parseModuleIO, parseModuleIO') where
 
 import Lvm.Common.Id(Id)
+import Lvm.Core.Module(Field)
 import Helium.CodeGeneration.Iridium.Parse.Parser
 import Helium.CodeGeneration.Iridium.Parse.Type
 import Helium.CodeGeneration.Iridium.Parse.Custom
@@ -18,7 +19,20 @@ pCustomDeclaration = CustomDeclaration <$ pToken ':' <* pWhitespace <*> pDeclKin
 pDataTypeConstructorDeclaration :: Parser (Declaration DataTypeConstructorDeclaration)
 pDataTypeConstructorDeclaration = pDeclaration f
   where
-    f "constructor" decl = (decl . DataTypeConstructorDeclaration) <$ pToken ':' <* pWhitespace <* pToken '{' <* pWhitespace <*> pType <* pToken '}'
+    f :: String -> (forall a. a -> Declaration a) -> Parser (Declaration DataTypeConstructorDeclaration)
+    f "constructor" decl = do
+      pToken ':'
+      pWhitespace
+      pToken '{'
+      pWhitespace
+      tp <- pType
+      pToken '}'
+      pWhitespace
+      pToken '['
+      pWhitespace
+      fs <- pure [] :: Parser [Field]
+      pToken ']'
+      return (decl (DataTypeConstructorDeclaration tp fs))
     f _ _ = pError "expected constructor declaration"
 
 pDataType :: Parser DataType

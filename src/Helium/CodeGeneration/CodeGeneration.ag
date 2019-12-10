@@ -34,6 +34,7 @@ import Helium.Syntax.UHA_Utils
 import Helium.Syntax.UHA_Range 
 import Helium.ModuleSystem.ImportEnvironment
 import Helium.ModuleSystem.DictionaryEnvironment
+import Helium.CodeGeneration.Iridium.Show
 import qualified Data.Map as M
 import Helium.StaticAnalysis.Miscellaneous.TypeConversion
 import Data.Char (ord)

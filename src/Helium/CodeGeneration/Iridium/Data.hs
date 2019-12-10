@@ -16,7 +16,7 @@ module Helium.CodeGeneration.Iridium.Data where
 
 import Lvm.Common.Id(Id, stringFromId, idFromString)
 import Lvm.Common.IdMap(mapFromList, emptyMap)
-import Lvm.Core.Module(Custom(..), DeclKind, Arity)
+import Lvm.Core.Module(Custom(..), DeclKind, Arity, Field)
 import Lvm.Core.Type
 import Data.List(intercalate)
 import Data.Either (isLeft, isRight)
@@ -38,7 +38,7 @@ data Module = Module
 
 data DataType = DataType ![Declaration DataTypeConstructorDeclaration]
 
-data DataTypeConstructorDeclaration = DataTypeConstructorDeclaration !Type
+data DataTypeConstructorDeclaration = DataTypeConstructorDeclaration !Type ![Field]
 
 data DataTypeConstructor = DataTypeConstructor { constructorName :: !Id, constructorType :: !Type }
   deriving (Eq, Ord)
@@ -57,7 +57,7 @@ constructorDataType cons = findName $ findReturn $ constructorType cons
     findName t = error ("constructorDataType: Could not find data type name in type " ++ showType [] t)
 
 getConstructors :: Declaration DataType -> [DataTypeConstructor]
-getConstructors (Declaration dataName _ _ _ (DataType cons)) = map (\(Declaration conId _ _ _ (DataTypeConstructorDeclaration tp)) -> DataTypeConstructor conId tp) cons
+getConstructors (Declaration dataName _ _ _ (DataType cons)) = map (\(Declaration conId _ _ _ (DataTypeConstructorDeclaration tp _)) -> DataTypeConstructor conId tp) cons
 
 data Visibility = ExportedAs !Id | Private deriving (Eq, Ord)
 

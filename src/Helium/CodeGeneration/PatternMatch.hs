@@ -226,10 +226,10 @@ rearrangeRecordPatterns importEnv cons range bs
     where
         defPattern = Pattern_Wildcard range
         writtenPatterns = map getPatternFromRecord bs
-        err = internalError "PatternMatch" "rearrangeRecordPatterns"
         sortedFields = sortOn (\(_, (i, _, _, _)) -> i :: Int) $ M.assocs fields
-        fields = fromMaybe (err ("Record " ++ show cons ++ " not found")) 
-            (M.lookup cons (recordEnvironment importEnv))
+        fields = fromMaybe err (M.lookup cons (recordEnvironment importEnv))
+        err = internalError "PatternMatch" "rearrangeRecordPatterns"
+            ("Record " ++ show cons ++ " not found")
 
 getPatternFromRecord :: RecordPatternBinding -> (Name, Pattern)
 getPatternFromRecord (RecordPatternBinding_RecordPatternBinding _ n p) = (n, p)

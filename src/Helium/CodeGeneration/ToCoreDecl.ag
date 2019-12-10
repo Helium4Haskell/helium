@@ -415,7 +415,7 @@ SEM RightHandSide
     --  where                    : MaybeDeclarations
 
 -- ------------------------------------------------------------------------
--- -- Record Field Selectors                                             --
+-- -- Record Field                                                       --
 -- ------------------------------------------------------------------------
 {-
 Each field will correspond to a single top-level function where the constructors
@@ -424,6 +424,9 @@ where it is present will all appear in the pattern of the function
 
 ATTR Constructor Constructors 
     [ | | names USE { ++ } { [] } : Names ]
+
+ATTR FieldDeclaration FieldDeclarations
+    [ fieldMap : { M.Map Name (Int, Bool, Tp, TpScheme) } | | ]
 
 SEM Declaration
     | Data loc.selectorFunctions = map @toDecl @fieldTypes
@@ -439,9 +442,13 @@ SEM Declaration
               .fieldMap = fromMaybe (internalError "ToCoreDecl" "Declaration.Data" "selectorFunctions")
                             $ M.unions <$> sequence (map (`M.lookup` @recordEnv) @constructors.names)
 
-SEM Constructor
+SEM Constructor [ | | ]
     | Constructor       lhs . names = [ @constructor.self ]
     | Record            lhs . names = [ @constructor.self ]
+                  loc . fields  = map (\(n, (i, s, t, ts)) -> Module.Field (idFromName n) i (toCoreType ts)) (M.assocs @fieldMap)
+                      . fieldMap
+                            = fromMaybe (internalError "ToCoreDecl" "Constructor.Record" "constructor not found")
+                                $ M.lookup @constructor.self (recordEnvironment @lhs.importEnv)
 
 -- ------------------------------------------------------------------------
 -- -- Types                                                              --
@@ -465,6 +472,7 @@ SEM Constructor [ dataTypeName : Name typevariables : Names dataTypeCoreType : {
                                     @lhs.dataTypeName
                                     @constructor.self 
                                     (valueConstructors @lhs.importEnv)
+            , Core.declFields  = []
             }
           )
         ]
@@ -481,6 +489,7 @@ SEM Constructor [ dataTypeName : Name typevariables : Names dataTypeCoreType : {
                                     @lhs.dataTypeName
                                     @constructorOperator.self 
                                     (valueConstructors @lhs.importEnv)
+            , Core.declFields  = []
             }
           )
         ]
@@ -498,6 +507,7 @@ SEM Constructor [ dataTypeName : Name typevariables : Names dataTypeCoreType : {
                                     @lhs.dataTypeName
                                     @constructor.self 
                                     (valueConstructors @lhs.importEnv)
+            , Core.declFields = @fields
             }
           )
         ]
