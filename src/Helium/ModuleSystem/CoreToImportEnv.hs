@@ -6,7 +6,7 @@
     Portability :  portable
 -}
 
-module Helium.ModuleSystem.CoreToImportEnv(getImportEnvironment) where
+module Helium.ModuleSystem.CoreToImportEnv(getImportEnvironment, typeSchemeFromCore) where
 
 import Lvm.Core.Expr
 import qualified Lvm.Core.Type as Core

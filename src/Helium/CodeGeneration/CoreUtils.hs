@@ -436,7 +436,10 @@ createRecordUpdate :: TypeInferenceOutput
 createRecordUpdate typeOutput importEnv old oldBeta beta betaFunc bindings range
     = foldl app_ (func `app_` old) (map thd4 args)
   where
-    oldTp = lookupBeta oldBeta typeOutput
+    oldTp = traceShow ("old: " ++ show (lookupBeta oldBeta typeOutput)
+              ++ ", new: " ++ show newTp
+              ++ ", func: " ++ show (lookupBeta betaFunc typeOutput)
+              ) $ lookupBeta oldBeta typeOutput
     newTp = lookupBeta beta typeOutput
     scrutineeVar = Variable (idFromString "x$") (typeToCoreType oldTp)
 
@@ -446,7 +449,7 @@ createRecordUpdate typeOutput importEnv old oldBeta beta betaFunc bindings range
 
     constructors = mapMaybe (`M.lookup` fieldLookup importEnv) newFields
     relevantConstructors = if null constructors
-      then conNotFound 
+      then []
       else foldr1 intersect constructors
 
     recordEnv = recordEnvironment importEnv

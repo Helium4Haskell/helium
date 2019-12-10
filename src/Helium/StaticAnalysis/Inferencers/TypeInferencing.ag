@@ -111,6 +111,7 @@ import Helium.Syntax.UHA_Range
 -- other
 
 import Helium.Utils.Utils
+import Helium.CodeGeneration.CoreUtils (getTVar)
 import Helium.ModuleSystem.ImportEnvironment  hiding (setTypeSynonyms)
 import Helium.ModuleSystem.DictionaryEnvironment
 import Helium.Main.Args
@@ -118,6 +119,7 @@ import Helium.Main.Args
 -- standard
 import qualified Data.Map as M
 import Data.Maybe 
+import Control.Monad (when)
 
 -- TODO: debug
 import Debug.Trace

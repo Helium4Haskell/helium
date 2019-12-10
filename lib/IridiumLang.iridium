@@ -7,19 +7,19 @@ export_as @_$helium_runtime_print_string from IridiumLangString declare @_$heliu
 #[decl @kind [bytes "* -> *"]]
 export_as @"[]" data @"[]" {
   #[link @"[]" @data]
-  export_as @"[]" constructor @"[]": { forall a. [a] }
+  export_as @"[]" constructor @"[]": { forall a. [a] }  []
 
   #[link @"[]" @data]
-  export_as @":" constructor @":": { forall a. a -> [a] -> [a] }
+  export_as @":" constructor @":": { forall a. a -> [a] -> [a] }  []
 }
 
 #[decl @kind [bytes "*"]]
 export_as @Bool data @Bool {
   #[link @Bool @data]
-  export_as @False constructor @False: { Bool }
+  export_as @False constructor @False: { Bool } []
 
   #[link @Bool @data]
-  export_as @True constructor @True: { Bool }
+  export_as @True constructor @True: { Bool } []
 }
 
 export_as @primAddInt define @primAddInt(%a: !Int, %b: !Int): Int = prim int_add(%a: !Int, %b: !Int)
@@ -159,7 +159,7 @@ entry:
 #[decl @kind [bytes "* -> *"]]
 export_as @IORes data @IORes {
   #[link @"IORes" @data]
-  export_as @IORes constructor @IORes: { forall a. a -> !RealWorld -> IORes a }
+  export_as @IORes constructor @IORes: { forall a. a -> !RealWorld -> IORes a } []
 }
 
 ; data RealWorld
@@ -170,7 +170,7 @@ export_as @RealWorld data @RealWorld {}
 #[decl @kind [bytes "* -> *"]]
 export_as @IO data @IO {
   #[link @"IO" @data]
-  export_as @IO constructor @"IO": { forall a. (RealWorld -> IORes a) -> IO a }
+  export_as @IO constructor @"IO": { forall a. (RealWorld -> IORes a) -> IO a } []
 }
 
 ; unsafePerformIO :: IO a -> a

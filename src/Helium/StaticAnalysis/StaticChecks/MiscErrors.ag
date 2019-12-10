@@ -178,7 +178,7 @@ SEM Expression
                  lhs . miscerrors = @recordExpressionBindings.miscerrors
 
   | RecordUpdate lhs . miscerrors = @allPresentError ++ @expression.miscerrors ++ @recordExpressionBindings.miscerrors
-                 loc . allPresentError = if length @possibleConstrs == 0
+                 loc . allPresentError = if length @possibleConstrs == 0 && length @recordExpressionBindings.names /= 0
                                           then [AllFieldsPresent @recordExpressionBindings.names]
                                           else []
                      . relevantConstrs = concat $ mapMaybe (\n -> M.lookup n (@lhs.fieldLookup)) @recordExpressionBindings.names
