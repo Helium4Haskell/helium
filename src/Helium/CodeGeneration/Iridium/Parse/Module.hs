@@ -3,7 +3,7 @@
 module Helium.CodeGeneration.Iridium.Parse.Module (parseModule, parseModuleIO, parseModuleIO') where
 
 import Lvm.Common.Id(Id)
-import Lvm.Core.Module(Field)
+import Lvm.Core.Module(Field(..))
 import Helium.CodeGeneration.Iridium.Parse.Parser
 import Helium.CodeGeneration.Iridium.Parse.Type
 import Helium.CodeGeneration.Iridium.Parse.Custom
@@ -28,10 +28,7 @@ pDataTypeConstructorDeclaration = pDeclaration f
       tp <- pType
       pToken '}'
       pWhitespace
-      pToken '['
-      pWhitespace
-      fs <- pure [] :: Parser [Field]
-      pToken ']'
+      fs <- pFields
       return (decl (DataTypeConstructorDeclaration tp fs))
     f _ _ = pError "expected constructor declaration"
 
@@ -67,6 +64,47 @@ pTypeSynonym = do
   tp <- pType
   pToken '}'
   return $ TypeSynonym tp
+
+pFields :: Parser [Field]
+pFields = do
+  pWhitespace
+  pToken '<'
+  pWhitespace
+  c <- lookahead
+  if c == '>' then do
+    pChar
+    return []
+  else
+    pSome pField pSep
+  where
+    pSep :: Parser Bool
+    pSep = do
+      pWhitespace
+      c <- lookahead
+      if c == '>' then do
+        pChar
+        return False
+      else
+        if c == ','
+          then do
+            pChar
+            pWhitespace
+            return True
+          else
+            return True
+
+pField :: Parser Field
+pField = do
+  pWhitespace
+  c <- lookahead
+  if c == '!'
+    then do
+      pChar
+      n <- pId
+      return $ Field n True
+    else do
+      n <- pId
+      return $ Field n False
 
 pDeclaration :: (String -> (forall a . a -> Declaration a) -> Parser b) -> Parser b
 pDeclaration f = do

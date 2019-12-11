@@ -39,13 +39,13 @@ import qualified Data.Map as M
 import Helium.StaticAnalysis.Miscellaneous.TypeConversion
 import Data.Char (ord)
 import Data.Maybe
-import Data.List(isSuffixOf, find)
+import Data.List(isSuffixOf, find, sortOn)
 
 import Helium.CodeGeneration.InstanceDictionary
 
 import Lvm.Common.Id
 import Lvm.Common.IdSet 
-import Helium.Utils.Utils(internalError)
+import Helium.Utils.Utils(internalError, fst4)
 
 import Top.Types
 import Top.Solver (SolveResult)

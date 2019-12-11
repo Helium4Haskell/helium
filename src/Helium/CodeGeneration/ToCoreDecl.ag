@@ -445,7 +445,8 @@ SEM Declaration
 SEM Constructor [ | | ]
     | Constructor       lhs . names = [ @constructor.self ]
     | Record            lhs . names = [ @constructor.self ]
-                  loc . fields  = map (\(n, (i, s, t, ts)) -> Module.Field (idFromName n) i (toCoreType ts)) (M.assocs @fieldMap)
+                  loc . fields  = map (\(n, (i, s, t, ts)) -> Module.Field (idFromName n) s) @sortedFields
+                      . sortedFields = sortOn (fst4 . snd) (M.assocs @fieldMap)
                       . fieldMap
                             = fromMaybe (internalError "ToCoreDecl" "Constructor.Record" "constructor not found")
                                 $ M.lookup @constructor.self (recordEnvironment @lhs.importEnv)

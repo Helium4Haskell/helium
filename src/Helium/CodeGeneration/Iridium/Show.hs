@@ -233,7 +233,10 @@ instance Show DataTypeConstructor where
   show (DataTypeConstructor name tp) = "@" ++ showId name "" ++ ": " ++ show tp
 
 instance Show Field where
-  show (Field name i ts) = showId name "" ++ "(" ++ show i ++ ")" ++ ": " ++ show ts
+  show (Field name strict) = showStrict strict ++ showId name ""
+    where
+      showStrict False = ""
+      showStrict True = "!"
 
 instance ShowDeclaration DataType where
   showDeclaration (DataType cons) =

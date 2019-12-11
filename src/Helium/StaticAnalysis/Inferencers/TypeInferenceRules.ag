@@ -764,7 +764,10 @@ SEM RecordExpressionBinding
           . betaMap      = (@name.self, @expression.beta)
           . recordEnv    = recordEnvironment @lhs.importEnvironment
           . newcon       =
-                fromMaybe (internalError "TypeInferenceRules.ag" "RecordExpressionBinding" "Specified record field could not be found") $
+                fromMaybe (internalError "TypeInferenceRules.ag" "RecordExpressionBinding"
+                    ("Specified record field could not be found: "
+                    ++ show @name.self
+                    )) $
                     do
                         constructors <- M.lookup @name.self (fieldLookup @lhs.importEnvironment)
                         recordFields <- M.lookup (head constructors) @recordEnv

@@ -231,9 +231,14 @@ getImportEnvironment importedInModule decls = foldr (insertDictionaries imported
                    } ->
               if "Dict$" `isPrefixOf` stringFromId n then id
               else
-                addValueConstructor
-                  (makeImportName importedInModule importedFromModId n)
-                  (typeSchemeFromCore tp)
+                let
+                    idToName = makeImportName importedInModule importedFromModId
+                    constrName = idToName n
+                    toField f = (idToName $ fieldName f, fieldStrict f)
+                    fields = map toField fs
+                in addRecordFields constrName fields .
+                    addValueConstructor
+                        constrName (typeSchemeFromCore tp)
 
            -- type constructor import
            DeclCustom { declName    = n

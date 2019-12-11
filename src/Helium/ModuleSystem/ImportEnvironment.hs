@@ -22,13 +22,15 @@ import Helium.StaticAnalysis.Miscellaneous.TypeConversion
 import Helium.StaticAnalysis.Miscellaneous.ConstraintInfo
 import Helium.StaticAnalysis.Messages.Messages
 import Top.Types
+import Lvm.Core.Module (Field(..))
 
 
 import Data.List
-import Data.Maybe (catMaybes, isJust, fromJust)
+import Data.Maybe (catMaybes, isJust, fromJust, fromMaybe)
 import Data.Function (on)
 import Data.Char
 import Control.Arrow
+import Debug.Trace
 
 import qualified Data.Map as M
 
@@ -100,6 +102,33 @@ addToTypeEnvironment new importenv =
 addValueConstructor :: Name -> TpScheme -> ImportEnvironment -> ImportEnvironment
 addValueConstructor name tpscheme importenv =
    importenv {valueConstructors = M.insert name tpscheme (valueConstructors importenv)}
+
+addRecordFields :: Name -> [(Name, Bool)] -> ImportEnvironment -> ImportEnvironment
+addRecordFields constr []     importenv = importenv
+addRecordFields constr fields importenv =
+    let
+        importEnvError = internalError "ImportEnvironment" "addRecordFields"
+        names :: [Name]
+        names = map fst fields
+        constrTps :: TpScheme
+        constrTps = fromMaybe (importEnvError "constructor does not exist in environment")
+            (M.lookup constr (valueConstructors importenv))
+        (args, ret) = functionSpine $ unqualify $ unquantify constrTps
+        fieldToImport :: (Name, Bool) -> (Name, (Int, Bool, Tp, TpScheme))
+        fieldToImport (n, s) =
+            let
+                order = fromMaybe (importEnvError "(n/a)") (elemIndex n names)
+                tp = args !! order
+                tps = generalizeAll ([] .=>. foldl (.->.) ret [tp])
+            in (n, (order, s, tp, tps))
+    in if traceShow (show args ++ " - " ++ show fields) $ (length args /= length fields)
+        then importEnvError "constructor did not have the same number of arguments as fields"
+        else importenv
+            { recordEnvironment = M.insertWith M.union constr
+                (M.fromList (map fieldToImport fields)) (recordEnvironment importenv)
+            , fieldLookup = foldr (\(n, s) p -> M.insertWith (++) n [constr] p)
+                (fieldLookup importenv) fields
+            }
 
 addOperator :: Name -> (Int,Assoc) -> ImportEnvironment -> ImportEnvironment
 addOperator name pair importenv =

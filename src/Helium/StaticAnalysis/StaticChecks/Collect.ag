@@ -37,11 +37,9 @@ SEM Module
                                         . setInstanceEnvironment @body.instanceEnv
                                         . setClassMemberEnvironment @body.collectClassMemberEnv
                                         . setRecordEnvironment @body.collectRecord
-                                        $emptyEnvironment
+                                        $ emptyEnvironment
                                         -- the type environment will be added after type inferencing.
-                 . derivedFunctions = [] -- ++ @selectorFunctions
-                 -- . selectorFunctions = map (\(n, (_, _, _, ts)) -> (n, ts)) $ concatMap M.assocs (M.elems @body.collectRecord)
-
+                 . derivedFunctions = []
 {-
                  . derivedInstances = let f (n,i) = makeInstance "Show" i (show n)
                                           g (n,(i,_)) = f (n,i)
@@ -180,8 +178,9 @@ ATTR Body Declarations Declaration Expressions Expression Patterns Pattern
        fieldLookup : { M.Map Name [Name] } | | ]
 
 SEM Module
-    | Module body.recordFields = @body.collectRecord
-                 .fieldLookup = fieldLookup @collectEnvironment
+    | Module loc.totalEnvironment = foldr combineImportEnvironments @collectEnvironment @lhs.importEnvironments
+             body.recordFields = recordEnvironment @totalEnvironment
+                 .fieldLookup = fieldLookup @totalEnvironment
 
 -------------------------------------------
 -- 6) Distributing Value Constructors
