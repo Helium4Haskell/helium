@@ -65,6 +65,7 @@ data Error  = NoFunDef Entity Name {-names in scope-}Names
             | TupleTooBig Range
             | DuplicateRecordFieldWrongType Name Tps
             | AllFieldsPresent [Name]
+            | UpdateFieldsPresent Range
 
 instance HasMessage Error where
    getMessage x = let (oneliner, hints) = showError x
@@ -109,6 +110,7 @@ instance HasMessage Error where
       TupleTooBig r               -> [r]
       DuplicateRecordFieldWrongType name _ -> [getNameRange name]
       AllFieldsPresent names      -> sortRanges (map getNameRange names)
+      UpdateFieldsPresent r       -> [r]
 
 sensiblySimilar :: Name -> Names -> [Name]
 sensiblySimilar name inScope =
@@ -383,6 +385,10 @@ showError anError = case anError of
    AllFieldsPresent names ->
       ( MessageString ("All fields mentioned should be present in atleast one constructor: " ++ 
             prettyAndList (map (show . show) (sortNamesByRange names)))
+      , []
+      )
+   UpdateFieldsPresent range ->
+      ( MessageString "Record updates should be non-empty"
       , []
       )
 

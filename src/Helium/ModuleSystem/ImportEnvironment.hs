@@ -121,7 +121,7 @@ addRecordFields constr fields importenv =
                 tp = args !! order
                 tps = generalizeAll ([] .=>. foldl (.->.) ret [tp])
             in (n, (order, s, tp, tps))
-    in if traceShow (show args ++ " - " ++ show fields) $ (length args /= length fields)
+    in if length args /= length fields
         then importEnvError "constructor did not have the same number of arguments as fields"
         else importenv
             { recordEnvironment = M.insertWith M.union constr
