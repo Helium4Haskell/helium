@@ -91,11 +91,19 @@ SEM Expression | RecordConstruction loc . cinfoResult =
 
 -- Expression.RecordUpdate
 SEM Expression | RecordUpdate loc . cinfoFunc =
-  resultConstraint "record construction" @parentTree       
+  resultConstraint "record update bindings" @parentTree       
+     [ FolkloreConstraint ]
+
+SEM Expression | RecordUpdate loc . cinfoOld =
+  resultConstraint "record update expression" @parentTree       
+     [ ]
+
+SEM Expression | RecordUpdate loc . cinfoNo =
+  resultConstraint "RECORD UPDATE MISSING BINDING" @parentTree       
      [ FolkloreConstraint ]
 
 SEM Expression | RecordUpdate loc . cinfo =
-  resultConstraint "record construction" @parentTree       
+  resultConstraint "record update" @parentTree       
      [ ]
 
 -- Expression.NormalApplication

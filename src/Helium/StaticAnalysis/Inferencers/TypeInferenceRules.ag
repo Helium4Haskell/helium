@@ -479,22 +479,32 @@ SEM Expression
 
   | RecordUpdate
       recordExpressionBindings . betaConstr = @beta
-      lhs . betaUnique = @lhs.betaUnique + length @fieldsPresent + 1
+      lhs . betaUnique = @lhs.betaUnique + length @sortedFields + 1
       loc . assumptions  = @expression.assumptions `combine` @recordExpressionBindings.assumptions
-          . constraints  = @newcon .>. Node
+          . constraints  = @newcon .>. @conMissing .>. @conFunc .>. Node
                                 [ @conExpr .<. @expression.constraints
                                 , Node @recordExpressionBindings.constraintslist
                                 ]
-          . (newcon, conExpr, fieldsPresent)
+          . (newcon, conExpr, conFunc, conMissing, sortedFields)
                 = fromMaybe (internalError "TypeInferenceRules.ag" "RecordUpdate" "No constructor found with field") $ do
+                    let recordEnv = recordEnvironment @lhs.importEnvironment
                     let fieldsPresent = map fst @recordExpressionBindings.betasMap
                     let constructors = concat $ catMaybes $ map (\n -> M.lookup n (fieldLookup @lhs.importEnvironment)) fieldsPresent
-                    let constructor = head constructors
+                    let constructor = head $ reverse $ sortOn (\n -> M.size $ fromJust (M.lookup n recordEnv)) constructors
                     ctp <- M.lookup constructor (valueConstructors @lhs.importEnvironment)
+                    recordFields <- M.lookup constructor recordEnv
+                    let sortedFields = sortOn (\(n, (i, _, _, _)) -> i) (M.assocs recordFields)
+                    let sortedBetas = map (\(n, (i, _, _, _)) -> fromMaybe (TVar (@lhs.betaUnique + i + 1))
+                            (lookup n @recordExpressionBindings.betasMap)) sortedFields
+                    let recordFunc = foldr (.->.) @beta sortedBetas
+                    let oldSortedBetas = map (\(n, (i, _, _, _)) -> TVar (@lhs.betaUnique + i + 1)) sortedFields
+                    let oldFunc = foldr (.->.) @oldBeta oldSortedBetas
                     let t = generalizeAll ([] .=>. snd (functionSpine (unqualify (unquantify ctp))))
                     return ( [ (@beta .::. t) @cinfo ]
-                            , [ (@expression.beta .::. t) @cinfo, (@expression.beta .==. @oldBeta) @cinfo ]
-                            , fieldsPresent
+                            , [ (@expression.beta .::. t) @cinfoOld, (@expression.beta .==. @oldBeta) @cinfoOld ]
+                            , [ (recordFunc .::. ctp) @cinfoFunc ]
+                            , [ (oldFunc .::. ctp) @cinfoFunc ]
+                            , sortedFields
                             )
 
   | Variable
