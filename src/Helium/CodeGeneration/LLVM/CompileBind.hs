@@ -23,7 +23,8 @@ import LLVM.AST.CallingConvention
 import LLVM.AST.Type as Type
 import LLVM.AST.AddrSpace
 import LLVM.AST.Operand
-import qualified LLVM.AST.Constant as Constant
+import qualified LLVM.AST.Constant as Constant 
+import qualified LLVM.AST.IntegerPredicate as IntegerPredicate
 
 idThunk :: Id
 idThunk = idFromString "$alloc_thunk"
@@ -139,9 +140,11 @@ bindArguments env supply (Iridium.BindTargetThunk var) givenArgs _ =
     ++ -- Extract function pointer and 'remaining' from next thunk
       [ nameNextThunk := BitCast operandNext thunkType []
       , nameFnPtrPtr := getElementPtr operandNextThunk [0, 2]
-      , nameNextRemainingPtr := getElementPtr operandNextThunk [0, 3]
+      , nameNextRemainingPtr := getElementPtr operandNextThunk [0, 3] -- What if 'remaining' is a magic value?
       , nameFnPtr := Load False (LocalReference (pointer trampolineType) nameFnPtrPtr) Nothing 0 []
-      , nameNextRemaining := Load False (LocalReference (pointer $ IntegerType 16) nameNextRemainingPtr) Nothing 0 []
+      , nameNextRemaining' := Load False (LocalReference (pointer $ IntegerType 16) nameNextRemainingPtr) Nothing 0 []
+      , nameIsMagicNumber := ICmp IntegerPredicate.SGE (LocalReference (IntegerType 16) nameNextRemaining') (ConstantOperand $ Constant.Int 16 $ 32766) []
+      , nameNextRemaining := Select (LocalReference boolType nameIsMagicNumber) (LocalReference (IntegerType 16) nameNextRemaining') (ConstantOperand $ Constant.Int 16 $ -1 - fromIntegral givenArgs) []
       , nameRemaining := Sub False False (LocalReference (IntegerType 16) nameNextRemaining) (ConstantOperand $ Constant.Int 16 $ fromIntegral givenArgs) []
       ]
   , [ (operandNext, operandTrue)
@@ -157,8 +160,10 @@ bindArguments env supply (Iridium.BindTargetThunk var) givenArgs _ =
     (nameFnPtrPtr, supply2) = freshName supply1
     (nameFnPtr, supply3) = freshName supply2
     (nameNextRemainingPtr, supply4) = freshName supply3
-    (nameNextRemaining, supply5) = freshName supply4
-    (nameRemaining, supply6) = freshName supply5
+    (nameNextRemaining', supply5) = freshName supply4
+    (nameNextRemaining, supply6) = freshName supply5
+    (nameRemaining, supply7) = freshName supply6
+    (nameIsMagicNumber, _) = freshName supply7
 
     (instrNext, operandNext)
       | Iridium.typeIsStrict (Iridium.variableType var) = ([], toOperand env var)
