@@ -300,14 +300,20 @@ newconstr = addRange $
     do 
         (n, ts) <- try $ do 
             n <- conid
-            ts <- braces fielddecl
+            (FieldDeclaration_FieldDeclaration r ns t) <- braces fielddecl
+            let ts = FieldDeclaration_FieldDeclaration r ns (strictify t)
             return (n, ts)
         return (\r -> Constructor_Record r n [ts])
     <|>
     do 
         n <- conid
         ts <- annotatedType atype
-        return (\r -> Constructor_Constructor r n [ts])
+        let ts' = strictify ts
+        return (\r -> Constructor_Constructor r n [ts'])
+  where
+    strictify (AnnotatedType_AnnotatedType r _ t) 
+        = AnnotatedType_AnnotatedType r True t
+    
 
 {-
 constrs  ->  constr1 "|" ... "|" constrn  (n>=1)  

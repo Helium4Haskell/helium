@@ -173,7 +173,7 @@ SEM Expression [ | | core : { Core.Expr } ]
     | RecordConstruction lhs.core = createRecordInstantiation
                                         @lhs.typeOutput 
                                         @name.self 
-                                        @recordExpressionBindings.bindings
+                                        (map (\(n, e, _) -> (n, e)) @recordExpressionBindings.bindings)
                                         (declarationConstructorTypeScheme (importEnv @lhs.typeOutput) @name.self)
                                         (fromMaybe 
                                             (internalError "ToCoreExpr" "RecordConstruction" "(n/a)") 
@@ -184,7 +184,6 @@ SEM Expression [ | | core : { Core.Expr } ]
 
     | RecordUpdate       lhs.core = createRecordUpdate
                                         @lhs.typeOutput
-                                        @lhs.importEnv
                                         @expression.core
                                         (fromMaybe 
                                             (internalError "ToCoreExpr" "RecordUpdate" "(n/a)") 
@@ -192,9 +191,6 @@ SEM Expression [ | | core : { Core.Expr } ]
                                         (fromMaybe 
                                             (internalError "ToCoreExpr" "RecordUpdate" "(n/a)") 
                                             (getTVar @beta))
-                                        (fromMaybe 
-                                            (internalError "ToCoreExpr" "RecordUpdate" "(n/a)") 
-                                            (getTVar @betaFunc))
                                         @recordExpressionBindings.bindings
                                         @range.self
     --  range                    : Range

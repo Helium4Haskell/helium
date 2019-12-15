@@ -1,3 +1,5 @@
+{-# LANGUAGE TupleSections, RecordWildCards #-}
+
 {-| Module      :  CoreUtils
     License     :  GPL
 
@@ -328,6 +330,10 @@ applyTypeSynonym env tp@(Top.TCon name) tps = case M.lookup (nameFromString name
 applyTypeSynonym env (Top.TApp t1 t2) tps = applyTypeSynonym env t1 (t2 : tps)
 applyTypeSynonym env (Top.TVar a) tps = foldl (Top.TApp) (Top.TVar a) tps
 
+{-
+Given either a Constructor or an identifier present in the type environment generates
+the corresponding type correct expression.
+-}
 createInstantiation :: TypeInferenceOutput -> TypeEnvironment -> Name -> Bool -> Int -> Core.Expr
 createInstantiation typeOutput typeEnv name isConstructor beta = case maybeScheme of
   Nothing -> expr
@@ -340,13 +346,16 @@ createInstantiation typeOutput typeEnv name isConstructor beta = case maybeSchem
     maybeScheme
       | isConstructor = Just $ declarationConstructorTypeScheme (importEnv typeOutput) name
       | otherwise = M.lookup name typeEnv
-
+{-
+Tries to instantiate the type variables in the type scheme such that it results 
+in the given Tp. 
+-}
 findInstantiation :: ImportEnvironment -> Top.TpScheme -> Top.Tp -> [Top.Tp]
 findInstantiation importEnv t@(Top.Quantification (tvars, _, Top.Qualification (_, tLeft))) tRight
   = fmap (\a -> fromMaybe (Top.TCon "()") $ lookup a instantiations) tvars
   where
-    -- instantiations = traverse (traceShow ("instantiating " ++ show t ++ " with " ++ show tRight) $ tLeft) tRight []
-    instantiations = traverse tLeft tRight []
+    instantiations = traverse (traceShow ("instantiating " ++ show t ++ " with " ++ show tRight) $ tLeft) tRight []
+    -- instantiations = traverse tLeft tRight []
     traverse :: Top.Tp -> Top.Tp -> [(Int, Top.Tp)] -> [(Int, Top.Tp)]
     traverse (Top.TVar a) t2 = ((a, t2) :)
     traverse (Top.TCon _) _ = id
@@ -363,42 +372,38 @@ and applies them in that order to the constructor expression.
 Fills the empty fields with `undefined`
 -}
 createRecordInstantiation :: TypeInferenceOutput 
-                            -> Name 
-                            {- Field name, argument to pass to field, beta var for the argument -}
-                            -> [(Name, Core.Expr, Int)] 
+                            -> Name       {- Constructor name -}
+                            {- Field name, argument to pass to field -}
+                            -> [(Name, Core.Expr)] 
                             -> TpScheme   {- Typescheme corresponding to the beta variable -}
                             -> Int        {- Beta var containing the typeoutput -}
                             -> Core.Expr
-createRecordInstantiation typeOutput name bindings tps beta
+createRecordInstantiation typeOutput@TypeInferenceOutput{..} name bindings tps beta
     = foldl app_
-        (foldl (\e t -> Core.ApType e $ typeToCoreType t) constrExpr tvar)
+        (foldl (\e t -> Core.ApType e $ typeToCoreType t) constrExpr tVars)
           sortedBinds
   where
-    impEnv = importEnv typeOutput
-    recordEnv = recordEnvironment impEnv
-    recordFields = M.assocs $ fromMaybe (err "constructor could not be found") (M.lookup name recordEnv)
+    ImportEnvironment{..} = importEnv
+    recordFields = M.assocs $ fromMaybe (err "constructor could not be found") (M.lookup name recordEnvironment)
     err = internalError "CoreUtils" "createRecordInstantiation"
 
     constrExpr = Core.Con $ Core.ConId $ idFromName name
     -- Find an instantiation of the type variables using the type inferred for the
     -- constructor and the defined typescheme of the constructor 
     outputTp = lookupBeta beta typeOutput
-    tvar = findInstantiation impEnv tps outputTp
+    tVars = findInstantiation importEnv tps outputTp
 
-    binds = map (\(i, expr, _) -> (i, expr)) bindings
     sortedFields = sortOn (\(n, (i, _, _, _)) -> i) recordFields
     sortedBinds
-      = map (\(n, x) -> fieldToExpr (snd4 x) (thd4 x) (lookup n binds)) sortedFields
+      = map (\(n, x) -> fieldToExpr (snd4 x) (thd4 x) (lookup n bindings)) sortedFields
 
     strictOrUndefined :: Bool -> Tp -> Core.Expr
     strictOrUndefined strict tp = if strict
       then err "undefined strict field construction"
-      else coreUndefined impEnv tp
+      else coreUndefined importEnv tp
 
     fieldToExpr :: Bool -> Tp -> Maybe Core.Expr -> Core.Expr
-    fieldToExpr strict tp m = case m of
-      Nothing -> strictOrUndefined strict tp
-      Just expr -> expr
+    fieldToExpr strict tp = fromMaybe (strictOrUndefined strict tp)
 
 {-
 Transforms
@@ -417,77 +422,63 @@ into
                       _     -> patternMatchFail)
         x 1
 -}
--- TODO: Refactor to use constructorsToCase
 createRecordUpdate :: TypeInferenceOutput 
-                    -> ImportEnvironment 
                     {- Old record -}
                     -> Core.Expr 
                     {- Beta variable of the old expression -}
                     -> Int
                     {- Beta variable of the new expression -}
                     -> Int
-                    {- Beta variable containing the type of the emulated constructor -}
-                    -> Int
                     {- Field name, argument to pass to field, beta var for the argument -}
                     -> [(Name, Core.Expr, Int)] 
                     {- Range for the overal expression -}
                     -> Range
                     -> Core.Expr
-createRecordUpdate typeOutput importEnv old oldBeta beta betaFunc bindings range
+createRecordUpdate typeOutput@TypeInferenceOutput{..} old oldBeta beta bindings range
     = foldl app_ (func `app_` old) (map thd4 args)
   where
-    oldTp = traceShow ("old: " ++ show (lookupBeta oldBeta typeOutput)
-              ++ ", new: " ++ show newTp
-              ++ ", func: " ++ show (lookupBeta betaFunc typeOutput)
-              ) $ lookupBeta oldBeta typeOutput
-    newTp = lookupBeta beta typeOutput
-    scrutineeVar = Variable (idFromString "x$") (typeToCoreType oldTp)
+    ImportEnvironment{..} = importEnv
+    error = coreUtilsError "createRecordUpdate"
 
-    func = setTopArgs (map (\(n, i, e, t) -> (strict n, Variable i (findCoreType typeOutput t))) args) body
-    strict n = snd4 $ fromMaybe (coreUtilsError "createRecordUpdate" 
-      ("field could not be found " ++ show n)) (M.lookup n allFields)
+    -- Needed for the scrutinee and pattern matching
+    oldTp = lookupBeta oldBeta typeOutput
+    scrutVar = Variable (idFromString "x$") (typeToCoreType oldTp)
 
-    constructors = mapMaybe (`M.lookup` fieldLookup importEnv) newFields
-    relevantConstructors = if null constructors
-      then []
-      else foldr1 intersect constructors
+    -- Determine which constructors are possible with this field combination
+    constructors = mapMaybe (\x -> fst3 x `M.lookup` fieldLookup) bindings
+    relevantConstrs = foldr1 intersect constructors
+    resultTps = generalizeResult $ fromJust $ 
+      M.lookup (head relevantConstrs) valueConstructors
 
-    recordEnv = recordEnvironment importEnv
-    allFields = M.unions $ mapMaybe (`M.lookup` recordEnv) relevantConstructors
-    oldFields = map (\n -> (n, idFromString (show n))) $ M.keys $ foldr M.delete allFields newFields
-    newFields = map fst3 bindings
-    conNotFound = coreUtilsError "createRecordUpdate" "no constructor could be found"
-    
-    args :: [(Name, Id, Core.Expr, Int)]
+    -- Build up the inner function which will do the actual 'updating'
+    func = createLambdas lambdaArgs body
+    body = constructorsToCase importEnv 
+      (variableName scrutVar) 
+      (typeToCoreType (lookupBeta beta typeOutput)) 
+      range 
+      (findInstantiation importEnv resultTps oldTp) 
+      (map (\n -> (n, oldFields, exec n)) relevantConstrs)
+
+    -- Determine the types and strictness for each of the fields to be updated
     args = map (\(n, e, t) -> (n, idFromString (show n), e, t)) bindings
+    lambdaArgs = map (\(n, i, e, t) -> (strict n, Variable i (findCoreType typeOutput t))) args
+    strict n = snd4 $ fromJust (M.lookup n allFields)
 
-    body :: Core.Expr
-    body = body' relevantConstructors
+    allFields = M.unions $ mapMaybe (`M.lookup` recordEnvironment) relevantConstrs
+    oldFields = map (\n -> (n, idFromString (show n))) $ M.keys $ 
+      foldr (M.delete . fst3) allFields bindings
 
-    body' :: [Name] -> Core.Expr
-    body' []     = patternMatchFail "record expression binding" (typeToCoreType newTp) range
-    body' (c:cs) = constructorToCase' (variableName scrutineeVar) c oldFields (body' cs)
+    fieldToExpr :: Name -> Expr
+    fieldToExpr = Var . idFromString . show 
 
-    -- Chain the arguments
-    setTopArgs :: [(Bool, Variable)] -> Core.Expr -> Core.Expr
-    setTopArgs xs e = Lam True scrutineeVar (foldr (uncurry Lam) e xs)
+    allBinds :: Name -> [(Name, Core.Expr)]
+    allBinds n = fromMaybe (error "(n/a)") $ do 
+      fields <- M.lookup n recordEnvironment
+      return $ map (\(x, _) -> (x, fieldToExpr x)) (M.assocs fields)
+    exec n = createRecordInstantiation typeOutput n (allBinds n) resultTps beta
 
-    constructorToCase' :: Id -> Name -> [(Name, Id)] -> Core.Expr -> Core.Expr
-    constructorToCase' scrutinee c fs
-      = constructorToCase importEnv c scrutinee tvars fs exec
-      where 
-        tvars           = findInstantiation importEnv tps oldTp
-        constrTps       = fromMaybe err $ M.lookup c (valueConstructors importEnv)
-        constrTp        = snd $ functionSpine $ unqualify $ unquantify constrTps
-        tps             = generalizeAll ([] .=>. constrTp)
-        err             = coreUtilsError "constructorToCase'" "non-existing constructor"
-        fields          = fromMaybe conNotFound $ M.lookup c recordEnv
-        sortedFields    = sortOn (fst4 . snd) (M.assocs fields)
-        -- constructorFunc = createInstantiation typeOutput (typeEnvironment importEnv) c True beta
-        exec            =
-          createRecordInstantiation typeOutput c
-            (map (\x -> (fst x, Var (idFromString (show (fst x))), undefined)) sortedFields) tps beta
-          -- foldl Ap constructorFunc (map (Var . idFromString . show . fst) sortedFields)
+    createLambdas :: [(Bool, Variable)] -> Core.Expr -> Core.Expr
+    createLambdas xs e = Lam True scrutVar (foldr (uncurry Lam) e xs)
 
 {-
 Transforms 
@@ -520,21 +511,16 @@ createRecordSelector importEnv r field retTp
       return ts
     tvars = mapMaybe getTVar $ findInstantiation importEnv ty (unqualify (unquantify ty))
 
-    select = constructorsToCase importEnv scrutId (typeToCoreType retTp) r atEachConstructor
-    fieldId = idFromString (show field)
+    select = constructorsToCase importEnv scrutId (typeToCoreType retTp) r instantiated atEachConstructor
     scrutId = idFromString "x$"
-    atEachConstructor = map (\n -> (n, [(field, fieldId)], Var fieldId, instantiated n)) constrs
-    instantiated n = fromMaybe (notFound n) $ do
-      constrTps <- M.lookup n (valueConstructors importEnv)
-      let constrTp = unqualify (unquantify constrTps)
-      return $ sort $ findInstantiation importEnv constrTps constrTp
+    fieldId = idFromString (show field)
+    atEachConstructor = map (, [(field, fieldId)], Var fieldId) constrs
 
     constrs = fromMaybe (notFound field) $ field `M.lookup` fieldLookup importEnv
-    constr = case constrs of
-      [] -> notFound "1"
-      xs -> head xs
+    constr = head constrs
     constrTps
       = fromMaybe (notFound constr) $ M.lookup constr (valueConstructors importEnv)
+    instantiated = sort $ findInstantiation importEnv constrTps (unqualify (unquantify constrTps))
 
     scrutTp = unqualify (unquantify constrTps)
     scrutType = snd $ Core.typeExtractFunction $ toCoreTypeNotQuantified constrTps
@@ -542,19 +528,25 @@ createRecordSelector importEnv r field retTp
     notFound f = coreUtilsError "createRecordSelector" 
       ("no appropriate constructor found for field " ++ show f)
 
+generalizeResult :: TpScheme -> TpScheme
+generalizeResult constrTps = generalizeAll ([] .=>. constrTp)
+  where
+    constrTp = snd $ functionSpine $ unqualify $ unquantify constrTps
+
 -- Helper function for executing code for a multiple constructors
 constructorsToCase :: ImportEnvironment 
                     -> Id           {- Scrutinee's Id -}
                     -> Core.Type    {- Result type -}
                     -> Range        {- Range of the overal expression -}
+                    -> [Tp]         {- Scrutinee's type variables -}
                     {- (Constructor name, Fields to include, What to execute) -}
-                    -> [(Name, [(Name, Id)], Core.Expr, [Tp])]
+                    -> [(Name, [(Name, Id)], Core.Expr)]
                     -> Core.Expr
-constructorsToCase importEnv scrutId resType r fs 
+constructorsToCase importEnv scrutId resType r tps fs 
   = case fs of
     [] -> patternMatchFail "pattern binding" resType r
-    ((n, fields, exec, tps):xs) -> constructorToCase importEnv n scrutId tps fields exec $ 
-                          constructorsToCase importEnv scrutId resType r xs
+    ((n, fields, exec):xs) -> constructorToCase importEnv n scrutId tps fields exec $ 
+                          constructorsToCase importEnv scrutId resType r tps xs
 
 -- Helper function for executing code for a specific constructor
 constructorToCase :: ImportEnvironment 
