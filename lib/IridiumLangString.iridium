@@ -9,10 +9,10 @@ custom @"[]": @data
 #[decl @kind [bytes "* -> *"]]
 data @"[]" {
   #[link @"[]" @data]
-  constructor @"[]": { forall a. [a] } []
+  constructor @"[]": { forall a. [a] } <>
 
   #[link @"[]" @data]
-  constructor @":": { forall a. a -> [a] -> [a] } []
+  constructor @":": { forall a. a -> [a] -> [a] } <>
 }
 
 export_as @_$helium_runtime_unpack_string define @_$helium_runtime_unpack_string(%length: !Int, %pointer: !$UnsafePtr): ([Char]) {
