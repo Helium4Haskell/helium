@@ -12,18 +12,20 @@ import Helium.Main.Compile
 import Helium.Main.Args
 import qualified Helium.CodeGeneration.Iridium.FileCache as Iridium
 
+
 compileFile :: String -> IO ()
-compileFile s = do
+compileFile = compileFile' "../lib" "../demo"
+
+compileFile' :: String -> String -> String -> IO ()
+compileFile' preludePath developLocation s = do
     pwc <- getCurrentDirectory
     putStrLn pwc
-    let developLocation = "../develop"
     let file = developLocation ++ "/" ++ s
     let output = fst (splitExtension file)
-    let preludePath = "../lib"
     doneRef <- newIORef []
     let paths = [preludePath, developLocation]
     cache <- Iridium.newFileCache paths
-    make developLocation file paths [] [Overloading, BuildAll, VerifyBackend] cache doneRef
+    make developLocation file paths [] [Overloading, BuildAll, VerifyBackend, Verbose] cache doneRef
     putStrLn "Compiled!"
     (code, res, err) <- readProcessWithExitCode output [] ""
     putStrLn("Exit code: " ++ show code)

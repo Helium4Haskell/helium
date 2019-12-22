@@ -1,7 +1,7 @@
 name:                   helium
-version:                1.8.4
+version:                1.9
 synopsis:               The Helium Compiler.
-homepage:               http://www.cs.uu.nl/wiki/bin/view/Helium/WebHome
+homepage:               https://github.com/Helium4Haskell/helium
 description:
 
   Helium is a compiler for a subset of Haskell that aims at delivering high
@@ -11,7 +11,7 @@ description:
   to define new type classes and instances.
 
 category:               Compiler
-copyright:              (c) 2014-2016
+copyright:              (c) 2014-2019
 license:                GPL
 license-file:           LICENSE.txt
 author:                 Bastiaan Heeren, Jurriaan Hage
@@ -59,8 +59,8 @@ extra-source-files:
   src/Helium/Syntax/UHA_Pretty.ag
   src/Helium/Syntax/UHA_Syntax.ag
 build-type:             Simple
-cabal-version:          >= 1.10.1.0
-tested-with:            GHC == 7.6.3
+cabal-version:          >= 2
+tested-with:        GHC == 8.2.2, GHC == 8.4.4, GHC == 8.6.5, GHC == 8.8.1
 data-files:
   lib/Char.hs
   lib/HeliumLang.core
@@ -93,7 +93,7 @@ source-repository head
 --------------------------------------------------------------------------------
 
 Executable helium
-  Build-Depends:     base >= 3 && < 5, containers, mtl, parsec, network >= 2.7 && < 3.1, process, transformers, filepath, directory, wl-pprint, Top >= 1.8, lvmlib >= 1.2, helium
+  Build-Depends:     base >= 3 && < 5, containers, mtl, parsec, network >= 2.7 && < 3.1, process, transformers, filepath, directory, wl-pprint, Top >= 1.9, lvmlib >= 1.9, helium
   ghc-options:       -Wall
   default-language:  Haskell98
   hs-source-dirs:    src/commands/helium
@@ -108,7 +108,8 @@ Executable texthint
   default-language:  Haskell98
   hs-source-dirs:    src/commands/texthint
   Main-is:           TextHint/Main.hs
-  other-modules:     Paths_helium, TextHint.ConfigFile                
+  other-modules:     Paths_helium
+                     TextHint.ConfigFile                
 
 --------------------------------------------------------------------------------
 
@@ -119,7 +120,8 @@ Executable runhelium
   hs-source-dirs:    src/commands/runhelium, src/commands/texthint
   Main-is:           RunHelium/Main.hs
   other-modules:     Paths_helium
-
+                     TextHint.ConfigFile
+                     
 --------------------------------------------------------------------------------
 
 Executable heliumpath
@@ -133,7 +135,7 @@ Executable heliumpath
 --------------------------------------------------------------------------------
   
 Library
-  Build-Depends:     base >= 3 && < 5, containers, mtl, parsec, network >= 2.7 && < 3.1, process, transformers, filepath, directory, wl-pprint, Top >= 1.7, lvmlib >= 1.1, llvm-hs-pure, llvm-hs-pretty, text
+  Build-Depends:     base >= 3 && < 5, containers, mtl, parsec, network >= 2.7 && < 3.1, process, transformers, filepath, directory, wl-pprint, Top >= 1.9, lvmlib >= 1.9, llvm-hs-pure, llvm-hs-pretty, text
   ghc-options:       -Wall
   default-language:  Haskell98
   hs-source-dirs:    src dist/build/autogen/uuagc
@@ -215,6 +217,7 @@ Library
     Helium.ModuleSystem.CoreToImportEnv
     Helium.ModuleSystem.DictionaryEnvironment
     Helium.ModuleSystem.ExtractImportDecls
+    Helium.ModuleSystem.GatherImports
     Helium.ModuleSystem.ImportEnvironment
     Helium.Parser.CollectFunctionBindings
     Helium.Parser.LayoutRule
@@ -273,4 +276,6 @@ Library
     Helium.Utils.Texts
     Helium.Utils.Utils
     Helium.Utils.Network
+    Helium.Utils.QualifiedTypes
+    Helium.Utils.QualifiedTypes.Constants
   Other-modules:

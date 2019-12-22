@@ -13,6 +13,9 @@ import System.Directory(doesFileExist, getModificationTime,
 import Helium.Main.Args
 import Helium.Main.CompileUtils
 import Helium.Utils.Utils
+import Helium.StaticAnalysis.Messages.StaticErrors
+import Helium.Syntax.UHA_Utils
+import Helium.Syntax.UHA_Syntax
 import Data.IORef
 import qualified Lvm.Core.Module as Lvm
 import Lvm.Common.Id (Id, stringFromId, idFromString)
@@ -21,6 +24,7 @@ import qualified Lvm.Core.Parsing.Lexer as Lvm
 import qualified Lvm.Core.Parsing.Layout as Lvm
 import qualified Lvm.Core.Module as Lvm
 import qualified Lvm.Core.Expr as Lvm
+import Debug.Trace
 
 -- Prelude will be treated specially
 prelude :: String
@@ -43,22 +47,26 @@ make basedir fullName lvmPath chain options iridiumCache doneRef = do
     Nothing -> do
       let (_, name, ext) = splitFilePath fullName
       imports <- case ext of
-        "hs" -> ((if name == "Prelude" then [] else ["Prelude", "HeliumLang"]) ++) <$> parseOnlyImports fullName
+        "hs" -> ((if name == "Prelude" then [] else ["Prelude", "HeliumLang"]) ++) <$> do
+          ims <- parseOnlyImports fullName
+          return (map show ims)
         "core" -> parseCoreOnlyImports fullName
         "iridium" -> return []
 
+      let chainNames = map nameFromString chain
+
       -- If this module imports a module earlier in the chain, there is a cycle
-      case circularityCheck imports chain of
-        Just cycl -> do
-          putStrLn $ "Circular import chain: \n\t" ++ showImportChain cycl ++ "\n"
-          exitWith (ExitFailure 1)
-        Nothing -> return ()
+      case circularityCheck (map nameFromString imports) chainNames of
+          Just cycl -> do
+            showErrorsAndExit [CircularImport cycl] 1
+          Nothing ->
+            return ()
 
       -- Find all imports in the search path
       resolvedImports <- mapM (resolve lvmPath) imports
 
       -- For each of the imports...
-      compileResults <- forM (zip imports resolvedImports) 
+      compileResults <- forM (zip imports (resolvedImports)) 
         $ \(importModuleName, maybeImportFullName) -> do
 
           -- Issue error if import can not be found in the search path
@@ -91,7 +99,7 @@ make basedir fullName lvmPath chain options iridiumCache doneRef = do
       isRecompiled <- 
           if or compileResults || 
               BuildAll `elem` options || 
-              (BuildOne `elem` options && moduleName == head chain) ||
+              (BuildOne `elem` options && length chain > 0 && moduleName == head chain) ||
               not upToDate 
             then do
               compile basedir fullName options lvmPath iridiumCache (map fst newDone)
@@ -103,14 +111,8 @@ make basedir fullName lvmPath chain options iridiumCache doneRef = do
       -- Remember the fact that we have already been at this module
       writeIORef doneRef ((fullName, isRecompiled):newDone)
       return isRecompiled
-            
-showImportChain :: [String] -> String
-showImportChain = intercalate " imports "
 
-showSearchPath :: [String] -> String
-showSearchPath = unlines . map ("\t" ++)
-
-circularityCheck :: [String] -> [String] -> Maybe [String]
+circularityCheck :: [Name] -> [Name] -> Maybe [Name]
 circularityCheck (import_:imports) chain =
     case elemIndex import_ chain of
         Just index -> Just (drop index chain ++ [import_])

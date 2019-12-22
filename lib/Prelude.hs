@@ -1,8 +1,9 @@
 {- The overloaded Standard Prelude for the Helium Compiler -}
 
-module Prelude where 
+module Prelude(module Prelude, module PreludePrim, module HeliumLang) where 
 
 import PreludePrim
+import HeliumLang
 
 infixr 9  .
 infixl 9  !!
@@ -581,7 +582,7 @@ undefined = error "undefined"
 {-----------------------------------------------
  -- IO
  -----------------------------------------------}
-{-}
+{-
 putChar :: Char -> IO ()
 putChar c = primPutChar c
 
@@ -857,11 +858,6 @@ class Show a where
     showList ls s  = "[" ++ intercalate "," (map (flip shows s) ls) ++ "]"
     showsPrec _ x s = show x ++ s
     show x          = shows x ""
-    {-showList []   s = "[]" ++ s
-    showList (l:ls) s = '[' : shows l (showl ls)
-        where
-            showl []     = ']' : s
-            showl (y:ys) = ',' : shows y (show ys)-}
 
 instance Show Int where
     show = showInt

@@ -29,21 +29,25 @@ SEM Module
                                    foldr (\(n, i) -> insertInstance (show n) i)
                                          (classEnvironment @lhs.importEnvironment)
                                          @body.collectInstances
-           . typeErrors          = case makeTypeErrors @lhs.options @classEnv @orderedTypeSynonyms @substitution @solveErrors of
-                                      []   -> if NoOverloadingTypeCheck `elem` @lhs.options
-                                                 then filter (\(TypeError _ ms _ _) -> not $ isInfixOf "Illegal overloaded type" $ show ms) @body.collectErrors
-                                                 else @body.collectErrors
-                                      errs -> reverse errs
+           . tyConEnv            = typeConstructors @lhs.importEnvironment
+           . typeErrors          = map (convertTypeError (fromQualName (convertMap @tyConEnv))) @typeErrorsBase
+           . typeErrorsBase      =  let unqualifier = unQualifyName @lhs.importEnvironment
+                                    in case makeTypeErrors @lhs.options @classEnv unqualifier @orderedTypeSynonyms @substitution @solveErrors of
+                                        []   -> if NoOverloadingTypeCheck `elem` @lhs.options
+                                                   then filter (\(TypeError _ ms _ _) -> not $ isInfixOf "Illegal overloaded type" $ show ms) @body.collectErrors
+                                                   else @body.collectErrors
+                                        errs -> reverse errs
            . warnings            = @body.collectWarnings -- ++ @tooSpecificWarnings
            . assumptions         = let f xs = [ (n, @substitution |-> tp) | (n, tp) <- xs ]
                                    in M.map f @body.assumptions
            . initialScope        = M.keys (typeEnvironment @lhs.importEnvironment)
            . monos               = map TVar @monomorphics
-           . monomorphics        = ftv (  (M.elems $ valueConstructors @lhs.importEnvironment)
+           . monomorphics        = ftv (  (map (\(_, scheme) -> scheme) $ M.elems $ valueConstructors @lhs.importEnvironment) 
                                        ++ (M.elems $ typeEnvironment   @lhs.importEnvironment)
                                        )
+           . typeConstructors    = typeConstructors @lhs.importEnvironment
            . classMemberTypeSchemes = Nothing
-
+                                  
       body . typeschemeMap = M.fromList (M.assocs @typeschemeMap) -- was a copy rule.
            . betaUnique          = if null @monomorphics
                                      then 0
@@ -63,7 +67,7 @@ SEM MaybeName [ | | isNothing : Bool name : { Maybe Name } ]
 -- Type Inferencing : Body
 
 ATTR Body
-    [
+    [ typeConstructors      : TypeConstructorEnvironment
       monos                 : Monos
     | betaUnique            : Int
     | assumptions           : Assumptions
@@ -99,7 +103,8 @@ ATTR Declaration Declarations MaybeDeclarations RightHandSide Qualifier Qualifie
     |
 ]
 ATTR Declaration Declarations MaybeDeclarations 
-            [   monos:Monos 
+            [   typeConstructors:TypeConstructorEnvironment
+                monos:Monos 
             |   betaUnique:Int 
             |   boundBetas      USE {(++)} {[]} : {[(Name, Tp, [Tp])]} 
                 typeMemberBindings  USE {(++)} {[]} : {[(Name, TpScheme)]}
@@ -122,8 +127,10 @@ SEM Declaration
                . mybdggrp      = let 
                                     assumptions = filterAssumptions @bindings.assumptions
                                     filterAssumptions = M.filterWithKey (\k _ -> not $ k `elem` map fst @lhs.instanceTypes )
-                                  in
-                                 ( M.singleton @bindings.name @beta
+
+                                  in ( if @lhs.isTopLevel then
+                                    M.fromList [(@bindings.name, @beta), (addQualified @lhs.moduleQual @bindings.name, @beta)] 
+                                    else M.fromList [(@bindings.name, @beta)] 
                                  , assumptions
                                  , [ Node [ Phase (-1) [@newcon]
                                           , Receive @lhs.betaDeclUnique
@@ -146,7 +153,9 @@ SEM Declaration
       righthandside . monos         = findMono (chead (M.keys (@pattern.environment))) @lhs.inheritedBDG ++ @lhs.monos
       loc           . betaRight     = TVar @lhs.betaDeclUnique
                     . newcon        = [ (@betaRight .==. @pattern.beta) @cinfo ]
-                    . mybdggrp      = ( @pattern.environment
+                    . mybdggrp      = ( if @lhs.isTopLevel then
+                                            M.foldrWithKey (\n result old -> M.insert (addQualified @lhs.moduleQual n) result old) @pattern.environment @pattern.environment
+                                            else @pattern.environment
                                       , @righthandside.assumptions
                                       , [ @newcon .>.
                                           Node [ @pattern.constraints
@@ -163,20 +172,20 @@ SEM Declaration
                                     
   | TypeSignature
         lhs         . betaUnique = @lhs.betaUnique + 1
-        lhs         . typeMemberBindings = map (\name -> (name, makeTpSchemeFromType @type.self)) @names.self
+        lhs         . typeMemberBindings = map (\name -> (name, makeTpSchemeFromType $ convertTypeToQualified @lhs.importEnvironment @type.self)) @names.self
   | Class
         lhs         . bindingGroups = (@loc.environment, @where.assumptions, @loc.classMembers) : @lhs.bindingGroups
         where       . assumptions   = noAssumptions
         where       . constraints   = emptyTree
         where       . betaUnique    = @lhs.betaUnique + 1 + (length @where.typeMemberBindings)
         where       . classMemberTypeSchemes = appendClasses @where.typeMemberBindings @lhs.allTypeSchemes
-        where       . classPredicate = Just (@simpletype.name, @simpletype.typevariables)
+        where       . classPredicate = Just (@qualName, @simpletype.typevariables)
         loc         . environment   = M.fromList $ map (\((n, _), tp)->(n, tp)) @members
         loc         . classBeta     = TVar @lhs.betaUnique
         loc         . classMembers  = (map (\((_, tpscheme), tp) -> 
                                             let 
                                                 typeVars = @simpletype.typevariables
-                                                className = @simpletype.name
+                                                className = @qualName
                                                 typeIndices = filter (\(_, s) -> s `elem` (map getNameName typeVars)) (getQuantorMap tpscheme)
                                                 typeVariablesMapped = map (\(n, s) -> (fromJust $ find (\tv -> getNameName tv == s) typeVars, TVar n)) typeIndices
                                                 tpWContext = addContextToType className typeVariablesMapped tpscheme
@@ -187,41 +196,44 @@ SEM Declaration
         loc         . members       = zip @where.typeMemberBindings (map TVar [(@lhs.betaUnique + 1)..])
   | Instance
         lhs      . collectErrors        = let 
+                                            unqualifier = unQualifyName @lhs.importEnvironment
                                             checkPredicate :: Predicate -> [TypeError]
-                                            checkPredicate p@(Predicate n v) 
+                                            checkPredicate p@(Predicate _ v) 
                                                 | p `elem` map (superClassToPredicate @instanceBetas) @superClasses = []
-                                                | v `elem` map snd @instanceBetas = [makeMissingInstancePredicateError @range.self @name.self (show $ makeTpSchemeFromType (chead $ @types.self)) p (@superClasses) @instanceBetas]
+                                                | v `elem` map snd @instanceBetas = [makeMissingInstancePredicateError @range.self (unqualifier @qualName)
+                                                                                    (show $ makeTpSchemeFromType (chead $ @types.self)) (convertPredicate unqualifier p) 
+                                                                                    (map (\(n,v') -> (convertString unqualifier n, v')) @superClasses) @instanceBetas]
                                                 | otherwise = []
                                           in (concatMap checkPredicate @lhs.requiredPredicates) ++ @lhs.collectErrors
         where   . assumptions           = noAssumptions
         where   . constraints           = emptyTree
         where   . variableMapping       = Just [(chead $ fst $ @classMembers, @instBeta)]
         where   . classMemberTypeSchemes = appendClasses ((maybe (error "Invalid class name") ((map (\(n, tps, _, _)->(n, tps))).snd)
-                                            $ M.lookup @name.self (classMemberEnvironment @lhs.importEnvironment))) @lhs.allTypeSchemes
+                                            $ M.lookup @qualName (classMemberEnvironment @lhs.importEnvironment))) @lhs.allTypeSchemes
         where   . instanceTypes         = maybe [] ((map (\(n, tps, _, _)->(n, let
                                                     typeVars = fst @classMembers
-                                                    className = @name.self
+                                                    className = @qualName
                                                     typeIndices = filter (\(_, s) -> s `elem` (map getNameName typeVars)) (getQuantorMap tps)
-                                                    typeVariablesMapped = map (\(n, s) -> (fromJust $ find (\tv -> getNameName tv == s) typeVars, TVar n)) typeIndices
+                                                    typeVariablesMapped = map (\(n', s) -> (fromJust $ find (\tv -> getNameName tv == s) typeVars, TVar n')) typeIndices
                                                     tpWContext = addContextToType className typeVariablesMapped tps
-                                                in tpWContext))).snd) $ M.lookup @name.self (classMemberEnvironment @lhs.importEnvironment)
-        loc     . classMembers          = selectClass @lhs.importEnvironment @name.self
+                                                in tpWContext))).snd) $ M.lookup @qualName (classMemberEnvironment @lhs.importEnvironment)
+        loc     . classMembers          = selectClass @lhs.importEnvironment @qualName
         lhs     . bindingGroups         = (noAssumptions,  @where.assumptions, @loc.constraints) : @lhs.bindingGroups
         loc     . constraints           = [Node $ [@where.constraints] ++ @instanceConstraints]
         loc     . superPredicates       = map (
                                                 (\s -> 
                                                     let 
-                                                        Predicate _ tvar = predicate
-                                                        predicate = superClassToPredicate @instanceBetas s
+                                                        Predicate _ tvar = prd
+                                                        prd = superClassToPredicate @instanceBetas s
                                                         tv = (getNameName . fst . fromJust $ find (\ib -> tvar == snd ib) @instanceBetas)
                                                     in superClassToPredicateWithSource 
-                                                        predicate
-                                                        (getNameName @name.self)
+                                                        prd
+                                                        (getNameName @qualName)
                                                         tv
                                                 )
                                             ) @superClasses
         loc     . instanceConstraints   = [     
-                                                (   [TC2 $ Assume pred @cinfo | pred <- map (superClassToPredicate @instanceBetas) @superClasses] ++
+                                                (   [TC2 $ Assume prd @cinfo | prd <- map (superClassToPredicate @instanceBetas) @superClasses] ++
                                                     [(!::!) 
                                                         @loc.instBeta 
                                                         @instanceTpScheme
@@ -230,6 +242,11 @@ SEM Declaration
                                                     ((@loc.instBeta .==. @loc.instsType) @loc.cinfo)
                                                 ]) .>. Node []
                                             ]
+        loc     . typeVariabeles        = namesInType (chead $ @types.self)
+        loc     . memberSuperClassBeta  = [TVar v | v <- [(@lhs.betaUnique + 2 + length @typeVariabeles)..]]
+        loc     . memberBetas           = matchClassDefinitionToInstanceDefinition 
+                                                (maybe (error "Unknown class") (map (\(n, tp, _, _) -> (n, tp)).snd) $ M.lookup @qualName $ classMemberEnvironment @lhs.importEnvironment) $ 
+                                                map (\(n, b, _) -> (n, b)) @where.boundBetas
         loc     . cinfo                 = resultConstraint "instance definition" @parentTree [SkolemizedTypeScheme ([], @instanceTpScheme), TypeSignatureLocation @range.self]
  
 ATTR Constructors Constructor FieldDeclarations FieldDeclaration [ monos : Monos | bindingGroups : BindingGroups | ]
@@ -262,7 +279,6 @@ SEM FieldDeclaration
                             )
 
 {
-
 appendClasses :: [(Name, TpScheme)] -> M.Map NameWithRange TpScheme -> Maybe [(Name, TpScheme)]
 appendClasses typeMemberBindings allTypeSchemes = Just (map lookupScheme typeMemberBindings)
     where
@@ -270,7 +286,9 @@ appendClasses typeMemberBindings allTypeSchemes = Just (map lookupScheme typeMem
         lookupScheme (n, _) = (n, fromMaybe ((fromJust $ lookup n $ map (\(NameWithRange n', t) -> (n', t)) $ M.toList allTypeSchemes)) $ M.lookup (NameWithRange n) (allTypeSchemes))
 
 constructDictionaryName :: Name -> String -> Name
-constructDictionaryName (Name_Identifier range modules name) s = Name_Identifier range modules ("($dict" ++ name ++ "$" ++ s ++ ")")    
+constructDictionaryName (Name_Identifier range modules origin name) s = 
+      Name_Identifier range modules origin ("($dict" ++ name ++ "$" ++ s ++ ")")    
+constructDictionaryName _ _ = error "<unforseen situation in constructDictionaryName>"
 
 classVariablesToBeta :: Int -> Names -> [(Name, Tp)]
 classVariablesToBeta _ [] = []
@@ -327,12 +345,29 @@ instanceEq (TVar _) (TVar _) = True
 instanceEq (TVar _) (TCon "???") = True
 instanceEq (TCon "???") (TVar _) = True
 instanceEq (TApp f1 a1) (TApp f2 a2) = instanceEq f1 f2 && instanceEq a1 a2
-instanceEq x y = False
+instanceEq _            _            = False
 
 
 getInstanceFunctions :: (Instance, Types, [(Name, TpScheme)]) -> [(Name, TpScheme)]
 getInstanceFunctions (_, _, funcs) = funcs
 
+convertTypeError :: (Name -> Name) -> TypeError -> TypeError
+convertTypeError f (TypeError ran theLines table hints) = 
+   let newtab = map (\(b, block1, block2) -> (b, changeMessageBlock f block1, changeMessageBlock f block2)) table
+       newlines = map (changeMessageLine f) theLines
+       newhints = map (\(str, block) -> (str, changeMessageBlock f block)) hints
+   in TypeError ran newlines newtab newhints
+
+changeMessageLine :: (Name -> Name) -> MessageLine -> MessageLine
+changeMessageLine f (MessageOneLiner block) = MessageOneLiner (changeMessageBlock f block)
+changeMessageLine f (MessageTable table) = MessageTable $ map (\(indent, block1, block2) -> (indent, changeMessageBlock f block1, changeMessageBlock f block2)) table
+changeMessageLine f (MessageHints str blocks) = MessageHints str (map (changeMessageBlock f) blocks)
+
+changeMessageBlock :: (Name -> Name) -> MessageBlock -> MessageBlock
+changeMessageBlock f (MessageType tps) = MessageType (convertTpScheme f tps)
+changeMessageBlock f (MessagePredicate (Predicate str tp)) = MessagePredicate (Predicate str (convertTp f tp))
+changeMessageBlock f (MessageCompose blocks) = MessageCompose (map (changeMessageBlock f) blocks)
+changeMessageBlock _ block = block
 }
 
 SEM MaybeDeclarations
@@ -346,7 +381,8 @@ SEM MaybeDeclarations
 ---------------------------------------------------------------------------------------
 -- Type Inferencing : FunctionBinding, FunctionBindings
 
-ATTR FunctionBinding FunctionBindings [ betasLeft:Tps betaRight:Tp monos:Monos | betaUnique:Int | assumptions:Assumptions numberOfPatterns:Int name:Name ]
+ATTR FunctionBinding FunctionBindings [ typeConstructors : TypeConstructorEnvironment betasLeft:Tps betaRight:Tp monos:Monos | betaUnique:Int 
+                                      | assumptions:Assumptions numberOfPatterns:Int name:Name ]
 ATTR FunctionBinding                  [ | | constraints:ConstraintSet]
 ATTR                 FunctionBindings [ | | constraintslist:ConstraintSets]
 
@@ -382,7 +418,7 @@ SEM FunctionBindings
 ---------------------------------------------------------------------------------------
 -- Type Inferencing : LeftHandSide, RightHandSide
 
-ATTR LeftHandSide RightHandSide [ monos:Monos | betaUnique:Int | constraints:ConstraintSet ]
+ATTR LeftHandSide RightHandSide [ typeConstructors : TypeConstructorEnvironment monos:Monos | betaUnique:Int | constraints:ConstraintSet ]
 ATTR LeftHandSide               [ | | betas:Tps environment:PatternAssumptions numberOfPatterns:Int name:Name ]
 ATTR              RightHandSide [ betaRight:Tp | | assumptions:Assumptions ]
 
@@ -431,7 +467,7 @@ SEM RightHandSide
 ---------------------------------------------------------------------------------------
 -- Type Inferencing : Expression, Expressions, MaybeExpression
 
-ATTR Expression Expressions MaybeExpression [ monos:Monos | betaUnique:Int | assumptions:Assumptions ]
+ATTR Expression Expressions MaybeExpression [ typeConstructors : TypeConstructorEnvironment monos:Monos | betaUnique:Int | assumptions:Assumptions ]
 ATTR Expression                             [ | | beta:Tp constraints:ConstraintSet ]
 ATTR            Expressions                 [ | | betas:Tps constraintslist:ConstraintSets ]
 ATTR                        MaybeExpression [ | | beta:Tp constraints:ConstraintSet section:Bool ]
@@ -452,8 +488,8 @@ SEM Expression
           . constraints  = listTree @newcon
           . beta         = TVar @lhs.betaDeclUnique
           . newcon       = case M.lookup @name.self (valueConstructors @lhs.importEnvironment) of
-                              Nothing  -> []
-                              Just ctp -> [ (@beta .::. ctp) @cinfo ]
+                              Nothing            -> []
+                              Just (_, ctp) -> [ (@beta .::. ctp) @cinfo ]
 
   | RecordConstruction
       recordExpressionBindings . betaConstr = @beta
@@ -469,9 +505,8 @@ SEM Expression
                      let sortedBetas = map (\(n, (i, _, _, _)) -> fromMaybe (TVar (@lhs.betaUnique + i + 1))
                             (lookup n @recordExpressionBindings.betasMap)) sortedFields
                      let recordFunc = foldr (.->.) @beta sortedBetas
-                     tps <- M.lookup @name.self (valueConstructors @lhs.importEnvironment)
-                     ctp <- M.lookup @name.self (valueConstructors @lhs.importEnvironment)
-                     let t = generalizeAll ([] .=>. snd (functionSpine (unqualify (unquantify tps))))
+                     (_, ctp) <- M.lookup @name.self (valueConstructors @lhs.importEnvironment)
+                     let t = generalizeAll ([] .=>. snd (functionSpine (unqualify (unquantify ctp))))
                      return ( [(@beta .::. t) @cinfoResult]
                             , [(@betaFunc .==. recordFunc) @cinfoFunc, (recordFunc .::. ctp) @cinfoFunc]
                             , sortedFields
@@ -479,7 +514,8 @@ SEM Expression
 
   | RecordUpdate
       recordExpressionBindings . betaConstr = @beta
-      lhs . betaUnique = @lhs.betaUnique + length @sortedFields + 1
+      recordExpressionBindings . betaUnique = @expression.betaUnique
+      expression . betaUnique = @lhs.betaUnique + length @sortedFields + 1
       loc . assumptions  = @expression.assumptions `combine` @recordExpressionBindings.assumptions
           . constraints  = @newcon .>. @conMissing .>. @conFunc .>. Node
                                 [ @conExpr .<. @expression.constraints
@@ -491,7 +527,7 @@ SEM Expression
                     let fieldsPresent = map fst @recordExpressionBindings.betasMap
                     let constructors = concat $ catMaybes $ map (\n -> M.lookup n (fieldLookup @lhs.importEnvironment)) fieldsPresent
                     let constructor = head $ reverse $ sortOn (\n -> M.size $ fromJust (M.lookup n recordEnv)) constructors
-                    ctp <- M.lookup constructor (valueConstructors @lhs.importEnvironment)
+                    (_, ctp) <- M.lookup constructor (valueConstructors @lhs.importEnvironment)
                     recordFields <- M.lookup constructor recordEnv
                     let sortedFields = sortOn (\(n, (i, _, _, _)) -> i) (M.assocs recordFields)
                     let sortedBetas = map (\(n, (i, _, _, _)) -> fromMaybe (TVar (@lhs.betaUnique + i + 1))
@@ -559,7 +595,7 @@ SEM Expression
                                            , @conElse  .<. @elseExpression.constraints
                                            ]
                       . beta        = TVar @lhs.betaUnique
-                      . conGuard    = [ (@guardExpression.beta .==. boolType) @cinfoGuard ]
+                      . conGuard    = [ (@guardExpression.beta .==. boolQualType) @cinfoGuard ]
                       . conThen     = [ (@thenExpression.beta  .==. @beta   ) @cinfoThen  ]
                       . conElse     = [ (@elseExpression.beta  .==. @beta   ) @cinfoElse  ]
 
@@ -606,7 +642,7 @@ SEM Expression
                  . beta          = TVar @lhs.betaUnique
                  . betaMonad     = TVar $ @lhs.betaDeclUnique
                  . betaVar       = TVar $ @lhs.betaDeclUnique + 1
-                 . monadPredicate = Predicate "Monad" @betaMonad
+                 . monadPredicate = Predicate "Prelude.Monad" @betaMonad
                  . monadType     = TApp @betaMonad @betaVar
                  . monadBeta     = quantify [] ([@monadPredicate] .=>. @monadType)
                  . newcon        = case @statements.generatorBeta of
@@ -633,7 +669,8 @@ SEM Expression
                  . constraints = @conResult .>.
                                  Node [ @conExpr .<. @expression.constraints ]
                  . beta        = TVar @lhs.betaUnique
-                 . typeScheme  = makeTpSchemeFromType @type.self
+                 . qualType    = convertTypeToQualified @lhs.importEnvironment @type.self
+                 . typeScheme  = makeTpSchemeFromType @qualType 
                  . conResult   = [ (@beta            .::. @typeScheme) @cinfoResult          ]
                  . conExpr     = [ (@expression.beta !::! @typeScheme) @lhs.monos @cinfoExpr ]
 
@@ -660,8 +697,8 @@ SEM Expression
             . overloaded   = case M.lookup enumFromName (typeEnvironment @lhs.importEnvironment) of
                                 Just scheme -> isOverloaded scheme
                                 Nothing     -> False
-            . elementType  = if @overloaded then TVar @lhs.betaDeclUnique else intType
-            . conPredicate = if @overloaded then [predicate (Predicate "Enum" @elementType) @cinfoPred] else []
+            . elementType  = if @overloaded then TVar @lhs.betaDeclUnique else intQualType
+            . conPredicate = if @overloaded then [predicate (Predicate "Prelude.Enum" @elementType) @cinfoPred] else []
             . conList      = [ (listType @elementType .==. @beta) @cinfoResult ]
             . conFrom      = [ (@from.beta .==. @elementType) @cinfoFrom ]
             . conThen      = [ (@then.beta .==. @elementType) @cinfoThen ]
@@ -680,7 +717,7 @@ SEM Expression
        expression . betaUnique  = @lhs.betaUnique + 1
        loc        . constraints = @newcon .>. Node [ @expression.constraints ]
                   . beta        = TVar @lhs.betaUnique
-                  . newcon      = [ (floatType .->. floatType .==. @expression.beta .->. @beta) @cinfo]
+                  . newcon      = [ (floatQualType .->. floatQualType .==. @expression.beta .->. @beta) @cinfo]
 
 SEM Expressions
 
@@ -709,7 +746,7 @@ SEM MaybeExpression
 ---------------------------------------------------------------------------------------
 -- Type Inferencing : GuardedExpression, GuardedExpressions
 
-ATTR GuardedExpressions GuardedExpression [ numberOfGuards:Int monos:Monos betaRight:Tp | betaUnique:Int | assumptions:Assumptions ]
+ATTR GuardedExpressions GuardedExpression [ typeConstructors : TypeConstructorEnvironment numberOfGuards:Int monos:Monos betaRight:Tp | betaUnique:Int | assumptions:Assumptions ]
 ATTR GuardedExpressions                   [ | | constraintslist:ConstraintSets ]
 ATTR                    GuardedExpression [ | | constraints:ConstraintSet      ]
 
@@ -720,7 +757,7 @@ SEM GuardedExpression
                                , @newconExpr  .<. @expression.constraints
                                ]
           . assumptions = @guard.assumptions `combine` @expression.assumptions
-      loc . newconGuard = [ (@guard.beta .==. boolType) @cinfoGuard ]
+      loc . newconGuard = [ (@guard.beta .==. boolQualType) @cinfoGuard ]
           . newconExpr  = [ (@expression.beta .==. @lhs.betaRight) @cinfoExpr ]
 
 SEM GuardedExpressions
@@ -774,7 +811,7 @@ SEM RecordExpressionBindings
 ---------------------------------------------------------------------------------------
 -- Type Inferencing : Pattern
 
-ATTR Pattern Patterns [ monos:Monos | betaUnique:Int | environment:PatternAssumptions ]
+ATTR Pattern Patterns [ typeConstructors : TypeConstructorEnvironment monos:Monos | betaUnique:Int | environment:PatternAssumptions ]
 ATTR Pattern          [ | | constraints:ConstraintSet ]
 ATTR         Patterns [ | | betas:Tps constraintslist:ConstraintSets numberOfPatterns:Int ]
 
@@ -802,8 +839,8 @@ SEM Pattern
                   . betaCon        = TVar @lhs.betaUnique
                   . conApply       = [ (@betaCon .==. @leftPattern.beta .->. @rightPattern.beta .->. @beta) @cinfoApply ]
                   . conConstructor = case M.lookup @constructorOperator.self (valueConstructors @lhs.importEnvironment) of
-                                        Nothing  -> []
-                                        Just ctp -> [ (@betaCon .::. ctp) @cinfoConstructor ]
+                                        Nothing            -> []
+                                        Just (_, ctp) -> [ (@betaCon .::. ctp) @cinfoConstructor ]
 
   | Constructor
       patterns . betaUnique     = @lhs.betaUnique + 1
@@ -815,8 +852,8 @@ SEM Pattern
                . conApply       = [ (@betaCon .==. foldr (.->.) @beta @patterns.betas)
                                     (if @patterns.numberOfPatterns == 0  then @cinfoEmpty else @cinfoApply) ]
                . conConstructor = case M.lookup @name.self (valueConstructors @lhs.importEnvironment) of
-                                     Nothing  -> []
-                                     Just ctp -> [ (@betaCon .::. ctp) @cinfoConstructor ]
+                                     Nothing            -> []
+                                     Just (_, ctp) -> [ (@betaCon .::. ctp) @cinfoConstructor ]
 
   | Record
       recordPatternBindings . betaUnique  = @lhs.betaUnique + 1
@@ -865,7 +902,7 @@ SEM Pattern
       lhs . environment = noAssumptions
       loc . constraints = listTree @newcon
           . newcon      = -- The parser only accepts a literal after '-.' in a Pattern
-                          [ (floatType .==. @beta) @cinfo ]
+                          [ (floatQualType .==. @beta) @cinfo ]
 
 SEM Patterns
 
@@ -921,7 +958,7 @@ SEM RecordPatternBinding
 ---------------------------------------------------------------------------------------
 -- Type Inferencing : Alternative, Alternatives
 
-ATTR Alternative Alternatives [ betaLeft:Tp betaRight:Tp monos:Monos | betaUnique:Int | assumptions:Assumptions ]
+ATTR Alternative Alternatives [ typeConstructors : TypeConstructorEnvironment betaLeft:Tp betaRight:Tp monos:Monos | betaUnique:Int | assumptions:Assumptions ]
 ATTR Alternative              [ | | constraints:ConstraintSet ]
 ATTR             Alternatives [ | | constraintslist:ConstraintSets ]
 
@@ -957,7 +994,7 @@ SEM Alternatives
 ---------------------------------------------------------------------------------------
 -- Type Inferencing : Statement, Statements, Qualifier, Qualifiers
 
-ATTR Statement Statements Qualifier Qualifiers [ | assumptions:Assumptions betaUnique:Int constraints:ConstraintSet | ]
+ATTR Statement Statements Qualifier Qualifiers [ typeConstructors : TypeConstructorEnvironment | assumptions:Assumptions betaUnique:Int constraints:ConstraintSet | ]
 ATTR Statement Statements                      [ monadBeta : Tp | generatorBeta:{Maybe Tp} | ]
 ATTR Statement            Qualifier Qualifiers [ | monos:Monos | ]
 ATTR           Statements                      [ monos:Monos | | ]
@@ -1023,7 +1060,7 @@ SEM Qualifier
       loc . locConstraints = Node [ @newcon .<. @guard.constraints
                                   , @lhs.constraints
                                   ]
-          . newcon      = [ (@guard.beta .==. boolType) @cinfo ]
+          . newcon      = [ (@guard.beta .==. boolQualType) @cinfo ]
 
   | Let   declarations . bindingGroups  = []
           (lhs.assumptions, lhs.constraints, loc.inheritedBDG, loc.chunkNr, lhs.betaUnique, loc.implicitsFM) =
@@ -1060,7 +1097,7 @@ SEM Qualifiers
 ATTR Literal [ | | literalType:Tp ]
 
 SEM Literal
-  | Int     lhs . literalType = intType
-  | Char    lhs . literalType = charType
-  | String  lhs . literalType = stringType
-  | Float   lhs . literalType = floatType
+  | Int     lhs . literalType = intQualType    --intType
+  | Char    lhs . literalType = charQualType   --charType
+  | String  lhs . literalType = stringQualType --stringType
+  | Float   lhs . literalType = floatQualType  --floatType

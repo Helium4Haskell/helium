@@ -1,0 +1,7 @@
+Prelude is up to date
+Compiling exports/Export17.hs
+(1,23): "Hello" is not the parent of exported constructor "Empt". Exported constructors can only be exported with the correct parent.
+  Hint: Did you mean to export "Empt" with parent "Listt"?
+(1,37): "Listt2" is not the parent of exported constructor "Empt". Exported constructors can only be exported with the correct parent.
+  Hint: Did you mean to export "Empty" with parent "Listt2"?
+Compilation failed with 2 errors

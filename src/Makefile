@@ -11,7 +11,7 @@ default: all
 all: ag
 
 AG      = uuagc -P Helium/Syntax -P Helium/StaticAnalysis/StaticChecks -P Helium/StaticAnalysis/Inferencers -P Helium/CodeGeneration -P Helium/StaticAnalysis/Directives
-AG_OPTS = -mscfrw --kennedywarren
+AG_OPTS = -mscfrw --kennedywarren --bangpats
 
 AG_OUT_DIR=../dist/build/autogen/uuagc
 

@@ -1,4 +1,4 @@
-{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE MonoLocalBinds, FlexibleContexts #-}
 
 {-| Module      :  RepairHeuristics
     License     :  GPL
@@ -18,6 +18,7 @@ import Top.Interface.TypeInference
 import Top.Interface.Qualification hiding (contextReduction)
 import Helium.Syntax.UHA_Syntax (Range)
 import Helium.Utils.OneLiner (OneLineTree)
+import Helium.Utils.QualifiedTypes.Constants
 import Top.Implementation.TypeGraph.Heuristic
 import Top.Implementation.TypeGraph.Basics
 import Top.Implementation.TypeGraph.ClassMonadic
@@ -26,7 +27,6 @@ import Helium.StaticAnalysis.Messages.Messages (showNumber, ordinal, prettyAndLi
 import Helium.StaticAnalysis.Heuristics.OnlyResultHeuristics
 import Data.List
 import Helium.StaticAnalysis.Miscellaneous.UHA_Source
-
 -----------------------------------------------------------------------------
 
 type Siblings = [[(String, TpScheme)]]
@@ -55,7 +55,7 @@ siblingFunctions siblings =
                           case [ s | (True, (s, _)) <- zip fits candidates ] of
                              [] -> return Nothing
                              siblings' ->    -- TODO: put all siblings in the message
-                                let siblingsTextual = orList siblings'
+                                let siblingsTextual = orList . nub $ siblings'
                                     hint = fixHint ("use "++siblingsTextual++" instead")
                                 in return $ Just
                                        (10,"Sibling(s) "++siblingsTextual++" instead of "++show name, [edge], hint info)
@@ -100,22 +100,22 @@ siblingLiterals =
 
                case (literal,mtp) of
 
-                  ("Int", Just (TCon "Float"))
+                  ("Int", Just (TCon "LvmLang.Float"))
                        -> let hint = fixHint "use a float literal instead"
                           in return $ Just
                                 (5, "Int literal should be a Float", [edge], hint info)
 
-                  ("Float", Just (TCon "Int" ))
+                  ("Float", Just (TCon "LvmLang.Int" ))
                        -> let hint = fixHint "use an int literal instead"
                           in return $ Just
                                 (5, "Float literal should be an Int", [edge], hint info)
 
-                  ("Char", Just (TApp (TCon "[]") (TCon "Char"))) 
+                  ("Char", Just (TApp (TCon "[]") (TCon "LvmLang.Char"))) 
                        -> let hint = fixHint "use a string literal instead"
                           in return $ Just
                                 (5, "Char literal should be a String", [edge], hint info)
 
-                  ("String", Just (TCon "Char"))   
+                  ("String", Just (TCon "LvmLang.Char"))   
                        -> let hint = fixHint "use a char literal instead"
                           in return $ Just
                                 (5, "String literal should be a Char", [edge], hint info)
@@ -150,8 +150,8 @@ similarNegation  =
                            in return $ Just
                                  (6, "Float negation instead of int negation", [edge], hint info)
                        
-                    where intNegation       = unifiable synonyms tp (intType .->. intType)
-                          floatNegation     = unifiable synonyms tp (floatType .->. floatType)
+                    where intNegation       = unifiable synonyms tp (intQualType .->. intQualType)
+                          floatNegation     = unifiable synonyms tp (floatQualType .->. floatQualType)
                           intNegationEdge   = isIntNegation
                           floatNegationEdge = not isIntNegation                                         
 
@@ -494,16 +494,16 @@ unaryMinus overloading =
                   let contextType = fmap (snd . functionSpineOfLength 2 . expandType (snd synonyms)) mt2
                   case (someLiteral, leftType, contextType) of
                      (Left int, Just leftTp, Just contextTp) 
-                        | unifiable synonyms leftTp (intType .->. contextTp) -> 
+                        | unifiable synonyms leftTp (intQualType .->. contextTp) -> 
                              let hint = possibleHint ("Insert parentheses to negate the int literal: (-"++show int++")")
                              in return $ Just 
                                    (5, "Unary minus for int", [edge], hint info)
                      (Right float, Just leftTp, Just contextTp) 
-                        | unifiable synonyms leftTp (floatType .->. contextTp) && not overloading -> 
+                        | unifiable synonyms leftTp (floatQualType .->. contextTp) && not overloading -> 
                              let hint = possibleHint ("Insert parentheses to negate the float literal: (-."++show float++")")
                              in return $ Just 
                                    (5, "Unary minus for float", [edge], hint info)
-                        | unifiable synonyms leftTp (floatType .->. contextTp) && overloading -> 
+                        | unifiable synonyms leftTp (floatQualType .->. contextTp) && overloading -> 
                              let hint = possibleHint ("Insert parentheses to negate the float literal: (-"++show float++")")
                              in return $ Just 
                                    (5, "Unary minus for float (overloading)", [edge], hint info)

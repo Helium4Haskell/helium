@@ -17,10 +17,10 @@ import Helium.Utils.Utils (internalError)
 import Helium.Syntax.UHA_Syntax -- (Name)
 import Helium.Syntax.UHA_Utils
 import Helium.Syntax.UHA_Range
-import Helium.StaticAnalysis.Directives.TS_Syntax
-import Helium.StaticAnalysis.Miscellaneous.TypeConversion
+import Helium.StaticAnalysis.Directives.TS_Syntax()
+import Helium.StaticAnalysis.Miscellaneous.TypeConversion()
 import Helium.StaticAnalysis.Miscellaneous.ConstraintInfo
-import Helium.StaticAnalysis.Messages.Messages
+import Helium.StaticAnalysis.Messages.Messages()
 import Top.Types
 import Lvm.Core.Module (Field(..))
 
@@ -36,11 +36,12 @@ import qualified Data.Map as M
 
 type HasDefault = Bool
 
-type TypeEnvironment             = M.Map Name TpScheme
-type ValueConstructorEnvironment = M.Map Name TpScheme
-type TypeConstructorEnvironment  = M.Map Name Int
-type TypeSynonymEnvironment      = M.Map Name (Int, Tps -> Tp)
-type ClassMemberEnvironment      = M.Map Name (Names, [(Name, TpScheme, Bool, HasDefault)])
+type TypeEnvironment             = M.Map Name TpScheme {- Type scheme-}
+type ValueConstructorEnvironment = M.Map Name (Name, TpScheme) {-Parent, Type scheme-}
+type TypeConstructorEnvironment  = M.Map Name (Int, Name) {-Arity, Original qualified name-}
+type TypeSynonymEnvironment      = M.Map Name (Int, Tps -> Tp) {-Arity, function-}
+type ClassMemberEnvironment      = M.Map Name (Names, [(Name, TpScheme, Bool, HasDefault)]) {-Member, original module-}
+type ClassNameEnvironment        = M.Map Name Name {-Name to original qualified name-}
 type InstanceEnvironment         = M.Map (Name, Tp) (Names, [(String, String)])
 type RecordEnvironment           = M.Map Name (M.Map Name (Int, Bool, Tp, TpScheme))
 type FieldLookup                 = M.Map Name [Name]
@@ -55,7 +56,8 @@ data ImportEnvironment  =
                        , valueConstructors :: ValueConstructorEnvironment
                        , operatorTable     :: OperatorTable
                          -- type classes
-                       , classEnvironment  :: ClassEnvironment
+                       , classNameEnvironment   :: ClassNameEnvironment
+                       , classEnvironment       :: ClassEnvironment
                        , classMemberEnvironment :: ClassMemberEnvironment
                          -- other
                        , instanceEnvironment :: InstanceEnvironment
@@ -72,6 +74,7 @@ emptyEnvironment = ImportEnvironment
    , typeEnvironment   = M.empty
    , valueConstructors = M.empty
    , operatorTable     = M.empty
+   , classNameEnvironment = M.empty
    , classEnvironment  = emptyClassEnvironment
    , classMemberEnvironment = M.empty
    , instanceEnvironment = M.empty
@@ -80,15 +83,15 @@ emptyEnvironment = ImportEnvironment
    , typingStrategies  = []
    }
 
-addTypeConstructor :: Name -> Int -> ImportEnvironment -> ImportEnvironment
-addTypeConstructor name int importenv =
-   importenv {typeConstructors = M.insert name int (typeConstructors importenv)}
+addTypeConstructor :: Name -> (Int, Name) -> ImportEnvironment -> ImportEnvironment
+addTypeConstructor name (int, fullname) importenv =
+   importenv {typeConstructors = M.insert name (int, fullname) (typeConstructors importenv)}
 
 -- add a type synonym also to the type constructor environment
-addTypeSynonym :: Name -> (Int,Tps -> Tp) -> ImportEnvironment -> ImportEnvironment
-addTypeSynonym name (arity, function) importenv =
+addTypeSynonym :: Name -> (Int,Tps -> Tp, Name) -> ImportEnvironment -> ImportEnvironment
+addTypeSynonym name (arity, function, fullname) importenv =
    importenv { typeSynonyms     = M.insert name (arity, function) (typeSynonyms importenv)
-             , typeConstructors = M.insert name arity (typeConstructors importenv)
+             , typeConstructors = M.insert name (arity, fullname) (typeConstructors importenv)
              }
 
 addType :: Name -> TpScheme -> ImportEnvironment -> ImportEnvironment
@@ -98,10 +101,13 @@ addType name tpscheme importenv =
 addToTypeEnvironment :: TypeEnvironment -> ImportEnvironment -> ImportEnvironment
 addToTypeEnvironment new importenv =
    importenv {typeEnvironment = typeEnvironment importenv `M.union` new}
-
-addValueConstructor :: Name -> TpScheme -> ImportEnvironment -> ImportEnvironment
-addValueConstructor name tpscheme importenv =
-   importenv {valueConstructors = M.insert name tpscheme (valueConstructors importenv)}
+   
+addValueConstructor :: Name -> TpScheme -> Name -> ImportEnvironment -> ImportEnvironment
+addValueConstructor name tpscheme parent importenv = 
+   importenv {valueConstructors = M.insert name (parent, tpscheme) (valueConstructors importenv)}
+   
+setValueConstructors :: M.Map Name (Name, TpScheme) -> ImportEnvironment -> ImportEnvironment  
+setValueConstructors new importenv = importenv {valueConstructors = new} 
 
 addRecordFields :: Name -> [(Name, Bool)] -> ImportEnvironment -> ImportEnvironment
 addRecordFields constr []     importenv = importenv
@@ -111,7 +117,7 @@ addRecordFields constr fields importenv =
         names :: [Name]
         names = map fst fields
         constrTps :: TpScheme
-        constrTps = fromMaybe (importEnvError "constructor does not exist in environment")
+        constrTps = snd $ fromMaybe (importEnvError "constructor does not exist in environment")
             (M.lookup constr (valueConstructors importenv))
         (args, ret) = functionSpine $ unqualify $ unquantify constrTps
         fieldToImport :: (Name, Bool) -> (Name, (Int, Bool, Tp, TpScheme))
@@ -130,14 +136,11 @@ addRecordFields constr fields importenv =
                 (fieldLookup importenv) fields
             }
 
-addOperator :: Name -> (Int,Assoc) -> ImportEnvironment -> ImportEnvironment
-addOperator name pair importenv =
-   importenv {operatorTable = M.insert name pair (operatorTable importenv) }
+addOperator :: Name -> (Int,Assoc) -> ImportEnvironment -> ImportEnvironment  
+addOperator name pair importenv = 
+   importenv {operatorTable = M.insert name pair (operatorTable importenv) } 
 
-setValueConstructors :: M.Map Name TpScheme -> ImportEnvironment -> ImportEnvironment
-setValueConstructors new importenv = importenv {valueConstructors = new}
-
-setTypeConstructors :: M.Map Name Int -> ImportEnvironment -> ImportEnvironment
+setTypeConstructors :: M.Map Name (Int, Name) -> ImportEnvironment -> ImportEnvironment     
 setTypeConstructors new importenv = importenv {typeConstructors = new}
 
 setTypeSynonyms :: M.Map Name (Int,Tps -> Tp) -> ImportEnvironment -> ImportEnvironment
@@ -155,6 +158,16 @@ getOrderedTypeSynonyms importEnvironment =
                   in M.foldrWithKey insertIt M.empty (typeSynonyms importEnvironment)
        ordering = fst (getTypeSynonymOrdering synonyms)
    in (ordering, synonyms)
+   
+-- Change the classNameEnvironment in an importEnvironment
+setClassNameEnvironment :: ClassNameEnvironment -> ImportEnvironment -> ImportEnvironment
+setClassNameEnvironment cs env = env { classNameEnvironment = cs }
+
+-- Add a class and its fully qualified name to the classNameEnvironment of an importEnvironment
+addClassName :: Name -> Name -> ImportEnvironment -> ImportEnvironment
+addClassName name qualifiedname env = 
+   let newClassNameEnv = (M.insert name qualifiedname (classNameEnvironment env))
+   in setClassNameEnvironment newClassNameEnv env
 
 setClassMemberEnvironment :: ClassMemberEnvironment -> ImportEnvironment -> ImportEnvironment
 setClassMemberEnvironment new importenv = importenv { classMemberEnvironment = new }
@@ -162,12 +175,12 @@ setClassMemberEnvironment new importenv = importenv { classMemberEnvironment = n
 addClassMember :: Name -> (Names, [(Name, TpScheme, Bool, HasDefault)]) -> ImportEnvironment -> ImportEnvironment
 addClassMember name members env = 
     let 
-        envMember =  setClassMemberEnvironment (M.insert name members (classMemberEnvironment env)) env
-        classEnv = classEnvironment envMember
-        classEntry =    if M.member (getNameName name) (classEnvironment envMember) then
-                            M.insert (getNameName name) ([], []) (classEnvironment envMember)
-                        else
-                            classEnvironment envMember -- update existing member with superclasses
+        envMember  = setClassMemberEnvironment (M.insert name members (classMemberEnvironment env)) env
+        classEnv   = classEnvironment envMember
+        classEntry = if M.member (getNameName name) classEnv then
+                       M.insert (getNameName name) ([], []) classEnv
+                     else
+                       classEnv -- update existing member with superclasses
         envClass = setClassEnvironment classEntry envMember
     in envClass
     
@@ -211,11 +224,15 @@ getSiblingGroups importenv =
 getSiblings :: ImportEnvironment -> Siblings
 getSiblings importenv =
    let f s = [ (s, ts) | ts <- findTpScheme (nameFromString s) ]
-       findTpScheme n =
-          catMaybes [ M.lookup n (valueConstructors importenv)
+       findTpScheme n = 
+          catMaybes [ valueConsTpScheme n
                     , M.lookup n (typeEnvironment   importenv)
                     ]
    in map (concatMap f) (getSiblingGroups importenv)
+   where
+    valueConsTpScheme n =
+        let res = M.lookup n (valueConstructors importenv)
+        in maybe Nothing (\(_, scheme) -> Just scheme) res
 
 getNeverDirectives :: ImportEnvironment -> [(Predicate, ConstraintInfo)]
 getNeverDirectives importEnv = let
@@ -252,25 +269,32 @@ getDefaultDirectives :: ImportEnvironment -> [((String, Tps), ConstraintInfo)]
 getDefaultDirectives importEnv = let
     tps = typingStrategies importEnv
     convertDefault :: Core_TypingStrategy -> [((String, Tps), ConstraintInfo)]
-    convertDefault (Default n tps) = let
+    convertDefault (Default n locTps) = let
             info = standardConstraintInfo
-        in [((n, tps), info)]
+        in [((n, locTps), info)]
     convertDefault _ = []
     in concatMap convertDefault tps
 
+-- The Value Constuctors are unioned normally (takes left if same). 
+-- Because it is allowed to create a value constructor, that is also imported.
+-- As long as it is not used.
+-- But when you do this, it does need to check the type, when declared.
+-- Thus the normal union. We assume that the original module is always used
+-- as first argument.
 combineImportEnvironments :: ImportEnvironment -> ImportEnvironment -> ImportEnvironment
-combineImportEnvironments (ImportEnvironment tcs1 tss1 te1 vcs1 ot1 ce1 cm1 ins1 rec1 fs1 xs1) (ImportEnvironment tcs2 tss2 te2 vcs2 ot2 ce2 cm2 ins2 rec2 fs2 xs2) =
+combineImportEnvironments (ImportEnvironment tcs1 tss1 te1 vcs1 ot1 cn1 ce1 cm1 ins1 rec1 fs1 xs1) (ImportEnvironment tcs2 tss2 te2 vcs2 ot2 cn2 ce2 cm2 ins2 rec2 fs2 xs2) =
     insertMissingInstances $ ImportEnvironment
-      (tcs1 `exclusiveUnion` tcs2)
-      (tss1 `exclusiveUnion` tss2)
-      (te1  `exclusiveUnion` te2 )
-      (vcs1 `exclusiveUnion` vcs2)
-      (ot1  `exclusiveUnion` ot2)
+      (tcs1 `M.union` tcs2)
+      (tss1 `M.union` tss2)
+      (te1  `M.union` te2 )
+      (vcs1 `M.union` vcs2)
+      (ot1  `M.union` ot2)
+      (cn1  `M.union` cn2)
       (M.unionWith combineClassDecls ce1 ce2)
-      (cm1 `exclusiveUnion` cm2)
-      (ins1 `exclusiveUnion` ins2)
-      (M.unionWith exclusiveUnion rec1 rec2)
-      (fs1 `exclusiveUnion` fs2)
+      (cm1  `M.union` cm2)
+      (ins1 `M.union` ins2)
+      (M.unionWith M.union rec1 rec2)
+      (fs1 `M.union` fs2)
       (xs1 ++ xs2)
 
 insertMissingInstances :: ImportEnvironment -> ImportEnvironment
@@ -279,11 +303,11 @@ insertMissingInstances env = setClassEnvironment nClassEnv env
         classEnv = classEnvironment env
         nClassEnv = foldr addMissingInstance classEnv (M.toList $ instanceEnvironment env)
         addMissingInstance :: ((Name, Tp), (Names, [(String, String)])) -> ClassEnvironment -> ClassEnvironment
-        addMissingInstance ((className, instanceType), (typeVariables, superClasses)) env = let
+        addMissingInstance ((className, instanceType), (typeVariables, superClasses)) locEnv = let
                 update :: ([String], Instances) -> ([String], Instances)
-                update (supers, instances) = let
+                update (supers, locInstances) = let
                         predicate = Predicate (getNameName className) instanceType
-                        existingInstance = find (\(p, _) -> p == predicate) instances
+                        existingInstance = find (\(p, _) -> p == predicate) locInstances
                         getTypeVariables :: Tp -> [Tp]
                         getTypeVariables v@(TVar _) = [v]
                         getTypeVariables (TApp t1 t2) = getTypeVariables t1 ++ getTypeVariables t2
@@ -293,12 +317,13 @@ insertMissingInstances env = setClassEnvironment nClassEnv env
                         nInstance = (predicate, pSuperClasses)
                         nInstances = 
                             if isJust existingInstance then
-                                instances
+                                locInstances
                             else 
-                                nInstance : instances
+                                nInstance : locInstances
                     in (supers, nInstances)
-            in M.adjust update (getNameName className) env
+            in M.adjust update (getNameName className) locEnv
 
+-- IMPORTANT: the local environment should ALWAYS be the head of the list. Otherwise errors with same named value constructors WILL occur.
 combineImportEnvironmentList :: ImportEnvironments -> ImportEnvironment
 combineImportEnvironmentList = foldr combineImportEnvironments emptyEnvironment
 
@@ -328,18 +353,16 @@ combineClassDecls (super1, inst1) (super2, inst2)
 getInstanceNames :: [ImportEnvironment] -> [(Range, Instance)]
 getInstanceNames c = concatMap (map (\x -> (noRange, x)) . snd . snd) $  M.toList $ classEnvironment (combineImportEnvironmentList c)
 
-
-
 makeInstance :: String -> Int -> String -> Bool -> Instance
 makeInstance className nrOfArgs tp isDict =
-   let tps = take nrOfArgs [ TVar i | i <- [0..] ]
+   let tps = take nrOfArgs [ TVar i | i <- [0..] ] 
    in ( Predicate className (foldl TApp (TCon tp) tps)
       , [ Predicate className x | x <- tps, isDict ]
       )
 
 -- added for holmes
 holmesShowImpEnv :: Module -> ImportEnvironment -> String
-holmesShowImpEnv module_ (ImportEnvironment _ _ te _ _ _ _ _ _ _ _) =
+holmesShowImpEnv module_ (ImportEnvironment _ _ te _ _ _ _ _ _ _ _ _) =
       concat functions
     where
        localName = getModuleName module_
@@ -349,12 +372,13 @@ holmesShowImpEnv module_ (ImportEnvironment _ _ te _ _ _ _ _ _ _ _) =
           in map (++ ";") list
 
 instance Show ImportEnvironment where
-   show (ImportEnvironment tcs tss te vcs ot ce cm ins rs fs _) =
+   show (ImportEnvironment tcs tss te vcs ot cn ce cm ins rs fs _) =
       unlines (concat [ fixities
                       , datatypes
                       , typesynonyms
                       , theValueConstructors
                       , functions
+                      , classNames
                       , classes
                       , classmembers
                       , sinstances
@@ -380,7 +404,7 @@ instance Show ImportEnvironment where
 
        datatypes =
           let allDatas = filter ((`notElem` M.keys tss). fst) (M.assocs tcs)
-              f (n,i)  = unwords ("data" : showNameAsVariable n : take i variableList)
+              f (n,(i,_))  = unwords ("data" : showNameAsVariable n : take i variableList)
           in showWithTitle "Data types" (showEm f allDatas)
 
        typesynonyms =
@@ -395,6 +419,10 @@ instance Show ImportEnvironment where
        functions =
           let f (n,t) = showNameAsVariable n ++ " :: "++show t
           in showWithTitle "Functions" (showEm f (M.assocs te))
+
+       classNames =
+          let f (n, q) = show n ++ " => " ++ show q
+          in showWithTitle "Class names" (showEm f (M.assocs cn))
 
        classes =
           let f (n, s) = n ++ show s

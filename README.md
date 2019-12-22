@@ -1,5 +1,3 @@
-![Helium Logo](http://www.cs.uu.nl/people/jur/images/Helium_0300pix.jpg)
-
 [Contributors](CONTRIBUTORS.md) | [Helium Manual](HELIUM.md) | [Known Bugs](KNOWNBUGS.md)
 
 
@@ -22,8 +20,7 @@ you can install the latest version of Helium by running
 The former of the two is the compiler (which will probably install a few
 more packages, like Top and lvmlib), the second is the run-time. You can
 then test the installation by running the program *texthint* and
-evaluating a few expressions. The system is known to install with GHC
-7.6.3 and GHC 7.8.x.
+evaluating a few expressions.
 
 Other kinds of downloads are not supported anymore, and we advise
 against using them.
@@ -45,7 +42,7 @@ Of course, you must have the Java runtime installed on the system. Note
 that you need Hint version 1.8.1 or higher for this to work.
 
 Hint is not available through Hackage. The sources of Hint are publicly
-available from the svn repository that also stores the source code of
+available from the github repository that also stores the source code of
 the Helium compiler and all associated tools.
 
 ### Beyond the standard distributions
@@ -63,9 +60,9 @@ These source distributions are to be used at your own risk.
 
 ### Plans for the future
 
+-   making Helium full Haskell 2010 compliant
 -   check documentation consistency
 -   performance bug fix type inferencer
--   add type classes in full
 
 If you think you can do something for us on the above, please contact
 [us](mailto:helium4haskell@gmail.com).

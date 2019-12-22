@@ -3,8 +3,8 @@
 -} 
 
 module HeliumLang
-    ( Bool(True, False)
-    , '':[]''('':[]'', (:)) -- lists
+    ( Bool(..)
+    , '':[]''(..) -- lists
     , '':->'' -- function arrow
     , String, Int, Float, Char
     , PackedString

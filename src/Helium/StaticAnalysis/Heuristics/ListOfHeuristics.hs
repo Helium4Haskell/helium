@@ -1,4 +1,4 @@
-{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE MonoLocalBinds, FlexibleContexts #-}
 {-| Module      :  ListOfHeuristics
     License     :  GPL
 
@@ -16,7 +16,7 @@ import Helium.StaticAnalysis.Miscellaneous.ConstraintInfo
 import Helium.StaticAnalysis.Heuristics.HeuristicsInfo () -- instances
 import Top.Implementation.TypeGraph.Heuristic
 import Top.Implementation.TypeGraph.DefaultHeuristics
--- import RepairSystem (repairSystem)
+--import Helium.StaticAnalysis.Heuristics.RepairSystem (repairSystem)
 import Top.Implementation.TypeGraph.ClassMonadic
 import Helium.StaticAnalysis.Heuristics.RepairHeuristics
 import Helium.StaticAnalysis.Heuristics.UnifierHeuristics
@@ -38,8 +38,7 @@ listOfHeuristics options siblings path =
    , phaseFilter                     -- phasing from the type inference directives
    ] ++
    -- Repair system is disabled
-   -- [ repairSystem | NoRepairHeuristics `notElem` options
-   -- ] ++
+   -- [ repairSystem | NoRepairHeuristics `notElem` options] ++
    [ Heuristic (Voting (
         [ siblingFunctions siblings
         , siblingLiterals

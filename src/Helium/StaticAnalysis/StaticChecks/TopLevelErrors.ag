@@ -62,7 +62,7 @@ SEM Module
                                              in makeNoFunDef Fixity (filter (`notElem` list) @correctFixities) list ++ (@body.fixityButNoFunDefErrors)
 
 SEM Declaration
-  | Class   lhs . fixityButNoFunDefErrors = let list = nub (@loc.classMemberNames)
+  | Class   lhs . fixityButNoFunDefErrors = let list = nub @loc.classMemberNames
                                              in makeNoFunDef Fixity (filter (`notElem` list) (@where.fixityDefs)) list
   | Fixity  lhs . fixityDefs  = @operators.self
                                                           
@@ -74,7 +74,7 @@ SEM Module
   | Module   loc . wrongFlagErrors = 
        [ WrongOverloadingFlag flag
        | let flag = Overloading `elem` @lhs.options
-             imp  = any isOverloaded (concatMap (M.elems . typeEnvironment) @lhs.importEnvironments)
+             imp  = any isOverloaded (concatMap (M.elems . typeEnvironment) @importEnvironments)
        , flag /= imp
        , False
        ]
@@ -86,12 +86,13 @@ SEM Module
   | Module   loc . recursiveTypeSynonymErrors = 
                       let converted  = map (\(name, tuple) -> (show name, tuple)) @body.collectTypeSynonyms
                           recursives = snd . getTypeSynonymOrdering . M.fromList $ converted
+                          unqualifyNames = map ((fromQualName . convertMap) @loc.typeConstructors)
                           makeError = let f = foldr add (Just [])
                                           add s ml = case (g s, ml) of
                                                         ([n], Just ns) -> Just (n:ns)
                                                         _              -> Nothing
                                           g s = [ n | n <- map fst @body.collectTypeSynonyms, show n == s ] 
-                                      in maybe [] (\x -> [RecursiveTypeSynonyms x]) . f
+                                      in maybe [] (\x -> [RecursiveTypeSynonyms (unqualifyNames x)]) . f
                       in concatMap makeError recursives
 
 ------------------------------------------------------------------------------
@@ -105,5 +106,5 @@ SEM Module
                                           else [ WrongFileName @lhs.baseName moduleString moduleRange ]
                 . moduleName     = case @name.self of 
                                       MaybeName_Just name -> name 
-                                      MaybeName_Nothing   -> Name_Identifier noRange [] ""  -- !!!Name
-                . fileName       = Name_Identifier noRange [] @lhs.baseName -- !!!Name
+                                      MaybeName_Nothing   -> Name_Identifier noRange [] [] ""  -- !!!Name
+                . fileName       = Name_Identifier noRange [] [] @lhs.baseName -- !!!Name

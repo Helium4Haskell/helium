@@ -12,3 +12,6 @@ lib/simple/*.lvm
 *test.core
 *desugared.core
 *.iridium
+Develop/
+develop/
+.cabal-sandbox/

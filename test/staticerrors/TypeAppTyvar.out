@@ -1,4 +1,8 @@
 Prelude is up to date
 Compiling staticerrors/TypeAppTyvar.hs
-(5,9): Type variable "a" cannot be applied to another type
+(6,8): Type error in right-hand side
+ expression       : 0
+   type           : Int  
+   does not match : a Int
+
 Compilation failed with 1 error

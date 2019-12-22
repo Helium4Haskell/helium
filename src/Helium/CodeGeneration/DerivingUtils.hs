@@ -15,6 +15,7 @@ import           Helium.Syntax.UHA_Utils
 import           Helium.CodeGeneration.CoreUtils
 import           Helium.ModuleSystem.ImportEnvironment
 import           Helium.StaticAnalysis.Miscellaneous.TypeConversion
+import           Helium.Utils.QualifiedTypes
 import           Lvm.Core.Expr
 import qualified Lvm.Core.Type                 as Core
 import           Lvm.Common.Id
@@ -22,20 +23,22 @@ import           Top.Types
 import           Helium.Utils.Utils
 
 nameAndTypes
-    :: String -> TypeSynonymEnvironment -> M.Map UHA.Name Core.Type -> UHA.Constructor -> (Id, [(Core.Type, Expr)])
-nameAndTypes tpn tse m c = case c of
+    :: ImportEnvironment -> String -> M.Map UHA.Name Core.Type -> UHA.Constructor -> (Id, [(Core.Type, Expr)])
+nameAndTypes env tpn m c = case c of
     UHA.Constructor_Constructor _ n ts -> (idFromName n, map annotatedTypeToType ts)
     UHA.Constructor_Infix _ t1 n t2    -> (idFromName n, map annotatedTypeToType [t1, t2])
     UHA.Constructor_Record{}           -> error "pattern match failure in CodeGeneration.DerivingEq.nameAndTypes"
   where
+    tse = typeSynonyms env
     annotatedTypeToType :: UHA.AnnotatedType -> (Core.Type, Expr)
-    annotatedTypeToType (UHA.AnnotatedType_AnnotatedType _ _ t) = (uhaTypetoCoreType m t, eqFunForType tpn tse m t)
+    annotatedTypeToType (UHA.AnnotatedType_AnnotatedType _ _ t) 
+        = (uhaTypetoCoreType m t, eqFunForType tpn tse m (convertTypeToQualified env t))
 
 
 typeConstructorToTypeConstant :: UHA.Name -> Core.TypeConstant
 typeConstructorToTypeConstant un = case un of
-    UHA.Name_Identifier _ _ n -> Core.TConDataType $ idFromString n
-    UHA.Name_Special    _ _ n -> case n of
+    UHA.Name_Identifier _ _ _ n -> Core.TConDataType $ idFromString n
+    UHA.Name_Special    _ _ _ n -> case n of
         "->" -> Core.TConFun
         "()" -> Core.TConTuple 0
         '(' : str | dropWhile (== ',') str == ")" -> Core.TConTuple (length str)

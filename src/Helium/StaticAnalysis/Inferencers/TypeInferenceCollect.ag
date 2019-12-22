@@ -48,37 +48,39 @@ SEM Module
 
 SEM Body
   | Body   loc . inferredTypes      = findInferredTypes @lhs.typeschemeMap @implicitsFM
-           lhs . collectWarnings    = missingTypeSignature True @declarations.simplePatNames @inferredTypes @lhs.importEnvironment
+               . env                = typeConstructors @lhs.importEnvironment `M.union` M.map ((,) 0) (classNameEnvironment @lhs.importEnvironment)
+           lhs . collectWarnings    = map (convertWarnings @env) . filter notQualifiedWarnings $ 
+                                      missingTypeSignature True @declarations.simplePatNames @inferredTypes @lhs.importEnvironment
                                       ++ @declarations.collectWarnings
-               . collectErrors      = restrictedNameErrors @inferredTypes @declarations.restrictedNames
+               . collectErrors      = restrictedNameErrors @lhs.importEnvironment @inferredTypes @declarations.restrictedNames
                                       ++ @declarations.collectErrors
 
 SEM MaybeDeclarations
   | Just   loc . inferredTypes      = findInferredTypes @lhs.typeschemeMap @implicitsFM
            lhs . collectWarnings    = missingTypeSignature False @declarations.simplePatNames @inferredTypes @lhs.importEnvironment
                                       ++ @declarations.collectWarnings
-               . collectErrors      = restrictedNameErrors @inferredTypes @declarations.restrictedNames
+               . collectErrors      = restrictedNameErrors @lhs.importEnvironment @inferredTypes @declarations.restrictedNames
                                       ++ @declarations.collectErrors
 
 SEM Expression
   | Let    loc . inferredTypes      = findInferredTypes @lhs.typeschemeMap @implicitsFM
            lhs . collectWarnings    = missingTypeSignature False @declarations.simplePatNames  @inferredTypes @lhs.importEnvironment
                                       ++ @expression.collectWarnings
-               . collectErrors      = restrictedNameErrors @inferredTypes @declarations.restrictedNames
+               . collectErrors      = restrictedNameErrors @lhs.importEnvironment @inferredTypes @declarations.restrictedNames
                                       ++ @declarations.collectErrors
 
 SEM Statement
   | Let    loc . inferredTypes      = findInferredTypes @lhs.typeschemeMap @implicitsFM
            lhs . collectWarnings    = missingTypeSignature False @declarations.simplePatNames @inferredTypes @lhs.importEnvironment
                                       ++ @declarations.collectWarnings
-               . collectErrors      = restrictedNameErrors @inferredTypes @declarations.restrictedNames
+               . collectErrors      = restrictedNameErrors @lhs.importEnvironment @inferredTypes @declarations.restrictedNames
                                       ++ @declarations.collectErrors
 
 SEM Qualifier
   | Let    loc . inferredTypes      = findInferredTypes @lhs.typeschemeMap @implicitsFM
            lhs . collectWarnings    = missingTypeSignature False @declarations.simplePatNames @inferredTypes @lhs.importEnvironment
                                       ++ @declarations.collectWarnings
-               . collectErrors      = restrictedNameErrors @inferredTypes @declarations.restrictedNames
+               . collectErrors      = restrictedNameErrors @lhs.importEnvironment @inferredTypes @declarations.restrictedNames
                                       ++ @declarations.collectErrors
 
 {
@@ -103,20 +105,30 @@ missingTypeSignature topLevel simplePats typeenv importEnvironment =
               && (not (name `M.member` fieldLookup importEnvironment))]
    in concatMap makeWarning . M.assocs $ typeenv
 
-restrictedNameErrors :: TypeEnvironment -> Names -> TypeErrors
-restrictedNameErrors env =
-   let f name = case M.lookup name env of
-                   Just scheme -> [ makeRestrictedButOverloadedError name scheme | isOverloaded scheme ]
+restrictedNameErrors :: ImportEnvironment -> TypeEnvironment -> Names -> TypeErrors
+restrictedNameErrors ienv tenv =
+   let f name = case M.lookup name tenv of
+                   Just scheme -> [ makeRestrictedButOverloadedError name (convertTpScheme (unQualifyName ienv) scheme) | isOverloaded scheme ]
                    Nothing     -> []
    in concatMap f
+
+notQualifiedWarnings :: Warning -> Bool
+notQualifiedWarnings (NoTypeDef name _ _ _) = (not . isQualified) name
+notQualifiedWarnings _                      = True
+
+convertWarnings :: TypeConstructorEnvironment -> Warning -> Warning
+convertWarnings env (NoTypeDef name tpschem b1 b2) = NoTypeDef name (unqualifyTpScheme env tpschem) b1 b2
+convertWarnings env (MissingPatterns ra na tp ps str1 str2) = MissingPatterns ra na (unqualifyTp env tp) ps str1 str2
+convertWarnings env (SignatureTooSpecific na tps1 tps2) = SignatureTooSpecific na (unqualifyTpScheme env tps1) (unqualifyTpScheme env tps2)
+convertWarnings _ war = war
 
 }
 
 ----------------------------------------------------------------------------------------
 -- Collecting inferred top level types
 
-ATTR Body [ |  | toplevelTypes : TypeEnvironment ]
-
+ATTR Body [|  | toplevelTypes : TypeEnvironment ]   
+  
 SEM Body
   | Hole   lhs . toplevelTypes = M.empty
   | Body   lhs . toplevelTypes = @declarations.typeSignatures `M.union` @inferredTypes
@@ -212,13 +224,14 @@ SEM Declaration
       loc . typeScheme     =  if isJust @lhs.classPredicate then
                                 let
                                   Just (className, typeVars) = @lhs.classPredicate
-                                  tpscheme = makeTpSchemeFromType @type.self
+                                  qualName = convertClassNameToQualified @lhs.importEnvironment className
+                                  tpscheme = makeTpSchemeFromType (convertTypeToQualified @lhs.importEnvironment @type.self)
                                   typeIndices = filter (\(_, s) -> s `elem` (map getNameName typeVars)) (getQuantorMap tpscheme)
                                   typeVariablesMapped = map (\(n, s) -> (fromJust $ find (\tv -> getNameName tv == s) typeVars, TVar n)) typeIndices
-                                  tpWContext = addContextToType className typeVariablesMapped tpscheme
+                                  tpWContext = addContextToType qualName typeVariablesMapped tpscheme
                                 in tpWContext
                               else
-                                makeTpSchemeFromType @type.self
+                                convertTpSchemeToQualified @lhs.importEnvironment (makeTpSchemeFromType @type.self)
 
 --------------------------------
 -- Derived instances
@@ -227,17 +240,20 @@ ATTR Module -> Declaration [ | | collectInstances USE { ++ } { [] } : {[(Name, I
 
 SEM Declaration
   | Data
-        lhs . collectInstances =  [ (cl, makeInstance (show cl) (length @simpletype.typevariables) (show @simpletype.name) True)
-                                    | cl <- @derivings.self
+        lhs . collectInstances =  [ (cl, makeInstance (show cl) (length @simpletype.typevariables) (getNameName $ addQualified @lhs.moduleQual @simpletype.name) True)
+                                    | cl <- @qualDers
                                   ]
+        loc . qualDers         = map (convertClassNameToQualified @lhs.importEnvironment) @derivings.self
   | Instance
-        lhs . collectInstances  = [(@name.self, updateSuperclasses @typevariables (getSuperClasses @context.self) $ makeInstance (show @name.self) (length @typevariables) @stype False)]
-        loc . type              = head $ @types.self
-        loc . stype             = showInstanceType (makeTpFromType @typevariables @type)
-        loc . typevariables     = zip (namesInType @loc.type) [TVar n | n <- [0..]]
+        lhs . collectInstances  = [(@qualName, updateSuperclasses @typevariables (getSuperClasses @contextQual) $ makeInstance 
+                                      (show @qualName) (length @typevariables) @stype False)]
+        loc . contextQual       = map (convertContextItemToQualified @lhs.importEnvironment) @context.self
+        loc . type              = head @types.self
+        loc . stype             = showInstanceType $ makeTpFromType @typevariables @type
+        loc . typevariables     = zip (namesInType @type) [TVar n | n <- [0..]]
 {
 updateSuperclasses :: [(Name, Tp)] -> [(String, Name)] -> Instance -> Instance
-updateSuperclasses typevars supers (pred, preds) = (pred, preds ++ superPreds)
+updateSuperclasses typevars supers (prd, preds) = (prd, preds ++ superPreds)
     where
       superPreds = [Predicate s tp | (s, tpss) <- supers, let tp = fromJust $ lookup tpss typevars ]
 }

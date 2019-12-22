@@ -27,13 +27,15 @@ import Data.Maybe
 }
 
 SEM Module
-  | Module   loc . collectEnvironment = setValueConstructors   (M.fromList  @body.collectValueConstructors)
+  | Module   loc . moduleQual = maybe ["Main"] getQualified @name.name
+             loc . collectEnvironment = setValueConstructors   (M.fromList @body.collectValueConstructors)
                                         . setTypeConstructors  (M.fromList @body.collectTypeConstructors)
                                         . setTypeSynonyms      (M.fromList @body.collectTypeSynonyms)
                                         . setOperatorTable     (M.fromList @body.operatorFixities)
                                         . addToTypeEnvironment  (insertClassMembers @body.collectClassMemberEnv (M.fromList @derivedFunctions))
+                                        . setClassNameEnvironment @classNamesEnv
                                         . setClassEnvironment (insertInstances @body.classInstances
-                                            (M.unionWith combineClassDecls @body.classEnv (classEnvironment $ combineImportEnvironmentList @lhs.importEnvironments)))
+                                            (M.unionWith combineClassDecls @body.classEnv (classEnvironment $ combineImportEnvironmentList @importEnvironments)))
                                         . setInstanceEnvironment @body.instanceEnv
                                         . setClassMemberEnvironment @body.collectClassMemberEnv
                                         . setRecordEnvironment @body.collectRecord
@@ -42,52 +44,76 @@ SEM Module
                  . derivedFunctions = []
 {-
                  . derivedInstances = let f (n,i) = makeInstance "Show" i (show n)
-                                          g (n,(i,_)) = f (n,i)
                                       in unitFM "Show"
                                             ( []
-                                            , map f @body.collectTypeConstructors ++
-                                              map g @body.collectTypeSynonyms
+                                            , map f @body.collectTypeConstructors
                                             )
 
--}
+-}                             
+ATTR Body Declarations Declaration Constructors Constructor [ moduleQual : {[ String ]} | | ]
+{
+addQualifiedCollect :: [String] -> Name -> a -> [(Name, a)] -> [(Name, a)]
+addQualifiedCollect qual name result collect =
+    let qualname = addQualified qual name
+        res1 = (name, result)
+        res2 = (qualname, result)
+    in res1 : res2 : collect
+}
 
 -------------------------------------------
 -- 1) Collecting (data-)type constructors
 
-ATTR Body Declarations Declaration [ | collectTypeConstructors : {[(Name,Int)]} | ]
+ATTR Body Declarations Declaration [ | collectTypeConstructors : { [(Name,(Int, Name))] } | ]
 
 SEM Module | Module   body . collectTypeConstructors = []
 
 SEM Declaration
-  | Data      lhs . collectTypeConstructors = (@simpletype.name,length @simpletype.typevariables) : @lhs.collectTypeConstructors
-  | Newtype   lhs . collectTypeConstructors = (@simpletype.name,length @simpletype.typevariables) : @lhs.collectTypeConstructors
+  | Data  loc . fullname = addQualified @lhs.moduleQual @simpletype.name
+          lhs . collectTypeConstructors = addQualifiedCollect @lhs.moduleQual @simpletype.name (length @simpletype.typevariables, @fullname) @lhs.collectTypeConstructors
+  | Newtype   
+          loc . fullname = addQualified @lhs.moduleQual @simpletype.name
+          lhs . collectTypeConstructors = addQualifiedCollect @lhs.moduleQual @simpletype.name (length @simpletype.typevariables, @fullname) @lhs.collectTypeConstructors
+  | Type  loc . fullname = addQualified @lhs.moduleQual @simpletype.name
+          lhs . collectTypeConstructors = addQualifiedCollect @lhs.moduleQual @simpletype.name (length @simpletype.typevariables, @fullname) @lhs.collectTypeConstructors
 
 -------------------------------------------
 -- 2) Collecting value constructors
 
-ATTR Body Declarations Declaration Constructors Constructor [ | collectValueConstructors : {[(Name,TpScheme)]} | ]
-ATTR Constructor Constructors [ | | parameterTypes USE { ++ } { [] } : Tps ]
+ATTR Body Declarations Declaration Constructors Constructor [ | collectValueConstructors : {[(Name, (Name, TpScheme))]} | ]
+ATTR Constructor Constructors [ parent : Name | | parameterTypes USE { ++ } { [] } : Tps ]
 
 SEM Module | Module   body . collectValueConstructors = []
+SEM Declaration
+    | Newtype constructor.parent  = @simpletype.name
+    | Data    constructors.parent = @simpletype.name
 
 SEM Constructor
   | Constructor
-       lhs . collectValueConstructors = (@constructor.self, @typeScheme) : @lhs.collectValueConstructors
+       lhs . collectValueConstructors = addQualifiedCollect @lhs.moduleQual @constructor.self @res @lhs.collectValueConstructors
            . parameterTypes = @tps
        loc . typeScheme = generalizeAll ([] .=>. foldr (.->.) @tp @tps)
-           . (tp,tps)   = convertFromSimpleTypeAndTypes @lhs.simpletype @types.types
-
+           . newsimpletype = convertSimpleTypeToQualified @lhs.qualifiedEnvironment @lhs.simpletype
+           . newtypes = map (convertTypeToQualified @lhs.qualifiedEnvironment) @types.types
+           . (tp,tps)   = convertFromSimpleTypeAndTypes @newsimpletype @newtypes
+           . res        = (@lhs.parent, @typeScheme)
+                  
   | Infix
-       lhs . collectValueConstructors = (@constructorOperator.self, @typeScheme) : @lhs.collectValueConstructors
+       lhs . collectValueConstructors = addQualifiedCollect @lhs.moduleQual @constructorOperator.self @res @lhs.collectValueConstructors
            . parameterTypes = @tps
        loc . typeScheme = generalizeAll ([] .=>. foldr (.->.) @tp @tps)
-           . (tp,tps)   = convertFromSimpleTypeAndTypes @lhs.simpletype [@leftType.type,@rightType.type]
+           . newsimpletype = convertSimpleTypeToQualified @lhs.qualifiedEnvironment @lhs.simpletype
+           . newtypes = map (convertTypeToQualified @lhs.qualifiedEnvironment) [@leftType.type,@rightType.type]
+           . (tp,tps)   = convertFromSimpleTypeAndTypes @newsimpletype @newtypes
+           . res        = (@lhs.parent, @typeScheme)
 
   | Record
-       lhs . collectValueConstructors = (@constructor.self, @typeScheme) : @lhs.collectValueConstructors
+       lhs . collectValueConstructors = addQualifiedCollect @lhs.moduleQual @constructor.self @res @lhs.collectValueConstructors
            . parameterTypes = @tps
        loc . typeScheme = generalizeAll ([] .=>. foldr (.->.) @tp @tps)
-           . (tp,tps)   = convertFromSimpleTypeAndTypes @lhs.simpletype @fieldDeclarations.types
+           . newsimpletype = convertSimpleTypeToQualified @lhs.qualifiedEnvironment @lhs.simpletype
+           . newtypes = map (convertTypeToQualified @lhs.qualifiedEnvironment) @fieldDeclarations.types
+           . (tp,tps)   = convertFromSimpleTypeAndTypes @newsimpletype @newtypes
+           . res        = (@lhs.parent, @typeScheme)
 
 -------------------------------------------
 -- 3) Collecting type synonyms
@@ -96,10 +122,13 @@ ATTR Body Declarations Declaration [ | collectTypeSynonyms : {[(Name,(Int,Tps ->
 
 SEM Module | Module   body . collectTypeSynonyms = []
 
+--We only add the qualified name, since types will always be fully qualified before type checked.
 SEM Declaration
-  | Type   lhs . collectTypeSynonyms = (@simpletype.name, @typeSynonymInfo) : @lhs.collectTypeSynonyms
-           loc . typeSynonymInfo = (length @simpletype.typevariables,\tps -> makeTpFromType (zip @simpletype.typevariables tps) @type.self)
-
+  | Type   lhs . collectTypeSynonyms = (@qualname, @typeSynonymInfo) : @lhs.collectTypeSynonyms
+           loc . typeSynonymInfo = (length @simpletype.typevariables,\tps -> makeTpFromType (zip @simpletype.typevariables tps) @newtype)
+           loc . newtype  = convertTypeToQualified @lhs.qualifiedEnvironment @type.self
+           loc . qualname = addQualified @lhs.moduleQual @simpletype.name
+           
 -------------------------------------------
 -- 4) Collecting Fixity Declarations
 
@@ -133,7 +162,6 @@ SEM Declaration
 -- 
 
 ATTR Module Body Declarations Declaration Constructor Constructors [ | 
--- TODO: Fix equality checking here (strictness and type synonyms) 
   | duplicateLabelsWrongTypes USE { M.unionWith (++) } { M.empty } : {M.Map Name [Tp]}]
 ATTR Body Declarations Declaration Constructor Constructors [ | 
   | collectRecord USE { M.union } { M.empty } : { M.Map Name (M.Map Name (Int, Bool, Tp, TpScheme)) } ]
@@ -181,7 +209,7 @@ ATTR Body Declarations Declaration Expressions Expression Patterns Pattern
        fieldLookup : { M.Map Name [Name] } | | ]
 
 SEM Module
-    | Module loc.totalEnvironment = foldr combineImportEnvironments @collectEnvironment @lhs.importEnvironments
+    | Module loc.totalEnvironment = foldr combineImportEnvironments @collectEnvironment @importEnvironments
              body.recordFields = recordEnvironment @totalEnvironment
                  .fieldLookup = fieldLookup @totalEnvironment
 
@@ -189,12 +217,14 @@ SEM Module
 -- 6) Distributing Value Constructors
 
 SEM Module
-  | Module   loc . (uniqueValueConstructors, duplicatedValueConstructors) =
-                      uniqueKeys (  @body.collectValueConstructors
-                                 ++ concatMap (M.assocs . valueConstructors) @lhs.importEnvironments
-                                 )
-                 . allValueConstructors = map fst @uniqueValueConstructors ++ map head @duplicatedValueConstructors
-                 . valueConstructors    = M.fromList @uniqueValueConstructors
+  | Module   loc . (uniqueValueConstructors, ambiguousValueConstructorsWithValue) =
+                      uniqueKeysWithValue (@declNoConflictsValCon ++ mergeSameOrigins (concatMap (M.assocs . valueConstructors) @importEnvironments) )
+                 . (declNoConflictsValCon, duplicatedValueConstructors) = filterQualifiedDoubles $ uniqueKeys @body.collectValueConstructors
+                 . allValueConstructors            = map fst @uniqueValueConstructors ++ map head @duplicatedValueConstructors ++ map head @ambiguousValueConstructors
+                 . valueConstructorsWithParents = map (\(con, (par, _)) -> (con,par)) $ @uniqueValueConstructors
+                 . ambiguousValueConstructors = map (map fst) @ambiguousValueConstructorsWithValue
+                 . ambiguousValueConstructorsWithParents = map (map (\(con, (par, _)) -> (con,par))) $ @ambiguousValueConstructorsWithValue
+                 . valueConstructors               = M.fromList $ map (\(con, (_, tpscheme)) -> (con,tpscheme)) $ @uniqueValueConstructors
 
 ATTR Body Declarations Declaration Expressions Expression Patterns Pattern
      Statement Statements Qualifier Qualifiers
@@ -203,19 +233,21 @@ ATTR Body Declarations Declaration Expressions Expression Patterns Pattern
      FieldDeclaration FieldDeclarations RecordExpressionBinding RecordExpressionBindings
      LeftHandSide RightHandSide MaybeDeclarations MaybeExpression 
      RecordPatternBinding RecordPatternBindings AnnotatedType AnnotatedTypes
-     [ valueConstructors : {M.Map Name TpScheme} allValueConstructors : Names | | ]
+     [ valueConstructors : {M.Map Name TpScheme} 
+     allValueConstructors : Names
+     ambiguousValueConstructors : {[[Name]]} | | ]
 
 -------------------------------------------
 -- 7) Distributing Type Constructors
 
 SEM Module
-  | Module loc . (uniqueTypeConstructors,duplicatedTypeConstructors) =
-                    uniqueKeys (  @body.collectTypeConstructors
-                               ++ concatMap (M.assocs . typeConstructors) @lhs.importEnvironments
-                               ++ [ (n,i) | (n,(i,_)) <- @body.collectTypeSynonyms ]
-                               )
-               . allTypeConstructors = map fst @uniqueTypeConstructors ++ map head @duplicatedTypeConstructors
+  | Module loc . (uniqueTypeConstructors, ambiguousTypeConstructors) = 
+                    uniqueKeys  ( @declNoConflictsTyCon ++ mergeSameOrigins (concatMap (M.assocs . typeConstructors) @importEnvironments) )
+               . (declNoConflictsTyCon, duplicatedTypeConstructors) = 
+                    filterQualifiedDoubles $ uniqueKeys ( @body.collectTypeConstructors)
+               . allTypeConstructors = map fst @uniqueTypeConstructors ++ map head @duplicatedTypeConstructors ++ map head @ambiguousTypeConstructors
                . typeConstructors    = M.fromList @uniqueTypeConstructors
+               . typeConstructorsWithDefined = @typeConstructors `M.union` M.fromList @declNoConflictsTyCon
 
 ATTR Body Declarations Declaration Expressions Expression Patterns Pattern
      Statement Statements Qualifier Qualifiers
@@ -225,7 +257,10 @@ ATTR Body Declarations Declaration Expressions Expression Patterns Pattern
      LeftHandSide RightHandSide MaybeDeclarations MaybeExpression Type Types 
      RecordPatternBinding RecordPatternBindings 
      AnnotatedType AnnotatedTypes ContextItem ContextItems
-     [ typeConstructors : {M.Map Name Int} allTypeConstructors : Names | | ]
+     [ typeConstructors : { M.Map Name (Int, Name) }
+     typeConstructorsWithDefined : { M.Map Name (Int, Name) }
+     allTypeConstructors : Names
+     ambiguousTypeConstructors : {[Names]} | | ]
 
 -------------------------------------------
 -- 8) Distributing Type Synonyms
@@ -234,7 +269,7 @@ ATTR Module -> Declaration [ orderedTypeSynonyms:OrderedTypeSynonyms | | ]
 
 SEM Module
   | Module body . orderedTypeSynonyms =
-                      let list     = concatMap (M.assocs . typeSynonyms) @lhs.importEnvironments ++
+                      let list     = mergeSameOrigins (concatMap (M.assocs . typeSynonyms) @importEnvironments) ++
                                      @body.collectTypeSynonyms
                           newmap   = M.fromList [ (show name, t) | (name, t) <- list ]
                           ordering = fst (getTypeSynonymOrdering newmap)
@@ -247,16 +282,16 @@ ATTR Module -> Declaration [ classEnvironment:ClassEnvironment | | collectInstan
 
 SEM Module
   | Module
-       body.classEnvironment =
-          let importEnv = foldr combineImportEnvironments emptyEnvironment @lhs.importEnvironments
+       body.classEnvironment = 
+          let importEnv = foldr combineImportEnvironments emptyEnvironment @importEnvironments
           in foldr (\(n, i) -> insertInstance (show n) i)
                    (classEnvironment importEnv)
                    @body.collectInstances
 
 SEM Declaration
   | Data
-       lhs . collectInstances = [ (cl, makeInstance (show cl) (length @simpletype.typevariables) (show @simpletype.name) True)
-                                | cl <- @derivings.self
+       lhs . collectInstances = [ (cl, makeInstance (show cl) (length @simpletype.typevariables) (getNameName @fullname) True)
+                                | cl <- @qualDers
                                 ]
 
 
@@ -304,6 +339,10 @@ SEM FieldDeclaration
   | FieldDeclaration  lhs . type = @type.type
 
 {
+
+filterQualifiedDoubles :: ([(Name,a)],[[Name]]) -> ([(Name,a)],[[Name]]) 
+filterQualifiedDoubles (orig, doubles) = (orig, filter (not . isQualified . head) doubles)
+
 uniqueKeys :: Ord key => [(key,a)] -> ([(key,a)],[[key]])
 uniqueKeys = let comp (x,_) (y,_) = compare x y
                  eq   (x,_) (y,_) = x == y
@@ -312,6 +351,25 @@ uniqueKeys = let comp (x,_) (y,_) = compare x y
               . partition predicate
               . groupBy eq
               . sortBy comp
+
+uniqueKeysWithValue :: Ord key => [(key,a)] -> ([(key,a)],[[(key,a)]])
+uniqueKeysWithValue = let comp (x,_) (y,_) = compare x y
+                          eq   (x,_) (y,_) = x == y
+                          predicate xs = length xs == 1 
+                      in (\(xs, ys) -> (map head xs, ys)) 
+                       . partition predicate 
+                       . groupBy eq 
+                       . sortBy comp
+
+mergeSameOrigins :: [(Name,a)] -> [(Name,a)]
+mergeSameOrigins = map head
+                   . groupBy eq 
+                   . sortBy comp
+    where
+        comp (x,_) (y,_) = case compare x y of
+            EQ -> compare (getNameOrigin x) (getNameOrigin y)
+            cp -> cp
+        eq   (x,_) (y,_) = x == y && (getNameOrigin x) == (getNameOrigin y)
 }
 
 -- Collecting the Classes
@@ -365,26 +423,29 @@ createClassDef n MaybeDeclarations_Nothing names  = M.singleton n (names, [])
 createClassDef n (MaybeDeclarations_Just decls) names = M.singleton n (names, createClassDef2 fdecl $ concatMap (createClassDef1 names) types)
                where (types, fdecl) = filterType decls ([], [])
 
+convertClassMemberEnvironmentTypes :: (TpScheme -> TpScheme) -> ClassMemberEnvironment -> ClassMemberEnvironment
+convertClassMemberEnvironmentTypes f = fmap $ fmap $ fmap (\(a,b,c,d) -> (a,f b,c,d))
+
 insertDefaults :: Name -> Names -> ClassMemberEnvironment -> ClassMemberEnvironment
 insertDefaults name defs env = M.mapWithKey (\n membs -> if n == name then (update defs membs) else membs) env 
       where
           update :: Names -> (Names, [(Name, TpScheme, Bool, HasDefault)]) -> (Names, [(Name, TpScheme, Bool, HasDefault)])
-          update defs (tvars, funcs) = (tvars, map (\(fname, tpscheme, b, _)->(fname, tpscheme, b, fname `elem` defs)) funcs)
+          update locDefs (tvars, funcs) = (tvars, map (\(fname, tpscheme, b, _)->(fname, tpscheme, b, fname `elem` locDefs)) funcs)
 
 insertInstances :: [(String, Tp, [(String, Tp)])] -> ClassEnvironment -> ClassEnvironment
-insertInstances instances classEnv = foldr (\inst@(n, _, _) -> M.update (insert inst) n) classEnv instances
+insertInstances theInstances classEnv = foldr (\inst@(n, _, _) -> M.update (locInsert inst) n) classEnv theInstances
     where
-        insert :: (String, Tp, [(String, Tp)]) -> Class -> Maybe Class
-        insert (className, instType, preds) (cn, instances) = 
+        locInsert :: (String, Tp, [(String, Tp)]) -> Class -> Maybe Class
+        locInsert (className, instType, preds) (cn, locInstances) = 
             let 
                curInstance = (Predicate className instType, [Predicate n v | (n, v) <- preds]) 
-            in Just (cn, nub $ curInstance : instances)
+            in Just (cn, nub $ curInstance : locInstances)
 
 insertClassMembers :: M.Map Name (Names, [(Name, TpScheme, Bool, HasDefault)]) -> M.Map Name TpScheme -> M.Map Name TpScheme
-insertClassMembers classMemberEnv valueEnv = M.foldrWithKey insert valueEnv classMemberEnv
+insertClassMembers classMemberEnv valueEnv = M.foldrWithKey locInsert valueEnv classMemberEnv
     where 
-        insert :: Name -> (Names, [(Name, TpScheme, Bool, HasDefault)]) -> M.Map Name TpScheme -> M.Map Name TpScheme
-        insert className (typeVars, funcs) env = foldr (insertFunc className typeVars)  env funcs
+        locInsert :: Name -> (Names, [(Name, TpScheme, Bool, HasDefault)]) -> M.Map Name TpScheme -> M.Map Name TpScheme
+        locInsert className (typeVars, funcs) env = foldr (insertFunc className typeVars)  env funcs
         insertFunc :: Name -> Names -> (Name, TpScheme, Bool, HasDefault) -> M.Map Name TpScheme -> M.Map Name TpScheme
         insertFunc className typeVars (name, tp, _, _) env = 
             let 
@@ -396,14 +457,28 @@ insertClassMembers classMemberEnv valueEnv = M.foldrWithKey insert valueEnv clas
 }
 
 ATTR Declarations Declaration [ | | collectTypeClasses  USE { ++ } { [] } : { [(Name, [(Name, TpScheme)])] } ]
-ATTR Body Declarations Declaration [ | | collectClassMemberEnv USE { `M.union` } { M.empty } : {ClassMemberEnvironment} ]
+ATTR Body Declarations Declaration [ | | collectClassMemberEnv USE { `M.union` } { M.empty } : {ClassMemberEnvironment}
+                                         collectClassNames USE { M.union } { M.empty } : { ClassNameEnvironment } ]
 
 SEM Module
-    | Module body . classMemberEnv = foldr M.union @body.collectClassMemberEnv (map classMemberEnvironment @lhs.importEnvironments)
+    | Module body . classMemberEnv       = exclusiveUnion @body.collectClassMemberEnv (classMemberEnvironment @combinedEnv)
+                  . classNamesEnv        = @classNamesEnv
+                  . qualifiedEnvironment = -- Create an ImportEnvironment that contains all qualified class names and type constructors.
+                                           -- Can be used to qualify names of all kinds.
+                                           setClassNameEnvironment @classNamesEnv $ setTypeConstructors @typeConstructorsWithDefined $ @combinedEnv
+             loc  . classNamesEnv        = -- Insert all collected class names into the imported ClassNameEnvironment
+                                           exclusiveUnion @body.collectClassNames (classNameEnvironment @combinedEnv)
+                  . combinedEnv          = -- Combine all imported envrionments into one single environment
+                                           combineImportEnvironmentList @importEnvironments
 
 SEM Declaration
-    | Class lhs . collectTypeClasses = [(@simpletype.name, @where.typeSignatures)]
-            lhs . collectClassMemberEnv = insertDefaults @simpletype.name @where.functionDefaults $ createClassDef @simpletype.name @where.self @simpletype.typevariables
+    | Class lhs . collectClassNames     = M.fromList [(@simpletype.name, @qualifiedName), (@qualifiedName, @qualifiedName)]
+            lhs . collectTypeClasses    = [(@qualifiedName, @where.typeSignatures)]
+            lhs . collectClassMemberEnv = insertDefaults @qualifiedName @where.functionDefaults @qualifiedClassDef
+            loc . classDef              = createClassDef @qualifiedName @where.self @simpletype.typevariables
+                . qualifiedClassDef     = convertClassMemberEnvironmentTypes (convertTpSchemeToQualified @lhs.qualifiedEnvironment) @classDef
+                . qualifiedName         = addQualified @lhs.moduleQual @simpletype.name
+
 
 SEM Declarations
     | Cons     lhs . collectTypeClasses = @hd.collectTypeClasses  ++ @tl.collectTypeClasses
@@ -434,7 +509,7 @@ SEM MaybeDeclarations | Just    declarations . typeSignatures = []
 SEM Declaration
   | TypeSignature
       lhs . typeSignatures = [ (name, @typeScheme) | name <- @names.self ] ++ @lhs.typeSignatures
-      loc . (typeScheme, intMap) = makeTpSchemeFromType' @type.self
+      loc . (typeScheme, intMap) = makeTpSchemeFromType' $ convertTypeToQualified @lhs.qualifiedEnvironment @type.self
   | Class
       --lhs . typeSignatures = [] --@where.typeSignatures
   | Instance
@@ -448,7 +523,7 @@ SEM Declaration
 ATTR Body [ importedClassEnv : {ClassEnvironment}| | ]
 
 SEM Module
-  | Module body . importedClassEnv = classEnvironment $ combineImportEnvironmentList @lhs.importEnvironments
+  | Module body . importedClassEnv = classEnvironment $ combineImportEnvironmentList @importEnvironments
 
 ATTR Body Declaration Declarations [
     |
@@ -460,31 +535,40 @@ ATTR Body Declaration Declarations [
 
 SEM Declaration
     | Class
-        lhs . classEnv = M.singleton (getClassName @simpletype.self) ((map fst $ getSuperClasses @context.self), [])
+        lhs . classEnv    = M.singleton (getNameName $ convertClassNameToQualified @lhs.qualifiedEnvironment $ @simpletype.name) 
+                             ((map (getNameName . convertClassNameToQualified @lhs.qualifiedEnvironment . fst) $ getSuperClasses @contextQual), [])
+        loc . contextQual = map (convertContextItemToQualified @lhs.qualifiedEnvironment) @context.self
     | Instance
+       loc . qualifiedType  = convertTypeToQualified @lhs.qualifiedEnvironment $ head @types.self
+       loc . qualifiedTp    = makeTpFromType' @qualifiedType
+       loc . qualifiedName  = convertClassNameToQualified @lhs.qualifiedEnvironment @name.self
+       loc . superClasses   = map (\(c, tps) -> (getNameName $ convertClassNameToQualified @lhs.qualifiedEnvironment c, tps)) 
+                                                      $ getSuperClasses @contextQual
+       loc . contextQual    = map (convertContextItemToQualified @lhs.qualifiedEnvironment) @context.self
        lhs . classInstances = let
                                 superClasses :: [(String, Tp)]
-                                superClasses = map (\(c, tpss)-> (c, unqualify $ unquantify $ head tpss)) $ getSuperClasses @context.self
-                              in [(getNameName $ @name.self, makeTpFromType' $ head @types.self, superClasses)] 
+                                superClasses = map (fmap $ unqualify . unquantify . head) @superClasses
+                              in [(getNameName @qualifiedName, @qualifiedTp, superClasses)]
 
-       lhs . instanceEnv = M.singleton (@name.self, makeTpFromType' $ head @types.self) (namesInType (head @types.self), map (\(n, tp) -> (n, show $ head tp)) $ getSuperClasses @context.self)
+       lhs . instanceEnv = M.singleton (convertClassNameToQualified @lhs.qualifiedEnvironment @name.self, @qualifiedTp) 
+                            (namesInType @qualifiedType, map (fmap (show . head)) @superClasses)
     | Data  lhs . instanceEnv = M.fromList 
                                     [
-                                        let className = dn
+                                        let -- className = dn
                                             dataName = @simpletype.name
                                             tvs = @simpletype.typevariables
                                             tVars = zip tvs (map TVar [0..])
                                             key = (dn, foldl TApp (TCon $ show dataName) $ map snd tVars)
                                             value = (tvs, [(show dn, tv) | tv <- map show tvs])
-                                        in (key, value) | dn <- @derivings.self
+                                        in (key, value) | dn <- @qualDers
                                     ]
             lhs . classInstances =  [
                                         let 
                                             tvs = @simpletype.typevariables
                                             tVars = zip tvs (map TVar [0..])
-                                            typeClass = foldl TApp (TCon $ show @simpletype.name) $ map snd tVars
+                                            typeClass = foldl TApp (TCon $ getNameName @fullname) $ map snd tVars
                                         in (show dn, typeClass, map (\x -> (show dn, snd x)) tVars)
-                                        | dn <- @derivings.self
+                                        | dn <- @qualDers
                                     ]
         
 {
@@ -501,11 +585,8 @@ getTypeOfInstanceFunction instanceName name env = case M.lookup instanceName env
         lookupFunc n (f@(nf, _, _, _):fs)  | n == nf   = Just f
                                         | otherwise = lookupFunc n fs
 
-getClassName :: SimpleType -> String
-getClassName (SimpleType_SimpleType _ n _) = getNameName n
-
-getSuperClasses ::  ContextItems -> [(String, [TpScheme])]
-getSuperClasses = map (\(ContextItem_ContextItem _ n vs) -> (getNameName n, (map makeTpSchemeFromType vs)))
+getSuperClasses ::  ContextItems -> [(Name, [TpScheme])]
+getSuperClasses = map (\(ContextItem_ContextItem _ n vs) -> (n, map makeTpSchemeFromType vs))
 
 getInstanceFunctionNames :: MaybeDeclarations -> [Name]
 getInstanceFunctionNames (MaybeDeclarations_Nothing) = []
@@ -518,26 +599,28 @@ getDeclarationName (Declaration_FunctionBindings _ fb) =
         let names = map getFunctionBindingName fb 
             valid = all (==(head names)) names
         in if valid then head names else error "Inconsistent names in function bindings"
-
-getDeclarationName _ = error $ "Unknown declaration in instance"
+getDeclarationName _ = error "Unknown declaration in instance"
 
 getFunctionBindingName :: FunctionBinding -> Name
 getFunctionBindingName (FunctionBinding_FunctionBinding _ lhs _)= getLhsName lhs
+getFunctionBindingName _ = error "No function binding in getFunctionBindingName"
 
 getLhsName :: LeftHandSide -> Name
 getLhsName (LeftHandSide_Function _ name _) = name
 getLhsName (LeftHandSide_Infix _ _ name _) = name
+getLhsName _ = error "Uncovered argument case in getLhsName"
 }
 
 ATTR Body Declaration Declarations [ | | instances USE {++} {[]} : {[(Range, Instance)]} ]
 
 SEM Declaration
   | Instance
-     lhs . instances = [createInstance @range.self @name.self (head @types.self) @context.self]
+     lhs . instances   = [createInstance @range.self @qualifiedName @qualifiedType @contextQual]
   | Data
-    lhs. instances = [ (@range.self, makeInstance (show cl) (length @simpletype.typevariables) (show @simpletype.name) True)
-                                | cl <- @derivings.self
+    lhs . instances = [ (@range.self, makeInstance (show cl) (length @simpletype.typevariables) (getNameName @fullname) True)
+                                | cl <- @qualDers
                                 ]
+    loc . qualDers  = map (\x -> setNameRange (convertClassNameToQualified @lhs.qualifiedEnvironment x) (getNameRange x)) @derivings.self
     
 
 {

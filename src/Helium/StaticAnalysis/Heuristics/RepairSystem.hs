@@ -1,18 +1,30 @@
 module Helium.StaticAnalysis.Heuristics.RepairSystem (repairSystem) where
 
+{-| Module      :  RepairSystem
+    License     :  GPL
+
+    Maintainer  :  helium@cs.uu.nl
+    Stability   :  experimental
+    Portability :  portable
+
+    The work of Arjen Langebaerd to try out all kinds of repairs up to a particular
+    depth to see whether any repairs fix a type error. This can then be displayed
+    as a hint.
+-}
+
 import Top.Types
-import Top.States.BasicState (printMessage)
-import Top.TypeGraph.Basics (EdgeId, VertexId(..))
-import Top.TypeGraph.Heuristics
-import Top.TypeGraph.TypeGraphState
+--import Top.States.BasicState (printMessage)
+import Top.Implementation.TypeGraph.Basics (EdgeId, VertexId(..))
+import Top.Implementation.TypeGraph.Heuristic
+--import Top.Implementation.TypeGraph.TypeGraphState
 import Top.Repair.Repair (repair)
 import Top.Repair.AExpr
 import Data.Maybe
 import Helium.StaticAnalysis.Miscellaneous.ConstraintInfo
 import Helium.StaticAnalysis.Miscellaneous.DoublyLinkedTree
-import Helium.UHA_Syntax
-import Helium.UHA_Source
-import Helium.Utils (internalError)
+import Helium.Syntax.UHA_Syntax
+--import Helium.Syntax.UHA_Source
+import Helium.Utils.Utils (internalError)
 
 type HeliumRepairInfo = (Maybe Tp, Maybe UHA_Source)
 

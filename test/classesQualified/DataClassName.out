@@ -1,0 +1,8 @@
+Prelude is up to date
+Compiling classesQualified/ClassA.hs
+Compilation successful
+Compiling classesQualified/DataClassName.hs
+(1,45): The occurence of exported type constructor, type synonym or class "A" is ambiguous. It could refer to:
+	"A" defined at (3,1)
+	"A" imported from module ClassA (originally defined in "ClassA:(3,1)-(4,15)")
+Compilation failed with 1 error

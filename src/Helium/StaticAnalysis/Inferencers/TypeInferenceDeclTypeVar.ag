@@ -55,6 +55,7 @@ SEM FieldDeclaration
     lhs . betaDeclUnique = @lhs.betaDeclUnique + (length @names.self)
 
 {
+-- Get superclasses for contextitems. Result looks like [("Prelude.Eq", v0), ("Prelude.Num", v1)]
 getSuperClasses ::  ContextItems -> [(String, Name)]
 getSuperClasses = map (\(ContextItem_ContextItem _ n vs) -> (getNameName n, var vs))
     where
@@ -178,9 +179,6 @@ SEM Pattern
   | NegateFloat
     lhs.betaDeclUnique = @lhs.betaDeclUnique + 1
     loc.beta = TVar @lhs.betaDeclUnique
-
-  | Successor
-    loc.beta = internalError "TypeInferenceDeclTypeVar.ag" "n/a" "Pattern.Successor"
 
 SEM RecordPatternBinding
   | RecordPatternBinding

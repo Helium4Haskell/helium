@@ -1,0 +1,17 @@
+Prelude is up to date
+Compiling exports/Qual1.hs
+Compilation successful
+Compiling exports/Qual7.hs
+(1,28), (1,21): There is an export conflict for  "f":
+      "f" exports: "f" defined at (7,1)
+      "module Qual1" exports: "f" imported from module Qual1 (orignally defined in "Qual1:(4,1)-(4,6)")
+(1,31), (1,21): There is an export conflict for  ":>><":
+      "Listt3(..)" exports: ":>><" defined at (18,19)
+      "module Qual1" exports: ":>><" imported from module Qual1 (orignally defined in "Qual1:(22,17)-(22,40)")
+(1,31), (1,21): There is an export conflict for  "Emptyy":
+      "Listt3(..)" exports: "Emptyy" defined at (19,17)
+      "module Qual1" exports: "Emptyy" imported from module Qual1 (orignally defined in "Qual1:(22,43)-(22,49)")
+(1,31), (1,21): There is an export conflict for  "Listt3":
+      "Listt3(..)" exports: "Listt3" defined at (18,6)
+      "module Qual1" exports: "Listt3" imported from module Qual1 (orignally defined in "Qual1:(22,1)-(22,49)")
+Compilation failed with 4 errors

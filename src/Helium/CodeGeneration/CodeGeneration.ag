@@ -37,6 +37,7 @@ import Helium.ModuleSystem.DictionaryEnvironment
 import Helium.CodeGeneration.Iridium.Show
 import qualified Data.Map as M
 import Helium.StaticAnalysis.Miscellaneous.TypeConversion
+import Helium.Utils.QualifiedTypes
 import Data.Char (ord)
 import Data.Maybe
 import Data.List(isSuffixOf, find, sortOn)
@@ -88,6 +89,15 @@ ATTR Body Declarations Declaration Expressions Expression Statements Statement
         importEnv : ImportEnvironment
         | | ]
 
+ATTR Body Declarations Declaration MaybeDeclarations Constructor Constructors
+    [ modulename : String | | ]
+    
+SEM Expression        | Let  loc.importEnv  = internalError "CodeGeneration.ag" "Expression.Let" ""
+                             loc.modulename = internalError "CodeGeneration.ag" "Expression.Let" ""
+SEM Qualifier         | Let  loc.importEnv  = internalError "CodeGeneration.ag" "Qualifier.Let" ""
+                             loc.modulename = internalError "CodeGeneration.ag" "Qualifier.Let" ""       
+SEM Statement         | Let  loc.importEnv  = internalError "CodeGeneration.ag" "Statement.Let" ""
+                             loc.modulename = internalError "CodeGeneration.ag" "Statement.Let" ""
 
 ATTR Body Declarations Declaration Expressions Expression
      GuardedExpressions GuardedExpression 

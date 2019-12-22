@@ -23,6 +23,8 @@ module Helium.CodeGeneration.CoreUtils
     ,   constructorsToCase, constructorToCase
     ,   patternMatchFail, patternAlwaysSucceeds, getTVar
     ,   TypeInferenceOutput(TypeInferenceOutput, importEnv), lookupBeta
+    ,   setExportsPublic
+    ,   toplevelType
     ) where
 
 import Top.Types as Top
@@ -32,6 +34,7 @@ import Top.Types.Substitution(FixpointSubstitution, lookupInt)
 import Lvm.Core.Expr
 import Lvm.Core.Type as Core
 import Lvm.Common.Id
+import Lvm.Common.IdSet
 import Lvm.Core.Utils
 import Data.Char
 import Data.Maybe
@@ -39,18 +42,17 @@ import Data.List
 import Lvm.Common.Byte(bytesFromString)
 import qualified Lvm.Core.Expr as Core
 import qualified Data.Map as M
+import Helium.Utils.QualifiedTypes (convertClassNameToQualified)
+import Data.List(isPrefixOf)
 import Helium.ModuleSystem.ImportEnvironment
-import Helium.Syntax.UHA_Syntax
 import Helium.Syntax.UHA_Utils
 import Helium.Syntax.UHA_Range
+import Helium.Syntax.UHA_Syntax hiding (Module(..))
 import Helium.Utils.Utils
-import Debug.Trace
-import Text.PrettyPrint.Leijen (pretty)
+import Helium.Syntax.UHA_Syntax ( Name )
 
 lookupBeta :: Int -> TypeInferenceOutput -> Top.Tp
 lookupBeta beta typeOutput = lookupInt beta $ substitutionFromResult $ solveResult typeOutput
-
-infixl `app_`
 
 custom :: String -> String -> Custom
 custom sort text =
@@ -58,15 +60,16 @@ custom sort text =
         (DeclKindCustom (idFromString sort))
         [CustomBytes (bytesFromString text)]
 
-
 customStrategy :: String -> Decl a
 customStrategy text =
-    DeclCustom    
+    DeclCustom
         { declName = idFromString ""
         , declAccess = Defined { accessPublic = True }
         , declKind = DeclKindCustom (idFromString "strategy")
         , declCustoms = [custom "strategy" text]
         }
+
+infixl `app_`
 
 app_ :: Expr -> Expr -> Expr
 app_ f x = Ap f x
@@ -75,23 +78,23 @@ let_ :: Id -> Core.Type -> Expr -> Expr -> Expr
 let_ x t e b = Let (NonRec (Bind (Variable x t) e)) b
 
 letrec_ :: [CoreDecl] -> Expr -> Expr
-letrec_ bs e = 
-    Let 
-        (Rec 
+letrec_ bs e =
+    Let
+        (Rec
             [ Bind (Variable ident t) expr
             | DeclValue { declName = ident, declType = t, valueValue = expr } <- bs
             ]
-        ) 
+        )
         e
 
 -- Function "if_" builds a Core expression of the following form
--- let! guardId = <guardExpr> in 
--- match guardId 
+-- let! guardId = <guardExpr> in
+-- match guardId
 --   True -> <thenExpr>
 --   _    -> <elseExpr>
 if_ :: Expr -> Expr -> Expr -> Expr
 if_ guardExpr thenExpr elseExpr =
-    Let 
+    Let
         (Strict (Bind (Variable guardId typeBool) guardExpr))
         (Match guardId
             [ Alt (PatCon (ConId trueId) [] []) thenExpr
@@ -100,8 +103,8 @@ if_ guardExpr thenExpr elseExpr =
         )
 
 -- Function "coreList" builds a linked list of the given expressions
--- Example: coreList tp [e1, e2] ==> 
---   Ap (Ap (Con ":" `ApType` tp) e1) 
+-- Example: coreList tp [e1, e2] ==>
+--   Ap (Ap (Con ":" `ApType` tp) e1)
 --           (Ap (Ap (Con ":" `ApType` tp) e2)
 --                    (Con "[]" `ApType` tp)
 --           )
@@ -114,7 +117,7 @@ cons tp x xs = ApType (Con (ConId consId)) tp `app_` x `app_` xs
 nil :: Core.Type -> Expr
 nil tp = ApType (Con (ConId nilId)) tp
 
-nilId, consId, trueId, guardId :: Id 
+nilId, consId, trueId, guardId :: Id
 ( nilId : consId :  trueId :  guardId : []) =
    map idFromString ["[]", ":", "True", "guard$"]
 
@@ -133,17 +136,17 @@ var x = Var (idFromString x)
 
 --Core.Lit (Core.LitDouble (read @value))   PUSHFLOAT nog niet geimplementeerd
 float :: String -> Expr
-float f = 
-    Core.Ap 
-        (Core.Var (idFromString "$primStringToFloat")) 
+float f =
+    Core.Ap
+        (Core.Var (idFromString "$primStringToFloat"))
         ( Core.Lit (Core.LitBytes (bytesFromString f)) )
 
 addToTypeEnv :: TypeEnvironment -> [(Name, TpScheme)] -> TypeEnvironment
 addToTypeEnv = foldr (\(name, tpScheme) env -> M.insert name tpScheme env)
 
 decl :: Bool -> String -> Core.Type -> Expr -> CoreDecl
-decl isPublic x t e = 
-    DeclValue 
+decl isPublic x t e =
+    DeclValue
         { declName = idFromString x
         , declAccess = Defined { accessPublic = isPublic }
         , declType = t
@@ -154,7 +157,7 @@ decl isPublic x t e =
 getTVar :: Top.Tp -> Maybe Int
 getTVar (Top.TVar idx) = Just idx
 getTVar _ = Nothing
-      
+
 packedString :: String -> Expr
 packedString s = Lit (LitBytes (bytesFromString s))
 
@@ -183,12 +186,12 @@ instantiationInTypeClassInstance _ _ = Nothing
 
 declarationConstructorTypeScheme :: ImportEnvironment -> Name -> Top.TpScheme
 declarationConstructorTypeScheme importEnv name = case M.lookup name $ valueConstructors importEnv of
-  Just (Quantification (quantors, qmap, qtp)) -> 
+  Just (_, (Quantification (quantors, qmap, qtp))) ->
     let
       -- We must assure that the order of the quantors matches the order in which the type variables
       -- appear in the data type / return type of the constructor, eg [a, b] in
       -- a -> Either a b
-      
+
       Qualification (_, tp) = qtp
 
       -- Finds the (order of the) type arguments
@@ -198,7 +201,7 @@ declarationConstructorTypeScheme importEnv name = case M.lookup name $ valueCons
         where
           consume accum (Top.TApp t (Top.TVar idx)) = consume (idx : accum) t
           consume accum _ = accum
-      
+
       quantors' = findTypeArgs tp
     in Quantification (quantors', qmap, qtp)
   Nothing -> internalError "CodeGeneration" "declarationConstructorTypeScheme" ("Constructor not found: " ++ show name)
@@ -224,7 +227,7 @@ declarationType typeOutput context name =
     Nothing -> internalError "ToCoreDecl" "Declaration" ("no type found for " ++ getNameName name)
 
 declarationTypeInPattern :: TypeInferenceOutput -> Name -> Int -> (Top.TpScheme, Core.Type)
-declarationTypeInPattern typeOutput name beta = 
+declarationTypeInPattern typeOutput name beta =
   case declarationTpScheme typeOutput TCCNone name of
     Just scheme -> (scheme, toCoreType scheme)
     Nothing ->
@@ -258,6 +261,84 @@ qtypeToCoreType qmap (Top.Qualification (q, t)) = foldr addDictArgument (typeToC
 predicateToCoreType :: Top.QuantorMap -> Top.Predicate -> Core.Type
 predicateToCoreType qmap (Top.Predicate className tp) =
     Core.TAp (Core.TCon $ TConTypeClassDictionary $ idFromString className) $ typeToCoreType' qmap tp
+customInfix :: DeclKind
+customInfix = customDeclKind "infix"
+
+setExportsPublic :: Bool -> (IdSet,IdSet,IdSet,IdSet,IdSet) -> ImportEnvironment -> Module v -> Module v
+setExportsPublic implicit (exports,exportCons,exportData,exportDataCon,exportMods) env m
+  = m { moduleDecls = concatMap setPublic (moduleDecls m) }
+  where
+    setPublic decl_ | isQual decl_ && (isInstance decl_ || isTypeSynonym decl_ || declPublic decl_) =
+                        let name = stringFromId $! declName decl_
+                            newname = idFromString $! (unQualifyString name)
+                        in if not ("Dict" `isPrefixOf` name) then
+                            [decl_{ declName = newname, declAccess = (declAccess decl_){ accessPublic = True } }, decl_{declAccess = (declAccess decl_){ accessPublic = False }}]
+                           else
+                            [decl_]
+                    | isQual decl_ =
+                        [decl_{declAccess = (declAccess decl_){ accessPublic = False }}]
+                    | isInstance decl_ || isTypeSynonym decl_ || declPublic decl_ =
+                        [decl_{declAccess = (declAccess decl_){ accessPublic = True } }]
+                    | otherwise       = [decl_]
+
+    isExported decl_ elemIdSet =
+        let access = declAccess decl_ in
+        if implicit then
+            case decl_ of
+                DeclImport{} ->  False
+                _ ->
+                    case access of
+                        Imported{} -> False
+                        Defined{}  -> True --accessPublic access
+        else
+            case access of
+                Imported{ importModule = x }
+                    | elemSet x exportMods              -> True
+                    | otherwise                         -> elemIdSet
+                Defined{}
+                    | elemSet (moduleName m) exportMods -> True
+                    | otherwise                         -> elemIdSet
+
+    declPublic decl_ =
+        let name = declName decl_
+        in
+        case decl_ of
+            DeclValue{}     ->  isExported decl_ (elemSet name exports)
+            DeclAbstract{}  ->  isExported decl_
+                                    (  elemSet name exports
+                                    || elem (stringFromId name) classMembers
+                                    )
+            DeclExtern{}    ->  isExported decl_ (elemSet name exports)
+            DeclCon{}       ->  isExported decl_
+                                    (  elemSet name exportCons
+                                    || (elemSet (conTypeName decl_) exportDataCon)
+                                    )
+            DeclCustom{}    ->  isExported decl_
+                                    (declKind decl_ `elem` [customData, customTypeDecl, customClassDefinition]
+                                                && (elemSet name exportData || elemSet name exportDataCon)
+                                    || (declKind decl_ `elem` [customInfix] && elemSet name exports)
+                                    )
+            _               -> internalError "CoreUtils" "setExportsPublic" "We can only deal with Custom, Value, and Con Core.Decl"
+
+    isQual decl_ = let name = stringFromId $ declName decl_ in isQualifiedString name
+
+    -- Get all class members that should be exported
+    classMembers     = concat $ map (map (\(n,_,_,_) -> getNameName n) . snd) $ M.elems exportClasses
+    exportClasses    = M.filterWithKey (const . (`elem` exportClassNames)) classMemberEnv
+    exportClassNames = map (convertClassNameToQualified env . nameFromString . stringFromId) (listFromSet exportDataCon)
+    classMemberEnv   = classMemberEnvironment env
+
+            -- Always export dictionaries
+    isInstance decl_ = let name = stringFromId $ declName decl_ in "$dict" `isPrefixOf` name
+
+    --For now we always export type synonyms
+    isTypeSynonym decl_ =case decl_ of
+        DeclCustom{declKind = k} | k == customTypeDecl -> True
+        _ -> False
+
+
+    conTypeName (DeclCon{declCustoms=(_:CustomLink x _:_)}) = x
+    conTypeName _ = dummyId
 
 typeToCoreType :: Top.Tp -> Core.Type
 typeToCoreType = typeToCoreType' []
@@ -347,8 +428,8 @@ createInstantiation typeOutput typeEnv name isConstructor beta = case maybeSchem
       | isConstructor = Just $ declarationConstructorTypeScheme (importEnv typeOutput) name
       | otherwise = M.lookup name typeEnv
 {-
-Tries to instantiate the type variables in the type scheme such that it results 
-in the given Tp. 
+Tries to instantiate the type variables in the type scheme such that it results
+in the given Tp.
 -}
 findInstantiation :: ImportEnvironment -> Top.TpScheme -> Top.Tp -> [Top.Tp]
 findInstantiation importEnv t@(Top.Quantification (tvars, _, Top.Qualification (_, tLeft))) tRight
@@ -366,15 +447,15 @@ findInstantiation importEnv t@(Top.Quantification (tvars, _, Top.Qualification (
     traverseNoTypeSynonym t1 t2 = traverse t1 t2
 
 {-
-Puts the fields in the correct order, 
+Puts the fields in the correct order,
 and applies them in that order to the constructor expression.
 
 Fills the empty fields with `undefined`
 -}
-createRecordInstantiation :: TypeInferenceOutput 
+createRecordInstantiation :: TypeInferenceOutput
                             -> Name       {- Constructor name -}
                             {- Field name, argument to pass to field -}
-                            -> [(Name, Core.Expr)] 
+                            -> [(Name, Core.Expr)]
                             -> TpScheme   {- Typescheme corresponding to the beta variable -}
                             -> Int        {- Beta var containing the typeoutput -}
                             -> Core.Expr
@@ -389,7 +470,7 @@ createRecordInstantiation typeOutput@TypeInferenceOutput{..} name bindings tps b
 
     constrExpr = Core.Con $ Core.ConId $ idFromName name
     -- Find an instantiation of the type variables using the type inferred for the
-    -- constructor and the defined typescheme of the constructor 
+    -- constructor and the defined typescheme of the constructor
     outputTp = lookupBeta beta typeOutput
     tVars = findInstantiation importEnv tps outputTp
 
@@ -410,7 +491,7 @@ Transforms
 
 >> data Foo = Foo { a :: Int, b :: Int }
 >>          | Bar { a :: Int }
->> 
+>>
 >> f x = x { a = 1 }
 
 into
@@ -422,15 +503,15 @@ into
                       _     -> patternMatchFail)
         x 1
 -}
-createRecordUpdate :: TypeInferenceOutput 
+createRecordUpdate :: TypeInferenceOutput
                     {- Old record -}
-                    -> Core.Expr 
+                    -> Core.Expr
                     {- Beta variable of the old expression -}
                     -> Int
                     {- Beta variable of the new expression -}
                     -> Int
                     {- Field name, argument to pass to field, beta var for the argument -}
-                    -> [(Name, Core.Expr, Int)] 
+                    -> [(Name, Core.Expr, Int)]
                     {- Range for the overal expression -}
                     -> Range
                     -> Core.Expr
@@ -447,16 +528,16 @@ createRecordUpdate typeOutput@TypeInferenceOutput{..} old oldBeta beta bindings 
     -- Determine which constructors are possible with this field combination
     constructors = mapMaybe (\x -> fst3 x `M.lookup` fieldLookup) bindings
     relevantConstrs = foldr1 intersect constructors
-    resultTps = generalizeResult $ fromJust $ 
+    resultTps = generalizeResult $ snd $ fromJust $
       M.lookup (head relevantConstrs) valueConstructors
 
     -- Build up the inner function which will do the actual 'updating'
     func = createLambdas lambdaArgs body
-    body = constructorsToCase importEnv 
-      (variableName scrutVar) 
-      (typeToCoreType (lookupBeta beta typeOutput)) 
-      range 
-      (findInstantiation importEnv resultTps oldTp) 
+    body = constructorsToCase importEnv
+      (variableName scrutVar)
+      (typeToCoreType (lookupBeta beta typeOutput))
+      range
+      (findInstantiation importEnv resultTps oldTp)
       (map (\n -> (n, oldFields, exec n)) relevantConstrs)
 
     -- Determine the types and strictness for each of the fields to be updated
@@ -465,14 +546,14 @@ createRecordUpdate typeOutput@TypeInferenceOutput{..} old oldBeta beta bindings 
     strict n = snd4 $ fromJust (M.lookup n allFields)
 
     allFields = M.unions $ mapMaybe (`M.lookup` recordEnvironment) relevantConstrs
-    oldFields = map (\n -> (n, idFromString (show n))) $ M.keys $ 
+    oldFields = map (\n -> (n, idFromString (show n))) $ M.keys $
       foldr (M.delete . fst3) allFields bindings
 
     fieldToExpr :: Name -> Expr
-    fieldToExpr = Var . idFromString . show 
+    fieldToExpr = Var . idFromString . show
 
     allBinds :: Name -> [(Name, Core.Expr)]
-    allBinds n = fromMaybe (error "(n/a)") $ do 
+    allBinds n = fromMaybe (error "(n/a)") $ do
       fields <- M.lookup n recordEnvironment
       return $ map (\(x, _) -> (x, fieldToExpr x)) (M.assocs fields)
     exec n = createRecordInstantiation typeOutput n (allBinds n) resultTps beta
@@ -481,11 +562,11 @@ createRecordUpdate typeOutput@TypeInferenceOutput{..} old oldBeta beta bindings 
     createLambdas xs e = Lam True scrutVar (foldr (uncurry Lam) e xs)
 
 {-
-Transforms 
+Transforms
 
 >> data Foo = Foo { a :: Int, b :: Int }
 >>          | Bar { a :: Int }
->> 
+>>
 >> f x = a x
 
 into
@@ -505,7 +586,7 @@ createRecordSelector :: ImportEnvironment
 createRecordSelector importEnv r field retTp
   = foldr (\x e -> Core.Forall (typeVarToQuantor qmap x) Core.KStar e) (Lam True scrutVar select) tvars
   where
-    ty@(Top.Quantification (_, qmap, _)) = fromMaybe (notFound constr) $ do 
+    ty@(Top.Quantification (_, qmap, _)) = fromMaybe (notFound constr) $ do
       fields <- M.lookup constr (recordEnvironment importEnv)
       (i, s, t, ts) <- M.lookup field fields
       return ts
@@ -518,14 +599,14 @@ createRecordSelector importEnv r field retTp
 
     constrs = fromMaybe (notFound field) $ field `M.lookup` fieldLookup importEnv
     constr = head constrs
-    constrTps
+    (n, constrTps)
       = fromMaybe (notFound constr) $ M.lookup constr (valueConstructors importEnv)
     instantiated = sort $ findInstantiation importEnv constrTps (unqualify (unquantify constrTps))
 
     scrutTp = unqualify (unquantify constrTps)
     scrutType = snd $ Core.typeExtractFunction $ toCoreTypeNotQuantified constrTps
     scrutVar = Variable scrutId scrutType
-    notFound f = coreUtilsError "createRecordSelector" 
+    notFound f = coreUtilsError "createRecordSelector"
       ("no appropriate constructor found for field " ++ show f)
 
 generalizeResult :: TpScheme -> TpScheme
@@ -534,7 +615,7 @@ generalizeResult constrTps = generalizeAll ([] .=>. constrTp)
     constrTp = snd $ functionSpine $ unqualify $ unquantify constrTps
 
 -- Helper function for executing code for a multiple constructors
-constructorsToCase :: ImportEnvironment 
+constructorsToCase :: ImportEnvironment
                     -> Id           {- Scrutinee's Id -}
                     -> Core.Type    {- Result type -}
                     -> Range        {- Range of the overal expression -}
@@ -542,14 +623,14 @@ constructorsToCase :: ImportEnvironment
                     {- (Constructor name, Fields to include, What to execute) -}
                     -> [(Name, [(Name, Id)], Core.Expr)]
                     -> Core.Expr
-constructorsToCase importEnv scrutId resType r tps fs 
+constructorsToCase importEnv scrutId resType r tps fs
   = case fs of
     [] -> patternMatchFail "pattern binding" resType r
-    ((n, fields, exec):xs) -> constructorToCase importEnv n scrutId tps fields exec $ 
+    ((n, fields, exec):xs) -> constructorToCase importEnv n scrutId tps fields exec $
                           constructorsToCase importEnv scrutId resType r tps xs
 
 -- Helper function for executing code for a specific constructor
-constructorToCase :: ImportEnvironment 
+constructorToCase :: ImportEnvironment
                     -> Name           {- Constructor name -}
                     -> Id             {- Scrutinee -}
                     -> [Tp]           {- Typevariables to instantiate the pattern to -}
@@ -567,7 +648,7 @@ constructorToCase importEnv constr scrutinee tps fs exec continue
     patt = PatCon (ConId constructor) (map typeToCoreType tps) args
 
     constructor = idFromString (show constr)
-    (fields, constrTps) = fromMaybe (err "Constructor not found") $ do
+    (fields, (n, constrTps)) = fromMaybe (err "Constructor not found") $ do
       fields <- M.lookup constr (recordEnvironment importEnv)
       constrTps <- M.lookup constr (valueConstructors importEnv)
       return (fields, constrTps)
@@ -583,7 +664,7 @@ constructorToCase importEnv constr scrutinee tps fs exec continue
           Just _ -> idFromString "_"
 
 patternAlwaysSucceeds :: Pattern -> Bool
-patternAlwaysSucceeds p = 
+patternAlwaysSucceeds p =
     case p of
         Pattern_Variable _ _ -> True
         Pattern_Wildcard _ -> True
@@ -595,8 +676,8 @@ patternMatchFail :: String -> Core.Type -> Range -> Core.Expr
 patternMatchFail nodeDescription tp range =
     Core.ApType (var "$primPatternFailPacked") tp
         `app_` packedString (
-                    nodeDescription ++ " ranging from " ++ 
-                    showPosition start ++ " to " ++ 
+                    nodeDescription ++ " ranging from " ++
+                    showPosition start ++ " to " ++
                     showPosition (getRangeEnd range) ++ " in module " ++
                     moduleFromPosition start
                )
@@ -605,13 +686,24 @@ patternMatchFail nodeDescription tp range =
 
 coreUndefined :: ImportEnvironment -> Tp -> Core.Expr
 coreUndefined importEnv tp
-      = foldl (\e t -> Core.ApType e $ typeToCoreType t) undefinedExpr 
+      = foldl (\e t -> Core.ApType e $ typeToCoreType t) undefinedExpr
           (findInstantiation importEnv undefinedScheme tp)
     where
-      undefinedExpr = Var (idFromString "undefined") 
-      undefinedName = Name_Identifier (coreUtilsError "coreUndefined" "access non-existing range") ["Prelude"] "undefined"
+      undefinedExpr = Var (idFromString "undefined")
+      undefinedName = Name_Identifier (coreUtilsError "coreUndefined" "access non-existing range") ["Prelude"] "Prelude" "undefined"
       undefinedScheme = fromMaybe (coreUtilsError "coreUndefined" "undefined not defined") $
           M.lookup undefinedName (typeEnvironment importEnv)
 
 coreUtilsError :: String -> String -> a
 coreUtilsError = internalError "CoreUtils"
+
+-- TODO: Check if this is needed anymore (as core supports type synonyms)
+toplevelType :: Name -> ImportEnvironment -> Bool -> [Custom]
+toplevelType name ie isTopLevel
+    | isTopLevel = [custom "type" typeString]
+    | otherwise  = []
+    where
+        typeString = maybe
+            (internalError "ToCoreDecl" "Declaration" ("no type found for " ++ getNameName name))
+            show
+            (M.lookup name (typeEnvironment ie))

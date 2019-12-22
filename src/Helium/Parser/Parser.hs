@@ -50,7 +50,7 @@ import Helium.Syntax.UHA_Range
 import qualified Helium.Parser.CollectFunctionBindings as CollectFunctionBindings
 import Helium.Utils.Utils
 
-parseOnlyImports :: String -> IO [String]
+parseOnlyImports :: String -> IO [Name]
 parseOnlyImports fullName = do
     contents <- readSourceFile fullName    
     return $ case lexer [] fullName contents of
@@ -58,7 +58,7 @@ parseOnlyImports fullName = do
                Right (toks, _) ->
                  case runHParser onlyImports fullName (layout toks) False {- no EOF -} of
                    Left _ -> []
-                   Right imports -> map stringFromImportDeclaration imports
+                   Right imports -> map nameFromImportDeclaration imports
 
 {-
 module  
@@ -71,7 +71,7 @@ module_ = addRange $
     do
         lexMODULE
         n <- modid
-        let mes = MaybeExports_Nothing
+        mes <- exportList 
         lexWHERE
         b <- body
         return (\r -> Module_Module r (MaybeName_Just n) mes b)
@@ -82,12 +82,57 @@ module_ = addRange $
             Module_Module r MaybeName_Nothing MaybeExports_Nothing b)
 
 
+{-
+exports? -> Nothing
+          | Just exports
+exports ->   "(" export1 "," ... "," exportn [ , ] ) (n>=0)
+-}
+exportList :: HParser MaybeExports
+exportList =
+    do lexLPAREN
+       exps <- export `sepBy` lexCOMMAnotFollowedByRParen
+       optional lexCOMMA
+       lexRPAREN
+       return (MaybeExports_Just exps)
+    <|>
+    return MaybeExports_Nothing
+  where
+    lexCOMMAnotFollowedByRParen = try (do{lexCOMMA; notFollowedBy lexRPAREN})
+    export :: HParser Export
+    export = addRange $
+      exportVariable <|> exportModule <|> exportTypeOrClass
+
+    exportVariable = do
+        varname <- qvar
+        return (\range -> Export_Variable range varname)
+
+    exportModule = do
+      lexMODULE
+      modname <- modid
+      return  (\range -> Export_Module range modname)
+
+    exportTypeOrClass = do
+      typename <- qtycon
+      -- First let's try if constructors/methods are added (e.g. Bool(..) or Bool(True, False)
+      do
+        lexLPAREN
+        do
+          lexDOTDOT
+          lexRPAREN
+          return (\range -> Export_TypeOrClassComplete range typename)
+         <|> do
+          names <- cname `sepBy` lexCOMMA <|> qvar `sepBy` lexCOMMA
+          lexRPAREN
+          return (\range -> Export_TypeOrClass range typename (MaybeNames_Just names))
+       -- If there are no parens, no constructors are added.
+       <|> return (\range -> Export_TypeOrClass range typename MaybeNames_Nothing)
+
 onlyImports :: HParser [ImportDeclaration]
 onlyImports = 
     do
         lexMODULE
         _ <- modid
-        let _ = MaybeExports_Nothing
+        _ <- exportList 
         lexWHERE
         lexLBRACE <|> lexINSERTED_LBRACE
         many (do { i <- impdecl; semicolon; return i })
@@ -215,7 +260,7 @@ cdecls =
     do
         lexINSTANCE
         ct <- option [] (try $ do {c <- scontext; lexDARROW ; return c} )
-        n  <- tycls
+        n  <- qtycls
         ts <- iType
         ds <- option MaybeDeclarations_Nothing (try $ do lexWHERE
                                                          d <- idecls
@@ -240,11 +285,11 @@ cdecls =
 derivings :: HParser [Name]
 derivings = 
     do  lexDERIVING
-        ( do cls <- tycls
+        ( do cls <- qtycls
              return [cls] )
           <|> (
           do lexLPAREN           
-             clss <- tycls `sepBy` lexCOMMA
+             clss <- qtycls `sepBy` lexCOMMA
              lexRPAREN
              return clss )
     
@@ -376,9 +421,10 @@ impdecl :: HParser ImportDeclaration
 impdecl = addRange (
     do
         lexIMPORT
-        let q = False
+        q <- option False $ do {lexQUALIFIED; return True }
         m <- modid
-        let a = MaybeName_Nothing
+        a <- option MaybeName_Nothing $
+            do {lexAS; as <- modid; return (MaybeName_Just as)}
         i <- option MaybeImportSpecification_Nothing $
                 do{ is <- impspec
                   ; return (MaybeImportSpecification_Just is)
@@ -389,15 +435,40 @@ impdecl = addRange (
 impspec :: HParser ImportSpecification
 impspec = addRange $
     do  
-        h <- do { lexHIDING; return True }
-        is <- parens (commas import_)
+        h <- option False $
+            do { lexHIDING; return True }
+        lexLPAREN
+        is <- import_ `sepBy` lexCOMMAnotFollowedByRParen
+        optional lexCOMMA
+        lexRPAREN
         return $ \r -> ImportSpecification_Import r h is
+    where
+        lexCOMMAnotFollowedByRParen = try (do{lexCOMMA; notFollowedBy lexRPAREN})
+        
 
 import_ :: HParser Import
 import_ = addRange $
-    do
-        n <- var
-        return $ \r -> Import_Variable r n
+    importVariable <|> importTypeOrClass
+    where
+        importVariable = do
+            varname <- var
+            return (\range -> Import_Variable range varname)
+    
+        importTypeOrClass = do
+          typename <- tycon
+          -- First let's try if constructors/methods are added (e.g. Bool(..) or Bool(True, False)
+          do
+            lexLPAREN
+            do
+              lexDOTDOT
+              lexRPAREN
+              return (\range -> Import_TypeOrClassComplete range typename)
+             <|> do
+              names <- cname `sepBy` lexCOMMA <|> var `sepBy` lexCOMMA
+              lexRPAREN
+              return (\range -> Import_TypeOrClass range typename (MaybeNames_Just names))
+           -- If there are no parens, no constructors are added.
+           <|> return (\range -> Import_TypeOrClass range typename MaybeNames_Nothing)
 
 {-
 cdecls -> " {" decl1 ";" .... ";" decln "}"    (n>=0)
@@ -840,8 +911,8 @@ fexp = addRange $
 
 
 {-
-aexp    ->  var  (variable)  
-         |  con
+aexp    ->  qvar  (variable)  
+         |  gcon
          |  literal  
 
          |  "[" "]" 
@@ -850,23 +921,23 @@ aexp    ->  var  (variable)
          |  "[" exp "|" qual1 "," ... "," qualn "]"
 
          |  () 
-         |  (op fexp) (left section)
-         |  (fexp op) (right section)
+         |  (qop fexp) (left section)
+         |  (fexp qop) (right section)
          |  ( exp )  (parenthesized expression)  
          |  ( exp1 , ... , expk )  (tuple, k>=2)  
          
 Last cases parsed as:
 
     "(" "-" exprChain ( "," exp_ )* ")"
-  | "(" op fexp ")"
-  | "(" fexp op ")"
+  | "(" qop fexp ")"
+  | "(" fexp qop ")"
   | "(" ( exp_ )<sepBy ","> ")"
 -}
 
 operatorAsExpression :: Bool -> HParser Expression
 operatorAsExpression storeRange = (do
-    (o, r) <- withRange ( fmap Left varsym <|> fmap Right consym 
-                      <|> lexBACKQUOTEs (fmap Left varid <|> fmap Right conid))
+    (o, r) <- withRange ( fmap Left qvarsym <|> fmap Right qconsym 
+                      <|> lexBACKQUOTEs (fmap Left qvarid <|> fmap Right qconid))
     let range = if storeRange then r else noRange                      
     return (case o of
         Left  v -> Expression_Variable    range v
@@ -929,18 +1000,18 @@ aexp = addRange (
          )
     <|>
     do
-        n <- varid
+        n <- qvarid
         return $ \r -> Expression_Variable r n
     <|>
     do
         (n, rs) <- try $ do 
-            n <- conid
+            n <- qconid
             rs <- braces (fbind `sepBy` lexCOMMA)
             return (n, rs)
         return $ \r -> Expression_RecordConstruction r n rs
     <|>
     do
-        n <- conid
+        n <- qconid
         return $ \r -> Expression_Constructor r n
     <|>
     do 
@@ -998,7 +1069,7 @@ aexp1 =
     do
         lexRBRACKET
         return $ \r -> Expression_Constructor r
-                        (Name_Special r [] "[]") -- !!!Name
+                        (Name_Special r [] [] "[]") -- !!!Name
     <|>
     do
         e1 <- exp_
@@ -1160,7 +1231,7 @@ pat = addRange $
         u <- unaryMinusPat
         ps <- fmap concat $ many $
             do
-                o <- do { n <- conop; return (Pattern_Variable noRange n) }
+                o <- do { n <- qconop; return (Pattern_Variable noRange n) }
                 u' <- unaryMinusPat
                 return (o : u')
         return $ \_ -> Pattern_List noRange (u ++ ps)
@@ -1195,7 +1266,7 @@ pat10 = addRange (
         return $ \r -> Pattern_Record r n bs
     <|>
     do  
-        n  <- try con    
+        n  <- try gcon
         ps <- many apat
         return $ \r -> Pattern_Constructor r n ps
     )
@@ -1237,7 +1308,7 @@ apat = addRange (
     do
         ps <- brackets (commas pat)
         return $ \r -> case ps of
-            [] -> Pattern_Constructor r (Name_Special r [] "[]") [] -- !!!Name
+            [] -> Pattern_Constructor r (Name_Special r [] [] "[]") [] -- !!!Name
             _ -> Pattern_List r ps
     <|> 
     do
@@ -1246,13 +1317,13 @@ apat = addRange (
     <|>
     do
         (n, bs) <- try $ do 
-            n <- con
+            n <- qcon
             bs <- braces (fpat `sepBy` lexCOMMA)
             return (n, bs)
         return $ \r -> Pattern_Record r n bs
     <|>
     do
-        n <- con
+        n <- gcon
         return $ \r -> Pattern_Constructor r n []
     <|>
     do
@@ -1296,7 +1367,7 @@ scontext =
 
 simpleclass :: HParser ContextItem
 simpleclass = addRange (do
-    c <- tycon
+    c <- qtycon
     (v, vr) <- withRange tyvar
     return $ \r -> ContextItem_ContextItem r c [Type_Variable vr v]
     )
@@ -1314,7 +1385,7 @@ type_ = addRange (
                 (_, rangeArrow) <- withRange lexRARROW
                 right <- type_
                 return (\r -> Type_Application r False
-                        (Type_Constructor rangeArrow (Name_Special rangeArrow [] "->")) [left, right]) -- !!!Name
+                        (Type_Constructor rangeArrow (Name_Special rangeArrow [] [] "->")) [left, right]) -- !!!Name
     ) <?> Texts.parserType
 
 {-
@@ -1331,7 +1402,8 @@ btype = addRange (
             []  -> error "Pattern match failure in Parser.Parser.btype"
     ) <?> Texts.parserType
 
-{- iType -> tycon
+{-  (inst in Haskell2010)
+    iType -> tycon
          |  "(" ")"  (unit type)
          |  "(" type1 "," ... "," typek ")"  (tuple type, k>=2)  
          |  "(" type ")"  (parenthesized constructor)
@@ -1340,15 +1412,15 @@ btype = addRange (
 iType :: HParser Type
 iType = addRange (
     do
-        c <- tycon
+        c <- gtycon
         return (\r -> Type_Constructor r c)
     <|>
     do
         ts <- parens (commas type_)
         return (\r -> case ts of
-            [] -> Type_Constructor r (Name_Special r [] "()") -- !!!Name
+            [] -> Type_Constructor r (Name_Special r [] [] "()") -- !!!Name
             [t] -> Type_Parenthesized r t
-            _ -> let n = Name_Special r []  -- !!!Name
+            _ -> let n = Name_Special r [] []  -- !!!Name
                             ( "(" ++ replicate (length ts - 1) ',' ++ ")" )
                  in Type_Application r False (Type_Constructor r n) ts
          )
@@ -1356,7 +1428,7 @@ iType = addRange (
     do
         t <- brackets type_
         return $ \r ->
-            let n = Name_Special r [] "[]" -- !!!Name
+            let n = Name_Special r [] [] "[]" -- !!!Name
             in Type_Application r False (Type_Constructor r n) [t]
     ) <?> Texts.parserType
 
@@ -1372,7 +1444,7 @@ atype   ->  tycon
 atype :: HParser Type
 atype = addRange (
     do
-        c <- tycon
+        c <- gtycon
         return (\r -> Type_Constructor r c)
     <|>
     do
@@ -1382,9 +1454,9 @@ atype = addRange (
     do
         ts <- parens (commas type_)
         return (\r -> case ts of
-            [] -> Type_Constructor r (Name_Special r [] "()") -- !!!Name
+            [] -> Type_Constructor r (Name_Special r [] [] "()") -- !!!Name
             [t] -> Type_Parenthesized r t
-            _ -> let n = Name_Special r []  -- !!!Name
+            _ -> let n = Name_Special r [] [] -- !!!Name
                             ( "(" ++ replicate (length ts - 1) ',' ++ ")" )
                  in Type_Application r False (Type_Constructor r n) ts
          )
@@ -1392,7 +1464,7 @@ atype = addRange (
     do
         t <- brackets type_
         return $ \r ->
-            let n = Name_Special r [] "[]" -- !!!Name
+            let n = Name_Special r [] [] "[]" -- !!!Name
             in Type_Application r False (Type_Constructor r n) [t]
     ) <?> Texts.parserType
 

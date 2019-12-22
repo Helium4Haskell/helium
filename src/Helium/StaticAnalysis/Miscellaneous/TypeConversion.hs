@@ -73,17 +73,17 @@ addSimpleTypeContextToType (SimpleType_SimpleType _ name typevariables ) (Quanti
         nameToPredicate :: [(Name, Tp)] -> Name -> [Predicate]
         nameToPredicate nameMap tv = case lookup tv nameMap of
             Nothing -> []
-            Just tp -> [Predicate (getNameName name) tp]
+            Just tpe -> [Predicate (getNameName name) tpe]
 
 addPredicateToType :: Predicate -> TpScheme -> TpScheme
-addPredicateToType pred (Quantification (freeTV, nameMap', Qualification (prep, tp))) = Quantification (freeTV, nameMap', Qualification (pred : prep, tp))
+addPredicateToType prd (Quantification (freeTV, nameMap', Qualification (prep, tp))) = Quantification (freeTV, nameMap', Qualification (prd : prep, tp))
 
 classMemberEnvironmentAddContext :: Name -> (Names, [(Name, TpScheme, Bool, Bool)]) -> (Names, [(Name, TpScheme, Bool, Bool)])
 classMemberEnvironmentAddContext className members = Control.Arrow.second mapFunctions members
         where   mapFunctions = map updateFunc
                 updateFunc (name, tpscheme, b1, b2) = let 
-                    tpUpdated = addPredicateToType pred tpscheme
-                    pred = Predicate (getNameName className) tvar
+                    tpUpdated = addPredicateToType prd tpscheme
+                    prd = Predicate (getNameName className) tvar
                     tvar = TVar $ fst $ fromJust $ find (\x -> snd x == show (head $ fst members)) (getQuantorMap tpscheme)
                     in (name, tpUpdated, b1, b2)
                 
@@ -94,9 +94,9 @@ addContextToType name nameMap (Quantification (freeTV, nameMap', Qualification (
     in Quantification (nub freeTV, nub $ [ (i,getNameName n) | (n,TVar i) <- nameMap] ++ nameMap', Qualification (prep ++ context, tp))
     where
         nameToPredicate :: [(Name, Tp)] -> Name -> [Predicate]
-        nameToPredicate nameMap tv = case lookup tv nameMap of
+        nameToPredicate nmeMap tv = case lookup tv nmeMap of
             Nothing -> []
-            Just tp -> [Predicate (getNameName name) tp]
+            Just tpe -> [Predicate (getNameName name) tpe]
 {-}
             substituteClassVariables    :: TpScheme -- ^ The type which has to substituted
             -> Name     -- ^ The type variable of the class
@@ -117,11 +117,11 @@ substitution = listToSubstitution [(numb, beta) | (numb, tvar) <- qmap, tvar == 
 
 
 superClassToPredicate ::  [(Name, Tp)] -> (String, Name) -> Predicate
-superClassToPredicate classBetaVar (superClassName, typeVariable) = pred
+superClassToPredicate classBetaVar (superClassName, typeVariable) = prd
     where
-        err = error $  "Invalid type variable" ++ show classBetaVar ++ show typeVariable
-        predVar     = fromMaybe err $ lookup typeVariable classBetaVar
-        pred = Predicate superClassName predVar
+        err     = error $  "Invalid type variable" ++ show classBetaVar ++ show typeVariable
+        predVar = fromMaybe err $ lookup typeVariable classBetaVar
+        prd     = Predicate superClassName predVar
 
 
 {-superClassToPredicate :: [(Name, Tp)] -> (Name, [TpScheme]) -> Predicate
@@ -134,18 +134,18 @@ superClassToPredicate classVariables (superClassName, tpVars) =
 
 
 addSuperClassContext :: (String, [TpScheme])-> Tp -> (Name, Tp) -> Tp -> TpScheme -> TpScheme
-addSuperClassContext superClass instanceType classBetaVar classBeta typeScheme = tpScheme
-            where   tpScheme = updateType superClass typeScheme
-                --add context where every variable is replaced with type variable in instanceType 
-                    updateType :: (String, [TpScheme]) -> TpScheme -> TpScheme
-                    updateType (superClassName, typeVariables) tpScheme =
-                        let 
-                            nameMap = filter (\x -> snd x == getNameName (fst classBetaVar)) $ concatMap getQuantorMap typeVariables 
-                            predVar  | null nameMap = error "Invalid type variable"
-                                     | otherwise = snd classBetaVar
-                            updatedContext = Predicate superClassName predVar
-                            substitutedTp = addPredicateToType updatedContext tpScheme
-                        in substitutedTp
+addSuperClassContext superClass _ classBetaVar _ typeScheme = tpScheme
+    where   tpScheme = updateType superClass typeScheme
+        --add context where every variable is replaced with type variable in instanceType 
+            updateType :: (String, [TpScheme]) -> TpScheme -> TpScheme
+            updateType (superClassName, typeVariables) locTpScheme =
+                let 
+                    nameMap = filter (\x -> snd x == getNameName (fst classBetaVar)) $ concatMap getQuantorMap typeVariables 
+                    predVar  | null nameMap = error "Invalid type variable"
+                             | otherwise = snd classBetaVar
+                    updatedContext = Predicate superClassName predVar
+                    substitutedTp = addPredicateToType updatedContext locTpScheme
+                in substitutedTp
 
 replaceName :: (Name, Tp) -> TpScheme -> TpScheme
 replaceName repVar tpscheme = let
@@ -205,7 +205,7 @@ makeTypeFromTp t =
 showInstanceType :: Tp -> String
 showInstanceType (TCon c) = c
 showInstanceType (TApp f1 f2) = showInstanceType f1 ++ showInstanceType f2
-showInstanceType (TVar v) = ""
+showInstanceType (TVar _) = ""
             
 
 class Freshen a where
@@ -217,12 +217,12 @@ instance Freshen Tp where
     freshenWithMapping mapping n tp = (\(tp', (n', m'))->(m', (tp', n'))) $ runState (freshenHelper tp) (n, mapping) 
         where
             freshenHelper :: Tp -> State (Int, [(Int, Int)]) Tp
-            freshenHelper (TCon n) = return (TCon n)
+            freshenHelper (TCon cn) = return (TCon cn)
             freshenHelper (TVar v') = do
-                    (uniq, mapping) <- get
-                    case lookup v' mapping of
+                    (uniq, locMapping) <- get
+                    case lookup v' locMapping of
                         Just v -> return (TVar v)
-                        Nothing -> put (uniq + 1, (v', uniq) : mapping) >> return (TVar uniq)
+                        Nothing -> put (uniq + 1, (v', uniq) : locMapping) >> return (TVar uniq)
             freshenHelper (TApp a1 a2) = do
                 t1 <- freshenHelper a1
                 t2 <- freshenHelper a2
@@ -242,17 +242,17 @@ instance Freshen a => Freshen [a] where
         
 
 instance (Freshen a, Freshen b) => Freshen (Qualification a b) where
-    freshenWithMapping mapping n (Qualification (pred, tp)) = let
-        (mapping', (pred', b')) = freshenWithMapping mapping n pred
+    freshenWithMapping mapping n (Qualification (prd, tp)) = let
+        (mapping', (prd', b')) = freshenWithMapping mapping n prd
         (mapping'', (tp', b'')) = freshenWithMapping mapping' b' tp
-        in (mapping', (Qualification (pred', tp'), b''))
+        in (mapping', (Qualification (prd', tp'), b''))
 
 combineTps :: Tp -> TpScheme -> [(String, Tp)]
 combineTps tp tpscheme = combineTpsHelper (getQuantorMap tpscheme) tp (unqualify $ unquantify tpscheme)
     where 
         err = error "Error in mapping"
         combineTpsHelper :: [(Int, String)] -> Tp -> Tp -> [(String, Tp)]
-        combineTpsHelper mapping (TCon _) (TCon _) = []
+        combineTpsHelper _       (TCon _) (TCon _) = []
         combineTpsHelper mapping (TVar v1) (TVar v2) = return (fromMaybe err $ lookup v2 mapping, TVar v1)
         combineTpsHelper mapping (TApp f1 a1) (TApp f2 a2) = let
             f1Mapping = combineTpsHelper mapping f1 f2

@@ -6,19 +6,18 @@ are not documented. For information on these, please contact the authors
 of Helium. More information on the compiler and the ideas underlying it can
 be found on the Helium website, located at 
 
-   http://foswiki.cs.uu.nl/foswiki/Helium/WebHome
+   https://github.com/Helium4Haskell/
    
-ABOUT VERSION 1.8
+ABOUT VERSION 1.9
 
-This is the first version of Helium to be deployed through Cabal and Hackage.
-The main changes with respect to earlier versions of Helium is how the compiler
-is invoked, the parameters it supports, the use of a configuration file that
-governs its behaviour, and of course the platform independence achieved through
-the use of Cabal. The package offers three executables: ``texthint'' (the
-text-based command-line interpreter, i.e., our version of ghci), ``runhelium''
-(a wrapper for executing lvm object code files), and of course ``helium'', the
-compiler itself. 
+Helium now has (single parameter) type classes, type class instances, and
+Haskell 2010 compliant import and export facilities as well as 
+qualification. The new type class facilities also resolve some older bugs.
 
+ABOUT VERSION 1.8.2
+
+The Helium system tests now run again, and revealed a few small bugs. These 
+have been fixed.
 
 ABOUT VERSION 1.8.1
 
@@ -35,12 +34,14 @@ from the Helium website. The sources of Hint are publicly available from the git
 repository that also stores the source code of the Helium compiler and all
 associated tools. Again, see the links on the Helium website.
 
-ABOUT VERSION 1.8.2
+ABOUT VERSION 1.8
 
-The Helium system tests now run again, and revealed a few small bugs. These 
-have been fixed.
-
-ABOUT VERSION 2.0
-
-<watch this space>
+This is the first version of Helium to be deployed through Cabal and Hackage.
+The main changes with respect to earlier versions of Helium is how the compiler
+is invoked, the parameters it supports, the use of a configuration file that
+governs its behaviour, and of course the platform independence achieved through
+the use of Cabal. The package offers three executables: ``texthint'' (the
+text-based command-line interpreter, i.e., our version of ghci), ``runhelium''
+(a wrapper for executing lvm object code files), and of course ``helium'', the
+compiler itself. 
 

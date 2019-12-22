@@ -198,12 +198,12 @@ patternToCore' env types (name, tp, pat) continue nr =
 -- [1, 2, 3] ==> 1 : (2 : (3 : [] ) )
 expandPatList :: [Pattern] -> Pattern
 expandPatList [] = 
-    Pattern_Constructor noRange (Name_Special noRange [] "[]") [] -- !!!Name
+    Pattern_Constructor noRange (Name_Special noRange [] [] "[]") [] -- !!!Name
 expandPatList (p:ps) =
     Pattern_InfixConstructor 
         noRange 
         p
-        (Name_Identifier noRange [] ":")  -- !!!Name
+        (Name_Identifier noRange [] [] ":")  -- !!!Name
         (expandPatList ps)
     
 isSimple :: Pattern -> Bool
@@ -266,7 +266,7 @@ constructorFieldTypes env conName tp =
   where
     typeArgs = getDataTypeArgs retType []
     instantiation = getDataTypeArgs tp []
-    consTpScheme = fromMaybe (internalError "ToCorePat" "Pattern" $ "Could not find constructor " ++ show conName) $ M.lookup conName $ valueConstructors env
+    (n, consTpScheme) = fromMaybe (internalError "ToCorePat" "Pattern" $ "Could not find constructor " ++ show conName) $ M.lookup conName $ valueConstructors env
     (args, retType) = Core.typeExtractFunction $ toCoreTypeNotQuantified consTpScheme
 
     getDataTypeArgs :: Core.Type -> [Core.Type] -> [Core.Type]

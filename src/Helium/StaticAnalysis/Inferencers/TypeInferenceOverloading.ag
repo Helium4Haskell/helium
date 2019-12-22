@@ -28,13 +28,15 @@ ATTR Declarations Declaration Expressions Expression Statements Statement
 
 SEM Module
   | Module
-       -- return an empty dictionary environment for the non-overloading setting
-       lhs  . dictionaryEnvironment = if Overloading `elem` @lhs.options 
+       -- return an empty dictionary environment for the non-overloading setting, or if there are type errors
+       lhs  . dictionaryEnvironment = if Overloading `elem` @lhs.options
                                         then @body.dictionaryEnvironment
                                         else emptyDictionaryEnvironment
        body . dictionaryEnvironment = emptyDictionaryEnvironment
             . classEnvironment      = @classEnv
             . classMemberEnv        = classMemberEnvironment @lhs.importEnvironment
+            . qualifiedEnvironment  = @lhs.importEnvironment
+            . classNamesEnv         = classNameEnvironment @lhs.importEnvironment
             . availablePredicates   = []
             . instanceName          = Nothing
             . classPredicate        = Nothing
@@ -43,7 +45,7 @@ SEM Module
 
 SEM Declaration   
  
-  | FunctionBindings  -- for every predicate, copy class and replace the class with it's superclass 
+  | FunctionBindings  -- for every predicate, copy class and replace the class with its superclass 
        loc      . declPredicates        = let
                                               !predicates = matchTypeWithScheme @lhs.orderedTypeSynonyms 
                                                               (@lhs.substitution |-> @beta) 
@@ -52,13 +54,13 @@ SEM Declaration
         loc . scheme                     =  let 
                                                 classFunctions :: Maybe Name -> [(Name, TpScheme)]
                                                 classFunctions Nothing = []
-                                                classFunctions (Just n) = fromJust @lhs.classMemberTypeSchemes
+                                                classFunctions (Just _) = fromJust @lhs.classMemberTypeSchemes
                                                 searchClasses :: Name -> TpScheme
                                                 searchClasses name = maybe (err name) snd $ find (\(n, _)->n == name) (classFunctions @lhs.instanceName)
                                                 err name = internalError "TypeInferenceOverloading.ag" "n/a" 
                                                     ("could not find type for function binding for " ++ show name ++ " in " ++ "")
         
-                                            in M.findWithDefault (searchClasses @bindings.name) (NameWithRange @bindings.name) (@lhs.allTypeSchemes)
+                                            in  M.findWithDefault (searchClasses @bindings.name) (NameWithRange @bindings.name) (@lhs.allTypeSchemes)
         loc . originalFunctionType       =   fmap 
                                                     (\cname -> (\(_, tp, _, _) -> tp) $ fromJust $ find (\(n, _, _, _)-> n == @bindings.name) $ snd $ fromJust $ M.lookup cname (classMemberEnvironment @lhs.importEnvironment)) 
                                                 @lhs.instanceName
@@ -90,18 +92,20 @@ SEM Declaration
                                                   Just (n, ps) -> addForDeclaration n ps @righthandside.dictionaryEnvironment
                                                   Nothing      -> @righthandside.dictionaryEnvironment
   | Instance
-      where . instanceName  = Just @name.self
+      where . instanceName        = Just @qualName
       where . availablePredicates = @superPredicates ++ @lhs.availablePredicates
+      loc   . qualName            = convertClassNameToQualified @lhs.importEnvironment @name.self
   | Class
-      where . curClassPred = Just $ Predicate (getNameName @simpletype.name) @classBeta
-      where . instanceName = Just @simpletype.name
+      where . curClassPred = Just $ Predicate (getNameName @qualName) @classBeta
+      where . instanceName = Just $ @qualName
+      loc   . qualName     = convertClassNameToQualified @lhs.importEnvironment @simpletype.name
    
 SEM Expression 
 
   | Variable   lhs . dictionaryEnvironment = @newDEnv              
                loc . nameInScope           = case filter (@name.self==) @lhs.namesInScope of 
                                                 [name] -> NameWithRange name
-                                                _      -> internalError "TypeInferenceOverloading.ag" "n/a" "name not in scope"
+                                                _      -> internalError "TypeInferenceOverloading.ag" "n/a" ("name not in scope: " ++ (show.show) @name.self)
                    . maybeInferredType     = M.lookup @nameInScope @lhs.allTypeSchemes
                    . requiredDictionaries  = -- if not in finitemap then this is bound by a monomorphic pattern variable
                                              case @maybeInferredType of
@@ -123,7 +127,7 @@ SEM Expression
                                                                   (@lhs.substitution |-> @usedAsType)
                                                                   (@lhs.substitution |-> scheme)
                    . newDEnv               = resolveOverloading (@lhs.classEnvironment)
-                                                                @name.self 
+                                                                @name.self
                                                                 (@lhs.substitution |-> @lhs.availablePredicates)
                                                                 (@lhs.substitution |-> @requiredDictionaries)
                                                                 (fmap getNameName @lhs.instanceName)
@@ -139,7 +143,7 @@ SEM Expression
                                               (False, True ) -> enumFromThenName 
                                               (True , False) -> enumFromToName 
                                               (True , True ) -> enumFromName 
-                 . requiredDictionaries  = if @overloaded then @lhs.substitution |-> [PredicateFunction $ Predicate "Enum" @elementType] else []
+                 . requiredDictionaries  = if @overloaded then @lhs.substitution |-> [PredicateFunction $ Predicate "Prelude.Enum" @elementType] else []
                  . newDEnv               = resolveOverloading (@lhs.classEnvironment)  @localName 
                                                               (@lhs.substitution |-> @lhs.availablePredicates) 
                                                               (@lhs.substitution |-> @requiredDictionaries) 
@@ -152,7 +156,7 @@ SEM Expression
              loc . localName             = setNameRange intUnaryMinusName @range.self
                  . negateTypeScheme      = case M.lookup @localName (typeEnvironment @lhs.importEnvironment) of 
                                               Just scheme -> scheme
-                                              Nothing     -> generalizeAll ([Predicate "Num" (TVar 0)] .=>. TVar 0 .->. TVar 0)
+                                              Nothing     -> generalizeAll ([Predicate "Prelude.Num" (TVar 0)] .=>. TVar 0 .->. TVar 0)
                  . requiredDictionaries  = map PredicateFunction $ getRequiredDictionaries 
                                               (getOrderedTypeSynonyms @lhs.importEnvironment) 
                                               (@lhs.substitution |-> @usedAsType)
@@ -192,7 +196,7 @@ matchTypeWithScheme :: OrderedTypeSynonyms -> Tp -> TpScheme -> Predicates
 matchTypeWithScheme synonyms tp scheme =
    let (ips, itp) = split . snd . instantiate 0 . freezeFTV $ scheme
    in case mguWithTypeSynonyms synonyms itp (freezeVariablesInType tp) of
-         Left _ -> internalError "TypeInferenceOverloading.ag" "matchTypeWithScheme" "no unification"
+         Left _         -> []
          Right (_, sub) -> 
             let f (Predicate s typ) = Predicate s (unfreezeVariablesInType $ sub |-> typ)
             in map f ips
@@ -203,7 +207,7 @@ resolveOverloading classEnv name availablePredicates predicates currentClass cur
    let maybeTrees = map (makeDictionaryTree classEnv availablePredicates currentClass curPred) predicates
    in if all isJust maybeTrees
         then addForVariable name (map fromJust maybeTrees) dEnv
-    else internalError "TypeInferenceOverloading.ag" "resolveOverloading" ("cannot resolve overloading (" ++ show (NameWithRange name) ++ ")" ++ show predicates) 
+    else dEnv
    
 expandPredicates :: OrderedTypeSynonyms -> Predicates -> Predicates
 expandPredicates synonyms = map (expandPredicate synonyms)
@@ -212,8 +216,8 @@ expandPredicate :: OrderedTypeSynonyms -> Predicate -> Predicate
 expandPredicate (_, synonyms) (Predicate className tp) = Predicate className (expandType synonyms tp)
 
 getCurrentClassPredicate :: Maybe (Name, Names) -> Tp -> Maybe TpScheme -> [Predicate] -> Maybe Predicate
-getCurrentClassPredicate Nothing _ _ predicates = Nothing
-getCurrentClassPredicate (Just (className, typeVars)) derivedType (Just classType) preds =    
+getCurrentClassPredicate Nothing _ _ _ = Nothing
+getCurrentClassPredicate (Just (className, typeVars)) derivedType (Just classType) _ =
     Just (Predicate (getNameName className) $ TVar tv)
     where
         tv = maybe (error "Invalid type variable") snd (find ((getNameName (chead typeVars) ==) . fst) typeVarMapping)
@@ -226,6 +230,7 @@ getCurrentClassPredicate (Just (className, typeVars)) derivedType (Just classTyp
         mapping (TCon _) (TCon _) = []
         mapping (TApp f1 a1) (TApp f2 a2) = nub (mapping f1 f2 ++ mapping a1 a2)
         mapping _ _ = error "Invalid type scheme"
+getCurrentClassPredicate _ _ Nothing _ = error "Pattern match failure in getCurrentClassPredicate"    
 
 
 }

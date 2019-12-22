@@ -17,15 +17,13 @@ import Helium.Main.Args (Option(..))
 import Top.Types
 import Top.Ordering.Tree
 import Helium.Syntax.UHA_Syntax
+import Helium.Syntax.UHA_Utils
 import Helium.StaticAnalysis.Miscellaneous.UHA_Source
 import Helium.Syntax.UHA_Range
 import Helium.StaticAnalysis.Messages.TypeErrors
 import Helium.StaticAnalysis.Messages.Messages
 import Helium.StaticAnalysis.Miscellaneous.DoublyLinkedTree
 import Helium.StaticAnalysis.Miscellaneous.TypeConstraints
-
-import Data.Typeable
-import Data.Data
 
 import Top.Constraint.Information
 import Top.Implementation.Overloading
@@ -37,9 +35,6 @@ import Data.Maybe
 import Data.Function
 import Data.List
 import Control.Applicative
-
-import Helium.Utils.OneLiner
-
 
 data ConstraintInfo =
    CInfo_ { location      :: String
@@ -302,7 +297,7 @@ setTypePair :: (Tp, Tp) -> ConstraintInfo -> ConstraintInfo
 setTypePair pair = addProperty (TypePair pair)
 
 typepair :: ConstraintInfo -> (Tp, Tp)
-typepair info = fromJust (maybeHead [ pair | TypePair pair <- getProperties info ])
+typepair info = head [ pair | TypePair pair <- getProperties info ]
 
 isExprTyped :: ConstraintInfo -> Bool
 isExprTyped info = 
@@ -316,8 +311,8 @@ tooGeneralLabels = [skolemVersusConstantLabel, skolemVersusSkolemLabel, escaping
 -- TODO: get rid of the TypeError and TypeErrorHint data types, and move the following two functions
 -- to the module TypeErrors
     
-makeTypeErrors :: Substitution sub => [Option] -> ClassEnvironment -> OrderedTypeSynonyms -> sub -> [(ConstraintInfo, ErrorLabel)] -> TypeErrors
-makeTypeErrors options classEnv synonyms sub errors =
+makeTypeErrors :: Substitution sub => [Option] -> ClassEnvironment -> (Name -> Name) -> OrderedTypeSynonyms -> sub -> [(ConstraintInfo, ErrorLabel)] -> TypeErrors
+makeTypeErrors options classEnv unqualifier synonyms sub errors =
    let --comp l1 l2
        --   | l1 `elem` tooGeneralLabels && l2 `elem` tooGeneralLabels = EQ
        --   | otherwise = l1 `compare` l2
@@ -346,12 +341,12 @@ makeTypeErrors options classEnv synonyms sub errors =
       
       -- an unification error: first test if the two types can really not be unified
       | label == unificationErrorLabel =
-           let f info = 
+           let f info =
                   case mguWithTypeSynonyms synonyms (sub |-> fst (typepair info)) (sub |-> snd (typepair info)) of
-                     Left (InfiniteType _) -> 
+                     Left (InfiniteType _) ->
                         let hint = ("because", MessageString "unification would give infinite type")
                         in [ sub |-> special info (makeUnificationTypeError (addProperty (WithHint hint) info)) ]
-                     Left _  -> 
+                     Left _  ->
                         [ sub |-> special info (makeUnificationTypeError info) ]
                      Right _ -> []
            in (1, concatMap f infos)
@@ -372,7 +367,7 @@ makeTypeErrors options classEnv synonyms sub errors =
                                           sub' = listToSubstitution [ (i, TCon s) | (i, s) <- getQuantorMap scheme ]
                                       in (True, Predicate className (sub' |-> unfreezeVariablesInType tp))
                       err    = internalError "ConstraintInfo" "makeTypeErrors" "unknown class predicate"
-                  in special info (makeMissingConstraintTypeError range mSource scheme tuple (fst $ sources infoArising))
+                  in special info (makeMissingConstraintTypeError unqualifier range mSource scheme tuple (fst $ sources infoArising))
            in (2, map f infos)
       
       -- declared type is too general
@@ -382,9 +377,11 @@ makeTypeErrors options classEnv synonyms sub errors =
                       range   = fromMaybe err (maybeTypeSignatureLocation info)
                       scheme1 = generalize monoset ([] .=>. sub |->  snd (typepair info))
                       (ms, scheme2) = fromMaybe err (maybeSkolemizedTypeScheme info)
+                      us1     = convertTpScheme unqualifier scheme1
+                      us2     = convertTpScheme unqualifier scheme2
                       source  = uncurry fromMaybe (sources info)
                       err     = internalError "ConstraintInfo" "makeTypeErrors" "unknown original type scheme"
-                  in special info (makeNotGeneralEnoughTypeError (isExprTyped info) range source scheme1 scheme2)
+                  in special info (makeNotGeneralEnoughTypeError (isExprTyped info) range source us1 us2)
            in (if label == escapingSkolemLabel then 3 else 2, map f infos)
 
       -- a reduction error
@@ -403,7 +400,7 @@ makeTypeErrors options classEnv synonyms sub errors =
                       pred' = let err = internalError "ConstraintInfo" "makeTypeErrors" 
                                                        "unknown predicate which resulted in a reduction error"
                                in maybe (fromMaybe err $ maybeReductionErrorPredicate info) fst maybeNever
-                  in maybe (special info (sub |-> makeReductionError source extra classEnv pred'))
+                  in maybe (special info (sub |-> makeReductionError source extra classEnv unqualifier pred'))
                         (\m -> TypeError [rangeOfSource source] ([MessageOneLiner $ MessageString m]) [] []) customMessage
            in (4, map f infos)     
   

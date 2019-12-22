@@ -26,7 +26,7 @@ import Top.Solver.Greedy
 import Top.Solver.TypeGraph
 import Top.Solver.PartitionCombinator
 import Top.Solver.SwitchCombinator
-import Top.Constraint.Information
+import Top.Constraint.Information()
 import Top.Implementation.TypeClassDirectives
 import Top.Interface.Substitution (makeSubstConsistent)
 
@@ -34,7 +34,7 @@ type TreeSolver = ClassEnvironment -> OrderedTypeSynonyms -> Int
                        -> Tree (TypeConstraint ConstraintInfo) -> (SolveResult ConstraintInfo, LogEntries)
 
 selectConstraintSolver :: [Option] -> ImportEnvironment -> TreeSolver
-selectConstraintSolver options importenv classEnv synonyms unique constraintTree =
+selectConstraintSolver options importenv classEnv synonyms unique constraintTree = 
    solve selectedOptions constraints selectedSolver
 
  where   

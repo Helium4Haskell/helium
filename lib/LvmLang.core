@@ -7,7 +7,7 @@
 ----------------------------------------------------------------
 module LvmLang
     ( Bytes, Int, Float
-    , Bool(True, False), '':[]''('':[]'', (:)), '':()''('':()'')
+    , Bool(..), '':[]''(..)
     , IO(..), IORes(..), RealWorld(..), Char, Double, PackedString, String
     
     , packedFromString, stringFromPacked, packedLength
@@ -87,6 +87,8 @@ extern prim_string_length   :: "la"
 {----------------------------------------------------------
   Basic data types
 ----------------------------------------------------------}
+data Char
+
 data Bytes
 data Int
 data Float

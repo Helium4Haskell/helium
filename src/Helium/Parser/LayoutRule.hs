@@ -25,6 +25,7 @@ module Helium.Parser.LayoutRule(layout) where
 import Helium.Parser.LexerToken(Token, Lexeme(..), lexemeLength)
 import Text.ParserCombinators.Parsec.Pos
 
+
 layout :: [Token] -> [Token]
 layout [] = []
 layout input@((pos, lexeme):_) = optimise $

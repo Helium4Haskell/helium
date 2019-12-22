@@ -119,8 +119,11 @@ compileHaskellToCore basedir fullName contents options iridiumCache doneModules 
       phaseParser fullName tokens options
 
   -- Phase 3: Importing
-  (indirectionDecls, importEnvs) <-
+  (indirectionDecls, importEnvsWithMod) <-
       phaseImport fullName parsedModule (resolveDeclarations iridiumCache) options
+  let importEnvs = map (\(_,b,_) -> b) importEnvsWithMod
+
+  print (foldr1 combineImportEnvironments importEnvs)
 
   -- Phase 4: Resolving operators
   resolvedModule <- 
@@ -132,9 +135,7 @@ compileHaskellToCore basedir fullName contents options iridiumCache doneModules 
   -- Phase 5: Static checking
   (localEnv, typeSignatures, staticWarnings) <-
       doPhaseWithExit 20 (("S"++) . errorsLogCode) compileOptions $
-          phaseStaticChecks fullName resolvedModule importEnvs options        
-
-  print localEnv
+          phaseStaticChecks fullName resolvedModule importEnvsWithMod options        
 
   unless (NoWarnings `elem` options) $
       showMessages staticWarnings

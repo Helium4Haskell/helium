@@ -33,3 +33,6 @@ selectChild i tree =
       
 selectRoot :: DoublyLinkedTree a -> DoublyLinkedTree a
 selectRoot tree = maybe tree selectRoot (parent tree)
+
+convertTree :: (a -> a) -> DoublyLinkedTree a -> DoublyLinkedTree a
+convertTree f (DoublyLinkedTree par x childs) = DoublyLinkedTree par (f x) (map (convertTree f) childs)
