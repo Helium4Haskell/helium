@@ -48,8 +48,9 @@ typeChar = Core.TCon $ Core.TConDataType $ idFromString "Char"
 -- Show Dictionary for a data type declaration
 dataDictionary :: ImportEnvironment -> UHA.Declaration -> [Custom] -> UHA.Name -> CoreDecl
 dataDictionary env decla@(UHA.Declaration_Data _ _ (UHA.SimpleType_SimpleType _ _ names) _ _) origin qualname = DeclValue
-    { declName    = idFromString ("$dictPrelude.Show$" ++ getNameName qualname)
-    , declAccess  = public
+    { declName    = name
+    , declAccess  = Export name
+    , declModule  = Nothing
     , declType    = foldr (\(typeArg, idx) -> Core.TForall (Core.Quantor idx $ Just $ getNameName typeArg) Core.KStar)
                           (Core.typeFunction argTypes dictType)
                         $ zip names [1 ..]
@@ -60,6 +61,7 @@ dataDictionary env decla@(UHA.Declaration_Data _ _ (UHA.SimpleType_SimpleType _ 
                     ++ origin
     }
   where
+    name = idFromString ("$dictPrelude.Show$" ++ getNameName qualname)
     tse = typeSynonyms env
     argTypes :: [Core.Type]
     argTypes = zipWith (\_ idx -> typeDictFor $ Core.TVar idx) names [1 ..]

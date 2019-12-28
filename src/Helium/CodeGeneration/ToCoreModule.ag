@@ -16,6 +16,7 @@ makeCoreModule name decls =
                 Just n -> n
         , Module.moduleMajorVer = 0
         , Module.moduleMinorVer = 0
+        , Module.moduleImports  = []
         , Module.moduleDecls    = decls
         }
 
@@ -90,14 +91,9 @@ everythingPublicButPrelude theModule = theModule { Core.moduleDecls = map setPub
   where
     setPublic declaration =
         let -- accessRecord = Core.declAccess decl
-            public = case Core.declAccess declaration of
-                    Core.Defined _ -> True
-                    Core.Imported { Core.importModule = m } -> 
-                      stringFromId m `notElem` ["Prelude", "HeliumLang"]
-
+            public = Core.declModule declaration `notElem` [Just $ idFromString "Prelude", Just $ idFromString "HeliumLang"]
         in
-        declaration{ Core.declAccess =
-                  (Core.declAccess declaration){ Core.accessPublic = public } }
+        declaration{ Core.declAccess = if public then Core.Export $ Core.declName declaration else Core.Private }
 
 -- Set all imported modules to private, and export the normal declarations.
 everythingPublicButImported :: Core.CoreModule -> Core.CoreModule
@@ -105,13 +101,10 @@ everythingPublicButImported theModule = theModule { Core.moduleDecls = map setPu
   where
     setPublic declaration =
         let -- accessRecord = Core.declAccess decl
-            public = case Core.declAccess declaration of
-                    Core.Defined _ -> True
-                    Core.Imported { Core.importModule = m } ->
-                      stringFromId m `elem` ["PreludePrim"]
+            -- TODO: Why do we also export declarations from PreludePrim?
+            public = Core.declModule declaration `elem` [Nothing, Just $ idFromString "PreludePrim"]
         in
-        declaration{ Core.declAccess =
-                  (Core.declAccess declaration){ Core.accessPublic = public } }
+        declaration{ Core.declAccess = if public then Core.Export $ Core.declName declaration else Core.Private }
 }
 
 {-

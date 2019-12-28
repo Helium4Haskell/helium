@@ -2,7 +2,7 @@
    used in the translation of language constructs.
 -} 
 
-module HeliumLang
+module HeliumLang where {-
     ( Bool(..)
     , '':[]''(..) -- lists
     , '':->'' -- function arrow
@@ -26,36 +26,15 @@ module HeliumLang
 
     , negFloat, negInt
     , ''$floatUnaryMinus''
-    ) where
+    ) where -}
 
-import LvmLang
-    ( Int(), Float(), IO(IO)
-    , type String
-    , type PackedString
-    , Bool(True, False)
-    , '':[]''('':[]'', (:))
-    -- , ''$primEqFloat'' = (==.)
-    , (+#), (-#), (>#), (<#), (>=#), quot, rem, (==#)
-    , stringFromPacked
-    , unsafePerformIO  
-    , negInt --, negFloat  
-    , seq
-    , ''$primPutStrLn''
-    , ''$primIntToChar''
-    , ''$primCharToInt''
-    )
-{- import LvmIO
-    ( stdin, stdout, stderr, flush, outputChar, outputPacked
-    ) -}
-import LvmException
-    ( errorPacked
-    , patternFailPacked
-    )
+import ( IridiumLang, LvmLang, LvmException )
+
 
 {----------------------------------------------------------
   Fixities
 ----------------------------------------------------------}
-custom infix (:) : public [5,"right"]
+custom infix (:) : export [5,"right"]
 
 {--------------------------------------------------------------------------
   Built into the language
@@ -65,8 +44,6 @@ custom infix (:) : public [5,"right"]
   Basic data types
 ----------------------------------------------------------}
 data '':->'' v$0 v$1
--- Daan has type Char = Int
-data Char
 
 ''$primPackedToString'' :: String -> String
 ''$primPackedToString'' = \p: String -> p
@@ -138,14 +115,8 @@ showBool = \ !b: Bool ->
     ;   default -> "False"
     }
 
-showUnit :: () -> String
-showUnit = \ !u: () -> 
-    case u of
-    {   () -> "()"
-    }
-
 showChar :: Char -> String
-showChar = \c: Char ->
+showChar : export = \c: Char ->
     (:) {Char} '\'' (''$primAppend'' {Char} (safeShowChar True c) 
                          "\'")
 
@@ -180,7 +151,7 @@ showString = \s: String -> (''$primConcatMap'' {Char} {Char} (safeShowChar False
     -- (:) {Char} '\"' (''$primAppend'' {Char} (''$primConcatMap'' {Char} {Char} (safeShowChar False) s) "\"")
 -}
 showInt :: Int -> String
-showInt = \ !n: Int ->
+showInt : export = \ !n: Int ->
     let! isNeg: Bool = (<#) n 0 in case isNeg of
     {   True -> (:) {Char} '(' ((:) {Char} '-' 
                     (''$primAppend'' {Char}
@@ -216,7 +187,7 @@ extern float_of_string_extern "float_of_string" :: "Fz"
 extern stringFromFloat "string_of_float" :: "aFII"
 -}
 -- in overloaded version, a negative float is shown as usual (not with "-.")
---showFloat : public [custom "type"  ["Float -> String"]]
+--showFloat : export [custom "type"  ["Float -> String"]]
 --  = \f -> addPointZero (''$primShowFloat'' f)
 
 {- 

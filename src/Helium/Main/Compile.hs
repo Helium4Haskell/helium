@@ -70,12 +70,10 @@ compile basedir fullName options lvmPath iridiumCache doneModules =
           "hs" -> compileHaskellToCore basedir fullName contents options iridiumCache doneModules
           "core" -> do
             let tokens = Lvm.layout $ Lvm.lexer (1,1) contents
-            -- coreModule <- Lvm.parseModule fullName tokens
-            (m, implExps, es) <- Lvm.parseModuleExport fullName tokens
+            m <- Lvm.parseModule fullName tokens
 
             -- resolve imports
-            chasedMod <- Lvm.lvmImport' (resolveDeclarations iridiumCache) m
-            let publicmod = Lvm.modulePublic implExps es chasedMod
+            publicmod <- Lvm.lvmImport (resolveDeclarations iridiumCache) m
 
             verifyCore options "LvmImport" publicmod
 

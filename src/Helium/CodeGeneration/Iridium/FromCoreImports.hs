@@ -3,7 +3,7 @@
 module Helium.CodeGeneration.Iridium.FromCoreImports (fromCoreImports, visibility) where
 
 import Data.List (find)
-import Data.Maybe (catMaybes)
+import Data.Maybe (catMaybes, fromMaybe)
 import Data.Either (isRight)
 import Lvm.Common.Id
 import Helium.CodeGeneration.Iridium.Data
@@ -61,11 +61,9 @@ findDeclaration cache decl getDeclarations = do
 
 lookupDeclaration :: FileCache -> Core.CoreDecl -> (Module -> [Declaration a]) -> IO (Maybe (Id, Declaration a))
 lookupDeclaration cache decl getDeclarations = do
-  let (moduleName, externalName) = case Core.declAccess decl of
-        Core.Imported _ mod n _ _ _ -> (mod, n)
-        _ -> error "fromCoreImports: expected an imported declaration, got a definition"
+  let moduleName = fromMaybe (error "fromCoreImports: expected an imported declaration, got a definition") $ Core.declModule decl
   importedModule <- readIridium cache moduleName
-  return $ fmap (\d -> (Core.declName decl, setModule moduleName decl d)) $ find (\d -> declarationVisibility d == ExportedAs externalName) $ getDeclarations importedModule
+  return $ fmap (\d -> (Core.declName decl, setModule moduleName decl d)) $ find (\d -> declarationName d == Core.declName decl) $ getDeclarations importedModule
 
 setModule :: Id -> Core.CoreDecl -> Declaration a -> Declaration a
 setModule moduleName coreDecl decl = decl{ declarationModule = Just moduleName, declarationVisibility = visibility coreDecl }
@@ -75,11 +73,11 @@ reportError decl =  do
   putStrLn $ "Imported name " ++ stringFromId (Core.declName decl) ++ " was not found in module " ++ stringFromId moduleName
   exitWith (ExitFailure 1)
   where
-    moduleName = case Core.declAccess decl of
-      Core.Imported _ mod _ _ _ _ -> mod
+    moduleName = case Core.declModule decl of
+      Just mod -> mod
       _ -> error "fromCoreImports: expected an imported declaration, got a definition"
 
 visibility :: Core.CoreDecl -> Visibility
-visibility decl
-  | Core.accessPublic $ Core.declAccess decl = ExportedAs $ Core.declName decl
-  | otherwise = Private
+visibility decl = case Core.declAccess decl of
+  Core.Export name -> ExportedAs $ name
+  Core.Private -> Private

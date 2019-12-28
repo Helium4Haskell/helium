@@ -5,12 +5,9 @@
 -- $Author$
 -- $Date$
 ----------------------------------------------------------------
-module LvmException( Exception(..), RuntimeException(..), SystemException(..)
-                   , ArithmeticException(..), SignalException(..)
-                   , catch, raise, error, errorPacked, patternFail, patternFailPacked
-                   ) where
+module LvmException where
 
-import IridiumLang(''_$helium_runtime_error'', '':[]''() )
+import(IridiumLang)
 
 instruction primCatch "catch" :: (Exception -> v$0) -> v$0 -> v$0
 instruction primRaise "raise" :: Exception! -> v$0
@@ -25,24 +22,24 @@ data Exception
   | Runtime           RuntimeException      -- runtime system exception
   | Arithmetic        ArithmeticException   -- arithmetic exception
   | System            SystemException       -- operating system exceptions
-  | InvalidArgument   PackedString          -- invalid argument passed
-  | Assert            PackedString          -- assertion failed
+  | InvalidArgument   String                -- invalid argument passed
+  | Assert            String                -- assertion failed
   | NotFound                                -- no object is found
-  | UserError         PackedString          -- general failure (raised by "error")
+  | UserError         String                -- general failure (raised by "error")
 
 data RuntimeException
-  = PatternFailure    PackedString          -- pattern match failure
-  | NonTermination    PackedString          -- non terminating program
-  | OutOfBounds       PackedString          -- field access out of bounds                
+  = PatternFailure    String                -- pattern match failure
+  | NonTermination    String                -- non terminating program
+  | OutOfBounds       String                -- field access out of bounds                
   | Exit              Int                   -- exiting program
   | InvalidOpcode     Int                   -- invalid opcode
-  | LoadError         PackedString PackedString -- runtime loader exception
-  | RuntimeError      PackedString          -- general failure
+  | LoadError         String       String       -- runtime loader exception
+  | RuntimeError      String                -- general failure
 
 data SystemException
   = EndOfFile                               -- end of input reached
   | BlockedOnIO                             -- blocked I/O channel
-  | SystemError       Int PackedString      -- general system error
+  | SystemError       Int String            -- general system error
 
 data ArithmeticException
   = FloatInvalid                      -- float invalid operation
@@ -103,20 +100,20 @@ catch action handler
   user errors
 ----------------------------------------------------------}
 error :: forall v$0. [Char] -> v$0
-error = forall v$0. \msg: [Char] -> ''_$helium_runtime_error'' {v$0} msg
+error : export = forall v$0. \msg: [Char] -> ''_$helium_runtime_error'' {v$0} msg
   -- = let! s = (packedFromString msg) in raise (UserError s)
 
 errorPacked :: forall v$0. [Char] -> v$0
-errorPacked = forall v$0. \msg: [Char] -> error {v$0} msg
+errorPacked : export = forall v$0. \msg: [Char] -> error {v$0} msg
   -- = raise (UserError msg)
 
 patternFail :: forall v$0. [Char] -> v$0
-patternFail = forall v$0. \msg: [Char] -> error {v$0} msg
+patternFail : export = forall v$0. \msg: [Char] -> error {v$0} msg
   {- = let! s   = packedFromString msg
          exn = PatternFailure s
     in raise (Runtime exn) -}
 
 patternFailPacked :: forall v$0. [Char] -> v$0
-patternFailPacked = forall v$0. \msg: [Char] -> error {v$0} msg
+patternFailPacked : export = forall v$0. \msg: [Char] -> error {v$0} msg
   {- = let! exn = PatternFailure msg
     in raise (Runtime exn) -}

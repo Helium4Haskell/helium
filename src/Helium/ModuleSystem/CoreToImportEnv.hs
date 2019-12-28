@@ -34,38 +34,12 @@ import qualified Data.Map as M
 import Debug.Trace
 import Text.PrettyPrint.Leijen
 
-typeDictFromCustoms :: String -> [Custom] -> TpScheme
-typeDictFromCustoms n [] = internalError "CoreToImportEnv" "typeDictFromCustoms"
-                ("function import without type: " ++ n)
-typeDictFromCustoms n ( CustomDecl (DeclKindCustom ident) [CustomBytes bytes] : cs) 
-    | stringFromId ident == "type" =
-        let 
-            string = filter (/= '!') (stringFromBytes bytes) 
-            -- dictName = takeWhile (/= '$') string
-            dictType = drop 1 $ dropWhile (/= '$') string
-        in makeTpSchemeFromType (parseFromString contextAndType dictType)
-    | otherwise = typeDictFromCustoms n cs
-typeDictFromCustoms _ _ = internalError "CoreToImportEnv" "typeDictFromCustoms"
-                ("Can only convert CustomDecls to typeDict")
-
-typeFromCustoms :: String -> [Custom] -> TpScheme
-typeFromCustoms n [] =
-    internalError "CoreToImportEnv" "typeFromCustoms"
-        ("function import without type: " ++ n)
-typeFromCustoms n ( CustomDecl (DeclKindCustom ident) [CustomBytes bytes] : cs) 
-    | stringFromId ident == "type" =
-        let string = filter (/= '!') (stringFromBytes bytes) 
-        in makeTpSchemeFromType (parseFromString contextAndType string)
-    | otherwise =
-        typeFromCustoms n cs
-typeFromCustoms _ _ = error "Pattern match failure in ModuleSystem.CoreToImportEnv.typeFromCustoms"
-
 nameFromCustoms :: String -> Id -> String -> [Custom] -> Name
 nameFromCustoms _ _ conName [] =
     internalError "CoreToImportEnv" "nameFromCustoms"
         ("constructor import without name: " ++ conName)
 nameFromCustoms importedInModule importedFromModId conName ( CustomLink parentid (DeclKindCustom ident) : cs) 
-    | stringFromId ident == "data" = makeImportName importedInModule importedFromModId "" parentid
+    | stringFromId ident == "data" = makeImportName importedInModule importedFromModId parentid
     | otherwise =
         nameFromCustoms importedInModule importedFromModId conName cs
 nameFromCustoms importedInModule importedFromModId conName (_ : cs) = nameFromCustoms importedInModule importedFromModId conName cs
@@ -177,12 +151,12 @@ makeOperatorTable oper _ =
     internalError "CoreToImportEnv" "makeOperatorTable"
         ("infix decl missing priority or associativity: " ++ show oper)
 
-makeImportName :: String -> Id -> String -> Id -> Name
-makeImportName importedInMod importedFromMod origin n =
-    makeImportNameName importedInMod importedFromMod origin (nameFromId n)
+makeImportName :: String -> Id -> Id -> Name
+makeImportName importedInMod importedFromMod n =
+    makeImportNameName importedInMod importedFromMod (nameFromId n)
 
-makeImportNameName :: String -> Id -> String -> Name -> Name
-makeImportNameName importedInMod importedFromMod origin n = setNameOrigin origin $
+makeImportNameName :: String -> Id -> Name -> Name
+makeImportNameName importedInMod importedFromMod n = {-setNameOrigin (stringFromId importedFromMod) $-}
     setNameRange 
         n
         (makeImportRange (idFromString importedInMod) importedFromMod)
@@ -196,7 +170,7 @@ makeFullQualifiedImportName origin =
 insertDictionaries :: String -> CoreDecl -> ImportEnvironment -> ImportEnvironment
 insertDictionaries _
         DeclAbstract{ declName    = n
-                    , declAccess  = Imported{importModule = _}
+                    , declModule  = Just _
                     , declCustoms = cs
                     } env 
                         | "$dict" `isPrefixOf` stringFromId n =
@@ -257,42 +231,42 @@ getImportEnvironment importedInModule decls = foldr (insertDictionaries imported
          case decl of 
          
            -- functions
-           DeclAbstract { declName    = n
-                        , declAccess  = Imported{importModule = importedFromModId}
+           DeclAbstract { declAccess  = Export n
+                        , declModule  = Just importedFromModId
                         , declType    = tp
                         , declCustoms = cs
                         } ->
                 \env ->  
                     if "$dict" `isPrefixOf` (stringFromId n) then env else
                         addType
-                            (makeImportName importedInModule importedFromModId (originFromCustoms cs) n)
+                            (makeImportName importedInModule importedFromModId n)
                             (typeSchemeFromCore tp) env
 
            -- functions from non-core/non-lvm libraries and lvm-instructions
-           DeclExtern { declName = n
-                      , declAccess  = Imported{importModule = importedFromModId}
+           DeclExtern { declAccess  = Export n
+                      , declModule  = Just importedFromModId
                       , declCustoms = cs
                       , declType    = tp
                       } ->
               addType
-                 (makeImportName importedInModule importedFromModId (originFromCustoms cs) n)
+                 (makeImportName importedInModule importedFromModId n)
                  (typeSchemeFromCore tp)
-            
+
            -- constructors
-           DeclCon { declName    = n
-                   , declAccess  = Imported{importModule = importedFromModId}
+           DeclCon { declAccess  = Export n
+                   , declModule  = Just importedFromModId
                    , declCustoms = cs
                    , declFields  = fs
                    , declType    = tp
                    } ->
                 let
                     locName = stringFromId n
-                    idToName = makeImportName importedInModule importedFromModId (originFromCustoms cs)
+                    idToName = makeImportName importedInModule importedFromModId
                     constrName = idToName n
                     toField f = (idToName $ fieldName f, fieldStrict f)
                     fields = map toField fs
                     typeName = if "Dict" `isPrefixOf` stringFromId n 
-                        then makeImportNameName importedInModule importedFromModId "" 
+                        then makeImportNameName importedInModule importedFromModId
                             (nameFromString $ "Dict$" ++ drop 4 locName)
                         else nameFromCustoms importedInModule importedFromModId locName cs 
                 in addRecordFields constrName fields .
@@ -301,32 +275,30 @@ getImportEnvironment importedInModule decls = foldr (insertDictionaries imported
                         typeName
 
            -- type constructor import
-           DeclCustom { declName    = n
-                      , declAccess  = Imported{importModule = importedFromModId}
+           DeclCustom { declName    = fullname
+                      , declAccess  = Export n
+                      , declModule  = Just importedFromModId
                       , declKind    = DeclKindCustom ident
                       , declCustoms = cs 
                       } 
                       | stringFromId ident == "data" ->
-              let origin = originFromCustoms cs
-                  typename = makeImportName importedInModule importedFromModId origin n
-                  fullname = makeFullQualifiedImportName origin typename
-                  pair     = (arityFromCustoms (stringFromId n) cs, fullname)
+              let typename = makeImportName importedInModule importedFromModId n
+                  pair     = (arityFromCustoms (stringFromId n) cs, nameFromId fullname)
               in addTypeConstructor typename pair
 
            -- type synonym declarations
            -- important: a type synonym also introduces a new type constructor!
-           DeclTypeSynonym { declName = n
-                           , declAccess = Imported{importModule = importedFromModId}
+           DeclTypeSynonym { declName = fullname
+                           , declAccess = Export n
+                           , declModule = Just importedFromModId
                            , declType = tp
                            , declCustoms = cs
                            } ->
-              let origin = originFromCustoms cs
-                  typename = makeImportName importedInModule importedFromModId origin n
-                  fullname = makeFullQualifiedImportName origin typename
+              let typename = makeImportName importedInModule importedFromModId n
                   pair = typeSynFromCore tp
-                  pair2 = (fst pair, fullname)
-                  pair3 = (fst pair, snd pair, fullname)
-              in addTypeSynonym fullname pair3 . addTypeConstructor typename pair2
+                  pair2 = (fst pair, nameFromId fullname)
+                  pair3 = (fst pair, snd pair, nameFromId fullname)
+              in addTypeSynonym (nameFromId fullname) pair3 . addTypeConstructor typename pair2
                              
            -- infix decls
            DeclCustom { declName    = n
@@ -349,7 +321,8 @@ getImportEnvironment importedInModule decls = foldr (insertDictionaries imported
                     _ -> intErr "Could not parse typing strategy from core file"
             
            -- class decls
-           DeclCustom { declName    = n
+           DeclCustom { declName    = qualifiedId
+                      , declAccess  = Export n
                       , declKind    = DeclKindCustom ident
                       , declCustoms = cs
                       }
@@ -369,7 +342,7 @@ getImportEnvironment importedInModule decls = foldr (insertDictionaries imported
                             superClasses = selectCustom "SuperClass" cs
                             origin = originFromCustoms cs
                             originModule = takeWhile (/=':') origin
-                            qualifiedName = nameFromString $ originModule ++ "." ++ unQualifyString (stringFromId n)
+                            qualifiedName = nameFromId qualifiedId
                             addClass :: Name -> [Custom] -> ImportEnvironment -> ImportEnvironment
                             addClass clName superCls env = let
                                     classEnv = classEnvironment env
@@ -388,7 +361,6 @@ getImportEnvironment importedInModule decls = foldr (insertDictionaries imported
                             getFunction _ = internalError "CoreToImportEnv" "getImportEnvironment" "local function getFunction only defined for CustomDecls"    
                             classMembers = (classVariables, map getFunction $ selectCustom "Function" cs)
                         in addClassName className qualifiedName . addClass qualifiedName superClasses . addClassMember className classMembers 
-           -- !!! Print importedFromModId from "declAccess = Imported{importModule = importedFromModId}" as well
            DeclAbstract{ declName = n } ->
               intErr  ("don't know how to handle declared DeclAbstract: " ++ stringFromId n)
            DeclExtern  { declName = n } ->
@@ -399,7 +371,5 @@ getImportEnvironment importedInModule decls = foldr (insertDictionaries imported
               intErr  ("don't know how to handle DeclCustom: "            ++ stringFromId n)
            DeclValue   { declName = n } ->
               intErr  ("don't know how to handle DeclValue: "             ++ stringFromId n)
-           DeclImport  { declName = n } ->
-              intErr  ("don't know how to handle DeclImport: "            ++ stringFromId n)
         
       intErr = internalError "CoreToImportEnv" "getImportEnvironment"

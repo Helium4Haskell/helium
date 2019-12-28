@@ -147,12 +147,7 @@ parseCoreOnlyImports :: FilePath -> IO [String]
 parseCoreOnlyImports fullName =
   do
     coreModule <- readCore fullName
-    return $ nub $ mapMaybe importedModule $ Lvm.moduleDecls coreModule
-  where
-    importedModule :: Lvm.Decl a -> Maybe String
-    importedModule decl = case Lvm.declAccess decl of
-      Lvm.Imported{ Lvm.importModule = name } -> Just $ stringFromId name
-      _ -> Nothing
+    return $ map stringFromId $ nub $ Lvm.moduleImports coreModule
 
 readCore :: FilePath -> IO Lvm.CoreModule
 readCore fullName = do

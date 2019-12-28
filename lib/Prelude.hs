@@ -4,6 +4,9 @@ module Prelude(module Prelude, module PreludePrim, module HeliumLang) where
 
 import PreludePrim
 import HeliumLang
+import IridiumLang
+import LvmLang
+import LvmException
 
 infixr 9  .
 infixl 9  !!

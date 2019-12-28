@@ -8,7 +8,7 @@ import qualified Helium.CodeGeneration.Core.TypeEnvironment as Core
 import Helium.CodeGeneration.Iridium.Data
 import Helium.CodeGeneration.Iridium.Type
 import Helium.CodeGeneration.Iridium.Show
-import Data.Maybe(catMaybes)
+import Data.Maybe(catMaybes, fromMaybe)
 import Data.Either(isRight)
 
 data TypeEnv = TypeEnv
@@ -23,7 +23,7 @@ teReturnType :: TypeEnv -> Type
 teReturnType (TypeEnv _ _ _ (Just (_, retType)) _) = retType
 
 valueDeclaration :: TypeEnv -> Id -> ValueDeclaration
-valueDeclaration env name = findMap name (teValues env)
+valueDeclaration env name = fromMaybe (error $ "valueDeclaration: identifier " ++ show name ++ " not found in type environment") $ lookupMap name (teValues env)
 
 builtins :: [(Id, ValueDeclaration)]
 builtins = -- TODO: This should be replaced by parsing abstract definitions
@@ -40,13 +40,13 @@ builtins = -- TODO: This should be replaced by parsing abstract definitions
 
 data ValueDeclaration
   = ValueConstructor !DataTypeConstructor
-  | ValueFunction !Id !Int !Type !CallingConvention
+  | ValueFunction !Int !Type !CallingConvention
   | ValueVariable !Type
   deriving (Eq, Ord, Show)
 
 typeOf :: TypeEnv -> Id -> Type
 typeOf env name = case valueDeclaration env name of
-  ValueFunction _ _ fntype _ -> fntype
+  ValueFunction _ fntype _ -> fntype
   ValueVariable t -> t
 
 enterFunction :: Id -> Type -> TypeEnv -> TypeEnv
@@ -69,13 +69,7 @@ expandEnvWithLetAlloc thunks env = foldr (\b -> expandEnvWith $ bindLocal (teCor
 expandEnvWithMatch :: [Maybe Local] -> TypeEnv -> TypeEnv
 expandEnvWithMatch locals = expandEnvWithLocals $ catMaybes locals
 
-resolveFunction :: TypeEnv -> Id -> Maybe (Id, Int, Type)
+resolveFunction :: TypeEnv -> Id -> Maybe (Int, Type)
 resolveFunction env name = case lookupMap name (teValues env) of
-  Just (ValueFunction qualifiedName arity fn _) -> Just (qualifiedName, arity, fn)
+  Just (ValueFunction arity fn _) -> Just (arity, fn)
   _ -> Nothing
-
-valueOfMethod :: Id -> Declaration Method -> (Id, ValueDeclaration)
-valueOfMethod name (Declaration qualifiedName _ _ _ (Method tp args _ annotations _ _)) = (name, ValueFunction qualifiedName (length $ filter isRight args) tp $ callingConvention annotations)
-
-valueOfAbstract :: Id -> Declaration AbstractMethod -> (Id, ValueDeclaration)
-valueOfAbstract name (Declaration qualifiedName _ _ _ (AbstractMethod arity fntype annotations)) = (name, ValueFunction qualifiedName arity fntype $ callingConvention annotations)

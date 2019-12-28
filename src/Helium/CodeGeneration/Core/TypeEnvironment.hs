@@ -27,9 +27,9 @@ data TypeEnvironment = TypeEnvironment
   }
 
 typeEnvForModule :: CoreModule -> TypeEnvironment
-typeEnvForModule (Module _ _ _ decls) = TypeEnvironment (mapFromList synonyms) (mapFromList values)
+typeEnvForModule (Module _ _ _ _ decls) = TypeEnvironment (mapFromList synonyms) (mapFromList values)
   where
-    synonyms = [ (name, tp) | DeclTypeSynonym name _ tp _ <- decls ]
+    synonyms = [ (name, tp) | DeclTypeSynonym name _ _ tp _ <- decls ]
     values = mapMaybe findValue decls
     findValue :: CoreDecl -> Maybe (Id, Type)
     findValue decl
@@ -91,7 +91,7 @@ typeNormalizeHead env = normalize False
 typeOfId :: TypeEnvironment -> Id -> Type
 typeOfId env name = case lookupMap name $ typeEnvValues env of
   Just tp -> tp
-  Nothing -> internalError "Core.TypeEnvironment" "typeOfId" $ "variable " ++ show name ++ " not found in type environment"
+  Nothing -> internalError "Core.TypeEnvironment" "typeOfId" $ "variable " ++ show name ++ " not found in type environment " ++ show (map fst $ listFromMap $ typeEnvValues env)
 
 typeOfCoreExpression :: TypeEnvironment -> Expr -> Type
 

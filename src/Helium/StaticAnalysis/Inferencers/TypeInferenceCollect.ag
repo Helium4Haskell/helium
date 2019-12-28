@@ -249,7 +249,7 @@ SEM Declaration
                                       (show @qualName) (length @typevariables) @stype False)]
         loc . contextQual       = map (convertContextItemToQualified @lhs.importEnvironment) @context.self
         loc . type              = head @types.self
-        loc . stype             = showInstanceType $ makeTpFromType @typevariables @type
+        loc . stype             = showInstanceType $ convertTpToQualified @lhs.importEnvironment $ makeTpFromType @typevariables @type
         loc . typevariables     = zip (namesInType @type) [TVar n | n <- [0..]]
 {
 updateSuperclasses :: [(Name, Tp)] -> [(String, Name)] -> Instance -> Instance

@@ -45,7 +45,7 @@ insertSubstitution :: Id -> Id -> Env -> Env
 insertSubstitution from to (Env typeEnv mapping) = Env typeEnv $ insertMap from to mapping
 
 coreLift :: NameSupply -> CoreModule -> CoreModule
-coreLift supply mod@(Module name major minor decls) = Module name major minor decls'
+coreLift supply mod@(Module name major minor imports decls) = Module name major minor imports decls'
   where
     decls' = concat $ mapWithSupply (liftExprInDecl typeEnv) supply decls
     typeEnv = typeEnvForModule mod
@@ -54,7 +54,7 @@ boundVar :: Bind -> Variable
 boundVar (Bind var _) = var
 
 liftExprInDecl :: TypeEnvironment -> NameSupply -> CoreDecl -> ([CoreDecl])
-liftExprInDecl typeEnv supply (DeclValue name access enc expr customs) = DeclValue name access enc expr' customs : decls
+liftExprInDecl typeEnv supply (DeclValue name access mod enc expr customs) = DeclValue name access mod enc expr' customs : decls
   where
     (expr', decls) = liftExprIgnoreLambdas supply [] expr $ Env typeEnv emptyMap
 liftExprInDecl _ _ decl = [decl]
@@ -183,7 +183,8 @@ lazyBind isRec supply scope b@(Bind var@(Variable x t) expr) env
     decl :: CoreDecl
     decl = DeclValue
       { declName = name
-      , declAccess = Defined False
+      , declAccess = Private
+      , declModule = Nothing
       , declType = functionType (reverse scope)
       , valueValue = value
       , declCustoms = []

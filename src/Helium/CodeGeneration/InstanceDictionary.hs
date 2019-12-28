@@ -79,7 +79,8 @@ constructorType typeVar fieldsSuper fieldsMembers classType =
 classFunctions :: TypeInferenceOutput -> String -> String -> [Custom] -> [(Name, Int, DictLabel, Core.Type)] -> [CoreDecl]
 classFunctions typeOutput className typeVar origin combinedNames = [DeclCon -- Declare the constructor for the dictionary
                                                     { declName = dictName
-                                                    , declAccess  = public
+                                                    , declAccess  = Export dictName
+                                                    , declModule  = Nothing
                                                     , declType    = constructorType typeVar (map (\(_, _, _, t) -> t) superclasses) (map (\(_, _, _, t) -> t) combinedNames) classType
                                                     , declCustoms =
                                                         [ CustomLink dictName (DeclKindCustom $ idFromString "data") ]
@@ -87,7 +88,8 @@ classFunctions typeOutput className typeVar origin combinedNames = [DeclCon -- D
                                                     }
                                                    ,DeclCustom -- Declare the data type for the dictionary
                                                     { declName = dictName
-                                                    , declAccess = public
+                                                    , declAccess = Export dictName
+                                                    , declModule = Nothing
                                                     , declKind = DeclKindCustom (idFromString "data")
                                                     , declCustoms = [ CustomInt 1 ]} -- 1 type argument
                                                    ]
@@ -109,9 +111,11 @@ classFunctions typeOutput className typeVar origin combinedNames = [DeclCon -- D
                                     (Var $ idFromString label)
 
                             ]
+                    valName = idFromString $ "$get" ++ superName ++ "$" ++ className
                     val = DeclValue
-                        { declName    = idFromString $ "$get" ++ superName ++ "$" ++ className
-                        , declAccess  = public
+                        { declName    = valName
+                        , declAccess  = Export valName
+                        , declModule  = Nothing
                         , declType    = declType
                         , valueValue  = declValue
                         , declCustoms = []
@@ -131,7 +135,8 @@ classFunctions typeOutput className typeVar origin combinedNames = [DeclCon -- D
                     declType = snd $ declarationType typeOutput TCCNone name
                     val = DeclValue
                         { declName    = idFromString $ getNameName name
-                        , declAccess  = public
+                        , declAccess  = Export $ idFromString $ getNameName name
+                        , declModule  = Nothing
                         , declType    = declType
                         , valueValue  = Forall (Core.Quantor 0 $ Just typeVar) Core.KStar
                             $ flip (foldr (\q e -> Forall q Core.KStar e)) quantors
@@ -161,8 +166,9 @@ combineDeclIndex names decls = map (\(name, _, label, t) -> (label, name, t, loo
 constructDictionary :: TypeInferenceOutput -> [(String, Name)] -> [(Name, Int, DictLabel, Core.Type)] -> [(Name, CoreDecl)] -> Name -> String -> [(Name, Int)] -> Core.Type -> [Custom] -> CoreDecl
 constructDictionary typeOutput instanceSuperClass combinedNames whereDecls className insName typeVariables' insType origin =
     DeclValue
-    { declName    = idFromString ("$dict" ++ getNameName className ++ "$" ++ insName)
-    , declAccess  = public
+    { declName    = name
+    , declAccess  = Export name
+    , declModule  = Nothing
     , declType    = declType
     , valueValue  = declValue
     , declCustoms =  map (custom "typeVariable" . getNameName . fst) typeVariables
@@ -170,6 +176,7 @@ constructDictionary typeOutput instanceSuperClass combinedNames whereDecls class
                 ++ origin
     }
     where
+        name = idFromString ("$dict" ++ getNameName className ++ "$" ++ insName)
         typeVariables = map (\(name, idx) -> let TVar beta = lookupBeta idx typeOutput in (name, beta)) typeVariables'
         (declValue, declType) = createFunction quantors instanceSuperClassVariables dict dictType
         quantors = map (\(name, idx) -> (Core.Quantor idx $ Just $ getNameName name)) typeVariables
@@ -312,15 +319,17 @@ convertDictionaries typeOutput className functions defaults = map makeFunction f
                 makeFunction :: Name -> CoreDecl
                 makeFunction fname =
                     let
+                        fid = idFromString $ constructName fname
                         updateName :: CoreDecl -> CoreDecl
                         updateName fdecl = fdecl{
-                            declName = idFromString $ constructName fname
+                            declName = fid
                         }
                         tp = snd $ declarationType typeOutput TCCNone fname
                         fDefault :: CoreDecl
                         fDefault = DeclValue
-                            { declName    = idFromString $ constructName fname
-                            , declAccess  = public
+                            { declName    = fid
+                            , declAccess  = Export fid
+                            , declModule  = Nothing
                             , declType    = tp
                             , valueValue  = ApType (Var (idFromString "undefined")) tp
                             , declCustoms = []

@@ -5,8 +5,8 @@
 -- $Author$
 -- $Date$
 ----------------------------------------------------------------
-module LvmLang
-    ( Bytes, Int, Float
+module LvmLang where
+    {- ( Bytes, Int, Float
     , Bool(..), '':[]''(..)
     , IO(..), IORes(..), RealWorld(..), Char, Double, PackedString, String
     
@@ -30,68 +30,14 @@ module LvmLang
     , (+.), (-.), (*.), (/.), negFloat
     , (==.), (/=.), (<.), (>.), (<=.), (>=.)
 -}
-    ) where
+    ) where -}
 
-import IridiumLang
-
-{----------------------------------------------------------
-  Instructions
-----------------------------------------------------------}
-{- instruction primAddInt  "addint" :: Int -> Int -> Int!
-instruction primSubInt  "subint" :: Int -> Int -> Int!
-instruction primMulInt  "mulint" :: Int -> Int -> Int!
-instruction primDivInt  "divint" :: Int -> Int -> Int!
-instruction primModInt  "modint" :: Int -> Int -> Int!
-instruction primQuotInt "quotint":: Int -> Int -> Int!
-instruction primRemInt  "remint" :: Int -> Int -> Int!
-instruction primAndInt  "andint" :: Int -> Int -> Int!
-instruction primXorInt  "xorint" :: Int -> Int -> Int!
-instruction primOrInt   "orint"  :: Int -> Int -> Int!
-instruction primShrInt  "shrint" :: Int -> Int -> Int!
-instruction primShlInt  "shlint" :: Int -> Int -> Int!
-instruction primShrNat  "shrnat" :: Int -> Int -> Int!
-instruction primNegInt  "negint" :: Int! -> Int!
-
-instruction primEqInt   "eqint"  :: Int -> Int -> Bool!
-instruction primNeInt   "neint"  :: Int -> Int -> Bool!
-instruction primLtInt   "ltint"  :: Int -> Int -> Bool!
-instruction primGtInt   "gtint"  :: Int -> Int -> Bool!
-instruction primLeInt   "leint"  :: Int -> Int -> Bool!
-instruction primGeInt   "geint"  :: Int -> Int -> Bool!
-
-instruction primAddFloat  "addfloat" :: Float! -> Float! -> Float!
-instruction primSubFloat  "subfloat" :: Float! -> Float! -> Float!
-instruction primMulFloat  "mulfloat" :: Float! -> Float! -> Float!
-instruction primDivFloat  "divfloat" :: Float! -> Float! -> Float!
-instruction primNegFloat  "negfloat" :: Float! -> Float!
-
-instruction primEqFloat   "eqfloat"  :: Float! -> Float! -> Bool!
-instruction primNeFloat   "nefloat"  :: Float! -> Float! -> Bool!
-instruction primLtFloat   "ltfloat"  :: Float! -> Float! -> Bool!
-instruction primGtFloat   "gtfloat"  :: Float! -> Float! -> Bool!
-instruction primLeFloat   "lefloat"  :: Float! -> Float! -> Bool!
-instruction primGeFloat   "gefloat"  :: Float! -> Float! -> Bool!
-
-instruction primAlloc   "alloc"  :: Int! {- tag -} -> Int! {- size -} -> a!
-instruction primGetTag  "gettag" :: a! -> Int!
-instruction primGetSize "getsize":: a! -> Int!
--- instruction primNew     "new"    :: Int! {- tag -} -> Int! {- size -} -> {- x_1 ... x_n -> -} a!
--- instruction primPack    "pack"   :: a! -> Int! {- size -} -> {- x_1 ... x_size -} ()
--- instruction primUnPack  "unpack" :: a! -> (# x_1 ... x_size #)
-
-extern prim_chars_of_string :: "aa"
-extern prim_string_of_chars :: "ala"
-extern prim_string_length   :: "la"
--}
+import ( IridiumLang )
 
 {----------------------------------------------------------
   Basic data types
 ----------------------------------------------------------}
-data Char
 
-data Bytes
-data Int
-data Float
 
 -- data '':[]'' v$0 = '':[]'' | (:) v$0 [v$0]
 -- data '':()''    = '':()''
@@ -101,40 +47,39 @@ data Float
 ----------------------------------------------------------}
 type Double       = Float
 
-type PackedString = String
-type String       = [Char] 
+type PackedString = String 
 
 {----------------------------------------------------------
   Strictness
 ----------------------------------------------------------}
 ($!) :: forall v$0. forall v$1. (v$0 -> v$1) -> v$0 -> v$1
-($!) = forall v$0. forall v$1. \ !f: (v$0 -> v$1) -> \ !x: v$0 -> f x
+($!) : export = forall v$0. forall v$1. \ !f: (v$0 -> v$1) -> \ !x: v$0 -> f x
 
 {----------------------------------------------------------
   Basic arithmetic on Int's
 ----------------------------------------------------------}
 (+#) :: Int -> Int -> Int
-(+#) = \ !x: Int -> \ !y: Int -> primAddInt x y
+(+#) : export = \ !x: Int -> \ !y: Int -> primAddInt x y
 
 (-#) :: Int -> Int -> Int
-(-#) = \ !x: Int -> \ !y: Int -> primSubInt x y
+(-#) : export = \ !x: Int -> \ !y: Int -> primSubInt x y
 
 (*#) :: Int -> Int -> Int
-(*#) = \ !x: Int -> \ !y: Int -> primMulInt x y
+(*#) : export = \ !x: Int -> \ !y: Int -> primMulInt x y
 
 -- TODO: Round to -inf instead of zero
 div :: Int -> Int -> Int
-div = \ !x: Int -> \ !y: Int -> quot x y -- primDivInt x y
+div : export = \ !x: Int -> \ !y: Int -> quot x y -- primDivInt x y
 
 -- TODO: Round to -inf instead of zero
 mod :: Int -> Int -> Int
-mod = \ !x: Int -> \ !y: Int -> rem x y -- primModInt x y
+mod : export = \ !x: Int -> \ !y: Int -> rem x y -- primModInt x y
 
 quot :: Int -> Int -> Int
-quot = \ !x: Int -> \ !y: Int -> primQuotInt x y
+quot : export = \ !x: Int -> \ !y: Int -> primQuotInt x y
 
 rem :: Int -> Int -> Int
-rem = \ !x: Int -> \ !y: Int -> primRemInt x y
+rem : export = \ !x: Int -> \ !y: Int -> primRemInt x y
 {-
 and :: Int -> Int -> Int
 and = \x: Int -> \y: Int -> primAndInt x y
@@ -146,87 +91,87 @@ or :: Int -> Int -> Int
 or = \x: Int -> \y: Int -> primOrInt x y
 -}
 shr :: Int -> Int -> Int
-shr = \ !x: Int -> \ !y: Int -> primShrInt x y
+shr : export = \ !x: Int -> \ !y: Int -> primShrInt x y
 
 shl :: Int -> Int -> Int
-shl = \ !x: Int -> \ !y: Int -> primShlInt x y
+shl : export = \ !x: Int -> \ !y: Int -> primShlInt x y
 
 shrNat :: Int -> Int -> Int
-shrNat = \ !x: Int -> \ !y: Int -> primShrNat x y
+shrNat : export = \ !x: Int -> \ !y: Int -> primShrNat x y
 
 negInt :: Int -> Int
-negInt = \ !x: Int -> primNegInt x
+negInt : export = \ !x: Int -> primNegInt x
 
 {----------------------------------------------------------
   Comparisons on Int's
 ----------------------------------------------------------}
 (==#) :: Int -> Int -> Bool
-(==#) = \ !x: Int -> \ !y: Int -> primEqInt x y
+(==#) : export = \ !x: Int -> \ !y: Int -> primEqInt x y
 
 (/=#) :: Int -> Int -> Bool
-(/=#) = \ !x: Int -> \ !y: Int -> primNeInt x y
+(/=#) : export = \ !x: Int -> \ !y: Int -> primNeInt x y
 
 (<#) :: Int -> Int -> Bool
-(<#) = \ !x: Int -> \ !y: Int -> primLtInt x y
+(<#) : export = \ !x: Int -> \ !y: Int -> primLtInt x y
 
 (>#) :: Int -> Int -> Bool
-(>#) = \ !x: Int -> \ !y: Int -> primGtInt x y
+(>#) : export = \ !x: Int -> \ !y: Int -> primGtInt x y
 
 (<=#) :: Int -> Int -> Bool
-(<=#) = \ !x: Int -> \ !y: Int -> primLeInt x y
+(<=#) : export = \ !x: Int -> \ !y: Int -> primLeInt x y
 
 (>=#) :: Int -> Int -> Bool
-(>=#) = \ !x: Int -> \ !y: Int -> primGeInt x y
+(>=#) : export = \ !x: Int -> \ !y: Int -> primGeInt x y
 
 {----------------------------------------------------------
   Basic arithmetic on Float's
 ----------------------------------------------------------}
 
 (+.) :: Float -> Float -> Float
-(+.) = \x: Float -> \y: Float -> primAddFloat x y
+(+.) : export = \x: Float -> \y: Float -> primAddFloat x y
 
 (-.) :: Float -> Float -> Float
-(-.) = \x: Float -> \y: Float -> primSubFloat x y
+(-.) : export = \x: Float -> \y: Float -> primSubFloat x y
 
 (*.) :: Float -> Float -> Float
-(*.) = \x: Float -> \y: Float -> primMulFloat x y
+(*.) : export = \x: Float -> \y: Float -> primMulFloat x y
 
 (/.) :: Float -> Float -> Float
-(/.) = \x: Float -> \y: Float -> primDivFloat x y
+(/.) : export = \x: Float -> \y: Float -> primDivFloat x y
 
 negFloat :: Float -> Float
-negFloat = \x: Float -> primNegFloat x
+negFloat : export = \x: Float -> primNegFloat x
 
 {----------------------------------------------------------
   Comparisons on Float's
 ----------------------------------------------------------}
 
 (==.) :: Float -> Float -> Bool
-(==.) = \x: Float -> \y: Float -> primEqFloat x y
+(==.) : export = \x: Float -> \y: Float -> primEqFloat x y
 
 (/=.) :: Float -> Float -> Bool
-(/=.) = \x: Float -> \y: Float -> primNeFloat x y
+(/=.) : export = \x: Float -> \y: Float -> primNeFloat x y
 
 (<.) :: Float -> Float -> Bool
-(<.) = \x: Float -> \y: Float -> primLtFloat x y
+(<.) : export = \x: Float -> \y: Float -> primLtFloat x y
 
 (>.) :: Float -> Float -> Bool
-(>.) = \x: Float -> \y: Float -> primGtFloat x y
+(>.) : export = \x: Float -> \y: Float -> primGtFloat x y
 
 (<=.) :: Float -> Float -> Bool
-(<=.) = \x: Float -> \y: Float -> primLeFloat x y
+(<=.) : export = \x: Float -> \y: Float -> primLeFloat x y
 
 (>=.) :: Float -> Float -> Bool
-(>=.) = \x: Float -> \y: Float -> primGeFloat x y
+(>=.) : export = \x: Float -> \y: Float -> primGeFloat x y
 
 {----------------------------------------------------------
   Packed strings
 ----------------------------------------------------------}
 stringFromPacked :: PackedString -> String
-stringFromPacked = \p: String -> p
+stringFromPacked : export = \p: String -> p
 
 packedFromString :: String -> PackedString
-packedFromString = \s: String -> s
+packedFromString : export = \s: String -> s
   {- = let forced s = case s of
                      []       -> []
                      (:) x xs -> let! y  = x
@@ -271,16 +216,16 @@ foldlStrict f z xs
 -}
 
 getChar :: IO Char
-getChar = IO { Char } (\world: RealWorld -> ''$primGetChar'' world)
+getChar : export = IO { Char } (\world: RealWorld -> ''$primGetChar'' world)
 
 putChar :: Char -> IO ()
-putChar = \char: Char -> IO { () }
+putChar : export = \char: Char -> IO { () }
   (\world: RealWorld -> let! res: IORes Int = ''$primPutChar'' char world in case res of
     IORes { Int } _ world2 -> IORes { () } () world2
   )
 
 ''$primPutStrLn'' :: String -> IO ()
-''$primPutStrLn'' = 
+''$primPutStrLn'' : export = 
   let print: ([Char] -> Int) = \str: [Char] -> ''_$helium_runtime_print_string'' str
   in
     \str: String ->

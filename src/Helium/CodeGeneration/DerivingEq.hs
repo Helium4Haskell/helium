@@ -30,8 +30,9 @@ typeDictEq = Core.TCon $ Core.TConTypeClassDictionary $ idFromString "Eq"
 -- Eq Dictionary for a data type declaration
 dataDictionary :: ImportEnvironment -> UHA.Declaration -> UHA.Name -> CoreDecl
 dataDictionary env (UHA.Declaration_Data _ _ (UHA.SimpleType_SimpleType _ name names) constructors _) qualname = DeclValue
-    { declName    = idFromString ("$dictPrelude.Eq$" ++ getNameName qualname)
-    , declAccess  = public
+    { declName    = nm
+    , declAccess  = Export nm
+    , declModule  = Nothing
     , declType    = foldr (\(typeArg, idx) -> Core.TForall (Core.Quantor idx $ Just $ getNameName typeArg) Core.KStar)
                           (Core.typeFunction argTypes dictType)
                         $ zip names [1 ..]
@@ -41,6 +42,7 @@ dataDictionary env (UHA.Declaration_Data _ _ (UHA.SimpleType_SimpleType _ name n
                     ++ map (\n -> custom "superInstance" ("Prelude.Eq-" ++ getNameName n)) names
     }
   where
+    nm = idFromString ("$dictPrelude.Eq$" ++ getNameName qualname)
     argTypes :: [Core.Type]
     argTypes = zipWith (\_ idx -> Core.TAp typeDictEq $ Core.TVar idx) names [1 ..]
     dictType = Core.TAp typeDictEq dataType

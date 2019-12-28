@@ -15,8 +15,7 @@ import Helium.Utils.Utils (internalError)
 import Data.Maybe(fromMaybe)
 }
 {
-type ImportList = ( Core.CoreDecl -- The import declaration
-                  , Maybe Bool    -- Nothing if there is no import specification. Then True if hiding, false if not.
+type ImportList = ( Maybe Bool    -- Nothing if there is no import specification. Then True if hiding, false if not.
                   , Bool          -- True if qualified
                   , Name          -- How the imports should be qualified (normally the module name)
                   , IdSet         -- Values
@@ -33,8 +32,7 @@ ATTR Body ImportDeclarations ImportDeclaration
     
 SEM ImportDeclaration
     | Import 
-        lhs.coreImportDecls = [( @loc.importDecls
-                               , @importspecification.importspec
+        lhs.coreImportDecls = [( @importspecification.importspec
                                , @qualified
                                , fromMaybe @name.self @asname.name
                                , @importspecification.values
@@ -42,20 +40,6 @@ SEM ImportDeclaration
                                , @importspecification.typeorclassesCompl
                                , @importspecification.typeorclasses
                                , @name.self)]
-        loc.importDecls =
-            Core.DeclImport
-                { Core.declName = idFromName @name.self
-                , Core.declAccess =
-                    Core.Imported
-                        { Core.accessPublic   = False -- private
-                        , Core.importModule   = idFromName @name.self
-                        , Core.importName     = dummyId
-                        , Core.importKind     = Core.DeclKindModule
-                        , Core.importMajorVer = 0
-                        , Core.importMinorVer = 0
-                        }
-                , Core.declCustoms = []
-                }
 
 ATTR MaybeImportSpecification ImportSpecification [ | | importspec : {Maybe Bool} ]
 

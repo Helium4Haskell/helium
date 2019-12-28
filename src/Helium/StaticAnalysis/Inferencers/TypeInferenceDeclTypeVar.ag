@@ -42,7 +42,7 @@ SEM Declaration
     loc     . typeVariables        = namesInType (chead $ @types.self)
     loc     . instanceBetas         = (zip @typeVariables [TVar n | n <- [@lhs.betaDeclUnique + 1..]])
     loc     . instsType             = makeTpFromType @instanceBetas (chead $ @types.self)
-    loc     . instanceTpScheme      = addPredicatesToTpScheme (@superClasses) $ makeTpSchemeFromType (chead @types.self)
+    loc     . instanceTpScheme      = addPredicatesToTpScheme (@superClasses) $ makeTpSchemeFromType $ chead @types.self
     loc     . superClasses          = getSuperClasses @context.self
 
 SEM Constructor

@@ -34,21 +34,20 @@ import Helium.CodeGeneration.Iridium.FromCoreImports
 import Helium.CodeGeneration.Iridium.Utils
 
 fromCore :: FileCache -> NameSupply -> Core.CoreModule -> IO Module
-fromCore cache supply mod@(Core.Module name _ _ decls) = do
+fromCore cache supply mod@(Core.Module name _ _ dependencies decls) = do
   imports <- fromCoreImports cache imported
   return $ fromCoreAfterImports imports supply mod defs dependencies
   where
-    dependencies = listFromSet $ foldr gatherDependencies emptySet imported
     (imported, defs) = partition isImported decls
 
 fromCoreAfterImports :: ([(Id, Declaration CustomDeclaration)], [(Id, Declaration DataType)], [(Id, Declaration TypeSynonym)], [(Id, Declaration AbstractMethod)]) -> NameSupply -> Core.CoreModule -> [Core.CoreDecl] -> [Id] -> Module
-fromCoreAfterImports (importedCustoms, importedDatas, importTypes, importedAbstracts) supply mod@(Core.Module name _ _ _) decls dependencies
+fromCoreAfterImports (importedCustoms, importedDatas, importTypes, importedAbstracts) supply mod@(Core.Module name _ _ _ _) decls dependencies
   | not $ null abstracts = error "fromCore: Abstract method should be an imported declaration, found a definition instead"
   | otherwise = Module name dependencies (map snd $ importedCustoms ++ customs) (map snd importedDatas ++ datas) (map snd importTypes ++ synonyms) (map snd $ importedAbstracts ++ abstracts) (map snd methods)
   where
     coreEnv = Core.typeEnvForModule mod
     datas = decls >>= dataTypeFromCoreDecl consMap
-    synonyms = [ Declaration (Core.declName decl) (visibility decl) (origin decl) (Core.declCustoms decl) $ TypeSynonym (Core.declType decl) | decl@Core.DeclTypeSynonym{} <- decls ]
+    synonyms = [ Declaration (Core.declName decl) (visibility decl) (Core.declModule decl) (Core.declCustoms decl) $ TypeSynonym (Core.declType decl) | decl@Core.DeclTypeSynonym{} <- decls ]
     consMap = foldr dataTypeConFromCoreDecl emptyMap decls
     (methods, abstracts) = partitionEithers $ concat $ mapWithSupply (`fromCoreDecl` env) supply decls
     customs = mapMaybe (customFromCoreDecl name) decls
@@ -58,44 +57,30 @@ fromCoreAfterImports (importedCustoms, importedDatas, importTypes, importedAbstr
       (unionMap valuesFunctions $ unionMap valuesAbstracts valuesCons {- $ unionMap valuesCons $ mapFromList builtins-})
       Nothing
       coreEnv
-    valuesFunctions = mapMapWithId (\fnName (tp, fnType) -> ValueFunction (qualifiedName name fnName) (functionTypeArity fnType) tp CCFast) $ functionsMap coreEnv mod
-    valuesAbstracts = mapFromList $ map (\(fnName, Declaration qualified _ _ _ (AbstractMethod arity fnType annotations)) -> (fnName, ValueFunction qualified arity fnType $ callingConvention annotations)) importedAbstracts
+    valuesFunctions = mapMapWithId (\fnName (tp, fnType) -> ValueFunction (functionTypeArity fnType) tp CCFast) $ functionsMap coreEnv mod
+    valuesAbstracts = mapFromList $ map (\(fnName, Declaration _ _ _ _ (AbstractMethod arity fnType annotations)) -> (fnName, ValueFunction arity fnType $ callingConvention annotations)) importedAbstracts
 
     allConsList = map (\(name, Declaration qualified _ _ _ (DataType cons)) -> (name, cons)) importedDatas ++ listFromMap consMap
     valuesCons = mapFromList $ allConsList >>= (\(dataName, cons) -> map (\(Declaration conName _ _ _ (DataTypeConstructorDeclaration tp fs)) -> (conName, ValueConstructor (DataTypeConstructor conName tp))) cons)
 
 isImported :: Core.CoreDecl -> Bool
-isImported decl = case Core.declAccess decl of
-  Core.Defined _ -> False
-  _ -> True
+isImported decl = Core.declModule decl /= Nothing
 
 seqString :: String -> a -> a
 seqString str a = foldr seq a str
 
-qualifiedName :: Id -> Id -> Id
-qualifiedName moduleName name = idFromString q
-  where
-    q
-      | stringFromId name == "main$" = "main"
-      | otherwise = stringFromId moduleName ++ "#" ++ stringFromId name
-
 customFromCoreDecl :: Id -> Core.CoreDecl -> Maybe (Id, Declaration CustomDeclaration)
 customFromCoreDecl moduleName decl@Core.DeclCustom{}
-  | not isData = Just (name, Declaration (qualifiedName moduleName name) (visibility decl) (origin decl) (Core.declCustoms decl) $ CustomDeclaration $ Core.declKind decl)
+  | not isData = Just (name, Declaration name (visibility decl) (Core.declModule decl) (Core.declCustoms decl) $ CustomDeclaration $ Core.declKind decl)
   where
     name = Core.declName decl
     isData = Core.declKind decl == Core.DeclKindCustom (idFromString "data")
 customFromCoreDecl _ _ = Nothing
 
-gatherDependencies :: Core.CoreDecl -> IdSet -> IdSet
-gatherDependencies decl = case Core.declAccess decl of
-  Core.Imported _ mod _ _ _ _ -> insertSet mod
-  _ -> id
-
 dataTypeFromCoreDecl :: IdMap [Declaration DataTypeConstructorDeclaration] -> Core.CoreDecl -> [Declaration DataType]
 dataTypeFromCoreDecl consMap decl@Core.DeclCustom{}
   | Core.declKind decl == Core.DeclKindCustom (idFromString "data")
-    = [Declaration name (visibility decl) (origin decl) (Core.declCustoms decl) $ DataType $ fromMaybe [] $ lookupMap name consMap]
+    = [Declaration name (visibility decl) (Core.declModule decl) (Core.declCustoms decl) $ DataType $ fromMaybe [] $ lookupMap name consMap]
   where
     name = Core.declName decl
 dataTypeFromCoreDecl _ _ = []
@@ -108,11 +93,11 @@ dataTypeConFromCoreDecl decl@Core.DeclCon{} = case find isDataName (Core.declCus
     isDataName (Core.CustomLink _ (Core.DeclKindCustom name)) = name == idFromString "data"
     isDataName _ = False
     -- When adding strictness annotations to data types, `TypeAny` on the following line should be changed.
-    con = Declaration (Core.declName decl) (visibility decl) (origin decl) (Core.declCustoms decl) (DataTypeConstructorDeclaration (Core.declType decl) (Core.declFields decl))
+    con = Declaration (Core.declName decl) (visibility decl) (Core.declModule decl) (Core.declCustoms decl) (DataTypeConstructorDeclaration (Core.declType decl) (Core.declFields decl))
 dataTypeConFromCoreDecl _ = id
 
 fromCoreDecl :: NameSupply -> TypeEnv -> Core.CoreDecl -> [Either (Id, Declaration Method) (Id, Declaration AbstractMethod)]
-fromCoreDecl supply env decl@Core.DeclValue{} = [Left (name, Declaration (qualifiedName (teModuleName env) name) (visibility decl) (origin decl) (Core.declCustoms decl) method)]
+fromCoreDecl supply env decl@Core.DeclValue{} = [Left (name, Declaration name (visibility decl) (Core.declModule decl) (Core.declCustoms decl) method)]
   where
     name = Core.declName decl
     method = toMethod supply env (Core.declName decl) (Core.valueValue decl)
@@ -129,7 +114,7 @@ toMethod :: NameSupply -> TypeEnv -> Id -> Core.Expr -> Method
 toMethod supply env name expr = Method tp args returnType [AnnotateTrampoline] (Block entryName entry) blocks
   where
     (entryName, supply') = freshIdFromId idEntry supply
-    (_, arity, tp) = fromMaybe (error "toMethod: could not find function signature") $ resolveFunction env name
+    (arity, tp) = fromMaybe (error "toMethod: could not find function signature") $ resolveFunction env name
     createArgument (Left quantor) _ = Left quantor
     createArgument (Right t) (Right (Core.Variable name _)) = Right $ Local name t
     (args, expr') = consumeLambdas expr
@@ -292,14 +277,14 @@ toInstruction supply env continue expr = case getApplicationOrConstruction expr 
     | otherwise ->
       let argsArity = length $ filter isRight args
       in case resolveFunction env fn of
-        Just (qualifiedName, arity, fntype)
+        Just (arity, fntype)
           | arity == 0 ->
             -- Function has no arguments, e.g. it is a global variable.
             let
               (args', castInstructions, tp) = maybeCasts supply''' env fntype args
             in
               castInstructions
-                +> LetAlloc [Bind y (BindTargetThunk $ VarGlobal $ GlobalVariable qualifiedName fntype) args']
+                +> LetAlloc [Bind y (BindTargetThunk $ VarGlobal $ GlobalVariable fn fntype) args']
                 +> Let z (Eval $ VarLocal $ Local y tp)
                 +> ret supplyRet env z continue
           | arity == argsArity ->
@@ -307,7 +292,7 @@ toInstruction supply env continue expr = case getApplicationOrConstruction expr 
             let
               (args', castInstructions, _) = maybeCasts supply''' env fntype args
             in
-              castInstructions +> Let x (Call (GlobalFunction qualifiedName arity fntype) args') +> ret supplyRet env x continue
+              castInstructions +> Let x (Call (GlobalFunction fn arity fntype) args') +> ret supplyRet env x continue
           | arity > argsArity ->
             -- Not enough arguments, cannot call the function yet. Compile to a thunk.
             -- The thunk is already in WHNF, as the application does not have enough arguments.
@@ -315,7 +300,7 @@ toInstruction supply env continue expr = case getApplicationOrConstruction expr 
               (args', castInstructions, tp) = maybeCasts supply''' env fntype args
             in
               castInstructions
-                +> LetAlloc [Bind x (BindTargetFunction $ GlobalFunction qualifiedName arity fntype) args']
+                +> LetAlloc [Bind x (BindTargetFunction $ GlobalFunction fn arity fntype) args']
                 +> ret supplyRet env x continue
           | otherwise ->
             -- Too many arguments. Evaluate the function with the first `length params` arguments,
@@ -329,7 +314,7 @@ toInstruction supply env continue expr = case getApplicationOrConstruction expr 
             in
               castInstructions1
                 +> castInstructions2
-                +> Let x (Call (GlobalFunction qualifiedName arity fntype) args1')
+                +> Let x (Call (GlobalFunction fn arity fntype) args1')
                 +> LetAlloc [Bind y (BindTargetThunk $ VarLocal $ Local x $ Core.typeToStrict tp1) args2']
                 +> Let z (Eval $ VarLocal $ Local y tp2)
                 +> ret supplyRet env z continue
@@ -482,8 +467,8 @@ bind supply env (Core.Bind (Core.Variable x _) val) = Bind x target $ map toArg 
         in BindTargetConstructor constructor
       Left (Core.ConTuple arity) -> BindTargetTuple arity
       Right fn -> case resolveFunction env fn of
-        Just (qualifiedName, arity, fntype) ->
-          BindTargetFunction $ GlobalFunction qualifiedName arity fntype
+        Just (arity, fntype) ->
+          BindTargetFunction $ GlobalFunction fn arity fntype
         _
           | null args -> error $ "bind: a secondary thunk cannot have zero arguments"
         _ ->
@@ -498,7 +483,7 @@ coreBindIsStrict :: TypeEnv -> Core.Expr -> Bool
 coreBindIsStrict env val = case apOrCon of
   Left _ -> True
   Right fn -> case resolveFunction env fn of
-    Just (_, arity, _)
+    Just (arity, _)
       | length (filter isRight args) >= arity -> False
       | otherwise -> True -- Not all arguments were passed, so the value is already in WHNF
     Nothing -> False
@@ -524,8 +509,8 @@ literal (Core.LitBytes x) = LitString $ stringFromBytes x
 resolve :: TypeEnv -> Id -> Either Variable GlobalFunction
 resolve env name = case valueDeclaration env name of
   ValueConstructor _ -> error "resolve: Constructor cannot be used as a value."
-  ValueFunction qualifiedName 0 fntype _ -> Left $ VarGlobal $ GlobalVariable qualifiedName fntype
-  ValueFunction qualifiedName arity fntype _ -> Right $ GlobalFunction qualifiedName arity fntype
+  ValueFunction 0 fntype _ -> Left $ VarGlobal $ GlobalVariable name fntype
+  ValueFunction arity fntype _ -> Right $ GlobalFunction name arity fntype
   ValueVariable t -> Left $ VarLocal $ Local name t
 
 resolveVariable :: TypeEnv -> Id -> Variable
@@ -533,8 +518,3 @@ resolveVariable env name = case resolve env name of
   Left var -> var
   Right (GlobalFunction name 0 tp) -> VarGlobal $ GlobalVariable name $ typeRemoveArgumentStrictness tp
   Right (GlobalFunction name _ tp) -> VarGlobal $ GlobalVariable name $ typeToStrict $ typeRemoveArgumentStrictness tp
-
-origin :: Core.CoreDecl -> Maybe Id
-origin decl = case Core.declAccess decl of
-  (Core.Imported _ mod _ _ _ _) -> Just mod
-  _ -> Nothing

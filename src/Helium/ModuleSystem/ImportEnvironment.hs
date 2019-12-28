@@ -375,6 +375,7 @@ instance Show ImportEnvironment where
    show (ImportEnvironment tcs tss te vcs ot cn ce cm ins rs fs _) =
       unlines (concat [ fixities
                       , datatypes
+                      , typeconstructors
                       , typesynonyms
                       , theValueConstructors
                       , functions
@@ -406,6 +407,10 @@ instance Show ImportEnvironment where
           let allDatas = filter ((`notElem` M.keys tss). fst) (M.assocs tcs)
               f (n,(i,_))  = unwords ("data" : showNameAsVariable n : take i variableList)
           in showWithTitle "Data types" (showEm f allDatas)
+
+       typeconstructors =
+          let f (n,(i,g)) = show n ++ " => " ++ show g
+          in showWithTitle "Type constructors" (showEm f (M.assocs tcs))
 
        typesynonyms =
           let f (n,(i,g)) = let tcons =  take i (map TCon variableList)

@@ -67,7 +67,8 @@ SEM Declaration
         in
         [ Core.DeclTypeSynonym
             { Core.declName = idFromName @simpletype.name
-            , Core.declAccess = Core.private
+            , Core.declAccess = Core.Private
+            , Core.declModule  = Nothing
             , Core.declType = toCoreType (convertTpSchemeToQualified @lhs.importEnv ts)
             , Core.declCustoms = @origin
             }
@@ -84,7 +85,8 @@ SEM Declaration
         ++
         map (\n -> Core.DeclCustom
             { Core.declName    = idFromString (getNameName n)
-            , Core.declAccess  = Core.private
+            , Core.declAccess  = Core.Private
+            , Core.declModule  = Nothing
             , Core.declKind    = Core.DeclKindCustom (idFromString "data")
             , Core.declCustoms = [Core.CustomInt (length @simpletype.typevariables)] ++ @origin
             }
@@ -121,7 +123,8 @@ SEM Declaration
                         lhs.decls =
         [ Core.DeclValue
             { Core.declName    = idFromName @qualname
-            , Core.declAccess  = Core.private
+            , Core.declAccess  = Core.Private
+            , Core.declModule  = Nothing
             , Core.declType    = @loc.declType
             , Core.valueValue  = addLambdas @lhs.typeOutput @lhs.typeClassContext @lhs.betaDeclUnique @bindings.name (@dictionaries ++ @ids) @bindings.core
             , Core.declCustoms = toplevelType @bindings.name @lhs.importEnv (@lhs.isTopLevel || isJust @lhs.instanceName) ++ originCustoms @lhs.modulename @range.self
@@ -143,7 +146,8 @@ SEM Declaration
             Pattern_Variable _ n ->
                 [ Core.DeclValue
                     { Core.declName    = idFromName (addQualified @lhs.moduleQual n)
-                    , Core.declAccess  = Core.private
+                    , Core.declAccess  = Core.Private
+                    , Core.declModule  = Nothing
                     , Core.declType    = snd $ declarationType @lhs.typeOutput @lhs.typeClassContext n
                     , Core.valueValue  =
                         addLambdas @lhs.typeOutput @lhs.typeClassContext @lhs.betaDeclUnique n @dictionaries
@@ -159,7 +163,8 @@ SEM Declaration
               let patBindTp = findCoreType @lhs.typeOutput @lhs.betaDeclUnique
               in Core.DeclValue
                     { Core.declName    = patBindId
-                    , Core.declAccess  = Core.private
+                    , Core.declAccess  = Core.Private
+                    , Core.declModule  = Nothing
                     , Core.declType    = patBindTp
                     , Core.valueValue  =
                         let_ -- because guards can fail
@@ -170,7 +175,8 @@ SEM Declaration
                 :
                 [ Core.DeclValue
                     { Core.declName    = idFromName v
-                    , Core.declAccess  = Core.private
+                    , Core.declAccess  = Core.Private
+                    , Core.declModule  = Nothing
                     , Core.declType    = tp
                     , Core.valueValue  =
                         (let_ nextClauseId tp (patternMatchFail "pattern binding" tp @range.self)
@@ -199,7 +205,8 @@ SEM Declaration
             ( ( \n ->
                 Core.DeclCustom
                     { Core.declName    = idFromString n
-                    , Core.declAccess  = Core.private
+                    , Core.declAccess  = Core.Private
+                    , Core.declModule  = Nothing
                     , Core.declKind    = (Core.DeclKindCustom . idFromString) "infix"
                     , Core.declCustoms =
                         [ Core.CustomInt
@@ -242,7 +249,8 @@ SEM Declaration
                                                 {
                                                     --declName :: Id, declAccess :: !Access, declArity :: !Arity, declCustoms :: ![Custom]
                                                     Core.declName = idFromName @qualName,
-                                                    Core.declAccess = Core.public,
+                                                    Core.declAccess = Core.Export $ idFromName @simpletype.name,
+                                                    Core.declModule = Nothing,
                                                     Core.declKind = Core.DeclKindCustom $ idFromString "ClassDefinition",
                                                     Core.declCustoms =
                                                         constructClassMemberCustomDecl @lhs.importEnv @qualName (M.lookup @qualName $ classMemberEnvironment @lhs.importEnv) @origin
@@ -282,7 +290,8 @@ SEM Declaration
         ++
         [ Core.DeclCustom
             { Core.declName    = idFromString (getNameName @simpletype.name)
-            , Core.declAccess  = Core.private
+            , Core.declAccess  = Core.Private
+            , Core.declModule  = Nothing
             , Core.declKind    = Core.DeclKindCustom (idFromString "data")
             , Core.declCustoms = [Core.CustomInt (length @simpletype.typevariables)]
             }
@@ -368,14 +377,7 @@ insertDictionaries name dictionaryEnv expr =
    foldl Core.Ap
          expr
          ((map dictionaryTreeToCore (getDictionaryTrees name dictionaryEnv)))
-
-insertDictionaries' :: Name -> DictionaryEnvironment -> Core.Expr
-insertDictionaries' name dictionaryEnv =
-   foldl Core.Ap
-         (Core.Var $ idFromName name)
-         ((map dictionaryTreeToCore (getDictionaryTrees name dictionaryEnv)))
 }
-
 ATTR LeftHandSide
     [
     |
@@ -452,7 +454,8 @@ SEM Declaration
     | Data loc.selectorFunctions = map @toDecl @fieldTypes
               .toDecl = \(n, t, ts) -> Core.DeclValue
                                     { Core.declName    = idFromName n
-                                    , Core.declAccess  = Core.private
+                                    , Core.declAccess  = Core.Private
+                                    , Core.declModule  = Nothing
                                     , Core.declType    = toCoreType ts
                                     , Core.valueValue  = createRecordSelector @lhs.importEnv @range.self n t
                                     , Core.declCustoms = []
@@ -488,7 +491,8 @@ SEM Constructor [ dataTypeName : Name typevariables : Names dataTypeCoreType : {
         map (\n ->
             (idFromName @constructor.self, Core.DeclCon
                 { Core.declName    = idFromName @constructor.self
-                , Core.declAccess  = Core.private
+                , Core.declAccess  = Core.Private
+                , Core.declModule  = Nothing
                 , Core.declType    = declarationConstructorType @lhs.importEnv @constructor.self @types.strictness
                 , Core.declCustoms = constructorCustoms
                                         @lhs.dataTypeName
@@ -507,7 +511,8 @@ SEM Constructor [ dataTypeName : Name typevariables : Names dataTypeCoreType : {
             map (\n ->
                 (idFromName n, Core.DeclCon
                     { Core.declName    = idFromName n
-                    , Core.declAccess  = Core.private
+                    , Core.declAccess  = Core.Private
+                    , Core.declModule  = Nothing
                     , Core.declType    = declarationConstructorType @lhs.importEnv @constructorOperator.self [@leftType.strictness, @rightType.strictness]
                     , Core.declCustoms = constructorCustoms
                                             @lhs.dataTypeName
@@ -524,7 +529,8 @@ SEM Constructor [ dataTypeName : Name typevariables : Names dataTypeCoreType : {
     | Record            lhs.cons =
         [ (idFromName @constructor.self, Core.DeclCon
             { Core.declName    = idFromName @constructor.self
-            , Core.declAccess  = Core.private
+            , Core.declAccess  = Core.Private
+            , Core.declModule  = Nothing
             , Core.declType    = declarationConstructorType @lhs.importEnv @constructor.self @fieldDeclarations.strictness
             , Core.declCustoms = constructorCustoms
                                     @lhs.dataTypeName
@@ -561,7 +567,8 @@ constructorCustoms dataTypeName name envWithParent =
     maybe
         (internalError "ToCoreDecl" "Constructor" ("no type found for " ++ show name))
         (\tpScheme ->
-            [ Core.CustomLink
+            [ custom "type" (show tpScheme)
+            , Core.CustomLink
                     (idFromName dataTypeName)
                     (Core.DeclKindCustom (idFromString "data"))
             ]

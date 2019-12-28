@@ -100,22 +100,22 @@ siblingLiterals =
 
                case (literal,mtp) of
 
-                  ("Int", Just (TCon "LvmLang.Float"))
+                  ("Int", Just (TCon "Float"))
                        -> let hint = fixHint "use a float literal instead"
                           in return $ Just
                                 (5, "Int literal should be a Float", [edge], hint info)
 
-                  ("Float", Just (TCon "LvmLang.Int" ))
+                  ("Float", Just (TCon "Int" ))
                        -> let hint = fixHint "use an int literal instead"
                           in return $ Just
                                 (5, "Float literal should be an Int", [edge], hint info)
 
-                  ("Char", Just (TApp (TCon "[]") (TCon "LvmLang.Char"))) 
+                  ("Char", Just (TApp (TCon "[]") (TCon "Char"))) 
                        -> let hint = fixHint "use a string literal instead"
                           in return $ Just
                                 (5, "Char literal should be a String", [edge], hint info)
 
-                  ("String", Just (TCon "LvmLang.Char"))   
+                  ("String", Just (TCon "Char"))   
                        -> let hint = fixHint "use a char literal instead"
                           in return $ Just
                                 (5, "String literal should be a Char", [edge], hint info)

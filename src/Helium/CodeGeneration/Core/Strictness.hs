@@ -12,7 +12,7 @@ import Helium.CodeGeneration.Core.TypeEnvironment
 import Lvm.Core.Module
 
 coreStrictness :: NameSupply -> CoreModule -> CoreModule
-coreStrictness supply mod@(Module name major minor decls) = Module name major minor $ mapWithSupply (transformDeclaration env) supply decls
+coreStrictness supply mod@(Module name major minor imports decls) = Module name major minor imports $ mapWithSupply (transformDeclaration env) supply decls
   where
     env = envForModule mod
 
@@ -32,12 +32,12 @@ getConstructorStrictness tp = [ typeIsStrict tArg | Right tArg <- args ]
     FunctionType args _ = extractFunctionTypeNoSynonyms tp
 
 envForModule :: CoreModule -> Env
-envForModule mod@(Module _ _ _ decls) = Env typeEnv (mapFromList $ argsValues ++ argsAbstracts ++ argsConstructors)
+envForModule mod@(Module _ _ _ _ decls) = Env typeEnv (mapFromList $ argsValues ++ argsAbstracts ++ argsConstructors)
   where
     typeEnv = typeEnvForModule mod
-    argsValues = [ (name, getExpressionStrictness expr) | DeclValue name _ _ expr _ <- decls ]
-    argsAbstracts = [ (name, getAbstractStrictness typeEnv arity tp) | DeclAbstract name _ arity tp _ <- decls ]
-    argsConstructors = [ (name, getConstructorStrictness tp) | DeclCon name _ tp _ _ <- decls ]
+    argsValues = [ (name, getExpressionStrictness expr) | DeclValue name _ _ _ expr _ <- decls ]
+    argsAbstracts = [ (name, getAbstractStrictness typeEnv arity tp) | DeclAbstract name _ _ arity tp _ <- decls ]
+    argsConstructors = [ (name, getConstructorStrictness tp) | DeclCon name _ _ tp _ _ <- decls ]
 
 data Analysis a = Analysis IdSet !a
 

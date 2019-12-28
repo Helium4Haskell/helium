@@ -64,7 +64,7 @@ Left (TypeError loc msg) @@ name = Left $ TypeError (name : loc) msg
 infix 1 @@
 
 checkModule :: CoreModule -> [(CoreDecl, TypeError)]
-checkModule mod@(Module _ _ _ decls) = decls >>= checkDecl env
+checkModule mod@(Module _ _ _ _ decls) = decls >>= checkDecl env
   where
     env = typeEnvForModule mod
 

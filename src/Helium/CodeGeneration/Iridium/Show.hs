@@ -247,7 +247,7 @@ instance ShowDeclaration DataType where
 instance ShowDeclaration TypeSynonym where
   showDeclaration (TypeSynonym tp) =
     ( "type"
-    , " = { " ++ show tp ++ " }"
+    , " = { " ++ show tp ++ " }\n"
     )
 
 instance Show FloatPrecision where

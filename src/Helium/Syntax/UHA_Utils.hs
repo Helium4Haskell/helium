@@ -30,8 +30,8 @@ instance Eq Name where
 instance Ord Name where
    n1 <= n2 = getNameName n1 <= getNameName n2
 
-instance Show Name where 
-    show = getNameName  
+instance Show Name where
+    show name = getNameName name
 
 --------------------------------------------------------------
 -- NameWithRange 
@@ -191,9 +191,6 @@ getNameOrigin :: Name -> String
 getNameOrigin (Name_Identifier _ _ orig _) = orig
 getNameOrigin (Name_Operator   _ _ orig _) = orig
 getNameOrigin (Name_Special    _ _ orig _) = orig
-
-getIdOrigin :: Name -> Id
-getIdOrigin = idFromString . getNameOrigin
 
 getQualifier :: String -> ([String], String)
 getQualifier = getQualifier' []

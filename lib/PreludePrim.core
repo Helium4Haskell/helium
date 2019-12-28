@@ -1,5 +1,5 @@
-module PreludePrim
-    ( 
+module PreludePrim where
+    {- ( 
     -- Conversion
       primOrd, primChr, intToFloat, ceiling, floor, truncate, round
 
@@ -50,9 +50,9 @@ module PreludePrim
     -- misc
     , error, catch, catchEof, raise
 
-    ) where
-
-import HeliumLang
+    ) where -}
+import ( IridiumLang, HeliumLang, LvmLang, LvmException )
+{- import HeliumLang
     ( {-showFloat,-} showInt, showBool, showChar, showUnit
     {-, ''$primPutChar'', ''$primPutStr'', ''$primPutStrLn''-}, ''$primUnsafePerformIO''
     )
@@ -96,26 +96,27 @@ import LvmException
     ( error, errorPacked {- hack -} {- , catch, raise 
     , Exception(System), SystemException(EndOfFile) -}
     )
+-}
 
-custom infix (+#)  : public [6,"left"]
-custom infix (-#)  : public [6,"left"]
-custom infix (*#)  : public [7,"left"]
-custom infix div  : public [7,"left"]
-custom infix mod  : public [7,"left"]
-custom infix quot : public [7,"left"]
-custom infix rem  : public [7,"left"]
+custom infix (+#)  : export [6,"left"]
+custom infix (-#)  : export [6,"left"]
+custom infix (*#)  : export [7,"left"]
+custom infix div  : export [7,"left"]
+custom infix mod  : export [7,"left"]
+custom infix quot : export [7,"left"]
+custom infix rem  : export [7,"left"]
 
 
-custom infix (/#)  : public [7,"left"]
+custom infix (/#)  : export [7,"left"]
 
-custom infix (**.) : public [8,"right"]
-custom infix ($!)  : public [0,"right"]
+custom infix (**.) : export [8,"right"]
+custom infix ($!)  : export [0,"right"]
 
 primOrd :: Char -> Int
-primOrd = \x: Char -> ''$primCharToInt'' x
+primOrd : export = \x: Char -> ''$primCharToInt'' x
 
 primChr :: Int -> Char
-primChr = \x: Int -> ''$primIntToChar'' x
+primChr : export = \x: Int -> ''$primIntToChar'' x
 
 
 {--------------------------------------------------------------------------

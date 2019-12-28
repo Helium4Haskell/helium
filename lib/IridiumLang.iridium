@@ -30,6 +30,20 @@ export_as @Bool data @Bool {
   export_as @True constructor @True: { Bool } <>
 }
 
+#[decl @kind [bytes "*"]]
+#[decl @origin [name @IridiumLang]]
+export_as @Char data @Char {}
+
+#[decl @kind [bytes "*"]]
+#[decl @origin [name @IridiumLang]]
+export_as @Int data @Int {}
+
+#[decl @kind [bytes "*"]]
+#[decl @origin [name @IridiumLang]]
+export_as @Float data @Float {}
+
+export_as @String type @String = { [Char] }
+
 #[decl @origin [name @IridiumLang]]
 export_as @primAddInt define @IridiumLang#primAddInt(%a: !Int, %b: !Int): Int = prim int_add(%a: !Int, %b: !Int)
 #[decl @origin [name @IridiumLang]]

@@ -18,21 +18,19 @@ import Helium.Syntax.UHA_Utils
 import Helium.Syntax.UHA_Range(noRange)
 import Helium.Utils.Utils (internalError)
 import Lvm.Path(searchPath)
-import Lvm.Import(lvmImportDecls')
---import Helium.ModuleSystem.CoreToImportEnv(getImportEnvironment)
+import Lvm.Import(lvmImportDecls)
 import qualified Helium.ModuleSystem.ExtractImportDecls as EID
 import Data.List(isPrefixOf, intercalate)
 
-type ImportList = ( Core.CoreDecl -- The import declaration
-                    , Maybe Bool    -- Nothing if there is no import specification. Then True if hiding, false if not.
-                    , Bool          -- True if qualified
-                    , Name          -- How the imports should be qualified (normally the module name)
-                    , IdSet         -- Values
-                    , IdSet         -- Constructors, records fields or class methods
-                    , IdSet         -- Complete types or classes
-                    , IdSet         -- Only the type constructor or class name
-                    , Name          -- The imported module name
-                    )
+type ImportList = ( Maybe Bool    -- Nothing if there is no import specification. Then True if hiding, false if not.
+                  , Bool          -- True if qualified
+                  , Name          -- How the imports should be qualified (normally the module name)
+                  , IdSet         -- Values
+                  , IdSet         -- Constructors, records fields or class methods
+                  , IdSet         -- Complete types or classes
+                  , IdSet         -- Only the type constructor or class name
+                  , Name          -- The imported module name
+                  )
 
 type ModuleDecls = ( [Name]         -- normal values
                     , [Name]         -- type constructors
@@ -44,10 +42,9 @@ chaseImports resolve fromModule =
     let coreImports   = EID.coreImportDecls_Syn_Module $ EID.wrap_Module (EID.sem_Module fromModule) EID.Inh_Module -- Expand imports
         -- findModule    = searchPath lvmPath ".iridium" . stringFromId
         doImport :: ImportList -> IO (Name, [Core.CoreDecl], ModuleDecls)
-        doImport (importDecl, importspec, qualified, asName, values, confieldormethods, typeorclassesCompl, typeorclasses, modl)
-            = do decls_ <- lvmImportDecls' resolve [importDecl]
-                 let decls = concat decls_
-                     rightd = getRightImports importspec qualified asName (values, confieldormethods, typeorclassesCompl, typeorclasses) decls
+        doImport (importspec, qualified, asName, values, confieldormethods, typeorclassesCompl, typeorclasses, modl)
+            = do decls <- lvmImportDecls resolve [idFromName modl]
+                 let rightd = getRightImports importspec qualified asName (values, confieldormethods, typeorclassesCompl, typeorclasses) decls
                      moduledecls = getAllModuleDecl decls
                  return $ (modl, rightd, moduledecls)
     in mapM doImport coreImports
@@ -95,8 +92,8 @@ getRightImports importspec qualified asName (values, confieldormethods, typeorcl
         Just hiding ->  filter (isImported hiding)
                 -}
     case importspec of
-        Nothing     -> foldr (localAddQualified qualified asName) []
-        Just hiding -> foldr (localAddQualified qualified asName) [] . filter (isImported hiding)
+        Nothing     -> {-foldr (localAddQualified qualified asName) []-} id
+        Just hiding -> {-foldr (localAddQualified qualified asName) [] .-} filter (isImported hiding)
 
     where
     intErr = internalError "PhaseImport" "getRightImports"
@@ -108,11 +105,14 @@ getRightImports importspec qualified asName (values, confieldormethods, typeorcl
     -- I really have no clue why, but if you remove it, helium will loop and crash.
     localAddQualified :: Bool -> Name -> Core.CoreDecl -> [Core.CoreDecl] -> [Core.CoreDecl]
     localAddQualified qual as decl decls = 
-        let oldname    = stringFromId $ (Core.declName decl)
+        let oldname    = case Core.declAccess decl of 
+                Core.Export n -> stringFromId n
+                Core.Private  -> intErr "Expected an exported declaration"
+            -- stringFromId $ (Core.declAccess decl)
             newnameid  = idFromString $! (toQualified as oldname)
-            newdecl    = decl {Core.declName = newnameid }
+            newdecl    = decl {Core.declAccess = Core.Export newnameid }
             isReserved = any (`isPrefixOf` oldname) ["Dict", "$dict", "$Dict", "default$"]
-        in if isReserved then decl : decls else if qual then newdecl : decls else decl : newdecl : decls
+        in decl : decls -- if isReserved then decl : decls else if qual then newdecl : decls else decl : newdecl : decls
 
     toQualified :: Name -> String -> String
     toQualified (Name_Identifier _ qs _ n) declname = seq declname $ intercalate "." $ qs ++ [n, declname]
@@ -150,9 +150,7 @@ getRightImports importspec qualified asName (values, confieldormethods, typeorcl
             Core.DeclCustom  { } ->
                 intErr  ("don't know how to handle DeclCustom: "       ++ stringFromId name)
             Core.DeclValue   { } ->
-                intErr  ("don't know how to handle DeclValue: "        ++ stringFromId name)
-            Core.DeclImport  { } ->
-                intErr  ("don't know how to handle DeclImport: "       ++ stringFromId name) 
+                intErr  ("don't know how to handle DeclValue: "        ++ stringFromId name) 
 
 
 getAllModuleDecl :: [Core.CoreDecl] -> ModuleDecls

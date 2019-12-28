@@ -64,7 +64,8 @@ customStrategy :: String -> Decl a
 customStrategy text =
     DeclCustom
         { declName = idFromString ""
-        , declAccess = Defined { accessPublic = True }
+        , declAccess = Export $ idFromString ""
+        , declModule = Nothing
         , declKind = DeclKindCustom (idFromString "strategy")
         , declCustoms = [custom "strategy" text]
         }
@@ -148,7 +149,8 @@ decl :: Bool -> String -> Core.Type -> Expr -> CoreDecl
 decl isPublic x t e =
     DeclValue
         { declName = idFromString x
-        , declAccess = Defined { accessPublic = isPublic }
+        , declAccess = if isPublic then Export $ idFromString x else Private
+        , declModule = Nothing
         , declType = t
         , valueValue = e
         , declCustoms = []
@@ -270,32 +272,29 @@ setExportsPublic implicit (exports,exportCons,exportData,exportDataCon,exportMod
   where
     setPublic decl_ | isQual decl_ && (isInstance decl_ || isTypeSynonym decl_ || declPublic decl_) =
                         let name = stringFromId $! declName decl_
-                            newname = idFromString $! (unQualifyString name)
+                            newname = idFromString $! unQualifyString name
                         in if not ("Dict" `isPrefixOf` name) then
-                            [decl_{ declName = newname, declAccess = (declAccess decl_){ accessPublic = True } }, decl_{declAccess = (declAccess decl_){ accessPublic = False }}]
+                            [decl_{ declName = newname, declAccess = Export newname }, decl_{declAccess = Private}]
                            else
                             [decl_]
                     | isQual decl_ =
-                        [decl_{declAccess = (declAccess decl_){ accessPublic = False }}]
+                        [decl_{declAccess = Private}]
                     | isInstance decl_ || isTypeSynonym decl_ || declPublic decl_ =
-                        [decl_{declAccess = (declAccess decl_){ accessPublic = True } }]
+                        [decl_{declAccess = Export $ declName decl_ }]
                     | otherwise       = [decl_]
 
     isExported decl_ elemIdSet =
         let access = declAccess decl_ in
         if implicit then
-            case decl_ of
-                DeclImport{} ->  False
-                _ ->
-                    case access of
-                        Imported{} -> False
-                        Defined{}  -> True --accessPublic access
+            case declModule decl_ of
+              Just _  -> False -- imported
+              Nothing -> True  -- defined in current module
         else
-            case access of
-                Imported{ importModule = x }
+            case declModule decl_ of
+                Just x
                     | elemSet x exportMods              -> True
                     | otherwise                         -> elemIdSet
-                Defined{}
+                Nothing
                     | elemSet (moduleName m) exportMods -> True
                     | otherwise                         -> elemIdSet
 
@@ -318,7 +317,7 @@ setExportsPublic implicit (exports,exportCons,exportData,exportDataCon,exportMod
                                                 && (elemSet name exportData || elemSet name exportDataCon)
                                     || (declKind decl_ `elem` [customInfix] && elemSet name exports)
                                     )
-            _               -> internalError "CoreUtils" "setExportsPublic" "We can only deal with Custom, Value, and Con Core.Decl"
+            DeclTypeSynonym{} -> isExported decl_ (elemSet name exports)
 
     isQual decl_ = let name = stringFromId $ declName decl_ in isQualifiedString name
 
