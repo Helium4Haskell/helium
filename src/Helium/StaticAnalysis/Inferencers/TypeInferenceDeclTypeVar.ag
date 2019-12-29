@@ -37,9 +37,9 @@ SEM Declaration
     constructors.betaDeclUnique = @lhs.betaDeclUnique + 1
     lhs.betaDeclUnique = @constructors.betaDeclUnique + 1
   | Instance
-    where   . betaDeclUnique            = @lhs.betaDeclUnique + 1 + length(@typeVariables)
+    where   . betaDeclUnique        = @lhs.betaDeclUnique + 1 + length(@typeVariables)
     loc     . instBeta              = TVar @lhs.betaDeclUnique
-    loc     . typeVariables        = namesInType (chead $ @types.self)
+    loc     . typeVariables         = namesInType (chead $ @types.self)
     loc     . instanceBetas         = (zip @typeVariables [TVar n | n <- [@lhs.betaDeclUnique + 1..]])
     loc     . instsType             = makeTpFromType @instanceBetas (chead $ @types.self)
     loc     . instanceTpScheme      = addPredicatesToTpScheme (@superClasses) $ makeTpSchemeFromType $ chead @types.self

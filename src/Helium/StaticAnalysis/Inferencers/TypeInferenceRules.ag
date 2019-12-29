@@ -195,15 +195,18 @@ SEM Declaration
                                         [@where.constraints]
         loc         . members       = zip @where.typeMemberBindings (map TVar [(@lhs.betaUnique + 1)..])
   | Instance
+        loc      . qualifiedSuperClasses = map (\(nm, tp) -> (show $ convertClassNameToQualified @lhs.importEnvironment $ nameFromString nm, tp)) @superClasses
         lhs      . collectErrors        = let 
                                             unqualifier = unQualifyName @lhs.importEnvironment
                                             checkPredicate :: Predicate -> [TypeError]
-                                            checkPredicate p@(Predicate _ v) 
-                                                | p `elem` map (superClassToPredicate @instanceBetas) @superClasses = []
+                                            checkPredicate (Predicate pn v) 
+                                                | p `elem` map (superClassToPredicate @instanceBetas) @qualifiedSuperClasses = []
                                                 | v `elem` map snd @instanceBetas = [makeMissingInstancePredicateError @range.self (unqualifier @qualName)
                                                                                     (show $ makeTpSchemeFromType (chead $ @types.self)) (convertPredicate unqualifier p) 
                                                                                     (map (\(n,v') -> (convertString unqualifier n, v')) @superClasses) @instanceBetas]
                                                 | otherwise = []
+                                                where
+                                                    p = Predicate (show $ convertClassNameToQualified @lhs.importEnvironment $ nameFromString pn) v
                                           in (concatMap checkPredicate @lhs.requiredPredicates) ++ @lhs.collectErrors
         where   . assumptions           = noAssumptions
         where   . constraints           = emptyTree
