@@ -16,6 +16,7 @@ ATTR Declaration Declarations MaybeDeclarations [
 
 SEM Body
     | Body
+        declarations.isTopLevel = True        
         declarations.typeClassContext = TCCNone
 
 SEM Expression
@@ -118,7 +119,7 @@ SEM Declaration
                         lhs.declNames = [@bindings.name]
                         loc.instanceDict = [idFromString $ "$instanceDict" ++ show name | Just name <- [@lhs.instanceName]]
                         loc.dictionaries = @instanceDict ++ (map predicateToId (getPredicateForDecl @bindings.name @lhs.dictionaryEnv))
-                        loc.qualname     = addQualified @lhs.moduleQual @bindings.name
+                        loc.qualname     = if @lhs.isTopLevel then addQualified @lhs.moduleQual @bindings.name else @bindings.name
                         lhs.whereDeclarationTypes = [(@bindings.name, @loc.tpScheme)]
                         lhs.decls =
         [ Core.DeclValue
@@ -145,7 +146,7 @@ SEM Declaration
         case  @pattern.self of
             Pattern_Variable _ n ->
                 [ Core.DeclValue
-                    { Core.declName    = idFromName (addQualified @lhs.moduleQual n)
+                    { Core.declName    = idFromName (if @lhs.isTopLevel then addQualified @lhs.moduleQual n else n)
                     , Core.declAccess  = Core.Private
                     , Core.declModule  = Nothing
                     , Core.declType    = snd $ declarationType @lhs.typeOutput @lhs.typeClassContext n
