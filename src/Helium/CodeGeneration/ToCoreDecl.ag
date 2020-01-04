@@ -218,13 +218,19 @@ SEM Declaration
     --  names                    : Names
     --  type                     : Type   -- may have context
 
-    | Fixity            lhs.decls    =
+    | Fixity            loc.ops      = filter (const @lhs.isTopLevel) @operators.self
+                           .origin   = \n -> case Module.findInfixOrigin @lhs.extraDecls n of
+                                        Nothing -> @lhs.moduleQual
+                                        Just n -> getQualifiedFromString (stringFromId n)
+                           .origins  = map (@origin . idFromString . getNameName) @ops
+                           .zipped   = zip @ops @origins
+                        lhs.decls    =
         map
-            ( ( \n ->
+            ( ( \(n, orig) ->
                 Core.DeclCustom
-                    { Core.declName    = idFromString n
+                    { Core.declName    = idFromName $ addQualified orig n
                     , Core.declAccess  = Core.Private
-                    , Core.declModule  = Nothing
+                    , Core.declModule  = Just $ idFromString $ intercalate "." orig
                     , Core.declKind    = (Core.DeclKindCustom . idFromString) "infix"
                     , Core.declCustoms =
                         [ Core.CustomInt
@@ -244,10 +250,9 @@ SEM Declaration
                         ] ++ if @lhs.isTopLevel then originCustoms @lhs.modulename @range.self else []
                     }
               )
-              .
-              getNameName
             )
-            $ concatMap (\n -> [n] ++ if @lhs.isTopLevel then [addQualified @lhs.moduleQual n] else []) @operators.self
+            $ @zipped 
+            -- concatMap (\n -> [n] ++ if @lhs.isTopLevel then [addQualified @lhs.moduleQual n] else []) @operators.self
     --  range                    : Range
     --  fixity                   : Fixity
     --  priority                 : MaybeInt

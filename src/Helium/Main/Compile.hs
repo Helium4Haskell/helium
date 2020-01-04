@@ -76,6 +76,8 @@ compile basedir fullName options lvmPath iridiumCache doneModules =
             -- resolve imports
             publicmod <- Lvm.lvmImport (resolveDeclarations iridiumCache) m
 
+            writeFile (fullName ++ ".imported.core") $ show $ pretty publicmod
+
             verifyCore options "LvmImport" publicmod
 
             return (publicmod, 0)

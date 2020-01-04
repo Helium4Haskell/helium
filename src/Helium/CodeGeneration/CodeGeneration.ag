@@ -1,6 +1,5 @@
 ATTR Module
    [   dictionaryEnv    : DictionaryEnvironment
-       extraDecls       : { [Core.CoreDecl] }
        importEnv        : ImportEnvironment
        toplevelTypes    : TypeEnvironment
    |
@@ -13,7 +12,12 @@ ATTR Module Body Declaration Declarations MaybeDeclarations
   GuardedExpressions GuardedExpression RecordExpressionBindings
   RecordExpressionBinding RecordPatternBindings RecordPatternBinding
   FunctionBindings FunctionBinding LeftHandSide RightHandSide
-  Patterns Pattern [ typeOutput : TypeInferenceOutput | | ]
+  Patterns Pattern 
+  [ typeOutput : TypeInferenceOutput 
+    extraDecls       : { [Core.CoreDecl] }
+  | 
+  | 
+  ]
 
 -- UHA
 INCLUDE "UHA_Syntax.ag"
@@ -40,7 +44,7 @@ import Helium.StaticAnalysis.Miscellaneous.TypeConversion
 import Helium.Utils.QualifiedTypes
 import Data.Char (ord)
 import Data.Maybe
-import Data.List(isSuffixOf, find, sortOn)
+import Data.List(isSuffixOf, find, sortOn, intercalate)
 
 import Helium.CodeGeneration.InstanceDictionary
 
