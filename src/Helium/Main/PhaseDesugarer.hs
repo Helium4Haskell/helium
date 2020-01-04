@@ -23,9 +23,13 @@ import Helium.Syntax.UHA_Range(noRange)
 import Lvm.Core.Module(moduleDecls, declName, shallowKindFromDecl, declCustoms)
 import Helium.ModuleSystem.ImportEnvironment()
 import Helium.ModuleSystem.DictionaryEnvironment (DictionaryEnvironment)
-import Helium.ModuleSystem.CoreToImportEnv(originFromCustoms)
+import Helium.ModuleSystem.CoreToImportEnv(originFromDecl)
 import qualified Helium.CodeGeneration.CodeGeneration as CodeGeneration
-import Data.List(nubBy)
+import Data.List(nubBy, sort)
+import Debug.Trace
+import Lvm.Common.Id
+import Lvm.Common.IdMap
+import Lvm.Import
 
 
 phaseDesugarer :: DictionaryEnvironment -> 
@@ -44,7 +48,6 @@ en eigenlijk is afterTypeInferEnv te groot. alleen locale types en constructoren
 
 -}
 
-
         coreModule = CodeGeneration.core_Syn_Module $
             CodeGeneration.wrap_Module (CodeGeneration.sem_Module module_)
                 CodeGeneration.Inh_Module {
@@ -53,23 +56,32 @@ en eigenlijk is afterTypeInferEnv te groot. alleen locale types en constructoren
                     CodeGeneration.importEnv_Inh_Module     = afterTypeInferEnv,
                     CodeGeneration.toplevelTypes_Inh_Module = toplevelTypes,
                     CodeGeneration.typeOutput_Inh_Module = TypeInferenceOutput solveResult fullTypeSchemes afterTypeInferEnv }
+        
+        (valuesMap, typesMap) = lvmImportRenameMap $ nubDecls extraDecls
+        strippedCoreModule = removeDoubleDecls $ coreRemoveDead $
+            lvmImportQualifyModule (valuesMap, typesMap) coreModule
 
-        strippedCoreModule = removeDoubleDecls $ coreRemoveDead coreModule
+    writeFile (fullNameNoExt ++ ".KLSAJDSLJ") $ show . pretty $ moduleDecls coreModule
 
     when (DumpCore `elem` options) $
         print . pretty $ strippedCoreModule
 
     when (DumpCoreToFile `elem` options) $ do
         writeFile (fullNameNoExt ++ ".core") $ show . pretty $ strippedCoreModule
-        exitSuccess
+        -- exitSuccess
    
     return strippedCoreModule
+
+nubDecls :: [CoreDecl] -> [CoreDecl]
+nubDecls = nubBy cmp
+    where
+        cmp x y = shallowKindFromDecl x == shallowKindFromDecl y 
+            && declName x == declName y 
+            && originFromDecl x == originFromDecl y 
 
 -- It is possible to get double declarations, because we import the same value twice (but has the same origin). We simply remove doubles with same origins and kinds
 removeDoubleDecls :: CoreModule -> CoreModule
 removeDoubleDecls m =
     let olddecls = moduleDecls m
-        newdecls = nubBy cmp olddecls
-        getOrigin = originFromCustoms . declCustoms
-        cmp x y = shallowKindFromDecl x == shallowKindFromDecl y && declName x == declName y && getOrigin x == getOrigin y 
+        newdecls = nubDecls olddecls
     in m {moduleDecls = newdecls}

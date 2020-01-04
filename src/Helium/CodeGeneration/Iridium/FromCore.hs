@@ -54,7 +54,7 @@ fromCoreAfterImports (importedCustoms, importedDatas, importTypes, importedAbstr
     env = TypeEnv
       name
       (mapFromList $ map (\(dataName, d) -> (dataName, getConstructors d)) importedDatas ++ map (\d -> (declarationName d, getConstructors d)) datas)
-      (unionMap valuesFunctions $ unionMap valuesAbstracts valuesCons {- $ unionMap valuesCons $ mapFromList builtins-})
+      (unionMap valuesFunctions $ unionMap valuesAbstracts valuesCons)
       Nothing
       coreEnv
     valuesFunctions = mapMapWithId (\fnName (tp, fnType) -> ValueFunction (functionTypeArity fnType) tp CCFast) $ functionsMap coreEnv mod

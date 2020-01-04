@@ -6,7 +6,7 @@ import qualified Helium.CodeGeneration.Iridium.FileCache as Iridium
 import Control.Monad
 import System.FilePath(joinPath)
 import Data.List(nub, elemIndex, isSuffixOf, isPrefixOf, intercalate)
-import Data.Maybe(fromJust, mapMaybe)
+import Data.Maybe(fromJust, mapMaybe, catMaybes)
 import Lvm.Path(explodePath,getLvmPath)
 import System.Directory(doesFileExist, getModificationTime,
                         getPermissions, Permissions(writable))
@@ -40,6 +40,7 @@ prelude = "Prelude.hs"
 make :: String -> String -> [String] -> [String] -> [Option] -> Iridium.FileCache -> IORef [(String, Bool)] -> IO Bool
 make basedir fullName lvmPath chain options iridiumCache doneRef = do
   -- If we already compiled this module, return the result we already know
+  print (unwords ["Make", fullName])
   done <- readIORef doneRef
 
   case lookup fullName done of 
@@ -66,7 +67,7 @@ make basedir fullName lvmPath chain options iridiumCache doneRef = do
       resolvedImports <- mapM (resolve lvmPath) imports
 
       -- For each of the imports...
-      compileResults <- forM (zip imports (resolvedImports)) 
+      compileResults <- forM (zip imports resolvedImports) 
         $ \(importModuleName, maybeImportFullName) -> do
 
           -- Issue error if import can not be found in the search path

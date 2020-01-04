@@ -14,6 +14,7 @@ import Helium.ModuleSystem.CoreToImportEnv(getImportEnvironment)
 import Helium.Syntax.UHA_Syntax
 import Lvm.Common.Id
 import qualified Lvm.Core.Expr as Core
+import Text.PrettyPrint.Leijen (pretty)
 
 phaseImport :: String -> Module -> (Id -> IO Core.CoreModule) -> [Option] -> 
                     IO ([Core.CoreDecl], [(Name, ImportEnvironment, ModuleDecls)])
@@ -28,8 +29,8 @@ phaseImport fullName module_ resolve options = do
     -- Chase imports
     chasedImpsList <- chaseImports resolve moduleWithExtraImports
 
-    let indirectionDecls   = concatMap (\(_,x,_) -> x) chasedImpsList
+    let indirectionDecls = concatMap (\(_,x,_) -> x) chasedImpsList
         importEnvs = 
             map (\(name,decls,moddecls) -> (name, getImportEnvironment baseName decls, moddecls)) chasedImpsList
-    
+    writeFile (fullName ++ ".imported.core") $ show $ pretty indirectionDecls
     return (indirectionDecls, importEnvs)

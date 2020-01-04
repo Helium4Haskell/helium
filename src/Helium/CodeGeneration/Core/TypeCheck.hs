@@ -21,6 +21,7 @@ import Lvm.Common.IdMap
 import System.Exit
 import Data.List
 import Text.PrettyPrint.Leijen (pretty)
+import Debug.Trace
 
 type Location = [String]
 data TypeError = TypeError Location Message

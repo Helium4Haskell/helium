@@ -6,7 +6,11 @@
     Portability :  portable
 -}
 
-module Helium.ModuleSystem.CoreToImportEnv(getImportEnvironment, originFromCustoms) where
+module Helium.ModuleSystem.CoreToImportEnv
+    ( getImportEnvironment
+    , originFromCustoms
+    , originFromDecl
+    ) where
 
 import Lvm.Core.Expr
 import qualified Lvm.Core.Type as Core
@@ -28,11 +32,13 @@ import Helium.Syntax.UHA_Syntax
 import Top.Types
 
 import Control.Arrow
+import Control.Applicative
 import Data.List
 import Data.Maybe
 import qualified Data.Map as M
+import Text.PrettyPrint.Leijen (pretty)
 import Debug.Trace
-import Text.PrettyPrint.Leijen
+
 
 nameFromCustoms :: String -> Id -> String -> [Custom] -> Name
 nameFromCustoms _ _ conName [] =
@@ -44,12 +50,17 @@ nameFromCustoms importedInModule importedFromModId conName ( CustomLink parentid
         nameFromCustoms importedInModule importedFromModId conName cs
 nameFromCustoms importedInModule importedFromModId conName (_ : cs) = nameFromCustoms importedInModule importedFromModId conName cs
 
-originFromCustoms :: [Custom] -> String
-originFromCustoms [] =
-    internalError "CoreToImportEnv" "originFromCustoms" 
-        ("something imported without an origin, maybe you should recompile (base) libraries or update lvm.")
+-- TODO: Refactor to deprecate the use of customs for origin in favor of the decl declModule field
+originFromDecl :: CoreDecl -> String
+originFromDecl decl
+    = fromMaybe (internalError "CoreToImportEnv" "originFromDecl"
+            ("imported without an origin: " ++ show (pretty decl)))
+        (originFromCustoms (declCustoms decl) <|> (stringFromId <$> declModule decl))
+
+originFromCustoms :: [Custom] -> Maybe String
+originFromCustoms [] = Nothing
 originFromCustoms ( CustomDecl (DeclKindCustom ident) [CustomName originid] : cs)
-    | stringFromId ident == "origin" = stringFromId originid
+    | stringFromId ident == "origin" = Just $ stringFromId originid
     | otherwise                      = originFromCustoms cs
 originFromCustoms (_ : cs) = originFromCustoms cs
 
@@ -340,8 +351,6 @@ getImportEnvironment importedInModule decls = foldr (insertDictionaries imported
                             className = nameFromString $ stringFromId n
                             classVariables = getTypeVariable $ head (selectCustom "ClassTypeVariables" cs)
                             superClasses = selectCustom "SuperClass" cs
-                            origin = originFromCustoms cs
-                            originModule = takeWhile (/=':') origin
                             qualifiedName = nameFromId qualifiedId
                             addClass :: Name -> [Custom] -> ImportEnvironment -> ImportEnvironment
                             addClass clName superCls env = let

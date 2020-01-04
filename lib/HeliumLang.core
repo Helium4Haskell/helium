@@ -2,31 +2,7 @@
    used in the translation of language constructs.
 -} 
 
-module HeliumLang where {-
-    ( Bool(..)
-    , '':[]''(..) -- lists
-    , '':->'' -- function arrow
-    , String, Int, Float, Char
-    , PackedString
-
-    , showChar, showInt, showBool, showUnit, showFloat
-
-    , ''$primPutStrLn'' -- inserted main
-    , ''$primPutChar'', ''$primPutStr'' -- necessary for ''$primPutStrLn''
-    , bindIO -- do-notation
-    , ''$primUnsafePerformIO'' -- inserted main
-    , ''$primPatternFailPacked'' -- pattern-match failed runtime error
-    , ''$primEnumFrom'', ''$primEnumFromThen'', ''$primEnumFromTo'', ''$primEnumFromThenTo'' -- [1..] etc
-    , ''$primNegFloat'' -- unary minus for Expression_NegateFloat. Unnecessary in overloaded Helium?
-    , ''$primStringToFloat'' -- float literals
-    , ''$primEqFloat'' -- pattern-matching on floats
-    , ''$primConcat'' -- derived show functions 
-    , ''$primConcatMap'' -- list comprehensions
-    , ''$primPackedToString'' -- string literals and the built-in string  "No main defined..." and derived shows
-
-    , negFloat, negInt
-    , ''$floatUnaryMinus''
-    ) where -}
+module HeliumLang where
 
 import ( IridiumLang, LvmLang, LvmException )
 
@@ -46,61 +22,33 @@ custom infix (:) : export [5,"right"]
 data '':->'' v$0 v$1
 
 ''$primPackedToString'' :: String -> String
-''$primPackedToString'' = \p: String -> p
+''$primPackedToString'' : export = \p: String -> p
 
 ''$primUnsafePerformIO'' :: forall v$0. IO v$0 -> v$0
-''$primUnsafePerformIO'' = forall v$0. \io: IO v$0 -> unsafePerformIO {v$0} io
+''$primUnsafePerformIO'' : export = forall v$0. \io: IO v$0 -> unsafePerformIO {v$0} io
 
 ''$primPatternFailPacked'' :: forall v$0. String -> v$0
-''$primPatternFailPacked'' = forall v$0. \p: String -> patternFailPacked {v$0} p
+''$primPatternFailPacked'' : export = forall v$0. \p: String -> patternFailPacked {v$0} p
 
 ''$primErrorPacked'' :: forall v$0. String -> v$0
-''$primErrorPacked'' = forall v$0. \p: String -> errorPacked {v$0} p
-
-{-
-''$primPutChar'' :: Char -> IO ()
-''$primPutChar'' c = 
-    bindIO 
-        (outputChar stdout c) 
-        (flush stdout)
-        
-''$primPutChars'' :: String -> IO ()
-''$primPutChars'' xs = 
-    case xs of {
-        '':[]''  -> returnIO () ;
-        (:) y ys -> bindIO 
-                        (''$primPutChar'' y) -- if you don't want to flush each character: (outputChar stdout y) 
-                        (''$primPutChars'' ys) }
-
-''$primPutStr'' :: String -> IO ()
-''$primPutStr'' xs = 
-    bindIO 
-        (''$primPutChars'' xs) 
-        (flush stdout)
-
-''$primPutStrLn'' :: String -> IO ()
-''$primPutStrLn'' xs = 
-    bindIO  
-        (''$primPutChars'' xs) 
-        (''$primPutChar'' '\n') -- does the flush
--}
+''$primErrorPacked'' : export = forall v$0. \p: String -> errorPacked {v$0} p
 
 ''$primConcat'' :: forall v$0. [[v$0]] -> [v$0]
-''$primConcat'' = forall v$0. \ !xss: [[v$0]] ->
+''$primConcat'' : export = forall v$0. \ !xss: [[v$0]] ->
     case xss of 
     {   '':[]'' {[v$0]} -> [] {v$0}
     ;   (:) {[v$0]} ys yss -> ''$primAppend'' {v$0} ys (''$primConcat'' {v$0} yss)
     }
 
 ''$primConcatMap'' :: forall v$0. forall v$1. (v$0 -> [v$1]) -> ([v$0]) -> [v$1]
-''$primConcatMap'' = forall v$0. forall v$1. \f: (v$0 -> [v$1]) -> \ !xs: ([v$0]) ->
+''$primConcatMap'' : export = forall v$0. forall v$1. \f: (v$0 -> [v$1]) -> \ !xs: ([v$0]) ->
     case xs of
     {   '':[]'' {v$0}  -> [] {v$1}
     ;   (:) {v$0} y ys -> ''$primAppend'' {v$1} (f y) (''$primConcatMap'' {v$0} {v$1} f ys)
     }
     
 ''$primAppend'' :: forall v$0. [v$0] -> [v$0] -> [v$0] -- is '++'
-''$primAppend'' = forall v$0. \ !xs: [v$0] -> \ys: [v$0] ->
+''$primAppend'' : export = forall v$0. \ !xs: [v$0] -> \ys: [v$0] ->
     case xs of 
     {   '':[]'' { v$0 } -> ys
     ;   (:) {v$0} z zs -> (:) {v$0} z (''$primAppend'' {v$0} zs ys)
@@ -109,7 +57,7 @@ data '':->'' v$0 v$1
 -- Show
 
 showBool :: Bool -> String
-showBool = \ !b: Bool -> 
+showBool : export = \ !b: Bool -> 
     case b of
     {   True -> "True"
     ;   default -> "False"
@@ -146,10 +94,6 @@ safeShowChar = \ !inChar: Bool -> \ !c: Char -> case c of
         }
     }
 
-{- showString :: String -> String
-showString = \s: String -> (''$primConcatMap'' {Char} {Char} (safeShowChar False) s)
-    -- (:) {Char} '\"' (''$primAppend'' {Char} (''$primConcatMap'' {Char} {Char} (safeShowChar False) s) "\"")
--}
 showInt :: Int -> String
 showInt : export = \ !n: Int ->
     let! isNeg: Bool = (<#) n 0 in case isNeg of
@@ -174,51 +118,3 @@ showPositiveInt = \i: Int ->
         ;   default -> ''$primAppend'' {Char} (showPositiveInt rest) digits
         }
 
--- Float
-{-
-''$primNegFloat''   :: Float -> Float!
-''$primNegFloat''   = negFloat
-
-''$primStringToFloat'' :: String -> Float
-''$primStringToFloat'' = float_of_string_extern
-extern float_of_string_extern "float_of_string" :: "Fz"
-''$primShowFloat'' :: Float -> String
-''$primShowFloat'' x = let! x = x in stringFromPacked (stringFromFloat x 6 'g')
-extern stringFromFloat "string_of_float" :: "aFII"
--}
--- in overloaded version, a negative float is shown as usual (not with "-.")
---showFloat : export [custom "type"  ["Float -> String"]]
---  = \f -> addPointZero (''$primShowFloat'' f)
-
-{- 
-safeMinus : private [custom "type"  ["String -> String"]]
-  = \s  -> 
-    case s of
-    { (:) x xs -> 
-        case x of 
-        { '-' -> ''$primAppend'' (stringFromPacked "(-.") (''$primAppend'' xs (stringFromPacked ")"))
-        ; _   -> s
-        }
-    ; _ -> s
-    }
--}
-{-
-addPointZero : private [custom "type"  ["String -> String"]]
-    = \s: String ->
-        let! cond: Bool = hasPointOrE s in case cond of
-        { True -> s
-        ; default -> ''$primAppend'' s (stringFromPacked ".0")
-        }
-        
-hasPointOrE : private []
-    = \xs: String ->
-    case xs of
-    { [] -> False
-    ; (:) y ys ->
-        case y of 
-        { '.' -> True
-        ; 'e' -> True
-        ; default -> hasPointOrE ys
-        }
-    }
--}

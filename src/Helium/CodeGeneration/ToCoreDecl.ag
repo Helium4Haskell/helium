@@ -53,7 +53,12 @@ SEM MaybeDeclarations [ | |   core : { Core.Expr -> Core.Expr } ]
 SEM Declaration
     | Type
             loc.origin    = originCustoms @lhs.modulename @range.self
-               .qualname  = addQualified @lhs.moduleQual @simpletype.name
+            (loc.qualname, loc.access, loc.module)
+                        = if @lhs.isTopLevel 
+                            then ( addQualified @lhs.moduleQual @simpletype.name
+                                    , Core.Export (idFromName @simpletype.name)
+                                    , Just (idFromString @lhs.modulename))
+                            else (@simpletype.name, Core.Private, Nothing)
             lhs.decls  =
         let -- if we would have the collected type synonym information here, things could have been
             -- done much easier.
@@ -67,9 +72,9 @@ SEM Declaration
             free = maximum (map fst qmap) + 1
         in
         [ Core.DeclTypeSynonym
-            { Core.declName = idFromName @simpletype.name
-            , Core.declAccess = Core.Private
-            , Core.declModule  = Nothing
+            { Core.declName = idFromName @qualname
+            , Core.declAccess = @access
+            , Core.declModule  = @module
             , Core.declType = toCoreType (convertTpSchemeToQualified @lhs.importEnv ts)
             , Core.declCustoms = @origin
             }
@@ -79,19 +84,23 @@ SEM Declaration
               constructors.dataTypeCoreType = @simpletype.coreType
               constructors.typevariables = @simpletype.typevariables
               loc.origin      = originCustoms @lhs.modulename @range.self
-                 .qualname    = addQualified @lhs.moduleQual @simpletype.name
                  .qualDers    = map (convertClassNameToQualified @lhs.importEnv) @derivings.self
+              (loc.qualname, loc.access, loc.module)
+                            = if @lhs.isTopLevel 
+                                then ( addQualified @lhs.moduleQual @simpletype.name
+                                     , Core.Export (idFromName @simpletype.name)
+                                     , Just (idFromString @lhs.modulename))
+                                else (@simpletype.name, Core.Private, Nothing)
               lhs.decls  =
         map snd @constructors.cons
         ++
-        map (\n -> Core.DeclCustom
-            { Core.declName    = idFromString (getNameName n)
-            , Core.declAccess  = Core.Private
-            , Core.declModule  = Nothing
+        [Core.DeclCustom
+            { Core.declName    = idFromName @qualname
+            , Core.declAccess  = @access
+            , Core.declModule  = @module
             , Core.declKind    = Core.DeclKindCustom (idFromString "data")
             , Core.declCustoms = [Core.CustomInt (length @simpletype.typevariables)] ++ @origin
-            }
-        ) [@simpletype.name, @qualname]
+            }]
         ++
         @selectorFunctions
         ++
@@ -119,16 +128,22 @@ SEM Declaration
                         lhs.declNames = [@bindings.name]
                         loc.instanceDict = [idFromString $ "$instanceDict" ++ show name | Just name <- [@lhs.instanceName]]
                         loc.dictionaries = @instanceDict ++ (map predicateToId (getPredicateForDecl @bindings.name @lhs.dictionaryEnv))
-                        loc.qualname     = if @lhs.isTopLevel then addQualified @lhs.moduleQual @bindings.name else @bindings.name
                         lhs.whereDeclarationTypes = [(@bindings.name, @loc.tpScheme)]
+                        (loc.qualname, loc.access, loc.module)
+                            = if @lhs.isTopLevel 
+                                then ( addQualified @lhs.moduleQual @bindings.name
+                                     , Core.Export (idFromName @bindings.name)
+                                     , Just (idFromString @lhs.modulename))
+                                else (@bindings.name, Core.Private, Nothing)
                         lhs.decls =
         [ Core.DeclValue
             { Core.declName    = idFromName @qualname
-            , Core.declAccess  = Core.Private
-            , Core.declModule  = Nothing
+            , Core.declAccess  = @access
+            , Core.declModule  = @module
             , Core.declType    = @loc.declType
             , Core.valueValue  = addLambdas @lhs.typeOutput @lhs.typeClassContext @lhs.betaDeclUnique @bindings.name (@dictionaries ++ @ids) @bindings.core
-            , Core.declCustoms = toplevelType @bindings.name @lhs.importEnv (@lhs.isTopLevel || isJust @lhs.instanceName) ++ originCustoms @lhs.modulename @range.self
+            , Core.declCustoms = toplevelType @bindings.name @lhs.importEnv (@lhs.isTopLevel || isJust @lhs.instanceName) ++ 
+                                    if @lhs.isTopLevel then originCustoms @lhs.modulename @range.self else []
             }
         ]
     --  range                    : Range
@@ -156,7 +171,8 @@ SEM Declaration
                                 nextClauseId retType (patternMatchFail "pattern binding" retType @range.self)
                                 @righthandside.core
                             )
-                    , Core.declCustoms = toplevelType n @lhs.importEnv @lhs.isTopLevel ++ originCustoms @lhs.modulename @range.self
+                    , Core.declCustoms = toplevelType n @lhs.importEnv @lhs.isTopLevel ++ 
+                                            if @lhs.isTopLevel then originCustoms @lhs.modulename @range.self else []
                     }
                ]
             _ ->
@@ -171,7 +187,8 @@ SEM Declaration
                         let_ -- because guards can fail
                             nextClauseId patBindTp (patternMatchFail "pattern binding" patBindTp @range.self)
                             @righthandside.core
-                    , Core.declCustoms = [custom "type" "patternbinding"] ++ originCustoms @lhs.modulename @range.self
+                    , Core.declCustoms = [custom "type" "patternbinding"] ++
+                                            if @lhs.isTopLevel then originCustoms @lhs.modulename @range.self else []
                     }
                 :
                 [ Core.DeclValue
@@ -183,7 +200,7 @@ SEM Declaration
                         (let_ nextClauseId tp (patternMatchFail "pattern binding" tp @range.self)
                             (patternToCore @lhs.importEnv @pattern.patternTypes (patBindId, patBindTp, @pattern.self) (Core.Var (idFromName v)))
                         )
-                    , Core.declCustoms = originCustoms @lhs.modulename @range.self
+                    , Core.declCustoms = if @lhs.isTopLevel then originCustoms @lhs.modulename @range.self else []
                     }
                 | (v, tp) <- M.assocs @pattern.patternTypes
                 -- TODO: Check if this is necessary
@@ -224,13 +241,13 @@ SEM Declaration
                             --                            "SEM Declaration.Fixity"
                             --                            "unknown fixity"
                               )
-                        ] ++ originCustoms @lhs.modulename @range.self
+                        ] ++ if @lhs.isTopLevel then originCustoms @lhs.modulename @range.self else []
                     }
               )
               .
               getNameName
             )
-            $ concatMap (\n -> [n, addQualified @lhs.moduleQual n]) @operators.self
+            $ concatMap (\n -> [n] ++ if @lhs.isTopLevel then [addQualified @lhs.moduleQual n] else []) @operators.self
     --  range                    : Range
     --  fixity                   : Fixity
     --  priority                 : MaybeInt

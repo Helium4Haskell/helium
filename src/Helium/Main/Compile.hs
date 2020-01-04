@@ -47,6 +47,7 @@ import Helium.Syntax.UHA_Utils
 import qualified Data.Map as M
 import Data.Maybe
 
+import Debug.Trace
 import Text.PrettyPrint.Leijen (pretty)
 
 compile :: String -> String -> [Option] -> [String] -> Iridium.FileCache -> [String] -> IO ()
@@ -121,8 +122,6 @@ compileHaskellToCore basedir fullName contents options iridiumCache doneModules 
       phaseImport fullName parsedModule (resolveDeclarations iridiumCache) options
   let importEnvs = map (\(_,b,_) -> b) importEnvsWithMod
 
-  print (foldr1 combineImportEnvironments importEnvs)
-
   -- Phase 4: Resolving operators
   resolvedModule <- 
       doPhaseWithExit 20 (const "R") compileOptions $
@@ -142,6 +141,8 @@ compileHaskellToCore basedir fullName contents options iridiumCache doneModules 
 
   -- Phase 6: Kind inferencing (by default turned off)
   let combinedEnv = foldr combineImportEnvironments localEnv importEnvs
+
+  print combinedEnv
   when (KindInferencing `elem` options) $
       doPhaseWithExit maximumNumberOfKindErrors (const "K") compileOptions $
         phaseKindInferencer combinedEnv resolvedModule options
