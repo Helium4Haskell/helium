@@ -70,7 +70,7 @@ SEM Module
                 loc.module_ = 
                     setExportsPublic @exports.isImplicit @loc.exportlists @lhs.importEnv
                         (makeCoreModule (Just $ idFromString @modulename)
-                            ( @body.decls ++ @lhs.extraDecls
+                            ( @body.decls
                             ))
                 body . instanceName = Nothing
                 loc.exportlists = (@exports.values

@@ -32,5 +32,5 @@ phaseImport fullName module_ resolve options = do
     let indirectionDecls = concatMap (\(_,x,_) -> x) chasedImpsList
         importEnvs = 
             map (\(name,decls,moddecls) -> (name, getImportEnvironment baseName decls, moddecls)) chasedImpsList
-    writeFile (fullName ++ ".imported.core") $ show $ pretty indirectionDecls
+    writeFile (fullName ++ ".phase.imported.core") $ show $ pretty indirectionDecls
     return (indirectionDecls, importEnvs)

@@ -57,20 +57,25 @@ en eigenlijk is afterTypeInferEnv te groot. alleen locale types en constructoren
                     CodeGeneration.toplevelTypes_Inh_Module = toplevelTypes,
                     CodeGeneration.typeOutput_Inh_Module = TypeInferenceOutput solveResult fullTypeSchemes afterTypeInferEnv }
         
+        -- Expressions using imported declarations need to be qualified, so we 
+        -- create a map from the those declarations
         (valuesMap, typesMap) = lvmImportRenameMap $ nubDecls extraDecls
+
         strippedCoreModule = removeDoubleDecls $ coreRemoveDead $
             lvmImportQualifyModule (valuesMap, typesMap) coreModule
 
-    writeFile (fullNameNoExt ++ ".KLSAJDSLJ") $ show . pretty $ moduleDecls coreModule
+        -- The imported declarations need to be added seperately to the module 
+        -- or they will be nonsensically qualified. 
+        strippedModuleWithImports = coreModule { moduleDecls = moduleDecls strippedCoreModule ++ extraDecls }
 
     when (DumpCore `elem` options) $
         print . pretty $ strippedCoreModule
 
     when (DumpCoreToFile `elem` options) $ do
-        writeFile (fullNameNoExt ++ ".core") $ show . pretty $ strippedCoreModule
-        -- exitSuccess
+        writeFile (fullNameNoExt ++ ".core") $ show . pretty $ strippedModuleWithImports
+        exitSuccess
    
-    return strippedCoreModule
+    return strippedModuleWithImports
 
 nubDecls :: [CoreDecl] -> [CoreDecl]
 nubDecls = nubBy cmp
