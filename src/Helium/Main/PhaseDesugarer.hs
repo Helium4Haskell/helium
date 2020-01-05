@@ -62,11 +62,12 @@ en eigenlijk is afterTypeInferEnv te groot. alleen locale types en constructoren
         (valuesMap, typesMap) = lvmImportRenameMap $ nubDecls extraDecls
 
         strippedCoreModule = removeDoubleDecls $ coreRemoveDead $
-            lvmImportQualifyModule (valuesMap, typesMap) coreModule
+            lvmImportQualifyModule (valuesMap, typesMap) coreModule False
 
         -- The imported declarations need to be added seperately to the module 
         -- or they will be nonsensically qualified. 
-        strippedModuleWithImports = coreModule { moduleDecls = moduleDecls strippedCoreModule ++ extraDecls }
+        strippedModuleWithImports = coreModule 
+            { moduleDecls = moduleDecls strippedCoreModule ++ extraDecls }
 
     when (DumpCore `elem` options) $
         print . pretty $ strippedCoreModule
