@@ -112,7 +112,7 @@ SEM Expression
                                                 Nothing     -> maybe [] (\className -> 
                                                                     let
                                                                         classMembers = classMemberEnvironmentAddContext className $ fromJust $ M.lookup className (classMemberEnvironment @lhs.importEnvironment)
-                                                                        classFunctions = map (\(n, tps, _, _)->(n, tps)) $ snd classMembers
+                                                                        classFunctions = map (\(n, tps, _, _) -> (n, tps)) $ snd classMembers
                                                                     in maybe [] (\scheme ->
                                                                         map PredicateFunction $ getRequiredDictionaries 
                                                                             (getOrderedTypeSynonyms @lhs.importEnvironment) 
@@ -151,7 +151,6 @@ SEM Expression
                                                               @lhs.curPred
                                                               @to.dictionaryEnvironment 
 
-  
   | Negate   lhs . dictionaryEnvironment = @newDEnv
              loc . localName             = setNameRange intUnaryMinusName @range.self
                  . negateTypeScheme      = case M.lookup @localName (typeEnvironment @lhs.importEnvironment) of 

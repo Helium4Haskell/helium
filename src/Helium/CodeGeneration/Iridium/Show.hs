@@ -226,7 +226,7 @@ instance ShowDeclaration CustomDeclaration where
 instance ShowDeclaration DataTypeConstructorDeclaration where
   showDeclaration (DataTypeConstructorDeclaration tp fs) =
     ( "constructor"
-    , ": { " ++ show tp ++ " }" ++ " [ " ++ intercalate ", " (map show fs) ++ " ]"
+    , ": { " ++ show tp ++ " }" ++ " < " ++ intercalate ", " (map show fs) ++ " > "
     )
 
 instance Show DataTypeConstructor where

@@ -434,7 +434,7 @@ instance Show ImportEnvironment where
           in showWithTitle "Classes" (map f (M.assocs ce))
 
        classmembers =
-          let f (c, (tv, fs)) = show c ++ " " ++ show tv ++ " - " ++ intercalate ", " (map (\(n, t, _, b)->show n ++ " :: " ++ show t ++ if b then " has default" else "") fs)
+          let f (c, (tv, fs)) = show c ++ " " ++ show tv ++ "\n      " ++ intercalate "      " (map (\(n, t, _, b)-> show n ++ " :: " ++ show t ++ if b then " has default\n" else "\n") fs)
           in showWithTitle "Class members" (showEm f (map (\(c, m)->(c, m)) $ M.assocs cm))
 
        sinstances =

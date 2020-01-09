@@ -40,7 +40,7 @@ newtype NameWithRange = NameWithRange { nameWithRangeToName :: Name }
 
 instance Show NameWithRange where
    show (NameWithRange name) = 
-      show name ++ " at " ++ show (getNameRange name)
+      getNameName name ++ " at " ++ show (getNameRange name)
    
 instance Eq  NameWithRange where
    NameWithRange name1 == NameWithRange name2 = 
@@ -53,9 +53,9 @@ instance Ord NameWithRange where
 --------------------------------------------------------------
 
 getNameName :: Name -> String -- !!!Name
-getNameName (Name_Identifier _ qs _ name) = intercalate "." (qs ++ [name])
-getNameName (Name_Operator   _ qs _ name) = intercalate "." (qs ++ [name])
-getNameName (Name_Special    _ qs _ name) = intercalate "." (qs ++ [name])
+getNameName (Name_Identifier _ qs o name) = intercalate "." (qs ++ [name])
+getNameName (Name_Operator   _ qs o name) = intercalate "." (qs ++ [name])
+getNameName (Name_Special    _ qs o name) = intercalate "." (qs ++ [name])
 
 getOnlyName :: Name -> String -- !!!Name
 getOnlyName (Name_Identifier _ _ _ name) = name
@@ -78,6 +78,11 @@ getFrom range altname = if result == "" then altname else result
 getModuleName :: Module -> String       -- added for Holmes
 getModuleName (Module_Module _ MaybeName_Nothing _ _) = ""
 getModuleName (Module_Module _ (MaybeName_Just name) _ _) = show name
+
+showWholeName :: Name -> String
+showWholeName (Name_Identifier _ qs o name) = intercalate "." (qs ++ [name])  ++ " from " ++ o
+showWholeName (Name_Operator   _ qs o name) = intercalate "." (qs ++ [name])  ++ " from " ++ o
+showWholeName (Name_Special    _ qs o name) = intercalate "." (qs ++ [name])  ++ " from " ++ o
 
 idFromName :: Name -> Id -- !!!Name
 idFromName = idFromString . getNameName

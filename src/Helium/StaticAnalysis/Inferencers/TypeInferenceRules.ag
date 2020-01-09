@@ -234,7 +234,7 @@ SEM Declaration
                                                         (getNameName @qualName)
                                                         tv
                                                 )
-                                            ) @superClasses
+                                            ) @qualifiedSuperClasses
         loc     . qualifiedInstanceTpScheme = convertTpSchemeToQualified @lhs.importEnvironment @instanceTpScheme
         loc     . instanceConstraints   = [     
                                                 (   [TC2 $ Assume prd @cinfo | prd <- map (superClassToPredicate @instanceBetas) @superClasses] ++

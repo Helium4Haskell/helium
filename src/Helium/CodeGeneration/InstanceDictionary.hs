@@ -199,7 +199,7 @@ constructDictionary typeOutput instanceSuperClass combinedNames whereDecls class
                         | (n, fst $ fromJust (find (\x -> snd x == var) parentMapping)) `elem` map (\(a, b) -> (a, getNameName b)) instanceSuperClass && n == cName= let
                                     Just tvar = find (\(_, cn) -> cn == var) parentMapping
                                 in
-                                        Var (idFromString $ "$instanceDict" ++ cName ++ "$" ++ fst tvar)
+                                    Var (idFromString $ "$instanceDict" ++ cName ++ "$" ++ fst tvar)
                         | otherwise = let
                                 -- get all the available super classes
                                 repInstanceSuperClass = filter (\(_, v) -> getNameName v == rVar) instanceSuperClass

@@ -19,9 +19,11 @@ import qualified Data.Map as M
 import Data.List(find)
 import Data.Maybe
 import Helium.Syntax.UHA_Syntax (Name)
-import Helium.Syntax.UHA_Utils (NameWithRange(..) )
+import Helium.Syntax.UHA_Utils
+import Helium.Utils.Utils
 
 import Top.Types
+import Debug.Trace
 
 data DictionaryEnvironment = 
      DEnv { declMap :: M.Map NameWithRange Predicates
@@ -85,8 +87,7 @@ getPredicateForDecl name dEnv =
    M.findWithDefault [] (NameWithRange name) (declMap dEnv)
 
 getDictionaryTrees :: Name -> DictionaryEnvironment -> [DictionaryTree]
-getDictionaryTrees name dEnv =
-   M.findWithDefault [] (NameWithRange name) (varMap dEnv)
+getDictionaryTrees name dEnv = M.findWithDefault [] (NameWithRange name) (varMap dEnv)
 
 makeDictionaryTrees :: ClassEnvironment -> [PredicateWithSource] -> Maybe String -> Maybe Predicate -> [PredicateWithSource] -> Maybe [DictionaryTree]
 makeDictionaryTrees classEnv ps currentClass curPred x = mapM (makeDictionaryTree classEnv ps currentClass curPred) x
@@ -122,13 +123,13 @@ makeDictionaryTree classEnv availablePredicates currentClass curPred ps =
                                         tree = foldr (\(sub, super) -> BySuperClass sub super tp) 
                                             (maybe (ByPredicate fromPredicate) ByCurrentClass currentClass) 
                                             list
-                                    in 
-                                        if fromPredicate `elem` baseSuperClassPredicates 
-                                            then Just (foldr (\(sub, super) -> BySuperClass sub super tp) (convertPredicate ByPredicate (getSuperClassPredicate fromPredicate)) list) 
-                                            else Just tree
+                                    in if fromPredicate `elem` baseSuperClassPredicates 
+                                        then Just (foldr (\(sub, super) -> BySuperClass sub super tp) 
+                                            (convertPredicate ByPredicate (getSuperClassPredicate fromPredicate)) list) 
+                                        else Just tree
                                 
         _      -> case byInstance noOrderedTypeSynonyms classEnv p of
-                    Nothing -> Nothing
+                    Nothing -> internalError "DictionaryEnvironment" "makeDictionaryTree" ("reduction error" ++ show (M.assocs classEnv))
                     Just predicates -> 
                         do 
                             let (TCon instanceName, args) = leftSpine tp
