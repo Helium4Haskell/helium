@@ -124,7 +124,7 @@ operandTrue = ConstantOperand $ Constant.Int 1 1
 -- A thunk has an additional argument, namely the function. We add that argument here
 bindArguments :: Env -> NameSupply -> Iridium.BindTarget -> Int -> Operand -> (Bool, [Named Instruction], [(Operand, Operand)])
 bindArguments env _ target@(Iridium.BindTargetFunction (Iridium.GlobalFunction fn arity _)) givenArgs self
-  | arity == 0 && givenArgs /= 0 = error "Cannot bind arguments to a global function with 0 arguments"
+  | arity == 0 && givenArgs /= 0 = error ("Cannot bind arguments to a global function with 0 arguments: " ++ show fn)
   | otherwise = 
   ( True
   , []

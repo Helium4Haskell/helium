@@ -42,7 +42,7 @@ import Data.List
 import Lvm.Common.Byte(bytesFromString)
 import qualified Lvm.Core.Expr as Core
 import qualified Data.Map as M
-import Helium.Utils.QualifiedTypes (convertClassNameToQualified)
+import Helium.Utils.QualifiedTypes (convertClassNameToQualified, convertTpToQualified)
 import Data.List(isPrefixOf)
 import Helium.ModuleSystem.ImportEnvironment
 import Helium.Syntax.UHA_Utils
@@ -239,7 +239,8 @@ declarationTypeInPattern typeOutput name beta =
       in (scheme, typeToCoreType ty)
 
 findCoreType :: TypeInferenceOutput -> Int -> Core.Type
-findCoreType typeOutput beta = typeToCoreType $ lookupBeta beta typeOutput
+findCoreType typeOutput beta 
+  = typeToCoreType $ convertTpToQualified (importEnv typeOutput) $ lookupBeta beta typeOutput
 
 toCoreType :: Top.TpScheme -> Core.Type
 toCoreType (Top.Quantification (tvars, qmap, t)) = foldr addTypeVar t' tvars

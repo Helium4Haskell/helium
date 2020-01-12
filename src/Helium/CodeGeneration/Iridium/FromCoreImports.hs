@@ -12,7 +12,6 @@ import Helium.CodeGeneration.Iridium.FileCache
 import qualified Lvm.Core.Expr as Core
 import qualified Lvm.Core.Module as Core
 import System.Exit
-import Debug.Trace
 
 fromCoreImports :: FileCache -> [Core.CoreDecl] -> IO ([(Id, Declaration CustomDeclaration)], [(Id, Declaration DataType)], [(Id, Declaration TypeSynonym)], [(Id, Declaration AbstractMethod)])
 fromCoreImports cache decls = do

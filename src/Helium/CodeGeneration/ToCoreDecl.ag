@@ -74,13 +74,13 @@ SEM Declaration
         [ Core.DeclTypeSynonym
             { Core.declName = idFromName @qualname
             , Core.declAccess = @access
-            , Core.declModule  = @module
+            , Core.declModule  = Nothing
             , Core.declType = toCoreType (convertTpSchemeToQualified @lhs.importEnv ts)
             , Core.declCustoms = @origin
             }
         ]
 
-    | Data    constructors.dataTypeName = @simpletype.name
+    | Data    constructors.dataTypeName = @qualname
               constructors.dataTypeCoreType = @simpletype.coreType
               constructors.typevariables = @simpletype.typevariables
               loc.origin      = originCustoms @lhs.modulename @range.self
@@ -97,7 +97,7 @@ SEM Declaration
         [Core.DeclCustom
             { Core.declName    = idFromName @qualname
             , Core.declAccess  = @access
-            , Core.declModule  = @module
+            , Core.declModule  = Nothing
             , Core.declKind    = Core.DeclKindCustom (idFromString "data")
             , Core.declCustoms = [Core.CustomInt (length @simpletype.typevariables)] ++ @origin
             }]
@@ -139,7 +139,7 @@ SEM Declaration
         [ Core.DeclValue
             { Core.declName    = idFromName @qualname
             , Core.declAccess  = @access
-            , Core.declModule  = @module
+            , Core.declModule  = Nothing
             , Core.declType    = @loc.declType
             , Core.valueValue  = addLambdas @lhs.typeOutput @lhs.typeClassContext @lhs.betaDeclUnique @bindings.name (@dictionaries ++ @ids) @bindings.core
             , Core.declCustoms = toplevelType @bindings.name @lhs.importEnv (@lhs.isTopLevel || isJust @lhs.instanceName) ++ 
@@ -230,7 +230,7 @@ SEM Declaration
                 Core.DeclCustom
                     { Core.declName    = idFromName $ addQualified orig n
                     , Core.declAccess  = Core.Private
-                    , Core.declModule  = Just $ idFromString $ intercalate "." orig
+                    , Core.declModule  = Nothing
                     , Core.declKind    = (Core.DeclKindCustom . idFromString) "infix"
                     , Core.declCustoms =
                         [ Core.CustomInt
@@ -296,8 +296,8 @@ SEM Declaration
                                             ]
                         loc .   qualName    = convertClassNameToQualified @lhs.importEnv @name.self
                         loc .   contextQual = map (convertContextItemToQualified @lhs.importEnv) @context.self
-                        loc .   tp = makeTpFromType @instanceBetas @type
-                        loc .   typeName = showInstanceType (convertTpToQualified @lhs.importEnv @tp)
+                        loc .   tp = convertTpToQualified @lhs.importEnv $ makeTpFromType @instanceBetas @type
+                        loc .   typeName = showInstanceType @tp
                         loc .   err = error $ "Invalid class name " ++ getNameName @qualName
                         -- loc .   superClasses = fst (fromMaybe @err (M.lookup (getNameName @qualName) (classEnvironment @lhs.importEnv)))
                         -- loc .   typevariables = zip (namesInType @loc.type) [TVar n | n <- [0..]]
@@ -305,16 +305,20 @@ SEM Declaration
                         where . instanceName = Just @qualName
                         where . typeClassContext = TCCInstance (idFromName @name.self) (toCoreTypeNotQuantified $ makeTpSchemeFromType @loc.type)
 
-    -- Not supported
-
     | Newtype           constructor.dataTypeName = @simpletype.name
                         constructor.dataTypeCoreType = @simpletype.coreType
                         constructor.typevariables = @simpletype.typevariables
+                        (loc.qualname, loc.access, loc.module)
+                            = if @lhs.isTopLevel 
+                                then ( addQualified @lhs.moduleQual @simpletype.name
+                                     , Core.Export (idFromName @simpletype.name)
+                                     , Just (idFromString @lhs.modulename))
+                                else (@simpletype.name, Core.Private, Nothing)
                         lhs.decls    =
         map snd @constructor.cons
         ++
         [ Core.DeclCustom
-            { Core.declName    = idFromString (getNameName @simpletype.name)
+            { Core.declName    = idFromName @qualname
             , Core.declAccess  = Core.Private
             , Core.declModule  = Nothing
             , Core.declKind    = Core.DeclKindCustom (idFromString "data")
@@ -328,6 +332,7 @@ SEM Declaration
     --  constructor              : Constructor  -- has only one field, no strictness
     --  derivings                : Names
 
+    -- Not supported
 
     | Default           lhs.decls    = internalError "ToCoreDecl" "Declaration" "'default' not supported"
     --  range                    : Range
@@ -526,7 +531,7 @@ SEM Constructor [ dataTypeName : Name typevariables : Names dataTypeCoreType : {
                                     ++ originCustoms @lhs.modulename @range.self
                 , Core.declFields  = []
                 }
-            )) [@constructor.self, addQualified @lhs.moduleQual @constructor.self]
+            )) [addQualified @lhs.moduleQual @constructor.self]
     --  range                    : Range
     --  constructor              : Name
     --  types                    : AnnotatedTypes

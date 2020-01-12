@@ -74,7 +74,7 @@ en eigenlijk is afterTypeInferEnv te groot. alleen locale types en constructoren
 
     when (DumpCoreToFile `elem` options) $ do
         writeFile (fullNameNoExt ++ ".core") $ show . pretty $ strippedModuleWithImports
-        exitSuccess
+        -- exitSuccess
    
     return strippedModuleWithImports
 

@@ -76,8 +76,6 @@ compile basedir fullName options lvmPath iridiumCache doneModules =
             -- resolve imports
             publicmod <- Lvm.lvmImport (resolveDeclarations iridiumCache) m
 
-            writeFile (fullName ++ ".imported.core") $ show $ pretty publicmod
-
             verifyCore options "LvmImport" publicmod
 
             return (publicmod, 0)
@@ -144,7 +142,8 @@ compileHaskellToCore basedir fullName contents options iridiumCache doneModules 
   -- Phase 6: Kind inferencing (by default turned off)
   let combinedEnv = foldr combineImportEnvironments localEnv importEnvs
 
-  print combinedEnv
+  -- print combinedEnv
+  
   when (KindInferencing `elem` options) $
       doPhaseWithExit maximumNumberOfKindErrors (const "K") compileOptions $
         phaseKindInferencer combinedEnv resolvedModule options

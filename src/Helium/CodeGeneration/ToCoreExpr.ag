@@ -96,7 +96,10 @@ SEM Expression [ | | core : { Core.Expr } ]
     | Do                 loc.monadType = findCoreType @lhs.typeOutput @lhs.betaDeclUnique
                          statements.monadType = @loc.monadType
                          statements.returnType = findCoreType @lhs.typeOutput (@lhs.betaDeclUnique + 1)
-                         lhs.core = let_ (idFromString "$monadDict") (Core.TAp (Core.TCon $ Core.TConTypeClassDictionary $ idFromString "Monad") @loc.monadType) (dictionaryTreeToCore $ head $ getDictionaryTrees @loc.name @lhs.dictionaryEnv) $ chainCode @statements.core
+                         lhs.core = let_ (idFromString "$monadDict") 
+                                        (Core.TAp (Core.TCon $ Core.TConTypeClassDictionary $ idFromString "Prelude.Monad") @loc.monadType) 
+                                        (dictionaryTreeToCore $ head $ getDictionaryTrees @loc.name @lhs.dictionaryEnv) $ 
+                                        chainCode @statements.core
                          loc.name = setNameRange (nameFromString $ "do-" ++ show @range.self) @range.self
     --  range                    : Range
     --  statements               : Statements

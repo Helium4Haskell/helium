@@ -25,7 +25,7 @@ compileFile' preludePath developLocation s = do
     doneRef <- newIORef []
     let paths = [preludePath, developLocation]
     cache <- Iridium.newFileCache paths
-    make developLocation file paths [] [Overloading, BuildAll, VerifyBackend, Verbose] cache doneRef
+    make developLocation file paths [] [Overloading, BuildAll, VerifyBackend, Verbose, DumpCoreToFile] cache doneRef
     putStrLn "Compiled!"
     (code, res, err) <- readProcessWithExitCode output [] ""
     putStrLn("Exit code: " ++ show code)

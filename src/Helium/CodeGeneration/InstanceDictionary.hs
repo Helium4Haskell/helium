@@ -21,6 +21,9 @@ import qualified Data.Map as M
 import Data.Maybe
 import Data.List
 
+import Debug.Trace
+import Text.PrettyPrint.Leijen (pretty)
+
 type DictLabel = String
 
 constructFunctionMap :: ImportEnvironment -> Int -> Name -> [(Name, Int, DictLabel, Core.Type)]
@@ -39,7 +42,7 @@ constructSuperClassMap env name tp =
     let
         err = error $ "Invalid class name " ++ show name ++ " in " ++ show (classEnvironment env)
         f :: Class -> [(String, Int, DictLabel, Core.Type)]
-        f (ns, _) = zipWith (\n i -> (n, i, "superC$" ++ n, Core.TAp (typeClassType $ idFromString n) $ tp)) ns [0..]
+        f (ns, _) = zipWith (\n i -> (n, i, "superC$" ++ n, Core.TAp (typeClassType $ idFromString n) tp)) ns [0..]
     in maybe err f (M.lookup name $ classEnvironment env)
 
 constructorType :: String -> [Core.Type] -> [Core.Type] -> Core.Type -> Core.Type
