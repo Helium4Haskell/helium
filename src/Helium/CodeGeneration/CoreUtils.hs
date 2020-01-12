@@ -24,7 +24,6 @@ module Helium.CodeGeneration.CoreUtils
     ,   patternMatchFail, patternAlwaysSucceeds, getTVar
     ,   TypeInferenceOutput(TypeInferenceOutput, importEnv), lookupBeta
     ,   setExportsPublic
-    ,   toplevelType
     ) where
 
 import Top.Types as Top
@@ -271,7 +270,8 @@ setExportsPublic :: Bool -> (IdSet,IdSet,IdSet,IdSet,IdSet) -> ImportEnvironment
 setExportsPublic implicit (exports,exportCons,exportData,exportDataCon,exportMods) env m
   = m { moduleDecls = concatMap setPublic (moduleDecls m) }
   where
-    setPublic decl_ | isQual decl_ && (isInstance decl_ || isTypeSynonym decl_ || declPublic decl_) =
+    setPublic :: Decl v -> [Decl v]
+    setPublic decl_ | isQual decl_ && (isInstance decl_ || declPublic decl_) =
                         let name = stringFromId $! declName decl_
                             newname = idFromString $! unQualifyString name
                         in if not ("Dict" `isPrefixOf` name) then
@@ -280,7 +280,7 @@ setExportsPublic implicit (exports,exportCons,exportData,exportDataCon,exportMod
                             [decl_]
                     | isQual decl_ =
                         [decl_{declAccess = Private}]
-                    | isInstance decl_ || isTypeSynonym decl_ || declPublic decl_ =
+                    | isInstance decl_ || declPublic decl_ =
                         [decl_{declAccess = Export $ declName decl_ }]
                     | otherwise       = [decl_]
 
@@ -328,14 +328,8 @@ setExportsPublic implicit (exports,exportCons,exportData,exportDataCon,exportMod
     exportClassNames = map (convertClassNameToQualified env . nameFromString . stringFromId) (listFromSet exportDataCon)
     classMemberEnv   = classMemberEnvironment env
 
-            -- Always export dictionaries
+    -- Always export dictionaries
     isInstance decl_ = let name = stringFromId $ declName decl_ in "$dict" `isPrefixOf` name
-
-    --For now we always export type synonyms
-    isTypeSynonym decl_ =case decl_ of
-        DeclCustom{declKind = k} | k == customTypeDecl -> True
-        _ -> False
-
 
     conTypeName (DeclCon{declCustoms=(_:CustomLink x _:_)}) = x
     conTypeName _ = dummyId
@@ -697,13 +691,3 @@ coreUndefined importEnv tp
 coreUtilsError :: String -> String -> a
 coreUtilsError = internalError "CoreUtils"
 
--- TODO: Check if this is needed anymore (as core supports type synonyms)
-toplevelType :: Name -> ImportEnvironment -> Bool -> [Custom]
-toplevelType name ie isTopLevel
-    | isTopLevel = [custom "type" typeString]
-    | otherwise  = []
-    where
-        typeString = maybe
-            (internalError "ToCoreDecl" "Declaration" ("no type found for " ++ getNameName name))
-            show
-            (M.lookup name (typeEnvironment ie))

@@ -528,17 +528,41 @@ SEM Expression
           . (newcon, conExpr, conFunc, conMissing, sortedFields)
                 = fromMaybe (internalError "TypeInferenceRules.ag" "RecordUpdate" "No constructor found with field") $ do
                     let recordEnv = recordEnvironment @lhs.importEnvironment
+
+                    -- Given the fields used in the update try and find a constructor
                     let fieldsPresent = map fst @recordExpressionBindings.betasMap
                     let constructors = concat $ catMaybes $ map (\n -> M.lookup n (fieldLookup @lhs.importEnvironment)) fieldsPresent
+
+                    -- Preference is given to constructors which contain the most fields
                     let constructor = head $ reverse $ sortOn (\n -> M.size $ fromJust (M.lookup n recordEnv)) constructors
+
+                    -- Fetch the typescheme of the found constructor
                     (_, ctp) <- M.lookup constructor (valueConstructors @lhs.importEnvironment)
+
+                    -- Fetch the fields of the constructor
                     recordFields <- M.lookup constructor recordEnv
+
+                    -- Sort the fields of the constructor in the order of definition 
+                    -- so the construction function can be mimic'd
                     let sortedFields = sortOn (\(n, (i, _, _, _)) -> i) (M.assocs recordFields)
-                    let sortedBetas = map (\(n, (i, _, _, _)) -> fromMaybe (TVar (@lhs.betaUnique + i + 1))
-                            (lookup n @recordExpressionBindings.betasMap)) sortedFields
-                    let recordFunc = foldr (.->.) @beta sortedBetas
+
+                    -- For the old record we create a function type we can compare
+                    -- with the constructor's typescheme. 
+                    -- This way we can capture what typevariables were instantiated to.
                     let oldSortedBetas = map (\(n, (i, _, _, _)) -> TVar (@lhs.betaUnique + i + 1)) sortedFields
                     let oldFunc = foldr (.->.) @oldBeta oldSortedBetas
+
+                    -- In the same way, try and sort the beta variables for each
+                    -- of the update expressions according to the field they were used in.
+                    -- For unused fields reuse the same beta variable generated for the old record
+                    let sortedBetas = map (\(n, (i, _, _, _)) -> fromMaybe (TVar (@lhs.betaUnique + i + 1))
+                            (lookup n @recordExpressionBindings.betasMap)) sortedFields
+
+                    -- Create a function type with the beta variables in the order of the constructor function
+                    -- This is an instantiation of the 'ctp' typescheme
+                    let recordFunc = foldr (.->.) @beta sortedBetas
+
+                    -- The record update's type corresponds to what beta will be instantiated to
                     let t = generalizeAll ([] .=>. snd (functionSpine (unqualify (unquantify ctp))))
                     return ( [ (@beta .::. t) @cinfo ]
                             , [ (@expression.beta .::. t) @cinfoOld, (@expression.beta .==. @oldBeta) @cinfoOld ]
@@ -798,7 +822,7 @@ SEM RecordExpressionBinding
                         constructors <- M.lookup @name.self (fieldLookup @lhs.importEnvironment)
                         recordFields <- M.lookup (head constructors) @recordEnv
                         recordType <- M.lookup @name.self recordFields
-                        return [(@expression.beta .==. @beta) @cinfoExpr, (@lhs.betaConstr .->. @beta .::. fth4 recordType) @cinfoSel]
+                        return [(@expression.beta .==. @beta) @cinfoExpr]
 
 SEM RecordExpressionBindings
 

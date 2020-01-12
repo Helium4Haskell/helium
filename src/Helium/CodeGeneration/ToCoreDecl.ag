@@ -142,8 +142,7 @@ SEM Declaration
             , Core.declModule  = Nothing
             , Core.declType    = @loc.declType
             , Core.valueValue  = addLambdas @lhs.typeOutput @lhs.typeClassContext @lhs.betaDeclUnique @bindings.name (@dictionaries ++ @ids) @bindings.core
-            , Core.declCustoms = toplevelType @bindings.name @lhs.importEnv (@lhs.isTopLevel || isJust @lhs.instanceName) ++ 
-                                    if @lhs.isTopLevel then originCustoms @lhs.modulename @range.self else []
+            , Core.declCustoms = if @lhs.isTopLevel then originCustoms @lhs.modulename @range.self else []
             }
         ]
     --  range                    : Range
@@ -162,7 +161,7 @@ SEM Declaration
             Pattern_Variable _ n ->
                 [ Core.DeclValue
                     { Core.declName    = idFromName (if @lhs.isTopLevel then addQualified @lhs.moduleQual n else n)
-                    , Core.declAccess  = Core.Private
+                    , Core.declAccess  = if @lhs.isTopLevel then Core.Export (idFromString @lhs.modulename) else Core.Private
                     , Core.declModule  = Nothing
                     , Core.declType    = snd $ declarationType @lhs.typeOutput @lhs.typeClassContext n
                     , Core.valueValue  =
@@ -171,8 +170,7 @@ SEM Declaration
                                 nextClauseId retType (patternMatchFail "pattern binding" retType @range.self)
                                 @righthandside.core
                             )
-                    , Core.declCustoms = toplevelType n @lhs.importEnv @lhs.isTopLevel ++ 
-                                            if @lhs.isTopLevel then originCustoms @lhs.modulename @range.self else []
+                    , Core.declCustoms = if @lhs.isTopLevel then originCustoms @lhs.modulename @range.self else []
                     }
                ]
             _ ->
@@ -486,7 +484,7 @@ SEM Declaration
                                     { Core.declName    = idFromName n
                                     , Core.declAccess  = Core.Private
                                     , Core.declModule  = Nothing
-                                    , Core.declType    = toCoreType ts
+                                    , Core.declType    = toCoreType (convertTpSchemeToQualified @lhs.importEnv ts)
                                     , Core.valueValue  = createRecordSelector @lhs.importEnv @range.self n t
                                     , Core.declCustoms = []
                                     }

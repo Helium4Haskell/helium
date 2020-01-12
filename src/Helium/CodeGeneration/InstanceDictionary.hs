@@ -150,7 +150,7 @@ classFunctions typeOutput className typeVar origin combinedNames = [DeclCon -- D
                                         (Ap (foldl (\e (Core.Quantor idx _) -> ApType e (Core.TVar idx)) (Var $ idFromString label) quantors) $ Var dictParam)
                                 ]
                         -- TODO: Check if toplevelType is needed here
-                        , declCustoms = toplevelType name (importEnv typeOutput) True ++ origin
+                        , declCustoms = origin
                         }
                 in  if getNameName name == "negate" && className == "Prelude.Num" then
                         [val, val{

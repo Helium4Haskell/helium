@@ -95,11 +95,11 @@ SEM Expression | RecordUpdate loc . cinfoFunc =
      [ FolkloreConstraint ]
 
 SEM Expression | RecordUpdate loc . cinfoOld =
-  resultConstraint "record update expression" @parentTree       
+  resultConstraint "record being updated" @parentTree       
      [ ]
 
 SEM Expression | RecordUpdate loc . cinfoNo =
-  resultConstraint "RECORD UPDATE MISSING BINDING" @parentTree       
+  resultConstraint "record update missing binding" @parentTree
      [ FolkloreConstraint ]
 
 SEM Expression | RecordUpdate loc . cinfo =
@@ -265,11 +265,6 @@ SEM RecordExpressionBinding
   | RecordExpressionBinding loc . cinfoExpr =
     resultConstraint "record expression binding" @expression.infoTree
      [ ]
-
-SEM RecordExpressionBinding
-  | RecordExpressionBinding loc . cinfoSel =
-    resultConstraint "record expression binding" @expression.infoTree
-     [ FolkloreConstraint ]
 
 ---------------------------------------------------------------------------------------
 -- Type Inferencing : Pattern
