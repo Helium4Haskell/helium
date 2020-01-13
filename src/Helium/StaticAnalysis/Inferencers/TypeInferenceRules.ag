@@ -502,10 +502,11 @@ SEM Expression
           . constraints = @conRecord .>. @conFunc .>.
                             Node @recordExpressionBindings.constraintslist
           . (conRecord, conFunc, sortedFields)    
-                = fromMaybe ([], [], []) $ do
+                = fromMaybe (internalError "TypeInferenceRules.ag" "RecordConstruction" "") $ do
                      let recordEnv = recordEnvironment @lhs.importEnvironment
                      recordFields <- M.lookup @name.self recordEnv
                      let sortedFields = sortOn (\(n, (i, _, _, _)) -> i) (M.assocs recordFields)
+                     -- If some fields are omitted, use a default beta variable whose value will largely be ignored.
                      let sortedBetas = map (\(n, (i, _, _, _)) -> fromMaybe (TVar (@lhs.betaUnique + i + 1))
                             (lookup n @recordExpressionBindings.betasMap)) sortedFields
                      let recordFunc = foldr (.->.) @beta sortedBetas
@@ -526,7 +527,7 @@ SEM Expression
                                 , Node @recordExpressionBindings.constraintslist
                                 ]
           . (newcon, conExpr, conFunc, conMissing, sortedFields)
-                = fromMaybe (internalError "TypeInferenceRules.ag" "RecordUpdate" "No constructor found with field") $ do
+                = fromMaybe (internalError "TypeInferenceRules.ag" "RecordUpdate" "") $ do
                     let recordEnv = recordEnvironment @lhs.importEnvironment
 
                     -- Given the fields used in the update try and find a constructor

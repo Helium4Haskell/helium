@@ -73,7 +73,7 @@ SEM Declaration
         in
         [ Core.DeclTypeSynonym
             { Core.declName = idFromName @qualname
-            , Core.declAccess = @access
+            , Core.declAccess = Core.Private
             , Core.declModule  = Nothing
             , Core.declType = toCoreType (convertTpSchemeToQualified @lhs.importEnv ts)
             , Core.declCustoms = @origin
@@ -96,7 +96,7 @@ SEM Declaration
         ++
         [Core.DeclCustom
             { Core.declName    = idFromName @qualname
-            , Core.declAccess  = @access
+            , Core.declAccess  = Core.Private
             , Core.declModule  = Nothing
             , Core.declKind    = Core.DeclKindCustom (idFromString "data")
             , Core.declCustoms = [Core.CustomInt (length @simpletype.typevariables)] ++ @origin
@@ -138,7 +138,7 @@ SEM Declaration
                         lhs.decls =
         [ Core.DeclValue
             { Core.declName    = idFromName @qualname
-            , Core.declAccess  = @access
+            , Core.declAccess  = Core.Private
             , Core.declModule  = Nothing
             , Core.declType    = @loc.declType
             , Core.valueValue  = addLambdas @lhs.typeOutput @lhs.typeClassContext @lhs.betaDeclUnique @bindings.name (@dictionaries ++ @ids) @bindings.core

@@ -275,7 +275,7 @@ setExportsPublic implicit (exports,exportCons,exportData,exportDataCon,exportMod
                         let name = stringFromId $! declName decl_
                             newname = idFromString $! unQualifyString name
                         in if not ("Dict" `isPrefixOf` name) then
-                            [decl_{ declName = newname, declAccess = Export newname }, decl_{declAccess = Private}]
+                            [decl_{ declAccess = Export newname }]
                            else
                             [decl_]
                     | isQual decl_ =
@@ -330,6 +330,8 @@ setExportsPublic implicit (exports,exportCons,exportData,exportDataCon,exportMod
 
     -- Always export dictionaries
     isInstance decl_ = let name = stringFromId $ declName decl_ in "$dict" `isPrefixOf` name
+    isTypeSynonym decl_@DeclTypeSynonym{} = True
+    isTypeSynonym _ = False
 
     conTypeName (DeclCon{declCustoms=(_:CustomLink x _:_)}) = x
     conTypeName _ = dummyId

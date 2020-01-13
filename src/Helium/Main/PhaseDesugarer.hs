@@ -20,7 +20,7 @@ import Helium.CodeGeneration.CoreUtils(TypeInferenceOutput(..))
 import Helium.Syntax.UHA_Syntax(Name(..), MaybeName(..))
 import Helium.Syntax.UHA_Utils(NameWithRange)
 import Helium.Syntax.UHA_Range(noRange)
-import Lvm.Core.Module(moduleDecls, declName, shallowKindFromDecl, declCustoms)
+import Lvm.Core.Module(moduleDecls, declName, shallowKindFromDecl, declCustoms, accessPublic, declAccess)
 import Helium.ModuleSystem.ImportEnvironment()
 import Helium.ModuleSystem.DictionaryEnvironment (DictionaryEnvironment)
 import Helium.ModuleSystem.CoreToImportEnv(originFromDecl)
@@ -59,15 +59,18 @@ en eigenlijk is afterTypeInferEnv te groot. alleen locale types en constructoren
         
         -- Expressions using imported declarations need to be qualified, so we 
         -- create a map from the those declarations
-        (valuesMap, typesMap) = lvmImportRenameMap $ nubDecls extraDecls
+        exported = filter (accessPublic . declAccess) (moduleDecls coreModule)
+        (valuesMap, typesMap) = lvmImportRenameMap $ nubDecls (exported ++ extraDecls)
 
         strippedCoreModule = removeDoubleDecls $ coreRemoveDead $
             lvmImportQualifyModule (valuesMap, typesMap) coreModule False
-
+        
         -- The imported declarations need to be added seperately to the module 
         -- or they will be nonsensically qualified. 
         strippedModuleWithImports = coreModule 
             { moduleDecls = moduleDecls strippedCoreModule ++ extraDecls }
+
+    writeFile (fullNameNoExt ++ ".stripped.core") $ show . pretty $ coreModule
 
     when (DumpCore `elem` options) $
         print . pretty $ strippedCoreModule

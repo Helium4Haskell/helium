@@ -20,6 +20,7 @@ import Lvm.Common.Id
 import Lvm.Common.IdMap
 
 import Text.PrettyPrint.Leijen
+import Debug.Trace
 
 data TypeEnvironment = TypeEnvironment
   { typeEnvSynonyms :: IdMap Type
@@ -29,7 +30,7 @@ data TypeEnvironment = TypeEnvironment
 typeEnvForModule :: CoreModule -> TypeEnvironment
 typeEnvForModule (Module _ _ _ _ decls) = TypeEnvironment (mapFromList synonyms) (mapFromList values)
   where
-    synonyms = [ (name, tp) | DeclTypeSynonym name _ _ tp _ <- decls ]
+    synonyms = [ (traceShowId name, tp) | DeclTypeSynonym name _ _ tp _ <- decls ]
     values = mapMaybe findValue decls
     findValue :: CoreDecl -> Maybe (Id, Type)
     findValue decl
