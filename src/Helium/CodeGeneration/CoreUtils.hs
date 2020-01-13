@@ -49,6 +49,7 @@ import Helium.Syntax.UHA_Range
 import Helium.Syntax.UHA_Syntax hiding (Module(..))
 import Helium.Utils.Utils
 import Helium.Syntax.UHA_Syntax ( Name )
+import Debug.Trace
 
 lookupBeta :: Int -> TypeInferenceOutput -> Top.Tp
 lookupBeta beta typeOutput = lookupInt beta $ substitutionFromResult $ solveResult typeOutput
@@ -686,7 +687,7 @@ coreUndefined importEnv tp
           (findInstantiation importEnv undefinedScheme tp)
     where
       undefinedExpr = Var (idFromString "undefined")
-      undefinedName = Name_Identifier (coreUtilsError "coreUndefined" "access non-existing range") ["Prelude"] "Prelude" "undefined"
+      undefinedName = Name_Identifier (coreUtilsError "coreUndefined" "access non-existing range") [] "Prelude" "undefined"
       undefinedScheme = fromMaybe (coreUtilsError "coreUndefined" "undefined not defined") $
           M.lookup undefinedName (typeEnvironment importEnv)
 

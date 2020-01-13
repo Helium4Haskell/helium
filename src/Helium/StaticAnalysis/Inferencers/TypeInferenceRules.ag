@@ -579,7 +579,10 @@ SEM Expression
           . assumptions = @name.self `single` @beta
           . constraints = if isJust (M.lookup @name.self $ typeEnvironment @lhs.importEnvironment) then  
                                 let (preds, tp) = split (fst @updatedType) in
-                                Node $ [[(@beta .==. tp) @cinfo] .>. Node[], Receive @lhs.betaDeclUnique] ++ [(unitTree $ TC2 $ Prove p @cinfo) | p <- preds ]
+                                Node $ [
+                                    [ (@beta .==. tp) @cinfo] .>. Node[]
+                                    , Receive @lhs.betaDeclUnique
+                                    ] ++ [(unitTree $ TC2 $ Prove p @cinfo) | p <- preds ]
                             else 
                                 Node [ Receive @lhs.betaDeclUnique ]
           . beta        = TVar @lhs.betaDeclUnique

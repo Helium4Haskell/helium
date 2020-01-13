@@ -30,7 +30,7 @@ data TypeEnvironment = TypeEnvironment
 typeEnvForModule :: CoreModule -> TypeEnvironment
 typeEnvForModule (Module _ _ _ _ decls) = TypeEnvironment (mapFromList synonyms) (mapFromList values)
   where
-    synonyms = [ (traceShowId name, tp) | DeclTypeSynonym name _ _ tp _ <- decls ]
+    synonyms = [ (name, tp) | DeclTypeSynonym name _ _ tp _ <- decls ]
     values = mapMaybe findValue decls
     findValue :: CoreDecl -> Maybe (Id, Type)
     findValue decl

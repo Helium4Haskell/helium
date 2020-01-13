@@ -205,11 +205,15 @@ setInstanceEnvironment :: InstanceEnvironment -> ImportEnvironment -> ImportEnvi
 setInstanceEnvironment new importenv = importenv { instanceEnvironment = new }
 
 setRecordEnvironment :: RecordEnvironment -> ImportEnvironment -> ImportEnvironment
-setRecordEnvironment new importenv = importenv { recordEnvironment = new, fieldLookup = M.fromListWith (++) f }
+setRecordEnvironment new importenv 
+    = importenv
+        { recordEnvironment = new
+        , fieldLookup = M.fromListWith (++) f
+        }
     where
         constFields :: [(Name, [(Name, (Int, Bool, Tp, TpScheme))])]
         constFields = map (\(n, fs) -> (n, M.assocs fs)) (M.assocs new)
-        f = [ (labels, [const]) | (const, fields) <- constFields, (labels, _) <- fields ]
+        f = [ (f, [c]) | (c, fs) <- constFields, (f, _) <- fs ]
 
 addTypingStrategies :: Core_TypingStrategies -> ImportEnvironment -> ImportEnvironment
 addTypingStrategies new importenv = importenv {typingStrategies = new ++ typingStrategies importenv}

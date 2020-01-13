@@ -50,7 +50,8 @@ SEM Module
                                             )
 
 -}                             
-ATTR Body Declarations Declaration Constructors Constructor [ moduleQual : {[ String ]} | | ]
+ATTR Body Declarations Declaration Constructors Constructor FieldDeclarations FieldDeclaration 
+  [ moduleQual : {[ String ]} | | ]
 {
 addQualifiedCollect :: [String] -> Name -> a -> [(Name, a)] -> [(Name, a)]
 addQualifiedCollect qual name result collect =
@@ -70,7 +71,7 @@ SEM Module | Module   body . collectTypeConstructors = []
 SEM Declaration
   | Data  loc . fullname = addQualified @lhs.moduleQual @simpletype.name
           lhs . collectTypeConstructors = addQualifiedCollect @lhs.moduleQual @simpletype.name (length @simpletype.typevariables, @fullname) @lhs.collectTypeConstructors
-  | Newtype   
+  | Newtype
           loc . fullname = addQualified @lhs.moduleQual @simpletype.name
           lhs . collectTypeConstructors = addQualifiedCollect @lhs.moduleQual @simpletype.name (length @simpletype.typevariables, @fullname) @lhs.collectTypeConstructors
   | Type  loc . fullname = addQualified @lhs.moduleQual @simpletype.name
@@ -168,7 +169,7 @@ ATTR Body Declarations Declaration Constructor Constructors [ |
 ATTR FieldDeclarations [ | | collectFields USE { M.union } { M.empty } : { M.Map Name (Int, Bool, Tp, TpScheme) } ]
 ATTR FieldDeclaration [ | | fieldSel : { [(Name, Bool, Tp, TpScheme)] } ]
 
-SEM Declaration 
+SEM Declaration
     | Data
         lhs . duplicateLabelsWrongTypes = 
           M.filter (\xs -> not $ unifiableList @lhs.orderedTypeSynonyms xs) @allConFields
@@ -179,7 +180,8 @@ SEM Declaration
             in M.unionsWith (++) $ map (M.map ((:[]) . getTp)) (M.elems @constructors.collectRecord)
 
 SEM Constructor
-    | Constructor lhs . collectRecord = M.singleton @constructor.self M.empty
+    | Constructor
+        lhs . collectRecord = M.singleton @constructor.self M.empty
     | Record
         lhs . collectRecord = M.singleton @constructor.self @fieldDeclarations.collectFields
 
@@ -193,9 +195,10 @@ SEM FieldDeclarations
 SEM FieldDeclaration
     | FieldDeclaration 
         lhs . fieldSel = map (\n -> (n, head @type.stricts, @fieldType, @selectorType)) @names.self
-        loc . fieldType = head @tps
+        loc . fieldType = convertTpToQualified @lhs.qualifiedEnvironment $ head @tps
+            . selectorType = convertTpSchemeToQualified @lhs.qualifiedEnvironment
+                              $ generalizeAll ([] .=>. foldl (.->.) @tp @tps)
             . (tp, tps) = convertFromSimpleTypeAndTypes @lhs.simpletype [@type.type]
-            . selectorType = generalizeAll ([] .=>. foldl (.->.) @tp @tps)
 
 ATTR Body Declarations Declaration Expressions Expression Patterns Pattern
      Statement Statements Qualifier Qualifiers
@@ -310,11 +313,13 @@ ATTR Type Types AnnotatedTypes AnnotatedType Constructors Constructor
 SEM Type
   | Variable  lhs . typevariables = [ @name.self ]
 
-ATTR Constructors Constructor FieldDeclaration FieldDeclarations [ simpletype:SimpleType | | ]
+ATTR Constructors Constructor FieldDeclaration FieldDeclarations [ simpletype:SimpleType simplename : Name | | ]
 
 SEM Declaration
   | Data     constructors . simpletype = @simpletype.self
+             constructors . simplename = @simpletype.name
   | Newtype  constructor  . simpletype = @simpletype.self
+             constructor  . simplename = @simpletype.name
 
 ATTR AnnotatedTypes FieldDeclarations [ | | types : Types ]
 ATTR AnnotatedType FieldDeclaration  [ | | type  : Type  ]
