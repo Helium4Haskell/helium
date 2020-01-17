@@ -180,7 +180,7 @@ SEM Expression [ | | core : { Core.Expr } ]
                                         @name.self 
                                         (map (\(n, e, _) -> (n, e)) @recordExpressionBindings.bindings)
                                         (declarationConstructorTypeScheme (importEnv @lhs.typeOutput) @name.self)
-                                        (fromMaybe 
+                                        ((\b -> lookupBeta b @lhs.typeOutput) $ fromMaybe 
                                             (internalError "ToCoreExpr" "RecordConstruction" "(n/a)") 
                                             (getTVar @betaFunc))
     --  range                    : Range

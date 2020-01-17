@@ -453,10 +453,10 @@ createRecordInstantiation :: TypeInferenceOutput
                             -> Name       {- Constructor name -}
                             {- Field name, argument to pass to field -}
                             -> [(Name, Core.Expr)]
-                            -> TpScheme   {- Typescheme corresponding to the beta variable -}
-                            -> Int        {- Beta var containing the typeoutput -}
+                            -> TpScheme   {- Typescheme corresponding to the constructor function -}
+                            -> Tp         {- Type instantiation corresponding to the constructor function -}
                             -> Core.Expr
-createRecordInstantiation typeOutput@TypeInferenceOutput{..} name bindings tps beta
+createRecordInstantiation typeOutput@TypeInferenceOutput{..} name bindings tps outputTp
     = foldl app_
         (foldl (\e t -> Core.ApType e $ typeToCoreType t) constrExpr tVars)
           sortedBinds
@@ -468,12 +468,23 @@ createRecordInstantiation typeOutput@TypeInferenceOutput{..} name bindings tps b
     constrExpr = Core.Con $ Core.ConId $ idFromName name
     -- Find an instantiation of the type variables using the type inferred for the
     -- constructor and the defined typescheme of the constructor
-    outputTp = lookupBeta beta typeOutput
     tVars = findInstantiation importEnv tps outputTp
+    (args, retTp) = functionSpine outputTp
 
     sortedFields = sortOn (\(n, (i, _, _, _)) -> i) recordFields
+
+    -- If the types of all of the arguments are known we can reuse those types
+    --    This is useful in cases where we have a record construction with type 
+    --    arguments, but don't fill all of the fields (as we then still have a 
+    --    type to assign to the field being omitted)
+    -- If we don't, as in the case of when we have a record update where we don't 
+    --    know which constructor we are at, we use the types defined in the record 
+    --    environment. This is not a problem as we don't have to fill in 'undefined's
+    --    for omitted fields, We just reuse the values in the previous version of the record
+    argsWithTypes | length args < length sortedFields = zip (map (thd4 . snd) sortedFields) sortedFields
+                  | otherwise                         = zip args sortedFields
     sortedBinds
-      = map (\(n, x) -> fieldToExpr (snd4 x) (thd4 x) (lookup n bindings)) sortedFields
+      = map (\(tp, (n, x)) -> fieldToExpr (snd4 x) tp (lookup n bindings)) argsWithTypes
 
     strictOrUndefined :: Bool -> Tp -> Core.Expr
     strictOrUndefined strict tp = if strict
@@ -553,7 +564,8 @@ createRecordUpdate typeOutput@TypeInferenceOutput{..} old oldBeta beta bindings 
     allBinds n = fromMaybe (error "(n/a)") $ do
       fields <- M.lookup n recordEnvironment
       return $ map (\(x, _) -> (x, fieldToExpr x)) (M.assocs fields)
-    exec n = createRecordInstantiation typeOutput n (allBinds n) resultTps beta
+
+    exec n = createRecordInstantiation typeOutput n (allBinds n) resultTps (lookupBeta beta typeOutput)
 
     createLambdas :: [(Bool, Variable)] -> Core.Expr -> Core.Expr
     createLambdas xs e = Lam True scrutVar (foldr (uncurry Lam) e xs)
@@ -683,7 +695,7 @@ patternMatchFail nodeDescription tp range =
 
 coreUndefined :: ImportEnvironment -> Tp -> Core.Expr
 coreUndefined importEnv tp
-      = foldl (\e t -> Core.ApType e $ typeToCoreType t) undefinedExpr
+      = traceShow tp $ foldl (\e t -> Core.ApType e $ typeToCoreType t) undefinedExpr
           (findInstantiation importEnv undefinedScheme tp)
     where
       undefinedExpr = Var (idFromString "undefined")

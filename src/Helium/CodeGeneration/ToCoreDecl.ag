@@ -479,9 +479,10 @@ ATTR FieldDeclaration FieldDeclarations
     [ fieldMap : { M.Map Name (Int, Bool, Tp, TpScheme) } | | ]
 
 SEM Declaration
-    | Data loc.selectorFunctions = map @toDecl @fieldTypes
+    | Data 
+            loc.selectorFunctions = map @toDecl @fieldTypes
               .toDecl = \(n, t, ts) -> Core.DeclValue
-                                    { Core.declName    = idFromName n
+                                    { Core.declName    = idFromName (addQualified @lhs.moduleQual n)
                                     , Core.declAccess  = Core.Private
                                     , Core.declModule  = Nothing
                                     , Core.declType    = toCoreType (convertTpSchemeToQualified @lhs.importEnv ts)
