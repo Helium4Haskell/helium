@@ -43,8 +43,8 @@ phaseCodeGeneratorIridium supply cache fullName coreModule options = do
 
   writeFile (fullNameNoExt ++ ".test.core") $ show $ pretty simplified
 
-  -- Check whether the module has a 'main$' function
-  let hasMain = any ((== idFromString "main$") . Core.declName) $ Core.moduleDecls coreModule
+  -- Check whether the module has a 'main' function
+  let hasMain = any ((== idFromString "main") . Core.declName) $ Core.moduleDecls coreModule
 
   iridium' <- fromCore cache supplyFromCore simplified
   checkModuleIO "fromCore" (fullNameNoExt ++ ".iridium") iridium'

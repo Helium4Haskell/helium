@@ -20,12 +20,13 @@ import Helium.CodeGeneration.CoreUtils(TypeInferenceOutput(..))
 import Helium.Syntax.UHA_Syntax(Name(..), MaybeName(..))
 import Helium.Syntax.UHA_Utils(NameWithRange)
 import Helium.Syntax.UHA_Range(noRange)
-import Lvm.Core.Module(moduleDecls, declName, shallowKindFromDecl, declCustoms, accessPublic, declAccess)
+import Lvm.Core.Module(moduleDecls, declName, shallowKindFromDecl, declCustoms, accessPublic, declAccess, moduleImports, declModule)
 import Helium.ModuleSystem.ImportEnvironment()
 import Helium.ModuleSystem.DictionaryEnvironment (DictionaryEnvironment)
 import Helium.ModuleSystem.CoreToImportEnv(originFromDecl)
 import qualified Helium.CodeGeneration.CodeGeneration as CodeGeneration
-import Data.List(nubBy, sort)
+import Data.List(nubBy, sort, nub)
+import Data.Maybe(mapMaybe)
 import Debug.Trace
 import Lvm.Common.Id
 import Lvm.Common.IdMap
@@ -56,21 +57,23 @@ en eigenlijk is afterTypeInferEnv te groot. alleen locale types en constructoren
                     CodeGeneration.importEnv_Inh_Module     = afterTypeInferEnv,
                     CodeGeneration.toplevelTypes_Inh_Module = toplevelTypes,
                     CodeGeneration.typeOutput_Inh_Module = TypeInferenceOutput solveResult fullTypeSchemes afterTypeInferEnv }
+
+        -- Find imports from the declarations used
+        extraModules = nub $ mapMaybe declModule extraDecls
         
         -- Expressions using imported declarations need to be qualified, so we 
         -- create a map from the those declarations
         exported = filter (accessPublic . declAccess) (moduleDecls coreModule)
         (valuesMap, typesMap) = lvmImportRenameMap $ nubDecls (exported ++ extraDecls)
 
-        strippedCoreModule = removeDoubleDecls $ coreRemoveDead $
-            lvmImportQualifyModule (valuesMap, typesMap) coreModule False
+        strippedCoreModule = lvmImportQualifyModule (valuesMap, typesMap) coreModule False
         
         -- The imported declarations need to be added seperately to the module 
         -- or they will be nonsensically qualified. 
-        strippedModuleWithImports = coreModule 
-            { moduleDecls = moduleDecls strippedCoreModule ++ extraDecls }
-
-    writeFile (fullNameNoExt ++ ".stripped.core") $ show . pretty $ coreModule
+        strippedModuleWithImports = removeDoubleDecls $ coreRemoveDead $ coreModule 
+            { moduleDecls = moduleDecls strippedCoreModule ++ extraDecls
+            , moduleImports = extraModules
+            }
 
     when (DumpCore `elem` options) $
         print . pretty $ strippedCoreModule

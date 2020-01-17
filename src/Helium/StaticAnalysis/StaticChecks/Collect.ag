@@ -32,7 +32,7 @@ SEM Module
                                         . setTypeConstructors  (M.fromList @body.collectTypeConstructors)
                                         . setTypeSynonyms      (M.fromList @body.collectTypeSynonyms)
                                         . setOperatorTable     (M.fromList @body.operatorFixities)
-                                        . addToTypeEnvironment  (insertClassMembers @body.collectClassMemberEnv (M.fromList @derivedFunctions))
+                                        . addToTypeEnvironment (insertClassMembers @body.collectClassMemberEnv (M.fromList @derivedFunctions))
                                         . setClassNameEnvironment @classNamesEnv
                                         . setClassEnvironment (insertInstances @body.classInstances
                                             (M.unionWith combineClassDecls @body.classEnv (classEnvironment $ combineImportEnvironmentList @importEnvironments)))

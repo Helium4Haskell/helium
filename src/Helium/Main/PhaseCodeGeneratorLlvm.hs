@@ -12,6 +12,7 @@ import Lvm.Common.Id(NameSupply, splitNameSupplies, mapWithSupply)
 import qualified Lvm.Core.Expr as Core
 import qualified Lvm.Core.Module as Core
 import Helium.Main.CompileUtils
+import Control.Monad(when)
 import Helium.CodeGeneration.Iridium.ResolveDependencies(IridiumFile(..))
 import Helium.CodeGeneration.LLVM.CompileModule(compileModule)
 import Helium.CodeGeneration.LLVM.Target(Target(..))
@@ -28,8 +29,9 @@ phaseCodeGeneratorLlvm supply output files shouldLink options = do
   let target = Target 64 48
   sequence_ $ mapWithSupply (compileToLlvm target) supply files
 
-  if shouldLink then do
-    let args = "-o" : output : "-O3" : "./lib/runtime/memory.c" : map toLlvmPath files
+  when shouldLink $ do
+    let args = "-o" : output : "-O3" : "../lib/runtime/memory.c" : map toLlvmPath files
+    print args
     (code, res, err) <- readProcessWithExitCode "clang" args ""
     case code of
       ExitSuccess -> return ()
@@ -40,7 +42,6 @@ phaseCodeGeneratorLlvm supply output files shouldLink options = do
         putStrLn "Failed to link files. This is probably a bug of Helium. See errors above."
         exitWith (ExitFailure 1)
     return ()
-  else return ()
 
 compileToLlvm :: Target -> NameSupply -> IridiumFile -> IO ()
 compileToLlvm _ supply (IridiumFile _ _ False) = return ()

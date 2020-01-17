@@ -15,6 +15,7 @@ import Helium.Syntax.UHA_Syntax
 import Lvm.Common.Id
 import qualified Lvm.Core.Expr as Core
 import Text.PrettyPrint.Leijen (pretty)
+import Debug.Trace
 
 phaseImport :: String -> Module -> (Id -> IO Core.CoreModule) -> [Option] -> 
                     IO ([Core.CoreDecl], [(Name, ImportEnvironment, ModuleDecls)])
@@ -31,6 +32,6 @@ phaseImport fullName module_ resolve options = do
 
     let indirectionDecls = concatMap (\(_,x,_) -> x) chasedImpsList
         importEnvs = 
-            map (\(name,decls,moddecls) -> (name, getImportEnvironment baseName decls, moddecls)) chasedImpsList
+            map (\(name, decls, moddecls) -> (name, getImportEnvironment baseName decls, moddecls)) chasedImpsList
     
     return (indirectionDecls, importEnvs)
