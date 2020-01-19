@@ -695,7 +695,7 @@ patternMatchFail nodeDescription tp range =
 
 coreUndefined :: ImportEnvironment -> Tp -> Core.Expr
 coreUndefined importEnv tp
-      = traceShow tp $ foldl (\e t -> Core.ApType e $ typeToCoreType t) undefinedExpr
+      = foldl (\e t -> Core.ApType e $ typeToCoreType t) undefinedExpr
           (findInstantiation importEnv undefinedScheme tp)
     where
       undefinedExpr = Var (idFromString "undefined")

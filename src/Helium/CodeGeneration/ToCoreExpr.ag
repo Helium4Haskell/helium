@@ -15,7 +15,8 @@ SEM Expression [ | | core : { Core.Expr } ]
     --  range                    : Range
     --  literal                  : Literal
 
-    | Variable           lhs.core = insertDictionaries @name.self @lhs.dictionaryEnv $ createInstantiation @lhs.typeOutput @lhs.typeEnv @name.self False @lhs.betaDeclUnique
+    | Variable           lhs.core = insertDictionaries @name.self @lhs.dictionaryEnv $ 
+                                        createInstantiation @lhs.typeOutput @lhs.typeEnv @name.self False @lhs.betaDeclUnique
     --  range                    : Range
     --  name                     : Name
 

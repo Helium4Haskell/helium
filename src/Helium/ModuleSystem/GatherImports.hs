@@ -48,7 +48,7 @@ chaseImports resolve fromModule =
             = do decls <- lvmImportDecls resolve [idFromName modl]
                  let rightd = getRightImports importspec qualified asName (values, confieldormethods, typeorclassesCompl, typeorclasses) decls
                      moduledecls = getAllModuleDecl decls
-                 return $ (modl, rightd, moduledecls)
+                 return (modl, rightd, moduledecls)
     in mapM doImport coreImports
         -- zipWith ($) filterImports (lvmImportDecls' findModule coreImportDecls)
 

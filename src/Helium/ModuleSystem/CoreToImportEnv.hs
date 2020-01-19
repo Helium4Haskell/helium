@@ -84,11 +84,6 @@ typeSchemeFromCore quantifiedType =
         qmap' = case name of
           Nothing -> qmap
           Just n -> (idx, n) : qmap
-    splitForalls (Core.TAp t1 t2) = 
-        let 
-            (idxs1, qmap1, t1') = splitForalls t1
-            (idxs2, qmap2, t2') = splitForalls t2
-        in (idxs1 ++ idxs2, qmap1 ++ qmap2, Core.TAp t1' t2')
     splitForalls (Core.TStrict t) = splitForalls t
     splitForalls t = ([], [], t)
 
