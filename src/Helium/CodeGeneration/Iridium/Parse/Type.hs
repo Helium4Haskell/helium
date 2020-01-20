@@ -1,25 +1,21 @@
 module Helium.CodeGeneration.Iridium.Parse.Type where
 
-import Helium.CodeGeneration.Iridium.Parse.Parser
+import Data.Char
+import Data.List
+import Debug.Trace
 import Helium.CodeGeneration.Iridium.Data
+import Helium.CodeGeneration.Iridium.Parse.Parser
 import Helium.CodeGeneration.Iridium.Type
-
 import Lvm.Common.Id
 import Lvm.Core.Type
-
-import Data.List
-import Data.Char
-
-import Debug.Trace
 
 pTypeArgName :: Parser (Either Int String)
 pTypeArgName = do
   cs <- pSomeSatisfy "expected type variable" isLower
   c2 <- lookahead
-  if cs == "v" && c2 == '$' then do
-    Left <$ pChar <*> pUnsignedInt
-  else
-    return $ Right cs
+  if cs == "v" && c2 == '$'
+    then Left <$ pChar <*> pUnsignedInt
+    else return $ Right cs
 
 pTypeArg :: QuantorIndexing -> Parser Int
 pTypeArg (QuantorIndexing _ indexNamed indexUnnamed) = do
@@ -39,20 +35,22 @@ pTypeArg (QuantorIndexing _ indexNamed indexUnnamed) = do
 data QuantorIndexing = QuantorIndexing Int [(String, Int)] [(Int, Int)]
 
 addToMapping :: Eq a => a -> Int -> [(a, Int)] -> [(a, Int)]
-addToMapping name idx mapping = (name, idx) : filter ((name /= ) . fst) mapping
+addToMapping name idx mapping = (name, idx) : filter ((name /=) . fst) mapping
 
 pQuantor :: QuantorIndexing -> Parser (Quantor, QuantorIndexing)
 pQuantor (QuantorIndexing nextIdx stringMapping numberMapping) = do
   var <- pTypeArgName
   case var of
-    Left idx -> return
-      ( Quantor nextIdx Nothing
-      , QuantorIndexing (nextIdx + 1) stringMapping (addToMapping idx nextIdx numberMapping)
-      )
-    Right name -> return
-      ( Quantor nextIdx (Just name)
-      , QuantorIndexing (nextIdx + 1) (addToMapping name nextIdx stringMapping) numberMapping
-      )
+    Left idx ->
+      return
+        ( Quantor nextIdx Nothing,
+          QuantorIndexing (nextIdx + 1) stringMapping (addToMapping idx nextIdx numberMapping)
+        )
+    Right name ->
+      return
+        ( Quantor nextIdx (Just name),
+          QuantorIndexing (nextIdx + 1) (addToMapping name nextIdx stringMapping) numberMapping
+        )
 
 pTypeAtom :: Parser Type
 pTypeAtom = pTypeAtom' $ QuantorIndexing 0 [] []
@@ -95,13 +93,14 @@ pTypeAtom' quantors = do
       pChar
       pWhitespace
       c2 <- lookahead
-      if c2 == ']' then do
-        pChar
-        return (TCon $ TConDataType $ idFromString "[]")
-      else do
-        tp <- pType' quantors
-        pToken ']'
-        return $ TAp (TCon $ TConDataType $ idFromString "[]") tp
+      if c2 == ']'
+        then do
+          pChar
+          return (TCon $ TConDataType $ idFromString "[]")
+        else do
+          tp <- pType' quantors
+          pToken ']'
+          return $ TAp (TCon $ TConDataType $ idFromString "[]") tp
     '(' -> do
       pChar
       c2 <- lookahead
@@ -129,9 +128,7 @@ pTypeAtom' quantors = do
     _ | isLower c1 -> do
       idx <- pTypeArg quantors
       return $ TVar idx
-    _ -> do
-      name <- pId
-      return $ TCon $ TConDataType name
+    _ -> TCon . TConDataType <$> pId
 
 pTypeForall :: QuantorIndexing -> Parser (QuantorIndexing, Type -> Type)
 pTypeForall quantors = do
@@ -154,18 +151,20 @@ pFloatPrecision = do
     _ -> pError $ "Unsupported floating point precision: " ++ show bits
 
 pDataTypeConstructor :: Parser DataTypeConstructor
-pDataTypeConstructor = DataTypeConstructor
-  <$ pToken '@' <*> pId <* pToken ':' <* pWhitespace <*> pTypeAtom
+pDataTypeConstructor =
+  DataTypeConstructor
+    <$ pToken '@' <*> pId <* pToken ':' <* pWhitespace <*> pTypeAtom
 
 pInstantiation :: QuantorIndexing -> Parser [Type]
 pInstantiation quantors = do
   c <- lookahead
-  if c == '{' then do
-    pChar
-    pWhitespace
-    tp <- pType' quantors
-    pToken '}'
-    pWhitespace
-    tps <- pInstantiation quantors
-    return (tp : tps)
-  else return []
+  if c == '{'
+    then do
+      pChar
+      pWhitespace
+      tp <- pType' quantors
+      pToken '}'
+      pWhitespace
+      tps <- pInstantiation quantors
+      return (tp : tps)
+    else return []

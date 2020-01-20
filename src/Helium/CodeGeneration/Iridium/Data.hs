@@ -178,7 +178,7 @@ data Instruction
 -- * A bind describes the construction of an object in a 'letalloc' instruction. It consists of the
 -- variable to which the object is bound, the target and argument. A target represents what kind of object
 -- is created.
-data Bind = Bind { bindVar :: !Id, bindTarget :: !BindTarget, bindArguments :: ![Either Type Variable] }
+data Bind = Bind { bindVar :: !Id, bindTarget :: !BindTarget, bindArguments :: ![Either Type Variable], bindMem :: !(Maybe Id) }
   deriving (Eq, Ord)
 
 -- * A bind can either construct a thunk, a constructor or a tuple. For thunks, we distinguish
@@ -238,24 +238,24 @@ typeApplyArguments env tp args = case tp' of
 -- * Find the type of the constructed object in a Bind
 bindType :: TypeEnvironment -> Bind -> Type
 -- In case of a constructor application, we get a value in WHNF of the related data type.
-bindType env (Bind _ (BindTargetConstructor cons) args) = typeToStrict $ typeApplyArguments env (constructorType cons) args
+bindType env (Bind _ (BindTargetConstructor cons) args _) = typeToStrict $ typeApplyArguments env (constructorType cons) args
 -- For a tuple, we get a value in WHNF of the given tuple size.
-bindType env (Bind _ (BindTargetTuple arity) args) = typeToStrict $ foldl ap (TCon $ TConTuple arity) args
+bindType env (Bind _ (BindTargetTuple arity) args _) = typeToStrict $ foldl ap (TCon $ TConTuple arity) args
   where
     ap t1 (Right _) = t1
     ap t1 (Left t2) = t1 `TAp` t2
 -- When binding to a global function, we get a thunk in WHNF (TypeFunction) if not enough arguments were passed,
 -- or TypeAnyThunk (not in WHNF) otherwise.
-bindType env (Bind _ (BindTargetFunction (GlobalFunction fn arity fntype)) args)
+bindType env (Bind _ (BindTargetFunction (GlobalFunction fn arity fntype)) args _)
   | arity > valueArgCount = typeToStrict $ tp
   | otherwise = tp
   where
     tp = typeRemoveArgumentStrictness $ typeApplyArguments env fntype args
     valueArgCount = length $ filter isRight args
-bindType env (Bind _ (BindTargetThunk fn) args) = typeApplyArguments env (variableType fn) args
+bindType env (Bind _ (BindTargetThunk fn) args _) = typeApplyArguments env (variableType fn) args
 
 bindLocal :: TypeEnvironment -> Bind -> Local
-bindLocal env b@(Bind var _ _) = Local var $ bindType env b
+bindLocal env b@(Bind var _ _ _) = Local var $ bindType env b
 
 -- * Expressions are used to bind values to variables in 'let' instructions.
 -- Those binds cannot be recursive.

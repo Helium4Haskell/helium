@@ -1,26 +1,24 @@
-{-| Module      :  Data
-    License     :  GPL
-
-    Maintainer  :  helium@cs.uu.nl
-    Stability   :  experimental
-    Portability :  portable
--}
-
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE UndecidableInstances #-}
 
 -- Show instances for Iridium
 
+-- | Module      :  Data
+--    License     :  GPL
+--
+--    Maintainer  :  helium@cs.uu.nl
+--    Stability   :  experimental
+--    Portability :  portable
 module Helium.CodeGeneration.Iridium.Show where
 
-import Lvm.Common.Byte(stringFromBytes)
-import Lvm.Common.Id(Id, stringFromId, idFromString)
-import Lvm.Core.Module(Custom(..), DeclKind(..))
-import Lvm.Core.Type
-import Data.List(intercalate)
-import Data.Either(isRight)
+import Data.Either (isRight)
+import Data.List (intercalate)
 import Helium.CodeGeneration.Iridium.Data
 import Helium.CodeGeneration.Iridium.Type
+import Lvm.Common.Byte (stringFromBytes)
+import Lvm.Common.Id (Id, idFromString, stringFromId)
+import Lvm.Core.Module (Custom (..), DeclKind (..))
+import Lvm.Core.Type
 import qualified Text.PrettyPrint.Leijen as Pretty
 
 class ShowDeclaration a where
@@ -29,7 +27,7 @@ class ShowDeclaration a where
 instance ShowDeclaration a => Show (Declaration a) where
   show (Declaration name vis mod customs a) = customsString ++ export ++ maybe "" (("from " ++) . (++ " ") . stringFromId) mod ++ keyword ++ " @" ++ showId name body
     where
-      customsString = customs >>= ((++ "\n") . ('#' : ) . showCustom)
+      customsString = customs >>= ((++ "\n") . ('#' :) . showCustom)
       export = case vis of
         ExportedAs exportName -> "export_as @" ++ showId exportName " "
         _ -> ""
@@ -42,7 +40,7 @@ class ShowWithQuantors a where
   showsQ :: QuantorNames -> a -> ShowS
   showsQ names value = (showQ names value ++)
 
-instance {-# Overlaps #-} ShowWithQuantors a => Show a where
+instance {-# OVERLAPS #-} ShowWithQuantors a => Show a where
   show = showQ []
   showsPrec _ = showsQ []
 
@@ -51,14 +49,13 @@ text = (++)
 
 list :: ShowS -> [ShowS] -> ShowS
 list _ [] = id
-list sep (x:xs) = x . list' xs
+list sep (x : xs) = x . list' xs
   where
-    list' (y:ys) = sep . y . list' ys
+    list' (y : ys) = sep . y . list' ys
     list' [] = id
 
-
 instance ShowWithQuantors Type where
-  showQ quantors = showType quantors
+  showQ = showType
 
 showCustom :: Custom -> String
 showCustom (CustomInt i) = "[int " ++ show i ++ "]"
@@ -107,7 +104,11 @@ instructionIndent :: String
 instructionIndent = "  "
 
 instance ShowWithQuantors Bind where
-  showsQ quantors (Bind var target args) = text "%" . showId var . text " = " . showsQ quantors target . text " $ " . showCallArguments quantors args
+  showsQ quantors (Bind var target args mem) = text "%" . showId var . text " = " . showsQ quantors target . text " $ " . showCallArguments quantors args . showMem mem
+    where
+      showMem :: Maybe Id -> ShowS
+      showMem (Just a) = text "; %" . showId a
+      showMem Nothing = text ""
 
 instance ShowWithQuantors BindTarget where
   showsQ quantors (BindTargetFunction global) = text "function " . shows global
@@ -147,7 +148,7 @@ instance ShowWithQuantors Instruction where
   showsQ quantors (Return var) =
     text instructionIndent . text "return " . showsQ quantors var
   showsQ quantors (Unreachable (Just var)) =
-    text instructionIndent . text "unreachable " .showsQ quantors var
+    text instructionIndent . text "unreachable " . showsQ quantors var
   showsQ quantors (Unreachable Nothing) =
     text instructionIndent . text "unreachable"
 
@@ -179,19 +180,25 @@ instance Show CallingConvention where
 
 showAnnotations :: [Annotation] -> String
 showAnnotations [] = ""
-showAnnotations annotations = "[" ++ intercalate " " (map show annotations) ++ "]"
+showAnnotations annotations = "[" ++ unwords (map show annotations) ++ "]"
 
 instance ShowDeclaration AbstractMethod where
   showDeclaration (AbstractMethod arity fntype annotations) =
-    ( "declare"
-    , "[" ++ show arity ++ "]: { " ++ show fntype ++ " } " ++ showAnnotations annotations ++ "\n"
+    ( "declare",
+      "[" ++ show arity ++ "]: { " ++ show fntype ++ " } " ++ showAnnotations annotations ++ "\n"
     )
 
 instance ShowDeclaration Method where
   showDeclaration (Method tp args rettype annotations entry blocks) =
-    ( "define"
-    , ": { " ++ show tp ++ " } $ (" ++ intercalate ", " args' ++ "): "
-      ++ showQ quantors rettype ++ " " ++ showAnnotations annotations ++ " {\n" ++ showQ quantors entry ++ (blocks >>= ('\n' :) . showQ quantors) ++ "\n}\n"
+    ( "define",
+      ": { " ++ show tp ++ " } $ (" ++ intercalate ", " args' ++ "): "
+        ++ showQ quantors rettype
+        ++ " "
+        ++ showAnnotations annotations
+        ++ " {\n"
+        ++ showQ quantors entry
+        ++ (blocks >>= ('\n' :) . showQ quantors)
+        ++ "\n}\n"
     )
     where
       (args', quantors) = showMethodArguments [] args
@@ -211,12 +218,12 @@ showMethodArguments quantors [] = ([], quantors)
 instance Show Module where
   show (Module name dependencies customs datas types abstracts methods) =
     "module " ++ stringFromId name ++ "\n"
-    ++ importString
-    ++ (customs >>= ('\n' :) . show)
-    ++ (datas >>= ('\n' :) . show)
-    ++ (types >>= ('\n' :) . show)
-    ++ (abstracts >>= ('\n' :) . show)
-    ++ (methods >>= ('\n' :) . show)
+      ++ importString
+      ++ (customs >>= ('\n' :) . show)
+      ++ (datas >>= ('\n' :) . show)
+      ++ (types >>= ('\n' :) . show)
+      ++ (abstracts >>= ('\n' :) . show)
+      ++ (methods >>= ('\n' :) . show)
     where
       importString = "import (" ++ intercalate ", " (map stringFromId dependencies) ++ ")\n"
 
@@ -225,8 +232,8 @@ instance ShowDeclaration CustomDeclaration where
 
 instance ShowDeclaration DataTypeConstructorDeclaration where
   showDeclaration (DataTypeConstructorDeclaration tp) =
-    ( "constructor"
-    , ": { " ++ show tp ++ " }"
+    ( "constructor",
+      ": { " ++ show tp ++ " }"
     )
 
 instance Show DataTypeConstructor where
@@ -234,14 +241,14 @@ instance Show DataTypeConstructor where
 
 instance ShowDeclaration DataType where
   showDeclaration (DataType cons) =
-    ( "data"
-    , " {" ++ (cons >>= (("\n" ++) .unlines . map ("  " ++) . lines . show)) ++ "}\n"
+    ( "data",
+      " {" ++ (cons >>= (("\n" ++) . unlines . map ("  " ++) . lines . show)) ++ "}\n"
     )
 
 instance ShowDeclaration TypeSynonym where
   showDeclaration (TypeSynonym tp) =
-    ( "type"
-    , " = { " ++ show tp ++ " }"
+    ( "type",
+      " = { " ++ show tp ++ " }"
     )
 
 instance Show FloatPrecision where
@@ -275,5 +282,5 @@ showId name
   | all (`elem` chars) str = text str
   | otherwise = shows str
   where
-    chars = ['.', '$', '#', '_'] ++ ['a' .. 'z'] ++ ['A' .. 'Z'] ++ ['0' .. '9'] 
+    chars = ['.', '$', '#', '_'] ++ ['a' .. 'z'] ++ ['A' .. 'Z'] ++ ['0' .. '9']
     str = stringFromId name
