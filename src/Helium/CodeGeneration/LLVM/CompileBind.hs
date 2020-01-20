@@ -3,6 +3,7 @@ module Helium.CodeGeneration.LLVM.CompileBind (compileBinds, toStruct) where
 import Data.Bits ((.&.), (.|.), shiftL)
 import Data.Either
 import qualified Data.Graph as Graph
+import Data.Maybe
 import Data.Word (Word32)
 import qualified Helium.CodeGeneration.Iridium.Data as Iridium
 import qualified Helium.CodeGeneration.Iridium.Type as Iridium
@@ -28,8 +29,11 @@ import qualified Lvm.Core.Type as Core
 idThunk :: Id
 idThunk = idFromString "$alloc_thunk"
 
-idCon :: Id
-idCon = idFromString "$alloc_con"
+idACon :: Id
+idACon = idFromString "$alloc_con"
+
+idNACon :: Id
+idNACon = idFromString "$nonalloc_con"
 
 compileBinds :: Env -> NameSupply -> [Iridium.Bind] -> [Named Instruction]
 compileBinds env supply binds = concat inits ++ concat assigns
@@ -51,7 +55,8 @@ compileBind' env supply (Iridium.Bind varId target _ _) (Left tag) =
     value = fromIntegral tag * 2 + 1
 compileBind' env supply bind@(Iridium.Bind varId target args memId) (Right struct) =
   ( concat splitInstructions
-      ++ allocate env nameVoid nameStruct t struct
+      ++ maybe [allocate env nameBind struct] (const []) memId
+      ++ [bitCast operandVoid nameStruct t]
       ++ castBind,
     additionalArgInstructions
       ++ initialize supplyInit env (LocalReference (pointer t) nameStruct) struct (additionalArgs ++ if shouldReverse then reverse argOperands else argOperands)
@@ -85,9 +90,10 @@ compileBind' env supply bind@(Iridium.Bind varId target args memId) (Right struc
     (supplyInit, supply2) = splitNameSupply supply1
     (supplyAdditionalArgs, supply3) = splitNameSupply supply2
     (nameVoid, supply4) = freshName supply3
-    (nameStruct, _) = freshNameFromId (nameSuggestion target) supply4
+    nameBind = maybe nameVoid toName memId
+    (nameStruct, _) = freshNameFromId (nameSuggestion target (isNothing memId)) supply4
     whnf = Iridium.typeIsStrict $ Iridium.bindType (envTypeEnv env) bind
-    operandVoid = LocalReference voidPointer nameVoid
+    operandVoid = LocalReference voidPointer nameBind
     castBind
       | whnf = [toName varId := BitCast operandVoid voidPointer []]
       | otherwise =
@@ -99,9 +105,17 @@ compileBind' env supply bind@(Iridium.Bind varId target args memId) (Right struc
               []
         ]
 
-nameSuggestion :: Iridium.BindTarget -> Id
-nameSuggestion (Iridium.BindTargetConstructor _) = idCon
-nameSuggestion _ = idThunk
+allocate :: Env -> Name -> Struct -> Named Instruction
+allocate env nameVoid struct =
+  nameVoid := Call Nothing C [] (Right Builtins.alloc) [(ConstantOperand $ Constant.Int 32 $ fromIntegral $ sizeOf env struct, [])] [] []
+
+bitCast :: Operand -> Name -> Type -> Named Instruction
+bitCast operand name t = name := BitCast operand (pointer t) []
+
+nameSuggestion :: Iridium.BindTarget -> Bool -> Id
+nameSuggestion (Iridium.BindTargetConstructor _) True = idACon
+nameSuggestion (Iridium.BindTargetConstructor _) False = idNACon
+nameSuggestion _ _ = idThunk
 
 toStruct :: Env -> Iridium.BindTarget -> Int -> Either Int Struct
 toStruct env (Iridium.BindTargetConstructor (Iridium.DataTypeConstructor conId _)) arity = case findMap conId (envConstructors env) of
