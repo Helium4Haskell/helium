@@ -5,6 +5,7 @@
 *.css
 *.gif
 dist
+dist-newstyle
 lib/*.lvm
 lib/simple/*.lvm
 *.temp
