@@ -41,8 +41,8 @@ a A{ a = x } = x
 Partial record construction using special method omitting strict field
 Should fail
 -}
-e :: A
-e = A { a = 1 }
+b :: A
+b = A { a = 1 }
 
 {--------------------------------
 - Record update
@@ -52,48 +52,58 @@ e = A { a = 1 }
 Record update using fields present disjunctly in multuple constructors
 Should fail
 -}
-i :: A -> A
-i x = x { b = '1', c = False }
+c :: A -> A
+c x = x { b = '1', c = False }
 
 {-
 Record update using fields present in other constructor
 Should fail on runtime
 -}
-j :: A
-j = (A 1 '1'){ c = False }
+d :: A
+d = (A 1 '1'){ c = False }
 
 {-
 Record update using fields present in neither constructor
 Should fail
 -}
-k :: A -> A
-k x = x { a = 1, a1 = False }
+e :: A -> A
+e x = x { a = 1, a1 = False }
 
 {-
 Record update using duplicate fields
 Should fail
 -}
-k :: A -> A
-k x = x { a = 1, a = False }
-
-{-
-Record update without fields
-Should fail
--}
-k :: A -> A
-k x = x {  }
+f :: A -> A
+f x = x { a = 1, a = False }
 
 {-
 Record update with types more general than given
 Should fail
 -}
-l :: c -> A4 c b
-l c = (A4 1 1) { a4 = c }
+g :: c -> A4 c b
+g c = (A4 1 1) { a4 = c }
+
+{-
+Record update without fields
+Should fail
+-}
+h :: A -> A
+h x = x {  }
 
 {--------------------------------
 - Record pattern matching
 --------------------------------}
 
-{--------------------------------
-- Records with type arguments
---------------------------------}
+{-
+Record pattern match using non-existant fields
+Should fail
+-}
+i :: A -> Int
+i A{ q = w } = w
+
+{-
+Record pattern match using wrong constructor-field combination
+Should fail
+-}
+j :: A -> Bool
+j A{ c = x } = x
