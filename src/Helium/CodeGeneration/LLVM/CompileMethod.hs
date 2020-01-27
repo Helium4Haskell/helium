@@ -18,7 +18,7 @@ import Helium.CodeGeneration.LLVM.CompileBlock(compileBlock)
 import Helium.CodeGeneration.LLVM.Struct(Struct(..), StructField(..))
 import Helium.CodeGeneration.LLVM.CompileStruct(structType, extractField)
 
-import Lvm.Common.Id(Id, NameSupply, freshId, freshIdFromId, splitNameSupply, mapWithSupply, idFromString)
+import Lvm.Common.Id(Id, NameSupply, freshId, freshIdFromId, splitNameSupply, mapWithSupply, idFromString, stringFromId)
 import qualified Lvm.Core.Type as Core
 
 import qualified Helium.CodeGeneration.Iridium.Data as Iridium
@@ -30,7 +30,10 @@ import LLVM.AST.CallingConvention
 import LLVM.AST.Linkage
 import LLVM.AST.AddrSpace
 import qualified LLVM.AST.Constant as Constant
+import qualified LLVM.AST.Type as Type
 import qualified LLVM.AST.IntegerPredicate as IntegerPredicate
+
+import Data.Char
 
 -- llvm-hs-pure requires to set a name on the argument of a declared (abstract) function. However, when pretty printing / exporting the
 -- IR this is not used. We thus can use a non-unique name.
@@ -54,6 +57,11 @@ compileMethod env supply (Iridium.Declaration name visible _ _ method@(Iridium.M
     basicBlocks :: [BasicBlock]
     basicBlocks = concat $ mapWithSupply (compileBlock env) supply1 (entry : blocks)
     (supply1, supply2) = splitNameSupply supply
+
+packId :: Id -> Constant.Constant
+packId name = Constant.Array Type.i8 $ map (Constant.Int 8) (0 : list)
+  where
+    list = reverse $ map (fromIntegral . ord) $ stringFromId name
 
 toFunction :: Env -> NameSupply -> Id -> Iridium.Visibility -> [Iridium.Annotation] -> [Iridium.Local] -> Core.Type -> Core.Type -> [BasicBlock] -> [Definition]
 toFunction env supply name visible annotations args fnType retType basicBlocks = trampoline ++ thunk ++ [def]
@@ -121,7 +129,7 @@ toFunction env supply name visible annotations args fnType retType basicBlocks =
         , Global.comdat = Nothing
         , Global.alignment = 0
         , Global.garbageCollectorName = Nothing
-        , Global.prefix = Nothing
+        , Global.prefix = Just $ packId name
         , Global.basicBlocks = if null basicBlocks then [] else
           [ BasicBlock
               (mkName "entry")

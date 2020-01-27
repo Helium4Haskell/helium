@@ -144,7 +144,7 @@ bindArguments env supply (Iridium.BindTargetThunk var) givenArgs _ =
       , nameFnPtr := Load False (LocalReference (pointer trampolineType) nameFnPtrPtr) Nothing 0 []
       , nameNextRemaining' := Load False (LocalReference (pointer $ IntegerType 16) nameNextRemainingPtr) Nothing 0 []
       , nameIsMagicNumber := ICmp IntegerPredicate.SGE (LocalReference (IntegerType 16) nameNextRemaining') (ConstantOperand $ Constant.Int 16 $ 32766) []
-      , nameNextRemaining := Select (LocalReference boolType nameIsMagicNumber) (LocalReference (IntegerType 16) nameNextRemaining') (ConstantOperand $ Constant.Int 16 $ -1 - fromIntegral givenArgs) []
+      , nameNextRemaining := Select (LocalReference boolType nameIsMagicNumber) (ConstantOperand $ Constant.Int 16 $ -1 - fromIntegral givenArgs) (LocalReference (IntegerType 16) nameNextRemaining') []
       , nameRemaining := Sub False False (LocalReference (IntegerType 16) nameNextRemaining) (ConstantOperand $ Constant.Int 16 $ fromIntegral givenArgs) []
       ]
   , [ (operandNext, operandTrue)

@@ -858,9 +858,15 @@ class Show a where
     show :: a -> String
     showList :: [a] -> ShowS
     showsPrec :: Int -> a -> ShowS
-    showList ls s  = "[" ++ intercalate "," (map (flip shows s) ls) ++ "]"
     showsPrec _ x s = show x ++ s
     show x          = shows x ""
+    showList [] s = '[' : ']' : s
+    showList (x:xs) s = '[' : shows x (showList' shows xs s)
+
+showList' :: (a -> ShowS) -> [a] -> ShowS
+showList' showx []     s = ']' : s
+showList' showx (y:ys) s = ',' : showx y (showList' showx ys s)
+
 
 instance Show Int where
     show = showInt

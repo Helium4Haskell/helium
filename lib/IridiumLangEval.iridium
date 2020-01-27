@@ -26,11 +26,15 @@ eval.thunk:
 }
 
 declare @error[1]: { forall a. [Char] -> a }
+; Uncomment the declaration and calls to trace_thunk_eval and trace_thunk_done to debug thunk evaluation.
+; declare @trace_thunk_eval[1]: { !$UnsafePtr -> Int }
+; declare @trace_thunk_done[1]: { !$UnsafePtr -> Int }
 
 export_as @eval_thunk define @eval_thunk(%a: !$UnsafePtr): $UnsafePtr {
 entry:
   %remaining = prim thunk_extract_remaining(%a: !$UnsafePtr)
   %given = prim thunk_extract_given(%a: !$UnsafePtr)
+  ; %debug = call @trace_thunk_eval[1]: ( !$UnsafePtr -> Int ) $ (%a: !$UnsafePtr)
 
   %remaining_int = prim int16_sext_to_int(%remaining: !Int16)
 
@@ -58,6 +62,7 @@ unsaturated:
 saturated:
   ; Thunk is exactly saturated
   %saturated_value = prim thunk_eval(%a: !$UnsafePtr, %given: !Int16)
+  ; %debug2 = call @trace_thunk_done[1]: ( !$UnsafePtr -> Int ) $ (%a: !$UnsafePtr)
   return %saturated_value: !$UnsafePtr
 
 oversaturated_self:
@@ -94,6 +99,7 @@ o_unsaturated:
     %new_remaining: !Int16,
     %new_given: !Int16)
   %ou_write_result = prim thunk_write_value(%a: !$UnsafePtr, %ou_result: !$UnsafePtr)
+  ; %debug3 = call @trace_thunk_done[1]: ( !$UnsafePtr -> Int ) $ (%a: !$UnsafePtr)
   return %ou_result: !$UnsafePtr
 
 o_thunk:
