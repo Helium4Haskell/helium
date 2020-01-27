@@ -12,7 +12,6 @@
 
 imports {
 import Helium.Syntax.UHA_Utils
-import Debug.Trace
 }
 
 {

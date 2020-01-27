@@ -37,7 +37,6 @@ import Data.List
 import Data.Maybe
 import qualified Data.Map as M
 import Text.PrettyPrint.Leijen (pretty)
-import Debug.Trace
 
 
 nameFromCustoms :: String -> Id -> String -> [Custom] -> Name

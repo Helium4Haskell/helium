@@ -15,7 +15,6 @@ import Helium.Syntax.UHA_Syntax
 import Lvm.Common.Id
 import qualified Lvm.Core.Expr as Core
 import Text.PrettyPrint.Leijen (pretty)
-import Debug.Trace
 
 phaseImport :: String -> Module -> (Id -> IO Core.CoreModule) -> [Option] -> 
                     IO ([Core.CoreDecl], [(Name, ImportEnvironment, ModuleDecls)])

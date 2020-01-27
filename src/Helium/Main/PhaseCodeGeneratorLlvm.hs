@@ -31,7 +31,6 @@ phaseCodeGeneratorLlvm supply output files shouldLink options = do
 
   when shouldLink $ do
     let args = "-o" : output : "-O3" : "../lib/runtime/memory.c" : map toLlvmPath files
-    print ("clang" ++ unwords args)
     (code, res, err) <- readProcessWithExitCode "clang" args ""
     case code of
       ExitSuccess -> return ()

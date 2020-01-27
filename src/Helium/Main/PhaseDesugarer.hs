@@ -27,7 +27,6 @@ import Helium.ModuleSystem.CoreToImportEnv(originFromDecl)
 import qualified Helium.CodeGeneration.CodeGeneration as CodeGeneration
 import Data.List(nubBy, sort, nub)
 import Data.Maybe(mapMaybe)
-import Debug.Trace
 import Lvm.Common.Id
 import Lvm.Common.IdMap
 import Lvm.Import
@@ -80,7 +79,7 @@ en eigenlijk is afterTypeInferEnv te groot. alleen locale types en constructoren
 
     when (DumpCoreToFile `elem` options) $ do
         writeFile (fullNameNoExt ++ ".core") $ show . pretty $ strippedModuleWithImports
-        -- exitSuccess
+        exitSuccess
    
     return strippedModuleWithImports
 

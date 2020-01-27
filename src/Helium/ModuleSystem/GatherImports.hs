@@ -21,8 +21,6 @@ import Lvm.Path(searchPath)
 import Lvm.Import(lvmImportDecls)
 import qualified Helium.ModuleSystem.ExtractImportDecls as EID
 import Data.List(isPrefixOf, intercalate)
-import Debug.Trace
-import Text.PrettyPrint.Leijen
 
 type ImportList = ( Maybe Bool    -- Nothing if there is no import specification. Then True if hiding, false if not.
                   , Bool          -- True if qualified

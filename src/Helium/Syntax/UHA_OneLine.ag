@@ -240,8 +240,15 @@ SEM Expression                                   {- *** -}
     --  range                    : Range
     --  name                     : Name
 
-    -- TODO: Expand with its records
-    | RecordConstruction loc.oneLineTree = OneLineNode [@name.oneLineTree]
+    | RecordConstruction loc.oneLineTree = 
+            OneLineNode $
+            [ @name.oneLineTree
+            , OneLineText "{"
+            ] ++
+            @recordExpressionBindings.oneLineTree
+            ++ 
+            [ OneLineText "}"
+            ]
     --  range                    : Range
     --  name                     : Name
     --  recordExpressionBindings : RecordExpressionBindings

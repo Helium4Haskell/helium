@@ -47,7 +47,6 @@ import Helium.Syntax.UHA_Utils
 import qualified Data.Map as M
 import Data.Maybe
 
-import Debug.Trace
 import Text.PrettyPrint.Leijen (pretty)
 
 compile :: String -> String -> [Option] -> [String] -> Iridium.FileCache -> [String] -> IO ()

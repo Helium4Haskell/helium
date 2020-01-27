@@ -24,7 +24,6 @@ import qualified Lvm.Core.Parsing.Lexer as Lvm
 import qualified Lvm.Core.Parsing.Layout as Lvm
 import qualified Lvm.Core.Module as Lvm
 import qualified Lvm.Core.Expr as Lvm
-import Debug.Trace
 
 -- Prelude will be treated specially
 prelude :: String
@@ -40,7 +39,6 @@ prelude = "Prelude.hs"
 make :: String -> String -> [String] -> [String] -> [Option] -> Iridium.FileCache -> IORef [(String, Bool)] -> IO Bool
 make basedir fullName lvmPath chain options iridiumCache doneRef = do
   -- If we already compiled this module, return the result we already know
-  print (unwords ["Make", fullName])
   done <- readIORef doneRef
 
   case lookup fullName done of 

@@ -124,8 +124,6 @@ import qualified Data.Map as M
 import Data.Maybe 
 import Control.Monad (when)
 
--- TODO: debug
-import Debug.Trace
 }
 
 SEM Module | Module loc . moduleQual = maybe ["Main"] getQualified @name.name

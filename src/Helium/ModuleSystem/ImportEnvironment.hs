@@ -30,7 +30,6 @@ import Data.Maybe (catMaybes, isJust, fromJust, fromMaybe)
 import Data.Function (on)
 import Data.Char
 import Control.Arrow
-import Debug.Trace
 
 import qualified Data.Map as M
 

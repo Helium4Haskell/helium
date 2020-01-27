@@ -11,7 +11,6 @@ module Helium.Parser.Parser
     , parseOnlyImports
     ) where
 
--- TODO: Check which of these still apply
 {-
 Absent:
 - records
@@ -209,8 +208,6 @@ simpletype
         constructors             : Constructors
         derivings                : Names
 -}
--- TODO: Fix this doc to reflect that classes and instances are possible
--- TODO: Add [context =>] to data, newtype, type
 topdecl :: HParser Declaration
 topdecl = addRange (
     do
