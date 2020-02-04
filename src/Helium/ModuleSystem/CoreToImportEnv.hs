@@ -12,6 +12,7 @@ module Helium.ModuleSystem.CoreToImportEnv
 
 import Lvm.Core.Expr
 import qualified Lvm.Core.Type as Core
+import qualified Helium.CodeGeneration.Core.TypeEnvironment as Core
 import Lvm.Core.Utils
 import Lvm.Common.Id
 import Lvm.Common.Byte(stringFromBytes)
@@ -258,8 +259,8 @@ getImportEnvironment importedInModule decls = foldr (insertDictionaries imported
                     locName = stringFromId n
                     idToName = makeImportName importedInModule importedFromModId
                     constrName = idToName n
-                    toField f = (idToName $ fieldName f, fieldStrict f)
-                    fields = map toField fs
+                    Core.FunctionType args _ = Core.extractFunctionTypeNoSynonyms tp
+                    fields = zipWith (\(Field n) arg -> (idToName n, Core.typeIsStrict tp)) fs args
                     typeName = if "Dict" `isPrefixOf` stringFromId n 
                         then makeImportNameName importedInModule importedFromModId
                             (nameFromString $ "Dict$" ++ drop 4 locName)

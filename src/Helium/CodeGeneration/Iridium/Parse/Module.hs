@@ -96,15 +96,7 @@ pFields = do
 pField :: Parser Field
 pField = do
   pWhitespace
-  c <- lookahead
-  if c == '!'
-    then do
-      pChar
-      n <- pId
-      return $ Field n True
-    else do
-      n <- pId
-      return $ Field n False
+  Field <$> pId
 
 pDeclaration :: (String -> (forall a . a -> Declaration a) -> Parser b) -> Parser b
 pDeclaration f = do
