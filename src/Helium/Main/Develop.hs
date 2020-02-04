@@ -14,7 +14,7 @@ import qualified Helium.CodeGeneration.Iridium.FileCache as Iridium
 
 
 compileFile :: String -> IO ()
-compileFile = compileFile' "../lib" "../demo"
+compileFile = compileFile' "../lib" "../develop"
 
 compileFile' :: String -> String -> String -> IO ()
 compileFile' preludePath developLocation s = do
