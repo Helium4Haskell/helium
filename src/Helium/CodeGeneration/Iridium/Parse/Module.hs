@@ -68,35 +68,29 @@ pTypeSynonym = do
 pFields :: Parser [Field]
 pFields = do
   pWhitespace
-  pToken '<'
-  pWhitespace
   c <- lookahead
-  if c == '>' then do
+  if c == '(' then do
     pChar
-    return []
+    pWhitespace
+    fields <- pSome pField pSep
+    pToken ')'
+    return fields
   else
-    pSome pField pSep
+    return []
   where
     pSep :: Parser Bool
     pSep = do
       pWhitespace
       c <- lookahead
-      if c == '>' then do
+      if c == ',' then do
         pChar
-        return False
+        pWhitespace
+        return True
       else
-        if c == ','
-          then do
-            pChar
-            pWhitespace
-            return True
-          else
-            return True
+        return False
 
 pField :: Parser Field
-pField = do
-  pWhitespace
-  Field <$> pId
+pField = Field <$> pId
 
 pDeclaration :: (String -> (forall a . a -> Declaration a) -> Parser b) -> Parser b
 pDeclaration f = do
