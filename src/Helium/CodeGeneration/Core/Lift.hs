@@ -30,10 +30,13 @@ import Lvm.Core.Expr
 import Lvm.Core.Type
 import Lvm.Core.Utils
 import Helium.CodeGeneration.Core.TypeEnvironment
+import Helium.CodeGeneration.Core.ReduceThunks (isCheap)
 
-import Data.Maybe (catMaybes)
+import Data.Maybe (catMaybes, maybeToList)
+import Data.List (unzip4)
 
 data Env = Env TypeEnvironment (IdMap Id)
+type Scope = [Either Quantor Variable]
 
 typeEnv :: Env -> TypeEnvironment
 typeEnv (Env te _) = te
@@ -59,7 +62,7 @@ liftExprInDecl typeEnv supply (DeclValue name access mod enc expr customs) = Dec
     (expr', decls) = liftExprIgnoreLambdas supply [] expr $ Env typeEnv emptyMap
 liftExprInDecl _ _ decl = [decl]
 
-liftExprIgnoreLambdas :: NameSupply -> [Either Quantor Variable] -> Expr -> Env -> (Expr, [CoreDecl])
+liftExprIgnoreLambdas :: NameSupply -> Scope -> Expr -> Env -> (Expr, [CoreDecl])
 liftExprIgnoreLambdas supply scope (Lam strict x expr) env = (Lam strict x expr', decls)
   where
     (expr', decls) = liftExprIgnoreLambdas supply (Right (variableSetStrict strict x) : scope) expr env'
@@ -70,42 +73,42 @@ liftExprIgnoreLambdas supply scope (Forall x k expr) env = (Forall x k expr', de
     (expr', decls) = liftExprIgnoreLambdas supply (Left x : scope) expr env
 liftExprIgnoreLambdas supply scope expr env = liftExpr supply scope expr env
 
-liftExpr :: NameSupply -> [Either Quantor Variable] -> Expr -> Env -> (Expr, [CoreDecl])
-liftExpr supply scope (Let (Strict b) e) env =
-  ( case b' of
-    Nothing -> e'
-    Just bind -> Let (Strict bind) e'
-  , decls1 ++ decls2
-  )
+addBinds :: [Binds] -> Expr -> Expr
+addBinds = flip $ foldr Let
+
+liftBindss :: NameSupply -> Scope -> [Binds] -> Env -> ([Binds], [CoreDecl], Env)
+liftBindss _ _ [] env = ([], [], env)
+liftBindss supply scope (b:bs) env = (b' ++ bs', decls1 ++ decls2, env')
   where
     (supply1, supply2) = splitNameSupply supply
-    (b', decls1, envMap) = strictBind supply1 scope b env
+    (b', decls1, envMap, scope') = liftBinds supply1 scope b env
+    (bs', decls2, env') = liftBindss supply2 scope' bs $ envMap env
+
+liftBinds :: NameSupply -> Scope -> Binds -> Env -> ([Binds], [CoreDecl], Env -> Env, Scope)
+liftBinds supply scope (Strict b) env = (map Strict (maybeToList b'), decls, envMap, scope')
+  where
+    (b', decls, envMap) = strictBind supply scope b env
     scope' = case b' of
-      Nothing -> scope
+      Nothing -> scope'
       Just _ -> Right (variableSetStrict True $ boundVar b) : scope
-    (e', decls2) = liftExpr supply2 (scope') e (envMap env')
-    env' = modifyTypeEnv (typeEnvAddBind b) env
-liftExpr supply scope (Let (NonRec b) e) env =
-  ( case b' of
-      Nothing -> e'
-      Just bind -> Let (NonRec bind) e'
-  , decls1 ++ decls2
-  )
+liftBinds supply scope (NonRec b) env = (rotatedBinds ++ map NonRec (maybeToList b'), decls, envMap, scope')
   where
-    (supply1, supply2) = splitNameSupply supply
-    (b', decls1, envMap) = lazyBind False supply1 scope b env
+    (rotatedBinds, b', decls, envMap) = lazyBind False supply scope b env
     scope' = case b' of
       Nothing -> scope
       Just _ -> Right (boundVar b) : scope
-    (e', decls2) = liftExpr supply2 scope' e (envMap env')
-    env' = modifyTypeEnv (typeEnvAddBind b) env
-liftExpr supply scope (Let binds@(Rec bs) e) env = (Let (Rec $ catMaybes bs') e', concat decls1 ++ decls2)
+liftBinds supply scope (Rec bs) env = (concat rotatedBindss ++ [Rec $ catMaybes bs'], concat declss, \env' -> foldr id env' envMaps, scope')
   where
+    env1 = modifyTypeEnv (typeEnvAddBinds $ Rec bs) env
     scope' = map (Right . boundVar) bs ++ scope
+    (rotatedBindss, bs', declss, envMaps) = unzip4 $ mapWithSupply (\s b -> lazyBind True s scope' b env1) supply bs
+
+liftExpr :: NameSupply -> Scope -> Expr -> Env -> (Expr, [CoreDecl])
+liftExpr supply scope (Let bs e) env = (addBinds bss e', decls1 ++ decls2)
+  where
     (supply1, supply2) = splitNameSupply supply
-    (bs', decls1, envMaps) = unzip3 $ mapWithSupply (\s b -> lazyBind True s scope' b env) supply1 bs
-    (e', decls2) = liftExpr supply2 scope' e (foldr id env' envMaps)
-    env' = modifyTypeEnv (typeEnvAddBinds binds) env
+    (bss, decls1, envMap, scope') = liftBinds supply scope bs env
+    (e', decls2) = liftExpr supply2 scope' e (envMap env)
 liftExpr supply scope (Match name alts) env = (Match (rename env name) alts', concat decls)
   where
     (alts', decls) = unzip $ mapWithSupply (\s a -> liftAlt s scope a env) supply alts
@@ -143,20 +146,27 @@ isQuantifiedLambda (Forall _ _ expr) = isQuantifiedLambda expr
 isQuantifiedLambda (Lam _ _ _) = True
 isQuantifiedLambda _ = False
 
-strictBind :: NameSupply -> [Either Quantor Variable] -> Bind -> Env -> (Maybe Bind, [CoreDecl], Env -> Env)
+strictBind :: NameSupply -> Scope -> Bind -> Env -> (Maybe Bind, [CoreDecl], Env -> Env)
 strictBind supply scope b@(Bind _ expr) env
-  | isQuantifiedLambda expr = lazyBind False supply scope b env
+  | isQuantifiedLambda expr = case lazyBind False supply scope b env of
+    ([], b', decls, f) -> (b', decls, f)
+    _ -> error "strictBind: Expected zero additional binds"
 strictBind supply scope (Bind var expr) env = (Just $ Bind var expr', decls, id)
   where
     (expr', decls) = liftExpr supply scope expr env
 
-lazyBind :: Bool -> NameSupply -> [Either Quantor Variable] -> Bind -> Env -> (Maybe Bind, [CoreDecl], Env -> Env)
-lazyBind isRec supply scope b@(Bind var@(Variable x t) expr) env
+lazyBind :: Bool -> NameSupply -> Scope -> Bind -> Env -> ([Binds], Maybe Bind, [CoreDecl], Env -> Env)
+lazyBind isRec supply scope b@(Bind var@(Variable x t) expr) env = case extractThunks expr of
   -- Expression can already be put in a thunk, don't need to change anything.
-  | isValidThunk expr = (Just (Bind var $ renameInSimpleExpr env expr), [], id)
-  -- Do not construct a Bind if the value is placed in a toplevel value which is not a Lambda
-  | null scope = (Nothing, decl : decls, insertSubstitution x name)
-  | otherwise = (Just $ Bind var ap, decl : decls, id)
+  Just (binds, expr') ->
+    let
+      (binds', decls', env') = liftBindss supply scope binds env
+    in
+      (binds', Just $ Bind var $ {-(trace ("B: " ++ show (pretty expr)))-} renameInSimpleExpr env' expr', decls', id)
+  Nothing
+    -- Do not construct a Bind if the value is placed in a toplevel value which is not a Lambda
+    | null scope -> ([], Nothing, decl : decls, insertSubstitution x name)
+    | otherwise  -> ([], Just $ Bind var ap, decl : decls, id)
   where
     ap = foldr addAp (Var name) scope
       where
@@ -173,9 +183,9 @@ lazyBind isRec supply scope b@(Bind var@(Variable x t) expr) env
             (arg', _) = freshIdFromId arg s
         renameArg s q = (q, q)
 
-    env' = foldr (\(Variable arg _, Variable arg' _) -> insertSubstitution arg arg') env
+    envDecl = foldr (\(Variable arg _, Variable arg' _) -> insertSubstitution arg arg') env
       [(v1, v2) | (Right v1, Right v2) <- argNames]
-    (expr', decls) = liftExprIgnoreLambdas supply2 (map snd argNames) expr env'
+    (expr', decls) = liftExprIgnoreLambdas supply2 (map snd argNames) expr envDecl
     value = foldl addArg expr' argNames
       where
         addArg e (_, Left quantor) = Forall quantor KStar e
@@ -189,12 +199,12 @@ lazyBind isRec supply scope b@(Bind var@(Variable x t) expr) env
       , valueValue = value
       , declCustoms = []
       }
-    functionType :: [Either Quantor Variable] -> Type
+    functionType :: Scope -> Type
     functionType [] = t
     functionType (Left quantor : args) = TForall quantor KStar $ functionType args
     functionType (Right (Variable name tArg) : args) = TAp (TAp (TCon TConFun) $ typeNotStrict tArg) $ functionType args
 
-liftAlt :: NameSupply -> [Either Quantor Variable] -> Alt -> Env -> (Alt, [CoreDecl])
+liftAlt :: NameSupply -> Scope -> Alt -> Env -> (Alt, [CoreDecl])
 liftAlt supply scope (Alt pat expr) env = (Alt pat expr', decls)
   where
     (expr', decls) = liftExpr supply (map Right newVars ++ scope) expr env'
@@ -206,6 +216,23 @@ isValidThunk (Ap _ _) = True
 isValidThunk (Forall _ _ e) = isValidThunk e
 isValidThunk (ApType e _) = isValidThunk e
 isValidThunk _ = False
+
+-- Tries to extract an expression which can be put in a thunk, by rotating (hosting) any binds that we encounter
+extractThunks :: Expr -> Maybe ([Binds], Expr)
+extractThunks = go 10
+  where
+    go :: Int -> Expr -> Maybe ([Binds], Expr)
+    go budget expr
+      | budget < 0 = Nothing -- Don't rotate too many binds, as that will cause that we consume a lot more memory
+      | isValidThunk expr = Just ([], expr)
+    go _ (Let b@(Strict (Bind _ bnd)) _)
+      -- Don't rotate a strict bind, as this will cause that we evaluate things which we shouldn't
+      -- However, if the bind is cheap then this won't matter.
+      | not $ isCheap bnd = Nothing
+    go budget (Let b expr) = case go (budget - length (listFromBinds b)) expr of
+      Nothing -> Nothing
+      Just (binds, expr') -> Just (b : binds, expr')
+    go _ _ = Nothing
 
 variableSetStrict :: Bool -> Variable -> Variable
 variableSetStrict strict (Variable name tp) = Variable name $ typeSetStrict strict tp

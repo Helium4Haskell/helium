@@ -10,7 +10,7 @@
 -- It does so by evaluating 'cheap' expressions strictly. For instance, a literal
 -- or a constructor can be evaluated strict, without changing the semantics
 
-module Helium.CodeGeneration.Core.ReduceThunks (coreReduceThunks) where
+module Helium.CodeGeneration.Core.ReduceThunks (coreReduceThunks, isCheap) where
 
 import Lvm.Common.Id
 import Lvm.Core.Expr

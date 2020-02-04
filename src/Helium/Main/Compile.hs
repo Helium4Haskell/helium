@@ -125,7 +125,7 @@ compileHaskellToCore basedir fullName contents options iridiumCache doneModules 
   resolvedModule <- 
       doPhaseWithExit 20 (const "R") compileOptions $
           phaseResolveOperators parsedModule importEnvs options
-      
+
   stopCompilingIf (StopAfterParser `elem` options)
 
   -- Phase 5: Static checking
@@ -142,7 +142,7 @@ compileHaskellToCore basedir fullName contents options iridiumCache doneModules 
   let combinedEnv = foldr combineImportEnvironments localEnv importEnvs
 
   -- print combinedEnv
-  
+
   when (KindInferencing `elem` options) $
       doPhaseWithExit maximumNumberOfKindErrors (const "K") compileOptions $
         phaseKindInferencer combinedEnv resolvedModule options
