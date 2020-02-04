@@ -25,7 +25,7 @@ eval.thunk:
   return %res: !$UnsafePtr
 }
 
-declare @error[1]: { forall a. [Char] -> a }
+declare @LvmException.error[1]: { forall a. [Char] -> a }
 ; Uncomment the declaration and calls to trace_thunk_eval and trace_thunk_done to debug thunk evaluation.
 ; declare @trace_thunk_eval[1]: { !$UnsafePtr -> Int }
 ; declare @trace_thunk_done[1]: { !$UnsafePtr -> Int }
@@ -43,7 +43,7 @@ entry:
 is_blackhole:
   %err_loop = literal str "Loop blackhole\n"
   %err_loop_thunk = castthunk %err_loop: (![Char])
-  %_call = call @error[1]: (forall a. [Char] -> a) $ ({ () }, %err_loop_thunk: [Char])
+  %_call = call @LvmException.error[1]: (forall a. [Char] -> a) $ ({ () }, %err_loop_thunk: [Char])
   unreachable
 
 is_evaluated:
