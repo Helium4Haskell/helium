@@ -18,8 +18,6 @@ import Lvm.Common.IdSet
 import Lvm.Core.Expr
 import Lvm.Core.Utils
 
-import Debug.Trace
-
 ----------------------------------------------------------------
 -- Environment: name supply, id's in scope & renamed identifiers
 ----------------------------------------------------------------

@@ -21,7 +21,6 @@ import qualified Data.Map as M
 import Data.Maybe
 import Data.List
 
-import Debug.Trace
 import Text.PrettyPrint.Leijen (pretty)
 
 type DictLabel = String

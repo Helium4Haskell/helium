@@ -10,8 +10,6 @@ import Lvm.Core.Type
 import Data.List
 import Data.Char
 
-import Debug.Trace
-
 pTypeArgName :: Parser (Either Int String)
 pTypeArgName = do
   cs <- pSomeSatisfy "expected type variable" isLower

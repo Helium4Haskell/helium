@@ -23,7 +23,6 @@ import Helium.Syntax.UHA_Utils
 import Helium.Utils.Utils
 
 import Top.Types
-import Debug.Trace
 
 data DictionaryEnvironment = 
      DEnv { declMap :: M.Map NameWithRange Predicates

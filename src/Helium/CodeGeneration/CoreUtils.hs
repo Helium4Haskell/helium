@@ -49,7 +49,6 @@ import Helium.Syntax.UHA_Range
 import Helium.Syntax.UHA_Syntax hiding (Module(..))
 import Helium.Utils.Utils
 import Helium.Syntax.UHA_Syntax ( Name )
-import Debug.Trace
 
 lookupBeta :: Int -> TypeInferenceOutput -> Top.Tp
 lookupBeta beta typeOutput = lookupInt beta $ substitutionFromResult $ solveResult typeOutput

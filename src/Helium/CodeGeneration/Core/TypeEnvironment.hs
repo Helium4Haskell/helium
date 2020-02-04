@@ -20,7 +20,6 @@ import Lvm.Common.Id
 import Lvm.Common.IdMap
 
 import Text.PrettyPrint.Leijen
-import Debug.Trace
 
 data TypeEnvironment = TypeEnvironment
   { typeEnvSynonyms :: IdMap Type
