@@ -1,74 +1,51 @@
 module IridiumLang
 import (IridiumLangEval, IridiumLangString)
 
-#[decl @origin [name @IridiumLang]]
 export_as @_$helium_runtime_error from IridiumLangString declare @_$helium_runtime_error[1]: { forall a. [Char] -> a }
-#[decl @origin [name @IridiumLang]]
 export_as @_$helium_runtime_print_string from IridiumLangString declare @_$helium_runtime_print_string[1]: { ![Char] -> Int }
 
 #[decl @kind [bytes "* -> *"]]
-#[decl @origin [name @IridiumLang]]
 export_as @"[]" data @"[]" {
   #[link @"[]" @data]
-  #[decl @origin [name @IridiumLang]]
   export_as @"[]" constructor @"[]": { forall a. [a] } <>
 
   #[link @"[]" @data]
-  #[decl @origin [name @IridiumLang]]
   export_as @":" constructor @":": { forall a. a -> [a] -> [a] } <>
 }
 
 #[decl @kind [bytes "*"]]
-#[decl @origin [name @IridiumLang]]
 export_as @Bool data @Bool {
   #[link @Bool @data]
-  #[decl @origin [name @IridiumLang]]
   export_as @False constructor @False: { Bool } <>
 
   #[link @Bool @data]
-  #[decl @origin [name @IridiumLang]]
   export_as @True constructor @True: { Bool } <>
 }
 
 #[decl @kind [bytes "*"]]
-#[decl @origin [name @IridiumLang]]
 export_as @Char data @Char {}
 
 #[decl @kind [bytes "*"]]
-#[decl @origin [name @IridiumLang]]
 export_as @Int data @Int {}
 
 #[decl @kind [bytes "*"]]
-#[decl @origin [name @IridiumLang]]
 export_as @Float data @Float {}
 
 export_as @String type @String = { [Char] }
 
-#[decl @origin [name @IridiumLang]]
 export_as @primAddInt define @primAddInt(%a: !Int, %b: !Int): Int = prim int_add(%a: !Int, %b: !Int)
-#[decl @origin [name @IridiumLang]]
 export_as @primSubInt define @primSubInt(%a: !Int, %b: !Int): Int = prim int_sub(%a: !Int, %b: !Int)
-#[decl @origin [name @IridiumLang]]
 export_as @primMulInt define @primMulInt(%a: !Int, %b: !Int): Int = prim int_mul(%a: !Int, %b: !Int)
-#[decl @origin [name @IridiumLang]]
 export_as @primQuotInt define @primQuotInt(%a: !Int, %b: !Int): Int = prim int_sdiv(%a: !Int, %b: !Int)
-#[decl @origin [name @IridiumLang]]
 export_as @primRemInt define @primRemInt(%a: !Int, %b: !Int): Int = prim int_srem(%a: !Int, %b: !Int)
 
-#[decl @origin [name @IridiumLang]]
 export_as @primAndInt define @primAndInt(%a: !Int, %b: !Int): Int = prim int_and(%a: !Int, %b: !Int)
-#[decl @origin [name @IridiumLang]]
 export_as @primOrInt define @primOrInt(%a: !Int, %b: !Int): Int = prim int_or(%a: !Int, %b: !Int)
-#[decl @origin [name @IridiumLang]]
 export_as @primXorInt define @primXorInt(%a: !Int, %b: !Int): Int = prim int_xor(%a: !Int, %b: !Int)
-#[decl @origin [name @IridiumLang]]
 export_as @primShrInt define @primShrInt(%a: !Int, %b: !Int): Int = prim int_ashr(%a: !Int, %b: !Int)
-#[decl @origin [name @IridiumLang]]
 export_as @primShrNat define @primShrNat(%a: !Int, %b: !Int): Int = prim int_lshr(%a: !Int, %b: !Int)
-#[decl @origin [name @IridiumLang]]
 export_as @primShlInt define @primShlInt(%a: !Int, %b: !Int): Int = prim int_shl(%a: !Int, %b: !Int)
 
-#[decl @origin [name @IridiumLang]]
 export_as @primNegInt define @primNegInt(%a: !Int): Int {
 entry:
   %0 = literal int 0
@@ -76,7 +53,6 @@ entry:
   return %result: !Int
 }
 
-#[decl @origin [name @IridiumLang]]
 export_as @primEqInt define @primEqInt(%a: !Int, %b: !Int): Bool {
 entry:
   letalloc %true = constructor @True: Bool $ ()
@@ -85,7 +61,6 @@ entry:
   return %result: !Bool
 }
 
-#[decl @origin [name @IridiumLang]]
 export_as @primNeInt define @primNeInt(%a: !Int, %b: !Int): Bool {
 entry:
   letalloc %true = constructor @True: Bool $ ()
@@ -94,7 +69,6 @@ entry:
   return %result: !Bool
 }
 
-#[decl @origin [name @IridiumLang]]
 export_as @primLtInt define @primLtInt(%a: !Int, %b: !Int): Bool {
 entry:
   letalloc %true = constructor @True: Bool $ ()
@@ -103,7 +77,6 @@ entry:
   return %result: !Bool
 }
 
-#[decl @origin [name @IridiumLang]]
 export_as @primGeInt define @primGeInt(%a: !Int, %b: !Int): Bool { ; a >= b <=> not(a < b)
 entry:
   letalloc %true = constructor @True: Bool $ ()
@@ -112,25 +85,18 @@ entry:
   return %result: !Bool
 }
 
-#[decl @origin [name @IridiumLang]]
 export_as @primLeInt define @primLeInt(%a: !Int, %b: !Int): Bool {
 entry:
   %result = call @primGeInt[2]: (Int -> Int -> Bool) $ (%b: !Int, %a: !Int)
   return %result: !Bool
 }
-#[decl @origin [name @IridiumLang]]
 export_as @primGtInt define @primGtInt(%a: !Int, %b: !Int): Bool = call @primLtInt[2]: (Int -> Int -> Bool) $ (%b: !Int, %a: !Int)
 
-#[decl @origin [name @IridiumLang]]
 export_as @primAddFloat define @primAddFloat(%a: !Float, %b: !Float): Float = prim float64_add(%a: !Float, %b: !Float)
-#[decl @origin [name @IridiumLang]]
 export_as @primSubFloat define @primSubFloat(%a: !Float, %b: !Float): Float = prim float64_sub(%a: !Float, %b: !Float)
-#[decl @origin [name @IridiumLang]]
 export_as @primMulFloat define @primMulFloat(%a: !Float, %b: !Float): Float = prim float64_mul(%a: !Float, %b: !Float)
-#[decl @origin [name @IridiumLang]]
 export_as @primDivFloat define @primDivFloat(%a: !Float, %b: !Float): Float = prim float64_div(%a: !Float, %b: !Float)
 
-#[decl @origin [name @IridiumLang]]
 export_as @primNegFloat define @primNegFloat(%a: !Float): Float {
 entry:
   %0 = literal float64 0
@@ -138,7 +104,6 @@ entry:
   return %result: !Float
 }
 
-#[decl @origin [name @IridiumLang]]
 export_as @primEqFloat define @primEqFloat(%a: !Float, %b: !Float): Bool {
 entry:
   letalloc %true = constructor @True: Bool $ ()
@@ -147,7 +112,6 @@ entry:
   return %result: !Bool
 }
 
-#[decl @origin [name @IridiumLang]]
 export_as @primNeFloat define @primNeFloat(%a: !Float, %b: !Float): Bool {
 entry:
   letalloc %true = constructor @True: Bool $ ()
@@ -156,7 +120,6 @@ entry:
   return %result: !Bool
 }
 
-#[decl @origin [name @IridiumLang]]
 export_as @primLtFloat define @primLtFloat(%a: !Float, %b: !Float): Bool {
 entry:
   letalloc %true = constructor @True: Bool $ ()
@@ -165,7 +128,6 @@ entry:
   return %result: !Bool
 }
 
-#[decl @origin [name @IridiumLang]]
 export_as @primGtFloat define @primGtFloat(%a: !Float, %b: !Float): Bool {
 entry:
   letalloc %true = constructor @True: Bool $ ()
@@ -174,7 +136,6 @@ entry:
   return %result: !Bool
 }
 
-#[decl @origin [name @IridiumLang]]
 export_as @primLeFloat define @primLeFloat(%a: !Float, %b: !Float): Bool {
 entry:
   letalloc %true = constructor @True: Bool $ ()
@@ -183,7 +144,6 @@ entry:
   return %result: !Bool
 }
 
-#[decl @origin [name @IridiumLang]]
 export_as @primGeFloat define @primGeFloat(%a: !Float, %b: !Float): Bool {
 entry:
   letalloc %true = constructor @True: Bool $ ()
@@ -192,14 +152,12 @@ entry:
   return %result: !Bool
 }
 
-#[decl @origin [name @IridiumLang]]
 export_as @seq define @seq(forall a, forall b, %a: !a, %b: !b): b [trampoline] {
 entry:
   %c = seq %a: !a, %b: !b
   return %c: !b
 }
 
-#[decl @origin [name @IridiumLang]]
 export_as @pseq define @pseq(forall a, forall b, %a: !a, %b: b): b [trampoline] {
 entry:
   %c = seq %a: !a, %b: b
@@ -210,29 +168,23 @@ entry:
 ; IO
 ; data IORes a = IORes a !RealWorld
 #[decl @kind [bytes "* -> *"]]
-#[decl @origin [name @IridiumLang]]
 export_as @IORes data @IORes {
   #[link @"IORes" @data]
-  #[decl @origin [name @IridiumLang]]
   export_as @IORes constructor @IORes: { forall a. a -> !RealWorld -> IORes a } <>
 }
 
 ; data RealWorld
 #[decl @kind [bytes "*"]]
-#[decl @origin [name @IridiumLang]]
 export_as @RealWorld data @RealWorld {}
 
 ; data IO a = IO !(RealWorld -> IORes a)
 #[decl @kind [bytes "* -> *"]]
-#[decl @origin [name @IridiumLang]]
 export_as @IO data @IO {
   #[link @"IO" @data]
-  #[decl @origin [name @IridiumLang]]
   export_as @IO constructor @"IO": { forall a. (RealWorld -> IORes a) -> IO a } <>
 }
 
 ; unsafePerformIO :: IO a -> a
-#[decl @origin [name @IridiumLang]]
 export_as @unsafePerformIO define @unsafePerformIO(forall a, %io: !(IO a)): a [trampoline] {
 entry:
   match %io: !IO on @IO: (forall a. (RealWorld -> IORes a) -> IO a) { a } (%fn)
@@ -246,15 +198,11 @@ entry:
 }
 
 ; $primPutChar :: Char -> RealWorld -> IORes Int
-#[decl @origin [name @IridiumLang]]
 export_as @$primPutChar declare @putchar[2]: { !Char -> !RealWorld -> IORes Int } [callconvention:c fake_io]
 
 ; $primGetChar :: RealWorld -> IORes Char
-#[decl @origin [name @IridiumLang]]
 export_as @$primGetChar declare @getchar[1]: { RealWorld -> IORes Char } [callconvention:c fake_io]
 
-#[decl @origin [name @IridiumLang]]
 export_as @$primIntToChar define @$primIntToChar(%x: !Int): Char [trampoline] = prim int_to_char(%x: !Int)
 
-#[decl @origin [name @IridiumLang]]
 export_as @$primCharToInt define @$primCharToInt(%x: !Char): Int [trampoline] = prim char_to_int(%x: !Int)
