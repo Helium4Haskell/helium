@@ -139,10 +139,12 @@ SEM Expression
   | Enum     lhs . dictionaryEnvironment = @newDEnv
              loc . localName             = flip setNameRange @range.self $ 
                                            case (@then.section, @to.section) of
-                                              (False, False) -> enumFromThenToName 
-                                              (False, True ) -> enumFromThenName 
-                                              (True , False) -> enumFromToName 
-                                              (True , True ) -> enumFromName 
+                                              -- TODO: We should not use those names here. They might not be in scope everywhere. We cannot use qualified names to fix this,
+                                              -- which we can do in the backend. Instead we should probably just hardcode the type of these functions here.
+                                              (False, False) -> nameFromString "enumFromThenTo"
+                                              (False, True ) -> nameFromString "enumFromThen"
+                                              (True , False) -> nameFromString "enumFromTo"
+                                              (True , True ) -> nameFromString "enumFrom"
                  . requiredDictionaries  = if @overloaded then @lhs.substitution |-> [PredicateFunction $ Predicate "Prelude.Enum" @elementType] else []
                  . newDEnv               = resolveOverloading (@lhs.classEnvironment)  @localName 
                                                               (@lhs.substitution |-> @lhs.availablePredicates) 

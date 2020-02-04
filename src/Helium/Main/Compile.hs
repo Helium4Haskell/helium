@@ -141,7 +141,7 @@ compileHaskellToCore basedir fullName contents options iridiumCache doneModules 
   -- Phase 6: Kind inferencing (by default turned off)
   let combinedEnv = foldr combineImportEnvironments localEnv importEnvs
 
-  -- print combinedEnv
+  print combinedEnv
   
   when (KindInferencing `elem` options) $
       doPhaseWithExit maximumNumberOfKindErrors (const "K") compileOptions $

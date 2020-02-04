@@ -78,8 +78,8 @@ constructorType typeVar fieldsSuper fieldsMembers classType =
 -- data DictEq a = DictEq (Eq a => a -> a -> Bool) (forall b . Eq a => b -> a -> Bool)
 
 --returns for every function in a class the function that retrieves that class from a dictionary
-classFunctions :: TypeInferenceOutput -> String -> String -> [Custom] -> [(Name, Int, DictLabel, Core.Type)] -> [CoreDecl]
-classFunctions typeOutput className typeVar origin combinedNames = [DeclCon -- Declare the constructor for the dictionary
+classFunctions :: [String] -> TypeInferenceOutput -> String -> String -> [(Name, Int, DictLabel, Core.Type)] -> [CoreDecl]
+classFunctions mod typeOutput className typeVar combinedNames = [DeclCon -- Declare the constructor for the dictionary
                                                     { declName = dictName
                                                     , declAccess  = Export dictName
                                                     , declModule  = Nothing
@@ -136,7 +136,7 @@ classFunctions typeOutput className typeVar origin combinedNames = [DeclCon -- D
                             declType
                     declType = snd $ declarationType typeOutput TCCNone name
                     val = DeclValue
-                        { declName    = idFromString $ getNameName name
+                        { declName    = idFromName $ addQualified mod name
                         , declAccess  = Export $ idFromString $ getNameName name
                         , declModule  = Nothing
                         , declType    = declType
@@ -148,15 +148,9 @@ classFunctions typeOutput className typeVar origin combinedNames = [DeclCon -- D
                                     Alt (PatCon (ConId $ idFromString ("Dict$" ++ className)) [typeArg] (map idFromString labels))
                                         (Ap (foldl (\e (Core.Quantor idx _) -> ApType e (Core.TVar idx)) (Var $ idFromString label) quantors) $ Var dictParam)
                                 ]
-                        -- TODO: Check if toplevelType is needed here
-                        , declCustoms = origin
+                        , declCustoms = []
                         }
-                in  if getNameName name == "negate" && className == "Prelude.Num" then
-                        [val, val{
-                            declName = idFromString "$negate"
-                        }]
-                    else
-                    [val]
+                in  [val]
 
 combineDeclIndex :: [(Name, Int, DictLabel, Core.Type)] -> [(Name, CoreDecl)] -> [(DictLabel, Name, Core.Type, Maybe CoreDecl)]
 combineDeclIndex ls [] = map (\(n, _, l, t) -> (l, n, t, Nothing)) ls

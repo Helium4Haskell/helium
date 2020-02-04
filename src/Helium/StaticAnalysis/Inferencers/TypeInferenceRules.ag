@@ -726,7 +726,8 @@ SEM Expression
                                   , @conTo   .<. @to.constraints
                                   ]
             . beta         = TVar @lhs.betaUnique
-            . overloaded   = case M.lookup enumFromName (typeEnvironment @lhs.importEnvironment) of
+            -- TODO: We should not use 'enumFrom' here, as it might not be imported in every module
+            . overloaded   = case M.lookup (nameFromString "enumFrom") (typeEnvironment @lhs.importEnvironment) of
                                 Just scheme -> isOverloaded scheme
                                 Nothing     -> False
             . elementType  = if @overloaded then TVar @lhs.betaDeclUnique else intQualType

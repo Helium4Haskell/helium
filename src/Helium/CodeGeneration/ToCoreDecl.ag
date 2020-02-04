@@ -260,7 +260,7 @@ SEM Declaration
                                                 Core.declKind = (Core.DeclKindCustom n)
                                             }) = stringFromId n `isSuffixOf` " infix"
                                             isInfix _ = False
-                                        in (classFunctions @lhs.typeOutput (getNameName @qualName) (getNameName $ head @simpletype.typevariables) [] $ constructFunctionMap @lhs.importEnv (length @superClasses) @qualName) ++
+                                        in (classFunctions @lhs.moduleQual @lhs.typeOutput (getNameName @qualName) (getNameName $ head @simpletype.typevariables) $ constructFunctionMap @lhs.importEnv (length @superClasses) @qualName) ++
                                         [
                                             Core.DeclCustom
                                                 {

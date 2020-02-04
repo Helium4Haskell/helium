@@ -8,6 +8,7 @@
 
 module Helium.ModuleSystem.CoreToImportEnv
     ( getImportEnvironment
+    , parseFromString
     ) where
 
 import Lvm.Core.Expr
