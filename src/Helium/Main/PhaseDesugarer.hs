@@ -23,7 +23,6 @@ import Helium.Syntax.UHA_Range(noRange)
 import Lvm.Core.Module(moduleDecls, declName, shallowKindFromDecl, declCustoms, accessPublic, declAccess, moduleImports, declModule)
 import Helium.ModuleSystem.ImportEnvironment()
 import Helium.ModuleSystem.DictionaryEnvironment (DictionaryEnvironment)
-import Helium.ModuleSystem.CoreToImportEnv(originFromDecl)
 import qualified Helium.CodeGeneration.CodeGeneration as CodeGeneration
 import Data.List(nubBy, sort, nub)
 import Data.Maybe(mapMaybe)
@@ -88,7 +87,7 @@ nubDecls = nubBy cmp
     where
         cmp x y = shallowKindFromDecl x == shallowKindFromDecl y 
             && declName x == declName y 
-            && originFromDecl x == originFromDecl y 
+            && declModule x == declModule y 
 
 -- It is possible to get double declarations, because we import the same value twice (but has the same origin). We simply remove doubles with same origins and kinds
 removeDoubleDecls :: CoreModule -> CoreModule

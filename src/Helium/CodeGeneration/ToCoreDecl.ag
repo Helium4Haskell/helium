@@ -52,7 +52,6 @@ SEM MaybeDeclarations [ | |   core : { Core.Expr -> Core.Expr } ]
 
 SEM Declaration
     | Type
-            loc.origin    = originCustoms @lhs.modulename @range.self
             (loc.qualname, loc.access, loc.module)
                         = if @lhs.isTopLevel 
                             then ( addQualified @lhs.moduleQual @simpletype.name
@@ -76,15 +75,14 @@ SEM Declaration
             , Core.declAccess = Core.Private
             , Core.declModule  = Nothing
             , Core.declType = toCoreType (convertTpSchemeToQualified @lhs.importEnv ts)
-            , Core.declCustoms = @origin
+            , Core.declCustoms = []
             }
         ]
 
     | Data    constructors.dataTypeName = @qualname
               constructors.dataTypeCoreType = @simpletype.coreType
               constructors.typevariables = @simpletype.typevariables
-              loc.origin      = originCustoms @lhs.modulename @range.self
-                 .qualDers    = map (convertClassNameToQualified @lhs.importEnv) @derivings.self
+              loc.qualDers    = map (convertClassNameToQualified @lhs.importEnv) @derivings.self
               (loc.qualname, loc.access, loc.module)
                             = if @lhs.isTopLevel 
                                 then ( addQualified @lhs.moduleQual @simpletype.name
@@ -99,13 +97,13 @@ SEM Declaration
             , Core.declAccess  = Core.Private
             , Core.declModule  = Nothing
             , Core.declKind    = Core.DeclKindCustom (idFromString "data")
-            , Core.declCustoms = [Core.CustomInt (length @simpletype.typevariables)] ++ @origin
+            , Core.declCustoms = [Core.CustomInt (length @simpletype.typevariables)]
             }]
         ++
         @selectorFunctions
         ++
         (if "Prelude.Show" `elem` map show @qualDers
-         then [ DerivingShow.dataDictionary @lhs.importEnv @self @origin @qualname ]
+         then [ DerivingShow.dataDictionary @lhs.importEnv @self [] @qualname ]
          else []
         )
         ++
@@ -142,7 +140,7 @@ SEM Declaration
             , Core.declModule  = Nothing
             , Core.declType    = @loc.declType
             , Core.valueValue  = addLambdas @lhs.typeOutput @lhs.typeClassContext @lhs.betaDeclUnique @bindings.name (@dictionaries ++ @ids) @bindings.core
-            , Core.declCustoms = if @lhs.isTopLevel then originCustoms @lhs.modulename @range.self else []
+            , Core.declCustoms = []
             }
         ]
     --  range                    : Range
@@ -170,7 +168,7 @@ SEM Declaration
                                 nextClauseId retType (patternMatchFail "pattern binding" retType @range.self)
                                 @righthandside.core
                             )
-                    , Core.declCustoms = if @lhs.isTopLevel then originCustoms @lhs.modulename @range.self else []
+                    , Core.declCustoms = []
                     }
                ]
             _ ->
@@ -185,8 +183,7 @@ SEM Declaration
                         let_ -- because guards can fail
                             nextClauseId patBindTp (patternMatchFail "pattern binding" patBindTp @range.self)
                             @righthandside.core
-                    , Core.declCustoms = [custom "type" "patternbinding"] ++
-                                            if @lhs.isTopLevel then originCustoms @lhs.modulename @range.self else []
+                    , Core.declCustoms = [custom "type" "patternbinding"]
                     }
                 :
                 [ Core.DeclValue
@@ -198,7 +195,7 @@ SEM Declaration
                         (let_ nextClauseId tp (patternMatchFail "pattern binding" tp @range.self)
                             (patternToCore @lhs.importEnv @pattern.patternTypes (patBindId, patBindTp, @pattern.self) (Core.Var (idFromName v)))
                         )
-                    , Core.declCustoms = if @lhs.isTopLevel then originCustoms @lhs.modulename @range.self else []
+                    , Core.declCustoms = []
                     }
                 | (v, tp) <- M.assocs @pattern.patternTypes
                 -- TODO: Check if this is necessary
@@ -220,7 +217,7 @@ SEM Declaration
                            .origin   = \n -> case Module.findInfixOrigin @lhs.extraDecls n of
                                         Nothing -> @lhs.moduleQual
                                         Just n -> getQualifiedFromString (stringFromId n)
-                           .origins  = map (@origin . idFromString . getNameName) @ops
+                           .origins  = map (@origin . idFromName) @ops
                            .zipped   = zip @ops @origins
                         lhs.decls    =
         map
@@ -245,7 +242,7 @@ SEM Declaration
                             --                            "SEM Declaration.Fixity"
                             --                            "unknown fixity"
                               )
-                        ] ++ if @lhs.isTopLevel then originCustoms @lhs.modulename @range.self else []
+                        ]
                     }
               )
             )
@@ -258,13 +255,12 @@ SEM Declaration
     | Class             loc . superClasses = getSuperClasses @contextQual
                             . contextQual  = map (convertContextItemToQualified @lhs.importEnv) @context.self
                             . qualName     = convertClassNameToQualified @lhs.importEnv @simpletype.name
-                            . origin       = originCustoms @lhs.modulename @range.self
                         lhs.decls    = let
                                             isInfix (Module.DeclCustom{
                                                 Core.declKind = (Core.DeclKindCustom n)
                                             }) = stringFromId n `isSuffixOf` " infix"
                                             isInfix _ = False
-                                        in (classFunctions @lhs.typeOutput (getNameName @qualName) (getNameName $ head @simpletype.typevariables) @origin $ constructFunctionMap @lhs.importEnv (length @superClasses) @qualName) ++
+                                        in (classFunctions @lhs.typeOutput (getNameName @qualName) (getNameName $ head @simpletype.typevariables) [] $ constructFunctionMap @lhs.importEnv (length @superClasses) @qualName) ++
                                         [
                                             Core.DeclCustom
                                                 {
@@ -274,8 +270,7 @@ SEM Declaration
                                                     Core.declModule = Nothing,
                                                     Core.declKind = Core.DeclKindCustom $ idFromString "ClassDefinition",
                                                     Core.declCustoms =
-                                                        constructClassMemberCustomDecl @lhs.importEnv @qualName (M.lookup @qualName $ classMemberEnvironment @lhs.importEnv) @origin
-                                                        ++ @origin
+                                                        constructClassMemberCustomDecl @lhs.importEnv @qualName (M.lookup @qualName $ classMemberEnvironment @lhs.importEnv) []
                                                 }
                                         ] ++ convertDictionaries @lhs.typeOutput @qualName @where.functionNames @where.whereDeclarations
                                          ++ (filter isInfix @where.decls)
@@ -290,7 +285,7 @@ SEM Declaration
                                                 @qualName 
                                                 @loc.typeName (map (\(n, TVar i) -> (n, i)) @instanceBetas)
                                                 (typeToCoreType @tp)
-                                                (originCustoms @lhs.modulename @range.self)
+                                                []
                                             ]
                         loc .   qualName    = convertClassNameToQualified @lhs.importEnv @name.self
                         loc .   contextQual = map (convertContextItemToQualified @lhs.importEnv) @context.self
@@ -527,7 +522,6 @@ SEM Constructor [ dataTypeName : Name typevariables : Names dataTypeCoreType : {
                                         @lhs.dataTypeName
                                         @constructor.self
                                         (valueConstructors @lhs.importEnv)
-                                    ++ originCustoms @lhs.modulename @range.self
                 , Core.declFields  = []
                 }
             )) [addQualified @lhs.moduleQual @constructor.self]
@@ -605,7 +599,4 @@ constructorCustoms dataTypeName name envWithParent =
         (M.lookup name env)
     where
         env = M.map (\(_, scheme) -> scheme) envWithParent
-
-originCustoms :: String -> Range -> [Core.Custom]
-originCustoms origin range = [Core.CustomDecl (Core.DeclKindCustom (idFromString "origin")) [Core.CustomName (idFromString (origin ++ ":" ++ showFullRange range))] ]
 }

@@ -8,8 +8,6 @@
 
 module Helium.ModuleSystem.CoreToImportEnv
     ( getImportEnvironment
-    , originFromCustoms
-    , originFromDecl
     ) where
 
 import Lvm.Core.Expr
@@ -48,20 +46,6 @@ nameFromCustoms importedInModule importedFromModId conName ( CustomLink parentid
     | otherwise =
         nameFromCustoms importedInModule importedFromModId conName cs
 nameFromCustoms importedInModule importedFromModId conName (_ : cs) = nameFromCustoms importedInModule importedFromModId conName cs
-
--- TODO: Refactor to deprecate the use of customs for origin in favor of the decl declModule field
-originFromDecl :: CoreDecl -> String
-originFromDecl decl
-    = fromMaybe (internalError "CoreToImportEnv" "originFromDecl"
-            ("imported without an origin: " ++ show (pretty decl)))
-        (originFromCustoms (declCustoms decl) <|> (stringFromId <$> declModule decl))
-
-originFromCustoms :: [Custom] -> Maybe String
-originFromCustoms [] = Nothing
-originFromCustoms ( CustomDecl (DeclKindCustom ident) [CustomName originid] : cs)
-    | stringFromId ident == "origin" = Just $ stringFromId originid
-    | otherwise                      = originFromCustoms cs
-originFromCustoms (_ : cs) = originFromCustoms cs
 
 parseFromString :: HParser a -> String -> a
 parseFromString p string = 
