@@ -6,31 +6,6 @@
 -- $Date$
 ----------------------------------------------------------------
 module LvmLang where
-    {- ( Bytes, Int, Float
-    , Bool(..), '':[]''(..)
-    , IO(..), IORes(..), RealWorld(..), Char, Double, PackedString, String
-    
-    , packedFromString, stringFromPacked, packedLength
-    , ($!), seq, pseq
-    , ''$primIntToChar''
-    , ''$primCharToInt''
-
-    -- IO
-    , unsafePerformIO, unsafePerformStrictIO
-    , ''$primPutStrLn''
-    , putChar
-    , getChar
-
-    -- Int
-    , (+#), (-#), (*#), div, mod, quot, rem
-    , and, xor, or, shr, shl, shrNat, negInt
-    , (==#), (/=#), (<#), (>#), (<=#), (>=#)
-{-
-    -- Float
-    , (+.), (-.), (*.), (/.), negFloat
-    , (==.), (/=.), (<.), (>.), (<=.), (>=.)
--}
-    ) where -}
 
 import ( IridiumLang )
 

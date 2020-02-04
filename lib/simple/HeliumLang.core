@@ -103,8 +103,6 @@ custom infix (:) : public [5,"right"]
   Basic data types
 ----------------------------------------------------------}
 data '':->'' x y
--- Daan has type Char = Int
--- data Char
 
 ''$primPackedToString'' :: PackedString -> String
 ''$primPackedToString'' p
