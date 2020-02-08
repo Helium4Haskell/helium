@@ -244,7 +244,7 @@ toInstruction supply env continue expr = case getApplicationOrConstruction expr 
           +> LetAlloc [Bind x (BindTargetConstructor dataTypeCon) casted]
           +> ret supplyRet env x continue
   (Left con@(Core.ConTuple arity), args) ->
-    let fntype = Core.typeOfCoreExpression (teCoreEnv env) (Core.Con con)
+    let fntype = Core.typeOfCoreExpression (teCoreEnv env) (Core.Con con Nothing)
         (args', castInstructions, _) = maybeCasts supply''' env fntype args
      in castInstructions
           +> LetAlloc [Bind x (BindTargetTuple arity) args']
@@ -385,9 +385,9 @@ gatherCaseIntAlts ((Just value, block) : xs) = CaseInt ((value, block) : alts) d
     CaseInt alts def = gatherCaseIntAlts xs
 
 transformAltInt :: NameSupply -> TypeEnv -> (Core.Alt, Continue) -> ((Maybe Int, BlockName), [Block])
-transformAltInt supply env (Core.Alt pattern expr, continue) = ((value, blockName), Block blockName instr : blocks)
+transformAltInt supply env (Core.Alt pat expr, continue) = ((value, blockName), Block blockName instr : blocks)
   where
-    value = case pattern of
+    value = case pat of
       Core.PatLit (Core.LitInt value _) -> Just value
       _ -> Nothing
     (blockName, supply') = freshIdFromId idMatchCase supply
@@ -467,9 +467,10 @@ conId :: Core.Con -> Id
 conId (Core.ConId x) = x
 conId _ = error "conId: unexpected ConTuple in gatherCaseConstructorAlts"
 
+-- TODO: pass mv to 'bind'
 getApplicationOrConstruction :: Core.Expr -> [Either Core.Type Id] -> (Either Core.Con Id, [Either Core.Type Id])
 getApplicationOrConstruction (Core.Var x) accum = (Right x, accum)
-getApplicationOrConstruction (Core.Con c) accum = (Left c, accum)
+getApplicationOrConstruction (Core.Con c _) accum = (Left c, accum)
 getApplicationOrConstruction (Core.Ap expr (Core.Var arg)) accum = getApplicationOrConstruction expr (Right arg : accum)
 getApplicationOrConstruction (Core.ApType expr tp) accum = getApplicationOrConstruction expr (Left tp : accum)
 getApplicationOrConstruction e _ = error $ "getApplicationOrConstruction: expression is not properly normalized: " ++ show (pretty e)

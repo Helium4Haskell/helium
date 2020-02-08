@@ -59,8 +59,9 @@ coreLift supply mod@(Module name major minor imports decls) = Module name major 
 boundVar :: Bind -> Variable
 boundVar (Bind var _) = var
 
+-- TODO: lift mutating as well
 liftExprInDecl :: TypeEnvironment -> NameSupply -> CoreDecl -> ([CoreDecl])
-liftExprInDecl typeEnv supply (DeclValue name access mod enc expr customs) = DeclValue name access mod enc expr' customs : decls
+liftExprInDecl typeEnv supply (DeclValue name access mod enc expr customs mut) = DeclValue name access mod enc expr' customs mut : decls
   where
     (expr', decls) = liftExprIgnoreLambdas supply [] expr $ Env typeEnv emptyMap
 liftExprInDecl _ _ decl = [decl]
@@ -136,8 +137,7 @@ renameInSimpleExpr :: Env -> Expr -> Expr
 renameInSimpleExpr env (Var name) = Var $ rename env name
 renameInSimpleExpr env (Ap e1 e2) = Ap (renameInSimpleExpr env e1) (renameInSimpleExpr env e2)
 renameInSimpleExpr env (ApType e t) = ApType (renameInSimpleExpr env e) t
-renameInSimpleExpr env e@(Con _) = e
-renameInSimpleExpr env e@(Lit _) = e
+renameInSimpleExpr env e = e
 
 rename :: Env -> Id -> Id
 rename env@(Env _ mapping) name = case lookupMap name mapping of
@@ -192,6 +192,7 @@ lazyBind isRec supply scope b@(Bind var@(Variable x t) expr) env = case extractT
       where
         addArg e (_, Left quantor) = Forall quantor KStar e
         addArg e (_, Right (Variable name tp)) = Lam (typeIsStrict tp) (Variable name $ typeNotStrict tp) e
+    -- Coreutils already as a function named like this, add mutating to this new declaration
     decl :: CoreDecl
     decl =
       DeclValue
@@ -200,7 +201,8 @@ lazyBind isRec supply scope b@(Bind var@(Variable x t) expr) env = case extractT
           declModule = Nothing,
           declType = functionType (reverse scope),
           valueValue = value,
-          declCustoms = []
+          declCustoms = [],
+          mutating = []
         }
     functionType :: Scope -> Type
     functionType [] = t

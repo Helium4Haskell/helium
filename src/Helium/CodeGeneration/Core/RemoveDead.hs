@@ -104,7 +104,7 @@ usageExpr locals used expr =
     Match x alts -> usageAlts locals (usageVar locals used x) alts
     Ap e1 e2 -> usageExpr locals (usageExpr locals used e1) e2
     Var x -> usageVar locals used x
-    Con con -> usageCon locals used con
+    Con con _ -> usageCon locals used con
     Lit _ -> used
     Forall _ _ e -> usageExpr locals used e
     ApType e _ -> usageExpr locals used e

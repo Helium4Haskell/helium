@@ -149,7 +149,7 @@ checkPattern env tp (PatLit lit) = do
   return env
 checkPattern env tp PatDefault = return env
 checkPattern env tp pat@(PatCon con@(ConId _) typeArgs ids) = do
-  let tCon = typeApplyList (typeOfCoreExpression env $ Con con) typeArgs
+  let tCon = typeApplyList (typeOfCoreExpression env $ Con con Nothing) typeArgs
   vars <- findVars tCon ids
   return $ typeEnvAddVariables vars env
   where

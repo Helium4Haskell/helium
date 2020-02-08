@@ -141,6 +141,7 @@ SEM Declaration
             , Core.declType    = @loc.declType
             , Core.valueValue  = addLambdas @lhs.typeOutput @lhs.typeClassContext @lhs.betaDeclUnique @bindings.name (@dictionaries ++ @ids) @bindings.core
             , Core.declCustoms = []
+            , Core.mutating = []
             }
         ]
     --  range                    : Range
@@ -169,6 +170,7 @@ SEM Declaration
                                 @righthandside.core
                             )
                     , Core.declCustoms = []
+                    , Core.mutating = []
                     }
                ]
             _ ->
@@ -184,6 +186,7 @@ SEM Declaration
                             nextClauseId patBindTp (patternMatchFail "pattern binding" patBindTp @range.self)
                             @righthandside.core
                     , Core.declCustoms = [custom "type" "patternbinding"]
+                    , Core.mutating = []
                     }
                 :
                 [ Core.DeclValue
@@ -196,6 +199,7 @@ SEM Declaration
                             (patternToCore @lhs.importEnv @pattern.patternTypes (patBindId, patBindTp, @pattern.self) (Core.Var (idFromName v)))
                         )
                     , Core.declCustoms = []
+                    , Core.mutating = []
                     }
                 | (v, tp) <- M.assocs @pattern.patternTypes
                 -- TODO: Check if this is necessary
@@ -483,6 +487,7 @@ SEM Declaration
                                     , Core.declType    = toCoreType (convertTpSchemeToQualified @lhs.importEnv ts)
                                     , Core.valueValue  = createRecordSelector @lhs.importEnv @range.self n t
                                     , Core.declCustoms = []
+                                    , Core.mutating = []
                                     }
               .recordEnv = recordEnvironment @lhs.importEnv
               .fieldTypes = map (\(n, (i, s, t, ts)) -> (n, t, ts)) (M.assocs @fieldMap)

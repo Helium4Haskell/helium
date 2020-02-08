@@ -59,7 +59,8 @@ dataDictionary env decla@(UHA.Declaration_Data _ _ (UHA.SimpleType_SimpleType _ 
         [custom "type" ("DictPrelude.Show$ " ++ getNameName qualname)]
           ++ map (custom "typeVariable" . getNameName) names
           ++ map (\n -> custom "superInstance" ("Prelude.Show-" ++ getNameName n)) names
-          ++ origin
+          ++ origin,
+      mutating = []
     }
   where
     name = idFromString ("$dictPrelude.Show$" ++ getNameName qualname)
@@ -83,7 +84,7 @@ dataDictionary env decla@(UHA.Declaration_Data _ _ (UHA.SimpleType_SimpleType _ 
               ApType (Var $ idFromString "default$Prelude.Show$showList") dataType,
               showBody
             ]
-          body = foldr (Lam False) (foldl Ap (ApType (Con $ ConId $ idFromString "DictPrelude.Show") dataType) fields) ids
+          body = foldr (Lam False) (foldl Ap (ApType (Con (ConId $ idFromString "DictPrelude.Show") Nothing) dataType) fields) ids
        in foldr
             (\(typeArg, idx) -> Forall (Core.Quantor idx $ Just $ getNameName typeArg) Core.KStar)
             body

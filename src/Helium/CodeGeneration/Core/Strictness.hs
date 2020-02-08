@@ -35,7 +35,7 @@ envForModule :: CoreModule -> Env
 envForModule mod@(Module _ _ _ _ decls) = Env typeEnv (mapFromList $ argsValues ++ argsAbstracts ++ argsConstructors)
   where
     typeEnv = typeEnvForModule mod
-    argsValues = [(name, getExpressionStrictness expr) | DeclValue name _ _ _ expr _ <- decls]
+    argsValues = [(name, getExpressionStrictness expr) | DeclValue name _ _ _ expr _ _ <- decls]
     argsAbstracts = [(name, getAbstractStrictness typeEnv arity tp) | DeclAbstract name _ _ arity tp _ <- decls]
     argsConstructors = [(name, getConstructorStrictness tp) | DeclCon name _ _ tp _ _ <- decls]
 
@@ -101,11 +101,11 @@ analyseApplication env (Var name) arity = case lookupMap name $ envFunctionArgum
     -- as we do not know whether the partially applied function will be called later on.
     | otherwise -> Analysis emptySet args
   _ -> Analysis (singleSet name) []
-analyseApplication env (Con (ConId name)) arity = case lookupMap name $ envFunctionArguments env of
+analyseApplication env (Con (ConId name) _) arity = case lookupMap name $ envFunctionArguments env of
   Just args
     | arity >= length args -> Analysis emptySet args
   _ -> Analysis emptySet []
-analyseApplication _ (Con _) _ = Analysis emptySet []
+analyseApplication _ (Con _ _) _ = Analysis emptySet []
 analyseApplication _ expr _ = error ("Strictness.analyseApplication: expected application, got " ++ show (pretty expr))
 
 analyseFunction :: Env -> NameSupply -> Expr -> Analysis Expr

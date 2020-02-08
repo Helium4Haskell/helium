@@ -114,8 +114,8 @@ SEM Expression [ | | core : { Core.Expr } ]
             tp = findCoreType @lhs.typeOutput @lhs.betaDeclUnique
             tps = Core.typeTupleElements tp
             constructor =
-                foldl Core.ApType (Core.Con $ Core.ConTuple $ length @expressions.core) tps  
-        in foldl 
+                foldl Core.ApType (Core.Con (Core.ConTuple $ length @expressions.core) Nothing) tps
+        in foldl
             Core.Ap 
             constructor
             @expressions.core
@@ -125,7 +125,7 @@ SEM Expression [ | | core : { Core.Expr } ]
     | Comprehension      loc.tp = findCoreType @lhs.typeOutput @lhs.betaDeclUnique
                          qualifiers.coreType = @loc.tp
                          lhs.core = 
-        let singleton x = cons @loc.tp x $ nil @loc.tp
+        let singleton x = cons Nothing @loc.tp x $ nil @loc.tp
         in foldr ($) (singleton @expression.core) @qualifiers.core
     --  range                    : Range
     --  expression               : Expression

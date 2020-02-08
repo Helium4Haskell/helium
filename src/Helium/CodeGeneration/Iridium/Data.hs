@@ -184,6 +184,7 @@ data Instruction
 data Bind = Bind {bindVar :: !Id, bindTarget :: !BindTarget, bindArguments :: ![Either Type Variable]}
   deriving (Eq, Ord)
 
+-- TODO: add bindMem to BindTargetConstructor
 -- A bind can either construct a thunk, a constructor or a tuple. For thunks, we distinguish
 -- primary thunks, which contain a function pointer, and secondary thunks, which point to other thunks.
 data BindTarget

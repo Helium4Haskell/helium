@@ -134,13 +134,13 @@ if_ guardExpr thenExpr elseExpr =
 --                    (Con "[]" `ApType` tp)
 --           )
 coreList :: Core.Type -> [Expr] -> Expr
-coreList tp = foldr (cons tp) (nil tp)
+coreList tp = foldr (cons Nothing tp) (nil tp)
 
-cons :: Core.Type -> Expr -> Expr -> Expr
-cons tp x xs = ApType (Con (ConId consId)) tp `app_` x `app_` xs
+cons :: (Maybe Id) -> Core.Type -> Expr -> Expr -> Expr
+cons mv tp x xs = ApType (Con (ConId consId) mv) tp `app_` x `app_` xs
 
 nil :: Core.Type -> Expr
-nil tp = ApType (Con (ConId nilId)) tp
+nil tp = ApType (Con (ConId nilId) Nothing) tp
 
 nilId, consId, trueId, guardId :: Id
 (nilId : consId : trueId : guardId : []) =
@@ -151,7 +151,7 @@ stringToCore :: String -> Expr
 stringToCore [] = nil tp
   where
     tp = Core.TCon $ Core.TConDataType $ idFromString "Char"
-stringToCore [x] = cons tp (Lit (LitInt (ord x) IntTypeChar)) $ nil tp
+stringToCore [x] = cons Nothing tp (Lit (LitInt (ord x) IntTypeChar)) $ nil tp
   where
     tp = Core.TCon $ Core.TConDataType $ idFromString "Char"
 stringToCore xs = var "$primPackedToString" `app_` packedString xs
@@ -169,6 +169,7 @@ float f =
 addToTypeEnv :: TypeEnvironment -> [(Name, TpScheme)] -> TypeEnvironment
 addToTypeEnv = foldr (\(name, tpScheme) env -> M.insert name tpScheme env)
 
+-- TODO: add extra argument for mutating
 decl :: Bool -> String -> Core.Type -> Expr -> CoreDecl
 decl isPublic x t e =
   DeclValue
@@ -177,7 +178,8 @@ decl isPublic x t e =
       declModule = Nothing,
       declType = t,
       valueValue = e,
-      declCustoms = []
+      declCustoms = [],
+      mutating = []
     }
 
 getTVar :: Top.Tp -> Maybe Int
@@ -434,7 +436,7 @@ createInstantiation typeOutput typeEnv name isConstructor beta = case maybeSchem
   Just scheme -> foldl (\e t -> Core.ApType e $ typeToCoreType t) expr $ findInstantiation (importEnv typeOutput) scheme tp
   where
     expr
-      | isConstructor = Core.Con $ Core.ConId $ idFromName name
+      | isConstructor = Core.Con (Core.ConId $ idFromName name) Nothing
       | otherwise = Core.Var $ idFromName name
     tp = lookupBeta beta typeOutput
     maybeScheme
@@ -483,7 +485,7 @@ createRecordInstantiation typeOutput@TypeInferenceOutput {..} name bindings tps 
     ImportEnvironment {..} = importEnv
     recordFields = M.assocs $ fromMaybe (err "constructor could not be found") (M.lookup name recordEnvironment)
     err = internalError "CoreUtils" "createRecordInstantiation"
-    constrExpr = Core.Con $ Core.ConId $ idFromName name
+    constrExpr = Core.Con (Core.ConId $ idFromName name) Nothing
     -- Find an instantiation of the type variables using the type inferred for the
     -- constructor and the defined typescheme of the constructor
     tVars = findInstantiation importEnv tps outputTp

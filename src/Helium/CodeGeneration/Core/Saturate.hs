@@ -126,6 +126,6 @@ requiredArgs env expr =
     ApType e1 t2 -> case requiredArgs env e1 of
       Just t1 -> Just $ typeApply t1 t2
       Nothing -> Nothing
-    Con (ConId x) -> findConstructorType x env
-    Con (ConTuple arity) -> Just $ typeTuple arity
+    Con (ConId x) _ -> findConstructorType x env
+    Con (ConTuple arity) _ -> Just $ typeTuple arity
     _ -> Nothing

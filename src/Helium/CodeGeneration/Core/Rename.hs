@@ -127,7 +127,7 @@ analyse :: CoreModule -> Analysis
 analyse (Module _ _ _ _ decls) = foldr analyseDecl emptyMap decls
 
 analyseDecl :: CoreDecl -> Analysis -> Analysis
-analyseDecl (DeclValue _ _ _ _ expr _) = dupUnion $ duplicateNames expr
+analyseDecl (DeclValue _ _ _ _ expr _ _) = dupUnion $ duplicateNames expr
 analyseDecl _ = id
 
 duplicateNames :: Expr -> Analysis
@@ -137,9 +137,7 @@ duplicateNames (Ap e1 e2) = dupUnion (duplicateNames e1) (duplicateNames e2)
 duplicateNames (Lam _ (Variable x _) expr) = dupInsert x $ duplicateNames expr
 duplicateNames (Forall _ _ expr) = duplicateNames expr
 duplicateNames (ApType expr _) = duplicateNames expr
-duplicateNames (Con _) = emptyMap
-duplicateNames (Var _) = emptyMap
-duplicateNames (Lit _) = emptyMap
+duplicateNames _ = emptyMap
 
 duplicateNamesInAlt :: Alt -> Analysis
 duplicateNamesInAlt (Alt (PatCon _ _ args) expr) = dupInserts args $ duplicateNames expr

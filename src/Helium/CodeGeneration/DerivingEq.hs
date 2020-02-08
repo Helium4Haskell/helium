@@ -41,7 +41,8 @@ dataDictionary env (UHA.Declaration_Data _ _ (UHA.SimpleType_SimpleType _ name n
       declCustoms =
         [custom "type" ("DictPrelude.Eq$ " ++ getNameName qualname)]
           ++ map (custom "typeVariable" . getNameName) names
-          ++ map (\n -> custom "superInstance" ("Prelude.Eq-" ++ getNameName n)) names
+          ++ map (\n -> custom "superInstance" ("Prelude.Eq-" ++ getNameName n)) names,
+      mutating = []
     }
   where
     nm = idFromString ("$dictPrelude.Eq$" ++ getNameName qualname)
@@ -72,7 +73,7 @@ eqDict env dictType dataType names constructors =
         dictfType
         (eqFunction env dictType dataType typeArgs constructors)
         ( Ap
-            (Ap (ApType (Con $ ConId $ idFromString "Dict$Prelude.Eq") dataType) (ApType (var "default$Prelude.Eq$/=") dataType))
+            (Ap (ApType (Con (ConId $ idFromString "Dict$Prelude.Eq") Nothing) dataType) (ApType (var "default$Prelude.Eq$/=") dataType))
             (var "func$eq")
         )
     typeArgs = M.fromList (zipWith (\name idx -> (name, Core.TVar idx)) names [1 ..])
@@ -116,7 +117,7 @@ makeAlt env altType typeArgs constructor =
         [ Alt
             (PatCon (ConId ident) elems ws)
             ( if null types
-                then Con (ConId (idFromString "True"))
+                then Con (ConId (idFromString "True")) Nothing
                 else
                   foldr1
                     andCore
@@ -124,7 +125,7 @@ makeAlt env altType typeArgs constructor =
                       | (v, w, (tp, expr)) <- zip3 vs ws types
                     ]
             ),
-          Alt PatDefault (Con (ConId (idFromString "False")))
+          Alt PatDefault (Con (ConId (idFromString "False")) Nothing)
         ]
     )
   where

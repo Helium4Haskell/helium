@@ -46,7 +46,7 @@ isCheap :: Expr -> Bool
 isCheap (Lit _) = True
 -- A constructor (or applied constructor) is cheap
 isCheap (Ap l _) = isCheap l
-isCheap (Con _) = True
+isCheap (Con _ _) = True
 -- A let expression is cheap if its expression is cheap
 -- and (the binding is lazy or its value is cheap)
 isCheap (Let (Strict (Bind _ value)) expr) = isCheap value && isCheap expr

@@ -68,7 +68,7 @@ analyse (Ap e1 e2) = ASequence (analyse e1) (analyse e2)
 analyse (Lam _ (Variable name _) e) = ALambda $ AIgnore name $ analyse e
 analyse (Forall _ _ e) = analyse e
 analyse (ApType e1 _) = analyse e1
-analyse (Con _) = ANil
+analyse (Con _ _) = ANil
 analyse (Lit _) = ANil
 
 data Decision
@@ -131,7 +131,7 @@ solve (AIgnore name a) = filter checkName $ solve a
 isShort :: Bool -> Expr -> Bool
 isShort _ (Var _) = True
 isShort _ (Lit _) = True
-isShort _ (Con _) = True
+isShort _ (Con _ _) = True
 isShort allowAp (Forall _ _ e) = isShort allowAp e
 isShort True (Ap e1 e2) = isShort True e1 && isShort True e2
 isShort _ _ = False
@@ -158,7 +158,7 @@ createEnv arities expr = Env arities vars emptyMap
 inlineInExpr :: Env -> Expr -> Expr
 inlineInExpr env e@(Lit _) = e
 inlineInExpr env e@(Var name) = fromMaybe e $ lookupMap name $ values env
-inlineInExpr env e@(Con _) = e
+inlineInExpr env e@(Con _ _) = e
 inlineInExpr env (Lam strict x e) = Lam strict x $ inlineInExpr env e
 inlineInExpr env (Ap e1 e2) = Ap (inlineInExpr env e1) (inlineInExpr env e2)
 inlineInExpr env (Forall x k e) = Forall x k $ inlineInExpr env e

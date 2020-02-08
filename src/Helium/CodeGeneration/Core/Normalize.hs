@@ -41,7 +41,7 @@ isTrivial _ = False
 -- variables.
 isApTarget :: Expr -> Bool
 isApTarget (Ap _ _) = True
-isApTarget (Con _) = True
+isApTarget (Con _ _) = True
 isApTarget (Var _) = True
 isApTarget (Forall _ _ e) = isApTarget e
 isApTarget (ApType e _) = isApTarget e

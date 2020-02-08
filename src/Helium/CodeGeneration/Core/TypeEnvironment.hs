@@ -124,9 +124,9 @@ typeOfCoreExpression env (Forall x kind expr) =
   TForall x kind $ typeOfCoreExpression env expr
 -- Expression: (,)
 -- Type: forall a. forall b. a -> b -> (a, b)
-typeOfCoreExpression env (Con (ConTuple arity)) = typeTuple arity
+typeOfCoreExpression env (Con (ConTuple arity) _) = typeTuple arity
 -- Resolve the type of a variable or constructor
-typeOfCoreExpression env (Con (ConId x)) = typeOfId env x
+typeOfCoreExpression env (Con (ConId x) _) = typeOfId env x
 typeOfCoreExpression env (Var x) = typeOfId env x
 -- Types of literals
 typeOfCoreExpression _ (Lit lit) = typeOfLiteral lit
