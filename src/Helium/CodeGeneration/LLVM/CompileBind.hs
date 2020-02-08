@@ -1,4 +1,10 @@
-module Helium.CodeGeneration.LLVM.CompileBind (compileBinds, toStruct) where
+{-# LANGUAGE TupleSections #-}
+
+module Helium.CodeGeneration.LLVM.CompileBind
+  ( compileBinds,
+    toStruct,
+  )
+where
 
 import Data.Bits ((.&.), (.|.), shiftL)
 import Data.Either
@@ -28,8 +34,11 @@ import qualified Lvm.Core.Type as Core
 idThunk :: Id
 idThunk = idFromString "$alloc_thunk"
 
-idCon :: Id
-idCon = idFromString "$alloc_con"
+idACon :: Id
+idACon = idFromString "$alloc_con"
+
+idNACon :: Id
+idNACon = idFromString "$nonalloc_con"
 
 compileBinds :: Env -> NameSupply -> [Iridium.Bind] -> [Named Instruction]
 compileBinds env supply binds = concat inits ++ concat assigns
@@ -51,7 +60,8 @@ compileBind' env supply (Iridium.Bind varId target _) (Left tag) =
     value = fromIntegral tag * 2 + 1
 compileBind' env supply bind@(Iridium.Bind varId target args) (Right struct) =
   ( concat splitInstructions
-      ++ allocate env nameVoid nameStruct t struct
+      ++ maybe (allocate nameBind (sizeOf env struct)) (const []) (getReuse target)
+      ++ [nameStruct := BitCast operandVoid (pointer t) []]
       ++ castBind,
     additionalArgInstructions
       ++ initialize supplyInit env (LocalReference (pointer t) nameStruct) struct (additionalArgs ++ if shouldReverse then reverse argOperands else argOperands)
@@ -84,10 +94,10 @@ compileBind' env supply bind@(Iridium.Bind varId target args) (Right struct) =
     (supplyArgs, supply1) = splitNameSupply supply
     (supplyInit, supply2) = splitNameSupply supply1
     (supplyAdditionalArgs, supply3) = splitNameSupply supply2
-    (nameVoid, supply4) = freshName supply3
+    (nameBind, supply4) = getNameReuse supply3 target
     (nameStruct, _) = freshNameFromId (nameSuggestion target) supply4
     whnf = Iridium.typeIsStrict $ Iridium.bindType (envTypeEnv env) bind
-    operandVoid = LocalReference voidPointer nameVoid
+    operandVoid = LocalReference voidPointer nameBind
     castBind
       | whnf = [toName varId := BitCast operandVoid voidPointer []]
       | otherwise =
@@ -99,15 +109,39 @@ compileBind' env supply bind@(Iridium.Bind varId target args) (Right struct) =
               []
         ]
 
+allocate :: Name -> Int -> [Named Instruction]
+allocate name size =
+  [name := Call Nothing C [] (Right Builtins.alloc) [(ConstantOperand $ Constant.Int 32 $ fromIntegral size, [])] [] []]
+
+getAllocate :: Iridium.BindTarget -> Name -> Int -> [Named Instruction]
+getAllocate (Iridium.BindTargetConstructor _ mv) name size = getDataAllocate mv name size
+getAllocate (Iridium.BindTargetTuple _ mv) name size = getDataAllocate mv name size
+getAllocate _ name size = allocate Builtins.fn_alloc name size
+
+getDataAllocate :: Maybe Id -> Name -> Int -> [Named Instruction]
+getDataAllocate reuse name size = maybe (allocate Builtins.ds_alloc name size) (const []) reuse
+
+getNameReuse :: NameSupply -> Iridium.BindTarget -> (Name, NameSupply)
+getNameReuse supply (Iridium.BindTargetConstructor _ mv) = getNameReuse' supply mv
+getNameReuse supply (Iridium.BindTargetTuple _ mv) = getNameReuse' supply mv
+getNameReuse supply _ = freshName supply
+
+getNameReuse' :: NameSupply -> Maybe Id -> (Name, NameSupply)
+getNameReuse' supply mv = maybe (freshName supply) ((,supply) . toName) mv
+
 nameSuggestion :: Iridium.BindTarget -> Id
-nameSuggestion (Iridium.BindTargetConstructor _) = idCon
+nameSuggestion (Iridium.BindTargetConstructor _ mv) = nameSuggestion' mv
+nameSuggestion (Iridium.BindTargetTuple _ mv) = nameSuggestion' mv
 nameSuggestion _ = idThunk
 
+nameSuggestion' :: Maybe Id -> Id
+nameSuggestion' mv = maybe idACon (const idNACon) mv
+
 toStruct :: Env -> Iridium.BindTarget -> Int -> Either Int Struct
-toStruct env (Iridium.BindTargetConstructor (Iridium.DataTypeConstructor conId _)) arity = case findMap conId (envConstructors env) of
+toStruct env (Iridium.BindTargetConstructor (Iridium.DataTypeConstructor conId _) _) arity = case findMap conId (envConstructors env) of
   LayoutInline value -> Left value
   LayoutPointer struct -> Right struct
-toStruct env (Iridium.BindTargetTuple arity) _ = Right $ tupleStruct arity
+toStruct env (Iridium.BindTargetTuple arity _) _ = Right $ tupleStruct arity
 toStruct env target arity = Right $ Struct Nothing 0 0 fields
   where
     fields =

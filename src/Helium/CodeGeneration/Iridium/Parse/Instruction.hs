@@ -56,15 +56,16 @@ pCaseAlt :: Parser a -> Parser (a, BlockName)
 pCaseAlt pPattern = (\pat to -> (pat, to)) <$> pPattern <* pWhitespace <* pSymbol "to" <* pWhitespace <*> pId
 
 pBind :: QuantorIndexing -> Parser Bind
-pBind quantors = Bind <$ pToken '%' <*> pId <* pWhitespace <* pToken '=' <* pWhitespace <*> pBindTarget quantors <* pWhitespace <* pToken '$' <* pWhitespace <*> pCallArguments quantors
+pBind quantors = Bind <$ pToken '%' <*> pId <* pWhitespace <* pToken '=' <* pWhitespace <*> pBindTarget Nothing quantors <* pWhitespace <* pToken '$' <* pWhitespace <*> pCallArguments quantors
 
-pBindTarget :: QuantorIndexing -> Parser BindTarget
-pBindTarget quantors = do
+pBindTarget :: Maybe Id -> QuantorIndexing -> Parser BindTarget
+pBindTarget mid quantors = do
   key <- pKeyword
   case key of
     "function" -> BindTargetFunction <$> pGlobalFunction quantors
     "thunk" -> BindTargetThunk <$> pVariable quantors
-    "constructor" -> BindTargetConstructor <$> pDataTypeConstructor
+    "constructor" -> (\a -> BindTargetConstructor a mid) <$> pDataTypeConstructor
+    "reuse" -> (Just <$ pWhitespace <* pToken '%' <*> pId <* pWhitespace) >>= (`pBindTarget` quantors)
     "tuple" -> BindTargetTuple <$> pUnsignedInt
     _ -> pError "expected bind in letalloc"
 

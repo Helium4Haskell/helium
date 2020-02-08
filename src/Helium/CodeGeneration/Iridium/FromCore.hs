@@ -235,21 +235,21 @@ toInstruction supply env continue (Core.Var var) = case resolve env var of
     (name, supply') = freshId supply
     (nameThunk, supply'') = freshId supply'
 toInstruction supply env continue expr = case getApplicationOrConstruction expr [] of
-  (Left (Core.ConId con), args) ->
+  (mv, Left (Core.ConId con), args) ->
     let dataTypeCon@(DataTypeConstructor dataName fntype) = case valueDeclaration env con of
           ValueConstructor c -> c
           _ -> error "toInstruction: Illegal target of allocation, expected a constructor"
         (casted, castInstructions, _) = maybeCasts supply''' env fntype args
      in castInstructions
-          +> LetAlloc [Bind x (BindTargetConstructor dataTypeCon) casted]
+          +> LetAlloc [Bind x (BindTargetConstructor dataTypeCon mv) casted]
           +> ret supplyRet env x continue
-  (Left con@(Core.ConTuple arity), args) ->
+  (mv, Left con@(Core.ConTuple arity), args) ->
     let fntype = Core.typeOfCoreExpression (teCoreEnv env) (Core.Con con Nothing)
         (args', castInstructions, _) = maybeCasts supply''' env fntype args
      in castInstructions
-          +> LetAlloc [Bind x (BindTargetTuple arity) args']
+          +> LetAlloc [Bind x (BindTargetTuple arity mv) args']
           +> ret supplyRet env x continue
-  (Right fn, args)
+  (_, Right fn, args)
     | all isLeft args && not (isGlobalFunction $ resolve env fn) ->
       let e1 = (Instantiate (resolveVariable env fn) $ map (fromLeft $ error "FromCore.toInstruction: expected Left") args)
           t1 = typeOfExpr (teCoreEnv env) e1
@@ -428,7 +428,7 @@ gatherCaseConstructorAlts supply env (continue : continues) remaining var (Core.
 bind :: NameSupply -> TypeEnv -> Core.Bind -> Bind
 bind supply env (Core.Bind (Core.Variable x _) val) = Bind x target $ map toArg args
   where
-    (apOrCon, args) = getApplicationOrConstruction val []
+    (mv, apOrCon, args) = getApplicationOrConstruction val []
     (supply1, supply2) = splitNameSupply supply
     toArg (Left tp) = Left tp
     toArg (Right var) = Right $ resolveVariable env var
@@ -436,8 +436,8 @@ bind supply env (Core.Bind (Core.Variable x _) val) = Bind x target $ map toArg 
     target = case apOrCon of
       Left (Core.ConId con) ->
         let ValueConstructor constructor = valueDeclaration env con
-         in BindTargetConstructor constructor
-      Left (Core.ConTuple arity) -> BindTargetTuple arity
+         in BindTargetConstructor constructor mv
+      Left (Core.ConTuple arity) -> BindTargetTuple arity mv
       Right fn -> case resolveFunction env fn of
         Just (arity, fntype) ->
           BindTargetFunction $ GlobalFunction fn arity fntype
@@ -461,16 +461,16 @@ coreBindIsStrict env val = case apOrCon of
       | otherwise -> True -- Not all arguments were passed, so the value is already in WHNF
     Nothing -> False
   where
-    (apOrCon, args) = getApplicationOrConstruction val []
+    (_, apOrCon, args) = getApplicationOrConstruction val []
 
 conId :: Core.Con -> Id
 conId (Core.ConId x) = x
 conId _ = error "conId: unexpected ConTuple in gatherCaseConstructorAlts"
 
 -- TODO: pass mv to 'bind'
-getApplicationOrConstruction :: Core.Expr -> [Either Core.Type Id] -> (Either Core.Con Id, [Either Core.Type Id])
-getApplicationOrConstruction (Core.Var x) accum = (Right x, accum)
-getApplicationOrConstruction (Core.Con c _) accum = (Left c, accum)
+getApplicationOrConstruction :: Core.Expr -> [Either Core.Type Id] -> (Maybe Id, Either Core.Con Id, [Either Core.Type Id])
+getApplicationOrConstruction (Core.Var x) accum = (Nothing, Right x, accum)
+getApplicationOrConstruction (Core.Con c mv) accum = (mv, Left c, accum)
 getApplicationOrConstruction (Core.Ap expr (Core.Var arg)) accum = getApplicationOrConstruction expr (Right arg : accum)
 getApplicationOrConstruction (Core.ApType expr tp) accum = getApplicationOrConstruction expr (Left tp : accum)
 getApplicationOrConstruction e _ = error $ "getApplicationOrConstruction: expression is not properly normalized: " ++ show (pretty e)

@@ -212,7 +212,7 @@ compileExpression env supply expr@(Iridium.Call to@(Iridium.GlobalFunction globa
         supply''
         [ Iridium.Bind
             name
-            (Iridium.BindTargetConstructor ioRes)
+            (Iridium.BindTargetConstructor ioRes Nothing)
             [Left Iridium.typeInt, Right $ Iridium.VarLocal $ Iridium.Local nameValue Iridium.typeInt, Right $ Iridium.VarLocal $ Iridium.Local nameRealWorld Iridium.typeRealWorld]
         ]
   where

@@ -109,8 +109,8 @@ instance ShowWithQuantors Bind where
 instance ShowWithQuantors BindTarget where
   showsQ quantors (BindTargetFunction global) = text "function " . shows global
   showsQ quantors (BindTargetThunk var) = text "thunk " . showsQ quantors var
-  showsQ quantors (BindTargetConstructor con) = text "constructor " . shows con
-  showsQ quantors (BindTargetTuple arity) = text "tuple " . shows arity
+  showsQ quantors (BindTargetConstructor con mv) = text "constructor " . shows con . maybe (text ([])) (((text " reuse " . text "%") .) . showId) mv
+  showsQ quantors (BindTargetTuple arity mv) = text "tuple " . shows arity . maybe (text ([])) (((text " reuse " . text "%") .) . showId) mv
 
 instance Show MatchTarget where
   showsPrec _ (MatchTargetConstructor con) = shows con

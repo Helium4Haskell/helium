@@ -184,7 +184,6 @@ data Instruction
 data Bind = Bind {bindVar :: !Id, bindTarget :: !BindTarget, bindArguments :: ![Either Type Variable]}
   deriving (Eq, Ord)
 
--- TODO: add bindMem to BindTargetConstructor
 -- A bind can either construct a thunk, a constructor or a tuple. For thunks, we distinguish
 -- primary thunks, which contain a function pointer, and secondary thunks, which point to other thunks.
 data BindTarget
@@ -193,9 +192,9 @@ data BindTarget
   | -- The object points at another thunk and is thus a secondary thunk.
     BindTargetThunk !Variable
   | -- The bind represents a constructor invocation.
-    BindTargetConstructor !DataTypeConstructor
+    BindTargetConstructor !DataTypeConstructor !(Maybe Id)
   | -- The bind represents the construction of a tuple.
-    BindTargetTuple !Arity
+    BindTargetTuple !Arity !(Maybe Id)
   deriving (Eq, Ord)
 
 -- A 'match' instruction can pattern match on constructors, tuples or thunks. The latter
@@ -242,9 +241,9 @@ typeApplyArguments env tp args = case tp' of
 -- Find the type of the constructed object in a Bind
 bindType :: TypeEnvironment -> Bind -> Type
 -- In case of a constructor application, we get a value in WHNF of the related data type.
-bindType env (Bind _ (BindTargetConstructor cons) args) = typeToStrict $ typeApplyArguments env (constructorType cons) args
+bindType env (Bind _ (BindTargetConstructor cons _) args) = typeToStrict $ typeApplyArguments env (constructorType cons) args
 -- For a tuple, we get a value in WHNF of the given tuple size.
-bindType env (Bind _ (BindTargetTuple arity) args) = typeToStrict $ foldl ap (TCon $ TConTuple arity) args
+bindType env (Bind _ (BindTargetTuple arity _) args) = typeToStrict $ foldl ap (TCon $ TConTuple arity) args
   where
     ap t1 (Right _) = t1
     ap t1 (Left t2) = t1 `TAp` t2

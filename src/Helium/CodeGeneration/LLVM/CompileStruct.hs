@@ -96,12 +96,6 @@ tagInFirstElement env struct = tagSize struct + targetGarbageCollectorBits targe
   where
     target = envTarget env
 
-allocate :: Env -> Name -> Name -> Type -> Struct -> [Named Instruction]
-allocate env nameVoid name t struct =
-  [ nameVoid := Call Nothing C [] (Right Builtins.alloc) [(ConstantOperand $ Constant.Int 32 $ fromIntegral $ sizeOf env struct, [])] [] [],
-    name := BitCast (LocalReference voidPointer nameVoid) (pointer t) []
-  ]
-
 headerElementSize :: Env -> Int -> Int
 headerElementSize env 0 = firstFieldSize $ envTarget env
 headerElementSize env _ = targetWordSize $ envTarget env
