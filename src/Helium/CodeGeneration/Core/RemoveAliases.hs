@@ -1,4 +1,4 @@
-{-| Module      :  RemoveAliases
+{-  Module      :  RemoveAliases
     License     :  GPL
 
     Maintainer  :  helium@cs.uu.nl
@@ -21,22 +21,25 @@
 --   as
 --   _ -> match x on
 --     bs
--- 
+--
 -- After:
 -- match x on
 --   as
 --   bs
 
-module Helium.CodeGeneration.Core.RemoveAliases (coreRemoveAliases) where
+module Helium.CodeGeneration.Core.RemoveAliases
+  ( coreRemoveAliases,
+  )
+where
 
+import Data.Maybe (fromMaybe)
 import Lvm.Common.Id
-import Lvm.Common.IdSet
 import Lvm.Common.IdMap
-import Data.Maybe(fromMaybe)
+import Lvm.Common.IdSet
 import Lvm.Core.Expr
-import Lvm.Core.Type
 import Lvm.Core.Module
-import Lvm.Core.Utils(mapAlts, mapBinds)
+import Lvm.Core.Type
+import Lvm.Core.Utils (mapAlts, mapBinds)
 
 coreRemoveAliases :: CoreModule -> CoreModule
 coreRemoveAliases = fmap (renameExpr emptyEnv)
@@ -68,8 +71,8 @@ renameExpr env (Let (Strict (Bind var@(Variable x _) bindExpr)) expr) = bind $ r
       _ -> (Let $ Strict $ Bind var $ renameExpr env bindExpr, env)
 renameExpr env (Let bs expr) = Let (mapBinds (\var e -> Bind var $ renameExpr env e) bs) $ renameExpr env expr
 renameExpr env (Match x alts) =
-  Match x'
-    $ alts >>= renameAlt env x'
+  Match x' $
+    alts >>= renameAlt env x'
   where
     x' = lookupId env x
 renameExpr env (Ap e1 e2) = Ap (renameExpr env e1) (renameExpr env e2)

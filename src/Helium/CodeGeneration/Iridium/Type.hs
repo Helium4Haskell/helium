@@ -1,10 +1,9 @@
-{-| Module      :  Type
-    License     :  GPL
-
-    Maintainer  :  helium@cs.uu.nl
-    Stability   :  experimental
-    Portability :  portable
--}
+--    Module      :  Type
+--    License     :  GPL
+--
+--    Maintainer  :  helium@cs.uu.nl
+--    Stability   :  experimental
+--    Portability :  portable
 
 -- Iridium is the intermediate representation (IR) that we use between Core and LLVM. It is an imperative
 -- strict language. It features pattern matching.
@@ -13,17 +12,34 @@
 -- the entry block describes the arguments of the method.
 
 module Helium.CodeGeneration.Iridium.Type
-  ( typeFromFunctionType, FunctionType(..), extractFunctionTypeNoSynonyms, extractFunctionTypeWithArity
-  , FloatPrecision(..), Core.TypeEnvironment(..), Core.typeNormalizeHead, Core.typeEqual, typeIsStrict, typeToStrict
-  , typeNotStrict, typeRemoveArgumentStrictness
-  , typeRealWorld, typeUnsafePtr, typeTrampoline, typeInt, typeInt16, typeChar, typeFloat, functionTypeArity
-  ) where
+  ( typeFromFunctionType,
+    FunctionType (..),
+    extractFunctionTypeNoSynonyms,
+    extractFunctionTypeWithArity,
+    FloatPrecision (..),
+    Core.TypeEnvironment (..),
+    Core.typeNormalizeHead,
+    Core.typeEqual,
+    typeIsStrict,
+    typeToStrict,
+    typeNotStrict,
+    typeRemoveArgumentStrictness,
+    typeRealWorld,
+    typeUnsafePtr,
+    typeTrampoline,
+    typeInt,
+    typeInt16,
+    typeChar,
+    typeFloat,
+    functionTypeArity,
+  )
+where
 
-import Lvm.Common.Id(Id, stringFromId, idFromString)
-import Data.List(intercalate)
-import Data.Either(isRight)
-import Lvm.Core.Type
+import Data.Either (isRight)
+import Data.List (intercalate)
 import Helium.CodeGeneration.Core.TypeEnvironment as Core
+import Lvm.Common.Id (Id, idFromString, stringFromId)
+import Lvm.Core.Type
 
 typeRealWorld, typeUnsafePtr, typeTrampoline, typeInt, typeInt16, typeChar, typeFloat :: Type
 typeRealWorld = TStrict $ TCon $ TConDataType $ idFromString "$RealWorld"

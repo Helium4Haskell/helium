@@ -1,16 +1,22 @@
-{-# LANGUAGE RankNTypes, ApplicativeDo #-}
+{-# LANGUAGE ApplicativeDo #-}
+{-# LANGUAGE RankNTypes #-}
 
-module Helium.CodeGeneration.Iridium.Parse.Module (parseModule, parseModuleIO, parseModuleIO') where
+module Helium.CodeGeneration.Iridium.Parse.Module
+  ( parseModule,
+    parseModuleIO,
+    parseModuleIO',
+  )
+where
 
-import Lvm.Common.Id(Id)
-import Lvm.Core.Module(Field(..))
-import Helium.CodeGeneration.Iridium.Parse.Parser
-import Helium.CodeGeneration.Iridium.Parse.Type
+import Helium.CodeGeneration.Iridium.Data
 import Helium.CodeGeneration.Iridium.Parse.Custom
 import Helium.CodeGeneration.Iridium.Parse.Instruction
 import Helium.CodeGeneration.Iridium.Parse.Method
-import Helium.CodeGeneration.Iridium.Data
+import Helium.CodeGeneration.Iridium.Parse.Parser
+import Helium.CodeGeneration.Iridium.Parse.Type
 import Helium.CodeGeneration.Iridium.Type
+import Lvm.Common.Id (Id)
+import Lvm.Core.Module (Field (..))
 import System.Exit
 
 pCustomDeclaration :: Parser CustomDeclaration
@@ -38,21 +44,21 @@ pDataType = do
   pToken '{'
   pWhitespace
   c <- lookahead
-  if c == '}' then do
-    pChar
-    return $ DataType []
-  else
-    DataType <$> pSome pDataTypeConstructorDeclaration pSep
+  if c == '}'
+    then do
+      pChar
+      return $ DataType []
+    else DataType <$> pSome pDataTypeConstructorDeclaration pSep
   where
     pSep :: Parser Bool
     pSep = do
       pWhitespace
       c <- lookahead
-      if c == '}' then do
-        pChar
-        return False
-      else
-        return True
+      if c == '}'
+        then do
+          pChar
+          return False
+        else return True
 
 pTypeSynonym :: Parser TypeSynonym
 pTypeSynonym = do
@@ -69,30 +75,30 @@ pFields :: Parser [Field]
 pFields = do
   pWhitespace
   c <- lookahead
-  if c == '(' then do
-    pChar
-    pWhitespace
-    fields <- pSome pField pSep
-    pToken ')'
-    return fields
-  else
-    return []
+  if c == '('
+    then do
+      pChar
+      pWhitespace
+      fields <- pSome pField pSep
+      pToken ')'
+      return fields
+    else return []
   where
     pSep :: Parser Bool
     pSep = do
       pWhitespace
       c <- lookahead
-      if c == ',' then do
-        pChar
-        pWhitespace
-        return True
-      else
-        return False
+      if c == ','
+        then do
+          pChar
+          pWhitespace
+          return True
+        else return False
 
 pField :: Parser Field
 pField = Field <$> pId
 
-pDeclaration :: (String -> (forall a . a -> Declaration a) -> Parser b) -> Parser b
+pDeclaration :: (String -> (forall a. a -> Declaration a) -> Parser b) -> Parser b
 pDeclaration f = do
   customs <- pCustoms
   (vis, mod, key) <- pDeclarationVisibilityOriginAndKeyword
@@ -103,14 +109,14 @@ pDeclaration f = do
 pDeclarationVisibilityOriginAndKeyword :: Parser (Visibility, Maybe Id, String)
 pDeclarationVisibilityOriginAndKeyword = do
   key <- pKeyword
-  if key == "export_as" then do
-    pToken '@'
-    exportedName <- pId
-    pWhitespace
-    key' <- pKeyword
-    pOriginAndKeyword (ExportedAs exportedName) key'
-  else
-    pOriginAndKeyword Private key
+  if key == "export_as"
+    then do
+      pToken '@'
+      exportedName <- pId
+      pWhitespace
+      key' <- pKeyword
+      pOriginAndKeyword (ExportedAs exportedName) key'
+    else pOriginAndKeyword Private key
   where
     pOriginAndKeyword :: Visibility -> String -> Parser (Visibility, Maybe Id, String)
     pOriginAndKeyword vis "from" = do
@@ -137,7 +143,7 @@ pModule = do
 pModuleDeclaration :: Parser (Module -> Module)
 pModuleDeclaration = pDeclaration f
   where
-    f :: String -> (forall a . a -> Declaration a) -> Parser (Module -> Module)
+    f :: String -> (forall a. a -> Declaration a) -> Parser (Module -> Module)
     f "custom" decl = addCustom . decl <$> pCustomDeclaration
     f "data" decl = addDataType . decl <$> pDataType
     f "type" decl = addTypeSynonym . decl <$> pTypeSynonym
@@ -161,16 +167,16 @@ parseModuleIO fullName contents =
     Right ir -> return ir
 
 addCustom :: Declaration CustomDeclaration -> Module -> Module
-addCustom c m = m{ moduleCustoms = c : moduleCustoms m }
+addCustom c m = m {moduleCustoms = c : moduleCustoms m}
 
 addDataType :: Declaration DataType -> Module -> Module
-addDataType d m = m{ moduleDataTypes = d : moduleDataTypes m }
+addDataType d m = m {moduleDataTypes = d : moduleDataTypes m}
 
 addAbstract :: Declaration AbstractMethod -> Module -> Module
-addAbstract a m = m{ moduleAbstractMethods = a : moduleAbstractMethods m }
+addAbstract a m = m {moduleAbstractMethods = a : moduleAbstractMethods m}
 
 addMethod :: Declaration Method -> Module -> Module
-addMethod f m = m{ moduleMethods = f : moduleMethods m }
+addMethod f m = m {moduleMethods = f : moduleMethods m}
 
 addTypeSynonym :: Declaration TypeSynonym -> Module -> Module
-addTypeSynonym ts m = m { moduleTypeSynonyms = ts : moduleTypeSynonyms m }
+addTypeSynonym ts m = m {moduleTypeSynonyms = ts : moduleTypeSynonyms m}

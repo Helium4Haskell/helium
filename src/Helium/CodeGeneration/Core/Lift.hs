@@ -1,4 +1,4 @@
-{-| Module      :  Lift
+{- Module      :  Lift
     License     :  GPL
 
     Maintainer  :  helium@cs.uu.nl
@@ -21,21 +21,24 @@
 --
 -- Assumes that the AST is normalized, ie. the Normalize pass should be executed before.
 
-module Helium.CodeGeneration.Core.Lift (coreLift) where
+module Helium.CodeGeneration.Core.Lift
+  ( coreLift,
+  )
+where
 
+import Data.List (unzip4)
+import Data.Maybe (catMaybes, maybeToList)
+import Helium.CodeGeneration.Core.ReduceThunks (isCheap)
+import Helium.CodeGeneration.Core.TypeEnvironment
 import Lvm.Common.Id
-import Lvm.Common.IdSet
 import Lvm.Common.IdMap
+import Lvm.Common.IdSet
 import Lvm.Core.Expr
 import Lvm.Core.Type
 import Lvm.Core.Utils
-import Helium.CodeGeneration.Core.TypeEnvironment
-import Helium.CodeGeneration.Core.ReduceThunks (isCheap)
-
-import Data.Maybe (catMaybes, maybeToList)
-import Data.List (unzip4)
 
 data Env = Env TypeEnvironment (IdMap Id)
+
 type Scope = [Either Quantor Variable]
 
 typeEnv :: Env -> TypeEnvironment
@@ -78,7 +81,7 @@ addBinds = flip $ foldr Let
 
 liftBindss :: NameSupply -> Scope -> [Binds] -> Env -> ([Binds], [CoreDecl], Env)
 liftBindss _ _ [] env = ([], [], env)
-liftBindss supply scope (b:bs) env = (b' ++ bs', decls1 ++ decls2, env')
+liftBindss supply scope (b : bs) env = (b' ++ bs', decls1 ++ decls2, env')
   where
     (supply1, supply2) = splitNameSupply supply
     (b', decls1, envMap, scope') = liftBinds supply1 scope b env
@@ -159,14 +162,12 @@ lazyBind :: Bool -> NameSupply -> Scope -> Bind -> Env -> ([Binds], Maybe Bind, 
 lazyBind isRec supply scope b@(Bind var@(Variable x t) expr) env = case extractThunks expr of
   -- Expression can already be put in a thunk, don't need to change anything.
   Just (binds, expr') ->
-    let
-      (binds', decls', env') = liftBindss supply scope binds env
-    in
-      (binds', Just $ Bind var $ {-(trace ("B: " ++ show (pretty expr)))-} renameInSimpleExpr env' expr', decls', id)
+    let (binds', decls', env') = liftBindss supply scope binds env
+     in (binds', Just $ Bind var $ {-(trace ("B: " ++ show (pretty expr)))-} renameInSimpleExpr env' expr', decls', id)
   Nothing
     -- Do not construct a Bind if the value is placed in a toplevel value which is not a Lambda
     | null scope -> ([], Nothing, decl : decls, insertSubstitution x name)
-    | otherwise  -> ([], Just $ Bind var ap, decl : decls, id)
+    | otherwise -> ([], Just $ Bind var ap, decl : decls, id)
   where
     ap = foldr addAp (Var name) scope
       where
@@ -174,7 +175,6 @@ lazyBind isRec supply scope b@(Bind var@(Variable x t) expr) env = case extractT
         addAp (Right (Variable name _)) e = Ap e $ Var name
     (name, supply') = freshId supply
     (supply1, supply2) = splitNameSupply supply'
-
     argNames :: [(Either Quantor Variable, Either Quantor Variable)]
     argNames = mapWithSupply renameArg supply1 scope
       where
@@ -182,23 +182,26 @@ lazyBind isRec supply scope b@(Bind var@(Variable x t) expr) env = case extractT
           where
             (arg', _) = freshIdFromId arg s
         renameArg s q = (q, q)
-
-    envDecl = foldr (\(Variable arg _, Variable arg' _) -> insertSubstitution arg arg') env
-      [(v1, v2) | (Right v1, Right v2) <- argNames]
+    envDecl =
+      foldr
+        (\(Variable arg _, Variable arg' _) -> insertSubstitution arg arg')
+        env
+        [(v1, v2) | (Right v1, Right v2) <- argNames]
     (expr', decls) = liftExprIgnoreLambdas supply2 (map snd argNames) expr envDecl
     value = foldl addArg expr' argNames
       where
         addArg e (_, Left quantor) = Forall quantor KStar e
         addArg e (_, Right (Variable name tp)) = Lam (typeIsStrict tp) (Variable name $ typeNotStrict tp) e
     decl :: CoreDecl
-    decl = DeclValue
-      { declName = name
-      , declAccess = Private
-      , declModule = Nothing
-      , declType = functionType (reverse scope)
-      , valueValue = value
-      , declCustoms = []
-      }
+    decl =
+      DeclValue
+        { declName = name,
+          declAccess = Private,
+          declModule = Nothing,
+          declType = functionType (reverse scope),
+          valueValue = value,
+          declCustoms = []
+        }
     functionType :: Scope -> Type
     functionType [] = t
     functionType (Left quantor : args) = TForall quantor KStar $ functionType args

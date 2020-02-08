@@ -1,41 +1,41 @@
 module Helium.CodeGeneration.Iridium.Parse.Method where
 
+import Data.Maybe
+import Helium.CodeGeneration.Iridium.Data
+import Helium.CodeGeneration.Iridium.Parse.Expression
+import Helium.CodeGeneration.Iridium.Parse.Instruction
 import Helium.CodeGeneration.Iridium.Parse.Parser
 import Helium.CodeGeneration.Iridium.Parse.Type
-import Helium.CodeGeneration.Iridium.Parse.Instruction
-import Helium.CodeGeneration.Iridium.Parse.Expression
-import Helium.CodeGeneration.Iridium.Data
 import Helium.CodeGeneration.Iridium.Type
-import Lvm.Common.Id(Id, idFromString)
+import Lvm.Common.Id (Id, idFromString)
 import Lvm.Core.Type
-import Data.Maybe
 
 pMethod :: Parser Method
 pMethod = do
   c <- lookahead
-  tp <- if c == ':' then do
-    pToken ':'
-    pWhitespace
-    pToken '{'
-    pWhitespace
-    tp <- pType
-    pWhitespace
-    pToken '}'
-    pWhitespace
-    pToken '$'
-    pWhitespace
-    return $ Just tp
-  else
-    return Nothing
+  tp <-
+    if c == ':'
+      then do
+        pToken ':'
+        pWhitespace
+        pToken '{'
+        pWhitespace
+        tp <- pType
+        pWhitespace
+        pToken '}'
+        pWhitespace
+        pToken '$'
+        pWhitespace
+        return $ Just tp
+      else return Nothing
   pToken '('
   pWhitespace
   let emptyQuantors = QuantorIndexing 0 [] []
   c <- lookahead
   (args, quantors) <-
-    if c == ')' then
-      return ([], emptyQuantors)
-    else
-      pMethodArguments (QuantorIndexing 0 [] [])
+    if c == ')'
+      then return ([], emptyQuantors)
+      else pMethodArguments (QuantorIndexing 0 [] [])
   pToken ')'
   pWhitespace
   pToken ':'
@@ -47,7 +47,7 @@ pMethod = do
   let tp' = fromMaybe (typeFromFunctionType $ FunctionType (map toArg args) returnType) tp
   case c of
     '{' ->
-      (\(b:bs) -> Method tp' args returnType annotations b bs) <$ pWhitespace <*> pSome (pBlock quantors) pSep
+      (\(b : bs) -> Method tp' args returnType annotations b bs) <$ pWhitespace <*> pSome (pBlock quantors) pSep
     '=' -> do
       -- Shorthand for a function that computes a single expression and returns it
       pWhitespace
@@ -61,13 +61,12 @@ pMethod = do
     pSep :: Parser Bool
     pSep = do
       pWhitespace
-
       c <- lookahead
-      if c == '}' then do
-        pChar
-        return False
-      else
-        return True
+      if c == '}'
+        then do
+          pChar
+          return False
+        else return True
     toArg (Left quantor) = Left quantor
     toArg (Right (Local _ t)) = Right t
 
@@ -76,13 +75,13 @@ pMethodArguments quantors = do
   (arg, quantors') <- pMethodArgument quantors
   pWhitespace
   c <- lookahead
-  if c == ',' then do
-    pChar
-    pWhitespace
-    (args, quantors'') <- pMethodArguments quantors'
-    return (arg : args, quantors'')
-  else
-    return ([arg], quantors')
+  if c == ','
+    then do
+      pChar
+      pWhitespace
+      (args, quantors'') <- pMethodArguments quantors'
+      return (arg : args, quantors'')
+    else return ([arg], quantors')
 
 pMethodArgument :: QuantorIndexing -> Parser (Either Quantor Local, QuantorIndexing)
 pMethodArgument quantors = do
@@ -107,11 +106,11 @@ pAnnotations :: Parser [Annotation]
 pAnnotations =
   do
     eof <- isEndOfFile
-    if eof then
-      return []
-    else do
-      c <- lookahead
-      if c == '[' then pToken '[' *> pSome pAnnotation pSep <* pToken ']' else return []
+    if eof
+      then return []
+      else do
+        c <- lookahead
+        if c == '[' then pToken '[' *> pSome pAnnotation pSep <* pToken ']' else return []
   where
     pSep :: Parser Bool
     pSep = do

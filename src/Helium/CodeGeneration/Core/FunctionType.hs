@@ -1,4 +1,4 @@
-{-| Module      :  FunctionType
+{-  Module      :  FunctionType
     License     :  GPL
 
     Maintainer  :  helium@cs.uu.nl
@@ -8,18 +8,20 @@
 
 -- Finds the function types of all toplevel functions
 
-module Helium.CodeGeneration.Core.FunctionType (functionsMap) where
+module Helium.CodeGeneration.Core.FunctionType
+  ( functionsMap,
+  )
+where
 
 import Data.Maybe (mapMaybe)
-import Lvm.Common.Id(Id, idFromString)
-import Lvm.Common.IdMap(IdMap, mapFromList)
-import Lvm.Common.Byte(stringFromBytes)
+import Helium.CodeGeneration.Core.TypeEnvironment
+import Helium.CodeGeneration.Iridium.Type
+import Lvm.Common.Byte (stringFromBytes)
+import Lvm.Common.Id (Id, idFromString)
+import Lvm.Common.IdMap (IdMap, mapFromList)
 import Lvm.Core.Expr
 import Lvm.Core.Module
 import Lvm.Core.Type
-
-import Helium.CodeGeneration.Core.TypeEnvironment
-import Helium.CodeGeneration.Iridium.Type
 
 functionsList :: TypeEnvironment -> CoreModule -> [(Id, (Type, FunctionType))]
 functionsList env (Module _ _ _ _ decls) = mapMaybe (functionInDecl env) decls

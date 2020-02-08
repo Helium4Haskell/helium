@@ -1,36 +1,42 @@
 module Helium.CodeGeneration.Iridium.Parse.Parser where
 
-import Lvm.Common.Id(Id, idFromString)
 import Data.Maybe
+import Lvm.Common.Id (Id, idFromString)
 
 data ParseResult p = ResError !String !String | ResValue !p !String
 
 -- A greedy parser with 1 character lookahead
-newtype Parser p = Parser { runParser :: String -> ParseResult p }
+newtype Parser p = Parser {runParser :: String -> ParseResult p}
 
 instance Functor Parser where
-  fmap f (Parser fn) = Parser (\source -> case fn source of
-      ResError err remaining -> ResError err remaining
-      ResValue x remaining -> ResValue (f x) remaining
-    )
+  fmap f (Parser fn) =
+    Parser
+      ( \source -> case fn source of
+          ResError err remaining -> ResError err remaining
+          ResValue x remaining -> ResValue (f x) remaining
+      )
 
 instance Applicative Parser where
   pure x = Parser $ ResValue x
-  Parser fn1 <*> Parser fn2 = Parser (\source -> case fn1 source of
-      ResError err remaining -> ResError err remaining
-      ResValue f remaining -> case fn2 remaining of
-        ResError err remaining' -> ResError err remaining'
-        ResValue x remaining' -> ResValue (f x) remaining'
-    )
+  Parser fn1 <*> Parser fn2 =
+    Parser
+      ( \source -> case fn1 source of
+          ResError err remaining -> ResError err remaining
+          ResValue f remaining -> case fn2 remaining of
+            ResError err remaining' -> ResError err remaining'
+            ResValue x remaining' -> ResValue (f x) remaining'
+      )
 
 instance Monad Parser where
   return = pure
-  Parser fn1 >>= p = Parser (\source -> case fn1 source of
-      ResError err remaining -> ResError err remaining
-      ResValue x remaining ->
-        let Parser fn2 = p x
-        in fn2 remaining
-    )
+  Parser fn1 >>= p =
+    Parser
+      ( \source -> case fn1 source of
+          ResError err remaining -> ResError err remaining
+          ResValue x remaining ->
+            let Parser fn2 = p x
+             in fn2 remaining
+      )
 
 isWhitespace :: Char -> Bool
 isWhitespace ' ' = True
@@ -52,7 +58,7 @@ pManyMaybe :: Parser (Maybe a) -> Parser [a]
 pManyMaybe p = do
   res <- p
   case res of
-    Just x -> (x : ) <$> pManyMaybe p
+    Just x -> (x :) <$> pManyMaybe p
     Nothing -> return []
 
 validWordChar :: Char -> Bool
@@ -62,14 +68,13 @@ pKeyword :: Parser String
 pKeyword = Parser f
   where
     f str =
-      let
-        (parsed, remaining) = span validWordChar str
-        (spaces, remaining') = span isWhitespace remaining
-      in case parsed of
-        [] -> ResError "expected keyword" str
-        _ -> case spaces of
-          [] -> ResError "expected whitespace after keyword" remaining
-          _ -> ResValue parsed remaining'
+      let (parsed, remaining) = span validWordChar str
+          (spaces, remaining') = span isWhitespace remaining
+       in case parsed of
+            [] -> ResError "expected keyword" str
+            _ -> case spaces of
+              [] -> ResError "expected whitespace after keyword" remaining
+              _ -> ResValue parsed remaining'
 
 pWord :: Parser String
 pWord = pManySatisfy validWordChar
@@ -111,38 +116,36 @@ pSymbol sym = Parser f
 pSomeSatisfy :: String -> (Char -> Bool) -> Parser String
 pSomeSatisfy err fn = do
   str <- pManySatisfy fn
-  if null str then
-    pError err
-  else
-    return str
+  if null str
+    then pError err
+    else return str
 
 pManySatisfy :: (Char -> Bool) -> Parser String
 pManySatisfy fn = Parser f
   where
     f str =
-      let
-        (parsed, remaining) = span fn str
-      in ResValue parsed remaining
+      let (parsed, remaining) = span fn str
+       in ResValue parsed remaining
 
 pSome :: Parser a -> Parser Bool -> Parser [a]
 pSome elem continue = do
   item <- elem
   c <- continue
-  if c then
-    (item :) <$> pSome elem continue
-  else
-    return [item]
+  if c
+    then (item :) <$> pSome elem continue
+    else return [item]
 
 pWhitespace :: Parser ()
-pWhitespace = 
+pWhitespace =
   do
     pManySatisfy isWhitespace
     c <- lookahead
-    if c == ';' then do
-      pChar
-      pManySatisfy (/= '\n')
-      pWhitespace
-    else return ()
+    if c == ';'
+      then do
+        pChar
+        pManySatisfy (/= '\n')
+        pWhitespace
+      else return ()
 
 pString :: Parser String
 pString = read <$> Parser f
@@ -163,72 +166,72 @@ pId = idFromString <$> pName
 
 pName :: Parser String
 pName = do
-    c <- lookahead
-    if c == '"' then
-      pString
-    else
-      pSomeSatisfy "expected name" valid
+  c <- lookahead
+  if c == '"'
+    then pString
+    else pSomeSatisfy "expected name" valid
   where
-    valid c
-      = ('a' <= c && c <= 'z')
-      || ('A' <= c && c <= 'Z')
-      || ('0' <= c && c <= '9')
-      || c == '$' || c == '.' || c == '_' || c == '#'
+    valid c =
+      ('a' <= c && c <= 'z')
+        || ('A' <= c && c <= 'Z')
+        || ('0' <= c && c <= '9')
+        || c == '$'
+        || c == '.'
+        || c == '_'
+        || c == '#'
 
 pUnsignedInt :: Parser Int
 pUnsignedInt = do
-    str <- pManySatisfy valid
-    if str == "" then
-      pError "expected integer"
-    else
-      return $ read str
+  str <- pManySatisfy valid
+  if str == ""
+    then pError "expected integer"
+    else return $ read str
   where
     valid c = '0' <= c && c <= '9'
 
 pSignedInt :: Parser Int
 pSignedInt = do
   c <- lookahead
-  if c == '-' then do
-    pChar
-    (0 -) <$> pUnsignedInt
-  else
-    pUnsignedInt
+  if c == '-'
+    then do
+      pChar
+      (0 -) <$> pUnsignedInt
+    else pUnsignedInt
 
 pArguments :: Parser a -> Parser [a]
 pArguments pArg = do
   pToken '('
   c <- lookahead
-  if c == ')' then do
-    pChar
-    return []
-  else
-    pWhitespace *> pSome pArg pSep <* pToken ')'
+  if c == ')'
+    then do
+      pChar
+      return []
+    else pWhitespace *> pSome pArg pSep <* pToken ')'
   where
     pSep :: Parser Bool
     pSep = do
       pWhitespace
       c <- lookahead
-      if c == ',' then do
-        pChar
-        pWhitespace
-        return True
-      else
-        return False
+      if c == ','
+        then do
+          pChar
+          pWhitespace
+          return True
+        else return False
 
 data ParseError = ParseError !Int !Int String
 
 instance Show ParseError where
-  show (ParseError line col err)
-    = "Parse error at line " ++ show line ++ ", column " ++ show col ++ ":"
-    ++ "\n  " ++ err
+  show (ParseError line col err) =
+    "Parse error at line " ++ show line ++ ", column " ++ show col ++ ":"
+      ++ "\n  "
+      ++ err
 
 parse :: Parser a -> String -> Either ParseError a
 parse (Parser parser) source = case parser source of
   ResValue a _ -> Right a
   ResError err remaining ->
-    let 
-      consumed = take (length source - length remaining) source
-      line = length $ filter (== '\n') consumed
-      column = length $ takeWhile (/= '\n') $ reverse consumed
-    in
-      Left $ ParseError (line + 1) (column + 1) err
+    let consumed = take (length source - length remaining) source
+        line = length $ filter (== '\n') consumed
+        column = length $ takeWhile (/= '\n') $ reverse consumed
+     in Left $ ParseError (line + 1) (column + 1) err

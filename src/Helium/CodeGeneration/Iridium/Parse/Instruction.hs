@@ -1,10 +1,10 @@
 module Helium.CodeGeneration.Iridium.Parse.Instruction where
 
+import Helium.CodeGeneration.Iridium.Data
+import Helium.CodeGeneration.Iridium.Parse.Expression
 import Helium.CodeGeneration.Iridium.Parse.Parser
 import Helium.CodeGeneration.Iridium.Parse.Type
-import Helium.CodeGeneration.Iridium.Parse.Expression
-import Helium.CodeGeneration.Iridium.Data
-import Lvm.Common.Id(Id)
+import Lvm.Common.Id (Id)
 import Lvm.Core.Type
 
 pInstruction :: QuantorIndexing -> Parser Instruction
@@ -22,12 +22,12 @@ pInstruction quantors = do
             pSep = do
               pWhitespace
               c <- lookahead
-              if c == ',' then do
-                pChar
-                pWhitespace
-                return True
-              else
-                return False
+              if c == ','
+                then do
+                  pChar
+                  pWhitespace
+                  return True
+                else return False
         "jump" -> Jump <$> pId
         "match" -> Match <$> pVariable quantors <* pWhitespace <* pSymbol "on" <* pWhitespace <*> pMatchTarget <* pWhitespace <*> pInstantiation quantors <*> pArguments pMatchField <*> pInstruction quantors
         "case" -> Case <$> pVariable quantors <* pWhitespace <*> pCase
@@ -38,11 +38,11 @@ pInstruction quantors = do
 pMatchField :: Parser (Maybe Id)
 pMatchField = do
   c <- lookahead
-  if c == '_' then do
-    pChar
-    return Nothing
-  else
-    Just <$ pToken '%' <*> pId
+  if c == '_'
+    then do
+      pChar
+      return Nothing
+    else Just <$ pToken '%' <*> pId
 
 pCase :: Parser Case
 pCase = do
@@ -71,10 +71,10 @@ pBindTarget quantors = do
 pMatchTarget :: Parser MatchTarget
 pMatchTarget = do
   c <- lookahead
-  if c == '@' then
-    MatchTargetConstructor <$> pDataTypeConstructor
-  else do
-    key <- pKeyword
-    case key of
-      "tuple" -> MatchTargetTuple <$> pUnsignedInt
-      _ -> pError "Expected match target"
+  if c == '@'
+    then MatchTargetConstructor <$> pDataTypeConstructor
+    else do
+      key <- pKeyword
+      case key of
+        "tuple" -> MatchTargetTuple <$> pUnsignedInt
+        _ -> pError "Expected match target"

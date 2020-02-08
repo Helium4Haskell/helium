@@ -1,16 +1,18 @@
-{-| Module      :  ReduceThunks
-    License     :  GPL
-
-    Maintainer  :  helium@cs.uu.nl
-    Stability   :  experimental
-    Portability :  portable
--}
-
 -- Reduces the number of thunks that are (will be) created.
 -- It does so by evaluating 'cheap' expressions strictly. For instance, a literal
 -- or a constructor can be evaluated strict, without changing the semantics
 
-module Helium.CodeGeneration.Core.ReduceThunks (coreReduceThunks, isCheap) where
+-- | Module      :  ReduceThunks
+--    License     :  GPL
+--
+--    Maintainer  :  helium@cs.uu.nl
+--    Stability   :  experimental
+--    Portability :  portable
+module Helium.CodeGeneration.Core.ReduceThunks
+  ( coreReduceThunks,
+    isCheap,
+  )
+where
 
 import Lvm.Common.Id
 import Lvm.Core.Expr
@@ -22,7 +24,7 @@ coreReduceThunks = fmap reduceThunksInExpr
 reduceThunksInExpr :: Expr -> Expr
 reduceThunksInExpr (Let (NonRec b@(Bind var value)) expr)
   | isCheap value' = Let (Strict (Bind var value')) $ reduceThunksInExpr expr
-  | otherwise      = Let (NonRec (Bind var value')) $ reduceThunksInExpr expr
+  | otherwise = Let (NonRec (Bind var value')) $ reduceThunksInExpr expr
   where
     value' = reduceThunksInExpr value
 reduceThunksInExpr (Let (Strict b) expr) = Let (Strict $ reduceThunksInBind b) $ reduceThunksInExpr expr

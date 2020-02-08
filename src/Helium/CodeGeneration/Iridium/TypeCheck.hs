@@ -1,13 +1,13 @@
 module Helium.CodeGeneration.Iridium.TypeCheck where
 
+import Data.List
+import Data.Maybe
 import Helium.CodeGeneration.Iridium.Data
-import Helium.CodeGeneration.Iridium.Type
 import Helium.CodeGeneration.Iridium.Show
+import Helium.CodeGeneration.Iridium.Type
 import Lvm.Common.Id
 import Lvm.Common.IdMap
 import Lvm.Core.Type
-import Data.Maybe
-import Data.List
 import System.Exit
 
 data Location
@@ -25,18 +25,18 @@ showVar (Left var) = show var
 showVar (Right global) = show global
 
 data TypeError
-  -- The type of the MatchTarget does not match the variable
-  = TEMatch !VariableOrGlobal !Type
-  -- The type of the variable of a Case instruction does not match with a type of a pattern
-  | TECase !VariableOrGlobal !Type
+  = -- The type of the MatchTarget does not match the variable
+    TEMatch !VariableOrGlobal !Type
+  | -- The type of the variable of a Case instruction does not match with a type of a pattern
+    TECase !VariableOrGlobal !Type
   | TEReturn !VariableOrGlobal !Type
   | TEEval !Variable -- Variable is strict
-  -- Type at declaration does not match type at use
+      -- Type at declaration does not match type at use
   | TEVariable !VariableOrGlobal !VariableOrGlobal
   | TEMultipleDeclarations ![VariableOrGlobal]
   | TENotDeclared !Id
-  -- The annotated type of a method does not match the given argument types and return type
-  | TEMethod !Id !Type !Type
+  | -- The annotated type of a method does not match the given argument types and return type
+    TEMethod !Id !Type !Type
 
 instance Show TypeError where
   show (TEMatch var tp) = "Variable " ++ showVar var ++ " should have type " ++ show tp ++ " in a match instruction"
@@ -60,21 +60,21 @@ checkModule mod = errors
     typeEnv = envWithSynonyms mod
     analysis =
       fromList (map (analyseMethod typeEnv) $ moduleMethods mod)
-      `AJoin` fromList (map analyseAbstractMethod $ moduleAbstractMethods mod)
+        `AJoin` fromList (map analyseAbstractMethod $ moduleAbstractMethods mod)
     (Env occurrences errors1) = toEnv analysis emptyEnv
     errors2 = listFromMap occurrences >>= uncurry (checkOccurrences typeEnv)
     errors = errors1 ++ errors2
 
-checkModuleIO :: String -> FilePath-> Module -> IO ()
+checkModuleIO :: String -> FilePath -> Module -> IO ()
 checkModuleIO name path mod = do
   let errors = checkModule mod
-  if null errors then
-    return ()
-  else do
-    putStrLn ("Type errors in Iridium file after pass " ++ show name)
-    mapM_ print errors
-    putStrLn (show (length errors) ++ " type error(s) in Iridium file " ++ show path ++ " after pass " ++ show name)
-    exitWith (ExitFailure 1)
+  if null errors
+    then return ()
+    else do
+      putStrLn ("Type errors in Iridium file after pass " ++ show name)
+      mapM_ print errors
+      putStrLn (show (length errors) ++ " type error(s) in Iridium file " ++ show path ++ " after pass " ++ show name)
+      exitWith (ExitFailure 1)
 
 aCheck :: TypeEnvironment -> Type -> Type -> TypeError -> Analysis
 aCheck env t1 t2 err
@@ -121,14 +121,14 @@ analyseInstruction env returnType (Let name expr next) =
     (AVar name DeclareLocal $ typeOfExpr env expr)
     $ AJoin
       (fromList $ map variableToAnalysis $ dependenciesOfExpr expr)
-      $ AJoin (analyseExpression env expr)
-        $ analyseInstruction env returnType next
+    $ AJoin (analyseExpression env expr)
+    $ analyseInstruction env returnType next
 analyseInstruction env returnType (LetAlloc binds next) =
   AJoin
     (fromList $ map (analyseBind env) binds)
     $ analyseInstruction env returnType next
-analyseInstruction env returnType (Match var target instantiation fields next)
-  = variableToAnalysis var
+analyseInstruction env returnType (Match var target instantiation fields next) =
+  variableToAnalysis var
     `AJoin` aCheck env (variableType var) expectedType (TEMatch (Left var) expectedType)
     `AJoin` fromList (catMaybes $ zipWith analyseArg fields $ matchFieldTypes target instantiation)
     `AJoin` analyseInstruction env returnType next
@@ -138,16 +138,16 @@ analyseInstruction env returnType (Match var target instantiation fields next)
     analyseArg (Just name) tp = Just $ AVar name DeclareLocal tp
 analyseInstruction env returnType (Return var) =
   aCheck env (variableType var) returnType (TEReturn (Left var) returnType)
-  `AJoin` variableToAnalysis var
+    `AJoin` variableToAnalysis var
 analyseInstruction env _ (Case var _) = variableToAnalysis var
-  -- TODO: Check whether the types of the alts/branches match with the type of 'var'
+-- TODO: Check whether the types of the alts/branches match with the type of 'var'
 analyseInstruction _ _ _ = AEmpty
 
 analyseBind :: TypeEnvironment -> Bind -> Analysis
 analyseBind env bind@(Bind var target args) =
   AVar var DeclareLocal tp
-  `AJoin` aTarget
-  `AJoin` fromList [ variableToAnalysis arg | Right arg <- args ]
+    `AJoin` aTarget
+    `AJoin` fromList [variableToAnalysis arg | Right arg <- args]
   where
     tp = bindType env bind
     aTarget = case target of
@@ -156,6 +156,7 @@ analyseBind env bind@(Bind var target args) =
       _ -> AEmpty
 
 data Occurrence = Occurrence !Location !Type
+
 data Env = Env !(IdMap [Occurrence]) ![TypeError]
 
 emptyEnv :: Env
@@ -165,7 +166,7 @@ addOccurence :: Id -> Occurrence -> Env -> Env
 addOccurence name occurrence (Env m errors) = Env (insertMapWith name [occurrence] (occurrence :) m) errors
 
 addError :: TypeError -> Env -> Env
-addError err (Env m errors) = Env m (err:errors)
+addError err (Env m errors) = Env m (err : errors)
 
 toEnv :: Analysis -> Env -> Env
 toEnv (AVar name location tp) env = addOccurence name (Occurrence location tp) env
@@ -180,19 +181,17 @@ checkOccurrences env name occurrences =
     decl1 : decl2 : _
       | any (\(Occurrence l _) -> l == DeclareLocal) declarations -> [TEMultipleDeclarations $ map (toVariable name) declarations]
     decl : _ ->
-      let
-        declaration = toVariable name decl
-        alternative = case decl of
-          (Occurrence (DeclareGlobal arity) tp) -> Just $ VarGlobal $ GlobalVariable name tp
-          _ -> Nothing
-        check :: Occurrence -> Maybe TypeError
-        check use
-          | variableEqual env declaration var = Nothing
-          | otherwise = Just $ TEVariable declaration var
-          where
-            var = toVariable name use
-      in
-        mapMaybe check uses
+      let declaration = toVariable name decl
+          alternative = case decl of
+            (Occurrence (DeclareGlobal arity) tp) -> Just $ VarGlobal $ GlobalVariable name tp
+            _ -> Nothing
+          check :: Occurrence -> Maybe TypeError
+          check use
+            | variableEqual env declaration var = Nothing
+            | otherwise = Just $ TEVariable declaration var
+            where
+              var = toVariable name use
+       in mapMaybe check uses
   where
     (declarations, uses) = partition (\(Occurrence l _) -> isDeclaration l) occurrences
 
@@ -213,14 +212,14 @@ typeEqual' :: TypeEnvironment -> Type -> Type -> Bool
 typeEqual' env t1 t2 = typeEqual env t1 t2 && typeIsStrict t1 == typeIsStrict t2
 
 variableEqual :: TypeEnvironment -> VariableOrGlobal -> VariableOrGlobal -> Bool
-variableEqual env (Left (VarLocal (Local n1 t1))) (Left (VarLocal (Local n2 t2)))
-  = n1 == n2 && typeEqual' env t1 t2
-variableEqual env (Left (VarGlobal (GlobalVariable n1 t1))) (Left (VarGlobal (GlobalVariable n2 t2)))
-  = n1 == n2 && typeEqual' env t1 t2
-variableEqual env (Right (GlobalFunction n1 a1 t1)) (Right (GlobalFunction n2 a2 t2))
-  = n1 == n2 && typeEqual' env t1 t2 && a1 == a2
-variableEqual env (Left (VarGlobal (GlobalVariable n1 t1))) (Right (GlobalFunction n2 a2 t2))
-  = n1 == n2 && typeEqual' env t1 (typeSetStrict (a2 /= 0) $ typeRemoveArgumentStrictness t2)
-variableEqual env (Right (GlobalFunction n1 a1 t1)) (Left (VarGlobal (GlobalVariable n2 t2)))
-  = n1 == n2 && typeEqual' env (typeSetStrict (a1 /= 0) $ typeRemoveArgumentStrictness t1) t2
+variableEqual env (Left (VarLocal (Local n1 t1))) (Left (VarLocal (Local n2 t2))) =
+  n1 == n2 && typeEqual' env t1 t2
+variableEqual env (Left (VarGlobal (GlobalVariable n1 t1))) (Left (VarGlobal (GlobalVariable n2 t2))) =
+  n1 == n2 && typeEqual' env t1 t2
+variableEqual env (Right (GlobalFunction n1 a1 t1)) (Right (GlobalFunction n2 a2 t2)) =
+  n1 == n2 && typeEqual' env t1 t2 && a1 == a2
+variableEqual env (Left (VarGlobal (GlobalVariable n1 t1))) (Right (GlobalFunction n2 a2 t2)) =
+  n1 == n2 && typeEqual' env t1 (typeSetStrict (a2 /= 0) $ typeRemoveArgumentStrictness t2)
+variableEqual env (Right (GlobalFunction n1 a1 t1)) (Left (VarGlobal (GlobalVariable n2 t2))) =
+  n1 == n2 && typeEqual' env (typeSetStrict (a1 /= 0) $ typeRemoveArgumentStrictness t1) t2
 variableEqual _ _ _ = False

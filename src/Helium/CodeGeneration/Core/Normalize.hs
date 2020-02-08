@@ -1,4 +1,4 @@
-{-| Module      :  Normalize
+{- Module      :  Normalize
     License     :  GPL
 
     Maintainer  :  helium@cs.uu.nl
@@ -20,14 +20,17 @@
 --
 -- A trivial expression is a variable.
 
-module Helium.CodeGeneration.Core.Normalize (coreNormalize) where
+module Helium.CodeGeneration.Core.Normalize
+  ( coreNormalize,
+  )
+where
 
+import Helium.CodeGeneration.Core.TypeEnvironment
 import Lvm.Common.Id
 import Lvm.Common.IdSet
 import Lvm.Core.Expr
 import Lvm.Core.Type
 import Lvm.Core.Utils
-import Helium.CodeGeneration.Core.TypeEnvironment
 
 -- A trivial expression is a variable
 isTrivial :: Expr -> Bool
@@ -45,8 +48,8 @@ isApTarget (ApType e _) = isApTarget e
 isApTarget _ = False
 
 coreNormalize :: NameSupply -> CoreModule -> CoreModule
-coreNormalize supply m
-  = mapExprWithSupply (`normalizeLambda` env) supply m
+coreNormalize supply m =
+  mapExprWithSupply (`normalizeLambda` env) supply m
   where
     env = typeEnvForModule m
 

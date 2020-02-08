@@ -1,84 +1,82 @@
-{-| Module      :  Messages
-    License     :  GPL
-
-    Maintainer  :  helium@cs.uu.nl
-    Stability   :  experimental
-    Portability :  portable
-
-    Datatype to represent error messages. One abstraction is the datatype
-    MessageBlock, which contains (atomic) pieces of information that are
-    reported in the error messages such as types, ranges and code fragments.
--}
-
+-- | Module      :  Messages
+--    License     :  GPL
+--
+--    Maintainer  :  helium@cs.uu.nl
+--    Stability   :  experimental
+--    Portability :  portable
+--
+--    Datatype to represent error messages. One abstraction is the datatype
+--    MessageBlock, which contains (atomic) pieces of information that are
+--    reported in the error messages such as types, ranges and code fragments.
 module Helium.StaticAnalysis.Messages.Messages where
 
-import Helium.Syntax.UHA_Syntax
+import Data.Char (toUpper)
+import Data.Function
+import Data.List (partition, sortBy)
 import Helium.Syntax.UHA_Range
+import Helium.Syntax.UHA_Syntax
 import Helium.Syntax.UHA_Utils ()
-import Top.Types 
-
 import Helium.Utils.OneLiner
 import Helium.Utils.Similarity (similar)
-import Helium.Utils.Utils      (internalError)
-import Data.List       (sortBy, partition)
-import Data.Char       (toUpper)
-import Data.Function
+import Helium.Utils.Utils (internalError)
+import Top.Types
 
-type Message       = [MessageLine] 
+type Message = [MessageLine]
 
-data MessageLine   = MessageOneLiner  MessageBlock
-                   | MessageTable     [(Bool, MessageBlock, MessageBlock)]  -- Bool: indented or not
-                   | MessageHints     String MessageBlocks
+data MessageLine
+  = MessageOneLiner MessageBlock
+  | MessageTable [(Bool, MessageBlock, MessageBlock)] -- Bool: indented or not
+  | MessageHints String MessageBlocks
 
-type MessageBlocks = [MessageBlock]               
-data MessageBlock  = MessageString       String
-                   | MessageRange        Range
-                   | MessageType         TpScheme
-                   | MessagePredicate    Predicate                                      
-                   | MessageOneLineTree  OneLineTree
-                   | MessageCompose      MessageBlocks                   
+type MessageBlocks = [MessageBlock]
+
+data MessageBlock
+  = MessageString String
+  | MessageRange Range
+  | MessageType TpScheme
+  | MessagePredicate Predicate
+  | MessageOneLineTree OneLineTree
+  | MessageCompose MessageBlocks
 
 class HasMessage a where
-   getRanges            :: a -> [Range]
-   getMessage           :: a -> Message  
-   
-   -- default definitions
-   getRanges            _ = []
+  getRanges :: a -> [Range]
+  getMessage :: a -> Message
+
+  -- default definitions
+  getRanges _ = []
 
 instance (HasMessage a, HasMessage b) => HasMessage (Either a b) where
-   getRanges  = either getRanges  getRanges
-   getMessage = either getMessage getMessage
+  getRanges = either getRanges getRanges
+  getMessage = either getMessage getMessage
 
 instance Substitutable MessageLine where
+  sub |-> ml = case ml of
+    MessageOneLiner mb -> MessageOneLiner (sub |-> mb)
+    MessageTable table -> MessageTable [(b, sub |-> mb1, sub |-> mb2) | (b, mb1, mb2) <- table]
+    MessageHints s mbs -> MessageHints s (sub |-> mbs)
 
-   sub |-> ml = case ml of   
-                   MessageOneLiner mb -> MessageOneLiner (sub |-> mb)
-                   MessageTable table -> MessageTable [ (b, sub |-> mb1, sub |-> mb2) | (b, mb1, mb2) <- table ]
-                   MessageHints s mbs -> MessageHints s (sub |-> mbs)
+  ftv ml = case ml of
+    MessageOneLiner mb -> ftv mb
+    MessageTable table -> ftv [[mb1, mb2] | (_, mb1, mb2) <- table]
+    MessageHints _ mbs -> ftv mbs
 
-   ftv ml = case ml of
-               MessageOneLiner mb -> ftv mb
-               MessageTable table -> ftv [ [mb1, mb2] | (_, mb1, mb2) <- table ]
-               MessageHints _ mbs -> ftv mbs
-                                       
 instance Substitutable MessageBlock where
+  sub |-> mb = case mb of
+    MessageType tp -> MessageType (sub |-> tp)
+    MessagePredicate p -> MessagePredicate (sub |-> p)
+    MessageCompose mbs -> MessageCompose (sub |-> mbs)
+    _ -> mb
 
-   sub |-> mb = case mb of
-                   MessageType tp       -> MessageType (sub |-> tp)
-                   MessagePredicate p   -> MessagePredicate (sub |-> p)
-                   MessageCompose mbs   -> MessageCompose (sub |-> mbs) 
-                   _                    -> mb
-
-   ftv mb = case mb of         
-               MessageType tp       -> ftv tp
-               MessagePredicate p   -> ftv p           
-               MessageCompose mbs   -> ftv mbs
-               _                    -> []       
+  ftv mb = case mb of
+    MessageType tp -> ftv tp
+    MessagePredicate p -> ftv p
+    MessageCompose mbs -> ftv mbs
+    _ -> []
 
 -------------------------------------------------------------
 -- Smart row constructors for tables
 
-infixl 1 <:>, >:>    -- very low priority
+infixl 1 <:>, >:> -- very low priority
 
 -- do not indent
 (<:>) :: String -> MessageBlock -> (Bool, MessageBlock, MessageBlock)
@@ -91,104 +89,128 @@ s >:> mb = (True, MessageString s, mb)
 -------------------------------------------------------------
 -- Misc
 
-data Entity = TypeSignature
-            | TypeVariable
-            | TypeConstructor
-            | Definition
-            | Constructor
-            | Variable
-            | Import
-            | ExportVariable
-            | ExportModule
-            | ExportConstructor
-            | ExportTypeConstructorOrClass
-            | ImportVariable
-            | ImportConstructor
-            | ImportTypeConstructorOrClass
-            | Fixity
-            | RecordField
-    deriving Eq
+data Entity
+  = TypeSignature
+  | TypeVariable
+  | TypeConstructor
+  | Definition
+  | Constructor
+  | Variable
+  | Import
+  | ExportVariable
+  | ExportModule
+  | ExportConstructor
+  | ExportTypeConstructorOrClass
+  | ImportVariable
+  | ImportConstructor
+  | ImportTypeConstructorOrClass
+  | Fixity
+  | RecordField
+  deriving (Eq)
 
 sortMessages :: HasMessage a => [a] -> [a]
-sortMessages = let f x y = compare (getRanges x) (getRanges y)
-               in sortBy f
-               
+sortMessages =
+  let f x y = compare (getRanges x) (getRanges y)
+   in sortBy f
+
 sortNamesByRange :: Names -> Names
 sortNamesByRange names =
-   let tupleList = [ (name, getNameRange name) | name <- names ]
-       (xs,ys)   = partition (isImportRange . snd) tupleList
-   in map fst (sortBy (compare `on` snd ) ys ++ xs)
+  let tupleList = [(name, getNameRange name) | name <- names]
+      (xs, ys) = partition (isImportRange . snd) tupleList
+   in map fst (sortBy (compare `on` snd) ys ++ xs)
 
 -- The first argument indicates whether numbers up to ten should be
 -- printed "verbose"
 ordinal :: Bool -> Int -> String
 ordinal b i
-    | i >= 1 && i <= 10 && b = table !! (i - 1)
-    | i >= 0                 = show i ++ extension i
-    | otherwise              = internalError "Messages.hs"
-                                             "ordinal"
-                                             "can't show numbers smaller than 0"
-    where
-        table =
-            [ "first", "second", "third", "fourth", "fifth", "sixth","seventh"
-            , "eighth", "ninth", "tenth"
-            ]
-        extension j
-            | j > 3 && i < 20 = "th"
-            | j `mod` 10 == 1 = "st"
-            | j `mod` 10 == 2 = "nd"
-            | j `mod` 10 == 3 = "rd"
-            | otherwise       = "th"
-    
+  | i >= 1 && i <= 10 && b = table !! (i - 1)
+  | i >= 0 = show i ++ extension i
+  | otherwise =
+    internalError
+      "Messages.hs"
+      "ordinal"
+      "can't show numbers smaller than 0"
+  where
+    table =
+      [ "first",
+        "second",
+        "third",
+        "fourth",
+        "fifth",
+        "sixth",
+        "seventh",
+        "eighth",
+        "ninth",
+        "tenth"
+      ]
+    extension j
+      | j > 3 && i < 20 = "th"
+      | j `mod` 10 == 1 = "st"
+      | j `mod` 10 == 2 = "nd"
+      | j `mod` 10 == 3 = "rd"
+      | otherwise = "th"
+
 showNumber :: Int -> String
-showNumber i | i <= 10 && i >=0 = list !! i
-             | otherwise        = show i
-   where list = [ "zero", "one", "two", "three", "four", "five"
-                , "six", "seven", "eight", "nine", "ten" 
-                ]
-    
+showNumber i
+  | i <= 10 && i >= 0 = list !! i
+  | otherwise = show i
+  where
+    list =
+      [ "zero",
+        "one",
+        "two",
+        "three",
+        "four",
+        "five",
+        "six",
+        "seven",
+        "eight",
+        "nine",
+        "ten"
+      ]
+
 prettyOrList :: [String] -> String
-prettyOrList []  = ""
+prettyOrList [] = ""
 prettyOrList [s] = s
-prettyOrList xs  = foldr1 (\x y -> x++", "++y) (init xs) ++ " or "++last xs
+prettyOrList xs = foldr1 (\x y -> x ++ ", " ++ y) (init xs) ++ " or " ++ last xs
 
 prettyAndList :: [String] -> String
-prettyAndList []  = ""
+prettyAndList [] = ""
 prettyAndList [s] = s
-prettyAndList xs  = foldr1 (\x y -> x++", "++y) (init xs) ++ " and "++last xs
+prettyAndList xs = foldr1 (\x y -> x ++ ", " ++ y) (init xs) ++ " and " ++ last xs
 
 prettyNumberOfParameters :: Int -> String
 prettyNumberOfParameters 0 = "no parameters"
 prettyNumberOfParameters 1 = "1 parameter"
-prettyNumberOfParameters n = show n++" parameters"
+prettyNumberOfParameters n = show n ++ " parameters"
 
 capitalize :: String -> String
-capitalize []     = []
-capitalize (x:xs) = toUpper x : xs
+capitalize [] = []
+capitalize (x : xs) = toUpper x : xs
 
 findSimilar :: Name -> Names -> Names
 findSimilar n = filter (\x -> show n `similar` show x)
 
 instance Show Entity where
-   show entity = 
-      case entity of
-         TypeSignature   -> "type signature"
-         TypeVariable    -> "type variable"
-         TypeConstructor -> "type constructor"
-         Definition      -> "definition"
-         Constructor     -> "constructor"
-         Variable        -> "variable"
-         Import          -> "import"
-         ExportVariable  -> "exported variable"
-         ExportModule    -> "exported module"
-         ExportConstructor
-                         -> "exported constructor"
-         ExportTypeConstructorOrClass
-                         -> "exported type constructor, type synonym or class"
-         ImportVariable  -> "imported variable"
-         ImportConstructor 
-                         -> "imported constructor"
-         ImportTypeConstructorOrClass
-                         -> "imported type constructor, type synonym or class"
-         Fixity          -> "infix declaration"
-         RecordField     -> "record field"
+  show entity =
+    case entity of
+      TypeSignature -> "type signature"
+      TypeVariable -> "type variable"
+      TypeConstructor -> "type constructor"
+      Definition -> "definition"
+      Constructor -> "constructor"
+      Variable -> "variable"
+      Import -> "import"
+      ExportVariable -> "exported variable"
+      ExportModule -> "exported module"
+      ExportConstructor ->
+        "exported constructor"
+      ExportTypeConstructorOrClass ->
+        "exported type constructor, type synonym or class"
+      ImportVariable -> "imported variable"
+      ImportConstructor ->
+        "imported constructor"
+      ImportTypeConstructorOrClass ->
+        "imported type constructor, type synonym or class"
+      Fixity -> "infix declaration"
+      RecordField -> "record field"

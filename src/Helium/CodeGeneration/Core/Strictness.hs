@@ -1,33 +1,33 @@
 module Helium.CodeGeneration.Core.Strictness (coreStrictness) where
 
 import Data.List
-import Text.PrettyPrint.Leijen (pretty)
-
+import Helium.CodeGeneration.Core.TypeEnvironment
 import Lvm.Common.Id
 import Lvm.Common.IdMap
 import Lvm.Common.IdSet
 import Lvm.Core.Expr
-import Lvm.Core.Type
-import Helium.CodeGeneration.Core.TypeEnvironment
 import Lvm.Core.Module
+import Lvm.Core.Type
+import Text.PrettyPrint.Leijen (pretty)
 
 coreStrictness :: NameSupply -> CoreModule -> CoreModule
 coreStrictness supply mod@(Module name major minor imports decls) = Module name major minor imports $ mapWithSupply (transformDeclaration env) supply decls
   where
     env = envForModule mod
 
-data Env = Env
-  { envTypeEnv :: !TypeEnvironment
-  , envFunctionArguments :: !(IdMap [Bool])
-  }
+data Env
+  = Env
+      { envTypeEnv :: !TypeEnvironment,
+        envFunctionArguments :: !(IdMap [Bool])
+      }
 
 getAbstractStrictness :: TypeEnvironment -> Int -> Type -> [Bool]
-getAbstractStrictness typeEnv arity tp = [ typeIsStrict tArg | Right tArg <- args ]
+getAbstractStrictness typeEnv arity tp = [typeIsStrict tArg | Right tArg <- args]
   where
     FunctionType args _ = extractFunctionTypeWithArity typeEnv arity tp
 
 getConstructorStrictness :: Type -> [Bool]
-getConstructorStrictness tp = [ typeIsStrict tArg | Right tArg <- args ]
+getConstructorStrictness tp = [typeIsStrict tArg | Right tArg <- args]
   where
     FunctionType args _ = extractFunctionTypeNoSynonyms tp
 
@@ -35,14 +35,14 @@ envForModule :: CoreModule -> Env
 envForModule mod@(Module _ _ _ _ decls) = Env typeEnv (mapFromList $ argsValues ++ argsAbstracts ++ argsConstructors)
   where
     typeEnv = typeEnvForModule mod
-    argsValues = [ (name, getExpressionStrictness expr) | DeclValue name _ _ _ expr _ <- decls ]
-    argsAbstracts = [ (name, getAbstractStrictness typeEnv arity tp) | DeclAbstract name _ _ arity tp _ <- decls ]
-    argsConstructors = [ (name, getConstructorStrictness tp) | DeclCon name _ _ tp _ _ <- decls ]
+    argsValues = [(name, getExpressionStrictness expr) | DeclValue name _ _ _ expr _ <- decls]
+    argsAbstracts = [(name, getAbstractStrictness typeEnv arity tp) | DeclAbstract name _ _ arity tp _ <- decls]
+    argsConstructors = [(name, getConstructorStrictness tp) | DeclCon name _ _ tp _ _ <- decls]
 
 data Analysis a = Analysis IdSet !a
 
 transformDeclaration :: Env -> NameSupply -> CoreDecl -> CoreDecl
-transformDeclaration env supply decl@DeclValue{} = decl{ valueValue = expr }
+transformDeclaration env supply decl@DeclValue {} = decl {valueValue = expr}
   where
     Analysis _ expr = analyseExpression env supply $ valueValue decl
 transformDeclaration _ _ decl = decl
@@ -69,7 +69,7 @@ analyseExpression env supply (Let (Rec binds) expr) = Analysis (unionSet strictE
   where
     (supplyExpr, supplyBinds) = splitNameSupply supply
     Analysis strictExpr expr' = analyseExpression env supplyExpr expr
-    Analysis strictBinds binds' = analyseRecBinds env strictExpr supplyBinds binds 
+    Analysis strictBinds binds' = analyseRecBinds env strictExpr supplyBinds binds
 analyseExpression env supply (Match var alts) = Analysis (foldr1 intersectionSet stricts) $ Match var alts'
   where
     (stricts, alts') = unzip $ map (\(Analysis s a) -> (s, a)) $ mapWithSupply (analyseAlt env) supply alts
@@ -141,7 +141,7 @@ analyseStrictRecBinds env supply binds = foldr analyseStrictRecBind (Analysis em
     analyseStrictRecBind :: (NameSupply, Bind) -> Analysis [Bind] -> Analysis [Bind]
     analyseStrictRecBind (s, bind) (Analysis strict bs) = Analysis (unionSet strict strict') (bind' : bs)
       where
-        Analysis strict' bind' = analyseBind env s bind 
+        Analysis strict' bind' = analyseBind env s bind
 
 -- TODO: Remove declared variables from IdSet
 analyseAlt :: Env -> NameSupply -> Alt -> Analysis Alt

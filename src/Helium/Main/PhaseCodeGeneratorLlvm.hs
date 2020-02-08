@@ -1,34 +1,32 @@
-{-| Module      :  PhaseCodeGeneratorLlvm
-    License     :  GPL
+-- | Module      :  PhaseCodeGeneratorLlvm
+--    License     :  GPL
+--
+--    Maintainer  :  helium@cs.uu.nl
+--    Stability   :  experimental
+--    Portability :  portable
+module Helium.Main.PhaseCodeGeneratorLlvm
+  ( phaseCodeGeneratorLlvm,
+  )
+where
 
-    Maintainer  :  helium@cs.uu.nl
-    Stability   :  experimental
-    Portability :  portable
--}
-
-module Helium.Main.PhaseCodeGeneratorLlvm(phaseCodeGeneratorLlvm) where
-
-import Lvm.Common.Id(NameSupply, splitNameSupplies, mapWithSupply)
+import Control.Monad (when)
+import qualified Data.Text.Lazy as Text
+import Helium.CodeGeneration.Iridium.ResolveDependencies (IridiumFile (..))
+import Helium.CodeGeneration.LLVM.CompileModule (compileModule)
+import Helium.CodeGeneration.LLVM.Env (envForModule)
+import Helium.CodeGeneration.LLVM.Target (Target (..))
+import Helium.Main.CompileUtils
+import LLVM.Pretty (ppllvm)
+import Lvm.Common.Id (NameSupply, mapWithSupply, splitNameSupplies)
 import qualified Lvm.Core.Expr as Core
 import qualified Lvm.Core.Module as Core
-import Helium.Main.CompileUtils
-import Control.Monad(when)
-import Helium.CodeGeneration.Iridium.ResolveDependencies(IridiumFile(..))
-import Helium.CodeGeneration.LLVM.CompileModule(compileModule)
-import Helium.CodeGeneration.LLVM.Target(Target(..))
-import Helium.CodeGeneration.LLVM.Env(envForModule)
 import System.Process
-
-import qualified Data.Text.Lazy as Text
-import LLVM.Pretty (ppllvm)
 
 phaseCodeGeneratorLlvm :: NameSupply -> FilePath -> [IridiumFile] -> Bool -> [Option] -> IO ()
 phaseCodeGeneratorLlvm supply output files shouldLink options = do
   enterNewPhase "Code generation for LLVM" options
-
   let target = Target 64 48
   sequence_ $ mapWithSupply (compileToLlvm target) supply files
-
   when shouldLink $ do
     let args = "-o" : output : "-O3" : "../lib/runtime/memory.c" : map toLlvmPath files
     (code, res, err) <- readProcessWithExitCode "clang" args ""

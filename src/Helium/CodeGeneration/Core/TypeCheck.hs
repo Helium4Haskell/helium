@@ -1,51 +1,56 @@
-{-| Module      :  TypeCheck
-    License     :  GPL
-
-    Maintainer  :  helium@cs.uu.nl
-    Stability   :  experimental
-    Portability :  portable
--}
-
 -- A type checker for Core files.
 
-module Helium.CodeGeneration.Core.TypeCheck (checkModule, checkModuleIO) where
+-- | Module      :  TypeCheck
+--    License     :  GPL
+--
+--    Maintainer  :  helium@cs.uu.nl
+--    Stability   :  experimental
+--    Portability :  portable
+module Helium.CodeGeneration.Core.TypeCheck
+  ( checkModule,
+    checkModuleIO,
+  )
+where
 
+import Data.List
 import Helium.CodeGeneration.Core.TypeEnvironment
-import Lvm.Core.Module
-import Lvm.Core.Expr
-import Lvm.Core.Type
-import Lvm.Core.Utils
 import Lvm.Common.Id
 import Lvm.Common.IdMap
-
+import Lvm.Core.Expr
+import Lvm.Core.Module
+import Lvm.Core.Type
+import Lvm.Core.Utils
 import System.Exit
-import Data.List
 import Text.PrettyPrint.Leijen (pretty)
 
 type Location = [String]
+
 data TypeError = TypeError Location Message
+
 data Message
   = MessageExpected String Type (Maybe Expr)
   | MessageNotEqual Type Type
   | MessageNameNotFound Id
 
 instance Show Message where
-  show (MessageExpected str tp (Just expr))
-    = "  Expected " ++ str ++ ", got `" ++ showType [] tp ++ "' instead"
-    ++ "  as the type of expression:\n\n" ++ show (pretty expr)
-  show (MessageExpected str tp Nothing)
-    = "  Expected " ++ str ++ ", got `" ++ showType [] tp ++ "' instead"
-  show (MessageNotEqual t1 t2)
-    = "  Types `" ++ showType [] t1 ++ "' and `" ++ showType [] t2 ++ "' do not match"
-  show (MessageNameNotFound name)
-    = "  Variable not found: " ++ show name
+  show (MessageExpected str tp (Just expr)) =
+    "  Expected " ++ str ++ ", got `" ++ showType [] tp ++ "' instead"
+      ++ "  as the type of expression:\n\n"
+      ++ show (pretty expr)
+  show (MessageExpected str tp Nothing) =
+    "  Expected " ++ str ++ ", got `" ++ showType [] tp ++ "' instead"
+  show (MessageNotEqual t1 t2) =
+    "  Types `" ++ showType [] t1 ++ "' and `" ++ showType [] t2 ++ "' do not match"
+  show (MessageNameNotFound name) =
+    "  Variable not found: " ++ show name
 
 instance Show TypeError where
-  show (TypeError location msg)
-    = "Type error"
-    ++ concat (map (\loc -> "\nin " ++ loc) location)
-    ++ "\n" ++ show msg
-    ++ "\n\n"
+  show (TypeError location msg) =
+    "Type error"
+      ++ concat (map (\loc -> "\nin " ++ loc) location)
+      ++ "\n"
+      ++ show msg
+      ++ "\n\n"
 
 type Check a = Either TypeError a
 
@@ -85,7 +90,7 @@ checkDecl env decl = case checkDecl' env decl of
   Right _ -> []
 
 checkDecl' :: TypeEnvironment -> CoreDecl -> Check ()
-checkDecl' env decl@DeclValue{} = do
+checkDecl' env decl@DeclValue {} = do
   tp <- checkExpression env (valueValue decl) @@ "function " ++ show (declName decl)
   assert env tp (declType decl) @@ "annotated type of function " ++ show (declName decl)
 checkDecl' env _ = return ()
@@ -101,7 +106,7 @@ checkExpression env (Let binds expr) = do
   checkExpression env' expr
 checkExpression env (Match name alts) = do
   scrutinee <- checkId env name
-  ~(tp:tps) <- traverse (\alt -> checkAlt env scrutinee alt @@ "match on variable " ++ show name) alts
+  ~(tp : tps) <- traverse (\alt -> checkAlt env scrutinee alt @@ "match on variable " ++ show name) alts
   sequence_ $ map (\tp' -> assert env tp tp' @@ "the inferred types of the alts") tps
   return tp
 checkExpression env (Ap e1 e2) = do
@@ -152,14 +157,13 @@ checkPattern env tp pat@(PatCon con@(ConId _) typeArgs ids) = do
     findVars tReturn [] = do
       assert env tp tReturn
       return []
-    findVars (TAp (TAp (TCon TConFun) tArg) tReturn) (x:xs) = do
+    findVars (TAp (TAp (TCon TConFun) tArg) tReturn) (x : xs) = do
       let var = Variable x tArg
       vars <- findVars tReturn xs
       return (var : vars)
     findVars t _ = do
       report $ MessageExpected "function type" t Nothing
 checkPattern env tp pat = return $ typeEnvAddPattern pat env
-
 
 checkId :: TypeEnvironment -> Id -> Check Type
 checkId (TypeEnvironment _ values) name = case lookupMap name values of

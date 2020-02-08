@@ -1,4 +1,4 @@
-{-| Module      :  Data
+{- Module      :  Data
     License     :  GPL
 
     Maintainer  :  helium@cs.uu.nl
@@ -14,33 +14,33 @@
 
 module Helium.CodeGeneration.Iridium.Data where
 
-import Lvm.Common.Id(Id, stringFromId, idFromString)
-import Lvm.Common.IdMap(mapFromList, emptyMap)
-import Lvm.Core.Module(Custom(..), DeclKind, Arity, Field)
-import Lvm.Core.Type
-import Data.List(intercalate)
 import Data.Either (isLeft, isRight)
-
+import Data.List (intercalate)
+import Helium.CodeGeneration.Iridium.Primitive (findPrimitive, primType)
 import Helium.CodeGeneration.Iridium.Type
-import Helium.CodeGeneration.Iridium.Primitive(findPrimitive, primType)
+import Lvm.Common.Id (Id, idFromString, stringFromId)
+import Lvm.Common.IdMap (emptyMap, mapFromList)
+import Lvm.Core.Module (Arity, Custom (..), DeclKind, Field)
+import Lvm.Core.Type
 
 type BlockName = Id
 
-data Module = Module
-  { moduleName :: !Id
-  , moduleDependencies :: ![Id]
-  , moduleCustoms :: ![Declaration CustomDeclaration]
-  , moduleDataTypes :: ![Declaration DataType]
-  , moduleTypeSynonyms :: ![Declaration TypeSynonym]
-  , moduleAbstractMethods :: ![Declaration AbstractMethod]
-  , moduleMethods :: ![Declaration Method]
-  }
+data Module
+  = Module
+      { moduleName :: !Id,
+        moduleDependencies :: ![Id],
+        moduleCustoms :: ![Declaration CustomDeclaration],
+        moduleDataTypes :: ![Declaration DataType],
+        moduleTypeSynonyms :: ![Declaration TypeSynonym],
+        moduleAbstractMethods :: ![Declaration AbstractMethod],
+        moduleMethods :: ![Declaration Method]
+      }
 
 data DataType = DataType ![Declaration DataTypeConstructorDeclaration]
 
 data DataTypeConstructorDeclaration = DataTypeConstructorDeclaration !Type ![Field]
 
-data DataTypeConstructor = DataTypeConstructor { constructorName :: !Id, constructorType :: !Type }
+data DataTypeConstructor = DataTypeConstructor {constructorName :: !Id, constructorType :: !Type}
   deriving (Eq, Ord)
 
 constructorDataType :: DataTypeConstructor -> Id
@@ -61,13 +61,14 @@ getConstructors (Declaration dataName _ _ _ (DataType cons)) = map (\(Declaratio
 
 data Visibility = ExportedAs !Id | Private deriving (Eq, Ord)
 
-data Declaration a = Declaration
-  { declarationName :: !Id
-  , declarationVisibility :: !Visibility
-  , declarationModule :: Maybe Id
-  , declarationCustom :: ![Custom]
-  , declarationValue :: !a
-  }
+data Declaration a
+  = Declaration
+      { declarationName :: !Id,
+        declarationVisibility :: !Visibility,
+        declarationModule :: Maybe Id,
+        declarationCustom :: ![Custom],
+        declarationValue :: !a
+      }
 
 data CustomDeclaration = CustomDeclaration !DeclKind
 
@@ -98,38 +99,40 @@ methodArity (Method _ args _ _ _ _) = length $ filter isRight args
 
 -- Annotations on methods
 data Annotation
-  -- * This method can be put in a thunk. An additional trampoline function is generated. We store a pointer to the trampoline in the thunk.
-  = AnnotateTrampoline
-  -- * Marks that this function uses a custom calling convention. When none is given, it is assumed to use CCFast
-  | AnnotateCallConvention !CallingConvention
-  -- * The type of the method ends in RealWorld -> IORes, but in reality the fuction does not take RealWorld as an argument and only produces
-  -- the value in the IORes object (not the 'next' real world). This is used to declare extern functions like putchar and getchar.
-  -- We currently assume that the return type of the function is 'int'.
-  -- Cannot be used in combination with 'AnnotateTrampoline'.
-  | AnnotateFakeIO
+  = -- This method can be put in a thunk. An additional trampoline function is generated. We store a pointer to the trampoline in the thunk.
+    AnnotateTrampoline
+  | -- Marks that this function uses a custom calling convention. When none is given, it is assumed to use CCFast
+    AnnotateCallConvention !CallingConvention
+  | -- The type of the method ends in RealWorld -> IORes, but in reality the fuction does not take RealWorld as an argument and only produces
+    -- the value in the IORes object (not the 'next' real world). This is used to declare extern functions like putchar and getchar.
+    -- We currently assume that the return type of the function is 'int'.
+    -- Cannot be used in combination with 'AnnotateTrampoline'.
+    AnnotateFakeIO
   deriving (Eq, Ord)
 
 data CallingConvention
   = CCC -- C calling convention
   | CCFast -- Fast calling convention of LLVM
-  -- * Preserves most registers. Created for runtime functions that have a hot path that doesn't use many registers,
-  -- and a cold path that might call other functions.
+    -- Preserves most registers. Created for runtime functions that have a hot path that doesn't use many registers,
+    -- and a cold path that might call other functions.
   | CCPreserveMost
   deriving (Eq, Ord)
 
 data TypeSynonym = TypeSynonym !Type
-data Local = Local { localName :: !Id, localType :: !Type }
+
+data Local = Local {localName :: !Id, localType :: !Type}
   deriving (Eq, Ord)
 
 data Global
   = GlobalVariable !Id !Type
   deriving (Eq, Ord)
 
-data GlobalFunction = GlobalFunction
-  { globalFunctionName :: !Id
-  , globalFunctionArity :: !Arity
-  , globalFunctionType :: !Type
-  }
+data GlobalFunction
+  = GlobalFunction
+      { globalFunctionName :: !Id,
+        globalFunctionArity :: !Arity,
+        globalFunctionType :: !Type
+      }
   deriving (Eq, Ord)
 
 data Variable
@@ -140,67 +143,67 @@ data Variable
 data Block = Block BlockName Instruction
   deriving (Eq, Ord)
 
--- * The branches of a 'case' instuction.
+-- The branches of a 'case' instuction.
 data Case
-  -- * Each branch is marked with a constructor. All constructors should be of the same data type.
-  --  It is not required that all constructors of the data type should be present. However,
-  -- the behavior is undefined if no constructor matches.
-  = CaseConstructor [(DataTypeConstructor, BlockName)]
-  -- * For a case instruction on ints, the branches are marked with integers and there is a default branch,
-  -- which is executed if the given numbers do not match.
-  | CaseInt [(Int, BlockName)] BlockName
+  = -- Each branch is marked with a constructor. All constructors should be of the same data type.
+    --  It is not required that all constructors of the data type should be present. However,
+    -- the behavior is undefined if no constructor matches.
+    CaseConstructor [(DataTypeConstructor, BlockName)]
+  | -- For a case instruction on ints, the branches are marked with integers and there is a default branch,
+    -- which is executed if the given numbers do not match.
+    CaseInt [(Int, BlockName)] BlockName
   deriving (Eq, Ord)
 
 data Instruction
-  -- * Computes an expression and assigns the value to the given variable name.
-  = Let !Id !Expr !Instruction
-  -- * Allocates thunks or constructors. Those binds may be recursive.
-  | LetAlloc ![Bind] !Instruction
-  -- * Uncoditionally jumps to a block
-  | Jump !BlockName
-  -- * Asserts that the variable matches with the specified MatchTarget. Can be used to match on constructors,
-  -- tuples and thunks. Pattern matching on thunks is not possible from Haskell code, but is used to write the
-  -- runtime library. If the variable does not match with the specified MatchTarget, the behaviour is undefined.
-  -- Extracts fields out of the object.
-  | Match !Variable !MatchTarget ![Type] ![Maybe Id] !Instruction
-  -- * Conditionally jumps to a block, depending on the value of the variable. Can be used to distinguish
-  -- different constructors of a data type, or on integers.
-  | Case !Variable Case
-  -- * Returns a value from the function. The type of the variable should match with the return type of the
-  -- containing method.
-  | Return !Variable
-  -- * Denotes that the current location is unreachable. Can be used after a call to a diverging function like 'error'.
-  -- The control flow or the argument should guarantee that this location is unreachable. In the case of calling 'error',
-  -- the argument should be the returned value of 'error'.
-  | Unreachable !(Maybe Variable)
+  = -- Computes an expression and assigns the value to the given variable name.
+    Let !Id !Expr !Instruction
+  | -- Allocates thunks or constructors. Those binds may be recursive.
+    LetAlloc ![Bind] !Instruction
+  | -- Uncoditionally jumps to a block
+    Jump !BlockName
+  | -- Asserts that the variable matches with the specified MatchTarget. Can be used to match on constructors,
+    -- tuples and thunks. Pattern matching on thunks is not possible from Haskell code, but is used to write the
+    -- runtime library. If the variable does not match with the specified MatchTarget, the behaviour is undefined.
+    -- Extracts fields out of the object.
+    Match !Variable !MatchTarget ![Type] ![Maybe Id] !Instruction
+  | -- Conditionally jumps to a block, depending on the value of the variable. Can be used to distinguish
+    -- different constructors of a data type, or on integers.
+    Case !Variable Case
+  | -- Returns a value from the function. The type of the variable should match with the return type of the
+    -- containing method.
+    Return !Variable
+  | -- Denotes that the current location is unreachable. Can be used after a call to a diverging function like 'error'.
+    -- The control flow or the argument should guarantee that this location is unreachable. In the case of calling 'error',
+    -- the argument should be the returned value of 'error'.
+    Unreachable !(Maybe Variable)
   deriving (Eq, Ord)
 
--- * A bind describes the construction of an object in a 'letalloc' instruction. It consists of the
+-- A bind describes the construction of an object in a 'letalloc' instruction. It consists of the
 -- variable to which the object is bound, the target and argument. A target represents what kind of object
 -- is created.
-data Bind = Bind { bindVar :: !Id, bindTarget :: !BindTarget, bindArguments :: ![Either Type Variable] }
+data Bind = Bind {bindVar :: !Id, bindTarget :: !BindTarget, bindArguments :: ![Either Type Variable]}
   deriving (Eq, Ord)
 
--- * A bind can either construct a thunk, a constructor or a tuple. For thunks, we distinguish
+-- A bind can either construct a thunk, a constructor or a tuple. For thunks, we distinguish
 -- primary thunks, which contain a function pointer, and secondary thunks, which point to other thunks.
 data BindTarget
-  -- * The object points at a function. The object is thus a primary thunk.
-  = BindTargetFunction !GlobalFunction
-  -- * The object points at another thunk and is thus a secondary thunk.
-  | BindTargetThunk !Variable
-  -- * The bind represents a constructor invocation.
-  | BindTargetConstructor !DataTypeConstructor
-  -- * The bind represents the construction of a tuple.
-  | BindTargetTuple !Arity
+  = -- he object points at a function. The object is thus a primary thunk.
+    BindTargetFunction !GlobalFunction
+  | -- The object points at another thunk and is thus a secondary thunk.
+    BindTargetThunk !Variable
+  | -- The bind represents a constructor invocation.
+    BindTargetConstructor !DataTypeConstructor
+  | -- The bind represents the construction of a tuple.
+    BindTargetTuple !Arity
   deriving (Eq, Ord)
 
--- * A 'match' instruction can pattern match on constructors, tuples or thunks. The latter
+-- A 'match' instruction can pattern match on constructors, tuples or thunks. The latter
 -- is not possible from Haskell code and is only used to write the runtime library.
 data MatchTarget
-  -- * Match on a constructor.
-  = MatchTargetConstructor !DataTypeConstructor
-  -- * Match on a tuple with a given number of fields.
-  | MatchTargetTuple !Arity
+  = -- Match on a constructor.
+    MatchTargetConstructor !DataTypeConstructor
+  | -- Match on a tuple with a given number of fields.
+    MatchTargetTuple !Arity
   deriving (Eq, Ord)
 
 matchArgumentType :: MatchTarget -> [Type] -> Type
@@ -211,7 +214,7 @@ matchArgumentType (MatchTargetTuple arity) instantiation = typeToStrict $ foldl 
 
 matchFieldTypes :: MatchTarget -> [Type] -> [Type]
 matchFieldTypes (MatchTargetConstructor (DataTypeConstructor _ tp)) instantiation =
-  [ arg | Right arg <- args ]
+  [arg | Right arg <- args]
   where
     FunctionType args _ = extractFunctionTypeNoSynonyms $ typeApplyList tp instantiation
 matchFieldTypes (MatchTargetTuple _) instantiation = instantiation
@@ -235,7 +238,7 @@ typeApplyArguments env tp args = case tp' of
       TStrict tp' -> tp'
       tp' -> tp'
 
--- * Find the type of the constructed object in a Bind
+-- Find the type of the constructed object in a Bind
 bindType :: TypeEnvironment -> Bind -> Type
 -- In case of a constructor application, we get a value in WHNF of the related data type.
 bindType env (Bind _ (BindTargetConstructor cons) args) = typeToStrict $ typeApplyArguments env (constructorType cons) args
@@ -257,36 +260,36 @@ bindType env (Bind _ (BindTargetThunk fn) args) = typeApplyArguments env (variab
 bindLocal :: TypeEnvironment -> Bind -> Local
 bindLocal env b@(Bind var _ _) = Local var $ bindType env b
 
--- * Expressions are used to bind values to variables in 'let' instructions.
+-- Expressions are used to bind values to variables in 'let' instructions.
 -- Those binds cannot be recursive.
 data Expr
-  -- A literal value. Note that strings are allocated, integers and floats not.
-  = Literal !Literal
-  -- Calls a function. The number of arguments should be equal to the number of parameters of the specified function.
-  | Call !GlobalFunction ![Either Type Variable]
+  = -- A literal value. Note that strings are allocated, integers and floats not.
+    Literal !Literal
+  | -- Calls a function. The number of arguments should be equal to the number of parameters of the specified function.
+    Call !GlobalFunction ![Either Type Variable]
   | Instantiate !Variable ![Type]
-  -- Evaluates a value to WHNF or returns the value if it is already in WHNF.
-  | Eval !Variable
-  -- Gets the value of a variable. Does not evaluate the variable.
-  | Var !Variable
-  -- Casts a variable to a (possibly) different type.
-  | Cast !Variable !Type
-  -- Casts type `!a` to `a`
-  | CastThunk !Variable
-  -- Represents a phi node in the control flow of the method. Gets a value, based on the previous block.
-  | Phi ![PhiBranch]
-  -- Calls a primitive instruction, like integer addition. The number of arguments should be equal to the number of parameters
-  -- that the primitive expects.
-  | PrimitiveExpr !Id ![Either Type Variable]
-  -- Denotes an undefined value, not the Haskell function 'undefined'. This expression does not throw, but just has some unknown value.
-  -- This can be used for a value which is not used.
-  | Undefined !Type
-  -- `%c = seq %a %b` marks a dependency between variables %a and %b. Assigns %b to %c and ignores the value of %a. 
-  -- Prevents that variable %a is removed by dead code removal. Can be used to compile the Haskell functions `seq` and `pseq`.
-  | Seq !Variable !Variable
+  | -- Evaluates a value to WHNF or returns the value if it is already in WHNF.
+    Eval !Variable
+  | -- Gets the value of a variable. Does not evaluate the variable.
+    Var !Variable
+  | -- Casts a variable to a (possibly) different type.
+    Cast !Variable !Type
+  | -- Casts type `!a` to `a`
+    CastThunk !Variable
+  | -- Represents a phi node in the control flow of the method. Gets a value, based on the previous block.
+    Phi ![PhiBranch]
+  | -- Calls a primitive instruction, like integer addition. The number of arguments should be equal to the number of parameters
+    -- that the primitive expects.
+    PrimitiveExpr !Id ![Either Type Variable]
+  | -- Denotes an undefined value, not the Haskell function 'undefined'. This expression does not throw, but just has some unknown value.
+    -- This can be used for a value which is not used.
+    Undefined !Type
+  | -- `%c = seq %a %b` marks a dependency between variables %a and %b. Assigns %b to %c and ignores the value of %a.
+    -- Prevents that variable %a is removed by dead code removal. Can be used to compile the Haskell functions `seq` and `pseq`.
+    Seq !Variable !Variable
   deriving (Eq, Ord)
 
-data PhiBranch = PhiBranch { phiBlock :: !BlockName, phiVariable :: !Variable }
+data PhiBranch = PhiBranch {phiBlock :: !BlockName, phiVariable :: !Variable}
   deriving (Eq, Ord)
 
 data Literal

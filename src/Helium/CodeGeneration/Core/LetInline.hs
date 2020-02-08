@@ -1,25 +1,30 @@
 -- Inlines lazy non-recursive let bindings if one of the following holds:
--- * The definition of the variable is an unsaturated call
--- * The result of the thunk is not shared
--- * The variable is not used
+-- - The definition of the variable is an unsaturated call
+-- - The result of the thunk is not shared
+-- - The variable is not used
 --
 -- You might not consider the last case as inlining, however, we do inline
 -- the definition on all (eg, no) usages.
 
-module Helium.CodeGeneration.Core.LetInline (coreLetInline) where
+module Helium.CodeGeneration.Core.LetInline
+  ( coreLetInline,
+  )
+where
+
+import Data.Maybe (fromMaybe, mapMaybe)
 import Lvm.Common.Id (Id)
 import Lvm.Common.IdMap
 import Lvm.Common.IdSet
-import Lvm.Core.Module
 import Lvm.Core.Expr
-import Data.Maybe (fromMaybe, mapMaybe)
+import Lvm.Core.Module
 
 coreLetInline :: CoreModule -> CoreModule
 coreLetInline = fmap inline
   where
     arities = emptyMap -- TODO: Gather all arities
     inline expr = inlineInExpr env expr
-      where env = createEnv arities expr
+      where
+        env = createEnv arities expr
 
 data InlineState
   = Inline -- Inline always
@@ -38,11 +43,11 @@ data Analysis
 
 aSequence :: [Analysis] -> Analysis
 aSequence [] = ANil
-aSequence (a:as) = foldr ASequence a as
+aSequence (a : as) = foldr ASequence a as
 
 aAlts :: [Analysis] -> Analysis
 aAlts [] = ANil
-aAlts (a:as) = foldr AAlts a as
+aAlts (a : as) = foldr AAlts a as
 
 analyseBind :: Bind -> Analysis
 analyseBind (Bind (Variable name _) expr) = AIgnore name $ analyse expr
@@ -67,8 +72,8 @@ analyse (Con _) = ANil
 analyse (Lit _) = ANil
 
 data Decision
-  = Local { decisionName :: !Id, decisionValue :: !InlineState } -- Analysed only locally, not yet final
-  | Final { decisionName :: !Id, decisionValue :: !InlineState } -- Analysed till the declaration, the definition is final
+  = Local {decisionName :: !Id, decisionValue :: !InlineState} -- Analysed only locally, not yet final
+  | Final {decisionName :: !Id, decisionValue :: !InlineState} -- Analysed till the declaration, the definition is final
 
 -- Merge the two list, similar to merge sort
 mergeWith :: (InlineState -> InlineState -> InlineState) -> [Decision] -> [Decision] -> [Decision]
@@ -86,10 +91,8 @@ solveAlts = mergeWith f
   where
     f DontInline _ = DontInline
     f _ DontInline = DontInline
-
     f InlineNotShared _ = InlineNotShared
     f _ InlineNotShared = InlineNotShared
-
     f _ _ = InlineIfShort
 
 solveSequence :: [Decision] -> [Decision] -> [Decision]
@@ -142,7 +145,8 @@ isUnsaturatedCall arities (Forall _ _ e) consumed = isUnsaturatedCall arities e 
 isUnsaturatedCall _ _ _ = False
 
 type Arities = IdMap Int
-data Env = Env { arities :: !Arities, variables :: !(IdMap InlineState), values :: !(IdMap Expr) }
+
+data Env = Env {arities :: !Arities, variables :: !(IdMap InlineState), values :: !(IdMap Expr)}
 
 createEnv :: Arities -> Expr -> Env
 createEnv arities expr = Env arities vars emptyMap
@@ -164,10 +168,8 @@ inlineInExpr env (Match x alts) = Match x (map inlineInAlt alts)
     inlineInAlt (Alt pat expr) = Alt pat $ inlineInExpr env expr
 inlineInExpr env (Let (NonRec (Bind var@(Variable name _) value)) expr)
   | shouldInline env (findMap name $ variables env) expr =
-    let
-      env' = env{ values = insertMap name value' $ values env }
-    in
-      inlineInExpr env' expr
+    let env' = env {values = insertMap name value' $ values env}
+     in inlineInExpr env' expr
   | otherwise = Let (NonRec (Bind var value')) $ inlineInExpr env expr
   where
     value' = inlineInExpr env value

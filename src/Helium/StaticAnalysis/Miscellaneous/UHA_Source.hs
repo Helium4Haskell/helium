@@ -1,90 +1,88 @@
-{-| Module      :  UHA_Source
-    License     :  GPL
-
-    Maintainer  :  helium@cs.uu.nl
-    Stability   :  experimental
-    Portability :  portable
-    
-    The UHA_Source data type is the union of several data types from the abstract
-    syntax (UHA),  including expressions and patterns.
--}
-
+-- | Module      :  UHA_Source
+--    License     :  GPL
+--
+--    Maintainer  :  helium@cs.uu.nl
+--    Stability   :  experimental
+--    Portability :  portable
+--
+--    The UHA_Source data type is the union of several data types from the abstract
+--    syntax (UHA),  including expressions and patterns.
 module Helium.StaticAnalysis.Miscellaneous.UHA_Source where
 
-import Helium.Utils.OneLiner
+import qualified Helium.Syntax.UHA_OneLine as PP
 import Helium.Syntax.UHA_Range
 import Helium.Syntax.UHA_Syntax
 import Helium.Syntax.UHA_Utils
-import qualified Helium.Syntax.UHA_OneLine as PP
+import Helium.Utils.OneLiner
 
-data UHA_Source =
-     UHA_Expr   Expression              
-   | UHA_Pat    Pattern
-   | UHA_Stat   Statement
-   | UHA_Qual   Qualifier
-   | UHA_FB     FunctionBinding
-   | UHA_FD     FieldDeclaration
-   | UHA_C      Constructor
-   | UHA_RB     RecordExpressionBinding
-   | UHA_RPB    RecordPatternBinding
-   | UHA_RHS    RightHandSide
-   | UHA_Decl   Declaration
-   | UHA_Decls  Declarations
-   | UHA_Def    Name
-         
+data UHA_Source
+  = UHA_Expr Expression
+  | UHA_Pat Pattern
+  | UHA_Stat Statement
+  | UHA_Qual Qualifier
+  | UHA_FB FunctionBinding
+  | UHA_FD FieldDeclaration
+  | UHA_C Constructor
+  | UHA_RB RecordExpressionBinding
+  | UHA_RPB RecordPatternBinding
+  | UHA_RHS RightHandSide
+  | UHA_Decl Declaration
+  | UHA_Decls Declarations
+  | UHA_Def Name
+
 instance Show UHA_Source where
-   show = showOneLine 80 . oneLinerSource
- 
+  show = showOneLine 80 . oneLinerSource
+
 rangeOfSource :: UHA_Source -> Range
 rangeOfSource source =
-   case source of
-      UHA_Expr  expr  -> getExprRange expr
-      UHA_Pat   pat   -> getPatRange pat
-      UHA_Stat  stat  -> getStatementRange stat
-      UHA_Qual  qual  -> getQualifierRange qual
-      UHA_FB    fb    -> getFBRange fb
-      UHA_FD    fd    -> getFDRange fd
-      UHA_C     c     -> getCRange c
-      UHA_RB    rb    -> getRBRange rb
-      UHA_RPB   rpb   -> getRPBRange rpb
-      UHA_RHS   rhs   -> getRHSRange rhs
-      UHA_Decl  decl  -> getDeclarationRange decl
-      UHA_Decls decls -> if null decls then noRange else foldr1 mergeRanges (map getDeclarationRange decls)
-      UHA_Def   name  -> getNameRange name
+  case source of
+    UHA_Expr expr -> getExprRange expr
+    UHA_Pat pat -> getPatRange pat
+    UHA_Stat stat -> getStatementRange stat
+    UHA_Qual qual -> getQualifierRange qual
+    UHA_FB fb -> getFBRange fb
+    UHA_FD fd -> getFDRange fd
+    UHA_C c -> getCRange c
+    UHA_RB rb -> getRBRange rb
+    UHA_RPB rpb -> getRPBRange rpb
+    UHA_RHS rhs -> getRHSRange rhs
+    UHA_Decl decl -> getDeclarationRange decl
+    UHA_Decls decls -> if null decls then noRange else foldr1 mergeRanges (map getDeclarationRange decls)
+    UHA_Def name -> getNameRange name
 
 oneLinerSource :: UHA_Source -> OneLineTree
-oneLinerSource source = 
-   case source of
-      UHA_Expr  expr  -> PP.oneLineTree_Syn_Expression (PP.wrap_Expression (PP.sem_Expression expr) PP.Inh_Expression)
-      UHA_Pat   pat   -> PP.oneLineTree_Syn_Pattern (PP.wrap_Pattern (PP.sem_Pattern pat) PP.Inh_Pattern)
-      UHA_Stat  stat  -> PP.oneLineTree_Syn_Statement (PP.wrap_Statement (PP.sem_Statement stat) PP.Inh_Statement)
-      UHA_Qual  qual  -> PP.oneLineTree_Syn_Qualifier (PP.wrap_Qualifier (PP.sem_Qualifier qual) PP.Inh_Qualifier)
-      UHA_FB    fb    -> PP.oneLineTree_Syn_FunctionBinding (PP.wrap_FunctionBinding (PP.sem_FunctionBinding fb) PP.Inh_FunctionBinding)
-      UHA_FD    fd    -> PP.oneLineTree_Syn_FieldDeclaration (PP.wrap_FieldDeclaration (PP.sem_FieldDeclaration fd) PP.Inh_FieldDeclaration)
-      UHA_C     c     -> PP.oneLineTree_Syn_Constructor (PP.wrap_Constructor (PP.sem_Constructor c) PP.Inh_Constructor)
-      UHA_RB    rb    -> PP.oneLineTree_Syn_RecordExpressionBinding (PP.wrap_RecordExpressionBinding (PP.sem_RecordExpressionBinding rb) PP.Inh_RecordExpressionBinding)
-      UHA_RPB   rb    -> PP.oneLineTree_Syn_RecordPatternBinding (PP.wrap_RecordPatternBinding (PP.sem_RecordPatternBinding rb) PP.Inh_RecordPatternBinding)
-      UHA_RHS   rhs   -> PP.oneLineTree_Syn_RightHandSide (PP.wrap_RightHandSide (PP.sem_RightHandSide rhs) PP.Inh_RightHandSide) ""
-      UHA_Decl  decl  -> PP.oneLineTree_Syn_Declaration (PP.wrap_Declaration (PP.sem_Declaration decl) PP.Inh_Declaration)
-      UHA_Decls decls -> PP.encloseSep "{" "; " "}" (PP.oneLineTree_Syn_Declarations (PP.wrap_Declarations (PP.sem_Declarations decls) PP.Inh_Declarations))
-      UHA_Def   name  -> OneLineText (show name)
+oneLinerSource source =
+  case source of
+    UHA_Expr expr -> PP.oneLineTree_Syn_Expression (PP.wrap_Expression (PP.sem_Expression expr) PP.Inh_Expression)
+    UHA_Pat pat -> PP.oneLineTree_Syn_Pattern (PP.wrap_Pattern (PP.sem_Pattern pat) PP.Inh_Pattern)
+    UHA_Stat stat -> PP.oneLineTree_Syn_Statement (PP.wrap_Statement (PP.sem_Statement stat) PP.Inh_Statement)
+    UHA_Qual qual -> PP.oneLineTree_Syn_Qualifier (PP.wrap_Qualifier (PP.sem_Qualifier qual) PP.Inh_Qualifier)
+    UHA_FB fb -> PP.oneLineTree_Syn_FunctionBinding (PP.wrap_FunctionBinding (PP.sem_FunctionBinding fb) PP.Inh_FunctionBinding)
+    UHA_FD fd -> PP.oneLineTree_Syn_FieldDeclaration (PP.wrap_FieldDeclaration (PP.sem_FieldDeclaration fd) PP.Inh_FieldDeclaration)
+    UHA_C c -> PP.oneLineTree_Syn_Constructor (PP.wrap_Constructor (PP.sem_Constructor c) PP.Inh_Constructor)
+    UHA_RB rb -> PP.oneLineTree_Syn_RecordExpressionBinding (PP.wrap_RecordExpressionBinding (PP.sem_RecordExpressionBinding rb) PP.Inh_RecordExpressionBinding)
+    UHA_RPB rb -> PP.oneLineTree_Syn_RecordPatternBinding (PP.wrap_RecordPatternBinding (PP.sem_RecordPatternBinding rb) PP.Inh_RecordPatternBinding)
+    UHA_RHS rhs -> PP.oneLineTree_Syn_RightHandSide (PP.wrap_RightHandSide (PP.sem_RightHandSide rhs) PP.Inh_RightHandSide) ""
+    UHA_Decl decl -> PP.oneLineTree_Syn_Declaration (PP.wrap_Declaration (PP.sem_Declaration decl) PP.Inh_Declaration)
+    UHA_Decls decls -> PP.encloseSep "{" "; " "}" (PP.oneLineTree_Syn_Declarations (PP.wrap_Declarations (PP.sem_Declarations decls) PP.Inh_Declarations))
+    UHA_Def name -> OneLineText (show name)
 
 descriptionOfSource :: UHA_Source -> String
-descriptionOfSource source = 
-   case source of
-      UHA_Expr  _ -> "expression"
-      UHA_Pat   _ -> "pattern"
-      UHA_Stat  _ -> "statement"
-      UHA_Qual  _ -> "qualifier"
-      UHA_FB    _ -> "function binding"
-      UHA_FD    _ -> "field declaration"
-      UHA_C     _ -> "constructor"
-      UHA_RB    _ -> "record expression binding"
-      UHA_RPB   _ -> "record pattern binding"
-      UHA_RHS   _ -> "right-hand side"
-      UHA_Decl  _ -> "declaration"
-      UHA_Decls _ -> "declarations"
-      UHA_Def   _ -> "definition"
+descriptionOfSource source =
+  case source of
+    UHA_Expr _ -> "expression"
+    UHA_Pat _ -> "pattern"
+    UHA_Stat _ -> "statement"
+    UHA_Qual _ -> "qualifier"
+    UHA_FB _ -> "function binding"
+    UHA_FD _ -> "field declaration"
+    UHA_C _ -> "constructor"
+    UHA_RB _ -> "record expression binding"
+    UHA_RPB _ -> "record pattern binding"
+    UHA_RHS _ -> "right-hand side"
+    UHA_Decl _ -> "declaration"
+    UHA_Decls _ -> "declarations"
+    UHA_Def _ -> "definition"
 
 nameToUHA_Expr :: Name -> UHA_Source
 nameToUHA_Expr name = UHA_Expr (Expression_Variable (getNameRange name) name)
@@ -96,14 +94,14 @@ nameToUHA_Def :: Name -> UHA_Source
 nameToUHA_Def = UHA_Def
 
 convertSources :: (UHA_Source, Maybe UHA_Source) -> [(String, UHA_Source)]
-convertSources (source, maybeSource) = 
-   (descriptionOfSource source, source) : maybe [] (\s -> [(f s, s)]) maybeSource
+convertSources (source, maybeSource) =
+  (descriptionOfSource source, source) : maybe [] (\s -> [(f s, s)]) maybeSource
   where
     f (UHA_Expr (Expression_Variable _ name))
-       | isConstructor  name = "constructor"
-       | isOperatorName name = "operator"
-    f (UHA_Expr (Expression_Constructor _ name)) 
-       | isConstructor name  =  "constructor"
+      | isConstructor name = "constructor"
+      | isOperatorName name = "operator"
+    f (UHA_Expr (Expression_Constructor _ name))
+      | isConstructor name = "constructor"
     f (UHA_Pat (Pattern_Variable _ name))
-       | isConstructor name  = "constructor"
-    f _                      = "term"      
+      | isConstructor name = "constructor"
+    f _ = "term"

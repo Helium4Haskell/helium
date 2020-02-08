@@ -1,40 +1,40 @@
-{-| Module      :  Core
-    License     :  GPL
+-- | Module      :  Core
+--    License     :  GPL
+--
+--    Maintainer  :  helium@cs.uu.nl
+--    Stability   :  experimental
+--    Portability :  portable
+module Helium.CodeGeneration.Core
+  ( desugarCore,
+  )
+where
 
-    Maintainer  :  helium@cs.uu.nl
-    Stability   :  experimental
-    Portability :  portable
--}
-
-module Helium.CodeGeneration.Core (desugarCore) where
-
+import Helium.CodeGeneration.Core.LetInline (coreLetInline)
+import Helium.CodeGeneration.Core.LetSort (coreLetSort)
+import Helium.CodeGeneration.Core.Lift (coreLift)
+import Helium.CodeGeneration.Core.Normalize (coreNormalize)
+import Helium.CodeGeneration.Core.ReduceThunks (coreReduceThunks)
+import Helium.CodeGeneration.Core.RemoveAliases (coreRemoveAliases)
+import Helium.CodeGeneration.Core.Rename (coreRename)
+import Helium.CodeGeneration.Core.Saturate (coreSaturate)
+import Helium.CodeGeneration.Core.Strictness (coreStrictness)
+import Helium.CodeGeneration.Core.TypeCheck
 import Lvm.Common.Id
 import Lvm.Core.Expr
-import Helium.CodeGeneration.Core.TypeCheck
-
-import Helium.CodeGeneration.Core.LetInline(coreLetInline)
-import Helium.CodeGeneration.Core.LetSort(coreLetSort)
-import Helium.CodeGeneration.Core.Normalize(coreNormalize)
-import Helium.CodeGeneration.Core.Lift(coreLift)
-import Helium.CodeGeneration.Core.ReduceThunks(coreReduceThunks)
-import Helium.CodeGeneration.Core.Rename(coreRename)
-import Helium.CodeGeneration.Core.RemoveAliases(coreRemoveAliases)
-import Helium.CodeGeneration.Core.Saturate(coreSaturate)
-import Helium.CodeGeneration.Core.Strictness(coreStrictness)
 
 pipeline :: [(String, NameSupply -> CoreModule -> CoreModule)]
 pipeline =
-  [ ("Rename", coreRename)
-  , ("Saturate", coreSaturate)
-  , ("LetSort", const coreLetSort)
-  , ("LetInline 1", const coreLetInline)
-  , ("LetInline 2", const coreLetInline)
-  , ("Normalize", coreNormalize)
-  , ("Strictness 1", coreStrictness)
-  , ("Strictness 2", coreStrictness)
-  , ("RemoveAliases", const coreRemoveAliases)
-  , ("ReduceThunks", const coreReduceThunks)
-  , ("Lift", coreLift)
+  [ ("Rename", coreRename),
+    ("Saturate", coreSaturate),
+    ("LetSort", const coreLetSort),
+    ("LetInline 1", const coreLetInline),
+    ("LetInline 2", const coreLetInline),
+    ("Normalize", coreNormalize),
+    ("Strictness 1", coreStrictness),
+    ("Strictness 2", coreStrictness),
+    ("RemoveAliases", const coreRemoveAliases),
+    ("ReduceThunks", const coreReduceThunks),
+    ("Lift", coreLift)
   ]
 
 -- Desugars core. The desugared AST can be converted to Iridium.
@@ -45,6 +45,6 @@ desugar :: NameSupply -> [(String, NameSupply -> CoreModule -> CoreModule)] -> C
 desugar supply ((passName, passFn) : passes) mod = do
   let (supply1, supply2) = splitNameSupply supply
   let mod' = passFn supply1 mod
-  checkModuleIO passName mod' 
+  checkModuleIO passName mod'
   desugar supply2 passes mod'
 desugar _ [] mod = return mod
