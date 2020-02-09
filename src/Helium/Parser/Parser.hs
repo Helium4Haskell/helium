@@ -917,6 +917,16 @@ exp10 =
     <|> fexp
     <?> Texts.parserExpression
 
+mexp :: HParser Expression
+mexp =
+  addRange
+    ( do
+        v <- var
+        lexAT
+        f <- aexp
+        return $ \r -> Expression_AtApplication r v f
+    )
+
 {-
 fexp  -> aexp+
 -}
@@ -972,99 +982,98 @@ operatorAsExpression storeRange =
 
 aexp :: HParser Expression
 aexp =
-  addRange
-    ( do
-        lexLPAREN
-        ( -- dit haakje is nodig (snap niet waarom). Arjan
-          try
-            ( do
-                -- de try vanwege (-) DEZE PARSER MOET OPNIEUW GESCHREVEN WORDEN !!!
-                ue <- do
-                  u <- unaryMinus
-                  es <- exprChain
-                  return (Expression_List noRange (u : es))
-                es <- many (do lexCOMMA; exp_)
-                lexRPAREN
-                return $
-                  if null es
-                    then \r -> Expression_Parenthesized r ue
-                    else \r -> Expression_Tuple r (ue : es)
-            )
-            <|> do
-              -- operator followed by optional expression
-              -- either full section (if there is no expression) or
-              -- a left section (if there is)
-              opExpr <- operatorAsExpression True
-              me <- option Nothing (fmap Just fexp)
-              lexRPAREN
-              return $ \r ->
-                Expression_InfixApplication
-                  r
-                  MaybeExpression_Nothing
-                  opExpr
-                  ( case me of
-                      Nothing -> MaybeExpression_Nothing
-                      Just e -> MaybeExpression_Just e
-                  )
-            <|> try
+  try mexp
+    <|> addRange
+      ( do
+          lexLPAREN
+          ( -- dit haakje is nodig (snap niet waarom). Arjan
+            try
               ( do
-                  -- right section, expression followed by operator
-                  -- or a parenthesized expression (if no operator is found)
-                  e <- fexp
-                  mo <- option Nothing (fmap Just (operatorAsExpression True))
+                  -- de try vanwege (-) DEZE PARSER MOET OPNIEUW GESCHREVEN WORDEN !!!
+                  ue <- do
+                    u <- unaryMinus
+                    es <- exprChain
+                    return (Expression_List noRange (u : es))
+                  es <- many (do lexCOMMA; exp_)
                   lexRPAREN
-                  return $ \r ->
-                    case mo of
-                      Nothing -> Expression_Parenthesized r e
-                      Just opExpr ->
-                        Expression_InfixApplication
-                          r
-                          (MaybeExpression_Just e)
-                          opExpr
-                          MaybeExpression_Nothing
+                  return $
+                    if null es
+                      then (`Expression_Parenthesized` ue)
+                      else (`Expression_Tuple` (ue : es))
               )
-            <|> do
-              -- unit "()", expression between parenthesis or a tuple
-              es <- commas exp_
-              lexRPAREN
-              return $ \r -> case es of
-                [e] -> Expression_Parenthesized r e
-                _ -> Expression_Tuple r es
-          )
-        <|> do
-          n <- qvarid
-          return $ \r -> Expression_Variable r n
-        <|> do
-          (n, rs) <- try $ do
+              <|> do
+                -- operator followed by optional expression
+                -- either full section (if there is no expression) or
+                -- a left section (if there is)
+                opExpr <- operatorAsExpression True
+                me <- option Nothing (fmap Just fexp)
+                lexRPAREN
+                return $ \r ->
+                  Expression_InfixApplication
+                    r
+                    MaybeExpression_Nothing
+                    opExpr
+                    ( maybe MaybeExpression_Nothing MaybeExpression_Just me
+                    )
+              <|> try
+                ( do
+                    -- right section, expression followed by operator
+                    -- or a parenthesized expression (if no operator is found)
+                    e <- fexp
+                    mo <- option Nothing (fmap Just (operatorAsExpression True))
+                    lexRPAREN
+                    return $ \r ->
+                      case mo of
+                        Nothing -> Expression_Parenthesized r e
+                        Just opExpr ->
+                          Expression_InfixApplication
+                            r
+                            (MaybeExpression_Just e)
+                            opExpr
+                            MaybeExpression_Nothing
+                )
+              <|> do
+                -- unit "()", expression between parenthesis or a tuple
+                es <- commas exp_
+                lexRPAREN
+                return $ \r -> case es of
+                  [e] -> Expression_Parenthesized r e
+                  _ -> Expression_Tuple r es
+            )
+          <|> do
+            n <- qvarid
+            return $ \r -> Expression_Variable r n
+          <|> do
+            (n, rs) <- try $ do
+              n <- qconid
+              rs <- braces (fbind `sepBy` lexCOMMA)
+              return (n, rs)
+            return $ \r -> Expression_RecordConstruction r n rs
+          <|> do
             n <- qconid
-            rs <- braces (fbind `sepBy` lexCOMMA)
-            return (n, rs)
-          return $ \r -> Expression_RecordConstruction r n rs
-        <|> do
-          n <- qconid
-          return $ \r -> Expression_Constructor r n
-        <|> do
-          n <- lexNamedHole
-          return $ \r -> Expression_Hole r n
-        <|> do
-          feedback <- lexFeedback
-          e <- aexp
-          return $ \r -> Expression_Feedback r feedback e
-        <|> do
-          n <- lexEta
-          e <- aexp
-          return $ \r -> Expression_Eta r n e
-        <|> do
-          lexeme LexMustUse
-          e <- aexp
-          return $ \r -> Expression_MustUse r e
-        <|> do
-          l <- literal
-          return $ \r -> Expression_Literal r l
-        <|> do
-          lexLBRACKET
-          aexp1
-    )
+            return $ \r -> Expression_Constructor r n
+          <|> do
+            n <- lexNamedHole
+            return $ \r -> Expression_Hole r n
+          <|> do
+            feedback <- lexFeedback
+            e <- aexp
+            return $ \r -> Expression_Feedback r feedback e
+          <|> do
+            n <- lexEta
+            e <- aexp
+            return $ \r -> Expression_Eta r n e
+          <|> do
+            lexeme LexMustUse
+            e <- aexp
+            return $ \r -> Expression_MustUse r e
+          <|> do
+            l <- literal
+            return $ \r -> Expression_Literal r l
+          <|> do
+            lexLBRACKET
+            aexp1
+      )
     <?> Texts.parserExpression
 
 fbind :: HParser RecordExpressionBinding

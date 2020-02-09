@@ -330,6 +330,10 @@ DATA Expression                                   {- *** -}
     | Parenthesized
         range                    : Range
         expression               : Expression
+    | AtApplication
+        range                    : Range
+        reuse                    : Name
+        expression               : Expression
     | NormalApplication                {- *** -}
         range                    : Range
         function                 : Expression
