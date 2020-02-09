@@ -35,6 +35,7 @@ module Helium.CodeGeneration.CoreUtils
     addLambdasForLambdaExpression,
     TypeClassContext (..),
     findCoreType,
+    addReuseToCore,
     createInstantiation,
     createRecordInstantiation,
     createRecordUpdate,
@@ -425,6 +426,12 @@ applyTypeSynonym env tp@(Top.TCon name) tps = case M.lookup (nameFromString name
   _ -> foldl (Top.TApp) tp tps
 applyTypeSynonym env (Top.TApp t1 t2) tps = applyTypeSynonym env t1 (t2 : tps)
 applyTypeSynonym env (Top.TVar a) tps = foldl (Top.TApp) (Top.TVar a) tps
+
+addReuseToCore :: Name -> Core.Expr -> Core.Expr
+addReuseToCore nm (Ap e1 e2) = Ap (addReuseToCore nm e1) e2
+addReuseToCore nm (ApType e t) = ApType (addReuseToCore nm e) t
+addReuseToCore (Name_Identifier _ _ _ nm) (Con c _) = Con c (Just (idFromString nm))
+addReuseToCore _ _ = error ("wrong core")
 
 {-
 Given either a Constructor or an identifier present in the type environment generates

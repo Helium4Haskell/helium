@@ -32,6 +32,11 @@ SEM Expression [ | | core : { Core.Expr } ]
     --  range                    : Range
     --  expression               : Expression
 
+    | AtApplication      lhs.core = addReuseToCore @reuse.self @expression.core
+    --  range                    : Range
+    --  reuse                    : Name
+    --  expression               : Expression
+
     | NormalApplication  lhs.core = foldl Core.Ap @function.core @arguments.core  
     --  range                    : Range
     --  function                 : Expression
