@@ -8,6 +8,11 @@
 #define GLOBAL_BLOCK_SIZE (1024 * 128)
 int helium_global_remaining = 0;
 void* helium_global_next;
+
+#if defined(DEBUG)
+int total_memory = 0;
+#endif
+
 void* helium_global_alloc(int size) {
   if (size > helium_global_remaining) {
     // Allocate new block
@@ -17,6 +22,11 @@ void* helium_global_alloc(int size) {
   helium_global_remaining -= size;
   void* pointer = helium_global_next;
   helium_global_next += size;
+
+#if defined(DEBUG)
+  total_memory += size;
+#endif
+
   return pointer;
 }
 

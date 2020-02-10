@@ -6,6 +6,8 @@
 --    Portability :  portable
 module Helium.Main.Args
   ( Option (..),
+    DOption (..),
+    containsDOption,
     processHeliumArgs,
     processRunHeliumArgs,
     processTexthintArgs,
@@ -24,6 +26,8 @@ where
 
 import Control.Monad (when)
 import Data.Char
+import Data.List
+import Data.List.Split
 import Data.Maybe
 import Helium.Main.Version
 import System.Console.GetOpt
@@ -75,10 +79,11 @@ terminateWithMessage :: [Option] -> String -> [String] -> IO ([Option], Maybe St
 terminateWithMessage options message errors = do
   let experimentalOptions = ExperimentalOptions `elem` options
   let moreOptions = MoreOptions `elem` options || experimentalOptions
+  let debugOptions = DebugOptions `elem` options
   putStrLn message
   putStrLn (unlines errors)
   putStrLn $ "Helium compiler " ++ version
-  putStrLn (usageInfo "Usage: helium [options] file [options]" (optionDescription moreOptions experimentalOptions))
+  putStrLn (usageInfo "Usage: helium [options] file [options]" (optionDescription moreOptions experimentalOptions debugOptions))
   exitWith (ExitFailure 1)
 
 processTexthintArgs :: [String] -> IO ([Option], Maybe String)
@@ -105,13 +110,13 @@ processRunHeliumArgs args = do
 -- Sometimes you know the options are correct. Then you can use this.
 argsToOptions :: [String] -> [Option]
 argsToOptions args =
-  let (opts, _, _) = getOpt Permute (optionDescription True True) args
+  let (opts, _, _) = getOpt Permute (optionDescription True True True) args
    in opts
 
 -- The Maybe String indicates that a file may be missing. Resulting options are simplified
 basicProcessArgs :: [Option] -> [String] -> IO ([Option], Maybe String)
 basicProcessArgs defaults args =
-  let (options, arguments, errors) = getOpt Permute (optionDescription True True) args
+  let (options, arguments, errors) = getOpt Permute (optionDescription True True True) args
    in if not (null errors)
         then
           terminateWithMessage
@@ -129,8 +134,8 @@ basicProcessArgs defaults args =
                 putStrLn ("Argument: " ++ show argument)
               return (simpleOptions, argument)
 
-optionDescription :: Bool -> Bool -> [OptDescr Option]
-optionDescription moreOptions experimentalOptions =
+optionDescription :: Bool -> Bool -> Bool -> [OptDescr Option]
+optionDescription moreOptions experimentalOptions debugOptions =
   -- Main options
   [ Option "b" [flag BuildOne] (NoArg BuildOne) "recompile module even if up to date",
     Option "B" [flag BuildAll] (NoArg BuildAll) "recompile all modules even if up to date",
@@ -161,10 +166,8 @@ optionDescription moreOptions experimentalOptions =
           Option "c" [flag DumpCore] (NoArg DumpCore) "pretty print Core program",
           Option "C" [flag DumpCoreToFile] (NoArg DumpCoreToFile) "write Core program to file",
           Option "" [flag VerifyBackend] (NoArg VerifyBackend) "type check the intermediate languages of the backend for consistency",
-          Option "" [flag DebugLogger] (NoArg DebugLogger) "show logger debug information",
           Option "" [flag (Host "")] (ReqArg Host "HOST") ("specify which HOST to use for logging (default " ++ loggerDEFAULTHOST ++ ")"),
           Option "" [flag (Port 0)] (ReqArg selectPort "PORT") ("select the PORT number for the logger (default: " ++ show loggerDEFAULTPORT ++ ")"),
-          Option "d" [flag DumpTypeDebug] (NoArg DumpTypeDebug) "debug constraint-based type inference",
           Option "W" [flag AlgorithmW] (NoArg AlgorithmW) "use bottom-up type inference algorithm W",
           Option "M" [flag AlgorithmM] (NoArg AlgorithmM) "use folklore top-down type inference algorithm M",
           Option "" [flag DisableDirectives] (NoArg DisableDirectives) "disable type inference directives",
@@ -200,6 +203,14 @@ optionDescription moreOptions experimentalOptions =
                 Option "" [flag (RepairDepth 0)] (ReqArg selectDepth "RDEPTH") "specify depth of transformation tree",
                 Option "" [flag (RepairEvalLimit 0)] (ReqArg selectEvalLimit "RTREVL") "specify re-evaluation limit of transformed expressions"
               ]
+                ++
+                -- Debug options
+                if not debugOptions
+                  then []
+                  else
+                    [ Option "" [flag DebugOptions] (NoArg DebugOptions) "show debug compiler options",
+                      Option "d" [flag (Debug [])] (ReqArg selectDebug "") "dump debug information (type,logger,memory,core)"
+                    ]
 
 data Option
   = -- Main options
@@ -228,10 +239,8 @@ data Option
   | DumpCore
   | DumpCoreToFile
   | VerifyBackend
-  | DebugLogger
   | Host String
   | Port Int
-  | DumpTypeDebug
   | AlgorithmW
   | AlgorithmM
   | DisableDirectives
@@ -261,7 +270,22 @@ data Option
   | UseTutor
   | RepairDepth Int
   | RepairEvalLimit Int -- Arjen Langebaerd's work
+      -- Debug options
+  | DebugOptions
+  | Debug [DOption]
   deriving (Eq)
+
+data DOption = Type | Logger | Memory | Core deriving (Eq)
+
+containsDOption :: DOption -> Option -> Bool
+containsDOption d (Debug a) = d `elem` a
+containsDOption _ _ = False
+
+instance Show DOption where
+  show Type = "type"
+  show Logger = "logger"
+  show Memory = "memory"
+  show Core = "core"
 
 stripShow :: String -> String
 stripShow name = tail (tail (takeWhile ('=' /=) name))
@@ -292,12 +316,12 @@ instance Show Option where
   show DumpTokens = "--dump-tokens"
   show DumpUHA = "--dump-uha"
   show DumpCore = "--dump-core"
+  show DebugOptions = "--debug-options"
   show DumpCoreToFile = "--save-core"
   show VerifyBackend = "--verify-backend"
-  show DebugLogger = "--debug-logger"
+  show (Debug options) = "--debug=" ++ intercalate "," (map show options)
   show (Host host) = "--host=" ++ host
   show (Port port) = "--port=" ++ show port
-  show DumpTypeDebug = "--type-debug"
   show AlgorithmW = "--algorithm-w"
   show AlgorithmM = "--algorithm-m"
   show DisableDirectives = "--no-directives"
@@ -372,6 +396,15 @@ selectNumber str
 
 selectPort :: String -> Option
 selectPort = Port . selectNumber
+
+selectDebug :: String -> Option
+selectDebug xs = Debug (map selectDebug' (splitOn "," xs))
+  where
+    selectDebug' "type" = Type
+    selectDebug' "logger" = Logger
+    selectDebug' "memory" = Memory
+    selectDebug' "core" = Core
+    selectDebug' _ = error "No such option to -d"
 
 selectCNR :: String -> Option
 selectCNR = SelectConstraintNumber . selectNumber

@@ -33,10 +33,10 @@ phaseCodeGeneratorIridium :: NameSupply -> FileCache -> String -> Core.CoreModul
 phaseCodeGeneratorIridium supply cache fullName coreModule options = do
   enterNewPhase "Code generation for Iridium" options
   let supplyDesugar : supplyFromCore : supplyPassDeadCode : supplyPassTailRecursion : _ = splitNameSupplies supply
-  simplified <- desugarCore supplyDesugar coreModule
   let (path, baseName, _) = splitFilePath fullName
   let fullNameNoExt = combinePathAndFile path baseName
-  writeFile (fullNameNoExt ++ ".test.core") $ show $ pretty simplified
+  -- desugar Core
+  simplified <- desugarCore fullNameNoExt supplyDesugar options coreModule
   -- Check whether the module has a 'main' function
   let hasMain = any ((== idFromString "main") . Core.declName) $ Core.moduleDecls coreModule
   iridium' <- fromCore cache supplyFromCore simplified

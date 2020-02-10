@@ -11,6 +11,7 @@ where
 
 -- import ImportEnvironment
 import qualified Data.Map as M
+import Helium.Main.Args
 import Helium.Main.CompileUtils
 import Helium.StaticAnalysis.Inferencers.KindInferencing as KI
 import Helium.StaticAnalysis.Messages.KindErrors
@@ -27,7 +28,7 @@ phaseKindInferencer importEnvironment module_ options =
               { KI.importEnvironment_Inh_Module = importEnvironment,
                 KI.options_Inh_Module = options
               }
-    when (DumpTypeDebug `elem` options) $
+    when (containsDOption Type `any` options) $
       do
         KI.debugIO_Syn_Module res
         putStrLn . unlines . map (\(n, ks) -> show n ++ " :: " ++ showKindScheme ks) . M.assocs $ KI.kindEnvironment_Syn_Module res

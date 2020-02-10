@@ -15,6 +15,7 @@ import Helium.CodeGeneration.Iridium.ResolveDependencies (IridiumFile (..))
 import Helium.CodeGeneration.LLVM.CompileModule (compileModule)
 import Helium.CodeGeneration.LLVM.Env (envForModule)
 import Helium.CodeGeneration.LLVM.Target (Target (..))
+import Helium.Main.Args
 import Helium.Main.CompileUtils
 import LLVM.Pretty (ppllvm)
 import Lvm.Common.Id (NameSupply, mapWithSupply, splitNameSupplies)
@@ -28,7 +29,8 @@ phaseCodeGeneratorLlvm supply output files shouldLink options = do
   let target = Target 64 48
   sequence_ $ mapWithSupply (compileToLlvm target) supply files
   when shouldLink $ do
-    let args = "-o" : output : "-O3" : "../lib/runtime/memory.c" : map toLlvmPath files
+    let debug = if (containsDOption Memory `any` options) then "-DDEBUG" else ""
+    let args = "-o" : output : "-O0" : debug : "../lib/runtime/memory.c" : map toLlvmPath files
     (code, res, err) <- readProcessWithExitCode "clang" args ""
     case code of
       ExitSuccess -> return ()

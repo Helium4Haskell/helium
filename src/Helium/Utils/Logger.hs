@@ -104,7 +104,7 @@ logInternalError maybeSources = logger "I" maybeSources internalErrorOptions
 
 logger :: String -> Maybe ([String], String) -> [Option] -> IO ()
 logger logcode maybeSources options =
-  let debugLogger = DebugLogger `elem` options
+  let debugLogger = containsDOption Logger `any` options
       reallyLog = EnableLogging `elem` options -- We use that the presence of an alert adds EnableLogging in Options.hs
       hostName = fromMaybe loggerDEFAULTHOST (hostFromOptions options)
       portNumber = fromMaybe loggerDEFAULTPORT (portFromOptions options)

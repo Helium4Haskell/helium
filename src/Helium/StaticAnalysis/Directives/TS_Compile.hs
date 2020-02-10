@@ -13,6 +13,7 @@ module Helium.StaticAnalysis.Directives.TS_Compile where
 import Control.Monad (unless, when)
 import Helium.CodeGeneration.CoreUtils
 import qualified Helium.Main.Args as Args
+import Helium.Main.Args
 import Helium.ModuleSystem.ImportEnvironment
 import Helium.Parser.Lexer (strategiesLexer)
 import Helium.Parser.ParseMessage ()
@@ -69,7 +70,7 @@ readTypingStrategiesFromFile options filename importEnvironment =
                                )
                         )
                     let coreTypingStrategies = map (typingStrategyToCore importEnvironment) strategies
-                    when (Args.DumpTypeDebug `elem` options) $
+                    when (containsDOption Type `any` options) $
                       do
                         putStrLn "Core typing strategies:"
                         mapM_ print coreTypingStrategies

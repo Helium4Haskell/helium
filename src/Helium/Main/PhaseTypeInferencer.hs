@@ -10,6 +10,7 @@ module Helium.Main.PhaseTypeInferencer
 where
 
 import qualified Data.Map as M
+import Helium.Main.Args
 import Helium.Main.CompileUtils
 import Helium.ModuleSystem.DictionaryEnvironment (DictionaryEnvironment)
 import Helium.StaticAnalysis.Inferencers.TypeInferencing (typeInferencing)
@@ -49,7 +50,7 @@ phaseTypeInferencer basedir fullName module_ localEnv completeEnv options = do
         typeInferencing newOptions completeEnv module_
       -- add the top-level types (including the inferred types)
       finalEnv = addToTypeEnvironment toplevelTypes completeEnv
-  when (DumpTypeDebug `elem` options) debugIO
+  when (containsDOption Type `any` options) debugIO
   -- display name information
   showInformation True options finalEnv
   case typeErrors of
