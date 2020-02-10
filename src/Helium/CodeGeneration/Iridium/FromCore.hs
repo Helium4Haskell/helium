@@ -96,7 +96,7 @@ fromCoreDecl :: NameSupply -> TypeEnv -> Core.CoreDecl -> [Either (Id, Declarati
 fromCoreDecl supply env decl@Core.DeclValue {} = [Left (name, Declaration name (visibility decl) (Core.declModule decl) (Core.declCustoms decl) method)]
   where
     name = Core.declName decl
-    method = toMethod supply env (Core.declName decl) (Core.valueValue decl)
+    method = toMethod supply env (Core.declName decl) (Core.mutating decl) (Core.valueValue decl)
 fromCoreDecl _ _ _ = []
 
 idEntry, idMatchAfter, idMatchCase, idMatchDefault :: Id
@@ -105,9 +105,10 @@ idMatchAfter = idFromString "match_after"
 idMatchCase = idFromString "match_case"
 idMatchDefault = idFromString "match_default"
 
-toMethod :: NameSupply -> TypeEnv -> Id -> Core.Expr -> Method
-toMethod supply env name expr = Method tp args returnType [AnnotateTrampoline] (Block entryName entry) blocks
+toMethod :: NameSupply -> TypeEnv -> Id -> [Id] -> Core.Expr -> Method
+toMethod supply env name mids expr = Method tp args returnType annotations (Block entryName entry) blocks
   where
+    annotations = AnnotateTrampoline : if null mids then [] else [AnnotateMutate mids]
     (entryName, supply') = freshIdFromId idEntry supply
     (arity, tp) = fromMaybe (error "toMethod: could not find function signature") $ resolveFunction env name
     createArgument (Left quantor) _ = Left quantor

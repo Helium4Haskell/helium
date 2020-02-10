@@ -111,12 +111,13 @@ pAnnotations =
       else do
         c <- lookahead
         if c == '[' then pToken '[' *> pSome pAnnotation pSep <* pToken ']' else return []
-  where
-    pSep :: Parser Bool
-    pSep = do
-      pWhitespace
-      c <- lookahead
-      return $ c /= ']'
+
+pSep :: Parser Bool
+pSep = do
+  pToken ','
+  pWhitespace
+  c <- lookahead
+  return $ c /= ']'
 
 pAnnotation :: Parser Annotation
 pAnnotation = do
@@ -124,6 +125,10 @@ pAnnotation = do
   pWhitespace
   case word of
     "trampoline" -> return AnnotateTrampoline
+    "mutating" -> do
+      pToken ':'
+      ids <- pToken '[' *> pSome pId pSep <* pToken ']'
+      return $ AnnotateMutate ids
     "callconvention" -> do
       pToken ':'
       conv <- pWord

@@ -108,6 +108,7 @@ data Annotation
     -- We currently assume that the return type of the function is 'int'.
     -- Cannot be used in combination with 'AnnotateTrampoline'.
     AnnotateFakeIO
+  | AnnotateMutate [Id]
   deriving (Eq, Ord)
 
 data CallingConvention
