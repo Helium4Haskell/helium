@@ -153,6 +153,9 @@ analyseBind env bind@(Bind var target args) =
     aTarget = case target of
       BindTargetFunction var -> globalFunctionToAnalysis var
       BindTargetThunk var -> variableToAnalysis var
+      BindTargetConstructor _ name -> case name of
+        Just a -> AVar a UseLocal tp
+        Nothing -> AEmpty
       _ -> AEmpty
 
 data Occurrence = Occurrence !Location !Type

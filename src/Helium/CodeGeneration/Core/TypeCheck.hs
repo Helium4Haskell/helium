@@ -130,8 +130,12 @@ checkExpression env (Forall quantor kind expr) = do
   tp <- checkExpression env expr
   return $ TForall quantor kind tp
 checkExpression env (Var name) = checkId env name
--- Con or Lit
-checkExpression env expr = return $ typeOfCoreExpression env expr
+checkExpression _ (Con (ConTuple arity) _) = return $ typeTuple arity
+checkExpression env (Con (ConId x) Nothing) = return $ typeOfId env x
+checkExpression env (Con (ConId x) (Just mid)) = do
+  checkId env mid @@ "annotated type for memory reuse " ++ stringFromId mid
+  return $ typeOfId env x
+checkExpression _ (Lit lit) = return $ typeOfLiteral lit
 
 checkBind :: TypeEnvironment -> Bind -> Check ()
 checkBind env (Bind (Variable x tpAnnotated) expr) = do
