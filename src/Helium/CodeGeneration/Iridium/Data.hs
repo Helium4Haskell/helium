@@ -91,6 +91,9 @@ methodFunctionType (Method _ args returnType _ _ _) = FunctionType (map arg args
     arg (Left quantor) = Left quantor
     arg (Right (Local _ tp)) = Right tp
 
+methodAnnotation :: Method -> [Annotation]
+methodAnnotation (Method _ _ _ an _ _) = an
+
 methodType :: Method -> Type
 methodType (Method tp _ _ _ _ _) = tp
 
@@ -110,6 +113,11 @@ data Annotation
     AnnotateFakeIO
   | AnnotateMutate [Id]
   deriving (Eq, Ord)
+
+getAnnotateMutate :: [Annotation] -> [Id]
+getAnnotateMutate [] = []
+getAnnotateMutate (AnnotateMutate mids : _) = mids
+getAnnotateMutate (_ : xs) = getAnnotateMutate xs
 
 data CallingConvention
   = CCC -- C calling convention

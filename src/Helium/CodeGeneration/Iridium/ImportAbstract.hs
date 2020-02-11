@@ -44,13 +44,15 @@ convertConstructor _ = Nothing
 convertMethod :: Declaration Method -> Maybe (Core.Decl v)
 convertMethod (Declaration qname (ExportedAs name) mod customs method) =
   Just $
-    Core.DeclAbstract qname (Core.Export name) mod (methodArity method) (methodType method) customs
+    Core.DeclAbstract qname (Core.Export name) mod (methodArity method) (methodType method) customs (mat method)
+  where
+    mat = getAnnotateMutate . methodAnnotation
 convertMethod _ = Nothing
 
 convertAbstractMethod :: Declaration AbstractMethod -> Maybe (Core.Decl v)
-convertAbstractMethod (Declaration qname (ExportedAs name) mod customs (AbstractMethod arity tp _)) =
+convertAbstractMethod (Declaration qname (ExportedAs name) mod customs (AbstractMethod arity tp mat)) =
   Just $
-    Core.DeclAbstract qname (Core.Export name) mod arity tp customs
+    Core.DeclAbstract qname (Core.Export name) mod arity tp customs (getAnnotateMutate mat)
 convertAbstractMethod _ = Nothing
 
 convertTypeSynonym :: Declaration TypeSynonym -> Maybe (Core.Decl v)
