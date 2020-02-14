@@ -1,237 +1,76 @@
 module Helium.CodeGeneration.Iridium.Parse.Parser where
 
-import Data.Maybe
+import Control.Applicative
+import Data.Char
+import Data.Functor.Identity
 import Lvm.Common.Id (Id, idFromString)
+import qualified Text.Parsec as P
+import Text.Parsec.Language (emptyDef)
+import qualified Text.Parsec.Token as P
 
-data ParseResult p = ResError !String !String | ResValue !p !String
+type Parser a = P.Parsec String () a
 
--- A greedy parser with 1 character lookahead
-newtype Parser p = Parser {runParser :: String -> ParseResult p}
-
-instance Functor Parser where
-  fmap f (Parser fn) =
-    Parser
-      ( \source -> case fn source of
-          ResError err remaining -> ResError err remaining
-          ResValue x remaining -> ResValue (f x) remaining
-      )
-
-instance Applicative Parser where
-  pure x = Parser $ ResValue x
-  Parser fn1 <*> Parser fn2 =
-    Parser
-      ( \source -> case fn1 source of
-          ResError err remaining -> ResError err remaining
-          ResValue f remaining -> case fn2 remaining of
-            ResError err remaining' -> ResError err remaining'
-            ResValue x remaining' -> ResValue (f x) remaining'
-      )
-
-instance Monad Parser where
-  return = pure
-  Parser fn1 >>= p =
-    Parser
-      ( \source -> case fn1 source of
-          ResError err remaining -> ResError err remaining
-          ResValue x remaining ->
-            let Parser fn2 = p x
-             in fn2 remaining
-      )
-
-isWhitespace :: Char -> Bool
-isWhitespace ' ' = True
-isWhitespace '\n' = True
-isWhitespace '\t' = True
-isWhitespace _ = False
-
-pError :: String -> Parser a
-pError err = Parser $ ResError err
-
-pMaybe :: Parser a -> Parser (Maybe a)
-pMaybe (Parser p) = Parser f
-  where
-    f str = case p str of
-      ResError _ _ -> ResValue Nothing str
-      ResValue v str' -> ResValue (Just v) str'
-
-pManyMaybe :: Parser (Maybe a) -> Parser [a]
-pManyMaybe p = do
-  res <- p
-  case res of
-    Just x -> (x :) <$> pManyMaybe p
-    Nothing -> return []
-
-validWordChar :: Char -> Bool
-validWordChar c = ('a' <= c && c <= 'z') || c == '_'
-
-pKeyword :: Parser String
-pKeyword = Parser f
-  where
-    f str =
-      let (parsed, remaining) = span validWordChar str
-          (spaces, remaining') = span isWhitespace remaining
-       in case parsed of
-            [] -> ResError "expected keyword" str
-            _ -> case spaces of
-              [] -> ResError "expected whitespace after keyword" remaining
-              _ -> ResValue parsed remaining'
+lexer :: P.GenTokenParser String () Identity
+lexer =
+  P.makeTokenParser
+    emptyDef
+      { P.commentLine = ";"
+      }
 
 pWord :: Parser String
-pWord = pManySatisfy validWordChar
+pWord = P.many1 P.letter
 
-lookahead :: Parser Char
-lookahead = Parser f
-  where
-    f [] = ResValue '\0' ""
-    f str@(c : _) = ResValue c str
+pToken :: Char -> Parser Char
+pToken = pLexeme . P.char
 
-isEndOfFile :: Parser Bool
-isEndOfFile = Parser f
-  where
-    f str = ResValue (null str) str
+pSymbol :: String -> Parser String
+pSymbol = pLexeme . P.string
 
--- Reads a single character
-pChar :: Parser Char
-pChar = Parser f
-  where
-    f [] = ResError "unexpected EOF while reading a single character" []
-    f (c : str) = ResValue c str
+pBraces :: Parser a -> Parser a
+pBraces = P.braces lexer
 
-pToken :: Char -> Parser ()
-pToken t = Parser f
-  where
-    f (c : str)
-      | c == t = ResValue () str
-    f str = ResError ("expected " ++ show t) str
+pParentheses :: Parser a -> Parser a
+pParentheses = P.parens lexer
 
-pSymbol :: String -> Parser ()
-pSymbol sym = Parser f
-  where
-    f str
-      | compare == sym = ResValue () remaining
-      | otherwise = ResError ("expected " ++ sym) str
-      where
-        (compare, remaining) = splitAt (length sym) str
+pBrackets :: Parser a -> Parser a
+pBrackets = P.brackets lexer
 
-pSomeSatisfy :: String -> (Char -> Bool) -> Parser String
-pSomeSatisfy err fn = do
-  str <- pManySatisfy fn
-  if null str
-    then pError err
-    else return str
+pSome :: Parser a -> Parser [a]
+pSome = P.many1
 
-pManySatisfy :: (Char -> Bool) -> Parser String
-pManySatisfy fn = Parser f
-  where
-    f str =
-      let (parsed, remaining) = span fn str
-       in ResValue parsed remaining
-
-pSome :: Parser a -> Parser Bool -> Parser [a]
-pSome elem continue = do
-  item <- elem
-  c <- continue
-  if c
-    then (item :) <$> pSome elem continue
-    else return [item]
+pLexeme :: Parser p -> Parser p
+pLexeme = P.lexeme lexer
 
 pWhitespace :: Parser ()
-pWhitespace =
-  do
-    pManySatisfy isWhitespace
-    c <- lookahead
-    if c == ';'
-      then do
-        pChar
-        pManySatisfy (/= '\n')
-        pWhitespace
-      else return ()
+pWhitespace = P.skipMany1 (P.satisfy isSpace)
 
-pString :: Parser String
-pString = read <$> Parser f
-  where
-    f ('"' : str) = prepend '"' $ g str
-    f str = ResError "expected string" str
-    g :: String -> ParseResult String
-    g ('\\' : c : str) = prepend '\\' $ prepend c $ g str
-    g ('"' : str) = ResValue "\"" str
-    g (c : str) = prepend c $ g str
-    g [] = ResError "unexpected EOF while parsing a string" []
-    prepend :: Char -> ParseResult String -> ParseResult String
-    prepend c (ResValue str remaining) = ResValue (c : str) remaining
-    prepend _ r = r
+pComment :: Parser ()
+pComment = P.try (pToken ';') *> P.skipMany (P.satisfy (/= '\n'))
 
 pId :: Parser Id
 pId = idFromString <$> pName
 
+pString :: Parser String
+pString = P.stringLiteral lexer
+
 pName :: Parser String
-pName = do
-  c <- lookahead
-  if c == '"'
-    then pString
-    else pSomeSatisfy "expected name" valid
+pName = pLexeme (pString <|> pSome (P.satisfy valid))
   where
     valid c =
-      ('a' <= c && c <= 'z')
-        || ('A' <= c && c <= 'Z')
-        || ('0' <= c && c <= '9')
+      isAlphaNum c
         || c == '$'
         || c == '.'
         || c == '_'
         || c == '#'
 
+number :: Parser Int
+number = fromIntegral <$> P.decimal lexer
+
+pFloat :: Parser Double
+pFloat = P.float lexer
+
 pUnsignedInt :: Parser Int
-pUnsignedInt = do
-  str <- pManySatisfy valid
-  if str == ""
-    then pError "expected integer"
-    else return $ read str
-  where
-    valid c = '0' <= c && c <= '9'
+pUnsignedInt = pLexeme $ fromIntegral <$> number
 
 pSignedInt :: Parser Int
-pSignedInt = do
-  c <- lookahead
-  if c == '-'
-    then do
-      pChar
-      (0 -) <$> pUnsignedInt
-    else pUnsignedInt
-
-pArguments :: Parser a -> Parser [a]
-pArguments pArg = do
-  pToken '('
-  c <- lookahead
-  if c == ')'
-    then do
-      pChar
-      return []
-    else pWhitespace *> pSome pArg pSep <* pToken ')'
-  where
-    pSep :: Parser Bool
-    pSep = do
-      pWhitespace
-      c <- lookahead
-      if c == ','
-        then do
-          pChar
-          pWhitespace
-          return True
-        else return False
-
-data ParseError = ParseError !Int !Int String
-
-instance Show ParseError where
-  show (ParseError line col err) =
-    "Parse error at line " ++ show line ++ ", column " ++ show col ++ ":"
-      ++ "\n  "
-      ++ err
-
-parse :: Parser a -> String -> Either ParseError a
-parse (Parser parser) source = case parser source of
-  ResValue a _ -> Right a
-  ResError err remaining ->
-    let consumed = take (length source - length remaining) source
-        line = length $ filter (== '\n') consumed
-        column = length $ takeWhile (/= '\n') $ reverse consumed
-     in Left $ ParseError (line + 1) (column + 1) err
+pSignedInt = fromIntegral <$> P.integer lexer

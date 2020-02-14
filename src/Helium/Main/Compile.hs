@@ -88,7 +88,7 @@ compile basedir fullName options lvmPath iridiumCache doneModules =
         sendLog "C" fullName doneModules options
         return (files, link, warnings)
       else do
-        iridium <- Iridium.parseModuleIO fullName contents
+        iridium <- Iridium.parseModuleIO' fullName contents
         return ([Iridium.IridiumFile fullName iridium True], False, 0)
 
     -- Phase 11: Generate LLVM code

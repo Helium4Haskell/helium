@@ -1,170 +1,97 @@
-{-# LANGUAGE ApplicativeDo #-}
 {-# LANGUAGE RankNTypes #-}
+{-# LANGUAGE ViewPatterns #-}
 
-module Helium.CodeGeneration.Iridium.Parse.Module
-  ( parseModule,
-    parseModuleIO,
-    parseModuleIO',
-  )
-where
+module Helium.CodeGeneration.Iridium.Parse.Module where
 
+import Control.Applicative
 import Helium.CodeGeneration.Iridium.Data
 import Helium.CodeGeneration.Iridium.Parse.Custom
-import Helium.CodeGeneration.Iridium.Parse.Instruction
+import Helium.CodeGeneration.Iridium.Parse.Expression
 import Helium.CodeGeneration.Iridium.Parse.Method
 import Helium.CodeGeneration.Iridium.Parse.Parser
 import Helium.CodeGeneration.Iridium.Parse.Type
-import Helium.CodeGeneration.Iridium.Type
 import Lvm.Common.Id (Id)
 import Lvm.Core.Module (Field (..))
 import System.Exit
+import qualified Text.Parsec as P
 
-pCustomDeclaration :: Parser CustomDeclaration
-pCustomDeclaration = CustomDeclaration <$ pToken ':' <* pWhitespace <*> pDeclKind
+--parseModule :: String -> Either ParseError Module
+parseModule :: FilePath -> String -> Either P.ParseError Module
+parseModule path text = P.parse pModule path text
 
-pDataTypeConstructorDeclaration :: Parser (Declaration DataTypeConstructorDeclaration)
-pDataTypeConstructorDeclaration = pDeclaration f
-  where
-    f :: String -> (forall a. a -> Declaration a) -> Parser (Declaration DataTypeConstructorDeclaration)
-    f "constructor" decl = do
-      pToken ':'
-      pWhitespace
-      pToken '{'
-      pWhitespace
-      tp <- pType
-      pToken '}'
-      pWhitespace
-      fs <- pFields
-      return (decl (DataTypeConstructorDeclaration tp fs))
-    f _ _ = pError "expected constructor declaration"
+parseModuleIO :: FilePath -> IO Module
+parseModuleIO path = readFile path >>= parseModuleIO' path
 
-pDataType :: Parser DataType
-pDataType = do
-  pWhitespace
-  pToken '{'
-  pWhitespace
-  c <- lookahead
-  if c == '}'
-    then do
-      pChar
-      return $ DataType []
-    else DataType <$> pSome pDataTypeConstructorDeclaration pSep
-  where
-    pSep :: Parser Bool
-    pSep = do
-      pWhitespace
-      c <- lookahead
-      if c == '}'
-        then do
-          pChar
-          return False
-        else return True
-
-pTypeSynonym :: Parser TypeSynonym
-pTypeSynonym = do
-  pWhitespace
-  pToken '='
-  pWhitespace
-  pToken '{'
-  pWhitespace
-  tp <- pType
-  pToken '}'
-  return $ TypeSynonym tp
-
-pFields :: Parser [Field]
-pFields = do
-  pWhitespace
-  c <- lookahead
-  if c == '('
-    then do
-      pChar
-      pWhitespace
-      fields <- pSome pField pSep
-      pToken ')'
-      return fields
-    else return []
-  where
-    pSep :: Parser Bool
-    pSep = do
-      pWhitespace
-      c <- lookahead
-      if c == ','
-        then do
-          pChar
-          pWhitespace
-          return True
-        else return False
-
-pField :: Parser Field
-pField = Field <$> pId
-
-pDeclaration :: (String -> (forall a. a -> Declaration a) -> Parser b) -> Parser b
-pDeclaration f = do
-  customs <- pCustoms
-  (vis, mod, key) <- pDeclarationVisibilityOriginAndKeyword
-  pToken '@'
-  name <- pId
-  f key (Declaration name vis mod customs)
-
-pDeclarationVisibilityOriginAndKeyword :: Parser (Visibility, Maybe Id, String)
-pDeclarationVisibilityOriginAndKeyword = do
-  key <- pKeyword
-  if key == "export_as"
-    then do
-      pToken '@'
-      exportedName <- pId
-      pWhitespace
-      key' <- pKeyword
-      pOriginAndKeyword (ExportedAs exportedName) key'
-    else pOriginAndKeyword Private key
-  where
-    pOriginAndKeyword :: Visibility -> String -> Parser (Visibility, Maybe Id, String)
-    pOriginAndKeyword vis "from" = do
-      mod <- pId
-      pWhitespace
-      key <- pKeyword
-      return (vis, Just mod, key)
-    pOriginAndKeyword vis key = return (vis, Nothing, key)
-
-pModule :: Parser Module
-pModule = do
-  pSymbol "module"
-  pWhitespace
-  name <- pId
-  pWhitespace
-  pSymbol "import"
-  pWhitespace
-  dependencies <- pArguments pId
-  pWhitespace
-  let emptyModule = Module name dependencies [] [] [] [] []
-  decls <- pSome pModuleDeclaration (not <$ pWhitespace <*> isEndOfFile)
-  return $ foldr (\f m -> f m) emptyModule decls
-
-pModuleDeclaration :: Parser (Module -> Module)
-pModuleDeclaration = pDeclaration f
-  where
-    f :: String -> (forall a. a -> Declaration a) -> Parser (Module -> Module)
-    f "custom" decl = addCustom . decl <$> pCustomDeclaration
-    f "data" decl = addDataType . decl <$> pDataType
-    f "type" decl = addTypeSynonym . decl <$> pTypeSynonym
-    f "declare" decl = addAbstract . decl <$> pAbstractMethod
-    f "define" decl = addMethod . decl <$> pMethod
-    f keyword _ = pError $ "Unknown declaration keyword: " ++ keyword
-
-parseModule :: String -> Either ParseError Module
-parseModule = parse pModule
-
-parseModuleIO' :: FilePath -> IO Module
-parseModuleIO' path = readFile path >>= parseModuleIO path
-
-parseModuleIO :: FilePath -> String -> IO Module
-parseModuleIO fullName contents =
-  case parseModule contents of
+parseModuleIO' :: FilePath -> String -> IO Module
+parseModuleIO' fullName contents =
+  case parseModule fullName contents of
     Left err -> do
       putStrLn $ "Failed to parse Iridium file " ++ show fullName
       print err
       exitWith (ExitFailure 1)
     Right ir -> return ir
+
+newtype DeclarationL = DeclarationL {dL :: forall a. Id -> a -> Declaration a}
+
+pCustomDeclaration :: Parser CustomDeclaration
+pCustomDeclaration = CustomDeclaration <$ pToken ':' <*> pDeclKind
+
+pDataTypeConstructorDeclaration :: Parser (Declaration DataTypeConstructorDeclaration)
+pDataTypeConstructorDeclaration = pDeclaration f
+  where
+    f :: DeclarationL -> Parser (Declaration DataTypeConstructorDeclaration)
+    f (dL -> decl) =
+      (\n tp fs -> decl n (DataTypeConstructorDeclaration tp fs)) <$ pSymbol "constructor"
+        <*> pDeclarationName
+        <* pToken (':')
+        <*> pBraces pType
+        <*> pFields
+
+pDataType :: Parser DataType
+pDataType = DataType <$> pBraces (P.many pDataTypeConstructorDeclaration)
+
+pFields :: Parser [Field]
+pFields = P.option [] (pParentheses (P.sepBy pField (pToken ',')))
+
+pField :: Parser Field
+pField = Field <$> pId
+
+pTypeSynonym :: Parser TypeSynonym
+pTypeSynonym = TypeSynonym <$ pToken '=' <*> pBraces pType
+
+pDeclaration :: (DeclarationL -> Parser b) -> Parser b
+pDeclaration f = pEmptyDeclaration >>= f
+
+pVisibility :: Parser Visibility
+pVisibility = P.option (Private) (ExportedAs <$ pSymbol "export_as" <* pToken '@' <*> pId)
+
+pOrigin :: Parser (Maybe Id)
+pOrigin = P.optionMaybe (pSymbol "from" *> pId)
+
+pEmptyDeclaration :: Parser DeclarationL
+pEmptyDeclaration = (\b c d -> DeclarationL (\e -> Declaration e c d b)) <$> pCustoms <*> pVisibility <*> pOrigin
+
+pDeclarationName :: Parser Id
+pDeclarationName = pToken '@' *> pId
+
+pModuleDeclaration' :: Parser (Module -> Module)
+pModuleDeclaration' = pDeclaration f
+  where
+    f :: DeclarationL -> Parser (Module -> Module)
+    f (dL -> decl) =
+      ((addCustom .) . decl) <$ pSymbol "custom" <*> pDeclarationName <*> pCustomDeclaration
+        <|> ((addDataType .) . decl) <$ P.try (pSymbol "data") <*> pDeclarationName <*> pDataType
+        <|> ((addAbstract .) . decl) <$ P.try (pSymbol "declare") <*> pDeclarationName <*> pAbstractMethod
+        <|> ((addTypeSynonym .) . decl) <$ pSymbol "type" <*> pDeclarationName <*> pTypeSynonym
+        <|> ((addMethod .) . decl) <$ pSymbol "define" <*> pDeclarationName <*> pMethod
+
+pModule :: Parser Module
+pModule = foldr id <$> pEmptyModule <*> pSome pModuleDeclaration'
+
+pEmptyModule :: Parser Module
+pEmptyModule =
+  (\name dependencies -> Module name dependencies [] [] [] [] [])
+    <$ pSymbol "module" <*> pId <* pSymbol "import" <*> pArguments pId
 
 addCustom :: Declaration CustomDeclaration -> Module -> Module
 addCustom c m = m {moduleCustoms = c : moduleCustoms m}

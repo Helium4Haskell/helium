@@ -16,7 +16,6 @@ import qualified Helium.CodeGeneration.Core.TypeEnvironment as Core
 import Helium.CodeGeneration.Iridium.Data
 import Helium.CodeGeneration.Iridium.FileCache
 import Helium.CodeGeneration.Iridium.FromCoreImports
-import Helium.CodeGeneration.Iridium.Parse.Parser (ParseError)
 import Helium.CodeGeneration.Iridium.Type
 import Helium.CodeGeneration.Iridium.TypeEnvironment
 import Helium.CodeGeneration.Iridium.Utils

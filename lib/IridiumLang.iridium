@@ -1,16 +1,16 @@
 module IridiumLang
 import (IridiumLangEval, IridiumLangString)
 
-export_as @_$helium_runtime_error from IridiumLangString declare @_$helium_runtime_error[1]: { forall a. [Char] -> a }
+export_as @_$helium_runtime_error from IridiumLangString declare @_$helium_runtime_error[1]: { forall v$a1. [Char] -> v$a1 }
 export_as @_$helium_runtime_print_string from IridiumLangString declare @_$helium_runtime_print_string[1]: { ![Char] -> Int }
 
 #[decl @kind [bytes "* -> *"]]
 export_as @"[]" data @"[]" {
   #[link @"[]" @data]
-  export_as @"[]" constructor @"[]": { forall a. [a] }
+  export_as @"[]" constructor @"[]": { forall v$a1. [v$a1] }
 
   #[link @"[]" @data]
-  export_as @":" constructor @":": { forall a. a -> [a] -> [a] }
+  export_as @":" constructor @":": { forall v$a1. v$a1 -> [v$a1] -> [v$a1] }
 }
 
 #[decl @kind [bytes "*"]]
@@ -99,7 +99,7 @@ export_as @primDivFloat define @primDivFloat(%a: !Float, %b: !Float): Float = pr
 
 export_as @primNegFloat define @primNegFloat(%a: !Float): Float {
 entry:
-  %0 = literal float64 0
+  %0 = literal float64 0.0
   %result = prim float64_sub(%0: !Float, %a: !Float)
   return %result: !Float
 }
@@ -152,17 +152,17 @@ entry:
   return %result: !Bool
 }
 
-export_as @seq define @seq(forall a, forall b, %a: !a, %b: !b): b [trampoline] {
+export_as @seq define @seq(forall v$a1, forall v$a2, %a: !v$a1, %b: !v$a2) [trampoline]: v$a2 {
 entry:
-  %c = seq %a: !a, %b: !b
-  return %c: !b
+  %c = seq %a: !v$a1, %b: !v$a2
+  return %c: !v$a2
 }
 
-export_as @pseq define @pseq(forall a, forall b, %a: !a, %b: b): b [trampoline] {
+export_as @pseq define @pseq(forall v$a1, forall v$a2, %a: !v$a1, %b: v$a2) [trampoline]: v$a2 {
 entry:
-  %c = seq %a: !a, %b: b
-  %c_whnf = eval %c: b
-  return %c_whnf: !b
+  %c = seq %a: !v$a1, %b: v$a2
+  %c_whnf = eval %c: v$a2
+ return %c_whnf: !v$a2
 }
 
 ; IO
@@ -170,7 +170,7 @@ entry:
 #[decl @kind [bytes "* -> *"]]
 export_as @IORes data @IORes {
   #[link @"IORes" @data]
-  export_as @IORes constructor @IORes: { forall a. a -> !RealWorld -> IORes a }
+  export_as @IORes constructor @IORes: { forall v$a1. v$a1 -> !RealWorld -> IORes v$a1 }
 }
 
 ; data RealWorld
@@ -181,28 +181,28 @@ export_as @RealWorld data @RealWorld {}
 #[decl @kind [bytes "* -> *"]]
 export_as @IO data @IO {
   #[link @"IO" @data]
-  export_as @IO constructor @"IO": { forall a. (RealWorld -> IORes a) -> IO a }
+  export_as @IO constructor @"IO": { forall v$a1. (RealWorld -> IORes v$a1) -> IO v$a1 }
 }
 
-; unsafePerformIO :: IO a -> a
-export_as @unsafePerformIO define @unsafePerformIO(forall a, %io: !(IO a)): a [trampoline] {
+; unsafePerformIO :: IO v$a1 -> v$a1
+export_as @unsafePerformIO define @unsafePerformIO(forall v$a1, %io: !(IO v$a1)) [trampoline]: v$a1 {
 entry:
-  match %io: !IO on @IO: (forall a. (RealWorld -> IORes a) -> IO a) { a } (%fn)
+  match %io: !IO on @IO: (forall v$a1. (RealWorld -> IORes v$a1) -> IO v$a1) { v$a1 } (%fn)
   %world = undefined !RealWorld
-  letalloc %thunk = thunk %fn: (RealWorld -> IORes a) $ (%world: !RealWorld)
-  %res = eval %thunk: (IORes a)
-  match %res: !(IORes a) on @IORes: (forall a. a -> RealWorld -> IORes a) { a } (%value_any, %new_world)
-  %value = eval %value_any: a
-  %value2 = seq %new_world: RealWorld, %value: !a
-  return %value2: !a
+  letalloc %thunk = thunk %fn: (RealWorld -> IORes v$a1) $ (%world: !RealWorld)
+  %res = eval %thunk: (IORes v$a1)
+  match %res: !(IORes v$a1) on @IORes: (forall v$a1. v$a1 -> RealWorld -> IORes v$a1) { v$a1 } (%value_any, %new_world)
+  %value = eval %value_any: v$a1
+  %value2 = seq %new_world: RealWorld, %value: !v$a1
+  return %value2: !v$a1
 }
 
 ; $primPutChar :: Char -> RealWorld -> IORes Int
-export_as @$primPutChar declare @putchar[2]: { !Char -> !RealWorld -> IORes Int } [callconvention:c fake_io]
+export_as @$primPutChar declare @putchar[2]: { !Char -> !RealWorld -> IORes Int } [callconvention:c, fake_io]
 
 ; $primGetChar :: RealWorld -> IORes Char
-export_as @$primGetChar declare @getchar[1]: { RealWorld -> IORes Char } [callconvention:c fake_io]
+export_as @$primGetChar declare @getchar[1]: { RealWorld -> IORes Char } [callconvention:c, fake_io]
 
-export_as @$primIntToChar define @$primIntToChar(%x: !Int): Char [trampoline] = prim int_to_char(%x: !Int)
+export_as @$primIntToChar define @$primIntToChar(%x: !Int) [trampoline] : Char = prim int_to_char(%x: !Int)
 
-export_as @$primCharToInt define @$primCharToInt(%x: !Char): Int [trampoline] = prim char_to_int(%x: !Int)
+export_as @$primCharToInt define @$primCharToInt(%x: !Char) [trampoline] : Int = prim char_to_int(%x: !Int)

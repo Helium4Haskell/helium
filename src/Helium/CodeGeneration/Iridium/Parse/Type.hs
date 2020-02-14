@@ -1,169 +1,82 @@
 module Helium.CodeGeneration.Iridium.Parse.Type where
 
-import Helium.CodeGeneration.Iridium.Parse.Parser
-import Helium.CodeGeneration.Iridium.Data
-import Helium.CodeGeneration.Iridium.Type
-
-import Lvm.Common.Id
-import Lvm.Core.Type
-
-import Data.List
+import Control.Applicative
 import Data.Char
+import Helium.CodeGeneration.Iridium.Data
+import Helium.CodeGeneration.Iridium.Parse.Parser
+import Helium.CodeGeneration.Iridium.Type
+import Lvm.Common.Id (Id, idFromString)
+import Lvm.Core.Type
+import qualified Text.Parsec as P
 
-pTypeArgName :: Parser (Either Int String)
-pTypeArgName = do
-  cs <- pSomeSatisfy "expected type variable" isLower
-  c2 <- lookahead
-  if cs == "v" && c2 == '$' then do
-    Left <$ pChar <*> pUnsignedInt
-  else
-    return $ Right cs
+pTypeVariable :: Parser Int
+pTypeVariable = pLexeme $ P.string "v$" *> P.option "" (P.many1 P.lower) *> number
 
-pTypeArg :: QuantorIndexing -> Parser Int
-pTypeArg (QuantorIndexing _ indexNamed indexUnnamed) = do
-  arg <- pTypeArgName
-  (idx, name) <-
-    case arg of
-      Left idx -> return (lookup idx indexUnnamed, 'v' : '$' : show idx)
-      Right name -> return (lookup name indexNamed, name)
-  case idx of
-    Just i -> return i
-    Nothing -> pError ("Type variable not in scope: " ++ name)
+pQuantor :: Parser Quantor
+pQuantor = flip Quantor Nothing <$> pTypeVariable
 
--- Contains the next free id for a type variable, the mapping from names
--- to indices and a mapping from source type variables to new type variables.
--- We maintain the last mapping such that we can more easily assign indices to
--- named type variables.
-data QuantorIndexing = QuantorIndexing Int [(String, Int)] [(Int, Int)]
-
-addToMapping :: Eq a => a -> Int -> [(a, Int)] -> [(a, Int)]
-addToMapping name idx mapping = (name, idx) : filter ((name /= ) . fst) mapping
-
-pQuantor :: QuantorIndexing -> Parser (Quantor, QuantorIndexing)
-pQuantor (QuantorIndexing nextIdx stringMapping numberMapping) = do
-  var <- pTypeArgName
-  case var of
-    Left idx -> return
-      ( Quantor nextIdx Nothing
-      , QuantorIndexing (nextIdx + 1) stringMapping (addToMapping idx nextIdx numberMapping)
-      )
-    Right name -> return
-      ( Quantor nextIdx (Just name)
-      , QuantorIndexing (nextIdx + 1) (addToMapping name nextIdx stringMapping) numberMapping
-      )
-
-pTypeAtom :: Parser Type
-pTypeAtom = pTypeAtom' $ QuantorIndexing 0 [] []
+pTypeForall :: Parser Type
+pTypeForall = (\q -> (TForall q KStar)) <$ pSymbol "forall" <*> pQuantor <* pToken '.' <*> pType
 
 pType :: Parser Type
-pType = pType' $ QuantorIndexing 0 [] []
+pType = pTypeForall <|> pFunctionType
 
-pType' :: QuantorIndexing -> Parser Type
-pType' quantors = do
-  forallType <- pMaybe $ pTypeForall quantors
-  case forallType of
-    Just (quantors', tp) -> tp <$> pType' quantors'
-    Nothing -> do
-      -- Parse function type
-      left <- pTypeAp quantors
-      arrow <- pMaybe (pSymbol "->")
-      case arrow of
-        Just _ -> do
-          pWhitespace
-          right <- pType' quantors
-          return $ TAp (TAp (TCon TConFun) left) right
-        Nothing -> return left
+pFunctionType :: Parser Type
+pFunctionType = foldr1 (TAp . TAp (TCon TConFun)) <$> P.sepBy1 (pTypeForall <|> pTypeAp) (pSymbol "->")
 
-pTypeAp :: QuantorIndexing -> Parser Type
-pTypeAp quantors = do
-  tp1 <- pTypeAtom' quantors
-  pWhitespace
-  tps <- pManyMaybe $ pMaybe (pTypeAtom' quantors <* pWhitespace)
-  return $ foldl TAp tp1 tps
+pTypeAp :: Parser Type
+pTypeAp = foldl TAp <$> pTypeAtom <*> P.many pTypeAtom
 
-pTypeAtom' :: QuantorIndexing -> Parser Type
-pTypeAtom' quantors = do
-  c1 <- lookahead
-  case c1 of
-    '!' -> do
-      pChar
-      pWhitespace
-      typeToStrict <$> pTypeAtom' quantors
-    '[' -> do
-      pChar
-      pWhitespace
-      c2 <- lookahead
-      if c2 == ']' then do
-        pChar
-        return (TCon $ TConDataType $ idFromString "[]")
-      else do
-        tp <- pType' quantors
-        pToken ']'
-        return $ TAp (TCon $ TConDataType $ idFromString "[]") tp
-    '(' -> do
-      pChar
-      c2 <- lookahead
-      case c2 of
-        '@' -> do
-          pChar
-          pSymbol "dictionary"
-          pWhitespace
-          typeClass <- pId
-          pWhitespace
-          pToken ')'
-          return $ TCon $ TConTypeClassDictionary typeClass
-        ')' -> do
-          pChar
-          return $ TCon $ TConTuple 0
-        ',' -> do
-          commas <- pManySatisfy (== ',')
-          pToken ')'
-          return $ TCon $ TConTuple $ length commas + 1
-        _ -> do
-          pWhitespace
-          tp <- pType' quantors
-          pToken ')'
-          return tp
-    _ | isLower c1 -> do
-      idx <- pTypeArg quantors
-      return $ TVar idx
-    _ -> do
-      name <- pId
-      return $ TCon $ TConDataType name
+pTypeAtom :: Parser Type
+pTypeAtom = pTypeAtomStrict <|> pTypeAtomList <|> pTypeAtomT <|> pTypeAtomTypeVariable <|> pTypeAtomDataType
 
-pTypeForall :: QuantorIndexing -> Parser (QuantorIndexing, Type -> Type)
-pTypeForall quantors = do
-  key <- pKeyword
-  case key of
-    "forall" -> do
-      (q, quantors') <- pQuantor quantors
-      pWhitespace
-      pToken '.'
-      pWhitespace
-      return (quantors', TForall q KStar)
-    _ -> pError "Expected keyword 'forall'"
+pTypeAtomStrict :: Parser Type
+pTypeAtomStrict = typeToStrict <$ pToken '!' <*> pTypeAtom
+
+pTypeAtomList :: Parser Type
+pTypeAtomList = pBrackets pTypeAtomMaybeList
+
+pTypeAtomMaybeList :: Parser Type
+pTypeAtomMaybeList = let tcon = (TCon $ TConDataType $ idFromString "[]") in TAp tcon <$> pType <|> return tcon
+
+pTypeAtomT :: Parser Type
+pTypeAtomT = pParentheses (pTypeAtomTypeClass <|> pType <|> pTypeAtomTuple)
+
+pTypeAtomTypeClass :: Parser Type
+pTypeAtomTypeClass = (TCon . TConTypeClassDictionary) <$ pSymbol "@dictionary" <*> pNameDataType
+
+pTypeAtomTypeVariable :: Parser Type
+pTypeAtomTypeVariable = TVar <$> pTypeVariable
+
+pTypeAtomTuple :: Parser Type
+pTypeAtomTuple = (TCon . TConTuple . length') <$> P.many (P.satisfy ((',') ==))
+  where
+    -- arity is the number of types the tuple contains, for example (t1,t2) = 2 but () = 0
+    length' tp = case length tp of
+      0 -> 0
+      x -> x + 1
+
+pTypeAtomDataType :: Parser Type
+pTypeAtomDataType = (TCon . TConDataType) <$> pNameDataType
+
+pNameDataType :: Parser Id
+pNameDataType = pLexeme $ ((idFromString .) . (:)) <$> P.satisfy vstart <*> pSome (P.satisfy valid) <|> idFromString <$> pString
+  where
+    valid c =
+      isAlphaNum c
+        || c == '.'
+        || c == '_'
+        || c == '$'
+    vstart c = isUpper c || c == '$' || c == '.'
 
 pFloatPrecision :: Parser FloatPrecision
-pFloatPrecision = do
-  bits <- pUnsignedInt
-  case bits of
-    32 -> return Float32
-    64 -> return Float64
-    _ -> pError $ "Unsupported floating point precision: " ++ show bits
+pFloatPrecision = Float64 <$ pSymbol "64" <|> Float64 <$ pSymbol "32"
+
+pNamedTypeAtom :: (Id -> Type -> b) -> Parser b
+pNamedTypeAtom a = a <$ pToken '@' <*> pNameDataType <* pToken ':' <*> pTypeAtom
 
 pDataTypeConstructor :: Parser DataTypeConstructor
-pDataTypeConstructor = DataTypeConstructor
-  <$ pToken '@' <*> pId <* pToken ':' <* pWhitespace <*> pTypeAtom
+pDataTypeConstructor = pNamedTypeAtom DataTypeConstructor
 
-pInstantiation :: QuantorIndexing -> Parser [Type]
-pInstantiation quantors = do
-  c <- lookahead
-  if c == '{' then do
-    pChar
-    pWhitespace
-    tp <- pType' quantors
-    pToken '}'
-    pWhitespace
-    tps <- pInstantiation quantors
-    return (tp : tps)
-  else return []
+pInstantiation :: Parser [Type]
+pInstantiation = P.many $ pBraces pType

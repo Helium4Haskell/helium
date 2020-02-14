@@ -1,111 +1,56 @@
 module Helium.CodeGeneration.Iridium.Parse.Expression where
 
+import Control.Applicative
+import Helium.CodeGeneration.Iridium.Data
 import Helium.CodeGeneration.Iridium.Parse.Parser
 import Helium.CodeGeneration.Iridium.Parse.Type
-import Helium.CodeGeneration.Iridium.Data
-import Helium.CodeGeneration.Iridium.Type
 import Lvm.Core.Type
+import qualified Text.Parsec as P
 
 pLiteral :: Parser Literal
-pLiteral = do
-  keyword <- pWord
-  case keyword of
-    "int" -> LitInt IntTypeInt <$ pWhitespace <*> pSignedInt
-    "char" -> LitInt IntTypeChar <$ pWhitespace <*> pSignedInt
-    "float" -> LitFloat <$> pFloatPrecision <* pWhitespace <*> pFloat
-    "str" -> LitString <$ pWhitespace <*> pString
-    _ -> pError "expected literal"
+pLiteral =
+  LitInt IntTypeInt <$ pSymbol "int" <*> pSignedInt
+    <|> LitInt IntTypeChar
+    <$ pSymbol "char" <*> pSignedInt
+    <|> LitFloat
+    <$ pSymbol "float" <*> pFloatPrecision
+      <*> pFloat
+    <|> LitString
+    <$ pSymbol "str" <*> pString
 
-pFloat :: Parser Double
-pFloat = do
-  cMinus <- lookahead
-  sign <- case cMinus of
-    '-' -> do
-      pChar
-      return (-1)
-    _ -> return 1
-  int <- pUnsignedInt
-  c <- lookahead
-  case c of
-    '.' -> do
-      pChar
-      decimalStr <- pManySatisfy (\c -> '0' <= c && c <= '9')
-      let decimal = foldl (+) 0 $ zipWith (\c i -> fromIntegral (fromEnum c - fromEnum '0') / (10 ^ i)) decimalStr [1..]
-      let value = sign * fromIntegral int + decimal
-      c2 <- lookahead
-      if c2 == 'e' then do
-        pChar
-        exp <- pSignedInt
-        return $ value * 10 ^ exp
-      else
-        return value
-    'e' -> do
-      pChar
-      exp <- pSignedInt
-      return $ sign * fromIntegral int * 10 ^ exp
-    _ -> return $ sign * fromIntegral int
+pGlobal :: Parser Global
+pGlobal = pNamedTypeAtom GlobalVariable
 
-pGlobal :: QuantorIndexing -> Parser Global
-pGlobal quantors = do
-  pToken '@'
-  name <- pId
-  pToken ':'
-  pWhitespace
-  GlobalVariable name <$> pTypeAtom
+pGlobalFunction :: Parser GlobalFunction
+pGlobalFunction = GlobalFunction <$ pToken '@' <*> pId <*> pBrackets pUnsignedInt <* pToken ':' <*> pTypeAtom
 
-pGlobalFunction :: QuantorIndexing -> Parser GlobalFunction
-pGlobalFunction quantors = do
-  pToken '@'
-  name <- pId
-  pWhitespace
-  pToken '['
-  pWhitespace
-  arity <- pUnsignedInt
-  pWhitespace
-  pToken ']'
-  pWhitespace
-  pToken ':'
-  pWhitespace
-  tp <- pTypeAtom' quantors
-  return $ GlobalFunction name arity tp
+pLocal :: Parser Local
+pLocal = Local <$ pToken '%' <*> pId <* pToken ':' <*> pTypeAtom
 
-pLocal :: QuantorIndexing -> Parser Local
-pLocal quantors = Local <$ pToken '%' <*> pId <* pToken ':' <* pWhitespace <*> pTypeAtom' quantors
+pVariable :: Parser Variable
+pVariable = VarGlobal <$> pGlobal <|> VarLocal <$> pLocal
 
-pVariable :: QuantorIndexing -> Parser Variable
-pVariable quantors = do
-  c <- lookahead
-  case c of
-    '@' -> VarGlobal <$> pGlobal quantors
-    '%' -> VarLocal <$> pLocal quantors
-    _ -> pError "expected variable"
+pArguments :: Parser a -> Parser [a]
+pArguments pArg = pParentheses (P.sepBy pArg (pToken ','))
 
-pCallArguments :: QuantorIndexing -> Parser [Either Type Variable]
-pCallArguments quantors = pArguments pCallArgument
+pCallArguments :: Parser [Either Type Variable]
+pCallArguments = pArguments pCallArgument
   where
-    pCallArgument = do
-      c <- lookahead
-      if c == '{' then
-        Left <$ pChar <* pWhitespace <*> pType' quantors <* pToken '}'
-      else
-        Right <$> pVariable quantors
+    pCallArgument = Left <$> pBraces pType <|> Right <$> pVariable
 
-pExpression :: QuantorIndexing -> Parser Expr
-pExpression quantors = do
-  keyword <- pKeyword
-  case keyword of
-    "literal" -> Literal <$> pLiteral
-    "call" -> Call <$> pGlobalFunction quantors <* pWhitespace <* pToken '$' <* pWhitespace <*> pCallArguments quantors
-    "eval" -> Eval <$> pVariable quantors
-    "var" -> Var <$> pVariable quantors
-    "instantiate" -> Instantiate <$> pVariable quantors <* pWhitespace <*> pInstantiation quantors
-    -- "cast" -> Cast <$> pVariable quantors <* pWhitespace <* pSymbol "as" <* pWhitespace <*> pTypeAtom' quantors
-    "castthunk" -> CastThunk <$> pVariable quantors
-    "phi" -> Phi <$> pArguments (pPhiBranch quantors)
-    "prim" -> PrimitiveExpr <$> pId <* pWhitespace <*> pCallArguments quantors
-    "undefined" -> Undefined <$ pWhitespace <*> pTypeAtom' quantors
-    "seq" -> Seq <$> pVariable quantors <* pWhitespace <* pToken ',' <* pWhitespace <*> pVariable quantors
-    _ -> pError "expected expression"
+pExpression :: Parser Expr
+pExpression =
+  Call <$ P.try (pSymbol "call") <*> pGlobalFunction <* pToken '$' <*> pCallArguments
+    <|> CastThunk <$ P.try (pSymbol "castthunk") <*> pVariable
+    <|> Cast <$ pSymbol "cast" <*> pVariable <* pSymbol "as"  <*> pTypeAtom
+    <|> Eval <$ pSymbol "eval" <*> pVariable
+    <|> Instantiate <$ pSymbol "instantiate" <*> pVariable <*> pInstantiation
+    <|> Literal <$ pSymbol "literal" <*> pLiteral
+    <|> Phi <$ P.try (pSymbol "phi") <*> pArguments pPhiBranch
+    <|> PrimitiveExpr <$ pSymbol "prim" <*> pId <*> pCallArguments
+    <|> Seq <$ pSymbol "seq" <*> pVariable <* pToken ',' <*> pVariable
+    <|> Undefined <$ pSymbol "undefined" <*> pTypeAtom
+    <|> Var <$ pSymbol "var" <*> pVariable
 
-pPhiBranch :: QuantorIndexing -> Parser PhiBranch
-pPhiBranch quantors = PhiBranch <$> pId <* pWhitespace <* pSymbol "=>" <* pWhitespace <*> pVariable quantors
+pPhiBranch :: Parser PhiBranch
+pPhiBranch = PhiBranch <$> pId <* pSymbol "=>" <*> pVariable

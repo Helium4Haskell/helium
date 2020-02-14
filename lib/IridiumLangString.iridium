@@ -9,10 +9,10 @@ custom @"[]": @data
 #[decl @kind [bytes "* -> *"]]
 data @"[]" {
   #[link @"[]" @data]
-  constructor @"[]": { forall a. [a] }
+  constructor @"[]": { forall v$a1. [v$a1] }
 
   #[link @"[]" @data]
-  constructor @":": { forall a. a -> [a] -> [a] }
+  constructor @":": { forall v$a1. v$a1 -> [v$a1] -> [v$a1] }
 }
 
 export_as @_$helium_runtime_unpack_string define @_$helium_runtime_unpack_string(%length: !Int, %pointer: !$UnsafePtr): ([Char]) {
@@ -28,10 +28,10 @@ unpack.cons:
   %tail_as_any = castthunk %tail: ![Char]
   %c_char = prim int_to_char(%c: !Int)
   %c_as_any = castthunk %c_char: !Char
-  letalloc %list = constructor @":": (forall a. a -> [a] -> [a]) $ ({Char}, %c_as_any: Char, %tail_as_any: [Char])
+  letalloc %list = constructor @":": (forall v$a1. v$a1 -> [v$a1] -> [v$a1]) $ ({Char}, %c_as_any: Char, %tail_as_any: [Char])
   return %list: ![Char]
 unpack.nil:
-  letalloc %nil = constructor @"[]": (forall a. [a]) $ ({Char})
+  letalloc %nil = constructor @"[]": (forall v$a1. [v$a1]) $ ({Char})
   return %nil: ![Char]
 }
 
@@ -46,13 +46,13 @@ print.loop:
   ; a dead code analysis
   %res = phi (print.entry => %0: !Int, print.cons => %res_cons: !Int)
   %list = phi (print.entry => %arg_list: ![Char], print.cons => %cons: ![Char])
-  case %list: ![Char] constructor (@"[]": (forall a. [a]) to print.nil, @":": (forall a. a -> [a] -> [a]) to print.cons)
+  case %list: ![Char] constructor (@"[]": (forall v$a1. [v$a1]) to print.nil, @":": (forall v$a1. v$a1 -> [v$a1] -> [v$a1]) to print.cons)
 
 print.nil:
   return %res: !Int
 
 print.cons:
-  match %list: ![Char] on @":": (forall a. a -> [a] -> [a]) {Char} (%c_thunk, %cons_as_any)
+  match %list: ![Char] on @":": (forall v$a1. v$a1 -> [v$a1] -> [v$a1]) {Char} (%c_thunk, %cons_as_any)
   %c_whnf = eval %c_thunk: Char
   %c = prim char_to_int(%c_whnf: !Char)
   %c2 = seq %res: !Int, %c: !Int ; Prevent reordering of @putchar calls
@@ -64,7 +64,7 @@ print.cons:
 
 declare @exit[1]: { !Int -> Int } [callconvention:c]
 
-export_as @_$helium_runtime_error define @_$helium_runtime_error(forall a, %msg: [Char]): a {
+export_as @_$helium_runtime_error define @_$helium_runtime_error(forall v$a1, %msg: [Char]): v$a1 {
 error.entry:
   %msg_list = eval %msg: [Char]
   %_1 = call @_$helium_runtime_print_string[1]: (![Char] -> Int) $ (%msg_list: ![Char])

@@ -15,7 +15,7 @@ import Lvm.Common.IdMap
 import Data.IORef
 import Helium.CodeGeneration.Iridium.Data
 import Helium.CodeGeneration.Iridium.Show
-import Helium.CodeGeneration.Iridium.Parse.Module (parseModuleIO)
+import Helium.CodeGeneration.Iridium.Parse.Module (parseModuleIO')
 import Helium.Utils.Utils (readSourceFile)
 import Lvm.Path (searchPath)
 
@@ -49,6 +49,6 @@ writeIridium (FileCache _ ref) fileName iridium = do
 
 parseIridium :: FileCache -> Id -> FilePath -> String -> IO Module
 parseIridium (FileCache _ ref) name fileName contents = do
-  iridium <- parseModuleIO fileName contents
+  iridium <- parseModuleIO' fileName contents
   modifyIORef' ref $ insertMap name (CachedFile fileName iridium)
   return iridium

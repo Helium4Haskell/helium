@@ -188,10 +188,10 @@ instance ShowDeclaration AbstractMethod where
 instance ShowDeclaration Method where
   showDeclaration (Method tp args rettype annotations entry blocks) =
     ( "define",
-      ": { " ++ show tp ++ " } $ (" ++ intercalate ", " args' ++ "): "
-        ++ showQ quantors rettype
-        ++ " "
+      ": { " ++ show tp ++ " } $ (" ++ intercalate ", " args' ++ ") "
         ++ showAnnotations annotations
+        ++ ": "
+        ++ showQ quantors rettype
         ++ " {\n"
         ++ showQ quantors entry
         ++ (blocks >>= ('\n' :) . showQ quantors)
