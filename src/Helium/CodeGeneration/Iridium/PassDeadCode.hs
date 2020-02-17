@@ -144,6 +144,7 @@ analyseBind (Bind var target args) =
     args' = rights args
     targetVars = case target of
       BindTargetThunk var -> [variableName var]
+      BindTargetConstructor _ name -> maybe ([]) return name
       _ -> []
 
 data Implications = Implications ![Id] ![(Id, Id)]

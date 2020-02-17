@@ -11,12 +11,15 @@ module Helium.CodeGeneration.Core.LetInline
   )
 where
 
+import Control.Monad
 import Data.Maybe (fromMaybe, mapMaybe)
+import Debug.Trace
 import Lvm.Common.Id (Id)
 import Lvm.Common.IdMap
 import Lvm.Common.IdSet
 import Lvm.Core.Expr
 import Lvm.Core.Module
+import Text.PrettyPrint.Leijen hiding ((<$>))
 
 coreLetInline :: CoreModule -> CoreModule
 coreLetInline = fmap inline
@@ -158,7 +161,7 @@ createEnv arities expr = Env arities vars emptyMap
 inlineInExpr :: Env -> Expr -> Expr
 inlineInExpr env e@(Lit _) = e
 inlineInExpr env e@(Var name) = fromMaybe e $ lookupMap name $ values env
-inlineInExpr env e@(Con _ _) = e
+inlineInExpr env e@(Con c n) = Con c (((\(Var n') -> n') <$> (flip lookupMap (values env) =<< n)) `mplus` n)
 inlineInExpr env (Lam strict x e) = Lam strict x $ inlineInExpr env e
 inlineInExpr env (Ap e1 e2) = Ap (inlineInExpr env e1) (inlineInExpr env e2)
 inlineInExpr env (Forall x k e) = Forall x k $ inlineInExpr env e

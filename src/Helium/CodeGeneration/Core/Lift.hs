@@ -135,6 +135,7 @@ liftExpr supply scope expr env = (renameInSimpleExpr env expr, [])
 -- Renames according to Env. Works on expressions consisting of Ap, Var, Con and Lit nodes.
 renameInSimpleExpr :: Env -> Expr -> Expr
 renameInSimpleExpr env (Var name) = Var $ rename env name
+renameInSimpleExpr env (Con con name) = Con con (rename env <$> name)
 renameInSimpleExpr env (Ap e1 e2) = Ap (renameInSimpleExpr env e1) (renameInSimpleExpr env e2)
 renameInSimpleExpr env (ApType e t) = ApType (renameInSimpleExpr env e) t
 renameInSimpleExpr env e = e

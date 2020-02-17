@@ -78,6 +78,7 @@ nsExpr env expr =
     Var x -> Var (renameVar env x)
     Forall x k e -> Forall x k $ nsExpr env e
     ApType e t -> ApType (nsExpr env e) t
+    Con c n -> Con c (renameVar env <$> n)
     _ -> expr
 
 nsBinds :: Env -> Binds -> (Env -> Binds -> a) -> a
