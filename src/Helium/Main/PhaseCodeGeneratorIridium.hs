@@ -35,15 +35,19 @@ phaseCodeGeneratorIridium supply cache fullName coreModule options = do
   let supplyDesugar : supplyFromCore : supplyPassDeadCode : supplyPassTailRecursion : _ = splitNameSupplies supply
   let (path, baseName, _) = splitFilePath fullName
   let fullNameNoExt = combinePathAndFile path baseName
-  -- desugar Core
+  -- Desugar Core
   simplified <- desugarCore fullNameNoExt supplyDesugar options coreModule
   -- Check whether the module has a 'main' function
   let hasMain = any ((== idFromString "real_main") . Core.declName) $ Core.moduleDecls coreModule
   -- Convert Core to Iridium
   iridium' <- fromCore cache supplyFromCore simplified
+  -- Typecheck generated iridium
   checkModuleIO "fromCore" (fullNameNoExt ++ ".iridium") iridium'
+  -- Run deadcode elimination and tail recursion pass. The first pass also renames variables.
   let iridium = passTailRecursion supplyPassTailRecursion $ passDeadCode supplyPassDeadCode iridium'
+  -- Write iridium file to disk
   writeIridium cache (fullNameNoExt ++ ".iridium") iridium
+  -- Run a final check to verify if the Iridium files is still correct after running the analyses
   checkModuleIO "passTailRecursion" (fullNameNoExt ++ ".iridium") iridium
   let file = IridiumFile (fullNameNoExt ++ ".iridium") iridium True
   files <-
