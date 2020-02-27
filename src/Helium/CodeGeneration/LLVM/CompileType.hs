@@ -122,7 +122,7 @@ cast supply env fromOperand toName fromType' toType'
     copy env fromOperand toName toType
   -- Thunk to WHNF - not allowed in a Cast instruction. This should be done with an Eval statement
   | not fromStrict && toStrict =
-    error ("cast: Cannot cast from thunk to WHNF: " ++ show fromOperand ++ ", " ++ show toName ++ show fromType ++ " to " ++ show toType)
+    error ("cast: Cannot cast from thunk to WHNF: " ++ show fromOperand ++ ", " ++ show toName ++ Core.showType fromType ++ " to " ++ Core.showType toType)
   -- Strict to thunk - perform bitcast from fromType to the strict variant of toType,
   -- then wrap the value in a thunk
   | fromStrict && not toStrict =

@@ -54,7 +54,7 @@ constructorDataType cons = findName $ findReturn $ constructorType cons
     findName (TAp t _) = findName t
     findName (TCon (TConDataType name)) = name
     findName (TCon (TConTypeClassDictionary name)) = idFromString $ ("Dict$" ++ stringFromId name)
-    findName t = error ("constructorDataType: Could not find data type name in type " ++ showType [] t)
+    findName t = error ("constructorDataType: Could not find data type name in type " ++ showType t)
 
 getConstructors :: Declaration DataType -> [DataTypeConstructor]
 getConstructors (Declaration dataName _ _ _ (DataType cons)) = map (\(Declaration conId _ _ _ (DataTypeConstructorDeclaration tp _)) -> DataTypeConstructor conId tp) cons
@@ -240,8 +240,8 @@ typeApplyArguments env tp args = case tp' of
   TAp (TAp (TCon TConFun) _) _
     | isRight $ head args -> typeApplyArguments env tp' args
   _
-    | isRight $ head args -> error ("typeApplyArguments: expected a function type, got " ++ showType [] tp')
-    | otherwise -> error ("typeApplyArguments: expected a forall type, got " ++ showType [] tp')
+    | isRight $ head args -> error ("typeApplyArguments: expected a function type, got " ++ showType tp')
+    | otherwise -> error ("typeApplyArguments: expected a forall type, got " ++ showType tp')
   where
     tp' = case typeNormalizeHead env tp of
       TStrict tp' -> tp'

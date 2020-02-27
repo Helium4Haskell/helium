@@ -81,11 +81,11 @@ typeSchemeFromCore quantifiedType =
     (quantors, qmap, qtype) = splitForalls quantifiedType
     (predicates, tp) = splitPredicates qtype
     fromCore :: Core.Type -> Tp
-    fromCore (Core.TCon c) = TCon $ show c
+    fromCore (Core.TCon c) = TCon $ Core.showTypeConstant c
     fromCore (Core.TAp t1 t2) = TApp (fromCore t1) (fromCore t2)
     fromCore (Core.TVar x) = TVar x
     fromCore (Core.TStrict t) = fromCore t
-    fromCore (Core.TForall _ _ _) = internalError "CoreToImportEnv" "typeSynFromCore" ("Unexpected 'forall' in type scheme. Forall quantifiers may only occur on the top level of a type scheme. Type: " ++ Core.showType [] quantifiedType)
+    fromCore (Core.TForall _ _ _) = internalError "CoreToImportEnv" "typeSynFromCore" ("Unexpected 'forall' in type scheme. Forall quantifiers may only occur on the top level of a type scheme. Type: " ++ Core.showType quantifiedType)
 
 typeSynFromCore :: Core.Type -> (Int, Tps -> Tp)
 typeSynFromCore quantifiedType = (length typeArgs, \args -> fromCore (zip typeArgs args) tp)
@@ -97,7 +97,7 @@ typeSynFromCore quantifiedType = (length typeArgs, \args -> fromCore (zip typeAr
         (idxs, t') = splitForalls t
     splitForalls t = ([], t)
     fromCore :: [(Int, Tp)] -> Core.Type -> Tp
-    fromCore args (Core.TCon c) = TCon $ show c
+    fromCore args (Core.TCon c) = TCon $ Core.showTypeConstant c
     fromCore args (Core.TAp t1 t2) = TApp (fromCore args t1) (fromCore args t2)
     fromCore args (Core.TVar x) = case lookup x args of
       Just t -> t

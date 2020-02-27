@@ -361,7 +361,7 @@ maybeCasts supply env tp args'@(Right name : args) =
           (var, instr) = maybeCast supply1 env name tArg
           (tailVars, tailInstr, returnType) = maybeCasts supply2 env tReturn args
        in (Right var : tailVars, instr . tailInstr, returnType)
-    _ -> error ("FromCore.maybeCasts: expected function type, got " ++ Core.showType [] tp)
+    _ -> error ("FromCore.maybeCasts: expected function type, got " ++ Core.showType tp)
 maybeCasts supply env tp (Left tpArg : args) =
   let tp' = Core.typeApply tp tpArg
       (tailVars, tailInstr, returnType) = maybeCasts supply env tp' args

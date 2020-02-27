@@ -12,14 +12,14 @@ data Struct
         tagValue :: Int,
         fields :: [StructField]
       }
-  deriving (Eq, Ord, Show)
+  deriving (Eq, Ord)
 
 data StructField
   = StructField
       { fieldType :: Core.Type,
         fieldFlagIndex :: Maybe Int
       }
-  deriving (Eq, Ord, Show)
+  deriving (Eq, Ord)
 
 tupleStruct :: Int -> Struct
 tupleStruct arity = Struct Nothing 0 0 $ map field [0 .. arity - 1]

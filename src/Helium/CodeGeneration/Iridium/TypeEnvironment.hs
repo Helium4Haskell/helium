@@ -46,7 +46,7 @@ data ValueDeclaration
   = ValueConstructor !DataTypeConstructor
   | ValueFunction !Int !Type !CallingConvention
   | ValueVariable !Type
-  deriving (Eq, Ord, Show)
+  deriving (Eq, Ord)
 
 typeOf :: TypeEnv -> Id -> Type
 typeOf env name = case valueDeclaration env name of

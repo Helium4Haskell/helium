@@ -65,7 +65,7 @@ patternVariables env (PatCon (ConId name) tps ids) =
     findVars (x : xs) (TAp (TAp (TCon TConFun) tArg) tReturn) =
       Variable x tArg : findVars xs tReturn
     findVars [] _ = []
-    findVars _ tp = internalError "Core.TypeEnvironment" "patternVariables" $ "Expected function type for constructor " ++ show name ++ ", got " ++ showType [] tp
+    findVars _ tp = internalError "Core.TypeEnvironment" "patternVariables" $ "Expected function type for constructor " ++ show name ++ ", got " ++ showType tp
 patternVariables _ _ = [] -- Literal or default
 
 typeEnvAddPattern :: Pat -> TypeEnvironment -> TypeEnvironment
@@ -106,12 +106,12 @@ typeOfCoreExpression env (Match name (Alt pat expr : _)) =
 -- Resolve the type of e1, which should be a function type.
 typeOfCoreExpression env e@(Ap e1 e2) = case typeNotStrict $ typeNormalizeHead env $ typeOfCoreExpression env e1 of
   TAp (TAp (TCon TConFun) _) tReturn -> tReturn
-  tp -> internalError "Core.TypeEnvironment" "typeOfCoreExpression" $ "expected a function type in the first argument of a function application, got " ++ showType [] tp ++ " in expression " ++ show (pretty e)
+  tp -> internalError "Core.TypeEnvironment" "typeOfCoreExpression" $ "expected a function type in the first argument of a function application, got " ++ showType tp ++ " in expression " ++ show (pretty e)
 -- Expression: e1 { tp1 }
 -- The type of e1 should be of the form `forall x. tp2`. Substitute x with tp1 in tp2.
 typeOfCoreExpression env (ApType e1 tp1) = case typeNormalizeHead env $ typeOfCoreExpression env e1 of
   tp@(TForall (Quantor idx _) _ tp2) -> typeSubstitute idx tp1 tp2
-  tp -> internalError "Core.TypeEnvironment" "typeOfCoreExpression" $ "typeOfCoreExpression: expected a forall type in the first argument of a function application, got " ++ showType [] tp
+  tp -> internalError "Core.TypeEnvironment" "typeOfCoreExpression" $ "typeOfCoreExpression: expected a forall type in the first argument of a function application, got " ++ showType tp
 -- Expression: \x: t1 -> e
 -- If e has type t2, then the lambda has type t1 -> t2
 typeOfCoreExpression env (Lam _ var@(Variable _ tp) expr) =
@@ -203,7 +203,7 @@ extractFunctionTypeWithArity env arity tp = case typeNormalizeHead env tp of
   TAp (TAp (TCon TConFun) tArg) tReturn ->
     let FunctionType args ret = extractFunctionTypeWithArity env (arity - 1) tReturn
      in FunctionType (Right tArg : args) ret
-  _ -> error ("extractFunctionTypeWithArity: expected function type or forall type, got " ++ showType [] tp)
+  _ -> error ("extractFunctionTypeWithArity: expected function type or forall type, got " ++ showType tp)
 
 updateFunctionTypeStrictness :: TypeEnvironment -> [Bool] -> Type -> Type
 updateFunctionTypeStrictness _ strictness tp

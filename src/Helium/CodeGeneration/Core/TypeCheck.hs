@@ -34,13 +34,13 @@ data Message
 
 instance Show Message where
   show (MessageExpected str tp (Just expr)) =
-    "  Expected " ++ str ++ ", got `" ++ showType [] tp ++ "' instead"
+    "  Expected " ++ str ++ ", got `" ++ showType tp ++ "' instead"
       ++ "  as the type of expression:\n\n"
       ++ show (pretty expr)
   show (MessageExpected str tp Nothing) =
-    "  Expected " ++ str ++ ", got `" ++ showType [] tp ++ "' instead"
+    "  Expected " ++ str ++ ", got `" ++ showType tp ++ "' instead"
   show (MessageNotEqual t1 t2) =
-    "  Types `" ++ showType [] t1 ++ "' and `" ++ showType [] t2 ++ "' do not match"
+    "  Types `" ++ showType t1 ++ "' and `" ++ showType t2 ++ "' do not match"
   show (MessageNameNotFound name) =
     "  Variable not found: " ++ show name
 

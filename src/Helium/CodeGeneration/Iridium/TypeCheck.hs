@@ -39,14 +39,14 @@ data TypeError
     TEMethod !Id !Type !Type
 
 instance Show TypeError where
-  show (TEMatch var tp) = "Variable " ++ showVar var ++ " should have type " ++ show tp ++ " in a match instruction"
-  show (TECase var tp) = "Variable " ++ showVar var ++ " should have type " ++ show tp ++ " in a case instruction"
-  show (TEReturn var tp) = "Variable " ++ showVar var ++ " should have type " ++ show tp ++ " in a return instruction"
+  show (TEMatch var tp) = "Variable " ++ showVar var ++ " should have type " ++ showType tp ++ " in a match instruction"
+  show (TECase var tp) = "Variable " ++ showVar var ++ " should have type " ++ showType tp ++ " in a case instruction"
+  show (TEReturn var tp) = "Variable " ++ showVar var ++ " should have type " ++ showType tp ++ " in a return instruction"
   show (TEEval var) = "Variable " ++ show var ++ " should not be strict in an eval expression"
   show (TEVariable var1 var2) = "Variable declared as " ++ showVar var1 ++ " is used as " ++ showVar var2
   show (TEMultipleDeclarations vars) = "Variable has multiple declarations: " ++ intercalate ", " (map showVar vars)
   show (TENotDeclared name) = "Variable " ++ show name ++ " is not declared"
-  show (TEMethod name t1 t2) = "Method " ++ show name ++ " was declared with type " ++ show t1 ++ ", which does not match the type inferred from the arguments and return type: " ++ show t2
+  show (TEMethod name t1 t2) = "Method " ++ show name ++ " was declared with type " ++ showType t1 ++ ", which does not match the type inferred from the arguments and return type: " ++ showType t2
 
 data Analysis
   = AJoin !Analysis !Analysis

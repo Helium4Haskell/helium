@@ -1,6 +1,3 @@
-{-# LANGUAGE FlexibleInstances #-}
-{-# LANGUAGE UndecidableInstances #-}
-
 -- Show instances for Iridium
 
 -- | Module      :  Data
@@ -16,10 +13,9 @@ import Data.List (intercalate)
 import Helium.CodeGeneration.Iridium.Data
 import Helium.CodeGeneration.Iridium.Type
 import Lvm.Common.Byte (stringFromBytes)
-import Lvm.Common.Id (Id, idFromString, stringFromId)
+import Lvm.Common.Id (Id, stringFromId)
 import Lvm.Core.Module (Custom (..), DeclKind (..), Field (..))
 import Lvm.Core.Type
-import qualified Text.PrettyPrint.Leijen as Pretty
 
 class ShowDeclaration a where
   showDeclaration :: a -> (String, String)
@@ -40,10 +36,6 @@ class ShowWithQuantors a where
   showsQ :: QuantorNames -> a -> ShowS
   showsQ names value = (showQ names value ++)
 
-instance {-# OVERLAPS #-} ShowWithQuantors a => Show a where
-  show = showQ []
-  showsPrec _ = showsQ []
-
 text :: String -> ShowS
 text = (++)
 
@@ -55,7 +47,7 @@ list sep (x : xs) = x . list' xs
     list' [] = id
 
 instance ShowWithQuantors Type where
-  showQ quantors = showType quantors
+  showQ quantors = showTypeWithQuantors quantors
 
 showCustom :: Custom -> String
 showCustom (CustomInt i) = "[int " ++ show i ++ "]"
@@ -152,10 +144,13 @@ instance ShowWithQuantors Local where
   showsQ quantors (Local name t) = ('%' :) . showId name . text ": " . showsQ quantors t
 
 instance Show Global where
-  showsPrec _ (GlobalVariable name t) = ('@' :) . showId name . text ": " . shows t
+  showsPrec _ (GlobalVariable name t) = ('@' :) . showId name . text ": " . (showsQ [] t)
+
+instance Show Variable where
+  show = showQ []
 
 instance Show GlobalFunction where
-  showsPrec _ (GlobalFunction name arity fntype) = ('@' :) . showId name . text "[" . shows arity . text "]: " . shows fntype
+  showsPrec _ (GlobalFunction name arity fntype) = ('@' :) . showId name . text "[" . shows arity . text "]: " . (showsQ [] fntype)
 
 instance ShowWithQuantors Variable where
   showsQ quantors (VarLocal local) = showsQ quantors local
@@ -182,13 +177,13 @@ showAnnotations annotations = "[" ++ intercalate ", " (map show annotations) ++ 
 instance ShowDeclaration AbstractMethod where
   showDeclaration (AbstractMethod arity fntype annotations) =
     ( "declare",
-      "[" ++ show arity ++ "]: { " ++ show fntype ++ " } " ++ showAnnotations annotations ++ "\n"
+      "[" ++ show arity ++ "]: { " ++ showType fntype ++ " } " ++ showAnnotations annotations ++ "\n"
     )
 
 instance ShowDeclaration Method where
   showDeclaration (Method tp args rettype annotations entry blocks) =
     ( "define",
-      ": { " ++ show tp ++ " } $ (" ++ intercalate ", " args' ++ ") "
+      ": { " ++ showType tp ++ " } $ (" ++ intercalate ", " args' ++ ") "
         ++ showAnnotations annotations
         ++ ": "
         ++ showQ quantors rettype
@@ -230,7 +225,7 @@ instance ShowDeclaration CustomDeclaration where
 instance ShowDeclaration DataTypeConstructorDeclaration where
   showDeclaration (DataTypeConstructorDeclaration tp fs) =
     ( "constructor",
-      ": { " ++ show tp ++ " }" ++ recordFields
+      ": { " ++ showType tp ++ " }" ++ recordFields
     )
     where
       recordFields = case fs of
@@ -238,7 +233,7 @@ instance ShowDeclaration DataTypeConstructorDeclaration where
         _ -> " (" ++ intercalate ", " (map show fs) ++ ")"
 
 instance Show DataTypeConstructor where
-  show (DataTypeConstructor name tp) = "@" ++ showId name "" ++ ": " ++ show tp
+  show (DataTypeConstructor name tp) = "@" ++ showId name "" ++ ": " ++ showType tp
 
 instance Show Field where
   showsPrec _ (Field name) = showId name
@@ -252,7 +247,7 @@ instance ShowDeclaration DataType where
 instance ShowDeclaration TypeSynonym where
   showDeclaration (TypeSynonym tp) =
     ( "type",
-      " = { " ++ show tp ++ " }\n"
+      " = { " ++ showType tp ++ " }\n"
     )
 
 instance Show FloatPrecision where
@@ -275,7 +270,7 @@ showTypeArguments :: QuantorNames -> [Type] -> ShowS
 showTypeArguments quantors tps = list (text " ") $ map (\tp -> text "{" . showsQ quantors tp . text "}") tps
 
 instance Show FunctionType where
-  show fntype@(FunctionType args _) = "[" ++ show arity ++ "] " ++ show tp
+  show fntype@(FunctionType args _) = "[" ++ show arity ++ "] " ++ showType tp
     where
       arity = length $ filter isRight args
       tp = typeFromFunctionType fntype

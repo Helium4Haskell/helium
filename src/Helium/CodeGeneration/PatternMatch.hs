@@ -282,4 +282,4 @@ constructorFieldTypes env conName tp =
               tp' = typeToCoreTypeMapped [] f $ fn $ map Top.TVar [-1, -2 .. - arity]
            in getDataTypeArgs tp' remaining
     getDataTypeArgs (Core.TAp t1 t2) accum = getDataTypeArgs t1 (t2 : accum)
-    getDataTypeArgs tp _ = internalError "ToCorePat" "Pattern" $ "Unexpected type " ++ Core.showType [] tp ++ ", expected a data type"
+    getDataTypeArgs tp _ = internalError "ToCorePat" "Pattern" $ "Unexpected type " ++ Core.showType tp ++ ", expected a data type"
