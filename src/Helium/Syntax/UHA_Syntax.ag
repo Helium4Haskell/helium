@@ -717,6 +717,9 @@ DATA Name                                         {- *** -}
         module                   : Strings
         origin                   : String
         name                     : String
+    | Reuse
+        name                     : Name
+        cons_type                : {Either Name Int}
 
 -- Normal identifiers should be stored as "Name_Identifier".
 -- Symbolic identifiers or operators that are usually applied infix

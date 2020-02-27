@@ -96,6 +96,7 @@ data Entity
   | Definition
   | Constructor
   | Variable
+  | AtApplication
   | Import
   | ExportVariable
   | ExportModule
@@ -200,6 +201,7 @@ instance Show Entity where
       Definition -> "definition"
       Constructor -> "constructor"
       Variable -> "variable"
+      AtApplication -> "memory reuse"
       Import -> "import"
       ExportVariable -> "exported variable"
       ExportModule -> "exported module"

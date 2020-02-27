@@ -166,18 +166,27 @@ SEM Qualifiers
 
 -------------------------------------------------------------------------------------
 
+ATTR Pattern
+  [| | cons_type : {Either Name Int}]
+
 ATTR Pattern Patterns RecordPatternBinding RecordPatternBindings
      LeftHandSide [ | | patVarNames USE {++} {[]} : Names ]
 
 SEM Pattern 
   | Variable   lhs . patVarNames = [ @name.self ]
-  | As         lhs . patVarNames = @name.self : @pattern.patVarNames
+  | As         lhs . patVarNames = @reuse : @pattern.patVarNames
+               loc . reuse       = Name_Reuse @name.self @pattern.cons_type
   | Hole       lhs . patVarNames = [ Name_Special noRange [] [] ("hole" ++ show @loc.i) ]
                loc . i : UNIQUEREF counter
   | Record     lhs . patVarNames = @recordPatternBindings.patVarNames
+  | Parenthesized lhs.cons_type = @pattern.cons_type
+  | InfixConstructor lhs.cons_type = Left @constructorOperator.self
+  | Constructor lhs.cons_type = Left @name.self
+  | Tuple lhs.cons_type = Right (length @patterns.self)
 
 SEM Expression 
-  | Variable   lhs . unboundNames = [ @name.self ]    
+  | Variable   lhs . unboundNames = [ @name.self ]
+  | AtApplication lhs.unboundNames = @reuse.self : @expression.unboundNames
 
 ATTR Body Declaration Declarations MaybeDeclarations Constructor Constructors 
       FieldDeclaration FieldDeclarations [ | | declVarNames USE {++} {[]} : Names ]

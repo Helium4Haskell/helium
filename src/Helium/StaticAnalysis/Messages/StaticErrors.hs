@@ -8,7 +8,7 @@
 --    Collection of static error messages.
 module Helium.StaticAnalysis.Messages.StaticErrors where
 
-import Data.List (intercalate, intersperse, nub, partition, sort)
+import Data.List (find, intercalate, intersperse, nub, partition, sort)
 import qualified Data.Map as M
 import Data.Maybe
 import Helium.StaticAnalysis.Messages.Messages
@@ -65,6 +65,9 @@ data Error
   | AllFieldsPresent [Name]
   | UpdateFieldsPresent Range
   | ClassesAndInstancesNotAllowed Range
+  | UnsupportedAtApplication Range Name
+  | UnsupportedConstructorAtApplication Range Name Name Name
+  | UnsupportedTupleAtApplication Range Name Int Int
   | ExportWrongParent Entity Name {-Value Construct-} Name {-Wrong Parent-} Name {-Right Parent-} Names {-Right Childs-}
   | ExportConflict [(Name, (Name, String {-(declaration, export list entry, exact declaration entry)-}))]
   | NotExportedByModule Name {-The thing-} Name {-The module-} Names {-Similair names-}
@@ -117,6 +120,9 @@ instance HasMessage Error where
     AllFieldsPresent names -> sortRanges (map getNameRange names)
     UpdateFieldsPresent r -> [r]
     ClassesAndInstancesNotAllowed r -> [r]
+    UnsupportedAtApplication r _ -> [r]
+    UnsupportedConstructorAtApplication r _ _ _ -> [r]
+    UnsupportedTupleAtApplication r _ _ _ -> [r]
     ExportWrongParent _ name _ _ _ -> [getNameRange name]
     ExportConflict conflicts -> [getNameRange name | (_, (name, _)) <- conflicts]
     NotExportedByModule name _ _ -> [getNameRange name]
@@ -448,18 +454,50 @@ showError anError = case anError of
           ++ showSearchPath paths,
       []
     )
+  UnsupportedAtApplication _ name ->
+    ( MessageString $
+        "Memory reuse on '" ++ show name ++ "' is only supported on constructor application" ++ "\n",
+      []
+    )
+  UnsupportedConstructorAtApplication _ name acname cname ->
+    ( MessageString $
+        "Memory reuse on '" ++ show name ++ "' is for now only supported on constructor application with the same name: '" ++ show acname ++ "' vs '" ++ show cname ++ "'\n",
+      []
+    )
+  UnsupportedTupleAtApplication _ name aclen clen ->
+    ( MessageString $
+        "Memory reuse on '" ++ show name ++ "' is for now only supported on tuple application with the same length: '" ++ show aclen ++ "' vs '" ++ show clen ++ "'\n",
+      []
+    )
   _ -> internalError "StaticErrors.hs" "showError" "unknown type of Error"
 
 ambiguousOrUndefinedErrors :: Entity -> Name -> Names -> [[Name]] -> [String] -> Errors
 ambiguousOrUndefinedErrors entity name namesInScope ambiguousConflicts undefinedHint =
   if name `elem` namesInScope
     then []
-    else
-      let amb = [a | a <- ambiguousConflicts, head a == name]
-       in case amb of
-            [] -> [Undefined entity name namesInScope undefinedHint]
-            y : [] -> [Ambiguous entity name y]
-            _ -> internalError "StaticErrors.hs" "n/a" "ambiguousOrUndefinedErrors"
+    else ambiguousErrors entity name namesInScope ambiguousConflicts undefinedHint
+
+ambiguousErrors :: Entity -> Name -> Names -> [[Name]] -> [String] -> [Error]
+ambiguousErrors entity name namesInScope ambiguousConflicts undefinedHint =
+  let amb = [a | a <- ambiguousConflicts, head a == name]
+   in case amb of
+        [] -> [Undefined entity name namesInScope undefinedHint]
+        y : [] -> [Ambiguous entity name y]
+        _ -> internalError "StaticErrors.hs" "n/a" "ambiguousErrors"
+
+correctUseOfReuse :: Entity -> Name -> Names -> [[Name]] -> [String] -> Expression -> Range -> Errors
+correctUseOfReuse entity name namesInScope ambiguousConflicts undefinedHint e r =
+  case find (== name) namesInScope of
+    Just aname -> isSupportedMemoryReuse aname e r
+    Nothing -> ambiguousErrors entity name namesInScope ambiguousConflicts undefinedHint
+
+isSupportedMemoryReuse :: Name -> Expression -> Range -> Errors
+isSupportedMemoryReuse (Name_Reuse name (Left acname)) (Expression_Constructor _ cname) r = if acname == cname then [] else [UnsupportedConstructorAtApplication r name acname cname]
+isSupportedMemoryReuse (Name_Reuse name (Right len)) (Expression_Tuple _ e) r = if len == length e then [] else [UnsupportedTupleAtApplication r name len (length e)]
+isSupportedMemoryReuse n (Expression_InfixApplication _ _ e _) r = isSupportedMemoryReuse n e r
+isSupportedMemoryReuse n (Expression_NormalApplication _ e _) r = isSupportedMemoryReuse n e r
+isSupportedMemoryReuse n (Expression_Parenthesized _ e) r = isSupportedMemoryReuse n e r
+isSupportedMemoryReuse n _ r = [UnsupportedAtApplication r n]
 
 makeUndefined :: Entity -> Names -> Names -> [Error]
 makeUndefined entity names inScope = [Undefined entity name inScope [] | name <- names]

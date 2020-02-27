@@ -50,6 +50,7 @@ getNameRange :: Name -> Range -- !!!Name
 getNameRange (Name_Identifier r _ _ _) = r
 getNameRange (Name_Operator r _ _ _) = r
 getNameRange (Name_Special r _ _ _) = r
+getNameRange (Name_Reuse n _) = getNameRange n
 
 setNameRange :: Name -> Range -> Name -- !!!Name
 setNameRange (Name_Identifier _ s o e) r = Name_Identifier r s o e

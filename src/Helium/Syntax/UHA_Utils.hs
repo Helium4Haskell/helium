@@ -1,6 +1,6 @@
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 
---  | Module      :  UHA_Utils
+-- | Module      :  UHA_Utils
 --    License     :  GPL
 --
 --    Maintainer  :  helium@cs.uu.nl
@@ -57,6 +57,7 @@ getNameName :: Name -> String -- !!!Name
 getNameName (Name_Identifier _ qs o name) = intercalate "." (qs ++ [name])
 getNameName (Name_Operator _ qs o name) = intercalate "." (qs ++ [name])
 getNameName (Name_Special _ qs o name) = intercalate "." (qs ++ [name])
+getNameName (Name_Reuse name name1) = getNameName name
 
 getOnlyName :: Name -> String -- !!!Name
 getOnlyName (Name_Identifier _ _ _ name) = name

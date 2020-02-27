@@ -154,6 +154,8 @@ frequencies = map (\ys -> (head ys, length ys)) . group . sort
 SEM Expression
   | Variable     lhs . miscerrors     = @undefinedErrors
                  loc . undefinedErrors = ambiguousOrUndefinedErrors Variable @name.self @lhs.namesInScope @lhs.ambiguousConflicts []
+  | AtApplication lhs . miscerrors = @aterrors  ++ @expression.miscerrors
+                  loc . aterrors = correctUseOfReuse AtApplication @reuse.self @lhs.namesInScope @lhs.ambiguousConflicts [] @expression.self @range.self
 
   | Do           lhs . miscerrors = @lastStatementErrors ++ @statements.miscerrors
                  loc . lastStatementErrors = if @statements.lastStatementIsExpr
