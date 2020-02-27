@@ -12,11 +12,17 @@ import qualified Text.Parsec as P
 pTypeVariable :: Parser Int
 pTypeVariable = pLexeme $ P.string "v$" *> P.option "" (P.many1 P.lower) *> number
 
-pQuantor :: Parser Quantor
-pQuantor = flip Quantor Nothing <$> pTypeVariable
+pUniquenessVariable :: Parser Int
+pUniquenessVariable = P.string "u$" *> number
+
+pQuantor :: Parser (Kind, Int)
+pQuantor = (,) KStar <$> pTypeVariable <|> (,) KAnn <$> pUniquenessVariable
+
+pTypeForall' :: (Kind, Int) -> Type -> Parser Type
+pTypeForall' (k, q) t = return $ TForall (Quantor q Nothing) k t
 
 pTypeForall :: Parser Type
-pTypeForall = (\q -> (TForall q KStar)) <$ pSymbol "forall" <*> pQuantor <* pToken '.' <*> pType
+pTypeForall = pSymbol "forall" *> ((\(k,q) _ t -> TForall (Quantor q Nothing) k t) <$> pQuantor <*> pToken '.' <*> pType)
 
 pType :: Parser Type
 pType = pTypeForall <|> pFunctionType
@@ -25,13 +31,22 @@ pFunctionType :: Parser Type
 pFunctionType = foldr1 (TAp . TAp (TCon TConFun)) <$> P.sepBy1 (pTypeForall <|> pTypeAp) (pSymbol "->")
 
 pTypeAp :: Parser Type
-pTypeAp = foldl TAp <$> pTypeAtom <*> P.many pTypeAtom
+pTypeAp = foldl TAp <$> pTypeAtom <*> P.many pTypeAtom'
 
 pTypeAtom :: Parser Type
-pTypeAtom = pTypeAtomStrict <|> pTypeAtomList <|> pTypeAtomT <|> pTypeAtomTypeVariable <|> pTypeAtomDataType
+pTypeAtom = pTypeAtomAnn <|> pTypeAtom'
 
-pTypeAtomStrict :: Parser Type
-pTypeAtomStrict = typeToStrict <$ pToken '!' <*> pTypeAtom
+pTypeAtom' :: Parser Type
+pTypeAtom' = pTypeAtomList <|> pTypeAtomT <|> pTypeAtomTypeVariable <|> pTypeAtomDataType
+
+pTypeAtomTypeVariable :: Parser Type
+pTypeAtomTypeVariable = TVar <$> pTypeVariable
+
+pTypeAtomAnn :: Parser Type
+pTypeAtomAnn = (typeToStrict <$ pToken '!' <*> pTypeAtomAnn') <|> pTypeAtomAnn'
+
+pTypeAtomAnn' :: Parser Type
+pTypeAtomAnn' = ((\a t -> TAp (TUniq a) t) <$> (Shared <$ pSymbol "w:" <|> Unique <$ pSymbol "1:" <|> (UVar <$> pUniquenessVariable <* pToken ':')) <*> pTypeAtom') <|> pTypeAtom'
 
 pTypeAtomList :: Parser Type
 pTypeAtomList = pBrackets pTypeAtomMaybeList
@@ -44,9 +59,6 @@ pTypeAtomT = pParentheses (pTypeAtomTypeClass <|> pType <|> pTypeAtomTuple)
 
 pTypeAtomTypeClass :: Parser Type
 pTypeAtomTypeClass = (TCon . TConTypeClassDictionary) <$ pSymbol "@dictionary" <*> pNameDataType
-
-pTypeAtomTypeVariable :: Parser Type
-pTypeAtomTypeVariable = TVar <$> pTypeVariable
 
 pTypeAtomTuple :: Parser Type
 pTypeAtomTuple = (TCon . TConTuple . length') <$> P.many (P.satisfy ((',') ==))
