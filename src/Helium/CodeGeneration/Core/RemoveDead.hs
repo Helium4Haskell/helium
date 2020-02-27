@@ -52,7 +52,7 @@ coreRemoveDead m =
     alwaysUsed =
       Set.fromList
         [ (DeclKindValue, idFromString "main$"),
-          (DeclKindValue, idFromString "main")
+          (DeclKindValue, idFromString "real_main")
         ]
 
 ----------------------------------------------------------------

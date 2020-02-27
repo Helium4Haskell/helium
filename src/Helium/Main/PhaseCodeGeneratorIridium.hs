@@ -38,7 +38,8 @@ phaseCodeGeneratorIridium supply cache fullName coreModule options = do
   -- desugar Core
   simplified <- desugarCore fullNameNoExt supplyDesugar options coreModule
   -- Check whether the module has a 'main' function
-  let hasMain = any ((== idFromString "main") . Core.declName) $ Core.moduleDecls coreModule
+  let hasMain = any ((== idFromString "real_main") . Core.declName) $ Core.moduleDecls coreModule
+  -- Convert Core to Iridium
   iridium' <- fromCore cache supplyFromCore simplified
   checkModuleIO "fromCore" (fullNameNoExt ++ ".iridium") iridium'
   let iridium = passTailRecursion supplyPassTailRecursion $ passDeadCode supplyPassDeadCode iridium'

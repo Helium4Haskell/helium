@@ -1,5 +1,11 @@
 #include <stdlib.h>
 #include <stdio.h>
+#include <pthread.h>
+#include <threads.h>
+#include <limits.h>
+
+// The real main: runs the user defined main using unsafePerformIO
+extern int real_main(void);
 
 // Contains allocation functions for different kinds of regions
 
@@ -9,9 +15,7 @@
 int helium_global_remaining = 0;
 void* helium_global_next;
 
-#if defined(DEBUG)
 int total_memory = 0;
-#endif
 
 void* helium_global_alloc(int size) {
   if (size > helium_global_remaining) {
@@ -28,6 +32,46 @@ void* helium_global_alloc(int size) {
 #endif
 
   return pointer;
+}
+
+void print_memory_usage() {
+  printf("memory alloc: %d\n", total_memory);
+}
+
+void* thread_main(void* arg) {
+  return (void*)real_main();
+}
+
+// entry point of the runtime: runs the use program in a seperate thread
+int main() {
+  int err;
+  pthread_t tid;
+  pthread_attr_t tattr;
+  void *tret;
+
+  // default stack size is not enough
+  size_t size = PTHREAD_STACK_MIN + 0x80000;
+
+  err = pthread_attr_init(&tattr);
+  err = pthread_attr_setstacksize(&tattr, size);
+  err = pthread_create(&tid, &tattr, thread_main, NULL);
+
+  if (err != 0) {
+    printf("can′t create thread\n");
+    exit(1);
+  }
+
+  err = pthread_join(tid, &tret);
+  if (err != 0) {
+    printf("can′t join with thread\n");
+    exit(1);
+  }
+
+#ifdef defined(DEBUG)
+  print_memory_usage();
+#endif
+
+  return (int)tret;
 }
 
 // Utilities to debug thunk evaluation

@@ -1,4 +1,4 @@
--- |  Module      :  CompileMethod
+-- | Module      :  CompileMethod
 --    License     :  GPL
 --
 --    Maintainer  :  helium@cs.uu.nl
@@ -90,7 +90,7 @@ toFunction env supply name visible annotations args fnType retType basicBlocks =
           }
     linkage = case visible of
       Iridium.Private
-        | not (null basicBlocks) && name /= idFromString "main" -> Private
+        | not (null basicBlocks) && name /= idFromString "real_main" -> Private
       _ -> External
     parameters :: [Parameter]
     parameters = map (\(Iridium.Local name t) -> Parameter (compileType env t) (toName name) []) args

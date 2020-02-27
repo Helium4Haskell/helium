@@ -62,13 +62,14 @@ print.cons:
   jump print.loop
 }
 
-declare @exit[1]: { !Int -> Int } [callconvention:c]
+declare @pthread_exit[1]: { !$UnsafePtr -> () } [callconvention:c]
 
 export_as @_$helium_runtime_error define @_$helium_runtime_error(forall v$a1, %msg: [Char]): v$a1 {
 error.entry:
   %msg_list = eval %msg: [Char]
   %_1 = call @_$helium_runtime_print_string[1]: (![Char] -> Int) $ (%msg_list: ![Char])
   %1 = literal int 1
-  %_2 = call @exit[1]: (!Int -> Int) $ (%1: !Int)
+  %2 = cast %1: !Int as !$UnsafePtr
+  %_3 = call @pthread_exit[1]: (!$UnsafePtr -> ()) $ (%2: !$UnsafePtr)
   unreachable
 }

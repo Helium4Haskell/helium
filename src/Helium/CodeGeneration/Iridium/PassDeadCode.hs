@@ -84,7 +84,7 @@ analyseMethod (Declaration name vis _ _ (Method _ args _ _ b bs)) =
     env = Env name
     exported = case vis of
       ExportedAs _ -> True
-      _ -> name == idFromString "main"
+      _ -> name == idFromString "real_main"
     fnConstraint = case exported of
       True ->
         CSequence

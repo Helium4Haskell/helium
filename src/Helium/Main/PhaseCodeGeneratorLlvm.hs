@@ -30,7 +30,7 @@ phaseCodeGeneratorLlvm supply output files shouldLink options = do
   sequence_ $ mapWithSupply (compileToLlvm target) supply files
   when shouldLink $ do
     let debug = if (containsDOption Memory `any` options) then "-DDEBUG" else ""
-    let args = "-o" : output : "-O0" : debug : "../lib/runtime/memory.c" : map toLlvmPath files
+    let args = "-o" : output : "-O0" : debug : "../lib/runtime/runtime.c" : map toLlvmPath files
     (code, res, err) <- readProcessWithExitCode "clang" args ""
     case code of
       ExitSuccess -> return ()
