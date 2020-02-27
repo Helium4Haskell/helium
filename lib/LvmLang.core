@@ -199,13 +199,13 @@ putChar : export = \char: Char -> IO { () }
     IORes { Int } _ world2 -> IORes { () } () world2
   )
 
-''$primPutStrLn'' :: String -> IO ()
-''$primPutStrLn'' : export = 
+putStrLn :: String -> IO ()
+putStrLn : export =
   let print: ([Char] -> Int) = \str: [Char] -> ''_$helium_runtime_print_string'' str
   in
     \str: String ->
       IO {()} (\realworld: RealWorld ->
         seq {Int} {IORes ()}
-          (print str)
+          (print "\n")
           (seq {Int} {IORes ()}
-            (print "\n") (IORes {()} () realworld)))
+            (print str) (IORes {()} () realworld)))
