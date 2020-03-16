@@ -114,8 +114,7 @@ classFunctions mod typeOutput className typeVar combinedNames =
                 declModule = Nothing,
                 declType = declType,
                 valueValue = declValue,
-                declCustoms = [],
-                mutating = []
+                declCustoms = []
               }
        in val
     classFunction :: (Name, Int, DictLabel, Core.Type) -> [CoreDecl]
@@ -146,8 +145,7 @@ classFunctions mod typeOutput className typeVar combinedNames =
                           (PatCon (ConId $ idFromString ("Dict$" ++ className)) [typeArg] (map idFromString labels))
                           (Ap (foldl (\e (Core.Quantor idx _) -> ApType e (Core.TVar idx)) (Var $ idFromString label) quantors) $ Var dictParam)
                       ],
-                declCustoms = [],
-                mutating = []
+                declCustoms = []
               }
        in [val]
 
@@ -168,8 +166,7 @@ constructDictionary typeOutput instanceSuperClass combinedNames whereDecls class
       declCustoms =
         map (custom "typeVariable" . getNameName . fst) typeVariables
           ++ map (\(superName, superVar) -> custom "superInstance" $ superName ++ "-" ++ getNameName superVar) instanceSuperClass
-          ++ origin,
-      mutating = []
+          ++ origin
     }
   where
     name = idFromString ("$dict" ++ getNameName className ++ "$" ++ insName)
@@ -329,7 +326,6 @@ convertDictionaries typeOutput className functions defaults = map makeFunction f
                 declModule = Nothing,
                 declType = tp,
                 valueValue = ApType (Var (idFromString "undefined")) tp,
-                declCustoms = [],
-                mutating = []
+                declCustoms = []
               }
        in maybe fDefault updateName (lookup fname defaults)

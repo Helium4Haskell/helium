@@ -170,7 +170,6 @@ float f =
 addToTypeEnv :: TypeEnvironment -> [(Name, TpScheme)] -> TypeEnvironment
 addToTypeEnv = foldr (\(name, tpScheme) env -> M.insert name tpScheme env)
 
--- TODO: add extra argument for mutating
 decl :: Bool -> String -> Core.Type -> Expr -> CoreDecl
 decl isPublic x t e =
   DeclValue
@@ -179,8 +178,7 @@ decl isPublic x t e =
       declModule = Nothing,
       declType = t,
       valueValue = e,
-      declCustoms = [],
-      mutating = []
+      declCustoms = []
     }
 
 getTVar :: Top.Tp -> Maybe Int

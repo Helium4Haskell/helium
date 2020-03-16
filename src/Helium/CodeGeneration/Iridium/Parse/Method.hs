@@ -61,13 +61,10 @@ pAnnotations :: Parser [Annotation]
 pAnnotations = P.option [] (pBrackets (P.sepBy pAnnotation (pToken ',')))
 
 pAnnotation :: Parser Annotation
-pAnnotation = pAnnotateTrampoline <|> pAnnotateMutate <|> pAnnotateCallConvention <|> pAnnotateFakeIO
+pAnnotation = pAnnotateTrampoline <|> pAnnotateCallConvention <|> pAnnotateFakeIO
 
 pAnnotateTrampoline :: Parser Annotation
 pAnnotateTrampoline = AnnotateTrampoline <$ pSymbol "trampoline"
-
-pAnnotateMutate :: Parser Annotation
-pAnnotateMutate = AnnotateMutate <$ pSymbol "mutating" <*> pBrackets (P.sepBy pId (pToken ','))
 
 pAnnotateCallConvention :: Parser Annotation
 pAnnotateCallConvention =

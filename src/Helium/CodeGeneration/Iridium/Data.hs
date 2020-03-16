@@ -111,13 +111,7 @@ data Annotation
     -- We currently assume that the return type of the function is 'int'.
     -- Cannot be used in combination with 'AnnotateTrampoline'.
     AnnotateFakeIO
-  | AnnotateMutate [Id]
   deriving (Eq, Ord)
-
-getAnnotateMutate :: [Annotation] -> [Id]
-getAnnotateMutate [] = []
-getAnnotateMutate (AnnotateMutate mids : _) = mids
-getAnnotateMutate (_ : xs) = getAnnotateMutate xs
 
 data CallingConvention
   = CCC -- C calling convention

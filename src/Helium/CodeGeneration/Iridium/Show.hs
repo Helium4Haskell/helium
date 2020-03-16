@@ -162,7 +162,6 @@ instance ShowWithQuantors Block where
 instance Show Annotation where
   show AnnotateTrampoline = "trampoline"
   show (AnnotateCallConvention conv) = "callconvention:" ++ show conv
-  show (AnnotateMutate mut) = "mutating: [" ++ intercalate ", " (map show mut) ++ "]"
   show AnnotateFakeIO = "fake_io"
 
 instance Show CallingConvention where

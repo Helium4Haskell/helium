@@ -59,8 +59,7 @@ dataDictionary env decla@(UHA.Declaration_Data _ _ (UHA.SimpleType_SimpleType _ 
         [custom "type" ("DictPrelude.Show$ " ++ getNameName qualname)]
           ++ map (custom "typeVariable" . getNameName) names
           ++ map (\n -> custom "superInstance" ("Prelude.Show-" ++ getNameName n)) names
-          ++ origin,
-      mutating = []
+          ++ origin
     }
   where
     name = idFromString ("$dictPrelude.Show$" ++ getNameName qualname)

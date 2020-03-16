@@ -41,8 +41,7 @@ dataDictionary env (UHA.Declaration_Data _ _ (UHA.SimpleType_SimpleType _ name n
       declCustoms =
         [custom "type" ("DictPrelude.Eq$ " ++ getNameName qualname)]
           ++ map (custom "typeVariable" . getNameName) names
-          ++ map (\n -> custom "superInstance" ("Prelude.Eq-" ++ getNameName n)) names,
-      mutating = []
+          ++ map (\n -> custom "superInstance" ("Prelude.Eq-" ++ getNameName n)) names
     }
   where
     nm = idFromString ("$dictPrelude.Eq$" ++ getNameName qualname)
