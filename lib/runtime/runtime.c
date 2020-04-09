@@ -17,21 +17,31 @@ void* helium_global_next;
 
 int total_memory = 0;
 
-void* helium_global_alloc(int size) {
+void* helium_global_common_alloc(int size) {
   if (size > helium_global_remaining) {
     // Allocate new block
     helium_global_next = malloc(GLOBAL_BLOCK_SIZE);
     helium_global_remaining = GLOBAL_BLOCK_SIZE;
   }
+
   helium_global_remaining -= size;
   void* pointer = helium_global_next;
   helium_global_next += size;
 
+  return pointer;
+}
+
+void* helium_global_fn_alloc(int size) {
+  void* pointer = helium_global_common_alloc(size);
 #if defined(DEBUG)
   total_memory += size;
 #endif
 
   return pointer;
+}
+
+void* helium_global_ds_alloc(int size) {
+  return helium_global_common_alloc(size);
 }
 
 void print_memory_usage() {

@@ -359,7 +359,7 @@ compileThunkAllocCopy target supply [fieldCount, base] name =
         { LLVM.tailCallKind = Nothing,
           LLVM.callingConvention = LLVM.C,
           LLVM.returnAttributes = [],
-          LLVM.function = Right $ LLVM.ConstantOperand $ LLVMConstant.GlobalReference (pointer $ LLVM.FunctionType typeVoidPtr [int16Type] False) $ LLVM.mkName "helium_global_alloc",
+          LLVM.function = Right $ LLVM.ConstantOperand $ LLVMConstant.GlobalReference (pointer $ LLVM.FunctionType typeVoidPtr [int16Type] False) $ LLVM.mkName "helium_global_fn_alloc",
           LLVM.arguments =
             [(LLVM.LocalReference (LLVM.IntegerType 32) nameSize32, [])],
           LLVM.functionAttributes = [],

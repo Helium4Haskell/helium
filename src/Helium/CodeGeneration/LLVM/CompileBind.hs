@@ -60,7 +60,7 @@ compileBind' env supply (Iridium.Bind varId target _) (Left tag) =
     value = fromIntegral tag * 2 + 1
 compileBind' env supply bind@(Iridium.Bind varId target args) (Right struct) =
   ( concat splitInstructions
-      ++ maybe (allocate nameBind (sizeOf env struct)) (const []) (getReuse target)
+      ++ getAllocate target nameBind (sizeOf env struct)
       ++ [nameStruct := BitCast operandVoid (pointer t) []]
       ++ castBind,
     additionalArgInstructions
@@ -109,9 +109,10 @@ compileBind' env supply bind@(Iridium.Bind varId target args) (Right struct) =
               []
         ]
 
-allocate :: Name -> Int -> [Named Instruction]
-allocate name size =
-  [name := Call Nothing C [] (Right Builtins.alloc) [(ConstantOperand $ Constant.Int 32 $ fromIntegral size, [])] [] []]
+-- When debugging memory usage ds_alloc will keep track of memory usage of constructor allocation
+allocate :: Operand -> Name -> Int -> [Named Instruction]
+allocate op name size =
+  [name := Call Nothing C [] (Right op) [(ConstantOperand $ Constant.Int 32 $ fromIntegral size, [])] [] []]
 
 getAllocate :: Iridium.BindTarget -> Name -> Int -> [Named Instruction]
 getAllocate (Iridium.BindTargetConstructor _ mv) name size = getDataAllocate mv name size
