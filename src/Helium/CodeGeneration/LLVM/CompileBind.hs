@@ -13,6 +13,7 @@ import Data.Word (Word32)
 import qualified Helium.CodeGeneration.Iridium.Data as Iridium
 import qualified Helium.CodeGeneration.Iridium.Type as Iridium
 import qualified Helium.CodeGeneration.LLVM.Builtins as Builtins
+import qualified Helium.CodeGeneration.Core.TypeEnvironment as Core
 import Helium.CodeGeneration.LLVM.CompileStruct
 import Helium.CodeGeneration.LLVM.CompileType
 import Helium.CodeGeneration.LLVM.ConstructorLayout
@@ -73,7 +74,7 @@ compileBind' env supply bind@(Iridium.Bind varId target args) (Right struct) =
     (splitInstructions, argOperands) = unzip $ fst $ mapWithSupply' splitValueFlag' supplyArgs (zip args' $ drop (length additionalArgs) $ fields struct)
     splitValueFlag' :: NameSupply -> (Iridium.Variable, StructField) -> (([Named Instruction], (Operand, Operand)), NameSupply)
     splitValueFlag' s (var, StructField tp Nothing)
-      | not (Iridium.typeEqual (envTypeEnv env) (Iridium.variableType var) tp) =
+      | not (Core.typeEqual (envTypeEnv env) (Iridium.variableType var) tp) =
         let (nameThunk, s1) = freshName s
             (s2, s3) = splitNameSupply s1
          in ( ( cast s2 env (toOperand env var) nameThunk (Iridium.variableType var) tp,
@@ -96,7 +97,7 @@ compileBind' env supply bind@(Iridium.Bind varId target args) (Right struct) =
     (supplyAdditionalArgs, supply3) = splitNameSupply supply2
     (nameBind, supply4) = getNameReuse supply3 target
     (nameStruct, _) = freshNameFromId (nameSuggestion target) supply4
-    whnf = Iridium.typeIsStrict $ Iridium.bindType (envTypeEnv env) bind
+    whnf = Core.typeIsStrict $ Iridium.bindType (envTypeEnv env) bind
     operandVoid = LocalReference voidPointer nameBind
     castBind
       | whnf = [toName varId := BitCast operandVoid voidPointer []]
@@ -150,7 +151,7 @@ toStruct env target arity = Right $ Struct Nothing 0 0 fields
         : StructField Iridium.typeTrampoline Nothing -- functionpointer to trampoline
         : StructField Iridium.typeInt16 Nothing -- i16 remaining
         : StructField Iridium.typeInt16 Nothing -- i16 given
-        : replicate arity (StructField (Iridium.typeNotStrict $ Iridium.typeUnsafePtr) Nothing)
+        : replicate arity (StructField (Core.typeNotStrict $ Iridium.typeUnsafePtr) Nothing)
 
 operandTrue :: Operand
 operandTrue = ConstantOperand $ Constant.Int 1 1
@@ -198,7 +199,7 @@ bindArguments env supply (Iridium.BindTargetThunk var) givenArgs _ =
     (nameRemaining, supply7) = freshName supply6
     (nameIsMagicNumber, _) = freshName supply7
     (instrNext, operandNext)
-      | Iridium.typeIsStrict (Iridium.variableType var) = ([], toOperand env var)
+      | Core.typeIsStrict (Iridium.variableType var) = ([], toOperand env var)
       | otherwise =
         ( [nameNext := ExtractValue (toOperand env var) [0] []],
           LocalReference voidPointer nameNext

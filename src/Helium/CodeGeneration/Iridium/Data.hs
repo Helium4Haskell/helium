@@ -18,6 +18,9 @@ import Data.Either (isLeft, isRight)
 import Data.List (intercalate)
 import Helium.CodeGeneration.Iridium.Primitive (findPrimitive, primType)
 import Helium.CodeGeneration.Iridium.Type
+import Helium.CodeGeneration.Core.TypeEnvironment (FunctionType (..),
+                                                   TypeEnvironment (..),
+                                                   extractFunctionTypeWithArity, extractFunctionTypeNoSynonyms, typeNormalizeHead, typeFromFunctionType)
 import Lvm.Common.Id (Id, idFromString, stringFromId)
 import Lvm.Common.IdMap (emptyMap, mapFromList)
 import Lvm.Core.Module (Arity, Custom (..), DeclKind, Field)
@@ -237,9 +240,7 @@ typeApplyArguments env tp args = case tp' of
     | isRight $ head args -> error ("typeApplyArguments: expected a function type, got " ++ showType tp')
     | otherwise -> error ("typeApplyArguments: expected a forall type, got " ++ showType tp')
   where
-    tp' = case typeNormalizeHead env tp of
-      TStrict tp' -> tp'
-      tp' -> tp'
+    tp' = typeNotStrict $ typeNormalizeHead env tp
 
 -- Find the type of the constructed object in a Bind
 bindType :: TypeEnvironment -> Bind -> Type
@@ -302,9 +303,9 @@ data Literal
   deriving (Eq, Ord)
 
 typeOfExpr :: TypeEnvironment -> Expr -> Type
-typeOfExpr _ (Literal (LitFloat precision _)) = TStrict $ TCon $ TConDataType $ idFromString "Float" -- TODO: Precision
-typeOfExpr _ (Literal (LitString _)) = TStrict $ TAp (TCon $ TConDataType $ idFromString "[]") $ TCon $ TConDataType $ idFromString "Char"
-typeOfExpr _ (Literal (LitInt tp _)) = TStrict $ TCon $ TConDataType $ idFromString $ show tp
+typeOfExpr _ (Literal (LitFloat precision _)) = typeFloat -- TODO: Precision
+typeOfExpr _ (Literal (LitString _)) = typeString
+typeOfExpr _ (Literal (LitInt tp _)) = typeLitInt (show tp)
 typeOfExpr env (Call (GlobalFunction _ _ t) args) = typeToStrict $ typeApplyArguments env t args
 typeOfExpr env (Instantiate v args) = typeNormalizeHead env $ typeApplyList (variableType v) args
 typeOfExpr _ (Eval v) = typeToStrict $ variableType v

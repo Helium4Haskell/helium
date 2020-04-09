@@ -2,6 +2,7 @@ module Helium.CodeGeneration.Iridium.TypeCheck where
 
 import Data.List
 import Data.Maybe
+import Helium.CodeGeneration.Core.TypeEnvironment hiding (typeEqual')
 import Helium.CodeGeneration.Iridium.Data
 import Helium.CodeGeneration.Iridium.Show
 import Helium.CodeGeneration.Iridium.Type

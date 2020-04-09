@@ -21,11 +21,12 @@ import qualified Lvm.Core.Type as Core
 import Helium.CodeGeneration.LLVM.Utils
 import Helium.CodeGeneration.LLVM.Target
 import Helium.CodeGeneration.LLVM.Struct
+import qualified Helium.CodeGeneration.Core.TypeEnvironment as Core (FunctionType (..), extractFunctionTypeNoSynonyms)
 import qualified Helium.CodeGeneration.Iridium.Data as Iridium
 import qualified Helium.CodeGeneration.Iridium.Type as Iridium
 
 data ConstructorLayout
-  = LayoutInline 
+  = LayoutInline
     { layoutTagId :: Int
     }
   | LayoutPointer
@@ -37,7 +38,7 @@ constructorLayout target (Iridium.DataType constructors) index (Iridium.DataType
   | fields == [] = LayoutInline index
   | otherwise = LayoutPointer struct
   where
-    Iridium.FunctionType typeArgs typeReturn = Iridium.extractFunctionTypeNoSynonyms tp
+    Core.FunctionType typeArgs typeReturn = Core.extractFunctionTypeNoSynonyms tp
     fields = [field | Right field <- typeArgs]
 
     tagBits = ceiling $ logBase 2.0 $ fromIntegral $ length constructors
@@ -47,7 +48,7 @@ constructorLayout target (Iridium.DataType constructors) index (Iridium.DataType
 
     structFields :: [StructField]
     (_, structFields) = mapAccumL toField 0 fields
-    
+
     toField nextIndex fieldType
       | Core.typeIsStrict fieldType = (nextIndex, StructField fieldType Nothing) -- Do not use a bit in the header
       | otherwise = (nextIndex + 1, StructField fieldType $ Just nextIndex) -- Use a bit in the header

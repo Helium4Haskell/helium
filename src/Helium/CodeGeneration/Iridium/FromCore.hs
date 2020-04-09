@@ -228,7 +228,7 @@ toInstruction supply env continue (Core.Var var) = case resolve env var of
     let bind = Bind name (BindTargetFunction global) []
      in LetAlloc [bind] +> ret supply' env name continue
   Left variable
-    | typeIsStrict (variableType variable) -> ret supply env var continue
+    | Core.typeIsStrict (variableType variable) -> ret supply env var continue
     | otherwise -> Let name (Eval variable) +> ret supply' env name continue
   where
     (name, supply') = freshId supply
@@ -353,7 +353,7 @@ castTo supply env var _ to = (var, id)
 maybeCasts :: NameSupply -> TypeEnv -> Core.Type -> [Either Core.Type Id] -> ([Either Core.Type Variable], Instruction -> Instruction, Core.Type)
 maybeCasts _ _ tp [] = ([], id, tp)
 maybeCasts supply env tp args'@(Right name : args) =
-  case typeNormalizeHead (teCoreEnv env) tp of
+  case Core.typeNormalizeHead (teCoreEnv env) tp of
     Core.TStrict tp' -> maybeCasts supply env tp' args'
     Core.TAp (Core.TAp (Core.TCon Core.TConFun) tArg) tReturn ->
       let (supply1, supply2) = splitNameSupply supply
@@ -394,7 +394,7 @@ transformAltInt supply env (Core.Alt pat expr, continue) = ((value, blockName), 
 
 transformAlt :: NameSupply -> TypeEnv -> Continue -> Variable -> DataTypeConstructor -> [Core.Type] -> [Id] -> Core.Expr -> Partial
 transformAlt supply env continue var con@(DataTypeConstructor _ tp) instantiation args expr =
-  let FunctionType fields _ = extractFunctionTypeNoSynonyms $ Core.typeApplyList tp instantiation
+  let Core.FunctionType fields _ = Core.extractFunctionTypeNoSynonyms $ Core.typeApplyList tp instantiation
       locals = zipWith (\name (Right t) -> Local name t) args fields
       env' = expandEnvWithLocals locals env
    in Match var (MatchTargetConstructor con) instantiation (map Just args)
@@ -489,5 +489,5 @@ resolve env name = case valueDeclaration env name of
 resolveVariable :: TypeEnv -> Id -> Variable
 resolveVariable env name = case resolve env name of
   Left var -> var
-  Right (GlobalFunction name 0 tp) -> VarGlobal $ GlobalVariable name $ typeRemoveArgumentStrictness tp
-  Right (GlobalFunction name _ tp) -> VarGlobal $ GlobalVariable name $ typeToStrict $ typeRemoveArgumentStrictness tp
+  Right (GlobalFunction name 0 tp) -> VarGlobal $ GlobalVariable name $ Core.typeRemoveArgumentStrictness tp
+  Right (GlobalFunction name _ tp) -> VarGlobal $ GlobalVariable name $ Core.typeToStrict $ Core.typeRemoveArgumentStrictness tp

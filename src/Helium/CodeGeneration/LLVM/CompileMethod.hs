@@ -15,6 +15,7 @@ import Data.Either
 import Data.String (fromString)
 import qualified Helium.CodeGeneration.Iridium.Data as Iridium
 import qualified Helium.CodeGeneration.Iridium.Type as Iridium
+import qualified Helium.CodeGeneration.Core.TypeEnvironment as Core
 import Helium.CodeGeneration.LLVM.CompileBlock (compileBlock)
 import Helium.CodeGeneration.LLVM.CompileStruct (extractField, structType)
 import Helium.CodeGeneration.LLVM.CompileType (compileCallingConvention, compileType, toOperand)
@@ -41,7 +42,7 @@ unusedArgumentName = idFromString "_argument"
 compileAbstractMethod :: Env -> NameSupply -> Iridium.Declaration Iridium.AbstractMethod -> [Definition]
 compileAbstractMethod env supply (Iridium.Declaration name visible _ _ method@(Iridium.AbstractMethod arity fnType annotations)) = toFunction env supply name visible annotations args fnType retType []
   where
-    Iridium.FunctionType argTypes' retType = Iridium.abstractFunctionType (envTypeEnv env) method
+    Core.FunctionType argTypes' retType = Iridium.abstractFunctionType (envTypeEnv env) method
     argTypes = [tp | Right tp <- argTypes']
     args = map (Iridium.Local unusedArgumentName) argTypes
 

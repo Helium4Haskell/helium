@@ -1,5 +1,6 @@
 module Helium.CodeGeneration.LLVM.CompileType (compileType, typeSize, toOperand, globalFunctionToOperand, taggedThunkPointer, splitValueFlag, cast, copy, compileCallingConvention) where
 
+import qualified Helium.CodeGeneration.Core.TypeEnvironment as Core
 import qualified Helium.CodeGeneration.Iridium.Data as Iridium
 import qualified Helium.CodeGeneration.Iridium.Type as Iridium
 import qualified Helium.CodeGeneration.Iridium.TypeEnvironment as Iridium
@@ -19,7 +20,7 @@ import qualified Lvm.Core.Type as Core
 compileType :: Env -> Core.Type -> Type
 compileType env tp
   | not $ Core.typeIsStrict tp = taggedThunkPointer
-compileType env tp = case skipApp $ skipForallAndStrict $ Iridium.typeNormalizeHead (envTypeEnv env) tp of
+compileType env tp = case skipApp $ skipForallAndStrict $ Core.typeNormalizeHead (envTypeEnv env) tp of
   Core.TCon (Core.TConDataType name)
     | name == idFromString "Float" -> FloatingPointType DoubleFP
     | name == idFromString "Int" -> envValueType env
@@ -33,7 +34,7 @@ compileType env tp = case skipApp $ skipForallAndStrict $ Iridium.typeNormalizeH
 typeSize :: Target -> Core.Type -> Int
 typeSize target tp
   | tp == Iridium.typeInt16 = 16
-  | Iridium.typeIsStrict tp = targetWordSize target
+  | Core.typeIsStrict tp = targetWordSize target
   | otherwise = 8 + targetWordSize target
 
 skipApp :: Core.Type -> Core.Type
@@ -45,15 +46,15 @@ skipForallAndStrict (Core.TForall _ _ t) = skipForallAndStrict t
 skipForallAndStrict (Core.TStrict t) = skipForallAndStrict t
 skipForallAndStrict tp = tp
 
-compileFunctionType :: Env -> Iridium.FunctionType -> Type
-compileFunctionType env (Iridium.FunctionType args returnType) = pointer $ FunctionType (compileType env $ Core.typeToStrict returnType) argTypes False
+compileFunctionType :: Env -> Core.FunctionType -> Type
+compileFunctionType env (Core.FunctionType args returnType) = pointer $ FunctionType (compileType env $ Core.typeToStrict returnType) argTypes False
   where
     argTypes = [compileType env tp | Right tp <- args]
 
 toOperand :: Env -> Iridium.Variable -> Operand
 toOperand env (Iridium.VarLocal (Iridium.Local name t)) = LocalReference (compileType env t) (toName name)
 toOperand env (Iridium.VarGlobal (Iridium.GlobalVariable name t))
-  | Iridium.typeIsStrict t = ConstantOperand $ Constant.BitCast (GlobalReference thunkType (toNamePrefixed "thunk$" name)) voidPointer
+  | Core.typeIsStrict t = ConstantOperand $ Constant.BitCast (GlobalReference thunkType (toNamePrefixed "thunk$" name)) voidPointer
   | otherwise =
     ConstantOperand $
       Constant.Struct
@@ -66,7 +67,7 @@ toOperand env (Iridium.VarGlobal (Iridium.GlobalVariable name t))
 globalFunctionToOperand :: Env -> Iridium.GlobalFunction -> Operand
 globalFunctionToOperand env (Iridium.GlobalFunction name arity tp) = ConstantOperand $ GlobalReference (compileFunctionType env fntype) (toName name)
   where
-    fntype = Iridium.extractFunctionTypeWithArity (envTypeEnv env) arity tp
+    fntype = Core.extractFunctionTypeWithArity (envTypeEnv env) arity tp
 
 -- Splits a variable into its value and its tag. Casts to a less-precise type.
 splitValueFlag :: Env -> NameSupply -> (Iridium.Variable, Core.Type) -> ([Named Instruction], (Operand, Operand))
@@ -127,7 +128,7 @@ cast supply env fromOperand toName fromType' toType'
   -- then wrap the value in a thunk
   | fromStrict && not toStrict =
     let (name, supply') = freshName supply
-     in cast supply env fromOperand name fromType (Core.TStrict $ Core.TVar 0) -- Cast to voidPointer
+     in cast supply env fromOperand name fromType (Core.typeToStrict $ Core.TVar 0) -- Cast to voidPointer
           ++ [ toName
                  := AST.InsertValue
                    (ConstantOperand $ Struct Nothing True [Constant.Undef voidPointer, Constant.Int 1 1])
@@ -139,8 +140,8 @@ cast supply env fromOperand toName fromType' toType'
   | fromStrict && toStrict =
     cast' supply toName toType
   where
-    fromType = Iridium.typeNormalizeHead (envTypeEnv env) fromType'
-    toType = Iridium.typeNormalizeHead (envTypeEnv env) toType'
+    fromType = Core.typeNormalizeHead (envTypeEnv env) fromType'
+    toType = Core.typeNormalizeHead (envTypeEnv env) toType'
     fromStrict = Core.typeIsStrict fromType
     toStrict = Core.typeIsStrict toType
     fromBase = skipApp $ skipForallAndStrict fromType
@@ -155,7 +156,7 @@ cast supply env fromOperand toName fromType' toType'
     toPointer = isPointer toBase
     cast' supply name to
       | fromPointer == toPointer =
-        [name := AST.BitCast fromOperand (compileType env $ Iridium.typeToStrict toType) []]
+        [name := AST.BitCast fromOperand (compileType env $ Core.typeToStrict toType) []]
       | fromPointer =
         if toBase == Core.TCon (Core.TConDataType $ idFromString "Float")
           then

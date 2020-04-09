@@ -79,12 +79,12 @@ typeNormalizeHead env = normalize False
       t1'@(TForall _ _ _) -> normalize strict $ typeApply t1' t2
       t1' ->
         let tp = TAp t1' t2
-         in if strict then TStrict tp else tp
+         in if strict then typeToStrict tp else tp
     normalize _ (TStrict t1) = normalize True t1
     normalize strict t1@(TCon (TConDataType name)) = case lookupMap name $ typeEnvSynonyms env of
       Just t2 -> normalize strict t2
-      Nothing -> if strict then TStrict t1 else t1
-    normalize True t1 = TStrict t1
+      Nothing -> if strict then typeToStrict t1 else t1
+    normalize True t1 = typeToStrict t1
     normalize False t1 = t1
 
 typeOfId :: TypeEnvironment -> Id -> Type
@@ -150,13 +150,16 @@ typeEqual' env False (TStrict t1) t2 = typeEqual' env False t1 t2 -- Ignore stri
 typeEqual' env False t1 (TStrict t2) = typeEqual' env False t1 t2 -- Ignore strictness
 typeEqual' env True (TStrict t1) (TStrict t2) = typeEqual' env True t1 t2 -- Do use strictness
 typeEqual' env _ (TVar x1) (TVar x2) = x1 == x2
-typeEqual' env checkStrict t1@(TCon _) t2 = typeEqualNoTypeSynonym env checkStrict (typeNormalizeHead env t1) (typeNormalizeHead env t2)
-typeEqual' env checkStrict t1 t2@(TCon _) = typeEqualNoTypeSynonym env checkStrict (typeNormalizeHead env t1) (typeNormalizeHead env t2)
-typeEqual' env checkStrict t1@(TAp _ _) t2 = typeEqualNoTypeSynonym env checkStrict (typeNormalizeHead env t1) (typeNormalizeHead env t2)
-typeEqual' env checkStrict t1 t2@(TAp _ _) = typeEqualNoTypeSynonym env checkStrict (typeNormalizeHead env t1) (typeNormalizeHead env t2)
+typeEqual' env checkStrict t1@(TCon _) t2 = typeEqual'' env checkStrict t1 t2
+typeEqual' env checkStrict t1 t2@(TCon _) = typeEqual'' env checkStrict t1 t2
+typeEqual' env checkStrict t1@(TAp _ _) t2 = typeEqual'' env checkStrict t1 t2
+typeEqual' env checkStrict t1 t2@(TAp _ _) = typeEqual'' env checkStrict t1 t2
 typeEqual' env checkStrict (TForall (Quantor x _) _ t1) (TForall (Quantor y _) _ t2) =
   typeEqual' env checkStrict t1 (typeSubstitute y (TVar x) t2)
 typeEqual' env _ _ _ = False
+
+typeEqual'' :: TypeEnvironment -> Bool -> Type -> Type -> Bool
+typeEqual'' env checkStrict t1 t2 = typeEqualNoTypeSynonym env checkStrict (typeNormalizeHead env t1) (typeNormalizeHead env t2)
 
 -- Checks type equivalence, assuming that there is no synonym at the head of the type
 typeEqualNoTypeSynonym :: TypeEnvironment -> Bool -> Type -> Type -> Bool

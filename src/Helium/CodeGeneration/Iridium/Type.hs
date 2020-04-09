@@ -12,25 +12,17 @@
 -- the entry block describes the arguments of the method.
 
 module Helium.CodeGeneration.Iridium.Type
-  ( typeFromFunctionType,
-    FunctionType (..),
-    extractFunctionTypeNoSynonyms,
-    extractFunctionTypeWithArity,
+  (
     FloatPrecision (..),
-    Core.TypeEnvironment (..),
-    Core.typeNormalizeHead,
-    Core.typeEqual,
-    typeIsStrict,
-    typeToStrict,
-    typeNotStrict,
-    typeRemoveArgumentStrictness,
     typeRealWorld,
     typeUnsafePtr,
     typeTrampoline,
     typeInt,
+    typeLitInt,
     typeInt16,
     typeChar,
     typeFloat,
+    typeString,
     functionTypeArity,
   )
 where
@@ -41,14 +33,25 @@ import Helium.CodeGeneration.Core.TypeEnvironment as Core
 import Lvm.Common.Id (Id, idFromString, stringFromId)
 import Lvm.Core.Type
 
-typeRealWorld, typeUnsafePtr, typeTrampoline, typeInt, typeInt16, typeChar, typeFloat :: Type
-typeRealWorld = TStrict $ TCon $ TConDataType $ idFromString "$RealWorld"
-typeUnsafePtr = TStrict $ TCon $ TConDataType $ idFromString "$UnsafePtr"
-typeTrampoline = TStrict $ TCon $ TConDataType $ idFromString "$Trampoline"
-typeInt = TStrict $ TCon $ TConDataType $ idFromString "Int"
-typeInt16 = TStrict $ TCon $ TConDataType $ idFromString "Int16"
-typeChar = TStrict $ TCon $ TConDataType $ idFromString "Char"
-typeFloat = TStrict $ TCon $ TConDataType $ idFromString "Float"
+createDataType :: String -> Type
+createDataType s = TCon $ TConDataType $ idFromString s
+
+createStrictDataType :: String -> Type
+createStrictDataType = typeToStrict . createDataType
+
+typeRealWorld, typeUnsafePtr, typeTrampoline, typeInt, typeInt16, typeChar, typeChar', typeFloat, typeString :: Type
+typeRealWorld = createStrictDataType "$RealWorld"
+typeUnsafePtr = createStrictDataType "$UnsafePtr"
+typeTrampoline = createStrictDataType "$Trampoline"
+typeInt = createStrictDataType "Int"
+typeInt16 = createStrictDataType "Int16"
+typeChar = typeToStrict $ typeChar'
+typeChar' = createDataType "Char"
+typeFloat = createStrictDataType "Float"
+typeString = typeToStrict $ TAp (createDataType "[]") $ typeChar'
+
+typeLitInt :: String -> Type
+typeLitInt = createStrictDataType
 
 data FloatPrecision = Float32 | Float64 deriving (Eq, Ord)
 

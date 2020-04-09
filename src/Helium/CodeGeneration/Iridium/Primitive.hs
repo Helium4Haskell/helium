@@ -13,6 +13,7 @@ module Helium.CodeGeneration.Iridium.Primitive
   )
 where
 
+import Helium.CodeGeneration.Core.TypeEnvironment ( FunctionType (..))
 import Helium.CodeGeneration.Iridium.Type
 import Helium.CodeGeneration.LLVM.Target (Target (..))
 import Helium.CodeGeneration.LLVM.Utils

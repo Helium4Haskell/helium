@@ -60,7 +60,7 @@ constructorType typeVar fieldsSuper fieldsMembers classType =
     updateTypeVars idxTypeClass (Core.TVar idx)
       | idx == idxTypeClass = Core.TVar 0
       | otherwise = Core.TVar $ idx + 1
-    updateTypeVars idxTypeClass (Core.TStrict t) = updateTypeVars idxTypeClass t
+    updateTypeVars idxTypeClass (Core.TStrict t) = Core.TStrict $ updateTypeVars idxTypeClass t
     updateTypeVars idxTypeClass (Core.TAp t1 t2) = Core.TAp (updateTypeVars idxTypeClass t1) (updateTypeVars idxTypeClass t2)
     updateTypeVars _ (Core.TCon c) = Core.TCon c
 

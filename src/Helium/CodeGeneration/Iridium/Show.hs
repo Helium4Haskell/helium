@@ -10,6 +10,7 @@ module Helium.CodeGeneration.Iridium.Show where
 
 import Data.Either (isRight)
 import Data.List (intercalate)
+import Helium.CodeGeneration.Core.TypeEnvironment (FunctionType (..), typeFromFunctionType)
 import Helium.CodeGeneration.Iridium.Data
 import Helium.CodeGeneration.Iridium.Type
 import Lvm.Common.Byte (stringFromBytes)

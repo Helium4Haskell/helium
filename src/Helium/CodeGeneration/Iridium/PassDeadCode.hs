@@ -24,6 +24,7 @@ import Data.Either (isRight, rights)
 import Data.Maybe (catMaybes, fromMaybe, isNothing)
 import Helium.CodeGeneration.Iridium.Data
 import Helium.CodeGeneration.Iridium.Type
+import Helium.CodeGeneration.Core.TypeEnvironment
 import Lvm.Common.Id
 import Lvm.Common.IdMap
 import Lvm.Common.IdSet

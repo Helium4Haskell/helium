@@ -14,6 +14,7 @@ import Data.Function (on)
 import Data.List (group, maximumBy, partition, sort)
 import Data.String (fromString)
 import Data.Word (Word32)
+import qualified Helium.CodeGeneration.Core.TypeEnvironment as Core
 import qualified Helium.CodeGeneration.Iridium.Data as Iridium
 import qualified Helium.CodeGeneration.Iridium.Primitive as Iridium
 import qualified Helium.CodeGeneration.Iridium.Type as Iridium
@@ -169,7 +170,7 @@ compileExpression env supply expr@(Iridium.Call to@(Iridium.GlobalFunction globa
     ]
   | not fakeIO =
     let (name', supply') = freshName supply
-        fromType = Iridium.typeToStrict retType
+        fromType = Core.typeToStrict retType
         toType = Iridium.typeOfExpr (envTypeEnv env) expr
         castArgument s (var, argType) =
           ( cast s' env (toOperand env var) argName (Iridium.variableType var) argType,
@@ -200,7 +201,7 @@ compileExpression env supply expr@(Iridium.Call to@(Iridium.GlobalFunction globa
           { tailCallKind = Nothing,
             callingConvention = compileCallingConvention convention,
             returnAttributes = [],
-            function = Right $ globalFunctionToOperand env (Iridium.GlobalFunction global (arity - 1) $ Iridium.typeFromFunctionType $ Iridium.FunctionType (init argTypes) $ Core.TCon $ Core.TConDataType $ idFromString "Int"),
+            function = Right $ globalFunctionToOperand env (Iridium.GlobalFunction global (arity - 1) $ Core.typeFromFunctionType $ Core.FunctionType (init argTypes) $ Core.TCon $ Core.TConDataType $ idFromString "Int"),
             arguments = [(toOperand env arg, []) | Right arg <- init args],
             functionAttributes = [],
             metadata = []
@@ -216,11 +217,11 @@ compileExpression env supply expr@(Iridium.Call to@(Iridium.GlobalFunction globa
             [Left Iridium.typeInt, Right $ Iridium.VarLocal $ Iridium.Local nameValue Iridium.typeInt, Right $ Iridium.VarLocal $ Iridium.Local nameRealWorld Iridium.typeRealWorld]
         ]
   where
-    Iridium.FunctionType argTypes retType = Iridium.extractFunctionTypeWithArity (envTypeEnv env) arity tp
+    Core.FunctionType argTypes retType = Core.extractFunctionTypeWithArity (envTypeEnv env) arity tp
     EnvMethodInfo convention fakeIO = findMap global (envMethodInfo env)
     (nameValue, supply') = freshId supply
     (nameRealWorld, supply'') = freshId supply'
-    ioRes = Iridium.DataTypeConstructor ioResId $ Iridium.typeFromFunctionType $ Iridium.FunctionType [Left $ Core.Quantor 0 Nothing, Right $ Core.TVar 0, Right Iridium.typeRealWorld] Iridium.typeRealWorld
+    ioRes = Iridium.DataTypeConstructor ioResId $ Core.typeFromFunctionType $ Core.FunctionType [Left $ Core.Quantor 0 Nothing, Right $ Core.TVar 0, Right Iridium.typeRealWorld] Iridium.typeRealWorld
     ioResId = idFromString "IORes"
     tRealWorld = compileType env Iridium.typeRealWorld
 compileExpression env supply (Iridium.Eval var) name = compileEval env supply (toOperand env var) (Iridium.variableType var) $ toName name
@@ -233,7 +234,7 @@ compileExpression env supply (Iridium.Cast var toType) name = cast supply env (t
 compileExpression env supply (Iridium.CastThunk var) name = cast supply env (toOperand env var) (toName name) t toType
   where
     t = Iridium.variableType var
-    toType = Iridium.typeNotStrict t
+    toType = Core.typeNotStrict t
 compileExpression env supply expr@(Iridium.Instantiate var _) name = cast supply env (toOperand env var) (toName name) t toType
   where
     t = Iridium.variableType var
@@ -262,7 +263,7 @@ compileEval env supply operand tp name
       nameIsWHNFExt := ZExt (LocalReference boolType nameIsWHNF) (envValueType env) [],
       nameWHNF := callEval (LocalReference voidPointer namePtr) (LocalReference (envValueType env) nameIsWHNFExt)
     ]
-      ++ cast supply env (LocalReference voidPointer nameWHNF) name (Core.TStrict $ Core.TVar 0) (Core.typeToStrict tp)
+      ++ cast supply env (LocalReference voidPointer nameWHNF) name (Core.typeToStrict $ Core.TVar 0) (Core.typeToStrict tp)
   where
     (namePtr, supply') = freshName supply
     (nameIsWHNF, supply'') = freshName supply'
