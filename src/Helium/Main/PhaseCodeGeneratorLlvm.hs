@@ -22,15 +22,17 @@ import Lvm.Common.Id (NameSupply, mapWithSupply, splitNameSupplies)
 import qualified Lvm.Core.Expr as Core
 import qualified Lvm.Core.Module as Core
 import System.Process
+import Paths_helium
 
 phaseCodeGeneratorLlvm :: NameSupply -> FilePath -> [IridiumFile] -> Bool -> [Option] -> IO ()
 phaseCodeGeneratorLlvm supply output files shouldLink options = do
   enterNewPhase "Code generation for LLVM" options
   let target = Target 64 48
+  runtimeFile <- getDataFileName "lib/runtime/runtime.c"
   sequence_ $ mapWithSupply (compileToLlvm target) supply files
   when shouldLink $ do
     let debug = if (containsDOption Memory `any` options) then "-DDEBUG" else ""
-    let args = "-o" : output : "-O0" : debug : "../lib/runtime/runtime.c" : map toLlvmPath files
+    let args = "-o" : output : "-O0" : debug : runtimeFile : map toLlvmPath files
     (code, res, err) <- readProcessWithExitCode "clang" args ""
     case code of
       ExitSuccess -> return ()

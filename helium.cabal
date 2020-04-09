@@ -62,6 +62,7 @@ build-type:             Simple
 cabal-version:          >= 2
 tested-with:        GHC == 8.2.2, GHC == 8.4.4, GHC == 8.6.5, GHC == 8.8.1
 data-files:
+  lib/runtime/runtime.c
   lib/Char.hs
   lib/HeliumLang.core
   lib/List.hs
@@ -140,7 +141,6 @@ Library
   default-language:  Haskell98
   hs-source-dirs:    src dist/build/autogen/uuagc
   extensions:        BangPatterns, DoAndIfThenElse
-
 
   Exposed-modules:
     Helium.CodeGeneration.CodeGeneration
@@ -278,4 +278,5 @@ Library
     Helium.Utils.Network
     Helium.Utils.QualifiedTypes
     Helium.Utils.QualifiedTypes.Constants
-  Other-modules:
+  other-modules:
+    Paths_helium
