@@ -350,17 +350,18 @@ castTo supply env var from to
     (casted, _) = freshIdFromId (variableName var) supply
 castTo supply env var _ to = (var, id)
 
+
 maybeCasts :: NameSupply -> TypeEnv -> Core.Type -> [Either Core.Type Id] -> ([Either Core.Type Variable], Instruction -> Instruction, Core.Type)
 maybeCasts _ _ tp [] = ([], id, tp)
 maybeCasts supply env tp args'@(Right name : args) =
   case Core.typeNormalizeHead (teCoreEnv env) tp of
-    Core.TStrict tp' -> maybeCasts supply env tp' args'
+    Core.TAp (Core.TAnn _ _) tp' -> maybeCasts supply env tp' args'
     Core.TAp (Core.TAp (Core.TCon Core.TConFun) tArg) tReturn ->
       let (supply1, supply2) = splitNameSupply supply
           (var, instr) = maybeCast supply1 env name tArg
           (tailVars, tailInstr, returnType) = maybeCasts supply2 env tReturn args
        in (Right var : tailVars, instr . tailInstr, returnType)
-    _ -> error ("FromCore.maybeCasts: expected function type, got " ++ Core.showType tp)
+    _ -> error ("FromCore.maybeCasts: expected function type, got " ++ show tp)
 maybeCasts supply env tp (Left tpArg : args) =
   let tp' = Core.typeApply tp tpArg
       (tailVars, tailInstr, returnType) = maybeCasts supply env tp' args

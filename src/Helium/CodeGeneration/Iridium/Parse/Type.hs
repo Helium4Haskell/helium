@@ -46,7 +46,7 @@ pTypeAtomAnn :: Parser Type
 pTypeAtomAnn = (typeToStrict <$ pToken '!' <*> pTypeAtomAnn') <|> pTypeAtomAnn'
 
 pTypeAtomAnn' :: Parser Type
-pTypeAtomAnn' = ((\a t -> TAp (TUniq a) t) <$> (Shared <$ pSymbol "w:" <|> Unique <$ pSymbol "1:" <|> (UVar <$> pUniquenessVariable <* pToken ':')) <*> pTypeAtom') <|> pTypeAtom'
+pTypeAtomAnn' = (addUAnnToType <$> (UShared <$ pSymbol "w:" <|> UUnique <$ pSymbol "1:" <|> (UVar <$> pUniquenessVariable <* pToken ':')) <*> pTypeAtom') <|> pTypeAtom'
 
 pTypeAtomList :: Parser Type
 pTypeAtomList = pBrackets pTypeAtomMaybeList

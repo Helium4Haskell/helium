@@ -75,12 +75,12 @@ typeEnvAddPattern pat env =
 typeNormalizeHead :: TypeEnvironment -> Type -> Type
 typeNormalizeHead env = normalize False
   where
+    normalize _ (TAp t1 t2) | typeIsStrict t1 = normalize True t2
     normalize strict (TAp t1 t2) = case normalize False t1 of
       t1'@(TForall _ _ _) -> normalize strict $ typeApply t1' t2
       t1' ->
         let tp = TAp t1' t2
          in if strict then typeToStrict tp else tp
-    normalize _ (TStrict t1) = normalize True t1
     normalize strict t1@(TCon (TConDataType name)) = case lookupMap name $ typeEnvSynonyms env of
       Just t2 -> normalize strict t2
       Nothing -> if strict then typeToStrict t1 else t1
@@ -146,9 +146,9 @@ typeEqualIgnoreStrictness env = typeEqual' env False
 
 -- Checks type equivalence
 typeEqual' :: TypeEnvironment -> Bool -> Type -> Type -> Bool
-typeEqual' env False (TStrict t1) t2 = typeEqual' env False t1 t2 -- Ignore strictness
-typeEqual' env False t1 (TStrict t2) = typeEqual' env False t1 t2 -- Ignore strictness
-typeEqual' env True (TStrict t1) (TStrict t2) = typeEqual' env True t1 t2 -- Do use strictness
+typeEqual' env False (TAp (TAnn _ _) t1) t2 = typeEqual' env False t1 t2 -- Ignore annotations
+typeEqual' env False t1 (TAp (TAnn _ _) t2) = typeEqual' env False t1 t2 -- Ignore annotations
+typeEqual' env True (TAp (TAnn a1 _) t1) (TAp (TAnn a2 _) t2) = a1 == a2 && typeEqual' env True t1 t2 -- Do use annotations
 typeEqual' env _ (TVar x1) (TVar x2) = x1 == x2
 typeEqual' env checkStrict t1@(TCon _) t2 = typeEqual'' env checkStrict t1 t2
 typeEqual' env checkStrict t1 t2@(TCon _) = typeEqual'' env checkStrict t1 t2
@@ -159,7 +159,7 @@ typeEqual' env checkStrict (TForall (Quantor x _) _ t1) (TForall (Quantor y _) _
 typeEqual' env _ _ _ = False
 
 typeEqual'' :: TypeEnvironment -> Bool -> Type -> Type -> Bool
-typeEqual'' env checkStrict t1 t2 = typeEqualNoTypeSynonym env checkStrict (typeNormalizeHead env t1) (typeNormalizeHead env t2)
+typeEqual'' env checkStrict t1 t2 = typeEqualNoTypeSynonym env checkStrict (typeNormalizeHead env (removeUAnnFromType t1)) (typeNormalizeHead env (removeUAnnFromType t2))
 
 -- Checks type equivalence, assuming that there is no synonym at the head of the type
 typeEqualNoTypeSynonym :: TypeEnvironment -> Bool -> Type -> Type -> Bool
@@ -199,7 +199,7 @@ extractFunctionTypeNoSynonyms tp = FunctionType [] tp
 extractFunctionTypeWithArity :: TypeEnvironment -> Int -> Type -> FunctionType
 extractFunctionTypeWithArity _ 0 tp = FunctionType [] tp
 extractFunctionTypeWithArity env arity tp = case typeNormalizeHead env tp of
-  TStrict tp' -> extractFunctionTypeWithArity env arity tp'
+  TAp (TAnn _ _) tp' -> extractFunctionTypeWithArity env arity tp'
   TForall quantor _ tp' ->
     let FunctionType args ret = extractFunctionTypeWithArity env arity tp'
      in FunctionType (Left quantor : args) ret

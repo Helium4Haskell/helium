@@ -20,7 +20,7 @@ import qualified Lvm.Core.Type as Core
 compileType :: Env -> Core.Type -> Type
 compileType env tp
   | not $ Core.typeIsStrict tp = taggedThunkPointer
-compileType env tp = case skipApp $ skipForallAndStrict $ Core.typeNormalizeHead (envTypeEnv env) tp of
+compileType env tp = case skipApp $ skipForallAndAnn $ Core.typeNormalizeHead (envTypeEnv env) tp of
   Core.TCon (Core.TConDataType name)
     | name == idFromString "Float" -> FloatingPointType DoubleFP
     | name == idFromString "Int" -> envValueType env
@@ -41,10 +41,10 @@ skipApp :: Core.Type -> Core.Type
 skipApp (Core.TAp t _) = skipApp t
 skipApp t = t
 
-skipForallAndStrict :: Core.Type -> Core.Type
-skipForallAndStrict (Core.TForall _ _ t) = skipForallAndStrict t
-skipForallAndStrict (Core.TStrict t) = skipForallAndStrict t
-skipForallAndStrict tp = tp
+skipForallAndAnn :: Core.Type -> Core.Type
+skipForallAndAnn (Core.TForall _ _ t) = skipForallAndAnn t
+skipForallAndAnn (Core.TAp (Core.TAnn _ _) t) = skipForallAndAnn t
+skipForallAndAnn tp = tp
 
 compileFunctionType :: Env -> Core.FunctionType -> Type
 compileFunctionType env (Core.FunctionType args returnType) = pointer $ FunctionType (compileType env $ Core.typeToStrict returnType) argTypes False
@@ -123,7 +123,7 @@ cast supply env fromOperand toName fromType' toType'
     copy env fromOperand toName toType
   -- Thunk to WHNF - not allowed in a Cast instruction. This should be done with an Eval statement
   | not fromStrict && toStrict =
-    error ("cast: Cannot cast from thunk to WHNF: " ++ show fromOperand ++ ", " ++ show toName ++ Core.showType fromType ++ " to " ++ Core.showType toType)
+    error ("cast: Cannot cast from thunk to WHNF: " ++ show fromOperand ++ ", " ++ show toName ++ " " ++ Core.showType fromType ++ " to " ++ Core.showType toType)
   -- Strict to thunk - perform bitcast from fromType to the strict variant of toType,
   -- then wrap the value in a thunk
   | fromStrict && not toStrict =
@@ -144,8 +144,8 @@ cast supply env fromOperand toName fromType' toType'
     toType = Core.typeNormalizeHead (envTypeEnv env) toType'
     fromStrict = Core.typeIsStrict fromType
     toStrict = Core.typeIsStrict toType
-    fromBase = skipApp $ skipForallAndStrict fromType
-    toBase = skipApp $ skipForallAndStrict toType
+    fromBase = skipApp $ skipForallAndAnn fromType
+    toBase = skipApp $ skipForallAndAnn toType
     -- Checks whether a type is represented in LLVM as a pointer type
     isPointer (Core.TCon (Core.TConDataType name)) =
       name /= idFromString "Int"

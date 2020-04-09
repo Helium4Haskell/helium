@@ -66,14 +66,14 @@ typeSchemeFromCore quantifiedType =
         qmap' = case name of
           Nothing -> qmap
           Just n -> (idx, n) : qmap
-    splitForalls (Core.TStrict t) = splitForalls t
+    splitForalls (Core.TAp (Core.TAnn _ _) t) = splitForalls t
     splitForalls t = ([], [], t)
     splitPredicates :: Core.Type -> ([Predicate], Core.Type)
     splitPredicates (Core.TAp (Core.TAp (Core.TCon Core.TConFun) (Core.TAp (Core.TCon (Core.TConTypeClassDictionary className)) instanceType)) t) =
       (Predicate (stringFromId className) (fromCore instanceType) : predicates, t')
       where
         (predicates, t') = splitPredicates t
-    splitPredicates (Core.TAp (Core.TAp (Core.TCon Core.TConFun) (Core.TStrict (Core.TAp (Core.TCon (Core.TConTypeClassDictionary className)) instanceType))) t) =
+    splitPredicates (Core.TAp (Core.TAp (Core.TCon Core.TConFun) (Core.TAp (Core.TAnn _ _) (Core.TAp (Core.TCon (Core.TConTypeClassDictionary className)) instanceType))) t) =
       (Predicate (stringFromId className) (fromCore instanceType) : predicates, t')
       where
         (predicates, t') = splitPredicates t
@@ -82,9 +82,9 @@ typeSchemeFromCore quantifiedType =
     (predicates, tp) = splitPredicates qtype
     fromCore :: Core.Type -> Tp
     fromCore (Core.TCon c) = TCon $ Core.showTypeConstant c
+    fromCore (Core.TAp (Core.TAnn _ _) t) = fromCore t
     fromCore (Core.TAp t1 t2) = TApp (fromCore t1) (fromCore t2)
     fromCore (Core.TVar x) = TVar x
-    fromCore (Core.TStrict t) = fromCore t
     fromCore (Core.TForall _ _ _) = internalError "CoreToImportEnv" "typeSynFromCore" ("Unexpected 'forall' in type scheme. Forall quantifiers may only occur on the top level of a type scheme. Type: " ++ Core.showType quantifiedType)
 
 typeSynFromCore :: Core.Type -> (Int, Tps -> Tp)
