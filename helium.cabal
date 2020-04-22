@@ -163,6 +163,7 @@ Library
     Helium.CodeGeneration.Core.Strictness
     Helium.CodeGeneration.Core.TypeCheck
     Helium.CodeGeneration.Core.TypeEnvironment
+    Helium.CodeGeneration.Core.Uniqueness.Data
     Helium.CodeGeneration.Iridium.Data
     Helium.CodeGeneration.Iridium.FromCore
     Helium.CodeGeneration.Iridium.Type
