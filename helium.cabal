@@ -150,6 +150,9 @@ Library
     Helium.CodeGeneration.DerivingUtils
     Helium.CodeGeneration.PatternMatch
     Helium.CodeGeneration.Core
+    Helium.CodeGeneration.Core.Uniqueness.Data
+    Helium.CodeGeneration.Core.Uniqueness.Duplicating
+    Helium.CodeGeneration.Core.Uniqueness.Analysis
     Helium.CodeGeneration.Core.FunctionType
     Helium.CodeGeneration.Core.LetInline
     Helium.CodeGeneration.Core.LetSort
