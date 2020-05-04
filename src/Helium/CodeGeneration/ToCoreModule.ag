@@ -45,13 +45,13 @@ insertedMain env moduleName toplevelTypes =
                 Nothing
             Just (name, tpScheme)
                 | not (null qs) ->
-                    d (Core.TCon $ Core.TConTuple 0) $ var "LvmLang.$primPutStrLn" `app_` 
+                    d (Core.TCon $ Core.TConTuple 0) $ var "LvmLang.putStrLn" `app_`
                         (var "$primPackedToString" `app_`
                             packedString "<<overloaded function>>")
                 | isJust (isIOType tp) -> 
                     d (typeToCoreType $ fromJust $ isIOType tp) $ var name
                 | otherwise ->
-                    d (Core.TCon $ Core.TConTuple 0) $ var "LvmLang.$primPutStrLn" `app_` 
+                    d (Core.TCon $ Core.TConTuple 0) $ var "LvmLang.putStrLn" `app_`
                         (Core.Ap (var "show" `Core.ApType` typeToCoreType tp) (DerivingUtils.eqFunForType "Prelude.Show$" tse M.empty (makeTypeFromTp tp)) `app_`
                             var name)
                 where                        
