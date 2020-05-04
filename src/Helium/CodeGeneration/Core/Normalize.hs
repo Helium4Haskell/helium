@@ -43,7 +43,7 @@ isApTarget :: Expr -> Bool
 isApTarget (Ap _ _) = True
 isApTarget (Con _ _) = True
 isApTarget (Var _) = True
-isApTarget (Forall _ _ e) = isApTarget e
+isApTarget (Forall _ e) = isApTarget e
 isApTarget (ApType e _) = isApTarget e
 isApTarget _ = False
 
@@ -60,7 +60,7 @@ normalizeLambda :: NameSupply -> TypeEnvironment -> Expr -> Expr
 normalizeLambda supply env (Lam strict var expr) = Lam strict var $ normalizeLambda supply env' expr
   where
     env' = typeEnvAddVariable var env
-normalizeLambda supply env (Forall x k expr) = Forall x k $ normalizeLambda supply env expr
+normalizeLambda supply env (Forall q expr) = Forall q $ normalizeLambda supply env expr
 normalizeLambda supply env expr = normalize supply env expr
 
 -- Normalizes an expression.
@@ -96,7 +96,7 @@ normSubExprs supply env (Ap e1 e2) = (Ap e1'' e2', bindings1' ++ bindings2)
       | otherwise = (Var name, [Bind (Variable name $ typeOfCoreExpression env e1) $ addBindings e1' bindings1])
     (e2', bindings2) = normExpr supply2 env e2
 normSubExprs supply env expr@(Lam _ _ _) = (normalizeLambda supply env expr, [])
-normSubExprs supply env (Forall x k expr) = (Forall x k expr', binds)
+normSubExprs supply env (Forall q expr) = (Forall q expr', binds)
   where
     (expr', binds) = normSubExprs supply env expr
 normSubExprs supply env (ApType expr t) = (ApType expr' t, binds)

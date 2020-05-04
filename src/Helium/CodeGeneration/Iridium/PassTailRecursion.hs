@@ -32,7 +32,7 @@ findTailRecursion _ _ = Nothing
 typeArgumentsPreserved :: [Either Quantor Local] -> [Either Type Variable] -> Bool
 typeArgumentsPreserved params args = all (uncurry sameTypeVar) $ zip params args
   where
-    sameTypeVar (Left (Quantor idx _)) (Left tp) = tp == TVar idx
+    sameTypeVar (Left (Quantor idx _ _)) (Left tp) = tp == TVar idx
     sameTypeVar _ _ = True -- Not a type parameter
 
 transformMethod :: NameSupply -> Declaration Method -> Declaration Method

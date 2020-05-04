@@ -44,8 +44,8 @@ lsExpr expr
         -> Lam strict x (lsExpr e)
       Ap e1 e2
         -> Ap (lsExpr e1) (lsExpr e2)
-      Forall x k e
-        -> Forall x k $ lsExpr e
+      Forall q e
+        -> Forall q $ lsExpr e
       ApType e t
         -> ApType (lsExpr e) t
       _

@@ -70,10 +70,10 @@ liftExprIgnoreLambdas supply scope (Lam strict x expr) env = (Lam strict x expr'
   where
     (expr', decls) = liftExprIgnoreLambdas supply (Right (variableSetStrict strict x) : scope) expr env'
     env' = modifyTypeEnv (typeEnvAddVariable x) env
-liftExprIgnoreLambdas supply scope (Forall x k expr) env = (Forall x k expr', decls)
+liftExprIgnoreLambdas supply scope (Forall q expr) env = (Forall q expr', decls)
   where
     -- We should also keep track of all type variables which are in scope
-    (expr', decls) = liftExprIgnoreLambdas supply (Left x : scope) expr env
+    (expr', decls) = liftExprIgnoreLambdas supply (Left q : scope) expr env
 liftExprIgnoreLambdas supply scope expr env = liftExpr supply scope expr env
 
 addBinds :: [Binds] -> Expr -> Expr
@@ -120,7 +120,7 @@ liftExpr supply scope expr@(Lam _ _ _) env = liftExpr supply' scope (Let (NonRec
   where
     (name, supply') = freshId supply
     bind = Bind (Variable name $ typeOfCoreExpression (typeEnv env) expr) expr
-liftExpr supply scope (Forall x k expr) env = (Forall x k expr', decls)
+liftExpr supply scope (Forall q expr) env = (Forall q expr', decls)
   where
     (expr', decls) = liftExpr supply scope expr env
 liftExpr supply scope (ApType expr t) env = (ApType expr' t, decls)
@@ -145,7 +145,7 @@ rename env@(Env _ mapping) name = case lookupMap name mapping of
   Just name' -> rename env name'
 
 isQuantifiedLambda :: Expr -> Bool
-isQuantifiedLambda (Forall _ _ expr) = isQuantifiedLambda expr
+isQuantifiedLambda (Forall _ expr) = isQuantifiedLambda expr
 isQuantifiedLambda (Lam _ _ _) = True
 isQuantifiedLambda _ = False
 
@@ -171,7 +171,7 @@ lazyBind isRec supply scope b@(Bind var@(Variable x t) expr) env = case extractT
   where
     ap = foldr addAp (Var name) scope
       where
-        addAp (Left (Quantor idx _)) e = ApType e $ TVar idx
+        addAp (Left (Quantor idx KStar _)) e = ApType e $ TVar idx
         addAp (Right (Variable name _)) e = Ap e $ Var name
     (name, supply') = freshId supply
     (supply1, supply2) = splitNameSupply supply'
@@ -190,7 +190,7 @@ lazyBind isRec supply scope b@(Bind var@(Variable x t) expr) env = case extractT
     (expr', decls) = liftExprIgnoreLambdas supply2 (map snd argNames) expr envDecl
     value = foldl addArg expr' argNames
       where
-        addArg e (_, Left quantor) = Forall quantor KStar e
+        addArg e (_, Left quantor) = Forall quantor e
         addArg e (_, Right (Variable name tp)) = Lam (typeIsStrict tp) (Variable name $ typeNotStrict tp) e
     decl :: CoreDecl
     decl =
@@ -204,7 +204,7 @@ lazyBind isRec supply scope b@(Bind var@(Variable x t) expr) env = case extractT
         }
     functionType :: Scope -> Type
     functionType [] = t
-    functionType (Left quantor : args) = TForall quantor KStar $ functionType args
+    functionType (Left quantor : args) = TForall quantor $ functionType args
     functionType (Right (Variable name tArg) : args) = TAp (TAp (TCon TConFun) $ typeNotStrict tArg) $ functionType args
 
 liftAlt :: NameSupply -> Scope -> Alt -> Env -> (Alt, [CoreDecl])
@@ -216,7 +216,7 @@ liftAlt supply scope (Alt pat expr) env = (Alt pat expr', decls)
 
 isValidThunk :: Expr -> Bool
 isValidThunk (Ap _ _) = True
-isValidThunk (Forall _ _ e) = isValidThunk e
+isValidThunk (Forall _ e) = isValidThunk e
 isValidThunk (ApType e _) = isValidThunk e
 isValidThunk _ = False
 

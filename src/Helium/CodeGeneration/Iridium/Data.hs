@@ -50,7 +50,7 @@ constructorDataType :: DataTypeConstructor -> Id
 constructorDataType cons = findName $ findReturn $ constructorType cons
   where
     findReturn :: Type -> Type
-    findReturn (TForall _ _ t) = findReturn t
+    findReturn (TForall _ t) = findReturn t
     findReturn (TAp (TAp (TCon TConFun) _) t) = findReturn t
     findReturn t = t
     findName :: Type -> Id
@@ -226,13 +226,13 @@ matchFieldTypes (MatchTargetConstructor (DataTypeConstructor _ tp)) instantiatio
 matchFieldTypes (MatchTargetTuple _) instantiation = instantiation
 
 typeApplyArguments :: TypeEnvironment -> Type -> [Either Type Variable] -> Type
-typeApplyArguments env t1@(TForall _ _ _) (Left t2 : args) = typeApplyArguments env t1' args
+typeApplyArguments env t1@(TForall _ _) (Left t2 : args) = typeApplyArguments env t1' args
   where
     t1' = typeApply t1 t2
 typeApplyArguments env (TAp (TAp (TCon TConFun) _) tReturn) (Right _ : args) = typeApplyArguments env tReturn args
 typeApplyArguments env tp [] = tp
 typeApplyArguments env tp args = case tp' of
-  TForall _ _ _
+  TForall _ _
     | isLeft $ head args -> typeApplyArguments env tp' args
   TAp (TAp (TCon TConFun) _) _
     | isRight $ head args -> typeApplyArguments env tp' args

@@ -60,7 +60,7 @@ typeSchemeFromCore quantifiedType =
   Quantification (quantors, qmap, Qualification (predicates, fromCore tp))
   where
     splitForalls :: Core.Type -> ([Int], QuantorMap, Core.Type)
-    splitForalls (Core.TForall (Core.Quantor idx name) _ t) = (idx : idxs, qmap', t')
+    splitForalls (Core.TForall (Core.Quantor idx _ name) t) = (idx : idxs, qmap', t')
       where
         (idxs, qmap, t') = splitForalls t
         qmap' = case name of
@@ -85,14 +85,14 @@ typeSchemeFromCore quantifiedType =
     fromCore (Core.TAp (Core.TAnn _ _) t) = fromCore t
     fromCore (Core.TAp t1 t2) = TApp (fromCore t1) (fromCore t2)
     fromCore (Core.TVar x) = TVar x
-    fromCore (Core.TForall _ _ _) = internalError "CoreToImportEnv" "typeSynFromCore" ("Unexpected 'forall' in type scheme. Forall quantifiers may only occur on the top level of a type scheme. Type: " ++ Core.showType quantifiedType)
+    fromCore (Core.TForall _ _) = internalError "CoreToImportEnv" "typeSynFromCore" ("Unexpected 'forall' in type scheme. Forall quantifiers may only occur on the top level of a type scheme. Type: " ++ Core.showType quantifiedType)
 
 typeSynFromCore :: Core.Type -> (Int, Tps -> Tp)
 typeSynFromCore quantifiedType = (length typeArgs, \args -> fromCore (zip typeArgs args) tp)
   where
     (typeArgs, tp) = splitForalls quantifiedType
     splitForalls :: Core.Type -> ([Int], Core.Type)
-    splitForalls (Core.TForall (Core.Quantor idx _) _ t) = (idx : idxs, t)
+    splitForalls (Core.TForall (Core.Quantor idx _ _) t) = (idx : idxs, t)
       where
         (idxs, t') = splitForalls t
     splitForalls t = ([], t)
@@ -102,7 +102,7 @@ typeSynFromCore quantifiedType = (length typeArgs, \args -> fromCore (zip typeAr
     fromCore args (Core.TVar x) = case lookup x args of
       Just t -> t
       Nothing -> internalError "CoreToImportEnv" "typeSynFromCore" ("Type variable not found: v$" ++ show x)
-    fromCore args (Core.TForall _ _ _) = internalError "CoreToImportEnv" "typeSynFromCore" ("Unexpected 'forall' in type synonym")
+    fromCore args (Core.TForall _ _) = internalError "CoreToImportEnv" "typeSynFromCore" ("Unexpected 'forall' in type synonym")
 
 -- in compiled Core files types have a kind (e.g. * -> *),
 -- in Helium the have a number indicating the arity

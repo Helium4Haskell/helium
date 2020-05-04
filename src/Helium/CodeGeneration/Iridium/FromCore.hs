@@ -121,7 +121,7 @@ consumeLambdas :: Core.Expr -> ([Either Core.Quantor Local], Core.Expr)
 consumeLambdas (Core.Lam strict (Core.Variable name tp) expr) = (Right (Local name $ Core.typeSetStrict strict tp) : args, expr')
   where
     (args, expr') = consumeLambdas expr
-consumeLambdas (Core.Forall x k expr) = (Left x : args, expr')
+consumeLambdas (Core.Forall q expr) = (Left q : args, expr')
   where
     (args, expr') = consumeLambdas expr
 consumeLambdas expr = ([], expr)

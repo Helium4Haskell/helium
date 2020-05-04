@@ -199,7 +199,7 @@ showMethodArguments :: QuantorNames -> [Either Quantor Local] -> ([String], Quan
 showMethodArguments quantors (Left quantor : args) = (("forall " ++ show quantor) : args', quantors'')
   where
     quantors' = case quantor of
-      Quantor idx (Just name) -> (idx, name) : quantors
+      Quantor idx _ (Just name) -> (idx, name) : quantors
       _ -> quantors
     (args', quantors'') = showMethodArguments quantors' args
 showMethodArguments quantors (Right arg : args) = (showQ quantors arg : args', quantors')

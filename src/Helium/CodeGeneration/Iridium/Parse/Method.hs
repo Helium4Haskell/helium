@@ -49,7 +49,7 @@ pMethodArguments :: Parser ([Either Quantor Local])
 pMethodArguments = P.sepBy (pMethodArgument) (pToken ',')
 
 pMethodArgument :: Parser (Either Quantor Local)
-pMethodArgument = Right <$> pLocal <|> Left <$ pSymbol "forall" <*> (flip Quantor Nothing . snd <$> pQuantor)
+pMethodArgument = Right <$> pLocal <|> Left <$ pSymbol "forall" <*> pQuantor
 
 pBlock :: Parser Block
 pBlock = Block <$> pId <* pToken ':' <*> pInstruction

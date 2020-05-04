@@ -38,6 +38,6 @@ functionInDecl env (DeclValue name _ _ tp expr _) = Just (name, (tp', fnType))
 functionInDecl env decl = Nothing
 
 arityOfExpr :: Expr -> Int -> Int
-arityOfExpr (Forall _ _ expr) accum = arityOfExpr expr accum
+arityOfExpr (Forall _ expr) accum = arityOfExpr expr accum
 arityOfExpr (Lam _ _ expr) accum = arityOfExpr expr $ accum + 1
 arityOfExpr _ accum = accum

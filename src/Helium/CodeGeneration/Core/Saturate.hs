@@ -59,7 +59,7 @@ coreSaturate supply m =
     constructors = mapFromList [(declName d, declType d) | d <- moduleDecls m, isDeclCon d || isDeclExtern d]
 
 extractArguments :: Type -> [Type]
-extractArguments (TForall _ _ t) = extractArguments t
+extractArguments (TForall _ t) = extractArguments t
 extractArguments (TAp (TAp (TCon TConFun) t1) t2) = t1 : extractArguments t2
 extractArguments _ = []
 
@@ -79,8 +79,8 @@ satExpr env expr =
       Match x (satAlts env alts)
     Lam strict var e ->
       Lam strict var (satExpr env e)
-    Forall x k e ->
-      Forall x k $ satExpr env e
+    Forall q e ->
+      Forall q $ satExpr env e
     _ ->
       let expr' = satExprSimple env expr
        in case requiredArgs env expr' of
@@ -100,7 +100,7 @@ satExprSimple env expr =
     Let _ _ -> satExpr env expr
     Match _ _ -> satExpr env expr
     Lam _ _ _ -> satExpr env expr
-    Forall _ _ _ -> satExpr env expr
+    Forall _ _ -> satExpr env expr
     ApType e t -> ApType (satExprSimple env e) t
     Ap e1 e2 ->
       let (env1, env2) = splitEnv env

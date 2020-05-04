@@ -83,7 +83,7 @@ renameExpr env (Lam strict var@(Variable x tp) expr) = Lam strict var $ renameEx
       | otherwise = env
 renameExpr env (Var x) = Var $ lookupId env x
 renameExpr env (Con con name) = Con con $ lookupId env <$> name
-renameExpr env (Forall x k expr) = Forall x k $ renameExpr env expr
+renameExpr env (Forall q expr) = Forall q $ renameExpr env expr
 renameExpr env (ApType expr t) = ApType (renameExpr env expr) t
 renameExpr _ m = m
 

@@ -16,17 +16,20 @@ pTypeVariable = pLexeme $ P.string "v$" *> P.option "" (P.many1 P.lower) *> numb
 pUniquenessVariable :: Parser Int
 pUniquenessVariable = pLexeme $ P.string "u$" *> number
 
-pQuantor :: Parser (Kind, Int)
-pQuantor = (,) KStar <$> pTypeVariable <|> (,) KAnn <$> pUniquenessVariable
+pUniqueQuantor :: Parser (Maybe String -> Quantor)
+pUniqueQuantor = Quantor <$> pUniquenessVariable <*> pure KAnn
 
-pTypeForall' :: (Kind, Int) -> Type -> Parser Type
-pTypeForall' (k, q) t = return $ TForall (Quantor q Nothing) k t
+pTypeQuantor :: Parser (Maybe String -> Quantor)
+pTypeQuantor = Quantor <$> pTypeVariable <*> pure KStar
 
-pTypeForall :: Parser Type
-pTypeForall = pSymbol "forall" *> ((\(k,q) _ t -> TForall (Quantor q Nothing) k t) <$> pQuantor <*> pToken '.' <*> pType)
+pQuantor :: Parser Quantor
+pQuantor = ($ Nothing) <$> (pUniqueQuantor <|> pTypeQuantor)
+
+pForall :: Parser Type
+pForall = TForall <$ pSymbol "forall" <*> pQuantor <* pToken '.' <*> pType
 
 pType :: Parser Type
-pType = pTypeForall <|> pFunctionType
+pType = pForall <|> pFunctionType
 
 pAnnVar :: Parser UAnn
 pAnnVar = UVar <$> pUniquenessVariable

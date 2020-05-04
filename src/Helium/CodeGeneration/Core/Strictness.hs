@@ -78,7 +78,7 @@ analyseExpression env supply expr@(Lam _ _ _) = Analysis emptySet expr'
   where
     -- Do not propagate the strictness information from the function, as it may not be invoked
     Analysis _ expr' = analyseFunction env supply expr
-analyseExpression env supply (Forall quantor kind expr) = Analysis strict $ Forall quantor kind expr'
+analyseExpression env supply (Forall quantor expr) = Analysis strict $ Forall quantor expr'
   where
     Analysis strict expr' = analyseExpression env supply expr
 analyseExpression env supply expr = Analysis strict expr
@@ -112,7 +112,7 @@ analyseFunction :: Env -> NameSupply -> Expr -> Analysis Expr
 analyseFunction env supply (Lam s var@(Variable name _) expr) = Analysis strict $ Lam (s || name `elemSet` strict) var expr'
   where
     Analysis strict expr' = analyseFunction env supply expr
-analyseFunction env supply (Forall quantor kind expr) = Analysis strict $ Forall quantor kind expr'
+analyseFunction env supply (Forall quantor expr) = Analysis strict $ Forall quantor expr'
   where
     Analysis strict expr' = analyseFunction env supply expr
 analyseFunction env supply expr = analyseExpression env supply expr

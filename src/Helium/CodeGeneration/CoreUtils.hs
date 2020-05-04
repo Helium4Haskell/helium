@@ -235,7 +235,7 @@ declarationConstructorType :: ImportEnvironment -> Name -> [Bool] -> Core.Type
 declarationConstructorType importEnv name strictness = setStrictness strictness $ toCoreType $ declarationConstructorTypeScheme importEnv name
   where
     setStrictness :: [Bool] -> Core.Type -> Core.Type
-    setStrictness stricts (TForall quantor kind tp) = TForall quantor kind $ setStrictness stricts tp
+    setStrictness stricts (TForall quantor tp) = TForall quantor $ setStrictness stricts tp
     setStrictness (strict : stricts) (Core.TAp (Core.TAp (Core.TCon Core.TConFun) t1) t2) =
       Core.TAp (Core.TAp (Core.TCon Core.TConFun) $ Core.typeSetStrict strict t1) $ setStrictness stricts t2
     setStrictness _ tp = tp
@@ -267,13 +267,13 @@ toCoreType :: Top.TpScheme -> Core.Type
 toCoreType (Top.Quantification (tvars, qmap, t)) = foldr addTypeVar t' tvars
   where
     t' = qtypeToCoreType qmap t
-    addTypeVar index = Core.TForall (typeVarToQuantor qmap index) Core.KStar
+    addTypeVar index = Core.TForall (typeVarToQuantor qmap index Core.KStar)
 
 toCoreTypeNotQuantified :: Top.TpScheme -> Core.Type
 toCoreTypeNotQuantified (Top.Quantification (_, qmap, t)) = qtypeToCoreType qmap t
 
-typeVarToQuantor :: Top.QuantorMap -> Int -> Core.Quantor
-typeVarToQuantor qmap index = Core.Quantor index $ lookup index qmap
+typeVarToQuantor :: Top.QuantorMap -> Int -> Core.Kind -> Core.Quantor
+typeVarToQuantor qmap index kind = Core.Quantor index kind $ lookup index qmap
 
 qtypeToCoreType :: Top.QuantorMap -> Top.QType -> Core.Type
 qtypeToCoreType qmap (Top.Qualification (q, t)) = foldr addDictArgument (typeToCoreType' qmap t) q
@@ -393,7 +393,7 @@ addLambdas typeOutput context beta name args expr = case declarationTpScheme typ
         instantiation = findInstantiation (importEnv typeOutput) ty typeCorrectTVars
         tvars' = mapMaybe getTVar instantiation
         substitute = Core.typeSubstitutions $ zipWith (\idx typeArg -> (idx, typeToCoreType typeArg)) tvars instantiation
-     in foldr (\x e -> Core.Forall (typeVarToQuantor qmap x) Core.KStar e) (addLambdasForQType (importEnv typeOutput) [] t substitute args expr) tvars'
+     in foldr (\x e -> Core.Forall (typeVarToQuantor qmap x Core.KStar) e) (addLambdasForQType (importEnv typeOutput) [] t substitute args expr) tvars'
 
 addLambdasForQType :: ImportEnvironment -> QuantorMap -> Top.QType -> (Core.Type -> Core.Type) -> [Id] -> ([Core.Type] -> Core.Type -> Core.Expr) -> Core.Expr
 addLambdasForQType env qmap (Top.Qualification ([], t)) substitute args expr = addLambdasForType env qmap t substitute args [] expr
@@ -613,7 +613,7 @@ createRecordSelector ::
   Tp ->
   Core.Expr
 createRecordSelector importEnv r field retTp =
-  foldr (\x e -> Core.Forall (typeVarToQuantor qmap x) Core.KStar e) (Lam True scrutVar select) tvars
+  foldr (\x e -> Core.Forall (typeVarToQuantor qmap x Core.KStar) e) (Lam True scrutVar select) tvars
   where
     ty@(Top.Quantification (_, qmap, _)) = fromMaybe (notFound constr) $ do
       fields <- M.lookup constr (recordEnvironment importEnv)

@@ -120,15 +120,15 @@ checkExpression env (Ap e1 e2) = do
 checkExpression env (ApType e1 t2) = do
   t1 <- checkExpression env e1
   case typeNormalizeHead env t1 of
-    TForall (Quantor idx _) _ t1' -> return $ typeSubstitute idx t2 t1'
+    TForall (Quantor idx _ _) t1' -> return $ typeSubstitute idx t2 t1'
     t1' -> report $ MessageExpected "forall type" t1' $ Just e1
 checkExpression env (Lam _ var@(Variable x tArg) expr) = do
   let env' = typeEnvAddVariable var env
   tReturn <- checkExpression env' expr @@ "lambda with argument " ++ show x
   return $ TAp (TAp (TCon TConFun) tArg) tReturn
-checkExpression env (Forall quantor kind expr) = do
+checkExpression env (Forall quantor expr) = do
   tp <- checkExpression env expr
-  return $ TForall quantor kind tp
+  return $ TForall quantor tp
 checkExpression env (Var name) = checkId env name
 checkExpression _ (Con (ConTuple arity) _) = return $ typeTuple arity
 checkExpression env (Con (ConId x) Nothing) = return $ typeOfId env x

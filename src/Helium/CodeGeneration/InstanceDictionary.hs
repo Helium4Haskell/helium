@@ -38,25 +38,25 @@ constructSuperClassMap env name tp =
 
 constructorType :: String -> [Core.Type] -> [Core.Type] -> Core.Type -> Core.Type
 constructorType typeVar fieldsSuper fieldsMembers classType =
-  Core.TForall (Core.Quantor 0 $ Just typeVar) Core.KStar $ Core.typeFunction fields' classType
+  Core.TForall (Core.Quantor 0 Core.KStar (Just typeVar)) $ Core.typeFunction fields' classType
   where
     fields' = fieldsSuper ++ map (addDictArgument . instantiateClassVar) fieldsMembers
     -- Adds the dictionary argument to the types of the fields of the type class
     addDictArgument :: Core.Type -> Core.Type
-    addDictArgument (Core.TForall quantor kind tp) = Core.TForall quantor kind $ addDictArgument tp
+    addDictArgument (Core.TForall quantor tp) = Core.TForall quantor $ addDictArgument tp
     addDictArgument tp = Core.TAp (Core.TAp (Core.TCon Core.TConFun) classType) tp
     -- We use 0 for the type variable for the argument of the type class.
     -- The types for the fields may need to be updated for this.
     -- We increment all other type variables with 1 (such that 0 is not used)
     -- and replace the type variable for the type class with 0.
     instantiateClassVar :: Core.Type -> Core.Type
-    instantiateClassVar (Core.TForall (Core.Quantor idx name) k t)
+    instantiateClassVar (Core.TForall (Core.Quantor idx k name) t)
       | name == Just typeVar = updateTypeVars idx t
-      | otherwise = Core.TForall (Core.Quantor (idx + 1) name) k $ instantiateClassVar t
+      | otherwise = Core.TForall (Core.Quantor (idx + 1) k name) $ instantiateClassVar t
     instantiateClassVar t = internalError "InstanceDictionary" "constructorType" "Type argument for type class not found in signature of field."
     -- Substitute type variable with index idxTypeClass with `TVar 0`. Increment all other type variables with 1.
-    updateTypeVars idxTypeClass (Core.TForall (Core.Quantor idx name) k t) =
-      Core.TForall (Core.Quantor (idx + 1) name) k $ updateTypeVars idxTypeClass t
+    updateTypeVars idxTypeClass (Core.TForall (Core.Quantor idx k name) t) =
+      Core.TForall (Core.Quantor (idx + 1) k name) $ updateTypeVars idxTypeClass t
     updateTypeVars idxTypeClass (Core.TVar idx)
       | idx == idxTypeClass = Core.TVar 0
       | otherwise = Core.TVar $ idx + 1
@@ -97,7 +97,7 @@ classFunctions mod typeOutput className typeVar combinedNames =
     superDict :: (String, Int, DictLabel, Core.Type) -> CoreDecl
     superDict (superName, _, label, t) =
       let dictParam = idFromString "dict"
-          (declValue, declType) = createFunction [Core.Quantor 0 $ Just typeVar] [Variable dictParam classType] body t
+          (declValue, declType) = createFunction [Core.Quantor 0 Core.KStar (Just typeVar)] [Variable dictParam classType] body t
           body =
             Let (Strict $ Bind (Variable dictParam classType) (Var dictParam)) $
               Match
@@ -124,7 +124,7 @@ classFunctions mod typeOutput className typeVar combinedNames =
             drop 1 $
               unfoldr
                 ( \tp -> case tp of
-                    Core.TForall quantor _ t -> Just (quantor, t)
+                    Core.TForall quantor t -> Just (quantor, t)
                     _ -> Nothing
                 )
                 declType
@@ -136,14 +136,14 @@ classFunctions mod typeOutput className typeVar combinedNames =
                 declModule = Nothing,
                 declType = declType,
                 valueValue =
-                  Forall (Core.Quantor 0 $ Just typeVar) Core.KStar
-                    $ flip (foldr (\q e -> Forall q Core.KStar e)) quantors
+                  Forall (Core.Quantor 0 Core.KStar (Just typeVar))
+                    $ flip (foldr Forall) quantors
                     $ Lam True (Variable dictParam classType)
                     $ Match
                       dictParam
                       [ Alt
                           (PatCon (ConId $ idFromString ("Dict$" ++ className)) [typeArg] (map idFromString labels))
-                          (Ap (foldl (\e (Core.Quantor idx _) -> ApType e (Core.TVar idx)) (Var $ idFromString label) quantors) $ Var dictParam)
+                          (Ap (foldl (\e (Core.Quantor idx _ _) -> ApType e (Core.TVar idx)) (Var $ idFromString label) quantors) $ Var dictParam)
                       ],
                 declCustoms = []
               }
@@ -172,7 +172,7 @@ constructDictionary typeOutput instanceSuperClass combinedNames whereDecls class
     name = idFromString ("$dict" ++ getNameName className ++ "$" ++ insName)
     typeVariables = map (\(name, idx) -> let TVar beta = lookupBeta idx typeOutput in (name, beta)) typeVariables'
     (declValue, declType) = createFunction quantors instanceSuperClassVariables dict dictType
-    quantors = map (\(name, idx) -> (Core.Quantor idx $ Just $ getNameName name)) typeVariables
+    quantors = map (\(name, idx) -> (Core.Quantor idx Core.KStar (Just $ getNameName name))) typeVariables
     functions = combineDeclIndex combinedNames whereDecls
     idP = idFromString "index"
     superClasses = constructSuperClassMap (importEnv typeOutput) (getNameName className) insType

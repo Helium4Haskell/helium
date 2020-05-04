@@ -42,7 +42,7 @@ skipApp (Core.TAp t _) = skipApp t
 skipApp t = t
 
 skipForallAndAnn :: Core.Type -> Core.Type
-skipForallAndAnn (Core.TForall _ _ t) = skipForallAndAnn t
+skipForallAndAnn (Core.TForall _ t) = skipForallAndAnn t
 skipForallAndAnn (Core.TAp (Core.TAnn _ _) t) = skipForallAndAnn t
 skipForallAndAnn tp = tp
 

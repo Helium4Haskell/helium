@@ -77,7 +77,7 @@ typeNormalizeHead env = normalize False
   where
     normalize _ (TAp t1 t2) | typeIsStrict t1 = normalize True t2
     normalize strict (TAp t1 t2) = case normalize False t1 of
-      t1'@(TForall _ _ _) -> normalize strict $ typeApply t1' t2
+      t1'@(TForall _ _) -> normalize strict $ typeApply t1' t2
       t1' ->
         let tp = TAp t1' t2
          in if strict then typeToStrict tp else tp
@@ -110,7 +110,7 @@ typeOfCoreExpression env e@(Ap e1 e2) = case typeNotStrict $ typeNormalizeHead e
 -- Expression: e1 { tp1 }
 -- The type of e1 should be of the form `forall x. tp2`. Substitute x with tp1 in tp2.
 typeOfCoreExpression env (ApType e1 tp1) = case typeNormalizeHead env $ typeOfCoreExpression env e1 of
-  tp@(TForall (Quantor idx _) _ tp2) -> typeSubstitute idx tp1 tp2
+  tp@(TForall (Quantor idx _ _) tp2) -> typeSubstitute idx tp1 tp2
   tp -> internalError "Core.TypeEnvironment" "typeOfCoreExpression" $ "typeOfCoreExpression: expected a forall type in the first argument of a function application, got " ++ showType tp
 -- Expression: \x: t1 -> e
 -- If e has type t2, then the lambda has type t1 -> t2
@@ -120,8 +120,8 @@ typeOfCoreExpression env (Lam _ var@(Variable _ tp) expr) =
     env' = typeEnvAddVariable var env
 -- Expression: forall x. expr
 -- If expr has type t, then the forall expression has type `forall x. t`.
-typeOfCoreExpression env (Forall x kind expr) =
-  TForall x kind $ typeOfCoreExpression env expr
+typeOfCoreExpression env (Forall q expr) =
+  TForall q $ typeOfCoreExpression env expr
 -- Expression: (,)
 -- Type: forall a. forall b. a -> b -> (a, b)
 typeOfCoreExpression env (Con (ConTuple arity) _) = typeTuple arity
@@ -132,7 +132,7 @@ typeOfCoreExpression env (Var x) = typeOfId env x
 typeOfCoreExpression _ (Lit lit) = typeOfLiteral lit
 
 typeTuple :: Int -> Type
-typeTuple arity = foldr (\var -> TForall (Quantor var Nothing) KStar) (typeFunction (map TVar vars) tp) vars
+typeTuple arity = foldr (\var -> TForall (Quantor var KStar Nothing)) (typeFunction (map TVar vars) tp) vars
   where
     -- Type without quantifications, eg (a, b)
     tp = foldl (\t var -> TAp t $ TVar var) (TCon $ TConTuple arity) vars
@@ -154,7 +154,7 @@ typeEqual' env checkStrict t1@(TCon _) t2 = typeEqual'' env checkStrict t1 t2
 typeEqual' env checkStrict t1 t2@(TCon _) = typeEqual'' env checkStrict t1 t2
 typeEqual' env checkStrict t1@(TAp _ _) t2 = typeEqual'' env checkStrict t1 t2
 typeEqual' env checkStrict t1 t2@(TAp _ _) = typeEqual'' env checkStrict t1 t2
-typeEqual' env checkStrict (TForall (Quantor x _) _ t1) (TForall (Quantor y _) _ t2) =
+typeEqual' env checkStrict (TForall (Quantor x _ _) t1) (TForall (Quantor y _ _) t2) =
   typeEqual' env checkStrict t1 (typeSubstitute y (TVar x) t2)
 typeEqual' env _ _ _ = False
 
@@ -184,11 +184,11 @@ data FunctionType = FunctionType {functionArguments :: ![Either Quantor Type], f
 typeFromFunctionType :: FunctionType -> Type
 typeFromFunctionType (FunctionType args ret) = foldr addArg ret args
   where
-    addArg (Left quantor) = TForall quantor KStar
+    addArg (Left quantor) = TForall quantor
     addArg (Right tp) = TAp $ TAp (TCon $ TConFun) tp
 
 extractFunctionTypeNoSynonyms :: Type -> FunctionType
-extractFunctionTypeNoSynonyms (TForall quantor _ tp) = FunctionType (Left quantor : args) ret
+extractFunctionTypeNoSynonyms (TForall quantor tp) = FunctionType (Left quantor : args) ret
   where
     FunctionType args ret = extractFunctionTypeNoSynonyms tp
 extractFunctionTypeNoSynonyms (TAp (TAp (TCon TConFun) tArg) tReturn) = FunctionType (Right tArg : args) ret
@@ -200,19 +200,19 @@ extractFunctionTypeWithArity :: TypeEnvironment -> Int -> Type -> FunctionType
 extractFunctionTypeWithArity _ 0 tp = FunctionType [] tp
 extractFunctionTypeWithArity env arity tp = case typeNormalizeHead env tp of
   TAp (TAnn _ _) tp' -> extractFunctionTypeWithArity env arity tp'
-  TForall quantor _ tp' ->
+  TForall quantor tp' ->
     let FunctionType args ret = extractFunctionTypeWithArity env arity tp'
      in FunctionType (Left quantor : args) ret
   TAp (TAp (TCon TConFun) tArg) tReturn ->
     let FunctionType args ret = extractFunctionTypeWithArity env (arity - 1) tReturn
      in FunctionType (Right tArg : args) ret
-  _ -> error ("extractFunctionTypeWithArity: expected function type or forall type, got " ++ showType tp)
+  _ -> error ("extractFunctionTypeWithArity: expected function type or forall type, got " ++ show tp)
 
 updateFunctionTypeStrictness :: TypeEnvironment -> [Bool] -> Type -> Type
 updateFunctionTypeStrictness _ strictness tp
   | all not strictness = tp -- No arguments are strict, type does not change
 updateFunctionTypeStrictness env (strict : strictness) tp = case typeNormalizeHead env tp of
-  TForall quantor kind tp' -> TForall quantor kind $ updateFunctionTypeStrictness env (strict : strictness) tp'
+  TForall quantor tp' -> TForall quantor $ updateFunctionTypeStrictness env (strict : strictness) tp'
   TAp (TAp (TCon TConFun) tArg) tReturn ->
     let tArg'
           | strict = typeToStrict tArg
