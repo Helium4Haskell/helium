@@ -1,6 +1,7 @@
 module Helium.CodeGeneration.Iridium.Parse.Type where
 
 import Control.Applicative
+import Control.Monad (ap)
 import Data.Char
 import Helium.CodeGeneration.Iridium.Data
 import Helium.CodeGeneration.Iridium.Parse.Parser
@@ -13,7 +14,7 @@ pTypeVariable :: Parser Int
 pTypeVariable = pLexeme $ P.string "v$" *> P.option "" (P.many1 P.lower) *> number
 
 pUniquenessVariable :: Parser Int
-pUniquenessVariable = P.string "u$" *> number
+pUniquenessVariable = pLexeme $ P.string "u$" *> number
 
 pQuantor :: Parser (Kind, Int)
 pQuantor = (,) KStar <$> pTypeVariable <|> (,) KAnn <$> pUniquenessVariable
@@ -27,14 +28,20 @@ pTypeForall = pSymbol "forall" *> ((\(k,q) _ t -> TForall (Quantor q Nothing) k 
 pType :: Parser Type
 pType = pTypeForall <|> pFunctionType
 
+pAnnVar :: Parser UAnn
+pAnnVar = UVar <$> pUniquenessVariable
+
+pFun :: Parser (Type -> Type -> Type)
+pFun = ((TAp .) . TAp) <$> pTypeAtomUAnn (pSymbol "->" *> pure (TCon TConFun))
+
 pFunctionType :: Parser Type
-pFunctionType = foldr1 (TAp . TAp (TCon TConFun)) <$> P.sepBy1 (pTypeForall <|> pTypeAp) (pSymbol "->")
+pFunctionType = P.chainr1 pTypeAp pFun
 
 pTypeAp :: Parser Type
-pTypeAp = foldl TAp <$> pTypeAtom <*> P.many pTypeAtom'
+pTypeAp = foldl1 TAp <$> P.many1 pTypeAtom
 
 pTypeAtom :: Parser Type
-pTypeAtom = pTypeAtomAnn <|> pTypeAtom'
+pTypeAtom = pTypeAtomAnn pTypeAtom'
 
 pTypeAtom' :: Parser Type
 pTypeAtom' = pTypeAtomList <|> pTypeAtomT <|> pTypeAtomTypeVariable <|> pTypeAtomDataType
@@ -42,11 +49,15 @@ pTypeAtom' = pTypeAtomList <|> pTypeAtomT <|> pTypeAtomTypeVariable <|> pTypeAto
 pTypeAtomTypeVariable :: Parser Type
 pTypeAtomTypeVariable = TVar <$> pTypeVariable
 
-pTypeAtomAnn :: Parser Type
-pTypeAtomAnn = (typeToStrict <$ pToken '!' <*> pTypeAtomAnn') <|> pTypeAtomAnn'
+pTypeAtomAnn :: Parser Type -> Parser Type
+pTypeAtomAnn p = (typeToStrict <$ pToken '!' <*> pTypeAtomUAnn p) <|> pTypeAtomUAnn p
 
-pTypeAtomAnn' :: Parser Type
-pTypeAtomAnn' = (addUAnnToType <$> (UShared <$ pSymbol "w:" <|> UUnique <$ pSymbol "1:" <|> (UVar <$> pUniquenessVariable <* pToken ':')) <*> pTypeAtom') <|> pTypeAtom'
+-- We first parse a type, the we parse an optionally uniqueness attribute
+pTypeAtomUAnn :: Parser Type -> Parser Type
+pTypeAtomUAnn p = p >>= (ap P.option ((<$> pUAnn) . flip addUAnnToType))
+
+pUAnn :: Parser UAnn
+pUAnn = pToken ':' *> (UShared <$ pToken 'w' <|> UUnique <$ pToken '1' <|> pAnnVar)
 
 pTypeAtomList :: Parser Type
 pTypeAtomList = pBrackets pTypeAtomMaybeList
