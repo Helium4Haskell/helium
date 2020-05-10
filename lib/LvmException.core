@@ -10,7 +10,7 @@ module LvmException where
 import( IridiumLang )
 
 instruction primCatch "catch" :: (Exception -> v$0) -> v$0 -> v$0
-instruction primRaise "raise" :: Exception! -> v$0
+instruction primRaise "raise" :: !Exception -> v$0
 
 {----------------------------------------------------------
   Exception and Signals

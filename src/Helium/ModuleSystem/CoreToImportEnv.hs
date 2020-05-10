@@ -60,6 +60,8 @@ typeSchemeFromCore quantifiedType =
   Quantification (quantors, qmap, Qualification (predicates, fromCore tp))
   where
     splitForalls :: Core.Type -> ([Int], QuantorMap, Core.Type)
+    splitForalls (Core.TQTy t c) = splitForalls t
+    splitForalls (Core.TForall (Core.Quantor _ Core.KAnn _) t) = splitForalls t
     splitForalls (Core.TForall (Core.Quantor idx _ name) t) = (idx : idxs, qmap', t')
       where
         (idxs, qmap, t') = splitForalls t

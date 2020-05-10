@@ -10,11 +10,21 @@ import Lvm.Common.Id (Id, idFromString)
 import Lvm.Core.Type
 import qualified Text.Parsec as P
 
+-- We first parse the type of the function, then possible uniqueness constraints follow
+pConstraintType :: Parser Type
+pConstraintType = ap maybe TQTy <$> pType <*> P.optionMaybe (pToken (',') *> pTQTy)
+
+pTQTy :: Parser [(UAnn, UAnn)]
+pTQTy = pBrackets (P.sepBy pConstraint (pToken ','))
+
+pConstraint :: Parser (UAnn, UAnn)
+pConstraint = (,) <$> pLexeme pAnnVar <* pSymbol "<=" <*> pLexeme pAnnVar
+
 pTypeVariable :: Parser Int
 pTypeVariable = pLexeme $ P.string "v$" *> P.option "" (P.many1 P.lower) *> number
 
 pUniquenessVariable :: Parser Int
-pUniquenessVariable = pLexeme $ P.string "u$" *> number
+pUniquenessVariable = P.string "u$" *> number
 
 pUniqueQuantor :: Parser (Maybe String -> Quantor)
 pUniqueQuantor = Quantor <$> pUniquenessVariable <*> pure KAnn
@@ -29,13 +39,14 @@ pForall :: Parser Type
 pForall = TForall <$ pSymbol "forall" <*> pQuantor <* pToken '.' <*> pType
 
 pType :: Parser Type
-pType = pForall <|> pFunctionType
-
-pAnnVar :: Parser UAnn
-pAnnVar = UVar <$> pUniquenessVariable
+pType = pFunctionType <|> pForall
 
 pFun :: Parser (Type -> Type -> Type)
-pFun = ((TAp .) . TAp) <$> pTypeAtomUAnn (pSymbol "->" *> pure (TCon TConFun))
+pFun = ((TAp .) . TAp) <$ pSymbol "->" <*> pArrow
+
+pArrow :: Parser Type
+pArrow = P.option arr (flip addUAnnToType arr <$ pToken ':' <*> pUAnn)
+  where arr = TCon TConFun
 
 pFunctionType :: Parser Type
 pFunctionType = P.chainr1 pTypeAp pFun
@@ -55,12 +66,14 @@ pTypeAtomTypeVariable = TVar <$> pTypeVariable
 pTypeAtomAnn :: Parser Type -> Parser Type
 pTypeAtomAnn p = (typeToStrict <$ pToken '!' <*> pTypeAtomUAnn p) <|> pTypeAtomUAnn p
 
--- We first parse a type, the we parse an optionally uniqueness attribute
 pTypeAtomUAnn :: Parser Type -> Parser Type
-pTypeAtomUAnn p = p >>= (ap P.option ((<$> pUAnn) . flip addUAnnToType))
+pTypeAtomUAnn p = (addUAnnToType <$> pUAnn <* pToken ':' <*> p) <|> p
 
 pUAnn :: Parser UAnn
-pUAnn = pToken ':' *> (UShared <$ pToken 'w' <|> UUnique <$ pToken '1' <|> pAnnVar)
+pUAnn = (UShared <$ pToken 'w' <|> UUnique <$ pToken '1' <|> pAnnVar)
+
+pAnnVar :: Parser UAnn
+pAnnVar = UVar <$> pUniquenessVariable
 
 pTypeAtomList :: Parser Type
 pTypeAtomList = pBrackets pTypeAtomMaybeList

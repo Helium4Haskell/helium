@@ -57,6 +57,7 @@ data FloatPrecision = Float32 | Float64 deriving (Eq, Ord)
 
 applyWithArity :: Int -> Type -> Type
 applyWithArity 0 tp = tp
+applyWithArity n (TAp (TAp (TAp (TAnn _ _) (TCon TConFun)) _) tp) = applyWithArity (n - 1) tp
 applyWithArity n (TAp (TAp (TCon TConFun) _) tp) = applyWithArity (n - 1) tp
 applyWithArity _ tp = error ("Expected function type, got `" ++ showType tp ++ "' instead")
 

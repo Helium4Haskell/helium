@@ -50,6 +50,8 @@ constructorDataType :: DataTypeConstructor -> Id
 constructorDataType cons = findName $ findReturn $ constructorType cons
   where
     findReturn :: Type -> Type
+    findReturn (TQTy t _) = findReturn t
+    findReturn (TAp (TAp (TAp (TAnn _ _) (TCon TConFun)) _) t) = findReturn t
     findReturn (TForall _ t) = findReturn t
     findReturn (TAp (TAp (TCon TConFun) _) t) = findReturn t
     findReturn t = t
@@ -232,8 +234,11 @@ typeApplyArguments env t1@(TForall _ _) (Left t2 : args) = typeApplyArguments en
 typeApplyArguments env (TAp (TAp (TCon TConFun) _) tReturn) (Right _ : args) = typeApplyArguments env tReturn args
 typeApplyArguments env tp [] = tp
 typeApplyArguments env tp args = case tp' of
+  TQTy t cs ->  typeApplyArguments env t args
+  TForall (Quantor _ KAnn _) t ->  typeApplyArguments env t args
   TForall _ _
     | isLeft $ head args -> typeApplyArguments env tp' args
+  TAp (TAp (TAp (TAnn _ _) (TCon TConFun)) t1) t2 -> typeApplyArguments env (TAp (TAp (TCon TConFun) t1) t2) args
   TAp (TAp (TCon TConFun) _) _
     | isRight $ head args -> typeApplyArguments env tp' args
   _

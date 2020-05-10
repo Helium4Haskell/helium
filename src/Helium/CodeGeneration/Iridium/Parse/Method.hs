@@ -14,7 +14,7 @@ import qualified Text.Parsec as P
 
 pMethod :: Parser Method
 pMethod =
-  createMethod <$> P.optionMaybe (pToken (':') *> pBraces pType <* pToken ('$'))
+  createMethod <$> P.optionMaybe (pToken (':') *> pBraces pConstraintType <* pToken ('$'))
     <*> pParentheses (pMethodArguments)
     <*> pAnnotations
     <* pToken ':'
@@ -55,7 +55,7 @@ pBlock :: Parser Block
 pBlock = Block <$> pId <* pToken ':' <*> pInstruction
 
 pAbstractMethod :: Parser AbstractMethod
-pAbstractMethod = AbstractMethod <$> (pBrackets pUnsignedInt) <* pToken ':' <*> pBraces pType <*> pAnnotations
+pAbstractMethod = AbstractMethod <$> (pBrackets pUnsignedInt) <* pToken ':' <*> pBraces pConstraintType <*> pAnnotations
 
 pAnnotations :: Parser [Annotation]
 pAnnotations = P.option [] (pBrackets (P.sepBy pAnnotation (pToken ',')))

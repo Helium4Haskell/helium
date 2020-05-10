@@ -19,11 +19,10 @@ import Lvm.Core.Module
 import Lvm.Core.Type
 import Text.PrettyPrint.Leijen
 
-data TypeEnvironment
-  = TypeEnvironment
-      { typeEnvSynonyms :: IdMap Type,
-        typeEnvValues :: IdMap Type
-      }
+data TypeEnvironment = TypeEnvironment
+  { typeEnvSynonyms :: IdMap Type,
+    typeEnvValues :: IdMap Type
+  }
 
 typeEnvForModule :: CoreModule -> TypeEnvironment
 typeEnvForModule (Module _ _ _ _ decls) = TypeEnvironment (mapFromList synonyms) (mapFromList values)
@@ -32,7 +31,7 @@ typeEnvForModule (Module _ _ _ _ decls) = TypeEnvironment (mapFromList synonyms)
     values = mapMaybe findValue decls
     findValue :: CoreDecl -> Maybe (Id, Type)
     findValue decl
-      | isValue decl = Just (declName decl, typeRemoveArgumentStrictness $ declType decl)
+      | isValue decl = Just (declName decl, typeRemoveAnn $ declType decl)
       | otherwise = Nothing
     isValue :: CoreDecl -> Bool
     isValue DeclValue {} = True
@@ -105,6 +104,7 @@ typeOfCoreExpression env (Match name (Alt pat expr : _)) =
 -- Expression: e1 e2
 -- Resolve the type of e1, which should be a function type.
 typeOfCoreExpression env e@(Ap e1 e2) = case typeNotStrict $ typeNormalizeHead env $ typeOfCoreExpression env e1 of
+  TAp (TAp (TAp (TAnn _ _) (TCon TConFun)) _) tReturn -> tReturn
   TAp (TAp (TCon TConFun) _) tReturn -> tReturn
   tp -> internalError "Core.TypeEnvironment" "typeOfCoreExpression" $ "expected a function type in the first argument of a function application, got " ++ showType tp ++ " in expression " ++ show (pretty e)
 -- Expression: e1 { tp1 }
@@ -146,8 +146,8 @@ typeEqualIgnoreStrictness env = typeEqual' env False
 
 -- Checks type equivalence
 typeEqual' :: TypeEnvironment -> Bool -> Type -> Type -> Bool
-typeEqual' env False (TAp (TAnn _ _) t1) t2 = typeEqual' env False t1 t2 -- Ignore annotations
-typeEqual' env False t1 (TAp (TAnn _ _) t2) = typeEqual' env False t1 t2 -- Ignore annotations
+typeEqual' env False (TAp (TAnn _ _) t1) t2 = typeEqual' env False t1 t2 -- Ignore strictness
+typeEqual' env False t1 (TAp (TAnn _ _) t2) = typeEqual' env False t1 t2 -- Ignore strictness
 typeEqual' env True (TAp (TAnn a1 _) t1) (TAp (TAnn a2 _) t2) = a1 == a2 && typeEqual' env True t1 t2 -- Do use annotations
 typeEqual' env _ (TVar x1) (TVar x2) = x1 == x2
 typeEqual' env checkStrict t1@(TCon _) t2 = typeEqual'' env checkStrict t1 t2
@@ -159,7 +159,7 @@ typeEqual' env checkStrict (TForall (Quantor x _ _) t1) (TForall (Quantor y _ _)
 typeEqual' env _ _ _ = False
 
 typeEqual'' :: TypeEnvironment -> Bool -> Type -> Type -> Bool
-typeEqual'' env checkStrict t1 t2 = typeEqualNoTypeSynonym env checkStrict (typeNormalizeHead env (removeUAnnFromType t1)) (typeNormalizeHead env (removeUAnnFromType t2))
+typeEqual'' env checkStrict t1 t2 = typeEqualNoTypeSynonym env checkStrict (typeNormalizeHead env t1) (typeNormalizeHead env t2)
 
 -- Checks type equivalence, assuming that there is no synonym at the head of the type
 typeEqualNoTypeSynonym :: TypeEnvironment -> Bool -> Type -> Type -> Bool
@@ -188,9 +188,14 @@ typeFromFunctionType (FunctionType args ret) = foldr addArg ret args
     addArg (Right tp) = TAp $ TAp (TCon $ TConFun) tp
 
 extractFunctionTypeNoSynonyms :: Type -> FunctionType
+extractFunctionTypeNoSynonyms (TQTy tp _) = extractFunctionTypeNoSynonyms tp
+extractFunctionTypeNoSynonyms (TForall (Quantor _ KAnn _) tp) = extractFunctionTypeNoSynonyms tp
 extractFunctionTypeNoSynonyms (TForall quantor tp) = FunctionType (Left quantor : args) ret
   where
     FunctionType args ret = extractFunctionTypeNoSynonyms tp
+extractFunctionTypeNoSynonyms (TAp (TAp (TAp (TAnn _ _) (TCon TConFun)) tArg) tReturn) = FunctionType (Right tArg : args) ret
+  where
+    FunctionType args ret = extractFunctionTypeNoSynonyms tReturn
 extractFunctionTypeNoSynonyms (TAp (TAp (TCon TConFun) tArg) tReturn) = FunctionType (Right tArg : args) ret
   where
     FunctionType args ret = extractFunctionTypeNoSynonyms tReturn
@@ -199,10 +204,15 @@ extractFunctionTypeNoSynonyms tp = FunctionType [] tp
 extractFunctionTypeWithArity :: TypeEnvironment -> Int -> Type -> FunctionType
 extractFunctionTypeWithArity _ 0 tp = FunctionType [] tp
 extractFunctionTypeWithArity env arity tp = case typeNormalizeHead env tp of
+  TQTy tp' _ -> extractFunctionTypeWithArity env arity tp'
   TAp (TAnn _ _) tp' -> extractFunctionTypeWithArity env arity tp'
+  TForall (Quantor _ KAnn _) tp' -> extractFunctionTypeWithArity env arity tp'
   TForall quantor tp' ->
     let FunctionType args ret = extractFunctionTypeWithArity env arity tp'
      in FunctionType (Left quantor : args) ret
+  TAp (TAp (TAp _ (TCon TConFun)) tArg) tReturn ->
+    let FunctionType args ret = extractFunctionTypeWithArity env (arity - 1) tReturn
+     in FunctionType (Right tArg : args) ret
   TAp (TAp (TCon TConFun) tArg) tReturn ->
     let FunctionType args ret = extractFunctionTypeWithArity env (arity - 1) tReturn
      in FunctionType (Right tArg : args) ret
@@ -212,11 +222,12 @@ updateFunctionTypeStrictness :: TypeEnvironment -> [Bool] -> Type -> Type
 updateFunctionTypeStrictness _ strictness tp
   | all not strictness = tp -- No arguments are strict, type does not change
 updateFunctionTypeStrictness env (strict : strictness) tp = case typeNormalizeHead env tp of
+  TQTy tp' cs -> TQTy (updateFunctionTypeStrictness env (strict : strictness) tp') cs
   TForall quantor tp' -> TForall quantor $ updateFunctionTypeStrictness env (strict : strictness) tp'
-  TAp (TAp (TCon TConFun) tArg) tReturn ->
-    let tArg'
-          | strict = typeToStrict tArg
-          | otherwise = tArg
-     in TAp (TAp (TCon TConFun) tArg') $
-          updateFunctionTypeStrictness env strictness tReturn
-  _ -> error "updateFunctionTypeStrictness: expected function type"
+  TAp (TAp (TAp u (TCon TConFun)) tArg) tReturn -> updateFunctionTypeStrictness' tArg tReturn
+  TAp (TAp (TCon TConFun) tArg) tReturn -> updateFunctionTypeStrictness' tArg tReturn
+  t -> error ("updateFunctionTypeStrictness: expected function type: " ++ show t)
+  where updateFunctionTypeStrictness' tArg tReturn = let tArg' | strict = typeToStrict tArg
+                                                               | otherwise = tArg
+                                                     in TAp (TAp (TCon TConFun) tArg') $
+                                                        updateFunctionTypeStrictness env strictness tReturn

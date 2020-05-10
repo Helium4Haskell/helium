@@ -59,7 +59,9 @@ coreSaturate supply m =
     constructors = mapFromList [(declName d, declType d) | d <- moduleDecls m, isDeclCon d || isDeclExtern d]
 
 extractArguments :: Type -> [Type]
+extractArguments (TQTy t _) = extractArguments t
 extractArguments (TForall _ t) = extractArguments t
+extractArguments (TAp (TAp (TAp (TAnn _ _) (TCon TConFun)) t1) t2) = t1 : extractArguments t2
 extractArguments (TAp (TAp (TCon TConFun) t1) t2) = t1 : extractArguments t2
 extractArguments _ = []
 
@@ -121,6 +123,7 @@ requiredArgs :: Env -> Expr -> Maybe Type
 requiredArgs env expr =
   case expr of
     Ap e1 _ -> case requiredArgs env e1 of
+      Just (TAp (TAp (TAp (TAnn _ _) (TCon TConFun)) _) t) -> Just t
       Just (TAp (TAp (TCon TConFun) _) t) -> Just t
       Nothing -> Nothing
     ApType e1 t2 -> case requiredArgs env e1 of

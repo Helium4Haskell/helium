@@ -86,10 +86,10 @@ fromList :: [Analysis] -> Analysis
 fromList = foldr AJoin AEmpty
 
 analyseAbstractMethod :: Declaration AbstractMethod -> Analysis
-analyseAbstractMethod (Declaration name _ _ _ (AbstractMethod arity tp _)) = AVar name (DeclareGlobal arity) tp
+analyseAbstractMethod (Declaration name _ _ _ (AbstractMethod arity tp _)) = AVar name (DeclareGlobal arity) (typeRemoveUAnn tp)
 
 analyseMethod :: TypeEnvironment -> Declaration Method -> Analysis
-analyseMethod env (Declaration name _ _ _ method@(Method fnType args retType' _ block blocks)) =
+analyseMethod env (Declaration name _ _ _ method@(Method afnType args retType' _ block blocks)) =
   aCheck env fnType fnType' (TEMethod name fnType fnType')
     `AJoin` AVar name (DeclareGlobal $ length aArgs) fnType
     `AJoin` fromList aArgs
@@ -97,6 +97,7 @@ analyseMethod env (Declaration name _ _ _ method@(Method fnType args retType' _ 
     `AJoin` fromList (map (analyseBlock env retType) blocks)
   where
     fnType' = typeFromFunctionType $ methodFunctionType method
+    fnType = typeRemoveUAnn afnType
     retType = typeToStrict retType'
     aArgs = [AVar arg (DeclareLocal) tp | Right (Local arg tp) <- args]
 
@@ -134,7 +135,7 @@ analyseInstruction env returnType (Match var target instantiation fields next) =
     `AJoin` fromList (catMaybes $ zipWith analyseArg fields $ matchFieldTypes target instantiation)
     `AJoin` analyseInstruction env returnType next
   where
-    expectedType = matchArgumentType target instantiation
+    expectedType = typeRemoveUAnn $ matchArgumentType target instantiation
     analyseArg Nothing _ = Nothing
     analyseArg (Just name) tp = Just $ AVar name DeclareLocal tp
 analyseInstruction env returnType (Return var) =
@@ -150,7 +151,7 @@ analyseBind env bind@(Bind var target args) =
     `AJoin` aTarget
     `AJoin` fromList [variableToAnalysis arg | Right arg <- args]
   where
-    tp = bindType env bind
+    tp = typeRemoveUAnn $ bindType env bind
     aTarget = case target of
       BindTargetFunction var -> globalFunctionToAnalysis var
       BindTargetThunk var -> variableToAnalysis var

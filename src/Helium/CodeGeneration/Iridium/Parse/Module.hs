@@ -44,7 +44,7 @@ pDataTypeConstructorDeclaration = pDeclaration f
       (\n tp fs -> decl n (DataTypeConstructorDeclaration tp fs)) <$ pSymbol "constructor"
         <*> pDeclarationName
         <* pToken (':')
-        <*> pBraces pType
+        <*> pBraces pConstraintType
         <*> pFields
 
 pDataType :: Parser DataType

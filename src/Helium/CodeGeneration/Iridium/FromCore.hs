@@ -54,9 +54,9 @@ fromCoreAfterImports (importedCustoms, importedDatas, importTypes, importedAbstr
         Nothing
         coreEnv
     valuesFunctions = mapMapWithId (\fnName (tp, fnType) -> ValueFunction (functionTypeArity fnType) tp CCFast) $ functionsMap coreEnv mod
-    valuesAbstracts = mapFromList $ map (\(fnName, Declaration _ _ _ _ (AbstractMethod arity fnType annotations)) -> (fnName, ValueFunction arity fnType $ callingConvention annotations)) importedAbstracts
+    valuesAbstracts = mapFromList $ map (\(fnName, Declaration _ _ _ _ (AbstractMethod arity fnType annotations)) -> (fnName, ValueFunction arity (Core.typeRemoveUAnn fnType) $ callingConvention annotations)) importedAbstracts
     allConsList = map (\(name, Declaration qualified _ _ _ (DataType cons)) -> (name, cons)) importedDatas ++ listFromMap consMap
-    valuesCons = mapFromList $ allConsList >>= (\(dataName, cons) -> map (\(Declaration conName _ _ _ (DataTypeConstructorDeclaration tp fs)) -> (conName, ValueConstructor (DataTypeConstructor conName tp))) cons)
+    valuesCons = mapFromList $ allConsList >>= (\(dataName, cons) -> map (\(Declaration conName _ _ _ (DataTypeConstructorDeclaration tp fs)) -> (conName, ValueConstructor (DataTypeConstructor conName (Core.typeRemoveUAnn tp)))) cons)
 
 isImported :: Core.CoreDecl -> Bool
 isImported decl = Core.declModule decl /= Nothing
@@ -350,18 +350,22 @@ castTo supply env var from to
     (casted, _) = freshIdFromId (variableName var) supply
 castTo supply env var _ to = (var, id)
 
-
 maybeCasts :: NameSupply -> TypeEnv -> Core.Type -> [Either Core.Type Id] -> ([Either Core.Type Variable], Instruction -> Instruction, Core.Type)
 maybeCasts _ _ tp [] = ([], id, tp)
 maybeCasts supply env tp args'@(Right name : args) =
   case Core.typeNormalizeHead (teCoreEnv env) tp of
+    Core.TQTy tp' cs -> maybeCasts supply env tp' args'
+    Core.TForall (Core.Quantor _ Core.KAnn _) tp' -> maybeCasts supply env tp' args'
     Core.TAp (Core.TAnn _ _) tp' -> maybeCasts supply env tp' args'
-    Core.TAp (Core.TAp (Core.TCon Core.TConFun) tArg) tReturn ->
+    Core.TAp (Core.TAp (Core.TAp (Core.TAnn _ _) (Core.TCon Core.TConFun)) tArg) tReturn -> mc tArg tReturn
+    Core.TAp (Core.TAp (Core.TCon Core.TConFun) tArg) tReturn -> mc tArg tReturn
+    _ -> error ("FromCore.maybeCasts: expected function type, got " ++ Core.showType tp)
+  where
+    mc tArg tReturn =
       let (supply1, supply2) = splitNameSupply supply
           (var, instr) = maybeCast supply1 env name tArg
           (tailVars, tailInstr, returnType) = maybeCasts supply2 env tReturn args
        in (Right var : tailVars, instr . tailInstr, returnType)
-    _ -> error ("FromCore.maybeCasts: expected function type, got " ++ show tp)
 maybeCasts supply env tp (Left tpArg : args) =
   let tp' = Core.typeApply tp tpArg
       (tailVars, tailInstr, returnType) = maybeCasts supply env tp' args

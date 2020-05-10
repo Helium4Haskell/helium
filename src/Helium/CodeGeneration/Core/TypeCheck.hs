@@ -35,7 +35,7 @@ data Message
 instance Show Message where
   show (MessageExpected str tp (Just expr)) =
     "  Expected " ++ str ++ ", got `" ++ showType tp ++ "' instead"
-      ++ "  as the type of expression:\n\n"
+      ++ " as the type of expression:\n\n"
       ++ show (pretty expr)
   show (MessageExpected str tp Nothing) =
     "  Expected " ++ str ++ ", got `" ++ showType tp ++ "' instead"
@@ -92,7 +92,7 @@ checkDecl env decl = case checkDecl' env decl of
 checkDecl' :: TypeEnvironment -> CoreDecl -> Check ()
 checkDecl' env decl@DeclValue {} = do
   tp <- checkExpression env (valueValue decl) @@ "function " ++ show (declName decl)
-  assert env tp (declType decl) @@ "annotated type of function " ++ show (declName decl)
+  assert env tp (typeRemoveAnn (declType decl)) @@ "annotated type of function " ++ show (declName decl)
 checkDecl' env _ = return ()
 
 checkExpression :: TypeEnvironment -> Expr -> Check Type
