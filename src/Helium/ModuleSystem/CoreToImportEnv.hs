@@ -67,6 +67,11 @@ typeSchemeFromCore quantifiedType =
           Nothing -> qmap
           Just n -> (idx, n) : qmap
     splitForalls (Core.TAp (Core.TAnn _ _) t) = splitForalls t
+    splitForalls (Core.TAp t1 t2) =
+        let
+            (idxs1, qmap1, t1') = splitForalls t1
+            (idxs2, qmap2, t2') = splitForalls t2
+        in (idxs1 ++ idxs2, qmap1 ++ qmap2, Core.TAp t1' t2')
     splitForalls t = ([], [], t)
     splitPredicates :: Core.Type -> ([Predicate], Core.Type)
     splitPredicates (Core.TAp (Core.TAp (Core.TCon Core.TConFun) (Core.TAp (Core.TCon (Core.TConTypeClassDictionary className)) instanceType)) t) =
