@@ -79,7 +79,7 @@ renameExpr env (Ap e1 e2) = Ap (renameExpr env e1) (renameExpr env e2)
 renameExpr env (Lam strict var@(Variable x tp) expr) = Lam strict var $ renameExpr env' expr
   where
     env'
-      | typeIsStrict tp = insertStrict x env
+      | strict = insertStrict x env
       | otherwise = env
 renameExpr env (Var x) = Var $ lookupId env x
 renameExpr env (Con con name) = Con con $ lookupId env <$> name
