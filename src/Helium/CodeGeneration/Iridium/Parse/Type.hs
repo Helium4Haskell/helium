@@ -12,7 +12,10 @@ import qualified Text.Parsec as P
 
 -- We first parse the type of the function, then possible uniqueness constraints follow
 pConstraintType :: Parser Type
-pConstraintType = ap maybe TQTy <$> pType <*> P.optionMaybe (pToken (',') *> pTQTy)
+pConstraintType = pConstraintType' pType
+
+pConstraintType' :: Parser Type -> Parser Type
+pConstraintType' p = ap maybe TQTy <$> p <*> P.optionMaybe (pToken (',') *> pTQTy)
 
 pTQTy :: Parser [(UAnn, UAnn)]
 pTQTy = pBrackets (P.sepBy pConstraint (pToken ','))
@@ -39,7 +42,7 @@ pForall :: Parser Type
 pForall = TForall <$ pSymbol "forall" <*> pQuantor <* pToken '.' <*> pType
 
 pType :: Parser Type
-pType = pFunctionType <|> pForall
+pType = pConstraintType' pFunctionType <|> pForall
 
 pFun :: Parser (Type -> Type -> Type)
 pFun = ((TAp .) . TAp) <$ pSymbol "->" <*> pArrow
