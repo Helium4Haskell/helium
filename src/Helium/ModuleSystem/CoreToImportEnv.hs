@@ -206,7 +206,7 @@ insertDictionaries
       declCustoms = cs
     }
   env
-    | stringFromId ident == "ClassDefinition" =
+    | stringFromId ident == "classDefinition" =
       let tpVar = map (\(CustomDecl _ [CustomName n']) -> nameFromId n') $ selectCustoms "ClassTypeVariables" cs
           functions = map getFunction $ selectCustoms "Function" cs
           getFunction :: Custom -> (Name, TpScheme, Bool, HasDefault)
@@ -344,7 +344,7 @@ getImportEnvironment importedInModule decls = foldr (insertDictionaries imported
             declKind = DeclKindCustom ident,
             declCustoms = cs
           }
-            | stringFromId ident == "ClassDefinition" ->
+            | stringFromId ident == "classDefinition" ->
               let selectCustom :: String -> [Custom] -> [Custom]
                   selectCustom s = filter (isCustom s)
                   isCustom :: String -> Custom -> Bool

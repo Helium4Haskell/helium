@@ -288,17 +288,17 @@ constructClassMemberCustomDecl env name (Just (typevars, members)) _ = typeVarsD
     superClassesDecl =
       let Just classDef = M.lookup (getNameName name) (classEnvironment env)
           conv :: String -> Custom
-          conv super = CustomDecl (DeclKindCustom $ idFromString "SuperClass") [CustomName $ idFromString super]
+          conv super = CustomDecl (DeclKindCustom $ idFromString "superClass") [CustomName $ idFromString super]
        in map conv $ fst classDef
     typeVarsDecl :: Custom
     typeVarsDecl =
       CustomDecl
-        (DeclKindCustom $ idFromString "ClassTypeVariables")
+        (DeclKindCustom $ idFromString "classTypeVariables")
         (map (CustomName . idFromString . getNameName) typevars)
     functionToCustom :: (Name, TpScheme, Bool, HasDefault) -> Custom
     functionToCustom (locName, tps, _, fDefault) =
       CustomDecl
-        (DeclKindCustom $ idFromString "Function")
+        (DeclKindCustom $ idFromString "function")
         [ CustomName $ idFromString $ getNameName locName,
           CustomBytes $ bytesFromString $ show tps,
           if fDefault then CustomInt 1 else CustomInt 0
