@@ -100,20 +100,20 @@ catch action handler
   user errors
 ----------------------------------------------------------}
 error :: forall v$0. [Char] -> v$0
-error : export = forall v$0. \msg: [Char] -> ''_$helium_runtime_error'' {v$0} msg
+error : export = forall v$0. \msg: ([Char]) -> ''_$helium_runtime_error'' {v$0} msg
   -- = let! s = (packedFromString msg) in raise (UserError s)
 
 errorPacked :: forall v$0. [Char] -> v$0
-errorPacked : export = forall v$0. \msg: [Char] -> error {v$0} msg
+errorPacked : export = forall v$0. \msg: ([Char]) -> error {v$0} msg
   -- = raise (UserError msg)
 
 patternFail :: forall v$0. [Char] -> v$0
-patternFail : export = forall v$0. \msg: [Char] -> error {v$0} msg
+patternFail : export = forall v$0. \msg: ([Char]) -> error {v$0} msg
   {- = let! s   = packedFromString msg
          exn = PatternFailure s
     in raise (Runtime exn) -}
 
 patternFailPacked :: forall v$0. [Char] -> v$0
-patternFailPacked : export = forall v$0. \msg: [Char] -> error {v$0} msg
+patternFailPacked : export = forall v$0. \msg: ([Char]) -> error {v$0} msg
   {- = let! exn = PatternFailure msg
     in raise (Runtime exn) -}

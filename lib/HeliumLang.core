@@ -22,19 +22,19 @@ custom infix (:) : export [5,"right"]
 data '':->'' v$0 v$1
 
 ''$primPackedToString'' :: String -> String
-''$primPackedToString'' : export = \p: String -> p
+''$primPackedToString'' : export = \p: (String) -> p
 
 ''$primUnsafePerformIO'' :: forall v$0. IO v$0 -> v$0
-''$primUnsafePerformIO'' : export = forall v$0. \io: IO v$0 -> unsafePerformIO {v$0} io
+''$primUnsafePerformIO'' : export = forall v$0. \io: (IO v$0) -> unsafePerformIO {v$0} io
 
 ''$primPatternFailPacked'' :: forall v$0. String -> v$0
-''$primPatternFailPacked'' : export = forall v$0. \p: String -> patternFailPacked {v$0} p
+''$primPatternFailPacked'' : export = forall v$0. \p: (String) -> patternFailPacked {v$0} p
 
 ''$primErrorPacked'' :: forall v$0. String -> v$0
-''$primErrorPacked'' : export = forall v$0. \p: String -> errorPacked {v$0} p
+''$primErrorPacked'' : export = forall v$0. \p: (String) -> errorPacked {v$0} p
 
 ''$primConcat'' :: forall v$0. [[v$0]] -> [v$0]
-''$primConcat'' : export = forall v$0. \ !xss: [[v$0]] ->
+''$primConcat'' : export = forall v$0. \ !xss: ([[v$0]]) ->
     case xss of 
     {   '':[]'' {[v$0]} -> [] {v$0}
     ;   (:) {[v$0]} ys yss -> ''$primAppend'' {v$0} ys (''$primConcat'' {v$0} yss)
@@ -48,7 +48,7 @@ data '':->'' v$0 v$1
     }
     
 ''$primAppend'' :: forall v$0. [v$0] -> [v$0] -> [v$0] -- is '++'
-''$primAppend'' : export = forall v$0. \ !xs: [v$0] -> \ys: [v$0] ->
+''$primAppend'' : export = forall v$0. \ !xs: ([v$0]) -> \ys: ([v$0]) ->
     case xs of 
     {   '':[]'' { v$0 } -> ys
     ;   (:) {v$0} z zs -> (:) {v$0} z (''$primAppend'' {v$0} zs ys)
@@ -57,19 +57,19 @@ data '':->'' v$0 v$1
 -- Show
 
 showBool :: Bool -> String
-showBool : export = \ !b: Bool -> 
+showBool : export = \ !b: (Bool) ->
     case b of
     {   True -> "True"
     ;   default -> "False"
     }
 
 showChar :: Char -> String
-showChar : export = \c: Char ->
+showChar : export = \c: (Char) ->
     (:) {Char} '\'' (''$primAppend'' {Char} (safeShowChar True c) 
                          "\'")
 
 safeShowChar :: Bool -> Char -> String
-safeShowChar = \ !inChar: Bool -> \ !c: Char -> case c of
+safeShowChar = \ !inChar: (Bool) -> \ !c: (Char) -> case c of
     { '\a' -> "\\a"
     ; '\b' -> "\\b"
     ; '\f' -> "\\f"
@@ -84,9 +84,9 @@ safeShowChar = \ !inChar: Bool -> \ !c: Char -> case c of
                              ; default -> "\\\""
                              }
     ; default -> 
-        let! cInt: Int = ''$primCharToInt'' c in
-        let! geq32: Bool = (>=#) cInt 32 in case geq32 of
-        {   True -> let! lt127: Bool = (<#) cInt 127 in case lt127 of
+        let! cInt: (Int) = ''$primCharToInt'' c in
+        let! geq32: (Bool) = (>=#) cInt 32 in case geq32 of
+        {   True -> let! lt127: (Bool) = (<#) cInt 127 in case lt127 of
             {   True -> (:) { Char } c ([] { Char })
             ;   default -> (:) {Char} '\\' (showInt cInt)
             }
@@ -95,8 +95,8 @@ safeShowChar = \ !inChar: Bool -> \ !c: Char -> case c of
     }
 
 showInt :: Int -> String
-showInt : export = \ !n: Int ->
-    let! isNeg: Bool = (<#) n 0 in case isNeg of
+showInt : export = \ !n: (Int) ->
+    let! isNeg: (Bool) = (<#) n 0 in case isNeg of
     {   True -> (:) {Char} '(' ((:) {Char} '-' 
                     (''$primAppend'' {Char}
                         (showPositiveInt (negInt n)) 
@@ -106,12 +106,12 @@ showInt : export = \ !n: Int ->
     } 
 
 showPositiveInt :: Int -> String
-showPositiveInt = \i: Int ->
-    let! rest: Int = quot i 10
-    in let! digitInt: Int = (+#) 48 (rem i 10) -- 48 is '0'
-    in let! digit: Char = ''$primIntToChar'' digitInt
-    in let! digits: [Char] = (:) {Char} digit ('':[]'' {Char})
-    in let! done: Bool = (==#) rest 0
+showPositiveInt = \i: (Int) ->
+    let! rest: (Int) = quot i 10
+    in let! digitInt: (Int) = (+#) 48 (rem i 10) -- 48 is '0'
+    in let! digit: (Char) = ''$primIntToChar'' digitInt
+    in let! digits: ([Char]) = (:) {Char} digit ('':[]'' {Char})
+    in let! done: (Bool) = (==#) rest 0
     in
         case done of
         {   True -> digits

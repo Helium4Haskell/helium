@@ -17,10 +17,10 @@ custom infix (**.) : export [8,"right"]
 custom infix ($!)  : export [0,"right"]
 
 primOrd :: Char -> Int
-primOrd : export = \x: Char -> ''$primCharToInt'' x
+primOrd : export = \x: (Char) -> ''$primCharToInt'' x
 
 primChr :: Int -> Char
-primChr : export = \x: Int -> ''$primIntToChar'' x
+primChr : export = \x: (Int) -> ''$primIntToChar'' x
 
 
 {--------------------------------------------------------------------------

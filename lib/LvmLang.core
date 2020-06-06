@@ -28,125 +28,125 @@ type PackedString = String
   Strictness
 ----------------------------------------------------------}
 ($!) :: forall v$0. forall v$1. (v$0 -> v$1) -> v$0 -> v$1
-($!) : export = forall v$0. forall v$1. \ !f: (v$0 -> v$1) -> \ !x: v$0 -> f x
+($!) : export = forall v$0. forall v$1. \ !f: (v$0 -> v$1) -> \ !x: (v$0) -> f x
 
 {----------------------------------------------------------
   Basic arithmetic on Int's
 ----------------------------------------------------------}
 (+#) :: Int -> Int -> Int
-(+#) : export = \ !x: Int -> \ !y: Int -> primAddInt x y
+(+#) : export = \ !x: (Int) -> \ !y: (Int) -> primAddInt x y
 
 (-#) :: Int -> Int -> Int
-(-#) : export = \ !x: Int -> \ !y: Int -> primSubInt x y
+(-#) : export = \ !x: (Int) -> \ !y: (Int) -> primSubInt x y
 
 (*#) :: Int -> Int -> Int
-(*#) : export = \ !x: Int -> \ !y: Int -> primMulInt x y
+(*#) : export = \ !x: (Int) -> \ !y: (Int) -> primMulInt x y
 
 -- TODO: Round to -inf instead of zero
 div :: Int -> Int -> Int
-div : export = \ !x: Int -> \ !y: Int -> quot x y -- primDivInt x y
+div : export = \ !x: (Int) -> \ !y: (Int) -> quot x y -- primDivInt x y
 
 -- TODO: Round to -inf instead of zero
 mod :: Int -> Int -> Int
-mod : export = \ !x: Int -> \ !y: Int -> rem x y -- primModInt x y
+mod : export = \ !x: (Int) -> \ !y: (Int) -> rem x y -- primModInt x y
 
 quot :: Int -> Int -> Int
-quot : export = \ !x: Int -> \ !y: Int -> primQuotInt x y
+quot : export = \ !x: (Int) -> \ !y: (Int) -> primQuotInt x y
 
 rem :: Int -> Int -> Int
-rem : export = \ !x: Int -> \ !y: Int -> primRemInt x y
+rem : export = \ !x: (Int) -> \ !y: (Int) -> primRemInt x y
 {-
 and :: Int -> Int -> Int
-and = \x: Int -> \y: Int -> primAndInt x y
+and = \x: (Int) -> \y: (Int) -> primAndInt x y
 
 xor :: Int -> Int -> Int
-xor = \x: Int -> \y: Int -> primXorInt x y
+xor = \x: (Int) -> \y: (Int) -> primXorInt x y
 
 or :: Int -> Int -> Int
-or = \x: Int -> \y: Int -> primOrInt x y
+or = \x: (Int) -> \y: (Int) -> primOrInt x y
 -}
 shr :: Int -> Int -> Int
-shr : export = \ !x: Int -> \ !y: Int -> primShrInt x y
+shr : export = \ !x: (Int) -> \ !y: (Int) -> primShrInt x y
 
 shl :: Int -> Int -> Int
-shl : export = \ !x: Int -> \ !y: Int -> primShlInt x y
+shl : export = \ !x: (Int) -> \ !y: (Int) -> primShlInt x y
 
 shrNat :: Int -> Int -> Int
-shrNat : export = \ !x: Int -> \ !y: Int -> primShrNat x y
+shrNat : export = \ !x: (Int) -> \ !y: (Int) -> primShrNat x y
 
 negInt :: Int -> Int
-negInt : export = \ !x: Int -> primNegInt x
+negInt : export = \ !x: (Int) -> primNegInt x
 
 {----------------------------------------------------------
   Comparisons on Int's
 ----------------------------------------------------------}
 (==#) :: Int -> Int -> Bool
-(==#) : export = \ !x: Int -> \ !y: Int -> primEqInt x y
+(==#) : export = \ !x: (Int) -> \ !y: (Int) -> primEqInt x y
 
 (/=#) :: Int -> Int -> Bool
-(/=#) : export = \ !x: Int -> \ !y: Int -> primNeInt x y
+(/=#) : export = \ !x: (Int) -> \ !y: (Int) -> primNeInt x y
 
 (<#) :: Int -> Int -> Bool
-(<#) : export = \ !x: Int -> \ !y: Int -> primLtInt x y
+(<#) : export = \ !x: (Int) -> \ !y: (Int) -> primLtInt x y
 
 (>#) :: Int -> Int -> Bool
-(>#) : export = \ !x: Int -> \ !y: Int -> primGtInt x y
+(>#) : export = \ !x: (Int) -> \ !y: (Int) -> primGtInt x y
 
 (<=#) :: Int -> Int -> Bool
-(<=#) : export = \ !x: Int -> \ !y: Int -> primLeInt x y
+(<=#) : export = \ !x: (Int) -> \ !y: (Int) -> primLeInt x y
 
 (>=#) :: Int -> Int -> Bool
-(>=#) : export = \ !x: Int -> \ !y: Int -> primGeInt x y
+(>=#) : export = \ !x: (Int) -> \ !y: (Int) -> primGeInt x y
 
 {----------------------------------------------------------
   Basic arithmetic on Float's
 ----------------------------------------------------------}
 
 (+.) :: Float -> Float -> Float
-(+.) : export = \x: Float -> \y: Float -> primAddFloat x y
+(+.) : export = \x: (Float) -> \y: (Float) -> primAddFloat x y
 
 (-.) :: Float -> Float -> Float
-(-.) : export = \x: Float -> \y: Float -> primSubFloat x y
+(-.) : export = \x: (Float) -> \y: (Float) -> primSubFloat x y
 
 (*.) :: Float -> Float -> Float
-(*.) : export = \x: Float -> \y: Float -> primMulFloat x y
+(*.) : export = \x: (Float) -> \y: (Float) -> primMulFloat x y
 
 (/.) :: Float -> Float -> Float
-(/.) : export = \x: Float -> \y: Float -> primDivFloat x y
+(/.) : export = \x: (Float) -> \y: (Float) -> primDivFloat x y
 
 negFloat :: Float -> Float
-negFloat : export = \x: Float -> primNegFloat x
+negFloat : export = \x: (Float) -> primNegFloat x
 
 {----------------------------------------------------------
   Comparisons on Float's
 ----------------------------------------------------------}
 
 (==.) :: Float -> Float -> Bool
-(==.) : export = \x: Float -> \y: Float -> primEqFloat x y
+(==.) : export = \x: (Float) -> \y: (Float) -> primEqFloat x y
 
 (/=.) :: Float -> Float -> Bool
-(/=.) : export = \x: Float -> \y: Float -> primNeFloat x y
+(/=.) : export = \x: (Float) -> \y: (Float) -> primNeFloat x y
 
 (<.) :: Float -> Float -> Bool
-(<.) : export = \x: Float -> \y: Float -> primLtFloat x y
+(<.) : export = \x: (Float) -> \y: (Float) -> primLtFloat x y
 
 (>.) :: Float -> Float -> Bool
-(>.) : export = \x: Float -> \y: Float -> primGtFloat x y
+(>.) : export = \x: (Float) -> \y: (Float) -> primGtFloat x y
 
 (<=.) :: Float -> Float -> Bool
-(<=.) : export = \x: Float -> \y: Float -> primLeFloat x y
+(<=.) : export = \x: (Float) -> \y: (Float) -> primLeFloat x y
 
 (>=.) :: Float -> Float -> Bool
-(>=.) : export = \x: Float -> \y: Float -> primGeFloat x y
+(>=.) : export = \x: (Float) -> \y: (Float) -> primGeFloat x y
 
 {----------------------------------------------------------
   Packed strings
 ----------------------------------------------------------}
 stringFromPacked :: PackedString -> String
-stringFromPacked : export = \p: String -> p
+stringFromPacked : export = \p: (String) -> p
 
 packedFromString :: String -> PackedString
-packedFromString : export = \s: String -> s
+packedFromString : export = \s: (String) -> s
   {- = let forced s = case s of
                      []       -> []
                      (:) x xs -> let! y  = x
@@ -191,20 +191,20 @@ foldlStrict f z xs
 -}
 
 getChar :: IO Char
-getChar : export = IO { Char } (\world: RealWorld -> ''$primGetChar'' world)
+getChar : export = IO { Char } (\world: (RealWorld) -> ''$primGetChar'' world)
 
 putChar :: Char -> IO ()
-putChar : export = \char: Char -> IO { () }
-  (\world: RealWorld -> let! res: IORes Int = ''$primPutChar'' char world in case res of
+putChar : export = \char: (Char) -> IO { () }
+  (\world: (RealWorld) -> let! res: (IORes Int) = ''$primPutChar'' char world in case res of
     IORes { Int } _ world2 -> IORes { () } () world2
   )
 
 putStrLn :: String -> IO ()
 putStrLn : export =
-  let print: ([Char] -> Int) = \str: [Char] -> ''_$helium_runtime_print_string'' str
+  let print: ([Char] -> Int) = \str: ([Char]) -> ''_$helium_runtime_print_string'' str
   in
-    \str: String ->
-      IO {()} (\realworld: RealWorld ->
+    \str: (String) ->
+      IO {()} (\realworld: (RealWorld) ->
         seq {Int} {IORes ()}
           (print "\n")
           (seq {Int} {IORes ()}
