@@ -58,17 +58,14 @@ en eigenlijk is afterTypeInferEnv te groot. alleen locale types en constructoren
 
         -- Find imports from the declarations used
         extraModules = nub $ mapMaybe declModule extraDecls
-        
-        -- Expressions using imported declarations need to be qualified, so we 
-        -- create a map from the those declarations
-        exported = filter (accessPublic . declAccess) (moduleDecls coreModule)
-        (valuesMap, typesMap) = lvmImportRenameMap $ nubDecls (exported ++ extraDecls)
 
+        -- Expressions in the module need to be qualified, so we create a map from the those declarations
+        (valuesMap, typesMap) = lvmImportRenameMap $ nubDecls (moduleDecls coreModule ++ extraDecls)
         strippedCoreModule = lvmImportQualifyModule (valuesMap, typesMap) coreModule False
-        
-        -- The imported declarations need to be added seperately to the module 
-        -- or they will be nonsensically qualified. 
-        strippedModuleWithImports = removeDoubleDecls $ coreRemoveDead $ coreModule 
+
+        -- The imported declarations need to be added seperately to the module
+        -- or they will be nonsensically qualified.
+        strippedModuleWithImports = removeDoubleDecls $ coreRemoveDead $ coreModule
             { moduleDecls = moduleDecls strippedCoreModule ++ extraDecls
             , moduleImports = extraModules
             }

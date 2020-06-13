@@ -320,7 +320,7 @@ setExportsPublic implicit (exports, exportCons, exportData, exportDataCon, expor
                 | elemSet (moduleName m) exportMods -> True
                 | otherwise -> elemIdSet
     declPublic decl_ =
-      let name = declName decl_
+      let name = idFromString (unQualifyString (stringFromId (declName decl_)))
        in case decl_ of
             DeclValue {} -> isExported decl_ (elemSet name exports)
             DeclAbstract {} ->
