@@ -30,7 +30,7 @@ SEM Pattern
 
     | As                    (loc.tpScheme, loc.coreType) = declarationTypeInPattern @lhs.typeOutput @name.self @lhs.betaDeclUnique
                             lhs.vars    = (@name.self, @loc.tpScheme) : @pattern.vars
-                            lhs.patternTypes = M.singleton @name.self $ findCoreType @lhs.typeOutput @lhs.betaDeclUnique
+                            lhs.patternTypes = M.insert @name.self (findCoreType @lhs.typeOutput @lhs.betaDeclUnique) @pattern.patternTypes
     --  range                    : Range
     --  name                     : Name
     --  pattern                  : Pattern
