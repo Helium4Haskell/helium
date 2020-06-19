@@ -43,6 +43,7 @@ reduceThunksInAlt :: Alt -> Alt
 reduceThunksInAlt (Alt pat expr) = Alt pat $ reduceThunksInExpr expr
 
 isCheap :: Expr -> Bool
+isCheap (Lit (LitBytes _)) = False
 isCheap (Lit _) = True
 -- A constructor (or applied constructor) is cheap
 isCheap (Ap l _) = isCheap l
