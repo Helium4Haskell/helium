@@ -32,15 +32,14 @@ void* helium_global_common_alloc(int size) {
 }
 
 void* helium_global_fn_alloc(int size) {
-  void* pointer = helium_global_common_alloc(size);
+  return helium_global_common_alloc(size);
+}
+
+void* helium_global_ds_alloc(int size) {
 #if defined(DEBUG)
   total_memory += size;
 #endif
 
-  return pointer;
-}
-
-void* helium_global_ds_alloc(int size) {
   return helium_global_common_alloc(size);
 }
 
@@ -77,7 +76,7 @@ int main() {
     exit(1);
   }
 
-#ifdef defined(DEBUG)
+#if defined(DEBUG)
   print_memory_usage();
 #endif
 
