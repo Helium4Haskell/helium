@@ -26,13 +26,19 @@ collectUnique (DeclValue {declName = name, declType = tp} : xs) =
       False -> s
 collectUnique (_:xs) = collectUnique xs
 
+typeExtractAnnotatedFunction :: Type -> [Type]
+typeExtractAnnotatedFunction (TQTy t _) = typeExtractAnnotatedFunction t
+typeExtractAnnotatedFunction (TForall _ t) = typeExtractAnnotatedFunction t
+typeExtractAnnotatedFunction (TAp (TAp (TAp _ (TCon TConFun)) t1) t2) = t1 : typeExtractAnnotatedFunction t2
+typeExtractAnnotatedFunction _ = []
+
 isUniqueFunction :: Type -> Bool
-isUniqueFunction (TForall _ t) = isUniqueFunction t
-isUniqueFunction (TAp (TAp (TCon TConFun) t1) t2) = isUniqueType t1 || isUniqueFunction t2
-isUniqueFunction _ = False
+isUniqueFunction t = any isUniqueType ts
+  where ts = typeExtractAnnotatedFunction t
 
 isUniqueType :: Type -> Bool
 isUniqueType (TAp (TAnn _ UUnique) _) = True
+isUniqueType (TAp t1 t2) = isUniqueType t1 || isUniqueType t2
 isUniqueType _ = False
 
 -- | Duplicates a declaration if it is a member of the Set
