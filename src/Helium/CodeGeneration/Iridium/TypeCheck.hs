@@ -156,7 +156,8 @@ analyseBind env bind@(Bind var target args) =
       BindTargetFunction var -> globalFunctionToAnalysis var
       BindTargetThunk var -> variableToAnalysis var
       BindTargetConstructor _ name -> case name of
-        Just a -> AVar a UseLocal tp
+        -- TODO: get type of a (not trivial)
+        Just a -> AEmpty
         Nothing -> AEmpty
       _ -> AEmpty
 
