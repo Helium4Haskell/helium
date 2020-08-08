@@ -15,7 +15,8 @@ extern int real_main(void);
 int helium_global_remaining = 0;
 void* helium_global_next;
 
-int total_memory = 0;
+int total_fn_memory = 0;
+int total_ds_memory = 0;
 
 void* helium_global_common_alloc(int size) {
   if (size > helium_global_remaining) {
@@ -32,19 +33,24 @@ void* helium_global_common_alloc(int size) {
 }
 
 void* helium_global_fn_alloc(int size) {
+#if defined(DEBUG)
+  total_fn_memory += size;
+#endif
+
   return helium_global_common_alloc(size);
 }
 
 void* helium_global_ds_alloc(int size) {
 #if defined(DEBUG)
-  total_memory += size;
+  total_ds_memory += size;
 #endif
 
   return helium_global_common_alloc(size);
 }
 
 void print_memory_usage() {
-  printf("memory alloc: %d\n", total_memory);
+  printf("data memory alloc: %d\n", total_ds_memory);
+  printf("thunk memory alloc: %d\n", total_fn_memory);
 }
 
 void* thread_main(void* arg) {
