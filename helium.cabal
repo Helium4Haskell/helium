@@ -93,6 +93,16 @@ source-repository head
   
 --------------------------------------------------------------------------------
 
+Executable testUniqueness
+  Build-Depends:     base >= 3 && < 5, containers, mtl, parsec, network >= 2.7 && < 3.1, process, transformers, filepath, directory, wl-pprint, Top >= 1.9, lvmlib >= 1.9, helium
+  ghc-options:       -Wall
+  default-language:  Haskell98
+  hs-source-dirs:    src/commands/testUniqueness
+  Main-is:           Main.hs
+  other-modules:     Paths_helium
+
+--------------------------------------------------------------------------------
+
 Executable helium
   Build-Depends:     base >= 3 && < 5, containers, mtl, parsec, network >= 2.7 && < 3.1, process, transformers, filepath, directory, wl-pprint, Top >= 1.9, lvmlib >= 1.9, helium
   ghc-options:       -Wall
@@ -150,9 +160,6 @@ Library
     Helium.CodeGeneration.DerivingUtils
     Helium.CodeGeneration.PatternMatch
     Helium.CodeGeneration.Core
-    Helium.CodeGeneration.Core.Uniqueness.Data
-    Helium.CodeGeneration.Core.Uniqueness.Duplicating
-    Helium.CodeGeneration.Core.Uniqueness.Analysis
     Helium.CodeGeneration.Core.FunctionType
     Helium.CodeGeneration.Core.LetInline
     Helium.CodeGeneration.Core.LetSort
@@ -167,6 +174,10 @@ Library
     Helium.CodeGeneration.Core.TypeCheck
     Helium.CodeGeneration.Core.TypeEnvironment
     Helium.CodeGeneration.Core.Uniqueness.Data
+    Helium.CodeGeneration.Core.Uniqueness.Duplicating
+    Helium.CodeGeneration.Core.Uniqueness.Analysis
+    Helium.CodeGeneration.Core.Uniqueness.Solving
+    Helium.CodeGeneration.Core.Uniqueness.Testing
     Helium.CodeGeneration.Iridium.Data
     Helium.CodeGeneration.Iridium.FromCore
     Helium.CodeGeneration.Iridium.Type

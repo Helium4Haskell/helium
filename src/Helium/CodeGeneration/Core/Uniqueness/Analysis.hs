@@ -194,7 +194,7 @@ algorithmUDecl is dname access expr = do
   -- seperate private definitions from public ones
   let (ue1, ue2) = partitionWithKeyS (\k _ -> elemMap k is) ue
   -- for exported and imported definitions, usage is shared
-  sequence_ (foldrS (\u' cs -> addAEqConstraint u' UShared : cs) [] ue2)
+  sequence_ (foldrS (\u' cs -> addAEqConstraint UShared u' : cs) [] ue2)
   -- if function is exported then usage is shared otherwise add quality constraint
   -- between value in the map and the usage returned from this function.
   case accessPublic access of
@@ -446,7 +446,7 @@ algorithmUCAp' :: Expr -> Infer (Type, UsEnv)
 algorithmUCAp' (ApType e (TAnn _ cu)) = do
   (tp, m) <- algorithmUCm e
   -- Since we have a memory reuse, annotation on variable m must be unique
-  addAEqConstraint cu UUnique
+  addAEqConstraint UUnique cu
   -- Return tp and empty usage environment: usage is already added to usage list
   return (tp, singletonS (m, cu))
 algorithmUCAp' (Ap e1 (Var i)) = do
