@@ -293,6 +293,9 @@ instance Substitutable UAnn where
 instance Substitutable a => Substitutable [a] where
   apply = fmap . apply
 
+instance (Ord a, Substitutable a) => Substitutable (S.Set a) where
+  apply = S.map . apply
+
 nonMutId :: Id -> Id
 nonMutId i = idFromString (stringFromId i ++ "_nonmut")
 
@@ -422,8 +425,7 @@ instantiate i t v a = (,) <$> instantiate' i t v a <*> fresh
 
 instantiate' :: Id -> Type -> Visibility -> Annotated -> Infer Type
 instantiate' _ t v a
-  | v == Extern || v == Global && a == AYes =
-    instantiateType t
+  | v == Extern || v == Global && a == AYes = instantiateType t
 instantiate' _ t Local AYes = return t
 instantiate' i t _ _ = do
   t' <- initEnvFType t
@@ -431,22 +433,30 @@ instantiate' i t _ _ = do
   return t'
 
 instantiateType :: Type -> Infer Type
-instantiateType (TQTy t us) = instantiateType' mempty us t
+instantiateType t =
+  do
+    (t', cs) <- instantiateConstrainedType t
+    mapM_ (tellAConstraint) cs
+    return t'
 
-instantiateType' :: Substitutions -> [(UAnn, UAnn)] -> Type -> Infer Type
+instantiateConstrainedType :: (MonadUnique m) => Type -> m (Type, [AConstraint])
+instantiateConstrainedType (TQTy t us) = instantiateType' mempty us t
+instantiateConstrainedType t = instantiateType' mempty [] t
+
+instantiateType' :: (MonadUnique m) => Substitutions -> [(UAnn, UAnn)] -> Type -> m (Type, [AConstraint])
 instantiateType' s us (TForall (Quantor a KAnn _) t) = do
   a' <- fresh
   instantiateType' (insertS a a' s) us t
-instantiateType' s us t = do
-  let t' = apply s t
-      cs = apply s (fmap (uncurry AInEqConstraint) us)
-  mapM_ (tellAConstraint) cs
-  return t'
+instantiateType' s us t = return (apply s t, apply s (fmap (uncurry AInEqConstraint) us))
 
-generalize :: Type -> Type
-generalize t = foldr (\a t' -> TForall (Quantor a KAnn Nothing) t') t favs
+generalize :: S.Set UAnn -> Type -> Type
+generalize ms t = foldr (\a t' -> TForall (Quantor a KAnn Nothing) t') t favs
   where
-    favs = fav t
+    favs = fav t `S.difference` (removeNonUVar ms)
+
+removeNonUVar :: S.Set UAnn -> S.Set UVar
+removeNonUVar = S.map (\(UVar u) -> u) . S.filter nonUVar
+  where nonUVar a = a == UShared || a == UNone || a == UUnique
 
 ----------------------------------------------------------------
 -- Constraints
@@ -515,7 +525,7 @@ makeGlobalTIConstraints f am = mapMapWithId makeGlobalTIConstraint am
 addLetTConstraints ::[Id] -> [Type] -> S.Set UAnn -> Infer a -> Infer a
 addLetTConstraints is ts ms m = censor addLetTConstraints' m
   where
-    addLetTConstraints' w = foldr (uncurry (addLetTConstraint False ms)) w (zip is ts)
+    addLetTConstraints' w = foldr (uncurry (addLetTConstraint True ms)) w (zip is ts)
 
 addLetTConstraint :: Bool -> S.Set UAnn -> Id -> Type -> WEnv -> WEnv
 addLetTConstraint b ms i t we@(WEnv {assumptions = at, tconstraints = tcs}) =
