@@ -18,6 +18,7 @@ import Data.List (group, groupBy, sort, elemIndex)
 import qualified Control.Exception as CE (catch, IOException, evaluate)
 import System.FilePath
 import Helium.Utils.Logger
+import Data.Char (toUpper)
 
 -- | Concrete representation of holes
 hole :: String
@@ -159,3 +160,7 @@ readSourceFile fullName =
 maxInt, minInt :: Integer
 maxInt = 1073741823
 minInt = -1073741823
+
+firstUpper :: String -> String
+firstUpper (c:cs) = toUpper c : cs
+firstUpper []     = []

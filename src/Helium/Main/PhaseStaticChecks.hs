@@ -9,6 +9,7 @@
 module Helium.Main.PhaseStaticChecks(phaseStaticChecks) where
 import Helium.ModuleSystem.GatherImports (ModuleDecls)
 import Helium.Main.CompileUtils
+import Helium.Utils.Utils (firstUpper)
 import Helium.StaticAnalysis.Messages.Warnings(Warning)
 import qualified Helium.StaticAnalysis.StaticChecks.StaticChecks as SC
 import Helium.Syntax.UHA_Syntax (Name)
@@ -26,7 +27,7 @@ phaseStaticChecks fullName module_ importEnvsWithMod options = do
         importEnvs = map (\(_,b,_) -> b) importEnvsWithMod
 
         res = SC.wrap_Module (SC.sem_Module module_) SC.Inh_Module {
-                 SC.baseName_Inh_Module = baseName,
+                 SC.baseName_Inh_Module = firstUpper baseName,
                  SC.importEnvironmentsWithMod_Inh_Module = importEnvsWithMod,
                  SC.options_Inh_Module = options }
 

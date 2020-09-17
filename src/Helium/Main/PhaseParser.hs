@@ -15,6 +15,7 @@ import Helium.Parser.ParseLibrary(runHParser)
 import Text.ParserCombinators.Parsec.Error (ParseError)
 import Helium.Syntax.UHA_Syntax(Name(..), MaybeName(..))
 import Helium.Syntax.UHA_Range(noRange)
+import Helium.Utils.Utils (firstUpper)
 
 phaseParser :: 
    String -> [Token] -> [Option] -> 
@@ -27,7 +28,7 @@ phaseParser fullName tokens options = do
         Left parseError ->
             return (Left [parseError])
         Right m ->
-            do let fixedm = fixModuleName m baseName
+            do let fixedm = fixModuleName m $ firstUpper baseName
                return (Right fixedm)
 
 -- | Make sure the module has a name. If there is no name (module without
