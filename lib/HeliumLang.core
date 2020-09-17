@@ -27,6 +27,9 @@ data '':->'' v$0 v$1
 ''$primUnsafePerformIO'' :: forall v$0. IO v$0 -> v$0
 ''$primUnsafePerformIO'' : export = forall v$0. \io: IO v$0 -> unsafePerformIO {v$0} io
 
+''$primUnsafePerformIOZero'' :: forall v$0. IO v$0 -> Int
+''$primUnsafePerformIOZero'' : export = forall v$0. \io: IO v$0 -> seq {v$0} {Int} (unsafePerformIO {v$0} io) 0
+
 ''$primPatternFailPacked'' :: forall v$0. String -> v$0
 ''$primPatternFailPacked'' : export = forall v$0. \p: String -> patternFailPacked {v$0} p
 

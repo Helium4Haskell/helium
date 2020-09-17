@@ -864,7 +864,7 @@ class Show a where
     showList (x:xs) s = '[' : shows x (showList' shows xs s)
 
 showList' :: (a -> ShowS) -> [a] -> ShowS
-showList' showx []     s = ']' : s
+showList' _     []     s = ']' : s
 showList' showx (y:ys) s = ',' : showx y (showList' showx ys s)
 
 

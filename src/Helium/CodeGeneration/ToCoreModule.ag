@@ -38,7 +38,7 @@ insertedMain env moduleName toplevelTypes =
                     case (M.lookup (Name_Identifier noRange [] [] interpreterMain) $! toplevelTypes) of -- !!!Name
                         Just t -> Just (interpreterMain, t)
                         Nothing -> Nothing
-        d tp expr = Just $ decl False "main" tp $ app_ (Core.ApType unsafePIO tp) expr
+        d tp expr = Just $ decl False "main" (Core.TCon $ Core.TConDataType $ idFromString "Int") $ app_ (Core.ApType unsafePIO tp) expr
     in
         case maybeWrapMainAndType of 
             Nothing ->
@@ -57,7 +57,7 @@ insertedMain env moduleName toplevelTypes =
                 where                        
                     (qs, tp) = split (snd (instantiate 123456789 tpScheme))
     where
-        unsafePIO = var "$primUnsafePerformIO"    
+        unsafePIO = var "$primUnsafePerformIOZero"    
                 
 }
 
