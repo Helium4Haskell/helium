@@ -52,12 +52,9 @@ SEM MaybeDeclarations [ | |   core : { Core.Expr -> Core.Expr } ]
 
 SEM Declaration
     | Type
-            (loc.qualname, loc.access, loc.module)
-                        = if @lhs.isTopLevel 
-                            then ( addQualified @lhs.moduleQual @simpletype.name
-                                    , Core.Export (idFromName @simpletype.name)
-                                    , Just (idFromString @lhs.modulename))
-                            else (@simpletype.name, Core.Private, Nothing)
+            loc.qualname = if @lhs.isTopLevel 
+                             then addQualified @lhs.moduleQual @simpletype.name
+                             else @simpletype.name
             lhs.decls  =
         let -- if we would have the collected type synonym information here, things could have been
             -- done much easier.
@@ -82,13 +79,10 @@ SEM Declaration
     | Data    constructors.dataTypeName = @qualname
               constructors.dataTypeCoreType = @simpletype.coreType
               constructors.typevariables = @simpletype.typevariables
-              loc.qualDers    = map (convertClassNameToQualified @lhs.importEnv) @derivings.self
-              (loc.qualname, loc.access, loc.module)
-                            = if @lhs.isTopLevel 
-                                then ( addQualified @lhs.moduleQual @simpletype.name
-                                     , Core.Export (idFromName @simpletype.name)
-                                     , Just (idFromString @lhs.modulename))
-                                else (@simpletype.name, Core.Private, Nothing)
+              loc.qualDers = map (convertClassNameToQualified @lhs.importEnv) @derivings.self
+              loc.qualname = if @lhs.isTopLevel 
+                               then addQualified @lhs.moduleQual @simpletype.name
+                               else @simpletype.name
               lhs.decls  =
         map snd @constructors.cons
         ++
@@ -127,12 +121,9 @@ SEM Declaration
                         loc.instanceDict = [idFromString $ "$instanceDict" ++ show name | Just name <- [@lhs.instanceName]]
                         loc.dictionaries = @instanceDict ++ (map predicateToId (getPredicateForDecl @bindings.name @lhs.dictionaryEnv))
                         lhs.whereDeclarationTypes = [(@bindings.name, @loc.tpScheme)]
-                        (loc.qualname, loc.access, loc.module)
-                            = if @lhs.isTopLevel 
-                                then ( addQualified @lhs.moduleQual @bindings.name
-                                     , Core.Export (idFromName @bindings.name)
-                                     , Just (idFromString @lhs.modulename))
-                                else (@bindings.name, Core.Private, Nothing)
+                        loc.qualname = if @lhs.isTopLevel
+                                        then addQualified @lhs.moduleQual @bindings.name
+                                        else @bindings.name
                         lhs.decls =
         [ Core.DeclValue
             { Core.declName    = idFromName @qualname
@@ -159,7 +150,7 @@ SEM Declaration
             Pattern_Variable _ n ->
                 [ Core.DeclValue
                     { Core.declName    = idFromName (if @lhs.isTopLevel then addQualified @lhs.moduleQual n else n)
-                    , Core.declAccess  = if @lhs.isTopLevel then Core.Export (idFromString @lhs.modulename) else Core.Private
+                    , Core.declAccess  = Core.Private
                     , Core.declModule  = Nothing
                     , Core.declType    = snd $ declarationType @lhs.typeOutput @lhs.typeClassContext n
                     , Core.valueValue  =
@@ -266,7 +257,7 @@ SEM Declaration
                                                 {
                                                     --declName :: Id, declAccess :: !Access, declArity :: !Arity, declCustoms :: ![Custom]
                                                     Core.declName = idFromName @qualName,
-                                                    Core.declAccess = Core.Export $ idFromName @simpletype.name,
+                                                    Core.declAccess = Core.Private,
                                                     Core.declModule = Nothing,
                                                     Core.declKind = Core.DeclKindCustom $ idFromString "ClassDefinition",
                                                     Core.declCustoms =
@@ -301,12 +292,10 @@ SEM Declaration
     | Newtype           constructor.dataTypeName = @simpletype.name
                         constructor.dataTypeCoreType = @simpletype.coreType
                         constructor.typevariables = @simpletype.typevariables
-                        (loc.qualname, loc.access, loc.module)
+                        loc.qualname
                             = if @lhs.isTopLevel 
-                                then ( addQualified @lhs.moduleQual @simpletype.name
-                                     , Core.Export (idFromName @simpletype.name)
-                                     , Just (idFromString @lhs.modulename))
-                                else (@simpletype.name, Core.Private, Nothing)
+                                then addQualified @lhs.moduleQual @simpletype.name
+                                else @simpletype.name
                         lhs.decls    =
         map snd @constructor.cons
         ++

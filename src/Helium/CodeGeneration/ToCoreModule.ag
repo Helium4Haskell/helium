@@ -83,30 +83,6 @@ SEM Module
     --  exports                  : MaybeExports
     --  body                     : Body
 
-{
--- set the public bit of all declarations except those that are imported from
--- Prelude or HeliumLang. I.e. export everything everywhere
-everythingPublicButPrelude :: Core.CoreModule -> Core.CoreModule
-everythingPublicButPrelude theModule = theModule { Core.moduleDecls = map setPublic (Core.moduleDecls theModule) }
-  where
-    setPublic declaration =
-        let -- accessRecord = Core.declAccess decl
-            public = Core.declModule declaration `notElem` [Just $ idFromString "Prelude", Just $ idFromString "HeliumLang"]
-        in
-        declaration{ Core.declAccess = if public then Core.Export $ Core.declName declaration else Core.Private }
-
--- Set all imported modules to private, and export the normal declarations.
-everythingPublicButImported :: Core.CoreModule -> Core.CoreModule
-everythingPublicButImported theModule = theModule { Core.moduleDecls = map setPublic (Core.moduleDecls theModule) }
-  where
-    setPublic declaration =
-        let -- accessRecord = Core.declAccess decl
-            -- TODO: Why do we also export declarations from PreludePrim?
-            public = Core.declModule declaration `elem` [Nothing, Just $ idFromString "PreludePrim"]
-        in
-        declaration{ Core.declAccess = if public then Core.Export $ Core.declName declaration else Core.Private }
-}
-
 {-
 {
 -- Return all local value definitions that start with a '$' in the name
