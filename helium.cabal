@@ -64,15 +64,18 @@ tested-with:        GHC == 8.2.2, GHC == 8.4.4, GHC == 8.6.5, GHC == 8.8.1
 data-files:
   lib/Char.hs
   lib/HeliumLang.core
+  lib/IridiumLang.iridium
+  lib/IridiumLangEval.iridium
+  lib/IridiumLangString.iridium
   lib/List.hs
   lib/LvmException.core
   lib/LvmIO.core
   lib/LvmLang.core
-  lib/Makefile
   lib/Maybe.hs
   lib/Prelude.hs
   lib/Prelude.type
   lib/PreludePrim.core
+  lib/runtime/memory.c
   lib/simple/Char.hs
   lib/simple/HeliumLang.core
   lib/simple/List.hs
