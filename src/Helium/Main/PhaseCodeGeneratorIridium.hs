@@ -24,6 +24,7 @@ import Helium.CodeGeneration.Iridium.TypeCheck
 import Helium.CodeGeneration.LLVM.CompileModule(compileModule)
 import Helium.CodeGeneration.LLVM.Target(Target(..))
 import Helium.CodeGeneration.LLVM.Env(envForModule)
+import Debug.Trace
 
 import Text.PrettyPrint.Leijen (pretty)
 
@@ -34,7 +35,11 @@ phaseCodeGeneratorIridium :: NameSupply -> FileCache -> String -> Core.CoreModul
 phaseCodeGeneratorIridium supply cache fullName coreModule options = do
   enterNewPhase "Code generation for Iridium" options
 
+  traceIO "codegen for Iridium"
+
   let supplyDesugar : supplyFromCore : supplyPassDeadCode : supplyPassTailRecursion : _ = splitNameSupplies supply
+
+  traceIO "before desugarCore"
 
   simplified <- desugarCore supplyDesugar coreModule
 
@@ -45,6 +50,8 @@ phaseCodeGeneratorIridium supply cache fullName coreModule options = do
 
   -- Check whether the module has a 'main' function
   let hasMain = any ((== idFromString "main") . Core.declName) $ Core.moduleDecls coreModule
+
+  traceIO "before fromCore"
 
   iridium' <- fromCore cache supplyFromCore simplified
   checkModuleIO "fromCore" (fullNameNoExt ++ ".iridium") iridium'

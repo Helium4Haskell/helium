@@ -331,7 +331,7 @@ SEM Declaration
                         { Core.declName    = idFromName @qualname 
                         , Core.declAccess  = Core.Private
                         , Core.declModule  = Nothing
-                        , Core.declArity   = 2
+                        , Core.declArity   = @fdecl.arity
                         , Core.declType    = @loc.tp
                         , Core.declCustoms = []
                         }
@@ -351,6 +351,34 @@ SEM Declaration
 
     | Empty             lhs.decls    = internalError "ToCoreDecl" "Declaration" "empty declarations not supported"
     --  range                    : Range
+
+--- Compute arity based on the type information
+--- only used for FFI
+
+ATTR Name Type Types FDecl [ | | arity : Int ]
+ATTR Name Type [ | isFunc : Bool | ]
+
+SEM Name
+    | Identifier lhs . arity  = 1
+                 lhs . isFunc = False
+    | Special    lhs . arity  = 0
+                 lhs . isFunc = @name == "->"
+
+SEM Type
+    | Application lhs . arity  = if @fun then @arguments.arity else 1
+                  loc . fun = @function.isFunc
+    | Constructor lhs . arity  = @name.arity
+                  lhs . isFunc = @name.isFunc
+
+SEM Types
+    | Cons lhs.arity = @hd.arity + @tl.arity
+    | Nil  lhs.arity = -1
+
+SEM FDecl 
+    | Import lhs.arity = @type.arity
+    | Export lhs.arity = @type.arity
+
+---
 
 ATTR FunctionBinding FunctionBindings
     [   ids : { [Id] }
