@@ -404,6 +404,7 @@ keywords =
     , "then", "else", "data", "type", "module", "import"
     , "infix", "infixl", "infixr", "_", "deriving"
     , "class", "instance", "default"
+    , "foreign" -- FFI
     , "newtype" -- not supported
     ]
 

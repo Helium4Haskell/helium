@@ -40,6 +40,7 @@ import Data.IORef
 import Helium.StaticAnalysis.Messages.StaticErrors(errorsLogCode)
 import System.FilePath(joinPath)
 import System.Exit
+import Debug.Trace
 
 -- Temp fix to add types to imported declarations
 import Helium.CodeGeneration.CoreUtils
@@ -108,6 +109,8 @@ compileHaskellToCore basedir fullName contents options iridiumCache doneModules 
       doPhaseWithExit 20 (const "L") compileOptions $
           phaseLexer fullName contents options
 
+  traceIO "Lexing"
+
   unless (NoWarnings `elem` options) $
       showMessages lexerWarnings
 
@@ -116,10 +119,14 @@ compileHaskellToCore basedir fullName contents options iridiumCache doneModules 
     doPhaseWithExit 20 (const "P") compileOptions $
       phaseParser fullName tokens options
 
+  traceIO "Parsing"
+
   -- Phase 3: Importing
   (indirectionDecls, importEnvsWithMod) <-
       phaseImport fullName parsedModule (resolveDeclarations iridiumCache) options
   let importEnvs = map (\(_,b,_) -> b) importEnvsWithMod
+
+  traceIO "Importing"
 
   -- Phase 4: Resolving operators
   resolvedModule <- 
@@ -127,6 +134,8 @@ compileHaskellToCore basedir fullName contents options iridiumCache doneModules 
           phaseResolveOperators parsedModule importEnvs options
 
   stopCompilingIf (StopAfterParser `elem` options)
+
+  traceIO "Resolving operators"
 
   -- Phase 5: Static checking
   (localEnv, typeSignatures, staticWarnings) <-
@@ -138,6 +147,8 @@ compileHaskellToCore basedir fullName contents options iridiumCache doneModules 
 
   stopCompilingIf (StopAfterStaticAnalysis `elem` options)
 
+  traceIO "Static Checking"
+
   -- Phase 6: Kind inferencing (by default turned off)
   let combinedEnv = foldr combineImportEnvironments localEnv importEnvs
 
@@ -147,9 +158,13 @@ compileHaskellToCore basedir fullName contents options iridiumCache doneModules 
       doPhaseWithExit maximumNumberOfKindErrors (const "K") compileOptions $
         phaseKindInferencer combinedEnv resolvedModule options
 
+  traceIO "Kind Inferencing"
+
   -- Phase 7: Type Inference Directives
   (beforeTypeInferEnv, typingStrategiesDecls) <-
       phaseTypingStrategies fullName combinedEnv typeSignatures options
+
+  traceIO "Type Infer directives"
 
   -- Phase 8: Type inferencing
   (dictionaryEnv, afterTypeInferEnv, toplevelTypes, allTypeSchemes, solveResult, typeWarnings) <- 
@@ -160,6 +175,8 @@ compileHaskellToCore basedir fullName contents options iridiumCache doneModules 
       showMessages typeWarnings
 
   stopCompilingIf (StopAfterTypeInferencing `elem` options)
+
+  traceIO "Type Infer"
 
   -- Phase 9: Desugaring
   coreModule <-
@@ -172,10 +189,14 @@ compileHaskellToCore basedir fullName contents options iridiumCache doneModules 
   
   let (path, baseName, _) = splitFilePath fullName
   let fullNameNoExt = combinePathAndFile path baseName
+  traceIO "before write to file"
   writeFile (fullNameNoExt ++ ".desugared.core") $ show $ pretty coreModule
+  traceIO "before verify core"
   verifyCore options "Desugar" coreModule
 
   stopCompilingIf (StopAfterDesugar `elem` options)
+
+  traceIO "Desugar"
 
   let number = length staticWarnings + length typeWarnings + length lexerWarnings
   return (coreModule, number)

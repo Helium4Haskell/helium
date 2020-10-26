@@ -151,8 +151,26 @@ DATA Declaration                                  {- *** -}
         fixity                   : Fixity
         priority                 : MaybeInt
         operators                : Names
+    | Foreign                            -- FFI declaration
+        range                    : Range
+        fdecl                    : FDecl
     | Empty
         range                    : Range
+
+DATA FDecl
+    | Import
+        range                    : Range
+        callconv                 : Name
+        safety                   : Bool
+        impend                   : String
+        name                     : Name
+        type                     : Type
+    | Export
+        range                    : Range
+        callconv                 : Name
+        expend                   : String
+        name                     : Name
+        type                     : Type
 
 DATA Fixity
     | Infixl

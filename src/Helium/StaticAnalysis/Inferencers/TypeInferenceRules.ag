@@ -102,7 +102,7 @@ ATTR Declaration Declarations MaybeDeclarations RightHandSide Qualifier Qualifie
     | 
     |
 ]
-ATTR Declaration Declarations MaybeDeclarations 
+ATTR Declaration Declarations MaybeDeclarations FDecl
             [   typeConstructors:TypeConstructorEnvironment
                 monos:Monos 
             |   betaUnique:Int 
@@ -252,6 +252,18 @@ SEM Declaration
                                                 (maybe (error "Unknown class") (map (\(n, tp, _, _) -> (n, tp)).snd) $ M.lookup @qualName $ classMemberEnvironment @lhs.importEnvironment) $ 
                                                 map (\(n, b, _) -> (n, b)) @where.boundBetas
         loc     . cinfo                 = resultConstraint "instance definition" @parentTree [SkolemizedTypeScheme ([], @qualifiedInstanceTpScheme), TypeSignatureLocation @range.self]
+  | Foreign
+        loc . beta          = TVar @lhs.betaDeclUnique
+        lhs . bindingGroups = (M.singleton @fdecl.name @beta, M.empty, []) : @lhs.bindingGroups
+
+ATTR FDecl [ | | name:Name ]
+
+SEM FDecl
+  | Import
+        lhs . name = @name.self
+  | Export
+        lhs . name = @name.self
+
  
 ATTR Constructors Constructor FieldDeclarations FieldDeclaration [ monos : Monos | bindingGroups : BindingGroups | ]
 ATTR                          FieldDeclarations FieldDeclaration [ conName : Name | | ]

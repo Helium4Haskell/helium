@@ -319,6 +319,24 @@ SEM Declaration
             }
         ]
 
+    | Foreign   (loc.tpScheme, loc.tp) = declarationType @lhs.typeOutput @lhs.typeClassContext @fdecl.name
+                (loc.qualname, _, _)
+                    = if @lhs.isTopLevel 
+                        then ( addQualified @lhs.moduleQual @fdecl.name
+                             , Core.Export (idFromName @fdecl.name)
+                             , Just (idFromString @lhs.modulename))
+                        else (@fdecl.name, Core.Private, Nothing)
+                lhs.decls = 
+                    [ Core.DeclAbstract 
+                        { Core.declName    = idFromName @qualname 
+                        , Core.declAccess  = Core.Private
+                        , Core.declModule  = Nothing
+                        , Core.declArity   = 2
+                        , Core.declType    = @loc.tp
+                        , Core.declCustoms = []
+                        }
+                    ]
+
     --  range                    : Range
     --  context                  : ContextItems
     --  simpletype               : SimpleType

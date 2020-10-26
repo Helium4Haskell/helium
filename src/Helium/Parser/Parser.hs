@@ -186,6 +186,7 @@ topdecl
     ->  "data" simpletype "=" constrs derivings?
      |  "type" simpletype "=" type
      |  infixdecl
+     |  foreign fdecl
      |  decl  
 
 derivings
@@ -233,6 +234,11 @@ topdecl = addRange (
         ds <- option [] derivings
         return $ \r -> Declaration_Newtype r [] st t ds
     <|>
+    do
+        lexFOREIGN
+        fd <- fdecl
+        return $ \r -> Declaration_Foreign r fd
+    <|>
 -- Declaration_Class (Range) (ContextItems) (SimpleType) (MaybeDeclarations)
 {-
 cdecls :: HParser Declarations
@@ -278,6 +284,19 @@ cdecls =
     <|>
     decl
     <?> Texts.parserDeclaration
+
+fdecl :: HParser FDecl
+fdecl = 
+    addRange (
+    do  lexIMPORT
+        callconv <- var
+        safety <- optionMaybe (lexSAFE <|> lexUNSAFE)
+        impent <- lexString
+        name <- var
+        lexCOLCOL
+        ty <- type_
+        return $ \r -> FDecl_Import r callconv False impent name ty
+    )
 
 derivings :: HParser [Name]
 derivings = 

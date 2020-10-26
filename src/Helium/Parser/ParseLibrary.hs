@@ -260,7 +260,7 @@ lexTILDE    = lexeme (LexResVarSym "~")
 lexCOLCOL :: HParser ()
 lexCOLCOL   = lexeme (LexResConSym "::")
 
-lexCLASS, lexINSTANCE, lexDATA, lexDERIVING, lexTYPE, lexNEWTYPE, lexLET, lexIN, lexDO, lexIF, lexTHEN, lexELSE, lexCASE, lexOF, lexMODULE, lexWHERE, lexIMPORT, lexINFIX, lexINFIXL, lexINFIXR, lexUNDERSCORE :: HParser ()
+lexCLASS, lexINSTANCE, lexDATA, lexDERIVING, lexTYPE, lexNEWTYPE, lexLET, lexIN, lexDO, lexIF, lexTHEN, lexELSE, lexCASE, lexOF, lexMODULE, lexWHERE, lexIMPORT, lexEXPORT, lexINFIX, lexINFIXL, lexINFIXR, lexFOREIGN, lexUNDERSCORE :: HParser ()
 lexCLASS    = lexeme (LexKeyword "class")
 lexINSTANCE = lexeme (LexKeyword "instance")
 lexDATA     = lexeme (LexKeyword "data")
@@ -277,11 +277,17 @@ lexCASE     = lexeme (LexKeyword "case")
 lexOF       = lexeme (LexKeyword "of")
 lexMODULE   = lexeme (LexKeyword "module")
 lexWHERE    = lexeme (LexKeyword "where")
-lexIMPORT   = lexeme (LexKeyword "import")
+lexIMPORT   = lexeme (LexKeyword "import") -- used either in importing modules or FFI
+lexEXPORT   = lexeme (LexKeyword "export") -- NOTE: this is not a keyword, only used in "foreign export"
 lexINFIX    = lexeme (LexKeyword "infix")
 lexINFIXL   = lexeme (LexKeyword "infixl")
 lexINFIXR   = lexeme (LexKeyword "infixr")
+lexFOREIGN  = lexeme (LexKeyword "foreign")
 lexUNDERSCORE = lexeme (LexKeyword "_")
+
+lexSAFE, lexUNSAFE :: HParser () -- NOTE: for FFI
+lexSAFE   = lexeme (LexKeyword "safe")
+lexUNSAFE = lexeme (LexKeyword "unsafe")
 
 lexHIDING, lexQUALIFIED, lexAS :: HParser ()
 lexHIDING     = lexeme (LexVar "hiding")

@@ -180,7 +180,7 @@ SEM Expression
   | Variable   lhs . unboundNames = [ @name.self ]    
 
 ATTR Body Declaration Declarations MaybeDeclarations Constructor Constructors 
-      FieldDeclaration FieldDeclarations [ | | declVarNames USE {++} {[]} : Names ]
+      FieldDeclaration FieldDeclarations FDecl [ | | declVarNames USE {++} {[]} : Names ]
 
 SEM MaybeDeclarations | Just    lhs          . declVarNames = @declarations.declVarNames
                       | Nothing lhs          . declVarNames = []
@@ -191,6 +191,11 @@ SEM Declaration
   | Class             lhs . declVarNames = [] -- @where.declVarNames  
   | Instance          lhs . declVarNames = [] -- @where.declVarNames
   | Data              lhs . declVarNames = @constructors.declVarNames
+  | Foreign           lhs . declVarNames = @fdecl.declVarNames
+
+SEM FDecl
+  | Import lhs . declVarNames = [@name.self]
+  | Export lhs . declVarNames = [@name.self]
 
 SEM Constructors
   | Cons   lhs . declVarNames = @hd.declVarNames ++ (@tl.declVarNames \\ @hd.declVarNames)

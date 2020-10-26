@@ -13,7 +13,7 @@ ATTR Declarations Declaration Expressions Expression Statements Statement
      Qualifiers Qualifier GuardedExpressions GuardedExpression 
      Alternatives Alternative FunctionBindings FunctionBinding
      RightHandSide MaybeDeclarations MaybeExpression RecordExpressionBinding
-     RecordExpressionBindings Body
+     RecordExpressionBindings Body FDecl
         [ availablePredicates   : {[PredicateWithSource]}
           classEnvironment      : ClassEnvironment
           instanceName : {Maybe Name}

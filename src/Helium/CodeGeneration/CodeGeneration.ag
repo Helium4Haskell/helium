@@ -12,7 +12,7 @@ ATTR Module Body Declaration Declarations MaybeDeclarations
   GuardedExpressions GuardedExpression RecordExpressionBindings
   RecordExpressionBinding RecordPatternBindings RecordPatternBinding
   FunctionBindings FunctionBinding LeftHandSide RightHandSide
-  Patterns Pattern 
+  Patterns Pattern FDecl
   [ typeOutput : TypeInferenceOutput 
     extraDecls       : { [Core.CoreDecl] }
   | 

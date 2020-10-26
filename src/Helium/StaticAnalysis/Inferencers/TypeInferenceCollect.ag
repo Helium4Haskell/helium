@@ -20,7 +20,7 @@ ATTR Expression Expressions MaybeExpression Alternative Alternatives
      Constructor Constructors FieldDeclaration FieldDeclarations
      RightHandSide Body Qualifier Qualifiers
      GuardedExpression GuardedExpressions  FunctionBinding FunctionBindings
-     RecordExpressionBinding RecordExpressionBindings
+     RecordExpressionBinding RecordExpressionBindings FDecl
         [ importEnvironment   : ImportEnvironment
           substitution        : FixpointSubstitution
           typeschemeMap       : {M.Map Int (Scheme Predicates)}
@@ -210,7 +210,7 @@ isSimplePattern pattern =
 -------------------------------------------
 -- Collecting Type Signatures
 
-ATTR Declaration Declarations [ | typeSignatures:TypeEnvironment | ]
+ATTR Declaration Declarations FDecl [ | typeSignatures:TypeEnvironment | ]
 
 SEM Body              | Body    declarations . typeSignatures = M.empty
 SEM Expression        | Let     declarations . typeSignatures = M.empty
@@ -221,6 +221,36 @@ SEM MaybeDeclarations | Just    declarations . typeSignatures = M.empty
 SEM Declaration
   | TypeSignature
       lhs . typeSignatures = @lhs.typeSignatures `M.union` (M.fromList [ (name, @typeScheme) | name <- @names.self ])
+      loc . typeScheme     =  if isJust @lhs.classPredicate then
+                                let
+                                  Just (className, typeVars) = @lhs.classPredicate
+                                  qualName = convertClassNameToQualified @lhs.importEnvironment className
+                                  tpscheme = makeTpSchemeFromType (convertTypeToQualified @lhs.importEnvironment @type.self)
+                                  typeIndices = filter (\(_, s) -> s `elem` (map getNameName typeVars)) (getQuantorMap tpscheme)
+                                  typeVariablesMapped = map (\(n, s) -> (fromJust $ find (\tv -> getNameName tv == s) typeVars, TVar n)) typeIndices
+                                  tpWContext = addContextToType qualName typeVariablesMapped tpscheme
+                                in tpWContext
+                              else
+                                convertTpSchemeToQualified @lhs.importEnvironment (makeTpSchemeFromType @type.self)
+  | Foreign
+      lhs . typeSignatures = @fdecl.typeSignatures
+
+SEM FDecl
+  | Import
+      lhs . typeSignatures = @lhs.typeSignatures `M.union` (M.fromList [ (name, @typeScheme) | name <- [@name.self] ])
+      loc . typeScheme     =  if isJust @lhs.classPredicate then
+                                let
+                                  Just (className, typeVars) = @lhs.classPredicate
+                                  qualName = convertClassNameToQualified @lhs.importEnvironment className
+                                  tpscheme = makeTpSchemeFromType (convertTypeToQualified @lhs.importEnvironment @type.self)
+                                  typeIndices = filter (\(_, s) -> s `elem` (map getNameName typeVars)) (getQuantorMap tpscheme)
+                                  typeVariablesMapped = map (\(n, s) -> (fromJust $ find (\tv -> getNameName tv == s) typeVars, TVar n)) typeIndices
+                                  tpWContext = addContextToType qualName typeVariablesMapped tpscheme
+                                in tpWContext
+                              else
+                                convertTpSchemeToQualified @lhs.importEnvironment (makeTpSchemeFromType @type.self)
+  | Export
+      lhs . typeSignatures = @lhs.typeSignatures `M.union` (M.fromList [ (name, @typeScheme) | name <- [@name.self] ])
       loc . typeScheme     =  if isJust @lhs.classPredicate then
                                 let
                                   Just (className, typeVars) = @lhs.classPredicate

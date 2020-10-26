@@ -16,7 +16,7 @@ SEM Names
     | Cons     lhs.names = @hd.self : @tl.names
     | Nil      lhs.names = []
 
-ATTR FunctionBinding FunctionBindings LeftHandSide [ | | name:Name ]
+ATTR FunctionBinding FunctionBindings LeftHandSide FDecl [ | | name:Name ]
 
 SEM FunctionBindings 
   | Cons  lhs . name = @hd.name
@@ -28,3 +28,7 @@ SEM FunctionBinding
 SEM LeftHandSide
   | Function  lhs . name = @name.self
   | Infix     lhs . name = @operator.self
+
+SEM FDecl
+  | Import  lhs . name = @name.self
+  | Export  lhs . name = @name.self
