@@ -280,4 +280,4 @@ Library
     Helium.Utils.Network
     Helium.Utils.QualifiedTypes
     Helium.Utils.QualifiedTypes.Constants
-  Other-modules:
+  other-modules:     Paths_helium 

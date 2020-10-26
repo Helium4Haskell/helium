@@ -19,7 +19,7 @@ import Helium.Main.Args
 import Helium.Main.Make
 import Helium.Main.CompileUtils
 import Data.IORef
-import Paths_helium
+import Paths_helium(getDataDir)
 
 -- Prelude will be treated specially
 prelude :: String
@@ -38,11 +38,12 @@ main = do
         Nothing -> getLvmPath
         Just s  -> return (explodePath s)
 
+    dataDir <- getDataDir 
+    
     baseLibs <- case basePathFromOptions options of
-        Nothing -> getDataFileName $
-                     if overloadingFromOptions options
-                     then "lib"
-                     else joinPath ["lib","simple"]
+        Nothing -> if overloadingFromOptions options
+                   then return $ joinPath [dataDir, "lib"]
+                   else return $ joinPath [dataDir, "lib", "simple"]
         Just path -> if overloadingFromOptions options
                      then return path
                      else return $ joinPath [path,"simple"] -- The lib will be part of path already.
