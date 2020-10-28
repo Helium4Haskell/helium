@@ -61,7 +61,6 @@ import Helium.ModuleSystem.GatherImports (ModuleDecls)
 import Helium.Parser.OperatorTable
 import Data.Char ( isUpper )
 import Data.List
-import Data.Maybe (fromMaybe)
 }
 
 -- combine all the collected errors, then filter out the "entity is undefined" 
