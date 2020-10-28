@@ -1,0 +1,19 @@
+resolver: lts-16.20
+
+packages: 
+- .
+
+extra-deps:
+  - wl-pprint-1.2.1@sha256:aea676cff4a062d7d912149d270e33f5bb0c01b68a9db46ff13b438141ff4b7c,734
+  - network-2.6.3.6@sha256:1ca79d81af02d7acd6032d5e6c9bde4618a8fdcfbe19bd42b49d420183975df0,2666
+  # If local development on Top is required, this entry can be replaced with the relative path of the directory the Top
+  # repository is located, such as `../Top`
+  - git: git@github.com:Helium4Haskell/Top.git
+    commit: 5e900184d6b2ab6d7ce69945287d782252e5ea68
+  - git: git@github.com:Helium4Haskell/lvm.git
+    commit: a516e95b66e989f1364567e9b4f3292266659d08
+    subdirs: 
+      - src/lib
+
+allow-newer: false
+

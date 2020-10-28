@@ -12,3 +12,4 @@ lib/simple/*.lvm
 Develop/
 develop/
 .cabal-sandbox/
+.stack-work/
