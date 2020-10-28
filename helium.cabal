@@ -1,233 +1,244 @@
-name:                   helium
-version:                1.9
-synopsis:               The Helium Compiler.
-homepage:               https://github.com/Helium4Haskell/helium
-description:
+cabal-version: 1.12
 
-  Helium is a compiler for a subset of Haskell that aims at delivering high
-  quality type error messages particularly for beginner programmers. It also
-  includes facilities for specializing type error diagnosis for embedded domain
-  specific languages. The compiler supports Haskell 98, but without the ability
-  to define new type classes and instances.
+-- This file has been generated from package.yaml by hpack version 0.33.0.
+--
+-- see: https://github.com/sol/hpack
+--
+-- hash: f841005c65059f813148839ed3aaadb6fe12d106c3b783f973c16f1964b0e0fa
 
-category:               Compiler
-copyright:              (c) 2014-2019
-license:                GPL
-license-file:           LICENSE.txt
-author:                 Bastiaan Heeren, Jurriaan Hage
-maintainer:             helium4haskell@gmail.com
-stability:              provisional
-extra-source-files:
-  CREDITS.txt
-  RELEASENOTES.txt
-  src/Makefile
-  src/Helium/CodeGeneration/CodeGeneration.ag
-  src/Helium/CodeGeneration/ToCoreDecl.ag
-  src/Helium/CodeGeneration/ToCoreExpr.ag
-  src/Helium/CodeGeneration/ToCoreModule.ag
-  src/Helium/CodeGeneration/ToCoreName.ag
-  src/Helium/CodeGeneration/ToCorePat.ag
-  src/Helium/ModuleSystem/ExtractImportDecls.ag
-  src/Helium/Parser/ResolveOperators.ag
-  src/Helium/StaticAnalysis/Directives/TS_Analyse.ag
-  src/Helium/StaticAnalysis/Directives/TS_Apply.ag
-  src/Helium/StaticAnalysis/Directives/TS_Collect.ag
-  src/Helium/StaticAnalysis/Directives/TS_CoreSyntax.ag
-  src/Helium/StaticAnalysis/Directives/TS_PatternMatching.ag
-  src/Helium/StaticAnalysis/Directives/TS_Syntax.ag
-  src/Helium/StaticAnalysis/Directives/TS_ToCore.ag
-  src/Helium/StaticAnalysis/Inferencers/GlobalInfo.ag
-  src/Helium/StaticAnalysis/Inferencers/KindInferencing.ag
-  src/Helium/StaticAnalysis/Inferencers/LocalInfo.ag
-  src/Helium/StaticAnalysis/Inferencers/PatternMatchWarnings.ag
-  src/Helium/StaticAnalysis/Inferencers/TypeInferenceCollect.ag
-  src/Helium/StaticAnalysis/Inferencers/TypeInferenceInfo.ag
-  src/Helium/StaticAnalysis/Inferencers/TypeInferenceOverloading.ag
-  src/Helium/StaticAnalysis/Inferencers/TypeInferenceRules.ag
-  src/Helium/StaticAnalysis/Inferencers/TypeInferencing.ag
-  src/Helium/StaticAnalysis/StaticChecks/Collect.ag
-  src/Helium/StaticAnalysis/StaticChecks/ExportErrors.ag
-  src/Helium/StaticAnalysis/StaticChecks/HeliumPartialSyntax.ag
-  src/Helium/StaticAnalysis/StaticChecks/KindChecking.ag
-  src/Helium/StaticAnalysis/StaticChecks/MiscErrors.ag
-  src/Helium/StaticAnalysis/StaticChecks/Scope.ag
-  src/Helium/StaticAnalysis/StaticChecks/ScopeErrors.ag
-  src/Helium/StaticAnalysis/StaticChecks/StaticChecks.ag
-  src/Helium/StaticAnalysis/StaticChecks/TopLevelErrors.ag
-  src/Helium/StaticAnalysis/StaticChecks/Warnings.ag
-  src/Helium/Syntax/UHA_OneLine.ag
-  src/Helium/Syntax/UHA_Pretty.ag
-  src/Helium/Syntax/UHA_Syntax.ag
-build-type:             Simple
-cabal-version:          >= 2
-tested-with:        GHC == 8.2.2, GHC == 8.4.4, GHC == 8.6.5, GHC == 8.8.1
+name:           helium
+version:        1.9
+synopsis:       The Helium Compiler.
+description:    Helium is a compiler for a subset of Haskell that aims at delivering high quality type error messages particularly for beginner programmers. It also includes facilities for specializing type error diagnosis for embedded domain specific languages. The compiler supports Haskell 98, but without the ability to define new type classes and instances.
+category:       Compiler
+stability:      provisional
+homepage:       https://github.com/Helium4Haskell/helium
+author:         Bastiaan Heeren, Jurriaan Hage
+maintainer:     helium4haskell@gmail.com
+copyright:      (c) 2014-2019
+license:        GPL
+license-file:   LICENSE.txt
+build-type:     Simple
 data-files:
-  lib/Char.hs
-  lib/HeliumLang.core
-  lib/List.hs
-  lib/LvmException.core
-  lib/LvmIO.core
-  lib/LvmLang.core
-  lib/Makefile
-  lib/Maybe.hs
-  lib/Prelude.hs
-  lib/Prelude.type
-  lib/PreludePrim.core
-  lib/simple/Char.hs
-  lib/simple/HeliumLang.core
-  lib/simple/List.hs
-  lib/simple/LvmException.core
-  lib/simple/LvmIO.core
-  lib/simple/LvmLang.core
-  lib/simple/Makefile
-  lib/simple/Maybe.hs
-  lib/simple/Prelude.hs
-  lib/simple/Prelude.type
-  lib/simple/PreludePrim.core
-  hint.conf
+    lib/Char.hs
+    lib/HeliumLang.core
+    lib/List.hs
+    lib/LvmException.core
+    lib/LvmIO.core
+    lib/LvmLang.core
+    lib/Makefile
+    lib/Maybe.hs
+    lib/Prelude.hs
+    lib/Prelude.type
+    lib/PreludePrim.core
+    lib/simple/Char.hs
+    lib/simple/HeliumLang.core
+    lib/simple/List.hs
+    lib/simple/LvmException.core
+    lib/simple/LvmIO.core
+    lib/simple/LvmLang.core
+    lib/simple/Makefile
+    lib/simple/Maybe.hs
+    lib/simple/Prelude.hs
+    lib/simple/Prelude.type
+    lib/simple/PreludePrim.core
+    hint.conf
 
-source-repository head
-  type:     git
-  location: https://github.com/Helium4Haskell/helium.git
-  
---------------------------------------------------------------------------------
+library
+  exposed-modules:
+      Helium.CodeGeneration.CoreToLvm
+      Helium.CodeGeneration.CoreUtils
+      Helium.CodeGeneration.DerivingEq
+      Helium.CodeGeneration.DerivingShow
+      Helium.CodeGeneration.InstanceDictionary
+      Helium.CodeGeneration.PatternMatch
+      Helium.Main.Args
+      Helium.Main.Compile
+      Helium.Main.CompileUtils
+      Helium.Main.Develop
+      Helium.Main.Make
+      Helium.Main.PhaseCodeGenerator
+      Helium.Main.PhaseDesugarer
+      Helium.Main.PhaseImport
+      Helium.Main.PhaseKindInferencer
+      Helium.Main.PhaseLexer
+      Helium.Main.PhaseParser
+      Helium.Main.PhaseResolveOperators
+      Helium.Main.PhaseStaticChecks
+      Helium.Main.PhaseTypeInferencer
+      Helium.Main.PhaseTypingStrategies
+      Helium.Main.Version
+      Helium.ModuleSystem.CoreToImportEnv
+      Helium.ModuleSystem.DictionaryEnvironment
+      Helium.ModuleSystem.GatherImports
+      Helium.ModuleSystem.ImportEnvironment
+      Helium.Parser.CollectFunctionBindings
+      Helium.Parser.LayoutRule
+      Helium.Parser.Lexer
+      Helium.Parser.LexerMessage
+      Helium.Parser.LexerMonad
+      Helium.Parser.LexerToken
+      Helium.Parser.OperatorTable
+      Helium.Parser.ParseLibrary
+      Helium.Parser.ParseMessage
+      Helium.Parser.Parser
+      Helium.StaticAnalysis.Directives.Matchers
+      Helium.StaticAnalysis.Directives.TS_Attributes
+      Helium.StaticAnalysis.Directives.TS_Compile
+      Helium.StaticAnalysis.Directives.TS_Messages
+      Helium.StaticAnalysis.Directives.TS_Parser
+      Helium.StaticAnalysis.Heuristics.HeuristicsInfo
+      Helium.StaticAnalysis.Heuristics.ListOfHeuristics
+      Helium.StaticAnalysis.Heuristics.OnlyResultHeuristics
+      Helium.StaticAnalysis.Heuristics.RepairHeuristics
+      Helium.StaticAnalysis.Heuristics.TieBreakerHeuristics
+      Helium.StaticAnalysis.Heuristics.UnifierHeuristics
+      Helium.StaticAnalysis.Inferencers.BindingGroupAnalysis
+      Helium.StaticAnalysis.Inferencers.ExpressionTypeInferencer
+      Helium.StaticAnalysis.Inferencers.SelectConstraintSolver
+      Helium.StaticAnalysis.Messages.HeliumMessages
+      Helium.StaticAnalysis.Messages.Information
+      Helium.StaticAnalysis.Messages.KindErrors
+      Helium.StaticAnalysis.Messages.Messages
+      Helium.StaticAnalysis.Messages.StaticErrors
+      Helium.StaticAnalysis.Messages.TypeErrors
+      Helium.StaticAnalysis.Messages.Warnings
+      Helium.StaticAnalysis.Miscellaneous.ConstraintInfo
+      Helium.StaticAnalysis.Miscellaneous.DoublyLinkedTree
+      Helium.StaticAnalysis.Miscellaneous.TypeConstraints
+      Helium.StaticAnalysis.Miscellaneous.TypeConversion
+      Helium.StaticAnalysis.Miscellaneous.TypesToAlignedDocs
+      Helium.StaticAnalysis.Miscellaneous.UHA_Source
+      Helium.Syntax.UHA_Range
+      Helium.Syntax.UHA_Utils
+      Helium.Utils.Logger
+      Helium.Utils.OneLiner
+      Helium.Utils.QualifiedTypes
+      Helium.Utils.QualifiedTypes.Constants
+      Helium.Utils.Similarity
+      Helium.Utils.Texts
+      Helium.Utils.Utils
+      Helium.CodeGeneration.CodeGeneration
+      Helium.ModuleSystem.ExtractImportDecls
+      Helium.Parser.ResolveOperators
+      Helium.StaticAnalysis.Directives.TS_Analyse
+      Helium.StaticAnalysis.Directives.TS_Apply
+      Helium.StaticAnalysis.Directives.TS_CoreSyntax
+      Helium.StaticAnalysis.Directives.TS_Syntax
+      Helium.StaticAnalysis.Directives.TS_ToCore
+      Helium.StaticAnalysis.Inferencers.KindInferencing
+      Helium.StaticAnalysis.Inferencers.TypeInferencing
+      Helium.StaticAnalysis.StaticChecks.StaticChecks
+      Helium.Syntax.UHA_OneLine
+      Helium.Syntax.UHA_Pretty
+      Helium.Syntax.UHA_Syntax
+  other-modules:
+      Paths_helium
+  hs-source-dirs:
+      src
+      dist/build/autogen/uuagc
+  ghc-options: -Wall
+  build-depends:
+      Top
+    , base
+    , containers
+    , directory
+    , filepath
+    , lvmlib
+    , mtl
+    , network
+    , parsec
+    , process
+    , wl-pprint
+  default-language: Haskell2010
 
-Executable helium
-  Build-Depends:     base >= 3 && < 5, containers, mtl, parsec, network < 2.7, process, transformers, filepath, directory, wl-pprint, Top >= 1.9, lvmlib >= 1.9, helium
-  ghc-options:       -Wall
-  default-language:  Haskell98
-  hs-source-dirs:    src/commands/helium
-  Main-is:           Helium/Main.hs
-  other-modules:     Paths_helium
-  
---------------------------------------------------------------------------------
+executable helium
+  main-is: Helium/Main.hs
+  other-modules:
+      Paths_helium
+  hs-source-dirs:
+      src/commands/helium
+  default-extensions: FlexibleContexts
+  build-depends:
+      Top
+    , base
+    , containers
+    , directory
+    , filepath
+    , helium
+    , lvmlib
+    , mtl
+    , network
+    , parsec
+    , process
+    , wl-pprint
+  default-language: Haskell2010
 
-Executable texthint
-  Build-Depends:     base >= 3 && < 5, containers, mtl, filepath, parsec, directory, process, helium
-  ghc-options:       -Wall
-  default-language:  Haskell98
-  hs-source-dirs:    src/commands/texthint
-  Main-is:           TextHint/Main.hs
-  other-modules:     Paths_helium
-                     TextHint.ConfigFile                
+executable heliumpath
+  main-is: Main.hs
+  other-modules:
+      Paths_helium
+  hs-source-dirs:
+      src/commands/heliumpath
+  default-extensions: FlexibleContexts
+  build-depends:
+      Top
+    , base
+    , containers
+    , directory
+    , filepath
+    , helium
+    , lvmlib
+    , mtl
+    , network
+    , parsec
+    , process
+    , wl-pprint
+  default-language: Haskell2010
 
---------------------------------------------------------------------------------
+executable runhelium
+  main-is: RunHelium/Main.hs
+  other-modules:
+      Paths_helium
+      TextHint.ConfigFile
+  hs-source-dirs:
+      src/commands/runhelium
+      src/commands/texthint
+  default-extensions: FlexibleContexts
+  build-depends:
+      Top
+    , base
+    , containers
+    , directory
+    , filepath
+    , helium
+    , lvmlib
+    , mtl
+    , network
+    , parsec
+    , process
+    , wl-pprint
+  default-language: Haskell2010
 
-Executable runhelium
-  Build-Depends:     base >= 3 && < 5, containers, filepath, directory, parsec, process, helium
-  ghc-options:       -Wall
-  default-language:  Haskell98
-  hs-source-dirs:    src/commands/runhelium, src/commands/texthint
-  Main-is:           RunHelium/Main.hs
-  other-modules:     Paths_helium
-                     TextHint.ConfigFile
-                     
---------------------------------------------------------------------------------
-
-Executable heliumpath
-  Build-Depends:     base >= 3 && < 5
-  ghc-options:       -Wall
-  default-language:  Haskell98
-  hs-source-dirs:    src/commands/heliumpath
-  Main-is:           Main.hs
-  other-modules:     Paths_helium                
-  
---------------------------------------------------------------------------------
-  
-Library
-  Build-Depends:     base >= 3 && < 5, containers, mtl, parsec, network < 2.7, process, transformers, filepath, directory, wl-pprint, Top >= 1.9, lvmlib >= 1.9
-  ghc-options:       -Wall
-  default-language:  Haskell98
-  hs-source-dirs:    src dist/build/autogen/uuagc
-
-
-  Exposed-modules:
-    Helium.CodeGeneration.CodeGeneration
-    Helium.CodeGeneration.CoreToLvm
-    Helium.CodeGeneration.CoreUtils
-    Helium.CodeGeneration.DerivingEq
-    Helium.CodeGeneration.DerivingShow
-    Helium.CodeGeneration.PatternMatch
-    Helium.CodeGeneration.InstanceDictionary
-    Helium.Main.Args
-    Helium.Main.Compile
-    Helium.Main.CompileUtils
-    Helium.Main.Make
-    Helium.Main.PhaseCodeGenerator
-    Helium.Main.PhaseDesugarer
-    Helium.Main.PhaseImport
-    Helium.Main.PhaseKindInferencer
-    Helium.Main.PhaseLexer
-    Helium.Main.PhaseParser
-    Helium.Main.PhaseResolveOperators
-    Helium.Main.PhaseStaticChecks
-    Helium.Main.PhaseTypeInferencer
-    Helium.Main.PhaseTypingStrategies
-    Helium.Main.Version
-    Helium.ModuleSystem.CoreToImportEnv
-    Helium.ModuleSystem.DictionaryEnvironment
-    Helium.ModuleSystem.ExtractImportDecls
-    Helium.ModuleSystem.GatherImports
-    Helium.ModuleSystem.ImportEnvironment
-    Helium.Parser.CollectFunctionBindings
-    Helium.Parser.LayoutRule
-    Helium.Parser.Lexer
-    Helium.Parser.LexerMessage
-    Helium.Parser.LexerMonad
-    Helium.Parser.LexerToken
-    Helium.Parser.OperatorTable
-    Helium.Parser.ParseLibrary
-    Helium.Parser.ParseMessage
-    Helium.Parser.Parser
-    Helium.Parser.ResolveOperators
-    Helium.StaticAnalysis.Directives.Matchers
-    Helium.StaticAnalysis.Directives.TS_Analyse
-    Helium.StaticAnalysis.Directives.TS_Apply
-    Helium.StaticAnalysis.Directives.TS_Attributes
-    Helium.StaticAnalysis.Directives.TS_Compile
-    Helium.StaticAnalysis.Directives.TS_CoreSyntax
-    Helium.StaticAnalysis.Directives.TS_Messages
-    Helium.StaticAnalysis.Directives.TS_Parser
-    Helium.StaticAnalysis.Directives.TS_Syntax
-    Helium.StaticAnalysis.Directives.TS_ToCore
-    Helium.StaticAnalysis.Heuristics.HeuristicsInfo
-    Helium.StaticAnalysis.Heuristics.ListOfHeuristics
-    Helium.StaticAnalysis.Heuristics.OnlyResultHeuristics
-    Helium.StaticAnalysis.Heuristics.RepairHeuristics
-    Helium.StaticAnalysis.Heuristics.TieBreakerHeuristics
-    Helium.StaticAnalysis.Heuristics.UnifierHeuristics
-    Helium.StaticAnalysis.Inferencers.BindingGroupAnalysis
-    Helium.StaticAnalysis.Inferencers.ExpressionTypeInferencer
-    Helium.StaticAnalysis.Inferencers.KindInferencing
-    Helium.StaticAnalysis.Inferencers.SelectConstraintSolver
-    Helium.StaticAnalysis.Inferencers.TypeInferencing
-    Helium.StaticAnalysis.Messages.HeliumMessages
-    Helium.StaticAnalysis.Messages.Information
-    Helium.StaticAnalysis.Messages.KindErrors
-    Helium.StaticAnalysis.Messages.Messages
-    Helium.StaticAnalysis.Messages.StaticErrors
-    Helium.StaticAnalysis.Messages.TypeErrors
-    Helium.StaticAnalysis.Messages.Warnings
-    Helium.StaticAnalysis.Miscellaneous.ConstraintInfo
-    Helium.StaticAnalysis.Miscellaneous.DoublyLinkedTree
-    Helium.StaticAnalysis.Miscellaneous.TypeConstraints
-    Helium.StaticAnalysis.Miscellaneous.TypeConversion
-    Helium.StaticAnalysis.Miscellaneous.TypesToAlignedDocs
-    Helium.StaticAnalysis.Miscellaneous.UHA_Source
-    Helium.StaticAnalysis.StaticChecks.StaticChecks
-    Helium.Syntax.UHA_OneLine
-    Helium.Syntax.UHA_Pretty
-    Helium.Syntax.UHA_Range
-    Helium.Syntax.UHA_Syntax
-    Helium.Syntax.UHA_Utils
-    Helium.Utils.Logger
-    Helium.Utils.OneLiner
-    Helium.Utils.Similarity
-    Helium.Utils.Texts
-    Helium.Utils.Utils
-    Helium.Utils.QualifiedTypes
-    Helium.Utils.QualifiedTypes.Constants
-  Other-modules:
-    
-
- 
+executable texthint
+  main-is: TextHint/Main.hs
+  other-modules:
+      Paths_helium
+      TextHint.ConfigFile
+  hs-source-dirs:
+      src/commands/texthint
+  default-extensions: FlexibleContexts
+  build-depends:
+      Top
+    , base
+    , containers
+    , directory
+    , filepath
+    , helium
+    , lvmlib
+    , mtl
+    , network
+    , parsec
+    , process
+    , wl-pprint
+  default-language: Haskell2010

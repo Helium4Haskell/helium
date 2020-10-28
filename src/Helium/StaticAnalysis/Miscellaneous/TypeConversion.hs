@@ -14,7 +14,6 @@ module Helium.StaticAnalysis.Miscellaneous.TypeConversion where
 import Helium.Syntax.UHA_Utils (getNameName, nameFromString)
 import Helium.Syntax.UHA_Range (noRange)
 import Helium.Utils.Utils (internalError)
-import Data.List (union, (\\))
 import Data.Maybe
 import qualified Data.Map as M
 import Helium.Syntax.UHA_Syntax
@@ -244,7 +243,7 @@ instance Freshen a => Freshen [a] where
 instance (Freshen a, Freshen b) => Freshen (Qualification a b) where
     freshenWithMapping mapping n (Qualification (prd, tp)) = let
         (mapping', (prd', b')) = freshenWithMapping mapping n prd
-        (mapping'', (tp', b'')) = freshenWithMapping mapping' b' tp
+        (_mapping'', (tp', b'')) = freshenWithMapping mapping' b' tp
         in (mapping', (Qualification (prd', tp'), b''))
 
 combineTps :: Tp -> TpScheme -> [(String, Tp)]

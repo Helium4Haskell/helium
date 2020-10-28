@@ -1,1 +1,1 @@
-ghci -g Helium/Main/Develop.hs -XOverlappingInstances -XUndecidableInstances -i../../lvm/src/lib:../../Top/src/:../../Top/dist/build/autogen/:../dist/build/autogen/uuagc:commands/helium/Helium
+stack ghci Helium/Main/Develop.hs
