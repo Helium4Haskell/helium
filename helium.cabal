@@ -7,14 +7,13 @@ description:
   Helium is a compiler for a subset of Haskell that aims at delivering high
   quality type error messages particularly for beginner programmers. It also
   includes facilities for specializing type error diagnosis for embedded domain
-  specific languages. The compiler supports Haskell 98, but without the ability
-  to define new type classes and instances.
+  specific languages.
 
 category:               Compiler
-copyright:              (c) 2014-2019
+copyright:              (c) 2014-2020
 license:                GPL
 license-file:           LICENSE.txt
-author:                 Bastiaan Heeren, Jurriaan Hage
+author:                 Bastiaan Heeren, Jurriaan Hage, Ivo Gabe de Wolff and many others
 maintainer:             helium4haskell@gmail.com
 stability:              provisional
 extra-source-files:
@@ -60,19 +59,22 @@ extra-source-files:
   src/Helium/Syntax/UHA_Syntax.ag
 build-type:             Simple
 cabal-version:          >= 2
-tested-with:        GHC == 8.2.2, GHC == 8.4.4, GHC == 8.6.5, GHC == 8.8.1
+tested-with:        GHC == 8.2.2, GHC == 8.4.4, GHC == 8.6.5, GHC == 8.8.1, GHC == 8.10.1
 data-files:
   lib/Char.hs
   lib/HeliumLang.core
+  lib/IridiumLang.iridium
+  lib/IridiumLangEval.iridium
+  lib/IridiumLangString.iridium
   lib/List.hs
   lib/LvmException.core
   lib/LvmIO.core
   lib/LvmLang.core
-  lib/Makefile
   lib/Maybe.hs
   lib/Prelude.hs
   lib/Prelude.type
   lib/PreludePrim.core
+  lib/runtime/memory.c
   lib/simple/Char.hs
   lib/simple/HeliumLang.core
   lib/simple/List.hs
@@ -94,7 +96,7 @@ source-repository head
 
 Executable helium
   Build-Depends:     base >= 3 && < 5, containers, mtl, parsec, network >= 2.7 && < 3.1, process, transformers, filepath, directory, wl-pprint, Top >= 1.9, lvmlib >= 1.9, helium
-  ghc-options:       -Wall
+  ghc-options:       -Wall -optP-Wno-nonportable-include-path
   default-language:  Haskell98
   hs-source-dirs:    src/commands/helium
   Main-is:           Helium/Main.hs
@@ -139,7 +141,7 @@ Library
   ghc-options:       -Wall
   default-language:  Haskell98
   hs-source-dirs:    src dist/build/autogen/uuagc
-  extensions:        BangPatterns, DoAndIfThenElse
+  default-extensions:        BangPatterns, DoAndIfThenElse
 
 
   Exposed-modules:
@@ -278,4 +280,4 @@ Library
     Helium.Utils.Network
     Helium.Utils.QualifiedTypes
     Helium.Utils.QualifiedTypes.Constants
-  Other-modules:
+  other-modules:     Paths_helium 

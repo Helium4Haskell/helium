@@ -25,7 +25,7 @@ import System.Directory
 import qualified Control.Exception as CE (catch, IOException)
 import Helium.Main.Args
 import TextHint.ConfigFile
-import Paths_helium
+import Paths_helium(getDataDir)
 
 data State = 
     State
@@ -76,7 +76,8 @@ main = do
       Just _ -> return ()
     
     -- Read all configuration info first
-    configFullname <- getDataFileName configFilename
+    dataDir <- getDataDir
+    let configFullname = joinPath [dataDir, configFilename]
     configInfo <-
         readConfig configFullname
         
@@ -96,10 +97,9 @@ main = do
     -- We can now assume the options are correct, and if maybeFileName is a Just, then we load this as file.
     -- This might fail as an ordinary load might. 
 
-    baseLibs <- getDataFileName $ 
-       if overloadingFromOptions options 
-       then slashify "lib"
-       else slashify "lib" ++ slashify "simple" -- Where the base libs are.
+    
+    let baseLibs = joinPath [dataDir, if overloadingFromOptions options then slashify "lib"
+                                      else slashify "lib" ++ slashify "simple"] -- Where the base libs are.
 
     let initialState = 
          State { tempDir = slashify tempDirFromEnv
