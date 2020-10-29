@@ -15,8 +15,8 @@ SEM Expression [ | | core : { Core.Expr } ]
     --  range                    : Range
     --  literal                  : Literal
 
-    | Variable           lhs.core = insertDictionaries @name.self @lhs.dictionaryEnv $ 
-                                        createInstantiation @lhs.typeOutput @lhs.typeEnv @name.self False @lhs.betaDeclUnique
+    | Variable           lhs.core = insertDictionaries @lhs.quantors @name.self @lhs.dictionaryEnv $ 
+                                        createInstantiation @lhs.typeOutput @lhs.typeEnv @lhs.quantors @name.self False @lhs.betaDeclUnique
     --  range                    : Range
     --  name                     : Name
 
@@ -24,7 +24,7 @@ SEM Expression [ | | core : { Core.Expr } ]
     --  range                    : Range
     --  id                       : Integer
 
-    | Constructor        lhs.core = createInstantiation @lhs.typeOutput @lhs.typeEnv @name.self True @lhs.betaDeclUnique
+    | Constructor        lhs.core = createInstantiation @lhs.typeOutput @lhs.typeEnv @lhs.quantors @name.self True @lhs.betaDeclUnique
     --  range                    : Range
     --  name                     : Name
 
@@ -42,7 +42,7 @@ SEM Expression [ | | core : { Core.Expr } ]
             (Nothing, Nothing) -> @operator.core
             (Just l , Nothing) -> Core.Ap @operator.core l
             (Nothing, Just r ) ->
-                addLambdasForLambdaExpression @lhs.typeOutput @lhs.betaDeclUnique [parameterId]
+                addLambdasForLambdaExpression @lhs.typeOutput @lhs.quantors @lhs.betaDeclUnique [parameterId]
                     (\_ _ -> Core.Ap (Core.Ap @operator.core $ Core.Var parameterId) r)
             {-
                 -- At most one new variable is needed. Consider
@@ -63,11 +63,12 @@ SEM Expression [ | | core : { Core.Expr } ]
 
     | Lambda             lhs.core = 
         let ids = freshIds "u$" @patterns.length
-        in addLambdasForLambdaExpression @lhs.typeOutput @lhs.betaDeclUnique ids
+        in addLambdasForLambdaExpression @lhs.typeOutput @lhs.quantors @lhs.betaDeclUnique ids
             (\tps retType -> 
                 let_ nextClauseId retType (patternMatchFail "lambda expression" retType @range.self)
                   $ patternsToCore
                     @lhs.importEnv
+                    @lhs.quantors
                     @patterns.patternTypes
                     (zip3 ids tps @patterns.self) 
                     @expression.core)
@@ -76,11 +77,11 @@ SEM Expression [ | | core : { Core.Expr } ]
     --  patterns                 : Patterns
     --  expression               : Expression
 
-    | Case               loc.scrutineeType = findCoreType @lhs.typeOutput $ @lhs.betaDeclUnique + 1
+    | Case               loc.scrutineeType = findCoreType @lhs.typeOutput @lhs.quantors $ @lhs.betaDeclUnique + 1
                          lhs.core = let_ caseExprId @loc.scrutineeType @expression.core @alternatives.core
                          alternatives.caseRange = @range.self
                          alternatives.scrutineeType = @loc.scrutineeType
-                         alternatives.rhsType = findCoreType @lhs.typeOutput @lhs.betaDeclUnique
+                         alternatives.rhsType = findCoreType @lhs.typeOutput @lhs.quantors @lhs.betaDeclUnique
     --  range                    : Range
     --  expression               : Expression
     --  alternatives             : Alternatives
@@ -94,24 +95,24 @@ SEM Expression [ | | core : { Core.Expr } ]
     --  declarations             : Declarations
     --  expression               : Expression
 
-    | Do                 loc.monadType = findCoreType @lhs.typeOutput @lhs.betaDeclUnique
+    | Do                 loc.monadType = findCoreType @lhs.typeOutput @lhs.quantors @lhs.betaDeclUnique
                          statements.monadType = @loc.monadType
-                         statements.returnType = findCoreType @lhs.typeOutput (@lhs.betaDeclUnique + 1)
+                         statements.returnType = findCoreType @lhs.typeOutput @lhs.quantors (@lhs.betaDeclUnique + 1)
                          lhs.core = let_ (idFromString "$monadDict") 
                                         (Core.TAp (Core.TCon $ Core.TConTypeClassDictionary $ idFromString "Prelude.Monad") @loc.monadType) 
-                                        (dictionaryTreeToCore $ head $ getDictionaryTrees @loc.name @lhs.dictionaryEnv) $ 
+                                        (dictionaryTreeToCore @lhs.quantors $ head $ getDictionaryTrees @loc.name @lhs.dictionaryEnv) $ 
                                         chainCode @statements.core
                          loc.name = setNameRange (nameFromString $ "do-" ++ show @range.self) @range.self
     --  range                    : Range
     --  statements               : Statements
 
-    | List               lhs.core = coreList (findCoreType @lhs.typeOutput @lhs.betaDeclUnique) @expressions.core
+    | List               lhs.core = coreList (findCoreType @lhs.typeOutput @lhs.quantors @lhs.betaDeclUnique) @expressions.core
     --  range                    : Range
     --  expressions              : Expressions
 
     | Tuple              lhs.core = 
         let
-            tp = findCoreType @lhs.typeOutput @lhs.betaDeclUnique
+            tp = findCoreType @lhs.typeOutput @lhs.quantors @lhs.betaDeclUnique
             tps = Core.typeTupleElements tp
             constructor =
                 foldl Core.ApType (Core.Con $ Core.ConTuple $ length @expressions.core) tps  
@@ -122,7 +123,7 @@ SEM Expression [ | | core : { Core.Expr } ]
     --  range                    : Range
     --  expressions              : Expressions
 
-    | Comprehension      loc.tp = findCoreType @lhs.typeOutput @lhs.betaDeclUnique
+    | Comprehension      loc.tp = findCoreType @lhs.typeOutput @lhs.quantors @lhs.betaDeclUnique
                          qualifiers.coreType = @loc.tp
                          lhs.core = 
         let singleton x = cons @loc.tp x $ nil @loc.tp
@@ -137,9 +138,9 @@ SEM Expression [ | | core : { Core.Expr } ]
     --  type                     : Type
 
     -- negate is overloaded and we need to insert a dictionary argument
-    | Negate             loc.tp   = findCoreType @lhs.typeOutput @lhs.betaDeclUnique
+    | Negate             loc.tp   = findCoreType @lhs.typeOutput @lhs.quantors @lhs.betaDeclUnique
                          lhs.core =
-            insertDictionaries (setNameRange intUnaryMinusName @range.self) @lhs.dictionaryEnv 
+            insertDictionaries @lhs.quantors (setNameRange intUnaryMinusName @range.self) @lhs.dictionaryEnv 
                 (Core.Var (idFromName intUnaryMinusName) `Core.ApType` @loc.tp)
                 `app_` @expression.core 
     --  range                    : Range
@@ -151,26 +152,26 @@ SEM Expression [ | | core : { Core.Expr } ]
     --  expression               : Expression
 
     -- enumerations are overloaded and we need to insert a dictionary argument
-    | Enum               loc.tp = findCoreType @lhs.typeOutput @lhs.betaDeclUnique
+    | Enum               loc.tp = findCoreType @lhs.typeOutput @lhs.quantors @lhs.betaDeclUnique
                          lhs.core = 
             case (@then.core, @to.core) of
                 -- TODO: `enumFromName` and friends are now qualified. However, we cannot pass a qualified name to insertDictionaries.
                 -- As a workaround we construct non-qualified names here. They might not be in scope everywhere, so this may fail.
                 -- We should fix this, by inserting the Enum dictionary manually                    
                 (Just then_, Just to) -> 
-                    insertDictionaries (setNameRange (nameFromString "enumFromThenTo") @range.self) @lhs.dictionaryEnv
+                    insertDictionaries @lhs.quantors (setNameRange (nameFromString "enumFromThenTo") @range.self) @lhs.dictionaryEnv
                        (Core.Var (idFromName enumFromThenToName) `Core.ApType` @loc.tp)
                        `app_` @from.core `app_` then_ `app_` to
                 (Just then_, Nothing) -> 
-                    insertDictionaries (setNameRange (nameFromString "enumFromThen") @range.self) @lhs.dictionaryEnv
+                    insertDictionaries @lhs.quantors (setNameRange (nameFromString "enumFromThen") @range.self) @lhs.dictionaryEnv
                         (Core.Var (idFromName enumFromThenName) `Core.ApType` @loc.tp)
                        `app_` @from.core `app_` then_
                 (Nothing, Just to) ->
-                    insertDictionaries (setNameRange (nameFromString "enumFromTo") @range.self) @lhs.dictionaryEnv
+                    insertDictionaries @lhs.quantors (setNameRange (nameFromString "enumFromTo") @range.self) @lhs.dictionaryEnv
                         (Core.Var (idFromName enumFromToName) `Core.ApType` @loc.tp)
                        `app_` @from.core `app_` to
                 (Nothing, Nothing) ->
-                    insertDictionaries (setNameRange (nameFromString "enumFrom") @range.self) @lhs.dictionaryEnv
+                    insertDictionaries @lhs.quantors (setNameRange (nameFromString "enumFrom") @range.self) @lhs.dictionaryEnv
                         (Core.Var (idFromName enumFromName) `Core.ApType` @loc.tp)
                        `app_` @from.core
                     
@@ -181,6 +182,7 @@ SEM Expression [ | | core : { Core.Expr } ]
 
     | RecordConstruction lhs.core = createRecordInstantiation
                                         @lhs.typeOutput 
+                                        @lhs.quantors
                                         @name.self 
                                         (map (\(n, e, _) -> (n, e)) @recordExpressionBindings.bindings)
                                         (declarationConstructorTypeScheme (importEnv @lhs.typeOutput) @name.self)
@@ -193,6 +195,7 @@ SEM Expression [ | | core : { Core.Expr } ]
 
     | RecordUpdate       lhs.core = createRecordUpdate
                                         @lhs.typeOutput
+                                        @lhs.quantors
                                         @expression.core
                                         (fromMaybe 
                                             (internalError "ToCoreExpr" "RecordUpdate" "(n/a)") 
@@ -210,7 +213,7 @@ ATTR Statements Statement [ monadType : { Core.Type } returnType : { Core.Type }
 ATTR Statements [  | | core USE { : } { [] } : { [Maybe Core.Expr -> Core.Expr] } ]
 
 SEM Statement [ | | core : { Maybe Core.Expr -> Core.Expr } ]
-    | Expression          loc.argType = findCoreType @lhs.typeOutput @lhs.betaDeclUnique
+    | Expression          loc.argType = findCoreType @lhs.typeOutput @lhs.quantors @lhs.betaDeclUnique
                           lhs.core =
             \theRest -> 
                 case theRest of
@@ -233,12 +236,12 @@ SEM Statement [ | | core : { Maybe Core.Expr -> Core.Expr } ]
     -- let _nextClause = <throw exception> in
     -- let _ok = \_misc -> case _misc of { pattern -> ...; _ -> _nextClause }
     -- in expression >>= ok
-    | Generator           loc.argType = let (TVar beta) = @pattern.beta in findCoreType @lhs.typeOutput beta
+    | Generator           loc.argType = let (TVar beta) = @pattern.beta in findCoreType @lhs.typeOutput @lhs.quantors beta
                           lhs.core =
         \theRest -> case theRest of
             Nothing   -> internalError "ToCoreExpr" "Statement" "generator can't be last in 'do'"
             Just rest ->
-                bind @lhs.monadType @argType @lhs.returnType (Core.Var $ idFromString "$monadDict") @expression.core (Core.Lam False (Core.Variable parameterId @loc.argType) (patternToCore @lhs.importEnv @pattern.patternTypes (parameterId, @loc.argType, @pattern.self) rest))
+                bind @lhs.monadType @argType @lhs.returnType (Core.Var $ idFromString "$monadDict") @expression.core (Core.Lam False (Core.Variable parameterId @loc.argType) (patternToCore @lhs.importEnv @lhs.quantors @pattern.patternTypes (parameterId, @loc.argType, @pattern.self) rest))
 
     --  range                    : Range
     --  pattern                  : Pattern
@@ -274,7 +277,7 @@ SEM Qualifier [ | | core : { Core.Expr -> Core.Expr } ]
     -- let _ok = \_misc -> case _misc of { pattern -> ...; _ -> _nextClause }
     -- in concatMap _ok expression
 
-    | Generator           loc.argType = let (TVar beta) = @pattern.beta in findCoreType @lhs.typeOutput beta
+    | Generator           loc.argType = let (TVar beta) = @pattern.beta in findCoreType @lhs.typeOutput @lhs.quantors beta
                           loc.retType = (Core.TCon (Core.TConDataType $ idFromString "[]") `Core.TAp` @lhs.coreType)
                           lhs.core = 
         \continue ->  
@@ -282,7 +285,7 @@ SEM Qualifier [ | | core : { Core.Expr -> Core.Expr } ]
                 (let_ 
                     okId (Core.typeFunction [@loc.argType] @loc.retType)
                     (Core.Lam False (Core.Variable parameterId @loc.argType)
-                        (patternToCore @lhs.importEnv @pattern.patternTypes (parameterId, @loc.argType, @pattern.self) continue)
+                        (patternToCore @lhs.importEnv @lhs.quantors @pattern.patternTypes (parameterId, @loc.argType, @pattern.self) continue)
                     )
                     (var "$primConcatMap" `Core.ApType` @loc.argType `Core.ApType` @lhs.coreType
                         `app_` Core.Var okId 
@@ -310,6 +313,7 @@ SEM Alternative [ | | core : { Core.Expr -> Core.Expr } ]
                                         let thisCase =
                                                 patternToCore
                                                     @lhs.importEnv
+                                                    @lhs.quantors
                                                     @pattern.patternTypes
                                                     (caseExprId, @lhs.scrutineeType, @pattern.self) 
                                                     @righthandside.core

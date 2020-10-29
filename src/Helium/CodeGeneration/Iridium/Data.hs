@@ -342,6 +342,6 @@ declaresFunction :: Module -> Id -> Bool
 declaresFunction (Module _ _ _ _ _ abstracts methods) name = any ((== name) . declarationName) abstracts || any ((== name) . declarationName) methods
 
 envWithSynonyms :: Module -> TypeEnvironment
-envWithSynonyms (Module _ _ _ _ synonyms _ _) = TypeEnvironment (mapFromList synonymsList) emptyMap
+envWithSynonyms (Module _ _ _ _ synonyms _ _) = TypeEnvironment (mapFromList synonymsList) emptyMap emptyMap
   where
     synonymsList = map (\(Declaration name _ _ _ (TypeSynonym tp)) -> (name, tp)) synonyms

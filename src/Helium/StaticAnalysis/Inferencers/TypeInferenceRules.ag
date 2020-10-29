@@ -265,7 +265,7 @@ SEM FieldDeclaration
       loc . recordEnv     = recordEnvironment @lhs.importEnvironment
           . fieldEnv      = fromMaybe (internalError 
                                 "TypeInferenceRules.ag" 
-                                "RecordExpressionBinding" 
+                                "FieldDeclaration" 
                                 "Specified record could not be found") 
                                     (M.lookup @lhs.conName @recordEnv)
           . selTypes      = catMaybes $ map (\n -> do

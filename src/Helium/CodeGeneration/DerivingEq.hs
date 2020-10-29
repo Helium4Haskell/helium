@@ -33,9 +33,9 @@ dataDictionary env (UHA.Declaration_Data _ _ (UHA.SimpleType_SimpleType _ name n
     { declName    = nm
     , declAccess  = Export nm
     , declModule  = Nothing
-    , declType    = foldr (\(typeArg, idx) -> Core.TForall (Core.Quantor idx $ Just $ getNameName typeArg) Core.KStar)
+    , declType    = foldr (\typeArg -> Core.TForall (Core.Quantor $ Just $ getNameName typeArg) Core.KStar)
                           (Core.typeFunction argTypes dictType)
-                        $ zip names [1 ..]
+                          names
     , valueValue  = eqDict env dictType dataType names constructors
     , declCustoms = [custom "type" ("DictPrelude.Eq$ " ++ getNameName qualname)]
                     ++ map (custom "typeVariable" . getNameName) names
@@ -52,9 +52,9 @@ dataDictionary _ _ _ = error "pattern match failure in CodeGeneration.Deriving.d
 
 eqDict :: ImportEnvironment -> Core.Type -> Core.Type -> [UHA.Name] -> [UHA.Constructor] -> Expr
 eqDict env dictType dataType names constructors = foldr
-    (\(typeArg, idx) -> Forall (Core.Quantor idx $ Just $ getNameName typeArg) Core.KStar)
+    (\typeArg -> Forall (Core.Quantor $ Just $ getNameName typeArg) Core.KStar)
     dictBody'
-    (zip names [1 ..])
+    names
   where
     dictBody' = foldr
         (Lam False)

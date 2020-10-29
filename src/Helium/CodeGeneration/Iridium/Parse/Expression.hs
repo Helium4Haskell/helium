@@ -45,16 +45,16 @@ pFloat = do
       return $ sign * fromIntegral int * 10 ^ exp
     _ -> return $ sign * fromIntegral int
 
-pGlobal :: QuantorIndexing -> Parser Global
-pGlobal quantors = do
+pGlobal :: Parser Global
+pGlobal = do
   pToken '@'
   name <- pId
   pToken ':'
   pWhitespace
   GlobalVariable name <$> pTypeAtom
 
-pGlobalFunction :: QuantorIndexing -> Parser GlobalFunction
-pGlobalFunction quantors = do
+pGlobalFunction :: Parser GlobalFunction
+pGlobalFunction = do
   pToken '@'
   name <- pId
   pWhitespace
@@ -66,21 +66,21 @@ pGlobalFunction quantors = do
   pWhitespace
   pToken ':'
   pWhitespace
-  tp <- pTypeAtom' quantors
+  tp <- pTypeAtom
   return $ GlobalFunction name arity tp
 
-pLocal :: QuantorIndexing -> Parser Local
+pLocal :: QuantorNames -> Parser Local
 pLocal quantors = Local <$ pToken '%' <*> pId <* pToken ':' <* pWhitespace <*> pTypeAtom' quantors
 
-pVariable :: QuantorIndexing -> Parser Variable
+pVariable :: QuantorNames -> Parser Variable
 pVariable quantors = do
   c <- lookahead
   case c of
-    '@' -> VarGlobal <$> pGlobal quantors
+    '@' -> VarGlobal <$> pGlobal
     '%' -> VarLocal <$> pLocal quantors
     _ -> pError "expected variable"
 
-pCallArguments :: QuantorIndexing -> Parser [Either Type Variable]
+pCallArguments :: QuantorNames -> Parser [Either Type Variable]
 pCallArguments quantors = pArguments pCallArgument
   where
     pCallArgument = do
@@ -90,12 +90,12 @@ pCallArguments quantors = pArguments pCallArgument
       else
         Right <$> pVariable quantors
 
-pExpression :: QuantorIndexing -> Parser Expr
+pExpression :: QuantorNames -> Parser Expr
 pExpression quantors = do
   keyword <- pKeyword
   case keyword of
     "literal" -> Literal <$> pLiteral
-    "call" -> Call <$> pGlobalFunction quantors <* pWhitespace <* pToken '$' <* pWhitespace <*> pCallArguments quantors
+    "call" -> Call <$> pGlobalFunction <* pWhitespace <* pToken '$' <* pWhitespace <*> pCallArguments quantors
     "eval" -> Eval <$> pVariable quantors
     "var" -> Var <$> pVariable quantors
     "instantiate" -> Instantiate <$> pVariable quantors <* pWhitespace <*> pInstantiation quantors
@@ -107,5 +107,5 @@ pExpression quantors = do
     "seq" -> Seq <$> pVariable quantors <* pWhitespace <* pToken ',' <* pWhitespace <*> pVariable quantors
     _ -> pError "expected expression"
 
-pPhiBranch :: QuantorIndexing -> Parser PhiBranch
+pPhiBranch :: QuantorNames -> Parser PhiBranch
 pPhiBranch quantors = PhiBranch <$> pId <* pWhitespace <* pSymbol "=>" <* pWhitespace <*> pVariable quantors

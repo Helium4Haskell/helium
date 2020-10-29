@@ -6,13 +6,25 @@ ATTR Module
    |   core             : { Core.CoreModule }
    ]
 
+ATTR Body Declaration Declarations MaybeDeclarations
+  Expression Expressions MaybeExpression
+  Statements Statement Qualifiers Qualifier Alternatives Alternative
+  GuardedExpressions GuardedExpression RecordExpressionBindings
+  RecordExpressionBinding RecordPatternBindings RecordPatternBinding
+  FunctionBindings FunctionBinding LeftHandSide RightHandSide
+  Patterns Pattern
+  [ quantors : { Quantors }
+  | 
+  | 
+  ]
+
 ATTR Module Body Declaration Declarations MaybeDeclarations
   Expression Expressions MaybeExpression
   Statements Statement Qualifiers Qualifier Alternatives Alternative
   GuardedExpressions GuardedExpression RecordExpressionBindings
   RecordExpressionBinding RecordPatternBindings RecordPatternBinding
   FunctionBindings FunctionBinding LeftHandSide RightHandSide
-  Patterns Pattern 
+  Patterns Pattern
   [ typeOutput : TypeInferenceOutput 
     extraDecls       : { [Core.CoreDecl] }
   | 

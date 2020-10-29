@@ -23,13 +23,15 @@ import Data.List
 
 import Text.PrettyPrint.Leijen (pretty)
 
+import Debug.Trace
+
 type DictLabel = String
 
 constructFunctionMap :: ImportEnvironment -> Int -> Name -> [(Name, Int, DictLabel, Core.Type)]
 constructFunctionMap env nrOfSuperclasses name =
     let
         err = error $ "Invalid class name " ++ show name
-        f i (n, t, _, _) = (n, i, "func$" ++ getNameName n, toCoreType t)
+        f i (n, t, _, _) = (n, i, "func$" ++ getNameName n, toCoreType emptyQuantors t)
 
     in maybe err (zipWith f [nrOfSuperclasses..] . snd) $ M.lookup name (classMemberEnvironment env)
 
@@ -46,34 +48,26 @@ constructSuperClassMap env name tp =
 
 constructorType :: String -> [Core.Type] -> [Core.Type] -> Core.Type -> Core.Type
 constructorType typeVar fieldsSuper fieldsMembers classType =
-    Core.TForall (Core.Quantor 0 $ Just typeVar) Core.KStar $ Core.typeFunction fields' classType
+    Core.TForall (Core.Quantor $ Just typeVar) Core.KStar $ Core.typeFunction fields' classType
     where
-        fields' = fieldsSuper ++ map (addDictArgument . instantiateClassVar) fieldsMembers
+        fields' = fieldsSuper ++ map (addDictArgument 0 . instantiateClassVar) fieldsMembers
 
         -- Adds the dictionary argument to the types of the fields of the type class
-        addDictArgument :: Core.Type -> Core.Type
-        addDictArgument (Core.TForall quantor kind tp) = Core.TForall quantor kind $ addDictArgument tp
-        addDictArgument tp = Core.TAp (Core.TAp (Core.TCon Core.TConFun) classType) tp
+        addDictArgument :: Int -> Core.Type -> Core.Type
+        addDictArgument idx (Core.TForall quantor kind tp) = Core.TForall quantor kind $ addDictArgument (idx + 1) tp
+        addDictArgument idx tp = Core.TAp (Core.TAp (Core.TCon Core.TConFun) $ Core.typeWeaken idx classType) tp
 
         -- We use 0 for the type variable for the argument of the type class.
         -- The types for the fields may need to be updated for this.
         -- We increment all other type variables with 1 (such that 0 is not used)
         -- and replace the type variable for the type class with 0.
         instantiateClassVar :: Core.Type -> Core.Type
-        instantiateClassVar (Core.TForall (Core.Quantor idx name) k t)
-            | name == Just typeVar = updateTypeVars idx t
-            | otherwise = Core.TForall (Core.Quantor (idx + 1) name) k $ instantiateClassVar t
-        instantiateClassVar t = internalError "InstanceDictionary" "constructorType" "Type argument for type class not found in signature of field."
-
-        -- Substitute type variable with index idxTypeClass with `TVar 0`. Increment all other type variables with 1.
-        updateTypeVars idxTypeClass (Core.TForall (Core.Quantor idx name) k t)
-            = Core.TForall (Core.Quantor (idx + 1) name) k $ updateTypeVars idxTypeClass t
-        updateTypeVars idxTypeClass (Core.TVar idx)
-            | idx == idxTypeClass = Core.TVar 0
-            | otherwise = Core.TVar $ idx + 1
-        updateTypeVars idxTypeClass (Core.TStrict t) = updateTypeVars idxTypeClass t
-        updateTypeVars idxTypeClass (Core.TAp t1 t2) = Core.TAp (updateTypeVars idxTypeClass t1) (updateTypeVars idxTypeClass t2)
-        updateTypeVars _ (Core.TCon c) = Core.TCon c
+        instantiateClassVar = go 0 . Core.typeWeaken 1
+          where
+            go idx t1@(Core.TForall (Core.Quantor name) k t2)
+              | name == Just typeVar = Core.typeApply t1 (Core.TVar idx)
+              | otherwise = Core.TForall (Core.Quantor name) k $ go (idx + 1) t2
+            go _ _ = internalError "InstanceDictionary" "constructorType" "Type argument for type class not found in signature of field."
 
 -- data DictEq a = DictEq (Eq a => a -> a -> Bool) (forall b . Eq a => b -> a -> Bool)
 
@@ -105,7 +99,7 @@ classFunctions mod typeOutput className typeVar combinedNames = [DeclCon -- Decl
             superDict :: (String, Int, DictLabel, Core.Type) -> CoreDecl
             superDict (superName, _, label, t) =
                 let dictParam = idFromString "dict"
-                    (declValue, declType) = createFunction [Core.Quantor 0 $ Just typeVar] [Variable dictParam classType] body t
+                    (declValue, declType) = createFunction [Core.Quantor $ Just typeVar] [Variable dictParam classType] body t
                     body = Let (Strict $ Bind (Variable dictParam classType) (Var dictParam))
                         $ Match dictParam
                             [
@@ -134,19 +128,21 @@ classFunctions mod typeOutput className typeVar combinedNames = [DeclCon -- Decl
                                 _ -> Nothing
                             )
                             declType
-                    declType = snd $ declarationType typeOutput TCCNone name
+                    declType = snd $ declarationType typeOutput TCCNone emptyQuantors name
+                    tvars = reverse [0..length quantors - 1]
+                    typeArg' = Core.TVar $ length quantors
                     val = DeclValue
                         { declName    = idFromName $ addQualified mod name
                         , declAccess  = Export $ idFromString $ getNameName name
                         , declModule  = Nothing
                         , declType    = declType
-                        , valueValue  = Forall (Core.Quantor 0 $ Just typeVar) Core.KStar
+                        , valueValue  = Forall (Core.Quantor $ Just typeVar) Core.KStar
                             $ flip (foldr (\q e -> Forall q Core.KStar e)) quantors
-                            $ Lam True (Variable dictParam classType)
+                            $ Lam True (Variable dictParam $ Core.typeWeaken (length quantors) classType)
                             $ Match dictParam
                                 [
-                                    Alt (PatCon (ConId $ idFromString ("Dict$" ++ className)) [typeArg] (map idFromString labels))
-                                        (Ap (foldl (\e (Core.Quantor idx _) -> ApType e (Core.TVar idx)) (Var $ idFromString label) quantors) $ Var dictParam)
+                                    Alt (PatCon (ConId $ idFromString ("Dict$" ++ className)) [typeArg'] (map idFromString labels))
+                                        (Ap (foldl (\e idx -> ApType e (Core.TVar idx)) (Var $ idFromString label) tvars) $ Var dictParam)
                                 ]
                         , declCustoms = []
                         }
@@ -175,7 +171,7 @@ constructDictionary typeOutput instanceSuperClass combinedNames whereDecls class
         name = idFromString ("$dict" ++ getNameName className ++ "$" ++ insName)
         typeVariables = map (\(name, idx) -> let TVar beta = lookupBeta idx typeOutput in (name, beta)) typeVariables'
         (declValue, declType) = createFunction quantors instanceSuperClassVariables dict dictType
-        quantors = map (\(name, idx) -> (Core.Quantor idx $ Just $ getNameName name)) typeVariables
+        quantors = map (\(name, idx) -> (Core.Quantor $ Just $ getNameName name)) typeVariables
         functions = combineDeclIndex combinedNames whereDecls
         idP = idFromString "index"
         superClasses = constructSuperClassMap (importEnv typeOutput) (getNameName className) insType
@@ -183,7 +179,7 @@ constructDictionary typeOutput instanceSuperClass combinedNames whereDecls class
         binds = map makeBindSuper superClasses ++ map makeBindFunc functions ++ [dictCon]
         labels = map (\(_, _, l, _)->l) superClasses ++ map (\(l, _, _, _)->l) functions
         findTVar :: Name -> Int
-        findTVar name = fromMaybe (error "constructDictionary: Type variable not found in a type class instance declaration") $ lookup name typeVariables
+        findTVar name = maybe (error "constructDictionary: Type variable not found in a type class instance declaration") (\i -> length typeVariables' - 1 - i) $ elemIndex name $ map fst typeVariables'
         instanceSuperClassVariables = map (\(className, tvar) -> Variable (idFromString $ "$instanceDict" ++ className ++ "$" ++ getNameName tvar) $ Core.TAp (typeClassType $ idFromString className) $ Core.TVar $ findTVar tvar) instanceSuperClass
         makeBindSuper :: (String, Int, DictLabel, Core.Type) -> Bind
         makeBindSuper (cName, _, label, t) = let
@@ -232,16 +228,16 @@ constructDictionary typeOutput instanceSuperClass combinedNames whereDecls class
 
                 baseInstanceFn =
                     foldl
-                        (\expr (_, idx) -> ApType expr (Core.TVar idx))
+                        (\expr idx -> ApType expr (Core.TVar idx))
                         (Var (idFromString ("$dict" ++ cName ++ "$" ++ insName)))
-                        typeVariables
+                        $ reverse $ zipWith const [0..] typeVariables
                 baseInstance = foldl Ap baseInstanceFn $ map resolveSuperInstance instanceSuperClasses
 
             in Bind (Variable (idFromString label) t) baseInstance
 
         makeBindFunc :: (DictLabel, Name, Core.Type, Maybe CoreDecl) -> Bind
         makeBindFunc (label, name, t, fdecl) = let
-            (_, tp) = declarationType typeOutput (TCCInstance (idFromString insName) insType) name
+            (_, tp) = declarationType typeOutput (TCCInstance (idFromString insName) insType) emptyQuantors name
                 -- declarationType :: M.Map NameWithRange Top.TpScheme -> ImportEnvironment -> TypeClassContext -> Name -> (Top.TpScheme, Core.Type)
             undefinedFunc = ApType (Var $ idFromString ("default$" ++ getNameName className ++ "$" ++ getNameName name)) insType
             func = maybe undefinedFunc getCoreValue fdecl
@@ -320,7 +316,7 @@ convertDictionaries typeOutput className functions defaults = map makeFunction f
                         updateName fdecl = fdecl{
                             declName = fid
                         }
-                        tp = snd $ declarationType typeOutput TCCNone fname
+                        tp = snd $ declarationType typeOutput TCCNone emptyQuantors fname
                         fDefault :: CoreDecl
                         fDefault = DeclValue
                             { declName    = fid

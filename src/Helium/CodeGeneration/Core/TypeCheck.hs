@@ -25,18 +25,18 @@ import Text.PrettyPrint.Leijen (pretty)
 type Location = [String]
 data TypeError = TypeError Location Message
 data Message
-  = MessageExpected String Type (Maybe Expr)
-  | MessageNotEqual Type Type
+  = MessageExpected QuantorNames String Type (Maybe Expr)
+  | MessageNotEqual QuantorNames Type Type
   | MessageNameNotFound Id
 
 instance Show Message where
-  show (MessageExpected str tp (Just expr))
-    = "  Expected " ++ str ++ ", got `" ++ showType [] tp ++ "' instead"
+  show (MessageExpected quantors str tp (Just expr))
+    = "  Expected " ++ str ++ ", got `" ++ showType quantors tp ++ "' instead"
     ++ "  as the type of expression:\n\n" ++ show (pretty expr)
-  show (MessageExpected str tp Nothing)
-    = "  Expected " ++ str ++ ", got `" ++ showType [] tp ++ "' instead"
-  show (MessageNotEqual t1 t2)
-    = "  Types `" ++ showType [] t1 ++ "' and `" ++ showType [] t2 ++ "' do not match"
+  show (MessageExpected quantors str tp Nothing)
+    = "  Expected " ++ str ++ ", got `" ++ showType quantors tp ++ "' instead"
+  show (MessageNotEqual quantors t1 t2)
+    = "  Types `" ++ showType quantors t1 ++ "' and `" ++ showType quantors t2 ++ "' do not match"
   show (MessageNameNotFound name)
     = "  Variable not found: " ++ show name
 
@@ -52,10 +52,10 @@ type Check a = Either TypeError a
 report :: Message -> Check a
 report = Left . TypeError []
 
-assert :: TypeEnvironment -> Type -> Type -> Check ()
-assert env t1 t2
+assert :: TypeEnvironment -> QuantorNames -> Type -> Type -> Check ()
+assert env quantors t1 t2
   | typeEqual env t1 t2 = Right ()
-  | otherwise = report $ MessageNotEqual t1 t2
+  | otherwise = report $ MessageNotEqual quantors t1 t2
 
 (@@) :: Check a -> String -> Check a
 Right x @@ name = Right x
@@ -86,82 +86,84 @@ checkDecl env decl = case checkDecl' env decl of
 
 checkDecl' :: TypeEnvironment -> CoreDecl -> Check ()
 checkDecl' env decl@DeclValue{} = do
-  tp <- checkExpression env (valueValue decl) @@ "function " ++ show (declName decl)
-  assert env tp (declType decl) @@ "annotated type of function " ++ show (declName decl)
+  tp <- checkExpression env [] (valueValue decl) @@ "function " ++ show (declName decl)
+  assert env [] tp (declType decl) @@ "annotated type of function " ++ show (declName decl)
 checkDecl' env _ = return ()
 
-checkExpression :: TypeEnvironment -> Expr -> Check Type
-checkExpression env (Let binds expr) = do
+checkExpression :: TypeEnvironment -> QuantorNames -> Expr -> Check Type
+checkExpression env quantors (Let binds expr) = do
   let env' = typeEnvAddBinds binds env
   let envBinds =
         case binds of
           Rec _ -> env'
           _ -> env
-  sequence_ $ map (checkBind env') $ listFromBinds binds
-  checkExpression env' expr
-checkExpression env (Match name alts) = do
+  sequence_ $ map (checkBind env' quantors) $ listFromBinds binds
+  checkExpression env' quantors expr
+checkExpression env quantors (Match name alts) = do
   scrutinee <- checkId env name
-  ~(tp:tps) <- traverse (\alt -> checkAlt env scrutinee alt @@ "match on variable " ++ show name) alts
-  sequence_ $ map (\tp' -> assert env tp tp' @@ "the inferred types of the alts") tps
+  ~(tp:tps) <- traverse (\alt -> checkAlt env quantors scrutinee alt @@ "match on variable " ++ show name) alts
+  sequence_ $ map (\tp' -> assert env quantors tp tp' @@ "the inferred types of the alts") tps
   return tp
-checkExpression env (Ap e1 e2) = do
-  t1 <- checkExpression env e1
-  t2 <- checkExpression env e2
+checkExpression env quantors (Ap e1 e2) = do
+  t1 <- checkExpression env quantors e1
+  t2 <- checkExpression env quantors e2
   case typeNotStrict $ typeNormalizeHead env t1 of
     (TAp (TAp (TCon TConFun) tArg) tReturn) -> do
-      assert env t2 tArg @@ "the argument of an application"
+      assert env quantors t2 tArg @@ "the argument of an application"
       return tReturn
-    t1' -> report (MessageExpected "function type" t1' $ Just e1) @@ "the argument of an application"
-checkExpression env (ApType e1 t2) = do
-  t1 <- checkExpression env e1
+    t1' -> report (MessageExpected quantors "function type" t1' $ Just e1) @@ "the argument of an application"
+checkExpression env quantors (ApType e1 t2) = do
+  t1 <- checkExpression env quantors e1
   case typeNormalizeHead env t1 of
-    TForall (Quantor idx _) _ t1' -> return $ typeSubstitute idx t2 t1'
-    t1' -> report $ MessageExpected "forall type" t1' $ Just e1
-checkExpression env (Lam _ var@(Variable x tArg) expr) = do
+    t1'@(TForall _ _ _) -> return $ typeApply t1' t2
+    t1' -> report $ MessageExpected quantors "forall type" t1' $ Just e1
+checkExpression env quantors (Lam _ var@(Variable x tArg) expr) = do
   let env' = typeEnvAddVariable var env
-  tReturn <- checkExpression env' expr @@ "lambda with argument " ++ show x
+  tReturn <- checkExpression env' quantors expr @@ "lambda with argument " ++ show x
   return $ TAp (TAp (TCon TConFun) tArg) tReturn
-checkExpression env (Forall quantor kind expr) = do
-  tp <- checkExpression env expr
+checkExpression env quantors (Forall quantor kind expr) = do
+  tp <- checkExpression (typeEnvWeaken 1 env) (freshQuantorName quantors quantor : quantors) expr
   return $ TForall quantor kind tp
-checkExpression env (Var name) = checkId env name
+checkExpression env quantors (Var name) = checkId env name
 -- Con or Lit
-checkExpression env expr = return $ typeOfCoreExpression env expr
+checkExpression env quantors expr = return $ typeOfCoreExpression env expr
 
-checkBind :: TypeEnvironment -> Bind -> Check ()
-checkBind env (Bind (Variable x tpAnnotated) expr) = do
-  tpResolved <- checkExpression env expr @@ "bind for variable " ++ show x
-  assert env tpAnnotated tpResolved @@ "annotated type for variable " ++ show x
+checkBind :: TypeEnvironment -> QuantorNames -> Bind -> Check ()
+checkBind env quantors (Bind (Variable x tpAnnotated) expr) = do
+  tpResolved <- checkExpression env quantors expr @@ "bind for variable " ++ show x
+  assert env quantors tpAnnotated tpResolved @@ "annotated type for variable " ++ show x
 
-checkAlt :: TypeEnvironment -> Type -> Alt -> Check Type
-checkAlt env tp (Alt pat expr) = do
-  env' <- checkPattern env tp pat @@ "pattern " ++ show (ppPattern [] pat)
-  checkExpression env' expr @@ "alt with pattern " ++ show (ppPattern [] pat)
+checkAlt :: TypeEnvironment -> QuantorNames -> Type -> Alt -> Check Type
+checkAlt env quantors tp (Alt pat expr) = do
+  env' <- checkPattern env quantors tp pat @@ "pattern " ++ show (ppPattern [] pat)
+  checkExpression env' quantors expr @@ "alt with pattern " ++ show (ppPattern [] pat)
 
-checkPattern :: TypeEnvironment -> Type -> Pat -> Check TypeEnvironment
-checkPattern env tp (PatLit lit) = do
-  assert env tp (typeOfLiteral lit)
+checkPattern :: TypeEnvironment -> QuantorNames -> Type -> Pat -> Check TypeEnvironment
+checkPattern env quantors tp (PatLit lit) = do
+  assert env quantors tp (typeOfLiteral lit)
   return env
-checkPattern env tp PatDefault = return env
-checkPattern env tp pat@(PatCon con@(ConId _) typeArgs ids) = do
+checkPattern env quantors tp PatDefault = return env
+checkPattern env quantors tp pat@(PatCon con@(ConId _) typeArgs ids) = do
   let tCon = typeApplyList (typeOfCoreExpression env $ Con con) typeArgs
   vars <- findVars tCon ids
   return $ typeEnvAddVariables vars env
   where
     findVars :: Type -> [Id] -> Check [Variable]
     findVars tReturn [] = do
-      assert env tp tReturn
+      assert env quantors tp tReturn
       return []
     findVars (TAp (TAp (TCon TConFun) tArg) tReturn) (x:xs) = do
       let var = Variable x tArg
       vars <- findVars tReturn xs
       return (var : vars)
     findVars t _ = do
-      report $ MessageExpected "function type" t Nothing
-checkPattern env tp pat = return $ typeEnvAddPattern pat env
+      report $ MessageExpected quantors "function type" t Nothing
+checkPattern env quantors tp pat = return $ typeEnvAddPattern pat env
 
 
 checkId :: TypeEnvironment -> Id -> Check Type
-checkId (TypeEnvironment _ values) name = case lookupMap name values of
+checkId (TypeEnvironment _ globals locals) name = case lookupMap name globals of
   Just tp -> return tp
-  Nothing -> report $ MessageNameNotFound name
+  Nothing -> case lookupMap name locals of
+    Just tp -> return tp
+    Nothing -> report $ MessageNameNotFound name

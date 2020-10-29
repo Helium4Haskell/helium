@@ -197,11 +197,10 @@ instance ShowDeclaration Method where
       (args', quantors) = showMethodArguments [] args
 
 showMethodArguments :: QuantorNames -> [Either Quantor Local] -> ([String], QuantorNames)
-showMethodArguments quantors (Left quantor : args) = (("forall " ++ show quantor) : args', quantors'')
+showMethodArguments quantors (Left quantor : args) = (("forall " ++ name) : args', quantors'')
   where
-    quantors' = case quantor of
-      Quantor idx (Just name) -> (idx, name) : quantors
-      _ -> quantors
+    name = freshQuantorName quantors quantor
+    quantors' = name : quantors
     (args', quantors'') = showMethodArguments quantors' args
 showMethodArguments quantors (Right arg : args) = (showQ quantors arg : args', quantors')
   where

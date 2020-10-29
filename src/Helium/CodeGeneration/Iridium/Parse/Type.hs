@@ -19,46 +19,36 @@ pTypeArgName = do
   else
     return $ Right cs
 
-pTypeArg :: QuantorIndexing -> Parser Int
-pTypeArg (QuantorIndexing _ indexNamed indexUnnamed) = do
+pTypeArg :: QuantorNames -> Parser Int
+pTypeArg quantorNames = do
   arg <- pTypeArgName
-  (idx, name) <-
-    case arg of
-      Left idx -> return (lookup idx indexUnnamed, 'v' : '$' : show idx)
-      Right name -> return (lookup name indexNamed, name)
-  case idx of
-    Just i -> return i
-    Nothing -> pError ("Type variable not in scope: " ++ name)
+  case arg of
+    Left idx
+      | idx >= length quantorNames -> pError $ "Unnamed type argument v$" ++ show idx ++ " not in scope"
+      | otherwise -> return idx
+    Right name -> case name `elemIndex` quantorNames of
+      Nothing -> pError $ "Type argument " ++ show name ++ " not in scope"
+      Just idx -> return idx
 
--- Contains the next free id for a type variable, the mapping from names
--- to indices and a mapping from source type variables to new type variables.
--- We maintain the last mapping such that we can more easily assign indices to
--- named type variables.
-data QuantorIndexing = QuantorIndexing Int [(String, Int)] [(Int, Int)]
-
-addToMapping :: Eq a => a -> Int -> [(a, Int)] -> [(a, Int)]
-addToMapping name idx mapping = (name, idx) : filter ((name /= ) . fst) mapping
-
-pQuantor :: QuantorIndexing -> Parser (Quantor, QuantorIndexing)
-pQuantor (QuantorIndexing nextIdx stringMapping numberMapping) = do
+pQuantor :: QuantorNames -> Parser (Quantor, QuantorNames)
+pQuantor quantorNames = do
   var <- pTypeArgName
   case var of
-    Left idx -> return
-      ( Quantor nextIdx Nothing
-      , QuantorIndexing (nextIdx + 1) stringMapping (addToMapping idx nextIdx numberMapping)
-      )
+    Left idx
+      | idx /= length quantorNames -> pError $ "Identifier for type argument v$" ++ show idx ++ " doesn't match the next fresh type argument v$" ++ show (length quantorNames)
+      | otherwise -> return (Quantor Nothing, ("v$" ++ show idx) : quantorNames)
     Right name -> return
-      ( Quantor nextIdx (Just name)
-      , QuantorIndexing (nextIdx + 1) (addToMapping name nextIdx stringMapping) numberMapping
+      ( Quantor (Just name)
+      , name : quantorNames
       )
 
 pTypeAtom :: Parser Type
-pTypeAtom = pTypeAtom' $ QuantorIndexing 0 [] []
+pTypeAtom = pTypeAtom' []
 
 pType :: Parser Type
-pType = pType' $ QuantorIndexing 0 [] []
+pType = pType' []
 
-pType' :: QuantorIndexing -> Parser Type
+pType' :: QuantorNames -> Parser Type
 pType' quantors = do
   forallType <- pMaybe $ pTypeForall quantors
   case forallType of
@@ -74,14 +64,14 @@ pType' quantors = do
           return $ TAp (TAp (TCon TConFun) left) right
         Nothing -> return left
 
-pTypeAp :: QuantorIndexing -> Parser Type
+pTypeAp :: QuantorNames -> Parser Type
 pTypeAp quantors = do
   tp1 <- pTypeAtom' quantors
   pWhitespace
   tps <- pManyMaybe $ pMaybe (pTypeAtom' quantors <* pWhitespace)
   return $ foldl TAp tp1 tps
 
-pTypeAtom' :: QuantorIndexing -> Parser Type
+pTypeAtom' :: QuantorNames -> Parser Type
 pTypeAtom' quantors = do
   c1 <- lookahead
   case c1 of
@@ -131,7 +121,7 @@ pTypeAtom' quantors = do
       name <- pId
       return $ TCon $ TConDataType name
 
-pTypeForall :: QuantorIndexing -> Parser (QuantorIndexing, Type -> Type)
+pTypeForall :: QuantorNames -> Parser (QuantorNames, Type -> Type)
 pTypeForall quantors = do
   key <- pKeyword
   case key of
@@ -155,7 +145,7 @@ pDataTypeConstructor :: Parser DataTypeConstructor
 pDataTypeConstructor = DataTypeConstructor
   <$ pToken '@' <*> pId <* pToken ':' <* pWhitespace <*> pTypeAtom
 
-pInstantiation :: QuantorIndexing -> Parser [Type]
+pInstantiation :: QuantorNames -> Parser [Type]
 pInstantiation quantors = do
   c <- lookahead
   if c == '{' then do

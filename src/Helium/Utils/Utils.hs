@@ -42,6 +42,11 @@ commaList [] = ""
 commaList [x] = x
 commaList (x:xs) = x ++ ", " ++ commaList xs
 
+safeIndex :: [a] -> Int -> Maybe a
+safeIndex []     !_ = Nothing
+safeIndex (x:_)  0  = Just x
+safeIndex (_:xs) !i = safeIndex xs (i - 1)
+
 -------------------------------------------------------
 -- Tuples
 -------------------------------------------------------

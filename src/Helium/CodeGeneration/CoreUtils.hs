@@ -20,7 +20,7 @@ module Helium.CodeGeneration.CoreUtils
     ,   addLambdas, addLambdasForLambdaExpression, TypeClassContext(..)
     ,   findCoreType, createInstantiation, createRecordInstantiation
     ,   createRecordUpdate, createRecordSelector
-    ,   constructorsToCase, constructorToCase
+    ,   Quantors, emptyQuantors, quantorsFromList, appendQuantors
     ,   patternMatchFail, patternAlwaysSucceeds, getTVar
     ,   TypeInferenceOutput(TypeInferenceOutput, importEnv), lookupBeta
     ,   setExportsPublic
@@ -208,7 +208,7 @@ declarationConstructorTypeScheme importEnv name = case M.lookup name $ valueCons
   Nothing -> internalError "CodeGeneration" "declarationConstructorTypeScheme" ("Constructor not found: " ++ show name)
 
 declarationConstructorType :: ImportEnvironment -> Name -> [Bool] -> Core.Type
-declarationConstructorType importEnv name strictness = setStrictness strictness $ toCoreType $ declarationConstructorTypeScheme importEnv name
+declarationConstructorType importEnv name strictness = setStrictness strictness $ toCoreType emptyQuantors $ declarationConstructorTypeScheme importEnv name
   where
     setStrictness :: [Bool] -> Core.Type -> Core.Type
     setStrictness stricts (TForall quantor kind tp) = TForall quantor kind $ setStrictness stricts tp
@@ -216,53 +216,68 @@ declarationConstructorType importEnv name strictness = setStrictness strictness 
       Core.TAp (Core.TAp (Core.TCon Core.TConFun) $ Core.typeSetStrict strict t1) $ setStrictness stricts t2
     setStrictness _ tp = tp
 
-declarationType :: TypeInferenceOutput -> TypeClassContext -> Name -> (Top.TpScheme, Core.Type)
-declarationType typeOutput context name =
+-- Mapping from Top's type variables to Debruijn indices for Core.
+-- The head of the list is the type variable which gets Debruijn index 0,
+-- the second element gets index 1, and so on.
+newtype Quantors = Quantors [Int]
+
+appendQuantors :: Quantors -> Quantors -> Quantors
+appendQuantors (Quantors parent) (Quantors current) = Quantors $ current ++ parent
+
+emptyQuantors :: Quantors
+emptyQuantors = Quantors []
+
+quantorsFromList :: [Int] -> Quantors
+quantorsFromList = Quantors . reverse
+
+declarationType :: TypeInferenceOutput -> TypeClassContext -> Quantors -> Name -> (Top.TpScheme, Core.Type)
+declarationType typeOutput context parent name =
   case declarationTpScheme typeOutput context name of
     Just ty ->
       let
-        coreType = toCoreType ty
+        coreType = toCoreType parent ty
       in case instantiationInTypeClassInstance context ty of
-        Just (typeVar, instanceType) -> (ty, Core.typeInstantiate typeVar instanceType coreType)
+        Just (typeVar, instanceType) -> (ty, Core.typeApply coreType instanceType)
         Nothing -> (ty, coreType)
     Nothing -> internalError "ToCoreDecl" "Declaration" ("no type found for " ++ getNameName name)
 
-declarationTypeInPattern :: TypeInferenceOutput -> Name -> Int -> (Top.TpScheme, Core.Type)
-declarationTypeInPattern typeOutput name beta =
+declarationTypeInPattern :: TypeInferenceOutput -> Quantors -> Name -> Int -> (Top.TpScheme, Core.Type)
+declarationTypeInPattern typeOutput parent name beta =
   case declarationTpScheme typeOutput TCCNone name of
-    Just scheme -> (scheme, toCoreType scheme)
+    Just scheme -> (scheme, toCoreType parent scheme)
     Nothing ->
       let
         ty = lookupBeta beta $ typeOutput
         scheme = Top.Quantification ([], [], (Top.Qualification ([], ty)))
-      in (scheme, typeToCoreType ty)
+      in (scheme, typeToCoreType parent ty)
 
-findCoreType :: TypeInferenceOutput -> Int -> Core.Type
-findCoreType typeOutput beta 
-  = typeToCoreType $ convertTpToQualified (importEnv typeOutput) $ lookupBeta beta typeOutput
+findCoreType :: TypeInferenceOutput -> Quantors -> Int -> Core.Type
+findCoreType typeOutput quantors beta 
+  = typeToCoreType quantors $ convertTpToQualified (importEnv typeOutput) $ lookupBeta beta typeOutput
 
-toCoreType :: Top.TpScheme -> Core.Type
-toCoreType (Top.Quantification (tvars, qmap, t)) = foldr addTypeVar t' tvars
+toCoreType :: Quantors -> Top.TpScheme -> Core.Type
+toCoreType parent (Top.Quantification (tvars, qmap, t)) = foldr addTypeVar t' tvars
   where
-    t' = qtypeToCoreType qmap t
+    t' = qtypeToCoreType (appendQuantors parent $ quantorsFromList tvars) t
     addTypeVar index = Core.TForall (typeVarToQuantor qmap index) Core.KStar
 
 toCoreTypeNotQuantified :: Top.TpScheme -> Core.Type
-toCoreTypeNotQuantified (Top.Quantification (_, qmap, t)) = qtypeToCoreType qmap t
+toCoreTypeNotQuantified (Top.Quantification (tvars, _, t)) = qtypeToCoreType (quantorsFromList tvars) t
 
 typeVarToQuantor :: Top.QuantorMap -> Int -> Core.Quantor
-typeVarToQuantor qmap index = Core.Quantor index $ lookup index qmap
+typeVarToQuantor qmap index = Core.Quantor $ lookup index qmap
 
-qtypeToCoreType :: Top.QuantorMap -> Top.QType -> Core.Type
-qtypeToCoreType qmap (Top.Qualification (q, t)) = foldr addDictArgument (typeToCoreType' qmap t) q
+qtypeToCoreType :: Quantors -> Top.QType -> Core.Type
+qtypeToCoreType quantors (Top.Qualification (q, t)) = foldr addDictArgument (typeToCoreType quantors t) q
   where
     addDictArgument predicate = Core.TAp $ Core.TAp (Core.TCon Core.TConFun) arg
       where
-        arg = predicateToCoreType qmap predicate
+        arg = predicateToCoreType quantors predicate
 
-predicateToCoreType :: Top.QuantorMap -> Top.Predicate -> Core.Type
-predicateToCoreType qmap (Top.Predicate className tp) =
-    Core.TAp (Core.TCon $ TConTypeClassDictionary $ idFromString className) $ typeToCoreType' qmap tp
+predicateToCoreType :: Quantors -> Top.Predicate -> Core.Type
+predicateToCoreType quantors (Top.Predicate className tp) =
+    Core.TAp (Core.TCon $ TConTypeClassDictionary $ idFromString className) $ typeToCoreType quantors tp
+
 customInfix :: DeclKind
 customInfix = customDeclKind "infix"
 
@@ -336,14 +351,15 @@ setExportsPublic implicit (exports,exportCons,exportData,exportDataCon,exportMod
     conTypeName (DeclCon{declCustoms=(_:CustomLink x _:_)}) = x
     conTypeName _ = dummyId
 
-typeToCoreType :: Top.Tp -> Core.Type
-typeToCoreType = typeToCoreType' []
+typeToCoreType :: Quantors -> Top.Tp -> Core.Type
+typeToCoreType quantors = typeToCoreTypeMapped quantors (const Nothing)
 
-typeToCoreType' :: Top.QuantorMap -> Top.Tp -> Core.Type
-typeToCoreType' qmap t = typeToCoreTypeMapped qmap (const Nothing) t
-
-typeToCoreTypeMapped :: Top.QuantorMap -> (Int -> Maybe Core.Type) -> Top.Tp -> Core.Type
-typeToCoreTypeMapped qmap f (Top.TVar index) = fromMaybe (Core.TVar index) $ f index
+typeToCoreTypeMapped :: Quantors -> (Int -> Maybe Core.Type) -> Top.Tp -> Core.Type
+typeToCoreTypeMapped (Quantors quantors) f (Top.TVar index) = case f index of
+  Just t -> t
+  Nothing -> case index `elemIndex` quantors of -- Convert index from Top to Debruijn index for Core
+    Just idx -> Core.TVar idx
+    Nothing  -> internalError "CoreUtils" "typeToCoreType" $ "Type variable " ++ show index ++ " not present in quantors list " ++ show quantors
 typeToCoreTypeMapped _ _ (Top.TCon name) = Core.TCon c
   where
     c = case name of
@@ -352,15 +368,15 @@ typeToCoreTypeMapped _ _ (Top.TCon name) = Core.TCon c
         '(':str
           | dropWhile (==',') str == ")" -> Core.TConTuple (length str)
         _ -> Core.TConDataType $ idFromString name
-typeToCoreTypeMapped qmap f (Top.TApp t1 t2) = Core.TAp (typeToCoreTypeMapped qmap f t1) (typeToCoreTypeMapped qmap f t2)
+typeToCoreTypeMapped quantors f (Top.TApp t1 t2) = Core.TAp (typeToCoreTypeMapped quantors f t1) (typeToCoreTypeMapped quantors f t2)
 
-addLambdasForLambdaExpression :: TypeInferenceOutput -> Int -> [Id] -> ([Core.Type] -> Core.Type -> Core.Expr) -> Core.Expr
-addLambdasForLambdaExpression typeOutput beta args expr = addLambdasForType (importEnv typeOutput) [] tp id args [] expr
+addLambdasForLambdaExpression :: TypeInferenceOutput -> Quantors -> Int -> [Id] -> ([Core.Type] -> Core.Type -> Core.Expr) -> Core.Expr
+addLambdasForLambdaExpression typeOutput quantors beta args expr = addLambdasForType (importEnv typeOutput) quantors tp id args [] expr
   where
     tp = lookupBeta beta typeOutput
 
-addLambdas :: TypeInferenceOutput -> TypeClassContext -> Int -> Name -> [Id] -> ([Core.Type] -> Core.Type -> Core.Expr) -> Core.Expr
-addLambdas typeOutput context beta name args expr = case declarationTpScheme typeOutput context name of
+addLambdas :: TypeInferenceOutput -> TypeClassContext -> Quantors -> Int -> Name -> [Id] -> (Quantors, ([Core.Type] -> Core.Type -> Core.Expr) -> Core.Expr)
+addLambdas typeOutput context parent beta name args = case declarationTpScheme typeOutput context name of
   Nothing -> internalError "ToCoreDecl" "Declaration" ("Could not find type for declaration " ++ show name)
   Just ty@(Top.Quantification (tvars, qmap, t)) ->
     let
@@ -372,25 +388,31 @@ addLambdas typeOutput context beta name args expr = case declarationTpScheme typ
       typeCorrectTVars = lookupBeta beta typeOutput
       instantiation = findInstantiation (importEnv typeOutput) ty typeCorrectTVars
       tvars' = mapMaybe getTVar instantiation
-      substitute = Core.typeSubstitutions $ zipWith (\idx typeArg -> (idx, typeToCoreType typeArg)) tvars instantiation
-    in foldr (\x e -> Core.Forall (typeVarToQuantor qmap x) Core.KStar e) (addLambdasForQType (importEnv typeOutput) [] t substitute args expr) tvars'
+      qmap' = mapMaybe (\(idx, name) -> (, name) <$> (lookup idx (zip tvars instantiation) >>= getTVar)) qmap
+      quantors  = appendQuantors parent $ quantorsFromList tvars
+      quantors' = appendQuantors parent $ quantorsFromList tvars'
+      substitute = Core.typeSubstitutions 0 $ reverse $ map (typeToCoreType quantors') instantiation
+    in
+      ( quantors'
+      , \expr -> foldr (\x e -> Core.Forall (typeVarToQuantor qmap' x) Core.KStar e) (addLambdasForQType (importEnv typeOutput) quantors t substitute args expr) tvars'
+      )
 
-addLambdasForQType :: ImportEnvironment -> QuantorMap -> Top.QType -> (Core.Type -> Core.Type) -> [Id] -> ([Core.Type] -> Core.Type -> Core.Expr) -> Core.Expr
-addLambdasForQType env qmap (Top.Qualification ([], t)) substitute args expr = addLambdasForType env qmap t substitute args [] expr
-addLambdasForQType env qmap (Top.Qualification (p : ps, t)) substitute (arg:args) expr =
-  Core.Lam False (Core.Variable arg $ substitute $ predicateToCoreType qmap p) $ addLambdasForQType env qmap (Top.Qualification (ps, t)) substitute args expr
+addLambdasForQType :: ImportEnvironment -> Quantors -> Top.QType -> (Core.Type -> Core.Type) -> [Id] -> ([Core.Type] -> Core.Type -> Core.Expr) -> Core.Expr
+addLambdasForQType env quantors (Top.Qualification ([], t)) substitute args expr = addLambdasForType env quantors t substitute args [] expr
+addLambdasForQType env quantors (Top.Qualification (p : ps, t)) substitute (arg:args) expr =
+  Core.Lam False (Core.Variable arg $ substitute $ predicateToCoreType quantors p) $ addLambdasForQType env quantors (Top.Qualification (ps, t)) substitute args expr
 
-addLambdasForType :: ImportEnvironment -> QuantorMap -> Top.Tp -> (Core.Type -> Core.Type) -> [Id] -> [Core.Type] -> ([Core.Type] -> Core.Type -> Core.Expr) -> Core.Expr
-addLambdasForType _ qmap retType substitute [] accumArgTypes expr = expr (reverse accumArgTypes) $ substitute $ typeToCoreType' qmap retType
-addLambdasForType env qmap (Top.TApp (Top.TApp (Top.TCon "->") argType) retType) substitute (arg:args) accumArgTypes expr =
+addLambdasForType :: ImportEnvironment -> Quantors -> Top.Tp -> (Core.Type -> Core.Type) -> [Id] -> [Core.Type] -> ([Core.Type] -> Core.Type -> Core.Expr) -> Core.Expr
+addLambdasForType _ quantors retType substitute [] accumArgTypes expr = expr (reverse accumArgTypes) $ substitute $ typeToCoreType quantors retType
+addLambdasForType env quantors (Top.TApp (Top.TApp (Top.TCon "->") argType) retType) substitute (arg:args) accumArgTypes expr =
   Core.Lam False (Core.Variable arg tp)
-    $ addLambdasForType env qmap retType substitute args (tp : accumArgTypes) expr
+    $ addLambdasForType env quantors retType substitute args (tp : accumArgTypes) expr
   where
-    tp = substitute $ typeToCoreType' qmap argType
-addLambdasForType env qmap tp substitute args accumArgTypes expr =
+    tp = substitute $ typeToCoreType quantors argType
+addLambdasForType env quantors tp substitute args accumArgTypes expr =
     case tp' of
         -- Verify that the resulting type is a function type
-        Top.TApp (Top.TApp (Top.TCon "->") _) _ -> addLambdasForType env qmap tp' substitute args accumArgTypes expr
+        Top.TApp (Top.TApp (Top.TCon "->") _) _ -> addLambdasForType env quantors tp' substitute args accumArgTypes expr
         _ -> internalError "ToCoreDecl" "Declaration" ("Expected a function type, got " ++ show tp' ++ " instead")
     where
         tp' = applyTypeSynonym env tp []
@@ -411,10 +433,10 @@ applyTypeSynonym env (Top.TVar a) tps = foldl (Top.TApp) (Top.TVar a) tps
 Given either a Constructor or an identifier present in the type environment generates
 the corresponding type correct expression.
 -}
-createInstantiation :: TypeInferenceOutput -> TypeEnvironment -> Name -> Bool -> Int -> Core.Expr
-createInstantiation typeOutput typeEnv name isConstructor beta = case maybeScheme of
+createInstantiation :: TypeInferenceOutput -> TypeEnvironment -> Quantors -> Name -> Bool -> Int -> Core.Expr
+createInstantiation typeOutput typeEnv quantors name isConstructor beta = case maybeScheme of
   Nothing -> expr
-  Just scheme -> foldl (\e t -> Core.ApType e $ typeToCoreType t) expr $ findInstantiation (importEnv typeOutput) scheme tp
+  Just scheme -> foldl (\e t -> Core.ApType e $ typeToCoreType quantors t) expr $ findInstantiation (importEnv typeOutput) scheme tp
   where
     expr
       | isConstructor = Core.Con $ Core.ConId $ idFromName name
@@ -449,15 +471,16 @@ and applies them in that order to the constructor expression.
 Fills the empty fields with `undefined`
 -}
 createRecordInstantiation :: TypeInferenceOutput
+                            -> Quantors
                             -> Name       {- Constructor name -}
                             {- Field name, argument to pass to field -}
                             -> [(Name, Core.Expr)]
                             -> TpScheme   {- Typescheme corresponding to the constructor function -}
                             -> Tp         {- Type instantiation corresponding to the constructor function -}
                             -> Core.Expr
-createRecordInstantiation typeOutput@TypeInferenceOutput{..} name bindings tps outputTp
+createRecordInstantiation typeOutput@TypeInferenceOutput{..} quantors name bindings tps outputTp
     = foldl app_
-        (foldl (\e t -> Core.ApType e $ typeToCoreType t) constrExpr tVars)
+        (foldl (\e t -> Core.ApType e $ typeToCoreType emptyQuantors t) constrExpr tVars)
           sortedBinds
   where
     ImportEnvironment{..} = importEnv
@@ -488,7 +511,7 @@ createRecordInstantiation typeOutput@TypeInferenceOutput{..} name bindings tps o
     strictOrUndefined :: Bool -> Tp -> Core.Expr
     strictOrUndefined strict tp = if strict
       then err "undefined strict field construction"
-      else coreUndefined importEnv tp
+      else coreUndefined importEnv quantors tp
 
     fieldToExpr :: Bool -> Tp -> Maybe Core.Expr -> Core.Expr
     fieldToExpr strict tp = fromMaybe (strictOrUndefined strict tp)
@@ -511,6 +534,7 @@ into
         x 1
 -}
 createRecordUpdate :: TypeInferenceOutput
+                    -> Quantors
                     {- Old record -}
                     -> Core.Expr
                     {- Beta variable of the old expression -}
@@ -522,7 +546,7 @@ createRecordUpdate :: TypeInferenceOutput
                     {- Range for the overal expression -}
                     -> Range
                     -> Core.Expr
-createRecordUpdate typeOutput@TypeInferenceOutput{..} old oldBeta beta bindings range
+createRecordUpdate typeOutput@TypeInferenceOutput{..} quantors old oldBeta beta bindings range
     = foldl app_ (func `app_` old) (map thd4 args)
   where
     ImportEnvironment{..} = importEnv
@@ -530,7 +554,7 @@ createRecordUpdate typeOutput@TypeInferenceOutput{..} old oldBeta beta bindings 
 
     -- Needed for the scrutinee and pattern matching
     oldTp = lookupBeta oldBeta typeOutput
-    scrutVar = Variable (idFromString "x$") (typeToCoreType oldTp)
+    scrutVar = Variable (idFromString "x$") (typeToCoreType quantors oldTp)
 
     -- Determine which constructors are possible with this field combination
     constructors = mapMaybe (\x -> fst3 x `M.lookup` fieldLookup) bindings
@@ -541,15 +565,16 @@ createRecordUpdate typeOutput@TypeInferenceOutput{..} old oldBeta beta bindings 
     -- Build up the inner function which will do the actual 'updating'
     func = createLambdas lambdaArgs body
     body = constructorsToCase importEnv
+      quantors
       (variableName scrutVar)
-      (typeToCoreType (lookupBeta beta typeOutput))
+      (typeToCoreType quantors (lookupBeta beta typeOutput))
       range
       (findInstantiation importEnv resultTps oldTp)
       (map (\n -> (n, oldFields, exec n)) relevantConstrs)
 
     -- Determine the types and strictness for each of the fields to be updated
     args = map (\(n, e, t) -> (n, idFromString (show n), e, t)) bindings
-    lambdaArgs = map (\(n, i, e, t) -> (strict n, Variable i (findCoreType typeOutput t))) args
+    lambdaArgs = map (\(n, i, e, t) -> (strict n, Variable i (findCoreType typeOutput quantors t))) args
     strict n = snd4 $ fromJust (M.lookup n allFields)
 
     allFields = M.unions $ mapMaybe (`M.lookup` recordEnvironment) relevantConstrs
@@ -564,7 +589,7 @@ createRecordUpdate typeOutput@TypeInferenceOutput{..} old oldBeta beta bindings 
       fields <- M.lookup n recordEnvironment
       return $ map (\(x, _) -> (x, fieldToExpr x)) (M.assocs fields)
 
-    exec n = createRecordInstantiation typeOutput n (allBinds n) resultTps (lookupBeta beta typeOutput)
+    exec n = createRecordInstantiation typeOutput quantors n (allBinds n) resultTps (lookupBeta beta typeOutput)
 
     createLambdas :: [(Bool, Variable)] -> Core.Expr -> Core.Expr
     createLambdas xs e = Lam True scrutVar (foldr (uncurry Lam) e xs)
@@ -587,11 +612,12 @@ into
         x
 -}
 createRecordSelector :: ImportEnvironment
+                    -> Quantors
                     -> Range
                     -> Name
                     -> Tp
                     -> Core.Expr
-createRecordSelector importEnv r field retTp
+createRecordSelector importEnv quantors r field retTp
   = foldr (\x e -> Core.Forall (typeVarToQuantor qmap x) Core.KStar e) (Lam True scrutVar select) tvars
   where
     ty@(Top.Quantification (_, qmap, _)) = fromMaybe (notFound constr) $ do
@@ -600,7 +626,7 @@ createRecordSelector importEnv r field retTp
       return ts
     tvars = mapMaybe getTVar $ findInstantiation importEnv ty (unqualify (unquantify ty))
 
-    select = constructorsToCase importEnv scrutId (typeToCoreType retTp) r instantiated atEachConstructor
+    select = constructorsToCase importEnv quantors scrutId (typeToCoreType quantors retTp) r instantiated atEachConstructor
     scrutId = idFromString "x$"
     fieldId = idFromString (show field)
     atEachConstructor = map (, [(field, fieldId)], Var fieldId) constrs
@@ -624,6 +650,7 @@ generalizeResult constrTps = generalizeAll ([] .=>. constrTp)
 
 -- Helper function for executing code for a multiple constructors
 constructorsToCase :: ImportEnvironment
+                    -> Quantors
                     -> Id           {- Scrutinee's Id -}
                     -> Core.Type    {- Result type -}
                     -> Range        {- Range of the overal expression -}
@@ -631,14 +658,15 @@ constructorsToCase :: ImportEnvironment
                     {- (Constructor name, Fields to include, What to execute) -}
                     -> [(Name, [(Name, Id)], Core.Expr)]
                     -> Core.Expr
-constructorsToCase importEnv scrutId resType r tps fs
+constructorsToCase importEnv quantors scrutId resType r tps fs
   = case fs of
     [] -> patternMatchFail "pattern binding" resType r
-    ((n, fields, exec):xs) -> constructorToCase importEnv n scrutId tps fields exec $
-                          constructorsToCase importEnv scrutId resType r tps xs
+    ((n, fields, exec):xs) -> constructorToCase importEnv quantors n scrutId tps fields exec $
+                          constructorsToCase importEnv quantors scrutId resType r tps xs
 
 -- Helper function for executing code for a specific constructor
 constructorToCase :: ImportEnvironment
+                    -> Quantors
                     -> Name           {- Constructor name -}
                     -> Id             {- Scrutinee -}
                     -> [Tp]           {- Typevariables to instantiate the pattern to -}
@@ -646,14 +674,14 @@ constructorToCase :: ImportEnvironment
                     -> Core.Expr      {- What to execute if it matches -}
                     -> Core.Expr      {- What to execute otherwise -}
                     -> Core.Expr
-constructorToCase importEnv constr scrutinee tps fs exec continue
+constructorToCase importEnv quantors constr scrutinee tps fs exec continue
   = Match scrutinee
       [ Alt patt exec
       , Alt PatDefault continue
       ]
   where
     args = map (\(n, _) -> placeholder n fieldsToReuse) sortedFields
-    patt = PatCon (ConId constructor) (map typeToCoreType tps) args
+    patt = PatCon (ConId constructor) (map (typeToCoreType quantors) tps) args
 
     constructor = idFromString (show constr)
     (fields, (n, constrTps)) = fromMaybe (err "Constructor not found") $ do
@@ -692,15 +720,11 @@ patternMatchFail nodeDescription tp range =
     where
         start = getRangeStart range
 
-coreUndefined :: ImportEnvironment -> Tp -> Core.Expr
-coreUndefined importEnv tp
-      = foldl (\e t -> Core.ApType e $ typeToCoreType t) undefinedExpr
-          (findInstantiation importEnv undefinedScheme tp)
+coreUndefined :: ImportEnvironment -> Quantors -> Tp -> Core.Expr
+coreUndefined importEnv quantors tp
+      = undefinedExpr `Core.ApType` typeToCoreType quantors tp
     where
       undefinedExpr = Var (idFromString "undefined")
-      undefinedName = Name_Identifier (coreUtilsError "coreUndefined" "access non-existing range") [] "Prelude" "undefined"
-      undefinedScheme = fromMaybe (coreUtilsError "coreUndefined" "undefined not defined") $
-          M.lookup undefinedName (typeEnvironment importEnv)
 
 coreUtilsError :: String -> String -> a
 coreUtilsError = internalError "CoreUtils"

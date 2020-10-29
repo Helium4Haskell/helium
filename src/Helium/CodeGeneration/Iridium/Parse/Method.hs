@@ -29,13 +29,12 @@ pMethod = do
     return Nothing
   pToken '('
   pWhitespace
-  let emptyQuantors = QuantorIndexing 0 [] []
   c <- lookahead
   (args, quantors) <-
     if c == ')' then
-      return ([], emptyQuantors)
+      return ([], [])
     else
-      pMethodArguments (QuantorIndexing 0 [] [])
+      pMethodArguments []
   pToken ')'
   pWhitespace
   pToken ':'
@@ -71,7 +70,7 @@ pMethod = do
     toArg (Left quantor) = Left quantor
     toArg (Right (Local _ t)) = Right t
 
-pMethodArguments :: QuantorIndexing -> Parser ([Either Quantor Local], QuantorIndexing)
+pMethodArguments :: QuantorNames -> Parser ([Either Quantor Local], QuantorNames)
 pMethodArguments quantors = do
   (arg, quantors') <- pMethodArgument quantors
   pWhitespace
@@ -84,7 +83,7 @@ pMethodArguments quantors = do
   else
     return ([arg], quantors')
 
-pMethodArgument :: QuantorIndexing -> Parser (Either Quantor Local, QuantorIndexing)
+pMethodArgument :: QuantorNames -> Parser (Either Quantor Local, QuantorNames)
 pMethodArgument quantors = do
   c <- lookahead
   case c of
@@ -97,7 +96,7 @@ pMethodArgument quantors = do
       (quantor, quantors') <- pQuantor quantors
       return (Left quantor, quantors')
 
-pBlock :: QuantorIndexing -> Parser Block
+pBlock :: QuantorNames -> Parser Block
 pBlock quantors = Block <$> pId <* pToken ':' <* pWhitespace <*> pInstruction quantors <* pWhitespace
 
 pAbstractMethod :: Parser AbstractMethod

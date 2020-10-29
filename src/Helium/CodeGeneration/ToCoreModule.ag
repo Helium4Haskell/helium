@@ -49,10 +49,10 @@ insertedMain env moduleName toplevelTypes =
                         (var "$primPackedToString" `app_`
                             packedString "<<overloaded function>>")
                 | isJust (isIOType tp) -> 
-                    d (typeToCoreType $ fromJust $ isIOType tp) $ var name
+                    d (typeToCoreType emptyQuantors $ fromJust $ isIOType tp) $ var name
                 | otherwise ->
                     d (Core.TCon $ Core.TConTuple 0) $ var "LvmLang.$primPutStrLn" `app_` 
-                        (Core.Ap (var "show" `Core.ApType` typeToCoreType tp) (DerivingUtils.eqFunForType "Prelude.Show$" tse M.empty (makeTypeFromTp tp)) `app_`
+                        (Core.Ap (var "show" `Core.ApType` typeToCoreType emptyQuantors tp) (DerivingUtils.eqFunForType "Prelude.Show$" tse M.empty (makeTypeFromTp tp)) `app_`
                             var name)
                 where                        
                     (qs, tp) = split (snd (instantiate 123456789 tpScheme))
@@ -73,6 +73,7 @@ SEM Module
                             ( @body.decls
                             ))
                 body . instanceName = Nothing
+                body . quantors = emptyQuantors
                 loc.exportlists = (@exports.values
                                   , @exports.confieldormethods
                                   , @exports.typeorclasses
