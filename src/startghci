@@ -1,1 +1,1 @@
-ghci Helium/Main/Develop.hs -static -fexternal-interpreter -fglasgow-exts -fallow-overlapping-instances -fallow-undecidable-instances -XBangPatterns -i../../lvm/src/lib:../../Top/src/:../../Top/dist/build/autogen/:../dist/build/autogen/uuagc:./commands/helium/Helium
+ghci Helium/Main/Develop.hs -static -fexternal-interpreter -fglasgow-exts -fallow-overlapping-instances -fallow-undecidable-instances -XBangPatterns -i../../lvm/src/lib:../../Top/src/:../../Top/dist/build/autogen/:../dist/build/heliumpath/autogen/:../dist/build/autogen/uuagc:./commands/helium/Helium
