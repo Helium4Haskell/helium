@@ -117,7 +117,29 @@ data CallingConvention
   | CCPreserveMost
   deriving (Eq, Ord)
 
-data TypeSynonym = TypeSynonym !Type
+data TypeSynonym = TypeSynonym !TypeSynonymCoercions !Type
+
+data TypeSynonymCoercions
+  = TypeSynonymAlias   -- Implicit coercions in Haskell and Iridium
+  | TypeSynonymNewtype !Visibility !Visibility -- Explicit coercions in Haskell with the specified constructor name and optionally destructor name, implicit in Iridium
+
+newtypeConstructorType :: Declaration TypeSynonym -> (Type, Type)
+newtypeConstructorType (Declaration name _ _ _ (TypeSynonym _ tp))
+  = ( addForalls tp $ typeFunction [tpRight] tpLeft -- Constructor type
+    , addForalls tp $ typeFunction [tpLeft] tpRight -- Destructur type
+    )
+  where
+    (forallCount, tpRight) = skipForalls 0 tp
+    tpLeft = foldl (\t v -> TAp t (TVar v)) (TCon $ TConDataType name) [forallCount - 1, forallCount - 2 .. 0]
+
+    skipForalls :: Int -> Type -> (Int, Type)
+    skipForalls count (TForall _ _ t) = skipForalls (count + 1) t
+    skipForalls count t = (count, t)
+
+    addForalls :: Type -> Type -> Type
+    addForalls (TForall q k t1) t2 = TForall q k $ addForalls t1 t2
+    addForalls _ t2 = t2
+
 data Local = Local { localName :: !Id, localType :: !Type }
   deriving (Eq, Ord)
 
@@ -344,4 +366,4 @@ declaresFunction (Module _ _ _ _ _ abstracts methods) name = any ((== name) . de
 envWithSynonyms :: Module -> TypeEnvironment
 envWithSynonyms (Module _ _ _ _ synonyms _ _) = TypeEnvironment (mapFromList synonymsList) emptyMap emptyMap
   where
-    synonymsList = map (\(Declaration name _ _ _ (TypeSynonym tp)) -> (name, tp)) synonyms
+    synonymsList = map (\(Declaration name _ _ _ (TypeSynonym _ tp)) -> (name, tp)) synonyms

@@ -297,13 +297,11 @@ SEM Declaration
                         where . instanceName = Just @qualName
                         where . typeClassContext = TCCInstance (idFromName @name.self) (toCoreTypeNotQuantified $ makeTpSchemeFromType @loc.type)
 
-    | Newtype           constructor.dataTypeName = @simpletype.name
+    | Newtype           constructor.isNewtype = True
+                        constructor.dataTypeName = @qualname
                         constructor.dataTypeCoreType = @simpletype.coreType
                         constructor.typevariables = @simpletype.typevariables
-                        loc.qualname
-                            = if @lhs.isTopLevel 
-                                then addQualified @lhs.moduleQual @simpletype.name
-                                else @simpletype.name
+                        loc.qualname = addQualified @lhs.moduleQual @simpletype.name
                         lhs.decls    =
         map snd @constructor.cons
         ++
@@ -466,13 +464,14 @@ where it is present will all appear in the pattern of the function
 -}
 
 ATTR Constructor Constructors
-    [ | | names USE { ++ } { [] } : Names ]
+    [ isNewtype : Bool | | names USE { ++ } { [] } : Names ]
 
 ATTR FieldDeclaration FieldDeclarations
     [ fieldMap : { M.Map Name (Int, Bool, Tp, TpScheme) } | | ]
 
 SEM Declaration
     | Data 
+            constructors.isNewtype = False
             loc.selectorFunctions = map @toDecl @fieldTypes
               .toDecl = \(n, t, ts) -> Core.DeclValue
                                     { Core.declName    = idFromName (addQualified @lhs.moduleQual n)
@@ -515,7 +514,7 @@ SEM Constructor [ dataTypeName : Name typevariables : Names dataTypeCoreType : {
                 { Core.declName    = idFromName @constructor.self
                 , Core.declAccess  = Core.Private
                 , Core.declModule  = Nothing
-                , Core.declType    = declarationConstructorType @lhs.importEnv @constructor.self @types.strictness
+                , Core.declType    = declarationConstructorType @lhs.importEnv @constructor.self (if @lhs.isNewtype then [True] else @types.strictness)
                 , Core.declCustoms = constructorCustoms
                                         @lhs.dataTypeName
                                         @constructor.self

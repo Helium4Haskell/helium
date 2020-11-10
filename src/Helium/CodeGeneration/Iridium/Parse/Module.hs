@@ -54,8 +54,8 @@ pDataType = do
       else
         return True
 
-pTypeSynonym :: Parser TypeSynonym
-pTypeSynonym = do
+pTypeAlias :: Parser TypeSynonym
+pTypeAlias = do
   pWhitespace
   pToken '='
   pWhitespace
@@ -63,7 +63,30 @@ pTypeSynonym = do
   pWhitespace
   tp <- pType
   pToken '}'
-  return $ TypeSynonym tp
+  return $ TypeSynonym TypeSynonymAlias tp
+
+pNewtype :: Parser TypeSynonym
+pNewtype = do
+  pWhitespace
+  pToken '='
+  pWhitespace
+  c1 <- lookahead
+  constructor <-
+    if c1 == '@' then
+      ExportedAs <$ pChar <*> pId <* pWhitespace
+    else
+      return Private
+  pToken '{'
+  pWhitespace
+  c2 <- lookahead
+  destructor <-
+    if c2 == '@' then
+      ExportedAs <$ pChar <*> pId <* pWhitespace <* pToken ':' <* pToken ':' <* pWhitespace
+    else
+      return Private
+  tp <- pType
+  pToken '}'
+  return $ TypeSynonym (TypeSynonymNewtype constructor destructor) tp
 
 pFields :: Parser [Field]
 pFields = do
@@ -140,7 +163,8 @@ pModuleDeclaration = pDeclaration f
     f :: String -> (forall a . a -> Declaration a) -> Parser (Module -> Module)
     f "custom" decl = addCustom . decl <$> pCustomDeclaration
     f "data" decl = addDataType . decl <$> pDataType
-    f "type" decl = addTypeSynonym . decl <$> pTypeSynonym
+    f "type" decl = addTypeSynonym . decl <$> pTypeAlias
+    f "newtype" decl = addTypeSynonym . decl <$> pNewtype
     f "declare" decl = addAbstract . decl <$> pAbstractMethod
     f "define" decl = addMethod . decl <$> pMethod
     f keyword _ = pError $ "Unknown declaration keyword: " ++ keyword

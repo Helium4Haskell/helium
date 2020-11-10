@@ -453,7 +453,6 @@ findInstantiation :: ImportEnvironment -> Top.TpScheme -> Top.Tp -> [Top.Tp]
 findInstantiation importEnv t@(Top.Quantification (tvars, _, Top.Qualification (_, tLeft))) tRight
   = fmap (\a -> fromMaybe (Top.TCon "()") $ lookup a instantiations) tvars
   where
-    -- instantiations = traverse (traceShow ("instantiating " ++ show t ++ " with " ++ show tRight) $ tLeft) tRight []
     instantiations = traverse tLeft tRight []
     traverse :: Top.Tp -> Top.Tp -> [(Int, Top.Tp)] -> [(Int, Top.Tp)]
     traverse (Top.TVar a) t2 = ((a, t2) :)

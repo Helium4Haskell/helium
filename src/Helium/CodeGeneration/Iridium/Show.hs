@@ -245,10 +245,22 @@ instance ShowDeclaration DataType where
     )
 
 instance ShowDeclaration TypeSynonym where
-  showDeclaration (TypeSynonym tp) =
-    ( "type"
-    , " = { " ++ show tp ++ " }\n"
+  showDeclaration (TypeSynonym s tp) =
+    ( keyword
+    , " = " ++ constructor ++ "{ " ++ destructor ++ show tp ++ " }\n"
     )
+    where
+      (keyword, constructor, destructor) = case s of
+        TypeSynonymAlias -> ("type", "", "")
+        TypeSynonymNewtype exportConstructor exportDestructor ->
+          ( "newtype"
+          , case exportConstructor of
+              ExportedAs name -> '@' : showId name " "
+              _ -> ""
+          , case exportDestructor of
+              ExportedAs name -> '@' : showId name " :: "
+              _ -> ""
+          )
 
 instance Show FloatPrecision where
   show Float32 = "32"

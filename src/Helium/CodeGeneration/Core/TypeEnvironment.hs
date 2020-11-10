@@ -42,6 +42,12 @@ typeEnvForModule (Module _ _ _ _ decls) = TypeEnvironment (mapFromList synonyms)
     isValue DeclCon{} = True
     isValue _ = False
 
+typeEnvAddSynonym :: Id -> Type -> TypeEnvironment -> TypeEnvironment
+typeEnvAddSynonym name tp env = env{ typeEnvSynonyms = insertMap name tp $ typeEnvSynonyms env }
+
+typeEnvAddSynonyms :: [(Id, Type)] -> TypeEnvironment -> TypeEnvironment
+typeEnvAddSynonyms = flip $ foldr (uncurry typeEnvAddSynonym)
+
 typeEnvAddVariable :: Variable -> TypeEnvironment -> TypeEnvironment
 typeEnvAddVariable (Variable name tp) env = env{ typeEnvLocalValues = updateMap name (typeNotStrict tp) $ typeEnvLocalValues env }
 

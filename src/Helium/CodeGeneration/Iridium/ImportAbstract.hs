@@ -3,7 +3,7 @@ module Helium.CodeGeneration.Iridium.ImportAbstract (toAbstractModule) where
 import Data.Maybe(mapMaybe, catMaybes, isNothing)
 import Helium.CodeGeneration.Iridium.Data
 import Helium.CodeGeneration.Iridium.Type
-import Lvm.Common.Id (Id, idFromString)
+import Lvm.Common.Id (Id, idFromString, stringFromId)
 import qualified Lvm.Core.Module as Core
 import qualified Lvm.Core.Type as Core
 
@@ -15,7 +15,7 @@ toAbstractModule (Module name imports customs datas synonyms abstracts methods) 
       ++ (datas >>= convertData)
       ++ mapMaybe convertMethod methods
       ++ mapMaybe convertAbstractMethod abstracts
-      ++ mapMaybe convertTypeSynonym synonyms
+      ++ (synonyms >>= convertTypeSynonym)
 
 setModule :: Id -> Core.Decl v -> Core.Decl v
 setModule modName decl
@@ -33,6 +33,7 @@ convertData (Declaration qname (ExportedAs name) mod customs (DataType cons)) =
   : catMaybes (map convertConstructor cons)
 convertData _ = []
 
+-- TODO: Can the fields be exported, if the data type isn't exported?
 convertConstructor :: Declaration DataTypeConstructorDeclaration -> Maybe (Core.Decl v)
 convertConstructor (Declaration qname (ExportedAs name) mod customs (DataTypeConstructorDeclaration tp fs)) = Just $
   Core.DeclCon qname (Core.Export name) mod tp fs customs
@@ -48,7 +49,19 @@ convertAbstractMethod (Declaration qname (ExportedAs name) mod customs (Abstract
   Core.DeclAbstract qname (Core.Export name) mod arity tp customs
 convertAbstractMethod _ = Nothing
 
-convertTypeSynonym :: Declaration TypeSynonym -> Maybe (Core.Decl v)
-convertTypeSynonym d@(Declaration qname (ExportedAs name) mod customs (TypeSynonym tp)) = Just $
+convertTypeSynonym :: Declaration TypeSynonym -> [Core.Decl v]
+convertTypeSynonym d@(Declaration qname (ExportedAs name) mod customs (TypeSynonym TypeSynonymAlias tp)) = return $
   Core.DeclTypeSynonym qname (Core.Export name) mod tp customs
-convertTypeSynonym _ = Nothing
+-- TODO: What if the data type is not exported, but the destructor is?
+convertTypeSynonym d@(Declaration qname (ExportedAs name) mod customs (TypeSynonym (TypeSynonymNewtype constructor destructor) tp)) =
+  Core.DeclCustom qname (Core.Export name) mod (Core.DeclKindCustom $ idFromString "data") customs
+    : constructorDecl
+  where
+    constructorDecl = case constructor of
+      ExportedAs construct -> return $ Core.DeclCon (idFromString $ stringFromId qname ++ "." ++ stringFromId construct) (Core.Export construct) mod constructorType fields []
+      Private -> []
+    fields = case destructor of
+      ExportedAs destruct -> [Core.Field destruct]
+      Private -> []
+    (constructorType, _) = newtypeConstructorType d
+convertTypeSynonym _ = []
