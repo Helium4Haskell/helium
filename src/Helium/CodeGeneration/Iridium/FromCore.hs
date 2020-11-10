@@ -263,6 +263,8 @@ toInstruction supply env continue (Core.Lit lit) = Let name expr +> ret supply' 
     (name, supply') = freshId supply
     expr = (Literal $ literal lit)
 toInstruction supply env continue (Core.Var var) = case resolve env var of
+  Right (GlobalFunction fn 0 fntype) ->
+    Let name (Eval $ VarGlobal $ GlobalVariable fn fntype) +> ret supply' env name continue
   Right global ->
     let
       bind = Bind name (BindTargetFunction global) []
@@ -504,6 +506,8 @@ bind supply env (Core.Bind (Core.Variable x _) val) = Bind x target $ map toArg 
         in BindTargetConstructor constructor
       Left (Core.ConTuple arity) -> BindTargetTuple arity
       Right fn -> case resolveFunction env fn of
+        Just (0, fntype) ->
+          BindTargetThunk $ VarGlobal $ GlobalVariable fn fntype
         Just (arity, fntype) ->
           BindTargetFunction $ GlobalFunction fn arity fntype
         _
