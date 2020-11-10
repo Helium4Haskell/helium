@@ -283,21 +283,20 @@ customInfix = customDeclKind "infix"
 
 setExportsPublic :: Bool -> (IdSet,IdSet,IdSet,IdSet,IdSet) -> ImportEnvironment -> Module v -> Module v
 setExportsPublic implicit (exports,exportCons,exportData,exportDataCon,exportMods) env m
-  = m { moduleDecls = concatMap setPublic (moduleDecls m) }
+  = m{ moduleDecls = map setPublic (moduleDecls m) }
   where
-    setPublic :: Decl v -> [Decl v]
+    setPublic :: Decl v -> Decl v
     setPublic decl_ | isQual decl_ && (isInstance decl_ || declPublic decl_) =
                         let name = stringFromId $! declName decl_
                             newname = idFromString $! unQualifyString name
                         in if not ("Dict" `isPrefixOf` name) then
-                            [decl_{ declAccess = Export newname }]
+                            decl_{ declAccess = Export newname }
                            else
-                            [decl_]
+                            decl_
                     | isQual decl_ =
-                        [decl_{declAccess = Private}]
-                    | isInstance decl_ || declPublic decl_ =
-                        [decl_{declAccess = Export $ declName decl_ }]
-                    | otherwise       = [decl_]
+                        decl_{declAccess = Private}
+                    | isInstance decl_ || declPublic decl_ = decl_{ declAccess = Export $ declName decl_ }
+                    | otherwise       = decl_{declAccess = Private}
 
     isExported decl_ elemIdSet =
         let access = declAccess decl_ in

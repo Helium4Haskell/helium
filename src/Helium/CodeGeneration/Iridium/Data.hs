@@ -125,8 +125,8 @@ data TypeSynonymCoercions
 
 newtypeConstructorType :: Declaration TypeSynonym -> (Type, Type)
 newtypeConstructorType (Declaration name _ _ _ (TypeSynonym _ tp))
-  = ( addForalls tp $ typeFunction [tpRight] tpLeft -- Constructor type
-    , addForalls tp $ typeFunction [tpLeft] tpRight -- Destructur type
+  = ( addForalls tp $ typeFunction [TStrict tpRight] tpLeft -- Constructor type
+    , addForalls tp $ typeFunction [TStrict tpLeft] tpRight -- Destructur type
     )
   where
     (forallCount, tpRight) = skipForalls 0 tp

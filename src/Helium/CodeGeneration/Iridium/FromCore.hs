@@ -33,8 +33,6 @@ import Helium.CodeGeneration.Iridium.FileCache
 import Helium.CodeGeneration.Iridium.FromCoreImports
 import Helium.CodeGeneration.Iridium.Utils
 
-import Debug.Trace
-
 fromCore :: FileCache -> NameSupply -> Core.CoreModule -> IO Module
 fromCore cache supply mod@(Core.Module name _ _ dependencies decls) = do
   imports <- fromCoreImports cache imported

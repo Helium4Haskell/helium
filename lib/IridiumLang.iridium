@@ -177,19 +177,15 @@ export_as @IORes data @IORes {
 #[decl @kind [bytes "*"]]
 export_as @RealWorld data @RealWorld {}
 
-; data IO a = IO !(RealWorld -> IORes a)
+; newtype IO a = IO (RealWorld -> IORes a)
 #[decl @kind [bytes "* -> *"]]
-export_as @IO data @IO {
-  #[link @"IO" @data]
-  export_as @IO constructor @"IO": { forall a. (RealWorld -> IORes a) -> IO a }
-}
+export_as @IO newtype @IO = @IO { forall a. RealWorld -> IORes a }
 
 ; unsafePerformIO :: IO a -> a
 export_as @unsafePerformIO define @unsafePerformIO(forall a, %io: !(IO a)): a [trampoline] {
 entry:
-  match %io: !IO on @IO: (forall a. (RealWorld -> IORes a) -> IO a) { a } (%fn)
   %world = undefined !RealWorld
-  letalloc %thunk = thunk %fn: (RealWorld -> IORes a) $ (%world: !RealWorld)
+  letalloc %thunk = thunk %io: !(RealWorld -> IORes a) $ (%world: !RealWorld)
   %res = eval %thunk: (IORes a)
   match %res: !(IORes a) on @IORes: (forall a. a -> RealWorld -> IORes a) { a } (%value_any, %new_world)
   %value = eval %value_any: a

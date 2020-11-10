@@ -1,6 +1,6 @@
 {- The overloaded Standard Prelude for the Helium Compiler -}
 
-module Prelude(module Prelude, module PreludePrim, module HeliumLang) where 
+module Prelude(module Prelude, module PreludePrim, module HeliumLang, module IridiumLang) where 
 
 import PreludePrim
 import HeliumLang

@@ -28,10 +28,14 @@ import Lvm.Common.IdSet
 import Lvm.Core.Type
 
 passDeadCode :: NameSupply -> Module -> Module
-passDeadCode supply mod = mod{ moduleMethods = methods }
+passDeadCode supply mod = mod{ moduleMethods = methods, moduleAbstractMethods = abstracts }
   where
     res = analyse mod
     methods = catMaybes $ mapWithSupply (`transformMethod` res) supply $ moduleMethods mod
+    abstracts = filter (\decl -> isExported decl || isLive res (declarationName decl)) $ moduleAbstractMethods mod
+
+    isExported (Declaration _ (ExportedAs _) _ _ _) = True
+    isExported _ = False
 
 -- Analysis
 data Constraint

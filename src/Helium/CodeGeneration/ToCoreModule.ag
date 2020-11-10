@@ -45,13 +45,13 @@ insertedMain env moduleName toplevelTypes =
                 Nothing
             Just (name, tpScheme)
                 | not (null qs) ->
-                    d (Core.TCon $ Core.TConTuple 0) $ var "LvmLang.$primPutStrLn" `app_` 
+                    d (Core.TCon $ Core.TConTuple 0) $ var "HeliumLang.$primPutStrLn" `app_` 
                         (var "$primPackedToString" `app_`
                             packedString "<<overloaded function>>")
                 | isJust (isIOType tp) -> 
                     d (typeToCoreType emptyQuantors $ fromJust $ isIOType tp) $ var name
                 | otherwise ->
-                    d (Core.TCon $ Core.TConTuple 0) $ var "LvmLang.$primPutStrLn" `app_` 
+                    d (Core.TCon $ Core.TConTuple 0) $ var "HeliumLang.$primPutStrLn" `app_` 
                         (Core.Ap (var "show" `Core.ApType` typeToCoreType emptyQuantors tp) (DerivingUtils.eqFunForType "Prelude.Show$" tse M.empty (makeTypeFromTp tp)) `app_`
                             var name)
                 where                        
@@ -70,7 +70,7 @@ SEM Module
                 loc.module_ = 
                     setExportsPublic @exports.isImplicit @loc.exportlists @lhs.importEnv
                         (makeCoreModule (Just $ idFromString @modulename)
-                            ( @body.decls
+                            ( @body.decls ++ @lhs.extraDecls
                             ))
                 body . instanceName = Nothing
                 body . quantors = emptyQuantors
