@@ -8,7 +8,6 @@ import Data.IORef
 import Control.Monad
 
 import Helium.Main.Make
-import Helium.Main.Compile
 import Helium.Main.Args
 import qualified Helium.CodeGeneration.Iridium.FileCache as Iridium
 
@@ -25,7 +24,7 @@ compileFile' preludePath developLocation s = do
     doneRef <- newIORef []
     let paths = [preludePath, developLocation]
     cache <- Iridium.newFileCache paths
-    make developLocation file paths [] [Overloading, BuildAll, VerifyBackend] cache doneRef
+    _ <- make developLocation file paths [] [Overloading, BuildAll, VerifyBackend] cache doneRef
     putStrLn "Compiled!"
     (code, res, err) <- readProcessWithExitCode output [] ""
     putStrLn("Exit code: " ++ show code)

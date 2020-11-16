@@ -8,6 +8,8 @@
 	Some Prelude-like functions
 -}
 
+{-# LANGUAGE BangPatterns #-}
+
 module Helium.Utils.Utils where
 
 import Data.IORef

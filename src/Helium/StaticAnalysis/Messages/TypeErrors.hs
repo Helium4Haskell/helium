@@ -13,7 +13,6 @@ module Helium.StaticAnalysis.Messages.TypeErrors where
 import Helium.StaticAnalysis.Messages.Messages
 import Top.Types
 
-import Data.List       (union, partition,find, intercalate)
 import Helium.Syntax.UHA_Syntax (Range, Name)
 import Helium.Syntax.UHA_Range  (getNameRange)
 import Helium.Syntax.UHA_Utils
