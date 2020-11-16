@@ -35,6 +35,7 @@ instance Monad Parser where
 isWhitespace :: Char -> Bool
 isWhitespace ' ' = True
 isWhitespace '\n' = True
+isWhitespace '\r' = True
 isWhitespace '\t' = True
 isWhitespace _ = False
 
