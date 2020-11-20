@@ -23,11 +23,12 @@ import Text.PrettyPrint.Leijen
 
 data TypeEnvironment = TypeEnvironment
   { typeEnvSynonyms :: IdMap Type
-  , typeEnvValues :: IdMap Type
+  , typeEnvGlobalValues :: IdMap Type
+  , typeEnvLocalValues  :: IdMap Type
   }
 
 typeEnvForModule :: CoreModule -> TypeEnvironment
-typeEnvForModule (Module _ _ _ _ decls) = TypeEnvironment (mapFromList synonyms) (mapFromList values)
+typeEnvForModule (Module _ _ _ _ decls) = TypeEnvironment (mapFromList synonyms) (mapFromList values) emptyMap
   where
     synonyms = [ (name, tp) | DeclTypeSynonym name _ _ tp _ <- decls ]
     values = mapMaybe findValue decls
@@ -41,8 +42,14 @@ typeEnvForModule (Module _ _ _ _ decls) = TypeEnvironment (mapFromList synonyms)
     isValue DeclCon{} = True
     isValue _ = False
 
+typeEnvAddSynonym :: Id -> Type -> TypeEnvironment -> TypeEnvironment
+typeEnvAddSynonym name tp env = env{ typeEnvSynonyms = insertMap name tp $ typeEnvSynonyms env }
+
+typeEnvAddSynonyms :: [(Id, Type)] -> TypeEnvironment -> TypeEnvironment
+typeEnvAddSynonyms = flip $ foldr (uncurry typeEnvAddSynonym)
+
 typeEnvAddVariable :: Variable -> TypeEnvironment -> TypeEnvironment
-typeEnvAddVariable (Variable name tp) env = env{ typeEnvValues = updateMap name (typeNotStrict tp) $ typeEnvValues env }
+typeEnvAddVariable (Variable name tp) env = env{ typeEnvLocalValues = updateMap name (typeNotStrict tp) $ typeEnvLocalValues env }
 
 typeEnvAddVariables :: [Variable] -> TypeEnvironment -> TypeEnvironment
 typeEnvAddVariables vars env = foldr typeEnvAddVariable env vars
@@ -54,6 +61,10 @@ typeEnvAddBinds :: Binds -> TypeEnvironment -> TypeEnvironment
 typeEnvAddBinds (Strict bind) env = typeEnvAddBind bind env
 typeEnvAddBinds (NonRec bind) env = typeEnvAddBind bind env
 typeEnvAddBinds (Rec binds) env = foldr typeEnvAddBind env binds
+
+typeEnvWeaken :: Int -> TypeEnvironment -> TypeEnvironment
+typeEnvWeaken 0 env = env
+typeEnvWeaken k env = env{ typeEnvLocalValues = fmap (typeWeaken k) $ typeEnvLocalValues env }
 
 patternVariables :: TypeEnvironment -> Pat -> [Variable]
 patternVariables _ (PatCon (ConTuple _) tps ids)
@@ -89,9 +100,11 @@ typeNormalizeHead env = normalize False
     normalize False t1 = t1
 
 typeOfId :: TypeEnvironment -> Id -> Type
-typeOfId env name = case lookupMap name $ typeEnvValues env of
+typeOfId env name = case lookupMap name $ typeEnvGlobalValues env of
   Just tp -> tp
-  Nothing -> internalError "Core.TypeEnvironment" "typeOfId" $ "variable " ++ show name ++ " not found in type environment " ++ show (map fst $ listFromMap $ typeEnvValues env)
+  Nothing -> case lookupMap name $ typeEnvLocalValues env of
+    Just tp -> tp
+    Nothing -> internalError "Core.TypeEnvironment" "typeOfId" $ "variable " ++ show name ++ " not found in type environment"
 
 typeOfCoreExpression :: TypeEnvironment -> Expr -> Type
 
@@ -115,7 +128,7 @@ typeOfCoreExpression env e@(Ap e1 e2) = case typeNotStrict $ typeNormalizeHead e
 -- Expression: e1 { tp1 }
 -- The type of e1 should be of the form `forall x. tp2`. Substitute x with tp1 in tp2.
 typeOfCoreExpression env (ApType e1 tp1) = case typeNormalizeHead env $ typeOfCoreExpression env e1 of
-  tp@(TForall (Quantor idx _) _ tp2) -> typeSubstitute idx tp1 tp2
+  tp@(TForall _ _ _) -> typeApply tp tp1
   tp -> internalError "Core.TypeEnvironment" "typeOfCoreExpression" $ "typeOfCoreExpression: expected a forall type in the first argument of a function application, got " ++ showType [] tp
 
 -- Expression: \x: t1 -> e
@@ -128,7 +141,7 @@ typeOfCoreExpression env (Lam _ var@(Variable _ tp) expr) =
 -- Expression: forall x. expr
 -- If expr has type t, then the forall expression has type `forall x. t`.
 typeOfCoreExpression env (Forall x kind expr) =
-  TForall x kind $ typeOfCoreExpression env expr
+  TForall x kind $ typeOfCoreExpression (typeEnvWeaken 1 env) expr
 
 -- Expression: (,)
 -- Type: forall a. forall b. a -> b -> (a, b)
@@ -142,11 +155,11 @@ typeOfCoreExpression env (Var x) = typeOfId env x
 typeOfCoreExpression _ (Lit lit) = typeOfLiteral lit
 
 typeTuple :: Int -> Type
-typeTuple arity = foldr (\var -> TForall (Quantor var Nothing) KStar) (typeFunction (map TVar vars) tp) vars
+typeTuple arity = foldr (\var -> TForall (Quantor Nothing) KStar) (typeFunction (map TVar vars) tp) vars
   where
     -- Type without quantifications, eg (a, b)
     tp = foldl (\t var -> TAp t $ TVar var) (TCon $ TConTuple arity) vars
-    vars = [0 .. arity - 1]
+    vars = reverse [0 .. arity - 1]
 
 typeEqual :: TypeEnvironment -> Type -> Type -> Bool
 typeEqual env = typeEqual' env True
@@ -164,8 +177,8 @@ typeEqual' env checkStrict t1@(TCon _) t2 = typeEqualNoTypeSynonym env checkStri
 typeEqual' env checkStrict t1 t2@(TCon _) = typeEqualNoTypeSynonym env checkStrict (typeNormalizeHead env t1) (typeNormalizeHead env t2)
 typeEqual' env checkStrict t1@(TAp _ _) t2 = typeEqualNoTypeSynonym env checkStrict (typeNormalizeHead env t1) (typeNormalizeHead env t2)
 typeEqual' env checkStrict t1 t2@(TAp _ _) = typeEqualNoTypeSynonym env checkStrict (typeNormalizeHead env t1) (typeNormalizeHead env t2)
-typeEqual' env checkStrict (TForall (Quantor x _) _ t1) (TForall (Quantor y _) _ t2) =
-  typeEqual' env checkStrict t1 (typeSubstitute y (TVar x) t2)
+typeEqual' env checkStrict (TForall _ _ t1) (TForall _ _ t2) =
+  typeEqual' env checkStrict t1 t2
 typeEqual' env _ _ _ = False
 
 -- Checks type equivalence, assuming that there is no synonym at the head of the type

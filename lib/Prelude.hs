@@ -1,6 +1,6 @@
 {- The overloaded Standard Prelude for the Helium Compiler -}
 
-module Prelude(module Prelude, module PreludePrim, module HeliumLang) where 
+module Prelude(module Prelude, module PreludePrim, module HeliumLang, module IridiumLang) where 
 
 import PreludePrim
 import HeliumLang
@@ -674,7 +674,7 @@ instance Functor Maybe where
 instance Functor (Either a) where
     fmap _ (Left x) = Left x
     fmap f (Right y) = Right (f y)
-        
+
 instance Functor [] where
     fmap = map
 
@@ -833,7 +833,7 @@ instance (Ord a, Ord b, Ord c, Ord d, Ord e, Ord f, Ord g, Ord h, Ord i) => Ord 
 instance (Ord a, Ord b, Ord c, Ord d, Ord e, Ord f, Ord g, Ord h, Ord i, Ord j) => Ord (a, b, c, d, e, f, g, h, i, j) where
     (x1, y1, z1, a1, b1, c1, d1, e1, f1, g1) < (x2, y2, z2, a2, b2, c2, d2, e2, f2, g2) | x1 /= x2 = x1 < x2
                                                                                         | otherwise = (y1, z1, a1, b1, c1, d1, e1, f1, g1) < (y2, z2, a2, b2, c2, d2, e2, f2, g2)
-    
+
 instance Ord Char where
     c1 < c2 = primOrd c1 < primOrd c2
     c1 > c2 = primOrd c1 > primOrd c2

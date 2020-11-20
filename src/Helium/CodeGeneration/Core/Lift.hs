@@ -33,6 +33,7 @@ import Helium.CodeGeneration.Core.TypeEnvironment
 import Helium.CodeGeneration.Core.ReduceThunks (isCheap)
 
 import Data.Maybe (catMaybes, maybeToList)
+import Data.Either (lefts)
 import Data.List (unzip4)
 
 data Env = Env TypeEnvironment (IdMap Id)
@@ -162,16 +163,16 @@ lazyBind isRec supply scope b@(Bind var@(Variable x t) expr) env = case extractT
     let
       (binds', decls', env') = liftBindss supply scope binds env
     in
-      (binds', Just $ Bind var $ {-(trace ("B: " ++ show (pretty expr)))-} renameInSimpleExpr env' expr', decls', id)
+      (binds', Just $ Bind var $ renameInSimpleExpr env' expr', decls', id)
   Nothing
     -- Do not construct a Bind if the value is placed in a toplevel value which is not a Lambda
     | null scope -> ([], Nothing, decl : decls, insertSubstitution x name)
     | otherwise  -> ([], Just $ Bind var ap, decl : decls, id)
   where
-    ap = foldr addAp (Var name) scope
+    ap = fst $ foldr addAp (Var name, length (lefts scope) - 1) scope
       where
-        addAp (Left (Quantor idx _)) e = ApType e $ TVar idx
-        addAp (Right (Variable name _)) e = Ap e $ Var name
+        addAp (Left _) (e, nextTypeVar) = (ApType e $ TVar nextTypeVar, nextTypeVar - 1)
+        addAp (Right (Variable name _)) (e, nextTypeVar) = (Ap e $ Var name, nextTypeVar)
     (name, supply') = freshId supply
     (supply1, supply2) = splitNameSupply supply'
 

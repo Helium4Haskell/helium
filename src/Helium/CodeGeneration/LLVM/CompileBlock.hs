@@ -228,7 +228,7 @@ compileExpression env supply expr@(Iridium.Call to@(Iridium.GlobalFunction globa
     EnvMethodInfo convention fakeIO = findMap global (envMethodInfo env)
     (nameValue, supply') = freshId supply
     (nameRealWorld, supply'') = freshId supply'
-    ioRes = Iridium.DataTypeConstructor ioResId $ Iridium.typeFromFunctionType $ Iridium.FunctionType [Left $ Core.Quantor 0 Nothing, Right $ Core.TVar 0, Right Iridium.typeRealWorld] Iridium.typeRealWorld
+    ioRes = Iridium.DataTypeConstructor ioResId $ Iridium.typeFromFunctionType $ Iridium.FunctionType [Left $ Core.Quantor Nothing, Right $ Core.TVar 0, Right Iridium.typeRealWorld] Iridium.typeRealWorld
     ioResId = idFromString "IORes"
     tRealWorld = compileType env Iridium.typeRealWorld
 compileExpression env supply (Iridium.Eval var) name = compileEval env supply (toOperand env var) (Iridium.variableType var) $ toName name

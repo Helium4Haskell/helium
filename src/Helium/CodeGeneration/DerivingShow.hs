@@ -51,9 +51,9 @@ dataDictionary env decla@(UHA.Declaration_Data _ _ (UHA.SimpleType_SimpleType _ 
     { declName    = name
     , declAccess  = Export name
     , declModule  = Nothing
-    , declType    = foldr (\(typeArg, idx) -> Core.TForall (Core.Quantor idx $ Just $ getNameName typeArg) Core.KStar)
+    , declType    = foldr (\typeArg -> Core.TForall (Core.Quantor $ Just $ getNameName typeArg) Core.KStar)
                           (Core.typeFunction argTypes dictType)
-                        $ zip names [1 ..]
+                          names
     , valueValue  = makeShowDictionary
     , declCustoms = [custom "type" ("DictPrelude.Show$ " ++ getNameName qualname)]
                     ++ map (custom "typeVariable" . getNameName)                     names
@@ -80,9 +80,9 @@ dataDictionary env decla@(UHA.Declaration_Data _ _ (UHA.SimpleType_SimpleType _ 
                     , showBody
                     ]
             body = foldr (Lam False) (foldl Ap (ApType (Con $ ConId $ idFromString "DictPrelude.Show") dataType) fields) ids
-        in  foldr (\(typeArg, idx) -> Forall (Core.Quantor idx $ Just $ getNameName typeArg) Core.KStar)
+        in  foldr (\typeArg -> Forall (Core.Quantor $ Just $ getNameName typeArg) Core.KStar)
                   body
-                  (zip names [1 ..])
+                  names
 dataDictionary _ _ _ _ = error "pattern match failure in CodeGeneration.Deriving.dataDictionary"
 
 -- Show function for a data type declaration

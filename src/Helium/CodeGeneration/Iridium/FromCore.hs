@@ -21,7 +21,7 @@ import qualified Helium.CodeGeneration.Core.TypeEnvironment as Core
 import qualified Lvm.Core.Module as Core
 import Data.List(find, replicate, group, sort, sortOn, partition)
 import Data.Maybe(fromMaybe, mapMaybe)
-import Data.Either(partitionEithers, isLeft, isRight, fromLeft)
+import Data.Either(partitionEithers, isLeft, isRight, fromLeft, rights)
 
 import Text.PrettyPrint.Leijen (pretty)
 
@@ -44,15 +44,18 @@ fromCoreAfterImports :: ([(Id, Declaration CustomDeclaration)], [(Id, Declaratio
 fromCoreAfterImports (importedCustoms, importedDatas, importTypes, importedAbstracts) supply mod@(Core.Module name _ _ _ _) decls dependencies
   = Module name dependencies (map snd $ importedCustoms ++ customs) (map snd importedDatas ++ datas) (map snd importTypes ++ synonyms) (map snd $ importedAbstracts ++ abstracts) (map snd methods)
   where
-    coreEnv = Core.typeEnvForModule mod
-    datas = decls >>= dataTypeFromCoreDecl consMap
-    synonyms = [ Declaration (Core.declName decl) (visibility decl) (Core.declModule decl) (Core.declCustoms decl) $ TypeSynonym (Core.declType decl) | decl@Core.DeclTypeSynonym{} <- decls ]
+    coreEnv = Core.typeEnvAddSynonyms (map (\(Declaration name _ _ _ (TypeSynonym _ tp)) -> (name, tp)) newtypes) $ Core.typeEnvForModule mod
+    datas' = decls >>= dataTypeFromCoreDecl consMap
+    (datas, (newtypes, newtypeConstructors)) = fmap unzip $ partitionEithers $ map tryPromoteNewtype datas'
+    aliasses = [ Declaration (Core.declName decl) (visibility decl) (Core.declModule decl) (Core.declCustoms decl) $ TypeSynonym TypeSynonymAlias (Core.declType decl) | decl@Core.DeclTypeSynonym{} <- decls ]
     consMap = foldr dataTypeConFromCoreDecl emptyMap decls
     (methods, abstracts) = partitionEithers $ concat $ mapWithSupply (`fromCoreDecl` env) supply decls
     customs = mapMaybe (customFromCoreDecl name) decls
+    importedNewtypeConstructors = mapMaybe getNewtypeConstructor importTypes
     env = TypeEnv
       name
       (mapFromList $ map (\(dataName, d) -> (dataName, getConstructors d)) importedDatas ++ map (\d -> (declarationName d, getConstructors d)) datas)
+      (setFromList $ newtypeConstructors ++ importedNewtypeConstructors)
       (unionMap valuesFunctions $ unionMap valueForeignAbstract $ unionMap valuesAbstracts valuesCons)
       Nothing
       coreEnv
@@ -76,6 +79,11 @@ valueDeclFromCoreFFI (Core.DeclAbstract{Core.declName=fnName, Core.declArity=ari
 valueDeclFromCoreFFI (_ : xs) = valueDeclFromCoreFFI xs
 valueDeclFromCoreFFI [] = []
 
+getNewtypeConstructor :: (Id, Declaration TypeSynonym) -> Maybe Id
+getNewtypeConstructor (_, Declaration name _ _ _ (TypeSynonym (TypeSynonymNewtype (ExportedAs constructor) _) _))
+  = Just $ idFromString $ stringFromId name ++ "." ++ stringFromId constructor
+getNewtypeConstructor _ = Nothing
+
 customFromCoreDecl :: Id -> Core.CoreDecl -> Maybe (Id, Declaration CustomDeclaration)
 customFromCoreDecl moduleName decl@Core.DeclCustom{}
   | not isData = Just (name, Declaration name (visibility decl) (Core.declModule decl) (Core.declCustoms decl) $ CustomDeclaration $ Core.declKind decl)
@@ -91,6 +99,21 @@ dataTypeFromCoreDecl consMap decl@Core.DeclCustom{}
   where
     name = Core.declName decl
 dataTypeFromCoreDecl _ _ = []
+
+tryPromoteNewtype :: Declaration DataType -> Either (Declaration DataType) (Declaration TypeSynonym, Id)
+tryPromoteNewtype (Declaration name vis mod customs (DataType [Declaration constructor constructorVis _ _ (DataTypeConstructorDeclaration tp fields)]))
+  | Just alias <- go tpArgs = Right $ (Declaration name vis mod customs $ TypeSynonym (TypeSynonymNewtype constructorVis destructorVis) alias, constructor)
+  where
+    FunctionType tpArgs _ = extractFunctionTypeNoSynonyms tp
+
+    go (Left q : args) = Core.TForall q Core.KStar <$> go args
+    go [Right (Core.TStrict arg)] = Just arg
+    go _ = Nothing
+
+    destructorVis = case fields of
+      [Core.Field x] -> ExportedAs x
+      _ -> Private
+tryPromoteNewtype decl = Left decl
 
 dataTypeConFromCoreDecl :: Core.CoreDecl -> IdMap [Declaration DataTypeConstructorDeclaration] -> IdMap [Declaration DataTypeConstructorDeclaration]
 dataTypeConFromCoreDecl decl@Core.DeclCon{} = case find isDataName (Core.declCustoms decl) of
@@ -194,6 +217,13 @@ toInstruction supply env continue (Core.Let (Core.Rec bs) expr)
     locals = map (coreBindLocal env) bs
     env' = expandEnvWithLocals locals env
 
+-- Match on newtype
+-- A newtype becomes a type alias in Iridium, hence pattern matching becomes a no-op.
+toInstruction supply env continue (Core.Match x (Core.Alt (Core.PatCon (Core.ConId con) _ [y]) expr : _))
+  | con `elemSet` teNewtypeConstructors env = toInstruction supply env continue $ Core.Let (Core.Strict $ Core.Bind (Core.Variable y tp) $ Core.Var x) expr
+  where
+    tp = Core.typeOfCoreExpression (teCoreEnv env) $ Core.Var x
+
 -- Match
 toInstruction supply env continue match@(Core.Match x alts) =
   blocks &> partial
@@ -247,6 +277,8 @@ toInstruction supply env continue (Core.Lit lit) = Let name expr +> ret supply' 
     (name, supply') = freshId supply
     expr = (Literal $ literal lit)
 toInstruction supply env continue (Core.Var var) = case resolve env var of
+  Right (GlobalFunction fn 0 fntype) ->
+    Let name (Eval $ VarGlobal $ GlobalVariable fn fntype) +> ret supply' env name continue
   Right global ->
     let
       bind = Bind name (BindTargetFunction global) []
@@ -260,16 +292,21 @@ toInstruction supply env continue (Core.Var var) = case resolve env var of
     (nameThunk, supply'') = freshId supply'
 
 toInstruction supply env continue expr = case getApplicationOrConstruction expr [] of
-  (Left (Core.ConId con), args) ->
-    let
-      dataTypeCon@(DataTypeConstructor dataName fntype) = case valueDeclaration env con of
-        ValueConstructor c -> c
-        _ -> error "toInstruction: Illegal target of allocation, expected a constructor"
-      (casted, castInstructions, _) = maybeCasts supply''' env fntype args
-    in
-      castInstructions
-        +> LetAlloc [Bind x (BindTargetConstructor dataTypeCon) casted]
-        +> ret supplyRet env x continue
+  (Left (Core.ConId con), args)
+    | con `elemSet` teNewtypeConstructors env ->
+      case rights args of
+        [arg] -> toInstruction supply env continue $ Core.Var arg
+        _ -> error "toInstruction: Newtype constructor has wrong number of arguments"
+    | otherwise ->
+      let
+        dataTypeCon@(DataTypeConstructor dataName fntype) = case valueDeclaration env con of
+          ValueConstructor c -> c
+          _ -> error "toInstruction: Illegal target of allocation, expected a constructor"
+        (casted, castInstructions, _) = maybeCasts supply''' env fntype args
+      in
+        castInstructions
+          +> LetAlloc [Bind x (BindTargetConstructor dataTypeCon) casted]
+          +> ret supplyRet env x continue
   (Left con@(Core.ConTuple arity), args) ->
     let
       fntype = Core.typeOfCoreExpression (teCoreEnv env) (Core.Con con)
@@ -483,6 +520,8 @@ bind supply env (Core.Bind (Core.Variable x _) val) = Bind x target $ map toArg 
         in BindTargetConstructor constructor
       Left (Core.ConTuple arity) -> BindTargetTuple arity
       Right fn -> case resolveFunction env fn of
+        Just (0, fntype) ->
+          BindTargetThunk $ VarGlobal $ GlobalVariable fn fntype
         Just (arity, fntype) ->
           BindTargetFunction $ GlobalFunction fn arity fntype
         _

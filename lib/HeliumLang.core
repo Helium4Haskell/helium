@@ -21,6 +21,18 @@ custom infix (:) : export [5,"right"]
 ----------------------------------------------------------}
 data '':->'' v$0 v$1
 
+
+''$primPutStrLn'' :: String -> IO ()
+''$primPutStrLn'' : export = 
+  let print: ([Char] -> Int) = \str: [Char] -> ''_$helium_runtime_print_string'' str
+  in
+    \str: String ->
+      IO {()} (\realworld: RealWorld ->
+        seq {Int} {IORes ()}
+          (print str)
+          (seq {Int} {IORes ()}
+            (print "\n") (IORes {()} () realworld)))
+
 ''$primPackedToString'' :: String -> String
 ''$primPackedToString'' : export = \p: String -> p
 

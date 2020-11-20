@@ -4,7 +4,7 @@ module Helium.CodeGeneration.Iridium.FromCoreImports (fromCoreImports, visibilit
 
 import Data.List (find)
 import Data.Maybe (catMaybes, fromMaybe)
-import Data.Either (isRight)
+import Data.Either (isRight, partitionEithers)
 import Lvm.Common.Id
 import Helium.CodeGeneration.Iridium.Data
 import Helium.CodeGeneration.Iridium.Type
@@ -16,19 +16,24 @@ import System.Exit
 fromCoreImports :: FileCache -> [Core.CoreDecl] -> IO ([(Id, Declaration CustomDeclaration)], [(Id, Declaration DataType)], [(Id, Declaration TypeSynonym)], [(Id, Declaration AbstractMethod)])
 fromCoreImports cache decls = do
   customs <- mapM (importCustom cache) decls
-  datas <- mapM (importData cache) decls
+  datas' <- mapM (importData cache) decls
+  let (datas, newtypes) = partitionEithers $ catMaybes datas'
   types <- mapM (importTypeSynonym cache) decls
   abstracts <- mapM (importAbstract cache) decls
-  return (catMaybes customs, catMaybes datas, catMaybes types, catMaybes abstracts)
+  return (catMaybes customs, datas, catMaybes types ++ newtypes, catMaybes abstracts)
 
 importCustom :: FileCache -> Core.CoreDecl -> IO (Maybe (Id, Declaration CustomDeclaration))
 importCustom cache decl@Core.DeclCustom{}
   | Core.declKind decl /= Core.DeclKindCustom (idFromString "data") = Just <$> findDeclaration cache decl moduleCustoms
 importCustom _ _ = return Nothing
 
-importData :: FileCache -> Core.CoreDecl -> IO (Maybe (Id, Declaration DataType))
+importData :: FileCache -> Core.CoreDecl -> IO (Maybe (Either (Id, Declaration DataType) (Id, Declaration TypeSynonym)))
 importData cache decl@Core.DeclCustom{}
-  | Core.declKind decl == Core.DeclKindCustom (idFromString "data") = Just <$> findDeclaration cache decl moduleDataTypes
+  | Core.declKind decl == Core.DeclKindCustom (idFromString "data") = do
+    d <- lookupDeclaration cache decl moduleDataTypes
+    case d of
+      Just d' -> return $ Just $ Left d'
+      Nothing -> Just . Right <$> findDeclaration cache decl moduleTypeSynonyms
 importData _ _ = return Nothing
 
 importTypeSynonym :: FileCache -> Core.CoreDecl -> IO (Maybe (Id, Declaration TypeSynonym))

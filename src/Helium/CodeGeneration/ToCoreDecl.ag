@@ -52,12 +52,9 @@ SEM MaybeDeclarations [ | |   core : { Core.Expr -> Core.Expr } ]
 
 SEM Declaration
     | Type
-            (loc.qualname, loc.access, loc.module)
-                        = if @lhs.isTopLevel 
-                            then ( addQualified @lhs.moduleQual @simpletype.name
-                                    , Core.Export (idFromName @simpletype.name)
-                                    , Just (idFromString @lhs.modulename))
-                            else (@simpletype.name, Core.Private, Nothing)
+            loc.qualname = if @lhs.isTopLevel 
+                             then addQualified @lhs.moduleQual @simpletype.name
+                             else @simpletype.name
             lhs.decls  =
         let -- if we would have the collected type synonym information here, things could have been
             -- done much easier.
@@ -74,7 +71,7 @@ SEM Declaration
             { Core.declName = idFromName @qualname
             , Core.declAccess = Core.Private
             , Core.declModule  = Nothing
-            , Core.declType = toCoreType (convertTpSchemeToQualified @lhs.importEnv ts)
+            , Core.declType = toCoreType @lhs.quantors (convertTpSchemeToQualified @lhs.importEnv ts)
             , Core.declCustoms = []
             }
         ]
@@ -82,13 +79,10 @@ SEM Declaration
     | Data    constructors.dataTypeName = @qualname
               constructors.dataTypeCoreType = @simpletype.coreType
               constructors.typevariables = @simpletype.typevariables
-              loc.qualDers    = map (convertClassNameToQualified @lhs.importEnv) @derivings.self
-              (loc.qualname, loc.access, loc.module)
-                            = if @lhs.isTopLevel 
-                                then ( addQualified @lhs.moduleQual @simpletype.name
-                                     , Core.Export (idFromName @simpletype.name)
-                                     , Just (idFromString @lhs.modulename))
-                                else (@simpletype.name, Core.Private, Nothing)
+              loc.qualDers = map (convertClassNameToQualified @lhs.importEnv) @derivings.self
+              loc.qualname = if @lhs.isTopLevel 
+                               then addQualified @lhs.moduleQual @simpletype.name
+                               else @simpletype.name
               lhs.decls  =
         map snd @constructors.cons
         ++
@@ -119,7 +113,7 @@ SEM Declaration
     --  derivings                : Names
 
     | FunctionBindings
-                        (loc.tpScheme, loc.declType) = declarationType @lhs.typeOutput @lhs.typeClassContext @bindings.name
+                        (loc.tpScheme, loc.declType) = declarationType @lhs.typeOutput @lhs.typeClassContext @lhs.quantors @bindings.name
                         loc.ids      = freshIds "u$" @bindings.arity
                         bindings.ids = @loc.ids
                         bindings.range = @range.self
@@ -127,19 +121,17 @@ SEM Declaration
                         loc.instanceDict = [idFromString $ "$instanceDict" ++ show name | Just name <- [@lhs.instanceName]]
                         loc.dictionaries = @instanceDict ++ (map predicateToId (getPredicateForDecl @bindings.name @lhs.dictionaryEnv))
                         lhs.whereDeclarationTypes = [(@bindings.name, @loc.tpScheme)]
-                        (loc.qualname, loc.access, loc.module)
-                            = if @lhs.isTopLevel 
-                                then ( addQualified @lhs.moduleQual @bindings.name
-                                     , Core.Export (idFromName @bindings.name)
-                                     , Just (idFromString @lhs.modulename))
-                                else (@bindings.name, Core.Private, Nothing)
+                        loc.qualname = if @lhs.isTopLevel
+                                        then addQualified @lhs.moduleQual @bindings.name
+                                        else @bindings.name
+                        (bindings.quantors, loc.bindLambdas) = addLambdas @lhs.typeOutput @lhs.typeClassContext @lhs.quantors @lhs.betaDeclUnique @bindings.name (@dictionaries ++ @ids)
                         lhs.decls =
         [ Core.DeclValue
             { Core.declName    = idFromName @qualname
             , Core.declAccess  = Core.Private
             , Core.declModule  = Nothing
             , Core.declType    = @loc.declType
-            , Core.valueValue  = addLambdas @lhs.typeOutput @lhs.typeClassContext @lhs.betaDeclUnique @bindings.name (@dictionaries ++ @ids) @bindings.core
+            , Core.valueValue  = @loc.bindLambdas @bindings.core
             , Core.declCustoms = []
             }
         ]
@@ -154,53 +146,58 @@ SEM Declaration
                                       (getPredicateForDecl n @lhs.dictionaryEnv)
                                 _ -> []
                         lhs.whereDeclarationTypes = @pattern.vars
-                        lhs.decls     =
+                        (righthandside.quantors, lhs.decls) =
         case  @pattern.self of
             Pattern_Variable _ n ->
-                [ Core.DeclValue
-                    { Core.declName    = idFromName (if @lhs.isTopLevel then addQualified @lhs.moduleQual n else n)
-                    , Core.declAccess  = if @lhs.isTopLevel then Core.Export (idFromString @lhs.modulename) else Core.Private
-                    , Core.declModule  = Nothing
-                    , Core.declType    = snd $ declarationType @lhs.typeOutput @lhs.typeClassContext n
-                    , Core.valueValue  =
-                        addLambdas @lhs.typeOutput @lhs.typeClassContext @lhs.betaDeclUnique n @dictionaries
-                            (\_ retType -> let_ -- because guards can fail
-                                nextClauseId retType (patternMatchFail "pattern binding" retType @range.self)
-                                @righthandside.core
-                            )
-                    , Core.declCustoms = []
-                    }
-               ]
+                let (quantors, bindLambdas) = addLambdas @lhs.typeOutput @lhs.typeClassContext @lhs.quantors @lhs.betaDeclUnique n @dictionaries
+                in (quantors,
+                    [ Core.DeclValue
+                        { Core.declName    = idFromName (if @lhs.isTopLevel then addQualified @lhs.moduleQual n else n)
+                        , Core.declAccess  = Core.Private
+                        , Core.declModule  = Nothing
+                        , Core.declType    = snd $ declarationType @lhs.typeOutput @lhs.typeClassContext @lhs.quantors n
+                        , Core.valueValue  =
+                            bindLambdas
+                                (\_ retType -> let_ -- because guards can fail
+                                    nextClauseId retType (patternMatchFail "pattern binding" retType @range.self)
+                                    @righthandside.core
+                                )
+                        , Core.declCustoms = []
+                        }
+                    ]
+                )
             _ ->
               -- TODO: Add type arguments
-              let patBindTp = findCoreType @lhs.typeOutput @lhs.betaDeclUnique
-              in Core.DeclValue
-                    { Core.declName    = patBindId
-                    , Core.declAccess  = Core.Private
-                    , Core.declModule  = Nothing
-                    , Core.declType    = patBindTp
-                    , Core.valueValue  =
-                        let_ -- because guards can fail
-                            nextClauseId patBindTp (patternMatchFail "pattern binding" patBindTp @range.self)
-                            @righthandside.core
-                    , Core.declCustoms = [custom "type" "patternbinding"]
-                    }
-                :
-                [ Core.DeclValue
-                    { Core.declName    = idFromName v
-                    , Core.declAccess  = Core.Private
-                    , Core.declModule  = Nothing
-                    , Core.declType    = tp
-                    , Core.valueValue  =
-                        (let_ nextClauseId tp (patternMatchFail "pattern binding" tp @range.self)
-                            (patternToCore @lhs.importEnv @pattern.patternTypes (patBindId, patBindTp, @pattern.self) (Core.Var (idFromName v)))
-                        )
-                    , Core.declCustoms = []
-                    }
-                | (v, tp) <- M.assocs @pattern.patternTypes
-                -- TODO: Check if this is necessary
-                -- | v1 <- @pattern.vars, let allv = v1 : if @lhs.isTopLevel then [addQualified @lhs.moduleQual v1] else [], v <- allv ]
-                ]
+              let patBindTp = findCoreType @lhs.typeOutput @lhs.quantors @lhs.betaDeclUnique
+              in (@lhs.quantors,
+                    Core.DeclValue
+                        { Core.declName    = patBindId
+                        , Core.declAccess  = Core.Private
+                        , Core.declModule  = Nothing
+                        , Core.declType    = patBindTp
+                        , Core.valueValue  =
+                            let_ -- because guards can fail
+                                nextClauseId patBindTp (patternMatchFail "pattern binding" patBindTp @range.self)
+                                @righthandside.core
+                        , Core.declCustoms = [custom "type" "patternbinding"]
+                        }
+                    :
+                    [ Core.DeclValue
+                        { Core.declName    = idFromName v
+                        , Core.declAccess  = Core.Private
+                        , Core.declModule  = Nothing
+                        , Core.declType    = tp
+                        , Core.valueValue  =
+                            (let_ nextClauseId tp (patternMatchFail "pattern binding" tp @range.self)
+                                (patternToCore @lhs.importEnv @lhs.quantors @pattern.patternTypes (patBindId, patBindTp, @pattern.self) (Core.Var (idFromName v)))
+                            )
+                        , Core.declCustoms = []
+                        }
+                    | (v, tp) <- M.assocs @pattern.patternTypes
+                    -- TODO: Check if this is necessary
+                    -- | v1 <- @pattern.vars, let allv = v1 : if @lhs.isTopLevel then [addQualified @lhs.moduleQual v1] else [], v <- allv ]
+                    ]
+                )
                 where
                     patBindId = idFromString ("patBind$" ++ show @lhs.patBindNr)
     --  range                    : Range
@@ -266,7 +263,7 @@ SEM Declaration
                                                 {
                                                     --declName :: Id, declAccess :: !Access, declArity :: !Arity, declCustoms :: ![Custom]
                                                     Core.declName = idFromName @qualName,
-                                                    Core.declAccess = Core.Export $ idFromName @simpletype.name,
+                                                    Core.declAccess = Core.Private,
                                                     Core.declModule = Nothing,
                                                     Core.declKind = Core.DeclKindCustom $ idFromString "ClassDefinition",
                                                     Core.declCustoms =
@@ -284,9 +281,11 @@ SEM Declaration
                                                 @where.whereDeclarations 
                                                 @qualName 
                                                 @loc.typeName (map (\(n, TVar i) -> (n, i)) @instanceBetas)
-                                                (typeToCoreType @tp)
+                                                (typeToCoreType @quantors @tp)
                                                 []
                                             ]
+                        loc .   quantors    = quantorsFromList $ map (\(_, TVar i) -> i) @instanceBetas
+                        where . quantors    = @quantors
                         loc .   qualName    = convertClassNameToQualified @lhs.importEnv @name.self
                         loc .   contextQual = map (convertContextItemToQualified @lhs.importEnv) @context.self
                         loc .   tp = convertTpToQualified @lhs.importEnv $ makeTpFromType @instanceBetas @type
@@ -298,15 +297,11 @@ SEM Declaration
                         where . instanceName = Just @qualName
                         where . typeClassContext = TCCInstance (idFromName @name.self) (toCoreTypeNotQuantified $ makeTpSchemeFromType @loc.type)
 
-    | Newtype           constructor.dataTypeName = @simpletype.name
+    | Newtype           constructor.isNewtype = True
+                        constructor.dataTypeName = @qualname
                         constructor.dataTypeCoreType = @simpletype.coreType
                         constructor.typevariables = @simpletype.typevariables
-                        (loc.qualname, loc.access, loc.module)
-                            = if @lhs.isTopLevel 
-                                then ( addQualified @lhs.moduleQual @simpletype.name
-                                     , Core.Export (idFromName @simpletype.name)
-                                     , Just (idFromString @lhs.modulename))
-                                else (@simpletype.name, Core.Private, Nothing)
+                        loc.qualname = addQualified @lhs.moduleQual @simpletype.name
                         lhs.decls    =
         map snd @constructor.cons
         ++
@@ -402,6 +397,7 @@ SEM FunctionBinding [ | | core : { [Core.Type] -> Core.Type -> Core.Expr -> Core
             let thisClause =
                     patternsToCore
                         @lhs.importEnv
+                        @lhs.quantors
                         @lefthandside.patternTypes
                         (zip3 @lhs.ids args @lefthandside.patterns)
                         @righthandside.core in
@@ -421,8 +417,8 @@ predicateToId :: Predicate -> Id
 predicateToId (Predicate class_ tp) =
     idFromString $ "$dict" ++ class_ ++ "$" ++ show tp
 
-dictionaryTreeToCore :: DictionaryTree -> Core.Expr
-dictionaryTreeToCore theTree =
+dictionaryTreeToCore :: Quantors -> DictionaryTree -> Core.Expr
+dictionaryTreeToCore quantors theTree =
    case theTree of
         ByPredicate predicate ->
             Core.Var (predicateToId predicate)
@@ -430,23 +426,23 @@ dictionaryTreeToCore theTree =
             foldl Core.Ap
                 (foldl Core.ApType
                     (Core.Var (idFromString ("$dict"++className++ "$" ++ instanceName)))
-                    $ map typeToCoreType typeArgs
+                    $ map (typeToCoreType quantors) typeArgs
                 )
-                (map dictionaryTreeToCore trees)
+                (map (dictionaryTreeToCore quantors) trees)
         BySuperClass subClass superClass tp tree ->
-            Core.Ap (Core.ApType (Core.Var (idFromString ("$get" ++ superClass ++ "$" ++ subClass))) $ typeToCoreType tp)
-                (dictionaryTreeToCore tree)
+            Core.Ap (Core.ApType (Core.Var (idFromString ("$get" ++ superClass ++ "$" ++ subClass))) $ typeToCoreType quantors tp)
+                (dictionaryTreeToCore quantors tree)
         ByCurrentClass className ->
             Core.Var (idFromString $ "$instanceDict" ++ className)
         BySuperInstance p className typeVariables ->
             Core.Var (idFromString $ "$instanceDict" ++ className ++ "$" ++ typeVariables )
 
 
-insertDictionaries :: Name -> DictionaryEnvironment -> Core.Expr -> Core.Expr
-insertDictionaries name dictionaryEnv expr =
+insertDictionaries :: Quantors -> Name -> DictionaryEnvironment -> Core.Expr -> Core.Expr
+insertDictionaries quantors name dictionaryEnv expr =
    foldl Core.Ap
          expr
-         ((map dictionaryTreeToCore (getDictionaryTrees name dictionaryEnv)))
+         ((map (dictionaryTreeToCore quantors) (getDictionaryTrees name dictionaryEnv)))
 }
 ATTR LeftHandSide
     [
@@ -515,20 +511,21 @@ where it is present will all appear in the pattern of the function
 -}
 
 ATTR Constructor Constructors
-    [ | | names USE { ++ } { [] } : Names ]
+    [ isNewtype : Bool | | names USE { ++ } { [] } : Names ]
 
 ATTR FieldDeclaration FieldDeclarations
     [ fieldMap : { M.Map Name (Int, Bool, Tp, TpScheme) } | | ]
 
 SEM Declaration
     | Data 
+            constructors.isNewtype = False
             loc.selectorFunctions = map @toDecl @fieldTypes
               .toDecl = \(n, t, ts) -> Core.DeclValue
                                     { Core.declName    = idFromName (addQualified @lhs.moduleQual n)
                                     , Core.declAccess  = Core.Private
                                     , Core.declModule  = Nothing
-                                    , Core.declType    = toCoreType (convertTpSchemeToQualified @lhs.importEnv ts)
-                                    , Core.valueValue  = createRecordSelector @lhs.importEnv @range.self n t
+                                    , Core.declType    = toCoreType @lhs.quantors (convertTpSchemeToQualified @lhs.importEnv ts)
+                                    , Core.valueValue  = createRecordSelector @lhs.importEnv @lhs.quantors @range.self n t
                                     , Core.declCustoms = []
                                     }
               .recordEnv = recordEnvironment @lhs.importEnv
@@ -564,7 +561,7 @@ SEM Constructor [ dataTypeName : Name typevariables : Names dataTypeCoreType : {
                 { Core.declName    = idFromName @constructor.self
                 , Core.declAccess  = Core.Private
                 , Core.declModule  = Nothing
-                , Core.declType    = declarationConstructorType @lhs.importEnv @constructor.self @types.strictness
+                , Core.declType    = declarationConstructorType @lhs.importEnv @constructor.self (if @lhs.isNewtype then [True] else @types.strictness)
                 , Core.declCustoms = constructorCustoms
                                         @lhs.dataTypeName
                                         @constructor.self

@@ -23,17 +23,17 @@ import Helium.CodeGeneration.CoreUtils
 import qualified Data.Map as M
 import Data.Maybe
 
-patternsToCore :: ImportEnvironment -> M.Map Name Core.Type -> [(Id, Core.Type, Pattern)] -> Core.Expr -> Core.Expr
-patternsToCore env types nps continue = fst (patternsToCore' env types nps continue 0)
+patternsToCore :: ImportEnvironment -> Quantors -> M.Map Name Core.Type -> [(Id, Core.Type, Pattern)] -> Core.Expr -> Core.Expr
+patternsToCore env quantors types nps continue = fst (patternsToCore' env quantors types nps continue 0)
 
-patternsToCore' :: ImportEnvironment -> M.Map Name Core.Type -> [(Id, Core.Type, Pattern)] -> Core.Expr -> Int -> (Core.Expr, Int)
-patternsToCore' _ _ [] continue nr = (continue, nr)
-patternsToCore' env types (np:nps) continue nr =
-    let (expr, nr') = patternsToCore' env types nps continue nr
-    in patternToCore' env types np expr nr'
+patternsToCore' :: ImportEnvironment -> Quantors -> M.Map Name Core.Type -> [(Id, Core.Type, Pattern)] -> Core.Expr -> Int -> (Core.Expr, Int)
+patternsToCore' _ _ _ [] continue nr = (continue, nr)
+patternsToCore' env quantors types (np:nps) continue nr =
+    let (expr, nr') = patternsToCore' env quantors types nps continue nr
+    in patternToCore' env quantors types np expr nr'
 
-patternToCore :: ImportEnvironment -> M.Map Name Core.Type -> (Id, Core.Type, Pattern) -> Core.Expr -> Core.Expr
-patternToCore env types np continue = fst (patternToCore' env types np continue 0)
+patternToCore :: ImportEnvironment -> Quantors -> M.Map Name Core.Type -> (Id, Core.Type, Pattern) -> Core.Expr -> Core.Expr
+patternToCore env quantors types np continue = fst (patternToCore' env quantors types np continue 0)
 
 
 withNr :: a -> b -> (b, a)
@@ -42,8 +42,8 @@ withNr nr e = (e, nr)
 findType :: Name -> M.Map Name Core.Type -> Core.Type
 findType name types = fromMaybe (internalError "PatternMatch" "patternToCore'" $ "Could not find type for variable in pattern: " ++ show name) $ M.lookup name types
 
-patternToCore' :: ImportEnvironment -> M.Map Name Core.Type -> (Id, Core.Type, Pattern) -> Core.Expr -> Int -> (Core.Expr, Int)
-patternToCore' env types (name, tp, pat) continue nr = 
+patternToCore' :: ImportEnvironment -> Quantors -> M.Map Name Core.Type -> (Id, Core.Type, Pattern) -> Core.Expr -> Int -> (Core.Expr, Int)
+patternToCore' env quantors types (name, tp, pat) continue nr = 
     case pat of
         -- let x = _u1 in ...
         Pattern_Variable _ n -> withNr nr $
@@ -61,9 +61,9 @@ patternToCore' env types (name, tp, pat) continue nr =
                         (map getIdOfSimplePattern ps, nr)
                     else 
                         freshIds' "l$" nr (length ps)
-                (instantiation, fieldTypes) = constructorFieldTypes env n tp
+                (instantiation, fieldTypes) = constructorFieldTypes env quantors n tp
                 (expr, nr'') =
-                    patternsToCore' env types (zip3 ids fieldTypes ps) continue nr'
+                    patternsToCore' env quantors types (zip3 ids fieldTypes ps) continue nr'
             in withNr nr'' $
                 case_ name tp
                 [ Core.Alt 
@@ -76,20 +76,20 @@ patternToCore' env types (name, tp, pat) continue nr =
         Pattern_Record range n bs ->
             let 
                 ps = rearrangeRecordPatterns env n range bs
-            in patternToCore' env types (name, tp, Pattern_Constructor range n ps) continue nr
+            in patternToCore' env quantors types (name, tp, Pattern_Constructor range n ps) continue nr
 
         -- case _u1 of _l1 : _l2 -> ...
         --             _         -> _next
         Pattern_InfixConstructor _ p1 n p2 ->
             let ie = internalError "PatternMatch" "patternToCore'" "shouldn't look at range"
-            in patternToCore' env types (name, tp, Pattern_Constructor ie n [p1, p2]) continue nr
+            in patternToCore' env quantors types (name, tp, Pattern_Constructor ie n [p1, p2]) continue nr
                 
         Pattern_Parenthesized _ p ->
-            patternToCore' env types (name, tp, p) continue nr
+            patternToCore' env quantors types (name, tp, p) continue nr
 
         -- let n = _u1 in ...
         Pattern_As _ n p -> 
-            let (expr, nr') = patternToCore' env types (name, tp, p) continue nr
+            let (expr, nr') = patternToCore' env quantors types (name, tp, p) continue nr
             in withNr nr' $
                 let_ 
                     (idFromName n) (findType n types) (Core.Var name) 
@@ -121,6 +121,7 @@ patternToCore' env types (name, tp, pat) continue nr =
                 Literal_String _ s -> 
                     patternToCore'
                         env
+                        quantors
                         types
                         ( name
                         , tp
@@ -133,7 +134,7 @@ patternToCore' env types (name, tp, pat) continue nr =
                     characters = read ("\"" ++ s ++ "\"") :: String
             
         Pattern_List _ ps -> 
-            patternToCore' env types (name, tp, expandPatList ps) continue nr
+            patternToCore' env quantors types (name, tp, expandPatList ps) continue nr
         
         Pattern_Tuple _ ps ->
             let
@@ -144,7 +145,7 @@ patternToCore' env types (name, tp, pat) continue nr =
                         freshIds' "l$" nr (length ps)
                 tps = Core.typeTupleElements tp
                 (expr, nr'') = 
-                    patternsToCore' env types (zip3 ids tps ps) continue nr'
+                    patternsToCore' env quantors types (zip3 ids tps ps) continue nr'
             in withNr nr'' $
                 case_ name tp
                 [ Core.Alt 
@@ -156,6 +157,7 @@ patternToCore' env types (name, tp, pat) continue nr =
         Pattern_Negate _ (Literal_Int r v) -> 
             patternToCore'
                 env
+                quantors
                 types
                 (name, tp, Pattern_Literal r (Literal_Int r neg))
                 continue
@@ -166,6 +168,7 @@ patternToCore' env types (name, tp, pat) continue nr =
         Pattern_Negate _ (Literal_Float r v) -> 
             patternToCore'
                 env
+                quantors
                 types
                 (name, tp, Pattern_Literal r (Literal_Float r neg))
                 continue
@@ -176,6 +179,7 @@ patternToCore' env types (name, tp, pat) continue nr =
         Pattern_NegateFloat _ (Literal_Float r v) -> 
             patternToCore'
                 env
+                quantors
                 types
                 (name, tp, Pattern_Literal r (Literal_Float r neg))
                 continue
@@ -189,7 +193,7 @@ patternToCore' env types (name, tp, pat) continue nr =
         --   in continue
         Pattern_Irrefutable _ p -> 
             withNr nr $ foldr 
-                (\v r -> let_ (idFromName v) (findType v types) (patternToCore env types (name, tp, p) (Core.Var $ idFromName v)) r)
+                (\v r -> let_ (idFromName v) (findType v types) (patternToCore env quantors types (name, tp, p) (Core.Var $ idFromName v)) r)
                 continue
                 $ patternVars p
         
@@ -258,16 +262,15 @@ case_ ident tp alts =
 
 toTp (Top.Quantification (_, _, tp)) = tp
 
-constructorFieldTypes :: ImportEnvironment -> Name -> Core.Type -> ([Core.Type], [Core.Type])
-constructorFieldTypes env conName tp =
+constructorFieldTypes :: ImportEnvironment -> Quantors -> Name -> Core.Type -> ([Core.Type], [Core.Type])
+constructorFieldTypes env quantors conName tp =
     ( instantiation
-    , map (Core.typeSubstitutions $ zipWith (\(Core.TVar typeArg) t -> (typeArg, t)) typeArgs instantiation) args
+    , map (Core.typeSubstitutions 0 $ reverse instantiation) args
     )
   where
-    typeArgs = getDataTypeArgs retType []
     instantiation = getDataTypeArgs tp []
-    (n, consTpScheme) = fromMaybe (internalError "ToCorePat" "Pattern" $ "Could not find constructor " ++ show conName) $ M.lookup conName $ valueConstructors env
-    (args, retType) = Core.typeExtractFunction $ toCoreTypeNotQuantified consTpScheme
+    (_, consTpScheme) = fromMaybe (internalError "ToCorePat" "Pattern" $ "Could not find constructor " ++ show conName) $ M.lookup conName $ valueConstructors env
+    (args, _) = Core.typeExtractFunction $ toCoreTypeNotQuantified consTpScheme
 
     getDataTypeArgs :: Core.Type -> [Core.Type] -> [Core.Type]
     getDataTypeArgs (Core.TCon (Core.TConDataType name)) accum = case M.lookup (nameFromId name) $ typeSynonyms env of
@@ -281,7 +284,7 @@ constructorFieldTypes env conName tp =
             f idx
               | idx < 0 = Just $ args !! (-1 - idx)
               | otherwise = Nothing
-            tp' = typeToCoreTypeMapped [] f $ fn $ map Top.TVar [-1, -2 .. -arity]
+            tp' = typeToCoreTypeMapped quantors f $ fn $ map Top.TVar [-1, -2 .. -arity]
           in
             getDataTypeArgs tp' remaining
     getDataTypeArgs (Core.TAp t1 t2) accum = getDataTypeArgs t1 (t2 : accum)

@@ -22,22 +22,22 @@ SEM Patterns
     
 
 SEM Pattern
-    | Variable              (loc.tpScheme, loc.coreType) = declarationTypeInPattern @lhs.typeOutput @name.self @lhs.betaDeclUnique
+    | Variable              (loc.tpScheme, loc.coreType) = declarationTypeInPattern @lhs.typeOutput @lhs.quantors @name.self @lhs.betaDeclUnique
                             lhs.vars    = [ (@name.self, @loc.tpScheme) ]
                             lhs.patternTypes = M.singleton @name.self @loc.coreType
     --  range                    : Range
     --  name                     : Name
 
-    | As                    (loc.tpScheme, loc.coreType) = declarationTypeInPattern @lhs.typeOutput @name.self @lhs.betaDeclUnique
+    | As                    (loc.tpScheme, loc.coreType) = declarationTypeInPattern @lhs.typeOutput @lhs.quantors @name.self @lhs.betaDeclUnique
                             lhs.vars    = (@name.self, @loc.tpScheme) : @pattern.vars
-                            lhs.patternTypes = M.insert @name.self (findCoreType @lhs.typeOutput @lhs.betaDeclUnique) @pattern.patternTypes
+                            lhs.patternTypes = M.insert @name.self (findCoreType @lhs.typeOutput @lhs.quantors @lhs.betaDeclUnique) @pattern.patternTypes
     --  range                    : Range
     --  name                     : Name
     --  pattern                  : Pattern
-    
-    | Record                (loc.tpScheme, loc.coreType) = declarationTypeInPattern @lhs.typeOutput @name.self @lhs.betaDeclUnique
+
+    | Record                (loc.tpScheme, loc.coreType) = declarationTypeInPattern @lhs.typeOutput @lhs.quantors @name.self @lhs.betaDeclUnique
                             lhs.vars    = @recordPatternBindings.vars
-                            lhs.patternTypes = M.singleton @name.self $ findCoreType @lhs.typeOutput @lhs.betaDeclUnique
+                            lhs.patternTypes = M.singleton @name.self $ findCoreType @lhs.typeOutput @lhs.quantors @lhs.betaDeclUnique
     --  range                    : Range
     --  name                     : Name
     --  recordPatternBindings    : RecordPatternBindings

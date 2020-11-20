@@ -198,14 +198,3 @@ putChar : export = \char: Char -> IO { () }
   (\world: RealWorld -> let! res: IORes Int = ''$primPutChar'' char world in case res of
     IORes { Int } _ world2 -> IORes { () } () world2
   )
-
-''$primPutStrLn'' :: String -> IO ()
-''$primPutStrLn'' : export = 
-  let print: ([Char] -> Int) = \str: [Char] -> ''_$helium_runtime_print_string'' str
-  in
-    \str: String ->
-      IO {()} (\realworld: RealWorld ->
-        seq {Int} {IORes ()}
-          (print str)
-          (seq {Int} {IORes ()}
-            (print "\n") (IORes {()} () realworld)))

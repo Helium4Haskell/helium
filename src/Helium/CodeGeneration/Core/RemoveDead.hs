@@ -58,6 +58,8 @@ coreRemoveDead m
 ----------------------------------------------------------------
 isUsed :: Used -> CoreDecl -> Bool
 isUsed _ DeclTypeSynonym{} = True
+isUsed _ decl@DeclCustom{}
+  | declKind decl == DeclKindCustom (idFromString "data") = True
 isUsed used decl
   = accessPublic (declAccess decl) || Set.member (declIdentity decl) used
 

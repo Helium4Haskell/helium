@@ -45,14 +45,14 @@ insertedMain env moduleName toplevelTypes =
                 Nothing
             Just (name, tpScheme)
                 | not (null qs) ->
-                    d (Core.TCon $ Core.TConTuple 0) $ var "LvmLang.$primPutStrLn" `app_` 
+                    d (Core.TCon $ Core.TConTuple 0) $ var "HeliumLang.$primPutStrLn" `app_` 
                         (var "$primPackedToString" `app_`
                             packedString "<<overloaded function>>")
                 | isJust (isIOType tp) -> 
-                    d (typeToCoreType $ fromJust $ isIOType tp) $ var name
+                    d (typeToCoreType emptyQuantors $ fromJust $ isIOType tp) $ var name
                 | otherwise ->
-                    d (Core.TCon $ Core.TConTuple 0) $ var "LvmLang.$primPutStrLn" `app_` 
-                        (Core.Ap (var "show" `Core.ApType` typeToCoreType tp) (DerivingUtils.eqFunForType "Prelude.Show$" tse M.empty (makeTypeFromTp tp)) `app_`
+                    d (Core.TCon $ Core.TConTuple 0) $ var "HeliumLang.$primPutStrLn" `app_` 
+                        (Core.Ap (var "show" `Core.ApType` typeToCoreType emptyQuantors tp) (DerivingUtils.eqFunForType "Prelude.Show$" tse M.empty (makeTypeFromTp tp)) `app_`
                             var name)
                 where                        
                     (qs, tp) = split (snd (instantiate 123456789 tpScheme))
@@ -70,9 +70,10 @@ SEM Module
                 loc.module_ = 
                     setExportsPublic @exports.isImplicit @loc.exportlists @lhs.importEnv
                         (makeCoreModule (Just $ idFromString @modulename)
-                            ( @body.decls
+                            ( @body.decls ++ @lhs.extraDecls
                             ))
                 body . instanceName = Nothing
+                body . quantors = emptyQuantors
                 loc.exportlists = (@exports.values
                                   , @exports.confieldormethods
                                   , @exports.typeorclasses
@@ -82,30 +83,6 @@ SEM Module
     --  name                     : MaybeName
     --  exports                  : MaybeExports
     --  body                     : Body
-
-{
--- set the public bit of all declarations except those that are imported from
--- Prelude or HeliumLang. I.e. export everything everywhere
-everythingPublicButPrelude :: Core.CoreModule -> Core.CoreModule
-everythingPublicButPrelude theModule = theModule { Core.moduleDecls = map setPublic (Core.moduleDecls theModule) }
-  where
-    setPublic declaration =
-        let -- accessRecord = Core.declAccess decl
-            public = Core.declModule declaration `notElem` [Just $ idFromString "Prelude", Just $ idFromString "HeliumLang"]
-        in
-        declaration{ Core.declAccess = if public then Core.Export $ Core.declName declaration else Core.Private }
-
--- Set all imported modules to private, and export the normal declarations.
-everythingPublicButImported :: Core.CoreModule -> Core.CoreModule
-everythingPublicButImported theModule = theModule { Core.moduleDecls = map setPublic (Core.moduleDecls theModule) }
-  where
-    setPublic declaration =
-        let -- accessRecord = Core.declAccess decl
-            -- TODO: Why do we also export declarations from PreludePrim?
-            public = Core.declModule declaration `elem` [Nothing, Just $ idFromString "PreludePrim"]
-        in
-        declaration{ Core.declAccess = if public then Core.Export $ Core.declName declaration else Core.Private }
-}
 
 {-
 {

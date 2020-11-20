@@ -51,7 +51,7 @@ primBinaryDouble name g = prim name [typeFloat, typeFloat] (typeFloat) f
     f _ _ _ _ = error "expected two arguments for binary double primitive"
 
 primCompare :: String -> Type -> (LLVM.Operand -> LLVM.Operand -> LLVM.InstructionMetadata -> LLVM.Instruction) -> (Id, Primitive)
-primCompare name t g = prim' name [Quantor 0 $ Just "a"] [t, t, TVar 0, TVar 0] (TVar 0) f
+primCompare name t g = prim' name [Quantor $ Just "a"] [t, t, TVar 0, TVar 0] (TVar 0) f
   where
     f target supply [a, b, whenTrue, whenFalse] var =
       [ bool LLVM.:= g a b []

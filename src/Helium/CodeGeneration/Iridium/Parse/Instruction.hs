@@ -7,7 +7,7 @@ import Helium.CodeGeneration.Iridium.Data
 import Lvm.Common.Id(Id)
 import Lvm.Core.Type
 
-pInstruction :: QuantorIndexing -> Parser Instruction
+pInstruction :: QuantorNames -> Parser Instruction
 pInstruction quantors = do
   pWhitespace
   c <- lookahead
@@ -55,14 +55,14 @@ pCase = do
 pCaseAlt :: Parser a -> Parser (a, BlockName)
 pCaseAlt pPattern = (\pat to -> (pat, to)) <$> pPattern <* pWhitespace <* pSymbol "to" <* pWhitespace <*> pId
 
-pBind :: QuantorIndexing -> Parser Bind
+pBind :: QuantorNames -> Parser Bind
 pBind quantors = Bind <$ pToken '%' <*> pId <* pWhitespace <* pToken '=' <* pWhitespace <*> pBindTarget quantors <* pWhitespace <* pToken '$' <* pWhitespace <*> pCallArguments quantors
 
-pBindTarget :: QuantorIndexing -> Parser BindTarget
+pBindTarget :: QuantorNames -> Parser BindTarget
 pBindTarget quantors = do
   key <- pKeyword
   case key of
-    "function" -> BindTargetFunction <$> pGlobalFunction quantors
+    "function" -> BindTargetFunction <$> pGlobalFunction
     "thunk" -> BindTargetThunk <$> pVariable quantors
     "constructor" -> BindTargetConstructor <$> pDataTypeConstructor
     "tuple" -> BindTargetTuple <$> pUnsignedInt

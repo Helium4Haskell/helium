@@ -62,15 +62,26 @@ typeSchemeFromCore :: Core.Type -> TpScheme
 typeSchemeFromCore quantifiedType =
   Quantification (quantors, qmap, Qualification (predicates, fromCore tp))
   where
-    splitForalls :: Core.Type -> ([Int], QuantorMap, Core.Type)
-    splitForalls (Core.TForall (Core.Quantor idx name) _ t) = (idx : idxs, qmap', t')
+    -- Convert Debruijn indices (as used in Core) to unique named indices (in Top).
+    -- Quantification can only occur at the top level of the type, which makes the
+    -- conversion easier. Since foralls cannot occur nested within the type, a type
+    -- variable will always have the same index in the Core type. We need to
+    -- explicitly find the indices for those variables at the toplevel, when building
+    -- the list of quantors. We use 'forallCount' to find the number of foralls. The
+    -- first type variable has index `forallCount quantifiedType - 1`.
+    splitForalls :: Int -> Core.Type -> ([Int], QuantorMap, Core.Type)
+    splitForalls nextTypeVar (Core.TForall (Core.Quantor name) _ t) = (nextTypeVar : idxs, qmap', t')
       where
-        (idxs, qmap, t') = splitForalls t
+        (idxs, qmap, t') = splitForalls (nextTypeVar - 1) t
         qmap' = case name of
           Nothing -> qmap
-          Just n -> (idx, n) : qmap
-    splitForalls (Core.TStrict t) = splitForalls t
-    splitForalls t = ([], [], t)
+          Just n -> (nextTypeVar, n) : qmap
+    splitForalls nextTypeVar (Core.TStrict t) = splitForalls nextTypeVar t -- I think this can be removed. We should test that.
+    splitForalls _ t = ([], [], t)
+
+    forallCount :: Core.Type -> Int
+    forallCount (Core.TForall _ _ t) = 1 + forallCount t
+    forallCount _ = 0
 
     splitPredicates :: Core.Type -> ([Predicate], Core.Type)
     splitPredicates (Core.TAp (Core.TAp (Core.TCon Core.TConFun) (Core.TAp (Core.TCon (Core.TConTypeClassDictionary className)) instanceType)) t)
@@ -83,7 +94,7 @@ typeSchemeFromCore quantifiedType =
         (predicates, t') = splitPredicates t
     splitPredicates t = ([], t)
 
-    (quantors, qmap, qtype) = splitForalls quantifiedType
+    (quantors, qmap, qtype) = splitForalls (forallCount quantifiedType - 1) quantifiedType
     (predicates, tp) = splitPredicates qtype
 
     fromCore :: Core.Type -> Tp
@@ -91,21 +102,22 @@ typeSchemeFromCore quantifiedType =
     fromCore (Core.TAp t1 t2) = TApp (fromCore t1) (fromCore t2)
     fromCore (Core.TVar x) = TVar x
     fromCore (Core.TStrict t) = fromCore t
-    fromCore (Core.TForall _ _ _) = internalError "CoreToImportEnv" "typeSynFromCore" ("Unexpected 'forall' in type scheme. Forall quantifiers may only occur on the top level of a type scheme. Type: " ++ Core.showType [] quantifiedType)
+    fromCore (Core.TForall _ _ _) = internalError "CoreToImportEnv" "typeSchemeFromCore" ("Unexpected 'forall' in type scheme. Forall quantifiers may only occur on the top level of a type scheme. Type: " ++ Core.showType [] quantifiedType)
 
 typeSynFromCore :: Core.Type -> (Int, Tps -> Tp)
-typeSynFromCore quantifiedType = (length typeArgs, \args -> fromCore (zip typeArgs args) tp)
+typeSynFromCore quantifiedType = (typeArgs, \args -> fromCore args tp)
   where
     (typeArgs, tp) = splitForalls quantifiedType
-    splitForalls :: Core.Type -> ([Int], Core.Type)
-    splitForalls (Core.TForall (Core.Quantor idx _) _ t) = (idx : idxs, t)
+    splitForalls :: Core.Type -> (Int, Core.Type)
+    splitForalls (Core.TForall _ _ t) = (count + 1, t)
       where
-        (idxs, t') = splitForalls t
-    splitForalls t = ([], t)
-    fromCore :: [(Int, Tp)] -> Core.Type -> Tp
+        (count, t') = splitForalls t
+    splitForalls t = (0, t)
+
+    fromCore :: [Tp] -> Core.Type -> Tp
     fromCore args (Core.TCon c) = TCon $ show c
     fromCore args (Core.TAp t1 t2) = TApp (fromCore args t1) (fromCore args t2)
-    fromCore args (Core.TVar x) = case lookup x args of
+    fromCore args (Core.TVar x) = case args `safeIndex` (typeArgs - 1 - x) of
       Just t -> t
       Nothing -> internalError "CoreToImportEnv" "typeSynFromCore" ("Type variable not found: v$" ++ show x)
     fromCore args (Core.TForall _ _ _) = internalError "CoreToImportEnv" "typeSynFromCore" ("Unexpected 'forall' in type synonym")
