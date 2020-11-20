@@ -42,12 +42,12 @@ fromCore cache supply mod@(Core.Module name _ _ dependencies decls) = do
 
 fromCoreAfterImports :: ([(Id, Declaration CustomDeclaration)], [(Id, Declaration DataType)], [(Id, Declaration TypeSynonym)], [(Id, Declaration AbstractMethod)]) -> NameSupply -> Core.CoreModule -> [Core.CoreDecl] -> [Id] -> Module
 fromCoreAfterImports (importedCustoms, importedDatas, importTypes, importedAbstracts) supply mod@(Core.Module name _ _ _ _) decls dependencies
-  = Module name dependencies (map snd $ importedCustoms ++ customs) (map snd importedDatas ++ datas) (map snd importTypes ++ synonyms) (map snd $ importedAbstracts ++ abstracts) (map snd methods)
+  = Module name dependencies (map snd $ importedCustoms ++ customs) (map snd importedDatas ++ datas) (map snd importTypes ++ aliases ++ newtypes) (map snd $ importedAbstracts ++ abstracts) (map snd methods)
   where
     coreEnv = Core.typeEnvAddSynonyms (map (\(Declaration name _ _ _ (TypeSynonym _ tp)) -> (name, tp)) newtypes) $ Core.typeEnvForModule mod
     datas' = decls >>= dataTypeFromCoreDecl consMap
     (datas, (newtypes, newtypeConstructors)) = fmap unzip $ partitionEithers $ map tryPromoteNewtype datas'
-    aliasses = [ Declaration (Core.declName decl) (visibility decl) (Core.declModule decl) (Core.declCustoms decl) $ TypeSynonym TypeSynonymAlias (Core.declType decl) | decl@Core.DeclTypeSynonym{} <- decls ]
+    aliases = [ Declaration (Core.declName decl) (visibility decl) (Core.declModule decl) (Core.declCustoms decl) $ TypeSynonym TypeSynonymAlias (Core.declType decl) | decl@Core.DeclTypeSynonym{} <- decls ]
     consMap = foldr dataTypeConFromCoreDecl emptyMap decls
     (methods, abstracts) = partitionEithers $ concat $ mapWithSupply (`fromCoreDecl` env) supply decls
     customs = mapMaybe (customFromCoreDecl name) decls

@@ -314,7 +314,7 @@ SEM Declaration
             }
         ]
 
-    | Foreign   (loc.tpScheme, loc.tp) = declarationType @lhs.typeOutput @lhs.typeClassContext @fdecl.name
+    | Foreign   (loc.tpScheme, loc.tp) = declarationType @lhs.typeOutput @lhs.typeClassContext @lhs.quantors @fdecl.name
                 (loc.qualname, _, _)
                     = if @lhs.isTopLevel 
                         then ( addQualified @lhs.moduleQual @fdecl.name
@@ -328,7 +328,7 @@ SEM Declaration
                         , Core.declAccess  = Core.Private
                         , Core.declModule  = Nothing
                         , Core.declArity   = @fdecl.arity
-                        , Core.declType    = @tp
+                        , Core.declType    = @loc.tp
                         , Core.declCustoms = []
                         }
                     ]
