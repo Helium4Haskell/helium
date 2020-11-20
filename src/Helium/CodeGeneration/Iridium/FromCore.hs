@@ -42,8 +42,7 @@ fromCore cache supply mod@(Core.Module name _ _ dependencies decls) = do
 
 fromCoreAfterImports :: ([(Id, Declaration CustomDeclaration)], [(Id, Declaration DataType)], [(Id, Declaration TypeSynonym)], [(Id, Declaration AbstractMethod)]) -> NameSupply -> Core.CoreModule -> [Core.CoreDecl] -> [Id] -> Module
 fromCoreAfterImports (importedCustoms, importedDatas, importTypes, importedAbstracts) supply mod@(Core.Module name _ _ _ _) decls dependencies
-  | not $ null abstracts = error "fromCore: Abstract method should be an imported declaration, found a definition instead"
-  | otherwise = Module name dependencies (map snd $ importedCustoms ++ customs) (map snd importedDatas ++ datas) (map snd importTypes ++ synonyms) (map snd $ importedAbstracts ++ abstracts) (map snd methods)
+  = Module name dependencies (map snd $ importedCustoms ++ customs) (map snd importedDatas ++ datas) (map snd importTypes ++ synonyms) (map snd $ importedAbstracts ++ abstracts) (map snd methods)
   where
     coreEnv = Core.typeEnvForModule mod
     datas = decls >>= dataTypeFromCoreDecl consMap
@@ -54,11 +53,14 @@ fromCoreAfterImports (importedCustoms, importedDatas, importTypes, importedAbstr
     env = TypeEnv
       name
       (mapFromList $ map (\(dataName, d) -> (dataName, getConstructors d)) importedDatas ++ map (\d -> (declarationName d, getConstructors d)) datas)
-      (unionMap valuesFunctions $ unionMap valuesAbstracts valuesCons)
+      (unionMap valuesFunctions $ unionMap valueForeignAbstract $ unionMap valuesAbstracts valuesCons)
       Nothing
       coreEnv
     valuesFunctions = mapMapWithId (\fnName (tp, fnType) -> ValueFunction (functionTypeArity fnType) tp CCFast) $ functionsMap coreEnv mod
     valuesAbstracts = mapFromList $ map (\(fnName, Declaration _ _ _ _ (AbstractMethod arity fnType annotations)) -> (fnName, ValueFunction arity fnType $ callingConvention annotations)) importedAbstracts
+    -- add abstraction declarations from FFI into the TypeEnv
+    -- NOTE: calling convention is fixed for FFI
+    valueForeignAbstract = mapFromList $ valueDeclFromCoreFFI decls
 
     allConsList = map (\(name, Declaration qualified _ _ _ (DataType cons)) -> (name, cons)) importedDatas ++ listFromMap consMap
     valuesCons = mapFromList $ allConsList >>= (\(dataName, cons) -> map (\(Declaration conName _ _ _ (DataTypeConstructorDeclaration tp fs)) -> (conName, ValueConstructor (DataTypeConstructor conName tp))) cons)
@@ -68,6 +70,11 @@ isImported decl = Core.declModule decl /= Nothing
 
 seqString :: String -> a -> a
 seqString str a = foldr seq a str
+
+valueDeclFromCoreFFI :: [Core.CoreDecl] -> [(Id, ValueDeclaration)]
+valueDeclFromCoreFFI (Core.DeclAbstract{Core.declName=fnName, Core.declArity=arity, Core.declType=fnType} : xs) = (fnName, ValueFunction arity fnType CCC) : valueDeclFromCoreFFI xs
+valueDeclFromCoreFFI (_ : xs) = valueDeclFromCoreFFI xs
+valueDeclFromCoreFFI [] = []
 
 customFromCoreDecl :: Id -> Core.CoreDecl -> Maybe (Id, Declaration CustomDeclaration)
 customFromCoreDecl moduleName decl@Core.DeclCustom{}
@@ -101,7 +108,10 @@ fromCoreDecl supply env decl@Core.DeclValue{} = [Left (name, Declaration name (v
   where
     name = Core.declName decl
     method = toMethod supply env (Core.declName decl) (Core.valueValue decl)
-
+fromCoreDecl _ env decl@Core.DeclAbstract{Core.declArity = arity} = [Right (name, Declaration name (visibility decl) (Core.declModule decl) (Core.declCustoms decl) abstract)]
+  where
+    name = Core.declName decl
+    abstract = toAbstractMethod env (Core.declName decl) arity
 fromCoreDecl _ _ _ = []
 
 idEntry, idMatchAfter, idMatchCase, idMatchDefault :: Id
@@ -121,6 +131,12 @@ toMethod supply env name expr = Method tp args returnType [AnnotateTrampoline] (
     returnType = Core.typeOfCoreExpression (teCoreEnv env') expr'
     env' = enterFunction name returnType $ expandEnvWithLocals [local | Right local <- args] env
     Partial entry blocks = toInstruction supply' env' CReturn expr'
+
+-- NOTE: calling convention is fixed to ccall
+toAbstractMethod :: TypeEnv -> Id -> Core.Arity -> AbstractMethod
+toAbstractMethod env name arity = AbstractMethod arity tp [AnnotateCallConvention CCC] 
+  where
+    (arity, tp) = fromMaybe (error "toMethod: could not find function signature") $ resolveFunction env name
 
 -- Removes all lambda expression, returns a list of arguments and the remaining expression.
 consumeLambdas :: Core.Expr -> ([Either Core.Quantor Local], Core.Expr)

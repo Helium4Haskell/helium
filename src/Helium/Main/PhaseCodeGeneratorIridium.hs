@@ -56,7 +56,11 @@ phaseCodeGeneratorIridium supply cache fullName coreModule options = do
   iridium' <- fromCore cache supplyFromCore simplified
   checkModuleIO "fromCore" (fullNameNoExt ++ ".iridium") iridium'
 
+  traceIO "after fromCore"
+
   let iridium = passTailRecursion supplyPassTailRecursion $ passDeadCode supplyPassDeadCode iridium'
+
+  traceIO "get iridium"
 
   writeIridium cache (fullNameNoExt ++ ".iridium") iridium
   checkModuleIO "passTailRecursion" (fullNameNoExt ++ ".iridium") iridium

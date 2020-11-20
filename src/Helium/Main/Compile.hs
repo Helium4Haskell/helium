@@ -92,6 +92,8 @@ compile basedir fullName options lvmPath iridiumCache doneModules =
         iridium <- Iridium.parseModuleIO fullName contents
         return ([Iridium.IridiumFile fullName iridium True], False, 0)
 
+    traceIO "before generating llvm"
+
     -- Phase 11: Generate LLVM code
     phaseCodeGeneratorLlvm supplyLlvm (joinPath [filePath, fileName]) iridiumFiles shouldLink options
 

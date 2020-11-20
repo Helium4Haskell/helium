@@ -1,3 +1,5 @@
 module Foreign where
 
-type CInt = Int
+-- type CInt = Int
+
+newtype CInt = CInt Int

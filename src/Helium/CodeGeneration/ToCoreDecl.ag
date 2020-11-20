@@ -326,13 +326,14 @@ SEM Declaration
                              , Core.Export (idFromName @fdecl.name)
                              , Just (idFromString @lhs.modulename))
                         else (@fdecl.name, Core.Private, Nothing)
+                lhs.whereDeclarationTypes = [(@fdecl.name, @tpScheme)]
                 lhs.decls = 
                     [ Core.DeclAbstract 
                         { Core.declName    = idFromName @qualname 
                         , Core.declAccess  = Core.Private
                         , Core.declModule  = Nothing
                         , Core.declArity   = @fdecl.arity
-                        , Core.declType    = @loc.tp
+                        , Core.declType    = @tp
                         , Core.declCustoms = []
                         }
                     ]
