@@ -106,7 +106,7 @@ checkExistence path name =
             putStr
                 (  "Cannot find "
                 ++ name
-                ++ ".hs (or .lvm) in search path:\n"
+                ++ ".hs (or .iridium) in search path:\n"
                 ++ unlines (map ("\t" ++) path)
                 ++ "Use the -P option to add paths to the search path.\n"
                 )
