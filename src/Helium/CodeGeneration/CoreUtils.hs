@@ -23,7 +23,7 @@ module Helium.CodeGeneration.CoreUtils
     ,   Quantors, emptyQuantors, quantorsFromList, appendQuantors
     ,   patternMatchFail, patternAlwaysSucceeds, getTVar
     ,   TypeInferenceOutput(TypeInferenceOutput, importEnv), lookupBeta
-    ,   setExportsPublic
+    ,   setExportsPublic, setAllStrict
     ) where
 
 import Top.Types as Top
@@ -215,6 +215,14 @@ declarationConstructorType importEnv name strictness = setStrictness strictness 
     setStrictness (strict : stricts) (Core.TAp (Core.TAp (Core.TCon Core.TConFun) t1) t2) =
       Core.TAp (Core.TAp (Core.TCon Core.TConFun) $ Core.typeSetStrict strict t1) $ setStrictness stricts t2
     setStrictness _ tp = tp
+
+-- Used for FFI functions
+-- Mark all parameters as strict
+setAllStrict :: Core.Type -> Core.Type
+setAllStrict (TForall quantor kind tp) = TForall quantor kind $ setAllStrict tp
+setAllStrict (Core.TAp (Core.TAp (Core.TCon Core.TConFun) t1) t2) = 
+  Core.TAp (Core.TAp (Core.TCon Core.TConFun) $ Core.typeToStrict t1) $ setAllStrict t2
+setAllStrict tp = tp
 
 -- Mapping from Top's type variables to Debruijn indices for Core.
 -- The head of the list is the type variable which gets Debruijn index 0,

@@ -33,9 +33,11 @@ phaseCodeGeneratorLlvm supply output files shouldLink options = do
   
   dataDir <- getDataDir 
   let memoryDotCLocation =  joinPath [dataDir, "lib","runtime","memory.c"]
+
+  let ffiPath = joinPath ["..", "develop", "ffi1c.ll"]
   
   when shouldLink $ do
-    let args = "-o" : output : "-O3" : memoryDotCLocation : map toLlvmPath files
+    let args = "-g" : "-o" : output : "-O3" : memoryDotCLocation : ffiPath : map toLlvmPath files
     (code, res, err) <- readProcessWithExitCode "clang" args ""
     case code of
       ExitSuccess -> return ()

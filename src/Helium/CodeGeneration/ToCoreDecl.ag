@@ -328,7 +328,7 @@ SEM Declaration
                         , Core.declAccess  = Core.Private
                         , Core.declModule  = Nothing
                         , Core.declArity   = @fdecl.arity
-                        , Core.declType    = @loc.tp
+                        , Core.declType    = setAllStrict @loc.tp
                         , Core.declCustoms = []
                         }
                     ]
