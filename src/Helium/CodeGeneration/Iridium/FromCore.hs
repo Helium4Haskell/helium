@@ -43,39 +43,42 @@ fromCore cache supply mod@(Core.Module name _ _ dependencies decls) = do
 fromCoreAfterImports :: ([(Id, Declaration CustomDeclaration)], [(Id, Declaration DataType)], [(Id, Declaration TypeSynonym)], [(Id, Declaration AbstractMethod)]) -> NameSupply -> Core.CoreModule -> [Core.CoreDecl] -> [Id] -> Module
 fromCoreAfterImports (importedCustoms, importedDatas, importTypes, importedAbstracts) supply mod@(Core.Module name _ _ _ _) decls dependencies
   | not $ null abstracts = error "fromCore: Abstract method should be an imported declaration, found a definition instead"
-  | otherwise = Module name dependencies (map snd $ importedCustoms ++ customs) (map snd importedDatas ++ datas) (map snd importTypes ++ aliasses ++ newtypes) (map snd $ importedAbstracts ++ abstracts) (map snd methods)
+  | otherwise = Module name dependencies (map snd $ importedCustoms ++ customs) (map snd importedDatas ++ datas) (map snd importTypes ++ aliasses) (map snd $ importedAbstracts ++ abstracts) (map snd methods)
   where
-    coreEnv = Core.typeEnvAddSynonyms (map (\(Declaration name _ _ _ (TypeSynonym _ tp)) -> (name, tp)) newtypes) $ Core.typeEnvForModule mod
-    datas' = decls >>= dataTypeFromCoreDecl consMap
-    (datas, (newtypes, newtypeConstructors)) = fmap unzip $ partitionEithers $ map tryPromoteNewtype datas'
-    aliasses = [ Declaration (Core.declName decl) (visibility decl) (Core.declModule decl) (Core.declCustoms decl) $ TypeSynonym TypeSynonymAlias (Core.declType decl) | decl@Core.DeclTypeSynonym{} <- decls ]
+    coreEnv = Core.typeEnvForModule mod
+    datas = decls >>= dataTypeFromCoreDecl consMap
+    aliasses = [ Declaration (Core.declName decl) (visibility decl) (Core.declModule decl) (Core.declCustoms decl) $ TypeSynonym (typeSynonymKind decl) (Core.declType decl) | decl@Core.DeclTypeSynonym{} <- decls ]
     consMap = foldr dataTypeConFromCoreDecl emptyMap decls
     (methods, abstracts) = partitionEithers $ concat $ mapWithSupply (`fromCoreDecl` env) supply decls
     customs = mapMaybe (customFromCoreDecl name) decls
-    importedNewtypeConstructors = mapMaybe getNewtypeConstructor importTypes
     env = TypeEnv
       name
       (mapFromList $ map (\(dataName, d) -> (dataName, getConstructors d)) importedDatas ++ map (\d -> (declarationName d, getConstructors d)) datas)
-      (setFromList $ newtypeConstructors ++ importedNewtypeConstructors)
       (unionMap valuesFunctions $ unionMap valuesAbstracts valuesCons)
       Nothing
       coreEnv
-    valuesFunctions = mapMapWithId (\fnName (tp, fnType) -> ValueFunction (functionTypeArity fnType) tp CCFast) $ functionsMap coreEnv mod
-    valuesAbstracts = mapFromList $ map (\(fnName, Declaration _ _ _ _ (AbstractMethod arity fnType annotations)) -> (fnName, ValueFunction arity fnType $ callingConvention annotations)) importedAbstracts
+    valuesFunctions = mapMapWithId (\fnName (tp, fnType) -> ValueFunction (functionArity fnType) tp CCFast) $ functionsMap coreEnv mod
+    valuesAbstracts = mapFromList $ map (\(fnName, Declaration _ _ _ _ (AbstractMethod _ fnType annotations)) -> (fnName, ValueFunction (functionArity fnType) (typeFromFunctionType fnType) $ callingConvention annotations)) importedAbstracts
 
     allConsList = map (\(name, Declaration qualified _ _ _ (DataType cons)) -> (name, cons)) importedDatas ++ listFromMap consMap
     valuesCons = mapFromList $ allConsList >>= (\(dataName, cons) -> map (\(Declaration conName _ _ _ (DataTypeConstructorDeclaration tp fs)) -> (conName, ValueConstructor (DataTypeConstructor conName tp))) cons)
+
+    typeSynonymKind Core.DeclTypeSynonym{ Core.declName = name, Core.declSynonym = Core.TypeSynonymNewtype }
+      = TypeSynonymNewtype constructor destructor
+      where
+        constructors = fromMaybe [] $ lookupMap name consMap
+        (constructor, destructor) = case constructors of
+          [Declaration{ declarationVisibility = consName, declarationValue = DataTypeConstructorDeclaration _ fields}]
+            | [Core.Field field] <- fields -> (consName, ExportedAs field)
+            | otherwise -> (consName, Private)
+          _ -> (Private, Private)
+    typeSynonymKind _ = TypeSynonymAlias
 
 isImported :: Core.CoreDecl -> Bool
 isImported decl = Core.declModule decl /= Nothing
 
 seqString :: String -> a -> a
 seqString str a = foldr seq a str
-
-getNewtypeConstructor :: (Id, Declaration TypeSynonym) -> Maybe Id
-getNewtypeConstructor (_, Declaration name _ _ _ (TypeSynonym (TypeSynonymNewtype (ExportedAs constructor) _) _))
-  = Just $ idFromString $ stringFromId name ++ "." ++ stringFromId constructor
-getNewtypeConstructor _ = Nothing
 
 customFromCoreDecl :: Id -> Core.CoreDecl -> Maybe (Id, Declaration CustomDeclaration)
 customFromCoreDecl moduleName decl@Core.DeclCustom{}
@@ -93,21 +96,6 @@ dataTypeFromCoreDecl consMap decl@Core.DeclCustom{}
     name = Core.declName decl
 dataTypeFromCoreDecl _ _ = []
 
-tryPromoteNewtype :: Declaration DataType -> Either (Declaration DataType) (Declaration TypeSynonym, Id)
-tryPromoteNewtype (Declaration name vis mod customs (DataType [Declaration constructor constructorVis _ _ (DataTypeConstructorDeclaration tp fields)]))
-  | Just alias <- go tpArgs = Right $ (Declaration name vis mod customs $ TypeSynonym (TypeSynonymNewtype constructorVis destructorVis) alias, constructor)
-  where
-    FunctionType tpArgs _ = extractFunctionTypeNoSynonyms tp
-
-    go (Left q : args) = Core.TForall q Core.KStar <$> go args
-    go [Right (Core.TStrict arg)] = Just arg
-    go _ = Nothing
-
-    destructorVis = case fields of
-      [Core.Field x] -> ExportedAs x
-      _ -> Private
-tryPromoteNewtype decl = Left decl
-
 dataTypeConFromCoreDecl :: Core.CoreDecl -> IdMap [Declaration DataTypeConstructorDeclaration] -> IdMap [Declaration DataTypeConstructorDeclaration]
 dataTypeConFromCoreDecl decl@Core.DeclCon{} = case find isDataName (Core.declCustoms decl) of
     Just (Core.CustomLink dataType _) -> insertMapWith dataType [con] (con :)
@@ -123,7 +111,7 @@ fromCoreDecl :: NameSupply -> TypeEnv -> Core.CoreDecl -> [Either (Id, Declarati
 fromCoreDecl supply env decl@Core.DeclValue{} = [Left (name, Declaration name (visibility decl) (Core.declModule decl) (Core.declCustoms decl) method)]
   where
     name = Core.declName decl
-    method = toMethod supply env (Core.declName decl) (Core.valueValue decl)
+    method = toMethod supply env (Core.declName decl) (Core.declType decl) (Core.valueValue decl)
 
 fromCoreDecl _ _ _ = []
 
@@ -133,11 +121,10 @@ idMatchAfter = idFromString "match_after"
 idMatchCase = idFromString "match_case"
 idMatchDefault = idFromString "match_default"
 
-toMethod :: NameSupply -> TypeEnv -> Id -> Core.Expr -> Method
-toMethod supply env name expr = Method tp args returnType [AnnotateTrampoline] (Block entryName entry) blocks
+toMethod :: NameSupply -> TypeEnv -> Id -> Core.Type -> Core.Expr -> Method
+toMethod supply env name tp expr = Method tp args returnType [AnnotateTrampoline] (Block entryName entry) blocks
   where
     (entryName, supply') = freshIdFromId idEntry supply
-    (arity, tp) = fromMaybe (error "toMethod: could not find function signature") $ resolveFunction env name
     createArgument (Left quantor) _ = Left quantor
     createArgument (Right t) (Right (Core.Variable name _)) = Right $ Local name t
     (args, expr') = consumeLambdas expr
@@ -200,13 +187,6 @@ toInstruction supply env continue (Core.Let (Core.Rec bs) expr)
     binds = mapWithSupply (\s -> bind s env') supply1 bs
     locals = map (coreBindLocal env) bs
     env' = expandEnvWithLocals locals env
-
--- Match on newtype
--- A newtype becomes a type alias in Iridium, hence pattern matching becomes a no-op.
-toInstruction supply env continue (Core.Match x (Core.Alt (Core.PatCon (Core.ConId con) _ [y]) expr : _))
-  | con `elemSet` teNewtypeConstructors env = toInstruction supply env continue $ Core.Let (Core.Strict $ Core.Bind (Core.Variable y tp) $ Core.Var x) expr
-  where
-    tp = Core.typeOfCoreExpression (teCoreEnv env) $ Core.Var x
 
 -- Match
 toInstruction supply env continue match@(Core.Match x alts) =
@@ -277,10 +257,6 @@ toInstruction supply env continue (Core.Var var) = case resolve env var of
 
 toInstruction supply env continue expr = case getApplicationOrConstruction expr [] of
   (Left (Core.ConId con), args)
-    | con `elemSet` teNewtypeConstructors env ->
-      case rights args of
-        [arg] -> toInstruction supply env continue $ Core.Var arg
-        _ -> error "toInstruction: Newtype constructor has wrong number of arguments"
     | otherwise ->
       let
         dataTypeCon@(DataTypeConstructor dataName fntype) = case valueDeclaration env con of

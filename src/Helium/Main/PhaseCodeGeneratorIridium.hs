@@ -21,7 +21,6 @@ import Helium.CodeGeneration.Iridium.PassDeadCode(passDeadCode)
 import Helium.CodeGeneration.Iridium.PassTailRecursion(passTailRecursion)
 import Helium.CodeGeneration.Iridium.ResolveDependencies(resolveDependencies, IridiumFile(..))
 import Helium.CodeGeneration.Iridium.TypeCheck
-import Helium.CodeGeneration.LLVM.CompileModule(compileModule)
 import Helium.CodeGeneration.LLVM.Target(Target(..))
 import Helium.CodeGeneration.LLVM.Env(envForModule)
 

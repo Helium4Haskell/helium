@@ -187,7 +187,7 @@ instantiationInTypeClassInstance _ _ = Nothing
 
 declarationConstructorTypeScheme :: ImportEnvironment -> Name -> Top.TpScheme
 declarationConstructorTypeScheme importEnv name = case M.lookup name $ valueConstructors importEnv of
-  Just (_, (Quantification (quantors, qmap, qtp))) ->
+  Just (_, (Quantification (quantors, qmap, qtp)), _) ->
     let
       -- We must assure that the order of the quantors matches the order in which the type variables
       -- appear in the data type / return type of the constructor, eg [a, b] in
@@ -438,7 +438,9 @@ createInstantiation typeOutput typeEnv quantors name isConstructor beta = case m
   Just scheme -> foldl (\e t -> Core.ApType e $ typeToCoreType quantors t) expr $ findInstantiation (importEnv typeOutput) scheme tp
   where
     expr
-      | isConstructor = Core.Con $ Core.ConId $ idFromName name
+      | isConstructor = case M.lookup name $ valueConstructors $ importEnv typeOutput of
+          Just (_, tpScheme, True) -> coreIdentity $ toCoreType emptyQuantors tpScheme
+          _ -> Core.Con $ Core.ConId $ idFromName name
       | otherwise = Core.Var $ idFromName name
     tp = lookupBeta beta typeOutput
     maybeScheme
@@ -557,7 +559,7 @@ createRecordUpdate typeOutput@TypeInferenceOutput{..} quantors old oldBeta beta 
     -- Determine which constructors are possible with this field combination
     constructors = mapMaybe (\x -> fst3 x `M.lookup` fieldLookup) bindings
     relevantConstrs = foldr1 intersect constructors
-    resultTps = generalizeResult $ snd $ fromJust $
+    resultTps = generalizeResult $ snd3 $ fromJust $
       M.lookup (head relevantConstrs) valueConstructors
 
     -- Build up the inner function which will do the actual 'updating'
@@ -631,7 +633,7 @@ createRecordSelector importEnv quantors r field retTp
 
     constrs = fromMaybe (notFound field) $ field `M.lookup` fieldLookup importEnv
     constr = head constrs
-    (n, constrTps)
+    (n, constrTps, _)
       = fromMaybe (notFound constr) $ M.lookup constr (valueConstructors importEnv)
     instantiated = sort $ findInstantiation importEnv constrTps (unqualify (unquantify constrTps))
 
@@ -673,19 +675,26 @@ constructorToCase :: ImportEnvironment
                     -> Core.Expr      {- What to execute otherwise -}
                     -> Core.Expr
 constructorToCase importEnv quantors constr scrutinee tps fs exec continue
-  = Match scrutinee
-      [ Alt patt exec
-      , Alt PatDefault continue
-      ]
+  | isTransparentNewtype
+  , [arg] <- args
+  , [tp] <- argTypes
+    -- Newtype becomes a type alias in Core
+    = Let (Strict (Bind (Variable arg tp) $ Var scrutinee)) exec
+  | otherwise
+    = Match scrutinee
+        [ Alt patt exec
+        , Alt PatDefault continue
+        ]
   where
     args = map (\(n, _) -> placeholder n fieldsToReuse) sortedFields
+    argTypes = map (typeToCoreType quantors) tps
     patt = PatCon (ConId constructor) (map (typeToCoreType quantors) tps) args
 
     constructor = idFromString (show constr)
-    (fields, (n, constrTps)) = fromMaybe (err "Constructor not found") $ do
+    (fields, (n, constrTps, isTransparentNewtype)) = fromMaybe (err "Constructor not found") $ do
       fields <- M.lookup constr (recordEnvironment importEnv)
-      constrTps <- M.lookup constr (valueConstructors importEnv)
-      return (fields, constrTps)
+      constrTps' <- M.lookup constr (valueConstructors importEnv)
+      return (fields, constrTps')
 
     sortedFields = sortOn (fst4 . snd) (M.assocs fields)
     fieldsToReuse = foldr (M.delete . fst) fields fs
@@ -727,3 +736,12 @@ coreUndefined importEnv quantors tp
 coreUtilsError :: String -> String -> a
 coreUtilsError = internalError "CoreUtils"
 
+-- Generates an identity function of the given function type
+-- Used to compile a constructor of a transparent newtype
+coreIdentity :: Core.Type -> Core.Expr
+coreIdentity (Core.TForall quantor kind tp) = Core.Forall quantor kind $ coreIdentity tp
+coreIdentity (Core.TAp (Core.TAp (Core.TCon Core.TConFun) argTp) _) =
+  Core.Lam False (Core.Variable argName argTp) $ Core.Var argName
+  where
+    argName = idFromString "x"
+coreIdentity _ = coreUtilsError "coreIdentity" "Expected forall or function type"

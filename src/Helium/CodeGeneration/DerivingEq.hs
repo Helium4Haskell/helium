@@ -115,7 +115,6 @@ makeAlt env altType typeArgs constructor =
         ]
     )
   where
-    tse            = typeSynonyms env
     elems          = M.elems typeArgs
     (ident, types) = nameAndTypes env "Prelude.Eq$" typeArgs constructor
     vs             = [ idFromString ("$r" ++ show i) | i <- [0 .. length types - 1] ]

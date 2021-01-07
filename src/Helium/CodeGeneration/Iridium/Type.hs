@@ -13,10 +13,10 @@
 -- the entry block describes the arguments of the method.
 
 module Helium.CodeGeneration.Iridium.Type
-  ( typeFromFunctionType, FunctionType(..), extractFunctionTypeNoSynonyms, extractFunctionTypeWithArity
+  ( typeFromFunctionType, FunctionType(..), functionArity, extractFunctionTypeNoSynonyms, extractFunctionTypeWithArity
   , FloatPrecision(..), Core.TypeEnvironment(..), Core.typeNormalizeHead, Core.typeEqual, typeIsStrict, typeToStrict
-  , typeNotStrict, typeRemoveArgumentStrictness
-  , typeRealWorld, typeUnsafePtr, typeTrampoline, typeInt, typeInt16, typeChar, typeFloat, functionTypeArity
+  , typeNotStrict, typeRemoveArgumentStrictness, extractFunctionTypeWithArityNoSynonyms
+  , typeRealWorld, typeUnsafePtr, typeTrampoline, typeInt, typeInt16, typeChar, typeFloat
   ) where
 
 import Lvm.Common.Id(Id, stringFromId, idFromString)
@@ -40,6 +40,3 @@ applyWithArity :: Int -> Type -> Type
 applyWithArity 0 tp = tp
 applyWithArity n (TAp (TAp (TCon TConFun) _) tp) = applyWithArity (n - 1) tp
 applyWithArity _ tp = error ("Expected function type, got `" ++ showType [] tp ++ "' instead")
-
-functionTypeArity :: FunctionType -> Int
-functionTypeArity (FunctionType args _) = length $ filter isRight args

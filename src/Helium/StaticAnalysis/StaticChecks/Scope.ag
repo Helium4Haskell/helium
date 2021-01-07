@@ -10,7 +10,7 @@
 -- 
 -- Variables can be added to the scope by three ways: 
 --
---   1) externally defefined, imported, or primitive
+--   1) externally defined, imported, or primitive
 --           Module.Module
 --
 --   2) introduced in a binding-group (nodes with "Declarations")

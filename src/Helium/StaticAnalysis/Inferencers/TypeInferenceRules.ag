@@ -42,7 +42,7 @@ SEM Module
                                    in M.map f @body.assumptions
            . initialScope        = M.keys (typeEnvironment @lhs.importEnvironment)
            . monos               = map TVar @monomorphics
-           . monomorphics        = ftv (  (map (\(_, scheme) -> scheme) $ M.elems $ valueConstructors @lhs.importEnvironment) 
+           . monomorphics        = ftv (  (map (\(_, scheme, _) -> scheme) $ M.elems $ valueConstructors @lhs.importEnvironment) 
                                        ++ (M.elems $ typeEnvironment   @lhs.importEnvironment)
                                        )
            . typeConstructors    = typeConstructors @lhs.importEnvironment
@@ -492,8 +492,8 @@ SEM Expression
           . constraints  = listTree @newcon
           . beta         = TVar @lhs.betaDeclUnique
           . newcon       = case M.lookup @name.self (valueConstructors @lhs.importEnvironment) of
-                              Nothing            -> []
-                              Just (_, ctp) -> [ (@beta .::. ctp) @cinfo ]
+                              Nothing          -> []
+                              Just (_, ctp, _) -> [ (@beta .::. ctp) @cinfo ]
 
   | RecordConstruction
       recordExpressionBindings . betaConstr = @beta
@@ -510,7 +510,7 @@ SEM Expression
                      let sortedBetas = map (\(n, (i, _, _, _)) -> fromMaybe (TVar (@lhs.betaUnique + i + 1))
                             (lookup n @recordExpressionBindings.betasMap)) sortedFields
                      let recordFunc = foldr (.->.) @beta sortedBetas
-                     (_, ctp) <- M.lookup @name.self (valueConstructors @lhs.importEnvironment)
+                     (_, ctp, _) <- M.lookup @name.self (valueConstructors @lhs.importEnvironment)
                      let t = generalizeAll ([] .=>. snd (functionSpine (unqualify (unquantify ctp))))
                      return ( [(@beta .::. t) @cinfoResult]
                             , [(@betaFunc .==. recordFunc) @cinfoFunc, (recordFunc .::. ctp) @cinfoFunc]
@@ -538,7 +538,7 @@ SEM Expression
                     let constructor = head $ reverse $ sortOn (\n -> M.size $ fromJust (M.lookup n recordEnv)) constructors
 
                     -- Fetch the typescheme of the found constructor
-                    (_, ctp) <- M.lookup constructor (valueConstructors @lhs.importEnvironment)
+                    (_, ctp, _) <- M.lookup constructor (valueConstructors @lhs.importEnvironment)
 
                     -- Fetch the fields of the constructor
                     recordFields <- M.lookup constructor recordEnv
@@ -872,8 +872,8 @@ SEM Pattern
                   . betaCon        = TVar @lhs.betaUnique
                   . conApply       = [ (@betaCon .==. @leftPattern.beta .->. @rightPattern.beta .->. @beta) @cinfoApply ]
                   . conConstructor = case M.lookup @constructorOperator.self (valueConstructors @lhs.importEnvironment) of
-                                        Nothing            -> []
-                                        Just (_, ctp) -> [ (@betaCon .::. ctp) @cinfoConstructor ]
+                                        Nothing          -> []
+                                        Just (_, ctp, _) -> [ (@betaCon .::. ctp) @cinfoConstructor ]
 
   | Constructor
       patterns . betaUnique     = @lhs.betaUnique + 1
@@ -885,8 +885,8 @@ SEM Pattern
                . conApply       = [ (@betaCon .==. foldr (.->.) @beta @patterns.betas)
                                     (if @patterns.numberOfPatterns == 0  then @cinfoEmpty else @cinfoApply) ]
                . conConstructor = case M.lookup @name.self (valueConstructors @lhs.importEnvironment) of
-                                     Nothing            -> []
-                                     Just (_, ctp) -> [ (@betaCon .::. ctp) @cinfoConstructor ]
+                                     Nothing          -> []
+                                     Just (_, ctp, _) -> [ (@betaCon .::. ctp) @cinfoConstructor ]
 
   | Record
       recordPatternBindings . betaUnique  = @lhs.betaUnique + 1

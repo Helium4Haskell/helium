@@ -11,6 +11,7 @@
 module Helium.CodeGeneration.Core.TypeEnvironment where
 
 import Data.Maybe
+import Data.Either (rights)
 
 import Helium.Utils.Utils
 import Lvm.Core.Module
@@ -30,7 +31,7 @@ data TypeEnvironment = TypeEnvironment
 typeEnvForModule :: CoreModule -> TypeEnvironment
 typeEnvForModule (Module _ _ _ _ decls) = TypeEnvironment (mapFromList synonyms) (mapFromList values) emptyMap
   where
-    synonyms = [ (name, tp) | DeclTypeSynonym name _ _ tp _ <- decls ]
+    synonyms = [ (name, tp) | DeclTypeSynonym name _ _ _ tp _ <- decls ]
     values = mapMaybe findValue decls
     findValue :: CoreDecl -> Maybe (Id, Type)
     findValue decl
@@ -201,6 +202,9 @@ typeOfLiteral (LitBytes _) = TCon $ TConDataType $ idFromString "String"
 data FunctionType = FunctionType { functionArguments :: ![Either Quantor Type], functionReturnType :: !Type }
   deriving (Eq, Ord)
 
+functionArity :: FunctionType -> Arity
+functionArity (FunctionType args _) = length $ rights args
+
 typeFromFunctionType :: FunctionType -> Type
 typeFromFunctionType (FunctionType args ret) = foldr addArg ret args
   where
@@ -215,6 +219,16 @@ extractFunctionTypeNoSynonyms (TAp (TAp (TCon TConFun) tArg) tReturn) = Function
   where
     FunctionType args ret = extractFunctionTypeNoSynonyms tReturn
 extractFunctionTypeNoSynonyms tp = FunctionType [] tp
+
+extractFunctionTypeWithArityNoSynonyms :: Int -> Type -> Maybe FunctionType
+extractFunctionTypeWithArityNoSynonyms 0 tp = Just $ FunctionType [] tp
+extractFunctionTypeWithArityNoSynonyms arity (TForall quantor _ tp') = do
+    FunctionType args ret <- extractFunctionTypeWithArityNoSynonyms arity tp'
+    return $ FunctionType (Left quantor : args) ret
+extractFunctionTypeWithArityNoSynonyms arity (TAp (TAp (TCon TConFun) tArg) tReturn) = do
+    FunctionType args ret <- extractFunctionTypeWithArityNoSynonyms (arity - 1) tReturn
+    return $ FunctionType (Right tArg : args) ret
+extractFunctionTypeWithArityNoSynonyms _ _ = Nothing
 
 extractFunctionTypeWithArity :: TypeEnvironment -> Int -> Type -> FunctionType
 extractFunctionTypeWithArity _ 0 tp = FunctionType [] tp

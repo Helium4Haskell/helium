@@ -13,12 +13,12 @@ import qualified Data.Map as M
 
 -- Gets a mapping of names to their fully qualified counterparts
 getNameEnvironment :: ImportEnvironment -> M.Map Name Name
-getNameEnvironment env = M.union (classNameEnvironment env) (fmap snd $ typeConstructors env)
+getNameEnvironment env = M.union (classNameEnvironment env) (fmap (\(_,x,_) -> x) $ typeConstructors env)
 
--- The same as getNameEnvironment, except names map to (Int, Name), which is needed
+-- The same as getNameEnvironment, except names map to (Int, Name, Int), which is needed
 -- for convertMap
-getNameEnvironmentInts :: ImportEnvironment -> M.Map Name (Int, Name)
-getNameEnvironmentInts env = M.union (M.map ((,) 0) $ classNameEnvironment env) (typeConstructors env)
+getNameEnvironmentInts :: ImportEnvironment -> M.Map Name (Int, Name, Int)
+getNameEnvironmentInts env = M.union (M.map (\x -> (0,x,0)) $ classNameEnvironment env) (fmap (\(a,x,_) -> (a,x,0)) $ typeConstructors env)
 
 -- Converts the name of a type constructor to a fully qualified version.
 toQualTyCon :: ImportEnvironment -> Name -> Name
@@ -68,9 +68,9 @@ convertTpSchemeToQualified env = convertTpScheme (toQualTyCon env)
 
 ---------------------------------------------------------
 -- Unqualify types
-convertMap :: M.Map Name (Int, Name) -> M.Map Name Name
-convertMap env = 
-    let newlist = [(qualn, key) | (key, (_, qualn)) <- M.toList env]
+convertMap :: M.Map Name (a, Name, b) -> M.Map Name Name
+convertMap env =
+    let newlist = [(qualn, key) | (key, (_, qualn, _)) <- M.toList env]
         newenv  = M.fromListWith combineNames newlist
         --Always take the first, except when the second is unqualified
         combineNames n1 n2 | isQualified n2 = n1
@@ -89,14 +89,14 @@ unQualifyName = fromQualName . convertMap . getNameEnvironmentInts
 
 -- Unqualify a name based on a ClassNameEnvironment
 unQualifyClassName :: ClassNameEnvironment -> Name -> Name
-unQualifyClassName = fromQualName . convertMap . M.map ((,) 0)
+unQualifyClassName = fromQualName . convertMap . M.map (\x -> (0, x, 0))
 
 -- Unqualify Top types
-unqualifyTpScheme :: M.Map Name (Int, Name) -> TpScheme -> TpScheme
+unqualifyTpScheme :: M.Map Name (a, Name, b) -> TpScheme -> TpScheme
 unqualifyTpScheme env = convertTpScheme (fromQualName $ convertMap env)
 
-unqualifyTp :: M.Map Name (Int, Name) -> Tp -> Tp
-unqualifyTp env = convertTp (fromQualName $ convertMap env)
+unqualifyTp :: M.Map Name (a, Name, b) -> Tp -> Tp
+unqualifyTp env = convertTp $ fromQualName $ convertMap env
 
 -- Checks whether or not a type is of type (IO a)
 isQualIOType :: Tp -> Bool

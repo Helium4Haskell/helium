@@ -15,7 +15,7 @@ extra-deps:
   #- ../Top
 
   - github: Helium4Haskell/lvm
-    commit: b36d193c694012ded6f575fa38475d3ab4fa80c8
+    commit: 95d89f8498b9895d59f740d13018462325bd226e
     subdirs: 
       - src/lib
   #- ../lvm/src/lib

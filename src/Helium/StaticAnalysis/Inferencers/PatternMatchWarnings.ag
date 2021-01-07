@@ -285,7 +285,7 @@ type Env = [(Tp, (Name, [Tp]))]
 importEnvironmentToEnv :: ImportEnvironment -> [(Tp, (Name, [Tp]))]
 importEnvironmentToEnv = map rearrange . M.assocs .toSchemeMap . valueConstructors
   where
-    toSchemeMap = M.map (\(_, scheme) -> scheme)
+    toSchemeMap = M.map (\(_, scheme, _) -> scheme)
 
 -- return the number of arguments of a constructor
 -- tuples ar not in the Env so they require special treatment

@@ -16,6 +16,7 @@ import qualified Lvm.Core.Type as Core
 import qualified Helium.CodeGeneration.Core.TypeEnvironment as Core
 import Lvm.Core.Utils
 import Lvm.Common.Id
+import Lvm.Common.IdSet
 import Lvm.Common.Byte(stringFromBytes)
 
 import Helium.Utils.Utils
@@ -233,10 +234,16 @@ selectCustoms n = filter (\(CustomDecl (DeclKindCustom n') _) -> n == stringFrom
 
 
 getImportEnvironment :: String -> [CoreDecl] -> ImportEnvironment
-getImportEnvironment importedInModule decls = foldr (insertDictionaries importedInModule) (foldr locInsert emptyEnvironment decls) decls
+getImportEnvironment importedInModule decls = foldr (insertDictionaries importedInModule) env1 decls
    where
-      locInsert :: CoreDecl -> (ImportEnvironment -> ImportEnvironment) 
-      locInsert decl =
+      transparentNewtypes = setFromList [ name | DeclTypeSynonym{ declName = name, declAccess = Export _, declSynonym = TypeSynonymNewtype } <- decls ]
+
+      -- dataTypeToConstructor is both filled and consumed in locInsert. That works because of laziness.
+      (env1, dataTypeToConstructor) = foldr locInsert (emptyEnvironment, []) decls
+      dataTypeToConstructorMap = M.fromListWith (++) $ map (\(x,y) -> (x, [y])) dataTypeToConstructor
+
+      locInsert :: CoreDecl -> (ImportEnvironment, [(Name, Name)]) -> (ImportEnvironment, [(Name, Name)])
+      locInsert decl (env, dataTypeMapping) =
          case decl of 
          
            -- functions
@@ -245,11 +252,13 @@ getImportEnvironment importedInModule decls = foldr (insertDictionaries imported
                         , declType    = tp
                         , declCustoms = cs
                         } ->
-                \env ->  
-                    if "$dict" `isPrefixOf` (stringFromId n) then env else
-                        addType
-                            (makeImportName importedInModule importedFromModId n)
-                            (typeSchemeFromCore tp) env
+                if "$dict" `isPrefixOf` (stringFromId n) then (env, dataTypeMapping) else
+                    ( addType
+                        (makeImportName importedInModule importedFromModId n)
+                        (typeSchemeFromCore tp)
+                        env
+                    , dataTypeMapping
+                    )
 
            -- functions from non-core/non-lvm libraries and lvm-instructions
            DeclExtern { declAccess  = Export n
@@ -257,9 +266,12 @@ getImportEnvironment importedInModule decls = foldr (insertDictionaries imported
                       , declCustoms = cs
                       , declType    = tp
                       } ->
-              addType
+              ( addType
                  (makeImportName importedInModule importedFromModId n)
                  (typeSchemeFromCore tp)
+                 env
+              , dataTypeMapping
+              )
 
            -- constructors
            DeclCon { declAccess  = Export n
@@ -277,11 +289,16 @@ getImportEnvironment importedInModule decls = foldr (insertDictionaries imported
                     typeName = if "Dict" `isPrefixOf` stringFromId n 
                         then makeImportNameName importedInModule importedFromModId
                             (nameFromString $ "Dict$" ++ drop 4 locName)
-                        else nameFromCustoms importedInModule importedFromModId locName cs 
-                in addRecordFields constrName fields .
-                    addValueConstructor
-                        constrName (typeSchemeFromCore tp)
-                        typeName
+                        else nameFromCustoms importedInModule importedFromModId locName cs -- TODO: Use tp to derive data type name
+                in ( addRecordFields constrName fields
+                       $ addValueConstructor
+                           constrName
+                           (typeSchemeFromCore tp)
+                           typeName
+                           (idFromName typeName `elemSet` transparentNewtypes)
+                           env
+                    , (typeName, constrName) : dataTypeMapping
+                    )
 
            -- type constructor import
            DeclCustom { declName    = fullname
@@ -292,30 +309,58 @@ getImportEnvironment importedInModule decls = foldr (insertDictionaries imported
                       } 
                       | stringFromId ident == "data" ->
               let typename = makeImportName importedInModule importedFromModId n
-                  pair     = (arityFromCustoms (stringFromId n) cs, nameFromId fullname)
-              in addTypeConstructor typename pair
+                  constructors = case M.lookup (nameFromId fullname) dataTypeToConstructorMap of
+                    Nothing -> Just [] -- Data type has no constructors
+                    Just cs -> Just cs
+                  pair = (arityFromCustoms (stringFromId n) cs, nameFromId fullname, constructors)
+              in ( addTypeConstructor typename pair env
+                 , dataTypeMapping
+                 )
+
+           -- newtype declarations
+           -- note that this only creates the data type, the constructor is defined
+           -- in a DeclCon
+           DeclTypeSynonym { declName = fullname
+                           , declAccess = Export n
+                           , declModule = Just importedFromModId
+                           , declSynonym = TypeSynonymNewtype
+                           , declCustoms = cs
+                           } ->
+              let typename = makeImportName importedInModule importedFromModId n
+                  constructors = case M.lookup (nameFromId fullname) dataTypeToConstructorMap of
+                    Nothing -> Just []
+                    Just cs -> Just cs
+                  pair     = (arityFromCustoms (stringFromId n) cs, nameFromId fullname, constructors)
+              in ( addTypeConstructor typename pair env
+                 , dataTypeMapping
+                 )
 
            -- type synonym declarations
            -- important: a type synonym also introduces a new type constructor!
            DeclTypeSynonym { declName = fullname
                            , declAccess = Export n
                            , declModule = Just importedFromModId
+                           , declSynonym = TypeSynonymAlias
                            , declType = tp
                            , declCustoms = cs
                            } ->
               let typename = makeImportName importedInModule importedFromModId n
                   pair = typeSynFromCore tp
-                  pair2 = (fst pair, nameFromId fullname)
+                  pair2 = (fst pair, nameFromId fullname, Nothing)
                   pair3 = (fst pair, snd pair, nameFromId fullname)
-              in addTypeSynonym (nameFromId fullname) pair3 . addTypeConstructor typename pair2
-                             
+              in ( addTypeSynonym (nameFromId fullname) pair3 $ addTypeConstructor typename pair2 env
+                 , dataTypeMapping
+                 )
+
            -- infix decls
            DeclCustom { declName    = n
                       , declKind    = DeclKindCustom ident
                       , declCustoms = cs
                       }
                       | stringFromId ident == "infix" ->
-              flip (foldr (uncurry addOperator)) (makeOperatorTable (nameFromId n) cs)
+              ( flip (foldr (uncurry addOperator)) (makeOperatorTable (nameFromId n) cs) env
+              , dataTypeMapping
+              )
 
            -- typing strategies
            DeclCustom { declName    = _
@@ -326,7 +371,7 @@ getImportEnvironment importedInModule decls = foldr (insertDictionaries imported
               let (CustomDecl _  [CustomBytes bytes]) = head cs
                   text = stringFromBytes bytes
               in case reads text of 
-                    [(rule, [])] -> addTypingStrategies rule
+                    [(rule, [])] -> ( addTypingStrategies rule env, dataTypeMapping )
                     _ -> intErr "Could not parse typing strategy from core file"
             
            -- class decls
@@ -367,7 +412,9 @@ getImportEnvironment importedInModule decls = foldr (insertDictionaries imported
                                 ]) = (nameFromString $ stringFromId fname, makeTpSchemeFromType $ parseFromString type_ $ stringFromBytes tps, False, n' == 1)
                             getFunction _ = internalError "CoreToImportEnv" "getImportEnvironment" "local function getFunction only defined for CustomDecls"    
                             classMembers = (classVariables, map getFunction $ selectCustom "Function" cs)
-                        in addClassName className qualifiedName . addClass qualifiedName superClasses . addClassMember className classMembers 
+                        in ( addClassName className qualifiedName $ addClass qualifiedName superClasses $ addClassMember className classMembers env
+                           , dataTypeMapping
+                           )
            DeclAbstract{ declName = n } ->
               intErr  ("don't know how to handle declared DeclAbstract: " ++ stringFromId n)
            DeclExtern  { declName = n } ->
@@ -378,5 +425,5 @@ getImportEnvironment importedInModule decls = foldr (insertDictionaries imported
               intErr  ("don't know how to handle DeclCustom: "            ++ stringFromId n)
            DeclValue   { declName = n } ->
               intErr  ("don't know how to handle DeclValue: "             ++ stringFromId n)
-        
+
       intErr = internalError "CoreToImportEnv" "getImportEnvironment"

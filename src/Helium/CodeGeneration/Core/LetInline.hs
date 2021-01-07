@@ -138,6 +138,7 @@ isUnsaturatedCall arities (Var name) consumed = case lookupMap name arities of
   Nothing -> False
   Just arity -> consumed < arity
 isUnsaturatedCall arities (Ap e1 e2) consumed = isShort False e2 && isUnsaturatedCall arities e1 (consumed + 1)
+isUnsaturatedCall arities (ApType e _) consumed = isUnsaturatedCall arities e consumed
 isUnsaturatedCall arities (Forall _ _ e) consumed = isUnsaturatedCall arities e consumed
 isUnsaturatedCall _ _ _ = False
 

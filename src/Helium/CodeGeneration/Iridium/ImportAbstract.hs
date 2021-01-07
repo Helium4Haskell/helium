@@ -41,25 +41,26 @@ convertConstructor _ = Nothing
 
 convertMethod :: Declaration Method -> Maybe (Core.Decl v)
 convertMethod (Declaration qname (ExportedAs name) mod customs method) = Just $
-  Core.DeclAbstract qname (Core.Export name) mod (methodArity method) (methodType method) customs
+  Core.DeclAbstract qname (Core.Export name) mod (methodArity method) (methodSourceType method) customs
 convertMethod _ = Nothing
 
 convertAbstractMethod :: Declaration AbstractMethod -> Maybe (Core.Decl v)
-convertAbstractMethod (Declaration qname (ExportedAs name) mod customs (AbstractMethod arity tp _)) = Just $
-  Core.DeclAbstract qname (Core.Export name) mod arity tp customs
+convertAbstractMethod (Declaration qname (ExportedAs name) mod customs (AbstractMethod sourceType fnType _)) = Just $
+  Core.DeclAbstract qname (Core.Export name) mod (functionArity fnType) sourceType customs
 convertAbstractMethod _ = Nothing
 
 convertTypeSynonym :: Declaration TypeSynonym -> [Core.Decl v]
 convertTypeSynonym d@(Declaration qname (ExportedAs name) mod customs (TypeSynonym TypeSynonymAlias tp)) = return $
-  Core.DeclTypeSynonym qname (Core.Export name) mod tp customs
+  Core.DeclTypeSynonym qname (Core.Export name) mod Core.TypeSynonymAlias tp customs
 -- TODO: What if the data type is not exported, but the destructor is?
 convertTypeSynonym d@(Declaration qname (ExportedAs name) mod customs (TypeSynonym (TypeSynonymNewtype constructor destructor) tp)) =
-  Core.DeclCustom qname (Core.Export name) mod (Core.DeclKindCustom $ idFromString "data") customs
+  Core.DeclTypeSynonym qname (Core.Export name) mod Core.TypeSynonymNewtype tp customs
     : constructorDecl
   where
     constructorDecl = case constructor of
-      ExportedAs construct -> return $ Core.DeclCon (idFromString $ stringFromId qname ++ "." ++ stringFromId construct) (Core.Export construct) mod constructorType fields []
+      ExportedAs construct -> return $ Core.DeclCon (idFromString $ stringFromId qname ++ "." ++ stringFromId construct) (Core.Export construct) mod constructorType fields constructorCustom
       Private -> []
+    constructorCustom = [Core.CustomLink qname (Core.DeclKindCustom (idFromString "data"))]
     fields = case destructor of
       ExportedAs destruct -> [Core.Field destruct]
       Private -> []
