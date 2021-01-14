@@ -54,7 +54,12 @@ patternToCore' env quantors types (name, tp, pat) continue nr =
         
         -- case _u1 of C _l1 _l2 -> ...
         --             _         -> _next
-        Pattern_Constructor range n ps ->
+        Pattern_Constructor range n ps
+          | [p] <- ps
+          , isTransparentNewtypeConstructor env n ->
+            patternToCore' env quantors types (name, tp, p) continue nr
+
+          | otherwise ->
             let 
                 (ids, nr') =
                     if all isSimple ps then 
@@ -269,7 +274,7 @@ constructorFieldTypes env quantors conName tp =
     )
   where
     instantiation = getDataTypeArgs tp []
-    (_, consTpScheme) = fromMaybe (internalError "ToCorePat" "Pattern" $ "Could not find constructor " ++ show conName) $ M.lookup conName $ valueConstructors env
+    (_, consTpScheme, _) = fromMaybe (internalError "ToCorePat" "Pattern" $ "Could not find constructor " ++ show conName) $ M.lookup conName $ valueConstructors env
     (args, _) = Core.typeExtractFunction $ toCoreTypeNotQuantified consTpScheme
 
     getDataTypeArgs :: Core.Type -> [Core.Type] -> [Core.Type]

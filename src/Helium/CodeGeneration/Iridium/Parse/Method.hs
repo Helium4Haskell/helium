@@ -88,7 +88,7 @@ pMethodArgument quantors = do
   c <- lookahead
   case c of
     '%' -> do
-      arg <- pLocal quantors
+      arg <- pLocal (pType' quantors)
       return (Right arg, quantors)
     _ -> do
       pSymbol "forall"
@@ -100,7 +100,49 @@ pBlock :: QuantorNames -> Parser Block
 pBlock quantors = Block <$> pId <* pToken ':' <* pWhitespace <*> pInstruction quantors <* pWhitespace
 
 pAbstractMethod :: Parser AbstractMethod
-pAbstractMethod = AbstractMethod <$ pToken '[' <* pWhitespace <*> pUnsignedInt <* pToken ']' <* pToken ':' <* pWhitespace <* pToken '{' <* pWhitespace <*> pType <* pToken '}' <* pWhitespace <*> pAnnotations
+pAbstractMethod = do
+  c <- lookahead
+  case c of
+    '[' -> do
+      pToken '['
+      pWhitespace
+      arity <- pUnsignedInt
+      pToken ']'
+      pToken ':'
+      pWhitespace
+      pToken '{'
+      pWhitespace
+      tp <- pType
+      fnType <- case extractFunctionTypeWithArityNoSynonyms arity tp of
+        Nothing -> pError $ "Expected function type with arity at least " ++ show arity
+        Just f -> return f
+      pToken '}'
+      pWhitespace
+      AbstractMethod (typeRemoveArgumentStrictness tp) fnType <$> pAnnotations
+    _ -> do
+      pToken ':'
+      pWhitespace
+      pToken '{'
+      pWhitespace
+      sourceType <- pType
+      pToken '}'
+      pWhitespace
+      pToken '$'
+      pWhitespace
+      pToken '['
+      pWhitespace
+      arity <- pUnsignedInt
+      pToken ']'
+      pWhitespace
+      pToken '{'
+      pWhitespace
+      tp <- pType
+      fnType <- case extractFunctionTypeWithArityNoSynonyms arity tp of
+        Nothing -> pError $ "Expected function type with arity at least " ++ show arity
+        Just f -> return f
+      pToken '}'
+      pWhitespace
+      AbstractMethod sourceType fnType <$> pAnnotations
 
 pAnnotations :: Parser [Annotation]
 pAnnotations =

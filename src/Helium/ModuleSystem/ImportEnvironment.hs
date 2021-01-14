@@ -34,10 +34,11 @@ import Control.Arrow
 import qualified Data.Map as M
 
 type HasDefault = Bool
+type IsTransparentNewtype = Bool -- A transparent newtype does not require explicit (un)wrapping in Core
 
 type TypeEnvironment             = M.Map Name TpScheme {- Type scheme-}
-type ValueConstructorEnvironment = M.Map Name (Name, TpScheme) {-Parent, Type scheme-}
-type TypeConstructorEnvironment  = M.Map Name (Int, Name) {-Arity, Original qualified name-}
+type ValueConstructorEnvironment = M.Map Name (Name, TpScheme, IsTransparentNewtype) {-Parent, Type scheme, Is transparent newtype-}
+type TypeConstructorEnvironment  = M.Map Name (Int, Name, Maybe [Name]) {-Arity, Original qualified name-} {- Value constructors in case of a data type or newtype -}
 type TypeSynonymEnvironment      = M.Map Name (Int, Tps -> Tp) {-Arity, function-}
 type ClassMemberEnvironment      = M.Map Name (Names, [(Name, TpScheme, Bool, HasDefault)]) {-Member, original module-}
 type ClassNameEnvironment        = M.Map Name Name {-Name to original qualified name-}
@@ -82,15 +83,15 @@ emptyEnvironment = ImportEnvironment
    , typingStrategies  = []
    }
 
-addTypeConstructor :: Name -> (Int, Name) -> ImportEnvironment -> ImportEnvironment
-addTypeConstructor name (int, fullname) importenv =
-   importenv {typeConstructors = M.insert name (int, fullname) (typeConstructors importenv)}
+addTypeConstructor :: Name -> (Int, Name, Maybe [Name]) -> ImportEnvironment -> ImportEnvironment
+addTypeConstructor name (int, fullname, constructors) importenv =
+   importenv {typeConstructors = M.insert name (int, fullname, constructors) (typeConstructors importenv)}
 
 -- add a type synonym also to the type constructor environment
 addTypeSynonym :: Name -> (Int,Tps -> Tp, Name) -> ImportEnvironment -> ImportEnvironment
 addTypeSynonym name (arity, function, fullname) importenv =
    importenv { typeSynonyms     = M.insert name (arity, function) (typeSynonyms importenv)
-             , typeConstructors = M.insert name (arity, fullname) (typeConstructors importenv)
+             , typeConstructors = M.insert name (arity, fullname, Nothing) (typeConstructors importenv)
              }
 
 addType :: Name -> TpScheme -> ImportEnvironment -> ImportEnvironment
@@ -100,13 +101,59 @@ addType name tpscheme importenv =
 addToTypeEnvironment :: TypeEnvironment -> ImportEnvironment -> ImportEnvironment
 addToTypeEnvironment new importenv =
    importenv {typeEnvironment = typeEnvironment importenv `M.union` new}
-   
-addValueConstructor :: Name -> TpScheme -> Name -> ImportEnvironment -> ImportEnvironment
-addValueConstructor name tpscheme parent importenv = 
-   importenv {valueConstructors = M.insert name (parent, tpscheme) (valueConstructors importenv)}
-   
-setValueConstructors :: M.Map Name (Name, TpScheme) -> ImportEnvironment -> ImportEnvironment  
+
+addValueConstructor :: Name -> TpScheme -> Name -> IsTransparentNewtype -> ImportEnvironment -> ImportEnvironment
+addValueConstructor name tpscheme parent transparentNewtype importenv = 
+   importenv {valueConstructors = M.insert name (parent, tpscheme, transparentNewtype) (valueConstructors importenv)}
+
+setValueConstructors :: M.Map Name (Name, TpScheme, IsTransparentNewtype) -> ImportEnvironment -> ImportEnvironment
 setValueConstructors new importenv = importenv {valueConstructors = new} 
+
+-- We can promote non-recursive newtypes to transparent newtypes. Those are handled
+-- as type synonyms in the backend. To the user they still behave as newtypes
+-- of course.
+-- For mutual recursive newtypes, we try to make some of the newtypes in
+-- that component of newtypes transparent, without introducing cycles.
+-- This promotion works by first marking all newtypes as transparent
+-- (mainly as we need to distinguish newtypes from other data types).
+-- We visit all those newtypes in `go', and decide whether we want to
+-- commit on that, or remove the transparency annotation.
+--
+fixRecursiveNewtypes :: ImportEnvironment -> ImportEnvironment
+fixRecursiveNewtypes importEnv = M.foldrWithKey go importEnv $ typeConstructors importEnv
+  where
+    go :: Name -> (Int, Name, Maybe [Name]) -> ImportEnvironment -> ImportEnvironment
+    go dataName (_, _, Just [constructorName]) env
+      | Just (parent, tpScheme, True) <- M.lookup constructorName $ valueConstructors env
+      , getOnlyName dataName /= getNameName dataName -- This check returns False for data types which are present both qualified and unqualified
+      , recursive $ fieldType $ unqualify $ unquantify tpScheme
+        -- Data type is recursive, mark as non-transparent.
+        = env{ valueConstructors = M.insert constructorName (parent, tpScheme, False) $ M.insert (nameFromString $ getOnlyName constructorName) (parent, tpScheme, False) $ valueConstructors env }
+      where
+        fieldType :: Tp -> Tp
+        fieldType (TApp (TApp (TCon "->") tp) _) = tp
+        fieldtype = internalError "ImportEnvironment" "fixRecursiveNewtypes" "Expected function type"
+
+        recursive :: Tp -> Bool
+        recursive (TCon con)
+          | getNameName dataName == con = True
+        recursive (TCon con) -- It might be a type alias
+          | Just (_, tp) <- M.lookup (nameFromString con) $ typeSynonyms env
+            = recursive $ tp $ map TVar $ [0..]
+        recursive (TCon con) -- It might be a newtype which we already promoted
+          | con > getNameName dataName -- We traverse the data type names in descending order, so only smaller data type names may have been promoted yet.
+          , Just (_, _, Just [otherConstructor]) <- M.lookup (nameFromString con) $ typeConstructors env
+          , Just (_, tpScheme', True) <- M.lookup otherConstructor $ valueConstructors env
+          , TApp (TApp (TCon "->") tp) _ <- unqualify $ unquantify tpScheme'
+            = recursive tp
+        recursive (TApp t1 t2) = recursive t1 || recursive t2
+        recursive _ = False
+    go _ _ env = env
+
+isTransparentNewtypeConstructor :: ImportEnvironment -> Name -> Bool
+isTransparentNewtypeConstructor env name = case M.lookup name $ valueConstructors env of
+  Nothing -> False
+  Just (_, _, tn) -> tn
 
 addRecordFields :: Name -> [(Name, Bool)] -> ImportEnvironment -> ImportEnvironment
 addRecordFields constr []     importenv = importenv
@@ -116,7 +163,7 @@ addRecordFields constr fields importenv =
         names :: [Name]
         names = map fst fields
         constrTps :: TpScheme
-        constrTps = snd $ fromMaybe (importEnvError "constructor does not exist in environment")
+        (_, constrTps, _) = fromMaybe (importEnvError "constructor does not exist in environment")
             (M.lookup constr (valueConstructors importenv))
         (args, ret) = functionSpine $ unqualify $ unquantify constrTps
         fieldToImport :: (Name, Bool) -> (Name, (Int, Bool, Tp, TpScheme))
@@ -139,7 +186,7 @@ addOperator :: Name -> (Int,Assoc) -> ImportEnvironment -> ImportEnvironment
 addOperator name pair importenv = 
    importenv {operatorTable = M.insert name pair (operatorTable importenv) } 
 
-setTypeConstructors :: M.Map Name (Int, Name) -> ImportEnvironment -> ImportEnvironment     
+setTypeConstructors :: M.Map Name (Int, Name, Maybe [Name]) -> ImportEnvironment -> ImportEnvironment     
 setTypeConstructors new importenv = importenv {typeConstructors = new}
 
 setTypeSynonyms :: M.Map Name (Int,Tps -> Tp) -> ImportEnvironment -> ImportEnvironment
@@ -235,7 +282,7 @@ getSiblings importenv =
    where
     valueConsTpScheme n =
         let res = M.lookup n (valueConstructors importenv)
-        in maybe Nothing (\(_, scheme) -> Just scheme) res
+        in maybe Nothing (\(_, scheme, _) -> Just scheme) res
 
 getNeverDirectives :: ImportEnvironment -> [(Predicate, ConstraintInfo)]
 getNeverDirectives importEnv = let
@@ -408,11 +455,11 @@ instance Show ImportEnvironment where
 
        datatypes =
           let allDatas = filter ((`notElem` M.keys tss). fst) (M.assocs tcs)
-              f (n,(i,_))  = unwords ("data" : showNameAsVariable n : take i variableList)
+              f (n,(i,_,_))  = unwords ("data" : showNameAsVariable n : take i variableList)
           in showWithTitle "Data types" (showEm f allDatas)
 
        typeconstructors =
-          let f (n,(i,g)) = show n ++ " => " ++ show g
+          let f (n,(i,g,_)) = show n ++ " => " ++ show g
           in showWithTitle "Type constructors" (showEm f (M.assocs tcs))
 
        typesynonyms =

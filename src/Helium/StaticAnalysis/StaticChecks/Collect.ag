@@ -28,7 +28,8 @@ import Data.Maybe
 
 SEM Module
   | Module   loc . moduleQual = maybe ["Main"] getQualified @name.name
-             loc . collectEnvironment = setValueConstructors   (M.fromList @body.collectValueConstructors)
+             loc . collectEnvironment = fixRecursiveNewtypes
+                                        . setValueConstructors   (M.fromList @body.collectValueConstructors)
                                         . setTypeConstructors  (M.fromList @body.collectTypeConstructors)
                                         . setTypeSynonyms      (M.fromList @body.collectTypeSynonyms)
                                         . setOperatorTable     (M.fromList @body.operatorFixities)
@@ -59,62 +60,78 @@ addQualifiedCollect qual name result collect =
         res1 = (name, result)
         res2 = (qualname, result)
     in res1 : res2 : collect
+
+addQualifiedCollectValue :: [String] -> Name -> a -> Bool -> [(Name, a, Bool)] -> [(Name, a, Bool)]
+addQualifiedCollectValue qual name result transparentNewtype collect =
+    let qualname = addQualified qual name
+        res1 = (name, result, transparentNewtype)
+        res2 = (qualname, result, transparentNewtype)
+    in res1 : res2 : collect
 }
 
 -------------------------------------------
 -- 1) Collecting (data-)type constructors
 
-ATTR Body Declarations Declaration [ | collectTypeConstructors : { [(Name,(Int, Name))] } | ]
+ATTR Body Declarations Declaration [ | collectTypeConstructors : { [(Name,(Int, Name, Maybe [Name]))] } | ]
 
 SEM Module | Module   body . collectTypeConstructors = []
 
 SEM Declaration
   | Data  loc . fullname = addQualified @lhs.moduleQual @simpletype.name
-          lhs . collectTypeConstructors = addQualifiedCollect @lhs.moduleQual @simpletype.name (length @simpletype.typevariables, @fullname) @lhs.collectTypeConstructors
+          lhs . collectTypeConstructors = addQualifiedCollect @lhs.moduleQual @simpletype.name (length @simpletype.typevariables, @fullname, Just @constructors.constructors) @lhs.collectTypeConstructors
   | Newtype
           loc . fullname = addQualified @lhs.moduleQual @simpletype.name
-          lhs . collectTypeConstructors = addQualifiedCollect @lhs.moduleQual @simpletype.name (length @simpletype.typevariables, @fullname) @lhs.collectTypeConstructors
+          lhs . collectTypeConstructors = addQualifiedCollect @lhs.moduleQual @simpletype.name (length @simpletype.typevariables, @fullname, Just @constructor.constructors) @lhs.collectTypeConstructors
   | Type  loc . fullname = addQualified @lhs.moduleQual @simpletype.name
-          lhs . collectTypeConstructors = addQualifiedCollect @lhs.moduleQual @simpletype.name (length @simpletype.typevariables, @fullname) @lhs.collectTypeConstructors
+          lhs . collectTypeConstructors = addQualifiedCollect @lhs.moduleQual @simpletype.name (length @simpletype.typevariables, @fullname, Nothing) @lhs.collectTypeConstructors
 
 -------------------------------------------
 -- 2) Collecting value constructors
 
-ATTR Body Declarations Declaration Constructors Constructor [ | collectValueConstructors : {[(Name, (Name, TpScheme))]} | ]
-ATTR Constructor Constructors [ parent : Name | | parameterTypes USE { ++ } { [] } : Tps ]
+ATTR Body Declarations Declaration Constructors Constructor [ | collectValueConstructors : {[(Name, (Name, TpScheme, Bool))]} | ]
+ATTR Constructor Constructors [ parent : Name | | parameterTypes USE { ++ } { [] } : Tps constructors USE { ++ } { [] } : { [Name] } ]
+ATTR Constructor [ isNewtype : Bool | | ]
 
 SEM Module | Module   body . collectValueConstructors = []
 SEM Declaration
     | Newtype constructor.parent  = @simpletype.name
+              constructor.isNewtype = True
     | Data    constructors.parent = @simpletype.name
+
+SEM Constructors
+  | Cons
+       hd.isNewtype = False
 
 SEM Constructor
   | Constructor
        lhs . collectValueConstructors = addQualifiedCollect @lhs.moduleQual @constructor.self @res @lhs.collectValueConstructors
            . parameterTypes = @tps
+           . constructors = [addQualified @lhs.moduleQual @constructor.self]
        loc . typeScheme = generalizeAll ([] .=>. foldr (.->.) @tp @tps)
            . newsimpletype = convertSimpleTypeToQualified @lhs.qualifiedEnvironment @lhs.simpletype
            . newtypes = map (convertTypeToQualified @lhs.qualifiedEnvironment) @types.types
            . (tp,tps)   = convertFromSimpleTypeAndTypes @newsimpletype @newtypes
-           . res        = (@lhs.parent, @typeScheme)
-                  
+           . res        = (@lhs.parent, @typeScheme, @lhs.isNewtype)
+
   | Infix
        lhs . collectValueConstructors = addQualifiedCollect @lhs.moduleQual @constructorOperator.self @res @lhs.collectValueConstructors
            . parameterTypes = @tps
+           . constructors = [addQualified @lhs.moduleQual @constructorOperator.self]
        loc . typeScheme = generalizeAll ([] .=>. foldr (.->.) @tp @tps)
            . newsimpletype = convertSimpleTypeToQualified @lhs.qualifiedEnvironment @lhs.simpletype
            . newtypes = map (convertTypeToQualified @lhs.qualifiedEnvironment) [@leftType.type,@rightType.type]
            . (tp,tps)   = convertFromSimpleTypeAndTypes @newsimpletype @newtypes
-           . res        = (@lhs.parent, @typeScheme)
+           . res        = (@lhs.parent, @typeScheme, @lhs.isNewtype)
 
   | Record
        lhs . collectValueConstructors = addQualifiedCollect @lhs.moduleQual @constructor.self @res @lhs.collectValueConstructors
            . parameterTypes = @tps
+           . constructors = [addQualified @lhs.moduleQual @constructor.self]
        loc . typeScheme = generalizeAll ([] .=>. foldr (.->.) @tp @tps)
            . newsimpletype = convertSimpleTypeToQualified @lhs.qualifiedEnvironment @lhs.simpletype
            . newtypes = map (convertTypeToQualified @lhs.qualifiedEnvironment) @fieldDeclarations.types
            . (tp,tps)   = convertFromSimpleTypeAndTypes @newsimpletype @newtypes
-           . res        = (@lhs.parent, @typeScheme)
+           . res        = (@lhs.parent, @typeScheme, @lhs.isNewtype)
 
 -------------------------------------------
 -- 3) Collecting type synonyms
@@ -129,7 +146,7 @@ SEM Declaration
            loc . typeSynonymInfo = (length @simpletype.typevariables,\tps -> makeTpFromType (zip @simpletype.typevariables tps) @newtype)
            loc . newtype  = convertTypeToQualified @lhs.qualifiedEnvironment @type.self
            loc . qualname = addQualified @lhs.moduleQual @simpletype.name
-           
+
 -------------------------------------------
 -- 4) Collecting Fixity Declarations
 
@@ -224,10 +241,10 @@ SEM Module
                       uniqueKeysWithValue (@declNoConflictsValCon ++ mergeSameOrigins (concatMap (M.assocs . valueConstructors) @importEnvironments) )
                  . (declNoConflictsValCon, duplicatedValueConstructors) = filterQualifiedDoubles $ uniqueKeys @body.collectValueConstructors
                  . allValueConstructors            = map fst @uniqueValueConstructors ++ map head @duplicatedValueConstructors ++ map head @ambiguousValueConstructors
-                 . valueConstructorsWithParents = map (\(con, (par, _)) -> (con,par)) $ @uniqueValueConstructors
+                 . valueConstructorsWithParents = map (\(con, (par, _, _)) -> (con,par)) $ @uniqueValueConstructors
                  . ambiguousValueConstructors = map (map fst) @ambiguousValueConstructorsWithValue
-                 . ambiguousValueConstructorsWithParents = map (map (\(con, (par, _)) -> (con,par))) $ @ambiguousValueConstructorsWithValue
-                 . valueConstructors               = M.fromList $ map (\(con, (_, tpscheme)) -> (con,tpscheme)) $ @uniqueValueConstructors
+                 . ambiguousValueConstructorsWithParents = map (map (\(con, (par, _, _)) -> (con,par))) $ @ambiguousValueConstructorsWithValue
+                 . valueConstructors               = M.fromList $ map (\(con, (_, tpscheme, _)) -> (con,tpscheme)) $ @uniqueValueConstructors
 
 ATTR Body Declarations Declaration Expressions Expression Patterns Pattern
      Statement Statements Qualifier Qualifiers
@@ -260,8 +277,8 @@ ATTR Body Declarations Declaration Expressions Expression Patterns Pattern
      LeftHandSide RightHandSide MaybeDeclarations MaybeExpression Type Types 
      RecordPatternBinding RecordPatternBindings 
      AnnotatedType AnnotatedTypes ContextItem ContextItems
-     [ typeConstructors : { M.Map Name (Int, Name) }
-     typeConstructorsWithDefined : { M.Map Name (Int, Name) }
+     [ typeConstructors : { M.Map Name (Int, Name, Maybe [Name]) }
+     typeConstructorsWithDefined : { M.Map Name (Int, Name, Maybe [Name]) }
      allTypeConstructors : Names
      ambiguousTypeConstructors : {[Names]} | | ]
 
@@ -345,7 +362,7 @@ SEM FieldDeclaration
 
 {
 
-filterQualifiedDoubles :: ([(Name,a)],[[Name]]) -> ([(Name,a)],[[Name]]) 
+filterQualifiedDoubles :: (a,[[Name]]) -> (a,[[Name]]) 
 filterQualifiedDoubles (orig, doubles) = (orig, filter (not . isQualified . head) doubles)
 
 uniqueKeys :: Ord key => [(key,a)] -> ([(key,a)],[[key]])

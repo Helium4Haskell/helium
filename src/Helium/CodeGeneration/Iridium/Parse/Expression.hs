@@ -69,15 +69,15 @@ pGlobalFunction = do
   tp <- pTypeAtom
   return $ GlobalFunction name arity tp
 
-pLocal :: QuantorNames -> Parser Local
-pLocal quantors = Local <$ pToken '%' <*> pId <* pToken ':' <* pWhitespace <*> pTypeAtom' quantors
+pLocal :: Parser Type -> Parser Local
+pLocal pTp = Local <$ pToken '%' <*> pId <* pToken ':' <* pWhitespace <*> pTp
 
 pVariable :: QuantorNames -> Parser Variable
 pVariable quantors = do
   c <- lookahead
   case c of
     '@' -> VarGlobal <$> pGlobal
-    '%' -> VarLocal <$> pLocal quantors
+    '%' -> VarLocal <$> pLocal (pTypeAtom' quantors)
     _ -> pError "expected variable"
 
 pCallArguments :: QuantorNames -> Parser [Either Type Variable]

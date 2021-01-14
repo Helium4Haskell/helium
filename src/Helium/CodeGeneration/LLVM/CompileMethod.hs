@@ -41,9 +41,9 @@ unusedArgumentName :: Id
 unusedArgumentName = idFromString "_argument"
 
 compileAbstractMethod :: Env -> NameSupply -> Iridium.Declaration Iridium.AbstractMethod -> [Definition]
-compileAbstractMethod env supply (Iridium.Declaration name visible _ _ method@(Iridium.AbstractMethod arity fnType annotations)) = toFunction env supply name visible annotations args fnType retType []
+compileAbstractMethod env supply (Iridium.Declaration name visible _ _ method@(Iridium.AbstractMethod _ fnType annotations)) = toFunction env supply name visible annotations args (Iridium.typeFromFunctionType fnType) retType []
   where
-    Iridium.FunctionType argTypes' retType = Iridium.abstractFunctionType (envTypeEnv env) method
+    Iridium.FunctionType argTypes' retType = fnType
     argTypes = [tp | Right tp <- argTypes']
     args = map (Iridium.Local unusedArgumentName) argTypes
 

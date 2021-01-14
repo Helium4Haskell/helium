@@ -71,6 +71,7 @@ SEM Declaration
             { Core.declName = idFromName @qualname
             , Core.declAccess = Core.Private
             , Core.declModule  = Nothing
+            , Core.declSynonym = Core.TypeSynonymAlias
             , Core.declType = toCoreType @lhs.quantors (convertTpSchemeToQualified @lhs.importEnv ts)
             , Core.declCustoms = []
             }
@@ -302,17 +303,32 @@ SEM Declaration
                         constructor.dataTypeCoreType = @simpletype.coreType
                         constructor.typevariables = @simpletype.typevariables
                         loc.qualname = addQualified @lhs.moduleQual @simpletype.name
+                        loc.constructorDecl = snd $ head @constructor.cons
+                        loc.transparent = case M.lookup (nameFromId $ Core.declName @constructorDecl) $ valueConstructors @lhs.importEnv of
+                                            Just (_, _, True) -> True
+                                            _ -> False
                         lhs.decls    =
-        map snd @constructor.cons
-        ++
-        [ Core.DeclCustom
+        if @transparent then
+          [ @constructorDecl
+          , Core.DeclTypeSynonym
+            { Core.declName    = idFromName @qualname
+            , Core.declAccess  = Core.Private
+            , Core.declModule  = Nothing
+            , Core.declSynonym = Core.TypeSynonymNewtype
+            , Core.declType    = Core.typeSynonymTypeFromConstructorType $ Core.declType @constructorDecl
+            , Core.declCustoms = []
+            }
+          ]
+        else
+          [ @constructorDecl
+          , Core.DeclCustom
             { Core.declName    = idFromName @qualname
             , Core.declAccess  = Core.Private
             , Core.declModule  = Nothing
             , Core.declKind    = Core.DeclKindCustom (idFromString "data")
             , Core.declCustoms = [Core.CustomInt (length @simpletype.typevariables)]
             }
-        ]
+          ]
 
     | Foreign   (loc.tpScheme, loc.tp) = declarationType @lhs.typeOutput @lhs.typeClassContext @lhs.quantors @fdecl.name
                 (loc.qualname, _, _)
@@ -642,5 +658,5 @@ constructorCustoms dataTypeName name envWithParent =
         )
         (M.lookup name env)
     where
-        env = M.map (\(_, scheme) -> scheme) envWithParent
+        env = M.map (\(_, scheme, _) -> scheme) envWithParent
 }

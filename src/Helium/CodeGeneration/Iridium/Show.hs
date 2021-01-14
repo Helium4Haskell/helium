@@ -58,7 +58,7 @@ list sep (x:xs) = x . list' xs
 
 
 instance ShowWithQuantors Type where
-  showQ quantors = showType quantors
+  showQ quantors = showTypeAtom quantors
 
 showCustom :: Custom -> String
 showCustom (CustomInt i) = "[int " ++ show i ++ "]"
@@ -182,10 +182,17 @@ showAnnotations [] = ""
 showAnnotations annotations = "[" ++ intercalate " " (map show annotations) ++ "]"
 
 instance ShowDeclaration AbstractMethod where
-  showDeclaration (AbstractMethod arity fntype annotations) =
-    ( "declare"
-    , "[" ++ show arity ++ "]: { " ++ show fntype ++ " } " ++ showAnnotations annotations ++ "\n"
-    )
+  showDeclaration (AbstractMethod sourceType fnType annotations)
+    | sourceType == typeRemoveArgumentStrictness (typeFromFunctionType fnType) =
+      ( "declare"
+      , "[" ++ show arity ++ "]: { " ++ show (typeFromFunctionType fnType) ++ " } " ++ showAnnotations annotations ++ "\n"
+      )
+    | otherwise =
+      ( "declare"
+      , ": { " ++ show sourceType ++ " } $ [" ++ show arity ++ "]{ " ++ show (typeFromFunctionType fnType) ++ " }"
+      )
+    where
+      arity = functionArity fnType
 
 instance ShowDeclaration Method where
   showDeclaration (Method tp args rettype annotations entry blocks) =

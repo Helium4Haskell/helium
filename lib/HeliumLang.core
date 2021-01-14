@@ -27,11 +27,11 @@ data '':->'' v$0 v$1
   let print: ([Char] -> Int) = \str: [Char] -> ''_$helium_runtime_print_string'' str
   in
     \str: String ->
-      IO {()} (\realworld: RealWorld ->
+      \realworld: RealWorld ->
         seq {Int} {IORes ()}
           (print str)
           (seq {Int} {IORes ()}
-            (print "\n") (IORes {()} () realworld)))
+            (print "\n") (IORes {()} () realworld))
 
 ''$primPackedToString'' :: String -> String
 ''$primPackedToString'' : export = \p: String -> p

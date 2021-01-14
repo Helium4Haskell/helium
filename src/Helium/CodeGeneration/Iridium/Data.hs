@@ -75,11 +75,17 @@ instance Functor Declaration where
   fmap f (Declaration name visibility mod customs a) = Declaration name visibility mod customs $ f a
 
 -- Imported method, eg a method without a definition. The implementation is in some other file.
-data AbstractMethod = AbstractMethod !Arity !Type ![Annotation]
+data AbstractMethod = AbstractMethod !Type !FunctionType ![Annotation]
   deriving (Eq, Ord)
 
-abstractFunctionType :: TypeEnvironment -> AbstractMethod -> FunctionType
-abstractFunctionType env (AbstractMethod arity tp _) = extractFunctionTypeWithArity env arity tp
+abstractFunctionType :: AbstractMethod -> FunctionType
+abstractFunctionType (AbstractMethod _ tp _) = tp
+
+abstractType :: AbstractMethod -> Type
+abstractType method = typeFromFunctionType $ abstractFunctionType method
+
+abstractSourceType :: AbstractMethod -> Type
+abstractSourceType (AbstractMethod tp _ _) = tp
 
 data Method = Method !Type ![Either Quantor Local] !Type ![Annotation] !Block ![Block]
   deriving (Eq, Ord)
@@ -91,7 +97,11 @@ methodFunctionType (Method _ args returnType _ _ _) = FunctionType (map arg args
     arg (Right (Local _ tp)) = Right tp
 
 methodType :: Method -> Type
-methodType (Method tp _ _ _ _ _) = tp
+methodType method = typeFromFunctionType $ methodFunctionType method
+
+-- The original type of the function in Haskell, excluding strictness annotations
+methodSourceType :: Method -> Type
+methodSourceType (Method tp _ _ _ _ _) = tp
 
 methodArity :: Method -> Int
 methodArity (Method _ args _ _ _ _) = length $ filter isRight args

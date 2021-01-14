@@ -15,14 +15,13 @@ import Data.Either(isRight)
 data TypeEnv = TypeEnv
   { teModuleName :: !Id
   , teDataTypes :: !(IdMap [DataTypeConstructor]) -- TODO: Make data types fully qualified
-  , teNewtypeConstructors :: !IdSet
   , teValues :: !(IdMap ValueDeclaration)
   , teMethod :: !(Maybe (Id, Type))
   , teCoreEnv :: !Core.TypeEnvironment
   }
 
 teReturnType :: TypeEnv -> Type
-teReturnType (TypeEnv _ _ _ _ (Just (_, retType)) _) = retType
+teReturnType (TypeEnv _ _ _ (Just (_, retType)) _) = retType
 
 valueDeclaration :: TypeEnv -> Id -> ValueDeclaration
 valueDeclaration env name = fromMaybe (error $ "valueDeclaration: identifier " ++ show name ++ " not found in type environment") $ lookupMap name (teValues env)
@@ -52,10 +51,10 @@ typeOf env name = case valueDeclaration env name of
   ValueVariable t -> t
 
 enterFunction :: Id -> Type -> TypeEnv -> TypeEnv
-enterFunction name fntype (TypeEnv moduleName datas newtypes values _ coreEnv) = TypeEnv moduleName datas newtypes values (Just (name, fntype)) coreEnv
+enterFunction name fntype (TypeEnv moduleName datas values _ coreEnv) = TypeEnv moduleName datas values (Just (name, fntype)) coreEnv
 
 expandEnvWith :: Local -> TypeEnv -> TypeEnv
-expandEnvWith (Local name t) (TypeEnv moduleName datas newtypes values method coreEnv) = TypeEnv moduleName datas newtypes (insertMap name (ValueVariable t) values) method coreEnv'
+expandEnvWith (Local name t) (TypeEnv moduleName datas values method coreEnv) = TypeEnv moduleName datas (insertMap name (ValueVariable t) values) method coreEnv'
   where
     coreEnv' = Core.typeEnvAddVariable (Core.Variable name t) coreEnv
 

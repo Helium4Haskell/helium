@@ -40,7 +40,7 @@ isApTarget :: Expr -> Bool
 isApTarget (Ap _ _) = True
 isApTarget (Con _) = True
 isApTarget (Var _) = True
-isApTarget (Forall _ _ e) = isApTarget e
+isApTarget (Forall _ _ e) = False
 isApTarget (ApType e _) = isApTarget e
 isApTarget _ = False
 
@@ -93,12 +93,14 @@ normSubExprs supply env (Ap e1 e2) = (Ap e1'' e2', bindings1' ++ bindings2)
       | otherwise = (Var name, [Bind (Variable name $ typeOfCoreExpression env e1) $ addBindings e1' bindings1])
     (e2', bindings2) = normExpr supply2 env e2
 normSubExprs supply env expr@(Lam _ _ _) = (normalizeLambda supply env expr, [])
-normSubExprs supply env (Forall x k expr) = (Forall x k expr', binds)
+normSubExprs supply env expr@(Forall _ _ _) = (normalizeLambda supply env expr, [])
+normSubExprs supply env (ApType expr t) = (ApType expr'' t, bindings')
   where
-    (expr', binds) = normSubExprs supply env expr
-normSubExprs supply env (ApType expr t) = (ApType expr' t, binds)
-  where
-    (expr', binds) = normSubExprs supply env expr
+    (name, supply') = freshId supply
+    (expr', bindings) = normSubExprs supply' env expr
+    (expr'', bindings')
+      | isApTarget expr' = (expr', bindings)
+      | otherwise = (Var name, [Bind (Variable name $ typeOfCoreExpression env expr') $ addBindings expr' bindings])
 normSubExprs supply env expr = (expr, []) -- expr is already trivial, we don't need to normalize it further.
 
 normBinds :: NameSupply -> TypeEnvironment -> Binds -> (TypeEnvironment, Binds)
