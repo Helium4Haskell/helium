@@ -75,9 +75,9 @@ toFunction env supply name visible annotations args fnType retType basicBlocks =
       , Global.dllStorageClass = Nothing
       , Global.callingConvention = callConv
       , Global.returnAttributes = []
-      , Global.returnType = compileType env (Core.typeToStrict $ if fake_io then Iridium.typeInt else retType)
+      , Global.returnType = compileType env (Core.typeToStrict $ if implicitIO then Iridium.typeInt else retType)
       , Global.name = toName name
-      , Global.parameters = (if fake_io then init parameters else parameters, {- varargs: -} False)
+      , Global.parameters = (if implicitIO then init parameters else parameters, {- varargs: -} False)
       , Global.functionAttributes = []
       , Global.section = Nothing
       , Global.comdat = Nothing
@@ -103,7 +103,7 @@ toFunction env supply name visible annotations args fnType retType basicBlocks =
 
     arity = length args
 
-    fake_io = Iridium.AnnotateFakeIO `elem` annotations
+    implicitIO = Iridium.AnnotateImplicitIO `elem` annotations
 
     trampoline :: [Definition]
     trampoline

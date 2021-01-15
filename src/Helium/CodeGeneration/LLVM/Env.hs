@@ -44,7 +44,7 @@ envForModule target mod = Env
     synonyms :: [(Id, Core.Type)]
     synonyms = [(name, tp) | Iridium.Declaration name _ _ _ (Iridium.TypeSynonym _ tp) <- Iridium.moduleTypeSynonyms mod]
 
-data EnvMethodInfo = EnvMethodInfo { envMethodConvention :: !Iridium.CallingConvention, envMethodFakeIO :: !Bool }
+data EnvMethodInfo = EnvMethodInfo { envMethodConvention :: !Iridium.CallingConvention, envMethodImplicitIO :: !Bool }
 
 methodInfo :: [Iridium.Annotation] -> EnvMethodInfo
-methodInfo annotations = EnvMethodInfo (Iridium.callingConvention annotations) (Iridium.AnnotateFakeIO `elem` annotations)
+methodInfo annotations = EnvMethodInfo (Iridium.callingConvention annotations) (Iridium.AnnotateImplicitIO `elem` annotations)
