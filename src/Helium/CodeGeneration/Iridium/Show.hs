@@ -167,17 +167,17 @@ instance ShowWithQuantors Variable where
 instance ShowWithQuantors Block where
   showsQ quantors (Block name instruction) = text (stringFromId name) . text ":\n" . showsQ quantors instruction
 
-instance Show Annotation where
-  show AnnotateTrampoline = "trampoline"
-  show (AnnotateCallConvention conv) = "callconvention:" ++ show conv
-  show AnnotateImplicitIO = "implicit_io"
+instance Show MethodAnnotation where
+  show MethodAnnotateTrampoline = "trampoline"
+  show (MethodAnnotateCallConvention conv) = "callconvention:" ++ show conv
+  show MethodAnnotateImplicitIO = "implicit_io"
 
 instance Show CallingConvention where
   show CCC = "c"
   show CCFast = "fast"
   show CCPreserveMost = "preserve_most"
 
-showAnnotations :: [Annotation] -> String
+showAnnotations :: [MethodAnnotation] -> String
 showAnnotations [] = ""
 showAnnotations annotations = "[" ++ intercalate " " (map show annotations) ++ "]"
 
@@ -279,7 +279,7 @@ showArguments' showFn xs = text "(" . list (text ", ") (map showFn xs) . text ")
 showArguments :: ShowWithQuantors a => QuantorNames -> [a] -> ShowS
 showArguments quantors = showArguments' (showsQ quantors)
 
-showCallArguments :: QuantorNames -> [Either Type Variable] -> ShowS
+showCallArguments :: QuantorNames -> [Either Type Local] -> ShowS
 showCallArguments quantors = showArguments' showArg
   where
     showArg (Left tp) = text "{" . showsQ quantors tp . text "}"

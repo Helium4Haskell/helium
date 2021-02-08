@@ -61,14 +61,14 @@ compileBind' env supply bind@(Iridium.Bind varId target args) (Right struct) =
     (shouldReverse, additionalArgInstructions, additionalArgs) = bindArguments env supplyAdditionalArgs target (length args') operandVoid
     args' = [arg | Right arg <- args]
     (splitInstructions, argOperands) = unzip $ fst $ mapWithSupply' splitValueFlag' supplyArgs (zip args' $ drop (length additionalArgs) $ fields struct)
-    splitValueFlag' :: NameSupply -> (Iridium.Variable, StructField) -> (([Named Instruction], (Operand, Operand)), NameSupply)
+    splitValueFlag' :: NameSupply -> (Iridium.Local, StructField) -> (([Named Instruction], (Operand, Operand)), NameSupply)
     splitValueFlag' s (var, StructField tp Nothing)
-      | not (Iridium.typeEqual (envTypeEnv env) (Iridium.variableType var) tp) =
+      | not (Iridium.typeEqual (envTypeEnv env) (Iridium.localType var) tp) =
         let
           (nameThunk, s1) = freshName s
           (s2, s3) = splitNameSupply s1
         in
-          ( ( cast s2 env (toOperand env var) nameThunk (Iridium.variableType var) tp
+          ( ( cast s2 env (toOperand env $ Iridium.VarLocal var) nameThunk (Iridium.localType var) tp
             , ( LocalReference (compileType env tp) nameThunk
               , operandTrue
               )
@@ -77,12 +77,12 @@ compileBind' env supply bind@(Iridium.Bind varId target args) (Right struct) =
           )
       | otherwise = 
         ( ( []
-          , ( toOperand env var, operandTrue )
+          , ( toOperand env $ Iridium.VarLocal var, operandTrue )
           )
         , s
         )
     -- Flag is stored in header
-    splitValueFlag' s (var, StructField tp _) = let (s1, s2) = splitNameSupply s in (splitValueFlag env s1 (var, tp), s2)
+    splitValueFlag' s (var, StructField tp _) = let (s1, s2) = splitNameSupply s in (splitValueFlag env s1 (Iridium.VarLocal var, tp), s2)
     (supplyArgs, supply1) = splitNameSupply supply
     (supplyInit, supply2) = splitNameSupply supply1
     (supplyAdditionalArgs, supply3) = splitNameSupply supply2

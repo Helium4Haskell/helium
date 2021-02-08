@@ -14,12 +14,12 @@ import Lvm.Core.Type
 passTailRecursion :: NameSupply -> Module -> Module
 passTailRecursion = mapMethodsWithSupply transformMethod
 
-data TailRecursion = TailRecursion !BlockName ![Either Type Variable]
+data TailRecursion = TailRecursion !BlockName ![Either Type Local]
 
 data Context = Context !Id ![Either Quantor Local] !BlockName
 
 findTailRecursion :: Context -> Instruction -> Maybe TailRecursion
-findTailRecursion (Context fnName params blockName) (Let var (Call (GlobalFunction fn _ _) args) (Return (VarLocal (Local ret _))))
+findTailRecursion (Context fnName params blockName) (Let var (Call (GlobalFunction fn _ _) args) (Return (Local ret _)))
   | fnName == fn && var == ret && typeArgumentsPreserved (length (lefts params) - 1) params args = Just $ TailRecursion blockName args
 findTailRecursion context (Let _ _ next) = findTailRecursion context next
 findTailRecursion context (LetAlloc _ next) = findTailRecursion context next
@@ -31,7 +31,7 @@ findTailRecursion _ _ = Nothing
 -- not change, as we do not have phi nodes on type arguments, and it is
 -- probably not a good idea to introduce those.
 -- The first argument in the TypeVar (as a Debruijn index) of the left-most type variable.
-typeArgumentsPreserved :: Int -> [Either Quantor Local] -> [Either Type Variable] -> Bool
+typeArgumentsPreserved :: Int -> [Either Quantor Local] -> [Either Type Local] -> Bool
 typeArgumentsPreserved _ [] [] = True
 typeArgumentsPreserved firstTypeVar (Left _ : params) (Left tp : args) = tp == TVar firstTypeVar && typeArgumentsPreserved (firstTypeVar - 1) params args
 typeArgumentsPreserved firstTypeVar (Right _ : params) (Right _ : args) = typeArgumentsPreserved firstTypeVar params args
@@ -65,7 +65,7 @@ createPhis entryName [] [] tails = id
 createPhis entryName (Left _ : args) (Left _ : args') tails = createPhis entryName args args' $ map tailRecursionDrop tails
 createPhis entryName (Right (Local arg t) : args) (Right (Local arg' _) : args') tails = phi . createPhis entryName args args' tails'
   where
-    phi = Let arg $ Phi $ PhiBranch entryName (VarLocal $ Local arg' t) : tailBranches
+    phi = Let arg $ Phi $ PhiBranch entryName (Local arg' t) : tailBranches
     tailBranches = map (\(TailRecursion block (Right v:_)) -> PhiBranch block v) tails
 
     -- Remove first argument from tails, for recursive call

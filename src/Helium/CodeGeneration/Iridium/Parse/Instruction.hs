@@ -29,10 +29,10 @@ pInstruction quantors = do
               else
                 return False
         "jump" -> Jump <$> pId
-        "match" -> Match <$> pVariable quantors <* pWhitespace <* pSymbol "on" <* pWhitespace <*> pMatchTarget <* pWhitespace <*> pInstantiation quantors <*> pArguments pMatchField <*> pInstruction quantors
-        "case" -> Case <$> pVariable quantors <* pWhitespace <*> pCase
-        "return" -> Return <$> pVariable quantors
-        "unreachable" -> Unreachable <$> pMaybe (pVariable quantors)
+        "match" -> Match <$> pLocal quantors <* pWhitespace <* pSymbol "on" <* pWhitespace <*> pMatchTarget <* pWhitespace <*> pInstantiation quantors <*> pArguments pMatchField <*> pInstruction quantors
+        "case" -> Case <$> pLocal quantors <* pWhitespace <*> pCase
+        "return" -> Return <$> pLocal quantors
+        "unreachable" -> Unreachable <$> pMaybe (pLocal quantors)
         _ -> pError "expected instruction"
 
 pMatchField :: Parser (Maybe Id)

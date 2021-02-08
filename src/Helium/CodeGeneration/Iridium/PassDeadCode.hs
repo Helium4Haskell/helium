@@ -110,28 +110,25 @@ analyseInstruction env (LetAlloc binds next) = CSequence
   $ analyseInstruction env next
 analyseInstruction env (Jump _) = CEmpty
 analyseInstruction env (Match var _ _ args next) = CSequence
-  (fromList $ map (\name -> CImplies name [variableName var]) $ catMaybes args)
+  (fromList $ map (\name -> CImplies name [localName var]) $ catMaybes args)
   $ analyseInstruction env next
-analyseInstruction env (Case var _) = CImplies (envFunction env) [variableName var]
-analyseInstruction env (Return var) = CImplies (envFunction env) [variableName var]
-analyseInstruction env (Unreachable (Just var)) = CImplies (envFunction env) [variableName var]
+analyseInstruction env (Case var _) = CImplies (envFunction env) [localName var]
+analyseInstruction env (Return var) = CImplies (envFunction env) [localName var]
+analyseInstruction env (Unreachable (Just var)) = CImplies (envFunction env) [localName var]
 analyseInstruction env (Unreachable Nothing) = CEmpty
 
-analyseCall :: Id -> Id -> [Either Type Variable] -> Constraint
-analyseCall var fn args = CSequence argumentConstraints $ fromList $
+analyseCall :: Id -> Id -> [Either Type Local] -> Constraint
+analyseCall var fn args = fromList $
   CImplies var [fn]
   : CBindCount fn (length args)
   : zipWith constraintArgument args [0..]
   where
-    constraintArgument (Right arg) index = CArgument var fn index $ variableName arg
+    constraintArgument (Right arg) index = CArgument var fn index $ localName arg
     constraintArgument (Left tp) index = CEmpty
-    argumentConstraints = fromList $ map bindCountInVariable $ rights args
 
 analyseBind :: Bind -> Constraint
 analyseBind (Bind var (BindTargetFunction fn) args) = analyseCall var (globalFunctionName fn) args
-analyseBind (Bind var target args) = CSequence
-  (fromList $ map bindCountInVariable args')
-  $ CImplies var $ targetVars ++ map variableName args'
+analyseBind (Bind var target args) = CImplies var $ targetVars ++ map localName args'
   where
     args' = rights args
     targetVars = case target of
@@ -245,10 +242,10 @@ transformExpr supply res (Call fn args) = (Call (transformGlobal res fn) args', 
     (args', instr) = transformCall supply res fn args (getArgTypes args)
 transformExpr _ _ expr = (expr, id)
 
-getArgTypes :: [Either Type Variable] -> [Either () Type]
+getArgTypes :: [Either Type Local] -> [Either () Type]
 getArgTypes = map argType
   where
-    argType (Right var) = Right $ variableType var
+    argType (Right var) = Right $ localType var
     argType (Left _) = Left ()
 
 transformBind :: NameSupply -> Result -> Bind -> (Bind, Instruction -> Instruction)
@@ -262,19 +259,19 @@ transformBind supply res@(Result env _ _) (Bind var (BindTargetFunction global@(
     global'@(GlobalFunction name arity tp) = transformGlobal res global
 transformBind _ _ bind = (bind, id)
 
-transformCall :: NameSupply -> Result -> GlobalFunction -> [Either Type Variable] -> [Either () Type] -> ([Either Type Variable], Instruction -> Instruction)
+transformCall :: NameSupply -> Result -> GlobalFunction -> [Either Type Local] -> [Either () Type] -> ([Either Type Local], Instruction -> Instruction)
 transformCall supply res fn args argTypes = (args', flip (foldr id) instrs)
   where
     (args', instrs) = unzip $ catMaybes $ mapWithSupply transformArgument supply $ zip (zip args argTypes)
       -- In case of a LetAlloc bind, the function may be oversaturated. Those oversaturated arguments must always be preserved
       $ preservedArguments res (globalFunctionName fn) ++ repeat True
     
-    transformArgument :: NameSupply -> ((Either Type Variable, Either () Type), Bool) -> Maybe (Either Type Variable, Instruction -> Instruction)
+    transformArgument :: NameSupply -> ((Either Type Local, Either () Type), Bool) -> Maybe (Either Type Local, Instruction -> Instruction)
     transformArgument _ (_, False) = Nothing
     transformArgument s ((Right arg, Right t), True)
-      | not $ isLive res $ variableName arg = Just (Right $ VarLocal $ Local name t, Let name $ Undefined t)
+      | not $ isLive res $ localName arg = Just (Right $ Local name t, Let name $ Undefined t)
       where
-        (name, _) = freshIdFromId (variableName arg) s
+        (name, _) = freshIdFromId (localName arg) s
     transformArgument s ((arg, _), True) = Just $ (arg, id)
 
 transformGlobal :: Result -> GlobalFunction -> GlobalFunction

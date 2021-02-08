@@ -53,7 +53,7 @@ pMethod = do
       expr <- pExpression quantors
       annotations <- pAnnotations
       let result = idFromString "result"
-      let b = Block (idFromString "entry") (Let result expr $ Return $ VarLocal $ Local result $ typeToStrict returnType)
+      let b = Block (idFromString "entry") (Let result expr $ Return $ Local result $ typeToStrict returnType)
       return $ Method tp' args returnType annotations b []
     _ -> pError "Expected '{' or '=' in a method declaration"
   where
@@ -88,7 +88,7 @@ pMethodArgument quantors = do
   c <- lookahead
   case c of
     '%' -> do
-      arg <- pLocal (pType' quantors)
+      arg <- pLocal' (pType' quantors)
       return (Right arg, quantors)
     _ -> do
       pSymbol "forall"
@@ -144,7 +144,7 @@ pAbstractMethod = do
       pWhitespace
       AbstractMethod sourceType fnType <$> pAnnotations
 
-pAnnotations :: Parser [Annotation]
+pAnnotations :: Parser [MethodAnnotation]
 pAnnotations =
   do
     eof <- isEndOfFile
@@ -160,19 +160,19 @@ pAnnotations =
       c <- lookahead
       return $ c /= ']'
 
-pAnnotation :: Parser Annotation
+pAnnotation :: Parser MethodAnnotation
 pAnnotation = do
   word <- pWord
   pWhitespace
   case word of
-    "trampoline" -> return AnnotateTrampoline
+    "trampoline" -> return MethodAnnotateTrampoline
     "callconvention" -> do
       pToken ':'
       conv <- pWord
       case conv of
-        "c" -> return $ AnnotateCallConvention CCC
-        "fast" -> return $ AnnotateCallConvention CCFast
-        "preserve_most" -> return $ AnnotateCallConvention CCPreserveMost
+        "c" -> return $ MethodAnnotateCallConvention CCC
+        "fast" -> return $ MethodAnnotateCallConvention CCFast
+        "preserve_most" -> return $ MethodAnnotateCallConvention CCPreserveMost
         _ -> pError $ "Unknown calling convention: " ++ show conv
-    "implicit_io" -> return AnnotateImplicitIO
+    "implicit_io" -> return MethodAnnotateImplicitIO
     _ -> pError $ "Unknown annotation: " ++ show word
