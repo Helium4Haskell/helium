@@ -163,7 +163,7 @@ merge as bs
     f (Just idxA, Just idxB)
       | a == b    = Just (a, (incA idxA, incB idxB))
       | a < b     = Just (a, (incA idxA, Just idxB))
-      | otherwise = Just (b, (Just idxB, incB idxB))
+      | otherwise = Just (b, (Just idxA, incB idxB))
       where
         a = as V.! idxA
         b = bs V.! idxB
@@ -171,12 +171,12 @@ merge as bs
     incA :: Int -> Maybe Int
     incA idx
       | idx >= V.length as - 1 = Nothing
-      | otherwise = Just idx
+      | otherwise = Just $ idx + 1
 
     incB :: Int -> Maybe Int
     incB idx
       | idx >= V.length bs - 1 = Nothing
-      | otherwise = Just idx
+      | otherwise = Just $ idx + 1
 
 -- Returns the elements of the first vector which are not present in the second.
 -- Assumes that both vectors are sorted and do not contain duplicates.
@@ -200,12 +200,12 @@ diff as bs
     incA :: Int -> Maybe Int
     incA idx
       | idx >= V.length as - 1 = Nothing
-      | otherwise = Just idx
+      | otherwise = Just $ idx + 1
 
     incB :: Int -> Maybe Int
     incB idx
       | idx >= V.length bs - 1 = Nothing
-      | otherwise = Just idx
+      | otherwise = Just $ idx + 1
 
 -- Given two sorted vectors with no duplicates, checks whether all elements of the first vector are also present in the second.
 subVector :: V.Vector Word64 -> V.Vector Word64 -> Bool
@@ -241,3 +241,9 @@ nubSorted (x : xs) = x : go x xs
     go y (z : zs)
       | y == z = go y zs
       | otherwise = z : go z zs
+
+mapAccumLM :: Monad m => (a -> b -> m (a,c)) -> a -> [b] -> m (a,[c])
+mapAccumLM _ s1 [] = return (s1, [])
+mapAccumLM f s1 (x:xs) = do 
+  (s2, y) <- f s1 x
+  fmap (y:) <$> mapAccumLM f s2 xs

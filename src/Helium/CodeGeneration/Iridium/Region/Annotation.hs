@@ -55,6 +55,9 @@ type Names = (QuantorNames, Env String, Env String) -- Type variable names, anno
 
 data Precedence = PrecLow | PrecApp | PrecHigh deriving (Eq, Ord)
 
+instance Show Annotation where
+  showsPrec _ = showAnnotation ([], emptyEnv, emptyEnv) 0 PrecHigh
+
 showAnnotation :: Names -> Int -> Precedence -> Annotation -> ShowS
 showAnnotation names indentation precedence annotation = case annotation of
   AFix f s g
@@ -105,7 +108,7 @@ showAnnotation names indentation precedence annotation = case annotation of
         parens PrecHigh $ arguments . showString " -> " . showAnnotation names' indentation PrecHigh a
       else
         parensMultiline PrecHigh $ \indentation' ->
-          showString "λ" . arguments . showString " ->\r\n"
+          arguments . showString " ->\r\n"
           . showIndentation (indentation' + 1) . showAnnotation names' (indentation' + 1) PrecHigh a
 
   AInstantiate a tp

@@ -25,12 +25,12 @@ containment' env tp vars = relationFromConstraints $ containment'' env tp vars
 
 containment'' :: DataTypeEnv -> Type -> RegionVars -> [RelationConstraint]
 containment'' env tp vars
-  | typeIsStrict tp
+  | not $ typeIsStrict tp
   , RegionVarsTuple [RegionVarsSingle regionThunk, RegionVarsSingle regionValue, regionFields] <- vars
     = Outlives regionThunk regionValue
     : map (Outlives regionValue) (flattenRegionVars regionFields) 
     ++ containmentChildren env tp [] regionFields
-  | not $ typeIsStrict tp
+  | typeIsStrict tp
   , RegionVarsTuple [RegionVarsSingle regionValue, regionFields] <- vars
     = map (Outlives regionValue) (flattenRegionVars regionFields)
     ++ containmentChildren env tp [] regionFields

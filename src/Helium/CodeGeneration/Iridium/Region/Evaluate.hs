@@ -1,5 +1,6 @@
 module Helium.CodeGeneration.Iridium.Region.Evaluate
   ( simplify, weakSimplify, afixEscape --, widen
+  , strengthen, weaken
   ) where
 
 import Control.Applicative
