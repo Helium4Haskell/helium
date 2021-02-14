@@ -58,7 +58,7 @@ generate (GlobalEnv typeEnv dataTypeEnv globals) (Declaration _ _ _ _ method@(Me
 
     -- Assumes the annotation is present in the map
     findAnnotation :: Key -> Annotation
-    findAnnotation k = lookupAnnotation k (error "generate: key not found")
+    findAnnotation k = lookupAnnotation k (error $ "generate: key not found: " ++ show k)
 
     fixpoint :: Annotation
     fixpoint
@@ -76,6 +76,7 @@ generate (GlobalEnv typeEnv dataTypeEnv globals) (Declaration _ _ _ _ method@(Me
 
     fixpointBody :: Annotation
     fixpointBody = ATuple
+      $ fmap addLambdas
       $ annotationEffects
       : annotationReturn
       : annotationLocals
@@ -135,7 +136,7 @@ generate (GlobalEnv typeEnv dataTypeEnv globals) (Declaration _ _ _ _ method@(Me
     -- from the scope
     strengthen' :: Annotation -> Annotation
     strengthen'
-      = fromJust (error "generate: Annotation on the return uses a region or annotation variable from the return or previous-thunk, which is not in scope at that place")
+      = fromMaybe (error "generate: Annotation on the return uses a region or annotation variable from the return or previous-thunk, which is not in scope at that place")
       . strengthen 0 2 (regionVarsSize (methodEnvReturnRegions methodEnv) + 1)
 
 assign :: GlobalEnv -> Method -> MethodEnv
@@ -299,7 +300,7 @@ lookupLocal env name = case lookupMap name $ methodEnvVars env of
         Right var -> AVar var
     in (annotation, regions)
 
-data Key = KeyEffect | KeyReturn | KeyLocal !Int deriving (Eq, Ord)
+data Key = KeyEffect | KeyReturn | KeyLocal !Int deriving (Eq, Ord, Show)
 
 type Gather = [(Key, Annotation)]
 
@@ -329,7 +330,7 @@ gatherInstruction genv env instruction = case instruction of
         (aEffect, aValue) = gatherExpression genv env name expr regions
       in
         effect aEffect ++ gatherLocal idx aValue ++ go next
-  LetAlloc binds next -> binds >>= gatherBind genv env
+  LetAlloc binds next -> (binds >>= gatherBind genv env) ++ go next
   Jump _ -> []
   Match var target instantiation fields next -> gatherMatch genv env var target instantiation fields ++ go next
   Case _ _ -> []
