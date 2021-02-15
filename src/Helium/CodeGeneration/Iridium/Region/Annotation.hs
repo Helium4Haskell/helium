@@ -136,7 +136,7 @@ showAnnotation names indentation precedence annotation = case annotation of
   ATuple as
     | isSimple annotation -> showString "(" . showsIntercalate (showAnnotation' indentation PrecHigh) ", " as . showString ")"
     | otherwise ->
-      newline . showString "( "
+      showString "( "
       . showsIntercalate (showAnnotation' (indentation + 1) PrecHigh) (newline ", ") as . newline . showString ")"
   AProject a idx -> showAnnotation' indentation PrecLow a . showString "." . shows idx
 
@@ -164,9 +164,9 @@ showAnnotation names indentation precedence annotation = case annotation of
 
     parensMultiline :: Precedence -> (Int -> ShowS) -> ShowS
     parensMultiline expected s
-      | precedence >= expected = newline . s indentation
+      | precedence >= expected = s indentation
       | otherwise = 
-        newline . showString "( "
+        showString "( "
         . s (indentation + 1)
         . newline . showString ")"
 

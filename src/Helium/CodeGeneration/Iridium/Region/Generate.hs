@@ -42,7 +42,14 @@ data MethodEnv = MethodEnv
 
 generate :: GlobalEnv -> Declaration Method -> Annotation
 generate (GlobalEnv typeEnv dataTypeEnv globals) (Declaration _ _ _ _ method@(Method fnType arguments _ _ _ _))
-  = result fixpoint
+  -- Equivalent to 'result fixpoint', but now fixpoint is shared in the generared annotation term.
+  = AApp
+      ( ALam fixpointSort RegionSortUnit LifetimeContextAny
+        $ result $ AVar $ AnnotationVar $ methodEnvArgumentCount methodEnv + 1
+      )
+      fixpoint
+      (RegionVarsTuple [])
+      LifetimeContextAny
   where
     methodEnv = assign genv method
 
@@ -117,7 +124,7 @@ generate (GlobalEnv typeEnv dataTypeEnv globals) (Declaration _ _ _ _ method@(Me
               | [] <- args
                 = ALam SortUnit RegionSortMonomorphic LifetimeContextAny
                 $ ALam SortUnit (methodEnvReturnRegionSort methodEnv) LifetimeContextLocalBottom
-                $ AProject annotation 0
+                $ AProject (weaken 0 2 (regionSortSize (methodEnvReturnRegionSort methodEnv) + 1) annotation) 0
               | otherwise
                 = ALam SortUnit RegionSortMonomorphic LifetimeContextAny
                 $ ALam SortUnit (RegionSortTuple [RegionSortMonomorphic, RegionSortUnit]) LifetimeContextLocalBottom
@@ -127,7 +134,7 @@ generate (GlobalEnv typeEnv dataTypeEnv globals) (Declaration _ _ _ _ method@(Me
                 $ RegionLocal 1 : flattenRegionVars (regionSortToVars 2 rs)
 
             rest 
-              | [] <- args = Just $ AProject (strengthen' annotation) 1
+              | [] <- args = Just $ AProject annotation 1
               | otherwise = go args
 
         go [] = Nothing
@@ -136,7 +143,7 @@ generate (GlobalEnv typeEnv dataTypeEnv globals) (Declaration _ _ _ _ method@(Me
     -- from the scope
     strengthen' :: Annotation -> Annotation
     strengthen'
-      = fromMaybe (error "generate: Annotation on the return uses a region or annotation variable from the return or previous-thunk, which is not in scope at that place")
+      = fromMaybe (error "generate: Annotation on the return value or a local variable uses a region or annotation variable from the return or previous-thunk, which is not in scope at that place")
       . strengthen 0 2 (regionVarsSize (methodEnvReturnRegions methodEnv) + 1)
 
 assign :: GlobalEnv -> Method -> MethodEnv
@@ -205,7 +212,7 @@ assign genv@(GlobalEnv typeEnv dataTypeEnv _) method@(Method _ arguments returnT
     assignLocal (nextAnnotation, nextRegion) (Local name tp)
       = ( (nextAnnotation + 1, nextRegion + regionSortSize rs),
           ( name
-          , ( Left (nextAnnotation, applyLocal (AVar $ AnnotationVar nextAnnotation))
+          , ( Left (nextAnnotation, applyLocal (AProject fixpointArgument nextAnnotation))
             , regionSortToVars nextRegion rs
             )
           )

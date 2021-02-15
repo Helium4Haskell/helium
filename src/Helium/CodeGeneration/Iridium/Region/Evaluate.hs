@@ -38,14 +38,14 @@ simplify env annotation = case weakSimplifyStep env annotation of
       , Just f' <- strengthen 0 1 (regionSortSize regionSort) f = f' -- eta reduction
       | otherwise = ALam argSort regionSort lifetime body'
       where
-        body' = weakSimplify env body
+        body' = simplify env body
     nested (AForall q body)
       | ABottom s <- body' = ABottom (SortForall q s)
       | AInstantiate a (TVar 0) <- body'
       , Just a' <- strengthen 1 0 0 a = a' -- eta reduction of quantification
       | otherwise = AForall q body'
       where
-        body' = weakSimplify env body
+        body' = simplify env body
     nested AJoin{} = error "simplify: AJoin is not properly simplified"
     nested (AInstantiate a tp) = AInstantiate (nested a) tp -- 'a' is already weakly normalized.
     nested (AApp a1 a2 r lc) = AApp (nested a1) (simplify env a2) r lc -- 'a1' is already weakly normalized.
@@ -259,7 +259,7 @@ apply env annotation argument argumentRegion lc
     apply' lambdaCount simplified (AJoin a1 a2) = (False, AJoin (snd $ apply' lambdaCount simplified a1) (snd $ apply' lambdaCount simplified a2))
     apply' _ _ (ABottom s) = case s of
       SortFun _ _ _ s' -> (True, ABottom s')
-      _ -> error "Helium.CodeGeneration.Iridium.Region.Annotation.apply: Bottom has wrong sort"
+      _ -> error $ "Helium.CodeGeneration.Iridium.Region.Annotation.apply: Bottom has wrong sort: " ++ showSort [] s ""
     apply' lambdaCount _ (ALam _ rs _ body) = (False, substitute (regionVarMapping rs argumentRegion []) lambdaCount 0 body)
     apply' lambdaCount simplified (AFix a1 s a2) = (False, AFix (mapInFunction (snd . apply' (lambdaCount + 1) simplified) s a1) s a2) -- Start with lambdaCount=1, as mapInFunction also creates a lambda. This lambda does not have region arguments.
     apply' lambdaCount False annotation' = uncurry (apply' lambdaCount) $ weakSimplifyStep env annotation'
