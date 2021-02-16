@@ -37,18 +37,18 @@ packages:
   original:
     url: https://github.com/Helium4Haskell/Top/archive/f8a61d1f3f68066e23cce768abdba4c1ddf3e907.tar.gz
 - completed:
-    size: 274183
+    size: 274720
     subdir: src/lib
-    url: https://github.com/Helium4Haskell/lvm/archive/b36d193c694012ded6f575fa38475d3ab4fa80c8.tar.gz
+    url: https://github.com/Helium4Haskell/lvm/archive/95d89f8498b9895d59f740d13018462325bd226e.tar.gz
     name: lvmlib
     version: '1.9'
-    sha256: 35187227cd56aeecaa7a1db0c7df0cfbce5097077cebaefed27f04ae05fa6ef8
+    sha256: 477c74c43995a4a22cf5de38eaf8de64807148416fa719d058074c511e4bdadf
     pantry-tree:
       size: 1785
-      sha256: e0689f195b7b8147d2a1b6e666edd412d058400b5f3485bb3853eeb0b9dde7a0
+      sha256: 6920ed2cabc372ea5938a66740cf09ef6d3ac8f376dfb9708b35589680caa70e
   original:
     subdir: src/lib
-    url: https://github.com/Helium4Haskell/lvm/archive/b36d193c694012ded6f575fa38475d3ab4fa80c8.tar.gz
+    url: https://github.com/Helium4Haskell/lvm/archive/95d89f8498b9895d59f740d13018462325bd226e.tar.gz
 snapshots:
 - completed:
     size: 532177
