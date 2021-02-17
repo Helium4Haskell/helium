@@ -15,6 +15,15 @@ constrAdd :: Constr -> Constr -> Constr
 constrAdd = M.unionWith (+)
 
 -- | Index a constraint set (default 0)
-constrIdx :: Constr -> Int -> Int
-constrIdx m x = M.findWithDefault 0 x m
+constrIdx :: Int -> Constr -> Int
+constrIdx = M.findWithDefault 0
 
+-- | Remove a region variable from the constraint set
+constrRem :: RegVar -> Constr -> Constr
+constrRem = M.delete
+
+-- | Instantiate a region variable in the constraint set
+constrInst :: Constr -- ^ The instantiation
+           -> RegVar -- ^ The region variable to instantiate 
+           -> Constr -> Constr
+constrInst inst r c = constrAdd inst $ constrRem r c

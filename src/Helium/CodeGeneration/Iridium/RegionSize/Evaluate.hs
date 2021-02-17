@@ -15,7 +15,7 @@ import Helium.CodeGeneration.Iridium.RegionSize.Utils
 
 -- | Fully evaluate an expression
 eval :: Annotation -> Annotation
-eval = execAnnAlg evalAlg
+eval = foldAnnAlg evalAlg
   where evalAlg = idAnnAlg {
     aAdd   = \_ -> add,
     aJoin  = \_ -> join,
@@ -47,8 +47,7 @@ join (ALam   s a) (ALam   _ b) = ALam   s $ AJoin a b
 join (AApl   s a) (AApl   _ b) = AApl   s $ AJoin a b
 join (AQuant q a) (AQuant _ b) = AQuant q $ AJoin a b
 join (AInstn a t) (AInstn b _) = AInstn (AJoin a b) t
-join _ _ = error "No join" -- TODO: Return Join
-
+join _ _ = error "No join" -- TODO: Return Join?
 
 
 -- | Only project if subannotation has been evaluated to a tuple
@@ -60,26 +59,28 @@ project _ t = t
 
 -- | TODO: Application
 application :: Annotation -> Annotation -> Annotation
-application (ALam s f) x | sortIsAnnotation s = execAnnAlg subsAnnAlg f
-                         | sortIsRegion     s = execAnnAlg subsRegAlg f
+application (ALam s f) x | sortIsAnnotation s = foldAnnAlg subsAnnAlg f
+                         | sortIsRegion     s = foldAnnAlg subsRegAlg f
                          | otherwise = rsError "Sort is neither region or annotation!?" -- TODO: Remove error? should never occur
   where
     -- | Substitute a variable for an annotation
     subsAnnAlg :: AnnAlg Annotation
     subsAnnAlg = idAnnAlg {
-      aVar = \d idx -> if d == idx then x else AVar idx
+      aVar = \d idx -> if d == idx then annReIndex d x else AVar idx
     }
     -- | Substitute a region variable for a region
     subsRegAlg :: AnnAlg Annotation
-    subsRegAlg = idAnnAlg -- TODO
+    subsRegAlg = idAnnAlg {
+      -- TODO: reindex as well
+      aConstr = \d c -> AConstr $ regVarSubs x d c
+    }
 application f x = AApl f x
-
-
 
 
 -- | Instantiate a type if it starts with a quantification 
 instantiate :: Annotation -> Type -> Annotation
-instantiate (AQuant quant anno) ty = execAnnAlg annInstAlg anno
+-- TODO: Reindex (simpler reindex? All subvariables have to be decreased by 1)
+instantiate (AQuant quant anno) ty = foldAnnAlg annInstAlg anno
   where annInstAlg = idAnnAlg {
     aLam   = \_ s a -> ALam (sortInstantiate quant ty s) a,
     aFix   = \_ s a -> AFix (sortInstantiate quant ty s) a

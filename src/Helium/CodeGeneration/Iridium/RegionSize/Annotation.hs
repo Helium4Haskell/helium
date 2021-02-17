@@ -3,6 +3,7 @@ where
 
 import Helium.CodeGeneration.Iridium.RegionSize.Constraints
 import Helium.CodeGeneration.Iridium.RegionSize.Sort
+import Helium.CodeGeneration.Iridium.RegionSize.Utils
 
 import Data.List
 import qualified Data.Map as M
@@ -91,8 +92,11 @@ idAnnAlg = AnnAlg {
   aFix    = \_ -> AFix   
 }
 
-execAnnAlg :: AnnAlg a -> Annotation -> a
-execAnnAlg alg ann = go 0 ann
+foldAnnAlg :: AnnAlg a -> Annotation -> a
+foldAnnAlg = foldAnnAlgN 0
+
+foldAnnAlgN :: Int -> AnnAlg a -> Annotation -> a
+foldAnnAlgN n alg ann = go n ann
   where go d (AVar   idx) = aVar    alg d idx
         go d (ALam   s a) = aLam    alg d s $ go (d + 1) a
         go d (AApl   a b) = aApl    alg d (go d a) (go d b)
@@ -109,12 +113,60 @@ execAnnAlg alg ann = go 0 ann
         go d (AConstr  c) = aConstr alg d c
 
 ----------------------------------------------------------------
+-- De Bruijn re-indexing 
+----------------------------------------------------------------
+
+-- TODO: I feel like something will go wrong: we remove a lambda but all the vars in the body keep the same idx?
+
+-- | Re-index the debruijn indices of an annotation 
+annReIndex :: Int -- ^ Depth of substitution 
+           -> Annotation -> Annotation
+annReIndex n = foldAnnAlgN 1 reIdxAlg -- Start at depth 1
+  where reIdxAlg = idAnnAlg {
+    aLam    = \d s a -> ALam (sortReIndex d n s) a,
+    aFix    = \d s a -> AFix (sortReIndex d n s) a,
+    aConstr = \d c   -> AConstr (constrReIndex n d c), 
+    aVar    = \d idx -> AVar (idxReIndex n d idx)
+  }
+
+-- | Re-index the debruin indices of a sort
+sortReIndex :: Int -- ^ Depth in annotation 
+            -> Int -- ^ Depth of substitution
+            -> Sort -> Sort
+sortReIndex annD n = foldSortAlgN annD reIdxAlg
+  where reIdxAlg = idSortAlg {
+    sortPolyRegion = \d idx ts -> SortPolyRegion (idxReIndex n d idx) ts,
+    sortPolySort   = \d idx ts -> SortPolySort   (idxReIndex n d idx) ts
+  }
+
+-- | Re-index the debruijn indices of a cosntraint set 
+constrReIndex :: Int -- ^ Depth of substitution 
+              -> Int -- ^ Depth of constraint set in annotation
+              -> Constr -> Constr
+constrReIndex n d = M.mapKeys (idxReIndex n d)
+
+-- | Reindex a debruin index
+idxReIndex :: Int -- ^ Depth of substitution  
+           -> Int -- ^ Depth of variable in lambda
+           -> Int -> Int
+idxReIndex n d idx = if d > n -- If d > n: var points outside of applicated term
+                     then idx + n -- Reindex
+                     else idx
+
+----------------------------------------------------------------
 -- Annotation utilities
 ----------------------------------------------------------------
 
--- | TODO: ID function as annotation
-annotationId :: Annotation
-annotationId = AQuant undefined (ALam (SortConstr) (AVar 0)) 
+-- | Initialize region variables in a constraint set
+regVarSubs :: Annotation -> RegVar -> Constr -> Constr 
+regVarSubs ann r c = constrInst inst r c
+  where n    = constrIdx r c
+        inst = collect n ann
 
-annReIndex :: Annotation
-annReIndex = undefined -- TODO: reindexing
+-- | Collect all region variables in tuple
+collect :: Int -> Annotation -> Constr
+collect _ AUnit       = M.empty
+collect n (AVar    a) = M.singleton a n
+collect n (ATuple ps) = foldr constrAdd M.empty $ map (collect n) ps
+collect _ _ = rsError "Collect of non region annotation"
+

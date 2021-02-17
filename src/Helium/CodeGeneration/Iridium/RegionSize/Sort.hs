@@ -1,4 +1,9 @@
 module Helium.CodeGeneration.Iridium.RegionSize.Sort
+  ( Sort(..), 
+    SortAlg(..), idSortAlg, foldSortAlg, foldSortAlgN, 
+    sortInstantiate,
+    sortIsRegion, sortIsAnnotation
+  )
 where
 
 import Helium.CodeGeneration.Iridium.RegionSize.Utils
@@ -38,43 +43,50 @@ instance Show Sort where
 -- Sort algebra
 ----------------------------------------------------------------
 
+type Depth = Int
+
 -- | Algebra for sorts
 data SortAlg a = 
   SortAlg { 
-    sortLam        :: a -> a -> a,
-    sortConstr     :: a,
-    sortUnit       :: a,
-    sortQuant      :: Quantor -> a -> a,
-    sortMonoRegion :: a,
-    sortPolyRegion :: TypeVar -> [Type] -> a,
-    sortPolySort   :: TypeVar -> [Type] -> a,
-    sortTuple      :: [a] -> a
+    sortLam        :: Int -> a -> a -> a,
+    sortConstr     :: Int -> a,
+    sortUnit       :: Int -> a,
+    sortQuant      :: Int -> Quantor -> a -> a,
+    sortMonoRegion :: Int -> a,
+    sortPolyRegion :: Int -> TypeVar -> [Type] -> a,
+    sortPolySort   :: Int -> TypeVar -> [Type] -> a,
+    sortTuple      :: Int -> [a] -> a
   }
 
 -- | Algebra that does not change the sort, usefull to edit for specific cases 
 idSortAlg :: SortAlg Sort
 idSortAlg = SortAlg {
-  sortLam        = SortLam, 
-  sortConstr     = SortConstr, 
-  sortUnit       = SortUnit, 
-  sortQuant      = SortQuant, 
-  sortMonoRegion = SortMonoRegion, 
-  sortPolyRegion = SortPolyRegion, 
-  sortPolySort   = SortPolySort, 
-  sortTuple      = SortTuple  
+  sortLam        = \_ -> SortLam, 
+  sortConstr     = \_ -> SortConstr, 
+  sortUnit       = \_ -> SortUnit, 
+  sortQuant      = \_ -> SortQuant, 
+  sortMonoRegion = \_ -> SortMonoRegion, 
+  sortPolyRegion = \_ -> SortPolyRegion, 
+  sortPolySort   = \_ -> SortPolySort, 
+  sortTuple      = \_ -> SortTuple  
 }
 
+
 -- | Execute a sort algebra on a sort
-execSortAlg :: SortAlg a -> Sort -> a
-execSortAlg alg = go
-  where go (SortLam        a b ) = sortLam alg (go a) (go b)
-        go (SortConstr         ) = sortConstr alg
-        go (SortUnit           ) = sortUnit   alg
-        go (SortQuant      a s ) = sortQuant      alg a $ go s
-        go (SortMonoRegion     ) = sortMonoRegion alg
-        go (SortPolyRegion a ts) = sortPolyRegion alg a ts  
-        go (SortPolySort   a ts) = sortPolySort   alg a ts
-        go (SortTuple      ss  ) = sortTuple      alg $ map (go) ss
+foldSortAlg :: SortAlg a -> Sort -> a
+foldSortAlg = foldSortAlgN 0
+
+-- | Execute a sort algebra on a sort, staring at depth N
+foldSortAlgN :: Int -> SortAlg a -> Sort -> a
+foldSortAlgN n alg = go n
+  where go d (SortLam        a b ) = sortLam        alg d (go d a) (go d b)
+        go d (SortConstr         ) = sortConstr     alg d
+        go d (SortUnit           ) = sortUnit       alg d
+        go d (SortQuant      a s ) = sortQuant      alg d a (go d s)
+        go d (SortMonoRegion     ) = sortMonoRegion alg d
+        go d (SortPolyRegion a ts) = sortPolyRegion alg d a ts  
+        go d (SortPolySort   a ts) = sortPolySort   alg d a ts
+        go d (SortTuple      ss  ) = sortTuple      alg d $ map (go d) ss
 
 ----------------------------------------------------------------
 -- Sort utilities
@@ -86,16 +98,15 @@ execSortAlg alg = go
 
 -- | Instatiate a quantified type in a sort
 sortInstantiate :: Quantor -> Type -> Sort -> Sort
-sortInstantiate quant t = execSortAlg instAlg
+sortInstantiate quant t = foldSortAlg instAlg
   where instAlg = idSortAlg {
     sortPolyRegion = undefined, -- \a ts -> regionAssign $ typeInstantiate t ts, -- TODO: What if a != quant and extra polymorphic arguments in ts
     sortPolySort   = undefined  -- \a ts -> sortAssign   $ typeInstantiate t ts  -- TODO: What if a != quant and extra polymorphic arguments in ts
   }
 
-typeInstantiate :: Type -> [Type] -> Type
-typeInstantiate t [] = t 
-typeInstantiate _ _ = rsError "Datatypes not implemented yet"
-
+-- typeInstantiate :: Type -> [Type] -> Type
+-- typeInstantiate t [] = t 
+-- typeInstantiate _ _ = rsError "Datatypes not implemented yet"
 
 {-| Evaluate if a sort is a region
 For sort tuples we recurse into the first element.
@@ -106,7 +117,6 @@ sortIsRegion SortMonoRegion       = True
 sortIsRegion (SortPolyRegion _ _) = True
 sortIsRegion (SortTuple as)       = sortIsRegion $ as !! 0
 sortIsRegion _ = False
-
 
 -- | Check if a sort is an annotation sort
 sortIsAnnotation :: Sort -> Bool
