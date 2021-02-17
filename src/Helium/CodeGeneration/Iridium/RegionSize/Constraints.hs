@@ -4,6 +4,7 @@ where
 import qualified Data.Map as M
 
 type RegVar = Int
+type Region = Int 
 type Constr = M.Map RegVar Int
 
 -- | Join of constraint sets

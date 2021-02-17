@@ -1,5 +1,7 @@
 module Helium.CodeGeneration.Iridium.RegionSize.Evaluate
-    ( eval
+    ( eval,
+    -- TODO: Remove these:
+    add, join, application, instantiate, project
     ) where 
 
 import Lvm.Core.Type
@@ -24,12 +26,10 @@ eval = foldAnnAlg evalAlg
     aProj  = \_ -> project
   }
 
-
 -- | Only add when the subannotations are constraints
 add :: Annotation -> Annotation -> Annotation
 add (AConstr c1) (AConstr c2) = AConstr $ constrAdd c1 c2
 add c1 c2 = AAdd c1 c2 -- TODO: Addition of other sorts?
-
 
 -- | Join of annotations
 join :: Annotation -> Annotation -> Annotation
@@ -66,20 +66,22 @@ application (ALam s f) x | sortIsAnnotation s = foldAnnAlg subsAnnAlg f
     -- | Substitute a variable for an annotation
     subsAnnAlg :: AnnAlg Annotation
     subsAnnAlg = idAnnAlg {
-      aVar = \d idx -> if d == idx then annReIndex d x else AVar idx
+      aVar = \d idx -> if d == idx 
+                       then annReIndex d x -- Reindex
+                       else AVar $ if idx > d then idx - 1 else idx -- Weaken if it points out of lambda 
     }
     -- | Substitute a region variable for a region
     subsRegAlg :: AnnAlg Annotation
     subsRegAlg = idAnnAlg {
       -- TODO: reindex as well
-      aConstr = \d c -> AConstr $ regVarSubs x d c
+      aConstr = \d c -> AConstr $ regVarSubst x d c
     }
 application f x = AApl f x
 
 
 -- | Instantiate a type if it starts with a quantification 
 instantiate :: Annotation -> Type -> Annotation
--- TODO: Reindex (simpler reindex? All subvariables have to be decreased by 1)
+-- TODO: Reindex (simpler reindex? All subvariables pointing out +have to be decreased by 1)
 instantiate (AQuant quant anno) ty = foldAnnAlg annInstAlg anno
   where annInstAlg = idAnnAlg {
     aLam   = \_ s a -> ALam (sortInstantiate quant ty s) a,

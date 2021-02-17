@@ -1,5 +1,9 @@
 module Helium.CodeGeneration.Iridium.RegionSize.Annotation
-where
+  ( Annotation(..), 
+    AnnAlg(..), foldAnnAlg, foldAnnAlgN, idAnnAlg,
+    annReIndex,
+    regVarSubst
+  ) where
 
 import Helium.CodeGeneration.Iridium.RegionSize.Constraints
 import Helium.CodeGeneration.Iridium.RegionSize.Sort
@@ -41,8 +45,8 @@ instance Show Annotation where
     show (AUnit     ) = "()"
     show (ATuple as ) = "(" ++ (intercalate "," $ map show as) ++ ")"
     show (AProj  i a) = "π_" ++ show i ++ "[" ++ show a ++ "]"
-    show (AAdd   a b) = show a ++ " ⊕ " ++ show b
-    show (AJoin  a b) = show a ++ " ⊔ " ++ show b
+    show (AAdd   a b) = show a ++ " ⊕  " ++ show b
+    show (AJoin  a b) = show a ++ " ⊔  " ++ show b
     show (AQuant _ a) = "(forall α." ++ show a ++ ")"
     show (AInstn a _) = show a ++ "{" ++ "tau" ++ "}"
     show (ATop      ) = "T"
@@ -145,7 +149,7 @@ constrReIndex :: Int -- ^ Depth of substitution
               -> Constr -> Constr
 constrReIndex n d = M.mapKeys (idxReIndex n d)
 
--- | Reindex a debruin index
+-- | Reindex a de Bruijn index
 idxReIndex :: Int -- ^ Depth of substitution  
            -> Int -- ^ Depth of variable in lambda
            -> Int -> Int
@@ -158,8 +162,8 @@ idxReIndex n d idx = if d > n -- If d > n: var points outside of applicated term
 ----------------------------------------------------------------
 
 -- | Initialize region variables in a constraint set
-regVarSubs :: Annotation -> RegVar -> Constr -> Constr 
-regVarSubs ann r c = constrInst inst r c
+regVarSubst :: Annotation -> RegVar -> Constr -> Constr 
+regVarSubst ann r c = constrInst inst r c
   where n    = constrIdx r c
         inst = collect n ann
 

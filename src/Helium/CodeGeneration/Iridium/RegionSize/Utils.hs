@@ -1,10 +1,15 @@
 module Helium.CodeGeneration.Iridium.RegionSize.Utils
-    (rsError)
-where
+    ( rsError, rsInfo
+    ) where
+
+import qualified Debug.Trace as T
 
 ----------------------------------------------------------------
--- Crash notices
+-- Console messages
 ----------------------------------------------------------------
 
 rsError :: String -> a
 rsError = error . (++) "[RegionSize] " 
+
+rsInfo :: a -> String -> a
+rsInfo v s = T.trace s v

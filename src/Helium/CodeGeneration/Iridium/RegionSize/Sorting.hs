@@ -1,5 +1,6 @@
 module Helium.CodeGeneration.Iridium.RegionSize.Sorting
-where
+    ( sort
+    ) where
 
 import Helium.CodeGeneration.Iridium.RegionSize.Sort
 import Helium.CodeGeneration.Iridium.RegionSize.Annotation
