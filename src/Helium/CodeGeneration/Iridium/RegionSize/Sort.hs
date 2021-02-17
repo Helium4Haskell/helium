@@ -1,10 +1,10 @@
-{-# LANGUAGE PatternSynonyms #-}
 module Helium.CodeGeneration.Iridium.RegionSize.Sort
 where
 
+import Helium.CodeGeneration.Iridium.RegionSize.Utils
+
 import Lvm.Core.Type
 import Data.List
-
 
 ----------------------------------------------------------------
 -- Sort
@@ -66,7 +66,7 @@ idSortAlg = SortAlg {
 
 -- | Execute a sort algebra on a sort
 execSortAlg :: SortAlg a -> Sort -> a
-execSortAlg alg sort = go sort
+execSortAlg alg = go
   where go (SortLam        a b ) = sortLam alg (go a) (go b)
         go (SortConstr         ) = sortConstr alg
         go (SortUnit           ) = sortUnit   alg
@@ -80,10 +80,9 @@ execSortAlg alg sort = go sort
 -- Sort utilities
 ----------------------------------------------------------------
 
+-- | TODO: Sort assign
 -- sortAssign :: Type -> Sort
 -- sortAssign (TAp a b) = 
-
-
 
 -- | Instatiate a quantified type in a sort
 sortInstantiate :: Quantor -> Type -> Sort -> Sort
@@ -95,4 +94,20 @@ sortInstantiate quant t = execSortAlg instAlg
 
 typeInstantiate :: Type -> [Type] -> Type
 typeInstantiate t [] = t 
-typeInstantiate t xs = error "Datatypes not implemented yet"
+typeInstantiate _ _ = rsError "Datatypes not implemented yet"
+
+
+{-| Evaluate if a sort is a region
+For sort tuples we recurse into the first element.
+A sort unit is never a region (can only occur in last element of SortTuple, which we do not check)
+-}
+sortIsRegion :: Sort -> Bool
+sortIsRegion SortMonoRegion       = True
+sortIsRegion (SortPolyRegion _ _) = True
+sortIsRegion (SortTuple as)       = sortIsRegion $ as !! 0
+sortIsRegion _ = False
+
+
+-- | Check if a sort is an annotation sort
+sortIsAnnotation :: Sort -> Bool
+sortIsAnnotation = not . sortIsRegion
