@@ -12,4 +12,4 @@ rsError :: String -> a
 rsError = error . (++) "[RegionSize] " 
 
 rsInfo :: a -> String -> a
-rsInfo v s = T.trace s v
+rsInfo v s = T.trace ("\n[INFO] "++ s) v

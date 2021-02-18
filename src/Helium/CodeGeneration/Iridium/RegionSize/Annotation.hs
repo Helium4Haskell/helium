@@ -1,7 +1,7 @@
 module Helium.CodeGeneration.Iridium.RegionSize.Annotation
   ( Annotation(..), 
     AnnAlg(..), foldAnnAlg, foldAnnAlgN, idAnnAlg,
-    annReIndex,
+    annReIndex, annWeaken,
     regVarSubst
   ) where
 
@@ -19,6 +19,7 @@ import Lvm.Core.Type
 
 data Annotation = 
       AVar    Int                   -- ^ De Bruijn index Variable
+    | AReg    Int                   -- ^ Region
     | ALam    Sort       Annotation -- ^ Annotation lambda
     | AApl    Annotation Annotation -- ^ Application
     | AConstr Constr                -- ^ Constraint set
@@ -32,7 +33,7 @@ data Annotation =
     | ATop    
     | ABot    
     | AFix    Sort       Annotation
-
+  deriving (Eq)
 ----------------------------------------------------------------
 -- Pretty printing
 ----------------------------------------------------------------
@@ -40,8 +41,9 @@ data Annotation =
 -- | TODO: Improve readability for types and quantors
 instance Show Annotation where
     show (AVar   idx) = "v$" ++ show idx
+    show (AReg   idx) = "r$" ++ show idx
     show (ALam   s a) = "(\\ψ:"++ show s ++"." ++ show a ++ ")"
-    show (AApl   a b) = show a ++ " " ++ show b
+    show (AApl   a b) = show a ++ "<" ++ show b ++ ">"
     show (AUnit     ) = "()"
     show (ATuple as ) = "(" ++ (intercalate "," $ map show as) ++ ")"
     show (AProj  i a) = "π_" ++ show i ++ "[" ++ show a ++ "]"
@@ -52,7 +54,7 @@ instance Show Annotation where
     show (ATop      ) = "T"
     show (ABot      ) = "⊥"
     show (AFix   s a) = "fix " ++ show s ++ ". " ++ show a 
-    show (AConstr  c) = "{" ++ (intercalate ", " $ map (\(x, b) -> "p_" ++ show x ++ " ↦  " ++ show b) $ M.toList c) ++ "}" 
+    show (AConstr  c) = "{" ++ (intercalate ", " $ map (\(x, b) -> show x ++ " ↦  " ++ show b) $ M.toList c) ++ "}" 
 
 ----------------------------------------------------------------
 -- Annotation algebra
@@ -63,6 +65,7 @@ type Depth = Int
 data AnnAlg a = 
   AnnAlg {
     aVar    :: Depth -> Int -> a,         
+    aReg    :: Depth -> Int -> a,         
     aLam    :: Depth -> Sort -> a -> a,
     aApl    :: Depth -> a -> a -> a,
     aConstr :: Depth -> Constr -> a,    
@@ -81,6 +84,7 @@ data AnnAlg a =
 idAnnAlg :: AnnAlg Annotation
 idAnnAlg = AnnAlg {
   aVar    = \_ -> AVar   ,
+  aReg    = \_ -> AReg   ,
   aLam    = \_ -> ALam   ,
   aApl    = \_ -> AApl   ,
   aConstr = \_ -> AConstr,
@@ -97,11 +101,12 @@ idAnnAlg = AnnAlg {
 }
 
 foldAnnAlg :: AnnAlg a -> Annotation -> a
-foldAnnAlg = foldAnnAlgN 0
+foldAnnAlg = foldAnnAlgN 1
 
 foldAnnAlgN :: Int -> AnnAlg a -> Annotation -> a
 foldAnnAlgN n alg ann = go n ann
   where go d (AVar   idx) = aVar    alg d idx
+        go d (AReg   idx) = aReg    alg d idx
         go d (ALam   s a) = aLam    alg d s $ go (d + 1) a
         go d (AApl   a b) = aApl    alg d (go d a) (go d b)
         go d (AUnit     ) = aUnit   alg d 
@@ -120,12 +125,10 @@ foldAnnAlgN n alg ann = go n ann
 -- De Bruijn re-indexing 
 ----------------------------------------------------------------
 
--- TODO: I feel like something will go wrong: we remove a lambda but all the vars in the body keep the same idx?
-
 -- | Re-index the debruijn indices of an annotation 
 annReIndex :: Int -- ^ Depth of substitution 
            -> Annotation -> Annotation
-annReIndex n = foldAnnAlgN 1 reIdxAlg -- Start at depth 1
+annReIndex n = foldAnnAlgN 0 reIdxAlg -- Start at depth 1, why??
   where reIdxAlg = idAnnAlg {
     aLam    = \d s a -> ALam (sortReIndex d n s) a,
     aFix    = \d s a -> AFix (sortReIndex d n s) a,
@@ -134,7 +137,7 @@ annReIndex n = foldAnnAlgN 1 reIdxAlg -- Start at depth 1
   }
 
 -- | Re-index the debruin indices of a sort
-sortReIndex :: Int -- ^ Depth in annotation 
+sortReIndex :: Int -- ^ Depth in annotation
             -> Int -- ^ Depth of substitution
             -> Sort -> Sort
 sortReIndex annD n = foldSortAlgN annD reIdxAlg
@@ -147,15 +150,47 @@ sortReIndex annD n = foldSortAlgN annD reIdxAlg
 constrReIndex :: Int -- ^ Depth of substitution 
               -> Int -- ^ Depth of constraint set in annotation
               -> Constr -> Constr
-constrReIndex n d = M.mapKeys (idxReIndex n d)
+constrReIndex n d = M.mapKeys keyReIndex
+  where keyReIndex (ReV idx) = ReV $ idxReIndex n d idx
+        keyReIndex (Reg idx) = Reg idx
 
 -- | Reindex a de Bruijn index
 idxReIndex :: Int -- ^ Depth of substitution  
            -> Int -- ^ Depth of variable in lambda
            -> Int -> Int
-idxReIndex n d idx = if d > n -- If d > n: var points outside of applicated term
+idxReIndex n d idx = if d < n  -- If d > n: var points outside of applicated term
                      then idx + n -- Reindex
-                     else idx
+                     else idx 
+
+-- | Reduce all indexes in annotation by 1
+annWeaken :: Annotation -> Annotation
+annWeaken = foldAnnAlg weakenAlg
+  where weakenAlg = idAnnAlg {
+    aLam    = \d s a -> ALam (sortWeaken d s) a,
+    aFix    = \d s a -> AFix (sortWeaken d s) a,
+    aConstr = \d c   -> AConstr (constrWeaken d c), 
+    aVar    = \d idx -> AVar $ weakenIdx d idx
+  }
+
+sortWeaken :: Depth -> Sort -> Sort
+sortWeaken n = foldSortAlgN n weakenAlg
+  where weakenAlg = idSortAlg {
+    sortPolyRegion = \d tv ts -> SortPolyRegion (weakenIdx d tv) ts,
+    sortPolySort   = \d tv ts -> SortPolySort   (weakenIdx d tv) ts 
+  }
+
+-- | Re-index the debruijn indices of a cosntraint set 
+constrWeaken :: Int -- ^ Depth of substitution 
+             -> Constr -> Constr
+constrWeaken n = M.mapKeys keyReIndex
+  where keyReIndex (ReV idx) = ReV $ weakenIdx n idx
+        keyReIndex (Reg idx) = Reg idx
+
+
+weakenIdx :: Int -> Int -> Int
+weakenIdx d idx = if idx > d 
+                  then idx - 1 
+                  else idx
 
 ----------------------------------------------------------------
 -- Annotation utilities
@@ -164,13 +199,14 @@ idxReIndex n d idx = if d > n -- If d > n: var points outside of applicated term
 -- | Initialize region variables in a constraint set
 regVarSubst :: Annotation -> RegVar -> Constr -> Constr 
 regVarSubst ann r c = constrInst inst r c
-  where n    = constrIdx r c
+  where n    = constrIdx (ReV r) c
         inst = collect n ann
 
 -- | Collect all region variables in tuple
 collect :: Int -> Annotation -> Constr
+collect 0 _           = M.empty
 collect _ AUnit       = M.empty
-collect n (AVar    a) = M.singleton a n
+collect n (AVar    a) = M.singleton (ReV a) n
+collect n (AReg    a) = M.singleton (Reg a) n
 collect n (ATuple ps) = foldr constrAdd M.empty $ map (collect n) ps
 collect _ _ = rsError "Collect of non region annotation"
-
