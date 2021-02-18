@@ -8,6 +8,7 @@ module Helium.CodeGeneration.Iridium.RegionSize.Annotation
 import Helium.CodeGeneration.Iridium.RegionSize.Constraints
 import Helium.CodeGeneration.Iridium.RegionSize.Sort
 import Helium.CodeGeneration.Iridium.RegionSize.Utils
+import Helium.CodeGeneration.Iridium.RegionSize.Type
 
 import Data.List
 import qualified Data.Map as M
@@ -34,6 +35,7 @@ data Annotation =
     | ABot    
     | AFix    Sort       Annotation
   deriving (Eq)
+
 ----------------------------------------------------------------
 -- Pretty printing
 ----------------------------------------------------------------
@@ -130,12 +132,12 @@ foldAnnAlgN n alg ann = go n ann
 -- | Re-index the debruijn indices of an annotation 
 annReIndex :: Int -- ^ Depth of substitution 
            -> Annotation -> Annotation
-annReIndex n = foldAnnAlg reIdxAlg
+annReIndex subD = foldAnnAlg reIdxAlg
   where reIdxAlg = idAnnAlg {
-    aLam    = \d s a -> ALam (sortReIndex d n s) a,
-    aFix    = \d s a -> AFix (sortReIndex d n s) a,
-    aConstr = \d c   -> AConstr (constrReIndex n d c), 
-    aVar    = \d idx -> AVar (idxReIndex n d idx)
+    aLam    = \d s a -> ALam (sortReIndex d subD s) a,
+    aFix    = \d s a -> AFix (sortReIndex d subD s) a,
+    aConstr = \d c   -> AConstr (constrReIndex d subD c), 
+    aVar    = \d idx -> AVar (idxReIndex d subD idx)
   }
 
 -- | Re-index the debruin indices of a sort
@@ -143,31 +145,42 @@ annReIndex n = foldAnnAlg reIdxAlg
 sortReIndex :: Int -- ^ Depth in annotation
             -> Int -- ^ Depth of substitution
             -> Sort -> Sort
-sortReIndex annD n = foldSortAlgN annD reIdxAlg
+sortReIndex annD subD = foldSortAlgN annD reIdxAlg
   where reIdxAlg = idSortAlg {
-    sortPolyRegion = \d idx ts -> SortPolyRegion (idxReIndex n d idx) ts,
-    sortPolySort   = \d idx ts -> SortPolySort   (idxReIndex n d idx) ts
+    sortPolyRegion = \d idx ts -> SortPolyRegion (idxReIndex d subD idx) ts,
+    sortPolySort   = \d idx ts -> SortPolySort   (idxReIndex d subD idx) ts
+  }
+
+-- | Reindex a type
+typeReIndex :: Int -- ^ Depth in sort
+            -> Int -- ^ Depth of substitution
+            -> Type -> Type
+typeReIndex sortD subD = foldTypeAlgN sortD reIdxAlg
+  where reIdxAlg = idTypeAlg {
+    tVar = \d idx -> TVar $ idxReIndex d subD idx
   }
 
 -- | Re-index the debruijn indices of a cosntraint set 
-constrReIndex :: Int -- ^ Depth of substitution 
-              -> Int -- ^ Depth of constraint set in annotation
+constrReIndex :: Int -- ^ Depth of constraint set in annotation 
+              -> Int -- ^ Depth of substitution
               -> Constr -> Constr
-constrReIndex n d = M.mapKeys keyReIndex
-  where keyReIndex (ReV idx) = ReV $ idxReIndex n d idx
+constrReIndex d subD = M.mapKeys keyReIndex
+  where keyReIndex (ReV idx) = ReV $ idxReIndex d subD idx
         keyReIndex (Reg idx) = Reg idx
 
 -- | Reindex a de Bruijn index
-idxReIndex :: Int -- ^ Depth of substitution  
-           -> Int -- ^ Depth of variable in lambda
+idxReIndex :: Int -- ^ Depth of variable in lambda
+           -> Int -- ^ Depth of substitution  
            -> Int -> Int
-idxReIndex n d idx = if idx >= d  -- If d > n: var points outside of applicated term
-                     then idx + n -- Reindex
-                     else idx 
+idxReIndex d subD idx = if idx >= d  -- If idx >= d: var points outside of applicated term
+                        then idx + subD -- Reindex
+                        else idx 
 
+----------------------------------------------------------------
+-- De Bruijn weakening
+----------------------------------------------------------------
 
-
--- | Reduce all indexes in annotation by 1
+-- | Reduce all unbounded indexes by 1 in an annotation
 annWeaken :: Annotation -> Annotation
 annWeaken = foldAnnAlg weakenAlg
   where weakenAlg = idAnnAlg {
@@ -177,21 +190,29 @@ annWeaken = foldAnnAlg weakenAlg
     aVar    = \d idx -> AVar $ weakenIdx d idx
   }
 
-sortWeaken :: Depth -> Sort -> Sort
+-- | Reduce all unbounded indexes by 1 in a sort
+sortWeaken :: Int -> Sort -> Sort
 sortWeaken n = foldSortAlgN n weakenAlg
   where weakenAlg = idSortAlg {
-    sortPolyRegion = \d tv ts -> SortPolyRegion (weakenIdx d tv) ts,
-    sortPolySort   = \d tv ts -> SortPolySort   (weakenIdx d tv) ts 
+    sortPolyRegion = \d tv ts -> SortPolyRegion (weakenIdx d tv) $ map (typeWeaken n) ts,
+    sortPolySort   = \d tv ts -> SortPolySort   (weakenIdx d tv) $ map (typeWeaken n) ts 
   }
 
--- | Re-index the debruijn indices of a cosntraint set 
+-- | Reduce all unbounded indexes by 1 in an LVM type
+typeWeaken :: Int -> Type -> Type
+typeWeaken sortD = foldTypeAlgN sortD weakenAlg
+  where weakenAlg = idTypeAlg {
+    tVar = \d idx -> TVar $ weakenIdx d idx
+  }
+
+-- | Reduce all unbounded indexes by 1 in constraint set
 constrWeaken :: Int -- ^ Depth of substitution 
              -> Constr -> Constr
 constrWeaken n = M.mapKeys keyReIndex
   where keyReIndex (ReV idx) = ReV $ weakenIdx n idx
         keyReIndex (Reg idx) = Reg idx
 
--- | Weaken outward point variables by 1
+-- | Reduce unbounded index by 1
 weakenIdx :: Int -> Int -> Int
 weakenIdx d idx = if idx > d 
                   then idx - 1 
