@@ -82,7 +82,7 @@ application f x = AApl f x
 
 
 -- | Instantiate a type if it starts with a quantification 
--- TODO: Instantiation with polymorphic variables
+-- TODO: Type reindexing
 instantiate :: Annotation -> Type -> Annotation
 instantiate (AQuant quant anno) ty = annWeaken $ foldAnnAlg annInstAlg anno
   where annInstAlg = idAnnAlg {

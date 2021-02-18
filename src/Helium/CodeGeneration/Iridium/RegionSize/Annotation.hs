@@ -125,10 +125,12 @@ foldAnnAlgN n alg ann = go n ann
 -- De Bruijn re-indexing 
 ----------------------------------------------------------------
 
+-- | TODO, combine reindex and weaken?
+
 -- | Re-index the debruijn indices of an annotation 
 annReIndex :: Int -- ^ Depth of substitution 
            -> Annotation -> Annotation
-annReIndex n = foldAnnAlgN 0 reIdxAlg -- Start at depth 1, why??
+annReIndex n = foldAnnAlg reIdxAlg
   where reIdxAlg = idAnnAlg {
     aLam    = \d s a -> ALam (sortReIndex d n s) a,
     aFix    = \d s a -> AFix (sortReIndex d n s) a,
@@ -137,6 +139,7 @@ annReIndex n = foldAnnAlgN 0 reIdxAlg -- Start at depth 1, why??
   }
 
 -- | Re-index the debruin indices of a sort
+-- TODO: Type reindexing
 sortReIndex :: Int -- ^ Depth in annotation
             -> Int -- ^ Depth of substitution
             -> Sort -> Sort
@@ -158,9 +161,11 @@ constrReIndex n d = M.mapKeys keyReIndex
 idxReIndex :: Int -- ^ Depth of substitution  
            -> Int -- ^ Depth of variable in lambda
            -> Int -> Int
-idxReIndex n d idx = if d < n  -- If d > n: var points outside of applicated term
+idxReIndex n d idx = if idx >= d  -- If d > n: var points outside of applicated term
                      then idx + n -- Reindex
                      else idx 
+
+
 
 -- | Reduce all indexes in annotation by 1
 annWeaken :: Annotation -> Annotation
@@ -186,7 +191,7 @@ constrWeaken n = M.mapKeys keyReIndex
   where keyReIndex (ReV idx) = ReV $ weakenIdx n idx
         keyReIndex (Reg idx) = Reg idx
 
-
+-- | Weaken outward point variables by 1
 weakenIdx :: Int -> Int -> Int
 weakenIdx d idx = if idx > d 
                   then idx - 1 

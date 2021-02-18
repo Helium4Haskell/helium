@@ -16,17 +16,20 @@ import Data.Map as M
 -- (ALam SortMonoRegion )
 
 regApl1 = AApl (ALam SortMonoRegion $ AConstr $ M.fromList [(ReV 1, 1)]) (AReg 1)
+
+-- Simple application
 regApl2 = ALam SortMonoRegion (AApl (ALam SortMonoRegion $ AConstr $ M.fromList [(ReV 1, 1), (ReV 2, 1)]) (AReg 1))
-regApl5 = AApl (ALam SortMonoRegion (ALam SortMonoRegion $ AConstr $ M.fromList [(ReV 1, 1), (ReV 2, 1)])) (AReg 1)
+regApl3 = AApl (ALam SortMonoRegion (ALam SortMonoRegion $ AConstr $ M.fromList [(ReV 1, 1), (ReV 2, 1)])) (AReg 1)
 
-
--- regApl3 == (\ψ:P.(\ψ:P.{p_r$0 ↦  1, p_r$1 ↦  1}))
-regApl3 = let ho = (ALam (SortLam SortConstr SortConstr) (AApl (AVar 1) (mkAConstr True 2)))
+-- Weaking and reindexing at the same time
+-- regApl3 == (\ψ:P.(\ψ:P.{r$1 ↦  1} ⊕  {r$2 ↦  1}))
+regApl4 = let ho = (ALam (SortLam SortConstr SortConstr) (AApl (AVar 1) (mkAConstr True 2)))
               f  = ALam (SortConstr) (ALam SortMonoRegion (AAdd (mkAConstr True 1) (AVar 2)))
           in ALam SortMonoRegion $ AApl ho f
 
--- regApl4 == {p_rho_1337 ↦  1, p_rho_4200 ↦  1}
-regApl4 = AApl (AApl regApl3 (AReg 1337)) (AReg 4200)
+-- Weakening
+-- regApl6 = (\ψ:().(\ψ:().(\ψ:().v$3)))
+regApl5 = ALam SortUnit (AApl (ALam SortUnit $ ALam SortUnit $ AVar 2) (ALam SortUnit $ AVar 2))
 
 mkAConstr :: Bool -- Var? 
           -> Int -> Annotation
