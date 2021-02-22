@@ -22,7 +22,7 @@ data Sort =
     | SortMonoRegion
     | SortPolyRegion TypeVar [Type]
     | SortPolySort   TypeVar [Type]
-  deriving (Eq)
+  deriving (Eq, Ord)
 
 ----------------------------------------------------------------
 -- Pretty printing

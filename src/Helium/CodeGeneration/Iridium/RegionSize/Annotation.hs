@@ -10,8 +10,8 @@ import Helium.CodeGeneration.Iridium.RegionSize.Sort
 import Helium.CodeGeneration.Iridium.RegionSize.Utils
 import Helium.CodeGeneration.Iridium.RegionSize.Type
 
-import Data.List
 import qualified Data.Map as M
+import Data.List
 import Lvm.Core.Type
 
 ----------------------------------------------------------------
@@ -34,7 +34,7 @@ data Annotation =
     | ATop    
     | ABot    
     | AFix    Sort       Annotation
-  deriving (Eq)
+  deriving (Eq, Ord)
 
 ----------------------------------------------------------------
 -- Pretty printing
@@ -42,21 +42,24 @@ data Annotation =
 
 -- | TODO: Improve readability for types and quantors
 instance Show Annotation where
-    show (AVar   idx) = "v$" ++ show idx
-    show (AReg   idx) = "r$" ++ show idx
-    show (ALam   s a) = "(\\ψ:"++ show s ++"." ++ show a ++ ")"
-    show (AApl   a b) = show a ++ "<" ++ show b ++ ">"
-    show (AUnit     ) = "()"
-    show (ATuple as ) = "(" ++ (intercalate "," $ map show as) ++ ")"
-    show (AProj  i a) = "π_" ++ show i ++ "[" ++ show a ++ "]"
-    show (AAdd   a b) = show a ++ " ⊕  " ++ show b
-    show (AJoin  a b) = show a ++ " ⊔  " ++ show b
-    show (AQuant _ a) = "(forall α." ++ show a ++ ")"
-    show (AInstn a _) = show a ++ "{" ++ "tau" ++ "}"
-    show (ATop      ) = "T"
-    show (ABot      ) = "⊥"
-    show (AFix   s a) = "fix " ++ show s ++ ". " ++ show a 
-    show (AConstr  c) = "{" ++ (intercalate ", " $ map (\(x, b) -> show x ++ " ↦  " ++ show b) $ M.toList c) ++ "}" 
+    show = foldAnnAlg showAlg
+      where showAlg = AnnAlg {
+        aVar    = \d idx -> varNames !! (d - idx),
+        aReg    = \_ idx -> "reg_" ++ show idx,
+        aLam    = \d s a -> "(\\"++ (varNames !! d) ++":"++ show s ++".\n" ++ indent a ++ ")",
+        aApl    = \_ a b -> a ++ "<" ++ b ++ ">",
+        aUnit   = \_     -> "()",
+        aTuple  = \_ as  -> "(" ++ (intercalate "," $ map show as) ++ ")",
+        aProj   = \_ i a -> "π_" ++ show i ++ "[" ++ a ++ "]",
+        aAdd    = \_ a b -> a ++ " ⊕  " ++ b,
+        aJoin   = \_ a b -> a ++ " ⊔  " ++ b,
+        aQuant  = \_ _ a -> "(forall α." ++ a ++ ")",
+        aInstn  = \_ a _ -> a ++ "{" ++ "tau" ++ "}",
+        aTop    = \_     -> "T",
+        aBot    = \_     -> "⊥",
+        aFix    = \_ s a -> "fix " ++ show s ++ ". " ++ a,
+        aConstr = \d c   -> constrShow d c
+      }
 
 ----------------------------------------------------------------
 -- Annotation algebra
@@ -153,14 +156,14 @@ constrReIndex :: (Depth -> Int -> Int) -- ^ Reindex function
               -> Int -- ^ Depth of constraint set in annotation
               -> Constr -> Constr
 constrReIndex f annD = M.mapKeys keyReIndex
-  where keyReIndex (ReV idx) = ReV $ f annD idx
-        keyReIndex (Reg idx) = Reg idx
+  where keyReIndex (RegVar idx) = RegVar $ f annD idx
+        keyReIndex (Region idx) = Region idx
 
 ----------------------------------------------------------------
 -- De Bruijn reindexing implementations
 ----------------------------------------------------------------
 
--- | Weaken all unbound variables by the substitution depth
+-- | Increase all unbound variables by the substitution depth
 annWeaken :: Depth -- ^ Depth of the substitution
           -> Annotation -> Annotation
 annWeaken subD = annReIndex idxReIndex 
@@ -168,7 +171,7 @@ annWeaken subD = annReIndex idxReIndex
                            then idx + subD -- Reindex
                            else idx 
 
--- | Strengthen all unbound indexes by 1
+-- | Decrease all unbound indexes by 1
 annStrengthen :: Annotation -> Annotation
 annStrengthen = annReIndex strgthIdx
   where strgthIdx d idx = if idx > d 
@@ -180,16 +183,16 @@ annStrengthen = annReIndex strgthIdx
 ----------------------------------------------------------------
 
 -- | Initialize region variables in a constraint set
-regVarSubst :: Annotation -> RegVar -> Constr -> Constr 
+regVarSubst :: Annotation -> Int -> Constr -> Constr 
 regVarSubst ann r c = constrInst inst r c
-  where n    = constrIdx (ReV r) c
+  where n    = constrIdx (RegVar r) c
         inst = collect n ann
 
 -- | Collect all region variables in tuple
 collect :: Int -> Annotation -> Constr
 collect 0 _           = M.empty
 collect _ AUnit       = M.empty
-collect n (AVar    a) = M.singleton (ReV a) n
-collect n (AReg    a) = M.singleton (Reg a) n
+collect n (AVar    a) = M.singleton (RegVar a) n
+collect n (AReg    a) = M.singleton (Region a) n
 collect n (ATuple ps) = foldr constrAdd M.empty $ map (collect n) ps
 collect _ _ = rsError "Collect of non region annotation"

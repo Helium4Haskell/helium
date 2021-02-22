@@ -1,20 +1,38 @@
 module Helium.CodeGeneration.Iridium.RegionSize.Constraints
+    (ConstrIdx(..), Constr, 
+    constrShow,
+    constrJoin, constrAdd, constrIdx, constrRem, constrInst)
 where
 
+import Helium.CodeGeneration.Iridium.RegionSize.Utils
+
 import qualified Data.Map as M
+import Data.List
 
-type RegVar = Int
-type Region = Int
+----------------------------------------------------------------
+-- Types
+----------------------------------------------------------------
 
-data ConstrIdx = ReV RegVar
-               | Reg Region
-    deriving (Eq,Ord)
-
-instance Show ConstrIdx where
-    show (ReV idx) = "r$" ++ show idx
-    show (Reg idx) = "rho_" ++ show idx
-
+type Depth = Int
+data ConstrIdx = RegVar Int
+               | Region Int
+    deriving (Eq, Ord)
 type Constr = M.Map ConstrIdx Int
+
+----------------------------------------------------------------
+-- Pretty printing
+----------------------------------------------------------------
+
+constrShow :: Depth -> Constr -> String
+constrShow d c = "{" ++ (intercalate ", " $ map (\(x, b) -> constrIdxShow d x ++ " ↦  " ++ show b) $ M.toList c) ++ "}"
+
+constrIdxShow :: Depth -> ConstrIdx -> String
+constrIdxShow d (RegVar idx) = varNames !! (d - idx) 
+constrIdxShow _ (Region idx) = "rho_" ++ show idx 
+
+----------------------------------------------------------------
+-- Constraint utilities
+----------------------------------------------------------------
 
 -- | Join of constraint sets
 constrJoin :: Constr -> Constr -> Constr
@@ -34,6 +52,6 @@ constrRem = M.delete
 
 -- | Instantiate a region variable in the constraint set
 constrInst :: Constr -- ^ The instantiation
-           -> RegVar -- ^ The region variable to instantiate 
+           -> Int    -- ^ The region variable to instantiate 
            -> Constr -> Constr
-constrInst inst r c = constrAdd inst $ constrRem (ReV r) c
+constrInst inst r c = constrAdd inst $ constrRem (RegVar r) c

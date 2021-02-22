@@ -1,7 +1,5 @@
 module Helium.CodeGeneration.Iridium.RegionSize.Evaluate
     ( eval,
-    -- TODO: Remove these:
-    add, join, application, instantiate, project
     ) where 
 
 import Lvm.Core.Type
@@ -27,12 +25,10 @@ eval = foldAnnAlg evalAlg
     aProj  = \_ -> project
   }
 
-
 -- | Only add when the subannotations are constraints
 add :: Annotation -> Annotation -> Annotation
 add (AConstr c1) (AConstr c2) = AConstr $ constrAdd c1 c2
 add c1 c2 = AAdd c1 c2 -- TODO: Addition of other sorts?
-
 
 -- | Join of annotations
 join :: Annotation -> Annotation -> Annotation
@@ -64,7 +60,7 @@ project _ t = t
 application :: Annotation -> Annotation -> Annotation
 application (ALam s f) x | sortIsAnnotation s = annStrengthen $ foldAnnAlg subsAnnAlg f
                          | sortIsRegion     s = annStrengthen $ foldAnnAlg subsRegAlg f
-                         | otherwise = rsError "Sort is neither region or annotation!?" -- TODO: Remove error? should never occur
+                         | otherwise = rsError "Sort is neither region or annotation!?"
   where -- | Substitute a variable for an annotation
         subsAnnAlg = idAnnAlg {
           aVar = \d idx -> if d == idx 
