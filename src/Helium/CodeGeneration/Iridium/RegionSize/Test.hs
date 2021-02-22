@@ -7,6 +7,7 @@ import Helium.CodeGeneration.Iridium.RegionSize.Constraints
 import Helium.CodeGeneration.Iridium.RegionSize.Utils
 
 import Data.Map as M
+import Lvm.Core.Type
 
 -- | Application of annotations
 -- application (ALam SortMonoRegion $ AConstr $ M.fromList [(RegVar 0, 1)]) (AReg 1)
@@ -42,3 +43,8 @@ mkAConstr True  idx = AConstr $ M.fromList [(RegVar idx, 1)]
 mkAConstr False idx = AConstr $ M.fromList [(Region idx, 1)]
 
 
+
+-- pp test
+ppTest = let idType    = TForall (Quantor $ Just "hi") (KFun KStar KStar) (TAp (TAp (TCon TConFun) $ TVar 1) $ TVar 1)
+             forallLam = ALam (SortPolyRegion 1 [idType]) (AVar 1)
+         in AQuant (Quantor $ Just "hi") forallLam 

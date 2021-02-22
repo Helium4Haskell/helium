@@ -23,7 +23,7 @@ splitOn c s = case dropWhile ((==) c) s of
 
 -- | Infinite list of variable names
 varNames :: [String]
-varNames = map ("v$" ++ ) $ map pure ['a'..'z'] ++ map ((++) "a" . (show :: Int -> String)) [1..]
+varNames = (:) "#ERROR 0 INDEX#" $ map pure ['a'..'z'] ++ map ((++) "a" . (show :: Int -> String)) [1..]
 
 ----------------------------------------------------------------
 -- Console messages

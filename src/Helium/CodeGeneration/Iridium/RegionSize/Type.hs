@@ -1,13 +1,27 @@
 module Helium.CodeGeneration.Iridium.RegionSize.Type
-    ( TypeAlg(..), idTypeAlg, foldTypeAlg, foldTypeAlgN
+    (showTypeN, 
+    TypeAlg(..), idTypeAlg, foldTypeAlg, foldTypeAlgN
     ) where
 
-import Lvm.Core.Type
+import Helium.CodeGeneration.Iridium.RegionSize.Utils
+
+import Lvm.Core.Type hiding (showType)
+
 
   
 ----------------------------------------------------------------
 -- Pretty printing
 ----------------------------------------------------------------
+
+showTypeN :: Depth -> Type -> String
+showTypeN n = foldTypeAlgN n showAlg
+    where showAlg = TypeAlg {
+        tAp     = \_ t1 t2 -> t1 ++ " " ++ t2,
+        tForall = \d _ _ t -> "forall " ++ (varNames !! d) ++". " ++ t,
+        tStrict = \_ t     -> "!" ++ t,
+        tVar    = \d idx   -> varNames !! (d - idx),
+        tCon    = \_ tc    -> show tc
+    }
 
 ----------------------------------------------------------------
 -- Type algebra

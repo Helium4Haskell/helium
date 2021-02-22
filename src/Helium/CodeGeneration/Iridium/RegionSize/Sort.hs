@@ -1,10 +1,13 @@
 module Helium.CodeGeneration.Iridium.RegionSize.Sort
-  ( Sort(..), 
+  ( Sort(..), showSort, 
     SortAlg(..), idSortAlg, foldSortAlg, foldSortAlgN, 
     sortInstantiate,
     sortIsRegion, sortIsAnnotation
   )
 where
+
+import Helium.CodeGeneration.Iridium.RegionSize.Utils
+import Helium.CodeGeneration.Iridium.RegionSize.Type
 
 import Lvm.Core.Type
 import Data.List
@@ -28,16 +31,18 @@ data Sort =
 -- Pretty printing
 ----------------------------------------------------------------
 
-instance Show Sort where
-    show (SortLam        a b  ) = show a ++ " ↦  " ++ show b
-    show (SortConstr          ) = "C"
-    show (SortUnit            ) = "()"
-    show (SortQuant      _ s  ) = "forall α. " ++ show s
-    show (SortMonoRegion      ) = "P"
-    show (SortPolyRegion v  _ ) = "P<" ++ show v ++ ">"
-    show (SortPolySort   v  _ ) = "Ψ<" ++ show v ++ ">"
-    show (SortTuple      ss   ) = "(" ++ (intercalate "," $ map show ss) ++ ")" 
-
+showSort :: Depth -> Sort -> String
+showSort n = foldSortAlgN n showAlg
+  where showAlg = SortAlg {
+    sortLam        = \_ a b  -> a ++ " ↦  " ++ b,
+    sortConstr     = \_      -> "C",
+    sortUnit       = \_      -> "()",
+    sortQuant      = \d _ s  -> "forall " ++ show (varNames !! d) ++ ". " ++ s,
+    sortMonoRegion = \_      -> "P",
+    sortPolyRegion = \d idx ts -> "P<" ++ (varNames !! (d - idx)) ++ " [" ++ (intercalate "," $ map (showTypeN d) ts) ++ "]>",
+    sortPolySort   = \d idx ts -> "Ψ<" ++ (varNames !! (d - idx)) ++ " [" ++ (intercalate "," $ map (showTypeN d) ts) ++ "]>",
+    sortTuple      = \_ ss   -> "(" ++ (intercalate "," ss) ++ ")"
+}
 ----------------------------------------------------------------
 -- Sort algebra
 ----------------------------------------------------------------

@@ -46,18 +46,18 @@ instance Show Annotation where
       where showAlg = AnnAlg {
         aVar    = \d idx -> varNames !! (d - idx),
         aReg    = \_ idx -> "reg_" ++ show idx,
-        aLam    = \d s a -> "(\\"++ (varNames !! d) ++":"++ show s ++".\n" ++ indent a ++ ")",
-        aApl    = \_ a b -> a ++ "<" ++ b ++ ">",
+        aLam    = \d s a -> "(\\"++ (varNames !! d) ++":"++ showSort d s ++ "." ++ a ++ ")",
+        aApl    = \_ a b -> a ++ "< " ++ b ++ " >",
         aUnit   = \_     -> "()",
-        aTuple  = \_ as  -> "(" ++ (intercalate "," $ map show as) ++ ")",
+        aTuple  = \_ as  -> "(" ++ intercalate "," as ++ ")",
         aProj   = \_ i a -> "π_" ++ show i ++ "[" ++ a ++ "]",
         aAdd    = \_ a b -> a ++ " ⊕  " ++ b,
         aJoin   = \_ a b -> a ++ " ⊔  " ++ b,
-        aQuant  = \_ _ a -> "(forall α." ++ a ++ ")",
-        aInstn  = \_ a _ -> a ++ "{" ++ "tau" ++ "}",
+        aQuant  = \d _ a -> "(forall " ++ (varNames !! d) ++ "." ++ a ++ ")",
+        aInstn  = \_ a _ -> a ++ " {" ++ "tau" ++ "}",
         aTop    = \_     -> "T",
         aBot    = \_     -> "⊥",
-        aFix    = \_ s a -> "fix " ++ show s ++ ". " ++ a,
+        aFix    = \d s a -> "fix " ++ showSort d s ++ ". " ++ a,
         aConstr = \d c   -> constrShow d c
       }
 
