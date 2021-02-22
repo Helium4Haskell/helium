@@ -37,14 +37,21 @@ regApl6 = AApl regApl4 $ ATuple [AReg 2, AReg 3, AReg 4]
 sortRegionTuple = (SortTuple [SortMonoRegion, SortMonoRegion]) 
 
 
+idType = TForall (Quantor $ Nothing) (KFun KStar KStar) (TAp (TAp (TCon TConFun) $ TVar 1) $ TVar 1)
+idSort = sortAssign idType
+idAnno = case idSort of
+            (SortQuant a) -> AQuant $ ALam a $ AVar 1
+
+idInstnB    = AInstn idAnno $ typeBool
+idInstnU    = AInstn idAnno $ typeUnit
+idInstnPoly = AQuant $ AQuant $ AInstn idAnno $ TAp (TAp (TCon TConFun) $ TVar 1) $ TVar 2
+
 mkAConstr :: Bool -- Var? 
           -> Int -> Annotation
 mkAConstr True  idx = AConstr $ M.fromList [(RegVar idx, 1)]
 mkAConstr False idx = AConstr $ M.fromList [(Region idx, 1)]
 
-
-
 -- pp test
 ppTest = let idType    = TForall (Quantor $ Just "hi") (KFun KStar KStar) (TAp (TAp (TCon TConFun) $ TVar 1) $ TVar 1)
              forallLam = ALam (SortPolyRegion 1 [idType]) (AVar 1)
-         in AQuant (Quantor $ Just "hi") forallLam 
+         in AQuant forallLam 

@@ -19,7 +19,7 @@ import Lvm.Core.Type
 ----------------------------------------------------------------
 
 data Annotation = 
-      AVar    Int                   -- ^ De Bruijn index Variable
+      AVar    Int                   -- ^ De Bruijn i7ndex Variable
     | AReg    Int                   -- ^ Region
     | ALam    Sort       Annotation -- ^ Annotation lambda
     | AApl    Annotation Annotation -- ^ Application
@@ -29,7 +29,7 @@ data Annotation =
     | AProj   Int        Annotation -- ^ Projection
     | AAdd    Annotation Annotation -- ^ Annotation addition
     | AJoin   Annotation Annotation -- ^ Annotation join
-    | AQuant  Quantor    Annotation
+    | AQuant  Annotation
     | AInstn  Annotation Type
     | ATop    
     | ABot    
@@ -53,8 +53,8 @@ instance Show Annotation where
         aProj   = \_ i a -> "π_" ++ show i ++ "[" ++ a ++ "]",
         aAdd    = \_ a b -> a ++ " ⊕  " ++ b,
         aJoin   = \_ a b -> a ++ " ⊔  " ++ b,
-        aQuant  = \d _ a -> "(forall " ++ (varNames !! d) ++ "." ++ a ++ ")",
-        aInstn  = \_ a _ -> a ++ " {" ++ "tau" ++ "}",
+        aQuant  = \d a   -> "(∀ t_" ++ (varNames !! d) ++ "." ++ a ++ ")",
+        aInstn  = \d a t -> a ++ " {" ++ showTypeN d t ++ "}",
         aTop    = \_     -> "T",
         aBot    = \_     -> "⊥",
         aFix    = \d s a -> "fix " ++ showSort d s ++ ". " ++ a,
@@ -79,7 +79,7 @@ data AnnAlg a =
     aProj   :: Depth -> Int -> a -> a,
     aAdd    :: Depth -> a -> a -> a,
     aJoin   :: Depth -> a -> a -> a,
-    aQuant  :: Depth -> Quantor -> a -> a,
+    aQuant  :: Depth -> a -> a,
     aInstn  :: Depth -> a -> Type -> a,
     aTop    :: Depth -> a,
     aBot    :: Depth -> a,
@@ -119,7 +119,7 @@ foldAnnAlgN n alg ann = go n ann
         go d (AProj  i a) = aProj   alg d i (go d a) 
         go d (AAdd   a b) = aAdd    alg d (go d a) (go d b)
         go d (AJoin  a b) = aJoin   alg d (go d a) (go d b)
-        go d (AQuant q a) = aQuant  alg d q $ go (d + 1) a 
+        go d (AQuant a  ) = aQuant  alg d $ go (d + 1) a 
         go d (AInstn a t) = aInstn  alg d (go d a) t
         go d (ATop      ) = aTop    alg d 
         go d (ABot      ) = aBot    alg d 
@@ -147,8 +147,8 @@ sortReIndex :: (Depth -> Int -> Int) -- ^ Reindex function
             -> Sort -> Sort
 sortReIndex f annD = foldSortAlgN annD reIdxAlg
   where reIdxAlg = idSortAlg {
-    sortPolyRegion = \d idx ts -> SortPolyRegion (f d idx) ts,
-    sortPolySort   = \d idx ts -> SortPolySort   (f d idx) ts
+    sortPolyRegion = \d idx ts -> SortPolyRegion (f d idx) $ map (typeReindex $ f d) ts, -- TODO: Reindexing of types
+    sortPolySort   = \d idx ts -> SortPolySort   (f d idx) $ map (typeReindex $ f d) ts  -- TODO: Reindexing of types
   }
 
 -- | Re-index the debruijn indices of a cosntraint set 

@@ -44,7 +44,7 @@ join (AConstr c1) (AConstr c2) = AConstr $ constrJoin c1 c2
 -- Join-simplicitation
 join (ALam   s a) (ALam   _ b) = ALam   s $ AJoin a b
 join (AApl   s a) (AApl   _ b) = AApl   s $ AJoin a b
-join (AQuant q a) (AQuant _ b) = AQuant q $ AJoin a b
+join (AQuant a  ) (AQuant b  ) = AQuant   $ AJoin a b
 join (AInstn a t) (AInstn b _) = AInstn (AJoin a b) t
 join a b = AJoin a b
 
@@ -75,12 +75,11 @@ application f x = AApl f x
 
 
 -- | Instantiate a type if it starts with a quantification 
--- TODO: Type reindexing
 instantiate :: Annotation -> Type -> Annotation
-instantiate (AQuant quant anno) ty = annStrengthen $ foldAnnAlg annInstAlg anno
+instantiate (AQuant anno) ty = annStrengthen $ foldAnnAlg annInstAlg anno
   where annInstAlg = idAnnAlg {
-    aLam   = \_ s a -> ALam (sortInstantiate quant ty s) a,
-    aFix   = \_ s a -> AFix (sortInstantiate quant ty s) a
+    aLam   = \d s a -> ALam (sortInstantiate d ty s) a,
+    aFix   = \d s a -> AFix (sortInstantiate d ty s) a
   } 
 instantiate a t = AInstn a t
 

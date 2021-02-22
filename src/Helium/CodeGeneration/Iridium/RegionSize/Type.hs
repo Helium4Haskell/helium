@@ -1,6 +1,7 @@
 module Helium.CodeGeneration.Iridium.RegionSize.Type
     (showTypeN, 
-    TypeAlg(..), idTypeAlg, foldTypeAlg, foldTypeAlgN
+    TypeAlg(..), idTypeAlg, foldTypeAlg, foldTypeAlgN,
+    typeInsantiate
     ) where
 
 import Helium.CodeGeneration.Iridium.RegionSize.Utils
@@ -17,9 +18,9 @@ showTypeN :: Depth -> Type -> String
 showTypeN n = foldTypeAlgN n showAlg
     where showAlg = TypeAlg {
         tAp     = \_ t1 t2 -> t1 ++ " " ++ t2,
-        tForall = \d _ _ t -> "forall " ++ (varNames !! d) ++". " ++ t,
+        tForall = \d _ _ t -> "∀t_" ++ (varNames !! d) ++". " ++ t,
         tStrict = \_ t     -> "!" ++ t,
-        tVar    = \d idx   -> varNames !! (d - idx),
+        tVar    = \d idx   -> "t_" ++ varNames !! (d - idx),
         tCon    = \_ tc    -> show tc
     }
 
@@ -57,5 +58,15 @@ foldTypeAlgN n alg = go n
           go d (TCon    tc   ) =  tCon    alg d tc
 
 ----------------------------------------------------------------
--- Type utilities
+-- Type substitution
 ----------------------------------------------------------------
+
+-- | Instantiate a type within a type
+typeInsantiate :: Depth -- ^ Depth in sort 
+               -> Type -> Type -> Type
+typeInsantiate subD subT = foldTypeAlgN subD instAlg
+  where instAlg = idTypeAlg {
+    tVar = \d idx -> if d == idx
+                     then typeWeaken d subT
+                     else TVar idx
+  }
