@@ -62,29 +62,26 @@ project _ t = t
 
 -- | Annotation application
 application :: Annotation -> Annotation -> Annotation
-application (ALam s f) x | sortIsAnnotation s = annWeaken $ foldAnnAlg subsAnnAlg f
-                         | sortIsRegion     s = annWeaken $ foldAnnAlg subsRegAlg f
+application (ALam s f) x | sortIsAnnotation s = annStrengthen $ foldAnnAlg subsAnnAlg f
+                         | sortIsRegion     s = annStrengthen $ foldAnnAlg subsRegAlg f
                          | otherwise = rsError "Sort is neither region or annotation!?" -- TODO: Remove error? should never occur
-  where
-    -- | Substitute a variable for an annotation
-    subsAnnAlg :: AnnAlg Annotation
-    subsAnnAlg = idAnnAlg {
-      aVar = \d idx -> if d == idx 
-                       then annReIndex d x -- Reindex
-                       else AVar idx
-    }
-    -- | Substitute a region variable for a region
-    subsRegAlg :: AnnAlg Annotation
-    subsRegAlg = idAnnAlg {
-      aConstr = \d c -> AConstr $ regVarSubst x d c
-    }
+  where -- | Substitute a variable for an annotation
+        subsAnnAlg = idAnnAlg {
+          aVar = \d idx -> if d == idx 
+                           then annWeaken d x -- Weaken indexes
+                           else AVar idx
+        }
+        -- | Substitute a region variable for a region
+        subsRegAlg = idAnnAlg {
+          aConstr = \d c -> AConstr $ regVarSubst x d c
+        }
 application f x = AApl f x
 
 
 -- | Instantiate a type if it starts with a quantification 
 -- TODO: Type reindexing
 instantiate :: Annotation -> Type -> Annotation
-instantiate (AQuant quant anno) ty = annWeaken $ foldAnnAlg annInstAlg anno
+instantiate (AQuant quant anno) ty = annStrengthen $ foldAnnAlg annInstAlg anno
   where annInstAlg = idAnnAlg {
     aLam   = \_ s a -> ALam (sortInstantiate quant ty s) a,
     aFix   = \_ s a -> AFix (sortInstantiate quant ty s) a

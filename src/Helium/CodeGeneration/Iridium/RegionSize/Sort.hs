@@ -47,14 +47,14 @@ type Depth = Int
 -- | Algebra for sorts
 data SortAlg a = 
   SortAlg { 
-    sortLam        :: Int -> a -> a -> a,
-    sortConstr     :: Int -> a,
-    sortUnit       :: Int -> a,
-    sortQuant      :: Int -> Quantor -> a -> a,
-    sortMonoRegion :: Int -> a,
-    sortPolyRegion :: Int -> TypeVar -> [Type] -> a,
-    sortPolySort   :: Int -> TypeVar -> [Type] -> a,
-    sortTuple      :: Int -> [a] -> a
+    sortLam        :: Depth -> a -> a -> a,
+    sortConstr     :: Depth -> a,
+    sortUnit       :: Depth -> a,
+    sortQuant      :: Depth -> Quantor -> a -> a,
+    sortMonoRegion :: Depth -> a,
+    sortPolyRegion :: Depth -> TypeVar -> [Type] -> a,
+    sortPolySort   :: Depth -> TypeVar -> [Type] -> a,
+    sortTuple      :: Depth -> [a] -> a
   }
 
 -- | Algebra that does not change the sort, usefull to edit for specific cases 
@@ -69,7 +69,6 @@ idSortAlg = SortAlg {
   sortPolySort   = \_ -> SortPolySort, 
   sortTuple      = \_ -> SortTuple  
 }
-
 
 -- | Execute a sort algebra on a sort
 foldSortAlg :: SortAlg a -> Sort -> a
