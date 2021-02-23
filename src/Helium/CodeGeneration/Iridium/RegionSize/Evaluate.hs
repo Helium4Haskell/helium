@@ -3,6 +3,7 @@ module Helium.CodeGeneration.Iridium.RegionSize.Evaluate
     ) where 
 
 import Lvm.Core.Type
+import Data.List
 
 import Helium.CodeGeneration.Iridium.RegionSize.Test
 import Helium.CodeGeneration.Iridium.RegionSize.Sort
@@ -25,10 +26,15 @@ eval = foldAnnAlg evalAlg
     aProj  = \_ -> project
   }
 
+
 -- | Only add when the subannotations are constraints
 add :: Annotation -> Annotation -> Annotation
 add (AConstr c1) (AConstr c2) = AConstr $ constrAdd c1 c2
-add c1 c2 = AAdd c1 c2 -- TODO: Addition of other sorts?
+add c1 c2 = addSort $ collect (AAdd c1 c2)
+  where collect (AAdd c3 c4) = collect c3 ++ collect c4 
+        collect ann = [ann]
+        addSort = operatorSort AAdd constrAdd
+
 
 -- | Join of annotations
 join :: Annotation -> Annotation -> Annotation
@@ -46,14 +52,11 @@ join (ALam   s a) (ALam   _ b) = ALam   s $ AJoin a b
 join (AApl   s a) (AApl   _ b) = AApl   s $ AJoin a b
 join (AQuant a  ) (AQuant b  ) = AQuant   $ AJoin a b
 join (AInstn a t) (AInstn b _) = AInstn (AJoin a b) t
-join a b = AJoin a b
-
-
--- | Only project if subannotation has been evaluated to a tuple
-project :: Int -> Annotation -> Annotation 
-project idx (ATuple as) | length as > idx = as !! idx
-                        | otherwise       = rsError $ "Projection-index out of bounds\n Idx: " ++ show idx ++ "\n Annotation: " ++ (show $ ATuple as)
-project _ t = t 
+-- Collect and sort
+join c1 c2 = joinSort $ collect (AJoin c1 c2)
+  where collect (AJoin c3 c4) = collect c3 ++ collect c4 
+        collect ann = [ann]
+        joinSort = operatorSort AJoin constrJoin
 
 
 -- | Annotation application
@@ -84,7 +87,22 @@ instantiate (AQuant anno) ty = annStrengthen $ foldAnnAlg annInstAlg anno
 instantiate a t = AInstn a t
 
 
+-- | Only project if subannotation has been evaluated to a tuple
+project :: Int -> Annotation -> Annotation 
+project idx (ATuple as) | length as > idx = as !! idx
+                        | otherwise       = rsError $ "Projection-index out of bounds\n Idx: " ++ show idx ++ "\n Annotation: " ++ (show $ ATuple as)
+project _ t = t 
 
 
+----------------------------------------------------------------
+-- Evalutation utilities
+----------------------------------------------------------------
 
-
+-- | Sort binary operator operands, compute all computable operators
+operatorSort :: (Annotation -> Annotation -> Annotation)
+             -> (Constr -> Constr -> Constr)
+             -> [Annotation] 
+             -> Annotation
+operatorSort op evalF xs = foldl op constr $ sort other 
+  where (constrs, other) = partition isConstr xs
+        constr = AConstr $ foldr (\(AConstr a) -> evalF a) constrBot constrs

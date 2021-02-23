@@ -11,6 +11,7 @@ import Data.List
 indent :: String -> String
 indent = intercalate "\n" . map ((++) "  ") . splitOn '\n'
 
+-- | Split string on character
 splitOn :: Char -> String -> [String]
 splitOn c s = case dropWhile ((==) c) s of
                      "" -> []

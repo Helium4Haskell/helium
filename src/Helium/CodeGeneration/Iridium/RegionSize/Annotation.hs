@@ -2,7 +2,8 @@ module Helium.CodeGeneration.Iridium.RegionSize.Annotation
   ( Annotation(..), 
     AnnAlg(..), foldAnnAlg, foldAnnAlgN, idAnnAlg,
     annWeaken, annStrengthen,
-    regVarSubst
+    regVarSubst,
+    isConstr
   ) where
 
 import Helium.CodeGeneration.Iridium.RegionSize.Constraints
@@ -40,13 +41,12 @@ data Annotation =
 -- Pretty printing
 ----------------------------------------------------------------
 
--- | TODO: Improve readability for types and quantors
 instance Show Annotation where
     show = foldAnnAlg showAlg
       where showAlg = AnnAlg {
         aVar    = \d idx -> varNames !! (d - idx),
         aReg    = \_ idx -> "reg_" ++ show idx,
-        aLam    = \d s a -> "(\\"++ (varNames !! d) ++":"++ showSort d s ++ "." ++ a ++ ")",
+        aLam    = \d s a -> "(λ"++ (varNames !! d) ++":"++ showSort d s ++ "." ++ a ++ ")",
         aApl    = \_ a b -> a ++ "< " ++ b ++ " >",
         aUnit   = \_     -> "()",
         aTuple  = \_ as  -> "(" ++ intercalate "," as ++ ")",
@@ -196,3 +196,8 @@ collect n (AVar    a) = M.singleton (RegVar a) n
 collect n (AReg    a) = M.singleton (Region a) n
 collect n (ATuple ps) = foldr constrAdd M.empty $ map (collect n) ps
 collect _ _ = rsError "Collect of non region annotation"
+
+-- | Is annotation a constraint set?
+isConstr :: Annotation -> Bool
+isConstr (AConstr _) = True
+isConstr _           = False

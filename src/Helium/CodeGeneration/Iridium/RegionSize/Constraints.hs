@@ -1,7 +1,7 @@
 module Helium.CodeGeneration.Iridium.RegionSize.Constraints
     (ConstrIdx(..), Constr, 
     constrShow,
-    constrJoin, constrAdd, constrIdx, constrRem, constrInst)
+    constrBot, constrJoin, constrAdd, constrIdx, constrRem, constrInst)
 where
 
 import Helium.CodeGeneration.Iridium.RegionSize.Utils
@@ -33,6 +33,10 @@ constrIdxShow _ (Region idx) = "rho_" ++ show idx
 ----------------------------------------------------------------
 -- Constraint utilities
 ----------------------------------------------------------------
+
+-- | Constraint bottom, also empty constraint set
+constrBot :: Constr
+constrBot = M.empty
 
 -- | Join of constraint sets
 constrJoin :: Constr -> Constr -> Constr

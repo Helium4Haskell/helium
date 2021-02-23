@@ -3,8 +3,6 @@ module Helium.CodeGeneration.Iridium.RegionSize.Sort
     SortAlg(..), idSortAlg, foldSortAlg, foldSortAlgN, 
     sortInstantiate,
     sortIsRegion, sortIsAnnotation,
-    -- TODO: Remove these from exports
-    sortAssign, regionAssign
   )
 where
 
@@ -39,7 +37,7 @@ instance Show Sort where
 showSort :: Depth -> Sort -> String
 showSort n = foldSortAlgN n showAlg
   where showAlg = SortAlg {
-    sortLam        = \_ a b  -> a ++ " ↦  " ++ b,
+    sortLam        = \_ a b  -> "(" ++ a ++ " ↦  " ++ b ++ ")",
     sortConstr     = \_      -> "C",
     sortUnit       = \_      -> "()",
     sortQuant      = \d s    -> "∀t_" ++ (varNames !! d) ++ ". " ++ s,
@@ -101,7 +99,6 @@ foldSortAlgN n alg = go n
 -- Sort assignment
 ----------------------------------------------------------------
 
--- | TODO: indexes of sort assign? Should already be bound localy?
 -- | Sort assignment based on type
 sortAssign :: Type -> Sort
 sortAssign = sortAssign' []
