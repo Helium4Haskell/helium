@@ -61,8 +61,8 @@ join c1 c2 = joinSort $ collect (AJoin c1 c2)
 
 -- | Annotation application
 application :: Annotation -> Annotation -> Annotation
-application (ALam s f) x | sortIsAnnotation s = annStrengthen $ foldAnnAlg subsAnnAlg f
-                         | sortIsRegion     s = annStrengthen $ foldAnnAlg subsRegAlg f
+application (ALam s f) x | sortIsAnnotation s = eval $ annStrengthen $ foldAnnAlg subsAnnAlg f
+                         | sortIsRegion     s = eval $ annStrengthen $ foldAnnAlg subsRegAlg f
                          | otherwise = rsError "Sort is neither region or annotation!?"
   where -- | Substitute a variable for an annotation
         subsAnnAlg = idAnnAlg {
@@ -79,7 +79,7 @@ application f x = AApl f x
 
 -- | Instantiate a type if it starts with a quantification 
 instantiate :: Annotation -> Type -> Annotation
-instantiate (AQuant anno) ty = annStrengthen $ foldAnnAlg annInstAlg anno
+instantiate (AQuant anno) ty = eval $ annStrengthen $ foldAnnAlg annInstAlg anno
   where annInstAlg = idAnnAlg {
     aLam   = \d s a -> ALam (sortInstantiate d ty s) a,
     aFix   = \d s a -> AFix (sortInstantiate d ty s) a

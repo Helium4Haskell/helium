@@ -18,6 +18,7 @@ import Helium.CodeGeneration.Iridium.FromCore(fromCore)
 import Helium.CodeGeneration.Iridium.Show()
 import Helium.CodeGeneration.Iridium.FileCache
 import Helium.CodeGeneration.Iridium.PassDeadCode(passDeadCode)
+import Helium.CodeGeneration.Iridium.RegionSize.PassRegionSize(passRegionSize)
 import Helium.CodeGeneration.Iridium.PassTailRecursion(passTailRecursion)
 import Helium.CodeGeneration.Iridium.ResolveDependencies(resolveDependencies, IridiumFile(..))
 import Helium.CodeGeneration.Iridium.TypeCheck
