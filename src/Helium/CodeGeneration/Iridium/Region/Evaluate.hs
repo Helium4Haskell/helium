@@ -22,9 +22,11 @@ import Helium.CodeGeneration.Iridium.Region.Relation
 import Helium.CodeGeneration.Iridium.Region.Sort
 import Helium.CodeGeneration.Iridium.Region.Utils
 
+import Debug.Trace
+
 simplify :: DataTypeEnv -> Annotation -> Annotation
 -- 'join' and 'afix' reduce a value fully, no need to recurse on the sub-annotations
-simplify env annotation@AJoin{} = join True env annotation
+simplify env annotation@AJoin{} = join False env annotation
 simplify env (AFix a1 s a2) = afix False env (a1, s, a2)
 simplify env annotation = case weakSimplifyStep env annotation of
   (True , annotation') -> nested annotation'
@@ -229,8 +231,14 @@ instantiate dataTypeEnv annotation tp = instantiate' False annotation
         transformSort = sortSubstitute dataTypeEnv forallCount tp
         transformRegionSort = regionSortSubstitute dataTypeEnv forallCount tp
 
+        transformRegion :: RegionVar -> RegionVars
+        transformRegion (RegionLocal idx)
+          | idx >= envSize env = RegionVarsSingle $ RegionLocal $ idx - envSize env + newEnvSize
+          | otherwise = mapRegionVars (\(RegionVar level) -> RegionVar $ newEnvSize - 1 - level) $ envFind idx env
+        transformRegion r = RegionVarsSingle r -- global or bottom
+
         transformRegions :: RegionVars -> RegionVars
-        transformRegions = mapRegionVars (\(RegionVar level) -> RegionVar $ newEnvSize - 1 - level) . bindRegionVars (\(RegionVar idx) -> envFind idx env)
+        transformRegions = bindRegionVars transformRegion
 
     regionVarMapping :: RegionSort -> RegionSort -> Env RegionVars -> Int -> (Env RegionVars, Int)
     regionVarMapping _ RegionSortMonomorphic   env newEnvSize
@@ -428,6 +436,10 @@ mapInFunction :: (Annotation -> Annotation) -> Sort -> Annotation -> Annotation
 mapInFunction f _ (ALam s rs lc a) = ALam s rs lc $ f a
 mapInFunction f s a = ALam s (RegionSortTuple []) LifetimeContextAny $ f $ AApp (weaken 0 1 0 a) (AVar $ AnnotationVar 0) (RegionVarsTuple []) LifetimeContextAny
 
+mapInFunction' :: (Annotation -> Annotation) -> Sort -> RegionSort -> Annotation -> Annotation
+mapInFunction' f _ _ (ALam s rs lc a) = ALam s rs lc $ f a
+mapInFunction' f s rs a = ALam s rs LifetimeContextAny $ f $ AApp (weaken 0 1 (regionSortSize rs) a) (AVar $ AnnotationVar 0) (regionSortToVars 0 rs) LifetimeContextAny
+
 -- Composes two functions (which do not take region arguments)
 -- by appling the first function after the second function.
 compose :: Sort -> Annotation -> Annotation -> Annotation
@@ -451,12 +463,12 @@ transformFixpoint (f, _, g) s' h hInv =
   )
 
 afixEscape :: DataTypeEnv -> Int -> Sort -> RegionSort -> Annotation -> ([Bool], Annotation)
-afixEscape env arity sort' regionSort f = iterate 0 $ snd $ escapes' $ step $ ABottom sort'
+afixEscape env arity sort' regionSort f = mapInFunction' (`AProject` 0) SortUnit regionSort <$> iterate 0 (snd $ escapes' $ step $ ABottom sort')
   where
     f' = simplify env f
 
     iterate :: Int -> Annotation -> ([Bool], Annotation)
-    iterate 16 _ -- Give up
+    iterate 64 _ -- Give up
       -- Decide on the escapes check, put the remainder in a normal fixpoint
       | ALam s rs lc body <- f' -- TODO: We could use f'^n for some n here, as that may give better results in the escapes check
       , (doesEscape, body') <- escapes' body
@@ -468,23 +480,25 @@ afixEscape env arity sort' regionSort f = iterate 0 $ snd $ escapes' $ step $ AB
       where
         (doesEscape, next) = escapes' $ step current
 
-    step a = simplify env $ AApp f' a (RegionVarsTuple []) LifetimeContextAny
+    step a = simplify env $ simplify env $ AApp f' a (RegionVarsTuple []) LifetimeContextAny
     escapes' = escapes arity regionSort
 
 escapes :: Int -> RegionSort -> Annotation -> ([Bool], Annotation) -- For each region whether it escapes, and the transformed annotation
-escapes arity regionSort (AFix (ALam _ _ _ a) _ _) = escapes arity regionSort a
+-- escapes _ _ a = (repeat True, a)
+escapes arity regionSort (AFix (ALam s rs lc a) s' a') = (\a'' -> AFix (ALam s rs lc a'') s' a') <$> escapes arity regionSort a
 escapes _     regionSort a@(ABottom _) = (map (const False) $ flattenRegionVars $ regionSortToVars 0 regionSort, a) -- Both Top and Bottom don't need additional region arguments.
 escapes _     regionSort a@(ATop _) = (map (const False) $ flattenRegionVars $ regionSortToVars 0 regionSort, a)
-escapes arity regionSort  (ALam _ _ _ a) = skipLambdas arity 0 a
+escapes arity regionSort (ALam sort' regionSort' lifetime (ATuple (a : as))) = ALam sort' regionSort' lifetime . ATuple . (: as) <$> skipLambdas arity 0 a
   where
     regionSize = regionSortSize regionSort
 
     skipLambdas :: Int -> Int -> Annotation -> ([Bool], Annotation)
-    skipLambdas 0 regionScope a1 = escapesBody regionSort regionScope a1
+    skipLambdas 0 _ a1 = (repeat False, a1)
+    skipLambdas 1 regionScope (ALam s rs lc a1) = ALam s rs lc <$> escapesBody regionSort (regionScope + regionSortSize rs) a1
     skipLambdas n regionScope (AForall q a1) = AForall q <$> skipLambdas n regionScope a1
     skipLambdas n regionScope (ALam s rs lc (ATuple [a1, a2])) = (doesEscape, ALam s rs lc (ATuple [a1', a2']))
       where
-        a1' = restrict doesEscape regionScope a1
+        a1' = restrict doesEscape (regionScope + regionSortSize rs) a1
         (doesEscape, a2') = skipLambdas (n - 1) (regionScope + regionSortSize rs) a2
     skipLambdas _ _ _ = error "Helium.CodeGeneration.Iridium.Region.Annotation.escapes: annotation does not match with the function arity"
 
@@ -495,9 +509,7 @@ escapes arity regionSort  (ALam _ _ _ a) = skipLambdas arity 0 a
         AForall q a1 -> AForall q (go a1)
         ALam s rs lc a1 -> ALam s rs lc $ restrict doesEscape (regionScope + regionSortSize rs) a1
         AInstantiate a1 tp -> AInstantiate (go a1) tp
-        AApp a1 a2 rs lc
-          | not $ all preserveRegion $ flattenRegionVars rs -> error "Helium.CodeGeneration.Iridium.Region.Annotation.escapes: illegal application in annotation"
-          | otherwise -> AApp (go a1) (go a2) rs lc
+        AApp a1 a2 rs lc -> AApp (go a1) (go a2) (mapRegionVars mapRegion rs) lc
         ATuple as -> ATuple $ go <$> as
         AProject a1 idx -> AProject (go a1) idx
         AVar v -> AVar v
@@ -508,28 +520,48 @@ escapes arity regionSort  (ALam _ _ _ a) = skipLambdas arity 0 a
       where
         go = restrict doesEscape regionScope
 
+        mapRegion :: RegionVar -> RegionVar
+        mapRegion r
+          | preserveRegion r = RegionBottom
+          | otherwise = r
+
         preserveRegion :: RegionVar -> Bool
         preserveRegion (RegionLocal idx)
           | idx >= regionScope
           , idx < regionScope + regionSize
-          , not $ doesEscape !!! (regionSize - (idx - regionScope) + 1) = False
+          , not $ doesEscape !!! (regionSize - (idx - regionScope) - 1) = False
         preserveRegion _ = True
 
 escapes _ regionSort a = (map (const True) $ flattenRegionVars $ regionSortToVars 0 regionSort, a) -- This cannot be analyzed
 
 escapesBody :: RegionSort -> Int -> Annotation -> ([Bool], Annotation)
-escapesBody regionSort extraRegionScope body = (doesEscape, substitute 0 body)
+escapesBody regionSort extraRegionScope (ATuple
+    [ ALam SortUnit RegionSortMonomorphic LifetimeContextAny (ALam SortUnit returnRegionSort LifetimeContextLocalBottom aEffect)
+    , aReturn
+    ])
+  = ( doesEscape
+    , ATuple
+      [ ALam SortUnit RegionSortMonomorphic LifetimeContextAny $ ALam SortUnit returnRegionSort LifetimeContextLocalBottom $ substitute 0 aEffect
+      , fromMaybe (error "escapesBody: illegal variable") $ strengthen 0 0 (regionSortSize returnRegionSort + 1) $ substitute 0 aReturn'
+      ]
+    )
   where
-    regionSize = regionSortSize regionSort
-    Escapes relation higherOrderVars = analyseEscapeBody 0 body
+    aReturn' = weaken 0 0 (regionSortSize returnRegionSort + 1) aReturn
+    extraRegionScope' = extraRegionScope + regionSortSize returnRegionSort + 1
 
-    (_, substitutionList) = relationCollapse canCollapse (filter canCollapse $ map RegionLocal [extraRegionScope .. extraRegionScope + regionSize - 1]) relation
+    regionSize = regionSortSize regionSort
+    Escapes relation higherOrderVars = analyseEscapeBody 0 aEffect <> analyseEscapeBody 0 aReturn'
+
+    (_, substitutionList) = relationCollapse canCollapse canDefault (map RegionLocal [extraRegionScope' .. extraRegionScope' + regionSize - 1]) relation
     substitution = IntMap.fromList $ map (\(RegionVar idx, r) -> (idx, r)) substitutionList
 
-    canCollapse (RegionLocal idx) = idx >= extraRegionScope && idx < extraRegionScope + regionSize && idx `IntSet.notMember` higherOrderVars
+    canCollapse (RegionLocal idx) = idx >= extraRegionScope' && idx < extraRegionScope' + regionSize
     canCollapse _ = False
 
-    doesEscape = map (\var -> substituteRegionVar 0 var == var) $ reverse $ map RegionLocal $ [extraRegionScope .. extraRegionScope + regionSize - 1]
+    canDefault (RegionLocal idx) = canCollapse (RegionLocal idx) && idx `IntSet.notMember` higherOrderVars
+    canDefault _ = False
+
+    doesEscape = map (\var -> substituteRegionVar 0 var == var) $ reverse $ map RegionLocal $ [extraRegionScope' .. extraRegionScope' + regionSize - 1]
 
     substitute :: Int -> Annotation -> Annotation
     substitute scope annotation = case annotation of
@@ -560,6 +592,7 @@ escapesBody regionSort extraRegionScope body = (doesEscape, substitute 0 body)
       -- substituted with another variable.
         = substituteRegionVar scope $ weakenRegionVar 0 scope r
     substituteRegionVar _ r = r
+escapesBody _ _ body = trace "escapesBody: unexpected body annotation" (repeat True, body)
 
 analyseEscapeBody :: Int -> Annotation -> Escapes
 analyseEscapeBody firstRegionScope annotation = case annotation of
@@ -570,10 +603,13 @@ analyseEscapeBody firstRegionScope annotation = case annotation of
     AInstantiate a1 _ -> go a1
     AApp a1 a2 rs lc ->
       let
-        r = if lc == LifetimeContextAny && rs /= RegionVarsTuple [] && isTopApplication a1 then
-              Escapes (relationFromConstraints $ map ((`Outlives` RegionGlobal) . RegionLocal) $ mapMaybe regionIdx $ flattenRegionVars rs) IntSet.empty
-            else
-              Escapes relationEmpty $ IntSet.fromList $ mapMaybe regionIdx $ flattenRegionVars rs
+        r 
+          | lc == LifetimeContextAny && rs /= RegionVarsTuple [] && isTopApplication a1
+            = Escapes (relationFromConstraints $ map ((`Outlives` RegionGlobal) . RegionLocal) $ mapMaybe regionIdx $ flattenRegionVars rs) IntSet.empty
+          | lc == LifetimeContextAny
+            = Escapes relationEmpty $ IntSet.fromList $ mapMaybe regionIdx $ flattenRegionVars rs
+          | otherwise
+            = mempty
       in go a1 <> go a2 <> r
     ATuple as -> mconcat $ go <$> as
     AProject a1 _ -> go a1

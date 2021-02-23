@@ -30,7 +30,7 @@ envLookup idx (Env n m) = case IntMap.lookup (n - idx - 1) m of
 envFind :: Int -> Env a -> a
 envFind idx (Env n m) = case IntMap.lookup (n - idx - 1) m of
   Nothing
-    | idx < 0 || idx >= n -> error "Helium.CodeGeneration.Iridium.Region.Env.envFind: Invalid Debruijn index"
+    | idx < 0 || idx >= n -> error $ "Helium.CodeGeneration.Iridium.Region.Env.envFind: Invalid Debruijn index: " ++ show idx
     | otherwise -> error "Helium.CodeGeneration.Iridium.Region.Env.envFind: Env has an invalid state"
   Just x -> x
 

@@ -305,14 +305,16 @@ relationCollapseDirectOutlives canCollapse vars relation = case partitionEithers
 
 -- 'canCollapse' and 'vars' should represent the same set of variables:
 --   canCollapse x iff x `elem` vars
-relationCollapse :: (RegionVar -> Bool) -> [RegionVar] -> Relation -> (Relation, [(RegionVar, RegionVar)]) -- Unifications may not be closed/idempotent, eg we need to recursively descend to find the substituted region var.
-relationCollapse canCollapse vars1 relation1 = (relation4, bottomUnifications ++ cycleUnifications ++ directOutlivesUnifications)
+-- 'canCollapse' should be implied by 'canDefault':
+--    canDefault x => canCollapse x
+relationCollapse :: (RegionVar -> Bool) -> (RegionVar -> Bool) -> [RegionVar] -> Relation -> (Relation, [(RegionVar, RegionVar)]) -- Unifications may not be closed/idempotent, eg we need to recursively descend to find the substituted region var.
+relationCollapse canCollapse canDefault vars1 relation1 = (relation4, bottomUnifications ++ cycleUnifications ++ directOutlivesUnifications)
   where
-    ((vars2, relation2), bottomUnifications) = relationCollapseBottom canCollapse vars1 relation1
+    ((vars2, relation2), bottomUnifications) = relationCollapseBottom canDefault vars1 relation1
 
     (vars3, relation3, cycleUnifications) = relationCollapseCyclic canCollapse vars2 relation2
 
-    (relation4, directOutlivesUnifications) = relationCollapseDirectOutlives canCollapse vars3 relation3
+    (relation4, directOutlivesUnifications) = relationCollapseDirectOutlives canDefault vars3 relation3
 
 
 instance Semigroup Relation where

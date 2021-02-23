@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: a0cfe60d5264a904442d9020a89597d3b6762e60b82c5fc84e0543a4b7532486
+-- hash: d8d31e869e47a63e85c3dfa3bdacf73fe626e28161dcda58561624e8cbe73327
 
 name:           helium
 version:        1.9
@@ -68,6 +68,7 @@ library
       Helium.CodeGeneration.DerivingShow
       Helium.CodeGeneration.DerivingUtils
       Helium.CodeGeneration.InstanceDictionary
+      Helium.CodeGeneration.Iridium.BindingGroup
       Helium.CodeGeneration.Iridium.Data
       Helium.CodeGeneration.Iridium.FileCache
       Helium.CodeGeneration.Iridium.FromCore
@@ -83,6 +84,14 @@ library
       Helium.CodeGeneration.Iridium.PassDeadCode
       Helium.CodeGeneration.Iridium.PassTailRecursion
       Helium.CodeGeneration.Iridium.Primitive
+      Helium.CodeGeneration.Iridium.Region.Annotation
+      Helium.CodeGeneration.Iridium.Region.Containment
+      Helium.CodeGeneration.Iridium.Region.Env
+      Helium.CodeGeneration.Iridium.Region.Evaluate
+      Helium.CodeGeneration.Iridium.Region.Generate
+      Helium.CodeGeneration.Iridium.Region.PassRegion
+      Helium.CodeGeneration.Iridium.Region.RegionVar
+      Helium.CodeGeneration.Iridium.Region.Relation
       Helium.CodeGeneration.Iridium.Region.Sort
       Helium.CodeGeneration.Iridium.Region.Utils
       Helium.CodeGeneration.Iridium.ResolveDependencies
@@ -207,6 +216,8 @@ library
     , parsec
     , process
     , text
+    , vector
+    , vector-algorithms
     , wl-pprint
   default-language: Haskell2010
 
@@ -232,6 +243,8 @@ executable helium
     , parsec
     , process
     , text
+    , vector
+    , vector-algorithms
     , wl-pprint
   default-language: Haskell2010
 
@@ -257,6 +270,8 @@ executable heliumpath
     , parsec
     , process
     , text
+    , vector
+    , vector-algorithms
     , wl-pprint
   default-language: Haskell2010
 
@@ -284,6 +299,8 @@ executable runhelium
     , parsec
     , process
     , text
+    , vector
+    , vector-algorithms
     , wl-pprint
   default-language: Haskell2010
 
@@ -310,5 +327,7 @@ executable texthint
     , parsec
     , process
     , text
+    , vector
+    , vector-algorithms
     , wl-pprint
   default-language: Haskell2010
