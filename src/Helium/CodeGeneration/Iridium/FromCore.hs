@@ -122,7 +122,7 @@ idMatchCase = idFromString "match_case"
 idMatchDefault = idFromString "match_default"
 
 toMethod :: NameSupply -> TypeEnv -> Id -> Core.Type -> Core.Expr -> Method
-toMethod supply env name tp expr = Method tp args returnType [AnnotateTrampoline] (Block entryName entry) blocks
+toMethod supply env name tp expr = Method tp args returnType [MethodAnnotateTrampoline] (Block entryName entry) blocks
   where
     (entryName, supply') = freshIdFromId idEntry supply
     createArgument (Left quantor) _ = Left quantor
@@ -156,7 +156,7 @@ infixr 2 &>
 bs &> (Partial instr blocks) = Partial instr $ bs ++ blocks
 
 ret :: NameSupply -> TypeEnv -> Id -> Continue -> Partial
-ret supply env x CReturn = Partial (Return $ VarLocal $ Local x $ Core.typeToStrict retType) []
+ret supply env x CReturn = Partial (Return $ Local x $ Core.typeToStrict retType) []
   where
     retType = teReturnType env
 ret _ _ x (CBind next) = next x
@@ -164,10 +164,11 @@ ret _ _ x (CBind next) = next x
 toInstruction :: NameSupply -> TypeEnv -> Continue -> Core.Expr -> Partial
 -- Let bindings
 toInstruction supply env continue (Core.Let (Core.NonRec b) expr)
-  = LetAlloc [letbind]
+  = instr
+    +> LetAlloc [letbind]
     +> toInstruction supply2 env' continue expr
   where
-    letbind = bind supply1 env b
+    (instr, letbind) = bind supply1 env b
     (supply1, supply2) = splitNameSupply supply
     env' = expandEnvWithLetAlloc [letbind] env
 
@@ -180,20 +181,22 @@ toInstruction supply env continue (Core.Let (Core.Strict (Core.Bind (Core.Variab
       where env' = expandEnvWith (Local x t') env
 
 toInstruction supply env continue (Core.Let (Core.Rec bs) expr)
-  = LetAlloc binds
+  = instructions instrs
+  +> LetAlloc binds
   +> toInstruction supply2 env' continue expr
   where
     (supply1, supply2) = splitNameSupply supply
-    binds = mapWithSupply (\s -> bind s env') supply1 bs
+    (instrs, binds) = unzip $ mapWithSupply (\s -> bind s env') supply1 bs
     locals = map (coreBindLocal env) bs
     env' = expandEnvWithLocals locals env
 
 -- Match
 toInstruction supply env continue match@(Core.Match x alts) =
-  blocks &> partial
+  blocks &> instr +> partial
   where
+    (supply', instr, x') = resolveLocal supply env x
     (blockCount, partial) = case head alts of
-      Core.Alt Core.PatDefault expr -> (1, toInstruction supply'' env (head continues) expr)
+      Core.Alt Core.PatDefault expr -> (1, toInstruction supply''' env (head continues) expr)
       -- We don't need to create a Case statement for tuples, we only Match on the elements of the tuple.
       Core.Alt (Core.PatCon (Core.ConTuple arity) instantiation fields) expr ->
         let
@@ -201,28 +204,28 @@ toInstruction supply env continue match@(Core.Match x alts) =
           env' = expandEnvWithLocals locals env
         in
           ( 1,
-            Match (resolveVariable env x) (MatchTargetTuple arity) instantiation (map Just fields)
-              +> toInstruction supply'' env' (head continues) expr
+            Match x' (MatchTargetTuple arity) instantiation (map Just fields)
+              +> toInstruction supply''' env' (head continues) expr
           )
       Core.Alt (Core.PatCon (Core.ConId con) _ _) _ ->
         let ValueConstructor constructor = findMap con (teValues env)
-        in transformCaseConstructor supply'' env continues x (constructorDataType constructor) alts
-      Core.Alt (Core.PatLit (Core.LitInt _ _)) _ -> transformCaseInt supply'' env continues x alts
+        in transformCaseConstructor supply''' env continues x' (constructorDataType constructor) alts
+      Core.Alt (Core.PatLit (Core.LitInt _ _)) _ -> transformCaseInt supply''' env continues x' alts
       Core.Alt (Core.PatLit _) _ -> error "Match on float literals is not supported"
 
-    (supply1, supply2) = splitNameSupply supply
+    (supply1, supply2) = splitNameSupply supply'
     jumps :: [(Local, Id)] -- Names of intermediate blocks and names of the variables containing the result
     jumps = mapWithSupply (\s _ ->
       let
         (blockName, s') = freshIdFromId idMatchCase s
         (varName, _) = freshId s'
       in (Local varName tp, blockName)) supply1 alts
-    phiBranches = take blockCount $ map (\(loc, block) -> PhiBranch block $ VarLocal loc) jumps
+    phiBranches = take blockCount $ map (\(loc, block) -> PhiBranch block loc) jumps
     phi = case phiBranches of
-      [PhiBranch _ var] -> Var var
+      [PhiBranch _ var] -> Var $ VarLocal var
       _ -> Phi phiBranches
-    (blockId, supply') = freshIdFromId idMatchAfter supply2
-    (result, supply'') = freshId supply'
+    (blockId, supply'') = freshIdFromId idMatchAfter supply2
+    (result, supply''') = freshId supply''
     tp = Core.typeToStrict $ Core.typeOfCoreExpression (teCoreEnv env) match
     blocks = case continue of
       CReturn -> []
@@ -278,13 +281,14 @@ toInstruction supply env continue expr = case getApplicationOrConstruction expr 
   (Right fn, args)
     | all isLeft args && not (isGlobalFunction $ resolve env fn) ->
       let
-        e1 = (Instantiate (resolveVariable env fn) $ map (fromLeft $ error "FromCore.toInstruction: expected Left") args)
+        (_, instr, fn') = resolveLocal supply''' env fn
+        e1 = (Instantiate fn' $ map (fromLeft $ error "FromCore.toInstruction: expected Left") args)
         t1 = typeOfExpr (teCoreEnv env) e1
       in if Core.typeIsStrict t1 then
-        Let x e1
+        instr . Let x e1
           +> ret supplyRet env x continue
       else
-        Let x e1
+        instr . Let x e1
           +> Let y (Eval $ VarLocal $ Local x t1)
           +> ret supplyRet env y continue
     | otherwise ->
@@ -363,8 +367,13 @@ altJump toBlock (Local toVar toType, intermediateBlockId) = CBind (\resultVar ->
       Partial (Jump intermediateBlockId) [intermediateBlock]
   )
 
-maybeCast :: NameSupply -> TypeEnv -> Id -> Core.Type -> (Variable, Instruction -> Instruction)
-maybeCast supply env name expected = maybeCastVariable supply env (resolveVariable env name) expected
+maybeCast :: NameSupply -> TypeEnv -> Id -> Core.Type -> (Local, Instruction -> Instruction)
+maybeCast supply env name expected = case maybeCastVariable supply1 env (resolveVariable env name) expected of
+  (VarLocal local, instr) -> (local, instr)
+  (var, instr) -> (Local localName expected, instr . Let localName (Var var))
+  where
+    (supply1, supply2) = splitNameSupply supply
+    (localName, _) = freshIdFromId name supply2
 
 maybeCastVariable :: NameSupply -> TypeEnv -> Variable -> Core.Type -> (Variable, Instruction -> Instruction)
 maybeCastVariable supply env var expected
@@ -376,17 +385,20 @@ maybeCastVariable supply env var expected
 -- A cast should only change the strictness of a type
 castTo :: NameSupply -> TypeEnv -> Variable -> Core.Type -> Core.Type -> (Variable, Instruction -> Instruction)
 castTo supply env var from to
-  | not (Core.typeIsStrict from) && Core.typeIsStrict to = (newVar, Let nameWhnf (Eval var) . instructions)
+  | not (Core.typeIsStrict from) && Core.typeIsStrict to = (newVar, Let nameWhnf (Eval var) . instrs)
   where
     (nameWhnf, supply') = freshIdFromId (variableName var) supply
-    (newVar, instructions) = maybeCastVariable supply' env (VarLocal $ Local nameWhnf (Core.typeToStrict from)) to
+    (newVar, instrs) = maybeCastVariable supply' env (VarLocal $ Local nameWhnf (Core.typeToStrict from)) to
 castTo supply env var from to
-  | Core.typeIsStrict from && not (Core.typeIsStrict to) = (VarLocal $ Local casted to, Let casted $ CastThunk var)
+  | Core.typeIsStrict from && not (Core.typeIsStrict to) = case var of
+      VarLocal localVar -> (VarLocal $ Local casted to, Let casted $ CastThunk localVar)
+      VarGlobal _ -> (VarLocal $ Local casted to, Let localName (Var var) . Let casted (CastThunk $ Local localName $ variableType var))
   where
-    (casted, _) = freshIdFromId (variableName var) supply
+    (casted, supply') = freshIdFromId (variableName var) supply
+    (localName, _) = freshIdFromId (variableName var) supply'
 castTo supply env var _ to = (var, id)
 
-maybeCasts :: NameSupply -> TypeEnv -> Core.Type -> [Either Core.Type Id] -> ([Either Core.Type Variable], Instruction -> Instruction, Core.Type)
+maybeCasts :: NameSupply -> TypeEnv -> Core.Type -> [Either Core.Type Id] -> ([Either Core.Type Local], Instruction -> Instruction, Core.Type)
 maybeCasts _ _ tp [] = ([], id, tp)
 maybeCasts supply env tp args'@(Right name : args) =
   case typeNormalizeHead (teCoreEnv env) tp of
@@ -406,11 +418,10 @@ maybeCasts supply env tp (Left tpArg : args) =
   in
     (Left tpArg : tailVars, tailInstr, returnType)
 
-transformCaseInt :: NameSupply -> TypeEnv -> [Continue] -> Id -> [Core.Alt] -> (Int, Partial)
-transformCaseInt supply env continues name alts = (length bs, Partial (Case var c) $ concat blocks)
+transformCaseInt :: NameSupply -> TypeEnv -> [Continue] -> Local -> [Core.Alt] -> (Int, Partial)
+transformCaseInt supply env continues var alts = (length bs, Partial (Case var c) $ concat blocks)
   where
     (supply1, supply2) = splitNameSupply supply
-    var = resolveVariable env name
     c@(CaseInt bs _) = gatherCaseIntAlts branches
     branches :: [(Maybe Int, BlockName)]
     blocks :: [[Block]]
@@ -432,7 +443,7 @@ transformAltInt supply env (Core.Alt pattern expr, continue) = ((value, blockNam
     (blockName, supply') = freshIdFromId idMatchCase supply
     Partial instr blocks = toInstruction supply' env continue expr
 
-transformAlt :: NameSupply -> TypeEnv -> Continue -> Variable -> DataTypeConstructor -> [Core.Type] -> [Id] -> Core.Expr -> Partial
+transformAlt :: NameSupply -> TypeEnv -> Continue -> Local -> DataTypeConstructor -> [Core.Type] -> [Id] -> Core.Expr -> Partial
 transformAlt supply env continue var con@(DataTypeConstructor _ tp) instantiation args expr = 
   let
     FunctionType fields _ = extractFunctionTypeNoSynonyms $ Core.typeApplyList tp instantiation
@@ -442,16 +453,15 @@ transformAlt supply env continue var con@(DataTypeConstructor _ tp) instantiatio
     Match var (MatchTargetConstructor con) instantiation (map Just args)
     +> toInstruction supply env' continue expr
 
-transformCaseConstructor :: NameSupply -> TypeEnv -> [Continue] -> Id -> Id -> [Core.Alt] -> (Int, Partial)
-transformCaseConstructor supply env continues varName dataType alts = (length alts', Partial (Case var c) blocks)
+transformCaseConstructor :: NameSupply -> TypeEnv -> [Continue] -> Local -> Id -> [Core.Alt] -> (Int, Partial)
+transformCaseConstructor supply env continues var dataType alts = (length alts', Partial (Case var c) blocks)
   where
-    var = resolveVariable env varName
     (supply1, supply2) = splitNameSupply supply
     c = CaseConstructor alts'
     constructors = findMap dataType (teDataTypes env)
     (alts', blocks) = gatherCaseConstructorAlts supply2 env continues constructors var alts
 
-gatherCaseConstructorAlts :: NameSupply -> TypeEnv -> [Continue] -> [DataTypeConstructor] -> Variable -> [Core.Alt] -> ([(DataTypeConstructor, BlockName)], [Block])
+gatherCaseConstructorAlts :: NameSupply -> TypeEnv -> [Continue] -> [DataTypeConstructor] -> Local -> [Core.Alt] -> ([(DataTypeConstructor, BlockName)], [Block])
 gatherCaseConstructorAlts _ _ _ _ _ [] = ([], [])
 gatherCaseConstructorAlts supply env (continue:_) remaining _ (Core.Alt Core.PatDefault expr : _) = (map (\con -> (con, blockName)) remaining, Block blockName instr : blocks)
   where
@@ -466,13 +476,13 @@ gatherCaseConstructorAlts supply env (continue:continues) remaining var (Core.Al
     Partial instr blocks = transformAlt supply1 env continue var con instantiation args expr
     (nextAlts, nextBlocks) = gatherCaseConstructorAlts supply2 env continues remaining' var alts
 
-bind :: NameSupply -> TypeEnv -> Core.Bind -> Bind
-bind supply env (Core.Bind (Core.Variable x _) val) = Bind x target $ map toArg args
+bind :: NameSupply -> TypeEnv -> Core.Bind -> (Instruction -> Instruction, Bind)
+bind supply env (Core.Bind (Core.Variable x _) val) = (argInstrs, Bind x target args')
   where
     (apOrCon, args) = getApplicationOrConstruction val []
-    (supply1, supply2) = splitNameSupply supply
-    toArg (Left tp) = Left tp
-    toArg (Right var) = Right $ resolveVariable env var
+    (supply', argInstrs, args') = callArguments supply env args
+    (supply1, supply2) = splitNameSupply supply'
+
     target :: BindTarget
     target = case apOrCon of
       Left (Core.ConId con) ->
@@ -488,6 +498,16 @@ bind supply env (Core.Bind (Core.Variable x _) val) = Bind x target $ map toArg 
           | null args -> error $ "bind: a secondary thunk cannot have zero arguments"
         _ ->
           BindTargetThunk $ resolveVariable env fn
+
+callArguments :: NameSupply -> TypeEnv -> [Either Core.Type Id] -> (NameSupply, Instruction -> Instruction, [Either Core.Type Local])
+callArguments supply env (Left tp : args) = (supply', instr, Left tp : args')
+  where
+    (supply', instr, args') = callArguments supply env args
+callArguments supply env (Right x : args) = (supply'', instr . instrX, Right local : args')
+  where
+    (supply', instrX, local) = resolveLocal supply env x
+    (supply'', instr, args') = callArguments supply' env args
+callArguments supply _ [] = (supply, id, [])
 
 coreBindLocal :: TypeEnv -> Core.Bind -> Local
 coreBindLocal env (Core.Bind (Core.Variable name tp) expr) = 
@@ -533,3 +553,15 @@ resolveVariable env name = case resolve env name of
   Left var -> var
   Right (GlobalFunction name 0 tp) -> VarGlobal $ GlobalVariable name $ typeRemoveArgumentStrictness tp
   Right (GlobalFunction name _ tp) -> VarGlobal $ GlobalVariable name $ typeToStrict $ typeRemoveArgumentStrictness tp
+
+resolveLocal :: NameSupply -> TypeEnv -> Id -> (NameSupply, Instruction -> Instruction, Local)
+resolveLocal supply env name = case resolveVariable env name of
+  VarLocal local -> (supply, id, local)
+  VarGlobal global@(GlobalVariable _ tp) ->
+    let
+      (name', supply') = freshIdFromId name supply
+    in
+      (supply', Let name' (Var $ VarGlobal global), Local name' tp)
+
+instructions :: [Instruction -> Instruction] -> Instruction -> Instruction
+instructions = foldr (.) id

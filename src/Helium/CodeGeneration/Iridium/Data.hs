@@ -14,15 +14,16 @@
 
 module Helium.CodeGeneration.Iridium.Data where
 
-import Lvm.Common.Id(Id, stringFromId, idFromString)
-import Lvm.Common.IdMap(mapFromList, emptyMap)
-import Lvm.Core.Module(Custom(..), DeclKind, Arity, Field)
+import Lvm.Common.Id (Id, stringFromId, idFromString)
+import Lvm.Common.IdMap (mapFromList, emptyMap)
+import Lvm.Core.Module (Custom(..), DeclKind, Arity, Field)
 import Lvm.Core.Type
-import Data.List(intercalate)
-import Data.Either (isLeft, isRight)
+import Data.List (intercalate)
+import Data.Maybe (catMaybes)
+import Data.Either (isLeft, isRight, rights)
 
 import Helium.CodeGeneration.Iridium.Type
-import Helium.CodeGeneration.Iridium.Primitive(findPrimitive, primType)
+import Helium.CodeGeneration.Iridium.Primitive (findPrimitive, primType)
 
 type BlockName = Id
 
@@ -75,7 +76,7 @@ instance Functor Declaration where
   fmap f (Declaration name visibility mod customs a) = Declaration name visibility mod customs $ f a
 
 -- Imported method, eg a method without a definition. The implementation is in some other file.
-data AbstractMethod = AbstractMethod !Type !FunctionType ![Annotation]
+data AbstractMethod = AbstractMethod !Type !FunctionType ![MethodAnnotation]
   deriving (Eq, Ord)
 
 abstractFunctionType :: AbstractMethod -> FunctionType
@@ -87,7 +88,7 @@ abstractType method = typeFromFunctionType $ abstractFunctionType method
 abstractSourceType :: AbstractMethod -> Type
 abstractSourceType (AbstractMethod tp _ _) = tp
 
-data Method = Method !Type ![Either Quantor Local] !Type ![Annotation] !Block ![Block]
+data Method = Method !Type ![Either Quantor Local] !Type ![MethodAnnotation] !Block ![Block]
   deriving (Eq, Ord)
 
 methodFunctionType :: Method -> FunctionType
@@ -107,16 +108,16 @@ methodArity :: Method -> Int
 methodArity (Method _ args _ _ _ _) = length $ filter isRight args
 
 -- Annotations on methods
-data Annotation
+data MethodAnnotation
   -- * This method can be put in a thunk. An additional trampoline function is generated. We store a pointer to the trampoline in the thunk.
-  = AnnotateTrampoline
+  = MethodAnnotateTrampoline
   -- * Marks that this function uses a custom calling convention. When none is given, it is assumed to use CCFast
-  | AnnotateCallConvention !CallingConvention
+  | MethodAnnotateCallConvention !CallingConvention
   -- * The type of the method ends in RealWorld -> IORes, but in reality the fuction does not take RealWorld as an argument and only produces
   -- the value in the IORes object (not the 'next' real world). This is used to declare extern functions like putchar and getchar.
   -- We currently assume that the return type of the function is 'int'.
-  -- Cannot be used in combination with 'AnnotateTrampoline'.
-  | AnnotateImplicitIO
+  -- Cannot be used in combination with 'MethodAnnotateTrampoline'.
+  | MethodAnnotateImplicitIO
   deriving (Eq, Ord)
 
 data CallingConvention
@@ -194,23 +195,23 @@ data Instruction
   -- tuples and thunks. Pattern matching on thunks is not possible from Haskell code, but is used to write the
   -- runtime library. If the variable does not match with the specified MatchTarget, the behaviour is undefined.
   -- Extracts fields out of the object.
-  | Match !Variable !MatchTarget ![Type] ![Maybe Id] !Instruction
+  | Match !Local !MatchTarget ![Type] ![Maybe Id] !Instruction
   -- * Conditionally jumps to a block, depending on the value of the variable. Can be used to distinguish
   -- different constructors of a data type, or on integers.
-  | Case !Variable Case
+  | Case !Local Case
   -- * Returns a value from the function. The type of the variable should match with the return type of the
   -- containing method.
-  | Return !Variable
+  | Return !Local
   -- * Denotes that the current location is unreachable. Can be used after a call to a diverging function like 'error'.
   -- The control flow or the argument should guarantee that this location is unreachable. In the case of calling 'error',
   -- the argument should be the returned value of 'error'.
-  | Unreachable !(Maybe Variable)
+  | Unreachable !(Maybe Local)
   deriving (Eq, Ord)
 
 -- * A bind describes the construction of an object in a 'letalloc' instruction. It consists of the
 -- variable to which the object is bound, the target and argument. A target represents what kind of object
 -- is created.
-data Bind = Bind { bindVar :: !Id, bindTarget :: !BindTarget, bindArguments :: ![Either Type Variable] }
+data Bind = Bind { bindVar :: !Id, bindTarget :: !BindTarget, bindArguments :: ![Either Type Local] }
   deriving (Eq, Ord)
 
 -- * A bind can either construct a thunk, a constructor or a tuple. For thunks, we distinguish
@@ -248,7 +249,13 @@ matchFieldTypes (MatchTargetConstructor (DataTypeConstructor _ tp)) instantiatio
     FunctionType args _ = extractFunctionTypeNoSynonyms $ typeApplyList tp instantiation
 matchFieldTypes (MatchTargetTuple _) instantiation = instantiation
 
-typeApplyArguments :: TypeEnvironment -> Type -> [Either Type Variable] -> Type
+matchFieldLocals :: MatchTarget -> [Type] -> [Maybe Id] -> [Maybe Local]
+matchFieldLocals target instantiation fields = zipWith f fields $ matchFieldTypes target instantiation
+  where
+    f Nothing _ = Nothing
+    f (Just name) tp = Just $ Local name tp
+
+typeApplyArguments :: TypeEnvironment -> Type -> [Either Type Local] -> Type
 typeApplyArguments env t1@(TForall _ _ _) (Left t2 : args) = typeApplyArguments env t1' args
   where
     t1' = typeApply t1 t2
@@ -295,30 +302,30 @@ data Expr
   -- A literal value. Note that strings are allocated, integers and floats not.
   = Literal !Literal
   -- Calls a function. The number of arguments should be equal to the number of parameters of the specified function.
-  | Call !GlobalFunction ![Either Type Variable]
-  | Instantiate !Variable ![Type]
+  | Call !GlobalFunction ![Either Type Local]
+  | Instantiate !Local ![Type]
   -- Evaluates a value to WHNF or returns the value if it is already in WHNF.
   | Eval !Variable
   -- Gets the value of a variable. Does not evaluate the variable.
   | Var !Variable
   -- Casts a variable to a (possibly) different type.
-  | Cast !Variable !Type
+  | Cast !Local !Type
   -- Casts type `!a` to `a`
-  | CastThunk !Variable
+  | CastThunk !Local
   -- Represents a phi node in the control flow of the method. Gets a value, based on the previous block.
   | Phi ![PhiBranch]
   -- Calls a primitive instruction, like integer addition. The number of arguments should be equal to the number of parameters
   -- that the primitive expects.
-  | PrimitiveExpr !Id ![Either Type Variable]
+  | PrimitiveExpr !Id ![Either Type Local]
   -- Denotes an undefined value, not the Haskell function 'undefined'. This expression does not throw, but just has some unknown value.
   -- This can be used for a value which is not used.
   | Undefined !Type
   -- `%c = seq %a %b` marks a dependency between variables %a and %b. Assigns %b to %c and ignores the value of %a. 
   -- Prevents that variable %a is removed by dead code removal. Can be used to compile the Haskell functions `seq` and `pseq`.
-  | Seq !Variable !Variable
+  | Seq !Local !Local
   deriving (Eq, Ord)
 
-data PhiBranch = PhiBranch { phiBlock :: !BlockName, phiVariable :: !Variable }
+data PhiBranch = PhiBranch { phiBlock :: !BlockName, phiVariable :: !Local }
   deriving (Eq, Ord)
 
 data Literal
@@ -332,29 +339,29 @@ typeOfExpr _ (Literal (LitFloat precision _)) = TStrict $ TCon $ TConDataType $ 
 typeOfExpr _ (Literal (LitString _)) = TStrict $ TAp (TCon $ TConDataType $ idFromString "[]") $ TCon $ TConDataType $ idFromString "Char"
 typeOfExpr _ (Literal (LitInt tp _)) = TStrict $ TCon $ TConDataType $ idFromString $ show tp
 typeOfExpr env (Call (GlobalFunction _ _ t) args) = typeToStrict $ typeApplyArguments env t args
-typeOfExpr env (Instantiate v args) = typeNormalizeHead env $ typeApplyList (variableType v) args
+typeOfExpr env (Instantiate v args) = typeNormalizeHead env $ typeApplyList (localType v) args
 typeOfExpr _ (Eval v) = typeToStrict $ variableType v
 typeOfExpr _ (Var v) = variableType v
 typeOfExpr _ (Cast _ t) = t
-typeOfExpr _ (CastThunk var) = typeNotStrict $ variableType var
+typeOfExpr _ (CastThunk var) = typeNotStrict $ localType var
 typeOfExpr _ (Phi []) = error "typeOfExpr: Empty phi node. A phi expression should have at least 1 branch."
-typeOfExpr _ (Phi (PhiBranch _ var : _)) = variableType var
+typeOfExpr _ (Phi (PhiBranch _ var : _)) = localType var
 typeOfExpr env (PrimitiveExpr name args) = typeApplyArguments env (typeFromFunctionType $ primType $ findPrimitive name) args
 typeOfExpr _ (Undefined t) = t
-typeOfExpr _ (Seq _ v) = variableType v
+typeOfExpr _ (Seq _ v) = localType v
 
 dependenciesOfExpr :: Expr -> [Variable]
 dependenciesOfExpr (Literal _) = []
-dependenciesOfExpr (Call g args) = [arg | Right arg <- args]
-dependenciesOfExpr (Instantiate var _) = [var]
+dependenciesOfExpr (Call _ args) = [VarLocal arg | Right arg <- args]
+dependenciesOfExpr (Instantiate var _) = [VarLocal var]
 dependenciesOfExpr (Eval var) = [var]
 dependenciesOfExpr (Var var) = [var]
-dependenciesOfExpr (Cast var _) = [var]
-dependenciesOfExpr (CastThunk var) = [var]
-dependenciesOfExpr (Phi branches) = map phiVariable branches
-dependenciesOfExpr (PrimitiveExpr _ args) = [arg | Right arg <- args]
+dependenciesOfExpr (Cast var _) = [VarLocal var]
+dependenciesOfExpr (CastThunk var) = [VarLocal var]
+dependenciesOfExpr (Phi branches) = map (VarLocal . phiVariable) branches
+dependenciesOfExpr (PrimitiveExpr _ args) = [VarLocal arg | Right arg <- args]
 dependenciesOfExpr (Undefined _) = []
-dependenciesOfExpr (Seq v1 v2) = [v1, v2]
+dependenciesOfExpr (Seq v1 v2) = [VarLocal v1, VarLocal v2]
 
 variableType :: Variable -> Type
 variableType (VarLocal (Local _ t)) = t
@@ -364,9 +371,9 @@ variableName :: Variable -> Id
 variableName (VarLocal (Local x _)) = x
 variableName (VarGlobal (GlobalVariable x _)) = x
 
-callingConvention :: [Annotation] -> CallingConvention
+callingConvention :: [MethodAnnotation] -> CallingConvention
 callingConvention [] = CCFast -- Default
-callingConvention (AnnotateCallConvention c : _) = c
+callingConvention (MethodAnnotateCallConvention c : _) = c
 callingConvention (_ : as) = callingConvention as
 
 -- Checks whether this module has a declaration or definition for this function
@@ -377,3 +384,49 @@ envWithSynonyms :: Module -> TypeEnvironment
 envWithSynonyms (Module _ _ _ _ synonyms _ _) = TypeEnvironment (mapFromList synonymsList) emptyMap emptyMap
   where
     synonymsList = map (\(Declaration name _ _ _ (TypeSynonym _ tp)) -> (name, tp)) synonyms
+
+methodLocals :: Bool -> TypeEnvironment -> Method -> [Local]
+methodLocals withArguments env (Method _ args _ _ block blocks) = foldr blockLocals (blockLocals block argLocals) blocks
+  where
+    argLocals
+      | withArguments = rights args
+      | otherwise = []
+
+    blockLocals :: Block -> [Local] -> [Local]
+    blockLocals (Block _ instruction) = instructionLocals instruction
+
+    instructionLocals :: Instruction -> [Local] -> [Local]
+    instructionLocals (Let name expr next) accum =
+      instructionLocals next $ Local name (typeOfExpr env expr) : accum
+    instructionLocals (LetAlloc binds next) accum =
+      instructionLocals next $ map (bindLocal env) binds ++ accum
+    instructionLocals (Match _ target instantiation fields next) accum =
+      instructionLocals next $ catMaybes (matchFieldLocals target instantiation fields) ++ accum
+    instructionLocals _ accum = accum
+
+methodBinds :: Method -> [Bind]
+methodBinds (Method _ _ _ _ block blocks) = (block : blocks) >>= travBlock
+  where
+    travBlock (Block _ instr) = travInstr instr
+    travInstr (Let _ _ next) = travInstr next
+    travInstr (LetAlloc binds next) = binds ++ travInstr next
+    travInstr (Jump _) = []
+    travInstr (Match _ _ _ _ next) = travInstr next
+    travInstr (Case _ _) = []
+    travInstr (Return _) = []
+    travInstr (Unreachable _) = []
+
+methodExpressions :: Method -> [(Id, Expr)]
+methodExpressions (Method _ _ _ _ block blocks) = (block : blocks) >>= travBlock
+  where
+    travBlock (Block _ instr) = travInstr instr
+    travInstr (Let name expr next) = (name, expr) : travInstr next
+    travInstr (LetAlloc _ next) = travInstr next
+    travInstr (Jump _) = []
+    travInstr (Match _ _ _ _ next) = travInstr next
+    travInstr (Case _ _) = []
+    travInstr (Return _) = []
+    travInstr (Unreachable _) = []
+
+methodCalls :: Method -> [(Id, GlobalFunction, [Either Type Local])]
+methodCalls method = [(name, fn, args) | (name, Call fn args) <- methodExpressions method]

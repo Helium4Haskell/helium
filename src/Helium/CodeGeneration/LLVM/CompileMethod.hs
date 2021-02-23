@@ -63,7 +63,7 @@ packId name = Constant.Array Type.i8 $ map (Constant.Int 8) (0 : list)
   where
     list = reverse $ map (fromIntegral . ord) $ stringFromId name
 
-toFunction :: Env -> NameSupply -> Id -> Iridium.Visibility -> [Iridium.Annotation] -> [Iridium.Local] -> Core.Type -> Core.Type -> [BasicBlock] -> [Definition]
+toFunction :: Env -> NameSupply -> Id -> Iridium.Visibility -> [Iridium.MethodAnnotation] -> [Iridium.Local] -> Core.Type -> Core.Type -> [BasicBlock] -> [Definition]
 toFunction env supply name visible annotations args fnType retType basicBlocks = trampoline ++ thunk ++ [def]
   where
     def = GlobalDefinition $ Function
@@ -103,11 +103,11 @@ toFunction env supply name visible annotations args fnType retType basicBlocks =
 
     arity = length args
 
-    implicitIO = Iridium.AnnotateImplicitIO `elem` annotations
+    implicitIO = Iridium.MethodAnnotateImplicitIO `elem` annotations
 
     trampoline :: [Definition]
     trampoline
-      | Iridium.AnnotateTrampoline `notElem` annotations = []
+      | Iridium.MethodAnnotateTrampoline `notElem` annotations = []
       | otherwise = return $ GlobalDefinition $ Function
         { Global.linkage = linkage
         , Global.visibility = Default
@@ -149,7 +149,7 @@ toFunction env supply name visible annotations args fnType retType basicBlocks =
 
     thunk :: [Definition]
     thunk
-      | Iridium.AnnotateTrampoline `notElem` annotations = []
+      | Iridium.MethodAnnotateTrampoline `notElem` annotations = []
       | otherwise = return $ GlobalDefinition $ GlobalVariable
         { Global.name = toNamePrefixed "thunk$" name
         , Global.linkage = linkage
@@ -183,9 +183,9 @@ trampolineBody supply fn params fnType retType = foldr id call instrs
     res' = idFromString "$_result_any"
     (args, instrs) = unzip $ zipWith trampolineCastArgument [0..] params
     retType' = Core.typeToStrict $ Core.TVar 0 -- Return type must be a pointer in LLVM
-    call = Iridium.Let res (Iridium.Call (Iridium.GlobalFunction fn (length params) fnType) $ map (Right . Iridium.VarLocal) args)
-      $ Iridium.Let res' (Iridium.Cast (Iridium.VarLocal $ Iridium.Local res retType) retType')
-      $ Iridium.Return $ Iridium.VarLocal $ Iridium.Local res' retType'
+    call = Iridium.Let res (Iridium.Call (Iridium.GlobalFunction fn (length params) fnType) $ map Right args)
+      $ Iridium.Let res' (Iridium.Cast (Iridium.Local res retType) retType')
+      $ Iridium.Return $ Iridium.Local res' retType'
 
 trampolineCastArgument :: Int -> Iridium.Local -> (Iridium.Local, Iridium.Instruction -> Iridium.Instruction)
 trampolineCastArgument index (Iridium.Local _ tp)

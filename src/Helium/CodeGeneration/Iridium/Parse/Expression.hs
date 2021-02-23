@@ -69,18 +69,21 @@ pGlobalFunction = do
   tp <- pTypeAtom
   return $ GlobalFunction name arity tp
 
-pLocal :: Parser Type -> Parser Local
-pLocal pTp = Local <$ pToken '%' <*> pId <* pToken ':' <* pWhitespace <*> pTp
+pLocal' :: Parser Type -> Parser Local
+pLocal' pTp = Local <$ pToken '%' <*> pId <* pToken ':' <* pWhitespace <*> pTp
+
+pLocal :: QuantorNames -> Parser Local
+pLocal = pLocal' . pTypeAtom'
 
 pVariable :: QuantorNames -> Parser Variable
 pVariable quantors = do
   c <- lookahead
   case c of
     '@' -> VarGlobal <$> pGlobal
-    '%' -> VarLocal <$> pLocal (pTypeAtom' quantors)
+    '%' -> VarLocal <$> pLocal quantors
     _ -> pError "expected variable"
 
-pCallArguments :: QuantorNames -> Parser [Either Type Variable]
+pCallArguments :: QuantorNames -> Parser [Either Type Local]
 pCallArguments quantors = pArguments pCallArgument
   where
     pCallArgument = do
@@ -88,7 +91,7 @@ pCallArguments quantors = pArguments pCallArgument
       if c == '{' then
         Left <$ pChar <* pWhitespace <*> pType' quantors <* pToken '}'
       else
-        Right <$> pVariable quantors
+        Right <$> pLocal quantors
 
 pExpression :: QuantorNames -> Parser Expr
 pExpression quantors = do
@@ -98,14 +101,14 @@ pExpression quantors = do
     "call" -> Call <$> pGlobalFunction <* pWhitespace <* pToken '$' <* pWhitespace <*> pCallArguments quantors
     "eval" -> Eval <$> pVariable quantors
     "var" -> Var <$> pVariable quantors
-    "instantiate" -> Instantiate <$> pVariable quantors <* pWhitespace <*> pInstantiation quantors
+    "instantiate" -> Instantiate <$> pLocal quantors <* pWhitespace <*> pInstantiation quantors
     -- "cast" -> Cast <$> pVariable quantors <* pWhitespace <* pSymbol "as" <* pWhitespace <*> pTypeAtom' quantors
-    "castthunk" -> CastThunk <$> pVariable quantors
+    "castthunk" -> CastThunk <$> pLocal quantors
     "phi" -> Phi <$> pArguments (pPhiBranch quantors)
     "prim" -> PrimitiveExpr <$> pId <* pWhitespace <*> pCallArguments quantors
     "undefined" -> Undefined <$ pWhitespace <*> pTypeAtom' quantors
-    "seq" -> Seq <$> pVariable quantors <* pWhitespace <* pToken ',' <* pWhitespace <*> pVariable quantors
+    "seq" -> Seq <$> pLocal quantors <* pWhitespace <* pToken ',' <* pWhitespace <*> pLocal quantors
     _ -> pError "expected expression"
 
 pPhiBranch :: QuantorNames -> Parser PhiBranch
-pPhiBranch quantors = PhiBranch <$> pId <* pWhitespace <* pSymbol "=>" <* pWhitespace <*> pVariable quantors
+pPhiBranch quantors = PhiBranch <$> pId <* pWhitespace <* pSymbol "=>" <* pWhitespace <*> pLocal quantors

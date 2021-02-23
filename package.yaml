@@ -28,6 +28,8 @@ dependencies:
   - network
   - parsec
   - process
+  - vector
+  - vector-algorithms
   - wl-pprint
   - llvm-hs-pure
   - llvm-hs-pretty

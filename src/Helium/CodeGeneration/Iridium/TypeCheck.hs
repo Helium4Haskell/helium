@@ -130,8 +130,8 @@ analyseInstruction env returnType (LetAlloc binds next) =
     (fromList $ map (analyseBind env) binds)
     $ analyseInstruction env returnType next
 analyseInstruction env returnType (Match var target instantiation fields next)
-  = variableToAnalysis var
-    `AJoin` aCheck env (variableType var) expectedType (TEMatch (Left var) expectedType)
+  = variableToAnalysis (VarLocal var)
+    `AJoin` aCheck env (variableType $ VarLocal var) expectedType (TEMatch (Left $ VarLocal var) expectedType)
     `AJoin` fromList (catMaybes $ zipWith analyseArg fields $ matchFieldTypes target instantiation)
     `AJoin` analyseInstruction env returnType next
   where
@@ -139,9 +139,9 @@ analyseInstruction env returnType (Match var target instantiation fields next)
     analyseArg Nothing _ = Nothing
     analyseArg (Just name) tp = Just $ AVar name DeclareLocal tp
 analyseInstruction env returnType (Return var) =
-  aCheck env (variableType var) returnType (TEReturn (Left var) returnType)
-  `AJoin` variableToAnalysis var
-analyseInstruction env _ (Case var _) = variableToAnalysis var
+  aCheck env (variableType $ VarLocal var) returnType (TEReturn (Left $ VarLocal var) returnType)
+  `AJoin` variableToAnalysis (VarLocal var)
+analyseInstruction env _ (Case var _) = variableToAnalysis $ VarLocal var
   -- TODO: Check whether the types of the alts/branches match with the type of 'var'
 analyseInstruction _ _ _ = AEmpty
 
@@ -149,7 +149,7 @@ analyseBind :: TypeEnvironment -> Bind -> Analysis
 analyseBind env bind@(Bind var target args) =
   AVar var DeclareLocal tp
   `AJoin` aTarget
-  `AJoin` fromList [ variableToAnalysis arg | Right arg <- args ]
+  `AJoin` fromList [ variableToAnalysis $ VarLocal arg | Right arg <- args ]
   where
     tp = bindType env bind
     aTarget = case target of
