@@ -54,7 +54,7 @@ initialEnv m = GlobalEnv typeEnv dataTypeEnv functionEnv
     method (Declaration name _ _ _ (Method tp _ _ _ _ _)) = (name, (0, top tp))
 
     top :: Type -> Annotation
-    top = ATop . sortOfType dataTypeEnv . typeNormalize typeEnv
+    top = ALam SortUnit RegionSortUnit LifetimeContextAny . ATop . sortOfType dataTypeEnv . typeNormalize typeEnv
 
     synonyms :: [(Id, Type)]
     synonyms = [(name, tp) | Declaration name _ _ _ (TypeSynonym _ tp) <- moduleTypeSynonyms m]
@@ -63,16 +63,24 @@ initialEnv m = GlobalEnv typeEnv dataTypeEnv functionEnv
 -- or a group of (mutual) recursive functions.
 transformGroup :: GlobalEnv -> BindingGroup Method -> IO (GlobalEnv, [Declaration Method])
 transformGroup _ (BindingRecursive _) = error "Cannot analyse (mutual) recursive functions yet"
-transformGroup genv@(GlobalEnv _ dataTypeEnv _) (BindingNonRecursive method) = do
+transformGroup genv@(GlobalEnv typeEnv dataTypeEnv globals) (BindingNonRecursive method) = do
   putStrLn $ "# Analyse method " ++ show (declarationName method)
 
   let annotation = generate genv method
   print annotation
 
-  let simplified = simplify dataTypeEnv annotation
+  let (doesEscape, substituteRegionVar, simplified) = simplifyFixEscape dataTypeEnv annotation
   putStrLn "Simplified:"
   print simplified
-  
+
+  let (regionCount, restricted) = annotationRestrict doesEscape simplified
+
+  putStrLn "Restricted:"
+  print restricted
+
+  let globals' = updateMap (declarationName method) (regionCount, restricted) globals
+  let genv' = GlobalEnv typeEnv dataTypeEnv globals'
+
   -- TODO: The actual program transformation
-  return (genv, [method])
+  return (genv', [method])
 

@@ -38,15 +38,13 @@ data MethodEnv = MethodEnv
   , methodEnvAdditionalFor :: IdMap [RegionVar]
   }
 
--- TODO: What if last argument of a method is a type argument?
-
 generate :: GlobalEnv -> Declaration Method -> Annotation
 generate (GlobalEnv typeEnv dataTypeEnv globals) (Declaration methodName _ _ _ method@(Method fnType arguments _ _ _ _))
   = fixpoint
   where
     (applyLocal, methodEnv) = assign genv method
 
-    globals' = updateMap methodName (regionSortSize $ methodEnvAdditionalRegionSort methodEnv, ALam SortUnit (methodEnvAdditionalRegionSort methodEnv) LifetimeContextAny $ AApp (weaken 0 1 0 fixpointArgument) (ATuple []) (regionSortToVars 0 $ methodEnvAdditionalRegionSort methodEnv) LifetimeContextAny) globals -- TODO: Add annotation for recursive calls
+    globals' = updateMap methodName (regionSortSize $ methodEnvAdditionalRegionSort methodEnv, ALam SortUnit (methodEnvAdditionalRegionSort methodEnv) LifetimeContextAny $ AApp (weaken 0 1 0 fixpointArgument) (ATuple []) (regionSortToVars 0 $ methodEnvAdditionalRegionSort methodEnv) LifetimeContextAny) globals
     genv = GlobalEnv typeEnv dataTypeEnv globals'
 
     annotationMap :: M.Map Key Annotation
@@ -367,7 +365,7 @@ gatherBind' genv env (Bind _ (BindTargetTuple _) arguments) (RegionVarsTuple [_,
 
     -- If any argument is strict, transform it to a lazy representation 
     argumentRegion :: (Annotation, RegionVars) -> RegionVars
-    argumentRegion (_, RegionVarsTuple [r, rs]) = RegionVarsTuple [RegionVarsSingle RegionBottom, r, rs]
+    argumentRegion (_, RegionVarsTuple [r, rs]) = RegionVarsTuple [r, r, rs]
     argumentRegion (_, r@(RegionVarsTuple [r1, r2, rs])) = r
     argumentRegion _ = error "gatherBind': Tuple: argument has wrong region sort"
 
@@ -493,7 +491,7 @@ gatherExpression genv@(GlobalEnv typeEnv dataTypeEnv _) env lhs expr returnRegio
 
       (annotationEffect, annotationReturn) = call (ABottom SortRelation, annotation') args
     in
-      (AApp (AApp annotationEffect (ATuple []) (RegionVarsSingle RegionBottom) LifetimeContextAny) (ATuple []) returnRegions LifetimeContextLocalBottom, annotationReturn)
+      (AApp (AApp annotationEffect (ATuple []) (RegionVarsSingle RegionGlobal) LifetimeContextAny) (ATuple []) returnRegions LifetimeContextLocalBottom, annotationReturn)
   Instantiate var tps ->
     let
       (annotation, regions) = lookupLocal env $ localName var

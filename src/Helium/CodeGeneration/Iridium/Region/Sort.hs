@@ -124,7 +124,7 @@ showSort quantors (SortForall quantor sort1) s
   where
     quantorName = freshQuantorName quantors quantor
 showSort quantors (SortFun sortArg RegionSortUnit _ sort1) s
-  = showSortLow quantors sortArg $ " ->" ++ showSort quantors sort1 s
+  = showSortLow quantors sortArg $ " -> " ++ showSort quantors sort1 s
 showSort quantors (SortFun sortArg regionArgs dir sort1) s
   = "[" ++ showSort quantors sortArg ("; " ++ (showRegionSort quantors) regionArgs ("]" ++ show dir ++ " -> " ++ showSort quantors sort1 s))
 showSort quantors (SortTuple sorts) s = showListWith "(" ")" (showSort quantors) sorts s
