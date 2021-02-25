@@ -20,7 +20,7 @@ import Helium.CodeGeneration.Iridium.Region.Utils
 passRegion :: NameSupply -> Module -> IO Module
 passRegion supply m = do
   let genv = initialEnv m
-  let groups = map BindingNonRecursive $ moduleMethods m
+  let groups = methodBindingGroups $ moduleMethods m
 
   (_, methods) <- mapAccumLM transformGroup genv groups
 
@@ -62,7 +62,12 @@ initialEnv m = GlobalEnv typeEnv dataTypeEnv functionEnv
 -- Analyses and transforms a binding group of a single non-recursive function
 -- or a group of (mutual) recursive functions.
 transformGroup :: GlobalEnv -> BindingGroup Method -> IO (GlobalEnv, [Declaration Method])
-transformGroup _ (BindingRecursive _) = error "Cannot analyse (mutual) recursive functions yet"
+transformGroup genv (BindingRecursive methods) = do
+  -- We cannot analyse mutual recursive functions yet
+  -- For now we will analyse them one by one.
+  (genv'', methods') <- mapAccumLM (\genv' method -> transformGroup genv' $ BindingNonRecursive method) genv methods
+  return (genv'', concat methods')
+
 transformGroup genv@(GlobalEnv typeEnv dataTypeEnv globals) (BindingNonRecursive method) = do
   putStrLn $ "# Analyse method " ++ show (declarationName method)
 

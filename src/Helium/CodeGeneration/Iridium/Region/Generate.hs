@@ -24,7 +24,8 @@ import Helium.CodeGeneration.Iridium.Region.Containment
 data GlobalEnv = GlobalEnv !TypeEnvironment !DataTypeEnv !(IdMap (Int, Annotation))
 
 data MethodEnv = MethodEnv
-  { methodEnvQuantificationCount :: Int
+  { methodEnvName :: Id
+  , methodEnvQuantificationCount :: Int
   , methodEnvArgumentCount :: Int
   , methodEnvArguments :: [(Either Quantor (Sort, RegionSort))]
   , methodEnvVars :: (IdMap (Either (Int, Annotation) AnnotationVar, RegionVars))
@@ -33,6 +34,7 @@ data MethodEnv = MethodEnv
   , methodEnvReturnSort :: Sort
   , methodEnvLocalSorts :: [Sort]
   , methodEnvAdditionalRegionSort :: RegionSort
+  , methodEnvAdditionalRegionVars :: RegionVars
   -- For variables on the left hand side of a let or LetAlloc bind, the additional region argument it may
   -- use for intermediate thunks or as additional region arguments for the caller
   , methodEnvAdditionalFor :: IdMap [RegionVar]
@@ -42,9 +44,9 @@ generate :: GlobalEnv -> Declaration Method -> Annotation
 generate (GlobalEnv typeEnv dataTypeEnv globals) (Declaration methodName _ _ _ method@(Method fnType arguments _ _ _ _))
   = fixpoint
   where
-    (applyLocal, methodEnv) = assign genv method
+    (applyLocal, methodEnv) = assign genv methodName method
 
-    globals' = updateMap methodName (regionSortSize $ methodEnvAdditionalRegionSort methodEnv, ALam SortUnit (methodEnvAdditionalRegionSort methodEnv) LifetimeContextAny $ AApp (weaken 0 1 0 fixpointArgument) (ATuple []) (regionSortToVars 0 $ methodEnvAdditionalRegionSort methodEnv) LifetimeContextAny) globals
+    globals' = updateMap methodName (0, ALam SortUnit (methodEnvAdditionalRegionSort methodEnv) LifetimeContextAny $ AProject (AApp (weaken 0 1 0 fixpointArgument) (ATuple []) (regionSortToVars 0 $ methodEnvAdditionalRegionSort methodEnv) LifetimeContextAny) 0) globals
     genv = GlobalEnv typeEnv dataTypeEnv globals'
 
     annotationMap :: M.Map Key Annotation
@@ -92,7 +94,7 @@ generate (GlobalEnv typeEnv dataTypeEnv globals) (Declaration methodName _ _ _ m
     addLambdas a = foldr add a $ methodEnvArguments methodEnv
       where
         add (Left q) = AForall q
-        add (Right (s, rs)) = ALam s rs LifetimeContextAny
+        add (Right (s, rs)) = ALam s (regionSortAsLazy rs) LifetimeContextAny
 
     resultSort :: Sort
     resultSort = sortOfType dataTypeEnv $ typeNormalize typeEnv fnType
@@ -106,7 +108,7 @@ generate (GlobalEnv typeEnv dataTypeEnv globals) (Declaration methodName _ _ _ m
         -- We cannot analyse functions whose last argument is a quantification
         go :: [Either Quantor (Sort, RegionSort)] -> Maybe Annotation
         go (Left quantor : args) = AForall quantor <$> go args
-        go (Right (s, rs) : args) = ALam s rs LifetimeContextAny . ATuple . (annotationEffects :) . return <$> rest
+        go (Right (s, rs) : args) = ALam s (regionSortAsLazy rs) LifetimeContextAny . ATuple . (annotationEffects :) . return <$> rest
           where
             annotationEffects
               | [] <- args
@@ -137,10 +139,11 @@ generate (GlobalEnv typeEnv dataTypeEnv globals) (Declaration methodName _ _ _ m
       = fromMaybe (error "generate: Annotation on the return value or a local variable uses a region or annotation variable from the return or previous-thunk, which is not in scope at that place")
       . strengthen 0 2 (regionVarsSize (methodEnvReturnRegions methodEnv) + 1)
 
-assign :: GlobalEnv -> Method -> (Annotation -> Int -> Annotation, MethodEnv)
-assign genv@(GlobalEnv typeEnv dataTypeEnv _) method@(Method _ arguments returnType _ _ _) = (applyLocal, methodEnv)
+assign :: GlobalEnv -> Id -> Method -> (Annotation -> Int -> Annotation, MethodEnv)
+assign genv@(GlobalEnv typeEnv dataTypeEnv _) name method@(Method _ arguments returnType _ _ _) = (applyLocal, methodEnv)
   where
     methodEnv = MethodEnv
+      name
       quantificationCount
       lambdaCount
       arguments'
@@ -150,6 +153,7 @@ assign genv@(GlobalEnv typeEnv dataTypeEnv _) method@(Method _ arguments returnT
       returnSort
       localSorts
       additionalRegionSort
+      additionalRegionVars
       additionalRegionFor
 
     quantificationCount = length $ lefts arguments
@@ -188,7 +192,7 @@ assign genv@(GlobalEnv typeEnv dataTypeEnv _) method@(Method _ arguments returnT
         ap (typeVarIdx, (Right var, regions) : localAssignment', a') (Right _) =
           ( typeVarIdx
           , localAssignment'
-          , AApp a' (AVar var) regions LifetimeContextAny
+          , AApp a' (AVar var) (regionsAsLazy regions) LifetimeContextAny
           )
         ap (_, (Left _, _) : _, _) (Right _) = error "assign: Expected argument variable, got local variable"
 
@@ -197,8 +201,10 @@ assign genv@(GlobalEnv typeEnv dataTypeEnv _) method@(Method _ arguments returnT
     additionalRegionVars = regionSortToVars nextRegion1 additionalRegionSort
 
     assignArg :: (Int, Int) -> (Local, (Sort, RegionSort)) -> ((Int, Int), (Id, (Either t AnnotationVar, RegionVars)))
-    assignArg (nextAnnotation, nextRegion) (Local name _, (_, rs))
-      = ((nextAnnotation + 1, nextRegion + regionSortSize rs), (name, (Right $ AnnotationVar nextAnnotation, regionSortToVars nextRegion rs)))
+    assignArg (nextAnnotation, nextRegion) (Local name tp, (_, rs)) =
+      ( (nextAnnotation + 1, nextRegion + regionSortSize rs + (if typeIsStrict tp then 1 else 0))
+      , (name, (Right $ AnnotationVar nextAnnotation, regionSortToVars nextRegion rs))
+      )
 
     assignLocal :: (Int, Int) -> Local -> ((Int, Int), (Id, (Either (Int, Annotation) t, RegionVars)))
     assignLocal (nextAnnotation, nextRegion) (Local name tp)
@@ -392,6 +398,17 @@ gatherBind' genv env (Bind lhs target arguments) returnRegions = case foldl appl
         in
           -- All additional regions for this bind are used for the intermediate thunks.
           (additionalRegions, a, l, s)
+      BindTargetFunction (GlobalFunction name _ _)
+        | name == methodEnvName env ->
+        let
+          (_, a) = lookupGlobal genv name
+          a' = AApp a (ATuple []) (methodEnvAdditionalRegionVars env) LifetimeContextAny
+        in
+          ( additionalRegions
+          , a'
+          , RegionGlobal
+          , RegionGlobal
+          )
       BindTargetFunction (GlobalFunction name _ _) ->
         let
           (callAdditionalRegionCount, a) = lookupGlobal genv name
@@ -478,9 +495,11 @@ gatherExpression genv@(GlobalEnv typeEnv dataTypeEnv _) env lhs expr returnRegio
   Literal _ -> bottom
   Call (GlobalFunction name _ _) args ->
     let
-      additionalRegions = fromMaybe [] $ lookupMap lhs $ methodEnvAdditionalFor env
+      additionalRegions
+        | name == methodEnvName env = methodEnvAdditionalRegionVars env
+        | otherwise = RegionVarsTuple $ map RegionVarsSingle $ fromMaybe [] $ lookupMap lhs $ methodEnvAdditionalFor env
       (_, annotation) = lookupGlobal genv name
-      annotation' = AApp annotation (ATuple []) (RegionVarsTuple $ map RegionVarsSingle additionalRegions) LifetimeContextAny
+      annotation' = AApp annotation (ATuple []) (additionalRegions) LifetimeContextAny
 
       call :: (Annotation, Annotation) -> [Either Type Local] -> (Annotation, Annotation)
       call (aEffect, aReturn) (Left tp' : args') = call (aEffect, AInstantiate aReturn tp') args'
@@ -548,6 +567,10 @@ regionsLazy (RegionVarsTuple [RegionVarsSingle r1, RegionVarsSingle r2, rs]) = (
 regionsLazy (RegionVarsTuple [RegionVarsSingle r, rs]) = (r, r, rs)
 regionsLazy rs@(RegionVarsSingle r) = (r, r, rs) -- We allow a single region to be used at places where multiple region variables are expected.
 regionsLazy _ = error "Expected region variables of a lazy value"
+
+regionSortAsLazy :: RegionSort -> RegionSort
+regionSortAsLazy (RegionSortTuple [r1, r2]) = RegionSortTuple [r1, r1, r2]
+regionSortAsLazy rs = rs
 
 regionsAsLazy :: RegionVars -> RegionVars
 regionsAsLazy regions = RegionVarsTuple [RegionVarsSingle r1, RegionVarsSingle r2, rs]

@@ -340,10 +340,11 @@ apply env annotation argument argumentRegion lc
       where
         go = substitute regions lambdaCount regionArgCount
         argumentRegionSize = length regions
-        substituteRegion (RegionVar idx)
-          | idx < regionArgCount = RegionVar idx
+        substituteRegion (RegionLocal idx)
+          | idx < regionArgCount = RegionLocal idx
           | idx < regionArgCount + argumentRegionSize = regions !! (regionArgCount + argumentRegionSize - idx - 1)
-          | otherwise = RegionVar $ idx - regionArgCount
+          | otherwise = RegionLocal $ idx - regionArgCount
+        substituteRegion r = r
 
 project :: DataTypeEnv -> Annotation -> Int -> (IsWeakSimplified, Annotation)
 project env annotation idx = f False annotation

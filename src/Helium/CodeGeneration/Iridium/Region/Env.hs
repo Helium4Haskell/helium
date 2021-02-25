@@ -120,7 +120,7 @@ regionChildSortOfType' env = regionSort'
 
 sortInstantiate :: DataTypeEnv -> Sort -> Type -> Sort
 sortInstantiate env (SortForall _ s) tp = sortSubstitute env 0 tp s
-sortInstantiate _ _ _ = error "Helium.CodeGeneration.Iridium.Region.Env.sortInstantiate: Cannot instantiate this sort, expected SortForall."
+sortInstantiate _ s _ = error $ "Helium.CodeGeneration.Iridium.Region.Env.sortInstantiate: Cannot instantiate this sort, expected SortForall, got " ++ showSort [] s ""
 
 sortSubstitute :: DataTypeEnv -> Int -> Type -> Sort -> Sort
 sortSubstitute env forallCount tp s = case s of
