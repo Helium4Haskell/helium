@@ -1,7 +1,7 @@
 module Helium.CodeGeneration.Iridium.RegionSize.Sort
   ( Sort(..), showSort, 
     SortAlg(..), idSortAlg, foldSortAlg, foldSortAlgN, 
-    sortInstantiate,
+    sortAssign, regionAssign, sortInstantiate,
     sortIsRegion, sortIsAnnotation,
   )
 where

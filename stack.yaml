@@ -10,15 +10,15 @@ extra-deps:
 
   # If local development on Top is required, this entry can be replaced with the relative path of the directory the Top
   # repository is located, such as `../Top`
-  - github: Helium4Haskell/Top
-    commit: f8a61d1f3f68066e23cce768abdba4c1ddf3e907
-  #- ../Top
+  #- github: Helium4Haskell/Top
+  #  commit: f8a61d1f3f68066e23cce768abdba4c1ddf3e907
+  - ../Top
 
-  - github: Helium4Haskell/lvm
-    commit: 95d89f8498b9895d59f740d13018462325bd226e
-    subdirs: 
-      - src/lib
-  #- ../lvm/src/lib
+  #- github: Helium4Haskell/lvm
+  #  commit: 95d89f8498b9895d59f740d13018462325bd226e
+  #  subdirs: 
+  #    - src/lib
+  - ../lvm/src/lib
 
 
 allow-newer: false

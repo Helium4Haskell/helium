@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 788e00726e4b2481eadb82380ab0e5bbd6afeec541087eb06f87dfd66fbcfd7f
+-- hash: 93e844ef80196c7e4880809bbd548eff3b77aab75e0d93ecc511b5bb4ab123ac
 
 name:           helium
 version:        1.9
@@ -68,6 +68,7 @@ library
       Helium.CodeGeneration.DerivingShow
       Helium.CodeGeneration.DerivingUtils
       Helium.CodeGeneration.InstanceDictionary
+      Helium.CodeGeneration.Iridium.BindingGroup
       Helium.CodeGeneration.Iridium.Data
       Helium.CodeGeneration.Iridium.FileCache
       Helium.CodeGeneration.Iridium.FromCore
@@ -83,9 +84,22 @@ library
       Helium.CodeGeneration.Iridium.PassDeadCode
       Helium.CodeGeneration.Iridium.PassTailRecursion
       Helium.CodeGeneration.Iridium.Primitive
+      Helium.CodeGeneration.Iridium.Region.Annotation
+      Helium.CodeGeneration.Iridium.Region.Containment
+      Helium.CodeGeneration.Iridium.Region.Env
+      Helium.CodeGeneration.Iridium.Region.Evaluate
+      Helium.CodeGeneration.Iridium.Region.Generate
+      Helium.CodeGeneration.Iridium.Region.PassRegion
+      Helium.CodeGeneration.Iridium.Region.RegionVar
+      Helium.CodeGeneration.Iridium.Region.Relation
+      Helium.CodeGeneration.Iridium.Region.Sort
+      Helium.CodeGeneration.Iridium.Region.Utils
+      Helium.CodeGeneration.Iridium.RegionSize.Analysis
       Helium.CodeGeneration.Iridium.RegionSize.Annotation
       Helium.CodeGeneration.Iridium.RegionSize.Constraints
+      Helium.CodeGeneration.Iridium.RegionSize.Environments
       Helium.CodeGeneration.Iridium.RegionSize.Evaluate
+      Helium.CodeGeneration.Iridium.RegionSize.PassRegionSize
       Helium.CodeGeneration.Iridium.RegionSize.Sort
       Helium.CodeGeneration.Iridium.RegionSize.Sorting
       Helium.CodeGeneration.Iridium.RegionSize.Test
@@ -213,6 +227,8 @@ library
     , parsec
     , process
     , text
+    , vector
+    , vector-algorithms
     , wl-pprint
   default-language: Haskell2010
 
@@ -238,6 +254,8 @@ executable helium
     , parsec
     , process
     , text
+    , vector
+    , vector-algorithms
     , wl-pprint
   default-language: Haskell2010
 
@@ -263,6 +281,8 @@ executable heliumpath
     , parsec
     , process
     , text
+    , vector
+    , vector-algorithms
     , wl-pprint
   default-language: Haskell2010
 
@@ -290,6 +310,8 @@ executable runhelium
     , parsec
     , process
     , text
+    , vector
+    , vector-algorithms
     , wl-pprint
   default-language: Haskell2010
 
@@ -316,5 +338,7 @@ executable texthint
     , parsec
     , process
     , text
+    , vector
+    , vector-algorithms
     , wl-pprint
   default-language: Haskell2010
