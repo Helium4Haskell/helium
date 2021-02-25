@@ -174,7 +174,7 @@ assign genv@(GlobalEnv typeEnv dataTypeEnv _) name method@(Method _ arguments re
 
     -- 1 region var, between the return regions and the arguments, is used for the previous-thunk region
     ((_, nextRegion1), argumentAssignment) = mapAccumR assignArg (2, regionSortSize returnRegionSort + 1) $ zip (rights arguments) (rights arguments')
-    ((_, nextRegion2), localAssignment) = mapAccumR assignLocal (1, nextRegion1) locals
+    ((_, nextRegion2), localAssignment) = mapAccumL assignLocal (1, nextRegion1) locals
     (nextRegion3, additionalRegionFor) = assignAdditionalRegionVars genv method nextRegion2
 
     localSorts = map (\(Local _ tp) -> sortOfType dataTypeEnv $ typeNormalize typeEnv tp) locals
@@ -379,7 +379,7 @@ gatherBind' genv env (Bind _ (BindTargetTuple _) arguments) (RegionVarsTuple [_,
 
     annotation = ATuple $ map fst argumentsAnalysis
 gatherBind' genv env (Bind _ (BindTargetConstructor (DataTypeConstructor constructorName _)) arguments) (RegionVarsTuple [_, returnRegions]) = (ABottom SortRelation, ATuple []) -- TODO: Constructors
-gatherBind' genv env (Bind lhs target arguments) returnRegions = case foldl apply (targetRegionStrict : intermediateRegions, ABottom SortRelation, targetAnnotation) arguments of
+gatherBind' genv env (Bind lhs target arguments) returnRegions = case foldl apply (if all isLeft arguments then [] else targetRegionStrict : intermediateRegions, ABottom SortRelation, targetAnnotation) arguments of
   ([], resultEffect, resultAnnotation) -> 
     ( arelation (relationFromConstraints constraints) `AJoin` resultEffect
     , resultAnnotation
