@@ -81,8 +81,8 @@ application f x = AApl f x
 instantiate :: Annotation -> Type -> Annotation
 instantiate (AQuant anno) ty = eval $ annStrengthen $ foldAnnAlg annInstAlg anno
   where annInstAlg = idAnnAlg {
-    aLam   = \d s a -> ALam (sortInstantiate d ty s) a,
-    aFix   = \d s a -> AFix (sortInstantiate d ty s) a
+    aLam   = \d s a -> ALam (sortSubstitute d ty s) a,
+    aFix   = \d s a -> AFix (sortSubstitute d ty s) a
   } 
 instantiate a t = AInstn a t
 

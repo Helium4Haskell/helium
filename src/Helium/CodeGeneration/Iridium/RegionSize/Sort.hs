@@ -1,7 +1,8 @@
 module Helium.CodeGeneration.Iridium.RegionSize.Sort
   ( Sort(..), showSort, 
     SortAlg(..), idSortAlg, foldSortAlg, foldSortAlgN, 
-    sortAssign, regionAssign, sortInstantiate,
+    sortAssign, regionAssign, 
+    sortInstantiate, sortSubstitute,
     sortIsRegion, sortIsAnnotation,
   )
 where
@@ -152,9 +153,14 @@ regionAssign' ts t = rsError $ "regionAssign: No pattern match: " ++ showTypeN 1
 -- Type substitution
 ----------------------------------------------------------------
 
+-- | Instatiate a type argument, sort should start wit SortQuant
+sortInstantiate :: Type -> Sort -> Sort
+sortInstantiate t (SortQuant s) = sortSubstitute 0 t s
+sortInstantiate _ s = rsError $ "Tried to instantiate a sort that does not start with SortQuant\nSort:" ++ show s
+
 -- | Instatiate a quantified type in a sort
-sortInstantiate :: Depth -> Type -> Sort -> Sort
-sortInstantiate subD ty = foldSortAlgN subD instAlg
+sortSubstitute :: Depth -> Type -> Sort -> Sort
+sortSubstitute subD ty = foldSortAlgN subD instAlg
   where instTypeArgs d ts = map (typeInsantiate d ty) ts
         instAlg = idSortAlg {
           sortPolyRegion = \d idx ts -> if idx == d 

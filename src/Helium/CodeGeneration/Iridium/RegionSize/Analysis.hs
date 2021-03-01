@@ -37,8 +37,8 @@ analyse gEnv methodId (Method _ _ _ _ init blocks) =
 -- | Put the blockmap in to get the result
 blockFold :: BlockEnv -> (BlockEnv -> (Annotation, Effect), Block) -> (BlockEnv, (Annotation, Effect))
 blockFold bEnv (f, block) = let res   = f bEnv
-                                bEnv' = insertMap (blockName block) res
-                   in (bEnv, res)
+                                bEnv' = insertMap (blockName block) res bEnv
+                   in (bEnv', res)
 
 analyseBlock :: Envs -> Block -> (LocalEnv, BlockEnv -> (Annotation, Effect))
 analyseBlock envs (Block name instr) = analyseInstr envs instr
@@ -79,7 +79,7 @@ analyseExpr envs@(Envs gEnv lEnv) = go
       go (CastThunk local)        = (lookupLocal lEnv local, botEffect)
       -- Join of the variable annotations in the branches
       go (Phi branches)           = (joinAnnList $ lookupLocal lEnv <$> map phiVariable branches, botEffect) 
-      -- TODO: Rules for primitive expressions (add, minus etc.): sum of parts
+      -- Primitive expression, does not allocate or cause any effect -> bottom
       go (PrimitiveExpr id tyLo)  = botAnnEff 
       -- No effect, bottom annotation
       go (Undefined ty)           = botAnnEff
@@ -134,6 +134,6 @@ botAnnEff = (ABot, botEffect)
 botEffect :: Effect
 botEffect = AConstr constrBot
 
-
+-- | Get the name of a block
 blockName :: Block -> BlockName
 blockName (Block name _) = name
