@@ -6,7 +6,6 @@ import Lvm.Common.IdMap
 import Lvm.Core.Type
 
 import Helium.CodeGeneration.Iridium.Data
-import Helium.CodeGeneration.Iridium.BindingGroup
 
 import Helium.CodeGeneration.Iridium.RegionSize.Annotation
 import Helium.CodeGeneration.Iridium.RegionSize.Constraints
@@ -24,100 +23,66 @@ import Data.List
 -- Build local env by mapAccumL on (init:blocks)
 -- Get final effects by building the block env from the last block to the first
 
-data InstrAlg a = InstrAlg {
-    iLet         :: Id -> Expr -> a -> a,
-    iLetAlloc    :: [Bind] -> a -> a,
-    iJump        :: BlockName -> a,
-    iCase        :: Local -> Case -> a,
-    iReturn      :: Local -> a,
-    iUnreachable :: Maybe Local -> a,
-    iMatch       :: Local -> MatchTarget -> [Type] -> [Maybe Id] -> a -> a
-}
-
-idInstrAlg :: InstrAlg Instruction
-idInstrAlg = InstrAlg {
-    iLet         = Let,
-    iLetAlloc    = LetAlloc,
-    iJump        = Jump,
-    iCase        = Case,
-    iReturn      = Return,
-    iUnreachable = Unreachable,
-    iMatch       = Match
-}
-
-dfltInstrAlg :: a -> InstrAlg a
-dfltInstrAlg a = InstrAlg {
-    -- Pass through default
-    iLet         = \_ _ b     -> b,
-    iLetAlloc    = \_ b       -> b,
-    iMatch       = \_ _ _ _ b -> b,
-    -- Return default
-    iJump        = \_         -> a,
-    iCase        = \_ _       -> a,
-    iReturn      = \_         -> a,
-    iUnreachable = \_         -> a
-}
-
-foldInstrAlg :: InstrAlg a -> Instruction -> a 
-foldInstrAlg alg = go
-    where go (Let         name expr next      ) = iLet         alg name expr       $ go next              
-          go (LetAlloc    binds next          ) = iLetAlloc    alg binds           $ go next      
-          go (Match       lcl tgt tys fds next) = iMatch       alg lcl tgt tys fds $ go next                   
-          go (Jump        blockName           ) = iJump        alg blockName           
-          go (Case        local cas           ) = iCase        alg local cas           
-          go (Return      local               ) = iReturn      alg local       
-          go (Unreachable local               ) = iUnreachable alg local
-
 ----------------------------------------------------------------
 -- Analysis
 ----------------------------------------------------------------
 
 analyse :: GlobalEnv -> Id -> Method -> (Annotation, Effect)
-analyse gEnv methodId (Method _ _ _ _ init blocks) =
-    let (lEnv, fs)  = mapAccumL (\lEnv -> analyseBlock (Envs gEnv lEnv)) emptyMap (init:blocks)
-        (bEnv, res) = mapAccumR blockFold emptyMap $ zip fs (init:blocks)
-    in head res
+analyse gEnv _ (Method _ _ _ _ block blocks) =
+    let localEnv   = foldl (\lEnv -> unionMap lEnv . localsOfBlock (Envs gEnv lEnv)) emptyMap (block:blocks)
+        (_, bEffs) = mapAccumR (blockAccum (Envs gEnv localEnv)) emptyMap (block:blocks)
+    in head bEffs
 
--- | Put the blockmap in to get the result
-blockFold :: BlockEnv -> (BlockEnv -> (Annotation, Effect), Block) -> (BlockEnv, (Annotation, Effect))
-blockFold bEnv (f, block) = let res   = f bEnv
-                                bEnv' = insertMap (blockName block) res bEnv
-                   in (bEnv', res)
+
 
 -- | Get the annotation of local variabvles from a block
-analyseBlock :: Envs -> Block -> (LocalEnv, BlockEnv -> (Annotation, Effect))
-analyseBlock envs (Block name instr) = analyseInstr envs instr
+localsOfBlock :: Envs -> Block -> LocalEnv
+localsOfBlock envs (Block _ instr) = localsOfInstr envs instr
 
-{- Get the annotation of local variabvles from an instruction
-   The second half of the tuple is a computation that, given the effect of the i+1..n blocks
-   can compute the effect of the i-th block.
--}
-analyseInstr :: Envs -> Instruction -> (LocalEnv, BlockEnv -> (Annotation, Effect))
-analyseInstr envs@(Envs gEnv lEnv) = go   
-    where go (Let name expr nextInstr) =  
-            let (varAnn, varEff) = analyseExpr  envs expr
-                lEnv'            = insertMap name varAnn lEnv
-                (lEnvR, cont)    = analyseInstr (Envs gEnv lEnv') nextInstr
-            in (lEnvR, \bEnv -> let (nxtAnn, nxtEff) = cont bEnv in (nxtAnn, AAdd varEff nxtEff))
-          -- TODO: Allocations with region variables
-          go (LetAlloc binds next) = (emptyMap, \bEnv -> botAnnEff) 
-          -- Lookup the annotation and effect from block
-          go (Jump blockName)      = (emptyMap, \bEnv -> lookupBlock bEnv blockName) 
-          -- Join the effects of all the blocks
-          go (Case local cas)      = (emptyMap, \bEnv -> joinBlocks bEnv $ caseBlocks cas)
-          -- Lookup the variable annotation
-          go (Return local)        = (emptyMap, \bEnv -> (lookupLocal lEnv local, botEffect))
-          -- No effect
-          go (Unreachable local)   = (emptyMap, \bEnv -> botAnnEff)
-          -- TODO: Figure out what to do with this (Probs some expansion of lEnv)
-          go (Match local target types fields next) = analyseInstr envs next
+-- | Get the annotation of local variabvles from an instruction
+localsOfInstr :: Envs -> Instruction -> LocalEnv
+localsOfInstr envs@(Envs gEnv lEnv) = go
+    where go (Let name expr next)    = let (varAnn, _) = analyseExpr envs expr
+                                           lEnv'       = insertMap name varAnn lEnv
+                                       in localsOfInstr (Envs gEnv lEnv') next
+          go (LetAlloc _ next)       = go next
+          go (Match    _ _ _ _ next) = go next
+          go _ = emptyMap
+
+
+
+-- | Put the blockmap in to get the result
+blockAccum :: Envs -> BlockEnv -> Block -> (BlockEnv, (Annotation, Effect))
+blockAccum envs bEnv (Block name instr) = let bEff  = analyseInstr envs bEnv instr
+                                              bEnv' = insertMap name bEff bEnv
+                                          in (bEnv', bEff)
+
+-- | Block effect
+analyseInstr :: Envs -> BlockEnv -> Instruction -> (Annotation, Effect)
+analyseInstr envs@(Envs _ lEnv) bEnv = go
+   where go (Let _ expr next)     =  
+           let (_     , varEff) = analyseExpr envs expr
+               (nxtAnn, nxtEff) = go next
+           in (nxtAnn, AAdd varEff nxtEff)
+         -- TODO: Allocations with region variables
+         go (LetAlloc _    next)  = go next 
+         -- Lookup the annotation and effect from block
+         go (Jump block)          = lookupBlock bEnv block 
+         -- Join the effects of all the blocks
+         go (Case _     cas)      = joinBlocks bEnv $ caseBlocks cas
+         -- Lookup the variable annotation
+         go (Return local)        = (lookupLocal lEnv local, botEffect)
+         -- No effect
+         go (Unreachable _)       = botAnnEff
+         -- TODO: Figure out what to do with this (Probs some expansion of lEnv)
+         go (Match _ _ _ _ next)  = go next
 
 -- | Find the annotation and effect of an expression
 analyseExpr :: Envs -> Expr -> (Annotation, Effect)
-analyseExpr envs@(Envs gEnv lEnv) = go
+analyseExpr (Envs gEnv lEnv) = go
     where 
       -- Literals have unit annotation, no effect. TODO: doesn't count for strings?
-      go (Literal lit)            = (AUnit, botEffect) 
+      go (Literal _)              = (AUnit, botEffect) 
       -- Eval & Var: Lookup annotation of variable (can be global or local)
       go (Eval var)               = (lookupVar gEnv lEnv var, botEffect)
       go (Var var)                = (lookupVar gEnv lEnv var, botEffect)
