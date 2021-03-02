@@ -21,6 +21,9 @@ import Helium.CodeGeneration.Iridium.Region.RegionVar
 import Helium.CodeGeneration.Iridium.Region.Relation
 import Helium.CodeGeneration.Iridium.Region.Containment
 
+import Debug.Trace
+import GHC.Stack
+
 data GlobalEnv = GlobalEnv !TypeEnvironment !DataTypeEnv !(IdMap (Int, Annotation))
 
 data MethodEnv = MethodEnv
@@ -40,13 +43,18 @@ data MethodEnv = MethodEnv
   , methodEnvAdditionalFor :: IdMap [RegionVar]
   }
 
-generate :: GlobalEnv -> Declaration Method -> Annotation
+generate :: GlobalEnv -> Declaration Method -> (RegionSort, Annotation)
 generate (GlobalEnv typeEnv dataTypeEnv globals) (Declaration methodName _ _ _ method@(Method fnType arguments _ _ _ _))
-  = fixpoint
+  = (methodEnvAdditionalRegionSort methodEnv, fixpoint)
   where
     (applyLocal, methodEnv) = assign genv methodName method
 
-    globals' = updateMap methodName (0, ALam SortUnit (methodEnvAdditionalRegionSort methodEnv) LifetimeContextAny $ AProject (AApp (weaken 0 1 0 fixpointArgument) (ATuple []) (regionSortToVars 0 $ methodEnvAdditionalRegionSort methodEnv) LifetimeContextAny) 0) globals
+    -- Used for recursive calls
+    (isZeroArity, recursiveAnnotation)
+      = correctArityZero (methodEnvAdditionalRegionSort methodEnv) arguments
+      $ ALam SortUnit (methodEnvAdditionalRegionSort methodEnv) LifetimeContextAny
+      $ AProject (AApp (weaken 0 1 0 fixpointArgument) (ATuple []) (regionSortToVars 0 $ methodEnvAdditionalRegionSort methodEnv) LifetimeContextAny) 0
+    globals' = updateMap methodName (0, recursiveAnnotation) globals
     genv = GlobalEnv typeEnv dataTypeEnv globals'
 
     annotationMap :: M.Map Key Annotation
@@ -124,10 +132,17 @@ generate (GlobalEnv typeEnv dataTypeEnv globals) (Declaration methodName _ _ _ m
                 $ RegionLocal 1 : flattenRegionVars (regionSortToVars 2 rs)
 
             rest 
-              | [] <- args = Just $ strengthen' $ lookupAnnotation KeyReturn (methodEnvReturnSort methodEnv)
+              | [] <- args = Just $ strengthen' $ lookupAnnotation KeyReturn $ methodEnvReturnSort methodEnv
               | otherwise = go args
 
-        go [] = Nothing
+        go []
+          | isZeroArity = Just $ ATuple [annotationEffects, strengthen' $ lookupAnnotation KeyReturn $ methodEnvReturnSort methodEnv]
+          | otherwise = Nothing
+          where
+            annotationEffects
+              = ALam SortUnit RegionSortMonomorphic LifetimeContextAny
+              $ ALam SortUnit (methodEnvReturnRegionSort methodEnv) LifetimeContextLocalBottom
+              $ lookupAnnotation KeyEffect SortRelation
 
     applyResult :: Annotation -> Int -> Annotation
     applyResult a idx = strengthen' $ applyLocal (weaken 0 2 (regionVarsSize (methodEnvReturnRegions methodEnv) + 1) a) idx
@@ -268,7 +283,7 @@ gatherContainment typeEnv dataTypeEnv methodEnv method@(Method _ _ tp _ _ _)
     -- containmentReturn = containment' dataTypeEnv (typeToStrict tp) $ methodEnvReturnRegions methodEnv
 
 -- In case of a global variable, it should be a function of arity 0.
-lookupSimpleVar :: GlobalEnv -> MethodEnv -> Variable -> (Annotation, RegionVars)
+lookupSimpleVar :: HasCallStack => GlobalEnv -> MethodEnv -> Variable -> (Annotation, RegionVars)
 lookupSimpleVar genv@(GlobalEnv typeEnv dataTypeEnv _) _ (VarGlobal (GlobalVariable name tp)) = case lookupGlobal genv name of
   -- Expect an annotation without additional region arguments.
   -- Apply the annotation with an empty list of additional region arguments.
@@ -370,16 +385,19 @@ gatherBind' genv env (Bind _ (BindTargetTuple _) arguments) (RegionVarsTuple [_,
     argumentsAnalysis = map (lookupLocal env . localName) arguments'
 
     -- If any argument is strict, transform it to a lazy representation 
-    argumentRegion :: (Annotation, RegionVars) -> RegionVars
-    argumentRegion (_, RegionVarsTuple [r, rs]) = RegionVarsTuple [r, r, rs]
-    argumentRegion (_, r@(RegionVarsTuple [r1, r2, rs])) = r
+    argumentRegion :: (Annotation, RegionVars) -> [RegionVars]
+    argumentRegion (_, RegionVarsTuple [r, rs]) = [r, r, rs]
+    argumentRegion (_, RegionVarsTuple [r1, r2, rs]) = [r1, r2, rs]
     argumentRegion _ = error "gatherBind': Tuple: argument has wrong region sort"
 
-    constraints = zipFlattenRegionVars Outlives (RegionVarsTuple $ map argumentRegion argumentsAnalysis) returnRegions
+    constraints = zipFlattenRegionVars Outlives (RegionVarsTuple $ argumentsAnalysis >>= argumentRegion) returnRegions
 
     annotation = ATuple $ map fst argumentsAnalysis
 gatherBind' genv env (Bind _ (BindTargetConstructor (DataTypeConstructor constructorName _)) arguments) (RegionVarsTuple [_, returnRegions]) = (ABottom SortRelation, ATuple []) -- TODO: Constructors
-gatherBind' genv env (Bind lhs target arguments) returnRegions = case foldl apply (if all isLeft arguments then [] else targetRegionStrict : intermediateRegions, ABottom SortRelation, targetAnnotation) arguments of
+-- Function or thunk
+gatherBind' genv env (Bind lhs (BindTargetThunk var) arguments) returnRegions
+  | all isLeft arguments = gatherInstantiate genv env var (lefts arguments) returnRegions
+gatherBind' genv@(GlobalEnv typeEnv _ _) env (Bind lhs target arguments) returnRegions = case foldl apply (if all isLeft arguments then [] else targetRegionStrict : intermediateRegions, ABottom SortRelation, targetAnnotation) arguments of
   ([], resultEffect, resultAnnotation) -> 
     ( arelation (relationFromConstraints constraints) `AJoin` resultEffect
     , resultAnnotation
@@ -428,7 +446,7 @@ gatherBind' genv env (Bind lhs target arguments) returnRegions = case foldl appl
 
     -- Passes the annotation and regions of the argument
     apply :: ([RegionVar], Annotation, Annotation) -> (Either Type Local) -> ([RegionVar], Annotation, Annotation)
-    apply (thunkRegions, effect, value) (Left tp) = (thunkRegions, effect, value `AInstantiate` tp)
+    apply (thunkRegions, effect, value) (Left tp) = (thunkRegions, effect, value `AInstantiate` typeNormalize typeEnv tp)
     apply (thunkRegions, effect, value) (Right var)
       | null thunkRegions = error "gatherBind': not enough region arguments"
       | otherwise = (thunkRegions', effect `AJoin` effect'', value')
@@ -502,7 +520,7 @@ gatherExpression genv@(GlobalEnv typeEnv dataTypeEnv _) env lhs expr returnRegio
       annotation' = AApp annotation (ATuple []) (additionalRegions) LifetimeContextAny
 
       call :: (Annotation, Annotation) -> [Either Type Local] -> (Annotation, Annotation)
-      call (aEffect, aReturn) (Left tp' : args') = call (aEffect, AInstantiate aReturn tp') args'
+      call (aEffect, aReturn) (Left tp' : args') = call (aEffect, AInstantiate aReturn $ typeNormalize typeEnv tp') args'
       call (_, aReturn) (Right var : args') = call (unliftPair $ AApp aReturn argAnnotation (regionsAsLazy argRegions) LifetimeContextAny) args'
         where
           (argAnnotation, argRegions) = lookupLocal env $ localName var
@@ -511,11 +529,7 @@ gatherExpression genv@(GlobalEnv typeEnv dataTypeEnv _) env lhs expr returnRegio
       (annotationEffect, annotationReturn) = call (ABottom SortRelation, annotation') args
     in
       (AApp (AApp annotationEffect (ATuple []) (RegionVarsSingle RegionGlobal) LifetimeContextAny) (ATuple []) returnRegions LifetimeContextLocalBottom, annotationReturn)
-  Instantiate var tps ->
-    let
-      (annotation, regions) = lookupLocal env $ localName var
-    in
-      (unifyRegions regions returnRegions, foldl AInstantiate annotation tps)
+  Instantiate var tps -> gatherInstantiate genv env (VarLocal var) tps returnRegions
   Eval var ->
     let
       (annotation, regions) = lookupVar genv env lhs var
@@ -551,11 +565,18 @@ gatherExpression genv@(GlobalEnv typeEnv dataTypeEnv _) env lhs expr returnRegio
     join (a, b) (a', b') = (AJoin a a', AJoin b b')
     joins = foldr1 join
 
-    outliveRegions :: RegionVars -> RegionVars -> Annotation
-    outliveRegions r1 r2 = arelation $ relationFromConstraints $ zipFlattenRegionVars Outlives r1 r2
+outliveRegions :: RegionVars -> RegionVars -> Annotation
+outliveRegions r1 r2 = arelation $ relationFromConstraints $ zipFlattenRegionVars Outlives r1 r2
 
-    unifyRegions :: RegionVars -> RegionVars -> Annotation
-    unifyRegions r1 r2 = arelation $ relationFromConstraints $ zipFlattenRegionVars Outlives r1 r2 ++ zipFlattenRegionVars Outlives r2 r1
+unifyRegions :: RegionVars -> RegionVars -> Annotation
+unifyRegions r1 r2 = arelation $ relationFromConstraints $ zipFlattenRegionVars Outlives r1 r2 ++ zipFlattenRegionVars Outlives r2 r1
+
+gatherInstantiate :: GlobalEnv -> MethodEnv -> Variable -> [Type] -> RegionVars -> (Annotation, Annotation)
+gatherInstantiate genv@(GlobalEnv typeEnv _ _) env var tps returnRegions =
+  let
+    (annotation, regions) = lookupSimpleVar genv env var
+  in
+    (unifyRegions regions returnRegions, foldl AInstantiate annotation $ map (typeNormalize typeEnv) tps)
 
 regionsStrict :: RegionVars -> (RegionVar, RegionVars)
 regionsStrict (RegionVarsTuple [RegionVarsSingle r, rs]) = (r, rs)
@@ -579,3 +600,17 @@ regionsAsLazy regions = RegionVarsTuple [RegionVarsSingle r1, RegionVarsSingle r
 
 unliftPair :: Annotation -> (Annotation, Annotation)
 unliftPair a = (AProject a 0, AProject a 1)
+
+-- The fixpoint of a method of arity zero returns both the effects and the annotation on the returned value.
+-- However, the sort of it only provides the annotation of the returned value.
+-- Furthermore, all additional region arguments are substituted with RegionGlobal
+correctArityZero :: RegionSort -> [Either Quantor Local] -> Annotation -> (Bool, Annotation)
+correctArityZero regionSort arguments annotation
+  | all isLeft arguments = (True, ALam SortUnit RegionSortUnit LifetimeContextAny annotation'')
+  where
+    annotation' = AApp (weaken 0 1 0 annotation) (ATuple []) (mapRegionVars (const RegionGlobal) $ regionSortToVars 0 regionSort) LifetimeContextAny 
+    annotation'' = addLambdas arguments (length arguments - 1) annotation'
+
+    addLambdas [] _ body = AProject body 1
+    addLambdas (Left q : args) idx body = AForall q $ addLambdas args (idx - 1) $ AInstantiate body $ TVar $ idx
+correctArityZero _ _ annotation = (False, annotation)

@@ -322,7 +322,7 @@ apply env annotation argument argumentRegion lc
       ALam sort regionSort lifetime a -> ALam sort regionSort lifetime $ substitute regions (lambdaCount + 1) (regionArgCount + regionSortSize regionSort) a
 
       AInstantiate a tp -> AInstantiate (go a) tp
-      AApp a1 a2 regions' lc' -> AApp (go a1) (go a2) regions' lc'
+      AApp a1 a2 regions' lc' -> AApp (go a1) (go a2) (mapRegionVars substituteRegion regions') lc'
 
       ATuple as -> ATuple $ map go as
       AProject a idx -> AProject (go a) idx
@@ -379,7 +379,7 @@ project env annotation idx = f False annotation
     projectSort (SortTuple sorts) = case tryIndex sorts idx of
       Just s -> s
       Nothing -> error "Helium.CodeGeneration.Iridium.Region.Annotation.project: Top: Index out of bounds"
-    projectSort _ = error "Helium.CodeGeneration.Iridium.Region.Annotation.project: Top: Illegal sort"
+    projectSort s = error $ "Helium.CodeGeneration.Iridium.Region.Annotation.project: Top: Illegal sort: " ++ showSort [] s "" ++ ", index " ++ show idx
 
 join :: Bool -> DataTypeEnv -> Annotation -> Annotation
 join weak env annotation = group $ gather False annotation []
@@ -546,7 +546,15 @@ transformFixpoint (f, _, g) s' h hInv =
   )
 
 afixEscape :: DataTypeEnv -> Int -> Sort -> RegionSort -> Annotation -> ([Bool], RegionVar -> RegionVar, Annotation)
-afixEscape env arity sort' regionSort f = 
+afixEscape env arity sort' regionSort f@(ALam _ RegionSortUnit LifetimeContextAny g)
+  = --traceShow ("AFIXESCAPE ", AFixEscape arity sort' regionSort f) $
+    afixEscape' env arity sort'' regionSort (ALam (SortFun sort'' RegionSortUnit LifetimeContextAny sort'') RegionSortUnit LifetimeContextAny g')
+  where
+    (sort'', g') = inlineFixEscapeTuple sort' g
+afixEscape env arity sort' regionSort f = afixEscape' env arity sort' regionSort f
+
+afixEscape' :: DataTypeEnv -> Int -> Sort -> RegionSort -> Annotation -> ([Bool], RegionVar -> RegionVar, Annotation)
+afixEscape' env arity sort' regionSort f = -- traceShow ("AFIXESCAPE' ", AFixEscape arity sort' regionSort f) $
   let
     (_, _, a) = escapes' $ step $ ABottom sort'
     (doesEscape, substituteRegionVar, a') = iterate 0 a
@@ -556,14 +564,14 @@ afixEscape env arity sort' regionSort f =
     f' = simplify env f
 
     iterate :: Int -> Annotation -> ([Bool], RegionVar -> RegionVar, Annotation)
-    iterate 64 _ -- Give up
+    iterate 12 _ -- Give up
       -- Decide on the escapes check, put the remainder in a normal fixpoint
-      | ALam s rs lc body <- f' -- TODO: We could use f'^n for some n here, as that may give better results in the escapes check
-      , (doesEscape, substituteRegionVar, body') <- escapes' body
-        = (doesEscape, substituteRegionVar, AFix (identity sort') sort' $ ALam s rs lc body')
+      -- | ALam s rs lc body <- f' -- TODO: We could use f'^n for some n here, as that may give better results in the escapes check
+      -- , (doesEscape, substituteRegionVar, body') <- escapes' body
+      --   = (doesEscape, substituteRegionVar, AFix (identity sort') sort' $ ALam s rs lc body')
       | otherwise = escapes' $ step (ATop sort')
     iterate i current
-      | current == next = (doesEscape, substituteRegionVar,  next)
+      | traceShow ("iterate", i) current == next = (doesEscape, substituteRegionVar,  next)
       | otherwise = iterate (i+1) next
       where
         (doesEscape, substituteRegionVar, next) = escapes' $ step current
@@ -646,7 +654,7 @@ escapesBody regionSort extraRegionScope (ATuple
     , substituteRegionVar 0
     , ATuple
       [ ALam SortUnit RegionSortMonomorphic LifetimeContextAny $ ALam SortUnit returnRegionSort LifetimeContextLocalBottom $ substitute 0 aEffect
-      , fromMaybe (error "escapesBody: illegal variable") $ strengthen 0 0 (regionSortSize returnRegionSort + 1) $ substitute 0 aReturn'
+      , fromMaybe (error $ "escapesBody: illegal variable.\naReturn:\n" ++ show aReturn ++ "\naReturn':\n" ++ show aReturn' ++ "\nSubstituted:\n" ++ show (substitute 0 aReturn') ++ "\nSubstitution:\n" ++ show substitution) $ strengthen 0 0 (regionSortSize returnRegionSort + 1) $ substitute 0 aReturn'
       ]
     )
   where
@@ -741,7 +749,7 @@ isTopApplication (AJoin a1 a2) = isTopApplication a2 || isTopApplication a1
 isTopApplication _ = False
 
 -- Local state in 'escapes'
-data Escapes = Escapes !Relation !IntSet
+data Escapes = Escapes !Relation !IntSet deriving Show
 
 instance Semigroup Escapes where
   Escapes relation1 set1 <> Escapes relation2 set2 = Escapes (relationJoin relation1 relation2) (IntSet.union set1 set2)
@@ -796,3 +804,72 @@ annotationRestrict preserve annotation
 
         transformRegionVars :: RegionVars -> RegionVars
         transformRegionVars = mapRegionVars transformRegionVar
+
+inlineFixEscapeTuple :: Sort -> Annotation -> (Sort, Annotation)
+inlineFixEscapeTuple (SortFun SortUnit regionSort lc (SortTuple sorts)) (ALam _ _ _ (ATuple annotations@(_ : _)))
+  | Just dependencies <- traverse (gatherDependencies 0 0) $ annotations
+  -- First element must always be manifest, as that is the result of the fixpoint.
+  , recursive <- True : snd (mapAccumL (\seen idx -> if isRecursive dependencies seen idx idx then (idx : seen, True) else (seen, False)) [0] $ zipWith const [1..] $ tail annotations)
+  -- We only preserve the elements which are recursive.
+  -- Here we construct a mapping from the original indices to the indices of the resulting array.
+  , mapping <- scanl (+) 0 $ map (\r -> if r then 1 else 0) recursive
+  = ( SortFun SortUnit regionSort lc $ SortTuple
+        $ map snd $ filter fst $ zip recursive sorts
+    , ALam SortUnit regionSort lc $ ATuple
+        $ map snd $ filter fst $ zip recursive $ map (inline recursive mapping 0 0) annotations
+    )
+  where
+    gatherDependencies :: Int -> Int -> Annotation -> Maybe [Int]
+    gatherDependencies lambdaCount regionCount a = case a of
+      AProject (AApp (AVar (AnnotationVar idx)) (ATuple []) regions LifetimeContextAny) i
+        | idx == lambdaCount + 1 && regions == regionSortToVars regionCount regionSort -> Just [i]
+      AFix a1 _ a2 -> go a1 `combine` go a2
+      AFixEscape _ _ _ a1 -> go a1
+      AForall _ a1 -> go a1
+      ALam _ rs' _ a1 -> gatherDependencies (lambdaCount + 1) (regionCount + regionSortSize rs') a1
+      AInstantiate a1 _ -> go a1
+      AApp a1 a2 _ _ -> go a1 `combine` go a2
+      ATuple as -> foldl' combine (Just []) $ map go as
+      AProject a1 _ -> go a1
+      AJoin a1 a2 -> go a1 `combine` go a2
+      AVar (AnnotationVar idx)
+        | idx == lambdaCount -> Nothing
+      _ -> Just []
+      where
+        go = gatherDependencies lambdaCount regionCount
+
+        combine (Just xs) (Just []) = Just xs
+        combine (Just xs) (Just ys) = Just $ xs ++ ys
+        combine _ _ = Nothing
+
+    inline :: [Bool] -> [Int] -> Int -> Int -> Annotation -> Annotation
+    inline recursive mapping lambdaCount regionCount a = case a of
+      AProject (AApp (AVar (AnnotationVar idx)) (ATuple []) regions LifetimeContextAny) i
+        | idx == lambdaCount + 1 && regions == regionSortToVars regionCount regionSort ->
+          if recursive !! i then
+            AProject (AApp (AVar (AnnotationVar idx)) (ATuple []) regions LifetimeContextAny) (mapping !! i)
+          else
+            go $ weaken 0 lambdaCount regionCount $ annotations !! i
+
+      AFix a1 s a2 -> AFix (go a1) s (go a2)
+      AFixEscape arity s rs a1 -> AFixEscape arity s rs $ go a1
+      AForall q a1 -> AForall q $ go a1
+      ALam s rs lc a1 -> ALam s rs lc $ inline recursive mapping (lambdaCount + 1) (regionCount + regionSortSize rs) a1
+      AInstantiate a1 tp -> AInstantiate (go a1) tp
+      AApp a1 a2 rs lc -> AApp (go a1) (go a2) rs lc
+      ATuple as -> ATuple $ map go as
+      AProject a1 idx -> AProject (go a1) idx
+      AVar var -> AVar var
+      ARelation r -> ARelation r
+      ATop s -> ATop s
+      ABottom s -> ABottom s
+      AJoin a1 a2 -> AJoin (go a1) (go a2)
+      where
+        go = inline recursive mapping lambdaCount regionCount
+
+    isRecursive :: [[Int]] -> [Int] -> Int -> Int -> Bool
+    isRecursive dependencies seen start idx
+      | idx `elem` seen = False
+      | otherwise = any (\idx' -> start == idx' || isRecursive dependencies (idx : seen) start idx') (dependencies !!! idx)
+
+inlineFixEscapeTuple s a = (s, a) -- Cannot be simplified

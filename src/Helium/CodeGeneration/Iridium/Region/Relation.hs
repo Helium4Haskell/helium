@@ -314,7 +314,12 @@ relationCollapse canCollapse canDefault vars1 relation1 = (relation4, bottomUnif
 
     (vars3, relation3, cycleUnifications) = relationCollapseCyclic canCollapse vars2 relation2
 
-    (relation4, directOutlivesUnifications) = relationCollapseDirectOutlives canDefault vars3 relation3
+    vars4 = filter canDefaultAfterUnifications vars3
+    -- We cannot perform defaulting of regions which have been unified with a variable which cannot be defaulted.
+    canDefaultAfterUnifications :: RegionVar -> Bool
+    canDefaultAfterUnifications x = canDefault x && not (any (\(y, z) -> x == z && not (canDefaultAfterUnifications y)) cycleUnifications)
+
+    (relation4, directOutlivesUnifications) = relationCollapseDirectOutlives canDefault vars4 relation3
 
 
 instance Semigroup Relation where

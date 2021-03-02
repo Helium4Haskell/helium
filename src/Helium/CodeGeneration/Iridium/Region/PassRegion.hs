@@ -54,7 +54,7 @@ initialEnv m = GlobalEnv typeEnv dataTypeEnv functionEnv
     method (Declaration name _ _ _ (Method tp _ _ _ _ _)) = (name, (0, top tp))
 
     top :: Type -> Annotation
-    top = ALam SortUnit RegionSortUnit LifetimeContextAny . ATop . sortOfType dataTypeEnv . typeNormalize typeEnv
+    top = ATop . SortFun SortUnit RegionSortUnit LifetimeContextAny . sortOfType dataTypeEnv . typeNormalize typeEnv
 
     synonyms :: [(Id, Type)]
     synonyms = [(name, tp) | Declaration name _ _ _ (TypeSynonym _ tp) <- moduleTypeSynonyms m]
@@ -68,22 +68,25 @@ transformGroup genv (BindingRecursive methods) = do
   (genv'', methods') <- mapAccumLM (\genv' method -> transformGroup genv' $ BindingNonRecursive method) genv methods
   return (genv'', concat methods')
 
-transformGroup genv@(GlobalEnv typeEnv dataTypeEnv globals) (BindingNonRecursive method) = do
-  putStrLn $ "# Analyse method " ++ show (declarationName method)
+transformGroup genv@(GlobalEnv typeEnv dataTypeEnv globals) (BindingNonRecursive method@(Declaration methodName _ _ _ (Method _ arguments _ _ _ _))) = do
+  putStrLn $ "# Analyse method " ++ show methodName
 
-  let annotation = generate genv method
-  print annotation
+  let (returnRegions, annotation) = generate genv method
+  -- print annotation
 
   let (doesEscape, substituteRegionVar, simplified) = simplifyFixEscape dataTypeEnv annotation
   putStrLn "Simplified:"
   print simplified
 
-  let (regionCount, restricted) = annotationRestrict doesEscape simplified
+  let (isZeroArity, simplified') = correctArityZero returnRegions arguments simplified
+
+  let (regionCount, restricted) = if isZeroArity then (0, simplified') else annotationRestrict doesEscape simplified
 
   putStrLn "Restricted:"
+  print doesEscape
   print restricted
 
-  let globals' = updateMap (declarationName method) (regionCount, restricted) globals
+  let globals' = updateMap methodName (regionCount, restricted) globals
   let genv' = GlobalEnv typeEnv dataTypeEnv globals'
 
   -- TODO: The actual program transformation
