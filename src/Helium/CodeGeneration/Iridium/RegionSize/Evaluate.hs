@@ -98,7 +98,7 @@ project _ t = t
 -- Evalutation utilities
 ----------------------------------------------------------------
 
--- | Sort binary operator operands, compute all computable operators
+-- | Ordering of binary operator operands, compute all computable operators
 operatorSort :: (Annotation -> Annotation -> Annotation)
              -> (Constr -> Constr -> Constr)
              -> [Annotation] 

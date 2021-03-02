@@ -32,7 +32,7 @@ analyseGroup :: GlobalEnv -> BindingGroup Method -> IO (GlobalEnv, [Declaration 
 analyseGroup _ (BindingRecursive _) = rsError "Cannot analyse (mutual) recursive functions yet"
 analyseGroup gEnv (BindingNonRecursive decl@(Declaration methodName _ _ _ method)) = do
   putStrLn $ "# Analyse method " ++ show methodName
-  let annotation = analyse gEnv methodName method
+  let (mAnn, mEff) = analyse gEnv methodName method -- TODO: finish annotation (or do it in analyseMethod)
 --   print annotation
 --   let simplified = simplify dataTypeEnv annotation
 --   putStrLn "Simplified:"

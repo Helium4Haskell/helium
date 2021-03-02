@@ -130,7 +130,7 @@ foldAnnAlgN n alg ann = go n ann
 -- De Bruijn generic re-indexing 
 ----------------------------------------------------------------
 
--- | Don't route subdD
+-- | Re-index the debruin indices of an annotation
 annReIndex :: (Depth -> Int -> Int) -- ^ Reindex function (depth in body to idx to idx)
            -> Annotation -> Annotation
 annReIndex f = foldAnnAlg reIdxAlg
@@ -147,8 +147,8 @@ sortReIndex :: (Depth -> Int -> Int) -- ^ Reindex function
             -> Sort -> Sort
 sortReIndex f annD = foldSortAlgN annD reIdxAlg
   where reIdxAlg = idSortAlg {
-    sortPolyRegion = \d idx ts -> SortPolyRegion (f d idx) $ map (typeReindex $ f d) ts, -- TODO: Reindexing of types
-    sortPolySort   = \d idx ts -> SortPolySort   (f d idx) $ map (typeReindex $ f d) ts  -- TODO: Reindexing of types
+    sortPolyRegion = \d idx ts -> SortPolyRegion (f d idx) $ map (typeReindex $ f d) ts,
+    sortPolySort   = \d idx ts -> SortPolySort   (f d idx) $ map (typeReindex $ f d) ts 
   }
 
 -- | Re-index the debruijn indices of a cosntraint set 

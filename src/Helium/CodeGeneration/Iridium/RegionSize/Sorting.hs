@@ -26,7 +26,6 @@ envWeaken = M.mapKeys $ (+) 1
 -- Sorting
 ----------------------------------------------------------------
 
--- | TODO: Errors (equality of sorts etc.)
 -- | Fills in the sorts on the annotation, returns sort of full annotation
 sort :: Annotation -> Sort
 sort = sort' M.empty
@@ -61,7 +60,7 @@ sort = sort' M.empty
               let sortA = sort' gamma a
                   sortB = sort' gamma b
               in if sortA == sortB && sortA == SortConstr
-                 then sortA
+                 then SortConstr
                  else rsError $ "Addition of non constraint-sort annotations: \nSort A:" ++ show sortA ++ "\nSort B:" ++ show sortB 
           sort' gamma (AJoin  a _) = sort' gamma a
 
