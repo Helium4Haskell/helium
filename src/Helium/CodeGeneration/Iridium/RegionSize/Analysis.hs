@@ -27,13 +27,18 @@ import Data.List
 -- Analysis
 ----------------------------------------------------------------
 
+-- | Analyse the effect and annotation of a block
 analyse :: GlobalEnv -> Id -> Method -> (Annotation, Effect)
-analyse gEnv _ (Method _ _ _ _ block blocks) =
-    let localEnv   = foldl (\lEnv -> unionMap lEnv . localsOfBlock (Envs gEnv lEnv)) emptyMap (block:blocks)
-        (_, bEffs) = mapAccumR (blockAccum (Envs gEnv localEnv)) emptyMap (block:blocks)
+analyse gEnv _ (Method _ args _ _ block blocks) =
+    let initEnv    = emptyMap 
+        -- TODO: unionMapWith AJoin
+        localEnv   = foldl (\lEnv -> unionMap lEnv . localsOfBlock (Envs gEnv lEnv)) initEnv (block:blocks)
+        (_, bEffs) = mapAccumR (blockAccum $ Envs gEnv localEnv) emptyMap (block:blocks)
     in head bEffs
 
-
+----------------------------------------------------------------
+-- Gathering local variable annotations
+----------------------------------------------------------------
 
 -- | Get the annotation of local variabvles from a block
 localsOfBlock :: Envs -> Block -> LocalEnv
@@ -42,22 +47,38 @@ localsOfBlock envs (Block _ instr) = localsOfInstr envs instr
 -- | Get the annotation of local variabvles from an instruction
 localsOfInstr :: Envs -> Instruction -> LocalEnv
 localsOfInstr envs@(Envs gEnv lEnv) = go
-    where go (Let name expr next)    = let (varAnn, _) = analyseExpr envs expr
-                                           lEnv'       = insertMap name varAnn lEnv
-                                       in localsOfInstr (Envs gEnv lEnv') next
-          go (LetAlloc _ next)       = go next
-          go (Match    _ _ _ _ next) = go next
+    where go (Let name expr next  ) = let (varAnn, _) = analyseExpr envs expr
+                                          lEnv'       = insertMap name varAnn lEnv
+                                      in localsOfInstr (Envs gEnv lEnv') next
+          go (LetAlloc _ next     ) = go next
+          go (Match local target tys ids next) = localsOfMatch envs local target tys ids next
           go _ = emptyMap
 
+-- | Retrieve the local variables from a match instruction
+localsOfMatch :: Envs
+             -> Local -> MatchTarget -> [Type] -> [Maybe Id] -> Instruction  
+             -> LocalEnv
+localsOfMatch (Envs gEnv lEnv) local (MatchTargetTuple n) _ ids next =
+    let tupleVar = lookupLocal lEnv local
+        newVars  = map (flip AProj $ tupleVar) [0..(n-1)]
+        -- Insert matched vars into lEnv
+        lEnv'    = foldl (flip $ uncurry insertMaybeId) lEnv (zip ids newVars)
+    in localsOfInstr (Envs gEnv lEnv') next
+localsOfMatch _ _ _ _ _ _ = rsError "analyseMatch: No support for data types."
 
+----------------------------------------------------------------
+-- Analysing the effect of the function
+----------------------------------------------------------------
 
--- | Put the blockmap in to get the result
+{-| Put the blockmap in to get the result. 
+    Returns the extended bEnv, the annotation of the result and the effect.
+-}
 blockAccum :: Envs -> BlockEnv -> Block -> (BlockEnv, (Annotation, Effect))
 blockAccum envs bEnv (Block name instr) = let bEff  = analyseInstr envs bEnv instr
                                               bEnv' = insertMap name bEff bEnv
                                           in (bEnv', bEff)
 
--- | Block effect
+-- | Analyse an instruction
 analyseInstr :: Envs -> BlockEnv -> Instruction -> (Annotation, Effect)
 analyseInstr envs@(Envs _ lEnv) bEnv = go
    where go (Let _ expr next)     =  
@@ -74,7 +95,7 @@ analyseInstr envs@(Envs _ lEnv) bEnv = go
          go (Return local)        = (lookupLocal lEnv local, botEffect)
          -- No effect
          go (Unreachable _)       = botAnnEff
-         -- TODO: Figure out what to do with this (Probs some expansion of lEnv)
+         -- Matching only reads, only effect of sub instruction
          go (Match _ _ _ _ next)  = go next
 
 -- | Find the annotation and effect of an expression
@@ -109,6 +130,11 @@ analyseExpr (Envs gEnv lEnv) = go
 ----------------------------------------------------------------
 -- Analysis utilities
 ----------------------------------------------------------------
+
+-- | Insert an ID if it is present
+insertMaybeId :: Maybe Id -> Annotation -> LocalEnv -> LocalEnv
+insertMaybeId Nothing  = flip const
+insertMaybeId (Just i) = insertMap i
 
 -- | Get the case block names out of the case
 caseBlocks :: Case -> [BlockName]
