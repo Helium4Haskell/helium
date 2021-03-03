@@ -140,7 +140,7 @@ binarySearchIndexAfter vec q = case binarySearchIndexBefore vec q of
 -- Returns the indices of the first element larger than q1 and the last element smaller than q2
 binarySearchRange :: V.Vector Word64 -> Word64 -> Word64 -> Maybe (Int, Int)
 binarySearchRange vec q1 q2
-  | upper > lower = Nothing
+  | upper < lower = Nothing
   | otherwise = Just (lower, upper)
   where
     (_, lower) = binarySearchIndexAfter vec q1

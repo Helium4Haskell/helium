@@ -30,7 +30,7 @@ envLookup idx (Env n m) = case IntMap.lookup (n - idx - 1) m of
 envFind :: Int -> Env a -> a
 envFind idx (Env n m) = case IntMap.lookup (n - idx - 1) m of
   Nothing
-    | idx < 0 || idx >= n -> error "Helium.CodeGeneration.Iridium.Region.Env.envFind: Invalid Debruijn index"
+    | idx < 0 || idx >= n -> error $ "Helium.CodeGeneration.Iridium.Region.Env.envFind: Invalid Debruijn index: " ++ show idx
     | otherwise -> error "Helium.CodeGeneration.Iridium.Region.Env.envFind: Env has an invalid state"
   Just x -> x
 
@@ -51,7 +51,7 @@ sortOfType' env = sort'
     sort' (TAp t1 t2)      args = sort' t1 (t2 : args)
 
     sort' (TForall q _ t1) []   = SortForall q $ sort' t1 []
-    sort' (TForall _ _ _)  _    = error "Helium.CodeGeneration.Iridium.Region.Env.sortOfType: Type is not properly normalized"
+    sort' (TForall _ _ t1) (t2:tps) = sort' (typeSubstitute 0 t2 t1) tps
 
     sort' (TStrict t1)     []   = sort' t1 []
     sort' (TStrict _)      _    = error "Helium.CodeGeneration.Iridium.Region.Env.sortOfType: Invalid strictness type"
@@ -100,7 +100,7 @@ regionChildSortOfType' env = regionSort'
     regionSort' (TAp t1 t2)      args = regionSort' t1 (t2 : args)
 
     regionSort' (TForall q _ t1) []   = RegionSortForall q $ regionSort' t1 []
-    regionSort' (TForall _ _ _)  _    = error "Helium.CodeGeneration.Iridium.Region.Env.regionSortOfType: Type is not properly normalized"
+    regionSort' (TForall _ _ t1) (t2:tps) = regionSort' (typeSubstitute 0 t2 t1) tps
 
     regionSort' (TStrict t1)     []   = regionSort' t1 []
     regionSort' (TStrict _)      _    = error "Helium.CodeGeneration.Iridium.Region.Env.regionSortOfType: Invalid strictness type"
@@ -120,7 +120,7 @@ regionChildSortOfType' env = regionSort'
 
 sortInstantiate :: DataTypeEnv -> Sort -> Type -> Sort
 sortInstantiate env (SortForall _ s) tp = sortSubstitute env 0 tp s
-sortInstantiate _ _ _ = error "Helium.CodeGeneration.Iridium.Region.Env.sortInstantiate: Cannot instantiate this sort, expected SortForall."
+sortInstantiate _ s _ = error $ "Helium.CodeGeneration.Iridium.Region.Env.sortInstantiate: Cannot instantiate this sort, expected SortForall, got " ++ showSort [] s ""
 
 sortSubstitute :: DataTypeEnv -> Int -> Type -> Sort -> Sort
 sortSubstitute env forallCount tp s = case s of

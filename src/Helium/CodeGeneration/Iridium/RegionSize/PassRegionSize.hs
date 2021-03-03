@@ -23,13 +23,16 @@ import qualified Control.Exception as Exc
 passRegionSize :: NameSupply -> Module -> IO Module
 passRegionSize supply m = do 
   if stringFromId (moduleName m) == "LvmLang"
+    || stringFromId (moduleName m) == "HeliumLang"
+    || stringFromId (moduleName m) == "PreludePrim"
+    || stringFromId (moduleName m) == "Prelude"
+    || stringFromId (moduleName m) == "LvmException"
   then return m
   else do
     print "=================="
     print "[PASS REGION SIZE]"
     print "=================="
     print $ moduleName m
-    print $ "Heyo: " ++ stringFromId (moduleName m)
     let gEnv = initialGEnv m
     let groups = map BindingNonRecursive $ moduleMethods m
     (_, methods) <- mapAccumLM analyseGroup gEnv groups
@@ -43,8 +46,8 @@ analyseGroup :: GlobalEnv -> BindingGroup Method -> IO (GlobalEnv, [Declaration 
 analyseGroup _ (BindingRecursive _) = rsError "Cannot analyse (mutual) recursive functions yet"
 analyseGroup gEnv (BindingNonRecursive decl@(Declaration methodName _ _ _ method)) = do
   putStrLn $ "# Analyse method " ++ show methodName
-  let x = analyse gEnv methodName method
-  mAnn <- Exc.catch (x `seq` return x) (\exc -> return AUnit `const` (exc :: Exc.ErrorCall)) -- TODO: finish annotation (or do it in analyseMethod)
+  let mAnn = analyse gEnv methodName method
+  -- mAnn <- Exc.catch (x `seq` return x) (\exc -> return AUnit `const` (exc :: Exc.ErrorCall)) 
   print mAnn
 
   return (gEnv, [decl{ declarationValue = method }])

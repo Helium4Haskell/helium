@@ -20,7 +20,7 @@ import Helium.CodeGeneration.Iridium.Region.Utils
 passRegion :: NameSupply -> Module -> IO Module
 passRegion supply m = do
   let genv = initialEnv m
-  let groups = map BindingNonRecursive $ moduleMethods m
+  let groups = methodBindingGroups $ moduleMethods m
 
   (_, methods) <- mapAccumLM transformGroup genv groups
 
@@ -54,7 +54,7 @@ initialEnv m = GlobalEnv typeEnv dataTypeEnv functionEnv
     method (Declaration name _ _ _ (Method tp _ _ _ _ _)) = (name, (0, top tp))
 
     top :: Type -> Annotation
-    top = ATop . sortOfType dataTypeEnv . typeNormalize typeEnv
+    top = ATop . SortFun SortUnit RegionSortUnit LifetimeContextAny . sortOfType dataTypeEnv . typeNormalize typeEnv
 
     synonyms :: [(Id, Type)]
     synonyms = [(name, tp) | Declaration name _ _ _ (TypeSynonym _ tp) <- moduleTypeSynonyms m]
@@ -62,17 +62,33 @@ initialEnv m = GlobalEnv typeEnv dataTypeEnv functionEnv
 -- Analyses and transforms a binding group of a single non-recursive function
 -- or a group of (mutual) recursive functions.
 transformGroup :: GlobalEnv -> BindingGroup Method -> IO (GlobalEnv, [Declaration Method])
-transformGroup _ (BindingRecursive _) = error "Cannot analyse (mutual) recursive functions yet"
-transformGroup genv@(GlobalEnv _ dataTypeEnv _) (BindingNonRecursive method) = do
-  putStrLn $ "# Analyse method " ++ show (declarationName method)
+transformGroup genv (BindingRecursive methods) = do
+  -- We cannot analyse mutual recursive functions yet
+  -- For now we will analyse them one by one.
+  (genv'', methods') <- mapAccumLM (\genv' method -> transformGroup genv' $ BindingNonRecursive method) genv methods
+  return (genv'', concat methods')
 
-  let annotation = generate genv method
-  print annotation
+transformGroup genv@(GlobalEnv typeEnv dataTypeEnv globals) (BindingNonRecursive method@(Declaration methodName _ _ _ (Method _ arguments _ _ _ _))) = do
+  putStrLn $ "# Analyse method " ++ show methodName
 
-  let simplified = simplify dataTypeEnv annotation
+  let (returnRegions, annotation) = generate genv method
+  -- print annotation
+
+  let (doesEscape, substituteRegionVar, simplified) = simplifyFixEscape dataTypeEnv annotation
   putStrLn "Simplified:"
   print simplified
-  
+
+  let (isZeroArity, simplified') = correctArityZero returnRegions arguments simplified
+
+  let (regionCount, restricted) = if isZeroArity then (0, simplified') else annotationRestrict doesEscape simplified
+
+  putStrLn "Restricted:"
+  print doesEscape
+  print restricted
+
+  let globals' = updateMap methodName (regionCount, restricted) globals
+  let genv' = GlobalEnv typeEnv dataTypeEnv globals'
+
   -- TODO: The actual program transformation
-  return (genv, [method])
+  return (genv', [method])
 

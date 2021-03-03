@@ -69,7 +69,7 @@ lookupBlock = flip findMap
 -- | Look up a local variable in the local environment
 lookupLocal :: LocalEnv -> Local -> Annotation
 lookupLocal lEnv local = case lookupMap (localName local) lEnv of
-                            Nothing -> rsError $ "lookupLocal: ID not in map" 
+                            Nothing -> rsError $ "lookupLocal - ID not in map: " ++ (stringFromId $ localName local) 
                             Just a  -> a
 
 -- | Lookup a global or local variable

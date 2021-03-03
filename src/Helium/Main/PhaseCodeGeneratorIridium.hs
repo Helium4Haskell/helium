@@ -54,7 +54,7 @@ phaseCodeGeneratorIridium supply cache fullName coreModule options = do
 
   let iridium2 = passTailRecursion supplyPassTailRecursion $ passDeadCode supplyPassDeadCode iridium1
   checkModuleIO "passTailRecursion" (fullNameNoExt ++ ".iridium") iridium2
-  iridium3 <- passRegion supplyRegion iridium2
+  iridium3 <- passRegionSize supplyRegion iridium2
 
   writeIridium cache (fullNameNoExt ++ ".iridium") iridium3
   checkModuleIO "passRegion" (fullNameNoExt ++ ".iridium") iridium3
