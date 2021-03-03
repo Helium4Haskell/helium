@@ -27,6 +27,7 @@ pMethod = do
     return $ Just tp
   else
     return Nothing
+  additionalRegions <- pTry (RegionVarsTuple []) pRegionVars
   pToken '('
   pWhitespace
   c <- lookahead
@@ -40,13 +41,14 @@ pMethod = do
   pToken ':'
   pWhitespace
   returnType <- pType' quantors
+  returnRegions <- pAtRegions
   annotations <- pAnnotations
   pWhitespace
   c <- pChar
   let tp' = fromMaybe (typeFromFunctionType $ FunctionType (map toArg args) returnType) tp
   case c of
     '{' ->
-      (\(b:bs) -> Method tp' args returnType annotations b bs) <$ pWhitespace <*> pSome (pBlock quantors) pSep
+      (\(b:bs) -> Method tp' additionalRegions args returnType returnRegions annotations b bs) <$ pWhitespace <*> pSome (pBlock quantors) pSep
     '=' -> do
       -- Shorthand for a function that computes a single expression and returns it
       pWhitespace
@@ -54,7 +56,7 @@ pMethod = do
       annotations <- pAnnotations
       let result = idFromString "result"
       let b = Block (idFromString "entry") (Let result expr $ Return $ Local result $ typeToStrict returnType)
-      return $ Method tp' args returnType annotations b []
+      return $ Method tp' additionalRegions args returnType returnRegions annotations b []
     _ -> pError "Expected '{' or '=' in a method declaration"
   where
     pSep :: Parser Bool

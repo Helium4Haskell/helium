@@ -169,7 +169,7 @@ compileExpression env supply (Iridium.Literal literal) name = [toName name := Bi
         ( Float $ Float.Double value
         , FloatingPointType DoubleFP
         )
-compileExpression env supply expr@(Iridium.Call to@(Iridium.GlobalFunction global arity tp) args) name
+compileExpression env supply expr@(Iridium.Call to@(Iridium.GlobalFunction global arity tp) _ args _) name
   | not fakeIO && all isRight args =
     [ toName name := Call
         { tailCallKind = Nothing
@@ -222,7 +222,7 @@ compileExpression env supply expr@(Iridium.Call to@(Iridium.GlobalFunction globa
     ]
     ++ [toName nameRealWorld := Select (ConstantOperand $ Int 1 1) (ConstantOperand $ Undef tRealWorld) (ConstantOperand $ Undef tRealWorld) []]
     ++ compileBinds env supply'' [Iridium.Bind name (Iridium.BindTargetConstructor ioRes)
-        [Left Iridium.typeInt, Right $ Iridium.Local nameValue Iridium.typeInt, Right $ Iridium.Local nameRealWorld Iridium.typeRealWorld]]
+        [Left Iridium.typeInt, Right $ Iridium.Local nameValue Iridium.typeInt, Right $ Iridium.Local nameRealWorld Iridium.typeRealWorld] Iridium.RegionGlobal]
   where
     Iridium.FunctionType argTypes retType = Iridium.extractFunctionTypeWithArity (envTypeEnv env) arity tp
     EnvMethodInfo convention fakeIO = findMap global (envMethodInfo env)

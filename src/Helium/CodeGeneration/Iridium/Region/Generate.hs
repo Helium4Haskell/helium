@@ -44,7 +44,7 @@ data MethodEnv = MethodEnv
   }
 
 generate :: GlobalEnv -> Declaration Method -> (RegionSort, Annotation)
-generate (GlobalEnv typeEnv dataTypeEnv globals) (Declaration methodName _ _ _ method@(Method fnType arguments _ _ _ _))
+generate (GlobalEnv typeEnv dataTypeEnv globals) (Declaration methodName _ _ _ method@(Method fnType _ arguments _ _ _ _ _))
   = (methodEnvAdditionalRegionSort methodEnv, fixpoint)
   where
     (applyLocal, methodEnv) = assign genv methodName method
@@ -155,7 +155,7 @@ generate (GlobalEnv typeEnv dataTypeEnv globals) (Declaration methodName _ _ _ m
       . strengthen 0 2 (regionVarsSize (methodEnvReturnRegions methodEnv) + 1)
 
 assign :: GlobalEnv -> Id -> Method -> (Annotation -> Int -> Annotation, MethodEnv)
-assign genv@(GlobalEnv typeEnv dataTypeEnv _) name method@(Method _ arguments returnType _ _ _) = (applyLocal, methodEnv)
+assign genv@(GlobalEnv typeEnv dataTypeEnv _) name method@(Method _ _ arguments returnType _ _ _ _) = (applyLocal, methodEnv)
   where
     methodEnv = MethodEnv
       name
@@ -254,14 +254,14 @@ assignAdditionalRegionVars genv method firstRegionVar = (nextRegionVar, mapFromL
       )
 
     bindRegionCount :: Bind -> (Id, Int)
-    bindRegionCount (Bind lhs (BindTargetThunk _) args)
+    bindRegionCount (Bind lhs (BindTargetThunk _ _) args _)
       = (lhs, max 0 (length (rights args) - 1))
-    bindRegionCount (Bind lhs (BindTargetFunction (GlobalFunction fn _ _)) args)
+    bindRegionCount (Bind lhs (BindTargetFunction (GlobalFunction fn _ _) _ _) args _)
       = (lhs, max 0 (length (rights args) - 1) + functionAdditionRegionCount fn)
-    bindRegionCount (Bind lhs _ _) = (lhs, 0)
+    bindRegionCount (Bind lhs _ _ _) = (lhs, 0)
     
     expRegionCount :: Id -> Expr -> (Id, Int)
-    expRegionCount lhs (Call (GlobalFunction fn _ _) args)
+    expRegionCount lhs (Call (GlobalFunction fn _ _) _ args _)
       = (lhs, functionAdditionRegionCount fn)
     expRegionCount lhs (Eval (VarGlobal (GlobalVariable var _)))
       = (lhs, functionAdditionRegionCount var)
@@ -273,14 +273,12 @@ assignAdditionalRegionVars genv method firstRegionVar = (nextRegionVar, mapFromL
     functionAdditionRegionCount = fst . lookupGlobal genv  -- TODO: Find function in environment
 
 gatherContainment :: TypeEnvironment -> DataTypeEnv -> MethodEnv -> Method -> Relation
-gatherContainment typeEnv dataTypeEnv methodEnv method@(Method _ _ tp _ _ _)
-  = containmentLocals -- <> containmentReturn
+gatherContainment typeEnv dataTypeEnv methodEnv method
+  = containmentLocals
   where
     containmentLocals = mconcat
       $ map (\(Local name tp) -> containment' dataTypeEnv (typeNormalize typeEnv tp) $ snd $ lookupLocal methodEnv name)
       $ methodLocals True typeEnv method -- locals including the function arguments
-    
-    -- containmentReturn = containment' dataTypeEnv (typeToStrict tp) $ methodEnvReturnRegions methodEnv
 
 -- In case of a global variable, it should be a function of arity 0.
 lookupSimpleVar :: HasCallStack => GlobalEnv -> MethodEnv -> Variable -> (Annotation, RegionVars)
@@ -335,7 +333,7 @@ gatherLocal :: Int -> Annotation -> Gather
 gatherLocal idx a = [(KeyLocal idx, a)]
 
 gatherInMethod :: GlobalEnv -> MethodEnv -> Method -> Gather
-gatherInMethod genv@(GlobalEnv typeEnv dataTypeEnv _) env method@(Method _ _ _ _ block blocks)
+gatherInMethod genv@(GlobalEnv typeEnv dataTypeEnv _) env method@(Method _ _ _ _ _ _ block blocks)
   = effect containment ++ gatherBlocks
   where
     gatherBlocks = (block : blocks) >>= (\(Block _ instr) -> gatherInstruction genv env instr)
@@ -367,7 +365,7 @@ gatherInstruction genv env instruction = case instruction of
     go = gatherInstruction genv env
 
 gatherBind :: GlobalEnv -> MethodEnv -> Bind -> Gather
-gatherBind genv env bind@(Bind var _ _) = case lookupMap var $ methodEnvVars env of
+gatherBind genv env bind@(Bind var _ _ _) = case lookupMap var $ methodEnvVars env of
   Nothing -> error "Local variable of bind not present in MethodEnv"
   Just (Right _, _) -> error "Found function argument in left hand side of Bind"
   Just (Left (idx, _), regions) ->
@@ -379,7 +377,7 @@ gatherBind genv env bind@(Bind var _ _) = case lookupMap var $ methodEnvVars env
 -- Returns the annotations (effect) caused by evaluating the expression, and the annotation
 -- (type) of the resulting value
 gatherBind' :: GlobalEnv -> MethodEnv -> Bind -> RegionVars -> (Annotation, Annotation)
-gatherBind' genv env (Bind _ (BindTargetTuple _) arguments) (RegionVarsTuple [_, returnRegions]) = (arelation $ relationFromConstraints constraints, annotation)
+gatherBind' genv env (Bind _ (BindTargetTuple _) arguments _) (RegionVarsTuple [_, returnRegions]) = (arelation $ relationFromConstraints constraints, annotation)
   where
     arguments' = rights arguments
     argumentsAnalysis = map (lookupLocal env . localName) arguments'
@@ -393,11 +391,11 @@ gatherBind' genv env (Bind _ (BindTargetTuple _) arguments) (RegionVarsTuple [_,
     constraints = zipFlattenRegionVars Outlives (RegionVarsTuple $ argumentsAnalysis >>= argumentRegion) returnRegions
 
     annotation = ATuple $ map fst argumentsAnalysis
-gatherBind' genv env (Bind _ (BindTargetConstructor (DataTypeConstructor constructorName _)) arguments) (RegionVarsTuple [_, returnRegions]) = (ABottom SortRelation, ATuple []) -- TODO: Constructors
+gatherBind' genv env (Bind _ (BindTargetConstructor (DataTypeConstructor constructorName _)) arguments _) (RegionVarsTuple [_, returnRegions]) = (ABottom SortRelation, ATuple []) -- TODO: Constructors
 -- Function or thunk
-gatherBind' genv env (Bind lhs (BindTargetThunk var) arguments) returnRegions
+gatherBind' genv env (Bind lhs (BindTargetThunk var _) arguments _) returnRegions
   | all isLeft arguments = gatherInstantiate genv env var (lefts arguments) returnRegions
-gatherBind' genv@(GlobalEnv typeEnv _ _) env (Bind lhs target arguments) returnRegions = case foldl apply (if all isLeft arguments then [] else targetRegionStrict : intermediateRegions, ABottom SortRelation, targetAnnotation) arguments of
+gatherBind' genv@(GlobalEnv typeEnv _ _) env (Bind lhs target arguments _) returnRegions = case foldl apply (if all isLeft arguments then [] else targetRegionStrict : intermediateRegions, ABottom SortRelation, targetAnnotation) arguments of
   ([], resultEffect, resultAnnotation) -> 
     ( arelation (relationFromConstraints constraints) `AJoin` resultEffect
     , resultAnnotation
@@ -409,14 +407,14 @@ gatherBind' genv@(GlobalEnv typeEnv _ _) env (Bind lhs target arguments) returnR
     additionalRegions = fromMaybe [] $ lookupMap lhs $ methodEnvAdditionalFor env 
 
     (intermediateRegions, targetAnnotation, targetRegionLazy, targetRegionStrict) = case target of
-      BindTargetThunk var ->
+      BindTargetThunk var _ ->
         let
           (a, rs) = lookupSimpleVar genv env var
           (l, s, _) = regionsLazy rs
         in
           -- All additional regions for this bind are used for the intermediate thunks.
           (additionalRegions, a, l, s)
-      BindTargetFunction (GlobalFunction name _ _)
+      BindTargetFunction (GlobalFunction name _ _) _ _
         | name == methodEnvName env ->
         let
           (_, a) = lookupGlobal genv name
@@ -427,7 +425,7 @@ gatherBind' genv@(GlobalEnv typeEnv _ _) env (Bind lhs target arguments) returnR
           , RegionGlobal
           , RegionGlobal
           )
-      BindTargetFunction (GlobalFunction name _ _) ->
+      BindTargetFunction (GlobalFunction name _ _) _ _ ->
         let
           (callAdditionalRegionCount, a) = lookupGlobal genv name
           a' = AApp a (ATuple []) (RegionVarsTuple $ map RegionVarsSingle $ take callAdditionalRegionCount additionalRegions) LifetimeContextAny
@@ -511,7 +509,7 @@ gatherMatch genv@(GlobalEnv typeEnv dataTypeEnv _) env (Local obj _) target@(Mat
 gatherExpression :: GlobalEnv -> MethodEnv -> Id -> Expr -> RegionVars -> (Annotation, Annotation)
 gatherExpression genv@(GlobalEnv typeEnv dataTypeEnv _) env lhs expr returnRegions = case expr of
   Literal _ -> bottom
-  Call (GlobalFunction name _ _) args ->
+  Call (GlobalFunction name _ _) _ args _ ->
     let
       additionalRegions
         | name == methodEnvName env = methodEnvAdditionalRegionVars env

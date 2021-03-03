@@ -38,18 +38,18 @@ compileBinds env supply binds = concat inits ++ concat assigns
     (inits, assigns) = unzip $ mapWithSupply (compileBind env) supply $ sortBinds binds
 
 compileBind :: Env -> NameSupply -> Iridium.Bind -> ([Named Instruction], [Named Instruction])
-compileBind env supply b@(Iridium.Bind varId target args)
+compileBind env supply b@(Iridium.Bind varId target args _)
   = compileBind' env supply b $ toStruct env target $ length $ filter isRight args
 
 compileBind' :: Env -> NameSupply -> Iridium.Bind -> Either Int Struct -> ([Named Instruction], [Named Instruction])
-compileBind' env supply (Iridium.Bind varId target _) (Left tag) = 
+compileBind' env supply (Iridium.Bind varId target _ _) (Left tag) = 
   ( [toName varId := AST.IntToPtr (ConstantOperand $ Constant.Int (fromIntegral $ targetWordSize $ envTarget env) value) voidPointer []]
   , [])
   where
     -- Put a '1' in the least significant bit to distinguish it from a pointer.
     value :: Integer
     value = fromIntegral tag * 2 + 1
-compileBind' env supply bind@(Iridium.Bind varId target args) (Right struct) =
+compileBind' env supply bind@(Iridium.Bind varId target args _) (Right struct) =
   ( concat splitInstructions
     ++ allocate env nameVoid nameStruct t struct
     ++ castBind
@@ -123,7 +123,7 @@ operandTrue = ConstantOperand $ Constant.Int 1 1
 
 -- A thunk has an additional argument, namely the function. We add that argument here
 bindArguments :: Env -> NameSupply -> Iridium.BindTarget -> Int -> Operand -> (Bool, [Named Instruction], [(Operand, Operand)])
-bindArguments env _ target@(Iridium.BindTargetFunction (Iridium.GlobalFunction fn arity _)) givenArgs self
+bindArguments env _ target@(Iridium.BindTargetFunction (Iridium.GlobalFunction fn arity _) _ _) givenArgs self
   | arity == 0 && givenArgs /= 0 = error ("Cannot bind arguments to a global function with 0 arguments: " ++ show fn)
   | otherwise = 
   ( True
@@ -134,7 +134,7 @@ bindArguments env _ target@(Iridium.BindTargetFunction (Iridium.GlobalFunction f
     , (ConstantOperand $ Constant.Int 16 $ fromIntegral $ givenArgs, operandTrue)
     ]
   )
-bindArguments env supply (Iridium.BindTargetThunk var) givenArgs _ =
+bindArguments env supply (Iridium.BindTargetThunk var _) givenArgs _ =
   ( True
   , instrNext
     ++ -- Extract function pointer and 'remaining' from next thunk
@@ -181,9 +181,9 @@ sortBinds :: [Iridium.Bind] -> [Iridium.Bind]
 sortBinds = map getBind . Graph.stronglyConnComp . map node
   where
     node :: Iridium.Bind -> (Iridium.Bind, Id, [Id])
-    node bind@(Iridium.Bind name (Iridium.BindTargetThunk target) _) =
+    node bind@(Iridium.Bind name (Iridium.BindTargetThunk target _) _ _) =
       (bind, name, [Iridium.variableName target])
-    node bind@(Iridium.Bind name _ _) =
+    node bind@(Iridium.Bind name _ _ _) =
       (bind, name, [])
     getBind :: Graph.SCC Iridium.Bind -> Iridium.Bind
     getBind (Graph.AcyclicSCC bind) = bind

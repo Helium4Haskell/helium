@@ -122,7 +122,7 @@ idMatchCase = idFromString "match_case"
 idMatchDefault = idFromString "match_default"
 
 toMethod :: NameSupply -> TypeEnv -> Id -> Core.Type -> Core.Expr -> Method
-toMethod supply env name tp expr = Method tp args returnType [MethodAnnotateTrampoline] (Block entryName entry) blocks
+toMethod supply env name tp expr = Method tp (RegionVarsTuple []) args returnType (RegionVarsTuple []) [MethodAnnotateTrampoline] (Block entryName entry) blocks
   where
     (entryName, supply') = freshIdFromId idEntry supply
     createArgument (Left quantor) _ = Left quantor
@@ -248,7 +248,7 @@ toInstruction supply env continue (Core.Var var) = case resolve env var of
     Let name (Eval $ VarGlobal $ GlobalVariable fn fntype) +> ret supply' env name continue
   Right global ->
     let
-      bind = Bind name (BindTargetFunction global) []
+      bind = Bind name (bindTargetFunction global) [] RegionGlobal
     in
       LetAlloc [bind] +> ret supply' env name continue
   Left variable
@@ -268,7 +268,7 @@ toInstruction supply env continue expr = case getApplicationOrConstruction expr 
         (casted, castInstructions, _) = maybeCasts supply''' env fntype args
       in
         castInstructions
-          +> LetAlloc [Bind x (BindTargetConstructor dataTypeCon) casted]
+          +> LetAlloc [Bind x (BindTargetConstructor dataTypeCon) casted RegionGlobal]
           +> ret supplyRet env x continue
   (Left con@(Core.ConTuple arity), args) ->
     let
@@ -276,7 +276,7 @@ toInstruction supply env continue expr = case getApplicationOrConstruction expr 
       (args', castInstructions, _) = maybeCasts supply''' env fntype args
     in
       castInstructions
-        +> LetAlloc [Bind x (BindTargetTuple arity) args']
+        +> LetAlloc [Bind x (BindTargetTuple arity) args' RegionGlobal]
         +> ret supplyRet env x continue
   (Right fn, args)
     | all isLeft args && not (isGlobalFunction $ resolve env fn) ->
@@ -301,7 +301,7 @@ toInstruction supply env continue expr = case getApplicationOrConstruction expr 
               (args', castInstructions, tp) = maybeCasts supply''' env fntype args
             in
               castInstructions
-                +> LetAlloc [Bind y (BindTargetThunk $ VarGlobal $ GlobalVariable fn fntype) args']
+                +> LetAlloc [Bind y (bindTargetThunk $ VarGlobal $ GlobalVariable fn fntype) args' RegionGlobal]
                 +> Let z (Eval $ VarLocal $ Local y tp)
                 +> ret supplyRet env z continue
           | arity == argsArity ->
@@ -309,7 +309,7 @@ toInstruction supply env continue expr = case getApplicationOrConstruction expr 
             let
               (args', castInstructions, _) = maybeCasts supply''' env fntype args
             in
-              castInstructions +> Let x (Call (GlobalFunction fn arity fntype) args') +> ret supplyRet env x continue
+              castInstructions +> Let x (call (GlobalFunction fn arity fntype) args') +> ret supplyRet env x continue
           | arity > argsArity ->
             -- Not enough arguments, cannot call the function yet. Compile to a thunk.
             -- The thunk is already in WHNF, as the application does not have enough arguments.
@@ -317,7 +317,7 @@ toInstruction supply env continue expr = case getApplicationOrConstruction expr 
               (args', castInstructions, tp) = maybeCasts supply''' env fntype args
             in
               castInstructions
-                +> LetAlloc [Bind x (BindTargetFunction $ GlobalFunction fn arity fntype) args']
+                +> LetAlloc [Bind x (bindTargetFunction $ GlobalFunction fn arity fntype) args' RegionGlobal]
                 +> ret supplyRet env x continue
           | otherwise ->
             -- Too many arguments. Evaluate the function with the first `length params` arguments,
@@ -331,8 +331,8 @@ toInstruction supply env continue expr = case getApplicationOrConstruction expr 
             in
               castInstructions1
                 +> castInstructions2
-                +> Let x (Call (GlobalFunction fn arity fntype) args1')
-                +> LetAlloc [Bind y (BindTargetThunk $ VarLocal $ Local x $ Core.typeToStrict tp1) args2']
+                +> Let x (call (GlobalFunction fn arity fntype) args1')
+                +> LetAlloc [Bind y (bindTargetThunk $ VarLocal $ Local x $ Core.typeToStrict tp1) args2' RegionGlobal]
                 +> Let z (Eval $ VarLocal $ Local y tp2)
                 +> ret supplyRet env z continue
         Nothing ->
@@ -341,7 +341,7 @@ toInstruction supply env continue expr = case getApplicationOrConstruction expr 
           let
             (supplyCast1, supplyCast2) = splitNameSupply supply'''
             (args', castInstructions, tp) = maybeCasts supplyCast1 env (variableType var) args
-            bind = Bind x (BindTargetThunk var) args'
+            bind = Bind x (bindTargetThunk var) args' RegionGlobal
             var = resolveVariable env fn
           in
             castInstructions
@@ -353,6 +353,15 @@ toInstruction supply env continue expr = case getApplicationOrConstruction expr 
     (x, supply') = freshId supply1
     (y, supply'') = freshId supply'
     (z, supply''') = freshId supply''
+
+call :: GlobalFunction -> [Either Core.Type Local] -> Expr
+call fn args = Call fn (RegionVarsTuple []) args (RegionVarsTuple [])
+
+bindTargetThunk :: Variable -> BindTarget
+bindTargetThunk var = BindTargetThunk var (BindThunkRegions (RegionVarsTuple []) (RegionVarsTuple []))
+
+bindTargetFunction :: GlobalFunction -> BindTarget
+bindTargetFunction fn = BindTargetFunction fn (RegionVarsTuple []) (BindThunkRegions (RegionVarsTuple []) (RegionVarsTuple []))
 
 isGlobalFunction :: Either Variable GlobalFunction -> Bool
 isGlobalFunction = isRight
@@ -477,7 +486,7 @@ gatherCaseConstructorAlts supply env (continue:continues) remaining var (Core.Al
     (nextAlts, nextBlocks) = gatherCaseConstructorAlts supply2 env continues remaining' var alts
 
 bind :: NameSupply -> TypeEnv -> Core.Bind -> (Instruction -> Instruction, Bind)
-bind supply env (Core.Bind (Core.Variable x _) val) = (argInstrs, Bind x target args')
+bind supply env (Core.Bind (Core.Variable x _) val) = (argInstrs, Bind x target args' RegionGlobal)
   where
     (apOrCon, args) = getApplicationOrConstruction val []
     (supply', argInstrs, args') = callArguments supply env args
@@ -491,13 +500,13 @@ bind supply env (Core.Bind (Core.Variable x _) val) = (argInstrs, Bind x target 
       Left (Core.ConTuple arity) -> BindTargetTuple arity
       Right fn -> case resolveFunction env fn of
         Just (0, fntype) ->
-          BindTargetThunk $ VarGlobal $ GlobalVariable fn fntype
+          BindTargetThunk (VarGlobal $ GlobalVariable fn fntype) (BindThunkRegions (RegionVarsTuple []) (RegionVarsTuple []))
         Just (arity, fntype) ->
-          BindTargetFunction $ GlobalFunction fn arity fntype
+          BindTargetFunction (GlobalFunction fn arity fntype) (RegionVarsTuple []) (BindThunkRegions (RegionVarsTuple []) (RegionVarsTuple []))
         _
           | null args -> error $ "bind: a secondary thunk cannot have zero arguments"
         _ ->
-          BindTargetThunk $ resolveVariable env fn
+          BindTargetThunk (resolveVariable env fn) (BindThunkRegions (RegionVarsTuple []) (RegionVarsTuple []))
 
 callArguments :: NameSupply -> TypeEnv -> [Either Core.Type Id] -> (NameSupply, Instruction -> Instruction, [Either Core.Type Local])
 callArguments supply env (Left tp : args) = (supply', instr, Left tp : args')

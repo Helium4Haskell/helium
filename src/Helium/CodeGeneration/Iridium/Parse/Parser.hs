@@ -2,6 +2,7 @@ module Helium.CodeGeneration.Iridium.Parse.Parser where
 
 import Lvm.Common.Id(Id, idFromString)
 import Data.Maybe
+import Data.List
 
 data ParseResult p = ResError !String !String | ResValue !p !String
 
@@ -48,6 +49,9 @@ pMaybe (Parser p) = Parser f
     f str = case p str of
       ResError _ _ -> ResValue Nothing str
       ResValue v str' -> ResValue (Just v) str'
+
+pTry :: a -> Parser a -> Parser a
+pTry def p = fromMaybe def <$> pMaybe p
 
 pManyMaybe :: Parser (Maybe a) -> Parser [a]
 pManyMaybe p = do
@@ -194,6 +198,31 @@ pSignedInt = do
     (0 -) <$> pUnsignedInt
   else
     pUnsignedInt
+
+pSubscriptInt :: Parser Int
+pSubscriptInt = do
+  c <- lookahead
+  if c == '₋' then do
+    pChar
+    (0 -) <$> pSubscriptUnsignedInt
+  else
+    pSubscriptUnsignedInt
+
+pSubscriptUnsignedInt :: Parser Int
+pSubscriptUnsignedInt = do
+  numbers <- go
+  if numbers == [] then
+    pError "expected subscript integer"
+  else
+    return $ foldl' (\a b -> a * 10 + b) 0 numbers
+  where
+    go :: Parser [Int]
+    go = do
+      c <- lookahead
+      case c `elemIndex` numbersSubscript of
+        Nothing -> return []
+        Just idx -> (idx : ) <$ pChar <*> go
+    numbersSubscript = "₀₁₂₃₄₅₆₇₈₉"
 
 pArguments :: Parser a -> Parser [a]
 pArguments pArg = do

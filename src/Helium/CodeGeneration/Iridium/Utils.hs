@@ -12,7 +12,7 @@ mapBlocks :: (Instruction -> Instruction) -> Module -> Module
 mapBlocks fn (Module name dependencies customs datas types abstracts methods) = Module name dependencies customs datas types abstracts $ map (fmap fnMethod) methods
   where
     fnMethod :: Method -> Method
-    fnMethod (Method tp args rettype annotations entry blocks) = Method tp args rettype annotations (fnBlock entry) $ map fnBlock blocks
+    fnMethod (Method tp additionalRegions args rettype retRegions annotations entry blocks) = Method tp additionalRegions args rettype retRegions annotations (fnBlock entry) $ map fnBlock blocks
     fnBlock :: Block -> Block
     fnBlock (Block name instr) = Block name $ fn instr
 
@@ -20,7 +20,7 @@ mapBlocksWithSupply :: (NameSupply -> Instruction -> Instruction) -> NameSupply 
 mapBlocksWithSupply fn supply (Module name dependencies customs datas types abstracts methods) = Module name dependencies customs datas types abstracts $ mapWithSupply (\s -> fmap (fnMethod s)) supply methods
   where
     fnMethod :: NameSupply -> Method -> Method
-    fnMethod s (Method tp args rettype annotations entry blocks) = Method tp args rettype annotations (fnBlock supply1 entry) $ mapWithSupply fnBlock supply2 blocks
+    fnMethod s (Method tp additionalRegions args rettype retRegions annotations entry blocks) = Method tp additionalRegions args rettype retRegions annotations (fnBlock supply1 entry) $ mapWithSupply fnBlock supply2 blocks
       where
         (supply1, supply2) = splitNameSupply s
     fnBlock :: NameSupply -> Block -> Block

@@ -48,7 +48,7 @@ compileAbstractMethod env supply (Iridium.Declaration name visible _ _ method@(I
     args = map (Iridium.Local unusedArgumentName) argTypes
 
 compileMethod :: Env -> NameSupply -> Iridium.Declaration Iridium.Method -> [Definition]
-compileMethod env supply (Iridium.Declaration name visible _ _ method@(Iridium.Method _ args retType annotations entry blocks)) = toFunction env supply2 name visible annotations args' fnType retType basicBlocks
+compileMethod env supply (Iridium.Declaration name visible _ _ method@(Iridium.Method _ _ args retType _ annotations entry blocks)) = toFunction env supply2 name visible annotations args' fnType retType basicBlocks
   where
     fnType = Iridium.methodType method
     parameters :: [Parameter]
@@ -183,7 +183,7 @@ trampolineBody supply fn params fnType retType = foldr id call instrs
     res' = idFromString "$_result_any"
     (args, instrs) = unzip $ zipWith trampolineCastArgument [0..] params
     retType' = Core.typeToStrict $ Core.TVar 0 -- Return type must be a pointer in LLVM
-    call = Iridium.Let res (Iridium.Call (Iridium.GlobalFunction fn (length params) fnType) $ map Right args)
+    call = Iridium.Let res (Iridium.Call (Iridium.GlobalFunction fn (length params) fnType) (Iridium.RegionVarsTuple []) (map Right args) (Iridium.RegionVarsTuple []))
       $ Iridium.Let res' (Iridium.Cast (Iridium.Local res retType) retType')
       $ Iridium.Return $ Iridium.Local res' retType'
 

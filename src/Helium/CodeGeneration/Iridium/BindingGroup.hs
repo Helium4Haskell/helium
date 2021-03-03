@@ -32,7 +32,7 @@ methodBindingGroups :: [Declaration Method] -> [BindingGroup Method]
 methodBindingGroups = bindingGroups methodDependencies
   where
     methodDependencies :: Method -> [Id]
-    methodDependencies (Method _ _ _ _ block blocks) = blockDependencies block ++ (blocks >>= blockDependencies)
+    methodDependencies (Method _ _ _ _ _ _ block blocks) = blockDependencies block ++ (blocks >>= blockDependencies)
 
     blockDependencies :: Block -> [Id]
     blockDependencies (Block _ instruction) = instructionDependencies instruction
@@ -52,7 +52,7 @@ methodBindingGroups = bindingGroups methodDependencies
     -- instructionDependencies (RegionRelease var next) = instructionDependencies next
 
     expressionDependencies (Literal _) = []
-    expressionDependencies (Call (GlobalFunction fn _ _) args) = [fn]
+    expressionDependencies (Call (GlobalFunction fn _ _) _ args _) = [fn]
     expressionDependencies (Instantiate _ _) = []
     expressionDependencies (Eval var) = variableDependencies var
     expressionDependencies (Var var) = variableDependencies var
@@ -64,10 +64,10 @@ methodBindingGroups = bindingGroups methodDependencies
     expressionDependencies (Seq _ _) = []
     -- expressionDependencies RegionAllocate = []
 
-    bindDependencies (Bind _ target _) = bindTargetDependencies target
+    bindDependencies (Bind _ target _ _) = bindTargetDependencies target
 
-    bindTargetDependencies (BindTargetFunction (GlobalFunction name _ _)) = [name]
-    bindTargetDependencies (BindTargetThunk var) = variableDependencies var
+    bindTargetDependencies (BindTargetFunction (GlobalFunction name _ _) _ _) = [name]
+    bindTargetDependencies (BindTargetThunk var _) = variableDependencies var
     bindTargetDependencies _ = []
 
 mapBindingGroup :: (Declaration a -> Declaration b) -> BindingGroup a -> BindingGroup b

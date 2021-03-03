@@ -5,6 +5,7 @@ import Helium.CodeGeneration.Iridium.Parse.Type
 import Helium.CodeGeneration.Iridium.Data
 import Helium.CodeGeneration.Iridium.Type
 import Lvm.Core.Type
+import Data.Maybe
 
 pLiteral :: Parser Literal
 pLiteral = do
@@ -83,6 +84,41 @@ pVariable quantors = do
     '%' -> VarLocal <$> pLocal quantors
     _ -> pError "expected variable"
 
+pRegionVar :: Parser RegionVar
+pRegionVar = do
+  pToken 'ρ'
+  c <- lookahead
+  case c of
+    '_' -> do
+      pChar
+      name <- pKeyword
+      case name of
+        "global" -> return RegionGlobal
+        "bottom" -> return RegionBottom
+        _ -> pError "Expected global or bottom"
+    _ -> RegionLocal <$> pSubscriptInt
+
+pRegionVars :: Parser RegionVars
+pRegionVars = do
+  c <- lookahead
+  case c of
+    '(' -> RegionVarsTuple <$> pArguments pRegionVars
+    _ -> RegionVarsSingle <$> pRegionVar
+
+pAtRegion :: Parser RegionVar
+pAtRegion = do
+  c <- lookahead
+  case c of
+    '@' -> pChar *> pWhitespace *> pRegionVar
+    _ -> return RegionGlobal
+
+pAtRegions :: Parser RegionVars
+pAtRegions = do
+  c <- lookahead
+  case c of
+    '@' -> pChar *> pWhitespace *> pRegionVars
+    _ -> return $ RegionVarsTuple []
+
 pCallArguments :: QuantorNames -> Parser [Either Type Local]
 pCallArguments quantors = pArguments pCallArgument
   where
@@ -98,7 +134,7 @@ pExpression quantors = do
   keyword <- pKeyword
   case keyword of
     "literal" -> Literal <$> pLiteral
-    "call" -> Call <$> pGlobalFunction <* pWhitespace <* pToken '$' <* pWhitespace <*> pCallArguments quantors
+    "call" -> Call <$> pGlobalFunction <* pWhitespace <* pToken '$' <* pWhitespace <*> pAdditionalRegions <*> pCallArguments quantors <* pWhitespace <*> pAtRegions
     "eval" -> Eval <$> pVariable quantors
     "var" -> Var <$> pVariable quantors
     "instantiate" -> Instantiate <$> pLocal quantors <* pWhitespace <*> pInstantiation quantors
@@ -109,6 +145,8 @@ pExpression quantors = do
     "undefined" -> Undefined <$ pWhitespace <*> pTypeAtom' quantors
     "seq" -> Seq <$> pLocal quantors <* pWhitespace <* pToken ',' <* pWhitespace <*> pLocal quantors
     _ -> pError "expected expression"
+  where
+    pAdditionalRegions = fromMaybe (RegionVarsTuple []) <$> pMaybe (pRegionVars <* pWhitespace)
 
 pPhiBranch :: QuantorNames -> Parser PhiBranch
 pPhiBranch quantors = PhiBranch <$> pId <* pWhitespace <* pSymbol "=>" <* pWhitespace <*> pLocal quantors
