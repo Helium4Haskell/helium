@@ -12,17 +12,28 @@ import Helium.CodeGeneration.Iridium.BindingGroup
 
 import Helium.CodeGeneration.Iridium.RegionSize.Analysis
 import Helium.CodeGeneration.Iridium.RegionSize.Annotation
+import Helium.CodeGeneration.Iridium.RegionSize.Environments
+import Helium.CodeGeneration.Iridium.RegionSize.Evaluate
 import Helium.CodeGeneration.Iridium.RegionSize.Sort
 import Helium.CodeGeneration.Iridium.RegionSize.Utils
-import Helium.CodeGeneration.Iridium.RegionSize.Environments
+
+import qualified Control.Exception as Exc
 
 -- | Infer the size of regions
 passRegionSize :: NameSupply -> Module -> IO Module
 passRegionSize supply m = do 
-  let gEnv = initialGEnv m
-  let groups = map BindingNonRecursive $ moduleMethods m
-  (_, methods) <- mapAccumLM analyseGroup gEnv groups
-  return m{moduleMethods = concat methods}
+  if stringFromId (moduleName m) == "LvmLang"
+  then return m
+  else do
+    print "=================="
+    print "[PASS REGION SIZE]"
+    print "=================="
+    print $ moduleName m
+    print $ "Heyo: " ++ stringFromId (moduleName m)
+    let gEnv = initialGEnv m
+    let groups = map BindingNonRecursive $ moduleMethods m
+    (_, methods) <- mapAccumLM analyseGroup gEnv groups
+    return m{moduleMethods = concat methods}
 
 
 {- Analyses a binding group of a single non-recursive function
@@ -32,11 +43,10 @@ analyseGroup :: GlobalEnv -> BindingGroup Method -> IO (GlobalEnv, [Declaration 
 analyseGroup _ (BindingRecursive _) = rsError "Cannot analyse (mutual) recursive functions yet"
 analyseGroup gEnv (BindingNonRecursive decl@(Declaration methodName _ _ _ method)) = do
   putStrLn $ "# Analyse method " ++ show methodName
-  let (mAnn, mEff) = analyse gEnv methodName method -- TODO: finish annotation (or do it in analyseMethod)
---   print annotation
---   let simplified = simplify dataTypeEnv annotation
---   putStrLn "Simplified:"
---   print simplified
+  let x = analyse gEnv methodName method
+  mAnn <- Exc.catch (x `seq` return x) (\exc -> return AUnit `const` (exc :: Exc.ErrorCall)) -- TODO: finish annotation (or do it in analyseMethod)
+  print mAnn
+
   return (gEnv, [decl{ declarationValue = method }])
 
 

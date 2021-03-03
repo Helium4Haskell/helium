@@ -11,6 +11,7 @@ import Helium.CodeGeneration.Iridium.Data
 
 import Helium.CodeGeneration.Iridium.RegionSize.Annotation
 import Helium.CodeGeneration.Iridium.RegionSize.Constraints
+import Helium.CodeGeneration.Iridium.RegionSize.Utils
 
 ----------------------------------------------------------------
 -- Type definitions
@@ -59,7 +60,7 @@ initialGEnv m = GlobalEnv synonyms functionEnv
 
 -- | Look up a local variable in the local environment
 lookupGlobal :: GlobalEnv -> Id -> Annotation
-lookupGlobal (GlobalEnv _ vars) id = findMap id vars 
+lookupGlobal (GlobalEnv _ vars) = flip findMap vars 
 
 -- | Look up a local variable in the local environment
 lookupBlock :: BlockEnv -> BlockName -> (Annotation, Effect)
@@ -67,9 +68,12 @@ lookupBlock = flip findMap
 
 -- | Look up a local variable in the local environment
 lookupLocal :: LocalEnv -> Local -> Annotation
-lookupLocal lEnv local = findMap (localName local) lEnv
+lookupLocal lEnv local = case lookupMap (localName local) lEnv of
+                            Nothing -> rsError $ "lookupLocal: ID not in map" 
+                            Just a  -> a
 
 -- | Lookup a global or local variable
 lookupVar :: GlobalEnv -> LocalEnv -> Variable -> Annotation
 lookupVar _ lEnv (VarLocal local) = lookupLocal  lEnv local
 lookupVar gEnv _ global = lookupGlobal gEnv $ variableName global
+lookupVar _ _ _ = error "Whut?"

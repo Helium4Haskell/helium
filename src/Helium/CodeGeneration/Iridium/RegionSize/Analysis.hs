@@ -6,8 +6,10 @@ import Lvm.Common.IdMap
 import Lvm.Core.Type
 
 import Helium.CodeGeneration.Iridium.Data
+import Helium.CodeGeneration.Core.TypeEnvironment
 
 import Helium.CodeGeneration.Iridium.RegionSize.Annotation
+import Helium.CodeGeneration.Iridium.RegionSize.Sort
 import Helium.CodeGeneration.Iridium.RegionSize.Constraints
 import Helium.CodeGeneration.Iridium.RegionSize.Environments
 import Helium.CodeGeneration.Iridium.RegionSize.Utils
@@ -28,13 +30,24 @@ import Data.List
 ----------------------------------------------------------------
 
 -- | Analyse the effect and annotation of a block
-analyse :: GlobalEnv -> Id -> Method -> (Annotation, Effect)
-analyse gEnv _ (Method _ args _ _ block blocks) =
-    let initEnv    = emptyMap 
-        -- TODO: unionMapWith AJoin
-        localEnv   = foldl (\lEnv -> unionMap lEnv . localsOfBlock (Envs gEnv lEnv)) initEnv (block:blocks)
-        (_, bEffs) = mapAccumR (blockAccum $ Envs gEnv localEnv) emptyMap (block:blocks)
-    in head bEffs
+analyse :: GlobalEnv -> Id -> Method -> Annotation
+analyse gEnv _ method@(Method _ args _ _ block blocks) =
+        -- Create inital lEnv with method arguments
+    let argIdxs      = zip args $ map AVar [(length args)..1]
+        initEnv      = foldl (flip $ uncurry insertArgument) emptyMap argIdxs
+        -- Retrieve other locals from method body
+        localEnv     = foldl (\lEnv -> unionMapWith AJoin lEnv . localsOfBlock (Envs gEnv lEnv)) initEnv (block:blocks)
+        -- Retrieve the annotation and effect of the function body
+        (bAnn, bEff) = head.snd $ mapAccumR (blockAccum $ Envs gEnv localEnv) emptyMap (block:blocks)
+        -- Generate the method annotation
+        (FunctionType argTy resTy) = methodFunctionType method
+        argSorts = map argumentSortAssign argTy
+        resReg   = regionAssign resTy
+        -- Create quantors and lambdas
+    in bAnn
+    -- in foldl (\a s -> case s of
+    --                     Nothing -> AQuant a
+    --                     Just s' -> ALam s' (ATuple [a, ALam resReg bEff])) bAnn argSorts
 
 ----------------------------------------------------------------
 -- Gathering local variable annotations
@@ -136,6 +149,16 @@ insertMaybeId :: Maybe Id -> Annotation -> LocalEnv -> LocalEnv
 insertMaybeId Nothing  = flip const
 insertMaybeId (Just i) = insertMap i
 
+-- | Insert method argument into lEnv, ignore quantors 
+insertArgument :: Either Quantor Local -> Annotation -> LocalEnv -> LocalEnv
+insertArgument (Left _)      = flip const
+insertArgument (Right local) = insertMap $ localName local
+
+-- | Assign sort to types, return Nothing for a quantor
+argumentSortAssign :: Either Quantor Type -> Maybe Sort
+argumentSortAssign (Left _)   = Nothing
+argumentSortAssign (Right ty) = Just $ sortAssign ty
+
 -- | Get the case block names out of the case
 caseBlocks :: Case -> [BlockName]
 caseBlocks (CaseConstructor cases) = map snd cases
@@ -176,3 +199,4 @@ botEffect = AConstr constrBot
 -- | Get the name of a block
 blockName :: Block -> BlockName
 blockName (Block name _) = name
+
