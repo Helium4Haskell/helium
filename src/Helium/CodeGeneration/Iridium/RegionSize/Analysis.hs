@@ -16,6 +16,14 @@ import Helium.CodeGeneration.Iridium.RegionSize.Utils
 
 import Data.List
 
+-- TODO: Remove
+instance Show Quantor where
+    show _ = "Quantor"
+instance Show Local where
+    show (Local id ty) = stringFromId id ++ "::" ++ showType varNames ty
+instance Show Type where
+    show t = showType varNames t
+
 ----------------------------------------------------------------
 -- Assumptions
 ----------------------------------------------------------------
@@ -33,10 +41,10 @@ import Data.List
 analyse :: GlobalEnv -> Id -> Method -> Annotation
 analyse gEnv _ method@(Method _ args _ _ block blocks) =
         -- Create inital lEnv with method arguments
-    let argIdxs      = zip args $ map AVar [(length args)..1]
-        initEnv      = foldl (flip $ uncurry insertArgument) emptyMap argIdxs
+    let argIdxs      = zip args $ map AVar $ reverse [1..(length args)]
+        initEnv      = foldl (flip $ uncurry insertArgument) emptyMap argIdxs 
         -- Retrieve other locals from method body
-        localEnv     = foldl (\lEnv -> unionMapWith AJoin lEnv . localsOfBlock (Envs gEnv lEnv)) initEnv (block:blocks)
+        localEnv     = foldl (\lEnv -> unionMapWith AJoin lEnv . localsOfBlock (Envs gEnv lEnv)) initEnv (block:blocks) 
         -- Retrieve the annotation and effect of the function body
         (bAnn, bEff) = head.snd $ mapAccumR (blockAccum $ Envs gEnv localEnv) emptyMap (block:blocks)
         -- Generate the method annotation
@@ -44,10 +52,9 @@ analyse gEnv _ method@(Method _ args _ _ block blocks) =
         argSorts = map argumentSortAssign argTy
         resReg   = regionAssign resTy
         -- Create quantors and lambdas
-    in bAnn
-    -- in foldl (\a s -> case s of
-    --                     Nothing -> AQuant a
-    --                     Just s' -> ALam s' (ATuple [a, ALam resReg bEff])) bAnn argSorts
+    in foldr (\s a -> case s of
+                        Nothing -> AQuant a
+                        Just s' -> ALam s' (ATuple [a, annWeaken 1 $ ALam resReg bEff])) bAnn argSorts
 
 ----------------------------------------------------------------
 -- Gathering local variable annotations
@@ -63,9 +70,21 @@ localsOfInstr envs@(Envs gEnv lEnv) = go
     where go (Let name expr next  ) = let (varAnn, _) = analyseExpr envs expr
                                           lEnv'       = insertMap name varAnn lEnv
                                       in localsOfInstr (Envs gEnv lEnv') next
-          go (LetAlloc _ next     ) = go next
+          -- TODO: Mutrec
+          go (LetAlloc binds next     ) = localsOfLetAlloc envs binds next
           go (Match local target tys ids next) = localsOfMatch envs local target tys ids next
-          go _ = emptyMap
+          go _ = lEnv
+
+localsOfLetAlloc :: Envs -> [Bind] -> Instruction -> LocalEnv
+localsOfLetAlloc envs [] next = localsOfInstr envs next
+localsOfLetAlloc (Envs gEnv lEnv) (Bind id (BindTargetThunk (VarLocal local)) args:bs) next =
+    let bindAnn = AProj 0 $ foldl (callApplyArg lEnv) (lookupLocal lEnv local) args
+        lEnv' = insertMap id bindAnn lEnv
+    in localsOfLetAlloc (Envs gEnv lEnv') bs next
+-- localsOfLetAlloc (Envs gEnv lEnv) (Bind id (BindTargetFunction gFun) args:bs) next = -- TODO: Check if okay
+--     let bindAnn = foldl (callApplyArg lEnv) (lookupGlobal gEnv $ globalFunctionName gFun) args
+--         lEnv'   = insertMap id bindAnn lEnv
+--     in localsOfLetAlloc (Envs gEnv lEnv') bs next
 
 -- | Retrieve the local variables from a match instruction
 localsOfMatch :: Envs
@@ -99,7 +118,7 @@ analyseInstr envs@(Envs _ lEnv) bEnv = go
                (nxtAnn, nxtEff) = go next
            in (nxtAnn, AAdd varEff nxtEff)
          -- TODO: Allocations with region variables
-         go (LetAlloc _    next)  = go next 
+         go (LetAlloc bnds next)  = analyseLetAlloc envs bEnv bnds next 
          -- Lookup the annotation and effect from block
          go (Jump block)          = lookupBlock bEnv block 
          -- Join the effects of all the blocks
@@ -110,6 +129,14 @@ analyseInstr envs@(Envs _ lEnv) bEnv = go
          go (Unreachable _)       = botAnnEff
          -- Matching only reads, only effect of sub instruction
          go (Match _ _ _ _ next)  = go next
+
+-- | Analyse letalloc (TODO: Abstract some stuff (same impl. in localsOf))
+analyseLetAlloc :: Envs -> BlockEnv -> [Bind] -> Instruction ->  (Annotation, Effect)
+analyseLetAlloc envs bEnv [] next = analyseInstr envs bEnv next
+analyseLetAlloc envs@(Envs gEnv lEnv) bEnv (Bind id (BindTargetThunk (VarLocal local)) args:bs) next =
+    let bindAnn = AProj 1 $ foldl (callApplyArg lEnv) (lookupLocal lEnv local) args
+        (rAnn,eff) = analyseLetAlloc envs bEnv bs next
+    in (rAnn, AAdd eff bindAnn)
 
 -- | Find the annotation and effect of an expression
 analyseExpr :: Envs -> Expr -> (Annotation, Effect)
@@ -138,7 +165,7 @@ analyseExpr (Envs gEnv lEnv) = go
       go (Call gFun tyLos)        = -- TODO, fEff = P -> C
           let gFunAnn = gEnv `lookupGlobal` globalFunctionName gFun
               resAnn  = foldl (callApplyArg lEnv) gFunAnn tyLos
-          in (resAnn, botEffect)
+          in (AProj 0 resAnn, AProj 1 resAnn) 
 
 ----------------------------------------------------------------
 -- Analysis utilities

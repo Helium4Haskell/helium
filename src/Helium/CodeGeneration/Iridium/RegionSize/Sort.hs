@@ -43,8 +43,8 @@ showSort n = foldSortAlgN n showAlg
     sortUnit       = \_      -> "()",
     sortQuant      = \d s    -> "∀t_" ++ (varNames !! d) ++ ". " ++ s,
     sortMonoRegion = \_      -> "P",
-    sortPolyRegion = \d idx ts -> "P<t_" ++ (varNames !! (d - idx)) ++ " [" ++ (intercalate "," $ map (showTypeN d) ts) ++ "]>",
-    sortPolySort   = \d idx ts -> "Ψ<t_" ++ (varNames !! (d - idx)) ++ " [" ++ (intercalate "," $ map (showTypeN d) ts) ++ "]>",
+    sortPolyRegion = \d idx ts -> "P<t_" ++ (varNames !! (d - idx - 1)) ++ " [" ++ (intercalate "," $ map (showTypeN d) ts) ++ "]>",
+    sortPolySort   = \d idx ts -> "Ψ<t_" ++ (varNames !! (d - idx - 1)) ++ " [" ++ (intercalate "," $ map (showTypeN d) ts) ++ "]>",
     sortTuple      = \_ ss   -> "(" ++ (intercalate "," ss) ++ ")"
 }
 
@@ -115,7 +115,10 @@ sortAssign' ts (TAp t1 t2)     = sortAssign' (t2:ts) t1
 sortAssign' [t1,t2] (TCon TConFun)       = funSort t1 t2  
 sortAssign' ts      (TCon (TConTuple n)) | length ts == n = SortTuple $ map sortAssign ts
                                          | otherwise      = rsError $ "sortAssign: Tuple with incorrect number of arguements: expected " ++ show n ++ " but got " ++ (show $ length ts) ++ "\n" ++ (intercalate ", " $ map (showTypeN 0) ts)
-sortAssign' []      (TCon (TConDataType _)) = SortUnit
+sortAssign' []      (TCon (TConDataType _))            = SortUnit
+sortAssign' [a]     (TCon (TConTypeClassDictionary _)) = sortAssign a -- TODO: Do not ignore typeclasses? Might just be okay though
+-- Data types
+sortAssign' _       (TCon (TConDataType _)) = rsError "sortAssign: Datatypes not yet supported"
 -- Not implemented cases 
 sortAssign' _ t = rsError $ "sortAssign: No pattern match: " ++ showTypeN 0 t
 
@@ -145,9 +148,10 @@ regionAssign' [_,_] (TCon TConFun      ) = SortUnit
 regionAssign' ts    (TCon (TConTuple n)) | length ts == n = SortTuple $ map regionAssign ts
                                          | otherwise      = rsError $ "regionAssign: Tuple with incorrect number of arguements: expected " ++ show n ++ " but got " ++ (show $ length ts) ++ "\n" ++ (intercalate ", " $ map (showTypeN 0) ts)
 regionAssign' [] (TCon (TConDataType _)) = SortUnit
+regionAssign' _  (TCon (TConDataType _)) = rsError "regionAssign: Datatypes not yet supported"
 -- Not implemented cases
-regionAssign' ts t = rsError $ "regionAssign: No pattern match: " ++ showTypeN 1 t 
-                                  ++ "\nArguments: " ++ (intercalate ", " $ map (showTypeN 1) ts)
+regionAssign' ts t = rsError $ "regionAssign: No pattern match: " ++ showTypeN 0 t 
+                                  ++ "\nArguments: " ++ (intercalate ", " $ map (showTypeN 0) ts)
 
 ----------------------------------------------------------------
 -- Type substitution

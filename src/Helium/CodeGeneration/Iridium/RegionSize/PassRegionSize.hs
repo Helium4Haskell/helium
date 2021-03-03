@@ -22,11 +22,11 @@ import qualified Control.Exception as Exc
 -- | Infer the size of regions
 passRegionSize :: NameSupply -> Module -> IO Module
 passRegionSize supply m = do 
-  if stringFromId (moduleName m) == "LvmLang"
-    || stringFromId (moduleName m) == "HeliumLang"
-    || stringFromId (moduleName m) == "PreludePrim"
-    || stringFromId (moduleName m) == "Prelude"
-    || stringFromId (moduleName m) == "LvmException"
+  if (stringFromId (moduleName m) == "LvmLang"        && True)
+    || (stringFromId (moduleName m) == "HeliumLang"   && True) 
+    || (stringFromId (moduleName m) == "PreludePrim"  && True)
+    || (stringFromId (moduleName m) == "Prelude"      && True)
+    || (stringFromId (moduleName m) == "LvmException" && True)
   then return m
   else do
     print "=================="
@@ -37,6 +37,7 @@ passRegionSize supply m = do
     let groups = map BindingNonRecursive $ moduleMethods m
     (_, methods) <- mapAccumLM analyseGroup gEnv groups
     return m{moduleMethods = concat methods}
+    error "Don!"
 
 
 {- Analyses a binding group of a single non-recursive function
@@ -45,11 +46,10 @@ passRegionSize supply m = do
 analyseGroup :: GlobalEnv -> BindingGroup Method -> IO (GlobalEnv, [Declaration Method])
 analyseGroup _ (BindingRecursive _) = rsError "Cannot analyse (mutual) recursive functions yet"
 analyseGroup gEnv (BindingNonRecursive decl@(Declaration methodName _ _ _ method)) = do
-  putStrLn $ "# Analyse method " ++ show methodName
+  putStrLn $ "\n# Analyse method " ++ show methodName
   let mAnn = analyse gEnv methodName method
   -- mAnn <- Exc.catch (x `seq` return x) (\exc -> return AUnit `const` (exc :: Exc.ErrorCall)) 
   print mAnn
-
   return (gEnv, [decl{ declarationValue = method }])
 
 

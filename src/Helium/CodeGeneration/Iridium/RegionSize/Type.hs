@@ -47,7 +47,7 @@ idTypeAlg = TypeAlg {
 }
 
 foldTypeAlg ::  TypeAlg a -> Type -> a
-foldTypeAlg = foldTypeAlgN 1
+foldTypeAlg = foldTypeAlgN 0
 
 foldTypeAlgN :: Int -> TypeAlg a -> Type -> a
 foldTypeAlgN n alg = go n

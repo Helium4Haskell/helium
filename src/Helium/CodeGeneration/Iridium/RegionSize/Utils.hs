@@ -24,14 +24,14 @@ splitOn c s = case dropWhile ((==) c) s of
 
 -- | Infinite list of variable names
 varNames :: [String]
-varNames = (:) "#ERROR 0 INDEX#" $ map pure ['a'..'z'] ++ map ((++) "a" . (show :: Int -> String)) [1..]
+varNames = map pure ['a'..'z'] ++ map ((++) "a" . (show :: Int -> String)) [1..]
 
 ----------------------------------------------------------------
 -- Console messages
 ----------------------------------------------------------------
 
 rsError :: String -> a
-rsError = error . (++) "[RegionSize] " 
+rsError s = error $ "[RegionSize] " ++ s ++ "\n"
 
 rsInfo :: a -> String -> a
 rsInfo v s = T.trace ("\n[RS_INFO] "++ s) v

@@ -44,12 +44,12 @@ data Annotation =
 instance Show Annotation where
     show = foldAnnAlg showAlg
       where showAlg = AnnAlg {
-        aVar    = \d idx -> varNames !! (d - idx),
+        aVar    = \d idx -> if (d - idx) < 0 then "v$LTZ" else varNames !! (d - idx),
         aReg    = \_ idx -> "reg_" ++ show idx,
-        aLam    = \d s a -> "(λ"++ (varNames !! d) ++":"++ showSort d s ++ "." ++ a ++ ")",
+        aLam    = \d s a -> "(λ"++ (varNames !! d) ++":"++ showSort d s ++ ".\n" ++ indent a ++ ")",
         aApl    = \_ a b -> a ++ "< " ++ b ++ " >",
         aUnit   = \_     -> "()",
-        aTuple  = \_ as  -> "(" ++ intercalate "," as ++ ")",
+        aTuple  = \_ as  -> "(" ++ intercalate "\n," as ++ ")",
         aProj   = \_ i a -> "π_" ++ show i ++ "[" ++ a ++ "]",
         aAdd    = \_ a b -> "(" ++ a ++ " ⊕  " ++ b ++ ")",
         aJoin   = \_ a b -> "(" ++ a ++ " ⊔  " ++ b ++ ")",
@@ -106,7 +106,7 @@ idAnnAlg = AnnAlg {
 }
 
 foldAnnAlg :: AnnAlg a -> Annotation -> a
-foldAnnAlg = foldAnnAlgN 1
+foldAnnAlg = foldAnnAlgN 0
 
 foldAnnAlgN :: Int -> AnnAlg a -> Annotation -> a
 foldAnnAlgN n alg ann = go n ann
@@ -133,7 +133,7 @@ foldAnnAlgN n alg ann = go n ann
 -- | Re-index the debruin indices of an annotation
 annReIndex :: (Depth -> Int -> Int) -- ^ Reindex function (depth in body to idx to idx)
            -> Annotation -> Annotation
-annReIndex f = foldAnnAlg reIdxAlg
+annReIndex f a = foldAnnAlg reIdxAlg a
   where reIdxAlg = idAnnAlg {
     aLam    = \d s a -> ALam (sortReIndex f d s) a,
     aFix    = \d s a -> AFix (sortReIndex f d s) a,
@@ -147,8 +147,8 @@ sortReIndex :: (Depth -> Int -> Int) -- ^ Reindex function
             -> Sort -> Sort
 sortReIndex f annD = foldSortAlgN annD reIdxAlg
   where reIdxAlg = idSortAlg {
-    sortPolyRegion = \d idx ts -> SortPolyRegion (f d idx) $ map (typeReindex $ f d) ts,
-    sortPolySort   = \d idx ts -> SortPolySort   (f d idx) $ map (typeReindex $ f d) ts 
+    sortPolyRegion = \d idx ts -> SortPolyRegion (f (d-100) idx) $ map (typeReIndex f d) ts,
+    sortPolySort   = \d idx ts -> SortPolySort   (f (d-100) idx) $ map (typeReIndex f d) ts 
   }
 
 -- | Re-index the debruijn indices of a cosntraint set 
@@ -158,6 +158,14 @@ constrReIndex :: (Depth -> Int -> Int) -- ^ Reindex function
 constrReIndex f annD = M.mapKeys keyReIndex
   where keyReIndex (RegVar idx) = RegVar $ f annD idx
         keyReIndex (Region idx) = Region idx
+
+-- | Re-index the debruin indices of a sort
+typeReIndex :: (Depth -> Int -> Int) -- ^ Reindex function
+            -> Depth -> Type -> Type
+typeReIndex f n = foldTypeAlgN n reIdxAlg
+    where reIdxAlg = idTypeAlg {
+        tVar = \d idx -> TVar $ f d idx
+    }
 
 ----------------------------------------------------------------
 -- De Bruijn reindexing implementations
