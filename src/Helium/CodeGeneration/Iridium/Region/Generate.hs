@@ -350,6 +350,8 @@ gatherInstruction genv env instruction = case instruction of
       in
         effect aEffect ++ gatherLocal idx aValue ++ go next
   LetAlloc binds next -> (binds >>= gatherBind genv env) ++ go next
+  NewRegion _ _ _ -> error "Helium.CodeGeneration.Iridium.Region.Generate: expected a program without region annotations"
+  ReleaseRegion _ _ -> error "Helium.CodeGeneration.Iridium.Region.Generate: expected a program without region annotations"
   Jump _ -> []
   Match var target instantiation fields next -> gatherMatch genv env var target instantiation fields ++ go next
   Case _ _ -> []

@@ -175,6 +175,12 @@ instance ShowWithQuantors Instruction where
     text instructionIndent . text "%" . showId var . text " = " . showsQ quantors expr . text "\n" . showsQ quantors next
   showsQ quantors (LetAlloc binds next) =
     text instructionIndent . text "letalloc " . list (text ", ") (map (showsQ quantors) binds) . text "\n" . showsQ quantors next
+  showsQ quantors (NewRegion var (Just size) next) =
+    text instructionIndent . text "newregion " . shows var . text " bounded " . shows size . text "\n" . showsQ quantors next
+  showsQ quantors (NewRegion var Nothing next) =
+    text instructionIndent . text "newregion " . shows var . text " unbounded\n" . showsQ quantors next
+  showsQ quantors (ReleaseRegion var next) =
+    text instructionIndent . text "release " . shows var . text "\n" . showsQ quantors next
   showsQ quantors (Jump to) =
     text instructionIndent . text "jump " . text (stringFromId to)
   showsQ quantors (Match var target instantiation args next) =

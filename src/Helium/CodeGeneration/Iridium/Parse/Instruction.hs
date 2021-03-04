@@ -28,12 +28,22 @@ pInstruction quantors = do
                 return True
               else
                 return False
+        "newregion" -> NewRegion <$> pRegionVar <* pWhitespace <*> pRegionSize <* pWhitespace <*> pInstruction quantors
+        "release" -> ReleaseRegion <$> pRegionVar <* pWhitespace <*> pInstruction quantors
         "jump" -> Jump <$> pId
         "match" -> Match <$> pLocal quantors <* pWhitespace <* pSymbol "on" <* pWhitespace <*> pMatchTarget <* pWhitespace <*> pInstantiation quantors <*> pArguments pMatchField <*> pInstruction quantors
         "case" -> Case <$> pLocal quantors <* pWhitespace <*> pCase
         "return" -> Return <$> pLocal quantors
         "unreachable" -> Unreachable <$> pMaybe (pLocal quantors)
         _ -> pError "expected instruction"
+
+pRegionSize :: Parser (Maybe Int)
+pRegionSize = do
+  key <- pKeyword
+  case key of
+    "bounded" -> Just <$> pUnsignedInt
+    "unbounded" -> return Nothing
+    _ -> pError "expected region size"
 
 pMatchField :: Parser (Maybe Id)
 pMatchField = do

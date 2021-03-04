@@ -50,17 +50,19 @@ transformBlock :: Regions -> Bool -> Block -> Block
 transformBlock regions isEntry (Block name instr) = Block name $ instrAlloc $ transformInstruction regions instr
   where
     instrAlloc
-      | isEntry = id -- TODO: Allocate internal regions
+      | isEntry = \instr' -> foldr (\var -> NewRegion var Nothing) instr' $ internalRegions regions
       | otherwise = id
 
 transformInstruction :: Regions -> Instruction -> Instruction
 transformInstruction regions instruction = case instruction of
   Let name expr next -> Let name (transformExpr regions name expr) (go next)
   LetAlloc binds next -> LetAlloc (transformBind regions <$> binds) (go next)
+  NewRegion _ _ _ -> error "Helium.CodeGeneration.Iridium.Region.Generate: expected a program without region annotations"
+  ReleaseRegion _ _ -> error "Helium.CodeGeneration.Iridium.Region.Generate: expected a program without region annotations"
   Jump block -> Jump block
   Match var target instantiation fields next -> Match var target instantiation fields $ go next
   Case var c -> Case var c
-  Return var -> id $ Return var -- TODO: deallocate regions
+  Return var -> foldr (\var -> NewRegion var Nothing) (Return var) $ internalRegions regions -- Deallocate all internal regions
   Unreachable var -> Unreachable var
   where
     go = transformInstruction regions

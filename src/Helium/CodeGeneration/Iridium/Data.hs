@@ -197,6 +197,11 @@ data Instruction
   = Let !Id !Expr !Instruction
   -- * Allocates thunks or constructors. Those binds may be recursive.
   | LetAlloc ![Bind] !Instruction
+  -- * Creates and allocates a new region. When annotated with a size bound, it may allocate the region
+  -- on the stack.
+  | NewRegion !RegionVar !(Maybe Int) !Instruction
+  -- * Releases a region
+  | ReleaseRegion !RegionVar !Instruction
   -- * Uncoditionally jumps to a block
   | Jump !BlockName
   -- * Asserts that the variable matches with the specified MatchTarget. Can be used to match on constructors,
@@ -414,6 +419,8 @@ methodLocals withArguments env (Method _ _ args _ _ _ block blocks) = foldr bloc
       instructionLocals next $ Local name (typeOfExpr env expr) : accum
     instructionLocals (LetAlloc binds next) accum =
       instructionLocals next $ map (bindLocal env) binds ++ accum
+    instructionLocals (NewRegion _ _ next) accum = instructionLocals next accum
+    instructionLocals (ReleaseRegion _ next) accum = instructionLocals next accum
     instructionLocals (Match _ target instantiation fields next) accum =
       instructionLocals next $ catMaybes (matchFieldLocals target instantiation fields) ++ accum
     instructionLocals _ accum = accum
@@ -424,6 +431,8 @@ methodBinds (Method _ _ _ _ _ _ block blocks) = (block : blocks) >>= travBlock
     travBlock (Block _ instr) = travInstr instr
     travInstr (Let _ _ next) = travInstr next
     travInstr (LetAlloc binds next) = binds ++ travInstr next
+    travInstr (NewRegion _ _ next) = travInstr next
+    travInstr (ReleaseRegion _ next) = travInstr next
     travInstr (Jump _) = []
     travInstr (Match _ _ _ _ next) = travInstr next
     travInstr (Case _ _) = []
@@ -436,6 +445,8 @@ methodExpressions (Method _ _ _ _ _ _ block blocks) = (block : blocks) >>= travB
     travBlock (Block _ instr) = travInstr instr
     travInstr (Let name expr next) = (name, expr) : travInstr next
     travInstr (LetAlloc _ next) = travInstr next
+    travInstr (NewRegion _ _ next) = travInstr next
+    travInstr (ReleaseRegion _ next) = travInstr next
     travInstr (Jump _) = []
     travInstr (Match _ _ _ _ next) = travInstr next
     travInstr (Case _ _) = []

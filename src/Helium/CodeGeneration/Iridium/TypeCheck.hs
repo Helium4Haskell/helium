@@ -129,6 +129,8 @@ analyseInstruction env returnType (LetAlloc binds next) =
   AJoin
     (fromList $ map (analyseBind env) binds)
     $ analyseInstruction env returnType next
+analyseInstruction env returnType (NewRegion _ _ next) = analyseInstruction env returnType next
+analyseInstruction env returnType (ReleaseRegion _ next) = analyseInstruction env returnType next
 analyseInstruction env returnType (Match var target instantiation fields next)
   = variableToAnalysis (VarLocal var)
     `AJoin` aCheck env (variableType $ VarLocal var) expectedType (TEMatch (Left $ VarLocal var) expectedType)

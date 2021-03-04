@@ -61,6 +61,8 @@ compileInstruction env supply (Iridium.LetAlloc binds next) =
   +> compileInstruction env supply2 next
   where
     (supply1, supply2) = splitNameSupply supply
+compileInstruction env supply (Iridium.NewRegion _ _ next) = compileInstruction env supply next
+compileInstruction env supply (Iridium.ReleaseRegion _ next) = compileInstruction env supply next
 compileInstruction env supply (Iridium.Jump to) = Partial [] (Do $ Br (toName to) []) []
 compileInstruction env supply (Iridium.Return var) = Partial [] (Do $ Ret (Just $ toOperand env $ Iridium.VarLocal var) []) []
 -- A Match has undefined behaviour if it does not match, so we do not need to check whether it actually matches.

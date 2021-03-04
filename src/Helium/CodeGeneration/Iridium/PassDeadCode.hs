@@ -108,6 +108,8 @@ analyseInstruction env (Let var expr next) = CSequence
 analyseInstruction env (LetAlloc binds next) = CSequence
   (fromList $ map analyseBind binds)
   $ analyseInstruction env next
+analyseInstruction env (NewRegion _ _ next) = analyseInstruction env next
+analyseInstruction env (ReleaseRegion _ next) = analyseInstruction env next
 analyseInstruction env (Jump _) = CEmpty
 analyseInstruction env (Match var _ _ args next) = CSequence
   (fromList $ map (\name -> CImplies name [localName var]) $ catMaybes args)
@@ -226,6 +228,8 @@ transformInstruction supply res (LetAlloc binds next)
     instr = flip (foldr id) instrs
     (binds', instrs) = unzip $ mapWithSupply (`transformBind` res) supply1 $ filter (isLive res . bindVar) binds
     (supply1, supply2) = splitNameSupply supply
+transformInstruction supply res (NewRegion r s next) = NewRegion r s $ transformInstruction supply res next
+transformInstruction supply res (ReleaseRegion r next) = ReleaseRegion r $ transformInstruction supply res next
 transformInstruction _ _ instr@(Jump _) = instr
 transformInstruction _ _ instr@(Return _) = instr
 transformInstruction _ _ instr@(Unreachable _) = instr
