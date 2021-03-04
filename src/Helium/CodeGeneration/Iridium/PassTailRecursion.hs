@@ -19,7 +19,7 @@ data TailRecursion = TailRecursion !BlockName ![Either Type Local]
 data Context = Context !Id ![Either Quantor Local] !BlockName
 
 findTailRecursion :: Context -> Instruction -> Maybe TailRecursion
-findTailRecursion (Context fnName params blockName) (Let var (Call (GlobalFunction fn _ _) args) (Return (Local ret _)))
+findTailRecursion (Context fnName params blockName) (Let var (Call (GlobalFunction fn _ _) _ args _) (Return (Local ret _)))
   | fnName == fn && var == ret && typeArgumentsPreserved (length (lefts params) - 1) params args = Just $ TailRecursion blockName args
 findTailRecursion context (Let _ _ next) = findTailRecursion context next
 findTailRecursion context (LetAlloc _ next) = findTailRecursion context next
@@ -38,9 +38,9 @@ typeArgumentsPreserved firstTypeVar (Right _ : params) (Right _ : args) = typeAr
 typeArgumentsPreserved _ _ _ = False
   
 transformMethod :: NameSupply -> Declaration Method -> Declaration Method
-transformMethod supply decl@(Declaration name vis mod customs (Method tp params retType annotations b@(Block entryName entryInstr) bs))
+transformMethod supply decl@(Declaration name vis mod customs (Method tp additionalRegions params retType retRegions annotations b@(Block entryName entryInstr) bs))
   | null tails = decl -- No tail recursion
-  | otherwise = Declaration name vis mod customs $ Method tp params' retType annotations entry $ b' : bs'
+  | otherwise = Declaration name vis mod customs $ Method tp additionalRegions params' retType retRegions annotations entry $ b' : bs'
   where
     blocks :: [(Block, Maybe TailRecursion)]
     blocks = map (\b@(Block blockName instr) -> (b, findTailRecursion (Context name params blockName) instr)) $ b : bs
@@ -81,7 +81,7 @@ transformBlock entryName (Block name instr, Just _) = Block name $ transformInst
 
 -- Transforms an instruction, in a block which does tail recursion
 transformInstruction :: Id -> Instruction -> Instruction
-transformInstruction entryName (Let _ (Call _ _) (Return _)) = Jump entryName
+transformInstruction entryName (Let _ Call{} (Return _)) = Jump entryName
 transformInstruction entryName (Let var expr next) = Let var expr $ transformInstruction entryName next
 transformInstruction entryName (LetAlloc binds next) = LetAlloc binds $ transformInstruction entryName next
 transformInstruction entryName (Match var target instantiation fields next) = Match var target instantiation fields $ transformInstruction entryName next

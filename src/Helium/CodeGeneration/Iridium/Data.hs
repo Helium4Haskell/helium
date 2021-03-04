@@ -12,7 +12,10 @@
 -- A method consists of blocks. The first block of a method is the entry block. Each block takes arguments,
 -- the entry block describes the arguments of the method.
 
-module Helium.CodeGeneration.Iridium.Data where
+{-# LANGUAGE PatternSynonyms #-}
+
+module Helium.CodeGeneration.Iridium.Data
+  (module Helium.CodeGeneration.Iridium.Data, module RegionSort, module RegionVar) where
 
 import Lvm.Common.Id (Id, stringFromId, idFromString)
 import Lvm.Common.IdMap (mapFromList, emptyMap)
@@ -24,6 +27,11 @@ import Data.Either (isLeft, isRight, rights)
 
 import Helium.CodeGeneration.Iridium.Type
 import Helium.CodeGeneration.Iridium.Primitive (findPrimitive, primType)
+
+import Helium.CodeGeneration.Iridium.Region.Sort as RegionSort
+  ( RegionSort(..), pattern RegionSortUnit, showRegionSortWithVariables, showRegionSort)
+import Helium.CodeGeneration.Iridium.Region.RegionVar as RegionVar
+  ( RegionVar, RegionVars(..), pattern RegionLocal, pattern RegionGlobal, pattern RegionBottom, showRegionVarsWith )
 
 type BlockName = Id
 
@@ -88,11 +96,11 @@ abstractType method = typeFromFunctionType $ abstractFunctionType method
 abstractSourceType :: AbstractMethod -> Type
 abstractSourceType (AbstractMethod tp _ _) = tp
 
-data Method = Method !Type ![Either Quantor Local] !Type ![MethodAnnotation] !Block ![Block]
+data Method = Method !Type !RegionVars ![Either Quantor Local] !Type !RegionVars ![MethodAnnotation] !Block ![Block]
   deriving (Eq, Ord)
 
 methodFunctionType :: Method -> FunctionType
-methodFunctionType (Method _ args returnType _ _ _) = FunctionType (map arg args) returnType
+methodFunctionType (Method _ _ args returnType _ _ _ _) = FunctionType (map arg args) returnType
   where
     arg (Left quantor) = Left quantor
     arg (Right (Local _ tp)) = Right tp
@@ -102,10 +110,10 @@ methodType method = typeFromFunctionType $ methodFunctionType method
 
 -- The original type of the function in Haskell, excluding strictness annotations
 methodSourceType :: Method -> Type
-methodSourceType (Method tp _ _ _ _ _) = tp
+methodSourceType (Method tp _ _ _ _ _ _ _) = tp
 
 methodArity :: Method -> Int
-methodArity (Method _ args _ _ _ _) = length $ filter isRight args
+methodArity (Method _ _ args _ _ _ _ _) = length $ filter isRight args
 
 -- Annotations on methods
 data MethodAnnotation
@@ -211,21 +219,26 @@ data Instruction
 -- * A bind describes the construction of an object in a 'letalloc' instruction. It consists of the
 -- variable to which the object is bound, the target and argument. A target represents what kind of object
 -- is created.
-data Bind = Bind { bindVar :: !Id, bindTarget :: !BindTarget, bindArguments :: ![Either Type Local] }
+data Bind = Bind { bindVar :: !Id, bindTarget :: !BindTarget, bindArguments :: ![Either Type Local], bindDestination :: !RegionVar }
   deriving (Eq, Ord)
 
 -- * A bind can either construct a thunk, a constructor or a tuple. For thunks, we distinguish
 -- primary thunks, which contain a function pointer, and secondary thunks, which point to other thunks.
 data BindTarget
   -- * The object points at a function. The object is thus a primary thunk.
-  = BindTargetFunction !GlobalFunction
+  = BindTargetFunction !GlobalFunction !RegionVars !BindThunkRegions -- additional region variables, and region variables for intermediate thunks and resulting value
   -- * The object points at another thunk and is thus a secondary thunk.
-  | BindTargetThunk !Variable
+  | BindTargetThunk !Variable !BindThunkRegions
   -- * The bind represents a constructor invocation.
   | BindTargetConstructor !DataTypeConstructor
   -- * The bind represents the construction of a tuple.
   | BindTargetTuple !Arity
   deriving (Eq, Ord)
+
+data BindThunkRegions = BindThunkRegions
+  { bindThunkIntermediate :: !RegionVars
+  , bindThunkValue :: !RegionVars
+  } deriving (Eq, Ord)
 
 -- * A 'match' instruction can pattern match on constructors, tuples or thunks. The latter
 -- is not possible from Haskell code and is only used to write the runtime library.
@@ -277,24 +290,24 @@ typeApplyArguments env tp args = case tp' of
 -- * Find the type of the constructed object in a Bind
 bindType :: TypeEnvironment -> Bind -> Type
 -- In case of a constructor application, we get a value in WHNF of the related data type.
-bindType env (Bind _ (BindTargetConstructor cons) args) = typeToStrict $ typeApplyArguments env (constructorType cons) args
+bindType env (Bind _ (BindTargetConstructor cons) args _) = typeToStrict $ typeApplyArguments env (constructorType cons) args
 -- For a tuple, we get a value in WHNF of the given tuple size.
-bindType env (Bind _ (BindTargetTuple arity) args) = typeToStrict $ foldl ap (TCon $ TConTuple arity) args
+bindType env (Bind _ (BindTargetTuple arity) args _) = typeToStrict $ foldl ap (TCon $ TConTuple arity) args
   where
     ap t1 (Right _) = t1
     ap t1 (Left t2) = t1 `TAp` t2
 -- When binding to a global function, we get a thunk in WHNF (TypeFunction) if not enough arguments were passed,
 -- or TypeAnyThunk (not in WHNF) otherwise.
-bindType env (Bind _ (BindTargetFunction (GlobalFunction fn arity fntype)) args)
+bindType env (Bind _ (BindTargetFunction (GlobalFunction fn arity fntype) _ _) args _)
   | arity > valueArgCount = typeToStrict $ tp
   | otherwise = tp
   where
     tp = typeRemoveArgumentStrictness $ typeApplyArguments env fntype args
     valueArgCount = length $ filter isRight args
-bindType env (Bind _ (BindTargetThunk fn) args) = typeApplyArguments env (variableType fn) args
+bindType env (Bind _ (BindTargetThunk fn _) args _) = typeApplyArguments env (variableType fn) args
 
 bindLocal :: TypeEnvironment -> Bind -> Local
-bindLocal env b@(Bind var _ _) = Local var $ bindType env b
+bindLocal env b@(Bind var _ _ _) = Local var $ bindType env b
 
 -- * Expressions are used to bind values to variables in 'let' instructions.
 -- Those binds cannot be recursive.
@@ -302,7 +315,8 @@ data Expr
   -- A literal value. Note that strings are allocated, integers and floats not.
   = Literal !Literal
   -- Calls a function. The number of arguments should be equal to the number of parameters of the specified function.
-  | Call !GlobalFunction ![Either Type Local]
+  -- The call provides additional region variables and regions used for the return value.
+  | Call !GlobalFunction !RegionVars ![Either Type Local] !RegionVars
   | Instantiate !Local ![Type]
   -- Evaluates a value to WHNF or returns the value if it is already in WHNF.
   | Eval !Variable
@@ -338,7 +352,7 @@ typeOfExpr :: TypeEnvironment -> Expr -> Type
 typeOfExpr _ (Literal (LitFloat precision _)) = TStrict $ TCon $ TConDataType $ idFromString "Float" -- TODO: Precision
 typeOfExpr _ (Literal (LitString _)) = TStrict $ TAp (TCon $ TConDataType $ idFromString "[]") $ TCon $ TConDataType $ idFromString "Char"
 typeOfExpr _ (Literal (LitInt tp _)) = TStrict $ TCon $ TConDataType $ idFromString $ show tp
-typeOfExpr env (Call (GlobalFunction _ _ t) args) = typeToStrict $ typeApplyArguments env t args
+typeOfExpr env (Call (GlobalFunction _ _ t) _ args _) = typeToStrict $ typeApplyArguments env t args
 typeOfExpr env (Instantiate v args) = typeNormalizeHead env $ typeApplyList (localType v) args
 typeOfExpr _ (Eval v) = typeToStrict $ variableType v
 typeOfExpr _ (Var v) = variableType v
@@ -352,7 +366,7 @@ typeOfExpr _ (Seq _ v) = localType v
 
 dependenciesOfExpr :: Expr -> [Variable]
 dependenciesOfExpr (Literal _) = []
-dependenciesOfExpr (Call _ args) = [VarLocal arg | Right arg <- args]
+dependenciesOfExpr (Call _ _ args _) = [VarLocal arg | Right arg <- args]
 dependenciesOfExpr (Instantiate var _) = [VarLocal var]
 dependenciesOfExpr (Eval var) = [var]
 dependenciesOfExpr (Var var) = [var]
@@ -386,7 +400,7 @@ envWithSynonyms (Module _ _ _ _ synonyms _ _) = TypeEnvironment (mapFromList syn
     synonymsList = map (\(Declaration name _ _ _ (TypeSynonym _ tp)) -> (name, tp)) synonyms
 
 methodLocals :: Bool -> TypeEnvironment -> Method -> [Local]
-methodLocals withArguments env (Method _ args _ _ block blocks) = foldr blockLocals (blockLocals block argLocals) blocks
+methodLocals withArguments env (Method _ _ args _ _ _ block blocks) = foldr blockLocals (blockLocals block argLocals) blocks
   where
     argLocals
       | withArguments = rights args
@@ -405,7 +419,7 @@ methodLocals withArguments env (Method _ args _ _ block blocks) = foldr blockLoc
     instructionLocals _ accum = accum
 
 methodBinds :: Method -> [Bind]
-methodBinds (Method _ _ _ _ block blocks) = (block : blocks) >>= travBlock
+methodBinds (Method _ _ _ _ _ _ block blocks) = (block : blocks) >>= travBlock
   where
     travBlock (Block _ instr) = travInstr instr
     travInstr (Let _ _ next) = travInstr next
@@ -417,7 +431,7 @@ methodBinds (Method _ _ _ _ block blocks) = (block : blocks) >>= travBlock
     travInstr (Unreachable _) = []
 
 methodExpressions :: Method -> [(Id, Expr)]
-methodExpressions (Method _ _ _ _ block blocks) = (block : blocks) >>= travBlock
+methodExpressions (Method _ _ _ _ _ _ block blocks) = (block : blocks) >>= travBlock
   where
     travBlock (Block _ instr) = travInstr instr
     travInstr (Let name expr next) = (name, expr) : travInstr next
@@ -429,4 +443,4 @@ methodExpressions (Method _ _ _ _ block blocks) = (block : blocks) >>= travBlock
     travInstr (Unreachable _) = []
 
 methodCalls :: Method -> [(Id, GlobalFunction, [Either Type Local])]
-methodCalls method = [(name, fn, args) | (name, Call fn args) <- methodExpressions method]
+methodCalls method = [(name, fn, args) | (name, Call fn _ args _) <- methodExpressions method]

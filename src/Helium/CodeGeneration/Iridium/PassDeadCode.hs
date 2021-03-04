@@ -75,7 +75,7 @@ analyse mod = Result (envWithSynonyms mod) (stateLive state) $ mapMapWithId live
         bindCount = findMap fn $ stateBindCount state
 
 analyseMethod :: Declaration Method -> ((Id, [Either () Id]), Constraint)
-analyseMethod (Declaration name vis _ _ (Method _ args _ _ b bs)) =
+analyseMethod (Declaration name vis _ _ (Method _ _ args _ _ _ b bs)) =
   ( (name, map argName args) -- Try to remove unused arguments
   , fnConstraint $ fromList $ map (analyseBlock env) $ b : bs
   )
@@ -96,7 +96,7 @@ analyseBlock :: Env -> Block -> Constraint
 analyseBlock env (Block _ instr) = analyseInstruction env instr
 
 analyseInstruction :: Env -> Instruction -> Constraint
-analyseInstruction env (Let var (Call fn args) next) = CSequence
+analyseInstruction env (Let var (Call fn _ args _) next) = CSequence
   (analyseCall var (globalFunctionName fn) args)
   $ analyseInstruction env next
 analyseInstruction env (Let var expr next) = CSequence
@@ -127,12 +127,12 @@ analyseCall var fn args = fromList $
     constraintArgument (Left tp) index = CEmpty
 
 analyseBind :: Bind -> Constraint
-analyseBind (Bind var (BindTargetFunction fn) args) = analyseCall var (globalFunctionName fn) args
-analyseBind (Bind var target args) = CImplies var $ targetVars ++ map localName args'
+analyseBind (Bind var (BindTargetFunction fn _ _) args _) = analyseCall var (globalFunctionName fn) args
+analyseBind (Bind var target args _) = CImplies var $ targetVars ++ map localName args'
   where
     args' = rights args
     targetVars = case target of
-      BindTargetThunk var -> [variableName var]
+      BindTargetThunk var _ -> [variableName var]
       _ -> []
 
 data Implications = Implications ![Id] ![(Id, Id)]
@@ -203,9 +203,9 @@ preservedArguments' :: Result -> Id -> Maybe [Bool]
 preservedArguments' (Result _ _ args) var = lookupMap var args
 
 transformMethod :: NameSupply -> Result -> Declaration Method -> Maybe (Declaration Method)
-transformMethod supply res (Declaration name vis mod customs (Method tp args retType annotations b bs))
+transformMethod supply res (Declaration name vis mod customs (Method tp additionalRegions args retType retRegions annotations b bs))
   | not $ isLive res name = Nothing
-  | otherwise = Just $ Declaration name vis mod customs $ Method tp' args' retType annotations b' bs'
+  | otherwise = Just $ Declaration name vis mod customs $ Method tp' additionalRegions args' retType retRegions annotations b' bs'
   where
     (_, tp') = transformType res name (length $ filter isRight args) tp
     args' = map fst $ filter snd $ zip args $ preservedArguments res name
@@ -237,7 +237,7 @@ transformInstruction supply res (Match var t instantiation fields next)
     fields' = map (>>= (\field -> if isLive res field then Just field else Nothing)) fields
 
 transformExpr :: NameSupply -> Result -> Expr -> (Expr, Instruction -> Instruction)
-transformExpr supply res (Call fn args) = (Call (transformGlobal res fn) args', instr)
+transformExpr supply res (Call fn additionalRegions args returnRegions) = (Call (transformGlobal res fn) additionalRegions args' returnRegions, instr)
   where
     (args', instr) = transformCall supply res fn args (getArgTypes args)
 transformExpr _ _ expr = (expr, id)
@@ -249,13 +249,13 @@ getArgTypes = map argType
     argType (Left _) = Left ()
 
 transformBind :: NameSupply -> Result -> Bind -> (Bind, Instruction -> Instruction)
-transformBind supply res@(Result env _ _) (Bind var (BindTargetFunction global@(GlobalFunction _ _ _)) args) =
-  (Bind var target args', instr)
+transformBind supply res@(Result env _ _) (Bind var (BindTargetFunction global@(GlobalFunction _ _ _) r1 r2) args region) =
+  (Bind var target args' region, instr)
   where
     (args', instr) = transformCall supply res global args (getArgTypes args)
     target
-      | arity == 0 = BindTargetThunk $ VarGlobal $ GlobalVariable name tp
-      | otherwise = BindTargetFunction global'
+      | arity == 0 = BindTargetThunk (VarGlobal $ GlobalVariable name tp) r2
+      | otherwise = BindTargetFunction global' r1 r2
     global'@(GlobalFunction name arity tp) = transformGlobal res global
 transformBind _ _ bind = (bind, id)
 

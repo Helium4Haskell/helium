@@ -21,13 +21,14 @@ import Data.List(intercalate)
 import Data.Either(isRight)
 import Helium.CodeGeneration.Iridium.Data
 import Helium.CodeGeneration.Iridium.Type
+import Helium.CodeGeneration.Iridium.Region.Utils
 import qualified Text.PrettyPrint.Leijen as Pretty
 
 class ShowDeclaration a where
   showDeclaration :: a -> (String, String)
 
 instance ShowDeclaration a => Show (Declaration a) where
-  show (Declaration name vis mod customs a) = customsString ++ export ++ maybe "" (("from " ++) . (++ " ") . stringFromId) mod ++ keyword ++ " @" ++ showId name body
+  showsPrec _ (Declaration name vis mod customs a) s = customsString ++ export ++ maybe "" (("from " ++) . (++ " ") . stringFromId) mod ++ keyword ++ " @" ++ showId name body ++ s
     where
       customsString = customs >>= ((++ "\n") . ('#' : ) . showCustom)
       export = case vis of
@@ -42,9 +43,11 @@ class ShowWithQuantors a where
   showsQ :: QuantorNames -> a -> ShowS
   showsQ names value = (showQ names value ++)
 
-instance {-# Overlaps #-} ShowWithQuantors a => Show a where
-  show = showQ []
-  showsPrec _ = showsQ []
+showDefault :: ShowWithQuantors a => a -> String
+showDefault = showQ []
+
+showsPrecDefault :: ShowWithQuantors a => Int -> a -> ShowS
+showsPrecDefault _ = showsQ []
 
 text :: String -> ShowS
 text = (++)
@@ -56,9 +59,11 @@ list sep (x:xs) = x . list' xs
     list' (y:ys) = sep . y . list' ys
     list' [] = id
 
-
 instance ShowWithQuantors Type where
   showQ quantors = showTypeAtom quantors
+
+instance Show Type where
+  show = showDefault
 
 showCustom :: Custom -> String
 showCustom (CustomInt i) = "[int " ++ show i ++ "]"
@@ -88,32 +93,68 @@ instance Show Literal where
   show (LitString x) = "str " ++ show x
 
 instance ShowWithQuantors Expr where
-  showsQ quantors (Literal lit) = text "literal " . shows lit
-  showsQ quantors (Call fn args) = text "call " . shows fn . text " $ " . showCallArguments quantors args
-  showsQ quantors (Instantiate var args) = text "instantiate " . showsQ quantors var . text " " . showTypeArguments quantors args
-  showsQ quantors (Eval var) = text "eval " . showsQ quantors var
-  showsQ quantors (Var var) = text "var " . showsQ quantors var
-  showsQ quantors (Cast var t) = text "cast " . showsQ quantors var . text " as " . showsQ quantors t
-  showsQ quantors (CastThunk var) = text "castthunk " . showsQ quantors var
-  showsQ quantors (Phi branches) = text "phi " . showArguments quantors branches
-  showsQ quantors (PrimitiveExpr prim args) = text "prim " . text (stringFromId prim) . showCallArguments quantors args
-  showsQ quantors (Undefined t) = text "undefined " . showsQ quantors t
-  showsQ quantors (Seq v1 v2) = text "seq " . showsQ quantors v1 . text ", " . showsQ quantors v2
+  showsQ quantors expr = case expr of
+    Literal lit
+      -> text "literal " . shows lit
+    Call fn additionalRegions args returnRegions
+      -> text "call " . shows fn . text " $ " . showsIfRegion additionalRegions (showsQ quantors additionalRegions . text " ") . showCallArguments quantors args . showsIfRegion returnRegions (text " @ " . showsQ quantors returnRegions)
+    Instantiate var args
+      -> text "instantiate " . showsQ quantors var . text " " . showTypeArguments quantors args
+    Eval var
+      -> text "eval " . showsQ quantors var
+    Var var
+      -> text "var " . showsQ quantors var
+    Cast var t
+      -> text "cast " . showsQ quantors var . text " as " . showsQ quantors t
+    CastThunk var
+      -> text "castthunk " . showsQ quantors var
+    Phi branches
+      -> text "phi " . showArguments quantors branches
+    PrimitiveExpr prim args
+      -> text "prim " . text (stringFromId prim) . showCallArguments quantors args
+    Undefined t
+      -> text "undefined " . showsQ quantors t
+    Seq v1 v2
+      -> text "seq " . showsQ quantors v1 . text ", " . showsQ quantors v2
+
+instance Show Expr where
+  show = showDefault
+  showsPrec = showsPrecDefault
 
 instance ShowWithQuantors PhiBranch where
   showsQ quantors (PhiBranch branch var) = text (stringFromId branch) . text " => " . showsQ quantors var
+
+instance Show PhiBranch where
+  show = showDefault
+  showsPrec = showsPrecDefault
 
 instructionIndent :: String
 instructionIndent = "  "
 
 instance ShowWithQuantors Bind where
-  showsQ quantors (Bind var target args) = text "%" . showId var . text " = " . showsQ quantors target . text " $ " . showCallArguments quantors args
+  showsQ quantors (Bind var target args region) = text "%" . showId var . text " = " . showsQ quantors target . text " $ " . showCallArguments quantors args . (if region == RegionGlobal then id else text " @ " . showsQ quantors region)
+
+instance Show Bind where
+  show = showDefault
+  showsPrec = showsPrecDefault
 
 instance ShowWithQuantors BindTarget where
-  showsQ quantors (BindTargetFunction global) = text "function " . shows global
-  showsQ quantors (BindTargetThunk var) = text "thunk " . showsQ quantors var
-  showsQ quantors (BindTargetConstructor con) = text "constructor " . shows con
-  showsQ quantors (BindTargetTuple arity) = text "tuple " . shows arity
+  showsQ quantors target = case target of
+    BindTargetFunction global additionalRegions (BindThunkRegions r1 r2) -> text "function " . shows global . (if additionalRegions /= RegionVarsTuple [] || r1 /= RegionVarsTuple [] || r2 /= RegionVarsTuple [] then text " $ " . showsQ quantors (RegionVarsTuple [additionalRegions, r1, r2]) else id)
+    BindTargetThunk var bindRegions -> text "thunk " . showsQ quantors var . (if bindRegions /= BindThunkRegions (RegionVarsTuple []) (RegionVarsTuple []) then text " $ " . showsQ quantors bindRegions else id)
+    BindTargetConstructor con -> text "constructor " . shows con
+    BindTargetTuple arity -> text "tuple " . shows arity
+
+instance Show BindTarget where
+  show = showDefault
+  showsPrec = showsPrecDefault
+
+instance ShowWithQuantors BindThunkRegions where
+  showsQ quantors (BindThunkRegions r1 r2) = showsQ quantors (RegionVarsTuple [r1, r2])
+
+instance Show BindThunkRegions where
+  show = showDefault
+  showsPrec = showsPrecDefault
 
 instance Show MatchTarget where
   showsPrec _ (MatchTargetConstructor con) = shows con
@@ -151,8 +192,16 @@ instance ShowWithQuantors Instruction where
   showsQ quantors (Unreachable Nothing) =
     text instructionIndent . text "unreachable"
 
+instance Show Instruction where
+  show = showDefault
+  showsPrec = showsPrecDefault
+
 instance ShowWithQuantors Local where
   showsQ quantors (Local name t) = ('%' :) . showId name . text ": " . showsQ quantors t
+
+instance Show Local where
+  show = showDefault
+  showsPrec = showsPrecDefault
 
 instance Show Global where
   showsPrec _ (GlobalVariable name t) = ('@' :) . showId name . text ": " . shows t
@@ -162,10 +211,18 @@ instance Show GlobalFunction where
 
 instance ShowWithQuantors Variable where
   showsQ quantors (VarLocal local) = showsQ quantors local
-  showsQ quantors (VarGlobal global) = shows global
+  showsQ _ (VarGlobal global) = shows global
+
+instance Show Variable where
+  show = showDefault
+  showsPrec = showsPrecDefault
 
 instance ShowWithQuantors Block where
   showsQ quantors (Block name instruction) = text (stringFromId name) . text ":\n" . showsQ quantors instruction
+
+instance Show Block where
+  show = showDefault
+  showsPrec = showsPrecDefault
 
 instance Show MethodAnnotation where
   show MethodAnnotateTrampoline = "trampoline"
@@ -181,6 +238,19 @@ showAnnotations :: [MethodAnnotation] -> String
 showAnnotations [] = ""
 showAnnotations annotations = "[" ++ intercalate " " (map show annotations) ++ "]"
 
+showReturnRegion, showAdditionalRegion, showLocalRegion :: Int -> String
+showReturnRegion idx = "ρᵣ" ++ showSubscript idx
+showAdditionalRegion idx = "ρₐ" ++ showSubscript idx
+showLocalRegion idx = "ρ" ++ showSubscript idx
+
+instance ShowWithQuantors RegionVar where
+  showQ _ = show
+  showsQ _ = shows
+
+instance ShowWithQuantors RegionVars where
+  showQ _ = show
+  showsQ _ = shows
+
 instance ShowDeclaration AbstractMethod where
   showDeclaration (AbstractMethod sourceType fnType annotations)
     | sourceType == typeRemoveArgumentStrictness (typeFromFunctionType fnType) =
@@ -195,13 +265,21 @@ instance ShowDeclaration AbstractMethod where
       arity = functionArity fnType
 
 instance ShowDeclaration Method where
-  showDeclaration (Method tp args rettype annotations entry blocks) =
+  showDeclaration (Method tp additionalRegions args rettype retRegions annotations entry blocks) =
     ( "define"
-    , ": { " ++ show tp ++ " } $ (" ++ intercalate ", " args' ++ "): "
-      ++ showQ quantors rettype ++ " " ++ showAnnotations annotations ++ " {\n" ++ showQ quantors entry ++ (blocks >>= ('\n' :) . showQ quantors) ++ "\n}\n"
+    , ": { " ++ show tp ++ " } $ " ++ (showIfRegion additionalRegions $ show additionalRegions ++ " ") ++ "(" ++ intercalate ", " args' ++ "): "
+      ++ showQ quantors rettype ++ " " ++ showIfRegion retRegions ("@ " ++ show retRegions) ++ showAnnotations annotations ++ " {\n" ++ showQ quantors entry ++ (blocks >>= ('\n' :) . showQ quantors) ++ "\n}\n"
     )
     where
       (args', quantors) = showMethodArguments [] args
+
+showIfRegion :: RegionVars -> String -> String
+showIfRegion (RegionVarsTuple []) _ = ""
+showIfRegion _ str = str
+
+showsIfRegion :: RegionVars -> ShowS -> ShowS
+showsIfRegion (RegionVarsTuple []) _ = id
+showsIfRegion _ f = f
 
 showMethodArguments :: QuantorNames -> [Either Quantor Local] -> ([String], QuantorNames)
 showMethodArguments quantors (Left quantor : args) = (("forall " ++ name) : args', quantors'')
@@ -286,7 +364,7 @@ showCallArguments quantors = showArguments' showArg
     showArg (Right var) = showsQ quantors var
 
 showTypeArguments :: QuantorNames -> [Type] -> ShowS
-showTypeArguments quantors tps = list (text " ") $ map (\tp -> text "{" . showsQ quantors tp . text "}") tps
+showTypeArguments quantors tps = list (text " ") $ map (\tp -> text "{" . text (showTypeAtom quantors tp) . text "}") tps
 
 instance Show FunctionType where
   show fntype@(FunctionType args _) = "[" ++ show arity ++ "] " ++ show tp

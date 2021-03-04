@@ -51,7 +51,7 @@ initialEnv m = GlobalEnv typeEnv dataTypeEnv functionEnv
     methods = method <$> moduleMethods m
 
     method :: Declaration Method -> (Id, (Int, Annotation))
-    method (Declaration name _ _ _ (Method tp _ _ _ _ _)) = (name, (0, top tp))
+    method (Declaration name _ _ _ (Method tp _ _ _ _ _ _ _)) = (name, (0, top tp))
 
     top :: Type -> Annotation
     top = ATop . SortFun SortUnit RegionSortUnit LifetimeContextAny . sortOfType dataTypeEnv . typeNormalize typeEnv
@@ -68,7 +68,7 @@ transformGroup genv (BindingRecursive methods) = do
   (genv'', methods') <- mapAccumLM (\genv' method -> transformGroup genv' $ BindingNonRecursive method) genv methods
   return (genv'', concat methods')
 
-transformGroup genv@(GlobalEnv typeEnv dataTypeEnv globals) (BindingNonRecursive method@(Declaration methodName _ _ _ (Method _ arguments _ _ _ _))) = do
+transformGroup genv@(GlobalEnv typeEnv dataTypeEnv globals) (BindingNonRecursive method@(Declaration methodName _ _ _ (Method _ _ arguments _ _ _ _ _))) = do
   putStrLn $ "# Analyse method " ++ show methodName
 
   let (returnRegions, annotation) = generate genv method
@@ -76,15 +76,15 @@ transformGroup genv@(GlobalEnv typeEnv dataTypeEnv globals) (BindingNonRecursive
 
   let (doesEscape, substituteRegionVar, simplified) = simplifyFixEscape dataTypeEnv annotation
   putStrLn "Simplified:"
-  print simplified
+  -- print simplified
 
   let (isZeroArity, simplified') = correctArityZero returnRegions arguments simplified
 
   let (regionCount, restricted) = if isZeroArity then (0, simplified') else annotationRestrict doesEscape simplified
 
   putStrLn "Restricted:"
-  print doesEscape
-  print restricted
+  -- print doesEscape
+  -- print restricted
 
   let globals' = updateMap methodName (regionCount, restricted) globals
   let genv' = GlobalEnv typeEnv dataTypeEnv globals'

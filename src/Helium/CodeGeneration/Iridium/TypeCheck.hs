@@ -90,7 +90,7 @@ analyseAbstractMethod (Declaration name _ _ _ (AbstractMethod _ tp _)) = AVar na
     arity = functionArity tp
 
 analyseMethod :: TypeEnvironment -> Declaration Method -> Analysis
-analyseMethod env (Declaration name _ _ _ method@(Method fnType args retType' _ block blocks)) =
+analyseMethod env (Declaration name _ _ _ method@(Method fnType _ args retType' _ _ block blocks)) =
   aCheck env fnType (typeRemoveArgumentStrictness fnType') (TEMethod name fnType fnType')
     `AJoin` AVar name (DeclareGlobal $ length aArgs) fnType'
     `AJoin` fromList aArgs
@@ -146,15 +146,15 @@ analyseInstruction env _ (Case var _) = variableToAnalysis $ VarLocal var
 analyseInstruction _ _ _ = AEmpty
 
 analyseBind :: TypeEnvironment -> Bind -> Analysis
-analyseBind env bind@(Bind var target args) =
+analyseBind env bind@(Bind var target args _) =
   AVar var DeclareLocal tp
   `AJoin` aTarget
   `AJoin` fromList [ variableToAnalysis $ VarLocal arg | Right arg <- args ]
   where
     tp = bindType env bind
     aTarget = case target of
-      BindTargetFunction var -> globalFunctionToAnalysis var
-      BindTargetThunk var -> variableToAnalysis var
+      BindTargetFunction var _ _ -> globalFunctionToAnalysis var
+      BindTargetThunk var _ -> variableToAnalysis var
       _ -> AEmpty
 
 data Occurrence = Occurrence !Location !Type

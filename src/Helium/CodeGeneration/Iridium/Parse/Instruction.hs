@@ -56,17 +56,41 @@ pCaseAlt :: Parser a -> Parser (a, BlockName)
 pCaseAlt pPattern = (\pat to -> (pat, to)) <$> pPattern <* pWhitespace <* pSymbol "to" <* pWhitespace <*> pId
 
 pBind :: QuantorNames -> Parser Bind
-pBind quantors = Bind <$ pToken '%' <*> pId <* pWhitespace <* pToken '=' <* pWhitespace <*> pBindTarget quantors <* pWhitespace <* pToken '$' <* pWhitespace <*> pCallArguments quantors
+pBind quantors = Bind <$ pToken '%' <*> pId <* pWhitespace <* pToken '=' <* pWhitespace <*> pBindTarget quantors <* pWhitespace <* pToken '$' <* pWhitespace <*> pCallArguments quantors <* pWhitespace <*> pAtRegion
 
 pBindTarget :: QuantorNames -> Parser BindTarget
 pBindTarget quantors = do
   key <- pKeyword
   case key of
-    "function" -> BindTargetFunction <$> pGlobalFunction
-    "thunk" -> BindTargetThunk <$> pVariable quantors
+    "function" -> uncurry . BindTargetFunction <$> pGlobalFunction <* pWhitespace <*> pFunctionRegions
+    "thunk" -> BindTargetThunk <$> pVariable quantors <* pWhitespace <*> pThunkRegions
     "constructor" -> BindTargetConstructor <$> pDataTypeConstructor
     "tuple" -> BindTargetTuple <$> pUnsignedInt
     _ -> pError "expected bind in letalloc"
+  where
+    pFunctionRegions :: Parser (RegionVars, BindThunkRegions)
+    pFunctionRegions
+      = pTry (RegionVarsTuple [], BindThunkRegions (RegionVarsTuple []) (RegionVarsTuple []))
+        ((\r1 r2 r3 -> (r1, BindThunkRegions r2 r3))
+          <$ pToken '(' <* pWhitespace
+          <*> pRegionVars
+          <* pWhitespace <* pToken ',' <* pWhitespace
+          <*> pRegionVars
+          <* pWhitespace <* pToken ',' <* pWhitespace
+          <*> pRegionVars
+          <* pWhitespace <* pToken ')' <* pWhitespace
+        )
+
+    pThunkRegions :: Parser BindThunkRegions
+    pThunkRegions
+      = pTry (BindThunkRegions (RegionVarsTuple []) (RegionVarsTuple []))
+        (BindThunkRegions
+          <$ pToken '(' <* pWhitespace
+          <*> pRegionVars
+          <* pWhitespace <* pToken ',' <* pWhitespace
+          <*> pRegionVars
+          <* pWhitespace <* pToken ')' <* pWhitespace
+        )
 
 pMatchTarget :: Parser MatchTarget
 pMatchTarget = do

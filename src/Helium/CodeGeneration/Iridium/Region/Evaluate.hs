@@ -547,8 +547,7 @@ transformFixpoint (f, _, g) s' h hInv =
 
 afixEscape :: DataTypeEnv -> Int -> Sort -> RegionSort -> Annotation -> ([Bool], RegionVar -> RegionVar, Annotation)
 afixEscape env arity sort' regionSort f@(ALam _ RegionSortUnit LifetimeContextAny g)
-  = --traceShow ("AFIXESCAPE ", AFixEscape arity sort' regionSort f) $
-    afixEscape' env arity sort'' regionSort (ALam (SortFun sort'' RegionSortUnit LifetimeContextAny sort'') RegionSortUnit LifetimeContextAny g')
+  = afixEscape' env arity sort'' regionSort (ALam (SortFun sort'' RegionSortUnit LifetimeContextAny sort'') RegionSortUnit LifetimeContextAny g')
   where
     (sort'', g') = inlineFixEscapeTuple sort' g
 afixEscape env arity sort' regionSort f = afixEscape' env arity sort' regionSort f
