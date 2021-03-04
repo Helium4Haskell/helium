@@ -30,6 +30,12 @@ eval = foldAnnAlg evalAlg
 -- | Only add when the subannotations are constraints
 add :: Annotation -> Annotation -> Annotation
 add (AConstr c1) (AConstr c2) = AConstr $ constrAdd c1 c2
+-- Empty constraint set? Then ann, otherwise sort
+add (AConstr c1) ann | constrBot == c1 = ann
+                     | otherwise = AAdd (AConstr c1) ann
+add ann (AConstr c2) | constrBot == c2 = ann
+                     | otherwise = AAdd (AConstr c2) ann
+-- Two non-constraint sets, sort
 add c1 c2 = addSort $ collect (AAdd c1 c2)
   where collect (AAdd c3 c4) = collect c3 ++ collect c4 
         collect ann = [ann]

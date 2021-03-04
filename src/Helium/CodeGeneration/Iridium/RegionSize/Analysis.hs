@@ -14,7 +14,9 @@ import Helium.CodeGeneration.Iridium.RegionSize.Constraints
 import Helium.CodeGeneration.Iridium.RegionSize.Environments
 import Helium.CodeGeneration.Iridium.RegionSize.Utils
 
-import Data.List
+import Data.List (mapAccumR)
+import Data.Maybe (fromJust)
+import Data.Either (rights)
 
 -- TODO: Remove
 instance Show Quantor where
@@ -41,20 +43,23 @@ instance Show Type where
 analyse :: GlobalEnv -> Id -> Method -> Annotation
 analyse gEnv _ method@(Method _ args _ _ block blocks) =
         -- Create inital lEnv with method arguments
-    let argIdxs      = zip args $ map AVar $ reverse [1..(length args)]
-        initEnv      = foldl (flip $ uncurry insertArgument) emptyMap argIdxs 
+    let argIdxs      = zip args $ map AVar $ reverse [0..(length args-1)]
+        initEnv      = foldl (flip $ uncurry insertArgument) emptyMap argIdxs
         -- Retrieve other locals from method body
-        localEnv     = foldl (\lEnv -> unionMapWith AJoin lEnv . localsOfBlock (Envs gEnv lEnv)) initEnv (block:blocks) 
+        localEnv     = foldl (\lEnv -> localsOfBlock (Envs gEnv lEnv)) initEnv (block:blocks) 
         -- Retrieve the annotation and effect of the function body
         (bAnn, bEff) = head.snd $ mapAccumR (blockAccum $ Envs gEnv localEnv) emptyMap (block:blocks)
         -- Generate the method annotation
         (FunctionType argTy resTy) = methodFunctionType method
         argSorts = map argumentSortAssign argTy
-        resReg   = regionAssign resTy
+        lamCount = length $ rights args   
+        resReg   = regionAssign $ typeWeaken lamCount resTy
+        -- TODO: Functions without arguments (vars or point free style)
+        fAnn     = ALam (fromJust $ last argSorts) (ATuple [bAnn, ALam resReg $ annWeaken 1 bEff]) 
         -- Create quantors and lambdas
     in foldr (\s a -> case s of
                         Nothing -> AQuant a
-                        Just s' -> ALam s' (ATuple [a, annWeaken 1 $ ALam resReg bEff])) bAnn argSorts
+                        Just s' -> ALam s' (ATuple [a, ALam SortUnit botEffect])) fAnn $ init argSorts
 
 ----------------------------------------------------------------
 -- Gathering local variable annotations
@@ -67,24 +72,27 @@ localsOfBlock envs (Block _ instr) = localsOfInstr envs instr
 -- | Get the annotation of local variabvles from an instruction
 localsOfInstr :: Envs -> Instruction -> LocalEnv
 localsOfInstr envs@(Envs gEnv lEnv) = go
-    where go (Let name expr next  ) = let (varAnn, _) = analyseExpr envs expr
-                                          lEnv'       = insertMap name varAnn lEnv
-                                      in localsOfInstr (Envs gEnv lEnv') next
+    where go (Let name expr next ) = let (varAnn, _) = analyseExpr envs expr
+                                         lEnv'       = insertMap name varAnn lEnv
+                                     in localsOfInstr (Envs gEnv lEnv') next
           -- TODO: Mutrec
-          go (LetAlloc binds next     ) = localsOfLetAlloc envs binds next
+          go (LetAlloc binds next) = localsOfLetAlloc envs binds next
           go (Match local target tys ids next) = localsOfMatch envs local target tys ids next
           go _ = lEnv
 
 localsOfLetAlloc :: Envs -> [Bind] -> Instruction -> LocalEnv
 localsOfLetAlloc envs [] next = localsOfInstr envs next
-localsOfLetAlloc (Envs gEnv lEnv) (Bind id (BindTargetThunk (VarLocal local)) args:bs) next =
-    let bindAnn = AProj 0 $ foldl (callApplyArg lEnv) (lookupLocal lEnv local) args
+-- Thunk binds
+localsOfLetAlloc envs@(Envs gEnv lEnv) (Bind id (BindTargetThunk var) args:bs) next =
+    let bindAnn = AProj 0 $ callApplyArgs lEnv (lookupVar envs var) args
         lEnv' = insertMap id bindAnn lEnv
     in localsOfLetAlloc (Envs gEnv lEnv') bs next
--- localsOfLetAlloc (Envs gEnv lEnv) (Bind id (BindTargetFunction gFun) args:bs) next = -- TODO: Check if okay
---     let bindAnn = foldl (callApplyArg lEnv) (lookupGlobal gEnv $ globalFunctionName gFun) args
---         lEnv'   = insertMap id bindAnn lEnv
---     in localsOfLetAlloc (Envs gEnv lEnv') bs next
+-- Function binds
+localsOfLetAlloc (Envs gEnv lEnv) (Bind id (BindTargetFunction gFun) args:bs) next = -- TODO: Check if okay
+    let gFunAnn = lookupGlobal gEnv $ globalFunctionName gFun
+        bindAnn = AProj 0 $ callApplyArgs lEnv gFunAnn args
+        lEnv'   = insertMap id bindAnn lEnv
+    in localsOfLetAlloc (Envs gEnv lEnv') bs next
 
 -- | Retrieve the local variables from a match instruction
 localsOfMatch :: Envs
@@ -133,20 +141,27 @@ analyseInstr envs@(Envs _ lEnv) bEnv = go
 -- | Analyse letalloc (TODO: Abstract some stuff (same impl. in localsOf))
 analyseLetAlloc :: Envs -> BlockEnv -> [Bind] -> Instruction ->  (Annotation, Effect)
 analyseLetAlloc envs bEnv [] next = analyseInstr envs bEnv next
-analyseLetAlloc envs@(Envs gEnv lEnv) bEnv (Bind id (BindTargetThunk (VarLocal local)) args:bs) next =
-    let bindAnn = AProj 1 $ foldl (callApplyArg lEnv) (lookupLocal lEnv local) args
-        (rAnn,eff) = analyseLetAlloc envs bEnv bs next
-    in (rAnn, AAdd eff bindAnn)
+analyseLetAlloc envs@(Envs gEnv lEnv) bEnv (Bind id (BindTargetThunk var) args:bs) next =
+    let bindEff = AProj 1 $ callApplyArgs lEnv (lookupVar envs var) args
+        (rAnn,rEff) = analyseLetAlloc envs bEnv bs next
+    in (rAnn, AAdd rEff bindEff)
+-- Function binds
+analyseLetAlloc envs@(Envs gEnv lEnv) bEnv (Bind id (BindTargetFunction gFun) args:bs) next = -- TODO: Check if okay
+    let gFunAnn = lookupGlobal gEnv $ globalFunctionName gFun
+        bindEff = AProj 1 $ callApplyArgs lEnv gFunAnn args
+        (rAnn,rEff) = analyseLetAlloc envs bEnv bs next
+    in (rAnn, AAdd rEff bindEff)
+
 
 -- | Find the annotation and effect of an expression
 analyseExpr :: Envs -> Expr -> (Annotation, Effect)
-analyseExpr (Envs gEnv lEnv) = go
+analyseExpr envs@(Envs gEnv lEnv) = go
     where 
       -- Literals have unit annotation, no effect. TODO: doesn't count for strings?
       go (Literal _)              = (AUnit, botEffect) 
       -- Eval & Var: Lookup annotation of variable (can be global or local)
-      go (Eval var)               = (lookupVar gEnv lEnv var, botEffect)
-      go (Var var)                = (lookupVar gEnv lEnv var, botEffect)
+      go (Eval var)               = (lookupVar envs var, botEffect)
+      go (Var var)                = (lookupVar envs var, botEffect)
       -- TODO: Can we ignore the type cast?
       go (Cast local _)           = (lookupLocal lEnv local, botEffect)
       -- No effect, annotation of local
@@ -162,10 +177,9 @@ analyseExpr (Envs gEnv lEnv) = go
       -- Instantiate types in local
       go (Instantiate local tys)  = (foldl AInstn (lEnv `lookupLocal` local) tys, botEffect) 
       -- Apply all type and variable arguments
-      go (Call gFun tyLos)        = -- TODO, fEff = P -> C
+      go (Call gFun args)        = -- TODO, fEff = P -> C
           let gFunAnn = gEnv `lookupGlobal` globalFunctionName gFun
-              resAnn  = foldl (callApplyArg lEnv) gFunAnn tyLos
-          in (AProj 0 resAnn, AProj 1 resAnn) 
+          in liftTuple $ callApplyArgs lEnv gFunAnn args
 
 ----------------------------------------------------------------
 -- Analysis utilities
@@ -181,6 +195,7 @@ insertArgument :: Either Quantor Local -> Annotation -> LocalEnv -> LocalEnv
 insertArgument (Left _)      = flip const
 insertArgument (Right local) = insertMap $ localName local
 
+
 -- | Assign sort to types, return Nothing for a quantor
 argumentSortAssign :: Either Quantor Type -> Maybe Sort
 argumentSortAssign (Left _)   = Nothing
@@ -195,10 +210,20 @@ caseBlocks (CaseInt cases dflt)    = dflt : map snd cases
 phiVarAnn :: LocalEnv -> [PhiBranch] -> [Annotation]
 phiVarAnn lEnv branches = lookupLocal lEnv <$> phiVariable <$> branches
 
+
+-- | Apply a list of arf
+callApplyArgs :: LocalEnv -> Annotation -> [Either Type Local] -> Annotation
+callApplyArgs lEnv fAnn args = foldl (callApplyArg lEnv) fAnn args
+
 -- | Apply an argument to a function
 callApplyArg :: LocalEnv -> Annotation -> Either Type Local -> Annotation
 callApplyArg _    fAnn (Left ty    ) = AInstn fAnn ty 
 callApplyArg lEnv fAnn (Right local) = AApl   fAnn $ lookupLocal lEnv local
+
+-- | Convert an annotation tuple to a haskell tuple
+liftTuple :: Annotation -> (Annotation, Effect)
+liftTuple a = (AProj 0 a, AProj 1 a) 
+
 
 -- | Join of blocks
 joinBlocks :: BlockEnv -> [BlockName] -> (Annotation, Effect)
@@ -215,6 +240,7 @@ joinAnnList []     = rsError "joinAnnList: Empty annotation list"
 joinAnnList [x]    = x
 joinAnnList (x:xs) = foldl AJoin x xs
 
+
 -- | The bottom for annotation & effect (annotation bot, constr bot)
 botAnnEff :: (Annotation, Effect)
 botAnnEff = (ABot, botEffect)
@@ -222,6 +248,7 @@ botAnnEff = (ABot, botEffect)
 -- | Bottom for the effect
 botEffect :: Effect
 botEffect = AConstr constrBot
+
 
 -- | Get the name of a block
 blockName :: Block -> BlockName

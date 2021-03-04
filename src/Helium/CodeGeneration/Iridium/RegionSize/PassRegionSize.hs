@@ -47,10 +47,16 @@ analyseGroup :: GlobalEnv -> BindingGroup Method -> IO (GlobalEnv, [Declaration 
 analyseGroup _ (BindingRecursive _) = rsError "Cannot analyse (mutual) recursive functions yet"
 analyseGroup gEnv (BindingNonRecursive decl@(Declaration methodName _ _ _ method)) = do
   putStrLn $ "\n# Analyse method " ++ show methodName
-  let mAnn = analyse gEnv methodName method
-  -- mAnn <- Exc.catch (x `seq` return x) (\exc -> return AUnit `const` (exc :: Exc.ErrorCall)) 
-  print mAnn
-  return (gEnv, [decl{ declarationValue = method }])
+  if True
+  then do
+    let mAnn  = analyse gEnv methodName method
+    print mAnn
+    putStrLn $ "\n# Simplified: " ++ show methodName
+    print $ eval mAnn
+    let gEnv' = insertGlobal gEnv methodName mAnn 
+    return (gEnv', [decl{ declarationValue = method }])
+  else do
+    return (gEnv, [decl{ declarationValue = method }])
 
 
 

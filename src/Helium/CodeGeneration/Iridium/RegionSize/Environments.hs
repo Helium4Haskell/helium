@@ -32,7 +32,7 @@ type BlockMonad = Reader BlockEnv
 
 -- | Initial analysis environment, sets all functions to top
 initialGEnv :: Module -> GlobalEnv
-initialGEnv m = GlobalEnv synonyms functionEnv
+initialGEnv m = GlobalEnv synonyms emptyMap -- functionEnv
   where
     -- Type synonims
     synonyms :: IdMap Type
@@ -62,6 +62,14 @@ initialGEnv m = GlobalEnv synonyms functionEnv
 lookupGlobal :: GlobalEnv -> Id -> Annotation
 lookupGlobal (GlobalEnv _ vars) = flip findMap vars 
 
+-- | Insert a function into the global environment
+insertGlobal :: GlobalEnv -> Id -> Annotation -> GlobalEnv
+insertGlobal (GlobalEnv syns fs) id ann =
+  case lookupMap id fs of
+    Nothing -> GlobalEnv syns $ insertMap id ann fs 
+    Just a  -> GlobalEnv syns $ insertMap id a $ deleteMap id fs 
+
+
 -- | Look up a local variable in the local environment
 lookupBlock :: BlockEnv -> BlockName -> (Annotation, Effect)
 lookupBlock = flip findMap
@@ -73,7 +81,6 @@ lookupLocal lEnv local = case lookupMap (localName local) lEnv of
                             Just a  -> a
 
 -- | Lookup a global or local variable
-lookupVar :: GlobalEnv -> LocalEnv -> Variable -> Annotation
-lookupVar _ lEnv (VarLocal local) = lookupLocal  lEnv local
-lookupVar gEnv _ global = lookupGlobal gEnv $ variableName global
-lookupVar _ _ _ = error "Whut?"
+lookupVar :: Envs -> Variable -> Annotation
+lookupVar (Envs _ lEnv) (VarLocal local) = lookupLocal  lEnv local
+lookupVar (Envs gEnv _) global           = lookupGlobal gEnv $ variableName global

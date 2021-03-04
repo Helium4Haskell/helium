@@ -1,6 +1,6 @@
 module Helium.CodeGeneration.Iridium.RegionSize.Utils
     ( indent,
-    varNames,
+    varNames, typeVarName, annVarName,
     rsError, rsInfo
     ) where
 
@@ -25,6 +25,16 @@ splitOn c s = case dropWhile ((==) c) s of
 -- | Infinite list of variable names
 varNames :: [String]
 varNames = map pure ['a'..'z'] ++ map ((++) "a" . (show :: Int -> String)) [1..]
+
+-- | Get a type var name
+typeVarName :: Int -> String
+typeVarName idx | idx < 0 = "t_[" ++ show idx ++ "]"
+                | otherwise = varNames !! idx
+
+-- | Get a type var name
+annVarName :: Int -> String
+annVarName idx | idx < 0 = "v$[" ++ show idx ++ "]"
+               | otherwise = varNames !! idx
 
 ----------------------------------------------------------------
 -- Console messages

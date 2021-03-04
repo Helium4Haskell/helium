@@ -41,11 +41,12 @@ showSort n = foldSortAlgN n showAlg
     sortLam        = \_ a b  -> "(" ++ a ++ " ↦  " ++ b ++ ")",
     sortConstr     = \_      -> "C",
     sortUnit       = \_      -> "()",
-    sortQuant      = \d s    -> "∀t_" ++ (varNames !! d) ++ ". " ++ s,
+    sortQuant      = \d s    -> "∀t_" ++ (typeVarName d) ++ ". " ++ s,
     sortMonoRegion = \_      -> "P",
-    sortPolyRegion = \d idx ts -> "P<t_" ++ (varNames !! (d - idx - 1)) ++ " [" ++ (intercalate "," $ map (showTypeN d) ts) ++ "]>",
-    sortPolySort   = \d idx ts -> "Ψ<t_" ++ (varNames !! (d - idx - 1)) ++ " [" ++ (intercalate "," $ map (showTypeN d) ts) ++ "]>",
+    sortPolyRegion = \d idx ts -> "P<t_" ++ (typeVarName $ d - idx - 1) ++ " [" ++ (intercalate "," $ map (showTypeN d) ts) ++ "]>",
+    sortPolySort   = \d idx ts -> "Ψ<t_" ++ (typeVarName $ d - idx - 1) ++ " [" ++ (intercalate "," $ map (showTypeN d) ts) ++ "]>",
     sortTuple      = \_ ss   -> "(" ++ (intercalate "," ss) ++ ")"
+
 }
 
 ----------------------------------------------------------------
