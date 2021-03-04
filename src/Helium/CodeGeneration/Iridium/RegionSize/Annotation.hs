@@ -1,10 +1,14 @@
+{-# LANGUAGE PatternSynonyms #-}
+
 module Helium.CodeGeneration.Iridium.RegionSize.Annotation
-  ( Annotation(..), 
+  ( Annotation(..), pattern AUnit,
     AnnAlg(..), foldAnnAlg, foldAnnAlgN, idAnnAlg,
     annWeaken, annStrengthen,
-    regVarSubst,
+    regionVarsToAnn, regVarSubst,
     isConstr
   ) where
+
+import Helium.CodeGeneration.Iridium.Region.RegionVar
 
 import Helium.CodeGeneration.Iridium.RegionSize.Constraints
 import Helium.CodeGeneration.Iridium.RegionSize.Sort
@@ -25,7 +29,6 @@ data Annotation =
     | ALam    Sort       Annotation -- ^ Annotation lambda
     | AApl    Annotation Annotation -- ^ Application
     | AConstr Constr                -- ^ Constraint set
-    | AUnit                         -- ^ Unit annotation
     | ATuple  [Annotation]          -- ^ Unit tuple
     | AProj   Int        Annotation -- ^ Projection
     | AAdd    Annotation Annotation -- ^ Annotation addition
@@ -36,6 +39,9 @@ data Annotation =
     | ABot    
     | AFix    Sort       Annotation
   deriving (Eq, Ord)
+
+-- | AUnit is a 0-tuple, a patern disallows them from co-existing
+pattern AUnit = ATuple []
 
 ----------------------------------------------------------------
 -- Pretty printing
@@ -159,6 +165,7 @@ constrReIndex f annD = M.mapKeys keyReIndex
   where keyReIndex (RegVar idx) = RegVar $ f annD idx
         keyReIndex (Region idx) = Region idx
 
+-- TODO: Check if we can use Ivos implementation of typeReindex
 -- | Re-index the debruin indices of a sort
 typeReIndex :: (Depth -> Int -> Int) -- ^ Reindex function
             -> Depth -> Type -> Type
@@ -189,6 +196,11 @@ annStrengthen = annReIndex strgthIdx
 ----------------------------------------------------------------
 -- Annotation utilities
 ----------------------------------------------------------------
+
+-- | Convert RegionVars to an annotions
+regionVarsToAnn :: RegionVars -> Annotation
+regionVarsToAnn (RegionVarsSingle (RegionVar r)) = AReg r
+regionVarsToAnn (RegionVarsTuple rs) = ATuple $ map regionVarsToAnn rs
 
 -- | Initialize region variables in a constraint set
 regVarSubst :: Annotation -> Int -> Constr -> Constr 

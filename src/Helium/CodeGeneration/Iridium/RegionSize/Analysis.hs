@@ -80,18 +80,19 @@ localsOfInstr envs@(Envs gEnv lEnv) = go
           go (Match local target tys ids next) = localsOfMatch envs local target tys ids next
           go _ = lEnv
 
+-- TODO: Still lots and lots of duplicated code here between localsOf and analyse
 localsOfLetAlloc :: Envs -> [Bind] -> Instruction -> LocalEnv
 localsOfLetAlloc envs [] next = localsOfInstr envs next
 -- Thunk binds
-localsOfLetAlloc envs@(Envs gEnv lEnv) (Bind id (BindTargetThunk var _) args _:bs) next =
-    let bindAnn = AProj 0 $ callApplyArgs lEnv (lookupVar envs var) args
-        lEnv' = insertMap id bindAnn lEnv
+localsOfLetAlloc envs@(Envs gEnv lEnv) (Bind id (BindTargetThunk var tRegs) args _:bs) next =
+    let (bAnn, _) = callApplyArgs lEnv (lookupVar envs var) args $ bindThunkValue tRegs
+        lEnv'     = insertMap id bAnn lEnv
     in localsOfLetAlloc (Envs gEnv lEnv') bs next
 -- Function binds
-localsOfLetAlloc (Envs gEnv lEnv) (Bind id (BindTargetFunction gFun _ _) args _:bs) next = -- TODO: Check if okay
-    let gFunAnn = lookupGlobal gEnv $ globalFunctionName gFun
-        bindAnn = AProj 0 $ callApplyArgs lEnv gFunAnn args
-        lEnv'   = insertMap id bindAnn lEnv
+localsOfLetAlloc (Envs gEnv lEnv) (Bind id (BindTargetFunction gFun regs _) args _:bs) next = -- TODO: Check if okay
+    let gFunAnn   = lookupGlobal gEnv $ globalFunctionName gFun
+        (bAnn, _) = callApplyArgs lEnv gFunAnn args regs
+        lEnv'     = insertMap id bAnn lEnv
     in localsOfLetAlloc (Envs gEnv lEnv') bs next
 
 -- | Retrieve the local variables from a match instruction
@@ -141,16 +142,16 @@ analyseInstr envs@(Envs _ lEnv) bEnv = go
 -- | Analyse letalloc (TODO: Abstract some stuff (same impl. in localsOf))
 analyseLetAlloc :: Envs -> BlockEnv -> [Bind] -> Instruction ->  (Annotation, Effect)
 analyseLetAlloc envs bEnv [] next = analyseInstr envs bEnv next
-analyseLetAlloc envs@(Envs gEnv lEnv) bEnv (Bind id (BindTargetThunk var _) args _:bs) next =
-    let bindEff = AProj 1 $ callApplyArgs lEnv (lookupVar envs var) args
+analyseLetAlloc envs@(Envs gEnv lEnv) bEnv (Bind id (BindTargetThunk var tRegs) args _:bs) next =
+    let (bAnn,bEff) = callApplyArgs lEnv (lookupVar envs var) args $ bindThunkValue tRegs
         (rAnn,rEff) = analyseLetAlloc envs bEnv bs next
-    in (rAnn, AAdd rEff bindEff)
+    in (rAnn, AAdd rEff bEff)
 -- Function binds
-analyseLetAlloc envs@(Envs gEnv lEnv) bEnv (Bind id (BindTargetFunction gFun _ _) args _:bs) next = -- TODO: Check if okay
+analyseLetAlloc envs@(Envs gEnv lEnv) bEnv (Bind id (BindTargetFunction gFun regs _) args _:bs) next = -- TODO: Check if okay
     let gFunAnn = lookupGlobal gEnv $ globalFunctionName gFun
-        bindEff = AProj 1 $ callApplyArgs lEnv gFunAnn args
+        (bAnn,bEff) = callApplyArgs lEnv gFunAnn args regs
         (rAnn,rEff) = analyseLetAlloc envs bEnv bs next
-    in (rAnn, AAdd rEff bindEff)
+    in (rAnn, AAdd rEff bEff)
 
 
 -- | Find the annotation and effect of an expression
@@ -177,9 +178,38 @@ analyseExpr envs@(Envs gEnv lEnv) = go
       -- Instantiate types in local
       go (Instantiate local tys)  = (foldl AInstn (lEnv `lookupLocal` local) tys, botEffect) 
       -- Apply all type and variable arguments
-      go (Call gFun _ args _)     = -- TODO, fEff = P -> C
+      go (Call gFun _ args retReg)     = -- TODO, fEff = P -> C
           let gFunAnn = gEnv `lookupGlobal` globalFunctionName gFun
-          in liftTuple $ callApplyArgs lEnv gFunAnn args
+          in callApplyArgs lEnv gFunAnn args retReg
+
+----------------------------------------------------------------
+-- Function calls
+----------------------------------------------------------------
+
+-- | Apply an argument to a function
+callApplyArg :: LocalEnv 
+             -> Annotation        -- ^ Return region
+             -> Annotation        -- ^ Function 
+             -> Either Type Local -- ^ Argument
+             -> (Annotation, Effect)
+-- TODO: Double check: If an AInst is the last argument this might goof up
+callApplyArg _    rReg fAnn (Left ty    ) = (AInstn fAnn ty, botEffect) 
+callApplyArg lEnv rReg fAnn (Right local) = 
+    let (cAnn,cEff) = liftTuple . AApl fAnn $ lookupLocal lEnv local
+    in (cAnn, AApl cEff rReg)
+
+-- | Apply a list of arguments to a funtion
+callApplyArgs :: LocalEnv -> Annotation -> [Either Type Local] -> RegionVars -> (Annotation, Effect)
+callApplyArgs lEnv fAnn args retRegs = 
+    let retRegAnn = regionVarsToAnn retRegs
+        initArgs  = init args
+        (cAnn,cEff) = foldl (\(sAnn,sEff) -> addEffect sEff . callApplyArg lEnv AUnit sAnn) (fAnn,botEffect) initArgs
+        lastArg   = last args
+        (rAnn,rEff) = callApplyArg lEnv retRegAnn cAnn lastArg
+    in (rAnn, AAdd cEff rEff)
+
+addEffect :: Effect -> (Annotation, Effect) -> (Annotation, Effect)
+addEffect eff (a,e) = (a, AAdd eff e)
 
 ----------------------------------------------------------------
 -- Analysis utilities
@@ -210,15 +240,6 @@ caseBlocks (CaseInt cases dflt)    = dflt : map snd cases
 phiVarAnn :: LocalEnv -> [PhiBranch] -> [Annotation]
 phiVarAnn lEnv branches = lookupLocal lEnv <$> phiVariable <$> branches
 
-
--- | Apply a list of arf
-callApplyArgs :: LocalEnv -> Annotation -> [Either Type Local] -> Annotation
-callApplyArgs lEnv fAnn args = foldl (callApplyArg lEnv) fAnn args
-
--- | Apply an argument to a function
-callApplyArg :: LocalEnv -> Annotation -> Either Type Local -> Annotation
-callApplyArg _    fAnn (Left ty    ) = AInstn fAnn ty 
-callApplyArg lEnv fAnn (Right local) = AApl   fAnn $ lookupLocal lEnv local
 
 -- | Convert an annotation tuple to a haskell tuple
 liftTuple :: Annotation -> (Annotation, Effect)

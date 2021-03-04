@@ -97,7 +97,7 @@ instantiate a t = AInstn a t
 project :: Int -> Annotation -> Annotation 
 project idx (ATuple as) | length as > idx = as !! idx
                         | otherwise       = rsError $ "Projection-index out of bounds\n Idx: " ++ show idx ++ "\n Annotation: " ++ (show $ ATuple as)
-project _ t = t 
+project idx t = AProj idx t 
 
 
 ----------------------------------------------------------------

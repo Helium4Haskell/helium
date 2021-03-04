@@ -37,7 +37,8 @@ phaseCodeGeneratorIridium :: NameSupply -> FileCache -> String -> Core.CoreModul
 phaseCodeGeneratorIridium supply cache fullName coreModule options = do
   enterNewPhase "Code generation for Iridium" options
 
-  let supplyDesugar : supplyFromCore : supplyPassDeadCode : supplyPassTailRecursion : supplyRegion : _ = splitNameSupplies supply
+  let supplyDesugar : supplyFromCore : supplyPassDeadCode : supplyPassTailRecursion 
+          : supplyRegion : supplyRegionSize : _ = splitNameSupplies supply
 
   simplified <- desugarCore supplyDesugar coreModule
 
@@ -54,12 +55,16 @@ phaseCodeGeneratorIridium supply cache fullName coreModule options = do
 
   let iridium2 = passTailRecursion supplyPassTailRecursion $ passDeadCode supplyPassDeadCode iridium1
   checkModuleIO "passTailRecursion" (fullNameNoExt ++ ".iridium") iridium2
-  iridium3 <- passRegionSize supplyRegion iridium2
 
-  writeIridium cache (fullNameNoExt ++ ".iridium") iridium3
-  checkModuleIO "passRegion" (fullNameNoExt ++ ".iridium") iridium3
+  -- iridium3 <- passRegion supplyRegion iridium2
+  -- writeIridium cache (fullNameNoExt ++ ".iridium") iridium3
+  -- checkModuleIO "passRegion" (fullNameNoExt ++ ".iridium") iridium3
 
-  let file = IridiumFile (fullNameNoExt ++ ".iridium") iridium3 True
+  iridium4 <- passRegionSize supplyRegionSize iridium2
+  writeIridium cache (fullNameNoExt ++ ".iridium") iridium4
+  checkModuleIO "passRegionSize" (fullNameNoExt ++ ".iridium") iridium4
+
+  let file = IridiumFile (fullNameNoExt ++ ".iridium") iridium4 True
   files <-
     if hasMain then
       resolveDependencies cache [file]
