@@ -15,6 +15,7 @@ import Helium.CodeGeneration.Iridium.Region.Sort
 import Helium.CodeGeneration.Iridium.Region.Annotation
 import Helium.CodeGeneration.Iridium.Region.Evaluate
 import Helium.CodeGeneration.Iridium.Region.Relation
+import Helium.CodeGeneration.Iridium.Region.Transform
 import Helium.CodeGeneration.Iridium.Region.Utils
 
 passRegion :: NameSupply -> Module -> IO Module
@@ -71,14 +72,14 @@ transformGroup genv (BindingRecursive methods) = do
 transformGroup genv@(GlobalEnv typeEnv dataTypeEnv globals) (BindingNonRecursive method@(Declaration methodName _ _ _ (Method _ _ arguments _ _ _ _ _))) = do
   putStrLn $ "# Analyse method " ++ show methodName
 
-  let (returnRegions, annotation) = generate genv method
+  let (methodEnv, annotation) = generate genv method
   -- print annotation
 
   let (doesEscape, substituteRegionVar, simplified) = simplifyFixEscape dataTypeEnv annotation
   putStrLn "Simplified:"
   -- print simplified
 
-  let (isZeroArity, simplified') = correctArityZero returnRegions arguments simplified
+  let (isZeroArity, simplified') = correctArityZero (methodEnvAdditionalRegionSort methodEnv) arguments simplified
 
   let (regionCount, restricted) = if isZeroArity then (0, simplified') else annotationRestrict doesEscape simplified
 
@@ -89,6 +90,7 @@ transformGroup genv@(GlobalEnv typeEnv dataTypeEnv globals) (BindingNonRecursive
   let globals' = updateMap methodName (regionCount, restricted) globals
   let genv' = GlobalEnv typeEnv dataTypeEnv globals'
 
-  -- TODO: The actual program transformation
-  return (genv', [method])
+  let method' = method{ declarationValue = transform methodEnv substituteRegionVar restricted $ declarationValue method }
+
+  return (genv', [method'])
 

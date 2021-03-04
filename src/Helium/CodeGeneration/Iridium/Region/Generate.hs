@@ -43,9 +43,9 @@ data MethodEnv = MethodEnv
   , methodEnvAdditionalFor :: IdMap [RegionVar]
   }
 
-generate :: GlobalEnv -> Declaration Method -> (RegionSort, Annotation)
+generate :: GlobalEnv -> Declaration Method -> (MethodEnv, Annotation)
 generate (GlobalEnv typeEnv dataTypeEnv globals) (Declaration methodName _ _ _ method@(Method fnType _ arguments _ _ _ _ _))
-  = (methodEnvAdditionalRegionSort methodEnv, fixpoint)
+  = (methodEnv, fixpoint)
   where
     (applyLocal, methodEnv) = assign genv methodName method
 

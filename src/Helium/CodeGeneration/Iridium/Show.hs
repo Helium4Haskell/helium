@@ -268,7 +268,7 @@ instance ShowDeclaration Method where
   showDeclaration (Method tp additionalRegions args rettype retRegions annotations entry blocks) =
     ( "define"
     , ": { " ++ show tp ++ " } $ " ++ (showIfRegion additionalRegions $ show additionalRegions ++ " ") ++ "(" ++ intercalate ", " args' ++ "): "
-      ++ showQ quantors rettype ++ " " ++ showIfRegion retRegions ("@ " ++ show retRegions) ++ showAnnotations annotations ++ " {\n" ++ showQ quantors entry ++ (blocks >>= ('\n' :) . showQ quantors) ++ "\n}\n"
+      ++ showQ quantors rettype ++ showIfRegion retRegions (" @ " ++ show retRegions) ++ " " ++ showAnnotations annotations ++ " {\n" ++ showQ quantors entry ++ (blocks >>= ('\n' :) . showQ quantors) ++ "\n}\n"
     )
     where
       (args', quantors) = showMethodArguments [] args
