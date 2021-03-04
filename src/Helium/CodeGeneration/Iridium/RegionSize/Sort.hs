@@ -2,6 +2,7 @@ module Helium.CodeGeneration.Iridium.RegionSize.Sort
   ( Sort(..), showSort, 
     SortAlg(..), idSortAlg, foldSortAlg, foldSortAlgN, 
     sortAssign, regionAssign, 
+    sortReIndex, sortStrengthen,
     sortInstantiate, sortSubstitute,
     sortIsRegion, sortIsAnnotation,
   )
@@ -41,7 +42,7 @@ showSort n = foldSortAlgN n showAlg
     sortLam        = \_ a b  -> "(" ++ a ++ " ↦  " ++ b ++ ")",
     sortConstr     = \_      -> "C",
     sortUnit       = \_      -> "()",
-    sortQuant      = \d s    -> "∀t_" ++ (typeVarName d) ++ ". " ++ s,
+    sortQuant      = \d s    -> "∀" ++ (typeVarName d) ++ ". " ++ s,
     sortMonoRegion = \_      -> "P",
     sortPolyRegion = \d idx ts -> "P<" ++ (typeVarName $ d - idx - 1) ++ " [" ++ (intercalate "," $ map (showTypeN d) ts) ++ "]>",
     sortPolySort   = \d idx ts -> "Ψ<" ++ (typeVarName $ d - idx - 1) ++ " [" ++ (intercalate "," $ map (showTypeN d) ts) ++ "]>",
@@ -173,8 +174,26 @@ sortSubstitute subD ty = foldSortAlgN subD instAlg
                                         else SortPolyRegion idx (instTypeArgs d ts),
           sortPolySort   = \d idx ts -> if idx == d 
                                         then sortAssign'   (instTypeArgs d ts) $ typeWeaken d ty
-                                        else SortPolySort   idx (instTypeArgs d ts)
+                                        else SortPolySort   idx (instTypeArgs d ts) 
         }
+
+----------------------------------------------------------------
+-- De Bruijn reindexing
+----------------------------------------------------------------
+
+-- | Re-index the debruin indices of a sort
+sortReIndex :: (Depth -> Int -> Int) -- ^ Reindex function
+            -> Int -- ^ Depth in annotation
+            -> Sort -> Sort
+sortReIndex f annD = foldSortAlgN annD reIdxAlg
+  where reIdxAlg = idSortAlg {
+    sortPolyRegion = \d idx ts -> SortPolyRegion (f (d-100) idx) $ map (typeReIndex f d) ts,
+    sortPolySort   = \d idx ts -> SortPolySort   (f (d-100) idx) $ map (typeReIndex f d) ts 
+  }
+
+-- | Decrease all unbound indexes by 1
+sortStrengthen :: Sort -> Sort
+sortStrengthen = sortReIndex strengthenIdx 0
 
 ----------------------------------------------------------------
 -- Sort utilities

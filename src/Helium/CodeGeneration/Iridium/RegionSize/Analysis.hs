@@ -39,10 +39,11 @@ instance Show Type where
 -- Analysis
 ----------------------------------------------------------------
 
+-- TODO: Clean up this mess
 -- | Analyse the effect and annotation of a block
 analyse :: GlobalEnv -> Id -> Method -> Annotation
 analyse gEnv _ method@(Method _ regArgs args _ _ _ block blocks) =
-        -- Create inital lEnv with method arguments
+        -- Create inital lEnv with method arguments 
     let argIdxs      = zip args $ map AVar $ reverse [0..(length args-1)]
         initEnv      = foldl (flip $ uncurry insertArgument) emptyMap argIdxs
         -- Retrieve other locals from method body
@@ -54,8 +55,10 @@ analyse gEnv _ method@(Method _ regArgs args _ _ _ block blocks) =
         argSorts = map argumentSortAssign argTy
         lamCount = length $ rights args   
         resReg   = regionAssign $ typeWeaken lamCount resTy
-        -- TODO: Functions without arguments (vars or point free style)
-        fAnn     = ALam (fromJust $ last argSorts) (ATuple [bAnn, ALam resReg $ annWeaken 1 bEff]) 
+        fAnn     = case last argSorts of
+                      Nothing | length argSorts == 0 -> bAnn
+                              | otherwise            -> AQuant bAnn
+                      Just s  -> ALam s (ATuple [bAnn, ALam resReg $ annWeaken 1 bEff]) 
         -- Create quantors and lambdas
     in foldr (\s a -> case s of
                         Nothing -> AQuant a
@@ -159,14 +162,14 @@ analyseExpr :: Envs -> Expr -> (Annotation, Effect)
 analyseExpr envs@(Envs gEnv lEnv) = go
     where 
       -- Literals have unit annotation, no effect. TODO: doesn't count for strings?
-      go (Literal _)              = (AUnit, botEffect) 
+      go (Literal _)              = (AUnit                          , botEffect) 
       -- Eval & Var: Lookup annotation of variable (can be global or local)
-      go (Eval var)               = (lookupVar envs var, botEffect)
-      go (Var var)                = (lookupVar envs var, botEffect)
+      go (Eval var)               = (lookupVar envs var             , botEffect)
+      go (Var var)                = (lookupVar envs var             , botEffect)
       -- TODO: Can we ignore the type cast?
-      go (Cast local _)           = (lookupLocal lEnv local, botEffect)
+      go (Cast local _)           = (lookupLocal lEnv local         , botEffect)
       -- No effect, annotation of local
-      go (CastThunk local)        = (lookupLocal lEnv local, botEffect)
+      go (CastThunk local)        = (lookupLocal lEnv local         , botEffect)
       -- Join of the variable annotations in the branches
       go (Phi branches)           = (joinAnnList $ lookupLocal lEnv <$> map phiVariable branches, botEffect) 
       -- Primitive expression, does not allocate or cause any effect -> bottom
@@ -174,13 +177,11 @@ analyseExpr envs@(Envs gEnv lEnv) = go
       -- No effect, bottom annotation
       go (Undefined _)            = botAnnEff
       -- No effect, just annotation of local2
-      go (Seq _ local2)           = (lookupLocal lEnv local2, botEffect)
+      go (Seq _ local2)           = (lookupLocal lEnv local2        , botEffect)
       -- Instantiate types in local
       go (Instantiate local tys)  = (foldl AInstn (lEnv `lookupLocal` local) tys, botEffect) 
       -- Apply all type and variable arguments
-      go (Call gFun _ args retReg)     = -- TODO, fEff = P -> C
-          let gFunAnn = gEnv `lookupGlobal` globalFunctionName gFun
-          in callApplyArgs lEnv gFunAnn args retReg
+      go (Call gFun _ args rReg)  = callApplyArgs lEnv (gEnv `lookupGlobal` globalFunctionName gFun) args rReg
 
 ----------------------------------------------------------------
 -- Function calls
@@ -208,6 +209,7 @@ callApplyArgs lEnv fAnn args retRegs =
         (rAnn,rEff) = callApplyArg lEnv retRegAnn cAnn lastArg
     in (rAnn, AAdd cEff rEff)
 
+-- | Add an effect to an effect tuple
 addEffect :: Effect -> (Annotation, Effect) -> (Annotation, Effect)
 addEffect eff (a,e) = (a, AAdd eff e)
 

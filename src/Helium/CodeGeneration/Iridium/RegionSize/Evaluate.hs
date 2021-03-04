@@ -85,7 +85,7 @@ application f x = AApl f x
 
 -- | Instantiate a type if it starts with a quantification 
 instantiate :: Annotation -> Type -> Annotation
-instantiate (AQuant anno) ty = eval $ annStrengthen $ foldAnnAlg annInstAlg anno
+instantiate (AQuant anno) ty = eval $ foldAnnAlg annInstAlg anno
   where annInstAlg = idAnnAlg {
     aLam   = \d s a -> ALam (sortSubstitute d ty s) a,
     aFix   = \d s a -> AFix (sortSubstitute d ty s) a

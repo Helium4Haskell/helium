@@ -1,7 +1,7 @@
 module Helium.CodeGeneration.Iridium.RegionSize.Type
     (showTypeN, 
     TypeAlg(..), idTypeAlg, foldTypeAlg, foldTypeAlgN,
-    typeInsantiate
+    typeReIndex, typeInsantiate
     ) where
 
 import Helium.CodeGeneration.Iridium.RegionSize.Utils
@@ -18,9 +18,9 @@ showTypeN :: Depth -> Type -> String
 showTypeN n = foldTypeAlgN n showAlg
     where showAlg = TypeAlg {
         tAp     = \_ t1 t2 -> t1 ++ " " ++ t2,
-        tForall = \d _ _ t -> "∀t_" ++ typeVarName d ++". " ++ t,
+        tForall = \d _ _ t -> "∀" ++ typeVarName d ++". " ++ t,
         tStrict = \_ t     -> "!" ++ t,
-        tVar    = \d idx   -> "t_" ++ typeVarName (d - idx - 1),
+        tVar    = \d idx   -> typeVarName $ d - idx - 1,
         tCon    = \_ tc    -> show tc
     }
 
@@ -56,6 +56,19 @@ foldTypeAlgN n alg = go n
           go d (TStrict t1   ) =  tStrict alg d (go d t1)
           go d (TVar    x    ) =  tVar    alg d x
           go d (TCon    tc   ) =  tCon    alg d tc
+
+----------------------------------------------------------------
+-- De Bruijn reindexing
+----------------------------------------------------------------
+
+-- TODO: Check if we can use Ivos implementation of typeReindex
+-- | Re-index the debruin indices of a sort
+typeReIndex :: (Depth -> Int -> Int) -- ^ Reindex function
+            -> Depth -> Type -> Type
+typeReIndex f n = foldTypeAlgN n reIdxAlg
+    where reIdxAlg = idTypeAlg {
+        tVar = \d idx -> TVar $ f d idx
+    }
 
 ----------------------------------------------------------------
 -- Type substitution

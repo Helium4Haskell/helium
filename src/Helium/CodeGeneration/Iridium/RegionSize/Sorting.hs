@@ -14,7 +14,7 @@ import qualified Data.Map as M
 -- | Environment for sorting
 type Gamma = M.Map Int Sort
 
--- | Increase all env indexes by one
+-- | Insert a new variable into the sorting environment
 envInsert :: Sort -> Gamma -> Gamma
 envInsert s = M.insert 0 s . envWeaken
 
@@ -26,6 +26,7 @@ envWeaken = M.mapKeys $ (+) 1
 -- Sorting
 ----------------------------------------------------------------
 
+-- TODO: Replace the rsInfo with rsError again (when the regions are generated)
 -- | Fills in the sorts on the annotation, returns sort of full annotation
 sort :: Annotation -> Sort
 sort = sort' M.empty
@@ -38,14 +39,14 @@ sort = sort' M.empty
           
           -- Lambdas & applications
           sort' gamma (ALam   s a) = 
-              let sortR =  sort' (envInsert s gamma) a
-              in SortLam s $ SortTuple [sortR, SortLam SortMonoRegion SortConstr]
+              let sortR = sort' (envInsert s gamma) a
+              in SortLam s $ SortTuple [sortR, SortLam SortMonoRegion SortConstr] -- TOOD: Not sort mono region?
           sort' gamma (AApl   f x) = 
               let SortLam sortA sortR = sort' gamma f
                   sortX = sort' gamma x 
               in if sortA == sortX 
                  then sortR
-                 else rsError $ "Argument has different sort than is expected.\nArgument sort: " ++ show sortX ++ "\nExpected sort:" ++ show sortA 
+                 else sortR `rsInfo` ("Argument has different sort than is expected.\nArgument sort: " ++ show sortX ++ "\nExpected sort: " ++ show sortA)
               
           -- Tuples & projections
           sort' gamma (ATuple  as) =
@@ -61,12 +62,12 @@ sort = sort' M.empty
                   sortB = sort' gamma b
               in if sortA == sortB && sortA == SortConstr
                  then SortConstr
-                 else rsError $ "Addition of non constraint-sort annotations: \nSort A:" ++ show sortA ++ "\nSort B:" ++ show sortB 
+                 else SortConstr `rsInfo` ("Addition of non constraint-sort annotations: \nSort A:" ++ show sortA ++ "\nSort B:" ++ show sortB) 
           sort' gamma (AJoin  a _) = sort' gamma a
 
           -- Quantification and instantiation
-          sort' gamma (AQuant   a) = sort' (envWeaken gamma) a
-          sort' gamma (AInstn a t) = sortInstantiate t $ sort' gamma a -- TODO: strengthen local indexes
+          sort' gamma (AQuant   a) = SortQuant $ sort' (envWeaken gamma) a
+          sort' gamma (AInstn a t) = sortStrengthen $ sortInstantiate t $ sort' gamma a -- TODO: strengthen local indexes
 
           -- Lattice stuff
           sort' _     (ATop      ) = error "No sort for bottom/top"

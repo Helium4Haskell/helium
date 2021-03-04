@@ -15,6 +15,7 @@ import Helium.CodeGeneration.Iridium.RegionSize.Annotation
 import Helium.CodeGeneration.Iridium.RegionSize.Environments
 import Helium.CodeGeneration.Iridium.RegionSize.Evaluate
 import Helium.CodeGeneration.Iridium.RegionSize.Sort
+import Helium.CodeGeneration.Iridium.RegionSize.Sorting
 import Helium.CodeGeneration.Iridium.RegionSize.Utils
 
 import qualified Control.Exception as Exc
@@ -50,9 +51,23 @@ analyseGroup gEnv (BindingNonRecursive decl@(Declaration methodName _ _ _ method
   if True
   then do
     let mAnn  = analyse gEnv methodName method
+        simpl = eval mAnn
     print mAnn
     putStrLn $ "\n# Simplified: " ++ show methodName
-    print $ eval mAnn
+    print simpl 
+    let mSrt1 = sort mAnn
+        mSrt2 = sort simpl
+    putStrLn $ "\n# Sort: " ++ show methodName
+    print mSrt1 
+    
+    if mSrt1 /= mSrt2
+    then putStrLn $ "Evaluation returned different sort!"
+                  ++ "\n\tPre-eval:  " ++ show mSrt1
+                  ++ "\n\tPost-eval: " ++ show mSrt2 
+    else return ()
+    putStrLn ""
+    putStrLn ""
+
     let gEnv' = insertGlobal gEnv methodName mAnn 
     return (gEnv', [decl{ declarationValue = method }])
   else do

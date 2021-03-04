@@ -50,7 +50,7 @@ pattern AUnit = ATuple []
 instance Show Annotation where
     show = foldAnnAlg showAlg
       where showAlg = AnnAlg {
-        aVar    = \d idx -> annVarName (d - idx - 1), -- TODO: Figure out why vars are off by 1
+        aVar    = \d idx -> annVarName (d - idx - 1),
         aReg    = \_ idx -> "reg_" ++ show idx,
         aLam    = \d s a -> "(λ"++ annVarName d ++":"++ showSort d s ++ ".\n" ++ indent a ++ ")",
         aApl    = \_ a b -> a ++ "< " ++ b ++ " >",
@@ -133,7 +133,7 @@ foldAnnAlgN n alg ann = go n ann
         go d (AConstr  c) = aConstr alg d c
 
 ----------------------------------------------------------------
--- De Bruijn generic re-indexing 
+-- De Bruijn reindexing
 ----------------------------------------------------------------
 
 -- | Re-index the debruin indices of an annotation
@@ -147,51 +147,14 @@ annReIndex f a = foldAnnAlg reIdxAlg a
     aVar    = \d idx -> AVar (f d idx)
   }
 
--- | Re-index the debruin indices of a sort
-sortReIndex :: (Depth -> Int -> Int) -- ^ Reindex function
-            -> Int -- ^ Depth in annotation
-            -> Sort -> Sort
-sortReIndex f annD = foldSortAlgN annD reIdxAlg
-  where reIdxAlg = idSortAlg {
-    sortPolyRegion = \d idx ts -> SortPolyRegion (f (d-100) idx) $ map (typeReIndex f d) ts,
-    sortPolySort   = \d idx ts -> SortPolySort   (f (d-100) idx) $ map (typeReIndex f d) ts 
-  }
-
--- | Re-index the debruijn indices of a cosntraint set 
-constrReIndex :: (Depth -> Int -> Int) -- ^ Reindex function
-              -> Int -- ^ Depth of constraint set in annotation
-              -> Constr -> Constr
-constrReIndex f annD = M.mapKeys keyReIndex
-  where keyReIndex (RegVar idx) = RegVar $ f annD idx
-        keyReIndex (Region idx) = Region idx
-
--- TODO: Check if we can use Ivos implementation of typeReindex
--- | Re-index the debruin indices of a sort
-typeReIndex :: (Depth -> Int -> Int) -- ^ Reindex function
-            -> Depth -> Type -> Type
-typeReIndex f n = foldTypeAlgN n reIdxAlg
-    where reIdxAlg = idTypeAlg {
-        tVar = \d idx -> TVar $ f d idx
-    }
-
-----------------------------------------------------------------
--- De Bruijn reindexing implementations
-----------------------------------------------------------------
-
 -- | Increase all unbound variables by the substitution depth
 annWeaken :: Depth -- ^ Depth of the substitution
           -> Annotation -> Annotation
-annWeaken subD = annReIndex idxReIndex 
-  where idxReIndex d idx = if idx >= d  -- If idx >= d: var points outside of applicated term
-                           then idx + subD -- Reindex
-                           else idx 
+annWeaken subD = annReIndex $ weakenIdx subD 
 
 -- | Decrease all unbound indexes by 1
 annStrengthen :: Annotation -> Annotation
-annStrengthen = annReIndex strgthIdx
-  where strgthIdx d idx = if idx > d 
-                          then idx - 1 
-                          else idx
+annStrengthen = annReIndex strengthenIdx
 
 ----------------------------------------------------------------
 -- Annotation utilities
@@ -208,14 +171,14 @@ regVarSubst ann r c = constrInst inst r c
   where n    = constrIdx (RegVar r) c
         inst = collect n ann
 
--- | Collect all region variables in tuple
+-- | Collect all region variables in an annotation
 collect :: Int -> Annotation -> Constr
 collect 0 _           = M.empty
 collect _ AUnit       = M.empty
 collect n (AVar    a) = M.singleton (RegVar a) n
 collect n (AReg    a) = M.singleton (Region a) n
 collect n (ATuple ps) = foldr constrAdd M.empty $ map (collect n) ps
-collect _ _ = rsError "Collect of non region annotation"
+collect _ _ = rsError "collect: Collect of non region annotation"
 
 -- | Is annotation a constraint set?
 isConstr :: Annotation -> Bool

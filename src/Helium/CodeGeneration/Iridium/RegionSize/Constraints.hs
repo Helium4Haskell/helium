@@ -1,6 +1,7 @@
 module Helium.CodeGeneration.Iridium.RegionSize.Constraints
     (ConstrIdx(..), Constr, 
     constrShow,
+    constrReIndex,
     constrBot, constrJoin, constrAdd, constrIdx, constrRem, constrInst)
 where
 
@@ -29,6 +30,18 @@ constrShow d c = "{" ++ (intercalate ", " $ map (\(x, b) -> constrIdxShow d x ++
 constrIdxShow :: Depth -> ConstrIdx -> String
 constrIdxShow d (RegVar idx) = varNames !! (d - idx) 
 constrIdxShow _ (Region idx) = "rho_" ++ show idx 
+
+----------------------------------------------------------------
+-- De Bruijn reindexing
+----------------------------------------------------------------
+
+-- | Re-index the debruijn indices of a cosntraint set 
+constrReIndex :: (Depth -> Int -> Int) -- ^ Reindex function
+              -> Int -- ^ Depth of constraint set in annotation
+              -> Constr -> Constr
+constrReIndex f annD = M.mapKeys keyReIndex
+  where keyReIndex (RegVar idx) = RegVar $ f annD idx
+        keyReIndex (Region idx) = Region idx
 
 ----------------------------------------------------------------
 -- Constraint utilities
