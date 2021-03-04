@@ -41,7 +41,7 @@ instance Show Type where
 
 -- | Analyse the effect and annotation of a block
 analyse :: GlobalEnv -> Id -> Method -> Annotation
-analyse gEnv _ method@(Method _ args _ _ block blocks) =
+analyse gEnv _ method@(Method _ regArgs args _ _ _ block blocks) =
         -- Create inital lEnv with method arguments
     let argIdxs      = zip args $ map AVar $ reverse [0..(length args-1)]
         initEnv      = foldl (flip $ uncurry insertArgument) emptyMap argIdxs
@@ -83,12 +83,12 @@ localsOfInstr envs@(Envs gEnv lEnv) = go
 localsOfLetAlloc :: Envs -> [Bind] -> Instruction -> LocalEnv
 localsOfLetAlloc envs [] next = localsOfInstr envs next
 -- Thunk binds
-localsOfLetAlloc envs@(Envs gEnv lEnv) (Bind id (BindTargetThunk var) args:bs) next =
+localsOfLetAlloc envs@(Envs gEnv lEnv) (Bind id (BindTargetThunk var _) args _:bs) next =
     let bindAnn = AProj 0 $ callApplyArgs lEnv (lookupVar envs var) args
         lEnv' = insertMap id bindAnn lEnv
     in localsOfLetAlloc (Envs gEnv lEnv') bs next
 -- Function binds
-localsOfLetAlloc (Envs gEnv lEnv) (Bind id (BindTargetFunction gFun) args:bs) next = -- TODO: Check if okay
+localsOfLetAlloc (Envs gEnv lEnv) (Bind id (BindTargetFunction gFun _ _) args _:bs) next = -- TODO: Check if okay
     let gFunAnn = lookupGlobal gEnv $ globalFunctionName gFun
         bindAnn = AProj 0 $ callApplyArgs lEnv gFunAnn args
         lEnv'   = insertMap id bindAnn lEnv
@@ -141,12 +141,12 @@ analyseInstr envs@(Envs _ lEnv) bEnv = go
 -- | Analyse letalloc (TODO: Abstract some stuff (same impl. in localsOf))
 analyseLetAlloc :: Envs -> BlockEnv -> [Bind] -> Instruction ->  (Annotation, Effect)
 analyseLetAlloc envs bEnv [] next = analyseInstr envs bEnv next
-analyseLetAlloc envs@(Envs gEnv lEnv) bEnv (Bind id (BindTargetThunk var) args:bs) next =
+analyseLetAlloc envs@(Envs gEnv lEnv) bEnv (Bind id (BindTargetThunk var _) args _:bs) next =
     let bindEff = AProj 1 $ callApplyArgs lEnv (lookupVar envs var) args
         (rAnn,rEff) = analyseLetAlloc envs bEnv bs next
     in (rAnn, AAdd rEff bindEff)
 -- Function binds
-analyseLetAlloc envs@(Envs gEnv lEnv) bEnv (Bind id (BindTargetFunction gFun) args:bs) next = -- TODO: Check if okay
+analyseLetAlloc envs@(Envs gEnv lEnv) bEnv (Bind id (BindTargetFunction gFun _ _) args _:bs) next = -- TODO: Check if okay
     let gFunAnn = lookupGlobal gEnv $ globalFunctionName gFun
         bindEff = AProj 1 $ callApplyArgs lEnv gFunAnn args
         (rAnn,rEff) = analyseLetAlloc envs bEnv bs next
@@ -177,7 +177,7 @@ analyseExpr envs@(Envs gEnv lEnv) = go
       -- Instantiate types in local
       go (Instantiate local tys)  = (foldl AInstn (lEnv `lookupLocal` local) tys, botEffect) 
       -- Apply all type and variable arguments
-      go (Call gFun args)        = -- TODO, fEff = P -> C
+      go (Call gFun _ args _)     = -- TODO, fEff = P -> C
           let gFunAnn = gEnv `lookupGlobal` globalFunctionName gFun
           in liftTuple $ callApplyArgs lEnv gFunAnn args
 

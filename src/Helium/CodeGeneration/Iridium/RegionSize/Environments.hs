@@ -48,7 +48,7 @@ initialGEnv m = GlobalEnv synonyms emptyMap -- functionEnv
 
     methods :: [(Id, Annotation)]
     methods = method <$> moduleMethods m
-    method (Declaration name _ _ _ (Method tp _ _ _ _ _)) = (name, top tp)
+    method (Declaration name _ _ _ (Method tp _ _ _ _ _ _ _)) = (name, top tp)
 
     -- Top of type
     top :: Type -> Annotation
