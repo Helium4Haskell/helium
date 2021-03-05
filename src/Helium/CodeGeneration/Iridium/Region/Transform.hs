@@ -62,7 +62,7 @@ transformInstruction regions instruction = case instruction of
   Jump block -> Jump block
   Match var target instantiation fields next -> Match var target instantiation fields $ go next
   Case var c -> Case var c
-  Return var -> foldr (\var -> NewRegion var Nothing) (Return var) $ internalRegions regions -- Deallocate all internal regions
+  Return var -> foldr (\var -> ReleaseRegion var) (Return var) $ internalRegions regions -- Deallocate all internal regions
   Unreachable var -> Unreachable var
   where
     go = transformInstruction regions
