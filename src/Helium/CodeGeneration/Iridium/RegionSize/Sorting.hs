@@ -20,7 +20,7 @@ envInsert s = M.insert 0 s . envWeaken
 
 -- | Increase all env indexes by one
 envWeaken :: Gamma -> Gamma
-envWeaken = M.mapKeys ((+) 1) 
+envWeaken = M.mapKeys $ (+) 1 
 
 ----------------------------------------------------------------
 -- Sorting
@@ -40,13 +40,13 @@ sort = sort' M.empty
           -- Lambdas & applications
           sort' gamma (ALam   s a) = 
               let sortR = sort' (envInsert s gamma) a
-              in SortLam s sortR
+              in sortStrengthen $ SortLam s sortR
           sort' gamma (AApl   f x) = 
               let SortLam sortA sortR = sort' gamma f
                   sortX = sort' gamma x 
               in if sortA == sortX 
                  then sortR
-                 else sortR `rsInfo` ("Argument has different sort than is expected.\nArgument sort: " ++ show sortX ++ "\nExpected sort: " ++ show sortA)
+                 else sortR `rsInfo` ("Argument has different sort than is expected.\nArgument sort: " ++ show sortX ++ "\nExpected sort: " ++ show sortA ++ "\n")
               
           -- Tuples & projections
           sort' gamma (ATuple  as) =
