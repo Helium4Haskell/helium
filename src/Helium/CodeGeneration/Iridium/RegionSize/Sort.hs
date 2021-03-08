@@ -2,7 +2,7 @@ module Helium.CodeGeneration.Iridium.RegionSize.Sort
   ( Sort(..), showSort, 
     SortAlg(..), idSortAlg, foldSortAlg, foldSortAlgN, 
     sortAssign, regionAssign, 
-    sortReIndex, sortStrengthen,
+    sortReIndex, sortStrengthen, sortWeaken,
     sortInstantiate, sortSubstitute,
     sortIsRegion, sortIsAnnotation,
   )
@@ -30,7 +30,7 @@ data Sort =
   deriving (Eq, Ord)
 
 instance Show Sort where
-  show s = showSort 1 s
+  show s = showSort 0 s
 
 ----------------------------------------------------------------
 -- Pretty printing
@@ -39,15 +39,14 @@ instance Show Sort where
 showSort :: Depth -> Sort -> String
 showSort n = foldSortAlgN n showAlg
   where showAlg = SortAlg {
-    sortLam        = \_ a b  -> "(" ++ a ++ " ↦  " ++ b ++ ")",
-    sortConstr     = \_      -> "C",
-    sortUnit       = \_      -> "()",
-    sortQuant      = \d s    -> "∀" ++ (typeVarName d) ++ ". " ++ s,
-    sortMonoRegion = \_      -> "P",
+    sortLam        = \_ a b    -> "(" ++ a ++ " ↦  " ++ b ++ ")",
+    sortConstr     = \_        -> "C",
+    sortUnit       = \_        -> "()",
+    sortQuant      = \d s      -> "∀" ++ (typeVarName d) ++ ". " ++ s,
+    sortMonoRegion = \_        -> "P",
     sortPolyRegion = \d idx ts -> "P<" ++ (typeVarName $ d - idx - 1) ++ " [" ++ (intercalate "," $ map (showTypeN d) ts) ++ "]>",
     sortPolySort   = \d idx ts -> "Ψ<" ++ (typeVarName $ d - idx - 1) ++ " [" ++ (intercalate "," $ map (showTypeN d) ts) ++ "]>",
-    sortTuple      = \_ ss   -> "(" ++ (intercalate "," ss) ++ ")"
-
+    sortTuple      = \_ ss     -> "(" ++ (intercalate "," ss) ++ ")"
 }
 
 ----------------------------------------------------------------
@@ -187,13 +186,17 @@ sortReIndex :: (Depth -> Int -> Int) -- ^ Reindex function
             -> Sort -> Sort
 sortReIndex f annD = foldSortAlgN annD reIdxAlg
   where reIdxAlg = idSortAlg {
-    sortPolyRegion = \d idx ts -> SortPolyRegion (f (d-100) idx) $ map (typeReIndex f d) ts,
-    sortPolySort   = \d idx ts -> SortPolySort   (f (d-100) idx) $ map (typeReIndex f d) ts 
+    sortPolyRegion = \d idx ts -> SortPolyRegion (f d idx) $ map (typeReindex $ f d) ts,
+    sortPolySort   = \d idx ts -> SortPolySort   (f d idx) $ map (typeReindex $ f d) ts 
   }
 
 -- | Decrease all unbound indexes by 1
 sortStrengthen :: Sort -> Sort
 sortStrengthen = sortReIndex strengthenIdx 0
+
+-- | Increase all unbound indexes by n
+sortWeaken :: Int -> Sort -> Sort
+sortWeaken n = sortReIndex (weakenIdx n) 0
 
 ----------------------------------------------------------------
 -- Sort utilities

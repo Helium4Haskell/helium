@@ -1,7 +1,7 @@
 module Helium.CodeGeneration.Iridium.RegionSize.Type
     (showTypeN, 
     TypeAlg(..), idTypeAlg, foldTypeAlg, foldTypeAlgN,
-    typeReIndex, typeInsantiate
+    typeInsantiate
     ) where
 
 import Helium.CodeGeneration.Iridium.RegionSize.Utils
@@ -57,18 +57,6 @@ foldTypeAlgN n alg = go n
           go d (TVar    x    ) =  tVar    alg d x
           go d (TCon    tc   ) =  tCon    alg d tc
 
-----------------------------------------------------------------
--- De Bruijn reindexing
-----------------------------------------------------------------
-
--- TODO: Check if we can use Ivos implementation of typeReindex
--- | Re-index the debruin indices of a sort
-typeReIndex :: (Depth -> Int -> Int) -- ^ Reindex function
-            -> Depth -> Type -> Type
-typeReIndex f n = foldTypeAlgN n reIdxAlg
-    where reIdxAlg = idTypeAlg {
-        tVar = \d idx -> TVar $ f d idx
-    }
 
 ----------------------------------------------------------------
 -- Type substitution

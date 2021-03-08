@@ -68,7 +68,7 @@ analyseGroup gEnv (BindingNonRecursive decl@(Declaration methodName _ _ _ method
     putStrLn ""
     putStrLn ""
 
-    let gEnv' = insertGlobal gEnv methodName mAnn 
+    let gEnv' = insertGlobal gEnv methodName simpl 
     return (gEnv', [decl{ declarationValue = method }])
   else do
     return (gEnv, [decl{ declarationValue = method }])

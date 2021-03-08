@@ -20,7 +20,7 @@ envInsert s = M.insert 0 s . envWeaken
 
 -- | Increase all env indexes by one
 envWeaken :: Gamma -> Gamma
-envWeaken = M.mapKeys $ (+) 1
+envWeaken = M.mapKeys ((+) 1) 
 
 ----------------------------------------------------------------
 -- Sorting
@@ -40,7 +40,7 @@ sort = sort' M.empty
           -- Lambdas & applications
           sort' gamma (ALam   s a) = 
               let sortR = sort' (envInsert s gamma) a
-              in SortLam s $ SortTuple [sortR, SortLam SortMonoRegion SortConstr] -- TOOD: Not sort mono region?
+              in SortLam s sortR
           sort' gamma (AApl   f x) = 
               let SortLam sortA sortR = sort' gamma f
                   sortX = sort' gamma x 
@@ -67,7 +67,7 @@ sort = sort' M.empty
 
           -- Quantification and instantiation
           sort' gamma (AQuant   a) = SortQuant $ sort' (envWeaken gamma) a
-          sort' gamma (AInstn a t) = sortStrengthen $ sortInstantiate t $ sort' gamma a -- TODO: strengthen local indexes
+          sort' gamma (AInstn a t) = sortStrengthen . sortInstantiate t $ sort' gamma a 
 
           -- Lattice stuff
           sort' _     (ATop      ) = error "No sort for bottom/top"
