@@ -134,8 +134,8 @@ funSort t1 t2 = SortLam (sortAssign t1) $ SortTuple [sortAssign t2,
 
 -- | Region assignment based on type
 regionAssign :: Type -> Sort
-regionAssign ty | typeIsStrict ty = SortTuple [SortMonoRegion,                 regionAssign' [] ty]
-                | otherwise       = SortTuple [SortMonoRegion, SortMonoRegion, regionAssign' [] ty]
+regionAssign ty | typeIsStrict ty = SortTuple [SortMonoRegion                ] --  regionAssign' [] ty]
+                | otherwise       = SortTuple [SortMonoRegion, SortMonoRegion] --, regionAssign' [] ty]
 
 -- | Region assingment with type arguments
 regionAssign' :: [Type] -- ^ Type arguments

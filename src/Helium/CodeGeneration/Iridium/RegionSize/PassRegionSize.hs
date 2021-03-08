@@ -38,7 +38,6 @@ passRegionSize supply m = do
     let groups = map BindingNonRecursive $ moduleMethods m
     (_, methods) <- mapAccumLM analyseGroup gEnv groups
     return m{moduleMethods = concat methods}
-    error "Don!"
 
 
 {- Analyses a binding group of a single non-recursive function

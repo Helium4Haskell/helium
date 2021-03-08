@@ -31,7 +31,8 @@ data Annotation =
     | AConstr Constr                -- ^ Constraint set
     | ATuple  [Annotation]          -- ^ Unit tuple
     | AProj   Int        Annotation -- ^ Projection
-    | AAdd    Annotation Annotation -- ^ Annotation addition
+    | AAdd    Annotation Annotation -- ^ Constraint set addition
+    | AMinus  Annotation RegionVar  -- ^ Constraint set minus
     | AJoin   Annotation Annotation -- ^ Annotation join
     | AQuant  Annotation
     | AInstn  Annotation Type
@@ -51,13 +52,14 @@ instance Show Annotation where
     show = foldAnnAlg showAlg
       where showAlg = AnnAlg {
         aVar    = \d idx -> annVarName (d - idx - 1),
-        aReg    = \_ idx -> "reg_" ++ show idx,
+        aReg    = \_ idx -> show idx,
         aLam    = \d s a -> "(λ"++ annVarName d ++":"++ showSort d s ++ ".\n" ++ indent a ++ ")",
         aApl    = \_ a b -> a ++ "< " ++ b ++ " >",
         aUnit   = \_     -> "()",
         aTuple  = \_ as  -> "(" ++ intercalate "\n," as ++ ")",
         aProj   = \_ i a -> "π_" ++ show i ++ "[" ++ a ++ "]",
         aAdd    = \_ a b -> "(" ++ a ++ " ⊕  " ++ b ++ ")",
+        aMinus  = \_ a r -> "(" ++ a ++ " \\  " ++ show r ++ ")",
         aJoin   = \_ a b -> "(" ++ a ++ " ⊔  " ++ b ++ ")",
         aQuant  = \d a   -> "(∀ " ++ typeVarName d ++ "." ++ a ++ ")",
         aInstn  = \d a t -> a ++ " {" ++ showTypeN d t ++ "}",
@@ -84,6 +86,7 @@ data AnnAlg a =
     aTuple  :: Depth -> [a] -> a,
     aProj   :: Depth -> Int -> a -> a,
     aAdd    :: Depth -> a -> a -> a,
+    aMinus  :: Depth -> a -> RegionVar -> a,
     aJoin   :: Depth -> a -> a -> a,
     aQuant  :: Depth -> a -> a,
     aInstn  :: Depth -> a -> Type -> a,
@@ -103,6 +106,7 @@ idAnnAlg = AnnAlg {
   aTuple  = \_ -> ATuple ,
   aProj   = \_ -> AProj  ,
   aAdd    = \_ -> AAdd   ,
+  aMinus  = \_ -> AMinus ,
   aJoin   = \_ -> AJoin  ,
   aQuant  = \_ -> AQuant ,
   aInstn  = \_ -> AInstn ,
@@ -124,6 +128,7 @@ foldAnnAlgN n alg ann = go n ann
         go d (ATuple as ) = aTuple  alg d (map (go d) as) 
         go d (AProj  i a) = aProj   alg d i (go d a) 
         go d (AAdd   a b) = aAdd    alg d (go d a) (go d b)
+        go d (AMinus a r) = aMinus  alg d (go d a) r
         go d (AJoin  a b) = aJoin   alg d (go d a) (go d b)
         go d (AQuant a  ) = aQuant  alg d $ go (d + 1) a 
         go d (AInstn a t) = aInstn  alg d (go d a) t
