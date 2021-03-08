@@ -43,9 +43,9 @@ data MethodEnv = MethodEnv
   , methodEnvAdditionalFor :: IdMap [RegionVar]
   }
 
-generate :: GlobalEnv -> Declaration Method -> (RegionSort, Annotation)
+generate :: GlobalEnv -> Declaration Method -> (MethodEnv, Annotation)
 generate (GlobalEnv typeEnv dataTypeEnv globals) (Declaration methodName _ _ _ method@(Method fnType _ arguments _ _ _ _ _))
-  = (methodEnvAdditionalRegionSort methodEnv, fixpoint)
+  = (methodEnv, fixpoint)
   where
     (applyLocal, methodEnv) = assign genv methodName method
 
@@ -350,6 +350,8 @@ gatherInstruction genv env instruction = case instruction of
       in
         effect aEffect ++ gatherLocal idx aValue ++ go next
   LetAlloc binds next -> (binds >>= gatherBind genv env) ++ go next
+  NewRegion _ _ _ -> error "Helium.CodeGeneration.Iridium.Region.Generate: expected a program without region annotations"
+  ReleaseRegion _ _ -> error "Helium.CodeGeneration.Iridium.Region.Generate: expected a program without region annotations"
   Jump _ -> []
   Match var target instantiation fields next -> gatherMatch genv env var target instantiation fields ++ go next
   Case _ _ -> []

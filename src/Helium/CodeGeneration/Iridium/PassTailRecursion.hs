@@ -23,6 +23,8 @@ findTailRecursion (Context fnName params blockName) (Let var (Call (GlobalFuncti
   | fnName == fn && var == ret && typeArgumentsPreserved (length (lefts params) - 1) params args = Just $ TailRecursion blockName args
 findTailRecursion context (Let _ _ next) = findTailRecursion context next
 findTailRecursion context (LetAlloc _ next) = findTailRecursion context next
+findTailRecursion context (NewRegion _ _ next) = findTailRecursion context next
+findTailRecursion context (ReleaseRegion _ next) = findTailRecursion context next
 findTailRecursion context (Match _ _ _ _ next) = findTailRecursion context next
 findTailRecursion _ _ = Nothing
 
@@ -84,5 +86,7 @@ transformInstruction :: Id -> Instruction -> Instruction
 transformInstruction entryName (Let _ Call{} (Return _)) = Jump entryName
 transformInstruction entryName (Let var expr next) = Let var expr $ transformInstruction entryName next
 transformInstruction entryName (LetAlloc binds next) = LetAlloc binds $ transformInstruction entryName next
+transformInstruction entryName (NewRegion r s next) = NewRegion r s $ transformInstruction entryName next
+transformInstruction entryName (ReleaseRegion r next) = ReleaseRegion r $ transformInstruction entryName next
 transformInstruction entryName (Match var target instantiation fields next) = Match var target instantiation fields $ transformInstruction entryName next
 transformInstruction entryName _ = error "PassTailRecursion: Expected block to be tail recursive"

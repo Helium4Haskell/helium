@@ -44,6 +44,8 @@ methodBindingGroups = bindingGroups methodDependencies
     instructionDependencies :: Instruction -> [Id]
     instructionDependencies (Let _ expr next) = expressionDependencies expr ++ instructionDependencies next
     instructionDependencies (LetAlloc binds next) = (binds >>= bindDependencies) ++ instructionDependencies next
+    instructionDependencies (NewRegion _ _ next) = instructionDependencies next
+    instructionDependencies (ReleaseRegion _ next) = instructionDependencies next
     instructionDependencies (Jump _) = []
     instructionDependencies (Match _ _ _ _ next) = instructionDependencies next
     instructionDependencies (Case _ _) = []
