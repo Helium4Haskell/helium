@@ -74,14 +74,18 @@ localsOfBlock envs (Block _ instr) = localsOfInstr envs instr
 
 -- | Get the annotation of local variabvles from an instruction
 localsOfInstr :: Envs -> Instruction -> LocalEnv
-localsOfInstr envs@(Envs gEnv lEnv) = go
-    where go (Let name expr next ) = let (varAnn, _) = analyseExpr envs expr
-                                         lEnv'       = insertMap name varAnn lEnv
-                                     in localsOfInstr (Envs gEnv lEnv') next
-          -- TODO: Mutrec
-          go (LetAlloc binds next) = localsOfLetAlloc envs binds next
-          go (Match local target tys ids next) = localsOfMatch envs local target tys ids next
-          go _ = lEnv
+localsOfInstr envs@(Envs gEnv lEnv) instr = 
+    case instr of
+        Let name expr next   -> let (varAnn, _) = analyseExpr envs expr
+                                    lEnv'       = insertMap name varAnn lEnv
+                                in localsOfInstr (Envs gEnv lEnv') next
+        --TODO: Mutrec
+        LetAlloc binds next  -> localsOfLetAlloc envs binds next
+        Match local target tys ids next -> localsOfMatch envs local target tys ids next
+        NewRegion _ _   next -> localsOfInstr envs next
+        ReleaseRegion _ next -> localsOfInstr envs next
+        -- Other instructions are 'terminal nodes' that do not extend lEnv
+        _ -> lEnv
 
 -- TODO: Still lots and lots of duplicated code here between localsOf and analyse
 localsOfLetAlloc :: Envs -> [Bind] -> Instruction -> LocalEnv
@@ -125,22 +129,26 @@ blockAccum envs bEnv (Block name instr) = let bEff  = analyseInstr envs bEnv ins
 -- | Analyse an instruction
 analyseInstr :: Envs -> BlockEnv -> Instruction -> (Annotation, Effect)
 analyseInstr envs@(Envs _ lEnv) bEnv = go
-   where go (Let _ expr next)     =  
+   where go (Let _ expr      next) =  
            let (_     , varEff) = analyseExpr envs expr
                (nxtAnn, nxtEff) = go next
            in (nxtAnn, AAdd varEff nxtEff)
          -- TODO: Allocations with region variables
-         go (LetAlloc bnds next)  = analyseLetAlloc envs bEnv bnds next 
+         go (LetAlloc bnds   next) = analyseLetAlloc envs bEnv bnds next 
+         -- TODO: Remove region from effect
+         go (NewRegion _ _   next) = analyseInstr envs bEnv next
+         -- TODO: Check if we can ignore a release
+         go (ReleaseRegion _ next) = analyseInstr envs bEnv next
          -- Lookup the annotation and effect from block
-         go (Jump block)          = lookupBlock bEnv block 
+         go (Jump block)           = lookupBlock bEnv block 
          -- Join the effects of all the blocks
-         go (Case _     cas)      = joinBlocks bEnv $ caseBlocks cas
+         go (Case _     cas)       = joinBlocks bEnv $ caseBlocks cas
          -- Lookup the variable annotation
-         go (Return local)        = (lookupLocal lEnv local, botEffect)
+         go (Return local)         = (lookupLocal lEnv local, botEffect)
          -- No effect
-         go (Unreachable _)       = botAnnEff
+         go (Unreachable _)        = botAnnEff
          -- Matching only reads, only effect of sub instruction
-         go (Match _ _ _ _ next)  = go next
+         go (Match _ _ _ _ next)   = go next
 
 -- | Analyse letalloc (TODO: Abstract some stuff (same impl. in localsOf))
 analyseLetAlloc :: Envs -> BlockEnv -> [Bind] -> Instruction ->  (Annotation, Effect)

@@ -570,7 +570,7 @@ afixEscape' env arity sort' regionSort f = -- traceShow ("AFIXESCAPE' ", AFixEsc
       --   = (doesEscape, substituteRegionVar, AFix (identity sort') sort' $ ALam s rs lc body')
       | otherwise = escapes' $ step (ATop sort')
     iterate i current
-      | traceShow ("iterate", i) current == next = (doesEscape, substituteRegionVar,  next)
+      | current == next = (doesEscape, substituteRegionVar,  next)
       | otherwise = iterate (i+1) next
       where
         (doesEscape, substituteRegionVar, next) = escapes' $ step current

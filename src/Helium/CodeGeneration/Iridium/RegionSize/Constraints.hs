@@ -5,6 +5,8 @@ module Helium.CodeGeneration.Iridium.RegionSize.Constraints
     constrBot, constrJoin, constrAdd, constrIdx, constrRem, constrInst)
 where
 
+import Helium.CodeGeneration.Iridium.Region.RegionVar
+
 import Helium.CodeGeneration.Iridium.RegionSize.Utils
 
 import qualified Data.Map as M
@@ -15,8 +17,8 @@ import Data.List
 ----------------------------------------------------------------
 
 type Depth = Int
-data ConstrIdx = RegVar Int
-               | Region Int
+data ConstrIdx = AnnVar Int
+               | Region RegionVar
     deriving (Eq, Ord)
 type Constr = M.Map ConstrIdx Int
 
@@ -28,8 +30,8 @@ constrShow :: Depth -> Constr -> String
 constrShow d c = "{" ++ (intercalate ", " $ map (\(x, b) -> constrIdxShow d x ++ " ↦  " ++ show b) $ M.toList c) ++ "}"
 
 constrIdxShow :: Depth -> ConstrIdx -> String
-constrIdxShow d (RegVar idx) = varNames !! (d - idx) 
-constrIdxShow _ (Region idx) = "rho_" ++ show idx 
+constrIdxShow d (AnnVar idx) = varNames !! (d - idx) 
+constrIdxShow _ (Region idx) = "rho_" ++ (show $ regionVarIndex idx) 
 
 ----------------------------------------------------------------
 -- De Bruijn reindexing
@@ -40,7 +42,7 @@ constrReIndex :: (Depth -> Int -> Int) -- ^ Reindex function
               -> Int -- ^ Depth of constraint set in annotation
               -> Constr -> Constr
 constrReIndex f annD = M.mapKeys keyReIndex
-  where keyReIndex (RegVar idx) = RegVar $ f annD idx
+  where keyReIndex (AnnVar idx) = AnnVar $ f annD idx
         keyReIndex (Region idx) = Region idx
 
 ----------------------------------------------------------------
@@ -69,6 +71,6 @@ constrRem = M.delete
 
 -- | Instantiate a region variable in the constraint set
 constrInst :: Constr -- ^ The instantiation
-           -> Int    -- ^ The region variable to instantiate 
+           -> Int    -- ^ The annotation variable to instantiate 
            -> Constr -> Constr
-constrInst inst r c = constrAdd inst $ constrRem (RegVar r) c
+constrInst inst r c = constrAdd inst $ constrRem (AnnVar r) c

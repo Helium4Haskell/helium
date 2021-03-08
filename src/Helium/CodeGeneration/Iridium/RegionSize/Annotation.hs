@@ -25,7 +25,7 @@ import Lvm.Core.Type
 
 data Annotation = 
       AVar    Int                   -- ^ De Bruijn i7ndex Variable
-    | AReg    Int                   -- ^ Region
+    | AReg    RegionVar             -- ^ Region
     | ALam    Sort       Annotation -- ^ Annotation lambda
     | AApl    Annotation Annotation -- ^ Application
     | AConstr Constr                -- ^ Constraint set
@@ -76,7 +76,7 @@ type Depth = Int
 data AnnAlg a = 
   AnnAlg {
     aVar    :: Depth -> Int -> a,         
-    aReg    :: Depth -> Int -> a,         
+    aReg    :: Depth -> RegionVar -> a,         
     aLam    :: Depth -> Sort -> a -> a,
     aApl    :: Depth -> a -> a -> a,
     aConstr :: Depth -> Constr -> a,    
@@ -162,20 +162,20 @@ annStrengthen = annReIndex strengthenIdx
 
 -- | Convert RegionVars to an annotions
 regionVarsToAnn :: RegionVars -> Annotation
-regionVarsToAnn (RegionVarsSingle (RegionVar r)) = AReg r
+regionVarsToAnn (RegionVarsSingle r) = AReg r
 regionVarsToAnn (RegionVarsTuple rs) = ATuple $ map regionVarsToAnn rs
 
 -- | Initialize region variables in a constraint set
 regVarSubst :: Annotation -> Int -> Constr -> Constr 
 regVarSubst ann r c = constrInst inst r c
-  where n    = constrIdx (RegVar r) c
+  where n    = constrIdx (AnnVar r) c
         inst = collect n ann
 
 -- | Collect all region variables in an annotation
 collect :: Int -> Annotation -> Constr
 collect 0 _           = M.empty
 collect _ AUnit       = M.empty
-collect n (AVar    a) = M.singleton (RegVar a) n
+collect n (AVar    a) = M.singleton (AnnVar a) n
 collect n (AReg    a) = M.singleton (Region a) n
 collect n (ATuple ps) = foldr constrAdd M.empty $ map (collect n) ps
 collect _ _ = rsError "collect: Collect of non region annotation"
