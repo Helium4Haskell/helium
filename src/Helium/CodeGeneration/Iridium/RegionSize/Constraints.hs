@@ -2,7 +2,7 @@ module Helium.CodeGeneration.Iridium.RegionSize.Constraints
     (ConstrIdx(..), Constr, 
     constrShow,
     constrReIndex,
-    constrBot, constrJoin, constrAdd, constrIdx, constrRem, constrInst)
+    constrBot, constrJoin, constrAdd, constrIdx, constrRem, constrInst, constrOne)
 where
 
 import Helium.CodeGeneration.Iridium.Region.RegionVar
@@ -17,8 +17,10 @@ import Data.List
 ----------------------------------------------------------------
 
 type Depth = Int
-data ConstrIdx = AnnVar Int
-               | Region RegionVar
+type Index = Int
+data ConstrIdx = AnnVar Index         -- ^ Annotation variable
+               | CnProj Int ConstrIdx -- ^ Project on region tuple
+               | Region RegionVar     -- ^ Region variable 
     deriving (Eq, Ord)
 type Constr = M.Map ConstrIdx Int
 
@@ -30,8 +32,9 @@ constrShow :: Depth -> Constr -> String
 constrShow d c = "{" ++ (intercalate ", " $ map (\(x, b) -> constrIdxShow d x ++ " ↦  " ++ show b) $ M.toList c) ++ "}"
 
 constrIdxShow :: Depth -> ConstrIdx -> String
-constrIdxShow d (AnnVar idx) = varNames !! (d - idx) 
-constrIdxShow _ (Region idx) = "rho_" ++ (show $ regionVarIndex idx) 
+constrIdxShow d (AnnVar idx) = annVarName (d - idx) 
+constrIdxShow d (CnProj i c) = constrIdxShow d c ++ "." ++ show i 
+constrIdxShow _ (Region var) = show var 
 
 ----------------------------------------------------------------
 -- De Bruijn reindexing
@@ -43,7 +46,8 @@ constrReIndex :: (Depth -> Int -> Int) -- ^ Reindex function
               -> Constr -> Constr
 constrReIndex f annD = M.mapKeys keyReIndex
   where keyReIndex (AnnVar idx) = AnnVar $ f annD idx
-        keyReIndex (Region idx) = Region idx
+        keyReIndex (CnProj i c) = CnProj i $ keyReIndex c 
+        keyReIndex (Region var) = Region var
 
 ----------------------------------------------------------------
 -- Constraint utilities
@@ -74,3 +78,7 @@ constrInst :: Constr -- ^ The instantiation
            -> Int    -- ^ The annotation variable to instantiate 
            -> Constr -> Constr
 constrInst inst r c = constrAdd inst $ constrRem (AnnVar r) c
+
+-- | Create a constraint set for a single variable
+constrOne :: ConstrIdx -> Constr
+constrOne i = M.singleton i 1

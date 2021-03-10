@@ -23,11 +23,11 @@ import qualified Control.Exception as Exc
 -- | Infer the size of regions
 passRegionSize :: NameSupply -> Module -> IO Module
 passRegionSize supply m = do 
-  if (stringFromId (moduleName m) == "LvmLang"        && True)
-    || (stringFromId (moduleName m) == "HeliumLang"   && True) 
-    || (stringFromId (moduleName m) == "PreludePrim"  && True)
-    || (stringFromId (moduleName m) == "Prelude"      && True)
-    || (stringFromId (moduleName m) == "LvmException" && True)
+  if (stringFromId (moduleName m) == "LvmLang"        && False)
+    || (stringFromId (moduleName m) == "HeliumLang"   && False) 
+    || (stringFromId (moduleName m) == "PreludePrim"  && False)
+    || (stringFromId (moduleName m) == "Prelude"      && False)
+    || (stringFromId (moduleName m) == "LvmException" && False)
   then return m
   else do
     print "=================="
@@ -54,18 +54,18 @@ analyseGroup gEnv (BindingNonRecursive decl@(Declaration methodName _ _ _ method
     print mAnn
     putStrLn $ "\n# Simplified: " ++ show methodName
     print simpl 
-    let mSrt1 = sort mAnn
-        mSrt2 = sort simpl
-    putStrLn $ "\n# Sort: " ++ show methodName
-    print mSrt1 
+    -- let mSrt1 = sort mAnn
+    --     mSrt2 = sort simpl
+    -- putStrLn $ "\n# Sort: " ++ show methodName
+    -- print mSrt1 
     
-    if mSrt1 /= mSrt2
-    then putStrLn $ "Evaluation returned different sort!"
-                  ++ "\n\tPre-eval:  " ++ show mSrt1
-                  ++ "\n\tPost-eval: " ++ show mSrt2 
-    else return ()
-    putStrLn ""
-    putStrLn ""
+    -- if mSrt1 /= mSrt2
+    -- then putStrLn $ "Evaluation returned different sort!"
+    --               ++ "\n\tPre-eval:  " ++ show mSrt1
+    --               ++ "\n\tPost-eval: " ++ show mSrt2 
+    -- else return ()
+    -- putStrLn ""
+    -- putStrLn ""
 
     let gEnv' = insertGlobal gEnv methodName simpl 
     return (gEnv', [decl{ declarationValue = method }])

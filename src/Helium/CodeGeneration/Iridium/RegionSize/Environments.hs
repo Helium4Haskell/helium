@@ -1,7 +1,7 @@
 module Helium.CodeGeneration.Iridium.RegionSize.Environments
 where
 
-import Control.Monad.Reader
+import qualified Data.Map as M
 
 import Lvm.Common.Id
 import Lvm.Common.IdMap
@@ -18,13 +18,12 @@ import Helium.CodeGeneration.Iridium.RegionSize.Utils
 ----------------------------------------------------------------
 
 data GlobalEnv = GlobalEnv !(IdMap Type) !(IdMap (Annotation))
+type RegionEnv = M.Map RegionVar ConstrIdx
 type BlockEnv  = IdMap (Annotation, Effect)
 type LocalEnv  = IdMap Annotation
-data Envs = Envs GlobalEnv LocalEnv
+data Envs = Envs GlobalEnv RegionEnv LocalEnv
 -- | The effect is an annotation, but always of sort C
 type Effect = Annotation
-
-type BlockMonad = Reader BlockEnv
 
 ----------------------------------------------------------------
 -- Global environment
@@ -60,27 +59,40 @@ initialGEnv m = GlobalEnv synonyms emptyMap -- functionEnv
 
 -- | Look up a local variable in the local environment
 lookupGlobal :: GlobalEnv -> Id -> Annotation
-lookupGlobal (GlobalEnv _ vars) = flip findMap vars 
+lookupGlobal (GlobalEnv _ vars) id = 
+  case lookupMap id vars of
+    Nothing -> ATop -- TODO: Remove this
+    Just a  -> a 
 
 -- | Insert a function into the global environment
 insertGlobal :: GlobalEnv -> Id -> Annotation -> GlobalEnv
 insertGlobal (GlobalEnv syns fs) id ann =
   case lookupMap id fs of
     Nothing -> GlobalEnv syns $ insertMap id ann fs 
-    Just a  -> GlobalEnv syns $ insertMap id a $ deleteMap id fs 
+    Just a  -> GlobalEnv syns $ insertMap id (AJoin a ann) $ deleteMap id fs 
 
 
 -- | Look up a local variable in the local environment
 lookupBlock :: BlockEnv -> BlockName -> (Annotation, Effect)
-lookupBlock = flip findMap
+lookupBlock bEnv id = 
+  case lookupMap id bEnv of
+    Nothing -> (ATop, ATop) -- TODO: Remove this
+    Just a  -> a 
 
 -- | Look up a local variable in the local environment
 lookupLocal :: LocalEnv -> Local -> Annotation
 lookupLocal lEnv local = case lookupMap (localName local) lEnv of
-                            Nothing -> rsError $ "lookupLocal - ID not in map: " ++ (stringFromId $ localName local) 
+                            Nothing -> ATop --rsError $ "lookupLocal - ID not in map: " ++ (stringFromId $ localName local) 
                             Just a  -> a
 
 -- | Lookup a global or local variable
 lookupVar :: Envs -> Variable -> Annotation
-lookupVar (Envs _ lEnv) (VarLocal local) = lookupLocal  lEnv local
-lookupVar (Envs gEnv _) global           = lookupGlobal gEnv $ variableName global
+lookupVar (Envs _ _ lEnv) (VarLocal local) = lookupLocal  lEnv local
+lookupVar (Envs gEnv _ _) global           = lookupGlobal gEnv $ variableName global
+
+
+-- | Lookup a region in the region environment, retuns the region if not in env
+lookupReg :: RegionEnv -> RegionVar -> ConstrIdx
+lookupReg rEnv r = case M.lookup r rEnv of
+                      Nothing -> Region r
+                      Just ci -> ci

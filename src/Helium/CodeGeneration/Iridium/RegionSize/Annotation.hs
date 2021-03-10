@@ -4,7 +4,7 @@ module Helium.CodeGeneration.Iridium.RegionSize.Annotation
   ( Annotation(..), pattern AUnit,
     AnnAlg(..), foldAnnAlg, foldAnnAlgN, idAnnAlg,
     annWeaken, annStrengthen,
-    regionVarsToAnn, regVarSubst,
+    regVarSubst,
     isConstr
   ) where
 
@@ -56,10 +56,10 @@ instance Show Annotation where
         aLam    = \d s a -> "(λ"++ annVarName d ++":"++ showSort d s ++ ".\n" ++ indent a ++ ")",
         aApl    = \_ a b -> a ++ "< " ++ b ++ " >",
         aUnit   = \_     -> "()",
-        aTuple  = \_ as  -> "(" ++ intercalate "\n," as ++ ")",
+        aTuple  = \_ as  -> "(" ++ intercalate (if strIsReg (as !! 0) then "," else "\n,") as ++ ")",
         aProj   = \_ i a -> "π_" ++ show i ++ "[" ++ a ++ "]",
         aAdd    = \_ a b -> "(" ++ a ++ " ⊕  " ++ b ++ ")",
-        aMinus  = \_ a r -> "(" ++ a ++ " \\  " ++ show r ++ ")",
+        aMinus  = \_ a r -> "(" ++ a ++ " \\ " ++ show r ++ ")",
         aJoin   = \_ a b -> "(" ++ a ++ " ⊔  " ++ b ++ ")",
         aQuant  = \d a   -> "(∀ " ++ typeVarName d ++ "." ++ a ++ ")",
         aInstn  = \d a t -> a ++ " {" ++ showTypeN d t ++ "}",
@@ -165,16 +165,11 @@ annStrengthen = annReIndex strengthenIdx
 -- Annotation utilities
 ----------------------------------------------------------------
 
--- | Convert RegionVars to an annotions
-regionVarsToAnn :: RegionVars -> Annotation
-regionVarsToAnn (RegionVarsSingle r) = AReg r
-regionVarsToAnn (RegionVarsTuple rs) = ATuple $ map regionVarsToAnn rs
-
 -- | Initialize region variables in a constraint set
 regVarSubst :: Annotation -> Int -> Constr -> Constr 
-regVarSubst ann r c = constrInst inst r c
-  where n    = constrIdx (AnnVar r) c
-        inst = collect n ann
+regVarSubst ann d c = constrInst inst d c
+  where n    = constrIdx (AnnVar d) c
+        inst = constrReIndex (weakenIdx d) 0 $ collect n ann
 
 -- | Collect all region variables in an annotation
 collect :: Int -> Annotation -> Constr
@@ -189,3 +184,11 @@ collect _ _ = rsError "collect: Collect of non region annotation"
 isConstr :: Annotation -> Bool
 isConstr (AConstr _) = True
 isConstr _           = False
+
+-- | Check if an annotation is a region
+annIsRegion :: Annotation -> Bool
+annIsRegion (AReg _)     = True
+annIsRegion AUnit        = False
+annIsRegion (ATuple ts)  = annIsRegion $ ts !! 0
+annIsRegion (AProj _ ts) = annIsRegion ts
+annIsRegion _            = False

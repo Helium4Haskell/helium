@@ -1,6 +1,6 @@
 module Helium.CodeGeneration.Iridium.RegionSize.Utils
     (weakenIdx, strengthenIdx,
-    indent,
+    indent, strIsReg,
     varNames, typeVarName, annVarName,
     rsError, rsInfo
     ) where
@@ -30,6 +30,10 @@ strengthenIdx d idx = if idx > d
 ----------------------------------------------------------------
 -- Indenting
 ----------------------------------------------------------------
+
+-- | Check if a string is a region
+strIsReg :: String -> Bool
+strIsReg (c:_) = c == 'ρ'
 
 -- | Indent a newline separated string
 indent :: String -> String

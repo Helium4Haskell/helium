@@ -54,8 +54,10 @@ sort = sort' M.empty
               in SortTuple sortAS
           sort' gamma (AProj  i t) = 
               let SortTuple ss = sort' gamma t
-              in ss !! i
-              
+              in if i < length ss
+                 then ss !! i
+                 else rsError "Projection out of bounds"   
+
           -- Operators
           sort' gamma (AAdd   a b) = 
               let sortA = sort' gamma a
@@ -63,6 +65,12 @@ sort = sort' M.empty
               in if sortA == sortB && sortA == SortConstr
                  then SortConstr
                  else SortConstr `rsInfo` ("Addition of non constraint-sort annotations: \nSort A:" ++ show sortA ++ "\nSort B:" ++ show sortB) 
+          sort' gamma (AMinus a _) = 
+              let sortA = sort' gamma a
+              in if sortA == SortConstr
+                 then SortConstr
+                 else SortConstr `rsInfo` ("Setminus on non constraint-sort annotation: \nSort:" ++ show sortA) 
+
           sort' gamma (AJoin  a _) = sort' gamma a
 
           -- Quantification and instantiation

@@ -8,6 +8,8 @@ module Helium.CodeGeneration.Iridium.RegionSize.Sort
   )
 where
 
+import Helium.CodeGeneration.Iridium.Region.RegionVar
+
 import Helium.CodeGeneration.Iridium.RegionSize.Utils
 import Helium.CodeGeneration.Iridium.RegionSize.Type
 
@@ -118,8 +120,8 @@ sortAssign' ts      (TCon (TConTuple n)) | length ts == n = SortTuple $ map sort
                                          | otherwise      = rsError $ "sortAssign: Tuple with incorrect number of arguements: expected " ++ show n ++ " but got " ++ (show $ length ts) ++ "\n" ++ (intercalate ", " $ map (showTypeN 0) ts)
 sortAssign' []      (TCon (TConDataType _))            = SortUnit
 sortAssign' [a]     (TCon (TConTypeClassDictionary _)) = sortAssign a -- TODO: Do not ignore typeclasses? Might just be okay though
--- Data types
-sortAssign' _       (TCon (TConDataType _)) = rsError "sortAssign: Datatypes not yet supported"
+-- TODO: Data types
+sortAssign' _       (TCon (TConDataType _)) = SortUnit --rsError "sortAssign: Datatypes not yet supported"
 -- Not implemented cases 
 sortAssign' _ t = rsError $ "sortAssign: No pattern match: " ++ showTypeN 0 t
 
@@ -149,6 +151,7 @@ regionAssign' [_,_] (TCon TConFun      ) = SortUnit
 regionAssign' ts    (TCon (TConTuple n)) | length ts == n = SortTuple $ map regionAssign ts
                                          | otherwise      = rsError $ "regionAssign: Tuple with incorrect number of arguements: expected " ++ show n ++ " but got " ++ (show $ length ts) ++ "\n" ++ (intercalate ", " $ map (showTypeN 0) ts)
 regionAssign' [] (TCon (TConDataType _)) = SortUnit
+-- TODO: Data types
 regionAssign' _  (TCon (TConDataType _)) = rsError "regionAssign: Datatypes not yet supported"
 -- Not implemented cases
 regionAssign' ts t = rsError $ "regionAssign: No pattern match: " ++ showTypeN 0 t 
