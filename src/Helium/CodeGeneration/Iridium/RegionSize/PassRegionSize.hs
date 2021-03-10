@@ -23,38 +23,39 @@ import qualified Control.Exception as Exc
 -- | Infer the size of regions
 passRegionSize :: NameSupply -> Module -> IO Module
 passRegionSize supply m = do 
-  if (stringFromId (moduleName m) == "LvmLang"        && False)
-    || (stringFromId (moduleName m) == "HeliumLang"   && False) 
-    || (stringFromId (moduleName m) == "PreludePrim"  && False)
-    || (stringFromId (moduleName m) == "Prelude"      && False)
-    || (stringFromId (moduleName m) == "LvmException" && False)
-  then return m
-  else do
-    print "=================="
-    print "[PASS REGION SIZE]"
-    print "=================="
-    print $ moduleName m
-    let gEnv = initialGEnv m
-    let groups = map BindingNonRecursive $ moduleMethods m
-    (_, methods) <- mapAccumLM analyseGroup gEnv groups
-    return m{moduleMethods = concat methods}
+  print "=================="
+  print "[PASS REGION SIZE]"
+  print "=================="
+  print $ moduleName m
+  let gEnv = initialGEnv m
+  let groups = map BindingNonRecursive $ moduleMethods m
+  (_, methods) <- mapAccumLM (analyseGroup $ stringFromId $ moduleName m) gEnv groups
+  return m{moduleMethods = concat methods}
 
 
 {- Analyses a binding group of a single non-recursive function
    or a group of (mutual) recursive functions.
--}
-analyseGroup :: GlobalEnv -> BindingGroup Method -> IO (GlobalEnv, [Declaration Method])
-analyseGroup _ (BindingRecursive _) = rsError "Cannot analyse (mutual) recursive functions yet"
-analyseGroup gEnv (BindingNonRecursive decl@(Declaration methodName _ _ _ method)) = do
+-} -- TODO: Remove module name from params
+analyseGroup :: String -> GlobalEnv -> BindingGroup Method -> IO (GlobalEnv, [Declaration Method])
+analyseGroup _ _ (BindingRecursive _) = rsError "Cannot analyse (mutual) recursive functions yet"
+analyseGroup modName gEnv (BindingNonRecursive decl@(Declaration methodName _ _ _ method)) = do
   putStrLn $ "\n# Analyse method " ++ show methodName
   if True
   then do
     let mAnn  = analyse gEnv methodName method
         simpl = eval mAnn
-    print mAnn
-    putStrLn $ "\n# Simplified: " ++ show methodName
-    print simpl 
-    -- let mSrt1 = sort mAnn
+    
+    if((modName == "LvmLang"        && True)
+      || (modName == "HeliumLang"   && True) 
+      || (modName == "PreludePrim"  && True)
+      || (modName == "Prelude"      && True)
+      || (modName == "LvmException" && True))
+    then do putStrLn "-"
+    else do
+      print mAnn
+      putStrLn $ "\n# Simplified: " ++ show methodName
+      print simpl 
+          -- let mSrt1 = sort mAnn
     --     mSrt2 = sort simpl
     -- putStrLn $ "\n# Sort: " ++ show methodName
     -- print mSrt1 

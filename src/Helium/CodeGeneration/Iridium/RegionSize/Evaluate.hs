@@ -37,8 +37,10 @@ add (AConstr c1) ann | constrBot == c1 = ann
                      | otherwise = AAdd (AConstr c1) ann
 add ann (AConstr c2) | constrBot == c2 = ann
                      | otherwise = AAdd (AConstr c2) ann
+add ATop _ = ATop
+add _ ATop = ATop
 -- Two non-constraint sets, sort
-add c1 c2 = addSort $ collect (AAdd c1 c2)
+add c1  c2 = addSort $ collect (AAdd c1 c2)
   where collect (AAdd c3 c4) = collect c3 ++ collect c4 
         collect ann = [ann]
         addSort = operatorSort AAdd constrAdd
@@ -47,7 +49,8 @@ add c1 c2 = addSort $ collect (AAdd c1 c2)
 -- | Minus of constraint
 minus :: Annotation -> RegionVar -> Annotation
 minus (AConstr c) r = AConstr $ constrRem (Region r) c
-minus a r = AMinus a r
+minus ATop _ = ATop
+minus a    r = AMinus a r
 
 
 -- | Join of annotations
@@ -88,7 +91,8 @@ application (ALam s f) x | sortIsAnnotation s = eval $ annStrengthen $ foldAnnAl
         subsRegAlg = idAnnAlg {
           aConstr = \d c -> AConstr $ regVarSubst x d c
         }
-application f x = AApl f x
+application ATop x = ATop
+application f    x = AApl f x
 
 
 -- | Instantiate a type if it starts with a quantification 
@@ -98,14 +102,16 @@ instantiate (AQuant anno) ty = eval $ foldAnnAlg annInstAlg anno
     aLam   = \d s a -> ALam (sortSubstitute d ty s) a,
     aFix   = \d s a -> AFix (sortSubstitute d ty s) a
   } 
-instantiate a t = AInstn a t
+instantiate ATop _ = ATop
+instantiate a    t = AInstn a t
 
 
 -- | Only project if subannotation has been evaluated to a tuple
 project :: Int -> Annotation -> Annotation 
 project idx (ATuple as) | length as > idx = as !! idx
                         | otherwise       = rsError $ "Projection-index out of bounds\n Idx: " ++ show idx ++ "\n Annotation: " ++ (show $ ATuple as)
-project idx t = AProj idx t 
+project _   ATop = ATop
+project idx t    = AProj idx t 
 
 
 ----------------------------------------------------------------
