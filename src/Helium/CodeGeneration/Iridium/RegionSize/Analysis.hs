@@ -59,7 +59,7 @@ analyse gEnv _ method@(Method _ aRegs args _ rRegs _ block blocks) =
         fAnn  = if argS == [] -- TODO: Also check retArg
                 then bAnn     -- IDEA: Now 'SortUnit' but could be a way to deal with thunk allocations
                 else foldr (\s a -> wrapBody s (a,botEffect) SortUnit) bAnn' $ init argS
-    in ALam regS $ annWeaken 1 fAnn 
+    in ALam regS fAnn 
 
 -- | Wrap a function body into a AQuant or `A -> (A, P -> C)'
 wrapBody :: Maybe Sort -> (Annotation,Effect) -> Sort -> Effect
@@ -93,7 +93,7 @@ initEnvFromArgs args = let argIdxs = zip args $ map AVar $ reverse [0..(length a
 
 -- | Region environment from additional regions and return regions
 regEnvFromArgs :: Int -> RegionVars -> RegionVars -> RegionEnv
-regEnvFromArgs n aRegs rRegs = M.union (go (AnnVar n) aRegs) (go (AnnVar $ 999) rRegs)
+regEnvFromArgs n aRegs rRegs = M.union (go (AnnVar n) aRegs) (go (AnnVar $ -1) rRegs)
     where go var (RegionVarsSingle r) = M.singleton r var
           go var (RegionVarsTuple rs) = M.unions.map (\(i,r) -> go (CnProj i var) r) $ zip [0..] rs
 
@@ -328,19 +328,12 @@ botAnnEff = (ABot, botEffect)
 botEffect :: Effect
 botEffect = AConstr constrBot
 
-
 -- | Get the name of a block
 blockName :: Block -> BlockName
 blockName (Block name _) = name
 
-
 -- | Convert RegionVars to an annotions
 regionVarsToAnn :: RegionEnv -> RegionVars -> Annotation
-regionVarsToAnn rEnv (RegionVarsSingle r) = AReg r--constrIdxToAnn $ lookupReg rEnv r
+regionVarsToAnn rEnv (RegionVarsSingle r) = constrIdxToAnn $ lookupReg rEnv r
 regionVarsToAnn rEnv (RegionVarsTuple rs) = ATuple $ map (regionVarsToAnn rEnv) rs
 
-
-constrIdxToAnn :: ConstrIdx -> Annotation 
-constrIdxToAnn (Region r)   = AReg r
-constrIdxToAnn (AnnVar a)   = AVar a
-constrIdxToAnn (CnProj i c) = AProj i $ constrIdxToAnn c

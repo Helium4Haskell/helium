@@ -3,9 +3,9 @@
 module Helium.CodeGeneration.Iridium.RegionSize.Annotation
   ( Annotation(..), pattern AUnit,
     AnnAlg(..), foldAnnAlg, foldAnnAlgN, idAnnAlg,
+    collect,
     annWeaken, annStrengthen,
-    regVarSubst,
-    isConstr
+    isConstr, constrIdxToAnn
   ) where
 
 import Helium.CodeGeneration.Iridium.Region.RegionVar
@@ -165,18 +165,13 @@ annStrengthen = annReIndex strengthenIdx
 -- Annotation utilities
 ----------------------------------------------------------------
 
--- | Initialize region variables in a constraint set
-regVarSubst :: Annotation -> Int -> Constr -> Constr 
-regVarSubst ann d c = constrInst inst d c
-  where n    = constrIdx (AnnVar d) c
-        inst = constrReIndex (weakenIdx d) 0 $ collect n ann
-
 -- | Collect all region variables in an annotation
 collect :: Int -> Annotation -> Constr
 collect 0 _           = M.empty
 collect _ AUnit       = M.empty
 collect n (AVar    a) = M.singleton (AnnVar a) n
 collect n (AReg    a) = M.singleton (Region a) n
+collect n (AProj i a) = M.mapKeys (CnProj i) $ collect n a
 collect n (ATuple ps) = foldr constrAdd M.empty $ map (collect n) ps
 collect _ _ = rsError "collect: Collect of non region annotation"
 
@@ -192,3 +187,9 @@ annIsRegion AUnit        = False
 annIsRegion (ATuple ts)  = annIsRegion $ ts !! 0
 annIsRegion (AProj _ ts) = annIsRegion ts
 annIsRegion _            = False
+
+-- | Convert a constraint index to an annotation
+constrIdxToAnn :: ConstrIdx -> Annotation 
+constrIdxToAnn (Region r)   = AReg r
+constrIdxToAnn (AnnVar a)   = AVar a
+constrIdxToAnn (CnProj i c) = AProj i $ constrIdxToAnn c

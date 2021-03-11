@@ -1,7 +1,7 @@
 module Helium.CodeGeneration.Iridium.RegionSize.Constraints
     (ConstrIdx(..), Constr, 
-    constrShow,
-    constrReIndex,
+    constrShow, constrIdxShow,
+    constrReIndex, constrIdxWithVar,
     constrBot, constrJoin, constrAdd, constrIdx, constrRem, constrInst, constrOne)
 where
 
@@ -32,7 +32,7 @@ constrShow :: Depth -> Constr -> String
 constrShow d c = "{" ++ (intercalate ", " $ map (\(x, b) -> constrIdxShow d x ++ " ↦  " ++ show b) $ M.toList c) ++ "}"
 
 constrIdxShow :: Depth -> ConstrIdx -> String
-constrIdxShow d (AnnVar idx) = annVarName (d - idx) 
+constrIdxShow d (AnnVar idx) = annVarName (d - idx - 1) 
 constrIdxShow d (CnProj i c) = constrIdxShow d c ++ "." ++ show i 
 constrIdxShow _ (Region var) = show var 
 
@@ -69,15 +69,22 @@ constrAdd = M.unionWith (+)
 constrIdx :: ConstrIdx -> Constr -> Int
 constrIdx = M.findWithDefault 0
 
+-- | Get all constraint indexes that use a variable
+constrIdxWithVar :: Int -> Constr -> [ConstrIdx] 
+constrIdxWithVar idx = filter f . M.keys  
+    where f (AnnVar var) = idx == var
+          f (CnProj _ c) = f c 
+          f _ = False 
+
 -- | Remove a region variable from the constraint set
 constrRem :: ConstrIdx -> Constr -> Constr
 constrRem = M.delete
 
 -- | Instantiate a region variable in the constraint set
-constrInst :: Constr -- ^ The instantiation
-           -> Int    -- ^ The annotation variable to instantiate 
+constrInst :: Constr    -- ^ The instantiation
+           -> ConstrIdx -- ^ The annotation variable to instantiate 
            -> Constr -> Constr
-constrInst inst r c = constrAdd inst $ constrRem (AnnVar r) c
+constrInst inst idx c = constrAdd inst $ constrRem idx c
 
 -- | Create a constraint set for a single variable
 constrOne :: ConstrIdx -> Constr

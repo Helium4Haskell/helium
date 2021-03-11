@@ -1,5 +1,5 @@
 module Helium.CodeGeneration.Iridium.RegionSize.Evaluate
-    ( eval,
+    ( eval
     ) where 
 
 import Lvm.Core.Type
@@ -50,6 +50,8 @@ add c1  c2 = addSort $ collect (AAdd c1 c2)
 minus :: Annotation -> RegionVar -> Annotation
 minus (AConstr c) r = AConstr $ constrRem (Region r) c
 minus ATop _ = ATop
+minus (AConstr c) r | c == constrBot = AConstr constrBot
+                    | otherwise      = AMinus (AConstr c) r 
 minus a    r = AMinus a r
 
 
@@ -79,7 +81,7 @@ join c1 c2 = joinSort $ collect (AJoin c1 c2)
 -- | Annotation application
 application :: Annotation -> Annotation -> Annotation
 application (ALam s f) x | sortIsAnnotation s = eval $ annStrengthen $ foldAnnAlg subsAnnAlg f
-                         | sortIsRegion     s = eval $ annStrengthen $ foldAnnAlg subsRegAlg f
+                         | sortIsRegion     s = eval $ foldAnnAlg subsRegAlg f
                          | otherwise = rsError "Sort is neither region or annotation!?"
   where -- | Substitute a variable for an annotation
         subsAnnAlg = idAnnAlg {
@@ -89,7 +91,7 @@ application (ALam s f) x | sortIsAnnotation s = eval $ annStrengthen $ foldAnnAl
         }
         -- | Substitute a region variable for a region
         subsRegAlg = idAnnAlg {
-          aConstr = \d c -> AConstr $ regVarSubst x d c
+          aConstr = \d c -> AConstr $ regVarSubst d x c
         }
 application ATop x = ATop
 application f    x = AApl f x
@@ -126,3 +128,21 @@ operatorSort :: (Annotation -> Annotation -> Annotation)
 operatorSort op evalF xs = foldl op constr $ sort other 
   where (constrs, other) = partition isConstr xs
         constr = AConstr $ foldr (\(AConstr a) -> evalF a) constrBot constrs
+
+----------------------------------------------------------------
+-- Subsitution of region variables
+----------------------------------------------------------------
+
+-- | Initialize region variables in a constraint set
+regVarSubst :: Int -> Annotation -> Constr -> Constr 
+regVarSubst d ann c = foldl constrAdd c' insts
+  where cIdxs = constrIdxWithVar d c 
+        c'    = foldr constrRem c cIdxs
+        ns    = flip constrIdx c <$> cIdxs
+        -- TODO: Do not use eval?
+        aIdxs = eval <$> regVarInst ann <$> (constrIdxToAnn <$> cIdxs)
+        insts = constrReIndex (weakenIdx d) 0 <$> uncurry collect <$> zip ns aIdxs 
+
+        regVarInst ann (AVar _)    = ann
+        regVarInst ann (AProj i a) = AProj i $ regVarInst ann a
+        regVarInst ann r = rsError $ "regVarInst: " ++ show ann ++ ", r: " ++ show r
