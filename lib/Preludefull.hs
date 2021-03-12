@@ -14,7 +14,6 @@ import IridiumLang
 import LvmLang
 import LvmException
 
-{-
 infixr 9  .
 infixl 9  !!
 infixr 8  ^ -- , **.
@@ -22,16 +21,15 @@ infixr 8  ^ -- , **.
 --infixl 6  +, -                                              
 infixr 5  ++
 -- infixr 5 :                                                  [HeliumLang]
-infix  4  ==, /=, <=, <, >, >=   
--}                              
+infix  4  ==, /=, <=, <, >, >=                                 
 infixr 3  &&
 infixr 2  ||
-{-
 infixr 0  $ --, $!                                             [PreludePrim]
 
 {-----------------------------------------------
  -- Num
  -----------------------------------------------}
+
 sum :: Num a => [a] -> a
 sum = foldl' (+) (fromInteger 0)
 
@@ -202,7 +200,7 @@ instance Num Float where
 {-----------------------------------------------
  -- Bool
  -----------------------------------------------}
--}
+
 not :: Bool -> Bool
 not False = True
 not _ = False
@@ -215,7 +213,7 @@ x && y = if x then y else x
 
 otherwise :: Bool
 otherwise = True
-{-
+
 {-----------------------------------------------
  -- Maybe
  -----------------------------------------------}
@@ -586,10 +584,10 @@ error :: String -> a
 
 until :: (a -> Bool) -> (a -> a) -> a -> a
 until p f x = if p x then x else until p f (f x)
--}
+
 undefined :: a
 undefined = error "undefined"
-{-
+
 {-----------------------------------------------
  -- IO
  -----------------------------------------------}
@@ -861,10 +859,9 @@ instance Ord () where
 
 shows :: Show a => a -> ShowS
 shows = showsPrec 0
--}
+
 class Show a where
     show :: a -> String
-	{-
     showList :: [a] -> ShowS
     showsPrec :: Int -> a -> ShowS
     showsPrec _ x s = show x ++ s
@@ -1062,5 +1059,4 @@ instance Enum Char where
     fromEnum        = primOrd
     enumFrom        = enumFromChar
     enumFromThen    = enumFromThenChar
--}
 -}

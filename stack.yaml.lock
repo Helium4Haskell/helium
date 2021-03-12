@@ -36,19 +36,6 @@ packages:
       sha256: 7bb3f686a20da4ca91e64da7535bda8d62356b88289f04989eb3507263d8aa51
   original:
     url: https://github.com/Helium4Haskell/Top/archive/f8a61d1f3f68066e23cce768abdba4c1ddf3e907.tar.gz
-- completed:
-    size: 274183
-    subdir: src/lib
-    url: https://github.com/Helium4Haskell/lvm/archive/b36d193c694012ded6f575fa38475d3ab4fa80c8.tar.gz
-    name: lvmlib
-    version: '1.9'
-    sha256: 35187227cd56aeecaa7a1db0c7df0cfbce5097077cebaefed27f04ae05fa6ef8
-    pantry-tree:
-      size: 1785
-      sha256: e0689f195b7b8147d2a1b6e666edd412d058400b5f3485bb3853eeb0b9dde7a0
-  original:
-    subdir: src/lib
-    url: https://github.com/Helium4Haskell/lvm/archive/b36d193c694012ded6f575fa38475d3ab4fa80c8.tar.gz
 snapshots:
 - completed:
     size: 532177

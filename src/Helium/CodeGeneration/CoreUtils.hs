@@ -358,7 +358,8 @@ typeToCoreTypeMapped (Quantors quantors) f (Top.TVar index) = case f index of
   Just t -> t
   Nothing -> case index `elemIndex` quantors of -- Convert index from Top to Debruijn index for Core
     Just idx -> Core.TVar idx
-    Nothing  -> internalError "CoreUtils" "typeToCoreType" $ "Type variable " ++ show index ++ " not present in quantors list " ++ show quantors
+    -- TODO: Reinstate error, needed to compile (\x -> (\y -> True) (\z -> x))
+    Nothing  -> Core.TCon $ Core.TConTuple 0 --internalError "CoreUtils" "typeToCoreType" $ "Type variable " ++ show index ++ " not present in quantors list " ++ show quantors
 typeToCoreTypeMapped _ _ (Top.TCon name) = Core.TCon c
   where
     c = case name of

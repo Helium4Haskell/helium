@@ -11,6 +11,9 @@ module Helium.CodeGeneration.Core (desugarCore) where
 import Lvm.Common.Id
 import Lvm.Core.Expr
 import Helium.CodeGeneration.Core.TypeCheck
+import Control.Monad (when)
+import Text.PrettyPrint.Leijen (pretty)
+import Helium.CodeGeneration.Iridium.FileCache
 
 import Helium.CodeGeneration.Core.LetInline(coreLetInline)
 import Helium.CodeGeneration.Core.LetSort(coreLetSort)
@@ -44,8 +47,9 @@ desugarCore supply mod = desugar supply pipeline mod
 
 desugar :: NameSupply -> [(String, NameSupply -> CoreModule -> CoreModule)] -> CoreModule -> IO CoreModule
 desugar supply ((passName, passFn) : passes) mod = do
+  --when (passName == "Strictness 1" || passName == "Strictness 2") $ writeFile ([last passName] ++ ".core") $ show $ pretty mod
   let (supply1, supply2) = splitNameSupply supply
   let mod' = passFn supply1 mod
-  checkModuleIO passName mod' 
+  checkModuleIO passName mod'
   desugar supply2 passes mod'
 desugar _ [] mod = return mod
