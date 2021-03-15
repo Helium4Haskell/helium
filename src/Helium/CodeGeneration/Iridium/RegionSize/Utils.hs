@@ -2,7 +2,8 @@ module Helium.CodeGeneration.Iridium.RegionSize.Utils
     (weakenIdx, strengthenIdx,
     indent, strIsReg,
     varNames, typeVarName, annVarName,
-    rsError, rsInfo
+    rsError, rsInfo,
+    mapAccumLM, mapWithIndex
     ) where
 
 import qualified Debug.Trace as T
@@ -73,3 +74,20 @@ rsError s = error $ "[RegionSize] " ++ s ++ "\n"
 
 rsInfo :: a -> String -> a
 rsInfo v s = T.trace ("\n[RS_INFO] " ++ s) v
+
+----------------------------------------------------------------
+-- Utitility functions
+----------------------------------------------------------------
+
+-- | Accumulate left side of tuple in monad
+mapAccumLM :: Monad m => (a -> b -> m (a,c)) -> a -> [b] -> m (a,[c])
+mapAccumLM _ s1 [] = return (s1, [])
+mapAccumLM f s1 (x:xs) = do 
+  (s2, y) <- f s1 x
+  fmap (y:) <$> mapAccumLM f s2 xs
+
+-- | Map over a list with the corresponding index
+mapWithIndex :: (Int -> a -> b) -> [a] -> [b] 
+mapWithIndex f = go 0
+    where go _ []     = []
+          go n (x:xs) = f n x : go (n+1) xs 

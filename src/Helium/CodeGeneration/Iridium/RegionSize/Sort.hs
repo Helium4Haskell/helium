@@ -116,7 +116,7 @@ sortAssign' ts (TVar a)        = SortPolySort a ts
 -- Type constructors (functions, tuples, simple data types)
 sortAssign' ts (TAp t1 t2)     = sortAssign' (t2:ts) t1
 sortAssign' [t1,t2] (TCon TConFun)       = funSort t1 t2  
-sortAssign' ts      (TCon (TConTuple n)) | length ts == n = SortTuple $ map sortAssign ts
+sortAssign' ts      (TCon (TConTuple n)) | length ts == n = SortTuple . concat $ map (sortUnpackTuple.sortAssign) ts
                                          | otherwise      = rsError $ "sortAssign: Tuple with incorrect number of arguements: expected " ++ show n ++ " but got " ++ (show $ length ts) ++ "\n" ++ (intercalate ", " $ map (showTypeN 0) ts)
 sortAssign' []      (TCon (TConDataType _))            = SortUnit
 sortAssign' [a]     (TCon (TConTypeClassDictionary _)) = sortAssign a -- TODO: Do not ignore typeclasses? Might just be okay though
@@ -136,8 +136,8 @@ funSort t1 t2 = SortLam (sortAssign t1) $ SortTuple [sortAssign t2,
 
 -- | Region assignment based on type
 regionAssign :: Type -> Sort
-regionAssign ty | typeIsStrict ty = SortTuple [SortMonoRegion                ] --  regionAssign' [] ty]
-                | otherwise       = SortTuple [SortMonoRegion, SortMonoRegion] --, regionAssign' [] ty]
+regionAssign ty | typeIsStrict ty = SortTuple [SortMonoRegion                , regionAssign' [] ty]
+                | otherwise       = SortTuple [SortMonoRegion, SortMonoRegion, regionAssign' [] ty]
 
 -- | Region assingment with type arguments
 regionAssign' :: [Type] -- ^ Type arguments
@@ -148,7 +148,7 @@ regionAssign' ts (TForall _ _ a) = SortQuant $ regionAssign' ts a
 -- Type constructors (functions, tuples, simple data types)
 regionAssign' ts (TAp t1 t2)     = regionAssign' (t2:ts) t1
 regionAssign' [_,_] (TCon TConFun      ) = SortUnit
-regionAssign' ts    (TCon (TConTuple n)) | length ts == n = SortTuple $ map regionAssign ts
+regionAssign' ts    (TCon (TConTuple n)) | length ts == n = SortTuple . concat $ map (sortUnpackTuple.regionAssign) ts
                                          | otherwise      = rsError $ "regionAssign: Tuple with incorrect number of arguements: expected " ++ show n ++ " but got " ++ (show $ length ts) ++ "\n" ++ (intercalate ", " $ map (showTypeN 0) ts)
 regionAssign' [] (TCon (TConDataType _)) = SortUnit
 -- TODO: Data types
@@ -218,3 +218,9 @@ sortIsRegion _ = False
 -- | Check if a sort is an annotation sort
 sortIsAnnotation :: Sort -> Bool
 sortIsAnnotation = not . sortIsRegion
+
+
+-- | Unpack a tuple sort
+sortUnpackTuple :: Sort -> [Sort]
+sortUnpackTuple (SortTuple ss) = ss
+sortUnpackTuple _ = rsError "sortUnpackTuple called on non-tuple"

@@ -44,7 +44,8 @@ analyseGroup modName gEnv (BindingNonRecursive decl@(Declaration methodName _ _ 
   then do
     let mAnn  = analyse gEnv methodName method
         simpl = eval mAnn
-    
+        mSrt1 = sort mAnn
+        mSrt2 = sort simpl
     if((modName == "LvmLang"        && True)
       || (modName == "HeliumLang"   && True) 
       || (modName == "PreludePrim"  && True)
@@ -55,33 +56,21 @@ analyseGroup modName gEnv (BindingNonRecursive decl@(Declaration methodName _ _ 
       print mAnn
       putStrLn $ "\n# Simplified: " ++ show methodName
       print simpl 
-          -- let mSrt1 = sort mAnn
-    --     mSrt2 = sort simpl
-    -- putStrLn $ "\n# Sort: " ++ show methodName
-    -- print mSrt1 
-    
-    -- if mSrt1 /= mSrt2
-    -- then putStrLn $ "Evaluation returned different sort!"
-    --               ++ "\n\tPre-eval:  " ++ show mSrt1
-    --               ++ "\n\tPost-eval: " ++ show mSrt2 
-    -- else return ()
-    -- putStrLn ""
-    -- putStrLn ""
+
+      putStrLn $ "\n# Sort: " ++ show methodName
+      print mSrt1 
+
+      -- if mSrt1 /= mSrt2
+      -- then putStrLn $ "Evaluation returned different sort!"
+      --               ++ "\n\tPre-eval:  " ++ show mSrt1
+      --               ++ "\n\tPost-eval: " ++ show mSrt2 
+      -- else return ()
+      putStrLn ""
+      putStrLn ""
 
     let gEnv' = insertGlobal gEnv methodName simpl 
     return (gEnv', [decl{ declarationValue = method }])
   else do
     return (gEnv, [decl{ declarationValue = method }])
-
-
-
--- TODO: Move
--- | Accumulate left side of tuple
-mapAccumLM :: Monad m => (a -> b -> m (a,c)) -> a -> [b] -> m (a,[c])
-mapAccumLM _ s1 [] = return (s1, [])
-mapAccumLM f s1 (x:xs) = do 
-  (s2, y) <- f s1 x
-  fmap (y:) <$> mapAccumLM f s2 xs
-
 
 

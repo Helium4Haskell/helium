@@ -15,7 +15,7 @@ import Helium.CodeGeneration.Iridium.RegionSize.Constraints
 import Helium.CodeGeneration.Iridium.RegionSize.Environments
 import Helium.CodeGeneration.Iridium.RegionSize.Utils
 
-import Data.List (mapAccumR)
+import Data.List (mapAccumR, mapAccumL)
 import Data.Maybe (fromJust)
 import Data.Either (rights)
 import qualified Data.Map as M
@@ -33,13 +33,13 @@ import qualified Data.Map as M
 -- Analysis
 ----------------------------------------------------------------
 
--- Step 3: Return regions
+-- Step 3: Return regions (add rRegs -> 1 at the end I guess)
 
 -- | Analyse the effect and annotation of a block
 analyse :: GlobalEnv -> Id -> Method -> Annotation
 analyse gEnv _ method@(Method _ aRegs args _ rRegs _ block blocks) =
     let initEnv      = initEnvFromArgs args
-        rEnv         = regEnvFromArgs (length args) aRegs rRegs
+        rEnv         = regEnvFromArgs (length args) aRegs
         -- Retrieve locals from method body
         localEnv     = foldl (\lEnv -> localsOfBlock (Envs gEnv rEnv lEnv)) initEnv (block:blocks) 
         -- Retrieve the annotation and effect of the function body
@@ -67,15 +67,15 @@ wrapBody mS (bAnn,bEff) rrSort = case mS of
 argumentSorts :: Method -> (Sort, [Maybe Sort], Sort)
 argumentSorts method@(Method _ regArgs args resTy _ _ _ _) = 
     let (FunctionType argTy resTy) = methodFunctionType method
-        argSorts = map argumentSortAssign argTy
+        (_,argSorts) = mapAccumL argumentSortAssign 0 argTy
         aRegSort = sort $ regionVarsToAnn M.empty regArgs
-        rrSort   = regionAssign $ typeWeaken (length $ rights args) resTy
+        rrSort   = regionAssign $ typeWeaken (length $ rights args) $ TStrict resTy
     in (aRegSort, argSorts, rrSort)
 
 -- | Assign sort to types, return Nothing for a quantor
-argumentSortAssign :: Either Quantor Type -> Maybe Sort
-argumentSortAssign (Left _)   = Nothing
-argumentSortAssign (Right ty) = Just $ sortAssign ty
+argumentSortAssign :: Int -> Either Quantor Type -> (Int, Maybe Sort)
+argumentSortAssign n (Left _)   = (n, Nothing)
+argumentSortAssign n (Right ty) = (n + 1, Just . sortWeaken n $ sortAssign ty)
 
 -- | Initial enviromentment based on function arguments
 initEnvFromArgs :: [Either Quantor Local] -> LocalEnv
@@ -83,8 +83,8 @@ initEnvFromArgs args = let argIdxs = zip args $ map AVar $ reverse [0..(length a
                        in foldl (flip $ uncurry insertArgument) emptyMap argIdxs
 
 -- | Region environment from additional regions and return regions
-regEnvFromArgs :: Int -> RegionVars -> RegionVars -> RegionEnv
-regEnvFromArgs n aRegs rRegs = M.union (go (AnnVar n) aRegs) (go (AnnVar $ -999) rRegs) -- TODO: fix return region idx
+regEnvFromArgs :: Int -> RegionVars -> RegionEnv
+regEnvFromArgs n aRegs = go (AnnVar n) aRegs
     where go var (RegionVarsSingle r) = M.singleton r var
           go var (RegionVarsTuple rs) = M.unions.map (\(i,r) -> go (CnProj i var) r) $ zip [0..] rs
 
@@ -129,7 +129,7 @@ localsOfLetAlloc envs@(Envs gEnv rEnv lEnv) (Bind id (BindTargetTuple _) args _:
     let tAnn  = tupleApplyArgs lEnv args
         lEnv' = insertMap id tAnn lEnv
     in localsOfLetAlloc (Envs gEnv rEnv lEnv') bs next
--- TODO: Implement others
+-- TODO: Datatypes
 localsOfLetAlloc envs (_:bs) next = localsOfLetAlloc envs bs next
 
 
@@ -204,7 +204,7 @@ analyseLetAlloc envs@(Envs gEnv rEnv lEnv) bEnv (Bind id (BindTargetFunction gFu
 analyseLetAlloc envs@(Envs gEnv rEnv lEnv) bEnv (Bind id (BindTargetTuple _) args dReg:bs) next =
     let (rAnn,rEff) = analyseLetAlloc envs bEnv bs next
     in (rAnn, AAdd (AConstr $ constrOne $ lookupReg rEnv dReg) rEff)
--- TODO: Implement others
+-- TODO: Datatypes
 analyseLetAlloc _ _ _ _ = (ATop,ATop)
 
 -- | Find the annotation and effect of an expression

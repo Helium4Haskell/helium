@@ -40,13 +40,13 @@ sort = sort' M.empty
           -- Lambdas & applications
           sort' gamma (ALam   s a) = 
               let sortR = sort' (envInsert s gamma) a
-              in sortStrengthen $ SortLam s sortR
+              in SortLam s $ sortStrengthen sortR
           sort' gamma (AApl   f x) = 
               let SortLam sortA sortR = sort' gamma f
                   sortX = sort' gamma x 
               in if sortA == sortX 
                  then sortR
-                 else sortR `rsInfo` ("Argument has different sort than is expected.\nArgument sort: " ++ show sortX ++ "\nExpected sort: " ++ show sortA ++ "\n")
+                 else sortR --`rsInfo` ("Argument has different sort than is expected.\nArgument sort: " ++ show sortX ++ "\nExpected sort: " ++ show sortA ++ "\n")
               
           -- Tuples & projections
           sort' gamma (ATuple  as) =
@@ -75,7 +75,7 @@ sort = sort' M.empty
 
           -- Quantification and instantiation
           sort' gamma (AQuant   a) = SortQuant $ sort' (envWeaken gamma) a
-          sort' gamma (AInstn a t) = sortStrengthen . sortInstantiate t $ sort' gamma a 
+          sort' gamma (AInstn a t) = sortInstantiate t $ sort' gamma a 
 
           -- Lattice stuff
           sort' _     (ATop      ) = error "No sort for bottom/top"
