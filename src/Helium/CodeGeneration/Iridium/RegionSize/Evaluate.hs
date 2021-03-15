@@ -139,10 +139,10 @@ regVarSubst d ann c = foldl constrAdd c' insts
   where cIdxs = constrIdxWithVar d c 
         c'    = foldr constrRem c cIdxs
         ns    = flip constrIdx c <$> cIdxs
-        -- TODO: Do not use eval?
         aIdxs = eval <$> regVarInst ann <$> (constrIdxToAnn <$> cIdxs)
         insts = constrReIndex (weakenIdx d) 0 <$> uncurry collect <$> zip ns aIdxs 
-
+        
+        regVarInst :: Annotation -> Annotation -> Annotation
         regVarInst ann (AVar _)    = ann
         regVarInst ann (AProj i a) = AProj i $ regVarInst ann a
         regVarInst ann r = rsError $ "regVarInst: " ++ show ann ++ ", r: " ++ show r

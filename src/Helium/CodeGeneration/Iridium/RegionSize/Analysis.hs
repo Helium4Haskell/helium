@@ -20,14 +20,6 @@ import Data.Maybe (fromJust)
 import Data.Either (rights)
 import qualified Data.Map as M
 
--- TODO: Remove
-instance Show Quantor where
-    show _ = "Quantor"
-instance Show Local where
-    show (Local id ty) = stringFromId id ++ "::" ++ showType varNames ty
-instance Show Type where
-    show t = showType varNames t
-
 ----------------------------------------------------------------
 -- Assumptions
 ----------------------------------------------------------------
@@ -41,8 +33,7 @@ instance Show Type where
 -- Analysis
 ----------------------------------------------------------------
 
--- Step 2: Implement the additional variables (as regular arguments)
--- Step 3: Return variable should follow logically
+-- Step 3: Return regions
 
 -- | Analyse the effect and annotation of a block
 analyse :: GlobalEnv -> Id -> Method -> Annotation
@@ -93,7 +84,7 @@ initEnvFromArgs args = let argIdxs = zip args $ map AVar $ reverse [0..(length a
 
 -- | Region environment from additional regions and return regions
 regEnvFromArgs :: Int -> RegionVars -> RegionVars -> RegionEnv
-regEnvFromArgs n aRegs rRegs = M.union (go (AnnVar n) aRegs) (go (AnnVar $ -1) rRegs)
+regEnvFromArgs n aRegs rRegs = M.union (go (AnnVar n) aRegs) (go (AnnVar $ -999) rRegs) -- TODO: fix return region idx
     where go var (RegionVarsSingle r) = M.singleton r var
           go var (RegionVarsTuple rs) = M.unions.map (\(i,r) -> go (CnProj i var) r) $ zip [0..] rs
 
@@ -120,7 +111,6 @@ localsOfInstr envs@(Envs gEnv rEnv lEnv) instr =
         -- Other instructions are 'terminal nodes' that do not extend lEnv
         _ -> lEnv
 
--- TODO: Still lots and lots of duplicated code here between localsOf and analyse
 localsOfLetAlloc :: Envs -> [Bind] -> Instruction -> LocalEnv
 localsOfLetAlloc envs [] next = localsOfInstr envs next
 -- Thunk binds
@@ -129,10 +119,15 @@ localsOfLetAlloc envs@(Envs gEnv rEnv lEnv) (Bind id (BindTargetThunk var tRegs)
         lEnv'     = insertMap id bAnn lEnv
     in localsOfLetAlloc (Envs gEnv rEnv lEnv') bs next
 -- Function binds
-localsOfLetAlloc envs@(Envs gEnv rEnv lEnv) (Bind id (BindTargetFunction gFun aRegs tRegs) args _:bs) next = -- TODO: Check if okay
+localsOfLetAlloc envs@(Envs gEnv rEnv lEnv) (Bind id (BindTargetFunction gFun aRegs tRegs) args _:bs) next =
     let gFunAnn   = lookupGlobal gEnv $ globalFunctionName gFun
         (bAnn, _) = funcApplyArgs envs gFunAnn aRegs args $ bindThunkValue tRegs
         lEnv'     = insertMap id bAnn lEnv
+    in localsOfLetAlloc (Envs gEnv rEnv lEnv') bs next
+-- Tuples
+localsOfLetAlloc envs@(Envs gEnv rEnv lEnv) (Bind id (BindTargetTuple _) args _:bs) next =
+    let tAnn  = tupleApplyArgs lEnv args
+        lEnv' = insertMap id tAnn lEnv
     in localsOfLetAlloc (Envs gEnv rEnv lEnv') bs next
 -- TODO: Implement others
 localsOfLetAlloc envs (_:bs) next = localsOfLetAlloc envs bs next
@@ -191,7 +186,7 @@ analyseInstr envs@(Envs _ _ lEnv) bEnv = go
          go (Match _ _ _ _ next)   = go next
 
 
--- | Analyse letalloc (TODO: Abstract some stuff (same impl. in localsOf))
+-- | Analyse letalloc
 analyseLetAlloc :: Envs -> BlockEnv -> [Bind] -> Instruction ->  (Annotation, Effect)
 analyseLetAlloc envs bEnv [] next = analyseInstr envs bEnv next
 analyseLetAlloc envs@(Envs gEnv rEnv lEnv) bEnv (Bind id (BindTargetThunk var tRegs) args dReg:bs) next =
@@ -205,6 +200,10 @@ analyseLetAlloc envs@(Envs gEnv rEnv lEnv) bEnv (Bind id (BindTargetFunction gFu
         (bAnn,bEff) = funcApplyArgs envs gFunAnn aRegs args retRegs
         (rAnn,rEff) = analyseLetAlloc envs bEnv bs next
     in (rAnn, AAdd (AConstr $ constrOne $ lookupReg rEnv dReg) (AAdd rEff bEff))
+-- Tuples
+analyseLetAlloc envs@(Envs gEnv rEnv lEnv) bEnv (Bind id (BindTargetTuple _) args dReg:bs) next =
+    let (rAnn,rEff) = analyseLetAlloc envs bEnv bs next
+    in (rAnn, AAdd (AConstr $ constrOne $ lookupReg rEnv dReg) rEff)
 -- TODO: Implement others
 analyseLetAlloc _ _ _ _ = (ATop,ATop)
 
@@ -270,13 +269,21 @@ funcApplyArgs :: Envs
 funcApplyArgs envs@(Envs _ rEnv _) fAnn aRegs args retRegs = 
     thunkApplyArgs envs (AApl fAnn $ regionVarsToAnn rEnv aRegs) args retRegs 
 
--- | Add an effect to an effect tuple
-addEffect :: Effect -> (Annotation, Effect) -> (Annotation, Effect)
-addEffect eff (a,e) = (a, AAdd eff e)
+-- | Apply bind arguments to a tuple
+tupleApplyArgs :: LocalEnv 
+               -> [Either Type Local] 
+               -> Annotation
+tupleApplyArgs lEnv = foldr go (ATuple [])
+    where go (Left _ ) (ATuple xs) = ATuple xs -- error "Cannot apply type to tuple" 
+          go (Right x) (ATuple xs) = ATuple $ lookupLocal lEnv x : xs
 
 ----------------------------------------------------------------
 -- Analysis utilities
 ----------------------------------------------------------------
+
+-- | Add an effect to an effect tuple
+addEffect :: Effect -> (Annotation, Effect) -> (Annotation, Effect)
+addEffect eff (a,e) = (a, AAdd eff e)
 
 -- | Insert an ID if it is present
 insertMaybeId :: Maybe Id -> Annotation -> LocalEnv -> LocalEnv
