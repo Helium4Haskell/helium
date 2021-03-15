@@ -5,8 +5,6 @@ module Helium.CodeGeneration.Iridium.RegionSize.Evaluate
 import Lvm.Core.Type
 import Data.List
 
-import Helium.CodeGeneration.Iridium.Region.RegionVar
-
 import Helium.CodeGeneration.Iridium.RegionSize.Sort
 import Helium.CodeGeneration.Iridium.RegionSize.Annotation
 import Helium.CodeGeneration.Iridium.RegionSize.Constraints
@@ -21,7 +19,6 @@ eval :: Annotation -> Annotation
 eval = foldAnnAlg evalAlg
   where evalAlg = idAnnAlg {
     aAdd   = \_ -> add,
-    aMinus = \_ -> minus,
     aJoin  = \_ -> join,
     aApl   = \_ -> application,
     aInstn = \_ -> instantiate,
@@ -37,8 +34,8 @@ add (AConstr c1) ann | constrBot == c1 = ann
                      | otherwise = AAdd (AConstr c1) ann
 add ann (AConstr c2) | constrBot == c2 = ann
                      | otherwise = AAdd (AConstr c2) ann
-add ATop _ = ATop
-add _ ATop = ATop
+add (ATop s) _ = ATop s
+add _ (ATop s) = ATop s
 -- Two non-constraint sets, sort
 add c1  c2 = addSort $ collect (AAdd c1 c2)
   where collect (AAdd c3 c4) = collect c3 ++ collect c4 
@@ -46,24 +43,15 @@ add c1  c2 = addSort $ collect (AAdd c1 c2)
         addSort = operatorSort AAdd constrAdd
 
 
--- | Minus of constraint
-minus :: Annotation -> RegionVar -> Annotation
-minus (AConstr c) r = AConstr $ constrRem (Region r) c
-minus ATop _ = ATop
-minus (AConstr c) r | c == constrBot = AConstr constrBot
-                    | otherwise      = AMinus (AConstr c) r 
-minus a    r = AMinus a r
-
-
 -- | Join of annotations
 join :: Annotation -> Annotation -> Annotation
 -- Join with constants
-join _ AUnit = AUnit
-join AUnit _ = AUnit 
-join ABot  a = a 
-join a  ABot = a 
-join ATop  _ = ATop 
-join _  ATop = ATop
+join _ AUnit     = AUnit
+join AUnit _     = AUnit 
+join (ABot _)  a = a 
+join a  (ABot _) = a 
+join (ATop s)  _ = ATop s
+join _  (ATop s) = ATop s
 -- Constraint set join
 join (AConstr c1) (AConstr c2) = AConstr $ constrJoin c1 c2
 -- Join-simplicitation
@@ -93,7 +81,7 @@ application (ALam s f) x | sortIsAnnotation s = eval $ annStrengthen $ foldAnnAl
         subsRegAlg = idAnnAlg {
           aConstr = \d c -> AConstr $ regVarSubst d x c
         }
-application ATop x = ATop
+application (ATop s) x = (ATop s)
 application f    x = AApl f x
 
 
@@ -104,7 +92,7 @@ instantiate (AQuant anno) ty = eval $ foldAnnAlg annInstAlg anno
     aLam   = \d s a -> ALam (sortSubstitute d ty s) a,
     aFix   = \d s a -> AFix (sortSubstitute d ty s) a
   } 
-instantiate ATop _ = ATop
+instantiate (ATop s) _ = (ATop s)
 instantiate a    t = AInstn a t
 
 
@@ -112,7 +100,7 @@ instantiate a    t = AInstn a t
 project :: Int -> Annotation -> Annotation 
 project idx (ATuple as) | length as > idx = as !! idx
                         | otherwise       = rsError $ "Projection-index out of bounds\n Idx: " ++ show idx ++ "\n Annotation: " ++ (show $ ATuple as)
-project _   ATop = ATop
+project _   (ATop s) = (ATop s)
 project idx t    = AProj idx t 
 
 

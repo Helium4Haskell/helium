@@ -12,6 +12,7 @@ import Helium.CodeGeneration.Iridium.Data
 import Helium.CodeGeneration.Iridium.RegionSize.Annotation
 import Helium.CodeGeneration.Iridium.RegionSize.Constraints
 import Helium.CodeGeneration.Iridium.RegionSize.Utils
+import Helium.CodeGeneration.Iridium.RegionSize.Sort
 
 ----------------------------------------------------------------
 -- Type definitions
@@ -51,7 +52,7 @@ initialGEnv m = GlobalEnv synonyms emptyMap -- functionEnv
 
     -- Top of type
     top :: Type -> Annotation
-    top _ = ATop -- . sortAssign . typeNormalize typeEnv
+    top = ATop . sortAssign
 
 ----------------------------------------------------------------
 -- Block environment
@@ -61,7 +62,7 @@ initialGEnv m = GlobalEnv synonyms emptyMap -- functionEnv
 lookupGlobal :: GlobalEnv -> Id -> Annotation
 lookupGlobal (GlobalEnv _ vars) id = 
   case lookupMap id vars of
-    Nothing -> ATop -- TODO: Remove this
+    Nothing -> ATop undefined -- TODO: Remove this
     Just a  -> a 
 
 -- | Insert a function into the global environment
@@ -76,13 +77,13 @@ insertGlobal (GlobalEnv syns fs) id ann =
 lookupBlock :: BlockEnv -> BlockName -> (Annotation, Effect)
 lookupBlock bEnv id = 
   case lookupMap id bEnv of
-    Nothing -> (ATop, ATop) -- TODO: Remove this
+    Nothing -> (ATop undefined, ATop undefined) -- TODO: Remove this
     Just a  -> a 
 
 -- | Look up a local variable in the local environment
 lookupLocal :: LocalEnv -> Local -> Annotation
 lookupLocal lEnv local = case lookupMap (localName local) lEnv of
-                            Nothing -> ATop --rsError $ "lookupLocal - ID not in map: " ++ (stringFromId $ localName local) 
+                            Nothing -> rsError $ "lookupLocal - ID not in map: " ++ (stringFromId $ localName local) 
                             Just a  -> a
 
 -- | Lookup a global or local variable
@@ -92,7 +93,5 @@ lookupVar (Envs gEnv _ _) global           = lookupGlobal gEnv $ variableName gl
 
 
 -- | Lookup a region in the region environment, retuns the region if not in env
-lookupReg :: RegionEnv -> RegionVar -> ConstrIdx
-lookupReg rEnv r = case M.lookup r rEnv of
-                      Nothing -> Region r
-                      Just ci -> ci
+lookupReg :: RegionEnv -> RegionVar -> Maybe ConstrIdx
+lookupReg = flip M.lookup

@@ -5,8 +5,6 @@ module Helium.CodeGeneration.Iridium.RegionSize.Constraints
     constrBot, constrJoin, constrAdd, constrIdx, constrRem, constrInst, constrOne)
 where
 
-import Helium.CodeGeneration.Iridium.Region.RegionVar
-
 import Helium.CodeGeneration.Iridium.RegionSize.Utils
 
 import qualified Data.Map as M
@@ -19,8 +17,7 @@ import Data.List
 type Depth = Int
 type Index = Int
 data ConstrIdx = AnnVar Index         -- ^ Annotation variable
-               | CnProj Int ConstrIdx -- ^ Project on region tuple
-               | Region RegionVar     -- ^ Region variable 
+               | CnProj Int ConstrIdx -- ^ Project on annotation tuple
     deriving (Eq, Ord)
 type Constr = M.Map ConstrIdx Int
 
@@ -34,7 +31,6 @@ constrShow d c = "{" ++ (intercalate ", " $ map (\(x, b) -> constrIdxShow d x ++
 constrIdxShow :: Depth -> ConstrIdx -> String
 constrIdxShow d (AnnVar idx) = annVarName (d - idx - 1) 
 constrIdxShow d (CnProj i c) = constrIdxShow d c ++ "." ++ show i 
-constrIdxShow _ (Region var) = show var 
 
 ----------------------------------------------------------------
 -- De Bruijn reindexing
@@ -47,7 +43,6 @@ constrReIndex :: (Depth -> Int -> Int) -- ^ Reindex function
 constrReIndex f annD = M.mapKeys keyReIndex
   where keyReIndex (AnnVar idx) = AnnVar $ f annD idx
         keyReIndex (CnProj i c) = CnProj i $ keyReIndex c 
-        keyReIndex (Region var) = Region var
 
 ----------------------------------------------------------------
 -- Constraint utilities
@@ -87,5 +82,6 @@ constrInst :: Constr    -- ^ The instantiation
 constrInst inst idx c = constrAdd inst $ constrRem idx c
 
 -- | Create a constraint set for a single variable
-constrOne :: ConstrIdx -> Constr
-constrOne i = M.singleton i 1
+constrOne :: Maybe ConstrIdx -> Constr
+constrOne (Just i) = M.singleton i 1
+constrOne (Just i) = M.empty

@@ -165,13 +165,11 @@ analyseInstr envs@(Envs _ _ lEnv) bEnv = go
            let (_     , varEff) = analyseExpr envs expr
                (nxtAnn, nxtEff) = go next
            in (nxtAnn, AAdd varEff nxtEff)
-         -- TODO: Allocations with region variables
+         -- Allocations with region variables
          go (LetAlloc bnds   next) = analyseLetAlloc envs bEnv bnds next 
          -- Remove region from effect, size has been detrimined
          -- TODO: Lookup & store size somewhere
-         go (NewRegion r _   next) = 
-             let (nxtAnn, nxtEff) = analyseInstr envs bEnv next
-             in  (nxtAnn, AMinus nxtEff r)
+         go (NewRegion r _   next) = analyseInstr envs bEnv next
          -- TODO: Check if we can ignore a release
          go (ReleaseRegion _ next) = analyseInstr envs bEnv next
          -- Lookup the annotation and effect from block
@@ -205,7 +203,7 @@ analyseLetAlloc envs@(Envs gEnv rEnv lEnv) bEnv (Bind id (BindTargetTuple _) arg
     let (rAnn,rEff) = analyseLetAlloc envs bEnv bs next
     in (rAnn, AAdd (AConstr $ constrOne $ lookupReg rEnv dReg) rEff)
 -- TODO: Datatypes
-analyseLetAlloc _ _ _ _ = (ATop,ATop)
+analyseLetAlloc envs bEnv (_:bs) next = analyseLetAlloc envs bEnv bs next
 
 -- | Find the annotation and effect of an expression
 analyseExpr :: Envs -> Expr -> (Annotation, Effect)
@@ -329,7 +327,7 @@ joinAnnList (x:xs) = foldl AJoin x xs
 
 -- | The bottom for annotation & effect (annotation bot, constr bot)
 botAnnEff :: (Annotation, Effect)
-botAnnEff = (ABot, botEffect)
+botAnnEff = (ABot undefined, botEffect)
 
 -- | Bottom for the effect
 botEffect :: Effect
@@ -341,6 +339,8 @@ blockName (Block name _) = name
 
 -- | Convert RegionVars to an annotions
 regionVarsToAnn :: RegionEnv -> RegionVars -> Annotation
-regionVarsToAnn rEnv (RegionVarsSingle r) = constrIdxToAnn $ lookupReg rEnv r
+regionVarsToAnn rEnv (RegionVarsSingle r) = case lookupReg rEnv r of
+                                                Nothing -> ABot SortMonoRegion
+                                                Just ci -> constrIdxToAnn ci
 regionVarsToAnn rEnv (RegionVarsTuple rs) = ATuple $ map (regionVarsToAnn rEnv) rs
 
