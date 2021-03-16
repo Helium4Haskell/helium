@@ -37,9 +37,9 @@ add ann (AConstr c2) | constrBot == c2 = ann
 add (ATop s) _ = ATop s
 add _ (ATop s) = ATop s
 -- Two non-constraint sets, sort
-add c1  c2 = addSort $ collect (AAdd c1 c2)
-  where collect (AAdd c3 c4) = collect c3 ++ collect c4 
-        collect ann = [ann]
+add c1  c2 = addSort $ aCollect (AAdd c1 c2)
+  where aCollect (AAdd c3 c4) = aCollect c3 ++ aCollect c4 
+        aCollect ann = [ann]
         addSort = operatorSort AAdd constrAdd
 
 
@@ -60,9 +60,9 @@ join (AApl   s a) (AApl   _ b) = AApl   s $ AJoin a b
 join (AQuant a  ) (AQuant b  ) = AQuant   $ AJoin a b
 join (AInstn a t) (AInstn b _) = AInstn (AJoin a b) t
 -- Collect and sort
-join c1 c2 = joinSort $ collect (AJoin c1 c2)
-  where collect (AJoin c3 c4) = collect c3 ++ collect c4 
-        collect ann = [ann]
+join c1 c2 = joinSort $ jCollect (AJoin c1 c2)
+  where jCollect (AJoin c3 c4) = jCollect c3 ++ jCollect c4 
+        jCollect ann = [ann]
         joinSort = operatorSort AJoin constrJoin
 
 
@@ -124,13 +124,13 @@ operatorSort op evalF xs = foldl op constr $ sort other
 -- | Initialize region variables in a constraint set
 regVarSubst :: Int -> Annotation -> Constr -> Constr 
 regVarSubst d ann c = foldl constrAdd c' insts
-  where cIdxs = constrIdxWithVar d c 
-        c'    = foldr constrRem c cIdxs
-        ns    = flip constrIdx c <$> cIdxs
-        aIdxs = eval <$> regVarInst ann <$> (constrIdxToAnn <$> cIdxs)
-        insts = constrReIndex (weakenIdx d) 0 <$> uncurry collect <$> zip ns aIdxs 
+  where cIdxs = constrIdxWithVar d c       -- Indexes that contain the to-be instantiated var
+        ns    = flip constrIdx c <$> cIdxs -- Get bounds on indexes
+        c'    = foldr constrRem c cIdxs    -- Remove cIdxs from c
+        aIdxs = eval <$> regVarInst ann <$> (constrIdxToAnn <$> cIdxs)              -- Get new indexes
+        insts = constrReIndex (weakenIdx d) 0 <$> uncurry collect <$> zip ns aIdxs  -- Instantiate and weaken
         
         regVarInst :: Annotation -> Annotation -> Annotation
-        regVarInst ann (AVar _)    = ann
-        regVarInst ann (AProj i a) = AProj i $ regVarInst ann a
-        regVarInst ann r = rsError $ "regVarInst: " ++ show ann ++ ", r: " ++ show r
+        regVarInst inst (AVar _)    = inst
+        regVarInst inst (AProj i a) = AProj i $ regVarInst inst a
+        regVarInst inst r = rsError $ "regVarInst: " ++ show inst ++ ", r: " ++ show r

@@ -28,12 +28,24 @@ import qualified Data.Map as M
 -- The idea now:
 -- Build local env by mapAccumL on (init:blocks)
 -- Get final effects by building the block env from the last block to the first
+-- Does not work when there are loops..
+
+----------------------------------------------------------------
+-- Region management
+----------------------------------------------------------------
+-- Step 3: Return regions
+
+----------------------------------------------------------------
+-- Fixpoints
+----------------------------------------------------------------
+-- Step 1: Alter global region so that methodName points to recursive annotation arg
+-- Step 2: Wrap annotation in fixpoint
+-- Step 3: Iterate until fixpoint is determined (or give up)
+
 
 ----------------------------------------------------------------
 -- Analysis
 ----------------------------------------------------------------
-
--- Step 3: Return regions (add rRegs -> 1 at the end I guess)
 
 -- | Analyse the effect and annotation of a block
 analyse :: GlobalEnv -> Id -> Method -> Annotation

@@ -57,9 +57,6 @@ analyseGroup modName gEnv (BindingNonRecursive decl@(Declaration methodName _ _ 
       putStrLn $ "\n# Simplified: " ++ show methodName
       print simpl 
 
-      print AVarRetReg
-      print AVarRec
-
       putStrLn $ "\n# Sort: " ++ show methodName
       print mSrt2 
 
