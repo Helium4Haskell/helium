@@ -34,11 +34,11 @@ add :: Annotation -> Annotation -> Annotation
 add (ATop s) _ = ATop s
 add _ (ATop s) = ATop s
 add (AConstr c1) (AConstr c2) = AConstr $ constrAdd c1 c2
--- Empty constraint set? Then ann, otherwise sort
-add (AConstr c1) ann | constrBot == c1 = ann
-                     | otherwise = AAdd (AConstr c1) ann
-add ann (AConstr c2) | constrBot == c2 = ann
-                     | otherwise = AAdd (AConstr c2) ann
+-- -- Empty constraint set? Then ann, otherwise sort
+-- add (AConstr c1) ann | constrBot == c1 = ann
+--                      | otherwise = AAdd (AConstr c1) ann
+-- add ann (AConstr c2) | constrBot == c2 = ann
+--                      | otherwise = AAdd (AConstr c2) ann
 -- Two non-constraint sets, sort
 add c1  c2 = addSort $ aCollect (AAdd c1 c2)
   where aCollect (AAdd c3 c4) = aCollect c3 ++ aCollect c4 
@@ -123,9 +123,9 @@ operatorSort :: (Annotation -> Annotation -> Annotation)
              -> (Constr -> Constr -> Constr)
              -> [Annotation] 
              -> Annotation
-operatorSort op evalF xs = foldl op constr $ sort other 
-  where (constrs, other) = partition isConstr xs
-        constr = AConstr $ foldr (\(AConstr a) -> evalF a) constrBot constrs
+operatorSort op evalF xs = foldl op computed $ sort other 
+  where (constrs, other) = partition isConstr xs 
+        computed = AConstr $ foldr (\(AConstr a) -> evalF a) constrBot constrs
 
 ----------------------------------------------------------------
 -- Subsitution of region variables

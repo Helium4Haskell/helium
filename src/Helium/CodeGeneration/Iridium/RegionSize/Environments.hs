@@ -33,7 +33,7 @@ type Effect = Annotation
 
 -- | Initial analysis environment, sets all functions to top
 initialGEnv :: Module -> GlobalEnv
-initialGEnv m = GlobalEnv synonyms functionEnv
+initialGEnv m = GlobalEnv synonyms emptyMap--functionEnv
   where
     -- Type synonims
     synonyms :: IdMap Type
@@ -63,7 +63,7 @@ initialGEnv m = GlobalEnv synonyms functionEnv
 lookupGlobal :: GlobalEnv -> Id -> Annotation
 lookupGlobal (GlobalEnv _ vars) id = 
   case lookupMap id vars of
-    Nothing -> ATop undefined -- TODO: Remove this
+    Nothing -> rsError $ "Global environment did not contain: " ++ stringFromId id
     Just a  -> a 
 
 -- | Insert a function into the global environment
@@ -78,7 +78,7 @@ insertGlobal (GlobalEnv syns fs) id ann =
 lookupBlock :: BlockEnv -> BlockName -> (Annotation, Effect)
 lookupBlock bEnv id = 
   case lookupMap id bEnv of
-    Nothing -> (ATop undefined, ATop undefined) -- TODO: Remove this
+    Nothing -> rsError $ "Recursive block definition: " ++ stringFromId id
     Just a  -> a 
 
 -- | Look up a local variable in the local environment
@@ -98,3 +98,8 @@ lookupReg :: RegionEnv -> RegionVar -> ConstrIdx
 lookupReg rEnv r = case M.lookup r rEnv of
                       Nothing -> Region r
                       Just ci -> ci
+
+
+-- | Alter a value in the global map
+updateGlobal :: GlobalEnv -> Id -> Annotation -> GlobalEnv
+updateGlobal (GlobalEnv syns fs) id ann = GlobalEnv syns $ updateMap id ann fs

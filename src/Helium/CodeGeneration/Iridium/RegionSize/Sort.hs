@@ -128,7 +128,7 @@ sortAssign' _ t = rsError $ "sortAssign: No pattern match: " ++ showTypeN 0 t
 -- | Sort for a function: t_1 -> t2 ===> SA(t_1) -> (SA(t_2), RA(t_2) -> C)
 funSort :: Type -> Type -> Sort
 funSort t1 t2 = SortLam (sortAssign t1) $ SortTuple [sortAssign t2, 
-                                                     SortLam (regionAssign t2) SortConstr]
+                                                     SortLam (regionAssign $ TStrict t2) SortConstr]
 
 ----------------------------------------------------------------
 -- Region assignment

@@ -135,7 +135,7 @@ foldAnnAlgN n alg ann = go n ann
         go d (AInstn a t) = aInstn  alg d (go d a) t
         go d (ATop   s  ) = aTop    alg d s
         go d (ABot   s  ) = aBot    alg d s
-        go d (AFix   s a) = aFix    alg d s (go d a)
+        go d (AFix   s a) = aFix    alg d s (go (d+1) a)
         go d (AConstr  c) = aConstr alg d c
 
 ----------------------------------------------------------------
@@ -167,11 +167,11 @@ annStrengthen = annReIndex strengthenIdx
 ----------------------------------------------------------------
 
 -- | Collect all region variables in an annotation
-collect :: Int -> Annotation -> Constr
-collect 0 _           = M.empty
+collect :: Bound -> Annotation -> Constr
+collect (Nat 0) _     = M.empty
 collect _ AUnit       = M.empty
-collect n (AVar    a) = M.singleton (AnnVar a) n
-collect n (AReg    a) = M.singleton (Region a) n
+collect n (AVar    a) = M.singleton (AnnVar a) n 
+collect n (AReg    a) = M.singleton (Region a) n 
 collect n (AProj i a) = M.mapKeys (CnProj i) $ collect n a
 collect n (ATuple ps) = foldr constrAdd M.empty $ map (collect n) ps
 collect _ _ = rsError "collect: Collect of non region annotation"

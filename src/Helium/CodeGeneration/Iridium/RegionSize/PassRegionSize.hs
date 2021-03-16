@@ -44,8 +44,9 @@ analyseGroup modName gEnv (BindingNonRecursive decl@(Declaration methodName _ _ 
   then do
     let mAnn  = analyse gEnv methodName method
         simpl = eval mAnn
-        mSrt1 = sort mAnn
-        mSrt2 = sort simpl
+        fixed = solveFix simpl
+        -- mSrt1 = sort mAnn
+        -- mSrt2 = sort simpl
     if((modName == "LvmLang"        && True)
       || (modName == "HeliumLang"   && True) 
       || (modName == "PreludePrim"  && True)
@@ -56,9 +57,10 @@ analyseGroup modName gEnv (BindingNonRecursive decl@(Declaration methodName _ _ 
       print mAnn
       putStrLn $ "\n# Simplified: " ++ show methodName
       print simpl 
-
-      putStrLn $ "\n# Sort: " ++ show methodName
-      print mSrt2 
+      putStrLn $ "\n# Fixpoint: " ++ show methodName
+      print fixed 
+      -- putStrLn $ "\n# Sort: " ++ show methodName
+      -- print mSrt2 
 
       -- if mSrt1 /= mSrt2
       -- then putStrLn $ "Evaluation returned different sort!"
@@ -68,9 +70,17 @@ analyseGroup modName gEnv (BindingNonRecursive decl@(Declaration methodName _ _ 
       putStrLn ""
       putStrLn ""
 
-    let gEnv' = insertGlobal gEnv methodName simpl 
+    let gEnv' = insertGlobal gEnv methodName fixed 
     return (gEnv', [decl{ declarationValue = method }])
   else do
     return (gEnv, [decl{ declarationValue = method }])
 
-
+-- | Solve a fixpoint
+solveFix :: Annotation -> Annotation
+solveFix (AFix s a) = go 0 a
+    where go :: Int -> Annotation -> Annotation
+          go 10 x = AFix s x
+          go n x = let res = eval $ AApl (ALam s a) x
+                    in if res == x
+                       then res
+                       else go (n+1) res

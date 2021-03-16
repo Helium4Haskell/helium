@@ -42,12 +42,14 @@ sort = sort' M.empty
               let sortR = sort' (envInsert s gamma) a
               in SortLam s $ sortStrengthen sortR
           sort' gamma (AApl   f x) = 
-              let SortLam sortA sortR = sort' gamma f
-                  sortX = sort' gamma x 
-              in if sortA == sortX 
-                 then sortR
-                 else sortR --`rsInfo` ("Argument has different sort than is expected.\nArgument sort: " ++ show sortX ++ "\nExpected sort: " ++ show sortA ++ "\n")
-              
+              case sort' gamma f of
+                SortLam sortA sortR ->
+                  let sortX = sort' gamma x 
+                  in if sortA == sortX 
+                     then sortR
+                     else sortR --`rsInfo` ("Argument has different sort than is expected.\nArgument sort: " ++ show sortX ++ "\nExpected sort: " ++ show sortA ++ "\n")
+                s -> rsError $ "Application to non function sort: " ++ show s
+
           -- Tuples & projections
           sort' gamma (ATuple  as) =
               let sortAS = map (sort' gamma) as
@@ -81,8 +83,9 @@ sort = sort' M.empty
           sort' _     (ATop   s  ) = s
           sort' _     (ABot   s  ) = s
           sort' gamma (AFix   s a) =
-              let sortA = sort' gamma a
+              let sortA = sort' (envInsert s gamma) a
               in if sortA == s
                  then s
-                 else rsError $ "Fixpoint has incorrect sort: " ++ "\nNoted sort: " ++ show s ++ "\nDerived sort: " ++ show sortA   
+                 else s `rsInfo` ("Fixpoint has incorrect sort: " ++ "\nNoted sort:   " ++ show s 
+                                                                  ++ "\nDerived sort: " ++ show sortA)   
 

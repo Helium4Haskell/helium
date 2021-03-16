@@ -14,6 +14,7 @@ import Helium.CodeGeneration.Iridium.RegionSize.Sorting
 import Helium.CodeGeneration.Iridium.RegionSize.Constraints
 import Helium.CodeGeneration.Iridium.RegionSize.Environments
 import Helium.CodeGeneration.Iridium.RegionSize.Utils
+import Helium.CodeGeneration.Iridium.RegionSize.Evaluate
 
 import Data.List (mapAccumR, mapAccumL)
 import Data.Maybe (fromJust)
@@ -56,20 +57,27 @@ import qualified Data.Map as M
 
 -- | Analyse the effect and annotation of a block
 analyse :: GlobalEnv -> Id -> Method -> Annotation
-analyse gEnv _ method@(Method _ aRegs args _ rRegs _ block blocks) =
-    let initEnv      = initEnvFromArgs args
+analyse gEnv methodName method@(Method mTy aRegs args _ rRegs _ block blocks) =
+    let gEnv'        = updateGlobal gEnv methodName (AVar $ length args + 1) 
+        initEnv      = initEnvFromArgs args
         rEnv         = regEnvFromArgs (length args) aRegs
+
         -- Retrieve locals from method body
-        localEnv     = foldl (\lEnv -> localsOfBlock (Envs gEnv rEnv lEnv)) initEnv (block:blocks) 
+        localEnv     = foldl (\lEnv -> localsOfBlock (Envs gEnv' rEnv lEnv)) initEnv (block:blocks) 
+        
         -- Retrieve the annotation and effect of the function body
-        (bAnn, bEff) = head.snd $ mapAccumR (blockAccum $ Envs gEnv rEnv localEnv) emptyMap (block:blocks)
+        (bAnn, bEff) = head.snd $ mapAccumR (blockAccum $ Envs gEnv' rEnv localEnv) emptyMap (block:blocks)
+        
         -- Generate the method annotation
-        (regS, argS, rtnS) = argumentSorts method
+        (aRegS, argS, rtnS) = argumentSorts method
         bAnn' = annRemLocalRegs $ wrapBody (last argS) (bAnn, bEff) rtnS
         fAnn  = if argS == [] -- TODO: Also check retArg
                 then bAnn     -- IDEA: Now 'SortUnit' but could be a way to deal with thunk allocations
                 else foldr (\s a -> wrapBody s (a,botEffect) SortUnit) bAnn' $ init argS
-    in ALam regS fAnn 
+    
+        -- Make and solve the fixpoint
+        fixpoint = AFix (SortLam aRegS $ sortAssign mTy) $ ALam aRegS fAnn 
+    in fixpoint
 
 -- | Wrap a function body into a AQuant or `A -> (A, P -> C)'
 wrapBody :: Maybe Sort -> (Annotation,Effect) -> Sort -> Effect
@@ -98,7 +106,7 @@ argumentSortAssign n (Right ty) = (n + 1, Just . sortWeaken n $ sortAssign ty)
 
 -- | Initial enviromentment based on function arguments
 initEnvFromArgs :: [Either Quantor Local] -> LocalEnv
-initEnvFromArgs args = let argIdxs = zip args $ map AVar $ reverse [0..(length args-1)]
+initEnvFromArgs args = let argIdxs = zip args $ map AVar $ reverse [0..(length args - 1)]
                        in foldl (flip $ uncurry insertArgument) emptyMap argIdxs
 
 -- | Region environment from additional regions and return regions
@@ -200,7 +208,7 @@ analyseInstr envs@(Envs _ _ lEnv) bEnv = go
          -- Lookup the variable annotation
          go (Return local)         = (lookupLocal lEnv local, botEffect)
          -- No effect
-         go (Unreachable _)        = botAnnEff
+         go (Unreachable _)        = (ABot undefined, botEffect)
          -- Matching only reads, only effect of sub instruction
          go (Match _ _ _ _ next)   = go next
 
@@ -242,9 +250,9 @@ analyseExpr envs@(Envs gEnv _ lEnv) = go
       -- Join of the variable annotations in the branches
       go (Phi branches)           = (joinAnnList $ lookupLocal lEnv <$> map phiVariable branches, botEffect) 
       -- Primitive expression, does not allocate or cause any effect -> bottom
-      go (PrimitiveExpr _ _)      = botAnnEff 
+      go (PrimitiveExpr _ _)      = (AUnit, botEffect) 
       -- No effect, bottom annotation
-      go (Undefined _)            = botAnnEff
+      go (Undefined t)            = (ABot $ sortAssign t, botEffect)
       -- No effect, just annotation of local2
       go (Seq _ local2)           = (lookupLocal lEnv local2        , botEffect)
       -- Instantiate types in local
@@ -332,7 +340,7 @@ liftTuple a = (AProj 0 a, AProj 1 a)
 
 -- | Join of blocks
 joinBlocks :: BlockEnv -> [BlockName] -> (Annotation, Effect)
-joinBlocks bEnv blockNames = foldr joinTuples botAnnEff blocks
+joinBlocks bEnv blockNames = foldr joinTuples (ABot undefined, botEffect) blocks
     where blocks = lookupBlock bEnv <$> blockNames 
 
 -- | The join of two tuples
@@ -345,10 +353,6 @@ joinAnnList []     = rsError "joinAnnList: Empty annotation list"
 joinAnnList [x]    = x
 joinAnnList (x:xs) = foldl AJoin x xs
 
-
--- | The bottom for annotation & effect (annotation bot, constr bot)
-botAnnEff :: (Annotation, Effect)
-botAnnEff = (ABot undefined, botEffect)
 
 -- | Bottom for the effect
 botEffect :: Effect

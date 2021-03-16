@@ -1,5 +1,5 @@
 module Helium.CodeGeneration.Iridium.RegionSize.Constraints
-    (ConstrIdx(..), Constr, 
+    (ConstrIdx(..), Constr, Bound(..),
     constrShow, constrIdxShow,
     constrReIndex, constrIdxWithVar,
     constrBot, constrJoin, constrAdd, constrIdx, constrRem, constrInst, constrOne,
@@ -13,21 +13,33 @@ import Helium.CodeGeneration.Iridium.RegionSize.Utils
 import qualified Data.Map as M
 import Data.List
 
+max_bound :: Int
+max_bound = 3
+
 ----------------------------------------------------------------
 -- Types
 ----------------------------------------------------------------
 
 type Depth = Int
 type Index = Int
+
 data ConstrIdx = AnnVar Index         -- ^ Annotation variable
                | CnProj Int ConstrIdx -- ^ Project on region tuple
                | Region RegionVar     -- ^ Region variable 
     deriving (Eq, Ord)
-type Constr = M.Map ConstrIdx Int
+
+data Bound = Nat Int | Infty
+    deriving (Eq, Ord)
+
+type Constr = M.Map ConstrIdx Bound
 
 ----------------------------------------------------------------
 -- Pretty printing
 ----------------------------------------------------------------
+
+instance Show Bound where
+    show (Nat n) = show n
+    show (Infty) = "∞"
 
 constrShow :: Depth -> Constr -> String
 constrShow d c = "{" ++ (intercalate ", " $ map (\(x, b) -> constrIdxShow d x ++ " ↦  " ++ show b) $ M.toList c) ++ "}"
@@ -60,15 +72,27 @@ constrBot = M.empty
 
 -- | Join of constraint sets
 constrJoin :: Constr -> Constr -> Constr
-constrJoin = M.unionWith max
-
+constrJoin = M.unionWith boundMax
+    where 
+        boundMax :: Bound -> Bound -> Bound
+        boundMax Infty _ = Infty
+        boundMax _ Infty = Infty
+        boundMax (Nat a) (Nat b) = Nat $ max a b
 -- | Addition of constraint sets
 constrAdd :: Constr -> Constr -> Constr
-constrAdd = M.unionWith (+)
+constrAdd = M.unionWith boundAdd
+    where 
+        boundAdd :: Bound -> Bound -> Bound
+        boundAdd Infty _ = Infty
+        boundAdd _ Infty = Infty
+        boundAdd (Nat a) (Nat b) = if a + b > max_bound
+                                   then Infty
+                                   else Nat $ a + b
+
 
 -- | Index a constraint set (default 0)
-constrIdx :: ConstrIdx -> Constr -> Int
-constrIdx = M.findWithDefault 0
+constrIdx :: ConstrIdx -> Constr -> Bound
+constrIdx = M.findWithDefault (Nat 0)
 
 -- | Get all constraint indexes that use a variable
 constrIdxWithVar :: Int -> Constr -> [ConstrIdx] 
@@ -89,7 +113,7 @@ constrInst inst idx c = constrAdd inst $ constrRem idx c
 
 -- | Create a constraint set for a single variable
 constrOne :: ConstrIdx -> Constr
-constrOne i = M.singleton i 1
+constrOne i = M.singleton i $ Nat 1
 
 -- | Remove local regions from constraint set
 constrRemLocalRegs :: Constr -> Constr
