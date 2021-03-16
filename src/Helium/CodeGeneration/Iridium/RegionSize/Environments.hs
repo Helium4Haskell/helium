@@ -23,6 +23,7 @@ type RegionEnv = M.Map RegionVar ConstrIdx
 type BlockEnv  = IdMap (Annotation, Effect)
 type LocalEnv  = IdMap Annotation
 data Envs = Envs GlobalEnv RegionEnv LocalEnv
+
 -- | The effect is an annotation, but always of sort C
 type Effect = Annotation
 

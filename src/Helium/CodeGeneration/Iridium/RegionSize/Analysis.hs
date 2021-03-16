@@ -31,6 +31,13 @@ import qualified Data.Map as M
 -- Does not work when there are loops..
 
 ----------------------------------------------------------------
+-- Allow loops (Removes the back-ward jump assumption)
+----------------------------------------------------------------
+-- Step 1: Create a local variable for local vars, use a 'gather' method for variables
+-- Step 2: Create a local variable for loops (n-tuple for n blocks)
+-- Step 3: Generate fixpoints if needed (for blocks and vars)
+
+----------------------------------------------------------------
 -- Region management
 ----------------------------------------------------------------
 -- Step 3: Return regions
