@@ -114,7 +114,7 @@ sortAssign' ts (TVar a)        = SortPolySort a ts
 -- Type constructors (functions, tuples, simple data types)
 sortAssign' ts (TAp t1 t2)     = sortAssign' (t2:ts) t1
 sortAssign' [t1,t2] (TCon TConFun)       = funSort t1 t2  
-sortAssign' ts      (TCon (TConTuple n)) | length ts == n = SortTuple . concat $ map (sortUnpackTuple.sortAssign) ts
+sortAssign' ts      (TCon (TConTuple n)) | length ts == n = SortTuple $ map sortAssign ts
                                          | otherwise      = rsError $ "sortAssign: Tuple with incorrect number of arguements: expected " ++ show n ++ " but got " ++ (show $ length ts) ++ "\n" ++ (intercalate ", " $ map (showTypeN 0) ts)
 sortAssign' []      (TCon (TConDataType _))            = SortUnit
 sortAssign' [a]     (TCon (TConTypeClassDictionary _)) = sortAssign a -- TODO: Do not ignore typeclasses? Might just be okay though

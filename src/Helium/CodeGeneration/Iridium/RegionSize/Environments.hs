@@ -32,7 +32,7 @@ type Effect = Annotation
 
 -- | Initial analysis environment, sets all functions to top
 initialGEnv :: Module -> GlobalEnv
-initialGEnv m = GlobalEnv synonyms emptyMap -- functionEnv
+initialGEnv m = GlobalEnv synonyms functionEnv
   where
     -- Type synonims
     synonyms :: IdMap Type

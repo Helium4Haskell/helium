@@ -84,4 +84,4 @@ constrInst inst idx c = constrAdd inst $ constrRem idx c
 -- | Create a constraint set for a single variable
 constrOne :: Maybe ConstrIdx -> Constr
 constrOne (Just i) = M.singleton i 1
-constrOne (Just i) = M.empty
+constrOne Nothing  = M.empty
