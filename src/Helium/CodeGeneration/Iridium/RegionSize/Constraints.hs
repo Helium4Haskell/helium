@@ -2,7 +2,8 @@ module Helium.CodeGeneration.Iridium.RegionSize.Constraints
     (ConstrIdx(..), Constr, 
     constrShow, constrIdxShow,
     constrReIndex, constrIdxWithVar,
-    constrBot, constrJoin, constrAdd, constrIdx, constrRem, constrInst, constrOne)
+    constrBot, constrJoin, constrAdd, constrIdx, constrRem, constrInst, constrOne,
+    constrRemLocalRegs)
 where
 
 import Helium.CodeGeneration.Iridium.Region.RegionVar
@@ -89,3 +90,9 @@ constrInst inst idx c = constrAdd inst $ constrRem idx c
 -- | Create a constraint set for a single variable
 constrOne :: ConstrIdx -> Constr
 constrOne i = M.singleton i 1
+
+-- | Remove local regions from constraint set
+constrRemLocalRegs :: Constr -> Constr
+constrRemLocalRegs = M.filterWithKey (\k _ -> not$isLocal k)
+    where isLocal (Region _) = True
+          isLocal _          = False

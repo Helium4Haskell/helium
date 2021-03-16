@@ -5,7 +5,8 @@ module Helium.CodeGeneration.Iridium.RegionSize.Annotation
     AnnAlg(..), foldAnnAlg, foldAnnAlgN, idAnnAlg,
     collect,
     annWeaken, annStrengthen,
-    isConstr, constrIdxToAnn
+    isConstr, constrIdxToAnn,
+    annRemLocalRegs
   ) where
 
 import Helium.CodeGeneration.Iridium.Region.RegionVar
@@ -193,3 +194,13 @@ constrIdxToAnn :: ConstrIdx -> Annotation
 constrIdxToAnn (Region r)   = AReg r
 constrIdxToAnn (AnnVar a)   = AVar a
 constrIdxToAnn (CnProj i c) = AProj i $ constrIdxToAnn c
+
+
+
+-- | Clean local
+annRemLocalRegs :: Annotation -> Annotation
+annRemLocalRegs = foldAnnAlg cleanAlg
+  where cleanAlg = idAnnAlg {
+    aMinus  = \_ a _ -> a,
+    aConstr = \_     -> AConstr . constrRemLocalRegs
+  }

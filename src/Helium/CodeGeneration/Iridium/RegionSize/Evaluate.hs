@@ -31,14 +31,14 @@ eval = foldAnnAlg evalAlg
 
 -- | Only add when the subannotations are constraints
 add :: Annotation -> Annotation -> Annotation
+add (ATop s) _ = ATop s
+add _ (ATop s) = ATop s
 add (AConstr c1) (AConstr c2) = AConstr $ constrAdd c1 c2
 -- Empty constraint set? Then ann, otherwise sort
 add (AConstr c1) ann | constrBot == c1 = ann
                      | otherwise = AAdd (AConstr c1) ann
 add ann (AConstr c2) | constrBot == c2 = ann
                      | otherwise = AAdd (AConstr c2) ann
-add (ATop s) _ = ATop s
-add _ (ATop s) = ATop s
 -- Two non-constraint sets, sort
 add c1  c2 = addSort $ aCollect (AAdd c1 c2)
   where aCollect (AAdd c3 c4) = aCollect c3 ++ aCollect c4 
@@ -48,11 +48,9 @@ add c1  c2 = addSort $ aCollect (AAdd c1 c2)
 
 -- | Minus of constraint
 minus :: Annotation -> RegionVar -> Annotation
+minus (ATop s)    _ = ATop s
 minus (AConstr c) r = AConstr $ constrRem (Region r) c
-minus ATop _ = ATop
-minus (AConstr c) r | c == constrBot = AConstr constrBot
-                    | otherwise      = AMinus (AConstr c) r 
-minus a    r = AMinus a r
+minus a r = AMinus a r
 
 
 -- | Join of annotations

@@ -58,7 +58,7 @@ analyse gEnv _ method@(Method _ aRegs args _ rRegs _ block blocks) =
         (bAnn, bEff) = head.snd $ mapAccumR (blockAccum $ Envs gEnv rEnv localEnv) emptyMap (block:blocks)
         -- Generate the method annotation
         (regS, argS, rtnS) = argumentSorts method
-        bAnn' = wrapBody (last argS) (bAnn, bEff) rtnS
+        bAnn' = annRemLocalRegs $ wrapBody (last argS) (bAnn, bEff) rtnS
         fAnn  = if argS == [] -- TODO: Also check retArg
                 then bAnn     -- IDEA: Now 'SortUnit' but could be a way to deal with thunk allocations
                 else foldr (\s a -> wrapBody s (a,botEffect) SortUnit) bAnn' $ init argS
