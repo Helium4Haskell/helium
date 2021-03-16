@@ -181,7 +181,9 @@ analyseInstr envs@(Envs _ _ lEnv) bEnv = go
          go (LetAlloc bnds   next) = analyseLetAlloc envs bEnv bnds next 
          -- Remove region from effect, size has been detrimined
          -- TODO: Lookup & store size somewhere
-         go (NewRegion r _   next) = analyseInstr envs bEnv next
+         go (NewRegion r _   next) = 
+             let (nxtAnn, nxtEff) = analyseInstr envs bEnv next
+             in  (nxtAnn, AMinus nxtEff r)
          -- TODO: Check if we can ignore a release
          go (ReleaseRegion _ next) = analyseInstr envs bEnv next
          -- Lookup the annotation and effect from block
@@ -351,8 +353,6 @@ blockName (Block name _) = name
 
 -- | Convert RegionVars to an annotions
 regionVarsToAnn :: RegionEnv -> RegionVars -> Annotation
-regionVarsToAnn rEnv (RegionVarsSingle r) = case lookupReg rEnv r of
-                                                Nothing -> ABot SortMonoRegion
-                                                Just ci -> constrIdxToAnn ci
+regionVarsToAnn rEnv (RegionVarsSingle r) = constrIdxToAnn $ lookupReg rEnv r
 regionVarsToAnn rEnv (RegionVarsTuple rs) = ATuple $ map (regionVarsToAnn rEnv) rs
 

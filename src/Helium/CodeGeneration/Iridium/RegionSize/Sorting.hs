@@ -33,6 +33,7 @@ sort = sort' M.empty
     where sort' :: Gamma -> Annotation -> Sort 
           -- Simple cases
           sort' gamma (AVar     a) = gamma M.! a
+          sort' _     (AReg     _) = SortMonoRegion
           sort' _     (AConstr  _) = SortConstr
           sort' _     (AUnit     ) = SortUnit
           
@@ -64,6 +65,12 @@ sort = sort' M.empty
               in if sortA == sortB && sortA == SortConstr
                  then SortConstr
                  else SortConstr `rsInfo` ("Addition of non constraint-sort annotations: \nSort A:" ++ show sortA ++ "\nSort B:" ++ show sortB) 
+          sort' gamma (AMinus a _) = 
+              let sortA = sort' gamma a
+              in if sortA == SortConstr
+                 then SortConstr
+                 else SortConstr `rsInfo` ("Setminus on non constraint-sort annotation: \nSort:" ++ show sortA) 
+
           sort' gamma (AJoin  a _) = sort' gamma a
 
           -- Quantification and instantiation

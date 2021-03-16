@@ -93,5 +93,7 @@ lookupVar (Envs gEnv _ _) global           = lookupGlobal gEnv $ variableName gl
 
 
 -- | Lookup a region in the region environment, retuns the region if not in env
-lookupReg :: RegionEnv -> RegionVar -> Maybe ConstrIdx
-lookupReg = flip M.lookup
+lookupReg :: RegionEnv -> RegionVar -> ConstrIdx
+lookupReg rEnv r = case M.lookup r rEnv of
+                      Nothing -> Region r
+                      Just ci -> ci
