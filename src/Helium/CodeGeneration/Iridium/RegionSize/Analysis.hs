@@ -77,7 +77,7 @@ De Bruijn indices (n = length args):
 analyseMethod :: GlobalEnv -> (Id, Method) -> (Annotation, Sort)
 analyseMethod gEnv (methodName,method@(Method mTy aRegs args _ rRegs _ block blocks)) =
     let initEnv      = initEnvFromArgs args
-        rEnv         = regEnvFromArgs (length args) aRegs
+        rEnv         = regEnvFromArgs (length args) aRegs rRegs
 
         -- Retrieve locals from method body
         localEnv     = foldl (\lEnv -> localsOfBlock (Envs gEnv rEnv lEnv)) initEnv (block:blocks) 
@@ -124,8 +124,8 @@ initEnvFromArgs args = let argIdxs = zip args $ map AVar $ reverse [0..(length a
                        in foldl (flip $ uncurry insertArgument) emptyMap argIdxs
 
 -- | Region environment from additional regions and return regions
-regEnvFromArgs :: Int -> RegionVars -> RegionEnv
-regEnvFromArgs n aRegs = go (AnnVar n) aRegs
+regEnvFromArgs :: Int -> RegionVars -> RegionVars -> RegionEnv
+regEnvFromArgs n aRegs rRegs = M.union (go (AnnVar n) aRegs) (go (AnnVar $ n+3) rRegs)
     where go var (RegionVarsSingle r) = M.singleton r var
           go var (RegionVarsTuple rs) = M.unions.map (\(i,r) -> go (CnProj i var) r) $ zip [0..] rs
 
@@ -169,6 +169,10 @@ localsOfLetAlloc envs@(Envs gEnv rEnv lEnv) (Bind id (BindTargetFunction gFun aR
 localsOfLetAlloc envs@(Envs gEnv rEnv lEnv) (Bind id (BindTargetTuple _) args _:bs) next =
     let tAnn  = tupleApplyArgs lEnv args
         lEnv' = insertMap id tAnn lEnv
+    in localsOfLetAlloc (Envs gEnv rEnv lEnv') bs next
+-- 0 argument constructors
+localsOfLetAlloc envs@(Envs gEnv rEnv lEnv) (Bind id (BindTargetConstructor _) [] _:bs) next =
+    let lEnv' = insertMap id AUnit lEnv
     in localsOfLetAlloc (Envs gEnv rEnv lEnv') bs next
 -- TODO: Datatypes
 localsOfLetAlloc envs (_:bs) next = localsOfLetAlloc envs bs next
@@ -243,6 +247,9 @@ analyseLetAlloc envs@(Envs gEnv rEnv lEnv) bEnv (Bind id (BindTargetFunction gFu
     in (rAnn, AAdd (AConstr $ constrOne $ lookupReg rEnv dReg) (AAdd rEff bEff))
 -- Tuples
 analyseLetAlloc envs@(Envs gEnv rEnv lEnv) bEnv (Bind id (BindTargetTuple _) args dReg:bs) next =
+    let (rAnn,rEff) = analyseLetAlloc envs bEnv bs next
+    in (rAnn, AAdd (AConstr $ constrOne $ lookupReg rEnv dReg) rEff)
+analyseLetAlloc envs@(Envs gEnv rEnv lEnv) bEnv (Bind id (BindTargetConstructor _) [] dReg:bs) next =
     let (rAnn,rEff) = analyseLetAlloc envs bEnv bs next
     in (rAnn, AAdd (AConstr $ constrOne $ lookupReg rEnv dReg) rEff)
 -- TODO: Datatypes
