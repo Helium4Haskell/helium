@@ -17,8 +17,11 @@ import Helium.CodeGeneration.Iridium.RegionSize.Evaluate
 import Helium.CodeGeneration.Iridium.RegionSize.Sort
 import Helium.CodeGeneration.Iridium.RegionSize.Sorting
 import Helium.CodeGeneration.Iridium.RegionSize.Utils
+import Helium.CodeGeneration.Iridium.RegionSize.Fixpoint
 
 import qualified Control.Exception as Exc
+
+-- | TODO: There is still an evalutation bug.. Test.recu, first bound to a (fix) after eval bound to b
 
 -- | Infer the size of regions
 passRegionSize :: NameSupply -> Module -> IO Module
@@ -55,10 +58,10 @@ analyseGroup modName gEnv (BindingNonRecursive decl@(Declaration methodName _ _ 
     then do putStrLn "-"
     else do
       print mAnn
-      putStrLn $ "\n# Simplified: " ++ show methodName
-      print simpl 
-      putStrLn $ "\n# Fixpoint: " ++ show methodName
-      print fixed 
+      -- putStrLn $ "\n# Simplified: " ++ show methodName
+      -- print simpl 
+      -- putStrLn $ "\n# Fixpoint: " ++ show methodName
+      -- print fixed 
       -- putStrLn $ "\n# Sort: " ++ show methodName
       -- print mSrt2 
 
@@ -75,12 +78,3 @@ analyseGroup modName gEnv (BindingNonRecursive decl@(Declaration methodName _ _ 
   else do
     return (gEnv, [decl{ declarationValue = method }])
 
--- | Solve a fixpoint
-solveFix :: Annotation -> Annotation
-solveFix (AFix s a) = go 0 a
-    where go :: Int -> Annotation -> Annotation
-          go 10 x = AFix s x
-          go n x = let res = eval $ AApl (ALam s a) x
-                    in if res == x
-                       then res
-                       else go (n+1) res

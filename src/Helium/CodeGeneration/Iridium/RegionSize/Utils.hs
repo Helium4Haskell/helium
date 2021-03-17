@@ -35,6 +35,7 @@ strengthenIdx d idx = if idx > d
 -- | Check if a string is a region
 strIsReg :: String -> Bool
 strIsReg (c:_) = c == 'ρ'
+strIsReg ""    = False
 
 -- | Indent a newline separated string
 indent :: String -> String

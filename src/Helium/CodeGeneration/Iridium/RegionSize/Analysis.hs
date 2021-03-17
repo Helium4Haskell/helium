@@ -46,10 +46,7 @@ import qualified Data.Map as M
 ----------------------------------------------------------------
 -- Fixpoints
 ----------------------------------------------------------------
--- Step 1: Alter global region so that methodName points to recursive annotation arg
--- Step 2: Wrap annotation in fixpoint
--- Step 3: Iterate until fixpoint is determined (or give up)
-
+-- Step 4: Mutually recursive binding groups
 
 ----------------------------------------------------------------
 -- Analysis
