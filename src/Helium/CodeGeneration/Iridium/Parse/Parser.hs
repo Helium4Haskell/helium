@@ -102,7 +102,8 @@ pToken t = Parser f
   where
     f (c : str)
       | c == t = ResValue () str
-    f str = ResError ("expected " ++ show t) str
+    f (c : str) = ResError ("expected " ++ show t ++ ", got " ++ show c) (c : str)
+    f [] = ResError ("expected " ++ show t ++ ", got EOF") []
 
 pSymbol :: String -> Parser ()
 pSymbol sym = Parser f
@@ -129,6 +130,14 @@ pManySatisfy fn = Parser f
         (parsed, remaining) = span fn str
       in ResValue parsed remaining
 
+pMany :: Parser a -> Parser Bool -> Parser [a]
+pMany elem continue = do
+  c <- continue
+  if c then
+    (:) <$> elem <*> pMany elem continue
+  else
+    return []
+
 pSome :: Parser a -> Parser Bool -> Parser [a]
 pSome elem continue = do
   item <- elem
@@ -148,6 +157,10 @@ pWhitespace =
       pManySatisfy (/= '\n')
       pWhitespace
     else return ()
+
+-- Parse whitespace, but don't allow comments
+pWhitespace' :: Parser ()
+pWhitespace' = pManySatisfy isWhitespace *> return ()
 
 pString :: Parser String
 pString = read <$> Parser f
@@ -225,14 +238,20 @@ pSubscriptUnsignedInt = do
     numbersSubscript = "₀₁₂₃₄₅₆₇₈₉"
 
 pArguments :: Parser a -> Parser [a]
-pArguments pArg = do
-  pToken '('
+pArguments = pArgumentsWith '(' ')'
+
+pArgumentsWith :: Char -> Char -> Parser a -> Parser [a]
+pArgumentsWith open close pArg = pToken open *> pArgumentsWith' close pArg
+
+pArgumentsWith' :: Char -> Parser a -> Parser [a]
+pArgumentsWith' close pArg = do
+  pWhitespace
   c <- lookahead
-  if c == ')' then do
+  if c == close then do
     pChar
     return []
   else
-    pWhitespace *> pSome pArg pSep <* pToken ')'
+    pWhitespace *> pSome pArg pSep <* pToken close
   where
     pSep :: Parser Bool
     pSep = do

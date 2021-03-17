@@ -82,7 +82,7 @@ pBindTarget quantors = do
     pFunctionRegions
       = pTry (RegionVarsTuple [], BindThunkRegions (RegionVarsTuple []) (RegionVarsTuple []))
         ((\r1 r2 r3 -> (r1, BindThunkRegions r2 r3))
-          <$ pToken '(' <* pWhitespace
+          <$ pToken '$' <* pWhitespace <* pToken '(' <* pWhitespace
           <*> pRegionVars
           <* pWhitespace <* pToken ',' <* pWhitespace
           <*> pRegionVars
@@ -95,7 +95,7 @@ pBindTarget quantors = do
     pThunkRegions
       = pTry (BindThunkRegions (RegionVarsTuple []) (RegionVarsTuple []))
         (BindThunkRegions
-          <$ pToken '(' <* pWhitespace
+          <$ pToken '$' <* pWhitespace <* pToken '(' <* pWhitespace
           <*> pRegionVars
           <* pWhitespace <* pToken ',' <* pWhitespace
           <*> pRegionVars

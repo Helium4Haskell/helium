@@ -247,3 +247,10 @@ mapAccumLM _ s1 [] = return (s1, [])
 mapAccumLM f s1 (x:xs) = do 
   (s2, y) <- f s1 x
   fmap (y:) <$> mapAccumLM f s2 xs
+
+tryLast :: [a] -> Maybe a
+tryLast [] = Nothing
+tryLast (x:xs) = Just $ go x xs
+  where
+    go y [] = y
+    go _ (y:ys) = go y ys

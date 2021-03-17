@@ -15,7 +15,7 @@ module Helium.Utils.Utils where
 import Data.IORef
 
 import GHC.IO (unsafePerformIO)
-import System.IO (withFile, hGetContents, IOMode(..), hSetBinaryMode)
+import System.IO (withFile, hGetContents, IOMode(..), hSetNewlineMode, hSetEncoding, noNewlineTranslation, utf8_bom)
 import Data.List (group, groupBy, sort, elemIndex)
 import qualified Control.Exception as CE (catch, IOException, evaluate)
 import System.FilePath
@@ -153,7 +153,8 @@ readSourceFile :: String -> IO String
 readSourceFile fullName = 
     CE.catch (
     withFile fullName ReadMode $ \h1 -> do               
-         hSetBinaryMode h1 True
+         hSetNewlineMode h1 noNewlineTranslation
+         hSetEncoding h1 utf8_bom
          contents <- hGetContents h1
          -- Without evaluate everything breaks down.
          src <- CE.evaluate contents

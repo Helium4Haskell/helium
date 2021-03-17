@@ -70,20 +70,22 @@ transformGroup genv (BindingRecursive methods) = do
   return (genv'', concat methods')
 
 transformGroup genv@(GlobalEnv typeEnv dataTypeEnv globals) (BindingNonRecursive method@(Declaration methodName _ _ _ (Method _ _ arguments _ _ _ _ _))) = do
-  putStrLn $ "# Analyse method " ++ show methodName
+  -- putStrLn $ "# Analyse method " ++ show methodName
 
   let (methodEnv, annotation) = generate genv method
   -- print annotation
 
   let (doesEscape, substituteRegionVar, simplified) = simplifyFixEscape dataTypeEnv annotation
-  putStrLn "Simplified:"
+  -- putStrLn "Simplified:"
   -- print simplified
 
   let (isZeroArity, simplified') = correctArityZero (methodEnvAdditionalRegionSort methodEnv) arguments simplified
 
   let (regionCount, restricted) = if isZeroArity then (0, simplified') else annotationRestrict doesEscape simplified
 
-  putStrLn "Restricted:"
+  rnfAnnotation restricted `seq` return ()
+
+  -- putStrLn "Restricted:"
   -- print doesEscape
   -- print restricted
 
@@ -93,4 +95,3 @@ transformGroup genv@(GlobalEnv typeEnv dataTypeEnv globals) (BindingNonRecursive
   let method' = method{ declarationValue = transform methodEnv substituteRegionVar restricted $ declarationValue method }
 
   return (genv', [method'])
-

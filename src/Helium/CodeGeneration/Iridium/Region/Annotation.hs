@@ -1,4 +1,8 @@
-module Helium.CodeGeneration.Iridium.Region.Annotation where
+module Helium.CodeGeneration.Iridium.Region.Annotation
+  ( Annotation(..), AnnotationVar(..)
+  , identity, arelation, isIdentity
+  , showAnnotation, rnfAnnotation
+  ) where
 
 import Control.Applicative
 import Data.Maybe
@@ -53,24 +57,30 @@ arelation rel
 
 type Names = (QuantorNames, Env String, Env String) -- Type variable names, annotation variable names, region variable names
 
+emptyNames :: Names
+emptyNames = ([], emptyEnv, emptyEnv)
+
 data Precedence = PrecLow | PrecApp | PrecHigh deriving (Eq, Ord)
 
 instance Show Annotation where
-  showsPrec _ = showAnnotation ([], emptyEnv, emptyEnv) 0 PrecHigh
+  showsPrec _ = showAnnotation 0
 
-showAnnotation :: Names -> Int -> Precedence -> Annotation -> ShowS
-showAnnotation names indentation precedence annotation = case annotation of
+showAnnotation :: Int -> Annotation -> ShowS
+showAnnotation indentation = showAnnotation' emptyNames indentation PrecHigh
+
+showAnnotation' :: Names -> Int -> Precedence -> Annotation -> ShowS
+showAnnotation' names indentation precedence annotation = case annotation of
   AFix f s g
     | isIdentity f -> parensMultiline PrecHigh $ \indentation' ->
       showString "fix {" . showSort' s . showString "}\r\n"
-      . showIndentation indentation' . showAnnotation' indentation' PrecHigh g
+      . showIndentation indentation' . showAnnotation'' indentation' PrecHigh g
     | otherwise ->
-      showAnnotation' indentation PrecHigh (AApp f (AFix (identity s) s g) (RegionVarsTuple []) LifetimeContextAny)
+      showAnnotation'' indentation PrecHigh (AApp f (AFix (identity s) s g) (RegionVarsTuple []) LifetimeContextAny)
 
   AFixEscape arity s rs f ->
     parensMultiline PrecHigh $ \indentation' ->
       showString "fix_escape {" . shows arity . showString "; " . showSort' s . showString "; " . showRegionSort quantorNames rs . showString "}\r\n"
-      . showIndentation indentation' . showAnnotation' indentation' PrecHigh f
+      . showIndentation indentation' . showAnnotation'' indentation' PrecHigh f
 
   AForall quantor a ->
     let
@@ -78,11 +88,11 @@ showAnnotation names indentation precedence annotation = case annotation of
       names' = (quantorName : quantorNames, annotationNames, regionNames)
     in
       if isSimple a then
-        parens PrecHigh $ showString "∀ " . showString quantorName . showString ". " . showAnnotation names' indentation PrecHigh a
+        parens PrecHigh $ showString "∀ " . showString quantorName . showString ". " . showAnnotation' names' indentation PrecHigh a
       else
         parensMultiline PrecHigh $ \indentation' ->
           showString "∀ " . showString quantorName . showString "."
-          . showString "\r\n" . showIndentation (indentation' + 1) . showAnnotation names' (indentation' + 1) PrecHigh a
+          . showString "\r\n" . showIndentation (indentation' + 1) . showAnnotation' names' (indentation' + 1) PrecHigh a
 
   ALam s RegionSortUnit _ a ->
     let
@@ -90,11 +100,11 @@ showAnnotation names indentation precedence annotation = case annotation of
       names' = (quantorNames, envPush var annotationNames, regionNames)
     in
       if isSimple a then
-        parens PrecHigh $ showString "λ" . showString var . showString ": " . showSortLow' s . showString " -> " . showAnnotation names' indentation PrecHigh a
+        parens PrecHigh $ showString "λ" . showString var . showString ": " . showSortLow' s . showString " -> " . showAnnotation' names' indentation PrecHigh a
       else
         parensMultiline PrecHigh $ \indentation' ->
           showString "λ" . showString var . showString ": " . showSortLow' s . showString " ->\r\n"
-          . showIndentation (indentation' + 1) . showAnnotation names' (indentation' + 1) PrecHigh a
+          . showIndentation (indentation' + 1) . showAnnotation' names' (indentation' + 1) PrecHigh a
 
   ALam s rs lc a ->
     let
@@ -105,53 +115,53 @@ showAnnotation names indentation precedence annotation = case annotation of
       arguments = showString "λ[" . showString annotationVar . showString ": " . showSortLow' s . showString "; " . showRegionSortWithVariables quantorNames regionVars rs . showString "]" . shows lc
     in
       if isSimple a then
-        parens PrecHigh $ arguments . showString " -> " . showAnnotation names' indentation PrecHigh a
+        parens PrecHigh $ arguments . showString " -> " . showAnnotation' names' indentation PrecHigh a
       else
         parensMultiline PrecHigh $ \indentation' ->
           arguments . showString " ->\r\n"
-          . showIndentation (indentation' + 1) . showAnnotation names' (indentation' + 1) PrecHigh a
+          . showIndentation (indentation' + 1) . showAnnotation' names' (indentation' + 1) PrecHigh a
 
   AInstantiate a tp
-    | isSimple annotation -> parens PrecApp $ showAnnotation' indentation PrecApp a . showString " { " . showType' tp . showString " }"
-    | otherwise -> parensMultiline PrecApp $ \indentation' -> showAnnotation' indentation' PrecApp a . showString "\r\n" . showIndentation indentation' . showString "{ " . showType' tp . showString " }"
+    | isSimple annotation -> parens PrecApp $ showAnnotation'' indentation PrecApp a . showString " { " . showType' tp . showString " }"
+    | otherwise -> parensMultiline PrecApp $ \indentation' -> showAnnotation'' indentation' PrecApp a . showString "\r\n" . showIndentation indentation' . showString "{ " . showType' tp . showString " }"
 
   AApp a1 a2 (RegionVarsTuple []) _
-    | isSimple annotation -> parens PrecApp $ showAnnotation' indentation PrecApp a1 . showString " " . showAnnotation' indentation PrecLow a2
-    | otherwise -> parensMultiline PrecApp $ \indentation' -> showAnnotation' indentation' PrecApp a1 . showString "\r\n" . showIndentation indentation' . showAnnotation' indentation PrecLow a2
+    | isSimple annotation -> parens PrecApp $ showAnnotation'' indentation PrecApp a1 . showString " " . showAnnotation'' indentation PrecLow a2
+    | otherwise -> parensMultiline PrecApp $ \indentation' -> showAnnotation'' indentation' PrecApp a1 . showString "\r\n" . showIndentation indentation' . showAnnotation'' indentation PrecLow a2
 
   AApp a1 a2 vars lc
-    | isSimple a1 && isSimple a2 -> parens PrecApp $ showAnnotation' indentation PrecApp a1 . showString " [" . showAnnotation' indentation PrecHigh a2 . showString "; " . showRegionVars vars . showString "]"
+    | isSimple a1 && isSimple a2 -> parens PrecApp $ showAnnotation'' indentation PrecApp a1 . showString " [" . showAnnotation'' indentation PrecHigh a2 . showString "; " . showRegionVars vars . showString "]"
     | isSimple a2 -> parensMultiline PrecApp $ \indentation' ->
-        showAnnotation' indentation' PrecApp a1
+        showAnnotation'' indentation' PrecApp a1
         . showString "\r\n" . showIndentation indentation'
-        . showString "[" . showAnnotation' indentation' PrecHigh a2 . showString "; " . showRegionVars vars . showString "]" . shows lc
+        . showString "[" . showAnnotation'' indentation' PrecHigh a2 . showString "; " . showRegionVars vars . showString "]" . shows lc
     | otherwise -> parensMultiline PrecApp $ \indentation' ->
-        showAnnotation' indentation' PrecApp a1
+        showAnnotation'' indentation' PrecApp a1
         . showString "\r\n" . showIndentation indentation'
-        . showString "[ " . showAnnotation' (indentation' + 1) PrecHigh a2
+        . showString "[ " . showAnnotation'' (indentation' + 1) PrecHigh a2
         . showString "\r\n" . showIndentation indentation'
         . showString "; " . showRegionVars vars
         . showString " ]" . shows lc
 
   ATuple as
-    | isSimple annotation -> showString "(" . showsIntercalate (showAnnotation' indentation PrecHigh) ", " as . showString ")"
+    | isSimple annotation -> showString (if single as then "T(" else "(") . showsIntercalate (showAnnotation'' indentation PrecHigh) ", " as . showString ")"
     | otherwise ->
-      showString "( "
-      . showsIntercalate (showAnnotation' (indentation + 1) PrecHigh) (newline ", ") as . newline . showString ")"
-  AProject a idx -> showAnnotation' indentation PrecLow a . showString "." . shows idx
+      showString (if single as then "T(" else "( ")
+      . showsIntercalate (showAnnotation'' (indentation + 1) PrecHigh) (newline ", ") as . newline . showString ")"
+  AProject a idx -> showAnnotation'' indentation PrecLow a . showString "." . shows idx
 
-  AVar var -> showAnnotationVar var
+  AVar var -> showAnnotation'Var var
   ARelation relation -> showRelationWith showRegionVar relation
   ATop s -> parens PrecApp (showString "⊤ { " . showSort' s . showString " }")
   ABottom s -> parens PrecApp (showString "⊥ { " . showSort' s . showString " }")
   AJoin{}
-    | isSimple annotation -> parens PrecHigh $ showsIntercalate (showAnnotation' indentation PrecApp) " ⊔ " $ gatherJoins annotation []
+    | isSimple annotation -> parens PrecHigh $ showsIntercalate (showAnnotation'' indentation PrecApp) " ⊔ " $ gatherJoins annotation []
     | a:as <- gatherJoins annotation [] ->
       parensMultiline PrecHigh $ \indentation' ->
-        showAnnotation' indentation' PrecApp a . newline . showString "⊔ "
+        showAnnotation'' indentation' PrecApp a . newline . showString "⊔ "
         -- Note that we use indentation instead of indentation' here,
         -- to prevent double indentation if parentheses are needed.
-        . showsIntercalate (showAnnotation' (indentation + 1) PrecApp) (newline "⊔ ") as
+        . showsIntercalate (showAnnotation'' (indentation + 1) PrecApp) (newline "⊔ ") as
     | otherwise -> error "Impossible"
 
   where
@@ -181,10 +191,10 @@ showAnnotation names indentation precedence annotation = case annotation of
     showSortLow' :: Sort -> ShowS
     showSortLow' = showSortLow quantorNames
 
-    showAnnotation' = showAnnotation names
+    showAnnotation'' = showAnnotation' names
 
-    showAnnotationVar :: AnnotationVar -> ShowS
-    showAnnotationVar (AnnotationVar idx) = case envLookup idx annotationNames of
+    showAnnotation'Var :: AnnotationVar -> ShowS
+    showAnnotation'Var (AnnotationVar idx) = case envLookup idx annotationNames of
       Nothing -> showString $ 'ψ' : showSubscript (envSize annotationNames - idx - 1)
       Just s -> showString s
 
@@ -214,6 +224,9 @@ showAnnotation names indentation precedence annotation = case annotation of
     gatherJoins (AJoin a1 a2) = gatherJoins a1 . gatherJoins a2
     gatherJoins a = (a :)
 
+    single [_] = True
+    single _ = False
+
 showIndentation :: Int -> ShowS
 showIndentation 0 s = s
 showIndentation i s = ' ' : ' ' : showIndentation (i - 1) s
@@ -221,3 +234,29 @@ showIndentation i s = ' ' : ' ' : showIndentation (i - 1) s
 isIdentity :: Annotation -> Bool
 isIdentity (ALam _ RegionSortUnit _ (AVar (AnnotationVar 0))) = True
 isIdentity _ = False
+
+-- Note that the data type is already strict, except for tuples.
+-- Hence we still need to descend the annotation to find all tuples.
+rnfAnnotation :: Annotation -> ()
+rnfAnnotation annotation = case annotation of
+  AFix a1 s a2
+    -> rnfAnnotation a1 `seq` rnfSort s `seq` rnfAnnotation a2
+  AFixEscape _ s rs a
+    -> rnfSort s `seq` rnfRegionSort rs `seq` rnfAnnotation a
+  AForall _ a
+    -> rnfAnnotation a
+  ALam s rs _ a
+    -> rnfSort s `seq` rnfRegionSort rs `seq` rnfAnnotation a
+  AInstantiate a _
+    -> rnfAnnotation a
+  AApp a1 a2 regions _
+    -> rnfAnnotation a1 `seq` rnfAnnotation a2 `seq` rnfRegionVars regions
+  ATuple as
+    -> foldl' seq () $ map rnfAnnotation as
+  AProject a _
+    -> rnfAnnotation a
+  AVar _ -> ()
+  ARelation _ -> ()
+  ATop s -> rnfSort s
+  ABottom s -> rnfSort s
+  AJoin a1 a2 -> rnfAnnotation a1 `seq` rnfAnnotation a2

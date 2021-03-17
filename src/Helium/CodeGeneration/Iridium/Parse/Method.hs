@@ -6,6 +6,7 @@ import Helium.CodeGeneration.Iridium.Parse.Instruction
 import Helium.CodeGeneration.Iridium.Parse.Expression
 import Helium.CodeGeneration.Iridium.Data
 import Helium.CodeGeneration.Iridium.Type
+import qualified Helium.CodeGeneration.Iridium.Region.Parse as Region
 import Lvm.Common.Id(Id, idFromString)
 import Lvm.Core.Type
 import Data.Maybe
@@ -27,7 +28,7 @@ pMethod = do
     return $ Just tp
   else
     return Nothing
-  additionalRegions <- pTry (RegionVarsTuple []) pRegionVars
+  additionalRegions <- pTry (RegionVarsTuple []) (pRegionVars <* pWhitespace)
   pToken '('
   pWhitespace
   c <- lookahead
@@ -42,8 +43,8 @@ pMethod = do
   pWhitespace
   returnType <- pType' quantors
   returnRegions <- pAtRegions
-  annotations <- pAnnotations
   pWhitespace
+  annotations <- pAnnotations
   c <- pChar
   let tp' = fromMaybe (typeFromFunctionType $ FunctionType (map toArg args) returnType) tp
   case c of
@@ -53,7 +54,6 @@ pMethod = do
       -- Shorthand for a function that computes a single expression and returns it
       pWhitespace
       expr <- pExpression quantors
-      annotations <- pAnnotations
       let result = idFromString "result"
       let b = Block (idFromString "entry") (Let result expr $ Return $ Local result $ typeToStrict returnType)
       return $ Method tp' additionalRegions args returnType returnRegions annotations b []
@@ -149,12 +149,17 @@ pAbstractMethod = do
 pAnnotations :: Parser [MethodAnnotation]
 pAnnotations =
   do
-    eof <- isEndOfFile
-    if eof then
+    c <- lookahead
+    if c == '[' then do
+      pChar
+      (isLong, annotation) <- pAnnotation True
+      annotations <- if isLong then return [] else pMany (snd <$> pAnnotation False) pSep
+      pToken ']'
+      pWhitespace
+      annotations' <- pAnnotations
+      return $ annotation : annotations ++ annotations'
+    else
       return []
-    else do
-      c <- lookahead
-      if c == '[' then pToken '[' *> pSome pAnnotation pSep <* pToken ']' else return []
   where
     pSep :: Parser Bool
     pSep = do
@@ -162,19 +167,21 @@ pAnnotations =
       c <- lookahead
       return $ c /= ']'
 
-pAnnotation :: Parser MethodAnnotation
-pAnnotation = do
+pAnnotation :: Bool -> Parser (Bool, MethodAnnotation)
+pAnnotation first = do
   word <- pWord
   pWhitespace
   case word of
-    "trampoline" -> return MethodAnnotateTrampoline
+    "trampoline" -> return (False, MethodAnnotateTrampoline)
     "callconvention" -> do
       pToken ':'
       conv <- pWord
       case conv of
-        "c" -> return $ MethodAnnotateCallConvention CCC
-        "fast" -> return $ MethodAnnotateCallConvention CCFast
-        "preserve_most" -> return $ MethodAnnotateCallConvention CCPreserveMost
+        "c" -> return (False, MethodAnnotateCallConvention CCC)
+        "fast" -> return (False, MethodAnnotateCallConvention CCFast)
+        "preserve_most" -> return (False, MethodAnnotateCallConvention CCPreserveMost)
         _ -> pError $ "Unknown calling convention: " ++ show conv
-    "implicit_io" -> return MethodAnnotateImplicitIO
+    "implicit_io" -> return (False, MethodAnnotateImplicitIO)
+    "regions"
+      | first -> (\a -> (True, MethodAnnotateRegion a)) <$ pToken ':' <* pWhitespace <*> Region.pAnnotation Region.emptyNames
     _ -> pError $ "Unknown annotation: " ++ show word

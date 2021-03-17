@@ -17,11 +17,12 @@ import Lvm.Common.Byte(stringFromBytes)
 import Lvm.Common.Id(Id, stringFromId, idFromString)
 import Lvm.Core.Module(Custom(..), DeclKind(..), Field(..))
 import Lvm.Core.Type
-import Data.List(intercalate)
+import Data.List(intercalate, partition)
 import Data.Either(isRight)
 import Helium.CodeGeneration.Iridium.Data
 import Helium.CodeGeneration.Iridium.Type
 import Helium.CodeGeneration.Iridium.Region.Utils
+import qualified Helium.CodeGeneration.Iridium.Region.Annotation as Region
 import qualified Text.PrettyPrint.Leijen as Pretty
 
 class ShowDeclaration a where
@@ -242,7 +243,17 @@ instance Show CallingConvention where
 
 showAnnotations :: [MethodAnnotation] -> String
 showAnnotations [] = ""
-showAnnotations annotations = "[" ++ intercalate " " (map show annotations) ++ "]"
+showAnnotations annotations = "[" ++ intercalate " " (map show others) ++ "]" ++ regionString
+  where
+    (regions, others) = partition isRegion annotations
+    isRegion (MethodAnnotateRegion _) = True
+    isRegion _ = False
+
+    regionString
+      | [MethodAnnotateRegion regionAnnotation] <- regions
+        =  "\n  [regions:\n    "
+        ++ Region.showAnnotation 2 regionAnnotation "\n  ]"
+      | otherwise = ""
 
 showReturnRegion, showAdditionalRegion, showLocalRegion :: Int -> String
 showReturnRegion idx = "ρᵣ" ++ showSubscript idx

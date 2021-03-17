@@ -87,14 +87,14 @@ pVariable quantors = do
 pRegionVar :: Parser RegionVar
 pRegionVar = do
   pToken 'ρ'
-  c <- lookahead
-  case c of
+  c1 <- lookahead
+  case c1 of
     '_' -> do
       pChar
-      name <- pKeyword
-      case name of
-        "global" -> return RegionGlobal
-        "bottom" -> return RegionBottom
+      c2 <- lookahead
+      case c2 of
+        'g' -> RegionGlobal <$ pSymbol "global"
+        'b' -> RegionBottom <$ pSymbol "bottom"
         _ -> pError "Expected global or bottom"
     _ -> RegionLocal <$> pSubscriptInt
 

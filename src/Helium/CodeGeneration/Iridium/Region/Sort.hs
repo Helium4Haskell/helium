@@ -7,10 +7,11 @@ module Helium.CodeGeneration.Iridium.Region.Sort
   , showSort, showSortLow, showRegionSort, sortReindex, regionSortReindex
   , sortWeaken, sortWeaken', sortStrengthen, sortStrengthen'
   , regionSortWeaken, regionSortWeaken', regionSortStrengthen, regionSortStrengthen'
-  , showRegionSortWithVariables
+  , showRegionSortWithVariables, rnfSort, rnfRegionSort
   ) where
 
 import Lvm.Core.Type
+import Data.List
 import Data.Functor.Identity
 
 import Helium.CodeGeneration.Iridium.Region.Utils
@@ -127,15 +128,16 @@ showSort quantors (SortFun sortArg RegionSortUnit _ sort1) s
   = showSortLow quantors sortArg $ " -> " ++ showSort quantors sort1 s
 showSort quantors (SortFun sortArg regionArgs dir sort1) s
   = "[" ++ showSort quantors sortArg ("; " ++ (showRegionSort quantors) regionArgs ("]" ++ show dir ++ " -> " ++ showSort quantors sort1 s))
-showSort quantors (SortTuple sorts) s = showListWith "(" ")" (showSort quantors) sorts s
-showSort _ SortRelation s = 'R' : s
-showSort quantors (SortPolymorphic tvar tps) s = "Ψ⟨" ++ showTypeVar quantors tvar ++ (tps >>= (\tp -> " " ++ showTypeAtom quantors tp)) ++ "⟩" ++ s
+showSort quantors sort' s = showSortLow quantors sort' s
 
 showSortLow :: QuantorNames -> Sort -> ShowS
-showSortLow quantors (SortTuple sorts) s = showListWith "(" ")" (showSort quantors) sorts s
 showSortLow _ SortRelation s = 'R' : s
 showSortLow quantors (SortPolymorphic tvar tps) s = "Ψ⟨" ++ showTypeVar quantors tvar ++ (tps >>= (\tp -> " " ++ showTypeAtom quantors tp)) ++ "⟩" ++ s
-showSortLow quantors sort1 s = "(" ++ showSort quantors sort1 (")" ++ s)
+showSortLow quantors (SortTuple sorts) s = showListWith (if single sorts then "T(" else "(") ")" (showSort quantors) sorts s
+  where
+    single [_] = True
+    single _ = False
+showSortLow quantors sort1 s = "(" ++ showSort quantors sort1 (')' : s)
 
 showRegionSort :: QuantorNames -> RegionSort -> ShowS
 showRegionSort quantors (RegionSortForall quantor sort1) s
@@ -144,7 +146,10 @@ showRegionSort quantors (RegionSortForall quantor sort1) s
     quantorName = freshQuantorName quantors quantor
 showRegionSort _ RegionSortMonomorphic s = 'Ρ' : s
 showRegionSort quantors (RegionSortPolymorphic tvar tps) s = "Ρ⟨" ++ showTypeVar quantors tvar ++ (tps >>= (\tp -> " " ++ showTypeAtom quantors tp)) ++ "⟩" ++ s
-showRegionSort quantors (RegionSortTuple sorts) s = showListWith "(" ")" (showRegionSort quantors) sorts s
+showRegionSort quantors (RegionSortTuple sorts) s = showListWith (if single sorts then "T(" else "(") ")" (showRegionSort quantors) sorts s
+  where
+    single [_] = True
+    single _ = False
 
 showRegionSortWithVariables :: QuantorNames -> [String] -> RegionSort -> ShowS
 showRegionSortWithVariables quantors names regionSort = snd $ showRegionSortWithVariables' quantors names regionSort
@@ -172,3 +177,16 @@ showRegionSortWithVariables' quantors names (RegionSortTuple (rs:rss)) =
         (names2, s) = showRegionSortWithVariables' quantors names1 rs'
         (names3, s') = go names2 rss'
 showRegionSortWithVariables' _ [] _ = error "showRegionSortWithVariables: Not enough variables"
+
+rnfSort :: Sort -> ()
+rnfSort (SortForall _ s) = rnfSort s
+rnfSort (SortFun s1 rs _ s2) = rnfSort s1 `seq` rnfRegionSort rs `seq` rnfSort s2
+rnfSort (SortTuple sorts) = foldl' seq () $ map rnfSort sorts
+rnfSort SortRelation = ()
+rnfSort (SortPolymorphic _ tps) = foldl' (flip seq) () tps
+
+rnfRegionSort :: RegionSort -> ()
+rnfRegionSort (RegionSortForall _ rs) = rnfRegionSort rs
+rnfRegionSort (RegionSortTuple regionSorts) = foldl' seq () $ map rnfRegionSort regionSorts
+rnfRegionSort RegionSortMonomorphic = ()
+rnfRegionSort (RegionSortPolymorphic _ tps) = foldl' (flip seq) () tps

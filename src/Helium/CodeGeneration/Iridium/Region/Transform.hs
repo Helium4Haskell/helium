@@ -16,8 +16,10 @@ import Data.Either
 
 transform :: MethodEnv -> (RegionVar -> RegionVar) -> Annotation -> Method -> Method
 transform env substitute annotation (Method tp _ args returnType _ methodAnnotations entry blocks)
-  = Method tp additionalRegions args returnType returnRegions methodAnnotations (transformBlock regions True entry) (transformBlock regions False <$> blocks)
+  = Method tp additionalRegions args returnType returnRegions methodAnnotations' (transformBlock regions True entry) (transformBlock regions False <$> blocks)
   where
+    methodAnnotations' = MethodAnnotateRegion annotation : methodAnnotations
+
     substitute' :: RegionVar -> RegionVar
     substitute' var = case substitute var of
       RegionBottom -> var -- Internal region
