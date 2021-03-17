@@ -118,5 +118,6 @@ constrOne i = M.singleton i $ Nat 1
 -- | Remove local regions from constraint set
 constrRemLocalRegs :: Constr -> Constr
 constrRemLocalRegs = M.filterWithKey (\k _ -> not$isLocal k)
-    where isLocal (Region _) = True
-          isLocal _          = False
+    where isLocal (Region RegionGlobal) = False
+          isLocal (Region _           ) = True
+          isLocal _ = False

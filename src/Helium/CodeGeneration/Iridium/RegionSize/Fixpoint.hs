@@ -17,7 +17,7 @@ solveFix fix@(AFix s a) =
        then a
        else iterate 0 a
     where iterate :: Int -> Annotation -> Annotation
-          iterate 10 x = AFix s x
+          iterate 3 x = AFix s x
           iterate n x = let res = eval $ AApl (ALam s a) x
                         in if res == x
                            then res

@@ -52,6 +52,12 @@ import qualified Data.Map as M
 -- Analysis
 ----------------------------------------------------------------
 
+-- n = args
+-- Indexes:
+-- 0..n-1: Arguments
+-- n     : Additional regions
+-- n+1   : Fixpoint argument
+
 -- | Analyse the effect and annotation of a block
 analyse :: GlobalEnv -> Id -> Method -> Annotation
 analyse gEnv methodName method@(Method mTy aRegs args _ rRegs _ block blocks) =
@@ -74,7 +80,7 @@ analyse gEnv methodName method@(Method mTy aRegs args _ rRegs _ block blocks) =
     
         -- Make and solve the fixpoint
         fixpoint = AFix (SortLam aRegS $ sortAssign mTy) $ ALam aRegS fAnn 
-    in annRemLocalRegs fixpoint
+    in {- annRemLocalRegs -}fixpoint
 
 -- | Wrap a function body into a AQuant or `A -> (A, P -> C)'
 wrapBody :: Maybe Sort -> (Annotation,Effect) -> Sort -> Effect

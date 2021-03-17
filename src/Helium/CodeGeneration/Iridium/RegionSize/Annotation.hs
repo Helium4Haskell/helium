@@ -57,7 +57,7 @@ instance Show Annotation where
         aLam    = \d s a -> "(λ"++ annVarName (d+1) ++":"++ showSort d s ++ ".\n" ++ indent a ++ ")",
         aApl    = \_ a b -> a ++ "< " ++ b ++ " >",
         aUnit   = \_     -> "()",
-        aTuple  = \_ as  -> "(" ++ intercalate (if strIsReg (as !! 0) then "," else "\n,") as ++ ")",
+        aTuple  = \_ as  -> "(" ++ intercalate (if noTupleBreak (as !! 0) then "," else "\n,") as ++ ")",
         aProj   = \_ i a -> "π_" ++ show i ++ "[" ++ a ++ "]",
         aAdd    = \_ a b -> "(" ++ a ++ " ⊕  " ++ b ++ ")",
         aMinus  = \_ a r -> "(" ++ a ++ " \\ " ++ show r ++ ")",
@@ -198,11 +198,11 @@ constrIdxToAnn (CnProj i c) = AProj i $ constrIdxToAnn c
 
 
 
--- | Clean local
+-- | Clean local regions from the annotation
 annRemLocalRegs :: Annotation -> Annotation
 annRemLocalRegs = foldAnnAlg cleanAlg
   where cleanAlg = idAnnAlg {
     aMinus  = \_ a _ -> a,
-    aReg    = \_ _   -> ABot SortMonoRegion,
+    aReg    = \_ r   -> if r == RegionGlobal then AReg r else ABot SortMonoRegion,
     aConstr = \_     -> AConstr . constrRemLocalRegs
   }

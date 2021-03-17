@@ -63,13 +63,16 @@ join a  (ABot _) = a
 join (ATop s)  _ = ATop s
 join _  (ATop s) = ATop s
 -- Constraint set join
-join (AConstr c1) (AConstr c2) = AConstr $ constrJoin c1 c2
+join (AConstr  c1) (AConstr  c2) = AConstr $ constrJoin c1 c2
 -- Join-simplicitation
-join (ALam   s a) (ALam   _ b) = ALam   s $ AJoin a b
-join (AApl   s a) (AApl   _ b) = AApl   s $ AJoin a b
-join (AQuant a  ) (AQuant b  ) = AQuant   $ AJoin a b
-join (AInstn a t) (AInstn b _) = AInstn (AJoin a b) t
--- Collect and sort
+join (ALam   s  a) (ALam   _  b) = ALam   s $ AJoin a b
+join (AApl   s  a) (AApl   _  b) = AApl   s $ AJoin a b
+join (AQuant a   ) (AQuant b   ) = AQuant   $ AJoin a b
+join (AInstn a  t) (AInstn b  _) = AInstn (AJoin a b) t
+join (ATuple as  ) (ATuple bs  ) = eval . ATuple $ zipWith AJoin as bs
+join (AProj  i1 a) (AProj  i2 b) | i1 == i2  = AProj i1 (AJoin a b)
+                                 | otherwise = operatorSort AJoin constrJoin [AProj i1 a, AProj i2 b]
+-- Collect and sort       
 join c1 c2 = joinSort $ jCollect (AJoin c1 c2)
   where jCollect (AJoin c3 c4) = jCollect c3 ++ jCollect c4 
         jCollect ann = [ann]
@@ -79,19 +82,19 @@ join c1 c2 = joinSort $ jCollect (AJoin c1 c2)
 -- | Annotation application
 application :: Annotation -> Annotation -> Annotation
 application (ALam s f) x | sortIsAnnotation s = eval $ annStrengthen $ foldAnnAlgN 0 subsAnnAlg f
-                         | sortIsRegion     s = eval $                 foldAnnAlgN 0 subsRegAlg f
+                         | sortIsRegion     s = eval $ annStrengthen $ foldAnnAlgN 0 subsRegAlg f
                          | otherwise = rsError "Sort is neither region or annotation!?"
   where -- | Substitute a variable for an annotation
         subsAnnAlg = idAnnAlg {
           aVar = \d idx -> if d == idx 
-                           then annWeaken d x -- Weaken indexes
+                           then annWeaken (d+1) x -- Weaken indexes
                            else AVar idx
         }
         -- | Substitute a region variable for a region
         subsRegAlg = idAnnAlg {
           aConstr = \d c -> AConstr $ regVarSubst d x c
         }
-application (ATop s) x = (ATop s)
+application (ATop s) _ = (ATop s)
 application f    x = AApl f x
 
 
@@ -123,9 +126,13 @@ operatorSort :: (Annotation -> Annotation -> Annotation)
              -> (Constr -> Constr -> Constr)
              -> [Annotation] 
              -> Annotation
-operatorSort op evalF xs = foldl op computed $ sort other 
-  where (constrs, other) = partition isConstr xs 
-        computed = AConstr $ foldr (\(AConstr a) -> evalF a) constrBot constrs
+operatorSort op evalF xs = if length others == 0 
+                           then computed
+                           else if computed /= AConstr constrBot 
+                               then foldl op computed      $ sort others
+                               else foldl op (head others) $ sort (tail others)
+  where (constrs, others) = partition isConstr xs 
+        computed = AConstr $ foldr (\(AConstr a) -> evalF a) (constrBot) constrs
 
 ----------------------------------------------------------------
 -- Subsitution of region variables
@@ -138,7 +145,7 @@ regVarSubst d ann c = foldl constrAdd c' insts
         ns    = flip constrIdx c <$> cIdxs -- Get bounds on indexes
         c'    = foldr constrRem c cIdxs    -- Remove cIdxs from c
         aIdxs = eval <$> regVarInst ann <$> (constrIdxToAnn <$> cIdxs)              -- Get new indexes
-        insts = constrReIndex (weakenIdx d) 0 <$> uncurry collect <$> zip ns aIdxs  -- Instantiate and weaken
+        insts = constrReIndex (weakenIdx $ d+1) 0 <$> uncurry collect <$> zip ns aIdxs  -- Instantiate and weaken
         
         regVarInst :: Annotation -> Annotation -> Annotation
         regVarInst inst (AVar _)    = inst
