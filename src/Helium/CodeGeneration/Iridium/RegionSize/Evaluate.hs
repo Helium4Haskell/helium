@@ -31,14 +31,12 @@ eval = foldAnnAlg evalAlg
 
 -- | Only add when the subannotations are constraints
 add :: Annotation -> Annotation -> Annotation
+add (AConstr c1) (AConstr c2) = AConstr $ constrAdd c1 c2
+-- Top and bottom
 add (ATop s) _ = ATop s
 add _ (ATop s) = ATop s
-add (AConstr c1) (AConstr c2) = AConstr $ constrAdd c1 c2
--- -- Empty constraint set? Then ann, otherwise sort
--- add (AConstr c1) ann | constrBot == c1 = ann
---                      | otherwise = AAdd (AConstr c1) ann
--- add ann (AConstr c2) | constrBot == c2 = ann
---                      | otherwise = AAdd (AConstr c2) ann
+add (ABot _) a = a
+add a (ABot _) = a
 -- Two non-constraint sets, sort
 add c1  c2 = addSort $ aCollect (AAdd c1 c2)
   where aCollect (AAdd c3 c4) = aCollect c3 ++ aCollect c4 
@@ -48,8 +46,11 @@ add c1  c2 = addSort $ aCollect (AAdd c1 c2)
 
 -- | Minus of constraint
 minus :: Annotation -> RegionVar -> Annotation
-minus (ATop s)    _ = ATop s
 minus (AConstr c) r = AConstr $ constrRem (Region r) c
+-- Top and bottom
+minus (ATop s)    _ = ATop s
+minus (ABot s)    _ = ABot s
+-- Cannot eval
 minus a r = AMinus a r
 
 
@@ -94,7 +95,10 @@ application (ALam s f) x | sortIsAnnotation s = eval $ annStrengthen $ foldAnnAl
         subsRegAlg = idAnnAlg {
           aConstr = \d c -> AConstr $ regVarSubst d x c
         }
+-- Top and bottom
 application (ATop s) _ = (ATop s)
+application (ABot s) _ = (ABot s)
+-- Cannot eval
 application f    x = AApl f x
 
 
@@ -105,7 +109,10 @@ instantiate (AQuant anno) ty = eval $ foldAnnAlg annInstAlg anno
     aLam   = \d s a -> ALam (sortSubstitute d ty s) a,
     aFix   = \d s a -> AFix (sortSubstitute d ty s) a
   } 
+-- Top and bottom
 instantiate (ATop s) _ = (ATop s)
+instantiate (ABot s) _ = (ABot s)
+-- Cannot eval
 instantiate a    t = AInstn a t
 
 
@@ -113,7 +120,10 @@ instantiate a    t = AInstn a t
 project :: Int -> Annotation -> Annotation 
 project idx (ATuple as) | length as > idx = as !! idx
                         | otherwise       = rsError $ "Projection-index out of bounds\n Idx: " ++ show idx ++ "\n Annotation: " ++ (show $ ATuple as)
+-- Top and bottom
 project _   (ATop s) = (ATop s)
+project _   (ABot s) = (ABot s)
+-- Cannot eval
 project idx t    = AProj idx t 
 
 

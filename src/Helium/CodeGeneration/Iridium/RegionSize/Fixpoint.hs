@@ -15,7 +15,7 @@ solveFix fix@(AFix s a) =
     let isFix = countFixBinds fix > 0
     in if not isFix
        then a
-       else iterate 0 a
+       else iterate 0 (ABot s)
     where iterate :: Int -> Annotation -> Annotation
           iterate 3 x = AFix s x
           iterate n x = let res = eval $ AApl (ALam s a) x
