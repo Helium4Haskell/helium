@@ -1,4 +1,5 @@
 module Helium.CodeGeneration.Iridium.RegionSize.Analysis
+    (analyseMethods)
 where
 
 import Lvm.Common.Id
@@ -52,24 +53,37 @@ import qualified Data.Map as M
 -- Analysis
 ----------------------------------------------------------------
 
--- n = args
--- Indexes:
--- 0..n-1: Arguments
--- n     : Additional regions
--- n+1   : Fixpoint argument
+-- | Analyse a (possibilty recursive) binding group
+analyseMethods :: GlobalEnv -> [(Id,Method)] -> [Annotation]
+analyseMethods gEnv methods =
+    let (gEnv',_)    = foldl makeFixVar (gEnv,0) methods
+        (anns,sorts) = unzip $ analyseMethod gEnv' <$> methods
+        fixpoints    = AFix (SortTuple sorts) <$> anns
+    in annRemLocalRegs <$> fixpoints
+        where makeFixVar (env, i) (methodName, (Method _ _ args _ _ _ _ _)) =
+                    let fixIdx = length args + 1
+                        env'   = updateGlobal env methodName (AProj i $ AVar fixIdx)
+                    in (env', i+1)
 
--- | Analyse the effect and annotation of a block
-analyse :: GlobalEnv -> Id -> Method -> Annotation
-analyse gEnv methodName method@(Method mTy aRegs args _ rRegs _ block blocks) =
-    let gEnv'        = updateGlobal gEnv methodName (AVar $ length args + 1) 
-        initEnv      = initEnvFromArgs args
+{-| Analyse the effect and annotation of a block
+De Bruijn indices (n = length args):
+    0..n-1: Arguments
+    n     : Additional regions
+    n+1   : Global fixpoint argument
+    TODO:
+    ?     : Block fixpoint argument
+    ?     : Variable fixpoint argument
+-}
+analyseMethod :: GlobalEnv -> (Id, Method) -> (Annotation, Sort)
+analyseMethod gEnv (methodName,method@(Method mTy aRegs args _ rRegs _ block blocks)) =
+    let initEnv      = initEnvFromArgs args
         rEnv         = regEnvFromArgs (length args) aRegs
 
         -- Retrieve locals from method body
-        localEnv     = foldl (\lEnv -> localsOfBlock (Envs gEnv' rEnv lEnv)) initEnv (block:blocks) 
+        localEnv     = foldl (\lEnv -> localsOfBlock (Envs gEnv rEnv lEnv)) initEnv (block:blocks) 
         
         -- Retrieve the annotation and effect of the function body
-        (bAnn, bEff) = head.snd $ mapAccumR (blockAccum $ Envs gEnv' rEnv localEnv) emptyMap (block:blocks)
+        (bAnn, bEff) = head.snd $ mapAccumR (blockAccum $ Envs gEnv rEnv localEnv) emptyMap (block:blocks)
         
         -- Generate the method annotation
         (aRegS, argS, rtnS) = argumentSorts method
@@ -77,10 +91,7 @@ analyse gEnv methodName method@(Method mTy aRegs args _ rRegs _ block blocks) =
         fAnn  = if argS == [] -- TODO: Also check retArg
                 then bAnn     -- IDEA: Now 'SortUnit' but could be a way to deal with thunk allocations
                 else foldr (\s a -> wrapBody s (a,botEffect) SortUnit) bAnn' $ init argS
-    
-        -- Make and solve the fixpoint
-        fixpoint = AFix (SortLam aRegS $ sortAssign mTy) $ ALam aRegS fAnn 
-    in {- annRemLocalRegs -}fixpoint
+    in (ALam aRegS fAnn, SortLam aRegS $ sortAssign mTy) 
 
 -- | Wrap a function body into a AQuant or `A -> (A, P -> C)'
 wrapBody :: Maybe Sort -> (Annotation,Effect) -> Sort -> Effect

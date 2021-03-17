@@ -9,20 +9,31 @@ import Helium.CodeGeneration.Iridium.RegionSize.Environments
 import Helium.CodeGeneration.Iridium.RegionSize.Utils
 import Helium.CodeGeneration.Iridium.RegionSize.Evaluate
 
--- | Solve a fixpoint
-solveFix :: Annotation -> Annotation
-solveFix fix@(AFix s a) = 
-    let isFix = countFixBinds fix > 0
-    in if not isFix
-       then a
-       else iterate 0 (ABot s)
-    where iterate :: Int -> Annotation -> Annotation
-          iterate 3 x = AFix s x
-          iterate n x = let res = eval $ AApl (ALam s a) x
-                        in if res == x
-                           then res
-                           else iterate (n+1) res
+-- TODO: Do a monotone-framework style iterate-when-depency chagned thing
 
+-- | Solve a group of fixpoints
+solveFixpoints :: [Annotation] -> [Annotation]
+solveFixpoints fixes = 
+        let init = map (\(AFix s _) -> ABot s) fixes
+        in iterate 0 init fixes
+    where iterate :: Int -> [Annotation] -> [Annotation] -> [Annotation]
+          iterate 10 state fs = state
+          iterate n  state fs = 
+              let res = solveFix (ATuple state) <$> fs
+              in if res == state 
+                 then res
+                 else iterate (n+1) res fs
+
+-- | Solve a fixpoint
+solveFix :: Annotation -- ^ The state
+         -> Annotation -- ^ The fixpoint
+         -> Annotation
+solveFix x fix@(AFix s a) = 
+    let isFixpoint = countFixBinds fix > 0
+    in if not isFixpoint
+       then a
+       else eval $ AApl (ALam s a) x
+solveFix x _ = x
 
 -- | Count usages of a variable
 countFixBinds :: Annotation -> Int
