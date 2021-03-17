@@ -78,8 +78,8 @@ join c1 c2 = joinSort $ jCollect (AJoin c1 c2)
 
 -- | Annotation application
 application :: Annotation -> Annotation -> Annotation
-application (ALam s f) x | sortIsAnnotation s = eval $ annStrengthen $ foldAnnAlg subsAnnAlg f
-                         | sortIsRegion     s = eval $ foldAnnAlg subsRegAlg f
+application (ALam s f) x | sortIsAnnotation s = eval $ annStrengthen $ foldAnnAlgN 0 subsAnnAlg f
+                         | sortIsRegion     s = eval $                 foldAnnAlgN 0 subsRegAlg f
                          | otherwise = rsError "Sort is neither region or annotation!?"
   where -- | Substitute a variable for an annotation
         subsAnnAlg = idAnnAlg {

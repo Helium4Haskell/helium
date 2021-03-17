@@ -44,10 +44,10 @@ showSort n = foldSortAlgN n showAlg
     sortLam        = \_ a b    -> "(" ++ a ++ " ↦  " ++ b ++ ")",
     sortConstr     = \_        -> "C",
     sortUnit       = \_        -> "()",
-    sortQuant      = \d s      -> "∀" ++ (typeVarName d) ++ ". " ++ s,
+    sortQuant      = \d s      -> "∀" ++ (typeVarName $ d+1) ++ ". " ++ s,
     sortMonoRegion = \_        -> "P",
-    sortPolyRegion = \d idx ts -> "P<" ++ (typeVarName $ d - idx - 1) ++ " [" ++ (intercalate "," $ map (showTypeN d) ts) ++ "]>",
-    sortPolySort   = \d idx ts -> "Ψ<" ++ (typeVarName $ d - idx - 1) ++ " [" ++ (intercalate "," $ map (showTypeN d) ts) ++ "]>",
+    sortPolyRegion = \d idx ts -> "P<" ++ (typeVarName $ d - idx) ++ " [" ++ (intercalate "," $ map (showTypeN d) ts) ++ "]>",
+    sortPolySort   = \d idx ts -> "Ψ<" ++ (typeVarName $ d - idx) ++ " [" ++ (intercalate "," $ map (showTypeN d) ts) ++ "]>",
     sortTuple      = \_ ss     -> "(" ++ (intercalate "," ss) ++ ")"
 }
 
@@ -85,7 +85,7 @@ idSortAlg = SortAlg {
 
 -- | Execute a sort algebra on a sort
 foldSortAlg :: SortAlg a -> Sort -> a
-foldSortAlg = foldSortAlgN 0
+foldSortAlg = foldSortAlgN (-1)
 
 -- | Execute a sort algebra on a sort, staring at depth N
 foldSortAlgN :: Int -> SortAlg a -> Sort -> a

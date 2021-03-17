@@ -67,14 +67,14 @@ analyse gEnv methodName method@(Method mTy aRegs args _ rRegs _ block blocks) =
         
         -- Generate the method annotation
         (aRegS, argS, rtnS) = argumentSorts method
-        bAnn' = annRemLocalRegs $ wrapBody (last argS) (bAnn, bEff) rtnS
+        bAnn' = wrapBody (last argS) (bAnn, bEff) rtnS
         fAnn  = if argS == [] -- TODO: Also check retArg
                 then bAnn     -- IDEA: Now 'SortUnit' but could be a way to deal with thunk allocations
                 else foldr (\s a -> wrapBody s (a,botEffect) SortUnit) bAnn' $ init argS
     
         -- Make and solve the fixpoint
         fixpoint = AFix (SortLam aRegS $ sortAssign mTy) $ ALam aRegS fAnn 
-    in fixpoint
+    in annRemLocalRegs fixpoint
 
 -- | Wrap a function body into a AQuant or `A -> (A, P -> C)'
 wrapBody :: Maybe Sort -> (Annotation,Effect) -> Sort -> Effect

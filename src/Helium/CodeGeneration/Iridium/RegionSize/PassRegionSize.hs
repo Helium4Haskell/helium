@@ -58,10 +58,10 @@ analyseGroup modName gEnv (BindingNonRecursive decl@(Declaration methodName _ _ 
     then do putStrLn "-"
     else do
       print mAnn
-      -- putStrLn $ "\n# Simplified: " ++ show methodName
-      -- print simpl 
-      -- putStrLn $ "\n# Fixpoint: " ++ show methodName
-      -- print fixed 
+      putStrLn $ "\n# Simplified: " ++ show methodName
+      print simpl 
+      putStrLn $ "\n# Fixpoint: " ++ show methodName
+      print fixed 
       -- putStrLn $ "\n# Sort: " ++ show methodName
       -- print mSrt2 
 

@@ -45,7 +45,7 @@ constrShow :: Depth -> Constr -> String
 constrShow d c = "{" ++ (intercalate ", " $ map (\(x, b) -> constrIdxShow d x ++ " ↦  " ++ show b) $ M.toList c) ++ "}"
 
 constrIdxShow :: Depth -> ConstrIdx -> String
-constrIdxShow d (AnnVar idx) = annVarName (d - idx - 1) 
+constrIdxShow d (AnnVar idx) = annVarName (d - idx) 
 constrIdxShow d (CnProj i c) = constrIdxShow d c ++ "." ++ show i 
 constrIdxShow _ (Region var) = show var 
 

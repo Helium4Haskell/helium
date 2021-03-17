@@ -52,9 +52,9 @@ pattern AUnit = ATuple []
 instance Show Annotation where
     show = foldAnnAlg showAlg
       where showAlg = AnnAlg {
-        aVar    = \d idx -> annVarName (d - idx - 1),
+        aVar    = \d idx -> annVarName (d - idx),
         aReg    = \_ idx -> show idx,
-        aLam    = \d s a -> "(λ"++ annVarName d ++":"++ showSort d s ++ ".\n" ++ indent a ++ ")",
+        aLam    = \d s a -> "(λ"++ annVarName (d+1) ++":"++ showSort d s ++ ".\n" ++ indent a ++ ")",
         aApl    = \_ a b -> a ++ "< " ++ b ++ " >",
         aUnit   = \_     -> "()",
         aTuple  = \_ as  -> "(" ++ intercalate (if strIsReg (as !! 0) then "," else "\n,") as ++ ")",
@@ -62,7 +62,7 @@ instance Show Annotation where
         aAdd    = \_ a b -> "(" ++ a ++ " ⊕  " ++ b ++ ")",
         aMinus  = \_ a r -> "(" ++ a ++ " \\ " ++ show r ++ ")",
         aJoin   = \_ a b -> "(" ++ a ++ " ⊔  " ++ b ++ ")",
-        aQuant  = \d a   -> "(∀ " ++ typeVarName d ++ "." ++ a ++ ")",
+        aQuant  = \d a   -> "(∀ " ++ typeVarName (d+1) ++ "." ++ a ++ ")",
         aInstn  = \d a t -> a ++ " {" ++ showTypeN d t ++ "}",
         aTop    = \_ _   -> "T",
         aBot    = \_ _   -> "⊥",
@@ -117,7 +117,7 @@ idAnnAlg = AnnAlg {
 }
 
 foldAnnAlg :: AnnAlg a -> Annotation -> a
-foldAnnAlg = foldAnnAlgN 0
+foldAnnAlg = foldAnnAlgN (-1)
 
 foldAnnAlgN :: Int -> AnnAlg a -> Annotation -> a
 foldAnnAlgN n alg ann = go n ann
@@ -145,7 +145,7 @@ foldAnnAlgN n alg ann = go n ann
 -- | Re-index the debruin indices of an annotation
 annReIndex :: (Depth -> Int -> Int) -- ^ Reindex function (depth in body to idx to idx)
            -> Annotation -> Annotation
-annReIndex f a = foldAnnAlg reIdxAlg a
+annReIndex f = foldAnnAlg reIdxAlg
   where reIdxAlg = idAnnAlg {
     aLam    = \d s a -> ALam (sortReIndex f d s) a,
     aFix    = \d s a -> AFix (sortReIndex f d s) a,
@@ -170,6 +170,7 @@ annStrengthen = annReIndex strengthenIdx
 collect :: Bound -> Annotation -> Constr
 collect (Nat 0) _     = M.empty
 collect _ AUnit       = M.empty
+collect n (ABot    _) = M.empty 
 collect n (AVar    a) = M.singleton (AnnVar a) n 
 collect n (AReg    a) = M.singleton (Region a) n 
 collect n (AProj i a) = M.mapKeys (CnProj i) $ collect n a
@@ -202,5 +203,6 @@ annRemLocalRegs :: Annotation -> Annotation
 annRemLocalRegs = foldAnnAlg cleanAlg
   where cleanAlg = idAnnAlg {
     aMinus  = \_ a _ -> a,
+    aReg    = \_ _   -> ABot SortMonoRegion,
     aConstr = \_     -> AConstr . constrRemLocalRegs
   }

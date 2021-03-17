@@ -28,7 +28,7 @@ solveFix fix@(AFix s a) =
 countFixBinds :: Annotation -> Int
 countFixBinds = foldAnnAlg countAlg
     where countAlg = AnnAlg {
-        aVar    = \d idx -> if d-1 == idx then 1 else 0,
+        aVar    = \d idx -> if d == idx then 1 else 0,
         aReg    = \_ _   -> 0,
         aLam    = \_ _ a -> a,
         aApl    = \_ a b -> a + b,

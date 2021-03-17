@@ -18,9 +18,9 @@ showTypeN :: Depth -> Type -> String
 showTypeN n = foldTypeAlgN n showAlg
     where showAlg = TypeAlg {
         tAp     = \_ t1 t2 -> t1 ++ " " ++ t2,
-        tForall = \d _ _ t -> "∀" ++ typeVarName d ++". " ++ t,
+        tForall = \d _ _ t -> "∀" ++ typeVarName (d+1) ++". " ++ t,
         tStrict = \_ t     -> "!" ++ t,
-        tVar    = \d idx   -> typeVarName $ d - idx - 1,
+        tVar    = \d idx   -> typeVarName $ d - idx,
         tCon    = \_ tc    -> show tc
     }
 
