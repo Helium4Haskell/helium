@@ -34,6 +34,7 @@ simplify env annotation = case weakSimplifyStep env annotation of
   where
     nested (ALam argSort regionSort lifetime body)
       | ABottom s <- body' = ABottom (SortFun argSort regionSort lifetime s)
+      | ATop s    <- body' = ATop    (SortFun argSort regionSort lifetime s)
       | AApp f (AVar (AnnotationVar 0)) regions lifetime' <- body'
       , lifetime == lifetime'
       , regions == regionSortToVars 0 regionSort
@@ -43,6 +44,7 @@ simplify env annotation = case weakSimplifyStep env annotation of
         body' = simplify env body
     nested (AForall q body)
       | ABottom s <- body' = ABottom (SortForall q s)
+      | ATop s    <- body' = ATop    (SortForall q s)
       | AInstantiate a (TVar 0) <- body'
       , Just a' <- strengthen 1 0 0 a = a' -- eta reduction of quantification
       | otherwise = AForall q body'
@@ -242,7 +244,7 @@ instantiate dataTypeEnv annotation tp = instantiate' False annotation
       AJoin a1 a2 -> AJoin (transform' a1) (transform' a2)
       where
         transform' = transform forallCount env newEnvSize
-        transformType tp1 = typeSubstitute forallCount tp1 $ typeWeaken forallCount tp
+        transformType = typeSubstitute forallCount (typeWeaken forallCount tp)
         transformSort = sortSubstitute dataTypeEnv forallCount tp
         transformRegionSort = regionSortSubstitute dataTypeEnv forallCount tp
 
@@ -295,7 +297,7 @@ apply env annotation argument argumentRegion lc
     apply' _ (AApp (ATop s) a1 regions lc) = case s of
       SortFun s' rs lc' (SortFun s'' rs' lc'' s''') -> (False, Just (s'', rs', lc'', s'''), AApp (ATop $ SortFun s' rs lc' s''') a1 regions lc)
       _ -> error $ "Helium.CodeGeneration.Iridium.Region.Annotation.apply: Top application has wrong sort: " ++ showSort [] s ""
-    apply' _ (ALam _ rs _ body) = (False, Nothing, substitute (regionVarMapping rs argumentRegion []) 0 0 body)
+    apply' _ (ALam _ rs _ body) = (False, Nothing, substitute (regionVarMapping rs argumentRegion []) 0 0 0 body)
     apply' simplified (AFix a1 s a2) = (False, Nothing, AFix (mapInFunction (\a1' -> snd $ apply env a1' (weaken 0 1 0 argument) argumentRegion lc) s a1) s a2) -- Start with lambdaCount=1, as mapInFunction also creates a lambda. This lambda does not have region arguments.
     apply' _ (ATop (SortFun s rs lc s')) = (isWeakSimplified, Nothing, a)
       where
@@ -313,13 +315,13 @@ apply env annotation argument argumentRegion lc
 
     argument' = simplify env argument
 
-    substitute :: [RegionVar] -> Int -> Int -> Annotation -> Annotation
-    substitute regions lambdaCount regionArgCount annotation = case annotation of
+    substitute :: [RegionVar] -> Int -> Int -> Int -> Annotation -> Annotation
+    substitute regions forallCount lambdaCount regionArgCount annotation = case annotation of
       AFix a1 s a2 -> AFix (go a1) s (go a2)
       AFixEscape arity s rs a1 -> AFixEscape arity s rs $ go a1
 
-      AForall q a -> AForall q $ go a
-      ALam sort regionSort lifetime a -> ALam sort regionSort lifetime $ substitute regions (lambdaCount + 1) (regionArgCount + regionSortSize regionSort) a
+      AForall q a -> AForall q $ substitute regions (forallCount + 1) lambdaCount regionArgCount a
+      ALam sort regionSort lifetime a -> ALam sort regionSort lifetime $ substitute regions forallCount (lambdaCount + 1) (regionArgCount + regionSortSize regionSort) a
 
       AInstantiate a tp -> AInstantiate (go a) tp
       AApp a1 a2 regions' lc' -> AApp (go a1) (go a2) (mapRegionVars substituteRegion regions') lc'
@@ -329,7 +331,7 @@ apply env annotation argument argumentRegion lc
 
       AVar (AnnotationVar idx)
         | idx <  lambdaCount -> AVar $ AnnotationVar idx
-        | idx == lambdaCount -> weaken 0 lambdaCount regionArgCount argument'
+        | idx == lambdaCount -> weaken forallCount lambdaCount regionArgCount argument'
         | otherwise          -> AVar $ AnnotationVar $ idx - 1
 
       ARelation relation -> arelation $ relationReindex substituteRegion relation
@@ -338,7 +340,7 @@ apply env annotation argument argumentRegion lc
       ATop s -> ATop s
       AJoin a1 a2 -> AJoin (go a1) (go a2)
       where
-        go = substitute regions lambdaCount regionArgCount
+        go = substitute regions forallCount lambdaCount regionArgCount
         argumentRegionSize = length regions
         substituteRegion (RegionLocal idx)
           | idx < regionArgCount = RegionLocal idx
@@ -703,7 +705,7 @@ escapesBody regionSort extraRegionScope (ATuple
       -- substituted with another variable.
         = substituteRegionVar scope $ weakenRegionVar 0 scope r
     substituteRegionVar _ r = r
-escapesBody rs _ body = trace "escapesBody: unexpected body annotation" (map (const True) $ flattenRegionVars $ regionSortToVars 0 rs, id, body)
+escapesBody rs _ body = (if isBottom body || isTopApplication body then id else trace "escapesBody: unexpected body annotation") (map (const True) $ flattenRegionVars $ regionSortToVars 0 rs, id, body)
 
 analyseEscapeBody :: Int -> Annotation -> Escapes
 analyseEscapeBody firstRegionScope annotation = case annotation of
@@ -746,6 +748,10 @@ isTopApplication (AApp a _ _ _) = isTopApplication a
 isTopApplication (AInstantiate a _) = isTopApplication a
 isTopApplication (AJoin a1 a2) = isTopApplication a2 || isTopApplication a1
 isTopApplication _ = False
+
+isBottom :: Annotation -> Bool
+isBottom (ABottom _) = True
+isBottom _ = False
 
 -- Local state in 'escapes'
 data Escapes = Escapes !Relation !IntSet deriving Show

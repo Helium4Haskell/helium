@@ -8,6 +8,7 @@ module Helium.CodeGeneration.Iridium.Region.RegionVar
   , regionVarsSize, flattenRegionVars, mapRegionVars, mapRegionVarsM
   , regionSortSize, bindRegionVars, zipFlattenRegionVars
   , showRegionVarsWith, regionSortToVars, regionSortToLevels
+  , rnfRegionVars
   ) where
 
 import Data.List
@@ -117,3 +118,7 @@ zipFlattenRegionVars f varsLeft varsRight = go varsLeft varsRight []
     goList [] [] = id
     goList (v:vs) (v':vs') = go v v' . goList vs vs'
     goList _ _ = error "Helium.CodeGeneration.Iridium.Region.RegionVars.zipFlattenRegionVars: Region vars mismatch"
+
+rnfRegionVars :: RegionVars -> ()
+rnfRegionVars (RegionVarsSingle _) = ()
+rnfRegionVars (RegionVarsTuple vars) = foldl' seq () $ map rnfRegionVars vars

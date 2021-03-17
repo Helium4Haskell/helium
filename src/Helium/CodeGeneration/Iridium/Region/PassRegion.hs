@@ -83,6 +83,8 @@ transformGroup genv@(GlobalEnv typeEnv dataTypeEnv globals) (BindingNonRecursive
 
   let (regionCount, restricted) = if isZeroArity then (0, simplified') else annotationRestrict doesEscape simplified
 
+  rnfAnnotation restricted `seq` return ()
+
   -- putStrLn "Restricted:"
   -- print doesEscape
   -- print restricted
@@ -93,4 +95,3 @@ transformGroup genv@(GlobalEnv typeEnv dataTypeEnv globals) (BindingNonRecursive
   let method' = method{ declarationValue = transform methodEnv substituteRegionVar restricted $ declarationValue method }
 
   return (genv', [method'])
-

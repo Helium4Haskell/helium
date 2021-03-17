@@ -33,6 +33,8 @@ import Helium.CodeGeneration.Iridium.Region.Sort as RegionSort
 import Helium.CodeGeneration.Iridium.Region.RegionVar as RegionVar
   ( RegionVar, RegionVars(..), pattern RegionLocal, pattern RegionGlobal, pattern RegionBottom, showRegionVarsWith )
 
+import qualified Helium.CodeGeneration.Iridium.Region.Annotation as Region
+
 type BlockName = Id
 
 data Module = Module
@@ -126,6 +128,7 @@ data MethodAnnotation
   -- We currently assume that the return type of the function is 'int'.
   -- Cannot be used in combination with 'MethodAnnotateTrampoline'.
   | MethodAnnotateImplicitIO
+  | MethodAnnotateRegion !Region.Annotation
   deriving (Eq, Ord)
 
 data CallingConvention
