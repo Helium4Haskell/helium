@@ -87,13 +87,14 @@ analyseMethod gEnv (methodName,method@(Method mTy aRegs args _ rRegs _ block blo
         fAnn  = if argS == [] -- TODO: Also check retArg
                 then bAnn     -- IDEA: Now 'SortUnit' but could be a way to deal with thunk allocations
                 else foldr (\s a -> wrapBody s (a,botEffect) SortUnit) bAnn' $ init argS
+    -- annStrengthen to correct for return region lambda scope moving inward
     in (ALam aRegS $ annStrengthen fAnn, SortLam aRegS $ sortAssign mTy) 
 
 -- | Wrap a function body into a AQuant or `A -> (A, P -> C)'
 wrapBody :: Maybe Sort -> (Annotation,Effect) -> Sort -> Effect
 wrapBody mS (bAnn,bEff) rrSort = case mS of
-                      Nothing -> AQuant bAnn
-                      Just s  -> ALam s (ATuple [bAnn, ALam rrSort $ annWeaken 1 bEff])
+                      Nothing -> AQuant bAnn    -- annWeaken to correct for extra lambda
+                      Just s  -> ALam s (ATuple [bAnn, annWeaken 1 $ ALam rrSort bEff])
 
 {- Compute the sort of all method arguments,
     Returns a tuple of:
