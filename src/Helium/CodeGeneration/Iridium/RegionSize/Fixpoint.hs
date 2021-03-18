@@ -14,7 +14,7 @@ import Helium.CodeGeneration.Iridium.RegionSize.Evaluate
 -- | Solve a group of fixpoints
 solveFixpoints :: [Annotation] -> [Annotation]
 solveFixpoints fixes = 
-        let init = map (\(AFix s _) -> ABot s) fixes
+        let init = map (\(AFix _ s _) -> ABot s) fixes
         in iterate 0 init fixes
     where iterate :: Int -> [Annotation] -> [Annotation] -> [Annotation]
           iterate 10 state fs = state
@@ -28,10 +28,10 @@ solveFixpoints fixes =
 solveFix :: Annotation -- ^ The state
          -> Annotation -- ^ The fixpoint
          -> Annotation
-solveFix x fix@(AFix s a) = 
+solveFix x fix@(AFix g s a) = 
     let isFixpoint = countFixBinds fix > 0
     in if not isFixpoint
-       then a
+       then annStrengthen a
        else eval $ AApl (ALam s a) x
 solveFix x _ = x
 
@@ -54,5 +54,5 @@ countFixBinds = foldAnnAlg countAlg
         aInstn  = \_ a _ -> a,
         aTop    = \_ _   -> 0,
         aBot    = \_ _   -> 0,
-        aFix    = \_ _ a -> a   
+        aFix    = \_ _ _ a -> a   
     }

@@ -9,6 +9,8 @@ module Helium.CodeGeneration.Iridium.RegionSize.Utils
 import qualified Debug.Trace as T
 import Data.List
 
+import GHC.Stack
+
 ----------------------------------------------------------------
 -- De bruijn reinexing
 ----------------------------------------------------------------
@@ -71,7 +73,7 @@ annVarName idx | idx < 0 = "v$[" ++ show idx ++ "]"
 -- Console messages
 ----------------------------------------------------------------
 
-rsError :: String -> a
+rsError :: HasCallStack => String -> a
 rsError s = error $ "[RegionSize] " ++ s ++ "\n"
 
 rsInfo :: a -> String -> a

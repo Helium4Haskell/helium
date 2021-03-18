@@ -22,27 +22,7 @@ import Data.Maybe (fromJust)
 import Data.Either (rights)
 import qualified Data.Map as M
 
-----------------------------------------------------------------
--- Assumptions
-----------------------------------------------------------------
--- Jumps never jump backward (in the order of blocks)
-
--- The idea now:
--- Build local env by mapAccumL on (init:blocks)
--- Get final effects by building the block env from the last block to the first
--- Does not work when there are loops..
-
-----------------------------------------------------------------
--- Allow loops (Removes the back-ward jump assumption)
-----------------------------------------------------------------
--- Step 1: Create a local variable for local vars, use a 'gather' method for variables
--- Step 2: Create a local variable for loops (n-tuple for n blocks)
--- Step 3: Generate fixpoints if needed (for blocks and vars)
-
-----------------------------------------------------------------
--- Fixpoints
-----------------------------------------------------------------
--- Step 4: Mutually recursive binding groups
+-- TODO: Type normalisation
 
 ----------------------------------------------------------------
 -- Analysis
@@ -53,10 +33,10 @@ analyseMethods :: GlobalEnv -> [(Id,Method)] -> [Annotation]
 analyseMethods gEnv methods =
     let (gEnv',_)    = foldl makeFixVar (gEnv,0) methods
         (anns,sorts) = unzip $ analyseMethod gEnv' <$> methods
-        fixpoints    = AFix (SortTuple sorts) <$> anns
+        fixpoints    = AFix undefined (SortTuple sorts) <$> anns
     in annRemLocalRegs <$> fixpoints
         where makeFixVar (env, i) (methodName, (Method _ _ args _ _ _ _ _)) =
-                    let fixIdx = length args + 2
+                    let fixIdx = length args + 3
                         env'   = updateGlobal env methodName (AProj i $ AVar fixIdx)
                     in (env', i+1)
 
@@ -65,36 +45,43 @@ De Bruijn indices (n = length args):
     0     : Return region argument
     1..n  : Arguments
     n+1   : Additional regions
-    n+2   : Global fixpoint argument
-    TODO:
-    ?     : Block fixpoint argument
-    ?     : Variable fixpoint argument
+    n+2   : Variable & block fixpoint argument
+    n+3   : Global fixpoint argument
 -}
 analyseMethod :: GlobalEnv -> (Id, Method) -> (Annotation, Sort)
-analyseMethod gEnv (methodName,method@(Method mTy aRegs args _ rRegs _ block blocks)) =
-    let initEnv      = initEnvFromArgs args
-        rEnv         = regEnvFromArgs (length args) aRegs rRegs
+analyseMethod gEnv (methodName,method@(Method mTy aRegs args _ rRegs _ fstBlock otherBlocks)) =
+    let blocks    = (fstBlock:otherBlocks)
+        initEnv   = initEnvFromArgs args
+        rEnv      = regEnvFromArgs (length args) aRegs rRegs
 
         -- Retrieve locals from method body
-        localEnv     = foldl (\lEnv -> localsOfBlock (Envs gEnv rEnv lEnv)) initEnv (block:blocks) 
-        
+        locals    = methodLocals False (rsError "analyseMethod: Only localName is available") method
+        fixIdx    = length args + 2
+        initEnv'  = unionMap initEnv $ mapFromList.map (\(idx,lName) -> (lName, AProj idx $ AVar fixIdx)) $ zip [(length blocks)..] (localName <$> locals)
+        localEnv  = foldl (\lEnv -> localsOfBlock (Envs gEnv rEnv lEnv)) initEnv' blocks  
+        -- TODO: List from map is not order preserving
+
         -- Retrieve the annotation and effect of the function body
-        (bAnn, bEff) = head.snd $ mapAccumR (blockAccum $ Envs gEnv rEnv localEnv) emptyMap (block:blocks)
-        
+        initBEnv = mapFromList.map (\(idx,bName) -> (bName, AProj idx $ AVar fixIdx)) $ zip [0..] (blockName <$> blocks)
+        blockAnn = blockAccum (Envs gEnv rEnv localEnv) initBEnv <$> blocks
+        localFix = AProj 0 . ATuple $ AFix undefined SortUnit 
+                           <$> ((unliftTuple <$> blockAnn) ++ (snd <$> listFromMap localEnv))
+
         -- Generate the method annotation
         (aRegS, argS, rtnS) = argumentSorts method
-        bAnn' = wrapBody (last argS) (bAnn, bEff) rtnS
-        fAnn  = if argS == [] -- TODO: Also check retArg
-                then bAnn     -- IDEA: Now 'SortUnit' but could be a way to deal with thunk allocations
+        bAnn' = wrapBody (last argS) (liftTuple localFix) rtnS
+        fAnn  = if argS == [] -- TODO: Also check retArg (aka fix 0-argument functions)
+                then localFix -- IDEA: Now 'SortUnit' but could be a way to deal with thunk allocations
                 else foldr (\s a -> wrapBody s (a,botEffect) SortUnit) bAnn' $ init argS
     -- annStrengthen to correct for return region lambda scope moving inward
-    in (ALam aRegS $ annStrengthen fAnn, SortLam aRegS $ sortAssign mTy) 
+    in (ALam    aRegS $ annStrengthen fAnn
+       ,SortLam aRegS $ sortAssign mTy) 
 
 -- | Wrap a function body into a AQuant or `A -> (A, P -> C)'
 wrapBody :: Maybe Sort -> (Annotation,Effect) -> Sort -> Effect
 wrapBody mS (bAnn,bEff) rrSort = case mS of
                       Nothing -> AQuant bAnn    -- annWeaken to correct for extra lambda
-                      Just s  -> ALam s (ATuple [bAnn, annWeaken 1 $ ALam rrSort bEff])
+                      Just s  -> ALam s (ATuple [bAnn, ALam rrSort bEff])
 
 {- Compute the sort of all method arguments,
     Returns a tuple of:
@@ -139,7 +126,7 @@ localsOfInstr :: Envs -> Instruction -> LocalEnv
 localsOfInstr envs@(Envs gEnv rEnv lEnv) instr = 
     case instr of
         Let name expr next   -> let (varAnn, _) = analyseExpr envs expr
-                                    lEnv'       = insertMap name varAnn lEnv
+                                    lEnv'       = updateMap name varAnn lEnv
                                 in localsOfInstr (Envs gEnv rEnv lEnv') next
         --TODO: Mutrec
         LetAlloc binds next  -> localsOfLetAlloc envs binds next
@@ -154,22 +141,22 @@ localsOfLetAlloc envs [] next = localsOfInstr envs next
 -- Thunk binds
 localsOfLetAlloc envs@(Envs gEnv rEnv lEnv) (Bind id (BindTargetThunk var tRegs) args _:bs) next =
     let (bAnn, _) = thunkApplyArgs envs (lookupVar envs var) args $ bindThunkValue tRegs
-        lEnv'     = insertMap id bAnn lEnv
+        lEnv'     = updateMap id bAnn lEnv
     in localsOfLetAlloc (Envs gEnv rEnv lEnv') bs next
 -- Function binds
 localsOfLetAlloc envs@(Envs gEnv rEnv lEnv) (Bind id (BindTargetFunction gFun aRegs tRegs) args _:bs) next =
     let gFunAnn   = lookupGlobal gEnv $ globalFunctionName gFun
         (bAnn, _) = funcApplyArgs envs gFunAnn aRegs args $ bindThunkValue tRegs
-        lEnv'     = insertMap id bAnn lEnv
+        lEnv'     = updateMap id bAnn lEnv
     in localsOfLetAlloc (Envs gEnv rEnv lEnv') bs next
 -- Tuples
 localsOfLetAlloc envs@(Envs gEnv rEnv lEnv) (Bind id (BindTargetTuple _) args _:bs) next =
     let tAnn  = tupleApplyArgs lEnv args
-        lEnv' = insertMap id tAnn lEnv
+        lEnv' = updateMap id tAnn lEnv
     in localsOfLetAlloc (Envs gEnv rEnv lEnv') bs next
 -- 0 argument constructors
 localsOfLetAlloc envs@(Envs gEnv rEnv lEnv) (Bind id (BindTargetConstructor _) [] _:bs) next =
-    let lEnv' = insertMap id AUnit lEnv
+    let lEnv' = updateMap id AUnit lEnv
     in localsOfLetAlloc (Envs gEnv rEnv lEnv') bs next
 -- TODO: Datatypes
 localsOfLetAlloc envs (_:bs) next = localsOfLetAlloc envs bs next
@@ -186,7 +173,7 @@ localsOfMatch (Envs gEnv rEnv lEnv) local (MatchTargetTuple n) _ ids next =
         lEnv'    = foldl (flip $ uncurry insertMaybeId) lEnv (zip ids newVars)
     in localsOfInstr (Envs gEnv rEnv lEnv') next
 -- TODO: Implement others
-localsOfMatch (Envs gEnv rEnv lEnv) _ _ _ _ _ = (lEnv)--rsError "analyseMatch: No support for data types."
+localsOfMatch (Envs gEnv rEnv lEnv) _ _ _ _ _ = (lEnv) --rsError "analyseMatch: No support for data types."
 
 ----------------------------------------------------------------
 -- Analysing the effect of a method
@@ -195,10 +182,9 @@ localsOfMatch (Envs gEnv rEnv lEnv) _ _ _ _ _ = (lEnv)--rsError "analyseMatch: N
 {-| Put the blockmap in to get the result. 
     Returns the extended bEnv, the annotation of the result and the effect.
 -}
-blockAccum :: Envs -> BlockEnv -> Block -> (BlockEnv, (Annotation, Effect))
-blockAccum envs bEnv (Block name instr) = let bEff  = analyseInstr envs bEnv instr
-                                              bEnv' = insertMap name bEff bEnv
-                                          in (bEnv', bEff)
+blockAccum :: Envs -> BlockEnv -> Block -> (Annotation, Effect)
+blockAccum envs bEnv (Block name instr) = analyseInstr envs bEnv instr
+
 
 -- | Analyse an instruction
 analyseInstr :: Envs -> BlockEnv -> Instruction -> (Annotation, Effect)
@@ -217,7 +203,7 @@ analyseInstr envs@(Envs _ _ lEnv) bEnv = go
          -- TODO: Check if we can ignore a release
          go (ReleaseRegion _ next) = analyseInstr envs bEnv next
          -- Lookup the annotation and effect from block
-         go (Jump block)           = lookupBlock bEnv block 
+         go (Jump block)           = liftTuple $ lookupBlock bEnv block 
          -- Join the effects of all the blocks
          go (Case _     cas)       = joinBlocks bEnv $ caseBlocks cas
          -- Lookup the variable annotation
@@ -318,9 +304,9 @@ funcApplyArgs envs@(Envs _ rEnv _) fAnn aRegs args retRegs =
 tupleApplyArgs :: LocalEnv 
                -> [Either Type Local] 
                -> Annotation
-tupleApplyArgs lEnv = foldr go (ATuple [])
-    where go (Left _ ) (ATuple xs) = ATuple xs -- error "Cannot apply type to tuple" 
-          go (Right x) (ATuple xs) = ATuple $ lookupLocal lEnv x : xs
+tupleApplyArgs lEnv = ATuple . foldr go []
+    where go (Left _ ) xs = xs -- error "Cannot apply type to tuple" 
+          go (Right x) xs = lookupLocal lEnv x : xs
 
 ----------------------------------------------------------------
 -- Analysis utilities
@@ -355,11 +341,15 @@ phiVarAnn lEnv branches = lookupLocal lEnv <$> phiVariable <$> branches
 liftTuple :: Annotation -> (Annotation, Effect)
 liftTuple a = (AProj 0 a, AProj 1 a) 
 
+-- | Convert an annotation tuple to a haskell tuple
+unliftTuple :: (Annotation, Effect) -> Annotation 
+unliftTuple (a,b) = ATuple [a,b] 
+
 
 -- | Join of blocks
 joinBlocks :: BlockEnv -> [BlockName] -> (Annotation, Effect)
 joinBlocks bEnv blockNames = foldr joinTuples (ABot undefined, botEffect) blocks
-    where blocks = lookupBlock bEnv <$> blockNames 
+    where blocks = liftTuple <$> lookupBlock bEnv <$> blockNames 
 
 -- | The join of two tuples
 joinTuples :: (Annotation, Effect) -> (Annotation, Effect) -> (Annotation, Effect)

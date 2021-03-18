@@ -82,7 +82,7 @@ sort = sort' M.empty
           -- Lattice stuff
           sort' _     (ATop   s  ) = s
           sort' _     (ABot   s  ) = s
-          sort' gamma (AFix   s a) =
+          sort' gamma (AFix _ s a) =
               let sortA = sort' (envInsert s gamma) a
               in if sortA == s
                  then s
