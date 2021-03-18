@@ -40,11 +40,6 @@ import qualified Data.Map as M
 -- Step 3: Generate fixpoints if needed (for blocks and vars)
 
 ----------------------------------------------------------------
--- Region management
-----------------------------------------------------------------
--- Step 3: Return regions
-
-----------------------------------------------------------------
 -- Fixpoints
 ----------------------------------------------------------------
 -- Step 4: Mutually recursive binding groups
@@ -61,15 +56,16 @@ analyseMethods gEnv methods =
         fixpoints    = AFix (SortTuple sorts) <$> anns
     in annRemLocalRegs <$> fixpoints
         where makeFixVar (env, i) (methodName, (Method _ _ args _ _ _ _ _)) =
-                    let fixIdx = length args + 1
+                    let fixIdx = length args + 2
                         env'   = updateGlobal env methodName (AProj i $ AVar fixIdx)
                     in (env', i+1)
 
 {-| Analyse the effect and annotation of a block
 De Bruijn indices (n = length args):
-    0..n-1: Arguments
-    n     : Additional regions
-    n+1   : Global fixpoint argument
+    0     : Return region argument
+    1..n  : Arguments
+    n+1   : Additional regions
+    n+2   : Global fixpoint argument
     TODO:
     ?     : Block fixpoint argument
     ?     : Variable fixpoint argument
@@ -91,7 +87,7 @@ analyseMethod gEnv (methodName,method@(Method mTy aRegs args _ rRegs _ block blo
         fAnn  = if argS == [] -- TODO: Also check retArg
                 then bAnn     -- IDEA: Now 'SortUnit' but could be a way to deal with thunk allocations
                 else foldr (\s a -> wrapBody s (a,botEffect) SortUnit) bAnn' $ init argS
-    in (ALam aRegS fAnn, SortLam aRegS $ sortAssign mTy) 
+    in (ALam aRegS $ annStrengthen fAnn, SortLam aRegS $ sortAssign mTy) 
 
 -- | Wrap a function body into a AQuant or `A -> (A, P -> C)'
 wrapBody :: Maybe Sort -> (Annotation,Effect) -> Sort -> Effect
@@ -108,7 +104,7 @@ wrapBody mS (bAnn,bEff) rrSort = case mS of
 argumentSorts :: Method -> (Sort, [Maybe Sort], Sort)
 argumentSorts method@(Method _ regArgs args resTy _ _ _ _) = 
     let (FunctionType argTy resTy) = methodFunctionType method
-        (_,argSorts) = mapAccumL argumentSortAssign 0 argTy
+        (_,argSorts) = mapAccumL argumentSortAssign 1 argTy
         aRegSort = sort $ regionVarsToAnn M.empty regArgs
         rrSort   = regionAssign $ typeWeaken (length $ rights args) $ TStrict resTy
     in (aRegSort, argSorts, rrSort)
@@ -125,7 +121,7 @@ initEnvFromArgs args = let argIdxs = zip args $ map AVar $ reverse [0..(length a
 
 -- | Region environment from additional regions and return regions
 regEnvFromArgs :: Int -> RegionVars -> RegionVars -> RegionEnv
-regEnvFromArgs n aRegs rRegs = M.union (go (AnnVar n) aRegs) (go (AnnVar $ n+3) rRegs)
+regEnvFromArgs n aRegs rRegs = M.union (go (AnnVar $ n+1) aRegs) (go (AnnVar 0) rRegs)
     where go var (RegionVarsSingle r) = M.singleton r var
           go var (RegionVarsTuple rs) = M.unions.map (\(i,r) -> go (CnProj i var) r) $ zip [0..] rs
 

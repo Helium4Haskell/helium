@@ -705,7 +705,7 @@ escapesBody regionSort extraRegionScope (ATuple
       -- substituted with another variable.
         = substituteRegionVar scope $ weakenRegionVar 0 scope r
     substituteRegionVar _ r = r
-escapesBody rs _ body = (if isBottom body || isTopApplication body then id else trace "escapesBody: unexpected body annotation") (map (const True) $ flattenRegionVars $ regionSortToVars 0 rs, id, body)
+escapesBody rs _ body = (if isBottom body || isTopApplication body then id else id) (map (const True) $ flattenRegionVars $ regionSortToVars 0 rs, id, body)
 
 analyseEscapeBody :: Int -> Annotation -> Escapes
 analyseEscapeBody firstRegionScope annotation = case annotation of

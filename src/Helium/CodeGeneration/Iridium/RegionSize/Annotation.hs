@@ -66,7 +66,7 @@ instance Show Annotation where
         aInstn  = \d a t -> a ++ " {" ++ showTypeN d t ++ "}",
         aTop    = \_ _   -> "T",
         aBot    = \_ _   -> "⊥",
-        aFix    = \d s a -> "fix " ++ showSort d s ++ ". " ++ a,
+        aFix    = \d s a -> "fix " ++ showSort d s ++ ".\n" ++ indent a,
         aConstr = \d c   -> constrShow d c
       }
 

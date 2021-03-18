@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: f03d0f1b6aa60fb34fe8027b09cb3cb2c9ffeda48711523a9edef2534e16967b
+-- hash: 30e4210881ecf2bc2763f4e56f7a6e681ae33e8593098ff2f1d785790520f8a3
 
 name:           helium
 version:        1.9
@@ -89,6 +89,7 @@ library
       Helium.CodeGeneration.Iridium.Region.Env
       Helium.CodeGeneration.Iridium.Region.Evaluate
       Helium.CodeGeneration.Iridium.Region.Generate
+      Helium.CodeGeneration.Iridium.Region.Parse
       Helium.CodeGeneration.Iridium.Region.PassRegion
       Helium.CodeGeneration.Iridium.Region.RegionVar
       Helium.CodeGeneration.Iridium.Region.Relation
