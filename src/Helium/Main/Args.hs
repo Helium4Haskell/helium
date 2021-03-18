@@ -199,6 +199,7 @@ optionDescription moreOptions experimentalOptions =
       , Option "" [flag NoPrelude]                      (NoArg NoPrelude)  "do not import the prelude (experimental)"
       , Option "" [flag (RepairDepth 0)]                (ReqArg selectDepth "RDEPTH") "specify depth of transformation tree"
       , Option "" [flag (RepairEvalLimit 0)]            (ReqArg selectEvalLimit "RTREVL") "specify re-evaluation limit of transformed expressions"      
+      , Option "" [flag (Strictness 0)]                 (ReqArg selectStrictness "STRICT") "specify variant of strictness analysis"
       ]
 
 
@@ -218,7 +219,8 @@ data Option
    | TreeWalkInorderTopFirstPost | TreeWalkInorderTopLastPost | SolverSimple | SolverGreedy
    | SolverTypeGraph | SolverCombination | SolverChunks | UnifierHeuristics
    | SelectConstraintNumber Int | NoOverloadingTypeCheck | NoPrelude | UseTutor
-   | RepairDepth Int | RepairEvalLimit Int -- Arjen Langebaerd's work 
+   | RepairDepth Int | RepairEvalLimit Int -- Arjen Langebaerd's work
+   | Strictness Int 
  deriving (Eq)
 
 stripShow :: String -> String
@@ -284,6 +286,7 @@ instance Show Option where
  show UseTutor                           = "--use-tutor"
  show (RepairDepth depth)                = "--repair-depth=" ++ show depth
  show (RepairEvalLimit limit)            = "--repair-eval-limit=" ++ show limit
+ show (Strictness variant)               = "--strictness=" ++ show variant
 
 basePathFromOptions :: [Option] -> Maybe String
 basePathFromOptions [] = Nothing
@@ -340,4 +343,6 @@ selectDepth = RepairDepth . selectNumber
 selectEvalLimit :: String -> Option
 selectEvalLimit = RepairEvalLimit . selectNumber
 
+selectStrictness :: String -> Option
+selectStrictness = Strictness . selectNumber
 

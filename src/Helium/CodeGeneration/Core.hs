@@ -23,27 +23,30 @@ import Helium.CodeGeneration.Core.ReduceThunks(coreReduceThunks)
 import Helium.CodeGeneration.Core.Rename(coreRename)
 import Helium.CodeGeneration.Core.RemoveAliases(coreRemoveAliases)
 import Helium.CodeGeneration.Core.Saturate(coreSaturate)
-import Helium.CodeGeneration.Core.Strictness.Strictness(coreStrictness)
+import Helium.CodeGeneration.Core.Strictness as S0 (coreStrictness)
+import Helium.CodeGeneration.Core.Strictness.Strictness as S1 (coreStrictness)
 
-pipeline :: [(String, NameSupply -> CoreModule -> CoreModule)]
-pipeline =
+pipeline :: Int -> [(String, NameSupply -> CoreModule -> CoreModule)]
+pipeline s =
   [ ("Rename", coreRename)
   , ("Saturate", coreSaturate)
   , ("LetSort", const coreLetSort)
   , ("LetInline 1", const coreLetInline)
   , ("LetInline 2", const coreLetInline)
   , ("Normalize", coreNormalize)
-  , ("Strictness 1", coreStrictness)
-  , ("Strictness 2", coreStrictness)
+  , ("Strictness 1", selectStrictness s)
+  , ("Strictness 2", selectStrictness s)
   , ("RemoveAliases", const coreRemoveAliases)
   , ("ReduceThunks", const coreReduceThunks)
   , ("Lift", coreLift)
-  , ("Strictness 3", coreStrictness)
+  , ("Strictness 3", selectStrictness s)
   ]
 
 -- Desugars core. The desugared AST can be converted to Iridium.
-desugarCore :: NameSupply -> CoreModule -> IO CoreModule
-desugarCore supply mod = desugar supply pipeline mod
+desugarCore :: Int -> NameSupply -> CoreModule -> IO CoreModule
+desugarCore s supply mod = do
+  putStrLn $ showStrictness s ++ " selected..."
+  desugar supply (pipeline s) mod
 
 desugar :: NameSupply -> [(String, NameSupply -> CoreModule -> CoreModule)] -> CoreModule -> IO CoreModule
 desugar supply ((passName, passFn) : passes) mod = do
@@ -53,3 +56,12 @@ desugar supply ((passName, passFn) : passes) mod = do
   checkModuleIO passName mod'
   desugar supply2 passes mod'
 desugar _ [] mod = return mod
+
+-- Select variant of strictness analysis
+selectStrictness :: Int -> (NameSupply -> CoreModule -> CoreModule)
+selectStrictness 1 = S1.coreStrictness
+selectStrictness _ = S0.coreStrictness -- Default strictness
+
+showStrictness :: Int -> String
+showStrictness 1 = "New strictness analysis"
+showStrictness _ = "Old strictness analysis"

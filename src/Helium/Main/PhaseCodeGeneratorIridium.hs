@@ -35,7 +35,7 @@ phaseCodeGeneratorIridium supply cache fullName coreModule options = do
 
   let supplyDesugar : supplyFromCore : supplyPassDeadCode : supplyPassTailRecursion : _ = splitNameSupplies supply
 
-  simplified <- desugarCore supplyDesugar coreModule
+  simplified <- desugarCore (getStrictness options) supplyDesugar coreModule
 
   let (path, baseName, _) = splitFilePath fullName
   let fullNameNoExt = combinePathAndFile path baseName
@@ -61,3 +61,8 @@ phaseCodeGeneratorIridium supply cache fullName coreModule options = do
       return [file]
 
   return (files, hasMain)
+
+getStrictness :: [Option] -> Int
+getStrictness (Strictness x : _) = x
+getStrictness (_ : xs)           = getStrictness xs
+getStrictness []                 = 0 -- default old strictness analysis
