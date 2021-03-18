@@ -19,7 +19,7 @@ import Debug.Trace
 data Names = Names
   { quantors :: QuantorNames
   , annotationNames :: [Int]
-  , regionNames :: [(Int, Maybe Int)] -- For each lambda depth, the left-most region index
+  , regionNames :: [(Int, Maybe Int)]
   }
 
 emptyNames :: Names
@@ -283,41 +283,45 @@ pRegionSort names = do
       (/= '⟩') <$> lookahead
 
 pRegionVarsAndSort :: Names -> Parser (Names, RegionSort)
-pRegionVarsAndSort names = do
-  c1 <- lookahead
-  case c1 of
-    '∀' -> do
-      pChar
-      pWhitespace'
-      (q, quantors') <- pQuantor (quantors names)
-      pWhitespace'
-      pToken '.'
-      pWhitespace'
-      fmap (RegionSortForall q) <$> pRegionVarsAndSort names{ quantors = quantors' }
-    '(' -> do
-      pChar
-      pWhitespace'
-      c2 <- lookahead
-      case c2 of
-        ')' -> (names, RegionSortTuple []) <$ pChar
-        _ -> fmap RegionSortTuple <$> tuple names
-    _ -> do
-      pToken 'ρ'
-      idx1 <- pSubscriptInt
-      idx2 <- pMaybe (pToken '₋' *> pSubscriptUnsignedInt)
-      let names' = names{ regionNames = (idx1, idx2) : regionNames names }
-      pWhitespace'
-      pToken ':'
-      pWhitespace'
-      regionSort <- pRegionSort $ quantors names
-      return (names', regionSort)
+pRegionVarsAndSort names
+  = (\(regions, regionSort) -> (names{ regionNames = regions }, regionSort))
+  <$> go (quantors names) (regionNames names)
   where
-    tuple :: Names -> Parser (Names, [RegionSort])
-    tuple names1 = do
-      (names2, regionSort) <- pRegionVarsAndSort names1
+    go :: [String] -> [(Int, Maybe Int)] -> Parser ([(Int, Maybe Int)], RegionSort)
+    go quantorNames regions = do
+      c1 <- lookahead
+      case c1 of
+        '∀' -> do
+          pChar
+          pWhitespace'
+          (q, quantorNames') <- pQuantor quantorNames
+          pWhitespace'
+          pToken '.'
+          pWhitespace'
+          fmap (RegionSortForall q) <$> go quantorNames' regions
+        '(' -> do
+          pChar
+          pWhitespace'
+          c2 <- lookahead
+          case c2 of
+            ')' -> (regions, RegionSortTuple []) <$ pChar
+            _ -> fmap RegionSortTuple <$> tuple quantorNames regions
+        _ -> do
+          pToken 'ρ'
+          idx1 <- pSubscriptInt
+          idx2 <- pMaybe (pToken '₋' *> pSubscriptUnsignedInt)
+          pWhitespace'
+          pToken ':'
+          pWhitespace'
+          regionSort <- pRegionSort quantorNames
+          return ((idx1, idx2) : regions, regionSort)
+
+    tuple :: [String] -> [(Int, Maybe Int)] -> Parser ([(Int, Maybe Int)], [RegionSort])
+    tuple quantorNames regions1 = do
+      (regions2, regionSort) <- go quantorNames regions1
       pWhitespace'
       c <- lookahead
       case c of
         ',' ->
-          fmap (regionSort : ) <$ pChar <* pWhitespace' <*> tuple names2
-        _ -> (names2, [regionSort]) <$ pToken ')' 
+          fmap (regionSort : ) <$ pChar <* pWhitespace' <*> tuple quantorNames regions2
+        _ -> (regions2, [regionSort]) <$ pToken ')' 
