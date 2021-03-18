@@ -33,23 +33,11 @@ analyseDeclaration _ _ = emptyMap
 
 -- Run strictness analysis on expressions
 analyseExpression :: Environment -> SAnn -> Expr -> Constraints
--- Information in bind has the context of the annotation variable related to the declared variable
-analyseExpression env context (Let (NonRec (Bind v@(Variable x (TAnn _ t)) e1)) e2) = unionMap cs $ unionMapWith meet c1 c2
+analyseExpression env context (Let b e) = unionMapWith meet c1 c2
   where
-    cs = analyseType t (typeOfCoreExpression (typeEnv env) e1)
-    c1 = analyseExpression env context e1
-    c2 = analyseExpression (envAddVariable v env) context e2
-analyseExpression env context (Let (Strict (Bind v@(Variable x (TAnn _ t)) e1)) e2) = unionMap cs $ unionMapWith meet c1 c2
-  where
-    cs = analyseType t (typeOfCoreExpression (typeEnv env) e1)
-    c1 = analyseExpression env context e1
-    c2 = analyseExpression (envAddVariable v env) context e2
--- Recursive bindings need variable in bind so information is less precise
-analyseExpression env context (Let b@(Rec bs) e) = unionMapWith meet c1 c2
-  where
+    c1   = analyseBinds env context b
     env' = envAddBinds b env
-    c1 = analyseBinds env' context bs
-    c2 = analyseExpression env' context e
+    c2   = containment context (getAnnotations b) $ analyseExpression env' S e
 -- Only if an expression is strict on all alts it is strict
 analyseExpression env context (Match _ alts) = foldr (unionMapWith join . analyseAlt env context) emptyMap alts
 analyseExpression env context (Ap e1 e2) = unionMapWith meet c1 c2
@@ -63,7 +51,10 @@ analyseExpression env context (Ap e1 e2) = unionMapWith meet c1 c2
     -- Analyse applicant under the join of the annotation and the context
     c2 = analyseExpression env (join context a) e2
 analyseExpression env context (ApType e _) = analyseExpression env context e
-analyseExpression env context (Lam _ v e) = analyseExpression (envAddVariable v env) context e
+-- Expression in S context to see if the variable is strict, but join with context to contain all other variables
+analyseExpression env context (Lam _ v@(Variable _ (TAnn a _)) e) = mapMap (\x -> if x /= a then join context x else x) cs
+  where
+    cs = analyseExpression (envAddVariable v env) S e
 analyseExpression env context (Forall _ _ e) = analyseExpression env context e
 analyseExpression env context (Var v) = mapFromList $ map snd $ listFromMap $ mapMapWithId (\x y -> (y, isVar x v)) (annEnv env)
   where
@@ -75,13 +66,22 @@ analyseExpression env _ _ = mapFromList $ map snd $ listFromMap $ mapMap (\x -> 
 analyseAlt :: Environment -> SAnn -> Alt -> Constraints
 analyseAlt env context (Alt pat e) = analyseExpression (envAddPattern pat env) context e
 
--- Run strictness analysis on recursive binds
-analyseBinds :: Environment -> SAnn -> [Bind] -> Constraints
-analyseBinds env context bs = foldr (unionMapWith join) emptyMap $ map (analyseBind env context) bs
+-- -- Run strictness analysis on binds
+analyseBinds :: Environment -> SAnn -> Binds -> Constraints
+analyseBinds env context (NonRec b) = analyseBind env context b
+analyseBinds env context (Strict b) = analyseBind env context b
+analyseBinds env context b@(Rec bs) = foldr (unionMapWith meet . analyseBind env' context) emptyMap bs
+  where
+    env' = envAddBinds b env
 
--- Run strictness analysis on recursive bind
+-- -- Run strictness analysis on bind
 analyseBind :: Environment -> SAnn -> Bind -> Constraints
-analyseBind env context (Bind _ e) = analyseExpression env context e
+analyseBind env context (Bind (Variable _ (TAnn a t)) e) = unionMap cs c1
+  where
+      -- Type of variable could be a function
+    cs = analyseType t (typeOfCoreExpression (typeEnv env) e)
+    -- Context depends on the variable
+    c1 = analyseExpression env a e
 
 -- Join and meet
 join, meet :: SAnn -> SAnn -> SAnn
@@ -131,3 +131,15 @@ envAddPattern p (Environment typeEnv annEnv) = Environment (typeEnvAddPattern p 
 annEnvAddVariable :: Variable -> AnnontationEnvironment -> AnnontationEnvironment
 annEnvAddVariable (Variable x (TAnn (AnnVar a) _)) env = insertMap x a env
 annEnvAddVariable (Variable x t) _ = error ("Annotation not found: " ++ show (pretty t))
+
+getAnnotations :: Binds -> [Id]
+getAnnotations (NonRec b) = [getAnnotation b]
+getAnnotations (Strict b) = [getAnnotation b]
+getAnnotations (Rec bs)   = map getAnnotation bs
+
+getAnnotation :: Bind -> Id
+getAnnotation (Bind (Variable _ (TAnn (AnnVar a) _)) _) = a
+
+-- Contain variables after let/lambda
+containment :: SAnn -> [Id] -> Constraints -> Constraints
+containment context is = mapMapWithId (\x y -> if x `elem` is then y else join context y)

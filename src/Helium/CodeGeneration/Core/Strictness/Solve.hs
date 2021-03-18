@@ -19,17 +19,17 @@ solveConstraints cs = foldl (solveConstraint nodeFromVertex) cs vs
 
 -- Turn constraints into graph
 constraintsToGraph :: Constraints -> [Node]
-constraintsToGraph cs = map toNode $ listFromMap $ mapMap constraintToEdges cs
+constraintsToGraph cs = map toNode $ listFromMap $ mapMapWithId constraintToEdges cs
     where
         -- Node needs three values but id can be the same as name
         toNode (k, e) = (k, k, e)
 
 -- Get dependencies of single constraints
-constraintToEdges :: SAnn -> [Id]
-constraintToEdges (AnnVar a)   = [a]
-constraintToEdges (Join s1 s2) = constraintToEdges s1 ++ constraintToEdges s2
-constraintToEdges (Meet s1 s2) = constraintToEdges s1 ++ constraintToEdges s2
-constraintToEdges _            = []
+constraintToEdges :: Id -> SAnn -> [Id]
+constraintToEdges i (AnnVar a)   = if i == a then [] else [a] -- Avoid constraints of type a == a
+constraintToEdges i (Join s1 s2) = constraintToEdges i s1 ++ constraintToEdges i s2
+constraintToEdges i (Meet s1 s2) = constraintToEdges i s1 ++ constraintToEdges i s2
+constraintToEdges _ _            = []
 
 -- Solve a single constraint
 solveConstraint :: (Vertex -> Node) -> Constraints -> Vertex -> Constraints
