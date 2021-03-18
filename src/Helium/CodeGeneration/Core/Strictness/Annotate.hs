@@ -16,6 +16,15 @@ annotateDeclaration supply (DeclValue n a m t v c) = DeclValue n a m t' v' c
     (supply1, supply2) = splitNameSupply supply
     t' = annotateType supply1 t
     v' = annotateExpression supply2 v
+annotateDeclaration supply (DeclAbstract n a m ar t c) = DeclAbstract n a m ar t' c
+  where
+    t' = annotateTypeAbstract t
+annotateDeclaration supply (DeclCon n a m t f c) = DeclCon n a m t' f c
+  where
+    t' = annotateTypeAbstract t
+annotateDeclaration supply (DeclTypeSynonym n a m s t c) = DeclTypeSynonym n a m s t' c
+  where
+    t' = annotateTypeAbstract t
 annotateDeclaration _ d = d
 
 -- Annotate type
@@ -24,11 +33,26 @@ annotateType supply (TAp (TAp (TCon TConFun) t1) t2) = TAp (TAp (TCon TConFun) t
     where
         -- Annotate only on function arrows
         (id, supply') = freshId supply
-        t1' = TAnn (AnnVar id) t1
-        t2' = annotateType supply' t2
+        (supply1, supply2) = splitNameSupply supply'
+        t1' = TAnn (AnnVar id) $ annotateType supply1 t1
+        t2' = annotateType supply2 t2
 annotateType supply (TForall q k t) = TForall q k $ annotateType supply t
 annotateType supply (TStrict t)     = TStrict $ annotateType supply t
 annotateType _ t = t
+
+-- Cannot place variables because they won't be inferred due to no body, so assume L unless type is strict, then S
+annotateTypeAbstract :: Type -> Type
+annotateTypeAbstract (TAp (TAp (TCon TConFun) (TStrict t1)) t2) = TAp (TAp (TCon TConFun) (TAnn S t1')) t2'
+  where
+    t1' = annotateTypeAbstract t1
+    t2' = annotateTypeAbstract t2
+annotateTypeAbstract (TAp (TAp (TCon TConFun) t1) t2) = TAp (TAp (TCon TConFun) (TAnn L t1')) t2'
+  where
+    t1' = annotateTypeAbstract t1
+    t2' = annotateTypeAbstract t2
+annotateTypeAbstract (TForall q k t) = TForall q k $ annotateTypeAbstract t
+annotateTypeAbstract (TStrict t)     = TStrict $ annotateTypeAbstract t
+annotateTypeAbstract t = t
 
 -- Annotate expression
 annotateExpression :: NameSupply -> Expr -> Expr
@@ -43,7 +67,11 @@ annotateExpression supply (Ap e1 e2) = Ap e1' e2'
     (supply1, supply2) = splitNameSupply supply
     e1' = annotateExpression supply1 e1
     e2' = annotateExpression supply2 e2
-annotateExpression supply (ApType e t) = ApType (annotateExpression supply e) t
+annotateExpression supply (ApType e t) = ApType e' t'
+  where
+    (supply1, supply2) = splitNameSupply supply
+    e' = annotateExpression supply1 e
+    t' = annotateType supply2 t
 annotateExpression supply (Lam s (Variable x t) e) = Lam s (Variable x t') e'
   where
     (id, supply') = freshId supply
@@ -70,4 +98,15 @@ annotateBind supply (Bind (Variable x t) e) = Bind (Variable x t') e'
 
 -- Annotate alt
 annotateAlt :: NameSupply -> Alt -> Alt
-annotateAlt supply (Alt p e) = Alt p $ annotateExpression supply e
+annotateAlt supply (Alt p e) = Alt p' e'
+  where
+    (supply1, supply2) = splitNameSupply supply
+    p' = annotatePat supply1 p
+    e' = annotateExpression supply2 e
+
+-- Annotate pat
+annotatePat :: NameSupply -> Pat -> Pat
+annotatePat supply (PatCon c t i) = PatCon c t' i
+  where
+    t' = mapWithSupply annotateType supply t
+annotatePat _ p = p

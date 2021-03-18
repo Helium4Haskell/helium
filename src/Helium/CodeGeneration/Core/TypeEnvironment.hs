@@ -50,7 +50,7 @@ typeEnvAddSynonyms :: [(Id, Type)] -> TypeEnvironment -> TypeEnvironment
 typeEnvAddSynonyms = flip $ foldr (uncurry typeEnvAddSynonym)
 
 typeEnvAddVariable :: Variable -> TypeEnvironment -> TypeEnvironment
-typeEnvAddVariable (Variable name tp) env = env{ typeEnvLocalValues = updateMap name (typeNotStrict tp) $ typeEnvLocalValues env }
+typeEnvAddVariable (Variable name tp) env = env{ typeEnvLocalValues = updateMap name (typeRemoveAnnotation $ typeNotStrict tp) $ typeEnvLocalValues env }
 
 typeEnvAddVariables :: [Variable] -> TypeEnvironment -> TypeEnvironment
 typeEnvAddVariables vars env = foldr typeEnvAddVariable env vars
@@ -115,10 +115,15 @@ typeOfCoreExpression env (Let binds expr)
 
 -- All Alternatives of a Match should have the same return type,
 -- so we only have to check the first one.
-typeOfCoreExpression env (Match name (Alt pattern expr : _))
-  = typeOfCoreExpression env' expr
+-- However, annotations have to be unified because all branches
+-- need to match one annotation.
+typeOfCoreExpression env (Match name (alt : alts))
+  = unifiedType
   where
-    env' = typeEnvAddPattern pattern env
+    baseType = typeOfCoreAlt env alt
+    alts' = map (typeOfCoreAlt env) alts
+    unifiedType = foldr unifyAnnotations baseType alts'
+    typeOfCoreAlt env (Alt pattern expr) = typeOfCoreExpression (typeEnvAddPattern pattern env) expr
 
 -- Expression: e1 e2
 -- Resolve the type of e1, which should be a function type.
@@ -256,3 +261,14 @@ updateFunctionTypeStrictness env (strict : strictness) tp = case typeNormalizeHe
       TAp (TAp (TCon TConFun) tArg')
         $ updateFunctionTypeStrictness env strictness tReturn
   _ -> error "updateFunctionTypeStrictness: expected function type"
+
+-- Unify the annotations on function arrows with a join
+unifyAnnotations :: Type -> Type -> Type
+unifyAnnotations (TAp (TAp (TCon TConFun) (TAnn a1 t11)) t12) (TAp (TAp (TCon TConFun) (TAnn a2 t21)) t22) = (TAp (TAp (TCon TConFun) (TAnn a' t1')) t2')
+  where
+    a' = Join a1 a2
+    t1' = unifyAnnotations t11 t21
+    t2' = unifyAnnotations t12 t22
+unifyAnnotations (TStrict t1) (TStrict t2) = TStrict $ unifyAnnotations t1 t2
+unifyAnnotations (TForall _ _ t1) (TForall q k t2) = TForall q k $ unifyAnnotations t1 t2
+unifyAnnotations t1 t2 = t2

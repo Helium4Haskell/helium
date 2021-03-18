@@ -42,7 +42,9 @@ solveConstraint nodeFromVertex c v = updateMap node new c
 
 -- Replace solved annotation variables
 replaceVar :: Constraints -> SAnn -> SAnn
-replaceVar cs (AnnVar x) = findMap x cs -- Variable should be solved because of order
+replaceVar cs (AnnVar x) = case lookupMap x cs of
+    Just y  -> y -- Variable should be solved because of order
+    Nothing -> L -- Assume laziness
 replaceVar cs (Meet x y) = meet (replaceVar cs x) (replaceVar cs y)
 replaceVar cs (Join x y) = join (replaceVar cs x) (replaceVar cs y)
 replaceVar _  x          = x

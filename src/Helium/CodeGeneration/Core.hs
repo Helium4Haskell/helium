@@ -23,7 +23,7 @@ import Helium.CodeGeneration.Core.ReduceThunks(coreReduceThunks)
 import Helium.CodeGeneration.Core.Rename(coreRename)
 import Helium.CodeGeneration.Core.RemoveAliases(coreRemoveAliases)
 import Helium.CodeGeneration.Core.Saturate(coreSaturate)
-import Helium.CodeGeneration.Core.Strictness(coreStrictness)
+import Helium.CodeGeneration.Core.Strictness.Strictness(coreStrictness)
 
 pipeline :: [(String, NameSupply -> CoreModule -> CoreModule)]
 pipeline =
@@ -47,7 +47,7 @@ desugarCore supply mod = desugar supply pipeline mod
 
 desugar :: NameSupply -> [(String, NameSupply -> CoreModule -> CoreModule)] -> CoreModule -> IO CoreModule
 desugar supply ((passName, passFn) : passes) mod = do
-  --when (passName == "Strictness 1" || passName == "Strictness 2") $ writeFile ([last passName] ++ ".core") $ show $ pretty mod
+  --writeFile (passName ++ ".core") $ show $ pretty mod
   let (supply1, supply2) = splitNameSupply supply
   let mod' = passFn supply1 mod
   checkModuleIO passName mod'
