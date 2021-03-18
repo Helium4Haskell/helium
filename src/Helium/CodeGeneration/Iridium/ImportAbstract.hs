@@ -45,7 +45,7 @@ convertMethod (Declaration qname (ExportedAs name) mod customs method) = Just $
 convertMethod _ = Nothing
 
 convertAbstractMethod :: Declaration AbstractMethod -> Maybe (Core.Decl v)
-convertAbstractMethod (Declaration qname (ExportedAs name) mod customs (AbstractMethod sourceType fnType _)) = Just $
+convertAbstractMethod (Declaration qname (ExportedAs name) mod customs (AbstractMethod sourceType _ fnType _)) = Just $
   Core.DeclAbstract qname (Core.Export name) mod (functionArity fnType) sourceType customs
 convertAbstractMethod _ = Nothing
 

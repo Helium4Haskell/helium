@@ -647,6 +647,15 @@ escapes arity regionSort (ALam sort' regionSort' lifetime (ATuple (a : as))) =
 escapes _ regionSort a = (map (const True) $ flattenRegionVars $ regionSortToVars 0 regionSort, id, a) -- This cannot be analyzed
 
 escapesBody :: RegionSort -> Int -> Annotation -> ([Bool], RegionVar -> RegionVar, Annotation)
+escapesBody regionSort extraRegionScope (ATop (SortTuple [s1, s2])) = escapesBody regionSort extraRegionScope (ATuple [ATop s1, ATop s2])
+escapesBody regionSort extraRegionScope (ATuple
+    [ ATop (SortFun SortUnit RegionSortMonomorphic LifetimeContextAny (SortFun SortUnit returnRegionSort LifetimeContextLocalBottom sEffect))
+    , aReturn
+    ])
+  = escapesBody regionSort extraRegionScope (ATuple
+    [ ALam SortUnit RegionSortMonomorphic LifetimeContextAny (ALam SortUnit returnRegionSort LifetimeContextLocalBottom (ATop sEffect))
+    , aReturn
+    ])
 escapesBody regionSort extraRegionScope (ATuple
     [ ALam SortUnit RegionSortMonomorphic LifetimeContextAny (ALam SortUnit returnRegionSort LifetimeContextLocalBottom aEffect)
     , aReturn

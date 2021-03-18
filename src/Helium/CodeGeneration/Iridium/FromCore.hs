@@ -58,7 +58,7 @@ fromCoreAfterImports (importedCustoms, importedDatas, importTypes, importedAbstr
       Nothing
       coreEnv
     valuesFunctions = mapMapWithId (\fnName (tp, fnType) -> ValueFunction (functionArity fnType) tp CCFast) $ functionsMap coreEnv mod
-    valuesAbstracts = mapFromList $ map (\(fnName, Declaration _ _ _ _ (AbstractMethod _ fnType annotations)) -> (fnName, ValueFunction (functionArity fnType) (typeFromFunctionType fnType) $ callingConvention annotations)) importedAbstracts
+    valuesAbstracts = mapFromList $ map (\(fnName, Declaration _ _ _ _ (AbstractMethod _ _ fnType annotations)) -> (fnName, ValueFunction (functionArity fnType) (typeFromFunctionType fnType) $ callingConvention annotations)) importedAbstracts
 
     allConsList = map (\(name, Declaration qualified _ _ _ (DataType cons)) -> (name, cons)) importedDatas ++ listFromMap consMap
     valuesCons = mapFromList $ allConsList >>= (\(dataName, cons) -> map (\(Declaration conName _ _ _ (DataTypeConstructorDeclaration tp fs)) -> (conName, ValueConstructor (DataTypeConstructor conName tp))) cons)

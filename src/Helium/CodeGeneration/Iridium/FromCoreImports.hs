@@ -9,6 +9,8 @@ import Lvm.Common.Id
 import Helium.CodeGeneration.Iridium.Data
 import Helium.CodeGeneration.Iridium.Type
 import Helium.CodeGeneration.Iridium.FileCache
+import qualified Helium.CodeGeneration.Iridium.Region.RegionVar as Region
+import qualified Helium.CodeGeneration.Iridium.Region.Sort as Region
 import qualified Lvm.Core.Expr as Core
 import qualified Lvm.Core.Module as Core
 import System.Exit
@@ -53,7 +55,7 @@ importAbstract cache decl
       Core.DeclAbstract{} -> True
       _ -> False
     toAbstract :: Method -> AbstractMethod
-    toAbstract method@(Method tp _ args _ _ annotations _ _) = AbstractMethod tp (methodFunctionType method) annotations
+    toAbstract method@(Method tp regions args _ _ annotations _ _) = AbstractMethod tp (Region.RegionSortTuple $ map (const Region.RegionSortMonomorphic) [1 .. Region.regionVarsSize regions]) (methodFunctionType method) annotations
 importAbstract _ _ = return Nothing
 
 findDeclaration :: FileCache -> Core.CoreDecl -> (Module -> [Declaration a]) -> IO (Id, Declaration a)

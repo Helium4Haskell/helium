@@ -112,6 +112,7 @@ pAbstractMethod = do
       pToken ']'
       pToken ':'
       pWhitespace
+      regionSort <- pTry RegionSortUnit (Region.pRegionSort [] <* pWhitespace) 
       pToken '{'
       pWhitespace
       tp <- pType
@@ -120,7 +121,7 @@ pAbstractMethod = do
         Just f -> return f
       pToken '}'
       pWhitespace
-      AbstractMethod (typeRemoveArgumentStrictness tp) fnType <$> pAnnotations
+      AbstractMethod (typeRemoveArgumentStrictness tp) regionSort fnType <$> pAnnotations
     _ -> do
       pToken ':'
       pWhitespace
@@ -131,6 +132,7 @@ pAbstractMethod = do
       pWhitespace
       pToken '$'
       pWhitespace
+      regionSort <- pTry RegionSortUnit (Region.pRegionSort [] <* pWhitespace) 
       pToken '['
       pWhitespace
       arity <- pUnsignedInt
@@ -144,7 +146,7 @@ pAbstractMethod = do
         Just f -> return f
       pToken '}'
       pWhitespace
-      AbstractMethod sourceType fnType <$> pAnnotations
+      AbstractMethod sourceType regionSort fnType <$> pAnnotations
 
 pAnnotations :: Parser [MethodAnnotation]
 pAnnotations =
