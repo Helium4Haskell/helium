@@ -194,10 +194,10 @@ entry:
 }
 
 ; $primPutChar :: Char -> RealWorld -> IORes Int
-export_as @$primPutChar declare @putchar[2]: { !Char -> !RealWorld -> IORes Int } [callconvention:c fake_io]
+export_as @$primPutChar declare @putchar[2]: { !Char -> !RealWorld -> IORes Int } [callconvention:c implicit_io]
 
 ; $primGetChar :: RealWorld -> IORes Char
-export_as @$primGetChar declare @getchar[1]: { RealWorld -> IORes Char } [callconvention:c fake_io]
+export_as @$primGetChar declare @getchar[1]: { RealWorld -> IORes Char } [callconvention:c implicit_io]
 
 export_as @$primIntToChar define @$primIntToChar(%x: !Int): Char [trampoline] = prim int_to_char(%x: !Int)
 

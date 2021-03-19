@@ -119,7 +119,7 @@ data Annotation
   -- the value in the IORes object (not the 'next' real world). This is used to declare extern functions like putchar and getchar.
   -- We currently assume that the return type of the function is 'int'.
   -- Cannot be used in combination with 'AnnotateTrampoline'.
-  | AnnotateFakeIO
+  | AnnotateImplicitIO
   deriving (Eq, Ord)
 
 data CallingConvention

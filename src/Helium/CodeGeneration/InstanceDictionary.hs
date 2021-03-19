@@ -23,8 +23,6 @@ import Data.List
 
 import Text.PrettyPrint.Leijen (pretty)
 
-import Debug.Trace
-
 type DictLabel = String
 
 constructFunctionMap :: ImportEnvironment -> Int -> Name -> [(Name, Int, DictLabel, Core.Type)]

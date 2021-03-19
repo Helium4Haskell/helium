@@ -170,7 +170,7 @@ instance ShowWithQuantors Block where
 instance Show Annotation where
   show AnnotateTrampoline = "trampoline"
   show (AnnotateCallConvention conv) = "callconvention:" ++ show conv
-  show AnnotateFakeIO = "fake_io"
+  show AnnotateImplicitIO = "implicit_io"
 
 instance Show CallingConvention where
   show CCC = "c"
