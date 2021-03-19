@@ -263,6 +263,13 @@ convertTp f (TApp t1 t2) = TApp (convertTp f t1) (convertTp f t2)
 
 convertPredicate :: (Name -> Name) -> Predicate -> Predicate
 convertPredicate f (Predicate n tp) = Predicate (getNameName $ f $ nameFromString n) (convertTp f tp)
+
+-- FIXME: the first parameter need some pre-processing
+setForeignName :: String -> Name -> Name
+setForeignName fname (Name_Identifier range _ orig name) = Name_Identifier range [] orig fname
+setForeignName fname (Name_Operator range _ orig name)   = Name_Operator range [] orig fname
+setForeignName fname (Name_Special range _ orig name)    = Name_Special range [] orig fname
+
 -------------------------------------
 -- Got these from the lexer.
 isLetter :: Char -> Bool

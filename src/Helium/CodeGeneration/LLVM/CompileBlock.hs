@@ -24,7 +24,7 @@ import Helium.CodeGeneration.LLVM.CompileStruct
 import qualified Helium.CodeGeneration.LLVM.Builtins as Builtins
 
 import Lvm.Common.Id(Id, NameSupply, splitNameSupply, splitNameSupplies, mapWithSupply, freshId, idFromString)
-import Lvm.Common.IdMap(findMap)
+import Lvm.Common.IdMap(findMap, lookupMap)
 import qualified Lvm.Core.Type as Core
 
 import qualified Helium.CodeGeneration.Iridium.Data as Iridium
@@ -40,6 +40,9 @@ import qualified LLVM.AST.Float as Float
 
 import Data.List (maximumBy, group, sort, partition)
 import Data.Function (on)
+
+import Lvm.Common.Id(stringFromId)
+import Debug.Trace
 
 data Partial = Partial [Named Instruction] (Named Terminator) [BasicBlock]
 
@@ -169,18 +172,19 @@ compileExpression env supply (Iridium.Literal literal) name = [toName name := Bi
         ( Float $ Float.Double value
         , FloatingPointType DoubleFP
         )
+-- TODO:
 compileExpression env supply expr@(Iridium.Call to@(Iridium.GlobalFunction global arity tp) args) name
   | not fakeIO && all isRight args =
-    [ toName name := Call
+    trace ("iridium call: " ++ ((show . stringFromId) global) ++ " real name: " ++ (stringFromId realName)) ([toName name := Call
         { tailCallKind = Nothing
         , callingConvention = compileCallingConvention convention
         , returnAttributes = []
-        , function = Right $ globalFunctionToOperand env to
+        , function = Right $ globalFunctionToOperand env (Iridium.GlobalFunction realName arity tp)
         , arguments = [(toOperand env arg, []) | Right arg <- args]
         , functionAttributes = []
         , metadata = []
         }
-    ]
+    ])
   | not fakeIO =
     let
       (name', supply') = freshName supply
@@ -231,6 +235,9 @@ compileExpression env supply expr@(Iridium.Call to@(Iridium.GlobalFunction globa
     ioRes = Iridium.DataTypeConstructor ioResId $ Iridium.typeFromFunctionType $ Iridium.FunctionType [Left $ Core.Quantor Nothing, Right $ Core.TVar 0, Right Iridium.typeRealWorld] Iridium.typeRealWorld
     ioResId = idFromString "IORes"
     tRealWorld = compileType env Iridium.typeRealWorld
+    realName = case lookupMap global (envFFIInfo env) of
+      Just foreignName -> idFromString foreignName
+      Nothing          -> global
 compileExpression env supply (Iridium.Eval var) name = compileEval env supply (toOperand env var) (Iridium.variableType var) $ toName name
 compileExpression env supply (Iridium.Var var) name = cast supply env (toOperand env var) (toName name) t t
   where t = Iridium.variableType var

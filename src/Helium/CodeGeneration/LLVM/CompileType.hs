@@ -16,6 +16,8 @@ import LLVM.AST.AddrSpace
 import LLVM.AST.Operand
 import qualified LLVM.AST.CallingConvention as CallingConvention
 
+import qualified Data.Map as M
+
 compileType :: Env -> Core.Type -> Type
 compileType env tp
   | not $ Core.typeIsStrict tp = taggedThunkPointer

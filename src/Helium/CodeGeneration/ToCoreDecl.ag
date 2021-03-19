@@ -340,12 +340,13 @@ SEM Declaration
                 lhs.whereDeclarationTypes = [(@fdecl.name, @tpScheme)]
                 lhs.decls = 
                     [ Core.DeclAbstract 
-                        { Core.declName    = idFromName @qualname 
-                        , Core.declAccess  = Core.Private
-                        , Core.declModule  = Nothing
-                        , Core.declArity   = @fdecl.arity
-                        , Core.declType    = setAllStrict @loc.tp
-                        , Core.declCustoms = []
+                        { Core.declName        = idFromName @qualname 
+                        , Core.declAccess      = Core.Private
+                        , Core.declModule      = Nothing
+                        , Core.declArity       = @fdecl.arity
+                        , Core.declType        = setAllStrict @loc.tp
+                        , Core.declForeignName = Just @fdecl.fname
+                        , Core.declCustoms     = []
                         }
                     ]
 
@@ -389,6 +390,14 @@ SEM Types
 SEM FDecl 
     | Import lhs.arity = @type.arity
     | Export lhs.arity = @type.arity
+---
+
+--- Record the foreign function name for FFI functions
+ATTR FDecl [ | | fname : String]
+
+SEM FDecl
+    | Import lhs.fname = @impend
+    | Export lhs.fname = @expend
 
 ---
 

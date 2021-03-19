@@ -182,17 +182,20 @@ showAnnotations [] = ""
 showAnnotations annotations = "[" ++ intercalate " " (map show annotations) ++ "]"
 
 instance ShowDeclaration AbstractMethod where
-  showDeclaration (AbstractMethod sourceType fnType annotations)
+  showDeclaration (AbstractMethod sourceType fnType ffiInfo annotations)
     | sourceType == typeRemoveArgumentStrictness (typeFromFunctionType fnType) =
       ( "declare"
-      , "[" ++ show arity ++ "]: { " ++ show (typeFromFunctionType fnType) ++ " } " ++ showAnnotations annotations ++ "\n"
+      , "[" ++ show arity ++ "]: { " ++ show (typeFromFunctionType fnType) ++ " } " ++ ffi ++ showAnnotations annotations ++ "\n"
       )
     | otherwise =
       ( "declare"
-      , ": { " ++ show sourceType ++ " } $ [" ++ show arity ++ "]{ " ++ show (typeFromFunctionType fnType) ++ " }"
+      , ": { " ++ show sourceType ++ " } $ [" ++ show arity ++ "]{ " ++ show (typeFromFunctionType fnType) ++ " } " ++ ffi
       )
     where
       arity = functionArity fnType
+      ffi = case ffiInfo of
+        FFIInfo (Just str) -> "{" ++ str ++ "} "
+        FFIInfo Nothing -> "{} "
 
 instance ShowDeclaration Method where
   showDeclaration (Method tp args rettype annotations entry blocks) =

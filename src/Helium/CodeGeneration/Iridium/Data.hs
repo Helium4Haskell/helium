@@ -75,17 +75,20 @@ instance Functor Declaration where
   fmap f (Declaration name visibility mod customs a) = Declaration name visibility mod customs $ f a
 
 -- Imported method, eg a method without a definition. The implementation is in some other file.
-data AbstractMethod = AbstractMethod !Type !FunctionType ![Annotation]
+data AbstractMethod = AbstractMethod !Type !FunctionType !FFIInfo ![Annotation]
+  deriving (Eq, Ord)
+
+data FFIInfo = FFIInfo (Maybe String)
   deriving (Eq, Ord)
 
 abstractFunctionType :: AbstractMethod -> FunctionType
-abstractFunctionType (AbstractMethod _ tp _) = tp
+abstractFunctionType (AbstractMethod _ tp _ _) = tp
 
 abstractType :: AbstractMethod -> Type
 abstractType method = typeFromFunctionType $ abstractFunctionType method
 
 abstractSourceType :: AbstractMethod -> Type
-abstractSourceType (AbstractMethod tp _ _) = tp
+abstractSourceType (AbstractMethod tp _ _ _) = tp
 
 data Method = Method !Type ![Either Quantor Local] !Type ![Annotation] !Block ![Block]
   deriving (Eq, Ord)

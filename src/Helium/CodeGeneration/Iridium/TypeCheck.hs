@@ -85,7 +85,7 @@ fromList :: [Analysis] -> Analysis
 fromList = foldr AJoin AEmpty
 
 analyseAbstractMethod :: Declaration AbstractMethod -> Analysis
-analyseAbstractMethod (Declaration name _ _ _ (AbstractMethod _ tp _)) = AVar name (DeclareGlobal arity) $ typeFromFunctionType tp
+analyseAbstractMethod (Declaration name _ _ _ (AbstractMethod _ tp _ _)) = AVar name (DeclareGlobal arity) $ typeFromFunctionType tp
   where
     arity = functionArity tp
 

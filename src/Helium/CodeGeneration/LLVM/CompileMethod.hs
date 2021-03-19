@@ -19,6 +19,7 @@ import Helium.CodeGeneration.LLVM.Struct(Struct(..), StructField(..))
 import Helium.CodeGeneration.LLVM.CompileStruct(structType, extractField)
 
 import Lvm.Common.Id(Id, NameSupply, freshId, freshIdFromId, splitNameSupply, mapWithSupply, idFromString, stringFromId)
+import Lvm.Common.IdMap(lookupMap)
 import qualified Lvm.Core.Type as Core
 
 import qualified Helium.CodeGeneration.Iridium.Data as Iridium
@@ -33,7 +34,11 @@ import qualified LLVM.AST.Constant as Constant
 import qualified LLVM.AST.Type as Type
 import qualified LLVM.AST.IntegerPredicate as IntegerPredicate
 
+import Lvm.Common.Id(stringFromId)
+import Debug.Trace
+
 import Data.Char
+import qualified Data.Map as M
 
 -- llvm-hs-pure requires to set a name on the argument of a declared (abstract) function. However, when pretty printing / exporting the
 -- IR this is not used. We thus can use a non-unique name.
@@ -41,7 +46,9 @@ unusedArgumentName :: Id
 unusedArgumentName = idFromString "_argument"
 
 compileAbstractMethod :: Env -> NameSupply -> Iridium.Declaration Iridium.AbstractMethod -> [Definition]
-compileAbstractMethod env supply (Iridium.Declaration name visible _ _ method@(Iridium.AbstractMethod _ fnType annotations)) = toFunction env supply name visible annotations args (Iridium.typeFromFunctionType fnType) retType []
+-- FIXME: I think I need to do something here later
+compileAbstractMethod env supply (Iridium.Declaration name visible _ _ method@(Iridium.AbstractMethod _ fnType _ annotations)) = 
+  trace ("Iridium Abstract Method: " ++ (show . stringFromId) name) (toFunction env supply name visible annotations args (Iridium.typeFromFunctionType fnType) retType [])
   where
     Iridium.FunctionType argTypes' retType = fnType
     argTypes = [tp | Right tp <- argTypes']
@@ -76,7 +83,7 @@ toFunction env supply name visible annotations args fnType retType basicBlocks =
       , Global.callingConvention = callConv
       , Global.returnAttributes = []
       , Global.returnType = compileType env (Core.typeToStrict $ if fake_io then Iridium.typeInt else retType)
-      , Global.name = toName name
+      , Global.name = realName
       , Global.parameters = (if fake_io then init parameters else parameters, {- varargs: -} False)
       , Global.functionAttributes = []
       , Global.section = Nothing
@@ -88,6 +95,10 @@ toFunction env supply name visible annotations args fnType retType basicBlocks =
       , Global.personalityFunction = Nothing
       , Global.metadata = []
       }
+
+    realName = case lookupMap name (envFFIInfo env) of
+      (Just ffiName) -> mkName ffiName
+      Nothing        -> toName name
 
     linkage = case visible of
       Iridium.Private

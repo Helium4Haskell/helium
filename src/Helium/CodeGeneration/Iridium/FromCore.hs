@@ -57,7 +57,7 @@ fromCoreAfterImports (importedCustoms, importedDatas, importTypes, importedAbstr
       Nothing
       coreEnv
     valuesFunctions = mapMapWithId (\fnName (tp, fnType) -> ValueFunction (functionArity fnType) tp CCFast) $ functionsMap coreEnv mod
-    valuesAbstracts = mapFromList $ map (\(fnName, Declaration _ _ _ _ (AbstractMethod _ fnType annotations)) -> (fnName, ValueFunction (functionArity fnType) (typeFromFunctionType fnType) $ callingConvention annotations)) importedAbstracts
+    valuesAbstracts = mapFromList $ map (\(fnName, Declaration _ _ _ _ (AbstractMethod _ fnType _ annotations)) -> (fnName, ValueFunction (functionArity fnType) (typeFromFunctionType fnType) $ callingConvention annotations)) importedAbstracts
     -- add abstraction declarations from FFI into the TypeEnv
     -- NOTE: calling convention is fixed for FFI
     valueForeignAbstract = mapFromList $ valueDeclFromCoreFFI decls
@@ -122,7 +122,8 @@ fromCoreDecl supply env decl@Core.DeclValue{} = [Left (name, Declaration name (v
 fromCoreDecl _ env decl@Core.DeclAbstract{Core.declArity = arity} = [Right (name, Declaration name (visibility decl) (Core.declModule decl) (Core.declCustoms decl) abstract)]
   where
     name = Core.declName decl
-    abstract = toAbstractMethod env (Core.declName decl)
+    ffiInfo = Core.declForeignName decl
+    abstract = toAbstractMethod env (Core.declName decl) ffiInfo
 fromCoreDecl _ _ _ = []
 
 idEntry, idMatchAfter, idMatchCase, idMatchDefault :: Id
@@ -143,8 +144,8 @@ toMethod supply env name tp expr = Method tp args returnType [AnnotateTrampoline
     Partial entry blocks = toInstruction supply' env' CReturn expr'
 
 -- NOTE: calling convention is fixed to ccall
-toAbstractMethod :: TypeEnv -> Id -> AbstractMethod
-toAbstractMethod env name = AbstractMethod tp functionTp [AnnotateCallConvention CCC] 
+toAbstractMethod :: TypeEnv -> Id -> (Maybe String) -> AbstractMethod
+toAbstractMethod env name ffiInfo = AbstractMethod tp functionTp (FFIInfo ffiInfo) [AnnotateCallConvention CCC] 
   where
     (_, tp) = fromMaybe (error "toMethod: could not find function signature") $ resolveFunction env name
     functionTp = extractFunctionTypeNoSynonyms tp

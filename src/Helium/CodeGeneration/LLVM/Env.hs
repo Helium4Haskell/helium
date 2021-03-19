@@ -15,6 +15,8 @@ data Env = Env
   , envMethod :: Maybe Iridium.Method
   , envConstructors :: IdMap ConstructorLayout
   , envMethodInfo :: IdMap EnvMethodInfo
+  -- FFI function name to their external name
+  , envFFIInfo :: IdMap String
   -- Environment is only used for type synonyms
   , envTypeEnv :: Core.TypeEnvironment
   }
@@ -26,6 +28,7 @@ envForModule target mod = Env
   , envMethod = Nothing
   , envConstructors = mapFromList constructors
   , envMethodInfo = mapFromList methods
+  , envFFIInfo = collectEnvFFIInfo (Iridium.moduleAbstractMethods mod)
   -- Environment is only used for type synonyms
   , envTypeEnv = Core.TypeEnvironment (mapFromList synonyms) emptyMap emptyMap
   }
@@ -40,7 +43,7 @@ envForModule target mod = Env
       )
     methods :: [(Id, EnvMethodInfo)]
     methods = fmap (\(Iridium.Declaration name _ _ _ (Iridium.Method _ _ _ annotations _ _)) -> (name, methodInfo annotations)) (Iridium.moduleMethods mod)
-      ++ fmap (\(Iridium.Declaration name _ _ _ (Iridium.AbstractMethod _ _ annotations)) -> (name, methodInfo annotations)) (Iridium.moduleAbstractMethods mod)
+      ++ fmap (\(Iridium.Declaration name _ _ _ (Iridium.AbstractMethod _ _ _ annotations)) -> (name, methodInfo annotations)) (Iridium.moduleAbstractMethods mod)
     synonyms :: [(Id, Core.Type)]
     synonyms = [(name, tp) | Iridium.Declaration name _ _ _ (Iridium.TypeSynonym _ tp) <- Iridium.moduleTypeSynonyms mod]
 
@@ -48,3 +51,12 @@ data EnvMethodInfo = EnvMethodInfo { envMethodConvention :: !Iridium.CallingConv
 
 methodInfo :: [Iridium.Annotation] -> EnvMethodInfo
 methodInfo annotations = EnvMethodInfo (Iridium.callingConvention annotations) (Iridium.AnnotateFakeIO `elem` annotations)
+
+collectEnvFFIInfo :: [Iridium.Declaration Iridium.AbstractMethod] -> IdMap String
+collectEnvFFIInfo abstracts = foldl extract emptyMap abstracts
+  where
+    extract :: IdMap String -> Iridium.Declaration Iridium.AbstractMethod -> IdMap String
+    extract ffiMap (Iridium.Declaration name _ _ _ (Iridium.AbstractMethod _ _ ffiInfo _)) =
+      case ffiInfo of
+        Iridium.FFIInfo (Just foreignName) -> insertMap name foreignName ffiMap
+        Iridium.FFIInfo Nothing  -> ffiMap

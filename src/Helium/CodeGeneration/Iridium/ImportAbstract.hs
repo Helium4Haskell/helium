@@ -41,12 +41,12 @@ convertConstructor _ = Nothing
 
 convertMethod :: Declaration Method -> Maybe (Core.Decl v)
 convertMethod (Declaration qname (ExportedAs name) mod customs method) = Just $
-  Core.DeclAbstract qname (Core.Export name) mod (methodArity method) (methodSourceType method) customs
+  Core.DeclAbstract qname (Core.Export name) mod (methodArity method) (methodSourceType method) Nothing customs
 convertMethod _ = Nothing
 
 convertAbstractMethod :: Declaration AbstractMethod -> Maybe (Core.Decl v)
-convertAbstractMethod (Declaration qname (ExportedAs name) mod customs (AbstractMethod sourceType fnType _)) = Just $
-  Core.DeclAbstract qname (Core.Export name) mod (functionArity fnType) sourceType customs
+convertAbstractMethod (Declaration qname (ExportedAs name) mod customs (AbstractMethod sourceType fnType (FFIInfo info) _)) = Just $
+  Core.DeclAbstract qname (Core.Export name) mod (functionArity fnType) sourceType info customs
 convertAbstractMethod _ = Nothing
 
 convertTypeSynonym :: Declaration TypeSynonym -> [Core.Decl v]

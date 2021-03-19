@@ -53,7 +53,7 @@ importAbstract cache decl
       Core.DeclAbstract{} -> True
       _ -> False
     toAbstract :: Method -> AbstractMethod
-    toAbstract method@(Method tp args _ annotations _ _) = AbstractMethod tp (methodFunctionType method) annotations
+    toAbstract method@(Method tp args _ annotations _ _) = AbstractMethod tp (methodFunctionType method) (FFIInfo Nothing) annotations
 importAbstract _ _ = return Nothing
 
 findDeclaration :: FileCache -> Core.CoreDecl -> (Module -> [Declaration a]) -> IO (Id, Declaration a)

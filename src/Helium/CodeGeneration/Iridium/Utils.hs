@@ -9,15 +9,16 @@ mapMethodsWithSupply fn supply (Module name dependencies customs datas types abs
     methods' = mapWithSupply fn supply methods
 
 mapBlocks :: (Instruction -> Instruction) -> Module -> Module
-mapBlocks fn (Module name dependencies customs datas types abstracts methods) = Module name dependencies customs datas types abstracts $ map (fmap fnMethod) methods
+mapBlocks fn (Module name dependencies customs datas types abstracts methods) = Module name dependencies customs datas types abstracts method'
   where
     fnMethod :: Method -> Method
     fnMethod (Method tp args rettype annotations entry blocks) = Method tp args rettype annotations (fnBlock entry) $ map fnBlock blocks
     fnBlock :: Block -> Block
     fnBlock (Block name instr) = Block name $ fn instr
+    method' = map (fmap fnMethod) methods
 
 mapBlocksWithSupply :: (NameSupply -> Instruction -> Instruction) -> NameSupply -> Module -> Module
-mapBlocksWithSupply fn supply (Module name dependencies customs datas types abstracts methods) = Module name dependencies customs datas types abstracts $ mapWithSupply (\s -> fmap (fnMethod s)) supply methods
+mapBlocksWithSupply fn supply (Module name dependencies customs datas types abstracts methods) = Module name dependencies customs datas types abstracts method'
   where
     fnMethod :: NameSupply -> Method -> Method
     fnMethod s (Method tp args rettype annotations entry blocks) = Method tp args rettype annotations (fnBlock supply1 entry) $ mapWithSupply fnBlock supply2 blocks
@@ -25,6 +26,7 @@ mapBlocksWithSupply fn supply (Module name dependencies customs datas types abst
         (supply1, supply2) = splitNameSupply s
     fnBlock :: NameSupply -> Block -> Block
     fnBlock s (Block name instr) = Block name $ fn s instr
+    method' = mapWithSupply (\s -> fmap (fnMethod s)) supply methods
 
 -- Takes a specified number of value arguments (Right).
 -- Type arguments (Left) are preserved, but not counted.
