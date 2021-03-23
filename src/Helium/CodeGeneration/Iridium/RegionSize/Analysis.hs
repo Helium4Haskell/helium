@@ -29,12 +29,12 @@ import qualified Data.Map as M
 ----------------------------------------------------------------
 
 -- | Analyse a (possibilty recursive) binding group
-analyseMethods :: GlobalEnv -> [(Id,Method)] -> [Annotation]
+analyseMethods :: GlobalEnv -> [(Id,Method)] -> Annotation
 analyseMethods gEnv methods =
     let (gEnv',_)    = foldl makeFixVar (gEnv,0) methods
         (anns,sorts) = unzip $ analyseMethod gEnv' <$> methods
-        fixpoints    = AFix undefined (SortTuple sorts) <$> anns
-    in annRemLocalRegs <$> fixpoints
+        fixpoints    = AFix (SortTuple sorts) anns
+    in annRemLocalRegs fixpoints
         where makeFixVar (env, i) (methodName, (Method _ _ args _ _ _ _ _)) =
                     let fixIdx = length args + 3
                         env'   = updateGlobal env methodName (AProj i $ AVar fixIdx)
@@ -42,11 +42,11 @@ analyseMethods gEnv methods =
 
 {-| Analyse the effect and annotation of a block
 De Bruijn indices (n = length args):
-    0     : Return region argument
-    1..n  : Arguments
-    n+1   : Additional regions
-    n+2   : Variable & block fixpoint argument
-    n+3   : Global fixpoint argument
+    0      : Variable & block fixpoint argument
+    1      : Return region argument
+    2..n+1 : Arguments
+    n+2    : Additional regions
+    n+3    : Global fixpoint argument
 -}
 analyseMethod :: GlobalEnv -> (Id, Method) -> (Annotation, Sort)
 analyseMethod gEnv (methodName,method@(Method mTy aRegs args _ rRegs _ fstBlock otherBlocks)) =
@@ -56,7 +56,7 @@ analyseMethod gEnv (methodName,method@(Method mTy aRegs args _ rRegs _ fstBlock 
 
         -- Retrieve locals from method body
         locals    = methodLocals False (rsError "analyseMethod: Only localName is available") method
-        fixIdx    = length args + 2
+        fixIdx    = 0
         initEnv'  = unionMap initEnv $ mapFromList.map (\(idx,lName) -> (lName, AProj idx $ AVar fixIdx)) $ zip [(length blocks)..] (localName <$> locals)
         localEnv  = foldl (\lEnv -> localsOfBlock (Envs gEnv rEnv lEnv)) initEnv' blocks  
         -- TODO: List from map is not order preserving
@@ -64,23 +64,23 @@ analyseMethod gEnv (methodName,method@(Method mTy aRegs args _ rRegs _ fstBlock 
         -- Retrieve the annotation and effect of the function body
         initBEnv = mapFromList.map (\(idx,bName) -> (bName, AProj idx $ AVar fixIdx)) $ zip [0..] (blockName <$> blocks)
         blockAnn = blockAccum (Envs gEnv rEnv localEnv) initBEnv <$> blocks
-        localFix = AProj 0 . ATuple $ AFix undefined SortUnit 
-                           <$> ((unliftTuple <$> blockAnn) ++ (snd <$> listFromMap localEnv))
+        localFix = AProj 0 . AFix SortUnit $ (unliftTuple <$> blockAnn) ++ (snd <$> listFromMap localEnv)
 
         -- Generate the method annotation
         (aRegS, argS, rtnS) = argumentSorts method
-        bAnn' = wrapBody (last argS) (liftTuple localFix) rtnS
+        (a,b) = liftTuple localFix
+        bAnn' = wrapBody (last argS) (annStrengthen a,b) rtnS
         fAnn  = if argS == [] -- TODO: Also check retArg (aka fix 0-argument functions)
                 then localFix -- IDEA: Now 'SortUnit' but could be a way to deal with thunk allocations
                 else foldr (\s a -> wrapBody s (a,botEffect) SortUnit) bAnn' $ init argS
-    -- annStrengthen to correct for return region lambda scope moving inward
-    in (ALam    aRegS $ annStrengthen fAnn
+                
+    in (ALam    aRegS $ fAnn
        ,SortLam aRegS $ sortAssign mTy) 
 
 -- | Wrap a function body into a AQuant or `A -> (A, P -> C)'
 wrapBody :: Maybe Sort -> (Annotation,Effect) -> Sort -> Effect
 wrapBody mS (bAnn,bEff) rrSort = case mS of
-                      Nothing -> AQuant bAnn    -- annWeaken to correct for extra lambda
+                      Nothing -> AQuant bAnn
                       Just s  -> ALam s (ATuple [bAnn, ALam rrSort bEff])
 
 {- Compute the sort of all method arguments,
@@ -104,12 +104,12 @@ argumentSortAssign n (Right ty) = (n + 1, Just . sortWeaken n $ sortAssign ty)
 
 -- | Initial enviromentment based on function arguments
 initEnvFromArgs :: [Either Quantor Local] -> LocalEnv
-initEnvFromArgs args = let argIdxs = zip args $ map AVar $ reverse [0..(length args - 1)]
+initEnvFromArgs args = let argIdxs = zip args $ map AVar $ reverse [2..(length args+1)]
                        in foldl (flip $ uncurry insertArgument) emptyMap argIdxs
 
 -- | Region environment from additional regions and return regions
 regEnvFromArgs :: Int -> RegionVars -> RegionVars -> RegionEnv
-regEnvFromArgs n aRegs rRegs = M.union (go (AnnVar $ n+1) aRegs) (go (AnnVar 0) rRegs)
+regEnvFromArgs n aRegs rRegs = M.union (go (AnnVar $ n+2) aRegs) (go (AnnVar 1) rRegs)
     where go var (RegionVarsSingle r) = M.singleton r var
           go var (RegionVarsTuple rs) = M.unions.map (\(i,r) -> go (CnProj i var) r) $ zip [0..] rs
 
@@ -319,7 +319,7 @@ addEffect eff (a,e) = (a, AAdd eff e)
 -- | Insert an ID if it is present
 insertMaybeId :: Maybe Id -> Annotation -> LocalEnv -> LocalEnv
 insertMaybeId Nothing  = flip const
-insertMaybeId (Just i) = insertMap i
+insertMaybeId (Just i) = updateMap i
 
 -- | Insert method argument into lEnv, ignore quantors 
 insertArgument :: Either Quantor Local -> Annotation -> LocalEnv -> LocalEnv

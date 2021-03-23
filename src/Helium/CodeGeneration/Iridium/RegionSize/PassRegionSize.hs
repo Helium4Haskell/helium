@@ -59,7 +59,7 @@ temp modName gEnv methods = do
   if True
   then do
     let mAnn  = analyseMethods gEnv methods
-        simpl = eval <$> mAnn
+        simpl = eval mAnn
         fixed = solveFixpoints simpl
         -- mSrt1 = sort mAnn
         -- mSrt2 = sort simpl
@@ -72,9 +72,9 @@ temp modName gEnv methods = do
     else do
       print mAnn
       putStrLn $ "\n# Simplified: "
-      putStrLn $ intercalate "\n\n" (show <$> simpl) 
+      putStrLn $ (show simpl) 
       putStrLn $ "\n# Fixpoint: "
-      putStrLn $ intercalate "\n\n" (show <$> fixed) 
+      putStrLn $ (show fixed) 
       -- putStrLn $ "\n# Sort: " ++ show methodName
       -- print mSrt2 
 
@@ -85,9 +85,13 @@ temp modName gEnv methods = do
       -- else return ()
       putStrLn ""
       putStrLn ""
-
-    let gEnv' = foldl (\env (name,ann) -> insertGlobal env name ann) gEnv $ zip (fst <$> methods) fixed
+    let fixed' = unsafeUnliftTuple fixed
+    let gEnv' = foldl (\env (name,ann) -> insertGlobal env name ann) gEnv $ zip (fst <$> methods) fixed'
     return (gEnv', methods)
   else do
     return (gEnv, methods)
 
+-- | Get an array of annotations from a tuple
+unsafeUnliftTuple :: Annotation -> [Annotation]
+unsafeUnliftTuple (ATuple as) = as
+unsafeUnliftTuple _ = rsError "unsafeUnliftTuple: Called unsafe unlift tuple on non-tuple"

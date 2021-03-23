@@ -82,10 +82,10 @@ sort = sort' M.empty
           -- Lattice stuff
           sort' _     (ATop   s  ) = s
           sort' _     (ABot   s  ) = s
-          sort' gamma (AFix _ s a) =
-              let sortA = sort' (envInsert s gamma) a
+          sort' gamma (AFix   s a) =
+              let sortA = SortTuple $ sort' (envInsert s gamma) <$> a
               in if sortA == s
-                 then s
+                 then sortA
                  else s `rsInfo` ("Fixpoint has incorrect sort: " ++ "\nNoted sort:   " ++ show s 
                                                                   ++ "\nDerived sort: " ++ show sortA)   
 

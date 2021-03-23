@@ -39,7 +39,7 @@ data Annotation =
     | AInstn  Annotation Type
     | ATop    Sort
     | ABot    Sort
-    | AFix    Annotation Sort       Annotation
+    | AFix    Sort     [Annotation] -- ^ Fix point has a list of data (Turns into tuple after eval)
   deriving (Eq, Ord)
 
 -- | AUnit is a 0-tuple, a patern disallows them from co-existing
@@ -66,7 +66,8 @@ instance Show Annotation where
         aInstn  = \d a t -> a ++ " {" ++ showTypeN d t ++ "}",
         aTop    = \_ _   -> "T",
         aBot    = \_ _   -> "⊥",
-        aFix    = \d _ s a -> "fix " ++ showSort d s ++ ".\n" ++ indent a,
+        aFix    = \d s a -> "fix " ++ annVarName (d+1) ++ " : " ++ showSort d s 
+                                   ++ ".\n[" ++ (indent $ intercalate ",\n" a) ++ "]",
         aConstr = \d c   -> constrShow d c
       }
 
@@ -93,7 +94,7 @@ data AnnAlg a =
     aInstn  :: Depth -> a -> Type -> a,
     aTop    :: Depth -> Sort -> a,
     aBot    :: Depth -> Sort -> a,
-    aFix    :: Depth -> a    -> Sort -> a -> a
+    aFix    :: Depth -> Sort -> [a] -> a
   }
 
 idAnnAlg :: AnnAlg Annotation
@@ -126,7 +127,7 @@ foldAnnAlgN n alg ann = go n ann
         go d (ALam   s a) = aLam    alg d s $ go (d + 1) a
         go d (AApl   a b) = aApl    alg d (go d a) (go d b)
         go d (AUnit     ) = aUnit   alg d 
-        go d (ATuple as ) = aTuple  alg d (map (go d) as) 
+        go d (ATuple as ) = aTuple  alg d (go d <$> as) 
         go d (AProj  i a) = aProj   alg d i (go d a) 
         go d (AAdd   a b) = aAdd    alg d (go d a) (go d b)
         go d (AMinus a r) = aMinus  alg d (go d a) r
@@ -135,7 +136,7 @@ foldAnnAlgN n alg ann = go n ann
         go d (AInstn a t) = aInstn  alg d (go d a) t
         go d (ATop   s  ) = aTop    alg d s
         go d (ABot   s  ) = aBot    alg d s
-        go d (AFix g s a) = aFix    alg d (go d g) s (go (d+1) a)
+        go d (AFix   s a) = aFix    alg d s (go (d+1) <$> a)
         go d (AConstr  c) = aConstr alg d c
 
 ----------------------------------------------------------------
@@ -147,10 +148,10 @@ annReIndex :: (Depth -> Int -> Int) -- ^ Reindex function (depth in body to idx 
            -> Annotation -> Annotation
 annReIndex f = foldAnnAlg reIdxAlg
   where reIdxAlg = idAnnAlg {
-    aLam    = \d s a   -> ALam (sortReIndex f d s) a,
-    aFix    = \d g s a -> AFix g (sortReIndex f d s) a,
-    aConstr = \d c     -> AConstr (constrReIndex f d c), 
-    aVar    = \d idx   -> AVar (f d idx)
+    aLam    = \d s a -> ALam (sortReIndex f d s) a,
+    aFix    = \d s a -> AFix (sortReIndex f d s) a,
+    aConstr = \d c   -> AConstr (constrReIndex f d c), 
+    aVar    = \d idx -> AVar (f d idx)
   }
 
 -- | Increase all unbound variables by the substitution depth

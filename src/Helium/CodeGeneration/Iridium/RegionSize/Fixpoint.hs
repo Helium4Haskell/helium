@@ -11,33 +11,39 @@ import Helium.CodeGeneration.Iridium.RegionSize.Evaluate
 
 -- TODO: Do a monotone-framework style iterate-when-depency chagned thing
 
+solveFixpoints :: Annotation -> Annotation
+solveFixpoints = eval . foldAnnAlg fixAlg
+    where fixAlg = idAnnAlg {
+        aFix = \_ s as -> solveFixpoint s as
+    }
+
 -- | Solve a group of fixpoints
-solveFixpoints :: [Annotation] -> [Annotation]
-solveFixpoints fixes = 
-        let init = map (\(AFix _ s _) -> ABot s) fixes
-        in iterate 0 init fixes
-    where iterate :: Int -> [Annotation] -> [Annotation] -> [Annotation]
-          iterate 10 state fs = state
+solveFixpoint :: Sort -> [Annotation] -> Annotation
+solveFixpoint s fixes = 
+        let bot = ABot s
+        in iterate 0 bot fixes
+    where iterate :: Int -> Annotation -> [Annotation] -> Annotation
+          iterate 3 state fs = state
           iterate n  state fs = 
-              let res = solveFix (ATuple state) <$> fs
-              in if res == state 
-                 then res
-                 else iterate (n+1) res fs
+              let res = solveFix state SortUnit <$> fs
+              in if ATuple res == state 
+                 then ATuple res
+                 else iterate (n+1) (ATuple res) fs
 
 -- | Solve a fixpoint
 solveFix :: Annotation -- ^ The state
+         -> Sort       -- ^ Argument sort
          -> Annotation -- ^ The fixpoint
          -> Annotation
-solveFix x fix@(AFix g s a) = 
+solveFix x s fix = 
     let isFixpoint = countFixBinds fix > 0
     in if not isFixpoint
-       then annStrengthen a
-       else eval $ AApl (ALam s a) x
-solveFix x _ = x
+       then annStrengthen fix
+       else eval $ AApl (ALam s fix) x
 
 -- | Count usages of a variable
 countFixBinds :: Annotation -> Int
-countFixBinds = foldAnnAlg countAlg
+countFixBinds = foldAnnAlgN 0 countAlg
     where countAlg = AnnAlg {
         aVar    = \d idx -> if d == idx then 1 else 0,
         aReg    = \_ _   -> 0,
@@ -54,5 +60,5 @@ countFixBinds = foldAnnAlg countAlg
         aInstn  = \_ a _ -> a,
         aTop    = \_ _   -> 0,
         aBot    = \_ _   -> 0,
-        aFix    = \_ _ _ a -> a   
+        aFix    = \_ _ a -> sum a   
     }
