@@ -12,7 +12,7 @@ import Helium.CodeGeneration.Iridium.RegionSize.Evaluate
 -- TODO: Do a monotone-framework style iterate-when-depency chagned thing
 
 solveFixpoints :: Annotation -> Annotation
-solveFixpoints = eval . foldAnnAlg fixAlg
+solveFixpoints = fillTop . eval . foldAnnAlg fixAlg
     where fixAlg = idAnnAlg {
         aFix = \_ s as -> solveFixpoint s as
     }
@@ -23,7 +23,7 @@ solveFixpoint s fixes =
         let bot = ABot s
         in iterate 0 bot fixes
     where iterate :: Int -> Annotation -> [Annotation] -> Annotation
-          iterate 3 state fs = state
+          iterate 3 state fs = ATop s []
           iterate n  state fs = 
               let res = solveFix state SortUnit <$> fs
               in if ATuple res == state 
@@ -38,7 +38,7 @@ solveFix :: Annotation -- ^ The state
 solveFix x s fix = 
     let isFixpoint = countFixBinds fix > 0
     in if not isFixpoint
-       then annStrengthen fix
+       then annStrengthen fix -- TODO: annStrengthen May have to be moved
        else eval $ AApl (ALam s fix) x
 
 -- | Count usages of a variable
@@ -58,7 +58,27 @@ countFixBinds = foldAnnAlgN 0 countAlg
         aJoin   = \_ a b -> a + b,
         aQuant  = \_ a   -> a,
         aInstn  = \_ a _ -> a,
-        aTop    = \_ _   -> 0,
+        aTop    = \_ _ _ -> 0, -- TODO: Count rec references in top?
         aBot    = \_ _   -> 0,
         aFix    = \_ _ a -> sum a   
     }
+
+-- | Fill top with local variables in scope
+fillTop :: Annotation -> Annotation
+fillTop = go []
+    where go scope (ATop  s []) = ATop s scope
+          go scope (ALam   s a) = ALam s $ go (AVar 0 : (weakenScope <$> scope)) a  
+          go scope (ATuple  as) = ATuple $ go scope <$> as
+          go scope (AProj  i a) = AProj i $ go scope a 
+          go scope (AApl   a b) = AApl   (go scope a) (go scope b) 
+          go scope (AAdd   a b) = AAdd   (go scope a) (go scope b)  
+          go scope (AMinus a r) = AMinus (go scope a) r
+          go scope (AJoin  a b) = AJoin  (go scope a) (go scope b)
+          go scope (AQuant a  ) = AQuant (go scope a)
+          go scope (AInstn a t) = AInstn (go scope a) t
+          go scope (AFix   s v) = AFix s $ go scope <$> v
+          go scope ann = ann
+
+          weakenScope :: Annotation -> Annotation
+          weakenScope (AVar i) = AVar $ i + 1
+          weakenScope a        = a

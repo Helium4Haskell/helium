@@ -62,7 +62,7 @@ temp modName gEnv methods = do
         simpl = eval mAnn
         fixed = solveFixpoints simpl
         -- mSrt1 = sort mAnn
-        -- mSrt2 = sort simpl
+        mSrt2 = sort fixed
     if((modName == "LvmLang"        && True)
       || (modName == "HeliumLang"   && True) 
       || (modName == "PreludePrim"  && True)
@@ -75,8 +75,8 @@ temp modName gEnv methods = do
       putStrLn $ (show simpl) 
       putStrLn $ "\n# Fixpoint: "
       putStrLn $ (show fixed) 
-      -- putStrLn $ "\n# Sort: " ++ show methodName
-      -- print mSrt2 
+      putStrLn $ "\n# Sort: "
+      print mSrt2 
 
       -- if mSrt1 /= mSrt2
       -- then putStrLn $ "Evaluation returned different sort!"

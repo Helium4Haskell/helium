@@ -55,7 +55,7 @@ initialGEnv m = GlobalEnv synonyms emptyMap--functionEnv
 
     -- Top of type
     top :: Type -> Annotation
-    top = ATop . sortAssign
+    top = flip ATop undefined . sortAssign
 
 ----------------------------------------------------------------
 -- Block environment

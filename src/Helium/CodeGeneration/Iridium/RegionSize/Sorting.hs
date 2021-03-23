@@ -80,7 +80,7 @@ sort = sort' M.empty
           sort' gamma (AInstn a t) = sortInstantiate t $ sort' gamma a 
 
           -- Lattice stuff
-          sort' _     (ATop   s  ) = s
+          sort' _     (ATop   s _) = s
           sort' _     (ABot   s  ) = s
           sort' gamma (AFix   s a) =
               let sortA = SortTuple $ sort' (envInsert s gamma) <$> a

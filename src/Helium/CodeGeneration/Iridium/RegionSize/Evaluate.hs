@@ -33,8 +33,9 @@ eval = foldAnnAlg evalAlg
 add :: Annotation -> Annotation -> Annotation
 add (AConstr c1) (AConstr c2) = AConstr $ constrAdd c1 c2
 -- Top and bottom
-add (ATop s) _ = ATop s
-add _ (ATop s) = ATop s
+add (ATop s v1)  (ATop _ v2) = ATop s (v1 ++ v2)
+add (ATop s vs)  _           = ATop s vs
+add _            (ATop s vs) = ATop s vs
 add (ABot _) a = a
 add a (ABot _) = a
 -- Two non-constraint sets, sort
@@ -48,8 +49,8 @@ add c1  c2 = addSort $ aCollect (AAdd c1 c2)
 minus :: Annotation -> RegionVar -> Annotation
 minus (AConstr c) r = AConstr $ constrRem (Region r) c
 -- Top and bottom
-minus (ATop s)    _ = ATop s
-minus (ABot s)    _ = ABot s
+minus (ATop s vs) _ = ATop s vs
+minus (ABot s   ) _ = ABot s
 -- Cannot eval
 minus a r = AMinus a r
 
@@ -61,8 +62,9 @@ join _ AUnit     = AUnit
 join AUnit _     = AUnit 
 join (ABot _)  a = a 
 join a  (ABot _) = a 
-join (ATop s)  _ = ATop s
-join _  (ATop s) = ATop s
+join (ATop   s v1) (ATop   _ v2) = ATop s (v1 ++ v2)
+join (ATop   s vs)   _           = ATop s vs
+join _             (ATop   s vs) = ATop s vs
 -- Constraint set join
 join (AConstr  c1) (AConstr  c2) = AConstr $ constrJoin c1 c2
 -- Join-simplicitation
@@ -93,10 +95,12 @@ application (ALam s f) x | sortIsAnnotation s = eval $ annStrengthen $ foldAnnAl
         }
         -- | Substitute a region variable for a region
         subsRegAlg = idAnnAlg {
-          aConstr = \d c -> AConstr $ regVarSubst d x c
+          aConstr = \d c    -> AConstr $ regVarSubst d x c,
+          aTop    = \d s vs -> ATop s  $ x : vs -- TODO: Substitutions
         }
 -- Top and bottom
-application (ATop s) _ = (ATop s)
+application (ATop s vs) x | sortIsRegion s = ATop s $ x : vs
+                          | otherwise      = ATop s vs
 application (ABot s) _ = (ABot s)
 -- Cannot eval
 application f    x = AApl f x
@@ -110,21 +114,22 @@ instantiate (AQuant anno) ty = eval $ foldAnnAlg annInstAlg anno
     aFix   = \d s a -> AFix (sortSubstitute d ty s) a
   } 
 -- Top and bottom
-instantiate (ATop s) _ = (ATop s)
-instantiate (ABot s) _ = (ABot s)
+instantiate (ATop s vs) _ = (ATop s vs)
+instantiate (ABot s   ) _ = (ABot s)
 -- Cannot eval
 instantiate a    t = AInstn a t
 
 
 -- | Only project if subannotation has been evaluated to a tuple
 project :: Int -> Annotation -> Annotation 
+project _   (ATuple []) = AUnit -- TODO: Check if this is sound, if missing causes an issue in region eval
 project idx (ATuple as) | length as > idx = as !! idx
                         | otherwise       = rsError $ "Projection-index out of bounds\n Idx: " ++ show idx ++ "\n Annotation: " ++ (show $ ATuple as)
 -- Top and bottom
-project _   (ATop s) = (ATop s)
-project _   (ABot s) = (ABot s)
+project _   (ATop s vs) = (ATop s vs)
+project _   (ABot s)    = (ABot s)
 -- Cannot eval
-project idx t    = AProj idx t 
+project idx t = AProj idx t 
 
 
 ----------------------------------------------------------------

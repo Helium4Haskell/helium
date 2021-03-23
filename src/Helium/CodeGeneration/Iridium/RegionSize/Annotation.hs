@@ -25,21 +25,21 @@ import Lvm.Core.Type
 ----------------------------------------------------------------
 
 data Annotation = 
-      AVar    Int                   -- ^ De Bruijn i7ndex Variable
-    | AReg    RegionVar             -- ^ Region
-    | ALam    Sort       Annotation -- ^ Annotation lambda
-    | AApl    Annotation Annotation -- ^ Application
-    | AConstr Constr                -- ^ Constraint set
-    | ATuple  [Annotation]          -- ^ Unit tuple
-    | AProj   Int        Annotation -- ^ Projection
-    | AAdd    Annotation Annotation -- ^ Constraint set addition
-    | AMinus  Annotation RegionVar  -- ^ Constraint set minus
-    | AJoin   Annotation Annotation -- ^ Annotation join
+      AVar    Int                     -- ^ De Bruijn i7ndex Variable
+    | AReg    RegionVar               -- ^ Region
+    | ALam    Sort       Annotation   -- ^ Annotation lambda
+    | AApl    Annotation Annotation   -- ^ Application
+    | AConstr Constr                  -- ^ Constraint set
+    | ATuple  [Annotation]            -- ^ Unit tuple
+    | AProj   Int        Annotation   -- ^ Projection
+    | AAdd    Annotation Annotation   -- ^ Constraint set addition
+    | AMinus  Annotation RegionVar    -- ^ Constraint set minus
+    | AJoin   Annotation Annotation   -- ^ Annotation join
     | AQuant  Annotation
     | AInstn  Annotation Type
-    | ATop    Sort
-    | ABot    Sort
-    | AFix    Sort     [Annotation] -- ^ Fix point has a list of data (Turns into tuple after eval)
+    | ATop    Sort       [Annotation] -- ^ Has a list of constraint indexes 
+    | ABot    Sort  
+    | AFix    Sort       [Annotation] -- ^ Fix point has a list of data (Turns into tuple after eval)
   deriving (Eq, Ord)
 
 -- | AUnit is a 0-tuple, a patern disallows them from co-existing
@@ -64,7 +64,7 @@ instance Show Annotation where
         aJoin   = \_ a b -> "(" ++ a ++ " ⊔  " ++ b ++ ")",
         aQuant  = \d a   -> "(∀ " ++ typeVarName (d+1) ++ "." ++ a ++ ")",
         aInstn  = \d a t -> a ++ " {" ++ showTypeN d t ++ "}",
-        aTop    = \_ _   -> "T",
+        aTop    = \_ _ v -> "T"  ++ "[" ++ (intercalate "," v) ++ "]",
         aBot    = \_ _   -> "⊥",
         aFix    = \d s a -> "fix " ++ annVarName (d+1) ++ " : " ++ showSort d s 
                                    ++ ".\n[" ++ (indent $ intercalate ",\n" a) ++ "]",
@@ -92,7 +92,7 @@ data AnnAlg a =
     aJoin   :: Depth -> a -> a -> a,
     aQuant  :: Depth -> a -> a,
     aInstn  :: Depth -> a -> Type -> a,
-    aTop    :: Depth -> Sort -> a,
+    aTop    :: Depth -> Sort -> [a] -> a,
     aBot    :: Depth -> Sort -> a,
     aFix    :: Depth -> Sort -> [a] -> a
   }
@@ -124,7 +124,7 @@ foldAnnAlgN :: Int -> AnnAlg a -> Annotation -> a
 foldAnnAlgN n alg ann = go n ann
   where go d (AVar   idx) = aVar    alg d idx
         go d (AReg   idx) = aReg    alg d idx
-        go d (ALam   s a) = aLam    alg d s $ go (d + 1) a
+        go d (ALam   s a) = aLam    alg d s $ go (d+1) a
         go d (AApl   a b) = aApl    alg d (go d a) (go d b)
         go d (AUnit     ) = aUnit   alg d 
         go d (ATuple as ) = aTuple  alg d (go d <$> as) 
@@ -132,9 +132,9 @@ foldAnnAlgN n alg ann = go n ann
         go d (AAdd   a b) = aAdd    alg d (go d a) (go d b)
         go d (AMinus a r) = aMinus  alg d (go d a) r
         go d (AJoin  a b) = aJoin   alg d (go d a) (go d b)
-        go d (AQuant a  ) = aQuant  alg d $ go (d + 1) a 
+        go d (AQuant a  ) = aQuant  alg d $ go (d+1) a 
         go d (AInstn a t) = aInstn  alg d (go d a) t
-        go d (ATop   s  ) = aTop    alg d s
+        go d (ATop   s v) = aTop    alg d s (go d <$> v)
         go d (ABot   s  ) = aBot    alg d s
         go d (AFix   s a) = aFix    alg d s (go (d+1) <$> a)
         go d (AConstr  c) = aConstr alg d c
