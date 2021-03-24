@@ -9,16 +9,15 @@ import Lvm.Core.Module
 annotateModule :: NameSupply -> CoreModule -> CoreModule
 annotateModule supply mod = mod{moduleDecls = mapWithSupply annotateDeclaration supply $ moduleDecls mod}
 
--- Annotate declaration
+-- Annotate declaration, switch original and annotated type
 annotateDeclaration :: NameSupply -> CoreDecl -> CoreDecl
-annotateDeclaration supply (DeclValue n a m t v c) = DeclValue n a m t' v' c
+annotateDeclaration supply (DeclValue n a m t ta v c) = DeclValue n a m t' t v' c
   where
     (supply1, supply2) = splitNameSupply supply
-    t' = annotateType supply1 t
+    t' = annotateType supply1 ta
     v' = annotateExpression supply2 v
-annotateDeclaration supply (DeclAbstract n a m ar t c) = DeclAbstract n a m ar t' c
-  where
-    t' = annotateTypeAbstract t
+-- Switch arguments
+annotateDeclaration supply (DeclAbstract n a m ar t ta c) = DeclAbstract n a m ar ta t c
 annotateDeclaration supply (DeclCon n a m t f c) = DeclCon n a m t' f c
   where
     t' = annotateTypeAbstract t
@@ -29,13 +28,19 @@ annotateDeclaration _ d = d
 
 -- Annotate type
 annotateType :: NameSupply -> Type -> Type
+annotateType supply (TAp (TAp (TCon TConFun) (TAnn a t1)) t2) = (TAp (TAp (TCon TConFun) (TAnn a t1')) t2') 
+  where
+      -- Already annotated
+      (supply1, supply2) = splitNameSupply supply
+      t1' = annotateType supply1 t1
+      t2' = annotateType supply2 t2
 annotateType supply (TAp (TAp (TCon TConFun) t1) t2) = TAp (TAp (TCon TConFun) t1') t2'
     where
-        -- Annotate only on function arrows
-        (id, supply') = freshId supply
-        (supply1, supply2) = splitNameSupply supply'
-        t1' = TAnn (AnnVar id) $ annotateType supply1 t1
-        t2' = annotateType supply2 t2
+      -- Annotate only on function arrows
+      (id, supply') = freshId supply
+      (supply1, supply2) = splitNameSupply supply'
+      t1' = TAnn (AnnVar id) $ annotateType supply1 t1
+      t2' = annotateType supply2 t2
 annotateType supply (TForall q k t) = TForall q k $ annotateType supply t
 annotateType supply (TStrict t)     = TStrict $ annotateType supply t
 annotateType _ t = t

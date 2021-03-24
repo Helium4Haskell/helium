@@ -239,6 +239,7 @@ extractFunctionTypeWithArity :: TypeEnvironment -> Int -> Type -> FunctionType
 extractFunctionTypeWithArity _ 0 tp = FunctionType [] tp
 extractFunctionTypeWithArity env arity tp = case typeNormalizeHead env tp of
   TStrict tp' -> extractFunctionTypeWithArity env arity tp'
+  TAnn _ tp' -> extractFunctionTypeWithArity env arity tp'
   TForall quantor _ tp' ->
     let FunctionType args ret = extractFunctionTypeWithArity env arity tp'
     in FunctionType (Left quantor : args) ret

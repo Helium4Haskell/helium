@@ -25,7 +25,7 @@ analyseModule mod = unionMaps $ map (analyseDeclaration env) (moduleDecls mod)
 
 -- Run strictness analysis on declaration
 analyseDeclaration :: Environment -> CoreDecl -> Constraints
-analyseDeclaration env (DeclValue n a m t v c) = unionMap cv ct
+analyseDeclaration env (DeclValue n a m t ta v c) = unionMap cv ct
   where
     cv = analyseExpression env S v
     ct = analyseType t $ typeOfCoreExpression (typeEnv env) v

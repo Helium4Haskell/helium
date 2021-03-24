@@ -33,9 +33,8 @@ dataDictionary env (UHA.Declaration_Data _ _ (UHA.SimpleType_SimpleType _ name n
     { declName    = nm
     , declAccess  = Export nm
     , declModule  = Nothing
-    , declType    = foldr (\typeArg -> Core.TForall (Core.Quantor $ Just $ getNameName typeArg) Core.KStar)
-                          (Core.typeFunction argTypes dictType)
-                          names
+    , declType    = tp
+    , declAnn     = tp -- Annotations will be added later
     , valueValue  = eqDict env dictType dataType names constructors
     , declCustoms = [custom "type" ("DictPrelude.Eq$ " ++ getNameName qualname)]
                     ++ map (custom "typeVariable" . getNameName) names
@@ -43,6 +42,9 @@ dataDictionary env (UHA.Declaration_Data _ _ (UHA.SimpleType_SimpleType _ name n
     }
   where
     nm = idFromString ("$dictPrelude.Eq$" ++ getNameName qualname)
+    tp = foldr (\typeArg -> Core.TForall (Core.Quantor $ Just $ getNameName typeArg) Core.KStar)
+                          (Core.typeFunction argTypes dictType)
+                          names
     argTypes :: [Core.Type]
     argTypes = zipWith (\_ idx -> Core.TAp typeDictEq $ Core.TVar idx) names [1 ..]
     dictType = Core.TAp typeDictEq dataType

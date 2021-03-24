@@ -111,6 +111,7 @@ classFunctions mod typeOutput className typeVar combinedNames = [DeclCon -- Decl
                         , declAccess  = Export valName
                         , declModule  = Nothing
                         , declType    = declType
+                        , declAnn     = declType -- Annotations will be added later
                         , valueValue  = declValue
                         , declCustoms = []
                         }
@@ -134,6 +135,7 @@ classFunctions mod typeOutput className typeVar combinedNames = [DeclCon -- Decl
                         , declAccess  = Export $ idFromString $ getNameName name
                         , declModule  = Nothing
                         , declType    = declType
+                        , declAnn     = declType -- Annotations will be added later
                         , valueValue  = Forall (Core.Quantor $ Just typeVar) Core.KStar
                             $ flip (foldr (\q e -> Forall q Core.KStar e)) quantors
                             $ Lam True (Variable dictParam $ Core.typeWeaken (length quantors) classType)
@@ -160,6 +162,7 @@ constructDictionary typeOutput instanceSuperClass combinedNames whereDecls class
     , declAccess  = Export name
     , declModule  = Nothing
     , declType    = declType
+    , declAnn     = declType -- Annotations will be added later
     , valueValue  = declValue
     , declCustoms =  map (custom "typeVariable" . getNameName . fst) typeVariables
                 ++ map (\(superName, superVar) -> custom "superInstance" $ superName ++ "-" ++ getNameName superVar) instanceSuperClass
@@ -321,6 +324,7 @@ convertDictionaries typeOutput className functions defaults = map makeFunction f
                             , declAccess  = Export fid
                             , declModule  = Nothing
                             , declType    = tp
+                            , declAnn     = tp -- Annotations will be added later
                             , valueValue  = ApType (Var (idFromString "undefined")) tp
                             , declCustoms = []
                             }

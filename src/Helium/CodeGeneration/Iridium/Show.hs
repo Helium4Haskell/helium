@@ -182,7 +182,7 @@ showAnnotations [] = ""
 showAnnotations annotations = "[" ++ intercalate " " (map show annotations) ++ "]"
 
 instance ShowDeclaration AbstractMethod where
-  showDeclaration (AbstractMethod sourceType fnType annotations)
+  showDeclaration (AbstractMethod sourceType annType fnType annotations)
     | sourceType == typeRemoveArgumentStrictness (typeFromFunctionType fnType) =
       ( "declare"
       , "[" ++ show arity ++ "]: { " ++ show (typeFromFunctionType fnType) ++ " } " ++ showAnnotations annotations ++ "\n"
@@ -195,7 +195,7 @@ instance ShowDeclaration AbstractMethod where
       arity = functionArity fnType
 
 instance ShowDeclaration Method where
-  showDeclaration (Method tp args rettype annotations entry blocks) =
+  showDeclaration (Method tp atp args rettype annotations entry blocks) =
     ( "define"
     , ": { " ++ show tp ++ " } $ (" ++ intercalate ", " args' ++ "): "
       ++ showQ quantors rettype ++ " " ++ showAnnotations annotations ++ " {\n" ++ showQ quantors entry ++ (blocks >>= ('\n' :) . showQ quantors) ++ "\n}\n"

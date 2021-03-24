@@ -122,7 +122,7 @@ analyse :: CoreModule -> Analysis
 analyse (Module _ _ _ _ decls) = foldr analyseDecl emptyMap decls
 
 analyseDecl :: CoreDecl -> Analysis -> Analysis
-analyseDecl (DeclValue _ _ _ _ expr _) = dupUnion $ duplicateNames expr
+analyseDecl (DeclValue _ _ _ _ _ expr _) = dupUnion $ duplicateNames expr
 analyseDecl _ = id
 
 duplicateNames :: Expr -> Analysis

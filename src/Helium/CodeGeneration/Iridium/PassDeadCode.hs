@@ -75,7 +75,7 @@ analyse mod = Result (envWithSynonyms mod) (stateLive state) $ mapMapWithId live
         bindCount = findMap fn $ stateBindCount state
 
 analyseMethod :: Declaration Method -> ((Id, [Either () Id]), Constraint)
-analyseMethod (Declaration name vis _ _ (Method _ args _ _ b bs)) =
+analyseMethod (Declaration name vis _ _ (Method _ _ args _ _ b bs)) =
   ( (name, map argName args) -- Try to remove unused arguments
   , fnConstraint $ fromList $ map (analyseBlock env) $ b : bs
   )
@@ -206,11 +206,12 @@ preservedArguments' :: Result -> Id -> Maybe [Bool]
 preservedArguments' (Result _ _ args) var = lookupMap var args
 
 transformMethod :: NameSupply -> Result -> Declaration Method -> Maybe (Declaration Method)
-transformMethod supply res (Declaration name vis mod customs (Method tp args retType annotations b bs))
+transformMethod supply res (Declaration name vis mod customs (Method tp atp args retType annotations b bs))
   | not $ isLive res name = Nothing
-  | otherwise = Just $ Declaration name vis mod customs $ Method tp' args' retType annotations b' bs'
+  | otherwise = Just $ Declaration name vis mod customs $ Method tp' atp' args' retType annotations b' bs'
   where
     (_, tp') = transformType res name (length $ filter isRight args) tp
+    (_, atp') = transformType res name (length $ filter isRight args) atp
     args' = map fst $ filter snd $ zip args $ preservedArguments res name
     b' : bs' = mapWithSupply transformBlock supply $ b : bs
     transformBlock s (Block blockName instr) = Block blockName $ transformInstruction s res instr

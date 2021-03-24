@@ -151,6 +151,7 @@ decl isPublic x t e =
         , declAccess = if isPublic then Export $ idFromString x else Private
         , declModule = Nothing
         , declType = t
+        , declAnn = t -- Annotations will be added in strictness pass
         , valueValue = e
         , declCustoms = []
         }
