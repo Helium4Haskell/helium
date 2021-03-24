@@ -151,6 +151,8 @@ annReIndex f = foldAnnAlg reIdxAlg
     aLam    = \d s a -> ALam (sortReIndex f d s) a,
     aFix    = \d s a -> AFix (sortReIndex f d s) a,
     aConstr = \d c   -> AConstr (constrReIndex f d c), 
+    aTop    = \d s c -> ATop (sortReIndex f d s) (constrReIndex f d c), 
+    aBot    = \d s   -> ABot (sortReIndex f d s), 
     aVar    = \d idx -> AVar (f d idx)
   }
 
