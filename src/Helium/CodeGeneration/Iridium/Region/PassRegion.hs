@@ -17,6 +17,7 @@ import Helium.CodeGeneration.Iridium.Region.Evaluate
 import Helium.CodeGeneration.Iridium.Region.RegionVar
 import Helium.CodeGeneration.Iridium.Region.Relation
 import Helium.CodeGeneration.Iridium.Region.Transform
+import Helium.CodeGeneration.Iridium.Region.DeadRegion
 import Helium.CodeGeneration.Iridium.Region.Utils
 
 passRegion :: NameSupply -> Module -> IO Module
@@ -73,6 +74,7 @@ transformGroup :: GlobalEnv -> BindingGroup Method -> IO (GlobalEnv, [Declaratio
 transformGroup genv (BindingRecursive methods) = do
   -- We cannot analyse mutual recursive functions yet
   -- For now we will analyse them one by one.
+  -- TODO: This will cause issues when later functions in the binding group get additional region arguments.
   (genv'', methods') <- mapAccumLM (\genv' method -> transformGroup genv' $ BindingNonRecursive method) genv methods
   return (genv'', concat methods')
 
@@ -89,17 +91,17 @@ transformGroup genv@(GlobalEnv typeEnv dataTypeEnv globals) (BindingNonRecursive
   let (isZeroArity, simplified') = correctArityZero (methodEnvAdditionalRegionSort methodEnv) arguments simplified
   let simplified'' = if isZeroArity then simplify dataTypeEnv simplified' else simplified'
 
-  let (regionCount, restricted) = if isZeroArity then (0, simplified'') else annotationRestrict doesEscape simplified
-
-  rnfAnnotation restricted `seq` return ()
+  let (_, restricted) = if isZeroArity then (0, simplified'') else annotationRestrict doesEscape simplified
 
   -- putStrLn "Restricted:"
   -- print doesEscape
   -- print restricted
 
-  let globals' = updateMap methodName (regionCount, restricted) globals
+  let (regionCount, method', restricted') = transformDead restricted $ transform methodEnv isZeroArity substituteRegionVar restricted $ declarationValue method
+
+  rnfAnnotation restricted' `seq` return ()
+
+  let globals' = updateMap methodName (regionCount, restricted') globals
   let genv' = GlobalEnv typeEnv dataTypeEnv globals'
 
-  let method' = method{ declarationValue = transform methodEnv isZeroArity substituteRegionVar restricted $ declarationValue method }
-
-  return (genv', [method'])
+  return (genv', [method{ declarationValue = method' }])

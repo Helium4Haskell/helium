@@ -248,8 +248,7 @@ data BindThunkRegions = BindThunkRegions
   , bindThunkValue :: !RegionVars
   } deriving (Eq, Ord)
 
--- * A 'match' instruction can pattern match on constructors, tuples or thunks. The latter
--- is not possible from Haskell code and is only used to write the runtime library.
+-- * A 'match' instruction can pattern match on constructors, tuples.
 data MatchTarget
   -- * Match on a constructor.
   = MatchTargetConstructor !DataTypeConstructor

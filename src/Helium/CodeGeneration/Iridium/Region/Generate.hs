@@ -275,8 +275,8 @@ assignAdditionalRegionVars genv method firstRegionVar = (nextRegionVar, mapFromL
     functionAdditionRegionCount = fst . lookupGlobal genv  -- TODO: Find function in environment
 
 gatherContainment :: TypeEnvironment -> DataTypeEnv -> MethodEnv -> Method -> Relation
-gatherContainment typeEnv dataTypeEnv methodEnv method
-  = containmentLocals
+gatherContainment typeEnv dataTypeEnv methodEnv method@(Method _ _ _ returnType _ _ _ _)
+  = containmentLocals <> containment' dataTypeEnv (typeToStrict $ typeNormalize typeEnv returnType) (methodEnvReturnRegions methodEnv)
   where
     containmentLocals = mconcat
       $ map (\(Local name tp) -> containment' dataTypeEnv (typeNormalize typeEnv tp) $ snd $ lookupLocal methodEnv name)
