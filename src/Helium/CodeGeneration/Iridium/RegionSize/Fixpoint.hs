@@ -66,8 +66,7 @@ countFixBinds = foldAnnAlgN 0 countAlg
 -- | Fill top with local variables in scope
 fillTop :: Annotation -> Annotation
 fillTop = go constrBot
-    where go scope (ATop   s c) | c == constrBot = ATop s scope
-                                | otherwise      = ATop s c -- Top from different scope, how do we handle that?
+    where go scope (ATop   s c) = ATop s $ constrAdd c scope
           go scope (ALam   s a) | sortIsRegion s = ALam s $ go (constrAdd (constrInfty $ AnnVar 0) (constrWeaken 1 scope)) a  
                                 | otherwise      = ALam s $ go (constrWeaken 1 scope) a
           go scope (ATuple  as) = ATuple $ go scope <$> as

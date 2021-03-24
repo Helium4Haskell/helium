@@ -31,11 +31,13 @@ eval = foldAnnAlg evalAlg
 
 -- | Only add when the subannotations are constraints
 add :: Annotation -> Annotation -> Annotation
-add (AConstr c1) (AConstr c2) = AConstr $ constrAdd c1 c2
+add (AConstr  c1) (AConstr  c2) = AConstr $ constrAdd c1 c2
 -- Top and bottom
-add (ATop s v1)  (ATop _ v2) = ATop s $ constrAdd v1 v2
-add (ATop s vs)  _           = ATop s vs
-add _            (ATop s vs) = ATop s vs
+add (ATop   s vs) (AConstr  c2) = AConstr $ constrAdd vs c2
+add (AConstr  c1) (ATop   s vs) = AConstr $ constrAdd c1 vs
+add (ATop s   v1) (ATop   _ v2) = ATop s  $ constrAdd v1 v2
+add (ATop s   vs) _             = ATop s vs
+add _             (ATop   s vs) = ATop s vs
 add (ABot _) a = a
 add a (ABot _) = a
 -- Two non-constraint sets, sort
@@ -62,8 +64,10 @@ join _ AUnit     = AUnit
 join AUnit _     = AUnit 
 join (ABot _)  a = a 
 join a  (ABot _) = a 
-join (ATop   s v1) (ATop   _ v2) = ATop s $ constrAdd v1 v2
-join (ATop   s vs)   _           = ATop s vs
+join (ATop   s vs) (AConstr  c2) = AConstr $ constrJoin vs c2
+join (AConstr  c1) (ATop   s vs) = AConstr $ constrJoin c1 vs
+join (ATop   s v1) (ATop   _ v2) = ATop s  $ constrJoin v1 v2
+join (ATop   s vs) _             = ATop s vs
 join _             (ATop   s vs) = ATop s vs
 -- Constraint set join
 join (AConstr  c1) (AConstr  c2) = AConstr $ constrJoin c1 c2
