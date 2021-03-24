@@ -8,10 +8,9 @@
 
 module Helium.Main.PhaseCodeGeneratorIridium(phaseCodeGeneratorIridium) where
 
-import Lvm.Common.Id(NameSupply, splitNameSupplies, mapWithSupply, idFromString)
+import Lvm.Common.Id(NameSupply, splitNameSupplies, idFromString)
 import qualified Lvm.Core.Expr as Core
 import qualified Lvm.Core.Module as Core
-import qualified Helium.CodeGeneration.Core.TypeCheck as Core
 import Helium.Main.CompileUtils
 import Helium.CodeGeneration.Core(desugarCore)
 import Helium.CodeGeneration.Iridium.FromCore(fromCore)
@@ -23,15 +22,8 @@ import Helium.CodeGeneration.Iridium.PassTailRecursion(passTailRecursion)
 import Helium.CodeGeneration.Iridium.Region.PassRegion(passRegion)
 import Helium.CodeGeneration.Iridium.ResolveDependencies(resolveDependencies, IridiumFile(..))
 import Helium.CodeGeneration.Iridium.TypeCheck
-import Helium.CodeGeneration.LLVM.Target(Target(..))
-import Helium.CodeGeneration.LLVM.Env(envForModule)
-
-import Helium.CodeGeneration.Iridium.Region.Evaluate
 
 import Text.PrettyPrint.Leijen (pretty)
-
-import qualified Data.Text.Lazy as Text
-import LLVM.Pretty (ppllvm)
 
 phaseCodeGeneratorIridium :: NameSupply -> FileCache -> String -> Core.CoreModule -> [Option] -> IO ([IridiumFile], Bool)
 phaseCodeGeneratorIridium supply cache fullName coreModule options = do

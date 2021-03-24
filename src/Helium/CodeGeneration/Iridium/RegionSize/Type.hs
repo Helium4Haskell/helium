@@ -8,8 +8,6 @@ import Helium.CodeGeneration.Iridium.RegionSize.Utils
 
 import Lvm.Core.Type hiding (showType)
 
-
-  
 ----------------------------------------------------------------
 -- Pretty printing
 ----------------------------------------------------------------

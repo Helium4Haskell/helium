@@ -36,8 +36,8 @@ strengthenIdx d idx = if idx > d
 
 -- | Check if a string is a region
 noTupleBreak :: String -> Bool
-noTupleBreak (c:_)  = c == 'ρ' || c == '⊥'
 noTupleBreak (_:"") = True
+noTupleBreak (c:_)  = c == 'ρ' || c == '⊥'
 noTupleBreak ""     = False
 
 -- | Indent a newline separated string

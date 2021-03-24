@@ -3,10 +3,7 @@ module Helium.CodeGeneration.Iridium.RegionSize.PassRegionSize
 where
 
 import Lvm.Common.Id
-import Lvm.Common.IdMap
-import Lvm.Core.Type
 
-import Helium.CodeGeneration.Core.TypeEnvironment
 import Helium.CodeGeneration.Iridium.Data
 import Helium.CodeGeneration.Iridium.BindingGroup
 
@@ -14,20 +11,19 @@ import Helium.CodeGeneration.Iridium.RegionSize.Analysis
 import Helium.CodeGeneration.Iridium.RegionSize.Annotation
 import Helium.CodeGeneration.Iridium.RegionSize.Environments
 import Helium.CodeGeneration.Iridium.RegionSize.Evaluate
-import Helium.CodeGeneration.Iridium.RegionSize.Sort
 import Helium.CodeGeneration.Iridium.RegionSize.Sorting
 import Helium.CodeGeneration.Iridium.RegionSize.Utils
 import Helium.CodeGeneration.Iridium.RegionSize.Fixpoint
 
-import qualified Control.Exception as Exc
 
 import Data.List (intercalate)
+
 
 -- | TODO: There is still an evalutation bug.. Test.recu, first bound to a (fix) after eval bound to b
 
 -- | Infer the size of regions
 passRegionSize :: NameSupply -> Module -> IO Module
-passRegionSize supply m = do 
+passRegionSize _ m = do 
   let gEnv = initialGEnv m
   let groups = methodBindingGroups $ moduleMethods m
 

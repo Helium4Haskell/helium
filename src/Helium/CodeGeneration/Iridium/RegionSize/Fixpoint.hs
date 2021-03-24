@@ -3,14 +3,11 @@ where
 
 import Helium.CodeGeneration.Iridium.RegionSize.Annotation
 import Helium.CodeGeneration.Iridium.RegionSize.Sort
-import Helium.CodeGeneration.Iridium.RegionSize.Sorting
 import Helium.CodeGeneration.Iridium.RegionSize.Constraints
-import Helium.CodeGeneration.Iridium.RegionSize.Environments
 import Helium.CodeGeneration.Iridium.RegionSize.Utils
 import Helium.CodeGeneration.Iridium.RegionSize.Evaluate
 
--- TODO: Do a monotone-framework style iterate-when-depency chagned thing
-
+-- | Solve all the fixpoints in an annotation
 solveFixpoints :: Annotation -> Annotation
 solveFixpoints = fillTop . eval . foldAnnAlg fixAlg
     where fixAlg = idAnnAlg {
@@ -21,14 +18,14 @@ solveFixpoints = fillTop . eval . foldAnnAlg fixAlg
 solveFixpoint :: Sort -> [Annotation] -> Annotation
 solveFixpoint s fixes = 
         let bot = ABot s
-        in iterate 0 bot fixes
-    where iterate :: Int -> Annotation -> [Annotation] -> Annotation
-          iterate 10 state fs = ATuple $ mapWithIndex (\ i _ -> AProj i $ ATop s constrBot) fixes
-          iterate n  state fs = 
+        in fixIterate 0 bot fixes
+    where fixIterate :: Int -> Annotation -> [Annotation] -> Annotation
+          fixIterate 10 _     _  = ATuple $ mapWithIndex (\ i _ -> AProj i $ ATop s constrBot) fixes
+          fixIterate n  state fs = 
               let res = solveFix state SortUnit <$> fs
               in if ATuple res == state 
                  then ATuple res
-                 else iterate (n+1) (ATuple res) fs
+                 else fixIterate (n+1) (ATuple res) fs
 
 -- | Solve a fixpoint
 solveFix :: Annotation -- ^ The state
@@ -78,4 +75,4 @@ fillTop = go constrBot
           go scope (AQuant a  ) = AQuant (go scope a)
           go scope (AInstn a t) = AInstn (go scope a) t
           go scope (AFix   s v) = AFix s $ go scope <$> v
-          go scope ann = ann
+          go _     ann = ann

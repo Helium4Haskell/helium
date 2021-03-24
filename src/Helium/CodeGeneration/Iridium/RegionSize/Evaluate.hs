@@ -33,8 +33,8 @@ eval = foldAnnAlg evalAlg
 add :: Annotation -> Annotation -> Annotation
 add (AConstr  c1) (AConstr  c2) = AConstr $ constrAdd c1 c2
 -- Top and bottom
-add (ATop   s vs) (AConstr  c2) = AConstr $ constrAdd vs c2
-add (AConstr  c1) (ATop   s vs) = AConstr $ constrAdd c1 vs
+add (ATop   _ vs) (AConstr  c2) = AConstr $ constrAdd vs c2
+add (AConstr  c1) (ATop   _ vs) = AConstr $ constrAdd c1 vs
 add (ATop s   v1) (ATop   _ v2) = ATop s  $ constrAdd v1 v2
 add (ATop s   vs) _             = ATop s vs
 add _             (ATop   s vs) = ATop s vs
@@ -64,8 +64,8 @@ join _ AUnit     = AUnit
 join AUnit _     = AUnit 
 join (ABot _)  a = a 
 join a  (ABot _) = a 
-join (ATop   s vs) (AConstr  c2) = AConstr $ constrJoin vs c2
-join (AConstr  c1) (ATop   s vs) = AConstr $ constrJoin c1 vs
+join (ATop   _ vs) (AConstr  c2) = AConstr $ constrJoin vs c2
+join (AConstr  c1) (ATop   _ vs) = AConstr $ constrJoin c1 vs
 join (ATop   s v1) (ATop   _ v2) = ATop s  $ constrJoin v1 v2
 join (ATop   s vs) _             = ATop s vs
 join _             (ATop   s vs) = ATop s vs
@@ -88,9 +88,9 @@ join c1 c2 = joinSort $ jCollect (AJoin c1 c2)
 
 -- | Annotation application
 application :: Annotation -> Annotation -> Annotation
-application (ALam s f) x | sortIsAnnotation s = eval $ annStrengthen $ foldAnnAlgN 0 subsAnnAlg f
-                         | sortIsRegion     s = eval $ annStrengthen $ foldAnnAlgN 0 subsRegAlg f
-                         | otherwise = rsError "Sort is neither region or annotation!?"
+application (ALam lamS f) x | sortIsAnnotation lamS = eval $ annStrengthen $ foldAnnAlgN 0 subsAnnAlg f
+                            | sortIsRegion     lamS = eval $ annStrengthen $ foldAnnAlgN 0 subsRegAlg f
+                            | otherwise = rsError "Sort is neither region or annotation!?"
   where -- | Substitute a variable for an annotation
         subsAnnAlg = idAnnAlg {
           aVar = \d idx -> if d == idx 
@@ -110,6 +110,7 @@ application (ABot s) _ = (ABot s)
 application f    x = AApl f x
 
 
+
 -- | Instantiate a type if it starts with a quantification 
 instantiate :: Annotation -> Type -> Annotation
 instantiate (AQuant anno) ty = eval $ foldAnnAlg annInstAlg anno
@@ -126,12 +127,12 @@ instantiate a    t = AInstn a t
 
 -- | Only project if subannotation has been evaluated to a tuple
 project :: Int -> Annotation -> Annotation 
-project _   (ATuple []) = AUnit -- TODO: Check if this is sound, if missing causes an issue in region eval
+project _   AUnit       = AUnit -- TODO: Check if this is sound, if missing causes an issue in region eval
 project idx (ATuple as) | length as > idx = as !! idx
                         | otherwise       = rsError $ "Projection-index out of bounds\n Idx: " ++ show idx ++ "\n Annotation: " ++ (show $ ATuple as)
 -- Top and bottom
-project _   (ATop s vs) = (ATop s vs)
-project _   (ABot s)    = (ABot s)
+project idx (ATop s vs) = (ATop (indexSortTuple idx s) vs)
+project idx (ABot s)    = (ABot (indexSortTuple idx s))
 -- Cannot eval
 project idx t = AProj idx t 
 

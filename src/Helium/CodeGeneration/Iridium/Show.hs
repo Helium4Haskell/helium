@@ -258,8 +258,9 @@ showAnnotations annotations = "[" ++ intercalate " " (map show others') ++ "]" +
         ++ Region.showAnnotation 2 regionAnnotation "\n  ]"
       | otherwise = ""
     regionSizeString
-      | [MethodAnnotateRegionSize regionAnnotation] <- regionSizes
-        =  "\n  [regionsize:\nTODO: Write to file\n  ]"
+      | [MethodAnnotateRegionSize regionSizeAnnotation] <- regionSizes
+        =  "\n  [regionsize:    "
+        ++ show regionSizeAnnotation ++ "\n  ]"
       | otherwise = ""
 
 showReturnRegion, showAdditionalRegion, showLocalRegion :: Int -> String

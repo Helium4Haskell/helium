@@ -55,8 +55,8 @@ initialGEnv m = GlobalEnv typeEnv functionEnv
     abstract (Declaration name _ _ _ (AbstractMethod tp _ _ anns)) = (name, regionSizeAnn tp anns)
 
     regionSizeAnn :: Type -> [MethodAnnotation] -> Annotation
-    regionSizeAnn tp (MethodAnnotateRegionSize a:xs) = a
-    regionSizeAnn tp (x:xs) = regionSizeAnn tp xs
+    regionSizeAnn _ (MethodAnnotateRegionSize a:_) = a
+    regionSizeAnn tp (_:xs) = regionSizeAnn tp xs
     regionSizeAnn tp []     = top tp
 
     -- Top of type
@@ -69,24 +69,24 @@ initialGEnv m = GlobalEnv typeEnv functionEnv
 
 -- | Look up a local variable in the local environment
 lookupGlobal :: HasCallStack => GlobalEnv -> Id -> Annotation
-lookupGlobal (GlobalEnv _ vars) id = 
-  case lookupMap id vars of
-    Nothing -> rsError $ "Global environment did not contain: " ++ stringFromId id
+lookupGlobal (GlobalEnv _ vars) name = 
+  case lookupMap name vars of
+    Nothing -> rsError $ "lookupGlobal - Global environment did not contain: " ++ stringFromId name
     Just a  -> a 
 
 -- | Insert a function into the global environment
 insertGlobal :: HasCallStack => GlobalEnv -> Id -> Annotation -> GlobalEnv
-insertGlobal (GlobalEnv syns fs) id ann =
-  case lookupMap id fs of
-    Nothing -> GlobalEnv syns $ insertMap id ann fs 
-    Just a  -> GlobalEnv syns $ insertMap id (AJoin a ann) $ deleteMap id fs 
+insertGlobal (GlobalEnv syns fs) name ann =
+  case lookupMap name fs of
+    Nothing -> GlobalEnv syns $ insertMap name ann fs 
+    Just a  -> GlobalEnv syns $ insertMap name (AJoin a ann) $ deleteMap name fs 
 
 
 -- | Look up a local variable in the local environment
 lookupBlock :: BlockEnv -> BlockName -> Annotation
-lookupBlock bEnv id = 
-  case lookupMap id bEnv of
-    Nothing -> rsError $ "Recursive block definition: " ++ stringFromId id
+lookupBlock bEnv name = 
+  case lookupMap name bEnv of
+    Nothing -> rsError $ "lookupBlock -Block variable missing: " ++ stringFromId name
     Just a  -> a 
 
 -- | Look up a local variable in the local environment
@@ -110,4 +110,4 @@ lookupReg rEnv r = case M.lookup r rEnv of
 
 -- | Alter a value in the global map
 updateGlobal :: HasCallStack => GlobalEnv -> Id -> Annotation -> GlobalEnv
-updateGlobal (GlobalEnv syns fs) id ann = GlobalEnv syns $ updateMap id ann fs
+updateGlobal (GlobalEnv syns fs) name ann = GlobalEnv syns $ updateMap name ann fs

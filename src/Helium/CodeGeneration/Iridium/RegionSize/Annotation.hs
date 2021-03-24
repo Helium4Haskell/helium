@@ -43,6 +43,7 @@ data Annotation =
   deriving (Eq, Ord)
 
 -- | AUnit is a 0-tuple, a patern disallows them from co-existing
+pattern AUnit :: Annotation
 pattern AUnit = ATuple []
 
 ----------------------------------------------------------------
@@ -173,7 +174,7 @@ annStrengthen = annReIndex strengthenIdx
 collect :: Bound -> Annotation -> Constr
 collect (Nat 0) _     = M.empty
 collect _ AUnit       = M.empty
-collect n (ABot    _) = M.empty 
+collect _ (ABot    _) = M.empty 
 collect n (AVar    a) = M.singleton (AnnVar a) n 
 collect n (AReg    a) = M.singleton (Region a) n 
 collect n (AProj i a) = M.mapKeys (CnProj i) $ collect n a
@@ -185,20 +186,12 @@ isConstr :: Annotation -> Bool
 isConstr (AConstr _) = True
 isConstr _           = False
 
--- | Check if an annotation is a region
-annIsRegion :: Annotation -> Bool
-annIsRegion (AReg _)     = True
-annIsRegion AUnit        = False
-annIsRegion (ATuple ts)  = annIsRegion $ ts !! 0
-annIsRegion (AProj _ ts) = annIsRegion ts
-annIsRegion _            = False
 
 -- | Convert a constraint index to an annotation
 constrIdxToAnn :: ConstrIdx -> Annotation 
 constrIdxToAnn (Region r)   = AReg r
 constrIdxToAnn (AnnVar a)   = AVar a
 constrIdxToAnn (CnProj i c) = AProj i $ constrIdxToAnn c
-
 
 
 -- | Clean local regions from the annotation

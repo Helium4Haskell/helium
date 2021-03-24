@@ -7,10 +7,9 @@ module Helium.CodeGeneration.Iridium.RegionSize.Sort
     sortReIndex, sortStrengthen, sortWeaken,
     sortInstantiate, sortSubstitute,
     sortIsRegion, sortIsAnnotation,
+    indexSortTuple
   )
 where
-
-import Helium.CodeGeneration.Iridium.Region.RegionVar
 
 import Helium.CodeGeneration.Iridium.RegionSize.Utils
 import Helium.CodeGeneration.Iridium.RegionSize.Type
@@ -35,6 +34,7 @@ data Sort =
 instance Show Sort where
   show s = showSort 0 s
 
+pattern SortUnit :: Sort
 pattern SortUnit = SortTuple []
 
 ----------------------------------------------------------------
@@ -122,8 +122,8 @@ sortAssign' [t1,t2] (TCon TConFun)       = funSort t1 t2
 sortAssign' ts      (TCon (TConTuple n)) | length ts == n = SortTuple $ map sortAssign ts
                                          | otherwise      = rsError $ "sortAssign: Tuple with incorrect number of arguements: expected " ++ show n ++ " but got " ++ (show $ length ts) ++ "\n" ++ (intercalate ", " $ map (showTypeN 0) ts)
 sortAssign' []      (TCon (TConDataType _))            = SortUnit
-sortAssign' [a]     (TCon (TConTypeClassDictionary _)) = sortAssign a -- TODO: Do not ignore typeclasses? Might just be okay though
--- TODO: Data types
+sortAssign' [a]     (TCon (TConTypeClassDictionary _)) = sortAssign a
+-- TODO: Datatypes
 sortAssign' _       (TCon (TConDataType _)) = SortUnit `rsInfo` "sortAssign: Datatypes not yet supported"
 -- Not implemented cases 
 sortAssign' _ t = rsError $ "sortAssign: No pattern match: " ++ showTypeN 0 t
@@ -154,7 +154,7 @@ regionAssign' [_,_] (TCon TConFun      ) = SortUnit
 regionAssign' ts    (TCon (TConTuple n)) | length ts == n = SortTuple . concat $ map (sortUnpackTuple.regionAssign) ts
                                          | otherwise      = rsError $ "regionAssign: Tuple with incorrect number of arguements: expected " ++ show n ++ " but got " ++ (show $ length ts) ++ "\n" ++ (intercalate ", " $ map (showTypeN 0) ts)
 regionAssign' []    (TCon (TConDataType _)) = SortUnit
-regionAssign' [a]   (TCon (TConTypeClassDictionary _)) = regionAssign a -- TODO: Do not ignore typeclasses? Might just be okay though
+regionAssign' [a]   (TCon (TConTypeClassDictionary _)) = regionAssign a
 -- TODO: Data types
 regionAssign' _     (TCon (TConDataType _)) = SortUnit `rsInfo` "regionAssign: Datatypes not yet supported"
 -- Not implemented cases
@@ -230,3 +230,11 @@ sortIsAnnotation = not . sortIsRegion
 sortUnpackTuple :: Sort -> [Sort]
 sortUnpackTuple (SortTuple ss) = ss
 sortUnpackTuple _ = rsError "sortUnpackTuple called on non-tuple"
+
+-- | Safely index a tuple sort
+indexSortTuple :: Int -> Sort -> Sort
+indexSortTuple _   SortUnit       = SortUnit -- TODO: Also has to do with region tuples
+indexSortTuple idx (SortTuple ts) = if idx < length ts
+                                    then ts !! idx
+                                    else rsError"indexSortTuple: Sort index out of bounds"
+indexSortTuple _ s = s
