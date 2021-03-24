@@ -1,8 +1,10 @@
 module Helium.CodeGeneration.Iridium.RegionSize.Constraints
     (ConstrIdx(..), Constr, Bound(..),
     constrShow, constrIdxShow,
-    constrReIndex, constrIdxWithVar,
-    constrBot, constrJoin, constrAdd, constrIdx, constrRem, constrInst, constrOne,
+    constrReIndex, constrWeaken, 
+    constrIdxWithVar,
+    constrBot, constrJoin, constrAdd, constrIdx, constrRem, constrInst, 
+    constrOne, constrInfty,
     constrRemLocalRegs)
 where
 
@@ -62,6 +64,10 @@ constrReIndex f annD = M.mapKeys keyReIndex
         keyReIndex (CnProj i c) = CnProj i $ keyReIndex c 
         keyReIndex (Region var) = Region var
 
+-- | Weaken the debruijn indices of a cosntraint set 
+constrWeaken :: Int -> Constr -> Constr
+constrWeaken n = constrReIndex (weakenIdx n) (-1)
+
 ----------------------------------------------------------------
 -- Constraint utilities
 ----------------------------------------------------------------
@@ -78,6 +84,7 @@ constrJoin = M.unionWith boundMax
         boundMax Infty _ = Infty
         boundMax _ Infty = Infty
         boundMax (Nat a) (Nat b) = Nat $ max a b
+
 -- | Addition of constraint sets
 constrAdd :: Constr -> Constr -> Constr
 constrAdd = M.unionWith boundAdd
@@ -114,6 +121,10 @@ constrInst inst idx c = constrAdd inst $ constrRem idx c
 -- | Create a constraint set for a single variable
 constrOne :: ConstrIdx -> Constr
 constrOne i = M.singleton i $ Nat 1
+
+-- | Create a constraint set for a single variable
+constrInfty :: ConstrIdx -> Constr
+constrInfty i = M.singleton i $ Infty
 
 -- | Remove local regions from constraint set
 constrRemLocalRegs :: Constr -> Constr

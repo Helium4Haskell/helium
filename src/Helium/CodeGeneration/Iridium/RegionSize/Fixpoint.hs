@@ -23,7 +23,7 @@ solveFixpoint s fixes =
         let bot = ABot s
         in iterate 0 bot fixes
     where iterate :: Int -> Annotation -> [Annotation] -> Annotation
-          iterate 3 state fs = ATop s []
+          iterate 3 state fs = ATop s constrBot
           iterate n  state fs = 
               let res = solveFix state SortUnit <$> fs
               in if ATuple res == state 
@@ -65,9 +65,11 @@ countFixBinds = foldAnnAlgN 0 countAlg
 
 -- | Fill top with local variables in scope
 fillTop :: Annotation -> Annotation
-fillTop = go []
-    where go scope (ATop  s []) = ATop s scope
-          go scope (ALam   s a) = ALam s $ go (AVar 0 : (weakenScope <$> scope)) a  
+fillTop = go constrBot
+    where go scope (ATop   s c) | c == constrBot = ATop s scope
+                                | otherwise      = ATop s c -- Top from different scope, how do we handle that?
+          go scope (ALam   s a) | sortIsRegion s = ALam s $ go (constrAdd (constrInfty $ AnnVar 0) (constrWeaken 1 scope)) a  
+                                | otherwise      = ALam s $ go (constrWeaken 1 scope) a
           go scope (ATuple  as) = ATuple $ go scope <$> as
           go scope (AProj  i a) = AProj i $ go scope a 
           go scope (AApl   a b) = AApl   (go scope a) (go scope b) 
@@ -78,7 +80,3 @@ fillTop = go []
           go scope (AInstn a t) = AInstn (go scope a) t
           go scope (AFix   s v) = AFix s $ go scope <$> v
           go scope ann = ann
-
-          weakenScope :: Annotation -> Annotation
-          weakenScope (AVar i) = AVar $ i + 1
-          weakenScope a        = a

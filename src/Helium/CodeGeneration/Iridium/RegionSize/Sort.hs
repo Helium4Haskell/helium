@@ -195,11 +195,11 @@ sortReIndex f annD = foldSortAlgN annD reIdxAlg
 
 -- | Decrease all unbound indexes by 1
 sortStrengthen :: Sort -> Sort
-sortStrengthen = sortReIndex strengthenIdx 0
+sortStrengthen = sortReIndex strengthenIdx (-1)
 
 -- | Increase all unbound indexes by n
 sortWeaken :: Int -> Sort -> Sort
-sortWeaken n = sortReIndex (weakenIdx n) 0
+sortWeaken n = sortReIndex (weakenIdx n) (-1)
 
 ----------------------------------------------------------------
 -- Sort utilities

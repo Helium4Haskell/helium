@@ -33,7 +33,7 @@ eval = foldAnnAlg evalAlg
 add :: Annotation -> Annotation -> Annotation
 add (AConstr c1) (AConstr c2) = AConstr $ constrAdd c1 c2
 -- Top and bottom
-add (ATop s v1)  (ATop _ v2) = ATop s (v1 ++ v2)
+add (ATop s v1)  (ATop _ v2) = ATop s $ constrAdd v1 v2
 add (ATop s vs)  _           = ATop s vs
 add _            (ATop s vs) = ATop s vs
 add (ABot _) a = a
@@ -62,7 +62,7 @@ join _ AUnit     = AUnit
 join AUnit _     = AUnit 
 join (ABot _)  a = a 
 join a  (ABot _) = a 
-join (ATop   s v1) (ATop   _ v2) = ATop s (v1 ++ v2)
+join (ATop   s v1) (ATop   _ v2) = ATop s $ constrAdd v1 v2
 join (ATop   s vs)   _           = ATop s vs
 join _             (ATop   s vs) = ATop s vs
 -- Constraint set join
@@ -95,11 +95,11 @@ application (ALam s f) x | sortIsAnnotation s = eval $ annStrengthen $ foldAnnAl
         }
         -- | Substitute a region variable for a region
         subsRegAlg = idAnnAlg {
-          aConstr = \d c    -> AConstr $ regVarSubst d x c,
-          aTop    = \d s vs -> ATop s  $ x : vs -- TODO: Substitutions
+          aConstr = \d c   -> AConstr $ regVarSubst d x c,
+          aTop    = \d s c -> ATop s  $ regVarSubst d x c
         }
 -- Top and bottom
-application (ATop s vs) x | sortIsRegion s = ATop s $ x : vs
+application (ATop s vs) x | sortIsRegion s = ATop s $ constrAdd (collect Infty x) vs
                           | otherwise      = ATop s vs
 application (ABot s) _ = (ABot s)
 -- Cannot eval
