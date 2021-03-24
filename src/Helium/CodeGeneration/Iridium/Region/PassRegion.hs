@@ -14,6 +14,7 @@ import Helium.CodeGeneration.Iridium.Region.Generate
 import Helium.CodeGeneration.Iridium.Region.Sort
 import Helium.CodeGeneration.Iridium.Region.Annotation
 import Helium.CodeGeneration.Iridium.Region.Evaluate
+import Helium.CodeGeneration.Iridium.Region.RegionVar
 import Helium.CodeGeneration.Iridium.Region.Relation
 import Helium.CodeGeneration.Iridium.Region.Transform
 import Helium.CodeGeneration.Iridium.Region.Utils
@@ -46,7 +47,7 @@ initialEnv m = GlobalEnv typeEnv dataTypeEnv functionEnv
     abstracts = abstract <$> moduleAbstractMethods m
 
     abstract :: Declaration AbstractMethod -> (Id, (Int, Annotation))
-    abstract (Declaration name _ _ _ (AbstractMethod tp _ _)) = (name, (0, top tp))
+    abstract (Declaration name _ _ _ (AbstractMethod tp regionSort _ annotations)) = (name, (regionSortSize regionSort, regionAnnotation tp annotations))
 
     methods :: [(Id, (Int, Annotation))]
     methods = method <$> moduleMethods m
@@ -59,6 +60,12 @@ initialEnv m = GlobalEnv typeEnv dataTypeEnv functionEnv
 
     synonyms :: [(Id, Type)]
     synonyms = [(name, tp) | Declaration name _ _ _ (TypeSynonym _ tp) <- moduleTypeSynonyms m]
+
+    regionAnnotation :: Type -> [MethodAnnotation] -> Annotation
+    regionAnnotation tp [] = top tp
+    regionAnnotation tp (a:as)
+      | MethodAnnotateRegion r <- a = r
+      | otherwise = regionAnnotation tp as
 
 -- Analyses and transforms a binding group of a single non-recursive function
 -- or a group of (mutual) recursive functions.
@@ -80,8 +87,9 @@ transformGroup genv@(GlobalEnv typeEnv dataTypeEnv globals) (BindingNonRecursive
   -- print simplified
 
   let (isZeroArity, simplified') = correctArityZero (methodEnvAdditionalRegionSort methodEnv) arguments simplified
+  let simplified'' = if isZeroArity then simplify dataTypeEnv simplified' else simplified'
 
-  let (regionCount, restricted) = if isZeroArity then (0, simplified') else annotationRestrict doesEscape simplified
+  let (regionCount, restricted) = if isZeroArity then (0, simplified'') else annotationRestrict doesEscape simplified
 
   rnfAnnotation restricted `seq` return ()
 
@@ -92,6 +100,6 @@ transformGroup genv@(GlobalEnv typeEnv dataTypeEnv globals) (BindingNonRecursive
   let globals' = updateMap methodName (regionCount, restricted) globals
   let genv' = GlobalEnv typeEnv dataTypeEnv globals'
 
-  let method' = method{ declarationValue = transform methodEnv substituteRegionVar restricted $ declarationValue method }
+  let method' = method{ declarationValue = transform methodEnv isZeroArity substituteRegionVar restricted $ declarationValue method }
 
   return (genv', [method'])

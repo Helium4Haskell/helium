@@ -47,7 +47,7 @@ initialGEnv m = GlobalEnv synonyms emptyMap--functionEnv
 
     abstracts :: [(Id, Annotation)]
     abstracts = abstract <$> moduleAbstractMethods m
-    abstract (Declaration name _ _ _ (AbstractMethod tp _ _)) = (name, top tp)
+    abstract (Declaration name _ _ _ (AbstractMethod tp _ _ _)) = (name, top tp)
 
     methods :: [(Id, Annotation)]
     methods = method <$> moduleMethods m

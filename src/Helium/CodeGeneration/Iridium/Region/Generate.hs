@@ -28,6 +28,7 @@ data GlobalEnv = GlobalEnv !TypeEnvironment !DataTypeEnv !(IdMap (Int, Annotatio
 
 data MethodEnv = MethodEnv
   { methodEnvName :: Id
+  , methodEnvIsZeroArity :: Bool
   , methodEnvQuantificationCount :: Int
   , methodEnvArgumentCount :: Int
   , methodEnvArguments :: [(Either Quantor (Sort, RegionSort))]
@@ -159,6 +160,7 @@ assign genv@(GlobalEnv typeEnv dataTypeEnv _) name method@(Method _ _ arguments 
   where
     methodEnv = MethodEnv
       name
+      (all isLeft arguments)
       quantificationCount
       lambdaCount
       arguments'
@@ -289,7 +291,7 @@ lookupSimpleVar genv@(GlobalEnv typeEnv dataTypeEnv _) _ (VarGlobal (GlobalVaria
     ( AApp a (ATuple []) (RegionVarsTuple []) LifetimeContextAny
     , mapRegionVars (const RegionGlobal) $ regionSortToVars 0 $ regionSortOfType dataTypeEnv $ typeNormalize typeEnv tp
     )
-  _ -> error "lookupSimpleVar: Expected to get a variable without additional region arguments, got a global function with additional region arguments."
+  _ -> error $ "lookupSimpleVar: Expected to get a variable without additional region arguments, got a global function with additional region arguments: " ++ show name
 lookupSimpleVar _ env (VarLocal (Local name _)) = lookupLocal env name
 
 lookupVar :: GlobalEnv -> MethodEnv -> Id -> Variable -> (Annotation, RegionVars)
@@ -422,7 +424,7 @@ gatherBind' genv@(GlobalEnv typeEnv _ _) env (Bind lhs target arguments _) retur
           (_, a) = lookupGlobal genv name
           a' = AApp a (ATuple []) (methodEnvAdditionalRegionVars env) LifetimeContextAny
         in
-          ( additionalRegions
+          ( if methodEnvIsZeroArity env then [] else additionalRegions
           , a'
           , RegionGlobal
           , RegionGlobal
@@ -514,7 +516,7 @@ gatherExpression genv@(GlobalEnv typeEnv dataTypeEnv _) env lhs expr returnRegio
   Call (GlobalFunction name _ _) _ args _ ->
     let
       additionalRegions
-        | name == methodEnvName env = methodEnvAdditionalRegionVars env
+        | name == methodEnvName env = if methodEnvIsZeroArity env then RegionVarsTuple [] else methodEnvAdditionalRegionVars env
         | otherwise = RegionVarsTuple $ map RegionVarsSingle $ fromMaybe [] $ lookupMap lhs $ methodEnvAdditionalFor env
       (_, annotation) = lookupGlobal genv name
       annotation' = AApp annotation (ATuple []) (additionalRegions) LifetimeContextAny

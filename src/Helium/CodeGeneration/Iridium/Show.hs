@@ -269,17 +269,20 @@ instance ShowWithQuantors RegionVars where
   showsQ _ = shows
 
 instance ShowDeclaration AbstractMethod where
-  showDeclaration (AbstractMethod sourceType fnType annotations)
+  showDeclaration (AbstractMethod sourceType regionSort fnType annotations)
     | sourceType == typeRemoveArgumentStrictness (typeFromFunctionType fnType) =
       ( "declare"
-      , "[" ++ show arity ++ "]: { " ++ show (typeFromFunctionType fnType) ++ " } " ++ showAnnotations annotations ++ "\n"
+      , "[" ++ show arity ++ "]:" ++ regionSortStr ++ " { " ++ show (typeFromFunctionType fnType) ++ " } " ++ showAnnotations annotations ++ "\n"
       )
     | otherwise =
       ( "declare"
-      , ": { " ++ show sourceType ++ " } $ [" ++ show arity ++ "]{ " ++ show (typeFromFunctionType fnType) ++ " }"
+      , ": { " ++ show sourceType ++ " } $" ++ regionSortStr ++ " [" ++ show arity ++ "]{ " ++ show (typeFromFunctionType fnType) ++ " }"
       )
     where
       arity = functionArity fnType
+      regionSortStr
+        | RegionSortUnit <- regionSort = ""
+        | otherwise = ' ' : showRegionSort [] regionSort ""
 
 instance ShowDeclaration Method where
   showDeclaration (Method tp additionalRegions args rettype retRegions annotations entry blocks) =

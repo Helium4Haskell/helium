@@ -14,8 +14,8 @@ import Helium.CodeGeneration.Iridium.Region.Generate
 import Data.Maybe
 import Data.Either
 
-transform :: MethodEnv -> (RegionVar -> RegionVar) -> Annotation -> Method -> Method
-transform env substitute annotation (Method tp _ args returnType _ methodAnnotations entry blocks)
+transform :: MethodEnv -> Bool -> (RegionVar -> RegionVar) -> Annotation -> Method -> Method
+transform env isZeroArity substitute annotation (Method tp _ args returnType _ methodAnnotations entry blocks)
   = Method tp additionalRegions args returnType returnRegions methodAnnotations' (transformBlock regions True entry) (transformBlock regions False <$> blocks)
   where
     methodAnnotations' = MethodAnnotateRegion annotation : methodAnnotations
@@ -23,7 +23,9 @@ transform env substitute annotation (Method tp _ args returnType _ methodAnnotat
     substitute' :: RegionVar -> RegionVar
     substitute' var = case substitute var of
       RegionBottom -> var -- Internal region
-      var' -> var'
+      var'
+        | isZeroArity && var' `elem` flattenRegionVars (methodEnvAdditionalRegionVars env) -> RegionGlobal
+        | otherwise -> var'
 
     regions = Regions
       (\name -> substitutes $ snd $ findMap name $ methodEnvVars env)
@@ -34,11 +36,13 @@ transform env substitute annotation (Method tp _ args returnType _ methodAnnotat
     substitutes = mapRegionVars substitute'
 
     additionalRegions
-      = RegionVarsTuple
-      $ map RegionVarsSingle
-      $ filter (\var -> substitute var == var)
-      $ flattenRegionVars
-      $ methodEnvAdditionalRegionVars env
+      | isZeroArity = RegionVarsTuple []
+      | otherwise
+        = RegionVarsTuple
+        $ map RegionVarsSingle
+        $ filter (\var -> substitute var == var)
+        $ flattenRegionVars
+        $ methodEnvAdditionalRegionVars env
 
     returnRegions = methodEnvReturnRegions env
 
