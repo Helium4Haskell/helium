@@ -243,16 +243,23 @@ instance Show CallingConvention where
 
 showAnnotations :: [MethodAnnotation] -> String
 showAnnotations [] = ""
-showAnnotations annotations = "[" ++ intercalate " " (map show others) ++ "]" ++ regionString
+showAnnotations annotations = "[" ++ intercalate " " (map show others') ++ "]" ++ regionString ++ regionSizeString
   where
-    (regions, others) = partition isRegion annotations
-    isRegion (MethodAnnotateRegion _) = True
-    isRegion _ = False
+    (regions    , others ) = partition isRegion     annotations
+    isRegion     (MethodAnnotateRegion     _) = True
+    isRegion     _ = False
+    (regionSizes, others') = partition isRegionSize others
+    isRegionSize (MethodAnnotateRegionSize _) = True
+    isRegionSize _ = False
 
     regionString
       | [MethodAnnotateRegion regionAnnotation] <- regions
         =  "\n  [regions:\n    "
         ++ Region.showAnnotation 2 regionAnnotation "\n  ]"
+      | otherwise = ""
+    regionSizeString
+      | [MethodAnnotateRegionSize regionAnnotation] <- regionSizes
+        =  "\n  [regionsize:\nTODO: Write to file\n  ]"
       | otherwise = ""
 
 showReturnRegion, showAdditionalRegion, showLocalRegion :: Int -> String

@@ -1,5 +1,7 @@
+{-# LANGUAGE PatternSynonyms #-}
+
 module Helium.CodeGeneration.Iridium.RegionSize.Sort
-  ( Sort(..), showSort, 
+  ( Sort(..), pattern SortUnit, showSort, 
     SortAlg(..), idSortAlg, foldSortAlg, foldSortAlgN, 
     sortAssign, regionAssign, 
     sortReIndex, sortStrengthen, sortWeaken,
@@ -23,7 +25,6 @@ import Data.List
 data Sort = 
       SortLam        Sort    Sort
     | SortConstr
-    | SortUnit
     | SortTuple      [Sort]
     | SortQuant      Sort
     | SortMonoRegion
@@ -33,6 +34,8 @@ data Sort =
 
 instance Show Sort where
   show s = showSort 0 s
+
+pattern SortUnit = SortTuple []
 
 ----------------------------------------------------------------
 -- Pretty printing
@@ -121,7 +124,7 @@ sortAssign' ts      (TCon (TConTuple n)) | length ts == n = SortTuple $ map sort
 sortAssign' []      (TCon (TConDataType _))            = SortUnit
 sortAssign' [a]     (TCon (TConTypeClassDictionary _)) = sortAssign a -- TODO: Do not ignore typeclasses? Might just be okay though
 -- TODO: Data types
-sortAssign' _       (TCon (TConDataType _)) = SortUnit --rsError "sortAssign: Datatypes not yet supported"
+sortAssign' _       (TCon (TConDataType _)) = SortUnit `rsInfo` "sortAssign: Datatypes not yet supported"
 -- Not implemented cases 
 sortAssign' _ t = rsError $ "sortAssign: No pattern match: " ++ showTypeN 0 t
 
@@ -150,9 +153,10 @@ regionAssign' ts (TAp t1 t2)     = regionAssign' (t2:ts) t1
 regionAssign' [_,_] (TCon TConFun      ) = SortUnit
 regionAssign' ts    (TCon (TConTuple n)) | length ts == n = SortTuple . concat $ map (sortUnpackTuple.regionAssign) ts
                                          | otherwise      = rsError $ "regionAssign: Tuple with incorrect number of arguements: expected " ++ show n ++ " but got " ++ (show $ length ts) ++ "\n" ++ (intercalate ", " $ map (showTypeN 0) ts)
-regionAssign' [] (TCon (TConDataType _)) = SortUnit
+regionAssign' []    (TCon (TConDataType _)) = SortUnit
+regionAssign' [a]   (TCon (TConTypeClassDictionary _)) = regionAssign a -- TODO: Do not ignore typeclasses? Might just be okay though
 -- TODO: Data types
-regionAssign' _  (TCon (TConDataType _)) = rsError "regionAssign: Datatypes not yet supported"
+regionAssign' _     (TCon (TConDataType _)) = SortUnit `rsInfo` "regionAssign: Datatypes not yet supported"
 -- Not implemented cases
 regionAssign' ts t = rsError $ "regionAssign: No pattern match: " ++ showTypeN 0 t 
                                   ++ "\nArguments: " ++ (intercalate ", " $ map (showTypeN 0) ts)
@@ -212,7 +216,9 @@ A sort unit is never a region (can only occur in last element of SortTuple, whic
 sortIsRegion :: Sort -> Bool
 sortIsRegion SortMonoRegion       = True
 sortIsRegion (SortPolyRegion _ _) = True
-sortIsRegion (SortTuple as)       = sortIsRegion $ as !! 0
+sortIsRegion (SortUnit)           = False -- TODO: Edge case, it is and is not a region...
+sortIsRegion (SortTuple as)       | as == [] = error "????"
+                                  | otherwise = sortIsRegion $ as !! 0
 sortIsRegion _ = False
 
 -- | Check if a sort is an annotation sort

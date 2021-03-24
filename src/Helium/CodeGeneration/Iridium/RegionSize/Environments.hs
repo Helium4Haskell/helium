@@ -7,6 +7,8 @@ import Lvm.Common.Id
 import Lvm.Common.IdMap
 import Lvm.Core.Type
 
+
+import Helium.CodeGeneration.Core.TypeEnvironment
 import Helium.CodeGeneration.Iridium.Data
 
 import Helium.CodeGeneration.Iridium.RegionSize.Annotation
@@ -20,7 +22,7 @@ import GHC.Stack
 -- Type definitions
 ----------------------------------------------------------------
 
-data GlobalEnv = GlobalEnv !(IdMap Type) !(IdMap (Annotation))
+data GlobalEnv = GlobalEnv !TypeEnvironment !(IdMap (Annotation))
 type RegionEnv = M.Map RegionVar ConstrIdx
 type BlockEnv  = IdMap Annotation
 type LocalEnv  = IdMap Annotation
@@ -35,27 +37,31 @@ type Effect = Annotation
 
 -- | Initial analysis environment, sets all functions to top
 initialGEnv :: Module -> GlobalEnv
-initialGEnv m = GlobalEnv synonyms emptyMap--functionEnv
+initialGEnv m = GlobalEnv typeEnv functionEnv
   where
+    -- Environment is only used for type synonyms
+    typeEnv = TypeEnvironment synonyms emptyMap emptyMap
+
     -- Type synonims
     synonyms :: IdMap Type
     synonyms = mapFromList [(name, tp) | Declaration name _ _ _ (TypeSynonym _ tp) <- moduleTypeSynonyms m]
 
     -- Functions
     functionEnv :: IdMap Annotation
-    functionEnv = mapFromList $ methods ++ abstracts
+    functionEnv = mapFromList abstracts
 
     abstracts :: [(Id, Annotation)]
     abstracts = abstract <$> moduleAbstractMethods m
-    abstract (Declaration name _ _ _ (AbstractMethod tp _ _ _)) = (name, top tp)
+    abstract (Declaration name _ _ _ (AbstractMethod tp _ _ anns)) = (name, regionSizeAnn tp anns)
 
-    methods :: [(Id, Annotation)]
-    methods = method <$> moduleMethods m
-    method (Declaration name _ _ _ (Method tp _ _ _ _ _ _ _)) = (name, top tp)
+    regionSizeAnn :: Type -> [MethodAnnotation] -> Annotation
+    regionSizeAnn tp (MethodAnnotateRegionSize a:xs) = a
+    regionSizeAnn tp (x:xs) = regionSizeAnn tp xs
+    regionSizeAnn tp []     = top tp
 
     -- Top of type
     top :: Type -> Annotation
-    top = flip ATop undefined . sortAssign
+    top = flip ATop constrBot . sortAssign
 
 ----------------------------------------------------------------
 -- Block environment

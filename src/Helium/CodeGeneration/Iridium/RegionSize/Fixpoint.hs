@@ -23,7 +23,7 @@ solveFixpoint s fixes =
         let bot = ABot s
         in iterate 0 bot fixes
     where iterate :: Int -> Annotation -> [Annotation] -> Annotation
-          iterate 10 state fs = ATop s constrBot
+          iterate 10 state fs = ATuple $ mapWithIndex (\ i _ -> AProj i $ ATop s constrBot) fixes
           iterate n  state fs = 
               let res = solveFix state SortUnit <$> fs
               in if ATuple res == state 

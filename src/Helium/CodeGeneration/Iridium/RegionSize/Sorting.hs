@@ -58,7 +58,7 @@ sort = sort' M.empty
               let SortTuple ss = sort' gamma t
               in if i < length ss
                  then ss !! i
-                 else rsError "Projection out of bounds"   
+                 else rsError "sort: Projection out of bounds"   
 
           -- Operators
           sort' gamma (AAdd   a b) = 

@@ -49,13 +49,13 @@ De Bruijn indices (n = length args):
     n+3    : Global fixpoint argument
 -}
 analyseMethod :: GlobalEnv -> (Id, Method) -> (Annotation, Sort)
-analyseMethod gEnv (methodName,method@(Method mTy aRegs args _ rRegs _ fstBlock otherBlocks)) =
+analyseMethod gEnv@(GlobalEnv tEnv _) (methodName,method@(Method mTy aRegs args _ rRegs _ fstBlock otherBlocks)) =
     let blocks    = (fstBlock:otherBlocks)
         initEnv   = initEnvFromArgs args
         rEnv      = regEnvFromArgs (length args) aRegs rRegs
 
         -- Retrieve locals from method body
-        locals    = methodLocals False (rsError "analyseMethod: Only localName is available") method
+        locals    = methodLocals False tEnv method
         fixIdx    = 0
         initEnv'  = unionMap initEnv $ mapFromList.map (\(idx,lName) -> (lName, AProj idx $ AVar fixIdx)) $ zip [(length blocks)..] (localName <$> locals)
         localEnv  = foldl (\lEnv -> localsOfBlock (Envs gEnv rEnv lEnv)) initEnv' blocks  

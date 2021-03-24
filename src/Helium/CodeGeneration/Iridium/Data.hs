@@ -34,6 +34,7 @@ import Helium.CodeGeneration.Iridium.Region.RegionVar as RegionVar
   ( RegionVar, RegionVars(..), pattern RegionLocal, pattern RegionGlobal, pattern RegionBottom, showRegionVarsWith )
 
 import qualified Helium.CodeGeneration.Iridium.Region.Annotation as Region
+import qualified Helium.CodeGeneration.Iridium.RegionSize.Annotation as RegionSize
 
 type BlockName = Id
 
@@ -129,6 +130,7 @@ data MethodAnnotation
   -- Cannot be used in combination with 'MethodAnnotateTrampoline'.
   | MethodAnnotateImplicitIO
   | MethodAnnotateRegion !Region.Annotation
+  | MethodAnnotateRegionSize !RegionSize.Annotation
   deriving (Eq, Ord)
 
 data CallingConvention

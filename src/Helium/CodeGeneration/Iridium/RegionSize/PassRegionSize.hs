@@ -28,13 +28,11 @@ import Data.List (intercalate)
 -- | Infer the size of regions
 passRegionSize :: NameSupply -> Module -> IO Module
 passRegionSize supply m = do 
-  print "=================="
-  print "[PASS REGION SIZE]"
-  print "=================="
-  print $ moduleName m
   let gEnv = initialGEnv m
   let groups = methodBindingGroups $ moduleMethods m
-  (_, methods) <- mapAccumLM (analyseGroup $ stringFromId $ moduleName m) gEnv groups
+
+  (_, methods) <- mapAccumLM (analyseGroup (stringFromId $ moduleName m)) gEnv groups
+
   return m{moduleMethods = concat methods}
 
 
@@ -44,13 +42,16 @@ passRegionSize supply m = do
 analyseGroup :: String -> GlobalEnv -> BindingGroup Method -> IO (GlobalEnv, [Declaration Method])
 analyseGroup modName gEnv (BindingRecursive bindings) = do
   let methods = map (\(Declaration methodName _ _ _ method) -> (methodName, method)) bindings
-  (gEnv, transformeds) <- temp modName gEnv methods
+
+  (gEnv', transformeds) <- temp modName gEnv methods
+
   let bindings' = map (\(decl, (_,transformed)) -> decl{declarationValue=transformed}) $ zip bindings transformeds
-  return (gEnv, bindings')
+  return (gEnv', bindings')
+
 analyseGroup modName gEnv (BindingNonRecursive decl@(Declaration methodName _ _ _ method)) = do
-  putStrLn $ "\n# Analyse method " ++ show methodName
-  (gEnv, [(_,transformed)]) <- temp modName gEnv [(methodName,method)]
-  return (gEnv, [decl{ declarationValue = transformed }])
+  (gEnv', [(_,transformed)]) <- temp modName gEnv [(methodName,method)]
+
+  return (gEnv', [decl{ declarationValue = transformed }])
 
 
 temp ::  String -> GlobalEnv -> [(Id,Method)] -> IO (GlobalEnv, [(Id,Method)])
@@ -87,11 +88,12 @@ temp modName gEnv methods = do
       putStrLn ""
     let fixed' = unsafeUnliftTuple fixed
     let gEnv' = foldl (\env (name,ann) -> insertGlobal env name ann) gEnv $ zip (fst <$> methods) fixed'
-    return (gEnv', methods)
+        methods' = map (\((name,Method a b c d e anns f g), ann) -> (name, Method a b c d e (MethodAnnotateRegionSize ann:anns) f g)) $ zip methods fixed'
+    return (gEnv', methods')
   else do
     return (gEnv, methods)
 
 -- | Get an array of annotations from a tuple
 unsafeUnliftTuple :: Annotation -> [Annotation]
 unsafeUnliftTuple (ATuple as) = as
-unsafeUnliftTuple _ = rsError "unsafeUnliftTuple: Called unsafe unlift tuple on non-tuple"
+unsafeUnliftTuple a = rsError $ "unsafeUnliftTuple: Called unsafe unlift tuple on non-tuple: " ++ show a
