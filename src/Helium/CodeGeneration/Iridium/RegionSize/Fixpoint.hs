@@ -20,10 +20,10 @@ solveFixpoint s fixes =
         let bot = ABot s
         in fixIterate 0 bot fixes
     where fixIterate :: Int -> Annotation -> [Annotation] -> Annotation
-          fixIterate 10 _     _  = ATuple $ mapWithIndex (\ i _ -> AProj i $ ATop s constrBot) fixes
+          fixIterate 10 _     _  = ATuple $  mapWithIndex (\ i _ -> AProj i $ ATop s constrBot) fixes
           fixIterate n  state fs = 
               let res = solveFix state SortUnit <$> fs
-              in if ATuple res == state 
+              in if ATuple res == state
                  then ATuple res
                  else fixIterate (n+1) (ATuple res) fs
 

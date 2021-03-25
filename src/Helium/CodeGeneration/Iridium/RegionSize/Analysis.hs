@@ -61,6 +61,8 @@ analyseMethod gEnv@(GlobalEnv tEnv _) (_, method@(Method mTy aRegs args _ rRegs 
         -- Retrieve the annotation and effect of the function body
         initBEnv = mapFromList.map (\(idx,bName) -> (bName, AProj idx $ AVar fixIdx)) $ zip [0..] (blockName <$> blocks)
         blockAnn = blockAccum (Envs gEnv rEnv localEnv) initBEnv <$> blocks
+
+
         localFix = AProj 0 . AFix SortUnit $ (unliftTuple <$> blockAnn) ++ (snd <$> listFromMap localEnv)
 
         -- Generate the method annotation
@@ -89,15 +91,15 @@ wrapBody mS (bAnn,bEff) rrSort = case mS of
 argumentSorts :: Method -> (Sort, [Maybe Sort], Sort)
 argumentSorts method@(Method _ regArgs args resTy _ _ _ _) = 
     let (FunctionType argTy _) = methodFunctionType method
-        (_,argSorts) = mapAccumL argumentSortAssign 1 argTy
+        argSorts = map argumentSortAssign argTy
         aRegSort = sort $ regionVarsToAnn M.empty regArgs
         rrSort   = regionAssign $ typeWeaken (length $ rights args) $ TStrict resTy
     in (aRegSort, argSorts, rrSort)
 
 -- | Assign sort to types, return Nothing for a quantor
-argumentSortAssign :: Int -> Either Quantor Type -> (Int, Maybe Sort)
-argumentSortAssign n (Left _)   = (n, Nothing)
-argumentSortAssign n (Right ty) = (n + 1, Just . sortWeaken n $ sortAssign ty)
+argumentSortAssign :: Either Quantor Type -> Maybe Sort
+argumentSortAssign (Left _)   = Nothing
+argumentSortAssign (Right ty) = Just $ sortAssign ty
 
 -- | Initial enviromentment based on function arguments
 initEnvFromArgs :: [Either Quantor Local] -> LocalEnv

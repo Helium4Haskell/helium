@@ -34,7 +34,7 @@ strengthenIdx d idx = if idx > d
 -- Indenting
 ----------------------------------------------------------------
 
--- | Check if a string is a region
+-- | Check if next tuple element should be on a newline
 noTupleBreak :: String -> Bool
 noTupleBreak (_:"") = True
 noTupleBreak (c:_)  = c == 'ρ' || c == '⊥'

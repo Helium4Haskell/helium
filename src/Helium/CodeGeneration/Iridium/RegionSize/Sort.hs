@@ -32,7 +32,7 @@ data Sort =
   deriving (Eq, Ord)
 
 instance Show Sort where
-  show s = showSort 0 s
+  show s = showSort (-1) s
 
 pattern SortUnit :: Sort
 pattern SortUnit = SortTuple []
