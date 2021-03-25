@@ -60,7 +60,11 @@ boundVar (Bind var _) = var
 liftExprInDecl :: TypeEnvironment -> NameSupply -> CoreDecl -> ([CoreDecl])
 liftExprInDecl typeEnv supply (DeclValue name access mod enc ann expr customs) = DeclValue name access mod enc ann expr' customs : decls
   where
-    (expr', decls) = liftExprIgnoreLambdas supply [] expr $ Env typeEnv emptyMap
+    unexpr = case expr of
+      -- TODO: Infinite loop when expr starts with strict bind?
+      Let (Strict (Bind v e1)) e2 -> Let (NonRec (Bind v e1)) e2
+      _ -> expr
+    (expr', decls) = liftExprIgnoreLambdas supply [] unexpr $ Env typeEnv emptyMap
 liftExprInDecl _ _ decl = [decl]
 
 liftExprIgnoreLambdas :: NameSupply -> Scope -> Expr -> Env -> (Expr, [CoreDecl])

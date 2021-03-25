@@ -17,7 +17,9 @@ annotateDeclaration supply (DeclValue n a m t ta v c) = DeclValue n a m t' t v' 
     t' = annotateType supply1 ta
     v' = annotateExpression supply2 v
 -- Switch arguments
-annotateDeclaration supply (DeclAbstract n a m ar t ta c) = DeclAbstract n a m ar ta t c
+annotateDeclaration supply (DeclAbstract n a m ar t ta c) = DeclAbstract n a m ar t' t c
+  where
+    t' = annotateTypeAbstract ta
 annotateDeclaration supply (DeclCon n a m t f c) = DeclCon n a m t' f c
   where
     t' = annotateTypeAbstract t
@@ -47,9 +49,13 @@ annotateType _ t = t
 
 -- Cannot place variables because they won't be inferred due to no body, so assume L unless type is strict, then S
 annotateTypeAbstract :: Type -> Type
-annotateTypeAbstract (TAp (TAp (TCon TConFun) (TStrict t1)) t2) = TAp (TAp (TCon TConFun) (TAnn S t1')) t2'
+annotateTypeAbstract (TAp (TAp (TCon TConFun) (TAnn a t1)) t2) = (TAp (TAp (TCon TConFun) (TAnn a t1')) t2')
   where
     t1' = annotateTypeAbstract t1
+    t2' = annotateTypeAbstract t2
+annotateTypeAbstract (TAp (TAp (TCon TConFun) (TStrict t1)) t2) = TAp (TAp (TCon TConFun) (TAnn S t1')) t2'
+  where
+    t1' = TStrict $ annotateTypeAbstract t1
     t2' = annotateTypeAbstract t2
 annotateTypeAbstract (TAp (TAp (TCon TConFun) t1) t2) = TAp (TAp (TCon TConFun) (TAnn L t1')) t2'
   where

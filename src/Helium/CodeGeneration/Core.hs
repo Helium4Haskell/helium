@@ -50,9 +50,10 @@ desugarCore s supply mod = do
 
 desugar :: NameSupply -> [(String, NameSupply -> CoreModule -> CoreModule)] -> CoreModule -> IO CoreModule
 desugar supply ((passName, passFn) : passes) mod = do
-  --writeFile (passName ++ ".core") $ show $ pretty mod
+  --writeFile (passName ++ "_before.core") $ show $ pretty mod
   let (supply1, supply2) = splitNameSupply supply
   let mod' = passFn supply1 mod
+  --writeFile (passName ++ "_after.core") $ show $ pretty mod'
   checkModuleIO passName mod'
   desugar supply2 passes mod'
 desugar _ [] mod = return mod
