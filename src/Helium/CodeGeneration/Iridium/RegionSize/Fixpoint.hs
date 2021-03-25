@@ -24,7 +24,7 @@ solveFixpoint s fixes =
           fixIterate n  state fs = 
               let res = solveFix state SortUnit <$> fs
               in if ATuple res == state
-                 then ATuple res
+                 then annStrengthen $ ATuple res
                  else fixIterate (n+1) (ATuple res) fs
 
 -- | Solve a fixpoint
@@ -35,7 +35,7 @@ solveFix :: Annotation -- ^ The state
 solveFix x s fix = 
     let isFixpoint = countFixBinds fix > 0
     in if not isFixpoint
-       then annStrengthen fix -- TODO: annStrengthen May have to be moved
+       then fix
        else eval $ AApl (ALam s fix) x
 
 -- | Count usages of a variable

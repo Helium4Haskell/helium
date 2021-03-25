@@ -68,7 +68,7 @@ instance Show Annotation where
         aTop    = \d _ c -> "T"  ++ "[" ++ (constrShow d c) ++ "]",
         aBot    = \_ _   -> "⊥",
         aFix    = \d s a -> "fix " ++ annVarName (d+1) ++ " : " ++ showSort d s 
-                                   ++ ".\n[" ++ (indent $ intercalate ",\n" a) ++ "]",
+                                   ++ ".\n[" ++ (intercalate ",\n" $ mapWithIndex (\i str -> show i ++ ": " ++ str) a) ++ "]",
         aConstr = \d c   -> constrShow d c
       }
 

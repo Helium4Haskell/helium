@@ -53,11 +53,7 @@ analyseGroup modName gEnv (BindingNonRecursive decl@(Declaration methodName _ _ 
 temp ::  String -> GlobalEnv -> [(Id,Method)] -> IO (GlobalEnv, [(Id,Method)])
 temp modName gEnv methods = do
   putStrLn $ "\n# Analyse methods:\n" ++ (intercalate "\n" $ map (show.fst) methods)
-  if((modName == "LvmLang"        && True)
-    || (modName == "HeliumLang"   && True) 
-    || (modName == "PreludePrim"  && True)
-    || (modName == "Prelude"      && True)
-    || (modName == "LvmException" && True))
+  if False
   then do
     return (gEnv, methods)
   else do
@@ -65,12 +61,12 @@ temp modName gEnv methods = do
         simpl = eval mAnn
         fixed = solveFixpoints simpl
         -- mSrt1 = sort mAnn
-        -- mSrt2 = sort fixed
-    if((modName == "LvmLang"        && True)
-      || (modName == "HeliumLang"   && True) 
-      || (modName == "PreludePrim"  && True)
-      || (modName == "Prelude"      && True)
-      || (modName == "LvmException" && True))
+        mSrt2 = sort fixed
+    if((modName == "LvmLang"        && False)
+      || (modName == "HeliumLang"   && False) 
+      || (modName == "PreludePrim"  && False)
+      || (modName == "Prelude"      && False)
+      || (modName == "LvmException" && False))
     then do putStrLn "-"
     else do
       print mAnn
@@ -78,8 +74,8 @@ temp modName gEnv methods = do
       putStrLn $ (show simpl) 
       putStrLn $ "\n# Fixpoint: "
       putStrLn $ (show fixed) 
-      -- putStrLn $ "\n# Sort: "
-      -- print mSrt2 
+      putStrLn $ "\n# Sort: "
+      print mSrt2 
 
       -- if mSrt1 /= mSrt2
       -- then putStrLn $ "Evaluation returned different sort!"

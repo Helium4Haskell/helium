@@ -16,7 +16,7 @@ import Helium.CodeGeneration.Iridium.RegionSize.Constraints
 import Helium.CodeGeneration.Iridium.RegionSize.Environments
 import Helium.CodeGeneration.Iridium.RegionSize.Utils
 
-import Data.List (mapAccumL)
+import Data.List(mapAccumL)
 import Data.Either (rights)
 import qualified Data.Map as M
 
@@ -89,19 +89,19 @@ wrapBody mS bAnn rrSort = case mS of
 argumentSorts :: Method -> (Sort, [Maybe Sort], Sort)
 argumentSorts method@(Method _ regArgs args resTy _ _ _ _) = 
     let (FunctionType argTy _) = methodFunctionType method
-        argSorts = map argumentSortAssign argTy
+        argSorts = mapAccumL argumentSortAssign 0 argTy
         aRegSort = sort $ regionVarsToAnn M.empty regArgs
-        rrSort   = regionAssign $ typeWeaken (length $ rights args) $ TStrict resTy
-    in (aRegSort, argSorts, rrSort)
+        rrSort   = regionAssign $ typeWeaken (2*(length $ rights args)-1) $ TStrict resTy
+    in (aRegSort, snd argSorts, rrSort)
 
 -- | Assign sort to types, return Nothing for a quantor
-argumentSortAssign :: Either Quantor Type -> Maybe Sort
-argumentSortAssign (Left _)   = Nothing
-argumentSortAssign (Right ty) = Just $ sortAssign ty
+argumentSortAssign :: Int -> Either Quantor Type -> (Int, Maybe Sort)
+argumentSortAssign n (Left _)   = (n,Nothing)
+argumentSortAssign n (Right ty) = (n+2,Just $ sortWeaken n $ sortAssign ty)
 
 -- | Initial enviromentment based on function arguments
 initEnvFromArgs :: [Either Quantor Local] -> LocalEnv
-initEnvFromArgs args = let argIdxs = zip args $ map AVar $ reverse [2,4..(2*length args)]
+initEnvFromArgs args = let argIdxs = zip args $ map AVar $ reverse [2,4..(2*length args+1)]
                        in foldl (flip $ uncurry insertArgument) emptyMap argIdxs
 
 -- | Region environment from additional regions and return regions

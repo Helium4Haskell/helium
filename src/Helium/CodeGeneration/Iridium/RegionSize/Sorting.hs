@@ -32,7 +32,9 @@ sort :: Annotation -> Sort
 sort = sort' M.empty
     where sort' :: Gamma -> Annotation -> Sort 
           -- Simple cases
-          sort' gamma (AVar     a) = gamma M.! a
+          sort' gamma (AVar     a) = case M.lookup a gamma of
+                                        Nothing -> rsError $ "Not in gamma: " ++ show a
+                                        Just s  -> s
           sort' _     (AReg     _) = SortMonoRegion
           sort' _     (AConstr  _) = SortConstr
           sort' _     (AUnit     ) = SortUnit
