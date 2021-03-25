@@ -181,7 +181,6 @@ relationReindex f (Relation vec) = Relation $ V.uniq $ V.modify V.sort $ V.mapMa
 
 relationMultipleReindex :: (RegionVar -> [RegionVar]) -> Relation -> Relation
 relationMultipleReindex f (Relation input) = Relation $ V.modify V.sort $ V.concatMap g input
-  -- TODO: We could have a more optimized version that doesn't require re-sorting
   where
     g :: Word64 -> V.Vector Word64
     g repr

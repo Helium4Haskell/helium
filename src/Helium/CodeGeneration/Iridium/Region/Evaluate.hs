@@ -345,7 +345,7 @@ apply env annotation argument argumentRegion lc
         substituteRegion (RegionLocal idx)
           | idx < regionArgCount = RegionLocal idx
           | idx < regionArgCount + argumentRegionSize = regions !! (regionArgCount + argumentRegionSize - idx - 1)
-          | otherwise = RegionLocal $ idx - regionArgCount
+          | otherwise = RegionLocal $ idx - argumentRegionSize
         substituteRegion r = r
 
 project :: DataTypeEnv -> Annotation -> Int -> (IsWeakSimplified, Annotation)
@@ -801,7 +801,7 @@ annotationRestrict preserve annotation
       ATuple as -> ATuple $ map transform' as
       AProject a1 idx -> AProject (transform' a1) idx
       AVar (AnnotationVar idx) -> AVar $ AnnotationVar idx
-      ARelation rel -> ARelation $ relationReindex transformRegionVar rel
+      ARelation rel -> ARelation $ relationReindex transformRegionVar $ relationFilter (isJust . transformRegionVarM) rel
       ATop s -> ATop s
       ABottom s -> ABottom s
       AJoin a1 a2 -> AJoin (transform' a1) (transform' a2)
@@ -809,12 +809,15 @@ annotationRestrict preserve annotation
         transform' = transform regionCount
 
         transformRegionVar :: RegionVar -> RegionVar
-        transformRegionVar (RegionLocal idx)
+        transformRegionVar r = fromMaybe RegionBottom $ transformRegionVarM r
+
+        transformRegionVarM :: RegionVar -> Maybe RegionVar
+        transformRegionVarM (RegionLocal idx)
           | idx >= regionCount && idx < regionCount + oldCount =
             case mapping !!! (idx - regionCount) of
-              Nothing -> error "annotationRestrict: annotation uses a variable which was claimed to be unused"
-              Just idx' -> RegionLocal $ idx' + regionCount
-        transformRegionVar r = r
+              Nothing -> Nothing
+              Just idx' -> Just $ RegionLocal $ idx' + regionCount
+        transformRegionVarM r = Just r
 
         transformRegionVars :: RegionVars -> RegionVars
         transformRegionVars = mapRegionVars transformRegionVar
