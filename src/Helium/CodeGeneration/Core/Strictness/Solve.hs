@@ -26,7 +26,7 @@ constraintsToGraph cs = map toNode $ listFromMap $ mapMapWithId constraintToEdge
 
 -- Get dependencies of single constraints
 constraintToEdges :: Id -> SAnn -> [Id]
-constraintToEdges i (AnnVar a)   = if i == a then [] else [a] -- Avoid constraints of type a == a
+constraintToEdges i (AnnVar a)   = [a | i /= a] -- Avoid constraints of type a == a
 constraintToEdges i (Join s1 s2) = constraintToEdges i s1 ++ constraintToEdges i s2
 constraintToEdges i (Meet s1 s2) = constraintToEdges i s1 ++ constraintToEdges i s2
 constraintToEdges _ _            = []

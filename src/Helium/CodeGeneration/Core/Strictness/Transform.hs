@@ -16,7 +16,7 @@ transformDeclaration env (DeclValue n a m t ta v c) = DeclValue n a m ta t' v' c
   where
     t' = transformType env t
     v' = transformExpression env v
-transformDeclaration env (DeclAbstract n a m ar t ta c) = DeclAbstract n a m ar ta t c
+transformDeclaration _ (DeclAbstract n a m ar t ta c) = DeclAbstract n a m ar ta t c
 transformDeclaration env (DeclCon n a m t f c) = DeclCon n a m t' f c
   where
     t' = deannotateType env t
@@ -33,7 +33,7 @@ deannotateType env (TAp (TAp (TCon TConFun) (TAnn _ t1)) t2) = TAp (TAp (TCon TC
     t2' = deannotateType env t2
 deannotateType env (TStrict t) = TStrict $ deannotateType env t
 deannotateType env (TForall q k t) = TForall q k $ deannotateType env t
-deannotateType env t = t
+deannotateType _ t = t
 
 -- Apply strict annotations on types
 transformType :: Constraints -> Type -> Type
@@ -47,7 +47,7 @@ transformType env (TAnn (AnnVar a) t) = TAnn s $ transformType env t
   where
     s = findMap a env
 transformType env (TAnn a t) = TAnn a $ transformType env t
-transformType env t = t
+transformType _ t = t
 
 -- Apply strict annotations on expressions
 transformExpression :: Constraints -> Expr -> Expr
@@ -59,7 +59,7 @@ transformExpression env (Let (NonRec (Bind (Variable x (TAnn (AnnVar a) t)) e1))
     t' = deannotateType env t
     e1' = transformExpression env e1
     e2' = transformExpression env e2
-transformExpression env (Let (Strict (Bind (Variable x (TAnn (AnnVar _) t)) e1)) e2) = Let b e2'
+transformExpression env (Let (Strict (Bind (Variable x (TAnn _ t)) e1)) e2) = Let b e2'
   where
     b = Strict (Bind (Variable x t') e1') -- Bind is already strict so annotation is irrelevant
     t' = deannotateType env t
@@ -71,13 +71,21 @@ transformExpression env (Ap e1 e2) = Ap e1' e2'
     e1' = transformExpression env e1
     e2' = transformExpression env e2
 transformExpression env (ApType e t) = ApType (transformExpression env e) (deannotateType env t)
-transformExpression env (Lam s (Variable x (TAnn (AnnVar a) t)) e) = Lam s' (Variable x t') e' 
+transformExpression env (Lam True  (Variable x (TAnn _          t)) e) = Lam True (Variable x t') e'
   where
-    s' = s || (findMap a env == S) -- Lambda might already be strict
+    -- Lambda is already strict so no variable to solve
+    e' = transformExpression env e
+    t' = deannotateType env t
+transformExpression env (Lam False (Variable x (TAnn (AnnVar a) t)) e) = Lam s    (Variable x t') e' 
+  where
+    -- Check if annotation variable is S or L
+    s  = findMap a env == S
     e' = transformExpression env e
     t' = deannotateType env t
 transformExpression env (Forall q k e) = Forall q k $ transformExpression env e
-transformExpression _ expr = expr -- Con and Lit
+transformExpression _ (Con c) = Con c
+transformExpression _ (Lit l) = Lit l
+transformExpression _ (Var v) = Var v
 
 -- Apply strict transformations on alts
 transformAlt :: Constraints -> Alt -> Alt

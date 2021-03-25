@@ -4,6 +4,7 @@ import Lvm.Common.Id
 import Lvm.Core.Expr
 import Lvm.Core.Type
 import Lvm.Core.Module
+import Text.PrettyPrint.Leijen (pretty)
 
 -- Annotate module
 annotateModule :: NameSupply -> CoreModule -> CoreModule
@@ -17,24 +18,30 @@ annotateDeclaration supply (DeclValue n a m t ta v c) = DeclValue n a m t' t v' 
     t' = annotateType supply1 ta
     v' = annotateExpression supply2 v
 -- Switch arguments
-annotateDeclaration supply (DeclAbstract n a m ar t ta c) = DeclAbstract n a m ar t' t c
+annotateDeclaration _ (DeclAbstract n a m ar t ta c) = DeclAbstract n a m ar t' t c
   where
     t' = annotateTypeAbstract ta
-annotateDeclaration supply (DeclCon n a m t f c) = DeclCon n a m t' f c
+annotateDeclaration _ (DeclCon n a m t f c) = DeclCon n a m t' f c
   where
     t' = annotateTypeAbstract t
-annotateDeclaration supply (DeclTypeSynonym n a m s t c) = DeclTypeSynonym n a m s t' c
+annotateDeclaration _ (DeclTypeSynonym n a m s t c) = DeclTypeSynonym n a m s t' c
   where
     t' = annotateTypeAbstract t
 annotateDeclaration _ d = d
 
 -- Annotate type
 annotateType :: NameSupply -> Type -> Type
-annotateType supply (TAp (TAp (TCon TConFun) (TAnn a t1)) t2) = (TAp (TAp (TCon TConFun) (TAnn a t1')) t2') 
+annotateType supply (TAp (TAp (TCon TConFun) (TAnn a t1)) t2) = TAp (TAp (TCon TConFun) (TAnn a t1')) t2' 
   where
       -- Already annotated
       (supply1, supply2) = splitNameSupply supply
       t1' = annotateType supply1 t1
+      t2' = annotateType supply2 t2
+annotateType supply (TAp (TAp (TCon TConFun) (TStrict t1)) t2) = TAp (TAp (TCon TConFun) (TAnn S t1')) t2'
+  where
+      -- Strict by type
+      (supply1, supply2) = splitNameSupply supply
+      t1' = TStrict $ annotateType supply1 t1
       t2' = annotateType supply2 t2
 annotateType supply (TAp (TAp (TCon TConFun) t1) t2) = TAp (TAp (TCon TConFun) t1') t2'
     where
@@ -49,7 +56,7 @@ annotateType _ t = t
 
 -- Cannot place variables because they won't be inferred due to no body, so assume L unless type is strict, then S
 annotateTypeAbstract :: Type -> Type
-annotateTypeAbstract (TAp (TAp (TCon TConFun) (TAnn a t1)) t2) = (TAp (TAp (TCon TConFun) (TAnn a t1')) t2')
+annotateTypeAbstract (TAp (TAp (TCon TConFun) (TAnn a t1)) t2) = TAp (TAp (TCon TConFun) (TAnn a t1')) t2'
   where
     t1' = annotateTypeAbstract t1
     t2' = annotateTypeAbstract t2
@@ -83,25 +90,40 @@ annotateExpression supply (ApType e t) = ApType e' t'
     (supply1, supply2) = splitNameSupply supply
     e' = annotateExpression supply1 e
     t' = annotateType supply2 t
-annotateExpression supply (Lam s (Variable x t) e) = Lam s (Variable x t') e'
+annotateExpression supply (Lam True (Variable x t) e) = Lam True (Variable x t') e'
+  where
+    -- Strict by lambda
+    (supply1, supply2) = splitNameSupply supply
+    t' = TAnn S $ annotateType supply1 t
+    e' = annotateExpression supply2 e
+annotateExpression supply (Lam False (Variable x t) e) = Lam False (Variable x t') e'
   where
     (id, supply') = freshId supply
     (supply1, supply2) = splitNameSupply supply'
     t' = TAnn (AnnVar id) $ annotateType supply1 t
     e' = annotateExpression supply2 e
 annotateExpression supply (Forall q k e) = Forall q k $ annotateExpression supply e
-annotateExpression _ expr = expr
+annotateExpression _ (Con c) = Con c
+annotateExpression _ (Lit l) = Lit l
+annotateExpression _ (Var v) = Var v
 
 -- Annotate binds
 annotateBinds :: NameSupply -> Binds -> Binds
-annotateBinds supply (Strict b) = Strict $               annotateBind supply b
-annotateBinds supply (NonRec b) = NonRec $               annotateBind supply b
-annotateBinds supply (Rec b)    = Rec    $ mapWithSupply annotateBind supply b
+annotateBinds supply (Strict b) = Strict $                annotateBind True   supply b
+annotateBinds supply (NonRec b) = NonRec $                annotateBind False  supply b
+annotateBinds supply (Rec b)    = Rec    $ mapWithSupply (annotateBind False) supply b
 
 -- Annotate bind
-annotateBind :: NameSupply -> Bind -> Bind
-annotateBind supply (Bind (Variable x t) e) = Bind (Variable x t') e'
+annotateBind :: Bool -> NameSupply -> Bind -> Bind
+annotateBind True  supply (Bind (Variable x t) e) = Bind (Variable x t') e'
   where
+    -- Strict bind, place strict annotation
+    (supply1, supply2) = splitNameSupply supply
+    t' = TAnn S $ annotateType supply1 t
+    e' = annotateExpression supply2 e
+annotateBind False supply (Bind (Variable x t) e) = Bind (Variable x t') e'
+  where
+    -- Nonstrict bind, place annotation variable
     (id, supply') = freshId supply
     (supply1, supply2) = splitNameSupply supply'
     t' = TAnn (AnnVar id) $ annotateType supply1 t
