@@ -53,13 +53,19 @@ analyseGroup modName gEnv (BindingNonRecursive decl@(Declaration methodName _ _ 
 temp ::  String -> GlobalEnv -> [(Id,Method)] -> IO (GlobalEnv, [(Id,Method)])
 temp modName gEnv methods = do
   putStrLn $ "\n# Analyse methods:\n" ++ (intercalate "\n" $ map (show.fst) methods)
-  if True
+  if((modName == "LvmLang"        && True)
+    || (modName == "HeliumLang"   && True) 
+    || (modName == "PreludePrim"  && True)
+    || (modName == "Prelude"      && True)
+    || (modName == "LvmException" && True))
   then do
+    return (gEnv, methods)
+  else do
     let mAnn  = analyseMethods gEnv methods
         simpl = eval mAnn
         fixed = solveFixpoints simpl
         -- mSrt1 = sort mAnn
-        mSrt2 = sort fixed
+        -- mSrt2 = sort fixed
     if((modName == "LvmLang"        && True)
       || (modName == "HeliumLang"   && True) 
       || (modName == "PreludePrim"  && True)
@@ -72,8 +78,8 @@ temp modName gEnv methods = do
       putStrLn $ (show simpl) 
       putStrLn $ "\n# Fixpoint: "
       putStrLn $ (show fixed) 
-      putStrLn $ "\n# Sort: "
-      print mSrt2 
+      -- putStrLn $ "\n# Sort: "
+      -- print mSrt2 
 
       -- if mSrt1 /= mSrt2
       -- then putStrLn $ "Evaluation returned different sort!"
@@ -86,8 +92,7 @@ temp modName gEnv methods = do
     let gEnv' = foldl (\env (name,ann) -> insertGlobal env name ann) gEnv $ zip (fst <$> methods) fixed'
         methods' = map (\((name,Method a b c d e anns f g), ann) -> (name, Method a b c d e (MethodAnnotateRegionSize ann:anns) f g)) $ zip methods fixed'
     return (gEnv', methods')
-  else do
-    return (gEnv, methods)
+
 
 -- | Get an array of annotations from a tuple
 unsafeUnliftTuple :: Annotation -> [Annotation]

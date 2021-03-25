@@ -32,17 +32,17 @@ analyseMethods gEnv methods =
         fixpoints    = AFix (SortTuple sorts) anns
     in annRemLocalRegs fixpoints
         where makeFixVar (env, i) (methodName, (Method _ _ args _ _ _ _ _)) =
-                    let fixIdx = length args + 3
+                    let fixIdx = 2 * length args + 2
                         env'   = updateGlobal env methodName (AProj i $ AVar fixIdx)
                     in (env', i+1)
 
 {-| Analyse the effect and annotation of a block
 De Bruijn indices (n = length args):
-    0      : Variable & block fixpoint argument
-    1      : Return region argument
-    2..n+1 : Arguments
-    n+2    : Additional regions
-    n+3    : Global fixpoint argument
+    0     : Variable & block fixpoint argument
+    1     : Return region argument
+    2..2n : Arguments
+    2n+1  : Additional regions
+    2n+2  : Global fixpoint argument
 -}
 -- TODO: Improve naming
 analyseMethod :: GlobalEnv -> (Id, Method) -> (Annotation, Sort)
@@ -61,26 +61,24 @@ analyseMethod gEnv@(GlobalEnv tEnv _) (_, method@(Method mTy aRegs args _ rRegs 
         -- Retrieve the annotation and effect of the function body
         initBEnv = mapFromList.map (\(idx,bName) -> (bName, AProj idx $ AVar fixIdx)) $ zip [0..] (blockName <$> blocks)
         blockAnn = blockAccum (Envs gEnv rEnv localEnv) initBEnv <$> blocks
-
-
         localFix = AProj 0 . AFix SortUnit $ (unliftTuple <$> blockAnn) ++ (snd <$> listFromMap localEnv)
 
         -- Generate the method annotation
         (aRegS, argS, rtnS) = argumentSorts method
-        (a,b) = liftTuple localFix
-        bAnn' = wrapBody (last argS) (annStrengthen a,b) rtnS
+        bAnn' = wrapBody (last argS) localFix rtnS
         fAnn  = if argS == [] -- TODO: Also check retArg (aka fix 0-argument functions)
                 then localFix -- IDEA: Now 'SortUnit' but could be a way to deal with thunk allocations
-                else foldr (\s a -> wrapBody s (a,botEffect) SortUnit) bAnn' $ init argS
+                else foldr (\s a -> wrapBody s (ATuple [a,botEffect]) SortUnit) bAnn' $ init argS
                 
     in (ALam    aRegS $ fAnn
        ,SortLam aRegS $ sortAssign mTy) 
 
--- | Wrap a function body into a AQuant or `A -> (A, P -> C)'
-wrapBody :: Maybe Sort -> (Annotation,Effect) -> Sort -> Effect
-wrapBody mS (bAnn,bEff) rrSort = case mS of
-                      Nothing -> AQuant bAnn
-                      Just s  -> ALam s (ATuple [bAnn, ALam rrSort bEff])
+-- | Wrap a function body into a AQuant or `A -> P -> (A,C)'
+wrapBody :: Maybe Sort -> Annotation -> Sort -> Effect
+wrapBody mS bAnn rrSort = case mS of
+                      Nothing -> AQuant $ AProj 0 bAnn
+                      Just s  -> ALam s $ ALam rrSort bAnn
+
 
 {- Compute the sort of all method arguments,
     Returns a tuple of:
@@ -103,12 +101,12 @@ argumentSortAssign (Right ty) = Just $ sortAssign ty
 
 -- | Initial enviromentment based on function arguments
 initEnvFromArgs :: [Either Quantor Local] -> LocalEnv
-initEnvFromArgs args = let argIdxs = zip args $ map AVar $ reverse [2..(length args+1)]
+initEnvFromArgs args = let argIdxs = zip args $ map AVar $ reverse [2,4..(2*length args)]
                        in foldl (flip $ uncurry insertArgument) emptyMap argIdxs
 
 -- | Region environment from additional regions and return regions
 regEnvFromArgs :: Int -> RegionVars -> RegionVars -> RegionEnv
-regEnvFromArgs n aRegs rRegs = M.union (go (AnnVar $ n+2) aRegs) (go (AnnVar 1) rRegs)
+regEnvFromArgs n aRegs rRegs = M.union (go (AnnVar $ 2*n+1) aRegs) (go (AnnVar 1) rRegs)
     where go var (RegionVarsSingle r) = M.singleton r var
           go var (RegionVarsTuple rs) = M.unions.map (\(i,r) -> go (CnProj i var) r) $ zip [0..] rs
 
@@ -269,11 +267,9 @@ thunkApplyArg :: LocalEnv
               -> Annotation        -- ^ Return region
               -> Annotation        -- ^ Function 
               -> Either Type Local -- ^ Argument
-              -> (Annotation, Effect)
+              -> (Annotation,Effect)
 thunkApplyArg _    _    fAnn (Left ty    ) = (AInstn fAnn ty, botEffect) 
-thunkApplyArg lEnv rReg fAnn (Right local) = 
-    let (cAnn,cEff) = liftTuple . AApl fAnn $ lookupLocal lEnv local
-    in (cAnn, AApl cEff rReg)
+thunkApplyArg lEnv rReg fAnn (Right local) = liftTuple $ AApl (AApl fAnn $ lookupLocal lEnv local) rReg
 
 -- | Apply a list of arguments to a funtion
 thunkApplyArgs :: Envs 
