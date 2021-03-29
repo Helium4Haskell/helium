@@ -7,6 +7,7 @@ import Lvm.Core.Type
 import Helium.CodeGeneration.Core.TypeEnvironment
 import Lvm.Core.Module
 import Text.PrettyPrint.Leijen (pretty)
+import Debug.Trace
 
 -- Constraint set, keys are annotation variables, values are the equality/join/meet
 type Constraints = IdMap SAnn
@@ -28,7 +29,7 @@ analyseDeclaration :: Environment -> CoreDecl -> Constraints
 analyseDeclaration env decl@DeclValue{} = unionMap cv ct
   where
     cv = analyseExpression env S (valueValue decl)
-    ct = analyseType (declType decl) $ typeOfCoreExpression (typeEnv env) (valueValue decl)
+    ct = analyseType (declType decl) $ typeOfCoreExpression (typeEnv env) True (valueValue decl)
 analyseDeclaration _ _ = emptyMap
 
 -- Run strictness analysis on expressions
@@ -41,15 +42,14 @@ analyseExpression env context (Let b e) = unionMapWith meet c1 c2
     c2   = mapMapWithId (\x y -> if x `elem` bs then y else join context y) $ analyseExpression env' S e
     bs   = getAnnotationVariablesBinds b
 -- Only if an expression is strict on all alts it is strict
-analyseExpression env context (Match _ alts) = foldr (unionMapWith join . analyseAlt env context) emptyMap alts
+analyseExpression env context (Match _ alts) = unionMapsWith join $ map (analyseAlt env context) alts
 analyseExpression env context (Ap e1 e2) = unionMapWith meet c1 c2
   where
     -- Analyse function
     c1 = analyseExpression env context e1
     -- Get annotation from function
-    a = case typeNormalizeHead (typeEnv env) $ typeOfCoreExpression (typeEnv env) e1  of
-      TAp (TAp (TCon TConFun) (TAnn a' _)) _ -> a'
-      _ -> L -- Forall function for tuple, has no annotation so assume L
+    t = typeOfCoreExpression (typeEnv env) True e1
+    TAp (TAp (TCon TConFun) (TAnn a _)) _ = typeNormalizeHead (typeEnv env) t
     -- Analyse applicant under the join of the annotation and the context
     c2 = analyseExpression env (join context a) e2
 analyseExpression env context (ApType e _) = analyseExpression env context e
@@ -81,7 +81,7 @@ analyseAlt env context (Alt pat e) = analyseExpression (envAddPattern pat env) c
 analyseBinds :: Environment -> Binds -> Constraints
 analyseBinds env (NonRec b) = analyseBind env b
 analyseBinds env (Strict b) = analyseBind env b
-analyseBinds env b@(Rec bs) = foldr (unionMapWith meet . analyseBind env') emptyMap bs
+analyseBinds env b@(Rec bs) = unionMapsWith meet $ map (analyseBind env') bs
   where
     env' = envAddBinds b env
 
@@ -90,7 +90,7 @@ analyseBind :: Environment -> Bind -> Constraints
 analyseBind env (Bind (Variable _ (TAnn a t)) e) = unionMap cs c1
   where
       -- Type of variable could be a function
-    cs = analyseType t (typeOfCoreExpression (typeEnv env) e)
+    cs = analyseType t (typeOfCoreExpression (typeEnv env) True e)
     -- Context depends on the variable
     c1 = analyseExpression env a e
 
@@ -147,7 +147,7 @@ envAddPattern :: Pat -> Environment -> Environment
 envAddPattern p (Environment typeEnv annEnv) = Environment (typeEnvAddPattern p typeEnv) annEnv
 
 annEnvAddVariable :: Variable -> AnnontationEnvironment -> AnnontationEnvironment
-annEnvAddVariable (Variable x (TAnn a _)) env = insertMap x a env
+annEnvAddVariable (Variable x (TAnn a _)) = insertMap x a
 
 -- Get all annotation variables in a binds
 getAnnotationVariablesBinds :: Binds -> [Id]

@@ -90,18 +90,9 @@ annotateExpression supply (ApType e t) = ApType e' t'
     (supply1, supply2) = splitNameSupply supply
     e' = annotateExpression supply1 e
     t' = annotateType supply2 t
-annotateExpression supply (Lam True (Variable x t) e) = Lam True (Variable x t') e'
+annotateExpression supply (Lam strict v e) = Lam strict v' e'
   where
-    -- Strict by lambda
-    (supply1, supply2) = splitNameSupply supply
-    t' = TAnn S $ annotateType supply1 t
-    e' = annotateExpression supply2 e
-annotateExpression supply (Lam False (Variable x t) e) = Lam False (Variable x t') e'
-  where
-    (id, supply') = freshId supply
-    (supply1, supply2) = splitNameSupply supply'
-    t' = TAnn (AnnVar id) $ annotateType supply1 t
-    e' = annotateExpression supply2 e
+    (v', e') = annotateLamOrBind strict supply v e
 annotateExpression supply (Forall q k e) = Forall q k $ annotateExpression supply e
 annotateExpression _ (Con c) = Con c
 annotateExpression _ (Lit l) = Lit l
@@ -115,19 +106,9 @@ annotateBinds supply (Rec b)    = Rec    $ mapWithSupply (annotateBind False) su
 
 -- Annotate bind
 annotateBind :: Bool -> NameSupply -> Bind -> Bind
-annotateBind True  supply (Bind (Variable x t) e) = Bind (Variable x t') e'
+annotateBind strict supply (Bind v e) = Bind v' e'
   where
-    -- Strict bind, place strict annotation
-    (supply1, supply2) = splitNameSupply supply
-    t' = TAnn S $ annotateType supply1 t
-    e' = annotateExpression supply2 e
-annotateBind False supply (Bind (Variable x t) e) = Bind (Variable x t') e'
-  where
-    -- Nonstrict bind, place annotation variable
-    (id, supply') = freshId supply
-    (supply1, supply2) = splitNameSupply supply'
-    t' = TAnn (AnnVar id) $ annotateType supply1 t
-    e' = annotateExpression supply2 e
+    (v', e') = annotateLamOrBind strict supply v e
 
 -- Annotate alt
 annotateAlt :: NameSupply -> Alt -> Alt
@@ -143,3 +124,12 @@ annotatePat supply (PatCon c t i) = PatCon c t' i
   where
     t' = mapWithSupply annotateType supply t
 annotatePat _ p = p
+
+annotateLamOrBind :: Bool -> NameSupply -> Variable -> Expr -> (Variable, Expr)
+annotateLamOrBind strict supply (Variable x t) e = (Variable x t', e')
+  where
+    (id, supply') = freshId supply
+    ann = if strict then S else AnnVar id
+    (supply1, supply2) = splitNameSupply supply'
+    t' = TAnn ann $ annotateType supply1 t
+    e' = annotateExpression supply2 e

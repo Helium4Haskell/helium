@@ -51,20 +51,15 @@ transformType _ t = t
 
 -- Apply strict annotations on expressions
 transformExpression :: Constraints -> Expr -> Expr
+-- Recursive has to stay recursive, bo transformation possible
 transformExpression env (Let (Rec b) e) = Let (Rec (map (transformBind env) b)) $ transformExpression env e
-transformExpression env (Let (NonRec (Bind (Variable x (TAnn (AnnVar a) t)) e1)) e2) = Let b e2' -- No transformation possible
+-- Turn bind to strict if annotated with S
+transformExpression env (Let (NonRec b@(Bind (Variable _ (TAnn (AnnVar a) _)) _)) e) = Let binds $ transformExpression env e 
   where
-    r = if findMap a env == S then Strict else NonRec -- Turn bind to strict if annotated with S
-    b = r (Bind (Variable x t') e1')
-    t' = deannotateType env t
-    e1' = transformExpression env e1
-    e2' = transformExpression env e2
-transformExpression env (Let (Strict (Bind (Variable x (TAnn _ t)) e1)) e2) = Let b e2'
-  where
-    b = Strict (Bind (Variable x t') e1') -- Bind is already strict so annotation is irrelevant
-    t' = deannotateType env t
-    e1' = transformExpression env e1
-    e2' = transformExpression env e2
+    binds = if findMap a env == S then Strict bind else NonRec bind
+    bind  = transformBind env b
+-- Bind is already strict
+transformExpression env (Let (Strict b) e) = Let (Strict (transformBind env b)) $ transformExpression env e
 transformExpression env (Match i alts) = Match i $ map (transformAlt env) alts
 transformExpression env (Ap e1 e2) = Ap e1' e2'
   where

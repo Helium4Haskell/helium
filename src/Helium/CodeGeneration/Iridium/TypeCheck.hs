@@ -91,13 +91,14 @@ analyseAbstractMethod (Declaration name _ _ _ (AbstractMethod _ _ tp _)) = AVar 
 
 analyseMethod :: TypeEnvironment -> Declaration Method -> Analysis
 analyseMethod env (Declaration name _ _ _ method@(Method fnType _ args retType' _ block blocks)) =
-  aCheck env fnType (typeRemoveArgumentStrictness fnType') (TEMethod name fnType fnType')
+  aCheck env fnType fnType'' (TEMethod name fnType fnType'')
     `AJoin` AVar name (DeclareGlobal $ length aArgs) fnType'
     `AJoin` fromList aArgs
     `AJoin` analyseBlock env retType block
     `AJoin` fromList (map (analyseBlock env retType) blocks)
   where
     fnType' = methodType method
+    fnType'' = typeRemoveArgumentStrictness fnType' 
     retType = typeToStrict retType'
     aArgs = [AVar arg (DeclareLocal) tp | Right (Local arg tp) <- args]
 

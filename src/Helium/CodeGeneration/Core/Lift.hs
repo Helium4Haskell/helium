@@ -60,11 +60,7 @@ boundVar (Bind var _) = var
 liftExprInDecl :: TypeEnvironment -> NameSupply -> CoreDecl -> ([CoreDecl])
 liftExprInDecl typeEnv supply (DeclValue name access mod enc ann expr customs) = DeclValue name access mod enc ann expr' customs : decls
   where
-    unexpr = case expr of
-      -- TODO: Infinite loop when expr starts with strict bind?
-      Let (Strict (Bind v e1)) e2 -> Let (NonRec (Bind v e1)) e2
-      _ -> expr
-    (expr', decls) = liftExprIgnoreLambdas supply [] unexpr $ Env typeEnv emptyMap
+    (expr', decls) = liftExprIgnoreLambdas supply [] expr $ Env typeEnv emptyMap
 liftExprInDecl _ _ decl = [decl]
 
 liftExprIgnoreLambdas :: NameSupply -> Scope -> Expr -> Env -> (Expr, [CoreDecl])
@@ -94,7 +90,7 @@ liftBinds supply scope (Strict b) env = (map Strict (maybeToList b'), decls, env
   where
     (b', decls, envMap) = strictBind supply scope b env
     scope' = case b' of
-      Nothing -> scope'
+      Nothing -> scope
       Just _ -> Right (variableSetStrict True $ boundVar b) : scope
 liftBinds supply scope (NonRec b) env = (rotatedBinds ++ map NonRec (maybeToList b'), decls, envMap, scope')
   where
@@ -121,7 +117,7 @@ liftExpr supply scope (Match name alts) env = (Match (rename env name) alts', co
 liftExpr supply scope expr@(Lam _ _ _) env = liftExpr supply' scope (Let (NonRec bind) (Var name)) env
   where
     (name, supply') = freshId supply
-    bind = Bind (Variable name $ typeOfCoreExpression (typeEnv env) expr) expr
+    bind = Bind (Variable name $ typeOfCoreExpression (typeEnv env) False expr) expr
 liftExpr supply scope (Forall x k expr) env = (Forall x k expr', decls)
   where
     (expr', decls) = liftExpr supply scope expr env

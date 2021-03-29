@@ -4,6 +4,7 @@ import Helium.CodeGeneration.Core.Strictness.Analyse
 import Lvm.Common.IdMap
 import Lvm.Core.Type
 import Data.Graph
+import Data.Maybe
 
 type Node = (Id, Id, [Id])
 
@@ -42,9 +43,7 @@ solveConstraint nodeFromVertex c v = updateMap node new c
 
 -- Replace solved annotation variables
 replaceVar :: Constraints -> SAnn -> SAnn
-replaceVar cs (AnnVar x) = case lookupMap x cs of
-    Just y  -> y -- Variable should be solved because of order
-    Nothing -> L -- Assume laziness
+replaceVar cs (AnnVar x) = fromMaybe L (lookupMap x cs)
 replaceVar cs (Meet x y) = meet (replaceVar cs x) (replaceVar cs y)
 replaceVar cs (Join x y) = join (replaceVar cs x) (replaceVar cs y)
 replaceVar _  x          = x

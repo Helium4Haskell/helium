@@ -126,7 +126,7 @@ checkExpression env quantors (Forall quantor kind expr) = do
   return $ TForall quantor kind tp
 checkExpression env quantors (Var name) = checkId env name
 -- Con or Lit
-checkExpression env quantors expr = return $ typeOfCoreExpression env expr
+checkExpression env quantors expr = return $ typeOfCoreExpression env False expr
 
 checkBind :: TypeEnvironment -> QuantorNames -> Bind -> Check ()
 checkBind env quantors (Bind (Variable x tpAnnotated) expr) = do
@@ -144,7 +144,7 @@ checkPattern env quantors tp (PatLit lit) = do
   return env
 checkPattern env quantors tp PatDefault = return env
 checkPattern env quantors tp pat@(PatCon con@(ConId _) typeArgs ids) = do
-  let tCon = typeApplyList (typeOfCoreExpression env $ Con con) typeArgs
+  let tCon = typeApplyList (typeOfCoreExpression env False $ Con con) typeArgs
   vars <- findVars tCon ids
   return $ typeEnvAddVariables vars env
   where
