@@ -1,8 +1,9 @@
 {-# LANGUAGE PatternSynonyms #-}
 
 module Helium.CodeGeneration.Iridium.RegionSize.Annotation
-  ( Annotation(..), pattern AUnit,
+  ( Annotation(..), Effect, pattern AUnit,
     AnnAlg(..), foldAnnAlg, foldAnnAlgN, idAnnAlg,
+    liftTuple, unliftTuple,
     collect,
     annWeaken, annStrengthen,
     isConstr, constrIdxToAnn,
@@ -42,6 +43,9 @@ data Annotation =
     | AFix    Sort       [Annotation] -- ^ Fix point has a list of (possibly mutally recursive) annotations
   deriving (Eq, Ord)
 
+-- | The effect is an annotation, but always of sort C
+type Effect = Annotation
+
 -- | AUnit is a 0-tuple, a patern disallows them from co-existing
 pattern AUnit :: Annotation
 pattern AUnit = ATuple []
@@ -68,7 +72,7 @@ instance Show Annotation where
         aTop    = \d _ c -> "T"  ++ "[" ++ (constrShow d c) ++ "]",
         aBot    = \_ _   -> "⊥",
         aFix    = \d s a -> "fix " ++ annVarName (d+1) ++ " : " ++ showSort d s 
-                                   ++ ".\n[" ++ (intercalate ",\n" $ mapWithIndex (\i str -> show i ++ ": " ++ str) a) ++ "]",
+                                   ++ ".\n[" ++ (intercalate ",\n" $ mapWithIndex (\i str -> show i ++ ": " ++ str) $ indent <$> a) ++ "]",
         aConstr = \d c   -> constrShow d c
       }
 
@@ -160,7 +164,7 @@ annReIndex f = foldAnnAlg reIdxAlg
 -- | Increase all unbound variables by the substitution depth
 annWeaken :: Depth -- ^ Depth of the substitution
           -> Annotation -> Annotation
-annWeaken subD = annReIndex $ weakenIdx subD 
+annWeaken subD = annReIndex (weakenIdx subD)
 
 -- | Decrease all unbound indexes by 1
 annStrengthen :: Annotation -> Annotation
@@ -169,6 +173,15 @@ annStrengthen = annReIndex strengthenIdx
 ----------------------------------------------------------------
 -- Annotation utilities
 ----------------------------------------------------------------
+
+-- | Convert an annotation tuple to a haskell tuple
+liftTuple :: Annotation -> (Annotation, Effect)
+liftTuple a = (AProj 0 a, AProj 1 a) 
+
+-- | Convert an annotation tuple to a haskell tuple
+unliftTuple :: (Annotation, Effect) -> Annotation 
+unliftTuple (a,b) = ATuple [a,b] 
+
 
 -- | Collect all region variables in an annotation
 collect :: Bound -> Annotation -> Constr
@@ -203,3 +216,4 @@ annRemLocalRegs = foldAnnAlg cleanAlg
     aConstr = \_     -> AConstr . constrRemLocalRegs,
     aTop    = \_ s   -> ATop s . constrRemLocalRegs
   }
+

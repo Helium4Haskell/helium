@@ -9,34 +9,23 @@ import Helium.CodeGeneration.Iridium.RegionSize.Evaluate
 
 -- | Solve all the fixpoints in an annotation
 solveFixpoints :: Annotation -> Annotation
-solveFixpoints = fillTop . eval . foldAnnAlg fixAlg
+solveFixpoints = eval . fillTop . foldAnnAlg fixAlg
     where fixAlg = idAnnAlg {
-        aFix = \_ s as -> solveFixpoint s as
+        aFix = \_ s as -> ATuple $ solveFixpoint s as
     }
 
 -- | Solve a group of fixpoints
-solveFixpoint :: Sort -> [Annotation] -> Annotation
+solveFixpoint :: Sort -> [Annotation] -> [Annotation]
 solveFixpoint s fixes = 
         let bot = ABot s
         in fixIterate 0 bot fixes
-    where fixIterate :: Int -> Annotation -> [Annotation] -> Annotation
-          fixIterate 10 _     _  = ATuple $  mapWithIndex (\ i _ -> AProj i $ ATop s constrBot) fixes
+    where fixIterate :: Int -> Annotation -> [Annotation] -> [Annotation]
+          fixIterate 10 _     _  = mapWithIndex (\ i _ -> AProj i $ ATop s constrBot) fixes
           fixIterate n  state fs = 
-              let res = solveFix state SortUnit <$> fs
+              let res = (\fix -> eval $ AApl (ALam s fix) state) <$> fs
               in if ATuple res == state
-                 then annStrengthen $ ATuple res
+                 then res
                  else fixIterate (n+1) (ATuple res) fs
-
--- | Solve a fixpoint
-solveFix :: Annotation -- ^ The state
-         -> Sort       -- ^ Argument sort
-         -> Annotation -- ^ The fixpoint
-         -> Annotation
-solveFix x s fix = 
-    let isFixpoint = countFixBinds fix > 0
-    in if not isFixpoint
-       then fix
-       else eval $ AApl (ALam s fix) x
 
 -- | Count usages of a variable
 countFixBinds :: Annotation -> Int

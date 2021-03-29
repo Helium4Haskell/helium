@@ -11,7 +11,6 @@ import Helium.CodeGeneration.Core.TypeEnvironment
 
 import Helium.CodeGeneration.Iridium.RegionSize.Annotation
 import Helium.CodeGeneration.Iridium.RegionSize.Sort
-import Helium.CodeGeneration.Iridium.RegionSize.Sorting
 import Helium.CodeGeneration.Iridium.RegionSize.Constraints
 import Helium.CodeGeneration.Iridium.RegionSize.Environments
 import Helium.CodeGeneration.Iridium.RegionSize.Utils
@@ -32,52 +31,59 @@ analyseMethods gEnv methods =
         fixpoints    = AFix (SortTuple sorts) anns
     in annRemLocalRegs fixpoints
         where makeFixVar (env, i) (methodName, (Method _ _ args _ _ _ _ _)) =
-                    let fixIdx = 2 * length args + 2
+                    let fixIdx = deBruinSize args + 2
                         env'   = updateGlobal env methodName (AProj i $ AVar fixIdx)
                     in (env', i+1)
 
+-- | Give the number of debruijn indexes the argument covers
+deBruinSize :: [Either Quantor Local] -> Int
+deBruinSize []           = 0 
+deBruinSize (Left  _:xs) = 1 + deBruinSize xs
+deBruinSize (Right _:xs) = 2 + deBruinSize xs
+
 {-| Analyse the effect and annotation of a block
-De Bruijn indices (n = length args):
-    0     : Variable & block fixpoint argument
-    1     : Return region argument
-    2..2n : Arguments
-    2n+1  : Additional regions
-    2n+2  : Global fixpoint argument
+De Bruijn indices (dbz = de bruijn size):
+    0      : Variable & block fixpoint argument
+    1..dbz : Return region argument followed by arguments (A -> P -> A -> P -> ...)
+    dbz+1  : Additional regions
+    dbz+2  : Global fixpoint argument
 -}
 -- TODO: Improve naming
 analyseMethod :: GlobalEnv -> (Id, Method) -> (Annotation, Sort)
 analyseMethod gEnv@(GlobalEnv tEnv _) (_, method@(Method mTy aRegs args _ rRegs _ fstBlock otherBlocks)) =
     let blocks    = (fstBlock:otherBlocks)
         initEnv   = initEnvFromArgs args
-        rEnv      = regEnvFromArgs (length args) aRegs rRegs
+        rEnv      = regEnvFromArgs (deBruinSize args) aRegs rRegs
 
         -- Retrieve locals from method body
         locals    = methodLocals False tEnv method
         fixIdx    = 0
-        initEnv'  = unionMap initEnv $ mapFromList.map (\(idx,lName) -> (lName, AProj idx $ AVar fixIdx)) $ zip [(length blocks)..] (localName <$> locals)
+        initEnv'  = unionMap initEnv $ mapFromList.map (\(idx,lName) -> (lName, AProj idx $ AVar fixIdx)) $ zip [length blocks..] (localName <$> locals)
         localEnv  = foldl (\lEnv -> localsOfBlock (Envs gEnv rEnv lEnv)) initEnv' blocks  
-        -- TODO: List from map is not order preserving
 
         -- Retrieve the annotation and effect of the function body
         initBEnv = mapFromList.map (\(idx,bName) -> (bName, AProj idx $ AVar fixIdx)) $ zip [0..] (blockName <$> blocks)
         blockAnn = blockAccum (Envs gEnv rEnv localEnv) initBEnv <$> blocks
+        -- TODO: listFromMap is not guaranteed to be order preserving
         localFix = AProj 0 . AFix SortUnit $ (unliftTuple <$> blockAnn) ++ (snd <$> listFromMap localEnv)
 
         -- Generate the method annotation
         (aRegS, argS, rtnS) = argumentSorts method
         bAnn' = wrapBody (last argS) localFix rtnS
-        fAnn  = if argS == [] -- TODO: Also check retArg (aka fix 0-argument functions)
-                then localFix -- IDEA: Now 'SortUnit' but could be a way to deal with thunk allocations
+        fAnn  = ALam aRegS 
+              $ if argS == []
+                then ALam rtnS localFix -- IDEA: Now 'SortUnit' but could be a way to deal with thunk allocations
                 else foldr (\s a -> wrapBody s (ATuple [a,botEffect]) SortUnit) bAnn' $ init argS
                 
-    in (ALam    aRegS $ fAnn
-       ,SortLam aRegS $ sortAssign mTy) 
+    in ( fAnn
+       , SortLam aRegS $ sortAssign mTy) 
 
 -- | Wrap a function body into a AQuant or `A -> P -> (A,C)'
 wrapBody :: Maybe Sort -> Annotation -> Sort -> Effect
-wrapBody mS bAnn rrSort = case mS of
-                      Nothing -> AQuant $ AProj 0 bAnn
-                      Just s  -> ALam s $ ALam rrSort bAnn
+wrapBody mS bAnn rrSort = 
+    case mS of
+      Nothing -> AQuant $ AProj 0 bAnn
+      Just s  -> ALam s $ ALam rrSort bAnn
 
 
 {- Compute the sort of all method arguments,
@@ -90,7 +96,7 @@ argumentSorts :: Method -> (Sort, [Maybe Sort], Sort)
 argumentSorts method@(Method _ regArgs args resTy _ _ _ _) = 
     let (FunctionType argTy _) = methodFunctionType method
         argSorts = mapAccumL argumentSortAssign 0 argTy
-        aRegSort = sort $ regionVarsToAnn M.empty regArgs
+        aRegSort = regionVarsToSort regArgs
         rrSort   = regionAssign $ typeWeaken (2*(length $ rights args)-1) $ TStrict resTy
     in (aRegSort, snd argSorts, rrSort)
 
@@ -101,12 +107,15 @@ argumentSortAssign n (Right ty) = (n+2,Just $ sortWeaken n $ sortAssign ty)
 
 -- | Initial enviromentment based on function arguments
 initEnvFromArgs :: [Either Quantor Local] -> LocalEnv
-initEnvFromArgs args = let argIdxs = zip args $ map AVar $ reverse [2,4..(2*length args+1)]
+initEnvFromArgs args = let argIdxs = createIdxs 2 $ reverse args
                        in foldl (flip $ uncurry insertArgument) emptyMap argIdxs
+    where createIdxs _ []           = []
+          createIdxs n (Left  q:xs) = (Left  q, AVar n) : createIdxs (n+1) xs
+          createIdxs n (Right t:xs) = (Right t, AVar n) : createIdxs (n+2) xs
 
 -- | Region environment from additional regions and return regions
 regEnvFromArgs :: Int -> RegionVars -> RegionVars -> RegionEnv
-regEnvFromArgs n aRegs rRegs = M.union (go (AnnVar $ 2*n+1) aRegs) (go (AnnVar 1) rRegs)
+regEnvFromArgs dbz aRegs rRegs = M.union (go (AnnVar $ dbz+1) aRegs) (go (AnnVar 1) rRegs)
     where go var (RegionVarsSingle r) = M.singleton r var
           go var (RegionVarsTuple rs) = M.unions.map (\(i,r) -> go (CnProj i var) r) $ zip [0..] rs
 
@@ -288,6 +297,10 @@ thunkApplyArgs (Envs _ rEnv lEnv) fAnn args retRegs =
 funcApplyArgs :: Envs 
               -> Annotation -> RegionVars -> [Either Type Local] -> RegionVars 
               -> (Annotation, Effect)
+-- 0 arguments
+-- funcApplyArgs envs@(Envs _ rEnv _) fAnn aRegs [] retRegs = 
+--     liftTuple (AApl (AApl fAnn $ regionVarsToAnn rEnv aRegs) (regionVarsToAnn rEnv aRegs))
+-- >1 arguments
 funcApplyArgs envs@(Envs _ rEnv _) fAnn aRegs args retRegs = 
     thunkApplyArgs envs (AApl fAnn $ regionVarsToAnn rEnv aRegs) args retRegs 
 
@@ -324,19 +337,10 @@ caseBlocks (CaseConstructor cases) = map snd cases
 caseBlocks (CaseInt cases dflt)    = dflt : map snd cases
 
 
--- | Convert an annotation tuple to a haskell tuple
-liftTuple :: Annotation -> (Annotation, Effect)
-liftTuple a = (AProj 0 a, AProj 1 a) 
-
--- | Convert an annotation tuple to a haskell tuple
-unliftTuple :: (Annotation, Effect) -> Annotation 
-unliftTuple (a,b) = ATuple [a,b] 
-
-
 -- | Join of blocks
 joinBlocks :: BlockEnv -> [BlockName] -> (Annotation, Effect)
-joinBlocks bEnv blockNames = foldr joinTuples (ABot undefined, botEffect) blocks
-    where blocks = liftTuple <$> lookupBlock bEnv <$> blockNames 
+joinBlocks bEnv blockNames = foldr joinTuples block blocks
+    where (block:blocks) = liftTuple <$> lookupBlock bEnv <$> blockNames 
 
 -- | The join of two tuples
 joinTuples :: (Annotation, Effect) -> (Annotation, Effect) -> (Annotation, Effect)

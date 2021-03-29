@@ -7,9 +7,12 @@ module Helium.CodeGeneration.Iridium.RegionSize.Sort
     sortReIndex, sortStrengthen, sortWeaken,
     sortInstantiate, sortSubstitute,
     sortIsRegion, sortIsAnnotation,
-    indexSortTuple
+    indexSortTuple,
+    regionVarsToSort
   )
 where
+
+import Helium.CodeGeneration.Iridium.Region.RegionVar
 
 import Helium.CodeGeneration.Iridium.RegionSize.Utils
 import Helium.CodeGeneration.Iridium.RegionSize.Type
@@ -237,5 +240,10 @@ indexSortTuple :: Int -> Sort -> Sort
 indexSortTuple _   SortUnit       = SortUnit -- TODO: Also has to do with region tuples
 indexSortTuple idx (SortTuple ts) = if idx < length ts
                                     then ts !! idx
-                                    else rsError"indexSortTuple: Sort index out of bounds"
+                                    else rsError "indexSortTuple: Sort index out of bounds"
 indexSortTuple _ s = s
+
+-- | Convert region variables to a sort
+regionVarsToSort :: RegionVars -> Sort
+regionVarsToSort (RegionVarsSingle _) = SortMonoRegion
+regionVarsToSort (RegionVarsTuple rs) = SortTuple $ regionVarsToSort <$> rs

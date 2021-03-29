@@ -28,9 +28,6 @@ type BlockEnv  = IdMap Annotation
 type LocalEnv  = IdMap Annotation
 data Envs = Envs GlobalEnv RegionEnv LocalEnv
 
--- | The effect is an annotation, but always of sort C
-type Effect = Annotation
-
 ----------------------------------------------------------------
 -- Global environment
 ----------------------------------------------------------------
@@ -97,7 +94,7 @@ lookupLocal lEnv local = case lookupMap (localName local) lEnv of
 
 -- | Lookup a global or local variable
 lookupVar :: HasCallStack => Envs -> Variable -> Annotation
-lookupVar (Envs _ _ lEnv) (VarLocal local) = lookupLocal  lEnv local
+lookupVar (Envs _ _ lEnv) (VarLocal local) = lookupLocal lEnv local
 lookupVar (Envs gEnv _ _) global           = lookupGlobal gEnv $ variableName global
 
 

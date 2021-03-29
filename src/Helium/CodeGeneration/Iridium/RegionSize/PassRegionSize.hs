@@ -9,14 +9,17 @@ import Helium.CodeGeneration.Iridium.BindingGroup
 
 import Helium.CodeGeneration.Iridium.RegionSize.Analysis
 import Helium.CodeGeneration.Iridium.RegionSize.Annotation
+import Helium.CodeGeneration.Iridium.RegionSize.Constraints
 import Helium.CodeGeneration.Iridium.RegionSize.Environments
 import Helium.CodeGeneration.Iridium.RegionSize.Evaluate
+import Helium.CodeGeneration.Iridium.RegionSize.Sort
 import Helium.CodeGeneration.Iridium.RegionSize.Sorting
 import Helium.CodeGeneration.Iridium.RegionSize.Utils
 import Helium.CodeGeneration.Iridium.RegionSize.Fixpoint
 
 
 import Data.List (intercalate)
+import Data.Either (isLeft)
 
 
 -- | TODO: There is still an evalutation bug.. Test.recu, first bound to a (fix) after eval bound to b
@@ -52,16 +55,24 @@ analyseGroup modName gEnv (BindingNonRecursive decl@(Declaration methodName _ _ 
 
 temp ::  String -> GlobalEnv -> [(Id,Method)] -> IO (GlobalEnv, [(Id,Method)])
 temp modName gEnv methods = do
-  putStrLn $ "\n# Analyse methods:\n" ++ (intercalate "\n" $ map (show.fst) methods)
-  if False
+  if((modName == "LvmLang"        && False)
+    || (modName == "HeliumLang"   && False) 
+    || (modName == "PreludePrim"  && False)
+    || (modName == "Prelude"      && False)
+    || (modName == "LvmException" && False))
   then do
     return (gEnv, methods)
   else do
-    let mAnn  = analyseMethods gEnv methods
-        simpl = eval mAnn
-        fixed = solveFixpoints simpl
+
+    putStrLn $ "\n# Analyse methods:\n" ++ (intercalate "\n" $ map (show.fst) methods)
+    
+    let mAnn    = analyseMethods gEnv methods
+        simpl   = eval mAnn
+        fixed   = solveFixpoints simpl
         -- mSrt1 = sort mAnn
         mSrt2 = sort fixed
+
+
     if((modName == "LvmLang"        && False)
       || (modName == "HeliumLang"   && False) 
       || (modName == "PreludePrim"  && False)
@@ -84,7 +95,10 @@ temp modName gEnv methods = do
       -- else return ()
       putStrLn ""
       putStrLn ""
-    let fixed' = unsafeUnliftTuple fixed
+    let fixed' = if isLeft mSrt2 
+                 then repeat (ATop SortUnit constrBot)
+                 else unsafeUnliftTuple fixed
+
     let gEnv' = foldl (\env (name,ann) -> insertGlobal env name ann) gEnv $ zip (fst <$> methods) fixed'
         methods' = map (\((name,Method a b c d e anns f g), ann) -> (name, Method a b c d e (MethodAnnotateRegionSize ann:anns) f g)) $ zip methods fixed'
     return (gEnv', methods')

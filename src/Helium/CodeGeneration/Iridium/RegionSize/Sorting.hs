@@ -4,8 +4,9 @@ module Helium.CodeGeneration.Iridium.RegionSize.Sorting
 
 import Helium.CodeGeneration.Iridium.RegionSize.Sort
 import Helium.CodeGeneration.Iridium.RegionSize.Annotation
-import Helium.CodeGeneration.Iridium.RegionSize.Utils
+
 import qualified Data.Map as M
+import Data.Either (lefts,rights)
 
 ----------------------------------------------------------------
 -- Sorting environment
@@ -28,66 +29,71 @@ envWeaken = M.mapKeys $ (+) 1
 
 -- TODO: Replace the rsInfo with rsError again (when the regions are generated)
 -- | Fills in the sorts on the annotation, returns sort of full annotation
-sort :: Annotation -> Sort
+sort :: Annotation -> Either String Sort
 sort = sort' M.empty
-    where sort' :: Gamma -> Annotation -> Sort 
+    where sort' :: Gamma -> Annotation -> Either String Sort 
           -- Simple cases
           sort' gamma (AVar     a) = case M.lookup a gamma of
-                                        Nothing -> rsError $ "Not in gamma: " ++ show a
-                                        Just s  -> s
-          sort' _     (AReg     _) = SortMonoRegion
-          sort' _     (AConstr  _) = SortConstr
-          sort' _     (AUnit     ) = SortUnit
+                                        Nothing -> Left $ "Not in gamma: " ++ show a
+                                        Just s  -> Right s
+          sort' _     (AReg     _) = Right SortMonoRegion
+          sort' _     (AConstr  _) = Right SortConstr
+          sort' _     (AUnit     ) = Right SortUnit
           
           -- Lambdas & applications
           sort' gamma (ALam   s a) = 
               let sortR = sort' (envInsert s gamma) a
-              in SortLam s $ sortStrengthen sortR
+              in SortLam s <$> sortStrengthen <$> sortR
           sort' gamma (AApl   f x) = 
               case sort' gamma f of
-                SortLam sortA sortR ->
+                Right (SortLam sortA sortR) ->
                   let sortX = sort' gamma x 
-                  in if sortA == sortX 
-                     then sortR
-                     else sortR --`rsInfo` ("Argument has different sort than is expected.\nArgument sort: " ++ show sortX ++ "\nExpected sort: " ++ show sortA ++ "\n")
-                s -> rsError $ "Application to non function sort: " ++ show s
+                  in if Right sortA == sortX 
+                     then Right sortR
+                     else sortX --sortR --`rsInfo` ("Argument has different sort than is expected.\nArgument sort: " ++ show sortX ++ "\nExpected sort: " ++ show sortA ++ "\n")
+                Right s -> Left $ "Application to non function sort: " ++ show s
+                err     -> err
 
           -- Tuples & projections
           sort' gamma (ATuple  as) =
               let sortAS = map (sort' gamma) as
-              in SortTuple sortAS
+                  errors = lefts sortAS  
+              in if length errors == 0 
+                 then Right . SortTuple $ rights sortAS
+                 else Left (errors !! 0) 
           sort' gamma (AProj  i t) = 
-              let SortTuple ss = sort' gamma t
-              in if i < length ss
-                 then ss !! i
-                 else rsError "sort: Projection out of bounds"   
+              case sort' gamma t of
+                  Right (SortTuple ss) -> if i < length ss
+                                          then Right $ ss !! i
+                                          else Left "sort: Projection out of bounds"   
+                  Right s -> Left $ "Projection on non-tuple sort: " ++ show s
+                  err     -> err
 
           -- Operators
           sort' gamma (AAdd   a b) = 
               let sortA = sort' gamma a
                   sortB = sort' gamma b
-              in if sortA == sortB && sortA == SortConstr
-                 then SortConstr
-                 else SortConstr `rsInfo` ("Addition of non constraint-sort annotations: \nSort A:" ++ show sortA ++ "\nSort B:" ++ show sortB) 
+              in if sortA == sortB && sortA == Right SortConstr
+                 then Right SortConstr
+                 else Left ("Addition of non constraint-sort annotations: \nSort A:" ++ show sortA ++ "\nSort B:" ++ show sortB) 
           sort' gamma (AMinus a _) = 
               let sortA = sort' gamma a
-              in if sortA == SortConstr
-                 then SortConstr
-                 else SortConstr `rsInfo` ("Setminus on non constraint-sort annotation: \nSort:" ++ show sortA) 
+              in if sortA == Right SortConstr
+                 then Right SortConstr
+                 else Left $ "Setminus on non constraint-sort annotation: \nSort:" ++ show sortA 
 
           sort' gamma (AJoin  a _) = sort' gamma a
 
           -- Quantification and instantiation
-          sort' gamma (AQuant   a) = SortQuant $ sort' (envWeaken gamma) a
-          sort' gamma (AInstn a t) = sortInstantiate t $ sort' gamma a 
+          sort' gamma (AQuant   a) = SortQuant <$> sort' (envWeaken gamma) a
+          sort' gamma (AInstn a t) = 
+              case sort' gamma a of
+                  Right (SortQuant s) -> Right . sortInstantiate t $ SortQuant s 
+                  Right s -> Left $ "Instantiation on non-quantified sort: " ++ show s
+                  err     -> err
 
           -- Lattice stuff
-          sort' _     (ATop   s _) = s
-          sort' _     (ABot   s  ) = s
-          sort' gamma (AFix   s a) =
-              let sortA = SortTuple $ sort' (envInsert s gamma) <$> a
-              in if sortA == s
-                 then sortA
-                 else s `rsInfo` ("Fixpoint has incorrect sort: " ++ "\nNoted sort:   " ++ show s 
-                                                                  ++ "\nDerived sort: " ++ show sortA)   
+          sort' _     (ATop   s _) = Right s
+          sort' _     (ABot   s  ) = Right s
+          sort' _     (AFix   s _) = Right s
 
