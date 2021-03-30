@@ -107,7 +107,7 @@ application (ATop s vs) x | sortIsRegion s = ATop s $ constrAdd (collect Infty x
                           | otherwise      = ATop s vs
 application (ABot s) _ = (ABot s)
 -- Cannot eval
-application f    x = AApl f x
+application f x = AApl f x
 
 
 
@@ -119,10 +119,10 @@ instantiate (AQuant anno) ty = eval $ foldAnnAlg annInstAlg anno
     aFix   = \d s a -> AFix (sortSubstitute d ty s) a
   } 
 -- Top and bottom
-instantiate (ATop s vs) _ = (ATop s vs)
-instantiate (ABot s   ) _ = (ABot s)
+instantiate (ATop s vs) ty = (ATop (sortInstantiate ty s) vs)
+instantiate (ABot s   ) ty = (ABot (sortInstantiate ty s))
 -- Cannot eval
-instantiate a    t = AInstn a t
+instantiate a t = AInstn a t
 
 
 -- | Only project if subannotation has been evaluated to a tuple

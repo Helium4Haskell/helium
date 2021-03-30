@@ -215,7 +215,7 @@ annRemLocalRegs :: Annotation -> Annotation
 annRemLocalRegs = foldAnnAlg cleanAlg
   where cleanAlg = idAnnAlg {
     aMinus  = \_ a _ -> a,
-    aReg    = \_ r   -> if r == RegionGlobal then AReg r else ABot SortMonoRegion,
+    aReg    = \_ r   -> if r == RegionGlobal then AReg RegionGlobal else ABot SortMonoRegion,
     aConstr = \_     -> AConstr . constrRemLocalRegs,
     aTop    = \_ s   -> ATop s . constrRemLocalRegs
   }

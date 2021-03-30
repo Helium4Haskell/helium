@@ -3,6 +3,7 @@ module Helium.CodeGeneration.Iridium.RegionSize.PassRegionSize
 where
 
 import Lvm.Common.Id
+import Lvm.Core.Type
 
 import Helium.CodeGeneration.Iridium.Data
 import Helium.CodeGeneration.Iridium.BindingGroup
@@ -16,6 +17,7 @@ import Helium.CodeGeneration.Iridium.RegionSize.Utils
 import Helium.CodeGeneration.Iridium.RegionSize.Fixpoint
 
 import Data.List (intercalate)
+import Data.Either (rights, lefts)
 
 -- | Infer the size of regions
 passRegionSize :: NameSupply -> Module -> IO Module
@@ -59,9 +61,9 @@ temp modName gEnv methods = do
 
     putStrLn $ "\n# Analyse methods:\n" ++ (intercalate "\n" $ map (show.fst) methods)
     
-    let mAnn    = analyseMethods gEnv methods
-        simpl   = eval mAnn
-        fixed   = solveFixpoints simpl
+    let mAnn  = analyseMethods gEnv methods
+        simpl = eval mAnn
+        fixed = solveFixpoints simpl
         -- mSrt1 = sort mAnn
         mSrt2 = sort fixed
 
@@ -91,11 +93,12 @@ temp modName gEnv methods = do
     fixed' <- case mSrt2 of
                 Left  e -> putStrLn e >>= \_ -> rsError "nope"
                 Right _ -> return $ unsafeUnliftTuple fixed
+    let zerod = uncurry fixZeroArity <$> zip methods fixed'
 
     -- Update the global environment with the found annotations
-    let gEnv' = foldr (uncurry insertGlobal) gEnv $ zip (fst <$> methods) fixed'
+    let gEnv' = foldr (uncurry insertGlobal) gEnv $ zip (fst <$> methods) zerod
     -- Save the annotation on the method
-    let methods' = map (\((name,Method a b c d e anns f g), ann) -> (name, Method a b c d e (MethodAnnotateRegionSize ann:anns) f g)) $ zip methods fixed'
+    let methods' = map (\((name,Method a b c d e anns f g), ann) -> (name, Method a b c d e (MethodAnnotateRegionSize ann:anns) f g)) $ zip methods zerod
     
     return (gEnv', methods')
 
@@ -104,3 +107,24 @@ temp modName gEnv methods = do
 unsafeUnliftTuple :: Annotation -> [Annotation]
 unsafeUnliftTuple (ATuple as) = as
 unsafeUnliftTuple a = rsError $ "unsafeUnliftTuple: Called unsafe unlift tuple on non-tuple: " ++ show a
+
+
+-- TODO: Quantifiers
+-- | Fix problems arising from zero arity functions
+fixZeroArity :: (Id, Method) -> Annotation -> Annotation
+fixZeroArity (name, Method _ aRegs args _ rRegs _ _ _) ann =
+  case length $ rights args of
+    0 -> let 
+             aplARegs = AApl ann      $ regionVarsToGlobal aRegs
+             newQuantIndexes = reverse $ TVar <$> [1..(length $ lefts args)]
+             aplTypes = foldl AInstn aplARegs newQuantIndexes
+             aplRRegs = AApl aplTypes $ regionVarsToGlobal rRegs
+             quants :: Annotation -> Annotation
+             quants a = foldr (const AQuant) a (lefts args)
+         in eval $ quants aplRRegs
+    _ -> ann 
+
+-- | Create an annotation that assigns all regionvars the global region
+regionVarsToGlobal :: RegionVars -> Annotation
+regionVarsToGlobal (RegionVarsSingle r) = AReg RegionGlobal
+regionVarsToGlobal (RegionVarsTuple rs) = ATuple $ regionVarsToGlobal <$> rs

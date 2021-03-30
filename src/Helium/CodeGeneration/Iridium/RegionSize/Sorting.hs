@@ -2,9 +2,8 @@ module Helium.CodeGeneration.Iridium.RegionSize.Sorting
     ( sort
     ) where
 
-import Helium.CodeGeneration.Iridium.RegionSize.Sort
 import Helium.CodeGeneration.Iridium.RegionSize.Annotation
-import Helium.CodeGeneration.Iridium.RegionSize.Utils
+import Helium.CodeGeneration.Iridium.RegionSize.Sort
 
 import qualified Data.Map as M
 import Data.Either (lefts,rights)
@@ -22,7 +21,7 @@ envInsert s = M.insert 0 s . envWeaken
 
 -- | Increase all env indexes by one
 envWeaken :: Gamma -> Gamma
-envWeaken = M.mapKeys ((+) 1) . M.map (sortWeaken 1) 
+envWeaken = M.mapKeys ((+) 1) . M.map (sortWeaken 1)
 
 ----------------------------------------------------------------
 -- Sorting
@@ -44,7 +43,7 @@ sort = sort' (-1) M.empty
           -- Lambdas & applications
           sort' d gamma (ALam   s a) = 
               let sortR = sort' (d+1) (envInsert s gamma) a
-              in SortLam s <$> (sortReIndex strengthenIdx 0) <$> sortR
+              in SortLam s <$> sortStrengthen <$> sortR
           sort' d gamma (AApl   f x) = 
               case sort' d gamma f of
                 Right (SortLam sortA sortR) ->
