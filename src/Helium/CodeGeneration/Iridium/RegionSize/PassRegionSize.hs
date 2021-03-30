@@ -50,56 +50,57 @@ analyseGroup modName gEnv (BindingNonRecursive decl@(Declaration methodName _ _ 
 
 temp ::  String -> GlobalEnv -> [(Id,Method)] -> IO (GlobalEnv, [(Id,Method)])
 temp modName gEnv methods = do
-  if((modName == "LvmLang"        && True)
-    || (modName == "HeliumLang"   && True) 
-    || (modName == "PreludePrim"  && True)
-    || (modName == "Prelude"      && True)
-    || (modName == "LvmException" && True))
+  if((modName == "LvmLang"        && False)
+    || (modName == "HeliumLang"   && False) 
+    || (modName == "PreludePrim"  && False)
+    || (modName == "Prelude"      && False)
+    || (modName == "LvmException" && False))
   then do
     return (gEnv, methods)
   else do
-
     putStrLn $ "\n# Analyse methods:\n" ++ (intercalate "\n" $ map (show.fst) methods)
-    
+    -- Generate the annotations     
     let mAnn  = analyseMethods gEnv methods
-        simpl = eval mAnn
-        fixed = solveFixpoints simpl
-        -- mSrt1 = sort mAnn
-        mSrt2 = sort fixed
+    -- Simplify the generated annotation
+    let simpl = eval mAnn
+    -- Solve the fixpoints
+    let fixed = solveFixpoints simpl
+    -- Check if the resulting annotation is well-sroted
+    let sorts = sort fixed
+    -- fixed' <- case sorts of
+                -- Left  e -> putStrLn e >>= \_ -> rsError "nope"
+                -- Right _ -> return $ unsafeUnliftTuple fixed
+    -- Fix the annotations of zero arity definitions
+    let zerod = uncurry fixZeroArity <$> zip methods (unsafeUnliftTuple fixed)
+    -- Update the global environment with the found annotations
+    let gEnv' = foldr (uncurry insertGlobal) gEnv $ zip (fst <$> methods) zerod
+    -- Save the annotation on the method
+    let methods' = map (\((name,Method a b c d e anns f g), ann) -> (name, Method a b c d e (MethodAnnotateRegionSize ann:anns) f g)) $ zip methods zerod
 
-
-    if((modName == "LvmLang"        && True)
-      || (modName == "HeliumLang"   && True) 
-      || (modName == "PreludePrim"  && True)
-      || (modName == "Prelude"      && True)
-      || (modName == "LvmException" && True))
+    if((modName == "LvmLang"        && False)
+      || (modName == "HeliumLang"   && False) 
+      || (modName == "PreludePrim"  && False)
+      || (modName == "Prelude"      && False)
+      || (modName == "LvmException" && False))
     then do putStrLn "-"
     else do
       print mAnn
       putStrLn $ "\n# Simplified: "
-      putStrLn $ (show simpl) 
+      print simpl 
       putStrLn $ "\n# Fixpoint: "
-      putStrLn $ (show fixed) 
+      print fixed
       putStrLn $ "\n# Sort: "
-      print mSrt2 
+      print sorts 
 
       -- if mSrt1 /= mSrt2
       -- then putStrLn $ "Evaluation returned different sort!"
       --               ++ "\n\tPre-eval:  " ++ show mSrt1
       --               ++ "\n\tPost-eval: " ++ show mSrt2 
       -- else return ()
-      putStrLn ""
-      putStrLn ""
-    fixed' <- case mSrt2 of
-                Left  e -> putStrLn e >>= \_ -> rsError "nope"
-                Right _ -> return $ unsafeUnliftTuple fixed
-    let zerod = uncurry fixZeroArity <$> zip methods fixed'
 
-    -- Update the global environment with the found annotations
-    let gEnv' = foldr (uncurry insertGlobal) gEnv $ zip (fst <$> methods) zerod
-    -- Save the annotation on the method
-    let methods' = map (\((name,Method a b c d e anns f g), ann) -> (name, Method a b c d e (MethodAnnotateRegionSize ann:anns) f g)) $ zip methods zerod
-    
+      putStrLn ""
+      putStrLn ""
+
     return (gEnv', methods')
 
 
@@ -110,21 +111,21 @@ unsafeUnliftTuple a = rsError $ "unsafeUnliftTuple: Called unsafe unlift tuple o
 
 
 -- TODO: Quantifiers
--- | Fix problems arising from zero arity functions
+{-| Fix problems arising from zero arity functions
+  Assigns the global regions to the return regions and additional regions.
+-}
 fixZeroArity :: (Id, Method) -> Annotation -> Annotation
-fixZeroArity (name, Method _ aRegs args _ rRegs _ _ _) ann =
+fixZeroArity (_, Method _ aRegs args _ rRegs _ _ _) ann =
   case length $ rights args of
-    0 -> let 
-             aplARegs = AApl ann      $ regionVarsToGlobal aRegs
+    0 -> let aplARegs = AApl ann      $ regionVarsToGlobal aRegs
              newQuantIndexes = reverse $ TVar <$> [1..(length $ lefts args)]
+             quants a = foldr (const AQuant) a (lefts args)
              aplTypes = foldl AInstn aplARegs newQuantIndexes
              aplRRegs = AApl aplTypes $ regionVarsToGlobal rRegs
-             quants :: Annotation -> Annotation
-             quants a = foldr (const AQuant) a (lefts args)
          in eval $ quants aplRRegs
     _ -> ann 
 
 -- | Create an annotation that assigns all regionvars the global region
 regionVarsToGlobal :: RegionVars -> Annotation
-regionVarsToGlobal (RegionVarsSingle r) = AReg RegionGlobal
+regionVarsToGlobal (RegionVarsSingle _) = AReg RegionGlobal
 regionVarsToGlobal (RegionVarsTuple rs) = ATuple $ regionVarsToGlobal <$> rs

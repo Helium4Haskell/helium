@@ -103,12 +103,15 @@ application (ALam lamS f) x | sortIsAnnotation lamS = eval $ annStrengthen $ fol
           aTop    = \d s c -> ATop s  $ regVarSubst d x c
         }
 -- Top and bottom
-application (ATop s vs) x | sortIsRegion s = ATop s $ constrAdd (collect Infty x) vs
-                          | otherwise      = ATop s vs
-application (ABot s) _ = (ABot s)
+application (ATop s vs) x | sortIsRegion s = ATop (sortDropLam s) $ constrAdd (collect Infty x) vs
+                          | otherwise      = ATop (sortDropLam s) vs
+application (ABot s) _ = (ABot $ sortDropLam s)
 -- Cannot eval
 application f x = AApl f x
 
+sortDropLam :: Sort -> Sort
+sortDropLam (SortLam _ s) = s
+sortDropLam s = s-- error $ "Called droplam on non-sortlam: " ++ show s
 
 
 -- | Instantiate a type if it starts with a quantification 
@@ -127,7 +130,7 @@ instantiate a t = AInstn a t
 
 -- | Only project if subannotation has been evaluated to a tuple
 project :: Int -> Annotation -> Annotation 
--- project _   AUnit       = AUnit -- TODO: Check if this is sound, if missing causes an issue in region eval
+project _   AUnit       = AUnit -- TODO: Check if this is sound, if missing causes an issue in region eval
 project idx (ATuple as) | length as > idx = as !! idx
                         | otherwise       = rsError $ "Projection-index out of bounds\n Idx: " ++ show idx ++ "\n Annotation: " ++ (show $ ATuple as)
 -- Top and bottom

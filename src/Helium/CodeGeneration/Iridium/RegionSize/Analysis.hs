@@ -48,7 +48,6 @@ De Bruijn indices (dbz = de bruijn size):
     dbz+1  : Additional regions
     dbz+2  : Global fixpoint argument
 -}
--- TODO: Improve naming
 analyseMethod :: GlobalEnv -> (Id, Method) -> (Annotation, Sort)
 analyseMethod gEnv@(GlobalEnv tEnv _) (_, method@(Method mTy aRegs args _ rRegs _ fstBlock otherBlocks)) =
     let blocks    = (fstBlock:otherBlocks)
@@ -64,17 +63,19 @@ analyseMethod gEnv@(GlobalEnv tEnv _) (_, method@(Method mTy aRegs args _ rRegs 
         -- Retrieve the annotation and effect of the function body
         initBEnv = mapFromList.map (\(idx,bName) -> (bName, AProj idx $ AVar fixIdx)) $ zip [0..] (blockName <$> blocks)
         blockAnn = blockAccum (Envs gEnv rEnv localEnv) initBEnv <$> blocks
-        -- TODO: listFromMap is not guaranteed to be order preserving
-        localFix = AProj 0 . AFix SortUnit $ (unliftTuple <$> blockAnn) ++ (snd <$> (listFromMap $ lEnvAnnotations localEnv))
 
         -- Generate the method annotation
-        (aRegS, argS, rtnS) = argumentSorts method
-        bAnn' = wrapBody (last argS) localFix rtnS
+        (aRegS, argS, rrSort, raSort) = argumentSorts method
+        bSorts = const (SortTuple [raSort, SortConstr]) <$> blocks
+        lSorts = const (SortUnit) <$> (listFromMap $ lEnvAnnotations localEnv)
+        -- TODO: listFromMap is not guaranteed to be order preserving
+        localFix = AProj 0 . AFix (SortTuple (bSorts ++ lSorts)) $ (unliftTuple <$> blockAnn) ++ (snd <$> (listFromMap $ lEnvAnnotations localEnv))
         fAnn  = ALam aRegS 
               $ if argS == []
-                then ALam rtnS localFix -- IDEA: Now 'SortUnit' but could be a way to deal with thunk allocations
-                else foldr (\s a -> wrapBody s (ATuple [a,botEffect]) SortUnit) bAnn' $ init argS
-                
+                then ALam rrSort localFix -- IDEA: Now 'SortUnit' but could be a way to deal with thunk allocations
+                else foldr (\s a -> wrapBody s (ATuple [a,botEffect]) SortUnit) 
+                           (wrapBody (last argS) localFix rrSort) 
+                           $ init argS
     in ( fAnn
        , SortLam aRegS $ sortAssign mTy) 
 
@@ -85,20 +86,22 @@ wrapBody mS bAnn rrSort =
       Nothing -> AQuant $ AProj 0 bAnn
       Just s  -> ALam s $ ALam rrSort bAnn
 
-
 {- Compute the sort of all method arguments,
     Returns a tuple of:
     0: Additional regions  
     1: Sort of regular argument (`Nothing' if quantifier)  
     2: Sort of return region
+    3: Sort of return type
 -}
-argumentSorts :: Method -> (Sort, [Maybe Sort], Sort)
+argumentSorts :: Method -> (Sort, [Maybe Sort], Sort, Sort)
 argumentSorts method@(Method _ regArgs args resTy _ _ _ _) = 
     let (FunctionType argTy _) = methodFunctionType method
         argSorts = mapAccumL argumentSortAssign 0 argTy
         aRegSort = regionVarsToSort regArgs
-        rrSort   = regionAssign $ typeWeaken (2*(length $ rights args)-1) $ TStrict resTy
-    in (aRegSort, snd argSorts, rrSort)
+        rType    = typeWeaken (2*(length $ rights args)-1) $ TStrict resTy
+        rrSort   = regionAssign rType
+        raSort   = sortAssign rType
+    in (aRegSort, snd argSorts, rrSort, raSort)
 
 -- | Assign sort to types, return Nothing for a quantor
 argumentSortAssign :: Int -> Either Quantor Type -> (Int, Maybe Sort)
