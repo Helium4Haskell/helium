@@ -25,7 +25,10 @@ import GHC.Stack
 data GlobalEnv = GlobalEnv !TypeEnvironment !(IdMap (Annotation))
 type RegionEnv = M.Map RegionVar ConstrIdx
 type BlockEnv  = IdMap Annotation
-type LocalEnv  = IdMap Annotation
+data LocalEnv  = LocalEnv { 
+  lEnvArgCount    :: Int, 
+  lEnvAnnotations :: IdMap Annotation 
+}
 data Envs = Envs GlobalEnv RegionEnv LocalEnv
 
 ----------------------------------------------------------------
@@ -65,46 +68,60 @@ initialGEnv m = GlobalEnv typeEnv functionEnv
 ----------------------------------------------------------------
 
 -- | Look up a local variable in the local environment
-lookupGlobal :: HasCallStack => GlobalEnv -> Id -> Annotation
-lookupGlobal (GlobalEnv _ vars) name = 
+lookupGlobal :: HasCallStack => Id -> GlobalEnv -> Annotation
+lookupGlobal name (GlobalEnv _ vars) = 
   case lookupMap name vars of
     Nothing -> rsError $ "lookupGlobal - Global environment did not contain: " ++ stringFromId name
     Just a  -> a 
 
 -- | Insert a function into the global environment
-insertGlobal :: HasCallStack => GlobalEnv -> Id -> Annotation -> GlobalEnv
-insertGlobal (GlobalEnv syns fs) name ann =
+insertGlobal :: HasCallStack => Id -> Annotation -> GlobalEnv -> GlobalEnv
+insertGlobal name ann (GlobalEnv syns fs) =
   case lookupMap name fs of
     Nothing -> GlobalEnv syns $ insertMap name ann fs 
     Just a  -> GlobalEnv syns $ insertMap name (AJoin a ann) $ deleteMap name fs 
 
 
 -- | Look up a local variable in the local environment
-lookupBlock :: BlockEnv -> BlockName -> Annotation
-lookupBlock bEnv name = 
+lookupBlock :: BlockName -> BlockEnv -> Annotation
+lookupBlock name bEnv = 
   case lookupMap name bEnv of
     Nothing -> rsError $ "lookupBlock -Block variable missing: " ++ stringFromId name
     Just a  -> a 
 
 -- | Look up a local variable in the local environment
-lookupLocal :: HasCallStack => LocalEnv -> Local -> Annotation
-lookupLocal lEnv local = case lookupMap (localName local) lEnv of
-                            Nothing -> rsError $ "lookupLocal - ID not in map: " ++ (stringFromId $ localName local) 
-                            Just a  -> a
+lookupLocal :: HasCallStack => Local -> LocalEnv -> Annotation
+lookupLocal local (LocalEnv _ lEnv) = 
+  case lookupMap (localName local) lEnv of
+    Nothing -> rsError $ "lookupLocal - ID not in map: " ++ (stringFromId $ localName local) 
+    Just a  -> a
 
 -- | Lookup a global or local variable
-lookupVar :: HasCallStack => Envs -> Variable -> Annotation
-lookupVar (Envs _ _ lEnv) (VarLocal local) = lookupLocal lEnv local
-lookupVar (Envs gEnv _ _) global           = lookupGlobal gEnv $ variableName global
+lookupVar :: HasCallStack => Variable -> Envs -> Annotation
+lookupVar (VarLocal local) (Envs _ _ lEnv) = lookupLocal local lEnv
+lookupVar global           (Envs gEnv _ _) = lookupGlobal (variableName global) gEnv
 
 
 -- | Lookup a region in the region environment, retuns the region if not in env
-lookupReg :: HasCallStack => RegionEnv -> RegionVar -> ConstrIdx
-lookupReg rEnv r = case M.lookup r rEnv of
+lookupReg :: HasCallStack => RegionVar -> RegionEnv -> ConstrIdx
+lookupReg r rEnv = case M.lookup r rEnv of
                       Nothing -> Region r
                       Just ci -> ci
 
 
+-- | Insert a local variable
+insertLocal :: Id -> Annotation -> LocalEnv -> LocalEnv
+insertLocal name ann (LocalEnv argC lEnv) = LocalEnv argC $ insertMap name ann lEnv
+
+-- | Insert a local variable
+updateLocal :: Id -> Annotation -> LocalEnv -> LocalEnv
+updateLocal name ann (LocalEnv argC lEnv) = LocalEnv argC $ updateMap name ann lEnv
+
 -- | Alter a value in the global map
-updateGlobal :: HasCallStack => GlobalEnv -> Id -> Annotation -> GlobalEnv
-updateGlobal (GlobalEnv syns fs) name ann = GlobalEnv syns $ updateMap name ann fs
+updateGlobal :: HasCallStack => Id -> Annotation -> GlobalEnv -> GlobalEnv
+updateGlobal name ann (GlobalEnv syns fs) = GlobalEnv syns $ updateMap name ann fs
+
+
+-- | Union the localenv with another annotation map
+unionLocalEnv :: LocalEnv -> IdMap Annotation -> LocalEnv
+unionLocalEnv (LocalEnv n m1) m2 = LocalEnv n $ unionMap m1 m2 

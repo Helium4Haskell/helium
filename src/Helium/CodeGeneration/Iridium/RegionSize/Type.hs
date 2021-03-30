@@ -66,6 +66,6 @@ typeInsantiate :: Depth -- ^ Depth in sort
 typeInsantiate subD subT = foldTypeAlgN subD instAlg
   where instAlg = idTypeAlg {
     tVar = \d idx -> if d == idx
-                     then typeWeaken d subT
+                     then typeSubstitutions d [] subT
                      else TVar idx
   }

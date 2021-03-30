@@ -127,9 +127,9 @@ instantiate a    t = AInstn a t
 
 -- | Only project if subannotation has been evaluated to a tuple
 project :: Int -> Annotation -> Annotation 
-project _   AUnit       = AUnit -- TODO: Check if this is sound, if missing causes an issue in region eval
+-- project _   AUnit       = AUnit -- TODO: Check if this is sound, if missing causes an issue in region eval
 project idx (ATuple as) | length as > idx = as !! idx
-                        | otherwise       = AUnit --rsError $ "Projection-index out of bounds\n Idx: " ++ show idx ++ "\n Annotation: " ++ (show $ ATuple as)
+                        | otherwise       = rsError $ "Projection-index out of bounds\n Idx: " ++ show idx ++ "\n Annotation: " ++ (show $ ATuple as)
 -- Top and bottom
 project idx (ATop s vs) = (ATop (indexSortTuple idx s) vs)
 project idx (ABot s)    = (ABot (indexSortTuple idx s))

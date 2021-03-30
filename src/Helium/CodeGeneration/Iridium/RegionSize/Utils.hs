@@ -20,7 +20,7 @@ type Index = Int
 
 -- | Increase unbound indexes by subD
 weakenIdx :: Int -> Depth -> Index -> Index
-weakenIdx subD d idx = if idx >= d -- If idx >= d: var points outside of applicated term 
+weakenIdx subD d idx = if idx > d -- If idx >= d: var points outside of applicated term 
                         then idx + subD -- Reindex
                         else idx 
 

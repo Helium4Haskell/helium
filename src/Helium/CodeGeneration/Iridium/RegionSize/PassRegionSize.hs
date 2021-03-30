@@ -9,20 +9,13 @@ import Helium.CodeGeneration.Iridium.BindingGroup
 
 import Helium.CodeGeneration.Iridium.RegionSize.Analysis
 import Helium.CodeGeneration.Iridium.RegionSize.Annotation
-import Helium.CodeGeneration.Iridium.RegionSize.Constraints
 import Helium.CodeGeneration.Iridium.RegionSize.Environments
 import Helium.CodeGeneration.Iridium.RegionSize.Evaluate
-import Helium.CodeGeneration.Iridium.RegionSize.Sort
 import Helium.CodeGeneration.Iridium.RegionSize.Sorting
 import Helium.CodeGeneration.Iridium.RegionSize.Utils
 import Helium.CodeGeneration.Iridium.RegionSize.Fixpoint
 
-
 import Data.List (intercalate)
-import Data.Either (isLeft)
-
-
--- | TODO: There is still an evalutation bug.. Test.recu, first bound to a (fix) after eval bound to b
 
 -- | Infer the size of regions
 passRegionSize :: NameSupply -> Module -> IO Module
@@ -55,11 +48,11 @@ analyseGroup modName gEnv (BindingNonRecursive decl@(Declaration methodName _ _ 
 
 temp ::  String -> GlobalEnv -> [(Id,Method)] -> IO (GlobalEnv, [(Id,Method)])
 temp modName gEnv methods = do
-  if((modName == "LvmLang"        && False)
-    || (modName == "HeliumLang"   && False) 
-    || (modName == "PreludePrim"  && False)
-    || (modName == "Prelude"      && False)
-    || (modName == "LvmException" && False))
+  if((modName == "LvmLang"        && True)
+    || (modName == "HeliumLang"   && True) 
+    || (modName == "PreludePrim"  && True)
+    || (modName == "Prelude"      && True)
+    || (modName == "LvmException" && True))
   then do
     return (gEnv, methods)
   else do
@@ -73,11 +66,11 @@ temp modName gEnv methods = do
         mSrt2 = sort fixed
 
 
-    if((modName == "LvmLang"        && False)
-      || (modName == "HeliumLang"   && False) 
-      || (modName == "PreludePrim"  && False)
-      || (modName == "Prelude"      && False)
-      || (modName == "LvmException" && False))
+    if((modName == "LvmLang"        && True)
+      || (modName == "HeliumLang"   && True) 
+      || (modName == "PreludePrim"  && True)
+      || (modName == "Prelude"      && True)
+      || (modName == "LvmException" && True))
     then do putStrLn "-"
     else do
       print mAnn
@@ -95,12 +88,15 @@ temp modName gEnv methods = do
       -- else return ()
       putStrLn ""
       putStrLn ""
-    let fixed' = if isLeft mSrt2 
-                 then repeat (ATop SortUnit constrBot)
-                 else unsafeUnliftTuple fixed
+    fixed' <- case mSrt2 of
+                Left  e -> putStrLn e >>= \_ -> rsError "nope"
+                Right _ -> return $ unsafeUnliftTuple fixed
 
-    let gEnv' = foldl (\env (name,ann) -> insertGlobal env name ann) gEnv $ zip (fst <$> methods) fixed'
-        methods' = map (\((name,Method a b c d e anns f g), ann) -> (name, Method a b c d e (MethodAnnotateRegionSize ann:anns) f g)) $ zip methods fixed'
+    -- Update the global environment with the found annotations
+    let gEnv' = foldr (uncurry insertGlobal) gEnv $ zip (fst <$> methods) fixed'
+    -- Save the annotation on the method
+    let methods' = map (\((name,Method a b c d e anns f g), ann) -> (name, Method a b c d e (MethodAnnotateRegionSize ann:anns) f g)) $ zip methods fixed'
+    
     return (gEnv', methods')
 
 

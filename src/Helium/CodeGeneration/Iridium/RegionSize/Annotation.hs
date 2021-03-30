@@ -1,7 +1,7 @@
 {-# LANGUAGE PatternSynonyms #-}
 
 module Helium.CodeGeneration.Iridium.RegionSize.Annotation
-  ( Annotation(..), Effect, pattern AUnit,
+  ( Annotation(..), Effect, pattern AUnit, annShow,
     AnnAlg(..), foldAnnAlg, foldAnnAlgN, idAnnAlg,
     liftTuple, unliftTuple,
     collect,
@@ -55,8 +55,11 @@ pattern AUnit = ATuple []
 ----------------------------------------------------------------
 
 instance Show Annotation where
-    show = foldAnnAlg showAlg
-      where showAlg = AnnAlg {
+  show = annShow (-1)
+
+annShow :: Int -> Annotation -> String    
+annShow n = foldAnnAlgN n showAlg
+     where showAlg = AnnAlg {
         aVar    = \d idx -> annVarName (d - idx),
         aReg    = \_ idx -> show idx,
         aLam    = \d s a -> "(λ"++ annVarName (d+1) ++":"++ showSort d s ++ ".\n" ++ indent a ++ ")",
