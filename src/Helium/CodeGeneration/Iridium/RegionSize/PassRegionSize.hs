@@ -90,6 +90,11 @@ temp modName gEnv methods = do
                   . solveFixpoints 
                   $ analyseMethods 1 gEnv' methods')
 
+    -- Do the program transformation
+    let transformed = uncurry transform <$> zip effects (snd <$> methods')
+    let emptyRegs   = collectEmptyRegs <$> transformed
+    let cleaned     = uncurry remEmptyRegs <$> zip emptyRegs transformed
+
     if((modName == "LvmLang"        && True)
       || (modName == "HeliumLang"   && True) 
       || (modName == "PreludePrim"  && True)
@@ -118,7 +123,7 @@ temp modName gEnv methods = do
       putStrLn ""
       putStrLn ""
 
-    return (gEnv', zip (fst <$> methods) $ uncurry transform <$> zip effects (snd <$> methods'))
+    return (gEnv', zip (fst <$> methods) cleaned)
 
 
 -- | Get an array of annotations from a tuple

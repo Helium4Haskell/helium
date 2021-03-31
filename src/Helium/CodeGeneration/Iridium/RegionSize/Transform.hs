@@ -1,11 +1,14 @@
 module Helium.CodeGeneration.Iridium.RegionSize.Transform
-    (transform)
+    (transform, collectEmptyRegs, remEmptyRegs)
 where
 
 import Helium.CodeGeneration.Iridium.Data
 
 import Helium.CodeGeneration.Iridium.RegionSize.Constraints
 
+----------------------------------------------------------------
+-- Fill in region sizes
+----------------------------------------------------------------
 transform :: Constr -> Method -> Method
 transform bounds (Method a b c d e f fstBlock otherBlocks) =
     let fstBlock'    = transformBlock bounds     fstBlock
@@ -28,7 +31,60 @@ transformInstr bounds instr =
         ReleaseRegion a next -> ReleaseRegion a $ transformInstr bounds next
         instr -> instr -- Other terminal nodes 
 
+-- Lookup a bound in a constraint set and convert it to a maybe int
 lookupBound :: RegionVar -> Constr -> Maybe Int
 lookupBound r c = case constrIdx (Region r) c of
                     Nat n -> Just n
                     Infty -> Nothing
+
+----------------------------------------------------------------
+-- Collect 0-size regions
+----------------------------------------------------------------
+
+collectEmptyRegs :: Method -> [RegionVar]
+collectEmptyRegs (Method _ _ _ _ _ _ fstBlock otherBlocks) =
+    concat $ collectEmptyRegsBlock <$> fstBlock:otherBlocks
+
+collectEmptyRegsBlock :: Block -> [RegionVar]
+collectEmptyRegsBlock (Block _ instr) =
+    collectEmptyRegsInstr instr
+
+collectEmptyRegsInstr :: Instruction -> [RegionVar]
+collectEmptyRegsInstr instr = 
+    case instr of
+        NewRegion reg (Just 0) next -> reg : collectEmptyRegsInstr next
+        NewRegion reg _        next -> collectEmptyRegsInstr next
+        Let         a b        next -> collectEmptyRegsInstr next
+        LetAlloc      a        next -> collectEmptyRegsInstr next
+        Match   a b c d        next -> collectEmptyRegsInstr next
+        ReleaseRegion a        next -> collectEmptyRegsInstr next
+        _                    -> []
+
+----------------------------------------------------------------
+-- Remove 0-size regions
+----------------------------------------------------------------
+
+remEmptyRegs :: [RegionVar] -> Method -> Method
+remEmptyRegs emptyRegs (Method a b c d e f fstBlock otherBlocks) =
+    let fstBlock'    = remEmptyRegsBlock emptyRegs     fstBlock
+        otherBlocks' = remEmptyRegsBlock emptyRegs <$> otherBlocks
+    in (Method a b c d e f fstBlock' otherBlocks')
+
+remEmptyRegsBlock :: [RegionVar] -> Block -> Block
+remEmptyRegsBlock emptyRegs (Block a instr) =
+    let instr' = remEmptyRegsInstr emptyRegs instr
+    in (Block a instr')
+
+remEmptyRegsInstr :: [RegionVar] -> Instruction -> Instruction
+remEmptyRegsInstr emptyRegs instr = 
+    case instr of
+        NewRegion   reg b next -> if reg `elem` emptyRegs
+                                  then remEmptyRegsInstr emptyRegs next
+                                  else NewRegion   reg b $ remEmptyRegsInstr emptyRegs next
+        ReleaseRegion reg next -> if reg `elem` emptyRegs
+                                  then remEmptyRegsInstr emptyRegs next
+                                  else ReleaseRegion reg $ remEmptyRegsInstr emptyRegs next
+        Let           a b next -> Let         a b $ remEmptyRegsInstr emptyRegs next
+        LetAlloc        a next -> LetAlloc      a $ remEmptyRegsInstr emptyRegs next
+        Match     a b c d next -> Match   a b c d $ remEmptyRegsInstr emptyRegs next
+        instr -> instr -- Other terminal nodes 
