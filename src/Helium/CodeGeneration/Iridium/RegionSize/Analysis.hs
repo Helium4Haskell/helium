@@ -24,12 +24,17 @@ import qualified Data.Map as M
 ----------------------------------------------------------------
 
 -- | Analyse a (possibilty recursive) binding group
-analyseMethods :: GlobalEnv -> [(Id,Method)] -> Annotation
-analyseMethods gEnv methods =
-    let (gEnv',_)    = foldl makeFixVar (gEnv,0) methods
+type Pass = Int
+analyseMethods :: Pass ->  GlobalEnv -> [(Id,Method)] -> Annotation
+analyseMethods pass gEnv methods =
+    let (gEnv',_)    = case pass of
+                          0 -> foldl makeFixVar (gEnv,0) methods
+                          _ -> (gEnv,0)
         (anns,sorts) = unzip $ analyseMethod gEnv' <$> methods
         fixpoints    = AFix (SortTuple sorts) anns
-    in annRemLocalRegs fixpoints
+    in case pass of 
+          0 -> annRemLocalRegs fixpoints
+          _ -> ATuple anns
         where makeFixVar (env, i) (methodName, (Method _ _ args _ _ _ _ _)) =
                     let fixIdx = deBruinSize args + 2
                         env'   = updateGlobal methodName (AProj i $ AVar fixIdx) env
@@ -208,7 +213,8 @@ analyseInstr envs@(Envs _ _ lEnv) bEnv = go
          -- Remove region from effect, size has been detrimined
          go (NewRegion r _   next) = 
              let (nxtAnn, nxtEff) = analyseInstr envs bEnv next
-             in  (nxtAnn, AMinus nxtEff r)
+            --  in  (nxtAnn, AMinus nxtEff r)
+             in  (nxtAnn, nxtEff)
          -- TODO: Check if we can ignore a release
          go (ReleaseRegion _ next) = analyseInstr envs bEnv next
          -- Lookup the annotation and effect from block

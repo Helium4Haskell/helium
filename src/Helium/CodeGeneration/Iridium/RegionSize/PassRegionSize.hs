@@ -10,10 +10,12 @@ import Helium.CodeGeneration.Iridium.BindingGroup
 
 import Helium.CodeGeneration.Iridium.RegionSize.Analysis
 import Helium.CodeGeneration.Iridium.RegionSize.Annotation
+import Helium.CodeGeneration.Iridium.RegionSize.Constraints
 import Helium.CodeGeneration.Iridium.RegionSize.Environments
 import Helium.CodeGeneration.Iridium.RegionSize.Evaluate
 import Helium.CodeGeneration.Iridium.RegionSize.Sort
 import Helium.CodeGeneration.Iridium.RegionSize.Sorting
+import Helium.CodeGeneration.Iridium.RegionSize.Transform
 import Helium.CodeGeneration.Iridium.RegionSize.Utils
 import Helium.CodeGeneration.Iridium.RegionSize.Fixpoint
 
@@ -52,38 +54,47 @@ analyseGroup modName gEnv (BindingNonRecursive decl@(Declaration methodName _ _ 
 
 temp ::  String -> GlobalEnv -> [(Id,Method)] -> IO (GlobalEnv, [(Id,Method)])
 temp modName gEnv methods = do
-  if((modName == "LvmLang"        && False)
-    || (modName == "HeliumLang"   && False) 
-    || (modName == "PreludePrim"  && False)
-    || (modName == "Prelude"      && False)
-    || (modName == "LvmException" && False))
+  if((modName == "LvmLang"        && True)
+    || (modName == "HeliumLang"   && True) 
+    || (modName == "PreludePrim"  && True)
+    || (modName == "Prelude"      && True)
+    || (modName == "LvmException" && True))
   then do
     return (gEnv, methods)
   else do
     putStrLn $ "\n# Analyse methods:\n" ++ (intercalate "\n" $ map (show.fst) methods)
     -- Generate the annotations     
-    let mAnn  = analyseMethods gEnv methods
+    let mAnn  = analyseMethods 0 gEnv methods
     -- Simplify the generated annotation
     let simpl = eval mAnn
     -- Solve the fixpoints
     let fixed = solveFixpoints simpl
     -- Check if the resulting annotation is well-sroted
     let sorts = sort fixed
-    -- fixed' <- case sorts of
-                -- Left  e -> putStrLn e >>= \_ -> rsError "nope"
-                -- Right _ -> return $ unsafeUnliftTuple fixed
+    fixed' <- case sorts of
+                Left  e -> putStrLn e >>= \_ -> rsError "nope"
+                Right _ -> return fixed
     -- Fix the annotations of zero arity definitions
-    let zerod = uncurry fixZeroArity <$> zip methods (unsafeUnliftTuple fixed)
+    let zerod = uncurry fixZeroArity <$> zip methods (unsafeUnliftTuple fixed')
+    
+
     -- Update the global environment with the found annotations
     let gEnv' = foldr (uncurry insertGlobal) gEnv $ zip (fst <$> methods) zerod
     -- Save the annotation on the method
     let methods' = map (\((name,Method a b c d e anns f g), ann) -> (name, Method a b c d e (MethodAnnotateRegionSize ann:anns) f g)) $ zip methods zerod
 
-    if((modName == "LvmLang"        && False)
-      || (modName == "HeliumLang"   && False) 
-      || (modName == "PreludePrim"  && False)
-      || (modName == "Prelude"      && False)
-      || (modName == "LvmException" && False))
+    -- Compute the second pass
+    let effects = collectEffects 
+              <$> (unsafeUnliftTuple 
+                  . eval 
+                  . solveFixpoints 
+                  $ analyseMethods 1 gEnv' methods')
+
+    if((modName == "LvmLang"        && True)
+      || (modName == "HeliumLang"   && True) 
+      || (modName == "PreludePrim"  && True)
+      || (modName == "Prelude"      && True)
+      || (modName == "LvmException" && True))
     then do putStrLn "-"
     else do
       print mAnn
@@ -95,6 +106,9 @@ temp modName gEnv methods = do
       print sorts 
       putStrLn $ "\n# Zerod: "
       print zerod 
+      putStrLn $ "\n# Effects: "
+      print effects
+
       -- if mSrt1 /= mSrt2
       -- then putStrLn $ "Evaluation returned different sort!"
       --               ++ "\n\tPre-eval:  " ++ show mSrt1
@@ -104,7 +118,7 @@ temp modName gEnv methods = do
       putStrLn ""
       putStrLn ""
 
-    return (gEnv', methods')
+    return (gEnv', zip (fst <$> methods) $ uncurry transform <$> zip effects (snd <$> methods'))
 
 
 -- | Get an array of annotations from a tuple
@@ -131,3 +145,25 @@ fixZeroArity (_, Method _ aRegs args _ rRegs _ _ _) ann =
 regionVarsToGlobal :: RegionVars -> Annotation
 regionVarsToGlobal (RegionVarsSingle _) = AReg RegionGlobal
 regionVarsToGlobal (RegionVarsTuple rs) = ATuple $ regionVarsToGlobal <$> rs
+
+
+collectEffects :: Annotation -> Constr
+collectEffects = foldAnnAlg collectAlg
+    where collectAlg = AnnAlg {
+        aVar    = \_ _   -> constrBot,
+        aReg    = \_ _   -> constrBot,
+        aLam    = \_ _ a -> a,
+        aApl    = \_ a b -> constrAdd a b,
+        aConstr = \_ c   -> c,
+        aUnit   = \_     -> constrBot,
+        aTuple  = \_ as  -> foldr constrAdd constrBot as,
+        aProj   = \_ _ a -> a,
+        aAdd    = \_ a b -> constrAdd a b,
+        aMinus  = \_ a _ -> a,
+        aJoin   = \_ a b -> constrAdd a b,
+        aQuant  = \_ a   -> a,
+        aInstn  = \_ a _ -> a,
+        aTop    = \_ _ _ -> constrBot,
+        aBot    = \_ _   -> constrBot,
+        aFix    = \_ _ a -> foldr constrAdd constrBot a
+    }

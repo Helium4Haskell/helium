@@ -43,6 +43,9 @@ instance Show Bound where
     show (Nat n) = show n
     show (Infty) = "∞"
 
+instance Show ConstrIdx where
+    show = constrIdxShow (-1)
+
 constrShow :: Depth -> Constr -> String
 constrShow d c = "{" ++ (intercalate ", " $ map (\(x, b) -> constrIdxShow d x ++ " ↦  " ++ show b) $ M.toList c) ++ "}"
 
