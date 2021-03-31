@@ -72,7 +72,8 @@ join _             (ATop   s vs) = ATop s vs
 -- Constraint set join
 join (AConstr  c1) (AConstr  c2) = AConstr $ constrJoin c1 c2
 -- Join-simplicitation
-join (ALam   s  a) (ALam   _  b) = ALam   s $ AJoin a b
+join (ALam   s1 a) (ALam   s2 b) | s1 == s2 = ALam s1 $ AJoin a b
+                                 | otherwise = operatorSort AJoin constrJoin [ALam s1 a, ALam s2 b]
 join (AApl   s  a) (AApl   _  b) = AApl   s $ AJoin a b
 join (AQuant a   ) (AQuant b   ) = AQuant   $ AJoin a b
 join (AInstn a  t) (AInstn b  _) = AInstn (AJoin a b) t
@@ -102,16 +103,13 @@ application (ALam lamS f) x | sortIsAnnotation lamS = eval $ annStrengthen $ fol
           aConstr = \d c   -> AConstr $ regVarSubst d x c,
           aTop    = \d s c -> ATop s  $ regVarSubst d x c
         }
+
 -- Top and bottom
 application (ATop s vs) x | sortIsRegion s = ATop (sortDropLam s) $ constrAdd (collect Infty x) vs
                           | otherwise      = ATop (sortDropLam s) vs
 application (ABot s) _ = (ABot $ sortDropLam s)
 -- Cannot eval
 application f x = AApl f x
-
-sortDropLam :: Sort -> Sort
-sortDropLam (SortLam _ s) = s
-sortDropLam s = s-- error $ "Called droplam on non-sortlam: " ++ show s
 
 
 -- | Instantiate a type if it starts with a quantification 
@@ -168,7 +166,7 @@ regVarSubst d ann c = foldl constrAdd c' insts
         ns    = flip constrIdx c <$> cIdxs -- Get bounds on indexes
         c'    = foldr constrRem c cIdxs    -- Remove cIdxs from c
         aIdxs = eval <$> regVarInst ann <$> (constrIdxToAnn <$> cIdxs)              -- Get new indexes
-        insts = constrReIndex (weakenIdx $ d+1) 0 <$> uncurry collect <$> zip ns aIdxs  -- Instantiate and weaken
+        insts = constrWeaken (d+1) <$> uncurry collect <$> zip ns aIdxs  -- Instantiate and weaken
         
         regVarInst :: Annotation -> Annotation -> Annotation
         regVarInst inst (AVar _)    = inst

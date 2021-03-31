@@ -12,6 +12,7 @@ import Helium.CodeGeneration.Iridium.RegionSize.Analysis
 import Helium.CodeGeneration.Iridium.RegionSize.Annotation
 import Helium.CodeGeneration.Iridium.RegionSize.Environments
 import Helium.CodeGeneration.Iridium.RegionSize.Evaluate
+import Helium.CodeGeneration.Iridium.RegionSize.Sort
 import Helium.CodeGeneration.Iridium.RegionSize.Sorting
 import Helium.CodeGeneration.Iridium.RegionSize.Utils
 import Helium.CodeGeneration.Iridium.RegionSize.Fixpoint
@@ -34,6 +35,7 @@ passRegionSize _ m = do
    or a group of (mutual) recursive functions.
 -} -- TODO: Remove module name from params
 analyseGroup :: String -> GlobalEnv -> BindingGroup Method -> IO (GlobalEnv, [Declaration Method])
+-- Recurisve bindings
 analyseGroup modName gEnv (BindingRecursive bindings) = do
   let methods = map (\(Declaration methodName _ _ _ method) -> (methodName, method)) bindings
 
@@ -41,7 +43,7 @@ analyseGroup modName gEnv (BindingRecursive bindings) = do
 
   let bindings' = map (\(decl, (_,transformed)) -> decl{declarationValue=transformed}) $ zip bindings transformeds
   return (gEnv', bindings')
-
+-- Non recursive binding
 analyseGroup modName gEnv (BindingNonRecursive decl@(Declaration methodName _ _ _ method)) = do
   (gEnv', [(_,transformed)]) <- temp modName gEnv [(methodName,method)]
 
@@ -91,7 +93,8 @@ temp modName gEnv methods = do
       print fixed
       putStrLn $ "\n# Sort: "
       print sorts 
-
+      putStrLn $ "\n# Zerod: "
+      print zerod 
       -- if mSrt1 /= mSrt2
       -- then putStrLn $ "Evaluation returned different sort!"
       --               ++ "\n\tPre-eval:  " ++ show mSrt1
@@ -110,19 +113,18 @@ unsafeUnliftTuple (ATuple as) = as
 unsafeUnliftTuple a = rsError $ "unsafeUnliftTuple: Called unsafe unlift tuple on non-tuple: " ++ show a
 
 
--- TODO: Quantifiers
 {-| Fix problems arising from zero arity functions
   Assigns the global regions to the return regions and additional regions.
 -}
 fixZeroArity :: (Id, Method) -> Annotation -> Annotation
 fixZeroArity (_, Method _ aRegs args _ rRegs _ _ _) ann =
   case length $ rights args of
-    0 -> let aplARegs = AApl ann      $ regionVarsToGlobal aRegs
+    0 -> let aplARegs = AApl ann $ regionVarsToGlobal aRegs
              newQuantIndexes = reverse $ TVar <$> [1..(length $ lefts args)]
              quants a = foldr (const AQuant) a (lefts args)
              aplTypes = foldl AInstn aplARegs newQuantIndexes
              aplRRegs = AApl aplTypes $ regionVarsToGlobal rRegs
-         in eval $ quants aplRRegs
+         in ALam SortUnit $ eval $ quants $ AProj 0 aplRRegs
     _ -> ann 
 
 -- | Create an annotation that assigns all regionvars the global region

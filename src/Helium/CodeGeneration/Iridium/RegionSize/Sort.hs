@@ -7,7 +7,7 @@ module Helium.CodeGeneration.Iridium.RegionSize.Sort
     sortReIndex, sortStrengthen, sortWeaken,
     sortInstantiate, sortSubstitute,
     sortIsRegion, sortIsAnnotation,
-    indexSortTuple,
+    indexSortTuple, sortDropLam,
     regionVarsToSort
   )
 where
@@ -242,6 +242,12 @@ indexSortTuple idx (SortTuple ts) = if idx < length ts
                                     then ts !! idx
                                     else rsError "indexSortTuple: Sort index out of bounds"
 indexSortTuple _ s = s
+
+-- | Drop a lambda for a sort
+sortDropLam :: Sort -> Sort
+sortDropLam (SortLam _ s) = s
+sortDropLam s = s-- error $ "Called droplam on non-sortlam: " ++ show s
+
 
 -- | Convert region variables to a sort
 regionVarsToSort :: RegionVars -> Sort

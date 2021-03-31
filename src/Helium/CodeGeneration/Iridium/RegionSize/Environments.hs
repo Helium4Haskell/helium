@@ -99,7 +99,7 @@ lookupLocal local (LocalEnv _ lEnv) =
 -- | Lookup a global or local variable
 lookupVar :: HasCallStack => Variable -> Envs -> Annotation
 lookupVar (VarLocal local) (Envs _ _ lEnv) = lookupLocal local lEnv
-lookupVar global           (Envs gEnv _ _) = lookupGlobal (variableName global) gEnv
+lookupVar global           (Envs gEnv _ _) = AApl (lookupGlobal (variableName global) gEnv) AUnit
 
 
 -- | Lookup a region in the region environment, retuns the region if not in env

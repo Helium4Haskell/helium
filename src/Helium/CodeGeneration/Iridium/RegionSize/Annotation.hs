@@ -62,8 +62,8 @@ annShow n = foldAnnAlgN n showAlg
      where showAlg = AnnAlg {
         aVar    = \d idx -> annVarName (d - idx),
         aReg    = \_ idx -> show idx,
-        aLam    = \d s a -> "(λ"++ annVarName (d+1) ++":"++ showSort d s ++ ".\n" ++ indent a ++ ")",
-        aApl    = \_ a b -> a ++ "< " ++ b ++ " >",
+        aLam    = \d s a -> "(λ"++ annVarName (d+1) ++":"++ showSort d s ++ ".\n" ++ indent "  " a ++ ")",
+        aApl    = \_ a b -> a ++ "<" ++ indent " "  b ++ " >",
         aUnit   = \_     -> "()",
         aTuple  = \_ as  -> "(" ++ intercalate (if noTupleBreak (as !! 0) then "," else "\n,") as ++ ")",
         aProj   = \_ i a -> "π_" ++ show i ++ "[" ++ a ++ "]",
@@ -75,7 +75,7 @@ annShow n = foldAnnAlgN n showAlg
         aTop    = \d _ c -> "T"  ++ "[" ++ (constrShow d c) ++ "]",
         aBot    = \_ _   -> "⊥",
         aFix    = \d s a -> "fix " ++ annVarName (d+1) ++ " : " ++ showSort d s 
-                                   ++ ".\n[" ++ (intercalate ",\n" $ mapWithIndex (\i str -> show i ++ ": " ++ str) $ indent <$> a) ++ "]",
+                                   ++ ".\n[" ++ (intercalate ",\n" $ mapWithIndex (\i str -> show i ++ ": " ++ str) $ indent "  " <$> a) ++ "]",
         aConstr = \d c   -> constrShow d c
       }
 

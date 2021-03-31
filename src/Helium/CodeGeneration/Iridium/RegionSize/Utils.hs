@@ -37,12 +37,13 @@ strengthenIdx d idx = if idx > d
 -- | Check if next tuple element should be on a newline
 noTupleBreak :: String -> Bool
 noTupleBreak (_:"") = True
+noTupleBreak ('(':')':_) = True
 noTupleBreak (c:_)  = c == 'ρ' || c == '⊥'
 noTupleBreak ""     = False
 
 -- | Indent a newline separated string
-indent :: String -> String
-indent = intercalate "\n" . map ((++) "  ") . splitOn '\n'
+indent :: String -> String -> String
+indent s = intercalate "\n" . map ((++) s) . splitOn '\n'
 
 -- | Split string on character
 splitOn :: Char -> String -> [String]
