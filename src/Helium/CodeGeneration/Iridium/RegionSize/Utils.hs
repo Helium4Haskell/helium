@@ -3,7 +3,8 @@ module Helium.CodeGeneration.Iridium.RegionSize.Utils
     indent, noTupleBreak,
     varNames, typeVarName, annVarName,
     rsError, rsInfo,
-    mapAccumLM, mapWithIndex
+    mapAccumLM, mapWithIndex,
+    cleanTUP
     ) where
 
 import qualified Debug.Trace as T
@@ -96,3 +97,9 @@ mapWithIndex :: (Int -> a -> b) -> [a] -> [b]
 mapWithIndex f = go 0
     where go _ []     = []
           go n (x:xs) = f n x : go (n+1) xs 
+
+-- | Remove the word "TUP"
+cleanTUP :: String -> String
+cleanTUP [] = []
+cleanTUP ('T':'U':'P': xs) = cleanTUP xs
+cleanTUP (x:xs) = x : cleanTUP xs

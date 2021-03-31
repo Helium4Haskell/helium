@@ -7,6 +7,7 @@ import Helium.CodeGeneration.Iridium.Parse.Expression
 import Helium.CodeGeneration.Iridium.Data
 import Helium.CodeGeneration.Iridium.Type
 import qualified Helium.CodeGeneration.Iridium.Region.Parse as Region
+import qualified Helium.CodeGeneration.Iridium.RegionSize.Parse as RegionSize
 import Lvm.Common.Id(Id, idFromString)
 import Lvm.Core.Type
 import Data.Maybe
@@ -186,4 +187,6 @@ pAnnotation first = do
     "implicit_io" -> return (False, MethodAnnotateImplicitIO)
     "regions"
       | first -> (\a -> (True, MethodAnnotateRegion a)) <$ pToken ':' <* pWhitespace <*> Region.pAnnotation Region.emptyNames
+    "regionsize"
+      | first -> (\a -> (True, MethodAnnotateRegionSize a)) <$ pToken ':' <* pWhitespace <*> RegionSize.pAnnotation []
     _ -> pError $ "Unknown annotation: " ++ show word

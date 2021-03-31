@@ -55,7 +55,7 @@ pattern AUnit = ATuple []
 ----------------------------------------------------------------
 
 instance Show Annotation where
-  show = annShow (-1)
+  show = cleanTUP . annShow (-1)
 
 annShow :: Int -> Annotation -> String    
 annShow n = foldAnnAlgN n showAlg
@@ -64,8 +64,8 @@ annShow n = foldAnnAlgN n showAlg
         aReg    = \_ idx -> show idx,
         aLam    = \d s a -> "(λ"++ annVarName (d+1) ++":"++ showSort d s ++ ".\n" ++ indent "  " a ++ ")",
         aApl    = \_ a b -> a ++ "<" ++ indent " "  b ++ " >",
-        aUnit   = \_     -> "()",
-        aTuple  = \_ as  -> "(" ++ intercalate (if noTupleBreak (as !! 0) then "," else "\n,") as ++ ")",
+        aUnit   = \_     -> "TUP()",
+        aTuple  = \_ as  -> "TUP(" ++ intercalate (if noTupleBreak (as !! 0) then "," else "\n,") as ++ ")",
         aProj   = \_ i a -> "π_" ++ show i ++ "[" ++ a ++ "]",
         aAdd    = \_ a b -> "(" ++ a ++ " ⊕  " ++ b ++ ")",
         aMinus  = \_ a r -> "(" ++ a ++ " \\ " ++ show r ++ ")",

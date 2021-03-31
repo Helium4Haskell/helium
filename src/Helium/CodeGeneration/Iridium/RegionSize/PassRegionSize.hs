@@ -54,11 +54,11 @@ analyseGroup modName gEnv (BindingNonRecursive decl@(Declaration methodName _ _ 
 
 temp ::  String -> GlobalEnv -> [(Id,Method)] -> IO (GlobalEnv, [(Id,Method)])
 temp modName gEnv methods = do
-  if((modName == "LvmLang"        && True)
-    || (modName == "HeliumLang"   && True) 
-    || (modName == "PreludePrim"  && True)
-    || (modName == "Prelude"      && True)
-    || (modName == "LvmException" && True))
+  if((modName == "LvmLang"        && False)
+    || (modName == "HeliumLang"   && False) 
+    || (modName == "PreludePrim"  && False)
+    || (modName == "Prelude"      && False)
+    || (modName == "LvmException" && False))
   then do
     return (gEnv, methods)
   else do
@@ -168,7 +168,7 @@ collectEffects = foldAnnAlg collectAlg
         aJoin   = \_ a b -> constrAdd a b,
         aQuant  = \_ a   -> a,
         aInstn  = \_ a _ -> a,
-        aTop    = \_ _ _ -> constrBot,
+        aTop    = \_ _ c -> c,
         aBot    = \_ _   -> constrBot,
         aFix    = \_ _ a -> foldr constrAdd constrBot a
     }
