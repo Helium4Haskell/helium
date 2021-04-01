@@ -90,7 +90,7 @@ liftBinds supply scope (Strict b) env = (map Strict (maybeToList b'), decls, env
   where
     (b', decls, envMap) = strictBind supply scope b env
     scope' = case b' of
-      Nothing -> scope'
+      Nothing -> scope
       Just _ -> Right (variableSetStrict True $ boundVar b) : scope
 liftBinds supply scope (NonRec b) env = (rotatedBinds ++ map NonRec (maybeToList b'), decls, envMap, scope')
   where
