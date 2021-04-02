@@ -359,8 +359,9 @@ typeToCoreTypeMapped (Quantors quantors) f (Top.TVar index) = case f index of
   Just t -> t
   Nothing -> case index `elemIndex` quantors of -- Convert index from Top to Debruijn index for Core
     Just idx -> Core.TVar idx
-    -- TODO: Reinstate error, needed to compile (\x -> (\y -> True) (\z -> x))
-    Nothing  -> Core.TCon $ Core.TConTuple 0 --internalError "CoreUtils" "typeToCoreType" $ "Type variable " ++ show index ++ " not present in quantors list " ++ show quantors
+    -- Type variable may be instantiated arbitrarily, for instance in `const undefined 1`.
+    -- TODO: The type variable may have a different kind than *.
+    Nothing  -> Core.TCon $ Core.TConTuple 0
 typeToCoreTypeMapped _ _ (Top.TCon name) = Core.TCon c
   where
     c = case name of

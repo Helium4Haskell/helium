@@ -21,6 +21,7 @@ import Lvm.Common.Id
 import Lvm.Common.IdMap
 
 import Text.PrettyPrint.Leijen
+import Helium.CodeGeneration.Core.Strictness.Data
 
 data TypeEnvironment = TypeEnvironment
   { typeEnvSynonyms :: IdMap Type
@@ -115,7 +116,6 @@ typeOfCoreExpression env a (Let binds expr)
 
 -- All Alternatives of a Match should have the same return type,
 -- so we only have to check the first one.
-
 typeOfCoreExpression env False (Match name (Alt pattern expr : _))
   = typeOfCoreExpression (typeEnvAddPattern pattern env) False expr
 
@@ -172,7 +172,7 @@ typeTuple arity a = foldr (\var -> TForall (Quantor Nothing) KStar) (if a then a
     tp = foldl (\t var -> TAp t $ TVar var) (TCon $ TConTuple arity) vars
     vars = reverse [0 .. arity - 1]
     annotate :: Type -> Type
-    annotate (TAp (TAp (TCon TConFun) t1) t2) = TAp (TAp (TCon TConFun) (TAnn L t1)) $ annotate t2
+    annotate (TAp (TAp (TCon TConFun) t1) t2) = TAp (TAp (TCon TConFun) (TAnn (L, L, L) t1)) $ annotate t2
     annotate t = t
 
 typeEqual :: TypeEnvironment -> Type -> Type -> Bool
@@ -275,7 +275,7 @@ updateFunctionTypeStrictness env (strict : strictness) tp = case typeNormalizeHe
 unifyAnnotations :: Type -> Type -> Type
 unifyAnnotations (TAp (TAp (TCon TConFun) (TAnn a1 t11)) t12) (TAp (TAp (TCon TConFun) (TAnn a2 t21)) t22) = (TAp (TAp (TCon TConFun) (TAnn a' t1')) t2')
   where
-    a' = Join a1 a2
+    a' = joinAll a1 a2
     t1' = unifyAnnotations t11 t21
     t2' = unifyAnnotations t12 t22
 unifyAnnotations (TStrict t1) (TStrict t2) = TStrict $ unifyAnnotations t1 t2

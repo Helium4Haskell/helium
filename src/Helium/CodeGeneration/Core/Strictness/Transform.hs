@@ -1,6 +1,6 @@
 module Helium.CodeGeneration.Core.Strictness.Transform (transformModule) where
 
-import Helium.CodeGeneration.Core.Strictness.Analyse
+import Helium.CodeGeneration.Core.Strictness.Data
 import Lvm.Common.IdMap
 import Lvm.Core.Expr
 import Lvm.Core.Type
@@ -43,10 +43,9 @@ transformType env (TAp (TAp (TCon TConFun) t1) t2) = TAp (TAp (TCon TConFun) t1'
     t2' = transformType env t2
 transformType env (TStrict t) = TStrict $ transformType env t
 transformType env (TForall q k t) = TForall q k $ transformType env t
-transformType env (TAnn (AnnVar a) t) = TAnn s $ transformType env t
+transformType env (TAnn (a1, r, a2) t) = TAnn (a1', r', a2') $ transformType env t
   where
-    s = findMap a env
-transformType env (TAnn a t) = TAnn a $ transformType env t
+    (a1', r', a2') = (replaceType env a1, replaceType env r, replaceType env a2)
 transformType _ t = t
 
 -- Apply strict annotations on expressions
@@ -54,7 +53,7 @@ transformExpression :: Constraints -> Expr -> Expr
 -- Recursive has to stay recursive, bo transformation possible
 transformExpression env (Let (Rec b) e) = Let (Rec (map (transformBind env) b)) $ transformExpression env e
 -- Turn bind to strict if annotated with S
-transformExpression env (Let (NonRec b@(Bind (Variable _ (TAnn (AnnVar a) _)) _)) e) = Let binds $ transformExpression env e 
+transformExpression env (Let (NonRec b@(Bind (Variable _ (TAnn (_, AnnVar a, _) _)) _)) e) = Let binds $ transformExpression env e 
   where
     binds = if findMap a env == S then Strict bind else NonRec bind
     bind  = transformBind env b
@@ -71,7 +70,7 @@ transformExpression env (Lam True  (Variable x (TAnn _          t)) e) = Lam Tru
     -- Lambda is already strict so no variable to solve
     e' = transformExpression env e
     t' = deannotateType env t
-transformExpression env (Lam False (Variable x (TAnn (AnnVar a) t)) e) = Lam s    (Variable x t') e' 
+transformExpression env (Lam False (Variable x (TAnn (_, AnnVar a, _) t)) e) = Lam s    (Variable x t') e' 
   where
     -- Check if annotation variable is S or L
     s  = findMap a env == S
@@ -102,3 +101,8 @@ transformBind env (Bind (Variable x (TAnn _ t)) e) = Bind (Variable x t') e'
   where
     t' = deannotateType env t
     e' = transformExpression env e
+
+
+replaceType :: Constraints -> SAnn -> SAnn
+replaceType env (AnnVar a) = findMap a env
+replaceType _   a          = a 

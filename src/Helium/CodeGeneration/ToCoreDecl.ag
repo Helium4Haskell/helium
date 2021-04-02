@@ -320,7 +320,7 @@ SEM Declaration
             , Core.declModule  = Nothing
             , Core.declSynonym = Core.TypeSynonymNewtype
             , Core.declType    = Core.typeSynonymTypeFromConstructorType $ Core.declType @constructorDecl
-            , Core.declCustoms = []
+            , Core.declCustoms = [Core.CustomInt (length @simpletype.typevariables)]
             }
           ]
         else

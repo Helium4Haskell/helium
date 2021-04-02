@@ -4,7 +4,6 @@ import Lvm.Common.Id
 import Lvm.Core.Expr
 import Lvm.Core.Type
 import Lvm.Core.Module
-import Text.PrettyPrint.Leijen (pretty)
 
 -- Annotate module
 annotateModule :: NameSupply -> CoreModule -> CoreModule
@@ -37,18 +36,15 @@ annotateType supply (TAp (TAp (TCon TConFun) (TAnn a t1)) t2) = TAp (TAp (TCon T
       (supply1, supply2) = splitNameSupply supply
       t1' = annotateType supply1 t1
       t2' = annotateType supply2 t2
-annotateType supply (TAp (TAp (TCon TConFun) (TStrict t1)) t2) = TAp (TAp (TCon TConFun) (TAnn S t1')) t2'
-  where
-      -- Strict by type
-      (supply1, supply2) = splitNameSupply supply
-      t1' = TStrict $ annotateType supply1 t1
-      t2' = annotateType supply2 t2
 annotateType supply (TAp (TAp (TCon TConFun) t1) t2) = TAp (TAp (TCon TConFun) t1') t2'
     where
       -- Annotate only on function arrows
-      (id, supply') = freshId supply
+      (id1, id2, id3, supply') = threeIds supply
       (supply1, supply2) = splitNameSupply supply'
-      t1' = TAnn (AnnVar id) $ annotateType supply1 t1
+      ann = case t1 of
+        TStrict _ -> S
+        _         -> AnnVar id2
+      t1' = TAnn (AnnVar id1, ann, AnnVar id3) $ annotateType supply1 t1
       t2' = annotateType supply2 t2
 annotateType supply (TForall q k t) = TForall q k $ annotateType supply t
 annotateType supply (TStrict t)     = TStrict $ annotateType supply t
@@ -60,11 +56,11 @@ annotateTypeAbstract (TAp (TAp (TCon TConFun) (TAnn a t1)) t2) = TAp (TAp (TCon 
   where
     t1' = annotateTypeAbstract t1
     t2' = annotateTypeAbstract t2
-annotateTypeAbstract (TAp (TAp (TCon TConFun) (TStrict t1)) t2) = TAp (TAp (TCon TConFun) (TAnn S t1')) t2'
+annotateTypeAbstract (TAp (TAp (TCon TConFun) (TStrict t1)) t2) = TAp (TAp (TCon TConFun) (TAnn (L, S, L) t1')) t2'
   where
     t1' = TStrict $ annotateTypeAbstract t1
     t2' = annotateTypeAbstract t2
-annotateTypeAbstract (TAp (TAp (TCon TConFun) t1) t2) = TAp (TAp (TCon TConFun) (TAnn L t1')) t2'
+annotateTypeAbstract (TAp (TAp (TCon TConFun) t1) t2) = TAp (TAp (TCon TConFun) (TAnn (L, L, L) t1')) t2'
   where
     t1' = annotateTypeAbstract t1
     t2' = annotateTypeAbstract t2
@@ -128,8 +124,15 @@ annotatePat _ p = p
 annotateLamOrBind :: Bool -> NameSupply -> Variable -> Expr -> (Variable, Expr)
 annotateLamOrBind strict supply (Variable x t) e = (Variable x t', e')
   where
-    (id, supply') = freshId supply
-    ann = if strict then S else AnnVar id
+    (id1, id2, id3, supply') = threeIds supply
+    ann = if strict then S else AnnVar id2
     (supply1, supply2) = splitNameSupply supply'
-    t' = TAnn ann $ annotateType supply1 t
+    t' = TAnn (AnnVar id1, ann, AnnVar id3) $ annotateType supply1 t
     e' = annotateExpression supply2 e
+
+threeIds :: NameSupply -> (Id, Id, Id, NameSupply)
+threeIds supply0 = (id1, id2, id3, supply3)
+  where
+    (id1, supply1) = freshId supply0
+    (id2, supply2) = freshId supply1
+    (id3, supply3) = freshId supply2

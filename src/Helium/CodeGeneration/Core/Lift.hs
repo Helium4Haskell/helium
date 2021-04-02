@@ -108,8 +108,9 @@ liftExpr :: NameSupply -> Scope -> Expr -> Env -> (Expr, [CoreDecl])
 liftExpr supply scope (Let bs e) env = (addBinds bss e', decls1 ++ decls2)
   where
     (supply1, supply2) = splitNameSupply supply
-    (bss, decls1, envMap, scope') = liftBinds supply scope bs env
-    (e', decls2) = liftExpr supply2 scope' e (envMap env)
+    (bss, decls1, envMap, scope') = liftBinds supply1 scope bs env
+    (e', decls2) = liftExpr supply2 scope' e (envMap $ Env (typeEnvAddBinds bs tenv) subst)
+    Env tenv subst = env
 liftExpr supply scope (Match name alts) env = (Match (rename env name) alts', concat decls)
   where
     (alts', decls) = unzip $ mapWithSupply (\s a -> liftAlt s scope a env) supply alts

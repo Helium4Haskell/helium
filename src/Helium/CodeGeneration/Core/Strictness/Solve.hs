@@ -1,6 +1,6 @@
 module Helium.CodeGeneration.Core.Strictness.Solve (solveConstraints) where
 
-import Helium.CodeGeneration.Core.Strictness.Analyse
+import Helium.CodeGeneration.Core.Strictness.Data
 import Lvm.Common.IdMap
 import Lvm.Core.Type
 import Data.Graph

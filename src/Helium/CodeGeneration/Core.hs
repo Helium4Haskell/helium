@@ -60,9 +60,11 @@ desugar _ [] mod = return mod
 
 -- Select variant of strictness analysis
 selectStrictness :: Int -> (NameSupply -> CoreModule -> CoreModule)
-selectStrictness 1 = S1.coreStrictness
-selectStrictness _ = S0.coreStrictness -- Default strictness
+selectStrictness 2 = S1.coreStrictness
+selectStrictness 1 = S0.coreStrictness
+selectStrictness 0 = \x y -> y -- No strictness
 
 showStrictness :: Int -> String
-showStrictness 1 = "New strictness analysis"
-showStrictness _ = "Old strictness analysis"
+showStrictness 2 = "New strictness analysis"
+showStrictness 1 = "Old strictness analysis"
+showStrictness _ = "No strictness analysis"

@@ -27,9 +27,14 @@ not _ = False
 
 (||) :: Bool -> Bool -> Bool
 (&&) :: Bool -> Bool -> Bool
+xor  :: Bool -> Bool -> Bool
 
 x || y = if x then x else y
 x && y = if x then y else x
+
+xor True  False = True
+xor False True  = True
+xor _     _     = False
 
 otherwise :: Bool
 otherwise = True
