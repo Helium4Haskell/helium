@@ -111,7 +111,7 @@ getRightImports importspec qualified asName (values, confieldormethods, typeorcl
             -- stringFromId $ (Core.declAccess decl)
             newnameid  = idFromString $! (toQualified as oldname)
             newdecl    = decl {Core.declAccess = Core.Export newnameid }
-            isReserved = any (`isPrefixOf` oldname) ["Dict", "$dict", "$Dict", "default$"]
+            isReserved = any (`isPrefixOf` oldname) ["Dict$", "$dict", "$Dict", "default$"]
         in decl : decls -- if isReserved then decl : decls else if qual then newdecl : decls else decl : newdecl : decls
 
     toQualified :: Name -> String -> String
