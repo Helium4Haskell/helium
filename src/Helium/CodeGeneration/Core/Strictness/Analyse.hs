@@ -43,7 +43,7 @@ analyseExpression env rel app (Let b e) = unionMapWith meet c1 c2
     (bs, app') = getAnnotationVariablesBinds b
 -- Only if an expression is strict on all alts it is strict
 analyseExpression env rel app (Match _ alts) = unionMapsWith join $ map (analyseAlt env rel app) alts
-analyseExpression env rel app (Ap e1 e2) = unionMapWith meet c1 c2
+analyseExpression env rel app (Ap e1 e2) = unionMapsWith meet [c1, c2, c3]
   where
     -- Analyse function
     c1 = analyseExpression env rel rel e1
@@ -53,7 +53,7 @@ analyseExpression env rel app (Ap e1 e2) = unionMapWith meet c1 c2
     -- Analyse applicant under the join of the annotation and the rel
     c2 = analyseExpression env (join rel r) (join rel a1) e2
     -- Right applicativeness annotation should be equal to applicative context
-    c3 = analyseAnnotation a2 app
+    c3 = analyseAnnotation app a2
 analyseExpression env rel app (ApType e _) = analyseExpression env rel app e
 -- Expression in S relevance to see if the variable is strict, but contain with applicative
 analyseExpression env _ app (Lam _ v@(Variable _ (TAnn (_, _, a2) _)) e) = mapMapWithId (\x y -> if inMap x then join app y else y) cs
@@ -62,7 +62,7 @@ analyseExpression env _ app (Lam _ v@(Variable _ (TAnn (_, _, a2) _)) e) = mapMa
     (relAnn, appAnn) = getAnnotationVariablesEnv env
     inMap x = x `elemMap` relAnn || x `elemMap` appAnn
 analyseExpression env rel app (Forall _ _ e) = analyseExpression env rel app e
-analyseExpression env rel app (Var v) = unionMapWith join (getConstraints env) cs
+analyseExpression env rel app (Var v) = unionMapWith meet (getConstraints env) cs
   where
     cs = getAnnotations env rel app v
 analyseExpression env _ _ _ = getConstraints env -- Lit and Con

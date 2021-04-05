@@ -62,7 +62,7 @@ desugar _ [] mod = return mod
 selectStrictness :: Int -> (NameSupply -> CoreModule -> CoreModule)
 selectStrictness 2 = S1.coreStrictness
 selectStrictness 1 = S0.coreStrictness
-selectStrictness 0 = \x y -> y -- No strictness
+selectStrictness _ = \_ x -> x -- No strictness
 
 showStrictness :: Int -> String
 showStrictness 2 = "New strictness analysis"
