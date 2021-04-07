@@ -146,7 +146,7 @@ showRegionSort quantors (RegionSortForall quantor sort1) s
     quantorName = freshQuantorName quantors quantor
 showRegionSort _ RegionSortMonomorphic s = 'Ρ' : s
 showRegionSort quantors (RegionSortPolymorphic tvar tps) s = "Ρ⟨" ++ showTypeVar quantors tvar ++ (tps >>= (\tp -> " " ++ showTypeAtom quantors tp)) ++ "⟩" ++ s
-showRegionSort quantors (RegionSortTuple sorts) s = showListWith (if single sorts then "T(" else "(") ")" (showRegionSort quantors) sorts s
+showRegionSort quantors (RegionSortTuple sorts) s = showListWith (if single sorts then "(" else "(") ")" (showRegionSort quantors) sorts s
   where
     single [_] = True
     single _ = False
