@@ -20,31 +20,44 @@ pAnnotation :: [String] -> Parser Annotation
 pAnnotation names = do
     c <- lookahead
     case c of
-        -- Parens 
-        '(' -> do
-            pToken '('
-            ann <- pAnnotation names
-            pToken ')'
-            return ann
         _ -> do
-            ann1 <- pAnnotation' []
+            ann1 <- pAnnotation' names
             pWhitespace'
-            c2 <- lookahead
-            case c2 of
-                '⊕' -> pChar >> AAdd  ann1 <$> pAnnotation' names
-                '⊔' -> pChar >> AJoin ann1 <$> pAnnotation' names
-                '<' -> do
-                    pToken '<'
-                    ann2 <- pAnnotation' names
-                    pToken '>'
-                    return $ AApl ann1 ann2 
-                '{' -> do
-                    pToken '{'
-                    ty <- pType' names
-                    pToken '}'
-                    return $ AInstn ann1 ty 
-                _    -> return ann1
-            
+            args <- pMany (pAnnMany names) pIsNext
+            return $ foldr ($) ann1 args
+
+
+pIsNext :: Parser Bool
+pIsNext = do
+    c <- lookahead
+    return $ c == '⊕' 
+          || c == '⊔' 
+          || c == '<'
+          || c == '{'
+
+pAnnMany :: [String] -> Parser (Annotation -> Annotation)
+pAnnMany names = do
+    pWhitespace'
+    c <- lookahead
+    case c of
+        '⊕' -> pChar >> pWhitespace' >> flip AAdd <$> pAnnotation' names
+        '⊔' -> pChar >> pWhitespace' >> flip AJoin <$> pAnnotation' names
+        '<' -> do
+            pToken '<'
+            pWhitespace'
+            ann2 <- pAnnotation names
+            pWhitespace'
+            pToken '>'
+            pWhitespace'
+            return $ flip AApl ann2 
+        '{' -> do
+            pToken '{'
+            ty <- pType' names
+            pToken '}'
+            pWhitespace'
+            return $ flip AInstn ty 
+        _ -> return id
+    
 
 -- | Parse an annotation
 pAnnotation' :: [String] -> Parser Annotation
@@ -52,6 +65,13 @@ pAnnotation' names = do
     pWhitespace'
     c <- lookahead
     case c of
+        -- Parens 
+        '(' -> do
+            pToken '('
+            ann <- pAnnotation names
+            pWhitespace'
+            pToken ')'
+            return ann
         -- Constraint set
         '{' -> AConstr <$> pConstr names
         -- Region 
@@ -73,20 +93,6 @@ pAnnotation' names = do
             pToken '.'
             pWhitespace'
             ALam sort <$> pAnnotation (name:names)
-        -- Fixpoint
-        'f' -> do 
-            pSymbol "fix"
-            pWhitespace'
-            name <- pRsName
-            pWhitespace'
-            pToken ':'
-            pWhitespace'
-            sort <- pSort names
-            pWhitespace'
-            pToken '.'
-            pWhitespace'
-            anns <- pArgumentsWith '[' ']' $ pAnnotation (name:names)
-            return $ AFix sort anns
         -- Bot
         '⊥' -> pToken '⊥' >> return (ABot undefined) -- TODO: Sort of bot
         -- Tuples/top
@@ -99,7 +105,7 @@ pAnnotation' names = do
                     anns <- pArguments $ pAnnotation names
                     return $ ATuple anns
                 _ -> do 
-                    pToken '['
+                    pToken '[' 
                     constr <- pConstr names
                     pToken ']'
                     -- TODO: Sort of top
@@ -113,9 +119,23 @@ pAnnotation' names = do
             ann <- pAnnotation names
             pToken ']'
             return $ AProj idx ann
-        _ -> do
-            name <- pRsName
-            return $ AVar (getIdx names name)
+        -- Fixpoint & var
+        _ -> do 
+            name1 <- pRsName
+            case name1 of
+                "fix" -> do
+                    pWhitespace'
+                    name2 <- pRsName
+                    pWhitespace'
+                    pToken ':'
+                    pWhitespace'
+                    sort <- pSort names
+                    pWhitespace'
+                    pToken '.'
+                    pWhitespace'
+                    anns <- pArgumentsWith '[' ']' $ pAnnotation (name2:names)
+                    return $ AFix sort anns
+                _ -> return $ AVar (getIdx names name1)
 
 -- | Parse a sort
 pSort :: [String] -> Parser Sort
@@ -134,7 +154,7 @@ pSort' :: [String] -> Parser Sort
 pSort' names = do
     c <- lookahead
     case c of
-        'C' -> return SortConstr
+        'C' -> pToken 'C' >> return SortConstr
         -- Region sorts
         'P' -> do
             pToken 'P'
@@ -160,6 +180,7 @@ pSort' names = do
         '(' -> do
             pToken '('
             sort <- pSort names
+            pWhitespace'
             pToken ')'
             return sort
         -- Tuples
@@ -234,11 +255,12 @@ pRegionVar = do
     c <- lookahead
     case c of
         '_' -> do
+            pToken '_'
             c2 <- lookahead
             case c2 of
                 'g' -> RegionGlobal <$ pSymbol "global"
                 'b' -> RegionBottom <$ pSymbol "bottom"
-                _ -> pError "Expected global or bottom" 
+                _ -> pError $ "Expected global or bottom, got: " ++ (c2:[]) 
         _ -> do
             idx <- pSubscriptInt
             return $ RegionLocal idx

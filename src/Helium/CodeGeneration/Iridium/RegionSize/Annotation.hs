@@ -76,7 +76,7 @@ annShow' n = foldAnnAlgN n showAlg
         aJoin   = \_ a b -> "(" ++ a ++ " ⊔  " ++ b ++ ")",
         aQuant  = \d a   -> "(∀ " ++ typeVarName (d+1) ++ "." ++ a ++ ")",
         aInstn  = \d a t -> a ++ " {" ++ showTypeN d t ++ "}",
-        aTop    = \d _ c -> "T"  ++ "[" ++ (constrShow d c) ++ "]",
+        aTop    = \d _ c -> "T" ++ "[" ++ (constrShow d c) ++ "]",
         aBot    = \_ _   -> "⊥",
         aFix    = \d s a -> "fix " ++ annVarName (d+1) ++ " : " ++ showSort d s 
                                    ++ ".\n[" ++ (intercalate ",\n" $ mapWithIndex (\i str -> show i ++ ": " ++ str) $ indent "  " <$> a) ++ "]",
