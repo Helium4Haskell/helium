@@ -85,6 +85,12 @@ lookahead = Parser f
     f [] = ResValue '\0' ""
     f str@(c : _) = ResValue c str
 
+lookaheadUnit :: Parser Bool
+lookaheadUnit = Parser f
+  where
+    f str@('(' : ')' : _) = ResValue True str
+    f str = ResValue False str
+
 isEndOfFile :: Parser Bool
 isEndOfFile = Parser f
   where

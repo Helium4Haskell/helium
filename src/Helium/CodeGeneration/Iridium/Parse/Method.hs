@@ -29,7 +29,14 @@ pMethod = do
     return $ Just tp
   else
     return Nothing
-  additionalRegions <- pTry (RegionVarsTuple []) (pRegionVars <* pWhitespace)
+
+  isUnit <- lookaheadUnit
+  -- Don't parse () as an empty list of additional regions.
+  -- () is an empty list of arguments instead of regions.
+  additionalRegions <- case isUnit of
+    True -> return $ RegionVarsTuple []
+    False -> pTry (RegionVarsTuple []) (pRegionVars <* pWhitespace)
+
   pToken '('
   pWhitespace
   c <- lookahead
