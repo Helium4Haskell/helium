@@ -289,7 +289,7 @@ setExportsPublic implicit (exports,exportCons,exportData,exportDataCon,exportMod
     setPublic decl_ | isQual decl_ && (isInstance decl_ || declPublic decl_) =
                         let name = stringFromId $! declName decl_
                             newname = idFromString $! unQualifyString name
-                        in if not ("Dict" `isPrefixOf` name) then
+                        in if not ("Dict$" `isPrefixOf` name) then
                             decl_{ declAccess = Export newname }
                            else
                             decl_
@@ -358,7 +358,9 @@ typeToCoreTypeMapped (Quantors quantors) f (Top.TVar index) = case f index of
   Just t -> t
   Nothing -> case index `elemIndex` quantors of -- Convert index from Top to Debruijn index for Core
     Just idx -> Core.TVar idx
-    Nothing  -> internalError "CoreUtils" "typeToCoreType" $ "Type variable " ++ show index ++ " not present in quantors list " ++ show quantors
+    -- Type variable may be instantiated arbitrarily, for instance in `const undefined 1`.
+    -- TODO: The type variable may have a different kind than *.
+    Nothing  -> Core.TCon $ Core.TConTuple 0
 typeToCoreTypeMapped _ _ (Top.TCon name) = Core.TCon c
   where
     c = case name of

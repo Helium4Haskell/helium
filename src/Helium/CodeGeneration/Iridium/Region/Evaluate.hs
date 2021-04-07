@@ -283,7 +283,7 @@ apply env annotation argument argumentRegion lc
       (isWeakSimplified, hasTopAp, annotation') = apply' False annotation
     in
       case hasTopAp of
-        Just (s, rs, lc, s') -> (False, AJoin annotation $ snd $ topApplication s rs argument' argumentRegion lc s')
+        Just (s, rs, lc, s') -> (False, AJoin annotation' $ snd $ topApplication s rs argument' argumentRegion lc s')
         Nothing -> (isWeakSimplified, annotation')
   where
     apply' :: IsWeakSimplified -> Annotation -> (IsWeakSimplified, Maybe (Sort, RegionSort, LifetimeContext, Sort), Annotation)
@@ -295,7 +295,11 @@ apply env annotation argument argumentRegion lc
       SortFun _ _ _ s' -> (True, Nothing, ABottom s')
       _ -> error $ "Helium.CodeGeneration.Iridium.Region.Annotation.apply: Bottom has wrong sort: " ++ showSort [] s ""
     apply' _ (AApp (ATop s) a1 regions lc) = case s of
-      SortFun s' rs lc' (SortFun s'' rs' lc'' s''') -> (False, Just (s'', rs', lc'', s'''), AApp (ATop $ SortFun s' rs lc' s''') a1 regions lc)
+      SortFun sArg1 rs1 lc1 (SortFun sArg2 rs2 lc2 sReturn) ->
+        ( False
+        , Just (sArg2, rs2, lc2, sReturn)
+        , AApp (ATop $ SortFun sArg1 rs1 lc1 sReturn) a1 regions lc
+        )
       _ -> error $ "Helium.CodeGeneration.Iridium.Region.Annotation.apply: Top application has wrong sort: " ++ showSort [] s ""
     apply' _ (ALam _ rs _ body) = (False, Nothing, substitute (regionVarMapping rs argumentRegion []) 0 0 0 body)
     apply' simplified (AFix a1 s a2) = (False, Nothing, AFix (mapInFunction (\a1' -> snd $ apply env a1' (weaken 0 1 0 argument) argumentRegion lc) s a1) s a2) -- Start with lambdaCount=1, as mapInFunction also creates a lambda. This lambda does not have region arguments.
@@ -362,8 +366,8 @@ project env annotation idx = f False annotation
     f _ (ATop (SortTuple sorts)) = case tryIndex sorts idx of
       Just s -> (True, ABottom s)
       Nothing -> error "Helium.CodeGeneration.Iridium.Region.Annotation.project: Top: Index out of bounds"
-    f simplified (AApp (ATop (SortFun s rs lc (SortTuple sorts))) a regions lc') = case tryIndex sorts idx of
-      Just s' -> (simplified, AApp (ATop $ SortFun s rs lc s') a regions lc')
+    f _ (AApp (ATop (SortFun s rs lc (SortTuple sorts))) a regions lc') = case tryIndex sorts idx of
+      Just s' -> (False, AApp (ATop $ SortFun s rs lc s') a regions lc')
       Nothing -> error "Helium.CodeGeneration.Iridium.Region.Annotation.project: Top application: Index out of bounds"
     f _ a
       | Just a' <- fTop a = (False, a')
@@ -672,7 +676,7 @@ escapesBody regionSort extraRegionScope (ATuple
     extraRegionScope' = extraRegionScope + regionSortSize returnRegionSort + 1
 
     regionSize = regionSortSize regionSort
-    Escapes relation higherOrderVars = analyseEscapeBody 0 aEffect <> analyseEscapeBody 0 aReturn'
+    Escapes relation higherOrderVars = analyseEscapeBody False 0 aEffect <> analyseEscapeBody True 0 aReturn'
 
     (_, substitutionList) = relationCollapse canCollapse canDefault (map RegionLocal [extraRegionScope' .. extraRegionScope' + regionSize - 1]) relation
     substitution = IntMap.fromList $ map (\(RegionVar idx, r) -> (idx, r)) substitutionList
@@ -716,22 +720,23 @@ escapesBody regionSort extraRegionScope (ATuple
     substituteRegionVar _ r = r
 escapesBody rs _ body = (if isBottom body || isTopApplication body then id else id) (map (const True) $ flattenRegionVars $ regionSortToVars 0 rs, id, body)
 
-analyseEscapeBody :: Int -> Annotation -> Escapes
-analyseEscapeBody firstRegionScope annotation = case annotation of
+analyseEscapeBody :: Bool -> Int -> Annotation -> Escapes
+analyseEscapeBody isReturn firstRegionScope annotation = case annotation of
     AFix f _ g -> go f <> go g
     AFixEscape _ _ _ a1 -> go a1
     AForall _ a1 -> go a1
-    ALam _ rs _ a1 -> analyseEscapeBody (firstRegionScope + regionSortSize rs) a1
+    ALam _ rs _ a1 -> analyseEscapeBody isReturn (firstRegionScope + regionSortSize rs) a1
     AInstantiate a1 _ -> go a1
     AApp a1 a2 rs lc ->
       let
-        r 
+        r
+          | lc == LifetimeContextLocalBottom && not isReturn
+            -- In the effect annotation, we may ignore regions used in local-bottom arguments
+            = mempty
           | lc == LifetimeContextAny && rs /= RegionVarsTuple [] && isTopApplication a1
             = Escapes (relationFromConstraints $ map ((`Outlives` RegionGlobal) . RegionLocal) $ mapMaybe regionIdx $ flattenRegionVars rs) IntSet.empty
-          | lc == LifetimeContextAny
-            = Escapes relationEmpty $ IntSet.fromList $ mapMaybe regionIdx $ flattenRegionVars rs
           | otherwise
-            = mempty
+            = Escapes relationEmpty $ IntSet.fromList $ mapMaybe regionIdx $ flattenRegionVars rs
       in go a1 <> go a2 <> r
     ATuple as -> mconcat $ go <$> as
     AProject a1 _ -> go a1
@@ -743,7 +748,7 @@ analyseEscapeBody firstRegionScope annotation = case annotation of
       let (vars, rel') = relationRestrict firstRegionScope rel
       in Escapes rel' $ IntSet.fromList $ map regionVarIndex vars
   where
-    go = analyseEscapeBody firstRegionScope
+    go = analyseEscapeBody isReturn firstRegionScope
 
     regionIdx :: RegionVar -> Maybe Int
     regionIdx (RegionLocal idx)
