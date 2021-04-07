@@ -157,7 +157,10 @@ pAnnotations =
       pChar
       (isLong, annotation) <- pAnnotation True
       annotations <- if isLong then return [] else pMany (snd <$> pAnnotation False) pSep
-      pToken ']'
+      c2 <- lookahead
+      case c2 of
+        ']' -> pToken ']'
+        c   -> pError "Unexpected end of annotation"
       pWhitespace
       annotations' <- pAnnotations
       return $ annotation : annotations ++ annotations'
@@ -188,5 +191,5 @@ pAnnotation first = do
     "regions"
       | first -> (\a -> (True, MethodAnnotateRegion a)) <$ pToken ':' <* pWhitespace <*> Region.pAnnotation Region.emptyNames
     "regionsize"
-      | first -> (\a -> (True, MethodAnnotateRegionSize a)) <$ pToken ':' <* pWhitespace <*> RegionSize.pAnnotation []
+      | first -> (\a -> (True, MethodAnnotateRegionSize a)) <$ pToken ':' <* pWhitespace <*> RegionSize.pAnnotation [] <* pWhitespace
     _ -> pError $ "Unknown annotation: " ++ show word

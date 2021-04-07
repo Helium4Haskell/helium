@@ -17,6 +17,7 @@ import Helium.CodeGeneration.Iridium.Region.RegionVar
 import Helium.CodeGeneration.Iridium.RegionSize.Utils
 import Helium.CodeGeneration.Iridium.RegionSize.Type
 
+import Lvm.Common.Id
 import Lvm.Core.Type
 import Data.List
 
@@ -125,13 +126,13 @@ sortAssign' [t1,t2] (TCon TConFun)       = funSort t1 t2
 sortAssign' ts      (TCon (TConTuple n)) | length ts == n = SortTuple $ map sortAssign ts
                                          | otherwise      = rsError $ "sortAssign: Tuple with incorrect number of arguements: expected " ++ show n ++ " but got " ++ (show $ length ts) ++ "\n" ++ (intercalate ", " $ map (showTypeN 0) ts)
 sortAssign' []      (TCon (TConDataType _))            = SortUnit
-sortAssign' [a]     (TCon (TConTypeClassDictionary _)) = sortAssign a
+sortAssign' [a]     (TCon (TConTypeClassDictionary _)) = funSort (TCon (TConDataType $ idFromString "TODO")) a
 -- TODO: Datatypes
 sortAssign' _       (TCon (TConDataType _)) = SortUnit `rsInfo` "sortAssign: Datatypes not yet supported"
 -- Not implemented cases 
 sortAssign' _ t = rsError $ "sortAssign: No pattern match: " ++ showTypeN 0 t
 
--- | Sort for a function: t_1 -> t2 ===> SA(t_1) -> (SA(t_2), RA(t_2) -> C)
+-- | Sort for a function: t_1 -> t2 ===> SA(t_1) -> RA(t_2) -> (SA(t_2), C)
 funSort :: Type -> Type -> Sort
 funSort t1 t2 = SortLam (sortAssign t1) 
               $ SortLam (regionAssign $ TStrict t2) 

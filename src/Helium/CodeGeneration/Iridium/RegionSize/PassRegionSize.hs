@@ -65,6 +65,7 @@ temp modName gEnv methods = do
     putStrLn $ "\n# Analyse methods:\n" ++ (intercalate "\n" $ map (show.fst) methods)
     -- Generate the annotations     
     let mAnn  = analyseMethods 0 gEnv methods
+  
     -- Simplify the generated annotation
     let simpl = eval mAnn
     -- Solve the fixpoints
@@ -72,8 +73,8 @@ temp modName gEnv methods = do
     -- Check if the resulting annotation is well-sroted
     let sorts = sort fixed
     fixed' <- case sorts of
-                Left  e -> putStrLn e >>= \_ -> rsError "nope"
-                Right _ -> return fixed
+          Left  e -> return $ ATop SortUnit constrBot
+          Right _ -> return fixed
     -- Fix the annotations of zero arity definitions
     let zerod = uncurry fixZeroArity <$> zip methods (unsafeUnliftTuple fixed')
     
@@ -107,12 +108,15 @@ temp modName gEnv methods = do
       print simpl 
       putStrLn $ "\n# Fixpoint: "
       print fixed
-      putStrLn $ "\n# Sort: "
-      print sorts 
-      putStrLn $ "\n# Zerod: "
-      print zerod 
-      putStrLn $ "\n# Effects: "
-      print effects
+      fixed' <- case sorts of
+            Left  e -> putStrLn e >>= \_ -> rsError "nope"
+            Right _ -> return fixed
+      -- putStrLn $ "\n# Sort: "
+      -- print sorts 
+      -- putStrLn $ "\n# Zerod: "
+      -- print zerod 
+      -- putStrLn $ "\n# Effects: "
+      -- print effects
 
       -- if mSrt1 /= mSrt2
       -- then putStrLn $ "Evaluation returned different sort!"
@@ -129,6 +133,7 @@ temp modName gEnv methods = do
 -- | Get an array of annotations from a tuple
 unsafeUnliftTuple :: Annotation -> [Annotation]
 unsafeUnliftTuple (ATuple as) = as
+unsafeUnliftTuple (ATop a b) = repeat $ ATop a b
 unsafeUnliftTuple a = rsError $ "unsafeUnliftTuple: Called unsafe unlift tuple on non-tuple: " ++ show a
 
 

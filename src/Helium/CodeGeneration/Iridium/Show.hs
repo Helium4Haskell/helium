@@ -23,6 +23,7 @@ import Helium.CodeGeneration.Iridium.Data
 import Helium.CodeGeneration.Iridium.Type
 import Helium.CodeGeneration.Iridium.Region.Utils
 import qualified Helium.CodeGeneration.Iridium.Region.Annotation as Region
+import qualified Helium.CodeGeneration.Iridium.RegionSize.Annotation as RegionSize
 import qualified Text.PrettyPrint.Leijen as Pretty
 
 class ShowDeclaration a where
@@ -260,7 +261,7 @@ showAnnotations annotations = "[" ++ intercalate " " (map show others') ++ "]" +
     regionSizeString
       | [MethodAnnotateRegionSize regionSizeAnnotation] <- regionSizes
         =  "\n  [regionsize:    "
-        ++ show regionSizeAnnotation ++ "\n  ]"
+        ++ RegionSize.annShow regionSizeAnnotation ++ "\n  ]"
       | otherwise = ""
 
 showReturnRegion, showAdditionalRegion, showLocalRegion :: Int -> String

@@ -59,14 +59,15 @@ pAnnotation' names = do
         -- Quantification
         '∀' -> do
             pToken '∀'
-            name <- pName
+            pWhitespace'
+            name <- pRsName
             pToken '.'
             pWhitespace'
             AQuant <$> pAnnotation (name:names)
         -- Lambda
         'λ' -> do 
             pToken 'λ'
-            name <- pName
+            name <- pRsName
             pToken ':'
             sort <- pSort names
             pToken '.'
@@ -76,7 +77,7 @@ pAnnotation' names = do
         'f' -> do 
             pSymbol "fix"
             pWhitespace'
-            name <- pName
+            name <- pRsName
             pWhitespace'
             pToken ':'
             pWhitespace'
@@ -87,7 +88,7 @@ pAnnotation' names = do
             anns <- pArgumentsWith '[' ']' $ pAnnotation (name:names)
             return $ AFix sort anns
         -- Bot
-        '⊥' -> return $ ABot undefined -- TODO: Sort of bot
+        '⊥' -> pToken '⊥' >> return (ABot undefined) -- TODO: Sort of bot
         -- Tuples/top
         'T' -> do
             pToken 'T'
@@ -113,7 +114,7 @@ pAnnotation' names = do
             pToken ']'
             return $ AProj idx ann
         _ -> do
-            name <- pName
+            name <- pRsName
             return $ AVar (getIdx names name)
 
 -- | Parse a sort
@@ -145,12 +146,13 @@ pSort' names = do
                 _   -> return SortMonoRegion 
         -- Poly sort
         'Ψ' -> do
+            pToken 'Ψ'
             (idx, types) <- pPolySort names
             return $ SortPolySort idx types
         -- Quantification
         '∀' -> do
             pToken '∀'
-            name <- pName
+            name <- pRsName
             pToken '.'
             pWhitespace'
             SortQuant <$> pSort (name:names)
@@ -165,13 +167,14 @@ pSort' names = do
             pSymbol "TUP"
             sorts <- pArguments $ pSort names
             return $ SortTuple sorts
+        c   -> pError $ c:[] 
 
 -- | Parse a polymorphic sort <name [t1,t2,..]>
 pPolySort :: [String] -> Parser (Int, [Type])
 pPolySort names = do
     pToken '<'
     pWhitespace'
-    name <- pName
+    name <- pRsName
     let idx = getIdx names name
     pWhitespace'
     types <- pArgumentsWith '[' ']' $ pType' names
@@ -192,6 +195,7 @@ pConstraints names = do
     pWhitespace'
     pToken '↦'
     pWhitespace'
+    pWhitespace'
     bound <- pBound
     return (idx,bound)
 
@@ -201,7 +205,7 @@ pConstrIdx names = do
     case c of
         'ρ' -> Region <$> pRegionVar
         _   -> do 
-            name <- pName
+            name <- pRsName
             let idx = getIdx names name
             projs <- pProjs
             return $ foldr CnProj (AnnVar idx) projs
@@ -220,7 +224,7 @@ pBound :: Parser Bound
 pBound = do
     c <- lookahead
     case c of
-        '∞' -> return $ Infty
+        '∞' -> pToken '∞' >> return Infty
         _   -> Nat <$> pUnsignedInt
 
 -- | Parse a region variable
@@ -246,3 +250,18 @@ getIdx names name =
     case name `elemIndex` names of
         Just i  -> i
         Nothing -> -1 
+
+-- | Parse a name
+pRsName :: Parser String
+pRsName = do
+    c <- lookahead
+    if c == '"' then
+      pString
+    else
+      pSomeSatisfy "expected name" valid
+  where
+    valid c
+      = ('a' <= c && c <= 'z')
+      || ('A' <= c && c <= 'Z')
+      || ('0' <= c && c <= '9')
+      || c == '_'

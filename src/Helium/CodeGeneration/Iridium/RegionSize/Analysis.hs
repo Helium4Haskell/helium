@@ -72,9 +72,9 @@ analyseMethod gEnv@(GlobalEnv tEnv _) (_, method@(Method mTy aRegs args _ rRegs 
         -- Generate the method annotation
         (aRegS, argS, rrSort, raSort) = argumentSorts method
         bSorts = const (SortTuple [raSort, SortConstr]) <$> blocks
-        lSorts = const (SortUnit) <$> (listFromMap $ lEnvAnnotations localEnv)
-        -- TODO: listFromMap is not guaranteed to be order preserving
-        localFix = AProj 0 . AFix (SortTuple (bSorts ++ lSorts)) $ (unliftTuple <$> blockAnn) ++ (snd <$> (listFromMap $ lEnvAnnotations localEnv))
+        lAnnos = map (flip lookupLocal localEnv) locals
+        lSorts = const (SortUnit) <$> lAnnos
+        localFix = AProj 0 . AFix (SortTuple (bSorts ++ lSorts)) $ (unliftTuple <$> blockAnn) ++ lAnnos
         fAnn  = ALam aRegS 
               $ if argS == []
                 then ALam rrSort localFix -- IDEA: Now 'SortUnit' but could be a way to deal with thunk allocations
@@ -211,7 +211,7 @@ analyseInstr envs@(Envs _ _ lEnv) bEnv = go
          -- Allocations with region variables
          go (LetAlloc bnds   next) = analyseLetAlloc envs bEnv bnds next 
          -- Remove region from effect, size has been detrimined
-         go (NewRegion r _   next) = 
+         go (NewRegion _ _   next) = 
              let (nxtAnn, nxtEff) = analyseInstr envs bEnv next
             --  in  (nxtAnn, AMinus nxtEff r)
              in  (nxtAnn, nxtEff)

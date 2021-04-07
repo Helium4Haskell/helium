@@ -120,8 +120,8 @@ instantiate (AQuant anno) ty = eval $ foldAnnAlg annInstAlg anno
     aFix   = \d s a -> AFix (sortSubstitute d ty s) a
   } 
 -- Top and bottom
-instantiate (ATop s vs) ty = (ATop (sortInstantiate ty s) vs)
-instantiate (ABot s   ) ty = (ABot (sortInstantiate ty s))
+instantiate (ATop s vs) ty = ATop s vs -- (ATop (sortInstantiate ty s) vs)
+instantiate (ABot s   ) ty = ABot s    -- (ABot (sortInstantiate ty s))
 -- Cannot eval
 instantiate a t = AInstn a t
 
