@@ -277,7 +277,7 @@ parse (Parser parser) source = case parser source of
   ResError err remaining ->
     let 
       consumed = take (length source - length remaining) source
-      line = countLines consumed
+      line = countLines $ fixRs consumed
       column = length $ takeWhile (\c -> c /= '\n' && c /= '\r') $ reverse consumed
     in Left $ ParseError (line + 1) (column + 1) err
 
@@ -287,3 +287,9 @@ countLines [] = 0
 countLines ('\r':'\n':rest) = 1 + countLines rest
 countLines ('\n':rest)      = 1 + countLines rest
 countLines (_   :rest)      =     countLines rest
+
+fixRs :: String -> String
+fixRs [] = []
+fixRs ('\r':'\n':rest) = '\n' : fixRs rest
+fixRs ('\r':rest)      = '\n' : fixRs rest
+fixRs (c   :rest)      =  c   : fixRs rest
