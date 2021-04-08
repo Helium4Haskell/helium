@@ -64,7 +64,7 @@ varNames = map pure ['a'..'z'] ++ map ((++) "a" . (show :: Int -> String)) [1..]
 -- | Get a type var name
 typeVarName :: Int -> String
 typeVarName idx | idx < 0 = "t_[" ++ show idx ++ "]"
-                | otherwise = (++) "t_" $ varNames !! idx
+                | otherwise = (++) "t" $ varNames !! idx
 
 -- | Get a type var name
 annVarName :: Int -> String
