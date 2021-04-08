@@ -147,13 +147,23 @@ operatorSort :: (Annotation -> Annotation -> Annotation)
              -> (Constr -> Constr -> Constr)
              -> [Annotation] 
              -> Annotation
-operatorSort op evalF xs = if length others == 0 
-                           then computed
-                           else if computed /= AConstr constrBot 
-                               then foldl op computed      $ sort others
-                               else foldl op (head others) $ sort (tail others)
-  where (constrs, others) = partition isConstr xs 
-        computed = AConstr $ foldr (\(AConstr a) -> evalF a) (constrBot) constrs
+operatorSort op evalF xs = -- Compose list (tops, bots then others)
+                           let list = if length tops > 0 && length bots > 0
+                                      then compTop : (bots !! 0) : sort others3
+                                      else if length tops > 0
+                                           then compTop : sort others3
+                                           else sort others3
+                           -- Combine list into single annotation
+                           in if length list == 0 
+                              then compConstr
+                              else if compConstr /= AConstr constrBot 
+                                  then foldl op compConstr  $ list
+                                  else foldl op (head list) $ tail list
+  where (constrs, others1) = partition isConstr xs
+        (tops   , others2) = partition isTop others1  
+        (bots   , others3) = partition isBot others2  
+        compConstr = AConstr      $ foldr (\(AConstr a)  -> evalF a                 ) (constrBot         ) constrs
+        compTop    = uncurry ATop $ foldr (\(ATop s a) b -> (s, constrAdd a $ snd b)) (SortUnit,constrBot) tops
 
 ----------------------------------------------------------------
 -- Subsitution of region variables
