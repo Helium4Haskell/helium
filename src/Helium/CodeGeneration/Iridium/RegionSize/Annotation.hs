@@ -6,7 +6,7 @@ module Helium.CodeGeneration.Iridium.RegionSize.Annotation
     liftTuple, unliftTuple,
     collect,
     annWeaken, annStrengthen,
-    isConstr, constrIdxToAnn,
+    isConstr, isTop, isBot, constrIdxToAnn,
     annRemLocalRegs
   ) where
 
@@ -76,8 +76,8 @@ annShow' n = foldAnnAlgN n showAlg
         aJoin   = \_ a b -> "(" ++ a ++ " ⊔  " ++ b ++ ")",
         aQuant  = \d a   -> "(∀ " ++ typeVarName (d+1) ++ "." ++ a ++ ")",
         aInstn  = \d a t -> a ++ " {" ++ showTypeN d t ++ "}",
-        aTop    = \d _ c -> "T" ++ "[" ++ (constrShow d c) ++ "]",
-        aBot    = \_ _   -> "⊥",
+        aTop    = \d s c -> "T[" ++ (constrShow d c) ++ ":" ++ showSort d s ++ "]",
+        aBot    = \d s   -> "⊥[" ++ showSort d s ++ "]",
         aFix    = \d s a -> "fix " ++ annVarName (d+1) ++ " : " ++ showSort d s 
                                    ++ ".\n[" ++ (intercalate ",\n" $ mapWithIndex (\i str -> show i ++ ": " ++ str) $ indent "  " <$> a) ++ "]",
         aConstr = \d c   -> constrShow d c
@@ -201,10 +201,19 @@ collect n (AProj i a) = M.mapKeys (CnProj i) $ collect n a
 collect n (ATuple ps) = foldr constrAdd M.empty $ map (collect n) ps
 collect _ _ = rsError "collect: Collect of non region annotation"
 
+
 -- | Is annotation a constraint set?
 isConstr :: Annotation -> Bool
 isConstr (AConstr _) = True
 isConstr _           = False
+
+isTop :: Annotation -> Bool
+isTop (ATop _ _) = True
+isTop _ = False
+
+isBot :: Annotation -> Bool
+isBot (ABot _) = True
+isBot _ = False
 
 
 -- | Convert a constraint index to an annotation

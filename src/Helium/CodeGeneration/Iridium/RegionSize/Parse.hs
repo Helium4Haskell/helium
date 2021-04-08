@@ -94,7 +94,12 @@ pAnnotation' names = do
             pWhitespace'
             ALam sort <$> pAnnotation (name:names)
         -- Bot
-        '⊥' -> pToken '⊥' >> return (ABot undefined) -- TODO: Sort of bot
+        '⊥' -> do 
+            pToken '⊥' 
+            pToken '[' 
+            sort <- pSort names
+            pToken ']'
+            return (ABot sort) -- TODO: Sort of bot
         -- Tuples/top
         'T' -> do
             pToken 'T'
@@ -107,9 +112,11 @@ pAnnotation' names = do
                 _ -> do 
                     pToken '[' 
                     constr <- pConstr names
+                    pToken ':'
+                    sort <- pSort names
                     pToken ']'
                     -- TODO: Sort of top
-                    return $ ATop undefined constr
+                    return $ ATop sort constr
         -- Projection
         'π' -> do
             pToken 'π'

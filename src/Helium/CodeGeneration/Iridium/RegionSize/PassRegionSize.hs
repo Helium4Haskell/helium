@@ -91,7 +91,7 @@ temp modName gEnv methods = do
                   . solveFixpoints 
                   $ analyseMethods 1 gEnv' methods')
 
-    -- Do the program transformation
+    -- Do the program transformation & remove empty regions
     let transformed = uncurry transform <$> zip effects (snd <$> methods')
     let emptyRegs   = collectEmptyRegs <$> transformed
     let cleaned     = uncurry remEmptyRegs <$> zip emptyRegs transformed
