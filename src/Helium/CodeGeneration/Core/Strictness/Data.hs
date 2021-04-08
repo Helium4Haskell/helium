@@ -12,13 +12,15 @@ join L _ = L
 join _ L = L
 join S x = x
 join x S = x
-join x y = Join x y
+join l r | l == r    = l
+         | otherwise = Join l r
 
 meet S _ = S
 meet _ S = S
 meet L x = x
 meet x L = x
-meet x y = Meet x y
+meet l r | l == r    = l
+         | otherwise = Meet l r
 
 joinAll, meetAll :: Ann -> Ann -> Ann
 joinAll (a1, r, a2) (a1', r', a2') = (join a1 a1', join r r', join a2 a2')
