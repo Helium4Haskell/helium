@@ -99,7 +99,7 @@ pAnnotation' names = do
             pToken '[' 
             sort <- pSort names
             pToken ']'
-            return (ABot sort) -- TODO: Sort of bot
+            return (ABot sort)
         -- Tuples/top
         'T' -> do
             pToken 'T'
@@ -115,7 +115,6 @@ pAnnotation' names = do
                     pToken ':'
                     sort <- pSort names
                     pToken ']'
-                    -- TODO: Sort of top
                     return $ ATop sort constr
         -- Projection
         'π' -> do

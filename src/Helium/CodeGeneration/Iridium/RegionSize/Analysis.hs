@@ -54,7 +54,7 @@ De Bruijn indices (dbz = de bruijn size):
     dbz+2  : Global fixpoint argument
 -}
 analyseMethod :: GlobalEnv -> (Id, Method) -> (Annotation, Sort)
-analyseMethod gEnv@(GlobalEnv tEnv _) (_, method@(Method mTy aRegs args _ rRegs _ fstBlock otherBlocks)) =
+analyseMethod gEnv@(GlobalEnv tEnv _) (_, method@(Method _ aRegs args _ rRegs _ fstBlock otherBlocks)) =
     let blocks    = (fstBlock:otherBlocks)
         initEnv   = initEnvFromArgs args
         rEnv      = regEnvFromArgs (deBruinSize args) aRegs rRegs
@@ -73,7 +73,7 @@ analyseMethod gEnv@(GlobalEnv tEnv _) (_, method@(Method mTy aRegs args _ rRegs 
         (aRegS, argS, rrSort, raSort) = argumentSorts method
         bSorts = const (SortTuple [raSort, SortConstr]) <$> blocks
         lAnnos = map (flip lookupLocal localEnv) locals
-        lSorts = const (SortUnit) <$> lAnnos
+        lSorts = sortAssign <$> (localType <$> locals)
         localFix = AProj 0 . AFix (SortTuple (bSorts ++ lSorts)) $ (unliftTuple <$> blockAnn) ++ lAnnos
         fAnn  = ALam aRegS 
               $ if argS == []
@@ -82,7 +82,7 @@ analyseMethod gEnv@(GlobalEnv tEnv _) (_, method@(Method mTy aRegs args _ rRegs 
                            (wrapBody (last argS) localFix rrSort) 
                            $ init argS
     in ( fAnn
-       , SortLam aRegS $ sortAssign mTy) 
+       , SortLam aRegS . sortAssign $ methodType method) 
 
 -- | Wrap a function body into a AQuant or `A -> P -> (A,C)'
 wrapBody :: Maybe Sort -> Annotation -> Sort -> Effect

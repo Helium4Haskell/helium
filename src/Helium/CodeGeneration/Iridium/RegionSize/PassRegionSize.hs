@@ -73,10 +73,11 @@ temp modName gEnv methods = do
     -- Check if the resulting annotation is well-sroted
     let sorts = sort fixed
     fixed' <- case sorts of
-          Left  e -> return $ ATop SortUnit constrBot
-          Right _ -> return fixed
+          Left  e -> return $ flip ATop constrBot . methodSortAssign <$> (snd <$> methods) 
+          Right _ -> return $ unsafeUnliftTuple fixed
+    
     -- Fix the annotations of zero arity definitions
-    let zerod = uncurry fixZeroArity <$> zip methods (unsafeUnliftTuple fixed')
+    let zerod = uncurry fixZeroArity <$> zip methods fixed'
     
 
     -- Update the global environment with the found annotations
@@ -129,6 +130,8 @@ temp modName gEnv methods = do
 
     return (gEnv', zip (fst <$> methods) cleaned)
 
+methodSortAssign :: Method -> Sort
+methodSortAssign = SortLam SortUnit . sortAssign . methodType 
 
 -- | Get an array of annotations from a tuple
 unsafeUnliftTuple :: Annotation -> [Annotation]
