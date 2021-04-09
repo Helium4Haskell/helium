@@ -150,7 +150,7 @@ pAbstractMethod = do
       ffi <- pMaybe pWord
       pToken '}'
       pWhitespace
-      AbstractMethod sourceType fnType (FFIInfo Nothing) <$> pAnnotations
+      AbstractMethod sourceType fnType (FFIInfo ffi) <$> pAnnotations
 
 pAnnotations :: Parser [Annotation]
 pAnnotations =

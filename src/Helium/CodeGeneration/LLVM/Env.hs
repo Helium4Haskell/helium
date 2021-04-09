@@ -9,6 +9,8 @@ import Helium.CodeGeneration.LLVM.ConstructorLayout(constructorLayout, Construct
 import qualified LLVM.AST as AST
 import Lvm.Common.IdMap
 
+import Debug.Trace
+
 data Env = Env
   { envTarget :: Target
   , envValueType :: AST.Type
@@ -22,7 +24,7 @@ data Env = Env
   }
 
 envForModule :: Target -> Iridium.Module -> Env
-envForModule target mod = Env
+envForModule target mod = trace ("Constructing Env: " ++ (show .listFromMap) ffiMap) (Env
   { envTarget = target
   , envValueType = AST.IntegerType $ fromIntegral $ targetWordSize target
   , envMethod = Nothing
@@ -31,7 +33,7 @@ envForModule target mod = Env
   , envFFIInfo = collectEnvFFIInfo (Iridium.moduleAbstractMethods mod)
   -- Environment is only used for type synonyms
   , envTypeEnv = Core.TypeEnvironment (mapFromList synonyms) emptyMap emptyMap
-  }
+  })
   where
     constructors = Iridium.moduleDataTypes mod >>=
       (\dataTypeDecl@(Iridium.Declaration name _ _ _ dataType) ->
@@ -46,6 +48,7 @@ envForModule target mod = Env
       ++ fmap (\(Iridium.Declaration name _ _ _ (Iridium.AbstractMethod _ _ _ annotations)) -> (name, methodInfo annotations)) (Iridium.moduleAbstractMethods mod)
     synonyms :: [(Id, Core.Type)]
     synonyms = [(name, tp) | Iridium.Declaration name _ _ _ (Iridium.TypeSynonym _ tp) <- Iridium.moduleTypeSynonyms mod]
+    ffiMap = collectEnvFFIInfo (Iridium.moduleAbstractMethods mod)
 
 data EnvMethodInfo = EnvMethodInfo { envMethodConvention :: !Iridium.CallingConvention, envMethodImplicitIO :: !Bool }
 

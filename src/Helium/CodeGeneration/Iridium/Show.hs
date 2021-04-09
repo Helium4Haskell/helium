@@ -189,10 +189,11 @@ instance ShowDeclaration AbstractMethod where
       )
     | otherwise =
       ( "declare"
-      , ": { " ++ show sourceType ++ " } $ [" ++ show arity ++ "]{ " ++ show (typeFromFunctionType fnType) ++ " } " ++ ffi
+      , ": { " ++ show sourceType ++ " } $ [" ++ show arity ++ "]{ " ++ show (typeFromFunctionType fnType) ++ " } " ++ ffi ++ showAnnotations annotations ++ "\n"
       )
     where
-      arity = functionArity fnType
+      arity = if implicitIO then (functionArity fnType) + 1 else functionArity fnType
+      implicitIO = AnnotateImplicitIO `elem` annotations
       ffi = case ffiInfo of
         FFIInfo (Just str) -> "{" ++ str ++ "} "
         FFIInfo Nothing -> "{} "

@@ -174,7 +174,7 @@ compileExpression env supply (Iridium.Literal literal) name = [toName name := Bi
         )
 -- TODO:
 compileExpression env supply expr@(Iridium.Call to@(Iridium.GlobalFunction global arity tp) args) name
-  | not fakeIO && all isRight args =
+  | not implicitIO && all isRight args =
     trace ("iridium call: " ++ ((show . stringFromId) global) ++ " real name: " ++ (stringFromId realName)) ([toName name := Call
         { tailCallKind = Nothing
         , callingConvention = compileCallingConvention convention
@@ -185,7 +185,7 @@ compileExpression env supply expr@(Iridium.Call to@(Iridium.GlobalFunction globa
         , metadata = []
         }
     ])
-  | not fakeIO =
+  | not implicitIO =
     let
       (name', supply') = freshName supply
       fromType = Iridium.typeToStrict retType
@@ -218,7 +218,7 @@ compileExpression env supply expr@(Iridium.Call to@(Iridium.GlobalFunction globa
         { tailCallKind = Nothing
         , callingConvention = compileCallingConvention convention
         , returnAttributes = []
-        , function = Right $ globalFunctionToOperand env (Iridium.GlobalFunction global (arity - 1) $ Iridium.typeFromFunctionType $ Iridium.FunctionType (init argTypes) $ Core.TCon $ Core.TConDataType $ idFromString "Int")
+        , function = Right $ globalFunctionToOperand env (Iridium.GlobalFunction realName (arity - 1) $ Iridium.typeFromFunctionType $ Iridium.FunctionType (init argTypes) $ Core.TCon $ Core.TConDataType $ idFromString "Int")
         , arguments = [(toOperand env arg, []) | Right arg <- init args]
         , functionAttributes = []
         , metadata = []
@@ -229,15 +229,15 @@ compileExpression env supply expr@(Iridium.Call to@(Iridium.GlobalFunction globa
         [Left Iridium.typeInt, Right $ Iridium.VarLocal $ Iridium.Local nameValue Iridium.typeInt, Right $ Iridium.VarLocal $ Iridium.Local nameRealWorld Iridium.typeRealWorld]]
   where
     Iridium.FunctionType argTypes retType = Iridium.extractFunctionTypeWithArity (envTypeEnv env) arity tp
-    EnvMethodInfo convention fakeIO = findMap global (envMethodInfo env)
+    EnvMethodInfo convention implicitIO = findMap global (envMethodInfo env)
     (nameValue, supply') = freshId supply
     (nameRealWorld, supply'') = freshId supply'
     ioRes = Iridium.DataTypeConstructor ioResId $ Iridium.typeFromFunctionType $ Iridium.FunctionType [Left $ Core.Quantor Nothing, Right $ Core.TVar 0, Right Iridium.typeRealWorld] Iridium.typeRealWorld
     ioResId = idFromString "IORes"
     tRealWorld = compileType env Iridium.typeRealWorld
-    realName = case lookupMap global (envFFIInfo env) of
-      Just foreignName -> idFromString foreignName
-      Nothing          -> global
+    realName = trace ("searching real name for: " ++ (show . stringFromId) global) (case lookupMap global (envFFIInfo env) of
+      Just foreignName -> trace ("found foreign name: " ++ show foreignName) (idFromString foreignName)
+      Nothing          -> global)
 compileExpression env supply (Iridium.Eval var) name = compileEval env supply (toOperand env var) (Iridium.variableType var) $ toName name
 compileExpression env supply (Iridium.Var var) name = cast supply env (toOperand env var) (toName name) t t
   where t = Iridium.variableType var
