@@ -16,7 +16,7 @@ import qualified Data.Map as M
 import Data.List
 
 max_bound :: Int
-max_bound = 7
+max_bound = 4
 
 ----------------------------------------------------------------
 -- Types

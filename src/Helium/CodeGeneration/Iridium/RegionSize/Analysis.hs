@@ -122,10 +122,17 @@ initEnvFromArgs :: [Either Quantor Local] -> LocalEnv
 initEnvFromArgs []   = LocalEnv 0 emptyMap emptyMap
 initEnvFromArgs args = let argIdxs = createIdxs 2 $ reverse args
                            lEnv    = LocalEnv (1 + 2 * (length $ rights args)) emptyMap emptyMap
-                       in foldl (flip $ uncurry insertArgument) lEnv argIdxs
+                       in foldr insertArgument lEnv argIdxs
     where createIdxs _ []           = []
-          createIdxs n (Left  q:xs) = (Left  q, AVar n) : createIdxs (n+1) xs
-          createIdxs n (Right t:xs) = (Right t, AVar n) : createIdxs (n+2) xs
+          createIdxs n (Left  q:xs) = (Left  q, n) : createIdxs (n+1) xs
+          createIdxs n (Right t:xs) = (Right t, n) : createIdxs (n+2) xs
+
+
+-- | Insert method argument into lEnv, ignore quantors 
+insertArgument :: (Either Quantor Local, Int) -> LocalEnv -> LocalEnv
+insertArgument (Left  _    , _) lEnv = lEnv
+insertArgument (Right local, d) lEnv = lEnv { lEnvAnns = insertMap (localName local) (AVar d) (lEnvAnns lEnv)
+                                            , lEnvSrts = insertMap (localName local) (sortAssign . typeWeaken d $ localType local) (lEnvSrts lEnv) }
 
 -- | Region environment from additional regions and return regions
 regEnvFromArgs :: Int -> RegionVars -> RegionVars -> RegionEnv
@@ -340,11 +347,6 @@ addEffect eff (a,e) = (a, AAdd eff e)
 insertMaybeId :: Maybe Id -> Annotation -> LocalEnv -> LocalEnv
 insertMaybeId Nothing  = flip const
 insertMaybeId (Just i) = updateLocal i
-
--- | Insert method argument into lEnv, ignore quantors 
-insertArgument :: Either Quantor Local -> Annotation -> LocalEnv -> LocalEnv
-insertArgument (Left _)      = flip const
-insertArgument (Right local) = insertLocal $ localName local
 
 
 -- | Get the case block names out of the case

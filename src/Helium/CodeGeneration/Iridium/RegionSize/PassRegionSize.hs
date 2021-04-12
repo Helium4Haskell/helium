@@ -54,11 +54,11 @@ analyseGroup modName gEnv (BindingNonRecursive decl@(Declaration methodName _ _ 
 
 temp ::  String -> GlobalEnv -> [(Id,Method)] -> IO (GlobalEnv, [(Id,Method)])
 temp modName gEnv methods = do
-  if((modName == "LvmLang"        && False)
-    || (modName == "HeliumLang"   && False) 
-    || (modName == "PreludePrim"  && False)
-    || (modName == "Prelude"      && False)
-    || (modName == "LvmException" && False))
+  if((modName == "LvmLang"        && True)
+    || (modName == "HeliumLang"   && True) 
+    || (modName == "PreludePrim"  && True)
+    || (modName == "Prelude"      && True)
+    || (modName == "LvmException" && True))
   then do
     return (gEnv, methods)
   else do
