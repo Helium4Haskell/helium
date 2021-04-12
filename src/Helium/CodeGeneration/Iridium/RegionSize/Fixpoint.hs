@@ -9,15 +9,15 @@ import Helium.CodeGeneration.Iridium.RegionSize.Evaluate
 
 -- | Solve all the fixpoints in an annotation
 solveFixpoints :: Annotation -> Annotation
-solveFixpoints = eval . fillTop . foldAnnAlg fixAlg
+solveFixpoints = eval . fillTop . foldAnnAlgLams fixAlg
     where fixAlg = idAnnAlg {
-        aFix = \_ s as -> ATuple $ solveFixpoint s as
+        aFix = \d s as -> ATuple $ solveFixpoint d s as
     }
 
 -- | Solve a group of fixpoints
-solveFixpoint :: Sort -> [Annotation] -> [Annotation]
-solveFixpoint s fixes = 
-        let bot = ABot s
+solveFixpoint :: Int -> Sort -> [Annotation] -> [Annotation]
+solveFixpoint d s fixes = 
+        let bot = ABot $ sortWeaken d s
         in fixIterate 0 bot fixes
     where fixIterate :: Int -> Annotation -> [Annotation] -> [Annotation]
           fixIterate 10 _     _  = mapWithIndex (\ i _ -> AProj i $ ATop s constrBot) fixes
@@ -44,7 +44,7 @@ countFixBinds = foldAnnAlgN 0 countAlg
         aJoin   = \_ a b -> a + b,
         aQuant  = \_ a   -> a,
         aInstn  = \_ a _ -> a,
-        aTop    = \_ _ _ -> 0, -- TODO: Count rec references in top?
+        aTop    = \_ _ _ -> 0,
         aBot    = \_ _   -> 0,
         aFix    = \_ _ a -> sum a   
     }

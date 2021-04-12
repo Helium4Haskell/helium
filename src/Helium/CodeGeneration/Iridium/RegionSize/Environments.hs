@@ -26,8 +26,9 @@ data GlobalEnv = GlobalEnv !TypeEnvironment !(IdMap (Annotation))
 type RegionEnv = M.Map RegionVar ConstrIdx
 type BlockEnv  = IdMap Annotation
 data LocalEnv  = LocalEnv { 
-  lEnvArgCount    :: Int, 
-  lEnvAnnotations :: IdMap Annotation 
+  lEnvLamCount :: Int,              -- ^ Number of lambdas wrapping the function body
+  lEnvAnns     :: IdMap Annotation, -- ^ Map from local id to annotation
+  lEnvSrts     :: IdMap Sort        -- ^ Map from local id to sort
 }
 data Envs = Envs GlobalEnv RegionEnv LocalEnv
 
@@ -90,15 +91,23 @@ lookupBlock name bEnv =
     Just a  -> a 
 
 -- | Look up a local variable in the local environment
-lookupLocal :: HasCallStack => Local -> LocalEnv -> Annotation
-lookupLocal local (LocalEnv _ lEnv) = 
-  case lookupMap (localName local) lEnv of
-    Nothing -> rsError $ "lookupLocal - ID not in map: " ++ (stringFromId $ localName local) 
+lookupLocalAnn :: HasCallStack => Local -> LocalEnv -> Annotation
+lookupLocalAnn local (LocalEnv _ lAnnEnv _) = 
+  case lookupMap (localName local) lAnnEnv of
+    Nothing -> rsError $ "lookupLocalAnn - ID not in map: " ++ (stringFromId $ localName local) 
     Just a  -> a
+
+-- | Look up a local variable in the local environment
+lookupLocalSrt :: HasCallStack => Local -> LocalEnv -> Sort
+lookupLocalSrt local (LocalEnv _ _ lSrtEnv) = 
+  case lookupMap (localName local) lSrtEnv of
+    Nothing -> rsError $ "lookupLocalAnn - ID not in map: " ++ (stringFromId $ localName local) 
+    Just a  -> a
+
 
 -- | Lookup a global or local variable
 lookupVar :: HasCallStack => Variable -> Envs -> Annotation
-lookupVar (VarLocal local) (Envs _ _ lEnv) = lookupLocal local lEnv
+lookupVar (VarLocal local) (Envs _ _ lEnv) = lookupLocalAnn local lEnv
 lookupVar global           (Envs gEnv _ _) = AApl (lookupGlobal (variableName global) gEnv) AUnit
 
 
@@ -111,17 +120,12 @@ lookupReg r rEnv = case M.lookup r rEnv of
 
 -- | Insert a local variable
 insertLocal :: Id -> Annotation -> LocalEnv -> LocalEnv
-insertLocal name ann (LocalEnv argC lEnv) = LocalEnv argC $ insertMap name ann lEnv
+insertLocal name ann (LocalEnv argC lAnnEnv lSrtEnv) = LocalEnv argC (insertMap name ann lAnnEnv) lSrtEnv
 
 -- | Insert a local variable
 updateLocal :: Id -> Annotation -> LocalEnv -> LocalEnv
-updateLocal name ann (LocalEnv argC lEnv) = LocalEnv argC $ updateMap name ann lEnv
+updateLocal name ann (LocalEnv argC lAnnEnv lSrtEnv) = LocalEnv argC (updateMap name ann lAnnEnv) lSrtEnv
 
 -- | Alter a value in the global map
 updateGlobal :: HasCallStack => Id -> Annotation -> GlobalEnv -> GlobalEnv
 updateGlobal name ann (GlobalEnv syns fs) = GlobalEnv syns $ updateMap name ann fs
-
-
--- | Union the localenv with another annotation map
-unionLocalEnv :: LocalEnv -> IdMap Annotation -> LocalEnv
-unionLocalEnv (LocalEnv n m1) m2 = LocalEnv n $ unionMap m1 m2 

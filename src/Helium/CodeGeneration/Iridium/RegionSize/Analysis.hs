@@ -56,13 +56,16 @@ De Bruijn indices (dbz = de bruijn size):
 analyseMethod :: GlobalEnv -> (Id, Method) -> (Annotation, Sort)
 analyseMethod gEnv@(GlobalEnv tEnv _) (_, method@(Method _ aRegs args _ rRegs _ fstBlock otherBlocks)) =
     let blocks    = (fstBlock:otherBlocks)
-        initEnv   = initEnvFromArgs args
         rEnv      = regEnvFromArgs (deBruinSize args) aRegs rRegs
 
-        -- Retrieve locals from method body
+        -- Create the local environment
+        initEnv   = initEnvFromArgs args
         locals    = methodLocals False tEnv method
         fixIdx    = 0
-        initEnv'  = unionLocalEnv initEnv $ mapFromList.map (\(idx,lName) -> (lName, AProj idx $ AVar fixIdx)) $ zip [length blocks..] (localName <$> locals)
+        localAnnMap = mapFromList $ map (\(idx,local) -> (localName local, AProj idx $ AVar fixIdx)) $ zip [length blocks..] locals
+        localSrtMap = mapFromList $ map (\local       -> (localName local, sortAssign $ typeWeaken (lEnvLamCount initEnv) (localType local))) locals
+        initEnv'  = initEnv { lEnvAnns = unionMap (lEnvAnns initEnv) localAnnMap
+                            , lEnvSrts = unionMap (lEnvSrts initEnv) localSrtMap }
         localEnv  = foldl (\lEnv -> localsOfBlock (Envs gEnv rEnv lEnv)) initEnv' blocks  
 
         -- Retrieve the annotation and effect of the function body
@@ -72,8 +75,8 @@ analyseMethod gEnv@(GlobalEnv tEnv _) (_, method@(Method _ aRegs args _ rRegs _ 
         -- Generate the method annotation
         (aRegS, argS, rrSort, raSort) = argumentSorts method
         bSorts = const (SortTuple [raSort, SortConstr]) <$> blocks
-        lAnnos = map (flip lookupLocal localEnv) locals
-        lSorts = sortAssign <$> (localType <$> locals)
+        lAnnos = map (flip lookupLocalAnn localEnv) locals
+        lSorts = map (flip lookupLocalSrt localEnv) locals
         localFix = AProj 0 . AFix (SortTuple (bSorts ++ lSorts)) $ (unliftTuple <$> blockAnn) ++ lAnnos
         fAnn  = ALam aRegS 
               $ if argS == []
@@ -114,10 +117,11 @@ argumentSortAssign n (Left _)   = (n,Nothing)
 argumentSortAssign n (Right ty) = (n+2,Just $ sortWeaken n $ sortAssign ty)
 
 -- | Initial enviromentment based on function arguments
+-- TODO: Insert local arg sorts
 initEnvFromArgs :: [Either Quantor Local] -> LocalEnv
-initEnvFromArgs []   = LocalEnv 0 emptyMap
+initEnvFromArgs []   = LocalEnv 0 emptyMap emptyMap
 initEnvFromArgs args = let argIdxs = createIdxs 2 $ reverse args
-                           lEnv    = LocalEnv (length $ rights args) emptyMap
+                           lEnv    = LocalEnv (1 + 2 * (length $ rights args)) emptyMap emptyMap
                        in foldl (flip $ uncurry insertArgument) lEnv argIdxs
     where createIdxs _ []           = []
           createIdxs n (Left  q:xs) = (Left  q, AVar n) : createIdxs (n+1) xs
@@ -182,7 +186,7 @@ localsOfMatch :: Envs
              -> Local -> MatchTarget -> [Type] -> [Maybe Id] -> Instruction  
              -> LocalEnv
 localsOfMatch (Envs gEnv rEnv lEnv) local (MatchTargetTuple n) _ ids next =
-    let tupleVar = lookupLocal local lEnv 
+    let tupleVar = lookupLocalAnn local lEnv 
         newVars  = map (flip AProj $ tupleVar) [0..(n-1)]
         -- Insert matched vars into lEnv
         lEnv'    = foldl (flip $ uncurry insertMaybeId) lEnv (zip ids newVars)
@@ -215,16 +219,17 @@ analyseInstr envs@(Envs _ _ lEnv) bEnv = go
              let (nxtAnn, nxtEff) = analyseInstr envs bEnv next
             --  in  (nxtAnn, AMinus nxtEff r)
              in  (nxtAnn, nxtEff)
-         -- TODO: Check if we can ignore a release
+         -- Ignore release region
          go (ReleaseRegion _ next) = analyseInstr envs bEnv next
          -- Lookup the annotation and effect from block
          go (Jump block)           = liftTuple $ lookupBlock block bEnv 
          -- Join the effects of all the blocks
          go (Case _     cas)       = joinBlocks bEnv $ caseBlocks cas
          -- Lookup the variable annotation
-         go (Return local)         = (lookupLocal local lEnv, botEffect)
+         go (Return local)         = (lookupLocalAnn local lEnv, botEffect)
          -- No effect
-         go (Unreachable _)        = (ABot undefined, botEffect)
+         go (Unreachable Nothing)  = (ABot undefined, botEffect) -- TODO: What to do here?
+         go (Unreachable (Just l)) = (ABot $ lookupLocalSrt l lEnv, botEffect)
          -- Matching only reads, only effect of sub instruction
          go (Match _ _ _ _ next)   = go next
 
@@ -262,19 +267,19 @@ analyseExpr envs@(Envs gEnv _ lEnv) = go
       -- Eval & Var: Lookup annotation of variable (can be global or local)
       go (Eval var)               = (lookupVar var envs             , botEffect)
       go (Var var)                = (lookupVar var envs             , botEffect)
-      go (Cast local _)           = (lookupLocal local lEnv         , botEffect)
+      go (Cast local _)           = (lookupLocalAnn local lEnv         , botEffect)
       -- No effect, annotation of local
-      go (CastThunk local)        = (lookupLocal local lEnv         , botEffect)
+      go (CastThunk local)        = (lookupLocalAnn local lEnv         , botEffect)
       -- Join of the variable annotations in the branches
-      go (Phi branches)           = (joinAnnList $ flip lookupLocal lEnv <$> map phiVariable branches, botEffect) 
+      go (Phi branches)           = (joinAnnList $ flip lookupLocalAnn lEnv <$> map phiVariable branches, botEffect) 
       -- Primitive expression, does not allocate or cause any effect -> bottom
       go (PrimitiveExpr _ _)      = (AUnit, botEffect) 
       -- No effect, bottom annotation
-      go (Undefined t)            = (ABot $ sortAssign t, botEffect)
+      go (Undefined t)            = (ABot . sortAssign $ typeWeaken (lEnvLamCount lEnv) t, botEffect)
       -- No effect, just annotation of local2
-      go (Seq _ local2)           = (lookupLocal local2 lEnv        , botEffect)
+      go (Seq _ local2)           = (lookupLocalAnn local2 lEnv        , botEffect)
       -- Instantiate types in local
-      go (Instantiate local tys)  = (foldl AInstn (local `lookupLocal` lEnv) (typeWeaken (1 + 2 * lEnvArgCount lEnv) <$> tys), botEffect) 
+      go (Instantiate local tys)  = (foldl AInstn (local `lookupLocalAnn` lEnv) (typeWeaken (lEnvLamCount lEnv) <$> tys), botEffect) 
       -- Apply all type and variable arguments
       go (Call gFun aRegs args rReg) = funcApplyArgs envs (globalFunctionName gFun `lookupGlobal` gEnv) aRegs args rReg
 
@@ -288,8 +293,8 @@ thunkApplyArg :: LocalEnv
               -> Annotation        -- ^ Function 
               -> Either Type Local -- ^ Argument
               -> (Annotation,Effect)
-thunkApplyArg lEnv _    fAnn (Left ty    ) = (AInstn fAnn $ typeWeaken (1 + 2 * lEnvArgCount lEnv) ty, botEffect) 
-thunkApplyArg lEnv rReg fAnn (Right local) = liftTuple $ AApl (AApl fAnn $ lookupLocal local lEnv) rReg
+thunkApplyArg lEnv _    fAnn (Left ty    ) = (AInstn fAnn $ typeWeaken (lEnvLamCount lEnv) ty, botEffect) 
+thunkApplyArg lEnv rReg fAnn (Right local) = liftTuple $ AApl (AApl fAnn $ lookupLocalAnn local lEnv) rReg
 
 -- | Apply a list of arguments to a funtion
 thunkApplyArgs :: Envs 
@@ -321,7 +326,7 @@ tupleApplyArgs :: LocalEnv
                -> Annotation
 tupleApplyArgs lEnv = ATuple . foldr go []
     where go (Left _ ) xs = xs -- error "Cannot apply type to tuple" 
-          go (Right x) xs = lookupLocal x lEnv : xs
+          go (Right x) xs = lookupLocalAnn x lEnv : xs
 
 ----------------------------------------------------------------
 -- Analysis utilities

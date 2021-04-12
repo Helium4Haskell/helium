@@ -126,7 +126,7 @@ sortAssign' [t1,t2] (TCon TConFun)       = funSort t1 t2
 sortAssign' ts      (TCon (TConTuple n)) | length ts == n = SortTuple $ map sortAssign ts
                                          | otherwise      = rsError $ "sortAssign: Tuple with incorrect number of arguements: expected " ++ show n ++ " but got " ++ (show $ length ts) ++ "\n" ++ (intercalate ", " $ map (showTypeN 0) ts)
 sortAssign' []      (TCon (TConDataType _))            = SortUnit
-sortAssign' [a]     (TCon (TConTypeClassDictionary _)) = funSort (TCon (TConDataType $ idFromString "TODO")) a
+sortAssign' [a]     (TCon (TConTypeClassDictionary _)) = funSort (TCon (TConDataType $ idFromString "TODO: Dictionaries")) a
 -- TODO: Datatypes
 sortAssign' _       (TCon (TConDataType _)) = SortUnit `rsInfo` "sortAssign: Datatypes not yet supported"
 -- Not implemented cases 

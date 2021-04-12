@@ -2,7 +2,7 @@
 
 module Helium.CodeGeneration.Iridium.RegionSize.Annotation
   ( Annotation(..), Effect, pattern AUnit, annShow, annShow',
-    AnnAlg(..), foldAnnAlg, foldAnnAlgN, idAnnAlg,
+    AnnAlg(..), foldAnnAlg, foldAnnAlgN, foldAnnAlgLams, idAnnAlg,
     liftTuple, unliftTuple,
     collect,
     annWeaken, annStrengthen,
@@ -129,14 +129,31 @@ idAnnAlg = AnnAlg {
   aFix    = \_ -> AFix   
 }
 
+-- | Start folding from default depth (-1)
 foldAnnAlg :: AnnAlg a -> Annotation -> a
 foldAnnAlg = foldAnnAlgN (-1)
 
+-- | Increase depth at lambdas and quantifications
 foldAnnAlgN :: Int -> AnnAlg a -> Annotation -> a
-foldAnnAlgN n alg ann = go n ann
+foldAnnAlgN = foldAnnAlgN' (+1) (+1)
+
+-- | Start folding from default depth (-1)
+foldAnnAlgLams :: AnnAlg a -> Annotation -> a
+foldAnnAlgLams = foldAnnAlgLamsN (-1)
+
+-- | Increase depth only at lambdas (thus also fixpoints)
+foldAnnAlgLamsN :: Int -> AnnAlg a -> Annotation -> a
+foldAnnAlgLamsN = foldAnnAlgN' (+1) (+0)
+
+
+-- | Generic fold over annotations 
+foldAnnAlgN' :: (Int -> Int) -- ^ Increment function for lams
+             -> (Int -> Int) -- ^ Increment function for quants
+             -> Int -> AnnAlg a -> Annotation -> a
+foldAnnAlgN' incrLam incrQuant n alg ann = go n ann
   where go d (AVar   idx) = aVar    alg d idx
         go d (AReg   idx) = aReg    alg d idx
-        go d (ALam   s a) = aLam    alg d s $ go (d+1) a
+        go d (ALam   s a) = aLam    alg d s $ go (incrLam d) a
         go d (AApl   a b) = aApl    alg d (go d a) (go d b)
         go d (AUnit     ) = aUnit   alg d 
         go d (ATuple as ) = aTuple  alg d (go d <$> as) 
@@ -144,11 +161,11 @@ foldAnnAlgN n alg ann = go n ann
         go d (AAdd   a b) = aAdd    alg d (go d a) (go d b)
         go d (AMinus a r) = aMinus  alg d (go d a) r
         go d (AJoin  a b) = aJoin   alg d (go d a) (go d b)
-        go d (AQuant a  ) = aQuant  alg d $ go (d+1) a 
+        go d (AQuant a  ) = aQuant  alg d $ go (incrQuant d) a 
         go d (AInstn a t) = aInstn  alg d (go d a) t
         go d (ATop   s v) = aTop    alg d s v
         go d (ABot   s  ) = aBot    alg d s
-        go d (AFix   s a) = aFix    alg d s (go (d+1) <$> a)
+        go d (AFix   s a) = aFix    alg d s (go (incrLam d) <$> a)
         go d (AConstr  c) = aConstr alg d c
 
 ----------------------------------------------------------------
