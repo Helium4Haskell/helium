@@ -1,0 +1,102 @@
+name: helium
+version: 1.9
+synopsis: The Helium Compiler.
+homepage: https://github.com/Helium4Haskell/helium
+description:
+
+  Helium is a compiler for a subset of Haskell that aims at delivering high
+  quality type error messages particularly for beginner programmers. It also
+  includes facilities for specializing type error diagnosis for embedded domain
+  specific languages. The compiler supports Haskell 98, but without the ability
+  to define new type classes and instances.
+category:               Compiler
+copyright:              (c) 2014-2019
+license:                GPL
+license-file:           LICENSE.txt
+author:                 Bastiaan Heeren, Jurriaan Hage
+maintainer:             helium4haskell@gmail.com
+stability:              provisional
+
+dependencies:
+  - Top
+  - base
+  - containers
+  - directory
+  - filepath
+  - lvmlib
+  - mtl
+  - network
+  - parsec
+  - process
+  - wl-pprint
+
+library:
+  ghc-options: 
+    -Wall
+  source-dirs: 
+    - src 
+    - dist/build/autogen/uuagc
+
+executables:
+  helium:
+    main: Helium/Main.hs
+    source-dirs: 
+      - src/commands/helium 
+    other-modules: Paths_helium
+    default-extensions: FlexibleContexts
+    dependencies: helium
+
+  texthint:
+    main: TextHint/Main.hs
+    source-dirs: 
+      - src/commands/texthint
+    other-modules: 
+      - Paths_helium
+      - TextHint.ConfigFile    
+    default-extensions: FlexibleContexts
+    dependencies: helium
+
+  runhelium:
+    main: RunHelium/Main.hs
+    source-dirs: 
+      - src/commands/runhelium
+      - src/commands/texthint
+    other-modules: 
+      - Paths_helium
+      - TextHint.ConfigFile    
+    default-extensions: FlexibleContexts
+    dependencies: helium
+
+  heliumpath:
+    main: Main.hs
+    source-dirs: 
+      - src/commands/heliumpath
+    other-modules: 
+      - Paths_helium 
+    default-extensions: FlexibleContexts
+    dependencies: helium
+
+data-files:
+  - lib/Char.hs
+  - lib/HeliumLang.core
+  - lib/List.hs
+  - lib/LvmException.core
+  - lib/LvmIO.core
+  - lib/LvmLang.core
+  - lib/Makefile
+  - lib/Maybe.hs
+  - lib/Prelude.hs
+  - lib/Prelude.type
+  - lib/PreludePrim.core
+  - lib/simple/Char.hs
+  - lib/simple/HeliumLang.core
+  - lib/simple/List.hs
+  - lib/simple/LvmException.core
+  - lib/simple/LvmIO.core
+  - lib/simple/LvmLang.core
+  - lib/simple/Makefile
+  - lib/simple/Maybe.hs
+  - lib/simple/Prelude.hs
+  - lib/simple/Prelude.type
+  - lib/simple/PreludePrim.core
+  - hint.conf

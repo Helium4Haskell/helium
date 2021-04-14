@@ -1,0 +1,23 @@
+resolver: lts-16.20
+
+packages: 
+- .
+
+extra-deps:
+  - wl-pprint-1.2.1@sha256:aea676cff4a062d7d912149d270e33f5bb0c01b68a9db46ff13b438141ff4b7c,734
+  - network-2.6.3.6@sha256:1ca79d81af02d7acd6032d5e6c9bde4618a8fdcfbe19bd42b49d420183975df0,2666
+  - llvm-hs-pretty-0.9.0.0@sha256:b7a5de5f3dd97893d19d2b47af1e4dd8d075a5cf57062180a912d1f3ef1def60,1671
+
+  # If local development on Top is required, this entry can be replaced with the relative path of the directory the Top
+  # repository is located, such as `../Top`
+  # - github: Helium4Haskell/Top
+  #  commit: f8a61d1f3f68066e23cce768abdba4c1ddf3e907
+  - ../Top
+
+  # - github: Helium4Haskell/lvm
+  #   commit: 95d89f8498b9895d59f740d13018462325bd226e
+  #   subdirs: 
+  #    - src/lib
+  - ../lvm/src/lib
+
+allow-newer: false
