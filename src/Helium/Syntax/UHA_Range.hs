@@ -167,6 +167,7 @@ getExprRange (Expression_List               r _    ) = r
 getExprRange (Expression_Tuple              r _    ) = r
 getExprRange (Expression_Comprehension      r _ _  ) = r
 getExprRange (Expression_Typed              r _ _  ) = r
+getExprRange (Expression_Dimensioned        r _ _  ) = r
 getExprRange (Expression_RecordConstruction r _ _  ) = r
 getExprRange (Expression_RecordUpdate       r _ _  ) = r
 getExprRange (Expression_Enum               r _ _ _) = r
@@ -239,8 +240,7 @@ getDeclarationRange decl = case decl of
    Declaration_Type r _ _           -> r
    Declaration_Data  r _ _ _ _      -> r
    Declaration_Newtype r _ _ _ _    -> r
-   Declaration_Dimension r _        -> r
-   Declaration_UnitFromDim r _ _    -> r
+   Declaration_Dimension r _ _      -> r
    Declaration_UnitFromUnit r _ _ _ -> r
    Declaration_AliasDimension r _ _ -> r
    Declaration_AliasUnit r _ _      -> r

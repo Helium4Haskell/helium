@@ -123,10 +123,7 @@ DATA Declaration                                  {- *** -}
     | Dimension
         range                    : Range
         simpledimension          : SimpleDimension
-    | UnitFromDim
-        range                    : Range
         simpleunit               : SimpleUnit
-        dimension                : Dimension
     | UnitFromUnit
         range                    : Range
         simpleunit               : SimpleUnit

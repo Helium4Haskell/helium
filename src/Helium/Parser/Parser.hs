@@ -240,24 +240,19 @@ topdecl = addRange (
     do
         lexDIMENSION
         sd <- sdim
-        return $ \r -> Declaration_Dimension r sd
+        lexIN
+        su <- sunit
+        return $ \r -> Declaration_Dimension r sd su
     <|>
     do
         lexUNIT
         su <- sunit
-        (do 
-            try (do
-                lexFROM
-                dim <- dimension
-                return $ \r -> Declaration_UnitFromDim r su dim)
-            <|>
-            (do
-                lexDERIVES
-                lexFROM
-                u <- unit
-                lexWITH
-                f <- decl  
-                return $ \r -> Declaration_UnitFromUnit r su u f))
+        lexDERIVES
+        lexFROM
+        u <- unit
+        lexWITH
+        f <- decl  
+        return $ \r -> Declaration_UnitFromUnit r su u f
     <|>
     do
         lexALIAS

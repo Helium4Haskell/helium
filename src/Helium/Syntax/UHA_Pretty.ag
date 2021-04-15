@@ -298,14 +298,10 @@ SEM Declaration                                  {- *** -}
     --  simpletype               : SimpleType
     --  constructor              : Constructor  -- has only one field, no strictness
     --  derivings                : Names
-    | Dimension         loc.text = text "dimension" <+> @simpledimension.text
+    | Dimension         loc.text = text "dimension" <+> @simpledimension.text <+> text "in" <+> @simpleunit.text
     --  range                    : Range
     --  simpledimension          : SimpleDimension
-    | UnitFromDim       loc.text = text "unit" <+> @simpleunit.text
-                                    <+> text "of" <+> @dimension.text
-    --  range                    : Range
-    --  simpleunit               : SimpleUnit
-    --  dimension                : Dimension
+    --  simpleunit          : SimpleUnit
     | UnitFromUnit      loc.text = text "unit" <+> @simpleunit.text
                                     <+> text "derives from" <+> @associatedunit.text
                                     <+> text "with" <+> @associatedcv.text
