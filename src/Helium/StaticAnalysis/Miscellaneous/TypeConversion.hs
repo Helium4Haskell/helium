@@ -36,8 +36,8 @@ namesInType :: Type -> Names
 namesInType uhaType = case uhaType of
 
       Type_Application _ _ fun args -> namesInTypes (fun : args)
-      Type_Variable _ name          -> [name]
-      Type_Constructor _ _          -> []
+      Type_Variable _ name _        -> [name]
+      Type_Constructor _ _ _        -> []
       Type_Parenthesized _ t        -> namesInType t
       Type_Qualified _ _ t          -> namesInType t
       Type_Forall{}                 -> internalError "TypeConversion.hs" "namesInType" "universal types are currently not supported"
@@ -159,7 +159,7 @@ predicatesFromContext :: [(Name,Tp)] -> Type -> Predicates
 predicatesFromContext nameMap (Type_Qualified _ is _) =
    concatMap predicateFromContext is
    where
-     predicateFromContext (ContextItem_ContextItem _ cn [Type_Variable _ vn]) =
+     predicateFromContext (ContextItem_ContextItem _ cn [Type_Variable _ vn _]) =
        case lookup vn nameMap of
          Nothing -> []
          Just tp -> [Predicate (getNameName cn) tp]
@@ -175,8 +175,8 @@ makeTpFromType nameMap = rec_
         rec_ :: Type -> Tp
         rec_ uhaType = case uhaType of
              Type_Application _ _ fun args -> foldl TApp (rec_ fun) (map rec_ args)
-             Type_Variable _ name          -> fromMaybe (TCon "???") (lookup name nameMap)
-             Type_Constructor _ name       -> TCon (getNameName name)
+             Type_Variable _ name _        -> fromMaybe (TCon "???") (lookup name nameMap)
+             Type_Constructor _ name _     -> TCon (getNameName name)
              Type_Parenthesized _ t        -> rec_ t
              Type_Qualified _ _ t          -> rec_ t
              Type_Forall{}                 -> internalError "TypeConversion.hs" "makeTpFromType" "universal types are currently not supported"
@@ -195,8 +195,8 @@ makeTypeFromTp t =
     in if null xs
         then f x
         else Type_Application noRange True (f x) (map makeTypeFromTp xs)
-   where f (TVar i) = Type_Variable noRange    (nameFromString ('v' : show i))
-         f (TCon s) = Type_Constructor noRange (nameFromString s)
+   where f (TVar i) = Type_Variable noRange    (nameFromString ('v' : show i)) MaybeUnit_Nothing
+         f (TCon s) = Type_Constructor noRange (nameFromString s) MaybeUnit_Nothing
          f (TApp _ _) = error "TApp case in makeTypeFromTp"
 
          

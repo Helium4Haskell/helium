@@ -335,9 +335,9 @@ checkClassContext (SimpleType_SimpleType _ c vars) tys =
 
 
 getTypeVariables :: Types                            -> Names
-getTypeVariables ((Type_Variable _ n):tys)           = n : getTypeVariables tys
+getTypeVariables ((Type_Variable _ n _):tys)           = n : getTypeVariables tys
 getTypeVariables ((Type_Application _ _ t tys):tyss) = getTypeVariables [t] ++ getTypeVariables tys ++ getTypeVariables tyss
-getTypeVariables ((Type_Constructor _ _):tys)        = getTypeVariables tys
+getTypeVariables ((Type_Constructor _ _ _):tys)        = getTypeVariables tys
 getTypeVariables ((Type_Exists _ _ t):tys)           = getTypeVariables [t] ++ getTypeVariables tys
 getTypeVariables ((Type_Forall _ _ t):tys)           = getTypeVariables [t] ++ getTypeVariables tys
 getTypeVariables ((Type_Parenthesized _ t):tys)      = getTypeVariables [t] ++ getTypeVariables tys
@@ -520,18 +520,18 @@ isSimplePattern pattern =
 
 --This function inspects whether a type is legal as type  for declaring an instance on
 validInstanceType :: Type -> Bool
-validInstanceType (Type_Constructor _ _) = True  -- A simple type is fine
+validInstanceType (Type_Constructor _ _ _) = True  -- A simple type is fine
 validInstanceType (Type_Parenthesized _ t) = validInstanceType t -- Just look inside
 validInstanceType (Type_Application _ _ ty tys) = (validApplyType ty tys) && (and $ map validInnerInstanceType tys) -- Some complicated stuff
 validInstanceType _                      = False -- We don't like quantified and unbound types etc...
 
 validInnerInstanceType :: Type -> Bool
 validInnerInstanceType (Type_Parenthesized _ t) = validInnerInstanceType t
-validInnerInstanceType (Type_Variable _ _) = True
+validInnerInstanceType (Type_Variable _ _ _) = True
 validInnerInstanceType _                   = False
 
 validApplyType :: Type -> Types -> Bool
-validApplyType (Type_Constructor _ n) ts = validInstanceConstrName n ts
+validApplyType (Type_Constructor _ n _) ts = validInstanceConstrName n ts
 validApplyType _                      _  =  False
 
 validInstanceConstrName :: Name -> Types -> Bool

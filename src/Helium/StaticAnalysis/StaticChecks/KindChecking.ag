@@ -50,22 +50,22 @@ checkType theTypeConstructors ambiguousTypeCon namesInScope t =
         xsErrors
         ++
         case f of
-            Type_Constructor r c ->
+            Type_Constructor r c _ ->
                 checkKind c theTypeConstructors ambiguousTypeCon (length xs) namesInScope
                 ++ [ TupleTooBig r
                    | let nameAsString = show c
                    , isTupleConstructor nameAsString
                    , length nameAsString - 1 > 10
                    ]
-            Type_Variable _ v -> []
+            Type_Variable _ v _ -> []
             _ ->
                 internalError "StaticAnalysis" "checkType" "unexpected type"
 
 walkSpine :: Type -> (Type, [Type])
 walkSpine t =
     case t of
-        Type_Variable _ _ -> (t, [])
-        Type_Constructor _ _ -> (t, [])
+        Type_Variable _ _ _ -> (t, [])
+        Type_Constructor _ _ _ -> (t, [])
         Type_Application _ _ f xs ->
             let (t', ys) = walkSpine f
             in (t', ys ++ xs)

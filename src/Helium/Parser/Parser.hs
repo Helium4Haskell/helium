@@ -185,6 +185,10 @@ importsThenTopdecls explicit =
 topdecl  
     ->  "data" simpletype "=" constrs derivings?
      |  "type" simpletype "=" type
+     |  "dimension" simpledimension
+     |  "unit" simpleunit "from" dimension
+     |  "unit" simpleunit "derives from" unit "with" decl
+     |  "alias" simpleunit = unit
      |  infixdecl
      |  decl  
 
@@ -232,6 +236,42 @@ topdecl = addRange (
         t <- newconstr
         ds <- option [] derivings
         return $ \r -> Declaration_Newtype r [] st t ds
+    <|>
+    do
+        lexDIMENSION
+        sd <- sdim
+        return $ \r -> Declaration_Dimension r sd
+    <|>
+    do
+        lexUNIT
+        su <- sunit
+        (do 
+            try (do
+                lexFROM
+                dim <- dimension
+                return $ \r -> Declaration_UnitFromDim r su dim)
+            <|>
+            (do
+                lexDERIVES
+                lexFROM
+                u <- unit
+                lexWITH
+                f <- decl  
+                return $ \r -> Declaration_UnitFromUnit r su u f))
+    <|>
+    do
+        lexALIAS
+        su <- sunit
+        lexASG
+        u <- unit
+        return $ \r -> Declaration_AliasUnit r su u
+    <|>
+    do
+        lexALIAS
+        su <- sdim
+        lexASG
+        u <- dimension
+        return $ \r -> Declaration_AliasDimension r su u
     <|>
 -- Declaration_Class (Range) (ContextItems) (SimpleType) (MaybeDeclarations)
 {-
@@ -569,8 +609,8 @@ Rewrite to reduce backtracking:
 decl    ->  [[ var ]] decl1
          |  [[ pat10 ]] decl2
          |  funlhs rhs
-decl1   ->  "," vars "::" type
-         |  "::" type
+decl1   ->  "," vars "::" type ("<" unit ">")?
+         |  "::" type ("<" unit ">")?
          |  varop pat10 rhs
          |  "@" apat decl2
          |  apat* rhs
@@ -754,6 +794,7 @@ gdexp equals = addRange $
 
 {-
 exp     ->  exp0 "::" type  (expression type signature)  
+         |  exp0 "::" type "<" dimension ">" (expression dimensioned)
          |  exp0  
 -}
 
@@ -849,7 +890,8 @@ exp10   ->  "\" apat1 ... apatn "->" exp  (lambda abstraction, n>=1)
          |  "if" exp "then" exp "else" exp  (conditional)  
          |  "case" exp "of" alts  (case expression)  
          |  "do" stmts (do expression)  
-         |  fexp  
+         |  fexp
+         |  uexp
 -}
 
 exp10 :: HParser Expression
@@ -890,6 +932,8 @@ exp10 = addRange (
         return $ \r -> Expression_Do r ss
     ) 
     <|>
+    (try uexp)
+    <|>
     fexp
     <?> Texts.parserExpression
 
@@ -906,7 +950,28 @@ fexp = addRange $
           else
             return $ \r -> Expression_NormalApplication r e es
 
+ {-
+ uexp -> qvar <unit> | literal <unit> | (exp) <unit>
+ -}
 
+uexp :: HParser Expression
+uexp = addRange $
+    do
+        n <- qvarid
+        u <- angles unit
+        return $ \r -> Expression_Dimensioned r (Expression_Variable r n) u
+    <|>
+    do 
+        l <- literal
+        u <- angles unit
+        return $ \r -> Expression_Dimensioned r (Expression_Literal r l) u
+    <|>
+    do
+        e <- parens exp_
+        u <- angles unit
+        return $ \r -> Expression_Dimensioned r e u
+
+    
 {-
 aexp    ->  qvar  (variable)  
          |  gcon
@@ -1366,7 +1431,7 @@ simpleclass :: HParser ContextItem
 simpleclass = addRange (do
     c <- qtycon
     (v, vr) <- withRange tyvar
-    return $ \r -> ContextItem_ContextItem r c [Type_Variable vr v]
+    return $ \r -> ContextItem_ContextItem r c [Type_Variable vr v MaybeUnit_Nothing]
     )
     
 {-
@@ -1382,7 +1447,7 @@ type_ = addRange (
                 (_, rangeArrow) <- withRange lexRARROW
                 right <- type_
                 return (\r -> Type_Application r False
-                        (Type_Constructor rangeArrow (Name_Special rangeArrow [] [] "->")) [left, right]) -- !!!Name
+                        (Type_Constructor rangeArrow (Name_Special rangeArrow [] [] "->") MaybeUnit_Nothing) [left, right]) -- !!!Name
     ) <?> Texts.parserType
 
 {-
@@ -1410,23 +1475,23 @@ iType :: HParser Type
 iType = addRange (
     do
         c <- gtycon
-        return (\r -> Type_Constructor r c)
+        return (\r -> Type_Constructor r c MaybeUnit_Nothing)
     <|>
     do
         ts <- parens (commas type_)
         return (\r -> case ts of
-            [] -> Type_Constructor r (Name_Special r [] [] "()") -- !!!Name
+            [] -> Type_Constructor r (Name_Special r [] [] "()") MaybeUnit_Nothing -- !!!Name
             [t] -> Type_Parenthesized r t
             _ -> let n = Name_Special r [] []  -- !!!Name
                             ( "(" ++ replicate (length ts - 1) ',' ++ ")" )
-                 in Type_Application r False (Type_Constructor r n) ts
+                 in Type_Application r False (Type_Constructor r n MaybeUnit_Nothing) ts
          )
     <|>
     do
         t <- brackets type_
         return $ \r ->
             let n = Name_Special r [] [] "[]" -- !!!Name
-            in Type_Application r False (Type_Constructor r n) [t]
+            in Type_Application r False (Type_Constructor r n MaybeUnit_Nothing) [t]
     ) <?> Texts.parserType
 
 {-
@@ -1442,27 +1507,37 @@ atype :: HParser Type
 atype = addRange (
     do
         c <- gtycon
-        return (\r -> Type_Constructor r c)
+        mu <- optionMaybe (angles unit)
+        return $ \r ->
+            Type_Constructor r c
+                (case mu of
+                    Just u -> MaybeUnit_Just u
+                    Nothing -> MaybeUnit_Nothing)
     <|>
     do
         c <- tyvar
-        return (\r -> Type_Variable r c)
+        mu <- optionMaybe (angles unit)
+        return $ \r ->
+            Type_Variable r c
+                (case mu of
+                    Just u -> MaybeUnit_Just u
+                    Nothing -> MaybeUnit_Nothing)
     <|>
     do
         ts <- parens (commas type_)
         return (\r -> case ts of
-            [] -> Type_Constructor r (Name_Special r [] [] "()") -- !!!Name
+            [] -> Type_Constructor r (Name_Special r [] [] "()") MaybeUnit_Nothing -- !!!Name
             [t] -> Type_Parenthesized r t
             _ -> let n = Name_Special r [] [] -- !!!Name
                             ( "(" ++ replicate (length ts - 1) ',' ++ ")" )
-                 in Type_Application r False (Type_Constructor r n) ts
+                 in Type_Application r False (Type_Constructor r n MaybeUnit_Nothing) ts
          )
     <|>
     do
         t <- brackets type_
         return $ \r ->
             let n = Name_Special r [] [] "[]" -- !!!Name
-            in Type_Application r False (Type_Constructor r n) [t]
+            in Type_Application r False (Type_Constructor r n MaybeUnit_Nothing) [t]
     ) <?> Texts.parserType
 
 annotatedType :: HParser Type -> HParser AnnotatedType
@@ -1501,3 +1576,174 @@ numericLiteral = addRange (
         d <- lexDouble
         return $ \r -> Literal_Float r d
     ) <?> Texts.parserNumericLiteral
+
+{- dim   -> firstdim
+         | firstdim * dim
+         | firstdim / firstdim
+         | firstdim / firstdim * dim
+
+firstdim -> sdim
+         | sdim ^ n
+         | "(" dim ")"
+         | "(" dim ")" ^ n 
+-}
+
+sdim :: HParser SimpleDimension
+sdim = addRange $
+    do
+        n <- conid
+        return $ \r -> SimpleDimension_SimpleDimension r n
+
+dimexpo :: Dimension -> HParser (Range -> Dimension)
+dimexpo d = 
+    do
+        lexLPAREN
+        m <- optionMaybe lexMIN
+        expo <- fmap fromInteger (fmap read lexInt) :: HParser Int
+        lexRPAREN
+        case m of
+            Nothing -> return $ \r -> Dimension_Power r d expo
+            Just _  -> return $ \r -> Dimension_NegPower r d expo
+    <|>
+    do
+        expo <- fmap fromInteger (fmap read lexInt) :: HParser Int
+        return $ \r -> Dimension_Power r d expo
+
+firstdim :: HParser Dimension
+firstdim = addRange (
+    do
+        d <- sdim
+        (do
+            try(do 
+                lexPOWER
+                d <- addRange $ return $ \r -> Dimension_Base r d
+                dimexpo d)
+            <|>
+            (do
+                return $ \r -> Dimension_Base r d))
+    <|>
+    do
+        d <- parens dimension
+        (do
+            try(do 
+                lexPOWER
+                d <- addRange $ return $ \r -> Dimension_Parenthesized r d
+                dimexpo d)
+            <|>
+            (do
+                return $ \r -> Dimension_Parenthesized r d))
+    )
+
+dimension :: HParser Dimension
+dimension =
+    addRange (
+     do
+        d <- firstdim
+        (do
+            try (do
+                lexTIMES
+                right <- dimension
+                return $ \r -> Dimension_Times r d right)
+            <|>
+            (do
+                lexDIV
+                right <- firstdim
+                (do
+                    try (do
+                        lexTIMES
+                        timesright <- dimension
+                        return $ \r -> Dimension_Times r (Dimension_Div r d right) timesright)
+                    <|>
+                    do
+                        return $ \r -> Dimension_Div r d right))
+            <|>
+            do
+                return $ \r -> d)
+    ) <?> Texts.parserDimension
+
+{- unit = ... -}
+
+{- dim   -> firstunit
+         | firstunit * unit
+         | firstunit / firstunit
+         | firstunit / firstunit * unit
+
+firstdim -> sunit
+         | sunit ^ n
+         | "(" unit ")"
+         | "(" unit ")" ^ n 
+-}
+
+sunit :: HParser SimpleUnit
+sunit = addRange $
+    do
+        n <- conid
+        return $ \r -> SimpleUnit_SimpleUnit r n   
+
+uexpo :: Unit -> HParser (Range -> Unit)
+uexpo u = 
+    do
+        lexLPAREN
+        m <- optionMaybe lexMIN
+        expo <- fmap fromInteger (fmap read lexInt) :: HParser Int
+        lexRPAREN
+        case m of
+            Nothing -> return $ \r -> Unit_Power r u expo
+            Just _  -> return $ \r -> Unit_NegPower r u expo
+    <|>
+    do
+        expo <- fmap fromInteger (fmap read lexInt) :: HParser Int
+        return $ \r -> Unit_Power r u expo
+
+firstunit :: HParser Unit
+firstunit = addRange (
+    do
+        d <- sunit
+        (do
+            try(do 
+                lexPOWER
+                u <- addRange $ return $ \r -> Unit_Base r d
+                uexpo u)
+            <|>
+            (do
+                return $ \r -> Unit_Base r d))
+    <|>
+    do
+        d <- parens unit
+        (do
+            try(do 
+                lexPOWER
+                u <- addRange $ return $ \r -> Unit_Parenthesized r d
+                uexpo u)
+            <|>
+            (do
+                return $ \r -> Unit_Parenthesized r d))
+    )
+ 
+
+unit :: HParser Unit
+unit =
+    addRange (
+     do
+        d <- firstunit
+        (do
+            try (do
+                lexTIMES
+                right <- unit
+                return $ \r -> Unit_Times r d right)
+            <|>
+            (do
+                lexDIV
+                right <- firstunit
+                (do
+                    try (do
+                        lexTIMES
+                        timesright <- unit
+                        return $ \r -> Unit_Times r (Unit_Div r d right) timesright)
+                    <|>
+                    do
+                        return $ \r -> Unit_Div r d right))
+            <|>
+            do
+                return $ \r -> d)
+    ) <?> Texts.parserUnit

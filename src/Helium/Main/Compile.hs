@@ -161,6 +161,8 @@ compileHaskellToCore basedir fullName contents options iridiumCache doneModules 
 
   stopCompilingIf (StopAfterTypeInferencing `elem` options)
 
+  -- AT THIS POINT WE SHOULD ADD PHASE 8.1: DIMENSION INFERENCING
+
   -- Phase 9: Desugaring
   coreModule <-
       phaseDesugarer dictionaryEnv

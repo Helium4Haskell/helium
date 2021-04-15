@@ -196,6 +196,18 @@ parserType = select language
     , Dutch   :-> "type"
     ]
 
+parserUnit :: String
+parserUnit = select language
+    [ English :-> "unit"
+    , Dutch   :-> "unit"
+    ]
+
+parserDimension :: String
+parserDimension = select language
+    [ English :-> "dimension"
+    , Dutch   :-> "dimensie"
+    ]
+
 parserLiteral :: String
 parserLiteral = select language
     [ English :-> "literal"

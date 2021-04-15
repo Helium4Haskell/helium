@@ -41,7 +41,7 @@ convertTypeToQualified env = convertType (toQualTyCon env)
 convertType :: (Name -> Name) -> Type -> Type
 convertType f (Type_Application ran pref func arg)
     = Type_Application ran pref (convertType f func) (map (convertType f) arg)
-convertType _ tv@(Type_Variable _ _) = tv
+convertType _ tv@(Type_Variable _ _ _) = tv
 convertType f (Type_Qualified ran con ty)
     = Type_Qualified ran con (convertType f ty)
 convertType f (Type_Forall ran tv ty )
@@ -50,8 +50,8 @@ convertType f (Type_Exists ran tv ty )
     = Type_Exists ran tv (convertType f ty) 
 convertType f (Type_Parenthesized ran ty)
     = Type_Parenthesized ran (convertType f ty)
-convertType f (Type_Constructor ran na) = 
-    Type_Constructor ran (f na)
+convertType f (Type_Constructor ran na u) = 
+    Type_Constructor ran (f na) u
 
 -- Converts ContextItem to a fully qualified version.
 convertContextItemToQualified :: ImportEnvironment-> ContextItem -> ContextItem

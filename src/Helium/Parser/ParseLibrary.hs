@@ -48,6 +48,9 @@ consym  = opName lexConSym
 varsym  = opName (   lexVarSym 
                  <|> do { lexMIN;    return "-" } 
                  <|> do { lexMINDOT; return "-." }
+                 <|> do { lexTIMES; return "*" }
+                 <|> do { lexPOWER; return "^" }
+                 <|> do { lexDIV; return "/" }
                  )
        <?> Texts.parserOperator
 
@@ -62,6 +65,9 @@ qconsym  = qOpName lexConSym <?> Texts.parserOperator
 qvarsym  = qOpName (   lexVarSym 
                    <|> do { lexMIN;    return "-" } 
                    <|> do { lexMINDOT; return "-." }
+                   <|> do { lexTIMES; return "*" }
+                   <|> do { lexPOWER; return "^" }
+                   <|> do { lexDIV; return "/" }
                    )
         <?> Texts.parserOperator
 
@@ -243,8 +249,7 @@ lexBACKQUOTE = lexeme (LexSpecial '`')
 lexHOLE :: HParser () 
 lexHOLE     =  lexeme (LexResVarSym hole)
 
-
-lexASG, lexLARROW, lexRARROW, lexDARROW, lexBAR, lexMIN, lexMINDOT, lexBSLASH, lexAT, lexDOTDOT, lexTILDE :: HParser ()
+lexASG, lexLARROW, lexRARROW, lexDARROW, lexBAR, lexMIN, lexMINDOT, lexBSLASH, lexAT, lexDOTDOT, lexTILDE, lexPOWER, lexTIMES, lexDIV :: HParser ()
 lexASG      = lexeme (LexResVarSym "=")
 lexLARROW   = lexeme (LexResVarSym "<-")
 lexRARROW   = lexeme (LexResVarSym "->")
@@ -256,11 +261,18 @@ lexBSLASH   = lexeme (LexResVarSym "\\")
 lexAT       = lexeme (LexResVarSym "@")
 lexDOTDOT   = lexeme (LexResVarSym "..")
 lexTILDE    = lexeme (LexResVarSym "~")
+lexPOWER    = lexeme (LexResVarSym "^")
+lexTIMES    = lexeme (LexResVarSym "*")
+lexDIV      = lexeme (LexResVarSym "/")
+
+lexLANGLE, lexRANGLE :: HParser ()
+lexLANGLE   = lexeme (LexVarSym "<")
+lexRANGLE   = lexeme (LexVarSym ">")
 
 lexCOLCOL :: HParser ()
 lexCOLCOL   = lexeme (LexResConSym "::")
 
-lexCLASS, lexINSTANCE, lexDATA, lexDERIVING, lexTYPE, lexNEWTYPE, lexLET, lexIN, lexDO, lexIF, lexTHEN, lexELSE, lexCASE, lexOF, lexMODULE, lexWHERE, lexIMPORT, lexINFIX, lexINFIXL, lexINFIXR, lexUNDERSCORE :: HParser ()
+lexCLASS, lexINSTANCE, lexDATA, lexDERIVING, lexTYPE, lexNEWTYPE, lexLET, lexIN, lexDO, lexIF, lexTHEN, lexELSE, lexCASE, lexOF, lexMODULE, lexWHERE, lexIMPORT, lexINFIX, lexINFIXL, lexINFIXR, lexUNDERSCORE, lexDIMENSION, lexUNIT, lexDERIVES, lexWITH, lexALIAS, lexFROM :: HParser ()
 lexCLASS    = lexeme (LexKeyword "class")
 lexINSTANCE = lexeme (LexKeyword "instance")
 lexDATA     = lexeme (LexKeyword "data")
@@ -282,6 +294,12 @@ lexINFIX    = lexeme (LexKeyword "infix")
 lexINFIXL   = lexeme (LexKeyword "infixl")
 lexINFIXR   = lexeme (LexKeyword "infixr")
 lexUNDERSCORE = lexeme (LexKeyword "_")
+lexDIMENSION  = lexeme (LexKeyword "dimension")
+lexUNIT     = lexeme (LexKeyword "unit")
+lexDERIVES  = lexeme (LexKeyword "derives")
+lexFROM     = lexeme (LexKeyword "from")
+lexWITH     = lexeme (LexKeyword "with")
+lexALIAS    = lexeme (LexKeyword "alias")
 
 lexHIDING, lexQUALIFIED, lexAS :: HParser ()
 lexHIDING     = lexeme (LexVar "hiding")
@@ -360,10 +378,11 @@ semiSepTerm  p = p `sepEndBy`  lexSEMI
 semiOrInsertedSemiSepTerm1 p = p `sepEndBy1` (lexINSERTED_SEMI <|> lexSEMI)
 semiOrInsertedSemiSepTerm  p = p `sepEndBy`  (lexINSERTED_SEMI <|> lexSEMI)
 
-parens, braces :: ParsecT [Token] SourcePos Identity a
+parens, braces, angles :: ParsecT [Token] SourcePos Identity a
                     -> ParsecT [Token] SourcePos Identity a
 parens = between lexLPAREN lexRPAREN
 braces = between lexLBRACE lexRBRACE
+angles = between lexLANGLE lexRANGLE
 
 ----------------------------------------------------------------
 -- Basic parsers

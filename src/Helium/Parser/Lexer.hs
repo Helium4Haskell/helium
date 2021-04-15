@@ -404,6 +404,9 @@ keywords =
     , "then", "else", "data", "type", "module", "import"
     , "infix", "infixl", "infixr", "_", "deriving"
     , "class", "instance", "default"
+    , "dimension", "unit"
+    , "derives", "with", "from"
+    , "alias"
     , "newtype" -- not supported
     ]
 
@@ -413,7 +416,7 @@ reservedConSyms =
 
 reservedVarSyms :: [String]
 reservedVarSyms =
-    [ "=>", "->", "<-", "..", "-", "-.", "@", "=", "\\", "|", "~" ]
+    [ "=>", "->", "<-", "..", "-", "-.", "@", "=", "\\", "|", "~", "*", "/", "^" ]
 
 specialsWithoutBrackets :: String
 specialsWithoutBrackets = 
