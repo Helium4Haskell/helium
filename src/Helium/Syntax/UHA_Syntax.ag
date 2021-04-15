@@ -49,7 +49,7 @@ DATA Body
         range                    : Range
         importdeclarations       : ImportDeclarations
         declarations             : Declarations
-
+    
 TYPE ImportDeclarations          = [ ImportDeclaration ]
 
 DATA ImportDeclaration
@@ -120,6 +120,26 @@ DATA Declaration                                  {- *** -}
         simpletype               : SimpleType
         constructor              : Constructor  -- has only one field, no strictness
         derivings                : Names
+    | Dimension
+        range                    : Range
+        simpledimension          : SimpleDimension
+    | UnitFromDim
+        range                    : Range
+        simpleunit               : SimpleUnit
+        dimension                : Dimension
+    | UnitFromUnit
+        range                    : Range
+        simpleunit               : SimpleUnit
+        associatedunit           : Unit
+        associatedcv             : Declaration
+    | AliasDimension
+        range                    : Range
+        alias                    : SimpleDimension
+        aliased                  : Dimension
+    | AliasUnit
+        range                    : Range
+        alias                    : SimpleUnit
+        aliased                  : Unit
     | Class
         range                    : Range
         context                  : ContextItems -- is a "simple" context
@@ -177,9 +197,11 @@ DATA Type                                         {- *** -}
     | Variable                               {- *** -}
         range                    : Range
         name                     : Name
+        unit                     : MaybeUnit
     | Constructor                            {- *** -}
         range                    : Range
         name                     : Name
+        unit                     : MaybeUnit
     | Qualified
         range                    : Range
         context                  : ContextItems
@@ -292,6 +314,79 @@ DATA AnnotatedType
         strict                   : Bool
         type                     : Type
 
+
+-- ------------------------------------------------------------------------
+-- -- Dimensions                                                              --
+-- ------------------------------------------------------------------------
+
+TYPE Dimensions = [ Dimension ]
+
+DATA SimpleDimension
+    | SimpleDimension
+        range                        : Range
+        name                         : Name
+
+DATA Dimension
+    | Base
+        range                    : Range
+        simpledim                : SimpleDimension
+    | Times
+        range                    : Range
+        prefix                   : Dimension
+        term                     : Dimension
+    | Div
+        range                    : Range
+        divisor                  : Dimension
+        dividend                 : Dimension
+    | Power
+        range                    : Range
+        term                     : Dimension
+        exponent                 : Int
+    | NegPower
+        range                    : Range
+        term                     : Dimension
+        exponent                 : Int
+    | Parenthesized
+        range                    : Range
+        term                     : Dimension
+
+TYPE Units = [ Unit ]
+
+DATA SimpleUnit
+    | SimpleUnit
+        range                        : Range
+        name                         : Name
+
+DATA MaybeUnit
+    | Nothing
+    | Just
+        unit                     : Unit
+
+DATA Unit
+    | Base
+        range                    : Range
+        simpleunit               : SimpleUnit
+    | Times
+        range                    : Range
+        prefix                   : Unit
+        term                     : Unit
+    | Div
+        range                    : Range
+        divisor                  : Unit
+        dividend                 : Unit
+    | Power
+        range                    : Range
+        term                     : Unit
+        exponent                 : Int
+    | NegPower
+        range                    : Range
+        term                     : Unit
+        exponent                 : Int
+    | Parenthesized
+        range                    : Range
+        term                     : Unit        
+
+
 -- ------------------------------------------------------------------------
 -- -- Expressions                                                        --
 -- ------------------------------------------------------------------------
@@ -373,6 +468,10 @@ DATA Expression                                   {- *** -}
         range                    : Range
         expression               : Expression
         type                     : Type
+    | Dimensioned
+        range                    : Range
+        expression               : Expression
+        unit                     : Unit
     | RecordConstruction
         range                    : Range
         name                     : Name

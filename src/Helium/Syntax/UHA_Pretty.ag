@@ -65,6 +65,7 @@ ATTR
     Module Export Body
     ImportDeclaration ImportSpecification Import Declaration Fixity
     Type SimpleType ContextItem
+    Dimension SimpleDimension Unit SimpleUnit
     Constructor
     FieldDeclaration
     AnnotatedType
@@ -81,7 +82,7 @@ ATTR
     [
     |
     | text        :          Doc
-    ]
+    ] 
 
 ATTR GuardedExpression RightHandSide
     [
@@ -113,7 +114,7 @@ ATTR
     ]
 
 ATTR
-    MaybeExpression MaybeName MaybeInt MaybeImportSpecification
+    MaybeExpression MaybeName MaybeInt MaybeImportSpecification MaybeUnit
     [
     |
     | text        : {        Maybe Doc  }
@@ -260,7 +261,7 @@ SEM Declaration                                  {- *** -}
                                     ++  [@derivingDoc]
                                     )
                             )
-                        loc.contextDoc   = contextPP @context.text
+                        loc.contextDoc  = contextPP @context.text
                         loc.derivingDoc =
                             if null @derivings.text then
                                 empty
@@ -297,6 +298,29 @@ SEM Declaration                                  {- *** -}
     --  simpletype               : SimpleType
     --  constructor              : Constructor  -- has only one field, no strictness
     --  derivings                : Names
+    | Dimension         loc.text = text "dimension" <+> @simpledimension.text
+    --  range                    : Range
+    --  simpledimension          : SimpleDimension
+    | UnitFromDim       loc.text = text "unit" <+> @simpleunit.text
+                                    <+> text "of" <+> @dimension.text
+    --  range                    : Range
+    --  simpleunit               : SimpleUnit
+    --  dimension                : Dimension
+    | UnitFromUnit      loc.text = text "unit" <+> @simpleunit.text
+                                    <+> text "derives from" <+> @associatedunit.text
+                                    <+> text "with" <+> @associatedcv.text
+    --  range                    : Range
+    --  simpleunit               : SimpleUnit
+    --  associatedunit           : Unit
+    --  associatedcv             : Declaration
+    | AliasDimension    loc.text = text "alias" <+> @alias.text <+> text "=" <+> @aliased.text
+    --  range                    : Range
+    --  alias                    : SimpleDimension
+    --  aliased                  : Dimension
+    | AliasUnit         loc.text = text "alias" <+> @alias.text <+> text "=" <+> @aliased.text
+    --  range                    : Range
+    --  alias                    : SimpleUnit
+    --  aliased                  : Unit
     | Class             loc.text = (PPrint.empty 
                                         <$> text "class" <+> contextPP @context.text <+> @simpletype.text
                                             <>  maybe
@@ -383,14 +407,16 @@ SEM Type                                         {- *** -}
                                                     _      -> text "{- error: Unknown special application notation -}"
     --  range                    : Range
     --  prefix                   : Bool
-    --  function                 : Type
+    --  function                 : Type 
     --  arguments                : Types
-    | Variable                 loc.text = @name.text {- *** -}
+    | Variable                 loc.text = @name.text <+> maybe empty id @unit.text {- *** -}
     --  range                    : Range
     --  name                     : Name
-    | Constructor              loc.text = @name.text              {- *** -}
+    --  unit                     : MaybeUnit
+    | Constructor              loc.text = @name.text <+> maybe empty (\u -> text "<" <+> u <+> text ">") @unit.text {- *** -}
     --  range                    : Range
     --  name                     : Name
+    --  unit                     : MaybeUnit
     | Qualified                loc.text = contextPP @context.text <+> @type.text
     --  range                    : Range
     --  context                  : ContextItems
@@ -444,6 +470,74 @@ SEM AnnotatedType
     --  range                    : Range
     --  strict                   : Bool
     --  type                     : Type
+
+-- ------------------------------------------------------------------------
+-- -- Dimensions                                                         --
+-- ------------------------------------------------------------------------
+
+SEM SimpleDimension
+    | SimpleDimension         loc.text = @name.text
+    --  range                        : Range
+    --  name                         : Name
+
+SEM Dimension
+    | Base                    loc.text = @simpledim.text
+    --  range                    : Range
+    --  simpledim                : SimpleDimension
+    | Times                   loc.text = @prefix.text <+> text "*" <+> @term.text
+    --  range                    : Range
+    --  prefix                   : Dimension
+    --  term                     : Dimension
+    | Div                     loc.text = text "(" <+> @dividend.text <+> text ")" <+> text "/" <+> text "(" <+> @divisor.text <+> text ")"
+    --  range                    : Range
+    --  divisor                  : Dimension
+    --  dividend                 : Dimension
+    | Power                   loc.text = @term.text <+> text "^" <+> int @exponent
+    --  range                    : Range
+    --  term                     : Dimension
+    --  exponent                 : Int
+    | NegPower                   loc.text = @term.text <+> text "^-" <+> int @exponent
+    --  range                    : Range
+    --  term                     : Dimension
+    --  exponent                 : Int
+    | Parenthesized           loc.text = parens @term.text
+    --  range                    : Range
+    --  term                     : Dimension
+
+SEM SimpleUnit
+    | SimpleUnit              loc.text = @name.text
+    -- range                        : Range
+    -- name                         : Name
+
+SEM MaybeUnit
+    | Nothing                loc.text = Nothing
+    | Just                   loc.text = Just @unit.text
+    -- unit                      : Unit
+
+SEM Unit
+    | Base                   loc.text = @simpleunit.text
+    --  range                    : Range
+    --  simpleunit               : SimpleUnit
+    | Times                  loc.text = @prefix.text <+> text "*" <+> @term.text
+    --  range                    : Range
+    --  prefix                   : Constant
+    --  term                     : Unit
+    | Div                    loc.text = text "(" <+> @dividend.text <+> text ")" <+> text "/" <+> text "(" <+> @dividend.text <+> text ")"
+    --  range                    : Range
+    --  divisor                  : Unit
+    --  dividend                 : Unit
+    | Power                  loc.text = @term.text <+> text "^" <+> int @exponent
+    --  range                    : Range
+    --  term                     : Unit
+    --  exponent                 : Int
+    | NegPower                   loc.text = @term.text <+> text "^" <+> int @exponent
+    --  range                    : Range
+    --  term                     : Unit
+    --  exponent                 : Int
+    | Parenthesized          loc.text = parens @term.text
+    --  range                    : Range
+    --  term                     : Unit  
+
 
 -- ------------------------------------------------------------------------
 -- -- Expressions                                                        --
@@ -539,6 +633,10 @@ SEM Expression                                   {- *** -}
     --  range                    : Range
     --  expression               : Expression
     --  type                     : Type
+    | Dimensioned        loc.text = @expression.text <+> text "<" <+> @unit.text <+> text ">"
+    --  range                    : Range
+    --  expression               : Expression
+    --  unit                     : Unit
     | RecordConstruction loc.text = @name.text <+> braces (commas @recordExpressionBindings.text)
     --  range                    : Range
     --  name                     : Name
@@ -546,7 +644,7 @@ SEM Expression                                   {- *** -}
     | RecordUpdate       loc.text = @expression.text <+> braces (commas @recordExpressionBindings.text)
     --  range                    : Range
     --  expression               : Expression
-    --  recordExpressionBindings : RecordExpressionBindings
+    --  recordExpressionBindings : RecordExpressionBindingsconstructors
     | Enum   loc.text =
                 text "[" <>
                 @from.text <>
@@ -604,7 +702,7 @@ SEM GuardedExpression -- ToDo: or _Guard?
     | GuardedExpression loc.text = \assign -> text "|" <+> @guard.text <+> assign <+> @expression.text
     --  range                    : Range
     --  guard                    : Expression -- type: Boolean
-    --  expression               : Expression
+    --  expression               : Expressionconstructors
 
 SEM RecordExpressionBinding
     | RecordExpressionBinding loc.text = @name.text <+> text "=" <+> @expression.text -- ToDo: or _Binding?
@@ -687,7 +785,7 @@ SEM Pattern
     --  range                    : Range
     --  literal                  : Literal
     | Variable              loc.text = parensIf @name.isOperator @name.text {- *** -}
-    --  range                    : Range
+    --  range                    : Rangeconstructors
     --  name                     : Name
     | Constructor           loc.text = foldl (<+>) (parensIf @name.isOperator @name.text) @patterns.text {- *** -}
     --  range                    : Range

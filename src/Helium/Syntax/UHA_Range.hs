@@ -239,6 +239,11 @@ getDeclarationRange decl = case decl of
    Declaration_Type r _ _           -> r
    Declaration_Data  r _ _ _ _      -> r
    Declaration_Newtype r _ _ _ _    -> r
+   Declaration_Dimension r _        -> r
+   Declaration_UnitFromDim r _ _    -> r
+   Declaration_UnitFromUnit r _ _ _ -> r
+   Declaration_AliasDimension r _ _ -> r
+   Declaration_AliasUnit r _ _      -> r
    Declaration_Class r _ _ _        -> r
    Declaration_Instance r _ _ _ _   -> r
    Declaration_Default r _          -> r
@@ -257,13 +262,31 @@ getBodyRange body = case body of
 getTypeRange :: Type -> Range
 getTypeRange tp = case tp of
    Type_Application r _ _ _ -> r
-   Type_Variable r _        -> r
-   Type_Constructor r _     -> r
+   Type_Variable r _ _      -> r
+   Type_Constructor r _ _   -> r
    Type_Qualified r _ _     -> r
    Type_Forall r _ _        -> r
    Type_Exists r _ _        -> r 
    Type_Parenthesized r _   -> r
    
+getDimensionRange :: Dimension -> Range
+getDimensionRange dim = case dim of
+   Dimension_Base r _       -> r
+   Dimension_Times r _ _    -> r
+   Dimension_Div r _ _      -> r
+   Dimension_Power r _ _    -> r
+   Dimension_NegPower r _ _    -> r
+   Dimension_Parenthesized r _  -> r
+
+getUnitRange :: Unit -> Range
+getUnitRange unit = case unit of
+   Unit_Base r _            -> r
+   Unit_Times r _ _         -> r
+   Unit_Div r _ _           -> r
+   Unit_Power r _ _         -> r
+   Unit_NegPower r _ _         -> r
+   Unit_Parenthesized r _   -> r
+
 getGuardedExprRange :: GuardedExpression -> Range
 getGuardedExprRange gexpr = case gexpr of
    GuardedExpression_GuardedExpression r _ _ -> r

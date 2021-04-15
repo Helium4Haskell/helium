@@ -173,7 +173,7 @@ nameOfDeclaration d = case d of
     Declaration_Newtype          _ _ (SimpleType_SimpleType _ n _) _ _ -> [n]
     Declaration_PatternBinding   _ _ _                                 -> [] --Not entirely sure whether this is correct or not (a directly declared pattern is a binding to the names in the pattern...)
     Declaration_Type             _ (SimpleType_SimpleType _ n _) _     -> [n]
-    Declaration_TypeSignature    _ ns _                                -> ns
+    Declaration_TypeSignature    _ ns _                               -> ns
     Declaration_Hole             _ _                                   -> []
     
 nameOfFunctionBinding :: FunctionBinding -> Names
