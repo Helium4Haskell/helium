@@ -199,6 +199,8 @@ optionDescription moreOptions experimentalOptions =
       , Option "" [flag NoPrelude]                      (NoArg NoPrelude)  "do not import the prelude (experimental)"
       , Option "" [flag (RepairDepth 0)]                (ReqArg selectDepth "RDEPTH") "specify depth of transformation tree"
       , Option "" [flag (RepairEvalLimit 0)]            (ReqArg selectEvalLimit "RTREVL") "specify re-evaluation limit of transformed expressions"      
+      , Option "" [flag (DimensionTypes)]             (NoArg DimensionTypes) "enable dimension types"      
+
       ]
 
 
@@ -219,6 +221,7 @@ data Option
    | SolverTypeGraph | SolverCombination | SolverChunks | UnifierHeuristics
    | SelectConstraintNumber Int | NoOverloadingTypeCheck | NoPrelude | UseTutor
    | RepairDepth Int | RepairEvalLimit Int -- Arjen Langebaerd's work 
+   | DimensionTypes
  deriving (Eq)
 
 stripShow :: String -> String
@@ -284,6 +287,7 @@ instance Show Option where
  show UseTutor                           = "--use-tutor"
  show (RepairDepth depth)                = "--repair-depth=" ++ show depth
  show (RepairEvalLimit limit)            = "--repair-eval-limit=" ++ show limit
+ show DimensionTypes                     = "--dim-types"
 
 basePathFromOptions :: [Option] -> Maybe String
 basePathFromOptions [] = Nothing
