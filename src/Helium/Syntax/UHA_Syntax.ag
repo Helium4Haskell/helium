@@ -320,8 +320,8 @@ TYPE Dimensions = [ Dimension ]
 
 DATA SimpleDimension
     | SimpleDimension
-        range                        : Range
-        name                         : Name
+        range                    : Range
+        name                     : Name
 
 DATA Dimension
     | Base
@@ -346,13 +346,15 @@ DATA Dimension
     | Parenthesized
         range                    : Range
         term                     : Dimension
+    | One
+        range                    : Range
 
 TYPE Units = [ Unit ]
 
 DATA SimpleUnit
     | SimpleUnit
-        range                        : Range
-        name                         : Name
+        range                    : Range
+        name                     : Name
 
 DATA MaybeUnit
     | Nothing
@@ -381,7 +383,9 @@ DATA Unit
         exponent                 : Int
     | Parenthesized
         range                    : Range
-        term                     : Unit        
+        term                     : Unit  
+    | One
+        range                    : Range      
 
 
 -- ------------------------------------------------------------------------

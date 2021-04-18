@@ -275,8 +275,9 @@ getDimensionRange dim = case dim of
    Dimension_Times r _ _    -> r
    Dimension_Div r _ _      -> r
    Dimension_Power r _ _    -> r
-   Dimension_NegPower r _ _    -> r
+   Dimension_NegPower r _ _     -> r
    Dimension_Parenthesized r _  -> r
+   Dimension_One r          -> r
 
 getUnitRange :: Unit -> Range
 getUnitRange unit = case unit of
@@ -284,8 +285,10 @@ getUnitRange unit = case unit of
    Unit_Times r _ _         -> r
    Unit_Div r _ _           -> r
    Unit_Power r _ _         -> r
-   Unit_NegPower r _ _         -> r
+   Unit_NegPower r _ _      -> r
    Unit_Parenthesized r _   -> r
+   Unit_One r               -> r
+   
 
 getGuardedExprRange :: GuardedExpression -> Range
 getGuardedExprRange gexpr = case gexpr of

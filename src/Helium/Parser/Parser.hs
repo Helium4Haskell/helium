@@ -256,17 +256,17 @@ topdecl = addRange (
     <|>
     do
         lexALIAS
-        su <- sunit
-        lexASG
-        u <- unit
-        return $ \r -> Declaration_AliasUnit r su u
-    <|>
-    do
-        lexALIAS
         su <- sdim
         lexASG
         u <- dimension
         return $ \r -> Declaration_AliasDimension r su u
+    <|>
+    do
+        lexALIAS
+        su <- sunit
+        lexASG
+        u <- unit
+        return $ \r -> Declaration_AliasUnit r su u
     <|>
 -- Declaration_Class (Range) (ContextItems) (SimpleType) (MaybeDeclarations)
 {-
@@ -1606,6 +1606,18 @@ dimexpo d =
 
 firstdim :: HParser Dimension
 firstdim = addRange (
+    try (do
+        one <- fmap fromInteger (fmap read lexInt) :: HParser Int
+        when (one /= 1) (fail Texts.parserType)
+        (do
+            try(do 
+                lexPOWER
+                d <- addRange $ return $ \r -> Dimension_One r
+                dimexpo d)
+            <|>
+            (do
+                return $ \r -> Dimension_One r)))
+    <|>
     do
         d <- sdim
         (do
@@ -1692,6 +1704,18 @@ uexpo u =
 
 firstunit :: HParser Unit
 firstunit = addRange (
+    try (do
+        one <- fmap fromInteger (fmap read lexInt) :: HParser Int
+        when (one /= 1) (fail Texts.parserType)
+        (do
+            try(do 
+                lexPOWER
+                u <- addRange $ return $ \r -> Unit_One r
+                uexpo u)
+            <|>
+            (do
+                return $ \r -> Unit_One r)))
+    <|>
     do
         d <- sunit
         (do

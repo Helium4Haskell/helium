@@ -499,6 +499,8 @@ SEM Dimension
     | Parenthesized           loc.text = parens @term.text
     --  range                    : Range
     --  term                     : Dimension
+    | One                     loc.text = text "1"
+    --  range                    : Range
 
 SEM SimpleUnit
     | SimpleUnit              loc.text = @name.text
@@ -532,7 +534,9 @@ SEM Unit
     --  exponent                 : Int
     | Parenthesized          loc.text = parens @term.text
     --  range                    : Range
-    --  term                     : Unit  
+    --  term                     : Unit 
+    | One                     loc.text = text "1"
+    --  range                    : Range 
 
 
 -- ------------------------------------------------------------------------
