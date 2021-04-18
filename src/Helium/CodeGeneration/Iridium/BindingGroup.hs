@@ -1,5 +1,6 @@
 module Helium.CodeGeneration.Iridium.BindingGroup where
 
+import Data.List
 import Lvm.Common.Id
 import Lvm.Common.IdMap
 import qualified Data.Graph as Graph
@@ -26,7 +27,7 @@ bindingGroups dependencies = map toBindingGroup . Graph.stronglyConnComp . map t
   where
     toNode decl@(Declaration name _ _ _ a) = (decl, name, dependencies a)
     toBindingGroup (Graph.AcyclicSCC decl) = BindingNonRecursive decl
-    toBindingGroup (Graph.CyclicSCC decls) = BindingRecursive decls
+    toBindingGroup (Graph.CyclicSCC decls) = BindingRecursive $ sortOn declarationName decls
 
 methodBindingGroups :: [Declaration Method] -> [BindingGroup Method]
 methodBindingGroups = bindingGroups methodDependencies

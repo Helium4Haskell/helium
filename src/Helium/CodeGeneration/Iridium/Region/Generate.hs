@@ -14,6 +14,7 @@ import Helium.CodeGeneration.Iridium.Data
 import Helium.CodeGeneration.Core.TypeEnvironment
 
 import Helium.CodeGeneration.Iridium.Region.Env
+import Helium.CodeGeneration.Iridium.Region.DataType
 import Helium.CodeGeneration.Iridium.Region.Sort
 import Helium.CodeGeneration.Iridium.Region.Annotation
 import Helium.CodeGeneration.Iridium.Region.Evaluate
@@ -24,7 +25,7 @@ import Helium.CodeGeneration.Iridium.Region.Containment
 import Debug.Trace
 import GHC.Stack
 
-data GlobalEnv = GlobalEnv !TypeEnvironment !DataTypeEnv !(IdMap (Int, Annotation))
+data GlobalEnv = GlobalEnv !TypeEnvironment !DataTypeEnv !ConstructorEnv !(IdMap (Int, Annotation))
 
 data MethodEnv = MethodEnv
   { methodEnvName :: Id
@@ -45,7 +46,7 @@ data MethodEnv = MethodEnv
   }
 
 generate :: GlobalEnv -> Declaration Method -> (MethodEnv, Annotation)
-generate (GlobalEnv typeEnv dataTypeEnv globals) (Declaration methodName _ _ _ method@(Method fnType _ arguments _ _ _ _ _))
+generate (GlobalEnv typeEnv dataTypeEnv constructorEnv globals) (Declaration methodName _ _ _ method@(Method fnType _ arguments _ _ _ _ _))
   = (methodEnv, fixpoint)
   where
     (applyLocal, methodEnv) = assign genv methodName method
@@ -56,7 +57,7 @@ generate (GlobalEnv typeEnv dataTypeEnv globals) (Declaration methodName _ _ _ m
       $ ALam SortUnit (methodEnvAdditionalRegionSort methodEnv) LifetimeContextAny
       $ AProject (AApp (weaken 0 1 0 fixpointArgument) (ATuple []) (regionSortToVars 0 $ methodEnvAdditionalRegionSort methodEnv) LifetimeContextAny) 0
     globals' = updateMap methodName (0, recursiveAnnotation) globals
-    genv = GlobalEnv typeEnv dataTypeEnv globals'
+    genv = GlobalEnv typeEnv dataTypeEnv constructorEnv globals'
 
     annotationMap :: M.Map Key Annotation
     annotationMap = M.fromListWith AJoin $ gatherInMethod genv methodEnv method
@@ -156,7 +157,7 @@ generate (GlobalEnv typeEnv dataTypeEnv globals) (Declaration methodName _ _ _ m
       . strengthen 0 2 (regionVarsSize (methodEnvReturnRegions methodEnv) + 1)
 
 assign :: GlobalEnv -> Id -> Method -> (Annotation -> Int -> Annotation, MethodEnv)
-assign genv@(GlobalEnv typeEnv dataTypeEnv _) name method@(Method _ _ arguments returnType _ _ _ _) = (applyLocal, methodEnv)
+assign genv@(GlobalEnv typeEnv dataTypeEnv _ _) name method@(Method _ _ arguments returnType _ _ _ _) = (applyLocal, methodEnv)
   where
     methodEnv = MethodEnv
       name
@@ -284,7 +285,7 @@ gatherContainment typeEnv dataTypeEnv methodEnv method@(Method _ _ _ returnType 
 
 -- In case of a global variable, it should be a function of arity 0.
 lookupSimpleVar :: HasCallStack => GlobalEnv -> MethodEnv -> Variable -> (Annotation, RegionVars)
-lookupSimpleVar genv@(GlobalEnv typeEnv dataTypeEnv _) _ (VarGlobal (GlobalVariable name tp)) = case lookupGlobal genv name of
+lookupSimpleVar genv@(GlobalEnv typeEnv dataTypeEnv _ _) _ (VarGlobal (GlobalVariable name tp)) = case lookupGlobal genv name of
   -- Expect an annotation without additional region arguments.
   -- Apply the annotation with an empty list of additional region arguments.
   (0, a) ->
@@ -295,7 +296,7 @@ lookupSimpleVar genv@(GlobalEnv typeEnv dataTypeEnv _) _ (VarGlobal (GlobalVaria
 lookupSimpleVar _ env (VarLocal (Local name _)) = lookupLocal env name
 
 lookupVar :: GlobalEnv -> MethodEnv -> Id -> Variable -> (Annotation, RegionVars)
-lookupVar genv@(GlobalEnv typeEnv dataTypeEnv _) env lhs (VarGlobal (GlobalVariable name tp)) = 
+lookupVar genv@(GlobalEnv typeEnv dataTypeEnv _ _) env lhs (VarGlobal (GlobalVariable name tp)) = 
   ( AApp a (ATuple []) (RegionVarsTuple $ map RegionVarsSingle additionalRegions) LifetimeContextAny
   , mapRegionVars (const RegionGlobal) $ regionSortToVars 0 $ regionSortOfType dataTypeEnv $ typeNormalize typeEnv tp
   )
@@ -307,7 +308,7 @@ lookupVar genv@(GlobalEnv typeEnv dataTypeEnv _) env lhs (VarGlobal (GlobalVaria
 lookupVar _ env _ (VarLocal (Local name _)) = lookupLocal env name
 
 lookupGlobal :: GlobalEnv -> Id -> (Int, Annotation)
-lookupGlobal (GlobalEnv _ _ m) name
+lookupGlobal (GlobalEnv _ _ _ m) name
   | Just a <- lookupMap name m = a
 lookupGlobal _ name = error $ "lookupGlobal: Variable " ++ show name ++ " not found"
 
@@ -335,7 +336,7 @@ gatherLocal :: Int -> Annotation -> Gather
 gatherLocal idx a = [(KeyLocal idx, a)]
 
 gatherInMethod :: GlobalEnv -> MethodEnv -> Method -> Gather
-gatherInMethod genv@(GlobalEnv typeEnv dataTypeEnv _) env method@(Method _ _ _ _ _ _ block blocks)
+gatherInMethod genv@(GlobalEnv typeEnv dataTypeEnv _ _) env method@(Method _ _ _ _ _ _ block blocks)
   = effect containment ++ gatherBlocks
   where
     gatherBlocks = (block : blocks) >>= (\(Block _ instr) -> gatherInstruction genv env instr)
@@ -395,11 +396,13 @@ gatherBind' genv env (Bind _ (BindTargetTuple _) arguments _) (RegionVarsTuple [
     constraints = zipFlattenRegionVars Outlives (RegionVarsTuple $ argumentsAnalysis >>= argumentRegion) returnRegions
 
     annotation = ATuple $ map fst argumentsAnalysis
-gatherBind' genv env (Bind _ (BindTargetConstructor (DataTypeConstructor constructorName _)) arguments _) (RegionVarsTuple [_, returnRegions]) = (ABottom SortRelation, ATuple []) -- TODO: Constructors
+gatherBind' genv env (Bind lhs (BindTargetConstructor constructor) arguments _) (RegionVarsTuple [_, returnRegions]) = (effect, ATuple []) -- TODO: Annotation on constructors
+  where
+    effect = gatherConstructorEffect genv env True constructor (lefts arguments) (map (Just . localName) $ rights arguments) lhs
 -- Function or thunk
 gatherBind' genv env (Bind lhs (BindTargetThunk var _) arguments _) returnRegions
   | all isLeft arguments = gatherInstantiate genv env var (lefts arguments) returnRegions
-gatherBind' genv@(GlobalEnv typeEnv _ _) env (Bind lhs target arguments _) returnRegions = case foldl apply (if all isLeft arguments then [] else targetRegionStrict : intermediateRegions, ABottom SortRelation, targetAnnotation) arguments of
+gatherBind' genv@(GlobalEnv typeEnv _ _ _) env (Bind lhs target arguments _) returnRegions = case foldl apply (if all isLeft arguments then [] else targetRegionStrict : intermediateRegions, ABottom SortRelation, targetAnnotation) arguments of
   ([], resultEffect, resultAnnotation) -> 
     ( arelation (relationFromConstraints constraints) `AJoin` resultEffect
     , resultAnnotation
@@ -467,6 +470,32 @@ gatherBind' genv@(GlobalEnv typeEnv _ _) env (Bind lhs target arguments _) retur
             resultRegions
             LifetimeContextLocalBottom
 
+-- Effect for constructor application or pattern
+gatherConstructorEffect :: GlobalEnv -> MethodEnv -> Bool -> DataTypeConstructor -> [Type] -> [Maybe Id] -> Id -> Annotation
+gatherConstructorEffect (GlobalEnv typeEnv _ constructors _) env isConstruct (DataTypeConstructor name fnType) tps fields object =
+  foldl applyField effect' (zip strictness fields)
+  where
+    FunctionType argTypes _ = extractFunctionTypeNoSynonyms fnType
+    strictness = map typeIsStrict $ rights argTypes
+
+    tps' = typeNormalize typeEnv <$> tps
+
+    ConstructorAnnotation construct _ destruct _ = findMap name constructors
+    (effect, lcObject, lcFields)
+      | isConstruct = (construct, LifetimeContextLocalBottom, LifetimeContextAny)
+      | otherwise = (destruct, LifetimeContextAny, LifetimeContextLocalBottom)
+    effect' = AApp (foldl AInstantiate effect tps') (ATuple []) (regionsChildren objectRegions) lcObject
+    (_, objectRegions) = lookupLocal env object
+
+    applyField :: Annotation -> (Bool, Maybe Id) -> Annotation
+    applyField a (strict, Just field) = AApp a (ATuple []) regions' lcFields
+      where
+        (_, regions) = lookupLocal env field -- TODO: Handle strictness mismatch
+        regions'
+          | strict = regions
+          | otherwise = regionsAsLazy regions
+    applyField a (_, Nothing) = AApp a (ATuple []) (RegionVarsSingle RegionBottom) lcFields
+
 gatherMatch :: GlobalEnv -> MethodEnv -> Local -> MatchTarget -> [Type] -> [Maybe Id] -> Gather
 gatherMatch genv env (Local obj _) (MatchTargetTuple _) _ fields =
   effect (arelation $ relationFromConstraints $ constraints objRegions fieldAnnotations)
@@ -495,8 +524,8 @@ gatherMatch genv env (Local obj _) (MatchTargetTuple _) _ fields =
       ++ gatherFields (i+1) fields'
     gatherFields _ (Just (Right _, _) : _) = error "gatherMatch: Expected a local variable, found an argument"
     gatherFields _ [] = []
-gatherMatch genv@(GlobalEnv typeEnv dataTypeEnv _) env (Local obj _) target@(MatchTargetConstructor _) tps fields
-  = (fieldLocals >>= f) ++ effect (arelation $ relationFromConstraints $ map (`Outlives` RegionGlobal) $ flattenRegionVars objRegions)
+gatherMatch genv@(GlobalEnv typeEnv dataTypeEnv _ _) env (Local obj _) target@(MatchTargetConstructor constructor) tps fields
+  = (fieldLocals >>= f) ++ effect (gatherConstructorEffect genv env False constructor tps fields obj)
   where
     (objAnnotation, RegionVarsTuple [_, objRegions]) = lookupLocal env obj
 
@@ -504,14 +533,13 @@ gatherMatch genv@(GlobalEnv typeEnv dataTypeEnv _) env (Local obj _) target@(Mat
     f :: Local -> Gather
     f (Local name tp)
       | (Left (idx, _), regions) <- findMap name $ methodEnvVars env
-        = effect (arelation $ relationFromConstraints $ map (`Outlives` RegionGlobal) $ flattenRegionVars regions)
-        ++ gatherLocal idx (ATop $ sortOfType dataTypeEnv $ typeNormalize typeEnv tp)
+        = gatherLocal idx (ATop $ sortOfType dataTypeEnv $ typeNormalize typeEnv tp)
     f _ = error "gatherMatch: Expected a local variable, found an argument"
 
 -- Returns the annotations (effect) caused by evaluating the expression, and the annotation
 -- (type) of the resulting value
 gatherExpression :: GlobalEnv -> MethodEnv -> Id -> Expr -> RegionVars -> (Annotation, Annotation)
-gatherExpression genv@(GlobalEnv typeEnv dataTypeEnv _) env lhs expr returnRegions = case expr of
+gatherExpression genv@(GlobalEnv typeEnv dataTypeEnv _ _) env lhs expr returnRegions = case expr of
   Literal _ -> bottom
   Call (GlobalFunction name _ _) _ args _ ->
     let
@@ -574,7 +602,7 @@ unifyRegions :: RegionVars -> RegionVars -> Annotation
 unifyRegions r1 r2 = arelation $ relationFromConstraints $ zipFlattenRegionVars Outlives r1 r2 ++ zipFlattenRegionVars Outlives r2 r1
 
 gatherInstantiate :: GlobalEnv -> MethodEnv -> Variable -> [Type] -> RegionVars -> (Annotation, Annotation)
-gatherInstantiate genv@(GlobalEnv typeEnv _ _) env var tps returnRegions =
+gatherInstantiate genv@(GlobalEnv typeEnv _ _ _) env var tps returnRegions =
   let
     (annotation, regions) = lookupSimpleVar genv env var
   in
@@ -599,6 +627,11 @@ regionsAsLazy :: RegionVars -> RegionVars
 regionsAsLazy regions = RegionVarsTuple [RegionVarsSingle r1, RegionVarsSingle r2, rs]
   where
     (r1, r2, rs) = regionsLazy regions
+
+regionsChildren :: RegionVars -> RegionVars
+regionsChildren (RegionVarsTuple [_, _, rs]) = rs
+regionsChildren (RegionVarsTuple [_, rs]) = rs
+regionsChildren _ = error "Expected pair or triple"
 
 unliftPair :: Annotation -> (Annotation, Annotation)
 unliftPair a = (AProject a 0, AProject a 1)

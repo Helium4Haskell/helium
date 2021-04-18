@@ -23,7 +23,7 @@ import Lvm.Core.Module (Custom(..), DeclKind, Arity, Field)
 import Lvm.Core.Type
 import Data.List (intercalate)
 import Data.Maybe (catMaybes)
-import Data.Either (isLeft, isRight, rights)
+import Data.Either (isLeft, isRight, lefts, rights)
 
 import Helium.CodeGeneration.Iridium.Type
 import Helium.CodeGeneration.Iridium.Primitive (findPrimitive, primType)
@@ -69,6 +69,12 @@ constructorDataType cons = findName $ findReturn $ constructorType cons
 
 getConstructors :: Declaration DataType -> [DataTypeConstructor]
 getConstructors (Declaration dataName _ _ _ (DataType cons)) = map (\(Declaration conId _ _ _ (DataTypeConstructorDeclaration tp _)) -> DataTypeConstructor conId tp) cons
+
+dataTypeQuantors :: DataType -> [Quantor]
+dataTypeQuantors (DataType []) = []
+dataTypeQuantors (DataType (Declaration _ _ _ _ (DataTypeConstructorDeclaration tp _) : _)) = lefts args
+  where
+    FunctionType args _ = extractFunctionTypeNoSynonyms tp
 
 data Visibility = ExportedAs !Id | Private deriving (Eq, Ord)
 

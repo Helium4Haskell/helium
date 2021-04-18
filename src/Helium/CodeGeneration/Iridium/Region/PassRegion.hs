@@ -10,6 +10,7 @@ import Helium.CodeGeneration.Iridium.Data
 import Helium.CodeGeneration.Iridium.BindingGroup
 
 import Helium.CodeGeneration.Iridium.Region.Env
+import Helium.CodeGeneration.Iridium.Region.DataType
 import Helium.CodeGeneration.Iridium.Region.Generate
 import Helium.CodeGeneration.Iridium.Region.Sort
 import Helium.CodeGeneration.Iridium.Region.Annotation
@@ -19,6 +20,8 @@ import Helium.CodeGeneration.Iridium.Region.Relation
 import Helium.CodeGeneration.Iridium.Region.Transform
 import Helium.CodeGeneration.Iridium.Region.DeadRegion
 import Helium.CodeGeneration.Iridium.Region.Utils
+
+import Debug.Trace
 
 passRegion :: NameSupply -> Module -> IO Module
 passRegion supply m = do
@@ -30,19 +33,15 @@ passRegion supply m = do
   return m{ moduleMethods = concat methods }
 
 initialEnv :: Module -> GlobalEnv
-initialEnv m = GlobalEnv typeEnv dataTypeEnv functionEnv
+initialEnv m = GlobalEnv typeEnv dataTypeEnv constructorEnv functionEnv
   where
     -- Environment is only used for type synonyms
     typeEnv = TypeEnvironment (mapFromList synonyms) emptyMap emptyMap
 
-    dataTypeEnv :: DataTypeEnv
-    dataTypeEnv = mapFromList $ map dataTypeSort $ moduleDataTypes m
+    (dataTypeEnv, constructorEnv) = createDataTypeEnv typeEnv $ moduleDataTypes m
 
     functionEnv :: IdMap (Int, Annotation)
     functionEnv = mapFromList $ methods ++ abstracts
-
-    dataTypeSort :: Declaration DataType -> (Id, DataTypeSort)
-    dataTypeSort (Declaration name _ _ _ (DataType _)) = (name, DataTypeSort relationEmpty SortUnit RegionSortUnit)
 
     abstracts :: [(Id, (Int, Annotation))]
     abstracts = abstract <$> moduleAbstractMethods m
@@ -78,7 +77,7 @@ transformGroup genv (BindingRecursive methods) = do
   (genv'', methods') <- mapAccumLM (\genv' method -> transformGroup genv' $ BindingNonRecursive method) genv methods
   return (genv'', concat methods')
 
-transformGroup genv@(GlobalEnv typeEnv dataTypeEnv globals) (BindingNonRecursive method@(Declaration methodName _ _ _ (Method _ _ arguments _ _ _ _ _))) = do
+transformGroup genv@(GlobalEnv typeEnv dataTypeEnv constructorEnv globals) (BindingNonRecursive method@(Declaration methodName _ _ _ (Method _ _ arguments _ _ _ _ _))) = do
   -- putStrLn $ "# Analyse method " ++ show methodName
 
   let (methodEnv, annotation) = generate genv method
@@ -102,6 +101,6 @@ transformGroup genv@(GlobalEnv typeEnv dataTypeEnv globals) (BindingNonRecursive
   rnfAnnotation restricted' `seq` return ()
 
   let globals' = updateMap methodName (regionCount, restricted') globals
-  let genv' = GlobalEnv typeEnv dataTypeEnv globals'
+  let genv' = GlobalEnv typeEnv dataTypeEnv constructorEnv globals'
 
   return (genv', [method{ declarationValue = method' }])
