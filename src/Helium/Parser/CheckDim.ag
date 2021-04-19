@@ -1,0 +1,405 @@
+-----------------------------------------------------------------------------
+-- |The Helium Compiler : Static Analysis
+-- 
+-- Maintainer  :  bastiaan@cs.uu.nl
+-- Stability   :  experimental
+-- Portability :  unknown
+--
+-- Check if some dimension / unit constructs occurs
+--
+-----------------------------------------------------------------------------
+
+INCLUDE "UHA_Syntax.ag"
+
+imports{
+-- Below two imports are to avoid clashes of "list" as used by the AG system.
+-- Effectively, only list from the imported library needs to be qualified.
+import Prelude hiding ((<$>))
+import Text.PrettyPrint.Leijen hiding (list)
+import qualified Text.PrettyPrint.Leijen as PPrint
+import Data.Char
+import Top.Types (isTupleConstructor)
+
+import Helium.Syntax.UHA_Syntax
+import Helium.Utils.Utils (internalError, hole)
+
+}
+
+ATTR
+    Module Body
+    Declaration
+    Type ContextItem
+    MaybeUnit MaybeExpression
+    Constructor
+    FieldDeclaration
+    AnnotatedType
+    Expression
+    Statement
+    Qualifier
+    Alternative
+    RecordExpressionBinding
+    FunctionBinding
+    GuardedExpression RightHandSide
+    GuardedExpressions
+    Constructors Declarations Types ContextItems
+    FieldDeclarations AnnotatedTypes Expressions
+    Statements Qualifiers Alternatives RecordExpressionBindings 
+    FunctionBindings
+    MaybeDeclarations
+    [
+    |
+    | dimconstruct : Bool
+    ]
+
+-- ------------------------------------------------------------------------
+-- -- Modules                                                            --
+-- ------------------------------------------------------------------------
+
+SEM Module
+    | Module lhs.dimconstruct = @body.dimconstruct
+    --  range                    : Range
+    --  name                     : MaybeName
+    --  exports                  : MaybeExports
+    --  body                     : Body
+
+SEM Body
+    | Hole                     lhs.dimconstruct = False
+    | Body                     lhs.dimconstruct = @declarations.dimconstruct
+    --  range                    : Range
+    --  importdeclarations       : ImportDeclarations
+    --  declarations             : Declarations
+
+-- ------------------------------------------------------------------------
+-- -- Declarations                                                       --
+-- ------------------------------------------------------------------------
+
+SEM MaybeDeclarations
+    | Nothing       lhs.dimconstruct = False      
+    | Just          lhs.dimconstruct = @declarations.dimconstruct
+    --  declarations             : Declarations
+
+SEM Declarations
+    | Cons              lhs.dimconstruct = @hd.dimconstruct || @tl.dimconstruct
+    | Nil               lhs.dimconstruct = False
+ 
+SEM Declaration  
+    | Hole              lhs.dimconstruct = False
+    | Type              lhs.dimconstruct = @type.dimconstruct
+    --  range                    : Range
+    --  simpletype               : SimpleType
+    --  type                     : Type
+    | Data              lhs.dimconstruct = @context.dimconstruct || @constructors.dimconstruct
+    --  range                    : Range        {- *** -}
+    --  context                  : ContextItems
+    --  simpletype               : SimpleType
+    --  constructors             : Constructors
+    --  derivings                : Names
+    | Newtype           lhs.dimconstruct = @context.dimconstruct || @constructor.dimconstruct
+    --  range                    : Range
+    --  context                  : ContextItems
+    --  simpletype               : SimpleType
+    --  constructor              : Constructor  -- has only one field, no strictness
+    --  derivings                : Names
+    | Dimension         lhs.dimconstruct = True
+    | UnitFromUnit      lhs.dimconstruct = True
+    | AliasDimension    lhs.dimconstruct = True
+    | AliasUnit         lhs.dimconstruct = True
+    | Class             lhs.dimconstruct = @context.dimconstruct || @where.dimconstruct
+    --  range                    : Range
+    --  context                  : ContextItems -- is a "simple" context
+    --  simpletype               : SimpleType   -- Haskell 98 allows only one variable
+    --  where                    : MaybeDeclarations -- cannot have everything
+    | Instance          lhs.dimconstruct = @context.dimconstruct || @types.dimconstruct || @where.dimconstruct
+    --  range                    : Range
+    --  context                  : ContextItems -- is a "simple" context
+    --  name                     : Name
+    --  types                    : Types        -- Haskell 98 allows only one type
+                                                -- that is severely restricted
+    --  where                    : MaybeDeclarations -- cannot have everything
+    | Default           lhs.dimconstruct = @types.dimconstruct
+    --  range                    : Range
+    --  types                    : Types        -- should be instances of Num
+    | FunctionBindings  lhs.dimconstruct = @bindings.dimconstruct
+    --  range                    : Range          {- *** -}
+    --  bindings                 : FunctionBindings -- should all be for the same function
+    | PatternBinding    lhs.dimconstruct = @righthandside.dimconstruct
+    --  range                    : Range
+    --  pattern                  : Pattern
+    --  righthandside            : RightHandSide
+    | TypeSignature     lhs.dimconstruct = @type.dimconstruct
+    --  range                    : Range
+    --  names                    : Names
+    --  type                     : Type   -- may have context
+    | Fixity            lhs.dimconstruct = False
+    | Empty             lhs.dimconstruct = False
+
+-- ------------------------------------------------------------------------
+-- -- Types                                                              --
+-- ------------------------------------------------------------------------
+
+SEM Types
+    | Cons              lhs.dimconstruct = @hd.dimconstruct || @tl.dimconstruct
+    | Nil               lhs.dimconstruct = False
+
+SEM Type                                         {- *** -}
+    | Application              lhs.dimconstruct = @arguments.dimconstruct
+    --  range                    : Range
+    --  prefix                   : Bool
+    --  function                 : Type 
+    --  arguments                : Types
+    | Variable                 lhs.dimconstruct = @unit.dimconstruct
+    --  range                    : Range
+    --  name                     : Name
+    --  unit                     : MaybeUnit
+    | Constructor              lhs.dimconstruct = @unit.dimconstruct
+    --  range                    : Range
+    --  name                     : Name
+    --  unit                     : MaybeUnit
+    | Qualified                lhs.dimconstruct =  @context.dimconstruct || @type.dimconstruct
+    --  range                    : Range
+    --  context                  : ContextItems
+    --  type                     : Type
+    | Forall                   lhs.dimconstruct = @type.dimconstruct
+    --  range                    : Range
+    --  typevariables            : Names  forall a b . Num a => a
+    --  type                     : Type
+    | Exists                   lhs.dimconstruct = @type.dimconstruct
+    --  range                    : Range
+    --  typevariables            : Names
+    --  type                     : Type
+    | Parenthesized            lhs.dimconstruct = @type.dimconstruct
+    --  range                    : Range
+    --  type                     : Type
+
+SEM ContextItems
+    | Cons              lhs.dimconstruct = @hd.dimconstruct || @tl.dimconstruct
+    | Nil               lhs.dimconstruct = False
+
+SEM ContextItem
+    | ContextItem       lhs.dimconstruct = @types.dimconstruct
+    --  range                    : Range
+    --  name                     : Name   -- that is the class
+    --  types                    : Types  -- in Haskell 98, this is only one type
+
+SEM Constructors
+    | Cons              lhs.dimconstruct = @hd.dimconstruct || @tl.dimconstruct
+    | Nil               lhs.dimconstruct = False
+
+SEM Constructor
+    | Constructor       lhs.dimconstruct = @types.dimconstruct
+    --  range                    : Range
+    --  constructor              : Name
+    --  types                    : AnnotatedTypes
+    | Infix             lhs.dimconstruct = @leftType.dimconstruct || @rightType.dimconstruct
+    --  range                    : Range
+    --  leftType                 : AnnotatedType
+    --  constructorOperator      : Name
+    --  rightType                : AnnotatedType
+    | Record            lhs.dimconstruct = @fieldDeclarations.dimconstruct
+    --  range                    : Range
+    --  constructor              : Name
+    --  fieldDeclarations        : FieldDeclarations
+
+SEM FieldDeclarations
+    | Cons              lhs.dimconstruct = @hd.dimconstruct || @tl.dimconstruct
+    | Nil               lhs.dimconstruct = False
+
+SEM FieldDeclaration
+    | FieldDeclaration lhs.dimconstruct = @type.dimconstruct
+    --  range                    : Range
+    --  names                    : Names
+    --  type                     : AnnotatedType        
+
+SEM AnnotatedTypes
+    | Cons              lhs.dimconstruct = @hd.dimconstruct || @tl.dimconstruct
+    | Nil               lhs.dimconstruct = False
+
+SEM AnnotatedType
+    | AnnotatedType   lhs.dimconstruct = @type.dimconstruct
+    --  range                    : Range
+    --  strict                   : Bool
+    --  type                     : Type
+
+-- ------------------------------------------------------------------------
+-- -- Dimensions and Units                                               --
+-- ------------------------------------------------------------------------
+
+SEM MaybeUnit
+    | Nothing                lhs.dimconstruct = False
+    | Just                   lhs.dimconstruct = True
+    -- unit                      : Unit
+
+-- ------------------------------------------------------------------------
+-- -- Expressions                                                        --
+-- ------------------------------------------------------------------------
+
+SEM Expressions
+    | Cons                lhs.dimconstruct = @hd.dimconstruct || @tl.dimconstruct
+    | Nil                 lhs.dimconstruct = False
+
+SEM MaybeExpression
+    | Nothing             lhs.dimconstruct = False
+    | Just                lhs.dimconstruct = @expression.dimconstruct
+    --  expression               : Expression
+
+SEM Expression                                   {- *** -}
+    | Hole               lhs.dimconstruct = False
+    | Literal            lhs.dimconstruct = False
+    | Variable           lhs.dimconstruct = False
+    | Constructor        lhs.dimconstruct = False
+    | Parenthesized      lhs.dimconstruct = @expression.dimconstruct
+    --  range                    : Range
+    --  expression               : Expression
+    | NormalApplication  lhs.dimconstruct = @function.dimconstruct || @arguments.dimconstruct
+    --  range                    : Range
+    --  function                 : Expression
+    --  arguments                : Expressions
+    | InfixApplication   lhs.dimconstruct = @leftExpression.dimconstruct || @operator.dimconstruct || @rightExpression.dimconstruct
+    --  range                    : Range
+    --  leftExpression           : MaybeExpression
+    --  operator                 : Expression
+    --  rightExpression          : MaybeExpression
+    | If                 lhs.dimconstruct = @guardExpression.dimconstruct || @thenExpression.dimconstruct || @elseExpression.dimconstruct
+    --  range                    : Range
+    --  guardExpression          : Expression
+    --  thenExpression           : Expression
+    --  elseExpression           : Expression
+    | Lambda             lhs.dimconstruct = @expression.dimconstruct
+    --  range                    : Range
+    --  patterns                 : Patterns
+    --  expression               : Expression
+    | Case               lhs.dimconstruct = @expression.dimconstruct || @alternatives.dimconstruct
+    --  range                    : Range
+    --  expression               : Expression
+    --  alternatives             : Alternatives
+    | Let                lhs.dimconstruct = @expression.dimconstruct
+    --  range                    : Range
+    --  declarations             : Declarations
+    --  expression               : Expression
+    | Do                 lhs.dimconstruct = @statements.dimconstruct
+    --  range                    : Range
+    --  statements               : Statements
+    | List               lhs.dimconstruct = @expressions.dimconstruct
+    --  range                    : Range
+    --  expressions              : Expressions
+    | Tuple              lhs.dimconstruct = @expressions.dimconstruct
+    --  range                    : Range
+    --  expressions              : Expressions
+    | Comprehension      lhs.dimconstruct = @expression.dimconstruct || @qualifiers.dimconstruct
+    --  range                    : Range
+    --  expression               : Expression
+    --  qualifiers               : Qualifiers
+    | Typed              lhs.dimconstruct = @expression.dimconstruct || @type.dimconstruct
+    --  range                    : Range
+    --  expression               : Expression
+    --  type                     : Type
+    | Dimensioned        lhs.dimconstruct = True
+    --  range                    : Range
+    --  expression               : Expression
+    --  unit                     : Unit
+    | RecordConstruction lhs.dimconstruct = @recordExpressionBindings.dimconstruct
+    --  range                    : Range
+    --  name                     : Name
+    --  recordExpressionBindings : RecordExpressionBindings
+    | RecordUpdate       lhs.dimconstruct = False -- see RecordExpressionBindings
+    --  range                    : Range
+    --  expression               : Expression
+    --  recordExpressionBindings : RecordExpressionBindingsconstructors
+    | Enum               lhs.dimconstruct = @from.dimconstruct || @then.dimconstruct || @to.dimconstruct
+    --  range                    : Range
+    --  from                     : Expression
+    --  then                     : MaybeExpression
+    --  to                       : MaybeExpression
+    | Negate             lhs.dimconstruct = @expression.dimconstruct
+    | NegateFloat        lhs.dimconstruct = @expression.dimconstruct
+    --  range                    : Range
+    --  expression               : Expression
+
+SEM Statements
+    | Cons              lhs.dimconstruct = @hd.dimconstruct || @tl.dimconstruct
+    | Nil               lhs.dimconstruct = False
+
+SEM Statement
+    | Expression          lhs.dimconstruct = @expression.dimconstruct
+    --  range                    : Range
+    --  expression               : Expression
+    | Let                 lhs.dimconstruct = @declarations.dimconstruct
+    --  range                    : Range
+    --  declarations             : Declarations
+    | Generator           lhs.dimconstruct = @expression.dimconstruct
+    --  range                    : Range
+    --  pattern                  : Pattern
+    --  expression               : Expression
+    | Empty               lhs.dimconstruct = False
+
+SEM Qualifiers
+    | Cons              lhs.dimconstruct = @hd.dimconstruct || @tl.dimconstruct
+    | Nil               lhs.dimconstruct = False
+
+SEM Qualifier
+    | Guard               lhs.dimconstruct = @guard.dimconstruct
+    --  range                    : Range
+    --  guard                    : Expression -- type: Boolean
+    | Let                 lhs.dimconstruct = @declarations.dimconstruct
+    --  range                    : Range
+    --  declarations             : Declarations
+    | Generator           lhs.dimconstruct = @expression.dimconstruct
+    --  range                    : Range
+    --  pattern                  : Pattern
+    --  expression               : Expression
+    | Empty               lhs.dimconstruct = False
+    --  range                    : Range
+
+SEM Alternatives
+    | Cons              lhs.dimconstruct = @hd.dimconstruct || @tl.dimconstruct
+    | Nil               lhs.dimconstruct = False
+
+SEM Alternative
+    | Hole                lhs.dimconstruct = False
+    | Alternative         lhs.dimconstruct = @righthandside.dimconstruct
+    --  range                    : Range
+    --  pattern                  : Pattern
+    --  righthandside            : RightHandSide
+    | Empty               lhs.dimconstruct = False
+    --  range                    : Range
+
+SEM GuardedExpressions
+    | Cons              lhs.dimconstruct = @hd.dimconstruct || @tl.dimconstruct
+    | Nil               lhs.dimconstruct = False
+
+SEM GuardedExpression -- ToDo: or _Guard?
+    | GuardedExpression   lhs.dimconstruct = @guard.dimconstruct || @expression.dimconstruct
+    --  range                    : Range
+    --  guard                    : Expression -- type: Boolean
+    --  expression               : Expression
+
+SEM RecordExpressionBindings
+    | Cons              lhs.dimconstruct = @hd.dimconstruct || @tl.dimconstruct
+    | Nil               lhs.dimconstruct = False
+
+SEM RecordExpressionBinding
+    | RecordExpressionBinding lhs.dimconstruct = @expression.dimconstruct
+    --  range                    : Range
+    --  name                     : Name
+    --  expression               : Expression
+
+SEM FunctionBindings
+    | Cons                lhs.dimconstruct = @hd.dimconstruct || @tl.dimconstruct
+    | Nil                 lhs.dimconstruct = False
+
+SEM FunctionBinding
+    | Hole                lhs.dimconstruct = False
+    | FunctionBinding     lhs.dimconstruct = @righthandside.dimconstruct
+    --  range                    : Range
+    --  lefthandside             : LeftHandSide
+    --  righthandside            : RightHandSide
+
+SEM RightHandSide
+    | Expression          lhs.dimconstruct = @expression.dimconstruct || @where.dimconstruct
+    --  range                    : Range
+    --  expression               : Expression
+    --  where                    : MaybeDeclarations
+    | Guarded             lhs.dimconstruct = @guardedexpressions.dimconstruct || @where.dimconstruct
+    --  range                    : Range
+    --  guardedexpressions       : GuardedExpressions
+    --  where                    : MaybeDeclarations
