@@ -702,7 +702,7 @@ SEM GuardedExpression -- ToDo: or _Guard?
     | GuardedExpression loc.text = \assign -> text "|" <+> @guard.text <+> assign <+> @expression.text
     --  range                    : Range
     --  guard                    : Expression -- type: Boolean
-    --  expression               : Expressionconstructors
+    --  expression               : Expression
 
 SEM RecordExpressionBinding
     | RecordExpressionBinding loc.text = @name.text <+> text "=" <+> @expression.text -- ToDo: or _Binding?

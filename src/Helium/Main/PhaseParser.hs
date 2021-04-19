@@ -12,7 +12,9 @@ import Helium.Main.CompileUtils
 import Helium.Parser.LexerToken(Token)
 import Helium.Parser.Parser (module_)
 import Helium.Parser.ParseLibrary(runHParser)
-import Text.ParserCombinators.Parsec.Error (ParseError)
+import qualified Helium.Parser.CheckDim as CD
+import Text.ParserCombinators.Parsec.Error (ParseError, Message(..), newErrorMessage)
+import Text.ParserCombinators.Parsec.Pos(newPos)
 import Helium.Syntax.UHA_Syntax(Name(..), MaybeName(..))
 import Helium.Syntax.UHA_Range(noRange)
 import Helium.Utils.Utils (firstUpper)
@@ -28,8 +30,12 @@ phaseParser fullName tokens options = do
         Left parseError ->
             return (Left [parseError])
         Right m ->
-            do let fixedm = fixModuleName m $ firstUpper baseName
-               return (Right fixedm)
+            (do let fixedm = fixModuleName m $ firstUpper baseName
+                let res = CD.wrap_Module (CD.sem_Module fixedm) CD.Inh_Module {}
+                if not (DimensionTypes `elem` options) 
+                    && CD.dimconstruct_Syn_Module res then
+                        return (Left [newErrorMessage (Message "dimension construct /n you should use --dim-types option") (newPos "Dimension" 0 0)])
+                else return (Right fixedm))
 
 -- | Make sure the module has a name. If there is no name (module without
 --   header) insert the base name of the file name as name.

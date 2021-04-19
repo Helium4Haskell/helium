@@ -199,7 +199,7 @@ optionDescription moreOptions experimentalOptions =
       , Option "" [flag NoPrelude]                      (NoArg NoPrelude)  "do not import the prelude (experimental)"
       , Option "" [flag (RepairDepth 0)]                (ReqArg selectDepth "RDEPTH") "specify depth of transformation tree"
       , Option "" [flag (RepairEvalLimit 0)]            (ReqArg selectEvalLimit "RTREVL") "specify re-evaluation limit of transformed expressions"      
-      , Option "" [flag (DimensionTypes)]             (NoArg DimensionTypes) "enable dimension types"      
+      , Option "" [flag (DimensionTypes)]               (NoArg DimensionTypes) "enable dimension types"      
 
       ]
 

@@ -30,7 +30,8 @@ AGSOURCES = \
      $(AG_OUT_DIR)/Helium/StaticAnalysis/Directives/TS_Analyse.hs \
      $(AG_OUT_DIR)/Helium/StaticAnalysis/Directives/TS_CoreSyntax.hs \
      $(AG_OUT_DIR)/Helium/StaticAnalysis/Directives/TS_ToCore.hs \
-     $(AG_OUT_DIR)/Helium/Parser/ResolveOperators.hs
+     $(AG_OUT_DIR)/Helium/Parser/ResolveOperators.hs \
+     $(AG_OUT_DIR)/Helium/Parser/CheckDim.hs
 
 libraries:
 	@echo "****************************************************"
@@ -68,6 +69,12 @@ $(AG_OUT_DIR)/Helium/Syntax/UHA_OneLine.hs : \
 	mkdir -p `dirname $@`
 	# AG UHA_OneLine
 	$(AG) $(AG_OPTS) --self --module=Helium.Syntax.UHA_OneLine Helium/Syntax/UHA_OneLine.ag --output=$@
+	
+$(AG_OUT_DIR)/Helium/Parser/CheckDim.hs : \
+		Helium/Parser/CheckDim.ag
+	mkdir -p `dirname $@`
+	# AG CheckDim
+	$(AG) $(AG_OPTS) --module=Helium.Parser.CheckDim Helium/Parser/CheckDim.ag --output=$@
 
 $(AG_OUT_DIR)/Helium/StaticAnalysis/StaticChecks/StaticChecks.hs : \
 		Helium/StaticAnalysis/StaticChecks/StaticChecks.ag \

@@ -313,7 +313,7 @@ DATA AnnotatedType
 
 
 -- ------------------------------------------------------------------------
--- -- Dimensions                                                              --
+-- -- Dimensions and Units                                               --
 -- ------------------------------------------------------------------------
 
 TYPE Dimensions = [ Dimension ]
@@ -491,7 +491,7 @@ DATA Expression                                   {- *** -}
         expression               : Expression
 
 -- Helium
-    | NegateFloat
+    | NegateFloat 
         range                    : Range
         expression               : Expression
 
