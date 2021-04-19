@@ -745,8 +745,12 @@ analyseEscapeBody isReturn firstRegionScope annotation = case annotation of
     ABottom _ -> mempty
     AJoin a1 a2 -> go a1 <> go a2
     ARelation rel ->
-      let (vars, rel') = relationRestrict firstRegionScope rel
-      in Escapes rel' $ IntSet.fromList $ map regionVarIndex vars
+      let
+        (vars, rel') = relationRestrict firstRegionScope rel
+        vars'
+          | isReturn = relationVars rel
+          | otherwise = []
+      in Escapes rel' $ IntSet.fromList $ map regionVarIndex (vars' ++ vars)
   where
     go = analyseEscapeBody isReturn firstRegionScope
 

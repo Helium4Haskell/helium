@@ -6,7 +6,7 @@
 module Helium.CodeGeneration.Iridium.Region.Relation
   ( RelationConstraint, pattern Outlives
   , Relation, trivialConstraint, relationToConstraints, showRelationWith
-  , relationFromTransitiveConstraints, relationFromConstraints
+  , relationFromTransitiveConstraints, relationFromConstraints, relationVars
   , relationJoin, subRelation, relationIsEmpty, relationEmpty
   , relationWeaken, relationWeaken', relationStrengthen, relationStrengthen'
   , relationReindex, relationMultipleReindex, relationMultipleReindexMonotone, relationRestrict
@@ -67,6 +67,9 @@ instance Ord Relation where
 
 relationToConstraints :: Relation -> [RelationConstraint]
 relationToConstraints (Relation vec) = map OutlivesR $ V.toList vec
+
+relationVars :: Relation -> [RegionVar]
+relationVars rel = relationToConstraints rel >>= (\(x `Outlives` y) -> [x, y])
 
 -- Assumes that the input is transitive, sorted and doesn't includ trivial constraints.
 relationFromTransitiveConstraints :: [RelationConstraint] -> Relation

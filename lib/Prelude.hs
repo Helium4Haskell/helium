@@ -477,8 +477,7 @@ span p xs@(x:xs')
                        where (ys,zs) = span p xs'
 
 break :: (a -> Bool) -> [a] -> ([a],[a])
--- break p = span (not . p)
-break p xs = span (\x -> not (p x)) xs
+break p = span (not . p)
 
 lines :: String -> [String]
 lines ""   = []

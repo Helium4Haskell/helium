@@ -129,7 +129,7 @@ stringToCore [] = nil tp
 stringToCore [x] = cons tp (Lit (LitInt (ord x) IntTypeChar)) $ nil tp
   where
     tp = Core.TCon $ Core.TConDataType $ idFromString "Char"
-stringToCore xs = var "$primPackedToString" `app_` packedString xs
+stringToCore xs = packedString xs
 
 var :: String -> Expr
 var x = Var (idFromString x)
