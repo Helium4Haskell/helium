@@ -25,7 +25,9 @@ eval = foldAnnAlg evalAlg
     aJoin  = \_ -> join,
     aApl   = \_ -> application,
     aInstn = \_ -> instantiate,
-    aProj  = \_ -> project
+    aProj  = \_ -> project,
+    aTop   = \_ -> top,
+    aBot   = \_ -> bot
   }
 
 
@@ -119,9 +121,6 @@ instantiate (AQuant anno) ty = eval $ foldAnnAlg annInstAlg anno
     aLam   = \d s a -> ALam (sortSubstitute d ty s) a,
     aFix   = \d s a -> AFix (sortSubstitute d ty s) a
   } 
--- Top and bottom
-instantiate (ATop s vs) ty = (ATop (sortInstantiate ty s) vs)
-instantiate (ABot s   ) ty = (ABot (sortInstantiate ty s))
 -- Cannot eval
 instantiate a t = AInstn a t
 
@@ -131,12 +130,25 @@ project :: Int -> Annotation -> Annotation
 project _   AUnit       = AUnit -- TODO: Check if this is sound, if missing causes an issue in region eval
 project idx (ATuple as) | length as > idx = as !! idx
                         | otherwise       = rsError $ "Projection-index out of bounds\n Idx: " ++ show idx ++ "\n Annotation: " ++ (show $ ATuple as)
--- Top and bottom
-project idx (ATop s vs) = (ATop (indexSortTuple idx s) vs)
-project idx (ABot s)    = (ABot (indexSortTuple idx s))
 -- Cannot eval
 project idx t = AProj idx t 
 
+
+-- | Break up top into a value
+top :: Sort -> Constr -> Annotation
+top SortUnit       c = AUnit 
+top SortConstr     c = AConstr c 
+top (SortTuple ss) c = ATuple $ flip ATop c <$> ss
+top (SortQuant s ) c = AQuant $ ATop s c
+top s c = ATop s c
+
+-- | Break up bot into a value
+bot :: Sort -> Annotation
+bot SortUnit       = AUnit 
+bot SortConstr     = AConstr constrBot
+bot (SortTuple ss) = ATuple $ ABot <$> ss
+bot (SortQuant s ) = AQuant $ ABot s
+bot s = ABot s
 
 ----------------------------------------------------------------
 -- Evalutation utilities
