@@ -925,8 +925,8 @@ exp10 = addRange (
         ss <- stmts
         return $ \r -> Expression_Do r ss
     ) 
-    <|>
-    (try uexp)
+    {-<|>
+    (try uexp)-}
     <|>
     fexp
     <?> Texts.parserExpression
@@ -1001,7 +1001,10 @@ operatorAsExpression storeRange = (do
      )) <?> Texts.parserOperator
                          
 aexp :: HParser Expression    
-aexp = addRange (
+aexp =
+    (try uexp)
+    <|>
+    addRange (
     do 
         lexLPAREN
         ( -- dit haakje is nodig (snap niet waarom). Arjan
