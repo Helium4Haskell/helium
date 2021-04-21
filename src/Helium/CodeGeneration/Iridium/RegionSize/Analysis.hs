@@ -226,7 +226,7 @@ analyseInstr envs@(Envs _ _ lEnv) bEnv = go
              let (nxtAnn, nxtEff) = analyseInstr envs bEnv next
             --  in  (nxtAnn, AMinus nxtEff r)
              in  (nxtAnn, nxtEff)
-         -- Ignore release region
+         -- Ignore release region (TODO: Handling release regions correctly within loops for constant bounds?)
          go (ReleaseRegion _ next) = analyseInstr envs bEnv next
          -- Lookup the annotation and effect from block
          go (Jump block)           = liftTuple $ lookupBlock block bEnv 
@@ -245,16 +245,22 @@ analyseInstr envs@(Envs _ _ lEnv) bEnv = go
 analyseLetAlloc :: Envs -> BlockEnv -> [Bind] -> Instruction ->  (Annotation, Effect)
 analyseLetAlloc envs bEnv [] next = analyseInstr envs bEnv next
 analyseLetAlloc envs@(Envs _ rEnv _) bEnv (Bind _ (BindTargetThunk var tRegs) args dReg:bs) next =
-    let (_   ,bEff) = thunkApplyArgs envs (lookupVar var envs) args $ bindThunkValue tRegs
+    let tnkRegs = bindThunkIntermediate tRegs
+        (_   ,bEff) = thunkApplyArgs envs (lookupVar var envs) args $ bindThunkValue tRegs
         (rAnn,rEff) = analyseLetAlloc envs bEnv bs next
-    in (rAnn, AAdd (AConstr $ constrOne $ lookupReg dReg rEnv) (AAdd rEff bEff))
+    in (rAnn, AAdd (AConstr $ constrOne $ lookupReg dReg rEnv) 
+             (AAdd (AConstr $ collectRegs rEnv tnkRegs)
+             (AAdd rEff bEff)))
 -- Function binds
-analyseLetAlloc envs@(Envs gEnv rEnv _) bEnv (Bind _ (BindTargetFunction gFun aRegs tRegs) args dReg:bs) next = -- TODO: Check if okay
-    let retRegs = bindThunkValue tRegs -- TODO: bindThunkIntermediate?
+analyseLetAlloc envs@(Envs gEnv rEnv _) bEnv (Bind _ (BindTargetFunction gFun aRegs tRegs) args dReg:bs) next =
+    let retRegs = bindThunkValue tRegs
+        tnkRegs = bindThunkIntermediate tRegs
         gFunAnn = lookupGlobal (globalFunctionName gFun) gEnv
         (_   ,bEff) = funcApplyArgs envs gFunAnn aRegs args retRegs
         (rAnn,rEff) = analyseLetAlloc envs bEnv bs next
-    in (rAnn, AAdd (AConstr $ constrOne $ lookupReg dReg rEnv) (AAdd rEff bEff))
+    in (rAnn, AAdd (AConstr $ constrOne $ lookupReg dReg rEnv) 
+             (AAdd (AConstr $ collectRegs rEnv tnkRegs)
+             (AAdd bEff rEff)))
 -- Tuples
 analyseLetAlloc envs@(Envs _ rEnv _) bEnv (Bind _ (BindTargetTuple _) _ dReg:bs) next =
     let (rAnn,rEff) = analyseLetAlloc envs bEnv bs next
@@ -264,6 +270,12 @@ analyseLetAlloc envs@(Envs _ rEnv _) bEnv (Bind _ (BindTargetConstructor _) [] d
     let (rAnn,rEff) = analyseLetAlloc envs bEnv bs next
     in (rAnn, AAdd (AConstr $ constrOne $ lookupReg dReg rEnv) rEff)
 analyseLetAlloc envs bEnv (_:bs) next = analyseLetAlloc envs bEnv bs next
+
+-- TODO: Move to a better location & rename maybe
+-- | Collect bounds from a regionvars
+collectRegs :: RegionEnv -> RegionVars -> Constr
+collectRegs rEnv (RegionVarsSingle r) = constrOne $ lookupReg r rEnv
+collectRegs rEnv (RegionVarsTuple rs) = M.unions $ collectRegs rEnv <$> rs
 
 -- | Find the annotation and effect of an expression
 analyseExpr :: Envs -> Expr -> (Annotation, Effect)
