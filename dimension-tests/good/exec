@@ -1,0 +1,6 @@
+#!/bin/sh
+
+for f in ./*.hs ;
+do helium --dim-types ${f%.hs};
+done
+
