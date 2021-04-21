@@ -25,6 +25,16 @@ import Helium.Utils.Utils (internalError, hole)
 
 }
 
+{
+select :: Maybe (Int, Int) -> Maybe (Int, Int) -> Maybe (Int, Int)
+select Nothing a = a
+select a _ = a
+
+select3 :: Maybe (Int, Int) -> Maybe (Int, Int) -> Maybe (Int, Int) -> Maybe (Int, Int)
+select3 Nothing a b = select a b
+select3 a _ _ = a
+}
+
 ATTR
     Module Body
     Declaration
@@ -48,9 +58,14 @@ ATTR
     MaybeDeclarations
     [
     |
-    | dimconstruct : Bool
+    | dimconstruct : {Maybe (Int, Int)}
     ]
 
+ATTR Unit Range Position
+    [
+    |
+    | pos : {(Int,Int)}
+    ]
 -- ------------------------------------------------------------------------
 -- -- Modules                                                            --
 -- ------------------------------------------------------------------------
@@ -63,7 +78,7 @@ SEM Module
     --  body                     : Body
 
 SEM Body
-    | Hole                     lhs.dimconstruct = False
+    | Hole                     lhs.dimconstruct = Nothing
     | Body                     lhs.dimconstruct = @declarations.dimconstruct
     --  range                    : Range
     --  importdeclarations       : ImportDeclarations
@@ -74,42 +89,42 @@ SEM Body
 -- ------------------------------------------------------------------------
 
 SEM MaybeDeclarations
-    | Nothing       lhs.dimconstruct = False      
+    | Nothing       lhs.dimconstruct = Nothing      
     | Just          lhs.dimconstruct = @declarations.dimconstruct
     --  declarations             : Declarations
 
 SEM Declarations
-    | Cons              lhs.dimconstruct = @hd.dimconstruct || @tl.dimconstruct
-    | Nil               lhs.dimconstruct = False
+    | Cons              lhs.dimconstruct =  select (@hd.dimconstruct) (@tl.dimconstruct)
+    | Nil               lhs.dimconstruct = Nothing
  
 SEM Declaration  
-    | Hole              lhs.dimconstruct = False
+    | Hole              lhs.dimconstruct = Nothing
     | Type              lhs.dimconstruct = @type.dimconstruct
     --  range                    : Range
     --  simpletype               : SimpleType
     --  type                     : Type
-    | Data              lhs.dimconstruct = @context.dimconstruct || @constructors.dimconstruct
+    | Data              lhs.dimconstruct = select (@context.dimconstruct) (@constructors.dimconstruct)
     --  range                    : Range        {- *** -}
     --  context                  : ContextItems
     --  simpletype               : SimpleType
     --  constructors             : Constructors
     --  derivings                : Names
-    | Newtype           lhs.dimconstruct = @context.dimconstruct || @constructor.dimconstruct
+    | Newtype           lhs.dimconstruct = select (@context.dimconstruct) (@constructor.dimconstruct)
     --  range                    : Range
     --  context                  : ContextItems
     --  simpletype               : SimpleType
     --  constructor              : Constructor  -- has only one field, no strictness
     --  derivings                : Names
-    | Dimension         lhs.dimconstruct = True
-    | UnitFromUnit      lhs.dimconstruct = True
-    | AliasDimension    lhs.dimconstruct = True
-    | AliasUnit         lhs.dimconstruct = True
-    | Class             lhs.dimconstruct = @context.dimconstruct || @where.dimconstruct
+    | Dimension         lhs.dimconstruct = Just @range.pos
+    | UnitFromUnit      lhs.dimconstruct = Just @range.pos
+    | AliasDimension    lhs.dimconstruct = Just @range.pos
+    | AliasUnit         lhs.dimconstruct = Just @range.pos
+    | Class             lhs.dimconstruct = select (@context.dimconstruct) (@where.dimconstruct)
     --  range                    : Range
     --  context                  : ContextItems -- is a "simple" context
     --  simpletype               : SimpleType   -- Haskell 98 allows only one variable
     --  where                    : MaybeDeclarations -- cannot have everything
-    | Instance          lhs.dimconstruct = @context.dimconstruct || @types.dimconstruct || @where.dimconstruct
+    | Instance          lhs.dimconstruct = select3 (@context.dimconstruct) (@types.dimconstruct) (@where.dimconstruct)
     --  range                    : Range
     --  context                  : ContextItems -- is a "simple" context
     --  name                     : Name
@@ -130,16 +145,16 @@ SEM Declaration
     --  range                    : Range
     --  names                    : Names
     --  type                     : Type   -- may have context
-    | Fixity            lhs.dimconstruct = False
-    | Empty             lhs.dimconstruct = False
+    | Fixity            lhs.dimconstruct = Nothing
+    | Empty             lhs.dimconstruct = Nothing
 
 -- ------------------------------------------------------------------------
 -- -- Types                                                              --
 -- ------------------------------------------------------------------------
 
 SEM Types
-    | Cons              lhs.dimconstruct = @hd.dimconstruct || @tl.dimconstruct
-    | Nil               lhs.dimconstruct = False
+    | Cons              lhs.dimconstruct =  select (@hd.dimconstruct) (@tl.dimconstruct)
+    | Nil               lhs.dimconstruct = Nothing
 
 SEM Type                                         {- *** -}
     | Application              lhs.dimconstruct = @arguments.dimconstruct
@@ -155,7 +170,7 @@ SEM Type                                         {- *** -}
     --  range                    : Range
     --  name                     : Name
     --  unit                     : MaybeUnit
-    | Qualified                lhs.dimconstruct =  @context.dimconstruct || @type.dimconstruct
+    | Qualified                lhs.dimconstruct =  select (@context.dimconstruct) (@type.dimconstruct)
     --  range                    : Range
     --  context                  : ContextItems
     --  type                     : Type
@@ -172,8 +187,8 @@ SEM Type                                         {- *** -}
     --  type                     : Type
 
 SEM ContextItems
-    | Cons              lhs.dimconstruct = @hd.dimconstruct || @tl.dimconstruct
-    | Nil               lhs.dimconstruct = False
+    | Cons              lhs.dimconstruct =  select (@hd.dimconstruct) (@tl.dimconstruct)
+    | Nil               lhs.dimconstruct = Nothing
 
 SEM ContextItem
     | ContextItem       lhs.dimconstruct = @types.dimconstruct
@@ -182,15 +197,15 @@ SEM ContextItem
     --  types                    : Types  -- in Haskell 98, this is only one type
 
 SEM Constructors
-    | Cons              lhs.dimconstruct = @hd.dimconstruct || @tl.dimconstruct
-    | Nil               lhs.dimconstruct = False
+    | Cons              lhs.dimconstruct =  select (@hd.dimconstruct) (@tl.dimconstruct)
+    | Nil               lhs.dimconstruct = Nothing
 
 SEM Constructor
     | Constructor       lhs.dimconstruct = @types.dimconstruct
     --  range                    : Range
     --  constructor              : Name
     --  types                    : AnnotatedTypes
-    | Infix             lhs.dimconstruct = @leftType.dimconstruct || @rightType.dimconstruct
+    | Infix             lhs.dimconstruct = select (@leftType.dimconstruct) (@rightType.dimconstruct)
     --  range                    : Range
     --  leftType                 : AnnotatedType
     --  constructorOperator      : Name
@@ -201,8 +216,8 @@ SEM Constructor
     --  fieldDeclarations        : FieldDeclarations
 
 SEM FieldDeclarations
-    | Cons              lhs.dimconstruct = @hd.dimconstruct || @tl.dimconstruct
-    | Nil               lhs.dimconstruct = False
+    | Cons              lhs.dimconstruct =  select (@hd.dimconstruct) (@tl.dimconstruct)
+    | Nil               lhs.dimconstruct = Nothing
 
 SEM FieldDeclaration
     | FieldDeclaration lhs.dimconstruct = @type.dimconstruct
@@ -211,8 +226,8 @@ SEM FieldDeclaration
     --  type                     : AnnotatedType        
 
 SEM AnnotatedTypes
-    | Cons              lhs.dimconstruct = @hd.dimconstruct || @tl.dimconstruct
-    | Nil               lhs.dimconstruct = False
+    | Cons              lhs.dimconstruct =  select (@hd.dimconstruct) (@tl.dimconstruct)
+    | Nil               lhs.dimconstruct = Nothing
 
 SEM AnnotatedType
     | AnnotatedType   lhs.dimconstruct = @type.dimconstruct
@@ -225,41 +240,50 @@ SEM AnnotatedType
 -- ------------------------------------------------------------------------
 
 SEM MaybeUnit
-    | Nothing                lhs.dimconstruct = False
-    | Just                   lhs.dimconstruct = True
+    | Nothing                lhs.dimconstruct = Nothing
+    | Just                   lhs.dimconstruct = Just @unit.pos
     -- unit                      : Unit
+
+SEM Unit
+    | Base  loc.pos = @range.pos
+    | Times loc.pos = @range.pos
+    | Div loc.pos = @range.pos
+    | Power loc.pos = @range.pos
+    | NegPower loc.pos = @range.pos
+    | Parenthesized loc.pos = @range.pos
+    | One loc.pos = @range.pos
 
 -- ------------------------------------------------------------------------
 -- -- Expressions                                                        --
 -- ------------------------------------------------------------------------
 
 SEM Expressions
-    | Cons                lhs.dimconstruct = @hd.dimconstruct || @tl.dimconstruct
-    | Nil                 lhs.dimconstruct = False
+    | Cons                lhs.dimconstruct =  select (@hd.dimconstruct) (@tl.dimconstruct)
+    | Nil                 lhs.dimconstruct = Nothing
 
 SEM MaybeExpression
-    | Nothing             lhs.dimconstruct = False
+    | Nothing             lhs.dimconstruct = Nothing
     | Just                lhs.dimconstruct = @expression.dimconstruct
     --  expression               : Expression
 
 SEM Expression                                   {- *** -}
-    | Hole               lhs.dimconstruct = False
-    | Literal            lhs.dimconstruct = False
-    | Variable           lhs.dimconstruct = False
-    | Constructor        lhs.dimconstruct = False
+    | Hole               lhs.dimconstruct = Nothing
+    | Literal            lhs.dimconstruct = Nothing
+    | Variable           lhs.dimconstruct = Nothing
+    | Constructor        lhs.dimconstruct = Nothing
     | Parenthesized      lhs.dimconstruct = @expression.dimconstruct
     --  range                    : Range
     --  expression               : Expression
-    | NormalApplication  lhs.dimconstruct = @function.dimconstruct || @arguments.dimconstruct
+    | NormalApplication  lhs.dimconstruct = select (@function.dimconstruct) (@arguments.dimconstruct)
     --  range                    : Range
     --  function                 : Expression
     --  arguments                : Expressions
-    | InfixApplication   lhs.dimconstruct = @leftExpression.dimconstruct || @operator.dimconstruct || @rightExpression.dimconstruct
+    | InfixApplication   lhs.dimconstruct = select3 (@leftExpression.dimconstruct) (@operator.dimconstruct) (@rightExpression.dimconstruct)
     --  range                    : Range
     --  leftExpression           : MaybeExpression
     --  operator                 : Expression
     --  rightExpression          : MaybeExpression
-    | If                 lhs.dimconstruct = @guardExpression.dimconstruct || @thenExpression.dimconstruct || @elseExpression.dimconstruct
+    | If                 lhs.dimconstruct = select3 (@guardExpression.dimconstruct) (@thenExpression.dimconstruct) (@elseExpression.dimconstruct)
     --  range                    : Range
     --  guardExpression          : Expression
     --  thenExpression           : Expression
@@ -268,7 +292,7 @@ SEM Expression                                   {- *** -}
     --  range                    : Range
     --  patterns                 : Patterns
     --  expression               : Expression
-    | Case               lhs.dimconstruct = @expression.dimconstruct || @alternatives.dimconstruct
+    | Case               lhs.dimconstruct = select (@expression.dimconstruct) (@alternatives.dimconstruct)
     --  range                    : Range
     --  expression               : Expression
     --  alternatives             : Alternatives
@@ -285,15 +309,15 @@ SEM Expression                                   {- *** -}
     | Tuple              lhs.dimconstruct = @expressions.dimconstruct
     --  range                    : Range
     --  expressions              : Expressions
-    | Comprehension      lhs.dimconstruct = @expression.dimconstruct || @qualifiers.dimconstruct
+    | Comprehension      lhs.dimconstruct = select (@expression.dimconstruct) (@qualifiers.dimconstruct)
     --  range                    : Range
     --  expression               : Expression
     --  qualifiers               : Qualifiers
-    | Typed              lhs.dimconstruct = @expression.dimconstruct || @type.dimconstruct
+    | Typed              lhs.dimconstruct = select (@expression.dimconstruct) (@type.dimconstruct)
     --  range                    : Range
     --  expression               : Expression
     --  type                     : Type
-    | Dimensioned        lhs.dimconstruct = True
+    | Dimensioned        lhs.dimconstruct = Just @range.pos
     --  range                    : Range
     --  expression               : Expression
     --  unit                     : Unit
@@ -301,11 +325,11 @@ SEM Expression                                   {- *** -}
     --  range                    : Range
     --  name                     : Name
     --  recordExpressionBindings : RecordExpressionBindings
-    | RecordUpdate       lhs.dimconstruct = False -- see RecordExpressionBindings
+    | RecordUpdate       lhs.dimconstruct = Nothing -- see RecordExpressionBindings
     --  range                    : Range
     --  expression               : Expression
     --  recordExpressionBindings : RecordExpressionBindingsconstructors
-    | Enum               lhs.dimconstruct = @from.dimconstruct || @then.dimconstruct || @to.dimconstruct
+    | Enum               lhs.dimconstruct = select3 (@from.dimconstruct) (@then.dimconstruct) (@to.dimconstruct)
     --  range                    : Range
     --  from                     : Expression
     --  then                     : MaybeExpression
@@ -316,8 +340,8 @@ SEM Expression                                   {- *** -}
     --  expression               : Expression
 
 SEM Statements
-    | Cons              lhs.dimconstruct = @hd.dimconstruct || @tl.dimconstruct
-    | Nil               lhs.dimconstruct = False
+    | Cons              lhs.dimconstruct =  select (@hd.dimconstruct) (@tl.dimconstruct)
+    | Nil               lhs.dimconstruct = Nothing
 
 SEM Statement
     | Expression          lhs.dimconstruct = @expression.dimconstruct
@@ -330,11 +354,11 @@ SEM Statement
     --  range                    : Range
     --  pattern                  : Pattern
     --  expression               : Expression
-    | Empty               lhs.dimconstruct = False
+    | Empty               lhs.dimconstruct = Nothing
 
 SEM Qualifiers
-    | Cons              lhs.dimconstruct = @hd.dimconstruct || @tl.dimconstruct
-    | Nil               lhs.dimconstruct = False
+    | Cons              lhs.dimconstruct =  select (@hd.dimconstruct) (@tl.dimconstruct)
+    | Nil               lhs.dimconstruct = Nothing
 
 SEM Qualifier
     | Guard               lhs.dimconstruct = @guard.dimconstruct
@@ -347,35 +371,35 @@ SEM Qualifier
     --  range                    : Range
     --  pattern                  : Pattern
     --  expression               : Expression
-    | Empty               lhs.dimconstruct = False
+    | Empty               lhs.dimconstruct = Nothing
     --  range                    : Range
 
 SEM Alternatives
-    | Cons              lhs.dimconstruct = @hd.dimconstruct || @tl.dimconstruct
-    | Nil               lhs.dimconstruct = False
+    | Cons              lhs.dimconstruct =  select (@hd.dimconstruct) (@tl.dimconstruct)
+    | Nil               lhs.dimconstruct = Nothing
 
 SEM Alternative
-    | Hole                lhs.dimconstruct = False
+    | Hole                lhs.dimconstruct = Nothing
     | Alternative         lhs.dimconstruct = @righthandside.dimconstruct
     --  range                    : Range
     --  pattern                  : Pattern
     --  righthandside            : RightHandSide
-    | Empty               lhs.dimconstruct = False
+    | Empty               lhs.dimconstruct = Nothing
     --  range                    : Range
 
 SEM GuardedExpressions
-    | Cons              lhs.dimconstruct = @hd.dimconstruct || @tl.dimconstruct
-    | Nil               lhs.dimconstruct = False
+    | Cons              lhs.dimconstruct =  select (@hd.dimconstruct) (@tl.dimconstruct)
+    | Nil               lhs.dimconstruct = Nothing
 
 SEM GuardedExpression -- ToDo: or _Guard?
-    | GuardedExpression   lhs.dimconstruct = @guard.dimconstruct || @expression.dimconstruct
+    | GuardedExpression   lhs.dimconstruct = select (@guard.dimconstruct) (@expression.dimconstruct)
     --  range                    : Range
     --  guard                    : Expression -- type: Boolean
     --  expression               : Expression
 
 SEM RecordExpressionBindings
-    | Cons              lhs.dimconstruct = @hd.dimconstruct || @tl.dimconstruct
-    | Nil               lhs.dimconstruct = False
+    | Cons              lhs.dimconstruct =  select (@hd.dimconstruct) (@tl.dimconstruct)
+    | Nil               lhs.dimconstruct = Nothing
 
 SEM RecordExpressionBinding
     | RecordExpressionBinding lhs.dimconstruct = @expression.dimconstruct
@@ -384,22 +408,29 @@ SEM RecordExpressionBinding
     --  expression               : Expression
 
 SEM FunctionBindings
-    | Cons                lhs.dimconstruct = @hd.dimconstruct || @tl.dimconstruct
-    | Nil                 lhs.dimconstruct = False
+    | Cons                lhs.dimconstruct =  select (@hd.dimconstruct) (@tl.dimconstruct)
+    | Nil                 lhs.dimconstruct = Nothing
 
 SEM FunctionBinding
-    | Hole                lhs.dimconstruct = False
+    | Hole                lhs.dimconstruct = Nothing
     | FunctionBinding     lhs.dimconstruct = @righthandside.dimconstruct
     --  range                    : Range
     --  lefthandside             : LeftHandSide
     --  righthandside            : RightHandSide
 
 SEM RightHandSide
-    | Expression          lhs.dimconstruct = @expression.dimconstruct || @where.dimconstruct
+    | Expression          lhs.dimconstruct = select (@expression.dimconstruct) (@where.dimconstruct)
     --  range                    : Range
     --  expression               : Expression
     --  where                    : MaybeDeclarations
-    | Guarded             lhs.dimconstruct = @guardedexpressions.dimconstruct || @where.dimconstruct
+    | Guarded             lhs.dimconstruct = select (@guardedexpressions.dimconstruct) (@where.dimconstruct)
     --  range                    : Range
     --  guardedexpressions       : GuardedExpressions
     --  where                    : MaybeDeclarations
+
+SEM Range
+    | Range             loc.pos = @start.pos
+
+SEM Position
+    | Position          loc.pos = (@line,@column)
+    | Unknown           loc.pos = (0,0)

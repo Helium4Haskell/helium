@@ -32,9 +32,10 @@ phaseParser fullName tokens options = do
         Right m ->
             (do let fixedm = fixModuleName m $ firstUpper baseName
                 let res = CD.wrap_Module (CD.sem_Module fixedm) CD.Inh_Module {}
-                if not (DimensionTypes `elem` options) 
-                    && CD.dimconstruct_Syn_Module res then
-                        return (Left [newErrorMessage (Message "dimension construct /n you should use --dim-types option") (newPos "Dimension" 0 0)])
+                if not (DimensionTypes `elem` options) then
+                    case CD.dimconstruct_Syn_Module res of
+                        Nothing -> return (Right fixedm)
+                        Just (line,column)  -> return $ Left [newErrorMessage (Message "dimension construct \n you should use --dim-types option") (newPos "Dimension" line column)]
                 else return (Right fixedm))
 
 -- | Make sure the module has a name. If there is no name (module without

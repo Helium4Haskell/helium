@@ -185,8 +185,7 @@ importsThenTopdecls explicit =
 topdecl  
     ->  "data" simpletype "=" constrs derivings?
      |  "type" simpletype "=" type
-     |  "dimension" simpledimension
-     |  "unit" simpleunit "from" dimension
+     |  "dimension" simpledimension in simpleunit
      |  "unit" simpleunit "derives from" unit "with" decl
      |  "alias" simpleunit = unit
      |  infixdecl

@@ -116,13 +116,6 @@ compileHaskellToCore basedir fullName contents options iridiumCache doneModules 
     doPhaseWithExit 20 (const "P") compileOptions $
       phaseParser fullName tokens options
 
-  {- if not DimensionTypes `elem` options then check if there are dimensions constructs
-    and if so, return a parsing error
-      
-  if not DimensionTypes `elem` options
-    then checkDim
-    else nothing -}
-
   -- Phase 3: Importing
   (indirectionDecls, importEnvsWithMod) <-
       phaseImport fullName parsedModule (resolveDeclarations iridiumCache) options
