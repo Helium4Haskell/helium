@@ -396,9 +396,18 @@ gatherBind' genv env (Bind _ (BindTargetTuple _) arguments _) (RegionVarsTuple [
     constraints = zipFlattenRegionVars Outlives (RegionVarsTuple $ argumentsAnalysis >>= argumentRegion) returnRegions
 
     annotation = ATuple $ map fst argumentsAnalysis
-gatherBind' genv env (Bind lhs (BindTargetConstructor constructor) arguments _) (RegionVarsTuple [_, returnRegions]) = (effect, ATuple []) -- TODO: Annotation on constructors
+gatherBind' genv@(GlobalEnv typeEnv _ constructorEnv _) env (Bind lhs (BindTargetConstructor constructor) arguments _) (RegionVarsTuple [_, returnRegions]) = (effect, annotation) -- TODO: Annotation on constructors
   where
-    effect = gatherConstructorEffect genv env True constructor (lefts arguments) (map (Just . localName) $ rights arguments) lhs
+    effect = gatherConstructorEffect genv env True constructor tps' (map (Just . localName) $ rights arguments) lhs
+    annotation = foldl f (foldl AInstantiate constructAnnotation tps') (rights arguments)
+
+    tps' = typeNormalize typeEnv <$> lefts arguments
+
+    ConstructorAnnotation _ constructAnnotation _ _ = findMap (constructorName constructor) constructorEnv
+
+    f :: Annotation -> Local -> Annotation
+    f a (Local name _) = AApp a (fst $ lookupLocal env name) (RegionVarsTuple []) LifetimeContextAny
+
 -- Function or thunk
 gatherBind' genv env (Bind lhs (BindTargetThunk var _) arguments _) returnRegions
   | all isLeft arguments = gatherInstantiate genv env var (lefts arguments) returnRegions
@@ -471,20 +480,19 @@ gatherBind' genv@(GlobalEnv typeEnv _ _ _) env (Bind lhs target arguments _) ret
             LifetimeContextLocalBottom
 
 -- Effect for constructor application or pattern
+-- tps should be normalized
 gatherConstructorEffect :: GlobalEnv -> MethodEnv -> Bool -> DataTypeConstructor -> [Type] -> [Maybe Id] -> Id -> Annotation
-gatherConstructorEffect (GlobalEnv typeEnv _ constructors _) env isConstruct (DataTypeConstructor name fnType) tps fields object =
+gatherConstructorEffect (GlobalEnv _ _ constructorEnv _) env isConstruct (DataTypeConstructor name fnType) tps fields object =
   foldl applyField effect' (zip strictness fields)
   where
     FunctionType argTypes _ = extractFunctionTypeNoSynonyms fnType
     strictness = map typeIsStrict $ rights argTypes
 
-    tps' = typeNormalize typeEnv <$> tps
-
-    ConstructorAnnotation construct _ destruct _ = findMap name constructors
+    ConstructorAnnotation construct _ destruct _ = findMap name constructorEnv
     (effect, lcObject, lcFields)
       | isConstruct = (construct, LifetimeContextLocalBottom, LifetimeContextAny)
       | otherwise = (destruct, LifetimeContextAny, LifetimeContextLocalBottom)
-    effect' = AApp (foldl AInstantiate effect tps') (ATuple []) (regionsChildren objectRegions) lcObject
+    effect' = AApp (foldl AInstantiate effect tps) (ATuple []) (regionsChildren objectRegions) lcObject
     (_, objectRegions) = lookupLocal env object
 
     applyField :: Annotation -> (Bool, Maybe Id) -> Annotation
@@ -524,17 +532,23 @@ gatherMatch genv env (Local obj _) (MatchTargetTuple _) _ fields =
       ++ gatherFields (i+1) fields'
     gatherFields _ (Just (Right _, _) : _) = error "gatherMatch: Expected a local variable, found an argument"
     gatherFields _ [] = []
-gatherMatch genv@(GlobalEnv typeEnv dataTypeEnv _ _) env (Local obj _) target@(MatchTargetConstructor constructor) tps fields
-  = (fieldLocals >>= f) ++ effect (gatherConstructorEffect genv env False constructor tps fields obj)
+gatherMatch genv@(GlobalEnv typeEnv dataTypeEnv constructorEnv _) env (Local obj _) target@(MatchTargetConstructor constructor) tps fields
+  = effect (gatherConstructorEffect genv env False constructor tps' fields obj)
+  ++ concat (zipWith f fields annotations)
   where
     (objAnnotation, RegionVarsTuple [_, objRegions]) = lookupLocal env obj
 
+    ConstructorAnnotation _ _ _ annotations = findMap (constructorName constructor) constructorEnv
+
+    tps' = typeNormalize typeEnv <$> tps
+
     fieldLocals = catMaybes $ matchFieldLocals target tps fields
-    f :: Local -> Gather
-    f (Local name tp)
+    f :: Maybe Id -> Annotation -> Gather
+    f Nothing _ = []
+    f (Just name) annotation
       | (Left (idx, _), regions) <- findMap name $ methodEnvVars env
-        = gatherLocal idx (ATop $ sortOfType dataTypeEnv $ typeNormalize typeEnv tp)
-    f _ = error "gatherMatch: Expected a local variable, found an argument"
+        = gatherLocal idx $ AApp (foldl AInstantiate annotation tps') objAnnotation (RegionVarsTuple []) LifetimeContextAny
+    f _ _ = error "gatherMatch: Expected a local variable, found an argument"
 
 -- Returns the annotations (effect) caused by evaluating the expression, and the annotation
 -- (type) of the resulting value

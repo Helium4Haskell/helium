@@ -76,7 +76,7 @@ sortOfType' env = sort'
       where
         dataType name = case lookupMap name env of
           Nothing -> error $ "Helium.CodeGeneration.Iridium.Region.Env.sortOfType: Data type not found in environment: " ++ stringFromId name
-          Just (DataTypeSort _ s _) -> s
+          Just (DataTypeSort _ s _) -> foldl (sortInstantiate env) s args
 
 regionSortOfType :: DataTypeEnv -> Type -> RegionSort
 regionSortOfType env tp

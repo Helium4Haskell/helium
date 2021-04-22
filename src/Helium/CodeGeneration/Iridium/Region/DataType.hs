@@ -37,7 +37,7 @@ instance Show ConstructorAnnotation where
       ++ map show returnDestruct
 
 createDataTypeEnv :: TypeEnvironment -> [Declaration DataType] -> (DataTypeEnv, ConstructorEnv)
-createDataTypeEnv = createDataTypeEnvRegions -- TODO: Add return annotations to constructors
+createDataTypeEnv env dataTypes = assignAnnotations env dataTypes $ createDataTypeEnvRegions env dataTypes
 
 createDataTypeEnvRegions :: TypeEnvironment -> [Declaration DataType] -> (DataTypeEnv, ConstructorEnv)
 createDataTypeEnvRegions env dataTypes = foldl' (flip assignGroup) (emptyMap, emptyMap) groups
@@ -73,7 +73,7 @@ createDataTypeEnvRegions env dataTypes = foldl' (flip assignGroup) (emptyMap, em
         regionSort :: RegionSort
         regionSort
           = flip (foldr RegionSortForall) quantors
-          $ foldr RegionSortForall (RegionSortTuple $ map RegionSortTuple regionSorts) quantors
+          $ RegionSortTuple $ map RegionSortTuple regionSorts
 
         regionVars :: RegionVars
         regionVars = regionSortToVars 0 regionSort
@@ -301,3 +301,100 @@ zipFlattenRec f recursive varsLeft varsRight = go varsLeft varsRight []
 skipRegionSortForalls :: RegionSort -> RegionSort
 skipRegionSortForalls (RegionSortForall _ rs) = skipRegionSortForalls rs
 skipRegionSortForalls rs = rs
+
+addConstructorAnnotations :: ConstructorEnv -> [(Id, Annotation, [Annotation])] -> ConstructorEnv
+addConstructorAnnotations = foldl' f
+  where
+    f env (name, a, as) = updateMapWith name (\c -> c{ constructorReturnConstruct = a, constructorReturnDestruct = as }) env
+
+assignAnnotations :: TypeEnvironment -> [Declaration DataType] -> (DataTypeEnv, ConstructorEnv) -> (DataTypeEnv, ConstructorEnv)
+assignAnnotations env dataTypes = flip (foldl' (flip assignGroup)) groups
+  where
+    groups = bindingGroups (dataTypeDependencies True) dataTypes
+
+    assignGroup :: BindingGroup DataType -> (DataTypeEnv, ConstructorEnv) -> (DataTypeEnv, ConstructorEnv)
+    assignGroup (BindingNonRecursive decl@(Declaration dataTypeName _ _ _ dataType)) (dataTypeEnv, constructorEnv) =
+      ( updateMapWith dataTypeName (\(DataTypeSort cr _ rs) -> DataTypeSort cr annotationSort rs) dataTypeEnv
+      , addConstructorAnnotations constructorEnv $ zipWith3 assignConstructor constructorNames [0..] sorts
+      )
+      -- Assign annotation variables to a non-recursive data type by making a tuple (over the constructors)
+      -- of tuples (over the fields).
+      where
+        constructors = getConstructors decl
+        constructorNames = map (\(DataTypeConstructor name _) -> name) constructors
+
+        quantors = case constructors of
+          [] -> []
+          DataTypeConstructor _ tp : _ -> let FunctionType args _ = extractFunctionTypeNoSynonyms tp in lefts args
+
+        types :: [[Type]]
+        types = map (\(DataTypeConstructor _ tp) -> let FunctionType args _ = extractFunctionTypeNoSynonyms tp in map (typeNormalize env) $ rights args) constructors
+
+        sorts :: [[Sort]]
+        sorts = map (sortOfType dataTypeEnv) <$> types
+
+        annotationSort :: Sort
+        annotationSort
+          = foldr SortForall annotationSort' quantors
+
+        annotationSort' :: Sort
+        annotationSort'
+          = SortTuple $ map SortTuple sorts
+
+        assignConstructor :: Id -> Int -> [Sort] -> (Id, Annotation, [Annotation])
+        assignConstructor name constructorIndex fields =
+          ( name
+          , flip (foldr AForall) quantors
+              $ flip (foldr $ \s -> ALam s RegionSortUnit LifetimeContextAny) fields
+              $ ATuple
+              $ zipWith
+                  (\sorts' idx -> if idx == constructorIndex then ATuple $ map (AVar . AnnotationVar) vars else ABottom (SortTuple sorts'))
+                  sorts
+                  [0..]
+          , map f [0 .. count - 1]
+          )
+          where
+            count = length fields
+            vars = [count - 1, count - 2 .. 0]
+
+            f fieldIndex =
+              flip (foldr AForall) quantors
+              $ ALam annotationSort RegionSortUnit LifetimeContextAny
+              $ AProject (AProject (AVar $ AnnotationVar 0) constructorIndex) fieldIndex
+    assignGroup (BindingRecursive decls) (dataTypeEnv, constructorEnv) =
+      -- Fallback, don't store annotations and default to top
+      ( dataTypeEnv1
+      , addConstructorAnnotations constructorEnv $ decls >>= assignDataType
+      )
+      where
+        dataTypeEnv1 = foldl'
+          (\e decl -> updateMapWith (declarationName decl) (\(DataTypeSort cr _ rs) -> DataTypeSort cr (annotationSort $ declarationValue decl) rs) e)
+          dataTypeEnv
+          decls
+
+        annotationSort :: DataType -> Sort
+        annotationSort dataType = flip (foldr SortForall) (dataTypeQuantors dataType) SortUnit
+
+        assignDataType :: Declaration DataType -> [(Id, Annotation, [Annotation])]
+        assignDataType (Declaration _ _ _ _ (DataType constructors)) = assignConstructor <$> constructors
+
+        assignConstructor :: Declaration DataTypeConstructorDeclaration -> (Id, Annotation, [Annotation])
+        assignConstructor (Declaration name _ _ _ (DataTypeConstructorDeclaration tp _)) =
+          ( name
+          , flip (foldr AForall) quantors
+              $ flip (foldr $ \s -> ALam s RegionSortUnit LifetimeContextAny) sorts
+              $ ATuple []
+          , map f sorts
+          )
+          where
+            FunctionType args _ = extractFunctionTypeNoSynonyms tp
+
+            quantors = lefts args
+            fields = typeNormalize env <$> rights args
+
+            sorts = sortOfType dataTypeEnv1 <$> fields
+
+            f s =
+              flip (foldr AForall) quantors
+              $ ALam SortUnit RegionSortUnit LifetimeContextAny
+              $ ATop s
