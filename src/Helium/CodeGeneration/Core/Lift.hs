@@ -198,7 +198,7 @@ lazyBind isRec supply scope b@(Bind var@(Variable x t) expr) env = case extractT
       , declAccess = Private
       , declModule = Nothing
       , declType = tp
-      , declAnn  = tp -- There is another strictness pass after lift which will reintroduce annotations
+      , declAnn  = Nothing -- There is another strictness pass after lift which will reintroduce annotations
       , valueValue = value
       , declCustoms = []
       }

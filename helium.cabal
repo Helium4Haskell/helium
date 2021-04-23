@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 6297f70a245f9508672b9bed664a56f87c653a864b4ad13127007733454af83b
+-- hash: d6e06b0d7bb3e51d9a21f2ecb6050ae4a14845c9b872bd604091bd900c81be0d
 
 name:           helium
 version:        1.9
@@ -50,6 +50,7 @@ data-files:
 library
   exposed-modules:
       Helium.CodeGeneration.Core
+      Helium.CodeGeneration.Core.BindingGroup
       Helium.CodeGeneration.Core.FunctionType
       Helium.CodeGeneration.Core.LetInline
       Helium.CodeGeneration.Core.LetSort

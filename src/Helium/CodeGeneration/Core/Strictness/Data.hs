@@ -1,10 +1,17 @@
 module Helium.CodeGeneration.Core.Strictness.Data where
 
-import Lvm.Core.Type
-import Lvm.Common.IdMap
+import qualified Data.Set as S
 
--- Constraint set, keys are annotation variables, values are the equality/join/meet
-type Constraints = IdMap SAnn
+import Lvm.Common.IdMap
+import Lvm.Core.Type
+
+-- Keys are annotation variables, values are the equality/join/meet
+type AnnotationEnvironment = IdMap SAnn
+
+-- Constraint set, l < r
+type Constraints = S.Set Constraint
+data Constraint = Constraint SAnn SAnn deriving (Eq, Ord, Show)
+type SolvedConstraints = IdMap SAnn
 
 -- Join and meet
 join, meet :: SAnn -> SAnn -> SAnn
@@ -33,3 +40,13 @@ isAnn _          = False
 fromAnn :: SAnn -> Id
 fromAnn (AnnVar x) = x
 fromAnn _          = error "fromAnn"
+
+annEnvToConstraints :: AnnotationEnvironment -> Constraints
+annEnvToConstraints = S.fromList . map snd . listFromMap . mapMapWithId (\x y -> Constraint y (AnnVar x))
+
+-- Get all variables in a join or meet
+getVariables :: SAnn -> [Id]
+getVariables (AnnVar x) = [x]
+getVariables (Join x y) = getVariables x ++ getVariables y
+getVariables (Meet x y) = getVariables x ++ getVariables y
+getVariables _          = []

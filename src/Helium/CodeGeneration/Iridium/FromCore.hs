@@ -121,7 +121,7 @@ idMatchAfter = idFromString "match_after"
 idMatchCase = idFromString "match_case"
 idMatchDefault = idFromString "match_default"
 
-toMethod :: NameSupply -> TypeEnv -> Id -> Core.Type -> Core.Type -> Core.Expr -> Method
+toMethod :: NameSupply -> TypeEnv -> Id -> Core.Type -> Maybe Core.Type -> Core.Expr -> Method
 toMethod supply env name tp atp expr = Method tp atp args returnType [AnnotateTrampoline] (Block entryName entry) blocks
   where
     (entryName, supply') = freshIdFromId idEntry supply

@@ -132,7 +132,7 @@ SEM Declaration
             , Core.declAccess  = Core.Private
             , Core.declModule  = Nothing
             , Core.declType    = @loc.declType
-            , Core.declAnn     = @loc.declType -- Annotations will be added later
+            , Core.declAnn     = Nothing -- Annotations will be added later
             , Core.valueValue  = @loc.bindLambdas @bindings.core
             , Core.declCustoms = []
             }
@@ -158,7 +158,7 @@ SEM Declaration
                         , Core.declAccess  = Core.Private
                         , Core.declModule  = Nothing
                         , Core.declType    = snd $ declarationType @lhs.typeOutput @lhs.typeClassContext @lhs.quantors n
-                        , Core.declAnn     = snd $ declarationType @lhs.typeOutput @lhs.typeClassContext @lhs.quantors n
+                        , Core.declAnn     = Nothing -- Annotations will be added later
                         , Core.valueValue  =
                             bindLambdas
                                 (\_ retType -> let_ -- because guards can fail
@@ -178,7 +178,7 @@ SEM Declaration
                         , Core.declAccess  = Core.Private
                         , Core.declModule  = Nothing
                         , Core.declType    = patBindTp
-                        , Core.declAnn     = patBindTp -- Annotations will be added later
+                        , Core.declAnn     = Nothing -- Annotations will be added later
                         , Core.valueValue  =
                             let_ -- because guards can fail
                                 nextClauseId patBindTp (patternMatchFail "pattern binding" patBindTp @range.self)
@@ -191,7 +191,7 @@ SEM Declaration
                         , Core.declAccess  = Core.Private
                         , Core.declModule  = Nothing
                         , Core.declType    = tp
-                        , Core.declAnn     = tp -- Annotations will be added later
+                        , Core.declAnn     = Nothing -- Annotations will be added later
                         , Core.valueValue  =
                             (let_ nextClauseId tp (patternMatchFail "pattern binding" tp @range.self)
                                 (patternToCore @lhs.importEnv @lhs.quantors @pattern.patternTypes (patBindId, patBindTp, @pattern.self) (Core.Var (idFromName v)))
@@ -498,7 +498,7 @@ SEM Declaration
                                     , Core.declAccess  = Core.Private
                                     , Core.declModule  = Nothing
                                     , Core.declType    = toCoreType @lhs.quantors (convertTpSchemeToQualified @lhs.importEnv ts)
-                                    , Core.declAnn     = toCoreType @lhs.quantors (convertTpSchemeToQualified @lhs.importEnv ts)
+                                    , Core.declAnn     = Nothing -- Annotations will be added later
                                     , Core.valueValue  = createRecordSelector @lhs.importEnv @lhs.quantors @range.self n t
                                     , Core.declCustoms = []
                                     }

@@ -20,7 +20,7 @@ module Helium.CodeGeneration.Iridium.PassDeadCode(passDeadCode) where
 
 import Helium.CodeGeneration.Iridium.Type
 import Helium.CodeGeneration.Iridium.Data
-import Data.Maybe (catMaybes, fromMaybe, isNothing)
+import Data.Maybe (catMaybes, fromMaybe, isNothing, mapMaybe)
 import Data.Either (rights, isRight)
 import Lvm.Common.Id
 import Lvm.Common.IdMap
@@ -211,7 +211,7 @@ transformMethod supply res (Declaration name vis mod customs (Method tp atp args
   | otherwise = Just $ Declaration name vis mod customs $ Method tp' atp' args' retType annotations b' bs'
   where
     (_, tp') = transformType res name (length $ filter isRight args) tp
-    (_, atp') = transformType res name (length $ filter isRight args) atp
+    atp' = fmap (snd . transformType res name (length $ filter isRight args)) atp
     args' = map fst $ filter snd $ zip args $ preservedArguments res name
     b' : bs' = mapWithSupply transformBlock supply $ b : bs
     transformBlock s (Block blockName instr) = Block blockName $ transformInstruction s res instr

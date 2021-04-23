@@ -34,7 +34,7 @@ dataDictionary env (UHA.Declaration_Data _ _ (UHA.SimpleType_SimpleType _ name n
     , declAccess  = Export nm
     , declModule  = Nothing
     , declType    = tp
-    , declAnn     = tp -- Annotations will be added later
+    , declAnn     = Nothing -- Annotations will be added later
     , valueValue  = eqDict env dictType dataType names constructors
     , declCustoms = [custom "type" ("DictPrelude.Eq$ " ++ getNameName qualname)]
                     ++ map (custom "typeVariable" . getNameName) names

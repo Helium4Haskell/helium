@@ -1,49 +1,68 @@
 module Helium.CodeGeneration.Core.Strictness.Solve (solveConstraints) where
 
+import Data.Graph
+import qualified Data.Map as M
+import qualified Data.Set as S
+
 import Helium.CodeGeneration.Core.Strictness.Data
+
 import Lvm.Common.IdMap
 import Lvm.Core.Type
-import Data.Graph
-import Data.Maybe
 
-type Node = (Id, Id, [Id])
+type EdgeMap = M.Map SAnn [SAnn]
+type Node a = (a, a, [a])
 
--- Solve a set of constraints
--- All variables have either S or L at the end
-solveConstraints :: Constraints -> Constraints
-solveConstraints cs = foldl (solveConstraint nodeFromVertex) cs vs
+-- First round of constraint solving, using the constraint set
+solveConstraints' :: Constraints -> SolvedConstraints
+solveConstraints' cs = foldl (handleAnn nodeFromVertex) emptyMap ts
     where
-        -- Turn constraints into graph
-        (graph, nodeFromVertex, _) = graphFromEdges $ constraintsToGraph cs
-        -- Solve order is reverse topological sor
-        vs = reverse $ topSort graph
+        -- Create edges, graph and topological sort
+        es = M.elems $ M.mapWithKey (\x y -> (x, x, y)) $ constraintsToEdges (S.toList cs) M.empty
+        (graph, nodeFromVertex, _) = graphFromEdges es
+        ts = topSort graph
 
--- Turn constraints into graph
-constraintsToGraph :: Constraints -> [Node]
-constraintsToGraph cs = map toNode $ listFromMap $ mapMapWithId constraintToEdges cs
+-- Second round of constraint solving, replacing variables in joins and meets
+solveConstraints :: Constraints -> SolvedConstraints
+solveConstraints cs = foldr (handleId nodeFromVertex) sc ts
     where
-        -- Node needs three values but id can be the same as name
-        toNode (k, e) = (k, k, e)
+        -- Solve constraints
+        sc = solveConstraints' cs
+        -- Create graph based on variables
+        es = map (\(x, y) -> (x, x, y)) $ listFromMap $ mapMap getVariables sc
+        (graph, nodeFromVertex, _) = graphFromEdges es
+        ts = topSort graph
 
--- Get dependencies of single constraints
-constraintToEdges :: Id -> SAnn -> [Id]
-constraintToEdges i (AnnVar a)   = [a | i /= a] -- Avoid constraints of type a == a
-constraintToEdges i (Join s1 s2) = constraintToEdges i s1 ++ constraintToEdges i s2
-constraintToEdges i (Meet s1 s2) = constraintToEdges i s1 ++ constraintToEdges i s2
-constraintToEdges _ _            = []
-
--- Solve a single constraint
-solveConstraint :: (Vertex -> Node) -> Constraints -> Vertex -> Constraints
-solveConstraint nodeFromVertex c v = updateMap node new c
+-- Handle a single annotation, adding it to the set of solved constraints
+handleAnn :: (Vertex -> Node SAnn) -> SolvedConstraints -> Vertex -> SolvedConstraints
+handleAnn nodeFromVertex sc v = foldr f sc es
     where
-        -- Get node corresponding to vertex
-        (node, _, _) = nodeFromVertex v
-        -- Get current value and replace with earlier solved annotations
-        new = replaceVar c $ findMap node c
+        -- Get node and neighbours
+        (n, _, es) = nodeFromVertex v
+        -- Update map of solved values with new information
+        f (AnnVar x) y = case lookupMap x y of
+            Nothing -> insertMap x n y
+            Just z  -> updateMap x (join n z) y
+        -- TODO: what if constraint was not put on variable?
+        f _ y = y
+
+-- Handle a single variable, replacing its occurences with its value
+handleId :: (Vertex -> Node Id) -> Vertex -> SolvedConstraints -> SolvedConstraints
+handleId nodeFromVertex v sc = updateMap n (replaceVar sc (findMap n sc)) sc 
+    where
+        (n, _, _) = nodeFromVertex v
+
+-- Turn list of constraints into a map of edges, drawing edges from the left to right parts of constraints
+constraintsToEdges :: [Constraint] -> EdgeMap -> EdgeMap
+constraintsToEdges []                  es = es
+constraintsToEdges (Constraint x y:cs) es = case M.lookup x es' of
+    Nothing -> M.insert x [y]   es'
+    Just z  -> M.insert x (y:z) es'
+    where
+        es' = constraintsToEdges cs es
 
 -- Replace solved annotation variables
-replaceVar :: Constraints -> SAnn -> SAnn
-replaceVar cs (AnnVar x) = fromMaybe L (lookupMap x cs)
-replaceVar cs (Meet x y) = meet (replaceVar cs x) (replaceVar cs y)
-replaceVar cs (Join x y) = join (replaceVar cs x) (replaceVar cs y)
+replaceVar :: SolvedConstraints -> SAnn -> SAnn
+replaceVar sc (AnnVar x) | elemMap x sc = findMap x sc
+replaceVar sc (Meet x y) = meet (replaceVar sc x) (replaceVar sc y)
+replaceVar sc (Join x y) = join (replaceVar sc x) (replaceVar sc y)
 replaceVar _  x          = x
