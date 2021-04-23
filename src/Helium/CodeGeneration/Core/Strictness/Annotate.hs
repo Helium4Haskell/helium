@@ -1,4 +1,4 @@
-module Helium.CodeGeneration.Core.Strictness.Annotate (annotateModule) where
+module Helium.CodeGeneration.Core.Strictness.Annotate (annotateModule, annotateDeclaration) where
 
 import Data.Maybe
 
@@ -18,7 +18,7 @@ annotateDeclaration supply decl@DeclValue{} = decl{declType = t, declAnn = Just 
     (supply1, supply2) = splitNameSupply supply
     -- Don't annotate again if already annotated
     t = fromMaybe (annotateType supply1 $ declType decl) $ declAnn decl
-    v = annotateExpression supply2 $ valueValue decl  
+    v = if isNothing $ declAnn decl then annotateExpression supply2 $ valueValue decl else valueValue decl
 annotateDeclaration supply decl@DeclAbstract{} = decl{declType = t, declAnn = Just $ declType decl}
   where
     -- Don't annotate again if already annotated

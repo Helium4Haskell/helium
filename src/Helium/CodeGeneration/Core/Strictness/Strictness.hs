@@ -20,13 +20,15 @@ type CoreGroup = BindingGroup Expr
 
 -- Turn expressions which are guaranteed to be evaluated to strict
 coreStrictness :: NameSupply -> CoreModule -> CoreModule
-coreStrictness supply mod = mod {moduleDecls = map resetDeclaration (others ++ values')}
+coreStrictness supply mod = mod {moduleDecls = map resetDeclaration (others' ++ values'')}
   where
-    mod' = annotateModule supply mod
-    (values, others) = partition isValue (moduleDecls mod')
-    env = typeEnvForModule mod{moduleDecls = others}
-    groups = coreBindingGroups values
-    (values', _) = foldl groupStrictness ([], env) groups
+    (values, others) = partition isValue (moduleDecls mod)
+    (supply1, supply2) = splitNameSupply supply
+    values' = mapWithSupply annotateDeclaration supply1 values
+    others' = mapWithSupply annotateDeclaration supply2 others
+    env = typeEnvForModule mod{moduleDecls = others'}
+    groups = coreBindingGroups values'
+    (values'', _) = foldl groupStrictness ([], env) groups
     
 groupStrictness :: ([CoreDecl], TypeEnvironment) -> CoreGroup -> ([CoreDecl], TypeEnvironment)
 -- Single declaration
@@ -63,5 +65,5 @@ resetDeclaration decl@DeclTypeSynonym{} = decl{declType = typeRemoveAnnotations 
 resetDeclaration decl                   = decl
 
 isValue :: CoreDecl -> Bool
-isValue DeclValue{} = True
-isValue _           = False
+isValue decl@DeclValue{} = isNothing (declAnn decl)
+isValue _                = False
