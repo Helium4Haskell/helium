@@ -65,7 +65,7 @@ initialGEnv m = GlobalEnv typeEnv functionEnv dataTypeEnv
 
     -- Functions
     functionEnv :: IdMap Annotation
-    functionEnv = mapFromList (abstracts ++ dataTypeRecordFuncs)
+    functionEnv = mapFromList (abstracts)-- ++ dataTypeRecordFuncs)
 
     abstracts :: [(Id, Annotation)]
     abstracts = abstract <$> moduleAbstractMethods m

@@ -7,7 +7,8 @@ module Helium.CodeGeneration.Iridium.RegionSize.Annotation
     collect,
     annWeaken, annStrengthen,
     isConstr, isTop, isBot, constrIdxToAnn,
-    annRemLocalRegs
+    annRemLocalRegs,
+    annNQuants
   ) where
 
 import Helium.CodeGeneration.Iridium.Region.RegionVar
@@ -248,3 +249,8 @@ annRemLocalRegs = foldAnnAlg cleanAlg
     aConstr = \_     -> AConstr . constrRemLocalRegs,
     aTop    = \_ s   -> ATop s . constrRemLocalRegs
   }
+
+-- | Wrap N quantifications around an annotation
+annNQuants :: Int -> Annotation -> Annotation 
+annNQuants 0 = id
+annNQuants n = AQuant . annNQuants (n-1)

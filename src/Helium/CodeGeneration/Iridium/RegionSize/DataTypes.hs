@@ -6,10 +6,13 @@ import Lvm.Core.Type
 import qualified Lvm.Core.Module as LVMModule
 
 import Helium.CodeGeneration.Iridium.Data
+import Helium.CodeGeneration.Core.TypeEnvironment
 
 import Helium.CodeGeneration.Iridium.RegionSize.Annotation
 import Helium.CodeGeneration.Iridium.RegionSize.Utils
 import Helium.CodeGeneration.Iridium.RegionSize.Sort
+
+import Data.Either (lefts)
 
 ----------------------------------------------------------------
 -- Data type sort discovery
@@ -55,11 +58,13 @@ makeDataTypeConstructors dtSort (DataType structs) =
               -- Tuple elements
               pre  = (\i -> ABot $ dtSorts !! i) <$> [0          .. start    -1]
               post = (\i -> ABot $ dtSorts !! i) <$> [start+size .. dtTupSize-1]  
-              args = (\i -> AVar i)              <$> [0          .. size     -1]
+              args = reverse $ (\i -> AVar i)    <$> [0          .. size     -1]
               -- Constructor tuple
               strctTup = ATuple (pre ++ args ++ post)
               -- Wrap with lambdas (TODO: Check if order is correct)
-              strctAnn = foldr (\i -> ALam (dtSorts !! i)) strctTup [size .. start+size-1]  
+              strctLam = foldr (\i -> ALam (dtSorts !! i)) strctTup [start .. start+size-1]
+              -- Wrap with quantifications
+              strctAnn = annNQuants (stuctorQuants strctDecl) strctLam
           in (start+size, (declarationName strctDecl, strctAnn):stctsAnns)
 
 -- | Make destructor annotations
@@ -73,7 +78,7 @@ makeDataTypeDestructors dtSort (DataType structs) =
     makeDestructorAnn (start, stctsAnns) strctDecl =
         let size = structorSize strctDecl
             -- Project on elements of constructor
-            destrctAnn = map (\i -> ALam dtSort $ AProj i (AVar 0)) [size .. start+size-1]  
+            destrctAnn = map (\i -> ALam dtSort $ AProj i (AVar 0)) [start .. start+size-1]  
         in (start+size, (declarationName strctDecl, destrctAnn):stctsAnns)
 
 ----------------------------------------------------------------
@@ -83,3 +88,7 @@ makeDataTypeDestructors dtSort (DataType structs) =
 structorSize :: Declaration DataTypeConstructorDeclaration -> Int
 structorSize (Declaration _ _ _ _ (DataTypeConstructorDeclaration _ fs)) = length fs
 
+stuctorQuants :: Declaration DataTypeConstructorDeclaration -> Int
+stuctorQuants (Declaration _ _ _ _ (DataTypeConstructorDeclaration ty _)) = 
+    let (FunctionType args _) = extractFunctionTypeNoSynonyms ty 
+    in length $ lefts args
