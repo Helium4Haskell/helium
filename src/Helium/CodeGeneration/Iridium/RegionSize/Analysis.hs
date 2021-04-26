@@ -54,7 +54,7 @@ De Bruijn indices (dbz = de bruijn size):
     dbz+2  : Global fixpoint argument
 -}
 analyseMethod :: GlobalEnv -> (Id, Method) -> (Annotation, Sort)
-analyseMethod gEnv@(GlobalEnv tEnv _) (_, method@(Method _ aRegs args _ rRegs _ fstBlock otherBlocks)) =
+analyseMethod gEnv@(GlobalEnv tEnv _ _) (_, method@(Method _ aRegs args _ rRegs _ fstBlock otherBlocks)) =
     let blocks    = (fstBlock:otherBlocks)
         rEnv      = regEnvFromArgs (deBruinSize args) aRegs rRegs
 
@@ -180,12 +180,11 @@ localsOfLetAlloc (Envs gEnv rEnv lEnv) (Bind name (BindTargetTuple _) args _:bs)
     let tAnn  = tupleApplyArgs lEnv args
         lEnv' = updateLocal name tAnn lEnv
     in localsOfLetAlloc (Envs gEnv rEnv lEnv') bs next
--- 0 argument constructors
-localsOfLetAlloc (Envs gEnv rEnv lEnv) (Bind name (BindTargetConstructor _) [] _:bs) next =
-    let lEnv' = updateLocal name AUnit lEnv
+-- Datatypes
+localsOfLetAlloc (Envs gEnv rEnv lEnv) (Bind name (BindTargetConstructor struct) args _:bs) next =
+    let dAnn  = dataTypeApplyArgs lEnv (constructorName struct `lookupStruct` globDataEnv gEnv) args 
+        lEnv' = updateLocal name dAnn lEnv
     in localsOfLetAlloc (Envs gEnv rEnv lEnv') bs next
--- TODO: Datatypes
-localsOfLetAlloc envs (_:bs) next = localsOfLetAlloc envs bs next
 
 
 -- | Retrieve the local variables from a match instruction
@@ -198,8 +197,14 @@ localsOfMatch (Envs gEnv rEnv lEnv) local (MatchTargetTuple n) _ ids next =
         -- Insert matched vars into lEnv
         lEnv'    = foldl (flip $ uncurry insertMaybeId) lEnv (zip ids newVars)
     in localsOfInstr (Envs gEnv rEnv lEnv') next
--- TODO: Datatypes
-localsOfMatch (Envs _ _ lEnv) _ _ _ _ _ = (lEnv) --rsError "analyseMatch: No support for data types."
+-- Datatypes
+localsOfMatch (Envs gEnv rEnv lEnv) local (MatchTargetConstructor struct) _ ids next =
+    let dataVar = lookupLocalAnn local lEnv
+        destruc = constructorName struct `lookupDestruct` globDataEnv gEnv
+        newVars = map (flip AApl dataVar) destruc
+        -- Insert matched vars into lEnv
+        lEnv'   = foldl (flip $ uncurry insertMaybeId) lEnv (zip ids newVars)
+    in localsOfInstr (Envs gEnv rEnv lEnv') next 
 
 ----------------------------------------------------------------
 -- Analysing the effect of a method
@@ -244,6 +249,7 @@ analyseInstr envs@(Envs _ _ lEnv) bEnv = go
 -- | Analyse letalloc
 analyseLetAlloc :: Envs -> BlockEnv -> [Bind] -> Instruction ->  (Annotation, Effect)
 analyseLetAlloc envs bEnv [] next = analyseInstr envs bEnv next
+-- Thunk binds
 analyseLetAlloc envs@(Envs _ rEnv _) bEnv (Bind _ (BindTargetThunk var tRegs) args dReg:bs) next =
     let tnkRegs = bindThunkIntermediate tRegs
         (_   ,bEff) = thunkApplyArgs envs (lookupVar var envs) args $ bindThunkValue tRegs
@@ -265,11 +271,10 @@ analyseLetAlloc envs@(Envs gEnv rEnv _) bEnv (Bind _ (BindTargetFunction gFun aR
 analyseLetAlloc envs@(Envs _ rEnv _) bEnv (Bind _ (BindTargetTuple _) _ dReg:bs) next =
     let (rAnn,rEff) = analyseLetAlloc envs bEnv bs next
     in (rAnn, AAdd (AConstr $ constrOne $ lookupReg dReg rEnv) rEff)
--- TODO: Datatypes
-analyseLetAlloc envs@(Envs _ rEnv _) bEnv (Bind _ (BindTargetConstructor _) [] dReg:bs) next =
+-- Datatypes
+analyseLetAlloc envs@(Envs _ rEnv _) bEnv (Bind _ (BindTargetConstructor _) _ dReg:bs) next =
     let (rAnn,rEff) = analyseLetAlloc envs bEnv bs next
     in (rAnn, AAdd (AConstr $ constrOne $ lookupReg dReg rEnv) rEff)
-analyseLetAlloc envs bEnv (_:bs) next = analyseLetAlloc envs bEnv bs next
 
 -- TODO: Move to a better location & rename maybe
 -- | Collect bounds from a regionvars
@@ -332,10 +337,6 @@ thunkApplyArgs (Envs _ rEnv lEnv) fAnn args retRegs =
 funcApplyArgs :: Envs 
               -> Annotation -> RegionVars -> [Either Type Local] -> RegionVars 
               -> (Annotation, Effect)
--- 0 arguments
--- funcApplyArgs envs@(Envs _ rEnv _) fAnn aRegs [] retRegs = 
---     liftTuple (AApl (AApl fAnn $ regionVarsToAnn rEnv aRegs) (regionVarsToAnn rEnv aRegs))
--- >1 arguments
 funcApplyArgs envs@(Envs _ rEnv _) fAnn aRegs args retRegs = 
     thunkApplyArgs envs (AApl fAnn $ regionVarsToAnn rEnv aRegs) args retRegs 
 
@@ -346,6 +347,15 @@ tupleApplyArgs :: LocalEnv
 tupleApplyArgs lEnv = ATuple . foldr go []
     where go (Left _ ) xs = xs -- error "Cannot apply type to tuple" 
           go (Right x) xs = lookupLocalAnn x lEnv : xs
+
+-- | Apply bind arguments to a tuple
+dataTypeApplyArgs :: LocalEnv
+                  -> Annotation
+                  -> [Either Type Local] 
+                  -> Annotation
+dataTypeApplyArgs lEnv = foldr go
+    where go (Left ty) ann = AInstn ann ty
+          go (Right x) ann = AApl ann (lookupLocalAnn x lEnv)
 
 ----------------------------------------------------------------
 -- Analysis utilities

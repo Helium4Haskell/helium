@@ -218,7 +218,6 @@ collect n (AProj i a) = M.mapKeys (CnProj i) $ collect n a
 collect n (ATuple ps) = foldr constrAdd M.empty $ map (collect n) ps
 collect _ _ = rsError "collect: Collect of non region annotation"
 
-
 -- | Is annotation a constraint set?
 isConstr :: Annotation -> Bool
 isConstr (AConstr _) = True
@@ -249,4 +248,3 @@ annRemLocalRegs = foldAnnAlg cleanAlg
     aConstr = \_     -> AConstr . constrRemLocalRegs,
     aTop    = \_ s   -> ATop s . constrRemLocalRegs
   }
-
