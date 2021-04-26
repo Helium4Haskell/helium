@@ -14,7 +14,7 @@
 
 module Helium.CodeGeneration.Iridium.Type
   ( typeFromFunctionType, FunctionType(..), functionArity, extractFunctionTypeNoSynonyms, extractFunctionTypeWithArity
-  , FloatPrecision(..), Core.TypeEnvironment(..), Core.typeNormalizeHead, Core.typeEqual, typeIsStrict, typeToStrict
+  , FloatPrecision(..), Core.TypeEnvironment(..), Core.typeNormalizeHead, Core.typeNormalize, Core.typeEqual, typeIsStrict, typeToStrict
   , typeNotStrict, typeRemoveArgumentStrictness, extractFunctionTypeWithArityNoSynonyms
   , typeRealWorld, typeUnsafePtr, typeTrampoline, typeInt, typeInt16, typeChar, typeFloat
   ) where

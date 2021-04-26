@@ -315,7 +315,7 @@ apply env annotation argument argumentRegion lc
     regionVarMapping rs                         (RegionVarsSingle var)       accum = map (const var) (flattenRegionVars $ regionSortToVars 0 rs) ++ accum
     regionVarMapping RegionSortUnit             (RegionVarsTuple [])         accum = accum
     regionVarMapping (RegionSortTuple (rs:rss)) (RegionVarsTuple (var:vars)) accum = regionVarMapping rs var $ regionVarMapping (RegionSortTuple rss) (RegionVarsTuple vars) accum
-    regionVarMapping _ _ _ = error "Helium.CodeGeneration.Iridium.Region.Evaluate.apply: region sort mismatch"
+    regionVarMapping rs vars _ = error $ "Helium.CodeGeneration.Iridium.Region.Evaluate.apply: region sort mismatch:\n" ++ showRegionSort [] rs "" ++ "\n" ++ show vars ++ "\n" ++ show (AApp annotation argument argumentRegion lc)
 
     argument' = simplify env argument
 
@@ -348,7 +348,7 @@ apply env annotation argument argumentRegion lc
         argumentRegionSize = length regions
         substituteRegion (RegionLocal idx)
           | idx < regionArgCount = RegionLocal idx
-          | idx < regionArgCount + argumentRegionSize = regions !! (regionArgCount + argumentRegionSize - idx - 1)
+          | idx < regionArgCount + argumentRegionSize = weakenRegionVar 0 regionArgCount $ regions !! (regionArgCount + argumentRegionSize - idx - 1) -- TODO: This line is probably not correct
           | otherwise = RegionLocal $ idx - argumentRegionSize
         substituteRegion r = r
 
@@ -401,7 +401,7 @@ join weak env annotation = group $ gather False annotation []
           ++ map (\a -> AInstantiate (weaken 1 0 0 a) (TVar 0)) (filter (not . isForall) parts)
       | Just (ALam s rs lc _) <- find isLam parts
         = ALam s rs lc $ deep
-          $ [ a | AForall _ a <- parts ]
+          $ [ a | ALam _ _ _ a <- parts ]
           ++ map (\a -> AApp (weaken 0 1 (regionSortSize rs) a) (AVar $ AnnotationVar 0) (regionSortToVars 0 rs) lc) (filter (not . isLam) parts)
       | hd:_ <- tuples
       , tuples' <- map (\a -> zipWith (\_ idx -> AProject a idx) hd [0..]) $ filter (not . isTuple) parts
@@ -569,7 +569,7 @@ afixEscape' env arity sort' regionSort f = -- traceShow ("AFIXESCAPE' ", AFixEsc
     f' = simplify env f
 
     iterate :: Int -> Annotation -> ([Bool], RegionVar -> RegionVar, Annotation)
-    iterate 12 _ -- Give up
+    iterate 8 _ -- Give up
       -- Decide on the escapes check, put the remainder in a normal fixpoint
       -- | ALam s rs lc body <- f' -- TODO: We could use f'^n for some n here, as that may give better results in the escapes check
       -- , (doesEscape, substituteRegionVar, body') <- escapes' body
@@ -745,8 +745,12 @@ analyseEscapeBody isReturn firstRegionScope annotation = case annotation of
     ABottom _ -> mempty
     AJoin a1 a2 -> go a1 <> go a2
     ARelation rel ->
-      let (vars, rel') = relationRestrict firstRegionScope rel
-      in Escapes rel' $ IntSet.fromList $ map regionVarIndex vars
+      let
+        (vars, rel') = relationRestrict firstRegionScope rel
+        vars'
+          | isReturn = relationVars rel
+          | otherwise = []
+      in Escapes rel' $ IntSet.fromList $ map regionVarIndex (vars' ++ vars)
   where
     go = analyseEscapeBody isReturn firstRegionScope
 

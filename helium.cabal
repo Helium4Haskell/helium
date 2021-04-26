@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: e3f026aaf65fe45c68656809ad275f8c5f5b60e2b1a2bb7584004c0c2a4f7e41
+-- hash: 4946e25058af07b2e65eaf2111db3b6f83682da730c04a94c7c52ec301583fdc
 
 name:           helium
 version:        1.9
@@ -86,6 +86,7 @@ library
       Helium.CodeGeneration.Iridium.Primitive
       Helium.CodeGeneration.Iridium.Region.Annotation
       Helium.CodeGeneration.Iridium.Region.Containment
+      Helium.CodeGeneration.Iridium.Region.DataType
       Helium.CodeGeneration.Iridium.Region.DeadRegion
       Helium.CodeGeneration.Iridium.Region.Env
       Helium.CodeGeneration.Iridium.Region.Evaluate
@@ -97,20 +98,6 @@ library
       Helium.CodeGeneration.Iridium.Region.Sort
       Helium.CodeGeneration.Iridium.Region.Transform
       Helium.CodeGeneration.Iridium.Region.Utils
-      Helium.CodeGeneration.Iridium.RegionSize.Analysis
-      Helium.CodeGeneration.Iridium.RegionSize.Annotation
-      Helium.CodeGeneration.Iridium.RegionSize.Constraints
-      Helium.CodeGeneration.Iridium.RegionSize.DataTypes
-      Helium.CodeGeneration.Iridium.RegionSize.Environments
-      Helium.CodeGeneration.Iridium.RegionSize.Evaluate
-      Helium.CodeGeneration.Iridium.RegionSize.Fixpoint
-      Helium.CodeGeneration.Iridium.RegionSize.Parse
-      Helium.CodeGeneration.Iridium.RegionSize.PassRegionSize
-      Helium.CodeGeneration.Iridium.RegionSize.Sort
-      Helium.CodeGeneration.Iridium.RegionSize.Sorting
-      Helium.CodeGeneration.Iridium.RegionSize.Transform
-      Helium.CodeGeneration.Iridium.RegionSize.Type
-      Helium.CodeGeneration.Iridium.RegionSize.Utils
       Helium.CodeGeneration.Iridium.ResolveDependencies
       Helium.CodeGeneration.Iridium.Show
       Helium.CodeGeneration.Iridium.Type

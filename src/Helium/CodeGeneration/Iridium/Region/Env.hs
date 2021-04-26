@@ -9,7 +9,6 @@ import qualified Data.IntMap.Strict as IntMap
 import Helium.CodeGeneration.Iridium.Region.Sort
 import Helium.CodeGeneration.Iridium.Region.Relation
 
-
 -- Environment indexed by Debruijn indices
 -- The environment is represented as a map of Debruijn levels
 data Env a = Env !Int (IntMap.IntMap a)
@@ -77,7 +76,7 @@ sortOfType' env = sort'
       where
         dataType name = case lookupMap name env of
           Nothing -> error $ "Helium.CodeGeneration.Iridium.Region.Env.sortOfType: Data type not found in environment: " ++ stringFromId name
-          Just (DataTypeSort _ s _) -> s
+          Just (DataTypeSort _ s _) -> foldl (sortInstantiate env) s args
 
 regionSortOfType :: DataTypeEnv -> Type -> RegionSort
 regionSortOfType env tp
@@ -97,6 +96,7 @@ regionChildSortOfType env tp = regionChildSortOfType' env tp []
 regionChildSortOfType' :: DataTypeEnv -> Type -> [Type] -> RegionSort
 regionChildSortOfType' env = regionSort'
   where
+    regionSort' :: Type -> [Type] -> RegionSort
     regionSort' (TAp t1 t2)      args = regionSort' t1 (t2 : args)
 
     regionSort' (TForall q _ t1) []   = RegionSortForall q $ regionSort' t1 []
@@ -114,9 +114,10 @@ regionChildSortOfType' env = regionSort'
       TConDataType name -> dataType name
       TConTypeClassDictionary name -> dataType $ dictionaryDataTypeName name
       where
+        dataType :: Id -> RegionSort
         dataType name = case lookupMap name env of
           Nothing -> error $ "Helium.CodeGeneration.Iridium.Region.Env.regionSortOfType: Data type not found in environment: " ++ stringFromId name
-          Just (DataTypeSort _ _ s) -> s
+          Just (DataTypeSort _ _ s) -> foldl (regionSortInstantiate env) s args
 
 sortInstantiate :: DataTypeEnv -> Sort -> Type -> Sort
 sortInstantiate env (SortForall _ s) tp = sortSubstitute env 0 tp s
@@ -140,6 +141,10 @@ sortSubstitute env forallCount tp s = case s of
   where
     substitute = sortSubstitute env forallCount tp
 
+regionSortInstantiate :: DataTypeEnv -> RegionSort -> Type -> RegionSort
+regionSortInstantiate env (RegionSortForall _ s) tp = regionSortSubstitute env 0 tp s
+regionSortInstantiate _ s _ = error $ "Helium.CodeGeneration.Iridium.Region.Env.regionSortInstantiate: Cannot instantiate this sort, expected RegionSortForall, got " ++ showRegionSort [] s ""
+
 regionSortSubstitute :: DataTypeEnv -> Int -> Type -> RegionSort -> RegionSort
 regionSortSubstitute env forallCount tp rs = case rs of
   RegionSortForall q s -> RegionSortForall q $ regionSortSubstitute env (forallCount + 1) tp s
@@ -154,4 +159,3 @@ regionSortSubstitute env forallCount tp rs = case rs of
         regionChildSortOfType' env tp' tps'
       else
         RegionSortPolymorphic (if idx < forallCount then idx else idx - 1) tps'
-

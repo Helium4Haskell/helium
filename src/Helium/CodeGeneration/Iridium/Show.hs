@@ -244,6 +244,9 @@ instance Show CallingConvention where
 
 showAnnotations :: [MethodAnnotation] -> String
 showAnnotations [] = ""
+showAnnotations [MethodAnnotateRegion regionAnnotation]
+  =  "\n  [regions:\n    "
+  ++ Region.showAnnotation 2 regionAnnotation "\n  ]"
 showAnnotations annotations = "[" ++ intercalate " " (map show others') ++ "]" ++ regionString ++ regionSizeString
   where
     (regions    , others ) = partition isRegion     annotations

@@ -64,7 +64,16 @@ print.cons:
 
 declare @exit[1]: { !Int -> Int } [callconvention:c]
 
-export_as @_$helium_runtime_error define @_$helium_runtime_error(forall a, %msg: [Char]): a {
+export_as @_$helium_runtime_error define @_$helium_runtime_error(forall a, %msg: [Char]): a
+  [regions:
+    λψ₀: () ->
+      ∀ v$0.
+        λ[ψ₁: (); (ρ₁₋₀: Ρ, ρ₁₋₁: Ρ, (((), ((ρ₁₋₂: Ρ, ρ₁₋₃: Ρ, ()), (ρ₁₋₄: Ρ, ρ₁₋₅: Ρ, ())))))] ->
+          ( λ[ψ₂: (); ρ₂₋₀: Ρ] ->
+              λ[ψ₃: (); (ρ₃₋₀: Ρ, ρ₃₋₁: Ρ⟨v$0⟩)]⥜ -> ⊥ { R }
+          , ⊥ { Ψ⟨v$0⟩ }
+          )
+  ] { ; ⟦ρ₁₋₄ ≥ ρ₁₋₅, ρ₁₋₃ ≥ ρ₁₋₅, ρ₁₋₃ ≥ ρ₁₋₄, ρ₁₋₁ ≥ ρ₁₋₅, ρ₁₋₁ ≥ ρ₁₋₄, ρ₁₋₁ ≥ ρ₁₋₃, ρ₁₋₁ ≥ ρ₁₋₂, ρ₁₋₀ ≥ ρ₁₋₅, ρ₁₋₀ ≥ ρ₁₋₄, ρ₁₋₀ ≥ ρ₁₋₃, ρ₁₋₀ ≥ ρ₁₋₂, ρ₁₋₀ ≥ ρ₁₋₁⟧
 error.entry:
   %msg_list = eval %msg: [Char]
   %_1 = call @_$helium_runtime_print_string[1]: (![Char] -> Int) $ (%msg_list: ![Char])

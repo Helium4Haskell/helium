@@ -101,4 +101,4 @@ nested env forallCount tps (RegionSortForall _ rs) vars accum = nested env (fora
 nested env forallCount tps (RegionSortUnit) (RegionVarsTuple []) accum = accum
 nested env forallCount tps (RegionSortTuple (rs:rss)) (RegionVarsTuple (v:vs)) accum
   = nested env forallCount tps rs v $ nested env forallCount tps (RegionSortTuple rss) (RegionVarsTuple vs) accum
-nested _ _ _ _ _ _ = error "Helium.CodeGeneration.Iridium.Region.Containment.nested: mismatch in region sort"
+nested _ _ _ rs rvars _ = error $ "Helium.CodeGeneration.Iridium.Region.Containment.nested: mismatch in region sort: \n" ++ showRegionSort [] rs "" ++ "\n" ++ show rvars
