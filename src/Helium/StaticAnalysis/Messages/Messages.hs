@@ -94,6 +94,7 @@ s >:> mb = (True, MessageString s, mb)
 data Entity = TypeSignature
             | TypeVariable
             | TypeConstructor
+            | Dimension
             | Definition
             | Constructor
             | Variable
@@ -175,6 +176,7 @@ instance Show Entity where
          TypeSignature   -> "type signature"
          TypeVariable    -> "type variable"
          TypeConstructor -> "type constructor"
+         Dimension       -> "dimension"
          Definition      -> "definition"
          Constructor     -> "constructor"
          Variable        -> "variable"

@@ -1686,7 +1686,7 @@ firstdim -> sunit
 sunit :: HParser SimpleUnit
 sunit = addRange $
     do
-        n <- conid
+        n <- unitcon
         return $ \r -> SimpleUnit_SimpleUnit r n   
 
 uexpo :: Unit -> HParser (Range -> Unit)

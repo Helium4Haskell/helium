@@ -40,6 +40,7 @@ tycls   = name   lexCon  <?> Texts.parserTypeClass
 tycon   = (opSpecial (try $ do { lexLBRACKET; lexRBRACKET; return "[]" })
         <|> opSpecial (try $ do { theCommas <- parens (many pComma); if null theCommas then fail "() not allowed" else return $ "(" ++ theCommas ++ ")"})
         <|> (name  lexCon)  <?> Texts.parserTypeConstructor)
+unitcon = name   lexCon  <?> Texts.parserUnitConstructor
 tyvar   = name   lexVar  <?> Texts.parserTypeVariable
 varid   = name   lexVar  <?> Texts.parserVariable
 conid   = name   lexCon  <?> Texts.parserVariable
