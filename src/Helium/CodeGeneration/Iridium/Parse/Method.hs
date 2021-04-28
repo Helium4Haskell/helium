@@ -46,7 +46,7 @@ pMethod = do
   let tp' = fromMaybe (typeFromFunctionType $ FunctionType (map toArg args) returnType) tp
   case c of
     '{' ->
-      (\(b:bs) -> Method tp' Nothing args returnType annotations b bs) <$ pWhitespace <*> pSome (pBlock quantors) pSep
+      (\(b:bs) -> Method tp' args returnType annotations b bs) <$ pWhitespace <*> pSome (pBlock quantors) pSep
     '=' -> do
       -- Shorthand for a function that computes a single expression and returns it
       pWhitespace
@@ -54,7 +54,7 @@ pMethod = do
       annotations <- pAnnotations
       let result = idFromString "result"
       let b = Block (idFromString "entry") (Let result expr $ Return $ VarLocal $ Local result $ typeToStrict returnType)
-      return $ Method tp' Nothing args returnType annotations b []
+      return $ Method tp' args returnType annotations b []
     _ -> pError "Expected '{' or '=' in a method declaration"
   where
     pSep :: Parser Bool
@@ -118,7 +118,7 @@ pAbstractMethod = do
         Just f -> return f
       pToken '}'
       pWhitespace
-      AbstractMethod (typeRemoveArgumentStrictness tp) Nothing fnType <$> pAnnotations
+      AbstractMethod (typeRemoveArgumentStrictness tp) fnType <$> pAnnotations
     _ -> do
       pToken ':'
       pWhitespace
@@ -142,7 +142,7 @@ pAbstractMethod = do
         Just f -> return f
       pToken '}'
       pWhitespace
-      AbstractMethod sourceType Nothing fnType <$> pAnnotations
+      AbstractMethod sourceType fnType <$> pAnnotations
 
 pAnnotations :: Parser [Annotation]
 pAnnotations =

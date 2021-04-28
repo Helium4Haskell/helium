@@ -52,7 +52,6 @@ dataDictionary env decla@(UHA.Declaration_Data _ _ (UHA.SimpleType_SimpleType _ 
     , declAccess  = Export name
     , declModule  = Nothing
     , declType    = tp
-    , declAnn     = Nothing -- Annotations will be added later
     , valueValue  = makeShowDictionary
     , declCustoms = [custom "type" ("DictPrelude.Show$ " ++ getNameName qualname)]
                     ++ map (custom "typeVariable" . getNameName)                     names

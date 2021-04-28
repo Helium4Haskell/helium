@@ -66,6 +66,7 @@ showCustom (CustomBytes bs) = "[bytes " ++ show (stringFromBytes bs) ++ "]"
 showCustom (CustomName id) = "[name @" ++ showId id [] ++ "]"
 showCustom (CustomLink id kind) = "[link @" ++ showId id [] ++ " " ++ showDeclKind kind ++ "]"
 showCustom (CustomDecl kind customs) = "[decl " ++ showDeclKind kind ++ (customs >>= ((" " ++) . showCustom)) ++ "]"
+showCustom (CustomType t) = "[type " ++ show (Pretty.pretty t) ++ "]"
 showCustom CustomNothing = "[]"
 
 showDeclKind :: DeclKind -> String
@@ -171,6 +172,7 @@ instance Show Annotation where
   show AnnotateTrampoline = "trampoline"
   show (AnnotateCallConvention conv) = "callconvention:" ++ show conv
   show AnnotateImplicitIO = "implicit_io"
+  show (AnnotateType t) = "strictness:" ++ show (Pretty.pretty t)
 
 instance Show CallingConvention where
   show CCC = "c"
@@ -182,7 +184,7 @@ showAnnotations [] = ""
 showAnnotations annotations = "[" ++ intercalate " " (map show annotations) ++ "]"
 
 instance ShowDeclaration AbstractMethod where
-  showDeclaration (AbstractMethod sourceType annType fnType annotations)
+  showDeclaration (AbstractMethod sourceType fnType annotations)
     | sourceType == typeRemoveArgumentStrictness (typeFromFunctionType fnType) =
       ( "declare"
       , "[" ++ show arity ++ "]: { " ++ show (typeFromFunctionType fnType) ++ " } " ++ showAnnotations annotations ++ "\n"
@@ -195,7 +197,7 @@ instance ShowDeclaration AbstractMethod where
       arity = functionArity fnType
 
 instance ShowDeclaration Method where
-  showDeclaration (Method tp atp args rettype annotations entry blocks) =
+  showDeclaration (Method tp args rettype annotations entry blocks) =
     ( "define"
     , ": { " ++ show tp ++ " } $ (" ++ intercalate ", " args' ++ "): "
       ++ showQ quantors rettype ++ " " ++ showAnnotations annotations ++ " {\n" ++ showQ quantors entry ++ (blocks >>= ('\n' :) . showQ quantors) ++ "\n}\n"

@@ -1,15 +1,13 @@
 module Helium.CodeGeneration.Core.BindingGroup where
 
+import qualified Data.Graph as Graph
+
 import Lvm.Common.Id
 import Lvm.Common.IdMap
-import Lvm.Common.IdSet
 import Lvm.Core.Expr
 import Lvm.Core.Module
-import Lvm.Core.Type
-import qualified Data.Graph as Graph
-import Text.PrettyPrint.Leijen
 
-import Debug.Trace
+import Text.PrettyPrint.Leijen
 
 data BindingGroup a
   = BindingRecursive [Decl a]
@@ -34,8 +32,8 @@ bindingGroupsToMap = foldr handleGroup emptyMap
 bindingGroups :: (a -> [Id]) -> [Decl a] -> [BindingGroup a]
 bindingGroups dependencies = map toBindingGroup . Graph.stronglyConnComp . map toNode
   where
-    toNode decl@(DeclValue name _ _ _ _ a _) = (decl, name, dependencies a)
-    toNode decl                              = (decl, declName decl, [])
+    toNode decl@(DeclValue name _ _ _ a _) = (decl, name, dependencies a)
+    toNode decl                            = (decl, declName decl, [])
     toBindingGroup (Graph.AcyclicSCC decl) = BindingNonRecursive decl
     toBindingGroup (Graph.CyclicSCC decls) = BindingRecursive decls
 

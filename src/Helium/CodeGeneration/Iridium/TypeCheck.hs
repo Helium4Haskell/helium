@@ -85,12 +85,12 @@ fromList :: [Analysis] -> Analysis
 fromList = foldr AJoin AEmpty
 
 analyseAbstractMethod :: Declaration AbstractMethod -> Analysis
-analyseAbstractMethod (Declaration name _ _ _ (AbstractMethod _ _ tp _)) = AVar name (DeclareGlobal arity) $ typeFromFunctionType tp
+analyseAbstractMethod (Declaration name _ _ _ (AbstractMethod _ tp _)) = AVar name (DeclareGlobal arity) $ typeFromFunctionType tp
   where
     arity = functionArity tp
 
 analyseMethod :: TypeEnvironment -> Declaration Method -> Analysis
-analyseMethod env (Declaration name _ _ _ method@(Method fnType _ args retType' _ block blocks)) =
+analyseMethod env (Declaration name _ _ _ method@(Method fnType args retType' _ block blocks)) =
   aCheck env fnType fnType'' (TEMethod name fnType fnType'')
     `AJoin` AVar name (DeclareGlobal $ length aArgs) fnType'
     `AJoin` fromList aArgs

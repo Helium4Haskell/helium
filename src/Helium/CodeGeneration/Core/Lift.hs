@@ -58,7 +58,7 @@ boundVar :: Bind -> Variable
 boundVar (Bind var _) = var
 
 liftExprInDecl :: TypeEnvironment -> NameSupply -> CoreDecl -> ([CoreDecl])
-liftExprInDecl typeEnv supply (DeclValue name access mod enc ann expr customs) = DeclValue name access mod enc ann expr' customs : decls
+liftExprInDecl typeEnv supply (DeclValue name access mod enc expr customs) = DeclValue name access mod enc expr' customs : decls
   where
     (expr', decls) = liftExprIgnoreLambdas supply [] expr $ Env typeEnv emptyMap
 liftExprInDecl _ _ decl = [decl]
@@ -198,7 +198,6 @@ lazyBind isRec supply scope b@(Bind var@(Variable x t) expr) env = case extractT
       , declAccess = Private
       , declModule = Nothing
       , declType = tp
-      , declAnn  = Nothing -- There is another strictness pass after lift which will reintroduce annotations
       , valueValue = value
       , declCustoms = []
       }

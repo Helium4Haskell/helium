@@ -11,7 +11,7 @@ import Lvm.Core.Type
 transformModule :: SolvedConstraints -> CoreModule -> CoreModule
 transformModule env mod = mod{moduleDecls = map (transformDeclaration env) (moduleDecls mod)}  
 
--- Apply strict annotations on declarations, switch back original and annotated types
+-- Apply strict annotations on declarations
 transformDeclaration :: SolvedConstraints -> CoreDecl -> CoreDecl
 transformDeclaration env decl@DeclValue{} = decl{declType = t, valueValue = v}
   where

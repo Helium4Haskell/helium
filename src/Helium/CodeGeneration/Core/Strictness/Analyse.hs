@@ -43,15 +43,15 @@ analyseDeclaration _ _ = S.empty
 
 -- Run strictness analysis on expressions
 analyseExpression :: Environment -> SAnn -> SAnn -> Expr -> (AnnotationEnvironment, Constraints)
-analyseExpression env rel app (Let b e) = (ae, S.union co cs)
+analyseExpression env rel app (Let b e) = (ae, cs)
   where
-    ae = unionMapWith meet a1 a2
-    cs = S.insert (Constraint app app') $ S.union c1 c2
+    ae = unionMapWith meet a1 a2'
+    cs = S.insert (app `Constraint` app') $ S.union c1 c2
     -- Analyse bind
     (a1, c1, app') = analyseBinds env rel b
     -- Analyse body      
     (a2, c2) = analyseExpression (envAddBinds b env) S app' e
-    co = containment env rel
+    a2' = unionMapWith join a2 $ containment env rel
 -- Only if an expression is strict on all alts it is strict
 analyseExpression env rel app (Match _ alts) = (unionMapsWith join ae, S.unions cs)
   where
@@ -59,7 +59,7 @@ analyseExpression env rel app (Match _ alts) = (unionMapsWith join ae, S.unions 
 analyseExpression env rel app (Ap e1 e2) = (ae, cs)
   where
     ae = unionMapWith meet ae1 ae2
-    cs = S.insert (Constraint app a2) $ S.union c1 c2
+    cs = S.insert (app `Constraint` a2) $ S.union c1 c2
     -- Analyse function
     (ae1, c1) = analyseExpression env rel rel e1
     -- Get annotation from function
@@ -69,10 +69,10 @@ analyseExpression env rel app (Ap e1 e2) = (ae, cs)
     (ae2, c2) = analyseExpression env (join rel r) (join rel a1) e2
 analyseExpression env rel app (ApType e _) = analyseExpression env rel app e
 -- Expression in S relevance to see if the variable is strict, but contain with applicative
-analyseExpression env _ app (Lam _ v@(Variable _ (TAnn (_, _, a2) _)) e) = (ae, S.union co cs)
+analyseExpression env _ app (Lam _ v@(Variable _ (TAnn (_, _, a2) _)) e) = (ae', cs)
   where
     (ae, cs) = analyseExpression (envAddVariable v env) S a2 e
-    co = containment env app
+    ae' = unionMapWith join ae $ containment env app
 analyseExpression env rel app (Forall _ _ e) = analyseExpression env rel app e
 -- No equalities from vars, cons and lits
 analyseExpression env rel app (Var v) = (unionMapWith meet (getLConstraints env) ae, S.empty)
@@ -112,7 +112,7 @@ analyseType env (TStrict t1) (TStrict t2) = analyseType env t1 t2
 analyseType env (TForall _ _ t1) (TForall _ _ t2) = analyseType env t1 t2
 analyseType env (TAnn (a1, r, a2) t1) (TAnn (a1', r', a2') t2) = S.union c1 c2
   where
-    c1 = S.fromList [Constraint a1' a1, Constraint r' r, Constraint a2' a2]
+    c1 = S.fromList [a1' `Constraint` a1, r' `Constraint` r, a2' `Constraint` a2]
     c2 = analyseType env t1 t2
 analyseType env t1 t2 | t1 == t2  = S.empty
                       | otherwise = analyseType env (typeNormalizeHead env t1) (typeNormalizeHead env t2)
@@ -146,18 +146,14 @@ appEnvAddVariable :: Variable -> ApplicativenessEnvironment -> ApplicativenessEn
 appEnvAddVariable (Variable x (TAnn (a, _, _) _)) = insertMap x a
 
 -- Get all annotation variables in the environment to introduce constraints
-getAnnotationVariablesEnv :: Environment -> ([Id], [Id])
-getAnnotationVariablesEnv (Environment _ relEnv appEnv) = (f relEnv, f appEnv)
+getAnnotationVariablesEnv :: Environment -> [Id]
+getAnnotationVariablesEnv (Environment _ relEnv appEnv) = f relEnv ++ f appEnv
   where
     f env = map snd $ listFromMap $ mapMap fromAnn $ filterMap isAnn env
 
 -- Make a L constraint for all annotation variables
 getLConstraints :: Environment -> ApplicativenessEnvironment
-getLConstraints env = unionMap relcs appcs
-  where
-    (relAnn, appAnn) = getAnnotationVariablesEnv env
-    (relcs , appcs ) = (getLConstraints' relAnn, getLConstraints' appAnn)
-    getLConstraints' vs = mapFromList $ map (\x -> (x, L)) vs
+getLConstraints = mapFromList . map (\x -> (x, L)) . getAnnotationVariablesEnv
 
 -- Get relevance and applicative annotations of var, set them equal to contexts
 getAnnotations :: Environment -> SAnn -> SAnn -> Id -> ApplicativenessEnvironment
@@ -168,7 +164,5 @@ getAnnotations (Environment _ relEnv appEnv) rel app var = unionMap (f relEnv re
       _ -> emptyMap
 
 -- Containment
-containment :: Environment -> SAnn -> Constraints
-containment env con = S.fromList $ map (Constraint con . AnnVar) (relAnn ++ appAnn)
-  where
-    (relAnn, appAnn) = getAnnotationVariablesEnv env
+containment :: Environment -> SAnn -> AnnotationEnvironment
+containment env con = mapFromList $ map (\x -> (x, con)) (getAnnotationVariablesEnv env)

@@ -39,8 +39,8 @@ envForModule target mod = Env
           [0..]
       )
     methods :: [(Id, EnvMethodInfo)]
-    methods = fmap (\(Iridium.Declaration name _ _ _ (Iridium.Method _ _ _ _ annotations _ _)) -> (name, methodInfo annotations)) (Iridium.moduleMethods mod)
-      ++ fmap (\(Iridium.Declaration name _ _ _ (Iridium.AbstractMethod _ _ _ annotations)) -> (name, methodInfo annotations)) (Iridium.moduleAbstractMethods mod)
+    methods = fmap (\(Iridium.Declaration name _ _ _ (Iridium.Method _ _ _ annotations _ _)) -> (name, methodInfo annotations)) (Iridium.moduleMethods mod)
+      ++ fmap (\(Iridium.Declaration name _ _ _ (Iridium.AbstractMethod _ _ annotations)) -> (name, methodInfo annotations)) (Iridium.moduleAbstractMethods mod)
     synonyms :: [(Id, Core.Type)]
     synonyms = [(name, tp) | Iridium.Declaration name _ _ _ (Iridium.TypeSynonym _ tp) <- Iridium.moduleTypeSynonyms mod]
 

@@ -151,7 +151,6 @@ decl isPublic x t e =
         , declAccess = if isPublic then Export $ idFromString x else Private
         , declModule = Nothing
         , declType = t
-        , declAnn = Nothing -- Annotations will be added in strictness pass
         , valueValue = e
         , declCustoms = []
         }
@@ -290,7 +289,7 @@ setExportsPublic implicit (exports,exportCons,exportData,exportDataCon,exportMod
     setPublic decl_ | isQual decl_ && (isInstance decl_ || declPublic decl_) =
                         let name = stringFromId $! declName decl_
                             newname = idFromString $! unQualifyString name
-                        in if not ("Dict" `isPrefixOf` name) then
+                        in if not ("Dict$" `isPrefixOf` name) then
                             decl_{ declAccess = Export newname }
                            else
                             decl_

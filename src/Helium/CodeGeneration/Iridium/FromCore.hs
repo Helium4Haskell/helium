@@ -58,7 +58,7 @@ fromCoreAfterImports (importedCustoms, importedDatas, importTypes, importedAbstr
       Nothing
       coreEnv
     valuesFunctions = mapMapWithId (\fnName (tp, fnType) -> ValueFunction (functionArity fnType) tp CCFast) $ functionsMap coreEnv mod
-    valuesAbstracts = mapFromList $ map (\(fnName, Declaration _ _ _ _ (AbstractMethod _ _ fnType annotations)) -> (fnName, ValueFunction (functionArity fnType) (typeFromFunctionType fnType) $ callingConvention annotations)) importedAbstracts
+    valuesAbstracts = mapFromList $ map (\(fnName, Declaration _ _ _ _ (AbstractMethod _ fnType annotations)) -> (fnName, ValueFunction (functionArity fnType) (typeFromFunctionType fnType) $ callingConvention annotations)) importedAbstracts
 
     allConsList = map (\(name, Declaration qualified _ _ _ (DataType cons)) -> (name, cons)) importedDatas ++ listFromMap consMap
     valuesCons = mapFromList $ allConsList >>= (\(dataName, cons) -> map (\(Declaration conName _ _ _ (DataTypeConstructorDeclaration tp fs)) -> (conName, ValueConstructor (DataTypeConstructor conName tp))) cons)
@@ -111,7 +111,7 @@ fromCoreDecl :: NameSupply -> TypeEnv -> Core.CoreDecl -> [Either (Id, Declarati
 fromCoreDecl supply env decl@Core.DeclValue{} = [Left (name, Declaration name (visibility decl) (Core.declModule decl) (Core.declCustoms decl) method)]
   where
     name = Core.declName decl
-    method = toMethod supply env (Core.declName decl) (Core.declType decl) (Core.declAnn decl) (Core.valueValue decl)
+    method = toMethod supply env (Core.declName decl) (Core.declType decl) (Core.valueValue decl)
 
 fromCoreDecl _ _ _ = []
 
@@ -121,8 +121,8 @@ idMatchAfter = idFromString "match_after"
 idMatchCase = idFromString "match_case"
 idMatchDefault = idFromString "match_default"
 
-toMethod :: NameSupply -> TypeEnv -> Id -> Core.Type -> Maybe Core.Type -> Core.Expr -> Method
-toMethod supply env name tp atp expr = Method tp atp args returnType [AnnotateTrampoline] (Block entryName entry) blocks
+toMethod :: NameSupply -> TypeEnv -> Id -> Core.Type -> Core.Expr -> Method
+toMethod supply env name tp expr = Method tp args returnType [AnnotateTrampoline] (Block entryName entry) blocks
   where
     (entryName, supply') = freshIdFromId idEntry supply
     createArgument (Left quantor) _ = Left quantor

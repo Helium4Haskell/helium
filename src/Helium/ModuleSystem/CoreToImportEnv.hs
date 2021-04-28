@@ -19,6 +19,8 @@ import Lvm.Common.Id
 import Lvm.Common.IdSet
 import Lvm.Common.Byte(stringFromBytes)
 
+import Debug.Trace
+
 import Helium.Utils.Utils
 import Helium.StaticAnalysis.Miscellaneous.TypeConversion
 import Helium.Parser.ParseLibrary
@@ -286,11 +288,15 @@ getImportEnvironment importedInModule decls = foldr (insertDictionaries imported
                     constrName = idToName n
                     Core.FunctionType args _ = Core.extractFunctionTypeNoSynonyms tp
                     fields = zipWith (\(Field n) arg -> (idToName n, Core.typeIsStrict tp)) fs args
-                    typeName = if "Dict" `isPrefixOf` stringFromId n 
+                    isTypeClass = "Dict$" `isPrefixOf` stringFromId n
+                    typeName = if isTypeClass
                         then makeImportNameName importedInModule importedFromModId
-                            (nameFromString $ "Dict$" ++ drop 4 locName)
+                            (nameFromString $ "Dict$" ++ drop 5 locName)
                         else nameFromCustoms importedInModule importedFromModId locName cs -- TODO: Use tp to derive data type name
-                in ( addRecordFields constrName fields
+                  in if isTypeClass then
+                    ( env, dataTypeMapping)
+                   else
+                    ( addRecordFields constrName fields
                        $ addValueConstructor
                            constrName
                            (typeSchemeFromCore tp)

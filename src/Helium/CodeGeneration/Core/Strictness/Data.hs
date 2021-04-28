@@ -2,7 +2,9 @@ module Helium.CodeGeneration.Core.Strictness.Data where
 
 import qualified Data.Set as S
 
+import Lvm.Common.Id
 import Lvm.Common.IdMap
+import Lvm.Core.Module
 import Lvm.Core.Type
 
 -- Keys are annotation variables, values are the equality/join/meet
@@ -40,6 +42,18 @@ isAnn _          = False
 fromAnn :: SAnn -> Id
 fromAnn (AnnVar x) = x
 fromAnn _          = error "fromAnn"
+
+hasCustomAnn :: [Custom] -> Bool
+hasCustomAnn [] = False
+hasCustomAnn (CustomDecl (DeclKindCustom n) _:xs) = stringFromId n == "strictness" || hasCustomAnn xs
+hasCustomAnn (_:xs) = hasCustomAnn xs
+
+fromCustomAnn :: [Custom] -> Type
+fromCustomAnn [] = error "fromCustomAnn"
+fromCustomAnn (CustomDecl (DeclKindCustom n) [CustomType t]:xs)
+    | stringFromId n == "strictness" = t
+    | otherwise = fromCustomAnn xs
+fromCustomAnn (_:xs) = fromCustomAnn xs
 
 annEnvToConstraints :: AnnotationEnvironment -> Constraints
 annEnvToConstraints = S.fromList . map snd . listFromMap . mapMapWithId (\x y -> Constraint y (AnnVar x))

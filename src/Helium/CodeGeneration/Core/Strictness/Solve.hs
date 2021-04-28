@@ -43,7 +43,7 @@ handleAnn nodeFromVertex sc v = foldr f sc es
             Nothing -> insertMap x n y
             Just z  -> updateMap x (join n z) y
         -- TODO: what if constraint was not put on variable?
-        f _ y = y
+        f x y = y
 
 -- Handle a single variable, replacing its occurences with its value
 handleId :: (Vertex -> Node Id) -> Vertex -> SolvedConstraints -> SolvedConstraints
@@ -53,8 +53,8 @@ handleId nodeFromVertex v sc = updateMap n (replaceVar sc (findMap n sc)) sc
 
 -- Turn list of constraints into a map of edges, drawing edges from the left to right parts of constraints
 constraintsToEdges :: [Constraint] -> EdgeMap -> EdgeMap
-constraintsToEdges []                  es = es
-constraintsToEdges (Constraint x y:cs) es = case M.lookup x es' of
+constraintsToEdges []                    es = es
+constraintsToEdges (x `Constraint` y:cs) es = case M.lookup x es' of
     Nothing -> M.insert x [y]   es'
     Just z  -> M.insert x (y:z) es'
     where

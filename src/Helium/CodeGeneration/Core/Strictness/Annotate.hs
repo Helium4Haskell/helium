@@ -2,6 +2,8 @@ module Helium.CodeGeneration.Core.Strictness.Annotate (annotateModule, annotateD
 
 import Data.Maybe
 
+import Helium.CodeGeneration.Core.Strictness.Data
+
 import Lvm.Common.Id
 import Lvm.Core.Expr
 import Lvm.Core.Module
@@ -13,19 +15,20 @@ annotateModule supply mod = mod{moduleDecls = mapWithSupply annotateDeclaration 
 
 -- Annotate declaration
 annotateDeclaration :: NameSupply -> CoreDecl -> CoreDecl
-annotateDeclaration supply decl@DeclValue{} = decl{declType = t, declAnn = Just $ declType decl, valueValue = v}
+annotateDeclaration supply decl@DeclValue{} = decl{declType = t, valueValue = v}
   where
     (supply1, supply2) = splitNameSupply supply
-    -- Don't annotate again if already annotated
-    t = fromMaybe (annotateType supply1 $ declType decl) $ declAnn decl
-    v = if isNothing $ declAnn decl then annotateExpression supply2 $ valueValue decl else valueValue decl
-annotateDeclaration supply decl@DeclAbstract{} = decl{declType = t, declAnn = Just $ declType decl}
-  where
-    -- Don't annotate again if already annotated
-    t = fromMaybe (annotateType supply $ declType decl) $ declAnn decl
-annotateDeclaration supply decl@DeclCon{} = decl{declType = annotateType supply $ declType decl}
-annotateDeclaration supply decl@DeclTypeSynonym{} = decl{declType = annotateType supply $ declType decl}
+    t = annotateType supply1 $ declType decl
+    v = annotateExpression supply2 $ valueValue decl
+annotateDeclaration supply decl@DeclAbstract{} = annotateDeclType supply decl
+annotateDeclaration supply decl@DeclCon{} = annotateDeclType supply decl
+annotateDeclaration supply decl@DeclTypeSynonym{} = annotateDeclType supply decl
 annotateDeclaration _ decl = decl
+
+annotateDeclType :: NameSupply -> CoreDecl -> CoreDecl
+annotateDeclType supply decl = decl{declType = t}
+  where
+    t = if hasCustomAnn (declCustoms decl) then fromCustomAnn (declCustoms decl) else annotateType supply $ declType decl
 
 -- Annotate type
 annotateType :: NameSupply -> Type -> Type
@@ -34,8 +37,9 @@ annotateType supply (TAp (TAp (TCon TConFun) t1) t2) = TAp (TAp (TCon TConFun) t
       -- Annotate only on function arrows
       (id1, id2, id3, supply') = threeIds supply
       (supply1, supply2) = splitNameSupply supply'
+      ann1 = if typeIsStrict t1 then S else AnnVar id1
       ann2 = if typeIsStrict t1 then S else AnnVar id2
-      t1' = TAnn (AnnVar id1, ann2, AnnVar id3) $ annotateType supply1 t1
+      t1' = TAnn (ann1, ann2, AnnVar id3) $ annotateType supply1 t1
       t2' = annotateType supply2 t2
 annotateType supply (TForall q k t) = TForall q k $ annotateType supply t
 annotateType supply (TStrict t)     = TStrict $ annotateType supply t
@@ -96,8 +100,9 @@ annotateLamOrBind strict supply (Variable x t) e = (Variable x t', e')
   where
     (id1, id2, id3, supply') = threeIds supply
     (supply1, supply2) = splitNameSupply supply'
+    ann1 = if strict then S else AnnVar id1
     ann2 = if strict then S else AnnVar id2
-    t' = TAnn (AnnVar id1, ann2, AnnVar id3) $ annotateType supply1 t
+    t' = TAnn (ann1, ann2, AnnVar id3) $ annotateType supply1 t
     e' = annotateExpression supply2 e
 
 threeIds :: NameSupply -> (Id, Id, Id, NameSupply)

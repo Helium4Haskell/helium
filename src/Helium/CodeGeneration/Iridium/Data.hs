@@ -75,23 +75,23 @@ instance Functor Declaration where
   fmap f (Declaration name visibility mod customs a) = Declaration name visibility mod customs $ f a
 
 -- Imported method, eg a method without a definition. The implementation is in some other file.
-data AbstractMethod = AbstractMethod !Type !(Maybe Type) !FunctionType ![Annotation]
+data AbstractMethod = AbstractMethod !Type !FunctionType ![Annotation]
   deriving (Eq, Ord)
 
 abstractFunctionType :: AbstractMethod -> FunctionType
-abstractFunctionType (AbstractMethod _ _ tp _) = tp
+abstractFunctionType (AbstractMethod _ tp _) = tp
 
 abstractType :: AbstractMethod -> Type
 abstractType method = typeFromFunctionType $ abstractFunctionType method
 
 abstractSourceType :: AbstractMethod -> Type
-abstractSourceType (AbstractMethod tp _ _ _) = tp
+abstractSourceType (AbstractMethod tp _ _) = tp
 
-data Method = Method !Type !(Maybe Type) ![Either Quantor Local] !Type ![Annotation] !Block ![Block]
+data Method = Method !Type ![Either Quantor Local] !Type ![Annotation] !Block ![Block]
   deriving (Eq, Ord)
 
 methodFunctionType :: Method -> FunctionType
-methodFunctionType (Method _ _ args returnType _ _ _) = FunctionType (map arg args) returnType
+methodFunctionType (Method _ args returnType _ _ _) = FunctionType (map arg args) returnType
   where
     arg (Left quantor) = Left quantor
     arg (Right (Local _ tp)) = Right tp
@@ -99,16 +99,12 @@ methodFunctionType (Method _ _ args returnType _ _ _) = FunctionType (map arg ar
 methodType :: Method -> Type
 methodType method = typeFromFunctionType $ methodFunctionType method
 
--- The original type of the function in Haskell, excluding strictness annotations
+-- The original type of the function in Haskell
 methodSourceType :: Method -> Type
-methodSourceType (Method tp _ _ _ _ _ _) = tp
-
--- The original type of the function in Haskell, including strictness annotations
-methodAnnType :: Method -> Maybe Type
-methodAnnType (Method _ tp _ _ _ _ _) = tp
+methodSourceType (Method tp _ _ _ _ _) = tp
 
 methodArity :: Method -> Int
-methodArity (Method _ _ args _ _ _ _) = length $ filter isRight args
+methodArity (Method _ args _ _ _ _) = length $ filter isRight args
 
 -- Annotations on methods
 data Annotation
@@ -121,6 +117,8 @@ data Annotation
   -- We currently assume that the return type of the function is 'int'.
   -- Cannot be used in combination with 'AnnotateTrampoline'.
   | AnnotateImplicitIO
+  -- * Annotated type for strictness analysis
+  | AnnotateType !Type
   deriving (Eq, Ord)
 
 data CallingConvention

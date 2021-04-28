@@ -38,9 +38,9 @@ typeArgumentsPreserved firstTypeVar (Right _ : params) (Right _ : args) = typeAr
 typeArgumentsPreserved _ _ _ = False
   
 transformMethod :: NameSupply -> Declaration Method -> Declaration Method
-transformMethod supply decl@(Declaration name vis mod customs (Method tp atp params retType annotations b@(Block entryName entryInstr) bs))
+transformMethod supply decl@(Declaration name vis mod customs (Method tp params retType annotations b@(Block entryName entryInstr) bs))
   | null tails = decl -- No tail recursion
-  | otherwise = Declaration name vis mod customs $ Method tp atp params' retType annotations entry $ b' : bs'
+  | otherwise = Declaration name vis mod customs $ Method tp params' retType annotations entry $ b' : bs'
   where
     blocks :: [(Block, Maybe TailRecursion)]
     blocks = map (\b@(Block blockName instr) -> (b, findTailRecursion (Context name params blockName) instr)) $ b : bs

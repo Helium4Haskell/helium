@@ -1,12 +1,12 @@
 module Helium.CodeGeneration.Core.Strictness.Strictness (coreStrictness) where
 
 import Data.List
-import Data.Maybe
 import qualified Data.Set as S
 
 import Helium.CodeGeneration.Core.BindingGroup
 import Helium.CodeGeneration.Core.Strictness.Analyse
 import Helium.CodeGeneration.Core.Strictness.Annotate
+import Helium.CodeGeneration.Core.Strictness.Data
 import Helium.CodeGeneration.Core.Strictness.Solve
 import Helium.CodeGeneration.Core.Strictness.Transform
 import Helium.CodeGeneration.Core.TypeEnvironment
@@ -19,8 +19,20 @@ import Lvm.Core.Type
 type CoreGroup = BindingGroup Expr
 
 -- Turn expressions which are guaranteed to be evaluated to strict
-coreStrictness :: NameSupply -> CoreModule -> CoreModule
-coreStrictness supply mod = mod {moduleDecls = map resetDeclaration (others' ++ values'')}
+coreStrictness :: Bool -> NameSupply -> CoreModule -> CoreModule
+coreStrictness False = monovariantStrictness
+coreStrictness True  = polyvariantStrictness
+
+monovariantStrictness :: NameSupply -> CoreModule -> CoreModule
+monovariantStrictness supply mod = mod'' {moduleDecls = map resetDeclaration (moduleDecls mod)}
+  where
+    mod' = annotateModule supply mod
+    cs = analyseModule mod'
+    cs' = solveConstraints cs
+    mod'' = transformModule cs' mod'
+
+polyvariantStrictness :: NameSupply -> CoreModule -> CoreModule
+polyvariantStrictness supply mod = mod {moduleDecls = map resetDeclaration (others' ++ values'')}
   where
     (values, others) = partition isValue (moduleDecls mod)
     (supply1, supply2) = splitNameSupply supply
@@ -58,12 +70,18 @@ groupStrictness (bs, env) (BindingRecursive ds) = (bs ++ ds'', env'')
 
 -- Switch back original and annotated type, or remove annotations
 resetDeclaration :: CoreDecl -> CoreDecl
-resetDeclaration decl@DeclValue{}       = decl{declType = fromJust $ declAnn decl, declAnn = Just $ declType decl}
-resetDeclaration decl@DeclAbstract{}    = decl{declType = fromJust $ declAnn decl, declAnn = Just $ declType decl}
-resetDeclaration decl@DeclCon{}         = decl{declType = typeRemoveAnnotations $ declType decl}
-resetDeclaration decl@DeclTypeSynonym{} = decl{declType = typeRemoveAnnotations $ declType decl}
-resetDeclaration decl                   = decl
+resetDeclaration decl = resetDeclaration' decl
+  where
+      t = typeRemoveAnnotations $ declType decl
+      c = if hasCustomAnn (declCustoms decl) then declCustoms decl else a : declCustoms decl
+      a = CustomDecl (DeclKindCustom (idFromString "strictness")) [CustomType (declType decl)]
+      resetDeclaration' :: CoreDecl -> CoreDecl
+      resetDeclaration' DeclValue{}       = decl{declType = t, declCustoms = c}
+      resetDeclaration' DeclAbstract{}    = decl{declType = t, declCustoms = c}
+      resetDeclaration' DeclCon{}         = decl{declType = t}
+      resetDeclaration' DeclTypeSynonym{} = decl{declType = t}
+      resetDeclaration' _                 = decl
 
 isValue :: CoreDecl -> Bool
-isValue decl@DeclValue{} = isNothing (declAnn decl)
-isValue _                = False
+isValue DeclValue{} = True
+isValue _           = False

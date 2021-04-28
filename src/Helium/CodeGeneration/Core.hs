@@ -45,7 +45,7 @@ pipeline s =
 -- Desugars core. The desugared AST can be converted to Iridium.
 desugarCore :: Int -> NameSupply -> CoreModule -> IO CoreModule
 desugarCore s supply mod = do
-  putStrLn $ showStrictness s ++ " selected..."
+  putStrLn $ showStrictness s ++ " strictness analysis selected..."
   desugar supply (pipeline s) mod
 
 desugar :: NameSupply -> [(String, NameSupply -> CoreModule -> CoreModule)] -> CoreModule -> IO CoreModule
@@ -60,11 +60,13 @@ desugar _ [] mod = return mod
 
 -- Select variant of strictness analysis
 selectStrictness :: Int -> (NameSupply -> CoreModule -> CoreModule)
-selectStrictness 2 = S1.coreStrictness
+selectStrictness 3 = S1.coreStrictness True
+selectStrictness 2 = S1.coreStrictness False
 selectStrictness 1 = S0.coreStrictness
 selectStrictness _ = \_ x -> x -- No strictness
 
 showStrictness :: Int -> String
-showStrictness 2 = "New strictness analysis"
-showStrictness 1 = "Old strictness analysis"
-showStrictness _ = "No strictness analysis"
+showStrictness 3 = "Polyvariant"
+showStrictness 2 = "Monovariant"
+showStrictness 1 = "Old"
+showStrictness _ = "No"

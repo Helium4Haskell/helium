@@ -28,7 +28,7 @@ functionsMap :: TypeEnvironment -> CoreModule -> IdMap (Type, FunctionType)
 functionsMap env = mapFromList . functionsList env
 
 functionInDecl :: TypeEnvironment -> CoreDecl -> Maybe (Id, (Type, FunctionType))
-functionInDecl env (DeclValue name _ _ tp _ expr _) = Just (name, (tp', fnType))
+functionInDecl env (DeclValue name _ _ tp expr _) = Just (name, (tp', fnType))
   where
     arity = arityOfExpr expr 0
     tp' = updateFunctionTypeStrictness env (getExpressionStrictness expr) tp
