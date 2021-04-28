@@ -1,7 +1,7 @@
 module Helium.CodeGeneration.Iridium.RegionSize.Type
     (showTypeN, 
     TypeAlg(..), idTypeAlg, foldTypeAlg, foldTypeAlgN,
-    typeInsantiate
+    typeInsantiate, typeRemoveQuants
     ) where
 
 import Helium.CodeGeneration.Iridium.RegionSize.Utils
@@ -69,3 +69,12 @@ typeInsantiate subD subT = foldTypeAlgN subD instAlg
                      then typeSubstitutions d [] subT
                      else TVar idx
   }
+
+----------------------------------------------------------------
+-- Type utils
+----------------------------------------------------------------
+
+-- | Remove quantifications
+typeRemoveQuants :: Type -> Type
+typeRemoveQuants (TForall _ _ t) = typeRemoveQuants t
+typeRemoveQuants t = t

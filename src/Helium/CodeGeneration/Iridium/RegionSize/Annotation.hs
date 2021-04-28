@@ -217,7 +217,7 @@ collect n (AVar    a) = M.singleton (AnnVar a) n
 collect n (AReg    a) = M.singleton (Region a) n 
 collect n (AProj i a) = M.mapKeys (CnProj i) $ collect n a
 collect n (ATuple ps) = foldr constrAdd M.empty $ map (collect n) ps
-collect _ _ = rsError "collect: Collect of non region annotation"
+collect _ a = rsError $ "collect: Collect of non region annotation: " ++ show a
 
 -- | Is annotation a constraint set?
 isConstr :: Annotation -> Bool

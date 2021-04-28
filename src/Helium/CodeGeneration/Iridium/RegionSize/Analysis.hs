@@ -353,9 +353,9 @@ dataTypeApplyArgs :: LocalEnv
                   -> Annotation
                   -> [Either Type Local] 
                   -> Annotation
-dataTypeApplyArgs lEnv = foldr go
-    where go (Left ty) ann = AInstn ann ty
-          go (Right x) ann = AApl ann (lookupLocalAnn x lEnv)
+dataTypeApplyArgs lEnv = foldl go
+    where go ann (Left ty) = AInstn ann ty
+          go ann (Right x) = AApl ann (lookupLocalAnn x lEnv)
 
 ----------------------------------------------------------------
 -- Analysis utilities

@@ -11,8 +11,9 @@ import Helium.CodeGeneration.Core.TypeEnvironment
 import Helium.CodeGeneration.Iridium.RegionSize.Annotation
 import Helium.CodeGeneration.Iridium.RegionSize.Utils
 import Helium.CodeGeneration.Iridium.RegionSize.Sort
+import Helium.CodeGeneration.Iridium.RegionSize.Type
 
-import Data.Either (lefts)
+import Data.Either (lefts, rights)
 
 ----------------------------------------------------------------
 -- Data type sort discovery
@@ -24,7 +25,7 @@ dataTypeSort (DataType structs) = SortTuple . concat $ dataStructSort <$> struct
 
 dataStructSort :: Declaration DataTypeConstructorDeclaration -> [Sort]
 dataStructSort (Declaration _ _ _ _ (DataTypeConstructorDeclaration ty _)) =
-  let (args, _) = typeExtractFunction ty
+  let (args, _) = typeExtractFunction $ typeRemoveQuants ty
   in sortAssign <$> args
 
 ----------------------------------------------------------------
@@ -56,7 +57,7 @@ makeDataTypeConstructors dtSort (DataType structs) =
         makeStructorAnn (start, stctsAnns) strctDecl =
           let size = structorSize strctDecl
               -- Tuple elements
-              pre  = (\i -> ABot $ dtSorts !! i) <$> [0          .. start    -1]
+              pre  = (\i -> ABot $ dtSorts !! i) <$> [0          .. start    -1] `rsInfo` ((show $ declarationName strctDecl) ++ ":" ++ (show $ dtSorts))
               post = (\i -> ABot $ dtSorts !! i) <$> [start+size .. dtTupSize-1]  
               args = reverse $ (\i -> AVar i)    <$> [0          .. size     -1]
               -- Constructor tuple
@@ -86,7 +87,9 @@ makeDataTypeDestructors dtSort (DataType structs) =
 ----------------------------------------------------------------
 
 structorSize :: Declaration DataTypeConstructorDeclaration -> Int
-structorSize (Declaration _ _ _ _ (DataTypeConstructorDeclaration _ fs)) = length fs
+structorSize (Declaration _ _ _ _ (DataTypeConstructorDeclaration ty _)) =
+    let (FunctionType args _) = extractFunctionTypeNoSynonyms ty 
+    in length $ rights args
 
 stuctorQuants :: Declaration DataTypeConstructorDeclaration -> Int
 stuctorQuants (Declaration _ _ _ _ (DataTypeConstructorDeclaration ty _)) = 

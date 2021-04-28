@@ -74,7 +74,9 @@ join _             (ATop   s vs) = ATop s vs
 -- Constraint set join
 join (AConstr  c1) (AConstr  c2) = AConstr $ constrJoin c1 c2
 -- Join-simplicitation
-join (ALam   s1 a) (ALam   s2 b) | s1 == s2 = ALam s1 $ AJoin a b
+join (AVar   i1  ) (AVar   i2  ) | i1 == i2  = AVar i1
+                                 | otherwise = AJoin (AVar i1) (AVar i2) 
+join (ALam   s1 a) (ALam   s2 b) | s1 == s2  = ALam s1 $ AJoin a b
                                  | otherwise = operatorSort AJoin constrJoin [ALam s1 a, ALam s2 b]
 join (AApl   s  a) (AApl   _  b) = AApl   s $ AJoin a b
 join (AQuant a   ) (AQuant b   ) = AQuant   $ AJoin a b
