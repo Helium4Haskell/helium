@@ -82,6 +82,12 @@ parserTypeConstructor = select language
     , Dutch   :-> "type constructor"
     ]
 
+parserUnitConstructor :: String
+parserUnitConstructor = select language
+    [ English :-> "unit constructor"
+    , Dutch   :-> "unit constructor"
+    ]
+
 parserTypeVariable :: String
 parserTypeVariable = select language
     [ English :-> "type variable"

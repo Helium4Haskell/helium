@@ -95,6 +95,7 @@ data Entity = TypeSignature
             | TypeVariable
             | TypeConstructor
             | Dimension
+            | Unit
             | Definition
             | Constructor
             | Variable
@@ -177,6 +178,7 @@ instance Show Entity where
          TypeVariable    -> "type variable"
          TypeConstructor -> "type constructor"
          Dimension       -> "dimension"
+         Unit            -> "unit"
          Definition      -> "definition"
          Constructor     -> "constructor"
          Variable        -> "variable"

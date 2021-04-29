@@ -316,7 +316,7 @@ DATA AnnotatedType
 -- -- Dimensions and Units                                               --
 -- ------------------------------------------------------------------------
 
-TYPE Dimensions = [ Dimension ]
+-- TYPE Dimensions = [ Dimension ]
 
 DATA SimpleDimension
     | SimpleDimension
@@ -349,7 +349,7 @@ DATA Dimension
     | One
         range                    : Range
 
-TYPE Units = [ Unit ]
+-- TYPE Units = [ Unit ]
 
 DATA SimpleUnit
     | SimpleUnit

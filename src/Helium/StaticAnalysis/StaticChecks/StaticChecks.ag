@@ -37,6 +37,7 @@ INCLUDE "MiscErrors.ag"
 INCLUDE "ExportErrors.ag"
 INCLUDE "HeliumPartialSyntax.ag"
 INCLUDE "ScopeErrors.ag"
+INCLUDE "DimScope.ag"
 
 imports {
 import Helium.Utils.Similarity ( similar )
@@ -72,6 +73,10 @@ SEM Module
              loc . allErrors = map (convertError (unqualifyTp @typeConstructors)) $ concat 
                                       [ @exportErrors
                                       , @scopeErrors
+                                      , @body.scopeunitError
+                                      , @body.scopedimensionError
+                                      , @unitdoublesError
+                                      , @dimensiondoublesError
                                       , @miscerrors
                                       , if KindInferencing `elem` @lhs.options then [] else @kindErrors
                                       , @topLevelErrors

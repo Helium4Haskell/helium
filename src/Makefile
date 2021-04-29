@@ -87,6 +87,7 @@ $(AG_OUT_DIR)/Helium/StaticAnalysis/StaticChecks/StaticChecks.hs : \
     Helium/StaticAnalysis/StaticChecks/HeliumPartialSyntax.ag \
     Helium/StaticAnalysis/StaticChecks/Scope.ag \
     Helium/StaticAnalysis/StaticChecks/ScopeErrors.ag \
+    Helium/StaticAnalysis/StaticChecks/DimScope.ag \
 		Helium/Syntax/UHA_Syntax.ag 
 	mkdir -p `dirname $@`
 	# AG StaticAnalysis

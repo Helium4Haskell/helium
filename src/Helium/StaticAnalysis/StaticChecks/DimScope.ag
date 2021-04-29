@@ -1,0 +1,130 @@
+-----------------------------------------------------------------------------
+-- |The Helium Compiler : Static Analysis
+-- 
+-- Maintainer  :  bastiaan@cs.uu.nl
+-- Stability   :  experimental
+-- Portability :  unknown
+--
+-- Add in scope dimensions and units
+--
+-----------------------------------------------------------------------------
+
+INCLUDE "UHA_Syntax.ag"
+
+-- This afternoon:
+-- Fix doubles
+-- Add unused
+-- Remove Aliasing Dimension / Dimension (comment rather than supress)
+
+-----------------------------------------------------------------------------
+
+-- 1) Add units and dims to the scope
+
+ATTR Module Body Declarations Declaration Unit Dimension
+    [ | | dimscope, unitscope USE { ++ } { [] } : { Names } ]
+
+
+ATTR SimpleUnit SimpleDimension   
+    [ | | name : Name ]
+
+SEM Module
+    | Module                    lhs . unitscope = @body.unitscope
+                                    . dimscope  = @body.dimscope
+
+SEM Body
+    | Body                      lhs . unitscope = @declarations.unitscope
+                                    . dimscope  = @declarations.dimscope
+
+SEM Declaration
+    | Dimension                 lhs . unitscope = [@simpleunit.name]
+                                lhs . dimscope  = [@simpledimension.name]
+    | UnitFromUnit              lhs . unitscope = [@simpleunit.name]
+    | AliasUnit                 lhs . unitscope = [@alias.name]
+    | AliasDimension            lhs . dimscope  = [@alias.name]
+
+SEM Unit
+    | Base                      lhs . unitscope = []
+    | Times Div Power NegPower Parenthesized One  lhs . unitscope = []
+
+SEM SimpleUnit
+    | SimpleUnit                lhs . name = @name.self
+
+SEM Dimension
+    | Base                      lhs . dimscope = []
+
+SEM SimpleDimension
+    | SimpleDimension           lhs . name = @name.self
+
+
+-----------------------------------------------------------------------------
+
+--2) Distributing Units and Dimensions
+
+SEM Module
+    | Module                    loc . dscope = @body.dimscope
+                                loc . uscope = @body.unitscope
+
+ATTR Body Declarations Declaration Expressions Expression Patterns Pattern
+     Statement Statements Qualifier Qualifiers
+     Alternative Alternatives Constructor Constructors
+     GuardedExpressions GuardedExpression FunctionBinding FunctionBindings
+     FieldDeclaration FieldDeclarations RecordExpressionBinding RecordExpressionBindings
+     LeftHandSide RightHandSide MaybeDeclarations MaybeExpression Type Types 
+     MaybeUnit SimpleUnit Unit SimpleDimension Dimension
+     RecordPatternBinding RecordPatternBindings 
+     AnnotatedType AnnotatedTypes ContextItem ContextItems
+     [ dscope, uscope : { Names } | | ]
+
+-----------------------------------------------------------------------------
+
+-- 3) Check if dimensions / units are in scope
+
+ATTR Module Body Declarations Declaration
+    Expressions Expression Patterns Pattern
+    Statement Statements Qualifier Qualifiers
+    Alternative Alternatives Constructor Constructors
+    GuardedExpressions GuardedExpression FunctionBinding FunctionBindings
+    FieldDeclaration FieldDeclarations RecordExpressionBinding RecordExpressionBindings
+    LeftHandSide RightHandSide MaybeDeclarations MaybeExpression Type Types 
+    RecordPatternBinding RecordPatternBindings 
+    AnnotatedType AnnotatedTypes ContextItem ContextItems
+    MaybeUnit Unit SimpleUnit
+    [ | | scopeunitError USE { ++ } { [] } : { [Error] } ]
+
+ATTR Module Body Declarations Declaration
+    Expressions Expression Patterns Pattern
+    Statement Statements Qualifier Qualifiers
+    Alternative Alternatives Constructor Constructors
+    GuardedExpressions GuardedExpression FunctionBinding FunctionBindings
+    FieldDeclaration FieldDeclarations RecordExpressionBinding RecordExpressionBindings
+    LeftHandSide RightHandSide MaybeDeclarations MaybeExpression Type Types 
+    RecordPatternBinding RecordPatternBindings 
+    AnnotatedType AnnotatedTypes ContextItem ContextItems
+    Dimension SimpleDimension
+    [ | | scopedimensionError USE { ++ } { [] } : { [Error] } ]
+
+SEM Expression
+    | Dimensioned               lhs . scopeunitError = @unit.scopeunitError
+
+SEM SimpleUnit
+    | SimpleUnit                lhs . scopeunitError =
+                                    if not (@name.self `elem` @lhs.uscope) then
+                                        [ Undefined Unit @name.self @lhs.uscope [] ]
+                                    else [] -- [Undefined Unit @name.self @lhs.uscope []]
+
+SEM SimpleDimension
+    | SimpleDimension           lhs . scopedimensionError =
+                                    if not (@name.self `elem` @lhs.dscope) then
+                                        [ Undefined Dimension @name.self @lhs.dscope [] ]
+                                    else [] -- [Undefined Dimension @name.self @lhs.dscope []]
+
+-----------------------------------------------------------------------------
+
+-- 4) Check if dimensions / units are duplicated
+
+--ATTR Module
+  --  [ unitdoublesError, dimensiondoublesError : { [Error] } | | ]
+
+SEM Module
+    | Module                    loc . unitdoublesError      = makeDuplicated Unit (filter ((>1) . length) . group . sort $ @uscope)
+                                    . dimensiondoublesError = makeDuplicated Dimension (filter ((>1) . length) . group . sort $ @dscope)
