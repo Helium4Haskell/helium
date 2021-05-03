@@ -53,6 +53,7 @@ data Error  = NoFunDef Entity Name {-names in scope-}Names
             | ArityMismatch {-type constructor-}Entity Name {-verwacht aantal parameters-}Int {-aangetroffen aantal parameters-}Int
             | DefArityMismatch Name (Maybe Int) {- verwacht -} Range
             | RecursiveTypeSynonyms Names
+            | RecursiveUnitDefinition Names
             | PatternDefinesNoVars Range
             | IntLiteralTooBig Range String
             | OverloadingDisabled Range
@@ -103,6 +104,7 @@ instance HasMessage Error where
       ArityMismatch _ name _ _    -> [getNameRange name]
       DefArityMismatch _ _ range  -> [range]
       RecursiveTypeSynonyms names -> sortRanges (map getNameRange names)
+      RecursiveUnitDefinition names -> sortRanges (map getNameRange names)
       PatternDefinesNoVars range  -> [range]
       IntLiteralTooBig range _    -> [range]
       OverloadingDisabled range   -> [range]
@@ -312,6 +314,12 @@ showError anError = case anError of
 
    RecursiveTypeSynonyms strings ->
       ( MessageString ("Recursive type synonyms " ++
+            prettyAndList (map (show . show) (sortNamesByRange strings)))
+      , []
+      )
+
+   RecursiveUnitDefinition strings ->
+      ( MessageString ("Recursive unit definition " ++
             prettyAndList (map (show . show) (sortNamesByRange strings)))
       , []
       )

@@ -77,6 +77,7 @@ SEM Module
                                       , @body.scopedimensionError
                                       , @unitdoublesError
                                       , @dimensiondoublesError
+                                      , @recursiveUnitErrors
                                       , @miscerrors
                                       , if KindInferencing `elem` @lhs.options then [] else @kindErrors
                                       , @topLevelErrors

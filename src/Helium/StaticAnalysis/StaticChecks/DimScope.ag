@@ -5,23 +5,25 @@
 -- Stability   :  experimental
 -- Portability :  unknown
 --
--- Add in scope dimensions and units
+-- Static check for dimensions :
+-- - Undefined units
+-- - Duplicated dimensions and units
+-- - Recursive unit definition
 --
 -----------------------------------------------------------------------------
 
 INCLUDE "UHA_Syntax.ag"
 
--- This afternoon:
--- Fix doubles
--- Add unused
--- Remove Aliasing Dimension / Dimension (comment rather than supress)
-
------------------------------------------------------------------------------
+imports{
+import qualified Data.Map as M
+import qualified Data.List as L
+}
 
 -- 1) Add units and dims to the scope
 
 ATTR Module Body Declarations Declaration Unit Dimension
-    [ | | dimscope, unitscope USE { ++ } { [] } : { Names } ]
+    [ | | dimscope, unitscope USE { ++ } { [] } : { Names }
+          unitdef             USE { ++ } { [] } : {[(Name, Maybe Unit)]} ]
 
 
 ATTR SimpleUnit SimpleDimension   
@@ -30,16 +32,21 @@ ATTR SimpleUnit SimpleDimension
 SEM Module
     | Module                    lhs . unitscope = @body.unitscope
                                     . dimscope  = @body.dimscope
+                                   --  . unitdef   = @body.unitdef
 
 SEM Body
     | Body                      lhs . unitscope = @declarations.unitscope
                                     . dimscope  = @declarations.dimscope
+                                    -- . unitdef   = @declarations.unitdef
 
 SEM Declaration
     | Dimension                 lhs . unitscope = [@simpleunit.name]
-                                lhs . dimscope  = [@simpledimension.name]
+                                    . dimscope  = [@simpledimension.name]
+                                    . unitdef   = [(@simpleunit.name,Nothing)]
     | UnitFromUnit              lhs . unitscope = [@simpleunit.name]
+                                    . unitdef   = [(@simpleunit.name,Just @associatedunit.self)]
     | AliasUnit                 lhs . unitscope = [@alias.name]
+                                    . unitdef   = [(@alias.name,Just @aliased.self)]
     | AliasDimension            lhs . dimscope  = [@alias.name]
 
 SEM Unit
@@ -63,6 +70,7 @@ SEM SimpleDimension
 SEM Module
     | Module                    loc . dscope = @body.dimscope
                                 loc . uscope = @body.unitscope
+                                loc . unitdef = @body.unitdef
 
 ATTR Body Declarations Declaration Expressions Expression Patterns Pattern
      Statement Statements Qualifier Qualifiers
@@ -122,9 +130,77 @@ SEM SimpleDimension
 
 -- 4) Check if dimensions / units are duplicated
 
---ATTR Module
-  --  [ unitdoublesError, dimensiondoublesError : { [Error] } | | ]
-
 SEM Module
     | Module                    loc . unitdoublesError      = makeDuplicated Unit (filter ((>1) . length) . group . sort $ @uscope)
                                     . dimensiondoublesError = makeDuplicated Dimension (filter ((>1) . length) . group . sort $ @dscope)
+                                    . recursiveUnitErrors =  if recursiveDependencies @unitdef then [RecursiveUnitDefinition []] else []
+-----------------------------------------------------------------------------
+
+{- 5) Detect cycles in the unit definition
+
+SEM Module
+  | Module   loc 
+                -- if recursiveDependencies @unitdef then [RecursiveUnitDefinition []] else []-}
+
+
+---------------------------------------------------------------------------
+
+{
+find_not_visited :: M.Map Name ([Name], Int) -> Maybe Name
+find_not_visited visited =
+    let lvisited = M.toList visited in
+    (case find (\(_,(_,b)) -> b == 0) lvisited of
+        Nothing -> Nothing
+        Just (a,_) -> Just a)
+
+hasCycle :: M.Map Name ([Name], Int) -> Bool
+hasCycle visited =
+        let name = find_not_visited visited in
+        case name of
+            Just n -> ccsearching visited [n]
+            Nothing -> False
+    where
+        ccsearching :: M.Map Name ([Name], Int) -> [Name] -> Bool
+        ccsearching visited stack_search =
+            case stack_search of
+                [] ->
+                    let visited' = M.map ( \(l,b) -> (l, if b == 1 then 2 else b) ) visited in
+                    case find_not_visited visited' of
+                        Nothing -> False
+                        Just newname -> ccsearching visited' [newname]
+                name:q -> 
+                    let (l, b) = case M.lookup name visited of Just a -> a in
+                    if b==1 then True
+                    else if b == 2 then
+                        ccsearching visited q
+                    else
+                        let visited' = M.adjust (\(l,_) -> (l,1)) name visited in
+                        ccsearching visited' (l++q)
+
+removeDoubles :: Ord a => [a] -> [a]
+removeDoubles =
+    (map head) . group . sort
+
+getName :: SimpleUnit -> Name
+getName (SimpleUnit_SimpleUnit _ n) = n
+
+getUnitDependencies :: Unit -> [Name]
+getUnitDependencies unit =
+    case unit of
+        Unit_One _             -> []
+        Unit_Base _ su         -> [getName su]
+        Unit_Power _ u _       -> getUnitDependencies u
+        Unit_NegPower _ u _    -> getUnitDependencies u
+        Unit_Parenthesized _ u -> getUnitDependencies u
+        Unit_Times _ ul ur     -> (getUnitDependencies ul) ++ (getUnitDependencies ur)
+        Unit_Div _ ul ur       -> (getUnitDependencies ul) ++ (getUnitDependencies ur)
+
+getDependencies :: Maybe Unit -> [Name]
+getDependencies Nothing = []
+getDependencies (Just u) = removeDoubles (getUnitDependencies u)
+
+recursiveDependencies :: [(Name, Maybe Unit)] -> Bool
+recursiveDependencies unitsdef =
+    let unitgraph  = M.fromList [ (su,(l, 0)) | (su,u) <- unitsdef, let l = getDependencies u ] in
+    hasCycle unitgraph
+}

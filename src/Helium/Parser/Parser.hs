@@ -253,13 +253,13 @@ topdecl = addRange (
         f <- decl  
         return $ \r -> Declaration_UnitFromUnit r su u f
     <|>
-    do
+    {-do
         lexALIAS
         su <- sdim
         lexASG
         u <- dimension
         return $ \r -> Declaration_AliasDimension r su u
-    <|>
+    <|>-}
     do
         lexALIAS
         su <- sunit
