@@ -65,7 +65,7 @@ ATTR
     Module Export Body
     ImportDeclaration ImportSpecification Import Declaration Fixity
     Type SimpleType ContextItem
-    Dimension SimpleDimension Unit SimpleUnit
+    SimpleDimension Unit SimpleUnit
     Constructor
     FieldDeclaration
     AnnotatedType
@@ -309,10 +309,6 @@ SEM Declaration                                  {- *** -}
     --  simpleunit               : SimpleUnit
     --  associatedunit           : Unit
     --  associatedcv             : Declaration
-    | AliasDimension    loc.text = text "alias" <+> @alias.text <+> text "=" <+> @aliased.text
-    --  range                    : Range
-    --  alias                    : SimpleDimension
-    --  aliased                  : Dimension
     | AliasUnit         loc.text = text "alias" <+> @alias.text <+> text "=" <+> @aliased.text
     --  range                    : Range
     --  alias                    : SimpleUnit
@@ -476,32 +472,6 @@ SEM SimpleDimension
     --  range                        : Range
     --  name                         : Name
 
-SEM Dimension
-    | Base                    loc.text = @simpledim.text
-    --  range                    : Range
-    --  simpledim                : SimpleDimension
-    | Times                   loc.text = @prefix.text <+> text "*" <+> @term.text
-    --  range                    : Range
-    --  prefix                   : Dimension
-    --  term                     : Dimension
-    | Div                     loc.text = text "(" <+> @dividend.text <+> text ")" <+> text "/" <+> text "(" <+> @divisor.text <+> text ")"
-    --  range                    : Range
-    --  divisor                  : Dimension
-    --  dividend                 : Dimension
-    | Power                   loc.text = @term.text <+> text "^" <+> int @exponent
-    --  range                    : Range
-    --  term                     : Dimension
-    --  exponent                 : Int
-    | NegPower                   loc.text = @term.text <+> text "^-" <+> int @exponent
-    --  range                    : Range
-    --  term                     : Dimension
-    --  exponent                 : Int
-    | Parenthesized           loc.text = parens @term.text
-    --  range                    : Range
-    --  term                     : Dimension
-    | One                     loc.text = text "1"
-    --  range                    : Range
-
 SEM SimpleUnit
     | SimpleUnit              loc.text = @name.text
     -- range                        : Range
@@ -516,6 +486,9 @@ SEM Unit
     | Base                   loc.text = @simpleunit.text
     --  range                    : Range
     --  simpleunit               : SimpleUnit
+    | Variable               loc.text = @name.text
+    --  range                    : Range
+    --  name                     : Name
     | Times                  loc.text = @prefix.text <+> text "*" <+> @term.text
     --  range                    : Range
     --  prefix                   : Constant

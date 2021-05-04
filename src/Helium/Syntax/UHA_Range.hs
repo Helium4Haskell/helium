@@ -242,7 +242,6 @@ getDeclarationRange decl = case decl of
    Declaration_Newtype r _ _ _ _    -> r
    Declaration_Dimension r _ _      -> r
    Declaration_UnitFromUnit r _ _ _ -> r
-   Declaration_AliasDimension r _ _ -> r
    Declaration_AliasUnit r _ _      -> r
    Declaration_Class r _ _ _        -> r
    Declaration_Instance r _ _ _ _   -> r
@@ -268,20 +267,11 @@ getTypeRange tp = case tp of
    Type_Forall r _ _        -> r
    Type_Exists r _ _        -> r 
    Type_Parenthesized r _   -> r
-   
-getDimensionRange :: Dimension -> Range
-getDimensionRange dim = case dim of
-   Dimension_Base r _       -> r
-   Dimension_Times r _ _    -> r
-   Dimension_Div r _ _      -> r
-   Dimension_Power r _ _    -> r
-   Dimension_NegPower r _ _     -> r
-   Dimension_Parenthesized r _  -> r
-   Dimension_One r          -> r
 
 getUnitRange :: Unit -> Range
 getUnitRange unit = case unit of
    Unit_Base r _            -> r
+   Unit_Variable r _        -> r
    Unit_Times r _ _         -> r
    Unit_Div r _ _           -> r
    Unit_Power r _ _         -> r

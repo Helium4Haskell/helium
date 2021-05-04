@@ -21,7 +21,7 @@ import qualified Data.List as L
 
 -- 1) Add units and dims to the scope
 
-ATTR Module Body Declarations Declaration Unit Dimension
+ATTR Module Body Declarations Declaration Unit
     [ | | dimscope, unitscope USE { ++ } { [] } : { Names }
           unitdef             USE { ++ } { [] } : {[(Name, Maybe Unit)]} ]
 
@@ -47,17 +47,13 @@ SEM Declaration
                                     . unitdef   = [(@simpleunit.name,Just @associatedunit.self)]
     | AliasUnit                 lhs . unitscope = [@alias.name]
                                     . unitdef   = [(@alias.name,Just @aliased.self)]
-    | AliasDimension            lhs . dimscope  = [@alias.name]
 
 SEM Unit
-    | Base                      lhs . unitscope = []
+    | Base Variable            lhs . unitscope = []
     | Times Div Power NegPower Parenthesized One  lhs . unitscope = []
 
 SEM SimpleUnit
     | SimpleUnit                lhs . name = @name.self
-
-SEM Dimension
-    | Base                      lhs . dimscope = []
 
 SEM SimpleDimension
     | SimpleDimension           lhs . name = @name.self
@@ -78,7 +74,7 @@ ATTR Body Declarations Declaration Expressions Expression Patterns Pattern
      GuardedExpressions GuardedExpression FunctionBinding FunctionBindings
      FieldDeclaration FieldDeclarations RecordExpressionBinding RecordExpressionBindings
      LeftHandSide RightHandSide MaybeDeclarations MaybeExpression Type Types 
-     MaybeUnit SimpleUnit Unit SimpleDimension Dimension
+     MaybeUnit SimpleUnit Unit SimpleDimension
      RecordPatternBinding RecordPatternBindings 
      AnnotatedType AnnotatedTypes ContextItem ContextItems
      [ dscope, uscope : { Names } | | ]
@@ -108,7 +104,7 @@ ATTR Module Body Declarations Declaration
     LeftHandSide RightHandSide MaybeDeclarations MaybeExpression Type Types 
     RecordPatternBinding RecordPatternBindings 
     AnnotatedType AnnotatedTypes ContextItem ContextItems
-    Dimension SimpleDimension
+    SimpleDimension
     [ | | scopedimensionError USE { ++ } { [] } : { [Error] } ]
 
 SEM Expression
@@ -188,6 +184,7 @@ getUnitDependencies :: Unit -> [Name]
 getUnitDependencies unit =
     case unit of
         Unit_One _             -> []
+        Unit_Variable _ _      -> []
         Unit_Base _ su         -> [getName su]
         Unit_Power _ u _       -> getUnitDependencies u
         Unit_NegPower _ u _    -> getUnitDependencies u

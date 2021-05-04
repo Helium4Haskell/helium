@@ -117,7 +117,6 @@ SEM Declaration
     --  derivings                : Names
     | Dimension         lhs.dimconstruct = Just @range.pos
     | UnitFromUnit      lhs.dimconstruct = Just @range.pos
-    | AliasDimension    lhs.dimconstruct = Just @range.pos
     | AliasUnit         lhs.dimconstruct = Just @range.pos
     | Class             lhs.dimconstruct = select (@context.dimconstruct) (@where.dimconstruct)
     --  range                    : Range
@@ -246,6 +245,7 @@ SEM MaybeUnit
 
 SEM Unit
     | Base  loc.pos = @range.pos
+    | Variable loc.pos = @range.pos
     | Times loc.pos = @range.pos
     | Div loc.pos = @range.pos
     | Power loc.pos = @range.pos

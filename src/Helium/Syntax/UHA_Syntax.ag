@@ -129,10 +129,6 @@ DATA Declaration                                  {- *** -}
         simpleunit               : SimpleUnit
         associatedunit           : Unit
         associatedcv             : Declaration
-    | AliasDimension
-        range                    : Range
-        alias                    : SimpleDimension
-        aliased                  : Dimension
     | AliasUnit
         range                    : Range
         alias                    : SimpleUnit
@@ -316,40 +312,10 @@ DATA AnnotatedType
 -- -- Dimensions and Units                                               --
 -- ------------------------------------------------------------------------
 
--- TYPE Dimensions = [ Dimension ]
-
 DATA SimpleDimension
     | SimpleDimension
         range                    : Range
         name                     : Name
-
-DATA Dimension
-    | Base
-        range                    : Range
-        simpledim                : SimpleDimension
-    | Times
-        range                    : Range
-        prefix                   : Dimension
-        term                     : Dimension
-    | Div
-        range                    : Range
-        divisor                  : Dimension
-        dividend                 : Dimension
-    | Power
-        range                    : Range
-        term                     : Dimension
-        exponent                 : Int
-    | NegPower
-        range                    : Range
-        term                     : Dimension
-        exponent                 : Int
-    | Parenthesized
-        range                    : Range
-        term                     : Dimension
-    | One
-        range                    : Range
-
--- TYPE Units = [ Unit ]
 
 DATA SimpleUnit
     | SimpleUnit
@@ -365,6 +331,9 @@ DATA Unit
     | Base
         range                    : Range
         simpleunit               : SimpleUnit
+    | Variable
+        range                    : Range
+        name                     : Name
     | Times
         range                    : Range
         prefix                   : Unit

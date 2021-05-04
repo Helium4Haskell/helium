@@ -253,13 +253,6 @@ topdecl = addRange (
         f <- decl  
         return $ \r -> Declaration_UnitFromUnit r su u f
     <|>
-    {-do
-        lexALIAS
-        su <- sdim
-        lexASG
-        u <- dimension
-        return $ \r -> Declaration_AliasDimension r su u
-    <|>-}
     do
         lexALIAS
         su <- sunit
@@ -1574,110 +1567,22 @@ numericLiteral = addRange (
         return $ \r -> Literal_Float r d
     ) <?> Texts.parserNumericLiteral
 
-{- dim   -> firstdim
-         | firstdim * dim
-         | firstdim / firstdim
-         | firstdim / firstdim * dim
-
-firstdim -> sdim
-         | sdim ^ n
-         | "(" dim ")"
-         | "(" dim ")" ^ n 
+{- sdim
 -}
 
 sdim :: HParser SimpleDimension
-sdim = addRange $
-    do
+sdim = addRange
+    (do
         n <- conid
-        return $ \r -> SimpleDimension_SimpleDimension r n
+        return $ \r -> SimpleDimension_SimpleDimension r n)
+    <?> Texts.parserDimension
 
-dimexpo :: Dimension -> HParser (Range -> Dimension)
-dimexpo d = 
-    do
-        lexLPAREN
-        m <- optionMaybe lexMIN
-        expo <- fmap fromInteger (fmap read lexInt) :: HParser Int
-        lexRPAREN
-        case m of
-            Nothing -> return $ \r -> Dimension_Power r d expo
-            Just _  -> return $ \r -> Dimension_NegPower r d expo
-    <|>
-    do
-        expo <- fmap fromInteger (fmap read lexInt) :: HParser Int
-        return $ \r -> Dimension_Power r d expo
-
-firstdim :: HParser Dimension
-firstdim = addRange (
-    try (do
-        one <- fmap fromInteger (fmap read lexInt) :: HParser Int
-        when (one /= 1) (fail Texts.parserType)
-        (do
-            try(do 
-                lexPOWER
-                d <- addRange $ return $ \r -> Dimension_One r
-                dimexpo d)
-            <|>
-            (do
-                return $ \r -> Dimension_One r)))
-    <|>
-    do
-        d <- sdim
-        (do
-            try(do 
-                lexPOWER
-                d <- addRange $ return $ \r -> Dimension_Base r d
-                dimexpo d)
-            <|>
-            (do
-                return $ \r -> Dimension_Base r d))
-    <|>
-    do
-        d <- parens dimension
-        (do
-            try(do 
-                lexPOWER
-                d <- addRange $ return $ \r -> Dimension_Parenthesized r d
-                dimexpo d)
-            <|>
-            (do
-                return $ \r -> Dimension_Parenthesized r d))
-    )
-
-dimension :: HParser Dimension
-dimension =
-    addRange (
-     do
-        d <- firstdim
-        (do
-            try (do
-                lexTIMES
-                right <- dimension
-                return $ \r -> Dimension_Times r d right)
-            <|>
-            (do
-                lexDIV
-                right <- firstdim
-                (do
-                    try (do
-                        lexTIMES
-                        timesright <- dimension
-                        return $ \r -> Dimension_Times r (Dimension_Div r d right) timesright)
-                    <|>
-                    do
-                        return $ \r -> Dimension_Div r d right))
-            <|>
-            do
-                return $ \r -> d)
-    ) <?> Texts.parserDimension
-
-{- unit = ... -}
-
-{- dim   -> firstunit
+{- unit -> firstunit
          | firstunit * unit
          | firstunit / firstunit
          | firstunit / firstunit * unit
 
-firstdim -> sunit
+firstunit -> sunit
          | sunit ^ n
          | "(" unit ")"
          | "(" unit ")" ^ n 
@@ -1687,7 +1592,7 @@ sunit :: HParser SimpleUnit
 sunit = addRange $
     do
         n <- unitcon
-        return $ \r -> SimpleUnit_SimpleUnit r n   
+        return $ \r -> SimpleUnit_SimpleUnit r n
 
 uexpo :: Unit -> HParser (Range -> Unit)
 uexpo u = 
@@ -1717,6 +1622,17 @@ firstunit = addRange (
             <|>
             (do
                 return $ \r -> Unit_One r)))
+    <|>
+    do
+        d <- unitvar
+        (do
+            try(do 
+                lexPOWER
+                u <- addRange $ return $ \r -> Unit_Variable r d
+                uexpo u)
+            <|>
+            (do
+                return $ \r -> Unit_Variable r d))
     <|>
     do
         d <- sunit
