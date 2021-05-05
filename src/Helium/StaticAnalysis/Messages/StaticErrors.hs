@@ -33,6 +33,7 @@ data Error  = NoFunDef Entity Name {-names in scope-}Names
             | DefNonUniqueInstanceVars Name Names
             | ClassMethodContextError Entity Name Names ContextItems
             | ClassVariableNotInMethodSignature Name Name Names -- Class name, class variable, method name
+            | UnexpectedUnitVariable Name
             | InvalidContext Entity Name Names
             | Undefined Entity Name {-names in scope-}Names {-similar name in wrong name-space hint-}[String] {- hints -}
             | UndefinedClass Name {-Classes in scope -} Names
@@ -86,6 +87,7 @@ instance HasMessage Error where
       ClassMethodContextError _ name _ _ -> [getNameRange name]
       InvalidContext _ name _     -> [getNameRange name]
       ClassVariableNotInMethodSignature _ _ names -> sortRanges (map getNameRange names)
+      UnexpectedUnitVariable name -> [getNameRange name]
       DuplicateClassName names -> sortRanges (map getNameRange names)
       DuplicatedClassImported name -> [getNameRange name]
       TypeClassOverloadRestr _ names -> sortRanges (map getNameRange names)
@@ -207,6 +209,11 @@ showError anError = case anError of
       , [MessageString ("The type signatures of the methods: " ++ prettyAndList (map show methods)
                        ++ " must mention type variable: " ++ show classVariable ++ ".")]
       )
+
+   UnexpectedUnitVariable name ->
+      ( MessageString ("Unexpected unit variable "++ show name ++", expected unit constructor")
+      ,
+      [])
 
    TypeClassOverloadRestr className members ->
       ( MessageString ("Class members may not have names occurring at top level, in class:  " ++ show  (removeQualified className) ++ ".")
