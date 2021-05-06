@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 4946e25058af07b2e65eaf2111db3b6f83682da730c04a94c7c52ec301583fdc
+-- hash: 918bce5219f16cc16e06604145d4405e3472c28a9131f526ab1b081aa89614c8
 
 name:           helium
 version:        1.9
@@ -98,6 +98,22 @@ library
       Helium.CodeGeneration.Iridium.Region.Sort
       Helium.CodeGeneration.Iridium.Region.Transform
       Helium.CodeGeneration.Iridium.Region.Utils
+      Helium.CodeGeneration.Iridium.RegionSize.Analysis
+      Helium.CodeGeneration.Iridium.RegionSize.Annotation
+      Helium.CodeGeneration.Iridium.RegionSize.AnnotationUtils
+      Helium.CodeGeneration.Iridium.RegionSize.Constraints
+      Helium.CodeGeneration.Iridium.RegionSize.DataTypes
+      Helium.CodeGeneration.Iridium.RegionSize.Environments
+      Helium.CodeGeneration.Iridium.RegionSize.Evaluate
+      Helium.CodeGeneration.Iridium.RegionSize.Fixpoint
+      Helium.CodeGeneration.Iridium.RegionSize.Parse
+      Helium.CodeGeneration.Iridium.RegionSize.PassRegionSize
+      Helium.CodeGeneration.Iridium.RegionSize.Sort
+      Helium.CodeGeneration.Iridium.RegionSize.Sorting
+      Helium.CodeGeneration.Iridium.RegionSize.SortUtils
+      Helium.CodeGeneration.Iridium.RegionSize.Transform
+      Helium.CodeGeneration.Iridium.RegionSize.Type
+      Helium.CodeGeneration.Iridium.RegionSize.Utils
       Helium.CodeGeneration.Iridium.ResolveDependencies
       Helium.CodeGeneration.Iridium.Show
       Helium.CodeGeneration.Iridium.Type

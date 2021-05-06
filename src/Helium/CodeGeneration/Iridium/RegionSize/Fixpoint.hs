@@ -3,6 +3,7 @@ where
 
 import Helium.CodeGeneration.Iridium.RegionSize.Annotation
 import Helium.CodeGeneration.Iridium.RegionSize.Sort
+import Helium.CodeGeneration.Iridium.RegionSize.SortUtils
 import Helium.CodeGeneration.Iridium.RegionSize.Constraints
 import Helium.CodeGeneration.Iridium.RegionSize.Utils
 import Helium.CodeGeneration.Iridium.RegionSize.Evaluate
@@ -63,11 +64,10 @@ fillInNonRec isRec fixes = foldAnnAlgN 0 fillAlg
     where fillAlg = idAnnAlg {
         aProj = \d i a -> case a of
                             AVar idx -> if idx == d && not (isRec !! i)
-                                        then fixes !! i
+                                        then fixes !! i -- `rsInfo` ("Inlined! " ++ show i)
                                         else AProj i $ AVar idx
                             _ -> AProj i a
     }
-
 
 -- | Check if a part of a fixpoint is recursive
 checkRecursive :: Annotation -> Bool
@@ -94,3 +94,29 @@ countFixBinds = foldAnnAlgN 0 countAlg
         aBot    = \_ _   -> 0,
         aFix    = \_ _ a -> sum a   
     }
+
+-- -- | Count usages of a variable
+-- findFixBinds :: Annotation -> [Int]
+-- findFixBinds = foldAnnAlgN 0 countAlg
+--     where countAlg = AnnAlg {
+--         aVar    = \d idx   -> if d == idx
+--                               then [-1]
+--                               else [],
+--         aReg    = \_ _   -> [],
+--         aLam    = \_ _ a -> a,
+--         aApl    = \_ a b -> a ++ b,
+--         aConstr = \_ _   -> [],
+--         aUnit   = \_     -> [],
+--         aTuple  = \_ as  -> concat as,
+--         aProj   = \_ i a -> case a of
+--                                 [-1] -> [i]
+--                                 _ -> a
+--         aAdd    = \_ a b -> a ++ b,
+--         aMinus  = \_ a _ -> a,
+--         aJoin   = \_ a b -> a ++ b,
+--         aQuant  = \_ a   -> a,
+--         aInstn  = \_ a _ -> a,
+--         aTop    = \_ _ _ -> [],
+--         aBot    = \_ _   -> [],
+--         aFix    = \_ _ a -> sum a   
+--     }

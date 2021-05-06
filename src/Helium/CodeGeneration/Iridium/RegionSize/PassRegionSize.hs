@@ -11,9 +11,11 @@ import Helium.CodeGeneration.Iridium.BindingGroup
 import Helium.CodeGeneration.Iridium.RegionSize.Analysis
 import Helium.CodeGeneration.Iridium.RegionSize.Annotation
 import Helium.CodeGeneration.Iridium.RegionSize.Constraints
+import Helium.CodeGeneration.Iridium.RegionSize.DataTypes
 import Helium.CodeGeneration.Iridium.RegionSize.Environments
 import Helium.CodeGeneration.Iridium.RegionSize.Evaluate
 import Helium.CodeGeneration.Iridium.RegionSize.Sort
+import Helium.CodeGeneration.Iridium.RegionSize.SortUtils
 import Helium.CodeGeneration.Iridium.RegionSize.Sorting
 import Helium.CodeGeneration.Iridium.RegionSize.Transform
 import Helium.CodeGeneration.Iridium.RegionSize.Utils
@@ -21,48 +23,60 @@ import Helium.CodeGeneration.Iridium.RegionSize.Fixpoint
 
 import Data.List (intercalate)
 import Data.Either (rights, lefts)
+import qualified Data.Map as M 
 
 -- | Infer the size of regions
 passRegionSize :: NameSupply -> Module -> IO Module
 passRegionSize _ m = do 
-  let gEnv = initialGEnv m
-  let groups = methodBindingGroups $ moduleMethods m
+  if(((stringFromId $ moduleName m) == "LvmLang"        && True)
+    || ((stringFromId $ moduleName m) == "HeliumLang"   && True) 
+    || ((stringFromId $ moduleName m) == "PreludePrim"  && True)
+    || ((stringFromId $ moduleName m) == "Prelude"      && True)
+    || ((stringFromId $ moduleName m) == "LvmException" && True))
+  then do
+    return m
+  else do
+    let gEnv = initialGEnv m
+    let groups = methodBindingGroups $ moduleMethods m
 
-  (_, methods) <- mapAccumLM (analyseGroup (stringFromId $ moduleName m)) gEnv groups
+    ((_, finite, infinite), methods) <- mapAccumLM (analyseGroup (stringFromId $ moduleName m)) (gEnv,0,0) groups
+    putStrLn $ "Finite:   " ++ show finite
+    putStrLn $ "Infinite: " ++ show infinite
 
-  return m{moduleMethods = concat methods}
+    return m{moduleMethods = concat methods}
 
 
 {- Analyses a binding group of a single non-recursive function
    or a group of (mutual) recursive functions.
 -} -- TODO: Remove module name from params
-analyseGroup :: String -> GlobalEnv -> BindingGroup Method -> IO (GlobalEnv, [Declaration Method])
+analyseGroup :: String -> (GlobalEnv, Int, Int) -> BindingGroup Method -> IO ((GlobalEnv, Int, Int), [Declaration Method])
 -- Recurisve bindings
-analyseGroup modName gEnv (BindingRecursive bindings) = do
+analyseGroup modName (gEnv, finite, infinite) (BindingRecursive bindings) = do
   let methods = map (\(Declaration methodName _ _ _ method) -> (methodName, method)) bindings
 
-  (gEnv', transformeds) <- temp modName gEnv methods
+  ((gEnv', finite2, infinite2), transformeds) <- temp modName gEnv methods
 
   let bindings' = map (\(decl, (_,transformed)) -> decl{declarationValue=transformed}) $ zip bindings transformeds
-  return (gEnv', bindings')
+  return ((gEnv', finite+finite2, infinite+infinite2)
+         , bindings')
 -- Non recursive binding
-analyseGroup modName gEnv (BindingNonRecursive decl@(Declaration methodName _ _ _ method)) = do
-  (gEnv', [(_,transformed)]) <- temp modName gEnv [(methodName,method)]
+analyseGroup modName (gEnv, finite, infinite) (BindingNonRecursive decl@(Declaration methodName _ _ _ method)) = do
+  ((gEnv', finite2, infinite2), [(_,transformed)]) <- temp modName gEnv [(methodName,method)]
 
-  return (gEnv', [decl{ declarationValue = transformed }])
+  return ((gEnv', finite+finite2, infinite+infinite2)
+         , [decl{ declarationValue = transformed }])
 
 
-temp ::  String -> GlobalEnv -> [(Id,Method)] -> IO (GlobalEnv, [(Id,Method)])
+temp ::  String -> GlobalEnv -> [(Id,Method)] -> IO ((GlobalEnv, Int, Int), [(Id,Method)])
 temp modName gEnv methods = do
-  if((modName == "LvmLang"        && True)
-    || (modName == "HeliumLang"   && True) 
-    || (modName == "PreludePrim"  && True)
-    || (modName == "Prelude"      && True)
-    || (modName == "LvmException" && True))
+  if((modName == "LvmLang"        && False)
+    || (modName == "HeliumLang"   && False) 
+    || (modName == "PreludePrim"  && False)
+    || (modName == "Prelude"      && False)
+    || (modName == "LvmException" && False))
   then do
-    return (gEnv, methods)
+    return ((gEnv, 0, 0), methods)
   else do
-    putStrLn $ "\n# Analyse methods:\n" ++ (intercalate "\n" $ map (show.fst) methods)
     -- Generate the annotations     
     let mAnn  = analyseMethods 0 gEnv methods
   
@@ -73,13 +87,12 @@ temp modName gEnv methods = do
     -- Check if the resulting annotation is well-sroted
     let sorts = sort fixed
     fixed' <- case sorts of
-          Left  e -> return $ flip ATop constrBot . methodSortAssign <$> (snd <$> methods) 
+          Left  _ -> return $ flip ATop constrBot . methodSortAssign (globDataEnv gEnv) <$> (snd <$> methods) 
           Right _ -> return $ unsafeUnliftTuple fixed
     
     -- Fix the annotations of zero arity definitions
     let zerod = uncurry fixZeroArity <$> zip methods fixed'
     
-
     -- Update the global environment with the found annotations
     let gEnv' = foldr (uncurry insertGlobal) gEnv $ zip (fst <$> methods) zerod
     -- Save the annotation on the method
@@ -91,6 +104,13 @@ temp modName gEnv methods = do
                   . eval 
                   . solveFixpoints 
                   $ analyseMethods 1 gEnv' methods')
+    let arePrimitive = foldr (||) False (isPrimitiveType [] <$> methodType . snd <$> methods)
+    let finite   = if arePrimitive 
+                   then sum $ length <$> filter (not . (== Infty) . snd) <$> filter (not . (== Region RegionGlobal) . fst) <$> M.toList <$> effects
+                   else 0
+    let infinite = if arePrimitive 
+                   then (sum $ length <$> filter (not . (== Region RegionGlobal) . fst) <$> M.toList <$> effects) - finite 
+                   else 0
 
     -- Do the program transformation & remove empty regions
     let transformed = uncurry transform <$> zip effects (snd <$> methods')
@@ -102,16 +122,17 @@ temp modName gEnv methods = do
       || (modName == "PreludePrim"  && True)
       || (modName == "Prelude"      && True)
       || (modName == "LvmException" && True))
-    then do putStrLn "-"
+    then do return () --putStrLn "-"
     else do
+      putStrLn $ "\n# Analyse methods:\n" ++ (intercalate "\n" $ map (show.fst) methods)
       print mAnn
       putStrLn $ "\n# Simplified: "
       print simpl 
       putStrLn $ "\n# Fixpoint: "
       print fixed
-      fixed' <- case sorts of
-            Left  e -> putStrLn e >>= \_ -> rsError "nope"
-            Right _ -> return fixed
+      -- fixed' <- case sorts of
+      --       Left  e -> putStrLn e >>= \_ -> rsError "nope"
+      --       Right _ -> return fixed
       -- putStrLn $ "\n# Sort: "
       -- print sorts 
       -- putStrLn $ "\n# Zerod: "
@@ -125,13 +146,14 @@ temp modName gEnv methods = do
       --               ++ "\n\tPost-eval: " ++ show mSrt2 
       -- else return ()
 
-      putStrLn ""
+      -- putStrLn ""
       putStrLn ""
 
-    return (gEnv', zip (fst <$> methods) cleaned)
+    return ((gEnv', finite, infinite), zip (fst <$> methods) cleaned)
 
-methodSortAssign :: Method -> Sort
-methodSortAssign = SortLam SortUnit . sortAssign . methodType 
+-- TODO: Correct bottom for offsets 
+methodSortAssign :: DataTypeEnv -> Method -> Sort
+methodSortAssign dEnv = SortLam SortUnit . sortAssign dEnv . methodType 
 
 -- | Get an array of annotations from a tuple
 unsafeUnliftTuple :: Annotation -> [Annotation]
@@ -180,3 +202,15 @@ collectEffects = foldAnnAlg collectAlg
         aBot    = \_ _   -> constrBot,
         aFix    = \_ _ a -> foldr constrAdd constrBot a
     }
+
+isPrimitiveType  :: [Type] -> Type -> Bool
+isPrimitiveType  ts (TStrict a)     = isPrimitiveType ts a
+isPrimitiveType  ts (TForall _ _ a) = isPrimitiveType ts a
+isPrimitiveType  ts (TVar a)        = True
+isPrimitiveType  ts (TAp t1 t2)     = isPrimitiveType (t2:ts) t1
+isPrimitiveType  [t1,t2] (TCon TConFun)       = isPrimitiveType [] t1 && isPrimitiveType [] t2  
+isPrimitiveType  ts      (TCon (TConTuple n)) = foldr (&&) True $ isPrimitiveType [] <$> ts
+isPrimitiveType  []      (TCon (TConDataType _))            = True
+isPrimitiveType  [a]     (TCon (TConTypeClassDictionary _)) = False
+isPrimitiveType  _       (TCon (TConDataType _)) = True
+isPrimitiveType  _ t = rsError $ "nope"

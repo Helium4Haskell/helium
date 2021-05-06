@@ -14,7 +14,9 @@ import Helium.CodeGeneration.Iridium.RegionSize.Annotation
 import Helium.CodeGeneration.Iridium.RegionSize.Constraints
 import Helium.CodeGeneration.Iridium.RegionSize.Utils
 import Helium.CodeGeneration.Iridium.RegionSize.Sort
+import Helium.CodeGeneration.Iridium.RegionSize.SortUtils
 import Helium.CodeGeneration.Iridium.RegionSize.DataTypes
+import Helium.CodeGeneration.Iridium.RegionSize.Type
 
 import GHC.Stack
 
@@ -23,12 +25,6 @@ import GHC.Stack
 ----------------------------------------------------------------
 
 type GlobFuncEnv = (IdMap Annotation)
-
-data DataTypeEnv = DataTypeEnv { 
-  dtSorts     :: !(IdMap Sort),        -- ^ Datatype id -> sort
-  dtStructs   :: !(IdMap Annotation),  -- ^ Constructor id -> constructor annotation
-  dtDestructs :: !(IdMap [Annotation]) -- ^ Constructor id -> destructor annotation
-}
 
 data GlobalEnv   = GlobalEnv {
   globTypeEnv :: !TypeEnvironment,
@@ -47,6 +43,19 @@ data LocalEnv    = LocalEnv {
 }
 
 data Envs = Envs GlobalEnv RegionEnv LocalEnv
+
+----------------------------------------------------------------
+-- Data type sort discovery
+----------------------------------------------------------------
+
+-- | Find sort for datatype
+dataTypeSort :: DataTypeEnv -> DataType -> Sort
+dataTypeSort dEnv (DataType structs) = SortTuple . concat $ dataStructSort dEnv <$> structs
+
+dataStructSort :: DataTypeEnv -> Declaration DataTypeConstructorDeclaration -> [Sort]
+dataStructSort dEnv (Declaration _ _ _ _ (DataTypeConstructorDeclaration ty _)) =
+  let (args, _) = typeExtractFunction $ typeRemoveQuants ty
+  in sortAssign dEnv <$> args
 
 ----------------------------------------------------------------
 -- Global environment
@@ -78,7 +87,7 @@ initialGEnv m = GlobalEnv typeEnv functionEnv dataTypeEnv
 
     -- Top of type
     top :: Type -> Annotation
-    top = flip ATop constrBot . sortAssign
+    top = flip ATop constrBot . sortAssign emptyDEnv
 
     -- ~~~~~~~~~
     -- Datatypes
@@ -90,7 +99,7 @@ initialGEnv m = GlobalEnv typeEnv functionEnv dataTypeEnv
                               (mapFromList dataTypeDestructors)
 
     declDataTypeSort :: Declaration DataType -> (Id, Sort)
-    declDataTypeSort decl = (declarationName decl, dataTypeSort $ declarationValue decl)
+    declDataTypeSort decl = (declarationName decl, dataTypeSort emptyDEnv $ declarationValue decl) `rsInfo` ((show $ declarationName decl) ++ ": " ++ (show . dataTypeSort emptyDEnv $ declarationValue decl))
     
     -- Record field functions (extract field by name)
     dataTypeRecordFuncs :: [(Id, Annotation)]
@@ -155,24 +164,6 @@ lookupReg :: HasCallStack => RegionVar -> RegionEnv -> ConstrIdx
 lookupReg r rEnv = case M.lookup r rEnv of
                       Nothing -> Region r
                       Just ci -> ci
-
--- | Lookup a datatype in the datatype environment
-lookupDataType :: HasCallStack => Id -> DataTypeEnv -> Sort
-lookupDataType name dEnv = case lookupMap name (dtSorts dEnv) of
-                              Nothing -> SortUnit -- TODO: Error?
-                              Just ds -> ds
-
--- | Lookup a datatype constructor in the datatype environment
-lookupStruct :: HasCallStack => Id -> DataTypeEnv -> Annotation
-lookupStruct name dEnv = case lookupMap name (dtStructs dEnv) of
-                              Nothing -> AUnit -- TODO: Error?
-                              Just ds -> ds
-
--- | Lookup a datatype constructor in the datatype environment
-lookupDestruct :: HasCallStack => Id -> DataTypeEnv -> [Annotation]
-lookupDestruct name dEnv = case lookupMap name (dtDestructs dEnv) of
-                              Nothing -> repeat AUnit -- TODO: Error?
-                              Just ds -> ds
 
 
 -- | Insert a function into the global environment

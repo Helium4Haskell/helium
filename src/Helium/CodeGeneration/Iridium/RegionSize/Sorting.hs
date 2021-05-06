@@ -4,6 +4,8 @@ module Helium.CodeGeneration.Iridium.RegionSize.Sorting
 
 import Helium.CodeGeneration.Iridium.RegionSize.Annotation
 import Helium.CodeGeneration.Iridium.RegionSize.Sort
+import Helium.CodeGeneration.Iridium.RegionSize.SortUtils
+import Helium.CodeGeneration.Iridium.RegionSize.DataTypes
 
 import qualified Data.Map as M
 import Data.Either (lefts,rights)
@@ -89,7 +91,7 @@ sort = sort' (-1) M.empty
           sort' d gamma (AQuant   a) = SortQuant <$> sort' (d+1) (envWeaken gamma) a
           sort' d gamma (AInstn a t) = 
               case sort' d gamma a of
-                  Right (SortQuant s) -> Right . sortInstantiate t $ SortQuant s 
+                  Right (SortQuant s) -> Right . sortInstantiate emptyDEnv t $ SortQuant s 
                   Right s -> Left $ "Instantiation on non-quantified sort: " ++ showSort d s
                   err     -> err
 

@@ -7,8 +7,11 @@ import Data.List
 
 import Helium.CodeGeneration.Iridium.Region.RegionVar
 
+import Helium.CodeGeneration.Iridium.RegionSize.DataTypes
 import Helium.CodeGeneration.Iridium.RegionSize.Sort
+import Helium.CodeGeneration.Iridium.RegionSize.SortUtils
 import Helium.CodeGeneration.Iridium.RegionSize.Annotation
+import Helium.CodeGeneration.Iridium.RegionSize.AnnotationUtils
 import Helium.CodeGeneration.Iridium.RegionSize.Constraints
 import Helium.CodeGeneration.Iridium.RegionSize.Utils
 
@@ -120,8 +123,8 @@ application f x = AApl f x
 instantiate :: Annotation -> Type -> Annotation
 instantiate (AQuant anno) ty = eval $ foldAnnAlg annInstAlg anno
   where annInstAlg = idAnnAlg {
-    aLam   = \d s a -> ALam (sortSubstitute d ty s) a,
-    aFix   = \d s a -> AFix (sortSubstitute d ty s) a
+    aLam   = \d s a -> ALam (sortSubstitute emptyDEnv d ty s) a,
+    aFix   = \d s a -> AFix (sortSubstitute emptyDEnv d ty s) a
   } 
 -- Cannot eval
 instantiate a t = AInstn a t
@@ -131,7 +134,7 @@ instantiate a t = AInstn a t
 project :: Int -> Annotation -> Annotation 
 project _   AUnit       = AUnit -- TODO: Check if this is sound, if missing causes an issue in region eval
 project idx (ATuple as) | length as > idx = as !! idx
-                        | otherwise       = rsError $ "Projection-index out of bounds\n Idx: " ++ show idx ++ "\n Annotation: " ++ (show $ ATuple as)
+                        | otherwise       = AUnit -- TODO: Revert to: rsError $ "Projection-index out of bounds\n Idx: " ++ show idx ++ "\n Annotation: " ++ (show $ ATuple as)
 -- Cannot eval
 project idx t = AProj idx t 
 

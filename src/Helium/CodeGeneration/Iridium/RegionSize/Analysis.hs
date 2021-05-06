@@ -10,7 +10,10 @@ import Helium.CodeGeneration.Iridium.Data
 import Helium.CodeGeneration.Core.TypeEnvironment
 
 import Helium.CodeGeneration.Iridium.RegionSize.Annotation
+import Helium.CodeGeneration.Iridium.RegionSize.AnnotationUtils
+import Helium.CodeGeneration.Iridium.RegionSize.DataTypes
 import Helium.CodeGeneration.Iridium.RegionSize.Sort
+import Helium.CodeGeneration.Iridium.RegionSize.SortUtils
 import Helium.CodeGeneration.Iridium.RegionSize.Constraints
 import Helium.CodeGeneration.Iridium.RegionSize.Environments
 import Helium.CodeGeneration.Iridium.RegionSize.Utils
@@ -54,16 +57,16 @@ De Bruijn indices (dbz = de bruijn size):
     dbz+2  : Global fixpoint argument
 -}
 analyseMethod :: GlobalEnv -> (Id, Method) -> (Annotation, Sort)
-analyseMethod gEnv@(GlobalEnv tEnv _ _) (_, method@(Method _ aRegs args _ rRegs _ fstBlock otherBlocks)) =
+analyseMethod gEnv@(GlobalEnv tEnv _ dEnv) (_, method@(Method _ aRegs args _ rRegs _ fstBlock otherBlocks)) =
     let blocks    = (fstBlock:otherBlocks)
         rEnv      = regEnvFromArgs (deBruinSize args) aRegs rRegs
 
         -- Create the local environment
-        initEnv   = initEnvFromArgs args
+        initEnv   = initEnvFromArgs dEnv args
         locals    = methodLocals False tEnv method
         fixIdx    = 0
         localAnnMap = mapFromList $ map (\(idx,local) -> (localName local, AProj idx $ AVar fixIdx)) $ zip [length blocks..] locals
-        localSrtMap = mapFromList $ map (\local       -> (localName local, sortAssign $ typeWeaken (lEnvLamCount initEnv) (localType local))) locals
+        localSrtMap = mapFromList $ map (\local       -> (localName local, sortAssign dEnv $ typeWeaken (lEnvLamCount initEnv) (localType local))) locals
         initEnv'  = initEnv { lEnvAnns = unionMap (lEnvAnns initEnv) localAnnMap
                             , lEnvSrts = unionMap (lEnvSrts initEnv) localSrtMap }
         localEnv  = foldl (\lEnv -> localsOfBlock (Envs gEnv rEnv lEnv)) initEnv' blocks  
@@ -73,7 +76,7 @@ analyseMethod gEnv@(GlobalEnv tEnv _ _) (_, method@(Method _ aRegs args _ rRegs 
         blockAnn = blockAccum (Envs gEnv rEnv localEnv) initBEnv <$> blocks
 
         -- Generate the method annotation
-        (aRegS, argS, rrSort, raSort) = argumentSorts method
+        (aRegS, argS, rrSort, raSort) = argumentSorts dEnv method
         bSorts = const (SortTuple [raSort, SortConstr]) <$> blocks
         lAnnos = map (flip lookupLocalAnn localEnv) locals
         lSorts = map (flip lookupLocalSrt localEnv) locals
@@ -85,7 +88,7 @@ analyseMethod gEnv@(GlobalEnv tEnv _ _) (_, method@(Method _ aRegs args _ rRegs 
                            (wrapBody (last argS) localFix rrSort) 
                            $ init argS
     in ( fAnn
-       , SortLam aRegS . sortAssign $ methodType method) 
+       , SortLam aRegS . sortAssign dEnv $ methodType method) 
 
 -- | Wrap a function body into a AQuant or `A -> P -> (A,C)'
 wrapBody :: Maybe Sort -> Annotation -> Sort -> Effect
@@ -101,38 +104,38 @@ wrapBody mS bAnn rrSort =
     2: Sort of return region
     3: Sort of return type
 -}
-argumentSorts :: Method -> (Sort, [Maybe Sort], Sort, Sort)
-argumentSorts method@(Method _ regArgs args resTy _ _ _ _) = 
+argumentSorts :: DataTypeEnv -> Method -> (Sort, [Maybe Sort], Sort, Sort)
+argumentSorts dEnv method@(Method _ regArgs args resTy _ _ _ _) = 
     let (FunctionType argTy _) = methodFunctionType method
-        argSorts = mapAccumL argumentSortAssign 0 argTy
+        argSorts = mapAccumL (argumentSortAssign dEnv) 0 argTy
         aRegSort = regionVarsToSort regArgs
         rType    = typeWeaken (2*(length $ rights args)-1) $ TStrict resTy
-        rrSort   = regionAssign rType
-        raSort   = sortAssign rType
+        rrSort   = regionAssign dEnv rType
+        raSort   = sortAssign dEnv rType
     in (aRegSort, snd argSorts, rrSort, raSort)
 
 -- | Assign sort to types, return Nothing for a quantor
-argumentSortAssign :: Int -> Either Quantor Type -> (Int, Maybe Sort)
-argumentSortAssign n (Left _)   = (n,Nothing)
-argumentSortAssign n (Right ty) = (n+2,Just $ sortWeaken n $ sortAssign ty)
+argumentSortAssign :: DataTypeEnv -> Int -> Either Quantor Type -> (Int, Maybe Sort)
+argumentSortAssign dEnv n (Left _)   = (n,Nothing)
+argumentSortAssign dEnv n (Right ty) = (n+2,Just $ sortWeaken n $ sortAssign dEnv ty)
 
 -- | Initial enviromentment based on function arguments
 -- TODO: Insert local arg sorts
-initEnvFromArgs :: [Either Quantor Local] -> LocalEnv
-initEnvFromArgs []   = LocalEnv 0 emptyMap emptyMap
-initEnvFromArgs args = let argIdxs = createIdxs 2 $ reverse args
-                           lEnv    = LocalEnv (1 + 2 * (length $ rights args)) emptyMap emptyMap
-                       in foldr insertArgument lEnv argIdxs
+initEnvFromArgs :: DataTypeEnv -> [Either Quantor Local] -> LocalEnv
+initEnvFromArgs dEnv []   = LocalEnv 0 emptyMap emptyMap
+initEnvFromArgs dEnv args = let argIdxs = createIdxs 2 $ reverse args
+                                lEnv    = LocalEnv (1 + 2 * (length $ rights args)) emptyMap emptyMap
+                            in foldr (insertArgument dEnv) lEnv argIdxs
     where createIdxs _ []           = []
           createIdxs n (Left  q:xs) = (Left  q, n) : createIdxs (n+1) xs
           createIdxs n (Right t:xs) = (Right t, n) : createIdxs (n+2) xs
 
 
 -- | Insert method argument into lEnv, ignore quantors 
-insertArgument :: (Either Quantor Local, Int) -> LocalEnv -> LocalEnv
-insertArgument (Left  _    , _) lEnv = lEnv
-insertArgument (Right local, d) lEnv = lEnv { lEnvAnns = insertMap (localName local) (AVar d) (lEnvAnns lEnv)
-                                            , lEnvSrts = insertMap (localName local) (sortAssign . typeWeaken d $ localType local) (lEnvSrts lEnv) }
+insertArgument :: DataTypeEnv -> (Either Quantor Local, Int) -> LocalEnv -> LocalEnv
+insertArgument dEnv (Left  _    , _) lEnv = lEnv
+insertArgument dEnv (Right local, d) lEnv = lEnv { lEnvAnns = insertMap (localName local) (AVar d) (lEnvAnns lEnv)
+                                                 , lEnvSrts = insertMap (localName local) (sortAssign dEnv . typeWeaken d $ localType local) (lEnvSrts lEnv) }
 
 -- | Region environment from additional regions and return regions
 regEnvFromArgs :: Int -> RegionVars -> RegionVars -> RegionEnv
@@ -299,7 +302,7 @@ analyseExpr envs@(Envs gEnv _ lEnv) = go
       -- Primitive expression, does not allocate or cause any effect -> bottom
       go (PrimitiveExpr _ _)      = (AUnit, botEffect) 
       -- No effect, bottom annotation
-      go (Undefined t)            = (ABot . sortAssign $ typeWeaken (lEnvLamCount lEnv) t, botEffect)
+      go (Undefined t)            = (ABot . sortAssign (globDataEnv gEnv) $ typeWeaken (lEnvLamCount lEnv) t, botEffect)
       -- No effect, just annotation of local2
       go (Seq _ local2)           = (lookupLocalAnn local2 lEnv        , botEffect)
       -- Instantiate types in local
