@@ -5,7 +5,7 @@ import qualified Data.Map as M
 
 import Lvm.Common.Id
 import Lvm.Common.IdMap
-import Lvm.Core.Type
+import Lvm.Core.Type hiding (showType, typeReindex, typeWeaken)
 
 import Helium.CodeGeneration.Core.TypeEnvironment
 import Helium.CodeGeneration.Iridium.Data
@@ -94,9 +94,10 @@ initialGEnv m = GlobalEnv typeEnv functionEnv dataTypeEnv
     -- ~~~~~~~~~
     -- Sorts
     dataTypeEnv :: DataTypeEnv
-    dataTypeEnv = DataTypeEnv (mapFromList $ map declDataTypeSort $ moduleDataTypes m)
-                              (mapFromList dataTypeConstructors)
-                              (mapFromList dataTypeDestructors)
+    dataTypeEnv = emptyDEnv
+                 -- DataTypeEnv (mapFromList $ map declDataTypeSort $ moduleDataTypes m)
+                 --             (mapFromList dataTypeConstructors)
+                 --             (mapFromList dataTypeDestructors)
 
     declDataTypeSort :: Declaration DataType -> (Id, Sort)
     declDataTypeSort decl = (declarationName decl, dataTypeSort emptyDEnv $ declarationValue decl) `rsInfo` ((show $ declarationName decl) ++ ": " ++ (show . dataTypeSort emptyDEnv $ declarationValue decl))

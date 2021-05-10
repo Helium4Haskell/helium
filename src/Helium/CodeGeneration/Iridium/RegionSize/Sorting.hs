@@ -29,14 +29,14 @@ envWeaken = M.mapKeys ((+) 1) . M.map (sortWeaken 1)
 -- Sorting
 ----------------------------------------------------------------
 
--- TODO: Still some reindexing bug.. probs goes wrong at SortLam
+-- TODO: Remove the depth or also add quantification depth
 -- | Fills in the sorts on the annotation, returns sort of full annotation
 sort :: Annotation -> Either String Sort
 sort = sort' (-1) M.empty
     where sort' :: Int -> Gamma -> Annotation -> Either String Sort 
           -- Simple cases
           sort' d gamma (AVar     a) = case M.lookup a gamma of
-                                        Nothing -> Left $ "Not in gamma: " ++ (annShow' d $ AVar a)
+                                        Nothing -> Left $ "Not in gamma: " ++ (annShow' (d,0) $ AVar a)
                                         Just s  -> Right s
           sort' _ _     (AReg     _) = Right SortMonoRegion
           sort' _ _     (AConstr  _) = Right SortConstr
@@ -45,7 +45,7 @@ sort = sort' (-1) M.empty
           -- Lambdas & applications
           sort' d gamma (ALam   s a) = 
               let sortR = sort' (d+1) (envInsert s gamma) a
-              in SortLam s <$> sortStrengthen <$> sortR
+              in SortLam s <$> sortR
           sort' d gamma (AApl   f x) = 
               case sort' d gamma f of
                 Right (SortLam sortA sortR) ->
@@ -88,7 +88,7 @@ sort = sort' (-1) M.empty
           sort' d gamma (AJoin  a _) = sort' d gamma a
 
           -- Quantification and instantiation
-          sort' d gamma (AQuant   a) = SortQuant <$> sort' (d+1) (envWeaken gamma) a
+          sort' d gamma (AQuant   a) = SortQuant <$> sort' d gamma a
           sort' d gamma (AInstn a t) = 
               case sort' d gamma a of
                   Right (SortQuant s) -> Right . sortInstantiate emptyDEnv t $ SortQuant s 

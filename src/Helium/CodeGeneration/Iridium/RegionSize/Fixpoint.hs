@@ -10,7 +10,7 @@ import Helium.CodeGeneration.Iridium.RegionSize.Evaluate
 
 -- | Solve all the fixpoints in an annotation
 solveFixpoints :: Annotation -> Annotation
-solveFixpoints = eval . fillTop . foldAnnAlgLams fixAlg
+solveFixpoints = eval . fillTop . foldAnnAlgQuants fixAlg
     where fixAlg = idAnnAlg {
         aFix = \d s as -> ATuple $ solveFixpoint d s
                                  . inlineFixpoint
@@ -23,8 +23,8 @@ solveFixpoints = eval . fillTop . foldAnnAlgLams fixAlg
 
 -- | Solve a group of fixpoints
 solveFixpoint :: Int -> Sort -> [Annotation] -> [Annotation]
-solveFixpoint d s fixes = 
-        let bot = ABot $ sortWeaken d s
+solveFixpoint qD s fixes = 
+        let bot = ABot $ sortWeaken qD s
         in fixIterate 0 bot fixes
     where fixIterate :: Int -> Annotation -> [Annotation] -> [Annotation]
           fixIterate 12 _     _  = mapWithIndex (\ i _ -> AProj i $ ATop s constrBot) fixes
@@ -60,7 +60,7 @@ inlineFixpoint anns = let isRec = checkRecursive <$> anns
                       in fillInNonRec isRec anns <$> anns
 
 fillInNonRec :: [Bool] -> [Annotation] -> Annotation -> Annotation 
-fillInNonRec isRec fixes = foldAnnAlgN 0 fillAlg
+fillInNonRec isRec fixes = foldAnnAlgLamsN 0 fillAlg
     where fillAlg = idAnnAlg {
         aProj = \d i a -> case a of
                             AVar idx -> if idx == d && not (isRec !! i)
@@ -75,7 +75,7 @@ checkRecursive ann = countFixBinds ann > 0
 
 -- | Count usages of a variable
 countFixBinds :: Annotation -> Int
-countFixBinds = foldAnnAlgN 0 countAlg
+countFixBinds = foldAnnAlgLamsN 0 countAlg
     where countAlg = AnnAlg {
         aVar    = \d idx -> if d == idx then 1 else 0,
         aReg    = \_ _   -> 0,

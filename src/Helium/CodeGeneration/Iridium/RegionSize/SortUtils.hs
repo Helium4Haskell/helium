@@ -17,7 +17,7 @@ import Helium.CodeGeneration.Iridium.RegionSize.DataTypes
 import Helium.CodeGeneration.Iridium.RegionSize.Sort
 
 import Lvm.Common.Id
-import Lvm.Core.Type
+import Lvm.Core.Type hiding (showType, typeReindex, typeWeaken)
 import Data.List
 
 ----------------------------------------------------------------
@@ -88,16 +88,17 @@ sortInstantiate dEnv t (SortQuant s) = sortSubstitute dEnv 0 t s
 sortInstantiate dEnv _ s = rsError $ "Tried to instantiate a sort that does not start with SortQuant\nSort:" ++ show s
 
 -- | Instatiate a quantified type in a sort
+-- TODO: Check if type instantiate also strengthens indexes
 sortSubstitute :: DataTypeEnv -> Int -> Type -> Sort -> Sort
 sortSubstitute dEnv subD ty = foldSortAlgN subD instAlg
   where instTypeArgs d ts = map (typeInsantiate d ty) ts
         instAlg = idSortAlg {
-          sortPolyRegion = \d idx ts -> if idx == d 
-                                        then regionAssign' dEnv (instTypeArgs d ts) $ typeWeaken d ty
-                                        else SortPolyRegion idx (instTypeArgs d ts),
-          sortPolySort   = \d idx ts -> if idx == d 
-                                        then sortAssign'   dEnv (instTypeArgs d ts) $ typeWeaken d ty
-                                        else SortPolySort   idx (instTypeArgs d ts) 
+          sortPolyRegion = \d idx ts -> if idx == d
+                                        then regionAssign'  dEnv (instTypeArgs d ts) $ typeWeaken d ty
+                                        else SortPolyRegion (strengthenIdx d idx) (instTypeArgs d ts),
+          sortPolySort   = \d idx ts -> if idx == d
+                                        then sortAssign'  dEnv (instTypeArgs d ts) $ typeWeaken d ty
+                                        else SortPolySort (strengthenIdx d idx) (instTypeArgs d ts) 
         }
 
 
@@ -113,8 +114,8 @@ sortReIndex :: (Depth -> Int -> Int) -- ^ Reindex function
             -> Sort -> Sort
 sortReIndex f annD = foldSortAlgN annD reIdxAlg
   where reIdxAlg = idSortAlg {
-    sortPolyRegion = \d idx ts -> SortPolyRegion (f d idx) $ map (typeReindex $ f d) ts,
-    sortPolySort   = \d idx ts -> SortPolySort   (f d idx) $ map (typeReindex $ f d) ts 
+    sortPolyRegion = \d idx ts -> SortPolyRegion (f d idx) $ map (typeReindex f d) ts,
+    sortPolySort   = \d idx ts -> SortPolySort   (f d idx) $ map (typeReindex f d) ts 
   }
 
 -- | Decrease all unbound indexes by 1
@@ -137,8 +138,7 @@ sortIsRegion :: Sort -> Bool
 sortIsRegion SortMonoRegion       = True
 sortIsRegion (SortPolyRegion _ _) = True
 sortIsRegion (SortUnit)           = False -- TODO: Edge case, it is and is not a region...
-sortIsRegion (SortTuple as)       | as == [] = error "????"
-                                  | otherwise = sortIsRegion $ as !! 0
+sortIsRegion (SortTuple as)       = sortIsRegion $ as !! 0
 sortIsRegion _ = False
 
 -- | Check if a sort is an annotation sort

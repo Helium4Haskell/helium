@@ -3,7 +3,7 @@ where
 
 import Lvm.Common.Id
 import Lvm.Common.IdMap
-import Lvm.Core.Type
+import Lvm.Core.Type hiding (showType, typeReindex, typeWeaken)
 import qualified Lvm.Core.Module as LVMModule
 
 import Helium.CodeGeneration.Iridium.Data

@@ -4,7 +4,7 @@ where
 
 import Lvm.Common.Id
 import Lvm.Common.IdMap
-import Lvm.Core.Type
+import Lvm.Core.Type hiding (showType, typeReindex, typeWeaken)
 
 import Helium.CodeGeneration.Iridium.Data
 import Helium.CodeGeneration.Core.TypeEnvironment
@@ -66,7 +66,7 @@ analyseMethod gEnv@(GlobalEnv tEnv _ dEnv) (_, method@(Method _ aRegs args _ rRe
         locals    = methodLocals False tEnv method
         fixIdx    = 0
         localAnnMap = mapFromList $ map (\(idx,local) -> (localName local, AProj idx $ AVar fixIdx)) $ zip [length blocks..] locals
-        localSrtMap = mapFromList $ map (\local       -> (localName local, sortAssign dEnv $ typeWeaken (lEnvLamCount initEnv) (localType local))) locals
+        localSrtMap = mapFromList $ map (\local       -> (localName local, sortAssign dEnv $ (localType local))) locals
         initEnv'  = initEnv { lEnvAnns = unionMap (lEnvAnns initEnv) localAnnMap
                             , lEnvSrts = unionMap (lEnvSrts initEnv) localSrtMap }
         localEnv  = foldl (\lEnv -> localsOfBlock (Envs gEnv rEnv lEnv)) initEnv' blocks  
@@ -109,15 +109,15 @@ argumentSorts dEnv method@(Method _ regArgs args resTy _ _ _ _) =
     let (FunctionType argTy _) = methodFunctionType method
         argSorts = mapAccumL (argumentSortAssign dEnv) 0 argTy
         aRegSort = regionVarsToSort regArgs
-        rType    = typeWeaken (2*(length $ rights args)-1) $ TStrict resTy
+        rType    = TStrict resTy
         rrSort   = regionAssign dEnv rType
         raSort   = sortAssign dEnv rType
     in (aRegSort, snd argSorts, rrSort, raSort)
 
 -- | Assign sort to types, return Nothing for a quantor
 argumentSortAssign :: DataTypeEnv -> Int -> Either Quantor Type -> (Int, Maybe Sort)
-argumentSortAssign dEnv n (Left _)   = (n,Nothing)
-argumentSortAssign dEnv n (Right ty) = (n+2,Just $ sortWeaken n $ sortAssign dEnv ty)
+argumentSortAssign _    n (Left _)   = (n,Nothing)
+argumentSortAssign dEnv n (Right ty) = (n+2,Just $ sortAssign dEnv ty)
 
 -- | Initial enviromentment based on function arguments
 -- TODO: Insert local arg sorts
@@ -135,7 +135,7 @@ initEnvFromArgs dEnv args = let argIdxs = createIdxs 2 $ reverse args
 insertArgument :: DataTypeEnv -> (Either Quantor Local, Int) -> LocalEnv -> LocalEnv
 insertArgument dEnv (Left  _    , _) lEnv = lEnv
 insertArgument dEnv (Right local, d) lEnv = lEnv { lEnvAnns = insertMap (localName local) (AVar d) (lEnvAnns lEnv)
-                                                 , lEnvSrts = insertMap (localName local) (sortAssign dEnv . typeWeaken d $ localType local) (lEnvSrts lEnv) }
+                                                 , lEnvSrts = insertMap (localName local) (sortAssign dEnv $ localType local) (lEnvSrts lEnv) }
 
 -- | Region environment from additional regions and return regions
 regEnvFromArgs :: Int -> RegionVars -> RegionVars -> RegionEnv
@@ -302,11 +302,11 @@ analyseExpr envs@(Envs gEnv _ lEnv) = go
       -- Primitive expression, does not allocate or cause any effect -> bottom
       go (PrimitiveExpr _ _)      = (AUnit, botEffect) 
       -- No effect, bottom annotation
-      go (Undefined t)            = (ABot . sortAssign (globDataEnv gEnv) $ typeWeaken (lEnvLamCount lEnv) t, botEffect)
+      go (Undefined t)            = (ABot $ sortAssign (globDataEnv gEnv) t, botEffect)
       -- No effect, just annotation of local2
       go (Seq _ local2)           = (lookupLocalAnn local2 lEnv        , botEffect)
       -- Instantiate types in local
-      go (Instantiate local tys)  = (foldl AInstn (local `lookupLocalAnn` lEnv) (typeWeaken (lEnvLamCount lEnv) <$> tys), botEffect) 
+      go (Instantiate local tys)  = (foldl AInstn (local `lookupLocalAnn` lEnv) tys, botEffect) 
       -- Apply all type and variable arguments
       go (Call gFun aRegs args rReg) = funcApplyArgs envs (globalFunctionName gFun `lookupGlobal` gEnv) aRegs args rReg
 
@@ -320,7 +320,7 @@ thunkApplyArg :: LocalEnv
               -> Annotation        -- ^ Function 
               -> Either Type Local -- ^ Argument
               -> (Annotation,Effect)
-thunkApplyArg lEnv _    fAnn (Left ty    ) = (AInstn fAnn $ typeWeaken (lEnvLamCount lEnv) ty, botEffect) 
+thunkApplyArg lEnv _    fAnn (Left ty    ) = (AInstn fAnn ty, botEffect) 
 thunkApplyArg lEnv rReg fAnn (Right local) = liftTuple $ AApl (AApl fAnn $ lookupLocalAnn local lEnv) rReg
 
 -- | Apply a list of arguments to a funtion

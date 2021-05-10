@@ -2,7 +2,7 @@ module Helium.CodeGeneration.Iridium.RegionSize.Evaluate
     ( eval
     ) where 
 
-import Lvm.Core.Type
+import Lvm.Core.Type hiding (showType, typeReindex, typeWeaken)
 import Data.List
 
 import Helium.CodeGeneration.Iridium.Region.RegionVar
@@ -95,22 +95,24 @@ join c1 c2 = joinSort $ jCollect (AJoin c1 c2)
 
 
 -- | Annotation application
+-- TODO: Bug: If lamS == () then region is not removed from constrs or top
 application :: Annotation -> Annotation -> Annotation
-application (ALam lamS f) x | sortIsAnnotation lamS = eval $ annStrengthen $ foldAnnAlgN 0 subsAnnAlg f
-                            | sortIsRegion     lamS = eval $ annStrengthen $ foldAnnAlgN 0 subsRegAlg f
+application (ALam lamS f) x | sortIsAnnotation lamS = eval $ foldAnnAlgN (0,-1) subsAnnAlg f
+                            | sortIsRegion     lamS = eval $ foldAnnAlgN (0,-1) subsRegAlg f
                             | otherwise = rsError "Sort is neither region or annotation!?"
   where -- | Substitute a variable for an annotation
         subsAnnAlg = idAnnAlg {
-          aVar = \d idx -> if d == idx 
-                           then annWeaken (d+1) x -- Weaken indexes
-                           else AVar idx
+          aVar = \(lD,qD) idx -> if lD == idx 
+                                 then annWeaken lD qD x -- Weaken indexes
+                                 else AVar $ strengthenIdx lD idx,
+          aConstr = \(lD,_) c   -> AConstr $ constrStrengthenN lD c
         }
         -- | Substitute a region variable for a region
         subsRegAlg = idAnnAlg {
-          aConstr = \d c   -> AConstr $ regVarSubst d x c,
-          aTop    = \d s c -> ATop s  $ regVarSubst d x c
+          aVar    = \(lD,_) idx -> AVar $ strengthenIdx lD idx,
+          aConstr = \(lD,_) c   -> AConstr $ regVarSubst lD x c,
+          aTop    = \(lD,_) s c -> ATop s  $ regVarSubst lD x c
         }
-
 -- Top and bottom
 application (ATop s vs) x | sortIsRegion s = ATop (sortDropLam s) $ constrAdd (collect Infty x) vs
                           | otherwise      = ATop (sortDropLam s) vs
@@ -121,10 +123,12 @@ application f x = AApl f x
 
 -- | Instantiate a type if it starts with a quantification 
 instantiate :: Annotation -> Type -> Annotation
-instantiate (AQuant anno) ty = eval $ foldAnnAlg annInstAlg anno
+instantiate (AQuant anno) ty = eval $ foldAnnAlgQuantsN 0 annInstAlg anno
   where annInstAlg = idAnnAlg {
-    aLam   = \d s a -> ALam (sortSubstitute emptyDEnv d ty s) a,
-    aFix   = \d s a -> AFix (sortSubstitute emptyDEnv d ty s) a
+    aBot   = \qD s   -> ABot (sortSubstitute emptyDEnv qD ty s),
+    aTop   = \qD s c -> ATop (sortSubstitute emptyDEnv qD ty s) c,
+    aLam   = \qD s a -> ALam (sortSubstitute emptyDEnv qD ty s) a,
+    aFix   = \qD s a -> AFix (sortSubstitute emptyDEnv qD ty s) a
   } 
 -- Cannot eval
 instantiate a t = AInstn a t
@@ -141,7 +145,7 @@ project idx t = AProj idx t
 
 -- | Break up top into a value
 top :: Sort -> Constr -> Annotation
-top SortUnit       c = AUnit 
+top SortUnit       _ = AUnit 
 top SortConstr     c = AConstr c 
 top (SortTuple ss) c = ATuple $ flip ATop c <$> ss
 top (SortQuant s ) c = AQuant $ ATop s c
@@ -188,12 +192,12 @@ operatorSort op evalF xs = -- Compose list (tops, bots then others)
 
 -- | Initialize region variables in a constraint set
 regVarSubst :: Int -> Annotation -> Constr -> Constr 
-regVarSubst d ann c = foldl constrAdd c' insts
+regVarSubst d ann c = foldl constrAdd (constrStrengthenN d c') (constrWeaken d <$> insts)
   where cIdxs = constrIdxWithVar d c       -- Indexes that contain the to-be instantiated var
         ns    = flip constrIdx c <$> cIdxs -- Get bounds on indexes
-        c'    = foldr constrRem c cIdxs    -- Remove cIdxs from c
-        aIdxs = eval <$> regVarInst ann <$> (constrIdxToAnn <$> cIdxs)              -- Get new indexes
-        insts = constrWeaken (d+1) <$> uncurry collect <$> zip ns aIdxs  -- Instantiate and weaken
+        c'    = foldr constrRem c cIdxs             -- Remove target indexes (cIdxs) from c
+        aIdxs = eval <$> regVarInst ann <$> (constrIdxToAnn <$> cIdxs) -- Make new indexes
+        insts = uncurry collect <$> zip ns aIdxs    -- Instantiate variables
         
         regVarInst :: Annotation -> Annotation -> Annotation
         regVarInst inst (AVar _)    = inst

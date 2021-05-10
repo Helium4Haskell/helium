@@ -2,6 +2,7 @@ module Helium.CodeGeneration.Iridium.RegionSize.AnnotationUtils
   ( liftTuple, unliftTuple,
     collect,
     annWeaken, annStrengthen,
+    annStrengthenAnns, annStrengthenTys,
     isConstr, isTop, isBot, constrIdxToAnn,
     annRemLocalRegs
   ) where
@@ -22,26 +23,36 @@ import qualified Data.Map as M
 type Depth = Int
 
 -- | Re-index the debruin indices of an annotation
-annReIndex :: (Depth -> Int -> Int) -- ^ Reindex function (depth in body to idx to idx)
+annReIndex :: (Depth -> Int -> Int) -- ^ Reindex function for annotation vars
+           -> (Depth -> Int -> Int) -- ^ Reindex function for type vars
            -> Annotation -> Annotation
-annReIndex f = foldAnnAlg reIdxAlg
+annReIndex fA fT = foldAnnAlg reIdxAlg
   where reIdxAlg = idAnnAlg {
-    aLam    = \d s a -> ALam (sortReIndex f d s) a,
-    aFix    = \d s a -> AFix (sortReIndex f d s) a,
-    aConstr = \d c   -> AConstr (constrReIndex f d c), 
-    aTop    = \d s c -> ATop (sortReIndex f d s) (constrReIndex f d c), 
-    aBot    = \d s   -> ABot (sortReIndex f d s), 
-    aVar    = \d idx -> AVar (f d idx)
+    aLam    = \(lD,qD) s a -> ALam (sortReIndex fT qD s) a,
+    aFix    = \(lD,qD) s a -> AFix (sortReIndex fT qD s) a,
+    aConstr = \(lD,qD) c   -> AConstr (constrReIndex fA lD c), 
+    aTop    = \(lD,qD) s c -> ATop (sortReIndex fT qD s) (constrReIndex fA lD c), 
+    aBot    = \(lD,qD) s   -> ABot (sortReIndex fT qD s), 
+    aVar    = \(lD,qD) idx -> AVar (fA lD idx)
   }
 
 -- | Increase all unbound variables by the substitution depth
-annWeaken :: Depth -- ^ Depth of the substitution
+annWeaken :: Depth -- ^ Lambda depth
+          -> Depth -- ^ Quantification depth
           -> Annotation -> Annotation
-annWeaken subD = annReIndex (weakenIdx subD)
+annWeaken lD qD = annReIndex (weakenIdx lD) (weakenIdx qD)
 
 -- | Decrease all unbound indexes by 1
 annStrengthen :: Annotation -> Annotation
-annStrengthen = annReIndex strengthenIdx
+annStrengthen = annReIndex strengthenIdx strengthenIdx
+
+-- | Decrease all unbound indexes by 1
+annStrengthenAnns :: Annotation -> Annotation
+annStrengthenAnns = annReIndex strengthenIdx strengthenIdx -- this one
+
+-- | Decrease all unbound indexes by 1
+annStrengthenTys :: Annotation -> Annotation
+annStrengthenTys = annReIndex (id . const) strengthenIdx
 
 ----------------------------------------------------------------
 -- Annotation utilities

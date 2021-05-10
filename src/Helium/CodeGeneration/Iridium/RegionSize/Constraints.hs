@@ -1,7 +1,7 @@
 module Helium.CodeGeneration.Iridium.RegionSize.Constraints
     (ConstrIdx(..), Constr, Bound(..),
     constrShow, constrIdxShow,
-    constrReIndex, constrWeaken, 
+    constrReIndex, constrWeaken, constrStrengthenN, 
     constrIdxWithVar,
     constrBot, constrJoin, constrAdd, constrIdx, constrRem, constrInst, 
     constrOne, constrInfty,
@@ -70,6 +70,10 @@ constrReIndex f annD = M.mapKeys keyReIndex
 -- | Weaken the debruijn indices of a cosntraint set 
 constrWeaken :: Int -> Constr -> Constr
 constrWeaken n = constrReIndex (weakenIdx n) (-1)
+
+-- | Weaken the debruijn indices of a cosntraint set 
+constrStrengthenN :: Int -> Constr -> Constr
+constrStrengthenN = constrReIndex strengthenIdx
 
 ----------------------------------------------------------------
 -- Constraint utilities

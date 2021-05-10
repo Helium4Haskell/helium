@@ -9,6 +9,7 @@ import Helium.CodeGeneration.Iridium.RegionSize.Constraints
 ----------------------------------------------------------------
 -- Fill in region sizes
 ----------------------------------------------------------------
+
 transform :: Constr -> Method -> Method
 transform bounds (Method a b c d e f fstBlock otherBlocks) =
     let fstBlock'    = transformBlock bounds     fstBlock

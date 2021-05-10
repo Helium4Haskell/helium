@@ -3,7 +3,7 @@ module Helium.CodeGeneration.Iridium.RegionSize.PassRegionSize
 where
 
 import Lvm.Common.Id
-import Lvm.Core.Type
+import Lvm.Core.Type hiding (showType, typeReindex, typeWeaken)
 
 import Helium.CodeGeneration.Iridium.Data
 import Helium.CodeGeneration.Iridium.BindingGroup
@@ -85,13 +85,13 @@ temp modName gEnv methods = do
     -- Solve the fixpoints
     let fixed = solveFixpoints simpl
     -- Check if the resulting annotation is well-sroted
-    let sorts = sort fixed
-    fixed' <- case sorts of
-          Left  _ -> return $ flip ATop constrBot . methodSortAssign (globDataEnv gEnv) <$> (snd <$> methods) 
-          Right _ -> return $ unsafeUnliftTuple fixed
+    -- let sorts = sort fixed
+    -- fixed' <- case sorts of
+    --       Left  _ -> return $ flip ATop constrBot . methodSortAssign (globDataEnv gEnv) <$> (snd <$> methods) 
+    --       Right _ -> return $ unsafeUnliftTuple fixed
     
     -- Fix the annotations of zero arity definitions
-    let zerod = uncurry fixZeroArity <$> zip methods fixed'
+    let zerod = uncurry fixZeroArity <$> zip methods (unsafeUnliftTuple fixed)
     
     -- Update the global environment with the found annotations
     let gEnv' = foldr (uncurry insertGlobal) gEnv $ zip (fst <$> methods) zerod

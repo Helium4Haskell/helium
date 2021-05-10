@@ -2,7 +2,10 @@
 
 module Helium.CodeGeneration.Iridium.RegionSize.Annotation
   ( Annotation(..), Effect, pattern AUnit, annShow, annShow',
-    AnnAlg(..), foldAnnAlg, foldAnnAlgN, foldAnnAlgLams, idAnnAlg
+    AnnAlg(..), foldAnnAlg, foldAnnAlgN, 
+    foldAnnAlgLams, foldAnnAlgLamsN,
+    foldAnnAlgQuants, foldAnnAlgQuantsN,
+    idAnnAlg
   ) where
 
 import Helium.CodeGeneration.Iridium.Region.RegionVar
@@ -12,9 +15,8 @@ import Helium.CodeGeneration.Iridium.RegionSize.Sort
 import Helium.CodeGeneration.Iridium.RegionSize.Utils
 import Helium.CodeGeneration.Iridium.RegionSize.Type
 
-import qualified Data.Map as M
 import Data.List
-import Lvm.Core.Type
+import Lvm.Core.Type hiding (showType, typeReindex, typeWeaken)
 
 ----------------------------------------------------------------
 -- Annotation data type
@@ -52,31 +54,31 @@ pattern AUnit = ATuple []
 instance Show Annotation where
   show = cleanTUP . annShow
 
-
 annShow :: Annotation -> String    
-annShow = annShow' $ -1
+annShow = annShow' $ (-1,-1)
 
-annShow' :: Int -> Annotation -> String    
-annShow' n = foldAnnAlgN n showAlg
-     where showAlg = AnnAlg {
-        aVar    = \d idx -> annVarName (d - idx),
-        aReg    = \_ idx -> show idx,
-        aLam    = \d s a -> "(λ"++ annVarName (d+1) ++":"++ showSort d s ++ ".\n" ++ indent "  " a ++ ")",
-        aApl    = \_ a b -> a ++ "<" ++ indent " "  b ++ " >",
-        aUnit   = \_     -> "TUP()",
-        aTuple  = \_ as  -> "TUP(" ++ intercalate (if noTupleBreak (as !! 0) then "," else "\n,") as ++ ")",
-        aProj   = \_ i a -> "π_" ++ show i ++ "[" ++ a ++ "]",
-        aAdd    = \_ a b -> "(" ++ a ++ " ⊕  " ++ b ++ ")",
-        aMinus  = \_ a r -> "(" ++ a ++ " \\ " ++ show r ++ ")",
-        aJoin   = \_ a b -> "(" ++ a ++ " ⊔  " ++ b ++ ")",
-        aQuant  = \d a   -> "(∀ " ++ typeVarName (d+1) ++ "." ++ a ++ ")",
-        aInstn  = \d a t -> a ++ " {" ++ showTypeN d t ++ "}",
-        aTop    = \d s c -> "T[" ++ (constrShow d c) ++ ":" ++ showSort d s ++ "]",
-        aBot    = \d s   -> "⊥[" ++ showSort d s ++ "]",
-        aFix    = \d s a -> "fix " ++ annVarName (d+1) ++ " : " ++ showSort d s 
-                                   ++ ".\n[" ++ (intercalate ",\n" $ mapWithIndex (\i str -> show i ++ ": " ++ str) $ indent "  " <$> a) ++ "]",
-        aConstr = \d c   -> constrShow d c
-      }
+annShow' :: (Int,Int) -> Annotation -> String     
+annShow' n = foldAnnAlgN n showAlg 
+     where showAlg = AnnAlg { 
+        aVar    = \(lD,_ ) idx -> annVarName (lD - idx), 
+        aReg    = \(_ ,_ ) reg -> show reg, 
+        aLam    = \(lD,qD) s a -> "(λ"++ annVarName (lD+1) ++":"++ showSort qD s ++ ".\n" ++ indent "  " a ++ ")", 
+        aApl    = \(_, _ ) a b -> a ++ "<" ++ indent " "  b ++ " >", 
+        aUnit   = \(_ ,_ )     -> "TUP()", 
+        aTuple  = \(_ ,_ ) as  -> "TUP(" ++ intercalate (if noTupleBreak (as !! 0) then "," else "\n,") as ++ ")", 
+        aProj   = \(_ ,_ ) i a -> "π_" ++ show i ++ "[" ++ a ++ "]", 
+        aAdd    = \(_ ,_ ) a b -> "(" ++ a ++ " ⊕  " ++ b ++ ")", 
+        aMinus  = \(_ ,_ ) a r -> "(" ++ a ++ " \\ " ++ show r ++ ")", 
+        aJoin   = \(_ ,_ ) a b -> "(" ++ a ++ " ⊔  " ++ b ++ ")", 
+        aQuant  = \(_ ,qD) a   -> "(∀ " ++ typeVarName (qD+1) ++ "." ++ a ++ ")", 
+        aInstn  = \(_ ,qD) a t -> a ++ " {" ++ showTypeN qD t ++ "}", 
+        aTop    = \(_ ,qD) s c -> "T[" ++ (constrShow qD c) ++ ":" ++ showSort qD s ++ "]", 
+        aBot    = \(_ ,qD) s   -> "⊥[" ++ showSort qD s ++ "]", 
+        aFix    = \(lD,qD) s a -> "fix " ++ annVarName (lD+1) ++ " : " ++ showSort qD s  
+                                         ++ ".\n[" ++ (intercalate ",\n" $ mapWithIndex (\i str -> show i ++ ": " ++ str) 
+                                          $ indent "  " <$> a) ++ "]", 
+        aConstr = \(lD,_ ) c   -> constrShow lD c 
+      } 
 
 ----------------------------------------------------------------
 -- Annotation algebra
@@ -84,27 +86,27 @@ annShow' n = foldAnnAlgN n showAlg
 
 type Depth = Int
 
-data AnnAlg a = 
+data AnnAlg b a = 
   AnnAlg {
-    aVar    :: Depth -> Int -> a,         
-    aReg    :: Depth -> RegionVar -> a,         
-    aLam    :: Depth -> Sort -> a -> a,
-    aApl    :: Depth -> a -> a -> a,
-    aConstr :: Depth -> Constr -> a,    
-    aUnit   :: Depth -> a,
-    aTuple  :: Depth -> [a] -> a,
-    aProj   :: Depth -> Int -> a -> a,
-    aAdd    :: Depth -> a -> a -> a,
-    aMinus  :: Depth -> a -> RegionVar -> a,
-    aJoin   :: Depth -> a -> a -> a,
-    aQuant  :: Depth -> a -> a,
-    aInstn  :: Depth -> a -> Type -> a,
-    aTop    :: Depth -> Sort -> Constr -> a,
-    aBot    :: Depth -> Sort -> a,
-    aFix    :: Depth -> Sort -> [a] -> a
+    aVar    :: b -> Int -> a,         
+    aReg    :: b -> RegionVar -> a,         
+    aLam    :: b -> Sort -> a -> a,
+    aApl    :: b -> a -> a -> a,
+    aConstr :: b -> Constr -> a,    
+    aUnit   :: b -> a,
+    aTuple  :: b -> [a] -> a,
+    aProj   :: b -> Int -> a -> a,
+    aAdd    :: b -> a -> a -> a,
+    aMinus  :: b -> a -> RegionVar -> a,
+    aJoin   :: b -> a -> a -> a,
+    aQuant  :: b -> a -> a,
+    aInstn  :: b -> a -> Type -> a,
+    aTop    :: b -> Sort -> Constr -> a,
+    aBot    :: b -> Sort -> a,
+    aFix    :: b -> Sort -> [a] -> a
   }
 
-idAnnAlg :: AnnAlg Annotation
+idAnnAlg :: AnnAlg a Annotation
 idAnnAlg = AnnAlg {
   aVar    = \_ -> AVar   ,
   aReg    = \_ -> AReg   ,
@@ -124,27 +126,42 @@ idAnnAlg = AnnAlg {
   aFix    = \_ -> AFix   
 }
 
+
+
 -- | Start folding from default depth (-1)
-foldAnnAlg :: AnnAlg a -> Annotation -> a
-foldAnnAlg = foldAnnAlgN (-1)
+foldAnnAlg :: AnnAlg (Int,Int) a -> Annotation -> a
+foldAnnAlg = foldAnnAlgN (-1,-1)
 
 -- | Increase depth at lambdas and quantifications
-foldAnnAlgN :: Int -> AnnAlg a -> Annotation -> a
-foldAnnAlgN = foldAnnAlgN' (+1) (+1)
+foldAnnAlgN :: (Int,Int) -> AnnAlg (Int,Int) a -> Annotation -> a
+foldAnnAlgN = foldAnnAlgN' (\(a,b) -> (a+1,b)) (\(a,b) -> (a,b+1))
+
+
 
 -- | Start folding from default depth (-1)
-foldAnnAlgLams :: AnnAlg a -> Annotation -> a
+foldAnnAlgLams :: AnnAlg Int a -> Annotation -> a
 foldAnnAlgLams = foldAnnAlgLamsN (-1)
 
 -- | Increase depth only at lambdas (thus also fixpoints)
-foldAnnAlgLamsN :: Int -> AnnAlg a -> Annotation -> a
+foldAnnAlgLamsN :: Int -> AnnAlg Int a -> Annotation -> a
 foldAnnAlgLamsN = foldAnnAlgN' (+1) (+0)
 
 
+
+-- | Start folding from default depth (-1)
+foldAnnAlgQuants :: AnnAlg Int a -> Annotation -> a
+foldAnnAlgQuants = foldAnnAlgQuantsN (-1)
+
+-- | Increase depth only at lambdas (thus also fixpoints)
+foldAnnAlgQuantsN :: Int -> AnnAlg Int a -> Annotation -> a
+foldAnnAlgQuantsN = foldAnnAlgN' (+0) (+1)
+
+
+
 -- | Generic fold over annotations 
-foldAnnAlgN' :: (Int -> Int) -- ^ Increment function for lams
-             -> (Int -> Int) -- ^ Increment function for quants
-             -> Int -> AnnAlg a -> Annotation -> a
+foldAnnAlgN' :: (a -> a) -- ^ Increment function for lams
+             -> (a -> a) -- ^ Increment function for quants
+             -> a -> AnnAlg a b -> Annotation -> b
 foldAnnAlgN' incrLam incrQuant n alg ann = go n ann
   where go d (AVar   idx) = aVar    alg d idx
         go d (AReg   idx) = aReg    alg d idx

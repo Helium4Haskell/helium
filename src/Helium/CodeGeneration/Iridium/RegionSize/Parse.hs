@@ -1,7 +1,7 @@
 module Helium.CodeGeneration.Iridium.RegionSize.Parse
 where
 
-import Lvm.Core.Type
+import Lvm.Core.Type hiding (showType, typeReindex, typeWeaken)
 
 import Helium.CodeGeneration.Iridium.Parse.Parser
 import Helium.CodeGeneration.Iridium.Parse.Type
@@ -15,6 +15,7 @@ import Helium.CodeGeneration.Iridium.RegionSize.Constraints
 import Data.List (elemIndex)
 import Data.Map (fromList)
 
+-- | TODO: Split names into two: Quants and vars 
 -- | Parse an annotation
 pAnnotation :: [String] -> Parser Annotation
 pAnnotation names = do
