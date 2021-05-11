@@ -52,9 +52,9 @@ dataTypeSort :: DataTypeEnv -> DataType -> Sort
 dataTypeSort dEnv (DataType structs) = SortTuple . concat $ dataStructSort dEnv <$> structs
 
 dataStructSort :: DataTypeEnv -> Declaration DataTypeConstructorDeclaration -> [Sort]
-dataStructSort dEnv (Declaration _ _ _ _ (DataTypeConstructorDeclaration ty _)) =
+dataStructSort dEnv (Declaration name _ _ _ (DataTypeConstructorDeclaration ty _)) =
   let (args, _) = typeExtractFunction $ typeRemoveQuants ty
-  in sortAssign dEnv <$> args
+  in sortAssign dEnv <$> args `rsInfo` show name
 
 ----------------------------------------------------------------
 -- Global environment
@@ -91,36 +91,40 @@ initialGEnv m = GlobalEnv typeEnv functionEnv dataTypeEnv
     -- ~~~~~~~~~
     -- Datatypes
     -- ~~~~~~~~~
-    -- Sorts
-    dataTypeEnv :: DataTypeEnv
-    dataTypeEnv = emptyDEnv
-                 -- DataTypeEnv (mapFromList $ map declDataTypeSort $ moduleDataTypes m)
-                 --             (mapFromList dataTypeConstructors)
-                 --             (mapFromList dataTypeDestructors)
 
-    declDataTypeSort :: Declaration DataType -> (Id, Sort)
-    declDataTypeSort decl = (declarationName decl, dataTypeSort emptyDEnv $ declarationValue decl) `rsInfo` ((show $ declarationName decl) ++ ": " ++ (show . dataTypeSort emptyDEnv $ declarationValue decl))
-    
-    -- Record field functions (extract field by name)
-    dataTypeRecordFuncs :: [(Id, Annotation)]
-    dataTypeRecordFuncs = concat $ dataTypeRecordFuncs' <$> moduleDataTypes m
-    
-    dataTypeRecordFuncs' :: Declaration DataType -> [(Id, Annotation)]
-    dataTypeRecordFuncs' dt = makeDataTypeRecordFields (declarationName dt `lookupDataType` dataTypeEnv) (declarationValue dt)
-    
+    dataTypeEnv :: DataTypeEnv
+    dataTypeEnv = DataTypeEnv declDataTypeSorts dataTypeConstructors dataTypeDestructors
+
+    -- Data type sorts
+    declDataTypeSorts :: IdMap Sort
+    declDataTypeSorts = mapFromList $ map declDataTypeSorts' $ moduleDataTypes m
+
+    declDataTypeSorts' :: Declaration DataType -> (Id, Sort)
+    declDataTypeSorts' decl = (declarationName decl, dataTypeSort recDEnv $ declarationValue decl)
+
     -- Constructor annotations
-    dataTypeConstructors :: [(Id, Annotation)]
-    dataTypeConstructors = concat $ dataTypeConstructors' <$> moduleDataTypes m
+    dataTypeConstructors :: IdMap Annotation
+    dataTypeConstructors = mapFromList $ concat $ dataTypeConstructors' <$> moduleDataTypes m
     
     dataTypeConstructors' :: Declaration DataType -> [(Id, Annotation)]
-    dataTypeConstructors' dt = makeDataTypeConstructors (declarationName dt `lookupDataType` dataTypeEnv) (declarationValue dt)
+    dataTypeConstructors' dt = makeDataTypeConstructors (declarationName dt `findMap` declDataTypeSorts) (declarationValue dt)
     
    -- Destructor annotations
-    dataTypeDestructors :: [(Id, [Annotation])]
-    dataTypeDestructors = concat $ dataTypeDestructors' <$> moduleDataTypes m
+    dataTypeDestructors :: IdMap [Annotation]
+    dataTypeDestructors = mapFromList $ concat $ dataTypeDestructors' <$> moduleDataTypes m
     
     dataTypeDestructors' :: Declaration DataType -> [(Id, [Annotation])]
-    dataTypeDestructors' dt = makeDataTypeDestructors (declarationName dt `lookupDataType` dataTypeEnv) (declarationValue dt)
+    dataTypeDestructors' dt = makeDataTypeDestructors (declarationName dt `findMap` declDataTypeSorts) (declarationValue dt)
+
+
+    -- Environment used for the recursive positions of data types
+    recDEnv :: DataTypeEnv
+    recDEnv = DataTypeEnv (mapFromList $ map makeRecDataTypeSort $ moduleDataTypes m)
+                          emptyMap
+                          emptyMap
+
+    makeRecDataTypeSort ::  Declaration DataType -> (Id, Sort)
+    makeRecDataTypeSort decl = (declarationName decl, foldr (const SortQuant) SortUnit . dataTypeQuantors $ declarationValue decl)
 
 ----------------------------------------------------------------
 -- Environment interface functions

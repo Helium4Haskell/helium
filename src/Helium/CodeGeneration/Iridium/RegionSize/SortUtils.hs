@@ -86,20 +86,19 @@ regionAssign' dEnv ts t = rsError $ "regionAssign: No pattern match: " ++ showTy
 -- | Instatiate a type argument, sort should start wit SortQuant
 sortInstantiate :: DataTypeEnv -> Type -> Sort -> Sort
 sortInstantiate dEnv t (SortQuant s) = sortSubstitute dEnv 0 t s
-sortInstantiate dEnv _ s = rsError $ "Tried to instantiate a sort that does not start with SortQuant\nSort:" ++ show s
+sortInstantiate _    _ s = rsError $ "Tried to instantiate a sort that does not start with SortQuant\nSort:" ++ show s
 
 -- | Instatiate a quantified type in a sort
--- TODO: Check if type instantiate also strengthens indexes
 sortSubstitute :: DataTypeEnv -> Int -> Type -> Sort -> Sort
 sortSubstitute dEnv subD ty = foldSortAlgN subD instAlg
-  where instTypeArgs d ts = map (typeInsantiate d ty) ts
+  where instTypeArgs d ts = typeSubstitute d (typeWeaken d ty) <$> ts
         instAlg = idSortAlg {
-          sortPolyRegion = \d idx ts -> if idx == d
-                                        then regionAssign'  dEnv (instTypeArgs d ts) $ typeWeaken d ty
-                                        else SortPolyRegion (strengthenIdx d idx) (instTypeArgs d ts),
-          sortPolySort   = \d idx ts -> if idx == d
-                                        then sortAssign'  dEnv (instTypeArgs d ts) $ typeWeaken d ty
-                                        else SortPolySort (strengthenIdx d idx) (instTypeArgs d ts) 
+          sortPolyRegion = \qD idx ts -> if idx == qD
+                                         then regionAssign'  dEnv (instTypeArgs qD ts) $ typeWeaken qD ty
+                                         else SortPolyRegion (strengthenIdx qD idx) (instTypeArgs qD ts),
+          sortPolySort   = \qD idx ts -> if idx == qD
+                                         then sortAssign'  dEnv (instTypeArgs qD ts) $ typeWeaken qD ty
+                                         else SortPolySort (strengthenIdx qD idx) (instTypeArgs qD ts) 
         }
 
 

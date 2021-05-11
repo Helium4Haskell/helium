@@ -22,14 +22,11 @@ import Data.Either (lefts, rights)
 -- Data type environment
 ----------------------------------------------------------------
 
-instance Show a => Show (IdMap a) where
-  show map = show $ listFromMap map
-
 data DataTypeEnv = DataTypeEnv { 
   dtSorts     :: !(IdMap Sort),        -- ^ Datatype id -> sort
   dtStructs   :: !(IdMap Annotation),  -- ^ Constructor id -> constructor annotation
   dtDestructs :: !(IdMap [Annotation]) -- ^ Constructor id -> destructor annotation
-} deriving (Show)
+}
 
 emptyDEnv :: DataTypeEnv
 emptyDEnv = DataTypeEnv emptyMap emptyMap emptyMap
@@ -41,19 +38,19 @@ emptyDEnv = DataTypeEnv emptyMap emptyMap emptyMap
 -- | Lookup a datatype in the datatype environment
 lookupDataType :: HasCallStack => Id -> DataTypeEnv -> Sort
 lookupDataType name dEnv = case lookupMap name (dtSorts dEnv) of
-                              Nothing -> SortUnit -- TODO: Error?
+                              Nothing -> rsError $ "lookupDataType: Datatype not in environment: " ++ show name
                               Just ds -> ds
 
 -- | Lookup a datatype constructor in the datatype environment
 lookupStruct :: HasCallStack => Id -> DataTypeEnv -> Annotation
 lookupStruct name dEnv = case lookupMap name (dtStructs dEnv) of
-                              Nothing -> AUnit -- TODO: Error?
+                              Nothing -> rsError $ "lookupStruct: Datatype not in environment: " ++ show name
                               Just ds -> ds
 
 -- | Lookup a datatype constructor in the datatype environment
 lookupDestruct :: HasCallStack => Id -> DataTypeEnv -> [Annotation]
 lookupDestruct name dEnv = case lookupMap name (dtDestructs dEnv) of
-                              Nothing -> repeat AUnit -- TODO: Error?
+                              Nothing -> rsError $ "lookupDestruct: Datatype not in environment: " ++ show name
                               Just ds -> ds
 
 ----------------------------------------------------------------

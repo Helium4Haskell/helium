@@ -1,10 +1,16 @@
 module Helium.CodeGeneration.Iridium.BindingGroup where
 
 import Data.List
+
 import Lvm.Common.Id
 import Lvm.Common.IdMap
+import Lvm.Core.Type
+
 import qualified Data.Graph as Graph
+import Data.Either (rights)
+
 import Helium.CodeGeneration.Iridium.Data
+import Helium.CodeGeneration.Core.TypeEnvironment
 
 data BindingGroup a
   = BindingRecursive [Declaration a]
@@ -28,6 +34,10 @@ bindingGroups dependencies = map toBindingGroup . Graph.stronglyConnComp . map t
     toNode decl@(Declaration name _ _ _ a) = (decl, name, dependencies a)
     toBindingGroup (Graph.AcyclicSCC decl) = BindingNonRecursive decl
     toBindingGroup (Graph.CyclicSCC decls) = BindingRecursive $ sortOn declarationName decls
+
+----------------------------------------------------------------
+-- Methods
+----------------------------------------------------------------
 
 methodBindingGroups :: [Declaration Method] -> [BindingGroup Method]
 methodBindingGroups = bindingGroups methodDependencies
@@ -76,3 +86,28 @@ methodBindingGroups = bindingGroups methodDependencies
 mapBindingGroup :: (Declaration a -> Declaration b) -> BindingGroup a -> BindingGroup b
 mapBindingGroup f (BindingNonRecursive a) = BindingNonRecursive $ f a
 mapBindingGroup f (BindingRecursive as) = BindingRecursive $ map f as
+
+----------------------------------------------------------------
+-- DataTypes
+----------------------------------------------------------------
+
+dataTypeBindingGroups :: [Declaration DataType] -> [BindingGroup DataType]
+dataTypeBindingGroups = bindingGroups dataTypeDependencies
+   where 
+    dataTypeDependencies :: DataType -> [Id]
+    dataTypeDependencies (DataType decls) = concat $ constructorDependencies <$> (declarationValue <$> decls)
+    
+    constructorDependencies :: DataTypeConstructorDeclaration -> [Id]
+    constructorDependencies (DataTypeConstructorDeclaration ty _) = 
+       let (FunctionType args _) = extractFunctionTypeNoSynonyms ty 
+       in concat $ typeDependencies <$> rights args
+    
+    typeDependencies :: Type -> [Id]
+    typeDependencies (TVar _)             = []
+    typeDependencies (TCon (TConTuple _)) = [] 
+    typeDependencies (TCon (TConFun))     = [] 
+    typeDependencies (TCon (TConTypeClassDictionary name)) = [name] 
+    typeDependencies (TCon (TConDataType name))            = [name] 
+    typeDependencies (TForall _ _ t) = typeDependencies t
+    typeDependencies (TStrict t)     = typeDependencies t
+    typeDependencies (TAp t1 t2)     = typeDependencies t1 ++ typeDependencies t2

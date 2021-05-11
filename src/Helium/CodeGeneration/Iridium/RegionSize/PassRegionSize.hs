@@ -28,11 +28,11 @@ import qualified Data.Map as M
 -- | Infer the size of regions
 passRegionSize :: NameSupply -> Module -> IO Module
 passRegionSize _ m = do 
-  if(((stringFromId $ moduleName m) == "LvmLang"        && True)
-    || ((stringFromId $ moduleName m) == "HeliumLang"   && True) 
-    || ((stringFromId $ moduleName m) == "PreludePrim"  && True)
-    || ((stringFromId $ moduleName m) == "Prelude"      && True)
-    || ((stringFromId $ moduleName m) == "LvmException" && True))
+  if(((stringFromId $ moduleName m) == "LvmLang"        && False)
+    || ((stringFromId $ moduleName m) == "HeliumLang"   && False) 
+    || ((stringFromId $ moduleName m) == "PreludePrim"  && False)
+    || ((stringFromId $ moduleName m) == "Prelude"      && False)
+    || ((stringFromId $ moduleName m) == "LvmException" && False))
   then do
     return m
   else do

@@ -1,7 +1,7 @@
 module Helium.CodeGeneration.Iridium.RegionSize.Type
     ( showTypeN, 
       TypeAlg(..), idTypeAlg, foldTypeAlg, foldTypeAlgN,
-      typeInsantiate, typeRemoveQuants    
+      typeRemoveQuants
     ) where
 
 import Helium.CodeGeneration.Iridium.RegionSize.Utils
@@ -54,20 +54,6 @@ foldTypeAlgN n alg = go n
           go d (TStrict t1   ) =  tStrict alg d (go d t1)
           go d (TVar    x    ) =  tVar    alg d x
           go d (TCon    tc   ) =  tCon    alg d tc
-
-----------------------------------------------------------------
--- Type substitution
-----------------------------------------------------------------
-
--- | Instantiate a type within a type
-typeInsantiate :: Depth -- ^ Depth in sort 
-               -> Type -> Type -> Type
-typeInsantiate subD subT = foldTypeAlgN subD instAlg
-  where instAlg = idTypeAlg {
-    tVar = \d idx -> if d == idx
-                     then typeSubstitutions d [] subT
-                     else TVar idx
-  }
 
 ----------------------------------------------------------------
 -- Type utils

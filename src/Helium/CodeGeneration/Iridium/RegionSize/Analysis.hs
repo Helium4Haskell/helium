@@ -19,7 +19,6 @@ import Helium.CodeGeneration.Iridium.RegionSize.Environments
 import Helium.CodeGeneration.Iridium.RegionSize.Utils
 
 import Data.List(mapAccumL)
-import Data.Either (rights)
 import qualified Data.Map as M
 
 ----------------------------------------------------------------
@@ -105,7 +104,7 @@ wrapBody mS bAnn rrSort =
     3: Sort of return type
 -}
 argumentSorts :: DataTypeEnv -> Method -> (Sort, [Maybe Sort], Sort, Sort)
-argumentSorts dEnv method@(Method _ regArgs args resTy _ _ _ _) = 
+argumentSorts dEnv method@(Method _ regArgs _ resTy _ _ _ _) = 
     let (FunctionType argTy _) = methodFunctionType method
         argSorts = mapAccumL (argumentSortAssign dEnv) 0 argTy
         aRegSort = regionVarsToSort regArgs
