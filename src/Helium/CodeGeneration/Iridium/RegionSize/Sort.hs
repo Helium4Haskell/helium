@@ -11,7 +11,7 @@ import Helium.CodeGeneration.Iridium.RegionSize.Utils
 import Helium.CodeGeneration.Iridium.RegionSize.Type
 
 import Lvm.Common.Id
-import Lvm.Core.Type hiding (showType, typeReindex, typeWeaken)
+import Lvm.Core.Type
 import Data.List
 
 ----------------------------------------------------------------

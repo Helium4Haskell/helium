@@ -3,7 +3,7 @@ module Helium.CodeGeneration.Iridium.RegionSize.PassRegionSize
 where
 
 import Lvm.Common.Id
-import Lvm.Core.Type hiding (showType, typeReindex, typeWeaken)
+import Lvm.Core.Type
 
 import Helium.CodeGeneration.Iridium.Data
 import Helium.CodeGeneration.Iridium.BindingGroup

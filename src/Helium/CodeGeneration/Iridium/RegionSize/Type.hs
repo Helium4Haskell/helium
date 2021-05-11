@@ -1,13 +1,12 @@
 module Helium.CodeGeneration.Iridium.RegionSize.Type
-    (showTypeN, 
-    TypeAlg(..), idTypeAlg, foldTypeAlg, foldTypeAlgN,
-    typeInsantiate, typeRemoveQuants,
-    typeWeaken, typeReindex
+    ( showTypeN, 
+      TypeAlg(..), idTypeAlg, foldTypeAlg, foldTypeAlgN,
+      typeInsantiate, typeRemoveQuants    
     ) where
 
 import Helium.CodeGeneration.Iridium.RegionSize.Utils
 
-import Lvm.Core.Type hiding (showType, typeReindex, typeWeaken)
+import Lvm.Core.Type
 
 ----------------------------------------------------------------
 -- Pretty printing
@@ -55,24 +54,6 @@ foldTypeAlgN n alg = go n
           go d (TStrict t1   ) =  tStrict alg d (go d t1)
           go d (TVar    x    ) =  tVar    alg d x
           go d (TCon    tc   ) =  tCon    alg d tc
-
-
-
-----------------------------------------------------------------
--- Type substitution
-----------------------------------------------------------------
-
-typeWeaken :: Depth -> Type -> Type
-typeWeaken d = typeReindex (weakenIdx d) (-1)
-
--- | Instantiate a type within a type
-typeReindex :: (Int -> Int -> Int)
-            -> Depth -- ^ Depth in sort 
-            -> Type -> Type
-typeReindex f subD = foldTypeAlgN subD reIdxAlg
-  where reIdxAlg = idTypeAlg {
-    tVar = \d idx -> TVar (f d idx)
-  }
 
 ----------------------------------------------------------------
 -- Type substitution

@@ -1,7 +1,7 @@
 module Helium.CodeGeneration.Iridium.RegionSize.Parse
 where
 
-import Lvm.Core.Type hiding (showType, typeReindex, typeWeaken)
+import Lvm.Core.Type
 
 import Helium.CodeGeneration.Iridium.Parse.Parser
 import Helium.CodeGeneration.Iridium.Parse.Type

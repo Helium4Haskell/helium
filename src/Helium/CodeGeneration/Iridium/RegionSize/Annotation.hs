@@ -16,7 +16,7 @@ import Helium.CodeGeneration.Iridium.RegionSize.Utils
 import Helium.CodeGeneration.Iridium.RegionSize.Type
 
 import Data.List
-import Lvm.Core.Type hiding (showType, typeReindex, typeWeaken)
+import Lvm.Core.Type
 
 ----------------------------------------------------------------
 -- Annotation data type

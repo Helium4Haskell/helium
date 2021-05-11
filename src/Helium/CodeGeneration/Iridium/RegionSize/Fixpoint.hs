@@ -27,7 +27,7 @@ solveFixpoint qD s fixes =
         let bot = ABot $ sortWeaken qD s
         in fixIterate 0 bot fixes
     where fixIterate :: Int -> Annotation -> [Annotation] -> [Annotation]
-          fixIterate 12 _     _  = mapWithIndex (\ i _ -> AProj i $ ATop s constrBot) fixes
+          fixIterate 24 _     _  = mapWithIndex (\ i _ -> AProj i $ ATop s constrBot) fixes
           fixIterate n  state fs = 
               let res = (\fix -> eval $ AApl (ALam s fix) state) <$> fs
               in if ATuple res == state

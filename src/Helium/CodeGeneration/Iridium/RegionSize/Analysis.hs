@@ -4,7 +4,7 @@ where
 
 import Lvm.Common.Id
 import Lvm.Common.IdMap
-import Lvm.Core.Type hiding (showType, typeReindex, typeWeaken)
+import Lvm.Core.Type
 
 import Helium.CodeGeneration.Iridium.Data
 import Helium.CodeGeneration.Core.TypeEnvironment
@@ -122,9 +122,9 @@ argumentSortAssign dEnv n (Right ty) = (n+2,Just $ sortAssign dEnv ty)
 -- | Initial enviromentment based on function arguments
 -- TODO: Insert local arg sorts
 initEnvFromArgs :: DataTypeEnv -> [Either Quantor Local] -> LocalEnv
-initEnvFromArgs dEnv []   = LocalEnv 0 emptyMap emptyMap
+initEnvFromArgs _    []   = LocalEnv emptyMap emptyMap
 initEnvFromArgs dEnv args = let argIdxs = createIdxs 2 $ reverse args
-                                lEnv    = LocalEnv (1 + 2 * (length $ rights args)) emptyMap emptyMap
+                                lEnv    = LocalEnv emptyMap emptyMap
                             in foldr (insertArgument dEnv) lEnv argIdxs
     where createIdxs _ []           = []
           createIdxs n (Left  q:xs) = (Left  q, n) : createIdxs (n+1) xs

@@ -2,7 +2,7 @@ module Helium.CodeGeneration.Iridium.RegionSize.Evaluate
     ( eval
     ) where 
 
-import Lvm.Core.Type hiding (showType, typeReindex, typeWeaken)
+import Lvm.Core.Type
 import Data.List
 
 import Helium.CodeGeneration.Iridium.Region.RegionVar

@@ -17,7 +17,7 @@ import Helium.CodeGeneration.Iridium.RegionSize.DataTypes
 import Helium.CodeGeneration.Iridium.RegionSize.Sort
 
 import Lvm.Common.Id
-import Lvm.Core.Type hiding (showType, typeReindex, typeWeaken)
+import Lvm.Core.Type
 import Data.List
 
 ----------------------------------------------------------------
@@ -39,7 +39,8 @@ sortAssign' dEnv ts (TVar a)        = SortPolySort a ts
 sortAssign' dEnv ts (TAp t1 t2)     = sortAssign' dEnv (t2:ts) t1
 sortAssign' dEnv [t1,t2] (TCon TConFun)       = funSort dEnv t1 t2  
 sortAssign' dEnv ts      (TCon (TConTuple n)) | length ts == n = SortTuple $ map (sortAssign dEnv) ts
-                                         | otherwise      = rsError $ "sortAssign: Tuple with incorrect number of arguements: expected " ++ show n ++ " but got " ++ (show $ length ts) ++ "\n" ++ (intercalate ", " $ map (showTypeN 0) ts)
+                                         | otherwise      = rsError $ "sortAssign: Tuple with incorrect number of arguements: expected " ++ show n 
+                                                                   ++ " but got " ++ (show $ length ts) ++ "\n" ++ (intercalate ", " $ map (showTypeN 0) ts)
 sortAssign' dEnv [a]     (TCon (TConTypeClassDictionary _)) = funSort dEnv (TCon (TConDataType $ idFromString "TODO: Dictionaries")) a
 sortAssign' dEnv ts      (TCon (TConDataType name)) = foldl (flip $ sortInstantiate dEnv) (name `lookupDataType` dEnv) ts
 
@@ -114,8 +115,8 @@ sortReIndex :: (Depth -> Int -> Int) -- ^ Reindex function
             -> Sort -> Sort
 sortReIndex f annD = foldSortAlgN annD reIdxAlg
   where reIdxAlg = idSortAlg {
-    sortPolyRegion = \d idx ts -> SortPolyRegion (f d idx) $ map (typeReindex f d) ts,
-    sortPolySort   = \d idx ts -> SortPolySort   (f d idx) $ map (typeReindex f d) ts 
+    sortPolyRegion = \d idx ts -> SortPolyRegion (f d idx) $ map (typeReindex $ f d) ts,
+    sortPolySort   = \d idx ts -> SortPolySort   (f d idx) $ map (typeReindex $ f d) ts 
   }
 
 -- | Decrease all unbound indexes by 1

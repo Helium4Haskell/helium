@@ -5,7 +5,7 @@ import qualified Data.Map as M
 
 import Lvm.Common.Id
 import Lvm.Common.IdMap
-import Lvm.Core.Type hiding (showType, typeReindex, typeWeaken)
+import Lvm.Core.Type
 
 import Helium.CodeGeneration.Core.TypeEnvironment
 import Helium.CodeGeneration.Iridium.Data
@@ -37,7 +37,6 @@ type RegionEnv   = M.Map RegionVar ConstrIdx
 type BlockEnv    = IdMap Annotation
 
 data LocalEnv    = LocalEnv { 
-  lEnvLamCount :: Int,              -- ^ Number of lambdas wrapping the function body
   lEnvAnns     :: IdMap Annotation, -- ^ Map from local id to annotation
   lEnvSrts     :: IdMap Sort        -- ^ Map from local id to sort
 }
@@ -143,14 +142,14 @@ lookupBlock name bEnv =
 
 -- | Look up a local variable in the local environment
 lookupLocalAnn :: HasCallStack => Local -> LocalEnv -> Annotation
-lookupLocalAnn local (LocalEnv _ lAnnEnv _) = 
+lookupLocalAnn local (LocalEnv lAnnEnv _) = 
   case lookupMap (localName local) lAnnEnv of
     Nothing -> rsError $ "lookupLocalAnn - ID not in map: " ++ (stringFromId $ localName local) 
     Just a  -> a
 
 -- | Look up a local variable in the local environment
 lookupLocalSrt :: HasCallStack => Local -> LocalEnv -> Sort
-lookupLocalSrt local (LocalEnv _ _ lSrtEnv) = 
+lookupLocalSrt local (LocalEnv _ lSrtEnv) = 
   case lookupMap (localName local) lSrtEnv of
     Nothing -> rsError $ "lookupLocalAnn - ID not in map: " ++ (stringFromId $ localName local) 
     Just a  -> a
@@ -177,11 +176,11 @@ insertGlobal name ann (GlobalEnv syns fs ds) =
 
 -- | Insert a local variable
 insertLocal :: Id -> Annotation -> LocalEnv -> LocalEnv
-insertLocal name ann (LocalEnv argC lAnnEnv lSrtEnv) = LocalEnv argC (insertMap name ann lAnnEnv) lSrtEnv
+insertLocal name ann (LocalEnv lAnnEnv lSrtEnv) = LocalEnv (insertMap name ann lAnnEnv) lSrtEnv
 
 -- | Insert a local variable
 updateLocal :: Id -> Annotation -> LocalEnv -> LocalEnv
-updateLocal name ann (LocalEnv argC lAnnEnv lSrtEnv) = LocalEnv argC (updateMap name ann lAnnEnv) lSrtEnv
+updateLocal name ann (LocalEnv lAnnEnv lSrtEnv) = LocalEnv (updateMap name ann lAnnEnv) lSrtEnv
 
 -- | Alter a value in the global map
 updateGlobal :: HasCallStack => Id -> Annotation -> GlobalEnv -> GlobalEnv

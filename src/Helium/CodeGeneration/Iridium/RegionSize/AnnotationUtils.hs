@@ -2,7 +2,6 @@ module Helium.CodeGeneration.Iridium.RegionSize.AnnotationUtils
   ( liftTuple, unliftTuple,
     collect,
     annWeaken, annStrengthen,
-    annStrengthenAnns, annStrengthenTys,
     isConstr, isTop, isBot, constrIdxToAnn,
     annRemLocalRegs
   ) where
@@ -45,14 +44,6 @@ annWeaken lD qD = annReIndex (weakenIdx lD) (weakenIdx qD)
 -- | Decrease all unbound indexes by 1
 annStrengthen :: Annotation -> Annotation
 annStrengthen = annReIndex strengthenIdx strengthenIdx
-
--- | Decrease all unbound indexes by 1
-annStrengthenAnns :: Annotation -> Annotation
-annStrengthenAnns = annReIndex strengthenIdx strengthenIdx -- this one
-
--- | Decrease all unbound indexes by 1
-annStrengthenTys :: Annotation -> Annotation
-annStrengthenTys = annReIndex (id . const) strengthenIdx
 
 ----------------------------------------------------------------
 -- Annotation utilities
