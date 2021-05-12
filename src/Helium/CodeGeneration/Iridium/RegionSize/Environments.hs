@@ -8,6 +8,7 @@ import Lvm.Common.IdMap
 import Lvm.Core.Type
 
 import Helium.CodeGeneration.Core.TypeEnvironment
+import Helium.CodeGeneration.Iridium.BindingGroup
 import Helium.CodeGeneration.Iridium.Data
 
 import Helium.CodeGeneration.Iridium.RegionSize.Annotation
@@ -48,13 +49,13 @@ data Envs = Envs GlobalEnv RegionEnv LocalEnv
 ----------------------------------------------------------------
 
 -- | Find sort for datatype
-dataTypeSort :: DataTypeEnv -> DataType -> Sort
-dataTypeSort dEnv (DataType structs) = SortTuple . concat $ dataStructSort dEnv <$> structs
+dataTypeSort :: TypeEnvironment -> DataTypeEnv -> DataType -> Sort
+dataTypeSort tEnv dEnv dt@(DataType structs) = foldr (const SortQuant) (SortTuple . concat $ dataStructSort tEnv dEnv <$> structs) (dataTypeQuantors dt)
 
-dataStructSort :: DataTypeEnv -> Declaration DataTypeConstructorDeclaration -> [Sort]
-dataStructSort dEnv (Declaration name _ _ _ (DataTypeConstructorDeclaration ty _)) =
+dataStructSort :: TypeEnvironment -> DataTypeEnv -> Declaration DataTypeConstructorDeclaration -> [Sort]
+dataStructSort tEnv dEnv (Declaration _ _ _ _ (DataTypeConstructorDeclaration ty _)) =
   let (args, _) = typeExtractFunction $ typeRemoveQuants ty
-  in sortAssign dEnv <$> args `rsInfo` show name
+  in sortAssign dEnv <$> typeNormalize tEnv <$> args
 
 ----------------------------------------------------------------
 -- Global environment
@@ -73,7 +74,7 @@ initialGEnv m = GlobalEnv typeEnv functionEnv dataTypeEnv
 
     -- Functions
     functionEnv :: IdMap Annotation
-    functionEnv = mapFromList (abstracts)-- ++ dataTypeRecordFuncs)
+    functionEnv = mapFromList abstracts
 
     abstracts :: [(Id, Annotation)]
     abstracts = abstract <$> moduleAbstractMethods m
@@ -86,7 +87,7 @@ initialGEnv m = GlobalEnv typeEnv functionEnv dataTypeEnv
 
     -- Top of type
     top :: Type -> Annotation
-    top = flip ATop constrBot . sortAssign emptyDEnv
+    top = flip ATop constrBot . sortAssign recDEnv . typeNormalize typeEnv
 
     -- ~~~~~~~~~
     -- Datatypes
@@ -97,19 +98,20 @@ initialGEnv m = GlobalEnv typeEnv functionEnv dataTypeEnv
 
     -- Data type sorts
     declDataTypeSorts :: IdMap Sort
-    declDataTypeSorts = mapFromList $ map declDataTypeSorts' $ moduleDataTypes m
+    declDataTypeSorts = mapFromList . concat $ map declDataTypeSorts' (dataTypeBindingGroups $ moduleDataTypes m)
 
-    declDataTypeSorts' :: Declaration DataType -> (Id, Sort)
-    declDataTypeSorts' decl = (declarationName decl, dataTypeSort recDEnv $ declarationValue decl)
+    declDataTypeSorts' :: BindingGroup DataType -> [(Id, Sort)]
+    declDataTypeSorts' (BindingNonRecursive decl) = [(declarationName decl, dataTypeSort typeEnv recDEnv $ declarationValue decl)]
+    declDataTypeSorts' (BindingRecursive decls) = concat $ declDataTypeSorts' <$> BindingNonRecursive <$> decls
 
     -- Constructor annotations
     dataTypeConstructors :: IdMap Annotation
-    dataTypeConstructors = mapFromList $ concat $ dataTypeConstructors' <$> moduleDataTypes m
+    dataTypeConstructors = mapFromList (concat $ dataTypeConstructors' <$> moduleDataTypes m)
     
     dataTypeConstructors' :: Declaration DataType -> [(Id, Annotation)]
     dataTypeConstructors' dt = makeDataTypeConstructors (declarationName dt `findMap` declDataTypeSorts) (declarationValue dt)
     
-   -- Destructor annotations
+    -- Destructor annotations
     dataTypeDestructors :: IdMap [Annotation]
     dataTypeDestructors = mapFromList $ concat $ dataTypeDestructors' <$> moduleDataTypes m
     
@@ -119,9 +121,7 @@ initialGEnv m = GlobalEnv typeEnv functionEnv dataTypeEnv
 
     -- Environment used for the recursive positions of data types
     recDEnv :: DataTypeEnv
-    recDEnv = DataTypeEnv (mapFromList $ map makeRecDataTypeSort $ moduleDataTypes m)
-                          emptyMap
-                          emptyMap
+    recDEnv = DataTypeEnv (mapFromList (map makeRecDataTypeSort $ moduleDataTypes m)) emptyMap emptyMap
 
     makeRecDataTypeSort ::  Declaration DataType -> (Id, Sort)
     makeRecDataTypeSort decl = (declarationName decl, foldr (const SortQuant) SortUnit . dataTypeQuantors $ declarationValue decl)
@@ -169,14 +169,12 @@ lookupReg r rEnv = case M.lookup r rEnv of
                       Nothing -> Region r
                       Just ci -> ci
 
-
 -- | Insert a function into the global environment
--- TODO: Get rid of the case
 insertGlobal :: HasCallStack => Id -> Annotation -> GlobalEnv -> GlobalEnv
 insertGlobal name ann (GlobalEnv syns fs ds) =
   case lookupMap name fs of
     Nothing -> GlobalEnv syns (insertMap name ann fs) ds  
-    Just a  -> GlobalEnv syns (insertMap name (AJoin a ann) $ deleteMap name fs) ds
+    Just a  -> rsError $ "insertGlobal - Value already present: " ++ show name
 
 -- | Insert a local variable
 insertLocal :: Id -> Annotation -> LocalEnv -> LocalEnv

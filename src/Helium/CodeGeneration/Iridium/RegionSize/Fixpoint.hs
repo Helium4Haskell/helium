@@ -2,6 +2,7 @@ module Helium.CodeGeneration.Iridium.RegionSize.Fixpoint
 where
 
 import Helium.CodeGeneration.Iridium.RegionSize.Annotation
+import Helium.CodeGeneration.Iridium.RegionSize.DataTypes
 import Helium.CodeGeneration.Iridium.RegionSize.Sort
 import Helium.CodeGeneration.Iridium.RegionSize.SortUtils
 import Helium.CodeGeneration.Iridium.RegionSize.Constraints
@@ -9,10 +10,10 @@ import Helium.CodeGeneration.Iridium.RegionSize.Utils
 import Helium.CodeGeneration.Iridium.RegionSize.Evaluate
 
 -- | Solve all the fixpoints in an annotation
-solveFixpoints :: Annotation -> Annotation
-solveFixpoints = eval . fillTop . foldAnnAlgQuants fixAlg
+solveFixpoints :: DataTypeEnv -> Annotation -> Annotation
+solveFixpoints dEnv = eval dEnv . fillTop . foldAnnAlgQuants fixAlg
     where fixAlg = idAnnAlg {
-        aFix = \d s as -> ATuple $ solveFixpoint d s
+        aFix = \d s as -> ATuple $ solveFixpoint dEnv d s
                                  . inlineFixpoint
                                  . inlineFixpoint
                                  . inlineFixpoint
@@ -22,14 +23,14 @@ solveFixpoints = eval . fillTop . foldAnnAlgQuants fixAlg
     }
 
 -- | Solve a group of fixpoints
-solveFixpoint :: Int -> Sort -> [Annotation] -> [Annotation]
-solveFixpoint qD s fixes = 
+solveFixpoint :: DataTypeEnv -> Int -> Sort -> [Annotation] -> [Annotation]
+solveFixpoint dEnv qD s fixes = 
         let bot = ABot $ sortWeaken qD s
         in fixIterate 0 bot fixes
     where fixIterate :: Int -> Annotation -> [Annotation] -> [Annotation]
           fixIterate 24 _     _  = mapWithIndex (\ i _ -> AProj i $ ATop s constrBot) fixes
           fixIterate n  state fs = 
-              let res = (\fix -> eval $ AApl (ALam s fix) state) <$> fs
+              let res = (\fix -> eval dEnv $ AApl (ALam s fix) state) <$> fs
               in if ATuple res == state
                  then res
                  else fixIterate (n+1) (ATuple res) fs

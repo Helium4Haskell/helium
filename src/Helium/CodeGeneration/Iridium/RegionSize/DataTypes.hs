@@ -70,10 +70,10 @@ makeDataTypeRecordFields dts (DataType structs) =
 
 -- | Make constructor annotations
 makeDataTypeConstructors :: Sort -> DataType -> [(Id, Annotation)]
-makeDataTypeConstructors dtSort (DataType structs) = 
+makeDataTypeConstructors dtSort dt@(DataType structs) = 
     snd $ foldl makeStructorAnn (0,[]) structs
   where dtTupSize = sum $ structorSize <$> structs
-        SortTuple dtSorts = dtSort
+        SortTuple dtSorts = removeSortQuants dtSort
         
         makeStructorAnn :: (Int, [(Id,Annotation)])
                         -> Declaration DataTypeConstructorDeclaration  
@@ -89,13 +89,13 @@ makeDataTypeConstructors dtSort (DataType structs) =
               -- Wrap with lambdas (TODO: Check if order is correct)
               strctLam = foldr (\i -> ALam (dtSorts !! i)) strctTup [start .. start+size-1]
               -- Wrap with quantifications
-              strctAnn = annNQuants (stuctorQuants strctDecl) strctLam
+              strctAnn = foldr (const AQuant) strctLam (dataTypeQuantors dt)
           in (start+size, (declarationName strctDecl, strctAnn):stctsAnns)
 
--- | Wrap N quantifications around an annotation
-annNQuants :: Int -> Annotation -> Annotation 
-annNQuants 0 = id
-annNQuants n = AQuant . annNQuants (n-1)
+-- | Remove sort quantifications
+removeSortQuants :: Sort -> Sort
+removeSortQuants (SortQuant s) = removeSortQuants s
+removeSortQuants s = s
 
 -- | Make destructor annotations
 makeDataTypeDestructors :: Sort -> DataType -> [(Id, [Annotation])]
@@ -119,8 +119,3 @@ structorSize :: Declaration DataTypeConstructorDeclaration -> Int
 structorSize (Declaration _ _ _ _ (DataTypeConstructorDeclaration ty _)) =
     let (FunctionType args _) = extractFunctionTypeNoSynonyms ty 
     in length $ rights args
-
-stuctorQuants :: Declaration DataTypeConstructorDeclaration -> Int
-stuctorQuants (Declaration _ _ _ _ (DataTypeConstructorDeclaration ty _)) = 
-    let (FunctionType args _) = extractFunctionTypeNoSynonyms ty 
-    in length $ lefts args

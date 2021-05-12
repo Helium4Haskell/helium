@@ -16,6 +16,8 @@ import Helium.CodeGeneration.Iridium.RegionSize.Utils
 
 import qualified Data.Map as M
 
+import GHC.Stack
+
 ----------------------------------------------------------------
 -- De Bruijn reindexing
 ----------------------------------------------------------------
@@ -59,7 +61,7 @@ unliftTuple (a,b) = ATuple [a,b]
 
 
 -- | Collect all region variables in an annotation
-collect :: Bound -> Annotation -> Constr
+collect :: HasCallStack => Bound -> Annotation -> Constr
 collect (Nat 0) _     = M.empty
 collect _ AUnit       = M.empty
 collect _ (ABot    _) = M.empty 

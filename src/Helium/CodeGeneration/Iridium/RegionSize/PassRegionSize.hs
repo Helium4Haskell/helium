@@ -77,13 +77,14 @@ temp modName gEnv methods = do
   then do
     return ((gEnv, 0, 0), methods)
   else do
+    putStrLn $ "\n# Analyse methods:\n" ++ (intercalate "\n" $ map (show.fst) methods)
     -- Generate the annotations     
     let mAnn  = analyseMethods 0 gEnv methods
   
     -- Simplify the generated annotation
-    let simpl = eval mAnn
+    let simpl = eval (globDataEnv gEnv) mAnn
     -- Solve the fixpoints
-    let fixed = solveFixpoints simpl
+    let fixed = solveFixpoints (globDataEnv gEnv) simpl
     -- Check if the resulting annotation is well-sroted
     -- let sorts = sort fixed
     -- fixed' <- case sorts of
@@ -101,8 +102,8 @@ temp modName gEnv methods = do
     -- Compute the second pass
     let effects = collectEffects 
               <$> (unsafeUnliftTuple 
-                  . eval 
-                  . solveFixpoints 
+                  . eval (globDataEnv gEnv)
+                  . solveFixpoints (globDataEnv gEnv)
                   $ analyseMethods 1 gEnv' methods')
     let arePrimitive = foldr (||) False (isPrimitiveType [] <$> methodType . snd <$> methods)
     let finite   = if arePrimitive 
@@ -124,7 +125,6 @@ temp modName gEnv methods = do
       || (modName == "LvmException" && True))
     then do return () --putStrLn "-"
     else do
-      putStrLn $ "\n# Analyse methods:\n" ++ (intercalate "\n" $ map (show.fst) methods)
       print mAnn
       putStrLn $ "\n# Simplified: "
       print simpl 
@@ -151,7 +151,7 @@ temp modName gEnv methods = do
 
     return ((gEnv', finite, infinite), zip (fst <$> methods) cleaned)
 
--- TODO: Correct bottom for offsets 
+-- | Assign a sort to a method
 methodSortAssign :: DataTypeEnv -> Method -> Sort
 methodSortAssign dEnv = SortLam SortUnit . sortAssign dEnv . methodType 
 
@@ -173,7 +173,7 @@ fixZeroArity (_, Method _ aRegs args _ rRegs _ _ _) ann =
              quants a = foldr (const AQuant) a (lefts args)
              aplTypes = foldl AInstn aplARegs newQuantIndexes
              aplRRegs = AApl aplTypes $ regionVarsToGlobal rRegs
-         in ALam SortUnit $ eval $ quants $ AProj 0 aplRRegs
+         in ALam SortUnit $ eval emptyDEnv $ quants $ AProj 0 aplRRegs
     _ -> ann 
 
 -- | Create an annotation that assigns all regionvars the global region
