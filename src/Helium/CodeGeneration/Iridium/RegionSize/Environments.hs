@@ -61,7 +61,7 @@ dataStructSort tEnv dEnv (Declaration _ _ _ _ (DataTypeConstructorDeclaration ty
 -- Global environment
 ----------------------------------------------------------------
 
--- | Initial analysis environment, sets all functions to top
+-- | Initial analysis environment
 initialGEnv :: Module -> GlobalEnv
 initialGEnv m = GlobalEnv typeEnv functionEnv dataTypeEnv
   where
@@ -87,7 +87,7 @@ initialGEnv m = GlobalEnv typeEnv functionEnv dataTypeEnv
 
     -- Top of type
     top :: Type -> Annotation
-    top = flip ATop constrBot . sortAssign recDEnv . typeNormalize typeEnv
+    top = flip ATop constrBot . SortLam SortUnit . sortAssign recDEnv . typeNormalize typeEnv
 
     -- ~~~~~~~~~
     -- Datatypes

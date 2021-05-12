@@ -114,9 +114,8 @@ application dEnv (ALam lamS f) x | sortIsAnnotation lamS = eval dEnv $ foldAnnAl
           aTop    = \(lD,_) s c -> ATop s  $ regVarSubst lD x c
         }
 -- Top and bottom
-application _ (ATop s vs) x | sortIsRegion s = ATop (sortDropLam s) $ constrAdd (collect Infty x  `rsInfo` show s) vs
+application _ (ATop s vs) x | sortIsRegion s = ATop (sortDropLam s) $ constrAdd (collect Infty x) vs
                             | otherwise      = ATop (sortDropLam s) vs
-application _ (ABot s) _ = (ABot $ sortDropLam s)
 -- Cannot eval
 application _ f x = AApl f x
 
@@ -136,27 +135,29 @@ instantiate _ a t = AInstn a t
 
 -- | Only project if subannotation has been evaluated to a tuple
 project :: Int -> Annotation -> Annotation 
-project _   AUnit       = AUnit -- TODO: Check if this is sound, if missing causes an issue in region eval
+-- project _   AUnit       = AUnit -- TODO: Check if this is sound, if missing causes an issue in region eval
 project idx (ATuple as) | length as > idx = as !! idx
-                        | otherwise       = AUnit -- TODO: Revert to: rsError $ "Projection-index out of bounds\n Idx: " ++ show idx ++ "\n Annotation: " ++ (show $ ATuple as)
+                        | otherwise       = rsError $ "Projection-index out of bounds\n Idx: " ++ show idx ++ "\n Annotation: " ++ (show $ ATuple as)
 -- Cannot eval
 project idx t = AProj idx t 
 
 
 -- | Break up top into a value
 top :: Sort -> Constr -> Annotation
-top SortUnit       _ = AUnit 
-top SortConstr     c = AConstr c 
-top (SortTuple ss) c = ATuple $ flip ATop c <$> ss
-top (SortQuant s ) c = AQuant $ ATop s c
+top SortUnit          _ = AUnit 
+top SortConstr        c = AConstr c 
+top (SortTuple ss   ) c = ATuple  $ flip ATop c <$> ss
+top (SortQuant s    ) c = AQuant  $ ATop s c
+-- top (SortLam   s1 s2) c = ALam s1 $ ATop s2 c
 top s c = ATop s c
 
 -- | Break up bot into a value
 bot :: Sort -> Annotation
-bot SortUnit       = AUnit 
-bot SortConstr     = AConstr constrBot
-bot (SortTuple ss) = ATuple $ ABot <$> ss
-bot (SortQuant s ) = AQuant $ ABot s
+bot SortUnit          = AUnit 
+bot SortConstr        = AConstr constrBot
+bot (SortTuple ss   ) = ATuple  $ ABot <$> ss
+bot (SortQuant s    ) = AQuant  $ ABot s
+bot (SortLam   s1 s2) = ALam s1 $ ABot s2
 bot s = ABot s
 
 ----------------------------------------------------------------

@@ -288,13 +288,13 @@ analyseExpr :: Envs -> Expr -> (Annotation, Effect)
 analyseExpr envs@(Envs gEnv _ lEnv) = go
     where 
       -- Literals have unit annotation, no effect. TODO: doesn't count for strings?
-      go (Literal _)              = (AUnit                          , botEffect) 
+      go (Literal _)              = (AUnit                    , botEffect) 
       -- Eval & Var: Lookup annotation of variable (can be global or local)
-      go (Eval var)               = (lookupVar var envs             , botEffect)
-      go (Var var)                = (lookupVar var envs             , botEffect)
-      go (Cast local _)           = (lookupLocalAnn local lEnv         , botEffect)
+      go (Eval var)               = (lookupVar var envs       , botEffect)
+      go (Var var)                = (lookupVar var envs       , botEffect)
+      go (Cast local _)           = (lookupLocalAnn local lEnv, botEffect)
       -- No effect, annotation of local
-      go (CastThunk local)        = (lookupLocalAnn local lEnv         , botEffect)
+      go (CastThunk local)        = (lookupLocalAnn local lEnv, botEffect)
       -- Join of the variable annotations in the branches
       go (Phi branches)           = (joinAnnList $ flip lookupLocalAnn lEnv <$> map phiVariable branches, botEffect) 
       -- Primitive expression, does not allocate or cause any effect -> bottom
@@ -302,7 +302,7 @@ analyseExpr envs@(Envs gEnv _ lEnv) = go
       -- No effect, bottom annotation
       go (Undefined t)            = (ABot $ sortAssign (globDataEnv gEnv) t, botEffect)
       -- No effect, just annotation of local2
-      go (Seq _ local2)           = (lookupLocalAnn local2 lEnv        , botEffect)
+      go (Seq _ local2)           = (lookupLocalAnn local2 lEnv, botEffect)
       -- Instantiate types in local
       go (Instantiate local tys)  = (foldl AInstn (local `lookupLocalAnn` lEnv) (typeNormalize (globTypeEnv gEnv) <$> tys), botEffect) 
       -- Apply all type and variable arguments

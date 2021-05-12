@@ -63,7 +63,6 @@ unliftTuple (a,b) = ATuple [a,b]
 -- | Collect all region variables in an annotation
 collect :: HasCallStack => Bound -> Annotation -> Constr
 collect (Nat 0) _     = M.empty
-collect _ AUnit       = M.empty
 collect _ (ABot    _) = M.empty 
 collect n (AVar    a) = M.singleton (AnnVar a) n 
 collect n (AReg    a) = M.singleton (Region a) n 

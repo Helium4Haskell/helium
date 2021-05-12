@@ -5,6 +5,8 @@ where
 import Lvm.Common.Id
 import Lvm.Core.Type
 
+import Helium.CodeGeneration.Core.TypeEnvironment
+
 import Helium.CodeGeneration.Iridium.Data
 import Helium.CodeGeneration.Iridium.BindingGroup
 
@@ -29,10 +31,10 @@ import qualified Data.Map as M
 passRegionSize :: NameSupply -> Module -> IO Module
 passRegionSize _ m = do 
   if(((stringFromId $ moduleName m) == "LvmLang"        && False)
-    || ((stringFromId $ moduleName m) == "HeliumLang"   && False) 
+    || ((stringFromId $ moduleName m) == "HeliumLang"   && True) 
     || ((stringFromId $ moduleName m) == "PreludePrim"  && False)
     || ((stringFromId $ moduleName m) == "Prelude"      && False)
-    || ((stringFromId $ moduleName m) == "LvmException" && False))
+    || ((stringFromId $ moduleName m) == "LvmException" && True))
   then do
     return m
   else do
@@ -86,13 +88,16 @@ temp modName gEnv methods = do
     -- Solve the fixpoints
     let fixed = solveFixpoints (globDataEnv gEnv) simpl
     -- Check if the resulting annotation is well-sroted
-    -- let sorts = sort fixed
-    -- fixed' <- case sorts of
-    --       Left  _ -> return $ flip ATop constrBot . methodSortAssign (globDataEnv gEnv) <$> (snd <$> methods) 
-    --       Right _ -> return $ unsafeUnliftTuple fixed
+    let sorts = sort fixed
+    fixed' <- case sorts of
+          Left  s -> do
+            print fixed
+            putStrLn s
+            rsError $ "Wrong sort: "  -- return $ flip ATop constrBot . methodSortAssign gEnv <$> (snd <$> methods) 
+          Right _ -> return $ unsafeUnliftTuple fixed
     
     -- Fix the annotations of zero arity definitions
-    let zerod = uncurry fixZeroArity <$> zip methods (unsafeUnliftTuple fixed)
+    let zerod = uncurry fixZeroArity <$> zip methods fixed'
     
     -- Update the global environment with the found annotations
     let gEnv' = foldr (uncurry insertGlobal) gEnv $ zip (fst <$> methods) zerod
@@ -152,8 +157,8 @@ temp modName gEnv methods = do
     return ((gEnv', finite, infinite), zip (fst <$> methods) cleaned)
 
 -- | Assign a sort to a method
-methodSortAssign :: DataTypeEnv -> Method -> Sort
-methodSortAssign dEnv = SortLam SortUnit . sortAssign dEnv . methodType 
+methodSortAssign :: GlobalEnv -> Method -> Sort
+methodSortAssign (GlobalEnv tEnv _ dEnv) = SortLam SortUnit . sortAssign dEnv . typeNormalize tEnv . methodType 
 
 -- | Get an array of annotations from a tuple
 unsafeUnliftTuple :: Annotation -> [Annotation]
