@@ -30,10 +30,10 @@ import qualified Data.Map as M
 -- | Infer the size of regions
 passRegionSize :: NameSupply -> Module -> IO Module
 passRegionSize _ m = do 
-  if(((stringFromId $ moduleName m) == "LvmLang"        && False)
+  if(((stringFromId $ moduleName m) == "LvmLang"        && True)
     || ((stringFromId $ moduleName m) == "HeliumLang"   && True) 
-    || ((stringFromId $ moduleName m) == "PreludePrim"  && False)
-    || ((stringFromId $ moduleName m) == "Prelude"      && False)
+    || ((stringFromId $ moduleName m) == "PreludePrim"  && True)
+    || ((stringFromId $ moduleName m) == "Prelude"      && True)
     || ((stringFromId $ moduleName m) == "LvmException" && True))
   then do
     return m
@@ -79,15 +79,19 @@ temp modName gEnv methods = do
   then do
     return ((gEnv, 0, 0), methods)
   else do
-    putStrLn $ "\n# Analyse methods:\n" ++ (intercalate "\n" $ map (show.fst) methods)
     -- Generate the annotations     
+    putStrLn $ "\n# Analyse methods:\n" ++ (intercalate "\n" $ map (show.fst) methods)
     let mAnn  = analyseMethods 0 gEnv methods
-  
+    print mAnn
     -- Simplify the generated annotation
-    let simpl = eval (globDataEnv gEnv) mAnn
+    let simpl = inlineFixpoints (globDataEnv gEnv) $ eval (globDataEnv gEnv) mAnn
+    putStrLn $ "\n# Simplified: "
+    print simpl 
     -- Solve the fixpoints
     let fixed = solveFixpoints (globDataEnv gEnv) simpl
     -- Check if the resulting annotation is well-sroted
+    putStrLn $ "\n# Fixpoint: "
+    print fixed 
     let sorts = sort fixed
     fixed' <- case sorts of
           Left  s -> do
@@ -130,11 +134,7 @@ temp modName gEnv methods = do
       || (modName == "LvmException" && True))
     then do return () --putStrLn "-"
     else do
-      print mAnn
-      putStrLn $ "\n# Simplified: "
-      print simpl 
-      putStrLn $ "\n# Fixpoint: "
-      print fixed
+
       -- fixed' <- case sorts of
       --       Left  e -> putStrLn e >>= \_ -> rsError "nope"
       --       Right _ -> return fixed
@@ -163,7 +163,6 @@ methodSortAssign (GlobalEnv tEnv _ dEnv) = SortLam SortUnit . sortAssign dEnv . 
 -- | Get an array of annotations from a tuple
 unsafeUnliftTuple :: Annotation -> [Annotation]
 unsafeUnliftTuple (ATuple as) = as
-unsafeUnliftTuple (ATop a b) = repeat $ ATop a b
 unsafeUnliftTuple a = rsError $ "unsafeUnliftTuple: Called unsafe unlift tuple on non-tuple: " ++ show a
 
 

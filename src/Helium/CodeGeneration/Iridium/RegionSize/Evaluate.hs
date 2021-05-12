@@ -97,15 +97,26 @@ join _ c1 c2 = joinSort $ jCollect (AJoin c1 c2)
 -- | Annotation application
 -- TODO: Bug: If lamS == () then region is not removed from constrs or top
 application :: DataTypeEnv -> Annotation -> Annotation -> Annotation
-application dEnv (ALam lamS f) x | sortIsAnnotation lamS = eval dEnv $ foldAnnAlgN (0,-1) subsAnnAlg f
+application dEnv (ALam lamS f) x | SortUnit ==      lamS = eval dEnv $ foldAnnAlgN (0,-1) subsUniAlg f
+                                 | sortIsAnnotation lamS = eval dEnv $ foldAnnAlgN (0,-1) subsAnnAlg f
                                  | sortIsRegion     lamS = eval dEnv $ foldAnnAlgN (0,-1) subsRegAlg f
                                  | otherwise = rsError "Sort is neither region or annotation!?"
   where -- | Substitute a variable for an annotation
+        subsUniAlg = idAnnAlg {
+          aVar    = \(lD,_) idx -> if lD == idx 
+                                   then AUnit
+                                   else AVar $ strengthenIdx lD idx,
+          aConstr = \(lD,_) c   -> AConstr $ regVarSubst lD x c,
+          aTop    = \(lD,_) s c -> ATop s  $ regVarSubst lD x c
+        }
+        -- | Substitute a variable for an annotation
         subsAnnAlg = idAnnAlg {
           aVar = \(lD,qD) idx -> if lD == idx 
                                  then annWeaken lD qD x -- Weaken indexes
                                  else AVar $ strengthenIdx lD idx,
-          aConstr = \(lD,_) c   -> AConstr $ constrStrengthenN lD c
+          aConstr = \(lD,_) c   -> AConstr $ constrStrengthenN lD c,
+          aTop    = \(lD,_) s c -> ATop s  $ constrStrengthenN lD c
+
         }
         -- | Substitute a region variable for a region
         subsRegAlg = idAnnAlg {

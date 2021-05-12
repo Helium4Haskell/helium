@@ -87,7 +87,7 @@ initialGEnv m = GlobalEnv typeEnv functionEnv dataTypeEnv
 
     -- Top of type
     top :: Type -> Annotation
-    top = flip ATop constrBot . SortLam SortUnit . sortAssign recDEnv . typeNormalize typeEnv
+    top = flip ATop constrBot . SortLam SortUnit . sortAssign dataTypeEnv . typeNormalize typeEnv
 
     -- ~~~~~~~~~
     -- Datatypes

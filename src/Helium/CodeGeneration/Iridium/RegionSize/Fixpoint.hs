@@ -9,17 +9,14 @@ import Helium.CodeGeneration.Iridium.RegionSize.Constraints
 import Helium.CodeGeneration.Iridium.RegionSize.Utils
 import Helium.CodeGeneration.Iridium.RegionSize.Evaluate
 
+import Data.List (sort, (\\), elemIndex)
+import Data.Maybe (fromJust)
+
 -- | Solve all the fixpoints in an annotation
 solveFixpoints :: DataTypeEnv -> Annotation -> Annotation
 solveFixpoints dEnv = eval dEnv . fillTop . foldAnnAlgQuants fixAlg
     where fixAlg = idAnnAlg {
-        aFix = \d s as -> ATuple $ solveFixpoint dEnv d s
-                                 . inlineFixpoint
-                                 . inlineFixpoint
-                                 . inlineFixpoint
-                                 . inlineFixpoint
-                                 . inlineFixpoint
-                                 $ inlineFixpoint as
+        aFix = \d s as -> ATuple $ solveFixpoint dEnv d s as
     }
 
 -- | Solve a group of fixpoints
@@ -55,6 +52,21 @@ fillTop = go constrBot
 ----------------------------------------------------------------
 -- Fixpoint inlining
 ----------------------------------------------------------------
+
+-- | Solve all the fixpoints in an annotation
+inlineFixpoints :: DataTypeEnv -> Annotation -> Annotation
+inlineFixpoints dEnv = eval dEnv . foldAnnAlgQuants fixAlg
+    where fixAlg = idAnnAlg {
+        aProj = \d i a  -> case a of
+                             AFix (SortTuple ss) as -> AProj i $ (removeUnused i ss as)
+                             _ -> AProj i a,
+        aFix  = \d s as -> AFix s $ inlineFixpoint
+                                  . inlineFixpoint
+                                  . inlineFixpoint
+                                  . inlineFixpoint
+                                  . inlineFixpoint
+                                  $ inlineFixpoint as
+    }
 
 inlineFixpoint :: [Annotation] -> [Annotation]
 inlineFixpoint anns = let isRec = checkRecursive <$> anns
@@ -96,28 +108,49 @@ countFixBinds = foldAnnAlgLamsN 0 countAlg
         aFix    = \_ _ a -> sum a   
     }
 
--- -- | Count usages of a variable
--- findFixBinds :: Annotation -> [Int]
--- findFixBinds = foldAnnAlgN 0 countAlg
---     where countAlg = AnnAlg {
---         aVar    = \d idx   -> if d == idx
---                               then [-1]
---                               else [],
---         aReg    = \_ _   -> [],
---         aLam    = \_ _ a -> a,
---         aApl    = \_ a b -> a ++ b,
---         aConstr = \_ _   -> [],
---         aUnit   = \_     -> [],
---         aTuple  = \_ as  -> concat as,
---         aProj   = \_ i a -> case a of
---                                 [-1] -> [i]
---                                 _ -> a
---         aAdd    = \_ a b -> a ++ b,
---         aMinus  = \_ a _ -> a,
---         aJoin   = \_ a b -> a ++ b,
---         aQuant  = \_ a   -> a,
---         aInstn  = \_ a _ -> a,
---         aTop    = \_ _ _ -> [],
---         aBot    = \_ _   -> [],
---         aFix    = \_ _ a -> sum a   
---     }
+-- | Remove unused indexes in a fixpoint
+removeUnused :: Int -> [Sort] -> [Annotation] -> Annotation
+removeUnused targetIdx ss as = AFix (SortTuple usedSrts) $ renameUsed usedIdxs <$> usedAnns
+    where usedIdxs = sort $ go (findFixBinds <$> as) [] [0]
+          usedAnns = foldl (\as' i -> (as !! i) : as') [] usedIdxs
+          usedSrts = foldl (\ss' i -> (ss !! i) : ss') [] usedIdxs
+          go rels seen []       = seen
+          go rels seen (x:todo) = if x `elem` seen
+                                  then go rels seen todo
+                                  else go rels (x:seen) (todo ++ (rels !! x))
+
+-- | Count usages of a variable
+renameUsed :: [Int] -> Annotation -> Annotation
+renameUsed usedIdxs = foldAnnAlgLamsN 0 renameAlg
+    where renameAlg = idAnnAlg {
+        aProj   = \d i a -> case a of
+                              AVar idx | idx == d  -> AProj (fromJust $ elemIndex i usedIdxs) (AVar idx)
+                                       | otherwise -> AProj i (AVar idx) 
+                              _ -> AProj i a
+    }
+
+-- | Count usages of a variable
+findFixBinds :: Annotation -> [Int]
+findFixBinds = foldAnnAlgLamsN 0 countAlg
+    where countAlg = AnnAlg {
+        aVar    = \d idx   -> if d == idx
+                              then [-1]
+                              else [],
+        aReg    = \_ _   -> [],
+        aLam    = \_ _ a -> a,
+        aApl    = \_ a b -> a ++ b,
+        aConstr = \_ _   -> [],
+        aUnit   = \_     -> [],
+        aTuple  = \_ as  -> concat as,
+        aProj   = \_ i a -> case a of
+                              [-1] -> [i]
+                              _ -> a,
+        aAdd    = \_ a b -> a ++ b,
+        aMinus  = \_ a _ -> a,
+        aJoin   = \_ a b -> a ++ b,
+        aQuant  = \_ a   -> a,
+        aInstn  = \_ a _ -> a,
+        aTop    = \_ _ _ -> [],
+        aBot    = \_ _   -> [],
+        aFix    = \_ _ a -> concat a   
+    }
