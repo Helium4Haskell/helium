@@ -99,10 +99,10 @@ sortSubstitute dEnv subD ty = foldSortAlgN subD instAlg
   where instTypeArgs d ts = typeSubstitute d (typeWeaken d ty) <$> ts
         instAlg = idSortAlg {
           sortPolyRegion = \qD idx ts -> if idx == qD
-                                         then regionAssign'  dEnv (instTypeArgs qD ts) $ typeWeaken qD ty
+                                         then regionAssign' dEnv (instTypeArgs qD ts) $ typeWeaken qD ty
                                          else SortPolyRegion (strengthenIdx qD idx) (instTypeArgs qD ts),
           sortPolySort   = \qD idx ts -> if idx == qD
-                                         then sortAssign'  dEnv (instTypeArgs qD ts) $ typeWeaken qD ty
+                                         then sortAssign' dEnv (instTypeArgs qD ts) $ typeWeaken qD ty
                                          else SortPolySort (strengthenIdx qD idx) (instTypeArgs qD ts) 
         }
 

@@ -23,7 +23,7 @@ envInsert s = M.insert 0 s . envWeaken
 
 -- | Increase all env indexes by one
 envWeaken :: Gamma -> Gamma
-envWeaken = M.mapKeys ((+) 1) . M.map (sortWeaken 1)
+envWeaken = M.mapKeys ((+) 1) -- . M.map (sortWeaken 1)
 
 ----------------------------------------------------------------
 -- Sorting
@@ -31,72 +31,77 @@ envWeaken = M.mapKeys ((+) 1) . M.map (sortWeaken 1)
 
 -- TODO: Remove the depth or also add quantification depth
 -- | Fills in the sorts on the annotation, returns sort of full annotation
-sort :: Annotation -> Either String Sort
-sort = sort' (-1) M.empty
-    where sort' :: Int -> Gamma -> Annotation -> Either String Sort 
+sort :: DataTypeEnv -> Annotation -> Either String Sort
+sort dEnv = sort' (-1,-1) M.empty
+    where sort' :: (Int,Int) -> Gamma -> Annotation -> Either String Sort 
           -- Simple cases
           sort' d gamma (AVar     a) = case M.lookup a gamma of
-                                        Nothing -> Left $ "Not in gamma: " ++ (annShow' (d,0) $ AVar a)
+                                        Nothing -> Left $ "Not in gamma: " ++ (annShow' d $ AVar a)
                                         Just s  -> Right s
           sort' _ _     (AReg     _) = Right SortMonoRegion
           sort' _ _     (AConstr  _) = Right SortConstr
           sort' _ _     (AUnit     ) = Right SortUnit
           
+          -- Top, bot and fix are annotated with their sort
+          sort' _ _     (ATop   s _) = Right s
+          sort' _ _     (ABot   s  ) = Right s
+          sort' _ _     (AFix   s _) = Right s
+          sort' d gamma (AJoin  a b) = 
+              let sortA = sort' d gamma a
+                  sortB = sort' d gamma b
+              in if sortA == sortB
+                 then sortA
+                 else Left ("Join of annotations with different sort: \nSort A: " ++ show sortA ++ "\nSort B: " ++ show sortB) 
+
           -- Lambdas & applications
-          sort' d gamma (ALam   s a) = 
-              let sortR = sort' (d+1) (envInsert s gamma) a
+          sort' (dL,dQ) gamma (ALam   s a) = 
+              let sortR = sort' (dL+1,dQ) (envInsert s gamma) a
               in SortLam s <$> sortR
-          sort' d gamma (AApl   f x) = 
-              case sort' d gamma f of
+          sort' (dL,dQ)  gamma (AApl   f x) = 
+              case sort' (dL,dQ)  gamma f of
                 Right (SortLam sortA sortR) ->
-                  let sortX = sort' d gamma x 
+                  let sortX = sort' (dL,dQ)  gamma x 
                   in case sortX of
-                        Right sX | sX == sortA -> Right sortR-- TOOD: Re-enable error
-                                 | otherwise   -> Right sortR-- Left $ "Argument has different sort than is expected.\nArgument sort: " ++ (showSort d sX) ++ "\nExpected sort: " ++ (showSort d sortA) ++ "\n"
+                        Right sX | sX == sortA -> Right sortR
+                                 | otherwise   -> Right sortR --Left $ "Argument has different sort than is expected.\nArgument sort: " ++ (showSort dQ sX) ++ "\nExpected sort: " ++ (showSort dQ sortA) ++ "\n"
                         err     -> err
-                Right s -> Left $ "Application to non function sort:\nSort:     " ++ (showSort d s)
+                Right s -> Left $ "Application to non function sort:\nSort:     " ++ (showSort dQ s)
                 err     -> err
 
           -- Tuples & projections
-          sort' d gamma (ATuple  as) =
-              let sortAS = map (sort' d gamma) as
+          sort' (dL,dQ) gamma (ATuple  as) =
+              let sortAS = map (sort' (dL,dQ) gamma) as
                   errors = lefts sortAS  
               in if length errors == 0 
                  then Right . SortTuple $ rights sortAS
                  else Left (errors !! 0) 
-          sort' d gamma (AProj  i t) = 
-              case sort' d gamma t of
+          sort' (dL,dQ) gamma (AProj  i t) = 
+              case sort' (dL,dQ) gamma t of
                   Right (SortTuple ss) -> if i < length ss
                                           then Right $ ss !! i
                                           else Left "sort: Projection out of bounds"   
-                  Right s -> Left $ "Projection on non-tuple sort: " ++ show s
+                  Right s -> Left $ "Projection on non-tuple sort: " ++ showSort dQ s
                   err     -> err
 
           -- Operators
-          sort' d gamma (AAdd   a b) = 
-              let sortA = sort' d gamma a
-                  sortB = sort' d gamma b
+          sort' (dL,dQ) gamma (AAdd   a b) = 
+              let sortA = sort' (dL,dQ) gamma a
+                  sortB = sort' (dL,dQ) gamma b
               in if sortA == sortB && sortA == Right SortConstr
                  then Right SortConstr
                  else Left ("Addition of non constraint-sort annotations: \nSort A: " ++ show sortA ++ "\nSort B: " ++ show sortB) 
-          sort' d gamma (AMinus a _) = 
-              let sortA = sort' d gamma a
+          sort' (dL,dQ) gamma (AMinus a _) = 
+              let sortA = sort' (dL,dQ) gamma a
               in if sortA == Right SortConstr
                  then Right SortConstr
                  else Left $ "Setminus on non constraint-sort annotation: \nSort:" ++ show sortA 
 
-          sort' d gamma (AJoin  a _) = sort' d gamma a
-
           -- Quantification and instantiation
-          sort' d gamma (AQuant   a) = SortQuant <$> sort' d gamma a
-          sort' d gamma (AInstn a t) = 
-              case sort' d gamma a of
-                  Right (SortQuant s) -> Right . sortInstantiate emptyDEnv t $ SortQuant s 
-                  Right s -> Left $ "Instantiation on non-quantified sort: " ++ showSort d s
+          sort' (dL,dQ) gamma (AQuant   a) = SortQuant <$> sort' (dL,dQ+1) gamma a
+          sort' (dL,dQ) gamma (AInstn a t) = 
+              case sort' (dL,dQ) gamma a of
+                  Right (SortQuant s) -> Right . sortInstantiate dEnv t $ SortQuant s 
+                  Right s -> Left $ "Instantiation on non-quantified sort: " ++ showSort dQ s
                   err     -> err
 
-          -- Lattice stuff
-          sort' _ _     (ATop   s _) = Right s
-          sort' _ _     (ABot   s  ) = Right s
-          sort' _ _     (AFix   s _) = Right s
 

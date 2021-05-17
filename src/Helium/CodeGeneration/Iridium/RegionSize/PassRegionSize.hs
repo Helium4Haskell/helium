@@ -3,6 +3,7 @@ module Helium.CodeGeneration.Iridium.RegionSize.PassRegionSize
 where
 
 import Lvm.Common.Id
+import Lvm.Common.IdMap
 import Lvm.Core.Type
 
 import Helium.CodeGeneration.Core.TypeEnvironment
@@ -30,11 +31,11 @@ import qualified Data.Map as M
 -- | Infer the size of regions
 passRegionSize :: NameSupply -> Module -> IO Module
 passRegionSize _ m = do 
-  if(((stringFromId $ moduleName m) == "LvmLang"        && True)
-    || ((stringFromId $ moduleName m) == "HeliumLang"   && True) 
-    || ((stringFromId $ moduleName m) == "PreludePrim"  && True)
-    || ((stringFromId $ moduleName m) == "Prelude"      && True)
-    || ((stringFromId $ moduleName m) == "LvmException" && True))
+  if(((stringFromId $ moduleName m) == "LvmLang"        && False)
+    || ((stringFromId $ moduleName m) == "HeliumLang"   && False) 
+    || ((stringFromId $ moduleName m) == "PreludePrim"  && False)
+    || ((stringFromId $ moduleName m) == "Prelude"      && False)
+    || ((stringFromId $ moduleName m) == "LvmException" && False))
   then do
     return m
   else do
@@ -92,16 +93,18 @@ temp modName gEnv methods = do
     -- Check if the resulting annotation is well-sroted
     putStrLn $ "\n# Fixpoint: "
     print fixed 
-    let sorts = sort fixed
+    let sorts = sort (globDataEnv gEnv) fixed
     fixed' <- case sorts of
           Left  s -> do
-            print fixed
+            putStrLn ""
             putStrLn s
-            rsError $ "Wrong sort: "  -- return $ flip ATop constrBot . methodSortAssign gEnv <$> (snd <$> methods) 
+            rsError $ "Wrong sort"
           Right _ -> return $ unsafeUnliftTuple fixed
     
     -- Fix the annotations of zero arity definitions
     let zerod = uncurry fixZeroArity <$> zip methods fixed'
+    putStrLn $ "\n# Zerod: "
+    print zerod 
     
     -- Update the global environment with the found annotations
     let gEnv' = foldr (uncurry insertGlobal) gEnv $ zip (fst <$> methods) zerod
@@ -114,13 +117,9 @@ temp modName gEnv methods = do
                   . eval (globDataEnv gEnv)
                   . solveFixpoints (globDataEnv gEnv)
                   $ analyseMethods 1 gEnv' methods')
-    let arePrimitive = foldr (||) False (isPrimitiveType [] <$> methodType . snd <$> methods)
-    let finite   = if arePrimitive 
-                   then sum $ length <$> filter (not . (== Infty) . snd) <$> filter (not . (== Region RegionGlobal) . fst) <$> M.toList <$> effects
-                   else 0
-    let infinite = if arePrimitive 
-                   then (sum $ length <$> filter (not . (== Region RegionGlobal) . fst) <$> M.toList <$> effects) - finite 
-                   else 0
+
+    let finite   = sum $ length <$> filter (not . (== Infty) . snd) <$> filter (not . (== Region RegionGlobal) . fst) <$> M.toList <$> effects
+    let infinite = (sum $ length <$> filter (not . (== Region RegionGlobal) . fst) <$> M.toList <$> effects) - finite 
 
     -- Do the program transformation & remove empty regions
     let transformed = uncurry transform <$> zip effects (snd <$> methods')
@@ -156,10 +155,6 @@ temp modName gEnv methods = do
 
     return ((gEnv', finite, infinite), zip (fst <$> methods) cleaned)
 
--- | Assign a sort to a method
-methodSortAssign :: GlobalEnv -> Method -> Sort
-methodSortAssign (GlobalEnv tEnv _ dEnv) = SortLam SortUnit . sortAssign dEnv . typeNormalize tEnv . methodType 
-
 -- | Get an array of annotations from a tuple
 unsafeUnliftTuple :: Annotation -> [Annotation]
 unsafeUnliftTuple (ATuple as) = as
@@ -173,7 +168,7 @@ fixZeroArity :: (Id, Method) -> Annotation -> Annotation
 fixZeroArity (_, Method _ aRegs args _ rRegs _ _ _) ann =
   case length $ rights args of
     0 -> let aplARegs = AApl ann $ regionVarsToGlobal aRegs
-             newQuantIndexes = reverse $ TVar <$> [1..(length $ lefts args)]
+             newQuantIndexes = reverse $ TVar <$> [0..(length $ lefts args)-1]
              quants a = foldr (const AQuant) a (lefts args)
              aplTypes = foldl AInstn aplARegs newQuantIndexes
              aplRRegs = AApl aplTypes $ regionVarsToGlobal rRegs
@@ -207,14 +202,3 @@ collectEffects = foldAnnAlg collectAlg
         aFix    = \_ _ a -> foldr constrAdd constrBot a
     }
 
-isPrimitiveType  :: [Type] -> Type -> Bool
-isPrimitiveType  ts (TStrict a)     = isPrimitiveType ts a
-isPrimitiveType  ts (TForall _ _ a) = isPrimitiveType ts a
-isPrimitiveType  ts (TVar a)        = True
-isPrimitiveType  ts (TAp t1 t2)     = isPrimitiveType (t2:ts) t1
-isPrimitiveType  [t1,t2] (TCon TConFun)       = isPrimitiveType [] t1 && isPrimitiveType [] t2  
-isPrimitiveType  ts      (TCon (TConTuple n)) = foldr (&&) True $ isPrimitiveType [] <$> ts
-isPrimitiveType  []      (TCon (TConDataType _))            = True
-isPrimitiveType  [a]     (TCon (TConTypeClassDictionary _)) = False
-isPrimitiveType  _       (TCon (TConDataType _)) = True
-isPrimitiveType  _ t = rsError $ "nope"

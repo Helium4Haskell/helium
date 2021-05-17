@@ -25,6 +25,9 @@ import GHC.Stack
 -- Type definitions
 ----------------------------------------------------------------
 
+instance Show a => Show (IdMap a) where
+  show a = show $ listFromMap a
+
 type GlobFuncEnv = (IdMap Annotation)
 
 data GlobalEnv   = GlobalEnv {
