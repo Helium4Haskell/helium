@@ -77,9 +77,9 @@ regionAssign' dEnv [_,_] (TCon TConFun      ) = SortUnit
 regionAssign' dEnv ts    (TCon (TConTuple n)) | length ts == n = SortTuple . concat $ map (sortUnpackTuple.regionAssign dEnv) ts
                                               | otherwise      = rsError $ "regionAssign: Tuple with incorrect number of arguements: expected " ++ show n ++ " but got " ++ (show $ length ts) ++ "\n" ++ (intercalate ", " $ map (showTypeN 0) ts)
 regionAssign' dEnv []    (TCon (TConDataType _)) = SortUnit
--- TODO: Data types & stuff
-regionAssign' dEnv [a]   (TCon (TConTypeClassDictionary _)) = SortUnit `rsInfo` "regionAssign: TypeClassDicts not yet supported"
-regionAssign' dEnv _     (TCon (TConDataType _)) = SortUnit `rsInfo` "regionAssign: Datatypes not yet supported"
+-- Data types & dictionaries
+regionAssign' dEnv ts    (TCon (TConTypeClassDictionary name)) = foldl (flip $ sortInstantiate dEnv) (dictionaryDataTypeName name `lookupDataTypeRegs` dEnv) ts
+regionAssign' dEnv ts    (TCon (TConDataType            name)) = foldl (flip $ sortInstantiate dEnv) (name `lookupDataTypeRegs` dEnv) ts
 -- Not implemented cases
 regionAssign' dEnv ts t = rsError $ "regionAssign: No pattern match: " ++ showTypeN 0 t 
                                   ++ "\nArguments: " ++ (intercalate ", " $ map (showTypeN 0) ts)

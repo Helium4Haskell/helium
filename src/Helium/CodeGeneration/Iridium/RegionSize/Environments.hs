@@ -58,7 +58,17 @@ dataTypeSort tEnv dEnv dt@(DataType structs) = foldr (const SortQuant) (SortTupl
 dataStructSort :: TypeEnvironment -> DataTypeEnv -> Declaration DataTypeConstructorDeclaration -> [Sort]
 dataStructSort tEnv dEnv (Declaration _ _ _ _ (DataTypeConstructorDeclaration ty _)) =
   let (args, _) = typeExtractFunction $ typeRemoveQuants ty
-  in sortAssign dEnv <$> typeNormalize tEnv <$> args
+  in sortAssign dEnv <$> typeNormalize tEnv <$> args -- TODO: We remove the quantifications here?
+
+-- | Find region assignment for datatype
+dataTypeRegions :: TypeEnvironment -> DataTypeEnv -> DataType -> Sort
+dataTypeRegions tEnv dEnv dt@(DataType structs) = foldr (const SortQuant) (SortTuple . concat $ dataStructRegions tEnv dEnv <$> structs) (dataTypeQuantors dt)
+
+dataStructRegions :: TypeEnvironment -> DataTypeEnv -> Declaration DataTypeConstructorDeclaration -> [Sort]
+dataStructRegions tEnv dEnv (Declaration _ _ _ _ (DataTypeConstructorDeclaration ty _)) =
+  let (args, _) = typeExtractFunction $ typeRemoveQuants ty
+  in regionAssign dEnv <$> typeNormalize tEnv <$> args -- TODO: We remove the quantifications here?
+
 
 ----------------------------------------------------------------
 -- Global environment
@@ -97,7 +107,7 @@ initialGEnv m = GlobalEnv typeEnv functionEnv dataTypeEnv
     -- ~~~~~~~~~
 
     dataTypeEnv :: DataTypeEnv
-    dataTypeEnv = DataTypeEnv declDataTypeSorts dataTypeConstructors dataTypeDestructors
+    dataTypeEnv = DataTypeEnv declDataTypeSorts declDataTypeRegions dataTypeConstructors dataTypeDestructors
 
     -- Data type sorts
     declDataTypeSorts :: IdMap Sort
@@ -106,6 +116,14 @@ initialGEnv m = GlobalEnv typeEnv functionEnv dataTypeEnv
     declDataTypeSorts' :: BindingGroup DataType -> [(Id, Sort)]
     declDataTypeSorts' (BindingNonRecursive decl) = [(declarationName decl, dataTypeSort typeEnv recDEnv $ declarationValue decl)]
     declDataTypeSorts' (BindingRecursive decls) = concat $ declDataTypeSorts' <$> BindingNonRecursive <$> decls
+
+    -- Data type regions
+    declDataTypeRegions :: IdMap Sort
+    declDataTypeRegions = mapFromList . concat $ map declDataTypeRegions' (dataTypeBindingGroups $ moduleDataTypes m)
+
+    declDataTypeRegions' :: BindingGroup DataType -> [(Id, Sort)]
+    declDataTypeRegions' (BindingNonRecursive decl) = [(declarationName decl, dataTypeRegions typeEnv recDEnv $ declarationValue decl)]
+    declDataTypeRegions' (BindingRecursive decls) = concat $ declDataTypeRegions' <$> BindingNonRecursive <$> decls
 
     -- Constructor annotations
     dataTypeConstructors :: IdMap Annotation
@@ -124,7 +142,8 @@ initialGEnv m = GlobalEnv typeEnv functionEnv dataTypeEnv
 
     -- Environment used for the recursive positions of data types
     recDEnv :: DataTypeEnv
-    recDEnv = DataTypeEnv (mapFromList (map makeRecDataTypeSort $ moduleDataTypes m)) emptyMap emptyMap
+    recDEnv = let recSorts = mapFromList . map makeRecDataTypeSort $ moduleDataTypes m
+              in DataTypeEnv recSorts recSorts emptyMap emptyMap
 
     makeRecDataTypeSort ::  Declaration DataType -> (Id, Sort)
     makeRecDataTypeSort decl = (declarationName decl, foldr (const SortQuant) SortUnit . dataTypeQuantors $ declarationValue decl)

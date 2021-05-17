@@ -94,13 +94,17 @@ temp modName gEnv methods = do
     putStrLn $ "\n# Fixpoint: "
     print fixed 
     let sorts = sort (globDataEnv gEnv) fixed
-    fixed' <- case sorts of
-          Left  s -> do
-            putStrLn ""
-            putStrLn s
-            rsError $ "Wrong sort"
-          Right _ -> return $ unsafeUnliftTuple fixed
-    
+
+    let hasDicts = foldr (||) False (isDataTypeMethod <$> methodType . snd <$> methods) 
+    fixed' <- if not hasDicts
+    then case sorts of
+            Left  s -> do
+              putStrLn ""
+              putStrLn s
+              rsError $ "Wrong sort"
+            Right _ -> return $ unsafeUnliftTuple fixed
+    else return $ flip ATop constrBot . methodSortAssign gEnv . snd <$> methods
+
     -- Fix the annotations of zero arity definitions
     let zerod = uncurry fixZeroArity <$> zip methods fixed'
     putStrLn $ "\n# Zerod: "
@@ -155,6 +159,10 @@ temp modName gEnv methods = do
 
     return ((gEnv', finite, infinite), zip (fst <$> methods) cleaned)
 
+-- | Assign a sort to a method 
+methodSortAssign :: GlobalEnv -> Method -> Sort 
+methodSortAssign (GlobalEnv tEnv _ dEnv) = SortLam SortUnit . sortAssign dEnv . typeNormalize tEnv . methodType  
+
 -- | Get an array of annotations from a tuple
 unsafeUnliftTuple :: Annotation -> [Annotation]
 unsafeUnliftTuple (ATuple as) = as
@@ -202,3 +210,15 @@ collectEffects = foldAnnAlg collectAlg
         aFix    = \_ _ a -> foldr constrAdd constrBot a
     }
 
+
+
+
+isDataTypeMethod :: Type -> Bool 
+isDataTypeMethod (TStrict a)     = isDataTypeMethod a 
+isDataTypeMethod (TForall _ _ a) = isDataTypeMethod a 
+isDataTypeMethod (TVar a)        = False 
+isDataTypeMethod (TAp t1 t2)     = isDataTypeMethod t1 || isDataTypeMethod t2   
+isDataTypeMethod (TCon TConFun)          = False   
+isDataTypeMethod (TCon (TConTuple n))    = False 
+isDataTypeMethod (TCon (TConDataType _)) = False
+isDataTypeMethod (TCon (TConTypeClassDictionary _)) = True 
