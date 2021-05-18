@@ -11,6 +11,8 @@ import Lvm.Core.Expr
 import Lvm.Core.Module
 import Lvm.Core.Type
 
+import Text.PrettyPrint.Leijen (pretty)
+
 -- Annotation variables per local definition by let or lambda
 type RelevanceEnvironment       = IdMap SAnn
 type ApplicativenessEnvironment = IdMap SAnn
@@ -43,18 +45,17 @@ analyseDeclaration _ _ = S.empty
 
 -- Run strictness analysis on expressions
 analyseExpression :: Environment -> SAnn -> SAnn -> Expr -> (AnnotationEnvironment, Constraints)
-analyseExpression env rel app (Let b e) = (ae, cs)
+analyseExpression env rel app (Let b e) = (ae, S.union c1 c2)
   where
     ae = unionMapWith meet a1 a2'
-    cs = S.insert (app `Constraint` app') $ S.union c1 c2
     -- Analyse bind
-    (a1, c1, app') = analyseBinds env rel b
+    (a1, c1) = analyseBinds env rel b
     -- Analyse body      
-    (a2, c2) = analyseExpression (envAddBinds b env) S app' e
+    (a2, c2) = analyseExpression (envAddBinds b env) S app e
     a2' = unionMapWith join a2 $ containment env rel
--- Only if an expression is strict on all alts it is strict
 analyseExpression env rel app (Match _ alts) = (unionMapsWith join ae, S.unions cs)
   where
+    -- Only if an expression is strict on all alts it is strict
     (ae, cs) = unzip $ map (analyseAlt env rel app) alts
 analyseExpression env rel app (Ap e1 e2) = (ae, cs)
   where
@@ -64,66 +65,76 @@ analyseExpression env rel app (Ap e1 e2) = (ae, cs)
     (ae1, c1) = analyseExpression env rel rel e1
     -- Get annotation from function
     t = typeNormalizeHead (typeEnv env) $ typeOfCoreExpression (typeEnv env) True e1
-    TAp (TAp (TCon TConFun) (TAnn (a1, r, a2) _)) _ = t
+    (TAp (TAp (TCon TConFun) (TAp (TAnn a1) (TAp (TAnn r) (TAp (TAnn a2) _)))) _) = t
     -- Analyse applicant under the join of the annotations and the relevance context
     (ae2, c2) = analyseExpression env (join rel r) (join rel a1) e2
 analyseExpression env rel app (ApType e _) = analyseExpression env rel app e
--- Expression in S relevance to see if the variable is strict, but contain with applicative
-analyseExpression env _ app (Lam _ v@(Variable _ (TAnn (_, _, a2) _)) e) = (ae', cs)
+analyseExpression env _ app (Lam _ v@(Variable _ (TAp _ (TAp _ (TAp (TAnn a2) _)))) e) = (ae', cs)
   where
+    -- Expression in S relevance to see if the variable is strict, but contain with applicative
     (ae, cs) = analyseExpression (envAddVariable v env) S a2 e
     ae' = unionMapWith join ae $ containment env app
 analyseExpression env rel app (Forall _ _ e) = analyseExpression env rel app e
--- No equalities from vars, cons and lits
 analyseExpression env rel app (Var v) = (unionMapWith meet (getLConstraints env) ae, S.empty)
   where
     ae = getAnnotations env rel app v
 analyseExpression env _ _ _ = (getLConstraints env, S.empty) -- Lit and Con
 
 -- Run strictness analysis on alts
--- Returns a tuple of constraints and applicative equalities
 analyseAlt :: Environment -> SAnn -> SAnn -> Alt -> (AnnotationEnvironment, Constraints)
 analyseAlt env rel app (Alt pat e) = analyseExpression (envAddPattern pat env) rel app e
 
 -- Run strictness analysis on binds
--- Returns a triplet of constraints, applicative equalities, and the right applicative annotation
-analyseBinds :: Environment -> SAnn -> Binds -> (AnnotationEnvironment, Constraints, SAnn)
+analyseBinds :: Environment -> SAnn -> Binds -> (AnnotationEnvironment, Constraints)
 analyseBinds env rel (Strict b) = analyseBind env rel b
 analyseBinds env rel (NonRec b) = analyseBind env rel b
-analyseBinds env rel b@(Rec bs) = (unionMapsWith meet ae, S.unions cs, foldr join S ap)
+analyseBinds env rel b@(Rec bs) = (unionMapsWith meet ae, S.unions cs)
   where
-    (ae, cs, ap) = unzip3 $ map (analyseBind (envAddBinds b env) rel) bs
+    (ae, cs) = unzip $ map (analyseBind (envAddBinds b env) rel) bs
 
 -- Run strictness analysis on bind
--- Returns a triplet of constraints, applicative equalities, and the right applicative annotation
-analyseBind :: Environment -> SAnn -> Bind -> (AnnotationEnvironment, Constraints, SAnn)
-analyseBind env rel (Bind (Variable _ (TAnn (a1, r, a2) t)) e) = (ae, S.union c1 c2, a2)
+analyseBind :: Environment -> SAnn -> Bind -> (AnnotationEnvironment, Constraints)
+analyseBind env rel (Bind (Variable _ (TAp (TAnn a1) (TAp (TAnn r) (TAp (TAnn _) t)))) e) = (ae, S.union c1 c2)
   where
     (ae, c1) = analyseExpression env (join rel r) (join rel a1) e
-    c2 = analyseType (typeEnv env) t (typeOfCoreExpression (typeEnv env) True e)
+    c2 = analyseType (typeEnv env) t $ typeOfCoreExpression (typeEnv env) True e
 
 -- Analyse type
 analyseType :: TypeEnvironment -> Type -> Type -> Constraints
-analyseType env (TAp (TAp (TCon TConFun) t11) t12)  (TAp (TAp (TCon TConFun) t21) t22) = S.union c1 c2
+analyseType env (TAp (TAp (TCon TConFun) t11) t12) (TAp (TAp (TCon TConFun) t21) t22) = S.union c1 c2
   where
+    -- Functions
     c1 = analyseType env t11 t21
     c2 = analyseType env t12 t22
-analyseType env (TStrict t1) (TStrict t2) = analyseType env t1 t2
-analyseType env (TForall _ _ t1) (TForall _ _ t2) = analyseType env t1 t2
-analyseType env (TAnn (a1, r, a2) t1) (TAnn (a1', r', a2') t2) = S.union c1 c2
+analyseType env (TAp (TAnn a1) (TAp (TAnn r) (TAp (TAnn a2) t1))) (TAp (TAnn a1') (TAp (TAnn r') (TAp (TAnn a2') t2))) = S.union c1 c2
   where
+    -- Annotated arrows
     c1 = S.fromList [a1' `Constraint` a1, r' `Constraint` r, a2' `Constraint` a2]
     c2 = analyseType env t1 t2
-analyseType env t1 t2 | t1 == t2  = S.empty
-                      | otherwise = analyseType env (typeNormalizeHead env t1) (typeNormalizeHead env t2)
+analyseType env (TAp t11 t12) (TAp t21 t22) | t11 == t21 = S.union c1 c2
+  where
+    -- Other applications
+    c1 = analyseType env t11 t21
+    c2 = analyseType env t12 t22
+analyseType env (TStrict t1) t2 = analyseType env t1 t2
+analyseType env t1 (TStrict t2) = analyseType env t1 t2 -- Remove all strict type information
+analyseType env (TForall _ _ t1) t2 = analyseType env t1 t2
+analyseType env t1 (TForall _ _ t2) = analyseType env t1 t2 -- Remove all foralls
+analyseType env t1 t2
+  | t1 == t2               = S.empty
+  | t1 /= t1' || t2 /= t2' = analyseType env t1' t2' -- Normalization changed type, try again
+  | otherwise              = error $ "analyseType: type mismatch: " ++ show (pretty t1) ++ " and " ++ show (pretty t2)
+    where
+      t1' = typeNormalizeHead env t1
+      t2' = typeNormalizeHead env t2
 
 -- Helper functions to add variables to both type and annotation environment
 envAddVariable :: Variable -> Environment -> Environment
-envAddVariable v (Environment typeEnv relEnv appEnv) = Environment typeEnv' relEnv' appEnv'
+envAddVariable var (Environment typeEnv relEnv appEnv) = Environment typeEnv' relEnv' appEnv'
   where
-    typeEnv' = typeEnvAddVariable v typeEnv
-    relEnv'  = relEnvAddVariable  v relEnv
-    appEnv'  = appEnvAddVariable  v appEnv
+    typeEnv' = typeEnvAddVariable var typeEnv
+    relEnv'  = relEnvAddVariable  var relEnv
+    appEnv'  = appEnvAddVariable  var appEnv
 
 envAddVariables :: [Variable] -> Environment -> Environment
 envAddVariables vars env = foldr envAddVariable env vars
@@ -140,10 +151,10 @@ envAddPattern :: Pat -> Environment -> Environment
 envAddPattern p (Environment typeEnv relEnv appEnv) = Environment (typeEnvAddPattern p typeEnv) relEnv appEnv
 
 relEnvAddVariable :: Variable -> RelevanceEnvironment -> RelevanceEnvironment
-relEnvAddVariable (Variable x (TAnn (_, r, _) _)) = insertMap x r
+relEnvAddVariable (Variable x (TAp _ (TAp (TAnn r) _))) = insertMap x r
 
 appEnvAddVariable :: Variable -> ApplicativenessEnvironment -> ApplicativenessEnvironment
-appEnvAddVariable (Variable x (TAnn (a, _, _) _)) = insertMap x a
+appEnvAddVariable (Variable x (TAp (TAnn a) _)) = insertMap x a
 
 -- Get all annotation variables in the environment to introduce constraints
 getAnnotationVariablesEnv :: Environment -> [Id]

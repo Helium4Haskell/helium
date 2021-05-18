@@ -31,10 +31,6 @@ meet x L = x
 meet l r | l == r    = l
          | otherwise = Meet l r
 
-joinAll, meetAll :: Ann -> Ann -> Ann
-joinAll (a1, r, a2) (a1', r', a2') = (join a1 a1', join r r', join a2 a2')
-meetAll (a1, r, a2) (a1', r', a2') = (meet a1 a1', meet r r', meet a2 a2')
-
 isAnn :: SAnn -> Bool
 isAnn (AnnVar _) = True
 isAnn _          = False
@@ -43,24 +39,46 @@ fromAnn :: SAnn -> Id
 fromAnn (AnnVar x) = x
 fromAnn _          = error "fromAnn"
 
-hasCustomAnn :: [Custom] -> Bool
-hasCustomAnn [] = False
-hasCustomAnn (CustomDecl (DeclKindCustom n) _:xs) = stringFromId n == "strictness" || hasCustomAnn xs
-hasCustomAnn (_:xs) = hasCustomAnn xs
+isCustomAnn :: Custom -> Bool
+isCustomAnn (CustomDecl (DeclKindCustom n) _) = stringFromId n == "strictness"
+isCustomAnn  _ = False
 
-fromCustomAnn :: [Custom] -> Type
-fromCustomAnn [] = error "fromCustomAnn"
-fromCustomAnn (CustomDecl (DeclKindCustom n) [CustomType t]:xs)
-    | stringFromId n == "strictness" = t
-    | otherwise = fromCustomAnn xs
-fromCustomAnn (_:xs) = fromCustomAnn xs
+fromCustomAnn :: Custom -> Type
+fromCustomAnn (CustomDecl (DeclKindCustom _) [CustomType t]) = t
 
 annEnvToConstraints :: AnnotationEnvironment -> Constraints
 annEnvToConstraints = S.fromList . map snd . listFromMap . mapMapWithId (\x y -> Constraint y (AnnVar x))
 
--- Get all variables in a join or meet
-getVariables :: SAnn -> [Id]
-getVariables (AnnVar x) = [x]
-getVariables (Join x y) = getVariables x ++ getVariables y
-getVariables (Meet x y) = getVariables x ++ getVariables y
-getVariables _          = []
+-- Get all variables in an annotation or type
+getVariablesAnn :: SAnn -> [Id]
+getVariablesAnn (AnnVar x) = [x]
+getVariablesAnn (Join x y) = getVariablesAnn x ++ getVariablesAnn y
+getVariablesAnn (Meet x y) = getVariablesAnn x ++ getVariablesAnn y
+getVariablesAnn _          = []
+
+typeRemoveStrictnessQuantification :: Type -> Type
+typeRemoveStrictnessQuantification (TForall _ KAnn t) = typeRemoveStrictnessQuantification t
+typeRemoveStrictnessQuantification (TForall q k t) = TForall q k $ typeRemoveStrictnessQuantification t
+typeRemoveStrictnessQuantification (TStrict t) = TStrict $ typeRemoveStrictnessQuantification t
+typeRemoveStrictnessQuantification (TAp t1 t2) = TAp (typeRemoveStrictnessQuantification t1) (typeRemoveStrictnessQuantification t2)
+typeRemoveStrictnessQuantification t = t
+
+typeRemoveAnnotations :: Type -> Type
+typeRemoveAnnotations (TAp (TAnn _) t1) = typeRemoveAnnotations t1
+typeRemoveAnnotations (TAp t1 t2) = TAp (typeRemoveAnnotations t1) (typeRemoveAnnotations t2)
+typeRemoveAnnotations (TForall _ KAnn t) = typeRemoveAnnotations t
+typeRemoveAnnotations (TForall q k t) = TForall q k $ typeRemoveAnnotations t
+typeRemoveAnnotations (TStrict t) = TStrict $ typeRemoveAnnotations t
+typeRemoveAnnotations (TAnn a) = error $ "Annotation " ++ show a ++ " occurs outside application"
+typeRemoveAnnotations t = t
+
+typeNotAnnotated :: Type -> Type
+typeNotAnnotated (TAp (TAnn _) t) = typeNotAnnotated t
+typeNotAnnotated t = t
+
+substitueAnn :: SAnn -> String -> SAnn -> SAnn
+substitueAnn (AnnVar x) id a | stringFromId x == id = a
+substitueAnn (Join x y) id a = join (substitueAnn x id a) (substitueAnn y id a)
+substitueAnn (Meet x y) id a = meet (substitueAnn x id a) (substitueAnn y id a)
+substitueAnn ann        _  _ = ann
+      

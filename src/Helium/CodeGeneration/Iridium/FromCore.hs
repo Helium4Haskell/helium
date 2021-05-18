@@ -18,6 +18,7 @@ import Lvm.Common.Byte(stringFromBytes)
 import qualified Lvm.Core.Expr as Core
 import qualified Lvm.Core.Type as Core
 import qualified Helium.CodeGeneration.Core.TypeEnvironment as Core
+import qualified Helium.CodeGeneration.Core.Strictness.Data as Core
 import qualified Lvm.Core.Module as Core
 import Data.List(find, replicate, group, sort, sortOn, partition)
 import Data.Maybe(fromMaybe, mapMaybe)
@@ -111,7 +112,8 @@ fromCoreDecl :: NameSupply -> TypeEnv -> Core.CoreDecl -> [Either (Id, Declarati
 fromCoreDecl supply env decl@Core.DeclValue{} = [Left (name, Declaration name (visibility decl) (Core.declModule decl) (Core.declCustoms decl) method)]
   where
     name = Core.declName decl
-    method = toMethod supply env (Core.declName decl) (Core.declType decl) (Core.valueValue decl)
+    method = toMethod supply env (Core.declName decl) (Core.declType decl) ann (Core.valueValue decl)
+    ann = Core.fromCustomAnn <$> (find Core.isCustomAnn (Core.declCustoms decl))
 
 fromCoreDecl _ _ _ = []
 
@@ -121,8 +123,8 @@ idMatchAfter = idFromString "match_after"
 idMatchCase = idFromString "match_case"
 idMatchDefault = idFromString "match_default"
 
-toMethod :: NameSupply -> TypeEnv -> Id -> Core.Type -> Core.Expr -> Method
-toMethod supply env name tp expr = Method tp args returnType [AnnotateTrampoline] (Block entryName entry) blocks
+toMethod :: NameSupply -> TypeEnv -> Id -> Core.Type -> Maybe Core.Type -> Core.Expr -> Method
+toMethod supply env name tp atp expr = Method tp args returnType [AnnotateTrampoline] (Block entryName entry) blocks
   where
     (entryName, supply') = freshIdFromId idEntry supply
     createArgument (Left quantor) _ = Left quantor
@@ -131,6 +133,9 @@ toMethod supply env name tp expr = Method tp args returnType [AnnotateTrampoline
     returnType = Core.typeOfCoreExpression (teCoreEnv env') False expr'
     env' = enterFunction name returnType $ expandEnvWithLocals [local | Right local <- args] env
     Partial entry blocks = toInstruction supply' env' CReturn expr'
+    annotations = case atp of
+      Nothing -> [AnnotateTrampoline]
+      Just t  -> [AnnotateTrampoline, AnnotateType t]
 
 -- Removes all lambda expression, returns a list of arguments and the remaining expression.
 consumeLambdas :: Core.Expr -> ([Either Core.Quantor Local], Core.Expr)

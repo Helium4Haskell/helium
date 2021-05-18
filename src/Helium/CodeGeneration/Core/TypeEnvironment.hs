@@ -74,9 +74,11 @@ patternVariables :: TypeEnvironment -> Pat -> [Variable]
 patternVariables _ (PatCon (ConTuple _) tps ids)
   = (zipWith Variable ids tps)
 patternVariables env (PatCon (ConId name) tps ids)
-  = findVars ids conType
+  = findVars ids apType
   where
-    conType = typeApplyList (typeOfId env name) tps
+    conType = typeOfId env name
+    (conType', tps') = annApplyList conType tps env
+    apType = typeApplyList conType' tps'
     findVars :: [Id] -> Type -> [Variable]
     findVars (x:xs) (TAp (TAp (TCon TConFun) tArg) tReturn)
       = Variable x tArg : findVars xs tReturn
@@ -139,7 +141,9 @@ typeOfCoreExpression env a e@(Ap e1 e2) = case typeNotStrict $ typeNormalizeHead
 -- Expression: e1 { tp1 }
 -- The type of e1 should be of the form `forall x. tp2`. Substitute x with tp1 in tp2.
 typeOfCoreExpression env a (ApType e1 tp1) = case typeNormalizeHead env $ typeOfCoreExpression env a e1 of
-  tp@(TForall _ _ _) -> typeApply tp tp1
+  tp@(TForall q _ t) -> case tp1 of
+    (TAnn a) -> annSubstitute t q a env
+    _ -> typeApply tp tp1
   tp -> internalError "Core.TypeEnvironment" "typeOfCoreExpression" $ "typeOfCoreExpression: expected a forall type in the first argument of a function application, got " ++ showType [] tp
 
 -- Expression: \x: t1 -> e
@@ -174,7 +178,7 @@ typeTuple arity a = foldr (\var -> TForall (Quantor Nothing) KStar) (if a then a
     tp = foldl (\t var -> TAp t $ TVar var) (TCon $ TConTuple arity) vars
     vars = reverse [0 .. arity - 1]
     annotate :: Type -> Type
-    annotate (TAp (TAp (TCon TConFun) t1) t2) = TAp (TAp (TCon TConFun) (TAnn (L, L, L) t1)) $ annotate t2
+    annotate (TAp (TAp (TCon TConFun) t1) t2) = TAp (TAp (TCon TConFun) (TAp (TAnn L) (TAp (TAnn L) (TAp (TAnn L) t1)))) $ annotate t2
     annotate t = t
 
 typeEqual :: TypeEnvironment -> Type -> Type -> Bool
@@ -249,7 +253,6 @@ extractFunctionTypeWithArity :: TypeEnvironment -> Int -> Type -> FunctionType
 extractFunctionTypeWithArity _ 0 tp = FunctionType [] tp
 extractFunctionTypeWithArity env arity tp = case typeNormalizeHead env tp of
   TStrict tp' -> extractFunctionTypeWithArity env arity tp'
-  TAnn _ tp' -> extractFunctionTypeWithArity env arity tp'
   TForall quantor _ tp' ->
     let FunctionType args ret = extractFunctionTypeWithArity env arity tp'
     in FunctionType (Left quantor : args) ret
@@ -275,11 +278,29 @@ updateFunctionTypeStrictness env (strict : strictness) tp = case typeNormalizeHe
 
 -- Unify the annotations on function arrows with a join
 unifyAnnotations :: Type -> Type -> Type
-unifyAnnotations (TAp (TAp (TCon TConFun) (TAnn a1 t11)) t12) (TAp (TAp (TCon TConFun) (TAnn a2 t21)) t22) = (TAp (TAp (TCon TConFun) (TAnn a' t1')) t2')
+unifyAnnotations (TAp t11 t12) (TAp t21 t22) = TAp t1 t2
   where
-    a' = joinAll a1 a2
-    t1' = unifyAnnotations t11 t21
-    t2' = unifyAnnotations t12 t22
-unifyAnnotations (TStrict t1) (TStrict t2) = TStrict $ unifyAnnotations t1 t2
+    t1 = unifyAnnotations t11 t21
+    t2 = unifyAnnotations t12 t22
+unifyAnnotations (TStrict t1) t2 = unifyAnnotations t1 t2
+unifyAnnotations t1 (TStrict t2) = unifyAnnotations t1 t2
 unifyAnnotations (TForall _ _ t1) (TForall q k t2) = TForall q k $ unifyAnnotations t1 t2
+unifyAnnotations (TAnn a1) (TAnn a2) = TAnn (join a1 a2)
 unifyAnnotations t1 t2 = t2
+
+annSubstitute :: Type -> Quantor -> SAnn -> TypeEnvironment -> Type
+annSubstitute (TAp t1 t2) q a env = TAp (annSubstitute t1 q a env) (annSubstitute t2 q a env)
+annSubstitute (TForall q' k t) q a env
+  | q' == q   = annSubstitute t q a env
+  | otherwise = TForall q' k $ annSubstitute t q a env
+annSubstitute (TStrict t) q a env = TStrict $ annSubstitute t q a env
+annSubstitute (TAnn a') (Quantor (Just id)) a _ = TAnn $ substitueAnn a' id a
+annSubstitute t q a env
+  | t' == t   = t
+  | otherwise = annSubstitute t' q a env
+    where
+      t' = typeNormalizeHead env t
+
+annApplyList :: Type -> [Type] -> TypeEnvironment -> (Type, [Type])
+annApplyList (TForall q KAnn t) ((TAnn a):ts) env = annApplyList (annSubstitute t q a env) ts env
+annApplyList t ts _ = (t, ts)

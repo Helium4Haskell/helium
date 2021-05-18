@@ -1,6 +1,6 @@
 module Helium.CodeGeneration.Core.Strictness.Annotate (annotateModule, annotateDeclaration) where
 
-import Data.Maybe
+import Data.List
 
 import Helium.CodeGeneration.Core.Strictness.Data
 
@@ -28,7 +28,8 @@ annotateDeclaration _ decl = decl
 annotateDeclType :: NameSupply -> CoreDecl -> CoreDecl
 annotateDeclType supply decl = decl{declType = t}
   where
-    t = if hasCustomAnn (declCustoms decl) then fromCustomAnn (declCustoms decl) else annotateType supply $ declType decl
+    -- If custom strictness exists, take that, otherwise create one from type
+    t = maybe (annotateTypeAbstract supply $ declType decl) fromCustomAnn $ find isCustomAnn (declCustoms decl)
 
 -- Annotate type
 annotateType :: NameSupply -> Type -> Type
@@ -37,20 +38,43 @@ annotateType supply (TAp (TAp (TCon TConFun) t1) t2) = TAp (TAp (TCon TConFun) t
       -- Annotate only on function arrows
       (id1, id2, id3, supply') = threeIds supply
       (supply1, supply2) = splitNameSupply supply'
-      ann1 = if typeIsStrict t1 then S else AnnVar id1
-      ann2 = if typeIsStrict t1 then S else AnnVar id2
-      t1' = TAnn (ann1, ann2, AnnVar id3) $ annotateType supply1 t1
+      t1' = TAp (TAnn $ AnnVar id1) (TAp (TAnn $ AnnVar id2) (TAp (TAnn $ AnnVar id3) (annotateType supply1 t1)))
       t2' = annotateType supply2 t2
 annotateType supply (TForall q k t) = TForall q k $ annotateType supply t
 annotateType supply (TStrict t)     = TStrict $ annotateType supply t
 annotateType _      t               = t
+
+-- Create annotated type from type
+annotateTypeAbstract :: NameSupply -> Type -> Type
+annotateTypeAbstract supply t = fst $ annotateTypeAbstract' supply t
+
+annotateTypeAbstract' :: NameSupply -> Type -> (Type, SAnn)
+annotateTypeAbstract' supply (TAp (TAp (TCon TConFun) t1) t2) = (TAp (TAp (TCon TConFun) ann) t2', ann1)
+    where
+      -- Annotate only on function arrows
+      (id, supply') = freshId supply
+      ann3 = AnnVar id
+      ann2 = if typeIsStrict t1 then AnnVar id else L
+      -- Applicative depends on annotation of next arguments
+      ann1 = join ann3 c
+      ann  = TAp (TAnn ann1) (TAp (TAnn ann2) (TAp (TAnn ann3) t1'))
+      (supply1, supply2) = splitNameSupply supply'
+      (t1', _) = annotateTypeAbstract' supply1 t1
+      (t2', c) = annotateTypeAbstract' supply2 t2
+annotateTypeAbstract' supply (TForall q k t) = (TForall q k t', c)
+  where
+    (t', c) = annotateTypeAbstract' supply t
+annotateTypeAbstract' supply (TStrict t)     = (TStrict t', c)
+  where
+    (t', c) = annotateTypeAbstract' supply t
+annotateTypeAbstract' _      t               = (t, S)
 
 -- Annotate expression
 annotateExpression :: NameSupply -> Expr -> Expr
 annotateExpression supply (Let b e) = Let b' e'
   where
     (supply1, supply2) = splitNameSupply supply
-    b' = annotateBinds      supply1 b
+    b' = annotateBinds supply1 b
     e' = annotateExpression supply2 e
 annotateExpression supply (Match x a) = Match x $ mapWithSupply annotateAlt supply a 
 annotateExpression supply (Ap e1 e2) = Ap e1' e2'
@@ -63,9 +87,13 @@ annotateExpression supply (ApType e t) = ApType e' t'
     (supply1, supply2) = splitNameSupply supply
     e' = annotateExpression supply1 e
     t' = annotateType supply2 t
-annotateExpression supply (Lam strict v e) = Lam strict v' e'
+annotateExpression supply (Lam strict (Variable x t) e) = Lam strict (Variable x t') e'
   where
-    (v', e') = annotateLamOrBind strict supply v e
+    (id1, id2, id3, supply') = threeIds supply
+    (supply1, supply2) = splitNameSupply supply' 
+    ann2 = if strict then AnnVar id3 else AnnVar id2
+    t' = TAp (TAnn (AnnVar id1)) (TAp (TAnn ann2) (TAp (TAnn (AnnVar id3)) (annotateType supply1 t)))
+    e' = annotateExpression supply2 e
 annotateExpression supply (Forall q k e) = Forall q k $ annotateExpression supply e
 annotateExpression _ e = e -- Con, Lit and Var
 
@@ -77,9 +105,14 @@ annotateBinds supply (Rec b)    = Rec $ mapWithSupply (annotateBind False) suppl
 
 -- Annotate bind
 annotateBind :: Bool -> NameSupply -> Bind -> Bind
-annotateBind strict supply (Bind v e) = Bind v' e'
+annotateBind strict supply (Bind (Variable x t) e) = Bind (Variable x t') e'
   where
-    (v', e') = annotateLamOrBind strict supply v e
+    (id1, id2, id3, supply') = threeIds supply
+    (supply1, supply2) = splitNameSupply supply'
+    ann1 = if strict then S else AnnVar id1
+    ann2 = if strict then S else AnnVar id2
+    t' = TAp (TAnn ann1) (TAp (TAnn ann2) (TAp (TAnn (AnnVar id3)) (annotateType supply1 t)))
+    e' = annotateExpression supply2 e
 
 -- Annotate alt
 annotateAlt :: NameSupply -> Alt -> Alt
@@ -93,17 +126,6 @@ annotateAlt supply (Alt p e) = Alt p' e'
 annotatePat :: NameSupply -> Pat -> Pat
 annotatePat supply (PatCon c t i) = PatCon c (mapWithSupply annotateType supply t) i
 annotatePat _ p = p
-
--- Annotate lambda or binding
-annotateLamOrBind :: Bool -> NameSupply -> Variable -> Expr -> (Variable, Expr)
-annotateLamOrBind strict supply (Variable x t) e = (Variable x t', e')
-  where
-    (id1, id2, id3, supply') = threeIds supply
-    (supply1, supply2) = splitNameSupply supply'
-    ann1 = if strict then S else AnnVar id1
-    ann2 = if strict then S else AnnVar id2
-    t' = TAnn (ann1, ann2, AnnVar id3) $ annotateType supply1 t
-    e' = annotateExpression supply2 e
 
 threeIds :: NameSupply -> (Id, Id, Id, NameSupply)
 threeIds supply0 = (id1, id2, id3, supply3)

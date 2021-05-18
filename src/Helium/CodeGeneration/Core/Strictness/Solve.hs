@@ -28,7 +28,7 @@ solveConstraints cs = foldr (handleId nodeFromVertex) sc ts
         -- Solve constraints
         sc = solveConstraints' cs
         -- Create graph based on variables
-        es = map (\(x, y) -> (x, x, y)) $ listFromMap $ mapMap getVariables sc
+        es = map (\(x, y) -> (x, x, y)) $ listFromMap $ mapMap getVariablesAnn sc
         (graph, nodeFromVertex, _) = graphFromEdges es
         ts = topSort graph
 

@@ -41,3 +41,6 @@ otherwise = True
 
 const :: a -> b -> a
 const x _ = x
+
+undefined :: a
+undefined = error "undefined"
