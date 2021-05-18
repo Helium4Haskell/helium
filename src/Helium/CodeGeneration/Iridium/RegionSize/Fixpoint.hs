@@ -55,7 +55,7 @@ fillTop = go constrBot
 
 -- | Solve all the fixpoints in an annotation
 inlineFixpoints :: DataTypeEnv -> Annotation -> Annotation
-inlineFixpoints dEnv = id --eval dEnv . foldAnnAlgQuants fixAlg
+inlineFixpoints dEnv = eval dEnv . foldAnnAlgQuants fixAlg
     where fixAlg = idAnnAlg {
         aProj = \d i a  -> case a of
                              AFix (SortTuple ss) as -> AProj i $ (removeUnused i ss as)

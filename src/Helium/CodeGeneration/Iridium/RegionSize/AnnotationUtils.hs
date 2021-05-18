@@ -10,7 +10,6 @@ import Helium.CodeGeneration.Iridium.Region.RegionVar
 
 import Helium.CodeGeneration.Iridium.RegionSize.Annotation
 import Helium.CodeGeneration.Iridium.RegionSize.Constraints
-import Helium.CodeGeneration.Iridium.RegionSize.Sort
 import Helium.CodeGeneration.Iridium.RegionSize.SortUtils
 import Helium.CodeGeneration.Iridium.RegionSize.Utils
 
@@ -29,12 +28,12 @@ annReIndex :: (Depth -> Int -> Int) -- ^ Reindex function for annotation vars
            -> Annotation -> Annotation
 annReIndex fA fT = foldAnnAlg reIdxAlg
   where reIdxAlg = idAnnAlg {
-    aLam    = \(lD,qD) s a -> ALam (sortReIndex fT qD s) a,
-    aFix    = \(lD,qD) s a -> AFix (sortReIndex fT qD s) a,
-    aConstr = \(lD,qD) c   -> AConstr (constrReIndex fA lD c), 
-    aTop    = \(lD,qD) s c -> ATop (sortReIndex fT qD s) (constrReIndex fA lD c), 
-    aBot    = \(lD,qD) s   -> ABot (sortReIndex fT qD s), 
-    aVar    = \(lD,qD) idx -> AVar (fA lD idx)
+    aLam    = \(_ , qD) s a -> ALam (sortReIndex fT qD s) a,
+    aFix    = \(_ , qD) s a -> AFix (sortReIndex fT qD s) a,
+    aConstr = \(lD, _ ) c   -> AConstr (constrReIndex fA lD c), 
+    aTop    = \(lD, qD) s c -> ATop (sortReIndex fT qD s) (constrReIndex fA lD c), 
+    aBot    = \(_ , qD) s   -> ABot (sortReIndex fT qD s), 
+    aVar    = \(lD, _ ) idx -> AVar (fA lD idx)
   }
 
 -- | Increase all unbound variables by the substitution depth

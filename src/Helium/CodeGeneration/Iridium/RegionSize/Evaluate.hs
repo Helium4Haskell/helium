@@ -21,14 +21,14 @@ import Helium.CodeGeneration.Iridium.RegionSize.Utils
 
 -- | Fully evaluate an expression
 eval :: DataTypeEnv -> Annotation -> Annotation
-eval dEnv = foldAnnAlg evalAlg
+eval dEnv ann = foldAnnAlg evalAlg ann
   where evalAlg = idAnnAlg {
     aAdd   = \_ -> add,
     aMinus = \_ -> minus,
     aJoin  = \_ -> join        dEnv,
     aApl   = \_ -> application dEnv,
     aInstn = \_ -> instantiate dEnv,
-    aProj  = \_ -> project,
+    aProj  = \_ -> project ann,
     aTop   = \_ -> top,
     aBot   = \_ -> bot
   }
@@ -85,8 +85,9 @@ join _    (AApl   s  a) (AApl   _  b) = AApl   s $ AJoin a b
 join _    (AQuant a   ) (AQuant b   ) = AQuant   $ AJoin a b
 join _    (AInstn a  t) (AInstn b  _) = AInstn (AJoin a b) t
 join dEnv (ATuple as  ) (ATuple bs  ) = eval dEnv . ATuple $ zipWith AJoin as bs
-join _    (AProj  i1 a) (AProj  i2 b) | i1 == i2  = AProj i1 (AJoin a b)
-                                 | otherwise = operatorSort AJoin constrJoin [AProj i1 a, AProj i2 b]
+-- TODO: This may create an incorrect sort if s1 != s2 (e.g. pi_0[((),C)]) join pi_0[((),())])
+-- join _    (AProj  i1 a) (AProj  i2 b) | i1 == i2  = AProj i1 (AJoin a b)
+--                                       | otherwise = operatorSort AJoin constrJoin [AProj i1 a, AProj i2 b]
 -- Collect and sort       
 join _ c1 c2 = joinSort $ jCollect (AJoin c1 c2)
   where jCollect (AJoin c3 c4) = jCollect c3 ++ jCollect c4 
@@ -144,12 +145,11 @@ instantiate _ a t = AInstn a t
 
 
 -- | Only project if subannotation has been evaluated to a tuple
-project :: Int -> Annotation -> Annotation 
--- project _   AUnit       = AUnit -- TODO: Check if this is sound, if missing causes an issue in region eval
-project idx (ATuple as) | length as > idx = as !! idx
-                        | otherwise       = rsError $ "Projection-index out of bounds\n Idx: " ++ show idx ++ "\n Annotation: " ++ (show $ ATuple as)
+project :: Annotation -> Int -> Annotation -> Annotation 
+project ann idx (ATuple as) | length as > idx = as !! idx
+                            | otherwise       = rsError $ "Projection-index out of bounds\n Idx: " ++ show idx ++ "\n Annotation: " ++ (show $ ATuple as) ++ "\n\n" ++ (show ann)
 -- Cannot eval
-project idx t = AProj idx t 
+project ann idx t = AProj idx t 
 
 
 -- | Break up top into a value
@@ -201,16 +201,28 @@ operatorSort op evalF xs = -- Compose list (tops, bots then others)
 -- Subsitution of region variables
 ----------------------------------------------------------------
 
+-- TODO: Completly redo
 -- | Initialize region variables in a constraint set
 regVarSubst :: Int -> Annotation -> Constr -> Constr 
 regVarSubst d ann c = foldl constrAdd (constrStrengthenN d c') (constrWeaken d <$> insts)
   where cIdxs = constrIdxWithVar d c       -- Indexes that contain the to-be instantiated var
         ns    = flip constrIdx c <$> cIdxs -- Get bounds on indexes
         c'    = foldr constrRem c cIdxs             -- Remove target indexes (cIdxs) from c
-        aIdxs = eval emptyDEnv <$> regVarInst ann <$> (constrIdxToAnn <$> cIdxs) -- Make new indexes
+        aIdxs = evalReg <$> regVarInst ann <$> (constrIdxToAnn <$> cIdxs) -- Make new indexes
         insts = uncurry collect <$> zip ns aIdxs    -- Instantiate variables
         
         regVarInst :: Annotation -> Annotation -> Annotation
         regVarInst inst (AVar _)    = inst
         regVarInst inst (AProj i a) = AProj i $ regVarInst inst a
         regVarInst inst r = rsError $ "regVarInst: " ++ show inst ++ ", r: " ++ show r
+
+        evalReg :: Annotation -> Annotation
+        evalReg (AVar a)              = (AVar a)
+        evalReg (AReg r)              = (AReg r)
+        evalReg (ATuple as)           = (ATuple $ evalReg <$> as)
+        evalReg (AProj _ AUnit)       = AUnit
+        evalReg (AProj i a) = case evalReg a of 
+                                  ATuple as | i < length as -> as !! i
+                                            | otherwise     -> rsError $ "Constraint index projection out of bounds"
+                                  ann -> AProj i ann
+        evalReg a = rsError $ "Illigal annotation for a constraint index: " ++ show a

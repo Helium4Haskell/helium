@@ -82,7 +82,7 @@ analyseMethod gEnv@(GlobalEnv tEnv _ dEnv) (_, method@(Method _ aRegs args _ rRe
         localFix = AProj 0 . AFix (SortTuple (bSorts ++ lSorts)) $ (unliftTuple <$> blockAnn) ++ lAnnos
         fAnn  = ALam aRegS 
               $ if argS == []
-                then ALam rrSort localFix -- IDEA: Now 'SortUnit' but could be a way to deal with thunk allocations
+                then ALam rrSort localFix
                 else foldr (\s a -> wrapBody s (ATuple [a,botEffect]) SortUnit) 
                            (wrapBody (last argS) localFix rrSort) 
                            $ init argS

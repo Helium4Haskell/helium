@@ -3,7 +3,6 @@ module Helium.CodeGeneration.Iridium.RegionSize.PassRegionSize
 where
 
 import Lvm.Common.Id
-import Lvm.Common.IdMap
 import Lvm.Core.Type
 
 import Helium.CodeGeneration.Core.TypeEnvironment
@@ -80,20 +79,22 @@ temp modName gEnv methods = do
   then do
     return ((gEnv, 0, 0), methods)
   else do
+    let dEnv = globDataEnv gEnv
+
     -- Generate the annotations     
     putStrLn $ "\n# Analyse methods:\n" ++ (intercalate "\n" $ map (show.fst) methods)
     let mAnn  = analyseMethods 0 gEnv methods
     print mAnn
     -- Simplify the generated annotation
-    let simpl = inlineFixpoints (globDataEnv gEnv) $ eval (globDataEnv gEnv) mAnn
+    let simpl = inlineFixpoints dEnv $ eval dEnv mAnn
     putStrLn $ "\n# Simplified: "
     print simpl 
     -- Solve the fixpoints
-    let fixed = solveFixpoints (globDataEnv gEnv) simpl
+    let fixed = solveFixpoints dEnv simpl
     -- Check if the resulting annotation is well-sroted
     putStrLn $ "\n# Fixpoint: "
     print fixed 
-    let sorts = sort (globDataEnv gEnv) fixed
+    let sorts = sort dEnv fixed
 
     let hasDicts = foldr (||) False (isDataTypeMethod <$> methodType . snd <$> methods) 
     fixed' <- if not hasDicts
@@ -118,8 +119,8 @@ temp modName gEnv methods = do
     -- Compute the second pass
     let effects = collectEffects 
               <$> (unsafeUnliftTuple 
-                  . eval (globDataEnv gEnv)
-                  . solveFixpoints (globDataEnv gEnv)
+                  . eval dEnv
+                  . solveFixpoints dEnv
                   $ analyseMethods 1 gEnv' methods')
 
     let finite   = sum $ length <$> filter (not . (== Infty) . snd) <$> filter (not . (== Region RegionGlobal) . fst) <$> M.toList <$> effects
@@ -129,35 +130,20 @@ temp modName gEnv methods = do
     let transformed = uncurry transform <$> zip effects (snd <$> methods')
     let emptyRegs   = collectEmptyRegs <$> transformed
     let cleaned     = uncurry remEmptyRegs <$> zip emptyRegs transformed
+    
 
-    if((modName == "LvmLang"        && True)
-      || (modName == "HeliumLang"   && True) 
-      || (modName == "PreludePrim"  && True)
-      || (modName == "Prelude"      && True)
-      || (modName == "LvmException" && True))
-    then do return () --putStrLn "-"
-    else do
+    putStrLn "\n# With locals:"
+    print $effects
 
-      -- fixed' <- case sorts of
-      --       Left  e -> putStrLn e >>= \_ -> rsError "nope"
-      --       Right _ -> return fixed
-      -- putStrLn $ "\n# Sort: "
-      -- print sorts 
-      -- putStrLn $ "\n# Zerod: "
-      -- print zerod 
-      -- putStrLn $ "\n# Effects: "
-      -- print effects
 
-      -- if mSrt1 /= mSrt2
-      -- then putStrLn $ "Evaluation returned different sort!"
-      --               ++ "\n\tPre-eval:  " ++ show mSrt1
-      --               ++ "\n\tPost-eval: " ++ show mSrt2 
-      -- else return ()
+    let a = seq cleaned gEnv'
+    putStrLn "\n# Done\n\n"
 
-      -- putStrLn ""
-      putStrLn ""
+    -- if (stringFromId . fst $ methods !! 0) == "HeliumLang.$primPatternFailPacked"
+    -- then error ""
+    -- else return ()
 
-    return ((gEnv', finite, infinite), zip (fst <$> methods) cleaned)
+    return ((a, finite, infinite), zip (fst <$> methods) cleaned)
 
 -- | Assign a sort to a method 
 methodSortAssign :: GlobalEnv -> Method -> Sort 
@@ -214,11 +200,11 @@ collectEffects = foldAnnAlg collectAlg
 
 
 isDataTypeMethod :: Type -> Bool 
-isDataTypeMethod (TStrict a)     = isDataTypeMethod a 
-isDataTypeMethod (TForall _ _ a) = isDataTypeMethod a 
-isDataTypeMethod (TVar a)        = False 
+isDataTypeMethod (TStrict t)     = isDataTypeMethod t 
+isDataTypeMethod (TForall _ _ t) = isDataTypeMethod t 
+isDataTypeMethod (TVar _)        = False 
 isDataTypeMethod (TAp t1 t2)     = isDataTypeMethod t1 || isDataTypeMethod t2   
 isDataTypeMethod (TCon TConFun)          = False   
-isDataTypeMethod (TCon (TConTuple n))    = False 
+isDataTypeMethod (TCon (TConTuple _))    = False 
 isDataTypeMethod (TCon (TConDataType _)) = False
 isDataTypeMethod (TCon (TConTypeClassDictionary _)) = True 

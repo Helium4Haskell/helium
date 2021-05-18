@@ -157,7 +157,7 @@ lookupGlobal :: HasCallStack => Id -> GlobalEnv -> Annotation
 lookupGlobal name (GlobalEnv _ vars _) = 
   case lookupMap name vars of
     Nothing -> rsError $ "lookupGlobal - Global environment did not contain: " ++ stringFromId name
-    Just a  -> a 
+    Just a  -> a
 
 -- | Look up a local variable in the local environment
 lookupBlock :: BlockName -> BlockEnv -> Annotation

@@ -19,11 +19,11 @@ type Gamma = M.Map Int Sort
 
 -- | Insert a new variable into the sorting environment
 envInsert :: Sort -> Gamma -> Gamma
-envInsert s = M.insert 0 s . envWeaken
+envInsert s = M.insert 0 s . M.mapKeys ((+) 1)
 
 -- | Increase all env indexes by one
 envWeaken :: Gamma -> Gamma
-envWeaken = M.mapKeys ((+) 1) -- . M.map (sortWeaken 1)
+envWeaken =  M.map (sortWeaken 0)
 
 ----------------------------------------------------------------
 -- Sorting
@@ -104,7 +104,7 @@ sort dEnv = sort' (-1,-1) M.empty
                  else Left $ "Setminus on non constraint-sort annotation: \nSort:" ++ show sortA 
 
           -- Quantification and instantiation
-          sort' (dL,dQ) gamma (AQuant   a) = SortQuant <$> sort' (dL,dQ+1) gamma a
+          sort' (dL,dQ) gamma (AQuant   a) = SortQuant <$> sort' (dL,dQ+1) (envWeaken gamma) a
           sort' (dL,dQ) gamma (AInstn a t) = 
               case sort' (dL,dQ) gamma a of
                   Right (SortQuant s) -> Right . sortInstantiate dEnv t $ SortQuant s 
