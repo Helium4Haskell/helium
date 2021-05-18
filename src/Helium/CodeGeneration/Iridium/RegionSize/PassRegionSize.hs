@@ -79,14 +79,31 @@ temp modName gEnv methods = do
   then do
     return ((gEnv, 0, 0), methods)
   else do
+    let hasDicts = foldr (||) False (isDataTypeMethod <$> methodType . snd <$> methods) 
+
+
     let dEnv = globDataEnv gEnv
 
     -- Generate the annotations     
     putStrLn $ "\n# Analyse methods:\n" ++ (intercalate "\n" $ map (show.fst) methods)
     let mAnn  = analyseMethods 0 gEnv methods
+    case sort dEnv mAnn of
+            Left  s -> do
+              putStrLn ""
+              putStrLn s
+              rsError $ "Wrong sort"
+            Right _ -> return ()
+
     print mAnn
     -- Simplify the generated annotation
     let simpl = inlineFixpoints dEnv $ eval dEnv mAnn
+    case sort dEnv simpl of
+            Left  s -> do
+              putStrLn ""
+              putStrLn s
+              rsError $ "Wrong sort"
+            Right _ -> return ()
+
     putStrLn $ "\n# Simplified: "
     print simpl 
     -- Solve the fixpoints
@@ -96,15 +113,12 @@ temp modName gEnv methods = do
     print fixed 
     let sorts = sort dEnv fixed
 
-    let hasDicts = foldr (||) False (isDataTypeMethod <$> methodType . snd <$> methods) 
-    fixed' <- if not hasDicts
-    then case sorts of
+    fixed' <- case sorts of
             Left  s -> do
               putStrLn ""
               putStrLn s
               rsError $ "Wrong sort"
             Right _ -> return $ unsafeUnliftTuple fixed
-    else return $ flip ATop constrBot . methodSortAssign gEnv . snd <$> methods
 
     -- Fix the annotations of zero arity definitions
     let zerod = uncurry fixZeroArity <$> zip methods fixed'
