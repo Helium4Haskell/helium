@@ -4,11 +4,14 @@ module Helium.CodeGeneration.Iridium.RegionSize.Sorting
 
 import Helium.CodeGeneration.Iridium.RegionSize.Annotation
 import Helium.CodeGeneration.Iridium.RegionSize.Sort
+import Helium.CodeGeneration.Iridium.RegionSize.Constraints
 import Helium.CodeGeneration.Iridium.RegionSize.SortUtils
 import Helium.CodeGeneration.Iridium.RegionSize.DataTypes
 
 import qualified Data.Map as M
 import Data.Either (lefts,rights)
+import Data.List (find)
+import Data.Maybe (fromMaybe)
 
 ----------------------------------------------------------------
 -- Sorting environment
@@ -39,9 +42,10 @@ sort dEnv = sort' (-1,-1) M.empty
                                         Nothing -> Left $ "Not in gamma: " ++ (annShow' d $ AVar a)
                                         Just s  -> Right s
           sort' _ _     (AReg     _) = Right SortMonoRegion
-          sort' _ _     (AConstr  _) = Right SortConstr
           sort' _ _     (AUnit     ) = Right SortUnit
-          
+          sort' d _     (AConstr  c) = case checkConstr (fst d) c of
+                                          ""  -> Right SortConstr
+                                          err -> Left err 
           -- Top, bot and fix are annotated with their sort
           sort' _ _     (ATop   s _) = Right s
           sort' _ _     (ABot   s  ) = Right s
@@ -112,3 +116,15 @@ sort dEnv = sort' (-1,-1) M.empty
                   err     -> err
 
 
+-- | Check if the indexes in a constraint set are bound
+checkConstr :: Int -> Constr -> String
+checkConstr depth c = fromMaybe "" . find ((<) 0 . length) $ checkConstrIdx . fst <$> M.toList c
+    where checkConstrIdx :: ConstrIdx -> String
+          checkConstrIdx (Region a) = ""             
+          checkConstrIdx (AnnVar a) = if a < 0
+                                      then "Negative constraint index"
+                                      else if a > depth
+                                           then "Unbound index"
+                                           else ""
+          checkConstrIdx (CnProj _ c) = checkConstrIdx c             
+                                      
