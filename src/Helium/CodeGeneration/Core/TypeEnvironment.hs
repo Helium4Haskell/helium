@@ -21,7 +21,6 @@ import Lvm.Common.Id
 import Lvm.Common.IdMap
 
 import Text.PrettyPrint.Leijen
-import Helium.CodeGeneration.Core.Strictness.Data
 
 data TypeEnvironment = TypeEnvironment
   { typeEnvSynonyms :: IdMap Type
@@ -140,11 +139,11 @@ typeOfCoreExpression env a e@(Ap e1 e2) = case typeNotStrict $ typeNormalizeHead
 
 -- Expression: e1 { tp1 }
 -- The type of e1 should be of the form `forall x. tp2`. Substitute x with tp1 in tp2.
-typeOfCoreExpression env a (ApType e1 tp1) = case typeNormalizeHead env $ typeOfCoreExpression env a e1 of
-  tp@(TForall q _ t) -> case tp1 of
-    (TAnn a) -> annSubstitute t q a env
-    _ -> typeApply tp tp1
-  tp -> internalError "Core.TypeEnvironment" "typeOfCoreExpression" $ "typeOfCoreExpression: expected a forall type in the first argument of a function application, got " ++ showType [] tp
+typeOfCoreExpression env a (ApType e1 tp1) = case tp1 of
+    t@(TAnn _) -> fst $ annApplyList (typeOfCoreExpression env a e1) [t] env
+    _ -> case typeNormalizeHead env $ typeOfCoreExpression env a e1 of
+      tp@(TForall _ _ _) -> typeApply tp tp1
+      tp -> internalError "Core.TypeEnvironment" "typeOfCoreExpression" $ "typeOfCoreExpression: expected a forall type in the first argument of a function application, got " ++ showType [] tp
 
 -- Expression: \x: t1 -> e
 -- If e has type t2, then the lambda has type t1 -> t2
@@ -302,5 +301,23 @@ annSubstitute t q a env
       t' = typeNormalizeHead env t
 
 annApplyList :: Type -> [Type] -> TypeEnvironment -> (Type, [Type])
-annApplyList (TForall q KAnn t) ((TAnn a):ts) env = annApplyList (annSubstitute t q a env) ts env
-annApplyList t ts _ = (t, ts)
+annApplyList t ((TAnn a):ts) env = annApplyList' t a ts env
+annApplyList t ts env = (t, ts)
+
+annApplyList' :: Type -> SAnn -> [Type] -> TypeEnvironment -> (Type, [Type])
+annApplyList' (TForall q KAnn t) a ts env = annApplyList (annSubstitute t q a env) ts env
+annApplyList' (TForall q k t) a ts env = (TForall q k t', ts')
+  where
+    (t', ts') = annApplyList' t a ts env
+annApplyList' (TStrict t) a ts env = (TStrict t', ts')
+  where
+    (t', ts') = annApplyList' t a ts env
+annApplyList' (TAp t1 t2) a ts env = (TAp t1' t2', ts'')
+  where
+    (t1', ts') = annApplyList' t1 a ts env
+    (t2', ts'') = annApplyList' t2 a ts' env
+annApplyList' t a ts env
+  | t /= t' = annApplyList' t' a ts env
+  | otherwise = (t, ts)
+    where
+      t' = typeNormalizeHead env t

@@ -1,4 +1,4 @@
-module Helium.CodeGeneration.Core.Strictness.Annotate (annotateModule, annotateDeclaration) where
+module Helium.CodeGeneration.Core.Strictness.Annotate (annotateModule) where
 
 import Data.List
 

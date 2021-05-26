@@ -62,21 +62,22 @@ groupStrictness supply (b, env) (BindingNonRecursive d) = (b ++ [td], env')
     -- Solve constraints
     sc = solveConstraints cs
     -- Apply transformations
-    td = transformDeclaration env sc True d
+    td = transformDeclaration sc True d
     -- Add to type environment for next declarations
     env' = typeEnvAddGlobalValue (declName td) (declType td) env
 -- Group of recursive declarations
 groupStrictness supply (bs, env) (BindingRecursive ds) = (bs ++ tds, env'')
   where
+    -- Add to type environment for recursive declarations
+    env' = typeEnvAddGlobalValues (map (\d -> (declName d, declType d)) ds) env
     -- Instantiate declarations
-    ids = instantiateDeclarations env supply ds
-    env' = typeEnvAddGlobalValues (map (\d -> (declName d, declType d)) ids) env
+    ids = mapWithSupply (instantiateDeclaration env') supply ds
     -- Analyse declarations
     cs = map (analyseDeclaration env') ids
     -- Solve constraints
     sc = solveConstraints (S.unions cs)
     -- Apply transformations
-    tds = map (transformDeclaration env' sc True) ds
+    tds = map (transformDeclaration sc True) ds
     -- Add to type environment for next declarations
     env'' = typeEnvAddGlobalValues (map (\d -> (declName d, declType d)) tds) env
 
