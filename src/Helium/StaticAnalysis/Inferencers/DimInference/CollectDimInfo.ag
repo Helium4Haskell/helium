@@ -1,0 +1,134 @@
+
+
+
+SEM Declaration
+    ----------------------------------- Problem 1 : Handle type structure -------------------------------
+
+    | Type              @lhs.typeToDim = M.insert @simpletype.name @type.typeToDim @lhs.typeToDim
+                        -- a bit more complicated because type Maybe a = a
+                        -- but it is a type at the right and not something with constructors, which are expressions
+    --  range                    : Range
+    --  simpletype               : SimpleType
+    --  type                     : Type
+
+    -- a SimpleType declared by data or Newtype keywords can't have dimension (but it does declare constructors having dimensions)
+    -- no constructors can have the same name
+    -- So the important is not the type but the name of the constructor, we only store that
+    -- so defaultly, unstored is undimensioned
+
+    | Data              @lhs.typeToDim = M.insert @simpletype.name @type.typeToDim @lhs.typeToDim
+    
+                        -- The point is mainly adding  
+                        -- Ca se fait mais ça demande du travail.
+    --  range                    : Range
+    --  context                  : ContextItems
+    --  simpletype               : SimpleType
+    --  constructors             : Constructors
+    --  derivings                : Names
+
+    | Newtype           -- same
+    --  range                    : Range
+    --  context                  : ContextItems
+    --  simpletype               : SimpleType
+    --  constructor              : Constructor  -- has only one field, no strictness
+    --  derivings                : Names
+
+
+-- ------------------------------------------------------------------------
+-- -- Types                                                              --
+-- ------------------------------------------------------------------------
+
+-- we need the dimension information
+
+-- maybe there is something to do for Tp...
+
+ATTR Types Type
+    [ variableNameToNum : M.map Name Int | | typeVarToType : {[UnitType] -> UnitType}]
+
+SEM Type
+    | Application           @lhs.typeVarToType = \utlist ->
+                                Arrow (@function.typesVarToType utlist) ([f utlist | f <- @arguments.typeVarToType ])
+    --  range                    : Range
+    --  prefix                   : Bool
+    --  function                 : Type 
+    --  arguments                : Types
+    | Variable              @lhs.variabltypeVarToTypeeNum = \utlist ->
+                                case M.lookup @lhs.variableNameToNum of
+                                    Just varInt -> nth 
+                                    Nothing -> [] -- not supposed to happen
+    --  range                    : Range
+    --  name                     : Name
+    --  unit                     : MaybeUnit
+    | Constructor              lhs.dimTypeInfo = Base @unit.self
+                               lhs.typeToDim = M.insert @lhs.dimTypeInfo @lhs.typeToDim
+    --  range                    : Range
+    --  name                     : Name
+    --  unit                     : MaybeUnit
+    | Parenthesized            lhs.dimTypeInfo = @type.dimTypeInfo
+                               lhs.typeToDim = @type.typeToDim
+    --  range                    : Range
+    --  type                     : Type
+    | Qualified                lhs.dimTypeInfo = @type.dimTypeInfo
+                               lhs.typeToDim = @type.typeToDim
+    --  range                    : Range
+    --  context                  : ContextItems
+    --  type                     : Type
+
+SEM SimpleType
+    | SimpleType         lhs.dimTypeInfo = M.lookup @name.self @lhs.typeToDim
+    --  name                     : Name
+    --  typevariables            : Names
+
+SEM ContextItem -- What is that?
+    | ContextItem       loc.text = @name.text <+> head @types.text -- no parens because it is always a var
+    --  range                    : Range
+    --  name                     : Name   -- that is the class
+    --  types                    : Types  -- in Haskell 98, this is only one type
+
+SEM Constructor
+    | Constructor       
+    --  range                    : Range
+    --  constructor              : Name
+    --  types                    : AnnotatedTypes
+    | Infix             
+    --  range                    : Range
+    --  leftType                 : AnnotatedType
+    --  constructorOperator      : Name
+    --  rightType                : AnnotatedType
+    | Record            
+    --  range                    : Range
+    --  constructor              : Name
+    --  fieldDeclarations        : FieldDeclarations
+
+-- This is in a record; what do we do with records? : well, normal dim inference
+SEM FieldDeclaration
+    | FieldDeclaration      @lhs.typeToDim =
+                                 fold (M.insert) @lhs.typeToDim
+                                    [(n,t) | n <- @names.self, t <- @type.dimTypeInfo]
+    --  range                    : Range
+    --  names                    : Names
+    --  type                     : AnnotatedType        
+
+SEM AnnotatedType
+    | AnnotatedType         @lhs.dimType = @type.dimTypeInfo
+
+{
+
+
+-- WE CAN USE makeTpFromType for the same thing !! amazing <3
+makeUnitFromTp :: [(Name, Tp)] -> Type -> (Tp)
+makeUnitTypeFromType nameMap = rec_
+  where
+        rec_ :: Type -> UnitType
+        rec_ uhaType = case uhaType of
+             Type_Application _ _ fun args -> foldl TApp (rec_ fun) (map rec_ args)
+             Type_Variable _ name _        -> fromMaybe (TCon "???") (lookup name nameMap)
+             Type_Constructor _ name _     -> Cons (getNameName name)
+             Type_Parenthesized _ t        -> rec_ t
+             Type_Qualified _ _ t          -> rec_ t
+             Type_Forall{}                 -> internalError "TypeConversion.hs" "makeTpFromType" "universal types are currently not supported"
+             Type_Exists{}                 -> internalError "TypeConversion.hs" "makeTpFromType" "existential types are currently not supported"
+
+
+
+}

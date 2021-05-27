@@ -74,10 +74,10 @@ SEM Module
                                       [ @exportErrors
                                       , @scopeErrors
                                       , @body.scopeunitError
-                                      , @body.scopedimensionError
-                                      , @unitdoublesError
-                                      , @dimensiondoublesError
+                                      , @unitduplicatedError
+                                      , @dimensionduplicatedError
                                       , @recursiveUnitErrors
+                                      , @unitvariableErrors
                                       , @miscerrors
                                       , if KindInferencing `elem` @lhs.options then [] else @kindErrors
                                       , @topLevelErrors

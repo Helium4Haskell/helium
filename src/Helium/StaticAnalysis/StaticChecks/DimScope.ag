@@ -116,28 +116,20 @@ SEM SimpleUnit
                                         [ Undefined Unit @name.self @lhs.uscope [] ]
                                     else [] -- [Undefined Unit @name.self @lhs.uscope []]
 
-SEM SimpleDimension
-    | SimpleDimension           lhs . scopedimensionError =
-                                    if not (@name.self `elem` @lhs.dscope) then
-                                        [ Undefined Dimension @name.self @lhs.dscope [] ]
-                                    else [] -- [Undefined Dimension @name.self @lhs.dscope []]
-
 -----------------------------------------------------------------------------
 
 -- 4) Check if dimensions / units are duplicated
 
 SEM Module
-    | Module                    loc . unitdoublesError      = makeDuplicated Unit (filter ((>1) . length) . group . sort $ @uscope)
-                                    . dimensiondoublesError = makeDuplicated Dimension (filter ((>1) . length) . group . sort $ @dscope)
-                                    . recursiveUnitErrors =  if recursiveDependencies @unitdef then [RecursiveUnitDefinition []] else []
+    | Module                    loc . unitduplicatedError      = makeDuplicated Unit (filter ((>1) . length) . group . sort $ @uscope)
+                                    . dimensionduplicatedError = makeDuplicated Dimension (filter ((>1) . length) . group . sort $ @dscope)
+                                    
 -----------------------------------------------------------------------------
 
-{- 5) Detect cycles in the unit definition
+-- 5) Detect cycles in the unit definition
 
 SEM Module
-  | Module   loc 
-                -- if recursiveDependencies @unitdef then [RecursiveUnitDefinition []] else []-}
-
+  | Module                      loc . recursiveUnitErrors =  if recursiveDependencies @unitdef then [RecursiveUnitDefinition []] else []
 
 ---------------------------------------------------------------------------
 
@@ -201,3 +193,39 @@ recursiveDependencies unitsdef =
     let unitgraph  = M.fromList [ (su,(l, 0)) | (su,u) <- unitsdef, let l = getDependencies u ] in
     hasCycle unitgraph
 }
+
+---------------------------------------------------------------------------
+
+-- 6) Check the context in which unit variables are used
+
+ATTR Body Declarations Declaration
+    Expressions Expression Patterns Pattern
+    Statement Statements Qualifier Qualifiers
+    Alternative Alternatives Constructor Constructors
+    GuardedExpressions GuardedExpression FunctionBinding FunctionBindings
+    FieldDeclaration FieldDeclarations RecordExpressionBinding RecordExpressionBindings
+    LeftHandSide RightHandSide MaybeDeclarations MaybeExpression Type Types 
+    RecordPatternBinding RecordPatternBindings 
+    AnnotatedType AnnotatedTypes ContextItem ContextItems
+    MaybeUnit Unit SimpleUnit
+    [ | | unitvariableErrors USE { ++ } { [] } : { [Error] } ]
+
+SEM Module
+    | Module                loc . unitvariableErrors = @body.unitvariableErrors
+
+SEM Declaration
+    | UnitFromUnit          lhs . unitvariableErrors = map (\n -> UnexpectedUnitVariable n) @associatedunit.hasVariable
+    | AliasUnit             lhs . unitvariableErrors = map (\n -> UnexpectedUnitVariable n) @aliased.hasVariable
+
+SEM Expression
+    | Dimensioned           lhs . unitvariableErrors = []
+
+SEM Type
+    | Variable              lhs . unitvariableErrors = []
+    | Constructor           lhs . unitvariableErrors = []
+
+ATTR MaybeUnit Unit
+    [ | | hasVariable USE { ++ } { [] } : {[Name]}]
+
+SEM Unit
+    | Variable              lhs . hasVariable = [@name.self]
