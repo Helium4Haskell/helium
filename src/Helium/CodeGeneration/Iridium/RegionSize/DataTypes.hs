@@ -32,7 +32,7 @@ data DataTypeEnv = DataTypeEnv {
 emptyDEnv :: DataTypeEnv
 emptyDEnv = DataTypeEnv emptyMap emptyMap emptyMap emptyMap
 
-----------------------------------------------------------------
+---------------------------------------------------------------
 -- Data types lookup functions
 ----------------------------------------------------------------
 

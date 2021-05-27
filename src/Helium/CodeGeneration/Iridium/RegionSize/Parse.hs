@@ -12,6 +12,7 @@ import Helium.CodeGeneration.Iridium.RegionSize.Annotation
 import Helium.CodeGeneration.Iridium.RegionSize.Sort
 import Helium.CodeGeneration.Iridium.RegionSize.Constraints
 
+import Control.Monad.Fail
 import Data.List (elemIndex)
 import Data.Map (fromList)
 
@@ -141,7 +142,9 @@ pAnnotation' names = do
                     pToken '.'
                     pWhitespace'
                     anns <- pArgumentsWith '[' ']' $ pAnnotation (name2:names)
-                    return $ AFix sort anns
+                    case sort of
+                        SortTuple sorts -> return $ AFix sorts anns
+                        _ -> error "Fixpoint annotated with non-tuple sort"
                 _ -> return $ AVar (getIdx names name1)
 
 -- | Parse a sort

@@ -48,107 +48,6 @@ data LocalEnv    = LocalEnv {
 data Envs = Envs GlobalEnv RegionEnv LocalEnv
 
 ----------------------------------------------------------------
--- Data type sort discovery
-----------------------------------------------------------------
-
--- | Find sort for datatype
-dataTypeSort :: TypeEnvironment -> DataTypeEnv -> DataType -> Sort
-dataTypeSort tEnv dEnv dt@(DataType structs) = foldr (const SortQuant) (SortTuple . concat $ dataStructSort tEnv dEnv <$> structs) (dataTypeQuantors dt)
-
-dataStructSort :: TypeEnvironment -> DataTypeEnv -> Declaration DataTypeConstructorDeclaration -> [Sort]
-dataStructSort tEnv dEnv (Declaration _ _ _ _ (DataTypeConstructorDeclaration ty _)) =
-  let (args, _) = typeExtractFunction $ typeRemoveQuants ty
-  in sortAssign dEnv <$> typeNormalize tEnv <$> args -- TODO: We remove the quantifications here?
-
--- | Find region assignment for datatype
-dataTypeRegions :: TypeEnvironment -> DataTypeEnv -> DataType -> Sort
-dataTypeRegions tEnv dEnv dt@(DataType structs) = foldr (const SortQuant) (SortTuple . concat $ dataStructRegions tEnv dEnv <$> structs) (dataTypeQuantors dt)
-
-dataStructRegions :: TypeEnvironment -> DataTypeEnv -> Declaration DataTypeConstructorDeclaration -> [Sort]
-dataStructRegions tEnv dEnv (Declaration _ _ _ _ (DataTypeConstructorDeclaration ty _)) =
-  let (args, _) = typeExtractFunction $ typeRemoveQuants ty
-  in regionAssign dEnv <$> typeNormalize tEnv <$> args -- TODO: We remove the quantifications here?
-
-
-----------------------------------------------------------------
--- Global environment
-----------------------------------------------------------------
-
--- | Initial analysis environment
-initialGEnv :: Module -> GlobalEnv
-initialGEnv m = GlobalEnv typeEnv functionEnv dataTypeEnv
-  where
-    -- Environment is only used for type synonyms
-    typeEnv = TypeEnvironment synonyms emptyMap emptyMap
-
-    -- Type synonims
-    synonyms :: IdMap Type
-    synonyms = mapFromList [(name, tp) | Declaration name _ _ _ (TypeSynonym _ tp) <- moduleTypeSynonyms m]
-
-    -- Functions
-    functionEnv :: IdMap Annotation
-    functionEnv = mapFromList abstracts
-
-    abstracts :: [(Id, Annotation)]
-    abstracts = abstract <$> moduleAbstractMethods m
-    abstract (Declaration name _ _ _ (AbstractMethod tp _ _ anns)) = (name, regionSizeAnn tp anns)
-
-    regionSizeAnn :: Type -> [MethodAnnotation] -> Annotation
-    regionSizeAnn _ (MethodAnnotateRegionSize a:_) = a
-    regionSizeAnn tp (_:xs) = regionSizeAnn tp xs
-    regionSizeAnn tp []     = top tp
-
-    -- Top of type
-    top :: Type -> Annotation
-    top = flip ATop constrBot . SortLam SortUnit . sortAssign dataTypeEnv . typeNormalize typeEnv
-
-    -- ~~~~~~~~~
-    -- Datatypes
-    -- ~~~~~~~~~
-
-    dataTypeEnv :: DataTypeEnv
-    dataTypeEnv = DataTypeEnv declDataTypeSorts declDataTypeRegions dataTypeConstructors dataTypeDestructors
-
-    -- Data type sorts
-    declDataTypeSorts :: IdMap Sort
-    declDataTypeSorts = mapFromList . concat $ map declDataTypeSorts' (dataTypeBindingGroups $ moduleDataTypes m)
-
-    declDataTypeSorts' :: BindingGroup DataType -> [(Id, Sort)]
-    declDataTypeSorts' (BindingNonRecursive decl) = [(declarationName decl, dataTypeSort typeEnv recDEnv $ declarationValue decl)]
-    declDataTypeSorts' (BindingRecursive decls) = concat $ declDataTypeSorts' <$> BindingNonRecursive <$> decls
-
-    -- Data type regions
-    declDataTypeRegions :: IdMap Sort
-    declDataTypeRegions = mapFromList . concat $ map declDataTypeRegions' (dataTypeBindingGroups $ moduleDataTypes m)
-
-    declDataTypeRegions' :: BindingGroup DataType -> [(Id, Sort)]
-    declDataTypeRegions' (BindingNonRecursive decl) = [(declarationName decl, dataTypeRegions typeEnv recDEnv $ declarationValue decl)]
-    declDataTypeRegions' (BindingRecursive decls) = concat $ declDataTypeRegions' <$> BindingNonRecursive <$> decls
-
-    -- Constructor annotations
-    dataTypeConstructors :: IdMap Annotation
-    dataTypeConstructors = mapFromList (concat $ dataTypeConstructors' <$> moduleDataTypes m)
-    
-    dataTypeConstructors' :: Declaration DataType -> [(Id, Annotation)]
-    dataTypeConstructors' dt = makeDataTypeConstructors (declarationName dt `findMap` declDataTypeSorts) (declarationValue dt)
-    
-    -- Destructor annotations
-    dataTypeDestructors :: IdMap [Annotation]
-    dataTypeDestructors = mapFromList $ concat $ dataTypeDestructors' <$> moduleDataTypes m
-    
-    dataTypeDestructors' :: Declaration DataType -> [(Id, [Annotation])]
-    dataTypeDestructors' dt = makeDataTypeDestructors (declarationName dt `findMap` declDataTypeSorts) (declarationValue dt)
-
-
-    -- Environment used for the recursive positions of data types
-    recDEnv :: DataTypeEnv
-    recDEnv = let recSorts = mapFromList . map makeRecDataTypeSort $ moduleDataTypes m
-              in DataTypeEnv recSorts recSorts emptyMap emptyMap
-
-    makeRecDataTypeSort ::  Declaration DataType -> (Id, Sort)
-    makeRecDataTypeSort decl = (declarationName decl, foldr (const SortQuant) SortUnit . dataTypeQuantors $ declarationValue decl)
-
-----------------------------------------------------------------
 -- Environment interface functions
 ----------------------------------------------------------------
 
@@ -157,7 +56,7 @@ lookupGlobal :: HasCallStack => Id -> GlobalEnv -> Annotation
 lookupGlobal name (GlobalEnv _ vars _) = 
   case lookupMap name vars of
     Nothing -> rsError $ "lookupGlobal - Global environment did not contain: " ++ stringFromId name
-    Just a  -> a
+    Just a  -> a --`rsInfo` (show name ++ ":\n" ++ show a ++ "\n")
 
 -- | Look up a local variable in the local environment
 lookupBlock :: BlockName -> BlockEnv -> Annotation
@@ -183,7 +82,7 @@ lookupLocalSrt local (LocalEnv _ lSrtEnv) =
 -- | Lookup a global or local variable
 lookupVar :: HasCallStack => Variable -> Envs -> Annotation
 lookupVar (VarLocal local) (Envs _ _ lEnv) = lookupLocalAnn local lEnv
-lookupVar global           (Envs gEnv _ _) = AApl (lookupGlobal (variableName global) gEnv) AUnit
+lookupVar global           (Envs gEnv _ _) = AApl (lookupGlobal (variableName global) gEnv) AUnit -- `rsInfo` (show $ variableName global)
 
 -- | Lookup a region in the region environment, retuns the region if not in env
 lookupReg :: HasCallStack => RegionVar -> RegionEnv -> ConstrIdx
@@ -196,7 +95,7 @@ insertGlobal :: HasCallStack => Id -> Annotation -> GlobalEnv -> GlobalEnv
 insertGlobal name ann (GlobalEnv syns fs ds) =
   case lookupMap name fs of
     Nothing -> GlobalEnv syns (insertMap name ann fs) ds  
-    Just a  -> rsError $ "insertGlobal - Value already present: " ++ show name
+    Just _  -> rsError $ "insertGlobal - Value already present: " ++ show name
 
 -- | Insert a local variable
 insertLocal :: Id -> Annotation -> LocalEnv -> LocalEnv

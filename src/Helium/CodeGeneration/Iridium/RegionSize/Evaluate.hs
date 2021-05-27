@@ -78,9 +78,9 @@ join _    _             (ATop   s vs) = ATop s vs
 join _    (AConstr  c1) (AConstr  c2) = AConstr $ constrJoin c1 c2
 -- Join-simplicitation
 join _    (AVar   i1  ) (AVar   i2  ) | i1 == i2  = AVar i1
-                                 | otherwise = AJoin (AVar i1) (AVar i2) 
+                                      | otherwise = AJoin (AVar i1) (AVar i2) 
 join _    (ALam   s1 a) (ALam   s2 b) | s1 == s2  = ALam s1 $ AJoin a b
-                                 | otherwise = operatorSort AJoin constrJoin [ALam s1 a, ALam s2 b]
+                                      | otherwise = operatorSort AJoin constrJoin [ALam s1 a, ALam s2 b]
 join _    (AApl   s  a) (AApl   _  b) = AApl   s $ AJoin a b
 join _    (AQuant a   ) (AQuant b   ) = AQuant   $ AJoin a b
 join _    (AInstn a  t) (AInstn b  _) = AInstn (AJoin a b) t
@@ -94,9 +94,7 @@ join _ c1 c2 = joinSort $ jCollect (AJoin c1 c2)
         jCollect ann = [ann]
         joinSort = operatorSort AJoin constrJoin
 
-
 -- | Annotation application
--- TODO: Bug: If lamS == () then region is not removed from constrs or top
 application :: DataTypeEnv -> Annotation -> Annotation -> Annotation
 application dEnv (ALam lamS f) x | SortUnit ==      lamS = eval dEnv $ foldAnnAlgN (0,-1) subsUniAlg f
                                  | sortIsAnnotation lamS = eval dEnv $ foldAnnAlgN (0,-1) subsAnnAlg f
@@ -138,7 +136,7 @@ instantiate dEnv (AQuant anno) ty = eval dEnv $ foldAnnAlgQuantsN 0 annInstAlg a
     aBot   = \qD s   -> ABot (sortSubstitute dEnv qD ty s),
     aTop   = \qD s c -> ATop (sortSubstitute dEnv qD ty s) c,
     aLam   = \qD s a -> ALam (sortSubstitute dEnv qD ty s) a,
-    aFix   = \qD s a -> AFix (sortSubstitute dEnv qD ty s) a
+    aFix   = \qD s a -> AFix (sortSubstitute dEnv qD ty <$> s) a
   } 
 -- Cannot eval
 instantiate _ a t = AInstn a t
@@ -146,10 +144,10 @@ instantiate _ a t = AInstn a t
 
 -- | Only project if subannotation has been evaluated to a tuple
 project :: Annotation -> Int -> Annotation -> Annotation 
-project ann idx (ATuple as) | length as > idx = as !! idx
-                            | otherwise       = rsError $ "Projection-index out of bounds\n Idx: " ++ show idx ++ "\n Annotation: " ++ (show $ ATuple as) ++ "\n\n" ++ (show ann)
+project tmp idx (ATuple as) | length as > idx = as !! idx
+                            | otherwise       = rsError $ "Projection-index out of bounds\n Idx: " ++ show idx ++ "\n Annotation: " ++ (show $ ATuple as) ++ "\n\n" ++ (show tmp)
 -- Cannot eval
-project ann idx t = AProj idx t 
+project _   idx t = AProj idx t 
 
 
 -- | Break up top into a value
@@ -158,7 +156,7 @@ top SortUnit          _ = AUnit
 top SortConstr        c = AConstr c 
 top (SortTuple ss   ) c = ATuple  $ flip ATop c <$> ss
 top (SortQuant s    ) c = AQuant  $ ATop s c
--- top (SortLam   s1 s2) c = ALam s1 $ ATop s2 c
+top (SortLam   s1 s2) c = ALam s1 $ ATop s2 c
 top s c = ATop s c
 
 -- | Break up bot into a value
@@ -201,7 +199,6 @@ operatorSort op evalF xs = -- Compose list (tops, bots then others)
 -- Subsitution of region variables
 ----------------------------------------------------------------
 
--- TODO: Completly redo
 -- | Initialize region variables in a constraint set
 regVarSubst :: Int -> Annotation -> Constr -> Constr 
 regVarSubst d ann c = foldl constrAdd (constrStrengthenN d c') (constrWeaken d <$> insts)
@@ -226,3 +223,11 @@ regVarSubst d ann c = foldl constrAdd (constrStrengthenN d c') (constrWeaken d <
                                             | otherwise     -> rsError $ "Constraint index projection out of bounds"
                                   ann -> AProj i ann
         evalReg a = rsError $ "Illigal annotation for a constraint index: " ++ show a
+
+-- import qualified Helium.CodeGeneration.Iridium.RegionSize.Annotation
+-- import qualified Helium.CodeGeneration.Iridium.RegionSize.Annotation as A
+-- import qualified Helium.CodeGeneration.Iridium.RegionSize.Sort as S      
+-- import qualified Helium.CodeGeneration.Iridium.RegionSize.Evaluate as E
+-- import qualified Data.Map as M
+-- E.eval emptyDEnv $ A.ALam SortMonoRegion (A.AApl (A.ALam SortMonoRegion (A.AConstr (M.fromList([(AnnVar 0, Nat 1)])))) (A.AVar 0))
+-- E.eval emptyDEnv $ A.ALam SortMonoRegion $ A.ALam S.SortUnit $ (A.AApl (A.ALam SortMonoRegion (A.AConstr (M.fromList([(AnnVar 0, Nat 1)])))) (A.AVar 1))

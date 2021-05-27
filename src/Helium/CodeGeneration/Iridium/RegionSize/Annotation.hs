@@ -37,7 +37,7 @@ data Annotation =
     | AInstn  Annotation Type         -- ^ Insantiation of quantification
     | ATop    Sort       Constr       -- ^ Has a constraint set, all bounds should be infty
     | ABot    Sort  
-    | AFix    Sort       [Annotation] -- ^ Fix point has a list of (possibly mutally recursive) annotations
+    | AFix    [Sort]     [Annotation] -- ^ Fix point has a list of (possibly mutally recursive) annotations
   deriving (Eq, Ord)
 
 -- | The effect is an annotation, but always of sort C
@@ -72,9 +72,9 @@ annShow' n = foldAnnAlgN n showAlg
         aJoin   = \(_ ,_ ) a b -> "(" ++ a ++ " ⊔  " ++ b ++ ")", 
         aQuant  = \(_ ,qD) a   -> "(∀ " ++ typeVarName (qD+1) ++ "." ++ a ++ ")", 
         aInstn  = \(_ ,qD) a t -> a ++ " {" ++ showTypeN qD t ++ "}", 
-        aTop    = \(_ ,qD) s c -> "T[" ++ (constrShow qD c) ++ ":" ++ showSort qD s ++ "]", 
+        aTop    = \(lD,qD) s c -> "T[" ++ (constrShow lD c) ++ ":" ++ showSort qD s ++ "]", 
         aBot    = \(_ ,qD) s   -> "⊥[" ++ showSort qD s ++ "]", 
-        aFix    = \(lD,qD) s a -> "fix " ++ annVarName (lD+1) ++ " : " ++ showSort qD s  
+        aFix    = \(lD,qD) s a -> "fix " ++ annVarName (lD+1) ++ " : " ++ showSort qD (SortTuple s)  
                                          ++ ".\n[" ++ (intercalate ",\n" $ mapWithIndex (\i str -> show i ++ ": " ++ str) 
                                           $ indent "  " <$> a) ++ "]", 
         aConstr = \(lD,_ ) c   -> constrShow lD c 
@@ -103,7 +103,7 @@ data AnnAlg b a =
     aInstn  :: b -> a -> Type -> a,
     aTop    :: b -> Sort -> Constr -> a,
     aBot    :: b -> Sort -> a,
-    aFix    :: b -> Sort -> [a] -> a
+    aFix    :: b -> [Sort] -> [a] -> a
   }
 
 idAnnAlg :: AnnAlg a Annotation

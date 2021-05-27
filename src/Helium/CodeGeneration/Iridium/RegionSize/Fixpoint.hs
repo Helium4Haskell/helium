@@ -9,24 +9,35 @@ import Helium.CodeGeneration.Iridium.RegionSize.Constraints
 import Helium.CodeGeneration.Iridium.RegionSize.Utils
 import Helium.CodeGeneration.Iridium.RegionSize.Evaluate
 
-import Data.List (sort, (\\), elemIndex)
+import Data.List (sort, (\\), elemIndex, intercalate)
 import Data.Maybe (fromJust)
+import qualified Data.Map as M
+
+import System.IO.Unsafe
+
+max_iterations :: Int
+max_iterations = 2
+
+----------------------------------------------------------------
+-- Solving fixpoints
+----------------------------------------------------------------
 
 -- | Solve all the fixpoints in an annotation
 solveFixpoints :: DataTypeEnv -> Annotation -> Annotation
-solveFixpoints dEnv = eval dEnv . fillTop . foldAnnAlgQuants fixAlg
+solveFixpoints dEnv = eval dEnv . fillTop . foldAnnAlg fixAlg
     where fixAlg = idAnnAlg {
         aFix = \d s as -> ATuple $ solveFixpoint dEnv d s as
     }
 
 -- | Solve a group of fixpoints
-solveFixpoint :: DataTypeEnv -> Int -> Sort -> [Annotation] -> [Annotation]
-solveFixpoint dEnv qD s fixes = 
-        let bot = ABot $ sortWeaken qD s
+solveFixpoint :: DataTypeEnv -> (Int,Int) -> [Sort] -> [Annotation] -> [Annotation]
+solveFixpoint dEnv d ss fixes = 
+        let bot = ABot s
         in fixIterate 0 bot fixes
-    where fixIterate :: Int -> Annotation -> [Annotation] -> [Annotation]
-          fixIterate 12 _     _  = mapWithIndex (\ i _ -> AProj i $ ATop s constrBot) fixes
-          fixIterate n  state fs = 
+    where s = SortTuple ss
+          fixIterate :: Int -> Annotation -> [Annotation] -> [Annotation]
+          fixIterate n  state fs | n >= max_iterations = mapWithIndex (\ i _ -> AProj i $ ATop s constrBot) fixes 
+                                 | otherwise =
               let res = (\fix -> eval dEnv $ AApl (ALam s fix) state) <$> fs
               in if ATuple res == state
                  then res
@@ -36,8 +47,8 @@ solveFixpoint dEnv qD s fixes =
 fillTop :: Annotation -> Annotation
 fillTop = go constrBot
     where go scope (ATop   s c) = ATop s $ constrAdd c scope
-          go scope (ALam   s a) | sortIsRegion s = ALam s $ go (constrAdd (constrInfty $ AnnVar 0) (constrWeaken 1 scope)) a  
-                                | otherwise      = ALam s $ go (constrWeaken 1 scope) a
+          go scope (ALam   s a) | sortIsRegion s = ALam s $ go (constrAdd (constrInfty $ AnnVar 0) (weakenScope scope)) a  
+                                | otherwise      = ALam s $ go (weakenScope scope) a
           go scope (ATuple  as) = ATuple $ go scope <$> as
           go scope (AProj  i a) = AProj i $ go scope a 
           go scope (AApl   a b) = AApl   (go scope a) (go scope b) 
@@ -49,16 +60,23 @@ fillTop = go constrBot
           go scope (AFix   s v) = AFix s $ go scope <$> v
           go _     ann = ann
 
+weakenScope :: Constr -> Constr
+weakenScope = M.mapKeys weakenKey
+   where
+     weakenKey (AnnVar n) = AnnVar $ n + 1
+     weakenKey others     = others
+
+
 ----------------------------------------------------------------
 -- Fixpoint inlining
 ----------------------------------------------------------------
 
 -- | Solve all the fixpoints in an annotation
-inlineFixpoints :: DataTypeEnv -> Annotation -> Annotation
-inlineFixpoints dEnv = eval dEnv . foldAnnAlgQuants fixAlg
+inlineFixpoints :: Annotation -> Annotation
+inlineFixpoints = id --foldAnnAlgQuants fixAlg
     where fixAlg = idAnnAlg {
         aProj = \d i a  -> case a of
-                             AFix (SortTuple ss) as -> AProj i $ (removeUnused i ss as)
+                             AFix ss as -> AProj i $ (removeUnused i ss as)
                              _ -> AProj i a,
         aFix  = \d s as -> AFix s $ inlineFixpoint
                                   . inlineFixpoint
@@ -110,8 +128,8 @@ countFixBinds = foldAnnAlgLamsN 0 countAlg
 
 -- | Remove unused indexes in a fixpoint
 removeUnused :: Int -> [Sort] -> [Annotation] -> Annotation
-removeUnused targetIdx ss as = AFix (SortTuple usedSrts) $ renameUsed usedIdxs <$> usedAnns
-    where usedIdxs = sort $ go (findFixBinds <$> as) [] [0]
+removeUnused targetIdx ss as = AFix usedSrts $ renameUsed usedIdxs <$> usedAnns
+    where usedIdxs = sort $ go (findFixBinds <$> as) [] [targetIdx]
           usedAnns = foldl (\as' i -> (as !! i) : as') [] usedIdxs
           usedSrts = foldl (\ss' i -> (ss !! i) : ss') [] usedIdxs
           go rels seen []       = seen

@@ -1,9 +1,9 @@
 module Helium.CodeGeneration.Iridium.RegionSize.AnnotationUtils
-  ( liftTuple, unliftTuple,
-    collect,
-    annWeaken, annStrengthen,
+  ( liftTuple, unliftTuple, unsafeUnliftTuple,
+    collect, collectEffects,
+    annWeaken,
     isConstr, isTop, isBot, constrIdxToAnn,
-    annRemLocalRegs
+    annRemLocalRegs, regionVarsToGlobal
   ) where
 
 import Helium.CodeGeneration.Iridium.Region.RegionVar
@@ -29,7 +29,7 @@ annReIndex :: (Depth -> Int -> Int) -- ^ Reindex function for annotation vars
 annReIndex fA fT = foldAnnAlg reIdxAlg
   where reIdxAlg = idAnnAlg {
     aLam    = \(_ , qD) s a -> ALam (sortReIndex fT qD s) a,
-    aFix    = \(_ , qD) s a -> AFix (sortReIndex fT qD s) a,
+    aFix    = \(_ , qD) s a -> AFix (sortReIndex fT qD <$> s) a,
     aConstr = \(lD, _ ) c   -> AConstr (constrReIndex fA lD c), 
     aTop    = \(lD, qD) s c -> ATop (sortReIndex fT qD s) (constrReIndex fA lD c), 
     aBot    = \(_ , qD) s   -> ABot (sortReIndex fT qD s), 
@@ -40,11 +40,7 @@ annReIndex fA fT = foldAnnAlg reIdxAlg
 annWeaken :: Depth -- ^ Lambda depth
           -> Depth -- ^ Quantification depth
           -> Annotation -> Annotation
-annWeaken lD qD = annReIndex (weakenIdx lD) (weakenIdx qD)
-
--- | Decrease all unbound indexes by 1
-annStrengthen :: Annotation -> Annotation
-annStrengthen = annReIndex strengthenIdx strengthenIdx
+annWeaken lD qD = annReIndex (weakenIdx lD) (id.const)
 
 ----------------------------------------------------------------
 -- Annotation utilities
@@ -57,6 +53,11 @@ liftTuple a = (AProj 0 a, AProj 1 a)
 -- | Convert an annotation tuple to a haskell tuple
 unliftTuple :: (Annotation, Effect) -> Annotation 
 unliftTuple (a,b) = ATuple [a,b] 
+
+-- | Get an array of annotations from a tuple
+unsafeUnliftTuple :: Annotation -> [Annotation]
+unsafeUnliftTuple (ATuple as) = as
+unsafeUnliftTuple a = rsError $ "unsafeUnliftTuple: Called unsafe unlift tuple on non-tuple: " ++ show a
 
 
 -- | Collect all region variables in an annotation
@@ -99,3 +100,30 @@ annRemLocalRegs = foldAnnAlg cleanAlg
     aConstr = \_     -> AConstr . constrRemLocalRegs,
     aTop    = \_ s   -> ATop s . constrRemLocalRegs
   }
+
+-- | Collect all constraint sets from an annotation
+collectEffects :: Annotation -> Constr
+collectEffects = foldAnnAlg collectAlg
+    where collectAlg = AnnAlg {
+        aVar    = \_ _   -> constrBot,
+        aReg    = \_ _   -> constrBot,
+        aLam    = \_ _ a -> a,
+        aApl    = \_ a b -> constrAdd a b,
+        aConstr = \_ c   -> c,
+        aUnit   = \_     -> constrBot,
+        aTuple  = \_ as  -> foldr constrAdd constrBot as,
+        aProj   = \_ _ a -> a,
+        aAdd    = \_ a b -> constrAdd a b,
+        aMinus  = \_ a _ -> a,
+        aJoin   = \_ a b -> constrAdd a b,
+        aQuant  = \_ a   -> a,
+        aInstn  = \_ a _ -> a,
+        aTop    = \_ _ c -> c,
+        aBot    = \_ _   -> constrBot,
+        aFix    = \_ _ a -> foldr constrAdd constrBot a
+    }
+
+-- | Create an annotation that assigns all regionvars the global region
+regionVarsToGlobal :: RegionVars -> Annotation
+regionVarsToGlobal (RegionVarsSingle _) = AReg RegionGlobal
+regionVarsToGlobal (RegionVarsTuple rs) = ATuple $ regionVarsToGlobal <$> rs

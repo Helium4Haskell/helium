@@ -47,9 +47,11 @@ sort dEnv = sort' (-1,-1) M.empty
                                           ""  -> Right SortConstr
                                           err -> Left err 
           -- Top, bot and fix are annotated with their sort
-          sort' _ _     (ATop   s _) = Right s
+          sort' d _     (ATop   s c) = case checkConstr (fst d) c of
+                                          ""  -> Right s
+                                          err -> Left err 
           sort' _ _     (ABot   s  ) = Right s
-          sort' _ _     (AFix   s _) = Right s
+          sort' _ _     (AFix   s _) = Right $ SortTuple s
           sort' d gamma (AJoin  a b) = 
               let sortA = sort' d gamma a
                   sortB = sort' d gamma b
@@ -84,13 +86,6 @@ sort dEnv = sort' (-1,-1) M.empty
                   Right (SortTuple ss) -> if i < length ss
                                           then Right $ ss !! i
                                           else Left "sort: Projection out of bounds"   
-                  -- TODO: Remove this
-                  Right (SortQuant (SortTuple ss)) -> if i < length ss
-                                                      then Right . SortQuant $ ss !! i
-                                                      else Left "sort: Projection out of bounds"
-                  Right (SortQuant (SortLam s (SortTuple ss))) -> if i < length ss
-                                                      then Right . SortQuant . SortLam s $ ss !! i
-                                                      else Left "sort: Projection out of bounds"     
                   Right s -> Left $ "Projection on non-tuple sort: " ++ showSort dQ s
                   err     -> err
 
