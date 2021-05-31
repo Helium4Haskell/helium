@@ -44,7 +44,7 @@ passRegionSize _ m = do
     let gEnv = initialGEnv m
     let groups = methodBindingGroups $ moduleMethods m
 
-    ((_, finite, infinite), methods) <- mapAccumLM (analyseGroup (stringFromId $ moduleName m)) (gEnv,0,0) groups
+    ((_, finite, infinite), methods) <- mapAccumLM analyseBindingGroup (gEnv,0,0) groups
     putStrLn $ "Finite:   " ++ show finite
     putStrLn $ "Infinite: " ++ show infinite
 
@@ -54,28 +54,29 @@ passRegionSize _ m = do
 {- Analyses a binding group of a single non-recursive function
    or a group of (mutual) recursive functions.
 -} 
-analyseGroup :: (GlobalEnv, Int, Int) -> BindingGroup Method -> IO ((GlobalEnv, Int, Int), [Declaration Method])
+analyseBindingGroup :: (GlobalEnv, Int, Int) -> BindingGroup Method -> IO ((GlobalEnv, Int, Int), [Declaration Method])
 -- Recurisve bindings
-analyseGroup (gEnv, finite, infinite) (BindingRecursive bindings) = do
+analyseBindingGroup (gEnv, finite, infinite) (BindingRecursive bindings) = do
   let methods = map (\(Declaration methodName _ _ _ method) -> (methodName, method)) bindings
 
-  ((gEnv', finite2, infinite2), transformeds) <- temp gEnv methods
+  ((gEnv', finite2, infinite2), transformeds) <- analysis gEnv methods
 
   let bindings' = map (\(decl, (_,transformed)) -> decl{declarationValue=transformed}) $ zip bindings transformeds
   return ((gEnv', finite+finite2, infinite+infinite2)
          , bindings')
 -- Non recursive binding
-analyseGroup (gEnv, finite, infinite) (BindingNonRecursive decl@(Declaration methodName _ _ _ method)) = do
-  ((gEnv', finite2, infinite2), [(_,transformed)]) <- temp gEnv [(methodName,method)]
+analyseBindingGroup (gEnv, finite, infinite) (BindingNonRecursive decl@(Declaration methodName _ _ _ method)) = do
+  ((gEnv', finite2, infinite2), [(_,transformed)]) <- analysis gEnv [(methodName,method)]
 
   return ((gEnv', finite+finite2, infinite+infinite2)
          , [decl{ declarationValue = transformed }])
 
-
-temp ::  GlobalEnv -> [(Id,Method)] -> IO ((GlobalEnv, Int, Int), [(Id,Method)])
-temp gEnv methods = do
-    let hasDicts = foldr (||) False (isDataTypeMethod <$> methodType . snd <$> methods)
-    if hasDicts
+-- | Run the analysis on a group of methods
+analysis ::  GlobalEnv -> [(Id,Method)] -> IO ((GlobalEnv, Int, Int), [(Id,Method)])
+analysis gEnv methods = do
+    putStrLn $ "\n# Analyse methods:\n" ++ (intercalate "\n" $ map (show.fst) methods)
+    let canDerive = foldr (||) False (isDataTypeMethod <$> methodType . snd <$> methods)
+    if canDerive
     then do
       let gEnv' = foldr (uncurry insertGlobal) gEnv $ zip (fst <$> methods) (flip ATop constrBot . methodSortAssign gEnv . snd <$> methods)
       return ((gEnv', 0, 0), methods)
@@ -83,54 +84,56 @@ temp gEnv methods = do
       let dEnv = globDataEnv gEnv
 
       -- Generate the annotations     
-      putStrLn $ "\n# Analyse methods:\n" ++ (intercalate "\n" $ map (show.fst) methods)
       let mAnn  = analyseMethods 0 gEnv methods
-      print mAnn
-
-      -- Simplify the generated annotation
       let simpl = inlineFixpoints $ eval dEnv mAnn
-      putStrLn $ "\n# Simplified: "
-      print simpl'
-
-      -- Solve the fixpoints
-      let fixed = solveFixpoints dEnv simpl'
-      -- Check if the resulting annotation is well-sroted
-      putStrLn $ "\n# Fixpoint: "
-      print fixed 
+      let fixed = solveFixpoints dEnv simpl
       let sorts = sort dEnv fixed
 
+      putStrLn $ "\n# Derived annotation: "
+      print mAnn
+      
+      putStrLn $ "\n# Simplified: "
+      print simpl
+
+      -- Solve the fixpoints
+      putStrLn $ "\n# Fixpoint: "
+      print fixed 
+
+      -- Check if the resulting annotation is well-sroted
       fixed' <- case sorts of
               Left  s -> do
                 putStrLn ""
                 putStrLn s
                 rsError $ "Wrong sort"
               Right _ -> return $ unsafeUnliftTuple fixed
-
-      -- Fix the annotations of zero arity definitions
       let zerod = uncurry fixZeroArity <$> zip methods fixed'
-      putStrLn $ "\n# Zerod: "
-      print zerod 
+      
 
       -- Update the global environment with the found annotations
       let gEnv' = foldr (uncurry insertGlobal) gEnv $ zip (fst <$> methods) zerod
       -- Save the annotation on the method
       let methods' = map (\((name,Method a b c d e anns f g), ann) -> (name, Method a b c d e (MethodAnnotateRegionSize ann:anns) f g)) $ zip methods zerod
-
       -- Compute the second pass
       let effects = collectEffects 
                 <$> (unsafeUnliftTuple 
                     . eval dEnv
                     . solveFixpoints dEnv
                     $ analyseMethods 1 gEnv' methods')
+            
 
-      -- Count regions
-      let finite   = sum $ length <$> filter (not . (== Infty) . snd) <$> filter (not . (== Region RegionGlobal) . fst) <$> M.toList <$> effects
-      let infinite = (sum $ length <$> filter (not . (== Region RegionGlobal) . fst) <$> M.toList <$> effects) - finite 
-
-      -- Do the program transformation & remove empty regions
+      -- Transform the program
       let transformed = uncurry transform <$> zip effects (snd <$> methods')
       let emptyRegs   = collectEmptyRegs <$> transformed
       let cleaned     = uncurry remEmptyRegs <$> zip emptyRegs transformed
+
+
+      -- Count bounded and unbouned regions
+      let finite   = sum $ length <$> filter (not . (== Infty) . snd) <$> filter (not . (== Region RegionGlobal) . fst) <$> M.toList <$> effects
+      let infinite = (sum $ length <$> filter (not . (== Region RegionGlobal) . fst) <$> M.toList <$> effects) - finite 
+
+      -- Fix the annotations of zero arity definitions
+      putStrLn $ "\n# Zerod: "
+      print zerod 
 
       putStrLn "\n#Effects:"
       print $ effects
@@ -256,7 +259,7 @@ dataStructRegions tEnv dEnv (Declaration _ _ _ _ (DataTypeConstructorDeclaration
   in regionAssign dEnv <$> typeNormalize tEnv <$> args -- TODO: We remove the quantifications here?
 
 ----------------------------------------------------------------
--- Temporary methods
+-- Check if method can be derived
 ----------------------------------------------------------------
 
 isDataTypeMethod :: Type -> Bool  
@@ -267,4 +270,4 @@ isDataTypeMethod (TAp t1 t2)     = isDataTypeMethod t1 || isDataTypeMethod t2
 isDataTypeMethod (TCon TConFun)          = False    
 isDataTypeMethod (TCon (TConTuple _))    = False  
 isDataTypeMethod (TCon (TConDataType _)) = True 
-isDataTypeMethod (TCon (TConTypeClassDictionary _)) = True
+isDataTypeMethod (TCon (TConTypeClassDictionary _)) = False

@@ -145,10 +145,11 @@ instantiate _ a t = AInstn a t
 -- | Only project if subannotation has been evaluated to a tuple
 project :: Annotation -> Int -> Annotation -> Annotation 
 project tmp idx (ATuple as) | length as > idx = as !! idx
-                            | otherwise       = rsError $ "Projection-index out of bounds\n Idx: " ++ show idx ++ "\n Annotation: " ++ (show $ ATuple as) ++ "\n\n" ++ (show tmp)
+                                 | otherwise       = rsError $ "Projection-index out of bounds\n Idx: " ++ show idx ++ "\n Annotation: " ++ (show $ ATuple as) ++ "\n\n" ++ (show tmp)                         
+-- Moving a join outwards
+project _   idx (AJoin a b) = AJoin (AProj idx a) (AProj idx b)
 -- Cannot eval
 project _   idx t = AProj idx t 
-
 
 -- | Break up top into a value
 top :: Sort -> Constr -> Annotation

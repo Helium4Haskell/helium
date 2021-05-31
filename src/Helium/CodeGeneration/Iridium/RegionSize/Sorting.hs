@@ -46,12 +46,15 @@ sort dEnv = sort' (-1,-1) M.empty
           sort' d _     (AConstr  c) = case checkConstr (fst d) c of
                                           ""  -> Right SortConstr
                                           err -> Left err 
-          -- Top, bot and fix are annotated with their sort
-          sort' d _     (ATop   s c) = case checkConstr (fst d) c of
-                                          ""  -> Right s
-                                          err -> Left err 
-          sort' _ _     (ABot   s  ) = Right s
-          sort' _ _     (AFix   s _) = Right $ SortTuple s
+          -- Top and bot are annotated with their sort
+          sort' d _ (ATop   s c) = case checkConstr (fst d) c of
+                                     ""  -> Right s
+                                     err -> Left err 
+          sort' _ _ (ABot   s  ) = Right s
+
+          -- Check body of the fixpoint
+          sort' d gamma (AFix   s a) = sort' d gamma (ALam (SortTuple s) (ATuple a))
+          -- Check if both operands have the same sort
           sort' d gamma (AJoin  a b) = 
               let sortA = sort' d gamma a
                   sortB = sort' d gamma b
@@ -115,11 +118,11 @@ sort dEnv = sort' (-1,-1) M.empty
 checkConstr :: Int -> Constr -> String
 checkConstr depth c = fromMaybe "" . find ((<) 0 . length) $ checkConstrIdx . fst <$> M.toList c
     where checkConstrIdx :: ConstrIdx -> String
-          checkConstrIdx (Region a) = ""             
+          checkConstrIdx (Region _) = ""             
           checkConstrIdx (AnnVar a) = if a < 0
                                       then "Negative constraint index"
                                       else if a > depth
                                            then "Unbound index"
                                            else ""
-          checkConstrIdx (CnProj _ c) = checkConstrIdx c             
+          checkConstrIdx (CnProj _ x) = checkConstrIdx x             
                                       
