@@ -11,7 +11,6 @@ import Helium.CodeGeneration.Iridium.RegionSize.DataTypes
 import qualified Data.Map as M
 import Data.Either (lefts,rights)
 import Data.List (find)
-import Data.Maybe (fromMaybe)
 
 ----------------------------------------------------------------
 -- Sorting environment
@@ -32,7 +31,6 @@ envWeaken =  M.map (sortWeaken 0)
 -- Sorting
 ----------------------------------------------------------------
 
--- TODO: Remove the depth or also add quantification depth
 -- | Fills in the sorts on the annotation, returns sort of full annotation
 sort :: DataTypeEnv -> Annotation -> Either String Sort
 sort dEnv = sort' (-1,-1) M.empty
@@ -44,12 +42,12 @@ sort dEnv = sort' (-1,-1) M.empty
           sort' _ _     (AReg     _) = Right SortMonoRegion
           sort' _ _     (AUnit     ) = Right SortUnit
           sort' d _     (AConstr  c) = case checkConstr (fst d) c of
-                                          ""  -> Right SortConstr
-                                          err -> Left err 
+                                          Nothing -> Right SortConstr
+                                          Just er -> Left er 
           -- Top and bot are annotated with their sort
           sort' d _ (ATop   s c) = case checkConstr (fst d) c of
-                                     ""  -> Right s
-                                     err -> Left err 
+                                     Nothing -> Right s
+                                     Just er -> Left er 
           sort' _ _ (ABot   s  ) = Right s
 
           -- Check body of the fixpoint
@@ -72,7 +70,7 @@ sort dEnv = sort' (-1,-1) M.empty
                   let sortX = sort' (dL,dQ)  gamma x 
                   in case sortX of
                         Right sX | sX == sortA -> Right sortR
-                                 | otherwise   -> Right sortR --Left $ "Argument has different sort than is expected.\nArgument sort: " ++ (showSort dQ sX) ++ "\nExpected sort: " ++ (showSort dQ sortA) ++ "\n"
+                                 | otherwise   -> Left $ "Argument has different sort than is expected.\nArgument sort: " ++ (showSort dQ sX) ++ "\nExpected sort: " ++ (showSort dQ sortA) ++ "\n"
                         err     -> err
                 Right s -> Left $ "Application to non function sort:\nSort:     " ++ (showSort dQ s)
                 err     -> err
@@ -115,8 +113,8 @@ sort dEnv = sort' (-1,-1) M.empty
 
 
 -- | Check if the indexes in a constraint set are bound
-checkConstr :: Int -> Constr -> String
-checkConstr depth c = fromMaybe "" . find ((<) 0 . length) $ checkConstrIdx . fst <$> M.toList c
+checkConstr :: Int -> Constr -> Maybe String
+checkConstr depth c = find ((<) 0 . length) $ checkConstrIdx . fst <$> M.toList c
     where checkConstrIdx :: ConstrIdx -> String
           checkConstrIdx (Region _) = ""             
           checkConstrIdx (AnnVar a) = if a < 0
