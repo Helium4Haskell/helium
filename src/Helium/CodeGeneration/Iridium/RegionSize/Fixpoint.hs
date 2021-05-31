@@ -9,11 +9,9 @@ import Helium.CodeGeneration.Iridium.RegionSize.Constraints
 import Helium.CodeGeneration.Iridium.RegionSize.Utils
 import Helium.CodeGeneration.Iridium.RegionSize.Evaluate
 
-import Data.List (sort, (\\), elemIndex, intercalate)
+import Data.List (sort, elemIndex)
 import Data.Maybe (fromJust)
 import qualified Data.Map as M
-
-import System.IO.Unsafe
 
 max_iterations :: Int
 max_iterations = 2
@@ -22,32 +20,10 @@ max_iterations = 2
 -- Solving fixpoints
 ----------------------------------------------------------------
 
--- | Solve all the fixpoints in an annotation
-solveFixpoints :: DataTypeEnv -> Annotation -> Annotation
-solveFixpoints dEnv = eval dEnv . fillTop . foldAnnAlg fixAlg
-    where fixAlg = idAnnAlg {
-        aFix = \d s as -> ATuple $ solveFixpoint dEnv d s as
-    }
-
--- | Solve a group of fixpoints
-solveFixpoint :: DataTypeEnv -> (Int,Int) -> [Sort] -> [Annotation] -> [Annotation]
-solveFixpoint dEnv d ss fixes = 
-        let bot = ABot s
-        in fixIterate 0 bot fixes
-    where s = SortTuple ss
-          fixIterate :: Int -> Annotation -> [Annotation] -> [Annotation]
-          fixIterate n  state fs | n >= max_iterations = mapWithIndex (\ i _ -> AProj i $ ATop s constrBot) fixes 
-                                 | otherwise =
-              let res = (\fix -> eval dEnv $ AApl (ALam s fix) state) <$> fs
-              in if ATuple res == state
-                 then res
-                 else fixIterate (n+1) (ATuple res) fs
-
 -- | Fill top with local variables in scope
-fillTop :: Annotation -> Annotation
-fillTop = go constrBot
-    where go scope (ATop   s c) = ATop s $ constrAdd c scope
-          go scope (ALam   s a) | sortIsRegion s = ALam s $ go (constrAdd (constrInfty $ AnnVar 0) (weakenScope scope)) a  
+solveFixpoints ::  DataTypeEnv -> Annotation -> Annotation
+solveFixpoints dEnv = go constrBot
+    where go scope (ALam   s a) | sortIsRegion s = ALam s $ go (constrAdd (constrInfty $ AnnVar 0) (weakenScope scope)) a  
                                 | otherwise      = ALam s $ go (weakenScope scope) a
           go scope (ATuple  as) = ATuple $ go scope <$> as
           go scope (AProj  i a) = AProj i $ go scope a 
@@ -57,18 +33,32 @@ fillTop = go constrBot
           go scope (AJoin  a b) = AJoin  (go scope a) (go scope b)
           go scope (AQuant a  ) = AQuant (go scope a)
           go scope (AInstn a t) = AInstn (go scope a) t
-          go scope (AFix   s v) = AFix s $ go scope <$> v
+          go scope (AFix   s v) = ATuple . solveFixpoint dEnv scope s $ go scope <$> v
           go _     ann = ann
 
+-- | Weaken all region variables in the constraint set
 weakenScope :: Constr -> Constr
 weakenScope = M.mapKeys weakenKey
    where
      weakenKey (AnnVar n) = AnnVar $ n + 1
      weakenKey others     = others
 
+-- | Solve a group of fixpoints
+solveFixpoint :: DataTypeEnv -> Constr -> [Sort] -> [Annotation] -> [Annotation]
+solveFixpoint dEnv scope ss fixes = 
+        let bot = ABot s
+        in fixIterate 0 bot fixes
+    where s = SortTuple ss
+          fixIterate :: Int -> Annotation -> [Annotation] -> [Annotation]
+          fixIterate n  state fs | n >= max_iterations = mapWithIndex (\ i _ -> AProj i $ ATop s scope) fixes 
+                                 | otherwise =
+              let res = (\fix -> eval dEnv $ AApl (ALam s fix) state) <$> fs
+              in if ATuple res == state
+                 then res
+                 else fixIterate (n+1) (ATuple res) fs
 
 ----------------------------------------------------------------
--- Fixpoint inlining
+-- Fixpoint simplification
 ----------------------------------------------------------------
 
 -- | Solve all the fixpoints in an annotation

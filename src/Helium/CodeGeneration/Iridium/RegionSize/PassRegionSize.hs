@@ -270,4 +270,4 @@ isDataTypeMethod (TAp t1 t2)     = isDataTypeMethod t1 || isDataTypeMethod t2
 isDataTypeMethod (TCon TConFun)          = False    
 isDataTypeMethod (TCon (TConTuple _))    = False  
 isDataTypeMethod (TCon (TConDataType _)) = True 
-isDataTypeMethod (TCon (TConTypeClassDictionary _)) = False
+isDataTypeMethod (TCon (TConTypeClassDictionary _)) = True
