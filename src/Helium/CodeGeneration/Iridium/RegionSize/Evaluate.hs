@@ -91,6 +91,7 @@ join _ c1 c2 = joinSort $ jCollect (AJoin c1 c2)
         jCollect ann = [ann]
         joinSort = operatorSort AJoin constrJoin
 
+
 -- | Annotation application
 application :: DataTypeEnv -> Annotation -> Annotation -> Annotation
 application dEnv (ALam lamS f) x = eval dEnv $ foldAnnAlgN (0,-1) subsAnnAlg f
@@ -131,14 +132,17 @@ project _   idx (AJoin a b) = AJoin (AProj idx a) (AProj idx b)
 -- Cannot eval
 project _   idx t = AProj idx t 
 
+
 -- | Break up top into a value
 top :: Sort -> Constr -> Annotation
 top SortUnit          _ = AUnit 
 top SortConstr        c = AConstr c 
 top (SortTuple ss   ) c = ATuple  $ flip ATop c <$> ss
 top (SortQuant s    ) c = AQuant  $ ATop s c
-top (SortLam   s1 s2) c = ALam s1 $ ATop s2 c
+-- TODO: This maybe prevent caputure a variable to top
+-- top (SortLam   s1 s2) c = ALam s1 $ ATop s2 c
 top s c = ATop s c
+
 
 -- | Break up bot into a value
 bot :: Sort -> Annotation
@@ -153,26 +157,27 @@ bot s = ABot s
 -- Evalutation utilities
 ----------------------------------------------------------------
 
+
+-- TODO: If there are tops we can simply reduce to only tops
+-- Most other join/top rules can be simplified at a join
 -- | Ordering of binary operator operands, compute all computable operators
 operatorSort :: (Annotation -> Annotation -> Annotation)
              -> (Constr -> Constr -> Constr)
              -> [Annotation] 
              -> Annotation
-operatorSort op evalF xs = -- Compose list (tops, bots then others)
-                           let list = if length tops > 0 && length bots > 0
-                                      then compTop : (bots !! 0) : sort others3
-                                      else if length tops > 0
-                                           then compTop : sort others3
-                                           else sort others3
+operatorSort op evalF xs = -- Compose list (bots are excluded, tops are combined)
+                           let list = if length tops > 0
+                                      then compTop : sort others
+                                      else sort others
                            -- Combine list into single annotation
                            in if length list == 0 
                               then compConstr
                               else if compConstr /= AConstr constrBot 
                                   then foldl op compConstr  $ list
                                   else foldl op (head list) $ tail list
-  where (constrs, others1) = partition isConstr xs
-        (tops   , others2) = partition isTop others1  
-        (bots   , others3) = partition isBot others2  
+  where (constrs, xs')    = partition isConstr xs
+        (tops   , xs'')   = partition isTop    xs'  
+        (bots   , others) = partition isBot    xs''  
         compConstr = AConstr      $ foldr (\(AConstr a)  -> evalF a                 ) (constrBot         ) constrs
         compTop    = uncurry ATop $ foldr (\(ATop s a) b -> (s, constrAdd a $ snd b)) (SortUnit,constrBot) tops
 

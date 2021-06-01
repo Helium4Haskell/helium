@@ -176,6 +176,7 @@ localsOfInstr envs@(Envs gEnv rEnv lEnv) instr =
         -- Other instructions are 'terminal nodes' that do not extend lEnv
         _ -> lEnv
 
+-- | Locals of an allocation
 localsOfLetAlloc :: Envs -> [Bind] -> Instruction -> LocalEnv
 localsOfLetAlloc envs [] next = localsOfInstr envs next
 -- Thunk binds

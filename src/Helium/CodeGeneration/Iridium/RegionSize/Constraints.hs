@@ -67,11 +67,11 @@ constrReIndex f annD = M.mapKeys keyReIndex
         keyReIndex (CnProj i c) = CnProj i $ keyReIndex c 
         keyReIndex (Region var) = Region var
 
--- | Weaken the debruijn indices of a cosntraint set 
+-- | Increase constraint set indices by subtitution depth
 constrWeaken :: Int -> Constr -> Constr
 constrWeaken n = constrReIndex (weakenIdx n) (-1)
 
--- | Weaken the debruijn indices of a cosntraint set 
+-- | Decrease all unbound de bruijn indeces by 1
 constrStrengthenN :: Int -> Constr -> Constr
 constrStrengthenN = constrReIndex strengthenIdx
 

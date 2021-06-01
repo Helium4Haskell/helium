@@ -145,7 +145,6 @@ sortSubstitute dEnv subD ty = foldSortAlgN subD instAlg
                                          else SortPolySort (strengthenIdx qD idx) (instTypeArgs qD ts) 
         }
 
-
 ----------------------------------------------------------------
 -- De Bruijn reindexing
 ----------------------------------------------------------------
