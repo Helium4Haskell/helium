@@ -85,9 +85,6 @@ join _    (AApl   s  a) (AApl   _  b) = AApl   s $ AJoin a b
 join _    (AQuant a   ) (AQuant b   ) = AQuant   $ AJoin a b
 join _    (AInstn a  t) (AInstn b  _) = AInstn (AJoin a b) t
 join dEnv (ATuple as  ) (ATuple bs  ) = eval dEnv . ATuple $ zipWith AJoin as bs
--- TODO: This may create an incorrect sort if s1 != s2 (e.g. pi_0[((),C)]) join pi_0[((),())])
--- join _    (AProj  i1 a) (AProj  i2 b) | i1 == i2  = AProj i1 (AJoin a b)
---                                       | otherwise = operatorSort AJoin constrJoin [AProj i1 a, AProj i2 b]
 -- Collect and sort       
 join _ c1 c2 = joinSort $ jCollect (AJoin c1 c2)
   where jCollect (AJoin c3 c4) = jCollect c3 ++ jCollect c4 
@@ -96,29 +93,12 @@ join _ c1 c2 = joinSort $ jCollect (AJoin c1 c2)
 
 -- | Annotation application
 application :: DataTypeEnv -> Annotation -> Annotation -> Annotation
-application dEnv (ALam lamS f) x | SortUnit ==      lamS = eval dEnv $ foldAnnAlgN (0,-1) subsUniAlg f
-                                 | sortIsAnnotation lamS = eval dEnv $ foldAnnAlgN (0,-1) subsAnnAlg f
-                                 | sortIsRegion     lamS = eval dEnv $ foldAnnAlgN (0,-1) subsRegAlg f
-                                 | otherwise = rsError "Sort is neither region or annotation!?"
+application dEnv (ALam lamS f) x = eval dEnv $ foldAnnAlgN (0,-1) subsAnnAlg f
   where -- | Substitute a variable for an annotation
-        subsUniAlg = idAnnAlg {
-          aVar    = \(lD,_) idx -> if lD == idx 
-                                   then AUnit
-                                   else AVar $ strengthenIdx lD idx,
-          aConstr = \(lD,_) c   -> AConstr $ regVarSubst lD x c,
-          aTop    = \(lD,_) s c -> ATop s  $ regVarSubst lD x c
-        }
-        -- | Substitute a variable for an annotation
         subsAnnAlg = idAnnAlg {
           aVar = \(lD,qD) idx -> if lD == idx 
                                  then annWeaken lD qD x -- Weaken indexes
                                  else AVar $ strengthenIdx lD idx,
-          aConstr = \(lD,_) c   -> AConstr $ constrStrengthenN lD c,
-          aTop    = \(lD,_) s c -> ATop s  $ constrStrengthenN lD c
-        }
-        -- | Substitute a region variable for a region
-        subsRegAlg = idAnnAlg {
-          aVar    = \(lD,_) idx -> AVar $ strengthenIdx lD idx,
           aConstr = \(lD,_) c   -> AConstr $ regVarSubst lD x c,
           aTop    = \(lD,_) s c -> ATop s  $ regVarSubst lD x c
         }
