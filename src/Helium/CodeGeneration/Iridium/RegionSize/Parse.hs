@@ -16,9 +16,17 @@ import Control.Monad.Fail
 import Data.List (elemIndex)
 import Data.Map (fromList)
 
+data Names = Names {
+    quantorNames :: [String],
+    varNames     :: [String]
+}
+
+emptyNames :: Names
+emptyNames = Names [] []
+
 -- | TODO: Split names into two: Quants and vars 
 -- | Parse an annotation
-pAnnotation :: [String] -> Parser Annotation
+pAnnotation :: Names -> Parser Annotation
 pAnnotation names = do
     c <- lookahead
     case c of
@@ -37,7 +45,7 @@ pIsNext = do
           || c == '<'
           || c == '{'
 
-pAnnMany :: [String] -> Parser (Annotation -> Annotation)
+pAnnMany :: Names -> Parser (Annotation -> Annotation)
 pAnnMany names = do
     pWhitespace'
     c <- lookahead
@@ -54,7 +62,7 @@ pAnnMany names = do
             return $ flip AApl ann2 
         '{' -> do
             pToken '{'
-            ty <- pType' names
+            ty <- pType' (quantorNames names)
             pToken '}'
             pWhitespace'
             return $ flip AInstn ty 
@@ -62,7 +70,7 @@ pAnnMany names = do
     
 
 -- | Parse an annotation
-pAnnotation' :: [String] -> Parser Annotation
+pAnnotation' :: Names -> Parser Annotation
 pAnnotation' names = do
     pWhitespace'
     c <- lookahead
@@ -85,7 +93,7 @@ pAnnotation' names = do
             name <- pRsName
             pToken '.'
             pWhitespace'
-            AQuant <$> pAnnotation (name:names)
+            AQuant <$> pAnnotation  (names {quantorNames = name:quantorNames names})
         -- Lambda
         'λ' -> do 
             pToken 'λ'
@@ -94,7 +102,7 @@ pAnnotation' names = do
             sort <- pSort names
             pToken '.'
             pWhitespace'
-            ALam sort <$> pAnnotation (name:names)
+            ALam sort <$> pAnnotation (names {varNames = name:varNames names})
         -- Bot
         '⊥' -> do 
             pToken '⊥' 
@@ -141,14 +149,14 @@ pAnnotation' names = do
                     pWhitespace'
                     pToken '.'
                     pWhitespace'
-                    anns <- pArgumentsWith '[' ']' $ pAnnotation (name2:names)
+                    anns <- pArgumentsWith '[' ']' $ pAnnotation (names {varNames = name2:varNames names})
                     case sort of
                         SortTuple sorts -> return $ AFix sorts anns
                         _ -> error "Fixpoint annotated with non-tuple sort"
-                _ -> return $ AVar (getIdx names name1)
+                _ -> return $ AVar (getVarIdx names name1)
 
 -- | Parse a sort
-pSort :: [String] -> Parser Sort
+pSort :: Names -> Parser Sort
 pSort names = do
     sort1 <- pSort' names
     pWhitespace'
@@ -160,7 +168,7 @@ pSort names = do
             SortLam sort1 <$> pSort' names
         _ -> return sort1 
 
-pSort' :: [String] -> Parser Sort
+pSort' :: Names -> Parser Sort
 pSort' names = do
     c <- lookahead
     case c of
@@ -185,7 +193,7 @@ pSort' names = do
             name <- pRsName
             pToken '.'
             pWhitespace'
-            SortQuant <$> pSort (name:names)
+            SortQuant <$> pSort (names {quantorNames = name:quantorNames names})
         -- Parens 
         '(' -> do
             pToken '('
@@ -201,26 +209,26 @@ pSort' names = do
         c   -> pError $ c:[] 
 
 -- | Parse a polymorphic sort <name [t1,t2,..]>
-pPolySort :: [String] -> Parser (Int, [Type])
+pPolySort :: Names -> Parser (Int, [Type])
 pPolySort names = do
     pToken '<'
     pWhitespace'
     name <- pRsName
-    let idx = getIdx names name
+    let idx = getQuantIdx names name
     pWhitespace'
-    types <- pArgumentsWith '[' ']' $ pType' names
+    types <- pArgumentsWith '[' ']' $ pType' (quantorNames names)
     pToken '>'
     return (idx, types)
 
 -- | Parse a constraint set
-pConstr :: [String] -> Parser Constr
+pConstr :: Names -> Parser Constr
 pConstr names = do
     pWhitespace'
     constrs <- pArgumentsWith '{' '}' $ pConstraints names
     pWhitespace'
     return $ fromList constrs
 
-pConstraints ::  [String] -> Parser (ConstrIdx,Bound)
+pConstraints ::  Names -> Parser (ConstrIdx,Bound)
 pConstraints names = do
     idx <- pConstrIdx names
     pWhitespace'
@@ -230,14 +238,14 @@ pConstraints names = do
     bound <- pBound
     return (idx,bound)
 
-pConstrIdx :: [String] -> Parser ConstrIdx
+pConstrIdx :: Names -> Parser ConstrIdx
 pConstrIdx names = do
     c <- lookahead
     case c of
         'ρ' -> Region <$> pRegionVar
         _   -> do 
             name <- pRsName
-            let idx = getIdx names name
+            let idx = getVarIdx names name
             projs <- pProjs
             return $ foldr CnProj (AnnVar idx) projs
 
@@ -277,11 +285,19 @@ pRegionVar = do
 
 
 -- | Get the index from an array
+getQuantIdx :: Names -> String -> Int
+getQuantIdx names = getIdx (quantorNames names)
+
+-- | Get the index from an array
+getVarIdx :: Names -> String -> Int
+getVarIdx names = getIdx (varNames names)
+
 getIdx :: [String] -> String -> Int
 getIdx names name = 
     case name `elemIndex` names of
         Just i  -> i
         Nothing -> -1 
+
 
 -- | Parse a name
 pRsName :: Parser String

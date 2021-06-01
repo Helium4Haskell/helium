@@ -198,5 +198,5 @@ pAnnotation first = do
     "regions"
       | first -> (\a -> (True, MethodAnnotateRegion a)) <$ pToken ':' <* pWhitespace <*> Region.pAnnotation Region.emptyNames
     "regionsize"
-      | first -> (\a -> (True, MethodAnnotateRegionSize a)) <$ pToken ':' <* pWhitespace <*> RegionSize.pAnnotation [] <* pWhitespace
+      | first -> (\a -> (True, MethodAnnotateRegionSize a)) <$ pToken ':' <* pWhitespace <*> RegionSize.pAnnotation RegionSize.emptyNames <* pWhitespace
     _ -> pError $ "Unknown annotation: " ++ show word
