@@ -24,7 +24,6 @@ data Names = Names {
 emptyNames :: Names
 emptyNames = Names [] []
 
--- | TODO: Split names into two: Quants and vars 
 -- | Parse an annotation
 pAnnotation :: Names -> Parser Annotation
 pAnnotation names = do

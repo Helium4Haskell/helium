@@ -24,7 +24,6 @@ import Helium.CodeGeneration.Iridium.RegionSize.Sorting
 import Helium.CodeGeneration.Iridium.RegionSize.Transform
 import Helium.CodeGeneration.Iridium.RegionSize.Utils
 import Helium.CodeGeneration.Iridium.RegionSize.Fixpoint
-import Helium.CodeGeneration.Iridium.RegionSize.Type
 
 import Data.List (intercalate)
 import Data.Either (rights, lefts)
@@ -78,6 +77,7 @@ analysis gEnv methods = do
     let canDerive = foldr (||) False (isDataTypeMethod <$> methodType . snd <$> methods)
     if canDerive
     then do
+      -- | Insert top for bad methods
       let gEnv' = foldr (uncurry insertGlobal) gEnv $ zip (fst <$> methods) (flip ATop constrBot . methodSortAssign gEnv . snd <$> methods)
       return ((gEnv', 0, 0), methods)
     else do
@@ -120,12 +120,10 @@ analysis gEnv methods = do
                     . solveFixpoints dEnv
                     $ analyseMethods 1 gEnv' methods')
             
-
       -- Transform the program
       let transformed = uncurry transform <$> zip effects (snd <$> methods')
       let emptyRegs   = collectEmptyRegs <$> transformed
       let cleaned     = uncurry remEmptyRegs <$> zip emptyRegs transformed
-
 
       -- Count bounded and unbouned regions
       let finite   = sum $ length <$> filter (not . (== Infty) . snd) <$> filter (not . (== Region RegionGlobal) . fst) <$> M.toList <$> effects
@@ -199,11 +197,12 @@ initialGEnv m = GlobalEnv typeEnv functionEnv dataTypeEnv
 
     -- Data type sorts
     declDataTypeSorts :: IdMap Sort
+    -- TODO: map is not really OK, we should foldl to get the sorts of previous dts
     declDataTypeSorts = mapFromList . concat $ map declDataTypeSorts' (dataTypeBindingGroups $ moduleDataTypes m)
 
     declDataTypeSorts' :: BindingGroup DataType -> [(Id, Sort)]
     declDataTypeSorts' (BindingNonRecursive decl) = [(declarationName decl, dataTypeSort typeEnv recDEnv $ declarationValue decl)]
-    declDataTypeSorts' (BindingRecursive decls) = concat $ declDataTypeSorts' <$> BindingNonRecursive <$> decls
+    declDataTypeSorts' (BindingRecursive decls)   = concat $ declDataTypeSorts' . BindingNonRecursive <$> decls
 
     -- Data type regions
     declDataTypeRegions :: IdMap Sort
@@ -235,28 +234,6 @@ initialGEnv m = GlobalEnv typeEnv functionEnv dataTypeEnv
 
     makeRecDataTypeSort ::  Declaration DataType -> (Id, Sort)
     makeRecDataTypeSort decl = (declarationName decl, foldr (const SortQuant) SortUnit . dataTypeQuantors $ declarationValue decl)
-
-----------------------------------------------------------------
--- Data type sort discovery
-----------------------------------------------------------------
-
--- | Find sort for datatype
-dataTypeSort :: TypeEnvironment -> DataTypeEnv -> DataType -> Sort
-dataTypeSort tEnv dEnv dt@(DataType structs) = foldr (const SortQuant) (SortTuple . concat $ dataStructSort tEnv dEnv <$> structs) (dataTypeQuantors dt)
-
-dataStructSort :: TypeEnvironment -> DataTypeEnv -> Declaration DataTypeConstructorDeclaration -> [Sort]
-dataStructSort tEnv dEnv (Declaration _ _ _ _ (DataTypeConstructorDeclaration ty _)) =
-  let (args, _) = typeExtractFunction $ typeRemoveQuants ty
-  in sortAssign dEnv <$> typeNormalize tEnv <$> args -- TODO: We remove the quantifications here?
-
--- | Find region assignment for datatype
-dataTypeRegions :: TypeEnvironment -> DataTypeEnv -> DataType -> Sort
-dataTypeRegions tEnv dEnv dt@(DataType structs) = foldr (const SortQuant) (SortTuple . concat $ dataStructRegions tEnv dEnv <$> structs) (dataTypeQuantors dt)
-
-dataStructRegions :: TypeEnvironment -> DataTypeEnv -> Declaration DataTypeConstructorDeclaration -> [Sort]
-dataStructRegions tEnv dEnv (Declaration _ _ _ _ (DataTypeConstructorDeclaration ty _)) =
-  let (args, _) = typeExtractFunction $ typeRemoveQuants ty
-  in regionAssign dEnv <$> typeNormalize tEnv <$> args -- TODO: We remove the quantifications here?
 
 ----------------------------------------------------------------
 -- Check if method can be derived

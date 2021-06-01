@@ -1,13 +1,16 @@
-
 module Helium.CodeGeneration.Iridium.RegionSize.SortUtils
     (sortAssign, regionAssign,
-     sortInstantiate, sortSubstitute, 
+    dataTypeSort, dataTypeRegions,
+    sortInstantiate, sortSubstitute, 
     sortReIndex, sortStrengthen, sortWeaken,
     sortIsRegion, sortIsAnnotation,
     indexSortTuple, sortDropLam,
-    regionVarsToSort
-  )
-where
+    regionVarsToSort) where
+
+import Helium.CodeGeneration.Core.TypeEnvironment
+
+import Helium.CodeGeneration.Iridium.Data
+import Helium.CodeGeneration.Iridium.BindingGroup
 
 import Helium.CodeGeneration.Iridium.Region.RegionVar
 
@@ -17,21 +20,21 @@ import Helium.CodeGeneration.Iridium.RegionSize.DataTypes
 import Helium.CodeGeneration.Iridium.RegionSize.Sort
 
 import Lvm.Common.Id
+import Lvm.Common.IdMap
 import Lvm.Core.Type
 import Data.List
-
-import GHC.Stack
+import qualified Data.Map as M
 
 ----------------------------------------------------------------
 -- Sort assignment
 ----------------------------------------------------------------
 
 -- | Sort assignment based on type
-sortAssign :: HasCallStack => DataTypeEnv -> Type -> Sort
+sortAssign :: DataTypeEnv -> Type -> Sort
 sortAssign dEnv = sortAssign' dEnv []
 
 -- | Sort assingment with type arguments
-sortAssign' :: HasCallStack => DataTypeEnv
+sortAssign' :: DataTypeEnv
             -> [Type] -- ^ Type arguments
             -> Type -> Sort
 sortAssign' dEnv ts (TStrict t)     = sortAssign' dEnv ts t
@@ -49,7 +52,7 @@ sortAssign' dEnv ts      (TCon (TConDataType            name)) = foldl (flip $ s
 sortAssign' _ ts t = rsError $ "sortAssign' - No pattern match: " ++ showType varNames t ++ "\n" ++ show (showType varNames <$> ts)
 
 -- | Sort for a function: t_1 -> t2 ===> SA(t_1) -> RA(t_2) -> (SA(t_2), C)
-funSort :: HasCallStack => DataTypeEnv -> Type -> Type -> Sort
+funSort :: DataTypeEnv -> Type -> Type -> Sort
 funSort dEnv t1 t2 = SortLam (sortAssign dEnv t1) 
                    $ SortLam (regionAssign dEnv $ TStrict t2) 
                    $ SortTuple [sortAssign dEnv t2, SortConstr]
@@ -85,16 +88,52 @@ regionAssign' dEnv ts t = rsError $ "regionAssign: No pattern match: " ++ showTy
                                   ++ "\nArguments: " ++ (intercalate ", " $ map (showTypeN 0) ts)
 
 ----------------------------------------------------------------
+-- Data type sort discovery
+----------------------------------------------------------------
+
+-- | Find sort for datatype
+dataTypeSort :: TypeEnvironment -> DataTypeEnv -> DataType -> Sort
+dataTypeSort tEnv dEnv dt@(DataType structs) = foldr (const SortQuant) (SortTuple . concat $ dataStructSort tEnv dEnv <$> structs) (dataTypeQuantors dt)
+
+dataStructSort :: TypeEnvironment -> DataTypeEnv -> Declaration DataTypeConstructorDeclaration -> [Sort]
+dataStructSort tEnv dEnv (Declaration _ _ _ _ (DataTypeConstructorDeclaration ty _)) =
+  let (args, _) = typeExtractFunction $ typeRemoveQuants ty
+  in sortAssign dEnv <$> typeNormalize tEnv <$> args -- TODO: We remove the quantifications here?
+
+-- | Find region assignment for datatype
+dataTypeRegions :: TypeEnvironment -> DataTypeEnv -> DataType -> Sort
+dataTypeRegions tEnv dEnv dt@(DataType structs) = foldr (const SortQuant) (SortTuple . concat $ dataStructRegions tEnv dEnv <$> structs) (dataTypeQuantors dt)
+
+dataStructRegions :: TypeEnvironment -> DataTypeEnv -> Declaration DataTypeConstructorDeclaration -> [Sort]
+dataStructRegions tEnv dEnv (Declaration _ _ _ _ (DataTypeConstructorDeclaration ty _)) =
+  let (args, _) = typeExtractFunction $ typeRemoveQuants ty
+  in regionAssign dEnv <$> typeNormalize tEnv <$> args -- TODO: We remove the quantifications here?
+
+
+----------------------------------------------------------------
+-- Mutually recursive data types
+----------------------------------------------------------------
+
+-- IDEA: Keeping expanding the datatype definition until we have seen all datatypes in de mutually recusive cluster once
+-- solveMutRecDataTypes :: DataTypeEnv -> [Id] -> [DataType] -> [(Id, Sort)]
+-- solveMutRecDataTypes dEnv names dataTypes = go names (mapFromList (zip ids dataTypes)) <$> dataTypes
+--   where goDT rem dict (DataType structs)                    = goST rem dict . declarationValue <$> structs 
+--         goST rem dict (DataTypeConstructorDeclaration ty _) =     
+--           let (args, _) = typeExtractFunction $ typeRemoveQuants ty
+--           in goTY <$> typeNormalize tEnv <$> args -- TODO: We remove the quantifications here?
+--         goTY rem dict ty
+
+----------------------------------------------------------------
 -- Type substitution
 ----------------------------------------------------------------
 
 -- | Instatiate a type argument, sort should start wit SortQuant
-sortInstantiate :: HasCallStack => DataTypeEnv -> Type -> Sort -> Sort
+sortInstantiate :: DataTypeEnv -> Type -> Sort -> Sort
 sortInstantiate dEnv t (SortQuant s) = sortSubstitute dEnv 0 t s
 sortInstantiate _    _ s = rsError $ "Tried to instantiate a sort that does not start with SortQuant\nSort:" ++ show s
 
 -- | Instatiate a quantified type in a sort
-sortSubstitute :: HasCallStack => DataTypeEnv -> Int -> Type -> Sort -> Sort
+sortSubstitute :: DataTypeEnv -> Int -> Type -> Sort -> Sort
 sortSubstitute dEnv subD ty = foldSortAlgN subD instAlg
   where instTypeArgs d ts = typeSubstitute d (typeWeaken d ty) <$> ts
         instAlg = idSortAlg {
