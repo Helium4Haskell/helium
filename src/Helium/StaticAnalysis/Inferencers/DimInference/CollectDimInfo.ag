@@ -1,6 +1,99 @@
+-----------------------------------------------------------------------------
+-- |The Helium Compiler : Static Analysis
+--
+-- Maintainer  :  bastiaan@cs.uu.nl
+-- Stability   :  experimental
+-- Portability :  unknown
+--
+-- Collect the following information:
+--
+--    1) dimension type constructors from a data type
+--    2) dimension type synonyms
+--    3) (value) constructors from a data type
+--    4) fixity declarations
+--    5) record declarations
+--
+-- Distribute the collected environments
+--    6) value constructors
+--    7) type constructors
+--    8) type synonyms
+
+-- Collect the following information:
+--    9) type classes and their declarations
+-------------------------------------------------------------------------------
+
+-- WARNING, WE SHOULD NOT CONFUSE THE DIMENSION OF EXPRESSIONS
+-- AND THE DIMENSION ASSOCIATED TO A TYPE CONSTRUCTOR
+-- OR TO PARAMETERS OF A VALUE CONSTRUCTOR (WHICH IS IN FACT A FUNCTION)
+-- /!\ I THINK WE SHOULD KEEP IT IN MIND !! AND CHECK|PROOF IF IT'S OK /!\
+-- THE LINK IS THAT AN EXPRESSION OF TYPE T HAS AS A DIMENSION THE DIM OF T
+
+-------------------------------------------------------------------------------
+ -- 1) Collecting (data-) dimension type constructors
+
+ATTR Body Declarations Declaration [ | collectDimTypeConstructors : { [(Name,(Int, Maybe [Name]))] } | ]
+
+SEM Declaration
+  | Data    lhs . collectDimTypeConstructors =
+                (@simpletype.name, (length @simpletype.typevariables, Just @constructors.constructors) : @lhs.collectDimTypeConstructors)
+  | Newtype lhs . collectDimTypeConstructors =
+                (@simpletype.name, (length @simpletype.typevariables, Just @constructor.constructors) : @lhs.collectDimTypeConstructors)
+  | Type -- maybe ?
+
+
+-------------------------------------------------------------------------------
+ -- 2) Collecting value dimension constructors
+
+ATTR Body Declarations Declaration Constructors Constructor [ | collectValueDimConstructors : {[(Name, (Int,[UnitType] -> UnitType))]} | ]
+ATTR Declaration Type Constructors Constructors [ | | numberParameter : Int ]
 
 
 
+SEM Constructor
+    | Constructor   lhs.collectValueDimConstructors = (@constructor.self,
+                        (length (--number of parameters),
+                        \utlist -> makeUnitTypeFromType
+                        ))
+        @constructor.self 
+        @lhs.simpletype
+        @types.self
+
+    | Infix
+    | Record
+
+-------------------------------------------------------------------------------
+ -- 3) Collecting dimension type synonyms
+
+-- strongly inspired from Collect.ag
+
+ATTR Body Declaration Declarations 
+    [ | collectDimTypeSynonyms : { [(Name, (Int, [UnitType] -> UnitType))} ]
+
+SEM Module | Module   body . collectDimTypeSynonyms = [] -- why ?
+
+
+SEM Declaration
+    | Type   lhs . collectDimTypeSynonyms = (@simpletype.name, @dimtypeSynonymInfo) : @lhs.collectDimTypeSynonyms
+             loc . dimtypeSynonymInfo = (@simpletype.name,
+                (length @simpletype.typevariables utlist, -- pretty sure I don't need it
+                \utlist ->
+                    makeUnitTypeFromType (zip @simpletype.typevariables tps) @type.self
+
+                ))
+
+
+
+-- 6) Distribution
+
+
+
+
+
+
+
+
+{-
+----------------------------------------------------------------------------------
 SEM Declaration
     ----------------------------------- Problem 1 : Handle type structure -------------------------------
 
@@ -40,8 +133,6 @@ SEM Declaration
 
 -- we need the dimension information
 
--- maybe there is something to do for Tp...
-
 ATTR Types Type
     [ variableNameToNum : M.map Name Int | | typeVarToType : {[UnitType] -> UnitType}]
 
@@ -52,7 +143,7 @@ SEM Type
     --  prefix                   : Bool
     --  function                 : Type 
     --  arguments                : Types
-    | Variable              @lhs.variabltypeVarToTypeeNum = \utlist ->
+    | Variable              @lhs.typeVarToType = \utlist ->
                                 case M.lookup @lhs.variableNameToNum of
                                     Just varInt -> nth 
                                     Nothing -> [] -- not supposed to happen
@@ -111,24 +202,24 @@ SEM FieldDeclaration
 
 SEM AnnotatedType
     | AnnotatedType         @lhs.dimType = @type.dimTypeInfo
-
+-}
 {
 
-
--- WE CAN USE makeTpFromType for the same thing !! amazing <3
-makeUnitFromTp :: [(Name, Tp)] -> Type -> (Tp)
+makeUnitTypeFromType :: [(Name, UnitType)] -> Type -> UnitType
 makeUnitTypeFromType nameMap = rec_
   where
         rec_ :: Type -> UnitType
         rec_ uhaType = case uhaType of
-             Type_Application _ _ fun args -> foldl TApp (rec_ fun) (map rec_ args)
-             Type_Variable _ name _        -> fromMaybe (TCon "???") (lookup name nameMap)
-             Type_Constructor _ name _     -> Cons (getNameName name)
+        -- I THINK I AM MAKING A MISTAKE THERE: WE SHOULD'NT HAVE ARROW
+        --  ARROW and APP are differents:
+        -- Arrow a b = App (Arrow) ([a,b])
+        -- List a b = App (List) ([a,b])
+             Type_Application _ _ fun args -> foldl Arrow (rec_ fun) (map rec_ args)
+             Type_Variable _ name _        -> fromMaybe Undimensioned (lookup name nameMap)
+             Type_Constructor _ name ut    -> ut
              Type_Parenthesized _ t        -> rec_ t
              Type_Qualified _ _ t          -> rec_ t
              Type_Forall{}                 -> internalError "TypeConversion.hs" "makeTpFromType" "universal types are currently not supported"
              Type_Exists{}                 -> internalError "TypeConversion.hs" "makeTpFromType" "existential types are currently not supported"
-
-
 
 }

@@ -152,16 +152,19 @@ unifyOne ((n,x):q, lcons) =
 
 {- construction of a type but base type replaced by Unit or Undimensioned -}
 data UnitType a =
-      Arrow [(UnitType a)] (UnitType a)
-    | Cons Name [(UnitType a)]
-    | InfixConstructor (UnitType a) (UnitType a)
-    | Tuple [(UnitType a)]
-    | List (UnitType a) -- this UnitType is either a tuple or a base unit
-    | Record [(Name, (UnitType a))] -- (not sure ?)
+      Arrow (UnitType a) (UnitType a)
     | Base a 
     -- this unit could be a variable so it is already handled there
     -- but we'll have to normalize the unit before !
     | Undimensioned
+    ------- Not sure about those one
+    | Cons Name [(UnitType a)] 
+    -- maybe string, not name - we would then have Cons "[]" = List
+    | InfixConstructor (UnitType a) (UnitType a)
+    | Tuple [(UnitType a)]
+    | List (UnitType a) 
+    | Record [(Name, (UnitType a))]
+
 
 type NormUnitType = UnitType NormUnit
 

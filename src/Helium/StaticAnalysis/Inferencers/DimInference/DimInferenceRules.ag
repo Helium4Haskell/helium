@@ -20,13 +20,8 @@ import qualified Data.Set as S
 
 {-
 
-TOMORROW:
-
-SEE TO CHANGE UNIT WITH TP
-EQUALITY CONSTRIAINT
-
--> EASIER TO WIDEN SINCE TOOLS ARE ALREADY CREATED
-
+I have asked myself it it was a good idea to use Top Types but they can not
+handle integer exponent so I changed my mind and keep my homemade data structure
 
 
 For the whole program, we need a map storing the dimension of each expression;
@@ -34,10 +29,6 @@ For the whole program, we need a map storing the dimension of each expression;
 
  Those dimensions can depend from a variable unit - its unit will be infered 
  in the solver
-
-( we may have to distribute those information then
- -> Take care about local information in a where
- UPDATE THE ENVIRONEMENT)
 
  You will have to make a more serious job with more serious rules from now...
  -> Mutual recursion to handle? A bit of study to be done there?
@@ -144,6 +135,8 @@ SEM Declaration
     --  range                    : Range
     --  names                    : Names
     --  type                     : Type
+
+    | Unit              lhs.unitConstraints = [(@associatedcv.dimExpr, Arrow (makeUnitTypeFromType [] (Base @associatedunit.self)) (Base @simpletype.name))]
 
 -- ------------------------------------------------------------------------
 -- -- Types                                                              --
