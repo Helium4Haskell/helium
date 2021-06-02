@@ -1,6 +1,6 @@
 module Helium.CodeGeneration.Iridium.RegionSize.AnnotationUtils
   ( liftTuple, unliftTuple, unsafeUnliftTuple,
-    collect, collectEffects,
+    collect,
     annWeaken,
     isConstr, isTop, isBot, constrIdxToAnn,
     annRemLocalRegs, regionVarsToGlobal
@@ -100,28 +100,6 @@ annRemLocalRegs = foldAnnAlg cleanAlg
     aConstr = \_     -> AConstr . constrRemLocalRegs,
     aTop    = \_ s   -> ATop s . constrRemLocalRegs
   }
-
--- | Collect all constraint sets from an annotation
-collectEffects :: Annotation -> Constr
-collectEffects = foldAnnAlg collectAlg
-    where collectAlg = AnnAlg {
-        aVar    = \_ _   -> constrBot,
-        aReg    = \_ _   -> constrBot,
-        aLam    = \_ _ a -> a,
-        aApl    = \_ a b -> constrAdd a b,
-        aConstr = \_ c   -> c,
-        aUnit   = \_     -> constrBot,
-        aTuple  = \_ as  -> foldr constrAdd constrBot as,
-        aProj   = \_ _ a -> a,
-        aAdd    = \_ a b -> constrAdd a b,
-        aMinus  = \_ a _ -> a,
-        aJoin   = \_ a b -> constrAdd a b,
-        aQuant  = \_ a   -> a,
-        aInstn  = \_ a _ -> a,
-        aTop    = \_ _ c -> c,
-        aBot    = \_ _   -> constrBot,
-        aFix    = \_ _ a -> foldr constrAdd constrBot a
-    }
 
 -- | Create an annotation that assigns all regionvars the global region
 regionVarsToGlobal :: RegionVars -> Annotation

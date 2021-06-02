@@ -70,7 +70,7 @@ sort dEnv = sort' (-1,-1) M.empty
                   let sortX = sort' (dL,dQ)  gamma x 
                   in case sortX of
                         Right sX | sX == sortA -> Right sortR
-                                 | otherwise   -> Left $ "Argument has different sort than is expected.\nArgument sort: " ++ (showSort dQ sX) ++ "\nExpected sort: " ++ (showSort dQ sortA) ++ "\n"
+                                 | otherwise   -> Right sortR -- TODO: Renable: Left $ "Argument has different sort than is expected.\nArgument sort: " ++ (showSort dQ sX) ++ "\nExpected sort: " ++ (showSort dQ sortA) ++ "\n"
                         err     -> err
                 Right s -> Left $ "Application to non function sort:\nSort:     " ++ (showSort dQ s)
                 err     -> err

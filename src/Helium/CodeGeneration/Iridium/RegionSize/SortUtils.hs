@@ -2,9 +2,8 @@ module Helium.CodeGeneration.Iridium.RegionSize.SortUtils
     (sortAssign, regionAssign,
     dataTypeSort, dataTypeRegions,
     sortInstantiate, sortSubstitute, 
-    sortReIndex, sortStrengthen, sortWeaken,
-    sortIsRegion, sortIsAnnotation,
-    indexSortTuple, sortDropLam,
+    sortReIndex, sortWeaken,
+    sortIsRegion, sortDropLam,
     regionVarsToSort) where
 
 import Helium.CodeGeneration.Core.TypeEnvironment
@@ -77,7 +76,7 @@ regionAssign' dEnv []      (TForall _ _ t1) = SortQuant $ regionAssign' dEnv [] 
 regionAssign' dEnv (t2:ts) (TForall _ _ t1) = regionAssign' dEnv ts (typeSubstitute 0 t2 t1)
 -- Type constructors (functions, tuples, simple data types)
 regionAssign' dEnv [_,_] (TCon TConFun      ) = SortUnit
-regionAssign' dEnv ts    (TCon (TConTuple n)) | length ts == n = SortTuple . concat $ map (sortUnpackTuple.regionAssign dEnv) ts
+regionAssign' dEnv ts    (TCon (TConTuple n)) | length ts == n = SortTuple . concat $ sortUnpackTuple.regionAssign dEnv <$> ts
                                               | otherwise      = rsError $ "regionAssign: Tuple with incorrect number of arguements: expected " ++ show n ++ " but got " ++ (show $ length ts) ++ "\n" ++ (intercalate ", " $ map (showTypeN 0) ts)
 regionAssign' dEnv []    (TCon (TConDataType _)) = SortUnit
 -- Data types & dictionaries
@@ -161,10 +160,6 @@ sortReIndex f annD = foldSortAlgN annD reIdxAlg
     sortPolySort   = \d idx ts -> SortPolySort   (f d idx) $ map (typeReindex $ f d) ts 
   }
 
--- | Decrease all unbound indexes by 1
-sortStrengthen :: Sort -> Sort
-sortStrengthen = sortReIndex strengthenIdx (-1)
-
 -- | Increase all unbound indexes by n
 sortWeaken :: Int -> Sort -> Sort
 sortWeaken n = sortReIndex (weakenIdx n) (-1)
@@ -184,28 +179,15 @@ sortIsRegion (SortUnit)           = False -- TODO: Edge case, it is and is not a
 sortIsRegion (SortTuple as)       = sortIsRegion $ as !! 0
 sortIsRegion _ = False
 
--- | Check if a sort is an annotation sort
-sortIsAnnotation :: Sort -> Bool
-sortIsAnnotation = not . sortIsRegion
-
-
 -- | Unpack a tuple sort
 sortUnpackTuple :: Sort -> [Sort]
 sortUnpackTuple (SortTuple ss) = ss
 sortUnpackTuple _ = rsError "sortUnpackTuple called on non-tuple"
 
--- | Safely index a tuple sort
-indexSortTuple :: Int -> Sort -> Sort
-indexSortTuple _   SortUnit       = SortUnit -- TODO: Also has to do with region tuples
-indexSortTuple idx (SortTuple ts) = if idx < length ts
-                                    then ts !! idx
-                                    else rsError "indexSortTuple: Sort index out of bounds"
-indexSortTuple _ s = s
-
 -- | Drop a lambda for a sort
 sortDropLam :: Sort -> Sort
 sortDropLam (SortLam _ s) = s
-sortDropLam s = s-- error $ "Called droplam on non-sortlam: " ++ show s
+sortDropLam s = error $ "Called droplam on non-sortlam: " ++ show s
 
 
 -- | Convert region variables to a sort

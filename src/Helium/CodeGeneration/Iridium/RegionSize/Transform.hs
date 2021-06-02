@@ -1,10 +1,37 @@
 module Helium.CodeGeneration.Iridium.RegionSize.Transform
-    (transform, collectEmptyRegs, remEmptyRegs)
+    (transform, collectEffects, collectEmptyRegs, remEmptyRegs)
 where
 
 import Helium.CodeGeneration.Iridium.Data
 
 import Helium.CodeGeneration.Iridium.RegionSize.Constraints
+import Helium.CodeGeneration.Iridium.RegionSize.Annotation
+
+----------------------------------------------------------------
+-- Retrieve all effect sets from the annotation
+----------------------------------------------------------------
+
+-- | Collect all constraint sets from an annotation
+collectEffects :: Annotation -> Constr
+collectEffects = foldAnnAlg collectAlg
+    where collectAlg = AnnAlg {
+        aVar    = \_ _   -> constrBot,
+        aReg    = \_ _   -> constrBot,
+        aLam    = \_ _ a -> a,
+        aApl    = \_ a b -> constrAdd a b,
+        aConstr = \_ c   -> c,
+        aUnit   = \_     -> constrBot,
+        aTuple  = \_ as  -> foldr constrAdd constrBot as,
+        aProj   = \_ _ a -> a,
+        aAdd    = \_ a b -> constrAdd a b,
+        aMinus  = \_ a _ -> a,
+        aJoin   = \_ a b -> constrAdd a b,
+        aQuant  = \_ a   -> a,
+        aInstn  = \_ a _ -> a,
+        aTop    = \_ _ c -> c,
+        aBot    = \_ _   -> constrBot,
+        aFix    = \_ _ a -> foldr constrAdd constrBot a
+    }
 
 ----------------------------------------------------------------
 -- Fill in region sizes
