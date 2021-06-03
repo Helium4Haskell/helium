@@ -3,7 +3,8 @@ module Helium.CodeGeneration.Iridium.RegionSize.AnnotationUtils
     collect,
     annWeaken,
     isConstr, isTop, isBot, constrIdxToAnn,
-    annRemLocalRegs, regionVarsToGlobal
+    annRemLocalRegs, regionVarsToGlobal,
+    annRemoveQuants, annWrapQuants
   ) where
 
 import Helium.CodeGeneration.Iridium.Region.RegionVar
@@ -40,7 +41,7 @@ annReIndex fA fT = foldAnnAlg reIdxAlg
 annWeaken :: Depth -- ^ Lambda depth
           -> Depth -- ^ Quantification depth
           -> Annotation -> Annotation
-annWeaken lD qD = annReIndex (weakenIdx lD) (id.const)
+annWeaken lD qD = annReIndex (weakenIdx lD) (weakenIdx qD)
 
 ----------------------------------------------------------------
 -- Annotation utilities
@@ -58,6 +59,15 @@ unliftTuple (a,b) = ATuple [a,b]
 unsafeUnliftTuple :: Annotation -> [Annotation]
 unsafeUnliftTuple (ATuple as) = as
 unsafeUnliftTuple a = rsError $ "unsafeUnliftTuple: Called unsafe unlift tuple on non-tuple: " ++ show a
+
+-- | Remove quantifiers from an annotation
+annRemoveQuants :: Annotation -> Annotation
+annRemoveQuants (AQuant a) = annRemoveQuants a
+annRemoveQuants a = a
+
+-- | Sort wrap quants
+annWrapQuants :: Int -> Annotation -> Annotation
+annWrapQuants n a = iterate AQuant a !! n
 
 
 -- | Collect all region variables in an annotation

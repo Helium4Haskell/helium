@@ -4,7 +4,8 @@ module Helium.CodeGeneration.Iridium.RegionSize.SortUtils
     sortInstantiate, sortSubstitute, 
     sortReIndex, sortWeaken,
     sortIsRegion, sortDropLam,
-    regionVarsToSort) where
+    regionVarsToSort,
+    methodSortAssign) where
 
 import Helium.CodeGeneration.Core.TypeEnvironment
 
@@ -83,7 +84,7 @@ regionAssign' dEnv []    (TCon (TConDataType _)) = SortUnit
 regionAssign' dEnv ts    (TCon (TConTypeClassDictionary name)) = foldl (flip $ sortInstantiate dEnv) (dictionaryDataTypeName name `lookupDataTypeRegs` dEnv) ts
 regionAssign' dEnv ts    (TCon (TConDataType            name)) = foldl (flip $ sortInstantiate dEnv) (name `lookupDataTypeRegs` dEnv) ts
 -- Not implemented cases
-regionAssign' dEnv ts t = rsError $ "regionAssign: No pattern match: " ++ showTypeN 0 t 
+regionAssign' _    ts t = rsError $ "regionAssign: No pattern match: " ++ showTypeN 0 t 
                                   ++ "\nArguments: " ++ (intercalate ", " $ map (showTypeN 0) ts)
 
 ----------------------------------------------------------------
@@ -96,8 +97,8 @@ dataTypeSort tEnv dEnv dt@(DataType structs) = foldr (const SortQuant) (SortTupl
 
 dataStructSort :: TypeEnvironment -> DataTypeEnv -> Declaration DataTypeConstructorDeclaration -> [Sort]
 dataStructSort tEnv dEnv (Declaration _ _ _ _ (DataTypeConstructorDeclaration ty _)) =
-  let (args, _) = typeExtractFunction $ typeRemoveQuants ty
-  in sortAssign dEnv <$> typeNormalize tEnv <$> args -- TODO: We remove the quantifications here?
+  let (args, _) = typeExtractFunction $ typeRemoveQuants ty 
+  in sortAssign dEnv . typeNormalize tEnv <$> args -- TODO: We remove the quantifications here?
 
 -- | Find region assignment for datatype
 dataTypeRegions :: TypeEnvironment -> DataTypeEnv -> DataType -> Sort
@@ -105,9 +106,8 @@ dataTypeRegions tEnv dEnv dt@(DataType structs) = foldr (const SortQuant) (SortT
 
 dataStructRegions :: TypeEnvironment -> DataTypeEnv -> Declaration DataTypeConstructorDeclaration -> [Sort]
 dataStructRegions tEnv dEnv (Declaration _ _ _ _ (DataTypeConstructorDeclaration ty _)) =
-  let (args, _) = typeExtractFunction $ typeRemoveQuants ty
-  in regionAssign dEnv <$> typeNormalize tEnv <$> args -- TODO: We remove the quantifications here?
-
+  let (args, _) = typeExtractFunction $ typeRemoveQuants ty 
+  in regionAssign dEnv . typeNormalize tEnv <$> args -- TODO: We remove the quantifications here?
 
 ----------------------------------------------------------------
 -- Mutually recursive data types
@@ -189,8 +189,11 @@ sortDropLam :: Sort -> Sort
 sortDropLam (SortLam _ s) = s
 sortDropLam s = error $ "Called droplam on non-sortlam: " ++ show s
 
-
 -- | Convert region variables to a sort
 regionVarsToSort :: RegionVars -> Sort
 regionVarsToSort (RegionVarsSingle _) = SortMonoRegion
 regionVarsToSort (RegionVarsTuple rs) = SortTuple $ regionVarsToSort <$> rs
+
+-- | Assign a sort to a method  
+methodSortAssign :: TypeEnvironment -> DataTypeEnv -> Method -> Sort  
+methodSortAssign tEnv dEnv = SortLam SortUnit . sortAssign dEnv . typeNormalize tEnv . methodType   

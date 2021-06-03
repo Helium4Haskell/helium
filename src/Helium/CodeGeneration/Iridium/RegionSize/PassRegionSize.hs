@@ -27,7 +27,7 @@ import Helium.CodeGeneration.Iridium.RegionSize.Utils
 import Helium.CodeGeneration.Iridium.RegionSize.Fixpoint
 
 import Data.List (intercalate)
-import Data.Either (rights)
+import Data.Either (rights,lefts)
 import qualified Data.Map as M 
 
 -- | Infer the size of regions
@@ -75,8 +75,8 @@ analyseBindingGroup (gEnv, finite, infinite) (BindingNonRecursive decl@(Declarat
 -- | Run the analysis on a group of methods
 analysis ::  GlobalEnv -> [(Id,Method)] -> IO ((GlobalEnv, Int, Int), [(Id,Method)])
 analysis gEnv methods = do
-    let canDerive = foldr (&&) True (not.isDataTypeMethod . typeNormalize (globTypeEnv gEnv) . methodType . snd <$> methods)
-
+    let canDerive = ((and (not.isDataTypeMethod . typeNormalize (globTypeEnv gEnv) . methodType . snd <$> methods))
+                 && (and (not.isDataTypeMethod . typeNormalize (globTypeEnv gEnv) . localType <$> concat (methodLocals False (globTypeEnv gEnv) . snd <$> methods))))
     putStrLn $ "\n# Analyse methods:\n" ++ (intercalate "\n" $ map (show.fst) methods)
     putStrLn $ "\n# Can derive: " ++ show canDerive ++ "\n" ++ (show $ typeNormalize (globTypeEnv gEnv) . methodType . snd <$> methods)
 
@@ -84,7 +84,7 @@ analysis gEnv methods = do
     then do
       -- | Insert top for bad methods
       -- TODO: Does not transform program
-      let gEnv' = foldr (uncurry insertGlobal) gEnv $ zip (fst <$> methods) (flip ATop constrBot . methodSortAssign gEnv . snd <$> methods)
+      let gEnv' = foldr (uncurry insertGlobal) gEnv $ zip (fst <$> methods) (flip ATop constrBot . methodSortAssign (globTypeEnv gEnv) (globDataEnv gEnv) . snd <$> methods)
       return ((gEnv', 0, 0), methods)
     else do
       let dEnv = globDataEnv gEnv
@@ -144,18 +144,20 @@ analysis gEnv methods = do
 
       return ((gEnv', finite, infinite), zip (fst <$> methods) cleaned)
 
-{-| Fix problems arising from zero arity functions
-  Assigns the global regions to the additional regions andintroduces
--}
-fixZeroArity :: (Id, Method) -> Annotation -> Annotation
-fixZeroArity (_, Method _ aRegs args _ _ _ _ _) ann =
-  case length $ rights args of
-    0 -> ALam SortUnit (eval emptyDEnv $ AApl ann (regionVarsToGlobal aRegs))
-    _ -> ann 
-
--- | Assign a sort to a method  
-methodSortAssign :: GlobalEnv -> Method -> Sort  
-methodSortAssign (GlobalEnv tEnv _ dEnv) = SortLam SortUnit . sortAssign dEnv . typeNormalize tEnv . methodType   
+ 
+{-| Fix problems arising from zero arity functions 
+  Assigns the global regions to the return regions and additional regions. 
+-} 
+fixZeroArity :: (Id, Method) -> Annotation -> Annotation 
+fixZeroArity (_, Method _ aRegs args _ rRegs _ _ _) ann = 
+  case length $ rights args of 
+    0 -> let aplARegs = AApl ann $ regionVarsToGlobal aRegs 
+             newQuantIndexes = reverse $ TVar <$> [0..(length $ lefts args)-1] 
+             quants a = foldr (const AQuant) a (lefts args) 
+             aplTypes = foldl AInstn aplARegs newQuantIndexes 
+             aplRRegs = AApl aplTypes $ regionVarsToGlobal rRegs 
+         in ALam SortUnit $ eval emptyDEnv $ quants $ AProj 0 aplRRegs 
+    _ -> ann  
 
 ----------------------------------------------------------------
 -- Initial global environment
@@ -253,6 +255,6 @@ isDataTypeMethod (TCon (TConDataType name)) = case stringFromId name of
                                                 "Bool" -> False
                                                 "Either" -> False
                                                 "Maybe"  -> False
-                                                --"[]"   -> False
+                                                "[]"   -> False
                                                 _ -> True
 isDataTypeMethod (TCon (TConTypeClassDictionary _)) = True

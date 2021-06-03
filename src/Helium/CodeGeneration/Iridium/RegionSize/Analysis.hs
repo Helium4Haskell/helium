@@ -18,13 +18,24 @@ import Helium.CodeGeneration.Iridium.RegionSize.Constraints
 import Helium.CodeGeneration.Iridium.RegionSize.Environments
 import Helium.CodeGeneration.Iridium.RegionSize.Utils
 
-import Data.List(mapAccumL)
-import Data.Either(rights)
+import Data.Either(rights,lefts)
 import qualified Data.Map as M
 
 -- | De bruijn index for the local fixpoint
 localFixIdx :: Int
 localFixIdx = 0
+
+-- | Return region de bruijn index
+rRegIdx :: Int
+rRegIdx = 1
+
+-- | Index for the last function argument
+fstArgIdx :: Int
+fstArgIdx = 2
+
+-- | Additional regions de bruijn index
+aRegIdx :: Int -> Int
+aRegIdx dbz = dbz + 1
 
 {- De bruijn index for the fixpoint for multually recursive methods
     Index is based on the 'de bruijn size' of the arguments.
@@ -62,59 +73,44 @@ analyseMethods pass gEnv methods =
 
 -- | Analyse the effect and annotation of a method
 analyseMethod :: GlobalEnv -> (Id, Method) -> (Annotation, Sort)
-analyseMethod gEnv@(GlobalEnv tEnv _ dEnv) (_, method@(Method _ aRegs args _ rRegs _ fstBlock otherBlocks)) =
+analyseMethod gEnv@(GlobalEnv tEnv _ dEnv) (_, method@(Method _ aRegs args rType rRegs _ fstBlock otherBlocks)) =
     let rEnv      = regEnvFromArgs (deBruinSize args) aRegs rRegs
         (lEnv,lAnns,lSrts)  = analyseLocals gEnv rEnv method
-        (aRegS, argS, rrSort, raSort) = argumentSorts tEnv dEnv method
-        envs      =  (Envs gEnv rEnv lEnv) 
-        (bAnns,bSrts) = analyseBlocks raSort envs (fstBlock:otherBlocks)
+        envs      = (Envs gEnv rEnv lEnv) 
+        rSort     = sortAssign dEnv $ typeNormalize tEnv rType
+        (bAnns,bSrts) = analyseBlocks rSort envs (fstBlock:otherBlocks)
 
-        -- Generate the method annotation
+        -- Wrap body in fixpoint, quants and lambdas
         localFix = AProj 0 . AFix (bSrts ++ lSrts) $ bAnns ++ lAnns
-        fAnn  = ALam aRegS 
-                $ if argS == []
-                then ALam rrSort localFix
-                else foldr (\s a -> wrapBody s (ATuple [a,botEffect]) SortUnit) 
-                            (wrapBody (last argS) localFix rrSort) 
-                            $ init argS
-    in ( fAnn
-       , SortLam aRegS . sortAssign dEnv $ typeNormalize tEnv $ methodType method) 
-
+        (FunctionType argTy _) = methodFunctionType method  
+        fAnn = wrapBody gEnv rType argTy localFix
+        
+    in ( ALam (regionVarsToSort aRegs) fAnn
+       , methodSortAssign tEnv dEnv method) 
 
 
 -- | Wrap a function body into a AQuant or `A -> P -> (A,C)'
-wrapBody :: Maybe Sort -> Annotation -> Sort -> Effect
-wrapBody mS bAnn rrSort = 
-    case mS of
-      Nothing -> AQuant $ AProj 0 bAnn
-      Just s  -> ALam s $ ALam rrSort bAnn
+wrapBody :: GlobalEnv 
+         -> Type                  -- ^ Return type 
+         -> [Either Quantor Type] -- ^ Arguments 
+         -> Annotation -> Annotation
+wrapBody (GlobalEnv tEnv _ dEnv) rType args a 
+        | length (rights args) == 0 = annWrapQuants (length $ lefts args) (ALam retRegSrt a)
+        | otherwise = foldr (wrapBody' False) (wrapBody' True (last args) a) (init args) 
+    where
+        wrapBody' _     (Left  _) bAnn = AQuant bAnn
+        wrapBody' first (Right t) bAnn = let argS  = sortAssign dEnv $ typeNormalize tEnv t
+                                             rSort = if first then retRegSrt else SortUnit
+                                             bAnn' = if first then bAnn      else ATuple [bAnn,botEffect]
+                                         in ALam argS $ ALam rSort bAnn'
+        -- Sort of the return region
+        retRegSrt = regionAssign dEnv $ TStrict (typeNormalize tEnv rType)
 
-{- Compute the sort of all method arguments,
-    Returns a tuple of:
-    0: Additional regions  
-    1: Sort of regular argument (`Nothing' if quantifier)  
-    2: Sort of return region
-    3: Sort of return type
--}
-argumentSorts :: TypeEnvironment -> DataTypeEnv -> Method -> (Sort, [Maybe Sort], Sort, Sort)
-argumentSorts tEnv dEnv method@(Method _ regArgs _ resTy _ _ _ _) = 
-    let (FunctionType argTy _) = methodFunctionType method
-        argSorts = mapAccumL (argumentSortAssign tEnv dEnv) 0 argTy
-        aRegSort = regionVarsToSort regArgs
-        rType    = TStrict (typeNormalize tEnv resTy)
-        rrSort   = regionAssign dEnv rType
-        raSort   = sortAssign dEnv rType
-    in (aRegSort, snd argSorts, rrSort, raSort)
-
--- | Assign sort to types, return Nothing for a quantor
-argumentSortAssign :: TypeEnvironment -> DataTypeEnv -> Int -> Either Quantor Type -> (Int, Maybe Sort)
-argumentSortAssign _    _    n (Left _)   = (n,Nothing)
-argumentSortAssign tEnv dEnv n (Right ty) = (n+2,Just $ sortAssign dEnv $ typeNormalize tEnv ty)
 
 -- | Initial enviromentment based on function arguments
 initEnvFromArgs :: TypeEnvironment -> DataTypeEnv -> [Either Quantor Local] -> LocalEnv
 initEnvFromArgs _    _    []   = LocalEnv emptyMap emptyMap
-initEnvFromArgs tEnv dEnv args = let argIdxs = createIdxs 2 $ reverse args
+initEnvFromArgs tEnv dEnv args = let argIdxs = createIdxs fstArgIdx $ reverse args
                                      lEnv    = LocalEnv emptyMap emptyMap
                                  in foldr (insertArgument tEnv dEnv) lEnv argIdxs
     where createIdxs _ []           = []
@@ -129,7 +125,7 @@ initEnvFromArgs tEnv dEnv args = let argIdxs = createIdxs 2 $ reverse args
 
 -- | Region environment from additional regions and return regions
 regEnvFromArgs :: Int -> RegionVars -> RegionVars -> RegionEnv
-regEnvFromArgs dbz aRegs rRegs = M.union (go (AnnVar $ dbz+1) aRegs) (go (AnnVar 1) rRegs)
+regEnvFromArgs dbz aRegs rRegs = M.union (go (AnnVar $ aRegIdx dbz) aRegs) (go (AnnVar rRegIdx) rRegs)
     where go var (RegionVarsSingle r) = M.singleton r var
           go var (RegionVarsTuple rs) = M.unions.map (\(i,r) -> go (CnProj i var) r) $ zip [0..] rs
 
@@ -139,7 +135,7 @@ regEnvFromArgs dbz aRegs rRegs = M.union (go (AnnVar $ dbz+1) aRegs) (go (AnnVar
 
 -- | Extract annotations for the locals from the method
 analyseLocals :: GlobalEnv -> RegionEnv -> Method -> (LocalEnv, [Annotation], [Sort])
-analyseLocals gEnv@(GlobalEnv tEnv _ dEnv) rEnv method@(Method _ aRegs args _ rRegs _ fstBlock otherBlocks) =
+analyseLocals gEnv@(GlobalEnv tEnv _ dEnv) rEnv method@(Method _ _ args _ _ _ fstBlock otherBlocks) =
     let blocks = fstBlock:otherBlocks
         initEnv   = initEnvFromArgs tEnv dEnv args
         locals    = methodLocals False tEnv method
@@ -336,7 +332,7 @@ thunkApplyArg :: TypeEnvironment -> LocalEnv
               -> Annotation        -- ^ Function 
               -> Either Type Local -- ^ Argument
               -> (Annotation,Effect)
-thunkApplyArg tEnv lEnv _    fAnn (Left ty    ) = (AInstn fAnn $ typeNormalize tEnv ty, botEffect) 
+thunkApplyArg tEnv _    _    fAnn (Left ty    ) = (AInstn fAnn $ typeNormalize tEnv ty, botEffect) 
 thunkApplyArg _    lEnv rReg fAnn (Right local) = liftTuple $ AApl (AApl fAnn $ lookupLocalAnn local lEnv) rReg
 
 -- | Apply a list of arguments to a funtion
