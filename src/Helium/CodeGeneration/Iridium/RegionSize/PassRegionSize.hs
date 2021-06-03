@@ -120,8 +120,8 @@ analysis gEnv methods = do
       -- Save the annotation on the method
       let methods' = map (\((name,Method a b c d e anns f g), ann) -> (name, Method a b c d e (MethodAnnotateRegionSize ann:anns) f g)) $ zip methods zerod
       -- Compute the second pass
-      let effects = collectEffects 
-                <$> (unsafeUnliftTuple 
+      let effects = M.filterWithKey pLocalRegion . collectEffects 
+                   <$> (unsafeUnliftTuple 
                     . eval dEnv
                     . solveFixpoints dEnv
                     $ analyseMethods 1 gEnv' methods')
@@ -142,9 +142,14 @@ analysis gEnv methods = do
       putStrLn "\n#Effects:"
       print $ effects
 
-      return ((gEnv', finite, infinite), zip (fst <$> methods) cleaned)
+      return ((gEnv', finite, infinite), zip (fst <$> methods) transformed)
 
- 
+pLocalRegion :: ConstrIdx -> Bound -> Bool
+pLocalRegion (AnnVar _) _ = False
+pLocalRegion (CnProj _ _) _ = False
+pLocalRegion (Region RegionBottom) _ = True
+pLocalRegion _ _ = True
+
 {-| Fix problems arising from zero arity functions 
   Assigns the global regions to the return regions and additional regions. 
 -} 

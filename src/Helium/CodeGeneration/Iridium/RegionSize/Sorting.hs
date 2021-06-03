@@ -69,8 +69,8 @@ sort dEnv = sort' (-1,-1) M.empty
                 Right (SortLam sortA sortR) ->
                   let sortX = sort' (dL,dQ)  gamma x 
                   in case sortX of
-                        Right sX | sX == sortA -> Right sortR
-                                 | otherwise   -> Right sortR -- TODO: Renable: Left $ "Argument has different sort than is expected.\nArgument sort: " ++ (showSort dQ sX) ++ "\nExpected sort: " ++ (showSort dQ sortA) ++ "\n"
+                        Right sX | checkArgs sortA sX -> Right sortR
+                                 | otherwise -> Left $ "Argument has different sort than is expected.\nArgument sort: " ++ (showSort dQ sX) ++ "\nExpected sort: " ++ (showSort dQ sortA) ++ "\n"
                         err     -> err
                 Right s -> Left $ "Application to non function sort:\nSort:     " ++ (showSort dQ s)
                 err     -> err
@@ -124,3 +124,12 @@ checkConstr depth c = find ((<) 0 . length) $ checkConstrIdx . fst <$> M.toList 
                                            else ""
           checkConstrIdx (CnProj _ x) = checkConstrIdx x             
                                       
+{- | Check if two arguments are the same
+    We allow a monoregion argument for a polyregion sort
+-}
+checkArgs :: Sort -- Expected sort 
+          -> Sort -- Argument
+          -> Bool
+checkArgs (SortTuple as) (SortTuple bs) = (length as == length bs) && (and $ uncurry checkArgs <$> zip as bs)
+checkArgs (SortPolyRegion _ _) SortMonoRegion = True
+checkArgs a b = a == b 

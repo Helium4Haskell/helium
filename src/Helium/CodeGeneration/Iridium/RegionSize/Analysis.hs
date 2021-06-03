@@ -342,7 +342,7 @@ thunkApplyArgs :: Envs
 thunkApplyArgs _ fAnn [] _ = (fAnn, botEffect)
 thunkApplyArgs (Envs gEnv rEnv lEnv) fAnn args retRegs = 
     let retRegAnn   = regionVarsToAnn rEnv retRegs
-        (cAnn,cEff) = foldl (\(sAnn,sEff) -> addEffect sEff . thunkApplyArg (globTypeEnv gEnv) lEnv (AUnit) sAnn) 
+        (cAnn,cEff) = foldl (\(sAnn,sEff) -> addEffect sEff . thunkApplyArg (globTypeEnv gEnv) lEnv (ATuple [AReg RegionGlobal, AUnit]) sAnn) 
                             (fAnn,botEffect) 
                             (init args)
         (rAnn,rEff) = thunkApplyArg (globTypeEnv gEnv) lEnv retRegAnn cAnn (last args)
