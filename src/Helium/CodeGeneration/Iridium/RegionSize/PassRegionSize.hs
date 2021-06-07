@@ -119,12 +119,12 @@ analysis gEnv methods = do
       -- Save the annotation on the method
       let methods' = map (\((name,Method a b c d e anns f g), ann) -> (name, Method a b c d e (MethodAnnotateRegionSize ann:anns) f g)) $ zip methods zerod
       -- Compute the second pass
-      let effects = constrRemVarRegs . collectEffects 
-                   <$> (unsafeUnliftTuple 
+      let localAnns = (unsafeUnliftTuple 
                     . eval dEnv
                     . solveFixpoints dEnv
                     $ analyseMethods 1 gEnv' methods')
-            
+      let effects = zipWith constrAdd (constrRemVarRegs . collectEffects <$> localAnns) (fixHigherOrderApplication <$> localAnns)
+
       -- Transform the program
       let transformed = uncurry transform <$> zip effects (snd <$> methods')
       let emptyRegs   = collectEmptyRegs <$> transformed
@@ -156,6 +156,24 @@ fixZeroArity (_, Method _ aRegs args _ rRegs _ _ _) ann =
              aplRRegs = AApl aplTypes $ regionVarsToGlobal rRegs 
          in ALam SortUnit $ eval emptyDEnv $ quants $ AProj 0 aplRRegs 
     _ -> ann  
+
+{-| When a local region is applied to a higher order function
+  we must make said region unbounded. We cannot know the true bound.
+  TODO: Do not pass c if a \= AApl? May be sound
+-}
+fixHigherOrderApplication :: Annotation -> Constr
+fixHigherOrderApplication = flip go constrBot
+  where go (AVar   _  ) c = c
+        go (AApl   f x) c = go f . constrJoins $ c : (constrInfty <$> gatherLocals x)
+        go (ALam   _ a) c = go a c
+        go (ATuple as ) c = constrJoins $ flip go c <$> as
+        go (AProj  _ a) c = go a c
+        go (AAdd   a b) c = constrJoin (go a c) (go b c)
+        go (AJoin  a b) c = constrJoin (go a c) (go b c)
+        go (AQuant a  ) c = go a c
+        go (AInstn a _) c = go a c
+        go (AFix  _ as) c = constrJoins $ flip go c <$> as
+        go _ _ = constrBot
 
 ----------------------------------------------------------------
 -- Initial global environment

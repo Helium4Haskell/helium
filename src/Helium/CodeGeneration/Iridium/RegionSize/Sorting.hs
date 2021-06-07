@@ -97,11 +97,11 @@ sort dEnv = sort' (-1,-1) M.empty
               in if sortA == sortB && sortA == Right SortConstr
                  then Right SortConstr
                  else Left ("Addition of non constraint-sort annotations: \nSort A: " ++ show sortA ++ "\nSort B: " ++ show sortB) 
-          sort' (dL,dQ) gamma (AMinus a _) = 
-              let sortA = sort' (dL,dQ) gamma a
-              in if sortA == Right SortConstr
-                 then Right SortConstr
-                 else Left $ "Setminus on non constraint-sort annotation: \nSort:" ++ show sortA 
+        --   sort' (dL,dQ) gamma (AMinus a _) = 
+        --       let sortA = sort' (dL,dQ) gamma a
+        --       in if sortA == Right SortConstr
+        --          then Right SortConstr
+        --          else Left $ "Setminus on non constraint-sort annotation: \nSort:" ++ show sortA 
 
           -- Quantification and instantiation
           sort' (dL,dQ) gamma (AQuant   a) = SortQuant <$> sort' (dL,dQ+1) (envWeaken gamma) a

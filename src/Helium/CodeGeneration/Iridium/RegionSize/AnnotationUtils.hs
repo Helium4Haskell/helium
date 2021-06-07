@@ -106,7 +106,7 @@ constrIdxToAnn (CnProj i c) = AProj i $ constrIdxToAnn c
 annRemLocalRegs :: Annotation -> Annotation
 annRemLocalRegs = foldAnnAlg cleanAlg
   where cleanAlg = idAnnAlg {
-    aMinus  = \_ a _ -> a,
+    -- aMinus  = \_ a _ -> a,
     aReg    = \_ r   -> if r == RegionGlobal then AReg RegionGlobal else AReg RegionBottom, 
     aConstr = \_     -> AConstr . constrRemLocalRegs,
     aTop    = \_ s   -> ATop s . constrRemLocalRegs
@@ -130,7 +130,7 @@ gatherLocals = foldAnnAlgLams countAlg
         aTuple  = \_ as  -> concat as,
         aProj   = \_ _ a -> a,
         aAdd    = \_ a b -> a ++ b,
-        aMinus  = \_ a _ -> a,
+        -- aMinus  = \_ a _ -> a,
         aJoin   = \_ a b -> a ++ b,
         aQuant  = \_ a   -> a,
         aInstn  = \_ a _ -> a,
@@ -153,7 +153,7 @@ gatherBinds = foldAnnAlgLamsN 0 countAlg
         aTuple  = \_ as  -> concat as,
         aProj   = \_ _ a -> a,
         aAdd    = \_ a b -> a ++ b,
-        aMinus  = \_ a _ -> a,
+        -- aMinus  = \_ a _ -> a,
         aJoin   = \_ a b -> a ++ b,
         aQuant  = \_ a   -> a,
         aInstn  = \_ a _ -> a,

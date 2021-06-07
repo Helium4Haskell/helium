@@ -3,7 +3,7 @@ module Helium.CodeGeneration.Iridium.RegionSize.Constraints
     constrShow, constrIdxShow,
     constrReIndex, constrWeaken, constrStrengthenN, 
     constrIdxWithVar,
-    constrBot, constrJoin, constrAdd, constrIdx, constrRem, constrInst, 
+    constrBot, constrJoin, constrJoins, constrAdd, constrIdx, constrRem, constrInst, 
     constrOne, constrInfty,
     constrRemLocalRegs, constrRemVarRegs)
 where
@@ -91,6 +91,10 @@ constrJoin = M.unionWith boundMax
         boundMax Infty _ = Infty
         boundMax _ Infty = Infty
         boundMax (Nat a) (Nat b) = Nat $ max a b
+
+-- | Join of constraint sets
+constrJoins :: [Constr] -> Constr
+constrJoins = foldr constrJoin constrBot
 
 -- | Addition of constraint sets
 constrAdd :: Constr -> Constr -> Constr

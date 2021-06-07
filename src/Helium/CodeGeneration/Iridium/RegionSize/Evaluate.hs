@@ -24,7 +24,7 @@ eval :: DataTypeEnv -> Annotation -> Annotation
 eval dEnv ann = foldAnnAlg evalAlg ann
   where evalAlg = idAnnAlg {
     aAdd   = \_ -> add,
-    aMinus = \_ -> minus,
+    -- aMinus = \_ -> minus,
     aJoin  = \_ -> join        dEnv,
     aApl   = \_ -> application dEnv,
     aInstn = \_ -> instantiate dEnv,
@@ -53,13 +53,13 @@ add c1  c2 = addSort $ aCollect (AAdd c1 c2)
 
 
 -- | Minus of constraint
-minus :: Annotation -> RegionVar -> Annotation
-minus (AConstr c) r = AConstr $ constrRem (Region r) c
--- Top and bottom
-minus (ATop s vs) _ = ATop s vs
-minus (ABot s   ) _ = ABot s
--- Cannot eval
-minus a r = AMinus a r
+-- minus :: Annotation -> RegionVar -> Annotation
+-- minus (AConstr c) r = AConstr $ constrRem (Region r) c
+-- -- Top and bottom
+-- minus (ATop s vs) _ = ATop s vs
+-- minus (ABot s   ) _ = ABot s
+-- -- Cannot eval
+-- minus a r = AMinus a r
 
 
 -- | Join of annotations
@@ -215,7 +215,7 @@ regVarSubst d ann c = foldl constrAdd (constrStrengthenN d c') (constrWeaken d <
 gatherConstraints :: Annotation -> Constr
 gatherConstraints a = let locals = constrInfty <$> gatherLocals a
                           annvrs = constrInfty <$> gatherBinds a
-                      in foldl constrJoin constrBot $ locals ++ annvrs
+                      in constrJoins $ locals ++ annvrs
   
    
 

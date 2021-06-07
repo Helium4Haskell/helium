@@ -1,8 +1,6 @@
 module Helium.CodeGeneration.Iridium.RegionSize.Fixpoint
 where
 
-import Helium.CodeGeneration.Iridium.Region.RegionVar
-
 import Helium.CodeGeneration.Iridium.RegionSize.Annotation
 import Helium.CodeGeneration.Iridium.RegionSize.AnnotationUtils
 import Helium.CodeGeneration.Iridium.RegionSize.DataTypes
@@ -17,7 +15,7 @@ import Data.Maybe (fromJust)
 import qualified Data.Map as M
 
 max_iterations :: Int
-max_iterations = 0
+max_iterations = 24
 
 ----------------------------------------------------------------
 -- Solving fixpoints
@@ -32,7 +30,7 @@ solveFixpoints dEnv = go constrBot
           go scope (AProj  i a) = AProj i $ go scope a 
           go scope (AApl   a b) = AApl   (go scope a) (go scope b) 
           go scope (AAdd   a b) = AAdd   (go scope a) (go scope b)  
-          go scope (AMinus a r) = AMinus (go scope a) r
+        --   go scope (AMinus a r) = AMinus (go scope a) r
           go scope (AJoin  a b) = AJoin  (go scope a) (go scope b)
           go scope (AQuant a  ) = AQuant (go scope a)
           go scope (AInstn a t) = AInstn (go scope a) t
@@ -114,7 +112,7 @@ findFixBinds = foldAnnAlgLamsN 0 countAlg
                               [-1] -> [i]
                               _ -> a,
         aAdd    = \_ a b -> a ++ b,
-        aMinus  = \_ a _ -> a,
+        -- aMinus  = \_ a _ -> a,
         aJoin   = \_ a b -> a ++ b,
         aQuant  = \_ a   -> a,
         aInstn  = \_ a _ -> a,
