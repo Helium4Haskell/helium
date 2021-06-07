@@ -68,7 +68,7 @@ join :: DataTypeEnv -> Annotation -> Annotation -> Annotation
 join _    _ AUnit     = AUnit
 join _    AUnit _     = AUnit 
 join _    (ABot _)  a = a 
-join _    a  (ABot _) = a 
+join _    a  (ABot _) = a
 join _    (ATop   _ vs) (AConstr  c2) = AConstr $ constrJoin vs c2
 join _    (AConstr  c1) (ATop   _ vs) = AConstr $ constrJoin c1 vs
 join _    (ATop   s v1) (ATop   _ v2) = ATop s  $ constrJoin v1 v2
@@ -104,8 +104,8 @@ application dEnv (ALam lamS f) x = eval dEnv $ foldAnnAlgN (0,-1) subsAnnAlg f
           aTop    = \(lD,_) s c -> ATop s  $ regVarSubst lD x c
         }
 -- Top and bottom
-application _ (ATop s vs) x | sortIsRegion s = ATop (sortDropLam s) $ constrAdd (collect Infty x) vs
-                            | otherwise      = ATop (sortDropLam s) vs
+application _ (ATop s vs) x | sortIsRegion s = ATop (sortDropLam s) $ constrJoin vs (collect Infty x)
+                            | otherwise      = ATop (sortDropLam s) $ constrJoin vs (gatherConstraints x)
 -- Cannot eval
 application _ f x = AApl f x
 
@@ -157,9 +157,6 @@ bot s = ABot s
 -- Evalutation utilities
 ----------------------------------------------------------------
 
-
--- TODO: If there are tops we can simply reduce to only tops
--- Most other join/top rules can be simplified at a join
 -- | Ordering of binary operator operands, compute all computable operators
 operatorSort :: (Annotation -> Annotation -> Annotation)
              -> (Constr -> Constr -> Constr)
