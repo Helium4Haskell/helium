@@ -17,7 +17,7 @@ import Data.Maybe (fromJust)
 import qualified Data.Map as M
 
 max_iterations :: Int
-max_iterations = 2
+max_iterations = 0
 
 ----------------------------------------------------------------
 -- Solving fixpoints
@@ -52,7 +52,7 @@ solveFixpoint dEnv scope sorts fixes =
         let bot = ABot s
         in fixIterate 0 bot fixes
     where s = SortTuple sorts
-          c = foldr constrAdd scope $ constrInfty . Region <$> gatherLocals (ATuple fixes)  
+          c = foldr constrAdd scope $ constrInfty <$> gatherLocals (ATuple fixes)  
 
           fixIterate :: Int -> Annotation -> [Annotation] -> [Annotation]
           fixIterate n  state fs | n >= max_iterations = mapWithIndex (\ i _ -> AProj i $ ATop s c) fixes 
@@ -142,26 +142,4 @@ renameUsed usedIdxs = foldAnnAlgLamsN 0 renameAlg
                               AVar idx | idx == d  -> AProj (fromJust $ elemIndex i usedIdxs) (AVar idx)
                                        | otherwise -> AProj i (AVar idx) 
                               _ -> AProj i a
-    }
-
--- | Retrieve all locals from an annotation
-gatherLocals :: Annotation -> [RegionVar]
-gatherLocals = foldAnnAlgLamsN 0 countAlg
-    where countAlg = AnnAlg {
-        aVar    = \_ _   -> [],
-        aReg    = \_ r   -> [r],
-        aLam    = \_ _ a -> a,
-        aApl    = \_ a b -> a ++ b,
-        aConstr = \_ _   -> [],
-        aUnit   = \_     -> [],
-        aTuple  = \_ as  -> concat as,
-        aProj   = \_ _ a -> a,
-        aAdd    = \_ a b -> a ++ b,
-        aMinus  = \_ a _ -> a,
-        aJoin   = \_ a b -> a ++ b,
-        aQuant  = \_ a   -> a,
-        aInstn  = \_ a _ -> a,
-        aTop    = \_ _ _ -> [],
-        aBot    = \_ _   -> [],
-        aFix    = \_ _ a -> concat a   
     }

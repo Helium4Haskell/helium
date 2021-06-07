@@ -4,7 +4,8 @@ module Helium.CodeGeneration.Iridium.RegionSize.AnnotationUtils
     annWeaken,
     isConstr, isTop, isBot, constrIdxToAnn,
     annRemLocalRegs, regionVarsToGlobal,
-    annRemoveQuants, annWrapQuants
+    annRemoveQuants, annWrapQuants,
+    gatherLocals, gatherBinds
   ) where
 
 import Helium.CodeGeneration.Iridium.Region.RegionVar
@@ -115,3 +116,48 @@ annRemLocalRegs = foldAnnAlg cleanAlg
 regionVarsToGlobal :: RegionVars -> Annotation
 regionVarsToGlobal (RegionVarsSingle _) = AReg RegionGlobal
 regionVarsToGlobal (RegionVarsTuple rs) = ATuple $ regionVarsToGlobal <$> rs
+
+-- | Retrieve all locals from an annotation
+gatherLocals :: Annotation -> [ConstrIdx]
+gatherLocals = foldAnnAlgLams countAlg
+    where countAlg = AnnAlg {
+        aVar    = \_ _   -> [],
+        aReg    = \_ r   -> [Region r],
+        aLam    = \_ _ a -> a,
+        aApl    = \_ a b -> a ++ b,
+        aConstr = \_ c   -> fst <$> (M.toList $ constrRemVarRegs c),
+        aUnit   = \_     -> [],
+        aTuple  = \_ as  -> concat as,
+        aProj   = \_ _ a -> a,
+        aAdd    = \_ a b -> a ++ b,
+        aMinus  = \_ a _ -> a,
+        aJoin   = \_ a b -> a ++ b,
+        aQuant  = \_ a   -> a,
+        aInstn  = \_ a _ -> a,
+        aTop    = \_ _ _ -> [],
+        aBot    = \_ _   -> [],
+        aFix    = \_ _ a -> concat a   
+    }
+
+-- TODO: Only bind region annvars?
+-- | Retrieve all bound region variables
+gatherBinds :: Annotation -> [ConstrIdx]
+gatherBinds = foldAnnAlgLamsN 0 countAlg
+    where countAlg = AnnAlg {
+        aVar    = \d idx -> if idx > d then [AnnVar idx] else [],
+        aReg    = \_ _   -> [],
+        aLam    = \_ _ a -> a,
+        aApl    = \_ a b -> a ++ b,
+        aConstr = \_ c   -> fst <$> (M.toList $ constrRemLocalRegs c),
+        aUnit   = \_     -> [],
+        aTuple  = \_ as  -> concat as,
+        aProj   = \_ _ a -> a,
+        aAdd    = \_ a b -> a ++ b,
+        aMinus  = \_ a _ -> a,
+        aJoin   = \_ a b -> a ++ b,
+        aQuant  = \_ a   -> a,
+        aInstn  = \_ a _ -> a,
+        aTop    = \_ _ _ -> [],
+        aBot    = \_ _   -> [],
+        aFix    = \_ _ a -> concat a   
+    }

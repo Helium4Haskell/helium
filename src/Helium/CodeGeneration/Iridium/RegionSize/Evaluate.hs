@@ -72,8 +72,8 @@ join _    a  (ABot _) = a
 join _    (ATop   _ vs) (AConstr  c2) = AConstr $ constrJoin vs c2
 join _    (AConstr  c1) (ATop   _ vs) = AConstr $ constrJoin c1 vs
 join _    (ATop   s v1) (ATop   _ v2) = ATop s  $ constrJoin v1 v2
-join _    (ATop   s vs) _             = ATop s vs
-join _    _             (ATop   s vs) = ATop s vs
+join _    (ATop   s vs) a             = ATop s  $ constrJoin (gatherConstraints a) vs
+join _    a             (ATop   s vs) = ATop s  $ constrJoin (gatherConstraints a) vs
 -- Constraint set join
 join _    (AConstr  c1) (AConstr  c2) = AConstr $ constrJoin c1 c2
 -- Join-simplicitation
@@ -209,6 +209,18 @@ regVarSubst d ann c = foldl constrAdd (constrStrengthenN d c') (constrWeaken d <
                                             | otherwise     -> rsError $ "Constraint index projection out of bounds"
                                   ann -> AProj i ann
         evalReg a = rsError $ "Illigal annotation for a constraint index: " ++ show a
+
+----------------------------------------------------------------
+-- Gather regions for top
+----------------------------------------------------------------
+
+-- | Gather constraints on local regions from an annotation 
+gatherConstraints :: Annotation -> Constr
+gatherConstraints a = let locals = constrInfty <$> gatherLocals a
+                          annvrs = constrInfty <$> gatherBinds a
+                      in foldl constrJoin constrBot $ locals ++ annvrs
+  
+   
 
 -- import qualified Helium.CodeGeneration.Iridium.RegionSize.Annotation
 -- import qualified Helium.CodeGeneration.Iridium.RegionSize.Annotation as A

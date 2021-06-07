@@ -5,19 +5,15 @@ import qualified Data.Map as M
 
 import Lvm.Common.Id
 import Lvm.Common.IdMap
-import Lvm.Core.Type
 
 import Helium.CodeGeneration.Core.TypeEnvironment
-import Helium.CodeGeneration.Iridium.BindingGroup
 import Helium.CodeGeneration.Iridium.Data
 
 import Helium.CodeGeneration.Iridium.RegionSize.Annotation
 import Helium.CodeGeneration.Iridium.RegionSize.Constraints
 import Helium.CodeGeneration.Iridium.RegionSize.Utils
 import Helium.CodeGeneration.Iridium.RegionSize.Sort
-import Helium.CodeGeneration.Iridium.RegionSize.SortUtils
 import Helium.CodeGeneration.Iridium.RegionSize.DataTypes
-import Helium.CodeGeneration.Iridium.RegionSize.Type
 
 import GHC.Stack
 
@@ -56,7 +52,7 @@ lookupGlobal :: HasCallStack => Id -> GlobalEnv -> Annotation
 lookupGlobal name (GlobalEnv _ vars _) = 
   case lookupMap name vars of
     Nothing -> rsError $ "lookupGlobal - Global environment did not contain: " ++ stringFromId name
-    Just a  -> a `rsInfo` (show name ++ ":\n" ++ show a ++ "\n")
+    Just a  -> a --`rsInfo` (show name ++ ":\n" ++ show a ++ "\n")
 
 -- | Look up a local variable in the local environment
 lookupBlock :: BlockName -> BlockEnv -> Annotation

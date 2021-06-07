@@ -5,7 +5,7 @@ module Helium.CodeGeneration.Iridium.RegionSize.Constraints
     constrIdxWithVar,
     constrBot, constrJoin, constrAdd, constrIdx, constrRem, constrInst, 
     constrOne, constrInfty,
-    constrRemLocalRegs)
+    constrRemLocalRegs, constrRemVarRegs)
 where
 
 import Helium.CodeGeneration.Iridium.Region.RegionVar
@@ -16,7 +16,7 @@ import qualified Data.Map as M
 import Data.List
 
 max_bound :: Int
-max_bound = 1
+max_bound = 3
 
 ----------------------------------------------------------------
 -- Types
@@ -135,7 +135,14 @@ constrInfty i = M.singleton i $ Infty
 
 -- | Remove local regions from constraint set
 constrRemLocalRegs :: Constr -> Constr
-constrRemLocalRegs = M.filterWithKey (\k _ -> not$isLocal k)
-    where isLocal (Region RegionGlobal) = False
-          isLocal (Region _           ) = True
-          isLocal _ = False
+constrRemLocalRegs = M.filterWithKey (\k _ -> not$isLocalRegion k)
+
+-- | Remove local regions from constraint set
+constrRemVarRegs :: Constr -> Constr
+constrRemVarRegs = M.filterWithKey (\k _ -> isLocalRegion k)
+
+-- | Check if constraintidx points to a local region
+isLocalRegion :: ConstrIdx -> Bool
+isLocalRegion (Region RegionGlobal) = False
+isLocalRegion (Region _           ) = True
+isLocalRegion _ = False
