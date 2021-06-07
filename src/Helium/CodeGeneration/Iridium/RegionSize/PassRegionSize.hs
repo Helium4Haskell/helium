@@ -83,7 +83,6 @@ analysis gEnv methods = do
     if not canDerive
     then do
       -- | Insert top for bad methods
-      -- TODO: Does not transform program
       let gEnv' = foldr (uncurry insertGlobal) gEnv $ zip (fst <$> methods) (flip ATop constrBot . methodSortAssign (globTypeEnv gEnv) (globDataEnv gEnv) . snd <$> methods)
       return ((gEnv', 0, 0), methods)
     else do
@@ -113,7 +112,7 @@ analysis gEnv methods = do
                 rsError $ "Wrong sort"
               Right _ -> return $ unsafeUnliftTuple fixed
       let zerod = uncurry fixZeroArity <$> zip methods fixed'
-      
+      print sorts
 
       -- Update the global environment with the found annotations
       let gEnv' = foldr (uncurry insertGlobal) gEnv $ zip (fst <$> methods) zerod
@@ -258,8 +257,8 @@ isDataTypeMethod (TCon (TConDataType name)) = case stringFromId name of
                                                 "Int"  -> False
                                                 "Char" -> False
                                                 "Bool" -> False
-                                                "Either" -> False
-                                                "Maybe"  -> False
-                                                "[]"   -> False
+                                                -- "Either" -> False
+                                                -- "Maybe"  -> False
+                                                -- "[]"   -> False
                                                 _ -> True
 isDataTypeMethod (TCon (TConTypeClassDictionary _)) = True

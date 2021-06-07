@@ -33,7 +33,7 @@ pAnnotation names = do
             ann1 <- pAnnotation' names
             pWhitespace'
             args <- pMany (pAnnMany names) pIsNext
-            return $ foldr ($) ann1 args
+            return $ foldl (flip ($)) ann1 args
 
 
 pIsNext :: Parser Bool

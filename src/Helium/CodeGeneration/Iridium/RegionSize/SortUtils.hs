@@ -98,7 +98,7 @@ dataTypeSort tEnv dEnv dt@(DataType structs) = foldr (const SortQuant) (SortTupl
 dataStructSort :: TypeEnvironment -> DataTypeEnv -> Declaration DataTypeConstructorDeclaration -> [Sort]
 dataStructSort tEnv dEnv (Declaration _ _ _ _ (DataTypeConstructorDeclaration ty _)) =
   let (args, _) = typeExtractFunction $ typeRemoveQuants ty 
-  in sortAssign dEnv . typeNormalize tEnv <$> args -- TODO: We remove the quantifications here?
+  in sortAssign dEnv . typeNormalize tEnv <$> args
 
 -- | Find region assignment for datatype
 dataTypeRegions :: TypeEnvironment -> DataTypeEnv -> DataType -> Sort
@@ -107,7 +107,7 @@ dataTypeRegions tEnv dEnv dt@(DataType structs) = foldr (const SortQuant) (SortT
 dataStructRegions :: TypeEnvironment -> DataTypeEnv -> Declaration DataTypeConstructorDeclaration -> [Sort]
 dataStructRegions tEnv dEnv (Declaration _ _ _ _ (DataTypeConstructorDeclaration ty _)) =
   let (args, _) = typeExtractFunction $ typeRemoveQuants ty 
-  in regionAssign dEnv . typeNormalize tEnv <$> args -- TODO: We remove the quantifications here?
+  in regionAssign dEnv . typeNormalize tEnv <$> args
 
 ----------------------------------------------------------------
 -- Mutually recursive data types
@@ -119,7 +119,7 @@ dataStructRegions tEnv dEnv (Declaration _ _ _ _ (DataTypeConstructorDeclaration
 --   where goDT rem dict (DataType structs)                    = goST rem dict . declarationValue <$> structs 
 --         goST rem dict (DataTypeConstructorDeclaration ty _) =     
 --           let (args, _) = typeExtractFunction $ typeRemoveQuants ty
---           in goTY <$> typeNormalize tEnv <$> args -- TODO: We remove the quantifications here?
+--           in goTY <$> typeNormalize tEnv <$> args
 --         goTY rem dict ty
 
 ----------------------------------------------------------------

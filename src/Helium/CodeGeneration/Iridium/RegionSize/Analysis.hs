@@ -251,7 +251,7 @@ analyseInstr envs@(Envs _ _ lEnv) bEnv = go
          -- Lookup the annotation and effect from block
          go (Jump block)           = liftTuple $ lookupBlock block bEnv 
          -- Join the effects of all the blocks
-         go (Case _     cas)       = joinBlocks bEnv $ caseBlocks cas -- `rsInfo` (show $ caseBlocks cas)
+         go (Case _     cas)       = joinBlocks bEnv $ caseBlocks cas
          -- Lookup the variable annotation
          go (Return local)         = (lookupLocalAnn local lEnv, botEffect)
          -- No effect
