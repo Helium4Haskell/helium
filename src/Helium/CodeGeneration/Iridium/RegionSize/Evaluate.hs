@@ -52,18 +52,15 @@ add c1 c2 = let parts1 = addCollect (AAdd c1 c2)
 
 -- | Annotation application
 application :: DataTypeEnv -> Annotation -> Annotation -> Annotation
-application dEnv (ALam _ f) x = eval dEnv $ foldAnnAlgN (0,-1) subsAnnAlg f
+application dEnv (ALam lamS f) x = eval dEnv $ foldAnnAlgN (0,-1) subsAnnAlg f
   where -- | Substitute a variable for an annotation
         subsAnnAlg = idAnnAlg {
           aVar = \(lD,qD) idx -> if lD == idx 
                                  then annWeaken lD qD x -- Weaken indexes
                                  else AVar $ strengthenIdx lD idx,
-          aConstr = \(lD,_) c   -> AConstr $ regVarSubst lD x c,
-          aTop    = \(lD,_) s c -> ATop s  $ regVarSubst lD x c
+          aConstr = \(lD,_) c   -> AConstr $ regVarSubst lamS lD x c,
+          aTop    = \(lD,_) s c -> ATop s  $ regVarSubst lamS lD x c
         }
--- Top and bottom
-application _ (ATop s vs) x | sortIsRegion s = ATop (sortDropLam s) $ constrJoin vs (collect Infty x)
-                            | otherwise      = ATop (sortDropLam s) $ constrJoin vs (gatherConstraints x)
 -- Cannot eval
 application _ f x = AApl f x
 
@@ -97,8 +94,7 @@ top SortUnit          _ = AUnit
 top SortConstr        c = AConstr c 
 top (SortTuple ss   ) c = ATuple  $ flip ATop c <$> ss
 top (SortQuant s    ) c = AQuant  $ ATop s c
--- TODO: This maybe prevent caputure a variable to top
--- top (SortLam   s1 s2) c = ALam s1 $ ATop s2 c
+top (SortLam   s1 s2) c = ALam s1 $ ATop s2 c
 top s c = ATop s c
 
 
@@ -146,29 +142,24 @@ join _    a             b             =
 ----------------------------------------------------------------
 
 -- | Initialize region variables in a constraint set
-regVarSubst :: Int -> Annotation -> Constr -> Constr 
-regVarSubst d ann c = foldl constrAdd (constrStrengthenN d c') (constrWeaken d <$> insts)
-  where cIdxs = constrIdxWithVar d c       -- Indexes that contain the to-be instantiated var
-        ns    = flip constrIdx c <$> cIdxs -- Get bounds on indexes
-        c'    = foldr constrRem c cIdxs             -- Remove target indexes (cIdxs) from c
-        aIdxs = evalReg <$> regVarInst ann <$> (constrIdxToAnn <$> cIdxs) -- Make new indexes
-        insts = uncurry collect <$> zip ns aIdxs    -- Instantiate variables
+regVarSubst :: Sort -> Int -> Annotation -> Constr -> Constr 
+regVarSubst argS d ann c | sortIsRegion argS = regVarSubst' d ann c
+                         | otherwise         = regVarSubst' d (gatherConstraintsTuple ann) c
+
+-- | Initialize region variables in a constraint set
+regVarSubst' :: Int -> Annotation -> Constr -> Constr 
+regVarSubst' d ann c = constrAdds $ (constrStrengthenN d c'):(constrWeaken d <$> insts)
+  where targetIdxs = constrIdxWithVar d c            -- Indexes that contain the to-be instantiated var
+        targetBnds = flip constrIdx c <$> targetIdxs -- Bounds on targets
+        c'    = foldr constrRem c targetIdxs         -- Remove target indexes  from c
+
+        aIdxs = eval emptyDEnv . regVarInst ann . constrIdxToAnn <$> targetIdxs -- Indexes with the instantiation
+        insts = uncurry collect <$> zip targetBnds aIdxs                 -- Collect indices
         
         regVarInst :: Annotation -> Annotation -> Annotation
         regVarInst inst (AVar _)    = inst
         regVarInst inst (AProj i a) = AProj i $ regVarInst inst a
         regVarInst inst r = rsError $ "regVarInst: " ++ show inst ++ ", r: " ++ show r
-
-        evalReg :: Annotation -> Annotation
-        evalReg (AVar a)              = (AVar a)
-        evalReg (AReg r)              = (AReg r)
-        evalReg (ATuple as)           = (ATuple $ evalReg <$> as)
-        evalReg (AProj _ AUnit)       = AUnit
-        evalReg (AProj i a) = case evalReg a of 
-                                  ATuple as | i < length as -> as !! i
-                                            | otherwise     -> rsError $ "Constraint index projection out of bounds"
-                                  _ -> AProj i a
-        evalReg a = rsError $ "Illigal annotation for a constraint index: " ++ show a
 
 ----------------------------------------------------------------
 -- Join utilities
@@ -258,6 +249,10 @@ gatherConstraints a = let locals = constrInfty <$> gatherLocals a
                           annvrs = constrInfty <$> gatherBinds a
                       in constrJoins $ locals ++ annvrs
   
+-- | Gather a tuple of region(variable)s from an annation
+gatherConstraintsTuple :: Annotation -> Annotation
+gatherConstraintsTuple a = let constraints = gatherLocals a ++ gatherLocals a
+                           in ATuple $ constrIdxToAnn <$> constraints
 
 -- import qualified Helium.CodeGeneration.Iridium.RegionSize.Annotation
 -- import qualified Helium.CodeGeneration.Iridium.RegionSize.Annotation as A
