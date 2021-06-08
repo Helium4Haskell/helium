@@ -2,7 +2,9 @@ module Helium.CodeGeneration.Iridium.RegionSize.AnnotationUtils
   ( liftTuple, unliftTuple, unsafeUnliftTuple,
     collect,
     annWeaken,
-    isConstr, isTop, isBot, constrIdxToAnn,
+    isConstr, isTop, isBot, isLam, isVar, isQuant, isApl, isInstn, isTuple,
+    unAConstr,
+    constrIdxToAnn,
     annRemLocalRegs, regionVarsToGlobal,
     annRemoveQuants, annWrapQuants,
     gatherLocals, gatherBinds
@@ -45,6 +47,54 @@ annWeaken :: Depth -- ^ Lambda depth
 annWeaken lD qD = annReIndex (weakenIdx lD) (weakenIdx qD)
 
 ----------------------------------------------------------------
+-- Annotation filters
+----------------------------------------------------------------
+
+isConstr :: Annotation -> Bool
+isConstr (AConstr _) = True
+isConstr _           = False
+
+isTop :: Annotation -> Bool
+isTop (ATop _ _) = True
+isTop _ = False
+
+isBot :: Annotation -> Bool
+isBot (ABot _) = True
+isBot _ = False
+
+isLam :: Annotation -> Bool
+isLam (ALam _ _) = True
+isLam _ = False
+
+isQuant :: Annotation -> Bool
+isQuant (AQuant _) = True
+isQuant _ = False
+
+isVar :: Annotation -> Bool
+isVar (AVar _) = True
+isVar _ = False
+
+isApl :: Annotation -> Bool
+isApl (AApl _ _) = True
+isApl _ = False
+
+isInstn :: Annotation -> Bool
+isInstn (AInstn _ _) = True
+isInstn _ = False
+
+isTuple :: Annotation -> Bool
+isTuple (ATuple _) = True
+isTuple _ = False
+
+----------------------------------------------------------------
+-- Unpack annotation
+----------------------------------------------------------------
+
+unAConstr :: Annotation -> Constr
+unAConstr (AConstr c) = c
+unAConstr _ = rsError "unAConstr of non-constr"
+
+----------------------------------------------------------------
 -- Annotation utilities
 ----------------------------------------------------------------
 
@@ -80,20 +130,6 @@ collect n (AReg    a) = M.singleton (Region a) n
 collect n (AProj i a) = M.mapKeys (CnProj i) $ collect n a
 collect n (ATuple ps) = foldr constrAdd M.empty $ map (collect n) ps
 collect _ a = rsError $ "collect: Collect of non region annotation: " ++ show a
-
--- | Is annotation a constraint set?
-isConstr :: Annotation -> Bool
-isConstr (AConstr _) = True
-isConstr _           = False
-
-isTop :: Annotation -> Bool
-isTop (ATop _ _) = True
-isTop _ = False
-
-isBot :: Annotation -> Bool
-isBot (ABot _) = True
-isBot _ = False
-
 
 -- | Convert a constraint index to an annotation
 constrIdxToAnn :: ConstrIdx -> Annotation 
@@ -134,12 +170,12 @@ gatherLocals = foldAnnAlgLams countAlg
         aJoin   = \_ a b -> a ++ b,
         aQuant  = \_ a   -> a,
         aInstn  = \_ a _ -> a,
-        aTop    = \_ _ _ -> [],
+        aTop    = \_ _ c -> fst <$> (M.toList $ constrRemVarRegs c),
         aBot    = \_ _   -> [],
         aFix    = \_ _ a -> concat a   
     }
 
--- TODO: Only bind region annvars?
+-- TODO: Only return region vars?
 -- | Retrieve all bound region variables
 gatherBinds :: Annotation -> [ConstrIdx]
 gatherBinds = foldAnnAlgLamsN 0 countAlg
@@ -157,7 +193,7 @@ gatherBinds = foldAnnAlgLamsN 0 countAlg
         aJoin   = \_ a b -> a ++ b,
         aQuant  = \_ a   -> a,
         aInstn  = \_ a _ -> a,
-        aTop    = \_ _ _ -> [],
+        aTop    = \_ _ c -> fst <$> (M.toList $ constrRemLocalRegs c),
         aBot    = \_ _   -> [],
         aFix    = \_ _ a -> concat a   
     }

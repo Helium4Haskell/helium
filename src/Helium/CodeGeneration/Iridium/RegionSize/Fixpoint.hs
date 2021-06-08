@@ -15,7 +15,7 @@ import Data.Maybe (fromJust)
 import qualified Data.Map as M
 
 max_iterations :: Int
-max_iterations = 24
+max_iterations = 12
 
 ----------------------------------------------------------------
 -- Solving fixpoints

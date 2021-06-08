@@ -2,8 +2,10 @@ module Helium.CodeGeneration.Iridium.RegionSize.Constraints
     (ConstrIdx(..), Constr, Bound(..),
     constrShow, constrIdxShow,
     constrReIndex, constrWeaken, constrStrengthenN, 
-    constrIdxWithVar,
-    constrBot, constrJoin, constrJoins, constrAdd, constrIdx, constrRem, constrInst, 
+    constrIdxWithVar, constrIdx, 
+    constrBot, constrJoin, constrJoins, 
+    constrAdd, constrAdds,
+    constrRem, 
     constrOne, constrInfty,
     constrRemLocalRegs, constrRemVarRegs)
 where
@@ -83,6 +85,7 @@ constrStrengthenN = constrReIndex strengthenIdx
 constrBot :: Constr
 constrBot = M.empty
 
+
 -- | Join of constraint sets
 constrJoin :: Constr -> Constr -> Constr
 constrJoin = M.unionWith boundMax
@@ -96,6 +99,7 @@ constrJoin = M.unionWith boundMax
 constrJoins :: [Constr] -> Constr
 constrJoins = foldr constrJoin constrBot
 
+
 -- | Addition of constraint sets
 constrAdd :: Constr -> Constr -> Constr
 constrAdd = M.unionWith boundAdd
@@ -106,6 +110,10 @@ constrAdd = M.unionWith boundAdd
         boundAdd (Nat a) (Nat b) = if a + b > max_bound
                                    then Infty
                                    else Nat $ a + b
+
+-- | Addition of a list of constraint sets
+constrAdds :: [Constr] -> Constr
+constrAdds = foldr constrAdd constrBot
 
 
 -- | Index a constraint set (default 0)
@@ -122,12 +130,6 @@ constrIdxWithVar idx = filter f . M.keys
 -- | Remove a region variable from the constraint set
 constrRem :: ConstrIdx -> Constr -> Constr
 constrRem = M.delete
-
--- | Instantiate a region variable in the constraint set
-constrInst :: Constr    -- ^ The instantiation
-           -> ConstrIdx -- ^ The annotation variable to instantiate 
-           -> Constr -> Constr
-constrInst inst idx c = constrAdd inst $ constrRem idx c
 
 -- | Create a constraint set for a single variable
 constrOne :: ConstrIdx -> Constr
