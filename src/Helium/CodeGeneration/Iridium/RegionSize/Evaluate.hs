@@ -37,7 +37,7 @@ add :: Annotation -> Annotation -> Annotation
 add c1 c2 = let parts1 = addCollect (AAdd c1 c2)
                 (constrs, parts2) = partition isConstr parts1
                 constr = addConstrs constrs
-            in addSort (constr ++ sort parts2)
+            in addSort (constr ++ parts2)
 
 
 -- | Minus of constraint
@@ -94,7 +94,7 @@ top SortUnit          _ = AUnit
 top SortConstr        c = AConstr c 
 top (SortTuple ss   ) c = ATuple  $ flip ATop c <$> ss
 top (SortQuant s    ) c = AQuant  $ ATop s c
-top (SortLam   s1 s2) c = ALam s1 $ ATop s2 c
+top (SortLam   s1 s2) c = ALam s1 . ATop s2 . constrAdd c . constrInfty $ AnnVar 0
 top s c = ATop s c
 
 
@@ -251,7 +251,7 @@ gatherConstraints a = let locals = constrInfty <$> gatherLocals a
   
 -- | Gather a tuple of region(variable)s from an annation
 gatherConstraintsTuple :: Annotation -> Annotation
-gatherConstraintsTuple a = let constraints = gatherLocals a ++ gatherLocals a
+gatherConstraintsTuple a = let constraints = gatherLocals a ++ gatherBinds a
                            in ATuple $ constrIdxToAnn <$> constraints
 
 -- import qualified Helium.CodeGeneration.Iridium.RegionSize.Annotation
