@@ -112,16 +112,16 @@ initEnvFromArgs :: TypeEnvironment -> DataTypeEnv -> [Either Quantor Local] -> L
 initEnvFromArgs _    _    []   = LocalEnv emptyMap emptyMap
 initEnvFromArgs tEnv dEnv args = let argIdxs = createIdxs fstArgIdx $ reverse args
                                      lEnv    = LocalEnv emptyMap emptyMap
-                                 in foldr (insertArgument tEnv dEnv) lEnv argIdxs
+                                 in foldr insertArgument lEnv argIdxs
     where createIdxs _ []           = []
           createIdxs n (Left  q:xs) = (Left  q, n) : createIdxs (n) xs
           createIdxs n (Right t:xs) = (Right t, n) : createIdxs (n+2) xs
 
           -- | Insert method argument into lEnv, ignore quantors 
-          insertArgument :: TypeEnvironment -> DataTypeEnv -> (Either Quantor Local, Int) -> LocalEnv -> LocalEnv
-          insertArgument _    _    (Left  _    , _) lEnv = lEnv
-          insertArgument tEnv dEnv (Right local, d) lEnv = lEnv { lEnvAnns = insertMap (localName local) (AVar d) (lEnvAnns lEnv)
-                                                                , lEnvSrts = insertMap (localName local) (sortAssign dEnv . typeNormalize tEnv $ localType local) (lEnvSrts lEnv) }
+          insertArgument :: (Either Quantor Local, Int) -> LocalEnv -> LocalEnv
+          insertArgument (Left  _    , _) lEnv = lEnv
+          insertArgument (Right local, d) lEnv = lEnv { lEnvAnns = insertMap (localName local) (AVar d) (lEnvAnns lEnv)
+                                                      , lEnvSrts = insertMap (localName local) (sortAssign dEnv . typeNormalize tEnv $ localType local) (lEnvSrts lEnv) }
 
 -- | Region environment from additional regions and return regions
 regEnvFromArgs :: Int -> RegionVars -> RegionVars -> RegionEnv

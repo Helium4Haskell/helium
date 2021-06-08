@@ -3,7 +3,6 @@ where
 
 import Lvm.Common.Id
 import Lvm.Common.IdMap
-import qualified Lvm.Core.Module as LVMModule
 
 import Helium.CodeGeneration.Iridium.Data
 import Helium.CodeGeneration.Core.TypeEnvironment
@@ -62,23 +61,12 @@ lookupDestruct name dEnv = case lookupMap name (dtDestructs dEnv) of
 -- Data types to annotations
 ----------------------------------------------------------------
 
--- | Make destructor annotations for record datatypes
-makeDataTypeRecordFields :: Sort -> DataType -> [(Id, Annotation)]
-makeDataTypeRecordFields dts (DataType structs) = 
-    mapWithIndex makeRecordField (concat $ constrRecordFields <$> structs)
-  where makeRecordField idx field = (field, ALam dts . AProj idx $ AVar 0)   
-
-        constrRecordFields :: Declaration DataTypeConstructorDeclaration -> [Id]
-        constrRecordFields (Declaration _ _ _ _ (DataTypeConstructorDeclaration _ fields)) = 
-            LVMModule.fieldName <$> fields
-
-
 -- | Make constructor annotations
 makeDataTypeConstructors :: Sort -> DataType -> [(Id, Annotation)]
 makeDataTypeConstructors dtSort dt@(DataType structs) = 
     snd $ foldl makeStructorAnn (0,[]) structs
-  where dtTupSize = sum $ structorSize <$> structs
-        SortTuple dtSorts = removeSortQuants dtSort
+  where dtTupSize = length structs
+        SortTuple dtSrts = removeSortQuants dtSort
         
         makeStructorAnn :: (Int, [(Id,Annotation)])
                         -> Declaration DataTypeConstructorDeclaration  
@@ -86,16 +74,16 @@ makeDataTypeConstructors dtSort dt@(DataType structs) =
         makeStructorAnn (start, stctsAnns) strctDecl =
           let size = structorSize strctDecl
               -- Tuple elements
-              pre  = (\i -> ABot $ dtSorts !! i) <$> [0          .. start    -1]
-              args = reverse $ (\i -> AVar i)    <$> [0          .. size     -1]
-              post = (\i -> ABot $ dtSorts !! i) <$> [start+size .. dtTupSize-1]  
+              pre  = (\i -> ABot $ dtSrts !! i)        <$> [0      ..start    -1]
+              args = ATuple . reverse $ (\i -> AVar i) <$> [0      ..size     -1]
+              post = (\i -> ABot $ dtSrts !! i)        <$> [start+1..dtTupSize-1]  
               -- Constructor tuple
-              strctTup = ATuple (pre ++ args ++ post)
-              -- Wrap with lambdas (TODO: Check if order is correct)
-              strctLam = foldr (\i -> ALam (dtSorts !! i)) strctTup [start .. start+size-1]
+              strctTup = ATuple (pre ++ [args] ++ post)
+              -- Wrap with lambdas
+              strctLam = foldr (\i -> ALam (dtSrts !! i)) strctTup [start .. start+size-1]
               -- Wrap with quantifications
               strctAnn = foldr (const AQuant) strctLam (dataTypeQuantors dt)
-          in (start+size, (declarationName strctDecl, strctAnn):stctsAnns)
+          in (start+1, (declarationName strctDecl, strctAnn):stctsAnns)
 
 -- | Remove sort quantifications
 removeSortQuants :: Sort -> Sort

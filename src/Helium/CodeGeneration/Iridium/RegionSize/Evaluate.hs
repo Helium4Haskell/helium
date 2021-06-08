@@ -17,6 +17,7 @@ import Helium.CodeGeneration.Iridium.RegionSize.Utils
 -- Evalutation
 ----------------------------------------------------------------
 
+-- TODO: Rewrite without foldalg for more control over subevals?
 -- | Fully evaluate an expression
 eval :: DataTypeEnv -> Annotation -> Annotation
 eval dEnv ann = foldAnnAlg evalAlg ann
@@ -26,7 +27,7 @@ eval dEnv ann = foldAnnAlg evalAlg ann
     aJoin  = \_ -> join        dEnv,
     aApl   = \_ -> application dEnv,
     aInstn = \_ -> instantiate dEnv,
-    aProj  = \_ -> project ann,
+    aProj  = \_ -> project     dEnv ann,
     aTop   = \_ -> top,
     aBot   = \_ -> bot
   }
@@ -79,13 +80,13 @@ instantiate _ a t = AInstn a t
 
 
 -- | Only project if subannotation has been evaluated to a tuple
-project :: Annotation -> Int -> Annotation -> Annotation 
-project tmp idx (ATuple as) | length as > idx = as !! idx
+project :: DataTypeEnv -> Annotation -> Int -> Annotation -> Annotation 
+project _    tmp idx (ATuple as) | length as > idx = as !! idx
                                  | otherwise       = rsError $ "Projection-index out of bounds\n Idx: " ++ show idx ++ "\n Annotation: " ++ (show $ ATuple as) ++ "\n\n" ++ (show tmp)                         
 -- Moving a join outwards
-project _   idx (AJoin a b) = joinSort $ AProj idx <$> joinCollect (AJoin a b) 
+project dEnv _   idx (AJoin a b) = eval dEnv . joinSort $ AProj idx <$> joinCollect (AJoin a b) 
 -- Cannot eval
-project _   idx t = AProj idx t 
+project _    _   idx t = AProj idx t 
 
 
 -- | Break up top into a value
@@ -111,31 +112,34 @@ bot s = ABot s
 -- | Join of annotations
 join :: DataTypeEnv -> Annotation -> Annotation -> Annotation
 -- Cases that consume the other element
-join _    _ AUnit     = AUnit
-join _    AUnit _     = AUnit 
-join _    (ABot _)  a = a 
-join _    a  (ABot _) = a
-join _    (ATop   s v1) (ATop   _ v2) = ATop s  $ constrJoin v1 v2
-join _    (ATop   s vs) a             = ATop s  $ constrJoin (gatherConstraints a) vs
-join _    a             (ATop   s vs) = ATop s  $ constrJoin (gatherConstraints a) vs
+join _ _ AUnit    = AUnit
+join _ AUnit _    = AUnit 
+join _ (ABot _) a = a 
+join _ a (ABot _) = a
+join _ (ATop   s vs) a = ATop s $ constrJoin (gatherConstraints a) vs
+join _ a (ATop   s vs) = ATop s $ constrJoin (gatherConstraints a) vs
 -- Complex case
-join _    a             b             = 
+join dEnv a b = 
   let parts1 = joinCollect (AJoin a b)
       (vars, parts2) = partition isVar parts1
       vars' = joinVars vars -- Vars are combined with lams
-      (lams, parts3) = partition isLam parts2
-      lam = joinLams lams vars'
-      (qnts, parts4) = partition isQuant parts3
-      qnt = joinQuants qnts
-      (apls, parts5) = partition isApl parts4
-      apl = joinApls apls
-      (tups, parts6) = partition isTuple parts5
-      tup = joinTuples tups
-      (instns, parts7) = partition isInstn parts6
-      instns' = joinInstns instns
-      (constrs, parts8) = partition isConstr parts7
-      constr = joinConstrs constrs
-  in joinSort (lam ++ qnt ++ apl ++ tup ++ instns' ++ constr ++ parts8)
+      (lams,    parts3 ) = partition isLam    parts2
+      (qnts,    parts4 ) = partition isQuant  parts3
+      (apls,    parts5 ) = partition isApl    parts4
+      (tups,    parts6 ) = partition isTuple  parts5
+      (instns,  parts7 ) = partition isInstn  parts6
+      (constrs, parts8 ) = partition isConstr parts7
+      (regs,    parts9 ) = partition isReg    parts8
+      (adds,    parts10) = partition isAdd    parts9
+  in joinSort $ eval dEnv <$> concat [ joinLams    lams vars'
+                                     , joinInstns  instns -- TODO: Also combine with vars?
+                                     , joinQuants  qnts
+                                     , joinApls    apls
+                                     , joinTuples  tups
+                                     , joinConstrs constrs
+                                     , joinRegs    regs
+                                     , joinAdds    adds
+                                     , parts10 ]
 
 ----------------------------------------------------------------
 -- Subsitution of region variables
@@ -162,7 +166,7 @@ regVarSubst' d ann c = constrAdds $ (constrStrengthenN d c'):(constrWeaken d <$>
         regVarInst inst r = rsError $ "regVarInst: " ++ show inst ++ ", r: " ++ show r
 
 ----------------------------------------------------------------
--- Join utilities
+-- Join rules
 ----------------------------------------------------------------
 
 -- | Collect all annotations in a group of joins
@@ -172,21 +176,33 @@ joinCollect ann = [ann]
 
 -- | Create a sorted join from a list of annotations
 joinSort :: [Annotation] -> Annotation 
-joinSort [] = rsError "??"
+joinSort [] = rsError "joinSort called on empty list"
 joinSort as = foldl1 AJoin $ sort as
 
 -- | Combine annotation variables
 joinVars :: [Annotation] -> [Annotation]
-joinVars = nub
+joinVars = ordNub 
+
+-- | Combine annotation variables
+joinRegs :: [Annotation] -> [Annotation]
+joinRegs = ordNub
+
+-- | Combine annotation additions
+joinAdds :: [Annotation] -> [Annotation]
+joinAdds []   = []
+joinAdds adds = let (as, bs) = unzip $ unAAdd <$> adds
+                in [AAdd (joinSort as) (joinSort bs)]
 
 -- | join annotation lambdas
 joinLams :: [Annotation] -- ^ Lams
          -> [Annotation] -- ^ Vars
          -> [Annotation]
 joinLams [] vars = vars
-joinLams lams@(ALam s _:_) vars = [ALam s . joinSort $ lams ++ (varToLam <$> vars)]
+joinLams lams@(ALam s _:_) vars = [ALam s . joinSort $ (dropLam <$> lams) ++ (varToLam <$> vars)]
   where varToLam (AVar idx) = AApl (AVar $ idx+1) (AVar 0)
         varToLam _ = rsError "Regionsize.joinLams: non-variable in vars"
+        dropLam  (ALam _ a) = a
+        dropLam _ = rsError "regionSize.joinLams: droplam on non-lam"
 joinLams _ _ = rsError "non-lambda in joinLams"
 
 -- | Combine annotation quantifiers
@@ -199,21 +215,24 @@ joinQuants quants = [AQuant . joinSort $ dropQuant <$> quants]
 -- | Combine annotation applications
 joinApls :: [Annotation] -> [Annotation]
 joinApls []   = []
-joinApls apls = let (fs, xs) = unzip $ unApl <$> apls
+joinApls apls = let (fs, xs) = unzip $ unAApl <$> apls
                 in [AApl (joinSort fs) (joinSort xs)]
-  where unApl (AApl f x) = (f,x)
-        unApl _ = rsError "RegionSize.joinApls: non-application"
 
 -- | Combine tuples
 joinTuples :: [Annotation] -> [Annotation]
 joinTuples [] = []
 joinTuples tups = let ts = unsafeUnliftTuple <$> tups
-                  in foldl1 (zipWith AJoin) ts 
+                  in [ATuple $ foldl1 (zipWith AJoin) ts] 
 
--- | Combine instantiations
+-- | Combine instantiations if the types are equal
 joinInstns :: [Annotation] -> [Annotation]
 joinInstns [] = []
-joinInstns instns = instns
+joinInstns instns = go $ sortWith (\(AInstn _ t) -> t) instns
+  where go [] = []
+        go [AInstn a t] = [AInstn a t] 
+        go (AInstn a t1:AInstn b t2:xs) | t1 == t2  = go $ AInstn (AJoin a b) t1:xs 
+                                        | otherwise = (AInstn a t1) : go (AInstn b t2:xs)
+        go _ = error ""
 
 -- | Combine constrs
 joinConstrs :: [Annotation] -> [Annotation]

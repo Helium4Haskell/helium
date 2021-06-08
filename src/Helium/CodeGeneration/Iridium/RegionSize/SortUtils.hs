@@ -86,7 +86,9 @@ regionAssign' _    ts t = rsError $ "regionAssign: No pattern match: " ++ showTy
 
 -- | Find sort for datatype
 dataTypeSort :: TypeEnvironment -> DataTypeEnv -> DataType -> Sort
-dataTypeSort tEnv dEnv dt@(DataType structs) = foldr (const SortQuant) (SortTuple . concat $ dataStructSort tEnv dEnv <$> structs) (dataTypeQuantors dt)
+dataTypeSort tEnv dEnv dt@(DataType structs) = 
+  let structSorts = SortTuple $ SortTuple . dataStructSort tEnv dEnv <$> structs
+  in sortWrapQuants (length $ dataTypeQuantors dt) structSorts
 
 dataStructSort :: TypeEnvironment -> DataTypeEnv -> Declaration DataTypeConstructorDeclaration -> [Sort]
 dataStructSort tEnv dEnv (Declaration _ _ _ _ (DataTypeConstructorDeclaration ty _)) =
@@ -95,7 +97,9 @@ dataStructSort tEnv dEnv (Declaration _ _ _ _ (DataTypeConstructorDeclaration ty
 
 -- | Find region assignment for datatype
 dataTypeRegions :: TypeEnvironment -> DataTypeEnv -> DataType -> Sort
-dataTypeRegions tEnv dEnv dt@(DataType structs) = foldr (const SortQuant) (SortTuple . concat $ dataStructRegions tEnv dEnv <$> structs) (dataTypeQuantors dt)
+dataTypeRegions tEnv dEnv dt@(DataType structs) = 
+  let structSorts = SortTuple $ SortTuple . dataStructRegions tEnv dEnv <$> structs
+  in sortWrapQuants (length $ dataTypeQuantors dt) structSorts
 
 dataStructRegions :: TypeEnvironment -> DataTypeEnv -> Declaration DataTypeConstructorDeclaration -> [Sort]
 dataStructRegions tEnv dEnv (Declaration _ _ _ _ (DataTypeConstructorDeclaration ty _)) =
@@ -181,6 +185,11 @@ sortUnpackTuple _ = rsError "sortUnpackTuple called on non-tuple"
 sortDropLam :: Sort -> Sort
 sortDropLam (SortLam _ s) = s
 sortDropLam s = error $ "Called droplam on non-sortlam: " ++ show s
+
+-- | Wrap a sort in n quantifiers
+sortWrapQuants :: Int -> Sort -> Sort
+sortWrapQuants 0 s = s
+sortWrapQuants n s = SortQuant $ sortWrapQuants (n-1) s
 
 -- | Convert region variables to a sort
 regionVarsToSort :: RegionVars -> Sort

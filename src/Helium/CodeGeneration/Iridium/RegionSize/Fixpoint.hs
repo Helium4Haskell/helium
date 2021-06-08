@@ -69,7 +69,7 @@ inlineFixpoints :: Annotation -> Annotation
 inlineFixpoints = id--foldAnnAlgQuants fixAlg
     where fixAlg = idAnnAlg {
         aProj = \_ i a  -> case a of
-                             AFix ss as -> AProj i $ (removeUnused i ss as)
+                             AFix ss as -> AProj i $ removeUnused i ss as
                              _ -> AProj i a,
         aFix  = \_ s as -> AFix s . inlineFixpoint 
                                   . inlineFixpoint 
@@ -124,7 +124,7 @@ findFixBinds = foldAnnAlgLamsN 0 countAlg
 -- | Remove unused indexes in a fixpoint
 removeUnused :: Int -> [Sort] -> [Annotation] -> Annotation
 removeUnused targetIdx ss as = AFix usedSrts $ renameUsed usedIdxs <$> usedAnns
-    where usedIdxs = sort $ go (findFixBinds <$> as) [] [targetIdx]
+    where usedIdxs = reverse.sort $ go (findFixBinds <$> as) [] [targetIdx]
           usedAnns = foldl (\as' i -> (as !! i) : as') [] usedIdxs
           usedSrts = foldl (\ss' i -> (ss !! i) : ss') [] usedIdxs
           go _    seen []       = seen

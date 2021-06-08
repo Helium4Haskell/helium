@@ -51,7 +51,11 @@ sort dEnv = sort' (-1,-1) M.empty
           sort' _ _ (ABot   s  ) = Right s
 
           -- Check body of the fixpoint
-          sort' d gamma (AFix   s a) = sort' d gamma (ALam (SortTuple s) (ATuple a))
+          sort' d gamma (AFix   s a) = 
+              let fs = sort' d gamma (ALam (SortTuple s) (ATuple a))
+              in case fs of
+                   (Right (SortLam _ sR)) -> Right sR
+                   _ -> fs
           -- Check if both operands have the same sort
           sort' d gamma (AJoin  a b) = 
               let sortA = sort' d gamma a

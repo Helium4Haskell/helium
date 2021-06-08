@@ -33,14 +33,6 @@ import qualified Data.Map as M
 -- | Infer the size of regions
 passRegionSize :: NameSupply -> Module -> IO Module
 passRegionSize _ m = do 
-  if  (((stringFromId $ moduleName m) == "LvmLang"      && False)
-    || ((stringFromId $ moduleName m) == "HeliumLang"   && False) 
-    || ((stringFromId $ moduleName m) == "PreludePrim"  && False)
-    || ((stringFromId $ moduleName m) == "Prelude"      && False)
-    || ((stringFromId $ moduleName m) == "LvmException" && False))
-  then do
-    return m
-  else do
     let gEnv = initialGEnv m
     let groups = methodBindingGroups $ moduleMethods m
 
@@ -90,29 +82,35 @@ analysis gEnv methods = do
 
       -- Generate the annotations     
       let mAnn  = analyseMethods 0 gEnv methods
-      let simpl = inlineFixpoints $ eval dEnv mAnn
+      let simpl = eval dEnv $ inlineFixpoints $ eval dEnv mAnn
       let fixed = solveFixpoints dEnv simpl
-      let sorts = sort dEnv fixed
 
       putStrLn $ "\n# Derived annotation: "
       print mAnn
       
       putStrLn $ "\n# Simplified: "
       print simpl
+      -- Check if the resulting annotation is well-sroted
+      simpl' <- case sort dEnv simpl of
+              Left  s -> do
+                putStrLn ""
+                putStrLn s
+                rsError $ "Wrong sort"
+              Right _ -> return simpl
+
 
       -- Solve the fixpoints
       putStrLn $ "\n# Fixpoint: "
       print fixed 
 
       -- Check if the resulting annotation is well-sroted
-      fixed' <- case sorts of
+      fixed' <- case sort dEnv fixed of
               Left  s -> do
                 putStrLn ""
                 putStrLn s
                 rsError $ "Wrong sort"
               Right _ -> return $ unsafeUnliftTuple fixed
       let zerod = uncurry fixZeroArity <$> zip methods fixed'
-      print sorts
 
       -- Update the global environment with the found annotations
       let gEnv' = foldr (uncurry insertGlobal) gEnv $ zip (fst <$> methods) zerod
