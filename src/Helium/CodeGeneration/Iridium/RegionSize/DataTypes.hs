@@ -3,7 +3,6 @@ where
 
 import Lvm.Common.Id
 import Lvm.Common.IdMap
-import Lvm.Core.Type
 import qualified Lvm.Core.Module as LVMModule
 
 import Helium.CodeGeneration.Iridium.Data
@@ -12,11 +11,10 @@ import Helium.CodeGeneration.Core.TypeEnvironment
 import Helium.CodeGeneration.Iridium.RegionSize.Annotation
 import Helium.CodeGeneration.Iridium.RegionSize.Utils
 import Helium.CodeGeneration.Iridium.RegionSize.Sort
-import Helium.CodeGeneration.Iridium.RegionSize.Type
 
 import GHC.Stack
 
-import Data.Either (lefts, rights)
+import Data.Either (rights)
 
 ----------------------------------------------------------------
 -- Data type environment

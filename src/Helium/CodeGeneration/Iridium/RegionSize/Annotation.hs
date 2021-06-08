@@ -23,7 +23,7 @@ import Lvm.Core.Type
 ----------------------------------------------------------------
 
 data Annotation = 
-      AVar    Int                     -- ^ De Bruijn i7ndex Variable
+      AVar    Int                     -- ^ De Bruijn index Variable
     | AReg    RegionVar               -- ^ Region
     | ALam    Sort       Annotation   -- ^ Annotation lambda
     | AApl    Annotation Annotation   -- ^ Application
@@ -83,8 +83,6 @@ annShow' n = foldAnnAlgN n showAlg
 ----------------------------------------------------------------
 -- Annotation algebra
 ----------------------------------------------------------------
-
-type Depth = Int
 
 data AnnAlg b a = 
   AnnAlg {

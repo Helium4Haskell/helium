@@ -4,10 +4,13 @@ module Helium.CodeGeneration.Iridium.RegionSize.Utils
     varNames, typeVarName, annVarName,
     rsError, rsInfo,
     mapAccumLM, mapWithIndex,
+    ordNub, sortWith,
     cleanTUP
     ) where
 
 import qualified Debug.Trace as T
+import qualified Data.Set as S
+import Data.Ord (comparing)
 import Data.List
 
 import GHC.Stack
@@ -103,3 +106,17 @@ cleanTUP :: String -> String
 cleanTUP [] = []
 cleanTUP ('T':'U':'P': xs) = cleanTUP xs
 cleanTUP (x:xs) = x : cleanTUP xs
+
+-- | Nub bot O(nlogn)
+ordNub :: (Ord a) => [a] -> [a]
+ordNub = go S.empty
+  where
+    go _ []     = []
+    go s (x:xs) =
+      if x `S.member` s
+      then go s xs
+      else x : go (S.insert x s) xs
+
+-- | Sort with selection
+sortWith :: Ord o => (a -> o) -> [a] -> [a]
+sortWith = sortBy . comparing

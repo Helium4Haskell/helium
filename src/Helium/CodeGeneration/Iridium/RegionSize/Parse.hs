@@ -12,7 +12,6 @@ import Helium.CodeGeneration.Iridium.RegionSize.Annotation
 import Helium.CodeGeneration.Iridium.RegionSize.Sort
 import Helium.CodeGeneration.Iridium.RegionSize.Constraints
 
-import Control.Monad.Fail
 import Data.List (elemIndex)
 import Data.Map (fromList)
 
@@ -205,7 +204,7 @@ pSort' names = do
             pSymbol "TUP"
             sorts <- pArguments $ pSort names
             return $ SortTuple sorts
-        c   -> pError $ c:[] 
+        c2   -> pError [c2] 
 
 -- | Parse a polymorphic sort <name [t1,t2,..]>
 pPolySort :: Names -> Parser (Int, [Type])

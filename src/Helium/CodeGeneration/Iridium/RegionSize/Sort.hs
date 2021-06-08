@@ -5,12 +5,9 @@ module Helium.CodeGeneration.Iridium.RegionSize.Sort
     SortAlg(..), idSortAlg, foldSortAlg, foldSortAlgN)
 where
 
-import Helium.CodeGeneration.Iridium.Region.RegionVar
-
 import Helium.CodeGeneration.Iridium.RegionSize.Utils
 import Helium.CodeGeneration.Iridium.RegionSize.Type
 
-import Lvm.Common.Id
 import Lvm.Core.Type
 import Data.List
 

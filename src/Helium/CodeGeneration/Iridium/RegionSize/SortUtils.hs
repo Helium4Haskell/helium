@@ -10,20 +10,14 @@ module Helium.CodeGeneration.Iridium.RegionSize.SortUtils
 import Helium.CodeGeneration.Core.TypeEnvironment
 
 import Helium.CodeGeneration.Iridium.Data
-import Helium.CodeGeneration.Iridium.BindingGroup
-
-import Helium.CodeGeneration.Iridium.Region.RegionVar
 
 import Helium.CodeGeneration.Iridium.RegionSize.Utils
 import Helium.CodeGeneration.Iridium.RegionSize.Type
 import Helium.CodeGeneration.Iridium.RegionSize.DataTypes
 import Helium.CodeGeneration.Iridium.RegionSize.Sort
 
-import Lvm.Common.Id
-import Lvm.Common.IdMap
 import Lvm.Core.Type
 import Data.List
-import qualified Data.Map as M
 
 ----------------------------------------------------------------
 -- Sort assignment
@@ -38,7 +32,7 @@ sortAssign' :: DataTypeEnv
             -> [Type] -- ^ Type arguments
             -> Type -> Sort
 sortAssign' dEnv ts (TStrict t)     = sortAssign' dEnv ts t
-sortAssign' dEnv ts (TVar idx)        = SortPolySort idx ts
+sortAssign' _    ts (TVar idx)        = SortPolySort idx ts
 sortAssign' dEnv ts (TAp t1 t2)     = sortAssign' dEnv (t2:ts) t1
 sortAssign' dEnv []      (TForall _ _ t1) = SortQuant $ sortAssign' dEnv [] t1
 sortAssign' dEnv (t2:ts) (TForall _ _ t1) = sortAssign' dEnv ts (typeSubstitute 0 t2 t1)
@@ -70,16 +64,15 @@ regionAssign dEnv ty | typeIsStrict ty = SortTuple [SortMonoRegion              
 regionAssign' :: DataTypeEnv
               -> [Type] -- ^ Type arguments
               -> Type -> Sort
-regionAssign' dEnv ts (TVar a)        = SortPolyRegion a ts
+regionAssign' _    ts (TVar a)        = SortPolyRegion a ts
 regionAssign' dEnv ts (TStrict a)     = regionAssign' dEnv ts a
 regionAssign' dEnv ts (TAp t1 t2)     = regionAssign' dEnv (t2:ts) t1
 regionAssign' dEnv []      (TForall _ _ t1) = SortQuant $ regionAssign' dEnv [] t1
 regionAssign' dEnv (t2:ts) (TForall _ _ t1) = regionAssign' dEnv ts (typeSubstitute 0 t2 t1)
 -- Type constructors (functions, tuples, simple data types)
-regionAssign' dEnv [_,_] (TCon TConFun      ) = SortUnit
+regionAssign' _    [_,_] (TCon TConFun      ) = SortUnit
 regionAssign' dEnv ts    (TCon (TConTuple n)) | length ts == n = SortTuple . concat $ sortUnpackTuple.regionAssign dEnv <$> ts
                                               | otherwise      = rsError $ "regionAssign: Tuple with incorrect number of arguements: expected " ++ show n ++ " but got " ++ (show $ length ts) ++ "\n" ++ (intercalate ", " $ map (showTypeN 0) ts)
-regionAssign' dEnv []    (TCon (TConDataType _)) = SortUnit
 -- Data types & dictionaries
 regionAssign' dEnv ts    (TCon (TConTypeClassDictionary name)) = foldl (flip $ sortInstantiate dEnv) (dictionaryDataTypeName name `lookupDataTypeRegs` dEnv) ts
 regionAssign' dEnv ts    (TCon (TConDataType            name)) = foldl (flip $ sortInstantiate dEnv) (name `lookupDataTypeRegs` dEnv) ts

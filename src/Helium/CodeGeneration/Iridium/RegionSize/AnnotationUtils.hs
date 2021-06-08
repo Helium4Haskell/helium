@@ -2,8 +2,8 @@ module Helium.CodeGeneration.Iridium.RegionSize.AnnotationUtils
   ( liftTuple, unliftTuple, unsafeUnliftTuple,
     collect,
     annWeaken,
-    isConstr, isTop, isBot, isLam, isVar, isQuant, isApl, isInstn, isTuple,
-    unAConstr,
+    isConstr, isTop, isBot, isLam, isVar, isQuant, isApl, isInstn, isTuple, isReg, isAdd,
+    unAConstr, unAApl, unAAdd,
     constrIdxToAnn,
     annRemLocalRegs, regionVarsToGlobal,
     annRemoveQuants, annWrapQuants,
@@ -86,6 +86,14 @@ isTuple :: Annotation -> Bool
 isTuple (ATuple _) = True
 isTuple _ = False
 
+isReg :: Annotation -> Bool
+isReg (AReg _) = True
+isReg _ = False
+
+isAdd :: Annotation -> Bool
+isAdd (AAdd _ _) = True
+isAdd _ = False
+
 ----------------------------------------------------------------
 -- Unpack annotation
 ----------------------------------------------------------------
@@ -93,6 +101,14 @@ isTuple _ = False
 unAConstr :: Annotation -> Constr
 unAConstr (AConstr c) = c
 unAConstr _ = rsError "unAConstr of non-constr"
+
+unAAdd :: Annotation -> (Annotation, Annotation)
+unAAdd (AAdd a b) = (a,b)
+unAAdd _ = rsError "unAAdd of non-addition"
+
+unAApl :: Annotation -> (Annotation, Annotation)
+unAApl (AApl f x) = (f,x)
+unAApl _ = rsError "RegionSize.joinApls: non-application"
 
 ----------------------------------------------------------------
 -- Annotation utilities
