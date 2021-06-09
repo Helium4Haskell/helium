@@ -54,8 +54,10 @@ sort dEnv = sort' (-1,-1) M.empty
           sort' d gamma (AFix   s a) = 
               let fs = sort' d gamma (ALam (SortTuple s) (ATuple a))
               in case fs of
-                   (Right (SortLam _ sR)) -> Right sR
-                   _ -> fs
+                   (Right (SortLam _ sR)) | SortTuple s == sR -> Right sR
+                                          | otherwise -> Left "Invalid fixpoint sort"
+                   Left xs -> Left xs
+                   Right _ -> Left "Invalid fixpoint sort"
           -- Check if both operands have the same sort
           sort' d gamma (AJoin  a b) = 
               let sortA = sort' d gamma a
@@ -74,7 +76,7 @@ sort dEnv = sort' (-1,-1) M.empty
                   let sortX = sort' (dL,dQ)  gamma x 
                   in case sortX of
                         Right sX | checkArgs sortA sX -> Right sortR
-                                 | otherwise -> Left $ "Argument has different sort than is expected.\nArgument sort: " ++ (showSort dQ sX) ++ "\nExpected sort: " ++ (showSort dQ sortA) ++ "\n"
+                                 | otherwise -> Left $ "Argument has different sort than is expected.\nArgument sort: " ++ (showSort dQ sX) ++ "\nExpected sort: " ++ (showSort dQ sortA) ++ "\nResult of lambda:" ++ showSort dQ sortR ++ "\n"
                         err     -> err
                 Right s -> Left $ "Application to non function sort:\nSort:     " ++ (showSort dQ s)
                 err     -> err
@@ -100,7 +102,10 @@ sort dEnv = sort' (-1,-1) M.empty
                   sortB = sort' (dL,dQ) gamma b
               in if sortA == sortB && sortA == Right SortConstr
                  then Right SortConstr
-                 else Left ("Addition of non constraint-sort annotations: \nSort A: " ++ show sortA ++ "\nSort B: " ++ show sortB) 
+                 else case (sortA, sortB) of
+                     (Left errA,_) -> Left errA
+                     (_,Left errB) -> Left errB
+                     (_,_) -> Left ("Addition of non constraint-sort annotations: \nSort A: " ++ show sortA ++ "\nSort B: " ++ show sortB) 
         --   sort' (dL,dQ) gamma (AMinus a _) = 
         --       let sortA = sort' (dL,dQ) gamma a
         --       in if sortA == Right SortConstr

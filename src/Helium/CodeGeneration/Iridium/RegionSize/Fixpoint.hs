@@ -66,7 +66,7 @@ solveFixpoint dEnv scope sorts fixes =
 
 -- | Solve all the fixpoints in an annotation
 inlineFixpoints :: Annotation -> Annotation
-inlineFixpoints = id--foldAnnAlgQuants fixAlg
+inlineFixpoints = foldAnnAlgQuants fixAlg
     where fixAlg = idAnnAlg {
         aProj = \_ i a  -> case a of
                              AFix ss as -> AProj i $ removeUnused i ss as

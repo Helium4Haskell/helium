@@ -117,6 +117,10 @@ methodFunctionType (Method _ _ args returnType _ _ _ _) = FunctionType (map arg 
 methodType :: Method -> Type
 methodType method = typeFromFunctionType $ methodFunctionType method
 
+-- The additional regions of a method
+methodAdditionRegions :: Method -> RegionVars
+methodAdditionRegions (Method _ aRegs _ _ _ _ _ _) = aRegs
+
 -- The original type of the function in Haskell, excluding strictness annotations
 methodSourceType :: Method -> Type
 methodSourceType (Method tp _ _ _ _ _ _ _) = tp

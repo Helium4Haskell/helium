@@ -157,6 +157,7 @@ fixZeroArity (_, Method _ aRegs args _ rRegs _ _ _) ann =
 
 {-| When a local region is applied to a higher order function
   we must make said region unbounded. We cannot know the true bound.
+  This could also be corrected with a change in region inference.
   TODO: Do not pass c if a \= AApl? May be sound
 -}
 fixHigherOrderApplication :: Annotation -> Constr

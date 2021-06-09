@@ -89,7 +89,7 @@ analyseMethod gEnv@(GlobalEnv tEnv _ dEnv) (_, method@(Method _ aRegs args rType
        , methodSortAssign tEnv dEnv method) 
 
 
--- | Wrap a function body into a AQuant or `A -> P -> (A,C)'
+-- | Wrap a function body into its arguments (AQuant or `A -> P -> (A,C)')
 wrapBody :: GlobalEnv 
          -> Type                  -- ^ Return type 
          -> [Either Quantor Type] -- ^ Arguments 

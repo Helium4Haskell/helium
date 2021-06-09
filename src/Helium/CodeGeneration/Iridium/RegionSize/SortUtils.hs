@@ -198,4 +198,4 @@ regionVarsToSort (RegionVarsTuple rs) = SortTuple $ regionVarsToSort <$> rs
 
 -- | Assign a sort to a method  
 methodSortAssign :: TypeEnvironment -> DataTypeEnv -> Method -> Sort  
-methodSortAssign tEnv dEnv = SortLam SortUnit . sortAssign dEnv . typeNormalize tEnv . methodType   
+methodSortAssign tEnv dEnv method = SortLam (regionVarsToSort $ methodAdditionRegions method) . sortAssign dEnv . typeNormalize tEnv $ methodType method
