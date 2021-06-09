@@ -100,14 +100,14 @@ dataTypeBindingGroups = bindingGroups dataTypeDependencies
     constructorDependencies :: DataTypeConstructorDeclaration -> [Id]
     constructorDependencies (DataTypeConstructorDeclaration ty _) = 
        let (FunctionType args _) = extractFunctionTypeNoSynonyms ty 
-       in concat $ typeDependencies <$> rights args
+       in rights args >>= typeDependencies 
     
     typeDependencies :: Type -> [Id]
-    typeDependencies (TVar _)             = []
-    typeDependencies (TCon (TConTuple _)) = [] 
-    typeDependencies (TCon (TConFun))     = [] 
-    typeDependencies (TCon (TConTypeClassDictionary name)) = [name] 
-    typeDependencies (TCon (TConDataType name))            = [name] 
-    typeDependencies (TForall _ _ t) = typeDependencies t
-    typeDependencies (TStrict t)     = typeDependencies t
-    typeDependencies (TAp t1 t2)     = typeDependencies t1 ++ typeDependencies t2
+    typeDependencies tp = dependencies tp []
+        where
+          dependencies (TAp t1 t2) accum = dependencies t1 $ dependencies t2 accum
+          dependencies (TForall _ _ t1) accum = dependencies t1 accum
+          dependencies (TStrict t1) accum = dependencies t1 accum
+          dependencies (TCon (TConDataType name)) accum = name : accum
+          dependencies (TCon (TConTypeClassDictionary name)) accum = dictionaryDataTypeName name : accum
+          dependencies _ accum = accum

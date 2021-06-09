@@ -18,6 +18,7 @@ import Helium.CodeGeneration.Iridium.RegionSize.Sort
 
 import Lvm.Core.Type
 import Data.List
+import Data.Maybe(fromMaybe)
 
 ----------------------------------------------------------------
 -- Sort assignment
@@ -41,8 +42,8 @@ sortAssign' dEnv [t1,t2] (TCon TConFun)       = funSort dEnv t1 t2
 sortAssign' dEnv ts      (TCon (TConTuple n)) | length ts == n = SortTuple $ map (sortAssign dEnv) ts
                                               | otherwise      = rsError $ "sortAssign: Tuple with incorrect number of arguements: expected " ++ show n 
                                                                         ++ " but got " ++ (show $ length ts) ++ "\n" ++ (intercalate ", " $ map (showTypeN 0) ts)
-sortAssign' dEnv ts      (TCon (TConTypeClassDictionary name)) = foldl (flip $ sortInstantiate dEnv) (dictionaryDataTypeName name `lookupDataType` dEnv) ts
-sortAssign' dEnv ts      (TCon (TConDataType            name)) = foldl (flip $ sortInstantiate dEnv) (name `lookupDataType` dEnv) ts
+sortAssign' dEnv ts      (TCon (TConTypeClassDictionary name)) = foldl (flip $ sortInstantiate dEnv) (fromMaybe SortUnit $ dictionaryDataTypeName name `lookupDataType` dEnv) ts
+sortAssign' dEnv ts      (TCon (TConDataType            name)) = foldl (flip $ sortInstantiate dEnv) (fromMaybe SortUnit $ name `lookupDataType` dEnv) ts
 sortAssign' _ ts t = rsError $ "sortAssign' - No pattern match: " ++ showType varNames t ++ "\n" ++ show (showType varNames <$> ts)
 
 -- | Sort for a function: t_1 -> t2 ===> SA(t_1) -> RA(t_2) -> (SA(t_2), C)
@@ -74,8 +75,8 @@ regionAssign' _    [_,_] (TCon TConFun      ) = SortUnit
 regionAssign' dEnv ts    (TCon (TConTuple n)) | length ts == n = SortTuple . concat $ sortUnpackTuple.regionAssign dEnv <$> ts
                                               | otherwise      = rsError $ "regionAssign: Tuple with incorrect number of arguements: expected " ++ show n ++ " but got " ++ (show $ length ts) ++ "\n" ++ (intercalate ", " $ map (showTypeN 0) ts)
 -- Data types & dictionaries
-regionAssign' dEnv ts    (TCon (TConTypeClassDictionary name)) = foldl (flip $ sortInstantiate dEnv) (dictionaryDataTypeName name `lookupDataTypeRegs` dEnv) ts
-regionAssign' dEnv ts    (TCon (TConDataType            name)) = foldl (flip $ sortInstantiate dEnv) (name `lookupDataTypeRegs` dEnv) ts
+regionAssign' dEnv ts    (TCon (TConTypeClassDictionary name)) = foldl (flip $ sortInstantiate dEnv) (fromMaybe SortUnit $ dictionaryDataTypeName name `lookupDataTypeRegs` dEnv) ts
+regionAssign' dEnv ts    (TCon (TConDataType            name)) = foldl (flip $ sortInstantiate dEnv) (fromMaybe SortUnit $ name `lookupDataTypeRegs` dEnv) ts
 -- Not implemented cases
 regionAssign' _    ts t = rsError $ "regionAssign: No pattern match: " ++ showTypeN 0 t 
                                   ++ "\nArguments: " ++ (intercalate ", " $ map (showTypeN 0) ts)
@@ -198,4 +199,7 @@ regionVarsToSort (RegionVarsTuple rs) = SortTuple $ regionVarsToSort <$> rs
 
 -- | Assign a sort to a method  
 methodSortAssign :: TypeEnvironment -> DataTypeEnv -> Method -> Sort  
-methodSortAssign tEnv dEnv method = SortLam (regionVarsToSort $ methodAdditionRegions method) . sortAssign dEnv . typeNormalize tEnv $ methodType method
+methodSortAssign tEnv dEnv method = 
+  let mType = typeNormalize tEnv $ methodType method
+      aSort = regionVarsToSort $ methodAdditionRegions method
+  in SortLam aSort $ sortAssign dEnv mType

@@ -82,24 +82,23 @@ analyseMethod gEnv@(GlobalEnv tEnv _ dEnv) (_, method@(Method _ aRegs args rType
 
         -- Wrap body in fixpoint, quants and lambdas
         localFix = AProj 0 . AFix (bSrts ++ lSrts) $ bAnns ++ lAnns
-        (FunctionType argTy _) = methodFunctionType method  
-        fAnn = wrapBody gEnv rType argTy localFix
+        fAnn = wrapBody gEnv rType args localFix
         
-    in ( ALam (regionVarsToSort aRegs) fAnn
+    in ( fixZeroArity method $ ALam (regionVarsToSort aRegs) fAnn
        , methodSortAssign tEnv dEnv method) 
 
 
 -- | Wrap a function body into its arguments (AQuant or `A -> P -> (A,C)')
 wrapBody :: GlobalEnv 
          -> Type                  -- ^ Return type 
-         -> [Either Quantor Type] -- ^ Arguments 
+         -> [Either Quantor Local] -- ^ Arguments 
          -> Annotation -> Annotation
 wrapBody (GlobalEnv tEnv _ dEnv) rType args a 
         | length (rights args) == 0 = annWrapQuants (length $ lefts args) (ALam retRegSrt a)
         | otherwise = foldr (wrapBody' False) (wrapBody' True (last args) a) (init args) 
     where
         wrapBody' _     (Left  _) bAnn = AQuant bAnn
-        wrapBody' first (Right t) bAnn = let argS  = sortAssign dEnv $ typeNormalize tEnv t
+        wrapBody' first (Right l) bAnn = let argS  = sortAssign dEnv . typeNormalize tEnv $ localType l
                                              rSort = if first then retRegSrt else SortUnit
                                              bAnn' = if first then bAnn      else ATuple [bAnn,botEffect]
                                          in ALam argS $ ALam rSort bAnn'
@@ -128,6 +127,20 @@ regEnvFromArgs :: Int -> RegionVars -> RegionVars -> RegionEnv
 regEnvFromArgs dbz aRegs rRegs = M.union (go (AnnVar $ aRegIdx dbz) aRegs) (go (AnnVar rRegIdx) rRegs)
     where go var (RegionVarsSingle r) = M.singleton r var
           go var (RegionVarsTuple rs) = M.unions.map (\(i,r) -> go (CnProj i var) r) $ zip [0..] rs
+
+{-| Fix problems arising from zero arity functions 
+  Assigns the global regions to the return regions and additional regions. 
+-} 
+fixZeroArity :: Method -> Annotation -> Annotation 
+fixZeroArity (Method _ aRegs args _ rRegs _ _ _) ann = 
+  case length $ rights args of 
+    0 -> let aplARegs = AApl ann $ regionVarsToGlobal aRegs 
+             newQuantIndexes = reverse $ TVar <$> [0..(length $ lefts args)-1] 
+             quants a = foldr (const AQuant) a (lefts args) 
+             aplTypes = foldl AInstn aplARegs newQuantIndexes 
+             aplRRegs = AApl aplTypes $ regionVarsToGlobal rRegs 
+         in ALam SortUnit $ quants $ AProj 0 aplRRegs 
+    _ -> ann
 
 ----------------------------------------------------------------
 -- Gathering local variable annotations
@@ -310,7 +323,7 @@ analyseExpr envs@(Envs gEnv _ lEnv) = go
       -- No effect, annotation of local
       go (CastThunk local)        = (lookupLocalAnn local lEnv, botEffect)
       -- Join of the variable annotations in the branches
-      go (Phi branches)           = (joinAnnList $ flip lookupLocalAnn lEnv <$> map phiVariable branches, botEffect) --`rsInfo` (show $ flip lookupLocalAnn lEnv <$> map phiVariable branches)
+      go (Phi branches)           = (joinAnnList $ flip lookupLocalAnn lEnv <$> map phiVariable branches, botEffect)
       -- Primitive expression, does not allocate or cause any effect -> bottom
       go (PrimitiveExpr _ _)      = (AUnit, botEffect) 
       -- No effect, bottom annotation
@@ -425,4 +438,3 @@ blockInstr (Block _ instr) = instr
 regionVarsToAnn :: RegionEnv -> RegionVars -> Annotation
 regionVarsToAnn rEnv (RegionVarsSingle r) = constrIdxToAnn $ lookupReg r rEnv
 regionVarsToAnn rEnv (RegionVarsTuple rs) = ATuple $ map (regionVarsToAnn rEnv) rs
-

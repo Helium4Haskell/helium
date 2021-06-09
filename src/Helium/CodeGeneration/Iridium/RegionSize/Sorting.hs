@@ -55,7 +55,8 @@ sort dEnv = sort' (-1,-1) M.empty
               let fs = sort' d gamma (ALam (SortTuple s) (ATuple a))
               in case fs of
                    (Right (SortLam _ sR)) | SortTuple s == sR -> Right sR
-                                          | otherwise -> Left "Invalid fixpoint sort"
+                                          | otherwise -> Left $ "Sort does not match fixpoint sort:\n" ++ "Expected sort: " ++ (showSort (snd d) $ SortTuple s) 
+                                                                                                     ++ "\nActual sort:   " ++ (showSort (snd d) sR)
                    Left xs -> Left xs
                    Right _ -> Left "Invalid fixpoint sort"
           -- Check if both operands have the same sort

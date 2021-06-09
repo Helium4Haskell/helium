@@ -20,10 +20,10 @@ import Data.Either (rights)
 ----------------------------------------------------------------
 
 data DataTypeEnv = DataTypeEnv { 
-  dtSorts     :: !(IdMap Sort),        -- ^ Datatype id -> sort, sort assignment
-  dtRegions   :: !(IdMap Sort),        -- ^ Datatype id -> sort, region assignment
-  dtStructs   :: !(IdMap Annotation),  -- ^ Constructor id -> constructor annotation
-  dtDestructs :: !(IdMap [Annotation]) -- ^ Constructor id -> destructor annotation
+  dtSorts     :: !(IdMap (Maybe Sort)),        -- ^ Datatype id -> sort, sort assignment
+  dtRegions   :: !(IdMap (Maybe Sort)),        -- ^ Datatype id -> sort, region assignment
+  dtStructs   :: !(IdMap Annotation),          -- ^ Constructor id -> constructor annotation
+  dtDestructs :: !(IdMap [Annotation])         -- ^ Constructor id -> destructor annotation
 }
 
 emptyDEnv :: DataTypeEnv
@@ -34,13 +34,13 @@ emptyDEnv = DataTypeEnv emptyMap emptyMap emptyMap emptyMap
 ----------------------------------------------------------------
 
 -- | Lookup a datatype in the datatype environment
-lookupDataType :: HasCallStack => Id -> DataTypeEnv -> Sort
+lookupDataType :: HasCallStack => Id -> DataTypeEnv -> Maybe Sort
 lookupDataType name dEnv = case lookupMap name (dtSorts dEnv) of
                               Nothing -> rsError $ "lookupDataType: Datatype not in environment: " ++ show name
                               Just ds -> ds
 
 -- | Lookup a datatype in the datatype environment
-lookupDataTypeRegs :: HasCallStack => Id -> DataTypeEnv -> Sort
+lookupDataTypeRegs :: HasCallStack => Id -> DataTypeEnv -> Maybe Sort
 lookupDataTypeRegs name dEnv = case lookupMap name (dtRegions dEnv) of
                                  Nothing -> rsError $ "lookupDataType: Datatype not in environment: " ++ show name
                                  Just ds -> ds
@@ -62,47 +62,45 @@ lookupDestruct name dEnv = case lookupMap name (dtDestructs dEnv) of
 ----------------------------------------------------------------
 
 -- | Make constructor annotations
-makeDataTypeConstructors :: Sort -> DataType -> [(Id, Annotation)]
-makeDataTypeConstructors dtSort dt@(DataType structs) = 
-    snd $ foldl makeStructorAnn (0,[]) structs
+makeDataTypeConstructors :: Maybe Sort -> DataType -> [(Id, Annotation)]
+makeDataTypeConstructors Nothing (DataType _) = [] 
+makeDataTypeConstructors (Just dtSort) dt@(DataType structs) = mapWithIndex makeStructorAnn structs
   where dtTupSize = length structs
-        SortTuple dtSrts = removeSortQuants dtSort
+        SortTuple dtSrts = sortRemoveQuants dtSort
         
-        makeStructorAnn :: (Int, [(Id,Annotation)])
-                        -> Declaration DataTypeConstructorDeclaration  
-                        -> (Int, [(Id,Annotation)])
-        makeStructorAnn (start, stctsAnns) strctDecl =
+        makeStructorAnn :: Int -> Declaration DataTypeConstructorDeclaration -> (Id,Annotation)
+        makeStructorAnn structIdx strctDecl =
           let size = structorSize strctDecl
+              SortTuple structSrt = dtSrts !! structIdx
               -- Tuple elements
-              pre  = (\i -> ABot $ dtSrts !! i)        <$> [0      ..start    -1]
-              args = ATuple . reverse $ (\i -> AVar i) <$> [0      ..size     -1]
-              post = (\i -> ABot $ dtSrts !! i)        <$> [start+1..dtTupSize-1]  
+              pre  = (\i -> ABot $ dtSrts !! i)        <$> [0          ..structIdx-1]
+              args = ATuple . reverse $ (\i -> AVar i) <$> [0          ..size     -1]
+              post = (\i -> ABot $ dtSrts !! i)        <$> [structIdx+1..dtTupSize-1]  
               -- Constructor tuple
               strctTup = ATuple (pre ++ [args] ++ post)
               -- Wrap with lambdas
-              strctLam = foldr (\i -> ALam (dtSrts !! i)) strctTup [start .. start+size-1]
+              strctLam = foldr (\i -> ALam (structSrt !! i)) strctTup [0 .. size-1]
               -- Wrap with quantifications
               strctAnn = foldr (const AQuant) strctLam (dataTypeQuantors dt)
-          in (start+1, (declarationName strctDecl, strctAnn):stctsAnns)
+          in (declarationName strctDecl, strctAnn)
 
 -- | Remove sort quantifications
-removeSortQuants :: Sort -> Sort
-removeSortQuants (SortQuant s) = removeSortQuants s
-removeSortQuants s = s
+sortRemoveQuants :: Sort -> Sort
+sortRemoveQuants (SortQuant s) = sortRemoveQuants s
+sortRemoveQuants s = s
 
 -- | Make destructor annotations
-makeDataTypeDestructors :: Sort -> DataType -> [(Id, [Annotation])]
-makeDataTypeDestructors dtSort (DataType structs) =
-    snd $ foldl makeDestructorAnn (0,[]) structs
+makeDataTypeDestructors :: Maybe Sort -> DataType -> [(Id, [Annotation])]
+makeDataTypeDestructors Nothing (DataType _) = [] 
+makeDataTypeDestructors (Just dtSort) (DataType structs) =
+    mapWithIndex makeDestructorAnn structs
   where 
-    makeDestructorAnn :: (Int, [(Id,[Annotation])])
-                        -> Declaration DataTypeConstructorDeclaration  
-                        -> (Int, [(Id,[Annotation])])
-    makeDestructorAnn (start, stctsAnns) strctDecl =
+    makeDestructorAnn :: Int -> Declaration DataTypeConstructorDeclaration -> (Id,[Annotation])
+    makeDestructorAnn idx strctDecl =
         let size = structorSize strctDecl
             -- Project on elements of constructor
-            destrctAnn = map (\i -> ALam dtSort $ AProj i (AVar 0)) [start .. start+size-1]  
-        in (start+size, (declarationName strctDecl, destrctAnn):stctsAnns)
+            destrctAnn = (\i -> ALam dtSort . AProj i . AProj idx $ AVar 0) <$> [0 .. size-1]  
+        in (declarationName strctDecl, destrctAnn)
 
 ----------------------------------------------------------------
 -- Data type utilitiy functions

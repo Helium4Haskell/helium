@@ -21,9 +21,6 @@ import GHC.Stack
 -- Type definitions
 ----------------------------------------------------------------
 
-instance Show a => Show (IdMap a) where
-  show a = show $ listFromMap a
-
 type GlobFuncEnv = (IdMap Annotation)
 
 data GlobalEnv   = GlobalEnv {
@@ -52,7 +49,7 @@ lookupGlobal :: HasCallStack => Id -> GlobalEnv -> Annotation
 lookupGlobal name (GlobalEnv _ vars _) = 
   case lookupMap name vars of
     Nothing -> rsError $ "lookupGlobal - Global environment did not contain: " ++ stringFromId name
-    Just a  -> a --`rsInfo` (show name ++ ":\n" ++ show a ++ "\n")
+    Just a  -> a
 
 -- | Look up a local variable in the local environment
 lookupBlock :: BlockName -> BlockEnv -> Annotation
@@ -78,7 +75,7 @@ lookupLocalSrt local (LocalEnv _ lSrtEnv) =
 -- | Lookup a global or local variable
 lookupVar :: HasCallStack => Variable -> Envs -> Annotation
 lookupVar (VarLocal local) (Envs _ _ lEnv) = lookupLocalAnn local lEnv
-lookupVar global           (Envs gEnv _ _) = AApl (lookupGlobal (variableName global) gEnv) AUnit -- `rsInfo` (show $ variableName global)
+lookupVar global           (Envs gEnv _ _) = AApl (lookupGlobal (variableName global) gEnv) AUnit
 
 -- | Lookup a region in the region environment, retuns the region if not in env
 lookupReg :: HasCallStack => RegionVar -> RegionEnv -> ConstrIdx

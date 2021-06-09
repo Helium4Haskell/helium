@@ -27,13 +27,21 @@ import Helium.CodeGeneration.Iridium.RegionSize.Utils
 import Helium.CodeGeneration.Iridium.RegionSize.Fixpoint
 
 import Data.List (intercalate)
-import Data.Either (rights,lefts)
 import qualified Data.Map as M 
 
 -- | Infer the size of regions
 passRegionSize :: NameSupply -> Module -> IO Module
-passRegionSize _ m = do 
+passRegionSize _ m = do
+    putStrLn "=================================================================="
+    print (moduleName m)
+    putStrLn "=================================================================="
     let gEnv = initialGEnv m
+    putStrLn . intercalate "\n" $ show <$> (listFromMap . dtSorts $ globDataEnv gEnv)
+    putStrLn "=================================================================="
+    putStrLn . intercalate "\n" $ show <$> (listFromMap . dtRegions $ globDataEnv gEnv)
+    putStrLn "=================================================================="
+    putStrLn . intercalate "\n" $ show <$> (listFromMap . dtStructs $ globDataEnv gEnv)
+
     let groups = methodBindingGroups $ moduleMethods m
 
     ((_, finite, infinite), methods) <- mapAccumLM analyseBindingGroup (gEnv,0,0) groups
@@ -69,8 +77,6 @@ analysis ::  GlobalEnv -> [(Id,Method)] -> IO ((GlobalEnv, Int, Int), [(Id,Metho
 analysis gEnv methods = do
     let canDerive = ((and (not.isDataTypeMethod . typeNormalize (globTypeEnv gEnv) . methodType . snd <$> methods))
                  && (and (not.isDataTypeMethod . typeNormalize (globTypeEnv gEnv) . localType <$> concat (methodLocals False (globTypeEnv gEnv) . snd <$> methods))))
-    putStrLn $ "\n# Analyse methods:\n" ++ (intercalate "\n" $ map (show.fst) methods)
-    putStrLn $ "\n# Can derive: " ++ show canDerive ++ "\n" ++ (show $ typeNormalize (globTypeEnv gEnv) . methodType . snd <$> methods)
 
     if not canDerive
     then do
@@ -78,10 +84,12 @@ analysis gEnv methods = do
       let gEnv' = foldr (uncurry insertGlobal) gEnv $ zip (fst <$> methods) (flip ATop constrBot . methodSortAssign (globTypeEnv gEnv) (globDataEnv gEnv) . snd <$> methods)
       return ((gEnv', 0, 0), methods)
     else do
+      putStrLn $ "\n# Analyse methods:\n" ++ (intercalate "\n" $ map (show.fst) methods)
+      putStrLn $ "\n# Can derive: " ++ show canDerive ++ "\n" ++ (show $ typeNormalize (globTypeEnv gEnv) . methodType . snd <$> methods)
       let dEnv = globDataEnv gEnv
 
       -- Generate the annotations     
-      let mAnn  = analyseMethods 0 gEnv methods
+      let mAnn  = inlineFixpoints $ analyseMethods 0 gEnv methods
       let simpl = eval dEnv $ inlineFixpoints $ eval dEnv mAnn
       let fixed = solveFixpoints dEnv simpl
 
@@ -91,7 +99,7 @@ analysis gEnv methods = do
       putStrLn $ "\n# Simplified: "
       print simpl
       -- Check if the resulting annotation is well-sroted
-      simpl' <- case sort dEnv simpl of
+      _ <- case sort dEnv simpl of
               Left  s -> do
                 putStrLn ""
                 putStrLn s
@@ -110,12 +118,11 @@ analysis gEnv methods = do
                 putStrLn s
                 rsError $ "Wrong sort"
               Right _ -> return $ unsafeUnliftTuple fixed
-      let zerod = uncurry fixZeroArity <$> zip methods fixed'
 
       -- Update the global environment with the found annotations
-      let gEnv' = foldr (uncurry insertGlobal) gEnv $ zip (fst <$> methods) zerod
+      let gEnv' = foldr (uncurry insertGlobal) gEnv $ zip (fst <$> methods) fixed'
       -- Save the annotation on the method
-      let methods' = map (\((name,Method a b c d e anns f g), ann) -> (name, Method a b c d e (MethodAnnotateRegionSize ann:anns) f g)) $ zip methods zerod
+      let methods' = map (\((name,Method a b c d e anns f g), ann) -> (name, Method a b c d e (MethodAnnotateRegionSize ann:anns) f g)) $ zip methods fixed'
       -- Compute the second pass
       let localAnns = (unsafeUnliftTuple 
                     . eval dEnv
@@ -132,28 +139,10 @@ analysis gEnv methods = do
       let finite   = sum $ length <$> filter (not . (== Infty) . snd) <$> filter (not . (== Region RegionGlobal) . fst) <$> M.toList <$> effects
       let infinite = (sum $ length <$> filter (not . (== Region RegionGlobal) . fst) <$> M.toList <$> effects) - finite 
 
-      -- Fix the annotations of zero arity definitions
-      putStrLn $ "\n# Zerod: "
-      print zerod 
-
       putStrLn "\n#Effects:"
       print $ effects
 
       return ((gEnv', finite, infinite), zip (fst <$> methods) cleaned)
-
-{-| Fix problems arising from zero arity functions 
-  Assigns the global regions to the return regions and additional regions. 
--} 
-fixZeroArity :: (Id, Method) -> Annotation -> Annotation 
-fixZeroArity (_, Method _ aRegs args _ rRegs _ _ _) ann = 
-  case length $ rights args of 
-    0 -> let aplARegs = AApl ann $ regionVarsToGlobal aRegs 
-             newQuantIndexes = reverse $ TVar <$> [0..(length $ lefts args)-1] 
-             quants a = foldr (const AQuant) a (lefts args) 
-             aplTypes = foldl AInstn aplARegs newQuantIndexes 
-             aplRRegs = AApl aplTypes $ regionVarsToGlobal rRegs 
-         in ALam SortUnit $ eval emptyDEnv $ quants $ AProj 0 aplRRegs 
-    _ -> ann  
 
 {-| When a local region is applied to a higher order function
   we must make said region unbounded. We cannot know the true bound.
@@ -214,21 +203,28 @@ initialGEnv m = GlobalEnv typeEnv functionEnv dataTypeEnv
     dataTypeEnv = DataTypeEnv declDataTypeSorts declDataTypeRegions dataTypeConstructors dataTypeDestructors
 
     -- Data type sorts
-    declDataTypeSorts :: IdMap Sort
-    -- TODO: map is not really OK, we should foldl to get the sorts of previous dts
-    declDataTypeSorts = mapFromList . concat $ map declDataTypeSorts' (dataTypeBindingGroups $ moduleDataTypes m)
+    declDataTypeSorts :: IdMap (Maybe Sort)
+    declDataTypeSorts = foldl declDataTypeSorts' recDSorts (dataTypeBindingGroups $ moduleDataTypes m)
 
-    declDataTypeSorts' :: BindingGroup DataType -> [(Id, Sort)]
-    declDataTypeSorts' (BindingNonRecursive decl) = [(declarationName decl, dataTypeSort typeEnv recDEnv $ declarationValue decl)]
-    declDataTypeSorts' (BindingRecursive decls)   = concat $ declDataTypeSorts' . BindingNonRecursive <$> decls
+    declDataTypeSorts' :: IdMap (Maybe Sort) -> BindingGroup DataType -> IdMap (Maybe Sort)
+    declDataTypeSorts' recEnv (BindingNonRecursive decl) = let dEnv    = DataTypeEnv recEnv emptyMap emptyMap emptyMap
+                                                               newSrts = mapFromList [(declarationName decl
+                                                                                      ,Just $ dataTypeSort typeEnv dEnv $ declarationValue decl)]
+                                                           in unionlMap newSrts recEnv
+    declDataTypeSorts' recEnv (BindingRecursive decls) = let newSrts = mapFromList $ zip (declarationName <$> decls) (repeat Nothing)
+                                                         in unionlMap newSrts recEnv -- TODO: Mutrec datatypes
 
     -- Data type regions
-    declDataTypeRegions :: IdMap Sort
-    declDataTypeRegions = mapFromList . concat $ map declDataTypeRegions' (dataTypeBindingGroups $ moduleDataTypes m)
-
-    declDataTypeRegions' :: BindingGroup DataType -> [(Id, Sort)]
-    declDataTypeRegions' (BindingNonRecursive decl) = [(declarationName decl, dataTypeRegions typeEnv recDEnv $ declarationValue decl)]
-    declDataTypeRegions' (BindingRecursive decls) = concat $ declDataTypeRegions' <$> BindingNonRecursive <$> decls
+    declDataTypeRegions :: IdMap (Maybe Sort)
+    declDataTypeRegions = foldl declDataTypeRegions' recDSorts (dataTypeBindingGroups $ moduleDataTypes m)
+    
+    declDataTypeRegions' :: IdMap (Maybe Sort) -> BindingGroup DataType -> IdMap (Maybe Sort)
+    declDataTypeRegions' recEnv (BindingNonRecursive decl) = let dEnv    = DataTypeEnv emptyMap recEnv emptyMap emptyMap
+                                                                 newSrts = mapFromList [(declarationName decl
+                                                                                        ,Just $ dataTypeRegions typeEnv dEnv $ declarationValue decl)]
+                                                             in unionlMap newSrts recEnv
+    declDataTypeRegions' recEnv (BindingRecursive decls) = let newSrts = mapFromList $ zip (declarationName <$> decls) (repeat Nothing)
+                                                           in unionlMap newSrts recEnv -- TODO: Mutrec datatypes
 
     -- Constructor annotations
     dataTypeConstructors :: IdMap Annotation
@@ -246,12 +242,11 @@ initialGEnv m = GlobalEnv typeEnv functionEnv dataTypeEnv
 
 
     -- Environment used for the recursive positions of data types
-    recDEnv :: DataTypeEnv
-    recDEnv = let recSorts = mapFromList . map makeRecDataTypeSort $ moduleDataTypes m
-              in DataTypeEnv recSorts recSorts emptyMap emptyMap
+    recDSorts :: IdMap (Maybe Sort)
+    recDSorts = mapFromList . map makeRecDataTypeSort $ moduleDataTypes m
 
-    makeRecDataTypeSort ::  Declaration DataType -> (Id, Sort)
-    makeRecDataTypeSort decl = (declarationName decl, foldr (const SortQuant) SortUnit . dataTypeQuantors $ declarationValue decl)
+    makeRecDataTypeSort ::  Declaration DataType -> (Id, Maybe Sort)
+    makeRecDataTypeSort decl = (declarationName decl, Just . foldr (const SortQuant) SortUnit . dataTypeQuantors $ declarationValue decl)
 
 ----------------------------------------------------------------
 -- Check if method can be derived
@@ -268,8 +263,10 @@ isDataTypeMethod (TCon (TConDataType name)) = case stringFromId name of
                                                 "Int"  -> False
                                                 "Char" -> False
                                                 "Bool" -> False
+                                                -- "Test.Bar" -> False
+                                                -- "Test.Bar2" -> False
                                                 -- "Either" -> False
                                                 -- "Maybe"  -> False
                                                 -- "[]"   -> False
-                                                _ -> True
+                                                _ -> False
 isDataTypeMethod (TCon (TConTypeClassDictionary _)) = True
