@@ -13,6 +13,8 @@ import Data.List (sort, elemIndex)
 import Data.Maybe (fromJust)
 import qualified Data.Map as M
 
+import System.IO.Unsafe
+
 max_iterations :: Int
 max_iterations = 12
 
@@ -22,18 +24,18 @@ max_iterations = 12
 
 -- | Fill top with local variables in scope
 solveFixpoints ::  DataTypeEnv -> Annotation -> Annotation
-solveFixpoints dEnv = eval dEnv . go constrBot
-    where go scope (ALam   s a) = ALam s $ go (constrAdd (constrInfty $ AnnVar 0) (weakenScope scope)) a  
-          go scope (ATuple  as) = ATuple $ go scope <$> as
-          go scope (AProj  i a) = AProj i $ go scope a 
-          go scope (AApl   a b) = AApl   (go scope a) (go scope b) 
-          go scope (AAdd   a b) = AAdd   (go scope a) (go scope b)  
+solveFixpoints dEnv = eval dEnv . go (-1,-1) constrBot
+    where go (lD,qD) scope (ALam   s a) = ALam s $ go (lD+1,qD) (constrAdd (constrInfty $ AnnVar 0) (weakenScope scope)) a  
+          go (lD,qD) scope (ATuple  as) = ATuple $ go (lD,qD) scope <$> as
+          go (lD,qD) scope (AProj  i a) = AProj i $ go (lD,qD) scope a 
+          go (lD,qD) scope (AApl   a b) = AApl   (go (lD,qD) scope a) (go (lD,qD) scope b) 
+          go (lD,qD) scope (AAdd   a b) = AAdd   (go (lD,qD) scope a) (go (lD,qD) scope b)  
+          go (lD,qD) scope (AJoin  a b) = AJoin  (go (lD,qD) scope a) (go (lD,qD) scope b)
+          go (lD,qD) scope (AQuant a  ) = AQuant (go (lD,qD+1) scope a)
+          go (lD,qD) scope (AInstn a t) = AInstn (go (lD,qD) scope a) t
+          go (lD,qD) scope (AFix   s v) = ATuple . solveFixpoint (lD,qD) dEnv scope s $ go (lD,qD) scope <$> v
+          go (lD,qD) _     ann = ann
         --   go scope (AMinus a r) = AMinus (go scope a) r
-          go scope (AJoin  a b) = AJoin  (go scope a) (go scope b)
-          go scope (AQuant a  ) = AQuant (go scope a)
-          go scope (AInstn a t) = AInstn (go scope a) t
-          go scope (AFix   s v) = ATuple . solveFixpoint dEnv scope s $ go scope <$> v
-          go _     ann = ann
 
 -- | Weaken all region variables in the constraint set
 weakenScope :: Constr -> Constr
@@ -43,20 +45,20 @@ weakenScope = M.mapKeys weakenKey
      weakenKey others     = others
 
 -- | Solve a group of fixpoints
-solveFixpoint :: DataTypeEnv -> Constr -> [Sort] -> [Annotation] -> [Annotation]
-solveFixpoint dEnv scope sorts fixes = 
+solveFixpoint :: (Int,Int) -> DataTypeEnv -> Constr -> [Sort] -> [Annotation] -> [Annotation]
+solveFixpoint d dEnv scope sorts fixes = 
         let bot = ABot s
-        in fixIterate 0 bot fixes
+        in fixIterate 0 bot $ ATuple fixes
     where s = SortTuple sorts
           c = foldr constrAdd scope $ constrInfty <$> gatherLocals (ATuple fixes)  
 
-          fixIterate :: Int -> Annotation -> [Annotation] -> [Annotation]
+          fixIterate :: Int -> Annotation -> Annotation -> [Annotation]
           fixIterate n  state fs | n >= max_iterations = mapWithIndex (\ i _ -> AProj i $ ATop s c) fixes 
                                  | otherwise =
-              let res = (\fix -> eval dEnv $ AApl (ALam s fix) state) <$> fs
-              in if ATuple res == state
-                 then res
-                 else fixIterate (n+1) (ATuple res) fs
+              let res = eval dEnv $ AApl (ALam s fs) state
+              in if res == state
+                 then unsafeUnliftTuple res
+                 else fixIterate (n+1) res fs 
 
 ----------------------------------------------------------------
 -- Fixpoint simplification

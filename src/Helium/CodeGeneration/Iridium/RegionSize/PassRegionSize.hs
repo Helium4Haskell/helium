@@ -81,8 +81,10 @@ pipeline gEnv methods = do
     if not canDerive
     then do
       -- | Insert top for bad methods
-      let gEnv' = foldr (uncurry insertGlobal) gEnv $ zip (fst <$> methods) (flip ATop constrBot . methodSortAssign (globTypeEnv gEnv) (globDataEnv gEnv) . snd <$> methods)
-      return ((gEnv', 0, 0), methods)
+      let top = flip ATop constrBot . methodSortAssign (globTypeEnv gEnv) (globDataEnv gEnv) . snd <$> methods
+      let gEnv' = foldr (uncurry insertGlobal) gEnv $ zip (fst <$> methods) top
+      let methods' = map (\((name,Method a b c d e anns f g), ann) -> (name, Method a b c d e (MethodAnnotateRegionSize ann:anns) f g)) $ zip methods top
+      return ((gEnv', 0, 0), methods')
     else do
       putStrLn $ "\n# Analyse methods:\n" ++ (intercalate "\n" $ map (show.fst) methods)
       putStrLn $ "\n# Can derive: " ++ show canDerive ++ "\n" ++ (show $ typeNormalize (globTypeEnv gEnv) . methodType . snd <$> methods)
@@ -268,5 +270,7 @@ isDataTypeMethod _    (TCon TConFun)          = False
 isDataTypeMethod _    (TCon (TConTuple _))    = False 
 isDataTypeMethod dEnv (TCon (TConDataType name)) = case name `lookupDataType` dEnv of
                                                       Nothing -> True
-                                                      Just _  -> True
-isDataTypeMethod _    (TCon (TConTypeClassDictionary _)) = True
+                                                      Just _  -> False
+isDataTypeMethod dEnv (TCon (TConTypeClassDictionary name)) = case (dictionaryDataTypeName name) `lookupDataType` dEnv of
+                                                                 Nothing -> True
+                                                                 Just _  -> False

@@ -194,7 +194,6 @@ gatherLocals = foldAnnAlgLams countAlg
         aFix    = \_ _ a -> concat a   
     }
 
--- TODO: Only return region vars?
 -- | Retrieve all bound region variables
 gatherBinds :: Annotation -> [ConstrIdx]
 gatherBinds = foldAnnAlgLamsN 0 countAlg

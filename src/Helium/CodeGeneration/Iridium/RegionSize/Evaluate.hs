@@ -149,7 +149,7 @@ join dEnv a b =
 -- | Initialize region variables in a constraint set
 regVarSubst :: Sort -> Int -> Annotation -> Constr -> Constr 
 regVarSubst argS d ann c | sortIsRegion argS = regVarSubst' d ann c
-                         | otherwise         = regVarSubst' d (gatherConstraintsTuple ann) c
+                         | otherwise         = regVarSubst' d (gatherConstraintsTuple d ann) c
 
 -- | Initialize region variables in a constraint set
 regVarSubst' :: Int -> Annotation -> Constr -> Constr 
@@ -158,7 +158,7 @@ regVarSubst' d ann c = constrAdds $ (constrStrengthenN d c'):(constrWeaken d <$>
         targetBnds = flip constrIdx c <$> targetIdxs -- Bounds on targets
         c'    = foldr constrRem c targetIdxs         -- Remove target indexes  from c
 
-        aIdxs = eval emptyDEnv . regVarInst ann . constrIdxToAnn <$> targetIdxs -- Indexes with the instantiation
+        aIdxs = evalReg. regVarInst ann . constrIdxToAnn <$> targetIdxs -- Indexes with the instantiation
         insts = uncurry collect <$> zip targetBnds aIdxs                 -- Collect indices
         
         regVarInst :: Annotation -> Annotation -> Annotation
@@ -166,6 +166,17 @@ regVarSubst' d ann c = constrAdds $ (constrStrengthenN d c'):(constrWeaken d <$>
         regVarInst inst (AProj i a) = AProj i $ regVarInst inst a
         regVarInst inst r = rsError $ "regVarInst: " ++ show inst ++ ", r: " ++ show r
 
+        evalReg :: Annotation -> Annotation 
+        evalReg (AVar a)              = (AVar a) 
+        evalReg (AReg r)              = (AReg r) 
+        evalReg (ATuple as)           = (ATuple $ evalReg <$> as) 
+        evalReg (AProj _ AUnit)       = AUnit -- TODO: Remove this. Has to do with gatherConstraintsTuple or something like that. Wrong indexes in C-set.
+        evalReg (AProj i a) = case evalReg a of  
+                                  ATuple as | i < length as -> as !! i 
+                                            | otherwise     -> rsError $ "Constraint index projection out of bounds" 
+                                  _ -> AProj i a
+        evalReg a = rsError $ "Illigal annotation for a constraint index: " ++ show a 
+ 
 ----------------------------------------------------------------
 -- Join rules
 ----------------------------------------------------------------
@@ -270,9 +281,10 @@ gatherConstraints a = let locals = constrInfty <$> gatherLocals a
                       in constrJoins $ locals ++ annvrs
   
 -- | Gather a tuple of region(variable)s from an annation
-gatherConstraintsTuple :: Annotation -> Annotation
-gatherConstraintsTuple a = let constraints = gatherLocals a ++ gatherBinds a
-                           in ATuple $ constrIdxToAnn <$> constraints
+gatherConstraintsTuple :: Int -> Annotation -> Annotation
+gatherConstraintsTuple d a = let regions = gatherLocals a
+                                 vars    = gatherBinds a
+                             in ATuple $ constrIdxToAnn <$> (regions ++ vars)
 
 -- import qualified Helium.CodeGeneration.Iridium.RegionSize.Annotation
 -- import qualified Helium.CodeGeneration.Iridium.RegionSize.Annotation as A
