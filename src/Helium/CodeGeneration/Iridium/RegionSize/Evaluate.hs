@@ -56,8 +56,8 @@ application :: DataTypeEnv -> Annotation -> Annotation -> Annotation
 application dEnv (ALam lamS f) x = eval dEnv $ foldAnnAlgN (0,-1) subsAnnAlg f
   where -- | Substitute a variable for an annotation
         subsAnnAlg = idAnnAlg {
-          aVar = \(lD,qD) idx -> if lD == idx 
-                                 then annWeaken lD qD x -- Weaken indexes
+          aVar = \(lD,_) idx -> if lD == idx 
+                                 then annWeaken lD 0 x -- Weaken indexes --TODO: why does putting 0 here work..
                                  else AVar $ strengthenIdx lD idx,
           aConstr = \(lD,_) c   -> AConstr $ regVarSubst lamS lD x c,
           aTop    = \(lD,_) s c -> ATop s  $ regVarSubst lamS lD x c
@@ -73,7 +73,8 @@ instantiate dEnv (AQuant anno) ty = eval dEnv $ foldAnnAlgQuantsN 0 annInstAlg a
     aBot   = \qD s   -> ABot (sortSubstitute dEnv qD ty s),
     aTop   = \qD s c -> ATop (sortSubstitute dEnv qD ty s) c,
     aLam   = \qD s a -> ALam (sortSubstitute dEnv qD ty s) a,
-    aFix   = \qD s a -> AFix (sortSubstitute dEnv qD ty <$> s) a
+    aFix   = \qD s a -> AFix (sortSubstitute dEnv qD ty <$> s) a,
+    aInstn = \qD a t -> AInstn a (typeSubstitute qD (typeWeaken qD ty) t)
   } 
 -- Cannot eval
 instantiate _ a t = AInstn a t

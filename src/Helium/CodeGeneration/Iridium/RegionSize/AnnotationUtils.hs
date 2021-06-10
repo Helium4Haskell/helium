@@ -17,6 +17,8 @@ import Helium.CodeGeneration.Iridium.RegionSize.Constraints
 import Helium.CodeGeneration.Iridium.RegionSize.SortUtils
 import Helium.CodeGeneration.Iridium.RegionSize.Utils
 
+import Lvm.Core.Type
+
 import qualified Data.Map as M
 
 import GHC.Stack
@@ -37,7 +39,8 @@ annReIndex fA fT = foldAnnAlg reIdxAlg
     aConstr = \(lD, _ ) c   -> AConstr (constrReIndex fA lD c), 
     aTop    = \(lD, qD) s c -> ATop (sortReIndex fT qD s) (constrReIndex fA lD c), 
     aBot    = \(_ , qD) s   -> ABot (sortReIndex fT qD s), 
-    aVar    = \(lD, _ ) idx -> AVar (fA lD idx)
+    aVar    = \(lD, _ ) idx -> AVar (fA lD idx),
+    aInstn  = \(_ , qD) a t -> AInstn a (typeReindex (fT qD) t)
   }
 
 -- | Increase all unbound variables by the substitution depth

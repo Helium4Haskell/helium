@@ -5,7 +5,6 @@ import Helium.CodeGeneration.Iridium.RegionSize.Annotation
 import Helium.CodeGeneration.Iridium.RegionSize.AnnotationUtils
 import Helium.CodeGeneration.Iridium.RegionSize.DataTypes
 import Helium.CodeGeneration.Iridium.RegionSize.Sort
-import Helium.CodeGeneration.Iridium.RegionSize.SortUtils
 import Helium.CodeGeneration.Iridium.RegionSize.Constraints
 import Helium.CodeGeneration.Iridium.RegionSize.Utils
 import Helium.CodeGeneration.Iridium.RegionSize.Evaluate
@@ -23,9 +22,8 @@ max_iterations = 12
 
 -- | Fill top with local variables in scope
 solveFixpoints ::  DataTypeEnv -> Annotation -> Annotation
-solveFixpoints dEnv = go constrBot
-    where go scope (ALam   s a) | sortIsRegion s = ALam s $ go (constrAdd (constrInfty $ AnnVar 0) (weakenScope scope)) a  
-                                | otherwise      = ALam s $ go (weakenScope scope) a
+solveFixpoints dEnv = eval dEnv . go constrBot
+    where go scope (ALam   s a) = ALam s $ go (constrAdd (constrInfty $ AnnVar 0) (weakenScope scope)) a  
           go scope (ATuple  as) = ATuple $ go scope <$> as
           go scope (AProj  i a) = AProj i $ go scope a 
           go scope (AApl   a b) = AApl   (go scope a) (go scope b) 
@@ -66,7 +64,7 @@ solveFixpoint dEnv scope sorts fixes =
 
 -- | Solve all the fixpoints in an annotation
 inlineFixpoints :: Annotation -> Annotation
-inlineFixpoints = foldAnnAlgQuants fixAlg
+inlineFixpoints = id--foldAnnAlgQuants fixAlg
     where fixAlg = idAnnAlg {
         aProj = \_ i a  -> case a of
                              AFix ss as -> AProj i $ removeUnused i ss as

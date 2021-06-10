@@ -59,24 +59,24 @@ analyseBindingGroup :: (GlobalEnv, Int, Int) -> BindingGroup Method -> IO ((Glob
 analyseBindingGroup (gEnv, finite, infinite) (BindingRecursive bindings) = do
   let methods = map (\(Declaration methodName _ _ _ method) -> (methodName, method)) bindings
 
-  ((gEnv', finite2, infinite2), transformeds) <- analysis gEnv methods
+  ((gEnv', finite2, infinite2), transformeds) <- pipeline gEnv methods
 
   let bindings' = map (\(decl, (_,transformed)) -> decl{declarationValue=transformed}) $ zip bindings transformeds
   return ((gEnv', finite+finite2, infinite+infinite2)
          , bindings')
 -- Non recursive binding
 analyseBindingGroup (gEnv, finite, infinite) (BindingNonRecursive decl@(Declaration methodName _ _ _ method)) = do
-  ((gEnv', finite2, infinite2), [(_,transformed)]) <- analysis gEnv [(methodName,method)]
+  ((gEnv', finite2, infinite2), [(_,transformed)]) <- pipeline gEnv [(methodName,method)]
 
   return ((gEnv', finite+finite2, infinite+infinite2)
          , [decl{ declarationValue = transformed }])
 
 
 -- | Run the analysis on a group of methods
-analysis ::  GlobalEnv -> [(Id,Method)] -> IO ((GlobalEnv, Int, Int), [(Id,Method)])
-analysis gEnv methods = do
-    let canDerive = ((and (not.isDataTypeMethod . typeNormalize (globTypeEnv gEnv) . methodType . snd <$> methods))
-                 && (and (not.isDataTypeMethod . typeNormalize (globTypeEnv gEnv) . localType <$> concat (methodLocals False (globTypeEnv gEnv) . snd <$> methods))))
+pipeline ::  GlobalEnv -> [(Id,Method)] -> IO ((GlobalEnv, Int, Int), [(Id,Method)])
+pipeline gEnv methods = do
+    let canDerive = ((and (not.isDataTypeMethod (globDataEnv gEnv) . typeNormalize (globTypeEnv gEnv) . methodType . snd <$> methods))
+                 && (and (not.isDataTypeMethod (globDataEnv gEnv) . typeNormalize (globTypeEnv gEnv) . localType <$> concat (methodLocals False (globTypeEnv gEnv) . snd <$> methods))))
 
     if not canDerive
     then do
@@ -123,11 +123,18 @@ analysis gEnv methods = do
       let gEnv' = foldr (uncurry insertGlobal) gEnv $ zip (fst <$> methods) fixed'
       -- Save the annotation on the method
       let methods' = map (\((name,Method a b c d e anns f g), ann) -> (name, Method a b c d e (MethodAnnotateRegionSize ann:anns) f g)) $ zip methods fixed'
+      
+      
+      -- Solve the fixpoints
+      putStrLn $ "\n# Locals: "
+      print $ solveFixpoints dEnv $ eval dEnv $ inlineFixpoints $ analyseMethods 1 gEnv' methods' 
+      
       -- Compute the second pass
       let localAnns = (unsafeUnliftTuple 
-                    . eval dEnv
                     . solveFixpoints dEnv
+                    . eval dEnv 
                     $ analyseMethods 1 gEnv' methods')
+
       let effects = zipWith constrAdd (constrRemVarRegs . collectEffects <$> localAnns) (fixHigherOrderApplication <$> localAnns)
 
       -- Transform the program
@@ -252,21 +259,14 @@ initialGEnv m = GlobalEnv typeEnv functionEnv dataTypeEnv
 -- Check if method can be derived
 ----------------------------------------------------------------
 
-isDataTypeMethod :: Type -> Bool  
-isDataTypeMethod (TStrict t)     = isDataTypeMethod t  
-isDataTypeMethod (TForall _ _ t) = isDataTypeMethod t  
-isDataTypeMethod (TVar _)        = False  
-isDataTypeMethod (TAp t1 t2)     = isDataTypeMethod t1 || isDataTypeMethod t2    
-isDataTypeMethod (TCon TConFun)          = False    
-isDataTypeMethod (TCon (TConTuple _))    = False 
-isDataTypeMethod (TCon (TConDataType name)) = case stringFromId name of
-                                                "Int"  -> False
-                                                "Char" -> False
-                                                "Bool" -> False
-                                                -- "Test.Bar" -> False
-                                                -- "Test.Bar2" -> False
-                                                -- "Either" -> False
-                                                -- "Maybe"  -> False
-                                                -- "[]"   -> False
-                                                _ -> False
-isDataTypeMethod (TCon (TConTypeClassDictionary _)) = True
+isDataTypeMethod :: DataTypeEnv -> Type -> Bool  
+isDataTypeMethod dEnv (TStrict t)     = isDataTypeMethod dEnv t  
+isDataTypeMethod dEnv (TForall _ _ t) = isDataTypeMethod dEnv t  
+isDataTypeMethod _    (TVar _)        = False  
+isDataTypeMethod dEnv (TAp t1 t2)     = isDataTypeMethod dEnv t1 || isDataTypeMethod dEnv t2    
+isDataTypeMethod _    (TCon TConFun)          = False    
+isDataTypeMethod _    (TCon (TConTuple _))    = False 
+isDataTypeMethod dEnv (TCon (TConDataType name)) = case name `lookupDataType` dEnv of
+                                                      Nothing -> True
+                                                      Just _  -> True
+isDataTypeMethod _    (TCon (TConTypeClassDictionary _)) = True

@@ -99,7 +99,7 @@ wrapBody (GlobalEnv tEnv _ dEnv) rType args a
     where
         wrapBody' _     (Left  _) bAnn = AQuant bAnn
         wrapBody' first (Right l) bAnn = let argS  = sortAssign dEnv . typeNormalize tEnv $ localType l
-                                             rSort = if first then retRegSrt else SortUnit
+                                             rSort = if first then retRegSrt else SortTuple [SortMonoRegion,SortUnit]
                                              bAnn' = if first then bAnn      else ATuple [bAnn,botEffect]
                                          in ALam argS $ ALam rSort bAnn'
         -- Sort of the return region

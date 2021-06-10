@@ -5,7 +5,7 @@ module Helium.CodeGeneration.Iridium.RegionSize.Utils
     rsError, rsInfo,
     mapAccumLM, mapWithIndex,
     ordNub, sortWith,
-    cleanTUP
+    cleanTUP, deSymbol
     ) where
 
 import qualified Debug.Trace as T
@@ -120,3 +120,13 @@ ordNub = go S.empty
 -- | Sort with selection
 sortWith :: Ord o => (a -> o) -> [a] -> [a]
 sortWith = sortBy . comparing
+
+-- | Remove UTF8 symbols from a string
+deSymbol :: String -> String
+deSymbol [] = []
+deSymbol ('λ':xs) = '\\':deSymbol xs
+deSymbol ('π':xs) = 'p':'i':deSymbol xs
+deSymbol ('∀':xs) = "forall" ++ deSymbol xs
+deSymbol ('⊥':xs) = "bot" ++ deSymbol xs
+deSymbol ('Ψ':xs) = "S" ++ deSymbol xs
+deSymbol (x:xs) = x : deSymbol xs
