@@ -343,7 +343,7 @@ SEM Declaration
                         { Core.declName        = idFromName @qualname 
                         , Core.declAccess      = Core.Private
                         , Core.declModule      = Nothing
-                        , Core.declArity       = @fdecl.arity
+                        , Core.declArity       = getArity @loc.tp
                         , Core.declType        = setAllStrict @loc.tp
                         , Core.declForeignName = Just @fdecl.fname
                         , Core.declCustoms     = []
@@ -367,7 +367,7 @@ SEM Declaration
 
 --- Compute arity based on the type information
 --- only used for FFI
-
+--- FIXME: Currently not used
 ATTR Name Type Types FDecl [ | | arity : Int ]
 ATTR Name Type [ | isFunc : Bool | ]
 
