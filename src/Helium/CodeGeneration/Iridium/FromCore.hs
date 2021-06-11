@@ -32,6 +32,7 @@ import Helium.CodeGeneration.Iridium.Parse.Parser (ParseError)
 import Helium.CodeGeneration.Iridium.FileCache
 import Helium.CodeGeneration.Iridium.FromCoreImports
 import Helium.CodeGeneration.Iridium.Utils
+import Debug.Trace
 
 fromCore :: FileCache -> NameSupply -> Core.CoreModule -> IO Module
 fromCore cache supply mod@(Core.Module name _ _ dependencies decls) = do
@@ -119,7 +120,7 @@ fromCoreDecl supply env decl@Core.DeclValue{} = [Left (name, Declaration name (v
   where
     name = Core.declName decl
     method = toMethod supply env (Core.declName decl) (Core.declType decl) (Core.valueValue decl)
-fromCoreDecl _ env decl@Core.DeclAbstract{Core.declArity = arity} = [Right (name, Declaration name (visibility decl) (Core.declModule decl) (Core.declCustoms decl) abstract)]
+fromCoreDecl _ env decl@Core.DeclAbstract{} = [Right (name, Declaration name (visibility decl) (Core.declModule decl) (Core.declCustoms decl) abstract)]
   where
     name = Core.declName decl
     ffiInfo = Core.declForeignName decl
@@ -145,10 +146,16 @@ toMethod supply env name tp expr = Method tp args returnType [AnnotateTrampoline
 
 -- NOTE: calling convention is fixed to ccall
 toAbstractMethod :: TypeEnv -> Id -> (Maybe String) -> AbstractMethod
-toAbstractMethod env name ffiInfo = AbstractMethod tp functionTp (FFIInfo ffiInfo) [AnnotateCallConvention CCC] 
+toAbstractMethod env name ffiInfo = AbstractMethod tp functionTp (FFIInfo ffiInfo) annotations
   where
     (_, tp) = fromMaybe (error "toMethod: could not find function signature") $ resolveFunction env name
     functionTp = extractFunctionTypeNoSynonyms tp
+    retTy = functionReturnType functionTp
+    isReturnIO = case retTy of
+      Core.TAp (Core.TCon (Core.TConDataType n)) _ -> trace ("Foreign Function " ++ (stringFromId name) ++ " returns IO: " ++ (show (stringFromId n == "IO"))) ((stringFromId n) == "IO")
+      _ -> False
+    annotations = if isReturnIO then [AnnotateCallConvention CCC, AnnotateImplicitIO] else [AnnotateCallConvention CCC]
+
 
 -- Removes all lambda expression, returns a list of arguments and the remaining expression.
 consumeLambdas :: Core.Expr -> ([Either Core.Quantor Local], Core.Expr)
