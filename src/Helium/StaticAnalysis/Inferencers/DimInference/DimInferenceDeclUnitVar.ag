@@ -6,7 +6,7 @@
 -- Portability :  unknown
 --
 -- Assigns unit variables. This allows to recover the unit information from the
--- output of the constraint solver/unification solver.
+-- output of the constraint solver.
 --
 ------------------------------------------------------------------------------
 
@@ -24,7 +24,7 @@ ATTR Declaration Declarations MaybeDeclarations
   RecordExpressionBinding RecordPatternBindings RecordPatternBinding
   Constructor Constructors FieldDeclarations FieldDeclaration
   FunctionBindings FunctionBinding LeftHandSide RightHandSide
-  Patterns Pattern [ | beta:Int | ]
+  Patterns Pattern [ | deltaDeclUnique:Int | ]
 
 
 SEM Declaration
@@ -38,7 +38,8 @@ SEM Declaration
     lhs.deltaDeclUnique = @constructors.deltaDeclUnique + 1
   | Instance
     where . deltaDeclUnique = @lhs.deltaDeclUnique + 1 + length(@typeVariables)
-
+    -- maybe a bit more complicated 
+  
 SEM Constructor
   | Record 
     fieldDeclarations . deltaDeclUnique = @lhs.deltaDeclUnique + 1

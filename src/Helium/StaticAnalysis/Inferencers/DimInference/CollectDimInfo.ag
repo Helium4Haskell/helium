@@ -20,7 +20,42 @@
 
 -- Collect the following information:
 --    9) type classes and their declarations
+--
+-- Adaptation of Collect.ag for unit information
+-- A bit more simple since we do not deal with imports
 -------------------------------------------------------------------------------
+
+{-
+
+ATTACK PLAN FOR TOMORROW MORNING:
+- END THE IMPLEMENTATION FOR TYPES AND RECORDS DONE
+- DEAL WITH DECLARATIONS OF TYPE CLASSES (~ 3H) IN PARTICULAR LEARN ABOUT IT
+- DEAL WITH ELEMENTS FROM TYPE CLASSES (~2h)
+
+ATTACK PLAN FOR FRIDAY:
+- END UP THURSDAY PLAN (~ 2H) (IN PARTICULAR DISTRIBUTE)
+- ATTRIBUTE NUMBERED VARIABLE WHERE IT'S NECESSARY!! (~ 2h)
+- CORRECT SOLVER WITH THE NEW STRUCTURES (~ 45 MIN)
+- LINK EVERYTHING (~ 1H)
+
+ATTACK PLAN FOR SUNDAY:
+- WRITE A TOPOLOGICAL SORT! THIS IS SUPPOSED TO BE EASY...
+
+ATTACK PLAN FOR THE REST:
+- DEBUG AND DEBUG AND DEBUG UNTIL THAT WORKS (MONDAY ESPECIALLY)
+- TOPOLOGICAL SORT (<2 DAYS)
+- CHECK THE TYPES IN A DIFFERENT FILE (<2 DAYS)
+- SIGNATURE TOO GENERAL (<2 DAYS)
+
+ATTACK PLAN 2: ERROR DIAGNOSIS
+-> CONVERSION TO TOP.TYPES
+-> UNDERSTAND HEURISTICS (RE-READ JH ARTICLE)
+-> CHOOSE MY OWN HEURISTICS
+-> IMPLEMENT
+-> DEBUG
+
+-}
+
 
 -- WARNING, WE SHOULD NOT CONFUSE THE DIMENSION OF EXPRESSIONS
 -- AND THE DIMENSION ASSOCIATED TO A TYPE CONSTRUCTOR
@@ -28,8 +63,19 @@
 -- /!\ I THINK WE SHOULD KEEP IT IN MIND !! AND CHECK|PROOF IF IT'S OK /!\
 -- THE LINK IS THAT AN EXPRESSION OF TYPE T HAS AS A DIMENSION THE DIM OF T
 
+-- WARNING : We are handling :
+-- data Maybe a = Just a | Nothing
+-- We have no quantification over dimensions; we can't write :
+-- data Maybe <a> = Just (Int <a>) | Nothing
+-- data Singularity <a> = Dimensioned (Int <a>) | Singular
+
+-- I could have the alias UnitScheme = [(Name,UnitType)] -> UnitType
 -------------------------------------------------------------------------------
  -- 1) Collecting (data-) dimension type constructors
+-- essentially storing the name of the variable PARAMETERS
+-- and linking constructors to a type
+-- TO BE FAIR, I AM NOT EVEN SURE THAT'S NECESSARY
+-- WE HAVE TO KNOW THEIR
 
 ATTR Body Declarations Declaration [ | collectDimTypeConstructors : { [(Name,(Int, Maybe [Name]))] } | ]
 
@@ -38,33 +84,46 @@ SEM Declaration
                 (@simpletype.name, (length @simpletype.typevariables, Just @constructors.constructors) : @lhs.collectDimTypeConstructors)
   | Newtype lhs . collectDimTypeConstructors =
                 (@simpletype.name, (length @simpletype.typevariables, Just @constructor.constructors) : @lhs.collectDimTypeConstructors)
-  | Type -- maybe ?
+--  | Type  : I think that's useless
 
 
 -------------------------------------------------------------------------------
  -- 2) Collecting value dimension constructors
 
-ATTR Body Declarations Declaration Constructors Constructor [ | collectValueDimConstructors : {[(Name, (Int,[UnitType] -> UnitType))]} | ]
-ATTR Declaration Type Constructors Constructors [ | | numberParameter : Int ]
+-- All we have to do is memorize the reference type and those parameters, and the function to recover
+-- the unittype of an expression using this constructor
 
+ATTR Body Declarations Declaration Constructors Constructor [ | collectValueDimConstructors : {M.map Name ([(Name,UnitType)] -> UnitType, (Name, Maybe [Name]))} | ]
+-- ATTR Declaration Type Constructors Constructors [ | | numberParameter : Int ]
 
+-- Quantification and TypeScheme are another solution
 
 SEM Constructor
-    | Constructor   lhs.collectValueDimConstructors = (@constructor.self,
+    | Constructor   lhs.collectValueDimConstructors = [(@constructor.self,
+                        (length (--number of parameters), --maybe not necessary
+                        \utlist -> Cons
+                            @constructor.self 
+                            [ tp | atp <- @types.self, tp <- makeUnitTypeFromAnnotatedType utlist atp]
+                        ))]
+    | Infix         lhs.collectValueDimConstructors = [(@constructor.self,
                         (length (--number of parameters),
-                        \utlist -> makeUnitTypeFromType
-                        ))
-        @constructor.self 
-        @lhs.simpletype
-        @types.self
-
-    | Infix
-    | Record
+                        \utlist -> Cons
+                            @constructor.self 
+                            [ tp | atp <- [@leftType.type, @rightType.type], tp <- makeUnitTypeFromAnnotatedType utlist atp]
+                        ))]
+    | Record        lhs.collectValueDimConstructors = [(@constructor.self,
+                        (length (--number of parameters),
+                        \utlist -> Cons
+                            @constructor.self 
+                            (Cons "Record"
+                            @fieldDeclarations.
+                        ))] -- we do not really need to do something there, except from passing information
+                        -- to the real record declaration ?
+                        -- the difference there is that we will encounter other constructors which can be used
+                        -- as a reference)
 
 -------------------------------------------------------------------------------
  -- 3) Collecting dimension type synonyms
-
--- strongly inspired from Collect.ag
 
 ATTR Body Declaration Declarations 
     [ | collectDimTypeSynonyms : { [(Name, (Int, [UnitType] -> UnitType))} ]
@@ -81,128 +140,250 @@ SEM Declaration
 
                 ))
 
+-------------------------------------------------------------------------------
+ -- 4) Collecting record declarations
+
+ATTR Body Declarations Declaration Constructor Constructors [ | 
+  | collectRecord USE { M.union } { M.empty } : { M.Map Name (M.Map Name (Int, Bool, Tp, TpScheme)) } ]
 
 
+SEM Declaration
+    | Data      -- collect and remap information
+
+
+SEM Constructor
+    | Constructor   lhs.collectDimRecord = M.singleton @constructor.self M.empty
+    | Record        lhs.collectDimRecord = 
+
+SEM FieldDeclaration
+    | FieldDeclaration      lhs.unitTypeFromFieldDecl = [(name,
+                                 \utlist -> Cons
+                                    name
+                                    [makeUnitTypeFromType @type.self])
+                                | name <- @names.self
+                                ]
+
+-------------------------------------------------------------------------------
 -- 6) Distribution
 
 
+-------------------------------------------------------------------------------
+-------------------------------------------------------------------------------
+PURE COPY OF COLLECTING THE CLASSES FROM COLLECT.AG
+-------------------------------------------------------------------------------
+-------------------------------------------------------------------------------
+
+-------------------------------------------------------------------------------
+-- 7) Collecting the classes
 
 
+{
 
 
+-- The following haskell code is used for building a temporary dictionairy in order to complete static checks
+type ClassDef = (Name, ClassMembers)
+type ClassMembers = (Names, [(Name, TpScheme, Bool, HasDefault)])
+type ClassMembers' = [(Name, TpScheme, Bool, HasDefault)]
+
+--In declarations we find both type signatures and function declarations
+filterType :: Declarations -> (Declarations, Declarations) -> (Declarations, Declarations)
+filterType (d@(Declaration_TypeSignature _ _ _):ds) (t, dec) = filterType ds (d:t, dec)
+filterType (d:ds) (t, dec)                                   = filterType ds (t, d:dec)
+filterType []     res                                        = res
 
 
-{-
-----------------------------------------------------------------------------------
+reorderQuantors :: Names -> TpScheme -> TpScheme
+reorderQuantors firstQuantors ty1@(Quantification (quantors, qmap, tp)) =
+  Quantification (quantors', qmap, tp)
+  where
+    quantors' = map fst (mapMaybe (\name -> find ((getNameName name == ) . snd) qmap) firstQuantors)
+      ++ filter notInFirst quantors
+    notInFirst idx = case lookup idx qmap of
+      Nothing -> True
+      Just str -> all (\name -> getNameName name /= str) firstQuantors
+
+--A type can be declared for multiple function names
+createClassDef1 :: Names -> Declaration -> ClassMembers'
+createClassDef1 typeArgs (Declaration_TypeSignature _ names ty) = [(n, reorderQuantors typeArgs $ fst $ makeTpSchemeFromType' ty, False, False) | n <- names]
+createClassDef1 _ _ = error "Error createClassDef1, filtering failed..."
+
+--A function declaration should be associated with a type in the class definition
+createClassDef2 :: Declarations -> ClassMembers' -> ClassMembers'
+createClassDef2 (d:ds) m = createClassDef2 ds $ createClassDef2' (nameOfDeclaration d) d m
+createClassDef2 []     m = m
+
+createClassDef2' :: Eq t1 => [t1] -> t -> [(t1, TpScheme, Bool, HasDefault)] -> [(t1, TpScheme, Bool, HasDefault)]
+createClassDef2' (n:ns) d m = createClassDef2' ns d $ createClassDef2'' n d m
+createClassDef2' []     _ m = m
+
+
+createClassDef2'' :: Eq t1 => t1 -> t -> [(t1, TpScheme, Bool, HasDefault)] -> [(t1, TpScheme, Bool, HasDefault)]
+createClassDef2'' n d (m@(n2,t, _, def):ms) | n == n2   = (n2, t, True, def):ms
+                                     | otherwise = m:(createClassDef2'' n d ms)
+createClassDef2'' _ _ []                             = [] -- Should not happen but if it happens the error is reported by another check
+
+createClassDef :: Name -> MaybeDeclarations -> Names -> ClassMemberEnvironment
+createClassDef n MaybeDeclarations_Nothing names  = M.singleton n (names, [])
+createClassDef n (MaybeDeclarations_Just decls) names = M.singleton n (names, createClassDef2 fdecl $ concatMap (createClassDef1 names) types)
+               where (types, fdecl) = filterType decls ([], [])
+
+convertClassMemberEnvironmentTypes :: (TpScheme -> TpScheme) -> ClassMemberEnvironment -> ClassMemberEnvironment
+convertClassMemberEnvironmentTypes f = fmap $ fmap $ fmap (\(a,b,c,d) -> (a,f b,c,d))
+
+insertDefaults :: Name -> Names -> ClassMemberEnvironment -> ClassMemberEnvironment
+insertDefaults name defs env = M.mapWithKey (\n membs -> if n == name then (update defs membs) else membs) env 
+      where
+          update :: Names -> (Names, [(Name, TpScheme, Bool, HasDefault)]) -> (Names, [(Name, TpScheme, Bool, HasDefault)])
+          update locDefs (tvars, funcs) = (tvars, map (\(fname, tpscheme, b, _)->(fname, tpscheme, b, fname `elem` locDefs)) funcs)
+
+insertInstances :: [(String, Tp, [(String, Tp)])] -> ClassEnvironment -> ClassEnvironment
+insertInstances theInstances classEnv = foldr (\inst@(n, _, _) -> M.update (locInsert inst) n) classEnv theInstances
+    where
+        locInsert :: (String, Tp, [(String, Tp)]) -> Class -> Maybe Class
+        locInsert (className, instType, preds) (cn, locInstances) = 
+            let 
+               curInstance = (Predicate className instType, [Predicate n v | (n, v) <- preds]) 
+            in Just (cn, nub $ curInstance : locInstances)
+
+insertClassMembers :: M.Map Name (Names, [(Name, TpScheme, Bool, HasDefault)]) -> M.Map Name TpScheme -> M.Map Name TpScheme
+insertClassMembers classMemberEnv valueEnv = M.foldrWithKey locInsert valueEnv classMemberEnv
+    where 
+        locInsert :: Name -> (Names, [(Name, TpScheme, Bool, HasDefault)]) -> M.Map Name TpScheme -> M.Map Name TpScheme
+        locInsert className (typeVars, funcs) env = foldr (insertFunc className typeVars)  env funcs
+        insertFunc :: Name -> Names -> (Name, TpScheme, Bool, HasDefault) -> M.Map Name TpScheme -> M.Map Name TpScheme
+        insertFunc className typeVars (name, tp, _, _) env = 
+            let 
+                typeIndices :: [(Int, String)]
+                typeIndices = filter (\(_, s) -> s `elem` (map getNameName typeVars)) (getQuantorMap tp)
+                typeVariablesMapped = map (\(n, s) -> (fromJust $ find (\tv -> getNameName tv == s) typeVars, TVar n)) typeIndices
+                tpWContext = addContextToType className typeVariablesMapped tp
+            in M.insert name tpWContext env
+}
+
+
+ATTR Declarations Declaration [ | | collectTypeClasses  USE { ++ } { [] } : { [(Name, [(Name, TpScheme)])] } ]
+ATTR Body Declarations Declaration [ | | collectClassMemberEnv USE { `M.union` } { M.empty } : {ClassMemberEnvironment}
+                                         collectClassNames USE { M.union } { M.empty } : { ClassNameEnvironment } ]
+
+SEM Module
+    | Module body . classMemberEnv       = @body.collectClassMemberEnv
+                  . classNamesEnv        = @body.collectClassNames
+
+
 SEM Declaration
-    ----------------------------------- Problem 1 : Handle type structure -------------------------------
+    | Class     lhs . collectClassNames     = M.fromList  [(@simpletype.name, @simpletype.name)] -- not in our case, since we do not import
+                lhs . collectTypeClasses    = [(@simpletype.name, @where.typeSignatures)]
+                lhs . collectClassMemberEnv = insertDefaults @simpletype.name @where.functionDefaults @classDef
+                loc . classDef              = createClassDef @simpletype.name @where.self @simpletype.typevariables  
 
-    | Type              @lhs.typeToDim = M.insert @simpletype.name @type.typeToDim @lhs.typeToDim
-                        -- a bit more complicated because type Maybe a = a
-                        -- but it is a type at the right and not something with constructors, which are expressions
-    --  range                    : Range
-    --  simpletype               : SimpleType
-    --  type                     : Type
+SEM Declarations
+    | Cons     lhs . collectTypeClasses = @hd.collectTypeClasses  ++ @tl.collectTypeClasses
 
-    -- a SimpleType declared by data or Newtype keywords can't have dimension (but it does declare constructors having dimensions)
-    -- no constructors can have the same name
-    -- So the important is not the type but the name of the constructor, we only store that
-    -- so defaultly, unstored is undimensioned
 
-    | Data              @lhs.typeToDim = M.insert @simpletype.name @type.typeToDim @lhs.typeToDim
+-- Collect the type variables in the context
+ATTR ContextItems ContextItem [ || typeVariables USE {++} {[]} : Types ]
+
+SEM ContextItem
+     | ContextItem lhs . typeVariables = @types.self
+
+-------------------------------------------
+-- Collecting Type Signatures
+
+ATTR Declaration Declarations [ | typeSignatures:{[(Name,TpScheme)]} | ]
+ATTR Body MaybeDeclarations   [ | | typeSignatures:{[(Name,TpScheme)]} ]
+ATTR Declaration Declarations MaybeDeclarations [ | | functionDefaults USE {(++)} {[]} : {[Name]}]
+
+SEM Body
+  | Hole lhs . typeSignatures = []
+  | Body    declarations . typeSignatures = []
+SEM Expression        | Let     declarations . typeSignatures = []
+SEM Statement         | Let     declarations . typeSignatures = []
+SEM Qualifier         | Let     declarations . typeSignatures = []
+SEM MaybeDeclarations | Just    declarations . typeSignatures = []
+                      | Nothing lhs          . typeSignatures = []
+
+
+SEM Declaration
+  | TypeSignature
+      lhs . typeSignatures = [ (name, @typeScheme) | name <- @names.self ] ++ @lhs.typeSignatures
+      loc . (typeScheme, intMap) = makeTpSchemeFromType' $ convertTypeToQualified @lhs.qualifiedEnvironment @type.self
+  | Class
+      --lhs . typeSignatures = [] --@where.typeSignatures
+  | Instance
+      lhs . typeSignatures = @where.typeSignatures -- And we apply the same trick again
+  | FunctionBindings
+      lhs . functionDefaults = [@bindings.name]
+
+-------
+-- Building a Class Environment
+
+
+
+
+ATTR Body Declaration Declarations [
+    |
+    |
+        classEnv USE {`M.union`} {M.empty} : {ClassEnvironment}
+        instanceEnv USE {`M.union`} {M.empty} : {InstanceEnvironment}
+        classInstances USE {(++)} {[]} : {[(String, UnitType, [(String, UnitType)])]}
+]
+
+SEM Declaration
+    | Class
+        lhs . classEnv    = M.singleton (getNameName @simpletype.name) 
+                             ((map (getNameName . convertClassNameToQualified @lhs.qualifiedEnvironment . fst) $ getSuperClasses @context.self), [])
+    | Instance
+       loc . qualifiedType  = convertTypeToQualified @lhs.qualifiedEnvironment $ head @types.self
+       loc . qualifiedTp    = makeTpFromType' @qualifiedType
+       loc . qualifiedName  = convertClassNameToQualified @lhs.qualifiedEnvironment @name.self
+       loc . superClasses   = map (\(c, tps) -> (getNameName $ convertClassNameToQualified @lhs.qualifiedEnvironment c, tps)) 
+                                                      $ getSuperClasses @context.self
+       lhs . classInstances = let
+                                superClasses :: [(String, Tp)]
+                                superClasses = map (fmap $ unqualify . unquantify . head) @superClasses
+                              in [(getNameName @qualifiedName, @qualifiedTp, superClasses)]
+
+       lhs . instanceEnv = M.singleton (convertClassNameToQualified @lhs.qualifiedEnvironment @name.self, @qualifiedTp) 
+                            (namesInType @qualifiedType, map (fmap (show . head)) @superClasses)
+    | Data  lhs . instanceEnv = M.fromList 
+                                    [
+                                        let dataName = @simpletype.name
+                                            tvs = @simpletype.typevariables
+                                            tVars = zip tvs (map TVar [0..])
+                                            key = (dn, foldl TApp (TCon $ show dataName) $ map snd tVars)
+                                            value = (tvs, [(show dn, tv) | tv <- map show tvs])
+                                        in (key, value) | dn <- @derivings.self
+                                    ]
+            lhs . classInstances =  [
+                                        let 
+                                            tvs = @simpletype.typevariables
+                                            tVars = zip tvs (map TVar [0..])
+                                            typeClass = foldl TApp (TCon $ getNameName @fullname) $ map snd tVars
+                                        in (show dn, typeClass, map (\x -> (show dn, snd x)) tVars)
+                                        | dn <- @derivings.self
+                                    ]
+
+SEM Declaration
+  | Instance
+     lhs . instances   = [createInstance @range.self @qualifiedName @qualifiedType @contextQual]
+  | Data
+    lhs . instances = [ (@range.self, makeInstance (show cl) (length @simpletype.typevariables) (getNameName @fullname) True)
+                                | cl <- @qualDers
+                                ]
+    loc . qualDers  = map (\x -> setNameRange (convertClassNameToQualified @lhs.qualifiedEnvironment x) (getNameRange x)) @derivings.self
     
-                        -- The point is mainly adding  
-                        -- Ca se fait mais ça demande du travail.
-    --  range                    : Range
-    --  context                  : ContextItems
-    --  simpletype               : SimpleType
-    --  constructors             : Constructors
-    --  derivings                : Names
 
-    | Newtype           -- same
-    --  range                    : Range
-    --  context                  : ContextItems
-    --  simpletype               : SimpleType
-    --  constructor              : Constructor  -- has only one field, no strictness
-    --  derivings                : Names
+{
+
+createInstance :: Range -> Name -> Type -> ContextItems -> (Range, Instance)
+createInstance r n ty ctx = (r, (makePredicate n ty , map (\(ContextItem_ContextItem _ n2 tys) -> makePredicate n2 (head tys)) ctx))
+   where nameMap = makeNameMap (namesInTypes $ ty : (map (\(ContextItem_ContextItem _ _ tys) -> head tys) ctx))
+         makePredicate :: Name -> Type -> Predicate
+         makePredicate nm typ = Predicate (getNameName nm) (makeTpFromType nameMap typ)
+
+}
 
 
--- ------------------------------------------------------------------------
--- -- Types                                                              --
--- ------------------------------------------------------------------------
-
--- we need the dimension information
-
-ATTR Types Type
-    [ variableNameToNum : M.map Name Int | | typeVarToType : {[UnitType] -> UnitType}]
-
-SEM Type
-    | Application           @lhs.typeVarToType = \utlist ->
-                                Arrow (@function.typesVarToType utlist) ([f utlist | f <- @arguments.typeVarToType ])
-    --  range                    : Range
-    --  prefix                   : Bool
-    --  function                 : Type 
-    --  arguments                : Types
-    | Variable              @lhs.typeVarToType = \utlist ->
-                                case M.lookup @lhs.variableNameToNum of
-                                    Just varInt -> nth 
-                                    Nothing -> [] -- not supposed to happen
-    --  range                    : Range
-    --  name                     : Name
-    --  unit                     : MaybeUnit
-    | Constructor              lhs.dimTypeInfo = Base @unit.self
-                               lhs.typeToDim = M.insert @lhs.dimTypeInfo @lhs.typeToDim
-    --  range                    : Range
-    --  name                     : Name
-    --  unit                     : MaybeUnit
-    | Parenthesized            lhs.dimTypeInfo = @type.dimTypeInfo
-                               lhs.typeToDim = @type.typeToDim
-    --  range                    : Range
-    --  type                     : Type
-    | Qualified                lhs.dimTypeInfo = @type.dimTypeInfo
-                               lhs.typeToDim = @type.typeToDim
-    --  range                    : Range
-    --  context                  : ContextItems
-    --  type                     : Type
-
-SEM SimpleType
-    | SimpleType         lhs.dimTypeInfo = M.lookup @name.self @lhs.typeToDim
-    --  name                     : Name
-    --  typevariables            : Names
-
-SEM ContextItem -- What is that?
-    | ContextItem       loc.text = @name.text <+> head @types.text -- no parens because it is always a var
-    --  range                    : Range
-    --  name                     : Name   -- that is the class
-    --  types                    : Types  -- in Haskell 98, this is only one type
-
-SEM Constructor
-    | Constructor       
-    --  range                    : Range
-    --  constructor              : Name
-    --  types                    : AnnotatedTypes
-    | Infix             
-    --  range                    : Range
-    --  leftType                 : AnnotatedType
-    --  constructorOperator      : Name
-    --  rightType                : AnnotatedType
-    | Record            
-    --  range                    : Range
-    --  constructor              : Name
-    --  fieldDeclarations        : FieldDeclarations
-
--- This is in a record; what do we do with records? : well, normal dim inference
-SEM FieldDeclaration
-    | FieldDeclaration      @lhs.typeToDim =
-                                 fold (M.insert) @lhs.typeToDim
-                                    [(n,t) | n <- @names.self, t <- @type.dimTypeInfo]
-    --  range                    : Range
-    --  names                    : Names
-    --  type                     : AnnotatedType        
-
-SEM AnnotatedType
-    | AnnotatedType         @lhs.dimType = @type.dimTypeInfo
--}
 {
 
 makeUnitTypeFromType :: [(Name, UnitType)] -> Type -> UnitType
@@ -211,7 +392,7 @@ makeUnitTypeFromType nameMap = rec_
         rec_ :: Type -> UnitType
         rec_ uhaType = case uhaType of
         -- I THINK I AM MAKING A MISTAKE THERE: WE SHOULD'NT HAVE ARROW
-        --  ARROW and APP are differents:
+        --  ARROW and APP are different:
         -- Arrow a b = App (Arrow) ([a,b])
         -- List a b = App (List) ([a,b])
              Type_Application _ _ fun args -> foldl Arrow (rec_ fun) (map rec_ args)
@@ -222,4 +403,14 @@ makeUnitTypeFromType nameMap = rec_
              Type_Forall{}                 -> internalError "TypeConversion.hs" "makeTpFromType" "universal types are currently not supported"
              Type_Exists{}                 -> internalError "TypeConversion.hs" "makeTpFromType" "existential types are currently not supported"
 
+
+makeUnitTypeFromType :: [(Name, UnitType)] -> AnnotatedType -> UnitType
+makeUnitTypeFromType nameMap annotatedType =
+    let AnnotatedType_AnnotatedType _ _ t = annotatedType in
+    makeUnitTypeFromType t
+
 }
+
+-------------------------------------------------------
+-- utility attributes for collect (name e.g)
+-- to fill when proofreading

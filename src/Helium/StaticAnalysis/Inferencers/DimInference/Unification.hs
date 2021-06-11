@@ -10,6 +10,8 @@
 
 module Helium.Helium.StaticAnalysis.Inference.DimInference.Unification where
 
+import Helium.Helium.StaticAnalysis.Inference.DimInference.Normalization (normalize)
+
 type UnitVar  = [(Name,Int)]
 type UnitCons = [(Name,Int)]
 type NormUnit = (UnitVar, UnitCons)
@@ -150,25 +152,7 @@ unifyOne ((n,x):q, lcons) =
 
 ------------------------------- Wider unification ----------------------------------------
 
-{- construction of a type but base type replaced by Unit or Undimensioned -}
-data UnitType a =
-      Arrow (UnitType a) (UnitType a)
-    | Base a 
-    -- this unit could be a variable so it is already handled there
-    -- but we'll have to normalize the unit before !
-    | Undimensioned
-    ------- Not sure about those one
-    | Cons Name [(UnitType a)] 
-    -- maybe string, not name - we would then have Cons "[]" = List
-    | InfixConstructor (UnitType a) (UnitType a)
-    | Tuple [(UnitType a)]
-    | List (UnitType a) 
-    | Record [(Name, (UnitType a))]
-
-
-type NormUnitType = UnitType NormUnit
-
-type UnitConstraints = [(UnitType Unit, UnitType Unit)]
+-------------------------------------------------------------------------
 
 -- we should not forget to label the code with dimensions?
 constraint_solver ::  UnitConstraints -> Either Fail Unifier
@@ -179,7 +163,7 @@ constraint_solver lunitconst =
             let nut1, nut2 = (apply subst ut1, apply subst ut2) in
             unify nut1 nut2 )
     M.empty
-    nromlunitconst
+    normlunitconst
 
 
 unify :: NormUnitType -> NormUnitType -> Either Fail Unifier, NormUnitType

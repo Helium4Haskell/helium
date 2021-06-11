@@ -4,13 +4,9 @@ module Helium.Helium.StaticAnalysis.Inference.DimInference.Normalization(normali
 normalizeUnitType :: UnitType Unit -> NormUnitType
 normalizeUnitType unit =
     case unit of
-        Arrow lu u  -> Arrow (map normalizeUnitType lu) (normalizeUnitType u)
-        Cons n lu -> Cons n (map normalizeUnitType lu)
-        InfixConstructor u1 u2 -> InfixConstructor (normalizeUnitType u1) (normalizeUnitType u2)
-        Tuple lu -> Tuple (map normalizeUnitType lu)
-        List u -> List (normalizeUnitType u)
-        Record lnu -> Record (map (\name, ut -> (name, normalizeUnitType ut)) u)
+        UTApp u1 u2 -> UTApp (normalizeUnitType u1) (normalizeUnitType u2)
         Base u -> Base (normalize u)
+        Cons n -> Cons n
         Undimensioned -> Undimensioned
 
 normalize :: Unit -> NormUnit
@@ -44,7 +40,7 @@ separeVarandCons unit =
                 separeWithAccumulator unit unitVar (name,int):unitCons
 
 unitName :: SimpleUnit -> Name
-        unitName SimpleUnit _ n = n
+unitName SimpleUnit _ n = n
 
 isVariable :: String -> Bool
 isVariable (hd:tl) = isLower hd
