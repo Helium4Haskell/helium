@@ -196,11 +196,11 @@ gatherLocals = foldAnnAlgLams countAlg
 
 -- | Retrieve all bound region variables
 gatherBinds :: Annotation -> [ConstrIdx]
-gatherBinds = foldAnnAlgLamsN 0 countAlg
+gatherBinds = foldAnnAlgLams countAlg
     where countAlg = AnnAlg {
         aVar    = \d idx -> if idx > d then [AnnVar idx] else [],
         aReg    = \_ _   -> [],
-        aLam    = \_ _ a -> a,
+        aLam    = \d _ a -> constrIdxStrengthenN (-1) <$> a, -- Strengthen here?
         aApl    = \_ a b -> a ++ b,
         aConstr = \_ c   -> fst <$> (M.toList $ constrRemLocalRegs c),
         aUnit   = \_     -> [],
@@ -213,5 +213,5 @@ gatherBinds = foldAnnAlgLamsN 0 countAlg
         aInstn  = \_ a _ -> a,
         aTop    = \_ _ c -> fst <$> (M.toList $ constrRemLocalRegs c),
         aBot    = \_ _   -> [],
-        aFix    = \_ _ a -> concat a   
+        aFix    = \d _ a -> constrIdxStrengthenN (-1) <$> concat a   
     }

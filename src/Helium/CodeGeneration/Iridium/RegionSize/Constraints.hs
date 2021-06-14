@@ -1,7 +1,8 @@
 module Helium.CodeGeneration.Iridium.RegionSize.Constraints
     (ConstrIdx(..), Constr, Bound(..),
     constrShow, constrIdxShow,
-    constrReIndex, constrWeaken, constrStrengthenN, 
+    constrReIndex, constrWeaken, constrStrengthenN,
+    constrIdxStrengthenN,
     constrIdxWithVar, constrIdx, 
     constrBot, constrJoin, constrJoins, 
     constrAdd, constrAdds,
@@ -64,10 +65,7 @@ constrIdxShow _ (Region var) = show var
 constrReIndex :: (Depth -> Int -> Int) -- ^ Reindex function
               -> Int -- ^ Depth of constraint set in annotation
               -> Constr -> Constr
-constrReIndex f annD = M.mapKeys keyReIndex
-  where keyReIndex (AnnVar idx) = AnnVar $ f annD idx
-        keyReIndex (CnProj i c) = CnProj i $ keyReIndex c 
-        keyReIndex (Region var) = Region var
+constrReIndex f d = M.mapKeys (constrIdxReIdx f d)
 
 -- | Increase constraint set indices by subtitution depth
 constrWeaken :: Int -> Constr -> Constr
@@ -76,6 +74,18 @@ constrWeaken n = constrReIndex (weakenIdx n) (-1)
 -- | Decrease all unbound de bruijn indeces by 1
 constrStrengthenN :: Int -> Constr -> Constr
 constrStrengthenN = constrReIndex strengthenIdx
+
+-- | Reindex the keys of a cosntraint set
+constrIdxReIdx :: (Depth -> Int -> Int) -- ^ Reindex function
+               -> Int -- ^ Depth of constraint set in annotation
+               -> ConstrIdx -> ConstrIdx
+constrIdxReIdx f d (AnnVar idx) = AnnVar $ f d idx
+constrIdxReIdx f d (CnProj i c) = CnProj i $ constrIdxReIdx f d c 
+constrIdxReIdx _ _ (Region var) = Region var
+
+-- | Increase all unbound indexes by 1
+constrIdxStrengthenN :: Int -> ConstrIdx -> ConstrIdx
+constrIdxStrengthenN = constrIdxReIdx strengthenIdx
 
 ----------------------------------------------------------------
 -- Constraint utilities

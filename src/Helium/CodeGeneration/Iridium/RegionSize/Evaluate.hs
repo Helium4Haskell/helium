@@ -94,9 +94,9 @@ project _    _   idx t = AProj idx t
 top :: Sort -> Constr -> Annotation
 top SortUnit          _ = AUnit 
 top SortConstr        c = AConstr c 
-top (SortTuple ss   ) c = ATuple  $ flip ATop c <$> ss
-top (SortQuant s    ) c = AQuant  $ ATop s c
-top (SortLam   s1 s2) c = ALam s1 . ATop s2 . constrAdd c . constrInfty $ AnnVar 0
+top (SortTuple ss   ) c = ATuple  $ eval emptyDEnv . flip ATop c <$> ss
+top (SortQuant s    ) c = AQuant  . eval emptyDEnv $ ATop s c
+top (SortLam   s1 s2) c = ALam s1 . eval emptyDEnv $ ATop s2 $ constrAdd (constrWeaken 0 c) (constrInfty $ AnnVar 0)
 top s c = ATop s c
 
 
@@ -149,7 +149,7 @@ join dEnv a b =
 -- | Initialize region variables in a constraint set
 regVarSubst :: Sort -> Int -> Annotation -> Constr -> Constr 
 regVarSubst argS d ann c | sortIsRegion argS = regVarSubst' d ann c
-                         | otherwise         = regVarSubst' d (gatherConstraintsTuple d ann) c
+                         | otherwise         = regVarSubst' d (gatherConstraintsTuple ann) c
 
 -- | Initialize region variables in a constraint set
 regVarSubst' :: Int -> Annotation -> Constr -> Constr 
@@ -170,7 +170,7 @@ regVarSubst' d ann c = constrAdds $ (constrStrengthenN d c'):(constrWeaken d <$>
         evalReg (AVar a)              = (AVar a) 
         evalReg (AReg r)              = (AReg r) 
         evalReg (ATuple as)           = (ATuple $ evalReg <$> as) 
-        evalReg (AProj _ AUnit)       = AUnit -- TODO: Remove this. Has to do with gatherConstraintsTuple or something like that. Wrong indexes in C-set.
+        -- evalReg (AProj _ AUnit)       = AUnit -- TODO: Remove this. Has to do with gatherConstraintsTuple or something like that. Wrong indexes in C-set.
         evalReg (AProj i a) = case evalReg a of  
                                   ATuple as | i < length as -> as !! i 
                                             | otherwise     -> rsError $ "Constraint index projection out of bounds" 
@@ -281,10 +281,10 @@ gatherConstraints a = let locals = constrInfty <$> gatherLocals a
                       in constrJoins $ locals ++ annvrs
   
 -- | Gather a tuple of region(variable)s from an annation
-gatherConstraintsTuple :: Int -> Annotation -> Annotation
-gatherConstraintsTuple d a = let regions = gatherLocals a
-                                 vars    = gatherBinds a
-                             in ATuple $ constrIdxToAnn <$> (regions ++ vars)
+gatherConstraintsTuple :: Annotation -> Annotation
+gatherConstraintsTuple a = let regions = gatherLocals a
+                               vars    = gatherBinds a
+                           in ATuple $ constrIdxToAnn <$> (regions ++ vars)
 
 -- import qualified Helium.CodeGeneration.Iridium.RegionSize.Annotation
 -- import qualified Helium.CodeGeneration.Iridium.RegionSize.Annotation as A

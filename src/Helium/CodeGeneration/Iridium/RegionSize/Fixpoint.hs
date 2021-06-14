@@ -13,8 +13,6 @@ import Data.List (sort, elemIndex)
 import Data.Maybe (fromJust)
 import qualified Data.Map as M
 
-import System.IO.Unsafe
-
 max_iterations :: Int
 max_iterations = 12
 
@@ -34,7 +32,7 @@ solveFixpoints dEnv = eval dEnv . go (-1,-1) constrBot
           go (lD,qD) scope (AQuant a  ) = AQuant (go (lD,qD+1) scope a)
           go (lD,qD) scope (AInstn a t) = AInstn (go (lD,qD) scope a) t
           go (lD,qD) scope (AFix   s v) = ATuple . solveFixpoint (lD,qD) dEnv scope s $ go (lD,qD) scope <$> v
-          go (lD,qD) _     ann = ann
+          go (_ ,_ ) _     ann = ann
         --   go scope (AMinus a r) = AMinus (go scope a) r
 
 -- | Weaken all region variables in the constraint set
