@@ -65,7 +65,7 @@ sort dEnv = sort' (-1,-1) M.empty
                   sortB = sort' d gamma b
               in if sortA == sortB
                  then sortA
-                 else Left ("Join of annotations with different sort: \nSort A: " ++ show sortA ++ "\nSort B: " ++ show sortB) 
+                 else Left ("Join of annotations with different sort: \nSort A: " ++ show sortA ++ "\nSort B: " ++ show sortB)
 
           -- Lambdas & applications
           sort' (dL,dQ) gamma (ALam   s a) = 
@@ -93,8 +93,8 @@ sort dEnv = sort' (-1,-1) M.empty
               case sort' (dL,dQ) gamma t of
                   Right (SortTuple ss) -> if i < length ss
                                           then Right $ ss !! i
-                                          else Left "sort: Projection out of bounds"   
-                  Right s -> Left $ "Projection on non-tuple sort: " ++ showSort dQ s
+                                          else Left $ "sort: Projection out of bounds\nIndex:" ++ show i ++ "\nSort" ++ show ss ++ "\nAnnotation:" ++ (annShow' (dL,dQ) (AProj i t))  
+                  Right s -> Left $ "Projection on non-tuple sort: " ++ showSort dQ s ++ "\nAnnotation: " ++ (annShow' (dL,dQ) (AProj i t))
                   err     -> err
 
           -- Operators

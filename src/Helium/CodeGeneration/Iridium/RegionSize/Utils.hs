@@ -125,8 +125,20 @@ sortWith = sortBy . comparing
 deSymbol :: String -> String
 deSymbol [] = []
 deSymbol ('λ':xs) = '\\':deSymbol xs
+deSymbol ('ρ':xs) = 'r':'h':'o':'_':deSymbol xs
 deSymbol ('π':xs) = 'p':'i':deSymbol xs
 deSymbol ('∀':xs) = "forall" ++ deSymbol xs
 deSymbol ('⊥':xs) = "bot" ++ deSymbol xs
 deSymbol ('Ψ':xs) = "S" ++ deSymbol xs
+deSymbol ('₀':xs) = '0':deSymbol xs
+deSymbol ('₁':xs) = '1':deSymbol xs
+deSymbol ('₂':xs) = '2':deSymbol xs
+deSymbol ('₃':xs) = '3':deSymbol xs
+deSymbol ('₄':xs) = '4':deSymbol xs
+deSymbol ('₅':xs) = '5':deSymbol xs
+deSymbol ('₆':xs) = '6':deSymbol xs
+deSymbol ('₇':xs) = '7':deSymbol xs
+deSymbol ('₈':xs) = '8':deSymbol xs
+deSymbol ('₉':xs) = '9':deSymbol xs
 deSymbol (x:xs) = x : deSymbol xs
+
