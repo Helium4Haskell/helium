@@ -137,7 +137,7 @@ pipeline gEnv methods = do
                     . eval dEnv 
                     $ analyseMethods 1 gEnv' methods')
 
-      let effects = zipWith constrAdd (constrRemVarRegs . collectEffects <$> localAnns) (fixHigherOrderApplication <$> localAnns)
+      let effects = zipWith constrAdd (collectEffects <$> localAnns) (fixHigherOrderApplication <$> localAnns)
 
       -- Transform the program
       let transformed = uncurry transform <$> zip effects (snd <$> methods')
@@ -209,51 +209,28 @@ initialGEnv m = GlobalEnv typeEnv functionEnv dataTypeEnv
     -- ~~~~~~~~~
 
     dataTypeEnv :: DataTypeEnv
-    dataTypeEnv = DataTypeEnv declDataTypeSorts declDataTypeRegions dataTypeConstructors dataTypeDestructors
+    dataTypeEnv = DataTypeEnv moduleDataTypeSorts moduleDataTypeRegions moduleDataTypeConstructors moduleDataTypeDestructors
 
     -- Data type sorts
-    declDataTypeSorts :: IdMap (Maybe Sort)
-    declDataTypeSorts = foldl declDataTypeSorts' recDSorts (dataTypeBindingGroups $ moduleDataTypes m)
-
-    declDataTypeSorts' :: IdMap (Maybe Sort) -> BindingGroup DataType -> IdMap (Maybe Sort)
-    declDataTypeSorts' recEnv (BindingNonRecursive decl) = let dEnv    = DataTypeEnv recEnv emptyMap emptyMap emptyMap
-                                                               newSrts = mapFromList [(declarationName decl
-                                                                                      ,Just $ dataTypeSort typeEnv dEnv $ declarationValue decl)]
-                                                           in unionlMap newSrts recEnv
-    declDataTypeSorts' recEnv (BindingRecursive decls) = let newSrts = mapFromList $ zip (declarationName <$> decls) (repeat Nothing)
-                                                         in unionlMap newSrts recEnv -- TODO: Mutrec datatypes
-
+    moduleDataTypeSorts :: IdMap (Maybe Sort)
+    moduleDataTypeSorts = foldl (declDataTypeSort typeEnv) recDSorts (dataTypeBindingGroups $ moduleDataTypes m)
     -- Data type regions
-    declDataTypeRegions :: IdMap (Maybe Sort)
-    declDataTypeRegions = foldl declDataTypeRegions' recDSorts (dataTypeBindingGroups $ moduleDataTypes m)
-    
-    declDataTypeRegions' :: IdMap (Maybe Sort) -> BindingGroup DataType -> IdMap (Maybe Sort)
-    declDataTypeRegions' recEnv (BindingNonRecursive decl) = let dEnv    = DataTypeEnv emptyMap recEnv emptyMap emptyMap
-                                                                 newSrts = mapFromList [(declarationName decl
-                                                                                        ,Just $ dataTypeRegions typeEnv dEnv $ declarationValue decl)]
-                                                             in unionlMap newSrts recEnv
-    declDataTypeRegions' recEnv (BindingRecursive decls) = let newSrts = mapFromList $ zip (declarationName <$> decls) (repeat Nothing)
-                                                           in unionlMap newSrts recEnv -- TODO: Mutrec datatypes
-
+    moduleDataTypeRegions :: IdMap (Maybe Sort)
+    moduleDataTypeRegions = foldl (declDataTypeRegions typeEnv) recDSorts (dataTypeBindingGroups $ moduleDataTypes m)
     -- Constructor annotations
-    dataTypeConstructors :: IdMap Annotation
-    dataTypeConstructors = mapFromList (concat $ dataTypeConstructors' <$> moduleDataTypes m)
-    
-    dataTypeConstructors' :: Declaration DataType -> [(Id, Annotation)]
-    dataTypeConstructors' dt = makeDataTypeConstructors (declarationName dt `findMap` declDataTypeSorts) (declarationValue dt)
-    
+    moduleDataTypeConstructors :: IdMap Annotation
+    moduleDataTypeConstructors = mapFromList (concat $ declDataTypeConstructors <$> moduleDataTypes m)
+    declDataTypeConstructors :: Declaration DataType -> [(Id, Annotation)]
+    declDataTypeConstructors dt = makeDataTypeConstructors (declarationName dt `findMap` moduleDataTypeSorts) (declarationValue dt)
     -- Destructor annotations
-    dataTypeDestructors :: IdMap [Annotation]
-    dataTypeDestructors = mapFromList $ concat $ dataTypeDestructors' <$> moduleDataTypes m
-    
-    dataTypeDestructors' :: Declaration DataType -> [(Id, [Annotation])]
-    dataTypeDestructors' dt = makeDataTypeDestructors (declarationName dt `findMap` declDataTypeSorts) (declarationValue dt)
+    moduleDataTypeDestructors :: IdMap [Annotation]
+    moduleDataTypeDestructors = mapFromList $ concat $ declDataTypeDestructors <$> moduleDataTypes m
+    declDataTypeDestructors :: Declaration DataType -> [(Id, [Annotation])]
+    declDataTypeDestructors dt = makeDataTypeDestructors (declarationName dt `findMap` moduleDataTypeSorts) (declarationValue dt)
 
-
-    -- Environment used for the recursive positions of data types
+    -- Environment used for the recursive positions of data types (Unit sort qith quantifications)
     recDSorts :: IdMap (Maybe Sort)
     recDSorts = mapFromList . map makeRecDataTypeSort $ moduleDataTypes m
-
     makeRecDataTypeSort ::  Declaration DataType -> (Id, Maybe Sort)
     makeRecDataTypeSort decl = (declarationName decl, Just . foldr (const SortQuant) SortUnit . dataTypeQuantors $ declarationValue decl)
 

@@ -89,6 +89,7 @@ sortRemoveQuants :: Sort -> Sort
 sortRemoveQuants (SortQuant s) = sortRemoveQuants s
 sortRemoveQuants s = s
 
+
 -- | Make destructor annotations
 makeDataTypeDestructors :: Maybe Sort -> DataType -> [(Id, [Annotation])]
 makeDataTypeDestructors Nothing (DataType _) = [] 

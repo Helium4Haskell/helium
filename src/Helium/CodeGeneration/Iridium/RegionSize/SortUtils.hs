@@ -1,6 +1,6 @@
 module Helium.CodeGeneration.Iridium.RegionSize.SortUtils
     (sortAssign, regionAssign,
-    dataTypeSort, dataTypeRegions,
+    declDataTypeSort, declDataTypeRegions,
     sortInstantiate, sortSubstitute, 
     sortReIndex, sortWeaken,
     sortIsRegion, sortDropLam,
@@ -10,6 +10,7 @@ module Helium.CodeGeneration.Iridium.RegionSize.SortUtils
 import Helium.CodeGeneration.Core.TypeEnvironment
 
 import Helium.CodeGeneration.Iridium.Data
+import Helium.CodeGeneration.Iridium.BindingGroup
 
 import Helium.CodeGeneration.Iridium.RegionSize.Utils
 import Helium.CodeGeneration.Iridium.RegionSize.Type
@@ -17,6 +18,7 @@ import Helium.CodeGeneration.Iridium.RegionSize.DataTypes
 import Helium.CodeGeneration.Iridium.RegionSize.Sort
 
 import Lvm.Common.Id
+import Lvm.Common.IdMap
 import Lvm.Core.Type
 import Data.List
 
@@ -100,6 +102,18 @@ regionAssignDT dEnv name ts =
 ----------------------------------------------------------------
 
 -- | Find sort for datatype
+declDataTypeSort :: TypeEnvironment -> IdMap (Maybe Sort) -> BindingGroup DataType -> IdMap (Maybe Sort)
+declDataTypeSort typeEnv recEnv (BindingNonRecursive decl) = 
+  let dEnv    = DataTypeEnv recEnv emptyMap emptyMap emptyMap
+      newSrts = mapFromList [(declarationName decl
+                             ,Just $ dataTypeSort typeEnv dEnv $ declarationValue decl)]
+  in unionlMap newSrts recEnv
+declDataTypeSort typeEnv recEnv (BindingRecursive decls) = 
+  case length decls of
+    1234 -> declDataTypeSort typeEnv recEnv (BindingNonRecursive $ decls !! 0) 
+    _ -> let newSrts = mapFromList $ zip (declarationName <$> decls) (repeat Nothing)
+          in unionlMap newSrts recEnv -- TODO: Mutrec datatypes
+
 dataTypeSort :: TypeEnvironment -> DataTypeEnv -> DataType -> Sort
 dataTypeSort tEnv dEnv dt@(DataType structs) = 
   let structSorts = SortTuple $ SortTuple . dataStructSort tEnv dEnv <$> structs
@@ -110,7 +124,20 @@ dataStructSort tEnv dEnv (Declaration _ _ _ _ (DataTypeConstructorDeclaration ty
   let (args, _) = typeExtractFunction $ typeRemoveQuants ty 
   in sortAssign dEnv . typeNormalize tEnv <$> args
 
+
 -- | Find region assignment for datatype
+declDataTypeRegions :: TypeEnvironment -> IdMap (Maybe Sort) -> BindingGroup DataType -> IdMap (Maybe Sort)
+declDataTypeRegions typeEnv recEnv (BindingNonRecursive decl) = 
+  let dEnv    = DataTypeEnv emptyMap recEnv emptyMap emptyMap
+      newSrts = mapFromList [(declarationName decl
+                             ,Just $ dataTypeRegions typeEnv dEnv $ declarationValue decl)]
+  in unionlMap newSrts recEnv
+declDataTypeRegions typeEnv recEnv (BindingRecursive decls) = 
+  case length decls of
+    1234 -> declDataTypeRegions typeEnv recEnv (BindingNonRecursive $ decls !! 0) 
+    _ -> let newSrts = mapFromList $ zip (declarationName <$> decls) (repeat Nothing)
+          in unionlMap newSrts recEnv -- TODO: Mutrec datatypes
+
 dataTypeRegions :: TypeEnvironment -> DataTypeEnv -> DataType -> Sort
 dataTypeRegions tEnv dEnv dt@(DataType structs) = 
   let structSorts = SortTuple $ SortTuple . dataStructRegions tEnv dEnv <$> structs
