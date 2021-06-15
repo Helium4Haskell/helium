@@ -41,21 +41,21 @@ passRegionSize _ m = do
     print (moduleName m)
     putStrLn "=================================================================="
     let gEnv = initialGEnv m
-    putStrLn . intercalate "\n" $ show <$> (listFromMap . dtSorts $ globDataEnv gEnv)
-    putStrLn "=================================================================="
-    putStrLn . intercalate "\n" $ show <$> (listFromMap . dtRegions $ globDataEnv gEnv)
-    putStrLn "=================================================================="
-    putStrLn . intercalate "\n" $ show <$> (listFromMap . dtStructs $ globDataEnv gEnv)
+    -- putStrLn . intercalate "\n" $ show <$> (listFromMap . dtSorts $ globDataEnv gEnv)
+    -- putStrLn "=================================================================="
+    -- putStrLn . intercalate "\n" $ show <$> (listFromMap . dtRegions $ globDataEnv gEnv)
+    -- putStrLn "=================================================================="
+    -- putStrLn . intercalate "\n" $ show <$> (listFromMap . dtStructs $ globDataEnv gEnv)
 
     let groups = methodBindingGroups $ moduleMethods m
     
     ((_, finite, infinite), methods) <- mapAccumLM analyseBindingGroup (gEnv,0,0) groups
+    putStrLn $ "Finite:   " ++ show finite
+    putStrLn $ "Infinite: " ++ show infinite
 
     end <- getCPUTime
     let diff = ((fromIntegral (end - start)) :: Double) / (10^12)
     printf "Computation time: %0.3f sec\n" diff
-    putStrLn $ "Finite:   " ++ show finite
-    putStrLn $ "Infinite: " ++ show infinite
 
     return m{moduleMethods = concat methods}
 
@@ -92,54 +92,64 @@ pipeline gEnv methods = do
     if not canDerive
     then do
       -- | Insert top for bad methods
-      let top = flip ATop constrBot . methodSortAssign tEnv dEnv . snd <$> methods
+      let top = eval dEnv . flip ATop constrBot . methodSortAssign tEnv dEnv . snd <$> methods
       let gEnv' = foldr (uncurry insertGlobal) gEnv $ zip (fst <$> methods) top
       let methods' = map (\((name,Method a b c d e anns f g), ann) -> (name, Method a b c d e (MethodAnnotateRegionSize ann:anns) f g)) $ zip methods top
       return ((gEnv', 0, 0), methods')
     else do
-      putStrLn $ "\n# Analyse methods:\n" ++ (intercalate "\n" $ map (show.fst) methods)
-      putStrLn $ "\n# Can derive: " ++ show canDerive ++ "\n" ++ (show $ typeNormalize tEnv . methodType . snd <$> methods)
+      -- putStrLn $ "\n# Analyse methods:\n" ++ (intercalate "\n" $ map (show.fst) methods)
+      -- putStrLn $ "\n# Can derive: " ++ show canDerive ++ "\n" ++ (show $ typeNormalize tEnv . methodType . snd <$> methods)
 
       -- Generate the annotations     
       let mAnn  = inlineFixpoints $ analyseMethods 0 gEnv methods
-      let simpl = eval dEnv $ inlineFixpoints $ eval dEnv mAnn
+
+      
+      let simpl = eval dEnv mAnn
       let fixed = solveFixpoints dEnv simpl
 
-      putStrLn $ "\n# Derived annotation: "
-      print mAnn
+      -- putStrLn $ "\n# Derived annotation: "
+      -- print mAnn
       
-      putStrLn $ "\n# Simplified: "
-      print simpl
-      -- Check if the resulting annotation is well-sroted
       _ <- case sort dEnv simpl of
               Left  s -> do
                 putStrLn ""
-                putStrLn s
-                rsError $ "Wrong sort"
-              Right _ -> return simpl
+                putStrLn $ cleanTUP s
+                rsError $ "Wrong sort (mAnn)"
+              Right _ -> return ()
 
-
-      -- Solve the fixpoints
-      putStrLn $ "\n# Fixpoint: "
-      print fixed 
-
+      -- putStrLn $ "\n# Simplified: "
+      -- print simpl
       -- Check if the resulting annotation is well-sroted
-      fixed' <- case sort dEnv fixed of
+
+      _ <- case sort dEnv simpl of
               Left  s -> do
                 putStrLn ""
-                putStrLn s
-                rsError $ "Wrong sort"
-              Right _ -> return $ unsafeUnliftTuple fixed
+                putStrLn $ cleanTUP s
+                rsError $ "Wrong sort (simpl)"
+              Right _ -> return ()
+
+      -- Solve the fixpoints
+      -- putStrLn $ "\n# Fixpoint: "
+      -- print fixed 
+
+      -- Check if the resulting annotation is well-sroted
+      _ <- case sort dEnv fixed of
+              Left  s -> do
+                putStrLn ""
+                putStrLn $ cleanTUP s
+                rsError $ "Wrong sort (fixed)"
+              Right _ -> return ()
 
       -- Update the global environment with the found annotations
-      let gEnv' = foldr (uncurry insertGlobal) gEnv $ zip (fst <$> methods) fixed'
+      let unpack = unsafeUnliftTuple fixed
+      let gEnv' = foldr (uncurry insertGlobal) gEnv $ zip (fst <$> methods) unpack
       -- Save the annotation on the method
-      let methods' = map (\((name,Method a b c d e anns f g), ann) -> (name, Method a b c d e (MethodAnnotateRegionSize ann:anns) f g)) $ zip methods fixed'
+      let methods' = map (\((name,Method a b c d e anns f g), ann) -> (name, Method a b c d e (MethodAnnotateRegionSize ann:anns) f g)) $ zip methods unpack
       
       
       -- Solve the fixpoints
-      putStrLn $ "\n# Locals: "
-      print $ solveFixpoints dEnv $ eval dEnv $ inlineFixpoints $ analyseMethods 1 gEnv' methods' 
+      -- putStrLn $ "\n# Locals: "
+      -- print $ solveFixpoints dEnv $ eval dEnv $ inlineFixpoints $ analyseMethods 1 gEnv' methods' 
       
       -- Compute the second pass
       let localAnns = (unsafeUnliftTuple 
@@ -158,15 +168,14 @@ pipeline gEnv methods = do
       let finite   = sum $ length <$> filter (not . (== Infty) . snd) <$> filter (not . (== Region RegionGlobal) . fst) <$> M.toList <$> effects
       let infinite = (sum $ length <$> filter (not . (== Region RegionGlobal) . fst) <$> M.toList <$> effects) - finite 
 
-      putStrLn "\n#Effects:"
-      print $ effects
+      -- putStrLn "\n#Effects:"
+      -- print $ effects
 
       return ((gEnv', finite, infinite), zip (fst <$> methods) cleaned)
 
 {-| When a local region is applied to a higher order function
   we must make said region unbounded. We cannot know the true bound.
   This could also be corrected with a change in region inference.
-  TODO: Do not pass c if a \= AApl? May be sound
 -}
 fixHigherOrderApplication :: Annotation -> Constr
 fixHigherOrderApplication = flip go constrBot
