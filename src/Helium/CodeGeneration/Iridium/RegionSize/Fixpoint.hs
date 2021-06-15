@@ -69,7 +69,7 @@ inlineFixpoints = foldAnnAlgQuants fixAlg
         aProj = \_ i a  -> case a of
                              AFix ss as -> AProj i $ removeUnused i ss as
                              _ -> AProj i a,
-        aFix  = \_ s as -> AFix s $ inlineFixpoint as
+        aFix  = \_ s as -> AFix s . inlineFixpoint.inlineFixpoint$inlineFixpoint as
     }
 
 inlineFixpoint :: [Annotation] -> [Annotation]
