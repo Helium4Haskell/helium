@@ -9,7 +9,7 @@ import Helium.CodeGeneration.Iridium.RegionSize.SortUtils
 import Helium.CodeGeneration.Iridium.RegionSize.DataTypes
 
 import qualified Data.Map as M
-import Data.Either (lefts,rights)
+import Data.Either (lefts,rights,fromRight)
 import Data.List (find)
 
 ----------------------------------------------------------------
@@ -37,7 +37,8 @@ sort dEnv = sort' (-1,-1) M.empty
     where sort' :: (Int,Int) -> Gamma -> Annotation -> Either String Sort 
           -- Simple cases
           sort' d gamma (AVar     a) = case M.lookup a gamma of
-                                        Nothing -> Left $ "Not in gamma: " ++ (annShow' d $ AVar a)
+                                        Nothing -> Left $ "Sorting: Variable not in environment. " 
+                                                       ++ "\n\tVariable: " ++ (annShow' d $ AVar a)
                                         Just s  -> Right s
           sort' _ _     (AReg     _) = Right SortMonoRegion
           sort' _ _     (AUnit     ) = Right SortUnit
@@ -45,27 +46,35 @@ sort dEnv = sort' (-1,-1) M.empty
                                           Nothing -> Right SortConstr
                                           Just er -> Left er 
           -- Top and bot are annotated with their sort
-          sort' d _ (ATop   s c) = case checkConstr (fst d) c of
+          sort' d _ (ATop s c) = case checkConstr (fst d) c of
                                      Nothing -> Right s
                                      Just er -> Left er 
-          sort' _ _ (ABot   s  ) = Right s
+          sort' _ _ (ABot s  ) = Right s
 
           -- Check body of the fixpoint
-          sort' d gamma (AFix   s a) = 
+          sort' d gamma (AFix s a) = 
               let fs = sort' d gamma (ALam (SortTuple s) (ATuple a))
               in case fs of
                    (Right (SortLam _ sR)) | SortTuple s == sR -> Right sR
-                                          | otherwise -> Left $ "Sort does not match fixpoint sort:\n" ++ "Expected sort: " ++ (showSort (snd d) $ SortTuple s) 
-                                                                                                     ++ "\nActual sort:   " ++ (showSort (snd d) sR)
-                   Left xs -> Left xs
-                   Right _ -> Left "Invalid fixpoint sort"
+                                          | otherwise -> Left $ "Sorting: Sort does not match fixpoint sort." 
+                                                             ++ "\n\tExpected sort: " ++ (showSort (snd d) $ SortTuple s) 
+                                                             ++ "\n\tActual sort:   " ++ (showSort (snd d) sR)
+                                                             ++ "\n\tAnnotation:   " ++ (annShow' d (AFix s a))
+                                                                                                    
+                   Left xs  -> Left xs
+                   Right s' -> Left $ "Invalid fixpoint sort" 
+                                   ++ "\nSort: " ++ showSort (snd d) s'
+                                   ++ "\nAnnotation:   " ++ (annShow' d (AFix s a))
           -- Check if both operands have the same sort
           sort' d gamma (AJoin  a b) = 
               let sortA = sort' d gamma a
                   sortB = sort' d gamma b
               in if sortA == sortB
                  then sortA
-                 else Left ("Join of annotations with different sort: \nSort A: " ++ show sortA ++ "\nSort B: " ++ show sortB)
+                 else Left $ "Sorting: Join of annotations with different sort."
+                          ++ "\n\tSort A: " ++ show sortA 
+                          ++ "\n\tSort B: " ++ show sortB
+                          ++ "\n\tAnnotation: " ++ annShow' d (AJoin  a b)
 
           -- Lambdas & applications
           sort' (dL,dQ) gamma (ALam   s a) = 
@@ -76,10 +85,15 @@ sort dEnv = sort' (-1,-1) M.empty
                 Right (SortLam sortA sortR) ->
                   let sortX = sort' (dL,dQ)  gamma x 
                   in case sortX of
-                        Right sX | checkArgs sortA sX -> Right sortR
-                                 | otherwise -> Left $ "Argument has different sort than is expected.\nArgument sort: " ++ (showSort dQ sX) ++ "\nExpected sort: " ++ (showSort dQ sortA) ++ "\nResult of lambda:" ++ showSort dQ sortR ++ "\n"
+                        Right sX | checkArgSort sortA sX -> Right sortR
+                                 | otherwise -> Left $ "Sorting: Argument has different sort than is expected."
+                                                     ++ "\n\tArgument sort: " ++ showSort dQ sX
+                                                     ++ "\n\tExpected sort: " ++ showSort dQ sortA
+                                                     ++ "\n\tAnnotation:" ++ annShow' (dL,dQ) (AApl f x)
                         err     -> err
-                Right s -> Left $ "Application to non function sort:\nSort:     " ++ (showSort dQ s)
+                Right s -> Left $ "Sorting: Application to non function sort."
+                               ++ "\n\tSort: " ++ (showSort dQ s)
+                               ++ "\n\tAnnotation: " ++ annShow' (dL,dQ) (AApl f x)
                 err     -> err
 
           -- Tuples & projections
@@ -93,20 +107,28 @@ sort dEnv = sort' (-1,-1) M.empty
               case sort' (dL,dQ) gamma t of
                   Right (SortTuple ss) -> if i < length ss
                                           then Right $ ss !! i
-                                          else Left $ "sort: Projection out of bounds\nIndex:" ++ show i ++ "\nSort" ++ show ss ++ "\nAnnotation:" ++ (annShow' (dL,dQ) (AProj i t))  
-                  Right s -> Left $ "Projection on non-tuple sort: " ++ showSort dQ s ++ "\nAnnotation: " ++ (annShow' (dL,dQ) (AProj i t))
+                                          else Left $ "Sorting: Projection out of bounds."
+                                                   ++ "\n\tIndex:" ++ show i 
+                                                   ++ "\n\tSort" ++ showSort dQ (SortTuple ss) 
+                                                   ++ "\n\tAnnotation:" ++ annShow' (dL,dQ) (AProj i t)  
+                  Right s -> Left $ "Sorting: Projection on non-tuple sort:"
+                                 ++ "\n\tSort: " ++ showSort dQ s 
+                                 ++ "\n\tAnnotation: " ++ annShow' (dL,dQ) (AProj i t)
                   err     -> err
 
           -- Operators
-          sort' (dL,dQ) gamma (AAdd   a b) = 
-              let sortA = sort' (dL,dQ) gamma a
-                  sortB = sort' (dL,dQ) gamma b
+          sort' d gamma (AAdd   a b) = 
+              let sortA = sort' d gamma a
+                  sortB = sort' d gamma b
               in if sortA == sortB && sortA == Right SortConstr
                  then Right SortConstr
                  else case (sortA, sortB) of
                      (Left errA,_) -> Left errA
                      (_,Left errB) -> Left errB
-                     (_,_) -> Left ("Addition of non constraint-sort annotations: \nSort A: " ++ show sortA ++ "\nSort B: " ++ show sortB) 
+                     (_,_) -> Left $ "Sorting: Addition of non constraint-sort annotations."
+                                  ++ "\n\tSort A: " ++ showSort (snd d) (fromRight undefined sortA) 
+                                  ++ "\n\tSort B: " ++ showSort (snd d) (fromRight undefined sortB)
+                                  ++ "\n\tAnnotation: " ++ annShow' d (AAdd a b)
         --   sort' (dL,dQ) gamma (AMinus a _) = 
         --       let sortA = sort' (dL,dQ) gamma a
         --       in if sortA == Right SortConstr
@@ -118,7 +140,9 @@ sort dEnv = sort' (-1,-1) M.empty
           sort' (dL,dQ) gamma (AInstn a t) = 
               case sort' (dL,dQ) gamma a of
                   Right (SortQuant s) -> Right . sortInstantiate dEnv t $ SortQuant s 
-                  Right s -> Left $ "Instantiation on non-quantified sort: " ++ showSort dQ s
+                  Right s -> Left $ "Sorting: Instantiation on non-quantified sort."
+                                 ++ "\n\tSort: " ++ showSort dQ s
+                                 ++ "\n\tAnnotation: " ++ annShow' (dL,dQ) (AInstn a t)
                   err     -> err
 
 
@@ -128,18 +152,23 @@ checkConstr depth c = find ((<) 0 . length) $ checkConstrIdx . fst <$> M.toList 
     where checkConstrIdx :: ConstrIdx -> String
           checkConstrIdx (Region _) = ""             
           checkConstrIdx (AnnVar a) = if a < 0
-                                      then "Negative constraint index"
+                                      then ("Sorting: Negative constraint set variable index."
+                                           ++ "\n\tVariable:" ++ annShow' (depth,0) (AVar a))
                                       else if a > depth
-                                           then "Unbound index"
+                                           then ("Sorting: Unbound constraint set variable index."
+                                                 ++ "\n\tVariable:" ++ annShow' (depth,0) (AVar a))
                                            else ""
           checkConstrIdx (CnProj _ x) = checkConstrIdx x             
                                       
 {- | Check if two arguments are the same
     We allow a monoregion argument for a polyregion sort
 -}
-checkArgs :: Sort -- Expected sort 
-          -> Sort -- Argument
-          -> Bool
-checkArgs (SortTuple as) (SortTuple bs) = (length as == length bs) && (and $ uncurry checkArgs <$> zip as bs)
-checkArgs (SortPolyRegion _ _) SortMonoRegion = True
-checkArgs a b = a == b 
+checkArgSort :: Sort -- Expected sort 
+             -> Sort -- Argument
+             -> Bool
+checkArgSort (SortTuple as) (SortTuple bs) =
+    let sameLength = length as == length bs
+        recurse    = and $ uncurry checkArgSort <$> zip as bs
+    in sameLength && recurse
+checkArgSort (SortPolyRegion _ _) SortMonoRegion = True
+checkArgSort a b = a == b 
