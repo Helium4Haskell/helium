@@ -29,9 +29,14 @@ import Helium.CodeGeneration.Iridium.RegionSize.Fixpoint
 import Data.List (intercalate)
 import qualified Data.Map as M 
 
+import System.CPUTime
+import Text.Printf
+
 -- | Infer the size of regions
 passRegionSize :: NameSupply -> Module -> IO Module
 passRegionSize _ m = do
+    start <- getCPUTime
+
     putStrLn "=================================================================="
     print (moduleName m)
     putStrLn "=================================================================="
@@ -43,8 +48,12 @@ passRegionSize _ m = do
     putStrLn . intercalate "\n" $ show <$> (listFromMap . dtStructs $ globDataEnv gEnv)
 
     let groups = methodBindingGroups $ moduleMethods m
-
+    
     ((_, finite, infinite), methods) <- mapAccumLM analyseBindingGroup (gEnv,0,0) groups
+
+    end <- getCPUTime
+    let diff = ((fromIntegral (end - start)) :: Double) / (10^12)
+    printf "Computation time: %0.3f sec\n" diff
     putStrLn $ "Finite:   " ++ show finite
     putStrLn $ "Infinite: " ++ show infinite
 
