@@ -14,7 +14,7 @@ import Data.Maybe (fromJust, catMaybes)
 import qualified Data.Map as M
 
 max_iterations :: Int
-max_iterations = 10
+max_iterations = 12
 
 ----------------------------------------------------------------
 -- Solving fixpoints
@@ -22,17 +22,17 @@ max_iterations = 10
 
 -- | Fill top with local variables in scope
 solveFixpoints ::  DataTypeEnv -> Annotation -> Annotation
-solveFixpoints dEnv = eval dEnv . go (-1,-1) constrBot
-    where go (lD,qD) scope (ALam   s a) = ALam s $ go (lD+1,qD) (constrAdd (constrInfty $ AnnVar 0) (weakenScope scope)) a  
-          go (lD,qD) scope (ATuple  as) = ATuple $ go (lD,qD) scope <$> as
-          go (lD,qD) scope (AProj  i a) = AProj i $ go (lD,qD) scope a 
-          go (lD,qD) scope (AApl   a b) = AApl   (go (lD,qD) scope a) (go (lD,qD) scope b) 
-          go (lD,qD) scope (AAdd   a b) = AAdd   (go (lD,qD) scope a) (go (lD,qD) scope b)  
-          go (lD,qD) scope (AJoin  a b) = AJoin  (go (lD,qD) scope a) (go (lD,qD) scope b)
-          go (lD,qD) scope (AQuant a  ) = AQuant (go (lD,qD+1) scope a)
-          go (lD,qD) scope (AInstn a t) = AInstn (go (lD,qD) scope a) t
-          go (lD,qD) scope (AFix   s v) = ATuple . solveFixpoint (lD,qD) dEnv scope s $ go (lD,qD) scope <$> v
-          go (_ ,_ ) _     ann = ann
+solveFixpoints dEnv = eval dEnv . go constrBot
+    where go scope (ALam   s a) = ALam s $ go (constrAdd (constrInfty $ AnnVar 0) (weakenScope scope)) a  
+          go scope (ATuple  as) = ATuple $ go scope <$> as
+          go scope (AProj  i a) = AProj i $ go scope a 
+          go scope (AApl   a b) = AApl   (go scope a) (go scope b) 
+          go scope (AAdd   a b) = AAdd   (go scope a) (go scope b)  
+          go scope (AJoin  a b) = AJoin  (go scope a) (go scope b)
+          go scope (AQuant a  ) = AQuant (go scope a)
+          go scope (AInstn a t) = AInstn (go scope a) t
+          go scope (AFix   s v) = ATuple . solveFixpoint dEnv scope s $ go scope <$> v
+          go _     ann = ann
         --   go scope (AMinus a r) = AMinus (go scope a) r
 
 -- | Weaken all region variables in the constraint set
@@ -43,8 +43,8 @@ weakenScope = M.mapKeys weakenKey
      weakenKey others     = others
 
 -- | Solve a group of fixpoints
-solveFixpoint :: (Int,Int) -> DataTypeEnv -> Constr -> [Sort] -> [Annotation] -> [Annotation]
-solveFixpoint d dEnv scope sorts fixes = 
+solveFixpoint :: DataTypeEnv -> Constr -> [Sort] -> [Annotation] -> [Annotation]
+solveFixpoint dEnv scope sorts fixes = 
         let bot = ABot s
         in fixIterate 0 bot $ ATuple fixes
     where s = SortTuple sorts
@@ -68,8 +68,8 @@ inlineFixpoints = foldAnnAlgQuants fixAlg
     where fixAlg = idAnnAlg {
         aProj = \_ i a  -> case a of
                              AFix ss as -> AProj i $ removeUnused i ss as
-                             _ -> AProj i a--,
-        -- aFix  = \_ s as -> AFix s $ inlineFixpoint as
+                             _ -> AProj i a,
+        aFix  = \_ s as -> AFix s $ inlineFixpoint as
     }
 
 inlineFixpoint :: [Annotation] -> [Annotation]
@@ -79,11 +79,12 @@ inlineFixpoint anns = let isRec = checkRecursive <$> anns
 fillInNonRec :: [Bool] -> [Annotation] -> Annotation -> Annotation 
 fillInNonRec isRec fixes = foldAnnAlgN (0,-1) fillAlg
     where fillAlg = idAnnAlg {
-        aProj = \(lD,qD) i a -> case a of
-                            AVar idx -> if idx == lD && not (isRec !! i)
-                                        then annWeaken lD qD $ fixes !! i
-                                        else AProj i a
-                            _ -> AProj i a
+        aProj = \(lD,_) i a -> 
+            case a of
+                AVar idx -> if idx == lD && not (isRec !! i)
+                            then annWeaken lD 0 $ fixes !! i
+                            else AProj i a
+                _ -> AProj i a
     }
 
 -- | Check if a part of a fixpoint is recursive
