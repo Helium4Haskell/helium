@@ -6,7 +6,6 @@ module Helium.CodeGeneration.Iridium.RegionSize.Sort
 where
 
 import Helium.CodeGeneration.Iridium.RegionSize.Utils
-import Helium.CodeGeneration.Iridium.RegionSize.Type
 
 import Lvm.Core.Type
 import Data.List

@@ -1,5 +1,6 @@
 module Helium.CodeGeneration.Iridium.RegionSize.Utils
     (weakenIdx, strengthenIdx,
+    rsShowType, typeRemoveQuants,
     indent, noTupleBreak,
     varNames, typeVarName, annVarName,
     rsError, rsInfo,
@@ -12,6 +13,8 @@ import qualified Debug.Trace as T
 import qualified Data.Set as S
 import Data.Ord (comparing)
 import Data.List
+
+import Lvm.Core.Type
 
 import GHC.Stack
 
@@ -33,6 +36,20 @@ strengthenIdx :: Depth -> Index -> Index
 strengthenIdx d idx = if idx > d
                       then idx - 1 
                       else idx
+
+
+----------------------------------------------------------------
+-- LVM type utils
+----------------------------------------------------------------
+
+-- | Show a type with region size naming convention
+rsShowType :: Type -> String
+rsShowType = showType ((:) 't' <$> varNames)
+
+-- | Remove quantifications
+typeRemoveQuants :: Type -> Type
+typeRemoveQuants (TForall _ _ t) = typeRemoveQuants t
+typeRemoveQuants t = t
 
 ----------------------------------------------------------------
 -- Indenting

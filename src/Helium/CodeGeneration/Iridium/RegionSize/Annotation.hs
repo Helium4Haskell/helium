@@ -13,7 +13,6 @@ import Helium.CodeGeneration.Iridium.Region.RegionVar
 import Helium.CodeGeneration.Iridium.RegionSize.Constraints
 import Helium.CodeGeneration.Iridium.RegionSize.Sort
 import Helium.CodeGeneration.Iridium.RegionSize.Utils
-import Helium.CodeGeneration.Iridium.RegionSize.Type
 
 import Data.List
 import Lvm.Core.Type

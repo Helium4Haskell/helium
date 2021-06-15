@@ -13,7 +13,6 @@ import Helium.CodeGeneration.Iridium.Data
 import Helium.CodeGeneration.Iridium.BindingGroup
 
 import Helium.CodeGeneration.Iridium.RegionSize.Utils
-import Helium.CodeGeneration.Iridium.RegionSize.Type
 import Helium.CodeGeneration.Iridium.RegionSize.DataTypes
 import Helium.CodeGeneration.Iridium.RegionSize.Sort
 
