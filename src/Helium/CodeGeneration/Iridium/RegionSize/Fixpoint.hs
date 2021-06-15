@@ -10,11 +10,11 @@ import Helium.CodeGeneration.Iridium.RegionSize.Utils
 import Helium.CodeGeneration.Iridium.RegionSize.Evaluate
 
 import Data.List (sort, elemIndex)
-import Data.Maybe (fromJust)
+import Data.Maybe (fromJust, catMaybes)
 import qualified Data.Map as M
 
 max_iterations :: Int
-max_iterations = 12
+max_iterations = 10
 
 ----------------------------------------------------------------
 -- Solving fixpoints
@@ -64,15 +64,12 @@ solveFixpoint d dEnv scope sorts fixes =
 
 -- | Solve all the fixpoints in an annotation
 inlineFixpoints :: Annotation -> Annotation
-inlineFixpoints = id--foldAnnAlgQuants fixAlg
+inlineFixpoints = foldAnnAlgQuants fixAlg
     where fixAlg = idAnnAlg {
         aProj = \_ i a  -> case a of
                              AFix ss as -> AProj i $ removeUnused i ss as
-                             _ -> AProj i a,
-        aFix  = \_ s as -> AFix s . inlineFixpoint 
-                                  . inlineFixpoint 
-                                  . inlineFixpoint 
-                                  $ inlineFixpoint as
+                             _ -> AProj i a--,
+        -- aFix  = \_ s as -> AFix s $ inlineFixpoint as
     }
 
 inlineFixpoint :: [Annotation] -> [Annotation]
@@ -91,7 +88,7 @@ fillInNonRec isRec fixes = foldAnnAlgN (0,-1) fillAlg
 
 -- | Check if a part of a fixpoint is recursive
 checkRecursive :: Annotation -> Bool
-checkRecursive ann = (length $ findFixBinds ann) > 0 
+checkRecursive ann = (length $ findFixBinds ann) > 0  
 
 -- | Count usages of a variable
 findFixBinds :: Annotation -> [Int]
@@ -103,7 +100,7 @@ findFixBinds = foldAnnAlgLamsN 0 countAlg
         aReg    = \_ _   -> [],
         aLam    = \_ _ a -> a,
         aApl    = \_ a b -> a ++ b,
-        aConstr = \_ _   -> [],
+        aConstr = \d c   -> constrFixBinds d c,
         aUnit   = \_     -> [],
         aTuple  = \_ as  -> concat as,
         aProj   = \_ i a -> case a of
@@ -114,17 +111,28 @@ findFixBinds = foldAnnAlgLamsN 0 countAlg
         aJoin   = \_ a b -> a ++ b,
         aQuant  = \_ a   -> a,
         aInstn  = \_ a _ -> a,
-        aTop    = \_ _ _ -> [],
+        aTop    = \d _ c -> constrFixBinds d c,
         aBot    = \_ _   -> [],
         aFix    = \_ _ a -> concat a   
     }
 
+-- | Find fix binds in constraint set 
+constrFixBinds :: Int -> Constr -> [Int]
+constrFixBinds d c = catMaybes $ go <$> M.keys c
+   where go (AnnVar _  ) = Nothing
+         go (Region _  ) = Nothing
+         go (CnProj i k) = 
+             case k of
+                 AnnVar idx | idx == d -> Just i
+                 _ -> go k
+
+
 -- | Remove unused indexes in a fixpoint
 removeUnused :: Int -> [Sort] -> [Annotation] -> Annotation
 removeUnused targetIdx ss as = AFix usedSrts $ renameUsed usedIdxs <$> usedAnns
-    where usedIdxs = reverse.sort $ go (findFixBinds <$> as) [] [targetIdx]
-          usedAnns = foldl (\as' i -> (as !! i) : as') [] usedIdxs
-          usedSrts = foldl (\ss' i -> (ss !! i) : ss') [] usedIdxs
+    where usedIdxs = sort $ go (findFixBinds <$> as) [] [targetIdx]
+          usedAnns = foldr (\i as' -> (as !! i) : as') [] usedIdxs
+          usedSrts = foldr (\i ss' -> (ss !! i) : ss') [] usedIdxs
           go _    seen []       = seen
           go rels seen (x:todo) = if x `elem` seen
                                   then go rels seen todo
