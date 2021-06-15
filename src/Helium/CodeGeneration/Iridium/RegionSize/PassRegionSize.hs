@@ -75,20 +75,21 @@ analyseBindingGroup (gEnv, finite, infinite) (BindingNonRecursive decl@(Declarat
 -- | Run the analysis on a group of methods
 pipeline ::  GlobalEnv -> [(Id,Method)] -> IO ((GlobalEnv, Int, Int), [(Id,Method)])
 pipeline gEnv methods = do
-    let canDerive = ((and (not.isDataTypeMethod (globDataEnv gEnv) . typeNormalize (globTypeEnv gEnv) . methodType . snd <$> methods))
-                 && (and (not.isDataTypeMethod (globDataEnv gEnv) . typeNormalize (globTypeEnv gEnv) . localType <$> concat (methodLocals False (globTypeEnv gEnv) . snd <$> methods))))
+    let dEnv = globDataEnv gEnv
+        tEnv = globTypeEnv gEnv
+    let canDerive = ((and (not . isComplexDataTypeMethod dEnv . typeNormalize tEnv . methodType . snd <$> methods))
+                  && (and (not . isComplexDataTypeMethod dEnv . typeNormalize tEnv . localType <$> concat (methodLocals False tEnv . snd <$> methods))))
 
     if not canDerive
     then do
       -- | Insert top for bad methods
-      let top = flip ATop constrBot . methodSortAssign (globTypeEnv gEnv) (globDataEnv gEnv) . snd <$> methods
+      let top = flip ATop constrBot . methodSortAssign tEnv dEnv . snd <$> methods
       let gEnv' = foldr (uncurry insertGlobal) gEnv $ zip (fst <$> methods) top
       let methods' = map (\((name,Method a b c d e anns f g), ann) -> (name, Method a b c d e (MethodAnnotateRegionSize ann:anns) f g)) $ zip methods top
       return ((gEnv', 0, 0), methods')
     else do
       putStrLn $ "\n# Analyse methods:\n" ++ (intercalate "\n" $ map (show.fst) methods)
-      putStrLn $ "\n# Can derive: " ++ show canDerive ++ "\n" ++ (show $ typeNormalize (globTypeEnv gEnv) . methodType . snd <$> methods)
-      let dEnv = globDataEnv gEnv
+      putStrLn $ "\n# Can derive: " ++ show canDerive ++ "\n" ++ (show $ typeNormalize tEnv . methodType . snd <$> methods)
 
       -- Generate the annotations     
       let mAnn  = inlineFixpoints $ analyseMethods 0 gEnv methods
@@ -238,16 +239,16 @@ initialGEnv m = GlobalEnv typeEnv functionEnv dataTypeEnv
 -- Check if method can be derived
 ----------------------------------------------------------------
 
-isDataTypeMethod :: DataTypeEnv -> Type -> Bool  
-isDataTypeMethod dEnv (TStrict t)     = isDataTypeMethod dEnv t  
-isDataTypeMethod dEnv (TForall _ _ t) = isDataTypeMethod dEnv t  
-isDataTypeMethod _    (TVar _)        = False  
-isDataTypeMethod dEnv (TAp t1 t2)     = isDataTypeMethod dEnv t1 || isDataTypeMethod dEnv t2    
-isDataTypeMethod _    (TCon TConFun)          = False    
-isDataTypeMethod _    (TCon (TConTuple _))    = False 
-isDataTypeMethod dEnv (TCon (TConDataType name)) = case name `lookupDataType` dEnv of
+isComplexDataTypeMethod :: DataTypeEnv -> Type -> Bool  
+isComplexDataTypeMethod dEnv (TStrict t)     = isComplexDataTypeMethod dEnv t  
+isComplexDataTypeMethod dEnv (TForall _ _ t) = isComplexDataTypeMethod dEnv t  
+isComplexDataTypeMethod _    (TVar _)        = False  
+isComplexDataTypeMethod dEnv (TAp t1 t2)     = isComplexDataTypeMethod dEnv t1 || isComplexDataTypeMethod dEnv t2    
+isComplexDataTypeMethod _    (TCon TConFun)          = False    
+isComplexDataTypeMethod _    (TCon (TConTuple _))    = False 
+isComplexDataTypeMethod dEnv (TCon (TConDataType name)) = case name `lookupDataType` dEnv of
                                                       Nothing -> True
                                                       Just _  -> False
-isDataTypeMethod dEnv (TCon (TConTypeClassDictionary name)) = case (dictionaryDataTypeName name) `lookupDataType` dEnv of
+isComplexDataTypeMethod dEnv (TCon (TConTypeClassDictionary name)) = case (dictionaryDataTypeName name) `lookupDataType` dEnv of
                                                                  Nothing -> True
                                                                  Just _  -> False

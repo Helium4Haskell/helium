@@ -35,7 +35,7 @@ sortAssign' :: DataTypeEnv
             -> [Type] -- ^ Type arguments
             -> Type -> Sort
 sortAssign' dEnv ts (TStrict t)     = sortAssign' dEnv ts t
-sortAssign' _    ts (TVar idx)        = SortPolySort idx ts
+sortAssign' _    ts (TVar idx)      = SortPolySort idx ts
 sortAssign' dEnv ts (TAp t1 t2)     = sortAssign' dEnv (t2:ts) t1
 sortAssign' dEnv []      (TForall _ _ t1) = SortQuant $ sortAssign' dEnv [] t1
 sortAssign' dEnv (t2:ts) (TForall _ _ t1) = sortAssign' dEnv ts (typeSubstitute 0 t2 t1)
@@ -43,7 +43,7 @@ sortAssign' dEnv (t2:ts) (TForall _ _ t1) = sortAssign' dEnv ts (typeSubstitute 
 sortAssign' dEnv [t1,t2] (TCon TConFun)       = funSort dEnv t1 t2  
 sortAssign' dEnv ts      (TCon (TConTuple n)) | length ts == n = SortTuple $ map (sortAssign dEnv) ts
                                               | otherwise      = rsError $ "sortAssign: Tuple with incorrect number of arguements: expected " ++ show n 
-                                                                        ++ " but got " ++ (show $ length ts) ++ "\n" ++ (intercalate ", " $ map (showTypeN 0) ts)
+                                                                        ++ " but got " ++ (show $ length ts) ++ "\n" ++ (intercalate ", " $ rsShowType <$> ts)
 sortAssign' dEnv ts      (TCon (TConTypeClassDictionary name)) = sortAssignDT dEnv (dictionaryDataTypeName name) ts
 sortAssign' dEnv ts      (TCon (TConDataType            name)) = sortAssignDT dEnv name ts
 sortAssign' _ ts t = rsError $ "sortAssign' - No pattern match: " ++ showType varNames t ++ "\n" ++ show (showType varNames <$> ts)
@@ -82,13 +82,13 @@ regionAssign' dEnv (t2:ts) (TForall _ _ t1) = regionAssign' dEnv ts (typeSubstit
 -- Type constructors (functions, tuples, simple data types)
 regionAssign' _    [_,_] (TCon TConFun      ) = SortUnit
 regionAssign' dEnv ts    (TCon (TConTuple n)) | length ts == n = SortTuple . concat $ sortUnpackTuple.regionAssign dEnv <$> ts
-                                              | otherwise      = rsError $ "regionAssign: Tuple with incorrect number of arguements: expected " ++ show n ++ " but got " ++ (show $ length ts) ++ "\n" ++ (intercalate ", " $ map (showTypeN 0) ts)
+                                              | otherwise      = rsError $ "regionAssign: Tuple with incorrect number of arguements: expected " ++ show n ++ " but got " ++ (show $ length ts) ++ "\n" ++ (intercalate ", " $ rsShowType <$> ts)
 -- Data types & dictionaries
 regionAssign' dEnv ts    (TCon (TConTypeClassDictionary name)) = regionAssignDT dEnv (dictionaryDataTypeName name) ts
 regionAssign' dEnv ts    (TCon (TConDataType            name)) = regionAssignDT dEnv name ts
 -- Not implemented cases
-regionAssign' _    ts t = rsError $ "regionAssign: No pattern match: " ++ showTypeN 0 t 
-                                  ++ "\nArguments: " ++ (intercalate ", " $ map (showTypeN 0) ts)
+regionAssign' _    ts t = rsError $ "regionAssign: No pattern match: " ++ rsShowType t 
+                                  ++ "\nArguments: " ++ (intercalate ", " $ rsShowType <$> ts)
 
 -- | Assign a region sort to a datatype from the Denv
 regionAssignDT :: DataTypeEnv -> Id -> [Type] -> Sort
