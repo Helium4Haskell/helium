@@ -35,7 +35,7 @@ import Text.Printf
 ----------------------------------------------------------------
 -- Debug flags
 ----------------------------------------------------------------
-debug,sortDerived,sortSimplified,sortFixpoint,sortWithLocals,checkSortsEq,printDTSorts,printDerived,printSimplified,printFixpoint,printWithLocals,printMethodName :: Bool
+debug,sortDerived,sortSimplified,sortFixpoint,sortWithLocals,checkSortsEq,printDTSorts,printDerived,printSimplified,printFixpoint,printWithLocals,printEffects,printMethodName :: Bool
 
 -- Global enable/disable
 debug           = True
@@ -53,7 +53,8 @@ printDerived    = False && debug
 printSimplified = False && debug
 printFixpoint   = False && debug
 printWithLocals = False && debug
-printMethodName = printDerived || printSimplified || printFixpoint || printWithLocals
+printEffects    = False && debug
+printMethodName = True && (printDerived || printSimplified || printFixpoint || printWithLocals || printEffects)
 
 ----------------------------------------------------------------
 -- Interface
@@ -158,7 +159,7 @@ pipeline gEnv methods = do
       let gEnv' = foldr (uncurry insertGlobal) gEnv $ zip (fst <$> methods) unpacked
 
       -- Save the annotation on the method
-      let methods' = map (\((name,Method a b c d e anns f g), ann) -> (name, Method a b c d e (MethodAnnotateRegionSize ann:anns) f g)) $ zip methods unpacked
+      let methods' = uncurry methodAddRegionSizeAnnotation <$> zip methods unpacked
 
       -- Derive again, but now with the local regions. Also print an sort.
       let withLocals = (unsafeUnliftTuple 
@@ -240,6 +241,10 @@ checkAnnotationSorts True  dEnv xs =
   in if all (s ==) ss
      then return ()
      else rsError "Sort changed during evaluation."                    
+
+-- | Add the derived annotation to the methods annotations
+methodAddRegionSizeAnnotation :: (Id,Method) -> Annotation -> (Id,Method)
+methodAddRegionSizeAnnotation (name,method) ann = (name, methodAddAnnotation (MethodAnnotateRegionSize ann) method)
 
 ----------------------------------------------------------
 -- Initial global environment

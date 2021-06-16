@@ -91,7 +91,7 @@ fillInNonRec isRec fixes = foldAnnAlgN (0,-1) fillAlg
 checkRecursive :: Annotation -> Bool
 checkRecursive ann = (length $ findFixBinds ann) > 0  
 
--- | Count usages of a variable
+-- | Which indices of the fixpoint are used
 findFixBinds :: Annotation -> [Int]
 findFixBinds = foldAnnAlgLamsN 0 countAlg
     where countAlg = AnnAlg {

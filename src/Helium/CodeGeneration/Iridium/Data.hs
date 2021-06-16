@@ -128,6 +128,10 @@ methodSourceType (Method tp _ _ _ _ _ _ _) = tp
 methodArity :: Method -> Int
 methodArity (Method _ _ args _ _ _ _ _) = length $ filter isRight args
 
+-- Add an annotation to a method
+methodAddAnnotation :: MethodAnnotation -> Method -> Method
+methodAddAnnotation ann (Method a b c d e anns f g) = Method a b c d e (ann:anns) f g
+
 -- Annotations on methods
 data MethodAnnotation
   -- * This method can be put in a thunk. An additional trampoline function is generated. We store a pointer to the trampoline in the thunk.

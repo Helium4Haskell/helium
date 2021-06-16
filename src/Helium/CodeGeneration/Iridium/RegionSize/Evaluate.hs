@@ -170,7 +170,6 @@ regVarSubst' d ann c = constrAdds $ (constrStrengthenN d c'):(constrWeaken d <$>
         evalReg (AVar a)              = (AVar a) 
         evalReg (AReg r)              = (AReg r) 
         evalReg (ATuple as)           = (ATuple $ evalReg <$> as) 
-        -- evalReg (AProj _ AUnit)       = AUnit -- TODO: Remove this. Has to do with gatherConstraintsTuple or something like that. Wrong indexes in C-set.
         evalReg (AProj i a) = case evalReg a of  
                                   ATuple as | i < length as -> as !! i 
                                             | otherwise     -> rsError $ "Constraint index projection out of bounds" 
