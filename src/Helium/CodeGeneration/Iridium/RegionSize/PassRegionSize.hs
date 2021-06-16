@@ -32,31 +32,69 @@ import qualified Data.Map as M
 import System.CPUTime
 import Text.Printf
 
+----------------------------------------------------------------
+-- Debug flags
+----------------------------------------------------------------
+debug,sortDerived,sortSimplified,sortFixpoint,sortWithLocals,checkSortsEq,printDTSorts,printDerived,printSimplified,printFixpoint,printWithLocals,printMethodName :: Bool
+
+-- Global enable/disable
+debug           = True
+
+-- Sorting of annotations
+sortDerived     = True && debug
+sortSimplified  = True && debug
+sortFixpoint    = True && debug
+sortWithLocals  = True && debug
+checkSortsEq    = True && debug
+
+-- Printing of annotations/sorts
+printDTSorts    = False && debug
+printDerived    = False && debug
+printSimplified = False && debug
+printFixpoint   = False && debug
+printWithLocals = False && debug
+printMethodName = printDerived || printSimplified || printFixpoint || printWithLocals
+
+----------------------------------------------------------------
+-- Interface
+----------------------------------------------------------------
+
 -- | Infer the size of regions
 passRegionSize :: NameSupply -> Module -> IO Module
 passRegionSize _ m = do
-    start <- getCPUTime
+    start <- if debug then do
+      putStrLn "=================================================================="
+      print (moduleName m)
+      putStrLn "=================================================================="
+      getCPUTime 
+    else return 0
 
-    putStrLn "=================================================================="
-    print (moduleName m)
-    putStrLn "=================================================================="
+    -- Construct the global environment for the module
     let gEnv = initialGEnv m
-    -- putStrLn . intercalate "\n" $ show <$> (listFromMap . dtSorts $ globDataEnv gEnv)
-    -- putStrLn "=================================================================="
-    -- putStrLn . intercalate "\n" $ show <$> (listFromMap . dtRegions $ globDataEnv gEnv)
-    -- putStrLn "=================================================================="
-    -- putStrLn . intercalate "\n" $ show <$> (listFromMap . dtStructs $ globDataEnv gEnv)
 
+    -- Print the derived datatype sorts
+    if printDTSorts then do
+      putStrLn . intercalate "\n" $ show <$> (listFromMap . dtSorts $ globDataEnv gEnv)
+      putStrLn "=================================================================="
+      putStrLn . intercalate "\n" $ show <$> (listFromMap . dtRegions $ globDataEnv gEnv)
+      putStrLn "=================================================================="
+      putStrLn . intercalate "\n" $ show <$> (listFromMap . dtStructs $ globDataEnv gEnv)
+    else return ()
+
+    -- Run the analysis on the binding groups
     let groups = methodBindingGroups $ moduleMethods m
-    
     ((_, finite, infinite), methods) <- mapAccumLM analyseBindingGroup (gEnv,0,0) groups
-    putStrLn $ "Finite:   " ++ show finite
-    putStrLn $ "Infinite: " ++ show infinite
 
-    end <- getCPUTime
-    let diff = ((fromIntegral (end - start)) :: Double) 
-    printf "Computation time: %0.3f sec\n" (diff / (10^12))
+    -- Print CPU time and region metrics
+    if debug then do
+      putStrLn $ "Finite:   " ++ show finite
+      putStrLn $ "Infinite: " ++ show infinite
+      end <- getCPUTime
+      let diff = ((fromIntegral (end - start)) :: Double) / ((10::Double)^(12::Int))
+      printf "Computation time: %0.3f sec\n" diff 
+    else return ()
 
+    -- Return the updated methods
     return m{moduleMethods = concat methods}
 
 
@@ -64,19 +102,16 @@ passRegionSize _ m = do
    or a group of (mutual) recursive functions.
 -} 
 analyseBindingGroup :: (GlobalEnv, Int, Int) -> BindingGroup Method -> IO ((GlobalEnv, Int, Int), [Declaration Method])
--- Recurisve bindings
+-- Recurisve bindings (call pipeline with the list of recursive methods)
 analyseBindingGroup (gEnv, finite, infinite) (BindingRecursive bindings) = do
   let methods = map (\(Declaration methodName _ _ _ method) -> (methodName, method)) bindings
-
   ((gEnv', finite2, infinite2), transformeds) <- pipeline gEnv methods
-
   let bindings' = map (\(decl, (_,transformed)) -> decl{declarationValue=transformed}) $ zip bindings transformeds
   return ((gEnv', finite+finite2, infinite+infinite2)
          , bindings')
--- Non recursive binding
+-- Non recursive binding (call pipeline with singleton list)
 analyseBindingGroup (gEnv, finite, infinite) (BindingNonRecursive decl@(Declaration methodName _ _ _ method)) = do
   ((gEnv', finite2, infinite2), [(_,transformed)]) <- pipeline gEnv [(methodName,method)]
-
   return ((gEnv', finite+finite2, infinite+infinite2)
          , [decl{ declarationValue = transformed }])
 
@@ -89,80 +124,58 @@ pipeline gEnv methods = do
     let canDerive = ((and (not . isComplexDataTypeMethod dEnv . typeNormalize tEnv . methodType . snd <$> methods))
                   && (and (not . isComplexDataTypeMethod dEnv . typeNormalize tEnv . localType <$> concat (methodLocals False tEnv . snd <$> methods))))
 
+    if printMethodName then do
+      putStrLn $ "\n# Analyse methods:\n" ++ (intercalate "\n" $ map (show.fst) methods)
+      putStrLn $ "\n# Can derive: " ++ show canDerive ++ "\n" ++ (show $ typeNormalize tEnv . methodType . snd <$> methods)
+    else return ()
+
     if not canDerive
     then do
-      -- | Insert top for bad methods
+      -- Insert top for methods we cannot analyze
       let top = eval dEnv . flip ATop constrBot . methodSortAssign tEnv dEnv . snd <$> methods
       let gEnv' = foldr (uncurry insertGlobal) gEnv $ zip (fst <$> methods) top
       let methods' = map (\((name,Method a b c d e anns f g), ann) -> (name, Method a b c d e (MethodAnnotateRegionSize ann:anns) f g)) $ zip methods top
       return ((gEnv', 0, 0), methods')
     else do
-      putStrLn $ "\n# Analyse methods:\n" ++ (intercalate "\n" $ map (show.fst) methods)
-      -- putStrLn $ "\n# Can derive: " ++ show canDerive ++ "\n" ++ (show $ typeNormalize tEnv . methodType . snd <$> methods)
+      -- Derive anotation, print and sort
+      let derived = inlineFixpoints $ analyseMethods 0 gEnv methods
+      _ <- printAnnotation printDerived "Derived" derived
+      _ <- checkSort sortDerived dEnv "derived" derived
 
-      -- Generate the annotations     
-      let mAnn  = inlineFixpoints $ analyseMethods 0 gEnv methods
-      let simpl = eval dEnv mAnn
-      let fixed = solveFixpoints dEnv simpl
+      -- Simplify annotation, print and sort
+      let simplified = eval dEnv derived
+      _ <- printAnnotation printDerived "Simplified" simplified
+      _ <- checkSort sortSimplified dEnv "simplified" simplified
 
-      putStrLn $ "\n# Derived annotation: "
-      print mAnn
-      
-      -- Check if the resulting annotation is well-sroted
-      _ <- case sort dEnv mAnn of
-              Left  s -> do
-                putStrLn ""
-                putStrLn $ cleanTUP s
-                rsError $ "Wrong sort (mAnn)"
-              Right _ -> return ()
+      -- Calculate the fixpoint, print an sort
+      let fixpoint = solveFixpoints dEnv simplified
+      _ <- printAnnotation printFixpoint "Fixpoint" fixpoint
+      _ <- checkSort sortFixpoint dEnv "fixpoint" fixpoint
 
-      -- putStrLn $ "\n# Simplified: "
-      -- print simpl
-
-      -- Check if the simplfied annotation is well-sroted
-      _ <- case sort dEnv simpl of
-              Left  s -> do
-                putStrLn ""
-                putStrLn $ cleanTUP s
-                rsError $ "Wrong sort (simpl)"
-              Right _ -> return ()
-
-      -- Solve the fixpoints
-      -- putStrLn $ "\n# Fixpoint: "
-      -- print fixed 
-
-      -- Check if the fixpoint is well-sroted
-      _ <- case sort dEnv fixed of
-              Left  s -> do
-                putStrLn ""
-                putStrLn $ cleanTUP s
-                rsError $ "Wrong sort (fixed)"
-              Right _ -> return ()
-
-      -- Check if the sort did not change
-      _ <- case sort dEnv mAnn == sort dEnv simpl && sort dEnv fixed == sort dEnv simpl of
-              True  -> return ()
-              False -> rsError $ "Sort changed during evaluation"
 
       -- Update the global environment with the found annotations
-      let unpack = unsafeUnliftTuple fixed
-      let gEnv' = foldr (uncurry insertGlobal) gEnv $ zip (fst <$> methods) unpack
+      let unpacked = unsafeUnliftTuple fixpoint
+      let gEnv' = foldr (uncurry insertGlobal) gEnv $ zip (fst <$> methods) unpacked
+
       -- Save the annotation on the method
-      let methods' = map (\((name,Method a b c d e anns f g), ann) -> (name, Method a b c d e (MethodAnnotateRegionSize ann:anns) f g)) $ zip methods unpack
-      
-      -- Solve the fixpoints
-      -- putStrLn $ "\n# Locals: "
-      -- print $ solveFixpoints dEnv $ eval dEnv $ inlineFixpoints $ analyseMethods 1 gEnv' methods' 
-      
-      -- Compute the second pass
-      let localAnns = (unsafeUnliftTuple 
-                    . solveFixpoints dEnv
-                    . eval dEnv 
-                    $ analyseMethods 1 gEnv' methods')
+      let methods' = map (\((name,Method a b c d e anns f g), ann) -> (name, Method a b c d e (MethodAnnotateRegionSize ann:anns) f g)) $ zip methods unpacked
 
-      let effects = zipWith constrAdd (collectEffects <$> localAnns) (fixHigherOrderApplication <$> localAnns)
+      -- Derive again, but now with the local regions. Also print an sort.
+      let withLocals = (unsafeUnliftTuple 
+              . solveFixpoints dEnv
+              . eval dEnv 
+              $ analyseMethods 1 gEnv' methods')
+      _ <- printAnnotation printWithLocals "With locals" $ ATuple withLocals
+      _ <- checkSort sortWithLocals dEnv "withLocals" $ ATuple withLocals
 
-      -- Transform the program
+      -- Check if the sort did not change during evalutations (an between with/without locals)
+      _ <- checkAnnotationSorts checkSortsEq dEnv [derived,simplified,fixpoint,ATuple withLocals]
+
+
+      -- Extract effects and transform program
+      let effects = zipWith constrAdd (collectEffects <$> withLocals) (fixHigherOrderApplication <$> withLocals)
+      _ <- printAnnotation printEffects "Effects" $ ATuple $ AConstr <$> effects
+      
       let transformed = uncurry transform <$> zip effects (snd <$> methods')
       let emptyRegs   = collectEmptyRegs <$> transformed
       let cleaned     = uncurry remEmptyRegs <$> zip emptyRegs transformed
@@ -170,9 +183,6 @@ pipeline gEnv methods = do
       -- Count bounded and unbouned regions
       let finite   = sum $ length <$> filter (not . (== Infty) . snd) <$> filter (not . (== Region RegionGlobal) . fst) <$> M.toList <$> effects
       let infinite = (sum $ length <$> filter (not . (== Region RegionGlobal) . fst) <$> M.toList <$> effects) - finite 
-
-      -- putStrLn "\n#Effects:"
-      -- print $ effects
 
       return ((gEnv', finite, infinite), zip (fst <$> methods) cleaned)
 
@@ -194,7 +204,44 @@ fixHigherOrderApplication = flip go constrBot
         go (AFix  _ as) c = constrJoins $ flip go c <$> as
         go _ _ = constrBot
 
-----------------------------------------------------------------
+
+-- | Check the sort of an annotation
+checkSort :: Bool       -- ^ Debug flag (sort yes/no)
+          -> DataTypeEnv
+          -> String     -- ^ Annotation name
+          -> Annotation -- ^ Annotation
+          -> IO ()
+checkSort False _ _ _ = return ()
+checkSort True dEnv name ann =
+   case sort dEnv ann of
+     Left  s -> do
+       putStrLn ""
+       putStrLn $ cleanTUP s
+       rsError $ "# Wrong sort (" ++ name ++ ")"
+     Right _ -> return ()
+
+-- | Print the annotation depending on the debug flag
+printAnnotation :: Bool       -- ^ Debug flag (sort yes/no)
+                -> String     -- ^ Annotation name
+                -> Annotation -- ^ Annotation
+                -> IO ()
+printAnnotation False _ _ = return ()
+printAnnotation True name ann = 
+  do putStrLn $ "\n# " ++ name ++ ": " 
+     print ann 
+
+-- | Check if the sort did not change during evaluation
+checkAnnotationSorts :: Bool -- ^ Debug flag (check eq yes/no)
+                     -> DataTypeEnv -> [Annotation] -> IO ()
+checkAnnotationSorts False _    _  = return ()                   
+checkAnnotationSorts _     _    [] = return ()                   
+checkAnnotationSorts True  dEnv xs = 
+  let (s:ss) = sort dEnv <$> xs
+  in if all (s ==) ss
+     then return ()
+     else rsError "Sort changed during evaluation."                    
+
+----------------------------------------------------------
 -- Initial global environment
 ----------------------------------------------------------------
 
