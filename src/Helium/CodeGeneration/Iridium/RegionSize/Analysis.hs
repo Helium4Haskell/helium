@@ -56,23 +56,22 @@ deBruinSize = (*) 2 . length . rights
     Pass \= 0: Leave the global env as is
 -}
 type Pass = Int
-analyseMethods :: Pass ->  GlobalEnv -> [(Id,Method)] -> Annotation
+analyseMethods :: Pass ->  GlobalEnv -> [(Id,Method)] -> (Annotation, [Effect])
 analyseMethods pass gEnv methods =
-    let (gEnv',_)    = case pass of
-                          0 -> foldl makeFixVar (gEnv,0) methods
-                          _ -> (gEnv,0)
-        (anns,sorts) = unzip $ analyseMethod gEnv' <$> methods
-        fixpoints    = AFix sorts anns
+    let (gEnv',_) = case pass of
+                      0 -> foldl makeFixVar (gEnv,0) methods
+                      _ -> (gEnv,0)
+        (anns, effects, sorts) = unzip3 $ analyseMethod gEnv' <$> methods
     in case pass of 
-          0 -> annRemLocalRegs fixpoints
-          _ -> ATuple anns
-        where makeFixVar (env, i) (methodName, (Method _ _ args _ _ _ _ _)) =
-                    let fixIdx = mutaulRecursionFixIdx (deBruinSize args)
-                        env'   = updateGlobal methodName (AProj i $ AVar fixIdx) env
-                    in (env', i+1)
+          0 -> (annRemLocalRegs $ AFix sorts anns, effects)
+          _ -> (ATuple anns, effects)
+  where makeFixVar (env, i) (methodName, (Method _ _ args _ _ _ _ _)) =
+              let fixIdx = mutaulRecursionFixIdx (deBruinSize args)
+                  env'   = updateGlobal methodName (AProj i $ AVar fixIdx) env
+              in (env', i+1)
 
 -- | Analyse the effect and annotation of a method
-analyseMethod :: GlobalEnv -> (Id, Method) -> (Annotation, Sort)
+analyseMethod :: GlobalEnv -> (Id, Method) -> (Annotation, Effect, Sort)
 analyseMethod gEnv@(GlobalEnv tEnv _ dEnv) (_, method@(Method _ aRegs args rType rRegs _ fstBlock otherBlocks)) =
     let rEnv      = regEnvFromArgs (deBruinSize args) aRegs rRegs
         (lEnv,lAnns,lSrts)  = analyseLocals gEnv rEnv method
@@ -83,8 +82,10 @@ analyseMethod gEnv@(GlobalEnv tEnv _ dEnv) (_, method@(Method _ aRegs args rType
         -- Wrap body in fixpoint, quants and lambdas
         localFix = AProj 0 . AFix (bSrts ++ lSrts) $ bAnns ++ lAnns
         fAnn = wrapBody gEnv rType args localFix
-        
-    in ( fixZeroArity method $ ALam (regionVarsToSort aRegs) fAnn
+
+        (annotation, effect) = fixZeroArity method $ ALam (regionVarsToSort aRegs) fAnn
+    in ( annotation
+       , effect 
        , methodSortAssign tEnv dEnv method) 
 
 
@@ -131,16 +132,16 @@ regEnvFromArgs dbz aRegs rRegs = M.union (go (AnnVar $ aRegIdx dbz) aRegs) (go (
 {-| Fix problems arising from zero arity functions 
   Assigns the global regions to the return regions and additional regions. 
 -} 
-fixZeroArity :: Method -> Annotation -> Annotation 
+fixZeroArity :: Method -> Annotation -> (Annotation, Effect)
 fixZeroArity (Method _ aRegs args _ rRegs _ _ _) ann = 
   case length $ rights args of 
     0 -> let aplARegs = AApl ann $ regionVarsToGlobal aRegs 
              newQuantIndexes = reverse $ TVar <$> [0..(length $ lefts args)-1] 
              quants a = foldr (const AQuant) a (lefts args) 
              aplTypes = foldl AInstn aplARegs newQuantIndexes 
-             aplRRegs = AApl aplTypes $ regionVarsToGlobal rRegs 
-         in ALam SortUnit $ quants $ AProj 0 aplRRegs 
-    _ -> ann
+             aplRRegs = AApl aplTypes $ regionVarsToGlobal rRegs
+         in (ALam SortUnit $ quants $ AProj 0 aplRRegs, AProj 1 aplRRegs) 
+    _ -> (ann, botEffect)
 
 ----------------------------------------------------------------
 -- Gathering local variable annotations

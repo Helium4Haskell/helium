@@ -1,10 +1,10 @@
 cabal-version: 1.12
 
--- This file has been generated from package.yaml by hpack version 0.33.0.
+-- This file has been generated from package.yaml by hpack version 0.34.4.
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 2d43edad4e7307ac3dd4b86c696256f70062a93572e141888a4fac65df11d73c
+-- hash: d456abff31015a3751dc920a26cf141af3339349e72cc2da5ffee4a659f1aed6
 
 name:           helium
 version:        1.9
@@ -246,7 +246,8 @@ executable helium
       Paths_helium
   hs-source-dirs:
       src/commands/helium
-  default-extensions: FlexibleContexts
+  default-extensions:
+      FlexibleContexts
   build-depends:
       Top
     , base
@@ -273,7 +274,8 @@ executable heliumpath
       Paths_helium
   hs-source-dirs:
       src/commands/heliumpath
-  default-extensions: FlexibleContexts
+  default-extensions:
+      FlexibleContexts
   build-depends:
       Top
     , base
@@ -302,7 +304,8 @@ executable runhelium
   hs-source-dirs:
       src/commands/runhelium
       src/commands/texthint
-  default-extensions: FlexibleContexts
+  default-extensions:
+      FlexibleContexts
   build-depends:
       Top
     , base
@@ -330,7 +333,8 @@ executable texthint
       TextHint.ConfigFile
   hs-source-dirs:
       src/commands/texthint
-  default-extensions: FlexibleContexts
+  default-extensions:
+      FlexibleContexts
   build-depends:
       Top
     , base

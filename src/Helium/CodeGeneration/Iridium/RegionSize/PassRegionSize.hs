@@ -52,10 +52,10 @@ checkSortsEq    = True && debug
 printDerived,printSimplified,printFixpoint,printWithLocals,printEffects,printMethodName :: Bool
 printDerived    = False && debug
 printSimplified = False && debug
-printFixpoint   = False && debug
-printWithLocals = False && debug
-printEffects    = False && debug
-printMethodName = False && (printDerived || printSimplified || printFixpoint || printWithLocals || printEffects)
+printFixpoint   = True && debug
+printWithLocals = True && debug
+printEffects    = True && debug
+printMethodName = True && (printDerived || printSimplified || printFixpoint || printWithLocals || printEffects)
 
 -- Printing datatypes
 printDTInfo,printDTSorts,printDTRegions,printDTStructs,printDTDestructs :: Bool
@@ -117,6 +117,9 @@ pipeline gEnv methods = do
     if printMethodName then do
       putStrLn $ "\n# Analyse methods:\n" ++ (intercalate "\n" $ map (show.fst) methods)
       putStrLn $ "\n# Can derive: " ++ show canDerive ++ "\n" ++ (show $ typeNormalize tEnv . methodType . snd <$> methods)
+      print (and (not . isComplexDataTypeMethod dEnv . typeNormalize tEnv . methodType . snd <$> methods))
+      print ((typeNormalize tEnv . localType <$> concat (methodLocals False tEnv . snd <$> methods)))
+      print ((not . isComplexDataTypeMethod dEnv . typeNormalize tEnv . localType <$> concat (methodLocals False tEnv . snd <$> methods)))
     else return ()
 
     if not canDerive
@@ -128,7 +131,8 @@ pipeline gEnv methods = do
       return ((gEnv', 0, 0, 0), methods')
     else do
       -- Derive anotation, print and sort
-      let derived = inlineFixpoints $ analyseMethods 0 gEnv methods
+      let (ann, zeroingEffect) = analyseMethods 0 gEnv methods
+      let derived = inlineFixpoints ann
       _ <- printAnnotation printDerived "Derived" derived
       _ <- checkSort sortDerived dEnv "derived" derived
 
@@ -142,6 +146,8 @@ pipeline gEnv methods = do
       _ <- printAnnotation printFixpoint "Fixpoint" fixpoint
       _ <- checkSort sortFixpoint dEnv "fixpoint" fixpoint
 
+      -- Check if the sort did not change during evalutations
+      _ <- checkAnnotationSorts checkSortsEq dEnv [derived,simplified,fixpoint]
 
       -- Update the global environment with the found annotations
       let unpacked = unsafeUnliftTuple fixpoint
@@ -154,16 +160,16 @@ pipeline gEnv methods = do
       let withLocals = (unsafeUnliftTuple 
               . solveFixpoints dEnv
               . eval dEnv 
+              . fst
               $ analyseMethods 1 gEnv' methods')
       _ <- printAnnotation printWithLocals "With locals" $ ATuple withLocals
       _ <- checkSort sortWithLocals dEnv "withLocals" $ ATuple withLocals
 
-      -- Check if the sort did not change during evalutations (an between with/without locals)
-      _ <- checkAnnotationSorts checkSortsEq dEnv [derived,simplified,fixpoint,ATuple withLocals]
-
-
       -- Extract effects and transform program
-      let effects = zipWith constrAdd (collectEffects <$> withLocals) (fixHigherOrderApplication <$> withLocals)
+      let zeroingEffect'   = unAConstr . solveFixpoints dEnv . eval dEnv <$> zeroingEffect
+          annotationEffect = collectEffects <$> withLocals
+          higherOrderFix   = fixHigherOrderApplication <$> withLocals
+      let effects = (\(a,b,c) -> constrAdds [a,b,c]) <$> zip3 zeroingEffect' annotationEffect higherOrderFix
       _ <- printAnnotation printEffects "Effects" $ ATuple $ AConstr <$> effects
       
       let transformed = uncurry transform <$> zip effects (snd <$> methods')

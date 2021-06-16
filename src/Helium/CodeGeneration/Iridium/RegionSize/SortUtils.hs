@@ -109,9 +109,8 @@ declDataTypeSort typeEnv recEnv (BindingNonRecursive decl) =
   in unionlMap newSrts recEnv
 declDataTypeSort typeEnv recEnv (BindingRecursive decls) = 
   case length decls of
-    1234 -> declDataTypeSort typeEnv recEnv (BindingNonRecursive $ decls !! 0) 
     _ -> let newSrts = mapFromList $ zip (declarationName <$> decls) (repeat Nothing)
-          in unionlMap newSrts recEnv -- TODO: Mutrec datatypes
+         in unionlMap newSrts recEnv -- TODO: Mutrec datatypes
 
 dataTypeSort :: TypeEnvironment -> DataTypeEnv -> DataType -> Sort
 dataTypeSort tEnv dEnv dt@(DataType structs) = 
@@ -133,9 +132,8 @@ declDataTypeRegions typeEnv recEnv (BindingNonRecursive decl) =
   in unionlMap newSrts recEnv
 declDataTypeRegions typeEnv recEnv (BindingRecursive decls) = 
   case length decls of
-    1234 -> declDataTypeRegions typeEnv recEnv (BindingNonRecursive $ decls !! 0) 
     _ -> let newSrts = mapFromList $ zip (declarationName <$> decls) (repeat Nothing)
-          in unionlMap newSrts recEnv -- TODO: Mutrec datatypes
+         in unionlMap newSrts recEnv -- TODO: Mutrec datatypes
 
 dataTypeRegions :: TypeEnvironment -> DataTypeEnv -> DataType -> Sort
 dataTypeRegions tEnv dEnv dt@(DataType structs) = 

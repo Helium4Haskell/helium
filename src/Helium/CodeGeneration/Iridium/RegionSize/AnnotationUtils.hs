@@ -103,7 +103,7 @@ isAdd _ = False
 
 unAConstr :: Annotation -> Constr
 unAConstr (AConstr c) = c
-unAConstr _ = rsError "unAConstr of non-constr"
+unAConstr a = rsError $ "unAConstr of non-constr:" ++ show a
 
 unAAdd :: Annotation -> (Annotation, Annotation)
 unAAdd (AAdd a b) = (a,b)

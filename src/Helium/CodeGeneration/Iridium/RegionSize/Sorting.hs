@@ -65,16 +65,20 @@ sort dEnv = sort' (-1,-1) M.empty
                    Right s' -> Left $ "Invalid fixpoint sort" 
                                    ++ "\n  Sort: " ++ showSort (snd d) s'
                                    ++ "\n  Annotation:\n\n" ++ (indent "    " $ annShow' d (AFix s a)) ++ "\n"
+                                   
           -- Check if both operands have the same sort
           sort' d gamma (AJoin  a b) = 
               let sortA = sort' d gamma a
                   sortB = sort' d gamma b
               in if sortA == sortB
                  then sortA
-                 else Left $ "Sorting: Join of annotations with different sort."
-                          ++ "\n  Sort A: " ++ show sortA 
-                          ++ "\n  Sort B: " ++ show sortB
-                          ++ "\n  Annotation:\n\n" ++ (indent "    " $ annShow' d (AJoin  a b)) ++ "\n"
+                 else case (sortA, sortB) of
+                     (Left errA,_) -> Left errA
+                     (_,Left errB) -> Left errB
+                     (_,_) -> Left $ "Sorting: Join of annotations with different sort."
+                                  ++ "\n  Sort A: " ++ show sortA 
+                                  ++ "\n  Sort B: " ++ show sortB
+                                  ++ "\n  Annotation:\n\n" ++ (indent "    " $ annShow' d (AJoin  a b)) ++ "\n"
 
           -- Lambdas & applications
           sort' (dL,dQ) gamma (ALam   s a) = 
