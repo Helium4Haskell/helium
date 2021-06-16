@@ -108,6 +108,7 @@ pipeline gEnv methods = do
       putStrLn $ "\n# Derived annotation: "
       print mAnn
       
+      -- Check if the resulting annotation is well-sroted
       _ <- case sort dEnv mAnn of
               Left  s -> do
                 putStrLn ""
@@ -117,8 +118,8 @@ pipeline gEnv methods = do
 
       -- putStrLn $ "\n# Simplified: "
       -- print simpl
-      -- Check if the resulting annotation is well-sroted
 
+      -- Check if the simplfied annotation is well-sroted
       _ <- case sort dEnv simpl of
               Left  s -> do
                 putStrLn ""
@@ -130,7 +131,7 @@ pipeline gEnv methods = do
       -- putStrLn $ "\n# Fixpoint: "
       -- print fixed 
 
-      -- Check if the resulting annotation is well-sroted
+      -- Check if the fixpoint is well-sroted
       _ <- case sort dEnv fixed of
               Left  s -> do
                 putStrLn ""
@@ -138,12 +139,16 @@ pipeline gEnv methods = do
                 rsError $ "Wrong sort (fixed)"
               Right _ -> return ()
 
+      -- Check if the sort did not change
+      _ <- case sort dEnv mAnn == sort dEnv simpl && sort dEnv fixed == sort dEnv simpl of
+              True  -> return ()
+              False -> rsError $ "Sort changed during evaluation"
+
       -- Update the global environment with the found annotations
       let unpack = unsafeUnliftTuple fixed
       let gEnv' = foldr (uncurry insertGlobal) gEnv $ zip (fst <$> methods) unpack
       -- Save the annotation on the method
       let methods' = map (\((name,Method a b c d e anns f g), ann) -> (name, Method a b c d e (MethodAnnotateRegionSize ann:anns) f g)) $ zip methods unpack
-      
       
       -- Solve the fixpoints
       -- putStrLn $ "\n# Locals: "
