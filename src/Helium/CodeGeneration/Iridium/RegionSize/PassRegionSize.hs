@@ -35,12 +35,13 @@ import Text.Printf
 ----------------------------------------------------------------
 -- Debug flags
 ----------------------------------------------------------------
-debug,sortDerived,sortSimplified,sortFixpoint,sortWithLocals,checkSortsEq,printDTSorts,printDerived,printSimplified,printFixpoint,printWithLocals,printEffects,printMethodName :: Bool
 
 -- Global enable/disable
+debug :: Bool
 debug           = True
 
 -- Sorting of annotations
+sortDerived,sortSimplified,sortFixpoint,sortWithLocals,checkSortsEq :: Bool
 sortDerived     = True && debug
 sortSimplified  = True && debug
 sortFixpoint    = True && debug
@@ -48,13 +49,21 @@ sortWithLocals  = True && debug
 checkSortsEq    = True && debug
 
 -- Printing of annotations/sorts
-printDTSorts    = False && debug
+printDerived,printSimplified,printFixpoint,printWithLocals,printEffects,printMethodName :: Bool
 printDerived    = False && debug
 printSimplified = False && debug
 printFixpoint   = False && debug
 printWithLocals = False && debug
 printEffects    = False && debug
-printMethodName = True && (printDerived || printSimplified || printFixpoint || printWithLocals || printEffects)
+printMethodName = False && (printDerived || printSimplified || printFixpoint || printWithLocals || printEffects)
+
+-- Printing datatypes
+printDTInfo,printDTSorts,printDTRegions,printDTStructs,printDTDestructs :: Bool
+printDTInfo      = False && debug
+printDTSorts     = True && printDTInfo
+printDTRegions   = True && printDTInfo
+printDTStructs   = True && printDTInfo
+printDTDestructs = True && printDTInfo
 
 ----------------------------------------------------------------
 -- Interface
@@ -63,37 +72,17 @@ printMethodName = True && (printDerived || printSimplified || printFixpoint || p
 -- | Infer the size of regions
 passRegionSize :: NameSupply -> Module -> IO Module
 passRegionSize _ m = do
-    start <- if debug then do
-      putStrLn "=================================================================="
-      print (moduleName m)
-      putStrLn "=================================================================="
-      getCPUTime 
-    else return 0
+    start <- getCPUTime 
 
     -- Construct the global environment for the module
     let gEnv = initialGEnv m
-
-    -- Print the derived datatype sorts
-    if printDTSorts then do
-      putStrLn . intercalate "\n" $ show <$> (listFromMap . dtSorts $ globDataEnv gEnv)
-      putStrLn "=================================================================="
-      putStrLn . intercalate "\n" $ show <$> (listFromMap . dtRegions $ globDataEnv gEnv)
-      putStrLn "=================================================================="
-      putStrLn . intercalate "\n" $ show <$> (listFromMap . dtStructs $ globDataEnv gEnv)
-    else return ()
+    printDataTypes gEnv
 
     -- Run the analysis on the binding groups
     let groups = methodBindingGroups $ moduleMethods m
-    ((_, finite, infinite), methods) <- mapAccumLM analyseBindingGroup (gEnv,0,0) groups
+    (statistics, methods) <- mapAccumLM analyseBindingGroup (gEnv,0,0,0) groups
 
-    -- Print CPU time and region metrics
-    if debug then do
-      putStrLn $ "Finite:   " ++ show finite
-      putStrLn $ "Infinite: " ++ show infinite
-      end <- getCPUTime
-      let diff = ((fromIntegral (end - start)) :: Double) / ((10::Double)^(12::Int))
-      printf "Computation time: %0.3f sec\n" diff 
-    else return ()
+    printMetrics start statistics 
 
     -- Return the updated methods
     return m{moduleMethods = concat methods}
@@ -102,23 +91,23 @@ passRegionSize _ m = do
 {- Analyses a binding group of a single non-recursive function
    or a group of (mutual) recursive functions.
 -} 
-analyseBindingGroup :: (GlobalEnv, Int, Int) -> BindingGroup Method -> IO ((GlobalEnv, Int, Int), [Declaration Method])
+analyseBindingGroup :: (GlobalEnv, Int, Int, Int) -> BindingGroup Method -> IO ((GlobalEnv, Int, Int, Int), [Declaration Method])
 -- Recurisve bindings (call pipeline with the list of recursive methods)
-analyseBindingGroup (gEnv, finite, infinite) (BindingRecursive bindings) = do
-  let methods = map (\(Declaration methodName _ _ _ method) -> (methodName, method)) bindings
-  ((gEnv', finite2, infinite2), transformeds) <- pipeline gEnv methods
+analyseBindingGroup (gEnv, finite, infinite, zero) (BindingRecursive bindings) = do
+  let methods = (\(Declaration methodName _ _ _ method) -> (methodName, method)) <$> bindings
+  ((gEnv', finite2, infinite2,zero2), transformeds) <- pipeline gEnv methods
   let bindings' = map (\(decl, (_,transformed)) -> decl{declarationValue=transformed}) $ zip bindings transformeds
-  return ((gEnv', finite+finite2, infinite+infinite2)
+  return ((gEnv', finite+finite2, infinite+infinite2, zero+zero2)
          , bindings')
 -- Non recursive binding (call pipeline with singleton list)
-analyseBindingGroup (gEnv, finite, infinite) (BindingNonRecursive decl@(Declaration methodName _ _ _ method)) = do
-  ((gEnv', finite2, infinite2), [(_,transformed)]) <- pipeline gEnv [(methodName,method)]
-  return ((gEnv', finite+finite2, infinite+infinite2)
+analyseBindingGroup (gEnv, finite, infinite, zero) (BindingNonRecursive decl@(Declaration methodName _ _ _ method)) = do
+  ((gEnv', finite2, infinite2,zero2), [(_,transformed)]) <- pipeline gEnv [(methodName,method)]
+  return ((gEnv', finite+finite2, infinite+infinite2, zero+zero2)
          , [decl{ declarationValue = transformed }])
 
 
 -- | Run the analysis on a group of methods
-pipeline ::  GlobalEnv -> [(Id,Method)] -> IO ((GlobalEnv, Int, Int), [(Id,Method)])
+pipeline ::  GlobalEnv -> [(Id,Method)] -> IO ((GlobalEnv, Int, Int, Int), [(Id,Method)])
 pipeline gEnv methods = do
     let dEnv = globDataEnv gEnv
         tEnv = globTypeEnv gEnv
@@ -136,7 +125,7 @@ pipeline gEnv methods = do
       let top = eval dEnv . flip ATop constrBot . methodSortAssign tEnv dEnv . snd <$> methods
       let gEnv' = foldr (uncurry insertGlobal) gEnv $ zip (fst <$> methods) top
       let methods' = map (\((name,Method a b c d e anns f g), ann) -> (name, Method a b c d e (MethodAnnotateRegionSize ann:anns) f g)) $ zip methods top
-      return ((gEnv', 0, 0), methods')
+      return ((gEnv', 0, 0, 0), methods')
     else do
       -- Derive anotation, print and sort
       let derived = inlineFixpoints $ analyseMethods 0 gEnv methods
@@ -184,15 +173,16 @@ pipeline gEnv methods = do
       -- Count bounded and unbouned regions
       let finite   = sum $ length <$> filter (not . (== Infty) . snd) <$> filter (not . (== Region RegionGlobal) . fst) <$> M.toList <$> effects
       let infinite = (sum $ length <$> filter (not . (== Region RegionGlobal) . fst) <$> M.toList <$> effects) - finite 
+      let zero     = length $ concat emptyRegs 
 
-      return ((gEnv', finite, infinite), zip (fst <$> methods) cleaned)
+      return ((gEnv', finite, infinite, zero), zip (fst <$> methods) cleaned)
 
 {-| When a local region is applied to a higher order function
   we must make said region unbounded. We cannot know the true bound.
   This could also be corrected with a change in region inference.
 -}
 fixHigherOrderApplication :: Annotation -> Constr
-fixHigherOrderApplication = flip go constrBot
+fixHigherOrderApplication = constrRemVarRegs . flip go constrBot
   where go (AVar   _  ) c = c
         go (AApl   f x) c = go f . constrJoins $ c : (constrInfty <$> gatherLocals x)
         go (ALam   _ a) c = go a c
@@ -205,46 +195,9 @@ fixHigherOrderApplication = flip go constrBot
         go (AFix  _ as) c = constrJoins $ flip go c <$> as
         go _ _ = constrBot
 
-
--- | Check the sort of an annotation
-checkSort :: Bool       -- ^ Debug flag (sort yes/no)
-          -> DataTypeEnv
-          -> String     -- ^ Annotation name
-          -> Annotation -- ^ Annotation
-          -> IO ()
-checkSort False _ _ _ = return ()
-checkSort True dEnv name ann =
-   case sort dEnv ann of
-     Left  s -> do
-       putStrLn ""
-       putStrLn $ cleanTUP s
-       rsError $ "# Wrong sort (" ++ name ++ ")"
-     Right _ -> return ()
-
--- | Print the annotation depending on the debug flag
-printAnnotation :: Bool       -- ^ Debug flag (sort yes/no)
-                -> String     -- ^ Annotation name
-                -> Annotation -- ^ Annotation
-                -> IO ()
-printAnnotation False _ _ = return ()
-printAnnotation True name ann = 
-  do putStrLn $ "\n# " ++ name ++ ": " 
-     print ann 
-
--- | Check if the sort did not change during evaluation
-checkAnnotationSorts :: Bool -- ^ Debug flag (check eq yes/no)
-                     -> DataTypeEnv -> [Annotation] -> IO ()
-checkAnnotationSorts False _    _  = return ()                   
-checkAnnotationSorts _     _    [] = return ()                   
-checkAnnotationSorts True  dEnv xs = 
-  let (s:ss) = sort dEnv <$> xs
-  in if all (s ==) ss
-     then return ()
-     else rsError "Sort changed during evaluation."                    
-
 -- | Add the derived annotation to the methods annotations
 methodAddRegionSizeAnnotation :: (Id,Method) -> Annotation -> (Id,Method)
-methodAddRegionSizeAnnotation (name,method) ann = (name, methodAddAnnotation (MethodAnnotateRegionSize ann) method)
+methodAddRegionSizeAnnotation (name,method) ann = (name, methodAddAnnotation (MethodAnnotateRegionSize ann) method)     
 
 ----------------------------------------------------------
 -- Initial global environment
@@ -325,3 +278,90 @@ isComplexDataTypeMethod dEnv (TCon (TConDataType name)) = case name `lookupDataT
 isComplexDataTypeMethod dEnv (TCon (TConTypeClassDictionary name)) = case (dictionaryDataTypeName name) `lookupDataType` dEnv of
                                                                  Nothing -> True
                                                                  Just _  -> False
+
+----------------------------------------------------------------
+-- Sort checks
+----------------------------------------------------------------
+
+-- | Check the sort of an annotation
+checkSort :: Bool       -- ^ Debug flag (sort yes/no)
+          -> DataTypeEnv
+          -> String     -- ^ Annotation name
+          -> Annotation -- ^ Annotation
+          -> IO ()
+checkSort False _ _ _ = return ()
+checkSort True dEnv name ann =
+   case sort dEnv ann of
+     Left  s -> do
+       putStrLn ""
+       putStrLn $ cleanTUP s
+       rsError $ "# Wrong sort (" ++ name ++ ")"
+     Right _ -> return ()
+
+-- | Check if the sort did not change during evaluation
+checkAnnotationSorts :: Bool -- ^ Debug flag (check eq yes/no)
+                     -> DataTypeEnv -> [Annotation] -> IO ()
+checkAnnotationSorts False _    _  = return ()                   
+checkAnnotationSorts _     _    [] = return ()                   
+checkAnnotationSorts True  dEnv xs = 
+  let (s:ss) = sort dEnv <$> xs
+  in if all (s ==) ss
+     then return ()
+     else rsError "Sort changed during evaluation."           
+
+----------------------------------------------------------------
+-- Initial global environment
+----------------------------------------------------------------
+
+-- | Print the annotation depending on the debug flag
+printAnnotation :: Bool       -- ^ Debug flag (sort yes/no)
+                -> String     -- ^ Annotation name
+                -> Annotation -- ^ Annotation
+                -> IO ()
+printAnnotation False _ _ = return ()
+printAnnotation True name ann = 
+  do putStrLn $ "\n# " ++ name ++ ": " 
+     print ann 
+
+-- | Print out the derive datatypes sorts and annotations
+printDataTypes :: GlobalEnv -> IO ()
+printDataTypes gEnv = do
+    if printDTSorts then do
+      putStrLn "=================================================================="
+      putStrLn "Sorts:"
+      putStrLn "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
+      putStrLn . intercalate "\n" $ show <$> (listFromMap . dtSorts $ globDataEnv gEnv)
+    else return ()
+    if printDTRegions then do
+      putStrLn "=================================================================="
+      putStrLn "Regions:"
+      putStrLn "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
+      putStrLn . intercalate "\n" $ show <$> (listFromMap . dtRegions $ globDataEnv gEnv)
+    else return ()
+    if printDTStructs then do
+      putStrLn "=================================================================="
+      putStrLn "Structors:"
+      putStrLn "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
+      putStrLn . intercalate "\n" $ show <$> (listFromMap . dtStructs $ globDataEnv gEnv)
+    else return ()
+    if printDTDestructs then do
+      putStrLn "=================================================================="
+      putStrLn "Destructors:"
+      putStrLn "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
+      putStrLn . intercalate "\n" $ show <$> (listFromMap . dtDestructs $ globDataEnv gEnv)
+      putStrLn "=================================================================="
+    else return ()
+    return ()
+
+-- | Print out the collected metrics for the module
+printMetrics :: Integer -> (GlobalEnv, Int, Int, Int) -> IO ()
+printMetrics start (_, finite, infinite, zero) =
+    -- Print CPU time and region metrics
+    if debug then do
+      putStrLn $ "Finite:   " ++ show finite
+      putStrLn $ "Infinite: " ++ show infinite
+      putStrLn $ "Zero:     " ++ show zero
+      end <- getCPUTime
+      let diff = ((fromIntegral (end - start)) :: Double) / ((10::Double)^(12::Int))
+      printf "Computation time: %0.3f sec\n" diff 
+    else return ()
