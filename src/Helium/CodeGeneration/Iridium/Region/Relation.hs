@@ -271,7 +271,8 @@ relationCollapseBottom canCollapse vars relation = case partitionEithers $ map f
   where
     f :: RegionVar -> Either (RegionVar, RegionVar) RegionVar
     f x
-      | [] <- outlivesSet relation x = Left (x, RegionBottom)
+      | canCollapse x
+      , [] <- outlivesSet relation x = Left (x, RegionBottom)
       | otherwise = Right x
 
 -- 'canCollapse' and 'vars' should represent the same set of variables:
