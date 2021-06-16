@@ -117,9 +117,6 @@ pipeline gEnv methods = do
     if printMethodName then do
       putStrLn $ "\n# Analyse methods:\n" ++ (intercalate "\n" $ map (show.fst) methods)
       putStrLn $ "\n# Can derive: " ++ show canDerive ++ "\n" ++ (show $ typeNormalize tEnv . methodType . snd <$> methods)
-      print (and (not . isComplexDataTypeMethod dEnv . typeNormalize tEnv . methodType . snd <$> methods))
-      print ((typeNormalize tEnv . localType <$> concat (methodLocals False tEnv . snd <$> methods)))
-      print ((not . isComplexDataTypeMethod dEnv . typeNormalize tEnv . localType <$> concat (methodLocals False tEnv . snd <$> methods)))
     else return ()
 
     if not canDerive

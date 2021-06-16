@@ -96,7 +96,7 @@ top SortUnit          _ = AUnit
 top SortConstr        c = AConstr c 
 top (SortTuple ss   ) c = ATuple  $ eval emptyDEnv . flip ATop c <$> ss
 top (SortQuant s    ) c = AQuant  . eval emptyDEnv $ ATop s c
-top (SortLam   s1 s2) c = ALam s1 . eval emptyDEnv $ ATop s2 $ constrAdd (constrWeaken 0 c) (constrInfty $ AnnVar 0)
+top (SortLam   s1 s2) c = ALam s1 . eval emptyDEnv $ ATop s2 $ constrAdd (constrWeaken 1 c) (constrInfty $ AnnVar 0)
 top s c = ATop s c
 
 
