@@ -222,13 +222,14 @@ localsOfMatch (Envs gEnv rEnv lEnv) local (MatchTargetTuple n) _ ids next =
         lEnv'    = foldl (flip $ uncurry insertMaybeId) lEnv (zip ids newVars)
     in localsOfInstr (Envs gEnv rEnv lEnv') next
 -- Datatypes
-localsOfMatch (Envs gEnv rEnv lEnv) local (MatchTargetConstructor struct) _ ids next =
+localsOfMatch (Envs (GlobalEnv tEnv fEnv dEnv) rEnv lEnv) local (MatchTargetConstructor struct) tys ids next =
     let dataVar = lookupLocalAnn local lEnv
-        destruc = constructorName struct `lookupDestruct` globDataEnv gEnv
-        newVars = map (flip AApl dataVar) destruc
+        destrcs = constructorName struct `lookupDestruct` dEnv
+        deInsts = flip (dataTypeApplyArgs tEnv lEnv) (map Left tys) <$> destrcs
         -- Insert matched vars into lEnv
+        newVars = flip AApl dataVar <$> deInsts
         lEnv'   = foldl (flip $ uncurry insertMaybeId) lEnv (zip ids newVars)
-    in localsOfInstr (Envs gEnv rEnv lEnv') next 
+    in localsOfInstr (Envs (GlobalEnv tEnv fEnv dEnv) rEnv lEnv') next 
 
 ----------------------------------------------------------------
 -- Analysing the effect of a method

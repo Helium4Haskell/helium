@@ -81,7 +81,7 @@ makeDataTypeConstructors (Just dtSort) dt@(DataType structs) = mapWithIndex make
               -- Wrap with lambdas
               strctLam = foldr (\i -> ALam (structSrt !! i)) strctTup [0 .. size-1]
               -- Wrap with quantifications
-              strctAnn = foldr (const AQuant) strctLam (dataTypeQuantors dt)
+              strctAnn = wrapDataTypeQuants dt strctLam
           in (declarationName strctDecl, strctAnn)
 
 -- | Remove sort quantifications
@@ -93,15 +93,18 @@ sortRemoveQuants s = s
 -- | Make destructor annotations
 makeDataTypeDestructors :: Maybe Sort -> DataType -> [(Id, [Annotation])]
 makeDataTypeDestructors Nothing (DataType _) = [] 
-makeDataTypeDestructors (Just dtSort) (DataType structs) =
+makeDataTypeDestructors (Just dtSort) dt@(DataType structs) =
     mapWithIndex makeDestructorAnn structs
   where 
+    dtSort' = sortRemoveQuants dtSort
+
     makeDestructorAnn :: Int -> Declaration DataTypeConstructorDeclaration -> (Id,[Annotation])
     makeDestructorAnn idx strctDecl =
         let size = structorSize strctDecl
             -- Project on elements of constructor
-            destrctAnn = (\i -> ALam dtSort . AProj i . AProj idx $ AVar 0) <$> [0 .. size-1]  
-        in (declarationName strctDecl, destrctAnn)
+            destrctAnn = (\i -> ALam dtSort' . AProj i . AProj idx $ AVar 0) <$> [0 .. size-1]  
+            destrctQnt = wrapDataTypeQuants dt <$> destrctAnn
+        in (declarationName strctDecl, destrctQnt)
 
 ----------------------------------------------------------------
 -- Data type utilitiy functions
@@ -111,3 +114,7 @@ structorSize :: Declaration DataTypeConstructorDeclaration -> Int
 structorSize (Declaration _ _ _ _ (DataTypeConstructorDeclaration ty _)) =
     let (FunctionType args _) = extractFunctionTypeNoSynonyms ty 
     in length $ rights args
+
+-- | Wrap an annotation in the quantifications for the corresponding datatype
+wrapDataTypeQuants :: DataType -> Annotation -> Annotation 
+wrapDataTypeQuants dt strctLam = foldr (const AQuant) strctLam (dataTypeQuantors dt)

@@ -54,8 +54,8 @@ passRegionSize _ m = do
     putStrLn $ "Infinite: " ++ show infinite
 
     end <- getCPUTime
-    let diff = ((fromIntegral (end - start)) :: Double) / (10^12)
-    printf "Computation time: %0.3f sec\n" diff
+    let diff = ((fromIntegral (end - start)) :: Double) 
+    printf "Computation time: %0.3f sec\n" (diff / (10^12))
 
     return m{moduleMethods = concat methods}
 
@@ -97,20 +97,18 @@ pipeline gEnv methods = do
       let methods' = map (\((name,Method a b c d e anns f g), ann) -> (name, Method a b c d e (MethodAnnotateRegionSize ann:anns) f g)) $ zip methods top
       return ((gEnv', 0, 0), methods')
     else do
-      -- putStrLn $ "\n# Analyse methods:\n" ++ (intercalate "\n" $ map (show.fst) methods)
+      putStrLn $ "\n# Analyse methods:\n" ++ (intercalate "\n" $ map (show.fst) methods)
       -- putStrLn $ "\n# Can derive: " ++ show canDerive ++ "\n" ++ (show $ typeNormalize tEnv . methodType . snd <$> methods)
 
       -- Generate the annotations     
       let mAnn  = inlineFixpoints $ analyseMethods 0 gEnv methods
-
-      
       let simpl = eval dEnv mAnn
       let fixed = solveFixpoints dEnv simpl
 
-      -- putStrLn $ "\n# Derived annotation: "
-      -- print mAnn
+      putStrLn $ "\n# Derived annotation: "
+      print mAnn
       
-      _ <- case sort dEnv simpl of
+      _ <- case sort dEnv mAnn of
               Left  s -> do
                 putStrLn ""
                 putStrLn $ cleanTUP s
