@@ -83,7 +83,7 @@ analyseMethod gEnv@(GlobalEnv tEnv _ dEnv) (_, method@(Method _ aRegs args rType
         localFix = AProj 0 . AFix (bSrts ++ lSrts) $ bAnns ++ lAnns
         fAnn = wrapBody gEnv rType args localFix
 
-        (annotation, effect) = fixZeroArity method $ ALam (regionVarsToSort aRegs) fAnn
+        (annotation, effect) = fixZeroArity method $ ALam (regionVarsToSort aRegs) fAnn `rsInfo` (deSymbol $ show aRegs)
     in ( annotation
        , effect 
        , methodSortAssign tEnv dEnv method) 

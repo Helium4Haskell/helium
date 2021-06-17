@@ -83,7 +83,10 @@ instantiate _ a t = AInstn a t
 -- | Only project if subannotation has been evaluated to a tuple
 project :: DataTypeEnv -> Annotation -> Int -> Annotation -> Annotation 
 project _    tmp idx (ATuple as) | length as > idx = as !! idx
-                                 | otherwise       = rsError $ "Projection-index out of bounds\n Idx: " ++ show idx ++ "\n Annotation: " ++ (show $ ATuple as) ++ "\n\n" ++ (show tmp)                         
+                                 | otherwise       = rsError $ "Projection-index out of bounds"
+                                                            ++ "\n  Idx: " ++ show idx 
+                                                            ++ "\n  Annotation: " ++ (deSymbol $ show $ ATuple as) 
+                                                            ++ "\n\n" ++ (deSymbol $ show tmp)                         
 -- Moving a join outwards
 project dEnv _   idx (AJoin a b) = eval dEnv . joinSort $ AProj idx <$> joinCollect (AJoin a b) 
 -- Cannot eval
@@ -172,7 +175,9 @@ regVarSubst' d ann c = constrAdds $ (constrStrengthenN d c'):(constrWeaken d <$>
         evalReg (ATuple as)           = (ATuple $ evalReg <$> as) 
         evalReg (AProj i a) = case evalReg a of  
                                   ATuple as | i < length as -> as !! i 
-                                            | otherwise     -> rsError $ "Constraint index projection out of bounds" 
+                                            | otherwise     -> rsError $ "Constraint index projection out of bounds: " 
+                                                                      ++ "\nIndex: " ++ show i
+                                                                      ++ "\nTuple: " ++ show a  
                                   _ -> AProj i a
         evalReg a = rsError $ "Illigal annotation for a constraint index: " ++ show a 
  

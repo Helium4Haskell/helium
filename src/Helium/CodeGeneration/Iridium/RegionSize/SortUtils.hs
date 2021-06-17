@@ -57,8 +57,8 @@ funSort dEnv t1 t2 = SortLam (sortAssign dEnv t1)
 sortAssignDT :: DataTypeEnv -> Id -> [Type] -> Sort
 sortAssignDT dEnv name ts = 
     case name `lookupDataType` dEnv of
-        Nothing -> SortUnit
-        Just s  -> foldl (flip $ sortInstantiate dEnv) s ts
+        Complex  _ -> SortUnit
+        Analyzed s -> foldl (flip $ sortInstantiate dEnv) s ts
 
 ----------------------------------------------------------------
 -- Region assignment
@@ -93,24 +93,25 @@ regionAssign' _    ts t = rsError $ "regionAssign: No pattern match: " ++ rsShow
 regionAssignDT :: DataTypeEnv -> Id -> [Type] -> Sort
 regionAssignDT dEnv name ts = 
     case name `lookupDataTypeRegs` dEnv of
-        Nothing -> SortUnit
-        Just s  -> foldl (flip $ sortInstantiate dEnv) s ts
+        Complex  _ -> SortMonoRegion
+        Analyzed s -> foldl (flip $ sortInstantiate dEnv) s ts
 
 ----------------------------------------------------------------
 -- Data type sort discovery
 ----------------------------------------------------------------
 
 -- | Find sort for datatype
-declDataTypeSort :: TypeEnvironment -> IdMap (Maybe Sort) -> BindingGroup DataType -> IdMap (Maybe Sort)
+declDataTypeSort :: TypeEnvironment -> IdMap DataSort -> BindingGroup DataType -> IdMap DataSort
 declDataTypeSort typeEnv recEnv (BindingNonRecursive decl) = 
-  let dEnv    = DataTypeEnv recEnv emptyMap emptyMap emptyMap
+  let dEnv    = DataTypeEnv recEnv recEnv emptyMap emptyMap
       newSrts = mapFromList [(declarationName decl
-                             ,Just $ dataTypeSort typeEnv dEnv $ declarationValue decl)]
+                             ,Analyzed $ dataTypeSort typeEnv dEnv $ declarationValue decl)]
   in unionlMap newSrts recEnv
 declDataTypeSort typeEnv recEnv (BindingRecursive decls) = 
-  case length decls of
-    _ -> let newSrts = mapFromList $ zip (declarationName <$> decls) (repeat Nothing)
-         in unionlMap newSrts recEnv -- TODO: Mutrec datatypes
+  let dEnv     = DataTypeEnv recEnv recEnv emptyMap emptyMap
+      groupSrt = Complex . SortTuple $ dataTypeSort typeEnv dEnv . declarationValue <$> decls
+      newSrts  = mapFromList $ zip (declarationName <$> decls) (repeat groupSrt)
+  in unionlMap newSrts recEnv
 
 dataTypeSort :: TypeEnvironment -> DataTypeEnv -> DataType -> Sort
 dataTypeSort tEnv dEnv dt@(DataType structs) = 
@@ -124,16 +125,17 @@ dataStructSort tEnv dEnv (Declaration _ _ _ _ (DataTypeConstructorDeclaration ty
 
 
 -- | Find region assignment for datatype
-declDataTypeRegions :: TypeEnvironment -> IdMap (Maybe Sort) -> BindingGroup DataType -> IdMap (Maybe Sort)
+declDataTypeRegions :: TypeEnvironment -> IdMap DataSort -> BindingGroup DataType -> IdMap DataSort
 declDataTypeRegions typeEnv recEnv (BindingNonRecursive decl) = 
-  let dEnv    = DataTypeEnv emptyMap recEnv emptyMap emptyMap
+  let dEnv    = DataTypeEnv recEnv recEnv emptyMap emptyMap
       newSrts = mapFromList [(declarationName decl
-                             ,Just $ dataTypeRegions typeEnv dEnv $ declarationValue decl)]
+                             ,Analyzed $ dataTypeRegions typeEnv dEnv $ declarationValue decl)]
   in unionlMap newSrts recEnv
 declDataTypeRegions typeEnv recEnv (BindingRecursive decls) = 
-  case length decls of
-    _ -> let newSrts = mapFromList $ zip (declarationName <$> decls) (repeat Nothing)
-         in unionlMap newSrts recEnv -- TODO: Mutrec datatypes
+  let dEnv     = DataTypeEnv recEnv recEnv emptyMap emptyMap
+      groupSrt = Complex . SortTuple $ dataTypeRegions typeEnv dEnv . declarationValue <$> decls
+      newSrts  = mapFromList $ zip (declarationName <$> decls) (repeat groupSrt)
+  in unionlMap newSrts recEnv
 
 dataTypeRegions :: TypeEnvironment -> DataTypeEnv -> DataType -> Sort
 dataTypeRegions tEnv dEnv dt@(DataType structs) = 
@@ -165,7 +167,7 @@ dataStructRegions tEnv dEnv (Declaration _ _ _ _ (DataTypeConstructorDeclaration
 -- | Instatiate a type argument, sort should start wit SortQuant
 sortInstantiate :: DataTypeEnv -> Type -> Sort -> Sort
 sortInstantiate dEnv t (SortQuant s) = sortSubstitute dEnv 0 t s
-sortInstantiate _    _ s = rsError $ "Tried to instantiate a sort that does not start with SortQuant\nSort:" ++ show s
+sortInstantiate _    _ s = rsError $ "sortInstantiate: Tried to instantiate a sort that does not start with SortQuant\nSort:" ++ deSymbol (show s)
 
 -- | Instatiate a quantified type in a sort
 sortSubstitute :: DataTypeEnv -> Int -> Type -> Sort -> Sort
@@ -206,12 +208,13 @@ sortWeaken n = sortReIndex (weakenIdx n) (-1)
 
 {-| Evaluate if a sort is a region
 For sort tuples we recurse into the first element.
+The SortUnit is not considered a region sort
 A sort unit is never a region (can only occur in last element of SortTuple, which we do not check)
 -}
 sortIsRegion :: Sort -> Bool
 sortIsRegion SortMonoRegion       = True
 sortIsRegion (SortPolyRegion _ _) = True
-sortIsRegion (SortUnit)           = False -- TODO: Edge case, it is and is not a region...
+sortIsRegion (SortUnit)           = False
 sortIsRegion (SortTuple as)       = sortIsRegion $ as !! 0
 sortIsRegion _ = False
 

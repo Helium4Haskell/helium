@@ -65,7 +65,7 @@ sort dEnv = sort' (-1,-1) M.empty
                    Right s' -> Left $ "Invalid fixpoint sort" 
                                    ++ "\n  Sort: " ++ showSort (snd d) s'
                                    ++ "\n  Annotation:\n\n" ++ (indent "    " $ annShow' d (AFix s a)) ++ "\n"
-                                   
+
           -- Check if both operands have the same sort
           sort' d gamma (AJoin  a b) = 
               let sortA = sort' d gamma a
