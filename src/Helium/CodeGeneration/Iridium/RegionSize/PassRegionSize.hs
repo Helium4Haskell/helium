@@ -65,6 +65,10 @@ printDTRegions   = True && printDTInfo
 printDTStructs   = True && printDTInfo
 printDTDestructs = True && printDTInfo
 
+-- Functionality
+removeEmpty :: Bool
+removeEmpty = False
+
 ----------------------------------------------------------------
 -- Interface
 ----------------------------------------------------------------
@@ -114,7 +118,7 @@ pipeline gEnv methods = do
     let canDerive = ((and (not . isComplexDataTypeMethod dEnv . typeNormalize tEnv . methodType . snd <$> methods))
                   && (and (not . isComplexDataTypeMethod dEnv . typeNormalize tEnv . localType <$> concat (methodLocals False tEnv . snd <$> methods))))
 
-    if printMethodName then do
+    if printMethodName && canDerive then do
       putStrLn $ "\n# Analyse methods:\n" ++ (intercalate "\n" $ map (show.fst) methods)
       putStrLn $ "\n# Can derive: " ++ show canDerive ++ "\n" ++ (show $ typeNormalize tEnv . methodType . snd <$> methods)
     else return ()
@@ -166,12 +170,14 @@ pipeline gEnv methods = do
       let zeroingEffect'   = unAConstr . solveFixpoints dEnv . eval dEnv <$> zeroingEffect
           annotationEffect = collectEffects <$> withLocals
           higherOrderFix   = fixHigherOrderApplication <$> withLocals
-      let effects = (\(a,b,c) -> constrAdds [a,b,c]) <$> zip3 zeroingEffect' annotationEffect higherOrderFix
+      let effects = constrRemVarRegs <$> (\(a,b,c) -> constrAdds [a,b,c]) <$> zip3 zeroingEffect' annotationEffect higherOrderFix
       _ <- printAnnotation printEffects "Effects" $ ATuple $ AConstr <$> effects
       
       let transformed = uncurry transform <$> zip effects (snd <$> methods')
       let emptyRegs   = collectEmptyRegs <$> transformed
-      let cleaned     = uncurry remEmptyRegs <$> zip emptyRegs transformed
+      let cleaned     = if removeEmpty
+                        then uncurry remEmptyRegs <$> zip emptyRegs transformed
+                        else transformed
 
       -- Count bounded and unbouned regions
       let finite   = sum $ length <$> filter (not . (== Infty) . snd) <$> filter (not . (== Region RegionGlobal) . fst) <$> M.toList <$> effects

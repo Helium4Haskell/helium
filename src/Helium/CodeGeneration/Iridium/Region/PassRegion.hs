@@ -79,7 +79,7 @@ transformGroup genv (BindingRecursive methods) = do
   return (genv'', concat methods')
 
 transformGroup genv@(GlobalEnv typeEnv dataTypeEnv constructorEnv globals) (BindingNonRecursive method@(Declaration methodName _ _ _ (Method _ _ arguments _ _ _ _ _))) = do
-  putStrLn $ "# Analyse method " ++ show methodName
+  -- putStrLn $ "# Analyse method " ++ show methodName
 
   let (methodEnv, annotation) = generate genv method
   -- print annotation
