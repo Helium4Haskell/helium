@@ -70,6 +70,7 @@ initialEnv m = GlobalEnv typeEnv dataTypeEnv constructorEnv functionEnv
 -- Analyses and transforms a binding group of a single non-recursive function
 -- or a group of (mutual) recursive functions.
 transformGroup :: GlobalEnv -> BindingGroup Method -> IO (GlobalEnv, [Declaration Method])
+transformGroup genv (BindingRecursive [method]) = transformGroup genv (BindingNonRecursive method)
 transformGroup genv (BindingRecursive methods) = do
   -- We cannot analyse mutual recursive functions yet
   -- For now we will analyse them one by one.
@@ -78,12 +79,15 @@ transformGroup genv (BindingRecursive methods) = do
   return (genv'', concat methods')
 
 transformGroup genv@(GlobalEnv typeEnv dataTypeEnv constructorEnv globals) (BindingNonRecursive method@(Declaration methodName _ _ _ (Method _ _ arguments _ _ _ _ _))) = do
-  -- putStrLn $ "# Analyse method " ++ show methodName
+  putStrLn $ "# Analyse method " ++ show methodName
 
   let (methodEnv, annotation) = generate genv method
   -- print annotation
 
-  let (doesEscape, substituteRegionVar, simplified) = simplifyFixEscape dataTypeEnv annotation
+  let
+    unwrap [x] = x
+    unwrap _ = error "Expected list of 1 element"
+    (doesEscape, substituteRegionVar, simplified) = unwrap $ simplifyFixEscape dataTypeEnv annotation
   -- putStrLn "Simplified:"
   -- print simplified
 
@@ -96,7 +100,7 @@ transformGroup genv@(GlobalEnv typeEnv dataTypeEnv constructorEnv globals) (Bind
   -- print doesEscape
   -- print restricted
 
-  let (regionCount, method', restricted') = transformDead restricted $ transform methodEnv isZeroArity substituteRegionVar restricted $ declarationValue method
+  let (regionCount, method', restricted') = transformDead restricted $ transform methodEnv isZeroArity substituteRegionVar restricted methodName $ declarationValue method
 
   rnfAnnotation restricted' `seq` return ()
 

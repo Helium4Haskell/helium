@@ -55,7 +55,8 @@ generate (GlobalEnv typeEnv dataTypeEnv constructorEnv globals) (Declaration met
     (isZeroArity, recursiveAnnotation)
       = correctArityZero (methodEnvAdditionalRegionSort methodEnv) arguments
       $ ALam SortUnit (methodEnvAdditionalRegionSort methodEnv) LifetimeContextAny
-      $ AProject (AApp (weaken 0 1 0 fixpointArgument) (ATuple []) (regionSortToVars 0 $ methodEnvAdditionalRegionSort methodEnv) LifetimeContextAny) 0
+      $ weaken 0 1 (regionSortSize $ methodEnvAdditionalRegionSort methodEnv)
+      $ AProject (AApp fixpointArgument (ATuple []) (methodEnvAdditionalRegionVars methodEnv) LifetimeContextAny) 0
     globals' = updateMap methodName (0, recursiveAnnotation) globals
     genv = GlobalEnv typeEnv dataTypeEnv constructorEnv globals'
 
@@ -72,9 +73,15 @@ generate (GlobalEnv typeEnv dataTypeEnv constructorEnv globals) (Declaration met
 
     fixpoint :: Annotation
     fixpoint
-      = AFixEscape (methodEnvArgumentCount methodEnv) fixpointSort (methodEnvAdditionalRegionSort methodEnv)
-      $ ALam fixpointSort RegionSortUnit LifetimeContextAny
-      $ ALam SortUnit (methodEnvAdditionalRegionSort methodEnv) LifetimeContextAny fixpointBody
+      = AFixEscape
+          (methodEnvAdditionalRegionSort methodEnv)
+          [
+            ( methodEnvArgumentCount methodEnv
+            , fixpointSort
+            , ALam (SortTuple [fixpointSort]) RegionSortUnit LifetimeContextAny
+            $ ALam SortUnit (methodEnvAdditionalRegionSort methodEnv) LifetimeContextAny fixpointBody
+            )
+          ] 
 
     -- The fixpoint consists of a tuple of the effect and return annotation of the function and all annotations on local variables
     fixpointSort :: Sort
@@ -92,7 +99,7 @@ generate (GlobalEnv typeEnv dataTypeEnv constructorEnv globals) (Declaration met
           = zipWith (\_ idx -> strengthen' $ findAnnotation $ KeyLocal idx) (methodEnvLocalSorts methodEnv) [1..]
 
     fixpointArgument :: Annotation
-    fixpointArgument = AVar $ AnnotationVar $ methodEnvArgumentCount methodEnv + 3
+    fixpointArgument = AProject (AVar $ AnnotationVar $ methodEnvArgumentCount methodEnv + 3) 0
 
     sortAddLambdas :: Sort -> Sort
     sortAddLambdas s = foldr add s $ methodEnvArguments methodEnv
@@ -198,7 +205,7 @@ assign genv@(GlobalEnv typeEnv dataTypeEnv _ _) name method@(Method _ _ argument
     localSorts = map (\(Local _ tp) -> sortOfType dataTypeEnv $ typeNormalize typeEnv tp) locals
 
     fixpointArgument :: Annotation
-    fixpointArgument = AVar $ AnnotationVar $ lambdaCount + 3
+    fixpointArgument = AProject (AVar $ AnnotationVar $ lambdaCount + 3) 0
 
     applyLocal :: Annotation -> Int -> Annotation
     applyLocal a idx = a''

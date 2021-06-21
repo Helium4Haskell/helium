@@ -81,11 +81,15 @@ pAnnotation names = do
           <* pWhitespace' <*> pAnnotation names
         "fix_escape" ->
           AFixEscape
-          <$ pToken '{' <* pWhitespace' <*> pUnsignedInt <* pWhitespace' <* pToken ';' <* pWhitespace'
-          <*> pSort (quantors names) <* pWhitespace' <* pToken ';' <* pWhitespace'
+          <$ pToken '{' <* pWhitespace'
           <*> pRegionSort (quantors names) <* pWhitespace' <* pToken '}' <* pWhitespace'
-          <*> pAnnotation names
+          <*> pArgumentsWith' ')' (pFixEscapeFunction names)
     _ -> pAnnotationJoin names
+
+pFixEscapeFunction :: Names -> Parser (Int, Sort, Annotation)
+pFixEscapeFunction names
+  = (,,) <$ pToken '[' <*> pUnsignedInt <* pWhitespace' <* pToken ',' <* pWhitespace' <*> pSort (quantors names)
+    <* pWhitespace' <* pToken ':' <* pWhitespace' <*> pAnnotation names
 
 pAnnotationJoin :: Names -> Parser Annotation
 pAnnotationJoin names = foldr1 AJoin <$> pSome (pAnnotationApp names) pSep

@@ -14,8 +14,8 @@ import Helium.CodeGeneration.Iridium.Region.Generate
 import Data.Maybe
 import Data.Either
 
-transform :: MethodEnv -> Bool -> (RegionVar -> RegionVar) -> Annotation -> Method -> Method
-transform env isZeroArity substitute annotation (Method tp _ args returnType _ methodAnnotations entry blocks)
+transform :: MethodEnv -> Bool -> (RegionVar -> RegionVar) -> Annotation -> Id -> Method -> Method
+transform env isZeroArity substitute annotation methodName (Method tp _ args returnType _ methodAnnotations entry blocks)
   = Method tp additionalRegions args returnType returnRegions methodAnnotations (transformBlock regions True entry) (transformBlock regions False <$> blocks)
   where
     substitute' :: RegionVar -> RegionVar
@@ -27,7 +27,7 @@ transform env isZeroArity substitute annotation (Method tp _ args returnType _ m
 
     regions = Regions
       (\name -> substitutes $ snd $ findMap name $ methodEnvVars env)
-      (\name -> map substitute' $ fromMaybe [] $ lookupMap name $ methodEnvAdditionalFor env)
+      (\name fn -> map substitute' $ if fn == Just methodName then flattenRegionVars $ methodEnvAdditionalRegionVars env else fromMaybe [] $ lookupMap name $ methodEnvAdditionalFor env)
       (filter (\var -> substitute var == RegionBottom) $ flattenRegionVars $ methodEnvAdditionalRegionVars env)
 
     substitutes :: RegionVars -> RegionVars
@@ -46,7 +46,7 @@ transform env isZeroArity substitute annotation (Method tp _ args returnType _ m
 
 data Regions = Regions
   { localRegions :: Id -> RegionVars
-  , additionalRegionsFor :: Id -> [RegionVar]
+  , additionalRegionsFor :: Id -> Maybe Id -> [RegionVar]
   , internalRegions :: [RegionVar]
   }
 
@@ -73,13 +73,16 @@ transformInstruction regions instruction = case instruction of
 
 transformExpr :: Regions -> Id -> Expr -> Expr
 transformExpr regions lhs expr = case expr of
-  Call fn _ args _ -> Call fn (RegionVarsTuple $ map RegionVarsSingle $ additionalRegionsFor regions lhs) args (localRegions regions lhs)
+  Call fn@(GlobalFunction name _ _) _ args _ -> Call fn (RegionVarsTuple $ map RegionVarsSingle $ additionalRegionsFor regions lhs $ Just name) args (localRegions regions lhs)
   _ -> expr
 
 transformBind :: Regions -> Bind -> Bind
 transformBind regions (Bind lhs target args _) = Bind lhs target' args $ head $ flattenRegionVars regionVars
   where
-    target' = transformBindTarget (additionalRegionsFor regions lhs) regionVars target (length $ rights args)
+    name = case target of
+      BindTargetFunction (GlobalFunction n _ _) _ _ -> Just n
+      _ -> Nothing
+    target' = transformBindTarget (additionalRegionsFor regions lhs name) regionVars target (length $ rights args)
     regionVars = localRegions regions lhs
 
 transformBindTarget :: [RegionVar] -> RegionVars -> BindTarget -> Int -> BindTarget
