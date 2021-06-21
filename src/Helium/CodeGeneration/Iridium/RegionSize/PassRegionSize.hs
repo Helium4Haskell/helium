@@ -42,11 +42,11 @@ debug           = True
 
 -- Sorting of annotations
 sortDerived,sortSimplified,sortFixpoint,sortWithLocals,checkSortsEq :: Bool
-sortDerived     = True && debug
-sortSimplified  = True && debug
-sortFixpoint    = True && debug
-sortWithLocals  = True && debug
-checkSortsEq    = True && debug
+sortDerived     = False && debug
+sortSimplified  = False && debug
+sortFixpoint    = False && debug
+sortWithLocals  = False && debug
+checkSortsEq    = False && debug
 
 -- Printing of annotations/sorts
 printDerived,printSimplified,printFixpoint,printWithLocals,printEffects,printMethodName :: Bool
@@ -170,7 +170,7 @@ pipeline gEnv methods = do
       let zeroingEffect'   = unAConstr . solveFixpoints dEnv . eval dEnv <$> zeroingEffect
           annotationEffect = collectEffects <$> withLocals
           higherOrderFix   = fixHigherOrderApplication <$> withLocals
-      let effects = constrRemVarRegs <$> (\(a,b,c) -> constrAdds [a,b,c]) <$> zip3 zeroingEffect' annotationEffect higherOrderFix
+      let effects = (\(a,b,c) -> constrAdds [a,b,c]) <$> zip3 zeroingEffect' annotationEffect higherOrderFix
       _ <- printAnnotation printEffects "Effects" $ ATuple $ AConstr <$> effects
       
       let transformed = uncurry transform <$> zip effects (snd <$> methods')
