@@ -29,7 +29,7 @@ data Annotation
   -- We store a function to apply to the result of the fixpoint, to prevent the fixpoint being duplicated.
   = AFix !Annotation !Sort !Annotation
 
-  | AFixEscape !Int !Sort !RegionSort !Annotation
+  | AFixEscape !RegionSort ![(Int, Sort, Annotation)]
 
   | AForall !Quantor !Annotation
   | ALam !Sort !RegionSort !LifetimeContext !Annotation
@@ -77,10 +77,22 @@ showAnnotation' names indentation precedence annotation = case annotation of
     | otherwise ->
       showAnnotation'' indentation PrecHigh (AApp f (AFix (identity s) s g) (RegionVarsTuple []) LifetimeContextAny)
 
-  AFixEscape arity s rs f ->
+  AFixEscape rs fs ->
     parensMultiline PrecHigh $ \indentation' ->
-      showString "fix_escape {" . shows arity . showString "; " . showSort' s . showString "; " . showRegionSort quantorNames rs . showString "}\r\n"
-      . showIndentation indentation' . showAnnotation'' indentation' PrecHigh f
+      let
+        showF :: (Int, Sort, Annotation) -> ShowS
+        showF (arity, sort', a) =
+          showString "[" . shows arity . showString ", " . showSort' sort' . showString "]:\n"
+          . showIndentation (indentation' + 2)
+          . showAnnotation'' (indentation' + 2) PrecHigh a
+      in
+        showString "fix_escape {" . showRegionSort quantorNames rs . showString "}\r\n"
+        . showIndentation indentation' . showString "( "
+        . showsIntercalate
+            showF
+            (showString "\r\n" $ showIndentation indentation' ", ")
+            fs
+        . showString "\r\n" . showIndentation indentation' . showString ")"
 
   AForall quantor a ->
     let
@@ -241,8 +253,8 @@ rnfAnnotation :: Annotation -> ()
 rnfAnnotation annotation = case annotation of
   AFix a1 s a2
     -> rnfAnnotation a1 `seq` rnfSort s `seq` rnfAnnotation a2
-  AFixEscape _ s rs a
-    -> rnfSort s `seq` rnfRegionSort rs `seq` rnfAnnotation a
+  AFixEscape rs fs
+    -> rnfRegionSort rs `seq` foldl' (\() (arity, s, a) -> arity `seq` rnfSort s `seq` rnfAnnotation a) () fs
   AForall _ a
     -> rnfAnnotation a
   ALam s rs _ a
