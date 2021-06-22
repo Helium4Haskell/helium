@@ -32,8 +32,8 @@ solveFixpoints dEnv = eval dEnv . go constrBot
           go scope (AQuant a  ) = AQuant (go scope a)
           go scope (AInstn a t) = AInstn (go scope a) t
           go scope (AFix   s v) = ATuple . solveFixpoint dEnv scope s $ go scope <$> v
+          go scope (AMinus a r) = AMinus (go scope a) r
           go _     ann = ann
-        --   go scope (AMinus a r) = AMinus (go scope a) r
 
 -- | Weaken all region variables in the constraint set
 weakenScope :: Constr -> Constr
@@ -108,7 +108,7 @@ findFixBinds = foldAnnAlgLamsN 0 countAlg
                               [-1] -> [i]
                               _ -> a,
         aAdd    = \_ a b -> a ++ b,
-        -- aMinus  = \_ a _ -> a,
+        aMinus  = \_ a _ -> a,
         aJoin   = \_ a b -> a ++ b,
         aQuant  = \_ a   -> a,
         aInstn  = \_ a _ -> a,

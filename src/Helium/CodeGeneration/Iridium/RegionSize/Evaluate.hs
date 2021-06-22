@@ -5,6 +5,8 @@ module Helium.CodeGeneration.Iridium.RegionSize.Evaluate
 import Lvm.Core.Type
 import Data.List
 
+import Helium.CodeGeneration.Iridium.Region.RegionVar
+
 import Helium.CodeGeneration.Iridium.RegionSize.DataTypes
 import Helium.CodeGeneration.Iridium.RegionSize.Sort
 import Helium.CodeGeneration.Iridium.RegionSize.SortUtils
@@ -23,7 +25,7 @@ eval :: DataTypeEnv -> Annotation -> Annotation
 eval dEnv ann = foldAnnAlg evalAlg ann
   where evalAlg = idAnnAlg {
     aAdd   = \_ -> add,
-    -- aMinus = \_ -> minus,
+    aMinus = \_ -> minus,
     aJoin  = \_ -> join        dEnv,
     aApl   = \_ -> application dEnv,
     aInstn = \_ -> instantiate dEnv,
@@ -42,13 +44,13 @@ add c1 c2 = let parts1 = addCollect (AAdd c1 c2)
 
 
 -- | Minus of constraint
--- minus :: Annotation -> RegionVar -> Annotation
--- minus (AConstr c) r = AConstr $ constrRem (Region r) c
--- -- Top and bottom
--- minus (ATop s vs) _ = ATop s vs
--- minus (ABot s   ) _ = ABot s
--- -- Cannot eval
--- minus a r = AMinus a r
+minus :: Annotation -> RegionVar -> Annotation
+minus (AConstr c) r = AConstr $ constrRem (Region r) c
+-- Top and bottom
+minus (ATop s vs) _ = ATop s vs
+minus (ABot s   ) _ = ABot s
+-- Cannot eval
+minus a r = AMinus a r
 
 
 -- | Annotation application

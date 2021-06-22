@@ -257,12 +257,11 @@ analyseInstr envs@(Envs _ _ lEnv) bEnv = go
          -- Allocations with region variables
          go (LetAlloc bnds   next) = analyseLetAlloc envs bEnv bnds next 
          -- Remove region from effect, size has been detrimined
-         go (NewRegion _ _   next) = 
-             let (nxtAnn, nxtEff) = analyseInstr envs bEnv next
-            --  in  (nxtAnn, AMinus nxtEff r)
-             in  (nxtAnn, nxtEff)
+         go (NewRegion _ _   next) = analyseInstr envs bEnv next
          -- Ignore release region
-         go (ReleaseRegion _ next) = analyseInstr envs bEnv next
+         go (ReleaseRegion r next) =
+             let (nxtAnn, nxtEff) = analyseInstr envs bEnv next
+             in  (nxtAnn, AMinus nxtEff r)
          -- Lookup the annotation and effect from block
          go (Jump block)           = liftTuple $ lookupBlock block bEnv 
          -- Join the effects of all the blocks

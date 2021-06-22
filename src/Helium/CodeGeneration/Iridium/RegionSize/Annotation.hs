@@ -30,7 +30,7 @@ data Annotation =
     | ATuple  [Annotation]            -- ^ Unit tuple
     | AProj   Int        Annotation   -- ^ Projection
     | AAdd    Annotation Annotation   -- ^ Constraint set addition
-    -- | AMinus  Annotation RegionVar    -- ^ Constraint set minus
+    | AMinus  Annotation RegionVar    -- ^ Constraint set minus
     | AJoin   Annotation Annotation   -- ^ Annotation join
     | AQuant  Annotation              -- ^ Quantification
     | AInstn  Annotation Type         -- ^ Insantiation of quantification
@@ -67,7 +67,7 @@ annShow' n = foldAnnAlgN n showAlg
         aTuple  = \(_ ,_ ) as  -> "TUP(" ++ intercalate (if noTupleBreak (as !! 0) then "," else "\n,") as ++ ")", 
         aProj   = \(_ ,_ ) i a -> "π_" ++ show i ++ "[" ++ a ++ "]", 
         aAdd    = \(_ ,_ ) a b -> "(" ++ a ++ " ⊕  " ++ b ++ ")", 
-        -- aMinus  = \(_ ,_ ) a r -> "(" ++ a ++ " \\ " ++ show r ++ ")", 
+        aMinus  = \(_ ,_ ) a r -> "(" ++ a ++ " \\ " ++ show r ++ ")", 
         aJoin   = \(_ ,_ ) a b -> "(" ++ a ++ " ⊔  " ++ b ++ ")", 
         aQuant  = \(_ ,qD) a   -> "(∀ " ++ typeVarName (qD+1) ++ "." ++ a ++ ")", 
         aInstn  = \(_ ,qD) a t -> a ++ " {" ++ rsShowType t ++ "}", 
@@ -94,7 +94,7 @@ data AnnAlg b a =
     aTuple  :: b -> [a] -> a,
     aProj   :: b -> Int -> a -> a,
     aAdd    :: b -> a -> a -> a,
-    -- aMinus  :: b -> a -> RegionVar -> a,
+    aMinus  :: b -> a -> RegionVar -> a,
     aJoin   :: b -> a -> a -> a,
     aQuant  :: b -> a -> a,
     aInstn  :: b -> a -> Type -> a,
@@ -114,7 +114,7 @@ idAnnAlg = AnnAlg {
   aTuple  = \_ -> ATuple ,
   aProj   = \_ -> AProj  ,
   aAdd    = \_ -> AAdd   ,
-  -- aMinus  = \_ -> AMinus ,
+  aMinus  = \_ -> AMinus ,
   aJoin   = \_ -> AJoin  ,
   aQuant  = \_ -> AQuant ,
   aInstn  = \_ -> AInstn ,
@@ -168,7 +168,7 @@ foldAnnAlgN' incrLam incrQuant n alg ann = go n ann
         go d (ATuple as ) = aTuple  alg d (go d <$> as) 
         go d (AProj  i a) = aProj   alg d i (go d a) 
         go d (AAdd   a b) = aAdd    alg d (go d a) (go d b)
-        -- go d (AMinus a r) = aMinus  alg d (go d a) r
+        go d (AMinus a r) = aMinus  alg d (go d a) r
         go d (AJoin  a b) = aJoin   alg d (go d a) (go d b)
         go d (AQuant a  ) = aQuant  alg d $ go (incrQuant d) a 
         go d (AInstn a t) = aInstn  alg d (go d a) t

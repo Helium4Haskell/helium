@@ -133,11 +133,14 @@ sort dEnv = sort' (-1,-1) M.empty
                                   ++ "\n  Sort A: " ++ showSort (snd d) (fromRight undefined sortA) 
                                   ++ "\n  Sort B: " ++ showSort (snd d) (fromRight undefined sortB)
                                   ++ "\n  Annotation:\n\n" ++ (indent "    " $ annShow' d (AAdd a b)) ++ "\n"
-        --   sort' (dL,dQ) gamma (AMinus a _) = 
-        --       let sortA = sort' (dL,dQ) gamma a
-        --       in if sortA == Right SortConstr
-        --          then Right SortConstr
-        --          else Left $ "Setminus on non constraint-sort annotation: \nSort:" ++ show sortA 
+          sort' d gamma (AMinus a r) = 
+              let sortA = sort' d gamma a
+              in case sortA of 
+                    (Left _) -> sortA
+                    (Right SortConstr) -> Right SortConstr
+                    (Right _) -> Left $ "Sorting: Setminus on non constraint-sort annotation."
+                                     ++ "\n  Sort:" ++ show sortA 
+                                     ++ "\n  Annotation:\n\n" ++ (indent "    " $ annShow' d (AMinus a r)) ++ "\n"
 
           -- Quantification and instantiation
           sort' (dL,dQ) gamma (AQuant   a) = SortQuant <$> sort' (dL,dQ+1) (envWeaken gamma) a
