@@ -124,13 +124,13 @@ idMatchCase = idFromString "match_case"
 idMatchDefault = idFromString "match_default"
 
 toMethod :: NameSupply -> TypeEnv -> Id -> Core.Type -> Maybe Core.Type -> Core.Expr -> Method
-toMethod supply env name tp atp expr = Method tp args returnType [AnnotateTrampoline] (Block entryName entry) blocks
+toMethod supply env name tp atp expr = Method tp args returnType annotations (Block entryName entry) blocks
   where
     (entryName, supply') = freshIdFromId idEntry supply
     createArgument (Left quantor) _ = Left quantor
     createArgument (Right t) (Right (Core.Variable name _)) = Right $ Local name t
     (args, expr') = consumeLambdas expr
-    returnType = Core.typeOfCoreExpression (teCoreEnv env') False expr'
+    returnType = Core.typeOfCoreExpression (teCoreEnv env') expr'
     env' = enterFunction name returnType $ expandEnvWithLocals [local | Right local <- args] env
     Partial entry blocks = toInstruction supply' env' CReturn expr'
     annotations = case atp of
@@ -228,7 +228,7 @@ toInstruction supply env continue match@(Core.Match x alts) =
       _ -> Phi phiBranches
     (blockId, supply') = freshIdFromId idMatchAfter supply2
     (result, supply'') = freshId supply'
-    tp = Core.typeToStrict $ Core.typeOfCoreExpression (teCoreEnv env) False match
+    tp = Core.typeToStrict $ Core.typeOfCoreExpression (teCoreEnv env) match
     blocks = case continue of
       CReturn -> []
       CBind next ->
@@ -274,7 +274,7 @@ toInstruction supply env continue expr = case getApplicationOrConstruction expr 
           +> ret supplyRet env x continue
   (Left con@(Core.ConTuple arity), args) ->
     let
-      fntype = Core.typeOfCoreExpression (teCoreEnv env) False (Core.Con con)
+      fntype = Core.typeOfCoreExpression (teCoreEnv env) (Core.Con con)
       (args', castInstructions, _) = maybeCasts supply''' env fntype args
     in
       castInstructions

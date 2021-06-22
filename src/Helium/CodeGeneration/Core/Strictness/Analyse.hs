@@ -5,8 +5,8 @@ import qualified Data.Set as S
 import Helium.CodeGeneration.Core.Strictness.Data
 import Helium.CodeGeneration.Core.TypeEnvironment
 
-import Lvm.Common.Id
 import Lvm.Common.IdMap
+import Lvm.Common.IdSet
 import Lvm.Core.Expr
 import Lvm.Core.Module
 import Lvm.Core.Type
@@ -26,13 +26,13 @@ analyseDeclaration _ _ = S.empty
 analyseValue :: TypeEnvironment -> (Expr, Type) -> Constraints
 analyseValue env (e, t) = S.unions [c1, c2, c3]
   where
-    env' = Environment env emptyMap emptyMap
+    env' = Environment env emptyMap emptyMap emptySet
     -- Annotation environment and constraints from body
     (ae, c1) = analyseExpression env' S (setApplicativeness env' t) e
     -- Turn annotation environment into constraints
     c2 = annEnvToConstraints ae
     -- Constraints on type-body relations
-    c3 = analyseType env' True t (typeOfCoreExpression env True e)
+    c3 = analyseType env' True t (typeOfCoreExpression env e)
 
 -- Run strictness analysis on expressions
 analyseExpression :: Environment -> SAnn -> SAnn -> Expr -> (AnnotationEnvironment, Constraints)
@@ -56,10 +56,10 @@ analyseExpression env rel app (Ap e1 e2) = (ae, cs)
     -- Analyse function
     (ae1, c1) = analyseExpression env rel rel e1
     -- Get annotation from function
-    t = typeNormalizeHead (typeEnv env) $ typeOfCoreExpression (typeEnv env) True e1
+    t = typeNormalizeHead (typeEnv env) $ typeOfCoreExpression (typeEnv env) e1
     (TAp (TAp (TCon TConFun) (TAp (TAnn a1) (TAp (TAnn r) (TAp (TAnn a2) t')))) _) = t
     -- If argument is function, get constraints for the instantiation
-    c3 = analyseType env False t' $ typeOfCoreExpression (typeEnv env) True e2
+    c3 = analyseType env False t' $ typeOfCoreExpression (typeEnv env) e2
     -- Analyse applicant under the join of the annotations and the relevance context
     (ae2, c2) = analyseExpression env (join rel r) (join rel a1) e2
 analyseExpression env rel app (ApType e _) = analyseExpression env rel app e
@@ -91,7 +91,7 @@ analyseBind :: Environment -> SAnn -> Bind -> (AnnotationEnvironment, Constraint
 analyseBind env rel (Bind (Variable _ (TAp (TAnn a1) (TAp (TAnn r) (TAp (TAnn a2) t)))) e) = (ae, S.union c1 c2, a2)
   where
     (ae, c1) = analyseExpression env (join rel r) (join rel a1) e
-    c2 = analyseType env True t $ typeOfCoreExpression (typeEnv env) True e
+    c2 = analyseType env True t $ typeOfCoreExpression (typeEnv env) e
 
 -- Analyse type
 analyseType :: Environment -> Bool -> Type -> Type -> Constraints
@@ -122,25 +122,3 @@ analyseType env err t1 t2
     where
       t1' = typeNormalizeHead (typeEnv env) t1
       t2' = typeNormalizeHead (typeEnv env) t2
-
--- Make a L constraint for all annotation variables
-getLConstraints :: Environment -> ApplicativenessEnvironment
-getLConstraints = mapFromList . map (\x -> (x, L)) . getAnnotationVariablesEnv
-
--- Get relevance and applicative annotations of var, set them equal to contexts
-getAnnotations :: Environment -> SAnn -> SAnn -> Id -> ApplicativenessEnvironment
-getAnnotations (Environment _ relEnv appEnv) rel app var = unionMap (f relEnv rel) (f appEnv app)
-  where
-    f env con = case lookupMap var env of
-      Just (AnnVar a) -> singleMap a con
-      _ -> emptyMap
-
--- Containment
-containment :: Environment -> SAnn -> AnnotationEnvironment
-containment env con = mapFromList $ map (\x -> (x, con)) (getAnnotationVariablesEnv env)
-
--- Set applicative context to S or L depending on the arity of the type
-setApplicativeness :: Environment -> Type -> SAnn
-setApplicativeness (Environment env _ _) t = case arityFromType $ typeNormalizeHead env t of
-  0 -> S
-  _ -> L

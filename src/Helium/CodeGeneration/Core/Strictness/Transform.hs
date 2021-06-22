@@ -1,4 +1,4 @@
-module Helium.CodeGeneration.Core.Strictness.Transform (transformModule, transformDeclaration, transformType) where
+module Helium.CodeGeneration.Core.Strictness.Transform (transformModule, transformDeclaration, transformType, transformExpression) where
 
 import Helium.CodeGeneration.Core.Strictness.Data
 
@@ -18,7 +18,7 @@ transformDeclaration sc poly decl@DeclValue{} = decl{declType = t', valueValue =
   where
     v = transformExpression sc $ valueValue decl
     t = transformType sc poly (accessPublic $ declAccess decl) $ declType decl
-    t' = if poly then forallify t else t
+    t' = if poly then forallify True t else t
 transformDeclaration sc poly decl@DeclAbstract{}    = transformDeclarationAbstract sc poly decl
 transformDeclaration sc poly decl@DeclCon{}         = transformDeclarationAbstract sc poly decl
 transformDeclaration sc poly decl@DeclTypeSynonym{} = transformDeclarationAbstract sc poly decl
@@ -39,7 +39,9 @@ transformType sc poly acc (TAp (TAp (TCon TConFun) (TAp (TAnn a1) (TAp (TAnn r) 
       a2' = lookupVar a2 sc poly export
       t1' = TAp (TAnn a1') (TAp (TAnn r') (TAp (TAnn a2') (transformType sc poly acc t1)))
       t2' = transformType sc poly acc t2
-transformType sc poly acc (TStrict t) = TStrict $ transformType sc poly acc t
+transformType sc poly acc (TAp t1 t2) = TAp (transformType sc poly acc t1) (transformType sc poly acc t2)
+transformType sc poly _ (TAnn a) = TAnn $ lookupVar a sc poly False
+transformType sc poly acc (TStrict t) = transformType sc poly acc t
 transformType sc poly acc (TForall q k t) = TForall q k $ transformType sc poly acc t
 transformType _ _ _ t = t
 
@@ -52,7 +54,9 @@ transformExpression sc (Ap e1 e2) = Ap e1' e2'
   where
     e1' = transformExpression sc e1
     e2' = transformExpression sc e2
-transformExpression sc (ApType e t) = ApType (transformExpression sc e) (typeRemoveAnnotations t)
+transformExpression sc (ApType e t) = case t of
+  TAnn _ -> transformExpression sc e
+  _      -> ApType (transformExpression sc e) (typeRemoveAnnotations t)
 transformExpression sc (Lam s (Variable x (TAp (TAnn a) (TAp (TAnn r) (TAp _ t)))) e) = Lam (s || s') (Variable x t') e' 
   where
     -- Lookup variables, polyvariant search because we need to check if it is not L
@@ -89,8 +93,12 @@ transformAlt sc (Alt p e) = Alt p' e'
 
 -- Apply strict transformations on pats
 transformPat :: Pat -> Pat
-transformPat (PatCon c t i) = PatCon c (map typeRemoveAnnotations t) i
+transformPat (PatCon c t i) = PatCon c (map typeRemoveAnnotations $ removeAnn t) i
 transformPat p = p
+
+removeAnn :: [Type] -> [Type]
+removeAnn (TAnn _:xs) = removeAnn xs
+removeAnn x = x
 
 -- Lookup annotation of variables
 lookupVar :: SAnn -> SolvedConstraints -> Bool -> Bool -> SAnn

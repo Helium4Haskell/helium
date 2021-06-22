@@ -126,10 +126,3 @@ annotateAlt supply (Alt p e) = Alt p' e'
 annotatePat :: NameSupply -> Pat -> Pat
 annotatePat supply (PatCon c t i) = PatCon c (mapWithSupply annotateType supply t) i
 annotatePat _ p = p
-
-threeIds :: NameSupply -> (Id, Id, Id, NameSupply)
-threeIds supply0 = (id1, id2, id3, supply3)
-  where
-    (id1, supply1) = freshId supply0
-    (id2, supply2) = freshId supply1
-    (id3, supply3) = freshId supply2

@@ -59,10 +59,3 @@ constraintsToEdges (x `Constraint` y:cs) es = case M.lookup x es' of
     Just z  -> M.insert x (y:z) es'
     where
         es' = constraintsToEdges cs es
-
--- Replace solved annotation variables
-replaceVar :: SolvedConstraints -> SAnn -> SAnn
-replaceVar sc (AnnVar x) | elemMap x sc = findMap x sc
-replaceVar sc (Meet x y) = meet (replaceVar sc x) (replaceVar sc y)
-replaceVar sc (Join x y) = join (replaceVar sc x) (replaceVar sc y)
-replaceVar _  x          = x

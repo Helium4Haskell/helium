@@ -118,7 +118,7 @@ liftExpr supply scope (Match name alts) env = (Match (rename env name) alts', co
 liftExpr supply scope expr@(Lam _ _ _) env = liftExpr supply' scope (Let (NonRec bind) (Var name)) env
   where
     (name, supply') = freshId supply
-    bind = Bind (Variable name $ typeOfCoreExpression (typeEnv env) False expr) expr
+    bind = Bind (Variable name $ typeOfCoreExpression (typeEnv env) expr) expr
 liftExpr supply scope (Forall x k expr) env = (Forall x k expr', decls)
   where
     (expr', decls) = liftExpr supply scope expr env

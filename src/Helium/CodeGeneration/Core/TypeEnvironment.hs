@@ -92,6 +92,7 @@ typeEnvAddPattern pat env
 typeNormalizeHead :: TypeEnvironment -> Type -> Type
 typeNormalizeHead env = normalize False
   where
+    normalize strict (TAp (TAnn a) t) = (TAp (TAnn a) (normalize strict t))
     normalize strict (TAp t1 t2) = case normalize False t1 of
       t1'@(TForall _ _ _) -> normalize strict $ typeApply t1' t2
       t1' ->
@@ -111,74 +112,67 @@ typeOfId env name = case lookupMap name $ typeEnvGlobalValues env of
     Just tp -> tp
     Nothing -> internalError "Core.TypeEnvironment" "typeOfId" $ "variable " ++ show name ++ " not found in type environment"
 
-typeOfCoreExpression :: TypeEnvironment -> Bool -> Expr -> Type
+typeOfCoreExpression :: TypeEnvironment -> Expr -> Type
 
 -- Find type of the expression in the Let
-typeOfCoreExpression env a (Let binds expr)
-  = typeOfCoreExpression (typeEnvAddBinds binds env) a expr
+typeOfCoreExpression env (Let binds expr)
+  = typeOfCoreExpression (typeEnvAddBinds binds env) expr
 
 -- All Alternatives of a Match should have the same return type,
--- so we only have to check the first one.
-typeOfCoreExpression env False (Match name (Alt pattern expr : _))
-  = typeOfCoreExpression (typeEnvAddPattern pattern env) False expr
-
--- Annotations have to be unified because all branches
+-- but annotations have to be unified because all branches
 -- need to match one annotation.
-typeOfCoreExpression env True (Match name (alt : alts))
+typeOfCoreExpression env (Match name (alt : alts))
   = foldr unifyAnnotations baseType alts'
   where
     baseType = typeOfCoreAlt env alt
     alts' = map (typeOfCoreAlt env) alts
-    typeOfCoreAlt env (Alt pattern expr) = typeOfCoreExpression (typeEnvAddPattern pattern env) True expr
+    typeOfCoreAlt env (Alt pattern expr) = typeOfCoreExpression (typeEnvAddPattern pattern env) expr
 
 -- Expression: e1 e2
 -- Resolve the type of e1, which should be a function type.
-typeOfCoreExpression env a e@(Ap e1 e2) = case typeNotStrict $ typeNormalizeHead env $ typeOfCoreExpression env a e1 of
+typeOfCoreExpression env e@(Ap e1 e2) = case typeNotStrict $ typeNormalizeHead env $ typeOfCoreExpression env e1 of
   TAp (TAp (TCon TConFun) _) tReturn -> tReturn
   tp -> internalError "Core.TypeEnvironment" "typeOfCoreExpression" $ "expected a function type in the first argument of a function application, got " ++ showType [] tp ++ " in expression " ++ show (pretty e)
 
 -- Expression: e1 { tp1 }
 -- The type of e1 should be of the form `forall x. tp2`. Substitute x with tp1 in tp2.
-typeOfCoreExpression env a (ApType e1 tp1) = case tp1 of
-    t@(TAnn _) -> fst $ annApplyList (typeOfCoreExpression env a e1) [t] env
-    _ -> case typeNormalizeHead env $ typeOfCoreExpression env a e1 of
+typeOfCoreExpression env (ApType e1 tp1) = case tp1 of
+  -- Strictness annotation
+    t@(TAnn _) -> fst $ annApplyList (typeOfCoreExpression env e1) [t] env
+    _ -> case typeNormalizeHead env $ typeOfCoreExpression env e1 of
       tp@(TForall _ _ _) -> typeApply tp tp1
       tp -> internalError "Core.TypeEnvironment" "typeOfCoreExpression" $ "typeOfCoreExpression: expected a forall type in the first argument of a function application, got " ++ showType [] tp
 
 -- Expression: \x: t1 -> e
 -- If e has type t2, then the lambda has type t1 -> t2
-typeOfCoreExpression env a (Lam _ var@(Variable _ tp) expr) =
-  typeFunction [tp] $ typeOfCoreExpression env' a expr
+typeOfCoreExpression env (Lam _ var@(Variable _ tp) expr) =
+  typeFunction [tp] $ typeOfCoreExpression env' expr
   where
     env' = typeEnvAddVariable var env
 
 -- Expression: forall x. expr
 -- If expr has type t, then the forall expression has type `forall x. t`.
-typeOfCoreExpression env a (Forall x kind expr) =
-  TForall x kind $ typeOfCoreExpression (typeEnvWeaken 1 env) a expr
+typeOfCoreExpression env (Forall x kind expr) =
+  TForall x kind $ typeOfCoreExpression (typeEnvWeaken 1 env) expr
 
 -- Expression: (,)
 -- Type: forall a. forall b. a -> b -> (a, b)
-typeOfCoreExpression env a (Con (ConTuple arity)) = typeTuple arity a
+typeOfCoreExpression env (Con (ConTuple arity)) = typeTuple arity
 
 -- Resolve the type of a variable or constructor
-typeOfCoreExpression env _ (Con (ConId x)) = typeOfId env x
-typeOfCoreExpression env _ (Var x) = typeOfId env x
+typeOfCoreExpression env (Con (ConId x)) = typeOfId env x
+typeOfCoreExpression env (Var x) = typeOfId env x
 
 -- Types of literals
-typeOfCoreExpression _ _ (Lit lit) = typeOfLiteral lit
+typeOfCoreExpression _ (Lit lit) = typeOfLiteral lit
 
--- Place L annotations in tuple if the type has to be annotated
-typeTuple :: Int -> Bool -> Type
-typeTuple arity a = foldr (\var -> TForall (Quantor Nothing) KStar) (if a then annotate tf else tf) vars
+typeTuple :: Int -> Type
+typeTuple arity = foldr (\var -> TForall (Quantor Nothing) KStar) tf vars
   where
     tf = typeFunction (map TVar vars) tp
     -- Type without quantifications, eg (a, b)
     tp = foldl (\t var -> TAp t $ TVar var) (TCon $ TConTuple arity) vars
     vars = reverse [0 .. arity - 1]
-    annotate :: Type -> Type
-    annotate (TAp (TAp (TCon TConFun) t1) t2) = TAp (TAp (TCon TConFun) (TAp (TAnn L) (TAp (TAnn L) (TAp (TAnn L) t1)))) $ annotate t2
-    annotate t = t
 
 typeEqual :: TypeEnvironment -> Type -> Type -> Bool
 typeEqual env = typeEqual' env True

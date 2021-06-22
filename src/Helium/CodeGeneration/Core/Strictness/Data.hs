@@ -3,13 +3,16 @@ module Helium.CodeGeneration.Core.Strictness.Data where
 import Data.List
 import qualified Data.Set as S
 
+import Helium.CodeGeneration.Core.TypeEnvironment
+
 import Lvm.Common.Id
 import Lvm.Common.IdMap
+import Lvm.Common.IdSet
 import Lvm.Core.Expr
 import Lvm.Core.Module
 import Lvm.Core.Type
 
-import Helium.CodeGeneration.Core.TypeEnvironment
+import Text.PrettyPrint.Leijen (pretty)
 
 -- Keys are annotation variables, values are the equality/join/meet
 type AnnotationEnvironment = IdMap SAnn
@@ -21,12 +24,18 @@ type ApplicativenessEnvironment = IdMap SAnn
 -- Complete environment with type and annotation environment
 data Environment = Environment { typeEnv :: TypeEnvironment,
                                  relEnv  :: RelevanceEnvironment,
-                                 appEnv  :: ApplicativenessEnvironment}
+                                 appEnv  :: ApplicativenessEnvironment,
+                                 vars    :: IdSet}
 
 -- Constraint set, l < r
 type Constraints = S.Set Constraint
 data Constraint = Constraint SAnn SAnn deriving (Eq, Ord, Show)
 type SolvedConstraints = IdMap SAnn
+
+data Analysis a = Analysis {value :: a,
+                            constraints :: Constraints,
+                            mergeEnv :: AnnotationEnvironment,
+                            solved :: SolvedConstraints}
 
 isAnn :: SAnn -> Bool
 isAnn (AnnVar _) = True
@@ -41,7 +50,13 @@ isCustomAnn (CustomDecl (DeclKindCustom n) _) = stringFromId n == "strictness"
 isCustomAnn  _ = False
 
 fromCustomAnn :: Custom -> Type
-fromCustomAnn (CustomDecl (DeclKindCustom _) [CustomType t]) = t
+fromCustomAnn (CustomDecl (DeclKindCustom n) [CustomType t]) | stringFromId n == "strictness" = t
+fromCustomAnn c = error $ "Expected strictness annotations, got: " ++ show (pretty c)
+
+typeFromCustom :: [Custom] -> Type
+typeFromCustom [] = error "Strictness type not found"
+typeFromCustom (CustomDecl (DeclKindCustom n) [CustomType t]:_) | stringFromId n == "strictness" = t
+typeFromCustom (_:xs) = typeFromCustom xs
 
 annEnvToConstraints :: AnnotationEnvironment -> Constraints
 annEnvToConstraints = S.fromList . map snd . listFromMap . mapMapWithId (\x y -> Constraint y (AnnVar x))
@@ -60,22 +75,13 @@ typeRemoveStrictnessQuantification (TStrict t) = TStrict $ typeRemoveStrictnessQ
 typeRemoveStrictnessQuantification (TAp t1 t2) = TAp (typeRemoveStrictnessQuantification t1) (typeRemoveStrictnessQuantification t2)
 typeRemoveStrictnessQuantification t = t
 
-typeRemoveAnnotations :: Type -> Type
-typeRemoveAnnotations (TAp (TAnn _) t1) = typeRemoveAnnotations t1
-typeRemoveAnnotations (TAp t1 t2) = TAp (typeRemoveAnnotations t1) (typeRemoveAnnotations t2)
-typeRemoveAnnotations (TForall _ KAnn t) = typeRemoveAnnotations t
-typeRemoveAnnotations (TForall q k t) = TForall q k $ typeRemoveAnnotations t
-typeRemoveAnnotations (TStrict t) = TStrict $ typeRemoveAnnotations t
-typeRemoveAnnotations (TAnn a) = error $ "Annotation " ++ show a ++ " occurs outside application"
-typeRemoveAnnotations t = t
-
 -- Helper functions to add variables to both type and annotation environment
 envAddVariable :: Variable -> Environment -> Environment
-envAddVariable var (Environment typeEnv relEnv appEnv) = Environment typeEnv' relEnv' appEnv'
+envAddVariable var env = env{typeEnv = typeEnv', relEnv = relEnv', appEnv = appEnv'}
   where
-    typeEnv' = typeEnvAddVariable var typeEnv
-    relEnv'  = relEnvAddVariable  var relEnv
-    appEnv'  = appEnvAddVariable  var appEnv
+    typeEnv' = typeEnvAddVariable var $ typeEnv env
+    relEnv'  = relEnvAddVariable  var $ relEnv env
+    appEnv'  = appEnvAddVariable  var $ appEnv env
 
 envAddVariables :: [Variable] -> Environment -> Environment
 envAddVariables vars env = foldr envAddVariable env vars
@@ -89,30 +95,120 @@ envAddBinds (NonRec bind) env = envAddBind bind env
 envAddBinds (Rec binds) env = foldr envAddBind env binds
 
 envAddPattern :: Pat -> Environment -> Environment
-envAddPattern p (Environment typeEnv relEnv appEnv) = Environment (typeEnvAddPattern p typeEnv) relEnv appEnv
+envAddPattern p env = envAddVariables x env
+  where
+    x = patternVariables (typeEnv env) p
 
 relEnvAddVariable :: Variable -> RelevanceEnvironment -> RelevanceEnvironment
-relEnvAddVariable (Variable x (TAp _ (TAp (TAnn r) _))) = insertMap x r
+relEnvAddVariable (Variable x (TAp (TAnn _) (TAp (TAnn r) (TAp (TAnn _) _)))) = insertMap x r
+relEnvAddVariable (Variable x t) = error $ show x ++ show (pretty t)
 
 appEnvAddVariable :: Variable -> ApplicativenessEnvironment -> ApplicativenessEnvironment
-appEnvAddVariable (Variable x (TAp (TAnn a) _)) = insertMap x a
+appEnvAddVariable (Variable x (TAp (TAnn a) (TAp (TAnn _) (TAp (TAnn _) _)))) = insertMap x a
+appEnvAddVariable (Variable x t) = error $ show x ++ show (pretty t)
+
+envAddVars :: IdSet -> Environment -> Environment
+envAddVars is env = env{vars = unionSet is (vars env)}
+
+-- Add foralls for strictness annotations
+forallify :: Bool -> Type -> Type
+forallify b (TAp (TAnn a) t) = TAp (TAnn a) $ forallify b t
+forallify b t = foldr (\a t' -> TForall (Quantor (Just $ stringFromId a)) KAnn t') (typeRemoveStrictnessQuantification t) anns
+  where
+    anns = getVariablesType b t
+
+getVariablesType :: Bool -> Type -> [Id]
+getVariablesType b (TAp (TAp (TCon TConFun) (TAp (TAnn a1) (TAp (TAnn r) (TAp (TAnn a2) t1)))) t2) = nub $ concat [i1, i2, i3]
+  where
+    i1 = getVariablesType b t1
+    i2 = getVariablesType b t2
+    i3 = concatMap getVariablesAnn [a1, r, a2]
+getVariablesType b (TAp t1 t2) = nub $ getVariablesType b t1 ++ getVariablesType b t2
+getVariablesType b (TStrict t) = getVariablesType b t
+getVariablesType b (TForall _ _ t) = getVariablesType b t
+getVariablesType True (TAnn a) = getVariablesAnn a
+getVariablesType _ _ = []
+
+-- Set applicative context to S or L depending on the arity of the type
+setApplicativeness :: Environment -> Type -> SAnn
+setApplicativeness env t = case arityFromType $ typeNormalizeHead (typeEnv env) t of
+  0 -> S
+  _ -> L
+
+-- Get relevance and applicative annotations of var, set them equal to contexts
+getAnnotations :: Environment -> SAnn -> SAnn -> Id -> AnnotationEnvironment
+getAnnotations env rel app var = unionMap (f (relEnv env) rel) (f (appEnv env) app)
+  where
+    f env' con = case lookupMap var env' of
+      Just (AnnVar a) -> singleMap a con
+      _ -> emptyMap
+
+-- Make a L constraint for all annotation variables
+getLConstraints :: Environment -> AnnotationEnvironment
+getLConstraints = mapFromList . map (\x -> (x, L)) . getAnnotationVariablesEnv
 
 -- Get all annotation variables in the environment to introduce constraints
 getAnnotationVariablesEnv :: Environment -> [Id]
-getAnnotationVariablesEnv (Environment _ relEnv appEnv) = f relEnv ++ f appEnv
+getAnnotationVariablesEnv env = f (relEnv env) ++ f (appEnv env)
   where
-    f env = map snd $ listFromMap $ mapMap fromAnn $ filterMap isAnn env
+    f env' = map snd $ listFromMap $ mapMap fromAnn $ filterMap isAnn env'
 
--- Add foralls for strictness annotations
-forallify :: Type -> Type
-forallify (TAp (TAnn a) t) = TAp (TAnn a) $ forallify t
-forallify t = foldr (\a t' -> TForall (Quantor (Just $ stringFromId a)) KAnn t') (typeRemoveStrictnessQuantification t) anns
+-- Containment
+containment :: Environment -> SAnn -> AnnotationEnvironment
+containment env con = mapFromList $ map (\x -> (x, con)) (getAnnotationVariablesEnv env)
+
+mergeAnalysis :: (SAnn -> SAnn -> SAnn) -> [Analysis a] -> Analysis [a]
+mergeAnalysis _ [] = Analysis [] S.empty emptyMap emptyMap
+mergeAnalysis f (x:xs) = Analysis (v:v') (S.union c c') (unionMapWith f a a') (unionMap sc sc')
+    where
+        Analysis v c a sc = x
+        Analysis v' c' a' sc' = mergeAnalysis f xs
+
+isTypeSynonym :: TypeEnvironment -> Type -> Bool
+isTypeSynonym env (TAp t _) = isTypeSynonym env t
+isTypeSynonym env (TCon (TConDataType c)) = elemMap c $ typeEnvSynonyms env
+isTypeSynonym _ _ = False
+
+isTupAp :: Expr -> Bool
+isTupAp (Con (ConTuple _)) = True
+isTupAp (Ap e _) = isTupAp e
+isTupAp (ApType e _) = isTupAp e
+isTupAp _ = False
+
+threeIds :: NameSupply -> (Id, Id, Id, NameSupply)
+threeIds supply0 = (id1, id2, id3, supply3)
   where
-    anns = getVariablesType t
+    (id1, supply1) = freshId supply0
+    (id2, supply2) = freshId supply1
+    (id3, supply3) = freshId supply2
 
-getVariablesType :: Type -> [Id]
-getVariablesType (TAp t1 t2) = nub $ getVariablesType t1 ++ getVariablesType t2
-getVariablesType (TStrict t) = getVariablesType t
-getVariablesType (TForall _ _ t) = getVariablesType t
-getVariablesType (TAnn a) = getVariablesAnn a
-getVariablesType _ = []
+strictBind :: Bind -> AnnotationEnvironment -> AnnotationEnvironment
+strictBind (Bind (Variable _ (TAp (TAnn (AnnVar a)) (TAp (TAnn (AnnVar r)) (TAp _ _)))) _) ae = ae'
+    where
+        ae' = insertMap a S $ insertMap r S ae
+    
+
+blockedConstraint :: IdSet -> Constraint -> Bool
+blockedConstraint is (_ `Constraint` AnnVar x) = elemSet x is
+blockedConstraint _ _                          = True
+
+mapConstraint :: SolvedConstraints -> Constraint -> Constraint
+mapConstraint sc (a1 `Constraint` a2) = a1 `Constraint` replaceVar sc a2
+
+getForalls :: TypeEnvironment -> Type -> [Bool]
+getForalls env (TForall _ KAnn t) = True : getForalls env t
+getForalls env (TForall _ _ t) = getForalls env t
+getForalls env (TStrict t) = getForalls env t
+getForalls env (TAp t1 t2) = getForalls env t1 ++ getForalls env t2
+getForalls env t | t' == t = []
+                 | otherwise = getForalls env t'
+                where
+                    t' = typeNormalizeHead env t
+
+-- Replace solved annotation variables
+replaceVar :: SolvedConstraints -> SAnn -> SAnn
+replaceVar sc (AnnVar x) | elemMap x sc = findMap x sc
+replaceVar sc (Meet x y) = meet (replaceVar sc x) (replaceVar sc y)
+replaceVar sc (Join x y) = join (replaceVar sc x) (replaceVar sc y)
+replaceVar _  x          = x
+
