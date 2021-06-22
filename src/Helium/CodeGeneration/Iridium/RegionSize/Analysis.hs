@@ -302,11 +302,11 @@ analyseLetAlloc envs@(Envs gEnv rEnv _) bEnv (Bind _ (BindTargetFunction gFun aR
 -- Tuples
 analyseLetAlloc envs@(Envs _ rEnv _) bEnv (Bind _ (BindTargetTuple _) _ dReg:bs) next =
     let (rAnn,rEff) = analyseLetAlloc envs bEnv bs next
-    in (rAnn, AAdd (AConstr $ constrOne $ lookupReg dReg rEnv) rEff)
+    in (rAnn, AAdd rEff (AConstr $ constrOne $ lookupReg dReg rEnv))
 -- Datatypes
 analyseLetAlloc envs@(Envs _ rEnv _) bEnv (Bind _ (BindTargetConstructor _) _ dReg:bs) next =
     let (rAnn,rEff) = analyseLetAlloc envs bEnv bs next
-    in (rAnn, AAdd (AConstr $ constrOne $ lookupReg dReg rEnv) rEff)
+    in (rAnn, AAdd rEff (AConstr $ constrOne $ lookupReg dReg rEnv))
 
 -- TODO: Move to a better location & rename maybe
 -- | Collect bounds from a regionvars
