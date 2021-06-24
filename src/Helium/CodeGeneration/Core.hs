@@ -25,8 +25,7 @@ import Helium.CodeGeneration.Core.Rename(coreRename)
 import Helium.CodeGeneration.Core.RemoveAliases(coreRemoveAliases)
 import Helium.CodeGeneration.Core.RemovePatterns(coreRemovePatterns)
 import Helium.CodeGeneration.Core.Saturate(coreSaturate)
-import Helium.CodeGeneration.Core.Strictness as S0 (coreStrictness)
-import Helium.CodeGeneration.Core.Strictness.Strictness as S1 (coreStrictness)
+import Helium.CodeGeneration.Core.Strictness.Strictness(coreStrictness)
 
 pipeline :: Int -> [(String, NameSupply -> CoreModule -> CoreModule)]
 pipeline s =
@@ -37,12 +36,12 @@ pipeline s =
   , ("LetInline 1", const coreLetInline)
   , ("LetInline 2", const coreLetInline)
   , ("Normalize", coreNormalize)
-  , ("Strictness 1", selectStrictness s)
+  , ("Strictness 1", coreStrictness s)
   , ("Strictness 2", strictnessExtraPass s)
   , ("RemoveAliases", const coreRemoveAliases)
   , ("ReduceThunks", const coreReduceThunks)
   , ("Lift", coreLift)
-  , ("Strictness 3", selectStrictness s)
+  , ("Strictness 3", coreStrictness s)
   ]
 
 -- Desugars core. The desugared AST can be converted to Iridium.
@@ -61,13 +60,6 @@ desugar supply ((passName, passFn) : passes) mod = do
   desugar supply2 passes mod'
 desugar _ [] mod = return mod
 
--- Select variant of strictness analysis
-selectStrictness :: Int -> (NameSupply -> CoreModule -> CoreModule)
-selectStrictness 3 = S1.coreStrictness True
-selectStrictness 2 = S1.coreStrictness False
-selectStrictness 1 = S0.coreStrictness
-selectStrictness _ = \_ x -> x -- No strictness
-
 showStrictness :: Int -> String
 showStrictness 3 = "Polyvariant"
 showStrictness 2 = "Monovariant"
@@ -75,5 +67,5 @@ showStrictness 1 = "Old"
 showStrictness _ = "No"
 
 strictnessExtraPass :: Int -> (NameSupply -> CoreModule -> CoreModule)
-strictnessExtraPass 1 = S0.coreStrictness
-strictnessExtraPass _ = \_ x -> x
+strictnessExtraPass 1 = coreStrictness 1
+strictnessExtraPass _ = \_ x -> x -- Type/effect system doesn't need second pass

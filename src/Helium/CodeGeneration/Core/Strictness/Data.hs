@@ -32,11 +32,6 @@ type Constraints = S.Set Constraint
 data Constraint = Constraint SAnn SAnn deriving (Eq, Ord, Show)
 type SolvedConstraints = IdMap SAnn
 
-data Analysis a = Analysis {value :: a,
-                            constraints :: Constraints,
-                            mergeEnv :: AnnotationEnvironment,
-                            solved :: SolvedConstraints}
-
 isAnn :: SAnn -> Bool
 isAnn (AnnVar _) = True
 isAnn _          = False
@@ -129,12 +124,6 @@ getVariablesType b (TForall _ _ t) = getVariablesType b t
 getVariablesType True (TAnn a) = getVariablesAnn a
 getVariablesType _ _ = []
 
--- Set applicative context to S or L depending on the arity of the type
-setApplicativeness :: Environment -> Type -> SAnn
-setApplicativeness env t = case arityFromType $ typeNormalizeHead (typeEnv env) t of
-  0 -> S
-  _ -> L
-
 -- Get relevance and applicative annotations of var, set them equal to contexts
 getAnnotations :: Environment -> SAnn -> SAnn -> Id -> AnnotationEnvironment
 getAnnotations env rel app var = unionMap (f (relEnv env) rel) (f (appEnv env) app)
@@ -156,18 +145,6 @@ getAnnotationVariablesEnv env = f (relEnv env) ++ f (appEnv env)
 -- Containment
 containment :: Environment -> SAnn -> AnnotationEnvironment
 containment env con = mapFromList $ map (\x -> (x, con)) (getAnnotationVariablesEnv env)
-
-mergeAnalysis :: (SAnn -> SAnn -> SAnn) -> [Analysis a] -> Analysis [a]
-mergeAnalysis _ [] = Analysis [] S.empty emptyMap emptyMap
-mergeAnalysis f (x:xs) = Analysis (v:v') (S.union c c') (unionMapWith f a a') (unionMap sc sc')
-    where
-        Analysis v c a sc = x
-        Analysis v' c' a' sc' = mergeAnalysis f xs
-
-isTypeSynonym :: TypeEnvironment -> Type -> Bool
-isTypeSynonym env (TAp t _) = isTypeSynonym env t
-isTypeSynonym env (TCon (TConDataType c)) = elemMap c $ typeEnvSynonyms env
-isTypeSynonym _ _ = False
 
 isTupAp :: Expr -> Bool
 isTupAp (Con (ConTuple _)) = True
@@ -212,3 +189,43 @@ replaceVar sc (Meet x y) = meet (replaceVar sc x) (replaceVar sc y)
 replaceVar sc (Join x y) = join (replaceVar sc x) (replaceVar sc y)
 replaceVar _  x          = x
 
+
+-- Switch back original and annotated type, or remove annotations
+resetDeclaration :: CoreDecl -> CoreDecl
+resetDeclaration decl = resetDeclaration' decl
+  where
+      t = typeRemoveAnnotations $ declType decl
+      c = strictnessToCustom (declType decl) (declCustoms decl)
+      resetDeclaration' :: CoreDecl -> CoreDecl
+      resetDeclaration' DeclValue{}       = decl{declType = t, declCustoms = c}
+      resetDeclaration' DeclAbstract{}    = decl{declType = t, declCustoms = c}
+      resetDeclaration' DeclCon{}         = decl{declType = t}
+      resetDeclaration' DeclTypeSynonym{} = decl{declType = t}
+      resetDeclaration' _                 = decl
+
+setStrictnessType :: CoreDecl -> CoreDecl
+setStrictnessType decl = decl{declType = t}
+  where
+    t = typeFromCustom $ declCustoms decl
+
+strictnessToCustom :: Type -> [Custom] -> [Custom]
+strictnessToCustom t c = CustomDecl (DeclKindCustom (idFromString "strictness")) [CustomType t] : c
+
+removeAnn :: [Type] -> [Type]
+removeAnn (TAnn _:xs) = removeAnn xs
+removeAnn x = x
+
+-- Lookup annotation of variables
+lookupVar :: SAnn -> SolvedConstraints -> SAnn
+lookupVar (AnnVar x) sc | elemMap x sc = findMap x sc
+lookupVar x _ = x
+
+uncontain :: [Id] -> SAnn -> SAnn
+uncontain xs (AnnVar x) | x `elem` xs = S
+uncontain xs (Join x y) = join (uncontain xs x) (uncontain xs y)
+uncontain xs (Meet x y) = meet (uncontain xs x) (uncontain xs y)
+uncontain _  x          = x
+
+-- Turn bind to strict if annotated with S
+bindToStrict :: SolvedConstraints -> Bind -> Bool
+bindToStrict sc (Bind (Variable _ (TAp (TAnn a) (TAp (TAnn r) (TAp _ _)))) _) = lookupVar r sc == S && lookupVar a sc == S

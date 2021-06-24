@@ -1,10 +1,11 @@
-module Helium.CodeGeneration.Core.Strictness.Polyvariant where
+module Helium.CodeGeneration.Core.Strictness.Polyvariant (polyvariantStrictness) where
 
+import Data.List
 import qualified Data.Set as S
 
-import Helium.CodeGeneration.Core.Strictness.Transform
-import Helium.CodeGeneration.Core.Strictness.Solve
+import Helium.CodeGeneration.Core.BindingGroup
 import Helium.CodeGeneration.Core.Strictness.Data
+import Helium.CodeGeneration.Core.Strictness.Solve
 import Helium.CodeGeneration.Core.TypeEnvironment
 
 import Lvm.Common.Id
@@ -15,6 +16,82 @@ import Lvm.Core.Module
 import Lvm.Core.Type
 
 import Text.PrettyPrint.Leijen (pretty)
+
+-- Analysis data type, containing return expression, set of constraints, environment containing the annotations and solved constraints
+data Analysis a = Analysis a Constraints AnnotationEnvironment SolvedConstraints
+
+mergeAnalysis :: (SAnn -> SAnn -> SAnn) -> [Analysis a] -> Analysis [a]
+mergeAnalysis _ [] = Analysis [] S.empty emptyMap emptyMap
+mergeAnalysis f (x:xs) = Analysis (v:v') (S.union c c') (unionMapWith f a a') (unionMap sc sc')
+    where
+        Analysis v c a sc = x
+        Analysis v' c' a' sc' = mergeAnalysis f xs
+
+type GroupData = ([CoreDecl], TypeEnvironment, NameSupply)
+type CoreGroup = BindingGroup Expr
+
+polyvariantStrictness :: NameSupply -> CoreModule -> CoreModule
+polyvariantStrictness supply mod = mod {moduleDecls = decls1 ++ map resetDeclaration others' ++ values'}
+  where
+    (supply1, supply2) = splitNameSupply supply
+    -- Ignore declarations which have already been analysed
+    (decls1, decls2) = partition (any isCustomAnn . declCustoms) $ moduleDecls mod
+    -- Split module in functions and others (constructors, abstract, synonyms)
+    (values, others) = partition isDeclValue decls2
+    -- For declarations which have been annotated, set strictness type to declType
+    decls1' = map setStrictnessType decls1
+    -- Annotate others
+    (others', is) = unzip $ mapWithSupply (annotateDeclaration (typeEnvForModule mod)) supply1 others
+    -- Create starting environment
+    env' = typeEnvForModule mod{moduleDecls = others' ++ decls1'}
+    -- Binding group analysis for functions
+    groups = coreBindingGroups values
+    (values', _, _) = foldl (groupStrictness (unionSets is)) ([], env', supply2) groups
+    
+groupStrictness :: IdSet -> GroupData -> CoreGroup -> GroupData
+-- Single declaration
+groupStrictness is (b, env, supply) (BindingNonRecursive d) = (b ++ [d{valueValue = e', declCustoms = c}], env', supply2)
+  where
+    (supply1, supply2) = splitNameSupply supply
+    -- Analyse function
+    Analysis e cs ae sc1 = analyseDeclaration env is supply1 d
+    -- Solve constraints
+    cs' = S.union cs $ annEnvToConstraints ae
+    sc2 = solveConstraints cs'
+    sc3 = mapMap (replaceVar sc2) sc1
+    sc = unionMap sc2 sc3
+    -- Transform expression using solved constraints
+    e' = transformExpression sc e
+    -- Get type, apply transformations and forallify
+    t' = forallify True $ transformType sc $ typeOfCoreExpression env e
+    -- Add strictness type to custom
+    c = strictnessToCustom t' (declCustoms d)
+    -- Add function to environment for next function
+    env' = typeEnvAddGlobalValue (declName d) t' env
+-- Group of recursive declarations
+groupStrictness is (bs, env, supply) (BindingRecursive ds) = (bs ++ ds', env'', supply3)
+  where
+    (supply1, supply') = splitNameSupply supply
+    (supply2, supply3) = splitNameSupply supply'
+    -- Annotate type signatures and add them to the envorinment
+    (ts, is2) = unzip $ mapWithSupply (\s d -> annotateType env s $ declType d) supply1 ds
+    env' = typeEnvAddGlobalValues (map (\(d, t) -> (declName d, t)) (zip ds ts)) env
+    is3 = unionSet is $ unionSets is2
+    -- Run analysis on all bodies, merge information with meet
+    Analysis es cs ae sc1 = mergeAnalysis meet $ mapWithSupply (analyseDeclaration env' is3) supply2 ds
+    -- Solve constraints
+    cs' = S.union cs $ annEnvToConstraints ae
+    sc2 = solveConstraints cs'
+    sc3 = mapMap (replaceVar sc2) sc1
+    sc = unionMap sc2 sc3
+    -- Transform all expressions using solved constraints
+    es' = map (transformExpression sc) es
+    -- Get types from body, apply solved constraints and forallify
+    ts' = map (forallify True . transformType sc . typeOfCoreExpression env') es
+    -- Create new declarations with new values and strictness types
+    ds' = map (\(d, v, t) -> d{valueValue = v, declCustoms = strictnessToCustom t (declCustoms d)}) (zip3 ds es' ts')
+    -- Add types to environment for next functions
+    env'' = typeEnvAddGlobalValues (map (\(d, t) -> (declName d, t)) (zip ds' ts')) env
 
 {-
 Analyse
@@ -120,7 +197,7 @@ analyseBinds env supply rel (Rec bs) = (Analysis (Rec b1) cs ae (unionMap sc sc'
         -- Run simplifier to get solved local constraints
         Analysis _ cs ae sc = simplify c a env'
         -- Apply solved constraints to get type signatures for all binds
-        (b1, i2) = unzip $ map (transformBind' env' sc) bs'
+        (b1, i2) = unzip $ map (simplifyBind env' sc) bs'
 analyseBinds env supply rel (NonRec b) = (Analysis (NonRec b1) cs ae (unionMap sc sc'), app, unionSet i2 is)
     where
         -- Run analysis on bind
@@ -128,7 +205,7 @@ analyseBinds env supply rel (NonRec b) = (Analysis (NonRec b1) cs ae (unionMap s
         -- Run simplifier to get solved local constraints
         Analysis _ cs ae sc = simplify c a (envAddVars is env)
         -- Apply solved constraints to get type signature for all bind
-        (b1, i2) = transformBind' env sc b'
+        (b1, i2) = simplifyBind env sc b'
 analyseBinds env supply rel (Strict b) = (Analysis (Strict b1) cs ae (unionMap sc sc'), app, unionSet i2 is)
     where
         -- Run analysis on bind
@@ -138,7 +215,7 @@ analyseBinds env supply rel (Strict b) = (Analysis (Strict b1) cs ae (unionMap s
         -- Run simplifier to get solved local constraints
         Analysis _ cs ae sc = simplify c a' (envAddVars is env)
         -- Apply solved constraints to get type signature for all bind
-        (b1, i2) = transformBind' env sc b'
+        (b1, i2) = simplifyBind env sc b'
 
 analyseRecBind :: Environment -> SAnn -> NameSupply -> Bind -> (Analysis Bind, SAnn)
 analyseRecBind env rel supply (Bind v e) = (Analysis (Bind v e') c a sc, a2)
@@ -313,6 +390,77 @@ annotateVarType env supply t = (TAp (TAnn (AnnVar id1)) (TAp (TAnn (AnnVar id2))
     is' = insertSet id1 $ insertSet id2 $ insertSet id3 is
 
 {-
+    Transform
+-}
+
+-- Apply strict annotations on types
+transformType :: SolvedConstraints -> Type -> Type
+transformType sc (TAp (TAp (TCon TConFun) (TAp (TAnn a1) (TAp (TAnn r) (TAp (TAnn a2) t1)))) t2) =
+  TAp (TAp (TCon TConFun) t1') t2'
+    where
+      -- If the function is exported and we're not in the last argument, we have to set applicativeess to L
+      a1' = lookupVar a1 sc
+      r'  = lookupVar r sc
+      a2' = lookupVar a2 sc
+      t1' = TAp (TAnn a1') (TAp (TAnn r') (TAp (TAnn a2') (transformType sc t1)))
+      t2' = transformType sc t2
+transformType sc (TAp t1 t2) = TAp (transformType sc t1) (transformType sc t2)
+transformType sc (TAnn a) = TAnn $ lookupVar a sc
+transformType sc (TStrict t) = transformType sc t
+transformType sc (TForall q k t) = TForall q k $ transformType sc t
+transformType _ t = t
+
+-- Apply strict annotations on expressions
+transformExpression :: SolvedConstraints -> Expr -> Expr
+transformExpression sc (Let b e) = Let (transformBinds sc b) $ transformExpression sc e
+transformExpression sc (Match i alts) = Match i $ map (transformAlt sc) alts
+transformExpression sc (Ap e1 e2) = Ap e1' e2'
+  where
+    e1' = transformExpression sc e1
+    e2' = transformExpression sc e2
+transformExpression sc (ApType e t) = case t of
+  TAnn _ -> transformExpression sc e
+  _      -> ApType (transformExpression sc e) (typeRemoveAnnotations t)
+transformExpression sc (Lam s (Variable x (TAp (TAnn a) (TAp (TAnn r) (TAp _ t)))) e) = Lam (s || s') (Variable x t') e' 
+  where
+    -- Lookup variables, polyvariant search because we need to check if it is not L
+    a' = lookupVar a sc
+    r' = lookupVar r sc
+    -- Lam can be made strict if it is strict when fully applied, i.e. when a' becomes S
+    s' = uncontain (getVariablesAnn a') r' == S
+    e' = transformExpression sc e
+    t' = typeRemoveAnnotations t
+transformExpression sc (Forall q k e) = Forall q k $ transformExpression sc e
+transformExpression _ e = e -- Con, Lit and Var
+
+-- Apply strict transformations on binds
+transformBinds :: SolvedConstraints -> Binds -> Binds
+transformBinds sc (Strict b) = Strict $ transformBind sc b
+transformBinds sc (NonRec b) = if bindToStrict sc b then Strict b' else NonRec b'
+  where
+    b' = transformBind sc b
+transformBinds sc (Rec bs) = Rec $ map (transformBind sc) bs
+
+-- Apply strict annotations on bind
+transformBind :: SolvedConstraints -> Bind -> Bind
+transformBind sc (Bind (Variable x (TAp _ (TAp _ (TAp _ t)))) e) = Bind (Variable x t') e'
+  where
+    t' = typeRemoveAnnotations t
+    e' = transformExpression sc e
+
+-- Apply strict transformations on alts
+transformAlt :: SolvedConstraints -> Alt -> Alt
+transformAlt sc (Alt p e) = Alt p' e'
+  where
+    p' = transformPat p
+    e' = transformExpression sc e
+
+-- Apply strict transformations on pats
+transformPat :: Pat -> Pat
+transformPat (PatCon c t i) = PatCon c (map typeRemoveAnnotations $ removeAnn t) i
+transformPat p = p
+
+{-
     Instantiate
 -}
 
@@ -394,7 +542,7 @@ instantiate env supply id e = (foldr (\x e' -> ApType e' (TAnn (AnnVar x))) e id
         ids = mapWithSupply (\x _ -> fst $ freshId x) supply $ getForalls env (typeOfId env id)
 
 {-
-    Simplification and transformation
+    Simplification
 -}
 
 -- Solve part of the constraint set in a let-binding
@@ -410,12 +558,12 @@ simplify cs ae env = Analysis () (S.map (mapConstraint sc) lc) (mapMap (replaceV
         cs' = S.union rc ac
         sc = solveConstraints cs'
 
--- Apply strict annotations on bind
-transformBind' :: Environment -> SolvedConstraints -> Bind -> (Bind, IdSet)
-transformBind' env sc (Bind (Variable x (TAp a1 (TAp r (TAp a2 _)))) e) = (Bind (Variable x t'') e, is)
+-- Simplify the type of a bind
+simplifyBind :: Environment -> SolvedConstraints -> Bind -> (Bind, IdSet)
+simplifyBind env sc (Bind (Variable x (TAp a1 (TAp r (TAp a2 _)))) e) = (Bind (Variable x t'') e, is)
   where
     -- Get type of binding, apply solved constraints and forallify
-    t' = forallify False $ transformType sc True False $ typeOfCoreExpression (typeEnv env) e
+    t' = forallify False $ transformType sc $ typeOfCoreExpression (typeEnv env) e
     -- Reinstate annotations belonging to variable itself which are yet to be answered
     t'' = TAp a1 $ TAp r $ TAp a2 t'
     -- Add used annotation variables
