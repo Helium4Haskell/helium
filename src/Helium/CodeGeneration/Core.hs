@@ -61,8 +61,10 @@ desugar supply ((passName, passFn) : passes) mod = do
 desugar _ [] mod = return mod
 
 showStrictness :: Int -> String
-showStrictness 3 = "Polyvariant"
-showStrictness 2 = "Monovariant"
+showStrictness 5 = "Simple polyvariant"
+showStrictness 4 = "Simple monovariant"
+showStrictness 3 = "Advanced polyvariant"
+showStrictness 2 = "Advanced monovariant"
 showStrictness 1 = "Old"
 showStrictness _ = "No"
 
