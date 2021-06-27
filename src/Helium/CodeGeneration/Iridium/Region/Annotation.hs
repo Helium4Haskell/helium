@@ -1,5 +1,5 @@
 module Helium.CodeGeneration.Iridium.Region.Annotation
-  ( Annotation(..), AnnotationVar(..)
+  ( Annotation(..), AnnotationVar(..), AFixEscapeFunction
   , identity, arelation, isIdentity
   , showAnnotation, rnfAnnotation
   ) where
@@ -29,7 +29,7 @@ data Annotation
   -- We store a function to apply to the result of the fixpoint, to prevent the fixpoint being duplicated.
   = AFix !Annotation !Sort !Annotation
 
-  | AFixEscape !RegionSort ![(Int, Sort, Annotation)]
+  | AFixEscape !RegionSort ![AFixEscapeFunction]
 
   | AForall !Quantor !Annotation
   | ALam !Sort !RegionSort !LifetimeContext !Annotation
@@ -46,6 +46,8 @@ data Annotation
   | ABottom !Sort
   | AJoin !Annotation !Annotation
   deriving (Eq, Ord)
+
+type AFixEscapeFunction = (Int, Sort, Annotation)
 
 identity :: Sort -> Annotation
 identity s = ALam s RegionSortUnit LifetimeContextAny $ AVar $ AnnotationVar 0

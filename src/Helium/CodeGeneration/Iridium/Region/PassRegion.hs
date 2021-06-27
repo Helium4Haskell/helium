@@ -4,6 +4,8 @@ import Lvm.Common.Id
 import Lvm.Common.IdMap
 import Lvm.Core.Type
 
+import Data.List
+
 import Helium.CodeGeneration.Core.TypeEnvironment
 
 import Helium.CodeGeneration.Iridium.Data
@@ -71,17 +73,50 @@ initialEnv m = GlobalEnv typeEnv dataTypeEnv constructorEnv functionEnv
 -- or a group of (mutual) recursive functions.
 transformGroup :: GlobalEnv -> BindingGroup Method -> IO (GlobalEnv, [Declaration Method])
 transformGroup genv (BindingRecursive [method]) = transformGroup genv (BindingNonRecursive method)
-transformGroup genv (BindingRecursive methods) = do
-  -- We cannot analyse mutual recursive functions yet
-  -- For now we will analyse them one by one.
-  -- TODO: This will cause issues when later functions in the binding group get additional region arguments.
-  (genv'', methods') <- mapAccumLM (\genv' method -> transformGroup genv' $ BindingNonRecursive method) genv methods
-  return (genv'', concat methods')
+transformGroup genv@(GlobalEnv typeEnv dataTypeEnv constructorEnv globals) (BindingRecursive methods) = do
+  putStrLn $ "# Analyse mutual recursive methods " ++ show (map declarationName methods)
+
+  let
+    bindings = map (\(Declaration name _ _ _ method@(Method _ _ args _ _ _ _ _)) -> MethodBinding name (assignRegionVarsCount genv method) args) methods
+    (methodEnvs, fixpointFunctions) = unzip $ map (generate genv bindings) methods
+    sort' = SortTuple $ map (\(_, s, _) -> s) fixpointFunctions
+    correctSort (arity, s, ALam _ rs lc a) = (arity, s, ALam sort' rs lc a)
+    correctSort _ = error "transformGroup: BindingRecursive: got invalid fixpoint function"
+    fixpointFunctions' = map correctSort fixpointFunctions
+    regionSort = methodEnvAdditionalRegionSort $ head methodEnvs
+    fixpoint = AFixEscape regionSort fixpointFunctions
+
+    correctArityZero' binding (doesEscape, substituteRegionVar, annotation)
+      | methodBindingZeroArity binding = 
+        ( doesEscape
+        , substituteRegionVar
+        , simplify dataTypeEnv $ snd $ correctArityZero regionSort (methodBindingArguments binding) annotation
+        )
+      | otherwise = (doesEscape, substituteRegionVar, snd $ annotationRestrict doesEscape annotation)
+    results = zipWith correctArityZero' bindings $ simplifyFixEscape dataTypeEnv fixpoint
+
+    transform' :: Declaration Method -> MethodEnv -> ([Bool], RegionVar -> RegionVar, Annotation) -> ((Id, (Int, Annotation)), Declaration Method)
+    transform' decl methodEnv (doesEscape, substituteRegionVar, annotation) =
+      ( ( declarationName decl, (regionCount, restricted))
+      , decl{ declarationValue = method }
+      )
+      where
+        (regionCount, method, restricted) = transformDead annotation $ transform methodEnv (methodEnvIsZeroArity methodEnv) substituteRegionVar annotation (declarationName decl) $ declarationValue decl
+
+    solved :: [(Id, (Int, Annotation))]
+    transformed :: [Declaration Method]
+    (solved, transformed) = unzip $ zipWith3 transform' methods methodEnvs results
+
+    globals' = foldl' (\globals'' (name, a) -> updateMap name a globals'') globals solved
+    genv' = GlobalEnv typeEnv dataTypeEnv constructorEnv globals'
+
+  return (genv', transformed)
 
 transformGroup genv@(GlobalEnv typeEnv dataTypeEnv constructorEnv globals) (BindingNonRecursive method@(Declaration methodName _ _ _ (Method _ _ arguments _ _ _ _ _))) = do
   putStrLn $ "# Analyse method " ++ show methodName
 
-  let (methodEnv, annotation) = generate genv method
+  let (methodEnv, fixpointFunction) = generate genv [] method
+  let annotation = AFixEscape (methodEnvAdditionalRegionSort methodEnv) [fixpointFunction]
   -- print annotation
 
   let
