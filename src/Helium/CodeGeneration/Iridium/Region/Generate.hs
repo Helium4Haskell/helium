@@ -336,20 +336,6 @@ lookupSimpleVar genv@(GlobalEnv typeEnv dataTypeEnv _ _) _ (VarGlobal (GlobalVar
   _ -> error $ "lookupSimpleVar: Expected to get a variable without additional region arguments, got a global function with additional region arguments: " ++ show name
 lookupSimpleVar _ env (VarLocal (Local name _)) = lookupLocal env name
 
-lookupVar :: GlobalEnv -> MethodEnv -> Id -> Variable -> (Annotation, RegionVars)
-lookupVar genv@(GlobalEnv typeEnv dataTypeEnv _ _) env lhs (VarGlobal (GlobalVariable name tp)) = 
-  ( AApp a (ATuple []) additionalRegions LifetimeContextAny
-  , mapRegionVars (const RegionGlobal) $ regionSortToVars 0 $ regionSortOfType dataTypeEnv $ typeNormalize typeEnv tp
-  )
-  where
-    (count, a) = lookupGlobal genv name
-    additionalRegions = case count of
-      _ | Just (_, m) <- lookupMethod name $ methodEnvBindingGroup env ->
-        if methodBindingZeroArity m then RegionVarsTuple [] else methodEnvAdditionalRegionVars env
-      0 -> RegionVarsTuple [] -- Prevent a lookup
-      _ -> RegionVarsTuple $ map RegionVarsSingle $ fromMaybe (error "lookupVar: additional region arguments not found") $ lookupMap lhs $ methodEnvAdditionalFor env
-lookupVar _ env _ (VarLocal (Local name _)) = lookupLocal env name
-
 lookupGlobal :: GlobalEnv -> Id -> (Int, Annotation)
 lookupGlobal (GlobalEnv _ _ _ m) name
   | Just a <- lookupMap name m = a
