@@ -342,7 +342,7 @@ toInstruction supply env continue expr = case getApplicationOrConstruction expr 
             (supplyCast1, supplyCast2) = splitNameSupply supply'''
             (args', castInstructions, tp) = maybeCasts supplyCast1 env (variableType var) args
             bind = Bind x (bindTargetThunk var) args' RegionGlobal
-            var = resolveVariable env fn
+            var = resolveSimpleVariable env fn
           in
             castInstructions
               +> LetAlloc [bind]
@@ -377,11 +377,12 @@ altJump toBlock (Local toVar toType, intermediateBlockId) = CBind (\resultVar ->
   )
 
 maybeCast :: NameSupply -> TypeEnv -> Id -> Core.Type -> (Local, Instruction -> Instruction)
-maybeCast supply env name expected = case maybeCastVariable supply1 env (resolveVariable env name) expected of
-  (VarLocal local, instr) -> (local, instr)
-  (var, instr) -> (Local localName expected, instr . Let localName (Var var))
+maybeCast supply env name expected = case maybeCastVariable supply1 env var expected of
+  (VarLocal local, instr) -> (local, instr0 . instr)
+  (var, instr) -> (Local localName expected, instr0 . instr . Let localName (Var var))
   where
-    (supply1, supply2) = splitNameSupply supply
+    (supply0, instr0, var) = resolveVariable supply env name
+    (supply1, supply2) = splitNameSupply supply0
     (localName, _) = freshIdFromId name supply2
 
 maybeCastVariable :: NameSupply -> TypeEnv -> Variable -> Core.Type -> (Variable, Instruction -> Instruction)
@@ -506,7 +507,7 @@ bind supply env (Core.Bind (Core.Variable x _) val) = (argInstrs, Bind x target 
         _
           | null args -> error $ "bind: a secondary thunk cannot have zero arguments"
         _ ->
-          BindTargetThunk (resolveVariable env fn) (BindThunkRegions (RegionVarsTuple []) (RegionVarsTuple []))
+          BindTargetThunk (resolveSimpleVariable env fn) (BindThunkRegions (RegionVarsTuple []) (RegionVarsTuple []))
 
 callArguments :: NameSupply -> TypeEnv -> [Either Core.Type Id] -> (NameSupply, Instruction -> Instruction, [Either Core.Type Local])
 callArguments supply env (Left tp : args) = (supply', instr, Left tp : args')
@@ -557,20 +558,38 @@ resolve env name = case valueDeclaration env name of
   ValueFunction arity fntype _ -> Right $ GlobalFunction name arity fntype
   ValueVariable t -> Left $ VarLocal $ Local name t
 
-resolveVariable :: TypeEnv -> Id -> Variable
-resolveVariable env name = case resolve env name of
+resolveSimpleVariable :: TypeEnv -> Id -> Variable
+resolveSimpleVariable env name = case resolve env name of
   Left var -> var
-  Right (GlobalFunction name 0 tp) -> VarGlobal $ GlobalVariable name $ typeRemoveArgumentStrictness tp
-  Right (GlobalFunction name _ tp) -> VarGlobal $ GlobalVariable name $ typeToStrict $ typeRemoveArgumentStrictness tp
+  Right (GlobalFunction name 0 tp) -> VarGlobal $ GlobalVariable name tp
+  Right (GlobalFunction name _ tp) -> error "Expected variable of arity 0" -- VarGlobal $ GlobalVariable name $ typeToStrict $ typeRemoveArgumentStrictness tp
+
+resolveVariable :: NameSupply -> TypeEnv -> Id -> (NameSupply, Instruction -> Instruction, Variable)
+resolveVariable supply env name = case resolve env name of
+  Left var -> (supply, id, var)
+  Right fn@(GlobalFunction _ _ tp) ->
+    let
+      (name', supply') = freshIdFromId name supply
+      target = bindTargetFunction fn
+      bind = Bind name' target [] RegionGlobal
+    in
+      (supply', LetAlloc [bind], VarLocal $ Local name' $ typeToStrict $ typeRemoveArgumentStrictness tp)
 
 resolveLocal :: NameSupply -> TypeEnv -> Id -> (NameSupply, Instruction -> Instruction, Local)
-resolveLocal supply env name = case resolveVariable env name of
-  VarLocal local -> (supply, id, local)
-  VarGlobal global@(GlobalVariable _ tp) ->
+resolveLocal supply env name = case resolve env name of
+  Left (VarLocal local) -> (supply, id, local)
+  Left (VarGlobal (GlobalVariable name tp)) ->
     let
       (name', supply') = freshIdFromId name supply
     in
-      (supply', Let name' (Var $ VarGlobal global), Local name' tp)
+      (supply', Let name' (Var $ VarGlobal $ GlobalVariable name tp), Local name' tp)
+  Right fn@(GlobalFunction _ _ tp) ->
+    let
+      (name', supply') = freshIdFromId name supply
+      target = bindTargetFunction fn
+      bind = Bind name' target [] RegionGlobal
+    in
+      (supply', LetAlloc [bind], Local name' $ typeToStrict $ typeRemoveArgumentStrictness tp)
 
 instructions :: [Instruction -> Instruction] -> Instruction -> Instruction
 instructions = foldr (.) id

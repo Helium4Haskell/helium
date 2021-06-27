@@ -619,14 +619,14 @@ gatherExpression genv@(GlobalEnv typeEnv dataTypeEnv _ _) env lhs expr returnReg
   Instantiate var tps -> gatherInstantiate genv env (VarLocal var) tps returnRegions
   Eval var ->
     let
-      (annotation, regions) = lookupVar genv env lhs var
+      (annotation, regions) = lookupSimpleVar genv env var
       (_, r2, rs) = regionsLazy regions
       (r2', rs') = regionsStrict returnRegions
     in
       (unifyRegions (RegionVarsTuple [RegionVarsSingle r2, rs]) (RegionVarsTuple [RegionVarsSingle r2', rs']), annotation)
   Var var ->
     let
-      (annotation, regions) = lookupVar genv env lhs var
+      (annotation, regions) = lookupSimpleVar genv env var
     in
       (unifyRegions regions returnRegions, annotation)
   Cast _ _ -> error "Cannot analyse cast"
