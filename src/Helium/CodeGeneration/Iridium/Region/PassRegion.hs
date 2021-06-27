@@ -101,7 +101,7 @@ transformGroup genv@(GlobalEnv typeEnv dataTypeEnv constructorEnv globals) (Bind
       , decl{ declarationValue = method }
       )
       where
-        (regionCount, method, restricted) = transformDead annotation $ transform methodEnv (methodEnvIsZeroArity methodEnv) substituteRegionVar annotation bindings $ declarationValue decl
+        (regionCount, method, restricted) = transformDead True annotation $ transform methodEnv (methodEnvIsZeroArity methodEnv) substituteRegionVar annotation bindings $ declarationValue decl
 
     solved :: [(Id, (Int, Annotation))]
     transformed :: [Declaration Method]
@@ -136,7 +136,7 @@ transformGroup genv@(GlobalEnv typeEnv dataTypeEnv constructorEnv globals) (Bind
   -- print restricted
 
   let bindings = [MethodBinding methodName 0 arguments]
-  let (regionCount, method', restricted') = transformDead restricted $ transform methodEnv isZeroArity substituteRegionVar restricted bindings $ declarationValue method
+  let (regionCount, method', restricted') = transformDead False restricted $ transform methodEnv isZeroArity substituteRegionVar restricted bindings $ declarationValue method
 
   rnfAnnotation restricted' `seq` return ()
 
