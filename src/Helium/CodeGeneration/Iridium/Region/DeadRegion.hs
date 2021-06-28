@@ -17,8 +17,8 @@ import Helium.CodeGeneration.Iridium.Region.Evaluate
 
 import Debug.Trace
 
-transformDead :: Annotation -> Method -> (Int, Method, Annotation)
-transformDead annotation (Method tp additionalRegions arguments returnType returnRegions annotations entry blocks)
+transformDead :: Bool -> Annotation -> Method -> (Int, Method, Annotation)
+transformDead preserveAllAdditionalRegions annotation (Method tp additionalRegions arguments returnType returnRegions annotations entry blocks)
   = ( regionVarsSize additionalRegions'
     , Method tp additionalRegions' arguments returnType returnRegions (MethodAnnotateRegion annotation' : annotations) entry' blocks'
     , annotation'
@@ -33,7 +33,9 @@ transformDead annotation (Method tp additionalRegions arguments returnType retur
 
     additionalRegions' = RegionVarsTuple [RegionVarsSingle r | r <- flattenRegionVars additionalRegions, preserve r]
 
-    preserve (RegionLocal idx) = idx `IntSet.member` used
+    preserve (RegionLocal idx)
+      = idx `IntSet.member` used
+      || (preserveAllAdditionalRegions && RegionLocal idx `elem` flattenRegionVars additionalRegions)
     preserve _ = False
 
 analyseBlock :: Block -> IntSet -> IntSet
