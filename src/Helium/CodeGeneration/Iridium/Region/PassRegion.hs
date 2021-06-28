@@ -72,7 +72,7 @@ initialEnv m = GlobalEnv typeEnv dataTypeEnv constructorEnv functionEnv
 -- Analyses and transforms a binding group of a single non-recursive function
 -- or a group of (mutual) recursive functions.
 transformGroup :: GlobalEnv -> BindingGroup Method -> IO (GlobalEnv, [Declaration Method])
-transformGroup genv (BindingRecursive [method]) = transformGroup genv (BindingNonRecursive method)
+transformGroup genv (BindingRecursive [method]) = transformSingle genv True method
 transformGroup genv@(GlobalEnv typeEnv dataTypeEnv constructorEnv globals) (BindingRecursive methods) = do
   putStrLn $ "# Analyse mutual recursive methods " ++ show (map declarationName methods)
 
@@ -112,8 +112,12 @@ transformGroup genv@(GlobalEnv typeEnv dataTypeEnv constructorEnv globals) (Bind
 
   return (genv', transformed)
 
-transformGroup genv@(GlobalEnv typeEnv dataTypeEnv constructorEnv globals) (BindingNonRecursive method@(Declaration methodName _ _ _ (Method _ _ arguments _ _ _ _ _))) = do
-  putStrLn $ "# Analyse method " ++ show methodName
+transformGroup genv (BindingNonRecursive method) = transformSingle genv False method
+  
+transformSingle :: GlobalEnv -> Bool -> Declaration Method -> IO (GlobalEnv, [Declaration Method])
+transformSingle genv@(GlobalEnv typeEnv dataTypeEnv constructorEnv globals) recursive method@(Declaration methodName _ _ _ (Method _ _ arguments _ _ _ _ _)) =
+  do
+  putStrLn $ "# Analyse " ++ (if recursive then "recursive " else "") ++ "method " ++ show methodName
 
   let (methodEnv, fixpointFunction) = generate genv [] method
   let annotation = AFixEscape (methodEnvAdditionalRegionSort methodEnv) [fixpointFunction]
@@ -136,7 +140,7 @@ transformGroup genv@(GlobalEnv typeEnv dataTypeEnv constructorEnv globals) (Bind
   -- print restricted
 
   let bindings = [MethodBinding methodName 0 arguments]
-  let (regionCount, method', restricted') = transformDead False restricted $ transform methodEnv isZeroArity substituteRegionVar restricted bindings $ declarationValue method
+  let (regionCount, method', restricted') = transformDead recursive restricted $ transform methodEnv isZeroArity substituteRegionVar restricted bindings $ declarationValue method
 
   rnfAnnotation restricted' `seq` return ()
 
