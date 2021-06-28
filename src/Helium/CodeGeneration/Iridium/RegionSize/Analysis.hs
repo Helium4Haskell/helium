@@ -75,19 +75,19 @@ analyseMethods pass gEnv methods =
 analyseMethod :: GlobalEnv -> (Id, Method) -> (Annotation, Effect, Sort)
 analyseMethod gEnv@(GlobalEnv tEnv _ dEnv) (_, method@(Method _ aRegs args rType rRegs _ fstBlock otherBlocks)) =
     let !rEnv      = regEnvFromArgs (deBruinSize args) aRegs rRegs
-        !(lEnv,lAnns,lSrts)  = analyseLocals gEnv rEnv method `rsInfo` "Hi"
-        !envs      = (Envs gEnv rEnv lEnv) `rsInfo` "Hi2"
-        !rSort     = sortAssign dEnv $ typeNormalize tEnv rType `rsInfo` "Hi3"
-        !(bAnns,bSrts) = analyseBlocks rSort envs (fstBlock:otherBlocks) `rsInfo` "Hi4"
+        !(lEnv,lAnns,lSrts)  = analyseLocals gEnv rEnv method
+        !envs      = (Envs gEnv rEnv lEnv)
+        !rSort     = sortAssign dEnv $ typeNormalize tEnv rType
+        !(bAnns,bSrts) = analyseBlocks rSort envs (fstBlock:otherBlocks)
 
         -- Wrap body in fixpoint, quants and lambdas
-        !localFix = AProj 0 . AFix (bSrts ++ lSrts) $ bAnns ++ lAnns `rsInfo` "Hi5"
-        !fAnn = wrapBody gEnv rType args localFix `rsInfo` "Hi6"
+        !localFix = AProj 0 . AFix (bSrts ++ lSrts) $ bAnns ++ lAnns
+        !fAnn = wrapBody gEnv rType args localFix
 
-        !(annotation, effect) = fixZeroArity method $ ALam (regionVarsToSort aRegs) fAnn `rsInfo` "Hi7"
-    in ( annotation `rsInfo` "Hi8"
-       , effect  `rsInfo` "Hi9"
-       , methodSortAssign tEnv dEnv method `rsInfo` "Hi12") 
+        !(annotation, effect) = fixZeroArity method $ ALam (regionVarsToSort aRegs) fAnn 
+    in ( annotation 
+       , effect 
+       , methodSortAssign tEnv dEnv method) 
 
 
 -- | Wrap a function body into its arguments (AQuant or `A -> P -> (A,C)')

@@ -121,7 +121,6 @@ sortRemoveQuants s = s
 --  - Do not project, return top with sortAssign
 --  - Sort on lambda is SortUnit (Datatype should be unit everywhere)
 -- | Make destructor annotations
--- | Make constructor annotations
 makeDataTypeDestructors :: DataTypeEnv -> BindingGroup DataType -> [(Id, [Annotation])]
 makeDataTypeDestructors dEnv (BindingRecursive decls) = concat $ mapWithIndex unPackDataType decls
   where (Complex (SortTuple dtSrts)) = declarationName (head decls) `lookupDataType` dEnv

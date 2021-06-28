@@ -38,12 +38,12 @@ import Text.Printf
 
 -- Global enable/disable
 debug,disable :: Bool
-debug           = True  -- ^ Enable debug mode
+debug           = True -- ^ Enable debug mode
 disable         = False -- ^ Disable region size analysis
 
 -- Sorting of annotations
 sortDerived,sortSimplified,sortFixpoint,sortWithLocals,checkSortsEq :: Bool
-sortDerived     = False && debug
+sortDerived     = True && debug
 sortSimplified  = True && debug
 sortFixpoint    = True && debug
 sortWithLocals  = False && debug
