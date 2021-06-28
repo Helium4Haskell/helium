@@ -85,7 +85,10 @@ instantiate _ a t = AInstn a t
 -- | Only project if subannotation has been evaluated to a tuple
 project :: DataTypeEnv -> Annotation -> Int -> Annotation -> Annotation 
 project _    tmp idx (ATuple as) | length as > idx = as !! idx
-                                 | otherwise       = rsError $ "Projection-index out of bounds\n Idx: " ++ show idx ++ "\n Annotation: " ++ (show $ ATuple as) ++ "\n\n" ++ (show tmp)                         
+                                 | otherwise       = rsError $ "Projection-index out of bounds"
+                                                            ++ "\n  Idx: " ++ show idx 
+                                                            ++ "\n  Annotation: " ++ (deSymbol $ show $ ATuple as) 
+                                                            ++ "\n\n" ++ (deSymbol $ show tmp)                         
 -- Moving a join outwards
 project dEnv _   idx (AJoin a b) = eval dEnv . joinSort $ AProj idx <$> joinCollect (AJoin a b) 
 -- Cannot eval
@@ -174,7 +177,9 @@ regVarSubst' d ann c = constrAdds $ (constrStrengthenN d c'):(constrWeaken d <$>
         evalReg (ATuple as)           = (ATuple $ evalReg <$> as) 
         evalReg (AProj i a) = case evalReg a of  
                                   ATuple as | i < length as -> as !! i 
-                                            | otherwise     -> rsError $ "Constraint index projection out of bounds" 
+                                            | otherwise     -> rsError $ "Constraint index projection out of bounds: " 
+                                                                      ++ "\nIndex: " ++ show i
+                                                                      ++ "\nTuple: " ++ show a  
                                   _ -> AProj i a
         evalReg a = rsError $ "Illigal annotation for a constraint index: " ++ show a 
  
@@ -291,6 +296,6 @@ gatherConstraintsTuple a = let regions = gatherLocals a
 -- import qualified Helium.CodeGeneration.Iridium.RegionSize.Annotation as A
 -- import qualified Helium.CodeGeneration.Iridium.RegionSize.Sort as S      
 -- import qualified Helium.CodeGeneration.Iridium.RegionSize.Evaluate as E
--- import qualified Data.Map as M
+-- import qualified Data.Map.Strict as M
 -- E.eval emptyDEnv $ A.ALam SortMonoRegion (A.AApl (A.ALam SortMonoRegion (A.AConstr (M.fromList([(AnnVar 0, Nat 1)])))) (A.AVar 0))
 -- E.eval emptyDEnv $ A.ALam SortMonoRegion $ A.ALam S.SortUnit $ (A.AApl (A.ALam SortMonoRegion (A.AConstr (M.fromList([(AnnVar 0, Nat 1)])))) (A.AVar 1))

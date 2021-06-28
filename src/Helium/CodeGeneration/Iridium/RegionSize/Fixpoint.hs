@@ -11,10 +11,10 @@ import Helium.CodeGeneration.Iridium.RegionSize.Evaluate
 
 import Data.List (sort, elemIndex)
 import Data.Maybe (fromJust, catMaybes)
-import qualified Data.Map as M
+import qualified Data.Map.Strict as M
 
 max_iterations :: Int
-max_iterations = 12
+max_iterations = 3
 
 ----------------------------------------------------------------
 -- Solving fixpoints

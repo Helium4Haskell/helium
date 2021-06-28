@@ -15,13 +15,13 @@ import Data.List
 ----------------------------------------------------------------
 
 data Sort = 
-      SortLam        Sort    Sort
+      SortLam        !Sort    !Sort
     | SortConstr
-    | SortTuple      [Sort]
-    | SortQuant      Sort
+    | SortTuple      ![Sort]
+    | SortQuant      !Sort
     | SortMonoRegion
-    | SortPolyRegion TypeVar [Type]
-    | SortPolySort   TypeVar [Type]
+    | SortPolyRegion !TypeVar ![Type]
+    | SortPolySort   !TypeVar ![Type]
   deriving (Eq, Ord)
 
 instance Show Sort where

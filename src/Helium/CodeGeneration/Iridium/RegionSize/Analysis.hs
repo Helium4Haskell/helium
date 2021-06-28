@@ -1,3 +1,4 @@
+{-# LANGUAGE BangPatterns #-}
 module Helium.CodeGeneration.Iridium.RegionSize.Analysis
     (analyseMethods)
 where
@@ -19,7 +20,7 @@ import Helium.CodeGeneration.Iridium.RegionSize.Environments
 import Helium.CodeGeneration.Iridium.RegionSize.Utils
 
 import Data.Either(rights,lefts)
-import qualified Data.Map as M
+import qualified Data.Map.Strict as M
 
 -- | De bruijn index for the local fixpoint
 localFixIdx :: Int
@@ -73,20 +74,20 @@ analyseMethods pass gEnv methods =
 -- | Analyse the effect and annotation of a method
 analyseMethod :: GlobalEnv -> (Id, Method) -> (Annotation, Effect, Sort)
 analyseMethod gEnv@(GlobalEnv tEnv _ dEnv) (_, method@(Method _ aRegs args rType rRegs _ fstBlock otherBlocks)) =
-    let rEnv      = regEnvFromArgs (deBruinSize args) aRegs rRegs
-        (lEnv,lAnns,lSrts)  = analyseLocals gEnv rEnv method
-        envs      = (Envs gEnv rEnv lEnv) 
-        rSort     = sortAssign dEnv $ typeNormalize tEnv rType
-        (bAnns,bSrts) = analyseBlocks rSort envs (fstBlock:otherBlocks)
+    let !rEnv      = regEnvFromArgs (deBruinSize args) aRegs rRegs
+        !(lEnv,lAnns,lSrts)  = analyseLocals gEnv rEnv method `rsInfo` "Hi"
+        !envs      = (Envs gEnv rEnv lEnv) `rsInfo` "Hi2"
+        !rSort     = sortAssign dEnv $ typeNormalize tEnv rType `rsInfo` "Hi3"
+        !(bAnns,bSrts) = analyseBlocks rSort envs (fstBlock:otherBlocks) `rsInfo` "Hi4"
 
         -- Wrap body in fixpoint, quants and lambdas
-        localFix = AProj 0 . AFix (bSrts ++ lSrts) $ bAnns ++ lAnns
-        fAnn = wrapBody gEnv rType args localFix
+        !localFix = AProj 0 . AFix (bSrts ++ lSrts) $ bAnns ++ lAnns `rsInfo` "Hi5"
+        !fAnn = wrapBody gEnv rType args localFix `rsInfo` "Hi6"
 
-        (annotation, effect) = fixZeroArity method $ ALam (regionVarsToSort aRegs) fAnn
-    in ( annotation
-       , effect 
-       , methodSortAssign tEnv dEnv method) 
+        !(annotation, effect) = fixZeroArity method $ ALam (regionVarsToSort aRegs) fAnn `rsInfo` "Hi7"
+    in ( annotation `rsInfo` "Hi8"
+       , effect  `rsInfo` "Hi9"
+       , methodSortAssign tEnv dEnv method `rsInfo` "Hi12") 
 
 
 -- | Wrap a function body into its arguments (AQuant or `A -> P -> (A,C)')
@@ -152,7 +153,7 @@ analyseLocals :: GlobalEnv -> RegionEnv -> Method -> (LocalEnv, [Annotation], [S
 analyseLocals gEnv@(GlobalEnv tEnv _ dEnv) rEnv method@(Method _ _ args _ _ _ fstBlock otherBlocks) =
     let blocks = fstBlock:otherBlocks
         initEnv   = initEnvFromArgs tEnv dEnv args
-        locals    = methodLocals False tEnv method
+        locals    = methodLocals False tEnv method 
 
         mkLocalFix = (\(idx,local) -> (localName local, AProj idx $ AVar localFixIdx))
         localAnnMap = mapFromList $ mkLocalFix <$> zip [length blocks..] locals
@@ -163,10 +164,10 @@ analyseLocals gEnv@(GlobalEnv tEnv _ dEnv) rEnv method@(Method _ _ args _ _ _ fs
         initEnv'  = initEnv { lEnvAnns = unionMap (lEnvAnns initEnv) localAnnMap
                             , lEnvSrts = unionMap (lEnvSrts initEnv) localSrtMap }
 
-        localEnv = foldl (\lEnv -> localsOfBlock (Envs gEnv rEnv lEnv)) initEnv' blocks  
-        lAnnos = flip lookupLocalAnn localEnv <$> locals
+        localEnv = foldl (\lEnv -> localsOfBlock (Envs gEnv rEnv lEnv)) initEnv' blocks 
+        lAnnos = flip lookupLocalAnn localEnv <$> locals 
         lSorts = flip lookupLocalSrt localEnv <$> locals
-    in (localEnv, lAnnos, lSorts)
+    in (localEnv, lAnnos, lSorts) 
 
 -- | Get the annotation of local variabvles from a block
 localsOfBlock :: Envs -> Block -> LocalEnv
@@ -249,7 +250,7 @@ analyseBlocks retSrt envs blocks =
 
 -- | Analyse an instruction
 analyseInstr :: Envs -> BlockEnv -> Instruction -> (Annotation, Effect)
-analyseInstr envs@(Envs _ _ lEnv) bEnv = go
+analyseInstr envs@(Envs _ _ lEnv) bEnv = go 
    where go (Let _ expr      next) =  
            let (_     , varEff) = analyseExpr envs expr
                (nxtAnn, nxtEff) = go next

@@ -19,7 +19,7 @@ import Helium.CodeGeneration.Iridium.RegionSize.Utils
 
 import Lvm.Core.Type
 
-import qualified Data.Map as M
+import qualified Data.Map.Strict as M
 
 import GHC.Stack
 

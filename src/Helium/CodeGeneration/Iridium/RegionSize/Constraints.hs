@@ -15,7 +15,7 @@ import Helium.CodeGeneration.Iridium.Region.RegionVar
 
 import Helium.CodeGeneration.Iridium.RegionSize.Utils
 
-import qualified Data.Map as M
+import qualified Data.Map.Strict as M
 import Data.List
 
 max_bound :: Int

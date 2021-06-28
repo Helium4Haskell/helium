@@ -22,21 +22,21 @@ import Lvm.Core.Type
 ----------------------------------------------------------------
 
 data Annotation = 
-      AVar    Int                     -- ^ De Bruijn index Variable
-    | AReg    RegionVar               -- ^ Region
-    | ALam    Sort       Annotation   -- ^ Annotation lambda
-    | AApl    Annotation Annotation   -- ^ Application
-    | AConstr Constr                  -- ^ Constraint set
-    | ATuple  [Annotation]            -- ^ Unit tuple
-    | AProj   Int        Annotation   -- ^ Projection
-    | AAdd    Annotation Annotation   -- ^ Constraint set addition
-    | AMinus  Annotation RegionVar    -- ^ Constraint set minus
-    | AJoin   Annotation Annotation   -- ^ Annotation join
-    | AQuant  Annotation              -- ^ Quantification
-    | AInstn  Annotation Type         -- ^ Insantiation of quantification
-    | ATop    Sort       Constr       -- ^ Has a constraint set, all bounds should be infty
-    | ABot    Sort  
-    | AFix    [Sort]     [Annotation] -- ^ Fix point has a list of (possibly mutally recursive) annotations
+      AVar    !Int                      -- ^ De Bruijn index Variable
+    | AReg    !RegionVar                -- ^ Region
+    | ALam    !Sort       !Annotation   -- ^ Annotation lambda
+    | AApl    !Annotation !Annotation   -- ^ Application
+    | AConstr !Constr                   -- ^ Constraint set
+    | ATuple  ![Annotation]              -- ^ Unit tuple
+    | AProj   !Int        !Annotation   -- ^ Projection
+    | AAdd    !Annotation !Annotation   -- ^ Constraint set addition
+    | AMinus  !Annotation !RegionVar    -- ^ Constraint set minus
+    | AJoin   !Annotation !Annotation   -- ^ Annotation join
+    | AQuant  !Annotation               -- ^ Quantification
+    | AInstn  !Annotation !Type         -- ^ Insantiation of quantification
+    | ATop    !Sort       !Constr       -- ^ Has a constraint set, all bounds should be infty
+    | ABot    !Sort  
+    | AFix    ![Sort]     ![Annotation] -- ^ Fix point has a list of (possibly mutally recursive) annotations
   deriving (Eq, Ord)
 
 -- | The effect is an annotation, but always of sort C

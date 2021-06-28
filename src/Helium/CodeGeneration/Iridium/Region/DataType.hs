@@ -103,7 +103,8 @@ createDataTypeEnvRegions env dataTypes = foldl' (flip assignGroup) (emptyMap, em
                   | construct = (LifetimeContextLocalBottom, LifetimeContextAny, flip Outlives)
                   | otherwise = (LifetimeContextAny, LifetimeContextLocalBottom, Outlives)
     assignGroup (BindingRecursive decls) (dataTypeEnv, constructorEnv)
-      | not $ dataTypesPolymorphicRecursion decls = -- trace ("Recursive, no polymorphic recursion: " ++ (decls >>= (show . declarationName)))
+      -- TODO: Re enable when region size analysis supports this category
+      | False, not $ dataTypesPolymorphicRecursion decls = -- trace ("Recursive, no polymorphic recursion: " ++ (decls >>= (show . declarationName)))
         ( dataTypeEnv1
         , foldl' (flip $ uncurry insertMap) constructorEnv 
           $ concat

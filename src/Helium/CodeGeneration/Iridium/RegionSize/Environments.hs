@@ -1,7 +1,7 @@
 module Helium.CodeGeneration.Iridium.RegionSize.Environments
 where
 
-import qualified Data.Map as M
+import qualified Data.Map.Strict as M
 
 import Lvm.Common.Id
 import Lvm.Common.IdMap
@@ -38,7 +38,7 @@ data LocalEnv    = LocalEnv {
   lEnvSrts     :: IdMap Sort        -- ^ Map from local id to sort
 }
 
-data Envs = Envs GlobalEnv RegionEnv LocalEnv
+data Envs = Envs !GlobalEnv !RegionEnv !LocalEnv
 
 ----------------------------------------------------------------
 -- Environment interface functions
@@ -95,7 +95,7 @@ insertLocal :: Id -> Annotation -> LocalEnv -> LocalEnv
 insertLocal name ann (LocalEnv lAnnEnv lSrtEnv) = LocalEnv (insertMap name ann lAnnEnv) lSrtEnv
 
 -- | Insert a local variable
-updateLocal :: Id -> Annotation -> LocalEnv -> LocalEnv
+updateLocal :: Id -> Annotation -> LocalEnv -> LocalEnv 
 updateLocal name ann (LocalEnv lAnnEnv lSrtEnv) = LocalEnv (updateMap name ann lAnnEnv) lSrtEnv
 
 -- | Alter a value in the global map

@@ -9,7 +9,7 @@ import Helium.CodeGeneration.Iridium.RegionSize.SortUtils
 import Helium.CodeGeneration.Iridium.RegionSize.DataTypes
 import Helium.CodeGeneration.Iridium.RegionSize.Utils
 
-import qualified Data.Map as M
+import qualified Data.Map.Strict as M
 import Data.Either (lefts,rights,fromRight)
 import Data.List (find)
 
@@ -65,7 +65,7 @@ sort dEnv = sort' (-1,-1) M.empty
                    Right s' -> Left $ "Invalid fixpoint sort" 
                                    ++ "\n  Sort: " ++ showSort (snd d) s'
                                    ++ "\n  Annotation:\n\n" ++ (indent "    " $ annShow' d (AFix s a)) ++ "\n"
-                                   
+
           -- Check if both operands have the same sort
           sort' d gamma (AJoin  a b) = 
               let sortA = sort' d gamma a
