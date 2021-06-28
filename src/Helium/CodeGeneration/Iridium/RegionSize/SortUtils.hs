@@ -146,19 +146,6 @@ dataStructRegions tEnv dEnv (Declaration _ _ _ _ (DataTypeConstructorDeclaration
   in regionAssign dEnv . typeNormalize tEnv <$> args
 
 ----------------------------------------------------------------
--- Mutually recursive data types
-----------------------------------------------------------------
-
--- IDEA: Keeping expanding the datatype definition until we have seen all datatypes in de mutually recusive cluster once
--- solveMutRecDataTypes :: DataTypeEnv -> [Id] -> [DataType] -> [(Id, Sort)]
--- solveMutRecDataTypes dEnv names dataTypes = go names (mapFromList (zip ids dataTypes)) <$> dataTypes
---   where goDT rem dict (DataType structs)                    = goST rem dict . declarationValue <$> structs 
---         goST rem dict (DataTypeConstructorDeclaration ty _) =     
---           let (args, _) = typeExtractFunction $ typeRemoveQuants ty
---           in goTY <$> typeNormalize tEnv <$> args
---         goTY rem dict ty
-
-----------------------------------------------------------------
 -- Type substitution
 ----------------------------------------------------------------
 

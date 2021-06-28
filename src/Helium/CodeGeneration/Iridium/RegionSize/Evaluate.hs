@@ -59,7 +59,7 @@ application dEnv (ALam lamS f) x = eval dEnv $ foldAnnAlgN (0,-1) subsAnnAlg f
   where -- | Substitute a variable for an annotation
         subsAnnAlg = idAnnAlg {
           aVar = \(lD,_) idx -> if lD == idx 
-                                 then annWeaken lD 0 x -- Weaken indexes --TODO: why does putting 0 here work..
+                                 then annWeaken lD 0 x -- Weaken indexes
                                  else AVar $ strengthenIdx lD idx,
           aConstr = \(lD,_) c   -> AConstr $ regVarSubst lamS lD x c,
           aTop    = \(lD,_) s c -> ATop s  $ regVarSubst lamS lD x c

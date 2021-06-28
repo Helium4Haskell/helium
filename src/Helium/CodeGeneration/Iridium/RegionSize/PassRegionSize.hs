@@ -52,10 +52,10 @@ checkSortsEq    = False && debug
 printDerived,printSimplified,printFixpoint,printWithLocals,printEffects,printMethodName :: Bool
 printDerived    = False && debug
 printSimplified = False && debug
-printFixpoint   = True && debug
-printWithLocals = True && debug
-printEffects    = True && debug
-printMethodName = True && (printDerived || printSimplified || printFixpoint || printWithLocals || printEffects)
+printFixpoint   = False && debug
+printWithLocals = False && debug
+printEffects    = False && debug
+printMethodName = False && (printDerived || printSimplified || printFixpoint || printWithLocals || printEffects)
 
 -- Printing datatypes
 printDTInfo,printDTSorts,printDTRegions,printDTStructs,printDTDestructs :: Bool
