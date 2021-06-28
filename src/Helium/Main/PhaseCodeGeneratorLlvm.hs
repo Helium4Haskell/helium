@@ -24,11 +24,10 @@ import Paths_helium(getDataDir)
 import qualified Data.Text.Lazy as Text
 import LLVM.Pretty (ppllvm)
 
-phaseCodeGeneratorLlvm :: NameSupply -> FilePath -> [IridiumFile] -> Bool -> [Option] -> IO ()
-phaseCodeGeneratorLlvm supply output files shouldLink options = do
+phaseCodeGeneratorLlvm :: NameSupply -> FilePath -> [IridiumFile] -> Target -> Bool -> [Option] -> IO ()
+phaseCodeGeneratorLlvm supply output files target shouldLink options = do
   enterNewPhase "Code generation for LLVM" options
 
-  let target = Target 64 48
   sequence_ $ mapWithSupply (compileToLlvm target) supply files
   
   dataDir <- getDataDir 
