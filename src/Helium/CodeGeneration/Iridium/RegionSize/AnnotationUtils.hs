@@ -197,12 +197,13 @@ gatherLocals = foldAnnAlgLams countAlg
 -- | Retrieve all bound region variables
 gatherBinds :: Annotation -> [ConstrIdx]
 gatherBinds = foldAnnAlgLams countAlg
-    where countAlg = AnnAlg {
-        aVar    = \d idx -> if idx > d then [AnnVar idx] else [],
+    where 
+      countAlg = AnnAlg {
+        aVar    = \d idx -> removeLocal d [AnnVar idx],
         aReg    = \_ _   -> [],
-        aLam    = \_ _ a -> constrIdxStrengthenN (-1) <$> a, -- Strengthen here?
+        aLam    = \_ _ a -> constrIdxStrengthenN (-1) <$> a,
         aApl    = \_ a b -> a ++ b,
-        aConstr = \_ c   -> fst <$> (M.toList $ constrRemLocalRegs c),
+        aConstr = \d c   -> removeLocal d $ fst <$> (M.toList $ constrRemLocalRegs c),
         aUnit   = \_     -> [],
         aTuple  = \_ as  -> concat as,
         aProj   = \_ _ a -> a,
@@ -211,7 +212,11 @@ gatherBinds = foldAnnAlgLams countAlg
         aJoin   = \_ a b -> a ++ b,
         aQuant  = \_ a   -> a,
         aInstn  = \_ a _ -> a,
-        aTop    = \_ _ c -> fst <$> (M.toList $ constrRemLocalRegs c),
+        aTop    = \d _ c -> removeLocal d $ fst <$> (M.toList $ constrRemLocalRegs c),
         aBot    = \_ _   -> [],
         aFix    = \_ _ a -> constrIdxStrengthenN (-1) <$> concat a   
-    }
+      }
+      isNonLocal d (AnnVar idx) = idx > d +1
+      isNonLocal d (CnProj _ l) = isNonLocal d l
+      isNonLocal d (Region _)   = True
+      removeLocal d = filter (isNonLocal d)

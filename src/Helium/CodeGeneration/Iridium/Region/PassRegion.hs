@@ -74,7 +74,7 @@ initialEnv m = GlobalEnv typeEnv dataTypeEnv constructorEnv functionEnv
 transformGroup :: GlobalEnv -> BindingGroup Method -> IO (GlobalEnv, [Declaration Method])
 transformGroup genv (BindingRecursive [method]) = transformSingle genv True method
 transformGroup genv@(GlobalEnv typeEnv dataTypeEnv constructorEnv globals) (BindingRecursive methods) = do
-  putStrLn $ "# Analyse mutual recursive methods " ++ show (map declarationName methods)
+  -- putStrLn $ "# Analyse mutual recursive methods " ++ show (map declarationName methods)
 
   let
     bindings = map (\(Declaration name _ _ _ method@(Method _ _ args _ _ _ _ _)) -> MethodBinding name (assignRegionVarsCount genv method) args) methods
@@ -117,7 +117,7 @@ transformGroup genv (BindingNonRecursive method) = transformSingle genv False me
 transformSingle :: GlobalEnv -> Bool -> Declaration Method -> IO (GlobalEnv, [Declaration Method])
 transformSingle genv@(GlobalEnv typeEnv dataTypeEnv constructorEnv globals) recursive method@(Declaration methodName _ _ _ (Method _ _ arguments _ _ _ _ _)) =
   do
-  putStrLn $ "# Analyse " ++ (if recursive then "recursive " else "") ++ "method " ++ show methodName
+  -- putStrLn $ "# Analyse " ++ (if recursive then "recursive " else "") ++ "method " ++ show methodName
 
   let (methodEnv, fixpointFunction) = generate genv [] method
   let annotation = AFixEscape (methodEnvAdditionalRegionSort methodEnv) [fixpointFunction]

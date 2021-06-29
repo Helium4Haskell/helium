@@ -8,6 +8,7 @@ import Lvm.Common.IdMap
 import Lvm.Core.Type
 
 import Helium.CodeGeneration.Iridium.Data
+import Helium.CodeGeneration.Iridium.Show()
 import Helium.CodeGeneration.Core.TypeEnvironment
 
 import Helium.CodeGeneration.Iridium.RegionSize.Annotation
@@ -20,6 +21,7 @@ import Helium.CodeGeneration.Iridium.RegionSize.Environments
 import Helium.CodeGeneration.Iridium.RegionSize.Utils
 
 import Data.Either(rights,lefts)
+import Data.List(foldl')
 import qualified Data.Map.Strict as M
 
 -- | De bruijn index for the local fixpoint
@@ -81,7 +83,7 @@ analyseMethod gEnv@(GlobalEnv tEnv _ dEnv) (_, method@(Method _ aRegs args rType
         !(bAnns,bSrts) = analyseBlocks rSort envs (fstBlock:otherBlocks)
 
         -- Wrap body in fixpoint, quants and lambdas
-        !localFix = AProj 0 . AFix (bSrts ++ lSrts) $ bAnns ++ lAnns
+        !localFix = AProj 0 . AFix (bSrts ++ lSrts) $ bAnns ++ lAnns 
         !fAnn = wrapBody gEnv rType args localFix
 
         !(annotation, effect) = fixZeroArity method $ ALam (regionVarsToSort aRegs) fAnn 
@@ -164,10 +166,11 @@ analyseLocals gEnv@(GlobalEnv tEnv _ dEnv) rEnv method@(Method _ _ args _ _ _ fs
         initEnv'  = initEnv { lEnvAnns = unionMap (lEnvAnns initEnv) localAnnMap
                             , lEnvSrts = unionMap (lEnvSrts initEnv) localSrtMap }
 
-        localEnv = foldl (\lEnv -> localsOfBlock (Envs gEnv rEnv lEnv)) initEnv' blocks 
+        localEnvs = localsOfBlock (Envs gEnv rEnv initEnv') <$> blocks 
+        localEnv  = unionLocalEnvs localEnvs
         lAnnos = flip lookupLocalAnn localEnv <$> locals 
         lSorts = flip lookupLocalSrt localEnv <$> locals
-    in (localEnv, lAnnos, lSorts) 
+    in (localEnv, lAnnos, lSorts)
 
 -- | Get the annotation of local variabvles from a block
 localsOfBlock :: Envs -> Block -> LocalEnv
@@ -244,7 +247,7 @@ analyseBlocks retSrt envs blocks =
     let mkBlockFix = (\(idx,bName) -> (bName, AProj idx $ AVar localFixIdx))
         initBEnv = mapFromList $ mkBlockFix <$> zip [0..] (blockName <$> blocks)
         bSrts = const (SortTuple [retSrt, SortConstr]) <$> blocks
-        bAnns = analyseInstr envs initBEnv . blockInstr <$> blocks
+        bAnns = analyseInstr envs initBEnv . blockInstr <$> blocks 
     in (unliftTuple <$> bAnns, bSrts) 
 
 
@@ -282,7 +285,7 @@ analyseLetAlloc envs bEnv [] next = analyseInstr envs bEnv next
 -- Thunk binds
 analyseLetAlloc envs@(Envs _ rEnv _) bEnv (Bind _ (BindTargetThunk var tRegs) args dReg:bs) next =
     let tnkRegs = bindThunkIntermediate tRegs
-        valRegs = bindThunkValue tRegs
+        -- valRegs = bindThunkValue tRegs
         (_   ,bEff) = thunkApplyArgs envs (lookupVar var envs) args $ bindThunkValue tRegs
         (rAnn,rEff) = analyseLetAlloc envs bEnv bs next
     in (rAnn, AAdd (AConstr $ constrOne $ lookupReg dReg rEnv) 

@@ -44,7 +44,7 @@ strengthenIdx d idx = if idx > d
 
 -- | Show a type with region size naming convention
 rsShowType :: Type -> String
-rsShowType = showType ((:) 't' <$> varNames)
+rsShowType = showType ((:) 't' <$> take 1000 varNames)
 
 -- | Remove quantifications
 typeRemoveQuants :: Type -> Type
@@ -158,5 +158,6 @@ deSymbol ('₆':xs) = '6':deSymbol xs
 deSymbol ('₇':xs) = '7':deSymbol xs
 deSymbol ('₈':xs) = '8':deSymbol xs
 deSymbol ('₉':xs) = '9':deSymbol xs
+deSymbol ('∞':xs) = 'X':deSymbol xs
 deSymbol (x:xs) = x : deSymbol xs
 

@@ -8,6 +8,7 @@ import Lvm.Common.IdMap
 
 import Helium.CodeGeneration.Core.TypeEnvironment
 import Helium.CodeGeneration.Iridium.Data
+import Helium.CodeGeneration.Iridium.Show()
 
 import Helium.CodeGeneration.Iridium.RegionSize.Annotation
 import Helium.CodeGeneration.Iridium.RegionSize.Constraints
@@ -20,6 +21,9 @@ import GHC.Stack
 ----------------------------------------------------------------
 -- Type definitions
 ----------------------------------------------------------------
+
+instance Show a => Show (IdMap a) where
+  show a = "IdMap.listFromMap " ++ (show $ listFromMap a)
 
 type GlobFuncEnv = (IdMap Annotation)
 
@@ -36,9 +40,9 @@ type BlockEnv    = IdMap Annotation
 data LocalEnv    = LocalEnv { 
   lEnvAnns     :: IdMap Annotation, -- ^ Map from local id to annotation
   lEnvSrts     :: IdMap Sort        -- ^ Map from local id to sort
-}
+} deriving (Show)
 
-data Envs = Envs !GlobalEnv !RegionEnv !LocalEnv
+data Envs = Envs !GlobalEnv !RegionEnv !LocalEnv 
 
 ----------------------------------------------------------------
 -- Environment interface functions
@@ -101,3 +105,9 @@ updateLocal name ann (LocalEnv lAnnEnv lSrtEnv) = LocalEnv (updateMap name ann l
 -- | Alter a value in the global map
 updateGlobal :: HasCallStack => Id -> Annotation -> GlobalEnv -> GlobalEnv
 updateGlobal name ann (GlobalEnv syns fs ds) = GlobalEnv syns (updateMap name ann fs) ds
+
+-- | Combine local environments
+unionLocalEnvs :: [LocalEnv] -> LocalEnv
+unionLocalEnvs lEnvs = let (as,bs) = unzip $ unpack <$> lEnvs
+                      in LocalEnv (foldr unionlMap emptyMap as) (foldr unionlMap emptyMap bs)
+    where unpack (LocalEnv a b) = (a,b)

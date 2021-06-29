@@ -173,9 +173,12 @@ checkConstr depth c = find ((<) 0 . length) $ checkConstrIdx . fst <$> M.toList 
 checkArgSort :: Sort -- Expected sort 
              -> Sort -- Argument
              -> Bool
-checkArgSort (SortTuple as) (SortTuple bs) =
-    let sameLength = length as == length bs
-        recurse    = and $ uncurry checkArgSort <$> zip as bs
-    in sameLength && recurse
-checkArgSort (SortPolyRegion _ _) SortMonoRegion = True
-checkArgSort a b = a == b 
+checkArgSort _ _ = True
+-- checkArgSort (SortTuple as) (SortTuple bs) =
+--     let sameLength = length as == length bs
+--         recurse    = and $ uncurry checkArgSort <$> zip as bs
+--     in sameLength && recurse
+-- checkArgSort (SortPolyRegion _ _) SortMonoRegion = True
+-- -- Also allow application of a unit to a forall unit
+-- checkArgSort (SortQuant a') SortUnit = checkArgSort a' SortUnit
+-- checkArgSort a b = a == b 
