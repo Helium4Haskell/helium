@@ -76,7 +76,8 @@ lookupDestruct name dEnv = case lookupMap name (dtDestructs dEnv) of
 -- | Make constructor annotations
 makeDataTypeConstructors :: DataTypeEnv -> BindingGroup DataType -> [(Id, Annotation)]
 makeDataTypeConstructors dEnv (BindingRecursive decls) = concat $ mapWithIndex unPackDataType decls
-  where (Complex (SortTuple dtSrts)) = declarationName (head decls) `lookupDataType` dEnv
+  where (Complex compl)    = declarationName (head decls) `lookupDataType` dEnv
+        (SortTuple dtSrts) = sortRemoveQuants $ compl
         unPackDataType :: Int -> Declaration DataType -> [(Id, Annotation)]
         unPackDataType idx decl = makeDataTypeConstructors' (Complex (dtSrts !! idx)) (declarationValue decl) 
 makeDataTypeConstructors dEnv (BindingNonRecursive decl) =
@@ -123,7 +124,8 @@ sortRemoveQuants s = s
 -- | Make destructor annotations
 makeDataTypeDestructors :: DataTypeEnv -> BindingGroup DataType -> [(Id, [Annotation])]
 makeDataTypeDestructors dEnv (BindingRecursive decls) = concat $ mapWithIndex unPackDataType decls
-  where (Complex (SortTuple dtSrts)) = declarationName (head decls) `lookupDataType` dEnv
+  where (Complex cmplx)    = declarationName (head decls) `lookupDataType` dEnv
+        (SortTuple dtSrts) = sortRemoveQuants cmplx 
         unPackDataType :: Int -> Declaration DataType -> [(Id, [Annotation])]
         unPackDataType idx decl = makeDataTypeDestructors' (Complex (dtSrts !! idx)) (declarationValue decl) 
 makeDataTypeDestructors dEnv (BindingNonRecursive decl) =

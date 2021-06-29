@@ -112,9 +112,10 @@ sort dEnv = sort' (-1,-1) M.empty
                   Right (SortTuple ss) -> if i < length ss
                                           then Right $ ss !! i
                                           else Left $ "Sorting: Projection out of bounds."
-                                                   ++ "\n  Index:" ++ show i 
-                                                   ++ "\n  Sort" ++ showSort dQ (SortTuple ss) 
+                                                   ++ "\n  Index: " ++ show i 
+                                                   ++ "\n  Sort:  " ++ showSort dQ (SortTuple ss) 
                                                    ++ "\n  Annotation:\n\n" ++ (indent "    " $ annShow' (dL,dQ) (AProj i t)) ++ "\n"
+                  Right SortMonoRegion -> Right SortMonoRegion
                   Right s -> Left $ "Sorting: Projection on non-tuple sort:"
                                  ++ "\n  Sort: " ++ showSort dQ s 
                                  ++ "\n  Annotation:\n\n" ++ (indent "    " $ annShow' (dL,dQ) (AProj i t)) ++ "\n"
@@ -174,11 +175,11 @@ checkArgSort :: Sort -- Expected sort
              -> Sort -- Argument
              -> Bool
 checkArgSort _ _ = True
--- checkArgSort (SortTuple as) (SortTuple bs) =
---     let sameLength = length as == length bs
---         recurse    = and $ uncurry checkArgSort <$> zip as bs
---     in sameLength && recurse
--- checkArgSort (SortPolyRegion _ _) SortMonoRegion = True
--- -- Also allow application of a unit to a forall unit
--- checkArgSort (SortQuant a') SortUnit = checkArgSort a' SortUnit
--- checkArgSort a b = a == b 
+checkArgSort (SortTuple as) (SortTuple bs) =
+    let sameLength = length as == length bs
+        recurse    = and $ uncurry checkArgSort <$> zip as bs
+    in sameLength && recurse
+checkArgSort (SortPolyRegion _ _) SortMonoRegion = True
+-- Also allow application of a unit to a forall unit
+checkArgSort (SortQuant a') SortUnit = checkArgSort a' SortUnit
+checkArgSort a b = a == b 

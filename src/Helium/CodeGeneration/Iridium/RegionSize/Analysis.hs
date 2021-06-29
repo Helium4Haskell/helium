@@ -62,7 +62,7 @@ type Pass = Int
 analyseMethods :: Pass ->  GlobalEnv -> [(Id,Method)] -> (Annotation, [Effect])
 analyseMethods pass gEnv methods =
     let (gEnv',_) = case pass of
-                      0 -> foldl makeFixVar (gEnv,0) methods
+                      0 -> foldl' makeFixVar (gEnv,0) methods
                       _ -> (gEnv,0)
         (anns, effects, sorts) = unzip3 $ analyseMethod gEnv' <$> methods
     in case pass of 
@@ -141,7 +141,7 @@ fixZeroArity (Method _ aRegs args _ rRegs _ _ _) ann =
     0 -> let aplARegs = AApl ann $ regionVarsToGlobal aRegs 
              newQuantIndexes = reverse $ TVar <$> [0..(length $ lefts args)-1] 
              quants a = foldr (const AQuant) a (lefts args) 
-             aplTypes = foldl AInstn aplARegs newQuantIndexes 
+             aplTypes = foldl' AInstn aplARegs newQuantIndexes 
              aplRRegs = AApl aplTypes $ regionVarsToGlobal rRegs
          in (ALam SortUnit $ quants $ AProj 0 aplRRegs, AProj 1 aplRRegs) 
     _ -> (ann, botEffect)
@@ -166,8 +166,7 @@ analyseLocals gEnv@(GlobalEnv tEnv _ dEnv) rEnv method@(Method _ _ args _ _ _ fs
         initEnv'  = initEnv { lEnvAnns = unionMap (lEnvAnns initEnv) localAnnMap
                             , lEnvSrts = unionMap (lEnvSrts initEnv) localSrtMap }
 
-        localEnvs = localsOfBlock (Envs gEnv rEnv initEnv') <$> blocks 
-        localEnv  = unionLocalEnvs localEnvs
+        localEnv = foldl' (\lEnv -> localsOfBlock (Envs gEnv rEnv lEnv)) initEnv' blocks
         lAnnos = flip lookupLocalAnn localEnv <$> locals 
         lSorts = flip lookupLocalSrt localEnv <$> locals
     in (localEnv, lAnnos, lSorts)
@@ -224,7 +223,7 @@ localsOfMatch (Envs gEnv rEnv lEnv) local (MatchTargetTuple n) _ ids next =
     let tupleVar = lookupLocalAnn local lEnv 
         newVars  = map (flip AProj $ tupleVar) [0..(n-1)]
         -- Insert matched vars into lEnv
-        lEnv'    = foldl (flip $ uncurry insertMaybeId) lEnv (zip ids newVars)
+        lEnv'    = foldl'(flip $ uncurry insertMaybeId) lEnv (zip ids newVars)
     in localsOfInstr (Envs gEnv rEnv lEnv') next
 -- Datatypes
 localsOfMatch (Envs (GlobalEnv tEnv fEnv dEnv) rEnv lEnv) local (MatchTargetConstructor struct) tys ids next =
@@ -233,7 +232,7 @@ localsOfMatch (Envs (GlobalEnv tEnv fEnv dEnv) rEnv lEnv) local (MatchTargetCons
         deInsts = flip (dataTypeApplyArgs tEnv lEnv) (map Left tys) <$> destrcs
         -- Insert matched vars into lEnv
         newVars = flip AApl dataVar <$> deInsts
-        lEnv'   = foldl (flip $ uncurry insertMaybeId) lEnv (zip ids newVars)
+        lEnv'   = foldl'(flip $ uncurry insertMaybeId) lEnv (zip ids newVars)
     in localsOfInstr (Envs (GlobalEnv tEnv fEnv dEnv) rEnv lEnv') next 
 
 ----------------------------------------------------------------
@@ -338,7 +337,7 @@ analyseExpr envs@(Envs gEnv _ lEnv) = go
       -- No effect, just annotation of local2
       go (Seq _ local2)           = (lookupLocalAnn local2 lEnv, botEffect)
       -- Instantiate types in local
-      go (Instantiate local tys)  = (foldl AInstn (local `lookupLocalAnn` lEnv) (typeNormalize (globTypeEnv gEnv) <$> tys), botEffect) 
+      go (Instantiate local tys)  = (foldl' AInstn (local `lookupLocalAnn` lEnv) (typeNormalize (globTypeEnv gEnv) <$> tys), botEffect) 
       -- Apply all type and variable arguments
       go (Call gFun aRegs args rReg) = funcApplyArgs envs (globalFunctionName gFun `lookupGlobal` gEnv) aRegs args rReg
 
@@ -362,7 +361,7 @@ thunkApplyArgs :: Envs
 thunkApplyArgs _ fAnn [] _ = (fAnn, botEffect)
 thunkApplyArgs (Envs gEnv rEnv lEnv) fAnn args retRegs = 
     let retRegAnn   = regionVarsToAnn rEnv retRegs
-        (cAnn,cEff) = foldl (\(sAnn,sEff) -> addEffect sEff . thunkApplyArg (globTypeEnv gEnv) lEnv (ATuple [AReg RegionGlobal, AUnit]) sAnn) 
+        (cAnn,cEff) = foldl'(\(sAnn,sEff) -> addEffect sEff . thunkApplyArg (globTypeEnv gEnv) lEnv (ATuple [AReg RegionGlobal, AUnit]) sAnn) 
                             (fAnn,botEffect) 
                             (init args)
         (rAnn,rEff) = thunkApplyArg (globTypeEnv gEnv) lEnv retRegAnn cAnn (last args)
@@ -388,7 +387,7 @@ dataTypeApplyArgs :: TypeEnvironment -> LocalEnv
                   -> Annotation
                   -> [Either Type Local] 
                   -> Annotation
-dataTypeApplyArgs tEnv lEnv = foldl go
+dataTypeApplyArgs tEnv lEnv = foldl' go
     where go ann (Left ty) = AInstn ann $ typeNormalize tEnv ty
           go ann (Right x) = AApl ann (lookupLocalAnn x lEnv)
 
@@ -425,7 +424,7 @@ joinTuples (a,b) (c,d) = (AJoin a c, AJoin b d)
 joinAnnList :: [Annotation] -> Annotation
 joinAnnList []     = rsError "joinAnnList: Empty annotation list"
 joinAnnList [x]    = x
-joinAnnList (x:xs) = foldl AJoin x xs
+joinAnnList (x:xs) = foldl' AJoin x xs
 
 
 -- | Bottom for the effect

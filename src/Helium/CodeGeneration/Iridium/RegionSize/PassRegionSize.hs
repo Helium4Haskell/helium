@@ -26,7 +26,7 @@ import Helium.CodeGeneration.Iridium.RegionSize.Transform
 import Helium.CodeGeneration.Iridium.RegionSize.Utils
 import Helium.CodeGeneration.Iridium.RegionSize.Fixpoint
 
-import Data.List (intercalate)
+import Data.List (intercalate, foldl')
 import qualified Data.Map.Strict as M 
 
 import System.CPUTime
@@ -51,12 +51,12 @@ checkSortsEq    = False && debug
 
 -- Printing of annotations/sorts
 printDerived,printSimplified,printFixpoint,printWithLocals,printEffects,printMethodName :: Bool
-printDerived    = True && debug
-printSimplified = True && debug
-printFixpoint   = True && debug
+printDerived    = False && debug
+printSimplified = False && debug
+printFixpoint   = False && debug
 printWithLocals = False && debug
 printEffects    = False && debug
-printMethodName = True && (printDerived || printSimplified || printFixpoint || printWithLocals || printEffects)
+printMethodName = (True || printDerived || printSimplified || printFixpoint || printWithLocals || printEffects)
 
 -- Printing datatypes
 printDTInfo,printDTSorts,printDTRegions,printDTStructs,printDTDestructs :: Bool
@@ -99,7 +99,6 @@ passRegionSize _ m = if disable then return m else do
 analyseBindingGroup :: (GlobalEnv, Int, Int, Int) -> BindingGroup Method -> IO ((GlobalEnv, Int, Int, Int), [Declaration Method])
 -- Recurisve bindings (call pipeline with the list of recursive methods)
 analyseBindingGroup (gEnv, finite, infinite, zero) (BindingRecursive bindings) = do
-  -- TODO: uncomment this code when region analysis works on mutrec methods
   -- let methods = (\(Declaration methodName _ _ _ method) -> (methodName, method)) <$> bindings
   -- ((gEnv', finite2, infinite2,zero2), transformeds) <- pipeline gEnv methods
   -- let bindings' = map (\(decl, (_,transformed)) -> decl{declarationValue=transformed}) $ zip bindings transformeds
@@ -243,8 +242,8 @@ initialGEnv m = GlobalEnv typeEnv functionEnv dataTypeEnv
 
     -- Data type sorts
     moduleDataTypeSorts, moduleDataTypeRegions :: IdMap DataSort
-    moduleDataTypeSorts = foldl (declDataTypeSort typeEnv) recDSorts dataTypeGroups
-    moduleDataTypeRegions = foldl (declDataTypeRegions typeEnv) recDSorts dataTypeGroups
+    moduleDataTypeSorts = foldl' (declDataTypeSort typeEnv) recDSorts dataTypeGroups
+    moduleDataTypeRegions = foldl' (declDataTypeRegions typeEnv) recDSorts dataTypeGroupsRegs
     -- Constructor annotations
     moduleDataTypeConstructors :: IdMap Annotation
     moduleDataTypeConstructors = mapFromList $ dataTypeGroups >>= makeDataTypeConstructors (emptyDEnv{dtSorts=moduleDataTypeSorts})
@@ -257,8 +256,9 @@ initialGEnv m = GlobalEnv typeEnv functionEnv dataTypeEnv
     recDSorts = mapFromList . map makeRecDataTypeSort $ moduleDataTypes m
     makeRecDataTypeSort ::  Declaration DataType -> (Id, DataSort)
     makeRecDataTypeSort decl = (declarationName decl, Complex . foldr (const SortQuant) SortUnit . dataTypeQuantors $ declarationValue decl)
-    dataTypeGroups :: [BindingGroup DataType]
-    dataTypeGroups = dataTypeBindingGroups $ moduleDataTypes m
+    dataTypeGroups,dataTypeGroupsRegs :: [BindingGroup DataType]
+    dataTypeGroups     = dataTypeBindingGroups True  $ moduleDataTypes m
+    dataTypeGroupsRegs = dataTypeBindingGroups False $ moduleDataTypes m
 
 ----------------------------------------------------------------
 -- Sort checks

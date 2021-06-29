@@ -12,7 +12,7 @@ import Helium.CodeGeneration.Iridium.RegionSize.Annotation
 import Helium.CodeGeneration.Iridium.RegionSize.Sort
 import Helium.CodeGeneration.Iridium.RegionSize.Constraints
 
-import Data.List (elemIndex)
+import Data.List (elemIndex,foldl')
 import Data.Map (fromList)
 
 data Names = Names {
@@ -32,7 +32,7 @@ pAnnotation names = do
             ann1 <- pAnnotation' names
             pWhitespace'
             args <- pMany (pAnnMany names) pIsNext
-            return $ foldl (flip ($)) ann1 args
+            return $ foldl' (flip ($)) ann1 args
 
 
 pIsNext :: Parser Bool

@@ -62,7 +62,6 @@ methodBindingGroups = bindingGroups methodDependencies
     instructionDependencies (Case _ _) = []
     instructionDependencies (Return _) = []
     instructionDependencies (Unreachable _) = []
-    -- instructionDependencies (RegionRelease var next) = instructionDependencies next
 
     expressionDependencies (Literal _) = []
     expressionDependencies (Call (GlobalFunction fn _ _) _ args _) = [fn]
@@ -75,7 +74,6 @@ methodBindingGroups = bindingGroups methodDependencies
     expressionDependencies (PrimitiveExpr _ _) = []
     expressionDependencies (Undefined _) = []
     expressionDependencies (Seq _ _) = []
-    -- expressionDependencies RegionAllocate = []
 
     bindDependencies (Bind _ target _ _) = bindTargetDependencies target
 
@@ -91,20 +89,23 @@ mapBindingGroup f (BindingRecursive as) = BindingRecursive $ map f as
 -- DataTypes
 ----------------------------------------------------------------
 
-dataTypeBindingGroups :: [Declaration DataType] -> [BindingGroup DataType]
-dataTypeBindingGroups = bindingGroups dataTypeDependencies
+dataTypeBindingGroups :: Bool -> [Declaration DataType] -> [BindingGroup DataType]
+dataTypeBindingGroups inFs = bindingGroups (dataTypeDependencies inFs)
    where 
-    dataTypeDependencies :: DataType -> [Id]
-    dataTypeDependencies (DataType decls) = concat $ constructorDependencies <$> (declarationValue <$> decls)
+    dataTypeDependencies :: Bool -> DataType -> [Id]
+    dataTypeDependencies inFunctions (DataType decls) = concat $ constructorDependencies inFunctions <$> (declarationValue <$> decls)
     
-    constructorDependencies :: DataTypeConstructorDeclaration -> [Id]
-    constructorDependencies (DataTypeConstructorDeclaration ty _) = 
+    constructorDependencies :: Bool -> DataTypeConstructorDeclaration -> [Id]
+    constructorDependencies inFunctions (DataTypeConstructorDeclaration ty _) = 
        let (FunctionType args _) = extractFunctionTypeNoSynonyms ty 
-       in rights args >>= typeDependencies 
+       in rights args >>= typeDependencies inFunctions
     
-    typeDependencies :: Type -> [Id]
-    typeDependencies tp = dependencies tp []
+    typeDependencies :: Bool -> Type -> [Id]
+    typeDependencies inFunctions tp = dependencies tp []
         where
+          dependencies (TAp (TAp (TCon TConFun) t1) t2) accum 
+              | inFunctions = dependencies t1 $ dependencies t2 accum
+              | otherwise   = accum
           dependencies (TAp t1 t2) accum = dependencies t1 $ dependencies t2 accum
           dependencies (TForall _ _ t1) accum = dependencies t1 accum
           dependencies (TStrict t1) accum = dependencies t1 accum

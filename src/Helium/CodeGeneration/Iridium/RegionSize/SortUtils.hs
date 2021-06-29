@@ -58,7 +58,7 @@ sortAssignDT :: DataTypeEnv -> Id -> [Type] -> Sort
 sortAssignDT dEnv name ts = 
     case name `lookupDataType` dEnv of
         Complex  _ -> SortUnit
-        Analyzed s -> foldl (flip $ sortInstantiate dEnv) s ts
+        Analyzed s -> foldl'(flip $ sortInstantiate dEnv) s ts
 
 ----------------------------------------------------------------
 -- Region assignment
@@ -93,8 +93,8 @@ regionAssign' _    ts t = rsError $ "regionAssign: No pattern match: " ++ rsShow
 regionAssignDT :: DataTypeEnv -> Id -> [Type] -> Sort
 regionAssignDT dEnv name ts = 
     case name `lookupDataTypeRegs` dEnv of
-        Complex  _ -> SortMonoRegion
-        Analyzed s -> foldl (flip $ sortInstantiate dEnv) s ts
+        Complex  s -> foldl' (flip $ sortInstantiate dEnv) s ts `rsInfo` ("regionAssignDT: " ++ show s)
+        Analyzed s -> foldl' (flip $ sortInstantiate dEnv) s ts `rsInfo` ("regionAssignDT: " ++ show s)
 
 ----------------------------------------------------------------
 -- Data type sort discovery
@@ -103,49 +103,52 @@ regionAssignDT dEnv name ts =
 -- | Find sort for datatype
 declDataTypeSort :: TypeEnvironment -> IdMap DataSort -> BindingGroup DataType -> IdMap DataSort
 declDataTypeSort typeEnv recEnv (BindingNonRecursive decl) = 
-  let dEnv    = DataTypeEnv recEnv recEnv emptyMap emptyMap
+  let dType   = declarationValue decl
+      dEnv    = DataTypeEnv recEnv recEnv emptyMap emptyMap
       newSrts = mapFromList [(declarationName decl
-                             ,Analyzed $ dataTypeSort typeEnv dEnv $ declarationValue decl)]
+                             ,Analyzed . dtWrapQuants dType $ dataTypeSort typeEnv dEnv dType)]
   in unionlMap newSrts recEnv
 declDataTypeSort typeEnv recEnv (BindingRecursive decls) = 
-  let dEnv     = DataTypeEnv recEnv recEnv emptyMap emptyMap
-      groupSrt = Complex . SortTuple $ dataTypeSort typeEnv dEnv . declarationValue <$> decls
+  let dTypes   = declarationValue <$> decls
+      dEnv     = DataTypeEnv recEnv recEnv emptyMap emptyMap
+      groupSrt = Complex . dtWrapQuants (head dTypes) . SortTuple $ dataTypeSort typeEnv dEnv <$> dTypes
       newSrts  = mapFromList $ zip (declarationName <$> decls) (repeat groupSrt)
   in unionlMap newSrts recEnv
 
 dataTypeSort :: TypeEnvironment -> DataTypeEnv -> DataType -> Sort
-dataTypeSort tEnv dEnv dt@(DataType structs) = 
-  let structSorts = SortTuple $ SortTuple . dataStructSort tEnv dEnv <$> structs
-  in sortWrapQuants (length $ dataTypeQuantors dt) structSorts
+dataTypeSort tEnv dEnv (DataType structs) = SortTuple $  dataStructSort tEnv dEnv <$> structs
 
-dataStructSort :: TypeEnvironment -> DataTypeEnv -> Declaration DataTypeConstructorDeclaration -> [Sort]
+dataStructSort :: TypeEnvironment -> DataTypeEnv -> Declaration DataTypeConstructorDeclaration -> Sort
 dataStructSort tEnv dEnv (Declaration _ _ _ _ (DataTypeConstructorDeclaration ty _)) =
   let (args, _) = typeExtractFunction $ typeRemoveQuants ty 
-  in sortAssign dEnv . typeNormalize tEnv <$> args
+  in SortTuple $ sortAssign dEnv . typeNormalize tEnv <$> args
 
 
 -- | Find region assignment for datatype
 declDataTypeRegions :: TypeEnvironment -> IdMap DataSort -> BindingGroup DataType -> IdMap DataSort
 declDataTypeRegions typeEnv recEnv (BindingNonRecursive decl) = 
-  let dEnv    = DataTypeEnv recEnv recEnv emptyMap emptyMap
+  let dType   = declarationValue decl
+      dEnv    = DataTypeEnv recEnv recEnv emptyMap emptyMap
       newSrts = mapFromList [(declarationName decl
-                             ,Analyzed $ dataTypeRegions typeEnv dEnv $ declarationValue decl)]
+                             ,Analyzed . dtWrapQuants dType $ dataTypeRegions typeEnv dEnv dType)]
   in unionlMap newSrts recEnv
 declDataTypeRegions typeEnv recEnv (BindingRecursive decls) = 
-  let dEnv     = DataTypeEnv recEnv recEnv emptyMap emptyMap
-      groupSrt = Complex . SortTuple $ dataTypeRegions typeEnv dEnv . declarationValue <$> decls
+  let dTypes   = declarationValue <$> decls
+      dEnv     = DataTypeEnv recEnv recEnv emptyMap emptyMap
+      groupSrt = Complex . dtWrapQuants (head dTypes) . SortTuple $ dataTypeRegions typeEnv dEnv <$> dTypes
       newSrts  = mapFromList $ zip (declarationName <$> decls) (repeat groupSrt)
   in unionlMap newSrts recEnv
 
 dataTypeRegions :: TypeEnvironment -> DataTypeEnv -> DataType -> Sort
-dataTypeRegions tEnv dEnv dt@(DataType structs) = 
-  let structSorts = SortTuple $ SortTuple . dataStructRegions tEnv dEnv <$> structs
-  in sortWrapQuants (length $ dataTypeQuantors dt) structSorts
+dataTypeRegions tEnv dEnv (DataType structs) = SortTuple $ dataStructRegions tEnv dEnv <$> structs
 
-dataStructRegions :: TypeEnvironment -> DataTypeEnv -> Declaration DataTypeConstructorDeclaration -> [Sort]
+dataStructRegions :: TypeEnvironment -> DataTypeEnv -> Declaration DataTypeConstructorDeclaration -> Sort
 dataStructRegions tEnv dEnv (Declaration _ _ _ _ (DataTypeConstructorDeclaration ty _)) =
   let (args, _) = typeExtractFunction $ typeRemoveQuants ty 
-  in regionAssign dEnv . typeNormalize tEnv <$> args
+  in SortTuple $ regionAssign dEnv . typeNormalize tEnv <$> args
+
+dtWrapQuants :: DataType -> Sort -> Sort
+dtWrapQuants dt = sortWrapQuants (length $ dataTypeQuantors dt)
 
 ----------------------------------------------------------------
 -- Type substitution
