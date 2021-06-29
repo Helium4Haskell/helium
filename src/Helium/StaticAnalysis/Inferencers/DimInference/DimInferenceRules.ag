@@ -12,42 +12,33 @@
 INCLUDE "UHA_Syntax.ag"
 
 imports{
--- Below two imports are to avoid clashes of "list" as used by the AG system.
--- Effectively, only list from the imported library needs to be qualified.
-import Prelude hiding ((<$>))
-import Text.PrettyPrint.Leijen hiding (list)
-import qualified Text.PrettyPrint.Leijen as PPrint
 import Data.Char
-import Top.Types (isTupleConstructor)
-import Helium.StaticAnalysis.Inferencers.DimInference.Unification(unify)
-
+import Data.Map
 import Helium.Syntax.UHA_Syntax
 import Helium.Utils.Utils (internalError, hole)
-
-import qualified Data.Set as S
 }
 
 {-
 
-For the whole program, we need a map storing the dimension of each expression;
- we add this information into the map for each dimensioned variable we encounter
-
- Those dimensions can depend from a variable unit - its unit will be infered 
- in the solver.
+ We add this information into the map for each dimensioned variable we encounter
 
  We should proceed step by step:
  - Attribute an unique identifier for each unit variable
- - Store the known dimension of the expression (expressed with those variables)
+ - Store the known dimension of the expressions (expressed with those variables)
  - Store each unit constraints
  - Normalization of units and solver on constraints
- - Display eror message from unit constraint
+ - Display error message from unit constraint
  - Go through the AST and labelled each expression with units / stored each variable units in a map
 
 HYPOTHESIS:
 - NO TYPE ERROR
 - EVERY DIMENSIONED OBJECT HAS TYPE INT OR FLOAT
 CONSEQUENCES:
-- NO DATA STRUCTURE CAN HAVE A DIMENSION (IN PARTICULAR LIST, TUPLE, RECORD...)                                                                                                                                                                                                                                                                               
+- NO DATA STRUCTURE CAN HAVE A DIMENSION (IN PARTICULAR LIST, TUPLE, RECORD...)
+
+Warning, Constructors do have a dimension 
+(data Type =  Cons (Int <Metre>) 
+-> Cons have type (Metre -> Undimensioned ))
 
 -}
 
@@ -83,25 +74,13 @@ They can also be parametrized :
  type TMetre a = a
  so the result should be depending of the type of the pattern
 
+Note: union is left-biased
 -}
 
 
-
--- We have to build an independant check for type, data and 
-
----------------------------------------------------------------------------
----------------------------------------------------------------------------
--- 2) Store each unit constraints and unit information
----------------------------------------------------------------------------
----------------------------------------------------------------------------
-
--- A type can be :
--- An undimensioned type constant (Bool, Int, Float, String)
--- A dimensioned type constant (Int <a>, Float <a>)
--- A data type, consequently undimensioned (record, constructor), variable (?) and then we
---   get interested in constructors or fields.
--- An alias for any type so we recurse on this type
-
+-- ------------------------------------------------------------------------
+-- -- Declarations                                                        --
+-- ------------------------------------------------------------------------
 
 SEM Declaration
 
@@ -152,15 +131,15 @@ SEM MaybeExpression
 
 
 {- We need two piece of infos:
-- dimension of the expression (with variables / Undimensioned when necessary)
-- constraints when there are some -}
+- the dimension of the expression
+- the constraints it raises -}
 
 SEM Expression
     
     | Literal            lhs.dimExpr = Undimensioned
     | Constructor        lhs.dimExpr = 
                             case M.lookup name @collectValueDimConstructors of
-                                Just a -> a
+                                Just a -> a -- (par1 -> par2 -> .. -> parn -> mothertype)
                                 Nothing -> internalError "Constructor undefined ?"
 
     | Variable           loc . beta = UTVar @lhs.betaDeclUnique
@@ -170,7 +149,7 @@ SEM Expression
                                 Just a -> a, [(@beta,a)]
 
     | NormalApplication  lhs . (dimExpr, resultUT) = 
-                            let (expectedArgUT, resut) = ufunctionSpine @function.dimExpr in
+                            let (expectedArgUT, resultUT) = ufunctionSpine @function.dimExpr in
                                 let appConstraints, unitType =
                                     constraintFromApp expectedArgUT resultUT @arguments.dimExpr
                                 in

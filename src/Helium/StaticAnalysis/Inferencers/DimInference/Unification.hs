@@ -10,44 +10,11 @@
 
 module Helium.Helium.StaticAnalysis.Inference.DimInference.Unification where
 
+import Helium.Helium.StaticAnalysis.Inference.DimInference.NormUnit
 import Helium.Helium.StaticAnalysis.Inference.DimInference.Normalization (normalize)
 
-type UnitVar  = [(Name,Int)]
-type UnitCons = [(Name,Int)]
-type NormUnit = (UnitVar, UnitCons)
 
 type Unifier = M.Map Name Unit
-
----------------------------- Useful functions on units ------------------------
-
-op_on_exp :: (Int -> Int) -> NormUnit -> NormUnit
-op_on_exp f (uvar, ucons)
-    (map (\n,int -> (n, f int) ) uvar,
-     map (\n,int -> (n, f int) ) ucons)
-
-mult :: [(Name, Int)] -> [(Name, Int)] 
--- if sorted by Name and they are because toList return an ordered List
-mult (n1, int1):q1 (n2,int2):q2 =
-    if n1 == n2 then
-        (n1, int1 * int2):(mult q1 q2)
-    else if n1 < n2 then
-        (n1, int1):(mult q1 (n2,int2):q2)
-    else
-        (n2, int2):(mult (n1,int1):q1 q2)
-
-multiply :: NormUnit -> NormUnit -> NormUnit
-multiply (uvar1, ucons1) (uvar2, ucons2) =
-    (mult uvar1 uvar2, mult ucons1 ucons2)
-
-inverse :: NormUnit -> NormUnit
-inverse (uvar, ucons) = op_on_exp (-)
-
-power :: NormUnit -> Int -> Unit
-power (uvar, ucons) exp = op_on_exp (*exp)
-
-divide :: NormUnit -> NormUnit -> NormUnit
-divide u1 u2 = 
-    multiply u1 (inverse u2)
 
 ------------------------ Useful functions on substitution ---------------------
 
@@ -166,26 +133,25 @@ constraint_solver lunitconst =
     normlunitconst
 
 
+-- maybe I should not return a norm unit type too, because in practice, we could also
+-- apply the subtitution everywhere in the code and get what's necessary
 unify :: NormUnitType -> NormUnitType -> Either Fail Unifier, NormUnitType
 unfiy Undimensioned u = (Left Fail, u)
 unify u Undimensioned = unify Undimensioned u
 unify u1 u2 = 
-    case u1, u2 of
-        (Arrow a1 a2), (Arrow b1 b2) ->
+    case (u1, u2) of
+        (UTApp a1 a2, UTApp b1 b2) ->
             let unifier1, ut1 = unify a1 b1 in
             let na2, nb2 = apply unifier1 na2, apply unifier1 nb2 in
             let unifer2, ut2  = unify na2 nb2 in
             (compose unifier2 unifier1,
-            Arrow ut1 ut2)
-        (Tuple lu1), (Tuple lu2) ->
-            map unify [(u1,u2) | u1 <- lu1, u2 <- lu2] -- we would in fact need a name
-        (Cons n1 lu1), (Cons n2 lu2) ->
-            if n1 \= n2 then Left Fail -- should have been statically checked
-            else map unify [(u1,u2) | u1 <- lu1, u2 <- lu2]
-        (Base u1), (Base u2) ->
+            UTApp ut1 ut2)
+        (Base u1, Base u2) ->
             let unifier = unifyOne (divide u1 u2) in
             apply unifier u1
-        _ -> Left Fail
+        (UTVar v1, _) -> -- alright but we should memorize it
+        (_, UTVar v2) -> -- alright but we should memorize it
+        _ -> internalError "Type inference should not have worked"
 
 
 unifyApplication :: UnitType -> [UnitType]-> Either Fail Unifier, [UnitType]

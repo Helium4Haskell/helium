@@ -25,57 +25,12 @@
 -- A bit more simple since we do not deal with imports
 -------------------------------------------------------------------------------
 
-{-
 
-ATTACK PLAN FOR TOMORROW MORNING:
-- END THE IMPLEMENTATION FOR TYPES AND RECORDS DONE
-- DEAL WITH DECLARATIONS OF TYPE CLASSES (~ 3H) IN PARTICULAR LEARN ABOUT IT
-- DEAL WITH ELEMENTS FROM TYPE CLASSES (~2h)
-
-ATTACK PLAN FOR FRIDAY:
-- END UP THURSDAY PLAN (~ 2H) (IN PARTICULAR DISTRIBUTE)
-- ATTRIBUTE NUMBERED VARIABLE WHERE IT'S NECESSARY!! (~ 2h)
-- CORRECT SOLVER WITH THE NEW STRUCTURES (~ 45 MIN)
-- LINK EVERYTHING (~ 1H)
-
-ATTACK PLAN FOR SUNDAY:
-- WRITE A TOPOLOGICAL SORT! THIS IS SUPPOSED TO BE EASY...
-
-ATTACK PLAN FOR THE REST:
-- DEBUG AND DEBUG AND DEBUG UNTIL THAT WORKS (MONDAY ESPECIALLY)
-- TOPOLOGICAL SORT (<2 DAYS)
-- CHECK THE TYPES IN A DIFFERENT FILE (<2 DAYS)
-- SIGNATURE TOO GENERAL (<2 DAYS)
-
-ATTACK PLAN 2: ERROR DIAGNOSIS
--> CONVERSION TO TOP.TYPES
--> UNDERSTAND HEURISTICS (RE-READ JH ARTICLE)
--> CHOOSE MY OWN HEURISTICS
--> IMPLEMENT
--> DEBUG
-
--}
-
-
--- WARNING, WE SHOULD NOT CONFUSE THE DIMENSION OF EXPRESSIONS
--- AND THE DIMENSION ASSOCIATED TO A TYPE CONSTRUCTOR
--- OR TO PARAMETERS OF A VALUE CONSTRUCTOR (WHICH IS IN FACT A FUNCTION)
--- /!\ I THINK WE SHOULD KEEP IT IN MIND !! AND CHECK|PROOF IF IT'S OK /!\
--- THE LINK IS THAT AN EXPRESSION OF TYPE T HAS AS A DIMENSION THE DIM OF T
-
--- WARNING : We are handling :
--- data Maybe a = Just a | Nothing
--- We have no quantification over dimensions; we can't write :
--- data Maybe <a> = Just (Int <a>) | Nothing
--- data Singularity <a> = Dimensioned (Int <a>) | Singular
-
--- I could have the alias UnitScheme = [(Name,UnitType)] -> UnitType
 -------------------------------------------------------------------------------
  -- 1) Collecting (data-) dimension type constructors
 -- essentially storing the name of the variable PARAMETERS
 -- and linking constructors to a type
 -- TO BE FAIR, I AM NOT EVEN SURE THAT'S NECESSARY
--- WE HAVE TO KNOW THEIR
 
 ATTR Body Declarations Declaration [ | collectDimTypeConstructors : { [(Name,(Int, Maybe [Name]))] } | ]
 
@@ -100,27 +55,14 @@ ATTR Body Declarations Declaration Constructors Constructor [ | collectValueDimC
 
 SEM Constructor
     | Constructor   lhs.collectValueDimConstructors = [(@constructor.self,
-                        (length (--number of parameters), --maybe not necessary
-                        \utlist -> Cons
-                            @constructor.self 
-                            [ tp | atp <- @types.self, tp <- makeUnitTypeFromAnnotatedType utlist atp]
-                        ))]
+                        \utlist -> foldl to @lhs.fatherType [ tp | atp <- @types.self, tp <- makeUnitTypeFromAnnotatedType utlist atp]
+                    )]
     | Infix         lhs.collectValueDimConstructors = [(@constructor.self,
-                        (length (--number of parameters),
-                        \utlist -> Cons
-                            @constructor.self 
-                            [ tp | atp <- [@leftType.type, @rightType.type], tp <- makeUnitTypeFromAnnotatedType utlist atp]
-                        ))]
+                        \utlist -> foldl to @lhs.fatherType [ tp | atp <- [@leftType.type, @rightType.type], tp <- makeUnitTypeFromAnnotatedType utlist atp]
+                        )]
     | Record        lhs.collectValueDimConstructors = [(@constructor.self,
-                        (length (--number of parameters),
-                        \utlist -> Cons
-                            @constructor.self 
-                            (Cons "Record"
-                            @fieldDeclarations.
-                        ))] -- we do not really need to do something there, except from passing information
-                        -- to the real record declaration ?
-                        -- the difference there is that we will encounter other constructors which can be used
-                        -- as a reference)
+                        \utlist -> Undimensioned to @lhs.fatherType
+                        )]
 
 -------------------------------------------------------------------------------
  -- 3) Collecting dimension type synonyms
@@ -141,14 +83,22 @@ SEM Declaration
                 ))
 
 -------------------------------------------------------------------------------
- -- 4) Collecting record declarations
+ -- 4) Collecting record fields
+
+-- Records are far more simpler in this version, since we only
+-- have to check fields (the record constructor is just Undim -> Undim )
+-- We have to check:
+-- the dimension of what is computed
+-- consistance of the field type with the arguments of the father type
+-- e.g. data Type a = Cons { field1 : a -> Int, field2 : a}
+-- we can't write 
+-- record = Cons { field1 = \x -> x + 1 <Metre>, field2 = 2 <Second> }
+-- record is inferred of type Type a and then this is the same variable for the other
+-- we just have to understand that in the fileDeclarations, there is a father type
+-- and that we should unify over those type variables and take care
 
 ATTR Body Declarations Declaration Constructor Constructors [ | 
-  | collectRecord USE { M.union } { M.empty } : { M.Map Name (M.Map Name (Int, Bool, Tp, TpScheme)) } ]
-
-
-SEM Declaration
-    | Data      -- collect and remap information
+  | collectFields USE { M.union } { M.empty } : { M.Map Name (M.Map Name ( [UTp Unit] -> UTp Unit)) } ]
 
 
 SEM Constructor
@@ -157,8 +107,8 @@ SEM Constructor
 
 SEM FieldDeclaration
     | FieldDeclaration      lhs.unitTypeFromFieldDecl = [(name,
-                                 \utlist -> Cons
-                                    name
+                                 \utlist -> 
+                                    foldl to
                                     [makeUnitTypeFromType @type.self])
                                 | name <- @names.self
                                 ]
