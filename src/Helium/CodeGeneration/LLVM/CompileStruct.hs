@@ -47,10 +47,10 @@ structTypeNoAlias env struct = StructureType False (headerStruct : fieldTypes)
 flagCount :: Struct -> Int
 flagCount struct = length (filter (\f -> isJust $ fieldFlagIndex f) $ fields struct)
 
-sizeOf :: Env -> Struct -> Int
-sizeOf env struct = (headerWords * wordSize + sum (map fieldSize $ fields struct))
+-- Returns the size of a struct in the number of bytes
+sizeOf :: Target -> Struct -> Int
+sizeOf target struct = (headerWords * wordSize + sum (map fieldSize $ fields struct))
   where
-    target = envTarget env
     headerBits = targetGarbageCollectorBits target + tagSize struct + flagCount struct
     headerWords = headerBits `divCeiling` (wordSize * 8)
     wordSize = targetWordSize target `div` 8
@@ -94,7 +94,7 @@ tagInFirstElement env struct = tagSize struct + targetGarbageCollectorBits targe
 
 allocate :: Env -> Name -> Name -> Type -> Struct -> [Named Instruction]
 allocate env nameVoid name t struct =
-  [ nameVoid := Call Nothing C [] (Right Builtins.alloc) [(ConstantOperand $ Constant.Int 32 $ fromIntegral $ sizeOf env struct, [])] [] []
+  [ nameVoid := Call Nothing C [] (Right Builtins.alloc) [(ConstantOperand $ Constant.Int 32 $ fromIntegral $ sizeOf (envTarget env) struct, [])] [] []
   , name := BitCast (LocalReference voidPointer nameVoid) (pointer t) []
   ]
 

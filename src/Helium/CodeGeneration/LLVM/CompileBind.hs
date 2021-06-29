@@ -1,4 +1,4 @@
-module Helium.CodeGeneration.LLVM.CompileBind (compileBinds, toStruct) where
+module Helium.CodeGeneration.LLVM.CompileBind (compileBinds, toStruct, thunkStruct) where
 
 import Data.Bits(shiftL, (.|.), (.&.))
 import Data.Word(Word32)
@@ -109,7 +109,10 @@ toStruct env (Iridium.BindTargetConstructor (Iridium.DataTypeConstructor conId _
   LayoutInline value -> Left value
   LayoutPointer struct -> Right struct
 toStruct env (Iridium.BindTargetTuple arity) _ = Right $ tupleStruct arity
-toStruct env target arity = Right $ Struct Nothing 0 0 fields
+toStruct env target arity = Right $ thunkStruct arity
+
+thunkStruct :: Int -> Struct
+thunkStruct arity = Struct Nothing 0 0 fields
   where
     fields =
       StructField Iridium.typeUnsafePtr Nothing -- Thunk* next

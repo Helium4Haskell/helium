@@ -10,6 +10,7 @@ import Helium.CodeGeneration.LLVM.ConstructorLayout
 import Helium.CodeGeneration.LLVM.Struct
 import Helium.CodeGeneration.LLVM.CompileStruct
 import Helium.CodeGeneration.LLVM.CompileType
+import Helium.CodeGeneration.LLVM.CompileBind
 import Helium.CodeGeneration.LLVM.Target
 import Helium.CodeGeneration.LLVM.Utils
 import qualified Helium.CodeGeneration.LLVM.Builtins as Builtins
@@ -46,3 +47,16 @@ compileExtractFields env supply reference struct vars
 compileExtractField :: Env -> Operand -> Struct -> NameSupply -> (StructField, Maybe Id, Int) -> [Named Instruction]
 compileExtractField env reference struct supply (field, Just name, index) = extractField supply env reference struct index field $ toName name
 compileExtractField _ _ _ _ (_, Nothing, _) = []
+
+-- Returns the size of a struct in the number of bytes
+constructorAllocationSize :: Target -> Iridium.DataType -> Iridium.DataTypeConstructor -> Int
+constructorAllocationSize target dataType constructor = case constructorLayout target dataType 0 constructor of
+  LayoutInline _ -> 0
+  LayoutPointer s -> sizeOf target s
+
+tupleAllocationSize :: Target -> Int -> Int
+tupleAllocationSize target arity = sizeOf target $ tupleStruct arity
+
+-- Returns the size of a thunk (constructed using either a BindTargetThunk or BindTargetFunction)
+thunkAllocationSize :: Target -> Int -> Int
+thunkAllocationSize target arity = sizeOf target $ thunkStruct arity

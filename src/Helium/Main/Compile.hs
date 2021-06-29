@@ -33,6 +33,7 @@ import qualified Helium.CodeGeneration.Core.TypeCheck as Core
 import qualified Helium.CodeGeneration.Iridium.Parse.Module as Iridium
 import qualified Helium.CodeGeneration.Iridium.ResolveDependencies as Iridium
 import qualified Helium.CodeGeneration.Iridium.FileCache as Iridium
+import qualified Helium.CodeGeneration.LLVM.Target as Iridium
 import Helium.CodeGeneration.Iridium.ImportAbstract (toAbstractModule)
 import Helium.Main.Args (overloadingFromOptions)
 import Helium.Utils.Utils
@@ -65,6 +66,8 @@ compile basedir fullName options lvmPath iridiumCache doneModules =
     supply <- newNameSupply
     let (supplyIridium, supplyLlvm) = splitNameSupply supply
 
+    let target = Iridium.Target 64 48
+
     (iridiumFiles, shouldLink, warnings) <- if ext /= "iridium" then do
         (coreModule, warnings) <- case ext of
           "hs" -> compileHaskellToCore basedir fullName contents options iridiumCache doneModules
@@ -92,7 +95,7 @@ compile basedir fullName options lvmPath iridiumCache doneModules =
         return ([Iridium.IridiumFile fullName iridium True], False, 0)
 
     -- Phase 11: Generate LLVM code
-    phaseCodeGeneratorLlvm supplyLlvm (joinPath [filePath, fileName]) iridiumFiles shouldLink options
+    phaseCodeGeneratorLlvm supplyLlvm (joinPath [filePath, fileName]) iridiumFiles target shouldLink options
 
     putStrLn $ "Compilation successful" ++
                   if warnings == 0 || (NoWarnings `elem` options)
