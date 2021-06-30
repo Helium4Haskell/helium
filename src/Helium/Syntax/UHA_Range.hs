@@ -270,6 +270,7 @@ getTypeRange tp = case tp of
 
 getUnitRange :: Unit -> Range
 getUnitRange unit = case unit of
+   Unit_QuestionMark r      -> r
    Unit_Base r _            -> r
    Unit_Variable r _        -> r
    Unit_Times r _ _         -> r

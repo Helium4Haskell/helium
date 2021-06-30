@@ -248,10 +248,11 @@ lexCOMMA    = lexeme (LexSpecial ',')
 lexSEMI     = lexeme (LexSpecial ';')
 lexBACKQUOTE = lexeme (LexSpecial '`')
 
+
 lexHOLE :: HParser () 
 lexHOLE     =  lexeme (LexResVarSym hole)
 
-lexASG, lexLARROW, lexRARROW, lexDARROW, lexBAR, lexMIN, lexMINDOT, lexBSLASH, lexAT, lexDOTDOT, lexTILDE, lexPOWER, lexTIMES, lexDIV :: HParser ()
+lexASG, lexLARROW, lexRARROW, lexDARROW, lexBAR, lexMIN, lexMINDOT, lexBSLASH, lexAT, lexDOTDOT, lexTILDE, lexPOWER, lexTIMES, lexDIV, lexQUESTION :: HParser ()
 lexASG      = lexeme (LexResVarSym "=")
 lexLARROW   = lexeme (LexResVarSym "<-")
 lexRARROW   = lexeme (LexResVarSym "->")
@@ -266,6 +267,7 @@ lexTILDE    = lexeme (LexResVarSym "~")
 lexPOWER    = lexeme (LexResVarSym "^")
 lexTIMES    = lexeme (LexResVarSym "*")
 lexDIV      = lexeme (LexResVarSym "/")
+lexQUESTION = lexeme (LexResVarSym "?")
 
 lexLANGLE, lexRANGLE :: HParser ()
 lexLANGLE   = lexeme (LexVarSym "<")

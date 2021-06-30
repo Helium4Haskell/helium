@@ -1584,6 +1584,10 @@ sdim = addRange
 
 firstunit -> sunit
          | sunit ^ n
+         | "1"
+         | "1" ^ n
+         | "?"
+         | "?" ^ n
          | "(" unit ")"
          | "(" unit ")" ^ n 
 -}
@@ -1622,6 +1626,18 @@ firstunit = addRange (
             <|>
             (do
                 return $ \r -> Unit_One r)))
+    <|>
+    do
+        lexQUESTION
+        (do
+            try(do 
+                lexPOWER
+                u <- addRange $ return $ \r -> Unit_QuestionMark r
+                uexpo u)
+            <|>
+            (do
+                return $ \r -> Unit_QuestionMark r))
+
     <|>
     do
         d <- unitvar

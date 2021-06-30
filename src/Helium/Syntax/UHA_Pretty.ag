@@ -483,6 +483,8 @@ SEM MaybeUnit
     -- unit                      : Unit
 
 SEM Unit
+    | QuestionMark           loc.text = text "?"
+    -- range                     : Range
     | Base                   loc.text = @simpleunit.text
     --  range                    : Range
     --  simpleunit               : SimpleUnit

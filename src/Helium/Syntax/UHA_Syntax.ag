@@ -328,6 +328,8 @@ DATA MaybeUnit
         unit                     : Unit
 
 DATA Unit
+    | QuestionMark
+        range                    : Range
     | Base
         range                    : Range
         simpleunit               : SimpleUnit
@@ -785,7 +787,7 @@ DATA Name                                         {- *** -}
 
 -- Normal identifiers should be stored as "Name_Identifier".
 -- Symbolic identifiers or operators that are usually applied infix
--- should be stored as "Name_Operator".
+-- should be stored as "".
 -- "Name_Special" is reserved for:
 --   o (on the type level:) the function space arrow, the unit type,
 --     all tuple type constructors, the list type constructor
