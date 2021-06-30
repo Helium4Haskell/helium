@@ -33,11 +33,10 @@ transformDead preserveAllAdditionalRegions annotation (Method tp additionalRegio
 
     additionalRegions' = RegionVarsTuple [RegionVarsSingle r | r <- flattenRegionVars additionalRegions, preserve r]
 
-    preserve _ = True
-    --preserve (RegionLocal idx)
-    --  = True
-    --  idx `IntSet.member` used
-    --  || (preserveAllAdditionalRegions && RegionLocal idx `elem` flattenRegionVars additionalRegions)
+    preserve (RegionLocal idx)
+      = idx `IntSet.member` used
+      || (preserveAllAdditionalRegions && RegionLocal idx `elem` flattenRegionVars additionalRegions)
+    preserve _ = False
 
 analyseBlock :: Block -> IntSet -> IntSet
 analyseBlock (Block _ instr) = analyseInstruction instr

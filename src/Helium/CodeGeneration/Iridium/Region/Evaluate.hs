@@ -669,10 +669,10 @@ escapes arity regionSort forceEscape (ALam sort' regionSort' lifetime (ATuple (a
           | otherwise = r
 
         preserveRegion :: RegionVar -> Bool
-        -- preserveRegion (RegionLocal idx)
-        --   | idx >= regionScope
-        --   , idx < regionScope + regionSize
-        --   , not $ doesEscape !!! (regionSize - (idx - regionScope) - 1) = False
+        preserveRegion (RegionLocal idx)
+          | idx >= regionScope
+          , idx < regionScope + regionSize
+          , not $ doesEscape !!! (regionSize - (idx - regionScope) - 1) = False
         preserveRegion _ = True
 
 escapes _ regionSort _ a = (map (const True) $ flattenRegionVars $ regionSortToVars 0 regionSort, id, a) -- This cannot be analyzed

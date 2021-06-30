@@ -137,6 +137,7 @@ join dEnv a b =
       (constrs, parts8 ) = partition isConstr parts7
       (regs,    parts9 ) = partition isReg    parts8
       (adds,    parts10) = partition isAdd    parts9
+      (minuss,  parts11) = partition isMinus  parts10
   in joinSort $ eval dEnv <$> concat [ joinLams    lams vars'
                                      , joinInstns  instns -- TODO: Also combine with vars?
                                      , joinQuants  qnts
@@ -145,7 +146,8 @@ join dEnv a b =
                                      , joinConstrs constrs
                                      , joinRegs    regs
                                      , joinAdds    adds
-                                     , parts10 ]
+                                     , joinMinuss  minuss
+                                     , parts11 ]
 
 ----------------------------------------------------------------
 -- Subsitution of region variables
@@ -210,6 +212,16 @@ joinAdds :: [Annotation] -> [Annotation]
 joinAdds []   = []
 joinAdds adds = let (as, bs) = unzip $ unAAdd <$> adds
                 in [AAdd (joinSort as) (joinSort bs)]
+
+-- | Combine instantiations if the types are equal
+joinMinuss :: [Annotation] -> [Annotation]
+joinMinuss [] = []
+joinMinuss minuss = go $ sortWith (\(AMinus _ r) -> r) minuss
+  where go [] = []
+        go [AMinus c r] = [AMinus c r] 
+        go (AMinus c1 r1:AMinus c2 r2:xs) | r1 == r2  = go $ AMinus (AJoin c1 c2) r1:xs 
+                                          | otherwise = (AMinus c1 r1) : go (AMinus c2 r2:xs)
+        go _ = error ""
 
 -- | join annotation lambdas
 joinLams :: [Annotation] -- ^ Lams

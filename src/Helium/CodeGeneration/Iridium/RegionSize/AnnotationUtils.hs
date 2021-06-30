@@ -2,7 +2,7 @@ module Helium.CodeGeneration.Iridium.RegionSize.AnnotationUtils
   ( liftTuple, unliftTuple, unsafeUnliftTuple,
     collect,
     annWeaken,
-    isConstr, isTop, isBot, isLam, isVar, isQuant, isApl, isInstn, isTuple, isReg, isAdd,
+    isConstr, isTop, isBot, isLam, isVar, isQuant, isApl, isInstn, isTuple, isReg, isAdd, isMinus,
     unAConstr, unAApl, unAAdd,
     constrIdxToAnn,
     annRemLocalRegs, regionVarsToGlobal,
@@ -96,6 +96,10 @@ isReg _ = False
 isAdd :: Annotation -> Bool
 isAdd (AAdd _ _) = True
 isAdd _ = False
+
+isMinus :: Annotation -> Bool
+isMinus (AMinus _ _) = True
+isMinus _ = False
 
 ----------------------------------------------------------------
 -- Unpack annotation
