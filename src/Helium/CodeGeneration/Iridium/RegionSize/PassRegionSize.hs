@@ -99,11 +99,15 @@ passRegionSize _ m = if disable then return m else do
 analyseBindingGroup :: (GlobalEnv, Int, Int, Int) -> BindingGroup Method -> IO ((GlobalEnv, Int, Int, Int), [Declaration Method])
 -- Recurisve bindings (call pipeline with the list of recursive methods)
 analyseBindingGroup (gEnv, finite, infinite, zero) (BindingRecursive bindings) = do
-  let methods = (\(Declaration methodName _ _ _ method) -> (methodName, method)) <$> bindings
-  ((gEnv', finite2, infinite2,zero2), transformeds) <- pipeline gEnv methods
-  let bindings' = map (\(decl, (_,transformed)) -> decl{declarationValue=transformed}) $ zip bindings transformeds
-  return ((gEnv', finite+finite2, infinite+infinite2, zero+zero2)
-         , bindings')
+  -- let methods = (\(Declaration methodName _ _ _ method) -> (methodName, method)) <$> bindings
+  -- ((gEnv', finite2, infinite2,zero2), transformeds) <- pipeline gEnv methods
+  -- let bindings' = map (\(decl, (_,transformed)) -> decl{declarationValue=transformed}) $ zip bindings transformeds
+  -- return ((gEnv', finite+finite2, infinite+infinite2, zero+zero2)
+  --        , bindings')
+  let top = eval (globDataEnv gEnv) . flip ATop constrBot . methodSortAssign (globTypeEnv gEnv) (globDataEnv gEnv) . declarationValue <$> bindings 
+  let gEnv' = foldr (uncurry insertGlobal) gEnv $ zip (declarationName <$> bindings) top 
+  return ((gEnv', finite, infinite, zero)
+         , bindings)
 -- Non recursive binding (call pipeline with singleton list)
 analyseBindingGroup (gEnv, finite, infinite, zero) (BindingNonRecursive decl@(Declaration methodName _ _ _ method)) = do
   ((gEnv', finite2, infinite2,zero2), [(_,transformed)]) <- pipeline gEnv [(methodName,method)]

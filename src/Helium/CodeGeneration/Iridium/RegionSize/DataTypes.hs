@@ -168,16 +168,16 @@ structorSize (Declaration _ _ _ _ (DataTypeConstructorDeclaration ty _)) =
 wrapDataTypeQuants :: DataType -> Annotation -> Annotation 
 wrapDataTypeQuants dt strctLam = foldr (const AQuant) strctLam (dataTypeQuantors dt)
 
--- | Check if the recursive declaration is the list datatype
-isListDataType :: [Declaration DataType] -> Bool
-isListDataType [decl] = declarationName decl == idFromString "[]"
-isListDataType _ = False
-  
-
 ----------------------------------------------------------------
 -- Hand defined stuff supporting for lists
 ----------------------------------------------------------------
 
+-- | Check if the recursive declaration is the list datatype
+isListDataType :: [Declaration DataType] -> Bool
+isListDataType [decl] = declarationName decl == idFromString "[]"
+isListDataType _ = False
+
+-- | Sort for lists
 polyS,listS :: Sort
 polyS = SortPolySort 0 []
 listS = SortTuple [SortTuple[SortUnit,SortTuple[polyS,SortUnit]]]
