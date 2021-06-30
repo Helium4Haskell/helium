@@ -68,11 +68,6 @@ lookupDestruct name dEnv = case lookupMap name (dtDestructs dEnv) of
 -- Data types to annotations
 ----------------------------------------------------------------
 
--- IDEA: For each field: 
---  - Create bot with sortAssign for non-targets
---  - Create top with sortAssign for targets
---  - What kind of effects does it create?
---    - Unbounded regions for methods in the datatype
 -- | Make constructor annotations
 makeDataTypeConstructors :: DataTypeEnv -> BindingGroup DataType -> [(Id, Annotation)]
 makeDataTypeConstructors dEnv (BindingRecursive decls) = concat $ mapWithIndex unPackDataType decls
@@ -84,6 +79,7 @@ makeDataTypeConstructors dEnv (BindingNonRecursive decl) =
   makeDataTypeConstructors' (declarationName decl `lookupDataType` dEnv) (declarationValue decl)
 
 makeDataTypeConstructors' :: DataSort -> DataType -> [(Id, Annotation)]
+{- Datatypes that we cannot analyze get a unit sort -}
 makeDataTypeConstructors' (Complex dtSort) dt@(DataType structs) = 
     mapWithIndex makeStructorAnn structs
   where SortTuple dtSrts = sortRemoveQuants dtSort
@@ -94,6 +90,9 @@ makeDataTypeConstructors' (Complex dtSort) dt@(DataType structs) =
                 -- Wrap with lambdas & quantification
                 strctLam = foldr (\i -> ALam (structSrt !! i)) AUnit [0 .. size-1]
             in (declarationName strctDecl, wrapDataTypeQuants dt strctLam)
+{-  Datatypes that we can analyze construct a tuple with bottom
+  for all fields that are not part of this constructor.
+  The fields that are part of the constructor are bound to a lambda. -}
 makeDataTypeConstructors' (Analyzed dtSort) dt@(DataType structs) = 
     mapWithIndex makeStructorAnn structs
   where dtTupSize = length structs
@@ -103,7 +102,7 @@ makeDataTypeConstructors' (Analyzed dtSort) dt@(DataType structs) =
         makeStructorAnn structIdx strctDecl =
             let size = structorSize strctDecl
                 SortTuple structSrt = dtSrts !! structIdx
-                -- Tuple elements
+                -- DT tuple elements
                 pre  = (\i -> ABot $ dtSrts !! i)        <$> [0          ..structIdx-1]
                 args = ATuple . reverse $ (\i -> AVar i) <$> [0          ..size     -1]
                 post = (\i -> ABot $ dtSrts !! i)        <$> [structIdx+1..dtTupSize-1]  
@@ -118,9 +117,6 @@ sortRemoveQuants :: Sort -> Sort
 sortRemoveQuants (SortQuant s) = sortRemoveQuants s
 sortRemoveQuants s = s
 
--- IDEA: For each field: 
---  - Do not project, return top with sortAssign
---  - Sort on lambda is SortUnit (Datatype should be unit everywhere)
 -- | Make destructor annotations
 makeDataTypeDestructors :: DataTypeEnv -> BindingGroup DataType -> [(Id, [Annotation])]
 makeDataTypeDestructors dEnv (BindingRecursive decls) = concat $ mapWithIndex unPackDataType decls
@@ -132,6 +128,7 @@ makeDataTypeDestructors dEnv (BindingNonRecursive decl) =
   makeDataTypeDestructors' (declarationName decl `lookupDataType` dEnv) (declarationValue decl)
 
 makeDataTypeDestructors' :: DataSort -> DataType -> [(Id, [Annotation])]
+{- Datatypes we cannot analyze return a top annotation for the matched fields -}
 makeDataTypeDestructors' (Complex dtSort) dt@(DataType structs) =
     mapWithIndex makeDestructorAnn structs
   where 
@@ -142,6 +139,7 @@ makeDataTypeDestructors' (Complex dtSort) dt@(DataType structs) =
             SortTuple fieldSorts = structorSorts !! idx
             destrctAnn = (\i -> ALam SortUnit $ ATop (fieldSorts !! i) constrBot) <$> [0 .. size-1]  
         in (declarationName strctDecl, wrapDataTypeQuants dt <$> destrctAnn)
+{- Datatypes we can analyze return the annotation of that field by projecting it out of the DT tuple -}
 makeDataTypeDestructors' (Analyzed dtSort) dt@(DataType structs) = 
     mapWithIndex makeDestructorAnn structs
   where 

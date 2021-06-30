@@ -242,7 +242,7 @@ initialGEnv m = GlobalEnv typeEnv functionEnv dataTypeEnv
 
     -- Data type sorts
     moduleDataTypeSorts, moduleDataTypeRegions :: IdMap DataSort
-    moduleDataTypeSorts = foldl' (declDataTypeSort typeEnv) recDSorts dataTypeGroups
+    moduleDataTypeSorts = foldl' (declDataTypeSort typeEnv moduleDataTypeRegions) recDSorts dataTypeGroups
     moduleDataTypeRegions = foldl' (declDataTypeRegions typeEnv) recDSorts dataTypeGroupsRegs
     -- Constructor annotations
     moduleDataTypeConstructors :: IdMap Annotation

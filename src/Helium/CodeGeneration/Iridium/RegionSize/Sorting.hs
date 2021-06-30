@@ -56,11 +56,11 @@ sort dEnv = sort' (-1,-1) M.empty
           sort' d gamma (AFix s a) = 
               let fs = sort' d gamma (ALam (SortTuple s) (ATuple a))
               in case fs of
-                   (Right (SortLam _ sR)) | SortTuple s == sR -> Right sR
-                                          | otherwise -> Left $ "Sorting: Sort does not match fixpoint sort." 
-                                                             ++ "\n  Expected sort: " ++ (showSort (snd d) $ SortTuple s) 
-                                                             ++ "\n  Actual sort:   " ++ (showSort (snd d) sR)
-                                                             ++ "\n  Annotation:\n\n" ++ (indent "    " $ annShow' d (AFix s a)) ++ "\n"
+                   (Right (SortLam _ sR)) | sortEq (SortTuple s) sR -> Right sR
+                                          | otherwise   -> Left $ "Sorting: Sort does not match fixpoint sort." 
+                                                               ++ "\n  Expected sort: " ++ (showSort (snd d) $ SortTuple s) 
+                                                               ++ "\n  Actual sort:   " ++ (showSort (snd d) sR)
+                                                               ++ "\n  Annotation:\n\n" ++ (indent "    " $ annShow' d (AFix s a)) ++ "\n"
                    Left xs  -> Left xs
                    Right s' -> Left $ "Invalid fixpoint sort" 
                                    ++ "\n  Sort: " ++ showSort (snd d) s'
@@ -183,3 +183,13 @@ checkArgSort (SortPolyRegion _ _) SortMonoRegion = True
 -- Also allow application of a unit to a forall unit
 checkArgSort (SortQuant a') SortUnit = checkArgSort a' SortUnit
 checkArgSort a b = a == b 
+
+
+-- | Check if sorts are equal
+sortEq :: Sort -- Expected sort 
+       -> Sort -- Computed sort
+       -> Bool
+sortEq (SortLam a1 a2) (SortLam b1 b2) = checkArgSort a1 b1 && sortEq a2 b2 
+sortEq (SortQuant  a1) (SortQuant  b1) = sortEq a1 b1
+sortEq (SortTuple  as) (SortTuple  bs) = and $ zipWith sortEq as bs
+sortEq a b = a == b
