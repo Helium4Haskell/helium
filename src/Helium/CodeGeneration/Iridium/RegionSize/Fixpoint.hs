@@ -14,7 +14,7 @@ import Data.Maybe (fromJust, catMaybes)
 import qualified Data.Map.Strict as M
 
 max_iterations :: Int
-max_iterations = 3
+max_iterations = 10
 
 ----------------------------------------------------------------
 -- Solving fixpoints

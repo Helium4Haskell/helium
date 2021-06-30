@@ -57,8 +57,10 @@ funSort dEnv t1 t2 = SortLam (sortAssign dEnv t1)
 sortAssignDT :: DataTypeEnv -> Id -> [Type] -> Sort
 sortAssignDT dEnv name ts = 
     case name `lookupDataType` dEnv of
-        Complex  _ -> SortUnit
-        Analyzed s -> foldl'(flip $ sortInstantiate dEnv) s ts
+        Complex  s -> if name == idFromString "[]" 
+                      then foldl' (flip $ sortInstantiate dEnv) s ts
+                      else SortUnit
+        Analyzed s -> foldl' (flip $ sortInstantiate dEnv) s ts
 
 ----------------------------------------------------------------
 -- Region assignment

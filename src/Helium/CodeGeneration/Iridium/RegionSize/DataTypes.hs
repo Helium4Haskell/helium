@@ -70,7 +70,9 @@ lookupDestruct name dEnv = case lookupMap name (dtDestructs dEnv) of
 
 -- | Make constructor annotations
 makeDataTypeConstructors :: DataTypeEnv -> BindingGroup DataType -> [(Id, Annotation)]
-makeDataTypeConstructors dEnv (BindingRecursive decls) = concat $ mapWithIndex unPackDataType decls
+makeDataTypeConstructors dEnv (BindingRecursive decls) = if isListDataType decls 
+                                                         then listConstructor
+                                                         else concat $ mapWithIndex unPackDataType decls
   where (Complex compl)    = declarationName (head decls) `lookupDataType` dEnv
         (SortTuple dtSrts) = sortRemoveQuants $ compl
         unPackDataType :: Int -> Declaration DataType -> [(Id, Annotation)]
@@ -119,7 +121,9 @@ sortRemoveQuants s = s
 
 -- | Make destructor annotations
 makeDataTypeDestructors :: DataTypeEnv -> BindingGroup DataType -> [(Id, [Annotation])]
-makeDataTypeDestructors dEnv (BindingRecursive decls) = concat $ mapWithIndex unPackDataType decls
+makeDataTypeDestructors dEnv (BindingRecursive decls) = if isListDataType decls 
+                                                        then listDestructor
+                                                        else concat $ mapWithIndex unPackDataType decls
   where (Complex cmplx)    = declarationName (head decls) `lookupDataType` dEnv
         (SortTuple dtSrts) = sortRemoveQuants cmplx 
         unPackDataType :: Int -> Declaration DataType -> [(Id, [Annotation])]
@@ -163,3 +167,32 @@ structorSize (Declaration _ _ _ _ (DataTypeConstructorDeclaration ty _)) =
 -- | Wrap an annotation in the quantifications for the corresponding datatype
 wrapDataTypeQuants :: DataType -> Annotation -> Annotation 
 wrapDataTypeQuants dt strctLam = foldr (const AQuant) strctLam (dataTypeQuantors dt)
+
+-- | Check if the recursive declaration is the list datatype
+isListDataType :: [Declaration DataType] -> Bool
+isListDataType [decl] = declarationName decl == idFromString "[]"
+isListDataType _ = False
+  
+
+----------------------------------------------------------------
+-- Hand defined stuff supporting for lists
+----------------------------------------------------------------
+
+polyS,listS :: Sort
+polyS = SortPolySort 0 []
+listS = SortTuple [SortTuple[SortUnit,SortTuple[polyS,SortUnit]]]
+
+-- | Hand defined constructor for lists
+listConstructor :: [(Id, Annotation)]
+listConstructor = [
+    (idFromString "[]", AQuant $                                  ATuple [ATuple [AUnit, ATuple [ABot polyS, AUnit]]]),
+    (idFromString ":" , AQuant . ALam polyS . ALam listS $ AJoin (ATuple [ATuple [AUnit, ATuple [AVar 1    , AUnit]]]) (AVar 0))
+  ]
+
+-- | Hand defined destructor for lists
+listDestructor :: [(Id,[Annotation])]
+listDestructor = [
+    (idFromString "[]", []),
+    (idFromString ":" , [AQuant . ALam listS . AProj 0 . AProj 1 . AProj 0 $ AVar 0,
+                         AQuant . ALam listS $ AVar 0])
+  ]

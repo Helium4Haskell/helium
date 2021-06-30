@@ -75,10 +75,10 @@ sort dEnv = sort' (-1,-1) M.empty
                  else case (sortA, sortB) of
                      (Left errA,_) -> Left errA
                      (_,Left errB) -> Left errB
-                     (_,_) -> Left $ "Sorting: Join of annotations with different sort."
-                                  ++ "\n  Sort A: " ++ show sortA 
-                                  ++ "\n  Sort B: " ++ show sortB
-                                  ++ "\n  Annotation:\n\n" ++ (indent "    " $ annShow' d (AJoin  a b)) ++ "\n"
+                     (Right sa,Right sb) -> Left $ "Sorting: Join of annotations with different sort."
+                                                ++ "\n  Sort A: " ++ showSort (snd d) sa 
+                                                ++ "\n  Sort B: " ++ showSort (snd d) sb
+                                                ++ "\n  Annotation:\n\n" ++ (indent "    " $ annShow' d (AJoin  a b)) ++ "\n"
 
           -- Lambdas & applications
           sort' (dL,dQ) gamma (ALam   s a) = 
@@ -139,9 +139,9 @@ sort dEnv = sort' (-1,-1) M.empty
               in case sortA of 
                     (Left _) -> sortA
                     (Right SortConstr) -> Right SortConstr
-                    (Right _) -> Left $ "Sorting: Setminus on non constraint-sort annotation."
-                                     ++ "\n  Sort:" ++ show sortA 
-                                     ++ "\n  Annotation:\n\n" ++ (indent "    " $ annShow' d (AMinus a r)) ++ "\n"
+                    (Right sa) -> Left $ "Sorting: Setminus on non constraint-sort annotation."
+                                      ++ "\n  Sort:" ++ showSort (snd d) sa
+                                      ++ "\n  Annotation:\n\n" ++ (indent "    " $ annShow' d (AMinus a r)) ++ "\n"
 
           -- Quantification and instantiation
           sort' (dL,dQ) gamma (AQuant   a) = SortQuant <$> sort' (dL,dQ+1) (envWeaken gamma) a

@@ -94,7 +94,7 @@ analyseMethod gEnv@(GlobalEnv tEnv _ dEnv) (_, method@(Method _ aRegs args rType
 
 -- | Wrap a function body into its arguments (AQuant or `A -> P -> (A,C)')
 wrapBody :: GlobalEnv 
-         -> Type                  -- ^ Return type 
+         -> Type                   -- ^ Return type 
          -> [Either Quantor Local] -- ^ Arguments 
          -> Annotation -> Annotation
 wrapBody (GlobalEnv tEnv _ dEnv) rType args a 
@@ -321,6 +321,7 @@ analyseExpr :: Envs -> Expr -> (Annotation, Effect)
 analyseExpr envs@(Envs gEnv _ lEnv) = go
     where 
       -- Literals have unit annotation, no effect. TODO: doesn't count for strings?
+      go (Literal (LitString _))  = (literalStringAnn         , botEffect) 
       go (Literal _)              = (AUnit                    , botEffect) 
       -- Eval & Var: Lookup annotation of variable (can be global or local)
       go (Eval var)               = (lookupVar var envs       , botEffect)
@@ -340,6 +341,9 @@ analyseExpr envs@(Envs gEnv _ lEnv) = go
       go (Instantiate local tys)  = (foldl' AInstn (local `lookupLocalAnn` lEnv) (typeNormalize (globTypeEnv gEnv) <$> tys), botEffect) 
       -- Apply all type and variable arguments
       go (Call gFun aRegs args rReg) = funcApplyArgs envs (globalFunctionName gFun `lookupGlobal` gEnv) aRegs args rReg
+
+literalStringAnn :: Annotation
+literalStringAnn = ATuple[ATuple[AUnit,ATuple[AUnit,AUnit]]]
 
 ----------------------------------------------------------------
 -- Function calls

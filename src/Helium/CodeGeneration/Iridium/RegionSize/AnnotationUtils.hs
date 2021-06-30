@@ -218,5 +218,5 @@ gatherBinds = foldAnnAlgLams countAlg
       }
       isNonLocal d (AnnVar idx) = idx > d +1
       isNonLocal d (CnProj _ l) = isNonLocal d l
-      isNonLocal d (Region _)   = True
+      isNonLocal _ (Region _)   = True
       removeLocal d = filter (isNonLocal d)

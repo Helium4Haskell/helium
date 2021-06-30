@@ -22,9 +22,6 @@ import GHC.Stack
 -- Type definitions
 ----------------------------------------------------------------
 
-instance Show a => Show (IdMap a) where
-  show a = "IdMap.listFromMap " ++ (show $ listFromMap a)
-
 type GlobFuncEnv = (IdMap Annotation)
 
 data GlobalEnv   = GlobalEnv {
@@ -40,7 +37,7 @@ type BlockEnv    = IdMap Annotation
 data LocalEnv    = LocalEnv { 
   lEnvAnns     :: IdMap Annotation, -- ^ Map from local id to annotation
   lEnvSrts     :: IdMap Sort        -- ^ Map from local id to sort
-} deriving (Show)
+}
 
 data Envs = Envs !GlobalEnv !RegionEnv !LocalEnv 
 
