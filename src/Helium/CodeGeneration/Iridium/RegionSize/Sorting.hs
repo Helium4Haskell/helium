@@ -56,11 +56,11 @@ sort dEnv = sort' (-1,-1) M.empty
           sort' d gamma (AFix s a) = 
               let fs = sort' d gamma (ALam (SortTuple s) (ATuple a))
               in case fs of
-                   (Right (SortLam _ sR)) | sortEq (SortTuple s) sR -> Right sR
-                                          | otherwise   -> Left $ "Sorting: Sort does not match fixpoint sort." 
-                                                               ++ "\n  Expected sort: " ++ (showSort (snd d) $ SortTuple s) 
-                                                               ++ "\n  Actual sort:   " ++ (showSort (snd d) sR)
-                                                               ++ "\n  Annotation:\n\n" ++ (indent "    " $ annShow' d (AFix s a)) ++ "\n"
+                   (Right (SortLam _ sR)) | fixSortEq (SortTuple s) sR -> Right sR
+                                          | otherwise -> Left $ "Sorting: Sort does not match fixpoint sort." 
+                                                             ++ "\n  Expected sort: " ++ (showSort (snd d) $ SortTuple s) 
+                                                             ++ "\n  Actual sort:   " ++ (showSort (snd d) sR)
+                                                             ++ "\n  Annotation:\n\n" ++ (indent "    " $ annShow' d (AFix s a)) ++ "\n"
                    Left xs  -> Left xs
                    Right s' -> Left $ "Invalid fixpoint sort" 
                                    ++ "\n  Sort: " ++ showSort (snd d) s'
@@ -174,22 +174,22 @@ checkConstr depth c = find ((<) 0 . length) $ checkConstrIdx . fst <$> M.toList 
 checkArgSort :: Sort -- Expected sort 
              -> Sort -- Argument
              -> Bool
-checkArgSort _ _ = True
+-- Recurse into tuples
 checkArgSort (SortTuple as) (SortTuple bs) =
     let sameLength = length as == length bs
         recurse    = and $ uncurry checkArgSort <$> zip as bs
     in sameLength && recurse
+-- Allow application of monovariant region to polyvariant region
 checkArgSort (SortPolyRegion _ _) SortMonoRegion = True
--- Also allow application of a unit to a forall unit
-checkArgSort (SortQuant a') SortUnit = checkArgSort a' SortUnit
+-- Allow application of a unit to a quantified unit
+checkArgSort (SortQuant a')       SortUnit       = checkArgSort a' SortUnit
 checkArgSort a b = a == b 
 
-
 -- | Check if sorts are equal
-sortEq :: Sort -- Expected sort 
-       -> Sort -- Computed sort
-       -> Bool
-sortEq (SortLam a1 a2) (SortLam b1 b2) = checkArgSort a1 b1 && sortEq a2 b2 
-sortEq (SortQuant  a1) (SortQuant  b1) = sortEq a1 b1
-sortEq (SortTuple  as) (SortTuple  bs) = and $ zipWith sortEq as bs
-sortEq a b = a == b
+fixSortEq :: Sort -- Expected sort 
+          -> Sort -- Computed sort
+          -> Bool
+fixSortEq (SortLam a1 a2) (SortLam b1 b2) = checkArgSort a1 b1 && fixSortEq a2 b2 
+fixSortEq (SortQuant  a1) (SortQuant  b1) = fixSortEq a1 b1
+fixSortEq (SortTuple  as) (SortTuple  bs) = and $ zipWith fixSortEq as bs
+fixSortEq a b = a == b
