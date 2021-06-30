@@ -42,20 +42,20 @@ polyvariantStrictness supply mod = mod {moduleDecls = decls1 ++ map resetDeclara
     -- For declarations which have been annotated, set strictness type to declType
     decls1' = map setStrictnessType decls1
     -- Annotate others
-    (others', is) = unzip $ mapWithSupply (annotateDeclaration (typeEnvForModule mod)) supply1 others
+    others' = mapWithSupply (annotateDeclaration (typeEnvForModule mod)) supply1 others
     -- Create starting environment
     env' = typeEnvForModule mod{moduleDecls = others' ++ decls1'}
     -- Binding group analysis for functions
     groups = coreBindingGroups values
-    (values', _, _) = foldl (groupStrictness (unionSets is)) ([], env', supply2) groups
+    (values', _, _) = foldl groupStrictness ([], env', supply2) groups
     
-groupStrictness :: IdSet -> GroupData -> CoreGroup -> GroupData
+groupStrictness :: GroupData -> CoreGroup -> GroupData
 -- Single declaration
-groupStrictness is (b, env, supply) (BindingNonRecursive d) = (b ++ [d{valueValue = e', declCustoms = c}], env', supply2)
+groupStrictness (b, env, supply) (BindingNonRecursive d) = (b ++ [d{valueValue = e', declCustoms = c}], env', supply2)
   where
     (supply1, supply2) = splitNameSupply supply
     -- Analyse function
-    Analysis e cs ae sc1 = analyseDeclaration env is supply1 d
+    Analysis e cs ae sc1 = analyseDeclaration env supply1 d
     -- Solve constraints
     cs' = S.union cs $ annEnvToConstraints ae
     sc2 = solveConstraints cs'
@@ -70,16 +70,15 @@ groupStrictness is (b, env, supply) (BindingNonRecursive d) = (b ++ [d{valueValu
     -- Add function to environment for next function
     env' = typeEnvAddGlobalValue (declName d) t' env
 -- Group of recursive declarations
-groupStrictness is (bs, env, supply) (BindingRecursive ds) = (bs ++ ds', env'', supply3)
+groupStrictness (bs, env, supply) (BindingRecursive ds) = (bs ++ ds', env'', supply3)
   where
     (supply1, supply') = splitNameSupply supply
     (supply2, supply3) = splitNameSupply supply'
     -- Annotate type signatures and add them to the envorinment
-    (ts, is2) = unzip $ mapWithSupply (\s d -> annotateType env s $ declType d) supply1 ds
+    ts = mapWithSupply (\s d -> annotateType env s $ declType d) supply1 ds
     env' = typeEnvAddGlobalValues (map (\(d, t) -> (declName d, t)) (zip ds ts)) env
-    is3 = unionSet is $ unionSets is2
     -- Run analysis on all bodies, merge information with meet
-    Analysis es cs ae sc1 = mergeAnalysis meet $ mapWithSupply (analyseDeclaration env' is3) supply2 ds
+    Analysis es cs ae sc1 = mergeAnalysis meet $ mapWithSupply (analyseDeclaration env') supply2 ds
     -- Solve constraints
     cs' = S.union cs $ annEnvToConstraints ae
     sc2 = solveConstraints cs'
@@ -98,130 +97,133 @@ groupStrictness is (bs, env, supply) (BindingRecursive ds) = (bs ++ ds', env'', 
     Analyse
 -}
 
-analyseDeclaration :: TypeEnvironment -> IdSet -> NameSupply -> CoreDecl -> Analysis Expr
-analyseDeclaration typeEnv is supply decl@DeclValue{} = Analysis e cs ae sc
+analyseDeclaration :: TypeEnvironment -> NameSupply -> CoreDecl -> Analysis Expr
+analyseDeclaration typeEnv supply decl@DeclValue{} = Analysis e cs ae sc
     where
         (supply1, supply2) = splitNameSupply supply
         -- Instantiate forallified expressions
-        (ie, is2) = instantiateExpression typeEnv supply1 $ valueValue decl
+        ie = instantiateExpression typeEnv supply1 $ valueValue decl
         -- Create empty environment
-        env = Environment typeEnv emptyMap (unionSet is is2)
+        env = Environment typeEnv emptyMap
         -- Run analysis, always start in S context
-        Analysis e cs ae sc = analyseExpression env S 0 supply2 ie
+        Analysis e cs ae sc = analyseExpression env S 0 False supply2 ie
 
-analyseExpression :: Environment -> SAnn -> Int -> NameSupply -> Expr -> Analysis Expr
-analyseExpression env rel _ supply (Let b e) = Analysis (Let b' e') (S.union c1 c2) (unionMapWith meet a1 as) (unionMap sc1 sc2)
+analyseExpression :: Environment -> SAnn -> Int -> Bool -> NameSupply -> Expr -> Analysis Expr
+analyseExpression env rel _ _ supply (Let b e) = Analysis (Let b' e') (S.union c1 c2) (unionMapWith meet a1 as) (unionMap sc1 sc2)
     where
         (supply1, supply') = splitNameSupply supply
         (supply2, supply3) = splitNameSupply supply'
         -- Analyse binds
-        (Analysis b' c1 a1 sc1, is1) = analyseBinds env supply1 rel b
+        Analysis b' c1 a1 sc1 = analyseBinds env supply1 rel b
         -- Add annotated binds to environment
         env' = envAddBinds b' env
         -- Instantiate quantified functions
-        (e1, is2) = instantiateExpression (typeEnv env') supply2 e
-        -- Add used annotation variables to IdSet
-        env'' = envAddVars (unionSet is1 is2) env'
+        e1 = instantiateExpression (typeEnv env') supply2 e
         -- Analyse body, set contexts to S
-        Analysis e' c2 a2 sc2 = analyseExpression env'' S 0 supply3 e1
+        Analysis e' c2 a2 sc2 = analyseExpression env' S 0 False supply3 e1
         -- Containment on old environment
         as = unionMapWith join a2 $ containment env rel
-analyseExpression env rel _ supply (Match id a) = Analysis (Match id a') c ae sc
+analyseExpression env rel _ _ supply (Match id a) = Analysis (Match id a') c ae sc
     where
         -- Merge with join as strictness has to occur in every case
         Analysis a' c ae sc = mergeAnalysis join $ mapWithSupply (analyseAlt env rel id) supply a
-analyseExpression env rel app supply (Ap e1 e2) = Analysis (Ap e1' e2') (S.union c1 c2) (unionMapsWith meet [ae1, ae2, ae3]) (unionMap sc1 sc2)
+analyseExpression env rel app _ supply (Ap e1 e2) = Analysis (Ap e1' e2') (S.unions [c1, c2, c3]) (unionMapsWith meet [ae1, ae2, ae3]) (unionMap sc1 sc2)
     where
         (supply1, supply2) = splitNameSupply supply
         -- Analyse function, with applicative context set to relevance
-        Analysis e1' c1 ae1 sc1 = analyseExpression env rel (app + 1) supply1 e1
+        Analysis e1' c1 ae1 sc1 = analyseExpression env rel (app + 1) True supply1 e1
         -- Get type of function
         t = typeNormalizeHead (typeEnv env) $ typeOfCoreExpression (typeEnv env) e1'
         -- Get the annotation on the function arrow
         (TAp (TAp (TCon TConFun) (TAp (TAnn r) t')) _) = t
         -- Analyse argument with annotation on function, context and the arity of the type
-        Analysis e2' c2 ae2 sc2 = analyseExpression env (join rel r) (arityFromType t - app - 1) supply2 e2
+        Analysis e2' c2 ae2 sc2 = analyseExpression env (join rel r) (arityFromType t - app - 1) False supply2 e2
         -- Annotation unifications between the function and the given argument
-        ae3 = analyseType env t' $ typeOfCoreExpression (typeEnv env) e2'
-analyseExpression env rel app supply (ApType e t) = Analysis (ApType e' t') c a sc
+        (ae3, c3) = analyseType env t' $ typeOfCoreExpression (typeEnv env) e2'
+analyseExpression env rel app f supply (ApType e t) = Analysis (ApType e' t') c a sc
     where
         (supply1, supply2) = splitNameSupply supply
         -- Annotate type, if it is a tuple place extra annotation
-        (t', is) = if isTupAp e then annotateVarType env supply1 t else annotateType (typeEnv env) supply1 t
-        -- Add used annotation variables to IdSet
-        env' = envAddVars is env
+        t' = if isTupAp e then annotateVarType env supply1 t else annotateType (typeEnv env) supply1 t
         -- Analyse expression
-        Analysis e' c a sc = analyseExpression env' rel app supply2 e
-analyseExpression env rel _ supply (Lam s (Variable x t) e) = Analysis (Lam s v' e') c a'' sc
+        Analysis e' c a sc = analyseExpression env rel app f supply2 e
+analyseExpression env rel _ _ supply (Lam s (Variable x t) e) = Analysis (Lam s v' e') c a'' sc
     where
         (id, supply') = freshId supply
         (supply1, supply2) = splitNameSupply supply'
         -- Annotate type in variable
-        (t', is) = annotateType (typeEnv env) supply1 t
+        t' = annotateType (typeEnv env) supply1 t
         -- Give extra annotation to variable
         v' = Variable x (TAp (TAnn (AnnVar id)) t')
-        -- Add variable and used annotations to environment
-        env' = envAddVars (insertSet id is) $ envAddVariable v' env
+        -- Add variable to environment
+        env' = envAddVariable v' env
         -- Analyse expression, set relevance to S and context to 0
-        Analysis e' c a sc = analyseExpression env' S 0 supply2 e
+        Analysis e' c a sc = analyseExpression env' S 0 False supply2 e
         -- Containment on old environment
         a' = unionMapWith join a $ containment env rel
         -- If lambda was strict, set its annotation variables equal to the second applicative
         a'' = if s then updateMap id S a' else a'
-analyseExpression env rel app supply (Forall q k e) = Analysis (Forall q k e') c a sc
+analyseExpression env rel app f supply (Forall q k e) = Analysis (Forall q k e') c a sc
     where
         -- Forall can be ignored
-        Analysis e' c a sc = analyseExpression env rel app supply e
-analyseExpression env _ _ _ (Con c) = Analysis (Con c) S.empty (getLConstraints env) emptyMap -- Set all annotation variables to L
-analyseExpression env rel app _ (Var v)
-    | app > 0   = Analysis (Var v) S.empty (getLConstraints env) emptyMap -- Not fully applied, no information can be derived
-    | otherwise = Analysis (Var v) S.empty (unionMapWith meet (getLConstraints env) ae) emptyMap
+        Analysis e' c a sc = analyseExpression env rel app f supply e
+analyseExpression env _ _ _ _ (Con c) = Analysis (Con c) S.empty (getLConstraints env) emptyMap -- Set all annotation variables to L
+analyseExpression env rel app f _ (Var v)
+    | app > 0 && not f = Analysis (Var v) S.empty (getLConstraints env) emptyMap -- Not fully applied, no information can be derived
+    | otherwise        = Analysis (Var v) S.empty (unionMapWith meet (getLConstraints env) ae) emptyMap
     where
         -- Set all annotation variables to L except the annotations related to this variable, which are set to context
         ae = getAnnotations env rel v
-analyseExpression env _ _ _ (Lit l) = Analysis (Lit l) S.empty (getLConstraints env) emptyMap -- Set all annotation variables to L
+analyseExpression env _ _ _ _ (Lit l) = Analysis (Lit l) S.empty (getLConstraints env) emptyMap -- Set all annotation variables to L
 
-analyseBinds :: Environment -> NameSupply -> SAnn -> Binds -> (Analysis Binds, IdSet)
-analyseBinds env supply rel (Rec bs) = (Analysis (Rec b1) cs ae (unionMap sc sc'), unionSet (unionSets is1) (unionSets i2))
+analyseBinds :: Environment -> NameSupply -> SAnn -> Binds -> Analysis Binds
+analyseBinds env supply rel (Rec bs) = Analysis (Rec b1) cs ae (unionMap sc sc')
     where
+        (supply1, supply2) = splitNameSupply supply
         -- Annotate types beforehand because they occur in the body
-        (bs'', is1) = unzip $ mapWithSupply (annotateBind env) supply bs
-        -- Add binds and used annotation variables to environment
-        env' = envAddVars (unionSets is1) $ envAddBinds (Rec bs'') env
+        bs'' = mapWithSupply (annotateBind env) supply1 bs
+        -- Add binds to environment
+        env' = envAddBinds (Rec bs'') env
         -- Run analysis on every bind separately
-        xs = mapWithSupply (analyseRecBind env' rel) supply bs''
+        (xs, is') = unzip $ mapWithSupply (analyseRecBind env' rel) supply2 bs''
         -- Merge the results with meet, as being strict in one bind is enough
         Analysis bs' c a sc' = mergeAnalysis meet xs
+        -- Calculate set of annotation variables which can be solved
+        is = diffSet (unionSets $ map getVariablesBind bs') (unionSets is')
         -- Run simplifier to get solved local constraints
-        Analysis _ cs ae sc = simplify c a env'
+        Analysis _ cs ae sc = simplify is c a
         -- Apply solved constraints to get type signatures for all binds
-        (b1, i2) = unzip $ map (simplifyBind env' sc) bs'
-analyseBinds env supply rel (NonRec b) = (Analysis (NonRec b1) cs ae (unionMap sc sc'), unionSet i2 is)
+        b1 = map (simplifyBind env' sc) bs'
+analyseBinds env supply rel (NonRec b) = Analysis (NonRec b1) cs ae (unionMap sc sc')
     where
         -- Run analysis on bind
-        (Analysis b' c a sc', is) = analyseBind env rel supply b
+        (Analysis b' c a sc', is') = analyseBind env rel supply b
+        -- Calculate set of annotation variables which can be solved
+        is = diffSet (getVariablesBind b') is'
         -- Run simplifier to get solved local constraints
-        Analysis _ cs ae sc = simplify c a (envAddVars is env)
+        Analysis _ cs ae sc = simplify is c a
         -- Apply solved constraints to get type signature for bind
-        (b1, i2) = simplifyBind env sc b'
-analyseBinds env supply rel (Strict b) = (Analysis (Strict b1) cs ae (unionMap sc sc'), unionSet i2 is)
+        b1 = simplifyBind env sc b'
+analyseBinds env supply rel (Strict b) = Analysis (Strict b1) cs ae (unionMap sc sc')
     where
         -- Run analysis on bind
-        (Analysis b' c a sc', is) = analyseBind env rel supply b
+        (Analysis b' c a sc', is') = analyseBind env rel supply b
         -- Set variables associated to this strict bind to strict
         a' = strictBind b' a
+        -- Calculate set of annotation variables which can be solved
+        is = diffSet (getVariablesBind b') is'
         -- Run simplifier to get solved local constraints
-        Analysis _ cs ae sc = simplify c a' (envAddVars is env)
+        Analysis _ cs ae sc = simplify is c a'
         -- Apply solved constraints to get type signature for bind
-        (b1, i2) = simplifyBind env sc b'
+        b1 = simplifyBind env sc b'
 
-analyseRecBind :: Environment -> SAnn -> NameSupply -> Bind -> Analysis Bind
-analyseRecBind env rel supply (Bind v e) = Analysis (Bind v e') c a sc
+analyseRecBind :: Environment -> SAnn -> NameSupply -> Bind -> (Analysis Bind, IdSet)
+analyseRecBind env rel supply (Bind v e) = (Analysis (Bind v e') c a sc, getVariablesType True t)
     where
         -- Get annotation from variable previously annotated
-        Variable _ (TAp (TAnn r)  _) = v
+        Variable _ t@(TAp (TAnn r)  _) = v
         -- Run analysis on binding with relevance set to context
-        Analysis e' c a sc = analyseExpression env (join rel r) 0 supply e 
+        Analysis e' c a sc = analyseExpression env (join rel r) 0 False supply e 
 
 analyseBind :: Environment -> SAnn -> NameSupply -> Bind -> (Analysis Bind, IdSet)
 analyseBind env rel supply (Bind (Variable x t) e) = (Analysis (Bind (Variable x t') e') c a sc, singleSet id)
@@ -230,51 +232,55 @@ analyseBind env rel supply (Bind (Variable x t) e) = (Analysis (Bind (Variable x
         (id, supply') = freshId supply
         -- Add annotations outside the type
         t' = TAp (TAnn (AnnVar id)) t
-        -- Add id to set of used ids
-        env' = envAddVars (singleSet id) env
         -- Run analysis on binding with relevance set to context
-        Analysis e' c a sc = analyseExpression env' (join rel (AnnVar id)) 0 supply' e   
+        Analysis e' c a sc = analyseExpression env (join rel (AnnVar id)) 0 False supply' e   
         
 analyseAlt :: Environment -> SAnn -> Id -> NameSupply -> Alt -> Analysis Alt
-analyseAlt env rel id supply (Alt p e) = Analysis (Alt p' e') c2 (unionMapWith meet a1 a2) sc
+analyseAlt env rel id supply (Alt p e) = Analysis (Alt p' e') (S.union c1 c2) (unionMapWith meet a1 a2) sc
     where
         (supply1, supply2) = splitNameSupply supply
-        -- Analyse the pattern, only the annotation environment has possibly additional information
-        (Analysis p' _ a1 _, is) = analysePat env id supply1 p
-        -- Add pattern and used identifiers to environment
-        env' = envAddVars is $ envAddPattern p' env
+        -- Analyse the pattern
+        Analysis p' c1 a1 _ = analysePat env id supply1 p
+        -- Add pattern to environment
+        env' = envAddPattern p' env
         -- Run analysis 
-        Analysis e' c2 a2 sc = analyseExpression env' rel 0 supply2 e
+        Analysis e' c2 a2 sc = analyseExpression env' rel 0 False supply2 e
 
-analysePat :: Environment -> Id -> NameSupply -> Pat -> (Analysis Pat, IdSet)
-analysePat env id supply (PatCon (ConTuple n) t i) = (Analysis (PatCon (ConTuple n) t' i) S.empty ae emptyMap, unionSets is)
+analysePat :: Environment -> Id -> NameSupply -> Pat -> Analysis Pat
+analysePat env id supply (PatCon (ConTuple n) t i) = Analysis (PatCon (ConTuple n) t' i) cs ae emptyMap
   where
     -- In case of a tuple, all types need an extra annotation to communicate the return annotation of the tuple
-    (t', is) = unzip $ mapWithSupply (annotateVarType env) supply t
+    t' = mapWithSupply (annotateVarType env) supply t
     -- Get equalities between type of id matched on and type of pattern
-    ae = analyseType env (typeOfId (typeEnv env) id) (foldl TAp (TCon (TConTuple n)) t')
-analysePat env _ supply (PatCon c t i) = (Analysis (PatCon c t' i) S.empty emptyMap emptyMap, unionSets is)
+    (ae, cs) = analyseType env (typeOfId (typeEnv env) id) (foldl TAp (TCon (TConTuple n)) t')
+analysePat env id supply (PatCon c t i) = Analysis (PatCon c t' i) cs ae emptyMap
     where
         -- Annotate all types given to constructor
-        (t', is) = unzip $ mapWithSupply (annotateType (typeEnv env)) supply t
-analysePat _ _ _ p = (Analysis p S.empty emptyMap emptyMap, emptySet) -- Literal or default, no information to be gained
+        t' = mapWithSupply (annotateType (typeEnv env)) supply t
+        -- Add pattern to environment
+        env' = envAddPattern (PatCon c t' i) env
+        -- Construct expression equivalent to constructor
+        e = foldl Ap (foldl ApType (Con c) t') (map Var i)
+        -- Analyse type of matched id with type of constructor
+        (ae, cs) = analyseType env (typeOfId (typeEnv env) id) (typeOfCoreExpression (typeEnv env') e)
+analysePat _ _ _ p = Analysis p S.empty emptyMap emptyMap -- Literal or default, no information to be gained
 
 -- Analyse type
-analyseType :: Environment -> Type -> Type -> AnnotationEnvironment
+analyseType :: Environment -> Type -> Type -> (AnnotationEnvironment, Constraints)
 analyseType env t1 t2
     | t1 /= t1' || t2 /= t2' = analyseType env t1' t2' -- Normalization changes types, try again
-    | t1 == t2               = emptyMap -- Types equal, analysis completed
+    | t1 == t2               = (emptyMap, S.empty) -- Types equal, analysis completed
         where
             t1' = typeNormalizeHead (typeEnv env) t1
             t2' = typeNormalizeHead (typeEnv env) t2
-analyseType env (TAp (TAp (TCon TConFun) t11) t12) (TAp (TAp (TCon TConFun) t21) t22) = unionMapsWith join [ae1, ae2, ae3]
+analyseType env (TAp (TAp (TCon TConFun) t11) t12) (TAp (TAp (TCon TConFun) t21) t22) = (unionMapWith join ae1 ae2, cs)
     -- Function arrows, analyse the pair of annotations on them
   where
     (TAp (TAnn a ) t1') = t11
     (TAp (TAnn a') t2') = t21
-    ae1 = analyseAnn a a'
-    ae2 = analyseType env t1' t2'
-    ae3 = analyseType env t12 t22
+    (ae1, c1) = analyseType env t1' t2'
+    (ae2, c2) = analyseType env t12 t22
+    cs = S.insert (a' `Constraint` a) $ S.union c1 c2
 analyseType env (TAp (TAnn _) (TAp (TAnn _) t1)) t2 = analyseType env t1' t2
     -- Double annotations in case of newtypes. Since they are strict by design we can forget them and place S
     where
@@ -283,20 +289,20 @@ analyseType env t1 (TAp (TAnn _) (TAp (TAnn _) t2)) = analyseType env t1 t2'
     -- Double annotations in case of newtypes. Since they are strict by design we can forget them and place S
     where
         t2' = TAp (TAnn S) t2
-analyseType env (TAp (TAnn a) t1) (TAp (TAnn a') t2) = unionMapsWith join [ae1, ae2]
+analyseType env (TAp (TAnn a) t1) (TAp (TAnn a') t2) = (unionMapWith join ae ae1, cs)
     -- Annotations on datatypes, evaluate pair
     where
         ae1 = analyseAnn a a'
-        ae2 = analyseType env t1 t2
-analyseType env (TAp t11 t12) (TAp t21 t22) = unionMapWith join ae1 ae2
+        (ae, cs) = analyseType env t1 t2
+analyseType env (TAp t11 t12) (TAp t21 t22) = (unionMapWith join ae1 ae2, S.union c1 c2)
     -- Unannotated applications
     where
-        ae1 = analyseType env t11 t21
-        ae2 = analyseType env t12 t22
+        (ae1, c1) = analyseType env t11 t21
+        (ae2, c2) = analyseType env t12 t22
 analyseType env (TForall _ _ t1) (TForall _ _ t2) = analyseType env t1 t2
 analyseType env (TStrict t1) t2 = analyseType env t1 t2
 analyseType env t1 (TStrict t2) = analyseType env t1 t2 -- Remove all strict type information
-analyseType _ (TVar _) (TVar _) = emptyMap -- Lift has a bug which might distort type variables, exact index doesn't matter
+analyseType _ (TVar _) (TVar _) = (emptyMap, S.empty) -- Lift has a bug which might distort type variables, exact index doesn't matter
 analyseType _ t1 t2 = error $ "analyseType: type mismatch: " ++ show (pretty t1) ++ " and " ++ show (pretty t2)
 
 analyseAnn :: SAnn -> SAnn -> AnnotationEnvironment
@@ -308,77 +314,13 @@ analyseAnn _ _ = emptyMap
     Annotate
 -}
 
-annotateDeclaration :: TypeEnvironment -> NameSupply -> CoreDecl -> (CoreDecl, IdSet)
-annotateDeclaration env supply decl@DeclAbstract{} = (decl{declType = forallify True t}, is)
-    where
-        (t, is) = annotateType env supply (declType decl)
-annotateDeclaration env supply decl@DeclCon{} = (decl{declType = forallify True t}, is)
-    where
-        (t, is) = annotateType env supply (declType decl)
+annotateDeclaration :: TypeEnvironment -> NameSupply -> CoreDecl -> CoreDecl
+annotateDeclaration env _      decl@DeclAbstract{} = decl{declType = annotateTypeAbstract env (declType decl)}
+annotateDeclaration env supply decl@DeclCon{} = decl{declType = forallify True $ annotateType env supply (declType decl)}
 annotateDeclaration env supply decl@DeclTypeSynonym{}
     -- String is the only type synonym which has to be annotated because it is partly hardcoded in the type system
-    | declName decl == idFromString "String" = (decl{declType = forallify True t}, is)
-    where
-        (t, is) = annotateType env supply (declType decl)
-annotateDeclaration _ _ decl = (decl, emptySet) -- Value is handled outside this method, others don't need anything
-
-annotateType :: TypeEnvironment -> NameSupply -> Type -> (Type, IdSet)
-annotateType env supply t
-    -- Type is not in weak head normal form
-    | t /= t' = annotateType env supply t'
-        where
-            t' = typeNormalizeHead env t
-annotateType env supply t@(TForall _ KAnn _) = (t'', insertSet id is)
-    -- Starts with strictness quantification, instantiate with fresh variable
-    where
-        (id, supply') = freshId supply
-        (t', _) = annApplyList' t (AnnVar id) [] env
-        (t'', is) = annotateType env supply' t'
-annotateType env supply (TAp (TAp (TCon TConFun) t1) t2) = (TAp (TAp (TCon TConFun) t1'') t2', is)
-    -- Function, place an annotation on the second argument (printed on the arrow)
-    where
-        (id, supply') = freshId supply
-        (supply1, supply2) = splitNameSupply supply'
-        (t1', is1) = annotateType env supply1 t1
-        t1'' = TAp (TAnn $ AnnVar id) t1'
-        (t2', is2) = annotateType env supply2 t2
-        is = insertSet id $ unionSet is1 is2
-annotateType env supply (TAp t1 (TAp (TAnn a) t2)) = (TAp t1' (TAp (TAnn a) t2'), unionSet i1 i2)
-    -- Already annotated, no need to annotate again
-    where
-        (supply1, supply2) = splitNameSupply supply
-        (t1', i1) = annotateType env supply1 t1
-        (t2', i2) = annotateType env supply2 t2
-annotateType env supply (TAp t1 t2) = (TAp t1' t2a, unionSets [is1, is2, is3])
-    -- Annotate applications to datatypes
-    where
-        (id, supply') = freshId supply
-        (supply1, supply2) = splitNameSupply supply'
-        (t1', is1) = annotateType env supply1 t1
-        (t2', is2) = annotateType env supply2 t2      
-        t2a = TAp (TAnn $ AnnVar id) t2'
-        is3 = setFromList [id]
-annotateType env supply (TForall q k t) = (TForall q k t', is)
-    -- Non-strictness forall needs to stay
-    where
-        (t', is) = annotateType env supply t
-annotateType env supply (TStrict t) = annotateType env supply t -- Strictness information is moved to annotations
-annotateType _ _ t = (t, emptySet)
-
-annotateBind :: Environment -> NameSupply -> Bind -> (Bind, IdSet)
-annotateBind env supply (Bind (Variable x t) e) = (Bind (Variable x t') e, is)
-  where
-    (t', is) = annotateVarType env supply t
-
-annotateVarType :: Environment -> NameSupply -> Type -> (Type, IdSet)
-annotateVarType env supply t = (TAp (TAnn (AnnVar id)) t', is')
-  where
-    -- Fresh variable for relevance annotation
-    (id, supply') = freshId supply
-    -- Annotate inner type
-    (t', is) = annotateType (typeEnv env) supply' t
-    -- Add ids to set of used ids
-    is' = insertSet id is
+    | declName decl == idFromString "String" = decl{declType = forallify True $ annotateType env supply (declType decl)}
+annotateDeclaration _ _ decl = decl -- Value is handled outside this method, others don't need anything
 
 {-
     Transform
@@ -449,79 +391,62 @@ transformPat p = p
 -}
 
 -- Instantiate expression
-instantiateExpression :: TypeEnvironment -> NameSupply -> Expr -> (Expr, IdSet)
-instantiateExpression env supply (Let b e) = (Let b' e, is)
-    where
-        -- Don't instantiate in the expression as the binding might end up quantified
-        -- After a let binding, analyseExpression has to call instantiateExpression again
-        (b', is) = instantiateBinds env supply b
-instantiateExpression env supply (Match x a) = (Match x as, unionSets is)
-    where
-        (as, is) = unzip $ mapWithSupply (instantiateAlt env) supply a
-instantiateExpression env supply (Ap e1 e2) = (Ap e1' e2', unionSet is1 is2)
+instantiateExpression :: TypeEnvironment -> NameSupply -> Expr -> Expr
+-- Don't instantiate in the expression as the binding might end up quantified
+-- After a let binding, analyseExpression has to call instantiateExpression again
+instantiateExpression env supply (Let b e) = Let (instantiateBinds env supply b) e
+instantiateExpression env supply (Match x a) = Match x $ mapWithSupply (instantiateAlt env) supply a
+instantiateExpression env supply (Ap e1 e2) = Ap e1' e2'
     where
         (supply1, supply2) = splitNameSupply supply
-        (e1', is1) = instantiateExpression env supply1 e1
-        (e2', is2) = instantiateExpression env supply2 e2
-instantiateExpression env supply (ApType e t) = (ApType e' t, is)
-    where
-        (e', is) = instantiateExpression env supply e
-instantiateExpression env supply (Lam s v e) = (Lam s v e', is)
-    where
-        (e', is) = instantiateExpression (typeEnvAddVariable v env) supply e
-instantiateExpression env supply (Forall q k e) = (Forall q k e', is)
-    where
-        (e', is) = instantiateExpression env supply e
+        e1' = instantiateExpression env supply1 e1
+        e2' = instantiateExpression env supply2 e2
+instantiateExpression env supply (ApType e t) = ApType (instantiateExpression env supply e) t
+instantiateExpression env supply (Lam s v e) = Lam s v $ instantiateExpression (typeEnvAddVariable v env) supply e
+instantiateExpression env supply (Forall q k e) = Forall q k $ instantiateExpression env supply e
 instantiateExpression env supply e@(Var v) = instantiate env supply v e
 instantiateExpression env supply e@(Con (ConId c)) = instantiate env supply c e
-instantiateExpression _ supply e@(Lit (LitBytes _)) = (e', singleSet id)
+instantiateExpression _ supply e@(Lit (LitBytes _)) = e'
     where
         -- String is stored as type synonym forall a -> [a Char]
         -- Add annotation to make them unique
         (id, _) = freshId supply
         e' = ApType e (TAnn (AnnVar id))
-instantiateExpression _ _ e = (e, emptySet)
+instantiateExpression _ _ e = e
 
 -- Instantiate binds
-instantiateBinds :: TypeEnvironment -> NameSupply -> Binds -> (Binds, IdSet)
-instantiateBinds env supply (Strict b) = (Strict b', is)
-    where
-        (b', is) = instantiateBind env supply b
-instantiateBinds env supply (NonRec b) = (NonRec b', is)
-    where
-        (b', is) = instantiateBind env supply b
-instantiateBinds env supply b@(Rec bs) = (Rec bs', unionSets is)
+instantiateBinds :: TypeEnvironment -> NameSupply -> Binds -> Binds
+instantiateBinds env supply (Strict b) = Strict $ instantiateBind env supply b
+instantiateBinds env supply (NonRec b) = NonRec $ instantiateBind env supply b
+instantiateBinds env supply b@(Rec bs) = Rec $ mapWithSupply (instantiateBind env') supply bs
     where
         env' = typeEnvAddBinds b env
-        (bs', is) = unzip $ mapWithSupply (instantiateBind env') supply bs
 
 -- Instantiate bind
-instantiateBind :: TypeEnvironment -> NameSupply -> Bind -> (Bind, IdSet)
-instantiateBind env supply (Bind (Variable x t) e) = (Bind (Variable x t) e', is)
-    where
-        (e', is) = instantiateExpression env supply e
+instantiateBind :: TypeEnvironment -> NameSupply -> Bind -> Bind
+instantiateBind env supply (Bind (Variable x t) e) = Bind (Variable x t) $ instantiateExpression env supply e
 
 -- Instantiate alt
-instantiateAlt :: TypeEnvironment -> NameSupply -> Alt -> (Alt, IdSet)
-instantiateAlt env supply (Alt p e) = (Alt p' e', unionSet is1 is2)
+instantiateAlt :: TypeEnvironment -> NameSupply -> Alt -> Alt
+instantiateAlt env supply (Alt p e) = Alt p' e'
     where
         (supply1, supply2) = splitNameSupply supply
-        (p', is1) = instantiatePat env supply1 p
-        (e', is2) = instantiateExpression (typeEnvAddPattern p' env) supply2 e
+        p' = instantiatePat env supply1 p
+        e' = instantiateExpression (typeEnvAddPattern p' env) supply2 e
 
 -- Instantiate pat  
-instantiatePat :: TypeEnvironment -> NameSupply -> Pat -> (Pat, IdSet)
-instantiatePat env supply (PatCon (ConId c) t i) = (PatCon (ConId c) t' i, setFromList ids)
+instantiatePat :: TypeEnvironment -> NameSupply -> Pat -> Pat
+instantiatePat env supply (PatCon (ConId c) t i) = PatCon (ConId c) t' i
     where
         -- Add more ids for the extra foralls
         t' = map (TAnn . AnnVar) ids ++ t
         ids = mapWithSupply (\x _ -> fst $ freshId x) supply n
         n = getForalls env $ typeOfId env c
-instantiatePat _ _ p = (p, emptySet)
+instantiatePat _ _ p = p
 
 -- Instantiate variable or constructor
-instantiate :: TypeEnvironment -> NameSupply -> Id -> Expr -> (Expr, IdSet)
-instantiate env supply id e = (foldr (\x e' -> ApType e' (TAnn (AnnVar x))) e ids, setFromList ids)
+instantiate :: TypeEnvironment -> NameSupply -> Id -> Expr -> Expr
+instantiate env supply id e = foldr (\x e' -> ApType e' (TAnn (AnnVar x))) e ids
     where
         -- Get all foralls, add an ApType with fresh variable
         ids = mapWithSupply (\x _ -> fst $ freshId x) supply $ getForalls env (typeOfId env id)
@@ -531,25 +456,49 @@ instantiate env supply id e = (foldr (\x e' -> ApType e' (TAnn (AnnVar x))) e id
 -}
 
 -- Solve part of the constraint set in a let-binding
-simplify :: Constraints -> AnnotationEnvironment -> Environment -> Analysis ()
-simplify cs ae env = Analysis () (S.map (mapConstraint sc) lc) (mapMap (replaceVar sc) la) sc
+simplify :: IdSet -> Constraints -> AnnotationEnvironment -> Analysis ()
+simplify is cs ae = Analysis () (S.map (mapConstraint sc) rc) (mapMap (replaceVar sc) ra) sc
     where
-        is = vars env
         -- Partition constraint in those allowed to be solved and not
         (lc, rc) = S.partition (blockedConstraint is) cs
         -- Partition annotation environment in those allowed to be solved and not
         (la, ra) = partitionMapWithId (\id _ -> id `elemSet` is) ae
-        ac = annEnvToConstraints ra
-        cs' = S.union rc ac
+        ac = annEnvToConstraints la
+        cs' = S.union lc ac
         sc = solveConstraints cs'
 
 -- Simplify the type of a bind
-simplifyBind :: Environment -> SolvedConstraints -> Bind -> (Bind, IdSet)
-simplifyBind env sc (Bind (Variable x (TAp a _)) e) = (Bind (Variable x t'') e, is)
+simplifyBind :: Environment -> SolvedConstraints -> Bind -> Bind
+simplifyBind env sc (Bind (Variable x (TAp a _)) e) = Bind (Variable x (TAp a t')) e
   where
     -- Get type of binding, apply solved constraints and forallify
     t' = forallify False $ transformType sc $ typeOfCoreExpression (typeEnv env) e
-    -- Reinstate annotations belonging to variable itself which are yet to be answered
-    t'' = TAp a t'
-    -- Add used annotation variables
-    is = setFromList $ getVariablesType True t'
+
+getVariablesBind :: Bind -> IdSet
+getVariablesBind (Bind (Variable _ (TAp (TAnn (AnnVar a)) t)) e) = insertSet a $ unionSet i1 i2
+    where
+        i1 = getVariablesType False t
+        i2 = getVariablesExpr e
+
+getVariablesExpr :: Expr -> IdSet
+getVariablesExpr (Let b e) = unionSet (getVariablesBinds b) (getVariablesExpr e)
+getVariablesExpr (Match _ as) = unionSets (map getVariablesAlt as)
+getVariablesExpr (Ap e1 e2) = unionSet (getVariablesExpr e1) (getVariablesExpr e2)
+getVariablesExpr (ApType e t) = unionSet (getVariablesExpr e) (getVariablesType False t)
+getVariablesExpr (Lam _ (Variable _ (TAp (TAnn (AnnVar a)) t)) e) = insertSet a $ unionSet (getVariablesType False t) (getVariablesExpr e)
+getVariablesExpr (Forall _ _ e) = getVariablesExpr e
+getVariablesExpr (Con _) = emptySet
+getVariablesExpr (Var _) = emptySet
+getVariablesExpr (Lit _) = emptySet
+
+getVariablesBinds :: Binds -> IdSet
+getVariablesBinds (Rec bs) = unionSets $ map getVariablesBind bs
+getVariablesBinds (NonRec b) = getVariablesBind b
+getVariablesBinds (Strict b) = getVariablesBind b
+
+getVariablesAlt :: Alt -> IdSet
+getVariablesAlt (Alt p e) = unionSet (getVariablesPat p) (getVariablesExpr e)
+
+getVariablesPat :: Pat -> IdSet
+getVariablesPat (PatCon _ t _) = unionSets $ map (getVariablesType False) t
+getVariablesPat _ = emptySet
