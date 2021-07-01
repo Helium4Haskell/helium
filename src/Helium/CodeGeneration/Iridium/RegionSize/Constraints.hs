@@ -18,6 +18,8 @@ import Helium.CodeGeneration.Iridium.RegionSize.Utils
 import qualified Data.Map.Strict as M
 import Data.List
 
+import System.IO.Unsafe
+
 max_bound :: Int
 max_bound = 10
 
@@ -118,7 +120,9 @@ constrAdd = M.unionWith boundAdd
         boundAdd Infty _ = Infty
         boundAdd _ Infty = Infty
         boundAdd (Nat a) (Nat b) = if a + b > max_bound
-                                   then Infty
+                                   then unsafePerformIO $ do 
+                                            appendFile "C:\\Users\\hanno\\Desktop\\inftys.csv" "1\n"
+                                            return $ Infty
                                    else Nat $ a + b
 
 -- | Addition of a list of constraint sets

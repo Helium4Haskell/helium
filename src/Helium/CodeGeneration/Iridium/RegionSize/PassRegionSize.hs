@@ -160,9 +160,9 @@ pipeline gEnv methods = do
     _ <- checkSort sortWithLocals dEnv "withLocals" $ ATuple withLocals
 
     -- Extract effects and transform program
-    let zeroingEffect'   = unAConstr . solveFixpoints dEnv . eval dEnv <$> zeroingEffect
-        annotationEffect = collectEffects <$> withLocals
-        higherOrderFix   = fixHigherOrderApplication <$> withLocals
+    let zeroingEffect'   = constrRemVarRegs <$> unAConstr . solveFixpoints dEnv . eval dEnv <$> zeroingEffect
+        annotationEffect = constrRemVarRegs <$> collectEffects <$> withLocals
+        higherOrderFix   = constrRemVarRegs <$> fixHigherOrderApplication <$> withLocals
     let effects = (\(a,b,c) -> constrAdds [a,b,c]) <$> zip3 zeroingEffect' annotationEffect higherOrderFix
     _ <- printAnnotation printEffects "Effects" $ ATuple $ AConstr <$> effects
     
@@ -187,14 +187,14 @@ fixHigherOrderApplication :: Annotation -> Constr
 fixHigherOrderApplication = constrRemVarRegs . flip go constrBot
   where go (AVar   _  ) c = c
         go (AApl   f x) c = go f . constrJoins $ c : (constrInfty <$> gatherLocals x)
-        go (ALam   _ a) c = go a c
-        go (ATuple as ) c = constrJoins $ flip go c <$> as
-        go (AProj  _ a) c = go a c
-        go (AAdd   a b) c = constrJoin (go a c) (go b c)
-        go (AJoin  a b) c = constrJoin (go a c) (go b c)
-        go (AQuant a  ) c = go a c
-        go (AInstn a _) c = go a c
-        go (AFix  _ as) c = constrJoins $ flip go c <$> as
+        go (ALam   _ a) _ = go a constrBot
+        go (ATuple as ) _ = constrJoins $ flip go constrBot <$> as
+        go (AProj  _ a) _ = go a constrBot
+        go (AAdd   a b) _ = constrJoin (go a constrBot) (go b constrBot)
+        go (AJoin  a b) _ = constrJoin (go a constrBot) (go b constrBot)
+        go (AQuant a  ) _ = go a constrBot
+        go (AInstn a _) _ = go a constrBot
+        go (AFix  _ as) _ = constrJoins $ flip go constrBot <$> as
         go _ _ = constrBot
 
 -- | Add the derived annotation to the methods annotations

@@ -13,6 +13,8 @@ import Data.List (sort, elemIndex)
 import Data.Maybe (fromJust, catMaybes)
 import qualified Data.Map.Strict as M
 
+import System.IO.Unsafe
+
 max_iterations :: Int
 max_iterations = 10
 
@@ -51,11 +53,15 @@ solveFixpoint dEnv scope sorts fixes =
           c = foldr constrAdd scope $ constrInfty <$> gatherLocals (ATuple fixes)  
 
           fixIterate :: Int -> Annotation -> Annotation -> [Annotation]
-          fixIterate n  state fs | n >= max_iterations = mapWithIndex (\ i _ -> AProj i $ ATop s c) fixes 
+          fixIterate n  state fs | n >= max_iterations = unsafePerformIO $ do 
+                                                            appendFile "C:\\Users\\hanno\\Desktop\\fixpoints.csv" "0\n"
+                                                            return $ mapWithIndex (\ i _ -> AProj i $ ATop s c) fixes 
                                  | otherwise =
               let res = eval dEnv $ AApl (ALam s fs) state
               in if res == state
-                 then unsafeUnliftTuple res
+                 then unsafePerformIO $ do 
+                        appendFile "C:\\Users\\hanno\\Desktop\\fixpoints.csv" "1\n"
+                        return $ unsafeUnliftTuple res
                  else fixIterate (n+1) res fs 
 
 ----------------------------------------------------------------
