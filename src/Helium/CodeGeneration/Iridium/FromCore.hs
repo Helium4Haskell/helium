@@ -84,7 +84,9 @@ seqString :: String -> a -> a
 seqString str a = foldr seq a str
 
 valueDeclFromCoreFFI :: [Core.CoreDecl] -> [(Id, ValueDeclaration)]
-valueDeclFromCoreFFI (Core.DeclAbstract{Core.declName=fnName, Core.declArity=arity, Core.declType=fnType} : xs) = (fnName, ValueFunction arity fnType CCC) : valueDeclFromCoreFFI xs
+valueDeclFromCoreFFI (Core.DeclAbstract{Core.declName=fnName, Core.declArity=ar, Core.declType=fnType} : xs) = (fnName, ValueFunction arity fnType CCC) : valueDeclFromCoreFFI xs
+  where
+    arity = if Core.isReturnIO $ extractFunctionTypeNoSynonyms fnType then ar + 1 else ar
 valueDeclFromCoreFFI (_ : xs) = valueDeclFromCoreFFI xs
 valueDeclFromCoreFFI [] = []
 
@@ -146,16 +148,14 @@ toMethod supply env name tp expr = Method tp args returnType [AnnotateTrampoline
 
 -- NOTE: calling convention is fixed to ccall
 toAbstractMethod :: TypeEnv -> Id -> (Maybe String) -> AbstractMethod
-toAbstractMethod env name ffiInfo = AbstractMethod tp functionTp (FFIInfo ffiInfo) annotations
+toAbstractMethod env name ffiInfo = AbstractMethod tp functionTp' (FFIInfo ffiInfo) annotations
   where
-    (_, tp) = fromMaybe (error "toMethod: could not find function signature") $ resolveFunction env name
-    functionTp = extractFunctionTypeNoSynonyms tp
-    retTy = functionReturnType functionTp
-    isReturnIO = case retTy of
-      Core.TAp (Core.TCon (Core.TConDataType n)) _ -> trace ("Foreign Function " ++ (stringFromId name) ++ " returns IO: " ++ (show (stringFromId n == "IO"))) ((stringFromId n) == "IO")
-      _ -> False
-    annotations = if isReturnIO then [AnnotateCallConvention CCC, AnnotateImplicitIO] else [AnnotateCallConvention CCC]
-
+    (arity, tp) = fromMaybe (error "toMethod: could not find function signature") $ resolveFunction env name
+    functionTp  = extractFunctionTypeNoSynonyms tp
+    annotations = if Core.isReturnIO functionTp then [AnnotateCallConvention CCC, AnnotateImplicitIO] else [AnnotateCallConvention CCC]
+    -- expand type synonym (namely IO), so that we can get correct arity for abstract declaration
+    -- NOTE: This may not be the best idea. Alternatively, we can also add an `arity` field in AbstractMethod.
+    functionTp' = extractFunctionTypeWithArity (teCoreEnv env) arity tp
 
 -- Removes all lambda expression, returns a list of arguments and the remaining expression.
 consumeLambdas :: Core.Expr -> ([Either Core.Quantor Local], Core.Expr)

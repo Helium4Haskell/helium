@@ -175,7 +175,7 @@ compileExpression env supply (Iridium.Literal literal) name = [toName name := Bi
 -- TODO:
 compileExpression env supply expr@(Iridium.Call to@(Iridium.GlobalFunction global arity tp) args) name
   | not implicitIO && all isRight args =
-    trace ("iridium call: " ++ ((show . stringFromId) global) ++ " real name: " ++ (stringFromId realName)) ([toName name := Call
+    trace ("iridium call: " ++ (show . stringFromId) global ++ " real name: " ++ stringFromId realName) [toName name := Call
         { tailCallKind = Nothing
         , callingConvention = compileCallingConvention convention
         , returnAttributes = []
@@ -184,7 +184,7 @@ compileExpression env supply expr@(Iridium.Call to@(Iridium.GlobalFunction globa
         , functionAttributes = []
         , metadata = []
         }
-    ])
+    ]
   | not implicitIO =
     let
       (name', supply') = freshName supply

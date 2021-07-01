@@ -202,6 +202,12 @@ typeOfLiteral (LitBytes _) = TCon $ TConDataType $ idFromString "String"
 data FunctionType = FunctionType { functionArguments :: ![Either Quantor Type], functionReturnType :: !Type }
   deriving (Eq, Ord)
 
+-- check if the return type of the function is an IO monad
+isReturnIO :: FunctionType -> Bool
+isReturnIO fnTy = case functionReturnType fnTy of
+      TAp (TCon (TConDataType n)) _ -> (stringFromId n) == "IO"
+      _ -> False
+
 functionArity :: FunctionType -> Arity
 functionArity (FunctionType args _) = length $ rights args
 
