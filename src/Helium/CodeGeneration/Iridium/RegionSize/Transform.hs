@@ -12,7 +12,6 @@ import Helium.CodeGeneration.Iridium.RegionSize.Annotation
 ----------------------------------------------------------------
 
 -- | Collect all constraint sets from an annotation
--- TODO: Do we need to collect ALL constrs?
 collectEffects :: Annotation -> Constr
 collectEffects = foldAnnAlg collectAlg
     where collectAlg = AnnAlg {

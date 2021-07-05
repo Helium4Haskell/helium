@@ -43,17 +43,19 @@ disable         = False -- ^ Disable region size analysis
 
 -- Print the annotations of a single method (empty = no method selected)
 targetMethod :: String
-targetMethod = ""
+targetMethod = if debug 
+               then ""  
+               else "" -- Do not change this one
 stopOnTarget :: Bool
 stopOnTarget = True
 
 -- Sorting of annotations
 sortDerived,sortSimplified,sortFixpoint,sortWithLocals,checkSortsEq :: Bool
-sortDerived     = True && debug
-sortSimplified  = True && debug
-sortFixpoint    = True && debug
-sortWithLocals  = True && debug
-checkSortsEq    = True && debug
+sortDerived     = False && debug
+sortSimplified  = False && debug
+sortFixpoint    = False && debug
+checkSortsEq    = False && debug
+sortWithLocals  = False && debug
 
 -- Printing of annotations/sorts
 printDerived,printSimplified,printFixpoint,printWithLocals,printEffects,printMethodName :: Bool
@@ -159,11 +161,6 @@ pipeline gEnv methods = do
             . eval dEnv 
             . fst
             $ analyseMethods 1 gEnv' methods')
-    _ <- printAnnotation (printWithLocals || isTargetMethod) "With locals (derived)" $ (fst $ analyseMethods 1 gEnv' methods')
-    _ <- checkSort sortWithLocals dEnv "withLocals" $ ATuple withLocals
-
-    _ <- printAnnotation (printWithLocals || isTargetMethod) "With locals (simplfied)" $ (eval dEnv . fst $ analyseMethods 1 gEnv' methods')
-    _ <- checkSort sortWithLocals dEnv "withLocals" $ ATuple withLocals
 
     _ <- printAnnotation (printWithLocals || isTargetMethod) "With locals (fixpoint)" $ ATuple withLocals
     _ <- checkSort sortWithLocals dEnv "withLocals" $ ATuple withLocals
@@ -187,7 +184,7 @@ pipeline gEnv methods = do
     let zero     = length $ concat emptyRegs 
 
     if stopOnTarget && isTargetMethod
-    then error "Stopped by target"
+    then rsError $ "Stopped by target method: " ++ show targetMethod
     else return ()
 
     return ((gEnv', finite, infinite, zero), zip (fst <$> methods) cleaned)

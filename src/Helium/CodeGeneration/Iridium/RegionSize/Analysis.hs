@@ -33,8 +33,8 @@ rRegIdx :: Int
 rRegIdx = 1
 
 -- | Index for the last function argument
-fstArgIdx :: Int
-fstArgIdx = 2
+lstArgIdx :: Int
+lstArgIdx = 2
 
 -- | Additional regions de bruijn index
 aRegIdx :: Int -> Int
@@ -46,7 +46,7 @@ aRegIdx dbz = dbz + 1
 mutaulRecursionFixIdx :: Int -> Int
 mutaulRecursionFixIdx dbz = dbz + 2
 
--- | The number of debruin indices by the function arguments
+-- | The number of debruin indices created by the function arguments
 deBruinSize :: [Either Quantor Local] -> Int
 deBruinSize = (*) 2 . length . rights
 
@@ -113,7 +113,7 @@ wrapBody (GlobalEnv tEnv _ dEnv) rType args a
 -- | Initial enviromentment based on function arguments
 initEnvFromArgs :: TypeEnvironment -> DataTypeEnv -> [Either Quantor Local] -> LocalEnv
 initEnvFromArgs _    _    []   = LocalEnv emptyMap emptyMap
-initEnvFromArgs tEnv dEnv args = let argIdxs = createIdxs fstArgIdx $ reverse args
+initEnvFromArgs tEnv dEnv args = let argIdxs = createIdxs lstArgIdx $ reverse args
                                      lEnv    = LocalEnv emptyMap emptyMap
                                  in foldr insertArgument lEnv argIdxs
     where createIdxs _ []           = []
@@ -250,7 +250,7 @@ analyseBlocks retSrt envs blocks =
     in (unliftTuple <$> bAnns, bSrts) 
 
 
--- | Analyse an instruction
+-- | Analyse an instruction for its annotation and effect
 analyseInstr :: Envs -> BlockEnv -> Instruction -> (Annotation, Effect)
 analyseInstr envs@(Envs _ _ lEnv) bEnv = go 
    where go (Let _ expr      next) =  
@@ -272,13 +272,13 @@ analyseInstr envs@(Envs _ _ lEnv) bEnv = go
          -- Lookup the variable annotation
          go (Return local)         = (lookupLocalAnn local lEnv, botEffect)
          -- No effect
-         go (Unreachable Nothing)  = (ABot undefined, botEffect) -- TODO: What to do here?
+         go (Unreachable Nothing)  = (ABot undefined, botEffect)
          go (Unreachable (Just l)) = (ABot $ lookupLocalSrt l lEnv, botEffect)
          -- Matching only reads, only effect of sub instruction
          go (Match _ _ _ _ next)   = go next
 
 
--- | Analyse letalloc
+-- | Analyse letalloc for its annotation and effect
 analyseLetAlloc :: Envs -> BlockEnv -> [Bind] -> Instruction ->  (Annotation, Effect)
 analyseLetAlloc envs bEnv [] next = analyseInstr envs bEnv next
 -- Thunk binds
@@ -310,7 +310,6 @@ analyseLetAlloc envs@(Envs _ rEnv _) bEnv (Bind _ (BindTargetConstructor _) _ dR
     let (rAnn,rEff) = analyseLetAlloc envs bEnv bs next
     in (rAnn, AAdd rEff (AConstr $ constrOne $ lookupReg dReg rEnv))
 
--- TODO: Move to a better location & rename maybe
 -- | Collect bounds from a regionvars
 collectRegs :: RegionEnv -> RegionVars -> Constr
 collectRegs rEnv (RegionVarsSingle r) = constrOne $ lookupReg r rEnv
@@ -320,7 +319,7 @@ collectRegs rEnv (RegionVarsTuple rs) = M.unions $ collectRegs rEnv <$> rs
 analyseExpr :: Envs -> Expr -> (Annotation, Effect)
 analyseExpr envs@(Envs gEnv _ lEnv) = go
     where 
-      -- Literals have unit annotation, no effect. TODO: doesn't count for strings?
+      -- Literals have unit annotation, no effect.
       go (Literal (LitString _))  = (literalStringAnn         , botEffect) 
       go (Literal _)              = (AUnit                    , botEffect) 
       -- Eval & Var: Lookup annotation of variable (can be global or local)
