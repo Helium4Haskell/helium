@@ -31,8 +31,11 @@ transform env isZeroArity substitute annotation methodBindings (Method tp _ args
         let
           args
             | Just fnName <- fn
-            , Just (_, m) <- lookupMethod fnName methodBindings = if methodBindingZeroArity m then [] else flattenRegionVars $ additionalRegions
-            | otherwise = fromMaybe [] $ lookupMap name $ methodEnvAdditionalFor env
+            , Just (_, m) <- lookupMethod fnName methodBindings
+              = (if methodBindingZeroArity m then [] else flattenRegionVars $ additionalRegions)
+              ++ fromMaybe [] (lookupMap name $ methodEnvAdditionalFor env)
+            | otherwise
+              = fromMaybe [] $ lookupMap name $ methodEnvAdditionalFor env
         in
           map substitute' args)
       (filter (\var -> substitute var == RegionBottom) $ flattenRegionVars $ methodEnvAdditionalRegionVars env)
