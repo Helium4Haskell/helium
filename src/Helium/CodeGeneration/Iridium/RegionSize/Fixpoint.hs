@@ -16,7 +16,7 @@ import qualified Data.Map.Strict as M
 import System.IO.Unsafe
 
 max_iterations :: Int
-max_iterations = 10
+max_iterations = 6
 
 ----------------------------------------------------------------
 -- Solving fixpoints

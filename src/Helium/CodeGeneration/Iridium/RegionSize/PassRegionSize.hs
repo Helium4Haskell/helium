@@ -41,9 +41,9 @@ debug,disable :: Bool
 debug           = True -- ^ Enable debug mode
 disable         = False -- ^ Disable region size analysis
 
--- Print the annotations of a single method
+-- Print the annotations of a single method (empty = no method selected)
 targetMethod :: String
-targetMethod = "$dictPrelude.Show$Prelude.Either"
+targetMethod = ""
 stopOnTarget :: Bool
 stopOnTarget = True
 
@@ -62,7 +62,7 @@ printSimplified = False && debug
 printFixpoint   = False && debug
 printWithLocals = False && debug
 printEffects    = False && debug
-printMethodName = (False || printDerived || printSimplified || printFixpoint || printWithLocals || printEffects)
+printMethodName = (True || printDerived || printSimplified || printFixpoint || printWithLocals || printEffects)
 
 -- Printing datatypes
 printDTInfo,printDTSorts,printDTRegions,printDTStructs,printDTDestructs :: Bool
@@ -105,15 +105,11 @@ passRegionSize _ m = if disable then return m else do
 analyseBindingGroup :: (GlobalEnv, Int, Int, Int) -> BindingGroup Method -> IO ((GlobalEnv, Int, Int, Int), [Declaration Method])
 -- Recurisve bindings (call pipeline with the list of recursive methods)
 analyseBindingGroup (gEnv, finite, infinite, zero) (BindingRecursive bindings) = do
-  -- let methods = (\(Declaration methodName _ _ _ method) -> (methodName, method)) <$> bindings
-  -- ((gEnv', finite2, infinite2,zero2), transformeds) <- pipeline gEnv methods
-  -- let bindings' = map (\(decl, (_,transformed)) -> decl{declarationValue=transformed}) $ zip bindings transformeds
-  -- return ((gEnv', finite+finite2, infinite+infinite2, zero+zero2)
-        --  , bindings')
-  let top = eval (globDataEnv gEnv) . flip ATop constrBot . methodSortAssign (globTypeEnv gEnv) (globDataEnv gEnv) . declarationValue <$> bindings 
-  let gEnv' = foldr (uncurry insertGlobal) gEnv $ zip (declarationName <$> bindings) top 
-  return ((gEnv', finite, infinite, zero)
-         , bindings)
+  let methods = (\(Declaration methodName _ _ _ method) -> (methodName, method)) <$> bindings
+  ((gEnv', finite2, infinite2,zero2), transformeds) <- pipeline gEnv methods
+  let bindings' = map (\(decl, (_,transformed)) -> decl{declarationValue=transformed}) $ zip bindings transformeds
+  return ((gEnv', finite+finite2, infinite+infinite2, zero+zero2)
+         , bindings')
 -- Non recursive binding (call pipeline with singleton list)
 analyseBindingGroup (gEnv, finite, infinite, zero) (BindingNonRecursive decl@(Declaration methodName _ _ _ method)) = do
   ((gEnv', finite2, infinite2,zero2), [(_,transformed)]) <- pipeline gEnv [(methodName,method)]
@@ -127,7 +123,7 @@ pipeline gEnv methods = do
     let dEnv = globDataEnv gEnv
         isTargetMethod = debug && (idFromString targetMethod `elem` (fst <$> methods))
 
-    if printMethodName then do
+    if printMethodName || isTargetMethod then do
       putStrLn $ "\n# Analyse methods:\n" ++ (intercalate "\n" $ map (show.fst) methods)
     else return ()
 
@@ -166,7 +162,10 @@ pipeline gEnv methods = do
     _ <- printAnnotation (printWithLocals || isTargetMethod) "With locals (derived)" $ (fst $ analyseMethods 1 gEnv' methods')
     _ <- checkSort sortWithLocals dEnv "withLocals" $ ATuple withLocals
 
-    _ <- printAnnotation (printWithLocals || isTargetMethod) "With locals (simplified)" $ ATuple withLocals
+    _ <- printAnnotation (printWithLocals || isTargetMethod) "With locals (simplfied)" $ (eval dEnv . fst $ analyseMethods 1 gEnv' methods')
+    _ <- checkSort sortWithLocals dEnv "withLocals" $ ATuple withLocals
+
+    _ <- printAnnotation (printWithLocals || isTargetMethod) "With locals (fixpoint)" $ ATuple withLocals
     _ <- checkSort sortWithLocals dEnv "withLocals" $ ATuple withLocals
 
     -- Extract effects and transform program
