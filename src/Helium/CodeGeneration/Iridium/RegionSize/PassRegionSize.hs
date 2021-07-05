@@ -41,12 +41,18 @@ debug,disable :: Bool
 debug           = True -- ^ Enable debug mode
 disable         = False -- ^ Disable region size analysis
 
+-- Print the annotations of a single method
+targetMethod :: String
+targetMethod = "$dictPrelude.Show$Prelude.Either"
+stopOnTarget :: Bool
+stopOnTarget = True
+
 -- Sorting of annotations
 sortDerived,sortSimplified,sortFixpoint,sortWithLocals,checkSortsEq :: Bool
 sortDerived     = True && debug
 sortSimplified  = True && debug
 sortFixpoint    = True && debug
-sortWithLocals  = False && debug
+sortWithLocals  = True && debug
 checkSortsEq    = True && debug
 
 -- Printing of annotations/sorts
@@ -119,6 +125,7 @@ analyseBindingGroup (gEnv, finite, infinite, zero) (BindingNonRecursive decl@(De
 pipeline ::  GlobalEnv -> [(Id,Method)] -> IO ((GlobalEnv, Int, Int, Int), [(Id,Method)])
 pipeline gEnv methods = do
     let dEnv = globDataEnv gEnv
+        isTargetMethod = debug && (idFromString targetMethod `elem` (fst <$> methods))
 
     if printMethodName then do
       putStrLn $ "\n# Analyse methods:\n" ++ (intercalate "\n" $ map (show.fst) methods)
@@ -127,17 +134,17 @@ pipeline gEnv methods = do
     -- Derive anotation, print and sort
     let (ann, zeroingEffect) = analyseMethods 0 gEnv methods
     let derived = inlineFixpoints ann
-    _ <- printAnnotation printDerived "Derived" derived
+    _ <- printAnnotation (printDerived || isTargetMethod) "Derived" derived
     _ <- checkSort sortDerived dEnv "derived" derived
 
     -- Simplify annotation, print and sort
     let simplified = eval dEnv derived
-    _ <- printAnnotation printSimplified "Simplified" simplified
+    _ <- printAnnotation (printSimplified || isTargetMethod) "Simplified" simplified
     _ <- checkSort sortSimplified dEnv "simplified" simplified
 
     -- Calculate the fixpoint, print an sort
     let fixpoint = solveFixpoints dEnv simplified
-    _ <- printAnnotation printFixpoint "Fixpoint" fixpoint
+    _ <- printAnnotation (printFixpoint || isTargetMethod) "Fixpoint" fixpoint
     _ <- checkSort sortFixpoint dEnv "fixpoint" fixpoint
 
     -- Check if the sort did not change during evalutations
@@ -156,7 +163,10 @@ pipeline gEnv methods = do
             . eval dEnv 
             . fst
             $ analyseMethods 1 gEnv' methods')
-    _ <- printAnnotation printWithLocals "With locals" $ ATuple withLocals
+    _ <- printAnnotation (printWithLocals || isTargetMethod) "With locals (derived)" $ (fst $ analyseMethods 1 gEnv' methods')
+    _ <- checkSort sortWithLocals dEnv "withLocals" $ ATuple withLocals
+
+    _ <- printAnnotation (printWithLocals || isTargetMethod) "With locals (simplified)" $ ATuple withLocals
     _ <- checkSort sortWithLocals dEnv "withLocals" $ ATuple withLocals
 
     -- Extract effects and transform program
@@ -164,7 +174,7 @@ pipeline gEnv methods = do
         annotationEffect = constrRemVarRegs <$> collectEffects <$> withLocals
         higherOrderFix   = constrRemVarRegs <$> fixHigherOrderApplication <$> withLocals
     let effects = (\(a,b,c) -> constrAdds [a,b,c]) <$> zip3 zeroingEffect' annotationEffect higherOrderFix
-    _ <- printAnnotation printEffects "Effects" $ ATuple $ AConstr <$> effects
+    _ <- printAnnotation (printWithLocals || isTargetMethod) "Effects" $ ATuple $ AConstr <$> effects
     
     let transformed = uncurry transform <$> zip effects (snd <$> methods')
     let emptyRegs   = collectEmptyRegs <$> transformed
@@ -176,6 +186,10 @@ pipeline gEnv methods = do
     let finite   = sum $ length <$> filter (not . (== Infty) . snd) <$> filter (not . (== Region RegionGlobal) . fst) <$> M.toList <$> effects
     let infinite = (sum $ length <$> filter (not . (== Region RegionGlobal) . fst) <$> M.toList <$> effects) - finite 
     let zero     = length $ concat emptyRegs 
+
+    if stopOnTarget && isTargetMethod
+    then error "Stopped by target"
+    else return ()
 
     return ((gEnv', finite, infinite, zero), zip (fst <$> methods) cleaned)
 

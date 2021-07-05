@@ -77,7 +77,7 @@ analyseMethods pass gEnv methods =
 analyseMethod :: GlobalEnv -> (Id, Method) -> (Annotation, Effect, Sort)
 analyseMethod gEnv@(GlobalEnv tEnv _ dEnv) (_, method@(Method _ aRegs args rType rRegs _ fstBlock otherBlocks)) =
     let !rEnv      = regEnvFromArgs (deBruinSize args) aRegs rRegs
-        !(lEnv,lAnns,lSrts)  = analyseLocals gEnv rEnv method
+        !(lEnv,lAnns,lSrts)  = analyseLocals gEnv rEnv method `rsInfo` show rEnv
         !envs      = (Envs gEnv rEnv lEnv)
         !rSort     = sortAssign dEnv $ typeNormalize tEnv rType
         !(bAnns,bSrts) = analyseBlocks rSort envs (fstBlock:otherBlocks)
