@@ -67,10 +67,6 @@ analyseBindingGroup (gEnv, finite, infinite, zero) (BindingRecursive bindings) =
   let bindings' = map (\(decl, (_,transformed)) -> decl{declarationValue=transformed}) $ zip bindings transformeds
   return ((gEnv', finite+finite2, infinite+infinite2, zero+zero2)
          , bindings')
-  -- let top = eval (globDataEnv gEnv) . flip ATop constrBot . methodSortAssign (globTypeEnv gEnv) (globDataEnv gEnv) . declarationValue <$> bindings  
-  -- let gEnv' = foldr (uncurry insertGlobal) gEnv $ zip (declarationName <$> bindings) top  
-  -- return ((gEnv', finite, infinite, zero) 
-        -- , bindings) 
 -- Non recursive binding (call pipeline with singleton list)
 analyseBindingGroup (gEnv, finite, infinite, zero) (BindingNonRecursive decl@(Declaration methodName _ _ _ method)) = do
   ((gEnv', finite2, infinite2,zero2), [(_,transformed)]) <- pipeline gEnv [(methodName,method)]
@@ -125,9 +121,9 @@ pipeline gEnv methods = do
     _ <- checkSort sortWithLocals dEnv "withLocals" $ ATuple withLocals
 
     -- Extract effects and transform program
-    let zeroingEffect'   = unAConstr . solveFixpoints dEnv . eval dEnv <$> zeroingEffect
-        annotationEffect = collectEffects <$> withLocals
-        higherOrderFix   = fixHigherOrderApplication <$> withLocals
+    let zeroingEffect'   = constrRemVarRegs <$> unAConstr . solveFixpoints dEnv . eval dEnv <$> zeroingEffect
+        annotationEffect = constrRemVarRegs <$> collectEffects <$> withLocals
+        higherOrderFix   = constrRemVarRegs <$> fixHigherOrderApplication <$> withLocals
     let effects = (\(a,b,c) -> constrAdds [a,b,c]) <$> zip3 zeroingEffect' annotationEffect higherOrderFix
     _ <- printAnnotation (printWithLocals || isTargetMethod) "Effects" $ ATuple $ AConstr <$> effects
     

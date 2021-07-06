@@ -284,12 +284,12 @@ analyseLetAlloc envs bEnv [] next = analyseInstr envs bEnv next
 -- Thunk binds
 analyseLetAlloc envs@(Envs _ rEnv _) bEnv (Bind _ (BindTargetThunk var tRegs) args dReg:bs) next =
     let tnkRegs = bindThunkIntermediate tRegs
-        -- valRegs = bindThunkValue tRegs
+        valRegs = bindThunkValue tRegs
         (_   ,bEff) = thunkApplyArgs envs (lookupVar var envs) args $ bindThunkValue tRegs
         (rAnn,rEff) = analyseLetAlloc envs bEnv bs next
     in (rAnn, AAdd (AConstr $ constrOne $ lookupReg dReg rEnv) 
-             (AAdd (AConstr $ collectRegs rEnv tnkRegs)
-            --  (AAdd (AConstr $ collectRegs rEnv valRegs)
+            --  (AAdd (AConstr $ collectRegs rEnv tnkRegs)
+             (AAdd (AConstr $ collectRegs rEnv valRegs)
              (AAdd rEff bEff)))
 -- Function binds
 analyseLetAlloc envs@(Envs gEnv rEnv _) bEnv (Bind _ (BindTargetFunction gFun aRegs tRegs) args dReg:bs) next =
