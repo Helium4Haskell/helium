@@ -68,11 +68,11 @@ getAnnotationsType (TAnn a) = setFromList $ getVariablesAnn a
 getAnnotationsType _ = emptySet
 
 -- Add foralls for strictness annotations
-forallify :: Bool -> Type -> Type
-forallify b (TAp (TAnn a) t) = TAp (TAnn a) $ forallify b t
-forallify b t = foldr (\a t' -> TForall (Quantor (Just $ stringFromId a)) KAnn t') (typeRemoveStrictnessQuantification t) anns
+forallify :: Maybe IdSet -> Type -> Type
+forallify is (TAp (TAnn a) t) = TAp (TAnn a) $ forallify is t
+forallify is t = foldr (\a t' -> TForall (Quantor (Just $ stringFromId a)) KAnn t') (typeRemoveStrictnessQuantification t) anns
   where
-    anns = listFromSet $ getVariablesType b t
+    anns = listFromSet $ maybe (getVariablesType False t) (intersectionSet (getVariablesType False t)) is
 
 -- Get relevance and applicative annotations of var, set them equal to contexts
 getAnnotations :: Environment -> SAnn -> SAnn -> Id -> AnnotationEnvironment
@@ -185,7 +185,10 @@ annotateTypeAbstract _ _ t = (t, S)
 annotateBind :: Environment -> NameSupply -> Bind -> Bind
 annotateBind env supply (Bind (Variable x t) e) = Bind (Variable x t') e
   where
-    t' = annotateVarType env supply t
+    -- Fresh variables for relevance and both applicativeness
+    (id1, id2, id3, _) = threeIds supply
+    -- Annotate inner type
+    t' = TAp (TAnn (AnnVar id1)) (TAp (TAnn (AnnVar id2)) (TAp (TAnn (AnnVar id3)) (annotateTypeRec (typeEnv env) t)))
 
 annotateVarType :: Environment -> NameSupply -> Type -> Type
 annotateVarType env supply t = TAp (TAnn (AnnVar id1)) (TAp (TAnn (AnnVar id2)) (TAp (TAnn (AnnVar id3)) t'))
@@ -194,3 +197,22 @@ annotateVarType env supply t = TAp (TAnn (AnnVar id1)) (TAp (TAnn (AnnVar id2)) 
     (id1, id2, id3, supply') = threeIds supply
     -- Annotate inner type
     t' = annotateType (typeEnv env) supply' t
+
+annotateTypeRec :: TypeEnvironment -> Type -> Type
+annotateTypeRec env t
+    | t /= t' = annotateTypeRec env t'
+        where
+            t' = typeNormalizeHead env t
+annotateTypeRec env (TAp (TAp (TCon TConFun) t1) t2) = TAp (TAp (TCon TConFun) t1') t2'
+    where
+        t1' = TAp (TAnn S) (TAp (TAnn S) (TAp (TAnn S) (annotateTypeRec env t1)))
+        t2' = annotateTypeRec env t2
+annotateTypeRec env (TAp t1 t2)
+  | isTup t1  = TAp t1' (TAp (TAnn S) (TAp (TAnn S) (TAp (TAnn S) t2')))
+  | otherwise = TAp t1' t2'
+    where
+        t1' = annotateTypeRec env t1
+        t2' = annotateTypeRec env t2
+annotateTypeRec env (TStrict t) = TStrict $ annotateTypeRec env t
+annotateTypeRec env (TForall q k t) = TForall q k $ annotateTypeRec env t
+annotateTypeRec _ t = t

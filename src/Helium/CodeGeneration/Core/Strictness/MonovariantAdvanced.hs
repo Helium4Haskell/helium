@@ -66,15 +66,14 @@ groupStrictness (Analysis v cs ae r, env, supply) (BindingNonRecursive d) = (a, 
     -- Update values for next binding group
     a = Analysis (insertMap (declName d) t v) (S.union cs cs') (unionMapWith join ae ae') (unionMap r r')
 -- Group of recursive declarations
-groupStrictness (Analysis v cs ae r, env, supply) (BindingRecursive ds) = (a, env'', supply3)
+groupStrictness (Analysis v cs ae r, env, supply) (BindingRecursive ds) = (a, env'', supply2)
   where
-    (supply1, supply') = splitNameSupply supply
-    (supply2, supply3) = splitNameSupply supply'
+    (supply1, supply2) = splitNameSupply supply
     -- Annotate type signatures and add them to the environment
-    ts = mapWithSupply (\s d -> annotateType env s $ declType d) supply1 ds
+    ts = map (annotateTypeRec env . declType) ds
     env' = typeEnvAddGlobalValues (map (\(d, t) -> (declName d, t)) (zip ds ts)) env
     -- Run analysis on all bodies, merge information with meet
-    Analysis es cs' ae' r' = mergeAnalysis meet $ mapWithSupply (analyseDeclaration env') supply2 ds
+    Analysis es cs' ae' r' = mergeAnalysis meet $ mapWithSupply (analyseDeclaration env') supply1 ds
     -- Get annotated types of bodies
     ts' = map (typeOfCoreExpression env') es
     -- Add strictness types to environment
