@@ -94,6 +94,7 @@ transformGroup genv@(GlobalEnv typeEnv dataTypeEnv constructorEnv globals) (Bind
         )
       | otherwise = (doesEscape, substituteRegionVar, snd $ annotationRestrict doesEscape annotation)
     results = zipWith correctArityZero' bindings $ simplifyFixEscape dataTypeEnv fixpoint
+    doesEscapes = map (\(d, _, _) -> d) results
 
     transform' :: Declaration Method -> MethodEnv -> ([Bool], RegionVar -> RegionVar, Annotation) -> ((Id, (Int, Annotation)), Declaration Method)
     transform' decl methodEnv (doesEscape, substituteRegionVar, annotation) =
@@ -101,7 +102,7 @@ transformGroup genv@(GlobalEnv typeEnv dataTypeEnv constructorEnv globals) (Bind
       , decl{ declarationValue = method }
       )
       where
-        (regionCount, method, restricted) = transformDead True annotation $ transform methodEnv (methodEnvIsZeroArity methodEnv) substituteRegionVar annotation bindings $ declarationValue decl
+        (regionCount, method, restricted) = transformDead True annotation $ transform methodEnv (methodEnvIsZeroArity methodEnv) substituteRegionVar annotation bindings doesEscapes $ declarationValue decl
 
     solved :: [(Id, (Int, Annotation))]
     transformed :: [Declaration Method]
@@ -140,7 +141,7 @@ transformSingle genv@(GlobalEnv typeEnv dataTypeEnv constructorEnv globals) recu
   -- print restricted
 
   let bindings = [MethodBinding methodName 0 arguments]
-  let (regionCount, method', restricted') = transformDead recursive restricted $ transform methodEnv isZeroArity substituteRegionVar restricted bindings $ declarationValue method
+  let (regionCount, method', restricted') = transformDead recursive restricted $ transform methodEnv isZeroArity substituteRegionVar restricted bindings [doesEscape] $ declarationValue method
 
   rnfAnnotation restricted' `seq` return ()
 
