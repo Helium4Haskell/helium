@@ -8,15 +8,13 @@ import Helium.CodeGeneration.Iridium.RegionSize.Sort
 import Helium.CodeGeneration.Iridium.RegionSize.Constraints
 import Helium.CodeGeneration.Iridium.RegionSize.Utils
 import Helium.CodeGeneration.Iridium.RegionSize.Evaluate
+import Helium.CodeGeneration.Iridium.RegionSize.Parameters
 
 import Data.List (sort, elemIndex)
 import Data.Maybe (fromJust, catMaybes)
 import qualified Data.Map.Strict as M
 
 import System.IO.Unsafe
-
-max_iterations :: Int
-max_iterations = 6
 
 ----------------------------------------------------------------
 -- Solving fixpoints

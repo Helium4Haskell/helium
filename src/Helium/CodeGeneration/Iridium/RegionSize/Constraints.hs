@@ -14,14 +14,12 @@ where
 import Helium.CodeGeneration.Iridium.Region.RegionVar
 
 import Helium.CodeGeneration.Iridium.RegionSize.Utils
+import Helium.CodeGeneration.Iridium.RegionSize.Parameters
 
 import qualified Data.Map.Strict as M
 import Data.List
 
 import System.IO.Unsafe
-
-max_bound :: Int
-max_bound = 10
 
 ----------------------------------------------------------------
 -- Types

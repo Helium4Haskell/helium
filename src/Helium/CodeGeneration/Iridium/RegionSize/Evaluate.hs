@@ -287,3 +287,12 @@ addSort as = foldl1 AAdd $ sort as
 addConstrs :: [Annotation] -> [Annotation]
 addConstrs [] = []
 addConstrs xs = [AConstr . constrAdds $ unAConstr <$> xs] 
+
+
+-- import qualified Helium.CodeGeneration.Iridium.RegionSize.Annotation
+-- import qualified Helium.CodeGeneration.Iridium.RegionSize.Annotation as A
+-- import qualified Helium.CodeGeneration.Iridium.RegionSize.Sort as S      
+-- import qualified Helium.CodeGeneration.Iridium.RegionSize.Evaluate as E
+-- import qualified Data.Map.Strict as M
+-- E.eval emptyDEnv $ A.ALam SortMonoRegion (A.AApl (A.ALam SortMonoRegion (A.AConstr (M.fromList([(AnnVar 0, Nat 1)])))) (A.AVar 0))
+-- E.eval emptyDEnv $ A.ALam SortMonoRegion $ A.ALam S.SortUnit $ (A.AApl (A.ALam SortMonoRegion (A.AConstr (M.fromList([(AnnVar 0, Nat 1)])))) (A.AVar 1))

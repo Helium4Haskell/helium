@@ -104,6 +104,7 @@ library
       Helium.CodeGeneration.Iridium.RegionSize.Constraints
       Helium.CodeGeneration.Iridium.RegionSize.DataTypes
       Helium.CodeGeneration.Iridium.RegionSize.Environments
+      Helium.CodeGeneration.Iridium.RegionSize.Parameters
       Helium.CodeGeneration.Iridium.RegionSize.Evaluate
       Helium.CodeGeneration.Iridium.RegionSize.Fixpoint
       Helium.CodeGeneration.Iridium.RegionSize.Parse

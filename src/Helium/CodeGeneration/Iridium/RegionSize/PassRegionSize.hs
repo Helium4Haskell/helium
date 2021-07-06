@@ -25,6 +25,7 @@ import Helium.CodeGeneration.Iridium.RegionSize.Sorting
 import Helium.CodeGeneration.Iridium.RegionSize.Transform
 import Helium.CodeGeneration.Iridium.RegionSize.Utils
 import Helium.CodeGeneration.Iridium.RegionSize.Fixpoint
+import Helium.CodeGeneration.Iridium.RegionSize.Parameters
 
 import Data.List (intercalate, foldl')
 import qualified Data.Map.Strict as M 
@@ -32,53 +33,7 @@ import qualified Data.Map.Strict as M
 import System.CPUTime
 import Text.Printf
 
-----------------------------------------------------------------
--- Debug flags
-----------------------------------------------------------------
-
--- Global enable/disable
-debug,disable :: Bool
-debug           = True -- ^ Enable debug mode
-disable         = False -- ^ Disable region size analysis
-
--- Print the annotations of a single method (empty = no method selected)
-targetMethod :: String
-targetMethod = if debug 
-               then ""  
-               else "" -- Do not change this one
-stopOnTarget :: Bool
-stopOnTarget = True
-
--- Sorting of annotations
-sortDerived,sortSimplified,sortFixpoint,sortWithLocals,checkSortsEq :: Bool
-sortDerived     = False && debug
-sortSimplified  = False && debug
-sortFixpoint    = False && debug
-checkSortsEq    = False && debug
-sortWithLocals  = False && debug
-
--- Printing of annotations/sorts
-printDerived,printSimplified,printFixpoint,printWithLocals,printEffects,printMethodName :: Bool
-printDerived    = False && debug
-printSimplified = False && debug
-printFixpoint   = False && debug
-printWithLocals = False && debug
-printEffects    = False && debug
-printMethodName = (True || printDerived || printSimplified || printFixpoint || printWithLocals || printEffects)
-
--- Printing datatypes
-printDTInfo,printDTSorts,printDTRegions,printDTStructs,printDTDestructs :: Bool
-printDTInfo      = False && debug
-printDTSorts     = True && printDTInfo
-printDTRegions   = True && printDTInfo
-printDTStructs   = True && printDTInfo
-printDTDestructs = True && printDTInfo
-
--- Functionality
-removeEmpty :: Bool
-removeEmpty = False
-
-----------------------------------------------------------------
+---------------------------------------------------------------
 -- Interface
 ----------------------------------------------------------------
 
@@ -107,15 +62,15 @@ passRegionSize _ m = if disable then return m else do
 analyseBindingGroup :: (GlobalEnv, Int, Int, Int) -> BindingGroup Method -> IO ((GlobalEnv, Int, Int, Int), [Declaration Method])
 -- Recurisve bindings (call pipeline with the list of recursive methods)
 analyseBindingGroup (gEnv, finite, infinite, zero) (BindingRecursive bindings) = do
-  -- let methods = (\(Declaration methodName _ _ _ method) -> (methodName, method)) <$> bindings
-  -- ((gEnv', finite2, infinite2,zero2), transformeds) <- pipeline gEnv methods
-  -- let bindings' = map (\(decl, (_,transformed)) -> decl{declarationValue=transformed}) $ zip bindings transformeds
-  -- return ((gEnv', finite+finite2, infinite+infinite2, zero+zero2)
-  --        , bindings')
-  let top = eval (globDataEnv gEnv) . flip ATop constrBot . methodSortAssign (globTypeEnv gEnv) (globDataEnv gEnv) . declarationValue <$> bindings  
-  let gEnv' = foldr (uncurry insertGlobal) gEnv $ zip (declarationName <$> bindings) top  
-  return ((gEnv', finite, infinite, zero) 
-         , bindings) 
+  let methods = (\(Declaration methodName _ _ _ method) -> (methodName, method)) <$> bindings
+  ((gEnv', finite2, infinite2,zero2), transformeds) <- pipeline gEnv methods
+  let bindings' = map (\(decl, (_,transformed)) -> decl{declarationValue=transformed}) $ zip bindings transformeds
+  return ((gEnv', finite+finite2, infinite+infinite2, zero+zero2)
+         , bindings')
+  -- let top = eval (globDataEnv gEnv) . flip ATop constrBot . methodSortAssign (globTypeEnv gEnv) (globDataEnv gEnv) . declarationValue <$> bindings  
+  -- let gEnv' = foldr (uncurry insertGlobal) gEnv $ zip (declarationName <$> bindings) top  
+  -- return ((gEnv', finite, infinite, zero) 
+        -- , bindings) 
 -- Non recursive binding (call pipeline with singleton list)
 analyseBindingGroup (gEnv, finite, infinite, zero) (BindingNonRecursive decl@(Declaration methodName _ _ _ method)) = do
   ((gEnv', finite2, infinite2,zero2), [(_,transformed)]) <- pipeline gEnv [(methodName,method)]
@@ -170,9 +125,9 @@ pipeline gEnv methods = do
     _ <- checkSort sortWithLocals dEnv "withLocals" $ ATuple withLocals
 
     -- Extract effects and transform program
-    let zeroingEffect'   = constrRemVarRegs <$> unAConstr . solveFixpoints dEnv . eval dEnv <$> zeroingEffect
-        annotationEffect = constrRemVarRegs <$> collectEffects <$> withLocals
-        higherOrderFix   = constrRemVarRegs <$> fixHigherOrderApplication <$> withLocals
+    let zeroingEffect'   = unAConstr . solveFixpoints dEnv . eval dEnv <$> zeroingEffect
+        annotationEffect = collectEffects <$> withLocals
+        higherOrderFix   = fixHigherOrderApplication <$> withLocals
     let effects = (\(a,b,c) -> constrAdds [a,b,c]) <$> zip3 zeroingEffect' annotationEffect higherOrderFix
     _ <- printAnnotation (printWithLocals || isTargetMethod) "Effects" $ ATuple $ AConstr <$> effects
     
@@ -183,9 +138,7 @@ pipeline gEnv methods = do
                       else transformed
 
     -- Count bounded and unbouned regions
-    let finite   = sum $ length <$> filter (not . (== Infty) . snd) <$> filter (not . (== Region RegionGlobal) . fst) <$> M.toList <$> effects
-    let infinite = (sum $ length <$> filter (not . (== Region RegionGlobal) . fst) <$> M.toList <$> effects) - finite 
-    let zero     = length $ concat emptyRegs 
+    let (finite, infinite, zero) = calcMetrics effects emptyRegs
 
     if stopOnTarget && isTargetMethod
     then rsError $ "Stopped by target method: " ++ show targetMethod
@@ -275,7 +228,7 @@ initialGEnv m = GlobalEnv typeEnv functionEnv dataTypeEnv
     dataTypeGroupsRegs = dataTypeBindingGroups False $ moduleDataTypes m
 
 ----------------------------------------------------------------
--- Sort checks
+-- Debug stuff
 ----------------------------------------------------------------
 
 -- | Check the sort of an annotation
@@ -304,9 +257,6 @@ checkAnnotationSorts True  dEnv xs =
      then return ()
      else rsError "Sort changed during evaluation."           
 
-----------------------------------------------------------------
--- Initial global environment
-----------------------------------------------------------------
 
 -- | Print the annotation depending on the debug flag
 printAnnotation :: Bool       -- ^ Debug flag (sort yes/no)
@@ -360,3 +310,14 @@ printMetrics start (_, finite, infinite, zero) =
       let diff = ((fromIntegral (end - start)) :: Double) / ((10::Double)^(12::Int))
       printf "Computation time: %0.3f sec\n" diff 
     else return ()
+
+-- | Calculate the bounded, unbounded and zero regions
+calcMetrics :: [Constr] -> [[RegionVar]] -> (Int,Int,Int)
+calcMetrics effects emptyRegs = 
+  let filterR r = fst r /= (Region RegionGlobal) && fst r /= (Region RegionBottom)
+      filterB b = snd b /= Infty
+      set       = filter filterR <$> M.toList <$> effects
+      finite    = sum $ length <$> filter filterB <$> set
+      infinite  = (sum $ length <$> set) - finite 
+      zero      = length $ concat emptyRegs
+  in (finite, infinite, zero)
