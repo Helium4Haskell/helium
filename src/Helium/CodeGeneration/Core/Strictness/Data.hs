@@ -13,6 +13,10 @@ import Lvm.Core.Type
 
 import Text.PrettyPrint.Leijen (pretty)
 
+
+type BindMap = IdMap SAnn
+type ValueMap = IdMap (Expr, Type)
+
 -- Keys are annotation variables, values are the equality/join/meet
 type AnnotationEnvironment = IdMap SAnn
 
@@ -46,9 +50,6 @@ typeFromCustom [] = error "Strictness type not found"
 typeFromCustom (CustomDecl (DeclKindCustom n) [CustomType t]:_) | stringFromId n == "strictness" = t
 typeFromCustom (_:xs) = typeFromCustom xs
 
-annEnvToConstraints :: AnnotationEnvironment -> Constraints
-annEnvToConstraints = S.fromList . map snd . listFromMap . mapMapWithId (\x y -> Constraint y (AnnVar x))
-
 -- Get all variables in an annotation or type
 getVariablesAnn :: SAnn -> [Id]
 getVariablesAnn (AnnVar x) = [x]
@@ -68,6 +69,11 @@ isTupAp (Con (ConTuple _)) = True
 isTupAp (Ap e _) = isTupAp e
 isTupAp (ApType e _) = isTupAp e
 isTupAp _ = False
+
+isTup :: Type -> Bool
+isTup (TAp t1 _) = isTup t1
+isTup (TCon (TConTuple _)) = True
+isTup _ = False
 
 threeIds :: NameSupply -> (Id, Id, Id, NameSupply)
 threeIds supply0 = (id1, id2, id3, supply3)
@@ -128,6 +134,8 @@ removeAnn x = x
 -- Lookup annotation of variables
 lookupVar :: SAnn -> SolvedConstraints -> SAnn
 lookupVar (AnnVar x) sc | elemMap x sc = findMap x sc
+lookupVar (Join x y) sc = join (lookupVar x sc) (lookupVar y sc)
+lookupVar (Meet x y) sc = meet (lookupVar x sc) (lookupVar y sc)
 lookupVar x _ = x
 
 uncontain :: [Id] -> SAnn -> SAnn
@@ -135,3 +143,11 @@ uncontain xs (AnnVar x) | x `elem` xs = S
 uncontain xs (Join x y) = join (uncontain xs x) (uncontain xs y)
 uncontain xs (Meet x y) = meet (uncontain xs x) (uncontain xs y)
 uncontain _  x          = x
+
+setValue :: ValueMap -> CoreDecl -> CoreDecl
+setValue vs decl@DeclValue{}
+    | elemMap (declName decl) vs = decl{valueValue = e, declCustoms = c}
+    where
+        (e, t) = findMap (declName decl) vs
+        c = strictnessToCustom t (declCustoms decl)
+setValue _ decl = decl

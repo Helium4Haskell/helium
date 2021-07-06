@@ -76,7 +76,7 @@ forallify b t = foldr (\a t' -> TForall (Quantor (Just $ stringFromId a)) KAnn t
 
 -- Get relevance and applicative annotations of var, set them equal to contexts
 getAnnotations :: Environment -> SAnn -> SAnn -> Id -> AnnotationEnvironment
-getAnnotations env rel app var = unionMap (f (relEnv env) rel) (f (appEnv env) app)
+getAnnotations env rel app var = unionMapWith join (f (relEnv env) rel) (f (appEnv env) app)
   where
     f env' con = case lookupMap var env' of
       Just (AnnVar a) -> singleMap a con
@@ -96,15 +96,6 @@ getAnnotationVariablesEnv env = f (relEnv env) ++ f (appEnv env) ++ g
 -- Containment
 containment :: Environment -> SAnn -> AnnotationEnvironment
 containment env con = mapFromList $ map (\x -> (x, con)) (getAnnotationVariablesEnv env)
-
-strictBind :: Bind -> AnnotationEnvironment -> AnnotationEnvironment
-strictBind (Bind (Variable _ (TAp (TAnn (AnnVar a)) (TAp (TAnn (AnnVar r)) (TAp _ _)))) _) ae = ae'
-    where
-        ae' = insertMap a S $ insertMap r S ae
-
--- Turn bind to strict if annotated with S
-bindToStrict :: SolvedConstraints -> Bind -> Bool
-bindToStrict sc (Bind (Variable _ (TAp (TAnn a) (TAp (TAnn r) (TAp _ _)))) _) = lookupVar r sc == S && lookupVar a sc == S
 
 {-
     Annotate
@@ -127,25 +118,31 @@ annotateType env supply (TAp (TAp (TCon TConFun) t1) t2) = TAp (TAp (TCon TConFu
         (id1, id2, id3, supply') = threeIds supply
         (supply1, supply2) = splitNameSupply supply'
         t1' = annotateType env supply1 t1
-        t1a = TAp (TAnn $ AnnVar id1) $ TAp (TAnn $ AnnVar id2) $ TAp (TAnn $ AnnVar id3) t1'
+        t1a = case t1 of
+          TStrict _ -> TAp (TAnn $ AnnVar id1) $ TAp (TAnn $ AnnVar id3) $ TAp (TAnn $ AnnVar id3) t1'
+          _         -> TAp (TAnn $ AnnVar id1) $ TAp (TAnn $ AnnVar id2) $ TAp (TAnn $ AnnVar id3) t1'
         t2' = annotateType env supply2 t2
-annotateType env supply (TAp t1 (TAp (TAnn a) (TAp (TAnn r) (TAp (TAnn a2) t2))))
-    = TAp t1' (TAp (TAnn a) (TAp (TAnn r) (TAp (TAnn a2) t2')))
-    -- Already annotated, no need to annotate again
-    where
-        (supply1, supply2) = splitNameSupply supply
-        t1' = annotateType env supply1 t1
-        t2' = annotateType env supply2 t2
-annotateType env supply (TAp t1 t2) = TAp t1' t2a
+-- annotateType env supply (TAp t1 (TAp (TAnn a) (TAp (TAnn r) (TAp (TAnn a2) t2))))
+--     = TAp t1' (TAp (TAnn a) (TAp (TAnn r) (TAp (TAnn a2) t2')))
+--     -- Already annotated, no need to annotate again
+--     where
+--         (supply1, supply2) = splitNameSupply supply
+--         t1' = annotateType env supply1 t1
+--         t2' = annotateType env supply2 t2
+annotateType env supply (TAp t1 t2)
+  | isTup t1 = TAp t1' t2a
+  | otherwise = TAp t1' t2'
     -- Annotate applications to datatypes
     where
         (id1, id2, id3, supply') = threeIds supply
         (supply1, supply2) = splitNameSupply supply'
         t1' = annotateType env supply1 t1
         t2' = annotateType env supply2 t2      
-        t2a = TAp (TAnn $ AnnVar id1) (TAp (TAnn $ AnnVar id2) (TAp (TAnn $ AnnVar id3) t2'))
+        t2a = case t2 of
+          TStrict _ -> TAp (TAnn S) (TAp (TAnn S) (TAp (TAnn S) t2'))
+          _         -> TAp (TAnn $ AnnVar id1) (TAp (TAnn $ AnnVar id2) (TAp (TAnn $ AnnVar id3) t2'))
 annotateType env supply (TForall q k t) = TForall q k $ annotateType env supply t -- Non-strictness forall needs to stay
-annotateType env supply (TStrict t) = annotateType env supply t -- Strictness information is moved to annotations
+annotateType env supply (TStrict t) = TStrict $ annotateType env supply t
 annotateType _ _ t = t
 
 annotateTypeAbstract :: TypeEnvironment -> NameSupply -> Type -> (Type, SAnn)
@@ -166,7 +163,9 @@ annotateTypeAbstract env supply (TAp (TAp (TCon TConFun) t1) t2) = (TAp (TAp (TC
         t1a = case t1' of
             (TStrict t) -> TAp (TAnn a') (TAp (TAnn ann) (TAp (TAnn ann) t))
             _           -> TAp (TAnn L) (TAp (TAnn L) (TAp (TAnn ann) t1'))
-annotateTypeAbstract env supply (TAp t1 t2) = (TAp t1' t2a, S)
+annotateTypeAbstract env supply (TAp t1 t2)
+  | isTup t1 = (TAp t1' t2a, S)
+  | otherwise = (TAp t1' t2', S)
     -- Annotate applications to datatypes
     where
         (supply1, supply2) = splitNameSupply supply

@@ -13,8 +13,8 @@ type EdgeMap = M.Map SAnn [SAnn]
 type Node a = (a, a, [a])
 
 -- First round of constraint solving, using the constraint set
-solveConstraints' :: Constraints -> SolvedConstraints
-solveConstraints' cs = foldl (handleAnn nodeFromVertex) emptyMap ts
+solveConstraints' :: AnnotationEnvironment -> Constraints -> SolvedConstraints
+solveConstraints' env cs = foldl (handleAnn nodeFromVertex) env ts
     where
         -- Create edges, graph and topological sort
         es = M.elems $ M.mapWithKey (\x y -> (x, x, y)) $ constraintsToEdges (S.toList cs) M.empty
@@ -22,11 +22,11 @@ solveConstraints' cs = foldl (handleAnn nodeFromVertex) emptyMap ts
         ts = topSort graph
 
 -- Second round of constraint solving, replacing variables in joins and meets
-solveConstraints :: Constraints -> SolvedConstraints
-solveConstraints cs = foldr (handleId nodeFromVertex) sc ts
+solveConstraints :: AnnotationEnvironment -> Constraints -> SolvedConstraints
+solveConstraints env cs = foldr (handleId nodeFromVertex) sc ts
     where
         -- Solve constraints
-        sc = solveConstraints' cs
+        sc = solveConstraints' env cs
         -- Create graph based on variables
         es = map (\(x, y) -> (x, x, y)) $ listFromMap $ mapMap getVariablesAnn sc
         (graph, nodeFromVertex, _) = graphFromEdges es

@@ -90,15 +90,6 @@ getAnnotationVariablesEnv env = f ++ g
 containment :: Environment -> SAnn -> AnnotationEnvironment
 containment env con = mapFromList $ map (\x -> (x, con)) (getAnnotationVariablesEnv env)
 
-strictBind :: Bind -> AnnotationEnvironment -> AnnotationEnvironment
-strictBind (Bind (Variable _ (TAp (TAnn (AnnVar a)) _)) _) ae = ae'
-    where
-        ae' = insertMap a S ae
-
--- Turn bind to strict if annotated with S
-bindToStrict :: SolvedConstraints -> Bind -> Bool
-bindToStrict sc (Bind (Variable _ (TAp (TAnn a) _)) _) = lookupVar a sc == S
-
 {-
     Annotate
 -}
@@ -119,23 +110,30 @@ annotateType env supply (TAp (TAp (TCon TConFun) t1) t2) = TAp (TAp (TCon TConFu
     where
         (id, supply') = freshId supply
         (supply1, supply2) = splitNameSupply supply'
-        t1' = TAp (TAnn $ AnnVar id) $ annotateType env supply1 t1
+        t1' = case t1 of
+          TStrict _ -> TAp (TAnn S) $ annotateType env supply1 t1
+          _         -> TAp (TAnn $ AnnVar id) $ annotateType env supply1 t1
         t2' = annotateType env supply2 t2
-annotateType env supply (TAp t1 (TAp (TAnn a) t2)) = TAp t1' (TAp (TAnn a) t2')
-    -- Already annotated, no need to annotate again
-    where
-        (supply1, supply2) = splitNameSupply supply
-        t1' = annotateType env supply1 t1
-        t2' = annotateType env supply2 t2
-annotateType env supply (TAp t1 t2) = TAp t1' t2'
+-- annotateType env supply (TAp t1 (TAp (TAnn a) t2)) = TAp t1' (TAp (TAnn a) t2')
+--     -- Already annotated, no need to annotate again
+--     where
+--         (supply1, supply2) = splitNameSupply supply
+--         t1' = annotateType env supply1 t1
+--         t2' = annotateType env supply2 t2
+annotateType env supply (TAp t1 t2) 
+  | isTup t1  = TAp t1' t2a
+  | otherwise = TAp t1' t2'
     -- Annotate applications to datatypes
     where
         (id, supply') = freshId supply
         (supply1, supply2) = splitNameSupply supply'
         t1' = annotateType env supply1 t1
-        t2' = TAp (TAnn $ AnnVar id) $ annotateType env supply2 t2      
+        t2' = annotateType env supply2 t2
+        t2a = case t2 of
+          TStrict _ -> TAp (TAnn S) t2'
+          _         -> TAp (TAnn $ AnnVar id) t2'
 annotateType env supply (TForall q k t) = TForall q k $ annotateType env supply t -- Non-strictness forall needs to stay
-annotateType env supply (TStrict t) = annotateType env supply t -- Strictness information is moved to annotations
+annotateType env supply (TStrict t) = TStrict $ annotateType env supply t
 annotateType _ _ t = t
 
 annotateTypeAbstract :: TypeEnvironment -> Type -> Type
@@ -152,7 +150,9 @@ annotateTypeAbstract env (TAp (TAp (TCon TConFun) t1) t2) = TAp (TAp (TCon TConF
             (TStrict t) -> TAp (TAnn S) t
             _           -> TAp (TAnn L) t1'
         t2' = annotateTypeAbstract env t2
-annotateTypeAbstract env (TAp t1 t2) = TAp t1' t2a
+annotateTypeAbstract env (TAp t1 t2)
+  | isTup t1 = TAp t1' t2a
+  | otherwise = TAp t1' t2'
     -- Annotate applications to datatypes
     where
         t1' = annotateTypeAbstract env t1
@@ -161,7 +161,7 @@ annotateTypeAbstract env (TAp t1 t2) = TAp t1' t2a
             (TStrict t) -> TAp (TAnn S) t
             _           -> TAp (TAnn L) t2'
 annotateTypeAbstract env (TForall q k t) = TForall q k $ annotateTypeAbstract env t -- Non-strictness forall needs to stay
-annotateTypeAbstract env (TStrict t) = TStrict $ annotateTypeAbstract env t -- Strictness information is moved to annotations
+annotateTypeAbstract env (TStrict t) = TStrict $ annotateTypeAbstract env t
 annotateTypeAbstract _ t = t
 
 annotateBind :: Environment -> NameSupply -> Bind -> Bind
