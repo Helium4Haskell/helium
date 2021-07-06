@@ -24,9 +24,9 @@ max_iterations = 6
 
 -- | Fill top with local variables in scope
 solveFixpoints ::  DataTypeEnv -> Annotation -> Annotation
-solveFixpoints dEnv = eval dEnv $ foldAnnAlg fixAlg
+solveFixpoints dEnv = eval dEnv . foldAnnAlg fixAlg
     where fixAlg = idAnnAlg {
-            aFix = \_ s v -> ATuple . solveFixpoint dEnv scope s $ go scope <$> v
+            aFix = \_ sorts anns -> ATuple $ solveFixpoint dEnv sorts anns
         }
 
 -- | Weaken all region variables in the constraint set
@@ -37,8 +37,8 @@ weakenScope = M.mapKeys weakenKey
      weakenKey others     = others
 
 -- | Solve a group of fixpoints
-solveFixpoint :: DataTypeEnv -> Constr -> [Sort] -> [Annotation] -> [Annotation]
-solveFixpoint dEnv scope sorts fixes = 
+solveFixpoint :: DataTypeEnv -> [Sort] -> [Annotation] -> [Annotation]
+solveFixpoint dEnv sorts fixes = 
         let bot   = ABot s
         in fixIterate 0 bot $ ATuple fixes
     where s = SortTuple sorts
