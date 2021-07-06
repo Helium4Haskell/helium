@@ -149,14 +149,14 @@ generate (GlobalEnv typeEnv dataTypeEnv constructorEnv globals) bindingGroup (De
 
     -- Converts the tuple from the fixpoint to combined format matching with the sort of the function
     result :: Annotation
-    result = case go $ methodEnvArguments methodEnv of
+    result = case go True $ methodEnvArguments methodEnv of
       Just a -> a
       Nothing -> ATop resultSort
       where
         -- We cannot analyse functions whose last argument is a quantification
-        go :: [Either Quantor (Sort, RegionSort)] -> Maybe Annotation
-        go (Left quantor : args) = AForall quantor <$> go args
-        go (Right (s, rs) : args) = ALam s (regionSortAsLazy rs) LifetimeContextAny . ATuple . (annotationEffects :) . return <$> rest
+        go :: Bool -> [Either Quantor (Sort, RegionSort)] -> Maybe Annotation
+        go first (Left quantor : args) = AForall quantor <$> go first args
+        go first (Right (s, rs) : args) = ALam s (regionSortAsLazy rs) LifetimeContextAny . ATuple . (annotationEffects :) . return <$> rest
           where
             annotationEffects
               | [] <- args
@@ -170,13 +170,16 @@ generate (GlobalEnv typeEnv dataTypeEnv constructorEnv globals) bindingGroup (De
                 $ relationFromConstraints
                 $ map (`Outlives` RegionLocal 0)
                 $ RegionLocal 1 : flattenRegionVars (regionSortToVars 2 rs)
+                ++ (if first then flattenRegionVars (regionSortToVars (2 + regionSortSize rs) $ methodEnvAdditionalRegionSort methodEnv) else [])
 
             rest 
               | [] <- args = Just $ strengthen' $ lookupAnnotation KeyReturn $ methodEnvReturnSort methodEnv
-              | otherwise = go args
+              | otherwise = go False args
 
-        go []
-          | all isLeft arguments = Just $ ATuple [annotationEffects, strengthen' $ lookupAnnotation KeyReturn $ methodEnvReturnSort methodEnv]
+        go first []
+          -- No value arguments
+          | first = Just $ ATuple [annotationEffects, strengthen' $ lookupAnnotation KeyReturn $ methodEnvReturnSort methodEnv]
+          -- We cannot analyse functions if they take value and type arguments, but end with a type argument.
           | otherwise = Nothing
           where
             annotationEffects

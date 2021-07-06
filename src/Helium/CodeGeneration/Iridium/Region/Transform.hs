@@ -14,8 +14,8 @@ import Helium.CodeGeneration.Iridium.Region.Generate
 import Data.Maybe
 import Data.Either
 
-transform :: MethodEnv -> Bool -> (RegionVar -> RegionVar) -> Annotation -> [MethodBinding] -> Method -> Method
-transform env isZeroArity substitute annotation methodBindings (Method tp _ args returnType _ methodAnnotations entry blocks)
+transform :: MethodEnv -> Bool -> (RegionVar -> RegionVar) -> Annotation -> [MethodBinding] -> [[Bool]] -> Method -> Method
+transform env isZeroArity substitute annotation methodBindings methodBindingsDoesEscape (Method tp _ args returnType _ methodAnnotations entry blocks)
   = Method tp additionalRegions args returnType returnRegions methodAnnotations (transformBlock regions True entry) (transformBlock regions False <$> blocks)
   where
     substitute' :: RegionVar -> RegionVar
@@ -31,8 +31,9 @@ transform env isZeroArity substitute annotation methodBindings (Method tp _ args
         let
           args
             | Just fnName <- fn
-            , Just (_, m) <- lookupMethod fnName methodBindings
-              = (if methodBindingZeroArity m then [] else flattenRegionVars $ additionalRegions)
+            , Just (idx, m) <- lookupMethod fnName methodBindings
+            , doesEscape <- methodBindingsDoesEscape !! idx -- Different functions may have different sets of escaping regions
+              = (if methodBindingZeroArity m then [] else additionalRegionsWith doesEscape)
               ++ fromMaybe [] (lookupMap name $ methodEnvAdditionalFor env)
             | otherwise
               = fromMaybe [] $ lookupMap name $ methodEnvAdditionalFor env
@@ -49,6 +50,13 @@ transform env isZeroArity substitute annotation methodBindings (Method tp _ args
         = RegionVarsTuple
         $ map RegionVarsSingle
         $ filter (\var -> substitute var == var)
+        $ flattenRegionVars
+        $ methodEnvAdditionalRegionVars env
+
+    additionalRegionsWith doesEscape
+        = map snd
+        $ filter fst
+        $ zip doesEscape
         $ flattenRegionVars
         $ methodEnvAdditionalRegionVars env
 
