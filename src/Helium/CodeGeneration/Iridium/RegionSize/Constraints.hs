@@ -1,7 +1,7 @@
 module Helium.CodeGeneration.Iridium.RegionSize.Constraints
     (ConstrIdx(..), Constr, Bound(..),
     constrShow, constrIdxShow,
-    constrReIndex, constrWeaken, constrStrengthenN,
+    constrReIndex, constrWeaken, constrStrengthen, constrStrengthenN,
     constrIdxStrengthenN,
     constrIdxWithVar, constrIdx, 
     constrBot, constrJoin, constrJoins, 
@@ -74,6 +74,10 @@ constrWeaken :: Int -> Constr -> Constr
 constrWeaken n = constrReIndex (weakenIdx n) (-1)
 
 -- | Decrease all unbound de bruijn indeces by 1
+constrStrengthen :: Constr -> Constr
+constrStrengthen = constrStrengthenN (-1)
+
+-- | Decrease all unbound de bruijn indeces by 1, starting at depth N
 constrStrengthenN :: Int -> Constr -> Constr
 constrStrengthenN = constrReIndex strengthenIdx
 

@@ -287,27 +287,3 @@ addSort as = foldl1 AAdd $ sort as
 addConstrs :: [Annotation] -> [Annotation]
 addConstrs [] = []
 addConstrs xs = [AConstr . constrAdds $ unAConstr <$> xs] 
-
-----------------------------------------------------------------
--- Other utilities
-----------------------------------------------------------------
-
--- | Gather constraints on local regions from an annotation 
-gatherConstraints :: Annotation -> Constr
-gatherConstraints a = let locals = constrInfty <$> gatherLocals a
-                          annvrs = constrInfty <$> gatherBinds a
-                      in constrJoins $ locals ++ annvrs
-  
--- | Gather a tuple of region(variable)s from an annation
-gatherConstraintsTuple :: Annotation -> Annotation
-gatherConstraintsTuple a = let regions = gatherLocals a
-                               vars    = gatherBinds a
-                           in ATuple $ constrIdxToAnn <$> (regions ++ vars)
-
--- import qualified Helium.CodeGeneration.Iridium.RegionSize.Annotation
--- import qualified Helium.CodeGeneration.Iridium.RegionSize.Annotation as A
--- import qualified Helium.CodeGeneration.Iridium.RegionSize.Sort as S      
--- import qualified Helium.CodeGeneration.Iridium.RegionSize.Evaluate as E
--- import qualified Data.Map.Strict as M
--- E.eval emptyDEnv $ A.ALam SortMonoRegion (A.AApl (A.ALam SortMonoRegion (A.AConstr (M.fromList([(AnnVar 0, Nat 1)])))) (A.AVar 0))
--- E.eval emptyDEnv $ A.ALam SortMonoRegion $ A.ALam S.SortUnit $ (A.AApl (A.ALam SortMonoRegion (A.AConstr (M.fromList([(AnnVar 0, Nat 1)])))) (A.AVar 1))

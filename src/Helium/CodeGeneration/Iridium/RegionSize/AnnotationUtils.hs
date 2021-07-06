@@ -7,7 +7,9 @@ module Helium.CodeGeneration.Iridium.RegionSize.AnnotationUtils
     constrIdxToAnn,
     annRemLocalRegs, regionVarsToGlobal,
     annRemoveQuants, annWrapQuants,
-    gatherLocals, gatherBinds
+    gatherLocals, gatherBinds,
+    gatherConstraints, 
+    gatherConstraintsTuple
   ) where
 
 import Helium.CodeGeneration.Iridium.Region.RegionVar
@@ -200,7 +202,7 @@ gatherLocals = foldAnnAlgLams countAlg
 
 -- | Retrieve all bound region variables
 gatherBinds :: Annotation -> [ConstrIdx]
-gatherBinds = foldAnnAlgLams countAlg
+gatherBinds = foldAnnAlgLamsN 0 countAlg
     where 
       countAlg = AnnAlg {
         aVar    = \d idx -> removeLocal d [AnnVar idx],
@@ -220,7 +222,20 @@ gatherBinds = foldAnnAlgLams countAlg
         aBot    = \_ _   -> [],
         aFix    = \_ _ a -> constrIdxStrengthenN (-1) <$> concat a   
       }
-      isNonLocal d (AnnVar idx) = idx > d +1
+      isNonLocal d (AnnVar idx) = idx > d
       isNonLocal d (CnProj _ l) = isNonLocal d l
       isNonLocal _ (Region _)   = True
       removeLocal d = filter (isNonLocal d)
+
+
+-- | Gather constraints on local regions from an annotation 
+gatherConstraints :: Annotation -> Constr
+gatherConstraints a = let locals = constrInfty <$> gatherLocals a
+                          annvrs = constrInfty <$> gatherBinds a
+                      in constrJoins $ locals ++ annvrs
+
+-- | Gather a tuple of region(variable)s from an annation
+gatherConstraintsTuple :: Annotation -> Annotation
+gatherConstraintsTuple a = let regions = gatherLocals a
+                               vars    = gatherBinds a
+                           in ATuple $ constrIdxToAnn <$> (regions ++ vars)

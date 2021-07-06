@@ -24,18 +24,10 @@ max_iterations = 6
 
 -- | Fill top with local variables in scope
 solveFixpoints ::  DataTypeEnv -> Annotation -> Annotation
-solveFixpoints dEnv = eval dEnv . go constrBot
-    where go scope (ALam   s a) = ALam s $ go (constrAdd (constrInfty $ AnnVar 0) (weakenScope scope)) a  
-          go scope (ATuple  as) = ATuple $ go scope <$> as
-          go scope (AProj  i a) = AProj i $ go scope a 
-          go scope (AApl   a b) = AApl   (go scope a) (go scope b) 
-          go scope (AAdd   a b) = AAdd   (go scope a) (go scope b)  
-          go scope (AJoin  a b) = AJoin  (go scope a) (go scope b)
-          go scope (AQuant a  ) = AQuant (go scope a)
-          go scope (AInstn a t) = AInstn (go scope a) t
-          go scope (AFix   s v) = ATuple . solveFixpoint dEnv scope s $ go scope <$> v
-          go scope (AMinus a r) = AMinus (go scope a) r
-          go _     ann = ann
+solveFixpoints dEnv = eval dEnv $ foldAnnAlg fixAlg
+    where fixAlg = idAnnAlg {
+            aFix = \_ s v -> ATuple . solveFixpoint dEnv scope s $ go scope <$> v
+        }
 
 -- | Weaken all region variables in the constraint set
 weakenScope :: Constr -> Constr
@@ -47,20 +39,25 @@ weakenScope = M.mapKeys weakenKey
 -- | Solve a group of fixpoints
 solveFixpoint :: DataTypeEnv -> Constr -> [Sort] -> [Annotation] -> [Annotation]
 solveFixpoint dEnv scope sorts fixes = 
-        let bot = ABot s
+        let bot   = ABot s
         in fixIterate 0 bot $ ATuple fixes
     where s = SortTuple sorts
-          c = foldr constrAdd scope $ constrInfty <$> gatherLocals (ATuple fixes)  
-
+          c = constrStrengthen $ gatherConstraints (ATuple fixes)  
+          isFix = hasFixBinds fixes
+          
           fixIterate :: Int -> Annotation -> Annotation -> [Annotation]
           fixIterate n  state fs | n >= max_iterations = unsafePerformIO $ do 
-                                                            appendFile "C:\\Users\\hanno\\Desktop\\fixpoints.csv" "0\n"
+                                                            if isFix
+                                                            then appendFile "C:\\Users\\hanno\\Desktop\\fixpoints.csv" "0\n"
+                                                            else return ()
                                                             return $ mapWithIndex (\ i _ -> AProj i $ ATop s c) fixes 
                                  | otherwise =
               let res = eval dEnv $ AApl (ALam s fs) state
               in if res == state
                  then unsafePerformIO $ do 
-                        appendFile "C:\\Users\\hanno\\Desktop\\fixpoints.csv" "1\n"
+                        if isFix
+                        then appendFile "C:\\Users\\hanno\\Desktop\\fixpoints.csv" "1\n"
+                        else return ()
                         return $ unsafeUnliftTuple res
                  else fixIterate (n+1) res fs 
 
@@ -96,6 +93,10 @@ fillInNonRec isRec fixes = foldAnnAlgN (0,-1) fillAlg
 -- | Check if a part of a fixpoint is recursive
 checkRecursive :: Annotation -> Bool
 checkRecursive ann = (length $ findFixBinds ann) > 0  
+
+-- | Check if a fixpoint actually has any bindings in the annotation
+hasFixBinds :: [Annotation] -> Bool
+hasFixBinds anns = 0 < (sum $ length . findFixBinds <$> anns)
 
 -- | Which indices of the fixpoint are used
 findFixBinds :: Annotation -> [Int]
