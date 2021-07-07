@@ -15,7 +15,8 @@ import Text.PrettyPrint.Leijen (pretty)
 
 
 type BindMap = IdMap SAnn
-type ValueMap = IdMap (Expr, Type)
+type PolyMap = IdMap (Expr, Type)
+type MonoMap = IdMap Type
 
 -- Keys are annotation variables, values are the equality/join/meet
 type AnnotationEnvironment = IdMap SAnn
@@ -144,10 +145,19 @@ uncontain xs (Join x y) = join (uncontain xs x) (uncontain xs y)
 uncontain xs (Meet x y) = meet (uncontain xs x) (uncontain xs y)
 uncontain _  x          = x
 
-setValue :: ValueMap -> CoreDecl -> CoreDecl
-setValue vs decl@DeclValue{}
+setValue :: (Type -> Type) -> PolyMap -> CoreDecl -> CoreDecl
+setValue _ vs decl@DeclValue{}
     | elemMap (declName decl) vs = decl{valueValue = e, declCustoms = c}
     where
         (e, t) = findMap (declName decl) vs
         c = strictnessToCustom t (declCustoms decl)
-setValue _ decl = decl
+setValue f _ decl
+  | isUpdate decl = decl{declCustoms = c}
+  | otherwise     = decl
+    where
+      c = strictnessToCustom (f $ declType decl) (declCustoms decl)
+
+isUpdate :: CoreDecl -> Bool
+isUpdate decl@DeclAbstract{} = not $ any isCustomAnn (declCustoms decl)
+isUpdate decl@DeclCon{} = not $ any isCustomAnn (declCustoms decl)
+isUpdate _ = False

@@ -28,13 +28,14 @@ mergeAnalysis f (x:xs) = Analysis (v:v') (S.union c c') (unionMapWith f a a') (u
         Analysis v c a sc r = x
         Analysis v' c' a' sc' r' = mergeAnalysis f xs
 
-type GroupData = (ValueMap, TypeEnvironment, NameSupply)
+type GroupData = (PolyMap, TypeEnvironment, NameSupply)
 type CoreGroup = BindingGroup Expr
 
 polyvariantStrictness :: NameSupply -> CoreModule -> CoreModule
-polyvariantStrictness supply mod = mod {moduleDecls = map (setValue values') $ moduleDecls mod}
+polyvariantStrictness supply mod = mod {moduleDecls = map (setValue (annotateTypeAbstract' env supply3) values') $ moduleDecls mod}
   where
-    (supply1, supply2) = splitNameSupply supply
+    (supply1, supply') = splitNameSupply supply
+    (supply2, supply3) = splitNameSupply supply'
     -- Ignore declarations which have already been analysed
     (decls1, decls2) = partition (any isCustomAnn . declCustoms) $ moduleDecls mod
     -- Split module in functions and others (constructors, abstract, synonyms)
@@ -44,10 +45,10 @@ polyvariantStrictness supply mod = mod {moduleDecls = map (setValue values') $ m
     -- Annotate others
     others' = mapWithSupply (annotateDeclaration (typeEnvForModule mod)) supply1 others
     -- Create starting environment
-    env' = typeEnvForModule mod{moduleDecls = others' ++ decls1'}
+    env = typeEnvForModule mod{moduleDecls = others' ++ decls1'}
     -- Binding group analysis for functions
     groups = coreBindingGroups values
-    (values', _, _) = foldl groupStrictness (emptyMap, env', supply2) groups
+    (values', _, _) = foldl groupStrictness (emptyMap, env, supply2) groups
 
 groupStrictness :: GroupData -> CoreGroup -> GroupData
 -- Single declaration
@@ -116,7 +117,7 @@ analyseExpression env rel app supply (Let b e) = Analysis (Let b' e') cs (unionM
         -- Analyse body, set contexts to S
         Analysis e' c2 a2 sc2 r2 = analyseExpression env' S S supply3 e1
         -- Containment on old environment
-        as = unionMapWith join a2 $ containment env app
+        as = unionMapWith join a2 $ containment env rel
         -- Add constraint on applicativeness
         cs = S.insert (app `Constraint` app') $ S.union c1 c2
 analyseExpression env rel app supply (Match id a) = Analysis (Match id a') c ae sc r
@@ -315,12 +316,15 @@ analyseAnn _ _ = emptyMap
 -}
 
 annotateDeclaration :: TypeEnvironment -> NameSupply -> CoreDecl -> CoreDecl
-annotateDeclaration env supply decl@DeclAbstract{} = decl{declType = fst $ annotateTypeAbstract env supply (declType decl)}
-annotateDeclaration env supply decl@DeclCon{} = decl{declType = fst $ annotateTypeAbstract env supply (declType decl)}
+annotateDeclaration env supply decl@DeclAbstract{} = decl{declType = annotateTypeAbstract' env supply (declType decl)}
+annotateDeclaration env supply decl@DeclCon{} = decl{declType = annotateTypeAbstract' env supply (declType decl)}
 -- annotateDeclaration env supply decl@DeclTypeSynonym{}
 --     -- String is the only type synonym which has to be annotated because it is partly hardcoded in the type system
 --     | declName decl == idFromString "String" = decl{declType = forallify Nothing $ annotateType env supply (declType decl)}
 annotateDeclaration _ _ decl = decl -- Value is handled outside this method, others don't need anything
+
+annotateTypeAbstract' :: TypeEnvironment -> NameSupply -> Type -> Type
+annotateTypeAbstract' env supply t = forallify Nothing $ fst $ annotateTypeAbstract env supply t
 
 {-
     Transform

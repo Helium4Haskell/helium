@@ -28,11 +28,11 @@ mergeAnalysis f (x:xs) = Analysis (v:v') (S.union c c') (unionMapWith f a a') (u
         Analysis v c a sc r = x
         Analysis v' c' a' sc' r' = mergeAnalysis f xs
 
-type GroupData = (ValueMap, TypeEnvironment, NameSupply)
+type GroupData = (PolyMap, TypeEnvironment, NameSupply)
 type CoreGroup = BindingGroup Expr
 
 polyvariantStrictness :: NameSupply -> CoreModule -> CoreModule
-polyvariantStrictness supply mod = mod {moduleDecls = map (setValue values') $ moduleDecls mod}
+polyvariantStrictness supply mod = mod {moduleDecls = map (setValue (annotateTypeAbstract env) values') $ moduleDecls mod}
   where
     (supply1, supply2) = splitNameSupply supply
     -- Ignore declarations which have already been analysed
@@ -44,10 +44,10 @@ polyvariantStrictness supply mod = mod {moduleDecls = map (setValue values') $ m
     -- Annotate others
     others' = mapWithSupply (annotateDeclaration (typeEnvForModule mod)) supply1 others
     -- Create starting environment
-    env' = typeEnvForModule mod{moduleDecls = others' ++ decls1'}
+    env = typeEnvForModule mod{moduleDecls = others' ++ decls1'}
     -- Binding group analysis for functions
     groups = coreBindingGroups values
-    (values', _, _) = foldl groupStrictness (emptyMap, env', supply2) groups
+    (values', _, _) = foldl groupStrictness (emptyMap, env, supply2) groups
 
 groupStrictness :: GroupData -> CoreGroup -> GroupData
 -- Single declaration

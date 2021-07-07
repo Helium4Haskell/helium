@@ -27,7 +27,7 @@ mergeAnalysis f (x:xs) = Analysis (v:v') (S.union c c') (unionMapWith f a a') (u
         Analysis v c a r = x
         Analysis v' c' a' r' = mergeAnalysis f xs
 
-type GroupData = (Analysis (IdMap Type), TypeEnvironment, NameSupply)
+type GroupData = (MonoMap, SolvedConstraints, BindMap, TypeEnvironment, NameSupply)
 type CoreGroup = BindingGroup Expr
 
 monovariantStrictness :: NameSupply -> CoreModule -> CoreModule
@@ -43,43 +43,49 @@ monovariantStrictness supply mod = mod {moduleDecls = values''}
     -- Annotate others
     others' = mapWithSupply (annotateDeclaration (typeEnvForModule mod)) supply1 others
     -- Create starting environment
-    env' = typeEnvForModule mod{moduleDecls = others' ++ decls1'}
+    env = typeEnvForModule mod{moduleDecls = others' ++ decls1'}
     -- Binding group analysis for functions
     groups = coreBindingGroups values
-    (Analysis values' cs ae r, _, _) = foldl groupStrictness (Analysis emptyMap S.empty emptyMap emptyMap, env', supply2) groups
-    -- Solve constraints
-    sc = solveConstraints ae cs
+    (values', sc, r, _, _) = foldl groupStrictness (emptyMap, emptyMap, emptyMap, env, supply2) groups
     -- Transform declarations based on solved constraints
-    values'' = map (transformDeclaration values' sc r) $ moduleDecls mod
+    values'' = map (transformDeclaration (annotateTypeAbstract env) values' sc r) $ moduleDecls mod
 
 groupStrictness :: GroupData -> CoreGroup -> GroupData
 -- Single declaration
-groupStrictness (Analysis v cs ae r, env, supply) (BindingNonRecursive d) = (a, env', supply2)
+groupStrictness (v, sc, r, env, supply) (BindingNonRecursive d) = (v', sc'', r'', env', supply2)
   where
     (supply1, supply2) = splitNameSupply supply
     -- Analyse function
-    Analysis e cs' ae' r' = analyseDeclaration env supply1 d
+    Analysis e cs ae r' = analyseDeclaration env supply1 d
+    -- Solve constraints
+    sc' = solveConstraints ae cs
     -- Get annotated type of body
-    t = typeOfCoreExpression env e
+    t = transformType sc' $ typeOfCoreExpression env e
     -- Add strictness type to environment
     env' = typeEnvAddGlobalValue (declName d) t env
     -- Update values for next binding group
-    a = Analysis (insertMap (declName d) t v) (S.union cs cs') (unionMapWith join ae ae') (unionMap r r')
+    v' = insertMap (declName d) t v 
+    sc'' = unionMapWith join sc sc'
+    r'' = unionMap r r'
 -- Group of recursive declarations
-groupStrictness (Analysis v cs ae r, env, supply) (BindingRecursive ds) = (a, env'', supply2)
+groupStrictness (v, sc, r, env, supply) (BindingRecursive ds) = (v', sc'', r'', env'', supply2)
   where
     (supply1, supply2) = splitNameSupply supply
     -- Annotate type signatures and add them to the environment
     ts = map (annotateTypeRec env . declType) ds
     env' = typeEnvAddGlobalValues (map (\(d, t) -> (declName d, t)) (zip ds ts)) env
     -- Run analysis on all bodies, merge information with meet
-    Analysis es cs' ae' r' = mergeAnalysis meet $ mapWithSupply (analyseDeclaration env') supply1 ds
+    Analysis es cs ae r' = mergeAnalysis meet $ mapWithSupply (analyseDeclaration env') supply1 ds
+    -- Solve constraints
+    sc' = solveConstraints ae cs
     -- Get annotated types of bodies
-    ts' = map (typeOfCoreExpression env') es
+    ts' = map (transformType sc' . typeOfCoreExpression env') es
     -- Add strictness types to environment
     env'' = typeEnvAddGlobalValues (map (\(d, t) -> (declName d, t)) (zip ds ts')) env
     -- Update values for next binding group
-    a = Analysis (foldl (\v' (d, t) -> insertMap (declName d) t v') v (zip ds ts')) (S.union cs cs') (unionMapWith join ae ae') (unionMap r r')
+    v' = foldl (\v'' (d, t) -> insertMap (declName d) t v'') v (zip ds ts')
+    sc'' = unionMapWith join sc sc'
+    r'' = unionMap r r'
 
 {-
     Analyse
@@ -158,16 +164,16 @@ analyseExpression env rel app f _ (Var v)
 analyseExpression env _ _ _ _ (Lit l) = Analysis (Lit l) S.empty (getLConstraints env) emptyMap -- Set all annotation variables to L
 
 analyseBinds :: Environment -> NameSupply -> SAnn -> Binds -> Analysis Binds
-analyseBinds env supply rel (Rec bs) = Analysis (Rec bs') c a r
+analyseBinds env supply rel (Rec bs) = Analysis (Rec bs'') c a r
     where
         -- Annotate types beforehand because they occur in the body
-        bs'' = mapWithSupply (annotateBind env) supply bs
+        bs' = mapWithSupply (annotateBind env) supply bs
         -- Add binds to environment
-        env' = envAddBinds (Rec bs'') env
+        env' = envAddBinds (Rec bs') env
         -- Run analysis on every bind separately
-        xs = mapWithSupply (analyseRecBind env' rel) supply bs''
+        xs = mapWithSupply (analyseRecBind env' rel) supply bs'
         -- Merge the results with meet, as being strict in one bind is enough
-        Analysis bs' c a r = mergeAnalysis meet xs
+        Analysis bs'' c a r = mergeAnalysis meet xs
 analyseBinds env supply rel (NonRec (Bind (Variable x _) e)) = Analysis (NonRec b) cs ae r'
     where
         -- Fresh variable for relevance annotation
@@ -190,12 +196,14 @@ analyseBinds env supply rel (Strict (Bind (Variable x _) e)) = Analysis (Strict 
         b = Bind (Variable x (TAp (TAnn S) t')) e'
 
 analyseRecBind :: Environment -> SAnn -> NameSupply -> Bind -> Analysis Bind
-analyseRecBind env rel supply (Bind v e) = Analysis (Bind v e') c a r
+analyseRecBind env rel supply (Bind v e) = Analysis (Bind (Variable x (TAp (TAnn rel') t')) e') c a r
     where
         -- Get annotations from variable previously annotated
-        Variable _ (TAp (TAnn rel')  _) = v
+        Variable x (TAp (TAnn rel')  _) = v
         -- Run analysis on binding with relevance set to context
-        Analysis e' c a r = analyseExpression env (join rel rel') 0 False supply e   
+        Analysis e' c a r = analyseExpression env (join rel rel') 0 False supply e
+        -- Get type of body
+        t' = typeOfCoreExpression (typeEnv env) e'
         
 analyseAlt :: Environment -> SAnn -> Id -> NameSupply -> Alt -> Analysis Alt
 analyseAlt env rel id supply (Alt p e) = Analysis (Alt p' e') (S.union c1 c2) (unionMapWith meet a1 a2) r
@@ -289,14 +297,18 @@ annotateDeclaration _ _ decl = decl -- Value is handled outside this method, oth
 -}
 
 -- Apply strict annotations on declarations
-transformDeclaration :: IdMap Type -> SolvedConstraints -> BindMap -> CoreDecl -> CoreDecl
-transformDeclaration vs sc r decl@DeclValue{}
+transformDeclaration :: (Type -> Type) -> MonoMap -> SolvedConstraints -> BindMap -> CoreDecl -> CoreDecl
+transformDeclaration _ vs sc r decl@DeclValue{}
     | elemMap (declName decl) vs = decl{valueValue = e, declCustoms = c}
     where
         t = findMap (declName decl) vs
         e = transformExpression sc r $ valueValue decl
         c = strictnessToCustom (transformType sc t) $ declCustoms decl
-transformDeclaration _ _ _ decl = decl
+transformDeclaration f _ _ _ decl
+  | isUpdate decl = decl{declCustoms = c}
+  | otherwise     = decl
+    where
+      c = strictnessToCustom (f $ declType decl) (declCustoms decl)
 
 -- Apply strict annotations on types
 transformType :: SolvedConstraints -> Type -> Type
