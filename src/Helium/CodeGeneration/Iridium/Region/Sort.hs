@@ -7,7 +7,7 @@ module Helium.CodeGeneration.Iridium.Region.Sort
   , showSort, showSortLow, showRegionSort, sortReindex, regionSortReindex
   , sortWeaken, sortWeaken', sortStrengthen, sortStrengthen'
   , regionSortWeaken, regionSortWeaken', regionSortStrengthen, regionSortStrengthen'
-  , showRegionSortWithVariables, rnfSort, rnfRegionSort
+  , showRegionSortWithVariables, rnfSort, rnfRegionSort, flattenRegionSort
   ) where
 
 import Lvm.Core.Type
@@ -190,3 +190,10 @@ rnfRegionSort (RegionSortForall _ rs) = rnfRegionSort rs
 rnfRegionSort (RegionSortTuple regionSorts) = foldl' seq () $ map rnfRegionSort regionSorts
 rnfRegionSort RegionSortMonomorphic = ()
 rnfRegionSort (RegionSortPolymorphic _ tps) = foldl' (flip seq) () tps
+
+flattenRegionSort :: RegionSort -> [RegionSort]
+flattenRegionSort = (`go` [])
+  where
+    go :: RegionSort -> [RegionSort] -> [RegionSort]
+    go (RegionSortTuple rs) accum = foldr go accum rs
+    go r accum = r : accum

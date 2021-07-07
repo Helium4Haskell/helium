@@ -363,7 +363,7 @@ project env annotation idx = f False annotation
     f _ (AFix a1 s a2) = (False, AFix (mapInFunction (\a -> AProject a idx) s a1) s a2)
     f _ (ABottom (SortTuple sorts)) = case tryIndex sorts idx of
       Just s -> (True, ABottom s)
-      Nothing -> error "Helium.CodeGeneration.Iridium.Region.Annotation.project: Bottom: Index out of bounds"
+      Nothing -> error $ "Helium.CodeGeneration.Iridium.Region.Annotation.project: Bottom: Index out of bounds: " ++ show idx ++ " / " ++ show (length sorts)
     f _ (ATop (SortTuple sorts)) = case tryIndex sorts idx of
       Just s -> (True, ABottom s)
       Nothing -> error "Helium.CodeGeneration.Iridium.Region.Annotation.project: Top: Index out of bounds"
@@ -625,25 +625,25 @@ escapes _     regionSort forceEscape a@(ABottom _) = (forceEscape, id, a) -- Bot
 escapes _     regionSort forceEscape a@(ATop _) = (forceEscape, id, a)
 escapes arity regionSort forceEscape (ALam sort' regionSort' lifetime (ATuple (a : as))) =
   let
-    (doesEscape, substituteRegionVar, a') = skipLambdas arity 0 a
+    (doesEscape, substituteRegionVar, a') = skipLambdas arity (flattenRegionSort regionSort') 0 a
   in
     (doesEscape, substituteRegionVar, ALam sort' regionSort' lifetime $ ATuple $ a' : as)
   where
     regionSize = regionSortSize regionSort
 
-    skipLambdas :: Int -> Int -> Annotation -> ([Bool], RegionVar -> RegionVar, Annotation)
-    skipLambdas 0 _ a1 = (replicate regionSize True, id, a1)
-    skipLambdas 1 regionScope (ALam s rs lc a1) = (doesEscape, substituteRegionVar, ALam s rs lc a1')
+    skipLambdas :: Int -> [RegionSort] -> Int -> Annotation -> ([Bool], RegionVar -> RegionVar, Annotation)
+    skipLambdas 0 _ _ a1 = (replicate regionSize True, id, a1)
+    skipLambdas 1 regionScopeList regionScope (ALam s rs lc a1) = (doesEscape, substituteRegionVar, ALam s rs lc a1')
       where
-        (doesEscape, substituteRegionVar, a1') = escapesBody regionSort (regionScope + regionSortSize rs) forceEscape a1
-    skipLambdas n regionScope (AForall q a1) = (doesEscape, substituteRegionVar, AForall q a1')
+        (doesEscape, substituteRegionVar, a1') = escapesBody regionSort (flattenRegionSort rs ++ regionScopeList) (regionScope + regionSortSize rs) forceEscape a1
+    skipLambdas n regionScopeList regionScope (AForall q a1) = (doesEscape, substituteRegionVar, AForall q a1')
       where
-        (doesEscape, substituteRegionVar, a1') = skipLambdas n regionScope a1
-    skipLambdas n regionScope (ALam s rs lc (ATuple [a1, a2])) = (doesEscape, substituteRegionVar, ALam s rs lc (ATuple [a1', a2']))
+        (doesEscape, substituteRegionVar, a1') = skipLambdas n regionScopeList regionScope a1
+    skipLambdas n regionScopeList regionScope (ALam s rs lc (ATuple [a1, a2])) = (doesEscape, substituteRegionVar, ALam s rs lc (ATuple [a1', a2']))
       where
         a1' = restrict doesEscape (regionScope + regionSortSize rs) a1
-        (doesEscape, substituteRegionVar, a2') = skipLambdas (n - 1) (regionScope + regionSortSize rs) a2
-    skipLambdas _ _ _ = error "Helium.CodeGeneration.Iridium.Region.Annotation.escapes: annotation does not match with the function arity"
+        (doesEscape, substituteRegionVar, a2') = skipLambdas (n - 1) (flattenRegionSort rs ++ regionScopeList) (regionScope + regionSortSize rs) a2
+    skipLambdas _ _ _ _ = error "Helium.CodeGeneration.Iridium.Region.Annotation.escapes: annotation does not match with the function arity"
 
     restrict :: [Bool] -> Int -> Annotation -> Annotation
     restrict doesEscape regionScope annotation = case annotation of
@@ -677,17 +677,17 @@ escapes arity regionSort forceEscape (ALam sort' regionSort' lifetime (ATuple (a
 
 escapes _ regionSort _ a = (map (const True) $ flattenRegionVars $ regionSortToVars 0 regionSort, id, a) -- This cannot be analyzed
 
-escapesBody :: RegionSort -> Int -> [Bool] -> Annotation -> ([Bool], RegionVar -> RegionVar, Annotation)
-escapesBody regionSort extraRegionScope forceEscape (ATop (SortTuple [s1, s2])) = escapesBody regionSort extraRegionScope forceEscape (ATuple [ATop s1, ATop s2])
-escapesBody regionSort extraRegionScope forceEscape (ATuple
+escapesBody :: RegionSort -> [RegionSort] -> Int -> [Bool] -> Annotation -> ([Bool], RegionVar -> RegionVar, Annotation)
+escapesBody regionSort extraRegionScopeList extraRegionScope forceEscape (ATop (SortTuple [s1, s2])) = escapesBody regionSort extraRegionScopeList extraRegionScope forceEscape (ATuple [ATop s1, ATop s2])
+escapesBody regionSort extraRegionScopeList extraRegionScope forceEscape (ATuple
     [ ATop (SortFun SortUnit RegionSortMonomorphic LifetimeContextAny (SortFun SortUnit returnRegionSort LifetimeContextLocalBottom sEffect))
     , aReturn
     ])
-  = escapesBody regionSort extraRegionScope forceEscape (ATuple
+  = escapesBody regionSort extraRegionScopeList extraRegionScope forceEscape (ATuple
     [ ALam SortUnit RegionSortMonomorphic LifetimeContextAny (ALam SortUnit returnRegionSort LifetimeContextLocalBottom (ATop sEffect))
     , aReturn
     ])
-escapesBody regionSort extraRegionScope forceEscape (ATuple
+escapesBody regionSort extraRegionScopeList extraRegionScope forceEscape (ATuple
     [ ALam SortUnit RegionSortMonomorphic LifetimeContextAny (ALam SortUnit returnRegionSort LifetimeContextLocalBottom aEffect)
     , aReturn
     ])
@@ -705,7 +705,7 @@ escapesBody regionSort extraRegionScope forceEscape (ATuple
     regionSize = regionSortSize regionSort
     Escapes relation higherOrderVars = analyseEscapeBody False 0 aEffect <> analyseEscapeBody True 0 aReturn'
 
-    (_, substitutionList) = relationCollapse canCollapse canDefault (map RegionLocal [extraRegionScope' .. extraRegionScope' + regionSize - 1]) relation
+    (_, substitutionList) = relationCollapse canCollapse canDefault canUnifyWith (map RegionLocal [extraRegionScope' .. extraRegionScope' + regionSize - 1]) relation
     substitution = IntMap.fromList $ map (\(RegionVar idx, r) -> (idx, r)) substitutionList
 
     canCollapse (RegionLocal idx) = idx >= extraRegionScope' && idx < extraRegionScope' + regionSize && not (forceEscape !! (extraRegionScope' + regionSize - idx - 1))
@@ -713,6 +713,11 @@ escapesBody regionSort extraRegionScope forceEscape (ATuple
 
     canDefault (RegionLocal idx) = canCollapse (RegionLocal idx) && idx `IntSet.notMember` higherOrderVars
     canDefault _ = False
+
+    canUnifyWith (RegionLocal idx1) (RegionLocal idx2) = (!!) extraRegionScopeList' idx1 == (!!) extraRegionScopeList' idx2
+    canUnifyWith _ _ = True
+
+    extraRegionScopeList' = flattenRegionSort returnRegionSort ++ [RegionSortMonomorphic] ++ extraRegionScopeList
 
     doesEscape = map (\var -> substituteRegionVar 0 var == var) $ reverse $ map RegionLocal $ [extraRegionScope' .. extraRegionScope' + regionSize - 1]
 
@@ -745,7 +750,7 @@ escapesBody regionSort extraRegionScope forceEscape (ATuple
       -- substituted with another variable.
         = substituteRegionVar scope $ weakenRegionVar 0 scope r
     substituteRegionVar _ r = r
-escapesBody rs _ _ body = (if isBottom body || isTopApplication body then id else trace "escapesBody: unexpected body annotation") (map (const True) $ flattenRegionVars $ regionSortToVars 0 rs, id, body)
+escapesBody rs _ _ _ body = (if isBottom body || isTopApplication body then id else trace "escapesBody: unexpected body annotation") (map (const True) $ flattenRegionVars $ regionSortToVars 0 rs, id, body)
 
 analyseEscapeBody :: Bool -> Int -> Annotation -> Escapes
 analyseEscapeBody isReturn firstRegionScope annotation = case annotation of

@@ -277,8 +277,8 @@ relationCollapseBottom canCollapse vars relation = case partitionEithers $ map f
 
 -- 'canCollapse' and 'vars' should represent the same set of variables:
 --   x `elem` vars ==> canCollapse x
-relationCollapseCyclic :: (RegionVar -> Bool) -> [RegionVar] -> Relation -> ([RegionVar], Relation, [(RegionVar, RegionVar)])
-relationCollapseCyclic canCollapse vars rel = (vars', relationFilter' canCollapse unifications rel, unifications)
+relationCollapseCyclic :: (RegionVar -> Bool) -> (RegionVar -> RegionVar -> Bool) -> [RegionVar] -> Relation -> ([RegionVar], Relation, [(RegionVar, RegionVar)])
+relationCollapseCyclic canCollapse canUnifyWith vars rel = (vars', relationFilter' canCollapse unifications rel, unifications)
   where
     (unifications, vars') = partitionEithers $ map f vars
 
@@ -291,38 +291,39 @@ relationCollapseCyclic canCollapse vars rel = (vars', relationFilter' canCollaps
     -- Unify a region with a region outside of the target range,
     -- or with a region variable with a higher index.
     -- The latter assures that we don't unify x with y and y with x.
-    unify x@(RegionVar idxX) y@(RegionVar idxY) = (not (canCollapse y) || idxX < idxY) && outlives rel y x 
+    unify x@(RegionVar idxX) y@(RegionVar idxY) = (not (canCollapse y) || idxX < idxY) && outlives rel y x && canUnifyWith x y
 
 -- 'canCollapse' and 'vars' should represent the same set of variables:
 --   x `elem` vars ==> canCollapse x
-relationCollapseDirectOutlives :: (RegionVar -> Bool) -> [RegionVar] -> Relation -> (Relation, [(RegionVar, RegionVar)])
-relationCollapseDirectOutlives canCollapse vars relation = case partitionEithers $ map f vars of
+relationCollapseDirectOutlives :: (RegionVar -> Bool) -> (RegionVar -> RegionVar -> Bool) -> [RegionVar] -> Relation -> (Relation, [(RegionVar, RegionVar)])
+relationCollapseDirectOutlives canCollapse canUnifyWith vars relation = case partitionEithers $ map f vars of
   ([], _) -> (relation, []) -- Fixpoint
-  (unifications, vars') -> (unifications ++) <$> relationCollapseDirectOutlives canCollapse vars' (relationFilter' canCollapse unifications relation)
+  (unifications, vars') -> (unifications ++) <$> relationCollapseDirectOutlives canCollapse canUnifyWith vars' (relationFilter' canCollapse unifications relation)
 
   where
     f :: RegionVar -> Either (RegionVar, RegionVar) RegionVar
     f x = case find (directlyOutlives relation x) $ outlivesSet relation x of
-      Just y -> Left (x, y)
-      Nothing -> Right x
+      Just y
+        | canUnifyWith x y -> Left (x, y)
+      _ -> Right x
 
 -- 'canCollapse' and 'vars' should represent the same set of variables:
 --   canCollapse x iff x `elem` vars
 -- 'canCollapse' should be implied by 'canDefault':
 --    canDefault x => canCollapse x
-relationCollapse :: (RegionVar -> Bool) -> (RegionVar -> Bool) -> [RegionVar] -> Relation -> (Relation, [(RegionVar, RegionVar)]) -- Unifications may not be closed/idempotent, eg we need to recursively descend to find the substituted region var.
-relationCollapse canCollapse canDefault vars1 relation1 = (relation4, bottomUnifications ++ cycleUnifications ++ directOutlivesUnifications)
+relationCollapse :: (RegionVar -> Bool) -> (RegionVar -> Bool) -> (RegionVar -> RegionVar -> Bool) -> [RegionVar] -> Relation -> (Relation, [(RegionVar, RegionVar)]) -- Unifications may not be closed/idempotent, eg we need to recursively descend to find the substituted region var.
+relationCollapse canCollapse canDefault canUnifyWith vars1 relation1 = (relation4, bottomUnifications ++ cycleUnifications ++ directOutlivesUnifications)
   where
     ((vars2, relation2), bottomUnifications) = relationCollapseBottom canDefault vars1 relation1
 
-    (vars3, relation3, cycleUnifications) = relationCollapseCyclic canCollapse vars2 relation2
+    (vars3, relation3, cycleUnifications) = relationCollapseCyclic canCollapse canUnifyWith vars2 relation2
 
     vars4 = filter canDefaultAfterUnifications vars3
     -- We cannot perform defaulting of regions which have been unified with a variable which cannot be defaulted.
     canDefaultAfterUnifications :: RegionVar -> Bool
     canDefaultAfterUnifications x = canDefault x && not (any (\(y, z) -> x == z && not (canDefaultAfterUnifications y)) cycleUnifications)
 
-    (relation4, directOutlivesUnifications) = relationCollapseDirectOutlives canDefault vars4 relation3
+    (relation4, directOutlivesUnifications) = relationCollapseDirectOutlives canDefault canUnifyWith vars4 relation3
 
 
 instance Semigroup Relation where
