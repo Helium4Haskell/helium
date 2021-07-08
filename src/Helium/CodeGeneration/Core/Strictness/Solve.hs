@@ -42,8 +42,9 @@ handleAnn nodeFromVertex sc v = foldr f sc es
         f (AnnVar x) y = case lookupMap x y of
             Nothing -> insertMap x n y
             Just z  -> updateMap x (join n z) y
-        -- TODO: what if constraint was not put on variable?
-        f x y = y
+        f S y = y
+        f L y = y
+        f a _ = error $ "Annotation in solving is not a constant: " ++ show a ++ " -> " ++ show (nodeFromVertex v)
 
 -- Handle a single variable, replacing its occurences with its value
 handleId :: (Vertex -> Node Id) -> Vertex -> SolvedConstraints -> SolvedConstraints

@@ -13,7 +13,6 @@ import Lvm.Core.Type
 
 import Text.PrettyPrint.Leijen (pretty)
 
-
 type BindMap = IdMap SAnn
 type PolyMap = IdMap (Expr, Type)
 type MonoMap = IdMap Type
@@ -161,3 +160,6 @@ isUpdate :: CoreDecl -> Bool
 isUpdate decl@DeclAbstract{} = not $ any isCustomAnn (declCustoms decl)
 isUpdate decl@DeclCon{} = not $ any isCustomAnn (declCustoms decl)
 isUpdate _ = False
+
+normalTypeOfCoreExpression :: TypeEnvironment -> Expr -> Type
+normalTypeOfCoreExpression env e = typeNormalizeHead env $ typeOfCoreExpression env e 

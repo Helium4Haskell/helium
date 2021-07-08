@@ -39,17 +39,16 @@ envAddPattern p env = envAddVariables x env
 relEnvAddVariable :: Variable -> RelevanceEnvironment -> RelevanceEnvironment
 relEnvAddVariable (Variable x (TAp (TAnn a) _)) = insertMap x a
 
-getVariablesType :: Bool -> Type -> IdSet
-getVariablesType b (TAp (TAp (TCon TConFun) (TAp (TAnn a) t1)) t2) = unionSets [i1, i2, i3]
+getVariablesType :: Type -> IdSet
+getVariablesType (TAp (TAp (TCon TConFun) (TAp (TAnn a) t1)) t2) = unionSets [i1, i2, i3]
   where
-    i1 = getVariablesType b t1
-    i2 = getVariablesType b t2
+    i1 = getVariablesType t1
+    i2 = getVariablesType t2
     i3 = setFromList $ getVariablesAnn a
-getVariablesType b (TAp t1 t2) = if b then unionSet (getVariablesType b t1) (getVariablesType b t2) else emptySet
-getVariablesType b (TStrict t) = getVariablesType b t
-getVariablesType b (TForall _ _ t) = getVariablesType b t
-getVariablesType True (TAnn a) = setFromList $ getVariablesAnn a
-getVariablesType _ _ = emptySet
+getVariablesType (TAp t1 t2) = unionSet (getVariablesType t1) (getVariablesType t2)
+getVariablesType (TStrict t) = getVariablesType t
+getVariablesType (TForall _ _ t) = getVariablesType t
+getVariablesType _ = emptySet
 
 getAnnotationsType :: Type -> IdSet
 getAnnotationsType (TAp (TAp (TCon TConFun) (TAp (TAnn _) t1)) t2) = unionSet i1 i2
@@ -67,7 +66,7 @@ forallify :: Maybe IdSet -> Type -> Type
 forallify is (TAp (TAnn a) t) = TAp (TAnn a) $ forallify is t
 forallify is t = foldr (\a t' -> TForall (Quantor (Just $ stringFromId a)) KAnn t') (typeRemoveStrictnessQuantification t) anns
   where
-    anns = listFromSet $ maybe (getVariablesType False t) (intersectionSet (getVariablesType False t)) is
+    anns = listFromSet $ maybe (getVariablesType t) (intersectionSet (getVariablesType t)) is
 
 -- Get relevance and applicative annotations of var, set them equal to contexts
 getAnnotations :: Environment -> SAnn -> Id -> AnnotationEnvironment
@@ -103,16 +102,16 @@ annotateType env supply t
 annotateType env supply t@(TForall _ KAnn _) = annotateType env supply' t'
     -- Starts with strictness quantification, instantiate with fresh variable
     where
-        (id, supply') = freshId supply
-        (t', _) = annApplyList' t (AnnVar id) [] env
+        (i, supply') = freshId supply
+        (t', _) = annApplyList' t (AnnVar i) [] env
 annotateType env supply (TAp (TAp (TCon TConFun) t1) t2) = TAp (TAp (TCon TConFun) t1') t2'
     -- Function, place an annotation on the second argument (printed on the arrow)
     where
-        (id, supply') = freshId supply
+        (i, supply') = freshId supply
         (supply1, supply2) = splitNameSupply supply'
         t1' = case t1 of
           TStrict _ -> TAp (TAnn S) $ annotateType env supply1 t1
-          _         -> TAp (TAnn $ AnnVar id) $ annotateType env supply1 t1
+          _         -> TAp (TAnn $ AnnVar i) $ annotateType env supply1 t1
         t2' = annotateType env supply2 t2
 -- annotateType env supply (TAp t1 (TAp (TAnn a) t2)) = TAp t1' (TAp (TAnn a) t2')
 --     -- Already annotated, no need to annotate again
@@ -125,13 +124,13 @@ annotateType env supply (TAp t1 t2)
   | otherwise = TAp t1' t2'
     -- Annotate applications to datatypes
     where
-        (id, supply') = freshId supply
+        (i, supply') = freshId supply
         (supply1, supply2) = splitNameSupply supply'
         t1' = annotateType env supply1 t1
         t2' = annotateType env supply2 t2
         t2a = case t2 of
           TStrict _ -> TAp (TAnn S) t2'
-          _         -> TAp (TAnn $ AnnVar id) t2'
+          _         -> TAp (TAnn $ AnnVar i) t2'
 annotateType env supply (TForall q k t) = TForall q k $ annotateType env supply t -- Non-strictness forall needs to stay
 annotateType env supply (TStrict t) = TStrict $ annotateType env supply t
 annotateType _ _ t = t
@@ -168,15 +167,15 @@ annotateBind :: Environment -> NameSupply -> Bind -> Bind
 annotateBind env supply (Bind (Variable x t) e) = Bind (Variable x t') e
   where
     -- Fresh variable for relevance annotation
-    (id, _) = freshId supply
+    (i, _) = freshId supply
     -- Annotate inner type
-    t' = TAp (TAnn (AnnVar id)) $ annotateTypeRec (typeEnv env) t
+    t' = TAp (TAnn (AnnVar i)) $ annotateTypeRec (typeEnv env) t
 
 annotateVarType :: Environment -> NameSupply -> Type -> Type
-annotateVarType env supply t = TAp (TAnn (AnnVar id)) t'
+annotateVarType env supply t = TAp (TAnn (AnnVar i)) t'
   where
     -- Fresh variable for relevance annotation
-    (id, supply') = freshId supply
+    (i, supply') = freshId supply
     -- Annotate inner type
     t' = annotateType (typeEnv env) supply' t
 

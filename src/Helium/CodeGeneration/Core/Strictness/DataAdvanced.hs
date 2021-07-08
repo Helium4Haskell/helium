@@ -44,17 +44,16 @@ relEnvAddVariable (Variable x (TAp (TAnn _) (TAp (TAnn r) (TAp (TAnn _) _)))) = 
 appEnvAddVariable :: Variable -> ApplicativenessEnvironment -> ApplicativenessEnvironment
 appEnvAddVariable (Variable x (TAp (TAnn a) (TAp (TAnn _) (TAp (TAnn _) _)))) = insertMap x a
 
-getVariablesType :: Bool -> Type -> IdSet
-getVariablesType b (TAp (TAp (TCon TConFun) (TAp (TAnn a1) (TAp (TAnn r) (TAp (TAnn a2) t1)))) t2) = unionSets [i1, i2, i3]
+getVariablesType :: Type -> IdSet
+getVariablesType (TAp (TAp (TCon TConFun) (TAp (TAnn a1) (TAp (TAnn r) (TAp (TAnn a2) t1)))) t2) = unionSets [i1, i2, i3]
   where
-    i1 = getVariablesType b t1
-    i2 = getVariablesType b t2
+    i1 = getVariablesType t1
+    i2 = getVariablesType t2
     i3 = setFromList (concatMap getVariablesAnn [a1, r, a2])
-getVariablesType b (TAp t1 t2) = if b then unionSet (getVariablesType b t1) (getVariablesType b t2) else emptySet
-getVariablesType b (TStrict t) = getVariablesType b t
-getVariablesType b (TForall _ _ t) = getVariablesType b t
-getVariablesType True (TAnn a) = setFromList $ getVariablesAnn a
-getVariablesType _ _ = emptySet
+getVariablesType (TAp t1 t2) = unionSet (getVariablesType t1) (getVariablesType t2)
+getVariablesType (TStrict t) = getVariablesType t
+getVariablesType (TForall _ _ t) = getVariablesType t
+getVariablesType _ = emptySet
 
 getAnnotationsType :: Type -> IdSet
 getAnnotationsType (TAp (TAp (TCon TConFun) (TAp (TAnn _) (TAp (TAnn _) (TAp (TAnn _) t1)))) t2) = unionSet i1 i2
@@ -72,7 +71,7 @@ forallify :: Maybe IdSet -> Type -> Type
 forallify is (TAp (TAnn a) t) = TAp (TAnn a) $ forallify is t
 forallify is t = foldr (\a t' -> TForall (Quantor (Just $ stringFromId a)) KAnn t') (typeRemoveStrictnessQuantification t) anns
   where
-    anns = listFromSet $ maybe (getVariablesType False t) (intersectionSet (getVariablesType False t)) is
+    anns = listFromSet $ maybe (getVariablesType t) (intersectionSet (getVariablesType t)) is
 
 -- Get relevance and applicative annotations of var, set them equal to contexts
 getAnnotations :: Environment -> SAnn -> SAnn -> Id -> AnnotationEnvironment
@@ -110,8 +109,8 @@ annotateType env supply t
 annotateType env supply t@(TForall _ KAnn _) = annotateType env supply' t'
     -- Starts with strictness quantification, instantiate with fresh variable
     where
-        (id, supply') = freshId supply
-        (t', _) = annApplyList' t (AnnVar id) [] env
+        (i, supply') = freshId supply
+        (t', _) = annApplyList' t (AnnVar i) [] env
 annotateType env supply (TAp (TAp (TCon TConFun) t1) t2) = TAp (TAp (TCon TConFun) t1a) t2'
     -- Function, place three annotations on the second argument (printed on the arrow)
     where
@@ -154,8 +153,8 @@ annotateTypeAbstract env supply t
 annotateTypeAbstract env supply (TAp (TAp (TCon TConFun) t1) t2) = (TAp (TAp (TCon TConFun) t1a) t2', a')
     -- Function, place an annotation on the second argument (printed on the arrow)
     where
-        (id, supply') = freshId supply
-        ann = AnnVar id
+        (i, supply') = freshId supply
+        ann = AnnVar i
         (supply1, supply2) = splitNameSupply supply'
         (t1', _) = annotateTypeAbstract env supply1 t1
         (t2', a) = annotateTypeAbstract env supply2 t2
