@@ -82,10 +82,10 @@ collectEmptyRegsInstr instr =
     case instr of
         NewRegion reg (Just 0) next -> reg : collectEmptyRegsInstr next
         NewRegion reg _        next -> collectEmptyRegsInstr next
-        Let         a b        next -> collectEmptyRegsInstr next
-        LetAlloc      a        next -> collectEmptyRegsInstr next
-        Match   a b c d        next -> collectEmptyRegsInstr next
-        ReleaseRegion a        next -> collectEmptyRegsInstr next
+        Let         _ _        next -> collectEmptyRegsInstr next
+        LetAlloc      _        next -> collectEmptyRegsInstr next
+        Match   _ _ _ _        next -> collectEmptyRegsInstr next
+        ReleaseRegion _        next -> collectEmptyRegsInstr next
         _                    -> []
 
 ----------------------------------------------------------------

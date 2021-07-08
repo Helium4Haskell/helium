@@ -61,17 +61,19 @@ deBruinSize = (*) 2 . length . rights
 type Pass = Int
 analyseMethods :: Pass ->  GlobalEnv -> [(Id,Method)] -> (Annotation, [Effect])
 analyseMethods pass gEnv methods =
-    let (gEnv',_) = case pass of
-                      0 -> foldl' makeFixVar (gEnv,0) methods
-                      _ -> (gEnv,0)
-        (anns, effects, sorts) = unzip3 $ analyseMethod gEnv' <$> methods
+    let (anns, effects, sorts) = unzip3 $ (\m -> analyseMethod (makeGEnv m) m) <$> methods
     in case pass of 
           0 -> (annRemLocalRegs $ AFix sorts anns, effects)
           _ -> (ATuple anns, effects)
-  where makeFixVar (env, i) (methodName, (Method _ _ args _ _ _ _ _)) =
-              let fixIdx = mutaulRecursionFixIdx (deBruinSize args)
-                  env'   = updateGlobal methodName (AProj i $ AVar fixIdx) env
-              in (env', i+1)
+  where {- Replace the mutually recurcive positions in GEnv 
+            with a debruijn index of the recursive fixpoint -}
+        makeGEnv (_, method) = 
+            let mutRecIdx = mutaulRecursionFixIdx (deBruinSize $ methodArguments method)
+            in case pass of
+                 0 -> fst $ foldl' (makeFixVar mutRecIdx) (gEnv,0) methods
+                 _ -> gEnv
+        makeFixVar fixIdx (env, i) (methodName, _) =
+            (updateGlobal methodName (AProj i $ AVar fixIdx) env, i+1)
 
 -- | Analyse the effect and annotation of a method
 analyseMethod :: GlobalEnv -> (Id, Method) -> (Annotation, Effect, Sort)
@@ -354,8 +356,8 @@ thunkApplyArg :: TypeEnvironment -> LocalEnv
               -> Annotation        -- ^ Function 
               -> Either Type Local -- ^ Argument
               -> (Annotation,Effect)
-thunkApplyArg tEnv _    _    fAnn (Left ty    ) = (AInstn fAnn $ typeNormalize tEnv ty, botEffect) 
-thunkApplyArg _    lEnv rReg fAnn (Right local) = liftTuple $ AApl (AApl fAnn $ lookupLocalAnn local lEnv) rReg
+thunkApplyArg tEnv _    _    fAnn (Left ty    ) = (AInstn fAnn $ typeNormalize tEnv ty, botEffect)
+thunkApplyArg _    lEnv rReg fAnn (Right local) = liftTuple $ AApl (AApl fAnn $ lookupLocalAnn local lEnv) rReg --`rsInfo` ("Local: " ++ (show local) ++ "\n" ++ (show $ lookupLocalAnn local lEnv))
 
 -- | Apply a list of arguments to a funtion
 thunkApplyArgs :: Envs 

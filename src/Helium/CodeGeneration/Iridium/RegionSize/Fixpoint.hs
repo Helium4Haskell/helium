@@ -46,7 +46,7 @@ solveFixpoint dEnv sorts fixes =
           fixIterate :: Int -> Annotation -> Annotation -> [Annotation]
           fixIterate n  state fs | n >= max_iterations = unsafePerformIO $ do 
                                                             if isFix
-                                                            then appendFile "C:\\Users\\hanno\\Desktop\\fixpoints.csv" "0\n"
+                                                            then appendFile "C:\\Users\\hpottens\\Desktop\\fixpoints.csv" "0\n"
                                                             else return ()
                                                             return $ mapWithIndex (\ i _ -> AProj i $ ATop s c) fixes 
                                  | otherwise =
@@ -54,7 +54,7 @@ solveFixpoint dEnv sorts fixes =
               in if res == state
                  then unsafePerformIO $ do 
                         if isFix
-                        then appendFile "C:\\Users\\hanno\\Desktop\\fixpoints.csv" "1\n"
+                        then appendFile "C:\\Users\\hpottens\\Desktop\\fixpoints.csv" "1\n"
                         else return ()
                         return $ unsafeUnliftTuple res
                  else fixIterate (n+1) res fs 

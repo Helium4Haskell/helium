@@ -181,6 +181,8 @@ checkArgSort (SortTuple as) (SortTuple bs) =
     in sameLength && recurse
 -- Allow application of monovariant region to polyvariant region
 checkArgSort (SortPolyRegion _ _) SortMonoRegion = True
+-- Allow application of monovariant region to polyvariant region
+checkArgSort (SortUnit)           SortMonoRegion = True
 -- Allow application of a unit to a quantified unit
 checkArgSort (SortQuant a')       SortUnit       = checkArgSort a' SortUnit
 checkArgSort a b = a == b 

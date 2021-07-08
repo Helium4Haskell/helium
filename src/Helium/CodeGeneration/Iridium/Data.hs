@@ -125,8 +125,13 @@ methodAdditionRegions (Method _ aRegs _ _ _ _ _ _) = aRegs
 methodSourceType :: Method -> Type
 methodSourceType (Method tp _ _ _ _ _ _ _) = tp
 
+-- The number of non-type variable argument of the method.
 methodArity :: Method -> Int
-methodArity (Method _ _ args _ _ _ _ _) = length $ filter isRight args
+methodArity = length . filter isRight . methodArguments
+
+-- The arguments of a method
+methodArguments :: Method -> [Either Quantor Local]
+methodArguments (Method _ _ args _ _ _ _ _) = args
 
 -- Add an annotation to a method
 methodAddAnnotation :: MethodAnnotation -> Method -> Method

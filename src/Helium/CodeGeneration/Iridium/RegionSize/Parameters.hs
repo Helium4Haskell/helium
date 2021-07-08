@@ -32,10 +32,10 @@ stopOnTarget = True
 
 -- Sorting of annotations
 sortDerived,sortSimplified,sortFixpoint,sortWithLocals,checkSortsEq :: Bool
-sortDerived     = True && debug
+sortDerived     = False && debug
 sortSimplified  = True && debug
 sortFixpoint    = True && debug
-checkSortsEq    = True && debug
+checkSortsEq    = False && debug
 sortWithLocals  = True && debug
 
 -- Printing of annotations/sorts
