@@ -73,7 +73,7 @@ analyseMethods pass gEnv methods =
                 mutRecIdx = if methodArity method == 0 then idx + 2 else idx 
             in case pass of
                  0 -> fst $ foldl' (makeFixVar mutRecIdx) (gEnv,0) methods
-                 _ -> gEnv `rsInfo` ("Methodname: " ++ (show methodName) ++ "\nMutrecidx: " ++ show mutRecIdx)
+                 _ -> gEnv
         makeFixVar fixIdx (env, i) (methodName, _) =
             (updateGlobal methodName (AProj i $ AVar fixIdx) env, i+1)
 
@@ -90,7 +90,7 @@ analyseMethod gEnv@(GlobalEnv tEnv _ dEnv) (methodName, method@(Method _ aRegs a
         !localFix = AProj 0 . AFix (bSrts ++ lSrts) $ bAnns ++ lAnns 
         !fAnn = wrapBody gEnv rType args localFix
 
-        !(annotation, effect) = fixZeroArity method $ ALam (regionVarsToSort aRegs) fAnn `rsInfo` ("Method:" ++ show methodName ++ "\nArity:" ++ show (length $ rights args))
+        !(annotation, effect) = fixZeroArity method $ ALam (regionVarsToSort aRegs) fAnn
     in ( annotation 
        , effect 
        , methodSortAssign tEnv dEnv method) 
@@ -359,7 +359,7 @@ thunkApplyArg :: TypeEnvironment -> LocalEnv
               -> Either Type Local -- ^ Argument
               -> (Annotation,Effect)
 thunkApplyArg tEnv _    _    fAnn (Left ty    ) = (AInstn fAnn $ typeNormalize tEnv ty, botEffect)
-thunkApplyArg _    lEnv rReg fAnn (Right local) = liftTuple $ AApl (AApl fAnn $ lookupLocalAnn local lEnv) rReg --`rsInfo` ("Local: " ++ (show local) ++ "\n" ++ (show $ lookupLocalAnn local lEnv))
+thunkApplyArg _    lEnv rReg fAnn (Right local) = liftTuple $ AApl (AApl fAnn $ lookupLocalAnn local lEnv) rReg
 
 -- | Apply a list of arguments to a funtion
 thunkApplyArgs :: Envs 
