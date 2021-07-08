@@ -625,7 +625,7 @@ escapes _     regionSort forceEscape a@(ABottom _) = (forceEscape, id, a) -- Bot
 escapes _     regionSort forceEscape a@(ATop _) = (forceEscape, id, a)
 escapes arity regionSort forceEscape (ALam sort' regionSort' lifetime (ATuple (a : as))) =
   let
-    (doesEscape, substituteRegionVar, a') = skipLambdas arity (flattenRegionSort regionSort') 0 a
+    (doesEscape, substituteRegionVar, a') = skipLambdas arity (reverse $ flattenRegionSort regionSort') 0 a
   in
     (doesEscape, substituteRegionVar, ALam sort' regionSort' lifetime $ ATuple $ a' : as)
   where
@@ -635,14 +635,14 @@ escapes arity regionSort forceEscape (ALam sort' regionSort' lifetime (ATuple (a
     skipLambdas 0 _ _ a1 = (replicate regionSize True, id, a1)
     skipLambdas 1 regionScopeList regionScope (ALam s rs lc a1) = (doesEscape, substituteRegionVar, ALam s rs lc a1')
       where
-        (doesEscape, substituteRegionVar, a1') = escapesBody regionSort (flattenRegionSort rs ++ regionScopeList) (regionScope + regionSortSize rs) forceEscape a1
+        (doesEscape, substituteRegionVar, a1') = escapesBody regionSort (reverse (flattenRegionSort rs) ++ regionScopeList) (regionScope + regionSortSize rs) forceEscape a1
     skipLambdas n regionScopeList regionScope (AForall q a1) = (doesEscape, substituteRegionVar, AForall q a1')
       where
         (doesEscape, substituteRegionVar, a1') = skipLambdas n regionScopeList regionScope a1
     skipLambdas n regionScopeList regionScope (ALam s rs lc (ATuple [a1, a2])) = (doesEscape, substituteRegionVar, ALam s rs lc (ATuple [a1', a2']))
       where
         a1' = restrict doesEscape (regionScope + regionSortSize rs) a1
-        (doesEscape, substituteRegionVar, a2') = skipLambdas (n - 1) (flattenRegionSort rs ++ regionScopeList) (regionScope + regionSortSize rs) a2
+        (doesEscape, substituteRegionVar, a2') = skipLambdas (n - 1) (reverse (flattenRegionSort rs) ++ regionScopeList) (regionScope + regionSortSize rs) a2
     skipLambdas _ _ _ _ = error "Helium.CodeGeneration.Iridium.Region.Annotation.escapes: annotation does not match with the function arity"
 
     restrict :: [Bool] -> Int -> Annotation -> Annotation
@@ -714,10 +714,10 @@ escapesBody regionSort extraRegionScopeList extraRegionScope forceEscape (ATuple
     canDefault (RegionLocal idx) = canCollapse (RegionLocal idx) && idx `IntSet.notMember` higherOrderVars
     canDefault _ = False
 
-    canUnifyWith (RegionLocal idx1) (RegionLocal idx2) = (!!) extraRegionScopeList' idx1 == (!!) extraRegionScopeList' idx2
+    canUnifyWith (RegionLocal idx1) (RegionLocal idx2) = extraRegionScopeList' !! idx1 == extraRegionScopeList' !! idx2
     canUnifyWith _ _ = True
 
-    extraRegionScopeList' = flattenRegionSort returnRegionSort ++ [RegionSortMonomorphic] ++ extraRegionScopeList
+    extraRegionScopeList' = reverse (flattenRegionSort returnRegionSort) ++ [RegionSortMonomorphic] ++ extraRegionScopeList
 
     doesEscape = map (\var -> substituteRegionVar 0 var == var) $ reverse $ map RegionLocal $ [extraRegionScope' .. extraRegionScope' + regionSize - 1]
 
