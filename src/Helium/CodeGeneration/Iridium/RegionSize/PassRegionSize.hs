@@ -261,7 +261,8 @@ printAnnotation :: Bool       -- ^ Debug flag (sort yes/no)
                 -> IO ()
 printAnnotation False _ _ = return ()
 printAnnotation True name ann = 
-  do putStrLn $ "\n# " ++ name ++ ": " 
+  do appendFile "C:\\Users\\hpottens\\Desktop\\target.txt" ("\n# " ++ name ++ ":\n" ++ (show ann) ++ "\n\n\n")
+     putStrLn $ "\n# " ++ name ++ ": " 
      print ann 
 
 -- | Print out the derive datatypes sorts and annotations

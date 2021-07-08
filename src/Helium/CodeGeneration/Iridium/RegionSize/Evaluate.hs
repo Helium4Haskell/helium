@@ -85,7 +85,6 @@ instantiate _ a t = AInstn a t
 -- | Only project if subannotation has been evaluated to a tuple
 project :: DataTypeEnv -> Annotation -> Int -> Annotation -> Annotation 
 project _    tmp idx (ATuple as) | length as > idx = as !! idx
-                                 | length as == 0  = AUnit
                                  | otherwise       = rsError $ "Projection-index out of bounds"
                                                             ++ "\n  Idx: " ++ show idx 
                                                             ++ "\n  Annotation: " ++ (deSymbol $ show $ ATuple as) 

@@ -67,17 +67,19 @@ analyseMethods pass gEnv methods =
           _ -> (ATuple anns, effects)
   where {- Replace the mutually recurcive positions in GEnv 
             with a debruijn index of the recursive fixpoint -}
-        makeGEnv (_, method) = 
-            let mutRecIdx = mutaulRecursionFixIdx (deBruinSize $ methodArguments method)
+        makeGEnv (methodName, method) = 
+            let idx = mutaulRecursionFixIdx (deBruinSize $ methodArguments method)
+                -- Account for two extra lambdas in the case of zero arity functions
+                mutRecIdx = if methodArity method == 0 then idx + 2 else idx 
             in case pass of
                  0 -> fst $ foldl' (makeFixVar mutRecIdx) (gEnv,0) methods
-                 _ -> gEnv
+                 _ -> gEnv `rsInfo` ("Methodname: " ++ (show methodName) ++ "\nMutrecidx: " ++ show mutRecIdx)
         makeFixVar fixIdx (env, i) (methodName, _) =
             (updateGlobal methodName (AProj i $ AVar fixIdx) env, i+1)
 
 -- | Analyse the effect and annotation of a method
 analyseMethod :: GlobalEnv -> (Id, Method) -> (Annotation, Effect, Sort)
-analyseMethod gEnv@(GlobalEnv tEnv _ dEnv) (_, method@(Method _ aRegs args rType rRegs _ fstBlock otherBlocks)) =
+analyseMethod gEnv@(GlobalEnv tEnv _ dEnv) (methodName, method@(Method _ aRegs args rType rRegs _ fstBlock otherBlocks)) =
     let !rEnv      = regEnvFromArgs (deBruinSize args) aRegs rRegs
         !(lEnv,lAnns,lSrts)  = analyseLocals gEnv rEnv method
         !envs      = (Envs gEnv rEnv lEnv)
@@ -88,7 +90,7 @@ analyseMethod gEnv@(GlobalEnv tEnv _ dEnv) (_, method@(Method _ aRegs args rType
         !localFix = AProj 0 . AFix (bSrts ++ lSrts) $ bAnns ++ lAnns 
         !fAnn = wrapBody gEnv rType args localFix
 
-        !(annotation, effect) = fixZeroArity method $ ALam (regionVarsToSort aRegs) fAnn 
+        !(annotation, effect) = fixZeroArity method $ ALam (regionVarsToSort aRegs) fAnn `rsInfo` ("Method:" ++ show methodName ++ "\nArity:" ++ show (length $ rights args))
     in ( annotation 
        , effect 
        , methodSortAssign tEnv dEnv method) 
