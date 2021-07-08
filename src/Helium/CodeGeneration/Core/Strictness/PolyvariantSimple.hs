@@ -116,12 +116,12 @@ analyseExpression env rel _ _ supply (Let b e) = Analysis (Let b' e') (S.union c
         -- Analyse body, set contexts to S
         Analysis e' c2 a2 sc2 r2 = analyseExpression env' S 0 False supply3 e1
         -- Containment on old environment
-        as = unionMapWith join a2 $ containment env rel
+        as = containment env rel a2
 analyseExpression env rel _ _ supply (Match i a) = Analysis (Match i a') c ae sc r
     where
         -- Merge with join as strictness has to occur in every case
         Analysis a' c ae sc r = mergeAnalysis join $ mapWithSupply (analyseAlt env rel i) supply a
-analyseExpression env rel app _ supply (Ap e1 e2) = Analysis (Ap e1' e2') (S.unions [c1, c2, c3]) (unionMapsWith meet [ae1, ae2, ae3]) (unionMap sc1 sc2) (unionMap r1 r2)
+analyseExpression env rel app _ supply (Ap e1 e2) = Analysis (Ap e1' e2') (S.unions [c1, c2, c3]) (unionMapsWith meet [ae1, ae2, ae3']) (unionMap sc1 sc2) (unionMap r1 r2)
     where
         (supply1, supply2) = splitNameSupply supply
         -- Analyse function, with applicative context set to relevance
@@ -134,6 +134,8 @@ analyseExpression env rel app _ supply (Ap e1 e2) = Analysis (Ap e1' e2') (S.uni
         Analysis e2' c2 ae2 sc2 r2 = analyseExpression env (join rel r) (arityFromType t - app - 1) False supply2 e2
         -- Annotation unifications between the function and the given argument
         (ae3, c3) = analyseType env t' $ normalTypeOfCoreExpression (typeEnv env) e2'
+        -- Containment for datatype annotations
+        ae3' = mapMap (join rel) ae3
 analyseExpression env rel app f supply (ApType e t) = Analysis (ApType e' t') c a sc r
     where
         (supply1, supply2) = splitNameSupply supply
@@ -156,7 +158,7 @@ analyseExpression env rel _ _ supply (Lam s (Variable x t) e) = Analysis (Lam s 
         -- Analyse expression, set relevance to S and context to 0
         Analysis e' c a sc r = analyseExpression env' S 0 False supply2 e
         -- Containment on old environment
-        a' = unionMapWith join a $ containment env rel
+        a' = containment env rel a
         -- If not strict, add variable to map which might turn to strict
         r' = if s then r else insertMap x (AnnVar i) r
 analyseExpression env rel app f supply (Forall q k e) = Analysis (Forall q k e') c a sc r
@@ -230,11 +232,13 @@ analyseRecBind env rel supply (Bind v e) = (Analysis (Bind (Variable x (TAp (TAn
         t = normalTypeOfCoreExpression (typeEnv env) e'
         
 analyseAlt :: Environment -> SAnn -> Id -> NameSupply -> Alt -> Analysis Alt
-analyseAlt env rel i supply (Alt p e) = Analysis (Alt p' e') (S.union c1 c2) (unionMapWith meet a1 a2) sc r
+analyseAlt env rel i supply (Alt p e) = Analysis (Alt p' e') (S.union c1 c2) (unionMapWith meet a1' a2) sc r
     where
         (supply1, supply2) = splitNameSupply supply
         -- Analyse the pattern
         Analysis p' c1 a1 _ _ = analysePat env i supply1 p
+        -- Containment for datatype annotations
+        a1' = mapMap (join rel) a1
         -- Add pattern to environment
         env' = envAddPattern p' env
         -- Run analysis 
@@ -298,11 +302,6 @@ analyseType env (TStrict t1) t2 = analyseType env t1 t2
 analyseType env t1 (TStrict t2) = analyseType env t1 t2 -- Remove all strict type information
 analyseType _ (TVar _) (TVar _) = (emptyMap, S.empty) -- Lift has a bug which might distort type variables, exact index doesn't matter
 analyseType _ t1 t2 = error $ "analyseType: type mismatch: " ++ show (pretty t1) ++ " and " ++ show (pretty t2)
-
-analyseAnn :: SAnn -> SAnn -> AnnotationEnvironment
-analyseAnn (AnnVar x) y = singleMap x y
-analyseAnn x (AnnVar y) = singleMap y x
-analyseAnn _ _ = emptyMap
 
 {-
     Annotate

@@ -106,19 +106,6 @@ replaceVar sc (Meet x y) = meet (replaceVar sc x) (replaceVar sc y)
 replaceVar sc (Join x y) = join (replaceVar sc x) (replaceVar sc y)
 replaceVar _  x          = x
 
--- Switch back original and annotated type, or remove annotations
-resetDeclaration :: CoreDecl -> CoreDecl
-resetDeclaration decl = resetDeclaration' decl
-  where
-      t = typeRemoveAnnotations $ declType decl
-      c = strictnessToCustom (declType decl) (declCustoms decl)
-      resetDeclaration' :: CoreDecl -> CoreDecl
-      resetDeclaration' DeclValue{}       = decl{declType = t, declCustoms = c}
-      resetDeclaration' DeclAbstract{}    = decl{declType = t, declCustoms = c}
-      resetDeclaration' DeclCon{}         = decl{declType = t}
-      resetDeclaration' DeclTypeSynonym{} = decl{declType = t}
-      resetDeclaration' _                 = decl
-
 setStrictnessType :: CoreDecl -> CoreDecl
 setStrictnessType decl = decl{declType = t}
   where
@@ -126,10 +113,6 @@ setStrictnessType decl = decl{declType = t}
 
 strictnessToCustom :: Type -> [Custom] -> [Custom]
 strictnessToCustom t c = CustomDecl (DeclKindCustom (idFromString "strictness")) [CustomType t] : c
-
-removeAnn :: [Type] -> [Type]
-removeAnn (TAnn _:xs) = removeAnn xs
-removeAnn x = x
 
 -- Lookup annotation of variables
 lookupVar :: SAnn -> SolvedConstraints -> SAnn
@@ -163,3 +146,8 @@ isUpdate _ = False
 
 normalTypeOfCoreExpression :: TypeEnvironment -> Expr -> Type
 normalTypeOfCoreExpression env e = typeNormalizeHead env $ typeOfCoreExpression env e 
+
+analyseAnn :: SAnn -> SAnn -> AnnotationEnvironment
+analyseAnn (AnnVar x) y = singleMap x y
+analyseAnn x (AnnVar y) = singleMap y x
+analyseAnn _ _ = emptyMap

@@ -93,8 +93,8 @@ getAnnotationVariablesEnv env = f (relEnv env) ++ f (appEnv env) ++ g
     g = listFromSet $ unionSets $ map snd $ listFromMap $ mapMap getAnnotationsType $ typeEnvLocalValues $ typeEnv env
 
 -- Containment
-containment :: Environment -> SAnn -> AnnotationEnvironment
-containment env con = mapFromList $ map (\x -> (x, con)) (getAnnotationVariablesEnv env)
+containment :: Environment -> SAnn -> AnnotationEnvironment -> AnnotationEnvironment
+containment env con ae = unionMapWith join ae $ mapFromList $ map (\x -> (x, con)) $ getAnnotationVariablesEnv env
 
 {-
     Annotate
