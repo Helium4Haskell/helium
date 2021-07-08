@@ -67,7 +67,7 @@ analyseMethods pass gEnv methods =
           _ -> (ATuple anns, effects)
   where {- Replace the mutually recurcive positions in GEnv 
             with a debruijn index of the recursive fixpoint -}
-        makeGEnv (methodName, method) = 
+        makeGEnv (_, method) = 
             let idx = mutaulRecursionFixIdx (deBruinSize $ methodArguments method)
                 -- Account for two extra lambdas in the case of zero arity functions
                 mutRecIdx = if methodArity method == 0 then idx + 2 else idx 
@@ -79,7 +79,7 @@ analyseMethods pass gEnv methods =
 
 -- | Analyse the effect and annotation of a method
 analyseMethod :: GlobalEnv -> (Id, Method) -> (Annotation, Effect, Sort)
-analyseMethod gEnv@(GlobalEnv tEnv _ dEnv) (methodName, method@(Method _ aRegs args rType rRegs _ fstBlock otherBlocks)) =
+analyseMethod gEnv@(GlobalEnv tEnv _ dEnv) (_, method@(Method _ aRegs args rType rRegs _ fstBlock otherBlocks)) =
     let !rEnv      = regEnvFromArgs (deBruinSize args) aRegs rRegs
         !(lEnv,lAnns,lSrts)  = analyseLocals gEnv rEnv method
         !envs      = (Envs gEnv rEnv lEnv)
@@ -287,12 +287,10 @@ analyseLetAlloc :: Envs -> BlockEnv -> [Bind] -> Instruction ->  (Annotation, Ef
 analyseLetAlloc envs bEnv [] next = analyseInstr envs bEnv next
 -- Thunk binds
 analyseLetAlloc envs@(Envs _ rEnv _) bEnv (Bind _ (BindTargetThunk var tRegs) args dReg:bs) next =
-    let tnkRegs = bindThunkIntermediate tRegs
-        valRegs = bindThunkValue tRegs
+    let valRegs = bindThunkValue tRegs
         (_   ,bEff) = thunkApplyArgs envs (lookupVar var envs) args $ bindThunkValue tRegs
         (rAnn,rEff) = analyseLetAlloc envs bEnv bs next
     in (rAnn, AAdd (AConstr $ constrOne $ lookupReg dReg rEnv) 
-            --  (AAdd (AConstr $ collectRegs rEnv tnkRegs)
              (AAdd (AConstr $ collectRegs rEnv valRegs)
              (AAdd rEff bEff)))
 -- Function binds

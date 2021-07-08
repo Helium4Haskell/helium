@@ -5,7 +5,7 @@ where
 ----------------------------------------------------------------
 
 removeEmpty :: Bool
-removeEmpty = False
+removeEmpty = True
 
 max_bound :: Int
 max_bound = 1
@@ -25,18 +25,18 @@ disable         = False -- ^ Disable region size analysis
 -- Print the annotations of a single method (empty = no method selected)
 targetMethod :: String
 targetMethod = if debug 
-               then "" -- Fill in target name here
+               then "" -- Fill in target name here, leave empty to disable
                else "" -- Do not change this one
 stopOnTarget :: Bool
-stopOnTarget = True
+stopOnTarget = True && debug
 
 -- Sorting of annotations
 sortDerived,sortSimplified,sortFixpoint,sortWithLocals,checkSortsEq :: Bool
-sortDerived     = True && debug
-sortSimplified  = True && debug
-sortFixpoint    = True && debug
+sortDerived     = False && debug
+sortSimplified  = False && debug
+sortFixpoint    = False && debug
 checkSortsEq    = False && debug
-sortWithLocals  = True && debug
+sortWithLocals  = False && debug
 
 -- Printing of annotations/sorts
 printDerived,printSimplified,printFixpoint,printWithLocals,printEffects,printMethodName :: Bool
@@ -45,7 +45,7 @@ printSimplified = False && debug
 printFixpoint   = False && debug
 printWithLocals = False && debug
 printEffects    = False && debug
-printMethodName = (True || printDerived || printSimplified || printFixpoint || printWithLocals || printEffects)
+printMethodName = ((False && debug) || printDerived || printSimplified || printFixpoint || printWithLocals || printEffects)
 
 -- Printing datatypes
 printDTInfo,printDTSorts,printDTRegions,printDTStructs,printDTDestructs :: Bool

@@ -1,6 +1,8 @@
 module Helium.CodeGeneration.Iridium.RegionSize.Fixpoint
 where
 
+import Lvm.Common.Id
+
 import Helium.CodeGeneration.Iridium.RegionSize.Annotation
 import Helium.CodeGeneration.Iridium.RegionSize.AnnotationUtils
 import Helium.CodeGeneration.Iridium.RegionSize.DataTypes
@@ -21,10 +23,10 @@ import System.IO.Unsafe
 ----------------------------------------------------------------
 
 -- | Fill top with local variables in scope
-solveFixpoints ::  DataTypeEnv -> Annotation -> Annotation
-solveFixpoints dEnv = eval dEnv . foldAnnAlg fixAlg
+solveFixpoints :: [Id] -> DataTypeEnv -> Annotation -> Annotation
+solveFixpoints methodNames dEnv = eval dEnv . foldAnnAlg fixAlg
     where fixAlg = idAnnAlg {
-            aFix = \_ sorts anns -> ATuple $ solveFixpoint dEnv sorts anns
+            aFix = \_ sorts anns -> ATuple $ solveFixpoint methodNames dEnv sorts anns
         }
 
 -- | Weaken all region variables in the constraint set
@@ -35,8 +37,8 @@ weakenScope = M.mapKeys weakenKey
      weakenKey others     = others
 
 -- | Solve a group of fixpoints
-solveFixpoint :: DataTypeEnv -> [Sort] -> [Annotation] -> [Annotation]
-solveFixpoint dEnv sorts fixes = 
+solveFixpoint :: [Id] -> DataTypeEnv -> [Sort] -> [Annotation] -> [Annotation]
+solveFixpoint methodNames dEnv sorts fixes = 
         let bot   = ABot s
         in fixIterate 0 bot $ ATuple fixes
     where s = SortTuple sorts
@@ -46,7 +48,7 @@ solveFixpoint dEnv sorts fixes =
           fixIterate :: Int -> Annotation -> Annotation -> [Annotation]
           fixIterate n  state fs | n >= max_iterations = unsafePerformIO $ do 
                                                             if isFix
-                                                            then appendFile "C:\\Users\\hpottens\\Desktop\\fixpoints.csv" "0\n"
+                                                            then appendFile "C:\\Users\\hpottens\\Desktop\\fixpoints.csv" ("0;"++show methodNames++"\n")
                                                             else return ()
                                                             return $ mapWithIndex (\ i _ -> AProj i $ ATop s c) fixes 
                                  | otherwise =
@@ -54,7 +56,7 @@ solveFixpoint dEnv sorts fixes =
               in if res == state
                  then unsafePerformIO $ do 
                         if isFix
-                        then appendFile "C:\\Users\\hpottens\\Desktop\\fixpoints.csv" "1\n"
+                        then appendFile "C:\\Users\\hpottens\\Desktop\\fixpoints.csv" ("1;"++show methodNames++"\n")
                         else return ()
                         return $ unsafeUnliftTuple res
                  else fixIterate (n+1) res fs 

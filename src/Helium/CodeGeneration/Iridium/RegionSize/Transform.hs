@@ -1,11 +1,14 @@
 module Helium.CodeGeneration.Iridium.RegionSize.Transform
-    (transform, collectEffects, collectEmptyRegs, remEmptyRegs)
+    (transform, collectEffects, remEmptyRegs,
+    collectEmptyRegs, collectBoundedRegs, collectUnboundedRegs)
 where
 
 import Helium.CodeGeneration.Iridium.Data
 
 import Helium.CodeGeneration.Iridium.RegionSize.Constraints
 import Helium.CodeGeneration.Iridium.RegionSize.Annotation
+
+import Data.Maybe (fromMaybe)
 
 ----------------------------------------------------------------
 -- Retrieve all effect sets from the annotation
@@ -66,26 +69,36 @@ lookupBound r c = case constrIdx (Region r) c of
                     Infty -> Nothing
 
 ----------------------------------------------------------------
--- Collect 0-size regions
+-- Collect regions
 ----------------------------------------------------------------
 
 collectEmptyRegs :: Method -> [RegionVar]
-collectEmptyRegs (Method _ _ _ _ _ _ fstBlock otherBlocks) =
-    concat $ collectEmptyRegsBlock <$> fstBlock:otherBlocks
+collectEmptyRegs method = fst <$> (filter (\(_,b) -> b == Just 0) $ collectRegs method)
 
-collectEmptyRegsBlock :: Block -> [RegionVar]
-collectEmptyRegsBlock (Block _ instr) =
-    collectEmptyRegsInstr instr
+collectBoundedRegs :: Method -> [RegionVar]
+collectBoundedRegs method = fst <$> (filter (\(_,b) -> 0 < fromMaybe 0 b) $ collectRegs method)
 
-collectEmptyRegsInstr :: Instruction -> [RegionVar]
-collectEmptyRegsInstr instr = 
+collectUnboundedRegs :: Method -> [RegionVar]
+collectUnboundedRegs method = fst <$> (filter (\(_,b) -> b == Nothing) $ collectRegs method)
+
+
+collectRegs :: Method -> [(RegionVar, Maybe Int)]
+collectRegs (Method _ _ _ _ _ _ fstBlock otherBlocks) =
+    concat $ collectRegsBlock <$> fstBlock:otherBlocks
+
+collectRegsBlock :: Block -> [(RegionVar, Maybe Int)]
+collectRegsBlock (Block _ instr) =
+    collectRegsInstr instr
+
+collectRegsInstr :: Instruction -> [(RegionVar, Maybe Int)]
+collectRegsInstr instr = 
     case instr of
-        NewRegion reg (Just 0) next -> reg : collectEmptyRegsInstr next
-        NewRegion reg _        next -> collectEmptyRegsInstr next
-        Let         _ _        next -> collectEmptyRegsInstr next
-        LetAlloc      _        next -> collectEmptyRegsInstr next
-        Match   _ _ _ _        next -> collectEmptyRegsInstr next
-        ReleaseRegion _        next -> collectEmptyRegsInstr next
+        NewRegion reg bound next -> (reg,bound) : collectRegsInstr next
+        NewRegion _   _        next -> collectRegsInstr next
+        Let         _ _        next -> collectRegsInstr next
+        LetAlloc      _        next -> collectRegsInstr next
+        Match   _ _ _ _        next -> collectRegsInstr next
+        ReleaseRegion _        next -> collectRegsInstr next
         _                    -> []
 
 ----------------------------------------------------------------
@@ -115,4 +128,4 @@ remEmptyRegsInstr emptyRegs instr =
         Let           a b next -> Let         a b $ remEmptyRegsInstr emptyRegs next
         LetAlloc        a next -> LetAlloc      a $ remEmptyRegsInstr emptyRegs next
         Match     a b c d next -> Match   a b c d $ remEmptyRegsInstr emptyRegs next
-        instr -> instr -- Other terminal nodes 
+        terminalInstr -> terminalInstr
