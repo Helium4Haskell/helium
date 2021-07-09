@@ -207,7 +207,7 @@ annotateTypeRec env (TAp (TAp (TCon TConFun) t1) t2) = TAp (TAp (TCon TConFun) t
         t1' = TAp (TAnn S) (TAp (TAnn S) (TAp (TAnn S) (annotateTypeRec env t1)))
         t2' = annotateTypeRec env t2
 annotateTypeRec env (TAp t1 t2)
-  | isTup t1  = TAp t1' (TAp (TAnn S) (TAp (TAnn S) (TAp (TAnn S) t2')))
+  | isTup t1  = TAp t1' (TAp (TAnn L) (TAp (TAnn L) (TAp (TAnn L) t2')))
   | otherwise = TAp t1' t2'
     where
         t1' = annotateTypeRec env t1

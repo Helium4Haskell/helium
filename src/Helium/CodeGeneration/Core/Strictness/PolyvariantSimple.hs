@@ -203,7 +203,7 @@ analyseBinds env supply rel (NonRec (Bind (Variable x _) e)) = Analysis (NonRec 
         -- Run simplifier to get solved local constraints
         Analysis _ cs' ae' sc' _ = simplify is cs ae
         -- Apply solved constraints to get type signature for bind
-        t' = forallify (Just is) $ transformType sc' $ normalTypeOfCoreExpression (typeEnv env) e'
+        t' = forallify (Just is) $ simplifyType sc' $ normalTypeOfCoreExpression (typeEnv env) e'
         -- Add annotations outside the type
         b = Bind (Variable x (TAp (TAnn $ AnnVar i) t')) e'
         -- Bind is NonRec, add to map of those which might be turned to strict
@@ -217,7 +217,7 @@ analyseBinds env supply rel (Strict (Bind (Variable x _) e)) = Analysis (Strict 
         -- Run simplifier to get solved local constraints
         Analysis _ cs' ae' sc' _ = simplify is cs ae
         -- Apply solved constraints to get type signature for bind
-        t' = forallify (Just is) $ transformType sc' $ normalTypeOfCoreExpression (typeEnv env) e'
+        t' = forallify (Just is) $ simplifyType sc' $ normalTypeOfCoreExpression (typeEnv env) e'
         -- Add annotations outside the type
         b = Bind (Variable x (TAp (TAnn S) t')) e'
 
@@ -250,7 +250,7 @@ analysePat env i' supply (PatCon (ConTuple n) t i) = Analysis (PatCon (ConTuple 
     -- In case of a tuple, all types need an extra annotation to communicate the return annotation of the tuple
     t' = mapWithSupply (annotateVarType env) supply t
     -- Get equalities between type of id matched on and type of pattern
-    (ae, cs) = analyseType env (typeOfId (typeEnv env) i') (foldl TAp (TCon (TConTuple n)) t')
+    (ae, cs) = analyseType env (foldl TAp (TCon (TConTuple n)) t') (typeOfId (typeEnv env) i')
 analysePat env i' supply (PatCon c t i) = Analysis (PatCon c t' i) cs ae emptyMap emptyMap
     where
         -- Annotate all types given to constructor
@@ -260,7 +260,7 @@ analysePat env i' supply (PatCon c t i) = Analysis (PatCon c t' i) cs ae emptyMa
         -- Construct expression equivalent to constructor
         e = foldl Ap (foldl ApType (Con c) t') (map Var i)
         -- Analyse type of matched id with type of constructor
-        (ae, cs) = analyseType env (typeOfId (typeEnv env) i') (normalTypeOfCoreExpression (typeEnv env') e)
+        (ae, cs) = analyseType env (normalTypeOfCoreExpression (typeEnv env') e) (typeOfId (typeEnv env) i')
 analysePat _ _ _ p = Analysis p S.empty emptyMap emptyMap emptyMap -- Literal or default, no information to be gained
 
 -- Analyse type
@@ -328,7 +328,7 @@ transformType sc (TAp (TAp (TCon TConFun) (TAp (TAnn a) t1)) t2) =
       t1' = TAp (TAnn a') (transformType sc t1)
       t2' = transformType sc t2
 transformType sc (TAp t1 t2) = TAp (transformType sc t1) (transformType sc t2)
-transformType sc (TAnn a) = TAnn $ lookupVar a sc
+transformType sc (TAnn a) = TAnn $ lookupVarMono a sc
 transformType sc (TStrict t) = transformType sc t
 transformType sc (TForall q k t) = TForall q k $ transformType sc t
 transformType _ t = t
@@ -448,7 +448,21 @@ simplifyBind :: IdSet -> SolvedConstraints -> Bind -> Bind
 simplifyBind is sc (Bind (Variable x (TAp a t)) e) = Bind (Variable x (TAp a t')) e
   where
     -- Get type of binding, apply solved constraints and forallify
-    t' = forallify (Just is) $ transformType sc t
+    t' = forallify (Just is) $ simplifyType sc t
+
+-- Simplify type signatures
+simplifyType :: SolvedConstraints -> Type -> Type
+simplifyType sc (TAp (TAp (TCon TConFun) (TAp (TAnn a) t1)) t2) =
+  TAp (TAp (TCon TConFun) t1') t2'
+    where
+      a' = lookupVar a sc
+      t1' = TAp (TAnn a') (simplifyType sc t1)
+      t2' = simplifyType sc t2
+simplifyType sc (TAp t1 t2) = TAp (simplifyType sc t1) (simplifyType sc t2)
+simplifyType sc (TStrict t) = simplifyType sc t
+simplifyType sc (TAnn a) = TAnn $ lookupVar a sc
+simplifyType sc (TForall q k t) = TForall q k $ simplifyType sc t
+simplifyType _ t = t
 
 getVariablesBind :: Bind -> IdSet
 getVariablesBind (Bind (Variable _ (TAp (TAnn a) _)) e) = insertSet' a $ getVariablesExpr e

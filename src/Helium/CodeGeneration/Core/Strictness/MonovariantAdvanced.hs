@@ -33,8 +33,6 @@ type CoreGroup = BindingGroup Expr
 monovariantStrictness :: NameSupply -> CoreModule -> CoreModule
 monovariantStrictness supply m = m{moduleDecls = values''}
   where
-    (supply1, supply') = splitNameSupply supply
-    (supply2, supply3) = splitNameSupply supply'
     -- Ignore declarations which have already been analysed
     (decls1, decls2) = partition (any isCustomAnn . declCustoms) $ moduleDecls m
     -- Split module in functions and others (constructors, abstract, synonyms)
@@ -42,14 +40,14 @@ monovariantStrictness supply m = m{moduleDecls = values''}
     -- For declarations which have been annotated, set strictness type to declType
     decls1' = map setStrictnessType decls1
     -- Annotate others
-    others' = mapWithSupply (annotateDeclaration (typeEnvForModule m)) supply1 others
+    others' = map (annotateDeclaration (typeEnvForModule m)) others
     -- Create starting environment
     env = typeEnvForModule m{moduleDecls = others' ++ decls1'}
     -- Binding group analysis for functions
     groups = coreBindingGroups values
-    (values', sc, r, _, _) = foldl groupStrictness (emptyMap, emptyMap, emptyMap, env, supply2) groups
+    (values', sc, r, _, _) = foldl groupStrictness (emptyMap, emptyMap, emptyMap, env, supply) groups
     -- Transform declarations based on solved constraints
-    values'' = map (transformDeclaration (annotateTypeAbstract' env supply3) values' sc r) $ moduleDecls m
+    values'' = map (transformDeclaration (annotateTypeAbstract' env) values' sc r) $ moduleDecls m
 
 groupStrictness :: GroupData -> CoreGroup -> GroupData
 -- Single declaration
@@ -232,7 +230,7 @@ analysePat env i' supply (PatCon (ConTuple n) t i) = Analysis (PatCon (ConTuple 
         -- In case of a tuple, all types need three extra annotations to communicate the return annotations of the tuple
         t' = mapWithSupply (annotateVarType env) supply t
         -- Get equalities between type of id matched on and type of pattern
-        (ae, cs) = analyseType env (typeOfId (typeEnv env) i') (foldl TAp (TCon (TConTuple n)) t')
+        (ae, cs) = analyseType env (foldl TAp (TCon (TConTuple n)) t') (typeOfId (typeEnv env) i')
 analysePat env i' supply (PatCon c t i) = Analysis (PatCon c t' i) cs ae emptyMap
     where
         -- Annotate all types given to constructor
@@ -242,7 +240,7 @@ analysePat env i' supply (PatCon c t i) = Analysis (PatCon c t' i) cs ae emptyMa
         -- Construct expression equivalent to constructor
         e = foldl Ap (foldl ApType (Con c) t') (map Var i)
         -- Analyse type of matched id with type of constructor
-        (ae, cs) = analyseType env (typeOfId (typeEnv env) i') (normalTypeOfCoreExpression (typeEnv env') e)
+        (ae, cs) = analyseType env (normalTypeOfCoreExpression (typeEnv env') e) (typeOfId (typeEnv env) i')
 analysePat _ _ _ p = Analysis p S.empty emptyMap emptyMap -- Literal or default, no information to be gained
 
 -- Analyse type
@@ -292,16 +290,32 @@ analyseType _ t1 t2 = error $ "analyseType: type mismatch: " ++ show (pretty t1)
     Annotate
 -}
 
-annotateDeclaration :: TypeEnvironment -> NameSupply -> CoreDecl -> CoreDecl
-annotateDeclaration env supply decl@DeclAbstract{} = decl{declType = annotateTypeAbstract' env supply (declType decl)}
-annotateDeclaration env supply decl@DeclCon{} = decl{declType = annotateTypeAbstract' env supply (declType decl)}
+annotateDeclaration :: TypeEnvironment -> CoreDecl -> CoreDecl
+annotateDeclaration env decl@DeclAbstract{} = decl{declType = annotateTypeAbstract' env (declType decl)}
+annotateDeclaration env decl@DeclCon{} = decl{declType = annotateTypeAbstract' env (declType decl)}
 -- annotateDeclaration env supply decl@DeclTypeSynonym{}
 --     -- String is the only type synonym which has to be annotated because it is partly hardcoded in the type system
 --     | declName decl == idFromString "String" = decl{declType = annotateType env supply (declType decl)}
-annotateDeclaration _ _ decl = decl -- Value is handled outside this method, others don't need anything
+annotateDeclaration _ decl = decl -- Value is handled outside this method, others don't need anything
 
-annotateTypeAbstract' :: TypeEnvironment -> NameSupply -> Type -> Type
-annotateTypeAbstract' env supply t = fst $ annotateTypeAbstract env supply t
+annotateTypeAbstract' :: TypeEnvironment -> Type -> Type
+annotateTypeAbstract' env t
+    | t /= t' = annotateTypeAbstract' env t'
+        where
+            t' = typeNormalizeHead env t
+annotateTypeAbstract' env (TAp (TAp (TCon TConFun) t1) t2) = TAp (TAp (TCon TConFun) t1') t2'
+    where
+        t1' = TAp (TAnn L) (TAp (TAnn L) (TAp (TAnn L) (annotateTypeAbstract' env t1)))
+        t2' = annotateTypeAbstract' env t2
+annotateTypeAbstract' env (TAp t1 t2)
+  | isTup t1  = TAp t1' (TAp (TAnn L) (TAp (TAnn L) (TAp (TAnn L) t2')))
+  | otherwise = TAp t1' t2'
+    where
+        t1' = annotateTypeAbstract' env t1
+        t2' = annotateTypeAbstract' env t2
+annotateTypeAbstract' env (TStrict t) = TStrict $ annotateTypeAbstract' env t
+annotateTypeAbstract' env (TForall q k t) = TForall q k $ annotateTypeAbstract' env t
+annotateTypeAbstract' _ t = t
 
 {-
     Transform
@@ -370,11 +384,3 @@ transformBinds sc r (NonRec (Bind v@(Variable x _) e)) = b'
 transformBinds sc r (Rec bs) = Rec $ map transformBind bs
     where
         transformBind (Bind v e) = Bind v $ transformExpression sc r e
-
--- Lookup annotation of variables
-lookupVarMono :: SAnn -> SolvedConstraints -> SAnn
-lookupVarMono (AnnVar x) sc | elemMap x sc = case findMap x sc of
-  S -> S
-  _ -> L
-lookupVarMono S _ = S
-lookupVarMono _ _ = L

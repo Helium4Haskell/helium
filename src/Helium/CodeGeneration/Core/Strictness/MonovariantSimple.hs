@@ -226,7 +226,7 @@ analysePat env i' supply (PatCon (ConTuple n) t i) = Analysis (PatCon (ConTuple 
         -- In case of a tuple, all types need an extra annotation to communicate the return annotation of the tuple
         t' = mapWithSupply (annotateVarType env) supply t
         -- Get equalities between type of id matched on and type of pattern
-        (ae, cs) = analyseType env (typeOfId (typeEnv env) i') (foldl TAp (TCon (TConTuple n)) t')
+        (ae, cs) = analyseType env (foldl TAp (TCon (TConTuple n)) t') (typeOfId (typeEnv env) i')
 analysePat env i' supply (PatCon c t i) = Analysis (PatCon c t' i) cs ae emptyMap
     where
         -- Annotate all types given to constructor
@@ -236,7 +236,7 @@ analysePat env i' supply (PatCon c t i) = Analysis (PatCon c t' i) cs ae emptyMa
         -- Construct expression equivalent to constructor
         e = foldl Ap (foldl ApType (Con c) t') (map Var i)
         -- Analyse type of matched id with type of constructor
-        (ae, cs) = analyseType env (typeOfId (typeEnv env) i') (normalTypeOfCoreExpression (typeEnv env') e)
+        (ae, cs) = analyseType env (normalTypeOfCoreExpression (typeEnv env') e) (typeOfId (typeEnv env) i')
 analysePat _ _ _ p = Analysis p S.empty emptyMap emptyMap -- Literal or default, no information to be gained
 
 -- Analyse type
@@ -353,11 +353,3 @@ transformBinds sc r (NonRec (Bind v@(Variable x _) e)) = b'
 transformBinds sc r (Rec bs) = Rec $ map transformBind bs
     where
         transformBind (Bind v e) = Bind v $ transformExpression sc r e
-
--- Lookup annotation of variables
-lookupVarMono :: SAnn -> SolvedConstraints -> SAnn
-lookupVarMono (AnnVar x) sc | elemMap x sc = case findMap x sc of
-  S -> S
-  _ -> L
-lookupVarMono S _ = S
-lookupVarMono _ _ = L

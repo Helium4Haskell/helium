@@ -121,6 +121,13 @@ lookupVar (Join x y) sc = join (lookupVar x sc) (lookupVar y sc)
 lookupVar (Meet x y) sc = meet (lookupVar x sc) (lookupVar y sc)
 lookupVar x _ = x
 
+lookupVarMono :: SAnn -> SolvedConstraints -> SAnn
+lookupVarMono (AnnVar x) sc | elemMap x sc = case findMap x sc of
+  S -> S
+  _ -> L
+lookupVarMono S _ = S
+lookupVarMono _ _ = L
+
 uncontain :: [Id] -> SAnn -> SAnn
 uncontain xs (AnnVar x) | x `elem` xs = S
 uncontain xs (Join x y) = join (uncontain xs x) (uncontain xs y)
@@ -148,6 +155,6 @@ normalTypeOfCoreExpression :: TypeEnvironment -> Expr -> Type
 normalTypeOfCoreExpression env e = typeNormalizeHead env $ typeOfCoreExpression env e 
 
 analyseAnn :: SAnn -> SAnn -> AnnotationEnvironment
-analyseAnn (AnnVar x) y = singleMap x y
 analyseAnn x (AnnVar y) = singleMap y x
+analyseAnn x (Join l r) = unionMap (analyseAnn x l) (analyseAnn x r)
 analyseAnn _ _ = emptyMap
