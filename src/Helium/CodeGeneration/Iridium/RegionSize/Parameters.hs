@@ -11,7 +11,7 @@ max_bound :: Int
 max_bound = 1
 
 max_iterations :: Int
-max_iterations = 7
+max_iterations = 8
 
 ----------------------------------------------------------------
 -- Debug flags

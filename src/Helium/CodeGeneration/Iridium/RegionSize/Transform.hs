@@ -93,10 +93,10 @@ collectRegsInstr :: Instruction -> [(RegionVar, Maybe Int)]
 collectRegsInstr instr = 
     case instr of
         NewRegion reg bound next -> (reg,bound) : collectRegsInstr next
-        Let         _ _        next -> collectRegsInstr next
-        LetAlloc      _        next -> collectRegsInstr next
-        Match   _ _ _ _        next -> collectRegsInstr next
-        ReleaseRegion _        next -> collectRegsInstr next
+        Let         _ _ next -> collectRegsInstr next
+        LetAlloc      _ next -> collectRegsInstr next
+        Match   _ _ _ _ next -> collectRegsInstr next
+        ReleaseRegion _ next -> collectRegsInstr next
         _                    -> []
 
 ----------------------------------------------------------------

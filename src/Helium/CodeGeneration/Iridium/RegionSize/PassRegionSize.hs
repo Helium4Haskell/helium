@@ -103,7 +103,7 @@ pipeline gEnv methods = do
 
     -- Calculate the fixpoint, print an sort (Dont leave fixpoints if sub methods have fixpoints)
     let fixpoint = if leaveFixpoint && (countFixpoints simplified <= length methods+1)
-                   then unliftFixpointTuple $ simplified
+                   then eval (globDataEnv gEnv) . flip ATop constrBot . methodSortAssign (globTypeEnv gEnv) dEnv . snd <$> methods
                    else unsafeUnliftTuple $ solveFixpoints (fst <$> methods) dEnv simplified
     _ <- printAnnotation (printFixpoint || isTargetMethod) "Fixpoint" (ATuple fixpoint)
     _ <- checkSort sortFixpoint dEnv "fixpoint" (ATuple fixpoint)
