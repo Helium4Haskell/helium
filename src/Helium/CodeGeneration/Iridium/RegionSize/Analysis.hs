@@ -61,17 +61,21 @@ deBruinSize = (*) 2 . length . rights
 type Pass = Int
 analyseMethods :: Pass ->  GlobalEnv -> [(Id,Method)] -> (Annotation, [Effect])
 analyseMethods pass gEnv methods =
-    let (gEnv',_) = case pass of
-                      0 -> foldl' makeFixVar (gEnv,0) methods
-                      _ -> (gEnv,0)
-        (anns, effects, sorts) = unzip3 $ analyseMethod gEnv' <$> methods
+    let (anns, effects, sorts) = unzip3 $ (\m -> analyseMethod (makeGEnv m) m) <$> methods
     in case pass of 
           0 -> (annRemLocalRegs $ AFix sorts anns, effects)
           _ -> (ATuple anns, effects)
-  where makeFixVar (env, i) (methodName, (Method _ _ args _ _ _ _ _)) =
-              let fixIdx = mutaulRecursionFixIdx (deBruinSize args)
-                  env'   = updateGlobal methodName (AProj i $ AVar fixIdx) env
-              in (env', i+1)
+  where {- Replace the mutually recurcive positions in GEnv 
+            with a debruijn index of the recursive fixpoint -}
+        makeGEnv (_, method) = 
+            let idx = mutaulRecursionFixIdx (deBruinSize $ methodArguments method)
+                -- Account for two extra lambdas in the case of zero arity functions
+                mutRecIdx = if methodArity method == 0 then idx + 2 else idx 
+            in case pass of
+                 0 -> fst $ foldl' (makeFixVar mutRecIdx) (gEnv,0) methods
+                 _ -> gEnv
+        makeFixVar fixIdx (env, i) (methodName, _) =
+            (updateGlobal methodName (AProj i $ AVar fixIdx) env, i+1)
 
 -- | Analyse the effect and annotation of a method
 analyseMethod :: GlobalEnv -> (Id, Method) -> (Annotation, Effect, Sort)
@@ -86,7 +90,7 @@ analyseMethod gEnv@(GlobalEnv tEnv _ dEnv) (_, method@(Method _ aRegs args rType
         !localFix = AProj 0 . AFix (bSrts ++ lSrts) $ bAnns ++ lAnns 
         !fAnn = wrapBody gEnv rType args localFix
 
-        !(annotation, effect) = fixZeroArity method $ ALam (regionVarsToSort aRegs) fAnn 
+        !(annotation, effect) = fixZeroArity method $ ALam (regionVarsToSort aRegs) fAnn
     in ( annotation 
        , effect 
        , methodSortAssign tEnv dEnv method) 
@@ -283,12 +287,10 @@ analyseLetAlloc :: Envs -> BlockEnv -> [Bind] -> Instruction ->  (Annotation, Ef
 analyseLetAlloc envs bEnv [] next = analyseInstr envs bEnv next
 -- Thunk binds
 analyseLetAlloc envs@(Envs _ rEnv _) bEnv (Bind _ (BindTargetThunk var tRegs) args dReg:bs) next =
-    let tnkRegs = bindThunkIntermediate tRegs
-        valRegs = bindThunkValue tRegs
+    let valRegs = bindThunkValue tRegs
         (_   ,bEff) = thunkApplyArgs envs (lookupVar var envs) args $ bindThunkValue tRegs
         (rAnn,rEff) = analyseLetAlloc envs bEnv bs next
     in (rAnn, AAdd (AConstr $ constrOne $ lookupReg dReg rEnv) 
-            --  (AAdd (AConstr $ collectRegs rEnv tnkRegs)
              (AAdd (AConstr $ collectRegs rEnv valRegs)
              (AAdd rEff bEff)))
 -- Function binds
@@ -354,7 +356,7 @@ thunkApplyArg :: TypeEnvironment -> LocalEnv
               -> Annotation        -- ^ Function 
               -> Either Type Local -- ^ Argument
               -> (Annotation,Effect)
-thunkApplyArg tEnv _    _    fAnn (Left ty    ) = (AInstn fAnn $ typeNormalize tEnv ty, botEffect) 
+thunkApplyArg tEnv _    _    fAnn (Left ty    ) = (AInstn fAnn $ typeNormalize tEnv ty, botEffect)
 thunkApplyArg _    lEnv rReg fAnn (Right local) = liftTuple $ AApl (AApl fAnn $ lookupLocalAnn local lEnv) rReg
 
 -- | Apply a list of arguments to a funtion

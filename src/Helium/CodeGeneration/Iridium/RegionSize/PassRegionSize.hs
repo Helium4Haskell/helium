@@ -28,7 +28,6 @@ import Helium.CodeGeneration.Iridium.RegionSize.Fixpoint
 import Helium.CodeGeneration.Iridium.RegionSize.Parameters
 
 import Data.List (intercalate, foldl')
-import qualified Data.Map.Strict as M 
 
 import System.CPUTime
 import Text.Printf
@@ -85,6 +84,7 @@ pipeline gEnv methods = do
     else return ()
 
     -- Derive anotation, print and sort
+    -- TODO: For calculating a bound on the global region, you need the zeroing effects.
     let (ann, zeroingEffect) = analyseMethods 0 gEnv methods
     let derived = inlineFixpoints ann
     _ <- printAnnotation (printDerived || isTargetMethod) "Derived" derived
@@ -96,7 +96,7 @@ pipeline gEnv methods = do
     _ <- checkSort sortSimplified dEnv "simplified" simplified
 
     -- Calculate the fixpoint, print an sort
-    let fixpoint = solveFixpoints dEnv simplified
+    let fixpoint = solveFixpoints (fst <$> methods) dEnv simplified
     _ <- printAnnotation (printFixpoint || isTargetMethod) "Fixpoint" fixpoint
     _ <- checkSort sortFixpoint dEnv "fixpoint" fixpoint
 
@@ -112,7 +112,7 @@ pipeline gEnv methods = do
 
     -- Derive again, but now with the local regions. Also print an sort.
     let withLocals = (unsafeUnliftTuple 
-            . solveFixpoints dEnv
+            . solveFixpoints (fst <$> methods) dEnv
             . eval dEnv 
             . fst
             $ analyseMethods 1 gEnv' methods')
@@ -121,20 +121,22 @@ pipeline gEnv methods = do
     _ <- checkSort sortWithLocals dEnv "withLocals" $ ATuple withLocals
 
     -- Extract effects and transform program
-    let zeroingEffect'   = constrRemVarRegs <$> unAConstr . solveFixpoints dEnv . eval dEnv <$> zeroingEffect
+    let --zeroingEffect'   = constrRemVarRegs <$> unAConstr . solveFixpoints (fst <$> methods) . eval dEnv <$> zeroingEffect
         annotationEffect = constrRemVarRegs <$> collectEffects <$> withLocals
         higherOrderFix   = constrRemVarRegs <$> fixHigherOrderApplication <$> withLocals
-    let effects = (\(a,b,c) -> constrAdds [a,b,c]) <$> zip3 zeroingEffect' annotationEffect higherOrderFix
+    let effects = zipWith constrAdd annotationEffect higherOrderFix
     _ <- printAnnotation (printWithLocals || isTargetMethod) "Effects" $ ATuple $ AConstr <$> effects
     
-    let transformed = uncurry transform <$> zip effects (snd <$> methods')
-    let emptyRegs   = collectEmptyRegs <$> transformed
+    let transformed   = uncurry transform <$> zip effects (snd <$> methods')
+    let emptyRegs     = collectEmptyRegs     <$> transformed
+    let boundedRegs   = collectBoundedRegs   <$> transformed
+    let unboundedRegs = collectUnboundedRegs <$> transformed
     let cleaned     = if removeEmpty
                       then uncurry remEmptyRegs <$> zip emptyRegs transformed
                       else transformed
 
     -- Count bounded and unbouned regions
-    let (finite, infinite, zero) = calcMetrics effects emptyRegs
+    let (finite, infinite, zero) = (length $ concat boundedRegs, length $ concat unboundedRegs, length $ concat emptyRegs)
 
     if stopOnTarget && isTargetMethod
     then rsError $ "Stopped by target method: " ++ show targetMethod
@@ -261,7 +263,8 @@ printAnnotation :: Bool       -- ^ Debug flag (sort yes/no)
                 -> IO ()
 printAnnotation False _ _ = return ()
 printAnnotation True name ann = 
-  do putStrLn $ "\n# " ++ name ++ ": " 
+  do appendFile "C:\\Users\\hpottens\\Desktop\\target.txt" ("\n# " ++ name ++ ":\n" ++ (show ann) ++ "\n\n\n")
+     putStrLn $ "\n# " ++ name ++ ": " 
      print ann 
 
 -- | Print out the derive datatypes sorts and annotations
@@ -306,14 +309,3 @@ printMetrics start (_, finite, infinite, zero) =
       let diff = ((fromIntegral (end - start)) :: Double) / ((10::Double)^(12::Int))
       printf "Computation time: %0.3f sec\n" diff 
     else return ()
-
--- | Calculate the bounded, unbounded and zero regions
-calcMetrics :: [Constr] -> [[RegionVar]] -> (Int,Int,Int)
-calcMetrics effects emptyRegs = 
-  let filterR r = fst r /= (Region RegionGlobal) && fst r /= (Region RegionBottom)
-      filterB b = snd b /= Infty
-      set       = filter filterR <$> M.toList <$> effects
-      finite    = sum $ length <$> filter filterB <$> set
-      infinite  = (sum $ length <$> set) - finite 
-      zero      = length $ concat emptyRegs
-  in (finite, infinite, zero)
