@@ -287,7 +287,7 @@ analyseLetAlloc :: Envs -> BlockEnv -> [Bind] -> Instruction ->  (Annotation, Ef
 analyseLetAlloc envs bEnv [] next = analyseInstr envs bEnv next
 -- Thunk binds
 analyseLetAlloc envs@(Envs _ rEnv _) bEnv (Bind _ (BindTargetThunk var tRegs) args dReg:bs) next =
-    let valRegs = bindThunkValue tRegs
+    let RegionVarsTuple [_,valRegs] = bindThunkValue tRegs -- First region is dReg
         thkRegs = bindThunkIntermediate tRegs
         (_   ,bEff) = thunkApplyArgs envs (lookupVar var envs) args $ bindThunkValue tRegs
         (rAnn,rEff) = analyseLetAlloc envs bEnv bs next
