@@ -60,7 +60,7 @@ transformInstr bounds instr =
         LetAlloc      a next -> LetAlloc      a $ transformInstr bounds next
         Match   a b c d next -> Match   a b c d $ transformInstr bounds next
         ReleaseRegion a next -> ReleaseRegion a $ transformInstr bounds next
-        instr -> instr -- Other terminal nodes 
+        terminalInstr -> terminalInstr -- Other terminal nodes 
 
 -- Lookup a bound in a constraint set and convert it to a maybe int
 lookupBound :: RegionVar -> Constr -> Maybe Int
@@ -94,7 +94,6 @@ collectRegsInstr :: Instruction -> [(RegionVar, Maybe Int)]
 collectRegsInstr instr = 
     case instr of
         NewRegion reg bound next -> (reg,bound) : collectRegsInstr next
-        NewRegion _   _        next -> collectRegsInstr next
         Let         _ _        next -> collectRegsInstr next
         LetAlloc      _        next -> collectRegsInstr next
         Match   _ _ _ _        next -> collectRegsInstr next
