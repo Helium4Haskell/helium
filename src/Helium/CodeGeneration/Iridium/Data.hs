@@ -125,6 +125,18 @@ methodAdditionRegions (Method _ aRegs _ _ _ _ _ _) = aRegs
 methodSourceType :: Method -> Type
 methodSourceType (Method tp _ _ _ _ _ _ _) = tp
 
+-- Check if a method is higher order
+isHigherOrderMethod :: Method -> Bool
+isHigherOrderMethod = isHOType False . methodType
+  where isHOType :: Bool -> Type -> Bool
+        isHOType inLHS (TAp (TAp (TCon TConFun) a) b) | inLHS     = True
+                                                      | otherwise = isHOType True a || isHOType False b
+        isHOType inLHS (TAp a b)       = isHOType inLHS a || isHOType inLHS b
+        isHOType inLHS (TStrict t)     = isHOType inLHS t
+        isHOType inLHS (TForall _ _ t) = isHOType inLHS t
+        isHOType inLHS (TCon _) = False
+        isHOType inLHS (TVar _) = False
+
 -- The number of non-type variable argument of the method.
 methodArity :: Method -> Int
 methodArity = length . filter isRight . methodArguments

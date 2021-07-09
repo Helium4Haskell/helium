@@ -77,10 +77,16 @@ analyseBindingGroup (gEnv, finite, infinite, zero) (BindingNonRecursive decl@(De
 pipeline ::  GlobalEnv -> [(Id,Method)] -> IO ((GlobalEnv, Int, Int, Int), [(Id,Method)])
 pipeline gEnv methods = do
     let dEnv = globDataEnv gEnv
-        isTargetMethod = debug && (idFromString targetMethod `elem` (fst <$> methods))
+        isTargetMethod  = debug && (idFromString targetMethod `elem` (fst <$> methods))
+        hasLocalRegions = and $ (<) 0 . length . collectRegs . snd <$> methods
+        isHigherOrder   = and $ isHigherOrderMethod . snd <$> methods
+        leaveFixpoint   = delayFixpoints && hasLocalRegions && isHigherOrder
 
-    if printMethodName || isTargetMethod then do
-      putStrLn $ "\n# Analyse methods:\n" ++ (intercalate "\n" $ map (show.fst) methods)
+    if printMethodName || isTargetMethod || leaveFixpoint then do
+      putStrLn $ "\n# Analyse methods:\n" ++ (intercalate "\n" $ map (show.fst) methods) 
+              -- ++ "\nHas local regions: " ++ (show hasLocalRegions)
+              -- ++ "\nHigher order: " ++ (show isHigherOrder)
+              -- ++ "\nLeaving fixpoint " ++ (show leaveFixpoint)
     else return ()
 
     -- Derive anotation, print and sort
@@ -95,54 +101,60 @@ pipeline gEnv methods = do
     _ <- printAnnotation (printSimplified || isTargetMethod) "Simplified" simplified
     _ <- checkSort sortSimplified dEnv "simplified" simplified
 
-    -- Calculate the fixpoint, print an sort
-    let fixpoint = solveFixpoints (fst <$> methods) dEnv simplified
-    _ <- printAnnotation (printFixpoint || isTargetMethod) "Fixpoint" fixpoint
-    _ <- checkSort sortFixpoint dEnv "fixpoint" fixpoint
+    -- Calculate the fixpoint, print an sort (Dont leave fixpoints if sub methods have fixpoints)
+    let fixpoint = if leaveFixpoint && (countFixpoints simplified <= length methods+1)
+                   then unliftFixpointTuple $ simplified
+                   else unsafeUnliftTuple $ solveFixpoints (fst <$> methods) dEnv simplified
+    _ <- printAnnotation (printFixpoint || isTargetMethod) "Fixpoint" (ATuple fixpoint)
+    _ <- checkSort sortFixpoint dEnv "fixpoint" (ATuple fixpoint)
 
     -- Check if the sort did not change during evalutations
-    _ <- checkAnnotationSorts checkSortsEq dEnv [derived,simplified,fixpoint]
+    _ <- checkAnnotationSorts checkSortsEq dEnv [derived,simplified,ATuple fixpoint]
 
     -- Update the global environment with the found annotations
-    let unpacked = unsafeUnliftTuple fixpoint
-    let gEnv' = foldr (uncurry insertGlobal) gEnv $ zip (fst <$> methods) unpacked
-
+    let gEnv' = foldr (uncurry insertGlobal) gEnv $ zip (fst <$> methods) fixpoint
     -- Save the annotation on the method
-    let methods' = uncurry methodAddRegionSizeAnnotation <$> zip methods unpacked
+    let methods' = uncurry methodAddRegionSizeAnnotation <$> zip methods fixpoint
 
-    -- Derive again, but now with the local regions. Also print an sort.
-    let withLocals = (unsafeUnliftTuple 
-            . solveFixpoints (fst <$> methods) dEnv
-            . eval dEnv 
-            . fst
-            $ analyseMethods 1 gEnv' methods')
-
-    _ <- printAnnotation (printWithLocals || isTargetMethod) "With locals (fixpoint)" $ ATuple withLocals
-    _ <- checkSort sortWithLocals dEnv "withLocals" $ ATuple withLocals
-
-    -- Extract effects and transform program
-    let --zeroingEffect'   = constrRemVarRegs <$> unAConstr . solveFixpoints (fst <$> methods) . eval dEnv <$> zeroingEffect
-        annotationEffect = constrRemVarRegs <$> collectEffects <$> withLocals
-        higherOrderFix   = constrRemVarRegs <$> fixHigherOrderApplication <$> withLocals
-    let effects = zipWith constrAdd annotationEffect higherOrderFix
-    _ <- printAnnotation (printWithLocals || isTargetMethod) "Effects" $ ATuple $ AConstr <$> effects
-    
-    let transformed   = uncurry transform <$> zip effects (snd <$> methods')
-    let emptyRegs     = collectEmptyRegs     <$> transformed
-    let boundedRegs   = collectBoundedRegs   <$> transformed
-    let unboundedRegs = collectUnboundedRegs <$> transformed
-    let cleaned     = if removeEmpty
-                      then uncurry remEmptyRegs <$> zip emptyRegs transformed
-                      else transformed
-
-    -- Count bounded and unbouned regions
-    let (finite, infinite, zero) = (length $ concat boundedRegs, length $ concat unboundedRegs, length $ concat emptyRegs)
-
+    -- Debug stop
     if stopOnTarget && isTargetMethod
     then rsError $ "Stopped by target method: " ++ show targetMethod
     else return ()
 
-    return ((gEnv', finite, infinite, zero), zip (fst <$> methods) cleaned)
+    -- No local regions? Do not reanalyze
+    if not hasLocalRegions
+    then return ((gEnv', 0, 0, 0), methods')
+    else do
+      -- Derive again, but now with the local regions. Also print an sort.
+      let withLocals = (unsafeUnliftTuple 
+              . solveFixpoints (fst <$> methods) dEnv
+              . eval dEnv 
+              . inlineFixpoints
+              . fst
+              $ analyseMethods 1 gEnv' methods')
+  
+      _ <- printAnnotation (printWithLocals || isTargetMethod) "With locals (fixpoint)" $ ATuple withLocals
+      _ <- checkSort sortWithLocals dEnv "withLocals" $ ATuple withLocals
+  
+      -- Extract effects and transform program
+      let --zeroingEffect'   = constrRemVarRegs <$> unAConstr . solveFixpoints (fst <$> methods) . eval dEnv <$> zeroingEffect
+          annotationEffect = constrRemVarRegs <$> collectEffects <$> withLocals
+          higherOrderFix   = constrRemVarRegs <$> fixHigherOrderApplication <$> withLocals
+      let effects = zipWith constrAdd annotationEffect higherOrderFix
+      _ <- printAnnotation (printWithLocals || isTargetMethod) "Effects" $ ATuple $ AConstr <$> effects
+      
+      let transformed   = uncurry transform <$> zip effects (snd <$> methods')
+      let emptyRegs     = collectEmptyRegs     <$> transformed
+      let boundedRegs   = collectBoundedRegs   <$> transformed
+      let unboundedRegs = collectUnboundedRegs <$> transformed
+      let cleaned     = if removeEmpty
+                        then uncurry remEmptyRegs <$> zip emptyRegs transformed
+                        else transformed
+  
+      -- Count bounded and unbouned regions
+      let (finite, infinite, zero) = (length $ concat boundedRegs, length $ concat unboundedRegs, length $ concat emptyRegs)
+
+      return ((gEnv', finite, infinite, zero), zip (fst <$> methods) cleaned)
 
 {-| When a local region is applied to a higher order function
   we must make said region unbounded. We cannot know the true bound.
@@ -263,7 +275,7 @@ printAnnotation :: Bool       -- ^ Debug flag (sort yes/no)
                 -> IO ()
 printAnnotation False _ _ = return ()
 printAnnotation True name ann = 
-  do appendFile "C:\\Users\\hpottens\\Desktop\\target.txt" ("\n# " ++ name ++ ":\n" ++ (show ann) ++ "\n\n\n")
+  do appendFile "C:\\Users\\hanno\\Desktop\\target.txt" ("\n# " ++ name ++ ":\n" ++ (show ann) ++ "\n\n\n")
      putStrLn $ "\n# " ++ name ++ ": " 
      print ann 
 

@@ -54,3 +54,7 @@ printDTSorts     = True && printDTInfo
 printDTRegions   = True && printDTInfo
 printDTStructs   = True && printDTInfo
 printDTDestructs = True && printDTInfo
+
+-- Experimental features
+delayFixpoints :: Bool
+delayFixpoints = True

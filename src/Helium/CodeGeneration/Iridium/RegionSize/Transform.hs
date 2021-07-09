@@ -1,6 +1,6 @@
 module Helium.CodeGeneration.Iridium.RegionSize.Transform
     (transform, collectEffects, remEmptyRegs,
-    collectEmptyRegs, collectBoundedRegs, collectUnboundedRegs)
+    collectRegs, collectEmptyRegs, collectBoundedRegs, collectUnboundedRegs)
 where
 
 import Helium.CodeGeneration.Iridium.Data
@@ -80,7 +80,6 @@ collectBoundedRegs method = fst <$> (filter (\(_,b) -> 0 < fromMaybe 0 b) $ coll
 
 collectUnboundedRegs :: Method -> [RegionVar]
 collectUnboundedRegs method = fst <$> (filter (\(_,b) -> b == Nothing) $ collectRegs method)
-
 
 collectRegs :: Method -> [(RegionVar, Maybe Int)]
 collectRegs (Method _ _ _ _ _ _ fstBlock otherBlocks) =

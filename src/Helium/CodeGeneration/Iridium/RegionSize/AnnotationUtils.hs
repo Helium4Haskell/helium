@@ -1,5 +1,5 @@
 module Helium.CodeGeneration.Iridium.RegionSize.AnnotationUtils
-  ( liftTuple, unliftTuple, unsafeUnliftTuple,
+  ( liftTuple, unliftTuple, unsafeUnliftTuple, unliftFixpointTuple,
     collect,
     annWeaken,
     isConstr, isTop, isBot, isLam, isVar, isQuant, isApl, isInstn, isTuple, isReg, isAdd, isMinus,
@@ -8,8 +8,8 @@ module Helium.CodeGeneration.Iridium.RegionSize.AnnotationUtils
     annRemLocalRegs, regionVarsToGlobal,
     annRemoveQuants, annWrapQuants,
     gatherLocals, gatherBinds,
-    gatherConstraints, 
-    gatherConstraintsTuple
+    gatherConstraints, gatherConstraintsTuple,
+    countFixpoints
   ) where
 
 import Helium.CodeGeneration.Iridium.Region.RegionVar
@@ -131,10 +131,16 @@ liftTuple a = (AProj 0 a, AProj 1 a)
 unliftTuple :: (Annotation, Effect) -> Annotation 
 unliftTuple (a,b) = ATuple [a,b] 
 
+-- | Unlift a fixpoint tuple
+unliftFixpointTuple :: Annotation -> [Annotation]
+unliftFixpointTuple fix@(AFix ss as) = zipWith makeProject ([0..(length as) - 1]) (repeat fix) 
+  where makeProject i fix = AProj i fix
+unliftFixpointTuple a =  rsError $ "unliftFixpointTuple: Called unlift on non-fixpoint: " ++ show a
+
 -- | Get an array of annotations from a tuple
 unsafeUnliftTuple :: Annotation -> [Annotation]
 unsafeUnliftTuple (ATuple as) = as
-unsafeUnliftTuple a = rsError $ "unsafeUnliftTuple: Called unsafe unlift tuple on non-tuple: " ++ show a
+unsafeUnliftTuple a = rsError $ "unsafeUnliftTuple: Called unlift on non-tuple: " ++ show a
 
 -- | Remove quantifiers from an annotation
 annRemoveQuants :: Annotation -> Annotation
@@ -239,3 +245,28 @@ gatherConstraintsTuple :: Annotation -> Annotation
 gatherConstraintsTuple a = let regions = gatherLocals a
                                vars    = gatherBinds a
                            in ATuple $ constrIdxToAnn <$> (regions ++ vars)
+
+
+
+-- | Count the number of fixpoint in the annotations
+countFixpoints :: Annotation -> Int
+countFixpoints = foldAnnAlgLams countAlg
+    where 
+      countAlg = AnnAlg {
+        aVar    = \_ _   -> 0,
+        aReg    = \_ _   -> 0,
+        aLam    = \_ _ a -> a,
+        aApl    = \_ a b -> a + b,
+        aConstr = \_ _   -> 0,
+        aUnit   = \_     -> 0,
+        aTuple  = \_ as  -> sum as,
+        aProj   = \_ _ a -> a,
+        aAdd    = \_ a b -> a + b,
+        aMinus  = \_ a _ -> a,
+        aJoin   = \_ a b -> a + b,
+        aQuant  = \_ a   -> a,
+        aInstn  = \_ a _ -> a,
+        aTop    = \_ _ _ -> 0,
+        aBot    = \_ _   -> 0,
+        aFix    = \_ _ a -> 1 + sum a   
+      }
