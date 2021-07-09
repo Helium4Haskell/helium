@@ -8,10 +8,10 @@ removeEmpty :: Bool
 removeEmpty = True
 
 max_bound :: Int
-max_bound = 1
+max_bound = 5
 
 max_iterations :: Int
-max_iterations = 7
+max_iterations = 6
 
 ----------------------------------------------------------------
 -- Debug flags
