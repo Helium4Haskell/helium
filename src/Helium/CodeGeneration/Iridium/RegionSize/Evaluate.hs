@@ -109,9 +109,9 @@ top s c = ATop s c
 bot :: Sort -> Annotation
 bot SortUnit          = AUnit 
 bot SortConstr        = AConstr constrBot
-bot (SortTuple ss   ) = ATuple  $ ABot <$> ss
-bot (SortQuant s    ) = AQuant  $ ABot s
-bot (SortLam   s1 s2) = ALam s1 $ ABot s2
+bot (SortTuple ss   ) = ATuple  $ eval emptyDEnv . ABot <$> ss
+bot (SortQuant s    ) = AQuant  . eval emptyDEnv $ ABot s
+bot (SortLam   s1 s2) = ALam s1 . eval emptyDEnv $ ABot s2
 bot s = ABot s
 
 
