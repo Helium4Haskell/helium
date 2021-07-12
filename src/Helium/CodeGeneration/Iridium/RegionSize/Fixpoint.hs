@@ -46,19 +46,11 @@ solveFixpoint methodNames dEnv sorts fixes =
           isFix = hasFixBinds fixes
           
           fixIterate :: Int -> Annotation -> Annotation -> [Annotation]
-          fixIterate n  state fs | n >= max_iterations = unsafePerformIO $ do 
-                                                            if isFix
-                                                            then appendFile "C:\\Users\\hanno\\Desktop\\fixpoints.csv" ("0;"++show methodNames++"\n")
-                                                            else return ()
-                                                            return $ mapWithIndex (\ i _ -> AProj i $ ATop s c) fixes 
+          fixIterate n  state fs | n >= max_iterations = mapWithIndex (\ i _ -> AProj i $ ATop s c) fixes 
                                  | otherwise =
               let res = eval dEnv $ AApl (ALam s fs) state
               in if res == state
-                 then unsafePerformIO $ do 
-                        if isFix
-                        then appendFile "C:\\Users\\hanno\\Desktop\\fixpoints.csv" ("1;"++show methodNames++"\n")
-                        else return ()
-                        return $ unsafeUnliftTuple res
+                 then unsafeUnliftTuple res
                  else fixIterate (n+1) res fs 
 
 ----------------------------------------------------------------

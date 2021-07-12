@@ -143,9 +143,7 @@ makeDataTypeDestructors' (Complex dtSort) dt@(DataType structs) =
     makeDestructorAnn idx strctDecl =
         let size = structorSize strctDecl
             SortTuple fieldSorts = structorSorts !! idx
-            destrctAnn = (\i -> unsafePerformIO $ do 
-                                  appendFile "C:\\Users\\hanno\\Desktop\\datatops.csv" "1\n"
-                                  return $ ALam SortUnit $ ATop (fieldSorts !! i) constrBot) <$> [0 .. size-1]  
+            destrctAnn = (\i -> ALam SortUnit $ ATop (fieldSorts !! i) constrBot) <$> [0 .. size-1]  
         in (declarationName strctDecl, wrapDataTypeQuants dt <$> destrctAnn)
 {- Datatypes we can analyze return the annotation of that field by projecting it out of the DT tuple -}
 makeDataTypeDestructors' (Analyzed dtSort) dt@(DataType structs) = 

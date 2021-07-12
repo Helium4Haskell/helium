@@ -122,9 +122,7 @@ constrAdd = M.unionWith boundAdd
         boundAdd Infty _ = Infty
         boundAdd _ Infty = Infty
         boundAdd (Nat a) (Nat b) = if a + b > max_bound
-                                   then unsafePerformIO $ do 
-                                            appendFile "C:\\Users\\hanno\\Desktop\\inftys.csv" "1\n"
-                                            return $ Infty
+                                   then Infty
                                    else Nat $ a + b
 
 -- | Addition of a list of constraint sets
