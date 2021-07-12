@@ -14,7 +14,6 @@
 module Helium.CodeGeneration.Core.Saturate (coreSaturate) where
 
 import Data.List
-import Data.Maybe
 import Lvm.Common.Id    
 import Lvm.Common.IdMap
 import Lvm.Core.Expr
@@ -37,6 +36,9 @@ findConstructorType :: Id -> Env -> Maybe Type
 findConstructorType x (Env _ requiredArgs)
   = lookupMap x requiredArgs
 
+findVarType :: Id -> Env -> Maybe Type
+findVarType x (Env _ requiredArgs) = lookupMap x requiredArgs
+
 splitEnv :: Env -> (Env, Env)
 splitEnv (Env supply requiredArgs)
   = let (s0,s1) = splitNameSupply supply
@@ -51,13 +53,22 @@ splitEnvs (Env supply requiredArgs)
 ----------------------------------------------------------------
 coreSaturate :: NameSupply -> CoreModule -> CoreModule
 coreSaturate supply m
-  = mapExprWithSupply (satDeclExpr constructors) supply m
+  = mapExprWithSupply (satDeclExpr decls) supply m
   where
-    constructors = mapFromList [(declName d, declType d) | d <- moduleDecls m, isDeclCon d || isDeclExtern d]
+    -- saturate constructors and FFI declarations
+    decls = mapFromList (constructors ++ foreigns)
+    constructors = [(declName d, declType d) | d <- moduleDecls m, isDeclCon d || isDeclExtern d]
+    foreigns = [(declName d, declType d) | d <- moduleDecls m, isForeignDecl d ]
+
+isForeignDecl :: Decl a -> Bool
+isForeignDecl DeclAbstract{declForeignName=(Just _)} = True 
+isForeignDecl _ = False
 
 extractArguments :: Type -> [Type]
 extractArguments (TForall _ _ t) = extractArguments t
 extractArguments (TAp (TAp (TCon TConFun) t1) t2) = t1 : extractArguments t2
+-- hardcode IO, because IO = forall a. RealWorld -> IORes a
+extractArguments (TAp (TCon (TConDataType n)) _) = [TCon $ TConDataType (idFromString "RealWorld") | stringFromId n == "IO"]
 extractArguments _ = []
 
 satDeclExpr :: IdMap Type -> NameSupply -> Expr -> Expr
@@ -126,4 +137,5 @@ requiredArgs env expr
         Nothing -> Nothing
       Con (ConId x)         -> findConstructorType x env
       Con (ConTuple arity)  -> Just $ typeTuple arity
+      Var x                 -> findVarType x env
       _                     -> Nothing
