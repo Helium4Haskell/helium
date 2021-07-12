@@ -32,12 +32,8 @@ uniqueId (Env supply requiredArgs)
   = let (x,supply') = freshId supply
     in  (x,Env supply' requiredArgs)
 
-findConstructorType :: Id -> Env -> Maybe Type
-findConstructorType x (Env _ requiredArgs)
-  = lookupMap x requiredArgs
-
-findVarType :: Id -> Env -> Maybe Type
-findVarType x (Env _ requiredArgs) = lookupMap x requiredArgs
+findTypeFromEnv :: Id -> Env -> Maybe Type
+findTypeFromEnv x (Env _ requiredArgs) = lookupMap x requiredArgs
 
 splitEnv :: Env -> (Env, Env)
 splitEnv (Env supply requiredArgs)
@@ -135,7 +131,7 @@ requiredArgs env expr
       ApType e1 t2 -> case requiredArgs env e1 of
         Just t1 -> Just $ typeApply t1 t2
         Nothing -> Nothing
-      Con (ConId x)         -> findConstructorType x env
+      Con (ConId x)         -> findTypeFromEnv x env
       Con (ConTuple arity)  -> Just $ typeTuple arity
-      Var x                 -> findVarType x env
+      Var x                 -> findTypeFromEnv x env
       _                     -> Nothing
