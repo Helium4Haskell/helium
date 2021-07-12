@@ -99,7 +99,7 @@ analyseApplication env (Var name) arity = case lookupMap name $ envFunctionArgum
     | arity >= length args -> Analysis emptySet args
     -- Unsaturated call. We cannot derive any strictness information on the applied arguments,
     -- as we do not know whether the partially applied function will be called later on.
-    | otherwise -> Analysis emptySet args
+    | otherwise -> Analysis emptySet []
   _ -> Analysis (singleSet name) []
 analyseApplication env (Con (ConId name)) arity = case lookupMap name $ envFunctionArguments env of
   Just args

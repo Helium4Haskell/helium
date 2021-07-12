@@ -5,6 +5,7 @@ export_as @_$helium_runtime_error from IridiumLangString declare @_$helium_runti
 export_as @_$helium_runtime_print_string from IridiumLangString declare @_$helium_runtime_print_string[1]: { ![Char] -> Int }
 
 #[decl @kind [bytes "* -> *"]]
+#[decl @constructors [name @"[]"] [name @":"]]
 export_as @"[]" data @"[]" {
   #[link @"[]" @data]
   export_as @"[]" constructor @"[]": { forall a. [a] }
@@ -14,6 +15,7 @@ export_as @"[]" data @"[]" {
 }
 
 #[decl @kind [bytes "*"]]
+#[decl @constructors [name @True] [name @False]]
 export_as @Bool data @Bool {
   #[link @Bool @data]
   export_as @False constructor @False: { Bool }
@@ -168,6 +170,7 @@ entry:
 ; IO
 ; data IORes a = IORes a !RealWorld
 #[decl @kind [bytes "* -> *"]]
+#[decl @constructors [name @"IORes"]]
 export_as @IORes data @IORes {
   #[link @"IORes" @data]
   export_as @IORes constructor @IORes: { forall a. a -> !RealWorld -> IORes a }
@@ -175,10 +178,12 @@ export_as @IORes data @IORes {
 
 ; data RealWorld
 #[decl @kind [bytes "*"]]
+#[decl @constructors []]
 export_as @RealWorld data @RealWorld {}
 
 ; newtype IO a = IO (RealWorld -> IORes a)
 #[decl @kind [bytes "* -> *"]]
+#[decl @constructors [name @"IO"]]
 export_as @IO newtype @IO = @IO { forall a. RealWorld -> IORes a }
 
 ; unsafePerformIO :: IO a -> a

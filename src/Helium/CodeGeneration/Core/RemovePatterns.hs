@@ -4,6 +4,7 @@ module Helium.CodeGeneration.Core.RemovePatterns (coreRemovePatterns) where
 -- Necessary to improve the precision of the strictness analysis
 -- Executed between the two let inline passes as the first let inline puts the cases in order making this analysis easier
 -- The second pass can then remove unused pattern fail errors in let bindings
+-- Datatypes defined in Iridium need to have #[decl @constructors {list of constructors}]
 
 import Helium.CodeGeneration.Core.TypeEnvironment
 
@@ -20,10 +21,10 @@ type DataEnvironment = IdMap IdSet
 type MatchEnvironment = IdMap IdSet
 
 coreRemovePatterns :: CoreModule -> CoreModule
-coreRemovePatterns mod = mod{moduleDecls = map (analyseDeclaration env typeEnv) $ moduleDecls mod}
+coreRemovePatterns m = m{moduleDecls = map (analyseDeclaration env typeEnv) $ moduleDecls m}
     where
-        env = foldr insertDeclaration emptyMap $ moduleDecls mod
-        typeEnv = typeEnvForModule mod
+        env = foldr insertDeclaration emptyMap $ moduleDecls m
+        typeEnv = typeEnvForModule m
 
 insertDeclaration :: CoreDecl -> DataEnvironment -> DataEnvironment
 insertDeclaration decl@DeclCon{} env = case lookupMap d env of
@@ -34,16 +35,32 @@ insertDeclaration decl@DeclCon{} env = case lookupMap d env of
     where
         -- custom "data" x
         [d] = [x | CustomLink x (DeclKindCustom y) <- declCustoms decl, y == idFromString "data"]
+insertDeclaration (DeclCustom d _ _ (DeclKindCustom c) cs) env
+    | c == idFromString "data" = updateMap d (setFromList cons) env
+        where
+            -- Get constructor list from datatype
+            cons = [z | CustomDecl (DeclKindCustom x) y <- cs, x == idFromString "constructors", CustomName z <- y]
 insertDeclaration _ env = env
 
 analyseDeclaration :: DataEnvironment -> TypeEnvironment -> CoreDecl -> CoreDecl
 analyseDeclaration env typeEnv decl@DeclValue{} = decl{valueValue = analyseExpression env emptyMap typeEnv $ valueValue decl}
+analyseDeclaration env _ decl@(DeclCustom _ _ _ (DeclKindCustom c) cs)
+    | c == idFromString "data" && noCons cs = decl{declCustoms = cons : cs}
+        where
+            cons = CustomDecl (DeclKindCustom d) (map CustomName $ maybe [] listFromSet $ lookupMap (declName decl) env)
+            d = idFromString "constructors"
 analyseDeclaration _ _ decl = decl
+
+
+noCons :: [Custom] -> Bool
+noCons [] = True
+noCons (CustomDecl (DeclKindCustom d) _:xs) = d /= idFromString "constructors" && noCons xs
+noCons (_:xs) = noCons xs
 
 analyseExpression :: DataEnvironment -> MatchEnvironment -> TypeEnvironment -> Expr -> Expr
 -- let! v :: _ = x in match v with as
-analyseExpression env m typeEnv (Let b@(Strict (Bind (Variable v t) (Var x))) (Match id as))
-    | v == id = Let b (Match id as')
+analyseExpression env m typeEnv (Let b@(Strict (Bind (Variable v t) (Var x))) (Match i as))
+    | v == i = Let b (Match i as')
         where
             as' = analyseAlts env m' typeEnv' x as
             m' = case getData t typeEnv' of
@@ -57,15 +74,15 @@ analyseExpression env m typeEnv (Let b@(Strict (Bind (Variable v t) (Var x))) (M
 analyseExpression env m typeEnv (Let b e) = Let (analyseBinds env m typeEnv b) $ analyseExpression env m typeEnv' e
     where
         typeEnv' = typeEnvAddBinds b typeEnv
-analyseExpression env m typeEnv (Match id as) = Match id $ analyseAlts env m' typeEnv id as
+analyseExpression env m typeEnv (Match i as) = Match i $ analyseAlts env m' typeEnv i as
     where
-        m' = case getData (typeOfId typeEnv id) typeEnv of
+        m' = case getData (typeOfId typeEnv i) typeEnv of
             -- Tuple
             Nothing -> m
             Just t' -> case lookupMap t' env of
                 -- Char, Int etc.
                 Nothing -> m
-                Just y  -> insertMap id y m
+                Just y  -> insertMap i y m
 analyseExpression env m typeEnv (Ap e1 e2) = Ap (analyseExpression env m typeEnv e1) $ analyseExpression env m typeEnv e2
 analyseExpression env m typeEnv (ApType e t) = ApType (analyseExpression env m typeEnv e) t
 analyseExpression env m typeEnv (Lam s v e) = Lam s v $ analyseExpression env m typeEnv' e

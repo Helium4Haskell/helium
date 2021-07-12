@@ -104,7 +104,7 @@ normSubExprs supply env (ApType expr t) = (ApType expr'' t, bindings')
 normSubExprs supply env expr = (expr, []) -- expr is already trivial, we don't need to normalize it further.
 
 normBinds :: NameSupply -> TypeEnvironment -> Binds -> (TypeEnvironment, Binds)
-normBinds supply env (Rec binds) = (env, Rec $ mapWithSupply (`normBind` env') supply binds)
+normBinds supply env (Rec binds) = (env', Rec $ mapWithSupply (`normBind` env') supply binds)
   where
     env' = typeEnvAddBinds (Rec binds) env
 normBinds supply env (Strict b) = (env', Strict $ normBind supply env b)
