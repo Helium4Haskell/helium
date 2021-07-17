@@ -6,7 +6,7 @@ module Helium.CodeGeneration.Iridium.RegionSize.Constraints
     constrIdxWithVar, constrIdx, 
     constrBot, constrJoin, constrJoins, 
     constrAdd, constrAdds,
-    constrRem, 
+    constrRem, constrRemVar,
     constrOne, constrInfty,
     constrRemLocalRegs, constrRemVarRegs)
 where
@@ -18,8 +18,6 @@ import Helium.CodeGeneration.Iridium.RegionSize.Parameters
 
 import qualified Data.Map.Strict as M
 import Data.List
-
-import System.IO.Unsafe
 
 ----------------------------------------------------------------
 -- Types
@@ -144,6 +142,13 @@ constrIdxWithVar idx = filter f . M.keys
 -- | Remove a region variable from the constraint set
 constrRem :: ConstrIdx -> Constr -> Constr
 constrRem = M.delete
+
+-- | Remove a region variable from the constraint set
+constrRemVar :: Int -> Constr -> Constr
+constrRemVar idx = M.filterWithKey go
+    where go (CnProj i idx') _ = go idx' undefined
+          go (Region _)      _ = True  
+          go (AnnVar idx')   _ = idx /= idx'  
 
 -- | Create a constraint set for a single variable
 constrOne :: ConstrIdx -> Constr

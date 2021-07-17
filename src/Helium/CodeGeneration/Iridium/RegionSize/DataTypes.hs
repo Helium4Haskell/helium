@@ -17,8 +17,6 @@ import GHC.Stack
 
 import Data.Either (rights)
 
-import System.IO.Unsafe
-
 ----------------------------------------------------------------
 -- Data type environment
 ----------------------------------------------------------------

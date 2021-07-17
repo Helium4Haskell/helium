@@ -103,7 +103,7 @@ collectRegsInstr instr =
 ----------------------------------------------------------------
 -- Remove 0-size regions
 ----------------------------------------------------------------
-
+-- TODO: Replace regions with regbottom...
 remEmptyRegs :: [RegionVar] -> Method -> Method
 remEmptyRegs emptyRegs (Method a b c d e f fstBlock otherBlocks) =
     let fstBlock'    = remEmptyRegsBlock emptyRegs     fstBlock

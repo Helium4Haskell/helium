@@ -16,8 +16,6 @@ import Data.List (sort, elemIndex)
 import Data.Maybe (fromJust, catMaybes)
 import qualified Data.Map.Strict as M
 
-import System.IO.Unsafe
-
 ----------------------------------------------------------------
 -- Solving fixpoints
 ----------------------------------------------------------------
