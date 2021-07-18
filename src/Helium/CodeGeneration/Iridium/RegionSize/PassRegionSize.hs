@@ -108,7 +108,7 @@ pipeline gEnv methods = do
     let gEnv' = foldr (uncurry insertGlobal) gEnv $ zip (fst <$> methods) unpacked
 
     -- Save the annotation on the method
-    let methods' = uncurry methodAddRegionSizeAnnotation <$> zip methods unpacked
+    let methods' = uncurry methodAddRegionSizeAnnotation <$> zip methods (removeUnneededBounds <$> unpacked)
 
     -- Derive again, but now with the local regions. Also print an sort.
     let withLocals = (unsafeUnliftTuple 
@@ -225,6 +225,39 @@ initialGEnv m = GlobalEnv typeEnv functionEnv dataTypeEnv
     dataTypeGroups     = dataTypeBindingGroups True  $ moduleDataTypes m
     dataTypeGroupsRegs = dataTypeBindingGroups False $ moduleDataTypes m
 
+
+removeUnneededBounds :: Annotation -> Annotation
+removeUnneededBounds = go []
+  where go ls (AVar   idx) = AVar idx
+        go ls (AReg   idx) = AReg idx
+        go ls (ALam   s a) | isNotNeeded s = ALam s $ go (0 : ((+1) <$> ls)) a
+                           | otherwise     = ALam s $ go (    ((+1) <$> ls)) a
+        go ls (AApl   a b) = AApl (go ls a) (go ls b)
+        go ls (AUnit     ) = AUnit
+        go ls (ATuple as ) = ATuple $ go ls <$> as
+        go ls (AProj  i a) = AProj i $ go ls a
+        go ls (AAdd   a b) = AAdd (go ls a) (go ls b)
+        go ls (AMinus a r) = AMinus (go ls a) r
+        go ls (AJoin  a b) = AJoin (go ls a) (go ls b)
+        go ls (AQuant a  ) = AQuant (go ls a)
+        go ls (AInstn a t) = AInstn (go ls a) t
+        go ls (ATop   s v) = ATop s (removeIdxs ls v)
+        go ls (ABot   s  ) = ABot s
+        go ls (AFix   s a) | and $ isNotNeeded <$> s = AFix s $ go (0 : ((+1) <$> ls)) <$> a
+                           | otherwise               = AFix s $ go (    ((+1) <$> ls)) <$> a
+        go ls (AConstr  c) = AConstr (removeIdxs ls c)
+
+        isNotNeeded (SortMonoRegion)     = False
+        isNotNeeded (SortConstr)         = False
+        isNotNeeded (SortPolyRegion _ _) = False
+        isNotNeeded (SortPolySort   _ _) = True
+        isNotNeeded (SortLam a b)        = False
+        isNotNeeded (SortUnit)           = True
+        isNotNeeded (SortQuant a)        = isNotNeeded a
+        isNotNeeded (SortTuple as)       = and $ isNotNeeded <$> as
+
+        removeIdxs ls c = foldr (\i -> constrRemVar i) c ls
+
 ----------------------------------------------------------------
 -- Debug stuff
 ----------------------------------------------------------------
@@ -254,7 +287,6 @@ checkAnnotationSorts True  dEnv xs =
   in if all (s ==) ss
      then return ()
      else rsError "Sort changed during evaluation."           
-
 
 -- | Print the annotation depending on the debug flag
 printAnnotation :: Bool       -- ^ Debug flag (sort yes/no)
