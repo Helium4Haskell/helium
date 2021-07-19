@@ -124,7 +124,33 @@ remEmptyRegsInstr emptyRegs instr =
         ReleaseRegion reg next -> if reg `elem` emptyRegs
                                   then remEmptyRegsInstr emptyRegs next
                                   else ReleaseRegion reg $ remEmptyRegsInstr emptyRegs next
-        Let           a b next -> Let         a b $ remEmptyRegsInstr emptyRegs next
-        LetAlloc        a next -> LetAlloc      a $ remEmptyRegsInstr emptyRegs next
         Match     a b c d next -> Match   a b c d $ remEmptyRegsInstr emptyRegs next
+        Let        a expr next -> Let  a   (remEmptyRegsExpr emptyRegs     expr) (remEmptyRegsInstr emptyRegs next)
+        LetAlloc     bnds next -> LetAlloc (remEmptyRegsBind emptyRegs <$> bnds) (remEmptyRegsInstr emptyRegs next)
         terminalInstr -> terminalInstr
+
+
+remEmptyRegsExpr :: [RegionVar] -> Expr -> Expr
+remEmptyRegsExpr emptyRegs (Call a regs1 b regs2) = Call a (remEmptyRegsRegs emptyRegs regs1) b (remEmptyRegsRegs emptyRegs regs2)
+remEmptyRegsExpr _ expr = expr
+
+remEmptyRegsBind :: [RegionVar] -> Bind -> Bind
+remEmptyRegsBind emptyRegs bind = bind { bindDestination = remEmptyRegsReg emptyRegs $ bindDestination bind,
+                                         bindTarget      = remEmptyRegsBindTarget emptyRegs $ bindTarget bind }
+
+remEmptyRegsBindTarget :: [RegionVar] -> BindTarget -> BindTarget
+remEmptyRegsBindTarget emptyRegs (BindTargetFunction a regVars bindThunkRegs) = BindTargetFunction a (remEmptyRegsRegs emptyRegs regVars) (remEmptyRegsBindThunkRegs emptyRegs bindThunkRegs)
+remEmptyRegsBindTarget emptyRegs (BindTargetThunk a bindThunkRegs) = BindTargetThunk a (remEmptyRegsBindThunkRegs emptyRegs bindThunkRegs)
+remEmptyRegsBindTarget _ target = target
+
+remEmptyRegsBindThunkRegs :: [RegionVar] -> BindThunkRegions -> BindThunkRegions
+remEmptyRegsBindThunkRegs emptyRegs (BindThunkRegions regs1 regs2) = BindThunkRegions (remEmptyRegsRegs emptyRegs regs1) (remEmptyRegsRegs emptyRegs regs2)
+
+remEmptyRegsRegs :: [RegionVar] -> RegionVars -> RegionVars
+remEmptyRegsRegs emptyRegs (RegionVarsSingle reg) = RegionVarsSingle $ remEmptyRegsReg emptyRegs reg
+remEmptyRegsRegs emptyRegs (RegionVarsTuple regs) = RegionVarsTuple $ remEmptyRegsRegs emptyRegs <$> regs
+
+
+remEmptyRegsReg :: [RegionVar] -> RegionVar -> RegionVar
+remEmptyRegsReg emptyRegs reg | reg `elem` emptyRegs = RegionBottom
+                              | otherwise =  reg

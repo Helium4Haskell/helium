@@ -5,7 +5,7 @@ where
 ----------------------------------------------------------------
 
 removeEmpty :: Bool
-removeEmpty = False
+removeEmpty = True
 
 max_bound :: Int
 max_bound = 1
