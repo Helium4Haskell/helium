@@ -50,11 +50,12 @@ ATTR Type SimpleType AnnotatedType
 ATTR Expression RightHandSide --...
     [ | | dimExprInfo : { UnitType } ]
 
-ATTR 
+ATTR Module Body Expression
     [ variableToDim : UnitEnvironment
       typeToDim : UnitEnvironment
       typeConstructorToDim : UnitEnvironment
-      unitConstraints USE {++} {[]} : UnitConstraints | | ]
+      | | 
+      unitConstraints USE {(++)} {[]} : UnitConstraints ]
 
 -- ------------------------------------------------------------------------
 -- -- Declarations                                                        --
@@ -63,7 +64,7 @@ ATTR
 ATTR Declarations Declaration
     [ | | 
       variableToDim USE {M.union} {M.empty} : UnitEnvironment
-      unitConstraints USE {++} {[]} : UnitConstraints]
+      unitConstraints USE {(++)} {[]} : UnitConstraints]
 
 SEM Declaration
 
@@ -88,7 +89,7 @@ SEM Declaration
 -- -- Expressions                                                        --
 -- ------------------------------------------------------------------------
 
-ATTR Expression Expressions MaybeExpression [ betaUnique:Int | assumptions:Assumptions ]
+ATTR Expression Expressions MaybeExpression [ betaUnique:Int | | assumptions:Assumptions ]
 ATTR Expression                             [ | | beta:Tp constraints:ConstraintSet ]
 ATTR            Expressions                 [ | | betas:Tps constraintslist:ConstraintSets ]
 ATTR                        MaybeExpression [ | | beta:Tp constraints:ConstraintSet section:Bool ]
@@ -138,9 +139,9 @@ SEM Expression
     | If                 loc . thenDim = @thenExpression.dimExpr
                              . elseDim = @elseExpression.dimExpr
                          lhs . dimExpr = @thenExpression.dimExpr
-                         lhs . unitConstraints = [(@thenDim, @elseDim)]
-                            ++ @thenExpression.unitConstraints ++ @elseExpression.unitConstraints
-                            ++ @guardExpression.unitConstraints
+                         lhs . unitConstraints = 
+                            [(@thenDim, @elseDim)] ++ @thenExpression.unitConstraints ++
+                            @elseExpression.unitConstraints ++ @guardExpression.unitConstraints
 
     | Lambda             expression.varToDim = M.union @patterns.patternVariablesDim @lhs.varToDim
                          lhs . dimExpr = Arrow @patterns.patternsDimType @expression.dimExpr
@@ -159,7 +160,8 @@ SEM Expression
                             @expression.unitConstraints
 
     | List              lhs . dimExpr = listUType @expressions.dimExprInfo
-                        loc . unitConstraints = -- everything should have the same unit
+                        -- everything should have the same unit
+                        loc . unitConstraints = 
                             case @expressions.dimExprInfo of
                                 []  -> []
                                 [a] -> []
@@ -190,14 +192,17 @@ SEM Expression
     
     | Comprehension     lhs.dimExpr = @expression.dimExpr
                         lhs.unitConstraints = @qualifiers.unitConstraints ++ @expression.unitConstraints
-    | RecordConstruction lhs.dimExpr, recordExpressionBindings.parameter = 
+    | RecordConstruction loc. (locdimExpr, locparameter) = 
                             case M.lookup @name.self @lhs.collectValueDimConstructors of
                                 Just (_, (n, parameter)) -> n, parameter
+                         lhs.dimExpr = @locdimExpr
+                         recordExpressionBindings.parameter = @locparameter
                          lhs.unitConstraints = @recordExpressionBindings.unitConstraints
     --  range                    : Range
     --  name                     : Name
     --  recordExpressionBindings : RecordExpressionBindings
-    | RecordUpdate               lhs.unitConstraints = @expression.unitConstraints ++ @recordExpressionBindings.unitConstraints
+    | RecordUpdate               lhs.unitConstraints = 
+                                    @expression.unitConstraints ++ @recordExpressionBindings.unitConstraints
                                     ++ [unitTypeField @recordExpressionBindings.name @expression.self, @recordExpressionBindings.dimExpr]
     --  range                    : Range
     --  expression               : Expression
@@ -223,21 +228,21 @@ unitTypeField n ut =
 
 }
 
-
 ---------------------------------------------------------------------------
 
-SEM Statements
-    |Cons           @tl.variableToDim = @hd.variableToDim
-                    @hd.variableToDim = @lhs.variableToDim
+{-SEM Statements
+    | Cons              tl.variableToDim = @hd.variableToDim
+                        hd.variableToDim = @lhs.variableToDim-}
 
 SEM Statement
     | Expression        lhs.unitConstraints = @expression.unitConstraints
                         lhs.dimExpr = @expression.dimExpr
     | Let               lhs.variableToDim = M.union @declarations.variableToDim  @lhs.variableToDim
     | Generator         lhs.unitConstraints = @expression.unitConstraints
-                        lhs.variableToDim = M.union
-                            @lhs.variableToDim 
-                            (M.fromList @patternpatternVariableDim)
+                        lhs.variableToDim =
+                            M.union 
+                                @lhs.variableToDim 
+                                (M.fromList @patternpatternVariableDim)
 
 SEM Qualifier
     | Guard               -- lhs.unitConstraints = @guard.unitConstraints
@@ -259,11 +264,10 @@ SEM GuardedExpression
                         lhs.dimExpr = @expression.dimExpr
 
 SEM RecordExpressionBinding
-    | RecordExpressionBinding lhs.unitConstraints, expression.variableToDim =
+    | RecordExpressionBinding  (lhs.unitConstraints, expression.variableToDim) =
                                 case M.lookup @name.self @lhs.collectDimRecordConstructors of
                                     recordConsUnit -> [(recordConsUnit, @expression.dimExpr)]++@expression.unitConstraints
-
-
+                                
 
 ---------------------------------------------------------------------------------------------------------
 
@@ -273,9 +277,10 @@ SEM FunctionBinding
                                 Nothing -> @righthandside.unitConstraints, []
                                 Just ut@(Arrow argsut resut) ->
                                     (@righthandside.dimExpr, resut):@righthandside.constraint, -- We'll see[(a,righthandside.dimExpr) |  ]
-                        righthandside.variableToDim = M.union
-                            @lhs.variableToDim
-                            (fromList @argsDimType)
+                        righthandside.variableToDim =
+                            M.union
+                                @lhs.variableToDim
+                                (fromList @argsDimType)
                         loc . functionName = @lefthandside.name
                         loc . argsDimType = @lefthandside.patternVariablesDim
 
@@ -300,9 +305,7 @@ SEM LeftHandSide
 
 
 SEM RightHandSide
-    | expression           expression.variableToDim = M.union @where.variableToDim @lhs.variableToDim
-                           -- expression.typeToDim = M.union @where.variableToDim @lhs.variableToDim
-                           -- no typeToDim in where I think, type decl are top level
+    | Expression           expression.variableToDim = M.union @where.variableToDim @lhs.variableToDim
                            lhs.unitConstraints = @expression.UnitConstraints
                            lhs.dimExpr = @expression.dimExpr
     --  range                    : Range
@@ -313,7 +316,7 @@ SEM RightHandSide
                             lhs.(unitConstraints, dimExpr) =
                                 let uc, dimexpr = constraintUnifiedList @guardedexpressions.dimExpr in
                                 (uc ++ @guardedexpressions.unitConstraints, dimexpr)
-                            @guardedexpressions.variableToDim = M.union @where.variableToDim @lhs.vari
+                            guardedexpressions.variableToDim = M.union @where.variableToDim @lhs.variableToDim
     --  range                    : Range
     --  guardedexpressions       : GuardedExpressions
     --  where                    : MaybeDeclarations
@@ -327,7 +330,6 @@ constraintUnifiedList utlist =
         [a] -> ([], a)
         dimRef:otherDim -> ([(dimRef, dim) | dim <- otherDim ], dimRef)
 
-
 }
 
 -- ------------------------------------------------------------------------
@@ -335,10 +337,10 @@ constraintUnifiedList utlist =
 -- ------------------------------------------------------------------------
 
 ATTR Patterns
-    [ list : [] | | ]
+    [ list : { [ Maybe a ] } | | ]
 
 ATTR Pattern
-    [ | | patternVariableDim USE { ++ } { [] }: [(Name,UnitType)] ]
+    [ | | patternVariableDim USE { ++ } { [] }: {[(Name,UnitType)]} ]
 
 
 SEM Patterns
@@ -357,58 +359,61 @@ SEM Patterns
 -- declUnit field is Just u if its pattern is forced to be of a certain dimension
 SEM Pattern
     | Variable              lhs.patternVariableDim = [(@name.self, @lhs.dimPatt)]
-                            lhs.dimPatt = case @lhs.declUnit of
-                                Nothing -> Undimensioned
-                                Just u -> u
+                            lhs.dimPatt = 
+                                case @lhs.declUnit of
+                                    Nothing -> Undimensioned
+                                    Just u -> u
     | List                  lhs.patternVariableDim = @patterns.patternVariableDim
                             lhs.dimPatt = List @patterns.dimPatt
-                            patterns.list = case @lhs.declUnit of
-                                List unit -> [unit | x <- @patterns.self] --other cases are impossible (type checked)
-        range                    : Range
-        patterns                 : Patterns
+                            patterns.list = 
+                                case @lhs.declUnit of
+                                    List unit -> [unit | x <- @patterns.self] --other cases are impossible (type checked)
+    --  range                    : Range
+    --  patterns                 : Patterns
     | Tuple                 lhs.patternVariableDim = @patterns.patternVariableDim
                             lhs.dimPatt = Tuple @patterns.dimPatt
                             patterns.list = [Undimensioned | x <- patterns.self]
-        range                    : Range
-        patterns                 : Patterns
+    --  range                    : Range
+    --  patterns                 : Patterns
     | As                    lhs.patternVariableDim = [(@name.self, @pattern.dimPatt)]++@pattern.patternVariableDim
                             pattern.declUnit = @lhs.declUnit
-        range                    : Range
-        name                     : Name
-        pattern                  : Pattern
-    | Constructor           patterns.list, lhs.dimPatt = [], Undimensioned
+    --  range                    : Range
+    --  name                     : Name
+    --  pattern                  : Pattern
+    | Constructor           patterns.list = []
+                            lhs.dimPatt = Undimensioned
 
                             {-(patterns.list, lhs.dimPatt) =
                                 case M.lookup @name.self @typeToDim of
                                     Just (Cons name list) -> list, Cons name list
                                     Nothing -> [], Undimensioned
                             lhs.patternVariableDim = @patterns.patternVariableDim-}
-        range                    : Range
-        name                     : Name
-        patterns                 : Patterns
+    --  range                    : Range
+    --  name                     : Name
+    --  patterns                 : Patterns
     | InfixConstructor      lhs.dimPatt = List @constructorOperator.dimtype
-                            leftPattern.declUnit, rightPattern.declUnit = 
+                            (leftPattern.declUnit, rightPattern.declUnit) = 
                                 case M.lookup @constructorOperator.name @lhs.typeToDim of
                                     Just (InfixConstructor utleft utright) -> utleft, utright
-        range                    : Range
-        leftPattern              : Pattern
-        constructorOperator      : Name
-        rightPattern             : Pattern
+    --  range                    : Range
+    --  leftPattern              : Pattern
+    --  constructorOperator      : Name
+    --  rightPattern             : Pattern
     -- TAKE CARE TO THE ORDER, NOT SURE THAT'S IMPORTANT FOR RECORDS
     | Record                lhs.dimPatt = Record @recordPatternBindings.dimPatt
                             recordPatternBindings.declUnit =
                                 case M.lookup @name.self @lhs.collectDimRecordConstructors of
                                     Just (Record fieldToUtList) -> fieldToUtList
-        range                    : Range
-        name                     : Name
-        recordPatternBindings    : RecordPatternBindings
+    --  range                    : Range
+    --  name                     : Name
+    --  recordPatternBindings    : RecordPatternBindings
 
 
 -- not necessary rule I think
 SEM RecordPatternBinding
     | Cons          lhs.dimPatt = @hd.dimPatt : @tl.dimPatt
                     lhs.unitConstraints = @hd.unitConstraints : @tl.unitConstraints
-                    hd.expectedDimType, tl.expectedDimType =
+                    (hd.expectedDimType, tl.expectedDimType) =
                         case @declUnit of
                             t:q -> t,q
                             [] -> internalError "Missing field" 
@@ -485,7 +490,7 @@ SEM Constructor
 
 -- This is in a record; what do we do with records? : well, normal dim inference
 SEM FieldDeclaration
-    | FieldDeclaration      @lhs.typeToDim =
+    | FieldDeclaration      lhs.typeToDim =
                                  fold (M.insert) @lhs.typeToDim
                                     [(n,t) | n <- @names.self, t <- @type.dimTypeInfo]
     --  range                    : Range
@@ -493,6 +498,4 @@ SEM FieldDeclaration
     --  type                     : AnnotatedType        
 
 SEM AnnotatedType
-    | AnnotatedType         @lhs.dimType = @type.dimTypeInfo
-
-
+    | AnnotatedType         lhs.dimType = @type.dimTypeInfo
