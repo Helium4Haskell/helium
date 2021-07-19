@@ -9,7 +9,7 @@
     The data type of normalized Unit
 -}
 
-module Helium.Helium.StaticAnalysis.Inference.DimInference.NormUnit where
+module Helium.StaticAnalysis.Inferencers.DimInference.NormUnit where
 
 
 type UnitVar  = [(Name,Int)]

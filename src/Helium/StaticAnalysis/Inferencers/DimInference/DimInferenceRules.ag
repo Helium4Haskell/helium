@@ -20,13 +20,12 @@ import Helium.Utils.Utils (internalError, hole)
 
 {-
 
- We add this information into the map for each dimensioned variable we encounter
-
- We should proceed step by step:
+ SUMMARY OF THE DIMENSION INFERENCE:
+ We proceed step by step:
  - Attribute an unique identifier for each unit variable
  - Store the known dimension of the expressions (expressed with those variables)
  - Store each unit constraints
- - Normalization of units and solver on constraints
+ - Normalization of units and solver of constraints
  - Display error message from unit constraint
  - Go through the AST and labelled each expression with units / stored each variable units in a map
 
@@ -35,17 +34,11 @@ HYPOTHESIS:
 - EVERY DIMENSIONED OBJECT HAS TYPE INT OR FLOAT
 CONSEQUENCES:
 - NO DATA STRUCTURE CAN HAVE A DIMENSION (IN PARTICULAR LIST, TUPLE, RECORD...)
-
-Warning, Constructors do have a dimension 
-(data Type =  Cons (Int <Metre>) 
--> Cons have type (Metre -> Undimensioned ))
-
 -}
 
 
 {
 data UnitEnvironment = M.Map Name UnitType
-data TypeUnitEnvironment = M.Map Name (UnitType)
 }
 
 
@@ -54,52 +47,29 @@ data TypeUnitEnvironment = M.Map Name (UnitType)
 ATTR Type SimpleType AnnotatedType
     [ | | dimTypeInfo : { UnitType } ]
 
-ATTR Expression RightHandSide ...
+ATTR Expression RightHandSide --...
     [ | | dimExprInfo : { UnitType } ]
 
 ATTR 
-    [ variableToDim, typeToDim : UnitEnvironment
+    [ variableToDim : UnitEnvironment
+      typeToDim : UnitEnvironment
       typeConstructorToDim : UnitEnvironment
       unitConstraints USE {++} {[]} : UnitConstraints | | ]
-
-{-
-
- GUESSING THE DIMENSION OF A VARIABLE THROUGH ITS TYPES ONLY HAPPENS IN PATTERN
- (IS THAT TRUE ?? Well, this is the only case in which the variable is not declared
-  with a value -- with a value, we know if it is dimensioned or not)
- A type can have an intrinsec dimension:
- type TMetre = Int <Metre>
- So the result should be Metre
-They can also be parametrized :
- type TMetre a = a
- so the result should be depending of the type of the pattern
-
-Note: union is left-biased
--}
-
 
 -- ------------------------------------------------------------------------
 -- -- Declarations                                                        --
 -- ------------------------------------------------------------------------
 
+ATTR Declarations Declaration
+    [ | | 
+      variableToDim USE {M.union} {M.empty} : UnitEnvironment
+      unitConstraints USE {++} {[]} : UnitConstraints]
+
 SEM Declaration
 
--------------------------- Handle classes and their inside declarations ------------------------
-
-    | Class             lhs.variableToDim = M.union @where.variableToDim @lhs.variableToDim 
-    --  range                    : Range
-    --  context                  : ContextItems -- is a "simple" context
-    --  simpletype               : SimpleType   -- Haskell 98 allows only one variable
-    --  where                    : MaybeDeclarations -- cannot have everything
-    | Instance          lhs.variableToDim = M.union @where.variableToDim @lhs.variableToDim 
-    --  range                    : Range
-    --  context                  : ContextItems -- is a "simple" context
-    --  name                     : Name
-    --  types                    : Types        -- Haskell 98 allows only one type
-                                                -- that is severely restricted
-    --  where                    : MaybeDeclarations -- cannot have everything
---------------------------------------------------------------------
-
+    | Instance          lhs.variableToDim = @where.variableToDim 
+                        lhs.unitConstraints = @where.constraints
+                        
     | FunctionBindings  lhs.variableToDim = M.union @bindings.variableToDim @lhs.variableToDim
     --  range                    : Range
     --  bindings                 : FunctionBindings
@@ -135,20 +105,19 @@ SEM MaybeExpression
 - the constraints it raises -}
 
 SEM Expression
-    
     | Literal            lhs.dimExpr = Undimensioned
-    | Constructor        lhs.dimExpr = 
-                            case M.lookup name @collectValueDimConstructors of
+    | Constructor        lhs.dimExpr = Undimensioned
+                         {-   case M.lookup name @collectValueDimConstructors of
                                 Just a -> a -- (par1 -> par2 -> .. -> parn -> mothertype)
-                                Nothing -> internalError "Constructor undefined ?"
+                                Nothing -> internalError "Constructor undefined ?" -}
 
     | Variable           loc . beta = UTVar @lhs.betaDeclUnique
                          lhs .(dimExpr, unitConstraints) = 
-                            case M.lookup name variableToDim of
+                            case M.lookup name @lhs.variableToDim of
                                 Nothing -> @beta, []
                                 Just a -> a, [(@beta,a)]
 
-    | NormalApplication  lhs . (dimExpr, resultUT) = 
+    | NormalApplication  lhs . (dimExpr, unitConstraints) = 
                             let (expectedArgUT, resultUT) = ufunctionSpine @function.dimExpr in
                                 let appConstraints, unitType =
                                     constraintFromApp expectedArgUT resultUT @arguments.dimExpr
@@ -365,7 +334,10 @@ constraintUnifiedList utlist =
 -- -- Patterns                                                           --
 -- ------------------------------------------------------------------------
 
-ATTR Pattern Patterns
+ATTR Patterns
+    [ list : [] | | ]
+
+ATTR Pattern
     [ | | patternVariableDim USE { ++ } { [] }: [(Name,UnitType)] ]
 
 
@@ -404,11 +376,13 @@ SEM Pattern
         range                    : Range
         name                     : Name
         pattern                  : Pattern
-    | Constructor           (patterns.list, lhs.dimPatt) =
+    | Constructor           patterns.list, lhs.dimPatt = [], Undimensioned
+
+                            {-(patterns.list, lhs.dimPatt) =
                                 case M.lookup @name.self @typeToDim of
                                     Just (Cons name list) -> list, Cons name list
                                     Nothing -> [], Undimensioned
-                            lhs.patternVariableDim = @patterns.patternVariableDim
+                            lhs.patternVariableDim = @patterns.patternVariableDim-}
         range                    : Range
         name                     : Name
         patterns                 : Patterns

@@ -11,11 +11,36 @@
 module Helium.StaticAnalysis.Inferencers.DimInference.DimUtils where
 
 data UTp a =
-     UTApp (UTp a) (UTp a)
+      UTApp (UTp a) (UTp a)
     | UTCon String
     | UTVar Int
-    | Base a 
+    | Base a
+    | QuestionMark
     | Undimensioned
+
+
+type UnitType = UTp Unit
+type NormUnitType = UTp NormUnit
+type UnitConstraints = [(UnitType, UnitType)]
+
+-- A representation of type schemes. 
+-- A type scheme is a (qualified) type with a number of quantifiers (foralls) 
+-- in front of it. A partial mapping from type variable (Int) to their name (String)
+-- is preserved. 
+type UTpScheme = Qualification UnitPredicates UTp
+    -- list of quantified unit variables, finite map partially
+    -- mapping those var to their original id and a qualified type
+
+type UnitPredicates = [UnitPredicate]
+data UnitPredicate = UnitPredicate String UnitType deriving Eq
+
+type UnitClassEnvironment = M.map String Class
+type UnitClass = ([String], UnitInstances)
+type UnitInstances = [UnitInstance]
+type UnitInstance = (UnitPredicate, UnitPredicates)
+
+
+
 
 (to) :: UTp -> UTp -> UTp
 ut1 to ut2 = UTApp (UTApp (UTCon "->") ut1) ut2
@@ -66,24 +91,3 @@ isTupleConstructor ('(':[]) = False
 isTupleConstructor ('(':cs) = all (','==) (init cs) && last cs == ')'
 isTupleConstructor _        = False
 
--- A representation of type schemes. 
--- A type scheme is a (qualified) type with a number of quantifiers (foralls) 
--- in front of it. A partial mapping from type variable (Int) to their name (String)
--- is preserved. 
-type UTpScheme = Qualification UnitPredicates UTp
-    -- list of quantified unit variables, finite map partially
-    -- mapping those var to their original id and a qualified type
-
-type NormUnitType = UTp NormUnit
-type UnitType = UTp Unit
-
-type UnitConstraints = [(UnitType Unit, UnitType Unit)]
-
-
-type UnitPredicates = [UnitPredicate]
-data UnitPredicate = UnitPredicate String UnitType deriving Eq
-
-type UnitClassEnvironment = M.map String Class
-type UnitClass = ([String], UnitInstances)
-type UnitInstances = [UnitInstance]
-type UnitInstance = (UnitPredicate, UnitPredicates)

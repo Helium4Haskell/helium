@@ -1,4 +1,15 @@
-module Helium.Helium.StaticAnalysis.Inference.DimInference.Normalization(normalizeUnitType) where
+
+{-| Module      :  TypeErrors
+    License     :  GPL
+
+    Maintainer  :  helium@cs.uu.nl
+    Stability   :  experimental
+    Portability :  portable
+    
+    Errors that are constructed during dimension inferece.
+-}
+
+module Helium.StaticAnalysis.Inferencers.DimInference.Normalization(normalizeUnitType) where
 
 
 normalizeUnitType :: UnitType Unit -> NormUnitType
