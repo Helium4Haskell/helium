@@ -64,6 +64,8 @@ application dEnv (ALam lamS f) x = eval dEnv $ foldAnnAlgN (0,-1) subsAnnAlg f
           aConstr = \(lD,_) c   -> AConstr $ regVarSubst lamS lD x c,
           aTop    = \(lD,_) s c -> ATop s  $ regVarSubst lamS lD x c
         }
+-- Make application on join a join of applications
+application dEnv (AJoin a b) x = eval dEnv $ AJoin (AApl a x) (AApl b x)
 -- Cannot eval
 application _ f x = AApl f x
 
@@ -90,7 +92,7 @@ project _    tmp idx (ATuple as) | length as > idx = as !! idx
                                                             ++ "\n  Annotation: " ++ (deSymbol $ show $ ATuple as) 
                                                             ++ "\n\n" ++ (deSymbol $ show tmp)                         
 -- Moving a join outwards
-project dEnv _   idx (AJoin a b) = eval dEnv . joinSort $ AProj idx <$> joinCollect (AJoin a b) 
+project dEnv _   idx (AJoin a b) = eval dEnv $ AJoin (AProj idx a) (AProj idx b)
 -- Cannot eval
 project _    _   idx t = AProj idx t 
 
@@ -131,8 +133,7 @@ join dEnv a b =
       vars' = joinVars vars -- Vars are combined with lams
       (lams,    parts3 ) = partition isLam    parts2
       (qnts,    parts4 ) = partition isQuant  parts3
-      (apls,    parts5 ) = partition isApl    parts4
-      (tups,    parts6 ) = partition isTuple  parts5
+      (tups,    parts6 ) = partition isTuple  parts4
       (instns,  parts7 ) = partition isInstn  parts6
       (constrs, parts8 ) = partition isConstr parts7
       (regs,    parts9 ) = partition isReg    parts8
@@ -141,7 +142,6 @@ join dEnv a b =
   in joinSort $ eval dEnv <$> concat [ joinLams    lams vars'
                                      , joinInstns  instns -- TODO: Also combine with vars?
                                      , joinQuants  qnts
-                                     , joinApls    apls
                                      , joinTuples  tups
                                      , joinConstrs constrs
                                      , joinRegs    regs
@@ -242,12 +242,6 @@ joinQuants quants = [AQuant . joinSort $ dropQuant <$> quants]
   where dropQuant (AQuant a) = a
         dropQuant _ = rsError "RegionSize.joinQuants: non-quantifier"
 
--- | Combine annotation applications
-joinApls :: [Annotation] -> [Annotation]
-joinApls []   = []
-joinApls apls = let (fs, xs) = unzip $ unAApl <$> apls
-                in [AApl (joinSort fs) (joinSort xs)]
-
 -- | Combine tuples
 joinTuples :: [Annotation] -> [Annotation]
 joinTuples [] = []
@@ -280,13 +274,16 @@ addCollect ann = [ann]
 
 -- | Create a sorted join from a list of annotations
 addSort :: [Annotation] -> Annotation 
-addSort [] = rsError "??"
+addSort [] = AConstr constrBot
 addSort as = foldl1 AAdd $ sort as
 
 -- | Combine constraint sets
 addConstrs :: [Annotation] -> [Annotation]
 addConstrs [] = []
-addConstrs xs = [AConstr . constrAdds $ unAConstr <$> xs] 
+addConstrs xs = let result = constrAdds $ unAConstr <$> xs
+                in if result == constrBot
+                   then []
+                   else [AConstr result] 
 
 
 -- import qualified Helium.CodeGeneration.Iridium.RegionSize.Annotation
