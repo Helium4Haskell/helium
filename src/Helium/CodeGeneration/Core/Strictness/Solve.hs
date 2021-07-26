@@ -42,14 +42,15 @@ handleAnn nodeFromVertex sc v = foldr f sc es
         f (AnnVar x) y = case lookupMap x y of
             Nothing -> insertMap x n y
             Just z  -> updateMap x (join n z) y
-        f S y = y
-        f L y = y
-        f a _ = error $ "Annotation in solving is not a constant: " ++ show a ++ " -> " ++ show (nodeFromVertex v)
+        f _ y = y
 
 -- Handle a single variable, replacing its occurences with its value
 handleId :: (Vertex -> Node Id) -> Vertex -> SolvedConstraints -> SolvedConstraints
-handleId nodeFromVertex v sc = updateMap n (replaceVar sc (findMap n sc)) sc 
+handleId nodeFromVertex v sc = updateMap n f sc 
     where
+        f = case replaceVar sc (findMap n sc) of
+            (AnnVar x) | x == n -> S
+            y -> y
         (n, _, _) = nodeFromVertex v
 
 -- Turn list of constraints into a map of edges, drawing edges from the left to right parts of constraints

@@ -100,7 +100,7 @@ annotateType env supply t
         where
             t' = typeNormalizeHead env t
 annotateType env supply t@(TForall _ KAnn _) = annotateType env supply' t'
-    -- Starts with strictness quantification, instantiate with fresh variable
+    -- Starts with strictness quantification (String), instantiate with fresh variable
     where
         (i, supply') = freshId supply
         (t', _) = annApplyList' t (AnnVar i) [] env
@@ -113,26 +113,28 @@ annotateType env supply (TAp (TAp (TCon TConFun) t1) t2) = TAp (TAp (TCon TConFu
           TStrict _ -> TAp (TAnn S) $ annotateType env supply1 t1
           _         -> TAp (TAnn $ AnnVar i) $ annotateType env supply1 t1
         t2' = annotateType env supply2 t2
--- annotateType env supply (TAp t1 (TAp (TAnn a) t2)) = TAp t1' (TAp (TAnn a) t2')
---     -- Already annotated, no need to annotate again
---     where
---         (supply1, supply2) = splitNameSupply supply
---         t1' = annotateType env supply1 t1
---         t2' = annotateType env supply2 t2
+annotateType env supply (TAp (TAp (TAnn a) t1) t2) = TAp (TAp (TAnn a) t1) t2'
+    -- Already annotated list of characters (String), no need to annotate again
+    where
+        t2' = annotateType env supply t2
 annotateType env supply (TAp t1 t2) 
-  | isTup t1  = TAp t1' t2a
+  | isTup t1 = TAp t1' t2a
   | otherwise = TAp t1' t2'
-    -- Annotate applications to datatypes
+    -- Annotate applications to datatypes (Tuple)
     where
         (i, supply') = freshId supply
         (supply1, supply2) = splitNameSupply supply'
         t1' = annotateType env supply1 t1
         t2' = annotateType env supply2 t2
-        t2a = case t2 of
-          TStrict _ -> TAp (TAnn S) t2'
+        t2a = case t2' of
+          TStrict t -> TAp (TAnn S) t
           _         -> TAp (TAnn $ AnnVar i) t2'
-annotateType env supply (TForall q k t) = TForall q k $ annotateType env supply t -- Non-strictness forall needs to stay
+annotateType env supply (TForall q k t) = TForall q k $ annotateType env supply t
 annotateType env supply (TStrict t) = TStrict $ annotateType env supply t
+annotateType _ supply t@(TCon (TConDataType c)) | stringFromId c == "[]" = TAp (TAnn $ AnnVar i) t
+  where
+    -- Place extra annotation for list
+    (i, _) = freshId supply
 annotateType _ _ t = t
 
 annotateTypeAbstract :: TypeEnvironment -> Type -> Type
@@ -141,6 +143,10 @@ annotateTypeAbstract env t
     | t /= t' = annotateTypeAbstract env t'
         where
             t' = typeNormalizeHead env t
+annotateTypeAbstract env t@(TForall _ KAnn _) = annotateTypeAbstract env t'
+    -- Starts with strictness quantification (String), instantiate with fresh variable
+    where
+        (t', _) = annApplyList' t L [] env
 annotateTypeAbstract env (TAp (TAp (TCon TConFun) t1) t2) = TAp (TAp (TCon TConFun) t1a) t2'
     -- Function, place an annotation on the second argument (printed on the arrow)
     where
@@ -149,27 +155,32 @@ annotateTypeAbstract env (TAp (TAp (TCon TConFun) t1) t2) = TAp (TAp (TCon TConF
             (TStrict t) -> TAp (TAnn S) t
             _           -> TAp (TAnn L) t1'
         t2' = annotateTypeAbstract env t2
+annotateTypeAbstract env (TAp (TAp (TAnn a) t1) t2) = TAp (TAp (TAnn a) t1) t2'
+    -- Already annotated list of characters (String), no need to annotate again
+    where
+        t2' = annotateTypeAbstract env t2
 annotateTypeAbstract env (TAp t1 t2)
   | isTup t1 = TAp t1' t2a
   | otherwise = TAp t1' t2'
-    -- Annotate applications to datatypes
+    -- Annotate applications to datatypes (Tuple)
     where
         t1' = annotateTypeAbstract env t1
         t2' = annotateTypeAbstract env t2      
         t2a = case t2' of
             (TStrict t) -> TAp (TAnn S) t
             _           -> TAp (TAnn L) t2'
-annotateTypeAbstract env (TForall q k t) = TForall q k $ annotateTypeAbstract env t -- Non-strictness forall needs to stay
+annotateTypeAbstract env (TForall q k t) = TForall q k $ annotateTypeAbstract env t
 annotateTypeAbstract env (TStrict t) = TStrict $ annotateTypeAbstract env t
+annotateTypeAbstract _ t@(TCon (TConDataType c)) | stringFromId c == "[]" = TAp (TAnn L) t -- Place extra annotation for list
 annotateTypeAbstract _ t = t
 
 annotateBind :: Environment -> NameSupply -> Bind -> Bind
 annotateBind env supply (Bind (Variable x t) e) = Bind (Variable x t') e
   where
     -- Fresh variable for relevance annotation
-    (i, _) = freshId supply
+    (i, supply') = freshId supply
     -- Annotate inner type
-    t' = TAp (TAnn (AnnVar i)) $ annotateTypeRec (typeEnv env) t
+    t' = TAp (TAnn (AnnVar i)) $ annotateType (typeEnv env) supply' t
 
 annotateVarType :: Environment -> NameSupply -> Type -> Type
 annotateVarType env supply t = TAp (TAnn (AnnVar i)) t'
@@ -179,21 +190,33 @@ annotateVarType env supply t = TAp (TAnn (AnnVar i)) t'
     -- Annotate inner type
     t' = annotateType (typeEnv env) supply' t
 
-annotateTypeRec :: TypeEnvironment -> Type -> Type
-annotateTypeRec env t
-    | t /= t' = annotateTypeRec env t'
+annotateTypeMax :: TypeEnvironment -> Type -> Type
+annotateTypeMax env t
+    -- Type is not in weak head normal form
+    | t /= t' = annotateTypeMax env t'
         where
             t' = typeNormalizeHead env t
-annotateTypeRec env (TAp (TAp (TCon TConFun) t1) t2) = TAp (TAp (TCon TConFun) (TAp (TAnn S) t1')) t2'
+annotateTypeMax env t@(TForall _ KAnn _) = annotateTypeMax env t'
+    -- Starts with strictness quantification (String), instantiate with fresh variable
     where
-        t1' = annotateTypeRec env t1
-        t2' = annotateTypeRec env t2
-annotateTypeRec env (TAp t1 t2)
-  | isTup t1  = TAp t1' (TAp (TAnn L) t2')
+        (t', _) = annApplyList' t L [] env
+annotateTypeMax env (TAp (TAp (TCon TConFun) t1) t2) = TAp (TAp (TCon TConFun) (TAp (TAnn S) t1')) t2'
+    where
+    -- Function, place an annotation on the second argument (printed on the arrow)
+        t1' = annotateTypeMax env t1
+        t2' = annotateTypeMax env t2
+annotateTypeMax env (TAp (TAp (TAnn a) t1) t2) = TAp (TAp (TAnn a) t1) t2'
+    -- Already annotated list of characters (String), no need to annotate again
+    where
+        t2' = annotateTypeMax env t2
+annotateTypeMax env (TAp t1 t2)
+  | isTup t1 = TAp t1' (TAp (TAnn S) t2')
   | otherwise = TAp t1' t2'
+    -- Annotate applications to datatypes (Tuple)
     where
-        t1' = annotateTypeRec env t1
-        t2' = annotateTypeRec env t2
-annotateTypeRec env (TStrict t) = TStrict $ annotateTypeRec env t
-annotateTypeRec env (TForall q k t) = TForall q k $ annotateTypeRec env t
-annotateTypeRec _ t = t
+        t1' = annotateTypeMax env t1
+        t2' = annotateTypeMax env t2
+annotateTypeMax env (TStrict t) = TStrict $ annotateTypeMax env t
+annotateTypeMax env (TForall q k t) = TForall q k $ annotateTypeMax env t
+annotateTypeMax _ t@(TCon (TConDataType c)) | stringFromId c == "[]" = TAp (TAnn S) t -- Place extra annotation for list
+annotateTypeMax _ t = t

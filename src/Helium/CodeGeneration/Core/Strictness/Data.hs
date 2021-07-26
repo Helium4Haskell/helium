@@ -75,6 +75,18 @@ isTup (TAp t1 _) = isTup t1
 isTup (TCon (TConTuple _)) = True
 isTup _ = False
 
+isNil :: Expr -> Bool
+isNil (Con (ConId c)) = stringFromId c == "[]"
+isNil _ = False
+
+isCons :: Expr -> Bool
+isCons (Con (ConId c)) = stringFromId c == ":"
+isCons _ = False
+
+isList :: Type -> Bool
+isList (TCon (TConDataType c)) = stringFromId c == "[]"
+isList _ = False
+
 threeIds :: NameSupply -> (Id, Id, Id, NameSupply)
 threeIds supply0 = (id1, id2, id3, supply3)
   where
@@ -128,12 +140,6 @@ lookupVarMono (AnnVar x) sc | elemMap x sc = case findMap x sc of
 lookupVarMono S _ = S
 lookupVarMono _ _ = L
 
-uncontain :: [Id] -> SAnn -> SAnn
-uncontain xs (AnnVar x) | x `elem` xs = S
-uncontain xs (Join x y) = join (uncontain xs x) (uncontain xs y)
-uncontain xs (Meet x y) = meet (uncontain xs x) (uncontain xs y)
-uncontain _  x          = x
-
 setValue :: (Type -> Type) -> PolyMap -> CoreDecl -> CoreDecl
 setValue _ vs decl@DeclValue{}
     | elemMap (declName decl) vs = decl{valueValue = e, declCustoms = c}
@@ -156,5 +162,5 @@ normalTypeOfCoreExpression env e = typeNormalizeHead env $ typeOfCoreExpression 
 
 analyseAnn :: SAnn -> SAnn -> AnnotationEnvironment
 analyseAnn x (AnnVar y) = singleMap y x
-analyseAnn x (Join l r) = unionMap (analyseAnn x l) (analyseAnn x r)
+analyseAnn x (Join l r) = unionMapWith join (analyseAnn x l) (analyseAnn x r)
 analyseAnn _ _ = emptyMap

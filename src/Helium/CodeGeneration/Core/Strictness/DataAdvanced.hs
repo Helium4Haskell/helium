@@ -106,11 +106,6 @@ annotateType env supply t
     | t /= t' = annotateType env supply t'
         where
             t' = typeNormalizeHead env t
-annotateType env supply t@(TForall _ KAnn _) = annotateType env supply' t'
-    -- Starts with strictness quantification, instantiate with fresh variable
-    where
-        (i, supply') = freshId supply
-        (t', _) = annApplyList' t (AnnVar i) [] env
 annotateType env supply (TAp (TAp (TCon TConFun) t1) t2) = TAp (TAp (TCon TConFun) t1a) t2'
     -- Function, place three annotations on the second argument (printed on the arrow)
     where
@@ -121,73 +116,61 @@ annotateType env supply (TAp (TAp (TCon TConFun) t1) t2) = TAp (TAp (TCon TConFu
           TStrict _ -> TAp (TAnn $ AnnVar id1) $ TAp (TAnn $ AnnVar id3) $ TAp (TAnn $ AnnVar id3) t1'
           _         -> TAp (TAnn $ AnnVar id1) $ TAp (TAnn $ AnnVar id2) $ TAp (TAnn $ AnnVar id3) t1'
         t2' = annotateType env supply2 t2
--- annotateType env supply (TAp t1 (TAp (TAnn a) (TAp (TAnn r) (TAp (TAnn a2) t2))))
---     = TAp t1' (TAp (TAnn a) (TAp (TAnn r) (TAp (TAnn a2) t2')))
---     -- Already annotated, no need to annotate again
---     where
---         (supply1, supply2) = splitNameSupply supply
---         t1' = annotateType env supply1 t1
---         t2' = annotateType env supply2 t2
-annotateType env supply (TAp t1 t2)
-  | isTup t1 = TAp t1' t2a
-  | otherwise = TAp t1' t2'
+annotateType env supply (TAp t1 t2) = TAp t1' t2'
     -- Annotate applications to datatypes
     where
-        (id1, id2, id3, supply') = threeIds supply
-        (supply1, supply2) = splitNameSupply supply'
+        (supply1, supply2) = splitNameSupply supply
         t1' = annotateType env supply1 t1
-        t2' = annotateType env supply2 t2      
-        t2a = case t2 of
-          TStrict _ -> TAp (TAnn S) (TAp (TAnn S) (TAp (TAnn S) t2'))
-          _         -> TAp (TAnn $ AnnVar id1) (TAp (TAnn $ AnnVar id2) (TAp (TAnn $ AnnVar id3) t2'))
+        t2' = annotateType env supply2 t2 
 annotateType env supply (TForall q k t) = TForall q k $ annotateType env supply t -- Non-strictness forall needs to stay
 annotateType env supply (TStrict t) = TStrict $ annotateType env supply t
 annotateType _ _ t = t
 
-annotateTypeAbstract :: TypeEnvironment -> NameSupply -> Type -> (Type, SAnn)
-annotateTypeAbstract env supply t
+annotateTypeAbstract :: TypeEnvironment -> NameSupply -> Type -> Type
+annotateTypeAbstract env supply t = t' 
+  where
+    (t', _, _) = annotateTypeAbstract' env supply t
+
+annotateTypeAbstract' :: TypeEnvironment -> NameSupply -> Type -> (Type, SAnn, SAnn)
+annotateTypeAbstract' env supply t
     -- Type is not in weak head normal form
-    | t /= t' = annotateTypeAbstract env supply t'
+    | t /= t' = annotateTypeAbstract' env supply t'
         where
             t' = typeNormalizeHead env t
-annotateTypeAbstract env supply (TAp (TAp (TCon TConFun) t1) t2) = (TAp (TAp (TCon TConFun) t1a) t2', a')
+annotateTypeAbstract' env supply (TAp (TAp (TCon TConFun) t1) t2) = (TAp (TAp (TCon TConFun) t1a) t2', a', r')
     -- Function, place an annotation on the second argument (printed on the arrow)
     where
         (i, supply') = freshId supply
         ann = AnnVar i
         (supply1, supply2) = splitNameSupply supply'
-        (t1', _) = annotateTypeAbstract env supply1 t1
-        (t2', a) = annotateTypeAbstract env supply2 t2
+        (t1', _, _) = annotateTypeAbstract' env supply1 t1
+        (t2', a, r) = annotateTypeAbstract' env supply2 t2
         a' = join ann a
+        r' = if arityFromType t2' == 0 then S else join ann r
         t1a = case t1' of
-            (TStrict t) -> TAp (TAnn a') (TAp (TAnn ann) (TAp (TAnn ann) t))
-            _           -> TAp (TAnn L) (TAp (TAnn L) (TAp (TAnn ann) t1'))
-annotateTypeAbstract env supply (TAp t1 t2)
-  | isTup t1 = (TAp t1' t2a, S)
-  | otherwise = (TAp t1' t2', S)
+            (TStrict t) -> TAp (TAnn a') (TAp (TAnn r') (TAp (TAnn ann) t  ))
+            _           -> TAp (TAnn L)  (TAp (TAnn L ) (TAp (TAnn ann) t1'))
+annotateTypeAbstract' env supply (TAp t1 t2) = (TAp t1' t2', S, S)
     -- Annotate applications to datatypes
     where
         (supply1, supply2) = splitNameSupply supply
-        (t1', _) = annotateTypeAbstract env supply1 t1
-        (t2', _) = annotateTypeAbstract env supply2 t2
-        t2a = case t2' of
-            (TStrict t) -> TAp (TAnn S) (TAp (TAnn S) (TAp (TAnn S) t))
-            _           -> TAp (TAnn L) (TAp (TAnn L) (TAp (TAnn L) t2'))
-annotateTypeAbstract env supply (TForall q k t) = (TForall q k t', a)
+        (t1', _, _) = annotateTypeAbstract' env supply1 t1
+        (t2', _, _) = annotateTypeAbstract' env supply2 t2
+annotateTypeAbstract' env supply (TForall q k t) = (TForall q k t', a, r)
     where
-        (t', a) = annotateTypeAbstract env supply t -- Non-strictness forall needs to stay
-annotateTypeAbstract env supply (TStrict t) = (TStrict t', a)
+        (t', a, r) = annotateTypeAbstract' env supply t -- Non-strictness forall needs to stay
+annotateTypeAbstract' env supply (TStrict t) = (TStrict t', a, r)
     where
-        (t', a) = annotateTypeAbstract env supply t -- Strictness information is moved to annotations
-annotateTypeAbstract _ _ t = (t, S)
+        (t', a, r) = annotateTypeAbstract' env supply t -- Strictness information is moved to annotations
+annotateTypeAbstract' _ _ t = (t, S, S)
 
 annotateBind :: Environment -> NameSupply -> Bind -> Bind
 annotateBind env supply (Bind (Variable x t) e) = Bind (Variable x t') e
   where
     -- Fresh variables for relevance and both applicativeness
-    (id1, id2, id3, _) = threeIds supply
+    (id1, id2, id3, supply') = threeIds supply
     -- Annotate inner type
-    t' = TAp (TAnn (AnnVar id1)) (TAp (TAnn (AnnVar id2)) (TAp (TAnn (AnnVar id3)) (annotateTypeRec (typeEnv env) t)))
+    t' = TAp (TAnn (AnnVar id1)) (TAp (TAnn (AnnVar id2)) (TAp (TAnn (AnnVar id3)) (annotateType (typeEnv env) supply' t)))
 
 annotateVarType :: Environment -> NameSupply -> Type -> Type
 annotateVarType env supply t = TAp (TAnn (AnnVar id1)) (TAp (TAnn (AnnVar id2)) (TAp (TAnn (AnnVar id3)) t'))
@@ -196,22 +179,3 @@ annotateVarType env supply t = TAp (TAnn (AnnVar id1)) (TAp (TAnn (AnnVar id2)) 
     (id1, id2, id3, supply') = threeIds supply
     -- Annotate inner type
     t' = annotateType (typeEnv env) supply' t
-
-annotateTypeRec :: TypeEnvironment -> Type -> Type
-annotateTypeRec env t
-    | t /= t' = annotateTypeRec env t'
-        where
-            t' = typeNormalizeHead env t
-annotateTypeRec env (TAp (TAp (TCon TConFun) t1) t2) = TAp (TAp (TCon TConFun) t1') t2'
-    where
-        t1' = TAp (TAnn S) (TAp (TAnn S) (TAp (TAnn S) (annotateTypeRec env t1)))
-        t2' = annotateTypeRec env t2
-annotateTypeRec env (TAp t1 t2)
-  | isTup t1  = TAp t1' (TAp (TAnn L) (TAp (TAnn L) (TAp (TAnn L) t2')))
-  | otherwise = TAp t1' t2'
-    where
-        t1' = annotateTypeRec env t1
-        t2' = annotateTypeRec env t2
-annotateTypeRec env (TStrict t) = TStrict $ annotateTypeRec env t
-annotateTypeRec env (TForall q k t) = TForall q k $ annotateTypeRec env t
-annotateTypeRec _ t = t
