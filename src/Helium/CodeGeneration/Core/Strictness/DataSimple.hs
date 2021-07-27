@@ -220,3 +220,38 @@ annotateTypeMax env (TStrict t) = TStrict $ annotateTypeMax env t
 annotateTypeMax env (TForall q k t) = TForall q k $ annotateTypeMax env t
 annotateTypeMax _ t@(TCon (TConDataType c)) | stringFromId c == "[]" = TAp (TAnn S) t -- Place extra annotation for list
 annotateTypeMax _ t = t
+
+annSubstitute :: Type -> Quantor -> SAnn -> TypeEnvironment -> Type
+annSubstitute (TAp t1 t2) q a env = TAp (annSubstitute t1 q a env) (annSubstitute t2 q a env)
+annSubstitute (TForall q' k t) q a env
+  | q' == q   = annSubstitute t q a env
+  | otherwise = TForall q' k $ annSubstitute t q a env
+annSubstitute (TStrict t) q a env = TStrict $ annSubstitute t q a env
+annSubstitute (TAnn a') (Quantor (Just i)) a _ = TAnn $ substitueAnn a' i a
+annSubstitute t q a env
+  | t' == t   = t
+  | otherwise = annSubstitute t' q a env
+    where
+      t' = typeNormalizeHead env t
+
+annApplyList :: Type -> [Type] -> TypeEnvironment -> (Type, [Type])
+annApplyList t (TAnn a:ts) env = annApplyList' t a ts env
+annApplyList t ts _ = (t, ts)
+
+annApplyList' :: Type -> SAnn -> [Type] -> TypeEnvironment -> (Type, [Type])
+annApplyList' (TForall q KAnn t) a ts env = annApplyList (annSubstitute t q a env) ts env
+annApplyList' (TForall q k t) a ts env = (TForall q k t', ts')
+  where
+    (t', ts') = annApplyList' t a ts env
+annApplyList' (TStrict t) a ts env = (TStrict t', ts')
+  where
+    (t', ts') = annApplyList' t a ts env
+annApplyList' (TAp t1 t2) a ts env = (TAp t1' t2', ts'')
+  where
+    (t1', ts') = annApplyList' t1 a ts env
+    (t2', ts'') = annApplyList' t2 a ts' env
+annApplyList' t a ts env
+  | t /= t' = annApplyList' t' a ts env
+  | otherwise = (t, ts)
+    where
+      t' = typeNormalizeHead env t

@@ -49,10 +49,14 @@ typeEnvAddGlobalValue name tp env = env{ typeEnvGlobalValues = insertMap name tp
 typeEnvAddGlobalValues :: [(Id, Type)] -> TypeEnvironment -> TypeEnvironment
 typeEnvAddGlobalValues = flip $ foldr (uncurry typeEnvAddGlobalValue)
 
+typeEnvAddSynonym :: Id -> Type -> TypeEnvironment -> TypeEnvironment
+typeEnvAddSynonym name tp env = env{ typeEnvSynonyms = insertMap name tp $ typeEnvSynonyms env }
+
+typeEnvAddSynonyms :: [(Id, Type)] -> TypeEnvironment -> TypeEnvironment
+typeEnvAddSynonyms = flip $ foldr (uncurry typeEnvAddSynonym)
+
 typeEnvAddVariable :: Variable -> TypeEnvironment -> TypeEnvironment
-typeEnvAddVariable (Variable name tp) env = env{ typeEnvLocalValues = updateMap name (normalizeType tp) $ typeEnvLocalValues env }
-  where
-    normalizeType = typeNotStrict . typeNotAnnotated
+typeEnvAddVariable (Variable name tp) env = env{ typeEnvLocalValues = updateMap name (typeNotStrict tp) $ typeEnvLocalValues env }
 
 typeEnvAddVariables :: [Variable] -> TypeEnvironment -> TypeEnvironment
 typeEnvAddVariables vars env = foldr typeEnvAddVariable env vars
@@ -73,11 +77,9 @@ patternVariables :: TypeEnvironment -> Pat -> [Variable]
 patternVariables _ (PatCon (ConTuple _) tps ids)
   = (zipWith Variable ids tps)
 patternVariables env (PatCon (ConId name) tps ids)
-  = findVars ids apType
+  = findVars ids conType
   where
-    conType = typeOfId env name
-    (conType', tps') = annApplyList conType tps env
-    apType = typeApplyList conType' tps'
+    conType = typeApplyList (typeOfId env name) tps
     findVars :: [Id] -> Type -> [Variable]
     findVars (x:xs) (TAp (TAp (TCon TConFun) tArg) tReturn)
       = Variable x tArg : findVars xs tReturn
@@ -92,7 +94,6 @@ typeEnvAddPattern pat env
 typeNormalizeHead :: TypeEnvironment -> Type -> Type
 typeNormalizeHead env = normalize False
   where
-    normalize strict (TAp (TAnn a) t) = (TAp (TAnn a) (normalize strict t))
     normalize strict (TAp t1 t2) = case normalize False t1 of
       t1'@(TForall _ _ _) -> normalize strict $ typeApply t1' t2
       t1' ->
@@ -119,14 +120,11 @@ typeOfCoreExpression env (Let binds expr)
   = typeOfCoreExpression (typeEnvAddBinds binds env) expr
 
 -- All Alternatives of a Match should have the same return type,
--- but annotations have to be unified because all branches
--- need to match one annotation.
-typeOfCoreExpression env (Match name (alt : alts))
-  = foldr unifyAnnotations baseType alts'
+-- so we only have to check the first one.
+typeOfCoreExpression env (Match name (Alt pattern expr : _))
+  = typeOfCoreExpression env' expr
   where
-    baseType = typeOfCoreAlt env alt
-    alts' = map (typeOfCoreAlt env) alts
-    typeOfCoreAlt env (Alt pattern expr) = typeOfCoreExpression (typeEnvAddPattern pattern env) expr
+    env' = typeEnvAddPattern pattern env
 
 -- Expression: e1 e2
 -- Resolve the type of e1, which should be a function type.
@@ -136,12 +134,9 @@ typeOfCoreExpression env e@(Ap e1 e2) = case typeNotStrict $ typeNormalizeHead e
 
 -- Expression: e1 { tp1 }
 -- The type of e1 should be of the form `forall x. tp2`. Substitute x with tp1 in tp2.
-typeOfCoreExpression env (ApType e1 tp1) = case tp1 of
-  -- Strictness annotation
-    t@(TAnn _) -> fst $ annApplyList (typeOfCoreExpression env e1) [t] env
-    _ -> case typeNormalizeHead env $ typeOfCoreExpression env e1 of
-      tp@(TForall _ _ _) -> typeApply tp tp1
-      tp -> internalError "Core.TypeEnvironment" "typeOfCoreExpression" $ "typeOfCoreExpression: expected a forall type in the first argument of a function application, got " ++ showType [] tp
+typeOfCoreExpression env (ApType e1 tp1) = case typeNormalizeHead env $ typeOfCoreExpression env e1 of
+  tp@(TForall _ _ _) -> typeApply tp tp1
+  tp -> internalError "Core.TypeEnvironment" "typeOfCoreExpression" $ "typeOfCoreExpression: expected a forall type in the first argument of a function application, got " ++ showType [] tp
 
 -- Expression: \x: t1 -> e
 -- If e has type t2, then the lambda has type t1 -> t2
@@ -167,9 +162,8 @@ typeOfCoreExpression env (Var x) = typeOfId env x
 typeOfCoreExpression _ (Lit lit) = typeOfLiteral lit
 
 typeTuple :: Int -> Type
-typeTuple arity = foldr (\var -> TForall (Quantor Nothing) KStar) tf vars
+typeTuple arity = foldr (\var -> TForall (Quantor Nothing) KStar) (typeFunction (map TVar vars) tp) vars
   where
-    tf = typeFunction (map TVar vars) tp
     -- Type without quantifications, eg (a, b)
     tp = foldl (\t var -> TAp t $ TVar var) (TCon $ TConTuple arity) vars
     vars = reverse [0 .. arity - 1]
@@ -268,50 +262,3 @@ updateFunctionTypeStrictness env (strict : strictness) tp = case typeNormalizeHe
       TAp (TAp (TCon TConFun) tArg')
         $ updateFunctionTypeStrictness env strictness tReturn
   _ -> error "updateFunctionTypeStrictness: expected function type"
-
--- Unify the annotations on function arrows with a join
-unifyAnnotations :: Type -> Type -> Type
-unifyAnnotations (TAp t11 t12) (TAp t21 t22) = TAp t1 t2
-  where
-    t1 = unifyAnnotations t11 t21
-    t2 = unifyAnnotations t12 t22
-unifyAnnotations (TStrict t1) t2 = unifyAnnotations t1 t2
-unifyAnnotations t1 (TStrict t2) = unifyAnnotations t1 t2
-unifyAnnotations (TForall _ _ t1) (TForall q k t2) = TForall q k $ unifyAnnotations t1 t2
-unifyAnnotations (TAnn a1) (TAnn a2) = TAnn (join a1 a2)
-unifyAnnotations t1 t2 = t2
-
-annSubstitute :: Type -> Quantor -> SAnn -> TypeEnvironment -> Type
-annSubstitute (TAp t1 t2) q a env = TAp (annSubstitute t1 q a env) (annSubstitute t2 q a env)
-annSubstitute (TForall q' k t) q a env
-  | q' == q   = annSubstitute t q a env
-  | otherwise = TForall q' k $ annSubstitute t q a env
-annSubstitute (TStrict t) q a env = TStrict $ annSubstitute t q a env
-annSubstitute (TAnn a') (Quantor (Just id)) a _ = TAnn $ substitueAnn a' id a
-annSubstitute t q a env
-  | t' == t   = t
-  | otherwise = annSubstitute t' q a env
-    where
-      t' = typeNormalizeHead env t
-
-annApplyList :: Type -> [Type] -> TypeEnvironment -> (Type, [Type])
-annApplyList t ((TAnn a):ts) env = annApplyList' t a ts env
-annApplyList t ts env = (t, ts)
-
-annApplyList' :: Type -> SAnn -> [Type] -> TypeEnvironment -> (Type, [Type])
-annApplyList' (TForall q KAnn t) a ts env = annApplyList (annSubstitute t q a env) ts env
-annApplyList' (TForall q k t) a ts env = (TForall q k t', ts')
-  where
-    (t', ts') = annApplyList' t a ts env
-annApplyList' (TStrict t) a ts env = (TStrict t', ts')
-  where
-    (t', ts') = annApplyList' t a ts env
-annApplyList' (TAp t1 t2) a ts env = (TAp t1' t2', ts'')
-  where
-    (t1', ts') = annApplyList' t1 a ts env
-    (t2', ts'') = annApplyList' t2 a ts' env
-annApplyList' t a ts env
-  | t /= t' = annApplyList' t' a ts env
-  | otherwise = (t, ts)
-    where
-      t' = typeNormalizeHead env t

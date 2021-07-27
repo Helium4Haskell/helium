@@ -66,7 +66,7 @@ showStrictness 4 = "Simple monovariant"
 showStrictness 3 = "Advanced polyvariant"
 showStrictness 2 = "Advanced monovariant"
 showStrictness 1 = "Old"
-showStrictness _ = "No"
+showStrictness _ = "Monotype"
 
 strictnessExtraPass :: Int -> (NameSupply -> CoreModule -> CoreModule)
 strictnessExtraPass 1 = coreStrictness 1

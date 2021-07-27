@@ -1,5 +1,7 @@
 module Helium.CodeGeneration.Core.Strictness.MonovariantAdvanced (monovariantStrictness) where
 
+-- THIS ANALYSIS IS DEPRECATED
+
 import Data.List
 import qualified Data.Set as S
 
@@ -81,7 +83,7 @@ groupStrictness (v, sc, r, env, supply) (BindingRecursive ds) = (v', sc'', r'', 
     -- Get type of function bodies
     ts' = map (normalTypeOfCoreExpression env') es
     -- Analyse type to solve the annotations which where put there at the beginning
-    cs2 = map (\(t1, t2) -> analyseType env t1 t2) (zip ts ts')  
+    cs2 = zipWith (analyseType env) ts ts'
     -- Solve constraints
     sc' = solveConstraints ae (S.union cs (S.unions cs2))
     -- Apply solved constraints to types

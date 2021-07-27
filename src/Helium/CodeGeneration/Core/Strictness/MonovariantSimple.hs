@@ -1,5 +1,7 @@
 module Helium.CodeGeneration.Core.Strictness.MonovariantSimple (monovariantStrictness) where
 
+-- THIS ANALYSIS IS DEPRECATED
+
 import Data.List
 import qualified Data.Set as S
 
@@ -80,7 +82,7 @@ groupStrictness (v, sc, r, env, supply) (BindingRecursive ds) = (v', sc'', r'', 
     -- Get type of function bodies
     ts' = map (normalTypeOfCoreExpression env') es
     -- Analyse type to solve the annotations which where put there at the beginning
-    (ae2, cs2) = unzip $ map (\(t1, t2) -> analyseType env t1 t2) (zip ts ts')  
+    (ae2, cs2) = unzip $ zipWith (analyseType env) ts ts'  
     -- Solve constraints
     sc' = solveConstraints (unionMapWith join ae (unionMaps ae2)) (S.union cs (S.unions cs2))
     -- Apply solved constraints to types
@@ -176,7 +178,7 @@ analyseExpression env rel app supply (Forall q k e) = Analysis (Forall q k e') c
         -- Forall can be ignored
         Analysis e' c a r = analyseExpression env rel app supply e
 analyseExpression env _ _ _ (Con c) = Analysis (Con c) S.empty (getLConstraints env) emptyMap -- Set all annotation variables to L
-analyseExpression env rel app _ (Var v) = Analysis (Var v) S.empty (unionMapWith meet (getLConstraints env) ae) emptyMap
+analyseExpression env rel _ _ (Var v) = Analysis (Var v) S.empty (unionMapWith meet (getLConstraints env) ae) emptyMap
     where
         -- Set all annotation variables to L except the annotations related to this variable, which are set to context
         ae = getAnnotations env rel v
@@ -288,11 +290,6 @@ analyseType env (TAp (TAp (TCon TConFun) t11) t12) (TAp (TAp (TCon TConFun) t21)
     (ae1, c1) = analyseType env t1' t2'
     (ae2, c2) = analyseType env t12 t22
     cs = S.insert (a' `Constraint` a) $ S.union c1 c2
-analyseType env (TAp (TAnn a) t1) (TAp (TAnn a') t2) = (ae, cs)
-    -- Annotations on datatypes, evaluate pair
-    where
-        ae1 = analyseAnn a a'
-        (ae, cs) = analyseType env t1 t2
 analyseType env (TAp t11 t12) (TAp t21 t22) = (unionMapWith join ae1 ae2, S.union c1 c2)
     -- Unannotated applications
     where

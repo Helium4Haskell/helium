@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: afc34996d250c81155463c1101766c7411193cd3a02f4aa2f5530a1c1980d58d
+-- hash: 2e0b9337b3c4f1ab6b1fda17f45f1032bc2a8689e3678d54ea85d7d82d6b143b
 
 name:           helium
 version:        1.9
@@ -66,6 +66,7 @@ library
       Helium.CodeGeneration.Core.Strictness.Data
       Helium.CodeGeneration.Core.Strictness.DataAdvanced
       Helium.CodeGeneration.Core.Strictness.DataSimple
+      Helium.CodeGeneration.Core.Strictness.MonoType
       Helium.CodeGeneration.Core.Strictness.MonovariantAdvanced
       Helium.CodeGeneration.Core.Strictness.MonovariantSimple
       Helium.CodeGeneration.Core.Strictness.PolyvariantAdvanced

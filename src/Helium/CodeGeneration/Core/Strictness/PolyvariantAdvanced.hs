@@ -1,5 +1,7 @@
 module Helium.CodeGeneration.Core.Strictness.PolyvariantAdvanced (polyvariantStrictness) where
 
+-- THIS ANALYSIS IS DEPRECATED
+
 import Data.List
 import qualified Data.Set as S
 
@@ -82,7 +84,7 @@ groupStrictness (vs, env, supply) (BindingRecursive ds) = (vs', env'', supply3)
     -- Get type of function bodies
     ts' = map (normalTypeOfCoreExpression env') es
     -- Analyse type to solve the annotations which where put there at the beginning
-    cs2 = map (\(t1, t2) -> analyseType env t1 t2) (zip ts ts')  
+    cs2 = zipWith (analyseType env) ts ts'  
     -- Solve constraints
     sc2 = solveConstraints ae (S.union cs (S.unions cs2))
     sc3 = mapMap (replaceVar sc2) sc1
@@ -130,7 +132,7 @@ analyseExpression env rel app supply (Match i a) = Analysis (Match i a') c (unio
         Analysis _ _ ae1 _ _ = analyseExpression env rel app supply (Var i)
         -- Merge with join as strictness has to occur in every case
         Analysis a' c ae2 sc r = mergeAnalysis join $ mapWithSupply (analyseAlt env rel app) supply a
-analyseExpression env rel app supply e@(Ap e1 e2) = Analysis (Ap e1' e2') cs (unionMapWith meet ae1 ae2) (unionMap sc1 sc2) (unionMap r1 r2)
+analyseExpression env rel app supply (Ap e1 e2) = Analysis (Ap e1' e2') cs (unionMapWith meet ae1 ae2) (unionMap sc1 sc2) (unionMap r1 r2)
     where
         (supply1, supply2) = splitNameSupply supply
         -- Analyse function, with applicative context set to relevance
