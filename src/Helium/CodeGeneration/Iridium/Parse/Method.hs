@@ -119,7 +119,7 @@ pAbstractMethod = do
       pToken '}'
       pWhitespace
       pToken '{'
-      ffi <- pMaybe pWord
+      ffi <- pMaybe pName
       pToken '}'
       pWhitespace
       AbstractMethod (typeRemoveArgumentStrictness tp) fnType (FFIInfo ffi) <$> pAnnotations
@@ -147,7 +147,7 @@ pAbstractMethod = do
       pToken '}'
       pWhitespace
       pToken '{'
-      ffi <- pMaybe pWord
+      ffi <- pMaybe pName
       pToken '}'
       pWhitespace
       AbstractMethod sourceType fnType (FFIInfo ffi) <$> pAnnotations

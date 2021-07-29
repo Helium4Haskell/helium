@@ -1,7 +1,7 @@
 module IridiumLangString
 import ()
 
-declare @putchar[1]: { !Int -> Int } [callconvention:c]
+declare @putchar[1]: { !Int -> Int } {} [callconvention:c]
 
 #[decl @kind [bytes "* -> *"]]
 custom @"[]": @data
@@ -62,7 +62,7 @@ print.cons:
   jump print.loop
 }
 
-declare @exit[1]: { !Int -> Int } [callconvention:c]
+declare @exit[1]: { !Int -> Int } {} [callconvention:c]
 
 export_as @_$helium_runtime_error define @_$helium_runtime_error(forall a, %msg: [Char]): a {
 error.entry:

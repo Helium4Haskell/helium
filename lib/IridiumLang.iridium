@@ -1,8 +1,8 @@
 module IridiumLang
 import (IridiumLangEval, IridiumLangString)
 
-export_as @_$helium_runtime_error from IridiumLangString declare @_$helium_runtime_error[1]: { forall a. [Char] -> a }
-export_as @_$helium_runtime_print_string from IridiumLangString declare @_$helium_runtime_print_string[1]: { ![Char] -> Int }
+export_as @_$helium_runtime_error from IridiumLangString declare @_$helium_runtime_error[1]: { forall a. [Char] -> a } {} 
+export_as @_$helium_runtime_print_string from IridiumLangString declare @_$helium_runtime_print_string[1]: { ![Char] -> Int } {} 
 
 #[decl @kind [bytes "* -> *"]]
 export_as @"[]" data @"[]" {
@@ -194,10 +194,10 @@ entry:
 }
 
 ; $primPutChar :: Char -> RealWorld -> IORes Int
-export_as @$primPutChar declare @putchar[2]: { !Char -> !RealWorld -> IORes Int } [callconvention:c implicit_io]
+export_as @$primPutChar declare @putchar[2]: { !Char -> !RealWorld -> IORes Int } {} [callconvention:c implicit_io]
 
 ; $primGetChar :: RealWorld -> IORes Char
-export_as @$primGetChar declare @getchar[1]: { RealWorld -> IORes Char } [callconvention:c implicit_io]
+export_as @$primGetChar declare @getchar[1]: { RealWorld -> IORes Char } {} [callconvention:c implicit_io]
 
 export_as @$primIntToChar define @$primIntToChar(%x: !Int): Char [trampoline] = prim int_to_char(%x: !Int)
 
