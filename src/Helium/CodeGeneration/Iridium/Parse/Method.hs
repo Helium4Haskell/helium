@@ -118,11 +118,11 @@ pAbstractMethod = do
         Just f -> return f
       pToken '}'
       pWhitespace
-      -- pToken '{'
-      -- ffi <- pMaybe pWord
-      -- pToken '}'
-      -- pWhitespace
-      AbstractMethod (typeRemoveArgumentStrictness tp) fnType (FFIInfo Nothing) <$> pAnnotations
+      pToken '{'
+      ffi <- pMaybe pWord
+      pToken '}'
+      pWhitespace
+      AbstractMethod (typeRemoveArgumentStrictness tp) fnType (FFIInfo ffi) <$> pAnnotations
     _ -> do
       pToken ':'
       pWhitespace
