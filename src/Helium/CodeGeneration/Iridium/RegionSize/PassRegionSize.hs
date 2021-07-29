@@ -113,6 +113,7 @@ pipeline gEnv methods = do
     let withLocals = (unsafeUnliftTuple 
             . solveFixpoints (fst <$> methods) dEnv
             . eval dEnv 
+            . inlineFixpoints
             . fst
             $ analyseMethods 1 gEnv' methods')
     _ <- printAnnotation (printWithLocals || isTargetMethod) "With locals (fixpoint)" $ ATuple withLocals
