@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 96fb6066f454cd849fb3198c4892b1eba5c0e9776c26f44bbd52b3540588ff08
+-- hash: 966f50ae6a8072732cf999d0565569b472cb1b90ab6e896235dc25f1a1cc7bcf
 
 name:           helium
 version:        1.9
@@ -33,6 +33,7 @@ data-files:
     lib/Prelude.hs
     lib/Prelude.type
     lib/PreludePrim.core
+    lib/Foreign.hs
     lib/runtime/memory.c
     lib/simple/Char.hs
     lib/simple/HeliumLang.core

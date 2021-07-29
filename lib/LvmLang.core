@@ -189,11 +189,3 @@ foldlStrict f z xs
                     z -> foldlStrict f z xx
       []       -> z
 -}
-
-getChar :: IO Char
-getChar : export = \ !world: RealWorld -> ''$primGetChar'' world
-
-putChar :: Char -> IO ()
-putChar : export = \char: Char ->
-  \ !world: RealWorld -> let! res: IORes Int = ''$primPutChar'' char world in case res of
-    IORes { Int } _ world2 -> IORes { () } () world2

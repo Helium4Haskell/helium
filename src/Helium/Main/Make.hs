@@ -46,11 +46,20 @@ make basedir fullName lvmPath chain options iridiumCache doneRef = do
     Nothing -> do
       let (_, name, ext) = splitFilePath fullName
       imports <- case ext of
-        "hs" -> ((if name == "Prelude" then [] else ["Prelude", "HeliumLang"]) ++) <$> do
+        "hs" -> ( hsImportList ++) <$> do
           ims <- parseOnlyImports fullName
           return (map show ims)
+          where
+            hsImportList = case name of
+              "Prelude" -> []
+              "Foreign" -> ["Prelude", "HeliumLang"]
+              "PreludeIO" -> ["Prelude", "HeliumLang"]
+              _ -> ["Prelude", "HeliumLang", "PreludeIO"]
         "core" -> parseCoreOnlyImports fullName
         "iridium" -> return []
+        _ -> do
+          putStrLn ("Unsupoorted file extension: " ++ ext)
+          exitWith (ExitFailure 1)
 
       let chainNames = map nameFromString chain
 

@@ -61,18 +61,7 @@ addImplicitImports (Module_Module moduleRange maybeName exports
         moduleRange
         maybeName
         exports
-        (Body_Body
-            bodyRange
-            ( case maybeName of
-                MaybeName_Just n
-                    | getNameName n == "Prelude" -> []
-                _ -> if "Prelude" `elem` map (getNameName . nameFromImportDeclaration) explicitImportDecls
-                        then []
-                        else [ implicitImportDecl "Prelude" ]
-            ++ [ implicitImportDecl "HeliumLang" ]
-            ++ explicitImportDecls
-            ) decls
-        )
+        (Body_Body bodyRange importDecls decls)
     where
     -- Artificial import declaration for implicit Prelude import
     implicitImportDecl :: String -> ImportDeclaration
@@ -83,6 +72,18 @@ addImplicitImports (Module_Module moduleRange maybeName exports
             (Name_Identifier noRange [] [] moduleName) -- !!!Name
             MaybeName_Nothing
             MaybeImportSpecification_Nothing
+    explicitImportDeclNames = map (getNameName . nameFromImportDeclaration) explicitImportDecls
+    filterImplicitImports imports implicits = filter (`notElem` imports) implicits
+    importDecls = case maybeName of
+        MaybeName_Just n 
+            | getNameName n == "Prelude" -> []
+        MaybeName_Just n 
+            | (getNameName n) `elem` ["PreludeIO", "Foreign"] -> [ implicitImportDecl "Prelude" ]
+        _ ->
+            [ implicitImportDecl x | x <- filterImplicitImports explicitImportDeclNames ["Prelude", "PreludeIO"] ]
+        ++ [ implicitImportDecl "HeliumLang", implicitImportDecl "LvmException" ]
+        ++ explicitImportDecls
+
 addImplicitImports (Module_Module _ _ _ (Body_Hole _ _)) = internalError "PhaseImport" "addImplicitImports" "Not supported Body_Hole"
 
 getRightImports :: Maybe Bool -> Bool -> Name -> (IdSet,IdSet,IdSet,IdSet) -> [Core.CoreDecl] -> [Core.CoreDecl]

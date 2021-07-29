@@ -93,6 +93,7 @@ data-files:
   - lib/Prelude.hs
   - lib/Prelude.type
   - lib/PreludePrim.core
+  - lib/Foreign.hs
   - lib/runtime/memory.c
   - lib/simple/Char.hs
   - lib/simple/HeliumLang.core

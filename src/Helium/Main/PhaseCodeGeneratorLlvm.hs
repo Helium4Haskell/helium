@@ -34,7 +34,7 @@ phaseCodeGeneratorLlvm supply output files shouldLink options = do
   dataDir <- getDataDir 
   let memoryDotCLocation =  joinPath [dataDir, "lib","runtime","memory.c"]
 
-  let ioDotCLocation = joinPath ["develop", "io", "io.c"]
+  let ioDotCLocation = joinPath ["/home/yanze/code/h4h/helium/develop", "io", "io.c"]
   
   when shouldLink $ do
     let args = "-g" : "-o" : output : "-O3" : memoryDotCLocation : ioDotCLocation : map toLlvmPath files
@@ -50,7 +50,7 @@ phaseCodeGeneratorLlvm supply output files shouldLink options = do
     return ()
 
 compileToLlvm :: Target -> NameSupply -> IridiumFile -> IO ()
-compileToLlvm _ supply (IridiumFile _ _ False) = return ()
+compileToLlvm _ _ (IridiumFile _ _ False) = return ()
 compileToLlvm target supply ir@(IridiumFile f iridium _) = do
   let llvm = compileModule (envForModule target iridium) supply iridium
   writeFile (toLlvmPath ir) $ Text.unpack $ ppllvm llvm

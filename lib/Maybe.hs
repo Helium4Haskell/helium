@@ -6,6 +6,8 @@
 
 module Maybe where
 
+import LvmException
+
 isJust            :: Maybe a -> Bool
 isJust (Just _)        = True
 isJust Nothing         = False

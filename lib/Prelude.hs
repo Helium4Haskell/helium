@@ -592,32 +592,13 @@ undefined = error "undefined"
  -- IO
  -----------------------------------------------}
 {-
-putChar :: Char -> IO ()
-putChar c = primPutChar c
-
-putStr :: String -> IO ()
-putStr s = primPutStr s 
-
-putStrLn :: String -> IO ()
-putStrLn s = primPutStrLn s
-
 unsafePerformIO :: IO a -> a 
 unsafePerformIO = primUnsafePerformIO
 -}
 
-getLine :: IO String
-getLine = do 
-        c <- getChar
-        if c == '\n' 
-            then return ""
-            else getLine >>= (return . (c :))
-
 sequence_ :: [IO a] -> IO ()
 sequence_ = foldr (>>) (return ())
 {-
-print :: Show a => a -> IO ()
-print e = putStrLn (show e)
-
 writeFile :: String -> String -> IO ()
 writeFile fname s
   = bracketIO (openFile fname WriteMode)
