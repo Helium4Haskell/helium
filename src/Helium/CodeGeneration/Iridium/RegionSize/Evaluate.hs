@@ -128,17 +128,17 @@ join _ (ATop   s vs) a = ATop s $ constrJoin (gatherConstraints a) vs
 join _ a (ATop   s vs) = ATop s $ constrJoin (gatherConstraints a) vs
 -- Complex case
 join dEnv a b = 
-  let parts1 = joinCollect (AJoin a b)
+  let parts1 = ordNub $ joinCollect (AJoin a b)
       (vars, parts2) = partition isVar parts1
       vars' = joinVars vars -- Vars are combined with lams
       (lams,    parts3 ) = partition isLam    parts2
       (qnts,    parts4 ) = partition isQuant  parts3
-      (tups,    parts6 ) = partition isTuple  parts4
-      (instns,  parts7 ) = partition isInstn  parts6
-      (constrs, parts8 ) = partition isConstr parts7
-      (regs,    parts9 ) = partition isReg    parts8
-      (adds,    parts10) = partition isAdd    parts9
-      (minuss,  parts11) = partition isMinus  parts10
+      (tups,    parts5 ) = partition isTuple  parts4
+      (instns,  parts6 ) = partition isInstn  parts5
+      (constrs, parts7 ) = partition isConstr parts6
+      (regs,    parts8 ) = partition isReg    parts7
+      (adds,    parts9)  = partition isAdd    parts8
+      (minuss,  parts10) = partition isMinus  parts9
   in joinSort $ eval dEnv <$> concat [ joinLams    lams vars'
                                      , joinInstns  instns -- TODO: Also combine with vars?
                                      , joinQuants  qnts
@@ -147,7 +147,7 @@ join dEnv a b =
                                      , joinRegs    regs
                                      , joinAdds    adds
                                      , joinMinuss  minuss
-                                     , parts11 ]
+                                     , parts10 ]
 
 ----------------------------------------------------------------
 -- Subsitution of region variables
