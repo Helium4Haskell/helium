@@ -25,7 +25,7 @@ pTypeArg quantorNames = do
   case arg of
     Left idx
       | idx >= length quantorNames -> pError $ "Unnamed type argument v$" ++ show idx ++ " not in scope"
-      | otherwise -> return idx
+      | otherwise -> return (length quantorNames - 1 - idx)
     Right name -> case name `elemIndex` quantorNames of
       Nothing -> pError $ "Type argument " ++ show name ++ " not in scope"
       Just idx -> return idx
