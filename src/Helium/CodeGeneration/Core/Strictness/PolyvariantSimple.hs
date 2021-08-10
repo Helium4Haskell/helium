@@ -317,7 +317,6 @@ analyseType env (TAp (TAp (TCon TConFun) t11) t12) (TAp (TAp (TCon TConFun) t21)
 analyseType env (TAp (TAnn a) t1) (TAp (TAnn a') t2) = (ae, cs)
     -- Annotations on datatypes, evaluate pair
     where
-        ae1 = analyseAnn a a'
         (ae, cs) = analyseType env t1 t2
 analyseType env (TAp t11 t12) (TAp t21 t22) = (unionMapWith join ae1 ae2, S.union c1 c2)
     -- Unannotated applications

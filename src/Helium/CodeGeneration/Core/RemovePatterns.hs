@@ -34,9 +34,9 @@ insertDeclaration decl@DeclCon{} env = case lookupMap d env of
     _      -> insertMap d (singleSet $ declName decl) env
     where
         -- custom "data" x
-        [d] = [x | CustomLink x (DeclKindCustom y) <- declCustoms decl, y == idFromString "data"]
+        d = getData2 $ declType decl
 insertDeclaration (DeclCustom d _ _ (DeclKindCustom c) cs) env
-    | c == idFromString "data" = updateMap d (setFromList cons) env
+    | c == idFromString "data" && not (null cons) = updateMap d (setFromList cons) env
         where
             -- Get constructor list from datatype
             cons = [z | CustomDecl (DeclKindCustom x) y <- cs, x == idFromString "constructors", CustomName z <- y]
@@ -45,9 +45,10 @@ insertDeclaration _ env = env
 analyseDeclaration :: DataEnvironment -> TypeEnvironment -> CoreDecl -> CoreDecl
 analyseDeclaration env typeEnv decl@DeclValue{} = decl{valueValue = analyseExpression env emptyMap typeEnv $ valueValue decl}
 analyseDeclaration env _ decl@(DeclCustom _ _ _ (DeclKindCustom c) cs)
-    | c == idFromString "data" && noCons cs = decl{declCustoms = cons : cs}
+    | c == idFromString "data" && noCons cs && not (null cons) = decl{declCustoms = cs' : cs}
         where
-            cons = CustomDecl (DeclKindCustom d) (map CustomName $ maybe [] listFromSet $ lookupMap (declName decl) env)
+            cons = maybe [] listFromSet $ lookupMap (declName decl) env
+            cs' = CustomDecl (DeclKindCustom d) (map CustomName cons)
             d = idFromString "constructors"
 analyseDeclaration _ _ decl = decl
 
@@ -139,3 +140,12 @@ getData (TAp t1 _) typeEnv = getData t1 typeEnv
 getData (TForall _ _ t) typeEnv = getData t typeEnv
 getData (TStrict t) typeEnv = getData t typeEnv
 getData _ _ = Nothing -- Tuples need to be handled differently
+
+getData2 :: Type -> Id
+getData2 (TCon (TConDataType n)) = n
+getData2 (TCon (TConTypeClassDictionary n)) = idFromString $ "Dict$" ++ stringFromId n
+getData2 (TAp (TAp (TCon TConFun) _) t2) = getData2 t2
+getData2 (TAp t1 _) = getData2 t1
+getData2 (TForall _ _ t) = getData2 t
+getData2 (TStrict t) = getData2 t
+getData2 _ = undefined

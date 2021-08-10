@@ -25,6 +25,9 @@ not :: Bool -> Bool
 not False = True
 not _ = False
 
+id :: Bool -> Bool
+id x = x
+
 (||) :: Bool -> Bool -> Bool
 (&&) :: Bool -> Bool -> Bool
 xor  :: Bool -> Bool -> Bool

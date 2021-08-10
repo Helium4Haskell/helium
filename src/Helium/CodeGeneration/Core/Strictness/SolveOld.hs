@@ -1,4 +1,6 @@
-module Helium.CodeGeneration.Core.Strictness.Solve (solveConstraints) where
+module Helium.CodeGeneration.Core.Strictness.SolveOld (solveConstraints) where
+
+-- Solving using scc/topsort. Theoretically slower than SolveNew but does not stack overflow
 
 import qualified Data.Graph as G
 import Data.List

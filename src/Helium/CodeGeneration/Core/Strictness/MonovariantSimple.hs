@@ -151,7 +151,7 @@ analyseExpression env rel app supply (ApType e t)
         t' = annotateType (typeEnv env) supply1 t
         -- Analyse expression
         Analysis e' c a r = analyseExpression env rel app supply2 e
-analyseExpression env rel _ supply (Lam s (Variable x t) e) = Analysis (Lam s v' e') c a' r'
+analyseExpression env rel _ supply (Lam s (Variable x t) e) = Analysis (Lam s v' e') c ae r'
     where
         (i, supply') = freshId supply
         (supply1, supply2) = splitNameSupply supply'

@@ -41,7 +41,7 @@ pipeline s =
   , ("RemoveAliases", const coreRemoveAliases)
   , ("ReduceThunks", const coreReduceThunks)
   , ("Lift", coreLift)
-  , ("Strictness 3", coreStrictness s)
+  , ("Strictness 3", strictnessExtraPass s)
   ]
 
 -- Desugars core. The desugared AST can be converted to Iridium.

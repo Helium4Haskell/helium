@@ -146,11 +146,12 @@ setValue _ vs decl@DeclValue{}
     where
         (e, t) = findMap (declName decl) vs
         c = strictnessToCustom t (declCustoms decl)
-setValue f _ decl
+setValue f _ decl@DeclAbstract{}
   | isUpdate decl = decl{declCustoms = c}
   | otherwise     = decl
     where
       c = strictnessToCustom (f $ declType decl) (declCustoms decl)
+setValue _ _ decl = decl
 
 isUpdate :: CoreDecl -> Bool
 isUpdate decl@DeclAbstract{} = not $ any isCustomAnn (declCustoms decl)
