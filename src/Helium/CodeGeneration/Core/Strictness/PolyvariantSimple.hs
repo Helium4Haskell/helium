@@ -211,7 +211,7 @@ analyseBinds env supply rel (Rec bs) = Analysis (Rec b1) cs ae (unionMap sc sc')
         Analysis _ cs ae sc _ = simplify is c a
         -- Apply solved constraints to get type signatures for all binds
         b1 = map (simplifyBind is sc) bs''
-analyseBinds env supply rel (NonRec (Bind (Variable x _) e)) = Analysis (NonRec b) cs' ae'' (unionMap sc sc') r'
+analyseBinds env supply rel (NonRec (Bind (Variable x _) e)) = Analysis (NonRec b) cs' ae' (unionMap sc sc') r'
     where
         -- Fresh variable for relevance annotation
         (i, supply') = freshId supply
@@ -223,10 +223,6 @@ analyseBinds env supply rel (NonRec (Bind (Variable x _) e)) = Analysis (NonRec 
         Analysis _ cs' ae' sc' _ = simplify is cs ae
         -- Apply solved constraints to get type signature for bind
         t' = forallify (Just is) $ simplifyType sc' $ normalTypeOfCoreExpression (typeEnv env) e'
-        -- Contain if function because we don't know if it is applied
-        ae'' = case arityFromType t' of
-            0 -> ae'
-            _ -> ae' -- mapMap (join L) ae'
         -- Add annotations outside the type
         b = Bind (Variable x (TAp (TAnn $ AnnVar i) t')) e'
         -- Bind is NonRec, add to map of those which might be turned to strict
@@ -314,10 +310,6 @@ analyseType env (TAp (TAp (TCon TConFun) t11) t12) (TAp (TAp (TCon TConFun) t21)
     (ae1, c1) = analyseType env t1' t2'
     (ae2, c2) = analyseType env t12 t22
     cs = S.insert (a' `Constraint` a) $ S.union c1 c2
-analyseType env (TAp (TAnn a) t1) (TAp (TAnn a') t2) = (ae, cs)
-    -- Annotations on datatypes, evaluate pair
-    where
-        (ae, cs) = analyseType env t1 t2
 analyseType env (TAp t11 t12) (TAp t21 t22) = (unionMapWith join ae1 ae2, S.union c1 c2)
     -- Unannotated applications
     where

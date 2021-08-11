@@ -332,17 +332,17 @@ annotateDeclaration _ _ decl = decl -- Functions are handled outside this method
 annotateNil :: Type -> Type
 annotateNil (TForall q k (TAp t1 t2)) = TForall q k $ TAp (TAp (TAnn S) t1) t2
 
--- a -> [a] -> [a] to a -11S> 2 [a] -22S> (12) [a]
+-- a -> [a] -> [a] to a -S1S> 2 [a] -S2S> (1&2) [a]
 annotateCons :: NameSupply -> Type -> Type
 annotateCons supply (TForall q k t) = TForall q k ta
   where
-    (id1, id2, id3, supply') = threeIds supply
-    (id4, _) = freshId supply'
+    (id1, supply') = freshId supply
+    (id2, _) = freshId supply'
     TAp (TAp (TCon TConFun) t1) t' = t
     TAp (TAp (TCon TConFun) (TAp l1 t2)) (TAp l2 t3) = t'
-    t1a = TAp (TAnn (Join (AnnVar id3) (AnnVar id4))) (TAp (TAnn (Join (AnnVar id3) (AnnVar id1))) (TAp (TAnn (AnnVar id3)) t1))
+    t1a = TAp (TAnn S) (TAp (TAnn (AnnVar id1)) (TAp (TAnn S) t1))
     ta = TAp (TAp (TCon TConFun) t1a) ta'
-    t2a = TAp (TAnn (AnnVar id4)) (TAp (TAnn (AnnVar id2)) (TAp (TAnn (AnnVar id4)) t2'))
+    t2a = TAp (TAnn S) (TAp (TAnn (AnnVar id2)) (TAp (TAnn S) t2'))
     t2' = TAp (TAp (TAnn $ AnnVar id2) l1) t2
     t3' = TAp (TAp (TAnn $ Join (AnnVar id1) (AnnVar id2)) l2) t3
     ta' = TAp (TAp (TCon TConFun) t2a) t3'
@@ -422,11 +422,6 @@ envAddBinds :: Binds -> Environment -> Environment
 envAddBinds (Strict bind) env = envAddBind bind env
 envAddBinds (NonRec bind) env = envAddBind bind env
 envAddBinds (Rec binds) env = foldr envAddBind env binds
-
-envAddPattern :: Pat -> Environment -> Environment
-envAddPattern p env = envAddVariables x env
-  where
-    x = patternVariables (typeEnv env) p
 
 -- Get relevance and applicative annotations of var, set them equal to contexts
 getAnnotations :: Environment -> SAnn -> SAnn -> Id -> AnnotationEnvironment

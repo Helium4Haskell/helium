@@ -61,12 +61,14 @@ desugar supply ((passName, passFn) : passes) mod = do
 desugar _ [] mod = return mod
 
 showStrictness :: Int -> String
+showStrictness 7 = "Datatyped"
+showStrictness 6 = "Monotyped"
 showStrictness 5 = "Simple polyvariant"
 showStrictness 4 = "Simple monovariant"
 showStrictness 3 = "Advanced polyvariant"
 showStrictness 2 = "Advanced monovariant"
 showStrictness 1 = "Old"
-showStrictness _ = "Monotype"
+showStrictness _ = "No"
 
 strictnessExtraPass :: Int -> (NameSupply -> CoreModule -> CoreModule)
 strictnessExtraPass 1 = coreStrictness 1
