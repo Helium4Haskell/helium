@@ -1,5 +1,4 @@
 
-dimension Distance
-unit Meter from Distance
+dimension Distance in Meter
 
 data Mint = Int <Meter>

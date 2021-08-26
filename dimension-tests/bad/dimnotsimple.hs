@@ -1,2 +1,3 @@
 
-dimension Distance * Distance
+dimension Distance * Distance in Meter
+

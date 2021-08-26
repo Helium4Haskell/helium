@@ -1,0 +1,543 @@
+module Dimension where
+import("HeliumLang", "PreludePrim", "Prelude", "IridiumLang", "LvmLang")
+custom ''data''  ''HeliumLang.->''  :  from HeliumLang [custom kind ["* -> * -> *"]];
+
+custom ''data''  ''[]''  :  from IridiumLang [custom kind ["* -> *"]];
+
+custom ''data''  Bool :  from IridiumLang [custom kind ["*"]];
+
+custom ''data''  Char :  from IridiumLang [custom kind ["*"]];
+
+custom ''data''  Int :  from IridiumLang [custom kind ["*"]];
+
+custom ''data''  Float :  from IridiumLang [custom kind ["*"]];
+
+custom ''data''  IORes :  from IridiumLang [custom kind ["* -> *"]];
+
+custom ''data''  RealWorld :  from IridiumLang [custom kind ["*"]];
+
+custom ''data''  ''Dict$Prelude.Num''  :  from Prelude [1];
+
+custom ''data''  ''Prelude.Maybe''  :  from Prelude [1];
+
+custom ''data''  ''Prelude.Either''  :  from Prelude [2];
+
+custom ''data''  ''Prelude.Ordering''  :  from Prelude [0];
+
+custom ''data''  ''Dict$Prelude.Functor''  :  from Prelude [1];
+
+custom ''data''  ''Dict$Prelude.Applicative''  :  from Prelude [1];
+
+custom ''data''  ''Dict$Prelude.Monad''  :  from Prelude [1];
+
+custom ''data''  ''Dict$Prelude.Eq''  :  from Prelude [1];
+
+custom ''data''  ''Dict$Prelude.Ord''  :  from Prelude [1];
+
+custom ''data''  ''Dict$Prelude.Show''  :  from Prelude [1];
+
+custom ''data''  ''Dict$Prelude.Enum''  :  from Prelude [1];
+
+abstract ''$dictPrelude.Eq$Int''  : export ''$dictPrelude.Eq$Int''  from Prelude 
+   ::  (@dictionary Prelude.Eq ) Int;
+
+abstract ''$dictPrelude.Ord$Int''  : export ''$dictPrelude.Ord$Int''  from Prelude 
+   ::  (@dictionary Prelude.Ord ) Int;
+
+abstract ''$dictPrelude.Num$Int''  : export ''$dictPrelude.Num$Int''  from Prelude 
+   ::  (@dictionary Prelude.Num ) Int;
+
+abstract ''$dictPrelude.Show$Prelude.Ordering''  : export ''$dictPrelude.Show$Prelude.Ordering''  from Prelude 
+   ::  (@dictionary Prelude.Show ) Prelude.Ordering;
+
+abstract ''$dictPrelude.Eq$Prelude.Ordering''  : export ''$dictPrelude.Eq$Prelude.Ordering''  from Prelude 
+   ::  (@dictionary Prelude.Eq ) Prelude.Ordering;
+
+abstract ''$dictPrelude.Eq$Char''  : export ''$dictPrelude.Eq$Char''  from Prelude 
+   ::  (@dictionary Prelude.Eq ) Char;
+
+abstract ''$dictPrelude.Functor$Prelude.Maybe''  : export ''$dictPrelude.Functor$Prelude.Maybe''  from Prelude 
+   ::  (@dictionary Prelude.Functor ) Prelude.Maybe;
+
+abstract ''$dictPrelude.Functor$Prelude.Either''  : export ''$dictPrelude.Functor$Prelude.Either''  from Prelude [custom typeVariable ["a"]]
+   ::  forall a. (@dictionary Prelude.Functor ) (Prelude.Either a);
+
+abstract ''$dictPrelude.Functor$[]''  : export ''$dictPrelude.Functor$[]''  from Prelude 
+   ::  (@dictionary Prelude.Functor ) [];
+
+abstract ''$dictPrelude.Functor$IO''  : export ''$dictPrelude.Functor$IO''  from Prelude 
+   ::  (@dictionary Prelude.Functor ) IO;
+
+abstract ''$dictPrelude.Applicative$Prelude.Maybe''  : export ''$dictPrelude.Applicative$Prelude.Maybe''  from Prelude 
+   ::  (@dictionary Prelude.Applicative ) Prelude.Maybe;
+
+abstract ''$dictPrelude.Applicative$Prelude.Either''  : export ''$dictPrelude.Applicative$Prelude.Either''  from Prelude [custom typeVariable ["a"]]
+   ::  forall a. (@dictionary Prelude.Applicative ) (Prelude.Either a);
+
+abstract ''$dictPrelude.Applicative$IO''  : export ''$dictPrelude.Applicative$IO''  from Prelude 
+   ::  (@dictionary Prelude.Applicative ) IO;
+
+abstract ''$dictPrelude.Monad$IO''  : export ''$dictPrelude.Monad$IO''  from Prelude 
+   ::  (@dictionary Prelude.Monad ) IO;
+
+abstract ''$dictPrelude.Monad$Prelude.Maybe''  : export ''$dictPrelude.Monad$Prelude.Maybe''  from Prelude 
+   ::  (@dictionary Prelude.Monad ) Prelude.Maybe;
+
+abstract ''$dictPrelude.Eq$Bool''  : export ''$dictPrelude.Eq$Bool''  from Prelude 
+   ::  (@dictionary Prelude.Eq ) Bool;
+
+abstract ''$dictPrelude.Eq$Prelude.Maybe''  : export ''$dictPrelude.Eq$Prelude.Maybe''  from Prelude [custom typeVariable ["a"]
+                                                                                                     ,custom superInstance ["Prelude.Eq-a"]]
+   ::  forall a. (@dictionary Prelude.Eq ) a -> (@dictionary Prelude.Eq ) (Prelude.Maybe a);
+
+abstract ''$dictPrelude.Eq$Prelude.Either''  : export ''$dictPrelude.Eq$Prelude.Either''  from Prelude [custom typeVariable ["a"]
+                                                                                                       ,custom typeVariable ["b"]
+                                                                                                       ,custom superInstance ["Prelude.Eq-a"]
+                                                                                                       ,custom superInstance ["Prelude.Eq-b"]]
+   ::  forall a. forall b. (@dictionary Prelude.Eq ) a -> (@dictionary Prelude.Eq ) b -> (@dictionary Prelude.Eq ) (Prelude.Either a b);
+
+abstract ''$dictPrelude.Eq$[]''  : export ''$dictPrelude.Eq$[]''  from Prelude [custom typeVariable ["a"]
+                                                                               ,custom superInstance ["Prelude.Eq-a"]]
+   ::  forall a. (@dictionary Prelude.Eq ) a -> (@dictionary Prelude.Eq ) ([a]);
+
+abstract ''$dictPrelude.Eq$()''  : export ''$dictPrelude.Eq$()''  from Prelude 
+   ::  (@dictionary Prelude.Eq ) ();
+
+abstract ''$dictPrelude.Eq$(,)''  : export ''$dictPrelude.Eq$(,)''  from Prelude [custom typeVariable ["a"]
+                                                                                 ,custom typeVariable ["b"]
+                                                                                 ,custom superInstance ["Prelude.Eq-a"]
+                                                                                 ,custom superInstance ["Prelude.Eq-b"]]
+   ::  forall a. forall b. (@dictionary Prelude.Eq ) a -> (@dictionary Prelude.Eq ) b -> (@dictionary Prelude.Eq ) ((,) a b);
+
+abstract ''$dictPrelude.Eq$(,,)''  : export ''$dictPrelude.Eq$(,,)''  from Prelude [custom typeVariable ["a"]
+                                                                                   ,custom typeVariable ["b"]
+                                                                                   ,custom typeVariable ["c"]
+                                                                                   ,custom superInstance ["Prelude.Eq-a"]
+                                                                                   ,custom superInstance ["Prelude.Eq-b"]
+                                                                                   ,custom superInstance ["Prelude.Eq-c"]]
+   ::  forall a. forall b. forall c. (@dictionary Prelude.Eq ) a -> (@dictionary Prelude.Eq ) b -> (@dictionary Prelude.Eq ) c -> (@dictionary Prelude.Eq ) ((,,) a b c);
+
+abstract ''$dictPrelude.Eq$(,,,)''  : export ''$dictPrelude.Eq$(,,,)''  from Prelude [custom typeVariable ["a"]
+                                                                                     ,custom typeVariable ["b"]
+                                                                                     ,custom typeVariable ["c"]
+                                                                                     ,custom typeVariable ["d"]
+                                                                                     ,custom superInstance ["Prelude.Eq-a"]
+                                                                                     ,custom superInstance ["Prelude.Eq-b"]
+                                                                                     ,custom superInstance ["Prelude.Eq-c"]
+                                                                                     ,custom superInstance ["Prelude.Eq-d"]]
+   ::  forall a. forall b. forall c. forall d. (@dictionary Prelude.Eq ) a -> (@dictionary Prelude.Eq ) b -> (@dictionary Prelude.Eq ) c -> (@dictionary Prelude.Eq ) d -> (@dictionary Prelude.Eq ) ((,,,) a b c d);
+
+abstract ''$dictPrelude.Eq$(,,,,)''  : export ''$dictPrelude.Eq$(,,,,)''  from Prelude [custom typeVariable ["a"]
+                                                                                       ,custom typeVariable ["b"]
+                                                                                       ,custom typeVariable ["c"]
+                                                                                       ,custom typeVariable ["d"]
+                                                                                       ,custom typeVariable ["e"]
+                                                                                       ,custom superInstance ["Prelude.Eq-a"]
+                                                                                       ,custom superInstance ["Prelude.Eq-b"]
+                                                                                       ,custom superInstance ["Prelude.Eq-c"]
+                                                                                       ,custom superInstance ["Prelude.Eq-d"]
+                                                                                       ,custom superInstance ["Prelude.Eq-e"]]
+   ::  forall a. forall b. forall c. forall d. forall e. (@dictionary Prelude.Eq ) a -> (@dictionary Prelude.Eq ) b -> (@dictionary Prelude.Eq ) c -> (@dictionary Prelude.Eq ) d -> (@dictionary Prelude.Eq ) e -> (@dictionary Prelude.Eq ) ((,,,,) a b c d e);
+
+abstract ''$dictPrelude.Eq$(,,,,,)''  : export ''$dictPrelude.Eq$(,,,,,)''  from Prelude [custom typeVariable ["a"]
+                                                                                         ,custom typeVariable ["b"]
+                                                                                         ,custom typeVariable ["c"]
+                                                                                         ,custom typeVariable ["d"]
+                                                                                         ,custom typeVariable ["e"]
+                                                                                         ,custom typeVariable ["f"]
+                                                                                         ,custom superInstance ["Prelude.Eq-a"]
+                                                                                         ,custom superInstance ["Prelude.Eq-b"]
+                                                                                         ,custom superInstance ["Prelude.Eq-c"]
+                                                                                         ,custom superInstance ["Prelude.Eq-d"]
+                                                                                         ,custom superInstance ["Prelude.Eq-e"]
+                                                                                         ,custom superInstance ["Prelude.Eq-f"]]
+   ::  forall a. forall b. forall c. forall d. forall e. forall f. (@dictionary Prelude.Eq ) a -> (@dictionary Prelude.Eq ) b -> (@dictionary Prelude.Eq ) c -> (@dictionary Prelude.Eq ) d -> (@dictionary Prelude.Eq ) e -> (@dictionary Prelude.Eq ) f -> (@dictionary Prelude.Eq ) ((,,,,,) a b c d e f);
+
+abstract ''$dictPrelude.Eq$(,,,,,,)''  : export ''$dictPrelude.Eq$(,,,,,,)''  from Prelude [custom typeVariable ["a"]
+                                                                                           ,custom typeVariable ["b"]
+                                                                                           ,custom typeVariable ["c"]
+                                                                                           ,custom typeVariable ["d"]
+                                                                                           ,custom typeVariable ["e"]
+                                                                                           ,custom typeVariable ["f"]
+                                                                                           ,custom typeVariable ["g"]
+                                                                                           ,custom superInstance ["Prelude.Eq-a"]
+                                                                                           ,custom superInstance ["Prelude.Eq-b"]
+                                                                                           ,custom superInstance ["Prelude.Eq-c"]
+                                                                                           ,custom superInstance ["Prelude.Eq-d"]
+                                                                                           ,custom superInstance ["Prelude.Eq-e"]
+                                                                                           ,custom superInstance ["Prelude.Eq-f"]
+                                                                                           ,custom superInstance ["Prelude.Eq-g"]]
+   ::  forall a. forall b. forall c. forall d. forall e. forall f. forall g. (@dictionary Prelude.Eq ) a -> (@dictionary Prelude.Eq ) b -> (@dictionary Prelude.Eq ) c -> (@dictionary Prelude.Eq ) d -> (@dictionary Prelude.Eq ) e -> (@dictionary Prelude.Eq ) f -> (@dictionary Prelude.Eq ) g -> (@dictionary Prelude.Eq ) ((,,,,,,) a b c d e f g);
+
+abstract ''$dictPrelude.Eq$(,,,,,,,)''  : export ''$dictPrelude.Eq$(,,,,,,,)''  from Prelude [custom typeVariable ["a"]
+                                                                                             ,custom typeVariable ["b"]
+                                                                                             ,custom typeVariable ["c"]
+                                                                                             ,custom typeVariable ["d"]
+                                                                                             ,custom typeVariable ["e"]
+                                                                                             ,custom typeVariable ["f"]
+                                                                                             ,custom typeVariable ["g"]
+                                                                                             ,custom typeVariable ["h"]
+                                                                                             ,custom superInstance ["Prelude.Eq-a"]
+                                                                                             ,custom superInstance ["Prelude.Eq-b"]
+                                                                                             ,custom superInstance ["Prelude.Eq-c"]
+                                                                                             ,custom superInstance ["Prelude.Eq-d"]
+                                                                                             ,custom superInstance ["Prelude.Eq-e"]
+                                                                                             ,custom superInstance ["Prelude.Eq-f"]
+                                                                                             ,custom superInstance ["Prelude.Eq-g"]
+                                                                                             ,custom superInstance ["Prelude.Eq-h"]]
+   ::  forall a. forall b. forall c. forall d. forall e. forall f. forall g. forall h. (@dictionary Prelude.Eq ) a -> (@dictionary Prelude.Eq ) b -> (@dictionary Prelude.Eq ) c -> (@dictionary Prelude.Eq ) d -> (@dictionary Prelude.Eq ) e -> (@dictionary Prelude.Eq ) f -> (@dictionary Prelude.Eq ) g -> (@dictionary Prelude.Eq ) h -> (@dictionary Prelude.Eq ) ((,,,,,,,) a b c d e f g h);
+
+abstract ''$dictPrelude.Eq$(,,,,,,,,)''  : export ''$dictPrelude.Eq$(,,,,,,,,)''  from Prelude [custom typeVariable ["a"]
+                                                                                               ,custom typeVariable ["b"]
+                                                                                               ,custom typeVariable ["c"]
+                                                                                               ,custom typeVariable ["d"]
+                                                                                               ,custom typeVariable ["e"]
+                                                                                               ,custom typeVariable ["f"]
+                                                                                               ,custom typeVariable ["g"]
+                                                                                               ,custom typeVariable ["h"]
+                                                                                               ,custom typeVariable ["i"]
+                                                                                               ,custom superInstance ["Prelude.Eq-a"]
+                                                                                               ,custom superInstance ["Prelude.Eq-b"]
+                                                                                               ,custom superInstance ["Prelude.Eq-c"]
+                                                                                               ,custom superInstance ["Prelude.Eq-d"]
+                                                                                               ,custom superInstance ["Prelude.Eq-e"]
+                                                                                               ,custom superInstance ["Prelude.Eq-f"]
+                                                                                               ,custom superInstance ["Prelude.Eq-g"]
+                                                                                               ,custom superInstance ["Prelude.Eq-h"]
+                                                                                               ,custom superInstance ["Prelude.Eq-i"]]
+   ::  forall a. forall b. forall c. forall d. forall e. forall f. forall g. forall h. forall i. (@dictionary Prelude.Eq ) a -> (@dictionary Prelude.Eq ) b -> (@dictionary Prelude.Eq ) c -> (@dictionary Prelude.Eq ) d -> (@dictionary Prelude.Eq ) e -> (@dictionary Prelude.Eq ) f -> (@dictionary Prelude.Eq ) g -> (@dictionary Prelude.Eq ) h -> (@dictionary Prelude.Eq ) i -> (@dictionary Prelude.Eq ) ((,,,,,,,,) a b c d e f g h i);
+
+abstract ''$dictPrelude.Eq$(,,,,,,,,,)''  : export ''$dictPrelude.Eq$(,,,,,,,,,)''  from Prelude [custom typeVariable ["a"]
+                                                                                                 ,custom typeVariable ["b"]
+                                                                                                 ,custom typeVariable ["c"]
+                                                                                                 ,custom typeVariable ["d"]
+                                                                                                 ,custom typeVariable ["e"]
+                                                                                                 ,custom typeVariable ["f"]
+                                                                                                 ,custom typeVariable ["g"]
+                                                                                                 ,custom typeVariable ["h"]
+                                                                                                 ,custom typeVariable ["i"]
+                                                                                                 ,custom typeVariable ["j"]
+                                                                                                 ,custom superInstance ["Prelude.Eq-a"]
+                                                                                                 ,custom superInstance ["Prelude.Eq-b"]
+                                                                                                 ,custom superInstance ["Prelude.Eq-c"]
+                                                                                                 ,custom superInstance ["Prelude.Eq-d"]
+                                                                                                 ,custom superInstance ["Prelude.Eq-e"]
+                                                                                                 ,custom superInstance ["Prelude.Eq-f"]
+                                                                                                 ,custom superInstance ["Prelude.Eq-g"]
+                                                                                                 ,custom superInstance ["Prelude.Eq-h"]
+                                                                                                 ,custom superInstance ["Prelude.Eq-i"]
+                                                                                                 ,custom superInstance ["Prelude.Eq-j"]]
+   ::  forall a. forall b. forall c. forall d. forall e. forall f. forall g. forall h. forall i. forall j. (@dictionary Prelude.Eq ) a -> (@dictionary Prelude.Eq ) b -> (@dictionary Prelude.Eq ) c -> (@dictionary Prelude.Eq ) d -> (@dictionary Prelude.Eq ) e -> (@dictionary Prelude.Eq ) f -> (@dictionary Prelude.Eq ) g -> (@dictionary Prelude.Eq ) h -> (@dictionary Prelude.Eq ) i -> (@dictionary Prelude.Eq ) j -> (@dictionary Prelude.Eq ) ((,,,,,,,,,) a b c d e f g h i j);
+
+abstract ''$dictPrelude.Ord$[]''  : export ''$dictPrelude.Ord$[]''  from Prelude [custom typeVariable ["a"]
+                                                                                 ,custom superInstance ["Prelude.Ord-a"]]
+   ::  forall a. (@dictionary Prelude.Ord ) a -> (@dictionary Prelude.Ord ) ([a]);
+
+abstract ''$dictPrelude.Ord$(,)''  : export ''$dictPrelude.Ord$(,)''  from Prelude [custom typeVariable ["a"]
+                                                                                   ,custom typeVariable ["b"]
+                                                                                   ,custom superInstance ["Prelude.Ord-a"]
+                                                                                   ,custom superInstance ["Prelude.Ord-b"]]
+   ::  forall a. forall b. (@dictionary Prelude.Ord ) a -> (@dictionary Prelude.Ord ) b -> (@dictionary Prelude.Ord ) ((,) a b);
+
+abstract ''$dictPrelude.Ord$(,,)''  : export ''$dictPrelude.Ord$(,,)''  from Prelude [custom typeVariable ["a"]
+                                                                                     ,custom typeVariable ["b"]
+                                                                                     ,custom typeVariable ["c"]
+                                                                                     ,custom superInstance ["Prelude.Ord-a"]
+                                                                                     ,custom superInstance ["Prelude.Ord-b"]
+                                                                                     ,custom superInstance ["Prelude.Ord-c"]]
+   ::  forall a. forall b. forall c. (@dictionary Prelude.Ord ) a -> (@dictionary Prelude.Ord ) b -> (@dictionary Prelude.Ord ) c -> (@dictionary Prelude.Ord ) ((,,) a b c);
+
+abstract ''$dictPrelude.Ord$(,,,)''  : export ''$dictPrelude.Ord$(,,,)''  from Prelude [custom typeVariable ["a"]
+                                                                                       ,custom typeVariable ["b"]
+                                                                                       ,custom typeVariable ["c"]
+                                                                                       ,custom typeVariable ["d"]
+                                                                                       ,custom superInstance ["Prelude.Ord-a"]
+                                                                                       ,custom superInstance ["Prelude.Ord-b"]
+                                                                                       ,custom superInstance ["Prelude.Ord-c"]
+                                                                                       ,custom superInstance ["Prelude.Ord-d"]]
+   ::  forall a. forall b. forall c. forall d. (@dictionary Prelude.Ord ) a -> (@dictionary Prelude.Ord ) b -> (@dictionary Prelude.Ord ) c -> (@dictionary Prelude.Ord ) d -> (@dictionary Prelude.Ord ) ((,,,) a b c d);
+
+abstract ''$dictPrelude.Ord$(,,,,)''  : export ''$dictPrelude.Ord$(,,,,)''  from Prelude [custom typeVariable ["a"]
+                                                                                         ,custom typeVariable ["b"]
+                                                                                         ,custom typeVariable ["c"]
+                                                                                         ,custom typeVariable ["d"]
+                                                                                         ,custom typeVariable ["e"]
+                                                                                         ,custom superInstance ["Prelude.Ord-a"]
+                                                                                         ,custom superInstance ["Prelude.Ord-b"]
+                                                                                         ,custom superInstance ["Prelude.Ord-c"]
+                                                                                         ,custom superInstance ["Prelude.Ord-d"]
+                                                                                         ,custom superInstance ["Prelude.Ord-e"]]
+   ::  forall a. forall b. forall c. forall d. forall e. (@dictionary Prelude.Ord ) a -> (@dictionary Prelude.Ord ) b -> (@dictionary Prelude.Ord ) c -> (@dictionary Prelude.Ord ) d -> (@dictionary Prelude.Ord ) e -> (@dictionary Prelude.Ord ) ((,,,,) a b c d e);
+
+abstract ''$dictPrelude.Ord$(,,,,,)''  : export ''$dictPrelude.Ord$(,,,,,)''  from Prelude [custom typeVariable ["a"]
+                                                                                           ,custom typeVariable ["b"]
+                                                                                           ,custom typeVariable ["c"]
+                                                                                           ,custom typeVariable ["d"]
+                                                                                           ,custom typeVariable ["e"]
+                                                                                           ,custom typeVariable ["f"]
+                                                                                           ,custom superInstance ["Prelude.Ord-a"]
+                                                                                           ,custom superInstance ["Prelude.Ord-b"]
+                                                                                           ,custom superInstance ["Prelude.Ord-c"]
+                                                                                           ,custom superInstance ["Prelude.Ord-d"]
+                                                                                           ,custom superInstance ["Prelude.Ord-e"]
+                                                                                           ,custom superInstance ["Prelude.Ord-f"]]
+   ::  forall a. forall b. forall c. forall d. forall e. forall f. (@dictionary Prelude.Ord ) a -> (@dictionary Prelude.Ord ) b -> (@dictionary Prelude.Ord ) c -> (@dictionary Prelude.Ord ) d -> (@dictionary Prelude.Ord ) e -> (@dictionary Prelude.Ord ) f -> (@dictionary Prelude.Ord ) ((,,,,,) a b c d e f);
+
+abstract ''$dictPrelude.Ord$(,,,,,,)''  : export ''$dictPrelude.Ord$(,,,,,,)''  from Prelude [custom typeVariable ["a"]
+                                                                                             ,custom typeVariable ["b"]
+                                                                                             ,custom typeVariable ["c"]
+                                                                                             ,custom typeVariable ["d"]
+                                                                                             ,custom typeVariable ["e"]
+                                                                                             ,custom typeVariable ["f"]
+                                                                                             ,custom typeVariable ["g"]
+                                                                                             ,custom superInstance ["Prelude.Ord-a"]
+                                                                                             ,custom superInstance ["Prelude.Ord-b"]
+                                                                                             ,custom superInstance ["Prelude.Ord-c"]
+                                                                                             ,custom superInstance ["Prelude.Ord-d"]
+                                                                                             ,custom superInstance ["Prelude.Ord-e"]
+                                                                                             ,custom superInstance ["Prelude.Ord-f"]
+                                                                                             ,custom superInstance ["Prelude.Ord-g"]]
+   ::  forall a. forall b. forall c. forall d. forall e. forall f. forall g. (@dictionary Prelude.Ord ) a -> (@dictionary Prelude.Ord ) b -> (@dictionary Prelude.Ord ) c -> (@dictionary Prelude.Ord ) d -> (@dictionary Prelude.Ord ) e -> (@dictionary Prelude.Ord ) f -> (@dictionary Prelude.Ord ) g -> (@dictionary Prelude.Ord ) ((,,,,,,) a b c d e f g);
+
+abstract ''$dictPrelude.Ord$(,,,,,,,)''  : export ''$dictPrelude.Ord$(,,,,,,,)''  from Prelude [custom typeVariable ["a"]
+                                                                                               ,custom typeVariable ["b"]
+                                                                                               ,custom typeVariable ["c"]
+                                                                                               ,custom typeVariable ["d"]
+                                                                                               ,custom typeVariable ["e"]
+                                                                                               ,custom typeVariable ["f"]
+                                                                                               ,custom typeVariable ["g"]
+                                                                                               ,custom typeVariable ["h"]
+                                                                                               ,custom superInstance ["Prelude.Ord-a"]
+                                                                                               ,custom superInstance ["Prelude.Ord-b"]
+                                                                                               ,custom superInstance ["Prelude.Ord-c"]
+                                                                                               ,custom superInstance ["Prelude.Ord-d"]
+                                                                                               ,custom superInstance ["Prelude.Ord-e"]
+                                                                                               ,custom superInstance ["Prelude.Ord-f"]
+                                                                                               ,custom superInstance ["Prelude.Ord-g"]
+                                                                                               ,custom superInstance ["Prelude.Ord-h"]]
+   ::  forall a. forall b. forall c. forall d. forall e. forall f. forall g. forall h. (@dictionary Prelude.Ord ) a -> (@dictionary Prelude.Ord ) b -> (@dictionary Prelude.Ord ) c -> (@dictionary Prelude.Ord ) d -> (@dictionary Prelude.Ord ) e -> (@dictionary Prelude.Ord ) f -> (@dictionary Prelude.Ord ) g -> (@dictionary Prelude.Ord ) h -> (@dictionary Prelude.Ord ) ((,,,,,,,) a b c d e f g h);
+
+abstract ''$dictPrelude.Ord$(,,,,,,,,)''  : export ''$dictPrelude.Ord$(,,,,,,,,)''  from Prelude [custom typeVariable ["a"]
+                                                                                                 ,custom typeVariable ["b"]
+                                                                                                 ,custom typeVariable ["c"]
+                                                                                                 ,custom typeVariable ["d"]
+                                                                                                 ,custom typeVariable ["e"]
+                                                                                                 ,custom typeVariable ["f"]
+                                                                                                 ,custom typeVariable ["g"]
+                                                                                                 ,custom typeVariable ["h"]
+                                                                                                 ,custom typeVariable ["i"]
+                                                                                                 ,custom superInstance ["Prelude.Ord-a"]
+                                                                                                 ,custom superInstance ["Prelude.Ord-b"]
+                                                                                                 ,custom superInstance ["Prelude.Ord-c"]
+                                                                                                 ,custom superInstance ["Prelude.Ord-d"]
+                                                                                                 ,custom superInstance ["Prelude.Ord-e"]
+                                                                                                 ,custom superInstance ["Prelude.Ord-f"]
+                                                                                                 ,custom superInstance ["Prelude.Ord-g"]
+                                                                                                 ,custom superInstance ["Prelude.Ord-h"]
+                                                                                                 ,custom superInstance ["Prelude.Ord-i"]]
+   ::  forall a. forall b. forall c. forall d. forall e. forall f. forall g. forall h. forall i. (@dictionary Prelude.Ord ) a -> (@dictionary Prelude.Ord ) b -> (@dictionary Prelude.Ord ) c -> (@dictionary Prelude.Ord ) d -> (@dictionary Prelude.Ord ) e -> (@dictionary Prelude.Ord ) f -> (@dictionary Prelude.Ord ) g -> (@dictionary Prelude.Ord ) h -> (@dictionary Prelude.Ord ) i -> (@dictionary Prelude.Ord ) ((,,,,,,,,) a b c d e f g h i);
+
+abstract ''$dictPrelude.Ord$(,,,,,,,,,)''  : export ''$dictPrelude.Ord$(,,,,,,,,,)''  from Prelude [custom typeVariable ["a"]
+                                                                                                   ,custom typeVariable ["b"]
+                                                                                                   ,custom typeVariable ["c"]
+                                                                                                   ,custom typeVariable ["d"]
+                                                                                                   ,custom typeVariable ["e"]
+                                                                                                   ,custom typeVariable ["f"]
+                                                                                                   ,custom typeVariable ["g"]
+                                                                                                   ,custom typeVariable ["h"]
+                                                                                                   ,custom typeVariable ["i"]
+                                                                                                   ,custom typeVariable ["j"]
+                                                                                                   ,custom superInstance ["Prelude.Ord-a"]
+                                                                                                   ,custom superInstance ["Prelude.Ord-b"]
+                                                                                                   ,custom superInstance ["Prelude.Ord-c"]
+                                                                                                   ,custom superInstance ["Prelude.Ord-d"]
+                                                                                                   ,custom superInstance ["Prelude.Ord-e"]
+                                                                                                   ,custom superInstance ["Prelude.Ord-f"]
+                                                                                                   ,custom superInstance ["Prelude.Ord-g"]
+                                                                                                   ,custom superInstance ["Prelude.Ord-h"]
+                                                                                                   ,custom superInstance ["Prelude.Ord-i"]
+                                                                                                   ,custom superInstance ["Prelude.Ord-j"]]
+   ::  forall a. forall b. forall c. forall d. forall e. forall f. forall g. forall h. forall i. forall j. (@dictionary Prelude.Ord ) a -> (@dictionary Prelude.Ord ) b -> (@dictionary Prelude.Ord ) c -> (@dictionary Prelude.Ord ) d -> (@dictionary Prelude.Ord ) e -> (@dictionary Prelude.Ord ) f -> (@dictionary Prelude.Ord ) g -> (@dictionary Prelude.Ord ) h -> (@dictionary Prelude.Ord ) i -> (@dictionary Prelude.Ord ) j -> (@dictionary Prelude.Ord ) ((,,,,,,,,,) a b c d e f g h i j);
+
+abstract ''$dictPrelude.Ord$Char''  : export ''$dictPrelude.Ord$Char''  from Prelude 
+   ::  (@dictionary Prelude.Ord ) Char;
+
+abstract ''$dictPrelude.Ord$Bool''  : export ''$dictPrelude.Ord$Bool''  from Prelude 
+   ::  (@dictionary Prelude.Ord ) Bool;
+
+abstract ''$dictPrelude.Ord$()''  : export ''$dictPrelude.Ord$()''  from Prelude 
+   ::  (@dictionary Prelude.Ord ) ();
+
+abstract ''$dictPrelude.Show$Int''  : export ''$dictPrelude.Show$Int''  from Prelude 
+   ::  (@dictionary Prelude.Show ) Int;
+
+abstract ''$dictPrelude.Show$Bool''  : export ''$dictPrelude.Show$Bool''  from Prelude 
+   ::  (@dictionary Prelude.Show ) Bool;
+
+abstract ''$dictPrelude.Show$()''  : export ''$dictPrelude.Show$()''  from Prelude 
+   ::  (@dictionary Prelude.Show ) ();
+
+abstract ''$dictPrelude.Show$Char''  : export ''$dictPrelude.Show$Char''  from Prelude 
+   ::  (@dictionary Prelude.Show ) Char;
+
+abstract ''$dictPrelude.Show$Prelude.Either''  : export ''$dictPrelude.Show$Prelude.Either''  from Prelude [custom typeVariable ["a"]
+                                                                                                           ,custom typeVariable ["b"]
+                                                                                                           ,custom superInstance ["Prelude.Show-a"]
+                                                                                                           ,custom superInstance ["Prelude.Show-b"]]
+   ::  forall a. forall b. (@dictionary Prelude.Show ) a -> (@dictionary Prelude.Show ) b -> (@dictionary Prelude.Show ) (Prelude.Either a b);
+
+abstract ''$dictPrelude.Show$Prelude.Maybe''  : export ''$dictPrelude.Show$Prelude.Maybe''  from Prelude [custom typeVariable ["a"]
+                                                                                                         ,custom superInstance ["Prelude.Show-a"]]
+   ::  forall a. (@dictionary Prelude.Show ) a -> (@dictionary Prelude.Show ) (Prelude.Maybe a);
+
+abstract ''$dictPrelude.Show$(,)''  : export ''$dictPrelude.Show$(,)''  from Prelude [custom typeVariable ["a"]
+                                                                                     ,custom typeVariable ["b"]
+                                                                                     ,custom superInstance ["Prelude.Show-a"]
+                                                                                     ,custom superInstance ["Prelude.Show-b"]]
+   ::  forall a. forall b. (@dictionary Prelude.Show ) a -> (@dictionary Prelude.Show ) b -> (@dictionary Prelude.Show ) ((,) a b);
+
+abstract ''$dictPrelude.Show$(,,)''  : export ''$dictPrelude.Show$(,,)''  from Prelude [custom typeVariable ["a"]
+                                                                                       ,custom typeVariable ["b"]
+                                                                                       ,custom typeVariable ["c"]
+                                                                                       ,custom superInstance ["Prelude.Show-a"]
+                                                                                       ,custom superInstance ["Prelude.Show-b"]
+                                                                                       ,custom superInstance ["Prelude.Show-c"]]
+   ::  forall a. forall b. forall c. (@dictionary Prelude.Show ) a -> (@dictionary Prelude.Show ) b -> (@dictionary Prelude.Show ) c -> (@dictionary Prelude.Show ) ((,,) a b c);
+
+abstract ''$dictPrelude.Show$(,,,)''  : export ''$dictPrelude.Show$(,,,)''  from Prelude [custom typeVariable ["a"]
+                                                                                         ,custom typeVariable ["b"]
+                                                                                         ,custom typeVariable ["c"]
+                                                                                         ,custom typeVariable ["d"]
+                                                                                         ,custom superInstance ["Prelude.Show-a"]
+                                                                                         ,custom superInstance ["Prelude.Show-b"]
+                                                                                         ,custom superInstance ["Prelude.Show-c"]
+                                                                                         ,custom superInstance ["Prelude.Show-d"]]
+   ::  forall a. forall b. forall c. forall d. (@dictionary Prelude.Show ) a -> (@dictionary Prelude.Show ) b -> (@dictionary Prelude.Show ) c -> (@dictionary Prelude.Show ) d -> (@dictionary Prelude.Show ) ((,,,) a b c d);
+
+abstract ''$dictPrelude.Show$(,,,,)''  : export ''$dictPrelude.Show$(,,,,)''  from Prelude [custom typeVariable ["a"]
+                                                                                           ,custom typeVariable ["b"]
+                                                                                           ,custom typeVariable ["c"]
+                                                                                           ,custom typeVariable ["d"]
+                                                                                           ,custom typeVariable ["e"]
+                                                                                           ,custom superInstance ["Prelude.Show-a"]
+                                                                                           ,custom superInstance ["Prelude.Show-b"]
+                                                                                           ,custom superInstance ["Prelude.Show-c"]
+                                                                                           ,custom superInstance ["Prelude.Show-d"]
+                                                                                           ,custom superInstance ["Prelude.Show-e"]]
+   ::  forall a. forall b. forall c. forall d. forall e. (@dictionary Prelude.Show ) a -> (@dictionary Prelude.Show ) b -> (@dictionary Prelude.Show ) c -> (@dictionary Prelude.Show ) d -> (@dictionary Prelude.Show ) e -> (@dictionary Prelude.Show ) ((,,,,) a b c d e);
+
+abstract ''$dictPrelude.Show$(,,,,,)''  : export ''$dictPrelude.Show$(,,,,,)''  from Prelude [custom typeVariable ["a"]
+                                                                                             ,custom typeVariable ["b"]
+                                                                                             ,custom typeVariable ["c"]
+                                                                                             ,custom typeVariable ["d"]
+                                                                                             ,custom typeVariable ["e"]
+                                                                                             ,custom typeVariable ["f"]
+                                                                                             ,custom superInstance ["Prelude.Show-a"]
+                                                                                             ,custom superInstance ["Prelude.Show-b"]
+                                                                                             ,custom superInstance ["Prelude.Show-c"]
+                                                                                             ,custom superInstance ["Prelude.Show-d"]
+                                                                                             ,custom superInstance ["Prelude.Show-e"]
+                                                                                             ,custom superInstance ["Prelude.Show-f"]]
+   ::  forall a. forall b. forall c. forall d. forall e. forall f. (@dictionary Prelude.Show ) a -> (@dictionary Prelude.Show ) b -> (@dictionary Prelude.Show ) c -> (@dictionary Prelude.Show ) d -> (@dictionary Prelude.Show ) e -> (@dictionary Prelude.Show ) f -> (@dictionary Prelude.Show ) ((,,,,,) a b c d e f);
+
+abstract ''$dictPrelude.Show$(,,,,,,)''  : export ''$dictPrelude.Show$(,,,,,,)''  from Prelude [custom typeVariable ["a"]
+                                                                                               ,custom typeVariable ["b"]
+                                                                                               ,custom typeVariable ["c"]
+                                                                                               ,custom typeVariable ["d"]
+                                                                                               ,custom typeVariable ["e"]
+                                                                                               ,custom typeVariable ["f"]
+                                                                                               ,custom typeVariable ["g"]
+                                                                                               ,custom superInstance ["Prelude.Show-a"]
+                                                                                               ,custom superInstance ["Prelude.Show-b"]
+                                                                                               ,custom superInstance ["Prelude.Show-c"]
+                                                                                               ,custom superInstance ["Prelude.Show-d"]
+                                                                                               ,custom superInstance ["Prelude.Show-e"]
+                                                                                               ,custom superInstance ["Prelude.Show-f"]
+                                                                                               ,custom superInstance ["Prelude.Show-g"]]
+   ::  forall a. forall b. forall c. forall d. forall e. forall f. forall g. (@dictionary Prelude.Show ) a -> (@dictionary Prelude.Show ) b -> (@dictionary Prelude.Show ) c -> (@dictionary Prelude.Show ) d -> (@dictionary Prelude.Show ) e -> (@dictionary Prelude.Show ) f -> (@dictionary Prelude.Show ) g -> (@dictionary Prelude.Show ) ((,,,,,,) a b c d e f g);
+
+abstract ''$dictPrelude.Show$(,,,,,,,)''  : export ''$dictPrelude.Show$(,,,,,,,)''  from Prelude [custom typeVariable ["a"]
+                                                                                                 ,custom typeVariable ["b"]
+                                                                                                 ,custom typeVariable ["c"]
+                                                                                                 ,custom typeVariable ["d"]
+                                                                                                 ,custom typeVariable ["e"]
+                                                                                                 ,custom typeVariable ["f"]
+                                                                                                 ,custom typeVariable ["g"]
+                                                                                                 ,custom typeVariable ["h"]
+                                                                                                 ,custom superInstance ["Prelude.Show-a"]
+                                                                                                 ,custom superInstance ["Prelude.Show-b"]
+                                                                                                 ,custom superInstance ["Prelude.Show-c"]
+                                                                                                 ,custom superInstance ["Prelude.Show-d"]
+                                                                                                 ,custom superInstance ["Prelude.Show-e"]
+                                                                                                 ,custom superInstance ["Prelude.Show-f"]
+                                                                                                 ,custom superInstance ["Prelude.Show-g"]
+                                                                                                 ,custom superInstance ["Prelude.Show-h"]]
+   ::  forall a. forall b. forall c. forall d. forall e. forall f. forall g. forall h. (@dictionary Prelude.Show ) a -> (@dictionary Prelude.Show ) b -> (@dictionary Prelude.Show ) c -> (@dictionary Prelude.Show ) d -> (@dictionary Prelude.Show ) e -> (@dictionary Prelude.Show ) f -> (@dictionary Prelude.Show ) g -> (@dictionary Prelude.Show ) h -> (@dictionary Prelude.Show ) ((,,,,,,,) a b c d e f g h);
+
+abstract ''$dictPrelude.Show$(,,,,,,,,)''  : export ''$dictPrelude.Show$(,,,,,,,,)''  from Prelude [custom typeVariable ["a"]
+                                                                                                   ,custom typeVariable ["b"]
+                                                                                                   ,custom typeVariable ["c"]
+                                                                                                   ,custom typeVariable ["d"]
+                                                                                                   ,custom typeVariable ["e"]
+                                                                                                   ,custom typeVariable ["f"]
+                                                                                                   ,custom typeVariable ["g"]
+                                                                                                   ,custom typeVariable ["h"]
+                                                                                                   ,custom typeVariable ["i"]
+                                                                                                   ,custom superInstance ["Prelude.Show-a"]
+                                                                                                   ,custom superInstance ["Prelude.Show-b"]
+                                                                                                   ,custom superInstance ["Prelude.Show-c"]
+                                                                                                   ,custom superInstance ["Prelude.Show-d"]
+                                                                                                   ,custom superInstance ["Prelude.Show-e"]
+                                                                                                   ,custom superInstance ["Prelude.Show-f"]
+                                                                                                   ,custom superInstance ["Prelude.Show-g"]
+                                                                                                   ,custom superInstance ["Prelude.Show-h"]
+                                                                                                   ,custom superInstance ["Prelude.Show-i"]]
+   ::  forall a. forall b. forall c. forall d. forall e. forall f. forall g. forall h. forall i. (@dictionary Prelude.Show ) a -> (@dictionary Prelude.Show ) b -> (@dictionary Prelude.Show ) c -> (@dictionary Prelude.Show ) d -> (@dictionary Prelude.Show ) e -> (@dictionary Prelude.Show ) f -> (@dictionary Prelude.Show ) g -> (@dictionary Prelude.Show ) h -> (@dictionary Prelude.Show ) i -> (@dictionary Prelude.Show ) ((,,,,,,,,) a b c d e f g h i);
+
+abstract ''$dictPrelude.Show$(,,,,,,,,,)''  : export ''$dictPrelude.Show$(,,,,,,,,,)''  from Prelude [custom typeVariable ["a"]
+                                                                                                     ,custom typeVariable ["b"]
+                                                                                                     ,custom typeVariable ["c"]
+                                                                                                     ,custom typeVariable ["d"]
+                                                                                                     ,custom typeVariable ["e"]
+                                                                                                     ,custom typeVariable ["f"]
+                                                                                                     ,custom typeVariable ["g"]
+                                                                                                     ,custom typeVariable ["h"]
+                                                                                                     ,custom typeVariable ["i"]
+                                                                                                     ,custom typeVariable ["j"]
+                                                                                                     ,custom superInstance ["Prelude.Show-a"]
+                                                                                                     ,custom superInstance ["Prelude.Show-b"]
+                                                                                                     ,custom superInstance ["Prelude.Show-c"]
+                                                                                                     ,custom superInstance ["Prelude.Show-d"]
+                                                                                                     ,custom superInstance ["Prelude.Show-e"]
+                                                                                                     ,custom superInstance ["Prelude.Show-f"]
+                                                                                                     ,custom superInstance ["Prelude.Show-g"]
+                                                                                                     ,custom superInstance ["Prelude.Show-h"]
+                                                                                                     ,custom superInstance ["Prelude.Show-i"]
+                                                                                                     ,custom superInstance ["Prelude.Show-j"]]
+   ::  forall a. forall b. forall c. forall d. forall e. forall f. forall g. forall h. forall i. forall j. (@dictionary Prelude.Show ) a -> (@dictionary Prelude.Show ) b -> (@dictionary Prelude.Show ) c -> (@dictionary Prelude.Show ) d -> (@dictionary Prelude.Show ) e -> (@dictionary Prelude.Show ) f -> (@dictionary Prelude.Show ) g -> (@dictionary Prelude.Show ) h -> (@dictionary Prelude.Show ) i -> (@dictionary Prelude.Show ) j -> (@dictionary Prelude.Show ) ((,,,,,,,,,) a b c d e f g h i j);
+
+abstract ''$dictPrelude.Show$[]''  : export ''$dictPrelude.Show$[]''  from Prelude [custom typeVariable ["a"]
+                                                                                   ,custom superInstance ["Prelude.Show-a"]]
+   ::  forall a. (@dictionary Prelude.Show ) a -> (@dictionary Prelude.Show ) ([a]);
+
+abstract ''$dictPrelude.Enum$Int''  : export ''$dictPrelude.Enum$Int''  from Prelude 
+   ::  (@dictionary Prelude.Enum ) Int;
+
+abstract ''$dictPrelude.Enum$()''  : export ''$dictPrelude.Enum$()''  from Prelude 
+   ::  (@dictionary Prelude.Enum ) ();
+
+abstract ''$dictPrelude.Enum$Bool''  : export ''$dictPrelude.Enum$Bool''  from Prelude 
+   ::  (@dictionary Prelude.Enum ) Bool;
+
+type ''String''  :  from IridiumLang  = [Char];
+
+newtype ''IO''  :  from IridiumLang [custom kind ["* -> *"]] = forall a. RealWorld -> IORes a;
+
+type ''LvmLang.Double''  :  from LvmLang  = Float;
+
+type ''LvmLang.PackedString''  :  from LvmLang  = String;
+
+type ''Prelude.Integer''  :  from Prelude  = Int;
+
+type ''Prelude.ShowS''  :  from Prelude  = String -> String;
+

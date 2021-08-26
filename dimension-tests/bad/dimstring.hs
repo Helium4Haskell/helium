@@ -1,2 +1,2 @@
 
-dimension "Distance"
+dimension "Distance" in Meter
