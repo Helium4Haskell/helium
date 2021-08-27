@@ -6,7 +6,7 @@
     Stability   :  experimental
     Portability :  portable
     
-    Errors that are constructed during dimension inferece.
+    Normalization function
 -}
 
 module Helium.StaticAnalysis.Inferencers.DimInference.Normalization(normalizeUnitType) where

@@ -5,7 +5,7 @@
 -- Stability   :  experimental
 -- Portability :  unknown
 --
--- Simplify a unit to a normal form
+-- Simplify a unit
 -------------------------------------------------------------------------------
 
 INCLUDE "UHA_Syntax.ag"

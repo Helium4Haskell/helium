@@ -1,5 +1,16 @@
 
-module Helium.StaticAnalysis.InterfaceUnitTypeToTP where
+{-| Module      :  TypeErrors
+    License     :  GPL
+
+    Maintainer  :  helium@cs.uu.nl
+    Stability   :  experimental
+    Portability :  portable
+    
+    Encode an interface between normalized unit type and Tp from Top
+-}
+
+
+module Helium.StaticAnalysis.Inferencers.DimInference.InterfaceUnitTypeToTP where
 
 unitConsToTp :: UnitCons -> Tp
 unitConsToTp (name,exp):l =
@@ -20,6 +31,7 @@ normUnitTypeToTp nut =
         Cons name -> TCon (show name)
         Base nu -> normUnitToTp nu
         Undimensioned -> TCon "Undimensioned"
+        QuestionMark -> TCon "QuestionMarl"
 
 unitClassEnvironmentToClassEnvironment :: UnitClassEnvironment -> UnitClassEnvironment
 unitClassEnvironmentToClassEnvironment =
