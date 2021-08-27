@@ -110,7 +110,8 @@ $(AG_OUT_DIR)/Helium/StaticAnalysis/Inferencers/TypeInferencing.hs : \
 	mkdir -p `dirname $@`
 	# AG TypeInferencing
 	$(AG) $(AG_OPTS) --self --module=Helium.StaticAnalysis.Inferencers.TypeInferencing Helium/StaticAnalysis/Inferencers/TypeInferencing.ag --output=$@
-
+	
+	
 $(AG_OUT_DIR)/Helium/StaticAnalysis/Inferencers/KindInferencing.hs : \
 		Helium/StaticAnalysis/Inferencers/KindInferencing.ag \
     Helium/Syntax/UHA_Syntax.ag

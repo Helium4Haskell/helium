@@ -25,6 +25,7 @@ import Helium.Main.PhaseStaticChecks
 import Helium.Main.PhaseKindInferencer
 import Helium.Main.PhaseTypingStrategies
 import Helium.Main.PhaseTypeInferencer
+-- import Helium.Main.PhaseDimInferencer
 import Helium.Main.PhaseDesugarer
 import Helium.Main.PhaseCodeGeneratorIridium
 import Helium.Main.PhaseCodeGeneratorLlvm
@@ -161,8 +162,13 @@ compileHaskellToCore basedir fullName contents options iridiumCache doneModules 
 
   stopCompilingIf (StopAfterTypeInferencing `elem` options)
 
-  {- if DimensionTypes `elem` options then do
-    Phase 8.2 Dimension Inferencing -}
+{-
+-- Phase 8.2: Dimension inferencing
+  when DimensionTypes `elem` options 
+  () <-
+    doPhaseWithExit maximumNumberOfDimErrors (const "D") compileOptions $
+      phaseDimInferencer basedir fullName resolvedModule localEnv options-}
+
 
   -- Phase 9: Desugaring
   coreModule <-
@@ -188,6 +194,9 @@ stopCompilingIf bool = when bool (exitWith (ExitFailure 1))
 
 maximumNumberOfTypeErrors :: Int
 maximumNumberOfTypeErrors = 3
+
+maximumNumberOfDimErrors :: Int
+maximumNumberOfDimErrors = 3
 
 maximumNumberOfKindErrors :: Int
 maximumNumberOfKindErrors = 1
