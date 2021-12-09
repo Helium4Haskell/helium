@@ -25,7 +25,7 @@ import Helium.Syntax.UHA_Range           (isImportRange, showRanges)
 import Data.Char                (isSpace)
 import Helium.StaticAnalysis.Inferencers.OutsideInX.Rhodium.RhodiumTypes
 
-import Unbound.LocallyNameless
+import Unbound.Generics.LocallyNameless
 
 import Control.Monad
 import Control.Arrow

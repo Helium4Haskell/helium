@@ -1,8 +1,9 @@
 {-# LANGUAGE FlexibleInstances, MultiParamTypeClasses, FlexibleContexts, UndecidableInstances  #-}
+{-# OPTIONS_GHC -Wno-orphans #-}
 module Helium.StaticAnalysis.Inferencers.OutsideInX.Rhodium.RhodiumErrors where
 
-import Unbound.LocallyNameless
-import Unbound.LocallyNameless.Fresh
+import Unbound.Generics.LocallyNameless
+import Unbound.Generics.LocallyNameless.Fresh
 
 import Rhodium.TypeGraphs.GraphProperties
 import Rhodium.TypeGraphs.GraphUtils
@@ -40,7 +41,7 @@ instance HasConstraintInfo (Constraint ConstraintInfo) ConstraintInfo where
     setConstraintInfo ci (Constraint_Unify m1 m2 _) = Constraint_Unify m1 m2 (Just ci)
     
 
-instance (CompareTypes m (RType ConstraintInfo), Fresh m, HasTypeGraph m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo) => TypeErrorInfo m (Constraint ConstraintInfo) ConstraintInfo where
+instance (MonadFail m, CompareTypes m (RType ConstraintInfo), Fresh m, HasTypeGraph m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo) => TypeErrorInfo m (Constraint ConstraintInfo) ConstraintInfo where
     createTypeError edge li constraint ci = maybe nError (return . const ci) (errorMessage ci)
         where
             nError 
@@ -62,7 +63,8 @@ instance (CompareTypes m (RType ConstraintInfo), Fresh m, HasTypeGraph m (Axiom 
                         case constraint of
                             Constraint_Inst m1 p2 _ -> do
                                 axioms <- getAxioms
-                                MType m1' <- getSubstTypeFull (getGroupFromEdge edge) (MType m1)
+                                let mmtype = MType m1
+                                MType m1' <- getSubstTypeFull (getGroupFromEdge edge) mmtype
                                 let Just (cn, m) = maybeMissingConcreteInstance ci
                                 let [MType m1'', PType p2', MType m'] = freshenRepresentation [MType m1', PType p2, MType m]
                               
@@ -138,7 +140,7 @@ instance (CompareTypes m (RType ConstraintInfo), Fresh m, HasTypeGraph m (Axiom 
                 | li == labelResidual = 
                         case constraint of
                             Constraint_Inst m1 m2 _ -> do
-                                MType scheme1 <- getSubstTypeFull (getGroupFromEdge edge) (MType m1) >>= (getSubstTypeFull (getGroupFromEdge edge))
+                                MType scheme1 <- getSubstTypeFull (getGroupFromEdge edge) (MType m1) >>= getSubstTypeFull (getGroupFromEdge edge)
                                 --PType scheme2 <- getSubstType (PType m2)
                                 graph <- getGraph
                                 let [MType scheme1', PType m2'] = freshenRepresentation [MType scheme1, PType m2]
@@ -225,7 +227,7 @@ makeNotGeneralEnoughTypeError isAnnotation range source tpscheme1 tpscheme2 =
                     , "declared type" >:> MessagePolyType ts2
                     , "inferred type" >:> MessageMonoType ts1
                     ]
-        hints    = [ ("hint", MessageString "try removing the type signature") | not (null (fv ts1 :: [TyVar])) ] 
+        hints    = [ ("hint", MessageString "try removing the type signature") | not (null (fvToList ts1 :: [TyVar])) ] 
     in TypeError [range] [oneliner] table hints
 
 

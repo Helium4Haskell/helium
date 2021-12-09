@@ -10,8 +10,8 @@ import Rhodium.Solver.SolveResult
 import Rhodium.Blamer.Heuristics
 import Rhodium.Blamer.ResidualHeuristics 
 
-import Unbound.LocallyNameless.Fresh
-import Unbound.LocallyNameless.Name
+import Unbound.Generics.LocallyNameless.Fresh
+import Unbound.Generics.LocallyNameless.Name
 
 import Helium.StaticAnalysis.Miscellaneous.ConstraintInfoOU
 import Helium.StaticAnalysis.Messages.HeliumMessages

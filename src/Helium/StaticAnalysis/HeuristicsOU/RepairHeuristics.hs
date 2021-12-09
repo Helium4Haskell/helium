@@ -1,6 +1,7 @@
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE ScopedTypeVariables #-}
-
+--{-# LANGUAGE MonoLocalBinds #-}
+--{-# OPTIONS_GHC -freduction-depth=400 #-}
 {-| Module      :  RepairHeuristics
     License     :  GPL
 
@@ -18,6 +19,7 @@ import Helium.StaticAnalysis.HeuristicsOU.OnlyResultHeuristics
 
 import Rhodium.Core
 import Rhodium.TypeGraphs.GraphProperties
+import Rhodium.TypeGraphs.GraphInstances
 import Rhodium.TypeGraphs.Graph
 import Rhodium.Blamer.Heuristics
 import Rhodium.Blamer.HeuristicProperties
@@ -41,8 +43,8 @@ import Helium.Utils.OneLiner
 import Helium.StaticAnalysis.Messages.TypeErrors
 import Helium.StaticAnalysis.Messages.Messages (showNumber, ordinal, prettyAndList)
 
-import Unbound.LocallyNameless.Fresh
-import Unbound.LocallyNameless hiding (GT, Name, from, to)
+import Unbound.Generics.LocallyNameless.Fresh
+import Unbound.Generics.LocallyNameless hiding (GT, Name, from, to)
 
 import Debug.Trace
    
@@ -51,6 +53,8 @@ import Data.Maybe
 import qualified Data.Map as M
 
 import Control.Monad
+import Rhodium.TypeGraphs.TGState
+import Control.Monad.IO.Class (MonadIO )
 -----------------------------------------------------------------------------
 
 fixHint, becauseHint, possibleHint :: WithHints a => String -> a -> a
@@ -79,11 +83,7 @@ deleteIndex i (a:as) = a : deleteIndex (i-1) as
 permute :: Permutation -> [a] -> [a]
 permute is as = map (as !!) is
 
-
-
-
-
-applicationHeuristic :: Fresh m => VotingHeuristic m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo
+applicationHeuristic :: (MonadFail m, MonadIO m, Fresh m) => VotingHeuristic m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo
 applicationHeuristic = SingleVoting "Application heuristic" f
    where
       f e@(constraint, eid, ci, gm) = 
@@ -95,7 +95,7 @@ applicationHeuristic = SingleVoting "Application heuristic" f
                else do
                graph <- getGraph
                let edge = getEdgeFromId graph eid
-               doWithoutEdge eid $ do
+               -- doWithoutEdge eid $ do
                axioms <- getAxioms 
                let Constraint_Unify t1 t2 _ = constraint
                maybeExpectedType <- getSubstTypeFull (getGroupFromEdge edge) $ MType t1
@@ -174,8 +174,10 @@ applicationHeuristic = SingleVoting "Application heuristic" f
                      | otherwise -> return Nothing
          
                     where
+                     unifiableTypeLists :: [MonoType] -> [MonoType] -> Maybe [(TyVar, RType ConstraintInfo)]
                      unifiableTypeLists s1 s2 = runFreshM (runTG (unifiableTypeLists' s1 s2))
-                     unifiableTypeLists' s1 s2 = unifyTypes axioms [] [Constraint_Unify (monotypeTuple s1) (monotypeTuple s2) Nothing] (nub (fv functionType ++ fv expectedType))
+                     unifiableTypeLists' :: (Fresh m, MonadIO m, MonadFail m) => [MonoType] -> [MonoType] -> TGStateM m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo (Maybe [(TyVar, RType ConstraintInfo)])
+                     unifiableTypeLists' s1 s2 = unifyTypes axioms [] [Constraint_Unify (monotypeTuple s1) (monotypeTuple s2) Nothing] (nub (fvToList functionType ++ fvToList expectedType))
                      numberOfArguments = length tuplesForArguments     
                      argumentPermutations = 
                                     [ p 
@@ -282,7 +284,7 @@ siblingsHeuristic siblings =
                      let ups = unbindPolyType scheme
                      freshIdentifier <- fresh (string2Name "a")
                      axioms <- getAxioms
-                     sub <- runTG (unifyTypes axioms [] [Constraint_Unify (var freshIdentifier) contextTp Nothing, Constraint_Inst (var freshIdentifier) ups Nothing] (freshIdentifier : fv contextTp ++ fv ups))
+                     sub <- runTG (unifyTypes axioms [] [Constraint_Unify (var freshIdentifier) contextTp Nothing, Constraint_Inst (var freshIdentifier) ups Nothing] (freshIdentifier : fvToList contextTp ++ fvToList ups))
                      return $ isJust sub
 
 
@@ -415,7 +417,8 @@ instance IsTupleEdge ConstraintInfo where
          UHA_Pat  (Pattern_Tuple _ _)    -> True
          _                               -> False
 
-tupleHeuristic :: Fresh m => VotingHeuristic m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo
+tupleHeuristic :: (MonadFail m, MonadIO m, Fresh m, HasTypeGraph m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo) => 
+                  VotingHeuristic m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo
 tupleHeuristic = SingleVoting "Tuple heuristics" f
       where      
          f pair@(constraint , eid, info, gm)    
@@ -441,7 +444,9 @@ tupleHeuristic = SingleVoting "Tuple heuristics" f
                                           do
                                              let   perms = take heuristicsMAX (permutationsForLength (length tupleTps))
                                              notUnifiable <- isNothing <$> unifyTypes axioms [] [Constraint_Unify (monotypeTuple tupleTps) (monotypeTuple expectedTps) Nothing] []
-                                             let   test perm = 
+                                             let
+                                                test :: (Fresh m, MonadFail m, MonadIO m) => [Int] -> TGStateM m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo Bool
+                                                test perm = 
                                                       let   t1 = monotypeTuple tupleTps
                                                             t2 = monotypeTuple (permute perm expectedTps)
                                                       in isJust <$> unifyTypes axioms [] [Constraint_Unify t1 t2 Nothing] []

@@ -41,7 +41,6 @@ INCLUDE "UHA_Syntax.ag"
 -- Imports
 
 imports {
-
 -- error messages and warnings
 import Helium.StaticAnalysis.Messages.Messages
 import Helium.StaticAnalysis.Messages.TypeErrors
@@ -72,13 +71,13 @@ import Data.List
 import Control.Monad
 import Control.Arrow
 
-import qualified Unbound.LocallyNameless as UL
-import Unbound.LocallyNameless(integer2Name)
-import Unbound.LocallyNameless.Fresh
+import qualified Unbound.Generics.LocallyNameless as UL
+import Unbound.Generics.LocallyNameless.Fresh
 
 import Helium.StaticAnalysis.Inferencers.OutsideInX.Rhodium.RhodiumTypes
 import Helium.StaticAnalysis.Inferencers.OutsideInX.Rhodium.RhodiumSolver
 import Helium.StaticAnalysis.Inferencers.OutsideInX.Rhodium.RhodiumGenerics
+import Helium.StaticAnalysis.Inferencers.OutsideInX.Rhodium.RhodiumInstances(integer2Name)
 
 import qualified Rhodium.Solver.SolveResult as SR
 

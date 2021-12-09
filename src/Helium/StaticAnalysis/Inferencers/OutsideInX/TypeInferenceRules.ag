@@ -129,7 +129,7 @@ SEM Body
             lhs . typeErrors,
             lhs . resolvedContraints
         ) =
-            let !inputBDG = (@lhs.importEnvironment, True, @lhs.axioms, @declarations.typeSignaturesCollect `M.union` (@lhs.typeSignatures M.\\ @declarations.environment), @declarations.touchables, Nothing, @declarations.typeErrors, @declarations.resolvedContraints, @declarations.betaUnique)
+            let inputBDG = id $! (@lhs.importEnvironment, True, @lhs.axioms, @declarations.typeSignaturesCollect `M.union` (@lhs.typeSignatures M.\\ @declarations.environment), @declarations.touchables, Nothing, @declarations.typeErrors, @declarations.resolvedContraints, @declarations.betaUnique)
             in bindingGroupAnalysis inputBDG @declarations.bindingGroups
 
 ATTR FunctionBinding FunctionBindings [ betasLeft : {[TyVar]} betaRight : TyVar | caseArmIndex : Int | name : Name numberOfPatterns : Integer  ]
@@ -199,7 +199,7 @@ SEM Declaration
         where . className           = Just  @simpletype.name
         where . typeSignatureConstraints = [Constraint_Class (show @simpletype.name) (map (var.snd) @classBetas) Nothing] ++ map (\(ContextItem_ContextItem _ cn ts) -> Constraint_Class (show cn) (map (var . snd) @classBetas) Nothing) @context.self
     | Instance
-        lhs . touchables = UL.fv @tp ++ take (length @typeVariables) [x | i <- [@lhs.betaUnique..], let x = integer2Name i] ++ @where.touchables
+        lhs . touchables = fvToList @tp ++ take (length @typeVariables) [x | i <- [@lhs.betaUnique..], let x = integer2Name i] ++ @where.touchables
         loc . instanceBetas = (@classBeta, @tp) : [] -- zip (map snd @typeVariables) (map (var . integer2Name) [@lhs.betaUnique..])
         loc . instanceType  = makeTpSchemeFromType $ head @types.self
         loc . typeVariables = getQuantorMap @instanceType
@@ -286,12 +286,12 @@ SEM Pattern
                                                 []
                                              else
                                                 [] -- UL.fv @rt 
-                                            ) ++ UL.fv (getRHSPT @tp) ++ @patterns.touchables
+                                            ) ++ fvToList (getRHSPT @tp) ++ @patterns.touchables
         lhs . constraints               =   if @ct == ConstructorRegular then 
                                                 @conApply : @conConstraints ++ @patterns.constraints
                                             else
                                                 [] -- [Constraint_Unify (var @beta) @rt (Just @cinfoConstructor)]
-        lhs . gadtCondition             = [modCi (addProperty FolkloreConstraint) @conApply, Constraint_Inst (var @betaCon) (bindVariables (map (\v -> ("", v)) $ UL.fv (getRHSPT @tpW)) @tpW) (Just $ addProperty (TypeSignatureLocation @origTpschemeRange) @cinfoConstructor)]
+        lhs . gadtCondition             = [modCi (addProperty FolkloreConstraint) @conApply, Constraint_Inst (var @betaCon) (bindVariables (map (\v -> ("", v)) $ fvToList (getRHSPT @tpW)) @tpW) (Just $ addProperty (TypeSignatureLocation @origTpschemeRange) @cinfoConstructor)]
         loc . (tpW, bu3)                = freshen @bu2 @tp
         loc . beta                      = integer2Name @lhs.betaUnique
         loc . betaCon                   = integer2Name (@lhs.betaUnique + 1)
@@ -303,11 +303,11 @@ SEM Pattern
                                                     noRange
                                                 else
                                                     getNameRange $ head (M.keys nameList)
-        loc . conConstraints            = [Constraint_Inst (var @betaCon) (bindVariables (map (\v -> ("", v)) $ UL.fv (@tp)) @tp) (Just $ addProperty (TypeSignatureLocation @origTpschemeRange) @cinfoConstructor)]
+        loc . conConstraints            = [Constraint_Inst (var @betaCon) (bindVariables (map (\v -> ("", v)) $ fvToList (@tp)) @tp) (Just $ addProperty (TypeSignatureLocation @origTpschemeRange) @cinfoConstructor)]
         loc . gadtVariables             =   if @ct == ConstructorRegular then 
                                                 []
                                             else
-                                                @betaCon : @patterns.touchables ++ UL.fv (getRHSPT @tp)
+                                                @betaCon : @patterns.touchables ++ fvToList (getRHSPT @tp)
         loc . gadtAssumeConstraints     =   if @ct == ConstructorRegular then 
                                                 []
                                             else
@@ -619,7 +619,7 @@ SEM Expression
             lhs . typeErrors,
             lhs . resolvedContraints
         ) =
-            let !inputBDG = (@lhs.importEnvironment, False, @lhs.axioms, @declarations.typeSignaturesCollect `M.union` (@lhs.typeSignatures M.\\ @declarations.environment), @declarations.touchables ++ @expression.touchables, Just (@expression.assumptions, @expression.constraints, @expression.gadtConstraints),  @declarations.typeErrors ++ @expression.typeErrors, @declarations.resolvedContraints ++ @expression.resolvedContraints ,@expression.betaUnique)
+            let inputBDG = id $! (@lhs.importEnvironment, False, @lhs.axioms, @declarations.typeSignaturesCollect `M.union` (@lhs.typeSignatures M.\\ @declarations.environment), @declarations.touchables ++ @expression.touchables, Just (@expression.assumptions, @expression.constraints, @expression.gadtConstraints),  @declarations.typeErrors ++ @expression.typeErrors, @declarations.resolvedContraints ++ @expression.resolvedContraints ,@expression.betaUnique)
             in bindingGroupAnalysis inputBDG @declarations.bindingGroups
     | Case
         lhs . touchables              = @beta : @beta' : @expression.touchables ++ @alternatives.touchables
@@ -732,7 +732,7 @@ SEM Statement
             lhs . typeErrors,
             lhs . resolvedContraints
         ) =
-            let !inputBDG = (@lhs.importEnvironment, False, @lhs.axioms, @declarations.typeSignaturesCollect `M.union` (@lhs.typeSignatures M.\\ @declarations.environment), @declarations.touchables ++ @lhs.touchables, Just (@lhs.assumptions, @lhs.constraints, @lhs.gadtConstraints), @declarations.typeErrors, @declarations.resolvedContraints, @declarations.betaUnique)
+            let inputBDG = id $! (@lhs.importEnvironment, False, @lhs.axioms, @declarations.typeSignaturesCollect `M.union` (@lhs.typeSignatures M.\\ @declarations.environment), @declarations.touchables ++ @lhs.touchables, Just (@lhs.assumptions, @lhs.constraints, @lhs.gadtConstraints), @declarations.typeErrors, @declarations.resolvedContraints, @declarations.betaUnique)
             in bindingGroupAnalysis inputBDG @declarations.bindingGroups
 
 SEM Statements
@@ -807,7 +807,7 @@ SEM Qualifier
             lhs . typeErrors,
             lhs . resolvedContraints
         ) =
-            let !inputBDG = (@lhs.importEnvironment, False, @lhs.axioms, @declarations.typeSignaturesCollect `M.union` (@lhs.typeSignatures M.\\ @declarations.environment), @declarations.touchables ++ @lhs.touchables, Just (@lhs.assumptions, @lhs.constraints, @lhs.gadtConstraints), @declarations.typeErrors, @declarations.resolvedContraints, @declarations.betaUnique)
+            let inputBDG = id $! (@lhs.importEnvironment, False, @lhs.axioms, @declarations.typeSignaturesCollect `M.union` (@lhs.typeSignatures M.\\ @declarations.environment), @declarations.touchables ++ @lhs.touchables, Just (@lhs.assumptions, @lhs.constraints, @lhs.gadtConstraints), @declarations.typeErrors, @declarations.resolvedContraints, @declarations.betaUnique)
             in bindingGroupAnalysis inputBDG @declarations.bindingGroups
 
 SEM Qualifiers

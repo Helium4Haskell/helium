@@ -1,15 +1,18 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE AllowAmbiguousTypes #-}
 {-# LANGUAGE DoAndIfThenElse #-}
-{-# LANGUAGE TypeSynonymInstances #-}
+--{-# LANGUAGE TypeSynonymInstances #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE UndecidableInstances #-}
+{-# LANGUAGE MonoLocalBinds #-}
+{-# OPTIONS_GHC -Wno-orphans #-}
 module Helium.StaticAnalysis.Inferencers.OutsideInX.Rhodium.RhodiumInstances where
 
 import Control.Monad.Trans.State
 import Control.Monad
+import Control.Monad.IO.Class(MonadIO)
 
 import Data.List
 import Data.Maybe
@@ -18,6 +21,7 @@ import qualified Data.Map.Strict as M
 
 import Rhodium.Core
 import Rhodium.TypeGraphs.GraphProperties
+import Rhodium.TypeGraphs.GraphInstances()
 import Rhodium.TypeGraphs.Graph
 import Rhodium.TypeGraphs.GraphUtils
 import Rhodium.Solver.Rules
@@ -25,14 +29,14 @@ import Rhodium.TypeGraphs.TGState
 
 import Rhodium.TypeGraphs.Touchables 
 
-import Unbound.LocallyNameless hiding (to, from)
-import Unbound.LocallyNameless.Fresh
-import Unbound.LocallyNameless.Name
-import qualified Unbound.LocallyNameless as UB
-import qualified Unbound.LocallyNameless.Fresh as UB
-import qualified Unbound.LocallyNameless.Alpha as UB
-import qualified Unbound.LocallyNameless.Types as UB
-import qualified Unbound.LocallyNameless.Subst as UB
+import Unbound.Generics.LocallyNameless hiding (to, from)
+import Unbound.Generics.LocallyNameless.Fresh
+import Unbound.Generics.LocallyNameless.Name
+import qualified Unbound.Generics.LocallyNameless as UB
+import qualified Unbound.Generics.LocallyNameless.Fresh as UB
+import qualified Unbound.Generics.LocallyNameless.Alpha as UB
+--import qualified Unbound.Generics.LocallyNameless.Types as UB
+import qualified Unbound.Generics.LocallyNameless.Subst as UB
 
 import Helium.StaticAnalysis.Miscellaneous.ConstraintInfoOU
 
@@ -41,14 +45,12 @@ import Helium.StaticAnalysis.Inferencers.OutsideInX.Rhodium.RhodiumErrors
 import Helium.StaticAnalysis.Inferencers.OutsideInX.ConstraintHelper
 import Helium.StaticAnalysis.Inferencers.OutsideInX.Rhodium.RhodiumGenerics
 
-import Debug.Trace
-
+integer2Name :: Integer -> Name a
+integer2Name = makeName ""
 
 instance {-# Overlaps #-} Show (RType ConstraintInfo) where
     show (PType pt) = show pt
-    show (MType mt) = show mt
-
-          
+    show (MType mt) = show mt          
 
 instance FreshVariable FreshM TyVar where
     freshVariable = error "try not using fresh" -- fresh (string2Name "a")
@@ -94,7 +96,7 @@ instance (CompareTypes m (RType ConstraintInfo), IsTouchable m TyVar, HasAxioms 
                                     --(False, True) -> return $ Applied ([], [], [Constraint_Unify m2 m1])
                                     _ -> return NotApplicable
                         (MonoType_Var _ v, _)
-                            | v `elem` (fv m2 :: [TyVar]), isFamilyFree m2 -> return (Error labelInfiniteType)
+                            | v `elem` (fvToList m2 :: [TyVar]), isFamilyFree m2 -> return (Error labelInfiniteType)
                             | isFamilyFree m2 -> return NotApplicable
                             | otherwise -> case m2 of
                                 MonoType_Con _    -> return NotApplicable
@@ -157,7 +159,7 @@ instance (HasGraph m touchable types constraint ci, CompareTypes m (RType Constr
     interact isGiven c1 c2
         | c1 == c2 = return $ Applied [c1]
     interact isGiven c1@(Constraint_Unify (MonoType_Var _ v1) m1 _) c2@(Constraint_Unify t2@(MonoType_Fam f vs2) m2 _)
-        | isFamilyFree m1, all isFamilyFree vs2, v1 `elem` (fv t2 :: [TyVar]) || v1 `elem` (fv m2 :: [TyVar]), isFamilyFree m2 =
+        | isFamilyFree m1, all isFamilyFree vs2, v1 `elem` (fvToList t2 :: [TyVar]) || v1 `elem` (fvToList m2 :: [TyVar]), isFamilyFree m2 =
                 return $ Applied [c1, Constraint_Unify (subst v1 m1 t2) (subst v1 m1 m2) Nothing]
     interact isGiven c1@(Constraint_Unify mv1@(MonoType_Var _ v1) m1 _) c2@(Constraint_Unify mv2@(MonoType_Var _ v2) m2 _) 
         | v1 == v2, isFamilyFree m1, isFamilyFree m2 = do
@@ -166,14 +168,14 @@ instance (HasGraph m touchable types constraint ci, CompareTypes m (RType Constr
                 return NotApplicable
             else
                 return $ Applied [c1, Constraint_Unify m1 m2 Nothing]
-        | v1 `elem` (fv m2 :: [TyVar]), isFamilyFree m1, isFamilyFree m2 = do 
+        | v1 `elem` (fvToList m2 :: [TyVar]), isFamilyFree m1, isFamilyFree m2 = do 
             ig <- greaterType (MType mv1) (MType m1 :: RType ConstraintInfo)
             if ig then 
                 return NotApplicable
             else
                 return $ Applied [c1, Constraint_Unify (var v2) (subst v1 m1 m2) Nothing]
     interact isGiven c1@(Constraint_Unify mv1@(MonoType_Var _ v1) m1 _) c2@(Constraint_Class n ms2 _)
-        | v1 `elem` (fv ms2 :: [TyVar]), all isFamilyFree ms2 = do 
+        | v1 `elem` (fvToList ms2 :: [TyVar]), all isFamilyFree ms2 = do 
             ig <- greaterType (MType mv1) (MType m1 :: RType ConstraintInfo)
             if ig then 
                 return NotApplicable
@@ -204,7 +206,7 @@ instance (CompareTypes m (RType ConstraintInfo), HasAxioms m (Axiom ConstraintIn
         | c1 == c2 = return $ Applied []
     simplify c1@(Constraint_Unify mv1@(MonoType_Var _ v1) m1 _) c2@(Constraint_Class _ ms _) 
         | mv1 == m1 = return NotApplicable
-        | v1 `elem` (fv ms :: [TyVar]), isFamilyFree m1, all isFamilyFree ms = do
+        | v1 `elem` (fvToList ms :: [TyVar]), isFamilyFree m1, all isFamilyFree ms = do
             gt <- greaterType (MType mv1) (MType m1 :: RType ConstraintInfo)
             if gt then 
                 return NotApplicable
@@ -212,7 +214,7 @@ instance (CompareTypes m (RType ConstraintInfo), HasAxioms m (Axiom ConstraintIn
                 return $ Applied [subst v1 m1 c2]
     simplify c1@(Constraint_Unify mv1@(MonoType_Var _ v1) m1 _) c2@(Constraint_Unify mv2@(MonoType_Var _ v2) m2 _) 
         | mv1 == m1 = return NotApplicable
-        | v1 `elem` (fv m2 :: [TyVar]), isFamilyFree m1, isFamilyFree m2 = do
+        | v1 `elem` (fvToList m2 :: [TyVar]), isFamilyFree m1, isFamilyFree m2 = do
             gt <- greaterType (MType mv1) (MType m1 :: RType ConstraintInfo)
             if gt then 
                 return NotApplicable
@@ -235,34 +237,46 @@ isInjective axioms s = any isInjective' axioms
         isInjective' (Axiom_Injective n) = n == s
         isInjective' _ = False
 
-instance (HasTypeGraph m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo, HasAxioms m (Axiom ConstraintInfo), Fresh m) => CanTopLevelReact m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) where
-    topLevelReact isGiven c@(Constraint_Class n cs _) = getAxioms >>= loopAxioms topLevelReact'
+instance (
+            MonadFail m, 
+            MonadIO m,
+            HasTypeGraph m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo,
+            HasAxioms m (Axiom ConstraintInfo), 
+            Fresh m
+        ) 
+        => CanTopLevelReact m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) where
+    topLevelReact _ (Constraint_Class n cs _) = getAxioms >>= loopAxioms topLevelReact'
         where
+            --topLevelReact' :: Axiom ConstraintInfo  -> m (RuleResult ([TyVar], [Constraint ConstraintInfo]))
             topLevelReact' ax@(Axiom_Class b) = do
                 (aes, (ctx, cls, args)) <- unbind b
                 if cls == n then do
-                    let bes = fv ax :: [TyVar]
-                    res <- runTG $ unifyTypes [] [] (zipWith (\c a -> Constraint_Unify c a (Nothing :: Maybe ConstraintInfo)) cs args) (aes \\ bes)
+                    let bes = fvToList ax :: [TyVar]
+                    let unify = unifyTypes [] [] (zipWith (\c a -> Constraint_Unify c a (Nothing :: Maybe ConstraintInfo)) cs args) (aes \\ bes) :: TGStateM m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo (Maybe [(TyVar, RType ConstraintInfo)])
+                    res <- runTG unify :: m (Maybe [(TyVar, RType ConstraintInfo)])
                     case res of
                       Just s -> return $ Applied ([], substs (convertSubstitution s) ctx)
                       _  -> return NotApplicable
                 else
                     return NotApplicable
             topLevelReact' _ = return NotApplicable
-    topLevelReact isGiven c@(Constraint_Unify (MonoType_Fam f ms) t _) = getAxioms >>= loopAxioms topLevelReact' 
+    topLevelReact given c@(Constraint_Unify (MonoType_Fam f ms) t _) = getAxioms >>= loopAxioms topLevelReact' 
         where
+            --topLevelReact' :: Axiom ConstraintInfo  -> m (RuleResult ([TyVar], [Constraint ConstraintInfo]))
             topLevelReact' ax@(Axiom_Unify b) | all isFamilyFree ms, isFamilyFree t =
                 do
                     (aes, (lhs, rhs)) <- unbind b
                     case lhs of
                         MonoType_Fam lF lMs | f == lF -> do
-                            res <- runTG $ unifyTypes [] [] (zipWith (\m l -> Constraint_Unify m l (Nothing :: Maybe ConstraintInfo)) ms lMs) (aes \\ (fv ax :: [TyVar]))
+                            let bes = fvToList ax :: [TyVar]
+                            let ustate = unifyTypes [] [] (zipWith (\m l -> Constraint_Unify m l (Nothing :: Maybe ConstraintInfo)) ms lMs) (aes \\ bes)
+                            res <- runTG ustate :: m (Maybe [(TyVar, RType ConstraintInfo)])
                             case res of
-                                (Just s) -> return $ Applied (if isGiven then [] else fv t, [Constraint_Unify (substs (convertSubstitution s) rhs) t Nothing])
+                                (Just s) -> return $ Applied (if given then [] else fvToList t, [Constraint_Unify (substs (convertSubstitution s) rhs) t Nothing])
                                 _ -> return NotApplicable
                         _ -> return NotApplicable
             topLevelReact' _ = return NotApplicable
-    topLevelReact isGiven constraint = return NotApplicable
+    topLevelReact _ _ = return NotApplicable
 
 convertSubstitution :: [(TyVar, RType ConstraintInfo)] -> [(TyVar, MonoType)]
 convertSubstitution = map (\(t, MType m) -> (t, m))
@@ -451,15 +465,15 @@ getTLVariableFromMonoType (MonoType_Var _ v) = [v]
 getTLVariableFromMonoType _ = []
 
 instance FreeVariables (Constraint ConstraintInfo) TyVar where
-    getFreeVariables = fv
+    getFreeVariables = fvToList
     getFreeTopLevelVariables (Constraint_Unify m1 m2 _) = getTLVariableFromMonoType m1 ++ getTLVariableFromMonoType m2
     getFreeTopLevelVariables (Constraint_Inst m1 _ _) = getTLVariableFromMonoType m1
     getFreeTopLevelVariables (Constraint_Class _ _ _) = []
     getFreeTopLevelVariables c = error (show c)
 
 instance FreeVariables (RType ConstraintInfo) TyVar where
-    getFreeVariables (MType m) = fv m
-    getFreeVariables (PType p) = fv p
+    getFreeVariables (MType m) = fvToList m
+    getFreeVariables (PType p) = fvToList p
     getFreeTopLevelVariables (MType m) = getTLVariableFromMonoType m
 
 
@@ -482,49 +496,5 @@ functionSpineP (PolyType_Mono _ m) = return (functionSpine m)
 
 arityOfPolyType :: Fresh m => (PolyType ConstraintInfo) -> m Int
 arityOfPolyType x = length . fst <$> functionSpineP x
-
-
-instance Show Property where
-    show FolkloreConstraint = "FolkloreConstraint"
-    show (ConstraintPhaseNumber _) = "ConstraintPhaseNumber"
-    show (HasTrustFactor f) = "HasTrustFactor: " ++ show f
-    show (FuntionBindingEdge fb) = "FuntionBindingEdge" ++ show fb
-    show (InstantiatedTypeScheme _) = "InstantiatedTypeScheme"
-    show (SkolemizedTypeScheme _) = "SkolemizedTypeScheme"
-    show (IsUserConstraint _ _) = "IsUserConstraint"
-    show (WithHint (s, _) ) = "WithHint: " ++ s
-    show (ReductionErrorInfo _) = "ReductionErrorInfo"
-    show (FromBindingGroup) = "FromBindingGroup"
-    show (IsImported _) = "IsImported"
-    show (ApplicationEdge _ lc) = "ApplicationEdge" ++ show (map assignedType lc)
-    show ExplicitTypedBinding = "ExplicitTypedBinding"
-    show (ExplicitTypedDefinition _ _) = "ExplicitTypedDefinition"
-    show (Unifier _ _) = "Unifier"
-    show (EscapedSkolems _) = "EscapedSkolems"
-    show (PredicateArisingFrom _) = "PredicateArisingFrom"
-    show (TypeSignatureLocation tsl) = "TypeSignatureLocation " ++ show tsl
-    show (TypePair (t1, t2)) = "TypePair (" ++ show t1 ++ ", " ++ show t2 ++ ")" 
-    show (MissingConcreteInstance n ms) = "MissingConcreteInstance(" ++ show n ++ " " ++ show ms ++ ")" 
-    show (AddConstraintToTypeSignature ms cc) = "AddConstraintToTypeSignature " ++ show cc ++ " => " ++ show ms
-    show (RelevantFunctionBinding fb) = "RelevantFunctionBinding: " ++ show fb
-    show (ClassUsages cis) = "ClassUsages " ++ show cis
-    show (AmbigiousClass c) = "AmbigiousClass " ++ show c
-    show (FromGADT) = "FromGADT"
-    show (UnreachablePattern m1 m2) = "UnreachablePattern(" ++ show m1 ++ ", " ++ show m2 ++ ")"
-    show GADTPatternApplication = "GADTPatternApplication"
-    show (PatternMatch v i mc) = "PatternMatch(" ++ show v ++ ", " ++ show i ++ "," ++ show mc ++ ")"
-    show (PossibleTypeSignature ps) = "PossibleTypeSignature " ++ show ps
-    show (GADTTypeSignature) = "GADTTypeSignature"
-    show (MissingGADTTypeSignature mpt f bs) = "MissingGADTTypeSignature " ++ show mpt ++ ", " ++ show bs
-    show (EscapingExistentital mt c) = "EscapingExistentital " ++ show mt ++ ", " ++ show c
-    show (IsTypeError) = "IsTypeError"
-    show (EdgeGroupPriority p g) = "EdgeGroupPriority " ++ show p ++ show g
-    show (ApplicationTypeSignature ps) = "ApplicationTypeSignature " ++ show ps
-    show TooManyFBArgs = "TooManyFBArgs"
-    show (PatternTypeSignature ps) = "PatternTypeSignature" ++ show ps
-    show (LiteralFloat f) = "LiteralFloat " ++ show f
-    
-instance Show ConstraintInfo where
-    show x = location x ++ show (properties x) -- ++ fromMaybe [] (sortAndShowMessages . (:[]) <$> errorMessage x)
 
     

@@ -1,3 +1,4 @@
+{-# LANGUAGE DeriveGeneric #-}
 {-| Module      :  UHA_Source
     License     :  GPL
 
@@ -16,6 +17,8 @@ import Helium.Syntax.UHA_Range
 import Helium.Syntax.UHA_Syntax
 import Helium.Syntax.UHA_Utils
 import qualified Helium.Syntax.UHA_OneLine as PP
+import GHC.Generics
+import Unbound.Generics.LocallyNameless (Alpha)
 
 data UHA_Source =
      UHA_Expr   Expression              
@@ -27,6 +30,7 @@ data UHA_Source =
    | UHA_Decl   Declaration
    | UHA_Decls  Declarations
    | UHA_Def    Name
+   deriving (Generic)
          
 instance Show UHA_Source where
    show = showOneLine 80 . oneLinerSource

@@ -1,6 +1,7 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE MonoLocalBinds #-}
 module Helium.StaticAnalysis.HeuristicsOU.FilterHeuristics where
 
 
@@ -27,8 +28,9 @@ import Data.Maybe
 import qualified Data.Map as M
 
 
-import Unbound.LocallyNameless
-import Unbound.LocallyNameless.Fresh
+import Unbound.Generics.LocallyNameless
+import Unbound.Generics.LocallyNameless.Fresh
+import Control.Monad.IO.Class (MonadIO)
 
 import Control.Monad
 
@@ -96,7 +98,9 @@ instance MaybeApplication ConstraintInfo where
                 tuple:_ -> Just tuple
 
 
-avoidApplicationConstraints :: (Fresh m, HasTypeGraph m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo) => Heuristic m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo
+avoidApplicationConstraints :: 
+    (Fresh m, HasTypeGraph m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo) 
+    => Heuristic m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo
 avoidApplicationConstraints = 
     edgeFilter "Avoid application constraints" f
     where
@@ -117,7 +121,7 @@ avoidApplicationConstraints =
                                     case (maybeFunctionType,maybeExpectedType) of    
                                         (MType functionType, MType expectedType) -> do
                                             axioms <- getAxioms
-                                            isSame <- runTG (unifyTypes axioms [] [Constraint_Unify (monotypeTuple xs) (monotypeTuple ys) Nothing] ((fv (monotypeTuple xs) :: [TyVar]) ++ fv (monotypeTuple ys)))     
+                                            isSame <- runTG (unifyTypes axioms [] [Constraint_Unify (monotypeTuple xs) (monotypeTuple ys) Nothing] ((fvToList (monotypeTuple xs) :: [TyVar]) ++ fvToList (monotypeTuple ys)))     
                                             return (not (length xs == nrArgs && length ys == nrArgs && isJust isSame))               
                                             where 
                                                 xs         = fst (functionSpineOfLength nrArgs functionType)
@@ -136,7 +140,7 @@ instance MaybeNegation ConstraintInfo where
             _                                     -> Nothing
      
 
-avoidNegationConstraints :: (Fresh m, HasTypeGraph m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo) => Heuristic m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo
+avoidNegationConstraints :: (MonadIO m, Fresh m, HasTypeGraph m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo) => Heuristic m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo
 avoidNegationConstraints = 
     edgeFilter "Avoid negation constraints" f
     where
@@ -153,7 +157,7 @@ avoidNegationConstraints =
                                 axioms <- getAxioms
                                 freshV <- fresh (string2Name "a")
                                 let testtp = (MonoType_Con $ if isIntNegation then "Int" else "Float") :-->: var freshV
-                                unif <- runTG (unifyTypes axioms [] [Constraint_Inst testtp t2' Nothing] (freshV : fv t2'))
+                                unif <- runTG (unifyTypes axioms [] [Constraint_Inst testtp t2' Nothing] (freshV : fvToList t2'))
                                 return (isNothing unif)
                     _ -> return True
 

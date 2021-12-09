@@ -33,10 +33,10 @@ import Rhodium.TypeGraphs.GraphProperties
 import Helium.ModuleSystem.ImportEnvironment 
 
 
-import Unbound.LocallyNameless.Fresh
-import Unbound.LocallyNameless hiding (Name, close, freshen)
-import Unbound.LocallyNameless.Ops hiding (freshen)
-import Unbound.LocallyNameless.Types hiding (Name)
+import Unbound.Generics.LocallyNameless.Fresh
+import Unbound.Generics.LocallyNameless hiding (Name, close, freshen)
+import Unbound.Generics.LocallyNameless.Operations hiding (freshen)
+--import Unbound.Generics.LocallyNameless.Types hiding (Name)
 
 import qualified Data.Map as M
 import qualified Data.Graph as G

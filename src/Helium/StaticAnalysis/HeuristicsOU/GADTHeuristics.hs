@@ -26,8 +26,8 @@ import Helium.StaticAnalysis.HeuristicsOU.OnlyResultHeuristics
 import Helium.StaticAnalysis.HeuristicsOU.RepairHeuristics
 import Helium.StaticAnalysis.Miscellaneous.DoublyLinkedTree
 
-import Unbound.LocallyNameless.Fresh
-import Unbound.LocallyNameless
+import Unbound.Generics.LocallyNameless.Fresh
+import Unbound.Generics.LocallyNameless
 
 import Data.Maybe
 import Data.List
@@ -38,6 +38,7 @@ import Control.Arrow
 import Control.Monad.Trans.State
 
 import Debug.Trace
+import Helium.StaticAnalysis.Inferencers.OutsideInX.Rhodium.RhodiumTypes (fvToList)
 
 
 selectPriorityPatterns :: TGGraph TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo -> Priority -> [TGEdge (Constraint ConstraintInfo)]
@@ -73,7 +74,7 @@ modifyTopLevelTS m pm graph fbc@(Constraint_Unify fbm@(MonoType_Var _ fbv) _ _) 
     cW <- convertConstraint [] True False [0] 1 (Constraint_Unify fbm m Nothing) 
     let gComplete = markEdgesUnresolved [0] $ mergeGraphs g'' [cG, cW]
     axioms <- getAxioms
-    (res, resG) <- runModGraph (fv pm) axioms gComplete
+    (res, resG) <- runModGraph (fvToList pm) axioms gComplete
     return ((origE, origL) `notElem` map (\(ci, cons, l) -> (cons, l)) (errors res))
     
     
@@ -156,12 +157,12 @@ unreachablePatternHeuristic path = SingleVoting "Unreachable GADT pattenr" f
                                 if null spp then    
                                     return $ Just (1, "Unreachable pattern", constraint, eid, addProperty (UnreachablePattern m1' m2') ci, removePriorGM (getGroupFromEdge cedge))
                                 else do
-                                (fbType, mgu, _) <- constructMGU graph cedge spp
-                                isMguCorrect <- maybe (return False) (\m -> modifyTopLevelTS mgu (PolyType_Mono [] mgu) graph m (constraintFromPath path) (labelFromPath path)) fbType
-                                when isMguCorrect (logMsg (show mgu ++ " would fix the problem"))
-                                let ci' | isMguCorrect = addProperty (PossibleTypeSignature  (PolyType_Mono [] mgu)) ci
-                                        | otherwise = ci
-                                return $ Just (1, "Unreachable pattern", constraint, eid, addProperty (UnreachablePattern m1' m2') ci', removePriorGM (getGroupFromEdge cedge))
+                                    (fbType, mgu, _) <- constructMGU graph cedge spp
+                                    isMguCorrect <- maybe (return False) (\m -> modifyTopLevelTS mgu (PolyType_Mono [] mgu) graph m (constraintFromPath path) (labelFromPath path)) fbType
+                                    when isMguCorrect (logMsg (show mgu ++ " would fix the problem"))
+                                    let ci' | isMguCorrect = addProperty (PossibleTypeSignature  (PolyType_Mono [] mgu)) ci
+                                            | otherwise = ci
+                                    return $ Just (1, "Unreachable pattern", constraint, eid, addProperty (UnreachablePattern m1' m2') ci', removePriorGM (getGroupFromEdge cedge))
                             else
                                 return Nothing
                     _ -> return Nothing
@@ -191,7 +192,7 @@ missingGADTSignature path = SingleVoting "Missing GADT Signature" f
                         case constraint of
                             Constraint_Unify (MonoType_Var _ cv1) (MonoType_Var _ cv2) _ -> do
                                 let fbEdges = filter (\e -> isConstraintEdge e && isJust (getConstraintInfo (getConstraintFromEdge e) >>= maybeFunctionBinding)) $ M.elems (edges graph)
-                                let relevantFbEdges = filter (\e -> let vs :: [TyVar] = fv $ getConstraintFromEdge e in cv1 `elem` vs || cv2 `elem` vs) fbEdges
+                                let relevantFbEdges = filter (\e -> let vs :: [TyVar] = fvToList $ getConstraintFromEdge e in cv1 `elem` vs || cv2 `elem` vs) fbEdges
                                 if null relevantFbEdges then
                                     return Nothing
                                 else do
@@ -203,16 +204,16 @@ missingGADTSignature path = SingleVoting "Missing GADT Signature" f
                                         if null spp then 
                                             return Nothing
                                         else do
-                                        (fbType, mgu, patternBranches) <- constructMGU graph eedge spp
-                                        let func = fromMaybe (error "No parent") $ parent $ localInfo $ fromMaybe (error "No constraint info") $ getConstraintInfo $ chead $ concat patternBranches
-                                        let branches = map (self . attribute) $ children func-- (mapMaybe (\x -> (self . attribute) <$> (parent $ localInfo x))) $ mapMaybe getConstraintInfo $ concat patternBranches --(map (\x -> (self . attribute) <$> (parent $ localInfo x))) $ mapMaybe getConstraintInfo $ concat patternBranches)
-                                        let pt = PolyType_Mono [] mgu
-                                        isMguCorrect <- modifyTopLevelTS mgu pt graph (getConstraintFromEdge fbEdge) (constraintFromPath path) (labelFromPath path)
-                                        let resPt   | isMguCorrect = Just pt
-                                                    | otherwise = Nothing
-                                        let resGm   | isMguCorrect = addTypeSignatureModifier (getConstraintFromEdge fbEdge) mgu (PolyType_Mono [] mgu)
-                                                    | otherwise = addConstraintModifier True (getGroupFromEdge eedge) (getPriorityFromEdge eedge - 1) (getConstraintFromEdge eedge)
-                                        return $ Just (2, "Missing type signature " ++ show mgu, constraint, eid, addProperty (MissingGADTTypeSignature resPt (fst $ sources $ fromJust $ getConstraintInfo $ getConstraintFromEdge fbEdge) branches) ci, resGm)
+                                            (fbType, mgu, patternBranches) <- constructMGU graph eedge spp
+                                            let func = fromMaybe (error "No parent") $ parent $ localInfo $ fromMaybe (error "No constraint info") $ getConstraintInfo $ chead $ concat patternBranches
+                                            let branches = map (self . attribute) $ children func-- (mapMaybe (\x -> (self . attribute) <$> (parent $ localInfo x))) $ mapMaybe getConstraintInfo $ concat patternBranches --(map (\x -> (self . attribute) <$> (parent $ localInfo x))) $ mapMaybe getConstraintInfo $ concat patternBranches)
+                                            let pt = PolyType_Mono [] mgu
+                                            isMguCorrect <- modifyTopLevelTS mgu pt graph (getConstraintFromEdge fbEdge) (constraintFromPath path) (labelFromPath path)
+                                            let resPt   | isMguCorrect = Just pt
+                                                        | otherwise = Nothing
+                                            let resGm   | isMguCorrect = addTypeSignatureModifier (getConstraintFromEdge fbEdge) mgu (PolyType_Mono [] mgu)
+                                                        | otherwise = addConstraintModifier True (getGroupFromEdge eedge) (getPriorityFromEdge eedge - 1) (getConstraintFromEdge eedge)
+                                            return $ Just (2, "Missing type signature " ++ show mgu, constraint, eid, addProperty (MissingGADTTypeSignature resPt (fst $ sources $ fromJust $ getConstraintInfo $ getConstraintFromEdge fbEdge) branches) ci, resGm)
                                     else
                                         return Nothing
                             _ -> return  Nothing
@@ -241,32 +242,32 @@ escapingGADTVariableHeuristic path = SingleVoting "Escaping GADT variable" f
                                 MType mv' <- getSubstTypeFull (getGroupFromEdge cedge) (MType mv)
                                 let fbEdges = map getConstraintFromEdge $ filter (\e -> isConstraintEdge e && isJust (getConstraintInfo (getConstraintFromEdge e) >>= maybeFunctionBinding)) $ M.elems $ edges graph 
                                 if v `elem` concatMap getFreeVariables scopedGivenCons || mv' `elem` map var (concatMap getFreeVariables scopedGivenCons)
-                                        && mv `notElem` map var (concatMap (fv . getResultTypeFromPatternConstraint) $ filter isUnifyConstraint scopedGivenCons)         
+                                        && mv `notElem` map var (concatMap (fvToList . getResultTypeFromPatternConstraint) $ filter isUnifyConstraint scopedGivenCons)         
                                     then do
                                     MType mt <- getSubstTypeFull (getGroupFromEdge cedge) $ MType $ firstConstraintElement (constraintFromPath path)
-                                    let scopedGivenCons' = filter (\c -> v `elem` (fv c :: [TyVar]) || mv' `elem` map var (fv c)) scopedGivenCons
-                                    return . Just $ if v `elem` concatMap fv fbEdges then
+                                    let scopedGivenCons' = filter (\c -> v `elem` (fvToList c :: [TyVar]) || mv' `elem` map var (fvToList c)) scopedGivenCons
+                                    return . Just $ if v `elem` concatMap fvToList fbEdges then
                                         (1, "Escaping gadt variable", constraint, eid, addProperty (EscapingExistentital (Left mt) (chead scopedGivenCons')) ci, gm)
                                     else
                                         (2, "Unifying gadt variable with type", constraint, eid, addProperties [EdgeGroupPriority (getPriorityFromEdge cedge) (getGroupFromEdge cedge), EscapingExistentital (Right (firstConstraintElement (constraintFromPath path))) (chead scopedGivenCons')] ci, gm)
                                 else do
                                     ps <- map fst <$> getPossibleTypes (tail (getGroupFromEdge eedge)) (MType $ var v)
-                                    if v `elem` concatMap fv fbEdges || any (\p -> p `elem` concatMap fv fbEdges) (nub $ concatMap getFreeVariables ps) then do
+                                    if v `elem` concatMap fvToList fbEdges || any (\p -> p `elem` concatMap fvToList fbEdges) (nub $ concatMap getFreeVariables ps) then do
                                         let spp = selectPriorityPatterns graph (getPriorityFromEdge eedge)
                                         if null spp then
                                             return Nothing
                                         else do
-                                        (fbType, mgu, patternBranches) <- constructMGU graph eedge spp
-                                        let func = fromMaybe (error "No parent") $ parent $ localInfo $ fromMaybe (error "No constraint info") $ getConstraintInfo $ chead $ concat patternBranches
-                                        let branches = map (self . attribute) $ children func
-                                        let pt = PolyType_Mono [] mgu
-                                        let fbEdge = chead (filter (\c -> v `elem` (fv c :: [TyVar]) || any (\p -> p `elem` (fv c :: [TyVar])) (nub $ concatMap getFreeVariables ps)) fbEdges)
-                                        isMguCorrect <- modifyTopLevelTS mgu pt graph fbEdge (constraintFromPath path) (labelFromPath path)
-                                        let resPt   | isMguCorrect = Just pt
-                                                    | otherwise = Nothing
-                                        {-let resGm   | isMguCorrect = addTypeSignatureModifier fbEdge mgu (PolyType_Mono [] mgu)
-                                                    | otherwise = addConstraintModifier True (getGroupFromEdge eedge) (getPriorityFromEdge eedge - 1) (getConstraintFromEdge eedge)-}
-                                        return $ Just (2, "Result of GADT unknown", constraint, eid, addProperty (MissingGADTTypeSignature resPt (fst $ sources $ fromJust $ getConstraintInfo fbEdge) branches) ci, gm )
+                                            (fbType, mgu, patternBranches) <- constructMGU graph eedge spp
+                                            let func = fromMaybe (error "No parent") $ parent $ localInfo $ fromMaybe (error "No constraint info") $ getConstraintInfo $ chead $ concat patternBranches
+                                            let branches = map (self . attribute) $ children func
+                                            let pt = PolyType_Mono [] mgu
+                                            let fbEdge = chead (filter (\c -> v `elem` (fvToList c :: [TyVar]) || any (\p -> p `elem` (fvToList c :: [TyVar])) (nub $ concatMap getFreeVariables ps)) fbEdges)
+                                            isMguCorrect <- modifyTopLevelTS mgu pt graph fbEdge (constraintFromPath path) (labelFromPath path)
+                                            let resPt   | isMguCorrect = Just pt
+                                                        | otherwise = Nothing
+                                            {-let resGm   | isMguCorrect = addTypeSignatureModifier fbEdge mgu (PolyType_Mono [] mgu)
+                                                        | otherwise = addConstraintModifier True (getGroupFromEdge eedge) (getPriorityFromEdge eedge - 1) (getConstraintFromEdge eedge)-}
+                                            return $ Just (2, "Result of GADT unknown", constraint, eid, addProperty (MissingGADTTypeSignature resPt (fst $ sources $ fromJust $ getConstraintInfo fbEdge) branches) ci, gm )
                                     else
                                         return Nothing
                             _ -> return Nothing

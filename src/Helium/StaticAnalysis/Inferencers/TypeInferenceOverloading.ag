@@ -45,7 +45,7 @@ SEM Declaration
  
   | FunctionBindings  -- for every predicate, copy class and replace the class with it's superclass 
        loc      . declPredicates        = let
-                                              !predicates = matchTypeWithScheme @lhs.orderedTypeSynonyms 
+                                              predicates = id $! matchTypeWithScheme @lhs.orderedTypeSynonyms 
                                                               (@lhs.substitution |-> @beta) 
                                                               (@lhs.substitution |-> @scheme)
                                           in expandPredicates @lhs.orderedTypeSynonyms predicates      

@@ -28,8 +28,8 @@ import Helium.StaticAnalysis.Inferencers.OutsideInX.Rhodium.RhodiumTypes
 
 import Rhodium.TypeGraphs.GraphProperties
 
-import Unbound.LocallyNameless hiding (Name)
-import Unbound.LocallyNameless.Alpha
+import Unbound.Generics.LocallyNameless hiding (Name)
+import Unbound.Generics.LocallyNameless.Alpha
 
 type Message       = [MessageLine] 
 

@@ -18,8 +18,8 @@ import qualified Text.PrettyPrint.Leijen as PPrint
 import Helium.StaticAnalysis.Inferencers.OutsideInX.Rhodium.RhodiumTypes
 import Rhodium.TypeGraphs.GraphProperties
 
-import Unbound.LocallyNameless
-import Unbound.LocallyNameless.Alpha
+import Unbound.Generics.LocallyNameless
+import Unbound.Generics.LocallyNameless.Alpha
 
 import Debug.Trace
 

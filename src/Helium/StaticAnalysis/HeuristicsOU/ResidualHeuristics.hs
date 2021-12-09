@@ -22,8 +22,8 @@ import Helium.Syntax.UHA_Syntax
 import Helium.StaticAnalysis.Miscellaneous.DoublyLinkedTree
 
 
-import Unbound.LocallyNameless hiding (from, to, join)
-import Unbound.LocallyNameless.Fresh
+import Unbound.Generics.LocallyNameless hiding (from, to, join)
+import Unbound.Generics.LocallyNameless.Fresh
 
 import Data.Maybe
 import Data.List
@@ -39,7 +39,7 @@ typeSignatureTooGeneral path = SingleVoting "Type signature too general" f
         f (constraint, eid, ci, ogm) 
             | labelFromPath path /= labelResidual = return Nothing
             | isTypeAnnotation ci =
-                return $ if any (`elem` (fv constraint :: [TyVar])) (fv (constraintFromPath path) :: [TyVar]) then
+                return $ if any (`elem` (fvToList constraint :: [TyVar])) (fvToList (constraintFromPath path) :: [TyVar]) then
                     Just (2, "Type signature too general", constraint, eid, ci, gm) 
                 else
                     Nothing
@@ -50,7 +50,7 @@ typeSignatureTooGeneral path = SingleVoting "Type signature too general" f
                         graph <- getGraph
                         let edge = getEdgeFromId graph eid
                         let eedge = constraintFromPath path
-                        return $ if Just True /= (isExplicitTypedBinding <$> getConstraintInfo constraint) || not (any (`elem` (fv constraint :: [TyVar])) (fv eedge :: [TyVar] )) then
+                        return $ if Just True /= (isExplicitTypedBinding <$> getConstraintInfo constraint) || not (any (`elem` (fvToList constraint :: [TyVar])) (fvToList eedge :: [TyVar] )) then
                             Nothing
                         else
                             Just (2, "Type signature too general", constraint, eid, ci, gm)
@@ -96,7 +96,7 @@ missingPredicate path = SingleVoting "Missing predicate" f
                                     nedges2 <- getNeighbours (to cedge)
                                     let anconstraints = filter (\e -> isConstraintEdge e && original e) $ nub (nedges1 ++ nedges2) 
                                     let fbEdges = filter (\e -> isConstraintEdge e && isJust (join $ maybeFunctionBinding <$> getConstraintInfo (getConstraintFromEdge e))) $ M.elems $ edges graph
-                                    let fbEdgesVars = map (\e -> (e, fv $ getConstraintFromEdge e :: [TyVar])) fbEdges
+                                    let fbEdgesVars = map (\e -> (e, fvToList $ getConstraintFromEdge e :: [TyVar])) fbEdges
                                    
                                     fbTypes <- mapM (\(e, vs) -> (mapM (getSubstTypeFull (getGroupFromEdge cedge) . MType . var) vs >>= (\ vs' -> return (e, vs')))) fbEdgesVars {-(e, map (\v -> substs sub (var v)) vs)) -}
                                     cType <- getSubstTypeFull (getGroupFromEdge cedge) $ MType $ var v
@@ -143,7 +143,7 @@ missingPredicate path = SingleVoting "Missing predicate" f
                                     let inf = influences (edgeCategory cedge)
                                     let infEdges = filter (isClassConstraint . getConstraintFromEdge) $ map (getEdgeFromId graph) inf
                                     repCons <- mapM (\e -> classSubst e $ getConstraintFromEdge e) infEdges
-                                    isUsed <- or <$> mapM (\c -> isJust <$> runTG (unifyTypes axioms [cc] [c] (fv c))) repCons 
+                                    isUsed <- or <$> mapM (\c -> isJust <$> runTG (unifyTypes axioms [cc] [c] (fvToList c))) repCons 
                                     return $ if isUsed then
                                         Just (4, "Missing instance: " ++ show cname ++ " " ++ show ms', constraint, eid, addProperty (MissingConcreteInstance cname ms') ci, gm)
                                     else

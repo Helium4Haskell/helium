@@ -32,6 +32,7 @@ import Data.Char
 import Data.Maybe
 import qualified Data.Map as M
 import Debug.Trace
+import Text.Parsec.Error (errorMessages, messageString)
 
 constructorTypeFromCustoms :: [Custom] -> ConstructorType
 constructorTypeFromCustoms (c@(CustomDecl (DeclKindCustom n) [CustomBytes bytes]):rest) 
@@ -72,7 +73,7 @@ parseFromString p string =
         Left _ -> internalError "CoreToImportEnv" "parseFromString" ("lex error in " ++ string)
         Right (tokens, _) ->
             case runHParser p "CoreToImportEnv" tokens True {- wait for EOF -} of
-                Left _  -> internalError "CoreToImportEnv" "parseFromString" ("parse error in " ++ string)
+                Left e  -> internalError "CoreToImportEnv" "parseFromString" ("parse error in " ++ string ++ show e ++ show (map messageString $ errorMessages e) ++ show tokens ++ string)
                 Right x -> x
 
 typeSynFromCustoms :: String -> [Custom] -> (Int, Tps -> Tp) -- !!! yuck

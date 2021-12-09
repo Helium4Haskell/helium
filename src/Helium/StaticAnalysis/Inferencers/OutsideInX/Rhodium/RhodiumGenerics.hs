@@ -6,25 +6,15 @@ import Helium.StaticAnalysis.Miscellaneous.ConstraintInfoOU
 
 import Top.Types.Classes
 
-import Unbound.LocallyNameless as UB
-import Unbound.LocallyNameless.Fresh as UB
-import Unbound.LocallyNameless.Alpha as UB
-import Unbound.LocallyNameless.Types as UB
-import Unbound.LocallyNameless.Subst as UB
+import Unbound.Generics.LocallyNameless as UB
+-- import Unbound.Generics.LocallyNameless.Fresh as UB
+-- import Unbound.Generics.LocallyNameless.Alpha as UB
+-- --import Unbound.Generics.LocallyNameless.Types as UB
+-- import Unbound.Generics.LocallyNameless.Subst as UB
 
 import qualified Data.Map as M
 
 import Data.Maybe
-
-
-     
-instance UB.Rep1 (UB.SubstD MonoType) ConstraintInfo
-   
-  
-instance UB.Subst MonoType ConstraintInfo where
-   substs _ = id
-   isvar _ = Nothing
-   subst _ _ = id
  
 addConstraint :: Constraint ConstraintInfo -> PolyType ConstraintInfo -> PolyType ConstraintInfo
 addConstraint c p = runFreshM $ addConstraint' c p

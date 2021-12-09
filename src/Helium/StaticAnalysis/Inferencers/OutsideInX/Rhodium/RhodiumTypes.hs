@@ -6,6 +6,7 @@
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# lANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE DeriveGeneric #-}
 module Helium.StaticAnalysis.Inferencers.OutsideInX.Rhodium.RhodiumTypes where
 
 import Control.Monad.Trans.State
@@ -17,12 +18,15 @@ import Rhodium.Core
 import Rhodium.TypeGraphs.Graph
 import Rhodium.TypeGraphs.GraphProperties
 
-import qualified Unbound.LocallyNameless as UB
-import qualified Unbound.LocallyNameless.Fresh as UB
-import qualified Unbound.LocallyNameless.Alpha as UB
-import qualified Unbound.LocallyNameless.Types as UB
-import qualified Unbound.LocallyNameless.Subst as UB
-import Unbound.LocallyNameless hiding (Name)
+import qualified Unbound.Generics.LocallyNameless as UB
+import qualified Unbound.Generics.LocallyNameless.Fresh as UB
+import qualified Unbound.Generics.LocallyNameless.Alpha as UB
+import qualified Unbound.Generics.LocallyNameless.Bind as UB
+--import qualified Unbound.Generics.LocallyNameless.Types as UB
+import qualified Unbound.Generics.LocallyNameless.Subst as UB
+import Unbound.Generics.LocallyNameless.Internal.Fold (toListOf)
+import Unbound.Generics.LocallyNameless hiding (Name)
+import GHC.Generics
 
 import Helium.Syntax.UHA_Syntax
 import Helium.Syntax.UHA_Range
@@ -30,6 +34,7 @@ import Helium.StaticAnalysis.Miscellaneous.UHA_Source
 import Helium.StaticAnalysis.Miscellaneous.DoublyLinkedTree
 
 import Debug.Trace
+import Data.Typeable (Typeable)
 
 data RType ci = PType (PolyType ci) | MType MonoType
 
@@ -58,7 +63,7 @@ data MonoType
     | MonoType_Var   (Maybe String) TyVar
     | MonoType_Con   String 
     | MonoType_App   MonoType MonoType
-    deriving (Ord)
+    deriving (Ord, Generic)
 
 instance Eq MonoType where
     MonoType_Fam s1 ms1 == MonoType_Fam s2 ms2 = s1 == s2 && ms1 == ms2
@@ -104,12 +109,14 @@ data LocalInfo =
         LocalInfo { self           :: UHA_Source  
                 , assignedType   :: Maybe TyVar
                     }
+    deriving (Show, Generic)
 
 data Constraint ci
     = Constraint_Unify MonoType MonoType (Maybe ci)
     | Constraint_Inst  MonoType (PolyType ci) (Maybe ci)
     | Constraint_Class String [MonoType] (Maybe ci)
     | Constraint_Exists (UB.Bind [TyVar] ([Constraint ci],[Constraint ci])) (Maybe ci)
+    deriving (Generic)
 
 instance (Alpha ci, Subst MonoType ci) => Eq (Constraint ci) where
     Constraint_Unify m1 m2 _ == Constraint_Unify n1 n2 _ = m1 == n1 && m2 == n2
@@ -139,6 +146,7 @@ showConstraint (Constraint_Exists b _)  = do    (x, (q,c)) <- UB.unbind b
 data PolyType ci
     = PolyType_Bind String (UB.Bind TyVar (PolyType ci))
     | PolyType_Mono [Constraint ci] MonoType
+    deriving (Generic)
 
 instance (Alpha ci, Subst MonoType ci) => Eq (PolyType ci) where
     PolyType_Bind s1 b1   == PolyType_Bind s2 b2 = UB.runFreshM $ do
@@ -203,6 +211,7 @@ data Axiom ci
     | Axiom_Class (UB.Bind [TyVar] ([Constraint ci], String, [MonoType]))
     | Axiom_Injective String  -- Injective type families
     | Axiom_Defer     String  -- Deferred type families
+    deriving (Generic)
 
 instance (Alpha ci, Subst MonoType ci) => Show (Axiom ci) where
     show = runFreshM . showAxiom
@@ -213,25 +222,25 @@ showAxiom (Axiom_Unify b) = do  (xs, (lhs,rhs)) <- unbind b
 showAxiom (Axiom_Class b) = do  (xs, (ctx,c,ms)) <- unbind b
                                 let ps = map (doParens . show) ms
                                 return $ "∀" ++ show xs ++ " " ++ show ctx ++
-                                        " => $" ++ c ++ " " ++ intercalate " " ps
+                                        " => $" ++ c ++ " " ++ unwords ps
 showAxiom (Axiom_Injective f) = return $ "injective ^" ++ f
 showAxiom (Axiom_Defer f) = return $ "defer ^" ++ f
 
 
 
-instance (Alpha ci, Subst MonoType ci, Rep ci) => Alpha (PolyType ci)
-instance (Alpha ci, Subst MonoType ci, Rep ci) => Subst MonoType (PolyType ci)
+instance (Alpha ci, Subst MonoType ci) => Alpha (PolyType ci)
+instance (Alpha ci, Subst MonoType ci) => Subst MonoType (PolyType ci)
 
 instance Alpha MonoType
 instance Subst MonoType MonoType where
   isvar (MonoType_Var _ v)  = Just (SubstName v)
   isvar _                   = Nothing
 
-instance (Alpha ci, Subst MonoType ci, Rep ci) => Alpha (Constraint ci)
-instance (Alpha ci, Subst MonoType ci, Rep ci) => Subst MonoType (Constraint ci)
+instance (Alpha ci, Subst MonoType ci) => Alpha (Constraint ci)
+instance (Alpha ci, Subst MonoType ci) => Subst MonoType (Constraint ci)
   
-instance (Alpha ci, Subst MonoType ci, Rep ci) => Alpha (Axiom ci)
-instance (Alpha ci, Subst MonoType ci, Rep ci) => Subst MonoType (Axiom ci) 
+instance (Alpha ci, Subst MonoType ci) => Alpha (Axiom ci)
+instance (Alpha ci, Subst MonoType ci) => Subst MonoType (Axiom ci) 
 
 
 
@@ -265,10 +274,10 @@ isInstConstraint :: Constraint a -> Bool
 isInstConstraint (Constraint_Inst _ _ _) = True
 isInstConstraint _ = False
 
-firstConstraintElement :: (Constraint a) -> MonoType
+firstConstraintElement :: Constraint a -> MonoType
 firstConstraintElement (Constraint_Unify m1 _ _) = m1
 firstConstraintElement (Constraint_Inst m1 _ _) = m1
 firstConstraintElement c = error "No first constraint element"
 
-
-$(UB.derive [''PolyType, ''MonoType, ''Constraint, ''Axiom])
+fvToList :: (Alpha a, Typeable b) => a -> [UB.Name b]
+fvToList = toListOf fv

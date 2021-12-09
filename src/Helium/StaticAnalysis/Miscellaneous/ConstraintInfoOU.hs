@@ -1,4 +1,7 @@
 {-# LANGUAGE TypeSynonymInstances, FlexibleInstances, MultiParamTypeClasses #-}
+{-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE StandaloneDeriving #-}
+{-# LANGUAGE DeriveAnyClass #-}
 
 {-| Module      :  ConstraintInfo
     License     :  GPL
@@ -33,11 +36,12 @@ import Rhodium.TypeGraphs.Graph
 import Rhodium.Blamer.HeuristicProperties
 import Helium.StaticAnalysis.Inferencers.OutsideInX.Rhodium.RhodiumTypes
 
-import qualified Unbound.LocallyNameless as UB
-import qualified Unbound.LocallyNameless.Fresh as UB
-import qualified Unbound.LocallyNameless.Alpha as UB
-import qualified Unbound.LocallyNameless.Types as UB
-import qualified Unbound.LocallyNameless.Subst as UB
+import qualified Unbound.Generics.LocallyNameless as UB
+--import qualified Unbound.Generics.LocallyNameless.Fresh as UB
+--import qualified Unbound.Generics.LocallyNameless.Alpha as UB
+import qualified Unbound.Generics.LocallyNameless.Bind as UB
+--import qualified Unbound.Generics.LocallyNameless.Types as UB
+--import qualified Unbound.Generics.LocallyNameless.Subst as UB
 
 import Data.Typeable
 import Data.Data
@@ -48,10 +52,12 @@ import qualified Data.Map as M
 
 import Control.Applicative
 
-import Unbound.LocallyNameless hiding (Name)
-import Unbound.LocallyNameless.Fresh
+import Unbound.Generics.LocallyNameless hiding (Name)
+import Unbound.Generics.LocallyNameless.Fresh
 
 import Debug.Trace
+import GHC.Generics (Generic)
+import Data.Typeable
  
 data ConstraintInfo =
    CInfo_ { location      :: String
@@ -60,12 +66,21 @@ data ConstraintInfo =
            , properties    :: Properties
            , errorMessage  :: Maybe TypeError
            }
+           deriving (Generic)
+
+instance UB.Subst MonoType ConstraintInfo where
+   substs _ = id
+   isvar _ = Nothing
+   subst _ _ = id
+
+instance Show ConstraintInfo where
+    show x = location x ++ show (properties x)
 
 type MCI = Maybe ConstraintInfo
 
-
-instance UB.Alpha ConstraintInfo where
-   fv' _ _ = UB.emptyC
+-- instance UB.Alpha ConstraintInfo
+instance Alpha ConstraintInfo where
+   fvAny' _ _ _ = error "fvAny"
    swaps' = error "swaps'"
    lfreshen' = error "lfreshen'"
    freshen' = error "freshen'"
@@ -76,10 +91,13 @@ instance UB.Alpha ConstraintInfo where
    isPat = error "isPat"
    isTerm = error "isTerm"
    isEmbed = error "isEmbed"
+   nthPatFind = error "nthPatFind"
+   namePatFind _ = error "namePatFind"
 
-instance UB.Rep ConstraintInfo
 
-instance (UB.Rep1 UB.AlphaD ConstraintInfo)
+-- instance UB.Rep ConstraintInfo
+
+-- instance (UB.Rep1 UB.AlphaD ConstraintInfo)
 
 -------------------------------------------------------------------------
 -- Properties
@@ -128,7 +146,49 @@ data Property
     | TooManyFBArgs 
     | PatternTypeSignature (PolyType ConstraintInfo)
     | LiteralFloat Float
+    deriving (Generic)
 
+instance Show Property where
+    show FolkloreConstraint = "FolkloreConstraint"
+    show (ConstraintPhaseNumber _) = "ConstraintPhaseNumber"
+    show (HasTrustFactor f) = "HasTrustFactor: " ++ show f
+    show (FuntionBindingEdge fb) = "FuntionBindingEdge" ++ show fb
+    show (InstantiatedTypeScheme _) = "InstantiatedTypeScheme"
+    show (SkolemizedTypeScheme _) = "SkolemizedTypeScheme"
+    show (IsUserConstraint _ _) = "IsUserConstraint"
+    show (WithHint (s, _) ) = "WithHint: " ++ s
+    show (ReductionErrorInfo _) = "ReductionErrorInfo"
+    show (FromBindingGroup) = "FromBindingGroup"
+    show (IsImported _) = "IsImported"
+    show (ApplicationEdge _ lc) = "ApplicationEdge" ++ show (map assignedType lc)
+    show ExplicitTypedBinding = "ExplicitTypedBinding"
+    show (ExplicitTypedDefinition _ _) = "ExplicitTypedDefinition"
+    show (Unifier _ _) = "Unifier"
+    show (EscapedSkolems _) = "EscapedSkolems"
+    show (PredicateArisingFrom _) = "PredicateArisingFrom"
+    show (TypeSignatureLocation tsl) = "TypeSignatureLocation " ++ show tsl
+    show (TypePair (t1, t2)) = "TypePair (" ++ show t1 ++ ", " ++ show t2 ++ ")" 
+    show (MissingConcreteInstance n ms) = "MissingConcreteInstance(" ++ show n ++ " " ++ show ms ++ ")" 
+    show (AddConstraintToTypeSignature ms cc) = "AddConstraintToTypeSignature " ++ show cc ++ " => " ++ show ms
+    show (RelevantFunctionBinding fb) = "RelevantFunctionBinding: " ++ show fb
+    show (ClassUsages cis) = "ClassUsages " ++ show cis
+    show (AmbigiousClass c) = "AmbigiousClass " ++ show c
+    show (FromGADT) = "FromGADT"
+    show (UnreachablePattern m1 m2) = "UnreachablePattern(" ++ show m1 ++ ", " ++ show m2 ++ ")"
+    show GADTPatternApplication = "GADTPatternApplication"
+    show (PatternMatch v i mc) = "PatternMatch(" ++ show v ++ ", " ++ show i ++ "," ++ show mc ++ ")"
+    show (PossibleTypeSignature ps) = "PossibleTypeSignature " ++ show ps
+    show (GADTTypeSignature) = "GADTTypeSignature"
+    show (MissingGADTTypeSignature mpt f bs) = "MissingGADTTypeSignature " ++ show mpt ++ ", " ++ show bs
+    show (EscapingExistentital mt c) = "EscapingExistentital " ++ show mt ++ ", " ++ show c
+    show (IsTypeError) = "IsTypeError"
+    show (EdgeGroupPriority p g) = "EdgeGroupPriority " ++ show p ++ show g
+    show (ApplicationTypeSignature ps) = "ApplicationTypeSignature " ++ show ps
+    show TooManyFBArgs = "TooManyFBArgs"
+    show (PatternTypeSignature ps) = "PatternTypeSignature" ++ show ps
+    show (LiteralFloat f) = "LiteralFloat " ++ show f
+
+--deriving instance Show TypeError
 
 class HasProperties a where
    getProperties :: a -> Properties

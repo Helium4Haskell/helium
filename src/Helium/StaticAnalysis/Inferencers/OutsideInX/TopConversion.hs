@@ -25,8 +25,10 @@ module Helium.StaticAnalysis.Inferencers.OutsideInX.TopConversion(
 
 ) where
 
-import Unbound.LocallyNameless hiding (Name, freshen)
-import Unbound.LocallyNameless.Types (GenBind(..))
+import Unbound.Generics.LocallyNameless hiding (Name, freshen)
+import qualified Unbound.Generics.LocallyNameless as UGL
+--import Unbound.Generics.LocallyNameless.Types (GenBind(..))
+import Unbound.Generics.LocallyNameless.Bind
 import Top.Types.Classes
 import Top.Types.Primitive
 import Top.Types.Quantification
@@ -49,9 +51,11 @@ import Data.List
 import Debug.Trace
 import Data.Functor.Identity
 
-import Unbound.LocallyNameless.Fresh
-import Unbound.LocallyNameless.Ops hiding (freshen)
-import Unbound.LocallyNameless.Types hiding (Name)
+import Unbound.Generics.LocallyNameless.Fresh
+import Unbound.Generics.LocallyNameless.Operations hiding (freshen)
+import Rhodium.TypeGraphs.GraphInstances()
+-- import Unbound.Generics.LocallyNameless.Types hiding (Name)
+--import Helium.StaticAnalysis.Inferencers.OutsideInX.TopConversion
 
 deriving instance Show Type
 deriving instance Show ContextItem 
@@ -61,6 +65,8 @@ type TypeFamilies = [(String, Int)]
 bindVariables :: [(String, TyVar)] -> PolyType ConstraintInfo -> PolyType ConstraintInfo
 bindVariables = flip (foldr (\(s, t) p -> PolyType_Bind s (bind t p)))
 
+integer2Name :: Integer -> UGL.Name a
+integer2Name = makeName ""
 
 monoTypeToTp :: MonoType -> Tp
 monoTypeToTp (MonoType_App (MonoType_Con "[]") (MonoType_Con "Char")) = TCon "String"
@@ -174,7 +180,7 @@ getTypeVariablesFromPolyType (PolyType_Bind _ (B p t)) = p : getTypeVariablesFro
 getTypeVariablesFromPolyType _ = []
 
 getTypeVariablesFromPolyType' :: PolyType ConstraintInfo -> [TyVar]
-getTypeVariablesFromPolyType' (PolyType_Mono _ m) = fv m
+getTypeVariablesFromPolyType' (PolyType_Mono _ m) = fvToList m
 getTypeVariablesFromPolyType' _ = []
 
 getTypeVariablesFromMonoType :: MonoType -> [TyVar]

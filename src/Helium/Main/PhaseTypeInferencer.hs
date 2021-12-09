@@ -70,10 +70,10 @@ phaseTypeInferencer basedir fullName module_ localEnv completeEnv options =
                unless (not (null typeErrorsOIX) && null tld) (
                   do
                      if null tld then return () else do
-                     putStrLn "Top level types are not equal"
-                     putStrLn (unlines $ map show $ M.toList tld)
-                     putStrLn (show toplevelTypes)
-                     putStrLn (show toplevelTypesOIX)
+                        putStrLn "Top level types are not equal"
+                        putStrLn (unlines $ map show $ M.toList tld)
+                        putStrLn (show toplevelTypes)
+                        putStrLn (show toplevelTypesOIX)
                   )    
                when gadtUsed (
                   do 

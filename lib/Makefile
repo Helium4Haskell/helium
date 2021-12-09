@@ -1,6 +1,6 @@
 
 COREASM=coreasm
-HELIUM=helium
+HELIUM="stack exec helium --"
 
 .PHONY : all
 .SUFFIXES : .core .lvm .o

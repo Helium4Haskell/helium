@@ -8,7 +8,7 @@ import Helium.StaticAnalysis.Miscellaneous.ConstraintInfoOU
 
 import Top.Types.Classes
 
-import Unbound.LocallyNameless
+import Unbound.Generics.LocallyNameless
 
 monotypeTuple :: [MonoType] -> MonoType
 monotypeTuple vars = let

@@ -1,0 +1,295 @@
+module PreludePrim
+    ( 
+    -- Conversion
+      ord, chr, intToFloat, ceiling, floor, truncate, round
+    
+    -- Int
+    , (+), (-), (*), div, mod, quot, rem, negate
+    , (==), (/=), (<), (>), (<=), (>=)
+    
+    -- Float
+    , (+.), (-.), (*.), (/.)
+    , (==.), (/=.), (<.), (>.), (<=.), (>=.)
+    , sqrt, (**.), exp, log, sin, cos, tan
+	
+
+    -- Enum
+    , enumFrom, enumFromThen, enumFromTo, enumFromThenTo
+
+    -- IO monad
+    , return 
+    , unsafePerformIO
+    , putChar, putStr, putStrLn
+
+    -- IO files
+    , getChar
+    , Handle, stdin, stdout, stderr
+    , IOMode(..), openFile, hClose
+    , hGetChar, hPutChar, hPutString
+    
+    -- strictness
+    , ($!), seq
+    
+    -- misc
+    , error, catch, catchEof, raise
+    ) where
+
+import LvmLang 
+    ( return = returnIO, bindIO
+
+    , (+), (-), (*), div = (/), mod = (%), quot, rem, negInt
+    , (==), (/=), (<), (>), (<=), (>=)
+
+    , (+.), (-.), (*.), (/.)
+    , (==.), (/=.), (<.), (>.), (<=.), (>=.)
+    
+    , ($!), seq
+    , True -- hack
+    )
+import LvmIO
+    ( stdinChannel = stdin, stdoutChannel = stdout, stderrChannel = stderr
+    , Channel(), Input(), Output()
+    , CreateMode(CreateIfNotExists, CreateOverwrite)
+    , openInputFile, openOutputFile
+    , close, flush
+    , inputChar, outputChar, outputString
+    )
+import LvmException
+    ( error, errorPacked {- hack -}, catch, raise 
+    , Exception(System), SystemException(EndOfFile)
+    )
+
+import HeliumLang
+    ( ''$negate'' 
+    , ''$enumFrom'', ''$enumFromThen'', ''$enumFromTo'', ''$enumFromThenTo''
+    , ''$primPutChar'', ''$primPutStr'', ''$primPutStrLn'', ''$primUnsafePerformIO''
+    )
+
+custom infix (+)  : public [6,"left"]
+custom infix (-)  : public [6,"left"]
+custom infix (*)  : public [7,"left"]
+custom infix div  : public [7,"left"]
+custom infix mod  : public [7,"left"]
+custom infix quot : public [7,"left"]
+custom infix rem  : public [7,"left"]
+
+custom infix (==) : public [4,"none"]
+custom infix (/=) : public [4,"none"]
+custom infix (<)  : public [4,"none"]
+custom infix (>)  : public [4,"none"]
+custom infix (<=) : public [4,"none"]
+custom infix (>=) : public [4,"none"]
+
+custom infix (+.) : public [6,"left"]
+custom infix (-.) : public [6,"left"]
+custom infix (*.) : public [7,"left"]
+custom infix (/.) : public [7,"left"]
+
+custom infix (==.) : public [4,"none"]
+custom infix (/=.) : public [4,"none"]
+custom infix (<.)  : public [4,"none"]
+custom infix (>.)  : public [4,"none"]
+custom infix (<=.) : public [4,"none"]
+custom infix (>=.) : public [4,"none"]
+
+custom infix (**.) : public [8,"right"]
+custom infix ($!)  : public [0,"right"]
+
+ord :: Char -> Int
+ord x = x
+
+chr :: Int -> Char
+chr x = x
+
+{--------------------------------------------------------------------------
+  IO
+--------------------------------------------------------------------------}
+putChar :: Char -> IO ()
+putChar c = ''$primPutChar''c
+
+putStr :: String -> IO ()
+putStr s = ''$primPutStr'' s 
+
+putStrLn :: String -> IO ()
+putStrLn s = ''$primPutStrLn'' s
+
+unsafePerformIO :: IO a -> a 
+unsafePerformIO io 
+  = ''$primUnsafePerformIO'' io
+
+
+-- Float
+
+extern primFloatSqrt "fp_sqrt" :: "FF"
+extern float_of_string_extern "float_of_string" :: "Fz"
+
+sqrt :: Float -> Float
+sqrt x = let! x = x 
+              y = float_of_string_extern "0.0"
+         in
+            case (>=.) x y of
+            {   True -> primFloatSqrt x
+            ;   _    -> errorPacked "Can't apply sqrt to negative floating-point number"
+            }
+
+extern primFloatPower "fp_pow" :: "FFF"
+
+(**.) :: Float -> Float -> Float
+(**.) x y = let! x = x in let! y = y in primFloatPower x y
+
+extern primFloatExp "fp_exp" :: "FF"
+
+exp :: Float -> Float
+exp x = let! x = x in primFloatExp x
+
+extern primFloatLog "fp_log" :: "FF"
+
+log :: Float -> Float
+log x = let! x = x in primFloatLog x
+
+extern primFloatSin "fp_sin" :: "FF"
+
+sin :: Float -> Float
+sin x = let! x = x in primFloatSin x
+
+extern primFloatCos "fp_cos" :: "FF"
+
+cos :: Float -> Float
+cos x = let! x = x in primFloatCos x
+
+extern primFloatTan "fp_tan" :: "FF"
+
+tan :: Float -> Float
+tan x = let! x = x in primFloatTan x
+
+extern primIntToFloat "float_of_int" :: "FI"
+
+intToFloat :: Int -> Float
+intToFloat x = let! x = x in primIntToFloat x
+
+extern primFloatCeil "fp_ceil" :: "FF"
+
+ceiling :: Float -> Int
+ceiling x = let! x = x 
+                 y = primFloatCeil x
+            in primFloatTruncateInt y
+
+extern primFloatFloor "fp_floor" :: "FF"
+
+floor :: Float -> Int
+floor x = let! x = x 
+               y = primFloatFloor x
+          in primFloatTruncateInt y
+
+extern primFloatTruncateInt "fp_trunc_int" :: "IF"
+
+truncate :: Float -> Int
+truncate x = let! x = x in primFloatTruncateInt x
+
+extern primFloatNear     "fp_near"      :: "FF"
+extern primFloatRoundInt "fp_round_int" :: "IF"
+
+round :: Float -> Int
+round x 
+    = let! y = x
+           z = primFloatNear     y
+           i = primFloatRoundInt z
+      in i
+
+{--------------------------------------------------------------------------
+  Re-export Builtins
+--------------------------------------------------------------------------}
+negate :: Int -> Int
+negate x = ''$negate'' x
+
+enumFrom :: Int -> [Int]
+enumFrom n = ''$enumFrom'' n
+
+enumFromTo :: Int -> Int -> [Int]
+enumFromTo n m = ''$enumFromTo'' n m
+
+enumFromThen :: Int -> Int -> [Int]
+enumFromThen n a = ''$enumFromThen'' n a
+
+enumFromThenTo :: Int -> Int -> Int -> [Int]
+enumFromThenTo n a m =
+    ''$enumFromThenTo'' n a m 
+
+{--------------------------------------------------------------------------
+  IO
+--------------------------------------------------------------------------}
+data Handle
+ = HandleRead  (Channel Input)
+ | HandleWrite (Channel Output)
+
+data IOMode
+ = ReadMode
+ | WriteMode
+ | AppendMode
+
+stdin :: Handle
+stdin
+  = HandleRead stdinChannel
+
+stdout :: Handle
+stdout
+  = HandleWrite stdoutChannel
+
+stderr :: Handle
+stderr
+  = HandleWrite stderrChannel
+
+getChar :: IO Char
+getChar 
+  = inputChar stdinChannel  -- hGetChar stdin
+
+openFile :: String -> IOMode -> IO Handle
+openFile fpath mode
+  = case mode of
+      ReadMode  -> bindIO (openInputFile fpath True) (\ch -> return (HandleRead ch))
+      WriteMode -> bindIO (openOutputFile fpath True CreateOverwrite) (\ch -> return (HandleWrite ch))
+      AppendMode-> bindIO (openOutputFile fpath True CreateIfNotExists) (\ch -> return (HandleWrite ch))
+
+hClose :: Handle -> IO ()
+hClose handle
+  = case handle of
+      HandleRead ch   -> close ch
+      HandleWrite ch  -> -- FUUCCKK: alleen maar om altijd geflushed te closen..
+                         catch (bindIO (flush ch) (\_ -> close ch)) 
+                               (\exn -> bindIO (catch (close ch) (\_ -> raise exn))
+                                               (\_ -> raise exn))
+
+hFlush :: Handle -> IO ()
+hFlush handle
+  = case handle of
+      HandleRead ch   -> flush ch
+      HandleWrite ch  -> flush ch
+
+hGetChar :: Handle -> IO Char
+hGetChar handle
+  = case handle of
+      HandleRead ch  -> inputChar ch
+      HandleWrite ch -> errorPacked "PreludePrim.hGetChar: Handle is not open for reading"
+
+hPutChar :: Handle -> Char -> IO ()
+hPutChar handle c
+  = case handle of
+      HandleRead ch  -> errorPacked "PreludePrim.hPutChar: Handle is not open for writing"
+      HandleWrite ch -> outputChar ch c
+
+hPutString :: Handle -> String -> IO ()
+hPutString handle s
+  = case handle of
+      HandleRead ch  -> errorPacked "PreludePrim.hPutString: Handle is not open for writing"
+      HandleWrite ch -> outputString ch s
+
+catchEof :: IO a -> IO a -> IO a
+catchEof io onEof
+  = catch io
+     (\exn -> case exn of
+                System sysexn -> case sysexn of
+                                   EndOfFile -> onEof
+                                   _         -> raise exn
+                _             -> raise exn
+     )
+
