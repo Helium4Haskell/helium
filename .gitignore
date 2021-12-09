@@ -9,3 +9,4 @@ lib/*.lvm
 lib/simple/*.lvm
 *.temp
 .cabal-sandbox/*
+.stack-work
