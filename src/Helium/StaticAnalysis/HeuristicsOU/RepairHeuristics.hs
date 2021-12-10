@@ -254,7 +254,7 @@ siblingsHeuristic siblings =
                               _ -> Nothing
                         case mtp of
                            Nothing -> return Nothing
-                           Just (t1, t2) -> do
+                           Just (t1, _) -> do
                               MType contextTp <- getSubstTypeFull (getGroupFromEdge edge) $ MType t1
                               fits <- mapM (schemeFits contextTp . snd) candidates
                               case [ s | (True, (s, _)) <- zip fits candidates ] of

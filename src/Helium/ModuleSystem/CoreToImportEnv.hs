@@ -51,29 +51,29 @@ typeDictFromCustoms n ( CustomDecl (DeclKindCustom ident) [CustomBytes bytes] : 
             string = filter (/= '!') (stringFromBytes bytes) 
             dictName = takeWhile (/= '$') string
             dictType = drop 1 $ dropWhile (/= '$') string
-        in makeTpSchemeFromType (parseFromString contextAndType dictType)
+        in makeTpSchemeFromType (parseFromString contextAndType dictType "yay")
     | otherwise =
         typeDictFromCustoms n cs
 
-typeFromCustoms :: String -> [Custom] -> TpScheme
-typeFromCustoms n [] =
+typeFromCustoms :: String -> String -> [Custom] -> TpScheme
+typeFromCustoms i n [] =
     internalError "CoreToImportEnv" "typeFromCustoms"
         ("function import without type: " ++ n)
-typeFromCustoms n ( CustomDecl (DeclKindCustom ident) [CustomBytes bytes] : cs) 
+typeFromCustoms i n ( CustomDecl (DeclKindCustom ident) [CustomBytes bytes] : cs) 
     | stringFromId ident == "type" =
         let string = filter (/= '!') (stringFromBytes bytes) 
-        in makeTpSchemeFromType (parseFromString contextAndType string)
+        in makeTpSchemeFromType (parseFromString contextAndType string n)
     | otherwise =
-        typeFromCustoms n cs
-typeFromCustoms _ _ = error "Pattern match failure in ModuleSystem.CoreToImportEnv.typeFromCustoms"
+        typeFromCustoms i n cs
+typeFromCustoms _ _ _ = error "Pattern match failure in ModuleSystem.CoreToImportEnv.typeFromCustoms"
 
-parseFromString :: HParser a -> String -> a
-parseFromString p string = 
+parseFromString :: HParser a -> String -> String -> a
+parseFromString p string n = 
     case lexer [] "CoreToImportEnv" string of 
         Left _ -> internalError "CoreToImportEnv" "parseFromString" ("lex error in " ++ string)
         Right (tokens, _) ->
             case runHParser p "CoreToImportEnv" tokens True {- wait for EOF -} of
-                Left e  -> internalError "CoreToImportEnv" "parseFromString" ("parse error in " ++ string ++ show e ++ show (map messageString $ errorMessages e) ++ show tokens ++ string)
+                Left e  -> internalError "CoreToImportEnv" "parseFromString" ("parse error in " ++ string ++ show e ++ show (map messageString $ errorMessages e) ++ show tokens ++ string ++ " " ++ n)
                 Right x -> x
 
 typeSynFromCustoms :: String -> [Custom] -> (Int, Tps -> Tp) -- !!! yuck
@@ -93,7 +93,7 @@ typeSynFromCustoms n (CustomBytes bs:cs) =
                         typeSynDecl
     in
         ( arityFromCustoms n cs
-        , \ts -> makeTpFromType (zip ids ts) (parseFromString type_ rhsType)
+        , \ts -> makeTpFromType (zip ids ts) (parseFromString type_ rhsType n)
         )
 typeSynFromCustoms n _ =
     internalError "CoreToImportEnv" "typeSynFromCustoms"
@@ -185,7 +185,7 @@ insertDictionaries importedInModule
                                             CustomName fname,
                                             CustomBytes tps,
                                             CustomInt n
-                                        ]) = (nameFromString $ stringFromId fname, makeTpSchemeFromType $ parseFromString type_ $ stringFromBytes tps, n == 1, n == 1)
+                                        ]) = (nameFromString $ stringFromId fname, makeTpSchemeFromType $ parseFromString type_ importedInModule $ stringFromBytes tps, n == 1, n == 1)
                                     className = nameFromId n
                                     classMembers = (tpVar, functions) 
                                 in setClassMemberEnvironment (M.insert className classMembers (classMemberEnvironment env)) env
@@ -215,10 +215,10 @@ getImportEnvironment importedInModule decls = foldr (insertDictionaries imported
                         nEnv =  addType
                                     (makeImportName importedInModule importedFromModId n)
                                     ((  
-                                        if "$dict" `isPrefixOf` (stringFromId n) then 
+                                        if "$dict" `isPrefixOf` stringFromId n then 
                                             typeDictFromCustoms
                                         else 
-                                            typeFromCustoms) 
+                                            typeFromCustoms (show n)) 
                                         (stringFromId n) cs) env
                         
                     in nEnv 
@@ -231,7 +231,7 @@ getImportEnvironment importedInModule decls = foldr (insertDictionaries imported
                       } ->
               addType
                  (makeImportName importedInModule importedFromModId n)
-                 (typeFromCustoms (stringFromId n) cs)
+                 (typeFromCustoms (show n) (stringFromId n) cs)
             
            -- constructors
            DeclCon { declName    = n
@@ -240,7 +240,7 @@ getImportEnvironment importedInModule decls = foldr (insertDictionaries imported
                    } -> 
               addValueConstructor
                 (makeImportName importedInModule importedFromModId n)
-                (typeFromCustoms (stringFromId n) cs)
+                (typeFromCustoms importedInModule (stringFromId n) cs)
                 (constructorTypeFromCustoms cs)
 
            -- type constructor import
@@ -316,7 +316,7 @@ getImportEnvironment importedInModule decls = foldr (insertDictionaries imported
                                     CustomName fname,
                                     CustomBytes tps,
                                     CustomInt n
-                                ]) = (nameFromString $ stringFromId fname, makeTpSchemeFromType $ parseFromString type_ $ stringFromBytes tps, False, n == 1)
+                                ]) = (nameFromString $ stringFromId fname, makeTpSchemeFromType $ parseFromString type_ importedInModule $ stringFromBytes tps, False, n == 1)
                             classMembers = (classVariables, map getFunction $ selectCustom "Function" cs)
                         in addClass className superClasses . addClassMember className classMembers 
            -- !!! Print importedFromModId from "declAccess = Imported{importModule = importedFromModId}" as well

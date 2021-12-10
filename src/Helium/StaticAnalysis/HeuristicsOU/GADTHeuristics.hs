@@ -38,7 +38,8 @@ import Control.Arrow
 import Control.Monad.Trans.State
 
 import Debug.Trace
-import Helium.StaticAnalysis.Inferencers.OutsideInX.Rhodium.RhodiumTypes (fvToList)
+import Helium.StaticAnalysis.Inferencers.OutsideInX.Rhodium.RhodiumTypes ()
+import Control.Monad.IO.Class (MonadIO)
 
 
 selectPriorityPatterns :: TGGraph TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo -> Priority -> [TGEdge (Constraint ConstraintInfo)]
@@ -102,6 +103,12 @@ runModGraph vars axioms graph = do
         )
         
 
+constructMGU :: (HasAxioms m (Axiom ConstraintInfo), Fresh m, MonadFail m, MonadIO m) =>
+                TGGraph touchable types (Constraint ConstraintInfo) ci
+                -> TGEdge constraint
+                -> [TGEdge (Constraint ConstraintInfo)]
+                -> m (Maybe (Constraint ConstraintInfo), MonoType,
+                   [[Constraint ConstraintInfo]])
 constructMGU graph cedge spp = do
     axioms <- getAxioms
     let groups = filter ((tail (getGroupFromEdge cedge) ==) . tail) $ nub $ map getGroupFromEdge $ filter isConstraintEdge $ M.elems $ edges graph
@@ -113,7 +120,7 @@ constructMGU graph cedge spp = do
             Just (_, _, Just gc) = maybePatternMatch ci
             in gc
     let patternCI = map ((\cs -> (snd $ chead cs, map fst cs)) . map (\c -> (fst $ splitEquality c, constraintToPatternMatchConstraint c))) patternBranches
-    patternSub <- mapM (\(gc, vs) -> ((\sub -> (map (\(v, MType mt) -> (v, mt)) <$> sub, vs)) <$> runTG (unifyTypes' (ignoreTouchables emptySolveOptions) axioms [] [gc] []))) patternCI
+    patternSub <- mapM (\(gc, vs) -> (\sub -> (map (\(v, MType mt) -> (v, mt)) <$> sub, vs)) <$> runTG (unifyTypes' (ignoreTouchables emptySolveOptions) axioms [] [gc] [])) patternCI
     let fbType = getConstraintFromEdge <$> maybeHead (filter (\e -> isConstraintEdge e && isJust (getConstraintInfo (getConstraintFromEdge e) >>= maybeFunctionBinding)) $ M.elems $ edges graph)
     let subApply :: Maybe [(TyVar, MonoType)] -> [RType ConstraintInfo] -> Maybe ([(TyVar, MonoType)], [MonoType])
         subApply Nothing _ = Nothing
@@ -132,7 +139,7 @@ constructMGU graph cedge spp = do
 
 
 unreachablePatternHeuristic :: Fresh m => Path m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo -> VotingHeuristic m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo
-unreachablePatternHeuristic path = SingleVoting "Unreachable GADT pattenr" f
+unreachablePatternHeuristic path = SingleVoting "Unreachable GADT pattern" f
     where 
         f (constraint, eid, ci, gm) = 
             if not (isFromGadt ci) then
@@ -150,8 +157,6 @@ unreachablePatternHeuristic path = SingleVoting "Unreachable GADT pattenr" f
                             let (_, typeSigRes) = functionSpine m2'
                             axioms <- getAxioms
                             resSubs <- runTG (unifyTypes axioms [] [Constraint_Unify patternRes typeSigRes Nothing] (getFreeVariables (MType typeSigRes :: RType ConstraintInfo)))
-                            let (conPattern, _) = conList patternRes
-                            let (conTypeSig, _) = conList typeSigRes
                             if isNothing resSubs then do
                                 let spp = selectPriorityPatterns graph (getPriorityFromEdge cedge)
                                 if null spp then    

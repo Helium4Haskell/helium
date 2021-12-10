@@ -5,7 +5,7 @@
     Stability   :  experimental
     Portability :  portable
 -}
-
+{-# LANGUAGE BangPatterns #-}
 module Helium.Main.PhaseImport(phaseImport) where
 
 import Helium.Main.CompileUtils
@@ -35,7 +35,8 @@ phaseImport fullName module_ lvmPath options = do
     chasedImpsList <- chaseImports lvmPath moduleWithExtraImports
 
     let indirectionDecls   = concat chasedImpsList
-        importEnvs = 
+
+    let importEnvs = 
             map (getImportEnvironment baseName) chasedImpsList
     
     return (indirectionDecls, importEnvs)

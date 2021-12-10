@@ -28,11 +28,11 @@ phaseStaticChecks fullName module_ importEnvs options = do
                  SC.baseName_Inh_Module = baseName,
                  SC.importEnvironments_Inh_Module = importEnvs,
                  SC.options_Inh_Module = options }
-
     case SC.errors_Syn_Module res of
     
        _:_ ->
-          do when (DumpInformationForAllModules `elem` options) $
+          do 
+             when (DumpInformationForAllModules `elem` options) $
                 print (foldr combineImportEnvironments emptyEnvironment importEnvs)
              
              -- display name information
@@ -42,4 +42,6 @@ phaseStaticChecks fullName module_ importEnvs options = do
              return (Left $ SC.errors_Syn_Module res)
          
        [] -> 
-          return (Right (SC.collectEnvironment_Syn_Module res, SC.typeSignatures_Syn_Module res, SC.warnings_Syn_Module res))
+          do
+             return (Right (SC.collectEnvironment_Syn_Module res, SC.typeSignatures_Syn_Module res, SC.warnings_Syn_Module res))
+          --SC.collectEnvironment_Syn_Module res

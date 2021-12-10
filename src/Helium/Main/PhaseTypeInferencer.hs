@@ -55,7 +55,7 @@ phaseTypeInferencer basedir fullName module_ localEnv completeEnv options =
      
       -- display name information
       showInformation True options finalEnv
-      when (True || VerifyOutsideInResult `elem` options) 
+      when (VerifyOutsideInResult `elem` options) 
          (
             do
                let err = internalError "PhaseTyperInferencer" "phaseTypeInferencer" "Flag VerifyOutsideInResult used without OutsideInX flag present"

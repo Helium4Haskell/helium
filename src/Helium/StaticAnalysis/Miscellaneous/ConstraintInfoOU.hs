@@ -58,6 +58,7 @@ import Unbound.Generics.LocallyNameless.Fresh
 import Debug.Trace
 import GHC.Generics (Generic)
 import Data.Typeable
+import Unbound.Generics.LocallyNameless.Internal.Fold (toListOf, foldMapOf)
  
 data ConstraintInfo =
    CInfo_ { location      :: String
@@ -80,7 +81,7 @@ type MCI = Maybe ConstraintInfo
 
 -- instance UB.Alpha ConstraintInfo
 instance Alpha ConstraintInfo where
-   fvAny' _ _ _ = error "fvAny"
+   fvAny' _ _ = pure 
    swaps' = error "swaps'"
    lfreshen' = error "lfreshen'"
    freshen' = error "freshen'"
