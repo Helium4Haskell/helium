@@ -33,9 +33,10 @@ rhodiumSolve :: [Axiom ConstraintInfo] -> [Constraint ConstraintInfo] -> [Constr
 rhodiumSolve axioms given wanted touchables = contFreshM (runTG (solve (solveOptions []) axioms given wanted touchables)) 20
 
 solveOU :: Sibblings -> [Axiom ConstraintInfo] -> [Constraint ConstraintInfo] -> [Constraint ConstraintInfo] -> [TyVar] -> FreshM (SolveResult TyVar MonoType (Constraint ConstraintInfo) ConstraintInfo)
-solveOU sibblings axioms given wanted tchs = trace (unlines $ map (\e -> show (e, getConstraintInfo e)) wanted) $ traceShow (given, tchs) $ let
-    in do 
-        
+solveOU sibblings axioms given wanted tchs = 
+    -- trace (unlines $ map (\e -> show (e, getConstraintInfo e)) wanted) $ traceShow (given, tchs) $ let
+    -- in 
+      do      
         rf <- runTG (solve (solveOptions sibblings) axioms (nub given) (nub wanted) (nub tchs))
         return SolveResult{
             substitution = map (\(t, MType m) -> (t, m)) (substitution rf),
