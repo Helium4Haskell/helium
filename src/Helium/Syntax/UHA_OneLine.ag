@@ -135,6 +135,8 @@ SEM Declaration                                  {- *** -}
     --  types                    : Types        -- Haskell 98 allows only one type
                                                 -- that is severely restricted
     --  where                    : MaybeDeclarations -- cannot have everything
+    | TypeFam           loc.oneLineTree = intErr "Declaration" "type family"
+    | TypeFamInstance   loc.oneLineTree = intErr "Declaration" "type family instance"
     | Default           loc.oneLineTree = intErr "Declaration" "default"
     --  range                    : Range
     --  types                    : Types        -- should be instances of Num

@@ -66,6 +66,7 @@ ATTR
     ImportDeclaration ImportSpecification Import Declaration Fixity
     Type SimpleType ContextItem
     Constructor
+    Injectivity
     FieldDeclaration
     AnnotatedType
     Expression
@@ -113,7 +114,7 @@ ATTR
     ]
 
 ATTR
-    MaybeExpression MaybeName MaybeInt MaybeImportSpecification
+    MaybeExpression MaybeName MaybeInt MaybeImportSpecification MaybeInjectivity
     [
     |
     | text        : {        Maybe Doc  }
@@ -330,6 +331,16 @@ SEM Declaration                                  {- *** -}
     --  types                    : Types        -- Haskell 98 allows only one type
                                                 -- that is severely restricted
     --  where                    : MaybeDeclarations -- cannot have everything
+    | TypeFam           loc.text = (PPrint.empty
+                                        <$> text "type family" <+> @simpletype.text
+                                            <> maybe
+                                                empty
+                                                (\ds -> PPrint.empty <$> indent 4 (text "where" <$> indent 4 (vcat ds)))
+                                                @where.text
+                                    )
+    | TypeFamInstance   loc.text = (PPrint.empty
+                                        <$> text (if @inclosed then "" else "type instance") <+> @name.text <+> PPrint.list @lhstypes.text <+> @rhstype.text
+                                   )
     | Default           loc.text = text "default" <+> tupled @types.text
     --  range                    : Range
     --  types                    : Types        -- should be instances of Num
@@ -366,6 +377,14 @@ SEM Declaration                                  {- *** -}
     --  operators                : Names
     | Empty             loc.text = empty
     --  range                    : Range
+
+SEM MaybeInjectivity
+    | Nothing           loc.text = Nothing
+    | Just              loc.text = Just @injectivity.text
+
+SEM Injectivity
+    | Injectivity       loc.text = PPrint.empty
+                                        <$> text "=" <+> @resname.text <+> text "|" <+> @resname.text <+> text "->" <+> PPrint.list @injnames.text
 
 SEM Fixity
     | Infixl                 loc.text = text "infixl"

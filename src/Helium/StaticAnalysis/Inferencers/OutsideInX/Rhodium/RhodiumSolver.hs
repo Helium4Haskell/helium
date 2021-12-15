@@ -17,7 +17,7 @@ import Helium.StaticAnalysis.Miscellaneous.ConstraintInfoOU
 import Helium.StaticAnalysis.Messages.HeliumMessages
 import Helium.StaticAnalysis.Messages.TypeErrors
 import Helium.StaticAnalysis.Inferencers.OutsideInX.Rhodium.RhodiumTypes
-import Helium.StaticAnalysis.Inferencers.OutsideInX.Rhodium.RhodiumInstances
+--import Helium.StaticAnalysis.Inferencers.OutsideInX.Rhodium.RhodiumInstances()
 
 import Helium.StaticAnalysis.HeuristicsOU.FilterHeuristics
 import Helium.StaticAnalysis.HeuristicsOU.RepairHeuristics

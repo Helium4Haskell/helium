@@ -1,5 +1,6 @@
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# OPTIONS_GHC -Wno-incomplete-patterns #-}
 --{-# LANGUAGE MonoLocalBinds #-}
 --{-# OPTIONS_GHC -freduction-depth=400 #-}
 {-| Module      :  RepairHeuristics

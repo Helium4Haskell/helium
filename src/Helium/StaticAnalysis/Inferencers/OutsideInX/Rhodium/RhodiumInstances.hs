@@ -238,8 +238,6 @@ isInjective axioms s = any isInjective' axioms
         isInjective' _ = False
 
 instance (
-            MonadFail m, 
-            MonadIO m,
             HasTypeGraph m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo,
             HasAxioms m (Axiom ConstraintInfo), 
             Fresh m
@@ -252,8 +250,8 @@ instance (
                 (aes, (ctx, cls, args)) <- unbind b
                 if cls == n then do
                     let bes = fvToList ax :: [TyVar]
-                    let unify = unifyTypes [] [] (zipWith (\c a -> Constraint_Unify c a (Nothing :: Maybe ConstraintInfo)) cs args) (aes \\ bes) :: TGStateM m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo (Maybe [(TyVar, RType ConstraintInfo)])
-                    res <- runTG unify :: m (Maybe [(TyVar, RType ConstraintInfo)])
+                    let unify = unifyTypes [] [] (zipWith (\c a -> Constraint_Unify c a (Nothing :: Maybe ConstraintInfo)) cs args) (aes \\ bes)
+                    res <- runTG unify
                     case res of
                       Just s -> return $ Applied ([], substs (convertSubstitution s) ctx)
                       _  -> return NotApplicable

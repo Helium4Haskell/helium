@@ -136,6 +136,17 @@ DATA Declaration                                  {- *** -}
         types                    : Types        -- Haskell 98 allows only one type
                                                 -- that is severely restricted
         where                    : MaybeDeclarations -- cannot have everything
+    | TypeFam
+        range                    : Range
+        simpletype               : SimpleType
+        injective                : MaybeInjectivity
+        where                    : MaybeDeclarations -- can only have typefam instances, add inj info
+    | TypeFamInstance
+        range                    : Range
+        inclosed                 : Bool
+        name                     : Name
+        lhstypes                 : Types -- must be same length as declaration
+        rhstype                  : Type -- One type on the right hand side (statically checked for typefam restrictions)
     | Default
         range                    : Range
         types                    : Types        -- should be instances of Num
@@ -157,6 +168,16 @@ DATA Declaration                                  {- *** -}
         operators                : Names
     | Empty
         range                    : Range
+
+DATA MaybeInjectivity
+    | Nothing
+    | Just
+        injectivity              : Injectivity
+
+DATA Injectivity
+    | Injectivity
+        resname                  : Name -- name of the result type
+        injnames                 : Names -- names for the injective variables
 
 DATA Fixity
     | Infixl
