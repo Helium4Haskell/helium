@@ -202,6 +202,7 @@ topdecl = addRange (
         lexINSTANCE
         n <- tycon
         lhs <- many1 btype
+        lexASG
         rhst <- btype
         return $ \r -> Declaration_TypeFamInstance r False n lhs rhst
     <|>
