@@ -188,6 +188,17 @@ topdecl = addRange (
     <|>
     do
         lexTYPE
+        lexFAMILY
+        st <- simpleType
+        inj <- option MaybeInjectivity_Nothing
+                    (try $ MaybeInjectivity_Just <$> injAnn)
+        ds <- option MaybeDeclarations_Nothing 
+                     (try $ do lexWHERE
+                               option MaybeDeclarations_Nothing (try $ MaybeDeclarations_Just <$> cdecls))
+        return (\r -> Declaration_TypeFam r st inj ds)
+    <|>
+    do
+        lexTYPE
         st <- simpleType
         lexASG
         t <- type_
@@ -238,6 +249,14 @@ cdecls =
     <|>
     decl
     <?> Texts.parserDeclaration
+
+injAnn :: HParser Injectivity
+injAnn = do
+    r <- tyvar
+    lexBAR
+    _ <- tyvar
+    injvars <- many tyvar
+    return $ Injectivity_Injectivity r injvars
 
 derivings :: HParser [Name]
 derivings = 

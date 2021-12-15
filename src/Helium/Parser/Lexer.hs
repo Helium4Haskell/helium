@@ -371,6 +371,7 @@ keywords =
     , "infix", "infixl", "infixr", "_", "deriving"
     , "class", "instance", "default"
     , "newtype" -- not supported
+    , "family"
     ]
 
 reservedConSyms :: [String]
