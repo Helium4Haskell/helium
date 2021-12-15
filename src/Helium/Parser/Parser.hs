@@ -194,8 +194,16 @@ topdecl = addRange (
                     (try $ MaybeInjectivity_Just <$> injAnn)
         ds <- option MaybeDeclarations_Nothing 
                      (try $ do lexWHERE
-                               option MaybeDeclarations_Nothing (try $ MaybeDeclarations_Just <$> cdecls))
+                               option MaybeDeclarations_Nothing (try $ MaybeDeclarations_Just <$> tfdecls))
         return (\r -> Declaration_TypeFam r st inj ds)
+    <|>
+    do
+        lexTYPE
+        lexINSTANCE
+        n <- tycon
+        lhs <- many1 btype
+        rhst <- btype
+        return $ \r -> Declaration_TypeFamInstance r False n lhs rhst
     <|>
     do
         lexTYPE
@@ -389,6 +397,18 @@ cdecls -> " {" decl1 ";" .... ";" decln "}"    (n>=0)
 cdecl -> vars "::" type  (type signature)
       | (funlhs | var) rhs
 -}
+
+-- closed typefamily instances
+tfdecls :: HParser Declarations
+tfdecls = withLayout tfdecl
+
+tfdecl :: HParser Declaration
+tfdecl = addRange $
+  do
+    n <- tycon
+    lhs <- many btype
+    rhst <- btype
+    return $ \r -> Declaration_TypeFamInstance r True n lhs rhst
 
 cdecls :: HParser Declarations
 cdecls =
