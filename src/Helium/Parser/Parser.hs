@@ -187,31 +187,38 @@ topdecl = addRange (
             )
     <|>
     do
-        lexTYPE
-        lexFAMILY
-        st <- simpleType
-        inj <- option MaybeInjectivity_Nothing
-                    (try $ MaybeInjectivity_Just <$> injAnn)
-        ds <- option MaybeDeclarations_Nothing 
-                     (try $ do lexWHERE
-                               option MaybeDeclarations_Nothing (try $ MaybeDeclarations_Just <$> tfdecls))
-        return (\r -> Declaration_TypeFam r st inj ds)
-    <|>
-    do
-        lexTYPE
-        lexINSTANCE
-        n <- tycon
-        lhs <- many1 btype
-        lexASG
-        rhst <- btype
-        return $ \r -> Declaration_TypeFamInstance r False n lhs rhst
-    <|>
-    do
-        lexTYPE
-        st <- simpleType
-        lexASG
-        t <- type_
-        return $ \r -> Declaration_Type r st t
+      lexTYPE
+      id(
+          ( 
+            do
+              lexFAMILY
+              st <- simpleType
+              inj <- option MaybeInjectivity_Nothing
+                          (try $ MaybeInjectivity_Just <$> injAnn)
+              ds <- option MaybeDeclarations_Nothing 
+                          (try $ do lexWHERE
+                                    option MaybeDeclarations_Nothing (try $ MaybeDeclarations_Just <$> tfdecls))
+              return (\r -> Declaration_TypeFam r st inj ds)
+          )
+        <|>
+          ( 
+            do
+              lexINSTANCE
+              n <- tycon
+              lhs <- many1 btype
+              lexASG
+              rhst <- btype
+              return $ \r -> Declaration_TypeFamInstance r False n lhs rhst
+          )
+        <|>
+          ( 
+            do
+              st <- simpleType
+              lexASG
+              t <- type_
+              return $ \r -> Declaration_Type r st t
+          )
+        )       
     <|>
 -- Declaration_Class (Range) (ContextItems) (SimpleType) (MaybeDeclarations)
 {-
@@ -241,8 +248,9 @@ cdecls =
         ts <- iType
         ds <- option MaybeDeclarations_Nothing (try $ do lexWHERE
                                                          d <- idecls
+                                                         tfd <- withLayout itfdecl
                                                          let d' = CollectFunctionBindings.decls' d
-                                                         return (MaybeDeclarations_Just d'))
+                                                         return (MaybeDeclarations_Just $ tfd ++ d'))
         return $ \r -> Declaration_Instance r ct n [ts] ds
     <|>
     infixdecl
@@ -261,9 +269,11 @@ cdecls =
 
 injAnn :: HParser Injectivity
 injAnn = do
+    lexASG
     r <- tyvar
     lexBAR
     _ <- tyvar
+    lexRARROW
     injvars <- many tyvar
     return $ Injectivity_Injectivity r injvars
 
@@ -403,19 +413,32 @@ cdecl -> vars "::" type  (type signature)
 tfdecls :: HParser Declarations
 tfdecls = withLayout tfdecl
 
+-- CLOSED DECL
 tfdecl :: HParser Declaration
 tfdecl = addRange $
   do
     n <- tycon
     lhs <- many btype
+    lexASG 
     rhst <- btype
     return $ \r -> Declaration_TypeFamInstance r True n lhs rhst
+
+-- ASSOCIATED TYPE DECL
+ctfdecl :: HParser Declaration
+ctfdecl = addRange $
+  do
+    lexTYPE
+    st <- simpleType
+    inj <- option MaybeInjectivity_Nothing
+                    (try $ MaybeInjectivity_Just <$> injAnn)
+    return $ \r -> Declaration_TypeFam r st inj MaybeDeclarations_Nothing
 
 cdecls :: HParser Declarations
 cdecls =
     do
      ds <- withLayout cdecl
-     return (CollectFunctionBindings.decls ds)
+     tfds <- withLayout ctfdecl
+     return $ tfds ++ CollectFunctionBindings.decls ds
      
 cdecl :: HParser Declaration
 cdecl = addRange (
@@ -464,7 +487,18 @@ idecls =
     do
      ds <- withLayout idecl
      return ds -- (CollectFunctionBindings.decls ds)
-     
+
+itfdecl :: HParser Declaration
+itfdecl = addRange $
+  do
+    lexTYPE
+    n <- tycon
+    lhs <- many1 btype
+    lexASG
+    rhst <- btype
+    return $ \r -> Declaration_TypeFamInstance r False n lhs rhst
+  
+
 idecl :: HParser Declaration
 idecl = addRange (
     try (do
