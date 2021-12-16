@@ -248,9 +248,8 @@ cdecls =
         ts <- iType
         ds <- option MaybeDeclarations_Nothing (try $ do lexWHERE
                                                          d <- idecls
-                                                         tfd <- withLayout itfdecl
                                                          let d' = CollectFunctionBindings.decls' d
-                                                         return (MaybeDeclarations_Just $ tfd ++ d'))
+                                                         return (MaybeDeclarations_Just d'))
         return $ \r -> Declaration_Instance r ct n [ts] ds
     <|>
     infixdecl
@@ -434,11 +433,7 @@ ctfdecl = addRange $
     return $ \r -> Declaration_TypeFam r st inj MaybeDeclarations_Nothing
 
 cdecls :: HParser Declarations
-cdecls =
-    do
-     ds <- withLayout cdecl
-     tfds <- withLayout ctfdecl
-     return $ tfds ++ CollectFunctionBindings.decls ds
+cdecls = CollectFunctionBindings.decls <$> withLayout (ctfdecl <|> cdecl)
      
 cdecl :: HParser Declaration
 cdecl = addRange (
@@ -483,10 +478,7 @@ idecl -> (funlhs | var) rhs
 -}
 
 idecls :: HParser Declarations
-idecls =
-    do
-     ds <- withLayout idecl
-     return ds -- (CollectFunctionBindings.decls ds)
+idecls = withLayout $ itfdecl <|> idecl
 
 itfdecl :: HParser Declaration
 itfdecl = addRange $

@@ -492,7 +492,9 @@ instanceMembers MaybeDeclarations_Nothing _ = []
 instanceMembers (MaybeDeclarations_Just decls) d = instanceMembers' decls d
   -- where n = concatMap nameOfDeclaration decls
 
+-- TODO: may need a more elegant implementation (ClassName needs to be extended with typefam instance info, at least a name)
 instanceMembers' :: Declarations -> ClassDef -> Errors
+instanceMembers' (Declaration_TypeFamInstance{}:ds) c = instanceMembers' ds c
 instanceMembers' (d:ds) c@(n, members) = let fn = head $ nameOfDeclaration d
                                              cm = map (\(x, _, _, _) -> x) (snd members)
                                           in

@@ -153,6 +153,7 @@ nameOfDeclaration :: Declaration -> Names
 nameOfDeclaration d = case d of
     Declaration_Class            _ _ (SimpleType_SimpleType _ n _) _   -> [n]
     Declaration_Data             _ _ (SimpleType_SimpleType _ n _) _ _ -> [n]
+    Declaration_Data_Gadt        _ (SimpleType_SimpleType _ n _) _     -> [n]
     Declaration_Default          _ _                                   -> [] --What does the Default do, it is not created by the parser...
     Declaration_Empty            _                                     -> []
     Declaration_Fixity           _ _ _ ns                              -> ns
@@ -163,6 +164,8 @@ nameOfDeclaration d = case d of
     Declaration_Type             _ (SimpleType_SimpleType _ n _) _     -> [n]
     Declaration_TypeSignature    _ ns _                                -> ns
     Declaration_Hole             _ _                                   -> []
+    Declaration_TypeFamInstance  _ _ n _ _                             -> [n]
+    Declaration_TypeFam          _ (SimpleType_SimpleType _ n _) _ _   -> [n]
     
 nameOfFunctionBinding :: FunctionBinding -> Names
 nameOfFunctionBinding (FunctionBinding_FunctionBinding _ lhs _) = nameOfLeftHandSide lhs

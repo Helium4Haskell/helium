@@ -54,6 +54,7 @@ import qualified Data.Map as M
 import Helium.ModuleSystem.ImportEnvironment
 import Helium.Parser.OperatorTable
 import Data.Char ( isUpper )
+import Debug.Trace
 
 }
 
