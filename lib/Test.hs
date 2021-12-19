@@ -6,7 +6,11 @@ class Test a where
 
 instance Test a => Test [a] where
     type T [a] = a
-    test x = x 
+    test x = x
+
+instance Test Int where
+    type T Int = Int
+    test x = x
 
 -- instance Test Int where
 --     test = id
@@ -14,11 +18,11 @@ instance Test a => Test [a] where
 -- instance Test a => Test [a] where
 --     test = id
 
--- type family X a = r | r -> a where
---     X Int = Float
---     X Char = String
--- --type instance X Int = Float
--- type family Z a = r | r -> a
+type family X a = r | r -> a where
+    X Int = Float
+    X Char = String
+--type instance X Int = Float
+type family Z a = r | r -> a
 
 main :: Int
-main = 4 + 5
+main = 4

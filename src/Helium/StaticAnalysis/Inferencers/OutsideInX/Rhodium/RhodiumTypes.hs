@@ -28,8 +28,8 @@ import Unbound.Generics.LocallyNameless.Internal.Fold (toListOf)
 import Unbound.Generics.LocallyNameless hiding (Name)
 import GHC.Generics
 
-import Helium.Syntax.UHA_Syntax
-import Helium.Syntax.UHA_Range
+import Helium.Syntax.UHA_Syntax ()
+import Helium.Syntax.UHA_Range ()
 import Helium.StaticAnalysis.Miscellaneous.UHA_Source
 import Helium.StaticAnalysis.Miscellaneous.DoublyLinkedTree
 

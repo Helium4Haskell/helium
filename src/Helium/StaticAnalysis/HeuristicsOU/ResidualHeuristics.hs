@@ -91,7 +91,7 @@ missingPredicate path = SingleVoting "Missing predicate" f
                             MType ms' <- getSubstTypeFull (getGroupFromEdge cedge) $ MType ms
                             case ms' of 
                                 MonoType_Var _ v -> do
-                                    graph <- getGraph
+                                    --graph <- getGraph
                                     nedges1 <- getNeighbours (from cedge)
                                     nedges2 <- getNeighbours (to cedge)
                                     let anconstraints = filter (\e -> isConstraintEdge e && original e) $ nub (nedges1 ++ nedges2) 

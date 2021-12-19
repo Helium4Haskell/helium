@@ -2,6 +2,7 @@
 {-# LANGAUGE MonoLocalBinds #-}
 {-# LANGUAGE DoAndIfThenElse #-}
 {-# LANGUAGE FlexibleContexts #-}
+{-# OPTIONS_GHC -Wno-simplifiable-class-constraints #-}
 module Helium.StaticAnalysis.HeuristicsOU.GADTHeuristics where
 
 import Rhodium.Core
@@ -77,6 +78,7 @@ modifyTopLevelTS m pm graph fbc@(Constraint_Unify fbm@(MonoType_Var _ fbv) _ _) 
     axioms <- getAxioms
     (res, resG) <- runModGraph (fvToList pm) axioms gComplete
     return ((origE, origL) `notElem` map (\(ci, cons, l) -> (cons, l)) (errors res))
+modifyTopLevelTS _ _ _ _ _ _ = return False 
     
     
 

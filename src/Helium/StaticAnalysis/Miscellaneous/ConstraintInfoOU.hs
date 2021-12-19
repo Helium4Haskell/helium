@@ -188,6 +188,7 @@ instance Show Property where
     show TooManyFBArgs = "TooManyFBArgs"
     show (PatternTypeSignature ps) = "PatternTypeSignature" ++ show ps
     show (LiteralFloat f) = "LiteralFloat " ++ show f
+    show _ = "No show"
 
 --deriving instance Show TypeError
 

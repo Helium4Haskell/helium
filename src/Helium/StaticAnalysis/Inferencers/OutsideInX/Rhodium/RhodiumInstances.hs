@@ -125,7 +125,7 @@ instance (CompareTypes m (RType ConstraintInfo), IsTouchable m TyVar, HasAxioms 
                         (_, _)
                             | m1 == m2, isFamilyFree m1, isFamilyFree m2 -> return $ Applied ([], [], [])
                             | otherwise -> return NotApplicable
-                canon' axs (Constraint_Inst m (PolyType_Mono cs pm) _) = return $ Applied ([], [], Constraint_Unify m pm Nothing : cs)                                  
+                canon' axs (Constraint_Inst m (PolyType_Mono cs pm) _) = return $ Applied ([], [], Constraint_Unify m pm Nothing : cs)
                 canon' axs (Constraint_Inst m p ci) = do 
                     (vs, c,t) <- instantiate p True
                     return $ Applied (vs, [], Constraint_Unify m t ci : c)
