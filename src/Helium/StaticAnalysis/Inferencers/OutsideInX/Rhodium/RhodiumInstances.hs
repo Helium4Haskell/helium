@@ -125,16 +125,16 @@ instance (CompareTypes m (RType ConstraintInfo), IsTouchable m TyVar, HasAxioms 
                         (_, _)
                             | m1 == m2, isFamilyFree m1, isFamilyFree m2 -> return $ Applied ([], [], [])
                             | otherwise -> return NotApplicable
-                canon' axs (Constraint_Inst m (PolyType_Mono cs pm) _) = return $ Applied ([], [], Constraint_Unify m pm Nothing : cs)
-                canon' axs (Constraint_Inst m p ci) = do 
+                canon' _ (Constraint_Inst m (PolyType_Mono cs pm) _) = return $ Applied ([], [], Constraint_Unify m pm Nothing : cs)
+                canon' _ (Constraint_Inst m p ci) = do 
                     (vs, c,t) <- instantiate p True
                     return $ Applied (vs, [], Constraint_Unify m t ci : c)
-                canon' axs (Constraint_Class _ _ _) = return NotApplicable
-                canon' axs c = error $ "Unknown canon constraint: " ++ show c
+                canon' _ (Constraint_Class _ _ _) = return NotApplicable
+                canon' _ c = error $ "Unknown canon constraint: " ++ show c
 
 
 instantiate :: Fresh m => PolyType ConstraintInfo -> Bool -> m ([TyVar], [Constraint ConstraintInfo], MonoType)
-instantiate pb@(PolyType_Bind s b) tch = do
+instantiate (PolyType_Bind s b) tch = do
     (v,i) <- unbind b
     (vs, c,t) <- instantiate i tch
     
@@ -148,20 +148,20 @@ instantiate (PolyType_Mono cs m) _tch = return ([], cs,m)
 fixVariableMapping :: String -> TyVar -> MonoType -> MonoType
 fixVariableMapping s v (MonoType_Var ms v') | v == v' = MonoType_Var (Just s) v'
                                         | otherwise = MonoType_Var ms v'
-fixVariableMapping s v m@(MonoType_Con _) = m
-fixVariableMapping s v m@(MonoType_App f a) = MonoType_App (fixVariableMapping s v f) (fixVariableMapping s v a)
-fixVariableMapping s v m@(MonoType_Fam f ms) = MonoType_Fam f (map (fixVariableMapping s v) ms)
+fixVariableMapping _ _ m@(MonoType_Con _) = m
+fixVariableMapping s v (MonoType_App f a) = MonoType_App (fixVariableMapping s v f) (fixVariableMapping s v a)
+fixVariableMapping s v (MonoType_Fam f ms) = MonoType_Fam f (map (fixVariableMapping s v) ms)
 
 
 
 instance (HasGraph m touchable types constraint ci, CompareTypes m (RType ConstraintInfo), IsTouchable m TyVar, Fresh m, Monad m) => CanInteract m TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo where
     --interact :: Bool -> constraint -> constraint -> m (RuleResult [constraint])
-    interact isGiven c1 c2
+    interact _ c1 c2
         | c1 == c2 = return $ Applied [c1]
-    interact isGiven c1@(Constraint_Unify (MonoType_Var _ v1) m1 _) c2@(Constraint_Unify t2@(MonoType_Fam f vs2) m2 _)
+    interact _ c1@(Constraint_Unify (MonoType_Var _ v1) m1 _) c2@(Constraint_Unify t2@(MonoType_Fam f vs2) m2 _)
         | isFamilyFree m1, all isFamilyFree vs2, v1 `elem` (fvToList t2 :: [TyVar]) || v1 `elem` (fvToList m2 :: [TyVar]), isFamilyFree m2 =
                 return $ Applied [c1, Constraint_Unify (subst v1 m1 t2) (subst v1 m1 m2) Nothing]
-    interact isGiven c1@(Constraint_Unify mv1@(MonoType_Var _ v1) m1 _) c2@(Constraint_Unify mv2@(MonoType_Var _ v2) m2 _) 
+    interact _ c1@(Constraint_Unify mv1@(MonoType_Var _ v1) m1 _) c2@(Constraint_Unify mv2@(MonoType_Var _ v2) m2 _) 
         | v1 == v2, isFamilyFree m1, isFamilyFree m2 = do
             ig <- greaterType (MType mv1) (MType m1 :: RType ConstraintInfo)
             if ig then 
@@ -174,16 +174,19 @@ instance (HasGraph m touchable types constraint ci, CompareTypes m (RType Constr
                 return NotApplicable
             else
                 return $ Applied [c1, Constraint_Unify (var v2) (subst v1 m1 m2) Nothing]
-    interact isGiven c1@(Constraint_Unify mv1@(MonoType_Var _ v1) m1 _) c2@(Constraint_Class n ms2 _)
+    interact _ c1@(Constraint_Unify mv1@(MonoType_Var _ v1) m1 _) c2@(Constraint_Class n ms2 _)
         | v1 `elem` (fvToList ms2 :: [TyVar]), all isFamilyFree ms2 = do 
             ig <- greaterType (MType mv1) (MType m1 :: RType ConstraintInfo)
             if ig then 
                 return NotApplicable
             else
                 return $ Applied [c1, Constraint_Class n (substs [(v1, m1)] ms2) Nothing]
-    interact isGiven c1@(Constraint_Class _ _ _) c2@(Constraint_Class _ _ _) 
+    interact _ c1@(Constraint_Unify (MonoType_Fam f1 vs1) m1 _) (Constraint_Unify (MonoType_Fam f2 vs2) m2 _)
+        | f1 == f2, vs1 == vs2, isFamilyFree m1, isFamilyFree m2, all isFamilyFree vs1, all isFamilyFree vs2 
+            = return $ Applied [c1, Constraint_Unify m1 m2 Nothing]
+    interact _ c1@Constraint_Class {} c2@Constraint_Class{}
         | c1 == c2 = return $ Applied [c1]
-    interact isGiven c1 c2 = return NotApplicable
+    interact _ _ _ = return NotApplicable
 
 instance (CompareTypes m (RType ConstraintInfo), HasAxioms m (Axiom ConstraintInfo), Fresh m) => CanSimplify m TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo where
     simplify c1@(Constraint_Unify mv1@(MonoType_Var _ v1) m1 _) c2@(Constraint_Unify mv2@(MonoType_Var _ v2) m2 _) 
@@ -220,6 +223,9 @@ instance (CompareTypes m (RType ConstraintInfo), HasAxioms m (Axiom ConstraintIn
                 return NotApplicable
             else
                 return $ Applied [subst v1 m1 c2]
+    simplify (Constraint_Unify (MonoType_Fam f1 vs1) m1 _) (Constraint_Unify (MonoType_Fam f2 vs2) m2 _)
+        | f1 == f2, vs1 == vs2, all isFamilyFree vs1, all isFamilyFree vs2, isFamilyFree m1, isFamilyFree m2
+            = return $ Applied [Constraint_Unify m1 m2 Nothing]
     simplify c1 c2 = return NotApplicable
 
 loopAxioms :: Monad m => (Axiom ConstraintInfo -> m (RuleResult a)) -> [Axiom ConstraintInfo] -> m (RuleResult a)
