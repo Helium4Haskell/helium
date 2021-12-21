@@ -197,6 +197,7 @@ optionDescription moreOptions experimentalOptions =
       , Option "" [flag NoOverloadingTypeCheck]         (NoArg NoOverloadingTypeCheck)  "disable overloading errors (experimental)"
       , Option "" [flag NoPrelude]                      (NoArg NoPrelude)  "do not import the prelude (experimental)"
       , Option "" [flag GADTs]                          (NoArg GADTs) "allows the usage of GADTs"
+      , Option "" [flag OutsideInX]                     (NoArg OutsideInX) "allows inference using Rhodium"
       ]
 
 

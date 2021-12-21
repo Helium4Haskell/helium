@@ -1,5 +1,6 @@
 {-# LANGUAGE FlexibleInstances, MultiParamTypeClasses, FlexibleContexts, UndecidableInstances  #-}
 {-# OPTIONS_GHC -Wno-orphans #-}
+{-# OPTIONS_GHC -Wno-incomplete-patterns #-}
 module Helium.StaticAnalysis.Inferencers.OutsideInX.Rhodium.RhodiumErrors where
 
 import Unbound.Generics.LocallyNameless
@@ -39,12 +40,12 @@ instance HasConstraintInfo (Constraint ConstraintInfo) ConstraintInfo where
     getConstraintInfo (Constraint_Class _ _ ci) = ci
     getConstraintInfo c = error ("No constraint info for " ++ show c)
     setConstraintInfo ci (Constraint_Unify m1 m2 _) = Constraint_Unify m1 m2 (Just ci)
-    
+
 
 instance (MonadFail m, CompareTypes m (RType ConstraintInfo), Fresh m, HasTypeGraph m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo) => TypeErrorInfo m (Constraint ConstraintInfo) ConstraintInfo where
     createTypeError edge li constraint ci = maybe nError (return . const ci) (errorMessage ci)
         where
-            nError 
+            nError
                 | li == labelIncorrectConstructors && isJust (maybeUnreachablePattern ci) =
                     do
                         let Just (expected, function) = maybeUnreachablePattern ci
@@ -53,7 +54,7 @@ instance (MonadFail m, CompareTypes m (RType ConstraintInfo), Fresh m, HasTypeGr
                             errorMessage = Just $ makeUnreachablePatternError (fst $ sources ci) tsLoc expected function (maybePossibleTypeSignature ci)
                         }
                         --error $ show (expected, function)
-                | li == labelIncorrectConstructors || li == labelInfiniteType || isTypeError ci || isTooManyFBArgs ci = 
+                | li == labelIncorrectConstructors || li == labelInfiniteType || isTypeError ci || isTooManyFBArgs ci =
                     do
                         te <- makeUnificationTypeError edge constraint ci
                         return ci{
@@ -67,13 +68,13 @@ instance (MonadFail m, CompareTypes m (RType ConstraintInfo), Fresh m, HasTypeGr
                                 MType m1' <- getSubstTypeFull (getGroupFromEdge edge) mmtype
                                 let Just (cn, m) = maybeMissingConcreteInstance ci
                                 let [MType m1'', PType p2', MType m'] = freshenRepresentation [MType m1', PType p2, MType m]
-                              
+
                                     source = fst (sources ci)
                                     extra  = (m1'', Just p2')
                                 return ci{
                                             errorMessage = Just $ makeReductionError source Nothing extra axioms (cn, m)
                                         }
-                | li == labelResidual && isJust (maybeAmbigiousClass ci) = 
+                | li == labelResidual && isJust (maybeAmbigiousClass ci) =
                         case constraint of
                             Constraint_Inst m1 p2 _ -> do
                                 let Just cc = maybeAmbigiousClass ci
@@ -88,7 +89,6 @@ instance (MonadFail m, CompareTypes m (RType ConstraintInfo), Fresh m, HasTypeGr
                         case constraint of
                             Constraint_Inst m1 p2 _ -> do
                                 let Just (m, cc) = maybeAddConstraintToTypeSignature ci
-                                graph <- getGraph
                                 case m of
                                     Nothing -> do
                                         axioms <- getAxioms
@@ -104,17 +104,12 @@ instance (MonadFail m, CompareTypes m (RType ConstraintInfo), Fresh m, HasTypeGr
                                         let extra = (fb'', Nothing)
                                         return ci{
                                             errorMessage = Just $ makeReductionError source (Just $ fst (sources ci)) extra axioms (nc, mt'')
-                                        } 
+                                        }
                                     Just (cts, eid, cits) -> do
-                                        let err    = error $ "unknown type signature location in " ++ show cits
                                         let range   = fromMaybe (rangeOfSource $ fst $ sources ci) (maybeTypeSignatureLocation ci)
                                         let mSource = if isExprTyped ci then Nothing else Just (fst $ sources ci)
-                                        MType m1' <- getSubstTypeFull (getGroupFromEdge edge) (MType m1)
+                                        -- MType m1' <- getSubstTypeFull (getGroupFromEdge edge) (MType m1)
                                         PType p2' <- getSubstTypeFull (getGroupFromEdge edge) (PType p2)
-                                        let source = fst (sources ci)
-                                        let extra = (m1', Just p2')
-                                        let Constraint_Class nc [mt] _ = cc
-                                        axioms <- getAxioms
                                         let Just usages = maybeClassUsages ci
                                         let mGadtTs = if isGADTTypeSignature ci then maybeTypeSignatureLocation cits else Nothing
                                         return ci{
@@ -128,27 +123,26 @@ instance (MonadFail m, CompareTypes m (RType ConstraintInfo), Fresh m, HasTypeGr
                 | li == labelResidual && isJust (maybeEscapingExistentital ci) = do
                         let Just (mmt, cons) = maybeEscapingExistentital ci
                         mmt' <- either (return . Left) (\mt -> (\m -> Right (mt, fromMType m)) <$> getSubstTypeFull (getGroupFromEdge edge) (MType mt)) mmt
-                        
+
                         let source = fst $ sources ci
                         let Constraint_Unify m1 _ _ = constraint
                         MType m1' <- getSubstTypeFull (getGroupFromEdge edge) $ MType m1
                         err <- makeEscapingVariable source cons mmt' m1'
-                        
+
                         return ci{
                             errorMessage = Just err
                         }
-                | li == labelResidual = 
+                | li == labelResidual =
                         case constraint of
                             Constraint_Inst m1 m2 _ -> do
                                 MType scheme1 <- getSubstTypeFull (getGroupFromEdge edge) (MType m1) >>= getSubstTypeFull (getGroupFromEdge edge)
                                 --PType scheme2 <- getSubstType (PType m2)
-                                graph <- getGraph
                                 let [MType scheme1', PType m2'] = freshenRepresentation [MType scheme1, PType m2]
-                                let 
+                                let
                                     range   = fromMaybe err (maybeTypeSignatureLocation ci)
                                     source  = uncurry fromMaybe (sources ci)
                                     err     = noRange -- error "unknown original type scheme"
-                                    
+
                                     te = makeNotGeneralEnoughTypeError (isExprTyped ci) range source scheme1' m2'
                                 return ci{
                                     errorMessage = Just te
@@ -156,15 +150,15 @@ instance (MonadFail m, CompareTypes m (RType ConstraintInfo), Fresh m, HasTypeGr
                             c -> return ci{
                                     errorMessage = Just $ TypeError [] [MessageOneLiner (MessageString ("Unknown residual constraint: " ++ show c))] [] []
                                 }
-                | isPrefixOf "Touchable touched:" (show li)   =
+                | "Touchable touched:" `isPrefixOf` show li   =
                     return ci{
                             errorMessage = Just $ TypeError [] [MessageOneLiner (MessageString ("Unknown residual constraint: " ++ show constraint))] [] []
                             }
                 | otherwise = error ("Unknown error label: " ++ show li)
 
-makeEscapingVariable :: Monad m => UHA_Source -> (Constraint ConstraintInfo) -> Either MonoType (MonoType, MonoType) -> MonoType -> m TypeError
+makeEscapingVariable :: Monad m => UHA_Source -> Constraint ConstraintInfo -> Either MonoType (MonoType, MonoType) -> MonoType -> m TypeError
 makeEscapingVariable source patternConstraint mt unif = do
-    
+
         let
             range = rangeOfSource source
             oneliner = MessageOneLiner (MessageString ("Cannot unify variable in " ++ descriptionOfSource source))
@@ -175,16 +169,16 @@ makeEscapingVariable source patternConstraint mt unif = do
         let
             table = (descriptionOfSource source <:> MessageOneLineTree (oneLinerSource source)) :
                 case mt of
-                    Left m -> let 
+                    Left m -> let
                             [MType m', PType constructor'] = freshenRepresentation [MType m, PType constructor]
-                        
+
                         in [
                             "type"  >:> MessageMonoType m'
                         ,   "constructor" >:> MessagePolyType constructor'
                         ,   "defined at" >:> MessageRange constructorTs
                         , "hint" <:> MessageString ("The type in the constructor represents an existential type, which cannot be used as a universal type in the expression")
                         ]
-                    Right (me, mt) -> let 
+                    Right (me, mt) -> let
                             [MType me', MType mt', PType constructor'] = freshenRepresentation [MType me, MType unif, PType constructor]
                         in [
                             "existential type"  >:> MessageMonoType me'
@@ -195,8 +189,8 @@ makeEscapingVariable source patternConstraint mt unif = do
         return $ TypeError [range] [oneliner] table []
 
 makeUnreachablePatternError :: UHA_Source -> Range -> MonoType -> MonoType -> Maybe (PolyType ConstraintInfo) -> TypeError
-makeUnreachablePatternError source functionRange expected inferred possibleTS= 
-    let 
+makeUnreachablePatternError source functionRange expected inferred possibleTS=
+    let
         (expected', inferred', possibleTS') = case possibleTS of
             Nothing -> let [MType e', MType i'] = freshenRepresentation [MType expected, MType inferred :: RType ConstraintInfo] in (e', i', Nothing)
             Just ts -> let [MType e', MType i', PType ts'] = freshenRepresentation [MType expected, MType inferred, PType ts] in (e', i', Just ts')
@@ -209,7 +203,7 @@ makeUnreachablePatternError source functionRange expected inferred possibleTS=
                 ,   "inferred type of pattern" >:> MessageMonoType inferred'
             ]
         hints = ("hint", MessageString "change the type signature, remove the branch or change the branch")
-                :  
+                :
                 [
                     ("possible type signature", MessageString (show ps)) | Just ps <- [possibleTS']
                 ]
@@ -217,7 +211,7 @@ makeUnreachablePatternError source functionRange expected inferred possibleTS=
 
 makeNotGeneralEnoughTypeError :: Bool -> Range -> UHA_Source -> MonoType -> PolyType ConstraintInfo -> TypeError
 makeNotGeneralEnoughTypeError isAnnotation range source tpscheme1 tpscheme2 =
-    let 
+    let
         ts1      = tpscheme1
         ts2      = tpscheme2
         special  = if isAnnotation then "Type annotation" else "Type signature"
@@ -227,7 +221,7 @@ makeNotGeneralEnoughTypeError isAnnotation range source tpscheme1 tpscheme2 =
                     , "declared type" >:> MessagePolyType ts2
                     , "inferred type" >:> MessageMonoType ts1
                     ]
-        hints    = [ ("hint", MessageString "try removing the type signature") | not (null (fvToList ts1 :: [TyVar])) ] 
+        hints    = [ ("hint", MessageString "try removing the type signature") | not (null (fvToList ts1 :: [TyVar])) ]
     in TypeError [range] [oneliner] table hints
 
 
@@ -246,15 +240,14 @@ makeUnificationTypeError edge constraint info =
             Just ps -> PType ps
     msgtp1   <- getSubstTypeFull (getGroupFromEdge edge) t1'
     msgtp2   <- getSubstTypeFull  (getGroupFromEdge edge) t2
-    graph <- getGraph
     let [msgtp2', msgtp1'] = freshenRepresentation [msgtp2, msgtp1]
-    let (reason1, reason2)   
+    let (reason1, reason2)
             | isTooManyFBArgs info                   = ("declared type", "inferred type")
             | isFolkloreConstraint info               = ("type"         , "expected type")
             | otherwise                                = ("type"         , "does not match")
-        table = [ s <:> MessageOneLineTree (oneLinerSource source') | (s, source') <- convertSources (sources info)] 
+        table = [ s <:> MessageOneLineTree (oneLinerSource source') | (s, source') <- convertSources (sources info)]
                 ++
-                [ 
+                [
                     reason1 >:> case msgtp2' of
                         MType m -> MessageMonoType m
                         PType p -> MessagePolyType p
@@ -270,15 +263,15 @@ makeReductionError source usage extra axioms (className, predicateTp) =
     let location = "function"
         message  = [ MessageOneLiner $ MessageString $ "Type error in overloaded " ++ location ]
         (predicateTp', extra')   = case extra of
-            (scheme, Just tp) ->  
+            (scheme, Just tp) ->
                 let [MType scheme', PType tp', MType predicateTp'] = freshenRepresentation [MType scheme, PType tp, MType predicateTp] in
                         (predicateTp', (scheme', Just tp'))
             (scheme, Nothing) ->
                 let [MType scheme', MType predicateTp'] = freshenRepresentation [MType scheme :: RType ConstraintInfo, MType predicateTp] in
                     (predicateTp', (scheme', Nothing))
-        tab1     = case extra' of 
+        tab1     = case extra' of
                         (scheme, Just tp) -> -- overloaded function
-                           
+
                             [ "function" <:> MessageOneLineTree (oneLinerSource source)
                             , "type"     >:> MessagePolyType tp
                             , "used as"  >:> MessageMonoType scheme
@@ -287,7 +280,7 @@ makeReductionError source usage extra axioms (className, predicateTp) =
                             [
                                     "function" <:> MessageOneLineTree (oneLinerSource source)
                                 ,   "inferred type"  >:> MessageMonoType scheme
-                                    
+
                             ] ++ maybe [] (\u -> ["arising from" >:> MessageOneLineTree (oneLinerSource u)]) usage
         tab2     =  [ "problem"  <:> MessageCompose [ MessageMonoType predicateTp'
                                                     , MessageString (" is not an instance of class "++className)
@@ -297,37 +290,37 @@ makeReductionError source usage extra axioms (className, predicateTp) =
         Just _ -> ("hint", MessageString hint)
         Nothing -> ("hint", MessageString "add a type signature to the function")
         ]
-    where  
+    where
         hint :: String
         hint = case valids of
                     []  -> "there are no valid instances of "++className
                     [x] -> "valid instance of "++className++" is "++show x
                     _   -> "valid instances of "++className++" are "++prettyAndList (nub valids)
-                
+
         valids :: [String]
-        valids = let    
+        valids = let
                         tps              = mapMaybe (instances className) axioms
                         (tuples, others) =  let     p (MonoType_Con s) = isTupleConstructor s
                                                     p _        = False
                                             in partition (p . fst . leftSpine) tps
                     in if length tuples > 4 -- magic number!
-                        then map (show) others ++ ["tuples"]
-                        else map (show) tps
+                        then map show others ++ ["tuples"]
+                        else map show tps
 
         instances :: String -> Axiom ConstraintInfo -> Maybe MonoType
         instances s (Axiom_Class b) = let (vars, (cond, cn, [mt])) = runFreshM $ unbind b
-                                        in  if s == cn then 
+                                        in  if s == cn then
                                                 Just mt
                                             else
-                                                Nothing 
+                                                Nothing
         instances s _ = Nothing
-                    
+
 makeMissingConstraintTypeError :: ConstraintInfo -> Range -> Maybe UHA_Source -> PolyType ConstraintInfo -> (Bool, Constraint ConstraintInfo) -> [UHA_Source] -> Maybe Range -> TypeError
 makeMissingConstraintTypeError ci range mSource scheme (original, Constraint_Class n [ms] _) arisingFrom gadtTypeSig =
 
     let special  = if isJust mSource then "signature" else "annotation"
         gadtCons = [PType m | Just (Just (Constraint_Inst _ m _,_, _), _) <- [maybeAddConstraintToTypeSignature ci]] :: [RType ConstraintInfo]
-        
+
         [PType scheme', MType ms'] = take 2 $ freshenRepresentation ([PType scheme :: RType ConstraintInfo, MType ms] ++ gadtCons)
         oneliner = MessageOneLiner (MessageString ("Missing class constraint in type "++special))
         gadtHint = maybe "" (\ts -> " from the GADT constructor, defined at " ++ show ts) gadtTypeSig
@@ -344,7 +337,7 @@ makeUnresolvedOverloadingError source (Constraint_Class description _ _) (functi
         table   = [ "function" <:> MessageOneLineTree (oneLinerSource source)
                     , "type"     >:> MessagePolyType functionType
                     , "used as"  >:> MessageMonoType usedAsType
-                    , "hint"     <:> MessageString ( "write an explicit type for this function" ++ 
+                    , "hint"     <:> MessageString ( "write an explicit type for this function" ++
                                 "\n   e.g. (show :: [Int] -> String)")
                     ]
     in TypeError [rangeOfSource source] message table []

@@ -39,7 +39,7 @@ phaseTypeInferencer basedir fullName module_ localEnv completeEnv options =
                         then filter (/= NoSpreading) . ([TreeWalkInorderTopFirstPre, SolverGreedy]++)  
                         else id)
                    $ options
-      let outsideInResult = if OutsideInX `elem` options then   
+      let outsideInResult = if True || OutsideInX `elem` options then   
                Just $ typeInferencingIOX newOptions completeEnv module_
             else
                Nothing
@@ -54,7 +54,7 @@ phaseTypeInferencer basedir fullName module_ localEnv completeEnv options =
      
       -- display name information
       showInformation True options finalEnv
-      when (VerifyOutsideInResult `elem` options) 
+      when (True || VerifyOutsideInResult `elem` options) 
          (
             do
                let err = internalError "PhaseTyperInferencer" "phaseTypeInferencer" "Flag VerifyOutsideInResult used without OutsideInX flag present"

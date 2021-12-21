@@ -8,20 +8,16 @@
     In a doubly linked, every node has access to its parent and its children. 
 	At each node, extra information (attributes) can be stored.
 -}
-{-# LANGUAGE DeriveGeneric #-}
-
 module Helium.StaticAnalysis.Miscellaneous.DoublyLinkedTree where
 
 import Helium.Utils.Utils (internalError)
-import GHC.Generics
-import Unbound.Generics.LocallyNameless
 
 data DoublyLinkedTree attributes = 
      DoublyLinkedTree { parent    :: Maybe (DoublyLinkedTree attributes)
                       , attribute :: attributes
                       , children  :: [DoublyLinkedTree attributes]
                       }
-         deriving (Eq, Show, Generic)
+         deriving (Eq, Show)
                       
 root :: a -> [DoublyLinkedTree a] -> DoublyLinkedTree a
 root = DoublyLinkedTree Nothing

@@ -114,11 +114,11 @@ instance (CompareTypes m (RType ConstraintInfo), IsTouchable m TyVar, HasAxioms 
                         (MonoType_Fam f1 ts1, MonoType_Fam f2 ts2)   
                             | f1 == f2, isInjective axs f1, length ts1 == length ts2 -> return $ Applied ([], [], zipWith (\t1 t2 -> Constraint_Unify t1 t2 Nothing) ts1 ts2)
                             | f1 == f2, isInjective axs f1, length ts1 /= length ts2 -> return $ Error $ ErrorLabel $ "Different Number of arguments for " ++ show ts1 ++ " and " ++ show ts2
-                            | f1 == f2, length ts1 == 0 && length ts2 == 0 -> return $ Applied ([], [], [])
+                            | f1 == f2, null ts1 && null ts2 -> return $ Applied ([], [], [])
                             | f1 == f2, length ts1 == length ts2 -> return NotApplicable  
                             | otherwise -> return NotApplicable
                         (MonoType_Fam f ts, _)
-                            | any (not . isFamilyFree) ts -> 
+                            | (not . all isFamilyFree) ts -> 
                                 do
                                     (ts2, cons, vars) <- unfamilys ts
                                     return (Applied (vars, [], Constraint_Unify (MonoType_Fam f ts2) m2 Nothing : cons))
@@ -127,10 +127,10 @@ instance (CompareTypes m (RType ConstraintInfo), IsTouchable m TyVar, HasAxioms 
                             | otherwise -> return NotApplicable
                 canon' _ (Constraint_Inst m (PolyType_Mono cs pm) _) = return $ Applied ([], [], Constraint_Unify m pm Nothing : cs)
                 canon' _ (Constraint_Inst m p ci) = do 
-                    (vs, c,t) <- instantiate p True
-                    return $ Applied (vs, [], Constraint_Unify m t ci : c)
-                canon' _ (Constraint_Class _ _ _) = return NotApplicable
-                canon' _ c = error $ "Unknown canon constraint: " ++ show c
+                    (vs, cci ,t) <- instantiate p True
+                    return $ Applied (vs, [], Constraint_Unify m t ci : cci)
+                canon' _ Constraint_Class{} = return NotApplicable
+                canon' _ cci = error $ "Unknown canon constraint: " ++ show cci
 
 
 instantiate :: Fresh m => PolyType ConstraintInfo -> Bool -> m ([TyVar], [Constraint ConstraintInfo], MonoType)
@@ -182,7 +182,7 @@ instance (HasGraph m touchable types constraint ci, CompareTypes m (RType Constr
             else
                 return $ Applied [c1, Constraint_Class n (substs [(v1, m1)] ms2) Nothing]
     interact _ c1@(Constraint_Unify (MonoType_Fam f1 vs1) m1 _) (Constraint_Unify (MonoType_Fam f2 vs2) m2 _)
-        | f1 == f2, vs1 == vs2, isFamilyFree m1, isFamilyFree m2, all isFamilyFree vs1, all isFamilyFree vs2 
+        | f1 == f2, vs1 == vs2, isFamilyFree m1, isFamilyFree m2
             = return $ Applied [c1, Constraint_Unify m1 m2 Nothing]
     interact _ c1@Constraint_Class {} c2@Constraint_Class{}
         | c1 == c2 = return $ Applied [c1]
@@ -224,7 +224,7 @@ instance (CompareTypes m (RType ConstraintInfo), HasAxioms m (Axiom ConstraintIn
             else
                 return $ Applied [subst v1 m1 c2]
     simplify (Constraint_Unify (MonoType_Fam f1 vs1) m1 _) (Constraint_Unify (MonoType_Fam f2 vs2) m2 _)
-        | f1 == f2, vs1 == vs2, all isFamilyFree vs1, all isFamilyFree vs2, isFamilyFree m1, isFamilyFree m2
+        | f1 == f2, vs1 == vs2, isFamilyFree m1, isFamilyFree m2
             = return $ Applied [Constraint_Unify m1 m2 Nothing]
     simplify c1 c2 = return NotApplicable
 
