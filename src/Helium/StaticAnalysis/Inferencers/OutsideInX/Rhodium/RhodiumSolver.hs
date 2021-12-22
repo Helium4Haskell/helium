@@ -35,7 +35,8 @@ rhodiumSolve axioms given wanted touchables = contFreshM (runTG (solve (solveOpt
 solveOU :: Sibblings -> [Axiom ConstraintInfo] -> [Constraint ConstraintInfo] -> [Constraint ConstraintInfo] -> [TyVar] -> FreshM (SolveResult TyVar MonoType (Constraint ConstraintInfo) ConstraintInfo)
 solveOU sibblings axioms given wanted tchs = 
     -- trace (unlines $ map (\e -> show (e, getConstraintInfo e)) wanted) $ traceShow (given, tchs) $ let
-    -- in 
+    -- in
+    traceShow (given, tchs) $
       do      
         rf <- runTG (solve (solveOptions sibblings) axioms (nub given) (nub wanted) (nub tchs))
         return SolveResult{

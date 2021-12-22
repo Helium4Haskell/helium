@@ -483,7 +483,7 @@ tupleHeuristic = SingleVoting "Tuple heuristics" f
 fbHasTooManyArguments :: Fresh m => VotingHeuristic m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo
 fbHasTooManyArguments = SingleVoting "Function binding heuristics" f
    where
-      f (constraint, eid, info, gm)   
+      f (constraint, eid, info, _)   
          | not (isExplicitlyTyped info) = return Nothing
          | otherwise                    =  
             case constraint of

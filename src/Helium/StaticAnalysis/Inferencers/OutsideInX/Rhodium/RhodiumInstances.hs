@@ -8,6 +8,7 @@
 {-# LANGUAGE UndecidableInstances #-}
 {-# LANGUAGE MonoLocalBinds #-}
 {-# OPTIONS_GHC -Wno-orphans #-}
+{-# OPTIONS_GHC -Wno-incomplete-patterns #-}
 module Helium.StaticAnalysis.Inferencers.OutsideInX.Rhodium.RhodiumInstances where
 
 import Control.Monad.Trans.State
@@ -223,6 +224,9 @@ instance (CompareTypes m (RType ConstraintInfo), HasAxioms m (Axiom ConstraintIn
                 return NotApplicable
             else
                 return $ Applied [subst v1 m1 c2]
+    simplify (Constraint_Unify mv@(MonoType_Var _ v) m1 _) (Constraint_Unify mf@(MonoType_Fam _ vs) m2 _)
+        | isFamilyFree m1, isFamilyFree m2, all isFamilyFree vs, v `elem` (fvToList mf :: [TyVar]) || v `elem` (fvToList m2 :: [TyVar])
+            = return $ Applied [Constraint_Unify (subst v m1 mf) (subst v m1 m2) Nothing]
     simplify (Constraint_Unify (MonoType_Fam f1 vs1) m1 _) (Constraint_Unify (MonoType_Fam f2 vs2) m2 _)
         | f1 == f2, vs1 == vs2, isFamilyFree m1, isFamilyFree m2
             = return $ Applied [Constraint_Unify m1 m2 Nothing]
@@ -288,7 +292,7 @@ convertSubstitution = map (\(t, MType m) -> (t, m))
 instance (IsTouchable m TyVar, Monad m, UniqueEdge m, UniqueVertex m, UniqueGroup m, Fresh m, HasGraph m TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo) => CanConvertType m TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo where
     convertType isOriginal groups priority (MType m) = do 
             mv <- getVertexFromGraph (MType m)
-            g <- getGraph
+            --g <- getGraph
             if isJust mv then
                 return (emptyTGGraph, fromJust mv)
             else
