@@ -128,7 +128,7 @@ DATA Declaration                                  {- *** -}
         range                    : Range
         context                  : ContextItems -- is a "simple" context
         simpletype               : SimpleType   -- Haskell 98 allows only one variable
-        where                    : MaybeDeclarations -- cannot have everything
+        where                    : MaybeDeclarations -- cannot have everything (only TypeFam or FunctionBindings)
     | Instance
         range                    : Range
         context                  : ContextItems -- is a "simple" context
@@ -176,7 +176,8 @@ DATA MaybeInjectivity
 
 DATA Injectivity
     | Injectivity
-        resname                  : Name -- name of the result type
+        declresname              : Name -- name of the result type
+        resname                  : Name
         injnames                 : Names -- names for the injective variables
 
 DATA Fixity

@@ -48,7 +48,9 @@ import Data.List
 import Helium.Utils.Utils ( internalError, minInt, maxInt )
 import Helium.StaticAnalysis.Miscellaneous.TypeConversion
 import Helium.CodeGeneration.DerivingShow
-
+import Helium.StaticAnalysis.Inferencers.OutsideInX.Rhodium.RhodiumTypes
+import Helium.StaticAnalysis.Inferencers.OutsideInX.TopConversion
+import Helium.StaticAnalysis.StaticChecks.TypeFamilies
 import qualified Data.Map as M
 
 import Helium.ModuleSystem.ImportEnvironment

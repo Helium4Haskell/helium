@@ -31,3 +31,5 @@ main = head $ mapPlus1 [1,2,3,4]
 
 mapPlus1 :: [Int] -> [Int]
 mapPlus1 = map (\x -> x + 1)
+
+type family F a b = r | r -> a

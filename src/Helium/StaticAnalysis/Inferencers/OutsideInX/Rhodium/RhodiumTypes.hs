@@ -58,6 +58,8 @@ instance VariableInjection (PolyType ci) where
 instance VariableInjection MonoType where
     var = MonoType_Var Nothing
 
+type MonoTypes = [MonoType]
+
 data MonoType 
     = MonoType_Fam   String [MonoType]
     | MonoType_Var   (Maybe String) TyVar

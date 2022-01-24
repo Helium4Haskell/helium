@@ -36,7 +36,7 @@ solveOU :: Sibblings -> [Axiom ConstraintInfo] -> [Constraint ConstraintInfo] ->
 solveOU sibblings axioms given wanted tchs = 
     -- trace (unlines $ map (\e -> show (e, getConstraintInfo e)) wanted) $ traceShow (given, tchs) $ let
     -- in
-    traceShow (given, tchs) $
+    -- traceShow (given, tchs) $
       do      
         rf <- runTG (solve (solveOptions sibblings) axioms (nub given) (nub wanted) (nub tchs))
         return SolveResult{

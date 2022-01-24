@@ -250,8 +250,8 @@ type ClassMembers' = [(Name, TpScheme, Bool, HasDefault)]
 --In declarations we find both type signatures and function declarations
 filterType :: Declarations -> (Declarations, Declarations) -> (Declarations, Declarations)
 filterType (d@(Declaration_TypeSignature _ _ _):ds) (t, dec) = filterType ds (d:t, dec)
-filterType (d:ds) (t, dec)                                   = filterType ds (t, d:dec)
-filterType []     res                                        = res
+filterType (d@(Declaration_FunctionBindings{}):ds)  (t, dec) = filterType ds (t, d:dec)
+filterType []                                       res      = res
 
 --A type can be declared for multiple function names
 createClassDef1 :: Declaration -> ClassMembers'
@@ -306,10 +306,26 @@ insertClassMembers classMemberEnv valueEnv = M.foldrWithKey insert valueEnv clas
                 typeVariablesMapped = map (\(n, s) -> (fromJust $ find (\tv -> getNameName tv == s) typeVars, TVar n)) typeIndices
                 tpWContext = addContextToType className typeVariablesMapped tp
             in M.insert name tpWContext env
+
+collectAssociatedTypeSynonyms :: MaybeDeclarations -> TypeFamDeclEnvironment
+collectAssociatedTypeSynonyms MaybeDeclarations_Nothing = M.empty
+collectAssociatedTypeSynonyms (MaybeDeclarations_Just decls) = M.fromList $ buildTypeFamEnvsSimple tfdecls
+  where tfdecls = filter isTFdecl decls
+        isTFdecl (Declaration_TypeFam{}) = True
+        isTFsecl _                       = False
+
+buildTypeFamEnvsSimple :: Declarations -> [(Name, (Names, Bool, Bool, Names))]
+buildTypeFamEnvsSimple (Declaration_TypeFam _ (SimpleType_SimpleType _ n tv) MaybeInjectivity_Nothing _:ds)
+  = (n, (tv, False, False, [])) : buildTypeFamEnvsSimple ds
+buildTypeFamEnvsSimple (Declaration_TypeFam _ (SimpleType_SimpleType _ n tv) (MaybeInjectivity_Just (Injectivity_Injectivity _ _ ns)) _:ds)
+  = (n, (tv, True, True, ns)) : buildTypeFamEnvsSimple ds
+buildTypeFamEnvsSimple [] = []
+
 }
 
 ATTR Declarations Declaration [ | | collectTypeClasses  USE { ++ } { [] } : { [(Name, [(Name, TpScheme)])] } ]
 ATTR Body Declarations Declaration [ | | collectClassMemberEnv USE { `M.union` } { M.empty } : {ClassMemberEnvironment} ]
+ATTR Body Declarations Declaration [ | | collectTypeFamilyDecls USE { `M.union` } { M.empty } : {TypeFamDeclEnvironment} ]
 
 SEM Module
     | Module body . classMemberEnv = foldr M.union @body.collectClassMemberEnv (map classMemberEnvironment @lhs.importEnvironments)
@@ -317,6 +333,7 @@ SEM Module
 SEM Declaration
     | Class lhs . collectTypeClasses = [(@simpletype.name, @where.typeSignatures)]
             lhs . collectClassMemberEnv = insertDefaults @simpletype.name @where.functionDefaults $ createClassDef @simpletype.name @where.self @simpletype.typevariables
+            lhs . collectTypeFamilyDecls = M.empty --collectAssociatedTypeSynonyms @where.self
 
 SEM Declarations
     | Cons     lhs . collectTypeClasses = @hd.collectTypeClasses  ++ @tl.collectTypeClasses

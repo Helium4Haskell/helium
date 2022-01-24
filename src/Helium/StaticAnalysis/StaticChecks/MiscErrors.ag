@@ -114,6 +114,8 @@ SEM Declaration
              loc . unused  = filter (`notElem` @type.typevariables)       @simpletype.typevariables
                  . doubles = filter ((>1) . length) . group . sort $      @simpletype.typevariables
                  . undef   = filter (`notElem` @simpletype.typevariables) @type.typevariables
+    | TypeFam
+            lhs . miscerrors = declNoIndenticalVars @self ++ declInjectivityVars @self
 
 SEM MaybeDeclarations
   | Just   lhs . miscerrors = @typeSignatureErrors ++ @declarations.miscerrors

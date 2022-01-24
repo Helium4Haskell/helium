@@ -269,12 +269,12 @@ cdecls =
 injAnn :: HParser Injectivity
 injAnn = do
     lexASG
-    r <- tyvar
+    r1 <- tyvar
     lexBAR
-    _ <- tyvar
+    r2 <- tyvar
     lexRARROW
     injvars <- many tyvar
-    return $ Injectivity_Injectivity r injvars
+    return $ Injectivity_Injectivity r1 r2 injvars
 
 derivings :: HParser [Name]
 derivings = 

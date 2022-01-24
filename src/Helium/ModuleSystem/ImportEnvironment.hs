@@ -31,18 +31,28 @@ import Data.Char
 import Control.Arrow
 
 import qualified Data.Map as M
+import Helium.StaticAnalysis.Inferencers.OutsideInX.Rhodium.RhodiumTypes (MonoType, MonoTypes)
 
 type HasDefault = Bool
 
 data ConstructorType = ConstructorRegular | ConstructorGADT
    deriving (Show, Eq)
 
+-- Part of import environment.
 type TypeEnvironment             = M.Map Name TpScheme
 type ValueConstructorEnvironment = M.Map Name (TpScheme, ConstructorType)
 type TypeConstructorEnvironment  = M.Map Name Int
 type TypeSynonymEnvironment      = M.Map Name (Int, Tps -> Tp)
 type ClassMemberEnvironment      = M.Map Name (Names, [(Name, TpScheme, Bool, HasDefault)])
 type InstanceEnvironment         = M.Map (Name, Tp) (Names, [(String, String)])
+
+type IsInjective = Bool
+type IsClosed = Bool
+
+-- Typefam decl environment holds for every type fam its variable names, if it is injective, if it is closed and its injective arguments.
+type TypeFamDeclEnvironment      = M.Map Name (Names, IsInjective, IsClosed, Names)
+-- Typefam instances are saved per type family (in case it is closed). every (MonoTypes, MonoType) represents a 
+type TypeFamInstanceEnvironment  = M.Map (Name, MonoTypes) MonoType
 
 type ImportEnvironments = [ImportEnvironment]
 data ImportEnvironment  =
@@ -58,6 +68,9 @@ data ImportEnvironment  =
                        , classMemberEnvironment :: ClassMemberEnvironment
                          -- other
                        , instanceEnvironment :: InstanceEnvironment
+                         -- type families
+                       , typeFamDeclEnvironment :: TypeFamDeclEnvironment
+                       , typeFamInstanceEnvironment :: TypeFamInstanceEnvironment 
 
                        , typingStrategies  :: Core_TypingStrategies
                        }
@@ -72,6 +85,8 @@ emptyEnvironment = ImportEnvironment
    , classEnvironment  = emptyClassEnvironment
    , classMemberEnvironment = M.empty
    , instanceEnvironment = M.empty
+   , typeFamDeclEnvironment = M.empty 
+   , typeFamInstanceEnvironment = M.empty 
    , typingStrategies  = []
    }
 
@@ -220,7 +235,7 @@ getDefaultDirectives importEnv = let
     in concatMap convertDefault tps
 
 combineImportEnvironments :: ImportEnvironment -> ImportEnvironment -> ImportEnvironment
-combineImportEnvironments (ImportEnvironment tcs1 tss1 te1 vcs1 ot1 ce1 cm1 ins1 xs1) (ImportEnvironment tcs2 tss2 te2 vcs2 ot2 ce2 cm2 ins2 xs2) =
+combineImportEnvironments (ImportEnvironment tcs1 tss1 te1 vcs1 ot1 ce1 cm1 ins1 tfd1 tfi1 xs1) (ImportEnvironment tcs2 tss2 te2 vcs2 ot2 ce2 cm2 ins2 tfd2 tfi2 xs2) =
     insertMissingInstances $ ImportEnvironment
       (tcs1 `exclusiveUnion` tcs2)
       (tss1 `exclusiveUnion` tss2)
@@ -230,6 +245,8 @@ combineImportEnvironments (ImportEnvironment tcs1 tss1 te1 vcs1 ot1 ce1 cm1 ins1
       (M.unionWith combineClassDecls ce1 ce2)
       (cm1 `exclusiveUnion` cm2)
       (ins1 `exclusiveUnion` ins2)
+      (tfd1 `exclusiveUnion` tfd2)
+      (tfi1 `exclusiveUnion` tfi2)
       (xs1 ++ xs2)
 
 insertMissingInstances :: ImportEnvironment -> ImportEnvironment
@@ -298,7 +315,7 @@ makeInstance className nrOfArgs tp isDict =
 
 -- added for holmes
 holmesShowImpEnv :: Module -> ImportEnvironment -> String
-holmesShowImpEnv module_ (ImportEnvironment _ _ te _ _ _ _ _ _) =
+holmesShowImpEnv module_ (ImportEnvironment _ _ te _ _ _ _ _ _ _ _) =
       concat functions
     where
        localName = getModuleName module_
@@ -307,8 +324,9 @@ holmesShowImpEnv module_ (ImportEnvironment _ _ te _ _ _ _ _ _) =
               list     = map (\(n,_) -> getHolmesName localName n) (ys++xs)
           in map (++ ";") list
 
+-- TODO: extend for assoc type syns and type families!!!!
 instance Show ImportEnvironment where
-   show (ImportEnvironment tcs tss te vcs ot ce cm ins _) =
+   show (ImportEnvironment tcs tss te vcs ot ce cm ins tfd tfi _) =
       unlines (concat [ fixities
                       , datatypes
                       , typesynonyms
