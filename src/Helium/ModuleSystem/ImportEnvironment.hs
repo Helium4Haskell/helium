@@ -51,8 +51,7 @@ type IsClosed = Bool
 
 -- Typefam decl environment holds for every type fam its variable names, if it is injective, if it is closed and its injective arguments.
 type TypeFamDeclEnvironment      = M.Map Name (Names, IsInjective, IsClosed, Names)
--- Typefam instances are saved per type family (in case it is closed). every (MonoTypes, MonoType) represents a 
-type TypeFamInstanceEnvironment  = M.Map (Name, MonoTypes) MonoType
+type TypeFamInstanceEnvironment  = M.Map (Name, MonoTypes) (IsClosed, MonoType)
 
 type ImportEnvironments = [ImportEnvironment]
 data ImportEnvironment  =

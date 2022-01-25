@@ -63,6 +63,8 @@ data Error  = NoFunDef Entity Name {-names in scope-}Names
             | TupleTooBig Range
             | IncorrectConstructorResult Range Name {- Constructor -} TpScheme {- Given result type -} TpScheme {- Expected result type -}
             | MissingGADTOption
+            | DuplicateTypeFamily (Name, Name)
+            | UndefinedTypeFamily Name Names
 
 instance HasMessage Error where
    getMessage x = let (oneliner, hints) = showError x
@@ -106,7 +108,9 @@ instance HasMessage Error where
       CannotDerive name _         -> [getNameRange name]
       TupleTooBig r               -> [r]
       IncorrectConstructorResult r _ _ _ -> [r]
-      MissingGADTOption          -> []
+      MissingGADTOption           -> []
+      DuplicateTypeFamily (n1, n2) -> sortRanges [getNameRange n1, getNameRange n2]
+      UndefinedTypeFamily name _  -> [getNameRange name]
 
 sensiblySimilar :: Name -> Names -> [Name]
 sensiblySimilar name inScope =
@@ -389,6 +393,15 @@ showError anError = case anError of
    MissingGADTOption ->
       (MessageString "GADTs used, but GADTs are not enabled"
       , [MessageString "Enable the option to use GADTs by using --gadts"])
+   DuplicateTypeFamily (n1, _) ->
+      (MessageString ("Found conflicting Type Families with the name " ++ show n1)
+      , [MessageString "Type families have to be uniquely named"])
+   UndefinedTypeFamily name inScope ->
+      ( MessageString ("Trying to instantiate unknown type family " ++ show name ++ ".")
+      , [ MessageString ("Did you mean " ++ prettyOrList (map (show . show) xs) ++ " ?")
+        | let xs = sensiblySimilar name inScope, not (null xs)
+        ]
+      )
 
    _ -> internalError "StaticErrors.hs" "showError" "unknown type of Error"
 
@@ -464,6 +477,8 @@ errorLogCode anError = case anError of
           OverlappingInstance _ _                 -> "oi"
           MissingSuperClass _ _ _                 -> "ms"
           IncorrectConstructorResult _ _ _ _      -> "wc"
+          MissingGADTOption                       -> "mg"
+          DuplicateTypeFamily _                   -> "dtf"
    where code entity = fromMaybe "??"
                      . lookup entity
                      $ [ (TypeSignature    ,"ts"), (TypeVariable         ,"tv"), (TypeConstructor,"tc")

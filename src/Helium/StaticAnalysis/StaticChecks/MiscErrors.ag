@@ -33,12 +33,13 @@ SEM Module
 -- Body
 
 SEM Body
-  | Body   lhs . miscerrors = @typeSignatureErrors ++ @classErrors ++ @declarations.miscerrors ++ @gadtErrors
+  | Body   lhs . miscerrors = @typeSignatureErrors ++ @classErrors ++ @declarations.miscerrors ++ @gadtErrors ++ @typefamErrors
            loc . typeSignatureErrors = checkTypeSignatures @declarations.declVarNames @declarations.restrictedNames @declarations.typeSignatures
            loc . classErrors = checkClass @declarations.collectTypeClasses @declarations.declVarNames @declarations.restrictedNames @declarations.typeSignatures @lhs.importedClassEnv
            lhs . classEnv = @declarations.classEnv
            lhs . instances = @declarations.instances
            loc . gadtErrors = [ MissingGADTOption | GADTs `notElem` @lhs.options, @declarations.hasGADT || (any (==ConstructorGADT) $ map snd $ M.elems $ valueConstructors $ combineImportEnvironmentList @lhs.importEnvironments)]
+           loc . typefamErrors = declCheckDuplicates @declarations.collectTypeFamilyDecls ++ instCheckDeclExists @declarations.collectTypeFamilyDecls @declarations.collectTypeFamilyInstances
 
 
 -----------------------------------------

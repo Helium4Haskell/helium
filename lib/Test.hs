@@ -33,3 +33,12 @@ mapPlus1 :: [Int] -> [Int]
 mapPlus1 = map (\x -> x + 1)
 
 type family F a b = r | r -> a
+
+type family I x
+
+type family G a
+
+class X a where
+    type H a
+
+type instance Z Int = Float
