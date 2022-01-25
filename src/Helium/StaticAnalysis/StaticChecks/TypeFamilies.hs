@@ -61,3 +61,10 @@ instCheckDeclExists ds is = let
   ns = map (\(n, _, _, _) -> n) ds
   
   in [UndefinedTypeFamily n ns | n <- getUndefinedNames]
+
+instSaturationCheck :: DeclInfo -> InstanceInfo -> Errors
+instSaturationCheck ds is = let
+
+  violations = [(n2, length ns, length ts) | (n1, _, ns, _) <- ds, (n2, ts, _) <- is, n1 == n2, length ns /= trace (show $ length ts) (length ts)]
+
+  in [WronglySaturatedTypeFamily n dl tl | (n, dl, tl) <- violations]

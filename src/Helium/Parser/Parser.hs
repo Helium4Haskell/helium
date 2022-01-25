@@ -205,9 +205,9 @@ topdecl = addRange (
             do
               lexINSTANCE
               n <- tycon
-              lhs <- many1 btype
+              lhs <- many1 atype
               lexASG
-              rhst <- btype
+              rhst <- atype
               return $ \r -> Declaration_TypeFamInstance r False n lhs rhst
           )
         <|>
@@ -417,9 +417,9 @@ tfdecl :: HParser Declaration
 tfdecl = addRange $
   do
     n <- tycon
-    lhs <- many btype
+    lhs <- many atype
     lexASG 
-    rhst <- btype
+    rhst <- atype
     return $ \r -> Declaration_TypeFamInstance r True n lhs rhst
 
 -- ASSOCIATED TYPE DECL
@@ -485,9 +485,9 @@ itfdecl = addRange $
   do
     lexTYPE
     n <- tycon
-    lhs <- many1 btype
+    lhs <- many1 atype
     lexASG
-    rhst <- btype
+    rhst <- atype
     return $ \r -> Declaration_TypeFamInstance r False n lhs rhst
   
 

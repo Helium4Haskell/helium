@@ -65,6 +65,7 @@ data Error  = NoFunDef Entity Name {-names in scope-}Names
             | MissingGADTOption
             | DuplicateTypeFamily (Name, Name)
             | UndefinedTypeFamily Name Names
+            | WronglySaturatedTypeFamily Name Int Int
 
 instance HasMessage Error where
    getMessage x = let (oneliner, hints) = showError x
@@ -111,6 +112,7 @@ instance HasMessage Error where
       MissingGADTOption           -> []
       DuplicateTypeFamily (n1, n2) -> sortRanges [getNameRange n1, getNameRange n2]
       UndefinedTypeFamily name _  -> [getNameRange name]
+      WronglySaturatedTypeFamily n _ _ -> [getNameRange n]
 
 sensiblySimilar :: Name -> Names -> [Name]
 sensiblySimilar name inScope =
@@ -402,6 +404,9 @@ showError anError = case anError of
         | let xs = sensiblySimilar name inScope, not (null xs)
         ]
       )
+   WronglySaturatedTypeFamily n dl tl ->
+      ( MessageString ("Instance for type family " ++ show n ++ " has " ++ show tl ++ " arguments but its declaration requires " ++ show dl)
+      , [MessageString "Type family instances may not be over or under saturated"])
 
    _ -> internalError "StaticErrors.hs" "showError" "unknown type of Error"
 

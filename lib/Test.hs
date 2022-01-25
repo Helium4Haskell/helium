@@ -41,4 +41,5 @@ type family G a
 class X a where
     type H a
 
-type instance Z Int = Float
+instance X Int where
+    type H Int Int = Float
