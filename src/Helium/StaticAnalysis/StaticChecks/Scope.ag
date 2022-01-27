@@ -106,6 +106,7 @@ SEM RightHandSide
 SEM Declaration 
   | Class    where . unboundNames = []
   | Instance where . unboundNames = []
+  | TypeFam  where . unboundNames = []
   
 -- correct scope for Statements/Qualifiers
 

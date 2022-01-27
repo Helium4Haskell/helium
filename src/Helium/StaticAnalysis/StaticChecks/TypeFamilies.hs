@@ -68,3 +68,12 @@ instSaturationCheck ds is = let
   violations = [(n2, length ns, length ts) | (n1, _, ns, _) <- ds, (n2, ts, _) <- is, n1 == n2, length ns /= trace (show $ length ts) (length ts)]
 
   in [WronglySaturatedTypeFamily n dl tl | (n, dl, tl) <- violations]
+
+-- CHECKS TODO!!!!!:
+-- Occurscheck of variables
+--
+-- Definition smaller check (For non-injective)
+-- - Injective type fams
+--    - Definition no type family or bare variable check
+--    - Pre-unification
+--    - Basically, the injectivity check from paper.

@@ -373,11 +373,15 @@ buildAssocTypeSynInstances []                                          = []
 }
 
 ATTR Body Declarations Declaration [ | | collectTypeFamilyDecls USE { ++ } { [] } : {[(Name, Bool, Names, Names)]} ]
-ATTR Body Declarations Declaration [ | | collectTypeFamilyInstances USE { ++ } { [] } : {[(Name, Types, Type)]}]
+ATTR Body MaybeDeclarations Declarations Declaration [ | | collectTypeFamilyInstances USE { ++ } { [] } : {[(Name, Types, Type)]}]
+
+SEM MaybeDeclarations
+    | Just lhs.collectTypeFamilyInstances = @declarations.collectTypeFamilyInstances
 
 SEM Declaration
     | Class lhs . collectTypeFamilyDecls = collectAssociatedTypeSynonyms @where.self
     | TypeFam lhs . collectTypeFamilyDecls = collectTypeFamDecls @self : []
+              lhs . collectTypeFamilyInstances = @where.collectTypeFamilyInstances
     | TypeFamInstance lhs . collectTypeFamilyInstances = collectTypeFamInstance @self : []
     | Instance lhs . collectTypeFamilyInstances = collectAssocTypeSynInstances @where.self
 
