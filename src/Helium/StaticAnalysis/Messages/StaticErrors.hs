@@ -19,6 +19,8 @@ import Data.Maybe
 import Helium.Utils.Utils       (commaList, internalError, maxInt)
 
 import Top.Types
+import Helium.StaticAnalysis.Miscellaneous.TypeConversion
+import Helium.StaticAnalysis.Inferencers.OutsideInX.Rhodium.RhodiumTypes (MonoType)
 
 -------------------------------------------------------------
 -- (Static) Errors
@@ -66,6 +68,7 @@ data Error  = NoFunDef Entity Name {-names in scope-}Names
             | DuplicateTypeFamily (Name, Name)
             | UndefinedTypeFamily Name Names
             | WronglySaturatedTypeFamily Name Int Int
+            | WronglyAlignedATS Name Name MonoType MonoType
 
 instance HasMessage Error where
    getMessage x = let (oneliner, hints) = showError x
@@ -113,6 +116,7 @@ instance HasMessage Error where
       DuplicateTypeFamily (n1, n2) -> sortRanges [getNameRange n1, getNameRange n2]
       UndefinedTypeFamily name _  -> [getNameRange name]
       WronglySaturatedTypeFamily n _ _ -> [getNameRange n]
+      WronglyAlignedATS n1 n2 t1 t2   -> sortRanges [getNameRange n1, getNameRange n2]
 
 sensiblySimilar :: Name -> Names -> [Name]
 sensiblySimilar name inScope =
@@ -407,6 +411,10 @@ showError anError = case anError of
    WronglySaturatedTypeFamily n dl tl ->
       ( MessageString ("Instance for type family " ++ show n ++ " has " ++ show tl ++ " arguments but its declaration requires " ++ show dl)
       , [MessageString "Type family instances may not be over or under saturated"])
+   WronglyAlignedATS n1 n2 t1 t2 ->
+      ( MessageString ("The type " ++ show t2 ++ " in associated type synonym instance " 
+                        ++ show n1 ++ " does not align with " ++  show t1 ++ " from the class instance " ++ show n2)
+      , [MessageString "Equal variables in the class declaration and the associated type synonym declaration must be assigned the same type."])
 
    _ -> internalError "StaticErrors.hs" "showError" "unknown type of Error"
 

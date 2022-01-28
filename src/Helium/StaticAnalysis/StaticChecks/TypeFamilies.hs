@@ -1,16 +1,20 @@
 module Helium.StaticAnalysis.StaticChecks.TypeFamilies where
 
 import Helium.Syntax.UHA_Syntax
-import Helium.Syntax.UHA_Syntax (Declaration(Declaration_TypeFam))
 import Helium.StaticAnalysis.Messages.StaticErrors
 import Helium.StaticAnalysis.Messages.Warnings
 import Helium.StaticAnalysis.Messages.Messages
+import Helium.StaticAnalysis.Inferencers.OutsideInX.TopConversion
 import Debug.Trace
 
---------------------------------------
--- Declaration static checks
+
 type DeclInfo = [(Name, Bool, Names, Names)]
 type InstanceInfo = [(Name, Types, Type)]
+
+type ATSDeclInfo = [(Name, Name, [(Int, Int)])]
+type ATSInstanceInfo = [(Name, Name, Types, Types)]
+--------------------------------------
+-- Declaration static checks
 
 -- Checks if a declaration does not have variables with identical names.
 declNoIndenticalVars :: Declaration -> Errors
@@ -46,10 +50,24 @@ declCheckDuplicates tfs = let
   tails (x:xs) = (x:xs) : tails xs
 
   in [DuplicateTypeFamily (n1, n2) | (n1, n2) <- createNamePairs tfs, n1 == n2]
+
 --------------------------------------
 -- Associated Typesynonym check (variable alignment)
-atsCheckVarAlignment :: DeclInfo -> Errors 
-atsCheckVarAlignment = undefined
+atsCheckVarAlignment :: ATSDeclInfo -> ATSInstanceInfo -> Errors 
+atsCheckVarAlignment decls insts = let
+  
+  convertedInsts = [(instn, itfn, map (typeToMonoType []) its, map (typeToMonoType []) tfts) | (instn, itfn, its, tfts) <- insts]
+
+  violations = [(itfn, instn, thrd (its !! ci), thrd (tfts !! tfi)) | 
+                (_, tfdn, idxs) <- decls, -- Get a decl
+                (ci, tfi) <- idxs, -- obtain alignment info
+                (instn, itfn,  its, tfts) <- convertedInsts, -- Get an inst
+                tfdn == itfn, -- instance and decl names must be equal 
+                thrd (its !! ci) /= thrd (tfts !! tfi)] -- Then types at indices must be equal.
+  
+  thrd (_, _, z) = z
+
+  in [WronglyAlignedATS n1 n2 t1 t2 | (n1, n2, t1, t2) <- violations]
 
 --------------------------------------
 -- Instance checks
@@ -65,7 +83,7 @@ instCheckDeclExists ds is = let
 instSaturationCheck :: DeclInfo -> InstanceInfo -> Errors
 instSaturationCheck ds is = let
 
-  violations = [(n2, length ns, length ts) | (n1, _, ns, _) <- ds, (n2, ts, _) <- is, n1 == n2, length ns /= trace (show $ length ts) (length ts)]
+  violations = [(n2, length ns, length ts) | (n1, _, ns, _) <- ds, (n2, ts, _) <- is, n1 == n2, length ns /= length ts]
 
   in [WronglySaturatedTypeFamily n dl tl | (n, dl, tl) <- violations]
 

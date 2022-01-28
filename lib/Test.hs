@@ -39,11 +39,11 @@ type family I x
 type family G a
 
 class X a where
-    type H a b c
+    type H a b
 
 instance X Int where
-    type H Int Int Float = Float
+    type H Float Int = Float
 
 type family J a b where
     J Int Int = Float
-    J Float = Int
+    J Float Float = Int

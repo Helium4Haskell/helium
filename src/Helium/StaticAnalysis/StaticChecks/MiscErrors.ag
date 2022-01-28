@@ -42,6 +42,7 @@ SEM Body
            loc . typefamErrors = declCheckDuplicates @declarations.collectTypeFamilyDecls 
                                  ++ instCheckDeclExists @declarations.collectTypeFamilyDecls @declarations.collectTypeFamilyInstances
                                  ++ instSaturationCheck @declarations.collectTypeFamilyDecls @declarations.collectTypeFamilyInstances
+                                 ++ atsCheckVarAlignment @declarations.collectAssocTypeSynDeclInfo @declarations.collectAssocTypeSynInstanceInfo
 
 
 -----------------------------------------

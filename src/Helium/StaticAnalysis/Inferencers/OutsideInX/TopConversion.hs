@@ -94,7 +94,6 @@ polyTypeToTypeScheme p = let
 importEnvironmentToTypeFamilies :: ImportEnvironment -> TypeFamilies
 importEnvironmentToTypeFamilies = map (\(n, (i, _)) -> (show n, i)) . M.assocs . typeSynonyms
 
-
 tpSchemeListDifference :: M.Map Name TpScheme -> M.Map Name TpScheme -> M.Map Name  ((Tp, String), (Tp, String))
 tpSchemeListDifference m1 m2 = M.map fromJust $ M.filter isJust $ M.intersectionWith eqTpScheme m1 m2
 
