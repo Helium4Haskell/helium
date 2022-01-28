@@ -6,15 +6,32 @@ import Helium.StaticAnalysis.Messages.Warnings
 import Helium.StaticAnalysis.Messages.Messages
 import Helium.StaticAnalysis.Inferencers.OutsideInX.TopConversion
 import Debug.Trace
+import GHC.Conc (disableAllocationLimit)
 
 
-type DeclInfo = [(Name, Bool, Names, Names)]
-type InstanceInfo = [(Name, Types, Type)]
+type TFDeclInfos = [TFDeclInfo]
+data TFDeclInfo
+  = DOpen Name Names (Maybe Names)
+  | DClosed Name Names (Maybe Names)
+  | DAssoc Name Names (Maybe Names) [(Int, Int)]
 
-type ATSDeclInfo = [(Name, Name, [(Int, Int)])]
-type ATSInstanceInfo = [(Name, Name, Types, Types)]
+type TFInstanceInfos = [TFInstanceInfo]
+data TFInstanceInfo
+  = IOpen Name Types Type
+  | IClosed Name Types Type
+  | IAssoc Name Types Type Types Name
+
+obtainDeclNames :: TFDeclInfo -> Name
+obtainDeclNames (DOpen n _ _)    = n
+obtainDeclNames (DClosed n _ _)  = n
+obtainDeclNames (DAssoc n _ _ _) = n
+
+obtainInstanceNames :: TFInstanceInfo -> Name
+obtainInstanceNames (IOpen n _ _)      = n
+obtainInstanceNames (IClosed n _ _)    = n
+obtainInstanceNames (IAssoc n _ _ _ _) = n
 --------------------------------------
--- Declaration static checks
+-- Declaration static checks, SEPARATE CHECKS
 
 -- Checks if a declaration does not have variables with identical names.
 declNoIndenticalVars :: Declaration -> Errors
@@ -25,26 +42,39 @@ declNoIndenticalVars (Declaration_TypeFam _ (SimpleType_SimpleType _ _ tv) _ _) 
 
   tails [] = []
   tails (x:xs) = (x:xs) : tails xs
-  
+
 
   in [Duplicated Variable [n1, n2] | (n1, n2) <- createPairs  tv, n1 == n2]
 declNoIndenticalVars _ = []
 
 -- Check the injectivity variables (both result var and injectively defined vars)
-declInjectivityVars :: Declaration -> Errors 
+declInjectivityVars :: Declaration -> Errors
 declInjectivityVars (Declaration_TypeFam _ _ MaybeInjectivity_Nothing  _)   = []
 declInjectivityVars (Declaration_TypeFam _ (SimpleType_SimpleType _ _ tv) (MaybeInjectivity_Just inj) _) = let
   (Injectivity_Injectivity declres res injargs) = inj
 
   in [Undefined Variable res [declres] ["The result variable in the injectivity annotation is not defined!"] | res /= declres] ++
-     [Undefined Variable x tv [] | x <- injargs, x `notElem` tv] 
+     [Undefined Variable x tv [] | x <- injargs, x `notElem` tv]
 declInjectivityVars _ = []
 
+------------------------------------------------------------------
+checkTypeFamStaticErrors :: TFDeclInfos -> TFInstanceInfos -> Errors
+checkTypeFamStaticErrors dis iis =
+     declCheckDuplicates dis
+  ++ atsCheckVarAlignment dis iis
+  ++ instCheckDeclExists dis iis
+  ++ instSaturationCheck dis iis
+
 -- Check whether duplicate type families exist.
-declCheckDuplicates :: DeclInfo -> Errors 
+declCheckDuplicates :: TFDeclInfos -> Errors
 declCheckDuplicates tfs = let
 
-  createNamePairs xs = [(n1, n2) | ((n1, _, _, _):ys) <- tails xs, (n2, _, _, _) <- ys]
+  obtainNames :: TFDeclInfo -> Name
+  obtainNames (DOpen n _ _) = n
+  obtainNames (DClosed n _ _) = n
+  obtainNames (DAssoc n _ _ _) = n
+
+  createNamePairs xs = [(n1, n2) | (n1:ys) <- tails (map obtainNames xs), n2 <- ys]
 
   tails [] = []
   tails (x:xs) = (x:xs) : tails xs
@@ -53,18 +83,18 @@ declCheckDuplicates tfs = let
 
 --------------------------------------
 -- Associated Typesynonym check (variable alignment)
-atsCheckVarAlignment :: ATSDeclInfo -> ATSInstanceInfo -> Errors 
+atsCheckVarAlignment :: TFDeclInfos -> TFInstanceInfos -> Errors
 atsCheckVarAlignment decls insts = let
-  
-  convertedInsts = [(instn, itfn, map (typeToMonoType []) its, map (typeToMonoType []) tfts) | (instn, itfn, its, tfts) <- insts]
 
-  violations = [(itfn, instn, thrd (its !! ci), thrd (tfts !! tfi)) | 
-                (_, tfdn, idxs) <- decls, -- Get a decl
+  convertedInsts = [(instn, itfn, map (typeToMonoType []) its, map (typeToMonoType []) tfts) | (IAssoc itfn tfts _ its instn) <- insts]
+
+  violations = [(itfn, instn, thrd (its !! ci), thrd (tfts !! tfi)) |
+                (DAssoc tfdn _ _ idxs) <- decls, -- Get a decl
                 (ci, tfi) <- idxs, -- obtain alignment info
                 (instn, itfn,  its, tfts) <- convertedInsts, -- Get an inst
                 tfdn == itfn, -- instance and decl names must be equal 
                 thrd (its !! ci) /= thrd (tfts !! tfi)] -- Then types at indices must be equal.
-  
+
   thrd (_, _, z) = z
 
   in [WronglyAlignedATS n1 n2 t1 t2 | (n1, n2, t1, t2) <- violations]
@@ -72,18 +102,28 @@ atsCheckVarAlignment decls insts = let
 --------------------------------------
 -- Instance checks
 
-instCheckDeclExists :: DeclInfo -> InstanceInfo -> Errors
+instCheckDeclExists :: TFDeclInfos -> TFInstanceInfos -> Errors
 instCheckDeclExists ds is = let
 
-  getUndefinedNames = [n1 | (n1, _, _) <- is, all (\(n2, _, _, _) -> n1 /= n2 ) ds]
-  ns = map (\(n, _, _, _) -> n) ds
-  
+  getUndefinedNames = [n1 | n1 <- map obtainInstanceNames is, notElem n1 $ map obtainDeclNames ds]
+  ns = map obtainDeclNames ds
+
   in [UndefinedTypeFamily n ns | n <- getUndefinedNames]
 
-instSaturationCheck :: DeclInfo -> InstanceInfo -> Errors
+instSaturationCheck :: TFDeclInfos -> TFInstanceInfos -> Errors
 instSaturationCheck ds is = let
 
-  violations = [(n2, length ns, length ts) | (n1, _, ns, _) <- ds, (n2, ts, _) <- is, n1 == n2, length ns /= length ts]
+  getNameArgs :: TFDeclInfo -> (Name, Names)
+  getNameArgs (DOpen n ns _)     = (n, ns)
+  getNameArgs (DClosed n ns _)   = (n, ns)
+  getNameArgs (DAssoc n ns _ _ ) = (n, ns)
+
+  getNameTypes :: TFInstanceInfo -> (Name, Types)
+  getNameTypes (IOpen n ts _)    = (n, ts)
+  getNameTypes (IClosed n ts _ ) = (n, ts)
+  getNameTypes (IAssoc n ts _ _ _) = (n, ts)
+
+  violations = [(n2, length ns, length ts) | (n1, ns) <- map getNameArgs ds, (n2, ts) <- map getNameTypes is, n1 == n2, length ns /= length ts]
 
   in [WronglySaturatedTypeFamily n dl tl | (n, dl, tl) <- violations]
 

@@ -333,10 +333,9 @@ SEM ContextItem
 -- Collecting Type Family decls and instances
 
 {
-collectAssociatedTypeSynonyms :: MaybeDeclarations -> [(Name, Bool, Names, Names)]
-collectAssociatedTypeSynonyms MaybeDeclarations_Nothing = []
-collectAssociatedTypeSynonyms (MaybeDeclarations_Just decls) = buildTypeFamEnvsSimple $ collectTFDecls decls
+type Dummy = Int
 
+-- Filter TF decls from others
 collectTFDecls :: Declarations -> Declarations
 collectTFDecls = filter isTFdecl
   where isTFdecl (Declaration_TypeFam{}) = True
@@ -347,79 +346,68 @@ collectTFInstances = filter isTFinstance
   where isTFinstance (Declaration_TypeFamInstance{}) = True
         isTFinstance _                               = False
 
-buildTypeFamEnvsSimple :: Declarations -> [(Name, Bool, Names, Names)]
-buildTypeFamEnvsSimple (Declaration_TypeFam _ (SimpleType_SimpleType _ n tv) MaybeInjectivity_Nothing _:ds)
-  = (n, False, tv, []) : buildTypeFamEnvsSimple ds
-buildTypeFamEnvsSimple (Declaration_TypeFam _ (SimpleType_SimpleType _ n tv) (MaybeInjectivity_Just (Injectivity_Injectivity _ _ ns)) _:ds)
-  = (n, False, tv, ns) : buildTypeFamEnvsSimple ds
-buildTypeFamEnvsSimple [] = []
-
-
-collectTypeFamDecls :: Declaration -> (Name, Bool, Names, Names)
+-- Collecting normal type fams decls and instances
+collectTypeFamDecls :: Declaration -> TFDeclInfo
 collectTypeFamDecls (Declaration_TypeFam _ (SimpleType_SimpleType _ n tv) MaybeInjectivity_Nothing MaybeDeclarations_Nothing)
-  = (n, False, tv, [])
+  = DOpen n tv Nothing
 collectTypeFamDecls (Declaration_TypeFam _ (SimpleType_SimpleType _ n tv) (MaybeInjectivity_Just inj) MaybeDeclarations_Nothing)
-  = let (Injectivity_Injectivity _ _ ns) = inj in (n, False, tv, ns)
+  = let (Injectivity_Injectivity _ _ ns) = inj in DOpen n tv (Just ns)
 collectTypeFamDecls (Declaration_TypeFam _ (SimpleType_SimpleType _ n tv) MaybeInjectivity_Nothing _)
-  = (n, True, tv, [])
+  = DClosed n tv Nothing
 collectTypeFamDecls (Declaration_TypeFam _ (SimpleType_SimpleType _ n tv) (MaybeInjectivity_Just inj) _)
-  = let (Injectivity_Injectivity _ _ ns) = inj in (n, True, tv, ns)
+  = let (Injectivity_Injectivity _ _ ns) = inj in DClosed n tv (Just ns)
 
+collectTypeFamInstance :: Declaration -> TFInstanceInfo
+collectTypeFamInstance (Declaration_TypeFamInstance _ isClosed n ts t) 
+  = if isClosed
+      then IClosed n ts t
+      else IOpen n ts t
 
-collectTypeFamInstance :: Declaration -> (Name, Types, Type)
-collectTypeFamInstance (Declaration_TypeFamInstance _ _ n ts t) = (n, ts, t)
+-- Collecting assoc type syns
+collectAssocTypeSynDecls :: Declaration -> MaybeDeclarations -> TFDeclInfos
+collectAssocTypeSynDecls _  MaybeDeclarations_Nothing = []
+collectAssocTypeSynDecls cl (MaybeDeclarations_Just decls) = collectAssocTypeSynDecls' cl $ collectTFDecls decls
 
-collectAssocTypeSynInstances :: MaybeDeclarations -> [(Name, Types, Type)]
-collectAssocTypeSynInstances MaybeDeclarations_Nothing = []
-collectAssocTypeSynInstances (MaybeDeclarations_Just decls) = buildAssocTypeSynInstances decls
-
-buildAssocTypeSynInstances :: Declarations -> [(Name, Types, Type)]
-buildAssocTypeSynInstances (Declaration_TypeFamInstance _ _ n ts t:is) = (n, ts, t) : buildAssocTypeSynInstances is
-buildAssocTypeSynInstances (_:is)                                      = buildAssocTypeSynInstances is
-buildAssocTypeSynInstances []                                          = []
-
-buildTypeSynDeclInfo :: Declaration -> MaybeDeclarations -> [(Name, Name, [(Int, Int)])]
-buildTypeSynDeclInfo _ MaybeDeclarations_Nothing = []
-buildTypeSynDeclInfo cl (MaybeDeclarations_Just decls) = buildTypeSynDeclInfo' cl $ collectTFDecls decls
-
-buildTypeSynDeclInfo' :: Declaration -> Declarations -> [(Name, Name, [(Int, Int)])]
-buildTypeSynDeclInfo' cd@(Declaration_Class _ _ (SimpleType_SimpleType _ n tvs) _) (Declaration_TypeFam _ (SimpleType_SimpleType _ tfn tftvs) _ _:tfdls)
-  = let 
+collectAssocTypeSynDecls' :: Declaration -> Declarations -> TFDeclInfos
+collectAssocTypeSynDecls' cd@(Declaration_Class _ _ (SimpleType_SimpleType _ n tvs) _) (Declaration_TypeFam _ (SimpleType_SimpleType _ tfn tftvs) inj _:tfdls)
+  = let
+      injInfo = case inj of
+                  MaybeInjectivity_Nothing -> Nothing
+                  MaybeInjectivity_Just (Injectivity_Injectivity _ _ ns) -> Just ns
+                  _ -> Nothing
       buildAssocIndices = [(fromJust (elemIndex tv tvs), fromJust (elemIndex tftv tftvs)) | tv <- tvs, tftv <- tftvs, tv == tftv]
-      in (n, tfn, buildAssocIndices) : buildTypeSynDeclInfo' cd tfdls
-buildTypeSynDeclInfo' cd (_:decls) = buildTypeSynDeclInfo' cd decls
-buildTypeSynDeclInfo' _  []        = []
+      in DAssoc tfn tftvs injInfo buildAssocIndices : collectAssocTypeSynDecls' cd tfdls
+collectAssocTypeSynDecls' cd (_:decls) = collectAssocTypeSynDecls' cd decls
+collectAssocTypeSynDecls' _  []        = []
 
-buildTypeSynInstanceInfo :: Declaration -> MaybeDeclarations -> [(Name, Name, Types, Types)]
-buildTypeSynInstanceInfo _ MaybeDeclarations_Nothing = []
-buildTypeSynInstanceInfo inst (MaybeDeclarations_Just decls) = buildTypeSynInstanceInfo' inst $ collectTFInstances decls
+collectAssocTypeSynInstances :: Declaration -> MaybeDeclarations -> TFInstanceInfos
+collectAssocTypeSynInstances _ MaybeDeclarations_Nothing = []
+collectAssocTypeSynInstances inst (MaybeDeclarations_Just decls) = collectAssocTypeSynInstances' inst decls
 
-buildTypeSynInstanceInfo' :: Declaration -> Declarations -> [(Name, Name, Types, Types)]
-buildTypeSynInstanceInfo' inst@(Declaration_Instance _ _ instn its _) (Declaration_TypeFamInstance _ _ tfn tfts _:insts)
-  = (instn, tfn, its, tfts) : buildTypeSynInstanceInfo' inst insts
-buildTypeSynInstanceInfo' inst (_:insts) = buildTypeSynInstanceInfo' inst insts
-buildTypeSynInstanceInfo' _    []        = []
+collectAssocTypeSynInstances' :: Declaration -> Declarations -> TFInstanceInfos
+collectAssocTypeSynInstances' inst@(Declaration_Instance _ _ n1 its _) (Declaration_TypeFamInstance _ _ n ts t:is) 
+  = IAssoc n ts t its n1 : collectAssocTypeSynInstances' inst is
+collectAssocTypeSynInstances' inst (_:is) = collectAssocTypeSynInstances' inst is
+collectAssocTypeSynInstances' _    []     = []
 }
 
 -- Type family decls and instances collection.
-ATTR Body Declarations Declaration [ | | collectTypeFamilyDecls USE { ++ } { [] } : {[(Name, Bool, Names, Names)]} ]
-ATTR Body MaybeDeclarations Declarations Declaration [ | | collectTypeFamilyInstances USE { ++ } { [] } : {[(Name, Types, Type)]}]
+ATTR Body Declarations Declaration [ | | collectTypeFamilyDecls USE { ++ } { [] } : {TFDeclInfos} ]
+ATTR Body MaybeDeclarations Declarations Declaration [ | | collectTypeFamilyInstances USE { ++ } { [] } : {TFInstanceInfos}]
 
 -- Seperate assoc type syn colleting for static checks related to the class
-ATTR Body Declarations Declaration [ | | collectAssocTypeSynDeclInfo USE { ++ } { [] } : {[(Name, Name, [(Int, Int)])]}]
-ATTR Body Declarations Declaration [ | | collectAssocTypeSynInstanceInfo USE { ++ } { [] } : {[(Name, Name, Types, Types)]}]
+-- ATTR Body Declarations Declaration [ | | collectAssocTypeSynDeclInfo USE { ++ } { [] } : {[(Name, Name, [(Int, Int)])]}]
+-- ATTR Body Declarations Declaration [ | | collectAssocTypeSynInstanceInfo USE { ++ } { [] } : {[(Name, Name, Types, Types)]}]
 
 SEM MaybeDeclarations
     | Just lhs.collectTypeFamilyInstances = @declarations.collectTypeFamilyInstances
 
 SEM Declaration
-    | Class lhs . collectTypeFamilyDecls = collectAssociatedTypeSynonyms @where.self
-            lhs . collectAssocTypeSynDeclInfo = buildTypeSynDeclInfo @self @where.self
+    | Class lhs . collectTypeFamilyDecls = collectAssocTypeSynDecls @self @where.self
     | TypeFam lhs . collectTypeFamilyDecls = collectTypeFamDecls @self : []
               lhs . collectTypeFamilyInstances = @where.collectTypeFamilyInstances
     | TypeFamInstance lhs . collectTypeFamilyInstances = collectTypeFamInstance @self : []
-    | Instance lhs . collectTypeFamilyInstances = collectAssocTypeSynInstances @where.self
-               lhs . collectAssocTypeSynInstanceInfo = buildTypeSynInstanceInfo @self @where.self
+    | Instance lhs . collectTypeFamilyInstances = collectAssocTypeSynInstances @self @where.self
 
 -------------------------------------------
 -- Collecting Type Signatures
