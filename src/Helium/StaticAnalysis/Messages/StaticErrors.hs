@@ -69,6 +69,10 @@ data Error  = NoFunDef Entity Name {-names in scope-}Names
             | UndefinedTypeFamily Name Names
             | WronglySaturatedTypeFamily Name Int Int
             | WronglyAlignedATS Name Name MonoType MonoType
+            | ATSNotInInstance Name Name
+            | ATSWrongClassInstance Name Name Name
+            | ATSNotPartOfClass Name Name
+            | OpenInstanceForClosed Name
 
 instance HasMessage Error where
    getMessage x = let (oneliner, hints) = showError x
@@ -116,7 +120,11 @@ instance HasMessage Error where
       DuplicateTypeFamily (n1, n2) -> sortRanges [getNameRange n1, getNameRange n2]
       UndefinedTypeFamily name _  -> [getNameRange name]
       WronglySaturatedTypeFamily n _ _ -> [getNameRange n]
-      WronglyAlignedATS n1 n2 t1 t2   -> sortRanges [getNameRange n1, getNameRange n2]
+      WronglyAlignedATS n1 n2 _ _   -> sortRanges [getNameRange n1, getNameRange n2]
+      ATSNotInInstance n _        -> [getNameRange n]
+      ATSWrongClassInstance n _ _ -> [getNameRange n]
+      ATSNotPartOfClass n _       -> [getNameRange n]
+      OpenInstanceForClosed n     -> [getNameRange n]
 
 sensiblySimilar :: Name -> Names -> [Name]
 sensiblySimilar name inScope =
@@ -400,7 +408,7 @@ showError anError = case anError of
       (MessageString "GADTs used, but GADTs are not enabled"
       , [MessageString "Enable the option to use GADTs by using --gadts"])
    DuplicateTypeFamily (n1, _) ->
-      (MessageString ("Found conflicting Type Families with the name " ++ show n1)
+      (MessageString ("Found conflicting Type Families with the name " ++ show (show n1))
       , [MessageString "Type families have to be uniquely named"])
    UndefinedTypeFamily name inScope ->
       ( MessageString ("Trying to instantiate unknown type family " ++ show name ++ ".")
@@ -409,12 +417,25 @@ showError anError = case anError of
         ]
       )
    WronglySaturatedTypeFamily n dl tl ->
-      ( MessageString ("Instance for type family " ++ show n ++ " has " ++ show tl ++ " arguments but its declaration requires " ++ show dl)
+      ( MessageString ("Instance for type family " ++ show (show n) ++ " has " ++ show (show tl) ++ " arguments but its declaration requires " ++ show (show dl))
       , [MessageString "Type family instances may not be over or under saturated"])
    WronglyAlignedATS n1 n2 t1 t2 ->
-      ( MessageString ("The type " ++ show t2 ++ " in associated type synonym instance " 
-                        ++ show n1 ++ " does not align with " ++  show t1 ++ " from the class instance " ++ show n2)
+      ( MessageString ("The type " ++ show (show t2) ++ " in associated type synonym instance " 
+                        ++ show (show n1) ++ " does not align with " ++  show (show t1) ++ " from the class instance " ++ show (show n2))
       , [MessageString "Equal variables in the class declaration and the associated type synonym declaration must be assigned the same type."])
+   ATSNotInInstance n cn ->
+      ( MessageString ("Instance for associated type synonym " ++ show (show n) ++ " should be declared in an instance for type class " ++ show (show cn))
+      ,[MessageString "Instances for associated type synonyms may only be declared inside its relative class instance"])
+   ATSWrongClassInstance n cn1 cn2 ->
+      ( MessageString ("Instance for associated type synonym " ++ show (show n) ++ " is declared inside an instance for class " ++ show (show cn1) ++
+                       " but it is part of class" ++ show (show cn2))
+      ,[])
+   ATSNotPartOfClass n1 n2 ->
+      ( MessageString ("Associated type synonym " ++ show n1 ++ " is not part of class " ++ show n2)
+      ,[MessageString "Associated type synonyms must be declared in the class declaration"])
+   OpenInstanceForClosed n ->
+      ( MessageString ("Found an open type family instance for closed type family " ++ show (show n))
+      ,[MessageString "Instances for closed type families may only be declared in the where clause"])
 
    _ -> internalError "StaticErrors.hs" "showError" "unknown type of Error"
 
@@ -492,6 +513,12 @@ errorLogCode anError = case anError of
           IncorrectConstructorResult _ _ _ _      -> "wc"
           MissingGADTOption                       -> "mg"
           DuplicateTypeFamily _                   -> "dtf"
+          UndefinedTypeFamily _ _                 -> "utf"
+          WronglySaturatedTypeFamily _ _ _        -> "wstf"
+          WronglyAlignedATS{}                     -> "waa"
+          ATSNotInInstance _ _                    -> "ani"
+          ATSWrongClassInstance _ _ _             -> "awci"
+          ATSNotPartOfClass _ _                   -> "anpc"
    where code entity = fromMaybe "??"
                      . lookup entity
                      $ [ (TypeSignature    ,"ts"), (TypeVariable         ,"tv"), (TypeConstructor,"tc")

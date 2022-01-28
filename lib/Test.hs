@@ -39,11 +39,18 @@ type family I x
 type family G a
 
 class X a where
-    type H a b
+    type Q a b
 
 instance X Int where
     type H Int Int = Float
 
-type family J a b c where
+type family J a b where
     J Int Int = Float
     J Float Float = Int
+
+type family UU a where
+    UU String = Char
+    UU Float = Int
+    UU [a] = Int
+
+type instance J Int Float = Float

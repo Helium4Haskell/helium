@@ -376,7 +376,7 @@ collectAssocTypeSynDecls' cd@(Declaration_Class _ _ (SimpleType_SimpleType _ n t
                   MaybeInjectivity_Just (Injectivity_Injectivity _ _ ns) -> Just ns
                   _ -> Nothing
       buildAssocIndices = [(fromJust (elemIndex tv tvs), fromJust (elemIndex tftv tftvs)) | tv <- tvs, tftv <- tftvs, tv == tftv]
-      in DAssoc tfn tftvs injInfo buildAssocIndices : collectAssocTypeSynDecls' cd tfdls
+      in DAssoc tfn tftvs injInfo buildAssocIndices n : collectAssocTypeSynDecls' cd tfdls
 collectAssocTypeSynDecls' cd (_:decls) = collectAssocTypeSynDecls' cd decls
 collectAssocTypeSynDecls' _  []        = []
 
