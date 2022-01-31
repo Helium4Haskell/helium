@@ -6,7 +6,7 @@ import Helium.StaticAnalysis.Messages.Warnings
 import Helium.StaticAnalysis.Messages.Messages
 import Helium.StaticAnalysis.Inferencers.OutsideInX.TopConversion
 import Debug.Trace
-import GHC.Conc (disableAllocationLimit)
+import Helium.StaticAnalysis.Inferencers.OutsideInX.Rhodium.RhodiumTypes
 
 
 type TFDeclInfos = [TFDeclInfo]
@@ -14,12 +14,14 @@ data TFDeclInfo
   = DOpen Name Names (Maybe Names)
   | DClosed Name Names (Maybe Names)
   | DAssoc Name Names (Maybe Names) [(Int, Int)] Name
+  deriving Show
 
 type TFInstanceInfos = [TFInstanceInfo]
 data TFInstanceInfo
   = IOpen Name Types Type
-  | IClosed Name Types Type
+  | IClosed Name Types Type Int --Int resembles the priority that the instance has in the closed type family
   | IAssoc Name Types Type Types Name
+  deriving Show
 
 obtainDeclNames :: TFDeclInfo -> Name
 obtainDeclNames (DOpen n _ _)      = n
@@ -28,8 +30,11 @@ obtainDeclNames (DAssoc n _ _ _ _) = n
 
 obtainInstanceNames :: TFInstanceInfo -> Name
 obtainInstanceNames (IOpen n _ _)      = n
-obtainInstanceNames (IClosed n _ _)    = n
+obtainInstanceNames (IClosed n _ _ _)    = n
 obtainInstanceNames (IAssoc n _ _ _ _) = n
+
+thrd :: (a, b, c) -> c
+thrd (_, _, z) = z
 --------------------------------------
 -- Declaration static checks, SEPARATE CHECKS
 
@@ -67,7 +72,7 @@ checkTypeFamStaticErrors dis iis = let
            ++ instCheckInstanceValidity dis iis
            ++ instSaturationCheck dis iis
   
-  phase2 = []
+  phase2 = instNoTFInArgument dis iis
   in if not (null phase1)
         then phase1
         else phase2
@@ -102,8 +107,6 @@ atsCheckVarAlignment decls insts = let
                 tfdn == itfn, -- instance and decl names must be equal 
                 thrd (its !! ci) /= thrd (tfts !! tfi)] -- Then types at indices must be equal.
 
-  thrd (_, _, z) = z
-
   in [WronglyAlignedATS n1 n2 t1 t2 | (n1, n2, t1, t2) <- violations]
 
 --------------------------------------
@@ -115,23 +118,26 @@ instCheckInstanceValidity ds is = let
   getUndefinedNames = [n1 | n1 <- map obtainInstanceNames is, notElem n1 $ map obtainDeclNames ds]
   ns = map obtainDeclNames ds
   
-  obtainOpenClosed (IOpen n _ _:ts)   = n : obtainOpenClosed ts
-  obtainOpenClosed (IClosed n _ _:ts) = n : obtainOpenClosed ts
-  obtainOpenClosed (_:ts)             = obtainOpenClosed ts
-  obtainOpenClosed []                 = []
+  obtainOpenClosed :: TFInstanceInfos -> Names
+  obtainOpenClosed (IOpen n _ _:ts)     = n : obtainOpenClosed ts
+  obtainOpenClosed (IClosed n _ _ _:ts) = n : obtainOpenClosed ts
+  obtainOpenClosed (_:ts)               = obtainOpenClosed ts
+  obtainOpenClosed []                   = []
 
-  obtainOpenAssoc (IOpen n _ _:ts)   = n : obtainOpenAssoc ts
+  obtainOpenAssoc :: TFInstanceInfos -> Names
+  obtainOpenAssoc (IOpen n _ _:ts)      = n : obtainOpenAssoc ts
   obtainOpenAssoc (IAssoc n _ _ _ _:ts) = n : obtainOpenAssoc ts
   obtainOpenAssoc (_:ts)                = obtainOpenAssoc ts
   obtainOpenAssoc []                    = []
 
+  hasAssocTypeSyn :: Name -> Name -> Bool
   hasAssocTypeSyn cn n = case [ n1 | (DAssoc n1 _ _ _ cn1) <- ds, cn1 == cn, n == n1] of
                             [] -> False
                             _  -> True 
 
   -- Associated type synonym instance validities
   assocNotInClassInstance = [(n2, cn) | (DAssoc n1 _ _ _ cn) <- ds, n2 <- obtainOpenClosed is, n1 == n2]
-  assocInstanceNotPartOfClass = [(n, cn) | (IAssoc n _ _ _ cn) <- is, not $ hasAssocTypeSyn cn n]
+  assocInstanceNotPartOfClass = [(n, cn) | (IAssoc n _ _ _ cn) <- is, not $ hasAssocTypeSyn cn n, n `notElem` getUndefinedNames]
   assocNotLinkedToRightClass = [(n2, cn2, cn1) | (DAssoc n1 _ _ _ cn1) <- ds, (IAssoc n2 _ _ _ cn2) <- is, n1 == n2, cn1 /= cn2]
 
   -- Closed type synonym instance validities.
@@ -153,15 +159,37 @@ instSaturationCheck ds is = let
 
   getNameTypes :: TFInstanceInfo -> (Name, Types)
   getNameTypes (IOpen n ts _)      = (n, ts)
-  getNameTypes (IClosed n ts _ )   = (n, ts)
+  getNameTypes (IClosed n ts _ _)   = (n, ts)
   getNameTypes (IAssoc n ts _ _ _) = (n, ts)
 
   violations = [(n2, length ns, length ts) | (n1, ns) <- map getNameArgs ds, (n2, ts) <- map getNameTypes is, n1 == n2, length ns /= length ts]
 
   in [WronglySaturatedTypeFamily n dl tl | (n, dl, tl) <- violations]
 
+instNoTFInArgument :: TFDeclInfos -> TFInstanceInfos -> Errors
+instNoTFInArgument dis tis = let
+
+  obtainArguments :: TFInstanceInfo -> Types
+  obtainArguments (IAssoc _ ts _ _ _) = ts
+  obtainArguments (IClosed _ ts _ _)  = ts
+  obtainArguments (IOpen _ ts _)      = ts
+
+  obtainTyFams :: TFDeclInfos -> [(String, Int)]
+  obtainTyFams (DAssoc n ns _ _ _:ts) = (show n, length ns) : obtainTyFams ts
+  obtainTyFams (DClosed n ns _:ts)    = (show n, length ns) : obtainTyFams ts
+  obtainTyFams (DOpen n ns _:ts)      = (show n, length ns) : obtainTyFams ts
+  obtainTyFams []                     = []
+
+  violations = [ (obtainInstanceNames inst, arg, thrd $ typeToMonoType (obtainTyFams dis) arg) |
+                 inst <- tis
+               , arg <- obtainArguments inst
+               , not $ isFamilyFree $ thrd $ typeToMonoType (obtainTyFams dis) arg
+               ]
+  in [TFInArgument n t mt | (n, t, mt) <- violations] 
+
 -- CHECKS TODO!!!!!:
 -- Occurscheck of variables
+-- No type fam in arguments!
 --
 -- Definition smaller check (For non-injective)
 -- - Injective type fams

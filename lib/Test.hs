@@ -42,15 +42,13 @@ class X a where
     type Q a b
 
 instance X Int where
-    type H Int Int = Float
+    type Q Int Int = Float
 
 type family J a b where
     J Int Int = Float
-    J Float Float = Int
+    J (UU Float) Float = Int
 
 type family UU a where
     UU String = Char
     UU Float = Int
     UU [a] = Int
-
-type instance J Int Float = Float

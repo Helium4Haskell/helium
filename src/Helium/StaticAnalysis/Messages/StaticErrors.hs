@@ -73,6 +73,7 @@ data Error  = NoFunDef Entity Name {-names in scope-}Names
             | ATSWrongClassInstance Name Name Name
             | ATSNotPartOfClass Name Name
             | OpenInstanceForClosed Name
+            | TFInArgument Name Type MonoType
 
 instance HasMessage Error where
    getMessage x = let (oneliner, hints) = showError x
@@ -125,6 +126,7 @@ instance HasMessage Error where
       ATSWrongClassInstance n _ _ -> [getNameRange n]
       ATSNotPartOfClass n _       -> [getNameRange n]
       OpenInstanceForClosed n     -> [getNameRange n]
+      TFInArgument _ t _         -> [getTypeRange t]
 
 sensiblySimilar :: Name -> Names -> [Name]
 sensiblySimilar name inScope =
@@ -411,7 +413,7 @@ showError anError = case anError of
       (MessageString ("Found conflicting Type Families with the name " ++ show (show n1))
       , [MessageString "Type families have to be uniquely named"])
    UndefinedTypeFamily name inScope ->
-      ( MessageString ("Trying to instantiate unknown type family " ++ show name ++ ".")
+      ( MessageString ("Found instance for unknown type family " ++ show name ++ ".")
       , [ MessageString ("Did you mean " ++ prettyOrList (map (show . show) xs) ++ " ?")
         | let xs = sensiblySimilar name inScope, not (null xs)
         ]
@@ -436,6 +438,9 @@ showError anError = case anError of
    OpenInstanceForClosed n ->
       ( MessageString ("Found an open type family instance for closed type family " ++ show (show n))
       ,[MessageString "Instances for closed type families may only be declared in the where clause"])
+   TFInArgument n _ mt ->
+      ( MessageString ("The argument " ++ show (show mt) ++ " for type family " ++ show (show n) ++ " contains a type family application")
+      ,[MessageString "Type family applications in instance arguments are not allowed"])
 
    _ -> internalError "StaticErrors.hs" "showError" "unknown type of Error"
 
@@ -519,6 +524,8 @@ errorLogCode anError = case anError of
           ATSNotInInstance _ _                    -> "ani"
           ATSWrongClassInstance _ _ _             -> "awci"
           ATSNotPartOfClass _ _                   -> "anpc"
+          OpenInstanceForClosed _                 -> "oic"
+          TFInArgument _ _ _                      -> "tia"
    where code entity = fromMaybe "??"
                      . lookup entity
                      $ [ (TypeSignature    ,"ts"), (TypeVariable         ,"tv"), (TypeConstructor,"tc")

@@ -357,10 +357,10 @@ collectTypeFamDecls (Declaration_TypeFam _ (SimpleType_SimpleType _ n tv) MaybeI
 collectTypeFamDecls (Declaration_TypeFam _ (SimpleType_SimpleType _ n tv) (MaybeInjectivity_Just inj) _)
   = let (Injectivity_Injectivity _ _ ns) = inj in DClosed n tv (Just ns)
 
-collectTypeFamInstance :: Declaration -> TFInstanceInfo
-collectTypeFamInstance (Declaration_TypeFamInstance _ isClosed n ts t) 
+collectTypeFamInstance :: Declaration -> Int -> TFInstanceInfo
+collectTypeFamInstance (Declaration_TypeFamInstance _ isClosed n ts t) instId
   = if isClosed
-      then IClosed n ts t
+      then IClosed n ts t instId
       else IOpen n ts t
 
 -- Collecting assoc type syns
@@ -394,19 +394,22 @@ collectAssocTypeSynInstances' _    []     = []
 -- Type family decls and instances collection.
 ATTR Body Declarations Declaration [ | | collectTypeFamilyDecls USE { ++ } { [] } : {TFDeclInfos} ]
 ATTR Body MaybeDeclarations Declarations Declaration [ | | collectTypeFamilyInstances USE { ++ } { [] } : {TFInstanceInfos}]
-
--- Seperate assoc type syn colleting for static checks related to the class
--- ATTR Body Declarations Declaration [ | | collectAssocTypeSynDeclInfo USE { ++ } { [] } : {[(Name, Name, [(Int, Int)])]}]
--- ATTR Body Declarations Declaration [ | | collectAssocTypeSynInstanceInfo USE { ++ } { [] } : {[(Name, Name, Types, Types)]}]
+-- Id that is given to Type Instance declarations in a closed type family
+ATTR Declarations Declaration [ instId : {Int} | | ]
 
 SEM MaybeDeclarations
     | Just lhs.collectTypeFamilyInstances = @declarations.collectTypeFamilyInstances
+           declarations.instId = 0
+
+SEM Declarations
+    | Cons hd.instId = @lhs.instId
+           tl.instId = @lhs.instId + 1
 
 SEM Declaration
     | Class lhs . collectTypeFamilyDecls = collectAssocTypeSynDecls @self @where.self
     | TypeFam lhs . collectTypeFamilyDecls = collectTypeFamDecls @self : []
               lhs . collectTypeFamilyInstances = @where.collectTypeFamilyInstances
-    | TypeFamInstance lhs . collectTypeFamilyInstances = collectTypeFamInstance @self : []
+    | TypeFamInstance lhs . collectTypeFamilyInstances = collectTypeFamInstance @self @lhs.instId : []
     | Instance lhs . collectTypeFamilyInstances = collectAssocTypeSynInstances @self @where.self
 
 -------------------------------------------
