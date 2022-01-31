@@ -7,7 +7,9 @@ import Helium.StaticAnalysis.Messages.Messages
 import Helium.StaticAnalysis.Inferencers.OutsideInX.TopConversion
 import Debug.Trace
 import Helium.StaticAnalysis.Inferencers.OutsideInX.Rhodium.RhodiumTypes
+    ( isFamilyFree )
 import Helium.StaticAnalysis.Miscellaneous.TypeConversion
+    ( namesInType, namesInTypes )
 
 
 type TFDeclInfos = [TFDeclInfo]
@@ -70,7 +72,7 @@ declNoIndenticalVars (Declaration_TypeFam _ (SimpleType_SimpleType _ _ tv) _ _) 
   tails (x:xs) = (x:xs) : tails xs
 
 
-  in [Duplicated Variable [n1, n2] | (n1, n2) <- createPairs  tv, n1 == n2]
+  in [Duplicated Variable [n1, n2] | (n1, n2) <- createPairs tv, n1 == n2]
 declNoIndenticalVars _ = []
 
 -- Check the injectivity variables (both result var and injectively defined vars)

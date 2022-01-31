@@ -51,6 +51,9 @@ SEM Body
 
 ATTR Declaration Declarations [ | | hasGADT USE {(||)} {False} : Bool]
 
+SEM Declarations
+    | Cons lhs.miscerrors = @hd.miscerrors ++ @tl.miscerrors
+
 SEM Declaration
     | Class              lhs . miscerrors = deleteClassErrors (@where.miscerrors ++ (checkClassFunctions @loc.declVarNames @loc.types) ++ @contextErrors)
                          lhs . typeSignatures = []
