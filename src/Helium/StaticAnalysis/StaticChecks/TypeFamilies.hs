@@ -7,6 +7,7 @@ import Helium.StaticAnalysis.Messages.Messages
 import Helium.StaticAnalysis.Inferencers.OutsideInX.TopConversion
 import Debug.Trace
 import Helium.StaticAnalysis.Inferencers.OutsideInX.Rhodium.RhodiumTypes
+import Helium.StaticAnalysis.Miscellaneous.TypeConversion
 
 
 type TFDeclInfos = [TFDeclInfo]
@@ -23,6 +24,9 @@ data TFInstanceInfo
   | IAssoc Name Types Type Types Name
   deriving Show
 
+-------------------------------------
+-- UTILS
+
 obtainDeclNames :: TFDeclInfo -> Name
 obtainDeclNames (DOpen n _ _)      = n
 obtainDeclNames (DClosed n _ _)    = n
@@ -35,6 +39,23 @@ obtainInstanceNames (IAssoc n _ _ _ _) = n
 
 thrd :: (a, b, c) -> c
 thrd (_, _, z) = z
+
+obtainTyFams :: TFDeclInfos -> [(String, Int)]
+obtainTyFams (DAssoc n ns _ _ _:ts) = (show n, length ns) : obtainTyFams ts
+obtainTyFams (DClosed n ns _:ts)    = (show n, length ns) : obtainTyFams ts
+obtainTyFams (DOpen n ns _:ts)      = (show n, length ns) : obtainTyFams ts
+obtainTyFams []                     = []
+
+obtainArguments :: TFInstanceInfo -> Types
+obtainArguments (IAssoc _ ts _ _ _) = ts
+obtainArguments (IClosed _ ts _ _)  = ts
+obtainArguments (IOpen _ ts _)      = ts
+
+obtainDefinitions :: TFInstanceInfo -> Type
+obtainDefinitions (IAssoc _ _ t _ _) = t
+obtainDefinitions (IClosed _ _ t _)  = t
+obtainDefinitions (IOpen _ _ t)      = t
+
 --------------------------------------
 -- Declaration static checks, SEPARATE CHECKS
 
@@ -73,6 +94,7 @@ checkTypeFamStaticErrors dis iis = let
            ++ instSaturationCheck dis iis
   
   phase2 = instNoTFInArgument dis iis
+           ++ instVarOccursCheck iis
   in if not (null phase1)
         then phase1
         else phase2
@@ -169,17 +191,6 @@ instSaturationCheck ds is = let
 instNoTFInArgument :: TFDeclInfos -> TFInstanceInfos -> Errors
 instNoTFInArgument dis tis = let
 
-  obtainArguments :: TFInstanceInfo -> Types
-  obtainArguments (IAssoc _ ts _ _ _) = ts
-  obtainArguments (IClosed _ ts _ _)  = ts
-  obtainArguments (IOpen _ ts _)      = ts
-
-  obtainTyFams :: TFDeclInfos -> [(String, Int)]
-  obtainTyFams (DAssoc n ns _ _ _:ts) = (show n, length ns) : obtainTyFams ts
-  obtainTyFams (DClosed n ns _:ts)    = (show n, length ns) : obtainTyFams ts
-  obtainTyFams (DOpen n ns _:ts)      = (show n, length ns) : obtainTyFams ts
-  obtainTyFams []                     = []
-
   violations = [ (obtainInstanceNames inst, arg, thrd $ typeToMonoType (obtainTyFams dis) arg) |
                  inst <- tis
                , arg <- obtainArguments inst
@@ -187,9 +198,20 @@ instNoTFInArgument dis tis = let
                ]
   in [TFInArgument n t mt | (n, t, mt) <- violations] 
 
+instVarOccursCheck :: TFInstanceInfos -> Errors
+instVarOccursCheck tis = let
+
+  getViolations :: TFInstanceInfo -> Names
+  getViolations tfi = let
+    argVars = namesInTypes $ obtainArguments tfi
+    defVars = namesInType $ obtainDefinitions tfi
+
+    undefNames = [n | n <- defVars, n `notElem` argVars]
+    in undefNames
+    
+  in [Undefined Variable n [] ["Variable " ++ show (show n) ++ " does not occur in any instance argument"] | n <- concatMap getViolations tis]
 -- CHECKS TODO!!!!!:
 -- Occurscheck of variables
--- No type fam in arguments!
 --
 -- Definition smaller check (For non-injective)
 -- - Injective type fams

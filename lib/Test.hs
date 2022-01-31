@@ -46,7 +46,7 @@ instance X Int where
 
 type family J a b where
     J Int Int = Float
-    J (UU Float) Float = Int
+    J a Float = c
 
 type family UU a where
     UU String = Char

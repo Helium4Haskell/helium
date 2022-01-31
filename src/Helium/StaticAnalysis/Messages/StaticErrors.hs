@@ -19,7 +19,6 @@ import Data.Maybe
 import Helium.Utils.Utils       (commaList, internalError, maxInt)
 
 import Top.Types
-import Helium.StaticAnalysis.Miscellaneous.TypeConversion
 import Helium.StaticAnalysis.Inferencers.OutsideInX.Rhodium.RhodiumTypes (MonoType)
 
 -------------------------------------------------------------
@@ -439,7 +438,7 @@ showError anError = case anError of
       ( MessageString ("Found an open type family instance for closed type family " ++ show (show n))
       ,[MessageString "Instances for closed type families may only be declared in the where clause"])
    TFInArgument n _ mt ->
-      ( MessageString ("The argument " ++ show (show mt) ++ " for type family " ++ show (show n) ++ " contains a type family application")
+      ( MessageString ("The argument " ++ show (show mt) ++ " for an instance of type family " ++ show (show n) ++ " contains a type family application")
       ,[MessageString "Type family applications in instance arguments are not allowed"])
 
    _ -> internalError "StaticErrors.hs" "showError" "unknown type of Error"
