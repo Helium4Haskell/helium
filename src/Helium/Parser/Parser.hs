@@ -47,6 +47,7 @@ import Helium.Syntax.UHA_Range
 
 import qualified Helium.Parser.CollectFunctionBindings as CollectFunctionBindings
 import Helium.Utils.Utils
+import Debug.Trace
 
 parseOnlyImports :: String -> IO [String]
 parseOnlyImports fullName = do
@@ -207,7 +208,7 @@ topdecl = addRange (
               n <- tycon
               lhs <- many1 atype
               lexASG
-              rhst <- atype
+              rhst <- btype
               return $ \r -> Declaration_TypeFamInstance r False n lhs rhst
           )
         <|>
@@ -419,7 +420,7 @@ tfdecl = addRange $
     n <- tycon
     lhs <- many atype
     lexASG 
-    rhst <- atype
+    rhst <- btype
     return $ \r -> Declaration_TypeFamInstance r True n lhs rhst
 
 -- ASSOCIATED TYPE DECL
@@ -487,7 +488,7 @@ itfdecl = addRange $
     n <- tycon
     lhs <- many1 atype
     lexASG
-    rhst <- atype
+    rhst <- btype
     return $ \r -> Declaration_TypeFamInstance r False n lhs rhst
   
 
@@ -1352,7 +1353,7 @@ atype :: HParser Type
 atype = addRange (
     do
         c <- tycon
-        return (\r -> Type_Constructor r c)
+        return (\r -> Type_Constructor r (trace (show c) c))
     <|>
     do
         c <- tyvar

@@ -7,7 +7,7 @@ import Helium.StaticAnalysis.Messages.Messages
 import Helium.StaticAnalysis.Inferencers.OutsideInX.TopConversion
 import Debug.Trace
 import Helium.StaticAnalysis.Inferencers.OutsideInX.Rhodium.RhodiumTypes
-    ( isFamilyFree )
+    ( isFamilyFree, MonoType (MonoType_Fam, MonoType_Var) )
 import Helium.StaticAnalysis.Miscellaneous.TypeConversion
     ( namesInType, namesInTypes )
 
@@ -29,15 +29,15 @@ data TFInstanceInfo
 -------------------------------------
 -- UTILS
 
-obtainDeclNames :: TFDeclInfo -> Name
-obtainDeclNames (DOpen n _ _)      = n
-obtainDeclNames (DClosed n _ _)    = n
-obtainDeclNames (DAssoc n _ _ _ _) = n
+obtainDeclName :: TFDeclInfo -> Name
+obtainDeclName (DOpen n _ _)      = n
+obtainDeclName (DClosed n _ _)    = n
+obtainDeclName (DAssoc n _ _ _ _) = n
 
-obtainInstanceNames :: TFInstanceInfo -> Name
-obtainInstanceNames (IOpen n _ _)      = n
-obtainInstanceNames (IClosed n _ _ _)    = n
-obtainInstanceNames (IAssoc n _ _ _ _) = n
+obtainInstanceName :: TFInstanceInfo -> Name
+obtainInstanceName (IOpen n _ _)      = n
+obtainInstanceName (IClosed n _ _ _)  = n
+obtainInstanceName (IAssoc n _ _ _ _) = n
 
 thrd :: (a, b, c) -> c
 thrd (_, _, z) = z
@@ -53,10 +53,18 @@ obtainArguments (IAssoc _ ts _ _ _) = ts
 obtainArguments (IClosed _ ts _ _)  = ts
 obtainArguments (IOpen _ ts _)      = ts
 
-obtainDefinitions :: TFInstanceInfo -> Type
-obtainDefinitions (IAssoc _ _ t _ _) = t
-obtainDefinitions (IClosed _ _ t _)  = t
-obtainDefinitions (IOpen _ _ t)      = t
+obtainDefinition :: TFInstanceInfo -> Type
+obtainDefinition (IAssoc _ _ t _ _) = t
+obtainDefinition (IClosed _ _ t _)  = t
+obtainDefinition (IOpen _ _ t)      = t
+
+isTFApplication :: MonoType -> Bool 
+isTFApplication (MonoType_Fam _ _) = True 
+isTFApplication _                  = False
+
+isBareVariable :: MonoType -> Bool
+isBareVariable (MonoType_Var _ _) = True
+isBareVariable _                  = False
 
 --------------------------------------
 -- Declaration static checks, SEPARATE CHECKS
@@ -97,6 +105,7 @@ checkTypeFamStaticErrors dis iis = let
   
   phase2 = instNoTFInArgument dis iis
            ++ instVarOccursCheck iis
+           ++ instInjDefChecks dis iis
   in if not (null phase1)
         then phase1
         else phase2
@@ -139,8 +148,8 @@ atsCheckVarAlignment decls insts = let
 instCheckInstanceValidity :: TFDeclInfos -> TFInstanceInfos -> Errors
 instCheckInstanceValidity ds is = let
 
-  getUndefinedNames = [n1 | n1 <- map obtainInstanceNames is, notElem n1 $ map obtainDeclNames ds]
-  ns = map obtainDeclNames ds
+  getUndefinedNames = [n1 | n1 <- map obtainInstanceName is, notElem n1 $ map obtainDeclName ds]
+  ns = map obtainDeclName ds
   
   obtainOpenClosed :: TFInstanceInfos -> Names
   obtainOpenClosed (IOpen n _ _:ts)     = n : obtainOpenClosed ts
@@ -193,7 +202,7 @@ instSaturationCheck ds is = let
 instNoTFInArgument :: TFDeclInfos -> TFInstanceInfos -> Errors
 instNoTFInArgument dis tis = let
 
-  violations = [ (obtainInstanceNames inst, arg, thrd $ typeToMonoType (obtainTyFams dis) arg) |
+  violations = [ (obtainInstanceName inst, arg, thrd $ typeToMonoType (obtainTyFams dis) arg) |
                  inst <- tis
                , arg <- obtainArguments inst
                , not $ isFamilyFree $ thrd $ typeToMonoType (obtainTyFams dis) arg
@@ -206,14 +215,41 @@ instVarOccursCheck tis = let
   getViolations :: TFInstanceInfo -> Names
   getViolations tfi = let
     argVars = namesInTypes $ obtainArguments tfi
-    defVars = namesInType $ obtainDefinitions tfi
+    defVars = namesInType $ obtainDefinition tfi
 
     undefNames = [n | n <- defVars, n `notElem` argVars]
     in undefNames
     
   in [Undefined Variable n [] ["Variable " ++ show (show n) ++ " does not occur in any instance argument"] | n <- concatMap getViolations tis]
+
+instSmallerChecks :: TFInstanceInfos -> Errors
+instSmallerChecks tis = let
+  x = 2
+  in []
+
+instInjDefChecks :: TFDeclInfos -> TFInstanceInfos -> Errors
+instInjDefChecks dis tis = let
+
+  isInjective :: TFDeclInfo -> TFInstanceInfo -> Bool
+  isInjective (DAssoc n1 _ (Just _) _ _) (IAssoc n2 _ _ _ _) = n1 == n2
+  isInjective (DClosed n1 _ (Just _))    (IClosed n2 _ _ _)  = n1 == n2
+  isInjective (DOpen n1 _ (Just _))      (IOpen n2 _ _)      = n1 == n2
+  isInjective _                          _                   = False
+
+  tyFams = obtainTyFams dis
+
+  injInsts = [inst | inst <- tis, decl <- dis, isInjective decl inst]
+  tyFamDef = [ obtainInstanceName inst | 
+               inst <- injInsts
+             , isTFApplication (thrd $ typeToMonoType tyFams (obtainDefinition inst))]
+  bareVars = [ (obtainInstanceName inst, filter (not . isBareVariable) (map (thrd . typeToMonoType tyFams) (obtainArguments inst))) |
+               inst <- injInsts
+             , isBareVariable (thrd $ typeToMonoType tyFams (obtainDefinition inst))
+             , not $ all (isBareVariable . thrd . typeToMonoType tyFams) (obtainArguments inst)]
+  in [InjTFInDefinition n | n <- tyFamDef] ++
+     [InjBareVarInDefinition n ns | (n, ns) <- bareVars]
 -- CHECKS TODO!!!!!:
--- Occurscheck of variables
+-- Type is smaller Checks!
 --
 -- Definition smaller check (For non-injective)
 -- - Injective type fams

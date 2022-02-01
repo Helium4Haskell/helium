@@ -14,12 +14,12 @@ module Helium.StaticAnalysis.Messages.StaticErrors where
 import Helium.Syntax.UHA_Syntax
 import Helium.Syntax.UHA_Range
 import Helium.StaticAnalysis.Messages.Messages
-import Data.List        (nub, intersperse, sort, partition)
+import Data.List        (nub, intersperse, sort, partition, intercalate)
 import Data.Maybe
 import Helium.Utils.Utils       (commaList, internalError, maxInt)
 
 import Top.Types
-import Helium.StaticAnalysis.Inferencers.OutsideInX.Rhodium.RhodiumTypes (MonoType)
+import Helium.StaticAnalysis.Inferencers.OutsideInX.Rhodium.RhodiumTypes (MonoType, MonoTypes)
 
 -------------------------------------------------------------
 -- (Static) Errors
@@ -73,6 +73,8 @@ data Error  = NoFunDef Entity Name {-names in scope-}Names
             | ATSNotPartOfClass Name Name
             | OpenInstanceForClosed Name
             | TFInArgument Name Type MonoType
+            | InjTFInDefinition Name
+            | InjBareVarInDefinition Name MonoTypes
 
 instance HasMessage Error where
    getMessage x = let (oneliner, hints) = showError x
@@ -125,7 +127,9 @@ instance HasMessage Error where
       ATSWrongClassInstance n _ _ -> [getNameRange n]
       ATSNotPartOfClass n _       -> [getNameRange n]
       OpenInstanceForClosed n     -> [getNameRange n]
-      TFInArgument _ t _         -> [getTypeRange t]
+      TFInArgument _ t _          -> [getTypeRange t]
+      InjTFInDefinition n         -> [getNameRange n] 
+      InjBareVarInDefinition n _  -> [getNameRange n]    
 
 sensiblySimilar :: Name -> Names -> [Name]
 sensiblySimilar name inScope =
@@ -440,6 +444,21 @@ showError anError = case anError of
    TFInArgument n _ mt ->
       ( MessageString ("The argument " ++ show (show mt) ++ " for an instance of type family " ++ show (show n) ++ " contains a type family application")
       ,[MessageString "Type family applications in instance arguments are not allowed"])
+   InjTFInDefinition n ->
+      ( MessageCompose 
+         [
+            MessageString ("Type family instance for " ++ show (show n) ++ " violates the family's injectivity annotation. \n")
+         ,  MessageString "The definition is a type family application, which is not allowed for injective type families."
+         ]
+      , [])
+   InjBareVarInDefinition n ts ->
+      ( MessageCompose 
+         [
+            MessageString ("Type family instance for " ++ show (show n) ++ " violates the family's injectivity annotation. \n")
+         ,  MessageString "The definition is a bare variable but not all arguments are bare variables. \n"
+         ,  MessageString ("Arguments that violate the definition are: " ++ intercalate ", "  (map (show . show) ts))
+         ]
+      , [])
 
    _ -> internalError "StaticErrors.hs" "showError" "unknown type of Error"
 
@@ -525,6 +544,8 @@ errorLogCode anError = case anError of
           ATSNotPartOfClass _ _                   -> "anpc"
           OpenInstanceForClosed _                 -> "oic"
           TFInArgument _ _ _                      -> "tia"
+          InjTFInDefinition _                     -> "itid"
+          InjBareVarInDefinition _ _              -> "ibvd"
    where code entity = fromMaybe "??"
                      . lookup entity
                      $ [ (TypeSignature    ,"ts"), (TypeVariable         ,"tv"), (TypeConstructor,"tc")

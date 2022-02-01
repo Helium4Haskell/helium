@@ -32,7 +32,7 @@ main = head $ mapPlus1 [1,2,3,4]
 mapPlus1 :: [Int] -> [Int]
 mapPlus1 = map (\x -> x + 1)
 
-type family F a a = r | r -> a
+type family F a b = r | r -> a
 
 type family I x
 
@@ -44,11 +44,13 @@ class X a where
 instance X Int where
     type Q Int Int = Float
 
-type family J a a where
+type family J a b where
     J Int Int = Float
-    J a Float = c
+    J a Float = a
 
 type family UU a where
     UU String = Char
     UU Float = Int
     UU [a] = Int
+
+type instance F Int Float = J Int Int
