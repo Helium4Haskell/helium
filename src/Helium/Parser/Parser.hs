@@ -1353,7 +1353,7 @@ atype :: HParser Type
 atype = addRange (
     do
         c <- tycon
-        return (\r -> Type_Constructor r (trace (show c) c))
+        return (\r -> Type_Constructor r c)
     <|>
     do
         c <- tyvar

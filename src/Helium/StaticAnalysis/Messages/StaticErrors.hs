@@ -75,6 +75,7 @@ data Error  = NoFunDef Entity Name {-names in scope-}Names
             | TFInArgument Name Type MonoType
             | InjTFInDefinition Name
             | InjBareVarInDefinition Name MonoTypes
+            | TFFamInDefNotFamFree Name MonoTypes
 
 instance HasMessage Error where
    getMessage x = let (oneliner, hints) = showError x
@@ -129,7 +130,8 @@ instance HasMessage Error where
       OpenInstanceForClosed n     -> [getNameRange n]
       TFInArgument _ t _          -> [getTypeRange t]
       InjTFInDefinition n         -> [getNameRange n] 
-      InjBareVarInDefinition n _  -> [getNameRange n]    
+      InjBareVarInDefinition n _  -> [getNameRange n]
+      TFFamInDefNotFamFree n _    -> [getNameRange n]  
 
 sensiblySimilar :: Name -> Names -> [Name]
 sensiblySimilar name inScope =
@@ -459,6 +461,13 @@ showError anError = case anError of
          ,  MessageString ("Arguments that violate the definition are: " ++ intercalate ", "  (map (show . show) ts))
          ]
       , [])
+   TFFamInDefNotFamFree n mts ->
+      ( MessageCompose 
+         [
+            MessageString ("Type family instance for " ++ show (show n) ++ " contains nested type family applications. \n")
+         ,  MessageString ("\t\tCulprits: " ++ intercalate ", "  (map (show . show) mts)) 
+         ]  
+      , [MessageString "Type instance definitions may not contain nested type families to ensure termination."])
 
    _ -> internalError "StaticErrors.hs" "showError" "unknown type of Error"
 
@@ -546,6 +555,7 @@ errorLogCode anError = case anError of
           TFInArgument _ _ _                      -> "tia"
           InjTFInDefinition _                     -> "itid"
           InjBareVarInDefinition _ _              -> "ibvd"
+          TFFamInDefNotFamFree _ _                -> "nff"
    where code entity = fromMaybe "??"
                      . lookup entity
                      $ [ (TypeSignature    ,"ts"), (TypeVariable         ,"tv"), (TypeConstructor,"tc")

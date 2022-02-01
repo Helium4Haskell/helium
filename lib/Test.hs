@@ -34,23 +34,23 @@ mapPlus1 = map (\x -> x + 1)
 
 type family F a b = r | r -> a
 
-type family I x
+type family I a b
 
-type family G a
+-- type family G a
 
-class X a where
-    type Q a b
+-- class X a where
+--     type Q a b
 
-instance X Int where
-    type Q Int Int = Float
+-- instance X Int where
+--     type Q Int Int = Float
 
 type family J a b where
     J Int Int = Float
     J a Float = a
 
-type family UU a where
-    UU String = Char
-    UU Float = Int
-    UU [a] = Int
+-- type family UU a where
+--     UU String = Char
+--     UU Float = Int
+--     UU [a] = Int
 
-type instance F Int Float = J Int Int
+type instance I Int Float = J (F Int (F Float Int)) Float

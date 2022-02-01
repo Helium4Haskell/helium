@@ -7,7 +7,7 @@ import Helium.StaticAnalysis.Messages.Messages
 import Helium.StaticAnalysis.Inferencers.OutsideInX.TopConversion
 import Debug.Trace
 import Helium.StaticAnalysis.Inferencers.OutsideInX.Rhodium.RhodiumTypes
-    ( isFamilyFree, MonoType (MonoType_Fam, MonoType_Var) )
+    ( isFamilyFree, MonoType (MonoType_Fam, MonoType_Var, MonoType_Con, MonoType_App), MonoTypes )
 import Helium.StaticAnalysis.Miscellaneous.TypeConversion
     ( namesInType, namesInTypes )
 
@@ -106,6 +106,7 @@ checkTypeFamStaticErrors dis iis = let
   phase2 = instNoTFInArgument dis iis
            ++ instVarOccursCheck iis
            ++ instInjDefChecks dis iis
+           ++ instSmallerChecks dis iis
   in if not (null phase1)
         then phase1
         else phase2
@@ -222,10 +223,47 @@ instVarOccursCheck tis = let
     
   in [Undefined Variable n [] ["Variable " ++ show (show n) ++ " does not occur in any instance argument"] | n <- concatMap getViolations tis]
 
-instSmallerChecks :: TFInstanceInfos -> Errors
-instSmallerChecks tis = let
-  x = 2
-  in []
+--TODO: DO OTHER SMALLER CHECKS FROM PROPOSAL!
+instSmallerChecks :: TFDeclInfos -> TFInstanceInfos -> Errors
+instSmallerChecks dis tis = let
+
+  tyFams = obtainTyFams dis
+
+  obtainDefTyFam :: MonoType -> MonoTypes
+  obtainDefTyFam t@(MonoType_Fam _ mts) = t : concatMap obtainDefTyFam mts
+  obtainDefTyFam (MonoType_App mt1 mt2) = obtainDefTyFam mt1 ++ obtainDefTyFam mt2
+  obtainDefTyFam _                      = []
+  
+  obtainNameArgsDef :: TFInstanceInfo -> (Name, Types, Type)
+  obtainNameArgsDef (IAssoc n ts t _ _) = (n, ts, t)
+  obtainNameArgsDef (IClosed n ts t _)  = (n, ts, t)
+  obtainNameArgsDef (IOpen n ts t)      = (n, ts, t)
+
+  countSymbols :: MonoType -> Int
+  countSymbols (MonoType_Var _ _)     = 1
+  countSymbols (MonoType_Con _)       = 1
+  countSymbols (MonoType_Fam _ mts)   = sum $ map countSymbols mts
+  countSymbols (MonoType_App mt1 mt2) = countSymbols mt1 + countSymbols mt2
+
+  countOccVar :: String -> MonoType -> Int
+  countOccVar v (MonoType_Var (Just s) _) | v == s = 1
+                                          | otherwise = 0
+  countOccVar v (MonoType_Fam _ mts)      = sum $ map (countOccVar v) mts
+  countOccVar v (MonoType_App mt1 mt2)    = countOccVar v mt1 + countOccVar v mt2
+  countOccVar _ _                         = 0
+
+  checkInstance :: (Name, Types, Type) -> Errors
+  checkInstance (n, ts, t) = let
+    argMts = map (thrd . typeToMonoType tyFams) ts
+    defMt = thrd $ typeToMonoType tyFams t 
+
+    defTFs = obtainDefTyFam defMt
+    notTFFree = case filter (\(MonoType_Fam _ mts) -> not $ all isFamilyFree mts) defTFs of
+                  [] -> []
+                  xs -> [TFFamInDefNotFamFree n xs]
+    in notTFFree
+
+  in concatMap (checkInstance . obtainNameArgsDef) tis
 
 instInjDefChecks :: TFDeclInfos -> TFInstanceInfos -> Errors
 instInjDefChecks dis tis = let
@@ -248,11 +286,16 @@ instInjDefChecks dis tis = let
              , not $ all (isBareVariable . thrd . typeToMonoType tyFams) (obtainArguments inst)]
   in [InjTFInDefinition n | n <- tyFamDef] ++
      [InjBareVarInDefinition n ns | (n, ns) <- bareVars]
+
 -- CHECKS TODO!!!!!:
 -- Type is smaller Checks!
+-- Type compatibility checks
 --
 -- Definition smaller check (For non-injective)
 -- - Injective type fams
---    - Definition no type family or bare variable check
 --    - Pre-unification
 --    - Basically, the injectivity check from paper.
+--
+-- SOME MORE CHECKS:
+-- Check defs for fully saturated appliances
+-- CHECK TYPE SIGNATURES FOR UNSATURATED APPLIANCES
