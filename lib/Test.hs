@@ -38,8 +38,8 @@ type family I a b
 
 -- type family G a
 
--- class X a where
---     type Q a b
+class X a where
+    type Q a b
 
 -- instance X Int where
 --     type Q Int Int = Float
@@ -53,4 +53,9 @@ type family J a b where
 --     UU Float = Int
 --     UU [a] = Int
 
-type instance I Int Float = J (F Int (F Float Int)) Float
+type instance I Int Float = J (F Int) Int
+
+data Tree a = Node a (Tree a) (Tree a) | Leaf
+
+f :: I Int
+f = Leaf

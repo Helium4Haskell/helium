@@ -151,6 +151,7 @@ SEM Module
                     uniqueKeys (  @body.collectTypeConstructors
                                ++ concatMap (M.assocs . typeConstructors) @lhs.importEnvironments
                                ++ [ (n,i) | (n,(i,_)) <- @body.collectTypeSynonyms ]
+                               ++ obtainTyFams1 @body.collectTypeFamilyDecls
                                )
                . allTypeConstructors = map fst @uniqueTypeConstructors ++ map head @duplicatedTypeConstructors
                . typeConstructors    = M.fromList @uniqueTypeConstructors

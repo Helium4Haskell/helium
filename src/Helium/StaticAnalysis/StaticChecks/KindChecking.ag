@@ -36,6 +36,9 @@ SEM Declaration
   | TypeSignature   lhs . kindErrors = @newErrors ++ @lhs.kindErrors
                     loc . newErrors  = checkType @lhs.typeConstructors (@lhs.namesInScope ++ @lhs.allValueConstructors) @type.self
 
+  | TypeFamInstance lhs . kindErrors = @newErrors ++ @lhs.kindErrors
+                    loc . newErrors  = checkType @lhs.typeConstructors (@lhs.namesInScope ++ @lhs.allValueConstructors) @rhstype.self
+
 SEM AnnotatedType
   | AnnotatedType   lhs . kindErrors = @newErrors ++ @lhs.kindErrors
                     loc . newErrors  = checkType @lhs.typeConstructors (@lhs.namesInScope ++ @lhs.allValueConstructors) @type.self

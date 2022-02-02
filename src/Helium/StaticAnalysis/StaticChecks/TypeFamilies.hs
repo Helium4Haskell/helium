@@ -5,6 +5,7 @@ import Helium.StaticAnalysis.Messages.StaticErrors
 import Helium.StaticAnalysis.Messages.Warnings
 import Helium.StaticAnalysis.Messages.Messages
 import Helium.StaticAnalysis.Inferencers.OutsideInX.TopConversion
+    ( typeToMonoType )
 import Debug.Trace
 import Helium.StaticAnalysis.Inferencers.OutsideInX.Rhodium.RhodiumTypes
     ( isFamilyFree, MonoType (MonoType_Fam, MonoType_Var, MonoType_Con, MonoType_App), MonoTypes )
@@ -47,6 +48,12 @@ obtainTyFams (DAssoc n ns _ _ _:ts) = (show n, length ns) : obtainTyFams ts
 obtainTyFams (DClosed n ns _:ts)    = (show n, length ns) : obtainTyFams ts
 obtainTyFams (DOpen n ns _:ts)      = (show n, length ns) : obtainTyFams ts
 obtainTyFams []                     = []
+
+obtainTyFams1 :: TFDeclInfos -> [(Name, Int)]
+obtainTyFams1 (DAssoc n ns _ _ _:ts) = (n, length ns) : obtainTyFams1 ts
+obtainTyFams1 (DClosed n ns _:ts)    = (n, length ns) : obtainTyFams1 ts
+obtainTyFams1 (DOpen n ns _:ts)      = (n, length ns) : obtainTyFams1 ts
+obtainTyFams1 []                     = []
 
 obtainArguments :: TFInstanceInfo -> Types
 obtainArguments (IAssoc _ ts _ _ _) = ts
