@@ -11,6 +11,7 @@ import Helium.StaticAnalysis.Inferencers.OutsideInX.Rhodium.RhodiumTypes
     ( isFamilyFree, MonoType (MonoType_Fam, MonoType_Var, MonoType_Con, MonoType_App), MonoTypes )
 import Helium.StaticAnalysis.Miscellaneous.TypeConversion
     ( namesInType, namesInTypes )
+import Data.List (nub)
 
 
 type TFDeclInfos = [TFDeclInfo]
@@ -30,45 +31,54 @@ data TFInstanceInfo
 -------------------------------------
 -- UTILS
 
+-- Obtains the name of a typefam declaration
 obtainDeclName :: TFDeclInfo -> Name
 obtainDeclName (DOpen n _ _)      = n
 obtainDeclName (DClosed n _ _)    = n
 obtainDeclName (DAssoc n _ _ _ _) = n
 
+-- Obtains the name of a typefam instance
 obtainInstanceName :: TFInstanceInfo -> Name
 obtainInstanceName (IOpen n _ _)      = n
 obtainInstanceName (IClosed n _ _ _)  = n
 obtainInstanceName (IAssoc n _ _ _ _) = n
 
+-- Like fst and snd
 thrd :: (a, b, c) -> c
 thrd (_, _, z) = z
 
+-- Obtains the type family declaration info as needed for `typeToMonoType`
 obtainTyFams :: TFDeclInfos -> [(String, Int)]
 obtainTyFams (DAssoc n ns _ _ _:ts) = (show n, length ns) : obtainTyFams ts
 obtainTyFams (DClosed n ns _:ts)    = (show n, length ns) : obtainTyFams ts
 obtainTyFams (DOpen n ns _:ts)      = (show n, length ns) : obtainTyFams ts
 obtainTyFams []                     = []
 
+-- Obtains the type family declaration info as needed for KindChecking.ag
 obtainTyFams1 :: TFDeclInfos -> [(Name, Int)]
 obtainTyFams1 (DAssoc n ns _ _ _:ts) = (n, length ns) : obtainTyFams1 ts
 obtainTyFams1 (DClosed n ns _:ts)    = (n, length ns) : obtainTyFams1 ts
 obtainTyFams1 (DOpen n ns _:ts)      = (n, length ns) : obtainTyFams1 ts
 obtainTyFams1 []                     = []
 
+-- Obtains the argument types of a type family instance (lhs)
 obtainArguments :: TFInstanceInfo -> Types
 obtainArguments (IAssoc _ ts _ _ _) = ts
 obtainArguments (IClosed _ ts _ _)  = ts
 obtainArguments (IOpen _ ts _)      = ts
 
+-- Obtains the definition of a type family instance (rhs)
 obtainDefinition :: TFInstanceInfo -> Type
 obtainDefinition (IAssoc _ _ t _ _) = t
 obtainDefinition (IClosed _ _ t _)  = t
 obtainDefinition (IOpen _ _ t)      = t
 
+-- Checks if a MonoType is as a whole a type family application
 isTFApplication :: MonoType -> Bool 
 isTFApplication (MonoType_Fam _ _) = True 
 isTFApplication _                  = False
 
+-- Checks if the MonoType is a bare variable
 isBareVariable :: MonoType -> Bool
 isBareVariable (MonoType_Var _ _) = True
 isBareVariable _                  = False
@@ -80,6 +90,7 @@ isBareVariable _                  = False
 declNoIndenticalVars :: Declaration -> Errors
 declNoIndenticalVars (Declaration_TypeFam _ (SimpleType_SimpleType _ _ tv) _ _) = let
 
+  -- Builds all unique pairs inside the list.
   createPairs :: Show a => [a] -> [(a, a)]
   createPairs xs = [(x, y) | (x:ys) <- tails xs, y <- ys]
 
@@ -122,12 +133,8 @@ checkTypeFamStaticErrors dis iis = let
 declCheckDuplicates :: TFDeclInfos -> Errors
 declCheckDuplicates tfs = let
 
-  obtainNames :: TFDeclInfo -> Name
-  obtainNames (DOpen n _ _)      = n
-  obtainNames (DClosed n _ _)    = n
-  obtainNames (DAssoc n _ _ _ _) = n
-
-  createNamePairs xs = [(n1, n2) | (n1:ys) <- tails (map obtainNames xs), n2 <- ys]
+  -- Creates all unique pairs of declaration names
+  createNamePairs xs = [(n1, n2) | (n1:ys) <- tails (map obtainDeclName xs), n2 <- ys]
 
   tails [] = []
   tails (x:xs) = (x:xs) : tails xs
@@ -139,6 +146,7 @@ declCheckDuplicates tfs = let
 atsCheckVarAlignment :: TFDeclInfos -> TFInstanceInfos -> Errors
 atsCheckVarAlignment decls insts = let
 
+  -- Converts all instances to a tuple containing (class instance name, tf instance name, monotypes of instance args, monotypes of tf instance args)
   convertedInsts = [(instn, itfn, map (typeToMonoType []) its, map (typeToMonoType []) tfts) | (IAssoc itfn tfts _ its instn) <- insts]
 
   violations = [(itfn, instn, thrd (its !! ci), thrd (tfts !! tfi)) |
@@ -156,15 +164,17 @@ atsCheckVarAlignment decls insts = let
 instCheckInstanceValidity :: TFDeclInfos -> TFInstanceInfos -> Errors
 instCheckInstanceValidity ds is = let
 
-  getUndefinedNames = [n1 | n1 <- map obtainInstanceName is, notElem n1 $ map obtainDeclName ds]
+  
   ns = map obtainDeclName ds
   
+  -- Obtains open and closed instances
   obtainOpenClosed :: TFInstanceInfos -> Names
   obtainOpenClosed (IOpen n _ _:ts)     = n : obtainOpenClosed ts
   obtainOpenClosed (IClosed n _ _ _:ts) = n : obtainOpenClosed ts
   obtainOpenClosed (_:ts)               = obtainOpenClosed ts
   obtainOpenClosed []                   = []
 
+  --Obtains assoc and open instances
   obtainOpenAssoc :: TFInstanceInfos -> Names
   obtainOpenAssoc (IOpen n _ _:ts)      = n : obtainOpenAssoc ts
   obtainOpenAssoc (IAssoc n _ _ _ _:ts) = n : obtainOpenAssoc ts
@@ -175,6 +185,9 @@ instCheckInstanceValidity ds is = let
   hasAssocTypeSyn cn n = case [ n1 | (DAssoc n1 _ _ _ cn1) <- ds, cn1 == cn, n == n1] of
                             [] -> False
                             _  -> True 
+
+  -- Obtains instance names of undefined type families
+  getUndefinedNames = [n1 | n1 <- map obtainInstanceName is, n1 `notElem` ns]
 
   -- Associated type synonym instance validities
   assocNotInClassInstance = [(n2, cn) | (DAssoc n1 _ _ _ cn) <- ds, n2 <- obtainOpenClosed is, n1 == n2]
@@ -246,6 +259,12 @@ instSmallerChecks dis tis = let
   obtainNameArgsDef (IClosed n ts t _)  = (n, ts, t)
   obtainNameArgsDef (IOpen n ts t)      = (n, ts, t)
 
+  obtainVars :: MonoType -> [String]
+  obtainVars (MonoType_Var (Just s) _) = [s]
+  obtainVars (MonoType_Con _)          = []
+  obtainVars (MonoType_Fam _ mts)      = nub $ concatMap obtainVars mts
+  obtainVars (MonoType_App mt1 mt2)    = nub $ obtainVars mt1 ++ obtainVars mt2
+
   countSymbols :: MonoType -> Int
   countSymbols (MonoType_Var _ _)     = 1
   countSymbols (MonoType_Con _)       = 1
@@ -265,10 +284,19 @@ instSmallerChecks dis tis = let
     defMt = thrd $ typeToMonoType tyFams t 
 
     defTFs = obtainDefTyFam defMt
+    -- First smaller check
     notTFFree = case filter (\(MonoType_Fam _ mts) -> not $ all isFamilyFree mts) defTFs of
                   [] -> []
                   xs -> [TFFamInDefNotFamFree n xs]
-    in notTFFree
+
+    -- Second smaller check
+    symbolsNotSmaller = [ TFDefNotSmallerSymbols n tf | tf <- defTFs, sum (map countSymbols argMts) <= countSymbols tf ]
+
+    varOccurenceCheck = [ TFDefVarCountNotSmaller n argVar | 
+                          argVar <- concatMap obtainVars argMts
+                        , defTF <- defTFs
+                        , sum (map (countOccVar argVar) argMts) <= countOccVar argVar defTF]
+    in notTFFree ++ symbolsNotSmaller ++ varOccurenceCheck
 
   in concatMap (checkInstance . obtainNameArgsDef) tis
 
@@ -296,13 +324,9 @@ instInjDefChecks dis tis = let
 
 -- CHECKS TODO!!!!!:
 -- Type is smaller Checks!
--- Type compatibility checks
+-- Type instance compatibility checks
 --
 -- Definition smaller check (For non-injective)
 -- - Injective type fams
 --    - Pre-unification
 --    - Basically, the injectivity check from paper.
---
--- SOME MORE CHECKS:
--- Check defs for fully saturated appliances
--- CHECK TYPE SIGNATURES FOR UNSATURATED APPLIANCES

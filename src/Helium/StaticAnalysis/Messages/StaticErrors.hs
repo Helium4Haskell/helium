@@ -76,6 +76,8 @@ data Error  = NoFunDef Entity Name {-names in scope-}Names
             | InjTFInDefinition Name
             | InjBareVarInDefinition Name MonoTypes
             | TFFamInDefNotFamFree Name MonoTypes
+            | TFDefNotSmallerSymbols Name MonoType
+            | TFDefVarCountNotSmaller Name String
 
 instance HasMessage Error where
    getMessage x = let (oneliner, hints) = showError x
@@ -131,7 +133,9 @@ instance HasMessage Error where
       TFInArgument _ t _          -> [getTypeRange t]
       InjTFInDefinition n         -> [getNameRange n] 
       InjBareVarInDefinition n _  -> [getNameRange n]
-      TFFamInDefNotFamFree n _    -> [getNameRange n]  
+      TFFamInDefNotFamFree n _    -> [getNameRange n]
+      TFDefNotSmallerSymbols n _  -> [getNameRange n] 
+      TFDefVarCountNotSmaller n _ -> [getNameRange n] 
 
 sensiblySimilar :: Name -> Names -> [Name]
 sensiblySimilar name inScope =
@@ -468,6 +472,12 @@ showError anError = case anError of
          ,  MessageString ("\t\tCulprits: " ++ intercalate ", "  (map (show . show) mts)) 
          ]  
       , [MessageString "Type instance definitions may not contain nested type families to ensure termination."])
+   TFDefNotSmallerSymbols n t ->
+      ( MessageString ("The definition for type family instance for " ++ show (show n) ++ " is not 'smaller'.")
+      ,[MessageString ("The type " ++ show (show t) ++ " must contain a strictly less amount of variables and constructors than the amount in the instance arguments.")])
+   TFDefVarCountNotSmaller n s ->
+      ( MessageString ("The definition for type family instance for " ++ show (show n) ++ " is not 'smaller'.")
+      ,[MessageString ("The variable " ++ show s ++ " may only occur strictly less times in type family applications than that it occurs in the instance arguments.")])
 
    _ -> internalError "StaticErrors.hs" "showError" "unknown type of Error"
 
@@ -556,6 +566,8 @@ errorLogCode anError = case anError of
           InjTFInDefinition _                     -> "itid"
           InjBareVarInDefinition _ _              -> "ibvd"
           TFFamInDefNotFamFree _ _                -> "nff"
+          TFDefNotSmallerSymbols _ _              -> "dns"
+          TFDefVarCountNotSmaller _ _             -> "dvc"
    where code entity = fromMaybe "??"
                      . lookup entity
                      $ [ (TypeSignature    ,"ts"), (TypeVariable         ,"tv"), (TypeConstructor,"tc")

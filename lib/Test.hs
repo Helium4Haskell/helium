@@ -53,9 +53,9 @@ type family J a b where
 --     UU Float = Int
 --     UU [a] = Int
 
-type instance I Int Float = J (F Int) Int
+type instance I Int a = J a a
 
 data Tree a = Node a (Tree a) (Tree a) | Leaf
 
-f :: I Int
-f = Leaf
+-- f :: I Int
+-- f = Leaf
