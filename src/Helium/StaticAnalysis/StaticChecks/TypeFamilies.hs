@@ -1,3 +1,4 @@
+{-# OPTIONS_GHC -Wno-incomplete-patterns #-}
 module Helium.StaticAnalysis.StaticChecks.TypeFamilies where
 
 import Helium.Syntax.UHA_Syntax
@@ -8,10 +9,13 @@ import Helium.StaticAnalysis.Inferencers.OutsideInX.TopConversion
     ( typeToMonoType )
 import Debug.Trace
 import Helium.StaticAnalysis.Inferencers.OutsideInX.Rhodium.RhodiumTypes
-    ( isFamilyFree, MonoType (MonoType_Fam, MonoType_Var, MonoType_Con, MonoType_App), MonoTypes )
+    ( isFamilyFree, MonoType (MonoType_Fam, MonoType_Var, MonoType_Con, MonoType_App), MonoTypes, TyVar, fvToList )
 import Helium.StaticAnalysis.Miscellaneous.TypeConversion
     ( namesInType, namesInTypes )
-import Data.List (nub)
+import Data.List (nub, elemIndex)
+import Data.Map (Map)
+import qualified Data.Map as M
+import Data.Maybe (fromJust, fromMaybe)
 
 
 type TFDeclInfos = [TFDeclInfo]
@@ -28,6 +32,14 @@ data TFInstanceInfo
   | IAssoc Name Types Type Types Name
   deriving Show
 
+type InjectiveEnv = Map String [Int]
+type SubstitutionEnv = Map TyVar MonoType
+
+data UnifyOptions = UO {
+  injChecking :: Bool,
+  matching :: Bool,
+  unifying :: Bool
+}
 -------------------------------------
 -- UTILS
 
@@ -83,6 +95,16 @@ isBareVariable :: MonoType -> Bool
 isBareVariable (MonoType_Var _ _) = True
 isBareVariable _                  = False
 
+-- Builds Injective environment.
+buildInjectiveEnv :: TFDeclInfos -> InjectiveEnv
+buildInjectiveEnv (DAssoc n ns ins _ _:dis) = M.insert (show n) (getInjIndices ns ins) $ buildInjectiveEnv dis
+buildInjectiveEnv (DClosed n ns ins:dis)    = M.insert (show n) (getInjIndices ns ins) $ buildInjectiveEnv dis
+buildInjectiveEnv (DOpen n ns ins:dis)      = M.insert (show n) (getInjIndices ns ins) $ buildInjectiveEnv dis
+buildInjectiveEnv []                        = M.empty
+
+getInjIndices :: Names -> Maybe Names -> [Int]
+getInjIndices _  Nothing = []
+getInjIndices ns (Just ins) = map (fromJust . flip elemIndex ins) ns
 --------------------------------------
 -- Declaration static checks, SEPARATE CHECKS
 
@@ -330,3 +352,57 @@ instInjDefChecks dis tis = let
 -- - Injective type fams
 --    - Pre-unification
 --    - Basically, the injectivity check from paper.
+
+unify :: InjectiveEnv -- Whether a type fam is injective, important for pre-U for injectivity check
+      -> UnifyOptions
+      -> MonoType -- type 1
+      -> MonoType -- type 2
+      -> SubstitutionEnv -- the substitution environment
+      -> Maybe SubstitutionEnv -- Unification result in the form of perhaps a substitution environment.
+unify _ _ (MonoType_Con cn1) (MonoType_Con cn2) subst
+  | cn1 == cn2 = return subst
+unify ienv opts mtv@(MonoType_Var _ tv) t subst
+  | M.member tv subst = unify ienv opts (applySubst subst mtv) t subst
+unify _ opts (MonoType_Var _ tv) t subst
+  | tv `elem` fvToList (applySubst subst t)
+    = if injChecking opts
+        then Just subst
+        else Nothing
+  | tv `notElem` fvToList (applySubst subst t)
+    = Just $ M.insert tv (applySubst subst t) subst
+unify ienv opts t mtv@(MonoType_Var _ _) subst
+  | not $ matching opts = unify ienv opts mtv t subst
+unify ienv opts (MonoType_App s1 s2) (MonoType_App t1 t2) subst
+  = unify ienv opts s1 t1 subst >>~ unify ienv opts s2 t2
+unify _ _ (MonoType_Fam f []) (MonoType_Fam g []) subst
+  | f == g = Just subst
+unify ienv opts (MonoType_Fam f fmts) (MonoType_Fam g gmts) subst
+  | injChecking opts,
+    g == f,
+    Just iargs <- M.lookup f ienv,
+    fargs <- map (fmts !!) iargs,
+    gargs <- map (gmts !!) iargs
+    = chainUnifies (Just subst) $ zipWith (unify ienv opts) fargs gargs
+  | g == f = chainUnifies (Just subst) $ zipWith (unify ienv opts) fmts gmts
+unify _ opts (MonoType_Fam _ _) _ subst
+  | injChecking opts = Just subst
+  | otherwise = Nothing
+unify _ opts _ (MonoType_Fam _ _) subst
+  | injChecking opts = Just subst
+  | otherwise = Nothing
+unify _ _ _ _ _ = Nothing 
+
+
+applySubst :: SubstitutionEnv -> MonoType -> MonoType
+applySubst env mtv@(MonoType_Var _ tv) = fromMaybe mtv (M.lookup tv env)
+applySubst _   mtc@(MonoType_Con _)    = mtc
+applySubst env (MonoType_Fam f mts)    = MonoType_Fam f $ map (applySubst env) mts
+applySubst env (MonoType_App mt1 mt2)  = MonoType_App (applySubst env mt1) (applySubst env mt2)
+
+chainUnifies :: Maybe SubstitutionEnv -> [SubstitutionEnv -> Maybe SubstitutionEnv] -> Maybe SubstitutionEnv
+chainUnifies = foldl (>>~)
+
+infixl 9 >>~
+(>>~) :: Maybe SubstitutionEnv -> (SubstitutionEnv -> Maybe SubstitutionEnv) -> Maybe SubstitutionEnv
+(Just subst) >>~ k = k subst
+Nothing      >>~ _ = Nothing
