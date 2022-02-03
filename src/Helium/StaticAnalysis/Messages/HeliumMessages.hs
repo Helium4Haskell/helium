@@ -245,7 +245,7 @@ freshenRepresentation rs = fst $ runState (mapM freshenHelper rs) (maximumString
             collectRepresentationM (MonoType_Var (Just s) v) | s == "" = [] 
                                                              | otherwise = [(v, s)]
             collectRepresentationM (MonoType_App f a) = collectRepresentationM f ++ collectRepresentationM a
-            collectRepresentationM (MonoType_Fam f ms) = concatMap collectRepresentationM ms
+            collectRepresentationM (MonoType_Fam f _ ms) = concatMap collectRepresentationM ms
             collectRepresentationM _ = []
             collectRepresentationP :: (Subst MonoType ci, Alpha ci, Fresh m) => PolyType ci -> m [(TyVar, String)]
             collectRepresentationP (PolyType_Mono cs m) = return (collectRepresentationM m)
@@ -272,7 +272,7 @@ freshenRepresentation rs = fst $ runState (mapM freshenHelper rs) (maximumString
                         put (n', rep')
                         return (MonoType_Var (Just n') v)
             freshenHelperM (MonoType_App f a) = MonoType_App <$> freshenHelperM f <*> freshenHelperM a 
-            freshenHelperM (MonoType_Fam f ms) = MonoType_Fam f <$> mapM freshenHelperM ms
+            freshenHelperM (MonoType_Fam f inj ms) = MonoType_Fam f inj <$> mapM freshenHelperM ms
 
                         
 nextVariableRep :: String -> String

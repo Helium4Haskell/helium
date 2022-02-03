@@ -339,7 +339,7 @@ siblingLiterals =
                                  -> let hint = fixHint "use a string literal instead"
                                     in return $ Just
                                           (5, "Char literal should be a String", constraint, eid, hint info, gm)
-                           ("Char", MonoType_Fam "String" [])
+                           ("Char", MonoType_Fam "String" _ [])
                                  -> let hint = fixHint "use a string literal instead"
                                     in return $ Just
                                           (5, "Char literal should be a String", constraint, eid, hint info, gm)

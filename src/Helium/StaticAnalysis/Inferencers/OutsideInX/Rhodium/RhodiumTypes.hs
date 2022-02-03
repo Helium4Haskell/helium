@@ -61,14 +61,14 @@ instance VariableInjection MonoType where
 type MonoTypes = [MonoType]
 
 data MonoType 
-    = MonoType_Fam   String [MonoType]
+    = MonoType_Fam   String Bool [MonoType]
     | MonoType_Var   (Maybe String) TyVar
     | MonoType_Con   String 
     | MonoType_App   MonoType MonoType
     deriving (Ord, Generic)
 
 instance Eq MonoType where
-    MonoType_Fam s1 ms1 == MonoType_Fam s2 ms2 = s1 == s2 && ms1 == ms2
+    MonoType_Fam s1 _ ms1 == MonoType_Fam s2 _ ms2 = s1 == s2 && ms1 == ms2
     MonoType_Var _ v1 == MonoType_Var _ v2 = v1 == v2
     MonoType_Con s1 == MonoType_Con s2 = s1 == s2
     MonoType_App f1 a1 == MonoType_App f2 a2 = f1 == f2 && a1 == a2
@@ -76,7 +76,7 @@ instance Eq MonoType where
 
 isFamilyFree :: MonoType -> Bool
 isFamilyFree (MonoType_Con _)       = True
-isFamilyFree (MonoType_Fam _ _)     = False
+isFamilyFree MonoType_Fam{}         = False
 isFamilyFree (MonoType_Var _ _)     = True
 isFamilyFree (MonoType_App a1 a2)   = isFamilyFree a1 && isFamilyFree a2
 
@@ -91,7 +91,7 @@ showMT mp (MonoType_List t)      = "[" ++ showMT mp t ++ "]"
 showMT mp (MonoType_App (MonoType_Con "[]") t) = "[" ++ showMT mp t ++ "]"
 showMT mp (MonoType_Tuple t1 t2) = "(" ++ showMT mp t1 ++ "," ++ showMT mp t2 ++ ")"
 showMT mp (MonoType_Con c)       = c 
-showMT mp (MonoType_Fam c a)     = c ++ concatMap (\x -> " " ++ doParens (showMT mp x)) a
+showMT mp (MonoType_Fam c _ a)   = c ++ concatMap (\x -> " " ++ doParens (showMT mp x)) a
 showMT mp (s :-->: t)            = doParens (showMT mp s) ++ " -> " ++ showMT mp t
 showMT mp (MonoType_Var s v)     = let r = fromMaybe (fromMaybe (show v) s) (lookup v mp) in if r == "" then show v else r
 showMT mp ma@(MonoType_App f a)  = case conList ma of 

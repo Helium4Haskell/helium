@@ -374,7 +374,7 @@ getResultTypeM i (MonoType_App y x) =  let
                                     (m2, cs2, i2) = getResultTypeM' i1 x
                                 in (MonoType_App m1 m2, MonoType_App m1 m2, cs1 ++ cs2, i2) 
 getResultTypeM i (MonoType_Con s)   = (MonoType_Con s, MonoType_Con s, [], i) --let v = var $ integer2Name i in (v, v, [Constraint_Unify v (MonoType_Con s) $ Just emptyConstraintInfo], i + 1)
-getResultTypeM i f@(MonoType_Fam _ _) = (f, f, [], i)
+getResultTypeM i f@MonoType_Fam{} = (f, f, [], i)
 getResultTypeM i (MonoType_Var s v)   = (internalError "TypeInferenceRules" "getResultTypeM" "Return type of a GADT can never be a type variable", MonoType_Var s v, [], i)
 
 getResultTypeM' :: Integer -> MonoType -> (MonoType, [Constraint ConstraintInfo], Integer)
@@ -852,7 +852,7 @@ SEM Literal
         lhs . literalType   = MonoType_Con "Float"
         lhs . floatValue    = read @value
     | String
-        lhs . literalType   = MonoType_Fam "String" []
+        lhs . literalType   = MonoType_Fam "String" False []
     | Char
         lhs . literalType   = MonoType_Con "Char"
               
