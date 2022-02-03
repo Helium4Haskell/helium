@@ -12,7 +12,6 @@ import Helium.StaticAnalysis.Inferencers.OutsideInX.Rhodium.RhodiumTypes
 import Helium.StaticAnalysis.Miscellaneous.TypeConversion
     ( namesInType, namesInTypes )
 import Data.List (nub)
-import Data.Maybe (isJust)
 
 
 type TFDeclInfos = [TFDeclInfo]
@@ -49,10 +48,10 @@ thrd :: (a, b, c) -> c
 thrd (_, _, z) = z
 
 -- Obtains the type family declaration info as needed for `typeToMonoType`
-obtainTyFams :: TFDeclInfos -> [(String, Bool, Int)]
-obtainTyFams (DAssoc n ns ins _ _:ts) = (show n, isJust ins, length ns) : obtainTyFams ts
-obtainTyFams (DClosed n ns ins:ts)    = (show n, isJust ins, length ns) : obtainTyFams ts
-obtainTyFams (DOpen n ns ins:ts)      = (show n, isJust ins, length ns) : obtainTyFams ts
+obtainTyFams :: TFDeclInfos -> [(String, Int)]
+obtainTyFams (DAssoc n ns _ _ _:ts) = (show n, length ns) : obtainTyFams ts
+obtainTyFams (DClosed n ns _:ts)    = (show n, length ns) : obtainTyFams ts
+obtainTyFams (DOpen n ns _:ts)      = (show n, length ns) : obtainTyFams ts
 obtainTyFams []                     = []
 
 -- Obtains the type family declaration info as needed for KindChecking.ag
@@ -76,8 +75,8 @@ obtainDefinition (IOpen _ _ t)      = t
 
 -- Checks if a MonoType is as a whole a type family application
 isTFApplication :: MonoType -> Bool 
-isTFApplication MonoType_Fam{} = True 
-isTFApplication _              = False
+isTFApplication (MonoType_Fam _ _) = True 
+isTFApplication _                  = False
 
 -- Checks if the MonoType is a bare variable
 isBareVariable :: MonoType -> Bool
@@ -251,9 +250,9 @@ instSmallerChecks dis tis = let
   tyFams = obtainTyFams dis
 
   obtainDefTyFam :: MonoType -> MonoTypes
-  obtainDefTyFam t@(MonoType_Fam _  _ mts) = t : concatMap obtainDefTyFam mts
-  obtainDefTyFam (MonoType_App mt1 mt2)    = obtainDefTyFam mt1 ++ obtainDefTyFam mt2
-  obtainDefTyFam _                         = []
+  obtainDefTyFam t@(MonoType_Fam _ mts) = t : concatMap obtainDefTyFam mts
+  obtainDefTyFam (MonoType_App mt1 mt2) = obtainDefTyFam mt1 ++ obtainDefTyFam mt2
+  obtainDefTyFam _                      = []
   
   obtainNameArgsDef :: TFInstanceInfo -> (Name, Types, Type)
   obtainNameArgsDef (IAssoc n ts t _ _) = (n, ts, t)
@@ -261,21 +260,21 @@ instSmallerChecks dis tis = let
   obtainNameArgsDef (IOpen n ts t)      = (n, ts, t)
 
   obtainVars :: MonoType -> [String]
-  obtainVars (MonoType_Var (Just s) _)   = [s]
-  obtainVars (MonoType_Con _)            = []
-  obtainVars (MonoType_Fam _ _ mts)      = nub $ concatMap obtainVars mts
-  obtainVars (MonoType_App mt1 mt2)      = nub $ obtainVars mt1 ++ obtainVars mt2
+  obtainVars (MonoType_Var (Just s) _) = [s]
+  obtainVars (MonoType_Con _)          = []
+  obtainVars (MonoType_Fam _ mts)      = nub $ concatMap obtainVars mts
+  obtainVars (MonoType_App mt1 mt2)    = nub $ obtainVars mt1 ++ obtainVars mt2
 
   countSymbols :: MonoType -> Int
-  countSymbols (MonoType_Var _ _)       = 1
-  countSymbols (MonoType_Con _)         = 1
-  countSymbols (MonoType_Fam _ _ mts)   = sum $ map countSymbols mts
-  countSymbols (MonoType_App mt1 mt2)   = countSymbols mt1 + countSymbols mt2
+  countSymbols (MonoType_Var _ _)     = 1
+  countSymbols (MonoType_Con _)       = 1
+  countSymbols (MonoType_Fam _ mts)   = sum $ map countSymbols mts
+  countSymbols (MonoType_App mt1 mt2) = countSymbols mt1 + countSymbols mt2
 
   countOccVar :: String -> MonoType -> Int
   countOccVar v (MonoType_Var (Just s) _) | v == s = 1
                                           | otherwise = 0
-  countOccVar v (MonoType_Fam _ _ mts)    = sum $ map (countOccVar v) mts
+  countOccVar v (MonoType_Fam _ mts)      = sum $ map (countOccVar v) mts
   countOccVar v (MonoType_App mt1 mt2)    = countOccVar v mt1 + countOccVar v mt2
   countOccVar _ _                         = 0
 
@@ -286,7 +285,7 @@ instSmallerChecks dis tis = let
 
     defTFs = obtainDefTyFam defMt
     -- First smaller check
-    notTFFree = case filter (\(MonoType_Fam _ _ mts) -> not $ all isFamilyFree mts) defTFs of
+    notTFFree = case filter (\(MonoType_Fam _ mts) -> not $ all isFamilyFree mts) defTFs of
                   [] -> []
                   xs -> [TFFamInDefNotFamFree n xs]
 
@@ -324,6 +323,7 @@ instInjDefChecks dis tis = let
      [InjBareVarInDefinition n ns | (n, ns) <- bareVars]
 
 -- CHECKS TODO!!!!!:
+-- Type is smaller Checks!
 -- Type instance compatibility checks
 --
 -- Definition smaller check (For non-injective)
