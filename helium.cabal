@@ -121,6 +121,7 @@ library
       Helium.StaticAnalysis.Miscellaneous.TypeConversion
       Helium.StaticAnalysis.Miscellaneous.TypesToAlignedDocs
       Helium.StaticAnalysis.Miscellaneous.UHA_Source
+      Helium.StaticAnalysis.Miscellaneous.Unify
       Helium.StaticAnalysis.StaticChecks.TypeFamilies
       Helium.Syntax.UHA_Range
       Helium.Syntax.UHA_Utils
