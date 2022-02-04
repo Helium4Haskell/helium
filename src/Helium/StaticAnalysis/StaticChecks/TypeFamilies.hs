@@ -51,6 +51,14 @@ obtainInstanceName (IAssoc n _ _ _ _) = n
 thrd :: (a, b, c) -> c
 thrd (_, _, z) = z
 
+-- Builds all unique pairs inside the list.
+createPairs :: Show a => [a] -> [(a, a)]
+createPairs xs = [(x, y) | (x:ys) <- tails xs, y <- ys]
+
+tails :: [a] -> [[a]]
+tails [] = []
+tails (x:xs) = (x:xs) : tails xs
+
 -- Obtains the type family declaration info as needed for `typeToMonoType`
 obtainTyFams :: TFDeclInfos -> [(String, Int)]
 obtainTyFams (DAssoc n ns _ _ _:ts) = (show n, length ns) : obtainTyFams ts
@@ -97,22 +105,23 @@ buildInjectiveEnv []                        = M.empty
 getInjIndices :: Names -> Maybe Names -> [Int]
 getInjIndices _  Nothing = []
 getInjIndices ns (Just ins) = map (fromJust . flip elemIndex ins) ns
+
+obtainOpenTFInstances :: TFInstanceInfos -> TFInstanceInfos
+obtainOpenTFInstances = filter isOpen
+  where isOpen IOpen{} = True 
+        isOpen _       = False
+
+buildMtOfLhs :: TFDeclInfos -> TFInstanceInfo -> MonoType 
+buildMtOfLhs dis (IOpen n ts _)      = MonoType_Fam (show n) $ map (thrd . typeToMonoType (obtainTyFams dis)) ts
+buildMtOfLhs dis (IClosed n ts _ _)  = MonoType_Fam (show n) $ map (thrd . typeToMonoType (obtainTyFams dis)) ts
+buildMtOfLhs dis (IAssoc n ts _ _ _) = MonoType_Fam (show n) $ map (thrd . typeToMonoType (obtainTyFams dis)) ts
 --------------------------------------
 -- Declaration static checks, SEPARATE CHECKS
 
 -- Checks if a declaration does not have variables with identical names.
 declNoIndenticalVars :: Declaration -> Errors
-declNoIndenticalVars (Declaration_TypeFam _ (SimpleType_SimpleType _ _ tv) _ _) = let
-
-  -- Builds all unique pairs inside the list.
-  createPairs :: Show a => [a] -> [(a, a)]
-  createPairs xs = [(x, y) | (x:ys) <- tails xs, y <- ys]
-
-  tails [] = []
-  tails (x:xs) = (x:xs) : tails xs
-
-
-  in [Duplicated Variable [n1, n2] | (n1, n2) <- createPairs tv, n1 == n2]
+declNoIndenticalVars (Declaration_TypeFam _ (SimpleType_SimpleType _ _ tv) _ _) 
+  = [Duplicated Variable [n1, n2] | (n1, n2) <- createPairs tv, n1 == n2]
 declNoIndenticalVars _ = []
 
 -- Check the injectivity variables (both result var and injectively defined vars)
@@ -335,6 +344,24 @@ instInjDefChecks dis tis = let
              , not $ all (isBareVariable . thrd . typeToMonoType tyFams) (obtainArguments inst)]
   in [InjTFInDefinition n | n <- tyFamDef] ++
      [InjBareVarInDefinition n ns | (n, ns) <- bareVars]
+
+-- TODO
+-- compatibilityCheck :: TFDeclInfos -> TFInstanceInfos -> Errors
+-- compatibilityCheck dis tis = let
+  
+--   openTFs = obtainOpenTFInstances tis
+--   mts = map (buildMtOfLhs dis) openTFs
+
+--   instancePairs = [(t1, t2) | t1@(MonoType_Fam n1 _) <- mts
+--                             , t2@(MonoType_Fam n2 _) <- mts
+--                             , n1 == n2
+--                             , t1 /= t2]
+
+--   checkPairs t1 t2 = unifyTy ienv t1 t2
+--   ienv = buildInjectiveEnv dis
+
+--   in [ ()| (t1, t2) <- instancePairs]
+    
 
 -- CHECKS TODO!!!!!:
 -- Type is smaller Checks!
