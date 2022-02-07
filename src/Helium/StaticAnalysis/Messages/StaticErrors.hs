@@ -78,6 +78,7 @@ data Error  = NoFunDef Entity Name {-names in scope-}Names
             | TFFamInDefNotFamFree Name MonoTypes
             | TFDefNotSmallerSymbols Name MonoType
             | TFDefVarCountNotSmaller Name String
+            | OpenTFOverlapping Name Name MonoType MonoType MonoType MonoType 
 
 instance HasMessage Error where
    getMessage x = let (oneliner, hints) = showError x
@@ -135,7 +136,8 @@ instance HasMessage Error where
       InjBareVarInDefinition n _  -> [getNameRange n]
       TFFamInDefNotFamFree n _    -> [getNameRange n]
       TFDefNotSmallerSymbols n _  -> [getNameRange n] 
-      TFDefVarCountNotSmaller n _ -> [getNameRange n] 
+      TFDefVarCountNotSmaller n _ -> [getNameRange n]
+      OpenTFOverlapping n1 n2 _ _ _ _ -> sortRanges [getNameRange n1, getNameRange n2]
 
 sensiblySimilar :: Name -> Names -> [Name]
 sensiblySimilar name inScope =
@@ -478,6 +480,14 @@ showError anError = case anError of
    TFDefVarCountNotSmaller n s ->
       ( MessageString ("The definition for type family instance for " ++ show (show n) ++ " is not 'smaller'.")
       ,[MessageString ("The variable " ++ show s ++ " may only occur strictly less times in type family applications than that it occurs in the instance arguments.")])
+   OpenTFOverlapping n1 _ t1 t2 dt1 dt2 ->
+      ( MessageCompose 
+         [
+            MessageString ("Found two overlapping instances for type family " ++ show (show n1) ++ ":\n")
+         ,  MessageString ("\t\t" ++ show t1 ++ " = " ++ show dt1 ++ "\n")
+         ,  MessageString ("\t\t" ++ show t2 ++ " = " ++ show dt2)
+         ]
+      ,[MessageString "Type family instances may not overlap to ensure that the compiler always knows which instance to choose for type family application."])
 
    _ -> internalError "StaticErrors.hs" "showError" "unknown type of Error"
 
@@ -568,6 +578,7 @@ errorLogCode anError = case anError of
           TFFamInDefNotFamFree _ _                -> "nff"
           TFDefNotSmallerSymbols _ _              -> "dns"
           TFDefVarCountNotSmaller _ _             -> "dvc"
+          OpenTFOverlapping _ _ _ _ _ _           -> "oto"
    where code entity = fromMaybe "??"
                      . lookup entity
                      $ [ (TypeSignature    ,"ts"), (TypeVariable         ,"tv"), (TypeConstructor,"tc")

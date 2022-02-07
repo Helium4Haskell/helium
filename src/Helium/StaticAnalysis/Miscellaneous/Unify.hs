@@ -29,7 +29,7 @@ data UnifyResultM a
   = SurelyApart
   | MaybeApart a
   | Unifiable a
-  deriving Functor
+  deriving (Show, Functor)
 
 instance Applicative UnifyResultM where
   pure = Unifiable

@@ -17,6 +17,8 @@ import Data.List (nub, elemIndex)
 import Data.Map (Map)
 import qualified Data.Map as M
 import Data.Maybe (fromJust, fromMaybe)
+import Helium.Utils.Utils (internalError)
+import Helium.Syntax.UHA_Range (getNameRange)
 
 
 type TFDeclInfos = [TFDeclInfo]
@@ -111,10 +113,10 @@ obtainOpenTFInstances = filter isOpen
   where isOpen IOpen{} = True 
         isOpen _       = False
 
-buildMtOfLhs :: TFDeclInfos -> TFInstanceInfo -> MonoType 
-buildMtOfLhs dis (IOpen n ts _)      = MonoType_Fam (show n) $ map (thrd . typeToMonoType (obtainTyFams dis)) ts
-buildMtOfLhs dis (IClosed n ts _ _)  = MonoType_Fam (show n) $ map (thrd . typeToMonoType (obtainTyFams dis)) ts
-buildMtOfLhs dis (IAssoc n ts _ _ _) = MonoType_Fam (show n) $ map (thrd . typeToMonoType (obtainTyFams dis)) ts
+buildMtTuple :: TFDeclInfos -> TFInstanceInfo -> (Name, MonoType, MonoType) 
+buildMtTuple dis (IOpen n ts dt)      = (n, MonoType_Fam (show n) $ map (thrd . typeToMonoType (obtainTyFams dis)) ts, thrd $ typeToMonoType (obtainTyFams dis) dt)
+buildMtTuple dis (IClosed n ts dt _)  = (n, MonoType_Fam (show n) $ map (thrd . typeToMonoType (obtainTyFams dis)) ts, thrd $ typeToMonoType (obtainTyFams dis) dt)
+buildMtTuple dis (IAssoc n ts dt _ _) = (n, MonoType_Fam (show n) $ map (thrd . typeToMonoType (obtainTyFams dis)) ts, thrd $ typeToMonoType (obtainTyFams dis) dt)
 --------------------------------------
 -- Declaration static checks, SEPARATE CHECKS
 
@@ -148,6 +150,7 @@ checkTypeFamStaticErrors dis iis = let
            ++ instVarOccursCheck iis
            ++ instInjDefChecks dis iis
            ++ instSmallerChecks dis iis
+           ++ compatibilityCheck dis iis
   in if not (null phase1)
         then phase1
         else phase2
@@ -346,21 +349,30 @@ instInjDefChecks dis tis = let
      [InjBareVarInDefinition n ns | (n, ns) <- bareVars]
 
 -- TODO
--- compatibilityCheck :: TFDeclInfos -> TFInstanceInfos -> Errors
--- compatibilityCheck dis tis = let
+compatibilityCheck :: TFDeclInfos -> TFInstanceInfos -> Errors
+compatibilityCheck dis tis = let
   
---   openTFs = obtainOpenTFInstances tis
---   mts = map (buildMtOfLhs dis) openTFs
+  openTFs = obtainOpenTFInstances tis
+  mts = map (buildMtTuple dis) openTFs
 
---   instancePairs = [(t1, t2) | t1@(MonoType_Fam n1 _) <- mts
---                             , t2@(MonoType_Fam n2 _) <- mts
---                             , n1 == n2
---                             , t1 /= t2]
+  instancePairs = [(n1, n2, t1, t2, dt1, dt2) | (n1, t1@(MonoType_Fam _ _), dt1):ys <- tails mts
+                                    , (n2, t2@(MonoType_Fam _ _), dt2) <- ys
+                                    , n1 == n2
+                                    , getNameRange n1 /= getNameRange n2]
+  ienv = buildInjectiveEnv dis
 
---   checkPairs t1 t2 = unifyTy ienv t1 t2
---   ienv = buildInjectiveEnv dis
+  checkPairs :: Name -> Name -> MonoType -> MonoType -> MonoType -> MonoType -> Maybe (Name, Name, MonoType, MonoType, MonoType, MonoType)
+  checkPairs n1 n2 t1 t2 dt1 dt2 = case trace (show $ unifyTy ienv t1 t2) unifyTy ienv t1 t2 of
+    SurelyApart -> Nothing
+    MaybeApart _ -> internalError "TypeFamilies.hs" "MaybeApart in compat check should not happen!" ""
+    Unifiable subst -> if applySubst subst dt1 == applySubst subst dt2
+                          then Nothing
+                          else Just (n1, n2, t1, t2, dt1, dt2)
+  
+  buildErrorPairs :: [Maybe (Name, Name, MonoType, MonoType, MonoType, MonoType)]
+  buildErrorPairs = map (\(n1, n2, t1, t2, dt1, dt2) -> checkPairs n1 n2 t1 t2 dt1 dt2) $ trace (show instancePairs) instancePairs
 
---   in [ ()| (t1, t2) <- instancePairs]
+  in [OpenTFOverlapping n1 n2 t1 t2 dt1 dt2 | Just (n1, n2, t1, t2, dt1, dt2) <- buildErrorPairs]
     
 
 -- CHECKS TODO!!!!!:
