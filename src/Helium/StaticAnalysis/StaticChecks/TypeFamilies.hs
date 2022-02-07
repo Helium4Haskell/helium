@@ -7,18 +7,20 @@ import Helium.StaticAnalysis.Messages.Warnings
 import Helium.StaticAnalysis.Messages.Messages
 import Helium.StaticAnalysis.Miscellaneous.Unify
 import Helium.StaticAnalysis.Inferencers.OutsideInX.TopConversion
-    ( typeToMonoType )
+    ( typeToMonoType, tpToMonoType )
 import Debug.Trace
 import Helium.StaticAnalysis.Inferencers.OutsideInX.Rhodium.RhodiumTypes
     ( isFamilyFree, MonoType (MonoType_Fam, MonoType_Var, MonoType_Con, MonoType_App), MonoTypes, TyVar, fvToList )
 import Helium.StaticAnalysis.Miscellaneous.TypeConversion
-    ( namesInType, namesInTypes )
+    ( namesInType, namesInTypes, makeTpSchemeFromType )
 import Data.List (nub, elemIndex)
 import Data.Map (Map)
 import qualified Data.Map as M
 import Data.Maybe (fromJust, fromMaybe)
 import Helium.Utils.Utils (internalError)
 import Helium.Syntax.UHA_Range (getNameRange)
+import Unbound.Generics.LocallyNameless (name2Integer)
+import Top.Types (unquantify, split)
 
 
 type TFDeclInfos = [TFDeclInfo]
@@ -114,9 +116,25 @@ obtainOpenTFInstances = filter isOpen
         isOpen _       = False
 
 buildMtTuple :: TFDeclInfos -> TFInstanceInfo -> (Name, MonoType, MonoType) 
-buildMtTuple dis (IOpen n ts dt)      = (n, MonoType_Fam (show n) $ map (thrd . typeToMonoType (obtainTyFams dis)) ts, thrd $ typeToMonoType (obtainTyFams dis) dt)
-buildMtTuple dis (IClosed n ts dt _)  = (n, MonoType_Fam (show n) $ map (thrd . typeToMonoType (obtainTyFams dis)) ts, thrd $ typeToMonoType (obtainTyFams dis) dt)
-buildMtTuple dis (IAssoc n ts dt _ _) = (n, MonoType_Fam (show n) $ map (thrd . typeToMonoType (obtainTyFams dis)) ts, thrd $ typeToMonoType (obtainTyFams dis) dt)
+buildMtTuple dis (IOpen n ts dt) = buildMtTuple' dis n ts dt
+buildMtTuple dis (IClosed n ts dt _) = buildMtTuple' dis n ts dt
+buildMtTuple dis (IAssoc n ts dt _ _) = buildMtTuple' dis n ts dt
+
+buildMtTuple' :: TFDeclInfos -> Name -> Types -> Type -> (Name, MonoType, MonoType)
+buildMtTuple' dis n ts t = let
+  (c, tv, mt) = typeToMonoType (obtainTyFams dis) $ buildUHATf n ts
+  qmap = map (\(s, v) -> (fromInteger $ name2Integer v, s)) tv
+
+  defTpScheme = makeTpSchemeFromType t
+  defTp = snd $ split $ unquantify defTpScheme
+  defMt = tpToMonoType (obtainTyFams dis) [] defTp
+  in (n, mt, defMt)
+
+-- Builds a type family in UHA syntax (so the monotype_fam will be built correctly in typeToMonoType)
+buildUHATf :: Name -> Types -> Type
+buildUHATf n = Type_Application (getNameRange n) True 
+                (Type_Constructor (getNameRange n) (Name_Identifier (getNameRange n) [] (show n)))
+
 --------------------------------------
 -- Declaration static checks, SEPARATE CHECKS
 
@@ -355,7 +373,7 @@ compatibilityCheck dis tis = let
   openTFs = obtainOpenTFInstances tis
   mts = map (buildMtTuple dis) openTFs
 
-  instancePairs = [(n1, n2, t1, t2, dt1, dt2) | (n1, t1@(MonoType_Fam _ _), dt1):ys <- tails mts
+  instancePairs = [(n1, n2, t1, t2, dt1, dt2) | (n1, t1@(MonoType_Fam _ _), dt1):ys <- tails (trace (show mts) mts)
                                     , (n2, t2@(MonoType_Fam _ _), dt2) <- ys
                                     , n1 == n2
                                     , getNameRange n1 /= getNameRange n2]

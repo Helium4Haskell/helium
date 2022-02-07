@@ -12,6 +12,7 @@ import Data.Map (Map)
 import qualified Data.Map as M
 import Data.Maybe (fromMaybe)
 import Control.Monad (ap)
+import Debug.Trace
 
 
 type InjectiveEnv = Map String [Int]
@@ -106,8 +107,9 @@ unify :: InjectiveEnv -- Whether a type fam is injective, important for pre-U fo
 -- Two type constructors unify when they are the same
 unify _ _ (MonoType_Con cn1) (MonoType_Con cn2) subst
   | cn1 == cn2 = return subst
-unify _ _ (MonoType_Var _ tv1) (MonoType_Var _ tv2) subst
+unify _ _ (MonoType_Var _ tv1) mv@(MonoType_Var _ tv2) subst
   | tv1 == tv2 = return subst
+  | otherwise = Unifiable $ M.insert tv1 mv subst
 -- If a tyvar is in the substitution, we apply the substitution and move on
 unify ienv opts mtv@(MonoType_Var _ tv) t subst
   | M.member tv subst = unify ienv opts (applySubst subst mtv) t subst
@@ -156,7 +158,7 @@ unify _ opts _ (MonoType_Fam _ _) subst
   | injChecking opts = MaybeApart subst
   | otherwise = SurelyApart
 -- In all other cases, we fail
-unify _ _ _ _ _ = SurelyApart 
+unify _ _ t1 t2 subst = trace (show subst ++ " " ++ show t1 ++ " " ++ show t2) SurelyApart 
 
 -- Multiple types that are checked left to right with updated substitution
 unifies :: InjectiveEnv -- Whether a type fam is injective, important for pre-U for injectivity check

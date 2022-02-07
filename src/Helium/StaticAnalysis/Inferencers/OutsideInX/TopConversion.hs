@@ -2,6 +2,7 @@
 {-# LANGUAGE StandaloneDeriving #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE FlexibleInstances #-}
+{-# OPTIONS_GHC -Wno-orphans #-}
 module Helium.StaticAnalysis.Inferencers.OutsideInX.TopConversion(
         monoTypeToTp
     ,   tpSchemeListDifference
@@ -22,6 +23,7 @@ module Helium.StaticAnalysis.Inferencers.OutsideInX.TopConversion(
     ,   polytypeToMonoType
     ,   unbindPolyType
     ,   importEnvironmentToTypeFamilies
+    ,   tpToMonoType
 
 ) where
 
@@ -229,6 +231,21 @@ typeSynonymsToAxioms env = concatMap tsToAxioms $ M.toList env
                         unifyAxiom = Axiom_Unify (bind mtVars ((MonoType_Fam (show name) $ map var mtVars), mt))
                     in [unifyAxiom] -- [Axiom_Injective $ show name, unifyAxiom]
 
+-- typeFamilyToMonoType :: TypeFamilies -> Name -> Types -> Type -> (MonoTypes, MonoType)
+-- typeFamilyToMonoType fams n args def = let
+--     (mtArgs, _) = runState (stateArgsToMonoType fams args) (0 :: Integer)
+
+--     in undefined
+
+-- stateArgsToMonoType :: TypeFamilies -> [(Int, String)] -> Types -> State Integer [(MonoType, [(String, TyVar)])]
+-- stateArgsToMonoType fams qmap (arg:args) = do
+--     i <- get
+--     let (_, tv, mt) = typeToMonoType fams arg
+    
+--     put newI
+--     mts <- stateArgsToMonoType fams args
+--     return $ (fmt,tv):mts
+-- stateArgsToMonoType _ _ [] = return []
 
 
 instance Freshen MonoType Integer where
