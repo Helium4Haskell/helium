@@ -123,6 +123,7 @@ library
       Helium.StaticAnalysis.Miscellaneous.UHA_Source
       Helium.StaticAnalysis.Miscellaneous.Unify
       Helium.StaticAnalysis.StaticChecks.TypeFamilies
+      Helium.StaticAnalysis.StaticChecks.TypeFamilyInfos
       Helium.Syntax.UHA_Range
       Helium.Syntax.UHA_Utils
       Helium.Utils.Logger

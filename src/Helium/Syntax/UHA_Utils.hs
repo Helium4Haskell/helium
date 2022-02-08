@@ -123,6 +123,11 @@ stringFromImportDeclaration importDecl =
         ImportDeclaration_Empty _ -> 
             internalError "UHA_Utils" "stringFromImportDeclaration" "empty import declaration"
 
+-- Builds a type family in UHA syntax (so the monotype_fam will be built correctly in typeToMonoType)
+buildUHATf :: Name -> Types -> Type
+buildUHATf n = Type_Application (getNameRange n) True 
+                (Type_Constructor (getNameRange n) (Name_Identifier (getNameRange n) [] (show n)))
+
 -- TODO: daan
 intUnaryMinusName, floatUnaryMinusName, enumFromName, enumFromToName, enumFromThenName, enumFromThenToName :: Name
 intUnaryMinusName   = nameFromString "$negate"

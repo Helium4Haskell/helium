@@ -51,6 +51,7 @@ import Helium.CodeGeneration.DerivingShow
 import Helium.StaticAnalysis.Inferencers.OutsideInX.Rhodium.RhodiumTypes
 import Helium.StaticAnalysis.Inferencers.OutsideInX.TopConversion
 import Helium.StaticAnalysis.StaticChecks.TypeFamilies
+import Helium.StaticAnalysis.StaticChecks.TypeFamilyInfos
 import qualified Data.Map as M
 
 import Helium.ModuleSystem.ImportEnvironment

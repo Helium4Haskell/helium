@@ -3,6 +3,7 @@
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# OPTIONS_GHC -Wno-orphans #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 module Helium.StaticAnalysis.Inferencers.OutsideInX.TopConversion(
         monoTypeToTp
     ,   tpSchemeListDifference
@@ -24,6 +25,10 @@ module Helium.StaticAnalysis.Inferencers.OutsideInX.TopConversion(
     ,   unbindPolyType
     ,   importEnvironmentToTypeFamilies
     ,   tpToMonoType
+    ,   TypeFamilies
+    ,   tfInstanceInfoToAxiom
+    ,   tfInstanceInfoToMonoTypes
+    ,   typeSynonymsToTypeFamilies
 
 ) where
 
@@ -56,11 +61,7 @@ import Data.Functor.Identity
 import Unbound.Generics.LocallyNameless.Fresh
 import Unbound.Generics.LocallyNameless.Operations hiding (freshen)
 import Rhodium.TypeGraphs.GraphInstances()
--- import Unbound.Generics.LocallyNameless.Types hiding (Name)
---import Helium.StaticAnalysis.Inferencers.OutsideInX.TopConversion
-
-deriving instance Show Type
-deriving instance Show ContextItem 
+import Helium.StaticAnalysis.StaticChecks.TypeFamilyInfos (TFDeclInfo, obtainArguments, obtainInstanceName, TFInstanceInfo, obtainDefinition)
 
 type TypeFamilies = [(String, Int)]
 
@@ -92,6 +93,9 @@ polyTypeToTypeScheme p = let
             return (fromInteger (name2Integer t) : qs, ps, tp)
         ptHelper (PolyType_Mono cs m) = do
             return ([], concatMap constraintToPredicate cs, monoTypeToTp m)
+
+typeSynonymsToTypeFamilies :: TypeSynonymEnvironment -> TypeFamilies
+typeSynonymsToTypeFamilies = map (\(n, (i, _)) -> (show n, i)) . M.assocs
 
 importEnvironmentToTypeFamilies :: ImportEnvironment -> TypeFamilies
 importEnvironmentToTypeFamilies = map (\(n, (i, _)) -> (show n, i)) . M.assocs . typeSynonyms
@@ -221,7 +225,7 @@ typeSynonymsToAxioms :: TypeSynonymEnvironment -> [Axiom ConstraintInfo]
 typeSynonymsToAxioms env = concatMap tsToAxioms $ M.toList env
             where
                 tsToAxioms (name, (size, f)) = let
-                        fams = map (\(n, (i, _)) -> (show n, i)) $ M.assocs  env
+                        fams = map (\(n, (i, _)) -> (show n, i)) $ M.assocs env
                         vars = take size [0..]
                         tpVars = map TVar vars
                         tp = f tpVars
@@ -230,6 +234,35 @@ typeSynonymsToAxioms env = concatMap tsToAxioms $ M.toList env
                         
                         unifyAxiom = Axiom_Unify (bind mtVars ((MonoType_Fam (show name) $ map var mtVars), mt))
                     in [unifyAxiom] -- [Axiom_Injective $ show name, unifyAxiom]
+
+tfInstanceInfoToAxiom :: TypeFamilies -> TFInstanceInfo -> Axiom ConstraintInfo
+tfInstanceInfoToAxiom fams iInfo = let
+
+    (_, lhsenv, lhsMonoType) = typeToMonoType fams $ buildUHATf (obtainInstanceName iInfo) (obtainArguments iInfo)
+    (_, _, rhsMonoType) = typeToMonoType fams (obtainDefinition iInfo)
+    rhsMonoType' = updateRhs lhsenv rhsMonoType
+
+    axVars = fvToList lhsMonoType
+
+    in Axiom_Unify (bind axVars (lhsMonoType, rhsMonoType'))
+
+tfInstanceInfoToMonoTypes :: TypeFamilies -> TFInstanceInfo -> (MonoType, MonoType)
+tfInstanceInfoToMonoTypes fams iInfo = let
+    
+    (_, lhsenv, lhsMonoType) = typeToMonoType fams $ buildUHATf (obtainInstanceName iInfo) (obtainArguments iInfo)
+    (_, _, rhsMonoType) = typeToMonoType fams (obtainDefinition iInfo)
+    rhsMonoType' = updateRhs lhsenv rhsMonoType
+
+    in (lhsMonoType, rhsMonoType')
+
+updateRhs :: [(String, TyVar)] -> MonoType -> MonoType
+updateRhs env v@(MonoType_Var (Just s) _) = case lookup s env of
+    Nothing -> v
+    Just tv -> MonoType_Var (Just s) tv
+updateRhs _   c@(MonoType_Con _)          = c
+updateRhs env (MonoType_Fam n mts)        = MonoType_Fam n $ map (updateRhs env) mts
+updateRhs env (MonoType_App mt1 mt2)      = MonoType_App (updateRhs env mt1) (updateRhs env mt2)
+updateRhs _   mtv                         = mtv
 
 -- typeFamilyToMonoType :: TypeFamilies -> Name -> Types -> Type -> (MonoTypes, MonoType)
 -- typeFamilyToMonoType fams n args def = let

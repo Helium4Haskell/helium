@@ -7,87 +7,27 @@ import Helium.StaticAnalysis.Messages.Warnings
 import Helium.StaticAnalysis.Messages.Messages
 import Helium.StaticAnalysis.Miscellaneous.Unify
 import Helium.StaticAnalysis.Inferencers.OutsideInX.TopConversion
-    ( typeToMonoType, tpToMonoType )
+    ( typeToMonoType, tpToMonoType, importEnvironmentToTypeFamilies, TypeFamilies, tfInstanceInfoToAxiom, tfInstanceInfoToMonoTypes, typeSynonymsToTypeFamilies )
 import Debug.Trace
 import Helium.StaticAnalysis.Inferencers.OutsideInX.Rhodium.RhodiumTypes
-    ( isFamilyFree, MonoType (MonoType_Fam, MonoType_Var, MonoType_Con, MonoType_App), MonoTypes, TyVar, fvToList )
+    ( isFamilyFree, MonoType (MonoType_Fam, MonoType_Var, MonoType_Con, MonoType_App), MonoTypes, TyVar, fvToList, Axiom (Axiom_Unify) )
 import Helium.StaticAnalysis.Miscellaneous.TypeConversion
     ( namesInType, namesInTypes, makeTpSchemeFromType )
 import Data.List (nub, elemIndex)
 import Data.Map (Map)
 import qualified Data.Map as M
-import Data.Maybe (fromJust, fromMaybe)
+import Data.Maybe (fromJust, fromMaybe, catMaybes, mapMaybe)
 import Helium.Utils.Utils (internalError)
 import Helium.Syntax.UHA_Range (getNameRange)
-import Unbound.Generics.LocallyNameless (name2Integer)
+import Unbound.Generics.LocallyNameless (name2Integer, runFreshM)
 import Top.Types (unquantify, split)
-
-
-type TFDeclInfos = [TFDeclInfo]
-data TFDeclInfo
-  = DOpen Name Names (Maybe Names)
-  | DClosed Name Names (Maybe Names)
-  | DAssoc Name Names (Maybe Names) [(Int, Int)] Name
-  deriving Show
-
-type TFInstanceInfos = [TFInstanceInfo]
-data TFInstanceInfo
-  = IOpen Name Types Type
-  | IClosed Name Types Type Int --Int resembles the priority that the instance has in the closed type family
-  | IAssoc Name Types Type Types Name
-  deriving Show
--------------------------------------
--- UTILS
-
--- Obtains the name of a typefam declaration
-obtainDeclName :: TFDeclInfo -> Name
-obtainDeclName (DOpen n _ _)      = n
-obtainDeclName (DClosed n _ _)    = n
-obtainDeclName (DAssoc n _ _ _ _) = n
-
--- Obtains the name of a typefam instance
-obtainInstanceName :: TFInstanceInfo -> Name
-obtainInstanceName (IOpen n _ _)      = n
-obtainInstanceName (IClosed n _ _ _)  = n
-obtainInstanceName (IAssoc n _ _ _ _) = n
-
--- Like fst and snd
-thrd :: (a, b, c) -> c
-thrd (_, _, z) = z
-
--- Builds all unique pairs inside the list.
-createPairs :: Show a => [a] -> [(a, a)]
-createPairs xs = [(x, y) | (x:ys) <- tails xs, y <- ys]
-
-tails :: [a] -> [[a]]
-tails [] = []
-tails (x:xs) = (x:xs) : tails xs
-
--- Obtains the type family declaration info as needed for `typeToMonoType`
-obtainTyFams :: TFDeclInfos -> [(String, Int)]
-obtainTyFams (DAssoc n ns _ _ _:ts) = (show n, length ns) : obtainTyFams ts
-obtainTyFams (DClosed n ns _:ts)    = (show n, length ns) : obtainTyFams ts
-obtainTyFams (DOpen n ns _:ts)      = (show n, length ns) : obtainTyFams ts
-obtainTyFams []                     = []
-
--- Obtains the type family declaration info as needed for KindChecking.ag
-obtainTyFams1 :: TFDeclInfos -> [(Name, Int)]
-obtainTyFams1 (DAssoc n ns _ _ _:ts) = (n, length ns) : obtainTyFams1 ts
-obtainTyFams1 (DClosed n ns _:ts)    = (n, length ns) : obtainTyFams1 ts
-obtainTyFams1 (DOpen n ns _:ts)      = (n, length ns) : obtainTyFams1 ts
-obtainTyFams1 []                     = []
-
--- Obtains the argument types of a type family instance (lhs)
-obtainArguments :: TFInstanceInfo -> Types
-obtainArguments (IAssoc _ ts _ _ _) = ts
-obtainArguments (IClosed _ ts _ _)  = ts
-obtainArguments (IOpen _ ts _)      = ts
-
--- Obtains the definition of a type family instance (rhs)
-obtainDefinition :: TFInstanceInfo -> Type
-obtainDefinition (IAssoc _ _ t _ _) = t
-obtainDefinition (IClosed _ _ t _)  = t
-obtainDefinition (IOpen _ _ t)      = t
+import Helium.ModuleSystem.ImportEnvironment ( ImportEnvironment, TypeSynonymEnvironment )
+import Helium.StaticAnalysis.StaticChecks.TypeFamilyInfos
+import Helium.Syntax.UHA_Utils (buildUHATf)
+import Helium.StaticAnalysis.Miscellaneous.ConstraintInfoOU
+import Control.Monad.State
+import Unbound.Generics.LocallyNameless.Operations (unbind)
+import Unbound.Generics.LocallyNameless.Fresh (FreshM)
 
 -- Checks if a MonoType is as a whole a type family application
 isTFApplication :: MonoType -> Bool 
@@ -115,26 +55,6 @@ obtainOpenTFInstances = filter isOpen
   where isOpen IOpen{} = True 
         isOpen _       = False
 
-buildMtTuple :: TFDeclInfos -> TFInstanceInfo -> (Name, MonoType, MonoType) 
-buildMtTuple dis (IOpen n ts dt) = buildMtTuple' dis n ts dt
-buildMtTuple dis (IClosed n ts dt _) = buildMtTuple' dis n ts dt
-buildMtTuple dis (IAssoc n ts dt _ _) = buildMtTuple' dis n ts dt
-
-buildMtTuple' :: TFDeclInfos -> Name -> Types -> Type -> (Name, MonoType, MonoType)
-buildMtTuple' dis n ts t = let
-  (c, tv, mt) = typeToMonoType (obtainTyFams dis) $ buildUHATf n ts
-  qmap = map (\(s, v) -> (fromInteger $ name2Integer v, s)) tv
-
-  defTpScheme = makeTpSchemeFromType t
-  defTp = snd $ split $ unquantify defTpScheme
-  defMt = tpToMonoType (obtainTyFams dis) [] defTp
-  in (n, mt, defMt)
-
--- Builds a type family in UHA syntax (so the monotype_fam will be built correctly in typeToMonoType)
-buildUHATf :: Name -> Types -> Type
-buildUHATf n = Type_Application (getNameRange n) True 
-                (Type_Constructor (getNameRange n) (Name_Identifier (getNameRange n) [] (show n)))
-
 --------------------------------------
 -- Declaration static checks, SEPARATE CHECKS
 
@@ -156,9 +76,11 @@ declInjectivityVars _ = []
 
 ------------------------------------------------------------------
 -- STATIC CHECKS OVER ALL KNOWN DECLARATIONS AND INSTANCES
-checkTypeFamStaticErrors :: TFDeclInfos -> TFInstanceInfos -> Errors
-checkTypeFamStaticErrors dis iis = let
-     
+checkTypeFamStaticErrors :: TypeSynonymEnvironment -> TFDeclInfos -> TFInstanceInfos -> Errors
+checkTypeFamStaticErrors env dis iis = let
+  
+  tyfams = typeSynonymsToTypeFamilies env ++ obtainTyFams dis
+
   phase1 = declCheckDuplicates dis
            ++ atsCheckVarAlignment dis iis
            ++ instCheckInstanceValidity dis iis
@@ -168,7 +90,7 @@ checkTypeFamStaticErrors dis iis = let
            ++ instVarOccursCheck iis
            ++ instInjDefChecks dis iis
            ++ instSmallerChecks dis iis
-           ++ compatibilityCheck dis iis
+           ++ compatibilityCheck tyfams iis
   in if not (null phase1)
         then phase1
         else phase2
@@ -366,32 +288,44 @@ instInjDefChecks dis tis = let
   in [InjTFInDefinition n | n <- tyFamDef] ++
      [InjBareVarInDefinition n ns | (n, ns) <- bareVars]
 
--- TODO
-compatibilityCheck :: TFDeclInfos -> TFInstanceInfos -> Errors
-compatibilityCheck dis tis = let
+-------------------------------
+-- COMPATIBILITY CHECK
+compatibilityCheck :: TypeFamilies -> TFInstanceInfos -> Errors
+compatibilityCheck tfams tis = let
   
+  -- Obtain all open tf instances
   openTFs = obtainOpenTFInstances tis
-  mts = map (buildMtTuple dis) openTFs
-
-  instancePairs = [(n1, n2, t1, t2, dt1, dt2) | (n1, t1@(MonoType_Fam _ _), dt1):ys <- tails (trace (show mts) mts)
-                                    , (n2, t2@(MonoType_Fam _ _), dt2) <- ys
-                                    , n1 == n2
-                                    , getNameRange n1 /= getNameRange n2]
-  ienv = buildInjectiveEnv dis
-
-  checkPairs :: Name -> Name -> MonoType -> MonoType -> MonoType -> MonoType -> Maybe (Name, Name, MonoType, MonoType, MonoType, MonoType)
-  checkPairs n1 n2 t1 t2 dt1 dt2 = case trace (show $ unifyTy ienv t1 t2) unifyTy ienv t1 t2 of
-    SurelyApart -> Nothing
-    MaybeApart _ -> internalError "TypeFamilies.hs" "MaybeApart in compat check should not happen!" ""
-    Unifiable subst -> if applySubst subst dt1 == applySubst subst dt2
-                          then Nothing
-                          else Just (n1, n2, t1, t2, dt1, dt2)
   
-  buildErrorPairs :: [Maybe (Name, Name, MonoType, MonoType, MonoType, MonoType)]
-  buildErrorPairs = map (\(n1, n2, t1, t2, dt1, dt2) -> checkPairs n1 n2 t1 t2 dt1 dt2) $ trace (show instancePairs) instancePairs
+  -- create to be checked pairs
+  instancePairs = [(inst1, inst2) | inst1:ys <- tails openTFs, inst2 <- ys]
 
-  in [OpenTFOverlapping n1 n2 t1 t2 dt1 dt2 | Just (n1, n2, t1, t2, dt1, dt2) <- buildErrorPairs]
-    
+  -- In compat
+  in mapMaybe (compat tfams) instancePairs
+
+
+compat :: TypeFamilies -> (TFInstanceInfo, TFInstanceInfo) -> Maybe Error
+compat tfams (inst1, inst2) = let
+
+  axiom1 = tfInstanceInfoToAxiom tfams inst1
+  axiom2 = tfInstanceInfoToAxiom tfams inst2
+
+  (lhs1, rhs1) = runFreshM $ unbindAx axiom1
+  (lhs2, rhs2) = runFreshM $ unbindAx axiom2
+
+  in case unifyTy M.empty lhs1 lhs2 of
+            SurelyApart -> Nothing
+            MaybeApart _ -> internalError "TypeFamilies.hs" "MaybeApart shouldn't happen for unifyTy" ""
+            Unifiable subst -> 
+              if applySubst subst rhs1 == applySubst subst rhs2
+                then Nothing
+                else Just $ OpenTFOverlapping (obtainInstanceName inst1) (obtainInstanceName inst2) lhs1 lhs2 rhs1 rhs2
+  where
+    unbindAx :: Axiom ConstraintInfo -> FreshM (MonoType, MonoType)
+    unbindAx (Axiom_Unify b) = do
+      (_, (lhs, rhs)) <- unbind b
+      return (lhs, rhs) 
+
+
 
 -- CHECKS TODO!!!!!:
 -- Type is smaller Checks!
