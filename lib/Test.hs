@@ -46,7 +46,7 @@ class X a where
 
 type family J a b where
     J Int Int = Float
-    J a Float = a
+    J Int Int = Int
 
 -- type family UU a where
 --     UU String = Char
@@ -60,5 +60,6 @@ data Tree a = Node a (Tree a) (Tree a) | Leaf
 -- f :: I Int
 -- f = Leaf
 
-type instance I a b = a
-type instance I a b = b
+type instance I Int a = a
+type instance I a Int = a
+

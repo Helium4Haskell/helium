@@ -47,11 +47,6 @@ getInjIndices :: Names -> Maybe Names -> [Int]
 getInjIndices _  Nothing = []
 getInjIndices ns (Just ins) = map (fromJust . flip elemIndex ins) ns
 
-obtainOpenTFInstances :: TFInstanceInfos -> TFInstanceInfos
-obtainOpenTFInstances = filter isOpen
-  where isOpen IOpen{} = True 
-        isOpen _       = False
-
 --------------------------------------
 -- Declaration static checks, SEPARATE CHECKS
 
@@ -83,14 +78,20 @@ checkTypeFamStaticErrors env dis iis = let
            ++ instCheckInstanceValidity dis iis
            ++ instSaturationCheck dis iis
   
-  phase2 = instNoTFInArgument dis iis
+  phase2 = instNoTFInArgument tyfams iis
            ++ instVarOccursCheck iis
-           ++ instInjDefChecks dis iis
-           ++ instSmallerChecks dis iis
+           ++ instInjDefChecks tyfams dis iis
+           ++ instSmallerChecks tyfams iis
            ++ compatibilityCheck tyfams iis
   in if not (null phase1)
         then phase1
         else phase2
+
+checkTypeFamWarnings :: TypeSynonymEnvironment -> TFDeclInfos -> TFInstanceInfos -> Warnings
+checkTypeFamWarnings env dis tis = let
+  tyfams = typeSynonymsToTypeFamilies env ++ obtainTyFams dis
+
+  in closedOverlapWarning tyfams tis
 
 -- Check whether duplicate type families exist.
 declCheckDuplicates :: TFDeclInfos -> Errors
@@ -98,9 +99,6 @@ declCheckDuplicates tfs = let
 
   -- Creates all unique pairs of declaration names
   createNamePairs xs = [(n1, n2) | (n1:ys) <- tails (map obtainDeclName xs), n2 <- ys]
-
-  tails [] = []
-  tails (x:xs) = (x:xs) : tails xs
 
   in [DuplicateTypeFamily (n1, n2) | (n1, n2) <- createNamePairs tfs, n1 == n2]
 
@@ -183,13 +181,13 @@ instSaturationCheck ds is = let
 
   in [WronglySaturatedTypeFamily n dl tl | (n, dl, tl) <- violations]
 
-instNoTFInArgument :: TFDeclInfos -> TFInstanceInfos -> Errors
-instNoTFInArgument dis tis = let
+instNoTFInArgument :: TypeFamilies -> TFInstanceInfos -> Errors
+instNoTFInArgument fams tis = let
 
-  violations = [ (obtainInstanceName inst, arg, thrd $ typeToMonoType (obtainTyFams dis) arg) |
+  violations = [ (obtainInstanceName inst, arg, thrd $ typeToMonoType fams arg) |
                  inst <- tis
                , arg <- obtainArguments inst
-               , not $ isFamilyFree $ thrd $ typeToMonoType (obtainTyFams dis) arg
+               , not $ isFamilyFree $ thrd $ typeToMonoType fams arg
                ]
   in [TFInArgument n t mt | (n, t, mt) <- violations] 
 
@@ -207,10 +205,8 @@ instVarOccursCheck tis = let
   in [Undefined Variable n [] ["Variable " ++ show (show n) ++ " does not occur in any instance argument"] | n <- concatMap getViolations tis]
 
 --TODO: DO OTHER SMALLER CHECKS FROM PROPOSAL!
-instSmallerChecks :: TFDeclInfos -> TFInstanceInfos -> Errors
-instSmallerChecks dis tis = let
-
-  tyFams = obtainTyFams dis
+instSmallerChecks :: TypeFamilies -> TFInstanceInfos -> Errors
+instSmallerChecks tyFams tis = let
 
   obtainDefTyFam :: MonoType -> MonoTypes
   obtainDefTyFam t@(MonoType_Fam _ mts) = t : concatMap obtainDefTyFam mts
@@ -263,16 +259,14 @@ instSmallerChecks dis tis = let
 
   in concatMap (checkInstance . obtainNameArgsDef) tis
 
-instInjDefChecks :: TFDeclInfos -> TFInstanceInfos -> Errors
-instInjDefChecks dis tis = let
+instInjDefChecks :: TypeFamilies -> TFDeclInfos -> TFInstanceInfos -> Errors
+instInjDefChecks tyFams dis tis = let
 
   isInjective :: TFDeclInfo -> TFInstanceInfo -> Bool
   isInjective (DAssoc n1 _ (Just _) _ _) (IAssoc n2 _ _ _ _) = n1 == n2
   isInjective (DClosed n1 _ (Just _))    (IClosed n2 _ _ _)  = n1 == n2
   isInjective (DOpen n1 _ (Just _))      (IOpen n2 _ _)      = n1 == n2
   isInjective _                          _                   = False
-
-  tyFams = obtainTyFams dis
 
   injInsts = [inst | inst <- tis, decl <- dis, isInjective decl inst]
   tyFamDef = [ obtainInstanceName inst | 
@@ -299,6 +293,13 @@ compatibilityCheck tfams tis = let
   -- In compat
   in mapMaybe (compat tfams) instancePairs
 
+closedOverlapWarning :: TypeFamilies -> TFInstanceInfos -> Warnings
+closedOverlapWarning tfams tis = let
+
+  closedTFs = obtainClosedTFInstances tis
+  instancePairs = [(inst1, inst2) | inst1:ys <- tails closedTFs, inst2 <- ys]
+
+  in mapMaybe (compatWarn tfams) instancePairs
 
 compat :: TypeFamilies -> (TFInstanceInfo, TFInstanceInfo) -> Maybe Error
 compat tfams (inst1, inst2) = let
@@ -308,20 +309,36 @@ compat tfams (inst1, inst2) = let
 
   ((lhs1, rhs1), (lhs2, rhs2)) = runFreshM $ unbindAx axiom1 axiom2
 
-  in case unifyTy M.empty lhs1 (trace (show lhs1 ++ " " ++ show lhs2) lhs2) of
+  in case unifyTy M.empty lhs1 lhs2 of
             SurelyApart -> Nothing
             MaybeApart _ -> internalError "TypeFamilies.hs" "compat" "MaybeApart shouldn't happen for unifyTy"
             Unifiable subst -> 
               if applySubst subst rhs1 == applySubst subst rhs2
                 then Nothing
                 else Just $ OpenTFOverlapping (obtainInstanceName inst1) (obtainInstanceName inst2) lhs1 lhs2 rhs1 rhs2
-  where
-    unbindAx :: Axiom ConstraintInfo -> Axiom ConstraintInfo -> FreshM ((MonoType, MonoType), (MonoType, MonoType))
-    unbindAx (Axiom_Unify b1) (Axiom_Unify b2) = do
-      (_, (lhs1, rhs1)) <- unbind b1
-      (_, (lhs2, rhs2)) <- unbind b2
-      --internalError "TypeFamilies.hs" (show tvs) ""
-      return ((lhs1, rhs1), (lhs2, rhs2))
+
+compatWarn :: TypeFamilies -> (TFInstanceInfo, TFInstanceInfo) -> Maybe Warning
+compatWarn tfams (inst1, inst2) = let
+  
+  axiom1 = tfInstanceInfoToAxiom tfams inst1
+  axiom2 = tfInstanceInfoToAxiom tfams inst2
+
+  ((lhs1, rhs1), (lhs2, rhs2)) = runFreshM $ unbindAx axiom1 axiom2
+  in case unifyTy M.empty lhs1 lhs2 of
+            SurelyApart -> Nothing
+            MaybeApart _ -> internalError "TypeFamilies.hs" "compatWarn" "MaybeApart shouldn't happen for unifyTy"
+            Unifiable subst -> 
+              if M.null subst
+                then Just $ EqualClosedTypeFamilyInstances (obtainInstanceName inst1) (obtainInstanceName inst2) lhs1 lhs2 rhs1 rhs2
+                else Nothing 
+
+
+-- Running this in the FreshM monad makes sure that the unbind functions generate fresh vars in the lhs and rhs's.
+unbindAx :: Axiom ConstraintInfo -> Axiom ConstraintInfo -> FreshM ((MonoType, MonoType), (MonoType, MonoType))
+unbindAx (Axiom_Unify b1) (Axiom_Unify b2) = do
+  (_, (lhs1, rhs1)) <- unbind b1
+  (_, (lhs2, rhs2)) <- unbind b2
+  return ((lhs1, rhs1), (lhs2, rhs2))
 
 
 

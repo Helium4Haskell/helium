@@ -72,3 +72,13 @@ obtainDefinition :: TFInstanceInfo -> Type
 obtainDefinition (IAssoc _ _ t _ _) = t
 obtainDefinition (IClosed _ _ t _)  = t
 obtainDefinition (IOpen _ _ t)      = t
+
+obtainOpenTFInstances :: TFInstanceInfos -> TFInstanceInfos
+obtainOpenTFInstances = filter isOpen
+  where isOpen IOpen{} = True 
+        isOpen _       = False
+
+obtainClosedTFInstances :: TFInstanceInfos -> TFInstanceInfos
+obtainClosedTFInstances = filter isClosed
+  where isClosed IClosed{} = True
+        isClosed _       = False

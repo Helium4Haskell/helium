@@ -232,7 +232,7 @@ typeSynonymsToAxioms env = concatMap tsToAxioms $ M.toList env
                         mt = tpToMonoType fams [] tp
                         mtVars = map (integer2Name . toInteger) vars
                         
-                        unifyAxiom = Axiom_Unify (bind mtVars ((MonoType_Fam (show name) $ map var mtVars), mt))
+                        unifyAxiom = Axiom_Unify (bind mtVars (MonoType_Fam (show name) $ map var mtVars, mt))
                     in [unifyAxiom] -- [Axiom_Injective $ show name, unifyAxiom]
 
 tfInstanceInfoToAxiom :: TypeFamilies -> TFInstanceInfo -> Axiom ConstraintInfo
@@ -255,6 +255,8 @@ tfInstanceInfoToMonoTypes fams iInfo = let
 
     in (lhsMonoType, rhsMonoType')
 
+-- Ensures that the right hand side vars are updated to coincide with the vars in the left hand side
+-- (For type families that is)
 updateRhs :: [(String, TyVar)] -> MonoType -> MonoType
 updateRhs env v@(MonoType_Var (Just s) _) = case lookup s env of
     Nothing -> v

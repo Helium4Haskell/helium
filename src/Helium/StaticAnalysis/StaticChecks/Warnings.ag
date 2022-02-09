@@ -29,7 +29,8 @@ SEM Module
 SEM Body
   | Body
         lhs . warnings =  @declarations.warnings ++
-                          @suspiciousErrors
+                          @suspiciousErrors ++
+                          checkTypeFamWarnings (M.fromList @lhs.collectTypeSynonyms) @declarations.collectTypeFamilyDecls @declarations.collectTypeFamilyInstances
 
 SEM Expression
   | Let        lhs . warnings = @expression.warnings ++

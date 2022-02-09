@@ -19,6 +19,7 @@ import Helium.StaticAnalysis.Messages.Messages
 import Data.List    (intercalate)
 import qualified Helium.Syntax.UHA_Pretty as PP (sem_Pattern, wrap_Pattern, Inh_Pattern (..), Syn_Pattern (..), sem_LeftHandSide, wrap_LeftHandSide, Inh_LeftHandSide (..), Syn_LeftHandSide (..), sem_Expression, wrap_Expression, Inh_Expression (..), Syn_Expression (..))
 import qualified Text.PrettyPrint.Leijen as PPrint
+import Helium.StaticAnalysis.Inferencers.OutsideInX.Rhodium.RhodiumTypes (MonoType)
 
 -------------------------------------------------------------
 -- (Static) Warnings
@@ -37,6 +38,7 @@ data Warning  = NoTypeDef Name TpScheme Bool{- toplevel? -} Bool{- simple pat an
               | FallThrough Range
               | SignatureTooSpecific Name TpScheme TpScheme
               | MissingClassMember Name Name
+              | EqualClosedTypeFamilyInstances Name Name MonoType MonoType MonoType MonoType
 
 instance HasMessage Warning where
    getMessage x = let (oneliner, hints) = showWarning x
@@ -58,6 +60,7 @@ instance HasMessage Warning where
       FallThrough rng               -> [rng]
       SignatureTooSpecific name _ _ -> [getNameRange name]
       MissingClassMember name _     -> [getNameRange name]
+      EqualClosedTypeFamilyInstances n1 n2 _ _ _ _ -> sortRanges [getNameRange n1, getNameRange n2]
 
 showWarning :: Warning -> (MessageBlock {- oneliner -}, MessageBlocks {- hints -})
 showWarning warning = case warning of
@@ -150,6 +153,15 @@ showWarning warning = case warning of
    MissingClassMember instanceName member ->
       ( MessageString ("The function: " ++ show member ++ " for an instance of: " ++ show instanceName ++ " is not defined and doesn't have a default.")
       , []
+      )
+   EqualClosedTypeFamilyInstances n1 _ t1 t2 dt1 dt2 ->
+      ( MessageCompose
+         [
+            MessageString ("Found two completely overlapping instances for closed type family " ++ show (show n1) ++ ":\n")
+         ,  MessageString ("\t\t" ++ show t1 ++ " = " ++ show dt1 ++ "\n")
+         ,  MessageString ("\t\t" ++ show t2 ++ " = " ++ show dt2)
+         ]
+      ,[MessageString "The uppermost instance will always be chosen over the lower one."]
       )
 --   _ -> internalError "Warnings" "showWarning" "unknown type of Warning"
 

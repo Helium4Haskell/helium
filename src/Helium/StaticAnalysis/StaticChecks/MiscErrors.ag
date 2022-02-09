@@ -41,10 +41,6 @@ SEM Body
            loc . gadtErrors = [ MissingGADTOption | GADTs `notElem` @lhs.options, @declarations.hasGADT || (any (==ConstructorGADT) $ map snd $ M.elems $ valueConstructors $ combineImportEnvironmentList @lhs.importEnvironments)]
            loc . typefamErrors = 
                         checkTypeFamStaticErrors (M.fromList @lhs.collectTypeSynonyms) @declarations.collectTypeFamilyDecls @declarations.collectTypeFamilyInstances
-          --  loc . typefamErrors = declCheckDuplicates @declarations.collectTypeFamilyDecls 
-          --                        ++ instCheckDeclExists @declarations.collectTypeFamilyDecls @declarations.collectTypeFamilyInstances
-          --                        ++ instSaturationCheck @declarations.collectTypeFamilyDecls @declarations.collectTypeFamilyInstances
-          --                        ++ atsCheckVarAlignment @declarations.collectAssocTypeSynDeclInfo @declarations.collectAssocTypeSynInstanceInfo
 
 
 -----------------------------------------
