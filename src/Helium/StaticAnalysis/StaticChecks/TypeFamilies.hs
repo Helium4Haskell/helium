@@ -83,6 +83,7 @@ checkTypeFamStaticErrors env dis iis = let
            ++ instInjDefChecks tyfams dis iis
            ++ instSmallerChecks tyfams iis
            ++ compatibilityCheck tyfams iis
+           ++ pairwiseInjChecks tyfams dis iis
   in if not (null phase1)
         then phase1
         else phase2
@@ -311,7 +312,6 @@ compat tfams (inst1, inst2) = let
 
   in case unifyTy M.empty lhs1 lhs2 of
             SurelyApart -> Nothing
-            MaybeApart _ -> internalError "TypeFamilies.hs" "compat" "MaybeApart shouldn't happen for unifyTy"
             Unifiable subst -> 
               if applySubst subst rhs1 == applySubst subst rhs2
                 then Nothing
@@ -326,12 +326,44 @@ compatWarn tfams (inst1, inst2) = let
   ((lhs1, rhs1), (lhs2, rhs2)) = runFreshM $ unbindAx axiom1 axiom2
   in case unifyTy M.empty lhs1 lhs2 of
             SurelyApart -> Nothing
-            MaybeApart _ -> internalError "TypeFamilies.hs" "compatWarn" "MaybeApart shouldn't happen for unifyTy"
             Unifiable subst -> 
               if M.null subst
                 then Just $ EqualClosedTypeFamilyInstances (obtainInstanceName inst1) (obtainInstanceName inst2) lhs1 lhs2 rhs1 rhs2
                 else Nothing 
 
+pairwiseInjChecks :: TypeFamilies -> TFDeclInfos -> TFInstanceInfos -> Errors
+pairwiseInjChecks fams dis tis = let
+
+  injTFs = obtainInjectiveTFInstances dis tis
+  instancePairs = [(inst1, inst2) | inst1:ys <- tails injTFs, inst2 <- ys]
+  ienv = buildInjectiveEnv dis
+  in mapMaybe (pairwiseInjCheck fams ienv) instancePairs 
+
+pairwiseInjCheck :: TypeFamilies -- Type fams to build axioms
+                 -> InjectiveEnv -- Map containing indices of injective type families.
+                 -> (TFInstanceInfo, TFInstanceInfo) -- The two instances to be pairwise checked
+                 -> Maybe Error -- Result is a maybe error
+pairwiseInjCheck fams ienv (inst1, inst2) = let
+
+  axiom1 = tfInstanceInfoToAxiom fams inst1
+  axiom2 = tfInstanceInfoToAxiom fams inst2
+  
+  ((clhs1@(MonoType_Fam _ lhs1), rhs1), (clhs2@(MonoType_Fam _ lhs2), rhs2)) = runFreshM $ unbindAx axiom1 axiom2
+
+  in case preUnify ienv rhs1 rhs2 of 
+            SurelyApart -> Nothing
+            Unifiable subst
+              | all (\i -> checkInjArg subst (lhs1 !! i) (lhs2 !! i)) injIndices
+                  -> Nothing 
+              | isClosed inst1 && applySubst subst clhs1 /= applySubst subst clhs2
+                  -> Nothing
+              | otherwise
+                  -> Just $ InjPreUnifyFailed (obtainInstanceName inst1) (obtainInstanceName inst2) clhs1 clhs2 rhs1 rhs2  -- ERROR!
+  where
+    injIndices = ienv M.! show (obtainInstanceName inst1)
+
+    checkInjArg :: SubstitutionEnv -> MonoType -> MonoType -> Bool
+    checkInjArg subst mt1 mt2 = applySubst subst mt1 == applySubst subst mt2
 
 -- Running this in the FreshM monad makes sure that the unbind functions generate fresh vars in the lhs and rhs's.
 unbindAx :: Axiom ConstraintInfo -> Axiom ConstraintInfo -> FreshM ((MonoType, MonoType), (MonoType, MonoType))
@@ -339,12 +371,7 @@ unbindAx (Axiom_Unify b1) (Axiom_Unify b2) = do
   (_, (lhs1, rhs1)) <- unbind b1
   (_, (lhs2, rhs2)) <- unbind b2
   return ((lhs1, rhs1), (lhs2, rhs2))
-
-
-
 -- CHECKS TODO!!!!!:
--- Type is smaller Checks!
--- Type instance compatibility checks
 --
 -- Definition smaller check (For non-injective)
 -- - Injective type fams

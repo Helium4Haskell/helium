@@ -80,5 +80,19 @@ obtainOpenTFInstances = filter isOpen
 
 obtainClosedTFInstances :: TFInstanceInfos -> TFInstanceInfos
 obtainClosedTFInstances = filter isClosed
-  where isClosed IClosed{} = True
-        isClosed _       = False
+
+isClosed :: TFInstanceInfo -> Bool
+isClosed IClosed{} = True
+isClosed _       = False
+
+obtainInjectiveTFInstances :: TFDeclInfos -> TFInstanceInfos -> TFInstanceInfos
+obtainInjectiveTFInstances dis tis = let
+  injNames = obtInjDeclNames dis
+
+  in [inst | inst <- tis, obtainInstanceName inst `elem` injNames]
+  where
+    obtInjDeclNames (DOpen n _ (Just _):ds)      = n : obtInjDeclNames ds
+    obtInjDeclNames (DClosed n _ (Just _):ds)    = n : obtInjDeclNames ds
+    obtInjDeclNames (DAssoc n _ (Just _) _ _:ds) = n : obtInjDeclNames ds
+    obtInjDeclNames (_:ds)                       = obtInjDeclNames ds
+    obtInjDeclNames []                           = []

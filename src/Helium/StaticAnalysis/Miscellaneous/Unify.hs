@@ -28,7 +28,6 @@ type UnifyResult = UnifyResultM SubstitutionEnv
 
 data UnifyResultM a
   = SurelyApart
-  | MaybeApart a
   | Unifiable a
   deriving (Show, Functor)
 
@@ -38,10 +37,6 @@ instance Applicative UnifyResultM where
 
 instance Monad UnifyResultM where
   SurelyApart >>= _ = SurelyApart
-  MaybeApart a >>= f = case f a of
-    SurelyApart -> SurelyApart
-    MaybeApart b -> MaybeApart b
-    Unifiable b -> MaybeApart b
   Unifiable a >>= f = f a
 
 ------------------------------------
@@ -120,7 +115,7 @@ unify ienv opts mtv@(MonoType_Var _ tv) t subst
 unify _ opts (MonoType_Var _ tv) t subst
   | tv `elem` fvToList (applySubst subst t)
     = if injChecking opts
-        then MaybeApart subst -- Not sure if apart or not but we return anyway
+        then Unifiable subst -- Not sure if apart or not but we return anyway
         else SurelyApart
   | tv `notElem` fvToList (applySubst subst t)
     = Unifiable $ M.insert tv (applySubst subst t) subst
@@ -149,13 +144,13 @@ unify ienv opts (MonoType_Fam f fmts) (MonoType_Fam g gmts) subst
 -- In case of an injectivity check, we return the substitution.
 -- In case of unifying or matching, we fail in this case.
 unify _ opts (MonoType_Fam _ _) _ subst
-  | injChecking opts = MaybeApart subst
+  | injChecking opts = Unifiable subst
   | otherwise = SurelyApart
 -- t ~ F a
 -- In case of an injectivity check, we return the substitution.
 -- In case of unifying or matching, we fail in this case.
 unify _ opts _ (MonoType_Fam _ _) subst
-  | injChecking opts = MaybeApart subst
+  | injChecking opts = Unifiable subst
   | otherwise = SurelyApart
 -- In all other cases, we fail
 unify _ _ t1 t2 subst = trace (show subst ++ " " ++ show t1 ++ " " ++ show t2) SurelyApart 

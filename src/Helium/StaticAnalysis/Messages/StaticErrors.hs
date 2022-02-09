@@ -78,7 +78,8 @@ data Error  = NoFunDef Entity Name {-names in scope-}Names
             | TFFamInDefNotFamFree Name MonoTypes
             | TFDefNotSmallerSymbols Name MonoType
             | TFDefVarCountNotSmaller Name String
-            | OpenTFOverlapping Name Name MonoType MonoType MonoType MonoType 
+            | OpenTFOverlapping Name Name MonoType MonoType MonoType MonoType
+            | InjPreUnifyFailed Name Name MonoType MonoType MonoType MonoType
 
 instance HasMessage Error where
    getMessage x = let (oneliner, hints) = showError x
@@ -138,6 +139,7 @@ instance HasMessage Error where
       TFDefNotSmallerSymbols n _  -> [getNameRange n] 
       TFDefVarCountNotSmaller n _ -> [getNameRange n]
       OpenTFOverlapping n1 n2 _ _ _ _ -> sortRanges [getNameRange n1, getNameRange n2]
+      InjPreUnifyFailed n1 n2 _ _ _ _ -> sortRanges [getNameRange n1, getNameRange n2]
 
 sensiblySimilar :: Name -> Names -> [Name]
 sensiblySimilar name inScope =
@@ -488,6 +490,14 @@ showError anError = case anError of
          ,  MessageString ("\t\t" ++ show t2 ++ " = " ++ show dt2)
          ]
       ,[MessageString "Type family instances may not overlap to ensure that the compiler always knows which instance to choose for type family application."])
+   InjPreUnifyFailed n1 _ t1 t2 dt1 dt2 ->
+      ( MessageCompose 
+         [
+            MessageString ("The following two instances for injective type family " ++ show (show n1) ++ " violated the injectivity property:\n")
+         ,  MessageString ("\t\t" ++ show t1 ++ " = " ++ show dt1 ++ "\n")
+         ,  MessageString ("\t\t" ++ show t2 ++ " = " ++ show dt2)
+         ]
+      ,[MessageString "An injective type family must ensure that its definition determines its injective arguments"])
 
    _ -> internalError "StaticErrors.hs" "showError" "unknown type of Error"
 
@@ -579,6 +589,7 @@ errorLogCode anError = case anError of
           TFDefNotSmallerSymbols _ _              -> "dns"
           TFDefVarCountNotSmaller _ _             -> "dvc"
           OpenTFOverlapping _ _ _ _ _ _           -> "oto"
+          InjPreUnifyFailed _ _ _ _ _ _           -> "ipu"
    where code entity = fromMaybe "??"
                      . lookup entity
                      $ [ (TypeSignature    ,"ts"), (TypeVariable         ,"tv"), (TypeConstructor,"tc")

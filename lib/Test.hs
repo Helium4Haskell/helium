@@ -48,6 +48,15 @@ type family J a b where
     J Int Int = Float
     J Int Int = Int
 
+type family G a = r | r -> a where
+    G Int = Bool
+    G Bool = Int
+    G a = a
+
+type family Z a = r | r -> a
+type instance Z [a] = (a, a)
+type instance Z (Maybe b) = (b, [b])
+
 -- type family UU a where
 --     UU String = Char
 --     UU Float = Int
