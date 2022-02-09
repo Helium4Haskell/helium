@@ -10,22 +10,19 @@ import Helium.StaticAnalysis.Inferencers.OutsideInX.TopConversion
     ( typeToMonoType, tpToMonoType, importEnvironmentToTypeFamilies, TypeFamilies, tfInstanceInfoToAxiom, tfInstanceInfoToMonoTypes, typeSynonymsToTypeFamilies )
 import Debug.Trace
 import Helium.StaticAnalysis.Inferencers.OutsideInX.Rhodium.RhodiumTypes
-    ( isFamilyFree, MonoType (MonoType_Fam, MonoType_Var, MonoType_Con, MonoType_App), MonoTypes, TyVar, fvToList, Axiom (Axiom_Unify) )
+    ( isFamilyFree, MonoType (MonoType_Fam, MonoType_Var, MonoType_Con, MonoType_App), MonoTypes, Axiom (Axiom_Unify), TyVar )
 import Helium.StaticAnalysis.Miscellaneous.TypeConversion
-    ( namesInType, namesInTypes, makeTpSchemeFromType )
+    ( namesInType, namesInTypes )
 import Data.List (nub, elemIndex)
 import Data.Map (Map)
 import qualified Data.Map as M
-import Data.Maybe (fromJust, fromMaybe, catMaybes, mapMaybe)
+import Data.Maybe (fromJust, mapMaybe)
 import Helium.Utils.Utils (internalError)
-import Helium.Syntax.UHA_Range (getNameRange)
-import Unbound.Generics.LocallyNameless (name2Integer, runFreshM)
+import Unbound.Generics.LocallyNameless (runFreshM)
 import Top.Types (unquantify, split)
-import Helium.ModuleSystem.ImportEnvironment ( ImportEnvironment, TypeSynonymEnvironment )
+import Helium.ModuleSystem.ImportEnvironment ( TypeSynonymEnvironment )
 import Helium.StaticAnalysis.StaticChecks.TypeFamilyInfos
-import Helium.Syntax.UHA_Utils (buildUHATf)
 import Helium.StaticAnalysis.Miscellaneous.ConstraintInfoOU
-import Control.Monad.State
 import Unbound.Generics.LocallyNameless.Operations (unbind)
 import Unbound.Generics.LocallyNameless.Fresh (FreshM)
 
@@ -309,21 +306,22 @@ compat tfams (inst1, inst2) = let
   axiom1 = tfInstanceInfoToAxiom tfams inst1
   axiom2 = tfInstanceInfoToAxiom tfams inst2
 
-  (lhs1, rhs1) = runFreshM $ unbindAx axiom1
-  (lhs2, rhs2) = runFreshM $ unbindAx axiom2
+  ((lhs1, rhs1), (lhs2, rhs2)) = runFreshM $ unbindAx axiom1 axiom2
 
-  in case unifyTy M.empty lhs1 lhs2 of
+  in case unifyTy M.empty lhs1 (trace (show lhs1 ++ " " ++ show lhs2) lhs2) of
             SurelyApart -> Nothing
-            MaybeApart _ -> internalError "TypeFamilies.hs" "MaybeApart shouldn't happen for unifyTy" ""
+            MaybeApart _ -> internalError "TypeFamilies.hs" "compat" "MaybeApart shouldn't happen for unifyTy"
             Unifiable subst -> 
               if applySubst subst rhs1 == applySubst subst rhs2
                 then Nothing
                 else Just $ OpenTFOverlapping (obtainInstanceName inst1) (obtainInstanceName inst2) lhs1 lhs2 rhs1 rhs2
   where
-    unbindAx :: Axiom ConstraintInfo -> FreshM (MonoType, MonoType)
-    unbindAx (Axiom_Unify b) = do
-      (_, (lhs, rhs)) <- unbind b
-      return (lhs, rhs) 
+    unbindAx :: Axiom ConstraintInfo -> Axiom ConstraintInfo -> FreshM ((MonoType, MonoType), (MonoType, MonoType))
+    unbindAx (Axiom_Unify b1) (Axiom_Unify b2) = do
+      (_, (lhs1, rhs1)) <- unbind b1
+      (_, (lhs2, rhs2)) <- unbind b2
+      --internalError "TypeFamilies.hs" (show tvs) ""
+      return ((lhs1, rhs1), (lhs2, rhs2))
 
 
 

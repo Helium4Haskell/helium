@@ -61,4 +61,4 @@ data Tree a = Node a (Tree a) (Tree a) | Leaf
 -- f = Leaf
 
 type instance I a b = a
-type instance I b a = a
+type instance I a b = b
