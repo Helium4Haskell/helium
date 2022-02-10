@@ -155,13 +155,13 @@ tpToMonoType fams qm (TVar v) = case lookup v qm of
                                     Just s -> MonoType_Var (Just s) (integer2Name $ toInteger v)
                                     Nothing -> var (integer2Name $ toInteger v)
 tpToMonoType fams qm (TCon n) | isTypeFamily fams (TCon n) = MonoType_Fam n []
-                           | otherwise = MonoType_Con n
+                              | otherwise = MonoType_Con n
 tpToMonoType fams qm ta@(TApp f a)  | isTypeFamily fams ta = let 
                                                 m1 = tpToMonoType fams qm f
-                                                m2 = tpToMonoType fams qm a 
-                                                (MonoType_Con famName, params) = conList (MonoType_App m1 m2)
+                                                m2 = tpToMonoType fams qm a
+                                                (MonoType_Con famName, params) = separateMt (MonoType_App m1 m2)
                                                 in MonoType_Fam famName params
-                                    | otherwise = MonoType_App (tpToMonoType fams qm f) (tpToMonoType fams qm a)
+                                    | otherwise = MonoType_App (tpToMonoType fams qm (trace ("LHS: " ++ show f ++ " RHS: " ++ show a) f)) (tpToMonoType fams qm a)
 
 tpDepth :: Tp -> Int
 tpDepth (TVar _) = 0
@@ -237,10 +237,10 @@ typeSynonymsToAxioms env = concatMap tsToAxioms $ M.toList env
 
 tfInstanceInfoToAxiom :: TypeFamilies -> TFInstanceInfo -> Axiom ConstraintInfo
 tfInstanceInfoToAxiom fams iInfo = let
-
-    (_, lhsenv, lhsMonoType) = typeToMonoType fams $ buildUHATf (obtainInstanceName iInfo) (obtainArguments iInfo)
-    (_, _, rhsMonoType) = typeToMonoType fams (obtainDefinition iInfo)
-    rhsMonoType' = updateRhs lhsenv rhsMonoType
+    famType = buildUHATf (obtainInstanceName iInfo) (obtainArguments iInfo)
+    (_, lhsenv, lhsMonoType) = typeToMonoType fams famType
+    (_, _, rhsMonoType) = typeToMonoType fams (trace ("UHA_Type: " ++ show (obtainDefinition iInfo)) obtainDefinition iInfo)
+    rhsMonoType' = updateRhs lhsenv (trace ("MonoType: " ++ show rhsMonoType) rhsMonoType)
 
     axVars = fvToList lhsMonoType
 

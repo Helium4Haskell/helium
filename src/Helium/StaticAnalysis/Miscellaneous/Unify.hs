@@ -153,7 +153,7 @@ unify _ opts _ (MonoType_Fam _ _) subst
   | injChecking opts = Unifiable subst
   | otherwise = SurelyApart
 -- In all other cases, we fail
-unify _ _ t1 t2 subst = trace (show subst ++ " " ++ show t1 ++ " " ++ show t2) SurelyApart 
+unify _ _ _ _ _ = SurelyApart 
 
 -- Multiple types that are checked left to right with updated substitution
 unifies :: InjectiveEnv -- Whether a type fam is injective, important for pre-U for injectivity check

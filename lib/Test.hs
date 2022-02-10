@@ -44,14 +44,14 @@ class X a where
 -- instance X Int where
 --     type Q Int Int = Float
 
-type family J a b where
-    J Int Int = Float
-    J Int Int = Int
+-- type family J a b where
+--     J Int Int = Float
+--     J Int Int = Int
 
-type family G a = r | r -> a where
-    G Int = Bool
-    G Bool = Int
-    G a = a
+-- type family G a = r | r -> a where
+--     G Int = Bool
+--     G Bool = Int
+--     G a = a
 
 type family Z a = r | r -> a
 type instance Z [a] = (a, a)
@@ -69,6 +69,6 @@ data Tree a = Node a (Tree a) (Tree a) | Leaf
 -- f :: I Int
 -- f = Leaf
 
-type instance I Int a = a
-type instance I a Int = a
+-- type instance I Int a = a
+-- type instance I a Int = a
 

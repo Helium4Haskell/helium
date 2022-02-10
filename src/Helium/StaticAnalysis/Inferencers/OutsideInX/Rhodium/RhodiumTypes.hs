@@ -35,6 +35,7 @@ import Helium.StaticAnalysis.Miscellaneous.DoublyLinkedTree
 
 import Debug.Trace
 import Data.Typeable (Typeable)
+import Helium.Utils.Utils (internalError)
 
 data RType ci = PType (PolyType ci) | MType MonoType
 
@@ -89,12 +90,12 @@ instance Show MonoType where
 showMT :: [(TyVar, String)] -> MonoType -> String
 showMT mp (MonoType_List t)      = "[" ++ showMT mp t ++ "]"
 showMT mp (MonoType_App (MonoType_Con "[]") t) = "[" ++ showMT mp t ++ "]"
-showMT mp (MonoType_Tuple t1 t2) = "(" ++ showMT mp t1 ++ "," ++ showMT mp t2 ++ ")"
+showMT mp (MonoType_Tuple t1 t2) = "(" ++ showMT mp t1 ++ "," ++ showMT mp (trace (show t2) t2) ++ ")"
 showMT mp (MonoType_Con c)       = c 
 showMT mp (MonoType_Fam c a)     = c ++ concatMap (\x -> " " ++ doParens (showMT mp x)) a
 showMT mp (s :-->: t)            = doParens (showMT mp s) ++ " -> " ++ showMT mp t
 showMT mp (MonoType_Var s v)     = let r = fromMaybe (fromMaybe (show v) s) (lookup v mp) in if r == "" then show v else r
-showMT mp ma@(MonoType_App f a)  = case conList ma of 
+showMT mp ma@(MonoType_App f a)  = case separateMt ma of 
                                     (MonoType_Con s, tp) | length s > 2 && head s == '(' && last s == ')' && all (==',') (tail (init s)) ->
                                        "(" ++ intercalate ", " (map show tp) ++ ")"
                                     _ -> showMT mp f ++ " " ++ showMT mp a
@@ -242,10 +243,7 @@ instance (Alpha ci, Subst MonoType ci) => Alpha (Constraint ci)
 instance (Alpha ci, Subst MonoType ci) => Subst MonoType (Constraint ci)
   
 instance (Alpha ci, Subst MonoType ci) => Alpha (Axiom ci)
-instance (Alpha ci, Subst MonoType ci) => Subst MonoType (Axiom ci) 
-
-
-
+instance (Alpha ci, Subst MonoType ci) => Subst MonoType (Axiom ci)
 
 conApply :: String -> [MonoType] -> MonoType
 conApply s = foldl MonoType_App (MonoType_Con s)
@@ -253,15 +251,22 @@ conApply s = foldl MonoType_App (MonoType_Con s)
 conApply' :: MonoType -> [MonoType] -> MonoType
 conApply' = foldl MonoType_App
 
-conList :: MonoType -> (MonoType, [MonoType])
-conList (MonoType_App m1 m2) = let ms = getMonotypeAppList m1 ++ getMonotypeAppList m2 in (head ms, tail ms)
-conList (MonoType_Con s) = (MonoType_Con s, [])
-conList v@(MonoType_Var _ _) = (v, [])
-conList m = error $ "No conList possible for " ++ show m
+separateMt :: MonoType -> (MonoType, [MonoType])
+separateMt (MonoType_App m1 m2) = let
+    (c, ms) = separateMt m1 in (c, ms ++ [m2])
+separateMt c@(MonoType_Con _)   = (c, [])
+separateMt v@(MonoType_Var _ _) = (v, [])
+separateMt (MonoType_Fam f mts)   = (MonoType_Con f, mts)
 
-getMonotypeAppList :: MonoType -> [MonoType]
-getMonotypeAppList (MonoType_App f a) = getMonotypeAppList f ++ getMonotypeAppList a
-getMonotypeAppList x = [x]
+-- conList :: MonoType -> (MonoType, [MonoType])
+-- conList (MonoType_App m1 m2) = let ms = getMonotypeAppList m1 ++ getMonotypeAppList m2 in (head ms, tail ms)
+-- conList (MonoType_Con s) = (MonoType_Con s, [])
+-- conList v@(MonoType_Var _ _) = (v, [])
+-- conList m = error $ "No conList possible for " ++ show m
+
+-- getMonotypeAppList :: MonoType -> [MonoType]
+-- getMonotypeAppList (MonoType_App f a) = getMonotypeAppList f ++ getMonotypeAppList a
+-- getMonotypeAppList x = [x]
 
 
 isClassConstraint :: Constraint a -> Bool
