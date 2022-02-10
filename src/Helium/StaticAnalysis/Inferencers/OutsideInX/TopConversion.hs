@@ -161,7 +161,7 @@ tpToMonoType fams qm ta@(TApp f a)  | isTypeFamily fams ta = let
                                                 m2 = tpToMonoType fams qm a
                                                 (MonoType_Con famName, params) = separateMt (MonoType_App m1 m2)
                                                 in MonoType_Fam famName params
-                                    | otherwise = MonoType_App (tpToMonoType fams qm (trace ("LHS: " ++ show f ++ " RHS: " ++ show a) f)) (tpToMonoType fams qm a)
+                                    | otherwise = MonoType_App (tpToMonoType fams qm f) (tpToMonoType fams qm a)
 
 tpDepth :: Tp -> Int
 tpDepth (TVar _) = 0
@@ -239,8 +239,8 @@ tfInstanceInfoToAxiom :: TypeFamilies -> TFInstanceInfo -> Axiom ConstraintInfo
 tfInstanceInfoToAxiom fams iInfo = let
     famType = buildUHATf (obtainInstanceName iInfo) (obtainArguments iInfo)
     (_, lhsenv, lhsMonoType) = typeToMonoType fams famType
-    (_, _, rhsMonoType) = typeToMonoType fams (trace ("UHA_Type: " ++ show (obtainDefinition iInfo)) obtainDefinition iInfo)
-    rhsMonoType' = updateRhs lhsenv (trace ("MonoType: " ++ show rhsMonoType) rhsMonoType)
+    (_, _, rhsMonoType) = typeToMonoType fams $ obtainDefinition iInfo
+    rhsMonoType' = updateRhs lhsenv rhsMonoType
 
     axVars = fvToList lhsMonoType
 

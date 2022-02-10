@@ -90,7 +90,7 @@ instance Show MonoType where
 showMT :: [(TyVar, String)] -> MonoType -> String
 showMT mp (MonoType_List t)      = "[" ++ showMT mp t ++ "]"
 showMT mp (MonoType_App (MonoType_Con "[]") t) = "[" ++ showMT mp t ++ "]"
-showMT mp (MonoType_Tuple t1 t2) = "(" ++ showMT mp t1 ++ "," ++ showMT mp (trace (show t2) t2) ++ ")"
+showMT mp (MonoType_Tuple t1 t2) = "(" ++ showMT mp t1 ++ "," ++ showMT mp t2 ++ ")"
 showMT mp (MonoType_Con c)       = c 
 showMT mp (MonoType_Fam c a)     = c ++ concatMap (\x -> " " ++ doParens (showMT mp x)) a
 showMT mp (s :-->: t)            = doParens (showMT mp s) ++ " -> " ++ showMT mp t

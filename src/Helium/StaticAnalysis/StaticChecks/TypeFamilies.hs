@@ -289,7 +289,9 @@ compatibilityCheck tfams tis = let
   openTFs = obtainOpenTFInstances tis
   
   -- create to be checked pairs
-  instancePairs = [(inst1, inst2) | inst1:ys <- tails openTFs, inst2 <- ys]
+  instancePairs = [(inst1, inst2) | 
+                  inst1:ys <- tails openTFs, inst2 <- ys
+                  , obtainInstanceName inst1 == obtainInstanceName inst2]
 
   -- In compat
   in mapMaybe (compat tfams) instancePairs
@@ -298,7 +300,9 @@ closedOverlapWarning :: TypeFamilies -> TFInstanceInfos -> Warnings
 closedOverlapWarning tfams tis = let
 
   closedTFs = obtainClosedTFInstances tis
-  instancePairs = [(inst1, inst2) | inst1:ys <- tails closedTFs, inst2 <- ys]
+  instancePairs = [(inst1, inst2) | 
+                  inst1:ys <- tails closedTFs, inst2 <- ys
+                  , obtainInstanceName inst1 == obtainInstanceName inst2]
 
   in mapMaybe (compatWarn tfams) instancePairs
 
@@ -335,7 +339,10 @@ pairwiseInjChecks :: TypeFamilies -> TFDeclInfos -> TFInstanceInfos -> Errors
 pairwiseInjChecks fams dis tis = let
 
   injTFs = obtainInjectiveTFInstances dis tis
-  instancePairs = [(inst1, inst2) | inst1:ys <- tails injTFs, inst2 <- ys]
+  instancePairs = [(inst1, inst2) 
+                  | inst1:ys <- tails injTFs, inst2 <- ys
+                  , obtainInstanceName inst1 == obtainInstanceName inst2]
+                  ++ [(inst, inst) | inst <- injTFs] -- Adding pairwise checks with itself (NEEDED)!
   ienv = buildInjectiveEnv dis
   in mapMaybe (pairwiseInjCheck fams ienv) instancePairs 
 
