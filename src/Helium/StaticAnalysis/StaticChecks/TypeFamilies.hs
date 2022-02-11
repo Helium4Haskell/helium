@@ -75,12 +75,17 @@ checkTypeFamStaticErrors env dis iis = let
   
   tyfams = typeSynonymsToTypeFamilies env ++ obtainTyFams dis
 
+  -- The simple duplication check and ast var alignment.
   phase1 = declCheckDuplicates dis
            ++ atsCheckVarAlignment dis iis
 
+  -- InstanceValidity is a big one, consists of multiple possible errors
+  -- New phase because duplicates generate errors in this area too.
   phase2 = instCheckInstanceValidity dis iis
            ++ instSaturationCheck dis iis
 
+  -- Phase three is initiated when instances are syntactically valid
+  -- These checks are based on theory rather than syntax.
   phase3 = instNoTFInArgument tyfams iis
            ++ instVarOccursCheck iis
            ++ instInjDefChecks tyfams dis iis
@@ -166,6 +171,7 @@ instCheckInstanceValidity ds is = let
      [ATSNotPartOfClass n1 n2 | (n1, n2) <- assocInstanceNotPartOfClass] ++
      [OpenInstanceForClosed n | n <- openInstancesForClosed]
 
+-- Checks whether the type fam instance LHS is fully saturated.
 instSaturationCheck :: TFDeclInfos -> TFInstanceInfos -> Errors
 instSaturationCheck ds is = let
 
@@ -183,6 +189,7 @@ instSaturationCheck ds is = let
 
   in [WronglySaturatedTypeFamily n dl tl | (n, dl, tl) <- violations]
 
+-- Checks if all arguments are type family free.
 instNoTFInArgument :: TypeFamilies -> TFInstanceInfos -> Errors
 instNoTFInArgument fams tis = let
 
@@ -193,6 +200,7 @@ instNoTFInArgument fams tis = let
                ]
   in [TFInArgument n t mt | (n, t, mt) <- violations] 
 
+-- Checks if all vars in RHS are in scope wrt the LHS.
 instVarOccursCheck :: TFInstanceInfos -> Errors
 instVarOccursCheck tis = let
 
@@ -206,6 +214,7 @@ instVarOccursCheck tis = let
     
   in [Undefined Variable n [] ["Variable " ++ show (show n) ++ " does not occur in any instance argument"] | n <- concatMap getViolations tis]
 
+-- Checks whether non-injective type families are always becoming 'smaller' (termination guarantees)
 instSmallerChecks :: TypeFamilies -> TFDeclInfos -> TFInstanceInfos -> Errors
 instSmallerChecks tyFams dis tis = let
 
@@ -244,22 +253,25 @@ instSmallerChecks tyFams dis tis = let
     defMt = thrd $ typeToMonoType tyFams t 
 
     defTFs = obtainDefTyFam defMt
-    -- First smaller check
+    -- First smaller check (def must be family free)
     notTFFree = case filter (\(MonoType_Fam _ mts) -> not $ all isFamilyFree mts) defTFs of
                   [] -> []
                   xs -> [TFFamInDefNotFamFree n xs]
 
-    -- Second smaller check
+    -- Second smaller check 
     symbolsNotSmaller = [ TFDefNotSmallerSymbols n tf | tf <- defTFs, sum (map countSymbols argMts) <= countSymbols tf ]
 
+    -- Third smaller check
     varOccurenceCheck = [ TFDefVarCountNotSmaller n argVar | 
                           argVar <- concatMap obtainVars argMts
                         , defTF <- defTFs
                         , sum (map (countOccVar argVar) argMts) <= countOccVar argVar defTF]
     in notTFFree ++ symbolsNotSmaller ++ varOccurenceCheck
-
+  -- checks are done over non-injective families.
   in concatMap (checkInstance . obtainNameArgsDef) (tis \\ obtainInjectiveTFInstances dis tis)
 
+-- Definition of instance may not be a direct type family, and,
+-- if a definition is a bare var, every argument must be too!
 instInjDefChecks :: TypeFamilies -> TFDeclInfos -> TFInstanceInfos -> Errors
 instInjDefChecks tyFams dis tis = let
 
@@ -281,7 +293,7 @@ instInjDefChecks tyFams dis tis = let
      [InjBareVarInDefinition n ns | (n, ns) <- bareVars]
 
 -------------------------------
--- COMPATIBILITY CHECK
+-- COMPATIBILITY CHECK (checks whether open type families overlap)
 compatibilityCheck :: TypeFamilies -> TFInstanceInfos -> Errors
 compatibilityCheck tfams tis = let
   
@@ -296,6 +308,7 @@ compatibilityCheck tfams tis = let
   -- In compat
   in mapMaybe (compat tfams) instancePairs
 
+-- Entrypoint for closed overlap warning.
 closedOverlapWarning :: TypeFamilies -> TFInstanceInfos -> Warnings
 closedOverlapWarning tfams tis = let
 
@@ -307,6 +320,7 @@ closedOverlapWarning tfams tis = let
 
   in mapMaybe (compatWarn tfams) instancePairs
 
+-- compatibility check of two instances (pairwise).
 compat :: TypeFamilies -> (TFInstanceInfo, TFInstanceInfo) -> Maybe Error
 compat tfams (inst1, inst2) = let
 
@@ -322,6 +336,7 @@ compat tfams (inst1, inst2) = let
                 then Nothing
                 else Just $ OpenTFOverlapping (obtainInstanceName inst1) (obtainInstanceName inst2) lhs1 lhs2 rhs1 rhs2
 
+-- warning version of compat, uses matchTy to check unification only in one way.
 compatWarn :: TypeFamilies -> (TFInstanceInfo, TFInstanceInfo) -> Maybe Warning
 compatWarn tfams (inst1, inst2) = let
   
@@ -333,6 +348,8 @@ compatWarn tfams (inst1, inst2) = let
             SurelyApart -> Nothing
             Unifiable _ -> Just $ OverlappedClosedTypeFamilyInstance (obtainInstanceName inst1) lhs2 rhs2
 
+-- Performs pairwise injectivity check
+-- Performs whether type vars in injective arguments are used injectively in the definition.
 injChecks :: TypeFamilies -> TFDeclInfos -> TFInstanceInfos -> Errors
 injChecks fams dis tis = let
 
@@ -356,13 +373,18 @@ pairwiseInjCheck fams ienv (inst1, inst2) = let
   
   ((clhs1@(MonoType_Fam _ lhs1), rhs1), (clhs2@(MonoType_Fam _ lhs2), rhs2)) = runFreshM $ unbindAx axiom1 axiom2
 
-  in case preUnify ienv rhs1 rhs2 of 
+  in case preUnify ienv rhs1 rhs2 of
+            -- RHSs surely apart, No error, no clashing.
             SurelyApart -> Nothing
+            -- RHSs may unify (under preunification).
             Unifiable subst
+              -- If all injective arguments agree with each other, there is no problem.
               | all (\i -> checkInjArg subst (lhs1 !! i) (lhs2 !! i)) injIndices
                   -> Nothing 
+              -- In case of a closed type family, we are good when the lhs's are not equal after applying the substitution.
               | isClosed inst1 && applySubst subst clhs1 /= applySubst subst clhs2
                   -> Nothing
+              -- Otherwise, the two instances violate the injectivity property.
               | otherwise
                   -> Just $ InjPreUnifyFailed (obtainInstanceName inst1) (obtainInstanceName inst2) clhs1 clhs2 rhs1 rhs2  -- ERROR!
   where
@@ -378,7 +400,7 @@ unbindAx (Axiom_Unify b1) (Axiom_Unify b2) = do
   (_, (lhs2, rhs2)) <- unbind b2
   return ((lhs1, rhs1), (lhs2, rhs2))
 
-
+-- Performs whether type vars in injective arguments are used injectively in the definition.
 wronglyUsedVarInInjCheck :: TypeFamilies -> InjectiveEnv -> TFInstanceInfo -> Maybe Error
 wronglyUsedVarInInjCheck fams ienv inst = let
 
@@ -386,20 +408,28 @@ wronglyUsedVarInInjCheck fams ienv inst = let
   (_, (lhs@(MonoType_Fam f mts), rhs)) = runFreshM $ unbind b
   
   injMts = map (mts !!) $ ienv M.! f
-  lhsVars = foldl (\s mt -> s `S.union` varTupleSet mt) S.empty injMts 
+  -- gets the vars in the injective arguments of the LHS
+  lhsVars = foldl (\s mt -> s `S.union` varTupleSet mt) S.empty injMts
+  -- gets the injectively used vars in the RHS
   rhsVars = injVarsOfMonoType ienv False rhs
+  -- Every var in the injective arguments must be used injectively in the RHS
   badVars = lhsVars S.\\ rhsVars  
 
   in if S.null badVars
       then Nothing
       else  Just $ InjWronglyUsedVars (obtainInstanceName inst) lhs rhs (map fst $ S.toList badVars)
 
+-- TyVar forgets the name of the variable and we therefore return a tuple containing the name
+-- in the form of a string.
+
+-- Simply obtains the vars in a monotype.
 varTupleSet :: MonoType -> S.Set (String, TyVar)
 varTupleSet (MonoType_Var (Just s) v) = S.singleton (s, v)
 varTupleSet (MonoType_Con _)          = S.empty 
 varTupleSet (MonoType_App mt1 mt2)    = varTupleSet mt1 `S.union` varTupleSet mt2
 varTupleSet (MonoType_Fam _ mts)      = foldl (\s mt -> s `S.union` varTupleSet mt) S.empty mts
 
+-- Obtains injective vars inside the RHS
 injVarsOfMonoType :: InjectiveEnv -> Bool -> MonoType -> S.Set (String, TyVar)
 injVarsOfMonoType _   _          (MonoType_Var (Just s) v) = S.singleton (s, v)
 injVarsOfMonoType _   _          (MonoType_Con _)   = S.empty 
