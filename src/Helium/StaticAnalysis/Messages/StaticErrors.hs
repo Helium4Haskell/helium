@@ -608,3 +608,8 @@ errorLogCode anError = case anError of
                        , (Import           ,"im"), (ExportVariable       ,"ev"), (ExportModule   ,"em")
                        , (ExportConstructor,"ec"), (ExportTypeConstructor,"et"), (Fixity         ,"fx")
                        ]
+
+infixl 9 >>\
+(>>\) :: Errors -> Errors -> Errors
+[] >>\ es2 = es2
+es >>\ _ = es

@@ -77,18 +77,17 @@ checkTypeFamStaticErrors env dis iis = let
 
   phase1 = declCheckDuplicates dis
            ++ atsCheckVarAlignment dis iis
-           ++ instCheckInstanceValidity dis iis
+
+  phase2 = instCheckInstanceValidity dis iis
            ++ instSaturationCheck dis iis
-  
-  phase2 = instNoTFInArgument tyfams iis
+
+  phase3 = instNoTFInArgument tyfams iis
            ++ instVarOccursCheck iis
            ++ instInjDefChecks tyfams dis iis
            ++ instSmallerChecks tyfams dis iis
            ++ compatibilityCheck tyfams iis
            ++ injChecks tyfams dis iis
-  in if not (null phase1)
-        then phase1
-        else phase2
+  in phase1 >>\ phase2 >>\ phase3
 
 checkTypeFamWarnings :: TypeSynonymEnvironment -> TFDeclInfos -> TFInstanceInfos -> Warnings
 checkTypeFamWarnings env dis tis = let
@@ -302,8 +301,9 @@ closedOverlapWarning tfams tis = let
 
   closedTFs = obtainClosedTFInstances tis
   instancePairs = [(inst1, inst2) | 
-                  inst1:ys <- tails closedTFs, inst2 <- ys
-                  , obtainInstanceName inst1 == obtainInstanceName inst2]
+                  inst1@(IClosed _ _ _ ord1) <- closedTFs, inst2@(IClosed _ _ _ ord2) <- closedTFs
+                  , obtainInstanceName inst1 == obtainInstanceName inst2
+                  , ord1 < ord2]
 
   in mapMaybe (compatWarn tfams) instancePairs
 
@@ -315,7 +315,7 @@ compat tfams (inst1, inst2) = let
 
   ((lhs1, rhs1), (lhs2, rhs2)) = runFreshM $ unbindAx axiom1 axiom2
 
-  in case unifyTy M.empty lhs1 lhs2 of
+  in case unifyTy lhs1 lhs2 of
             SurelyApart -> Nothing
             Unifiable subst -> 
               if applySubst subst rhs1 == applySubst subst rhs2
@@ -328,13 +328,10 @@ compatWarn tfams (inst1, inst2) = let
   axiom1 = tfInstanceInfoToAxiom tfams inst1
   axiom2 = tfInstanceInfoToAxiom tfams inst2
 
-  ((lhs1, rhs1), (lhs2, rhs2)) = runFreshM $ unbindAx axiom1 axiom2
-  in case unifyTy M.empty lhs1 lhs2 of
+  ((lhs1, _), (lhs2, rhs2)) = runFreshM $ unbindAx axiom1 axiom2
+  in case matchTy lhs1 lhs2 of
             SurelyApart -> Nothing
-            Unifiable subst -> 
-              if M.null subst
-                then Just $ EqualClosedTypeFamilyInstances (obtainInstanceName inst1) (obtainInstanceName inst2) lhs1 lhs2 rhs1 rhs2
-                else Nothing 
+            Unifiable _ -> Just $ OverlappedClosedTypeFamilyInstance (obtainInstanceName inst1) lhs2 rhs2
 
 injChecks :: TypeFamilies -> TFDeclInfos -> TFInstanceInfos -> Errors
 injChecks fams dis tis = let

@@ -43,11 +43,10 @@ instance Monad UnifyResultM where
 -- Util functions
 
 -- Sets unify up for type family matching
-matchTy :: InjectiveEnv
-         -> MonoType -- Should be a MonoType_Fam representing the target
-         -> MonoType -- Should be a MonoType_Fam representing the equation (instance)
-         -> UnifyResult
-matchTy ienv t1 t2 = let
+matchTy :: MonoType -- Should be a MonoType_Fam representing the target
+        -> MonoType -- Should be a MonoType_Fam representing the equation (instance)
+        -> UnifyResult
+matchTy t1 t2 = let
   
   opts = UO {
     injChecking = False
@@ -55,7 +54,7 @@ matchTy ienv t1 t2 = let
   , unifying = False
   }
 
-  in unify ienv opts t1 t2 M.empty
+  in unify M.empty opts t1 t2 M.empty
 
 -- Set unify up for pre unification for injectivity check
 preUnify :: InjectiveEnv
@@ -73,11 +72,10 @@ preUnify ienv t1 t2 = let
   in unify ienv opts t1 t2 M.empty
 
 
-unifyTy :: InjectiveEnv
-        -> MonoType
+unifyTy :: MonoType
         -> MonoType
         -> UnifyResult
-unifyTy ienv t1 t2 = let
+unifyTy t1 t2 = let
     
   opts = UO {
     injChecking = False
@@ -85,7 +83,7 @@ unifyTy ienv t1 t2 = let
   , unifying = True
   }
 
-  in unify ienv opts t1 t2 M.empty
+  in unify M.empty opts t1 t2 M.empty
 ------------------------------------
 -- unify: main work horse for unification
 -- Currently implemented for:

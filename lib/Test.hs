@@ -57,9 +57,9 @@ type family G a = r | r -> a where
 -- type instance Z [a] = (a, a)
 -- type instance Z (Maybe b) = (b, [b])
 
-type family G6 a = r | r -> a
-type instance G6 [a] = [G a]
-type instance G6 Bool = Int
+-- type family G6 a = r | r -> a
+-- type instance G6 [a] = [G a]
+-- type instance G6 Bool = Int
 
 -- type family G a = r | r -> a
 
@@ -80,3 +80,8 @@ data Tree a = Node a (Tree a) (Tree a) | Leaf
 
 -- type family G4 a b = r | r -> a b
 -- type instance G4 a b = [a]
+
+type family C a b where
+    C a b = Int
+    C Int Int = Float
+    C Int a   = Int
