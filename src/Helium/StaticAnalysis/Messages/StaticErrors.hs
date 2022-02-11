@@ -19,7 +19,8 @@ import Data.Maybe
 import Helium.Utils.Utils       (commaList, internalError, maxInt)
 
 import Top.Types
-import Helium.StaticAnalysis.Inferencers.OutsideInX.Rhodium.RhodiumTypes (MonoType, MonoTypes)
+import Helium.StaticAnalysis.Inferencers.OutsideInX.Rhodium.RhodiumTypes (MonoType, MonoTypes, TyVar)
+import Unbound.Generics.LocallyNameless (name2String)
 
 -------------------------------------------------------------
 -- (Static) Errors
@@ -80,6 +81,7 @@ data Error  = NoFunDef Entity Name {-names in scope-}Names
             | TFDefVarCountNotSmaller Name String
             | OpenTFOverlapping Name Name MonoType MonoType MonoType MonoType
             | InjPreUnifyFailed Name Name MonoType MonoType MonoType MonoType
+            | InjWronglyUsedVars Name MonoType MonoType [String]
 
 instance HasMessage Error where
    getMessage x = let (oneliner, hints) = showError x
@@ -140,6 +142,7 @@ instance HasMessage Error where
       TFDefVarCountNotSmaller n _ -> [getNameRange n]
       OpenTFOverlapping n1 n2 _ _ _ _ -> sortRanges [getNameRange n1, getNameRange n2]
       InjPreUnifyFailed n1 n2 _ _ _ _ -> sortRanges [getNameRange n1, getNameRange n2]
+      InjWronglyUsedVars n _ _ _      -> [getNameRange n]
 
 sensiblySimilar :: Name -> Names -> [Name]
 sensiblySimilar name inScope =
@@ -498,6 +501,14 @@ showError anError = case anError of
          ,  MessageString ("\t\t" ++ show t2 ++ " = " ++ show dt2)
          ]
       ,[MessageString "An injective type family must ensure that its definition determines its injective arguments"])
+   InjWronglyUsedVars n lhs rhs tvs ->
+      ( MessageCompose 
+         [
+            MessageString ("The following instance of injective type family " ++ show (show n) ++ " violated the injectivity property:\n")
+         ,  MessageString ("\t\t" ++ show lhs ++ " = " ++ show rhs ++ "\n")
+         ,  MessageString ("Type variable " ++ if length tvs > 1 then "s" else "" ++ intercalate ", " (map show tvs) ++ " cannot be inferred from the right hand side") 
+         ]
+      ,[])
 
    _ -> internalError "StaticErrors.hs" "showError" "unknown type of Error"
 

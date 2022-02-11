@@ -1,4 +1,5 @@
 {-# OPTIONS_GHC -Wno-incomplete-patterns #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 module Helium.StaticAnalysis.StaticChecks.TypeFamilies where
 
 import Helium.Syntax.UHA_Syntax
@@ -10,13 +11,14 @@ import Helium.StaticAnalysis.Inferencers.OutsideInX.TopConversion
     ( typeToMonoType, tpToMonoType, importEnvironmentToTypeFamilies, TypeFamilies, tfInstanceInfoToAxiom, tfInstanceInfoToMonoTypes, typeSynonymsToTypeFamilies )
 import Debug.Trace
 import Helium.StaticAnalysis.Inferencers.OutsideInX.Rhodium.RhodiumTypes
-    ( isFamilyFree, MonoType (MonoType_Fam, MonoType_Var, MonoType_Con, MonoType_App), MonoTypes, Axiom (Axiom_Unify), TyVar )
+    ( isFamilyFree, MonoType (MonoType_Fam, MonoType_Var, MonoType_Con, MonoType_App), MonoTypes, Axiom (Axiom_Unify), TyVar, fvToList )
 import Helium.StaticAnalysis.Miscellaneous.TypeConversion
     ( namesInType, namesInTypes )
-import Data.List (nub, elemIndex)
+import Data.List (nub, elemIndex, (\\))
 import Data.Map (Map)
 import qualified Data.Map as M
 import Data.Maybe (fromJust, mapMaybe)
+import qualified Data.Set as S
 import Helium.Utils.Utils (internalError)
 import Unbound.Generics.LocallyNameless (runFreshM)
 import Top.Types (unquantify, split)
@@ -81,9 +83,9 @@ checkTypeFamStaticErrors env dis iis = let
   phase2 = instNoTFInArgument tyfams iis
            ++ instVarOccursCheck iis
            ++ instInjDefChecks tyfams dis iis
-           ++ instSmallerChecks tyfams iis
+           ++ instSmallerChecks tyfams dis iis
            ++ compatibilityCheck tyfams iis
-           ++ pairwiseInjChecks tyfams dis iis
+           ++ injChecks tyfams dis iis
   in if not (null phase1)
         then phase1
         else phase2
@@ -205,9 +207,8 @@ instVarOccursCheck tis = let
     
   in [Undefined Variable n [] ["Variable " ++ show (show n) ++ " does not occur in any instance argument"] | n <- concatMap getViolations tis]
 
---TODO: DO OTHER SMALLER CHECKS FROM PROPOSAL!
-instSmallerChecks :: TypeFamilies -> TFInstanceInfos -> Errors
-instSmallerChecks tyFams tis = let
+instSmallerChecks :: TypeFamilies -> TFDeclInfos -> TFInstanceInfos -> Errors
+instSmallerChecks tyFams dis tis = let
 
   obtainDefTyFam :: MonoType -> MonoTypes
   obtainDefTyFam t@(MonoType_Fam _ mts) = t : concatMap obtainDefTyFam mts
@@ -258,7 +259,7 @@ instSmallerChecks tyFams tis = let
                         , sum (map (countOccVar argVar) argMts) <= countOccVar argVar defTF]
     in notTFFree ++ symbolsNotSmaller ++ varOccurenceCheck
 
-  in concatMap (checkInstance . obtainNameArgsDef) tis
+  in concatMap (checkInstance . obtainNameArgsDef) (tis \\ obtainInjectiveTFInstances dis tis)
 
 instInjDefChecks :: TypeFamilies -> TFDeclInfos -> TFInstanceInfos -> Errors
 instInjDefChecks tyFams dis tis = let
@@ -335,8 +336,8 @@ compatWarn tfams (inst1, inst2) = let
                 then Just $ EqualClosedTypeFamilyInstances (obtainInstanceName inst1) (obtainInstanceName inst2) lhs1 lhs2 rhs1 rhs2
                 else Nothing 
 
-pairwiseInjChecks :: TypeFamilies -> TFDeclInfos -> TFInstanceInfos -> Errors
-pairwiseInjChecks fams dis tis = let
+injChecks :: TypeFamilies -> TFDeclInfos -> TFInstanceInfos -> Errors
+injChecks fams dis tis = let
 
   injTFs = obtainInjectiveTFInstances dis tis
   instancePairs = [(inst1, inst2) 
@@ -344,7 +345,8 @@ pairwiseInjChecks fams dis tis = let
                   , obtainInstanceName inst1 == obtainInstanceName inst2]
                   ++ [(inst, inst) | inst <- injTFs] -- Adding pairwise checks with itself (NEEDED)!
   ienv = buildInjectiveEnv dis
-  in mapMaybe (pairwiseInjCheck fams ienv) instancePairs 
+  in mapMaybe (pairwiseInjCheck fams ienv) instancePairs
+  ++ mapMaybe (wronglyUsedVarInInjCheck fams ienv) injTFs
 
 pairwiseInjCheck :: TypeFamilies -- Type fams to build axioms
                  -> InjectiveEnv -- Map containing indices of injective type families.
@@ -378,9 +380,41 @@ unbindAx (Axiom_Unify b1) (Axiom_Unify b2) = do
   (_, (lhs1, rhs1)) <- unbind b1
   (_, (lhs2, rhs2)) <- unbind b2
   return ((lhs1, rhs1), (lhs2, rhs2))
+
+
+wronglyUsedVarInInjCheck :: TypeFamilies -> InjectiveEnv -> TFInstanceInfo -> Maybe Error
+wronglyUsedVarInInjCheck fams ienv inst = let
+
+  (Axiom_Unify b) = tfInstanceInfoToAxiom fams inst
+  (_, (lhs@(MonoType_Fam f mts), rhs)) = runFreshM $ unbind b
+  
+  injMts = map (mts !!) $ ienv M.! f
+  lhsVars = foldl (\s mt -> s `S.union` varTupleSet mt) S.empty injMts 
+  rhsVars = injVarsOfMonoType ienv False rhs
+  badVars = lhsVars S.\\ rhsVars  
+
+  in if S.null badVars
+      then Nothing
+      else  Just $ InjWronglyUsedVars (obtainInstanceName inst) lhs rhs (map fst $ S.toList badVars)
+
+varTupleSet :: MonoType -> S.Set (String, TyVar)
+varTupleSet (MonoType_Var (Just s) v) = S.singleton (s, v)
+varTupleSet (MonoType_Con _)          = S.empty 
+varTupleSet (MonoType_App mt1 mt2)    = varTupleSet mt1 `S.union` varTupleSet mt2
+varTupleSet (MonoType_Fam _ mts)      = foldl (\s mt -> s `S.union` varTupleSet mt) S.empty mts
+
+injVarsOfMonoType :: InjectiveEnv -> Bool -> MonoType -> S.Set (String, TyVar)
+injVarsOfMonoType _   _          (MonoType_Var (Just s) v) = S.singleton (s, v)
+injVarsOfMonoType _   _          (MonoType_Con _)   = S.empty 
+injVarsOfMonoType env look_under (MonoType_App mt1 mt2) 
+  = injVarsOfMonoType env look_under mt1 `S.union` injVarsOfMonoType env look_under mt2
+injVarsOfMonoType env look_under (MonoType_Fam f mts)
+  = case M.lookup f env of
+    Nothing -> S.empty
+    Just idxs
+      | look_under ->  let
+        injArgs = map (mts !!) idxs
+        in foldl (\s mt -> s `S.union` injVarsOfMonoType env look_under mt) S.empty injArgs
+      | otherwise -> S.empty
 -- CHECKS TODO!!!!!:
---
--- Definition smaller check (For non-injective)
--- - Injective type fams
---    - Pre-unification
---    - Basically, the injectivity check from paper.
+-- unused var check for injective type families.

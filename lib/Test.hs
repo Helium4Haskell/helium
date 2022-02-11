@@ -48,18 +48,18 @@ class X a where
 --     J Int Int = Float
 --     J Int Int = Int
 
--- type family G a = r | r -> a where
---     G Int = Bool
---     G Bool = Int
---     G a = a
+type family G a = r | r -> a where
+    G Int = Bool
+    G Bool = Int
+    G a = a
 
 -- type family Z a = r | r -> a
 -- type instance Z [a] = (a, a)
 -- type instance Z (Maybe b) = (b, [b])
 
--- type family G6 a = r | r -> a
--- type instance G6 [a] = [G a]
--- type instance G6 Bool = Int
+type family G6 a = r | r -> a
+type instance G6 [a] = [G a]
+type instance G6 Bool = Int
 
 -- type family G a = r | r -> a
 
@@ -78,5 +78,5 @@ data Tree a = Node a (Tree a) (Tree a) | Leaf
 -- type instance I Int a = a
 -- type instance I a Int = a
 
-type family G4 a b = r | r -> a b
-type instance G4 a b = [a]
+-- type family G4 a b = r | r -> a b
+-- type instance G4 a b = [a]

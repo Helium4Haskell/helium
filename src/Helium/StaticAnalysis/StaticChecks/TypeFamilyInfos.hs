@@ -5,21 +5,23 @@ import Helium.Syntax.UHA_Syntax ( Name, Names, Type(..), Types, ContextItem(..) 
 import Helium.Syntax.UHA_Utils ()
 
 deriving instance Show Type
+deriving instance Eq Type 
 deriving instance Show ContextItem
+deriving instance Eq ContextItem 
 
 type TFDeclInfos = [TFDeclInfo]
 data TFDeclInfo
   = DOpen Name Names (Maybe Names)
   | DClosed Name Names (Maybe Names)
   | DAssoc Name Names (Maybe Names) [(Int, Int)] Name
-  deriving Show
+  deriving (Show, Eq)
 
 type TFInstanceInfos = [TFInstanceInfo]
 data TFInstanceInfo
   = IOpen Name Types Type
   | IClosed Name Types Type Int --Int resembles the priority that the instance has in the closed type family
   | IAssoc Name Types Type Types Name
-  deriving Show
+  deriving (Show, Eq)
 -------------------------------------
 -- UTILS
 
