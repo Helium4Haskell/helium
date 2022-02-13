@@ -61,7 +61,7 @@ import Data.Functor.Identity
 import Unbound.Generics.LocallyNameless.Fresh
 import Unbound.Generics.LocallyNameless.Operations hiding (freshen)
 import Rhodium.TypeGraphs.GraphInstances()
-import Helium.StaticAnalysis.StaticChecks.TypeFamilyInfos (TFDeclInfo, obtainArguments, obtainInstanceName, TFInstanceInfo, obtainDefinition)
+import Helium.StaticAnalysis.StaticChecks.TypeFamilyInfos (TFDeclInfo, TFInstanceInfo (tfiName, argTypes, defType))
 
 type TypeFamilies = [(String, Int)]
 
@@ -214,7 +214,7 @@ classEnvironmentToAxioms fams env = concatMap (uncurry classToAxioms) (M.toList 
         classToAxioms :: String -> Class -> [Axiom ConstraintInfo]
         classToAxioms s (superclasses, instances) = map instanceToAxiom instances
         instanceToAxiom :: Instance -> Axiom ConstraintInfo
-        instanceToAxiom ((Predicate cn v), supers) = let
+        instanceToAxiom (Predicate cn v, supers) = let
                 vars = map (integer2Name  . toInteger) (ftv v ++ concatMap (\(Predicate _ v) -> ftv v) supers)
                 superCons = map (\(Predicate c v) -> Constraint_Class c [tpToMonoType fams [] v] Nothing) supers
             in Axiom_Class (bind vars (superCons, cn, [tpToMonoType fams [] v]))
@@ -237,9 +237,9 @@ typeSynonymsToAxioms env = concatMap tsToAxioms $ M.toList env
 
 tfInstanceInfoToAxiom :: TypeFamilies -> TFInstanceInfo -> Axiom ConstraintInfo
 tfInstanceInfoToAxiom fams iInfo = let
-    famType = buildUHATf (obtainInstanceName iInfo) (obtainArguments iInfo)
+    famType = buildUHATf (tfiName iInfo) (argTypes iInfo)
     (_, lhsenv, lhsMonoType) = typeToMonoType fams famType
-    (_, _, rhsMonoType) = typeToMonoType fams $ obtainDefinition iInfo
+    (_, _, rhsMonoType) = typeToMonoType fams $ defType iInfo
     rhsMonoType' = updateRhs lhsenv rhsMonoType
 
     axVars = fvToList lhsMonoType
@@ -249,8 +249,8 @@ tfInstanceInfoToAxiom fams iInfo = let
 tfInstanceInfoToMonoTypes :: TypeFamilies -> TFInstanceInfo -> (MonoType, MonoType)
 tfInstanceInfoToMonoTypes fams iInfo = let
     
-    (_, lhsenv, lhsMonoType) = typeToMonoType fams $ buildUHATf (obtainInstanceName iInfo) (obtainArguments iInfo)
-    (_, _, rhsMonoType) = typeToMonoType fams (obtainDefinition iInfo)
+    (_, lhsenv, lhsMonoType) = typeToMonoType fams $ buildUHATf (tfiName iInfo) (argTypes iInfo)
+    (_, _, rhsMonoType) = typeToMonoType fams (defType iInfo)
     rhsMonoType' = updateRhs lhsenv rhsMonoType
 
     in (lhsMonoType, rhsMonoType')
@@ -363,7 +363,7 @@ contFreshMRes i = runIdentity . contFreshMTRes i
 contFreshMTRes :: Monad m => FreshMT m a -> Integer -> m (a, Integer)
 contFreshMTRes (FreshMT m) = runStateT m
 
-unbindPolyType :: PolyType ConstraintInfo -> (PolyType ConstraintInfo)
+unbindPolyType :: PolyType ConstraintInfo -> PolyType ConstraintInfo
 unbindPolyType x = runFreshM $ unbindPolyType' x
 
 unbindPolyType' :: PolyType ConstraintInfo -> FreshM (PolyType ConstraintInfo)

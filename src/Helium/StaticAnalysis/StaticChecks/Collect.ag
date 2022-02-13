@@ -350,19 +350,19 @@ collectTFInstances = filter isTFinstance
 -- Collecting normal type fams decls and instances
 collectTypeFamDecls :: Declaration -> TFDeclInfo
 collectTypeFamDecls (Declaration_TypeFam _ (SimpleType_SimpleType _ n tv) MaybeInjectivity_Nothing MaybeDeclarations_Nothing)
-  = DOpen n tv Nothing
+  = createOpenTFDecl n tv Nothing
 collectTypeFamDecls (Declaration_TypeFam _ (SimpleType_SimpleType _ n tv) (MaybeInjectivity_Just inj) MaybeDeclarations_Nothing)
-  = let (Injectivity_Injectivity _ _ ns) = inj in DOpen n tv (Just ns)
+  = let (Injectivity_Injectivity _ _ ns) = inj in createOpenTFDecl n tv (Just ns)
 collectTypeFamDecls (Declaration_TypeFam _ (SimpleType_SimpleType _ n tv) MaybeInjectivity_Nothing _)
-  = DClosed n tv Nothing
+  = createClosedTFDecl n tv Nothing
 collectTypeFamDecls (Declaration_TypeFam _ (SimpleType_SimpleType _ n tv) (MaybeInjectivity_Just inj) _)
-  = let (Injectivity_Injectivity _ _ ns) = inj in DClosed n tv (Just ns)
+  = let (Injectivity_Injectivity _ _ ns) = inj in createClosedTFDecl n tv (Just ns)
 
 collectTypeFamInstance :: Declaration -> Int -> TFInstanceInfo
 collectTypeFamInstance (Declaration_TypeFamInstance _ isClosed n ts t) instId
   = if isClosed
-      then IClosed n ts t instId
-      else IOpen n ts t
+      then createClosedTFInst n ts t instId
+      else createOpenTFInst n ts t
 
 -- Collecting assoc type syns
 collectAssocTypeSynDecls :: Declaration -> MaybeDeclarations -> TFDeclInfos
@@ -377,7 +377,7 @@ collectAssocTypeSynDecls' cd@(Declaration_Class _ _ (SimpleType_SimpleType _ n t
                   MaybeInjectivity_Just (Injectivity_Injectivity _ _ ns) -> Just ns
                   _ -> Nothing
       buildAssocIndices = [(fromJust (elemIndex tv tvs), fromJust (elemIndex tftv tftvs)) | tv <- tvs, tftv <- tftvs, tv == tftv]
-      in DAssoc tfn tftvs injInfo buildAssocIndices n : collectAssocTypeSynDecls' cd tfdls
+      in createATSDecl tfn tftvs injInfo buildAssocIndices n : collectAssocTypeSynDecls' cd tfdls
 collectAssocTypeSynDecls' cd (_:decls) = collectAssocTypeSynDecls' cd decls
 collectAssocTypeSynDecls' _  []        = []
 
@@ -387,7 +387,7 @@ collectAssocTypeSynInstances inst (MaybeDeclarations_Just decls) = collectAssocT
 
 collectAssocTypeSynInstances' :: Declaration -> Declarations -> TFInstanceInfos
 collectAssocTypeSynInstances' inst@(Declaration_Instance _ _ n1 its _) (Declaration_TypeFamInstance _ _ n ts t:is) 
-  = IAssoc n ts t its n1 : collectAssocTypeSynInstances' inst is
+  = createATSInst n ts t its n1 : collectAssocTypeSynInstances' inst is
 collectAssocTypeSynInstances' inst (_:is) = collectAssocTypeSynInstances' inst is
 collectAssocTypeSynInstances' _    []     = []
 }

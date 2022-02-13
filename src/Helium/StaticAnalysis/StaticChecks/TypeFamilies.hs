@@ -40,10 +40,12 @@ isBareVariable _                  = False
 
 -- Builds Injective environment.
 buildInjectiveEnv :: TFDeclInfos -> InjectiveEnv
-buildInjectiveEnv (DAssoc n ns ins _ _:dis) = M.insert (show n) (getInjIndices ns ins) $ buildInjectiveEnv dis
-buildInjectiveEnv (DClosed n ns ins:dis)    = M.insert (show n) (getInjIndices ns ins) $ buildInjectiveEnv dis
-buildInjectiveEnv (DOpen n ns ins:dis)      = M.insert (show n) (getInjIndices ns ins) $ buildInjectiveEnv dis
-buildInjectiveEnv []                        = M.empty
+buildInjectiveEnv
+  = foldr (\ d
+          -> M.insert
+                (show $ tfdName d) (getInjIndices (argNames d) (injNames d))
+          )
+          M.empty
 
 getInjIndices :: Names -> Maybe Names -> [Int]
 getInjIndices _  Nothing = []
@@ -105,7 +107,7 @@ declCheckDuplicates :: TFDeclInfos -> Errors
 declCheckDuplicates tfs = let
 
   -- Creates all unique pairs of declaration names
-  createNamePairs xs = [(n1, n2) | (n1:ys) <- tails (map obtainDeclName xs), n2 <- ys]
+  createNamePairs xs = [(n1, n2) | (n1:ys) <- tails (map tfdName xs), n2 <- ys]
 
   in [DuplicateTypeFamily (n1, n2) | (n1, n2) <- createNamePairs tfs, n1 == n2]
 
@@ -115,13 +117,16 @@ atsCheckVarAlignment :: TFDeclInfos -> TFInstanceInfos -> Errors
 atsCheckVarAlignment decls insts = let
 
   -- Converts all instances to a tuple containing (class instance name, tf instance name, monotypes of instance args, monotypes of tf instance args)
-  convertedInsts = [(instn, itfn, map (typeToMonoType []) its, map (typeToMonoType []) tfts) | (IAssoc itfn tfts _ its instn) <- insts]
+  convertedInsts = [(fromJust (classIName inst), tfiName inst, map (typeToMonoType []) (fromJust $ classTypes inst), map (typeToMonoType []) (argTypes inst)) 
+                   | inst <- insts
+                   , tfiType inst == ATS]
 
   violations = [(itfn, instn, thrd (its !! ci), thrd (tfts !! tfi)) |
-                (DAssoc tfdn _ _ idxs _) <- decls, -- Get a decl
-                (ci, tfi) <- idxs, -- obtain alignment info
+                decl <- decls, -- Get a decl
+                tfdType decl == ATS,
+                (ci, tfi) <- fromJust $ classIdx decl, -- obtain alignment info
                 (instn, itfn,  its, tfts) <- convertedInsts, -- Get an inst
-                tfdn == itfn, -- instance and decl names must be equal 
+                tfdName decl == itfn, -- instance and decl names must be equal 
                 thrd (its !! ci) /= thrd (tfts !! tfi)] -- Then types at indices must be equal.
 
   in [WronglyAlignedATS n1 n2 t1 t2 | (n1, n2, t1, t2) <- violations]
@@ -132,38 +137,37 @@ atsCheckVarAlignment decls insts = let
 instCheckInstanceValidity :: TFDeclInfos -> TFInstanceInfos -> Errors
 instCheckInstanceValidity ds is = let
 
-  
-  ns = map obtainDeclName ds
+  ns = map tfdName ds
   
   -- Obtains open and closed instances
   obtainOpenClosed :: TFInstanceInfos -> Names
-  obtainOpenClosed (IOpen n _ _:ts)     = n : obtainOpenClosed ts
-  obtainOpenClosed (IClosed n _ _ _:ts) = n : obtainOpenClosed ts
-  obtainOpenClosed (_:ts)               = obtainOpenClosed ts
-  obtainOpenClosed []                   = []
+  obtainOpenClosed = map tfiName . filter (\ti -> tfiType ti == Open || tfiType ti == Closed)
 
   --Obtains assoc and open instances
   obtainOpenAssoc :: TFInstanceInfos -> Names
-  obtainOpenAssoc (IOpen n _ _:ts)      = n : obtainOpenAssoc ts
-  obtainOpenAssoc (IAssoc n _ _ _ _:ts) = n : obtainOpenAssoc ts
-  obtainOpenAssoc (_:ts)                = obtainOpenAssoc ts
-  obtainOpenAssoc []                    = []
+  obtainOpenAssoc = map tfiName . filter (\ti -> tfiType ti == Open || tfiType ti == ATS)
 
-  hasAssocTypeSyn :: Name -> Name -> Bool
-  hasAssocTypeSyn cn n = case [ n1 | (DAssoc n1 _ _ _ cn1) <- ds, cn1 == cn, n == n1] of
+  hasAssocTypeSyn :: Maybe Name -> Name -> Bool
+  hasAssocTypeSyn cn n = case filter (\d -> tfdType d == ATS 
+                                      && classDName d == cn 
+                                      && tfdName d == n) ds
+                          of
                             [] -> False
-                            _  -> True 
+                            _  -> True
 
   -- Obtains instance names of undefined type families
-  getUndefinedNames = [n1 | n1 <- map obtainInstanceName is, n1 `notElem` ns]
+  getUndefinedNames = [n1 | n1 <- map tfiName is, n1 `notElem` ns]
 
   -- Associated type synonym instance validities
-  assocNotInClassInstance = [(n2, cn) | (DAssoc n1 _ _ _ cn) <- ds, n2 <- obtainOpenClosed is, n1 == n2]
-  assocInstanceNotPartOfClass = [(n, cn) | (IAssoc n _ _ _ cn) <- is, not $ hasAssocTypeSyn cn n, n `notElem` getUndefinedNames]
-  assocNotLinkedToRightClass = [(n2, cn2, cn1) | (DAssoc n1 _ _ _ cn1) <- ds, (IAssoc n2 _ _ _ cn2) <- is, n1 == n2, cn1 /= cn2]
+  assocNotInClassInstance = [(n2, fromJust $ classDName d) | d <- ds, n2 <- obtainOpenClosed is, tfdName d == n2, tfdType d == ATS]
+  assocInstanceNotPartOfClass = [(tfiName i, fromJust $ classIName i) | i <- is, not $ hasAssocTypeSyn (classIName i) (tfiName i)
+                                , tfiName i `notElem` getUndefinedNames, tfiType i == ATS]
+  assocNotLinkedToRightClass = [(tfiName i, fromJust $ classIName i, fromJust $ classDName d) | d <- ds, i <- is
+                               , tfdName d == tfiName i, classDName d /= classIName i
+                               , tfdType d == ATS, tfiType i == ATS]
 
   -- Closed type synonym instance validities.
-  openInstancesForClosed = [n2 | (DClosed n1 _ _) <- ds, n2 <- obtainOpenAssoc is, n1 == n2]
+  openInstancesForClosed = [n2 | d <- ds, n2 <- obtainOpenAssoc is, tfdName d == n2, tfdType d == Closed]
 
   in [UndefinedTypeFamily n ns | n <- getUndefinedNames] ++
      [ATSNotInInstance n cn | (n, cn) <- assocNotInClassInstance] ++
@@ -176,14 +180,10 @@ instSaturationCheck :: TFDeclInfos -> TFInstanceInfos -> Errors
 instSaturationCheck ds is = let
 
   getNameArgs :: TFDeclInfo -> (Name, Names)
-  getNameArgs (DOpen n ns _)      = (n, ns)
-  getNameArgs (DClosed n ns _)    = (n, ns)
-  getNameArgs (DAssoc n ns _ _ _) = (n, ns)
+  getNameArgs d = (tfdName d, argNames d) 
 
   getNameTypes :: TFInstanceInfo -> (Name, Types)
-  getNameTypes (IOpen n ts _)      = (n, ts)
-  getNameTypes (IClosed n ts _ _)   = (n, ts)
-  getNameTypes (IAssoc n ts _ _ _) = (n, ts)
+  getNameTypes i = (tfiName i, argTypes i)
 
   violations = [(n2, length ns, length ts) | (n1, ns) <- map getNameArgs ds, (n2, ts) <- map getNameTypes is, n1 == n2, length ns /= length ts]
 
@@ -193,9 +193,9 @@ instSaturationCheck ds is = let
 instNoTFInArgument :: TypeFamilies -> TFInstanceInfos -> Errors
 instNoTFInArgument fams tis = let
 
-  violations = [ (obtainInstanceName inst, arg, thrd $ typeToMonoType fams arg) |
+  violations = [ (tfiName inst, arg, thrd $ typeToMonoType fams arg) |
                  inst <- tis
-               , arg <- obtainArguments inst
+               , arg <- argTypes inst
                , not $ isFamilyFree $ thrd $ typeToMonoType fams arg
                ]
   in [TFInArgument n t mt | (n, t, mt) <- violations] 
@@ -206,8 +206,8 @@ instVarOccursCheck tis = let
 
   getViolations :: TFInstanceInfo -> Names
   getViolations tfi = let
-    argVars = namesInTypes $ obtainArguments tfi
-    defVars = namesInType $ obtainDefinition tfi
+    argVars = namesInTypes $ argTypes tfi
+    defVars = namesInType $ defType tfi
 
     undefNames = [n | n <- defVars, n `notElem` argVars]
     in undefNames
@@ -224,9 +224,7 @@ instSmallerChecks tyFams dis tis = let
   obtainDefTyFam _                      = []
   
   obtainNameArgsDef :: TFInstanceInfo -> (Name, Types, Type)
-  obtainNameArgsDef (IAssoc n ts t _ _) = (n, ts, t)
-  obtainNameArgsDef (IClosed n ts t _)  = (n, ts, t)
-  obtainNameArgsDef (IOpen n ts t)      = (n, ts, t)
+  obtainNameArgsDef i = (tfiName i, argTypes i, defType i)
 
   obtainVars :: MonoType -> [String]
   obtainVars (MonoType_Var (Just s) _) = [s]
@@ -276,19 +274,16 @@ instInjDefChecks :: TypeFamilies -> TFDeclInfos -> TFInstanceInfos -> Errors
 instInjDefChecks tyFams dis tis = let
 
   isInjective :: TFDeclInfo -> TFInstanceInfo -> Bool
-  isInjective (DAssoc n1 _ (Just _) _ _) (IAssoc n2 _ _ _ _) = n1 == n2
-  isInjective (DClosed n1 _ (Just _))    (IClosed n2 _ _ _)  = n1 == n2
-  isInjective (DOpen n1 _ (Just _))      (IOpen n2 _ _)      = n1 == n2
-  isInjective _                          _                   = False
+  isInjective d i = injective d && tfdName d == tfiName i
 
   injInsts = [inst | inst <- tis, decl <- dis, isInjective decl inst]
-  tyFamDef = [ obtainInstanceName inst | 
+  tyFamDef = [ tfiName inst | 
                inst <- injInsts
-             , isTFApplication (thrd $ typeToMonoType tyFams (obtainDefinition inst))]
-  bareVars = [ (obtainInstanceName inst, filter (not . isBareVariable) (map (thrd . typeToMonoType tyFams) (obtainArguments inst))) |
+             , isTFApplication (thrd $ typeToMonoType tyFams (defType inst))]
+  bareVars = [ (tfiName inst, filter (not . isBareVariable) (map (thrd . typeToMonoType tyFams) (argTypes inst))) |
                inst <- injInsts
-             , isBareVariable (thrd $ typeToMonoType tyFams (obtainDefinition inst))
-             , not $ all (isBareVariable . thrd . typeToMonoType tyFams) (obtainArguments inst)]
+             , isBareVariable (thrd $ typeToMonoType tyFams (defType inst))
+             , not $ all (isBareVariable . thrd . typeToMonoType tyFams) (argTypes inst)]
   in [InjTFInDefinition n | n <- tyFamDef] ++
      [InjBareVarInDefinition n ns | (n, ns) <- bareVars]
 
@@ -298,12 +293,12 @@ compatibilityCheck :: TypeFamilies -> TFInstanceInfos -> Errors
 compatibilityCheck tfams tis = let
   
   -- Obtain all open tf instances
-  openTFs = obtainOpenTFInstances tis
+  openTFs = filter (\i -> tfiType i == Open) tis
   
   -- create to be checked pairs
   instancePairs = [(inst1, inst2) | 
                   inst1:ys <- tails openTFs, inst2 <- ys
-                  , obtainInstanceName inst1 == obtainInstanceName inst2]
+                  , tfiName inst1 == tfiName inst2]
 
   -- In compat
   in mapMaybe (compat tfams) instancePairs
@@ -312,11 +307,11 @@ compatibilityCheck tfams tis = let
 closedOverlapWarning :: TypeFamilies -> TFInstanceInfos -> Warnings
 closedOverlapWarning tfams tis = let
 
-  closedTFs = obtainClosedTFInstances tis
+  closedTFs = filter (\i -> tfiType i == Closed) tis
   instancePairs = [(inst1, inst2) | 
-                  inst1@(IClosed _ _ _ ord1) <- closedTFs, inst2@(IClosed _ _ _ ord2) <- closedTFs
-                  , obtainInstanceName inst1 == obtainInstanceName inst2
-                  , ord1 < ord2]
+                  inst1 <- closedTFs, inst2 <- closedTFs
+                  , tfiName inst1 == tfiName inst2
+                  , priority inst1 < priority inst2 ]
 
   in mapMaybe (compatWarn tfams) instancePairs
 
@@ -334,7 +329,7 @@ compat tfams (inst1, inst2) = let
             Unifiable subst -> 
               if applySubst subst rhs1 == applySubst subst rhs2
                 then Nothing
-                else Just $ OpenTFOverlapping (obtainInstanceName inst1) (obtainInstanceName inst2) lhs1 lhs2 rhs1 rhs2
+                else Just $ OpenTFOverlapping (tfiName inst1) (tfiName inst2) lhs1 lhs2 rhs1 rhs2
 
 -- warning version of compat, uses matchTy to check unification only in one way.
 compatWarn :: TypeFamilies -> (TFInstanceInfo, TFInstanceInfo) -> Maybe Warning
@@ -346,7 +341,7 @@ compatWarn tfams (inst1, inst2) = let
   ((lhs1, _), (lhs2, rhs2)) = runFreshM $ unbindAx axiom1 axiom2
   in case matchTy lhs1 lhs2 of
             SurelyApart -> Nothing
-            Unifiable _ -> Just $ OverlappedClosedTypeFamilyInstance (obtainInstanceName inst1) lhs2 rhs2
+            Unifiable _ -> Just $ OverlappedClosedTypeFamilyInstance (tfiName inst1) lhs2 rhs2
 
 -- Performs pairwise injectivity check
 -- Performs whether type vars in injective arguments are used injectively in the definition.
@@ -356,7 +351,7 @@ injChecks fams dis tis = let
   injTFs = obtainInjectiveTFInstances dis tis
   instancePairs = [(inst1, inst2) 
                   | inst1:ys <- tails injTFs, inst2 <- ys
-                  , obtainInstanceName inst1 == obtainInstanceName inst2]
+                  , tfiName inst1 == tfiName inst2]
                   ++ [(inst, inst) | inst <- injTFs] -- Adding pairwise checks with itself (NEEDED)!
   ienv = buildInjectiveEnv dis
   in mapMaybe (pairwiseInjCheck fams ienv) instancePairs
@@ -382,13 +377,13 @@ pairwiseInjCheck fams ienv (inst1, inst2) = let
               | all (\i -> checkInjArg subst (lhs1 !! i) (lhs2 !! i)) injIndices
                   -> Nothing 
               -- In case of a closed type family, we are good when the lhs's are not equal after applying the substitution.
-              | isClosed inst1 && applySubst subst clhs1 /= applySubst subst clhs2
+              | tfiType inst1 == Closed && applySubst subst clhs1 /= applySubst subst clhs2
                   -> Nothing
               -- Otherwise, the two instances violate the injectivity property.
               | otherwise
-                  -> Just $ InjPreUnifyFailed (obtainInstanceName inst1) (obtainInstanceName inst2) clhs1 clhs2 rhs1 rhs2  -- ERROR!
+                  -> Just $ InjPreUnifyFailed (tfiName inst1) (tfiName inst2) clhs1 clhs2 rhs1 rhs2  -- ERROR!
   where
-    injIndices = ienv M.! show (obtainInstanceName inst1)
+    injIndices = ienv M.! show (tfiName inst1)
 
     checkInjArg :: SubstitutionEnv -> MonoType -> MonoType -> Bool
     checkInjArg subst mt1 mt2 = applySubst subst mt1 == applySubst subst mt2
@@ -417,7 +412,7 @@ wronglyUsedVarInInjCheck fams ienv inst = let
 
   in if S.null badVars
       then Nothing
-      else  Just $ InjWronglyUsedVars (obtainInstanceName inst) lhs rhs (map fst $ S.toList badVars)
+      else  Just $ InjWronglyUsedVars (tfiName inst) lhs rhs (map fst $ S.toList badVars)
 
 -- TyVar forgets the name of the variable and we therefore return a tuple containing the name
 -- in the form of a string.
