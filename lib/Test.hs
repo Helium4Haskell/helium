@@ -41,8 +41,8 @@ type family I a b
 class X a where
     type Q a b
 
--- instance X Int where
---     type Q Int Int = Float
+instance X Int where
+    type Q Float Int = Float
 
 -- type family J a b where
 --     J Int Int = Float
@@ -85,3 +85,7 @@ type family C a b where
     C a b = Int
     C Int Int = Float
     C Int a   = Int
+
+type instance E Int = Float
+type instance E Float = Int
+type instance E Float = Float

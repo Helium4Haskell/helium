@@ -79,11 +79,11 @@ checkTypeFamStaticErrors env dis iis = let
 
   -- The simple duplication check and ast var alignment.
   phase1 = declCheckDuplicates dis
-           ++ atsCheckVarAlignment dis iis
 
   -- InstanceValidity is a big one, consists of multiple possible errors
   -- New phase because duplicates generate errors in this area too.
-  phase2 = instCheckInstanceValidity dis iis
+  phase2 = atsCheckVarAlignment dis iis
+           ++ instCheckInstanceValidity dis iis
            ++ instSaturationCheck dis iis
 
   -- Phase three is initiated when instances are syntactically valid

@@ -439,8 +439,8 @@ showError anError = case anError of
       , [MessageString "Type family instances may not be over or under saturated"])
    WronglyAlignedATS n1 n2 t1 t2 ->
       ( MessageString ("The type " ++ show (show t2) ++ " in associated type synonym instance " 
-                        ++ show (show n1) ++ " does not align with " ++  show (show t1) ++ " from the class instance " ++ show (show n2))
-      , [MessageString "Equal variables in the class declaration and the associated type synonym declaration must be assigned the same type."])
+                        ++ show (show n1) ++ " is not equal to type " ++  show (show t1) ++ " from the class instance " ++ show (show n2))
+      , [MessageString ("The types must be equal. Maybe you meant " ++ show (show t1) ++ "?")])
    ATSNotInInstance n cn ->
       ( MessageString ("Instance for associated type synonym " ++ show (show n) ++ " should be declared in an instance for type class " ++ show (show cn))
       ,[MessageString "Instances for associated type synonyms may only be declared inside its relative class instance"])
@@ -496,7 +496,7 @@ showError anError = case anError of
    InjPreUnifyFailed n1 _ t1 t2 dt1 dt2 ->
       ( MessageCompose 
          [
-            MessageString ("The following two instances for injective type family " ++ show (show n1) ++ " violated the injectivity property:\n")
+            MessageString ("The following two instances for injective type family " ++ show (show n1) ++ " violate the injectivity property:\n")
          ,  MessageString ("\t\t" ++ show t1 ++ " = " ++ show dt1 ++ "\n")
          ,  MessageString ("\t\t" ++ show t2 ++ " = " ++ show dt2)
          ]
@@ -504,7 +504,7 @@ showError anError = case anError of
    InjWronglyUsedVars n lhs rhs tvs ->
       ( MessageCompose 
          [
-            MessageString ("The following instance of injective type family " ++ show (show n) ++ " violated the injectivity property:\n")
+            MessageString ("The following instance of injective type family " ++ show (show n) ++ " violates the injectivity property:\n")
          ,  MessageString ("\t\t" ++ show lhs ++ " = " ++ show rhs ++ "\n")
          ,  MessageString ("Type variable " ++ if length tvs > 1 then "s" else "" ++ intercalate ", " (map show tvs) ++ " cannot be inferred from the right hand side") 
          ]
@@ -601,6 +601,7 @@ errorLogCode anError = case anError of
           TFDefVarCountNotSmaller _ _             -> "dvc"
           OpenTFOverlapping _ _ _ _ _ _           -> "oto"
           InjPreUnifyFailed _ _ _ _ _ _           -> "ipu"
+          InjWronglyUsedVars{}                    -> "iwu"
    where code entity = fromMaybe "??"
                      . lookup entity
                      $ [ (TypeSignature    ,"ts"), (TypeVariable         ,"tv"), (TypeConstructor,"tc")
