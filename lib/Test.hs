@@ -42,7 +42,7 @@ class X a where
     type Q a b
 
 instance X Int where
-    type Q Float Int = Float
+    type Q Int Int = Float
 
 -- type family J a b where
 --     J Int Int = Float
@@ -86,6 +86,6 @@ type family C a b where
     C Int Int = Float
     C Int a   = Int
 
-type instance E Int = Float
-type instance E Float = Int
-type instance E Float = Float
+-- type instance E Int = Float
+-- type instance E Float = Int
+-- type instance E Float = Float

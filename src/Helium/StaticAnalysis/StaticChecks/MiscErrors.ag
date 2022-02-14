@@ -40,7 +40,7 @@ SEM Body
            lhs . instances = @declarations.instances
            loc . gadtErrors = [ MissingGADTOption | GADTs `notElem` @lhs.options, @declarations.hasGADT || (any (==ConstructorGADT) $ map snd $ M.elems $ valueConstructors $ combineImportEnvironmentList @lhs.importEnvironments)]
            loc . typefamErrors = 
-                        checkTypeFamStaticErrors (M.fromList @lhs.collectTypeSynonyms) @declarations.collectTypeFamilyDecls @declarations.collectTypeFamilyInstances
+                        checkTypeFamStaticErrors (M.fromList @lhs.collectTypeSynonyms `M.union` @lhs.importedTypeSynEnv) @declarations.collectTypeFamilyDecls @declarations.collectTypeFamilyInstances
 
 
 -----------------------------------------

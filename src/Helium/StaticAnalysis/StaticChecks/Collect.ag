@@ -398,9 +398,19 @@ ATTR Body MaybeDeclarations Declarations Declaration [ | | collectTypeFamilyInst
 -- Id that is given to Type Instance declarations in a closed type family
 ATTR Declarations Declaration [ instId : {Int} | | ]
 
+ATTR Body [ importedTypeSynEnv : {TypeSynonymEnvironment}| | ]
+
+SEM Module
+  | Module body . importedTypeSynEnv = typeSynonyms $ combineImportEnvironmentList @lhs.importEnvironments
+
+SEM Body
+    | Body lhs . collectTypeFamilyInstances = preComputeCompat @tyFams @tempCollectedTFInstances--here, the precomputed compat will be added.
+           loc . tempCollectedTFInstances = @declarations.collectTypeFamilyInstances
+               . tyFams = typeSynonymsToTypeFamilies (M.fromList @lhs.collectTypeSynonyms `M.union` @lhs.importedTypeSynEnv) ++ obtainTyFams @declarations.collectTypeFamilyDecls
+
 SEM MaybeDeclarations
-    | Just lhs.collectTypeFamilyInstances = @declarations.collectTypeFamilyInstances
-           declarations.instId = 0
+    | Just lhs . collectTypeFamilyInstances = @declarations.collectTypeFamilyInstances
+           declarations . instId = 0
 
 SEM Declarations
     | Cons hd.instId = @lhs.instId

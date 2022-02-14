@@ -8,20 +8,17 @@ import Helium.StaticAnalysis.Messages.Warnings
 import Helium.StaticAnalysis.Messages.Messages
 import Helium.StaticAnalysis.Miscellaneous.Unify
 import Helium.StaticAnalysis.Inferencers.OutsideInX.TopConversion
-    ( typeToMonoType, tpToMonoType, importEnvironmentToTypeFamilies, TypeFamilies, tfInstanceInfoToAxiom, tfInstanceInfoToMonoTypes, typeSynonymsToTypeFamilies )
+    ( typeToMonoType, TypeFamilies, tfInstanceInfoToAxiom, typeSynonymsToTypeFamilies )
 import Debug.Trace
 import Helium.StaticAnalysis.Inferencers.OutsideInX.Rhodium.RhodiumTypes
-    ( isFamilyFree, MonoType (MonoType_Fam, MonoType_Var, MonoType_Con, MonoType_App), MonoTypes, Axiom (Axiom_Unify), TyVar, fvToList )
+    ( isFamilyFree, MonoType (MonoType_Fam, MonoType_Var, MonoType_Con, MonoType_App), MonoTypes, Axiom (Axiom_Unify), TyVar )
 import Helium.StaticAnalysis.Miscellaneous.TypeConversion
     ( namesInType, namesInTypes )
 import Data.List (nub, elemIndex, (\\))
-import Data.Map (Map)
 import qualified Data.Map as M
 import Data.Maybe (fromJust, mapMaybe)
 import qualified Data.Set as S
-import Helium.Utils.Utils (internalError)
 import Unbound.Generics.LocallyNameless (runFreshM)
-import Top.Types (unquantify, split)
 import Helium.ModuleSystem.ImportEnvironment ( TypeSynonymEnvironment )
 import Helium.StaticAnalysis.StaticChecks.TypeFamilyInfos
 import Helium.StaticAnalysis.Miscellaneous.ConstraintInfoOU
@@ -77,7 +74,7 @@ checkTypeFamStaticErrors env dis iis = let
   
   tyfams = typeSynonymsToTypeFamilies env ++ obtainTyFams dis
 
-  -- The simple duplication check and ast var alignment.
+  -- The simple duplication check
   phase1 = declCheckDuplicates dis
 
   -- InstanceValidity is a big one, consists of multiple possible errors
@@ -315,6 +312,29 @@ closedOverlapWarning tfams tis = let
 
   in mapMaybe (compatWarn tfams) instancePairs
 
+-- pre computation of compatibility of closed type family entries.
+preComputeCompat :: TypeFamilies -> TFInstanceInfos -> TFInstanceInfos
+preComputeCompat fams tis = let
+  (closed, other) = splitBy (\i -> tfiType i == Closed) tis
+
+  tbChecked = [(i, obtainRelevant i closed) | i <- closed]
+  in map (\(i, is) -> insertPreCompat (performPreCompute (i, is)) i) tbChecked ++ other
+  where 
+    splitBy :: (a -> Bool) -> [a] -> ([a], [a])
+    splitBy p (x:xs) = let (l, r) = splitBy p xs
+      in if p x then (x:l, r) else (r, x:r)
+    splitBy _ []     = ([], [])
+
+    -- Assumes closed tfs only, which is always the case in its usage
+    obtainRelevant :: TFInstanceInfo -> TFInstanceInfos -> TFInstanceInfos
+    obtainRelevant i is = [ci | ci <- is, tfiName i == tfiName ci, priority ci < priority i]
+
+    -- Uses compat below to check whether two instances are compatible.
+    performPreCompute :: (TFInstanceInfo, TFInstanceInfos) -> [Int]
+    performPreCompute (i, ci:is) = case compat fams (i, ci) of 
+      Nothing -> fromJust (priority ci) : performPreCompute (i, is)
+      Just _ -> performPreCompute (i, is)
+
 -- compatibility check of two instances (pairwise).
 compat :: TypeFamilies -> (TFInstanceInfo, TFInstanceInfo) -> Maybe Error
 compat tfams (inst1, inst2) = let
@@ -341,7 +361,7 @@ compatWarn tfams (inst1, inst2) = let
   ((lhs1, _), (lhs2, rhs2)) = runFreshM $ unbindAx axiom1 axiom2
   in case matchTy lhs1 lhs2 of
             SurelyApart -> Nothing
-            Unifiable _ -> Just $ OverlappedClosedTypeFamilyInstance (tfiName inst1) lhs2 rhs2
+            Unifiable _ -> Just $ OverlappedClosedTypeFamilyInstance (tfiName inst2) lhs2 rhs2
 
 -- Performs pairwise injectivity check
 -- Performs whether type vars in injective arguments are used injectively in the definition.

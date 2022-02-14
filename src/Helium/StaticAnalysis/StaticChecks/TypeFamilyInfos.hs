@@ -48,6 +48,7 @@ data TFInstanceInfo = TII {
   , priority :: Maybe Int -- priority inside closed type family
   , classTypes :: Maybe Types -- class types in case of ATS
   , classIName :: Maybe Name -- class name of accompanying class
+  , preCompat :: [Int] -- contains indices of other instances with which the closed instance is compatible, empty for open tfs and ATSs.
   } deriving (Show, Eq)
 -------------------------------------
 -- UTILS
@@ -94,7 +95,8 @@ createATSInst n ts t ct cn = TII {
   , tfiType = ATS
   , priority = Nothing
   , classTypes = Just ct
-  , classIName = Just cn 
+  , classIName = Just cn
+  , preCompat = [] 
 }
 
 createOpenTFInst :: Name -> Types -> Type -> TFInstanceInfo
@@ -105,7 +107,8 @@ createOpenTFInst n ts t = TII {
   , tfiType = Open
   , priority = Nothing
   , classTypes = Nothing
-  , classIName = Nothing 
+  , classIName = Nothing
+  , preCompat = [] 
 }
 
 createClosedTFInst :: Name -> Types -> Type -> Int -> TFInstanceInfo
@@ -116,8 +119,12 @@ createClosedTFInst n ts t prio = TII {
   , tfiType = Closed
   , priority = Just prio
   , classTypes = Nothing
-  , classIName = Nothing 
+  , classIName = Nothing
+  , preCompat = [] 
 }
+
+insertPreCompat :: [Int] -> TFInstanceInfo -> TFInstanceInfo
+insertPreCompat pcs ti = ti { preCompat = pcs }
 
 -- Like fst and snd
 thrd :: (a, b, c) -> c
