@@ -32,6 +32,7 @@ import Control.Arrow
 
 import qualified Data.Map as M
 import Helium.StaticAnalysis.Inferencers.OutsideInX.Rhodium.RhodiumTypes (MonoType, MonoTypes)
+import Helium.StaticAnalysis.StaticChecks.TypeFamilyInfos (TFDeclInfo, TFInstanceInfos)
 
 type HasDefault = Bool
 
@@ -50,8 +51,8 @@ type IsInjective = Bool
 type IsClosed = Bool
 
 -- Typefam decl environment holds for every type fam its variable names, if it is injective, if it is closed and its injective arguments.
-type TypeFamDeclEnvironment      = M.Map Name (Names, IsInjective, IsClosed, Names)
-type TypeFamInstanceEnvironment  = M.Map (Name, MonoTypes) (IsClosed, MonoType)
+type TypeFamDeclEnvironment      = M.Map Name TFDeclInfo
+type TypeFamInstanceEnvironment  = M.Map Name TFInstanceInfos
 
 type ImportEnvironments = [ImportEnvironment]
 data ImportEnvironment  =
