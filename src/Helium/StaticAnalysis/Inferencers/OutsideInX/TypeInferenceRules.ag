@@ -102,16 +102,19 @@ SEM Module
         lhs . toplevelTypes = if null @typeErrors then M.mapWithKey (lookupType @body.typeSignaturesCollect) @body.tlEnvironment else M.empty
         loc . typeErrors = concatMap (makeTypeError @tyvars) (getResidualConstraints @solveResults \\ @body.resolvedContraints) ++ getTypeErrors @solveResults ++ @body.typeErrors
         lhs . warnings = getWarnings @solveResults
-        loc . axioms = typeSynonymsToAxioms (typeSynonyms @lhs.importEnvironment) ++ classEnvironmentToAxioms (importEnvironmentToTypeFamilies @lhs.importEnvironment) (classEnvironment @lhs.importEnvironment)
+        loc . axioms = typeSynonymsToAxioms (typeSynonyms @lhs.importEnvironment) 
+                        ++ classEnvironmentToAxioms @tyFams (classEnvironment @lhs.importEnvironment)
+                        ++ trace (show $ typeFamiliesToAxioms @tyFams @lhs.importEnvironment) typeFamiliesToAxioms @tyFams @lhs.importEnvironment
+        loc . tyFams = typeSynonymsToTypeFamilies (typeSynonyms @lhs.importEnvironment) ++ obtainTyFams (M.elems $ typeFamDeclEnvironment @lhs.importEnvironment)
         body . axioms = @axioms
         body . betaUnique = 1
         loc . constrs = @body.constraints
         loc . tyvars = @body.touchables
         loc . solveResults = 
                 let 
-                    sibblings = map (map (second (tpSchemeToPolyType (importEnvironmentToTypeFamilies @lhs.importEnvironment)))) $ getSiblings @lhs.importEnvironment
+                    sibblings = map (map (second (tpSchemeToPolyType @tyFams))) $ getSiblings @lhs.importEnvironment
                 in constructErrors $ contFreshM (solveOU sibblings @axioms (map ((\(v, m) -> Constraint_Unify (var v) m Nothing)) @body.substitutionCollect) (@constrs) @tyvars) @body.betaUnique 
-        body . typeSignatures = M.map (\tps -> (integer2Name (-1), tpSchemeToPolyType (importEnvironmentToTypeFamilies @lhs.importEnvironment) tps)) $ typeEnvironment @lhs.importEnvironment
+        body . typeSignatures = M.map (\tps -> (integer2Name (-1), tpSchemeToPolyType @tyFams tps)) $ typeEnvironment @lhs.importEnvironment
         body . className = Nothing
         body . typeSignatureConstraints = []
 
@@ -149,6 +152,7 @@ SEM Declaration
         loc . br                = integer2Name $ @lhs.betaUnique + 1
         loc . beta              = UL.makeName (show @bindings.name) @lhs.betaUnique
         loc . parameterCons     = [Constraint_Unify (var @beta) (foldr ((:-->:) . var) (var @br) @bls) (Just @cinfo)]
+        loc . tyFams = typeSynonymsToTypeFamilies (typeSynonyms @lhs.importEnvironment) ++ obtainTyFams (M.elems $ typeFamDeclEnvironment @lhs.importEnvironment)
         loc . (instanceType, bu) = case @lhs.className of
                                         Nothing -> (Nothing, (@lhs.betaUnique + 2 + @bindings.numberOfPatterns))
                                         Just cn -> let 
@@ -156,7 +160,7 @@ SEM Declaration
                                                     M.lookup cn (classMemberEnvironment @lhs.importEnvironment)
                                                 (_, functionTpScheme, _, _) = fromMaybe (internalError "TypeInferenceRules" "n/a" "class function not found")
                                                     (find (\(n, _, _, _) -> n == @bindings.name) classFunctions) 
-                                                (polyType, mapping) = tpSchemeToPolyType' (importEnvironmentToTypeFamilies @lhs.importEnvironment) (map show classTypeVariables) functionTpScheme
+                                                (polyType, mapping) = tpSchemeToPolyType' @tyFams (map show classTypeVariables) functionTpScheme
                                             
                                                 (fMapping, (freshend, bu)) = freshenWithMapping [] (@lhs.betaUnique + 2 + @bindings.numberOfPatterns) polyType
                                                 replacedFreshened = UL.substs (combineSubsitutions @lhs.typeVariableReplace mapping fMapping) freshend
@@ -185,8 +189,9 @@ SEM Declaration
         loc . beta              = integer2Name @lhs.betaUnique
         lhs . betaUnique        = @bu
         lhs . typeSignaturesCollect = @ts
+        loc . tyFams = typeSynonymsToTypeFamilies (typeSynonyms @lhs.importEnvironment) ++ obtainTyFams (M.elems $ typeFamDeclEnvironment @lhs.importEnvironment)
         loc . (ts, bu)          = foldr (\n (m, b) -> let 
-                                                (t, b', mapping) = typeToPolytype (importEnvironmentToTypeFamilies @lhs.importEnvironment) b @type.self
+                                                (t, b', mapping) = typeToPolytype @tyFams b @type.self
                                                 t' = t
                                                 m' = M.insert n (integer2Name b', expandClassPredicates (classEnvironment @lhs.importEnvironment) t') m
                                             in (m', b' + 2)) (M.empty, @lhs.betaUnique + 1) $ @names.self
@@ -203,10 +208,11 @@ SEM Declaration
         loc . instanceBetas = (@classBeta, @tp) : [] -- zip (map snd @typeVariables) (map (var . integer2Name) [@lhs.betaUnique..])
         loc . instanceType  = makeTpSchemeFromType $ head @types.self
         loc . typeVariables = getQuantorMap @instanceType
+        loc . tyFams = typeSynonymsToTypeFamilies (typeSynonyms @lhs.importEnvironment) ++ obtainTyFams (M.elems $ typeFamDeclEnvironment @lhs.importEnvironment)
         loc . classBeta     = case (M.lookup @name.self (classMemberEnvironment @lhs.importEnvironment)) of
                                 Nothing -> internalError "TypeInferenceRules" "n/a" "Class not found"
                                 Just (classBeta, _) -> show $ head classBeta
-        loc . ((tp, mapping), bu) = freshen (@lhs.betaUnique + toInteger (length @instanceBetas + 1)) $ (\(_, mapping, x) -> (x, mapping)) $ typeToMonoType (importEnvironmentToTypeFamilies @lhs.importEnvironment) (head @types.self)
+        loc . ((tp, mapping), bu) = freshen (@lhs.betaUnique + toInteger (length @instanceBetas + 1)) $ (\(_, mapping, x) -> (x, mapping)) $ typeToMonoType @tyFams (head @types.self)
         where . betaUnique = @bu
         where . className = Just @name.self
         where . typeSignatureConstraints = 
@@ -215,7 +221,12 @@ SEM Declaration
                             [maybe (error "Unknown type variable") var $ lookup (show (makeTpSchemeFromType $ head ts)) @mapping] Nothing
                     ) @context.self
         where . typeVariableReplace = reverse $ @instanceBetas
-
+    | TypeFam -- all MaybeDecl stuff is empty as only TypeFamInstances can occur that don't matter here (axioms will be created for them)
+        where . className = Just @simpletype.name
+        where . touchables = []
+        where . gadtConstraints = []
+        where . constraints = []
+        where . assumptions = M.empty
 
 {
 
@@ -312,9 +323,10 @@ SEM Pattern
                                                 []
                                             else
                                                 @conApply : @conConstraints ++ @resConstraints ++ @patterns.constraints
+        loc . tyFams = typeSynonymsToTypeFamilies (typeSynonyms @lhs.importEnvironment) ++ obtainTyFams (M.elems $ typeFamDeclEnvironment @lhs.importEnvironment)
         loc . ((tp, bu), ct)            = case M.lookup @name.self (valueConstructors @lhs.importEnvironment) of
                                             Nothing  -> internalError "TypeInferenceRules" "n/a" "Constructor not found"
-                                            Just (ctp, ct) -> (freshen (@lhs.betaUnique + 2) $ unbindPolyType $ tpSchemeToPolyType (importEnvironmentToTypeFamilies @lhs.importEnvironment) ctp, ct)
+                                            Just (ctp, ct) -> (freshen (@lhs.betaUnique + 2) $ unbindPolyType $ tpSchemeToPolyType @tyFams ctp, ct)
         loc . ((rt, conrt, resConstraints), bu2) = freshen (@bu + 1) $ getResultType @tp
 
     | InfixConstructor
@@ -326,8 +338,9 @@ SEM Pattern
         loc . conApply                  = Constraint_Unify (var @betaCon) (var @leftPattern.beta :-->: (var @rightPattern.beta :-->: var @beta)) (Just @cinfoApply)
         loc . (tp, bu)                  = case M.lookup @constructorOperator.self (valueConstructors @lhs.importEnvironment) of
                                             Nothing  -> internalError "TypeInferenceRules" "n/a" "Constructor not found"
-                                            Just (ctp, _) -> freshen (@lhs.betaUnique + 2) $ tpSchemeToPolyType (importEnvironmentToTypeFamilies @lhs.importEnvironment) ctp
+                                            Just (ctp, _) -> freshen (@lhs.betaUnique + 2) $ tpSchemeToPolyType @tyFams ctp
         loc . conConstraints            = [Constraint_Inst (var @betaCon) @tp (Just @cinfoConstructor)]
+        loc . tyFams = typeSynonymsToTypeFamilies (typeSynonyms @lhs.importEnvironment) ++ obtainTyFams (M.elems $ typeFamDeclEnvironment @lhs.importEnvironment)
     | As
         pattern . betaUnique            = @lhs.betaUnique + 1
         lhs . touchables                = @beta : @pattern.touchables
@@ -339,8 +352,9 @@ SEM Pattern
         lhs . touchables                = @beta : @literal.touchables
         lhs . constraints               = [Constraint_Inst (@literal.literalType :-->: var @beta) @tp (Just @cinfo)] ++ @literal.constraints
         loc . beta                      = integer2Name @lhs.betaUnique
+        loc . tyFams = typeSynonymsToTypeFamilies (typeSynonyms @lhs.importEnvironment) ++ obtainTyFams (M.elems $ typeFamDeclEnvironment @lhs.importEnvironment)
         loc . (tp, bu)                  =   let standard = PolyType_Mono [Constraint_Class "Num" [var $ integer2Name 0] (Just @cinfo)] ((var $ integer2Name 0) :-->: (var $ integer2Name 0))
-                                            in freshen (@lhs.betaUnique + 1) $ M.findWithDefault standard (nameFromString "negate") (tpSchemeToPolyType (importEnvironmentToTypeFamilies @lhs.importEnvironment) <$> typeEnvironment @lhs.importEnvironment)
+                                            in freshen (@lhs.betaUnique + 1) $ M.findWithDefault standard (nameFromString "negate") (tpSchemeToPolyType @tyFams <$> typeEnvironment @lhs.importEnvironment)
     | NegateFloat
         lhs . betaUnique  = @lhs.betaUnique + 1
         lhs . touchables  = @beta : @literal.touchables
@@ -583,9 +597,10 @@ SEM Expression
     | Constructor
         lhs . touchables        = @beta : getTypeVariablesFromPolyType' @tp
         lhs . betaUnique        = @bu
+        loc . tyFams = typeSynonymsToTypeFamilies (typeSynonyms @lhs.importEnvironment) ++ obtainTyFams (M.elems $ typeFamDeclEnvironment @lhs.importEnvironment)
         loc . (tp, bu)          = case M.lookup @name.self (valueConstructors @lhs.importEnvironment) of
                                     Nothing  -> internalError "TypeInferenceRules" "n/a" "Constructor not found"
-                                    Just (ctp, _) -> freshen (@lhs.betaUnique + 1) $ tpSchemeToPolyType (importEnvironmentToTypeFamilies @lhs.importEnvironment) ctp
+                                    Just (ctp, _) -> freshen (@lhs.betaUnique + 1) $ tpSchemeToPolyType @tyFams ctp
         lhs . constraints       = [Constraint_Inst (var @beta) @tp (Just @cinfo)]
         loc . beta              = integer2Name @lhs.betaUnique
     | InfixApplication
@@ -638,7 +653,8 @@ SEM Expression
                                             ] ++ @expression.constraints
         loc . beta                      = integer2Name @lhs.betaUnique
         loc . (tp', bu')                = freshen @bu (unbindPolyType @tp)
-        loc . (tp, bu, mapping)         = typeToPolytype (importEnvironmentToTypeFamilies @lhs.importEnvironment) (@lhs.betaUnique + 1) @type.self
+        loc . tyFams = typeSynonymsToTypeFamilies (typeSynonyms @lhs.importEnvironment) ++ obtainTyFams (M.elems $ typeFamDeclEnvironment @lhs.importEnvironment)
+        loc . (tp, bu, mapping)         = typeToPolytype @tyFams (@lhs.betaUnique + 1) @type.self
     | Comprehension
         lhs . constraints           = @newcon : @qualifiers.constraints
         lhs . touchables            = @beta : @expression.touchables ++ @qualifiers.touchables
@@ -665,8 +681,9 @@ SEM Expression
         lhs . touchables            =   @beta : @expression.touchables
         lhs . constraints           =   [Constraint_Inst (var @expression.beta :-->: var @beta) @tp (Just @cinfo)] ++ @expression.constraints
         loc . beta                  =   integer2Name @lhs.betaUnique
+        loc . tyFams = typeSynonymsToTypeFamilies (typeSynonyms @lhs.importEnvironment) ++ obtainTyFams (M.elems $ typeFamDeclEnvironment @lhs.importEnvironment)
         loc . (tp, bu)              =   let standard = PolyType_Mono [Constraint_Class "Num" [var $ integer2Name 0] (Just @cinfo)] ((var $ integer2Name 0) :-->: (var $ integer2Name 0))
-                                        in freshen (@lhs.betaUnique + 1) $ M.findWithDefault standard (nameFromString "negate") (tpSchemeToPolyType (importEnvironmentToTypeFamilies @lhs.importEnvironment) <$> typeEnvironment @lhs.importEnvironment)
+                                        in freshen (@lhs.betaUnique + 1) $ M.findWithDefault standard (nameFromString "negate") (tpSchemeToPolyType @tyFams <$> typeEnvironment @lhs.importEnvironment)
     | NegateFloat 
         expression . betaUnique     = @lhs.betaUnique + 1
         lhs . touchables            = @beta : @expression.touchables

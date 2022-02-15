@@ -210,24 +210,30 @@ instance (Alpha ci, Subst MonoType ci) => Ord (Constraint ci) where
     Constraint_Exists _ _ <= _ = True
 
 data Axiom ci
-    = Axiom_Unify (UB.Bind [TyVar] (MonoType, MonoType))
+    = Axiom_Unify (UB.Bind [TyVar] (MonoType, MonoType)) (Maybe [Int])
     | Axiom_Class (UB.Bind [TyVar] ([Constraint ci], String, [MonoType]))
-    | Axiom_Injective String  -- Injective type families
+    | Axiom_Injective String [Int] -- Injective type families with indx of injective arguments
     | Axiom_Defer     String  -- Deferred type families
+    | Axiom_ClosedGroup String [Axiom ci] -- Closed type family group
     deriving (Generic)
 
 instance (Alpha ci, Subst MonoType ci) => Show (Axiom ci) where
     show = runFreshM . showAxiom
     
 showAxiom :: (Fresh m, Functor m, Alpha ci, Subst MonoType ci) => Axiom ci -> m String
-showAxiom (Axiom_Unify b) = do  (xs, (lhs,rhs)) <- unbind b
+showAxiom (Axiom_Unify b _) = do  
+                                (xs, (lhs,rhs)) <- unbind b
                                 return $ "∀" ++ show xs ++ " " ++ show lhs ++ " ~ " ++ show rhs
 showAxiom (Axiom_Class b) = do  (xs, (ctx,c,ms)) <- unbind b
                                 let ps = map (doParens . show) ms
                                 return $ "∀" ++ show xs ++ " " ++ show ctx ++
                                         " => $" ++ c ++ " " ++ unwords ps
-showAxiom (Axiom_Injective f) = return $ "injective ^" ++ f
+showAxiom (Axiom_Injective f _) = return $ "injective ^" ++ f
 showAxiom (Axiom_Defer f) = return $ "defer ^" ++ f
+showAxiom (Axiom_ClosedGroup _ axs) = do 
+                                        xs <- mapM showAxiom axs
+                                        let concatted = "[" ++ intercalate ", " xs ++ "]"
+                                        return $ "Closed ^ (" ++ concatted ++ ")"
 
 
 

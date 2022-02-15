@@ -32,7 +32,7 @@ import Control.Arrow
 
 import qualified Data.Map as M
 import Helium.StaticAnalysis.Inferencers.OutsideInX.Rhodium.RhodiumTypes (MonoType, MonoTypes)
-import Helium.StaticAnalysis.StaticChecks.TypeFamilyInfos (TFDeclInfo, TFInstanceInfo)
+import Helium.StaticAnalysis.StaticChecks.TypeFamilyInfos (TFDeclInfo (tfdName), TFInstanceInfo (tfiName, argTypes), TFDeclInfos, TFInstanceInfos)
 
 type HasDefault = Bool
 
@@ -51,8 +51,8 @@ type IsInjective = Bool
 type IsClosed = Bool
 
 type TypeFamDeclEnvironment      = M.Map Name TFDeclInfo
--- Monotype is added to ensure that combining goes as planned (equal to how the InstanceEnvironment works).
-type TypeFamInstanceEnvironment  = M.Map (Name, MonoType) TFInstanceInfo 
+-- Types is added to ensure that combining goes as planned (equal to how the InstanceEnvironment works).
+type TypeFamInstanceEnvironment  = M.Map Name TFInstanceInfos
 
 type ImportEnvironments = [ImportEnvironment]
 data ImportEnvironment  =
@@ -174,6 +174,21 @@ setClassEnvironment new importenv = importenv { classEnvironment = new }
 setInstanceEnvironment :: InstanceEnvironment -> ImportEnvironment -> ImportEnvironment
 setInstanceEnvironment new importenv = importenv { instanceEnvironment = new }
 
+setTypeFamDeclEnvironment :: TFDeclInfos -> ImportEnvironment -> ImportEnvironment
+setTypeFamDeclEnvironment new importenv =  importenv {
+   typeFamDeclEnvironment = M.fromList $ map (\d -> (tfdName d, d)) new
+}
+
+setTypeFamInstanceEnvironment :: TFInstanceInfos -> ImportEnvironment -> ImportEnvironment
+setTypeFamInstanceEnvironment new importenv = importenv {
+   typeFamInstanceEnvironment = foldl insertInst M.empty new
+}
+   where
+      insertInst m i = case M.lookup (tfiName i) m of
+        Nothing -> M.insert (tfiName i) [i] m
+        Just _ -> M.adjust (++[i]) (tfiName i) m
+
+
 addTypingStrategies :: Core_TypingStrategies -> ImportEnvironment -> ImportEnvironment
 addTypingStrategies new importenv = importenv {typingStrategies = new ++ typingStrategies importenv}
 
@@ -246,7 +261,7 @@ combineImportEnvironments (ImportEnvironment tcs1 tss1 te1 vcs1 ot1 ce1 cm1 ins1
       (cm1 `exclusiveUnion` cm2)
       (ins1 `exclusiveUnion` ins2)
       (tfd1 `exclusiveUnion` tfd2)
-      (tfi1 `exclusiveUnion` tfi2)
+      (M.unionWith (++) tfi1 tfi2)
       (xs1 ++ xs2)
 
 insertMissingInstances :: ImportEnvironment -> ImportEnvironment

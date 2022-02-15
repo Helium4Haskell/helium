@@ -74,6 +74,7 @@ import Control.Arrow
 import qualified Unbound.Generics.LocallyNameless as UL
 import Unbound.Generics.LocallyNameless.Fresh
 
+import Helium.StaticAnalysis.StaticChecks.TypeFamilyInfos
 import Helium.StaticAnalysis.Inferencers.OutsideInX.Rhodium.RhodiumTypes
 import Helium.StaticAnalysis.Inferencers.OutsideInX.Rhodium.RhodiumSolver
 import Helium.StaticAnalysis.Inferencers.OutsideInX.Rhodium.RhodiumGenerics

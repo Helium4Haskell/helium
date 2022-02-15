@@ -29,6 +29,7 @@ module Helium.StaticAnalysis.Inferencers.OutsideInX.TopConversion(
     ,   tfInstanceInfoToAxiom
     ,   tfInstanceInfoToMonoTypes
     ,   typeSynonymsToTypeFamilies
+    ,   typeFamiliesToAxioms
 
 ) where
 
@@ -61,7 +62,7 @@ import Data.Functor.Identity
 import Unbound.Generics.LocallyNameless.Fresh
 import Unbound.Generics.LocallyNameless.Operations hiding (freshen)
 import Rhodium.TypeGraphs.GraphInstances()
-import Helium.StaticAnalysis.StaticChecks.TypeFamilyInfos (TFDeclInfo, TFInstanceInfo (tfiName, argTypes, defType))
+import Helium.StaticAnalysis.StaticChecks.TypeFamilyInfos (TFInstanceInfo (tfiName, argTypes, defType, tfiType, preCompat), splitBy, TFType (Closed), TFInstanceInfos, ordPrio, buildInjectiveEnv)
 
 type TypeFamilies = [(String, Int)]
 
@@ -232,9 +233,10 @@ typeSynonymsToAxioms env = concatMap tsToAxioms $ M.toList env
                         mt = tpToMonoType fams [] tp
                         mtVars = map (integer2Name . toInteger) vars
                         
-                        unifyAxiom = Axiom_Unify (bind mtVars (MonoType_Fam (show name) $ map var mtVars, mt))
-                    in [unifyAxiom] -- [Axiom_Injective $ show name, unifyAxiom]
+                        unifyAxiom = Axiom_Unify (bind mtVars (MonoType_Fam (show name) $ map var mtVars, mt)) Nothing
+                    in [Axiom_Injective (show name) vars, unifyAxiom]
 
+-- For use during static checks
 tfInstanceInfoToAxiom :: TypeFamilies -> TFInstanceInfo -> Axiom ConstraintInfo
 tfInstanceInfoToAxiom fams iInfo = let
     famType = buildUHATf (tfiName iInfo) (argTypes iInfo)
@@ -244,8 +246,21 @@ tfInstanceInfoToAxiom fams iInfo = let
 
     axVars = fvToList lhsMonoType
 
-    in Axiom_Unify (bind axVars (lhsMonoType, rhsMonoType'))
+    in Axiom_Unify (bind axVars (lhsMonoType, rhsMonoType')) Nothing
 
+closedTFInstanceInfoToAxiom :: TypeFamilies -> TFInstanceInfo -> Axiom ConstraintInfo
+closedTFInstanceInfoToAxiom fams iInfo = let
+    famType = buildUHATf (tfiName iInfo) (argTypes iInfo)
+    (_, lhsenv, lhsMonoType) = typeToMonoType fams famType
+    (_, _, rhsMonoType) = typeToMonoType fams $ defType iInfo
+    rhsMonoType' = updateRhs lhsenv rhsMonoType
+
+    axVars = fvToList lhsMonoType
+
+    in Axiom_Unify (bind axVars (lhsMonoType, rhsMonoType')) (Just $ preCompat iInfo)
+
+
+-- For use during static checks
 tfInstanceInfoToMonoTypes :: TypeFamilies -> TFInstanceInfo -> (MonoType, MonoType)
 tfInstanceInfoToMonoTypes fams iInfo = let
     
@@ -254,6 +269,23 @@ tfInstanceInfoToMonoTypes fams iInfo = let
     rhsMonoType' = updateRhs lhsenv rhsMonoType
 
     in (lhsMonoType, rhsMonoType')
+
+-- Main families to axiom conversion function
+typeFamiliesToAxioms :: TypeFamilies -> ImportEnvironment -> [Axiom ConstraintInfo]
+typeFamiliesToAxioms fams env = let
+    injEnv = buildInjectiveEnv $ M.elems $ typeFamDeclEnvironment env
+    tfInstances = M.assocs $ typeFamInstanceEnvironment env
+    (closed, other) = splitBy (\(_,i:_) -> tfiType i == Closed) tfInstances
+
+    closedAxs = map createClosedGroup closed
+    injAxioms = map (\(n, idx) -> Axiom_Injective (show n) idx) $ filter (\(_, idx) -> not (null idx)) $ M.assocs injEnv
+    openAxs = concatMap (map (tfInstanceInfoToAxiom fams) . snd) other
+    in closedAxs ++ injAxioms ++ openAxs
+    where
+        createClosedGroup :: (Name, TFInstanceInfos) -> Axiom ConstraintInfo
+        createClosedGroup (n, infos) = let
+            axs = map (closedTFInstanceInfoToAxiom fams) (sortBy ordPrio infos)
+            in Axiom_ClosedGroup (show n) axs
 
 -- Ensures that the right hand side vars are updated to coincide with the vars in the left hand side
 -- (For type families that is)

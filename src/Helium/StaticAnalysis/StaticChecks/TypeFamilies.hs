@@ -35,19 +35,6 @@ isBareVariable :: MonoType -> Bool
 isBareVariable (MonoType_Var _ _) = True
 isBareVariable _                  = False
 
--- Builds Injective environment.
-buildInjectiveEnv :: TFDeclInfos -> InjectiveEnv
-buildInjectiveEnv
-  = foldr (\ d
-          -> M.insert
-                (show $ tfdName d) (getInjIndices (argNames d) (injNames d))
-          )
-          M.empty
-
-getInjIndices :: Names -> Maybe Names -> [Int]
-getInjIndices _  Nothing = []
-getInjIndices ns (Just ins) = map (fromJust . flip elemIndex ins) ns
-
 --------------------------------------
 -- Declaration static checks, SEPARATE CHECKS
 
@@ -319,12 +306,7 @@ preComputeCompat fams tis = let
 
   tbChecked = [(i, obtainRelevant i closed) | i <- closed]
   in map (\(i, is) -> insertPreCompat (performPreCompute (i, is)) i) tbChecked ++ other
-  where 
-    splitBy :: (a -> Bool) -> [a] -> ([a], [a])
-    splitBy p (x:xs) = let (l, r) = splitBy p xs
-      in if p x then (x:l, r) else (r, x:r)
-    splitBy _ []     = ([], [])
-
+  where
     -- Assumes closed tfs only, which is always the case in its usage
     obtainRelevant :: TFInstanceInfo -> TFInstanceInfos -> TFInstanceInfos
     obtainRelevant i is = [ci | ci <- is, tfiName i == tfiName ci, priority ci < priority i]
@@ -334,6 +316,7 @@ preComputeCompat fams tis = let
     performPreCompute (i, ci:is) = case compat fams (i, ci) of 
       Nothing -> fromJust (priority ci) : performPreCompute (i, is)
       Just _ -> performPreCompute (i, is)
+    performPreCompute (_, []) = []
 
 -- compatibility check of two instances (pairwise).
 compat :: TypeFamilies -> (TFInstanceInfo, TFInstanceInfo) -> Maybe Error
@@ -410,7 +393,7 @@ pairwiseInjCheck fams ienv (inst1, inst2) = let
 
 -- Running this in the FreshM monad makes sure that the unbind functions generate fresh vars in the lhs and rhs's.
 unbindAx :: Axiom ConstraintInfo -> Axiom ConstraintInfo -> FreshM ((MonoType, MonoType), (MonoType, MonoType))
-unbindAx (Axiom_Unify b1) (Axiom_Unify b2) = do
+unbindAx (Axiom_Unify b1 _) (Axiom_Unify b2 _) = do
   (_, (lhs1, rhs1)) <- unbind b1
   (_, (lhs2, rhs2)) <- unbind b2
   return ((lhs1, rhs1), (lhs2, rhs2))
@@ -419,7 +402,7 @@ unbindAx (Axiom_Unify b1) (Axiom_Unify b2) = do
 wronglyUsedVarInInjCheck :: TypeFamilies -> InjectiveEnv -> TFInstanceInfo -> Maybe Error
 wronglyUsedVarInInjCheck fams ienv inst = let
 
-  (Axiom_Unify b) = tfInstanceInfoToAxiom fams inst
+  (Axiom_Unify b _) = tfInstanceInfoToAxiom fams inst
   (_, (lhs@(MonoType_Fam f mts), rhs)) = runFreshM $ unbind b
   
   injMts = map (mts !!) $ ienv M.! f

@@ -45,6 +45,7 @@ import Helium.StaticAnalysis.Inferencers.OutsideInX.Rhodium.RhodiumTypes
 import Helium.StaticAnalysis.Inferencers.OutsideInX.Rhodium.RhodiumErrors
 import Helium.StaticAnalysis.Inferencers.OutsideInX.ConstraintHelper
 import Helium.StaticAnalysis.Inferencers.OutsideInX.Rhodium.RhodiumGenerics
+import Debug.Trace (trace)
 
 integer2Name :: Integer -> Name a
 integer2Name = makeName ""
@@ -113,7 +114,10 @@ instance (CompareTypes m (RType ConstraintInfo), IsTouchable m TyVar, HasAxioms 
                                         return NotApplicable
                         (MonoType_Con _, MonoType_Var _ _) -> return $ Applied ([], [], [Constraint_Unify m2 m1 Nothing])
                         (MonoType_Fam f1 ts1, MonoType_Fam f2 ts2)   
-                            | f1 == f2, isInjective axs f1, length ts1 == length ts2 -> return $ Applied ([], [], zipWith (\t1 t2 -> Constraint_Unify t1 t2 Nothing) ts1 ts2)
+                            | f1 == f2, 
+                              (Just injIdx) <- injectiveArgs axs f1, 
+                              length ts1 == length ts2 
+                                -> return $ Applied ([], [], map (\i -> Constraint_Unify (ts1 !! i) (ts2 !! i) Nothing) injIdx)
                             | f1 == f2, isInjective axs f1, length ts1 /= length ts2 -> return $ Error $ ErrorLabel $ "Different Number of arguments for " ++ show ts1 ++ " and " ++ show ts2
                             | f1 == f2, null ts1 && null ts2 -> return $ Applied ([], [], [])
                             | f1 == f2, length ts1 == length ts2 -> return NotApplicable  
@@ -244,8 +248,15 @@ loopAxioms f (x:xs) = do
 isInjective :: [Axiom ConstraintInfo] -> String -> Bool
 isInjective axioms s = any isInjective' axioms
     where 
-        isInjective' (Axiom_Injective n) = n == s
+        isInjective' (Axiom_Injective n _) = n == s
         isInjective' _ = False
+
+injectiveArgs :: [Axiom ConstraintInfo] -> String -> Maybe [Int]
+injectiveArgs (Axiom_Injective as idx:axioms) s 
+    = if as == s
+        then Just idx
+        else injectiveArgs axioms s
+injectiveArgs [] _ = Nothing
 
 instance (
             HasTypeGraph m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo,
@@ -271,7 +282,7 @@ instance (
     topLevelReact given c@(Constraint_Unify (MonoType_Fam f ms) t _) = getAxioms >>= loopAxioms topLevelReact' 
         where
             --topLevelReact' :: Axiom ConstraintInfo  -> m (RuleResult ([TyVar], [Constraint ConstraintInfo]))
-            topLevelReact' ax@(Axiom_Unify b) | all isFamilyFree ms, isFamilyFree t =
+            topLevelReact' ax@(Axiom_Unify b _) | all isFamilyFree ms, isFamilyFree t =
                 do
                     (aes, (lhs, rhs)) <- unbind b
                     case lhs of
@@ -283,8 +294,71 @@ instance (
                                 (Just s) -> return $ Applied (if given then [] else fvToList t, [Constraint_Unify (substs (convertSubstitution s) rhs) t Nothing])
                                 _ -> return NotApplicable
                         _ -> return NotApplicable
+            topLevelReact' (Axiom_ClosedGroup af axs) = 
+                do
+                    if f == af
+                        then reactClosedTypeFam given c (trace ("Inside ClosedGroup") axs)
+                        else return NotApplicable
             topLevelReact' _ = return NotApplicable
     topLevelReact _ _ = return NotApplicable
+
+reactClosedTypeFam :: (
+                        Fresh m,
+                        HasTypeGraph m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo,
+                        HasAxioms m (Axiom ConstraintInfo)
+                      )
+                   => Bool
+                   -> Constraint ConstraintInfo 
+                   -> [Axiom ConstraintInfo] 
+                   -> m (RuleResult ([Name MonoType], [Constraint ConstraintInfo]))
+reactClosedTypeFam given = reactClosedTypeFam' [] 
+    where
+        reactClosedTypeFam' seen c@(Constraint_Unify (MonoType_Fam _ ms) t _) (ax@(Axiom_Unify b (Just _)):axs) =
+            do
+                (aes, (lhs, rhs)) <- unbind (trace ("Constraint and Axiom: " ++ show c ++ " " ++ show ax) b)
+                case lhs of
+                  MonoType_Fam _ mts -> do
+                      let bes = fvToList ax
+                      let ustate = unifyTypes [] [] (zipWith (\m l -> Constraint_Unify m l Nothing) ms mts) (aes \\ bes)
+                      res <- runTG ustate
+                      case res of
+                        Nothing -> reactClosedTypeFam' (seen ++ [ax]) c axs 
+                        Just s -> do
+                            compatApartRes <- checkCompatApartness seen ax c
+                            if compatApartRes
+                                then return $ Applied (if given then [] else fvToList t, [Constraint_Unify (substs (convertSubstitution s) rhs) t Nothing])
+                                else return NotApplicable 
+                  _ -> return NotApplicable
+        reactClosedTypeFam' _ _ _ = return NotApplicable 
+
+checkCompatApartness :: (
+                            Fresh m,
+                            HasTypeGraph m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo,
+                            HasAxioms m (Axiom ConstraintInfo)
+                        )
+                     =>  [Axiom ConstraintInfo] -> Axiom ConstraintInfo -> Constraint ConstraintInfo -> m Bool
+checkCompatApartness seen (Axiom_Unify _ (Just idx)) c = do
+    let nonCompat = removeAt idx seen
+    apartRes <- mapM (apartnessCheck c) nonCompat
+    return $ all (==True) apartRes --LOL
+    where
+        removeAt :: [Int] -> [a] -> [a]
+        removeAt ns xs = [x | (n,x) <- zip [0..] xs, n `notElem` ns]
+
+apartnessCheck :: (
+                    Fresh m,
+                    HasTypeGraph m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo,
+                    HasAxioms m (Axiom ConstraintInfo)
+                  )
+                => Constraint ConstraintInfo -> Axiom ConstraintInfo -> m Bool
+apartnessCheck (Constraint_Unify fam _ _) (Axiom_Unify b _) = do
+     (ft, _, fvars) <- unfamily fam
+     (avars, (lhs, _)) <- unbind b
+     res <- runTG $ unifyTypes [] [] [Constraint_Unify lhs ft Nothing] (fvars ++ avars)
+     case res of
+       Nothing -> return True
+       Just _ -> return False
+     
 
 convertSubstitution :: [(TyVar, RType ConstraintInfo)] -> [(TyVar, MonoType)]
 convertSubstitution = map (\(t, MType m) -> (t, m))

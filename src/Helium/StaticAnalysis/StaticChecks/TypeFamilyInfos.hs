@@ -3,12 +3,16 @@
 module Helium.StaticAnalysis.StaticChecks.TypeFamilyInfos where
 import Helium.Syntax.UHA_Syntax ( Name, Names, Type(..), Types, ContextItem(..) )
 import Helium.Syntax.UHA_Utils ()
-import Data.Maybe (isJust)
+import Data.Maybe (isJust, fromJust)
+import qualified Data.Map as M
+import Data.List (elemIndex)
 
 deriving instance Show Type
 deriving instance Eq Type 
+deriving instance Ord Type
 deriving instance Show ContextItem
-deriving instance Eq ContextItem 
+deriving instance Eq ContextItem
+deriving instance Ord ContextItem 
 
 type TFDeclInfos = [TFDeclInfo]
 -- data TFDeclInfo
@@ -138,6 +142,17 @@ tails :: [a] -> [[a]]
 tails [] = []
 tails (x:xs) = (x:xs) : tails xs
 
+splitBy :: (a -> Bool) -> [a] -> ([a], [a])
+splitBy p (x:xs) = let (l, r) = splitBy p xs
+  in if p x then (x:l, r) else (l, x:r)
+splitBy _ []     = ([], [])
+
+ordPrio :: TFInstanceInfo -> TFInstanceInfo -> Ordering
+ordPrio i1 i2 
+  | priority i1 < priority i2 = LT
+  | priority i1 > priority i2 = GT 
+  | otherwise = EQ 
+
 -- Obtains the type family declaration info as needed for `typeToMonoType`
 obtainTyFams :: TFDeclInfos -> [(String, Int)]
 obtainTyFams = map (\d -> (show $ tfdName d, length $ argNames d))
@@ -156,3 +171,16 @@ obtainInjectiveTFInstances dis tis = let
                                   then tfdName d : obtInjDeclNames decls
                                   else obtInjDeclNames decls
     obtInjDeclNames []        = []
+
+-- Builds Injective environment.
+buildInjectiveEnv :: TFDeclInfos -> M.Map String [Int]
+buildInjectiveEnv
+  = foldr (\ d
+          -> M.insert
+                (show $ tfdName d) (getInjIndices (argNames d) (injNames d))
+          )
+          M.empty
+
+getInjIndices :: Names -> Maybe Names -> [Int]
+getInjIndices _  Nothing = []
+getInjIndices ns (Just ins) = map (fromJust . flip elemIndex ins) ns

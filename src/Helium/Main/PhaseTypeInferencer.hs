@@ -81,8 +81,7 @@ phaseTypeInferencer basedir fullName module_ localEnv completeEnv options =
                   )   
                --putStrLn $ unlines $ map show $ M.toList toplevelTypes
                unless (null typeErrorsOIX) ( do
-                     --putStrLn (sortAndShowMessages typeErrorsOIX)
-                     return ()
+                     putStrLn (sortAndShowMessages typeErrorsOIX)
                   )
                unless (null typeErrors && null typeErrorsOIX || not (null typeErrors) && not (null typeErrorsOIX)) (
                   do

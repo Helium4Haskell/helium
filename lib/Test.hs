@@ -27,7 +27,7 @@ module Test where
 type NewInt = Int
 
 main :: NewInt
-main = head $ mapPlus1 [1,2,3,4]
+main = head $ mapPlus1 [1,2,3, f 4]
 
 mapPlus1 :: [Int] -> [Int]
 mapPlus1 = map (\x -> x + 1)
@@ -89,3 +89,6 @@ type family C a b where
 -- type instance E Int = Float
 -- type instance E Float = Int
 -- type instance E Float = Float
+
+f :: G Bool -> G Bool
+f x = x
