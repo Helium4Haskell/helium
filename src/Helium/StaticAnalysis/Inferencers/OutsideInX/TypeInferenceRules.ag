@@ -104,7 +104,7 @@ SEM Module
         lhs . warnings = getWarnings @solveResults
         loc . axioms = typeSynonymsToAxioms (typeSynonyms @lhs.importEnvironment) 
                         ++ classEnvironmentToAxioms @tyFams (classEnvironment @lhs.importEnvironment)
-                        ++ trace (show $ typeFamiliesToAxioms @tyFams @lhs.importEnvironment) typeFamiliesToAxioms @tyFams @lhs.importEnvironment
+                        ++ typeFamiliesToAxioms @tyFams @lhs.importEnvironment
         loc . tyFams = typeSynonymsToTypeFamilies (typeSynonyms @lhs.importEnvironment) ++ obtainTyFams (M.elems $ typeFamDeclEnvironment @lhs.importEnvironment)
         body . axioms = @axioms
         body . betaUnique = 1

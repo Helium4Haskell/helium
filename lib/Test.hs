@@ -90,5 +90,5 @@ type family C a b where
 -- type instance E Float = Int
 -- type instance E Float = Float
 
-f :: G Bool -> G Bool
+f :: G Bool -> G Int
 f x = x

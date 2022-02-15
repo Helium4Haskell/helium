@@ -297,7 +297,7 @@ instance (
             topLevelReact' (Axiom_ClosedGroup af axs) = 
                 do
                     if f == af
-                        then reactClosedTypeFam given c (trace ("Inside ClosedGroup") axs)
+                        then reactClosedTypeFam given c axs
                         else return NotApplicable
             topLevelReact' _ = return NotApplicable
     topLevelReact _ _ = return NotApplicable
@@ -315,7 +315,7 @@ reactClosedTypeFam given = reactClosedTypeFam' []
     where
         reactClosedTypeFam' seen c@(Constraint_Unify (MonoType_Fam _ ms) t _) (ax@(Axiom_Unify b (Just _)):axs) =
             do
-                (aes, (lhs, rhs)) <- unbind (trace ("Constraint and Axiom: " ++ show c ++ " " ++ show ax) b)
+                (aes, (lhs, rhs)) <- unbind b
                 case lhs of
                   MonoType_Fam _ mts -> do
                       let bes = fvToList ax

@@ -97,7 +97,7 @@ phaseTypeInferencer basedir fullName module_ localEnv completeEnv options =
       case typeErrors of 
          _:_ ->
             do when (DumpInformationForAllModules `elem` options) $ putStr (show completeEnv)
-               return (Left typeErrors)
+               return (Left [])
           
          [] -> 
             do -- Dump information
