@@ -71,6 +71,19 @@ preUnify ienv t1 t2 = let
 
   in unify ienv opts t1 t2 M.empty
 
+preMatch :: InjectiveEnv
+         -> MonoType
+         -> MonoType
+         -> UnifyResult
+preMatch ienv t1 t2 = let
+
+  opts = UO {
+    injChecking = True
+  , matching = True
+  , unifying = False
+  }
+  
+  in unify ienv opts t1 t2 M.empty 
 
 unifyTy :: MonoType
         -> MonoType
@@ -149,7 +162,7 @@ unify _ opts (MonoType_Fam _ _) _ subst
 -- In case of unifying or matching, we fail in this case.
 unify _ opts _ (MonoType_Fam _ _) subst
   | injChecking opts = Unifiable subst
-  | otherwise = SurelyApart
+  | not $ injChecking opts = SurelyApart
 -- In all other cases, we fail
 unify _ _ _ _ _ = SurelyApart 
 

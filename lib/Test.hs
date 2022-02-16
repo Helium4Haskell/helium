@@ -27,10 +27,10 @@ module Test where
 type NewInt = Int
 
 main :: NewInt
-main = head $ mapPlus1 [1,2,3, f 4]
+main = f 4
 
-mapPlus1 :: [Int] -> [Int]
-mapPlus1 = map (\x -> x + 1)
+-- mapPlus1 :: [Int] -> [Int]
+-- mapPlus1 = map (\x -> x + 1)
 
 type family F a b = r | r -> a
 
@@ -48,10 +48,10 @@ instance X Int where
 --     J Int Int = Float
 --     J Int Int = Int
 
-type family G a = r | r -> a where
-    G Int = Bool
-    G Bool = Int
-    G a = a
+type family G a = r | r -> a
+    
+type instance G Int = Bool
+type instance G Bool = Int
 
 -- type family Z a = r | r -> a
 -- type instance Z [a] = (a, a)
@@ -81,14 +81,14 @@ data Tree a = Node a (Tree a) (Tree a) | Leaf
 -- type family G4 a b = r | r -> a b
 -- type instance G4 a b = [a]
 
-type family C a b where
-    C a b = Int
-    C Int Int = Float
-    C Int a   = Int
+-- type family C a b where
+--     C a b = Int
+--     C Int Int = Float
+--     C Int a   = Int
 
 -- type instance E Int = Float
 -- type instance E Float = Int
 -- type instance E Float = Float
 
-f :: G Bool -> G Int
-f x = x
+f :: G a -> G a
+f x = (x :: Int)
