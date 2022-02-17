@@ -208,7 +208,7 @@ topdecl = addRange (
               n <- tycon
               lhs <- many1 atype
               lexASG
-              rhst <- btype
+              rhst <- type_
               return $ \r -> Declaration_TypeFamInstance r False n lhs rhst
           )
         <|>
@@ -420,7 +420,7 @@ tfdecl = addRange $
     n <- tycon
     lhs <- many atype
     lexASG 
-    rhst <- btype
+    rhst <- type_
     return $ \r -> Declaration_TypeFamInstance r True n lhs rhst
 
 -- ASSOCIATED TYPE DECL
@@ -488,7 +488,7 @@ itfdecl = addRange $
     n <- tycon
     lhs <- many1 atype
     lexASG
-    rhst <- btype
+    rhst <- type_
     return $ \r -> Declaration_TypeFamInstance r False n lhs rhst
   
 

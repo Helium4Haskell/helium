@@ -46,7 +46,7 @@ import Helium.StaticAnalysis.Inferencers.OutsideInX.Rhodium.RhodiumErrors
 import Helium.StaticAnalysis.Inferencers.OutsideInX.ConstraintHelper
 import Helium.StaticAnalysis.Inferencers.OutsideInX.Rhodium.RhodiumGenerics
 import Debug.Trace (trace)
-import Helium.StaticAnalysis.Miscellaneous.Unify (preMatch, InjectiveEnv, UnifyResultM (SurelyApart, Unifiable), applySubst, matchTy, SubstitutionEnv)
+import Helium.StaticAnalysis.Miscellaneous.Unify (preMatch, InjectiveEnv, UnifyResultM (SurelyApart, Unifiable), applySubst, matchTy, SubstitutionEnv, unifyTy)
 
 integer2Name :: Integer -> Name a
 integer2Name = makeName ""
@@ -165,7 +165,7 @@ instance (HasGraph m touchable types constraint ci, CompareTypes m (RType Constr
         | c1 == c2 = return $ Applied [c1]
     interact _ c1@(Constraint_Unify (MonoType_Var _ v1) m1 _) c2@(Constraint_Unify t2@(MonoType_Fam f vs2) m2 _)
         | isFamilyFree m1, all isFamilyFree vs2, v1 `elem` (fvToList t2 :: [TyVar]) || v1 `elem` (fvToList m2 :: [TyVar]), isFamilyFree m2 =
-                return $ Applied [c1, Constraint_Unify (subst v1 m1 t2) (subst v1 m1 m2) Nothing]
+                return $ Applied [c1, Constraint_Unify (trace ("INTERACT: " ++ show (subst v1 m1 t2) ++ " ~ " ++ show (subst v1 m1 m2)) (subst v1 m1 t2)) (subst v1 m1 m2) Nothing]
     interact _ c1@(Constraint_Unify mv1@(MonoType_Var _ v1) m1 _) c2@(Constraint_Unify mv2@(MonoType_Var _ v2) m2 _) 
         | v1 == v2, isFamilyFree m1, isFamilyFree m2 = do
             ig <- greaterType (MType mv1) (MType m1 :: RType ConstraintInfo)
@@ -279,7 +279,7 @@ instance (
                 else
                     return NotApplicable
             topLevelReact' _ = return NotApplicable
-    topLevelReact given c@(Constraint_Unify (MonoType_Fam f ms) t _) = (getAxioms >>= loopAxioms improveTopLevelFun) `sequenceReacts` (getAxioms >>= loopAxioms topLevelReact')  
+    topLevelReact given c@(Constraint_Unify (MonoType_Fam f ms) t _) = (getAxioms >>= trace ("TopLevel: " ++ show c) loopAxioms improveTopLevelFun) `sequenceReacts` (getAxioms >>= loopAxioms topLevelReact')  
         where
             topLevelReact' :: Axiom ConstraintInfo  -> m (RuleResult ([TyVar], [Constraint ConstraintInfo]))
             topLevelReact' ax@(Axiom_Unify b _) | all isFamilyFree ms, isFamilyFree t =
@@ -396,7 +396,7 @@ reactClosedTypeFam given = reactClosedTypeFam' []
                             compatApartRes <- checkCompatApartness seen ax c
                             if compatApartRes
                                 then return $ Applied (if given then [] else fvToList t, [Constraint_Unify (substs (convertSubstitution s) rhs) t Nothing])
-                                else return NotApplicable 
+                                else reactClosedTypeFam' (seen ++ [ax]) c axs 
                   _ -> return NotApplicable
         reactClosedTypeFam' _ _ _ = return NotApplicable 
 
@@ -408,7 +408,7 @@ checkCompatApartness :: (
                             HasAxioms m (Axiom ConstraintInfo)
                         )
                      =>  [Axiom ConstraintInfo] -> Axiom ConstraintInfo -> Constraint ConstraintInfo -> m Bool
-checkCompatApartness seen (Axiom_Unify _ (Just idx)) c = do
+checkCompatApartness seen ax@(Axiom_Unify _ (Just idx)) c = do
     let nonCompat = removeAt idx seen
     apartRes <- mapM (apartnessCheck c) nonCompat
     return $ all (==True) apartRes --LOL
@@ -423,13 +423,13 @@ apartnessCheck :: (
                     HasAxioms m (Axiom ConstraintInfo)
                   )
                 => Constraint ConstraintInfo -> Axiom ConstraintInfo -> m Bool
-apartnessCheck (Constraint_Unify fam _ _) (Axiom_Unify b _) = do
-     (ft, _, fvars) <- unfamily fam
-     (avars, (lhs, _)) <- unbind b
-     res <- runTG $ unifyTypes [] [] [Constraint_Unify lhs ft Nothing] (fvars ++ avars)
-     case res of
-       Nothing -> return True
-       Just _ -> return False
+apartnessCheck (Constraint_Unify (MonoType_Fam f ts) _ _) (Axiom_Unify b _) = do
+     (ft, _, _) <- unfamilys ts
+     (_, (lhs, _)) <- unbind b
+     let nft = MonoType_Fam f ft
+     case unifyTy lhs nft of
+       SurelyApart -> return True
+       Unifiable _ -> return False
      
 
 convertSubstitution :: [(TyVar, RType ConstraintInfo)] -> [(TyVar, MonoType)]

@@ -344,7 +344,10 @@ compatWarn tfams (inst1, inst2) = let
   ((lhs1, _), (lhs2, rhs2)) = runFreshM $ unbindAx axiom1 axiom2
   in case matchTy lhs1 lhs2 of
             SurelyApart -> Nothing
-            Unifiable _ -> Just $ OverlappedClosedTypeFamilyInstance (tfiName inst2) lhs2 rhs2
+            Unifiable subst -> 
+              if applySubst subst lhs1 == applySubst subst lhs2
+                then Just $ OverlappedClosedTypeFamilyInstance (tfiName inst2) lhs2 (trace (show subst) rhs2)
+                else Nothing
 
 -- Performs pairwise injectivity check
 -- Performs whether type vars in injective arguments are used injectively in the definition.
