@@ -246,16 +246,16 @@ loopAxioms f (x:xs) = do
         return res
 
 isInjective :: [Axiom ConstraintInfo] -> String -> Bool
-isInjective axioms s = any isInjective' axioms
+isInjective axs s = any isInjective' axs
     where 
         isInjective' (Axiom_Injective n _) = n == s
         isInjective' _ = False
 
 injectiveArgs :: [Axiom ConstraintInfo] -> String -> Maybe [Int]
-injectiveArgs (Axiom_Injective as idx:axioms) s 
+injectiveArgs (Axiom_Injective as idx:axs) s 
     = if as == s
         then Just idx
-        else injectiveArgs axioms s
+        else injectiveArgs axs s
 injectiveArgs [] _ = Nothing
 
 instance (
@@ -279,7 +279,7 @@ instance (
                 else
                     return NotApplicable
             topLevelReact' _ = return NotApplicable
-    topLevelReact given c@(Constraint_Unify (MonoType_Fam f ms) t _) = (getAxioms >>= loopAxioms improveTopLevelFun) `sequenceReacts` (getAxioms >>= loopAxioms topLevelReact') --
+    topLevelReact given c@(Constraint_Unify (MonoType_Fam f ms) t _) = (getAxioms >>= loopAxioms improveTopLevelFun) `sequenceReacts` (getAxioms >>= loopAxioms topLevelReact')  
         where
             topLevelReact' :: Axiom ConstraintInfo  -> m (RuleResult ([TyVar], [Constraint ConstraintInfo]))
             topLevelReact' ax@(Axiom_Unify b _) | all isFamilyFree ms, isFamilyFree t =
@@ -295,20 +295,22 @@ instance (
                                 _ -> return NotApplicable
                         _ -> return NotApplicable
             topLevelReact' (Axiom_ClosedGroup af axs) =
-                do
                     if f == af
                         then reactClosedTypeFam given c axs
                         else return NotApplicable
             topLevelReact' _ = return NotApplicable
 
+            -- Improves top level constraints when the type family is injective
             improveTopLevelFun :: Axiom ConstraintInfo -> m (RuleResult ([TyVar], [Constraint ConstraintInfo]))
-            improveTopLevelFun ax@(Axiom_Unify b _) | all isFamilyFree ms, isFamilyFree t =
+            improveTopLevelFun (Axiom_Unify b _) | all isFamilyFree ms, isFamilyFree t =
                 do
                     (_, (lhs, rhs)) <- unbind b
+                    axs <- getAxioms
                     case lhs of
-                        MonoType_Fam lF axmts | f == lF -> do
-                            axs <- getAxioms 
-                            let ienv = axsToInjectiveEnv axs
+                        -- Only act when type family is injective and the names match.
+                        MonoType_Fam lF axmts | f == lF, isInjective axs lF -> do
+                            -- Builds the injective env needed for preMatch and matchTy 
+                            ienv <- axsToInjectiveEnv axs
                             let injIdx = ienv M.! f
                             -- If rhs and t preMatch (M(ti, t0))...
                             case preMatch ienv rhs t of
@@ -327,7 +329,8 @@ instance (
                         _ -> return NotApplicable 
             improveTopLevelFun (Axiom_ClosedGroup _ axs) = loopAxioms improveTopLevelFun axs
             improveTopLevelFun _ = return NotApplicable
-
+            
+            -- Combines the toplevelFun and normal react sequences (could be made a monad?)
             sequenceReacts :: m (RuleResult ([TyVar], [Constraint ConstraintInfo])) -> m (RuleResult ([TyVar], [Constraint ConstraintInfo])) -> m (RuleResult ([TyVar], [Constraint ConstraintInfo]))
             sequenceReacts r1 r2 = do
                 r1' <- r1
@@ -339,15 +342,21 @@ instance (
                     Applied (tvars2, constr2) -> return $ Applied (nub (tvars1 ++ tvars2), constr1 ++ constr2)
                     Error _ -> r2
                   Error _ -> r1
-
     topLevelReact _ _ = return NotApplicable
 
-axsToInjectiveEnv :: [Axiom ConstraintInfo] -> InjectiveEnv
-axsToInjectiveEnv = foldl f M.empty
+-- Builds the InjectiveEnv from axioms
+axsToInjectiveEnv :: (Fresh m, MonadFail m) => [Axiom ConstraintInfo] -> m InjectiveEnv
+axsToInjectiveEnv = foldM f M.empty
     where
-        f m (Axiom_Injective n injArgs) = M.insert n injArgs m
-        f m _                           = m
+        f m (Axiom_Injective n injArgs) = return $ M.insert n injArgs m
+        f m (Axiom_Unify b _)           = do
+            (_, (MonoType_Fam g _, _)) <- unbind b
+            case M.lookup g m of
+              Nothing -> return $ M.insert g [] m
+              Just _ -> return m
+        f m _                           = return m
 
+-- Extends the substitution with for every TyVar [t |-> v] where v is fresh (needed for toplevel improvements).          
 extendSubst :: (Fresh m) => SubstitutionEnv -> [TyVar] -> m (SubstitutionEnv, [TyVar])
 extendSubst env (t:tv) = do
     (v :: TyVar) <- fresh $ s2n "alpha"
@@ -355,7 +364,12 @@ extendSubst env (t:tv) = do
     return (M.insert t (MonoType_Var (Just "alpha") v) ihenv, v:ihtv)
 extendSubst env [] = return (env, [])
 
-
+-- Handles the reaction of a closed type family application.
+-- All instances are checked from top to bottom:
+-- - First we match (using unifyTypes with carefully chosen touchable variables)
+-- - If match succeeds, we check whether for all preceeding instances, the instance is compatible or apart.
+-- - If that succeeds, we return the applied new constraint
+-- The only difference wrt open type families, is that we match in an order and perform the compatApartness check.
 reactClosedTypeFam :: (
                         Fresh m,
                         HasTypeGraph m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo,
@@ -386,6 +400,8 @@ reactClosedTypeFam given = reactClosedTypeFam' []
                   _ -> return NotApplicable
         reactClosedTypeFam' _ _ _ = return NotApplicable 
 
+-- Compat was precomputed and is part of the Axiom_Unify construct (A Just idx where idx are the indices of previous instances with which it is compatible.
+-- These instances need not to be checked for apartness so are removed.
 checkCompatApartness :: (
                             Fresh m,
                             HasTypeGraph m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo,
@@ -400,6 +416,7 @@ checkCompatApartness seen (Axiom_Unify _ (Just idx)) c = do
         removeAt :: [Int] -> [a] -> [a]
         removeAt ns xs = [x | (n,x) <- zip [0..] xs, n `notElem` ns]
 
+-- apart(fam, lhs) = not(unify(lhs, flattened(fam))).
 apartnessCheck :: (
                     Fresh m,
                     HasTypeGraph m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo,

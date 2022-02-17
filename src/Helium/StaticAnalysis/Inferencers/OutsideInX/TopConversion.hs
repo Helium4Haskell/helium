@@ -278,7 +278,7 @@ typeFamiliesToAxioms fams env = let
     (closed, other) = splitBy (\(_,i:_) -> tfiType i == Closed) tfInstances
 
     closedAxs = map createClosedGroup closed
-    injAxioms = map (\(n, idx) -> Axiom_Injective (show n) idx) $ filter (\(_, idx) -> not (null idx)) $ M.assocs injEnv
+    injAxioms = map (uncurry Axiom_Injective) $ filter (\(_, idx) -> not (null idx)) $ M.assocs injEnv
     openAxs = concatMap (map (tfInstanceInfoToAxiom fams) . snd) other
     in closedAxs ++ injAxioms ++ openAxs
     where
