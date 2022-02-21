@@ -178,6 +178,9 @@ instance (HasGraph m touchable types constraint ci, HasAxioms m (Axiom Constrain
                 return NotApplicable
             else
                 return $ Applied [c1, Constraint_Unify (var v2) (subst v1 m1 m2) Nothing]
+    interact _ c1@(Constraint_Unify (MonoType_Var _ v1) s1 _) (Constraint_Inst t2 s2 _)
+        | v1 `elem` (fvToList t2 :: [TyVar]) || v1 `elem` (fvToList s2 :: [TyVar]), isFamilyFree s1
+            = return $ Applied [c1, Constraint_Inst (subst v1 s1 t2) (subst v1 s1 s2) Nothing]
     interact _ c1@(Constraint_Unify mv1@(MonoType_Var _ v1) m1 _) c2@(Constraint_Class n ms2 _)
         | v1 `elem` (fvToList ms2 :: [TyVar]), all isFamilyFree ms2 = do 
             ig <- greaterType (MType mv1) (MType m1 :: RType ConstraintInfo)
@@ -188,7 +191,7 @@ instance (HasGraph m touchable types constraint ci, HasAxioms m (Axiom Constrain
     interact _ c1@(Constraint_Unify fm1@(MonoType_Fam f1 vs1) m1 _) c2@(Constraint_Unify fm2@(MonoType_Fam f2 vs2) m2 _)
         | f1 == f2, vs1 == vs2, isFamilyFree m1, isFamilyFree m2
             = return $ Applied [c1, Constraint_Unify m1 m2 Nothing]
-        | f1 == f2, c1 == c2 = do
+        | f1 == f2, m1 == m2 = do
             (axs :: [Axiom ConstraintInfo]) <- getAxioms
             if isInjective axs f1
                 then return $ Applied [Constraint_Unify fm1 fm2 Nothing]
@@ -216,7 +219,10 @@ instance (CompareTypes m (RType ConstraintInfo), HasAxioms m (Axiom ConstraintIn
                 return $ Applied [Constraint_Unify m1 m2 Nothing]
     simplify c1@(Constraint_Class _ _ _) c2@(Constraint_Class _ _ _) 
         | c1 == c2 = return $ Applied []
-    simplify c1@(Constraint_Unify mv1@(MonoType_Var _ v1) m1 _) c2@(Constraint_Class _ ms _) 
+    simplify (Constraint_Unify (MonoType_Var _ v1) s1 _) (Constraint_Inst t2 s2 _)
+        | v1 `elem` (fvToList t2 :: [TyVar]) || v1 `elem` (fvToList s2 :: [TyVar]), isFamilyFree s1
+            = return $ Applied [Constraint_Inst (subst v1 s1 t2) (subst v1 s1 s2) Nothing]
+    simplify (Constraint_Unify mv1@(MonoType_Var _ v1) m1 _) c2@(Constraint_Class _ ms _) 
         | mv1 == m1 = return NotApplicable
         | v1 `elem` (fvToList ms :: [TyVar]), isFamilyFree m1, all isFamilyFree ms = do
             gt <- greaterType (MType mv1) (MType m1 :: RType ConstraintInfo)
@@ -238,7 +244,9 @@ instance (CompareTypes m (RType ConstraintInfo), HasAxioms m (Axiom ConstraintIn
     simplify (Constraint_Unify (MonoType_Fam f1 vs1) m1 _) (Constraint_Unify (MonoType_Fam f2 vs2) m2 _)
         | f1 == f2, vs1 == vs2, isFamilyFree m1, isFamilyFree m2
             = return $ Applied [Constraint_Unify m1 m2 Nothing]
-    simplify c1 c2 = return NotApplicable
+    simplify (Constraint_Inst t1 p1 _) (Constraint_Unify t2 p2 _)
+        | t1 == t2 = return $ Applied [Constraint_Inst p2 p1 Nothing]
+    simplify _ _ = return NotApplicable
 
 loopAxioms :: Monad m => (Axiom ConstraintInfo -> m (RuleResult a)) -> [Axiom ConstraintInfo] -> m (RuleResult a)
 loopAxioms _ [] = return NotApplicable 
@@ -327,7 +335,7 @@ instance (
                                     case matchTy lhs substLhs of
                                         SurelyApart -> return NotApplicable
                                         -- Deviate from paper, follow Cobalt, only focus on injective arguments.
-                                        Unifiable _ -> return $ Applied ([], [Constraint_Unify (applyOverInjArgs psubst injIdx lhs) fam Nothing])                                            -- Here we deviate from the paper and follow Cobalt (just substitute arguments with what we obtained)
+                                        Unifiable _ -> return $ Applied (if given then [] else fvToList fam, [Constraint_Unify (applyOverInjArgs psubst injIdx lhs) fam Nothing])                                            -- Here we deviate from the paper and follow Cobalt (just substitute arguments with what we obtained)
 
                                             -- We extend the substitution to hold [a -> v] for each var in args(F) not in dom(psubst)
                                             -- let argVars = [x | (x :: TyVar) <- fvToList lhs, x `notElem` M.keys psubst]
