@@ -26,8 +26,8 @@ module Test where
 
 type NewInt = Int
 
-main :: Int
-main = f 4
+-- main :: Int
+-- main = f 4
 
 -- mapPlus1 :: [Int] -> [Int]
 -- mapPlus1 = map (\x -> x + 1)
@@ -48,9 +48,9 @@ instance X Int where
 --     J Int Int = Float
 --     J Int Int = Int
 
-type family G a where   
-    G Int = Bool
-    G Bool = Int
+-- type family G a where   
+--     G Int = Bool
+--     G Bool = Int
 
 -- type family Z a = r | r -> a
 -- type instance Z [a] = (a, a)
@@ -89,22 +89,22 @@ data Tree a = Node a (Tree a) (Tree a) | Leaf
 -- type instance E Float = Int
 -- type instance E Float = Float
 
-f :: G a -> G a
-f x = x
+-- f :: G a -> G a
+-- f x = x
 
--- type family FloatInt a b where
---     FloatInt a a = Float
---     FloatInt a b = Int
+type family FloatInt a b where
+    FloatInt a a = Float
+    FloatInt a b = Int
 
--- type family IfFloat a where
---     IfFloat Float = Int -> Int
---     IfFloat Int   = String
+type family IfFloat a where
+    IfFloat Float = Int -> Int
+    IfFloat Int   = String
 
--- bad :: d -> IfFloat (FloatInt Float d)
--- bad _ = "Hi"
+bad :: d -> IfFloat (FloatInt Float d)
+bad _ = "Hi"
 
--- fault :: Int
--- fault = bad (0.2 :: Float) (5 :: Int)
+fault :: Int
+fault = bad (0.2 :: Float) (5 :: Int)
 
 -- type family H a b where
 --     H Float Int = Int
