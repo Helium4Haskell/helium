@@ -106,7 +106,7 @@ instance (CompareTypes m (RType ConstraintInfo), IsTouchable m TyVar, HasAxioms 
                                 MonoType_App c a  -> do (a2, con1, vars1) <- unfamily a
                                                         (c2, con2, vars2) <- unfamily c
                                                         
-                                                        return $ Applied (vars1 ++ vars2, [], Constraint_Unify (var v) (MonoType_App c2 a2) Nothing : con1 ++ con2)
+                                                        return $ Applied (if isGiven then [] else vars1 ++ vars2, [], Constraint_Unify (var v) (MonoType_App c2 a2) Nothing : con1 ++ con2)
                                 _ -> {-do 
                                     gt <- MType m1 `greaterType` MType m2
                                     if gt then 
@@ -127,7 +127,7 @@ instance (CompareTypes m (RType ConstraintInfo), IsTouchable m TyVar, HasAxioms 
                             | (not . all isFamilyFree) ts -> 
                                 do
                                     (ts2, cons, vars) <- unfamilys ts
-                                    return (Applied (vars, [], Constraint_Unify (MonoType_Fam f ts2) m2 Nothing : cons))
+                                    return (Applied (if isGiven then [] else vars, [], Constraint_Unify (MonoType_Fam f ts2) m2 Nothing : cons))
                         (_, _)
                             | m1 == m2, isFamilyFree m1, isFamilyFree m2 -> return $ Applied ([], [], [])
                             | otherwise -> return NotApplicable
@@ -244,8 +244,8 @@ instance (CompareTypes m (RType ConstraintInfo), HasAxioms m (Axiom ConstraintIn
     simplify (Constraint_Unify (MonoType_Fam f1 vs1) m1 _) (Constraint_Unify (MonoType_Fam f2 vs2) m2 _)
         | f1 == f2, vs1 == vs2, isFamilyFree m1, isFamilyFree m2
             = return $ Applied [Constraint_Unify m1 m2 Nothing]
-    simplify (Constraint_Inst t1 p1 _) (Constraint_Unify t2 p2 _)
-        | t1 == t2 = return $ Applied [Constraint_Inst p2 p1 Nothing]
+    -- simplify (Constraint_Inst t1 p1 _) (Constraint_Unify t2 p2 _)
+    --     | t1 == t2 = return $ Applied [Constraint_Inst p2 p1 Nothing]
     simplify _ _ = return NotApplicable
 
 loopAxioms :: Monad m => (Axiom ConstraintInfo -> m (RuleResult a)) -> [Axiom ConstraintInfo] -> m (RuleResult a)
