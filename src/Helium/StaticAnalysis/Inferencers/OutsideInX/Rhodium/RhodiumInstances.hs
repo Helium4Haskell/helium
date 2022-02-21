@@ -46,7 +46,7 @@ import Helium.StaticAnalysis.Inferencers.OutsideInX.Rhodium.RhodiumErrors
 import Helium.StaticAnalysis.Inferencers.OutsideInX.ConstraintHelper
 import Helium.StaticAnalysis.Inferencers.OutsideInX.Rhodium.RhodiumGenerics
 import Debug.Trace (trace)
-import Helium.StaticAnalysis.Miscellaneous.Unify (preMatch, InjectiveEnv, UnifyResultM (SurelyApart, Unifiable), applySubst, matchTy, SubstitutionEnv, unifyTy)
+import Helium.StaticAnalysis.Miscellaneous.Unify (preMatch, InjectiveEnv, UnifyResultM (SurelyApart, Unifiable), applySubst, matchTy, SubstitutionEnv, unifyTy, applyOverInjArgs)
 
 integer2Name :: Integer -> Name a
 integer2Name = makeName ""
@@ -128,7 +128,6 @@ instance (CompareTypes m (RType ConstraintInfo), IsTouchable m TyVar, HasAxioms 
                                 do
                                     (ts2, cons, vars) <- unfamilys ts
                                     return (Applied (vars, [], Constraint_Unify (MonoType_Fam f ts2) m2 Nothing : cons))
-                            
                         (_, _)
                             | m1 == m2, isFamilyFree m1, isFamilyFree m2 -> return $ Applied ([], [], [])
                             | otherwise -> return NotApplicable
@@ -159,13 +158,13 @@ fixVariableMapping _ _ m@(MonoType_Con _) = m
 fixVariableMapping s v (MonoType_App f a) = MonoType_App (fixVariableMapping s v f) (fixVariableMapping s v a)
 fixVariableMapping s v (MonoType_Fam f ms) = MonoType_Fam f (map (fixVariableMapping s v) ms)
 
-instance (HasGraph m touchable types constraint ci, CompareTypes m (RType ConstraintInfo), IsTouchable m TyVar, Fresh m, Monad m) => CanInteract m TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo where
+instance (HasGraph m touchable types constraint ci, HasAxioms m (Axiom ConstraintInfo), CompareTypes m (RType ConstraintInfo), IsTouchable m TyVar, Fresh m, Monad m) => CanInteract m TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo where
     --interact :: Bool -> constraint -> constraint -> m (RuleResult [constraint])
     interact _ c1 c2
         | c1 == c2 = return $ Applied [c1]
     interact _ c1@(Constraint_Unify (MonoType_Var _ v1) m1 _) c2@(Constraint_Unify t2@(MonoType_Fam f vs2) m2 _)
         | isFamilyFree m1, all isFamilyFree vs2, v1 `elem` (fvToList t2 :: [TyVar]) || v1 `elem` (fvToList m2 :: [TyVar]), isFamilyFree m2 =
-                return $ Applied [c1, Constraint_Unify (trace ("INTERACT: " ++ show (subst v1 m1 t2) ++ " ~ " ++ show (subst v1 m1 m2)) (subst v1 m1 t2)) (subst v1 m1 m2) Nothing]
+                return $ Applied [c1, Constraint_Unify (subst v1 m1 t2) (subst v1 m1 m2) Nothing]
     interact _ c1@(Constraint_Unify mv1@(MonoType_Var _ v1) m1 _) c2@(Constraint_Unify mv2@(MonoType_Var _ v2) m2 _) 
         | v1 == v2, isFamilyFree m1, isFamilyFree m2 = do
             ig <- greaterType (MType mv1) (MType m1 :: RType ConstraintInfo)
@@ -186,9 +185,14 @@ instance (HasGraph m touchable types constraint ci, CompareTypes m (RType Constr
                 return NotApplicable
             else
                 return $ Applied [c1, Constraint_Class n (substs [(v1, m1)] ms2) Nothing]
-    interact _ c1@(Constraint_Unify (MonoType_Fam f1 vs1) m1 _) (Constraint_Unify (MonoType_Fam f2 vs2) m2 _)
+    interact _ c1@(Constraint_Unify fm1@(MonoType_Fam f1 vs1) m1 _) c2@(Constraint_Unify fm2@(MonoType_Fam f2 vs2) m2 _)
         | f1 == f2, vs1 == vs2, isFamilyFree m1, isFamilyFree m2
             = return $ Applied [c1, Constraint_Unify m1 m2 Nothing]
+        | f1 == f2, c1 == c2 = do
+            (axs :: [Axiom ConstraintInfo]) <- getAxioms
+            if isInjective axs f1
+                then return $ Applied [Constraint_Unify fm1 fm2 Nothing]
+                else return NotApplicable 
     interact _ c1@Constraint_Class {} c2@Constraint_Class{}
         | c1 == c2 = return $ Applied [c1]
     interact _ _ _ = return NotApplicable
@@ -228,7 +232,7 @@ instance (CompareTypes m (RType ConstraintInfo), HasAxioms m (Axiom ConstraintIn
                 return NotApplicable
             else
                 return $ Applied [subst v1 m1 c2]
-    simplify (Constraint_Unify mv@(MonoType_Var _ v) m1 _) (Constraint_Unify mf@(MonoType_Fam _ vs) m2 _)
+    simplify c1@(Constraint_Unify mv@(MonoType_Var _ v) m1 _) c2@(Constraint_Unify mf@(MonoType_Fam _ vs) m2 _)
         | isFamilyFree m1, isFamilyFree m2, all isFamilyFree vs, v `elem` (fvToList mf :: [TyVar]) || v `elem` (fvToList m2 :: [TyVar])
             = return $ Applied [Constraint_Unify (subst v m1 mf) (subst v m1 m2) Nothing]
     simplify (Constraint_Unify (MonoType_Fam f1 vs1) m1 _) (Constraint_Unify (MonoType_Fam f2 vs2) m2 _)
@@ -237,7 +241,7 @@ instance (CompareTypes m (RType ConstraintInfo), HasAxioms m (Axiom ConstraintIn
     simplify c1 c2 = return NotApplicable
 
 loopAxioms :: Monad m => (Axiom ConstraintInfo -> m (RuleResult a)) -> [Axiom ConstraintInfo] -> m (RuleResult a)
-loopAxioms f [] = return NotApplicable
+loopAxioms _ [] = return NotApplicable 
 loopAxioms f (x:xs) = do
     res <- f x
     if res == NotApplicable then
@@ -252,11 +256,13 @@ isInjective axs s = any isInjective' axs
         isInjective' _ = False
 
 injectiveArgs :: [Axiom ConstraintInfo] -> String -> Maybe [Int]
+injectiveArgs [] _ = Nothing
 injectiveArgs (Axiom_Injective as idx:axs) s 
     = if as == s
         then Just idx
         else injectiveArgs axs s
-injectiveArgs [] _ = Nothing
+injectiveArgs (_:axs) s = injectiveArgs axs s
+
 
 instance (
             HasTypeGraph m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo,
@@ -279,7 +285,7 @@ instance (
                 else
                     return NotApplicable
             topLevelReact' _ = return NotApplicable
-    topLevelReact given c@(Constraint_Unify (MonoType_Fam f ms) t _) = (getAxioms >>= trace ("TopLevel: " ++ show c) loopAxioms improveTopLevelFun) `sequenceReacts` (getAxioms >>= loopAxioms topLevelReact')  
+    topLevelReact given c@(Constraint_Unify fam@(MonoType_Fam f ms) t _) = (getAxioms >>= loopAxioms improveTopLevelFun) `sequenceReacts` (getAxioms >>= loopAxioms topLevelReact')  
         where
             topLevelReact' :: Axiom ConstraintInfo  -> m (RuleResult ([TyVar], [Constraint ConstraintInfo]))
             topLevelReact' ax@(Axiom_Unify b _) | all isFamilyFree ms, isFamilyFree t =
@@ -302,15 +308,15 @@ instance (
 
             -- Improves top level constraints when the type family is injective
             improveTopLevelFun :: Axiom ConstraintInfo -> m (RuleResult ([TyVar], [Constraint ConstraintInfo]))
-            improveTopLevelFun (Axiom_Unify b _) | all isFamilyFree ms, isFamilyFree t =
+            improveTopLevelFun ax@(Axiom_Unify b _) | all isFamilyFree ms, isFamilyFree t =
                 do
                     (_, (lhs, rhs)) <- unbind b
                     axs <- getAxioms
                     case lhs of
                         -- Only act when type family is injective and the names match.
-                        MonoType_Fam lF axmts | f == lF, isInjective axs lF -> do
+                        MonoType_Fam lF _ | f == lF, isInjective axs lF -> do
                             -- Builds the injective env needed for preMatch and matchTy 
-                            ienv <- axsToInjectiveEnv axs
+                            ienv <- axsToInjectiveEnv axs --(trace ("Constraint and Ax: " ++ show c ++ ", " ++ show ax) axs)
                             let injIdx = ienv M.! f
                             -- If rhs and t preMatch (M(ti, t0))...
                             case preMatch ienv rhs t of
@@ -320,12 +326,14 @@ instance (
                                     let substLhs = applySubst psubst lhs
                                     case matchTy lhs substLhs of
                                         SurelyApart -> return NotApplicable
-                                        Unifiable _ -> do
+                                        -- Deviate from paper, follow Cobalt, only focus on injective arguments.
+                                        Unifiable _ -> return $ Applied ([], [Constraint_Unify (applyOverInjArgs psubst injIdx lhs) fam Nothing])                                            -- Here we deviate from the paper and follow Cobalt (just substitute arguments with what we obtained)
+
                                             -- We extend the substitution to hold [a -> v] for each var in args(F) not in dom(psubst)
-                                            let argVars = [x | (x :: TyVar) <- fvToList lhs, x `notElem` M.keys psubst]
-                                            (psubst', tv') <- extendSubst psubst argVars
-                                            -- This substitution is applied over the axiom args and a new constraint with t0 n is created for every injective arg.
-                                            return $ Applied (if given then tv' else tv' ++ fvToList ms, map (\i -> Constraint_Unify (applySubst psubst' (axmts !! i)) (ms !! i) Nothing) injIdx)
+                                            -- let argVars = [x | (x :: TyVar) <- fvToList lhs, x `notElem` M.keys psubst]
+                                            -- (psubst', tv') <- extendSubst psubst argVars
+                                            -- -- This substitution is applied over the axiom args and a new constraint with t0 n is created for every injective arg.
+                                            -- return $ Applied (if given then tv' else tv' ++ fvToList ms, map (\i -> Constraint_Unify (applySubst psubst' (axmts !! i)) (ms !! i) Nothing) injIdx)
                         _ -> return NotApplicable 
             improveTopLevelFun (Axiom_ClosedGroup _ axs) = loopAxioms improveTopLevelFun axs
             improveTopLevelFun _ = return NotApplicable
@@ -398,7 +406,7 @@ reactClosedTypeFam given = reactClosedTypeFam' []
                                 then return $ Applied (if given then [] else fvToList t, [Constraint_Unify (substs (convertSubstitution s) rhs) t Nothing])
                                 else reactClosedTypeFam' (seen ++ [ax]) c axs 
                   _ -> return NotApplicable
-        reactClosedTypeFam' _ _ _ = return NotApplicable 
+        reactClosedTypeFam' _ _ _ = return NotApplicable
 
 -- Compat was precomputed and is part of the Axiom_Unify construct (A Just idx where idx are the indices of previous instances with which it is compatible.
 -- These instances need not to be checked for apartness so are removed.

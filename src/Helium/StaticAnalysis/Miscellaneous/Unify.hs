@@ -184,3 +184,8 @@ applySubst env mtv@(MonoType_Var _ tv) = fromMaybe mtv (M.lookup tv env)
 applySubst _   mtc@(MonoType_Con _)    = mtc
 applySubst env (MonoType_Fam f mts)    = MonoType_Fam f $ map (applySubst env) mts
 applySubst env (MonoType_App mt1 mt2)  = MonoType_App (applySubst env mt1) (applySubst env mt2)
+
+-- Only over LHSs of type family axioms.
+applyOverInjArgs :: SubstitutionEnv -> [Int] -> MonoType -> MonoType
+applyOverInjArgs env injIdx (MonoType_Fam f mts) = MonoType_Fam f [applySubst env t | (i,t) <- zip [0..] mts, i `elem` injIdx]
+applyOverInjArgs _   _    mt                   = mt
