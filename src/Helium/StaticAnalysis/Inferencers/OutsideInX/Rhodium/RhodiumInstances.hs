@@ -121,7 +121,7 @@ instance (CompareTypes m (RType ConstraintInfo), IsTouchable m TyVar, HasAxioms 
                                 -> return $ Applied ([], [], map (\i -> Constraint_Unify (ts1 !! i) (ts2 !! i) Nothing) injIdx)
                             | f1 == f2, isInjective axs f1, length ts1 /= length ts2 -> return $ Error $ ErrorLabel $ "Different Number of arguments for " ++ show ts1 ++ " and " ++ show ts2
                             | f1 == f2, null ts1 && null ts2 -> return $ Applied ([], [], [])
-                            | f1 == f2, length ts1 == length ts2 -> return NotApplicable  
+                            | f1 == f2, length ts1 == length ts2 -> return NotApplicable
                             | otherwise -> return NotApplicable
                         (MonoType_Fam f ts, _)
                             | (not . all isFamilyFree) ts -> 
@@ -570,6 +570,7 @@ instance IsEquality (RType ConstraintInfo) (Constraint ConstraintInfo) TyVar whe
     isEquality _    = False
     -- splitEquality :: constraint -> (types, types)
     splitEquality (Constraint_Unify m1 m2 _) = (MType m1, MType m2)
+    allowInSubstitution (Constraint_Unify (MonoType_Fam f1 m1) (MonoType_Fam f2 m2) _) = f1 == f2 && m1 == m2
     allowInSubstitution (Constraint_Unify m1 m2 _) = isFamilyFree m1 && isFamilyFree m2
     allowInSubstitution _ = False
 
