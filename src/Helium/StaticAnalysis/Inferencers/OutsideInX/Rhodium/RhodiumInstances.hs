@@ -47,6 +47,7 @@ import Helium.StaticAnalysis.Inferencers.OutsideInX.ConstraintHelper
 import Helium.StaticAnalysis.Inferencers.OutsideInX.Rhodium.RhodiumGenerics
 import Debug.Trace (trace)
 import Helium.StaticAnalysis.Miscellaneous.Unify (preMatch, InjectiveEnv, UnifyResultM (SurelyApart, Unifiable), applySubst, matchTy, SubstitutionEnv, unifyTy, applyOverInjArgs)
+import Helium.Utils.Utils (internalError)
 
 integer2Name :: Integer -> Name a
 integer2Name = makeName ""
@@ -106,7 +107,7 @@ instance (CompareTypes m (RType ConstraintInfo), IsTouchable m TyVar, HasAxioms 
                                 MonoType_App c a  -> do (a2, con1, vars1) <- unfamily a
                                                         (c2, con2, vars2) <- unfamily c
                                                         
-                                                        return $ Applied (if isGiven then [] else vars1 ++ vars2, [], Constraint_Unify (var v) (MonoType_App c2 a2) Nothing : con1 ++ con2)
+                                                        return $ Applied (vars1 ++ vars2, [], Constraint_Unify (var v) (MonoType_App c2 a2) Nothing : con1 ++ con2)
                                 _ -> {-do 
                                     gt <- MType m1 `greaterType` MType m2
                                     if gt then 
@@ -293,7 +294,7 @@ instance (
                 else
                     return NotApplicable
             topLevelReact' _ = return NotApplicable
-    topLevelReact given c@(Constraint_Unify fam@(MonoType_Fam f ms) t _) = (getAxioms >>= loopAxioms improveTopLevelFun) `sequenceReacts` (getAxioms >>= loopAxioms topLevelReact')  
+    topLevelReact given c@(Constraint_Unify (MonoType_Fam f ms) t _) = getAxioms >>= loopAxioms topLevelReact'  
         where
             topLevelReact' :: Axiom ConstraintInfo  -> m (RuleResult ([TyVar], [Constraint ConstraintInfo]))
             topLevelReact' ax@(Axiom_Unify b _) | all isFamilyFree ms, isFamilyFree t =
@@ -306,59 +307,42 @@ instance (
                             res <- runTG ustate :: m (Maybe [(TyVar, RType ConstraintInfo)])
                             case res of
                                 (Just s) -> return $ Applied (if given then [] else fvToList t, [Constraint_Unify (substs (convertSubstitution s) rhs) t Nothing])
-                                _ -> return NotApplicable
+                                -- Try injectivity top level improvement when normal reaction fails
+                                _ -> improveTopLevelFun given c ax
                         _ -> return NotApplicable
             topLevelReact' (Axiom_ClosedGroup af axs) =
                     if f == af
                         then reactClosedTypeFam given c axs
                         else return NotApplicable
             topLevelReact' _ = return NotApplicable
-
-            -- Improves top level constraints when the type family is injective
-            improveTopLevelFun :: Axiom ConstraintInfo -> m (RuleResult ([TyVar], [Constraint ConstraintInfo]))
-            improveTopLevelFun ax@(Axiom_Unify b _) | all isFamilyFree ms, isFamilyFree t =
-                do
-                    (_, (lhs, rhs)) <- unbind b
-                    axs <- getAxioms
-                    case lhs of
-                        -- Only act when type family is injective and the names match.
-                        MonoType_Fam lF _ | f == lF, isInjective axs lF -> do
-                            -- Builds the injective env needed for preMatch and matchTy 
-                            ienv <- axsToInjectiveEnv axs --(trace ("Constraint and Ax: " ++ show c ++ ", " ++ show ax) axs)
-                            let injIdx = ienv M.! f
-                            -- If rhs and t preMatch (M(ti, t0))...
-                            case preMatch ienv rhs t of
-                                SurelyApart -> return NotApplicable
-                                Unifiable psubst -> do
-                                    -- And F (subst(args)) is reducible by the original...
-                                    let substLhs = applySubst psubst lhs
-                                    case matchTy lhs substLhs of
-                                        SurelyApart -> return NotApplicable
-                                        -- Deviate from paper, follow Cobalt, only focus on injective arguments.
-                                        Unifiable _ -> return $ Applied (if given then [] else fvToList fam, [Constraint_Unify (applyOverInjArgs psubst injIdx lhs) fam Nothing])                                            -- Here we deviate from the paper and follow Cobalt (just substitute arguments with what we obtained)
-
-                                            -- We extend the substitution to hold [a -> v] for each var in args(F) not in dom(psubst)
-                                            -- let argVars = [x | (x :: TyVar) <- fvToList lhs, x `notElem` M.keys psubst]
-                                            -- (psubst', tv') <- extendSubst psubst argVars
-                                            -- -- This substitution is applied over the axiom args and a new constraint with t0 n is created for every injective arg.
-                                            -- return $ Applied (if given then tv' else tv' ++ fvToList ms, map (\i -> Constraint_Unify (applySubst psubst' (axmts !! i)) (ms !! i) Nothing) injIdx)
-                        _ -> return NotApplicable 
-            improveTopLevelFun (Axiom_ClosedGroup _ axs) = loopAxioms improveTopLevelFun axs
-            improveTopLevelFun _ = return NotApplicable
-            
-            -- Combines the toplevelFun and normal react sequences (could be made a monad?)
-            sequenceReacts :: m (RuleResult ([TyVar], [Constraint ConstraintInfo])) -> m (RuleResult ([TyVar], [Constraint ConstraintInfo])) -> m (RuleResult ([TyVar], [Constraint ConstraintInfo]))
-            sequenceReacts r1 r2 = do
-                r1' <- r1
-                r2' <- r2
-                case r1' of
-                  NotApplicable -> r2
-                  Applied (tvars1, constr1) -> case r2' of
-                    NotApplicable -> r1
-                    Applied (tvars2, constr2) -> return $ Applied (nub (tvars1 ++ tvars2), constr1 ++ constr2)
-                    Error _ -> r2
-                  Error _ -> r1
     topLevelReact _ _ = return NotApplicable
+
+-- Improves top level constraints when the type family is injective
+improveTopLevelFun :: (Fresh m, HasAxioms m (Axiom ConstraintInfo), MonadFail m) 
+                   => Bool -> Constraint ConstraintInfo -> Axiom ConstraintInfo -> m (RuleResult ([TyVar], [Constraint ConstraintInfo]))
+improveTopLevelFun given (Constraint_Unify fam@(MonoType_Fam f ms) t _) (Axiom_Unify b _) | all isFamilyFree ms, isFamilyFree t =
+    do
+        (_, (lhs, rhs)) <- unbind b
+        axs <- getAxioms
+        case lhs of
+            -- Only act when type family is injective and the names match.
+            MonoType_Fam lF _ | f == lF, isInjective axs lF -> do
+                -- Builds the injective env needed for preMatch and matchTy 
+                ienv <- axsToInjectiveEnv axs --(trace ("Constraint and Ax: " ++ show c ++ ", " ++ show ax) axs)
+                let injIdx = ienv M.! f
+                -- If rhs and t preMatch (M(ti, t0))...
+                case preMatch ienv rhs t of
+                    SurelyApart -> return NotApplicable
+                    Unifiable psubst -> do
+                        -- And F (subst(args)) is reducible by the original...
+                        let substLhs = applySubst psubst lhs
+                        case matchTy lhs substLhs of
+                            SurelyApart -> return NotApplicable
+                            -- Deviate from paper, follow Cobalt, only focus on injective arguments.
+                            Unifiable _ -> return $ Applied (if given then [] else fvToList fam, [Constraint_Unify (applyOverInjArgs psubst injIdx lhs) fam Nothing]) -- Here we deviate from the paper and follow Cobalt (just substitute arguments with what we obtained)
+            _ -> return NotApplicable 
+improveTopLevelFun given c (Axiom_ClosedGroup _ axs) = loopAxioms (improveTopLevelFun given c) axs
+improveTopLevelFun _ _ _ = return NotApplicable
 
 -- Builds the InjectiveEnv from axioms
 axsToInjectiveEnv :: (Fresh m, MonadFail m) => [Axiom ConstraintInfo] -> m InjectiveEnv
@@ -407,7 +391,13 @@ reactClosedTypeFam given = reactClosedTypeFam' []
                       let ustate = unifyTypes [] [] (zipWith (\m l -> Constraint_Unify m l Nothing) ms mts) (aes \\ bes)
                       res <- runTG ustate
                       case res of
-                        Nothing -> reactClosedTypeFam' (seen ++ [ax]) c axs 
+                        Nothing -> do
+                            -- Try injectivity toplevel improvement when normal matching fails.
+                            improveRes <- improveTopLevelFun given c ax
+                            case improveRes of
+                              NotApplicable -> reactClosedTypeFam' (seen ++ [ax]) c axs 
+                              a@(Applied _) -> return a
+                              Error _ -> internalError "RhodiumInstances.hs" "reactClosedTypeFam" "improveTopLevelFun returned an error, should not happen!"
                         Just s -> do
                             compatApartRes <- checkCompatApartness seen ax c
                             if compatApartRes
