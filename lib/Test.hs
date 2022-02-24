@@ -26,8 +26,8 @@ module Test where
 
 type NewInt = Int
 
-main :: Int
-main = f 4
+-- main :: Int
+-- main = f 4
 
 -- mapPlus1 :: [Int] -> [Int]
 -- mapPlus1 = map (\x -> x + 1)
@@ -48,7 +48,7 @@ instance X Int where
 --     J Int Int = Float
 --     J Int Int = Int
 
-type family G a  where   
+type family G a = r | r -> a where   
     G Int = Bool
     G Bool = Int
 
@@ -114,5 +114,9 @@ f x = x
 --     J Int = Int
 --     J Float = Float
 
--- g :: H Int Float
+-- g :: H (J a) (J a)
 -- g = "Hi"
+
+-- Int -> Int > h_
+-- h :: Int -> Int
+-- h = id

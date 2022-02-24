@@ -180,7 +180,7 @@ bindingGroupAnalysis input@(importenv, isTopLevel, axioms, typeSignatures, touch
                                  {- -}                                
                                   {- Solving -}
                                  sBu = sbu4
-                                 sGiven = c2 ++ gCon1
+                                 sGiven = gCon1
                                  sWanted = (if isTopLevel && not (null gadtConstraints) then map (appendGADTInfo resGADTConstraints) else id) (c1 ++ c2 ++ con1 ++ c3 ++ c4 ++ c5 ++ gadtConstraints) 
                                  sTouchables = touchs
                                  sibblings = map (map (second (tpSchemeToPolyType (importEnvironmentToTypeFamilies importenv)))) $ getSiblings importenv
