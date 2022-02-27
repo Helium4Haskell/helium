@@ -145,16 +145,16 @@ bindingGroupAnalysis input@(importenv, isTopLevel, axioms, typeSignatures, touch
                      variableDependencies = foldr' op initial sortedGroups
                         where
                            
-                           instanceTSE :: Integer -> Environment -> TypeSignatures -> (Integer, [Constraint ConstraintInfo])
-                           instanceTSE bu env1 ts = foldr (\(n1, n2, e, t) (cbu, cons) -> 
+                           instanceTSE :: Integer -> Environment -> TypeSignatures -> (Integer, [Constraint ConstraintInfo], [Constraint ConstraintInfo])
+                           instanceTSE bu env1 ts = foldr (\(n1, n2, e, t) (cbu, gcons, wcons) -> 
                                  let 
-                                    (bu', classFixConstraint) =
+                                    (bu', gClassFixConstraint, wClassFixConstraint) =
                                              let 
-                                                (t', b') = freshen cbu $ unbindPolyType t
+                                                ((cs, t'), b') = freshen cbu $ unbindPolyTypeSep t
                                                 ci = Just (cinfoBindingGroupExplicitTypedBinding [] n2 n1 importenv)
-                                             in (b', Constraint_Inst (var e) t' ci : cons)
-                                 in (bu', classFixConstraint)
-                              ) (bu, []) $ M.intersectionWith (\(n1, e) (n2, (b, t)) -> (n1, n2, e, t)) (M.mapWithKey (\k e -> (k, e)) env1) (M.mapWithKey (\k t -> (k, t)) ts)
+                                             in (b', cs ++ gcons , Constraint_Inst (var e) t' ci : wcons)
+                                 in (bu', gClassFixConstraint, wClassFixConstraint)
+                              ) (bu, [], []) $ M.intersectionWith (\(n1, e) (n2, (b, t)) -> (n1, n2, e, t)) (M.mapWithKey (\k e -> (k, e)) env1) (M.mapWithKey (\k t -> (k, t)) ts)
                            extractVariable :: TyVar -> MonoType -> TyVar
                            extractVariable _ (MonoType_Var _ v) = v
                            extractVariable def m = def
@@ -167,7 +167,7 @@ bindingGroupAnalysis input@(importenv, isTopLevel, axioms, typeSignatures, touch
                            op g@(env1, ass1, con1, gCon1, gadtCons) (touchs, ass2, ts2, con2, bu, subsOrig, typeErrors, resolvedConstraints) =
                               let
                                  (sbu1, c1) = instanceTS importenv bu env1 ass1 ts2
-                                 (sbu2, c2) = instanceTSE sbu1 env1 ts2
+                                 (sbu2, gc2, wc2) = instanceTSE sbu1 env1 ts2
                                  env1' = env1 M.\\ ts2
                                  c3 = equalASENV (ass1 M.\\ ts2) env1' 
                                  c4 = concatMap (\(a', e) -> [Constraint_Unify (var a) (var e) (Just emptyConstraintInfo) | (_, a) <- a']) $ M.elems $ M.intersectionWith (,) ass2 env1'
@@ -180,8 +180,9 @@ bindingGroupAnalysis input@(importenv, isTopLevel, axioms, typeSignatures, touch
                                  {- -}                                
                                   {- Solving -}
                                  sBu = sbu4
-                                 sGiven = gCon1
-                                 sWanted = (if isTopLevel && not (null gadtConstraints) then map (appendGADTInfo resGADTConstraints) else id) (c1 ++ c2 ++ con1 ++ c3 ++ c4 ++ c5 ++ gadtConstraints) 
+                                 sGiven = gCon1 ++ gc2
+                                 -- con1 = body constraints, c2 is typesignature constraint
+                                 sWanted = (if isTopLevel && not (null gadtConstraints) then map (appendGADTInfo resGADTConstraints) else id) (trace ("Constr part: " ++ show c1) c1 ++ wc2 ++ con1 ++ c3 ++ c4 ++ c5 ++ gadtConstraints) 
                                  sTouchables = touchs
                                  sibblings = map (map (second (tpSchemeToPolyType (importEnvironmentToTypeFamilies importenv)))) $ getSiblings importenv
                                  (solverResult, bu1)     | isTopLevel = contFreshMRes (solveOU sibblings axioms sGiven sWanted sTouchables) sBu

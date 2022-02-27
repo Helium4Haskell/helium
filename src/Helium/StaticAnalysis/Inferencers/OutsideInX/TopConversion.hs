@@ -30,7 +30,7 @@ module Helium.StaticAnalysis.Inferencers.OutsideInX.TopConversion(
     ,   tfInstanceInfoToMonoTypes
     ,   typeSynonymsToTypeFamilies
     ,   typeFamiliesToAxioms
-
+    ,   unbindPolyTypeSep
 ) where
 
 import Unbound.Generics.LocallyNameless hiding (Name, freshen)
@@ -404,6 +404,16 @@ unbindPolyType' (PolyType_Bind s b) = do
     PolyType_Mono cs p' <- unbindPolyType' p
     return (PolyType_Mono (map (assureRepresentationC t s) cs) (assureRepresentation t s p'))
 unbindPolyType' pt = return pt
+
+unbindPolyTypeSep :: PolyType ConstraintInfo -> ([Constraint ConstraintInfo], PolyType ConstraintInfo)
+unbindPolyTypeSep = runFreshM . unbindPolyTypeSep'
+
+unbindPolyTypeSep' :: PolyType ConstraintInfo -> FreshM ([Constraint ConstraintInfo], PolyType ConstraintInfo)
+unbindPolyTypeSep' (PolyType_Bind s b) = do
+    (t, p) <- unbind b
+    (cs, PolyType_Mono _ p') <- unbindPolyTypeSep' p
+    return (map (assureRepresentationC t s) cs, PolyType_Mono [] p')
+unbindPolyTypeSep' (PolyType_Mono cs pt) = return (cs, PolyType_Mono [] pt)
 
 assureRepresentation :: TyVar -> String -> MonoType -> MonoType
 assureRepresentation t s (MonoType_Var ms v)    | v == t = MonoType_Var (Just s) v
