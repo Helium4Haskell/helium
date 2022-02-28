@@ -247,7 +247,7 @@ instSmallerChecks tyFams dis tis = let
     varOccurenceCheck = [ TFDefVarCountNotSmaller n argVar | 
                           argVar <- concatMap obtainVars argMts
                         , defTF <- defTFs
-                        , sum (map (countOccVar argVar) argMts) <= countOccVar argVar defTF]
+                        , sum (map (countOccVar argVar) argMts) < countOccVar argVar defTF]
     in notTFFree ++ symbolsNotSmaller ++ varOccurenceCheck
   -- checks are done over non-injective families.
   in concatMap (checkInstance . obtainNameArgsDef) (tis \\ obtainInjectiveTFInstances dis tis)

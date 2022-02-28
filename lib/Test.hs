@@ -123,7 +123,7 @@ type family Loop a where
     Loop a = a 
 
 g :: Loop [[[[[[[Char]]]]]]]
-g = "Hi"
+g = 'H'
 
 --h = g + g
 -- Int -> Int > h_
