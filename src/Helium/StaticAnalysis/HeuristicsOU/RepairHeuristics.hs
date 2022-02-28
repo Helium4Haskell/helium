@@ -99,7 +99,7 @@ applicationHeuristic = SingleVoting "Application heuristic" f
                let edge = getEdgeFromId graph eid
                doWithoutEdge eid $ 
                   do
-                     let Constraint_Unify t1 t2 _ = trace (show constraint) constraint
+                     let Constraint_Unify t1 t2 _ = constraint
                      maybeExpectedType <- getSubstTypeFull (getGroupFromEdge edge) $ MType t1
                      maybeFunctionType <- getSubstTypeFull (getGroupFromEdge edge) $ MType t2
                      graph <- getGraph
@@ -164,10 +164,10 @@ applicationHeuristic = SingleVoting "Application heuristic" f
                            | minimumForContext > numberOfArguments && not isPatternApplication && contextIsUnifiable ->
                               case typesZippedWithHoles of
          
-                                 [is] | not isBinary 
+                                 [is] | not (trace (show is ++ ", " ++ show isBinary) isBinary) 
                                        -> let hint = fixHint ("insert a "++prettyAndList (map (ordinal True . (+1)) is)++" argument")
                                           in return $ Just
-                                                (4, "not enough arguments are given"++show is, constraint, eid,  addProperties (IsTypeError : map ApplicationTypeSignature providedTs) $ hint ci, removeEdgeAndTsModifier)
+                                                (5, "not enough arguments are given"++show is, constraint, eid,  addProperties (IsTypeError : map ApplicationTypeSignature providedTs) $ hint ci, removeEdgeAndTsModifier)
          
                                  _   -> let hint = becauseHint "not enough arguments are given"
                                           in return $ Just
