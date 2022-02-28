@@ -95,125 +95,126 @@ applicationHeuristic = SingleVoting "Application heuristic" f
                   return Nothing
                else do
                graph <- getGraph
-               let edge = getEdgeFromId graph eid
-               -- doWithoutEdge eid $ do
                axioms <- getAxioms 
-               let Constraint_Unify t1 t2 _ = constraint
-               maybeExpectedType <- getSubstTypeFull (getGroupFromEdge edge) $ MType t1
-               maybeFunctionType <- getSubstTypeFull (getGroupFromEdge edge) $ MType t2
-               graph <- getGraph
-               let   isTs (Constraint_Inst m _ _) = m == t1
-                     isTs _ = False
-               let providedTs = map (\(Constraint_Inst _ p _) -> p) $ filter isTs $ map getConstraintFromEdge $ filter isConstraintEdge $ M.elems (edges graph)
-               case (maybeFunctionType, maybeExpectedType) of 
-                  (MType functionType, MType expectedType)
-                     | length tuplesForArguments > length functionArguments -> error $ show ("Length not correct", functionType, expectedType, constraint, ci)
-                     | length argumentPermutations == 1 && length (concat argumentPermutations) > 1 -> 
-                        let p = head argumentPermutations
-                        in 
-                        if p==[1,0] && isBinary
-                           then 
-                                 let hint = setTypePair (expectedType, functionType) . fixHint "swap the two arguments"
-                                 in return $ Just
-                                       (3, "swap the two arguments", constraint, eid, addProperties (IsTypeError : map ApplicationTypeSignature providedTs) $ hint ci, removeEdgeAndTsModifier)
-                           else         
-                                 let hint = setTypePair (expectedType, functionType) . fixHint "re-order arguments"                              
-                                 in return $ Just
-                                       (1, "application: permute with "++show p, constraint, eid,  addProperties (IsTypeError : map ApplicationTypeSignature providedTs) $ hint ci, removeEdgeAndTsModifier)
-                     | length incorrectArguments == 1  ->
-                        do 
-                           let   
-                                 i           = head incorrectArguments
-                                 (source,tp) = tuplesForArguments !! i
-                                 range       = rangeOfSource source
-                                 oneLiner    = oneLinerSource source
-                           MType tp'         <- getSubstTypeFull (getGroupFromEdge edge) $ MType tp
-                           let expargtp      = fst (functionSpine expectedType) !! i
-                           let infoFun       = typeErrorForTerm (isBinary,isPatternApplication) i oneLiner expectedType (tp',expargtp) range
-                           return $ Just 
-                                 (3, "incorrect argument of application="++show i, constraint, eid, addProperty IsTypeError $ infoFun ci, gm)
-                     | maybe False (< numberOfArguments) maximumForFunction && not isPatternApplication ->
-                        case typesZippedWithHoles of
-                           -- there is only one possible set to remove arguments 
-                           [is] | not isBinary && maybe True (>= 1) maximumForFunction
-                                 -> let hint = fixHint ("remove "++prettyAndList (map (ordinal True . (+1)) is)++" argument")
-                                    in return $ Just
-                                          (4, "too many arguments are given: "++show is, constraint, eid,  addProperties (IsTypeError : map ApplicationTypeSignature providedTs) $ hint ci, removeEdgeAndTsModifier)
-   
-   
-                           _    -- the expression to which arguments are given does not have a function type
-                                 | maybe False (<= 0) maximumForFunction && not isBinary && not (isPattern ci) ->                       
-                                       let hint = becauseHint "it is not a function"
+               let edge = getEdgeFromId graph eid
+               doWithoutEdge eid $ 
+                  do
+                     let Constraint_Unify t1 t2 _ = trace (show constraint) constraint
+                     maybeExpectedType <- getSubstTypeFull (getGroupFromEdge edge) $ MType t1
+                     maybeFunctionType <- getSubstTypeFull (getGroupFromEdge edge) $ MType t2
+                     graph <- getGraph
+                     let   isTs (Constraint_Inst m _ _) = m == t1
+                           isTs _ = False
+                     let providedTs = map (\(Constraint_Inst _ p _) -> p) $ filter isTs $ map getConstraintFromEdge $ filter isConstraintEdge $ M.elems (edges graph)
+                     case (maybeFunctionType, maybeExpectedType) of 
+                        (MType functionType, MType expectedType)
+                           | length tuplesForArguments > length functionArguments -> error $ show ("Length not correct", functionType, expectedType, constraint, ci)
+                           | length argumentPermutations == 1 && length (concat argumentPermutations) > 1 -> 
+                              let p = head argumentPermutations
+                              in 
+                              if trace ("BINARY P: " ++ show isBinary ++ ", " ++ show p ++ ", " ++ show argumentPermutations) p==[1,0] && isBinary
+                                 then 
+                                       let hint = setTypePair (expectedType, functionType) . fixHint "swap the two arguments"
                                        in return $ Just
-                                             (6, "not a function", constraint, eid,  addProperties (IsTypeError : map ApplicationTypeSignature providedTs) $ hint ci, removeEdgeAndTsModifier)
-   
-                                 -- function used as infix that expects < 2 arguments
-                                 | maybe False (<= 1) maximumForFunction && isBinary && not (isPattern ci) ->
-                                       let hint = becauseHint "it is not a binary function"
+                                             (3, "swap the two arguments", constraint, eid, addProperties (IsTypeError : map ApplicationTypeSignature providedTs) $ hint ci, removeEdgeAndTsModifier)
+                                 else         
+                                       let hint = setTypePair (expectedType, functionType) . fixHint "re-order arguments"                              
                                        in return $ Just
-                                             (6, "no binary function", constraint, eid,  addProperties (IsTypeError : map ApplicationTypeSignature providedTs) $ hint ci, removeEdgeAndTsModifier)
-   
-                           -- more than one or no possible set of arguments to be removed
-                                 | otherwise -> 
-                                       let hint = becauseHint "too many arguments are given"
-                                       in return $ Just
-                                             (2, "too many arguments are given", constraint, eid,  addProperties (IsTypeError : map ApplicationTypeSignature providedTs) $ hint ci, removeEdgeAndTsModifier)
-                                       
-                     -- not enough arguments are given
-                     | minimumForContext > numberOfArguments && not isPatternApplication && contextIsUnifiable ->
-                        case typesZippedWithHoles of
-   
-                           [is] | not isBinary 
-                                 -> let hint = fixHint ("insert a "++prettyAndList (map (ordinal True . (+1)) is)++" argument")
-                                    in return $ Just
-                                          (4, "not enough arguments are given"++show is, constraint, eid,  addProperties (IsTypeError : map ApplicationTypeSignature providedTs) $ hint ci, removeEdgeAndTsModifier)
-   
-                           _   -> let hint = becauseHint "not enough arguments are given"
-                                    in return $ Just
-                                          (2, "not enough arguments are given", constraint, eid,  addProperties (IsTypeError : map ApplicationTypeSignature providedTs) $ hint ci, removeEdgeAndTsModifier)
-               
-                     | otherwise -> return Nothing
+                                             (1, "application: permute with "++show p, constraint, eid,  addProperties (IsTypeError : map ApplicationTypeSignature providedTs) $ hint ci, removeEdgeAndTsModifier)
+                           | length incorrectArguments == 1  ->
+                              do 
+                                 let   
+                                       i           = head incorrectArguments
+                                       (source,tp) = tuplesForArguments !! i
+                                       range       = rangeOfSource source
+                                       oneLiner    = oneLinerSource source
+                                 MType tp'         <- getSubstTypeFull (getGroupFromEdge edge) $ MType tp
+                                 let expargtp      = fst (functionSpine expectedType) !! i
+                                 let infoFun       = typeErrorForTerm (isBinary,isPatternApplication) i oneLiner expectedType (tp',expargtp) range
+                                 return $ Just 
+                                       (3, "incorrect argument of application="++show i, constraint, eid, addProperty IsTypeError $ infoFun ci, gm)
+                           | maybe False (< numberOfArguments) maximumForFunction && not isPatternApplication ->
+                              case typesZippedWithHoles of
+                                 -- there is only one possible set to remove arguments 
+                                 [is] | not isBinary && maybe True (>= 1) maximumForFunction
+                                       -> let hint = fixHint ("remove "++prettyAndList (map (ordinal True . (+1)) is)++" argument")
+                                          in return $ Just
+                                                (4, "too many arguments are given: "++show is, constraint, eid,  addProperties (IsTypeError : map ApplicationTypeSignature providedTs) $ hint ci, removeEdgeAndTsModifier)
          
-                    where
-                     unifiableTypeLists :: [MonoType] -> [MonoType] -> Maybe [(TyVar, RType ConstraintInfo)]
-                     unifiableTypeLists s1 s2 = runFreshM (runTG (unifiableTypeLists' s1 s2))
-                     unifiableTypeLists' :: (Fresh m, MonadIO m, MonadFail m) => [MonoType] -> [MonoType] -> TGStateM m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo (Maybe [(TyVar, RType ConstraintInfo)])
-                     unifiableTypeLists' s1 s2 = unifyTypes axioms [] [Constraint_Unify (monotypeTuple s1) (monotypeTuple s2) Nothing] (nub (fvToList functionType ++ fvToList expectedType))
-                     numberOfArguments = length tuplesForArguments     
-                     argumentPermutations = 
-                                    [ p 
-                                    | length functionArguments == length expectedArguments 
-                                    , p <- take heuristicsMAX (permutationsForLength numberOfArguments)
-                                    , isJust (unifiableTypeLists (functionResult : functionArguments) 
-                                                         (expectedResult : permute p expectedArguments)) 
-                                    ]   
-                     (functionArguments, functionResult) = functionSpineOfLength numberOfArguments functionType
-                     (expectedArguments, expectedResult) = functionSpineOfLength numberOfArguments expectedType
-                     isPatternApplication = isPattern ci
-                     incorrectArguments = [ i 
-                        | length functionArguments == length expectedArguments 
-                        , i <- [0..numberOfArguments-1]
-                        , isNothing (unifiableTypeLists [functionArguments !! i] [expectedArguments !! i])
-                        , isJust (unifiableTypeLists (functionResult : deleteIndex i functionArguments) 
-                                             (expectedResult : deleteIndex i expectedArguments))
-                        ]
-                     maximumForFunction = case functionSpine expectedType of
-                           ([], MonoType_Var  _ _) -> Nothing
-                           (tps, _   ) -> Just (length tps)
-   
-                     -- minimum number of arguments that should be applied to the function to meet the expected context type
-                     minimumForContext = length allFunctionArgs + numberOfArguments - length allExpectedArgs
+         
+                                 _    -- the expression to which arguments are given does not have a function type
+                                       | maybe False (<= 0) maximumForFunction && not isBinary && not (isPattern ci) ->                       
+                                             let hint = becauseHint "it is not a function"
+                                             in return $ Just
+                                                   (6, "not a function", constraint, eid,  addProperties (IsTypeError : map ApplicationTypeSignature providedTs) $ hint ci, removeEdgeAndTsModifier)
+         
+                                       -- function used as infix that expects < 2 arguments
+                                       | maybe False (<= 1) maximumForFunction && isBinary && not (isPattern ci) ->
+                                             let hint = becauseHint "it is not a binary function"
+                                             in return $ Just
+                                                   (6, "no binary function", constraint, eid,  addProperties (IsTypeError : map ApplicationTypeSignature providedTs) $ hint ci, removeEdgeAndTsModifier)
+         
+                                 -- more than one or no possible set of arguments to be removed
+                                       | otherwise -> 
+                                             let hint = becauseHint "too many arguments are given"
+                                             in return $ Just
+                                                   (2, "too many arguments are given", constraint, eid,  addProperties (IsTypeError : map ApplicationTypeSignature providedTs) $ hint ci, removeEdgeAndTsModifier)
+                                             
+                           -- not enough arguments are given
+                           | minimumForContext > numberOfArguments && not isPatternApplication && contextIsUnifiable ->
+                              case typesZippedWithHoles of
+         
+                                 [is] | not isBinary 
+                                       -> let hint = fixHint ("insert a "++prettyAndList (map (ordinal True . (+1)) is)++" argument")
+                                          in return $ Just
+                                                (4, "not enough arguments are given"++show is, constraint, eid,  addProperties (IsTypeError : map ApplicationTypeSignature providedTs) $ hint ci, removeEdgeAndTsModifier)
+         
+                                 _   -> let hint = becauseHint "not enough arguments are given"
+                                          in return $ Just
+                                                (2, "not enough arguments are given", constraint, eid,  addProperties (IsTypeError : map ApplicationTypeSignature providedTs) $ hint ci, removeEdgeAndTsModifier)
                      
-                     -- is the context unifiable?
-                     contextIsUnifiable    = isJust $ unifiableTypeLists [functionResult] [snd (functionSpineOfLength minimumForContext expectedType)]
-                     (allFunctionArgs, allFunctionRes) = functionSpine expectedType
-                     (allExpectedArgs, allExpectedRes) = functionSpine functionType
-                     typesZippedWithHoles  = [ is 
-                        | (is,zl) <- take heuristicsMAX (zipWithHoles allFunctionArgs allExpectedArgs)
-                        , let (as,bs) = unzip zl
-                        , isJust $ unifiableTypeLists (allFunctionRes : as) 
-                                             (allExpectedRes : bs)
-                        ]                     
+                           | otherwise -> return Nothing
+               
+                              where
+                                 unifiableTypeLists :: [MonoType] -> [MonoType] -> Maybe [(TyVar, RType ConstraintInfo)]
+                                 unifiableTypeLists s1 s2 = runFreshM (runTG (unifiableTypeLists' s1 s2))
+                                 unifiableTypeLists' :: (Fresh m, MonadIO m, MonadFail m) => [MonoType] -> [MonoType] -> TGStateM m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo (Maybe [(TyVar, RType ConstraintInfo)])
+                                 unifiableTypeLists' s1 s2 = unifyTypes axioms [] [Constraint_Unify (monotypeTuple s1) (monotypeTuple s2) Nothing] (nub (fvToList functionType ++ fvToList expectedType))
+                                 numberOfArguments = length tuplesForArguments     
+                                 argumentPermutations = 
+                                                [ p 
+                                                | length functionArguments == length expectedArguments 
+                                                , p <- take heuristicsMAX (permutationsForLength numberOfArguments)
+                                                , isJust (unifiableTypeLists (functionResult : functionArguments) 
+                                                                     (expectedResult : permute p expectedArguments))
+                                                ]   
+                                 (functionArguments, functionResult) = functionSpineOfLength numberOfArguments functionType
+                                 (expectedArguments, expectedResult) = functionSpineOfLength numberOfArguments expectedType
+                                 isPatternApplication = isPattern ci
+                                 incorrectArguments = [ i 
+                                    | length functionArguments == length expectedArguments 
+                                    , i <- [0..numberOfArguments-1]
+                                    , isNothing (unifiableTypeLists [functionArguments !! i] [expectedArguments !! i])
+                                    , isJust (unifiableTypeLists (functionResult : deleteIndex i functionArguments) 
+                                                         (expectedResult : deleteIndex i expectedArguments))
+                                    ]
+                                 maximumForFunction = case functionSpine expectedType of
+                                       ([], MonoType_Var  _ _) -> Nothing
+                                       (tps, _   ) -> Just (length tps)
+
+                                 -- minimum number of arguments that should be applied to the function to meet the expected context type
+                                 minimumForContext = length allFunctionArgs + numberOfArguments - length allExpectedArgs
+                                 
+                                 -- is the context unifiable?
+                                 contextIsUnifiable    = isJust $ unifiableTypeLists [functionResult] [snd (functionSpineOfLength minimumForContext expectedType)]
+                                 (allFunctionArgs, allFunctionRes) = functionSpine expectedType
+                                 (allExpectedArgs, allExpectedRes) = functionSpine functionType
+                                 typesZippedWithHoles  = [ is 
+                                    | (is,zl) <- take heuristicsMAX (zipWithHoles allFunctionArgs allExpectedArgs)
+                                    , let (as,bs) = unzip zl
+                                    , isJust $ unifiableTypeLists (allFunctionRes : as) 
+                                                         (allExpectedRes : bs)
+                                    ]                     
 
 zipWithHoles :: [a] -> [b] -> [ ( [Int] , [(a,b)] ) ] 
 zipWithHoles = rec_ 0 where

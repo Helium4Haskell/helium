@@ -101,7 +101,7 @@ runModGraph vars axioms graph = do
             initializeAxioms axioms
             g' <- simplifyGraph False graph
             
-            return (graphToSolveResult False [] g', g')
+            return (graphToSolveResult axioms False [] g', g')
         )
         
 

@@ -554,15 +554,32 @@ instance (IsTouchable m TyVar, HasGraph m TyVar (RType ConstraintInfo) (Constrai
         return $ markTouchables (map (\v -> (v, priority + 2)) vars) (insertGraphs emptyTGGraph (given' ++ wanted'))
         --error $ show (vars, given, wanted)
 
-instance IsEquality (RType ConstraintInfo) (Constraint ConstraintInfo) TyVar where
+instance IsEquality (Axiom ConstraintInfo) (RType ConstraintInfo) (Constraint ConstraintInfo) TyVar where
     -- isEquality :: constraint -> Bool
     isEquality (Constraint_Unify _ _ _) = True
     isEquality _    = False
     -- splitEquality :: constraint -> (types, types)
     splitEquality (Constraint_Unify m1 m2 _) = (MType m1, MType m2)
-    allowInSubstitution (Constraint_Unify (MonoType_Fam f1 m1) (MonoType_Fam f2 m2) _) = f1 == f2 && m1 == m2
-    allowInSubstitution (Constraint_Unify m1 m2 _) = isFamilyFree m1 && isFamilyFree m2
-    allowInSubstitution _ = False
+    -- Interesting case for a constraint (G a ~ x) with G injective in argument a and x touchable. Could later be solved in a certain usage
+    -- so we allow it in the substitution.
+    -- This is subject to change.
+    allowInSubstitution axs thcs (Constraint_Unify (MonoType_Fam f mts) (MonoType_Var _ v) _)
+        -- G is injective
+        | (Just injArgs) <- injectiveArgs axs f
+        -- x is touchable
+        , v `elem` (thcs :: [TyVar]) 
+        = let
+            -- all argument vars
+            allVars = filter isVar mts
+            -- all injective vars
+            injVars = [x | (n, x@(MonoType_Var _ v1)) <- zip [0..] mts, n `elem` injArgs, v1 `notElem` thcs]
+            isVar (MonoType_Var _ _) = True
+            isVar _                  = False
+            -- allVars and injVars must be equal, this says: all remaining vars are injective and may be determined when we know x.
+            in allVars == injVars
+    allowInSubstitution _ _ (Constraint_Unify (MonoType_Fam f1 m1) (MonoType_Fam f2 m2) _) = f1 == f2 && m1 == m2
+    allowInSubstitution _ _ (Constraint_Unify m1 m2 _) = isFamilyFree m1 && isFamilyFree m2
+    allowInSubstitution _ _ _ = False
 
 
 instance CanCompareTouchable TyVar (RType ConstraintInfo) where

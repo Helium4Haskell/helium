@@ -48,9 +48,9 @@ instance X Int where
 --     J Int Int = Float
 --     J Int Int = Int
 
--- type family G a = r | r -> a where   
---     G Int = Bool
---     G Bool = Int
+type family G a = r | r -> a where   
+    G Int = Bool
+    G Bool = Int
 
 -- type family Z a = r | r -> a
 -- type instance Z [a] = (a, a)
@@ -92,6 +92,9 @@ data Tree a = Node a (Tree a) (Tree a) | Leaf
 -- f :: G a -> G a
 -- f x = x
 
+-- f2 :: Int
+-- f2 = f 3
+
 -- type family FloatInt a b where
 --     FloatInt a a = Float
 --     FloatInt a b = Int
@@ -108,18 +111,30 @@ data Tree a = Node a (Tree a) (Tree a) | Leaf
 
 type family H a b where
     H Float Int = Int
+    H Int Float = String
     H Int Int = Float
 
 type family J a where
     J Int = Int
     J Float = Float
 
-g :: H Int Float
+type family Loop a where
+    Loop [a] = Loop a
+    Loop a = a 
+
+g :: Loop [[[[[[[Char]]]]]]]
 g = "Hi"
 
+--h = g + g
 -- Int -> Int > h_
 -- h :: Int -> Int
 -- h = id
 
 -- k :: Eq a => a -> a -> Bool
 -- k x y = x == y
+
+-- type family K a
+-- type instance K Int = Int
+
+-- f :: [Int]
+-- f = [] : (3 :: K Int)
