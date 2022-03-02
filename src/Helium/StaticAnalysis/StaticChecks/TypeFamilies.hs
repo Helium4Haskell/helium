@@ -27,13 +27,13 @@ import Unbound.Generics.LocallyNameless.Fresh (FreshM)
 
 -- Checks if a MonoType is as a whole a type family application
 isTFApplication :: MonoType -> Bool 
-isTFApplication (MonoType_Fam _ _) = True 
-isTFApplication _                  = False
+isTFApplication MonoType_Fam{} = True 
+isTFApplication _              = False
 
 -- Checks if the MonoType is a bare variable
 isBareVariable :: MonoType -> Bool
-isBareVariable (MonoType_Var _ _) = True
-isBareVariable _                  = False
+isBareVariable MonoType_Var{} = True
+isBareVariable _              = False
 
 --------------------------------------
 -- Declaration static checks, SEPARATE CHECKS
@@ -203,30 +203,30 @@ instSmallerChecks :: TypeFamilies -> TFDeclInfos -> TFInstanceInfos -> Errors
 instSmallerChecks tyFams dis tis = let
 
   obtainDefTyFam :: MonoType -> MonoTypes
-  obtainDefTyFam t@(MonoType_Fam _ mts) = t : concatMap obtainDefTyFam mts
-  obtainDefTyFam (MonoType_App mt1 mt2) = obtainDefTyFam mt1 ++ obtainDefTyFam mt2
+  obtainDefTyFam t@(MonoType_Fam _ mts _) = t : concatMap obtainDefTyFam mts
+  obtainDefTyFam (MonoType_App mt1 mt2 _) = obtainDefTyFam mt1 ++ obtainDefTyFam mt2
   obtainDefTyFam _                      = []
   
   obtainNameArgsDef :: TFInstanceInfo -> (Name, Types, Type)
   obtainNameArgsDef i = (tfiName i, argTypes i, defType i)
 
   obtainVars :: MonoType -> [String]
-  obtainVars (MonoType_Var (Just s) _) = [s]
-  obtainVars (MonoType_Con _)          = []
-  obtainVars (MonoType_Fam _ mts)      = nub $ concatMap obtainVars mts
-  obtainVars (MonoType_App mt1 mt2)    = nub $ obtainVars mt1 ++ obtainVars mt2
+  obtainVars (MonoType_Var (Just s) _ _) = [s]
+  obtainVars (MonoType_Con _ _)          = []
+  obtainVars (MonoType_Fam _ mts _)      = nub $ concatMap obtainVars mts
+  obtainVars (MonoType_App mt1 mt2 _)    = nub $ obtainVars mt1 ++ obtainVars mt2
 
   countSymbols :: MonoType -> Int
-  countSymbols (MonoType_Var _ _)     = 1
-  countSymbols (MonoType_Con _)       = 1
-  countSymbols (MonoType_Fam _ mts)   = sum $ map countSymbols mts
-  countSymbols (MonoType_App mt1 mt2) = countSymbols mt1 + countSymbols mt2
+  countSymbols MonoType_Var{}     = 1
+  countSymbols (MonoType_Con _ _) = 1
+  countSymbols (MonoType_Fam _ mts _)   = sum $ map countSymbols mts
+  countSymbols (MonoType_App mt1 mt2 _) = countSymbols mt1 + countSymbols mt2
 
   countOccVar :: String -> MonoType -> Int
-  countOccVar v (MonoType_Var (Just s) _) | v == s = 1
-                                          | otherwise = 0
-  countOccVar v (MonoType_Fam _ mts)      = sum $ map (countOccVar v) mts
-  countOccVar v (MonoType_App mt1 mt2)    = countOccVar v mt1 + countOccVar v mt2
+  countOccVar v (MonoType_Var (Just s) _ _) | v == s = 1
+                                            | otherwise = 0
+  countOccVar v (MonoType_Fam _ mts _)      = sum $ map (countOccVar v) mts
+  countOccVar v (MonoType_App mt1 mt2 _)    = countOccVar v mt1 + countOccVar v mt2
   countOccVar _ _                         = 0
 
   checkInstance :: (Name, Types, Type) -> Errors
@@ -236,7 +236,7 @@ instSmallerChecks tyFams dis tis = let
 
     defTFs = obtainDefTyFam defMt
     -- First smaller check (def must be family free)
-    notTFFree = case filter (\(MonoType_Fam _ mts) -> not $ all isFamilyFree mts) defTFs of
+    notTFFree = case filter (\(MonoType_Fam _ mts _) -> not $ all isFamilyFree mts) defTFs of
                   [] -> []
                   xs -> [TFFamInDefNotFamFree n xs]
 
@@ -372,7 +372,7 @@ pairwiseInjCheck fams ienv (inst1, inst2) = let
   axiom1 = tfInstanceInfoToAxiom fams inst1
   axiom2 = tfInstanceInfoToAxiom fams inst2
   
-  ((clhs1@(MonoType_Fam _ lhs1), rhs1), (clhs2@(MonoType_Fam _ lhs2), rhs2)) = runFreshM $ unbindAx axiom1 axiom2
+  ((clhs1@(MonoType_Fam _ lhs1 _), rhs1), (clhs2@(MonoType_Fam _ lhs2 _), rhs2)) = runFreshM $ unbindAx axiom1 axiom2
 
   in case preUnify ienv rhs1 rhs2 of
             -- RHSs surely apart, No error, no clashing.
@@ -406,7 +406,7 @@ wronglyUsedVarInInjCheck :: TypeFamilies -> InjectiveEnv -> TFInstanceInfo -> Ma
 wronglyUsedVarInInjCheck fams ienv inst = let
 
   (Axiom_Unify b _) = tfInstanceInfoToAxiom fams inst
-  (_, (lhs@(MonoType_Fam f mts), rhs)) = runFreshM $ unbind b
+  (_, (lhs@(MonoType_Fam f mts _), rhs)) = runFreshM $ unbind b
   
   injMts = map (mts !!) $ ienv M.! f
   -- gets the vars in the injective arguments of the LHS
@@ -425,18 +425,18 @@ wronglyUsedVarInInjCheck fams ienv inst = let
 
 -- Simply obtains the vars in a monotype.
 varTupleSet :: MonoType -> S.Set (String, TyVar)
-varTupleSet (MonoType_Var (Just s) v) = S.singleton (s, v)
-varTupleSet (MonoType_Con _)          = S.empty 
-varTupleSet (MonoType_App mt1 mt2)    = varTupleSet mt1 `S.union` varTupleSet mt2
-varTupleSet (MonoType_Fam _ mts)      = foldl (\s mt -> s `S.union` varTupleSet mt) S.empty mts
+varTupleSet (MonoType_Var (Just s) v _) = S.singleton (s, v)
+varTupleSet (MonoType_Con _ _)          = S.empty 
+varTupleSet (MonoType_App mt1 mt2 _)    = varTupleSet mt1 `S.union` varTupleSet mt2
+varTupleSet (MonoType_Fam _ mts _)      = foldl (\s mt -> s `S.union` varTupleSet mt) S.empty mts
 
 -- Obtains injective vars inside the RHS
 injVarsOfMonoType :: InjectiveEnv -> Bool -> MonoType -> S.Set (String, TyVar)
-injVarsOfMonoType _   _          (MonoType_Var (Just s) v) = S.singleton (s, v)
-injVarsOfMonoType _   _          (MonoType_Con _)   = S.empty 
-injVarsOfMonoType env look_under (MonoType_App mt1 mt2) 
+injVarsOfMonoType _   _          (MonoType_Var (Just s) v _) = S.singleton (s, v)
+injVarsOfMonoType _   _          (MonoType_Con _ _)   = S.empty 
+injVarsOfMonoType env look_under (MonoType_App mt1 mt2 _) 
   = injVarsOfMonoType env look_under mt1 `S.union` injVarsOfMonoType env look_under mt2
-injVarsOfMonoType env look_under (MonoType_Fam f mts)
+injVarsOfMonoType env look_under (MonoType_Fam f mts _)
   = case M.lookup f env of
     Nothing -> S.empty
     Just idxs

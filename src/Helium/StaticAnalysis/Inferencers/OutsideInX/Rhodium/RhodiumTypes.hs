@@ -57,46 +57,69 @@ instance VariableInjection (PolyType ci) where
     var = PolyType_Mono [] . var
   
 instance VariableInjection MonoType where
-    var = MonoType_Var Nothing
+    var v = MonoType_Var Nothing v Nothing
 
 type MonoTypes = [MonoType]
 
+type ReductionTrace = [ReductionStep]
+type ReductionStep = (MonoType, MonoType, Constraint (), ReductionType)
+
+data ReductionType
+  = LeftToRight
+  | TopLevelImprovement
+  | CanonReduction
+  deriving (Generic, Ord, Eq, Show)
+
+insertReductionStepMaybe :: MonoType -> Maybe ReductionStep -> MonoType
+insertReductionStepMaybe m (Just rs) = insertReductionStep m rs
+insertReductionStepMaybe m Nothing   = m
+
+insertReductionStep :: MonoType -> ReductionStep -> MonoType
+insertReductionStep (MonoType_Var ms v _) rs  = MonoType_Var ms v (Just rs)
+insertReductionStep (MonoType_Fam f mts _) rs = MonoType_Fam f mts (Just rs)
+insertReductionStep (MonoType_Con s _) rs     = MonoType_Con s (Just rs)
+insertReductionStep (MonoType_App m1 m2 _) rs = MonoType_App m1 m2 (Just rs)
+
+removeCI :: Constraint ci -> Constraint ()
+removeCI (Constraint_Unify m1 m2 _) = Constraint_Unify m1 m2 Nothing
+removeCI _ = internalError "RhodiumTypes.hs" "removeCI" "removeCI should only be performed over unify constraints!"
+
 data MonoType 
-    = MonoType_Fam   String [MonoType]
-    | MonoType_Var   (Maybe String) TyVar
-    | MonoType_Con   String 
-    | MonoType_App   MonoType MonoType
+    = MonoType_Fam   String [MonoType] (Maybe ReductionStep)
+    | MonoType_Var   (Maybe String) TyVar (Maybe ReductionStep)
+    | MonoType_Con   String (Maybe ReductionStep)
+    | MonoType_App   MonoType MonoType (Maybe ReductionStep)
     deriving (Ord, Generic)
 
 instance Eq MonoType where
-    MonoType_Fam s1 ms1 == MonoType_Fam s2 ms2 = s1 == s2 && ms1 == ms2
-    MonoType_Var _ v1 == MonoType_Var _ v2 = v1 == v2
-    MonoType_Con s1 == MonoType_Con s2 = s1 == s2
-    MonoType_App f1 a1 == MonoType_App f2 a2 = f1 == f2 && a1 == a2
+    MonoType_Fam s1 ms1 _== MonoType_Fam s2 ms2 _= s1 == s2 && ms1 == ms2
+    MonoType_Var _ v1 _ == MonoType_Var _ v2 _ = v1 == v2
+    MonoType_Con s1 _ == MonoType_Con s2 _ = s1 == s2
+    MonoType_App f1 a1 _ == MonoType_App f2 a2 _ = f1 == f2 && a1 == a2
     _ == _ = False
 
 isFamilyFree :: MonoType -> Bool
-isFamilyFree (MonoType_Con _)       = True
-isFamilyFree (MonoType_Fam _ _)     = False
-isFamilyFree (MonoType_Var _ _)     = True
-isFamilyFree (MonoType_App a1 a2)   = isFamilyFree a1 && isFamilyFree a2
+isFamilyFree (MonoType_Con _ _)       = True
+isFamilyFree (MonoType_Fam _ _ _)     = False
+isFamilyFree (MonoType_Var _ _ _)     = True
+isFamilyFree (MonoType_App a1 a2 _)   = isFamilyFree a1 && isFamilyFree a2
 
-pattern s :-->: r          = MonoType_App   (MonoType_App (MonoType_Con "->") s) r
-pattern MonoType_List  t   = MonoType_App   (MonoType_Con   "List") t
-pattern MonoType_Tuple a b = MonoType_App   (MonoType_App (MonoType_Con "Tuple2") a) b
+pattern s :-->: r        = MonoType_App (MonoType_App (MonoType_Con "->" Nothing) s Nothing) r Nothing
+pattern MonoType_List t ri  = MonoType_App (MonoType_Con   "List" Nothing) t ri
+pattern MonoType_Tuple a b ri = MonoType_App (MonoType_App (MonoType_Con "Tuple2" Nothing) a Nothing) b ri
 
 instance Show MonoType where
     show = showMT []
 showMT :: [(TyVar, String)] -> MonoType -> String
-showMT mp (MonoType_List t)      = "[" ++ showMT mp t ++ "]"
-showMT mp (MonoType_App (MonoType_Con "[]") t) = "[" ++ showMT mp t ++ "]"
-showMT mp (MonoType_Tuple t1 t2) = "(" ++ showMT mp t1 ++ "," ++ showMT mp t2 ++ ")"
-showMT mp (MonoType_Con c)       = c 
-showMT mp (MonoType_Fam c a)     = c ++ concatMap (\x -> " " ++ doParens (showMT mp x)) a
+showMT mp (MonoType_List t _)      = "[" ++ showMT mp t ++ "]"
+showMT mp (MonoType_App (MonoType_Con "[]" _) t _) = "[" ++ showMT mp t ++ "]"
+showMT mp (MonoType_Tuple t1 t2 _) = "(" ++ showMT mp t1 ++ "," ++ showMT mp t2 ++ ")"
+showMT mp (MonoType_Con c _)       = c 
+showMT mp (MonoType_Fam c a _)     = c ++ concatMap (\x -> " " ++ doParens (showMT mp x)) a
 showMT mp (s :-->: t)            = doParens (showMT mp s) ++ " -> " ++ showMT mp t
-showMT mp (MonoType_Var s v)     = let r = fromMaybe (fromMaybe (show v) s) (lookup v mp) in if r == "" then show v else r
-showMT mp ma@(MonoType_App f a)  = case separateMt ma of 
-                                    (MonoType_Con s, tp) | length s > 2 && head s == '(' && last s == ')' && all (==',') (tail (init s)) ->
+showMT mp (MonoType_Var s v _)     = let r = fromMaybe (fromMaybe (show v) s) (lookup v mp) in if r == "" then show v else r
+showMT mp ma@(MonoType_App f a _)  = case separateMt ma of 
+                                    (MonoType_Con s _, tp) | length s > 2 && head s == '(' && last s == ')' && all (==',') (tail (init s)) ->
                                        "(" ++ intercalate ", " (map show tp) ++ ")"
                                     _ -> showMT mp f ++ " " ++ showMT mp a
 
@@ -242,27 +265,29 @@ instance (Alpha ci, Subst MonoType ci) => Subst MonoType (PolyType ci)
 
 instance Alpha MonoType
 instance Subst MonoType MonoType where
-  isvar (MonoType_Var _ v)  = Just (SubstName v)
+  isvar (MonoType_Var _ v _)  = Just (SubstName v)
   isvar _                   = Nothing
 
+instance Alpha ReductionType
 instance (Alpha ci, Subst MonoType ci) => Alpha (Constraint ci)
 instance (Alpha ci, Subst MonoType ci) => Subst MonoType (Constraint ci)
+instance Subst MonoType ReductionType
   
 instance (Alpha ci, Subst MonoType ci) => Alpha (Axiom ci)
 instance (Alpha ci, Subst MonoType ci) => Subst MonoType (Axiom ci)
 
 conApply :: String -> [MonoType] -> MonoType
-conApply s = foldl MonoType_App (MonoType_Con s)
+conApply s = foldl (\st l -> MonoType_App st l Nothing) (MonoType_Con s Nothing)
 
 conApply' :: MonoType -> [MonoType] -> MonoType
-conApply' = foldl MonoType_App
+conApply' = foldl (\st l -> MonoType_App st l Nothing)
 
 separateMt :: MonoType -> (MonoType, [MonoType])
-separateMt (MonoType_App m1 m2) = let
+separateMt (MonoType_App m1 m2 _) = let
     (c, ms) = separateMt m1 in (c, ms ++ [m2])
-separateMt c@(MonoType_Con _)   = (c, [])
-separateMt v@(MonoType_Var _ _) = (v, [])
-separateMt (MonoType_Fam f mts)   = (MonoType_Con f, mts)
+separateMt c@(MonoType_Con _ _)   = (c, [])
+separateMt v@(MonoType_Var _ _ _) = (v, [])
+separateMt (MonoType_Fam f mts ri)   = (MonoType_Con f ri, mts)
 
 -- conList :: MonoType -> (MonoType, [MonoType])
 -- conList (MonoType_App m1 m2) = let ms = getMonotypeAppList m1 ++ getMonotypeAppList m2 in (head ms, tail ms)
@@ -280,15 +305,15 @@ isClassConstraint (Constraint_Class _ [_] _) = True
 isClassConstraint _ = False
 
 isUnifyConstraint :: Constraint a -> Bool
-isUnifyConstraint (Constraint_Unify _ _ _) = True
+isUnifyConstraint Constraint_Unify{} = True
 isUnifyConstraint _ = False
 
 isInstConstraint :: Constraint a -> Bool
-isInstConstraint (Constraint_Inst _ _ _) = True
+isInstConstraint Constraint_Inst{} = True
 isInstConstraint _ = False
 
 firstConstraintElement :: Constraint a -> MonoType
-firstConstraintElement (Constraint_Unify m1 _ _) = m1
+firstConstraintElement (Constraint_Unify m1 _ _ ) = m1
 firstConstraintElement (Constraint_Inst m1 _ _) = m1
 firstConstraintElement c = error "No first constraint element"
 

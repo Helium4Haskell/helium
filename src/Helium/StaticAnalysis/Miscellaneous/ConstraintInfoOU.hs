@@ -493,7 +493,7 @@ setTypeError typeError info =
 -- is @([Int,Bool],String)@.
 functionSpine :: MonoType -> ([MonoType],MonoType)
 functionSpine = rec' [] where
-   rec' tps (MonoType_App (MonoType_App (MonoType_Con "->") t1) t2) = rec' (t1:tps) t2
+   rec' tps (MonoType_App (MonoType_App (MonoType_Con "->" _) t1 _) t2 _) = rec' (t1:tps) t2
    rec' tps tp                              = (reverse tps,tp)
 
 
@@ -524,7 +524,7 @@ isTupleConstructor _        = False
 leftSpine :: MonoType -> (MonoType,[MonoType])
 leftSpine = rec' [] 
    where
-      rec' tps (MonoType_App t1 t2) = rec' (t2:tps) t1
+      rec' tps (MonoType_App t1 t2 _) = rec' (t2:tps) t1
       rec' tps tp           = (tp,tps)
 
 class IsFunctionBinding a where

@@ -41,12 +41,12 @@ qualifiedPolyTypesToAlignedDocs pts = let
       showClassConstraint (Constraint_Class cn [m] _) = cn ++ " " ++ show m
 
 monoTypeToTp :: MonoType -> Tp
-monoTypeToTp (MonoType_App (MonoType_Con "[]") (MonoType_Con "Char")) = TCon "String"
-monoTypeToTp (MonoType_Var (Just s) n) = TCon s
-monoTypeToTp (MonoType_Var Nothing n) = TVar (fromInteger (name2Integer n))
-monoTypeToTp (MonoType_Con n)   = TCon n
-monoTypeToTp (MonoType_App f a) = TApp (monoTypeToTp f) (monoTypeToTp a)
-monoTypeToTp (MonoType_Fam s a) = foldl TApp (TCon s) (map monoTypeToTp a)
+monoTypeToTp (MonoType_App (MonoType_Con "[]" _) (MonoType_Con "Char" _) _) = TCon "String"
+monoTypeToTp (MonoType_Var (Just s) _ _) = TCon s
+monoTypeToTp (MonoType_Var Nothing n _) = TVar (fromInteger (name2Integer n))
+monoTypeToTp (MonoType_Con n _)   = TCon n
+monoTypeToTp (MonoType_App f a _) = TApp (monoTypeToTp f) (monoTypeToTp a)
+monoTypeToTp (MonoType_Fam s a _) = foldl TApp (TCon s) (map monoTypeToTp a)
 
 
 qualifiedTypesToAlignedDocs :: [QType] -> [PPrint.Doc]

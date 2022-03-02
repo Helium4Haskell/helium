@@ -64,7 +64,7 @@ modifyTopLevelTS    :: (HasTypeGraph m (Axiom ConstraintInfo) TyVar (RType Const
                     -> Constraint ConstraintInfo 
                     -> ErrorLabel 
                     -> m Bool
-modifyTopLevelTS m pm graph fbc@(Constraint_Unify fbm@(MonoType_Var _ fbv) _ _) origE origL = do
+modifyTopLevelTS m pm graph fbc@(Constraint_Unify fbm@(MonoType_Var _ fbv _) _ _) origE origL = do
     let g' = resetAll graph
     let g'' = g'{
             edges = M.filter (\e -> not (isConstraintEdge e && fbc /= getConstraintFromEdge e && fbv `elem` getFreeTopLevelVariables (getConstraintFromEdge e))) (edges g'),
@@ -126,11 +126,11 @@ constructMGU graph cedge spp = do
     let fbType = getConstraintFromEdge <$> maybeHead (filter (\e -> isConstraintEdge e && isJust (getConstraintInfo (getConstraintFromEdge e) >>= maybeFunctionBinding)) $ M.elems $ edges graph)
     let subApply :: Maybe [(TyVar, MonoType)] -> [RType ConstraintInfo] -> Maybe ([(TyVar, MonoType)], [MonoType])
         subApply Nothing _ = Nothing
-        subApply (Just sub) vs = Just (sub, map (\(MType mv@(MonoType_Var _ v)) -> fromMaybe mv (lookup v sub)) vs)
+        subApply (Just sub) vs = Just (sub, map (\(MType mv@(MonoType_Var _ v _)) -> fromMaybe mv (lookup v sub)) vs)
     let subTypes = map (uncurry subApply) patternSub
     let     subToFunction :: Maybe (Constraint ConstraintInfo) -> Maybe ([(TyVar, MonoType)], [MonoType]) -> Maybe MonoType
             subToFunction (Just (Constraint_Unify _ ft _)) (Just (sub, params)) = do 
-                    let (_, MonoType_Var _ res) = functionSpine ft
+                    let (_, MonoType_Var _ res _) = functionSpine ft
                     resType <- lookup res sub
                     return (foldr (:-->:) resType params)
             subToFunction v1 v2 = Nothing
@@ -194,17 +194,17 @@ missingGADTSignature path = SingleVoting "Missing GADT Signature" f
                 let cedge = getEdgeFromId graph eid
                 let eedge = getEdgeFromId graph (edgeIdFromPath path)
                 case constraintFromPath path of
-                    Constraint_Unify (MonoType_Var _ _) (MonoType_Var _ _) _ -> return Nothing
-                    cu@(Constraint_Unify m1@(MonoType_Var _ _) m2 _) | getPriorityFromEdge cedge == getPriorityFromEdge eedge -> 
+                    Constraint_Unify MonoType_Var{} MonoType_Var{} _ -> return Nothing
+                    cu@(Constraint_Unify m1@MonoType_Var{} m2 _) | getPriorityFromEdge cedge == getPriorityFromEdge eedge -> 
                         case constraint of
-                            Constraint_Unify (MonoType_Var _ cv1) (MonoType_Var _ cv2) _ -> do
+                            Constraint_Unify (MonoType_Var _ cv1 _) (MonoType_Var _ cv2 _) _ -> do
                                 let fbEdges = filter (\e -> isConstraintEdge e && isJust (getConstraintInfo (getConstraintFromEdge e) >>= maybeFunctionBinding)) $ M.elems (edges graph)
                                 let relevantFbEdges = filter (\e -> let vs :: [TyVar] = fvToList $ getConstraintFromEdge e in cv1 `elem` vs || cv2 `elem` vs) fbEdges
                                 if null relevantFbEdges then
                                     return Nothing
                                 else do
                                     let fbEdge = head relevantFbEdges
-                                    let Constraint_Unify mv@(MonoType_Var _ v) _ _ = getConstraintFromEdge fbEdge
+                                    let Constraint_Unify mv@(MonoType_Var _ v _) _ _ = getConstraintFromEdge fbEdge
                                     let tsEdges = filter (\e -> isConstraintEdge e && original e && isInstConstraint (getConstraintFromEdge e) && firstConstraintElement (getConstraintFromEdge e) == mv) $ M.elems $ edges graph
                                     if null tsEdges then do
                                         let spp = selectPriorityPatterns graph (getPriorityFromEdge eedge)
@@ -243,7 +243,7 @@ escapingGADTVariableHeuristic path = SingleVoting "Escaping GADT variable" f
                         if isEdgeGiven cedge || isPattern ci then
                             return Nothing
                         else case constraintFromPath path of
-                            Constraint_Unify mv@(MonoType_Var _ v) m2 _ -> do
+                            Constraint_Unify mv@(MonoType_Var _ v _) m2 _ -> do
                                 let pathConstraints = map getConstraintFromEdge $ filter isEdgeGiven $ map (getEdgeFromId graph) $ idsFromPath path
                                 let scopedGivenCons = map getConstraintFromEdge $ filter (\e -> isConstraintEdge e && Just True == (isPattern <$> getConstraintInfo (getConstraintFromEdge e))) $ M.elems $ edges graph
                                 MType mv' <- getSubstTypeFull (getGroupFromEdge cedge) (MType mv)
@@ -293,7 +293,7 @@ addTypeSignatureModifier    :: HasTypeGraph m (Axiom ConstraintInfo) TyVar (RTyp
                             -> MonoType 
                             -> PolyType ConstraintInfo 
                             -> GraphModifier m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo
-addTypeSignatureModifier fbc@(Constraint_Unify fbm@(MonoType_Var _ fbv) _ _) mts pts (_, _, ci) graph = do 
+addTypeSignatureModifier fbc@(Constraint_Unify fbm@(MonoType_Var _ fbv _) _ _) mts pts (_, _, ci) graph = do 
     let g' = resetAll graph
     let g'' = g'{
             edges = M.filter (\e -> not (isConstraintEdge e && fbc /= getConstraintFromEdge e && fbv `elem` getFreeTopLevelVariables (getConstraintFromEdge e))) (edges g'),

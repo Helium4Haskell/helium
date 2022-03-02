@@ -156,7 +156,7 @@ bindingGroupAnalysis input@(importenv, isTopLevel, axioms, typeSignatures, touch
                                  in (bu', gClassFixConstraint, wClassFixConstraint)
                               ) (bu, [], []) $ M.intersectionWith (\(n1, e) (n2, (b, t)) -> (n1, n2, e, t)) (M.mapWithKey (\k e -> (k, e)) env1) (M.mapWithKey (\k t -> (k, t)) ts)
                            extractVariable :: TyVar -> MonoType -> TyVar
-                           extractVariable _ (MonoType_Var _ v) = v
+                           extractVariable _ (MonoType_Var _ v _) = v
                            extractVariable def m = def
                            
                            initial :: (Touchables, Assumptions, TypeSignatures, Constraints, Integer, Substitution, TypeErrors, Constraints)
@@ -228,12 +228,12 @@ residualConstraintsCheck :: Environment -> Constraints -> [TypeError]
 residualConstraintsCheck env = concatMap constraintCheck
                      where
                         constraintCheck :: Constraint  ConstraintInfo -> [TypeError]
-                        constraintCheck (Constraint_Inst (MonoType_Var _ v) p _) | v `elem` (M.elems env) = createTypeError $ "Type of " ++ show v ++ " should be " ++  show p
+                        constraintCheck (Constraint_Inst (MonoType_Var _ v _) p _) | v `elem` M.elems env = createTypeError $ "Type of " ++ show v ++ " should be " ++  show p
                         constraintCheck c = createTypeError $ "Residual constraint " ++ show c
 
 replacePolytype :: [Constraint ConstraintInfo] -> PolyType ConstraintInfo -> PolyType ConstraintInfo
 replacePolytype [] p = p
-replacePolytype (Constraint_Inst (MonoType_Var _ v) pt _:cs) p  | var v == p = pt
+replacePolytype (Constraint_Inst (MonoType_Var _ v _) pt _:cs) p  | var v == p = pt
                                                             | otherwise =  replacePolytype cs p
 replacePolytype (_:cs) p = replacePolytype cs p
 
@@ -245,7 +245,7 @@ escapeVariableCheck ass env ts   | null ass = []
 
 makeTypeError :: [TyVar] -> Constraint ConstraintInfo -> [TypeError]
 makeTypeError _ (Constraint_Class s v _) = createTypeError ("Missing instance (" ++ s ++ " " ++ show (head v) ++ ")")
-makeTypeError touchables (Constraint_Inst (MonoType_Var _ v) p _) | v `notElem` touchables = createTypeError ("Variable " ++ show v ++ " should not be unified")
+makeTypeError touchables (Constraint_Inst (MonoType_Var _ v _) _ _) | v `notElem` touchables = createTypeError ("Variable " ++ show v ++ " should not be unified")
                                                                | otherwise = []
 makeTypeError _ _ = [] 
 

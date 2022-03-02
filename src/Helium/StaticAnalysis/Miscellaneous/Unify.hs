@@ -111,19 +111,19 @@ unify :: InjectiveEnv -- Whether a type fam is injective, important for pre-U fo
       -> SubstitutionEnv -- the substitution environment
       -> UnifyResult-- Unification result in the form of perhaps a substitution environment.
 -- Two type constructors unify when they are the same
-unify _ _ (MonoType_Con cn1) (MonoType_Con cn2) subst
+unify _ _ (MonoType_Con cn1 _) (MonoType_Con cn2 _) subst
   | cn1 == cn2 = return subst
-unify _ _ (MonoType_Var _ tv1) mv@(MonoType_Var _ tv2) subst
+unify _ _ (MonoType_Var _ tv1 _) mv@(MonoType_Var _ tv2 _) subst
   | tv1 == tv2 = return subst
   | otherwise = Unifiable $ M.insert tv1 mv subst
 -- If a tyvar is in the substitution, we apply the substitution and move on
-unify ienv opts mtv@(MonoType_Var _ tv) t subst
+unify ienv opts mtv@(MonoType_Var _ tv _) t subst
   | M.member tv subst = unify ienv opts (applySubst subst mtv) t subst
 -- If the tyvar is in `t`, we have two cases:
 -- - 1: we are pre-unifying (inj check). We return MaybeApart with the substitution
 -- - 2: we are matching or unifying: we FAIL (Occurs check).
 -- If the tyvar is not in `t`, the types are unifiable under tv |-> `t`
-unify _ opts (MonoType_Var _ tv) t subst
+unify _ opts (MonoType_Var _ tv _) t subst
   | tv `elem` fvToList (applySubst subst t)
     = if injChecking opts
         then Unifiable subst -- Not sure if apart or not but we return anyway
@@ -131,19 +131,19 @@ unify _ opts (MonoType_Var _ tv) t subst
   | tv `notElem` fvToList (applySubst subst t)
     = Unifiable $ M.insert tv (applySubst subst t) subst
 -- We swap the var and a type if that is allowed (if we are not matching, which is one way).
-unify ienv opts t mtv@(MonoType_Var _ _) subst
+unify ienv opts t mtv@MonoType_Var{} subst
   | not $ matching opts = unify ienv opts mtv t subst
 -- Two applications, match func and arg types accordingly
-unify ienv opts (MonoType_App s1 s2) (MonoType_App t1 t2) subst
+unify ienv opts (MonoType_App s1 s2 _) (MonoType_App t1 t2 _) subst
   = unify ienv opts s1 t1 subst >>= unify ienv opts s2 t2
 -- Case of two equal type synonyms
-unify _ _ (MonoType_Fam f []) (MonoType_Fam g []) subst
+unify _ _ (MonoType_Fam f [] _) (MonoType_Fam g [] _) subst
   | f == g = return subst
 -- When unifying two type fams we have two options:
 -- - If we are in an injectivity check, we unify all injective arguments
 -- - If not, we are matching or unifying, in which case all arguments must unify.
 -- Of course, only when f == g.
-unify ienv opts (MonoType_Fam f fmts) (MonoType_Fam g gmts) subst
+unify ienv opts (MonoType_Fam f fmts _) (MonoType_Fam g gmts _) subst
   | injChecking opts,
     g == f,
     Just iargs <- M.lookup f ienv,
@@ -154,13 +154,13 @@ unify ienv opts (MonoType_Fam f fmts) (MonoType_Fam g gmts) subst
 -- F a ~ t
 -- In case of an injectivity check, we return the substitution.
 -- In case of unifying or matching, we fail in this case.
-unify _ opts (MonoType_Fam _ _) _ subst
+unify _ opts MonoType_Fam{} _ subst
   | injChecking opts = Unifiable subst
   | otherwise = SurelyApart
 -- t ~ F a
 -- In case of an injectivity check, we return the substitution.
 -- In case of unifying or matching, we fail in this case.
-unify _ opts _ (MonoType_Fam _ _) subst
+unify _ opts _ MonoType_Fam{} subst
   | injChecking opts = Unifiable subst
   | not $ injChecking opts = SurelyApart
 -- In all other cases, we fail
@@ -180,12 +180,12 @@ unifies _ _ _ _ _ = SurelyApart -- Should never be reached
 
 -- Applies the substitution environment on a type
 applySubst :: SubstitutionEnv -> MonoType -> MonoType
-applySubst env mtv@(MonoType_Var _ tv) = fromMaybe mtv (M.lookup tv env)
-applySubst _   mtc@(MonoType_Con _)    = mtc
-applySubst env (MonoType_Fam f mts)    = MonoType_Fam f $ map (applySubst env) mts
-applySubst env (MonoType_App mt1 mt2)  = MonoType_App (applySubst env mt1) (applySubst env mt2)
+applySubst env mtv@(MonoType_Var _ tv _)  = fromMaybe mtv (M.lookup tv env)
+applySubst _   mtc@(MonoType_Con _ _)     = mtc
+applySubst env (MonoType_Fam f mts ri)    = MonoType_Fam f (map (applySubst env) mts) ri
+applySubst env (MonoType_App mt1 mt2 ri)  = MonoType_App (applySubst env mt1) (applySubst env mt2) ri
 
 -- Only over LHSs of type family axioms.
 applyOverInjArgs :: SubstitutionEnv -> [Int] -> MonoType -> MonoType
-applyOverInjArgs env injIdx (MonoType_Fam f mts) = MonoType_Fam f [applySubst env t | (i,t) <- zip [0..] mts, i `elem` injIdx]
+applyOverInjArgs env injIdx (MonoType_Fam f mts ri) = MonoType_Fam f [applySubst env t | (i,t) <- zip [0..] mts, i `elem` injIdx] ri
 applyOverInjArgs _   _    mt                   = mt

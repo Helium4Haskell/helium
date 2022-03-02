@@ -232,7 +232,7 @@ makeUnificationTypeError edge constraint info =
         range    = maybe (rangeOfSource source) rangeOfSource term
         oneliner = MessageOneLiner (MessageString ("Type error in " ++ location info))
         (t1, t2) = case constraint of
-            Constraint_Unify t1 t2 _ -> (MType t1, MType t2)
+            Constraint_Unify t1 t2 _-> (MType t1, MType t2)
             Constraint_Inst t1 t2 _ -> (MType t1, PType t2)
     --let    Constraint_Unify t1 t2 _ = constraint
     let t1' = case maybeApplicationTypeSignature info of
@@ -300,7 +300,7 @@ makeReductionError source usage extra axioms (className, predicateTp) =
         valids :: [String]
         valids = let
                         tps              = mapMaybe (instances className) axioms
-                        (tuples, others) =  let     p (MonoType_Con s) = isTupleConstructor s
+                        (tuples, others) =  let     p (MonoType_Con s _) = isTupleConstructor s
                                                     p _        = False
                                             in partition (p . fst . leftSpine) tps
                     in if length tuples > 4 -- magic number!

@@ -118,12 +118,15 @@ data Tree a = Node a (Tree a) (Tree a) | Leaf
 --     J Int = Int
 --     J Float = Float
 
--- type family Loop a where
---     Loop [a] = Loop a
---     Loop a = a 
+-- h :: H Int Int
+-- h = "hi"
 
--- g :: Loop [[[[[[[Char]]]]]]]
--- g = 'H'
+type family Loop a where
+    Loop [a] = Loop a
+    Loop a = a 
+
+g :: Loop [[[[[[[Char]]]]]]]
+g = "Hi"
 
 --h = g + g
 -- Int -> Int > h_
@@ -138,12 +141,6 @@ data Tree a = Node a (Tree a) (Tree a) | Leaf
 
 -- j :: a -> (a, Int)
 -- j x = (0, x)
-data X a where
-    A :: Bool -> X Bool
-    B :: Int -> X Int
-
-g (A x) = x
-g (B y) = y
 
 -- data X where
 --     A :: b -> X

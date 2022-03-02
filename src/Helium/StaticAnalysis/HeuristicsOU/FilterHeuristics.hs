@@ -156,7 +156,7 @@ avoidNegationConstraints =
                                 PType t2' <- getSubstTypeFull (getGroupFromEdge edge) $ PType t2                  
                                 axioms <- getAxioms
                                 freshV <- fresh (string2Name "a")
-                                let testtp = (MonoType_Con $ if isIntNegation then "Int" else "Float") :-->: var freshV
+                                let testtp = MonoType_Con (if isIntNegation then "Int" else "Float") Nothing :-->: var freshV
                                 unif <- runTG (unifyTypes axioms [] [Constraint_Inst testtp t2' Nothing] (freshV : fvToList t2'))
                                 return (isNothing unif)
                     _ -> return True

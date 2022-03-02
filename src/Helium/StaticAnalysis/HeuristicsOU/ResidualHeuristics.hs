@@ -90,7 +90,7 @@ missingPredicate path = SingleVoting "Missing predicate" f
                             let cedge = getEdgeFromId graph eid
                             MType ms' <- getSubstTypeFull (getGroupFromEdge cedge) $ MType ms
                             case ms' of 
-                                MonoType_Var _ v -> do
+                                MonoType_Var _ v _ -> do
                                     --graph <- getGraph
                                     nedges1 <- getNeighbours (from cedge)
                                     nedges2 <- getNeighbours (to cedge)

@@ -242,10 +242,10 @@ freshenRepresentation rs = fst $ runState (mapM freshenHelper rs) (maximumString
             collectRepresentation :: (Subst MonoType ci, Alpha ci) => RType ci -> [(TyVar, String)]
             collectRepresentation (MType mt) = collectRepresentationM mt
             collectRepresentation (PType pt) = runFreshM (collectRepresentationP pt)
-            collectRepresentationM (MonoType_Var (Just s) v) | s == "" = [] 
-                                                             | otherwise = [(v, s)]
-            collectRepresentationM (MonoType_App f a) = collectRepresentationM f ++ collectRepresentationM a
-            collectRepresentationM (MonoType_Fam f ms) = concatMap collectRepresentationM ms
+            collectRepresentationM (MonoType_Var (Just s) v _) | s == "" = [] 
+                                                               | otherwise = [(v, s)]
+            collectRepresentationM (MonoType_App f a _) = collectRepresentationM f ++ collectRepresentationM a
+            collectRepresentationM (MonoType_Fam f ms _) = concatMap collectRepresentationM ms
             collectRepresentationM _ = []
             collectRepresentationP :: (Subst MonoType ci, Alpha ci, Fresh m) => PolyType ci -> m [(TyVar, String)]
             collectRepresentationP (PolyType_Mono cs m) = return (collectRepresentationM m)
@@ -261,18 +261,18 @@ freshenRepresentation rs = fst $ runState (mapM freshenHelper rs) (maximumString
                (t, p) <- unbind b
                freshenHelperP p
                --unbind b >>= (\(t, p) -> return (freshenHelperP p))--return (get >>= (\rep -> put (second ((t, s):) rep) >> freshenHelperP p)))
-            freshenHelperM (MonoType_Con s) = return (MonoType_Con s)
-            freshenHelperM (MonoType_Var _ v) = do
+            freshenHelperM (MonoType_Con s ri) = return (MonoType_Con s ri)
+            freshenHelperM (MonoType_Var _ v ri) = do
                   (n, rep) <- get
                   case lookup v rep of
-                     Just r -> return (MonoType_Var (Just r) v)
+                     Just r -> return (MonoType_Var (Just r) v ri)
                      Nothing -> do
                         let n' = nextVariableRep n
                         let rep' = (v, n') : rep
                         put (n', rep')
-                        return (MonoType_Var (Just n') v)
-            freshenHelperM (MonoType_App f a) = MonoType_App <$> freshenHelperM f <*> freshenHelperM a 
-            freshenHelperM (MonoType_Fam f ms) = MonoType_Fam f <$> mapM freshenHelperM ms
+                        return (MonoType_Var (Just n') v ri)
+            freshenHelperM (MonoType_App f a ri) = (\fn an -> MonoType_App fn an ri) <$> freshenHelperM f <*> freshenHelperM a
+            freshenHelperM (MonoType_Fam f ms ri) = (\mts -> MonoType_Fam f mts ri) <$> mapM freshenHelperM ms
 
                         
 nextVariableRep :: String -> String

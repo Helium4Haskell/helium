@@ -77,7 +77,7 @@ getWarnings :: SolveResult -> [Warning]
 getWarnings (_, wa, _, _) = wa
 
 getSubstitution :: SolveResult -> [(TyVar, MonoType)]
-getSubstitution (_, _, subs, _) = subs
+getSubstitution (_, _, subs, _) = subs 
 
 getResidualConstraints :: SolveResult -> [Constraint ConstraintInfo]
 getResidualConstraints (_, _, _, cs) = cs
@@ -358,7 +358,7 @@ SEM Pattern
     | NegateFloat
         lhs . betaUnique  = @lhs.betaUnique + 1
         lhs . touchables  = @beta : @literal.touchables
-        loc . constraints = [ Constraint_Unify (MonoType_Con "Float") (var @beta) (Just @cinfo)] ++ @literal.constraints
+        loc . constraints = [ Constraint_Unify (MonoType_Con "Float" Nothing) (var @beta) (Just @cinfo)] ++ @literal.constraints
             . beta        = integer2Name @lhs.betaUnique
 
 
@@ -383,22 +383,22 @@ getResultTypeM i (f :-->: a) = let
                                     (_, m1, cs1, i1) = getResultTypeM i f
                                     (r, m2, cs2, i2) = getResultTypeM i1 a
                                 in (r, m1 :-->: m2, cs1 ++ cs2, i2) 
-getResultTypeM i (MonoType_App y x) =  let 
-                                    (m1, cs1, i1) = getResultTypeM' i y 
-                                    (m2, cs2, i2) = getResultTypeM' i1 x
-                                in (MonoType_App m1 m2, MonoType_App m1 m2, cs1 ++ cs2, i2) 
-getResultTypeM i (MonoType_Con s)   = (MonoType_Con s, MonoType_Con s, [], i) --let v = var $ integer2Name i in (v, v, [Constraint_Unify v (MonoType_Con s) $ Just emptyConstraintInfo], i + 1)
-getResultTypeM i f@(MonoType_Fam _ _) = (f, f, [], i)
-getResultTypeM i (MonoType_Var s v)   = (internalError "TypeInferenceRules" "getResultTypeM" "Return type of a GADT can never be a type variable", MonoType_Var s v, [], i)
+getResultTypeM i (MonoType_App y x rs) =  let 
+                                      (m1, cs1, i1) = getResultTypeM' i y 
+                                      (m2, cs2, i2) = getResultTypeM' i1 x
+                                  in (MonoType_App m1 m2 rs, MonoType_App m1 m2 rs, cs1 ++ cs2, i2) 
+getResultTypeM i (MonoType_Con s rs)   = (MonoType_Con s rs, MonoType_Con s rs, [], i) --let v = var $ integer2Name i in (v, v, [Constraint_Unify v (MonoType_Con s) $ Just emptyConstraintInfo], i + 1)
+getResultTypeM i f@(MonoType_Fam _ _ _) = (f, f, [], i)
+getResultTypeM i (MonoType_Var s v rs)   = (internalError "TypeInferenceRules" "getResultTypeM" "Return type of a GADT can never be a type variable", MonoType_Var s v rs, [], i)
 
 getResultTypeM' :: Integer -> MonoType -> (MonoType, [Constraint ConstraintInfo], Integer)
-getResultTypeM' i (MonoType_Var s v) = (MonoType_Var s v, [], i)
-getResultTypeM' i (MonoType_Con "->") = (MonoType_Con "->", [], i)
-getResultTypeM' i (MonoType_Con c) = (MonoType_Con c, [], i) -- (var (integer2Name i), [Constraint_Unify (var $ integer2Name i) (MonoType_Con c) $ Just emptyConstraintInfo], i + 1) 
-getResultTypeM' i (MonoType_App x y) = let 
+getResultTypeM' i (MonoType_Var s v rs) = (MonoType_Var s v rs, [], i)
+getResultTypeM' i (MonoType_Con "->" rs) = (MonoType_Con "->" rs, [], i)
+getResultTypeM' i (MonoType_Con c rs) = (MonoType_Con c rs, [], i) -- (var (integer2Name i), [Constraint_Unify (var $ integer2Name i) (MonoType_Con c) $ Just emptyConstraintInfo], i + 1) 
+getResultTypeM' i (MonoType_App x y rs) = let 
                                     (m1, cs1, i1) = getResultTypeM' i x
                                     (m2, cs2, i2) = getResultTypeM' i1 y
-                                in (MonoType_App m1 m2, cs1 ++ cs2, i2) 
+                                in (MonoType_App m1 m2 rs, cs1 ++ cs2, i2) 
 }
         
 SEM FunctionBinding 
@@ -499,7 +499,7 @@ SEM GuardedExpression
   | GuardedExpression
       lhs . constraints = 
                 [
-                    Constraint_Unify (var @guard.beta) (MonoType_Con "Bool") (Just @cinfoGuard), 
+                    Constraint_Unify (var @guard.beta) (MonoType_Con "Bool" Nothing) (Just @cinfoGuard), 
                     (unifyVar @expression.beta @lhs.betaRight @cinfoExpr)
                 ] ++ @guard.constraints ++ @expression.constraints
 
@@ -570,7 +570,7 @@ SEM Expression
         guardExpression.betaUnique = @lhs.betaUnique + 1
         loc . beta              = integer2Name @lhs.betaUnique
         loc . constraints       =   [
-                                        Constraint_Unify (var @guardExpression.beta) (MonoType_Con "Bool") (Just @cinfoGuard),
+                                        Constraint_Unify (var @guardExpression.beta) (MonoType_Con "Bool" Nothing) (Just @cinfoGuard),
                                         unifyVar @beta @thenExpression.beta @cinfoThen,
                                         unifyVar @beta @elseExpression.beta @cinfoElse
                                     ]
@@ -690,7 +690,7 @@ SEM Expression
         lhs . constraints           = 
                                         [
                                             Constraint_Unify 
-                                                (MonoType_Con "Float" :-->: MonoType_Con "Float") 
+                                                (MonoType_Con "Float" Nothing :-->: MonoType_Con "Float" Nothing) 
                                                 (var @expression.beta :-->: var @beta)
                                                 (Just @cinfo)
                                         ] ++ @expression.constraints
@@ -708,7 +708,7 @@ SEM Expression
         loc . betaMonad             = integer2Name $ @lhs.betaUnique + 1
         loc . betaVar               = integer2Name $ @lhs.betaUnique + 2
         lhs . constraints           =   [
-                                            Constraint_Unify (var @beta) (MonoType_App (var @betaMonad) (var @betaVar)) (Just @cinfo),
+                                            Constraint_Unify (var @beta) (MonoType_App (var @betaMonad) (var @betaVar) Nothing) (Just @cinfo),
                                             Constraint_Class "Monad" [var @betaMonad] (Just @cinfo)
                                         ] ++ maybe [] (\b -> [Constraint_Unify (var @beta) (var b) (Just @cinfo)]) @statements.generatorBeta ++ @statements.constraints
                                         
@@ -725,13 +725,13 @@ SEM Statement
         lhs . assumptions       = @lhs.assumptions `combineAssumptions` @expression.assumptions
         lhs . constraints       =   [
                                         Constraint_Unify (var @expression.beta) (var @beta) (Just @cinfo), 
-                                        Constraint_Unify (var @beta) (MonoType_App @lhs.monadBeta (var @betaRes)) (Just @cinfo)
+                                        Constraint_Unify (var @beta) (MonoType_App @lhs.monadBeta (var @betaRes) Nothing) (Just @cinfo)
                                     ] ++ @expression.constraints ++ @lhs.constraints
     | Generator 
         lhs . generatorBeta         = Nothing
         lhs . betaUnique            = @expression.betaUnique
         lhs . assumptions           = @assumptions' `combineAssumptions` @expression.assumptions
-        lhs . constraints           = Constraint_Unify (var @expression.beta) (MonoType_App @lhs.monadBeta (var @pattern.beta)) (Just @cinfoResult) : 
+        lhs . constraints           = Constraint_Unify (var @expression.beta) (MonoType_App @lhs.monadBeta (var @pattern.beta) Nothing) (Just @cinfoResult) : 
                                             @envConstraints ++ @expression.constraints ++ @pattern.constraints ++ @lhs.constraints
         lhs . touchables            = @expression.touchables ++ @pattern.touchables ++ @lhs.touchables
         pattern . betaUnique        = @lhs.betaUnique + 2
@@ -805,7 +805,7 @@ SEM Qualifier
     | Guard
         lhs . touchables = @guard.touchables ++ @lhs.touchables
         lhs . assumptions = @lhs.assumptions `combineAssumptions` @guard.assumptions
-        lhs . constraints =  Constraint_Unify (var @guard.beta) (MonoType_Con "Bool") (Just @cinfo) : @guard.constraints ++ @lhs.constraints
+        lhs . constraints =  Constraint_Unify (var @guard.beta) (MonoType_Con "Bool" Nothing) (Just @cinfo) : @guard.constraints ++ @lhs.constraints
     | Generator
         lhs . touchables        = @expression.touchables ++ @pattern.touchables ++ @lhs.touchables
         lhs . assumptions       = @assumptions' `combineAssumptions` @expression.assumptions
@@ -864,14 +864,14 @@ ATTR Literal [ | | literalType : MonoType floatValue : Float]
 
 SEM Literal
     | Int
-        lhs . literalType   = MonoType_Con "Int"
+        lhs . literalType   = MonoType_Con "Int" Nothing
     | Float
-        lhs . literalType   = MonoType_Con "Float"
+        lhs . literalType   = MonoType_Con "Float" Nothing
         lhs . floatValue    = read @value
     | String
-        lhs . literalType   = MonoType_Fam "String" []
+        lhs . literalType   = MonoType_Fam "String" [] Nothing
     | Char
-        lhs . literalType   = MonoType_Con "Char"
+        lhs . literalType   = MonoType_Con "Char" Nothing
               
 {
 

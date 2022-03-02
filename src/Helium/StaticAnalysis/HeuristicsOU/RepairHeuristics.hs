@@ -199,7 +199,7 @@ applicationHeuristic = SingleVoting "Application heuristic" f
                                                          (expectedResult : deleteIndex i expectedArguments))
                                     ]
                                  maximumForFunction = case functionSpine expectedType of
-                                       ([], MonoType_Var  _ _) -> Nothing
+                                       ([], MonoType_Var{}) -> Nothing
                                        (tps, _   ) -> Just (length tps)
 
                                  -- minimum number of arguments that should be applied to the function to meet the expected context type
@@ -281,7 +281,7 @@ siblingsHeuristic siblings =
                               | otherwise = filter ( (name /=) . fst) list
                      in concatMap fn siblings
                      
-                  schemeFits (MonoType_Var _ _) _ = return False   
+                  schemeFits MonoType_Var{} _ = return False   
                   schemeFits contextTp scheme = do
                      let ups = unbindPolyType scheme
                      freshIdentifier <- fresh (string2Name "a")
@@ -322,12 +322,12 @@ siblingLiterals =
                         MType tp <- getSubstTypeFull (getGroupFromEdge edge) $ MType t1
                         case (literal,tp) of
 
-                           ("Int", MonoType_Con "Float")
+                           ("Int", MonoType_Con "Float" _)
                                  -> let hint = fixHint "use a float literal instead"
                                     in return $ Just
                                           (5, "Int literal should be a Float", constraint, eid, hint info, gm)
 
-                           ("Float", MonoType_Con "Int" )
+                           ("Float", MonoType_Con "Int" _)
                                  -> let 
                                        hint = fixHint "use an int literal instead"
                                        literalFloat = maybeLiteralFloat info
@@ -336,15 +336,15 @@ siblingLiterals =
                                        else Just
                                           (5, "Float literal should be an Int", constraint, eid, hint info, gm)
 
-                           ("Char", MonoType_App (MonoType_Con "[]") (MonoType_Con "Char"))
+                           ("Char", MonoType_App (MonoType_Con "[]" _) (MonoType_Con "Char" _) _)
                                  -> let hint = fixHint "use a string literal instead"
                                     in return $ Just
                                           (5, "Char literal should be a String", constraint, eid, hint info, gm)
-                           ("Char", MonoType_Fam "String" [])
+                           ("Char", MonoType_Fam "String" [] _)
                                  -> let hint = fixHint "use a string literal instead"
                                     in return $ Just
                                           (5, "Char literal should be a String", constraint, eid, hint info, gm)
-                           ("String", MonoType_Con "Char")   
+                           ("String", MonoType_Con "Char" _)   
                                  -> let hint = fixHint "use a char literal instead"
                                     in return $ Just
                                           (5, "String literal should be a Char", constraint, eid, hint info, gm)
@@ -438,7 +438,7 @@ tupleHeuristic = SingleVoting "Tuple heuristics" f
                            MType mExpectedTp <- getSubstTypeFull (getGroupFromEdge edge) $ MType t2        
                            axioms <- getAxioms            
                            case (leftSpine mTupleTp,leftSpine mExpectedTp) of 
-                              ((MonoType_Con s,tupleTps), (MonoType_Con t,expectedTps))
+                              ((MonoType_Con s _,tupleTps), (MonoType_Con t _,expectedTps))
                                  | isTupleConstructor s && isTupleConstructor t ->
                                     case compare (length tupleTps) (length expectedTps) of
                                     
