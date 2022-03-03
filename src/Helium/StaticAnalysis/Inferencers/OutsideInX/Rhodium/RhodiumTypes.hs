@@ -62,13 +62,34 @@ instance VariableInjection MonoType where
 type MonoTypes = [MonoType]
 
 type ReductionTrace = [ReductionStep]
-type ReductionStep = (MonoType, MonoType, Constraint (), ReductionType)
+data ReductionStep = Step MonoType MonoType (Constraint ()) ReductionType
+    deriving (Show, Ord, Eq)
 
 data ReductionType
   = LeftToRight
   | TopLevelImprovement
   | CanonReduction
   deriving (Generic, Ord, Eq, Show)
+
+instance UB.Subst MonoType ReductionStep where
+   substs _ = id
+   isvar _ = Nothing
+   subst _ _ = id
+
+instance Alpha ReductionStep where
+   fvAny' _ _ = pure 
+   swaps' = error "swaps'"
+   lfreshen' = error "lfreshen'"
+   freshen' = error "freshen'"
+   aeq' = error "aeq'"
+   acompare' = error "acompare'"
+   close _ _ x = x
+   open _ _ x = x
+   isPat = error "isPat"
+   isTerm = error "isTerm"
+   isEmbed = error "isEmbed"
+   nthPatFind = error "nthPatFind"
+   namePatFind _ = error "namePatFind"
 
 insertReductionStepMaybe :: MonoType -> Maybe ReductionStep -> MonoType
 insertReductionStepMaybe m (Just rs) = insertReductionStep m rs

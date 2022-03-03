@@ -99,7 +99,7 @@ instance (CompareTypes m (RType ConstraintInfo), IsTouchable m TyVar, HasAxioms 
                                             else return NotApplicable
                                     --(False, True) -> return $ Applied ([], [], [Constraint_Unify m2 m1])
                                     _ -> return NotApplicable
-                        (MonoType_Var _ v (Just rs), _)
+                        (MonoType_Var _ v rs, _)
                             | v `elem` (fvToList m2 :: [TyVar]), isFamilyFree m2 -> return (Error labelInfiniteType)
                             | isFamilyFree m2 -> return NotApplicable
                             | otherwise -> case m2 of
@@ -108,7 +108,7 @@ instance (CompareTypes m (RType ConstraintInfo), IsTouchable m TyVar, HasAxioms 
                                     do (a2, con1, vars1) <- unfamily a
                                        (c2, con2, vars2) <- unfamily c
                                                         
-                                       return $ Applied (vars1 ++ vars2, [], Constraint_Unify (insertReductionStep (var v) rs) (MonoType_App c2 a2 ars) Nothing : con1 ++ con2)
+                                       return $ Applied (vars1 ++ vars2, [], Constraint_Unify (insertReductionStepMaybe (var v) rs) (MonoType_App c2 a2 ars) Nothing : con1 ++ con2)
                                 _ -> {-do 
                                     gt <- MType m1 `greaterType` MType m2
                                     if gt then 
@@ -120,7 +120,7 @@ instance (CompareTypes m (RType ConstraintInfo), IsTouchable m TyVar, HasAxioms 
                             | f1 == f2, 
                               (Just injIdx) <- injectiveArgs axs f1, 
                               length ts1 == length ts2 
-                                -> return $ Applied ([], [], map (\i -> Constraint_Unify (insertReductionStep (ts1 !! i) (ts1 !! i, mf1, removeCI ogc, CanonReduction)) (insertReductionStep (ts2 !! i) (ts1 !! i, mf2, removeCI ogc, CanonReduction)) Nothing) injIdx)
+                                -> return $ Applied ([], [], map (\i -> Constraint_Unify (insertReductionStep (ts1 !! i) (Step (ts1 !! i) mf1 (removeCI ogc) CanonReduction)) (insertReductionStep (ts2 !! i) (Step (ts1 !! i) mf2 (removeCI ogc) CanonReduction)) Nothing) injIdx)
                             | f1 == f2, isInjective axs f1, length ts1 /= length ts2 -> return $ Error $ ErrorLabel $ "Different Number of arguments for " ++ show ts1 ++ " and " ++ show ts2
                             | f1 == f2, null ts1 && null ts2 -> return $ Applied ([], [], [])
                             | f1 == f2, length ts1 == length ts2 -> return NotApplicable
@@ -309,7 +309,7 @@ instance (
                             case res of
                                 (Just s) -> do
                                     let substRhs = substs (convertSubstitution s) rhs
-                                    let newRhs = insertReductionStep substRhs (substRhs, mf, removeCI c, LeftToRight)
+                                    let newRhs = insertReductionStep substRhs (Step substRhs mf (removeCI c) LeftToRight)
                                     return $ Applied (if given then [] else fvToList t, [Constraint_Unify newRhs t Nothing])
                                 -- Try injectivity top level improvement when normal reaction fails
                                 _ -> improveTopLevelFun given c ax
@@ -344,9 +344,9 @@ improveTopLevelFun given c@(Constraint_Unify fam@(MonoType_Fam f ms _) t _) (Axi
                             SurelyApart -> return NotApplicable
                             -- Deviate from paper, follow Cobalt, only focus on injective arguments.
                             Unifiable _ -> do
-                                let substLhs = applyOverInjArgs psubst injIdx lhs
-                                let newLhs = insertReductionStep substLhs (substLhs, fam, removeCI c, TopLevelImprovement)
-                                return $ Applied (if given then [] else fvToList fam, [Constraint_Unify (applyOverInjArgs psubst injIdx lhs) fam Nothing]) -- Here we deviate from the paper and follow Cobalt (just substitute arguments with what we obtained)
+                                let substLhs' = applyOverInjArgs psubst injIdx lhs
+                                let newLhs = insertReductionStep substLhs' (Step substLhs fam (removeCI c) TopLevelImprovement)
+                                return $ Applied ([], [Constraint_Unify newLhs fam Nothing]) -- Here we deviate from the paper and follow Cobalt (just substitute arguments with what we obtained)
             _ -> return NotApplicable 
 improveTopLevelFun given c (Axiom_ClosedGroup _ axs) = loopAxioms (improveTopLevelFun given c) axs
 improveTopLevelFun _ _ _ = return NotApplicable
@@ -402,8 +402,8 @@ reactClosedTypeFam given = reactClosedTypeFam' []
                             if compatApartRes
                                 then do
                                     let substRhs = substs (convertSubstitution s) rhs
-                                    let newRhs = insertReductionStep substRhs (substRhs, mf, removeCI c, LeftToRight)
-                                    return $ Applied (if given then [] else fvToList t, [Constraint_Unify (substs (convertSubstitution s) rhs) t Nothing])
+                                    let newRhs = insertReductionStep substRhs (Step substRhs mf (removeCI c) LeftToRight)
+                                    return $ Applied (if given then [] else fvToList t, [Constraint_Unify newRhs t Nothing])
                                 else reactClosedTypeFam' (seen ++ [ax]) c axs 
                   _ -> return NotApplicable
         reactClosedTypeFam' _ _ _ = return NotApplicable
