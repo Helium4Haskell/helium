@@ -309,7 +309,9 @@ instance (
                             case res of
                                 (Just s) -> do
                                     let substRhs = substs (convertSubstitution s) rhs
-                                    let newRhs = insertReductionStep substRhs (Step substRhs mf (removeCI c) LeftToRight)
+                                    -- Makes sure that the lhs in LeftToRight is standardized on a certain uniqueness
+                                    let (_, (specLhs, _)) = contFreshM (unbind b) 1000000000000000 -- Must be large 
+                                    let newRhs = insertReductionStep substRhs (Step substRhs mf (removeCI c) (LeftToRight specLhs))
                                     return $ Applied (if given then [] else fvToList t, [Constraint_Unify newRhs t Nothing])
                                 -- Try injectivity top level improvement when normal reaction fails
                                 _ -> improveTopLevelFun given c ax
@@ -402,7 +404,8 @@ reactClosedTypeFam given = reactClosedTypeFam' []
                             if compatApartRes
                                 then do
                                     let substRhs = substs (convertSubstitution s) rhs
-                                    let newRhs = insertReductionStep substRhs (Step substRhs mf (removeCI c) LeftToRight)
+                                    let (_, (specLhs, _)) = contFreshM (unbind b) 1000000000000000
+                                    let newRhs = insertReductionStep substRhs (Step substRhs mf (removeCI c) (LeftToRight specLhs))
                                     return $ Applied (if given then [] else fvToList t, [Constraint_Unify newRhs t Nothing])
                                 else reactClosedTypeFam' (seen ++ [ax]) c axs 
                   _ -> return NotApplicable
@@ -676,5 +679,6 @@ functionSpineP (PolyType_Mono _ m) = return (functionSpine m)
 
 arityOfPolyType :: Fresh m => (PolyType ConstraintInfo) -> m Int
 arityOfPolyType x = length . fst <$> functionSpineP x
+
 
     

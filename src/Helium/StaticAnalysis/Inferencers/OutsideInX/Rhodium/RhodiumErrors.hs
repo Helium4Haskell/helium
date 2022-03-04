@@ -1,6 +1,7 @@
 {-# LANGUAGE FlexibleInstances, MultiParamTypeClasses, FlexibleContexts, UndecidableInstances  #-}
 {-# OPTIONS_GHC -Wno-orphans #-}
 {-# OPTIONS_GHC -Wno-incomplete-patterns #-}
+{-# OPTIONS_GHC -Wno-simplifiable-class-constraints #-}
 module Helium.StaticAnalysis.Inferencers.OutsideInX.Rhodium.RhodiumErrors where
 
 import Unbound.Generics.LocallyNameless
@@ -31,6 +32,7 @@ import Data.Maybe
 import Data.List
 
 import Debug.Trace
+import Data.Graph (Edge)
 
 
 instance HasConstraintInfo (Constraint ConstraintInfo) ConstraintInfo where
@@ -240,7 +242,8 @@ makeUnificationTypeError edge constraint info =
             Just ps -> PType ps
     msgtp1   <- getSubstTypeFull (getGroupFromEdge edge) t1'
     msgtp2   <- getSubstTypeFull  (getGroupFromEdge edge) t2
-    let [msgtp2', msgtp1'] = freshenRepresentation [msgtp2, msgtp1]
+    let [msgtp2'@(MType msgmt1), msgtp1'@(MType msgmt2)] = freshenRepresentation [msgtp2, msgtp1]
+    m2Trace <- buildReductionTrace edge msgmt2
     let (reason1, reason2)
             | isTooManyFBArgs info                   = ("declared type", "inferred type")
             | isFolkloreConstraint info               = ("type"         , "expected type")
@@ -253,9 +256,10 @@ makeUnificationTypeError edge constraint info =
                         PType p -> MessagePolyType p
                 ,   reason2 >:> case msgtp1' of
                         MType m -> MessageMonoType m
-                        PType p -> MessagePolyType p
+                        PType p -> MessagePolyType p                    
                 ]
         hints      = [ hint | WithHint hint <- properties info ]
+                   ++ [("trace " ++ show msgmt2, traceToMessageBlock (squashTrace m2Trace)) | (not . null) m2Trace]               
     return $ TypeError [range] [oneliner] table hints
 
 makeReductionError :: UHA_Source -> Maybe UHA_Source -> (MonoType, Maybe (PolyType ConstraintInfo)) -> [Axiom ConstraintInfo] -> (String, MonoType) -> TypeError
@@ -359,3 +363,45 @@ makeMissingTypeSignature source branchSources mTs = let
             ]
         hints = [("hint", MessageString $ "add a valid type signature" ++ maybe "" (\pt -> ", e.g. " ++ show pt) mTs')]
     in TypeError (map rangeOfSource branchSources) message table hints
+
+buildReductionTrace :: (CompareTypes m (RType ConstraintInfo), Fresh m, HasTypeGraph m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo)
+                    => TGEdge (Constraint ConstraintInfo) -> MonoType -> m ReductionTrace
+buildReductionTrace e mt = do
+    case getMaybeReductionStep mt of
+      Nothing -> return []
+      Just (Step after before (Constraint_Unify sm1 sm2 _) rt) -> do
+          (MType trAfter) <- getSubstTypeFull (getGroupFromEdge e) (MType after)
+          (MType trBefore) <- getSubstTypeFull (getGroupFromEdge e) (MType before)
+          (MType trConstrLeft) <- getSubstTypeFull (getGroupFromEdge e) (MType sm1)
+          (MType trConstrRight) <- getSubstTypeFull (getGroupFromEdge e) (MType sm2)
+          let trConstr = Constraint_Unify trConstrLeft trConstrRight Nothing
+          ih <- buildReductionTrace e trBefore
+          return $ (Step trAfter trBefore trConstr rt, 1) : ih
+
+squashTrace :: ReductionTrace -> ReductionTrace 
+squashTrace rts = let
+    
+    groupedRts = groupBy (\(Step _ _ _ rt1, _) (Step _ _ _ rt2, _) -> rt1 == rt2) rts
+    in map buildNewStep groupedRts
+    where
+        buildNewStep [s] = s 
+        buildNewStep (s@(Step after _ c rt, _):groupedRt) = let
+            (Step _ before _ _, _) = last groupedRt 
+            in (Step after before c rt, length (s:groupedRt))
+
+traceToMessageBlock :: ReductionTrace -> MessageBlock
+traceToMessageBlock rts = let
+    in MessageCompose $ mapToBlock (1 :: Int) "" rts
+    where
+        mapToBlock idx pre ((Step after before _ (LeftToRight _), times):rts')
+            = MessageString (pre ++ show idx ++ ". " ++ (show . show) after ++ " <--- " ++ (show . show) before ++ ". Reason: left to right application. " ++ timesToString times ++ "\n")
+                : mapToBlock (idx + 1) pre rts'
+        mapToBlock idx pre ((Step after before constr CanonReduction, times):rts')
+            = MessageString (pre ++ show idx ++ ". " ++ (show . show) after ++ " <--- " ++ (show . show) before ++ " in constraint: " ++ (show . show) constr ++ ". Reason: canon reduction" ++ timesToString times ++"\n.")
+                : mapToBlock (idx + 1) pre rts'
+        mapToBlock idx pre ((Step after before _ TopLevelImprovement, times):rts')
+            = MessageString (pre ++ show idx ++ ". " ++ (show . show) after ++ " <--- " ++ (show . show) before ++ ". Reason: injective top-level improvement" ++ timesToString times ++ "\n.")
+                : mapToBlock (idx + 1) pre rts'
+        mapToBlock _ _ [] = []
+
+        timesToString t = if t == 1 then "" else "Applied " ++ show t ++ " times."

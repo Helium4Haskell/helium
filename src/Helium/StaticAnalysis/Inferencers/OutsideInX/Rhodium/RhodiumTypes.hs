@@ -61,12 +61,16 @@ instance VariableInjection MonoType where
 
 type MonoTypes = [MonoType]
 
-type ReductionTrace = [ReductionStep]
+type ReductionTrace = [(ReductionStep, Int)]
 data ReductionStep = Step MonoType MonoType (Constraint ()) ReductionType
-    deriving (Show, Ord, Eq)
+    deriving (Ord, Eq)
+
+instance Show ReductionStep where
+    show (Step after before constr rt) 
+        = "Reduction: " ++ show after ++ " reduced from: " ++ show before ++ " in constraint: " ++ show constr ++ ". Type: " ++ show rt
 
 data ReductionType
-  = LeftToRight
+  = LeftToRight MonoType
   | TopLevelImprovement
   | CanonReduction
   deriving (Generic, Ord, Eq, Show)
@@ -100,6 +104,12 @@ insertReductionStep (MonoType_Var ms v _) rs  = MonoType_Var ms v (Just rs)
 insertReductionStep (MonoType_Fam f mts _) rs = MonoType_Fam f mts (Just rs)
 insertReductionStep (MonoType_Con s _) rs     = MonoType_Con s (Just rs)
 insertReductionStep (MonoType_App m1 m2 _) rs = MonoType_App m1 m2 (Just rs)
+
+getMaybeReductionStep :: MonoType -> Maybe ReductionStep
+getMaybeReductionStep (MonoType_Var _ _ rs)  = rs
+getMaybeReductionStep (MonoType_Fam _ _ rs)  = rs
+getMaybeReductionStep (MonoType_Con _ rs)    = rs
+getMaybeReductionStep (MonoType_App _ _ rs)  = rs
 
 removeCI :: Constraint ci -> Constraint ()
 removeCI (Constraint_Unify m1 m2 _) = Constraint_Unify m1 m2 Nothing
@@ -138,7 +148,7 @@ showMT mp (MonoType_Tuple t1 t2 _) = "(" ++ showMT mp t1 ++ "," ++ showMT mp t2 
 showMT mp (MonoType_Con c _)       = c 
 showMT mp (MonoType_Fam c a _)     = c ++ concatMap (\x -> " " ++ doParens (showMT mp x)) a
 showMT mp (s :-->: t)            = doParens (showMT mp s) ++ " -> " ++ showMT mp t
-showMT mp (MonoType_Var s v _)     = let r = fromMaybe (fromMaybe (show v) s) (lookup v mp) in if r == "" then show v else r
+showMT mp (MonoType_Var s v _)     = let r = fromMaybe (fromMaybe (show v) s) (lookup v mp) in r ++ show v--if r == "" then show v else r
 showMT mp ma@(MonoType_App f a _)  = case separateMt ma of 
                                     (MonoType_Con s _, tp) | length s > 2 && head s == '(' && last s == ')' && all (==',') (tail (init s)) ->
                                        "(" ++ intercalate ", " (map show tp) ++ ")"

@@ -121,12 +121,12 @@ data Tree a = Node a (Tree a) (Tree a) | Leaf
 -- h :: H Int Int
 -- h = "hi"
 
--- type family Loop a where
---     Loop [a] = Loop a
---     Loop a = a 
+type family Loop a where
+    Loop [a] = Loop a
+    Loop a = a 
 
--- g :: Loop [[[[[[[Char]]]]]]]
--- g = "Hi"
+g :: Loop [[[[[[[Char]]]]]]]
+g = "Hi"
 
 --h = g + g
 -- Int -> Int > h_
@@ -148,12 +148,12 @@ data Tree a = Node a (Tree a) (Tree a) | Leaf
 -- f :: X -> Bool
 -- f (A x) = x || True
 
-type family B a = r | r -> a
-type instance B Int = Float
-type instance B Float = Int
+-- type family B a = r | r -> a
+-- type instance B Int = Float
+-- type instance B Float = Int
 
-f :: B a -> Int
-f x = x
+-- f :: B a -> Int
+-- f x = x
 
-g :: Int -> B a
-g x = x
+-- g :: Int -> B a
+-- g x = x
