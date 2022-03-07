@@ -112,7 +112,7 @@ applicationHeuristic = SingleVoting "Application heuristic" f
                            | length argumentPermutations == 1 && length (concat argumentPermutations) > 1 -> 
                               let p = head argumentPermutations
                               in 
-                              if trace ("BINARY P: " ++ show isBinary ++ ", " ++ show p ++ ", " ++ show argumentPermutations) p==[1,0] && isBinary
+                              if p==[1,0] && isBinary
                                  then 
                                        let hint = setTypePair (expectedType, functionType) . fixHint "swap the two arguments"
                                        in return $ Just

@@ -121,6 +121,9 @@ type family J a where
 h :: String -> H (J Int) (J Int)
 h s = s ++ "hi"
 
+-- h1 :: H (J Float) (J Int)
+-- h1 = "Hi"
+
 -- type family Loop a where
 --     Loop [a] = Loop a
 --     Loop a = a 

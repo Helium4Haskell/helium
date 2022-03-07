@@ -244,6 +244,13 @@ makeUnificationTypeError edge constraint info =
     msgtp2   <- getSubstTypeFull  (getGroupFromEdge edge) t2
     let [msgtp2', msgtp1'] = freshenRepresentation [msgtp2, msgtp1]
     --m2Trace <- buildReductionTrace edge msgmt2
+    (m1Trace, msgmt1) <- case msgtp1' of
+      PType (PolyType_Mono _ mt) -> do
+          tr <- buildReductionTrace edge mt
+          return (tr, mt)
+      MType mt -> do
+          tr <- buildReductionTrace edge mt
+          return (tr, mt)
     (m2Trace, msgmt2) <- case msgtp2' of
       PType (PolyType_Mono _ mt) -> do
           tr <- buildReductionTrace edge mt
@@ -266,8 +273,12 @@ makeUnificationTypeError edge constraint info =
                         PType p -> MessagePolyType p                    
                 ]
         hints      = [ hint | WithHint hint <- properties info ]
-                   ++ [("trace " ++ show msgmt2, traceToMessageBlock (squashTrace m2Trace)) | (not . null) m2Trace]               
+                   ++ [("trace " ++ show msgmt1, traceToMessageBlock (squashTrace m1Trace)) | (not . null) m1Trace && notListChar msgmt1]
+                   ++ [("trace " ++ show msgmt2, traceToMessageBlock (squashTrace m2Trace)) | (not . null) m2Trace && notListChar msgmt2]               
     return $ TypeError [range] [oneliner] table hints
+    where 
+        notListChar (MonoType_App (MonoType_Con "[]" _) (MonoType_Con "Char" _) _) = False
+        notListChar _ = True
 
 makeReductionError :: UHA_Source -> Maybe UHA_Source -> (MonoType, Maybe (PolyType ConstraintInfo)) -> [Axiom ConstraintInfo] -> (String, MonoType) -> TypeError
 makeReductionError source usage extra axioms (className, predicateTp) =
@@ -435,13 +446,13 @@ traceToMessageBlock rts = let
     in MessageCompose $ mapToBlock (1 :: Int) "" rts
     where
         mapToBlock idx pre ((Step after before _ (LeftToRight _), times):rts')
-            = MessageString (pre ++ show idx ++ ". " ++ (show . show) after ++ " <--- " ++ (show . show) before ++ ". Reason: left to right application. " ++ timesToString times ++ "\n")
+            = MessageString (pre ++ show idx ++ ". " ++ show after ++ " <--- " ++ show before ++ ". Reason: left to right application. " ++ timesToString times ++ "\n")
                 : mapToBlock (idx + 1) pre rts'
         mapToBlock idx pre ((Step after before constr CanonReduction, times):rts')
-            = MessageString (pre ++ show idx ++ ". " ++ (show . show) after ++ " <--- " ++ (show . show) before ++ " in constraint: " ++ (show . show) constr ++ ". Reason: canon reduction" ++ timesToString times ++"\n.")
+            = MessageString (pre ++ show idx ++ ". " ++ show after ++ " <--- " ++ show before ++ " in constraint: " ++ show constr ++ ". Reason: canon reduction" ++ timesToString times ++"\n.")
                 : mapToBlock (idx + 1) pre rts'
         mapToBlock idx pre ((Step after before _ TopLevelImprovement, times):rts')
-            = MessageString (pre ++ show idx ++ ". " ++ (show . show) after ++ " <--- " ++ (show . show) before ++ ". Reason: injective top-level improvement" ++ timesToString times ++ "\n.")
+            = MessageString (pre ++ show idx ++ ". " ++ show after ++ " <--- " ++ show before ++ ". Reason: injective top-level improvement" ++ timesToString times ++ "\n.")
                 : mapToBlock (idx + 1) pre rts'
         mapToBlock _ _ [] = []
 
