@@ -62,7 +62,7 @@ instance VariableInjection MonoType where
 type MonoTypes = [MonoType]
 
 type ReductionTrace = [(ReductionStep, Int)]
-data ReductionStep = Step MonoType MonoType (Constraint ()) ReductionType
+data ReductionStep = Step MonoType MonoType (Maybe (Constraint ())) ReductionType
     deriving (Ord, Eq)
 
 instance Show ReductionStep where

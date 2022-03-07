@@ -120,7 +120,7 @@ instance (CompareTypes m (RType ConstraintInfo), IsTouchable m TyVar, HasAxioms 
                             | f1 == f2, 
                               (Just injIdx) <- injectiveArgs axs f1, 
                               length ts1 == length ts2 
-                                -> return $ Applied ([], [], map (\i -> Constraint_Unify (insertReductionStep (ts1 !! i) (Step (ts1 !! i) mf1 (removeCI ogc) CanonReduction)) (insertReductionStep (ts2 !! i) (Step (ts1 !! i) mf2 (removeCI ogc) CanonReduction)) Nothing) injIdx)
+                                -> return $ Applied ([], [], map (\i -> Constraint_Unify (insertReductionStep (ts1 !! i) (Step (ts1 !! i) mf1 (Just $ removeCI ogc) CanonReduction)) (insertReductionStep (ts2 !! i) (Step (ts1 !! i) mf2 (Just $ removeCI ogc) CanonReduction)) Nothing) injIdx)
                             | f1 == f2, isInjective axs f1, length ts1 /= length ts2 -> return $ Error $ ErrorLabel $ "Different Number of arguments for " ++ show ts1 ++ " and " ++ show ts2
                             | f1 == f2, null ts1 && null ts2 -> return $ Applied ([], [], [])
                             | f1 == f2, length ts1 == length ts2 -> return NotApplicable
@@ -311,7 +311,7 @@ instance (
                                     let substRhs = substs (convertSubstitution s) rhs
                                     -- Makes sure that the lhs in LeftToRight is standardized on a certain uniqueness
                                     let (_, (specLhs, _)) = contFreshM (unbind b) 1000000000000000 -- Must be large 
-                                    let newRhs = insertReductionStep substRhs (Step substRhs mf (removeCI c) (LeftToRight specLhs))
+                                    let newRhs = insertReductionStep substRhs (Step substRhs mf (Just $ removeCI c) (LeftToRight specLhs))
                                     return $ Applied (if given then [] else fvToList t, [Constraint_Unify newRhs t Nothing])
                                 -- Try injectivity top level improvement when normal reaction fails
                                 _ -> improveTopLevelFun given c ax
@@ -347,7 +347,7 @@ improveTopLevelFun given c@(Constraint_Unify fam@(MonoType_Fam f ms _) t _) (Axi
                             -- Deviate from paper, follow Cobalt, only focus on injective arguments.
                             Unifiable _ -> do
                                 let substLhs' = applyOverInjArgs psubst injIdx lhs
-                                let newLhs = insertReductionStep substLhs' (Step substLhs fam (removeCI c) TopLevelImprovement)
+                                let newLhs = insertReductionStep substLhs' (Step substLhs fam (Just $ removeCI c) TopLevelImprovement)
                                 return $ Applied ([], [Constraint_Unify newLhs fam Nothing]) -- Here we deviate from the paper and follow Cobalt (just substitute arguments with what we obtained)
             _ -> return NotApplicable 
 improveTopLevelFun given c (Axiom_ClosedGroup _ axs) = loopAxioms (improveTopLevelFun given c) axs
@@ -405,7 +405,7 @@ reactClosedTypeFam given = reactClosedTypeFam' []
                                 then do
                                     let substRhs = substs (convertSubstitution s) rhs
                                     let (_, (specLhs, _)) = contFreshM (unbind b) 1000000000000000
-                                    let newRhs = insertReductionStep substRhs (Step substRhs mf (removeCI c) (LeftToRight specLhs))
+                                    let newRhs = insertReductionStep substRhs (Step substRhs mf (Just $ removeCI c) (LeftToRight specLhs))
                                     return $ Applied (if given then [] else fvToList t, [Constraint_Unify newRhs t Nothing])
                                 else reactClosedTypeFam' (seen ++ [ax]) c axs 
                   _ -> return NotApplicable

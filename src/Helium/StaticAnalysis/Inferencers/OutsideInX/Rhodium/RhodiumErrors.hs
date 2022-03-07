@@ -242,8 +242,15 @@ makeUnificationTypeError edge constraint info =
             Just ps -> PType ps
     msgtp1   <- getSubstTypeFull (getGroupFromEdge edge) t1'
     msgtp2   <- getSubstTypeFull  (getGroupFromEdge edge) t2
-    let [msgtp2'@(MType msgmt1), msgtp1'@(MType msgmt2)] = freshenRepresentation [msgtp2, msgtp1]
-    m2Trace <- buildReductionTrace edge msgmt2
+    let [msgtp2', msgtp1'] = freshenRepresentation [msgtp2, msgtp1]
+    --m2Trace <- buildReductionTrace edge msgmt2
+    (m2Trace, msgmt2) <- case msgtp2' of
+      PType (PolyType_Mono _ mt) -> do
+          tr <- buildReductionTrace edge mt
+          return (tr, mt)
+      MType mt -> do
+          tr <- buildReductionTrace edge mt
+          return (tr, mt)
     let (reason1, reason2)
             | isTooManyFBArgs info                   = ("declared type", "inferred type")
             | isFolkloreConstraint info               = ("type"         , "expected type")
@@ -366,17 +373,51 @@ makeMissingTypeSignature source branchSources mTs = let
 
 buildReductionTrace :: (CompareTypes m (RType ConstraintInfo), Fresh m, HasTypeGraph m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo)
                     => TGEdge (Constraint ConstraintInfo) -> MonoType -> m ReductionTrace
-buildReductionTrace e mt = do
-    case getMaybeReductionStep mt of
-      Nothing -> return []
-      Just (Step after before (Constraint_Unify sm1 sm2 _) rt) -> do
+buildReductionTrace e mt = case getMaybeReductionStep mt of
+      Nothing -> case mt of
+          MonoType_Fam{} -> buildNestedSteps e mt
+          _                    -> return []
+      Just (Step after before mconstr rt) -> do
           (MType trAfter) <- getSubstTypeFull (getGroupFromEdge e) (MType after)
-          (MType trBefore) <- getSubstTypeFull (getGroupFromEdge e) (MType before)
-          (MType trConstrLeft) <- getSubstTypeFull (getGroupFromEdge e) (MType sm1)
-          (MType trConstrRight) <- getSubstTypeFull (getGroupFromEdge e) (MType sm2)
-          let trConstr = Constraint_Unify trConstrLeft trConstrRight Nothing
+          (MType trBefore) <- getSubstTypeFull (getGroupFromEdge e) (MType before)          
+          trConstr <- case mconstr of 
+                Just (Constraint_Unify sm1 sm2 _) -> do
+                    (MType trConstrLeft) <- getSubstTypeFull (getGroupFromEdge e) (MType sm1)
+                    (MType trConstrRight) <- getSubstTypeFull (getGroupFromEdge e) (MType sm2)
+                    return $ Just $ Constraint_Unify trConstrLeft trConstrRight Nothing
           ih <- buildReductionTrace e trBefore
           return $ (Step trAfter trBefore trConstr rt, 1) : ih
+
+buildNestedSteps :: (CompareTypes m (RType ConstraintInfo), Fresh m, HasTypeGraph m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo)
+                   => TGEdge (Constraint ConstraintInfo) -> MonoType -> m ReductionTrace
+buildNestedSteps = buildNestedSteps' []
+    where
+        buildNestedSteps' seen e' mt' = do
+            (MType mt'') <- getSubstTypeFull (getGroupFromEdge e') (MType mt')
+            case mt'' of
+                (MonoType_Fam f (m:mts) _) -> do
+                    step <- getOneStep e' m
+                    case step of
+                      Nothing -> buildNestedSteps' (m:seen) e' (MonoType_Fam f mts Nothing)
+                      Just (Step after before mconstr rt) -> do
+                            ih <- buildNestedSteps' (before:seen) e' (MonoType_Fam f mts Nothing)
+                            return ((Step (MonoType_Fam f (seen++(after:mts)) Nothing) (MonoType_Fam f (seen++(before:mts)) Nothing) mconstr rt, 1) : ih)
+                _ -> return []
+
+
+getOneStep :: (CompareTypes m (RType ConstraintInfo), Fresh m, HasTypeGraph m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo)
+                  => TGEdge (Constraint ConstraintInfo) -> MonoType -> m (Maybe ReductionStep)
+getOneStep e mt = case getMaybeReductionStep mt of
+    Nothing -> return Nothing
+    Just (Step after before mconstr rt) -> do
+        (MType trAfter) <- getSubstTypeFull (getGroupFromEdge e) (MType after)
+        (MType trBefore) <- getSubstTypeFull (getGroupFromEdge e) (MType before)
+        trConstr <- case mconstr of 
+                Just (Constraint_Unify sm1 sm2 _) -> do
+                    (MType trConstrLeft) <- getSubstTypeFull (getGroupFromEdge e) (MType sm1)
+                    (MType trConstrRight) <- getSubstTypeFull (getGroupFromEdge e) (MType sm2)
+                    return $ Just $ Constraint_Unify trConstrLeft trConstrRight Nothing
+        return $ Just $ Step trAfter trBefore trConstr rt
 
 squashTrace :: ReductionTrace -> ReductionTrace 
 squashTrace rts = let
