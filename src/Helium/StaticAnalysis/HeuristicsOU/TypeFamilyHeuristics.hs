@@ -28,7 +28,7 @@ typeErrorThroughReduction path = SingleVoting "Type error through type family re
           let ceid = edgeIdFromPath path
           let cedge = getEdgeFromId graph ceid
           let pconstraint = getConstraintFromEdge cedge
-          case (trace ("INSIDE INST: " ++ show pconstraint) pconstraint, labelFromPath path) of
+          case (pconstraint, labelFromPath path) of
             (Constraint_Unify mf@(MonoType_Fam f fmts _) t _, ErrorLabel "Residual constraint")
               -> return Nothing
             (Constraint_Unify t1 t2 _, ErrorLabel "Incorrect constructors") -> do
