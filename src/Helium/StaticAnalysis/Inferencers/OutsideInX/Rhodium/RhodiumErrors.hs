@@ -59,7 +59,7 @@ instance (MonadFail m, CompareTypes m (RType ConstraintInfo), Fresh m, HasTypeGr
                         --error $ show (expected, function)
                 | li == labelIncorrectConstructors  && isJust (maybeTypeFamilyReduction ci) =
                     do
-                        te <- makeTFReductionTypeError edge constraint ci
+                        te <- makeTFReductionTypeError False edge constraint ci
                         return ci {
                             errorMessage = Just te
                         }
@@ -141,6 +141,11 @@ instance (MonadFail m, CompareTypes m (RType ConstraintInfo), Fresh m, HasTypeGr
                         return ci{
                             errorMessage = Just err
                         }
+                | li == labelResidual && isJust (maybeTypeFamilyReduction ci) = do
+                    te <- makeTFReductionTypeError True edge constraint ci
+                    return ci {
+                        errorMessage = Just te
+                    }
                 | li == labelResidual =
                         case constraint of
                             Constraint_Inst m1 m2 _ -> do
@@ -370,12 +375,14 @@ makeMissingTypeSignature source branchSources mTs = let
     in TypeError (map rangeOfSource branchSources) message table hints
 
 makeTFReductionTypeError :: (CompareTypes m (RType ConstraintInfo), Fresh m, HasTypeGraph m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo) 
-                         => TGEdge (Constraint ConstraintInfo) -> Constraint ConstraintInfo -> ConstraintInfo -> m TypeError
-makeTFReductionTypeError edge constraint info =
+                         => Bool -> TGEdge (Constraint ConstraintInfo) -> Constraint ConstraintInfo -> ConstraintInfo -> m TypeError
+makeTFReductionTypeError isTooGeneral edge constraint info =
     do
     let (source, term) = sources info
         range    = maybe (rangeOfSource source) rangeOfSource term
-        oneliner = MessageOneLiner (MessageString ("Type error with type family reduction in " ++ location info))
+        oneliner = if isTooGeneral 
+                    then MessageOneLiner (MessageString ("Type family in " ++ location info ++ " was not fully reducable"))
+                    else MessageOneLiner (MessageString ("Type error with type family reduction in " ++ location info))
         (t1, t2) = case constraint of
             Constraint_Unify t1 t2 _-> (MType t1, MType t2)
             Constraint_Inst t1 t2 _ -> (MType t1, PType t2)

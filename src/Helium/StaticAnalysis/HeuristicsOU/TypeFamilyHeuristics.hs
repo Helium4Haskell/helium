@@ -3,7 +3,7 @@
 module Helium.StaticAnalysis.HeuristicsOU.TypeFamilyHeuristics where
 import Unbound.Generics.LocallyNameless ( Fresh )
 import Rhodium.Blamer.Path
-import Helium.StaticAnalysis.Inferencers.OutsideInX.Rhodium.RhodiumTypes (Axiom, TyVar, RType, Constraint (Constraint_Inst, Constraint_Unify), MonoType (MonoType_Fam, MonoType_App, MonoType_Con, MonoType_Var), PolyType (PolyType_Mono))
+import Helium.StaticAnalysis.Inferencers.OutsideInX.Rhodium.RhodiumTypes (Axiom, TyVar, RType (MType), Constraint (Constraint_Inst, Constraint_Unify), MonoType (MonoType_Fam, MonoType_App, MonoType_Con, MonoType_Var), PolyType (PolyType_Mono))
 import Helium.StaticAnalysis.Miscellaneous.ConstraintInfoOU (ConstraintInfo, HasProperties (addProperty), Property (TypeFamilyReduction))
 import Rhodium.Blamer.Heuristics (VotingHeuristic (SingleVoting))
 import Rhodium.TypeGraphs.Graph
@@ -23,23 +23,40 @@ typeErrorThroughReduction path = SingleVoting "Type error through type family re
   where
     f (constraint, eid, ci, gm) = do
       graph <- getGraph
-      case constraint of
+      case trace ("CONSTRAINT: " ++ show constraint) constraint of
         Constraint_Inst _ (PolyType_Mono _ pmt) _ -> do
           let ceid = edgeIdFromPath path
           let cedge = getEdgeFromId graph ceid
           let pconstraint = getConstraintFromEdge cedge
           case (pconstraint, labelFromPath path) of
-            (Constraint_Unify mf@(MonoType_Fam f fmts _) t _, ErrorLabel "Residual constraint")
-              -> return Nothing
+            -- Could not be reducted further
+            (Constraint_Unify mf@(MonoType_Fam f fmts _) t _, ErrorLabel "Residual constraint") -> do
+              (MType mf') <- getSubstTypeFull (getGroupFromEdge cedge) (MType mf)
+              let mf'' = makeCharString mf'
+              theTrace <- buildReductionTrace cedge mf''
+              case theTrace of
+                [] -> return Nothing
+                trc -> do
+                  let Just lastType = getLastTypeInTrace trc
+                  let Just firstType = getFirstTypeInTrace trc
+                  if typeIsInType lastType pmt
+                    then do
+                      let reducedTypeSig = replaceIfEqual firstType lastType pmt
+                      return $ Just (5, "Type family could not be reduced further", constraint, eid, addProperty (TypeFamilyReduction reducedTypeSig theTrace firstType) ci, gm)
+                    else return Nothing
+            -- Reduced to simple type but resulted in type error
             (Constraint_Unify t1 t2 _, ErrorLabel "Incorrect constructors") -> do
               t1Trace <- buildReductionTrace cedge t1
               t2Trace <- buildReductionTrace cedge t2
               case getFullTrace t1Trace t2Trace of
                 Nothing -> return Nothing
-                Just theTrace -> if typeIsInType (fromJust $ getLastTypeInTrace theTrace) pmt
+                Just theTrace -> do
+                  let Just lastType = getLastTypeInTrace theTrace
+                  let Just firstType = getFirstTypeInTrace theTrace
+                  if typeIsInType lastType pmt
                   then do
-                    let reducedTypeSig = replaceIfEqual (fromJust $ getFirstTypeInTrace theTrace) (fromJust $ getLastTypeInTrace theTrace) pmt
-                    return $ Just (5, "Type family reduction type error", constraint, eid, addProperty (TypeFamilyReduction reducedTypeSig theTrace (fromJust $ getFirstTypeInTrace theTrace)) ci, gm)
+                    let reducedTypeSig = replaceIfEqual firstType lastType pmt
+                    return $ Just (5, "Type family reduction type error", constraint, eid, addProperty (TypeFamilyReduction reducedTypeSig theTrace firstType) ci, gm)
                   else return Nothing
             _ -> return Nothing
         _                     -> return Nothing
@@ -55,3 +72,9 @@ replaceIfEqual t1 t2 mf@(MonoType_Fam f mts rt) = if t2 == mf then t1 else MonoT
 replaceIfEqual t1 t2 ma@(MonoType_App m1 m2 rt) = if t2 == ma then t1 else MonoType_App (replaceIfEqual t1 t2 m1) (replaceIfEqual t1 t2 m2) rt
 replaceIfEqual t1 t2 mc@(MonoType_Con _ _)      = if t2 == mc then t1 else mc
 replaceIfEqual t1 t2 mv@MonoType_Var{}          = if t2 == mv then t1 else mv
+
+makeCharString :: MonoType -> MonoType
+makeCharString (MonoType_App (MonoType_Con "[]" _) (MonoType_Con "Char" _) rt) = MonoType_Fam "String" [] rt
+makeCharString (MonoType_App m1 m2 rt) = MonoType_App (makeCharString m1) (makeCharString m2) rt
+makeCharString (MonoType_Fam f mts rt) = MonoType_Fam f (map makeCharString mts) rt
+makeCharString mt = mt
