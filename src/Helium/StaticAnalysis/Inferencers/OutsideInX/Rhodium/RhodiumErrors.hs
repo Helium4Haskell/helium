@@ -19,6 +19,7 @@ import Helium.StaticAnalysis.Messages.TypeErrors hiding (makeNotGeneralEnoughTyp
 import Helium.StaticAnalysis.Messages.Messages
 import Helium.StaticAnalysis.Miscellaneous.UHA_Source
 import Helium.StaticAnalysis.Miscellaneous.ConstraintInfoOU
+import Helium.StaticAnalysis.Miscellaneous.ReductionTraceUtils
 import Helium.StaticAnalysis.Inferencers.OutsideInX.Rhodium.RhodiumGenerics
 import Helium.StaticAnalysis.Miscellaneous.DoublyLinkedTree
 import Helium.Syntax.UHA_Utils
@@ -56,6 +57,12 @@ instance (MonadFail m, CompareTypes m (RType ConstraintInfo), Fresh m, HasTypeGr
                             errorMessage = Just $ makeUnreachablePatternError (fst $ sources ci) tsLoc expected function (maybePossibleTypeSignature ci)
                         }
                         --error $ show (expected, function)
+                | li == labelIncorrectConstructors  && isJust (maybeTypeFamilyReduction ci) =
+                    do
+                        te <- makeTFReductionTypeError edge constraint ci
+                        return ci {
+                            errorMessage = Just te
+                        }
                 | li == labelIncorrectConstructors || li == labelInfiniteType || isTypeError ci || isTooManyFBArgs ci =
                     do
                         te <- makeUnificationTypeError edge constraint ci
@@ -243,21 +250,6 @@ makeUnificationTypeError edge constraint info =
     msgtp1   <- getSubstTypeFull (getGroupFromEdge edge) t1'
     msgtp2   <- getSubstTypeFull  (getGroupFromEdge edge) t2
     let [msgtp2', msgtp1'] = freshenRepresentation [msgtp2, msgtp1]
-    --m2Trace <- buildReductionTrace edge msgmt2
-    (m1Trace, msgmt1) <- case msgtp1' of
-      PType (PolyType_Mono _ mt) -> do
-          tr <- buildReductionTrace edge mt
-          return (tr, mt)
-      MType mt -> do
-          tr <- buildReductionTrace edge mt
-          return (tr, mt)
-    (m2Trace, msgmt2) <- case msgtp2' of
-      PType (PolyType_Mono _ mt) -> do
-          tr <- buildReductionTrace edge mt
-          return (tr, mt)
-      MType mt -> do
-          tr <- buildReductionTrace edge mt
-          return (tr, mt)
     let (reason1, reason2)
             | isTooManyFBArgs info                   = ("declared type", "inferred type")
             | isFolkloreConstraint info               = ("type"         , "expected type")
@@ -272,13 +264,8 @@ makeUnificationTypeError edge constraint info =
                         MType m -> MessageMonoType m
                         PType p -> MessagePolyType p                    
                 ]
-        hints      = [ hint | WithHint hint <- properties info ]
-                   ++ [("trace " ++ show msgmt1, traceToMessageBlock (squashTrace m1Trace)) | (not . null) m1Trace && notListChar msgmt1]
-                   ++ [("trace " ++ show msgmt2, traceToMessageBlock (squashTrace m2Trace)) | (not . null) m2Trace && notListChar msgmt2]               
+        hints      = [ hint | WithHint hint <- properties info ]            
     return $ TypeError [range] [oneliner] table hints
-    where 
-        notListChar (MonoType_App (MonoType_Con "[]" _) (MonoType_Con "Char" _) _) = False
-        notListChar _ = True
 
 makeReductionError :: UHA_Source -> Maybe UHA_Source -> (MonoType, Maybe (PolyType ConstraintInfo)) -> [Axiom ConstraintInfo] -> (String, MonoType) -> TypeError
 makeReductionError source usage extra axioms (className, predicateTp) =
@@ -382,78 +369,35 @@ makeMissingTypeSignature source branchSources mTs = let
         hints = [("hint", MessageString $ "add a valid type signature" ++ maybe "" (\pt -> ", e.g. " ++ show pt) mTs')]
     in TypeError (map rangeOfSource branchSources) message table hints
 
-buildReductionTrace :: (CompareTypes m (RType ConstraintInfo), Fresh m, HasTypeGraph m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo)
-                    => TGEdge (Constraint ConstraintInfo) -> MonoType -> m ReductionTrace
-buildReductionTrace e mt = case getMaybeReductionStep mt of
-      Nothing -> case mt of
-          MonoType_Fam{} -> buildNestedSteps e mt
-          _                    -> return []
-      Just (Step after before mconstr rt) -> do
-          (MType trAfter) <- getSubstTypeFull (getGroupFromEdge e) (MType after)
-          (MType trBefore) <- getSubstTypeFull (getGroupFromEdge e) (MType before)          
-          trConstr <- case mconstr of 
-                Just (Constraint_Unify sm1 sm2 _) -> do
-                    (MType trConstrLeft) <- getSubstTypeFull (getGroupFromEdge e) (MType sm1)
-                    (MType trConstrRight) <- getSubstTypeFull (getGroupFromEdge e) (MType sm2)
-                    return $ Just $ Constraint_Unify trConstrLeft trConstrRight Nothing
-          ih <- buildReductionTrace e trBefore
-          return $ (Step trAfter trBefore trConstr rt, 1) : ih
-
-buildNestedSteps :: (CompareTypes m (RType ConstraintInfo), Fresh m, HasTypeGraph m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo)
-                   => TGEdge (Constraint ConstraintInfo) -> MonoType -> m ReductionTrace
-buildNestedSteps = buildNestedSteps' []
-    where
-        buildNestedSteps' seen e' mt' = do
-            (MType mt'') <- getSubstTypeFull (getGroupFromEdge e') (MType mt')
-            case mt'' of
-                (MonoType_Fam f (m:mts) _) -> do
-                    step <- getOneStep e' m
-                    case step of
-                      Nothing -> buildNestedSteps' (m:seen) e' (MonoType_Fam f mts Nothing)
-                      Just (Step after before mconstr rt) -> do
-                            ih <- buildNestedSteps' (before:seen) e' (MonoType_Fam f mts Nothing)
-                            return ((Step (MonoType_Fam f (seen++(after:mts)) Nothing) (MonoType_Fam f (seen++(before:mts)) Nothing) mconstr rt, 1) : ih)
-                _ -> return []
-
-
-getOneStep :: (CompareTypes m (RType ConstraintInfo), Fresh m, HasTypeGraph m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo)
-                  => TGEdge (Constraint ConstraintInfo) -> MonoType -> m (Maybe ReductionStep)
-getOneStep e mt = case getMaybeReductionStep mt of
-    Nothing -> return Nothing
-    Just (Step after before mconstr rt) -> do
-        (MType trAfter) <- getSubstTypeFull (getGroupFromEdge e) (MType after)
-        (MType trBefore) <- getSubstTypeFull (getGroupFromEdge e) (MType before)
-        trConstr <- case mconstr of 
-                Just (Constraint_Unify sm1 sm2 _) -> do
-                    (MType trConstrLeft) <- getSubstTypeFull (getGroupFromEdge e) (MType sm1)
-                    (MType trConstrRight) <- getSubstTypeFull (getGroupFromEdge e) (MType sm2)
-                    return $ Just $ Constraint_Unify trConstrLeft trConstrRight Nothing
-        return $ Just $ Step trAfter trBefore trConstr rt
-
-squashTrace :: ReductionTrace -> ReductionTrace 
-squashTrace rts = let
-    
-    groupedRts = groupBy (\(Step _ _ _ rt1, _) (Step _ _ _ rt2, _) -> rt1 == rt2) rts
-    in map buildNewStep groupedRts
-    where
-        buildNewStep [s] = s 
-        buildNewStep (s@(Step after _ c rt, _):groupedRt) = let
-            (Step _ before _ _, _) = last groupedRt 
-            in (Step after before c rt, length (s:groupedRt))
-
-traceToMessageBlock :: ReductionTrace -> MessageBlock
-traceToMessageBlock rts = let
-    in MessageCompose $ mapToBlock (1 :: Int) "" rts
-    where
-        mapToBlock idx pre ((Step after before _ (LeftToRight _), times):rts')
-            = MessageString (pre ++ show idx ++ ". " ++ show after ++ " <--- " ++ show before ++ ". Reason: left to right application. " ++ timesToString times ++ "\n")
-                : mapToBlock (idx + 1) pre rts'
-        mapToBlock idx pre ((Step after before constr CanonReduction, times):rts')
-            = MessageString (pre ++ show idx ++ ". " ++ show after ++ " <--- " ++ show before ++ " in constraint: " ++ show constr ++ ". Reason: canon reduction" ++ timesToString times ++"\n.")
-                : mapToBlock (idx + 1) pre rts'
-        mapToBlock idx pre ((Step after before _ TopLevelImprovement, times):rts')
-            = MessageString (pre ++ show idx ++ ". " ++ show after ++ " <--- " ++ show before ++ ". Reason: injective top-level improvement" ++ timesToString times ++ "\n.")
-                : mapToBlock (idx + 1) pre rts'
-        mapToBlock _ _ [] = []
-
-        timesToString t = if t == 1 then "" else "Applied " ++ show t ++ " times."
+makeTFReductionTypeError :: (CompareTypes m (RType ConstraintInfo), Fresh m, HasTypeGraph m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo) 
+                         => TGEdge (Constraint ConstraintInfo) -> Constraint ConstraintInfo -> ConstraintInfo -> m TypeError
+makeTFReductionTypeError edge constraint info =
+    do
+    let (source, term) = sources info
+        range    = maybe (rangeOfSource source) rangeOfSource term
+        oneliner = MessageOneLiner (MessageString ("Type error with type family reduction in " ++ location info))
+        (t1, t2) = case constraint of
+            Constraint_Unify t1 t2 _-> (MType t1, MType t2)
+            Constraint_Inst t1 t2 _ -> (MType t1, PType t2)
+    --let    Constraint_Unify t1 t2 _ = constraint
+    let t1' = maybe t1 PType (maybeApplicationTypeSignature info)
+    msgtp1   <- getSubstTypeFull (getGroupFromEdge edge) t1'
+    msgtp2   <- getSubstTypeFull  (getGroupFromEdge edge) t2
+    let [msgtp2', msgtp1'] = freshenRepresentation [msgtp2, msgtp1]
+    --m2Trace <- buildReductionTrace edge msgmt2
+    let (Just (reduced, theTrace, msgmt)) = maybeTypeFamilyReduction info
+    let (reason1, reason2, reason3) = ("declared type", "reduced type", "inferred type")
+        table = [ s <:> MessageOneLineTree (oneLinerSource source') | (s, source') <- convertSources (sources info)]
+                ++
+                [
+                    reason1 >:> case msgtp2' of
+                        MType m -> MessageMonoType m
+                        PType p -> MessagePolyType p
+                ,   reason2 >:> MessageMonoType reduced
+                ,   reason3 >:> case msgtp1' of
+                        MType m -> MessageMonoType m
+                        PType p -> MessagePolyType p                    
+                ]
+        hints      = [ hint | WithHint hint <- properties info ]
+                   ++ [("trace " ++ show msgmt, traceToMessageBlock (squashTrace theTrace)) | (not . null) theTrace]              
+    return $ TypeError [range] [oneliner] table hints

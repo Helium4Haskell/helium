@@ -95,6 +95,7 @@ library
       Helium.StaticAnalysis.HeuristicsOU.RepairHeuristics
       Helium.StaticAnalysis.HeuristicsOU.ResidualHeuristics
       Helium.StaticAnalysis.HeuristicsOU.TieBreakerHeuristics
+      Helium.StaticAnalysis.HeuristicsOU.TypeFamilyHeuristics
       Helium.StaticAnalysis.HeuristicsOU.UnifierHeuristics
       Helium.StaticAnalysis.Inferencers.BindingGroupAnalysis
       Helium.StaticAnalysis.Inferencers.ExpressionTypeInferencer
@@ -117,6 +118,7 @@ library
       Helium.StaticAnalysis.Miscellaneous.ConstraintInfo
       Helium.StaticAnalysis.Miscellaneous.ConstraintInfoOU
       Helium.StaticAnalysis.Miscellaneous.DoublyLinkedTree
+      Helium.StaticAnalysis.Miscellaneous.ReductionTraceUtils
       Helium.StaticAnalysis.Miscellaneous.TypeConstraints
       Helium.StaticAnalysis.Miscellaneous.TypeConversion
       Helium.StaticAnalysis.Miscellaneous.TypesToAlignedDocs
