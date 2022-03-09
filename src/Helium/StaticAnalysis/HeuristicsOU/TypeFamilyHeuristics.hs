@@ -27,30 +27,44 @@ typeErrorThroughReduction path = SingleVoting "Type error through type family re
       graph <- getGraph
       case constraint of
         Constraint_Inst _ (PolyType_Mono _ pmt) _ -> do
+          -- Getting edge of erroneous constraint (pconstraint)
           let ceid = edgeIdFromPath path
           let cedge = getEdgeFromId graph ceid
           let pconstraint = getConstraintFromEdge cedge
           case (pconstraint, labelFromPath path) of
-            -- Could not be reducted further
+            -- PConstraint could not be reducted further
             (Constraint_Unify mf@(MonoType_Fam f fmts _) t _, ErrorLabel "Residual constraint") -> do
+              -- If there are vars in the typefamily, it may be the case that a type family application was there.
               let varsInTf = filter isVar fmts
               substVars <- mapM (getSubstTypeFull (getGroupFromEdge cedge) . MType) varsInTf
+              -- substVarsMt is all type family applications obtained from vars. They were not reducable.
               let substVarsMt = filter isFam $ map (\(MType m) -> makeCharString m) substVars
+              -- Obtain substitution of full type
               (MType mf') <- getSubstTypeFull (getGroupFromEdge cedge) (MType mf)
               let mf'' = makeCharString mf'
-              theTrace <- buildReductionTrace cedge mf''
-              case theTrace of
-                [] -> return Nothing
+              -- Get potential trace.
+              theTrace <- squashTrace <$> buildReductionTrace cedge (trace ("MF: " ++ show mf'') mf'')
+              case trace ("THE TRACE: " ++ show theTrace) theTrace of
+                [] -> if null substVarsMt
+                        then do
+                          let hint = addHint "probable cause" (show mf'' ++ " is not reducable")
+                          return $ Just (4, "Type family could not be reduced, no nesting", constraint, eid, hint ci, gm)
+                        else do
+                          let rhsHint = case substVarsMt of
+                                            [x] -> show x ++ " is not reducable"
+                                            xs -> intercalate ", " (map show xs) ++ " are not reducable"
+                          let hint = addHint "probable cause" rhsHint
+                          return $ Just (4, "Type family could not be reduced, no trace", constraint, eid, hint ci, gm)
                 trc -> do
                   let Just lastType = getLastTypeInTrace trc
                   let Just firstType = getFirstTypeInTrace trc
                   if typeIsInType lastType pmt
-                    then if null substVars
+                    then if null substVarsMt
                       then return $ Just (5, "Type family could not be reduced further", constraint, eid, addProperty (TypeFamilyReduction theTrace t lastType firstType) ci, gm)
                       else do
                         let rhsHint = case substVarsMt of
-                                        [x] -> show x ++ " was not reducable"
-                                        xs -> intercalate ", " (map show xs) ++ " were not reducable"
+                                        [x] -> show x ++ " is not reducable"
+                                        xs -> intercalate ", " (map show xs) ++ " are not reducable"
                         let hint = addHint "probable cause" rhsHint
                         return $ Just (5, "Type family could not be reduced further", constraint, eid, addProperty (TypeFamilyReduction theTrace t lastType firstType) $ hint ci, gm)
                     else return Nothing

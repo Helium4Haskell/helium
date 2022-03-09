@@ -11,6 +11,7 @@ import Rhodium.TypeGraphs.Graph (TGEdge, getGroupFromEdge)
 import Helium.StaticAnalysis.Messages.Messages (MessageBlock (MessageString, MessageCompose))
 import Rhodium.TypeGraphs.GraphUtils (getSubstTypeFull)
 import Data.List (groupBy)
+import Debug.Trace (trace)
 
 
 buildReductionTrace :: (CompareTypes m (RType ConstraintInfo), Fresh m, HasTypeGraph m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo)
@@ -37,14 +38,25 @@ buildNestedSteps = buildNestedSteps' []
         buildNestedSteps' seen e' mt' = do
             (MType mt'') <- getSubstTypeFull (getGroupFromEdge e') (MType mt')
             case mt'' of
-                (MonoType_Fam f (m:mts) _) -> do
-                    step <- getOneStep e' m
+                mf@(MonoType_Fam f (m:mts) _) -> do
+                    step <- getOneStep e' (trace ("MONOTYPE: " ++ show m) m)
                     case step of
-                      Nothing -> buildNestedSteps' (m:seen) e' (MonoType_Fam f mts Nothing)
+                      Nothing -> do
+                          diveDeeper <- buildNestedSteps e' m 
+                          next <- buildNestedSteps' (m:seen) e' (MonoType_Fam f mts Nothing)
+                          return $ setInsideFam seen mf diveDeeper ++ next
                       Just (Step after before mconstr rt) -> do
-                            ih <- buildNestedSteps' (before:seen) e' (MonoType_Fam f mts Nothing)
+                            ih <- buildNestedSteps' seen e' (MonoType_Fam f (before:mts) Nothing)
                             return ((Step (MonoType_Fam f (seen++(after:mts)) Nothing) (MonoType_Fam f (seen++(before:mts)) Nothing) mconstr rt, 1) : ih)
                 _ -> return []
+        
+        setInsideFam seen mf@(MonoType_Fam f (_:mts) _) ((Step after before constr rt, _):ss) = let
+            afterFam = MonoType_Fam f (seen++(after:mts)) Nothing
+            beforeFam = MonoType_Fam f (seen++(before:mts)) Nothing
+            famStep = Step afterFam beforeFam constr rt
+            in (famStep, 1) : setInsideFam seen mf ss
+        setInsideFam _ _ [] = []
+
 
 
 getOneStep :: (CompareTypes m (RType ConstraintInfo), Fresh m, HasTypeGraph m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo)

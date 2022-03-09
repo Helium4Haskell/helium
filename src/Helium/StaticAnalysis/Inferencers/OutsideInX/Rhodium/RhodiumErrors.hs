@@ -157,7 +157,7 @@ instance (MonadFail m, CompareTypes m (RType ConstraintInfo), Fresh m, HasTypeGr
                                     source  = uncurry fromMaybe (sources ci)
                                     err     = noRange -- error "unknown original type scheme"
 
-                                    te = makeNotGeneralEnoughTypeError (isExprTyped ci) range source scheme1' m2'
+                                    te = makeNotGeneralEnoughTypeError (isExprTyped ci) range source scheme1' m2' ci
                                 return ci{
                                     errorMessage = Just te
                                 }
@@ -223,8 +223,8 @@ makeUnreachablePatternError source functionRange expected inferred possibleTS=
                 ]
     in TypeError [range] [oneliner] table hints
 
-makeNotGeneralEnoughTypeError :: Bool -> Range -> UHA_Source -> MonoType -> PolyType ConstraintInfo -> TypeError
-makeNotGeneralEnoughTypeError isAnnotation range source tpscheme1 tpscheme2 =
+makeNotGeneralEnoughTypeError :: Bool -> Range -> UHA_Source -> MonoType -> PolyType ConstraintInfo -> ConstraintInfo -> TypeError
+makeNotGeneralEnoughTypeError isAnnotation range source tpscheme1 tpscheme2 info =
     let
         ts1      = tpscheme1
         ts2      = tpscheme2
@@ -236,6 +236,7 @@ makeNotGeneralEnoughTypeError isAnnotation range source tpscheme1 tpscheme2 =
                     , "inferred type" >:> MessageMonoType ts1
                     ]
         hints    = [ ("hint", MessageString "try removing the type signature") | not (null (fvToList ts1 :: [TyVar])) ]
+                ++ [ hint | WithHint hint <- properties info ]
     in TypeError [range] [oneliner] table hints
 
 
