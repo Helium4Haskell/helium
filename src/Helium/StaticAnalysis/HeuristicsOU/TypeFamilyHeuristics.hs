@@ -44,7 +44,7 @@ typeErrorThroughReduction path = SingleVoting "Type error through type family re
               let mf'' = makeCharString mf'
               -- Get potential trace.
               theTrace <- squashTrace <$> buildReductionTrace cedge (trace ("MF: " ++ show mf'') mf'')
-              case trace ("THE TRACE: " ++ show theTrace) theTrace of
+              case theTrace of
                 [] -> if null substVarsMt
                         then do
                           let hint = addHint "probable cause" (show mf'' ++ " is not reducable")
