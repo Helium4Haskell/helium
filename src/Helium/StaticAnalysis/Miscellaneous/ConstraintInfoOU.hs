@@ -147,7 +147,7 @@ data Property
     | TooManyFBArgs 
     | PatternTypeSignature (PolyType ConstraintInfo)
     | LiteralFloat Float
-    | TypeFamilyReduction MonoType ReductionTrace MonoType
+    | TypeFamilyReduction ReductionTrace MonoType {-Inferred-} MonoType {-From signature-} MonoType {-Reduced-}
     deriving (Generic)
 
 instance Show Property where
@@ -189,7 +189,7 @@ instance Show Property where
     show TooManyFBArgs = "TooManyFBArgs"
     show (PatternTypeSignature ps) = "PatternTypeSignature" ++ show ps
     show (LiteralFloat f) = "LiteralFloat " ++ show f
-    show (TypeFamilyReduction mt1 _ _) = "TypeFamilyReduction " ++ show mt1
+    show (TypeFamilyReduction _ m1 m2 m3) = "TypeFamilyReduction " ++ show m1 ++ ", " ++ show m2 ++ ", " ++ show m3
     show _ = "No show"
 
 --deriving instance Show TypeError
@@ -345,8 +345,8 @@ maybePatternTypeSignature a = maybeHead [ ps | PatternTypeSignature ps <- getPro
 maybeLiteralFloat :: HasProperties a => a -> Maybe Float
 maybeLiteralFloat a = maybeHead [ f | LiteralFloat f <- getProperties a]
 
-maybeTypeFamilyReduction :: HasProperties a => a -> Maybe (MonoType, ReductionTrace, MonoType)
-maybeTypeFamilyReduction a = maybeHead [ (mt, rt, mt2) | TypeFamilyReduction mt rt mt2 <- getProperties a]
+maybeTypeFamilyReduction :: HasProperties a => a -> Maybe (ReductionTrace, MonoType, MonoType, MonoType)
+maybeTypeFamilyReduction a = maybeHead [ (rt, m1, m2, m3) | TypeFamilyReduction rt m1 m2 m3 <- getProperties a]
 -----------------------------------------------------------------
 -- Smart constructors
 

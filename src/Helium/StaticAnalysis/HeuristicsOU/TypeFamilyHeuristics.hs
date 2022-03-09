@@ -4,7 +4,7 @@ module Helium.StaticAnalysis.HeuristicsOU.TypeFamilyHeuristics where
 import Unbound.Generics.LocallyNameless ( Fresh )
 import Rhodium.Blamer.Path
 import Helium.StaticAnalysis.Inferencers.OutsideInX.Rhodium.RhodiumTypes (Axiom, TyVar, RType (MType), Constraint (Constraint_Inst, Constraint_Unify), MonoType (MonoType_Fam, MonoType_App, MonoType_Con, MonoType_Var), PolyType (PolyType_Mono))
-import Helium.StaticAnalysis.Miscellaneous.ConstraintInfoOU (ConstraintInfo, HasProperties (addProperty), Property (TypeFamilyReduction))
+import Helium.StaticAnalysis.Miscellaneous.ConstraintInfoOU
 import Rhodium.Blamer.Heuristics (VotingHeuristic (SingleVoting))
 import Rhodium.TypeGraphs.Graph
 import Rhodium.TypeGraphs.GraphProperties
@@ -13,9 +13,11 @@ import Rhodium.Solver.Rules (labelResidual, ErrorLabel (ErrorLabel))
 
 import Rhodium.TypeGraphs.Graph (getEdgeFromId)
 import Rhodium.Blamer.Path (edgeIdFromPath)
-import Helium.StaticAnalysis.Miscellaneous.ReductionTraceUtils (buildReductionTrace, getFullTrace, getLastTypeInTrace, getFirstTypeInTrace)
+import Helium.StaticAnalysis.Miscellaneous.ReductionTraceUtils (buildReductionTrace, getFullTrace, getLastTypeInTrace, getFirstTypeInTrace, squashTrace)
 import Data.Maybe (fromJust)
 import Debug.Trace (trace)
+import Data.List (intercalate)
+import Helium.StaticAnalysis.HeuristicsOU.HeuristicsInfo
 
 typeErrorThroughReduction :: (Fresh m, HasTypeGraph m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo, CompareTypes m (RType ConstraintInfo) )
                           => Path m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo -> VotingHeuristic m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo
@@ -23,7 +25,7 @@ typeErrorThroughReduction path = SingleVoting "Type error through type family re
   where
     f (constraint, eid, ci, gm) = do
       graph <- getGraph
-      case trace ("CONSTRAINT: " ++ show constraint) constraint of
+      case constraint of
         Constraint_Inst _ (PolyType_Mono _ pmt) _ -> do
           let ceid = edgeIdFromPath path
           let cedge = getEdgeFromId graph ceid
@@ -31,6 +33,9 @@ typeErrorThroughReduction path = SingleVoting "Type error through type family re
           case (pconstraint, labelFromPath path) of
             -- Could not be reducted further
             (Constraint_Unify mf@(MonoType_Fam f fmts _) t _, ErrorLabel "Residual constraint") -> do
+              let varsInTf = filter isVar fmts
+              substVars <- mapM (getSubstTypeFull (getGroupFromEdge cedge) . MType) varsInTf
+              let substVarsMt = filter isFam $ map (\(MType m) -> makeCharString m) substVars
               (MType mf') <- getSubstTypeFull (getGroupFromEdge cedge) (MType mf)
               let mf'' = makeCharString mf'
               theTrace <- buildReductionTrace cedge mf''
@@ -40,26 +45,38 @@ typeErrorThroughReduction path = SingleVoting "Type error through type family re
                   let Just lastType = getLastTypeInTrace trc
                   let Just firstType = getFirstTypeInTrace trc
                   if typeIsInType lastType pmt
-                    then do
-                      let reducedTypeSig = replaceIfEqual firstType lastType pmt
-                      return $ Just (5, "Type family could not be reduced further", constraint, eid, addProperty (TypeFamilyReduction reducedTypeSig theTrace firstType) ci, gm)
+                    then if null substVars
+                      then return $ Just (5, "Type family could not be reduced further", constraint, eid, addProperty (TypeFamilyReduction theTrace t lastType firstType) ci, gm)
+                      else do
+                        let rhsHint = case substVarsMt of
+                                        [x] -> show x ++ " was not reducable"
+                                        xs -> intercalate ", " (map show xs) ++ " were not reducable"
+                        let hint = addHint "probable cause" rhsHint
+                        return $ Just (5, "Type family could not be reduced further", constraint, eid, addProperty (TypeFamilyReduction theTrace t lastType firstType) $ hint ci, gm)
                     else return Nothing
             -- Reduced to simple type but resulted in type error
             (Constraint_Unify t1 t2 _, ErrorLabel "Incorrect constructors") -> do
-              t1Trace <- buildReductionTrace cedge t1
-              t2Trace <- buildReductionTrace cedge t2
+              (MType t1') <- getSubstTypeFull (getGroupFromEdge cedge) (MType t1)
+              (MType t2') <- getSubstTypeFull (getGroupFromEdge cedge) (MType t2)
+              t1Trace <- squashTrace <$> buildReductionTrace cedge t1'
+              t2Trace <- squashTrace <$> buildReductionTrace cedge t2'
               case getFullTrace t1Trace t2Trace of
                 Nothing -> return Nothing
-                Just theTrace -> do
+                Just (ti, theTrace) -> do
+                  let inferredT = if ti == 0 then t2' else t1'
                   let Just lastType = getLastTypeInTrace theTrace
                   let Just firstType = getFirstTypeInTrace theTrace
                   if typeIsInType lastType pmt
-                  then do
-                    let reducedTypeSig = replaceIfEqual firstType lastType pmt
-                    return $ Just (5, "Type family reduction type error", constraint, eid, addProperty (TypeFamilyReduction reducedTypeSig theTrace firstType) ci, gm)
-                  else return Nothing
+                    then return $ Just (5, "Type family reduction type error", constraint, eid, addProperty (TypeFamilyReduction theTrace inferredT lastType firstType) ci, gm)
+                    else return Nothing
             _ -> return Nothing
         _                     -> return Nothing
+        where
+          isVar MonoType_Var{} = True
+          isVar _              = False
+
+          isFam MonoType_Fam{} = True
+          isFam _              = False
 
 typeIsInType :: MonoType -> MonoType -> Bool
 typeIsInType t1 mf@(MonoType_Fam _ mts _) = mf == t1 || any (typeIsInType t1) mts

@@ -578,10 +578,14 @@ instance IsEquality (Axiom ConstraintInfo) (RType ConstraintInfo) (Constraint Co
             allVars = filter isVar mts
             -- all injective vars
             injVars = [x | (n, x@(MonoType_Var _ v1 _)) <- zip [0..] mts, n `elem` injArgs, v1 `notElem` thcs]
-            isVar MonoType_Var{} = True
-            isVar _                  = False
             -- allVars and injVars must be equal, this says: all remaining vars are injective and may be determined when we know x.
             in allVars == injVars
+        | (not . any isVar) mts
+        , v `elem` thcs
+        = True
+        where
+            isVar MonoType_Var{} = True
+            isVar _              = False
     allowInSubstitution _ _ (Constraint_Unify (MonoType_Fam f1 m1 _) (MonoType_Fam f2 m2 _) _) = f1 == f2 && m1 == m2
     allowInSubstitution _ _ (Constraint_Unify m1 m2 _) = isFamilyFree m1 && isFamilyFree m2
     allowInSubstitution _ _ _ = False

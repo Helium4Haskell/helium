@@ -118,9 +118,11 @@ type family J a where
     J Int = Int
     J Float = Float
 
-h :: String -> H (J String) (J Float)
-h s = s ++ "hi"
+h :: String -> String -> H (J Int) (J String)
+h s1 s2 = s1 ++ s2 ++ "hi"
 
+-- h3 :: H Int Int
+-- h3 = "Hi"
 -- h1 :: H (J Float) (J Int)
 -- h1 = "Hi"
 

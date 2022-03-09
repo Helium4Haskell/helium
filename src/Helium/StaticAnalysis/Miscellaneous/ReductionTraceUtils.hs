@@ -81,12 +81,12 @@ getFirstTypeInTrace :: ReductionTrace -> Maybe MonoType
 getFirstTypeInTrace [] = Nothing
 getFirstTypeInTrace ((Step after _ _ _, _):_) = Just after 
 
-getFullTrace :: ReductionTrace -> ReductionTrace -> Maybe ReductionTrace
+getFullTrace :: ReductionTrace -> ReductionTrace -> Maybe (Int, ReductionTrace)
 getFullTrace [] [] = Nothing
-getFullTrace [] xs = Just xs
-getFullTrace xs [] = Just xs
-getFullTrace [(Step (MonoType_App (MonoType_Con "[]" _) (MonoType_Con "Char" _) _) _ _ _, _)] xs = Just xs
-getFullTrace xs [(Step (MonoType_App (MonoType_Con "[]" _) (MonoType_Con "Char" _) _) _ _ _, _)] = Just xs
+getFullTrace [] xs = Just (1, xs)
+getFullTrace xs [] = Just (0, xs)
+getFullTrace [(Step (MonoType_App (MonoType_Con "[]" _) (MonoType_Con "Char" _) _) _ _ _, _)] xs = Just (1, xs)
+getFullTrace xs [(Step (MonoType_App (MonoType_Con "[]" _) (MonoType_Con "Char" _) _) _ _ _, _)] = Just (0, xs)
 getFullTrace _ _ = Nothing
 
 traceToMessageBlock :: ReductionTrace -> MessageBlock

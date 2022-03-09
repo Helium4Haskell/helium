@@ -392,19 +392,27 @@ makeTFReductionTypeError isTooGeneral edge constraint info =
     msgtp2   <- getSubstTypeFull  (getGroupFromEdge edge) t2
     let [msgtp2', msgtp1'] = freshenRepresentation [msgtp2, msgtp1]
     --m2Trace <- buildReductionTrace edge msgmt2
-    let (Just (reduced, theTrace, msgmt)) = maybeTypeFamilyReduction info
-    let (reason1, reason2, reason3) = ("declared type", "reduced type", "inferred type")
-        table = [ s <:> MessageOneLineTree (oneLinerSource source') | (s, source') <- convertSources (sources info)]
+    let (Just (theTrace, inf, og, red)) = maybeTypeFamilyReduction info
+    let (reason1, reason2) = ("declared type", "inferred type")
+    let (treason1, treason2, treason3) = ("reduction of type", "to", "with")
+        table = ["could not match " <:> MessageString ""]
+                ++
+                [
+                    treason1 >:> MessageMonoType og
+                ,   treason2 >:> MessageMonoType red
+                ,   treason3 >:> MessageMonoType inf
+                ]
+                ++
+                [ "in " ++ s <:> MessageOneLineTree (oneLinerSource source') | (s, source') <- convertSources (sources info)]
                 ++
                 [
                     reason1 >:> case msgtp2' of
                         MType m -> MessageMonoType m
                         PType p -> MessagePolyType p
-                ,   reason2 >:> MessageMonoType reduced
-                ,   reason3 >:> case msgtp1' of
+                ,   reason2 >:> case msgtp1' of
                         MType m -> MessageMonoType m
                         PType p -> MessagePolyType p                    
                 ]
         hints      = [ hint | WithHint hint <- properties info ]
-                   ++ [("trace " ++ show msgmt, traceToMessageBlock (squashTrace theTrace)) | (not . null) theTrace]              
+                   ++ [("full reduction", traceToMessageBlock (squashTrace theTrace)) | (not . null) theTrace]              
     return $ TypeError [range] [oneliner] table hints
