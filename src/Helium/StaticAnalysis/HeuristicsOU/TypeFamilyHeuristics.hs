@@ -60,7 +60,9 @@ typeErrorThroughReduction path = SingleVoting "Type error through type family re
                   let Just firstType = getFirstTypeInTrace trc
                   if typeIsInType lastType pmt
                     then if null substVarsMt
-                      then return $ Just (5, "Type family could not be reduced further", constraint, eid, addProperty (TypeFamilyReduction theTrace t lastType firstType) ci, gm)
+                      then do
+                        let hint = addHint "probable cause" (show mf'' ++ " is not reducible")
+                        return $ Just (5, "Type family could not be reduced further", constraint, eid, addProperty (TypeFamilyReduction theTrace t lastType firstType) $ hint ci, gm)
                       else do
                         let rhsHint = case substVarsMt of
                                         [x] -> show x ++ " is not reducable"

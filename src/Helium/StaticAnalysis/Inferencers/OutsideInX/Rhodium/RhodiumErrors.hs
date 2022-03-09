@@ -395,7 +395,7 @@ makeTFReductionTypeError isTooGeneral edge constraint info =
     --m2Trace <- buildReductionTrace edge msgmt2
     let (Just (theTrace, inf, og, red)) = maybeTypeFamilyReduction info
     let (reason1, reason2) = ("declared type", "inferred type")
-    let (treason1, treason2, treason3) = ("reduction of type", "to", "with")
+    let (treason1, treason2, treason3) = ("type", "reduced to", "with")
         table = ["could not match " <:> MessageString ""]
                 ++
                 [
