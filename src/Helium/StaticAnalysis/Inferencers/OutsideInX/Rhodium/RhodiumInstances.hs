@@ -310,9 +310,9 @@ instance (
                             case res of
                                 (Just s) -> do
                                     let substRhs = substs (convertSubstitution s) rhs
-                                    -- Makes sure that the lhs in LeftToRight is standardized on a certain uniqueness
-                                    let (_, (specLhs, _)) = contFreshM (unbind b) 1000000000000000 -- Must be large 
-                                    let newRhs = insertReductionStep substRhs (Step substRhs mf (Just $ removeCI c) (LeftToRight specLhs tfi))
+                                    -- Makes sure that the lhs and rhs in LeftToRight is standardized on a certain uniqueness
+                                    let (_, (specLhs, specRhs)) = contFreshM (unbind b) 1000000000000000 -- Must be large 
+                                    let newRhs = insertReductionStep substRhs (Step substRhs mf (Just $ removeCI c) (LeftToRight (specLhs, specRhs) tfi))
                                     return $ Applied (if given then [] else fvToList t, [Constraint_Unify newRhs t Nothing])
                                 -- Try injectivity top level improvement when normal reaction fails
                                 _ -> improveTopLevelFun given c ax
@@ -348,7 +348,8 @@ improveTopLevelFun given c@(Constraint_Unify fam@(MonoType_Fam f ms _) t _) (Axi
                             -- Deviate from paper, follow Cobalt, only focus on injective arguments.
                             Unifiable _ -> do
                                 let substLhs' = applyOverInjArgs psubst injIdx lhs
-                                let newLhs = insertReductionStep substLhs' (Step substLhs fam (Just $ removeCI c) (TopLevelImprovement tfi))
+                                let (_, (specLhs, specRhs)) = contFreshM (unbind b) 1000000000000000 -- Must be large
+                                let newLhs = insertReductionStep substLhs' (Step substLhs fam (Just $ removeCI c) (TopLevelImprovement (specLhs, specRhs) tfi))
                                 return $ Applied ([], [Constraint_Unify newLhs fam Nothing]) -- Here we deviate from the paper and follow Cobalt (just substitute arguments with what we obtained)
             _ -> return NotApplicable 
 improveTopLevelFun given c (Axiom_ClosedGroup _ axs) = loopAxioms (improveTopLevelFun given c) axs
@@ -405,8 +406,8 @@ reactClosedTypeFam given = reactClosedTypeFam' []
                             if compatApartRes
                                 then do
                                     let substRhs = substs (convertSubstitution s) rhs
-                                    let (_, (specLhs, _)) = contFreshM (unbind b) 1000000000000000
-                                    let newRhs = insertReductionStep substRhs (Step substRhs mf (Just $ removeCI c) (LeftToRight specLhs tfi))
+                                    let (_, (specLhs, specRhs)) = contFreshM (unbind b) 1000000000000000
+                                    let newRhs = insertReductionStep substRhs (Step substRhs mf (Just $ removeCI c) (LeftToRight (specLhs,specRhs) tfi))
                                     return $ Applied (if given then [] else fvToList t, [Constraint_Unify newRhs t Nothing])
                                 else reactClosedTypeFam' (seen ++ [ax]) c axs 
                   _ -> return NotApplicable

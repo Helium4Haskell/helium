@@ -71,8 +71,8 @@ instance Show ReductionStep where
         = "Reduction: " ++ show after ++ " reduced from: " ++ show before ++ " in constraint: " ++ show constr ++ ". Type: " ++ show rt
 
 data ReductionType
-  = LeftToRight MonoType (Maybe TFInstanceInfo)
-  | TopLevelImprovement (Maybe TFInstanceInfo)
+  = LeftToRight (MonoType, MonoType) (Maybe TFInstanceInfo)
+  | TopLevelImprovement (MonoType, MonoType) (Maybe TFInstanceInfo)
   | CanonReduction
   deriving (Generic, Ord, Eq, Show)
 

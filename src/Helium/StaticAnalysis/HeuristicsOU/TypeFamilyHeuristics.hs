@@ -37,21 +37,19 @@ typeErrorThroughReduction path = SingleVoting "Type error through type family re
             (Constraint_Unify mf@(MonoType_Fam f fmts _) t _, ErrorLabel "Residual constraint") -> do
               -- If there are vars in the typefamily, it may be the case that a type family application was there.
               let varsInTf = filter isVar fmts
-              substVars <- mapM (getSubstTypeFull (getGroupFromEdge cedge) . MType) varsInTf
-              let substVars' = freshenRepresentation substVars
+              substVars <- freshenRepresentation <$> mapM (getSubstTypeFull (getGroupFromEdge cedge) . MType) varsInTf
               -- substVarsMt is all type family applications obtained from vars. They were not reducable.
-              let substVarsMt = filter isFam $ map (\(MType m) -> makeCharString m) substVars'
+              let substVarsMt = filter isFam $ map (\(MType m) -> makeCharString m) substVars
               -- Obtain substitution of full type
-              mf' <- getSubstTypeFull (getGroupFromEdge cedge) (MType mf)
-              let [MType freshMf] = freshenRepresentation [mf']
+              [MType freshMf] <- freshenRepresentation . (:[]) <$> getSubstTypeFull (getGroupFromEdge cedge) (MType mf)
               --let [MType freshMf] = freshenRepresentation [mf']
-              let mf'' = makeCharString freshMf
+              let mf' = makeCharString freshMf
               -- Get potential trace.
-              theTrace <- squashTrace <$> buildReductionTrace cedge mf''
+              theTrace <- squashTrace <$> buildReductionTrace cedge mf'
               case theTrace of
                 [] -> if null substVarsMt
                         then do
-                          let hint = addHint "probable cause" (show mf'' ++ " is not reducable")
+                          let hint = addHint "probable cause" (show mf' ++ " is not reducable")
                           return $ Just (4, "Type family could not be reduced, no nesting", constraint, eid, hint ci, gm)
                         else do
                           let rhsHint = case substVarsMt of
@@ -65,7 +63,7 @@ typeErrorThroughReduction path = SingleVoting "Type error through type family re
                   if typeIsInType lastType pmt
                     then if null substVarsMt
                       then do
-                        let hint = addHint "probable cause" (show mf'' ++ " is not reducible")
+                        let hint = addHint "probable cause" (show mf' ++ " is not reducible")
                         return $ Just (5, "Type family could not be reduced further", constraint, eid, addProperty (TypeFamilyReduction theTrace t lastType firstType) $ hint ci, gm)
                       else do
                         let rhsHint = case substVarsMt of
@@ -83,7 +81,7 @@ typeErrorThroughReduction path = SingleVoting "Type error through type family re
               case getFullTrace t1Trace t2Trace of
                 Nothing -> return Nothing
                 Just (ti, theTrace) -> do
-                  let inferredT = if ti == 0 then t2' else t1'
+                  let inferredT = makeCharString $ if ti == 0 then t2' else t1'
                   let Just lastType = getLastTypeInTrace theTrace
                   let Just firstType = getFirstTypeInTrace theTrace
                   if typeIsInType lastType pmt

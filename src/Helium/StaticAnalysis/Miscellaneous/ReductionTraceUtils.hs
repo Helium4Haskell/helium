@@ -114,21 +114,49 @@ getFullTrace _ _ = Nothing
 
 -- Maps trace to a message block for type error messages.
 traceToMessageBlock :: ReductionTrace -> MessageBlock
-traceToMessageBlock rts = MessageCompose $ mapToBlock (1 :: Int) "" rts
+traceToMessageBlock rts = MessageCompose $ mapToBlock (1 :: Int) rts
     where
-        mapToBlock idx pre ((Step after before _ (LeftToRight _ tfi), times):rts')
-            = MessageString (pre ++ show idx ++ ". " ++ showMaybeRange tfi ++ "\t: " ++ show after ++ " <- " ++ show before ++ "\n   Reason\t: left to right application" ++ timesToString times ++ "\n")
-                : mapToBlock (idx + 1) pre rts'
-        mapToBlock idx pre ((Step after before constr CanonReduction, times):rts')
-            = MessageString (pre ++ show idx ++ ". " ++ show after ++ " <- " ++ show before ++ " in constraint: " ++ show constr ++ "\n   Reason\t: canon reduction" ++ timesToString times ++"\n.")
-                : mapToBlock (idx + 1) pre rts'
-        mapToBlock idx pre ((Step after before _ (TopLevelImprovement tfi), times):rts')
-            = MessageString (pre ++ show idx ++ ". " ++ showMaybeRange tfi ++ "\t: " ++ show after ++ " <- " ++ show before ++ "\n   Reason\t: injective top-level improvement" ++ timesToString times ++ "\n.")
-                : mapToBlock (idx + 1) pre rts'
-        mapToBlock _ _ [] = []
+        mapToBlock idx ((Step after before _ rt@(LeftToRight (lhs, rhs) tfi), times):rts')
+            = MessageCompose 
+                [
+                  MessageString (show idx ++ ". " ++ "Applied\t: " ++ show lhs ++ " = " ++ show rhs)
+                , MessageString ("\n   At\t: " ++ showMaybeRange tfi)
+                , MessageString ("\n   Step\t: " ++ show after ++ " <- " ++ show before)
+                , MessageString ("\n   Reason\t: " ++ showReason rt)
+                , MessageString ("\n   Amount\t: " ++ timesToString times)
+                , MessageString "\n"
+                ]
+                : mapToBlock (idx + 1) rts'
+        mapToBlock idx ((Step after before constr rt@CanonReduction, times):rts')
+            = MessageCompose 
+                [
+                  MessageString (show idx ++ ". " ++ "Step\t: " ++ show after ++ " <- " ++ show before)
+                , MessageString ("\n   Constraint\t: " ++ show constr)
+                , MessageString ("\n   Reason\t: " ++ showReason rt)
+                , MessageString ("\n   Amount\t: " ++ timesToString times)
+                ]
+                : mapToBlock (idx + 1) rts'
+        mapToBlock idx ((Step after before _ rt@(TopLevelImprovement (lhs, rhs) tfi), times):rts')
+            = --MessageString (show idx ++ ". " ++ showMaybeRange tfi ++ "\t: " ++ show after ++ " <- " ++ show before ++ "\n   Reason\t: injective top-level improvement" ++ timesToString times ++ "\n.")
+              MessageCompose 
+                [
+                  MessageString (show idx ++ ". " ++ "Applied\t: " ++ show lhs ++ " = " ++ show rhs)
+                , MessageString ("\n   At\t: " ++ showMaybeRange tfi)
+                , MessageString ("\n   Step\t: " ++ show after ++ " <- " ++ show before)
+                , MessageString ("\n   Reason\t: " ++ showReason rt)
+                , MessageString ("\n   Amount\t: " ++ timesToString times)
+                , MessageString "\n"
+                ]
+                : mapToBlock (idx + 1) rts'
+        mapToBlock _ [] = []
 
-        timesToString t = "\n   Applied\t: " ++ show t ++ " time" ++ if t == 1 then "" else "s"
+        timesToString t = show t ++ " time" ++ if t == 1 then "" else "s"
 
         showMaybeRange tfi = case tfi of
-            Nothing -> ""
+            Nothing -> "unkown position"
             Just t -> showRange $ tfiRange t
+        
+        showReason rt = case rt of
+            LeftToRight _ _ -> "left to right application"
+            CanonReduction -> "canon reduction"
+            TopLevelImprovement _ _ -> "injective top-level improvement"
