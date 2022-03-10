@@ -18,6 +18,7 @@ import Data.Maybe (fromJust)
 import Debug.Trace (trace)
 import Data.List (intercalate)
 import Helium.StaticAnalysis.HeuristicsOU.HeuristicsInfo
+import Helium.StaticAnalysis.Messages.HeliumMessages (freshenRepresentation)
 
 typeErrorThroughReduction :: (Fresh m, HasTypeGraph m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo, CompareTypes m (RType ConstraintInfo) )
                           => Path m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo -> VotingHeuristic m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo
@@ -37,10 +38,12 @@ typeErrorThroughReduction path = SingleVoting "Type error through type family re
               -- If there are vars in the typefamily, it may be the case that a type family application was there.
               let varsInTf = filter isVar fmts
               substVars <- mapM (getSubstTypeFull (getGroupFromEdge cedge) . MType) varsInTf
+              let substVars' = freshenRepresentation substVars
               -- substVarsMt is all type family applications obtained from vars. They were not reducable.
-              let substVarsMt = filter isFam $ map (\(MType m) -> makeCharString m) substVars
+              let substVarsMt = filter isFam $ map (\(MType m) -> makeCharString m) substVars'
               -- Obtain substitution of full type
               (MType mf') <- getSubstTypeFull (getGroupFromEdge cedge) (MType mf)
+              --let [MType freshMf] = freshenRepresentation [mf']
               let mf'' = makeCharString mf'
               -- Get potential trace.
               theTrace <- squashTrace <$> buildReductionTrace cedge (trace ("MF: " ++ show mf'') mf'')

@@ -95,31 +95,31 @@ data Tree a = Node a (Tree a) (Tree a) | Leaf
 -- f2 :: Int
 -- f2 = f 3
 
--- type family FloatInt a b where
---     FloatInt a a = Float
---     FloatInt a b = Int
+type family FloatInt a b where
+    FloatInt a a = Float
+    FloatInt a b = Int
 
--- type family IfFloat a where
---     IfFloat Float = Int -> Int
---     IfFloat Int   = String
+type family IfFloat a where
+    IfFloat Float = Int -> Int
+    IfFloat Int   = String
 
--- bad :: d -> IfFloat (FloatInt Float d)
--- bad _ = "Hi"
+bad :: d -> IfFloat (FloatInt Float d)
+bad _ = "Hi"
 
--- fault :: Int
--- fault = bad (0.2 :: Float) (5 :: Int)
+fault :: Int
+fault = bad (0.2 :: Float) (5 :: Int)
 
-type family H a b where
-    H Float Int = Int
-    H Int Float = String
-    H Int Int = Float
+-- type family H a b where
+--     H Float Int = Int
+--     H Int Float = String
+--     H Int Int = Float
 
-type family J a where
-    J Int = Int
-    J Float = Float
+-- type family J a where
+--     J Int = Int
+--     J Float = Float
 
-h :: String -> String -> H (J (J Int)) Int
-h s1 s2 = s1 ++ s2 ++ "hi"
+-- h :: String -> String -> H (J (J Int)) Int
+-- h s1 s2 = s1 ++ s2 ++ "hi"
 
 -- h3 :: H Int Int
 -- h3 = "Hi"
