@@ -117,17 +117,17 @@ traceToMessageBlock :: ReductionTrace -> MessageBlock
 traceToMessageBlock rts = MessageCompose $ mapToBlock (1 :: Int) "" rts
     where
         mapToBlock idx pre ((Step after before _ (LeftToRight _ tfi), times):rts')
-            = MessageString (pre ++ show idx ++ ". " ++ showMaybeRange tfi ++ ": " ++ show after ++ " <- " ++ show before ++ "\n   Reason: left to right application" ++ timesToString times ++ "\n")
+            = MessageString (pre ++ show idx ++ ". " ++ showMaybeRange tfi ++ "\t: " ++ show after ++ " <- " ++ show before ++ "\n   Reason\t: left to right application" ++ timesToString times ++ "\n")
                 : mapToBlock (idx + 1) pre rts'
         mapToBlock idx pre ((Step after before constr CanonReduction, times):rts')
-            = MessageString (pre ++ show idx ++ ". " ++ show after ++ " <- " ++ show before ++ " in constraint: " ++ show constr ++ "\n   Reason: canon reduction" ++ timesToString times ++"\n.")
+            = MessageString (pre ++ show idx ++ ". " ++ show after ++ " <- " ++ show before ++ " in constraint: " ++ show constr ++ "\n   Reason\t: canon reduction" ++ timesToString times ++"\n.")
                 : mapToBlock (idx + 1) pre rts'
         mapToBlock idx pre ((Step after before _ (TopLevelImprovement tfi), times):rts')
-            = MessageString (pre ++ show idx ++ ". " ++ showMaybeRange tfi ++ ": " ++ show after ++ " <- " ++ show before ++ "\n   Reason: injective top-level improvement" ++ timesToString times ++ "\n.")
+            = MessageString (pre ++ show idx ++ ". " ++ showMaybeRange tfi ++ "\t: " ++ show after ++ " <- " ++ show before ++ "\n   Reason\t: injective top-level improvement" ++ timesToString times ++ "\n.")
                 : mapToBlock (idx + 1) pre rts'
         mapToBlock _ _ [] = []
 
-        timesToString t = if t == 1 then "" else "\n   Applied " ++ show t ++ " times."
+        timesToString t = "\n   Applied\t: " ++ show t ++ " time" ++ if t == 1 then "" else "s"
 
         showMaybeRange tfi = case tfi of
             Nothing -> ""

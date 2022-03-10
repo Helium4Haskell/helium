@@ -121,7 +121,7 @@ constructMGU graph cedge spp = do
             Just ci = getConstraintInfo c 
             Just (_, _, Just gc) = maybePatternMatch ci
             in gc
-    let patternCI = map ((\cs -> (snd $ chead cs, map fst cs)) . map (\c -> (fst $ splitEquality c, constraintToPatternMatchConstraint c))) (trace (show patternBranches) patternBranches)
+    let patternCI = map ((\cs -> (snd $ chead cs, map fst cs)) . map (\c -> (fst $ splitEquality c, constraintToPatternMatchConstraint c))) patternBranches
     patternSub <- mapM (\(gc, vs) -> (\sub -> (map (\(v, MType mt) -> (v, mt)) <$> sub, vs)) <$> runTG (unifyTypes' (ignoreTouchables emptySolveOptions) axioms [] [gc] [])) patternCI
     let fbType = getConstraintFromEdge <$> maybeHead (filter (\e -> isConstraintEdge e && isJust (getConstraintInfo (getConstraintFromEdge e) >>= maybeFunctionBinding)) $ M.elems $ edges graph)
     let subApply :: Maybe [(TyVar, MonoType)] -> [RType ConstraintInfo] -> Maybe ([(TyVar, MonoType)], [MonoType])

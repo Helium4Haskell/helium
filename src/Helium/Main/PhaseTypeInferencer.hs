@@ -86,7 +86,7 @@ phaseTypeInferencer basedir fullName module_ localEnv completeEnv options =
                unless (null typeErrors && null typeErrorsOIX || not (null typeErrors) && not (null typeErrorsOIX)) (
                   do
                      putStrLn "Length of errors doesn't match"
-                     putStrLn (sortAndShowMessages typeErrorsOIX)
+                     --putStrLn (sortAndShowMessages typeErrorsOIX)
                      putStrLn (show toplevelTypes)
                      print (show toplevelTypesOIX)
                      
