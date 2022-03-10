@@ -17,7 +17,6 @@ typeInferencingIOX options importEnv module_ =
 
 ATTR Module
    [
-      options               : {[Option]}
    |
    | dictionaryEnvironment : DictionaryEnvironment
      warnings              : Warnings

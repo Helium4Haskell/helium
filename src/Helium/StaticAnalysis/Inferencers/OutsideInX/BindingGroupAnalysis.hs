@@ -51,6 +51,7 @@ import Control.Monad.State
 import Control.Arrow hiding (left, right)
 
 import Debug.Trace
+import Helium.Main.Args (Option)
 
 
 type Assumptions = M.Map Name [(Name, TyVar)]
@@ -118,10 +119,10 @@ instanceTS importenv bu env ass ts = foldr combineTS (bu, []) $ concat $ M.elems
 equalASENV :: Assumptions -> Environment -> Constraints
 equalASENV ass env = concat $ M.elems $ M.intersectionWithKey (\n a e -> [Constraint_Unify (var a') (var e) (Just $ cinfoSameBindingGroup n) | (_, a') <- a]) ass env
 
-bindingGroupAnalysis ::   (ImportEnvironment, Bool, [Axiom ConstraintInfo], TypeSignatures, Touchables, Maybe (Assumptions, Constraints, GADTConstraints), TypeErrors, [Constraint ConstraintInfo], Integer) -> 
+bindingGroupAnalysis ::   ([Option], ImportEnvironment, Bool, [Axiom ConstraintInfo], TypeSignatures, Touchables, Maybe (Assumptions, Constraints, GADTConstraints), TypeErrors, [Constraint ConstraintInfo], Integer) -> 
                            [BindingGroup] -> 
                            (Touchables, Assumptions, TypeSignatures, Constraints, Integer, Substitution, TypeErrors, Constraints)
-bindingGroupAnalysis input@(importenv, isTopLevel, axioms, typeSignatures, touchables, body, ierrors, resolvedConstraints, betaUnique) groups =
+bindingGroupAnalysis input@(options, importenv, isTopLevel, axioms, typeSignatures, touchables, body, ierrors, resolvedConstraints, betaUnique) groups =
                   variableDependencies
                   where
                      bodyAssumptions :: Assumptions
@@ -185,7 +186,7 @@ bindingGroupAnalysis input@(importenv, isTopLevel, axioms, typeSignatures, touch
                                  sWanted = (if isTopLevel && not (null gadtConstraints) then map (appendGADTInfo resGADTConstraints) else id) (c1 ++ wc2 ++ con1 ++ c3 ++ c4 ++ c5 ++ gadtConstraints)
                                  sTouchables = touchs
                                  sibblings = map (map (second (tpSchemeToPolyType (importEnvironmentToTypeFamilies importenv)))) $ getSiblings importenv
-                                 (solverResult, bu1)     | isTopLevel = contFreshMRes (solveOU sibblings axioms sGiven sWanted sTouchables) sBu
+                                 (solverResult, bu1)     | isTopLevel = contFreshMRes (solveOU options sibblings axioms sGiven sWanted sTouchables) sBu
                                                          | otherwise = (error "solve result needed", sBu) 
                                  {- Gathering -}
                                  ts' = resTypeSignatures M.\\ ts2

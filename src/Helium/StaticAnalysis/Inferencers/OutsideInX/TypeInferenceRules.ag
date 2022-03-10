@@ -16,6 +16,7 @@ ATTR Module Body Declaration Declarations Expression Expressions
                 typeSignatures : {M.Map Name (TyVar, PolyType ConstraintInfo)}
                 importEnvironment : ImportEnvironment
                 axioms : {[Axiom ConstraintInfo]}
+                options : {[Option]}
                 typeSignatureConstraints : {[Constraint ConstraintInfo]}
                 typeVariableReplace : {[(String, MonoType)]}
                 className : {Maybe Name}
@@ -41,6 +42,7 @@ ATTR MaybeDeclarations Qualifier Qualifiers Statement Statements
         [ 
                 typeSignatures : {M.Map Name (TyVar, PolyType ConstraintInfo)}
                 importEnvironment : ImportEnvironment
+                options : {[Option]}
                 axioms : {[Axiom ConstraintInfo]}
                 typeSignatureConstraints : {[Constraint ConstraintInfo]}
                 typeVariableReplace : {[(String, MonoType)]}
@@ -113,10 +115,11 @@ SEM Module
         loc . solveResults = 
                 let 
                     sibblings = map (map (second (tpSchemeToPolyType @tyFams))) $ getSiblings @lhs.importEnvironment
-                in constructErrors $ contFreshM (solveOU sibblings @axioms (map ((\(v, m) -> Constraint_Unify (var v) m Nothing)) @body.substitutionCollect) (@constrs) @tyvars) @body.betaUnique 
+                in constructErrors $ contFreshM (solveOU @lhs.options sibblings @axioms (map ((\(v, m) -> Constraint_Unify (var v) m Nothing)) @body.substitutionCollect) (@constrs) @tyvars) @body.betaUnique 
         body . typeSignatures = M.map (\tps -> (integer2Name (-1), tpSchemeToPolyType @tyFams tps)) $ typeEnvironment @lhs.importEnvironment
         body . className = Nothing
         body . typeSignatureConstraints = []
+        body . options = @lhs.options
 
 SEM Body
     | Body
@@ -132,7 +135,7 @@ SEM Body
             lhs . typeErrors,
             lhs . resolvedContraints
         ) =
-            let inputBDG = id $! (@lhs.importEnvironment, True, @lhs.axioms, @declarations.typeSignaturesCollect `M.union` (@lhs.typeSignatures M.\\ @declarations.environment), @declarations.touchables, Nothing, @declarations.typeErrors, @declarations.resolvedContraints, @declarations.betaUnique)
+            let inputBDG = id $! (@lhs.options, @lhs.importEnvironment, True, @lhs.axioms, @declarations.typeSignaturesCollect `M.union` (@lhs.typeSignatures M.\\ @declarations.environment), @declarations.touchables, Nothing, @declarations.typeErrors, @declarations.resolvedContraints, @declarations.betaUnique)
             in bindingGroupAnalysis inputBDG @declarations.bindingGroups
 
 ATTR FunctionBinding FunctionBindings [ betasLeft : {[TyVar]} betaRight : TyVar | caseArmIndex : Int | name : Name numberOfPatterns : Integer  ]
@@ -530,7 +533,7 @@ SEM MaybeDeclarations
                     let err x = error $ "Should not need where" ++ show x
                     in (err 1, err 2, err 3, err 4, err 5, err 6, err 7, err 8)
                 else let 
-                    inputBDG = (@lhs.importEnvironment, False, @lhs.axioms, @declarations.typeSignaturesCollect `M.union` (@lhs.typeSignatures M.\\ @declarations.environment), @declarations.touchables ++ @lhs.touchables, Just (@lhs.assumptions, @lhs.constraints, @lhs.gadtConstraints), @declarations.typeErrors, @declarations.resolvedContraints, @declarations.betaUnique)
+                    inputBDG = (@lhs.options, @lhs.importEnvironment, False, @lhs.axioms, @declarations.typeSignaturesCollect `M.union` (@lhs.typeSignatures M.\\ @declarations.environment), @declarations.touchables ++ @lhs.touchables, Just (@lhs.assumptions, @lhs.constraints, @lhs.gadtConstraints), @declarations.typeErrors, @declarations.resolvedContraints, @declarations.betaUnique)
                 in bindingGroupAnalysis inputBDG @declarations.bindingGroups
 
 
@@ -634,7 +637,7 @@ SEM Expression
             lhs . typeErrors,
             lhs . resolvedContraints
         ) =
-            let inputBDG = id $! (@lhs.importEnvironment, False, @lhs.axioms, @declarations.typeSignaturesCollect `M.union` (@lhs.typeSignatures M.\\ @declarations.environment), @declarations.touchables ++ @expression.touchables, Just (@expression.assumptions, @expression.constraints, @expression.gadtConstraints),  @declarations.typeErrors ++ @expression.typeErrors, @declarations.resolvedContraints ++ @expression.resolvedContraints ,@expression.betaUnique)
+            let inputBDG = id $! (@lhs.options, @lhs.importEnvironment, False, @lhs.axioms, @declarations.typeSignaturesCollect `M.union` (@lhs.typeSignatures M.\\ @declarations.environment), @declarations.touchables ++ @expression.touchables, Just (@expression.assumptions, @expression.constraints, @expression.gadtConstraints),  @declarations.typeErrors ++ @expression.typeErrors, @declarations.resolvedContraints ++ @expression.resolvedContraints ,@expression.betaUnique)
             in bindingGroupAnalysis inputBDG @declarations.bindingGroups
     | Case
         lhs . touchables              = @beta : @beta' : @expression.touchables ++ @alternatives.touchables
@@ -749,7 +752,7 @@ SEM Statement
             lhs . typeErrors,
             lhs . resolvedContraints
         ) =
-            let inputBDG = id $! (@lhs.importEnvironment, False, @lhs.axioms, @declarations.typeSignaturesCollect `M.union` (@lhs.typeSignatures M.\\ @declarations.environment), @declarations.touchables ++ @lhs.touchables, Just (@lhs.assumptions, @lhs.constraints, @lhs.gadtConstraints), @declarations.typeErrors, @declarations.resolvedContraints, @declarations.betaUnique)
+            let inputBDG = id $! (@lhs.options, @lhs.importEnvironment, False, @lhs.axioms, @declarations.typeSignaturesCollect `M.union` (@lhs.typeSignatures M.\\ @declarations.environment), @declarations.touchables ++ @lhs.touchables, Just (@lhs.assumptions, @lhs.constraints, @lhs.gadtConstraints), @declarations.typeErrors, @declarations.resolvedContraints, @declarations.betaUnique)
             in bindingGroupAnalysis inputBDG @declarations.bindingGroups
 
 SEM Statements
@@ -824,7 +827,7 @@ SEM Qualifier
             lhs . typeErrors,
             lhs . resolvedContraints
         ) =
-            let inputBDG = id $! (@lhs.importEnvironment, False, @lhs.axioms, @declarations.typeSignaturesCollect `M.union` (@lhs.typeSignatures M.\\ @declarations.environment), @declarations.touchables ++ @lhs.touchables, Just (@lhs.assumptions, @lhs.constraints, @lhs.gadtConstraints), @declarations.typeErrors, @declarations.resolvedContraints, @declarations.betaUnique)
+            let inputBDG = id $! (@lhs.options, @lhs.importEnvironment, False, @lhs.axioms, @declarations.typeSignaturesCollect `M.union` (@lhs.typeSignatures M.\\ @declarations.environment), @declarations.touchables ++ @lhs.touchables, Just (@lhs.assumptions, @lhs.constraints, @lhs.gadtConstraints), @declarations.typeErrors, @declarations.resolvedContraints, @declarations.betaUnique)
             in bindingGroupAnalysis inputBDG @declarations.bindingGroups
 
 SEM Qualifiers

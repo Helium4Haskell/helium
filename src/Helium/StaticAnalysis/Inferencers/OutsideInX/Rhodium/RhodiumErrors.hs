@@ -46,7 +46,7 @@ instance HasConstraintInfo (Constraint ConstraintInfo) ConstraintInfo where
 
 
 instance (MonadFail m, CompareTypes m (RType ConstraintInfo), Fresh m, HasTypeGraph m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo) => TypeErrorInfo m (Constraint ConstraintInfo) ConstraintInfo where
-    createTypeError edge li constraint ci = maybe nError (return . const ci) (errorMessage ci)
+    createTypeError opts edge li constraint ci = maybe nError (return . const ci) (errorMessage ci)
         where
             nError
                 | li == labelIncorrectConstructors && isJust (maybeUnreachablePattern ci) =
@@ -59,7 +59,7 @@ instance (MonadFail m, CompareTypes m (RType ConstraintInfo), Fresh m, HasTypeGr
                         --error $ show (expected, function)
                 | li == labelIncorrectConstructors  && isJust (maybeTypeFamilyReduction ci) =
                     do
-                        te <- makeTFReductionTypeError False edge constraint ci
+                        te <- makeTFReductionTypeError False (showTrace opts) edge constraint ci
                         return ci {
                             errorMessage = Just te
                         }
@@ -142,7 +142,7 @@ instance (MonadFail m, CompareTypes m (RType ConstraintInfo), Fresh m, HasTypeGr
                             errorMessage = Just err
                         }
                 | li == labelResidual && isJust (maybeTypeFamilyReduction ci) = do
-                    te <- makeTFReductionTypeError True edge constraint ci
+                    te <- makeTFReductionTypeError True (showTrace opts)edge constraint ci
                     return ci {
                         errorMessage = Just te
                     }
@@ -376,8 +376,8 @@ makeMissingTypeSignature source branchSources mTs = let
     in TypeError (map rangeOfSource branchSources) message table hints
 
 makeTFReductionTypeError :: (CompareTypes m (RType ConstraintInfo), Fresh m, HasTypeGraph m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo) 
-                         => Bool -> TGEdge (Constraint ConstraintInfo) -> Constraint ConstraintInfo -> ConstraintInfo -> m TypeError
-makeTFReductionTypeError isTooGeneral edge constraint info =
+                         => Bool -> Bool -> TGEdge (Constraint ConstraintInfo) -> Constraint ConstraintInfo -> ConstraintInfo -> m TypeError
+makeTFReductionTypeError isTooGeneral mustShowTrace edge constraint info =
     do
     let (source, term) = sources info
         range    = maybe (rangeOfSource source) rangeOfSource term
@@ -418,5 +418,5 @@ makeTFReductionTypeError isTooGeneral edge constraint info =
                         PType p -> MessagePolyType p                    
                 ]
         hints      = [ hint | WithHint hint <- properties info ]
-                   ++ [("full reduction", traceToMessageBlock (squashTrace theTrace)) | (not . null) theTrace]              
+                   ++ [("full reduction", traceToMessageBlock (squashTrace theTrace)) | (not . null) theTrace && mustShowTrace]              
     return $ TypeError [range] [oneliner] table hints

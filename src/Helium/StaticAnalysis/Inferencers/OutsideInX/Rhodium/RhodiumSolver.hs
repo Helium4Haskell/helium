@@ -29,15 +29,16 @@ import Data.List
 
 import Debug.Trace
 import Helium.StaticAnalysis.HeuristicsOU.TypeFamilyHeuristics (typeErrorThroughReduction)
+import Helium.Main.Args (Option (ShowTFTrace))
 
 rhodiumSolve :: [Axiom ConstraintInfo] -> [Constraint ConstraintInfo] -> [Constraint ConstraintInfo] -> [TyVar] -> SolveResult TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo
-rhodiumSolve axioms given wanted touchables = contFreshM (runTG (solve (solveOptions []) axioms given wanted touchables)) 20
+rhodiumSolve axioms given wanted touchables = contFreshM (runTG (solve (solveOptions False []) axioms given wanted touchables)) 20
 
-solveOU :: Sibblings -> [Axiom ConstraintInfo] -> [Constraint ConstraintInfo] -> [Constraint ConstraintInfo] -> [TyVar] -> FreshM (SolveResult TyVar MonoType (Constraint ConstraintInfo) ConstraintInfo)
-solveOU sibblings axioms given wanted tchs = 
+solveOU :: [Option] -> Sibblings -> [Axiom ConstraintInfo] -> [Constraint ConstraintInfo] -> [Constraint ConstraintInfo] -> [TyVar] -> FreshM (SolveResult TyVar MonoType (Constraint ConstraintInfo) ConstraintInfo)
+solveOU options sibblings axioms given wanted tchs = 
     trace (unlines (map (\e -> "WANTED CONSTRAINT: " ++ show (e, getConstraintInfo e)) wanted)) $ traceShow (given, tchs) $
       do      
-        rf <- runTG (solve (solveOptions sibblings) axioms (nub given) (nub wanted) (nub tchs))
+        rf <- runTG (solve (solveOptions (ShowTFTrace `elem` options) sibblings) axioms (nub given) (nub wanted) (nub tchs))
         return SolveResult{
             substitution = map (\(t, MType m) -> (t, m)) (substitution rf),
             errors = errors rf,
@@ -45,8 +46,9 @@ solveOU sibblings axioms given wanted tchs =
             touchables = touchables rf
         }
 
-solveOptions sibblings = emptySolveOptions{
-        typeHeuristics = listOfTypeHeuristics sibblings
+solveOptions showTrace sibblings = emptySolveOptions{
+        typeHeuristics = listOfTypeHeuristics sibblings,
+        teMustShowTrace = showTrace
         }
         
 

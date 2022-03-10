@@ -198,6 +198,7 @@ optionDescription moreOptions experimentalOptions =
       , Option "" [flag NoPrelude]                      (NoArg NoPrelude)  "do not import the prelude (experimental)"
       , Option "" [flag GADTs]                          (NoArg GADTs) "allows the usage of GADTs"
       , Option "" [flag OutsideInX]                     (NoArg OutsideInX) "allows inference using Rhodium"
+      , Option "" [flag ShowTFTrace]                    (NoArg ShowTFTrace) "enables showing full reduction trace of type family applications"
       ]
 
 
@@ -217,7 +218,7 @@ data Option
    | TreeWalkInorderTopFirstPost | TreeWalkInorderTopLastPost | SolverSimple | SolverGreedy
    | SolverTypeGraph | SolverCombination | SolverChunks | UnifierHeuristics
    | SelectConstraintNumber Int | NoOverloadingTypeCheck | NoPrelude | UseTutor
-   | OutsideInX | VerifyOutsideInResult | GADTs
+   | OutsideInX | VerifyOutsideInResult | GADTs | ShowTFTrace
  deriving (Eq)
 
 stripShow :: String -> String
@@ -283,6 +284,7 @@ instance Show Option where
  show OutsideInX                         = "--outsideinx"
  show VerifyOutsideInResult              = "--verify-outsideinx-results"
  show GADTs                              = "--gadts"
+ show ShowTFTrace                        = "--showtrace"
 
 
 
