@@ -12,6 +12,8 @@ import Helium.StaticAnalysis.Messages.Messages (MessageBlock (MessageString, Mes
 import Rhodium.TypeGraphs.GraphUtils (getSubstTypeFull)
 import Data.List (groupBy)
 import Debug.Trace (trace)
+import Helium.StaticAnalysis.StaticChecks.TypeFamilyInfos
+import Helium.Syntax.UHA_Range (showRange)
 
 
 buildReductionTrace :: (CompareTypes m (RType ConstraintInfo), Fresh m, HasTypeGraph m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo)
@@ -114,15 +116,19 @@ getFullTrace _ _ = Nothing
 traceToMessageBlock :: ReductionTrace -> MessageBlock
 traceToMessageBlock rts = MessageCompose $ mapToBlock (1 :: Int) "" rts
     where
-        mapToBlock idx pre ((Step after before _ (LeftToRight _), times):rts')
-            = MessageString (pre ++ show idx ++ ". " ++ show after ++ " <--- " ++ show before ++ ". Reason: left to right application. " ++ timesToString times ++ "\n")
+        mapToBlock idx pre ((Step after before _ (LeftToRight _ tfi), times):rts')
+            = MessageString (pre ++ show idx ++ ". " ++ showMaybeRange tfi ++ ": " ++ show after ++ " <- " ++ show before ++ "\n   Reason: left to right application" ++ timesToString times ++ "\n")
                 : mapToBlock (idx + 1) pre rts'
         mapToBlock idx pre ((Step after before constr CanonReduction, times):rts')
-            = MessageString (pre ++ show idx ++ ". " ++ show after ++ " <--- " ++ show before ++ " in constraint: " ++ show constr ++ ". Reason: canon reduction" ++ timesToString times ++"\n.")
+            = MessageString (pre ++ show idx ++ ". " ++ show after ++ " <- " ++ show before ++ " in constraint: " ++ show constr ++ "\n   Reason: canon reduction" ++ timesToString times ++"\n.")
                 : mapToBlock (idx + 1) pre rts'
-        mapToBlock idx pre ((Step after before _ TopLevelImprovement, times):rts')
-            = MessageString (pre ++ show idx ++ ". " ++ show after ++ " <--- " ++ show before ++ ". Reason: injective top-level improvement" ++ timesToString times ++ "\n.")
+        mapToBlock idx pre ((Step after before _ (TopLevelImprovement tfi), times):rts')
+            = MessageString (pre ++ show idx ++ ". " ++ showMaybeRange tfi ++ ": " ++ show after ++ " <- " ++ show before ++ "\n   Reason: injective top-level improvement" ++ timesToString times ++ "\n.")
                 : mapToBlock (idx + 1) pre rts'
         mapToBlock _ _ [] = []
 
-        timesToString t = if t == 1 then "" else "Applied " ++ show t ++ " times."
+        timesToString t = if t == 1 then "" else "\n   Applied " ++ show t ++ " times."
+
+        showMaybeRange tfi = case tfi of
+            Nothing -> ""
+            Just t -> showRange $ tfiRange t

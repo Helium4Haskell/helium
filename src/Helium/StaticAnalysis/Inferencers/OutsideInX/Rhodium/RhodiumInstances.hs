@@ -48,6 +48,7 @@ import Helium.StaticAnalysis.Inferencers.OutsideInX.Rhodium.RhodiumGenerics
 import Debug.Trace (trace)
 import Helium.StaticAnalysis.Miscellaneous.Unify (preMatch, InjectiveEnv, UnifyResultM (SurelyApart, Unifiable), applySubst, matchTy, SubstitutionEnv, unifyTy, applyOverInjArgs)
 import Helium.Utils.Utils (internalError)
+import Helium.StaticAnalysis.StaticChecks.TypeFamilyInfos (TFInstanceInfo(preCompat))
 
 integer2Name :: Integer -> Name a
 integer2Name = makeName ""
@@ -298,7 +299,7 @@ instance (
     topLevelReact given c@(Constraint_Unify mf@(MonoType_Fam f ms _) t _) = getAxioms >>= loopAxioms topLevelReact'  
         where
             topLevelReact' :: Axiom ConstraintInfo  -> m (RuleResult ([TyVar], [Constraint ConstraintInfo]))
-            topLevelReact' ax@(Axiom_Unify b _) | all isFamilyFree ms, isFamilyFree t =
+            topLevelReact' ax@(Axiom_Unify b tfi) | all isFamilyFree ms, isFamilyFree t =
                 do
                     (aes, (lhs, rhs)) <- unbind b
                     case lhs of
@@ -311,7 +312,7 @@ instance (
                                     let substRhs = substs (convertSubstitution s) rhs
                                     -- Makes sure that the lhs in LeftToRight is standardized on a certain uniqueness
                                     let (_, (specLhs, _)) = contFreshM (unbind b) 1000000000000000 -- Must be large 
-                                    let newRhs = insertReductionStep substRhs (Step substRhs mf (Just $ removeCI c) (LeftToRight specLhs))
+                                    let newRhs = insertReductionStep substRhs (Step substRhs mf (Just $ removeCI c) (LeftToRight specLhs tfi))
                                     return $ Applied (if given then [] else fvToList t, [Constraint_Unify newRhs t Nothing])
                                 -- Try injectivity top level improvement when normal reaction fails
                                 _ -> improveTopLevelFun given c ax
@@ -326,7 +327,7 @@ instance (
 -- Improves top level constraints when the type family is injective
 improveTopLevelFun :: (Fresh m, HasAxioms m (Axiom ConstraintInfo), MonadFail m) 
                    => Bool -> Constraint ConstraintInfo -> Axiom ConstraintInfo -> m (RuleResult ([TyVar], [Constraint ConstraintInfo]))
-improveTopLevelFun given c@(Constraint_Unify fam@(MonoType_Fam f ms _) t _) (Axiom_Unify b _) | all isFamilyFree ms, isFamilyFree t =
+improveTopLevelFun given c@(Constraint_Unify fam@(MonoType_Fam f ms _) t _) (Axiom_Unify b tfi) | all isFamilyFree ms, isFamilyFree t =
     do
         (_, (lhs, rhs)) <- unbind b
         axs <- getAxioms
@@ -347,7 +348,7 @@ improveTopLevelFun given c@(Constraint_Unify fam@(MonoType_Fam f ms _) t _) (Axi
                             -- Deviate from paper, follow Cobalt, only focus on injective arguments.
                             Unifiable _ -> do
                                 let substLhs' = applyOverInjArgs psubst injIdx lhs
-                                let newLhs = insertReductionStep substLhs' (Step substLhs fam (Just $ removeCI c) TopLevelImprovement)
+                                let newLhs = insertReductionStep substLhs' (Step substLhs fam (Just $ removeCI c) (TopLevelImprovement tfi))
                                 return $ Applied ([], [Constraint_Unify newLhs fam Nothing]) -- Here we deviate from the paper and follow Cobalt (just substitute arguments with what we obtained)
             _ -> return NotApplicable 
 improveTopLevelFun given c (Axiom_ClosedGroup _ axs) = loopAxioms (improveTopLevelFun given c) axs
@@ -382,7 +383,7 @@ reactClosedTypeFam :: (
                    -> m (RuleResult ([Name MonoType], [Constraint ConstraintInfo]))
 reactClosedTypeFam given = reactClosedTypeFam' [] 
     where
-        reactClosedTypeFam' seen c@(Constraint_Unify mf@(MonoType_Fam _ ms _) t _) (ax@(Axiom_Unify b (Just _)):axs) 
+        reactClosedTypeFam' seen c@(Constraint_Unify mf@(MonoType_Fam _ ms _) t _) (ax@(Axiom_Unify b tfi):axs) 
             | all isFamilyFree ms, isFamilyFree t =
             do
                 (aes, (lhs, rhs)) <- unbind b
@@ -405,7 +406,7 @@ reactClosedTypeFam given = reactClosedTypeFam' []
                                 then do
                                     let substRhs = substs (convertSubstitution s) rhs
                                     let (_, (specLhs, _)) = contFreshM (unbind b) 1000000000000000
-                                    let newRhs = insertReductionStep substRhs (Step substRhs mf (Just $ removeCI c) (LeftToRight specLhs))
+                                    let newRhs = insertReductionStep substRhs (Step substRhs mf (Just $ removeCI c) (LeftToRight specLhs tfi))
                                     return $ Applied (if given then [] else fvToList t, [Constraint_Unify newRhs t Nothing])
                                 else reactClosedTypeFam' (seen ++ [ax]) c axs 
                   _ -> return NotApplicable
@@ -419,8 +420,8 @@ checkCompatApartness :: (
                             HasAxioms m (Axiom ConstraintInfo)
                         )
                      =>  [Axiom ConstraintInfo] -> Axiom ConstraintInfo -> Constraint ConstraintInfo -> m Bool
-checkCompatApartness seen ax@(Axiom_Unify _ (Just idx)) c = do
-    let nonCompat = removeAt idx seen
+checkCompatApartness seen ax@(Axiom_Unify _ (Just tfi)) c = do
+    let nonCompat = removeAt (preCompat tfi) seen
     apartRes <- mapM (apartnessCheck c) nonCompat
     return $ all (==True) apartRes --LOL
     where

@@ -361,10 +361,10 @@ collectTypeFamDecls (Declaration_TypeFam _ (SimpleType_SimpleType _ n tv) (Maybe
   = let (Injectivity_Injectivity _ _ ns) = inj in createClosedTFDecl n tv (Just ns)
 
 collectTypeFamInstance :: Declaration -> Int -> TFInstanceInfo
-collectTypeFamInstance (Declaration_TypeFamInstance _ isClosed n ts t) instId
+collectTypeFamInstance (Declaration_TypeFamInstance range isClosed n ts t) instId
   = if isClosed
-      then createClosedTFInst n ts t instId
-      else createOpenTFInst n ts t
+      then createClosedTFInst n ts t instId range
+      else createOpenTFInst n ts t range
 
 -- Collecting assoc type syns
 collectAssocTypeSynDecls :: Declaration -> MaybeDeclarations -> TFDeclInfos
@@ -388,8 +388,8 @@ collectAssocTypeSynInstances _ MaybeDeclarations_Nothing = []
 collectAssocTypeSynInstances inst (MaybeDeclarations_Just decls) = collectAssocTypeSynInstances' inst decls
 
 collectAssocTypeSynInstances' :: Declaration -> Declarations -> TFInstanceInfos
-collectAssocTypeSynInstances' inst@(Declaration_Instance _ _ n1 its _) (Declaration_TypeFamInstance _ _ n ts t:is) 
-  = createATSInst n ts t its n1 : collectAssocTypeSynInstances' inst is
+collectAssocTypeSynInstances' inst@(Declaration_Instance _ _ n1 its _) (Declaration_TypeFamInstance range _ n ts t:is) 
+  = createATSInst n ts t its n1 range : collectAssocTypeSynInstances' inst is
 collectAssocTypeSynInstances' inst (_:is) = collectAssocTypeSynInstances' inst is
 collectAssocTypeSynInstances' _    []     = []
 }

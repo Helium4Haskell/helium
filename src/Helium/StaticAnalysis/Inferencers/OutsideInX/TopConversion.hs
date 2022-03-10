@@ -246,7 +246,7 @@ tfInstanceInfoToAxiom fams iInfo = let
 
     axVars = fvToList lhsMonoType
 
-    in Axiom_Unify (bind axVars (lhsMonoType, rhsMonoType')) Nothing
+    in Axiom_Unify (bind axVars (lhsMonoType, rhsMonoType')) $ Just iInfo
 
 closedTFInstanceInfoToAxiom :: TypeFamilies -> TFInstanceInfo -> Axiom ConstraintInfo
 closedTFInstanceInfoToAxiom fams iInfo = let
@@ -257,7 +257,7 @@ closedTFInstanceInfoToAxiom fams iInfo = let
 
     axVars = fvToList lhsMonoType
 
-    in Axiom_Unify (bind axVars (lhsMonoType, rhsMonoType')) (Just $ preCompat iInfo)
+    in Axiom_Unify (bind axVars (lhsMonoType, rhsMonoType')) $ Just iInfo
 
 
 -- For use during static checks

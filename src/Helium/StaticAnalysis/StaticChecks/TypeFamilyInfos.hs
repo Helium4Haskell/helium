@@ -1,11 +1,13 @@
 {-# LANGUAGE StandaloneDeriving #-}
 {-# OPTIONS_GHC -Wno-orphans #-}
 module Helium.StaticAnalysis.StaticChecks.TypeFamilyInfos where
-import Helium.Syntax.UHA_Syntax ( Name, Names, Type(..), Types, ContextItem(..) )
+import Helium.Syntax.UHA_Syntax ( Name, Names, Type(..), Types, ContextItem(..), Range )
 import Helium.Syntax.UHA_Utils ()
 import Data.Maybe (isJust, fromJust)
 import qualified Data.Map as M
 import Data.List (elemIndex)
+import Unbound.Generics.LocallyNameless hiding (Name)
+
 
 deriving instance Show Type
 deriving instance Eq Type 
@@ -15,17 +17,12 @@ deriving instance Eq ContextItem
 deriving instance Ord ContextItem 
 
 type TFDeclInfos = [TFDeclInfo]
--- data TFDeclInfo
---   = DOpen Name Names (Maybe Names)
---   | DClosed Name Names (Maybe Names)
---   | DAssoc Name Names (Maybe Names) [(Int, Int)] Name
---   deriving (Show, Eq)
 
 data TFType
   = Open -- open type family
   | Closed -- closed type family
   | ATS -- associated type synonym
-  deriving (Show, Eq)
+  deriving (Show, Eq, Ord)
 
 data TFDeclInfo = TDI {
     tfdName :: Name -- name of the type family
@@ -38,11 +35,6 @@ data TFDeclInfo = TDI {
   } deriving (Show, Eq)
 
 type TFInstanceInfos = [TFInstanceInfo]
--- data TFInstanceInfo
---   = IOpen Name Types Type
---   | IClosed Name Types Type Int --Int resembles the priority that the instance has in the closed type family
---   | IAssoc Name Types Type Types Name
---   deriving (Show, Eq)
 
 data TFInstanceInfo = TII {
     tfiName :: Name 
@@ -53,7 +45,23 @@ data TFInstanceInfo = TII {
   , classTypes :: Maybe Types -- class types in case of ATS
   , classIName :: Maybe Name -- class name of accompanying class
   , preCompat :: [Int] -- contains indices of other instances with which the closed instance is compatible, empty for open tfs and ATSs.
-  } deriving (Show, Eq)
+  , tfiRange :: Range
+  } deriving (Show, Eq, Ord)
+
+instance Alpha TFInstanceInfo where
+   fvAny' _ _ = pure 
+   swaps' = error "swaps'"
+   lfreshen' = error "lfreshen'"
+   freshen' = error "freshen'"
+   aeq' = error "aeq'"
+   acompare' = error "acompare'"
+   close _ _ x = x
+   open _ _ x = x
+   isPat = error "isPat"
+   isTerm = error "isTerm"
+   isEmbed = error "isEmbed"
+   nthPatFind = error "nthPatFind"
+   namePatFind _ = error "namePatFind"
 -------------------------------------
 -- UTILS
 
@@ -91,8 +99,8 @@ createClosedTFDecl n ns ins = TDI {
   , classDName = Nothing
 }
 
-createATSInst :: Name -> Types -> Type -> Types -> Name -> TFInstanceInfo
-createATSInst n ts t ct cn = TII {
+createATSInst :: Name -> Types -> Type -> Types -> Name -> Range -> TFInstanceInfo
+createATSInst n ts t ct cn range = TII {
     tfiName = n
   , argTypes = ts
   , defType = t
@@ -100,11 +108,12 @@ createATSInst n ts t ct cn = TII {
   , priority = Nothing
   , classTypes = Just ct
   , classIName = Just cn
-  , preCompat = [] 
+  , preCompat = []
+  , tfiRange = range
 }
 
-createOpenTFInst :: Name -> Types -> Type -> TFInstanceInfo
-createOpenTFInst n ts t = TII {
+createOpenTFInst :: Name -> Types -> Type -> Range -> TFInstanceInfo
+createOpenTFInst n ts t range = TII {
     tfiName = n
   , argTypes = ts
   , defType = t
@@ -113,10 +122,11 @@ createOpenTFInst n ts t = TII {
   , classTypes = Nothing
   , classIName = Nothing
   , preCompat = [] 
+  , tfiRange = range
 }
 
-createClosedTFInst :: Name -> Types -> Type -> Int -> TFInstanceInfo
-createClosedTFInst n ts t prio = TII {
+createClosedTFInst :: Name -> Types -> Type -> Int -> Range -> TFInstanceInfo
+createClosedTFInst n ts t prio range= TII {
     tfiName = n
   , argTypes = ts
   , defType = t
@@ -125,6 +135,7 @@ createClosedTFInst n ts t prio = TII {
   , classTypes = Nothing
   , classIName = Nothing
   , preCompat = [] 
+  , tfiRange = range
 }
 
 insertPreCompat :: [Int] -> TFInstanceInfo -> TFInstanceInfo

@@ -36,6 +36,7 @@ import Helium.StaticAnalysis.Miscellaneous.DoublyLinkedTree
 import Debug.Trace
 import Data.Typeable (Typeable)
 import Helium.Utils.Utils (internalError)
+import Helium.StaticAnalysis.StaticChecks.TypeFamilyInfos (TFInstanceInfo)
 
 data RType ci = PType (PolyType ci) | MType MonoType
 
@@ -70,8 +71,8 @@ instance Show ReductionStep where
         = "Reduction: " ++ show after ++ " reduced from: " ++ show before ++ " in constraint: " ++ show constr ++ ". Type: " ++ show rt
 
 data ReductionType
-  = LeftToRight MonoType
-  | TopLevelImprovement
+  = LeftToRight MonoType (Maybe TFInstanceInfo)
+  | TopLevelImprovement (Maybe TFInstanceInfo)
   | CanonReduction
   deriving (Generic, Ord, Eq, Show)
 
@@ -264,12 +265,17 @@ instance (Alpha ci, Subst MonoType ci) => Ord (Constraint ci) where
     Constraint_Exists _ _ <= _ = True
 
 data Axiom ci
-    = Axiom_Unify (UB.Bind [TyVar] (MonoType, MonoType)) (Maybe [Int])
+    = Axiom_Unify (UB.Bind [TyVar] (MonoType, MonoType)) (Maybe TFInstanceInfo)
     | Axiom_Class (UB.Bind [TyVar] ([Constraint ci], String, [MonoType]))
     | Axiom_Injective String [Int] -- Injective type families with indx of injective arguments
     | Axiom_Defer     String  -- Deferred type families
     | Axiom_ClosedGroup String [Axiom ci] -- Closed type family group
     deriving (Generic)
+
+instance UB.Subst MonoType TFInstanceInfo where
+   substs _ = id
+   isvar _ = Nothing
+   subst _ _ = id
 
 instance (Alpha ci, Subst MonoType ci) => Show (Axiom ci) where
     show = runFreshM . showAxiom
