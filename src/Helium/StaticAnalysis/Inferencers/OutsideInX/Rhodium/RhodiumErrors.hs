@@ -392,16 +392,19 @@ makeTFReductionTypeError isTooGeneral edge constraint info =
     msgtp1   <- getSubstTypeFull (getGroupFromEdge edge) t1'
     msgtp2   <- getSubstTypeFull  (getGroupFromEdge edge) t2
     let [msgtp2', msgtp1'] = freshenRepresentation [msgtp2, msgtp1]
-    --m2Trace <- buildReductionTrace edge msgmt2
     let (Just (theTrace, inf, og, red)) = maybeTypeFamilyReduction info
+    inf' <- getSubstTypeFull (getGroupFromEdge edge) (MType inf)
+    og' <- getSubstTypeFull (getGroupFromEdge edge) (MType og)
+    red' <- getSubstTypeFull (getGroupFromEdge edge) (MType red)
+    let [MType inf'', MType og'', MType red''] = freshenRepresentation [inf', og', red']
     let (reason1, reason2) = ("declared type", "inferred type")
     let (treason1, treason2, treason3) = ("type", "reduced to", "with")
         table = ["could not match " <:> MessageString ""]
                 ++
                 [
-                    treason1 >:> MessageMonoType og
-                ,   treason2 >:> MessageMonoType red
-                ,   treason3 >:> MessageMonoType inf
+                    treason1 >:> MessageMonoType og''
+                ,   treason2 >:> MessageMonoType red''
+                ,   treason3 >:> MessageMonoType inf''
                 ]
                 ++
                 [ "in " ++ s <:> MessageOneLineTree (oneLinerSource source') | (s, source') <- convertSources (sources info)]

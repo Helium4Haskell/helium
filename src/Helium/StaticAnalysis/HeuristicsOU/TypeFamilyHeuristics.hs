@@ -42,11 +42,12 @@ typeErrorThroughReduction path = SingleVoting "Type error through type family re
               -- substVarsMt is all type family applications obtained from vars. They were not reducable.
               let substVarsMt = filter isFam $ map (\(MType m) -> makeCharString m) substVars'
               -- Obtain substitution of full type
-              (MType mf') <- getSubstTypeFull (getGroupFromEdge cedge) (MType mf)
+              mf' <- getSubstTypeFull (getGroupFromEdge cedge) (MType mf)
+              let [MType freshMf] = freshenRepresentation [mf']
               --let [MType freshMf] = freshenRepresentation [mf']
-              let mf'' = makeCharString mf'
+              let mf'' = makeCharString freshMf
               -- Get potential trace.
-              theTrace <- squashTrace <$> buildReductionTrace cedge (trace ("MF: " ++ show mf'') mf'')
+              theTrace <- squashTrace <$> buildReductionTrace cedge mf''
               case theTrace of
                 [] -> if null substVarsMt
                         then do
