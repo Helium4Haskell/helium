@@ -168,7 +168,7 @@ instance (HasGraph m touchable types constraint ci, HasAxioms m (Axiom Constrain
         | isFamilyFree m1, all isFamilyFree vs2, v1 `elem` (fvToList t2 :: [TyVar]) || v1 `elem` (fvToList m2 :: [TyVar]), isFamilyFree m2 =
                 return $ Applied [c1, Constraint_Unify (subst v1 m1 t2) (subst v1 m1 m2) Nothing]
     interact _ c1@(Constraint_Unify mv1@(MonoType_Var _ v1 _) m1 _) c2@(Constraint_Unify mv2@(MonoType_Var _ v2 _) m2 _) 
-        | v1 == v2, isFamilyFree (trace ("CONSTR 1: " ++ show c1 ++ " CONSTR 2: " ++ show c2) m1), isFamilyFree m2 = do
+        | v1 == v2, isFamilyFree m1, isFamilyFree m2 = do
             ig <- greaterType (MType mv1) (MType m1 :: RType ConstraintInfo)
             if ig then 
                 return NotApplicable
