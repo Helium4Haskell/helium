@@ -175,7 +175,7 @@ unifies :: InjectiveEnv -- Whether a type fam is injective, important for pre-U 
         -> UnifyResult-- Unification result in the form of perhaps a substitution environment.
 unifies ienv opts (t1:types1) (t2:types2) subst 
   = unify ienv opts t1 t2 subst >>= \newS -> unifies ienv opts types1 types2 newS
-unifies _    _    []          []          subst = return subst
+unifies _ _ [][] subst = return subst
 unifies _ _ _ _ _ = SurelyApart -- Should never be reached
 
 -- Applies the substitution environment on a type

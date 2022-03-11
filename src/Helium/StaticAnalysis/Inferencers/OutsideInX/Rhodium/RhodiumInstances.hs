@@ -98,7 +98,6 @@ instance (CompareTypes m (RType ConstraintInfo), IsTouchable m TyVar, HasAxioms 
                                         if isGreater then 
                                             return $ Applied ([], [], [Constraint_Unify m2 m1 Nothing]) 
                                             else return NotApplicable
-                                    --(False, True) -> return $ Applied ([], [], [Constraint_Unify m2 m1])
                                     _ -> return NotApplicable
                         (MonoType_Var _ v rs, _)
                             | v `elem` (fvToList m2 :: [TyVar]), isFamilyFree m2 -> return (Error labelInfiniteType)
@@ -168,8 +167,8 @@ instance (HasGraph m touchable types constraint ci, HasAxioms m (Axiom Constrain
     interact _ c1@(Constraint_Unify (MonoType_Var _ v1 _) m1 _) c2@(Constraint_Unify t2@(MonoType_Fam f vs2 _) m2 _)
         | isFamilyFree m1, all isFamilyFree vs2, v1 `elem` (fvToList t2 :: [TyVar]) || v1 `elem` (fvToList m2 :: [TyVar]), isFamilyFree m2 =
                 return $ Applied [c1, Constraint_Unify (subst v1 m1 t2) (subst v1 m1 m2) Nothing]
-    interact _ c1@(Constraint_Unify mv1@(MonoType_Var _ v1 _) m1 _) c2@(Constraint_Unify mv2@(MonoType_Var _ v2 rs) m2 _) 
-        | v1 == v2, isFamilyFree m1, isFamilyFree m2 = do
+    interact _ c1@(Constraint_Unify mv1@(MonoType_Var _ v1 _) m1 _) c2@(Constraint_Unify mv2@(MonoType_Var _ v2 _) m2 _) 
+        | v1 == v2, isFamilyFree (trace ("CONSTR 1: " ++ show c1 ++ " CONSTR 2: " ++ show c2) m1), isFamilyFree m2 = do
             ig <- greaterType (MType mv1) (MType m1 :: RType ConstraintInfo)
             if ig then 
                 return NotApplicable
@@ -180,7 +179,7 @@ instance (HasGraph m touchable types constraint ci, HasAxioms m (Axiom Constrain
             if ig then 
                 return NotApplicable
             else
-                return $ Applied [c1, Constraint_Unify (insertReductionStepMaybe (var v2) rs) (subst v1 m1 m2) Nothing]
+                return $ Applied [c1, Constraint_Unify mv2 (subst v1 m1 m2) Nothing]
     interact _ c1@(Constraint_Unify (MonoType_Var _ v1 _) s1 _) (Constraint_Inst t2 s2 _)
         | v1 `elem` (fvToList t2 :: [TyVar]) || v1 `elem` (fvToList s2 :: [TyVar]), isFamilyFree s1
             = return $ Applied [c1, Constraint_Inst (subst v1 s1 t2) (subst v1 s1 s2) Nothing]
@@ -308,7 +307,7 @@ instance (
                             let ustate = unifyTypes [] [] (zipWith (\m l -> Constraint_Unify m l (Nothing :: Maybe ConstraintInfo)) ms lMs) (aes \\ bes)
                             res <- runTG ustate :: m (Maybe [(TyVar, RType ConstraintInfo)])
                             case res of
-                                (Just s) -> do
+                                Just s -> do
                                     let substRhs = substs (convertSubstitution s) rhs
                                     -- Makes sure that the lhs and rhs in LeftToRight is standardized on a certain uniqueness
                                     let (_, (specLhs, specRhs)) = contFreshM (unbind b) 1000000000000000 -- Must be large 

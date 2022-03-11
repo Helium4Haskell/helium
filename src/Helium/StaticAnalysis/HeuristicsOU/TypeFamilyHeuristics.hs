@@ -73,7 +73,7 @@ typeErrorThroughReduction path = SingleVoting "Type error through type family re
                         return $ Just (5, "Type family could not be reduced further", constraint, eid, addProperty (TypeFamilyReduction theTrace t lastType firstType) $ hint ci, gm)
                     else return Nothing
             -- Reduced to simple type but resulted in type error
-            (Constraint_Unify t1 t2 _, ErrorLabel "Incorrect constructors") -> do
+            (Constraint_Unify t1 t2 _, _) -> do
               (MType t1') <- getSubstTypeFull (getGroupFromEdge cedge) (MType t1)
               (MType t2') <- getSubstTypeFull (getGroupFromEdge cedge) (MType t2)
               t1Trace <- squashTrace <$> buildReductionTrace cedge t1'

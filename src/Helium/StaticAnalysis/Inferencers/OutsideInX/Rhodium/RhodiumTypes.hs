@@ -68,7 +68,7 @@ data ReductionStep = Step MonoType MonoType (Maybe (Constraint ())) ReductionTyp
 
 instance Show ReductionStep where
     show (Step after before constr rt) 
-        = "Reduction: " ++ show after ++ " reduced from: " ++ show before ++ " in constraint: " ++ show constr ++ ". Type: " ++ show rt
+        = "Reduction: " ++ show after ++ " reduced from: " ++ show before ++ " in constraint: " ++ show constr
 
 data ReductionType
   = LeftToRight (MonoType, MonoType) (Maybe TFInstanceInfo)

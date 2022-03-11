@@ -14,6 +14,7 @@ import Data.List (groupBy)
 import Debug.Trace (trace)
 import Helium.StaticAnalysis.StaticChecks.TypeFamilyInfos
 import Helium.Syntax.UHA_Range (showRange)
+import Data.Maybe (fromMaybe)
 
 
 buildReductionTrace :: (CompareTypes m (RType ConstraintInfo), Fresh m, HasTypeGraph m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo)
@@ -24,32 +25,25 @@ buildReductionTrace e mt = case getMaybeReductionStep mt of
           MonoType_Fam{} -> buildNestedSteps e mt
           _                    -> return []
       -- else, we build substituted step components from the step we obtain.
-      Just (Step after before mconstr rt) -> do
-          (MType trAfter) <- getSubstTypeFull (getGroupFromEdge e) (MType after)
-          (MType trBefore) <- getSubstTypeFull (getGroupFromEdge e) (MType before)          
-          trConstr <- case mconstr of 
-                Just (Constraint_Unify sm1 sm2 _) -> do
-                    (MType trConstrLeft) <- getSubstTypeFull (getGroupFromEdge e) (MType sm1)
-                    (MType trConstrRight) <- getSubstTypeFull (getGroupFromEdge e) (MType sm2)
-                    return $ Just $ Constraint_Unify trConstrLeft trConstrRight Nothing
-          ih <- buildReductionTrace e trBefore
-          return $ (Step trAfter trBefore trConstr rt, 1) : ih
+      Just (Step after before mconstr rt) -> do       
+          ih <- buildReductionTrace e before
+          return $ (Step after before mconstr rt, 1) : ih
 
 buildNestedSteps :: (CompareTypes m (RType ConstraintInfo), Fresh m, HasTypeGraph m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo)
                    => TGEdge (Constraint ConstraintInfo) -> MonoType -> m ReductionTrace
 buildNestedSteps = buildNestedSteps' []
     where
-        buildNestedSteps' seen e' mt' = do
-            (MType mt'') <- getSubstTypeFull (getGroupFromEdge e') (MType mt')
-            case mt'' of
+        buildNestedSteps' seen e' mt' =
+            case mt' of
                 mf@(MonoType_Fam f (m:mts) _) -> do
                     step <- getOneStep e' m
                     case step of
                       Nothing -> do
                           -- diveDeeper dives into the type itself (and recurses)
-                          diveDeeper <- buildNestedSteps e' m 
+                          diveDeeper <- buildNestedSteps e' m
+                          let resArg = fromMaybe m (getLastTypeInTrace diveDeeper)
                           -- next obtains the next argument of the original type family
-                          next <- buildNestedSteps' (m:seen) e' (MonoType_Fam f mts Nothing)
+                          next <- buildNestedSteps' (resArg:seen) e' (MonoType_Fam f mts Nothing)
                           -- setInsideFam takes the recurses in diveDeeper and deposits them back in the original type family.
                           return $ setInsideFam seen mf diveDeeper ++ next
                       Just (Step after before mconstr rt) -> do
@@ -70,15 +64,7 @@ getOneStep :: (CompareTypes m (RType ConstraintInfo), Fresh m, HasTypeGraph m (A
                   => TGEdge (Constraint ConstraintInfo) -> MonoType -> m (Maybe ReductionStep)
 getOneStep e mt = case getMaybeReductionStep mt of
     Nothing -> return Nothing
-    Just (Step after before mconstr rt) -> do
-        (MType trAfter) <- getSubstTypeFull (getGroupFromEdge e) (MType after)
-        (MType trBefore) <- getSubstTypeFull (getGroupFromEdge e) (MType before)
-        trConstr <- case mconstr of 
-                Just (Constraint_Unify sm1 sm2 _) -> do
-                    (MType trConstrLeft) <- getSubstTypeFull (getGroupFromEdge e) (MType sm1)
-                    (MType trConstrRight) <- getSubstTypeFull (getGroupFromEdge e) (MType sm2)
-                    return $ Just $ Constraint_Unify trConstrLeft trConstrRight Nothing
-        return $ Just $ Step trAfter trBefore trConstr rt
+    Just (Step after before mconstr rt) -> return $ Just $ Step after before mconstr rt
 
 -- Squashes the trace when similar reduction steps are found.
 squashTrace :: ReductionTrace -> ReductionTrace 
