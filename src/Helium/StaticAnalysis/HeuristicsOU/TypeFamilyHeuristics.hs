@@ -26,6 +26,7 @@ typeErrorThroughReduction path = SingleVoting "Type error through type family re
   where
     f (constraint, eid, ci, gm) = do
       graph <- getGraph
+      axs <- getAxioms 
       case constraint of
         Constraint_Inst _ (PolyType_Mono _ pmt) _ -> do
           -- Getting edge of erroneous constraint (pconstraint)
@@ -33,7 +34,7 @@ typeErrorThroughReduction path = SingleVoting "Type error through type family re
           let cedge = getEdgeFromId graph ceid
           let pconstraint = getConstraintFromEdge cedge
           case (pconstraint, labelFromPath path) of
-            -- PConstraint could not be reducted further
+            -- PConstraint could not be reduced further
             (Constraint_Unify mf@(MonoType_Fam f fmts _) t _, ErrorLabel "Residual constraint") -> do
               -- If there are vars in the typefamily, it may be the case that a type family application was there.
               let varsInTf = filter isVar fmts
@@ -74,18 +75,16 @@ typeErrorThroughReduction path = SingleVoting "Type error through type family re
                     else return Nothing
             -- Reduced to simple type but resulted in type error
             (Constraint_Unify t1 t2 _, _) -> do
-              (MType t1') <- getSubstTypeFull (getGroupFromEdge cedge) (MType t1)
-              (MType t2') <- getSubstTypeFull (getGroupFromEdge cedge) (MType t2)
-              t1Trace <- squashTrace <$> buildReductionTrace cedge t1'
-              t2Trace <- squashTrace <$> buildReductionTrace cedge t2'
-              case getFullTrace t1Trace t2Trace of
+              t1Trace <- squashTrace <$> buildReductionTrace cedge t1
+              t2Trace <- squashTrace <$> buildReductionTrace cedge t2
+              case getFullTrace t1Trace (trace ("TRACE 1: " ++ show t1Trace ++ " TRACE 2: " ++ show t2Trace ++ " FULL: " ++ show (getFullTrace t1Trace t2Trace)) t2Trace) of
                 Nothing -> return Nothing
                 Just (ti, theTrace) -> do
-                  let inferredT = makeCharString $ if ti == 0 then t2' else t1'
+                  let inferredT = makeCharString $ if ti == 0 then t2 else t1
                   let Just lastType = getLastTypeInTrace theTrace
                   let Just firstType = getFirstTypeInTrace theTrace
                   if typeIsInType lastType pmt
-                    then return $ Just (5, "Type family reduction type error", constraint, eid, addProperty (TypeFamilyReduction theTrace inferredT lastType firstType) ci, gm)
+                    then return $ Just (7, "Type family reduction type error", constraint, eid, addProperty (TypeFamilyReduction theTrace inferredT lastType firstType) ci, gm)
                     else return Nothing
             _ -> return Nothing
         _                     -> return Nothing
@@ -95,6 +94,15 @@ typeErrorThroughReduction path = SingleVoting "Type error through type family re
 
           isFam MonoType_Fam{} = True
           isFam _              = False
+
+-- substituteTouchable :: (Fresh m, CompareTypes m (RType ConstraintInfo)) => RType ConstraintInfo -> Groups -> m (RType ConstraintInfo)
+-- substituteTouchable mv@(MType (MonoType_Var _ tv _)) grps = do
+--   isTch <- isVertexTouchable (tv :: TyVar)
+--   case isTch of
+--     Nothing -> return mv
+--     Just _ -> getSubstTypeFull grps mv
+
+
 
 typeIsInType :: MonoType -> MonoType -> Bool
 typeIsInType t1 mf@(MonoType_Fam _ mts _) = mf == t1 || any (typeIsInType t1) mts

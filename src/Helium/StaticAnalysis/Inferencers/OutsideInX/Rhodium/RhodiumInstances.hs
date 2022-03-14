@@ -108,7 +108,7 @@ instance (CompareTypes m (RType ConstraintInfo), IsTouchable m TyVar, HasAxioms 
                                     do (a2, con1, vars1) <- unfamily a
                                        (c2, con2, vars2) <- unfamily c
                                                         
-                                       return $ Applied (vars1 ++ vars2, [], Constraint_Unify (insertReductionStepMaybe (var v) rs) (MonoType_App c2 a2 ars) Nothing : con1 ++ con2)
+                                       return $ Applied (if isGiven then [] else vars1 ++ vars2, [], Constraint_Unify (insertReductionStepMaybe (var v) rs) (MonoType_App c2 a2 ars) Nothing : con1 ++ con2)
                                 _ -> {-do 
                                     gt <- MType m1 `greaterType` MType m2
                                     if gt then 

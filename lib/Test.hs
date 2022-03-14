@@ -109,14 +109,14 @@ data Tree a = Node a (Tree a) (Tree a) | Leaf
 -- fault :: Int
 -- fault = bad (0.2 :: Float) (5 :: Int)
 
--- type family H a b where
---     H Float Int = Int
---     H Int Float = String
---     H Int Int = Float
+type family H a b where
+    H Float Int = Int
+    H Int Float = String
+    H Int Int = Float
 
--- type family J a where
---     J Int = Int
---     J Float = Float
+type family J a where
+    J Int = Int
+    J Float = Float
 
 -- h :: String -> String -> H (J (J Int)) Int
 -- h s1 s2 = s1 ++ s2 ++ "hi"
@@ -132,6 +132,13 @@ data Tree a = Node a (Tree a) (Tree a) | Leaf
 
 -- g :: Loop [[[[[[[Char]]]]]]]
 -- g = "Hi"
+
+type family Loop a where
+    Loop [a] = Loop a
+    Loop a = a 
+
+g :: Loop [[[[[[[a]]]]]]]
+g = "Hi"
 
 --h = g + g
 -- Int -> Int > h_
@@ -175,8 +182,8 @@ data Tree a = Node a (Tree a) (Tree a) | Leaf
 -- g :: Int -> B a
 -- g x = x
 
-type family Right a b
-type instance Right a b = b
+-- type family Right a b
+-- type instance Right a b = b
 
-right :: a -> b -> Right a b
-right x y = x
+-- right :: a -> b -> Right a b
+-- right x y = x

@@ -106,7 +106,7 @@ traceToMessageBlock rts = MessageCompose $ mapToBlock (1 :: Int) rts
             = MessageCompose 
                 [
                   MessageString (show idx ++ ". " ++ "Applied\t: " ++ show lhs ++ " = " ++ show rhs)
-                , MessageString ("\n   At\t: " ++ showMaybeRange tfi)
+                , MessageString ("\n   From\t: " ++ showMaybeRange tfi)
                 , MessageString ("\n   Step\t: " ++ show after ++ " <- " ++ show before)
                 , MessageString ("\n   Reason\t: " ++ showReason rt)
                 , MessageString ("\n   Amount\t: " ++ timesToString times)
@@ -127,7 +127,7 @@ traceToMessageBlock rts = MessageCompose $ mapToBlock (1 :: Int) rts
               MessageCompose 
                 [
                   MessageString (show idx ++ ". " ++ "Applied\t: " ++ show lhs ++ " = " ++ show rhs)
-                , MessageString ("\n   At\t: " ++ showMaybeRange tfi)
+                , MessageString ("\n   From\t: " ++ showMaybeRange tfi)
                 , MessageString ("\n   Step\t: " ++ show after ++ " <- " ++ show before)
                 , MessageString ("\n   Reason\t: " ++ showReason rt)
                 , MessageString ("\n   Amount\t: " ++ timesToString times)

@@ -67,7 +67,7 @@ data ReductionStep = Step MonoType MonoType (Maybe (Constraint ())) ReductionTyp
     deriving (Ord, Eq)
 
 instance Show ReductionStep where
-    show (Step after before constr rt) 
+    show (Step after before constr _) 
         = "Reduction: " ++ show after ++ " reduced from: " ++ show before ++ " in constraint: " ++ show constr
 
 data ReductionType
@@ -149,7 +149,7 @@ showMT mp (MonoType_Tuple t1 t2 _) = "(" ++ showMT mp t1 ++ "," ++ showMT mp t2 
 showMT mp (MonoType_Con c _)       = c 
 showMT mp (MonoType_Fam c a _)     = c ++ concatMap (\x -> " " ++ doParens (showMT mp x)) a
 showMT mp (s :-->: t)            = doParens (showMT mp s) ++ " -> " ++ showMT mp t
-showMT mp (MonoType_Var s v _)     = let r = fromMaybe (fromMaybe (show v) s) (lookup v mp) in r ++ show v--if r == "" then show v else r
+showMT mp (MonoType_Var s v _)     = let r = fromMaybe (fromMaybe (show v) s) (lookup v mp) in if r == "" then show v else r
 showMT mp ma@(MonoType_App f a _)  = case separateMt ma of 
                                     (MonoType_Con s _, tp) | length s > 2 && head s == '(' && last s == ')' && all (==',') (tail (init s)) ->
                                        "(" ++ intercalate ", " (map show tp) ++ ")"
