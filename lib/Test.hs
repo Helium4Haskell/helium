@@ -133,12 +133,12 @@ type family J a where
 -- g :: Loop [[[[[[[Char]]]]]]]
 -- g = "Hi"
 
-type family Loop a where
-    Loop [a] = Loop a
-    Loop a = a 
+-- type family Loop a where
+--     Loop [a] = Loop a
+--     Loop a = a 
 
-g :: Loop [[[[[[[a]]]]]]]
-g = "Hi"
+-- g :: Loop [[[[[[[String]]]]]]]
+-- g = "Hi"
 
 --h = g + g
 -- Int -> Int > h_
@@ -182,8 +182,8 @@ g = "Hi"
 -- g :: Int -> B a
 -- g x = x
 
--- type family Right a b
--- type instance Right a b = b
+type family Right a b
+type instance Right a b = b
 
--- right :: a -> b -> Right a b
--- right x y = x
+right :: a -> b -> Right a b
+right x y = x

@@ -25,9 +25,11 @@ buildReductionTrace e mt = case getMaybeReductionStep mt of
           MonoType_Fam{} -> buildNestedSteps e mt
           _                    -> return []
       -- else, we build substituted step components from the step we obtain.
-      Just (Step after before mconstr rt) -> do       
-          ih <- buildReductionTrace e before
-          return $ (Step after before mconstr rt, 1) : ih
+      Just (Step after before mconstr rt) -> do
+          (MType after') <- getSubstTypeFull (getGroupFromEdge e) (MType after)
+          (MType before') <- getSubstTypeFull (getGroupFromEdge e) (MType before)       
+          ih <- buildReductionTrace e before'
+          return $ (Step after' before' mconstr rt, 1) : ih
 
 buildNestedSteps :: (CompareTypes m (RType ConstraintInfo), Fresh m, HasTypeGraph m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo)
                    => TGEdge (Constraint ConstraintInfo) -> MonoType -> m ReductionTrace

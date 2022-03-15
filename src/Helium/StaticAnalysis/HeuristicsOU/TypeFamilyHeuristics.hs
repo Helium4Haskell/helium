@@ -75,8 +75,10 @@ typeErrorThroughReduction path = SingleVoting "Type error through type family re
                     else return Nothing
             -- Reduced to simple type but resulted in type error
             (Constraint_Unify t1 t2 _, _) -> do
-              t1Trace <- squashTrace <$> buildReductionTrace cedge t1
-              t2Trace <- squashTrace <$> buildReductionTrace cedge t2
+              (MType t1') <- getSubstTypeFull (getGroupFromEdge cedge) (MType t1)
+              (MType t2') <- getSubstTypeFull (getGroupFromEdge cedge) (MType t2)
+              t1Trace <- squashTrace <$> buildReductionTrace cedge t1'
+              t2Trace <- squashTrace <$> buildReductionTrace cedge t2'
               case getFullTrace t1Trace (trace ("TRACE 1: " ++ show t1Trace ++ " TRACE 2: " ++ show t2Trace ++ " FULL: " ++ show (getFullTrace t1Trace t2Trace)) t2Trace) of
                 Nothing -> return Nothing
                 Just (ti, theTrace) -> do
