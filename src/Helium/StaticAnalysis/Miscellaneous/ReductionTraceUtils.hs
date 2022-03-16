@@ -4,7 +4,7 @@
 module Helium.StaticAnalysis.Miscellaneous.ReductionTraceUtils where
 
 import Rhodium.TypeGraphs.GraphProperties (CompareTypes, HasTypeGraph)
-import Helium.StaticAnalysis.Inferencers.OutsideInX.Rhodium.RhodiumTypes (RType (MType), Axiom, TyVar, Constraint (Constraint_Unify), MonoType (MonoType_Fam, MonoType_App, MonoType_Con), ReductionTrace, ReductionStep (Step), ReductionType (LeftToRight, CanonReduction, TopLevelImprovement), getMaybeReductionStep)
+import Helium.StaticAnalysis.Inferencers.OutsideInX.Rhodium.RhodiumTypes (RType (MType), Axiom, TyVar, Constraint (Constraint_Unify), MonoType (MonoType_Fam, MonoType_App, MonoType_Con, MonoType_Var), ReductionTrace, ReductionStep (Step), ReductionType (LeftToRight, CanonReduction, TopLevelImprovement), getMaybeReductionStep)
 import Helium.StaticAnalysis.Miscellaneous.ConstraintInfoOU (ConstraintInfo)
 import Unbound.Generics.LocallyNameless (Fresh)
 import Rhodium.TypeGraphs.Graph (TGEdge, getGroupFromEdge)
@@ -38,27 +38,67 @@ buildNestedSteps = buildNestedSteps' []
         buildNestedSteps' seen e' mt' =
             case mt' of
                 mf@(MonoType_Fam f (m:mts) _) -> do
-                    step <- getOneStep e' m
-                    case step of
-                      Nothing -> do
-                          -- diveDeeper dives into the type itself (and recurses)
-                          diveDeeper <- buildNestedSteps e' m
-                          let resArg = fromMaybe m (getLastTypeInTrace diveDeeper)
-                          -- next obtains the next argument of the original type family
-                          next <- buildNestedSteps' (resArg:seen) e' (MonoType_Fam f mts Nothing)
-                          -- setInsideFam takes the recurses in diveDeeper and deposits them back in the original type family.
-                          return $ setInsideFam seen mf diveDeeper ++ next
-                      Just (Step after before mconstr rt) -> do
-                            ih <- buildNestedSteps' seen e' (MonoType_Fam f (before:mts) Nothing)
-                            return ((Step (MonoType_Fam f (seen++(after:mts)) Nothing) (MonoType_Fam f (seen++(before:mts)) Nothing) mconstr rt, 1) : ih)
+                  step <- getOneStep e' m
+                  case step of
+                    Nothing -> do
+                        -- diveDeeper dives into the type itself (and recurses)
+                        diveDeeper <- buildNestedSteps e' m
+                        let resArg = fromMaybe m (getLastTypeInTrace diveDeeper)
+                        -- next obtains the next argument of the original type family
+                        next <- buildNestedSteps' (resArg:seen) e' (MonoType_Fam f mts Nothing)
+                        -- setInsideFam takes the recurses in diveDeeper and deposits them back in the original type family.
+                        return $ setInsideFam seen mf diveDeeper ++ next
+                    Just (Step after before mconstr rt) -> do
+                          ih <- buildNestedSteps' seen e' (MonoType_Fam f (before:mts) Nothing)
+                          return ((Step (MonoType_Fam f (seen++(after:mts)) Nothing) (MonoType_Fam f (seen++(before:mts)) Nothing) mconstr rt, 1) : ih)
+                ma@(MonoType_App mt1 mt2 _) -> do
+                  step <- getOneStep e' ma
+                  case step of
+                    Nothing -> do
+                      m1Trace <- buildNestedSteps' [] e' mt1
+                      m2Trace <- buildNestedSteps' [] e' mt2
+                      return $ setInsideApp ma m1Trace m2Trace
+                    Just st@(Step _ before _ _) -> do
+                      ih <- buildNestedSteps' [] e' before
+                      return $ (st, 1) : ih
+                mc@(MonoType_Con _ _) -> do
+                  step <- getOneStep e' mc
+                  case step of
+                    Nothing -> return []
+                    Just st@(Step _ before _ _) -> do
+                      ih <- buildNestedSteps' [] e' before
+                      return $ (st, 1) : ih
+                mv@MonoType_Var{} -> do
+                  step <- getOneStep e' mv
+                  case step of
+                    Nothing -> do
+                      (MType mv') <- getSubstTypeFull (getGroupFromEdge e') (MType mv)
+                      buildNestedSteps' [] e' mv'
+                    Just st@(Step _ before _ _) -> do
+                      ih <- buildNestedSteps' [] e' before
+                      return $ (st, 1) : ih
                 _ -> return []
+
         
         setInsideFam seen mf@(MonoType_Fam f (_:mts) _) ((Step after before constr rt, _):ss) = let
-            afterFam = MonoType_Fam f (seen++(after:mts)) Nothing
-            beforeFam = MonoType_Fam f (seen++(before:mts)) Nothing
-            famStep = Step afterFam beforeFam constr rt
-            in (famStep, 1) : setInsideFam seen mf ss
+          afterFam = MonoType_Fam f (seen++(after:mts)) Nothing
+          beforeFam = MonoType_Fam f (seen++(before:mts)) Nothing
+          famStep = Step afterFam beforeFam constr rt
+          in (famStep, 1) : setInsideFam seen mf ss
         setInsideFam _ _ [] = []
+
+        setInsideApp ma@(MonoType_App _ mt2 _) ((Step after before constr rt, _):ss1) ss2 = let
+          afterApp = MonoType_App after mt2 Nothing
+          beforeApp = MonoType_App before mt2 Nothing
+          appStep = Step afterApp beforeApp constr rt
+          in (appStep, 1) : setInsideApp beforeApp ss1 ss2
+        setInsideApp ma@(MonoType_App mt1 _ _) [] ((Step after before constr rt, _):ss1) = let
+          afterApp = MonoType_App mt1 after Nothing
+          beforeApp = MonoType_App mt1 before Nothing
+          appStep = Step afterApp beforeApp constr rt
+          in (appStep, 1) : setInsideApp beforeApp [] ss1
+        setInsideApp _ [] [] = []
+        
 
 
 -- Gets one step.
