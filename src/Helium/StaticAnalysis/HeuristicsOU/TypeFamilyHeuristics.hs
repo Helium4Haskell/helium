@@ -3,7 +3,7 @@
 module Helium.StaticAnalysis.HeuristicsOU.TypeFamilyHeuristics where
 import Unbound.Generics.LocallyNameless ( Fresh )
 import Rhodium.Blamer.Path
-import Helium.StaticAnalysis.Inferencers.OutsideInX.Rhodium.RhodiumTypes (Axiom, TyVar, RType (MType), Constraint (Constraint_Inst, Constraint_Unify), MonoType (MonoType_Fam, MonoType_App, MonoType_Con, MonoType_Var), PolyType (PolyType_Mono))
+import Helium.StaticAnalysis.Inferencers.OutsideInX.Rhodium.RhodiumTypes (Axiom (Axiom_ClosedGroup), TyVar, RType (MType), Constraint (Constraint_Inst, Constraint_Unify), MonoType (MonoType_Fam, MonoType_App, MonoType_Con, MonoType_Var), PolyType (PolyType_Mono))
 import Helium.StaticAnalysis.Miscellaneous.ConstraintInfoOU
 import Rhodium.Blamer.Heuristics (VotingHeuristic (SingleVoting))
 import Rhodium.TypeGraphs.Graph
@@ -19,6 +19,8 @@ import Debug.Trace (trace)
 import Data.List (intercalate)
 import Helium.StaticAnalysis.HeuristicsOU.HeuristicsInfo
 import Helium.StaticAnalysis.Messages.HeliumMessages (freshenRepresentation)
+import Helium.StaticAnalysis.Inferencers.OutsideInX.Rhodium.RhodiumInstances (reactClosedTypeFam)
+import Helium.Utils.Utils (internalError)
 
 typeErrorThroughReduction :: (Fresh m, HasTypeGraph m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo, CompareTypes m (RType ConstraintInfo) )
                           => Path m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo -> VotingHeuristic m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo
@@ -26,7 +28,6 @@ typeErrorThroughReduction path = SingleVoting "Type error through type family re
   where
     f (constraint, eid, ci, gm) = do
       graph <- getGraph
-      axs <- getAxioms 
       let edge = getEdgeFromId graph eid
       case constraint of
         Constraint_Inst _ (PolyType_Mono _ pmt) _ -> do
@@ -36,10 +37,9 @@ typeErrorThroughReduction path = SingleVoting "Type error through type family re
           let pconstraint = getConstraintFromEdge cedge
           case (pconstraint, labelFromPath path) of
             -- PConstraint could not be reduced further
-            (Constraint_Unify mf@(MonoType_Fam f fmts _) t _, ErrorLabel "Residual constraint") -> do
-              -- If there are vars in the typefamily, it may be the case that a type family application was there.
+            (cf@(Constraint_Unify mf@(MonoType_Fam _ fmts _) t _), ErrorLabel "Residual constraint") -> do
               let varsInTf = filter isVar fmts
-              substVars <- freshenRepresentation <$> mapM (getSubstTypeFull (getGroupFromEdge cedge) . MType) varsInTf
+              substVars <- mapM (getSubstTypeFull (getGroupFromEdge cedge) . MType) varsInTf
               -- substVarsMt is all type family applications obtained from vars. They were not reducable.
               let substVarsMt = filter isFam $ map (\(MType m) -> makeCharString m) substVars
               -- Obtain substitution of full type
@@ -48,31 +48,14 @@ typeErrorThroughReduction path = SingleVoting "Type error through type family re
               let mf' = makeCharString freshMf
               -- Get potential trace.
               theTrace <- squashTrace <$> buildReductionTrace cedge mf'
+              theHint <- buildApartnessHint substVarsMt cf  
               case theTrace of
-                [] -> if null substVarsMt
-                        then do
-                          let hint = addHint "probable cause" (show mf' ++ " is not reducable")
-                          return $ Just (4, "Type family could not be reduced, no nesting", constraint, eid, hint ci, gm)
-                        else do
-                          let rhsHint = case substVarsMt of
-                                            [x] -> show x ++ " is not reducable"
-                                            xs -> intercalate ", " (map show xs) ++ " are not reducable"
-                          let hint = addHint "probable cause" rhsHint
-                          return $ Just (4, "Type family could not be reduced, no trace", constraint, eid, hint ci, gm)
+                [] -> return $ Just (4, "Type family could not be reduced, no trace", constraint, eid, theHint ci, gm)
                 trc -> do
                   let Just lastType = getLastTypeInTrace trc
                   let Just firstType = getFirstTypeInTrace trc
                   if typeIsInType lastType pmt
-                    then if null substVarsMt
-                      then do
-                        let hint = addHint "probable cause" (show mf' ++ " is not reducible")
-                        return $ Just (5, "Type family could not be reduced further", constraint, eid, addProperty (TypeFamilyReduction theTrace t lastType firstType) $ hint ci, gm)
-                      else do
-                        let rhsHint = case substVarsMt of
-                                        [x] -> show x ++ " is not reducable"
-                                        xs -> intercalate ", " (map show xs) ++ " are not reducable"
-                        let hint = addHint "probable cause" rhsHint
-                        return $ Just (5, "Type family could not be reduced further", constraint, eid, addProperty (TypeFamilyReduction theTrace t lastType firstType) $ hint ci, gm)
+                    then return $ Just (5, "Type family could not be reduced further, trace", constraint, eid, addProperty (TypeFamilyReduction theTrace t lastType firstType) $ theHint ci, gm)
                     else return Nothing
             -- Reduced to simple type but resulted in type error
             (Constraint_Unify t1 t2 _, _) -> do
@@ -80,7 +63,7 @@ typeErrorThroughReduction path = SingleVoting "Type error through type family re
               (MType t2') <- getSubstTypeFull (getGroupFromEdge edge) (MType t2)
               t1Trace <- squashTrace <$> buildReductionTrace edge t1'
               t2Trace <- squashTrace <$> buildReductionTrace edge t2'
-              case getFullTrace t1Trace (trace ("TRACE 1: " ++ show t1Trace ++ " TRACE 2: " ++ show t2Trace ++ " FULL: " ++ show (getFullTrace t1Trace t2Trace)) t2Trace) of
+              case getFullTrace t1Trace t2Trace of
                 Nothing -> return Nothing
                 Just (ti, theTrace) -> do
                   let inferredT = makeCharString $ if ti == 0 then t2 else t1
@@ -92,6 +75,32 @@ typeErrorThroughReduction path = SingleVoting "Type error through type family re
             _ -> return Nothing
         _                     -> return Nothing
         where
+          buildApartnessHint :: (Fresh m, HasTypeGraph m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo, CompareTypes m (RType ConstraintInfo)) 
+                                => [MonoType] -> Constraint ConstraintInfo -> m (ConstraintInfo -> ConstraintInfo)
+          buildApartnessHint substVarsMt c@(Constraint_Unify (MonoType_Fam fn fmts _) _ _) = do
+            axs <- getAxioms
+            
+            let (cc@(Constraint_Unify cmf@MonoType_Fam{} _ _), mClosedAxs) = case trace ("SUBSTVARSMT: " ++ show fmts) substVarsMt of
+                  [] -> (c, getMaybeClosedAxs axs fn)
+                  (mt@(MonoType_Fam mfn _ _) : _) -> (Constraint_Unify mt (MonoType_Con "Char" Nothing) Nothing, getMaybeClosedAxs axs mfn)
+                  _ -> internalError "TypeFamilyHeuristics.hs" "typeErrorThroughReduction" "only fams should be here"          
+
+            mApartErr <- case mClosedAxs of
+              Nothing -> return Nothing
+              Just caxs -> snd <$> reactClosedTypeFam False False cc caxs
+            case mApartErr of
+              Just mt -> do
+                let hint = addHint "probable cause" (show cmf ++ " is not apart from " ++ show mt)
+                return hint
+              Nothing -> return $ addHint "probable cause" (show cmf ++ " is not reducable")
+          buildApartnessHint _ _ = return id
+
+          getMaybeClosedAxs :: [Axiom ConstraintInfo] -> String -> Maybe [Axiom ConstraintInfo]
+          getMaybeClosedAxs (Axiom_ClosedGroup fn1 cgaxs: _) fn2
+            | fn1 == fn2 = Just cgaxs
+          getMaybeClosedAxs (_:axs) fn = getMaybeClosedAxs axs fn
+          getMaybeClosedAxs [] _     = Nothing
+
           isVar MonoType_Var{} = True
           isVar _              = False
 

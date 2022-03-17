@@ -318,7 +318,7 @@ instance (
                         _ -> return NotApplicable
             topLevelReact' (Axiom_ClosedGroup af axs) =
                     if f == af
-                        then reactClosedTypeFam given c axs
+                        then fst <$> reactClosedTypeFam given True c axs
                         else return NotApplicable
             topLevelReact' _ = return NotApplicable
     topLevelReact _ _ = return NotApplicable
@@ -378,12 +378,13 @@ reactClosedTypeFam :: (
                         HasAxioms m (Axiom ConstraintInfo)
                       )
                    => Bool
+                   -> Bool -- No toplevel improvement
                    -> Constraint ConstraintInfo 
                    -> [Axiom ConstraintInfo] 
-                   -> m (RuleResult ([Name MonoType], [Constraint ConstraintInfo]))
-reactClosedTypeFam given = reactClosedTypeFam' [] 
+                   -> m (RuleResult ([Name MonoType], [Constraint ConstraintInfo]), Maybe MonoType)
+reactClosedTypeFam given improve = reactClosedTypeFam' Nothing [] 
     where
-        reactClosedTypeFam' seen c@(Constraint_Unify mf@(MonoType_Fam _ ms _) t _) (ax@(Axiom_Unify b tfi):axs) 
+        reactClosedTypeFam' posApartErr seen c@(Constraint_Unify mf@(MonoType_Fam _ ms _) t _) (ax@(Axiom_Unify b tfi):axs) 
             | all isFamilyFree ms, isFamilyFree t =
             do
                 (aes, (lhs, rhs)) <- unbind b
@@ -395,22 +396,22 @@ reactClosedTypeFam given = reactClosedTypeFam' []
                       case res of
                         Nothing -> do
                             -- Try injectivity toplevel improvement when normal matching fails.
-                            improveRes <- improveTopLevelFun given c ax
+                            improveRes <- if improve then improveTopLevelFun given c ax else return NotApplicable
                             case improveRes of
-                              NotApplicable -> reactClosedTypeFam' (seen ++ [ax]) c axs 
-                              a@(Applied _) -> return a
+                              NotApplicable -> reactClosedTypeFam' posApartErr (seen ++ [ax]) c axs 
+                              a@(Applied _) -> return (a, Nothing)
                               Error _ -> internalError "RhodiumInstances.hs" "reactClosedTypeFam" "improveTopLevelFun returned an error, should not happen!"
                         Just s -> do
                             compatApartRes <- checkCompatApartness seen ax c
-                            if compatApartRes
+                            if isNothing compatApartRes
                                 then do
                                     let substRhs = substs (convertSubstitution s) rhs
                                     let (_, (specLhs, specRhs)) = contFreshM (unbind b) 1000000000000000
                                     let newRhs = insertReductionStep substRhs (Step substRhs mf (Just $ removeCI c) (LeftToRight (specLhs,specRhs) tfi))
-                                    return $ Applied (if given then [] else fvToList t, [Constraint_Unify newRhs t Nothing])
-                                else reactClosedTypeFam' (seen ++ [ax]) c axs 
-                  _ -> return NotApplicable
-        reactClosedTypeFam' _ _ _ = return NotApplicable
+                                    return (Applied (if given then [] else fvToList t, [Constraint_Unify newRhs t Nothing]), Nothing)
+                                else reactClosedTypeFam' compatApartRes (seen ++ [ax]) c axs 
+                  _ -> return (NotApplicable, Nothing)
+        reactClosedTypeFam' posApartErr _ _ _ = return (NotApplicable, posApartErr)
 
 -- Compat was precomputed and is part of the Axiom_Unify construct (A Just idx where idx are the indices of previous instances with which it is compatible.
 -- These instances need not to be checked for apartness so are removed.
@@ -419,14 +420,19 @@ checkCompatApartness :: (
                             HasTypeGraph m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo,
                             HasAxioms m (Axiom ConstraintInfo)
                         )
-                     =>  [Axiom ConstraintInfo] -> Axiom ConstraintInfo -> Constraint ConstraintInfo -> m Bool
+                     =>  [Axiom ConstraintInfo] -> Axiom ConstraintInfo -> Constraint ConstraintInfo -> m (Maybe MonoType)
 checkCompatApartness seen ax@(Axiom_Unify _ (Just tfi)) c = do
     let nonCompat = removeAt (preCompat tfi) seen
     apartRes <- mapM (apartnessCheck c) nonCompat
-    return $ all (==True) apartRes --LOL
+    return $ takeFirstFaulty apartRes
     where
         removeAt :: [Int] -> [a] -> [a]
         removeAt ns xs = [x | (n,x) <- zip [0..] xs, n `notElem` ns]
+
+        takeFirstFaulty :: [Maybe MonoType] -> Maybe MonoType
+        takeFirstFaulty (Nothing:xs) = takeFirstFaulty xs
+        takeFirstFaulty (x:_)        = x
+        takeFirstFaulty []           = Nothing
 
 -- apart(fam, lhs) = not(unify(lhs, flattened(fam))).
 apartnessCheck :: (
@@ -434,14 +440,14 @@ apartnessCheck :: (
                     HasTypeGraph m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo,
                     HasAxioms m (Axiom ConstraintInfo)
                   )
-                => Constraint ConstraintInfo -> Axiom ConstraintInfo -> m Bool
+                => Constraint ConstraintInfo -> Axiom ConstraintInfo -> m (Maybe MonoType)
 apartnessCheck (Constraint_Unify (MonoType_Fam f ts _) _ _) (Axiom_Unify b _) = do
      (ft, _, _) <- unfamilys ts
      (_, (lhs, _)) <- unbind b
      let nft = MonoType_Fam f ft Nothing
      case unifyTy lhs nft of
-       SurelyApart -> return True
-       Unifiable _ -> return False
+       SurelyApart -> return Nothing
+       Unifiable _ -> return $ Just lhs
      
 
 convertSubstitution :: [(TyVar, RType ConstraintInfo)] -> [(TyVar, MonoType)]

@@ -73,7 +73,9 @@ buildNestedSteps = buildNestedSteps' []
                   case step of
                     Nothing -> do
                       (MType mv') <- getSubstTypeFull (getGroupFromEdge e') (MType mv)
-                      buildNestedSteps' [] e' mv'
+                      if mv' == mv
+                        then return []
+                        else buildNestedSteps' [] e' mv'
                     Just st@(Step _ before _ _) -> do
                       ih <- buildNestedSteps' [] e' before
                       return $ (st, 1) : ih

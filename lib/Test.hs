@@ -126,19 +126,19 @@ type family J a where
 -- h1 :: H (J (J Float)) (J Int)
 -- h1 = "Hi"
 
--- type family Loop a where
---     Loop [a] = Loop a
---     Loop a = a 
-
--- g :: Loop [[[[[[[Char]]]]]]]
--- g = "Hi"
-
 type family Loop a where
     Loop [a] = Loop a
     Loop a = a 
 
-g :: Loop [[[[[[[String]]]]]]]
+g :: Loop [[[[[[[a]]]]]]]
 g = "Hi"
+
+-- type family Loop a where
+--     Loop [a] = Loop a
+--     Loop a = a 
+
+-- g :: Loop [[[[[[[String]]]]]]]
+-- g = "Hi"
 
 --h = g + g
 -- Int -> Int > h_
