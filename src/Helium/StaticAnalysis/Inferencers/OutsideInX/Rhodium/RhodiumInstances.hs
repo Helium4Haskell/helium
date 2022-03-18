@@ -48,7 +48,8 @@ import Helium.StaticAnalysis.Inferencers.OutsideInX.Rhodium.RhodiumGenerics
 import Debug.Trace (trace)
 import Helium.StaticAnalysis.Miscellaneous.Unify (preMatch, InjectiveEnv, UnifyResultM (SurelyApart, Unifiable), applySubst, matchTy, SubstitutionEnv, unifyTy, applyOverInjArgs)
 import Helium.Utils.Utils (internalError)
-import Helium.StaticAnalysis.StaticChecks.TypeFamilyInfos (TFInstanceInfo(preCompat))
+import Helium.StaticAnalysis.StaticChecks.TypeFamilyInfos (TFInstanceInfo(preCompat, tfiRange))
+import Helium.Syntax.UHA_Syntax (Range)
 
 integer2Name :: Integer -> Name a
 integer2Name = makeName ""
@@ -381,7 +382,7 @@ reactClosedTypeFam :: (
                    -> Bool -- No toplevel improvement
                    -> Constraint ConstraintInfo 
                    -> [Axiom ConstraintInfo] 
-                   -> m (RuleResult ([Name MonoType], [Constraint ConstraintInfo]), Maybe MonoType)
+                   -> m (RuleResult ([Name MonoType], [Constraint ConstraintInfo]), Maybe (MonoType, Range))
 reactClosedTypeFam given improve = reactClosedTypeFam' Nothing [] 
     where
         reactClosedTypeFam' posApartErr seen c@(Constraint_Unify mf@(MonoType_Fam _ ms _) t _) (ax@(Axiom_Unify b tfi):axs) 
@@ -420,8 +421,8 @@ checkCompatApartness :: (
                             HasTypeGraph m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo,
                             HasAxioms m (Axiom ConstraintInfo)
                         )
-                     =>  [Axiom ConstraintInfo] -> Axiom ConstraintInfo -> Constraint ConstraintInfo -> m (Maybe MonoType)
-checkCompatApartness seen ax@(Axiom_Unify _ (Just tfi)) c = do
+                     =>  [Axiom ConstraintInfo] -> Axiom ConstraintInfo -> Constraint ConstraintInfo -> m (Maybe (MonoType, Range))
+checkCompatApartness seen (Axiom_Unify _ (Just tfi)) c = do
     let nonCompat = removeAt (preCompat tfi) seen
     apartRes <- mapM (apartnessCheck c) nonCompat
     return $ takeFirstFaulty apartRes
@@ -429,7 +430,7 @@ checkCompatApartness seen ax@(Axiom_Unify _ (Just tfi)) c = do
         removeAt :: [Int] -> [a] -> [a]
         removeAt ns xs = [x | (n,x) <- zip [0..] xs, n `notElem` ns]
 
-        takeFirstFaulty :: [Maybe MonoType] -> Maybe MonoType
+        takeFirstFaulty :: [Maybe (MonoType, Range)] -> Maybe (MonoType, Range)
         takeFirstFaulty (Nothing:xs) = takeFirstFaulty xs
         takeFirstFaulty (x:_)        = x
         takeFirstFaulty []           = Nothing
@@ -440,14 +441,14 @@ apartnessCheck :: (
                     HasTypeGraph m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo,
                     HasAxioms m (Axiom ConstraintInfo)
                   )
-                => Constraint ConstraintInfo -> Axiom ConstraintInfo -> m (Maybe MonoType)
-apartnessCheck (Constraint_Unify (MonoType_Fam f ts _) _ _) (Axiom_Unify b _) = do
+                => Constraint ConstraintInfo -> Axiom ConstraintInfo -> m (Maybe (MonoType, Range))
+apartnessCheck (Constraint_Unify (MonoType_Fam f ts _) _ _) (Axiom_Unify b (Just tfi)) = do
      (ft, _, _) <- unfamilys ts
      (_, (lhs, _)) <- unbind b
      let nft = MonoType_Fam f ft Nothing
      case unifyTy lhs nft of
        SurelyApart -> return Nothing
-       Unifiable _ -> return $ Just lhs
+       Unifiable _ -> return $ Just (lhs, tfiRange tfi)
      
 
 convertSubstitution :: [(TyVar, RType ConstraintInfo)] -> [(TyVar, MonoType)]

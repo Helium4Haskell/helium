@@ -59,7 +59,7 @@ instance (MonadFail m, CompareTypes m (RType ConstraintInfo), Fresh m, HasTypeGr
                         --error $ show (expected, function)
                 | li == labelIncorrectConstructors  && isJust (maybeTypeFamilyReduction ci) =
                     do
-                        te <- makeTFReductionTypeError False (showTrace opts) edge constraint ci
+                        te <- makeTFReductionTypeError (showTrace opts) edge constraint ci
                         return ci {
                             errorMessage = Just te
                         }
@@ -142,7 +142,7 @@ instance (MonadFail m, CompareTypes m (RType ConstraintInfo), Fresh m, HasTypeGr
                             errorMessage = Just err
                         }
                 | li == labelResidual && isJust (maybeTypeFamilyReduction ci) = do
-                    te <- makeTFReductionTypeError True (showTrace opts)edge constraint ci
+                    te <- makeTFReductionTypeError (showTrace opts)edge constraint ci
                     return ci {
                         errorMessage = Just te
                     }
@@ -376,12 +376,13 @@ makeMissingTypeSignature source branchSources mTs = let
     in TypeError (map rangeOfSource branchSources) message table hints
 
 makeTFReductionTypeError :: (CompareTypes m (RType ConstraintInfo), Fresh m, HasTypeGraph m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo) 
-                         => Bool -> Bool -> TGEdge (Constraint ConstraintInfo) -> Constraint ConstraintInfo -> ConstraintInfo -> m TypeError
-makeTFReductionTypeError isTooGeneral mustShowTrace edge constraint info =
+                         => Bool -> TGEdge (Constraint ConstraintInfo) -> Constraint ConstraintInfo -> ConstraintInfo -> m TypeError
+makeTFReductionTypeError mustShowTrace edge constraint info =
     do
+    let (Just (theTrace, inf, og, red, isReduced)) = maybeTypeFamilyReduction info
     let (source, term) = sources info
         range    = maybe (rangeOfSource source) rangeOfSource term
-        oneliner = if isTooGeneral 
+        oneliner = if not isReduced 
                     then MessageOneLiner (MessageString ("Type family in " ++ location info ++ " was not fully reducable"))
                     else MessageOneLiner (MessageString ("Type error with type family reduction in " ++ location info))
         (t1, t2) = case constraint of
@@ -392,17 +393,16 @@ makeTFReductionTypeError isTooGeneral mustShowTrace edge constraint info =
     msgtp1   <- getSubstTypeFull (getGroupFromEdge edge) t1'
     msgtp2   <- getSubstTypeFull  (getGroupFromEdge edge) t2
     let [msgtp2', msgtp1'] = freshenRepresentation [msgtp2, msgtp1]
-    let (Just (theTrace, inf, og, red)) = maybeTypeFamilyReduction info
     let [MType inf', MType og', MType red'] = freshenRepresentation [MType inf :: RType ConstraintInfo, MType og, MType red]
     let (reason1, reason2) = ("declared type", "inferred type")
     let (treason1, treason2, treason3) = ("type", "  reduced from", "with")
         table = ["could not match " <:> MessageString ""]
                 ++
-                [
-                    treason1 >:> MessageMonoType red'
-                ,   treason2 >:> MessageMonoType og'
-                ,   treason3 >:> MessageMonoType inf'
-                ]
+                [treason1 >:> MessageMonoType red']
+                ++
+                [treason2 >:> MessageMonoType og' | og /= red]
+                ++ 
+                [treason3 >:> MessageMonoType inf']
                 ++
                 [ "in " ++ s <:> MessageOneLineTree (oneLinerSource source') | (s, source') <- convertSources (sources info)]
                 ++
@@ -415,5 +415,5 @@ makeTFReductionTypeError isTooGeneral mustShowTrace edge constraint info =
                         PType p -> MessagePolyType p                    
                 ]
         hints      = [ hint | WithHint hint <- properties info ]
-                   ++ [("full reduction", traceToMessageBlock (squashTrace theTrace)) | (not . null) theTrace && mustShowTrace]              
+                   ++ [("full reduction", traceToMessageBlock (squashTrace trc)) | let Just trc = theTrace, (not . null) theTrace && mustShowTrace]              
     return $ TypeError [range] [oneliner] table hints
