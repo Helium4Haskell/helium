@@ -9,14 +9,12 @@ import Rhodium.Blamer.Heuristics (VotingHeuristic (SingleVoting))
 import Rhodium.TypeGraphs.Graph
 import Rhodium.TypeGraphs.GraphProperties
 import Rhodium.TypeGraphs.GraphUtils
-import Rhodium.Solver.Rules (labelResidual, ErrorLabel (ErrorLabel))
+import Rhodium.Solver.Rules (ErrorLabel (ErrorLabel))
 
-import Rhodium.TypeGraphs.Graph (getEdgeFromId)
-import Rhodium.Blamer.Path (edgeIdFromPath)
 import Helium.StaticAnalysis.Miscellaneous.ReductionTraceUtils (buildReductionTrace, getFullTrace, getLastTypeInTrace, getFirstTypeInTrace, squashTrace)
-import Data.Maybe (fromJust, isJust)
+import Data.Maybe (isJust)
 import Debug.Trace (trace)
-import Data.List (intercalate, permutations, nub)
+import Data.List (permutations, nub)
 import Helium.StaticAnalysis.HeuristicsOU.HeuristicsInfo
 import Helium.StaticAnalysis.Messages.HeliumMessages (freshenRepresentation)
 import Helium.StaticAnalysis.Inferencers.OutsideInX.Rhodium.RhodiumInstances (reactClosedTypeFam)
