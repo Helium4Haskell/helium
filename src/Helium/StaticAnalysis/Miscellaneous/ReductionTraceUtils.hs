@@ -51,37 +51,37 @@ buildNestedSteps = buildNestedSteps' []
                     Just (Step after before mconstr rt) -> do
                           ih <- buildNestedSteps' seen e' (MonoType_Fam f (before:mts) Nothing)
                           return ((Step (MonoType_Fam f (seen++(after:mts)) Nothing) (MonoType_Fam f (seen++(before:mts)) Nothing) mconstr rt, 1) : ih)
+                -- Case for application type
                 ma@(MonoType_App mt1 mt2 _) -> do
                   step <- getOneStep e' ma
                   case step of
-                    Nothing -> do
-                      m1Trace <- buildNestedSteps' [] e' mt1
-                      m2Trace <- buildNestedSteps' [] e' mt2
-                      return $ setInsideApp ma m1Trace m2Trace
-                    Just st@(Step _ before _ _) -> do
-                      ih <- buildNestedSteps' [] e' before
-                      return $ (st, 1) : ih
+                    -- No step of its own means we dive into the arguments
+                    Nothing -> setInsideApp ma <$> buildNestedSteps' [] e' mt1 <*> buildNestedSteps' [] e' mt2
+                    -- With a step we continue toplevel
+                    Just st@(Step _ before _ _) -> ((st, 1) :) <$> buildNestedSteps' [] e' before
+                -- Case for constant types
                 mc@(MonoType_Con _ _) -> do
                   step <- getOneStep e' mc
                   case step of
+                    -- No step means we are done (no recursion options)
                     Nothing -> return []
-                    Just st@(Step _ before _ _) -> do
-                      ih <- buildNestedSteps' [] e' before
-                      return $ (st, 1) : ih
+                    -- Otherwise we continue top level
+                    Just st@(Step _ before _ _) -> ((st, 1) :) <$> buildNestedSteps' [] e' before
                 mv@MonoType_Var{} -> do
                   step <- getOneStep e' mv
                   case step of
                     Nothing -> do
                       (MType mv') <- getSubstTypeFull (getGroupFromEdge e') (MType mv)
+                      -- If there is no step and we dive deeper, we only do so if the substitution results in a new type.
                       if mv' == mv
                         then return []
                         else buildNestedSteps' [] e' mv'
-                    Just st@(Step _ before _ _) -> do
-                      ih <- buildNestedSteps' [] e' before
-                      return $ (st, 1) : ih
+                    -- Otherwise, we continue toplevel
+                    Just st@(Step _ before _ _) -> ((st, 1) :) <$> buildNestedSteps' [] e' before
                 _ -> return []
 
-        
+        -- Sets an obtained trace of a type fam argument back in the original type fam trace
+        setInsideFam :: [MonoType] -> MonoType -> ReductionTrace -> ReductionTrace
         setInsideFam seen mf@(MonoType_Fam f (_:mts) _) ((Step after before constr rt, _):ss) = let
           afterFam = MonoType_Fam f (seen++(after:mts)) Nothing
           beforeFam = MonoType_Fam f (seen++(before:mts)) Nothing
@@ -89,12 +89,14 @@ buildNestedSteps = buildNestedSteps' []
           in (famStep, 1) : setInsideFam seen mf ss
         setInsideFam _ _ [] = []
 
-        setInsideApp ma@(MonoType_App _ mt2 _) ((Step after before constr rt, _):ss1) ss2 = let
+        -- Sets an obtained trace of a type app argument back in the original app trace.
+        setInsideApp :: MonoType -> ReductionTrace -> ReductionTrace -> ReductionTrace
+        setInsideApp (MonoType_App _ mt2 _) ((Step after before constr rt, _):ss1) ss2 = let
           afterApp = MonoType_App after mt2 Nothing
           beforeApp = MonoType_App before mt2 Nothing
           appStep = Step afterApp beforeApp constr rt
           in (appStep, 1) : setInsideApp beforeApp ss1 ss2
-        setInsideApp ma@(MonoType_App mt1 _ _) [] ((Step after before constr rt, _):ss1) = let
+        setInsideApp (MonoType_App mt1 _ _) [] ((Step after before constr rt, _):ss1) = let
           afterApp = MonoType_App mt1 after Nothing
           beforeApp = MonoType_App mt1 before Nothing
           appStep = Step afterApp beforeApp constr rt
@@ -164,6 +166,7 @@ traceToMessageBlock rts = MessageCompose $ mapToBlock (1 :: Int) rts
                 , MessageString ("\n   Constraint\t: " ++ show constr)
                 , MessageString ("\n   Reason\t: " ++ showReason rt)
                 , MessageString ("\n   Amount\t: " ++ timesToString times)
+                , MessageString "\n"
                 ]
                 : mapToBlock (idx + 1) rts'
         mapToBlock idx ((Step after before _ rt@(TopLevelImprovement (lhs, rhs) tfi), times):rts')

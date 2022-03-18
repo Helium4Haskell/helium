@@ -3,7 +3,7 @@
 module Helium.StaticAnalysis.HeuristicsOU.TypeFamilyHeuristics where
 import Unbound.Generics.LocallyNameless ( Fresh )
 import Rhodium.Blamer.Path
-import Helium.StaticAnalysis.Inferencers.OutsideInX.Rhodium.RhodiumTypes (Axiom (Axiom_ClosedGroup), TyVar, RType (MType), Constraint (Constraint_Inst, Constraint_Unify), MonoType (MonoType_Fam, MonoType_App, MonoType_Con, MonoType_Var), PolyType (PolyType_Mono))
+import Helium.StaticAnalysis.Inferencers.OutsideInX.Rhodium.RhodiumTypes (Axiom (Axiom_ClosedGroup), TyVar, RType (MType), Constraint (Constraint_Inst, Constraint_Unify), MonoType (MonoType_Fam, MonoType_App, MonoType_Con, MonoType_Var), PolyType (PolyType_Mono), fvToList)
 import Helium.StaticAnalysis.Miscellaneous.ConstraintInfoOU
 import Rhodium.Blamer.Heuristics (VotingHeuristic (SingleVoting))
 import Rhodium.TypeGraphs.Graph
@@ -14,13 +14,15 @@ import Rhodium.Solver.Rules (labelResidual, ErrorLabel (ErrorLabel))
 import Rhodium.TypeGraphs.Graph (getEdgeFromId)
 import Rhodium.Blamer.Path (edgeIdFromPath)
 import Helium.StaticAnalysis.Miscellaneous.ReductionTraceUtils (buildReductionTrace, getFullTrace, getLastTypeInTrace, getFirstTypeInTrace, squashTrace)
-import Data.Maybe (fromJust)
+import Data.Maybe (fromJust, isJust)
 import Debug.Trace (trace)
-import Data.List (intercalate)
+import Data.List (intercalate, permutations, nub)
 import Helium.StaticAnalysis.HeuristicsOU.HeuristicsInfo
 import Helium.StaticAnalysis.Messages.HeliumMessages (freshenRepresentation)
 import Helium.StaticAnalysis.Inferencers.OutsideInX.Rhodium.RhodiumInstances (reactClosedTypeFam)
 import Helium.Utils.Utils (internalError)
+import Rhodium.Core (unifyTypes, runTG)
+import Control.Monad (filterM)
 
 typeErrorThroughReduction :: (Fresh m, HasTypeGraph m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo, CompareTypes m (RType ConstraintInfo) )
                           => Path m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo -> VotingHeuristic m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo
@@ -67,13 +69,35 @@ typeErrorThroughReduction path = SingleVoting "Type error through type family re
                 Just (ti, theTrace) -> do
                   let inferredT = makeCharString $ if ti == 0 then t2 else t1
                   let Just lastType = getLastTypeInTrace theTrace
+                  hint <- buildPermutationHint lastType inferredT
                   let Just firstType = getFirstTypeInTrace theTrace
                   if typeIsInType lastType pmt
-                    then return $ Just (7, "Type family reduction type error", constraint, eid, addProperty (TypeFamilyReduction (Just theTrace) inferredT lastType firstType True) ci, gm)
+                    then return $ Just (7, "Type family reduction type error", constraint, eid, addProperty (TypeFamilyReduction (Just theTrace) inferredT lastType firstType True) $ hint ci, gm)
                     else return Nothing
             _ -> return Nothing
         _                     -> return Nothing
         where
+          buildPermutationHint :: (Fresh m, HasTypeGraph m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo, CompareTypes m (RType ConstraintInfo)) 
+                                => MonoType -> MonoType -> m (ConstraintInfo -> ConstraintInfo)
+          buildPermutationHint ogmf@(MonoType_Fam fn mts _) infMt = do
+            let permsMt = filter (mts /=) $ permutations mts
+            loopPerms permsMt
+            
+            where
+              loopPerms (p:perms) = do
+                axs <- getAxioms
+                let nft = MonoType_Fam fn p Nothing
+                tchs <- filterM (fmap isJust . isVertexTouchable) (nub $ fvToList nft ++ fvToList infMt :: [TyVar])
+                ures <- runTG $ unifyTypes axs [] [Constraint_Unify nft infMt Nothing] tchs
+                case ures of
+                  Nothing -> loopPerms perms
+                  Just _ -> do
+                    let hint = addHint "possible fix" ("Assuming that your instances and function body are correct, changing " 
+                                                      ++ (show . show) ogmf ++ " to " ++ (show . show) nft ++ " may fix the error")
+                    return hint 
+              loopPerms [] = return id
+          buildPermutationHint _ _ = return id
+
           buildApartnessHint :: (Fresh m, HasTypeGraph m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo, CompareTypes m (RType ConstraintInfo)) 
                                 => MonoType -> m (ConstraintInfo -> ConstraintInfo)
           buildApartnessHint mt@(MonoType_Fam fn _ _) = do
