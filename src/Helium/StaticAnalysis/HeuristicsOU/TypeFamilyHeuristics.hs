@@ -65,12 +65,13 @@ typeErrorThroughReduction path = SingleVoting "Type error through type family re
               case getFullTrace t1Trace t2Trace of
                 Nothing -> return Nothing
                 Just (ti, theTrace) -> do
-                  let inferredT = makeCharString $ if ti == 0 then t2 else t1
+                  let inferredT = if ti == 0 then t2 else t1
+                  let inferredTStr = makeCharString inferredT
                   let Just lastType = getLastTypeInTrace theTrace
                   hint <- buildPermutationHint lastType inferredT
                   let Just firstType = getFirstTypeInTrace theTrace
                   if typeIsInType lastType pmt
-                    then return $ Just (7, "Type family reduction type error", constraint, eid, addProperty (TypeFamilyReduction (Just theTrace) inferredT lastType firstType True) $ hint ci, gm)
+                    then return $ Just (7, "Type family reduction type error", constraint, eid, addProperty (TypeFamilyReduction (Just theTrace) inferredTStr lastType firstType True) $ hint ci, gm)
                     else return Nothing
             _ -> return Nothing
         _                     -> return Nothing

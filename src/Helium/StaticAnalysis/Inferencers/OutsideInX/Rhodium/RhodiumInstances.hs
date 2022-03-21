@@ -335,7 +335,7 @@ improveTopLevelFun given c@(Constraint_Unify fam@(MonoType_Fam f ms _) t _) (Axi
             -- Only act when type family is injective and the names match.
             MonoType_Fam lF _ _ | f == lF, isInjective axs lF -> do
                 -- Builds the injective env needed for preMatch and matchTy 
-                ienv <- axsToInjectiveEnv axs --(trace ("Constraint and Ax: " ++ show c ++ ", " ++ show ax) axs)
+                ienv <- axsToInjectiveEnv axs
                 let injIdx = ienv M.! f
                 -- If rhs and t preMatch (M(ti, t0))...
                 case preMatch ienv rhs t of
