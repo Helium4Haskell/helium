@@ -82,6 +82,7 @@ data Error  = NoFunDef Entity Name {-names in scope-}Names
             | OpenTFOverlapping Name Name MonoType MonoType MonoType MonoType
             | InjPreUnifyFailed Name Name MonoType MonoType MonoType MonoType
             | InjWronglyUsedVars Name MonoType MonoType [String]
+            | InstUnderWrongDecl Name Name
 
 instance HasMessage Error where
    getMessage x = let (oneliner, hints) = showError x
@@ -143,6 +144,7 @@ instance HasMessage Error where
       OpenTFOverlapping n1 n2 _ _ _ _ -> sortRanges [getNameRange n1, getNameRange n2]
       InjPreUnifyFailed n1 n2 _ _ _ _ -> sortRanges [getNameRange n1, getNameRange n2]
       InjWronglyUsedVars n _ _ _      -> [getNameRange n]
+      InstUnderWrongDecl _ instn     -> [getNameRange instn]
 
 sensiblySimilar :: Name -> Names -> [Name]
 sensiblySimilar name inScope =
@@ -509,6 +511,9 @@ showError anError = case anError of
          ,  MessageString ("Type variable " ++ if length tvs > 1 then "s" else "" ++ intercalate ", " (map show tvs) ++ " cannot be inferred from the right hand side") 
          ]
       ,[])
+   InstUnderWrongDecl dn instn ->
+      ( MessageString ("Instance for " ++ (show . show) instn ++ " was found under the closed type family " ++ (show . show) dn)
+      ,[MessageString ("Only instances for "  ++ (show . show) dn ++ " may appear here")])
 
    _ -> internalError "StaticErrors.hs" "showError" "unknown type of Error"
 
@@ -602,6 +607,7 @@ errorLogCode anError = case anError of
           OpenTFOverlapping _ _ _ _ _ _           -> "oto"
           InjPreUnifyFailed _ _ _ _ _ _           -> "ipu"
           InjWronglyUsedVars{}                    -> "iwu"
+          InstUnderWrongDecl _ _                  -> "iuwd"
    where code entity = fromMaybe "??"
                      . lookup entity
                      $ [ (TypeSignature    ,"ts"), (TypeVariable         ,"tv"), (TypeConstructor,"tc")

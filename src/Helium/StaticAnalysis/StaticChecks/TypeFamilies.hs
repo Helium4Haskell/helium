@@ -16,7 +16,7 @@ import Helium.StaticAnalysis.Miscellaneous.TypeConversion
     ( namesInType, namesInTypes )
 import Data.List (nub, elemIndex, (\\))
 import qualified Data.Map as M
-import Data.Maybe (fromJust, mapMaybe)
+import Data.Maybe (fromJust, mapMaybe, isJust)
 import qualified Data.Set as S
 import Unbound.Generics.LocallyNameless (runFreshM)
 import Helium.ModuleSystem.ImportEnvironment ( TypeSynonymEnvironment )
@@ -68,6 +68,7 @@ checkTypeFamStaticErrors env dis iis = let
   -- New phase because duplicates generate errors in this area too.
   phase2 = atsCheckVarAlignment dis iis
            ++ instCheckInstanceValidity dis iis
+           ++ instWronglyUnderClosed iis
            ++ instSaturationCheck dis iis
 
   -- Phase three is initiated when instances are syntactically valid
@@ -158,6 +159,12 @@ instCheckInstanceValidity ds is = let
      [ATSWrongClassInstance n cn1 cn2 | (n, cn1, cn2) <- assocNotLinkedToRightClass] ++
      [ATSNotPartOfClass n1 n2 | (n1, n2) <- assocInstanceNotPartOfClass] ++
      [OpenInstanceForClosed n | n <- openInstancesForClosed]
+
+instWronglyUnderClosed :: TFInstanceInfos -> Errors
+instWronglyUnderClosed is = let
+  closedInsts = filter (isJust . closedDeclName) is
+  wronglyClosed = [(dname, tfiName i) | i <- closedInsts, let Just dname = closedDeclName i, dname /= tfiName i]
+  in [InstUnderWrongDecl dn instn | (dn, instn) <- wronglyClosed]
 
 -- Checks whether the type fam instance LHS is fully saturated.
 instSaturationCheck :: TFDeclInfos -> TFInstanceInfos -> Errors

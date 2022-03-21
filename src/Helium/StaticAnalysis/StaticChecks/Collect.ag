@@ -360,10 +360,10 @@ collectTypeFamDecls (Declaration_TypeFam _ (SimpleType_SimpleType _ n tv) MaybeI
 collectTypeFamDecls (Declaration_TypeFam _ (SimpleType_SimpleType _ n tv) (MaybeInjectivity_Just inj) _)
   = let (Injectivity_Injectivity _ _ ns) = inj in createClosedTFDecl n tv (Just ns)
 
-collectTypeFamInstance :: Declaration -> Int -> TFInstanceInfo
-collectTypeFamInstance (Declaration_TypeFamInstance range isClosed n ts t) instId
+collectTypeFamInstance :: Declaration -> Int -> Maybe Name -> TFInstanceInfo
+collectTypeFamInstance (Declaration_TypeFamInstance range isClosed n ts t) instId declName
   = if isClosed
-      then createClosedTFInst n ts t instId range
+      then createClosedTFInst n ts t instId range declName
       else createOpenTFInst n ts t range
 
 -- Collecting assoc type syns
@@ -398,7 +398,8 @@ collectAssocTypeSynInstances' _    []     = []
 ATTR Body Declarations Declaration [ | | collectTypeFamilyDecls USE { ++ } { [] } : {TFDeclInfos} ]
 ATTR Body MaybeDeclarations Declarations Declaration [ | | collectTypeFamilyInstances USE { ++ } { [] } : {TFInstanceInfos}]
 -- Id that is given to Type Instance declarations in a closed type family
-ATTR Declarations Declaration [ instId : {Int} | | ]
+ATTR Declarations Declaration [ instId : {Int} declName : {Maybe Name} | | ]
+ATTR MaybeDeclarations [ declName : {Maybe Name} | | ]
 
 ATTR Body [ importedTypeSynEnv : {TypeSynonymEnvironment}| | ]
 
@@ -409,20 +410,25 @@ SEM Body
     | Body lhs . collectTypeFamilyInstances = preComputeCompat @tyFams @tempCollectedTFInstances--here, the precomputed compat will be added.
            loc . tempCollectedTFInstances = @declarations.collectTypeFamilyInstances
                . tyFams = typeSynonymsToTypeFamilies (M.fromList @lhs.collectTypeSynonyms `M.union` @lhs.importedTypeSynEnv) ++ obtainTyFams @declarations.collectTypeFamilyDecls
+           declarations . declName = Nothing
 
 SEM MaybeDeclarations
     | Just lhs . collectTypeFamilyInstances = @declarations.collectTypeFamilyInstances
+           declarations . declName = @lhs.declName
            declarations . instId = 0
 
 SEM Declarations
     | Cons hd.instId = @lhs.instId
+           hd.declName = @lhs.declName
+           tl.declName = @lhs.declName
            tl.instId = @lhs.instId + 1
 
 SEM Declaration
     | Class lhs . collectTypeFamilyDecls = collectAssocTypeSynDecls @self @where.self
     | TypeFam lhs . collectTypeFamilyDecls = collectTypeFamDecls @self : []
               lhs . collectTypeFamilyInstances = @where.collectTypeFamilyInstances
-    | TypeFamInstance lhs . collectTypeFamilyInstances = collectTypeFamInstance @self @lhs.instId : []
+              where . declName = Just @simpletype.name
+    | TypeFamInstance lhs . collectTypeFamilyInstances = collectTypeFamInstance @self @lhs.instId @lhs.declName : []
     | Instance lhs . collectTypeFamilyInstances = collectAssocTypeSynInstances @self @where.self
 
 -------------------------------------------

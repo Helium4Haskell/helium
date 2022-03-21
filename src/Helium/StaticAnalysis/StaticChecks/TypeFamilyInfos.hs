@@ -46,6 +46,7 @@ data TFInstanceInfo = TII {
   , classIName :: Maybe Name -- class name of accompanying class
   , preCompat :: [Int] -- contains indices of other instances with which the closed instance is compatible, empty for open tfs and ATSs.
   , tfiRange :: Range
+  , closedDeclName :: Maybe Name
   } deriving (Show, Eq, Ord)
 
 instance Alpha TFInstanceInfo where
@@ -110,6 +111,7 @@ createATSInst n ts t ct cn range = TII {
   , classIName = Just cn
   , preCompat = []
   , tfiRange = range
+  , closedDeclName = Nothing
 }
 
 createOpenTFInst :: Name -> Types -> Type -> Range -> TFInstanceInfo
@@ -123,10 +125,11 @@ createOpenTFInst n ts t range = TII {
   , classIName = Nothing
   , preCompat = [] 
   , tfiRange = range
+  , closedDeclName = Nothing
 }
 
-createClosedTFInst :: Name -> Types -> Type -> Int -> Range -> TFInstanceInfo
-createClosedTFInst n ts t prio range= TII {
+createClosedTFInst :: Name -> Types -> Type -> Int -> Range -> Maybe Name -> TFInstanceInfo
+createClosedTFInst n ts t prio range declName = TII {
     tfiName = n
   , argTypes = ts
   , defType = t
@@ -136,6 +139,7 @@ createClosedTFInst n ts t prio range= TII {
   , classIName = Nothing
   , preCompat = [] 
   , tfiRange = range
+  , closedDeclName = declName 
 }
 
 insertPreCompat :: [Int] -> TFInstanceInfo -> TFInstanceInfo

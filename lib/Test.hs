@@ -34,7 +34,7 @@ type NewInt = Int
 
 type family F a b = r | r -> a
 
-type family I a b
+-- type family I a b
 
 -- type family G a
 
@@ -118,12 +118,16 @@ type family J a where
     J Int = Int
     J Float = Float
 
+type family I a b c where
+    J String = String
+    I Float Int Float = Float
+
 -- h :: String -> String -> H (J (J Int)) Int
 -- h s1 s2 = s1 ++ s2 ++ "hi"
 
 -- h3 :: H Int Int
 -- h3 = "Hi"
-h1 :: H Float Int
+h1 :: I Float Int Float
 h1 = "Hi"
 
 -- type family Loop a where
