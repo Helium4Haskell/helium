@@ -588,9 +588,10 @@ instance IsEquality (Axiom ConstraintInfo) (RType ConstraintInfo) (Constraint Co
             injVars = [x | (n, x@(MonoType_Var _ v1 _)) <- zip [0..] mts, n `elem` injArgs, v1 `notElem` thcs]
             -- allVars and injVars must be equal, this says: all remaining vars are injective and may be determined when we know x.
             in allVars == injVars
-        | (not . any isVar) mts
-        , v `elem` thcs
-        = True
+        -- This does not work! GHC does some weird "Type families are equal stuff!"
+        -- | (not . any isVar) mts
+        -- , v `elem` thcs
+        -- = True
         where
             isVar MonoType_Var{} = True
             isVar _              = False

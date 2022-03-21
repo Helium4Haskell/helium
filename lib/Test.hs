@@ -110,25 +110,25 @@ data Tree a = Node a (Tree a) (Tree a) | Leaf
 -- fault = bad (0.2 :: Float) (5 :: Int)
 
 type family H a b where
-    H Float Int = Int
+    --H Float Int = Int
     H Int Float = String
-    H Int Int = Float
+    --H Float Int = Float
 
 type family J a where
     J Int = Int
     J Float = Float
 
-type family I a b c where
-    J String = String
-    I Float Int Float = Float
+-- type family I a b c where
+--     I Float Float Int = String
+--     I Float Int Float = Float
 
--- h :: String -> String -> H (J (J Int)) Int
--- h s1 s2 = s1 ++ s2 ++ "hi"
+-- -- h :: String -> String -> H (J (J Int)) Int
+-- -- h s1 s2 = s1 ++ s2 ++ "hi"
 
--- h3 :: H Int Int
--- h3 = "Hi"
-h1 :: I Float Int Float
-h1 = "Hi"
+h3 :: H (H Float Int) Int
+h3 = "Hi"
+-- h1 :: I Float Int Float
+-- h1 = "Hi"
 
 -- type family Loop a where
 --     Loop [a] = Loop a

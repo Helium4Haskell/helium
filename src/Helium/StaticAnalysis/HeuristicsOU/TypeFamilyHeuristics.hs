@@ -39,6 +39,7 @@ typeErrorThroughReduction path = SingleVoting "Type error through type family re
             -- PConstraint could not be reduced further
             (Constraint_Unify mf@MonoType_Fam{} t _, ErrorLabel "Residual constraint") -> do
               -- Gets the left most, most deeply nested type fam
+              -- The blamed fam could be obtained differently
               blamedFam <- getFirstNestedFam cedge mf
               -- Obtain substitution of blamed type
               [MType freshBlamed] <- freshenRepresentation . (:[]) <$> getSubstTypeFull (getGroupFromEdge cedge) (MType blamedFam)
@@ -49,12 +50,19 @@ typeErrorThroughReduction path = SingleVoting "Type error through type family re
               theTrace <- squashTrace <$> buildReductionTrace cedge freshOg
               theHint <- buildApartnessHint freshBlamed'
               case theTrace of
-                [] -> return $ Just (4, "Type family could not be reduced, no trace", constraint, eid, addProperty (TypeFamilyReduction Nothing t freshOg freshOg False) $ theHint ci, gm)
+                [] -> do
+                  permHint <- if freshBlamed == freshOg
+                    then buildPermutationHint mf t
+                    else return id
+                  return $ Just (4, "Type family could not be reduced, no trace", constraint, eid, addProperty (TypeFamilyReduction Nothing t freshOg freshOg False) $ theHint $ permHint ci, gm)
                 trc -> do
                   let Just lastType = getLastTypeInTrace trc
                   let Just firstType = getFirstTypeInTrace trc
+                  permHint <- if freshBlamed == freshOg
+                    then buildPermutationHint lastType t
+                    else return id
                   if typeIsInType lastType pmt
-                    then return $ Just (5, "Type family could not be reduced further, trace", constraint, eid, addProperty (TypeFamilyReduction (Just theTrace) t lastType firstType False) $ theHint ci, gm)
+                    then return $ Just (5, "Type family could not be reduced further, trace", constraint, eid, addProperty (TypeFamilyReduction (Just theTrace) t lastType firstType False) $ theHint $ permHint ci, gm)
                     else return Nothing
             -- Reduced to simple type but resulted in type error
             (Constraint_Unify t1 t2 _, _) -> do
