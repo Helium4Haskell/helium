@@ -38,47 +38,42 @@ typeErrorThroughReduction path = SingleVoting "Type error through type family re
           case (pconstraint, labelFromPath path) of
             -- PConstraint could not be reduced further
             (Constraint_Unify mf@MonoType_Fam{} t _, ErrorLabel "Residual constraint") -> do
-              -- Gets the left most, most deeply nested type fam
-              -- The blamed fam could be obtained differently
-              --blamedFam <- getFirstNestedFam cedge mf
-              -- Obtain substitution of blamed type
-              --[MType freshBlamed] <- freshenRepresentation . (:[]) <$> getSubstTypeFull (getGroupFromEdge cedge) (MType blamedFam)
-              --let freshBlamed' = makeCharString freshBlamed
-              -- Obtain substitution of original type
               [MType freshOg] <- freshenRepresentation . (:[]) <$> getSubstTypeFull (getGroupFromEdge cedge) (MType mf)
               -- Get potential trace.
               theTrace <- squashTrace <$> buildReductionTrace cedge freshOg
-              --theHint <- buildApartnessHint freshBlamed'
+              -- Builds hint in nested sense, when type family contains other families that were not reducable (or wronly reduced, perhaps)
               mTheHint <- buildNestedHints cedge mf t
+              -- Unpack hint
               let theHint = case mTheHint of
                     Nothing -> id
-                    Just (x:xs) -> trace (show (length (x:xs))) x 
+                    Just [] -> id
+                    Just (x:_) -> x
               case theTrace of
-                [] -> do
-                  -- permHint <- if freshBlamed == freshOg
-                  --   then buildPermutationHint mf t
-                  --   else return id
-                  return $ Just (4, "Type family could not be reduced, no trace", constraint, eid, addProperty (TypeFamilyReduction Nothing t freshOg freshOg False) $ theHint ci, gm)
+                -- No trace but still reduction error
+                [] -> return $ Just (4, "Type family could not be reduced, no trace", constraint, eid, addProperty (TypeFamilyReduction Nothing t freshOg freshOg False) $ theHint ci, gm)
+                -- Now with trace, checking if the trace belongs to the type signature
                 trc -> do
                   let Just lastType = getLastTypeInTrace trc
                   let Just firstType = getFirstTypeInTrace trc
-                  -- permHint <- if freshBlamed == freshOg
-                  --   then buildPermutationHint lastType t
-                  --   else return id
                   if typeIsInType lastType pmt
                     then return $ Just (5, "Type family could not be reduced further, trace", constraint, eid, addProperty (TypeFamilyReduction (Just theTrace) t lastType firstType False) $ theHint ci, gm)
                     else return Nothing
             -- Reduced to simple type but resulted in type error
             (Constraint_Unify t1 t2 _, _) -> do
+              -- Substitute both types
               (MType t1') <- getSubstTypeFull (getGroupFromEdge edge) (MType t1)
               (MType t2') <- getSubstTypeFull (getGroupFromEdge edge) (MType t2)
+              -- Generate traces
               t1Trace <- squashTrace <$> buildReductionTrace edge t1'
               t2Trace <- squashTrace <$> buildReductionTrace edge t2'
+              -- Get the type reduced from a type family (only one side is).
               case getFullTrace t1Trace t2Trace of
                 Nothing -> return Nothing
                 Just (ti, theTrace) -> do
+                  -- Get the inferred type
                   let inferredT = if ti == 0 then t2 else t1
                   let inferredTStr = makeCharString inferredT
+                  -- Get last type in trace and first type, obtain potential permutation hint.
                   let Just lastType = getLastTypeInTrace theTrace
                   mhint <- buildPermutationHint lastType inferredT
                   let hint = fromMaybe id mhint
@@ -89,20 +84,29 @@ typeErrorThroughReduction path = SingleVoting "Type error through type family re
             _ -> return Nothing
         _                     -> return Nothing
         where
+          -- Builds permutation hint.
           buildPermutationHint :: (Fresh m, HasTypeGraph m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo, CompareTypes m (RType ConstraintInfo)) 
                                 => MonoType -> MonoType -> m (Maybe (ConstraintInfo -> ConstraintInfo))
           buildPermutationHint ogmf@(MonoType_Fam fn mts _) infMt = do
+            -- Build permutations of the arguments of the type family.
             let permsMt = filter (mts /=) $ permutations mts
+            -- loop over the permutations.
             loopPerms permsMt
             
             where
+              -- Tries a permutation.
               loopPerms (p:perms) = do
                 axs <- getAxioms
+                -- building new type family.
                 let nft = MonoType_Fam fn p Nothing
+                -- obtain touchable vars for unification.
                 tchs <- filterM (fmap isJust . isVertexTouchable) (nub $ fvToList nft ++ fvToList infMt :: [TyVar])
+                -- unify new type family application with the inferred type passed with it.
                 ures <- runTG $ unifyTypes axs [] [Constraint_Unify nft infMt Nothing] tchs
                 case ures of
+                  -- No substitution, we try the next.
                   Nothing -> loopPerms perms
+                  -- There is a substitution and thus we may provide a possible fix.
                   Just _ -> do
                     let hint = addHint "possible fix" ("Changing " 
                                                       ++ (show . show) ogmf ++ " to " ++ (show . show) nft ++ " removes this type error")
@@ -110,16 +114,21 @@ typeErrorThroughReduction path = SingleVoting "Type error through type family re
               loopPerms [] = return Nothing
           buildPermutationHint _ _ = return Nothing
 
+          -- Builds a hint that shows when a type was not apart during closed type family matching.
           buildApartnessHint :: (Fresh m, HasTypeGraph m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo, CompareTypes m (RType ConstraintInfo)) 
                              => MonoType -> m (Maybe (ConstraintInfo -> ConstraintInfo))
           buildApartnessHint mt@(MonoType_Fam fn _ _) = do
             axs <- getAxioms
             
+            -- get the closed axioms belonging to the family (or not)
             let mClosedAxs = getMaybeClosedAxs axs fn         
 
             mApartErr <- case mClosedAxs of
+              -- No closed family, no hint.
               Nothing -> return Nothing
+              -- We perform the reaction again, with different arguments to obtain the possibly non apart axiom.
               Just caxs -> snd <$> reactClosedTypeFam False False (Constraint_Unify mt (MonoType_Con "Char" Nothing) Nothing) caxs
+            -- Build hint accordingly.
             case mApartErr of
               Just (amt, r) -> do
                 let hint = addHint "probable cause" ("type " ++ (show . show) mt ++ " is not apart from instance " ++ (show . show) amt ++ " at " ++ show r)
@@ -127,26 +136,36 @@ typeErrorThroughReduction path = SingleVoting "Type error through type family re
               Nothing -> return $ Just $ addHint "probable cause" ((show . show) mt ++ " is not reducable. No matching instance was found")
           buildApartnessHint _ = return Nothing
 
+          -- Builds hints in a nested way, considers arguments of the non-reducable type family too.
           buildNestedHints :: (Fresh m, HasTypeGraph m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo, CompareTypes m (RType ConstraintInfo)) 
                            => TGEdge (Constraint ConstraintInfo) ->  MonoType -> MonoType -> m (Maybe [ConstraintInfo -> ConstraintInfo])
           buildNestedHints cedge mf@(MonoType_Fam fn _ _) t = do
             axs <- getAxioms
+            -- We need to know what arguments are expected to be (based on inferred body type "t")
             wantedArgs <- filterOnAxsRHS fn axs axs t
-            case trace ("WANTEDARGS: " ++ show wantedArgs) wantedArgs of
+            case wantedArgs of
+              -- Nothing is returned when no wanted args could be obtained (injective problems, multiple possibilities...)
               Nothing -> return Nothing
+              -- Else, we nest again and build hints for this level.
               Just args -> do
+                -- Substitute the family to get complete type.
                 (MType mf'@(MonoType_Fam _ mts' _)) <- getSubstTypeFull (getGroupFromEdge cedge) (MType mf)
+                -- Considerables are the family arguments and the wanted family arguments zipped.
                 let considerables = zip mts' args
+                -- Recurse
                 nestedRes <- concat . catMaybes <$> mapM (uncurry (buildNestedHints cedge)) considerables
                 
+                -- Build hints for this level.
                 apartHint <- buildApartnessHint mf'
                 permHint <- buildPermutationHint mf' t
+                -- If deeper levels have hints, we return those, else we use this level's hints.
                 return (case (nestedRes, apartHint, permHint) of
-                   ([], Just a, Just p) -> Just [a . p]
-                   ([], Just a, Nothing) -> Just [a]
-                   ([], Nothing, Just p) -> Just [p]
-                   ([], _, _) -> Nothing
-                   (xs, _, _) -> Just xs)
+                  (x:xs, _, _) -> Just (x:xs)
+                  ([], Just a, Just p) -> Just [a . p]
+                  ([], Just a, Nothing) -> Just [a]
+                  ([], Nothing, Just p) -> Just [p]
+                  ([], _, _) -> Nothing)
+          -- In case a type with trace is found, we check if we can build a hint with the last type in it.         
           buildNestedHints cedge mt t = do
             theTrace <- buildReductionTrace cedge mt
             case theTrace of
@@ -158,14 +177,16 @@ typeErrorThroughReduction path = SingleVoting "Type error through type family re
                   Just p -> Just [p]
                   Nothing -> Nothing
 
+          -- Filter function for axioms.
           filterOnAxsRHS :: (Fresh m, HasTypeGraph m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo, CompareTypes m (RType ConstraintInfo))
                          => String -> [Axiom ConstraintInfo] -> [Axiom ConstraintInfo] -> MonoType -> m (Maybe [MonoType])
           filterOnAxsRHS fn axs axs' mt = do
             filterRes <- catMaybes <$> mapM (filterAxOnRHS axs' fn mt) axs
-            if length (trace ("FILTERRES: " ++ show filterRes) filterRes) == 1
+            if length filterRes == 1
               then return $ Just (head filterRes)
               else return Nothing
 
+          -- Checks one axiom at a time.
           filterAxOnRHS :: (Fresh m, HasTypeGraph m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo, CompareTypes m (RType ConstraintInfo)) 
                         => [Axiom ConstraintInfo] -> String -> MonoType -> Axiom ConstraintInfo -> m (Maybe [MonoType])
           filterAxOnRHS axs fn mt (Axiom_Unify b _) = do
@@ -174,12 +195,15 @@ typeErrorThroughReduction path = SingleVoting "Type error through type family re
               then return Nothing
               else do
                 tchs <- filterM (fmap isJust . isVertexTouchable) (fvToList mt :: [TyVar])
+                -- We check if the right hand side unifies with the type from the constraint.
                 res <- runTG $ unifyTypes axs [] [Constraint_Unify rhs mt Nothing] (nub $ tchs ++ aes)
-                case trace ("RHS, MT: " ++ show rhs ++ ", " ++ show mt ++ ", " ++ show res) res of
+                case res of
+                  -- If so, apply the substitution and return the argument types.
                   Just s -> do
                     let (MonoType_Fam _ mts _) = substs (convertSubstitution s) lhs
                     return $ Just mts
                   Nothing -> return Nothing
+          -- If closed group, loop over the group.
           filterAxOnRHS axs' fn mt (Axiom_ClosedGroup fn' axs) =
             if fn == fn'
               then filterOnAxsRHS fn axs axs' mt
@@ -191,35 +215,6 @@ typeErrorThroughReduction path = SingleVoting "Type error through type family re
             | fn1 == fn2 = Just cgaxs
           getMaybeClosedAxs (_:axs) fn = getMaybeClosedAxs axs fn
           getMaybeClosedAxs [] _     = Nothing
-          
-          
-
-          getFirstNestedFam :: (Fresh m, HasTypeGraph m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo, CompareTypes m (RType ConstraintInfo))
-                            => TGEdge (Constraint ConstraintInfo) -> MonoType -> m MonoType
-          getFirstNestedFam cedge mf@(MonoType_Fam fn mts _) = do
-            let varsInTf = filter isVar mts
-            substVars <- mapM (getSubstTypeFull (getGroupFromEdge cedge) . MType) varsInTf
-            -- substVarsMt is all type family applications obtained from vars. They were not reducable.
-            let substVarsMt = filter isFam $ map (\(MType m) -> makeCharString m) substVars
-            if null substVarsMt
-              then return mf
-              else getFirstNestedFam cedge $ head substVarsMt
-          getFirstNestedFam _ _ = internalError "TypeFamilyHeuristics.hs" "getFirstNestedFam" "Only type families should be pattern matched!"
-
-          isVar MonoType_Var{} = True
-          isVar _              = False
-
-          isFam MonoType_Fam{} = True
-          isFam _              = False
-
--- substituteTouchable :: (Fresh m, CompareTypes m (RType ConstraintInfo)) => RType ConstraintInfo -> Groups -> m (RType ConstraintInfo)
--- substituteTouchable mv@(MType (MonoType_Var _ tv _)) grps = do
---   isTch <- isVertexTouchable (tv :: TyVar)
---   case isTch of
---     Nothing -> return mv
---     Just _ -> getSubstTypeFull grps mv
-
-
 
 typeIsInType :: MonoType -> MonoType -> Bool
 typeIsInType t1 mf@(MonoType_Fam _ mts _) = mf == t1 || any (typeIsInType t1) mts
