@@ -48,7 +48,7 @@ instance X Int where
 --     J Int Int = Float
 --     J Int Int = Int
 
-type family G a where   
+type family G a = r | r -> a where   
     G Int = Bool
     G Bool = Int
 
@@ -95,19 +95,22 @@ data Tree a = Node a (Tree a) (Tree a) | Leaf
 -- f2 :: Int
 -- f2 = f 3
 
--- type family FloatInt a b where
---     FloatInt a a = Float
---     FloatInt a b = Int
+type family FloatInt a b where
+    FloatInt a a = Float
+    FloatInt a b = Int
 
--- type family IfFloat a where
---     IfFloat Float = Int -> Int
---     IfFloat Int   = String
+type family IfFloat a where
+    IfFloat Float = Int -> Int
+    IfFloat Int   = String
 
 -- bad :: d -> IfFloat (FloatInt Float d)
 -- bad _ = "Hi"
 
 -- fault :: Int
 -- fault = bad (0.2 :: Float) (5 :: Int)
+
+l :: J String -> J String
+l x = x
 
 type family H a b where
     --H Float Int = Int
@@ -125,8 +128,8 @@ type family J a where
 -- -- h :: String -> String -> H (J (J Int)) Int
 -- -- h s1 s2 = s1 ++ s2 ++ "hi"
 
-h3 :: H (H Float Int) Int
-h3 = "Hi"
+-- h3 :: H (H Float Int) Int
+-- h3 = "Hi"
 -- h1 :: I Float Int Float
 -- h1 = "Hi"
 
@@ -139,10 +142,11 @@ h3 = "Hi"
 
 -- type family Loop a where
 --     Loop [a] = Loop a
---     Loop a = a 
+--     Loop a = a
+--     Loop Int = Bool
 
--- g :: Loop [[[[[[[a]]]]]]]
--- g = "Hi"
+-- g :: Loop [[[[[[[Int]]]]]]]
+-- g = True
 
 --h = g + g
 -- Int -> Int > h_
@@ -176,7 +180,7 @@ h3 = "Hi"
 -- g :: [a] -> [a] -> a
 -- g xs ys = sum (xs ++ ys)
 
--- type family B a = r | r -> a
+-- type family B a -- = r | r -> a
 -- type instance B Int = Float
 -- type instance B Float = Int
 
@@ -186,8 +190,8 @@ h3 = "Hi"
 -- g :: Int -> B a
 -- g x = x
 
-type family Right a b
-type instance Right a b = b
+-- type family Right a b
+-- type instance Right a b = b
 
 -- right :: a -> b -> Right a b
 -- right x y = x

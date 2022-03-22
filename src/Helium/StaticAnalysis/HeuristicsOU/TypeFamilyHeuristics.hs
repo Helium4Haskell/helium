@@ -99,8 +99,8 @@ typeErrorThroughReduction path = SingleVoting "Type error through type family re
                 case ures of
                   Nothing -> loopPerms perms
                   Just _ -> do
-                    let hint = addHint "possible fix" ("Assuming that your instances and function body are correct, changing " 
-                                                      ++ (show . show) ogmf ++ " to " ++ (show . show) nft ++ " may fix the error")
+                    let hint = addHint "possible fix" ("Changing " 
+                                                      ++ (show . show) ogmf ++ " to " ++ (show . show) nft ++ " removes this type error")
                     return hint 
               loopPerms [] = return id
           buildPermutationHint _ _ = return id
@@ -119,7 +119,7 @@ typeErrorThroughReduction path = SingleVoting "Type error through type family re
               Just (amt, r) -> do
                 let hint = addHint "probable cause" ("type " ++ (show . show) mt ++ " is not apart from instance " ++ (show . show) amt ++ " at " ++ show r)
                 return hint
-              Nothing -> return $ addHint "probable cause" (show mt ++ " is not reducable")
+              Nothing -> return $ addHint "probable cause" ((show . show) mt ++ " is not reducable. No matching instance was found")
           buildApartnessHint _ = return id
 
           getMaybeClosedAxs :: [Axiom ConstraintInfo] -> String -> Maybe [Axiom ConstraintInfo]
