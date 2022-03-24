@@ -113,7 +113,7 @@ data Tree a = Node a (Tree a) (Tree a) | Leaf
 -- l x = x
 
 type family H a b where
-    --H Float Int = Int
+    H Float Int = Int
     H Int Float = String
     --H Float Int = Float
 
@@ -128,8 +128,8 @@ type family J a where
 -- -- h :: String -> String -> H (J (J Int)) Int
 -- -- h s1 s2 = s1 ++ s2 ++ "hi"
 
--- h3 :: H (H Int Float) Float
--- h3 = "Hi"
+h3 :: H (H Int Float) (H Int Int)
+h3 = "Hi"
 -- h1 :: I Float Int Float
 -- h1 = "Hi"
 
@@ -140,13 +140,13 @@ type family J a where
 -- g :: Loop [[[[[[[String]]]]]]]
 -- g = "Hi"
 
-type family Loop a where
-    Loop [a] = Loop a
-    Loop a = a
-    --Loop Int = Bool
+-- type family Loop a where
+--     Loop [a] = Loop a
+--     Loop a = a
+--     --Loop Int = Bool
 
-g :: Loop [[[[[[[a]]]]]]]
-g = True
+-- g :: Loop [[[[[[[a]]]]]]]
+-- g = True
 
 --h = g + g
 -- Int -> Int > h_

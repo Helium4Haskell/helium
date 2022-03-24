@@ -14,7 +14,7 @@ import Rhodium.Solver.Rules (ErrorLabel (ErrorLabel))
 import Helium.StaticAnalysis.Miscellaneous.ReductionTraceUtils (buildReductionTrace, getFullTrace, getLastTypeInTrace, getFirstTypeInTrace, squashTrace)
 import Data.Maybe (isJust, catMaybes, fromMaybe)
 import Debug.Trace (trace)
-import Data.List (permutations, nub)
+import Data.List (permutations, nub, intercalate)
 import Helium.StaticAnalysis.HeuristicsOU.HeuristicsInfo
 import Helium.StaticAnalysis.Messages.HeliumMessages (freshenRepresentation)
 import Helium.StaticAnalysis.Inferencers.OutsideInX.Rhodium.RhodiumInstances (reactClosedTypeFam, convertSubstitution)
@@ -46,8 +46,15 @@ typeErrorThroughReduction path = SingleVoting "Type error through type family re
               -- Unpack hint
               let theHint = case mTheHint of
                     Nothing -> id
-                    Just [] -> id
-                    Just (x:_) -> x
+                    Just ([],[]) -> id
+                    Just (causes, fixes) -> let
+                      causeHint = if null causes
+                        then id
+                        else addHint ("probable cause" ++ if length causes > 1 then "s" else "") (intercalate "\n" causes)
+                      fixHint = if null fixes
+                        then id
+                        else addHint ("possible fix" ++ if length fixes > 1 then "es" else "") (intercalate "\n" fixes)
+                      in causeHint . fixHint
               case theTrace of
                 -- No trace but still reduction error
                 [] -> return $ Just (4, "Type family could not be reduced, no trace", constraint, eid, addProperty (TypeFamilyReduction Nothing t freshOg freshOg False) $ theHint ci, gm)
@@ -76,7 +83,7 @@ typeErrorThroughReduction path = SingleVoting "Type error through type family re
                   -- Get last type in trace and first type, obtain potential permutation hint.
                   let Just lastType = getLastTypeInTrace theTrace
                   mhint <- buildPermutationHint lastType inferredT
-                  let hint = fromMaybe id mhint
+                  let hint = maybe id (addHint "possible fix") mhint
                   let Just firstType = getFirstTypeInTrace theTrace
                   if typeIsInType lastType pmt
                     then return $ Just (7, "Type family reduction type error", constraint, eid, addProperty (TypeFamilyReduction (Just theTrace) inferredTStr lastType firstType True) $ hint ci, gm)
@@ -86,7 +93,7 @@ typeErrorThroughReduction path = SingleVoting "Type error through type family re
         where
           -- Builds permutation hint.
           buildPermutationHint :: (Fresh m, HasTypeGraph m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo, CompareTypes m (RType ConstraintInfo)) 
-                                => MonoType -> MonoType -> m (Maybe (ConstraintInfo -> ConstraintInfo))
+                                => MonoType -> MonoType -> m (Maybe String)
           buildPermutationHint ogmf@(MonoType_Fam fn mts _) infMt = do
             -- Build permutations of the arguments of the type family.
             let permsMt = filter (mts /=) $ permutations mts
@@ -108,15 +115,15 @@ typeErrorThroughReduction path = SingleVoting "Type error through type family re
                   Nothing -> loopPerms perms
                   -- There is a substitution and thus we may provide a possible fix.
                   Just _ -> do
-                    let hint = addHint "possible fix" ("Changing " 
-                                                      ++ (show . show) ogmf ++ " to " ++ (show . show) nft ++ " removes this type error")
-                    return $ Just hint 
+                    let hint = Just ("Changing " 
+                                  ++ (show . show) ogmf ++ " to " ++ (show . show) nft ++ " helps to remove this type error")
+                    return hint 
               loopPerms [] = return Nothing
           buildPermutationHint _ _ = return Nothing
 
           -- Builds a hint that shows when a type was not apart during closed type family matching.
           buildApartnessHint :: (Fresh m, HasTypeGraph m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo, CompareTypes m (RType ConstraintInfo)) 
-                             => MonoType -> m (Maybe (ConstraintInfo -> ConstraintInfo))
+                             => MonoType -> m (Maybe String)
           buildApartnessHint mt@(MonoType_Fam fn _ _) = do
             axs <- getAxioms
             
@@ -131,14 +138,14 @@ typeErrorThroughReduction path = SingleVoting "Type error through type family re
             -- Build hint accordingly.
             case mApartErr of
               Just (amt, r) -> do
-                let hint = addHint "probable cause" ("type " ++ (show . show) mt ++ " is not apart from instance " ++ (show . show) amt ++ " at " ++ show r)
+                let hint = "type " ++ (show . show) mt ++ " is not apart from instance " ++ (show . show) amt ++ " at " ++ show r
                 return $ Just hint
-              Nothing -> return $ Just $ addHint "probable cause" ((show . show) mt ++ " is not reducable. No matching instance was found")
+              Nothing -> return $ Just $ (show . show) mt ++ " is not reducable. No matching instance was found"
           buildApartnessHint _ = return Nothing
 
           -- Builds hints in a nested way, considers arguments of the non-reducable type family too.
           buildNestedHints :: (Fresh m, HasTypeGraph m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo, CompareTypes m (RType ConstraintInfo)) 
-                           => TGEdge (Constraint ConstraintInfo) ->  MonoType -> MonoType -> m (Maybe [ConstraintInfo -> ConstraintInfo])
+                           => TGEdge (Constraint ConstraintInfo) ->  MonoType -> MonoType -> m (Maybe ([String], [String]))
           buildNestedHints cedge mf@(MonoType_Fam fn _ _) t = do
             axs <- getAxioms
             -- We need to know what arguments are expected to be (based on inferred body type "t")
@@ -153,18 +160,21 @@ typeErrorThroughReduction path = SingleVoting "Type error through type family re
                 -- Considerables are the family arguments and the wanted family arguments zipped.
                 let considerables = zip mts' args
                 -- Recurse
-                nestedRes <- concat . catMaybes <$> mapM (uncurry (buildNestedHints cedge)) considerables
+                nestedRes <- foldl (\(pcs,pfs) (pcs', pfs') -> (pcs++pcs', pfs++pfs')) ([],[]) . catMaybes <$> mapM (uncurry (buildNestedHints cedge)) considerables
                 
                 -- Build hints for this level.
                 apartHint <- buildApartnessHint mf'
                 permHint <- buildPermutationHint mf' t
                 -- If deeper levels have hints, we return those, else we use this level's hints.
+                -- Not the prettiest of pattern matches
                 return (case (nestedRes, apartHint, permHint) of
-                  (x:xs, _, _) -> Just (x:xs)
-                  ([], Just a, Just p) -> Just [a . p]
-                  ([], Just a, Nothing) -> Just [a]
-                  ([], Nothing, Just p) -> Just [p]
-                  ([], _, _) -> Nothing)
+                  (r@(_:_, _:_), _, _) -> Just r
+                  (r@(_:_, []), _, _) -> Just r
+                  (r@([], _:_), _, _) -> Just r
+                  (_, Just a, Just p) -> Just ([a], [p])
+                  (_, Just a, Nothing) -> Just ([a], [])
+                  (_, Nothing, Just p) -> Just ([], [p])
+                  (_, _, _) -> Nothing)
           -- In case a type with trace is found, we check if we can build a hint with the last type in it.         
           buildNestedHints cedge mt t = do
             theTrace <- buildReductionTrace cedge mt
@@ -174,7 +184,7 @@ typeErrorThroughReduction path = SingleVoting "Type error through type family re
                 let Just lastType = getLastTypeInTrace xs
                 permHint <- buildPermutationHint lastType t
                 return $ case permHint of
-                  Just p -> Just [p]
+                  Just p -> Just ([],[p])
                   Nothing -> Nothing
 
           -- Filter function for axioms.
@@ -182,9 +192,10 @@ typeErrorThroughReduction path = SingleVoting "Type error through type family re
                          => String -> [Axiom ConstraintInfo] -> [Axiom ConstraintInfo] -> MonoType -> m (Maybe [MonoType])
           filterOnAxsRHS fn axs axs' mt = do
             filterRes <- catMaybes <$> mapM (filterAxOnRHS axs' fn mt) axs
-            if length filterRes == 1
-              then return $ Just (head filterRes)
-              else return Nothing
+            case filterRes of
+              [] -> return $ Just []
+              [x] -> return $ Just x
+              _ : _ -> return Nothing
 
           -- Checks one axiom at a time.
           filterAxOnRHS :: (Fresh m, HasTypeGraph m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo, CompareTypes m (RType ConstraintInfo)) 
