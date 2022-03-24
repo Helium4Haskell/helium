@@ -60,7 +60,7 @@ listOfTypeHeuristics sibblings path = [
            
             siblingsHeuristic sibblings,
             siblingLiterals, 
-            applicationHeuristic,
+            applicationHeuristic path,
             variableFunction,
             tupleHeuristic,
             fbHasTooManyArguments,

@@ -15,6 +15,7 @@ import Debug.Trace (trace)
 import Helium.StaticAnalysis.StaticChecks.TypeFamilyInfos
 import Helium.Syntax.UHA_Range (showRange)
 import Data.Maybe (fromMaybe)
+import Helium.StaticAnalysis.HeuristicsOU.HeuristicsInfo (WithHints(addHint))
 
 
 buildReductionTrace :: (CompareTypes m (RType ConstraintInfo), Fresh m, HasTypeGraph m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo)
@@ -193,3 +194,21 @@ traceToMessageBlock rts = MessageCompose $ mapToBlock (1 :: Int) rts
             LeftToRight _ _ -> "left to right application"
             CanonReduction -> "canon reduction"
             TopLevelImprovement _ _ -> "injective top-level improvement"
+
+getTraceFromTwoTypes :: (CompareTypes m (RType ConstraintInfo), Fresh m, HasTypeGraph m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo)
+                     => TGEdge (Constraint ConstraintInfo) -> MonoType -> MonoType -> m (Maybe ReductionTrace)
+getTraceFromTwoTypes cedge m1 m2 = do
+  trc1 <- buildReductionTrace cedge m1
+  trc2 <- buildReductionTrace cedge m2
+  
+  case getFullTrace trc1 trc2 of
+    Just (_, trc) -> return $ Just trc 
+    Nothing -> return Nothing
+
+buildSimpleTraceHint :: ReductionTrace -> (ConstraintInfo -> ConstraintInfo)
+buildSimpleTraceHint [] = id
+buildSimpleTraceHint xs = let
+  Just firstType = getFirstTypeInTrace xs
+  Just lastType = getLastTypeInTrace xs
+  in addHint "reduction" ((show . show) lastType ++ " reduced to " ++ (show . show) firstType)
+  

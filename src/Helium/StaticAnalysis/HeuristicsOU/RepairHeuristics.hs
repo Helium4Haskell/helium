@@ -56,6 +56,7 @@ import qualified Data.Map as M
 import Control.Monad
 import Rhodium.TypeGraphs.TGState
 import Control.Monad.IO.Class (MonadIO )
+import Helium.StaticAnalysis.Miscellaneous.ReductionTraceUtils (getTraceFromTwoTypes, buildSimpleTraceHint)
 -----------------------------------------------------------------------------
 
 fixHint, becauseHint, possibleHint :: WithHints a => String -> a -> a
@@ -84,8 +85,9 @@ deleteIndex i (a:as) = a : deleteIndex (i-1) as
 permute :: Permutation -> [a] -> [a]
 permute is as = map (as !!) is
 
-applicationHeuristic :: (MonadFail m, MonadIO m, Fresh m) => VotingHeuristic m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo
-applicationHeuristic = SingleVoting "Application heuristic" f
+applicationHeuristic :: (MonadFail m, MonadIO m, Fresh m) 
+                     => Path m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo -> VotingHeuristic m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo
+applicationHeuristic path = SingleVoting "Application heuristic" f
    where
       f e@(constraint, eid, ci, gm) = 
          case maybeApplicationEdge ci of
@@ -96,6 +98,11 @@ applicationHeuristic = SingleVoting "Application heuristic" f
                else do
                graph <- getGraph
                axioms <- getAxioms 
+               let ceid = edgeIdFromPath path
+               let cedge = getEdgeFromId graph ceid
+               let Constraint_Unify pt1 pt2 _ = getConstraintFromEdge cedge
+               trc <- getTraceFromTwoTypes cedge pt1 pt2
+               let redHint = maybe id buildSimpleTraceHint trc
                let edge = getEdgeFromId graph eid
                doWithoutEdge eid $ 
                   do
@@ -116,11 +123,11 @@ applicationHeuristic = SingleVoting "Application heuristic" f
                                  then 
                                        let hint = setTypePair (expectedType, functionType) . fixHint "swap the two arguments"
                                        in return $ Just
-                                             (3, "swap the two arguments", constraint, eid, addProperties (IsTypeError : map ApplicationTypeSignature providedTs) $ hint ci, removeEdgeAndTsModifier)
+                                             (3, "swap the two arguments", constraint, eid, addProperties (IsTypeError : map ApplicationTypeSignature providedTs) $ redHint $ hint ci, removeEdgeAndTsModifier)
                                  else         
                                        let hint = setTypePair (expectedType, functionType) . fixHint "re-order arguments"                              
                                        in return $ Just
-                                             (1, "application: permute with "++show p, constraint, eid,  addProperties (IsTypeError : map ApplicationTypeSignature providedTs) $ hint ci, removeEdgeAndTsModifier)
+                                             (1, "application: permute with "++show p, constraint, eid,  addProperties (IsTypeError : map ApplicationTypeSignature providedTs) $ redHint $ hint ci, removeEdgeAndTsModifier)
                            | length incorrectArguments == 1  ->
                               do 
                                  let   
@@ -139,26 +146,26 @@ applicationHeuristic = SingleVoting "Application heuristic" f
                                  [is] | not isBinary && maybe True (>= 1) maximumForFunction
                                        -> let hint = fixHint ("remove "++prettyAndList (map (ordinal True . (+1)) is)++" argument")
                                           in return $ Just
-                                                (4, "too many arguments are given: "++show is, constraint, eid,  addProperties (IsTypeError : map ApplicationTypeSignature providedTs) $ hint ci, removeEdgeAndTsModifier)
+                                                (4, "too many arguments are given: "++show is, constraint, eid,  addProperties (IsTypeError : map ApplicationTypeSignature providedTs) $ hint $ redHint ci, removeEdgeAndTsModifier)
          
          
                                  _    -- the expression to which arguments are given does not have a function type
                                        | maybe False (<= 0) maximumForFunction && not isBinary && not (isPattern ci) ->                       
                                              let hint = becauseHint "it is not a function"
                                              in return $ Just
-                                                   (6, "not a function", constraint, eid,  addProperties (IsTypeError : map ApplicationTypeSignature providedTs) $ hint ci, removeEdgeAndTsModifier)
+                                                   (6, "not a function", constraint, eid,  addProperties (IsTypeError : map ApplicationTypeSignature providedTs) $ hint $ redHint ci, removeEdgeAndTsModifier)
          
                                        -- function used as infix that expects < 2 arguments
                                        | maybe False (<= 1) maximumForFunction && isBinary && not (isPattern ci) ->
                                              let hint = becauseHint "it is not a binary function"
                                              in return $ Just
-                                                   (6, "no binary function", constraint, eid,  addProperties (IsTypeError : map ApplicationTypeSignature providedTs) $ hint ci, removeEdgeAndTsModifier)
+                                                   (6, "no binary function", constraint, eid,  addProperties (IsTypeError : map ApplicationTypeSignature providedTs) $ hint $ redHint ci, removeEdgeAndTsModifier)
          
                                  -- more than one or no possible set of arguments to be removed
                                        | otherwise -> 
                                              let hint = becauseHint "too many arguments are given"
                                              in return $ Just
-                                                   (2, "too many arguments are given", constraint, eid,  addProperties (IsTypeError : map ApplicationTypeSignature providedTs) $ hint ci, removeEdgeAndTsModifier)
+                                                   (2, "too many arguments are given", constraint, eid,  addProperties (IsTypeError : map ApplicationTypeSignature providedTs) $ hint $ redHint ci, removeEdgeAndTsModifier)
                                              
                            -- not enough arguments are given
                            | minimumForContext > numberOfArguments && not isPatternApplication && contextIsUnifiable ->
@@ -167,11 +174,11 @@ applicationHeuristic = SingleVoting "Application heuristic" f
                                  [is] | not (trace (show is ++ ", " ++ show isBinary) isBinary) 
                                        -> let hint = fixHint ("insert a "++prettyAndList (map (ordinal True . (+1)) is)++" argument")
                                           in return $ Just
-                                                (5, "not enough arguments are given"++show is, constraint, eid,  addProperties (IsTypeError : map ApplicationTypeSignature providedTs) $ hint ci, removeEdgeAndTsModifier)
+                                                (5, "not enough arguments are given"++show is, constraint, eid,  addProperties (IsTypeError : map ApplicationTypeSignature providedTs) $ hint $ redHint ci, removeEdgeAndTsModifier)
          
                                  _   -> let hint = becauseHint "not enough arguments are given"
                                           in return $ Just
-                                                (2, "not enough arguments are given", constraint, eid,  addProperties (IsTypeError : map ApplicationTypeSignature providedTs) $ hint ci, removeEdgeAndTsModifier)
+                                                (2, "not enough arguments are given", constraint, eid,  addProperties (IsTypeError : map ApplicationTypeSignature providedTs) $ hint $ redHint ci, removeEdgeAndTsModifier)
                      
                            | otherwise -> return Nothing
                
