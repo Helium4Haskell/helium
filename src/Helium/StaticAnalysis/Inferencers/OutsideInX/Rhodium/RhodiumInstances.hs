@@ -86,6 +86,8 @@ instance (CompareTypes m (RType ConstraintInfo), IsTouchable m TyVar, HasAxioms 
                             | otherwise -> return (Error labelIncorrectConstructors)
                         (MonoType_Con _ _, MonoType_App{}) -> return (Error labelIncorrectConstructors)
                         (MonoType_App{}, MonoType_Con _ _) -> return (Error labelIncorrectConstructors)
+                        (MonoType_App (MonoType_Con "[]" _) _ _, MonoType_App mt _ _)
+                            | isNotList mt -> return (Error labelIncorrectConstructors)
                         (f1 :-->: a1, f2 :-->: a2) -> return $ Applied ([], [], [Constraint_Unify f1 f2 Nothing, Constraint_Unify a1 a2 Nothing])
                         (MonoType_App f1 a1 _, MonoType_App f2 a2 _) -> return $ Applied ([], [], [Constraint_Unify f1 f2 Nothing, Constraint_Unify a1 a2 Nothing])
                         (MonoType_Var _ v1 _, MonoType_Var _ v2 _) 
@@ -141,6 +143,9 @@ instance (CompareTypes m (RType ConstraintInfo), IsTouchable m TyVar, HasAxioms 
                 canon' _ Constraint_Class{} = return NotApplicable
                 canon' _ cci = error $ "Unknown canon constraint: " ++ show cci
 
+isNotList :: MonoType -> Bool
+isNotList (MonoType_Con "[]" _) = False
+isNotList _ = True
 
 instantiate :: Fresh m => PolyType ConstraintInfo -> Bool -> m ([TyVar], [Constraint ConstraintInfo], MonoType)
 instantiate (PolyType_Bind s b) tch = do
