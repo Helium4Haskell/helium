@@ -1,5 +1,6 @@
 {-# LANGUAGE DoAndIfThenElse #-}
 {-# LANGUAGE FlexibleContexts #-}
+{-# OPTIONS_GHC -Wno-simplifiable-class-constraints #-}
 module Helium.StaticAnalysis.HeuristicsOU.ResidualHeuristics where
 
 import Rhodium.Blamer.Heuristics
@@ -32,18 +33,23 @@ import qualified Data.Map.Strict as M
 import Control.Monad
 
 import Debug.Trace
+import Helium.StaticAnalysis.Miscellaneous.ReductionTraceUtils (buildReductionFromPath)
 
-typeSignatureTooGeneral :: Fresh m => Path m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo -> VotingHeuristic m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo
+typeSignatureTooGeneral :: (Fresh m, HasTypeGraph m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo) 
+                        => Path m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo 
+                        -> VotingHeuristic m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo
 typeSignatureTooGeneral path = SingleVoting "Type signature too general" f
     where
         f (constraint, eid, ci, ogm) 
             | labelFromPath path /= labelResidual = return Nothing
-            | isTypeAnnotation ci =
+            | isTypeAnnotation ci = do
+                redHint <- buildReductionFromPath path
                 return $ if any (`elem` (fvToList constraint :: [TyVar])) (fvToList (constraintFromPath path) :: [TyVar]) then
-                    Just (2, "Type signature too general", constraint, eid, ci, gm) 
+                    Just (2, "Type signature too general", constraint, eid, redHint ci, gm) 
                 else
                     Nothing
-            | otherwise = 
+            | otherwise = do
+                redHint <- buildReductionFromPath path
                 case maybeExplicitTypedDefinition ci of 
                     Nothing -> return Nothing
                     Just (ms, n) -> do
@@ -53,7 +59,7 @@ typeSignatureTooGeneral path = SingleVoting "Type signature too general" f
                         return $ if Just True /= (isExplicitTypedBinding <$> getConstraintInfo constraint) || not (any (`elem` (fvToList constraint :: [TyVar])) (fvToList eedge :: [TyVar] )) then
                             Nothing
                         else
-                            Just (2, "Type signature too general", constraint, eid, ci, gm)
+                            Just (2, "Type signature too general", constraint, eid, redHint ci, gm)
         gm (eid, constraint, ci) g = do
                 let g' = resetAll g
                 let cedge = getEdgeFromId g eid
