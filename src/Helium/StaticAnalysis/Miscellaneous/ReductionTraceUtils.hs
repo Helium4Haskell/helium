@@ -3,19 +3,20 @@
 {-# OPTIONS_GHC -Wno-simplifiable-class-constraints #-}
 module Helium.StaticAnalysis.Miscellaneous.ReductionTraceUtils where
 
-import Rhodium.TypeGraphs.GraphProperties (CompareTypes, HasTypeGraph)
-import Helium.StaticAnalysis.Inferencers.OutsideInX.Rhodium.RhodiumTypes (RType (MType), Axiom, TyVar, Constraint, MonoType (MonoType_Fam, MonoType_App, MonoType_Con, MonoType_Var), ReductionTrace, ReductionStep (Step), ReductionType (LeftToRight, CanonReduction, TopLevelImprovement), getMaybeReductionStep)
+import Rhodium.TypeGraphs.GraphProperties (CompareTypes, HasTypeGraph, HasGraph (getGraph))
+import Helium.StaticAnalysis.Inferencers.OutsideInX.Rhodium.RhodiumTypes (RType (MType), Axiom, TyVar, Constraint (Constraint_Unify), MonoType (MonoType_Fam, MonoType_App, MonoType_Con, MonoType_Var), ReductionTrace, ReductionStep (Step), ReductionType (LeftToRight, CanonReduction, TopLevelImprovement), getMaybeReductionStep)
 import Helium.StaticAnalysis.Miscellaneous.ConstraintInfoOU (ConstraintInfo)
 import Unbound.Generics.LocallyNameless (Fresh)
-import Rhodium.TypeGraphs.Graph (TGEdge, getGroupFromEdge)
+import Rhodium.TypeGraphs.Graph (TGEdge, getGroupFromEdge, getEdgeFromId)
 import Helium.StaticAnalysis.Messages.Messages (MessageBlock (MessageString, MessageCompose))
-import Rhodium.TypeGraphs.GraphUtils (getSubstTypeFull)
+import Rhodium.TypeGraphs.GraphUtils (getSubstTypeFull, getConstraintFromEdge)
 import Data.List (groupBy)
 import Debug.Trace (trace)
 import Helium.StaticAnalysis.StaticChecks.TypeFamilyInfos
 import Helium.Syntax.UHA_Range (showRange)
 import Data.Maybe (fromMaybe)
-import Helium.StaticAnalysis.HeuristicsOU.HeuristicsInfo (WithHints(addHint))
+import Helium.StaticAnalysis.HeuristicsOU.HeuristicsInfo (WithHints(addHint, addReduction))
+import Rhodium.Blamer.Path (Path, edgeIdFromPath)
 
 
 buildReductionTrace :: (CompareTypes m (RType ConstraintInfo), Fresh m, HasTypeGraph m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo)
@@ -204,6 +205,16 @@ getTraceFromTwoTypes cedge m1 m2 = do
   case getFullTrace trc1 trc2 of
     Just (_, trc) -> return $ Just trc 
     Nothing -> return Nothing
+
+buildReductionFromPath :: (CompareTypes m (RType ConstraintInfo), Fresh m, HasTypeGraph m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo)
+                   => Path m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo -> m (ConstraintInfo -> ConstraintInfo)
+buildReductionFromPath path = do
+  graph <- getGraph
+  let ceid = edgeIdFromPath path
+  let cedge = getEdgeFromId graph ceid
+  let Constraint_Unify pt1 pt2 _ = getConstraintFromEdge cedge
+  trc <- getTraceFromTwoTypes cedge pt1 pt2
+  return $ addReduction trc
 
 buildSimpleTraceHint :: ReductionTrace -> (String, MessageBlock)
 buildSimpleTraceHint xs = let

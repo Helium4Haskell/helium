@@ -1,6 +1,7 @@
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# OPTIONS_GHC -Wno-incomplete-patterns #-}
+{-# OPTIONS_GHC -Wno-simplifiable-class-constraints #-}
 --{-# LANGUAGE MonoLocalBinds #-}
 --{-# OPTIONS_GHC -freduction-depth=400 #-}
 {-| Module      :  RepairHeuristics
@@ -56,7 +57,7 @@ import qualified Data.Map as M
 import Control.Monad
 import Rhodium.TypeGraphs.TGState
 import Control.Monad.IO.Class (MonadIO )
-import Helium.StaticAnalysis.Miscellaneous.ReductionTraceUtils (getTraceFromTwoTypes)
+import Helium.StaticAnalysis.Miscellaneous.ReductionTraceUtils (getTraceFromTwoTypes, buildReductionFromPath)
 import Helium.StaticAnalysis.HeuristicsOU.HeuristicsInfo (WithHints(addReduction))
 -----------------------------------------------------------------------------
 
@@ -86,7 +87,7 @@ deleteIndex i (a:as) = a : deleteIndex (i-1) as
 permute :: Permutation -> [a] -> [a]
 permute is as = map (as !!) is
 
-applicationHeuristic :: (MonadFail m, MonadIO m, Fresh m) 
+applicationHeuristic :: (Fresh m, HasTypeGraph m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo) 
                      => Path m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo -> VotingHeuristic m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo
 applicationHeuristic path = SingleVoting "Application heuristic" f
    where
@@ -99,11 +100,7 @@ applicationHeuristic path = SingleVoting "Application heuristic" f
                else do
                graph <- getGraph
                axioms <- getAxioms 
-               let ceid = edgeIdFromPath path
-               let cedge = getEdgeFromId graph ceid
-               let Constraint_Unify pt1 pt2 _ = getConstraintFromEdge cedge
-               trc <- getTraceFromTwoTypes cedge pt1 pt2
-               let redHint = addReduction trc
+               redHint <- buildReductionFromPath path
                let edge = getEdgeFromId graph eid
                doWithoutEdge eid $
                   do
@@ -244,8 +241,11 @@ maybeImportedName cinfo =
          []  -> Nothing
          n:_ -> Just (show n)
 
-siblingsHeuristic :: Fresh m => Sibblings -> VotingHeuristic m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo
-siblingsHeuristic siblings = 
+siblingsHeuristic :: (Fresh m, HasTypeGraph m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo) 
+                  => Sibblings 
+                  -> Path m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo 
+                  -> VotingHeuristic m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo
+siblingsHeuristic siblings path = 
    SingleVoting "Sibling functions" f
    where
       f pair@(constraint, edgeId, info, gm) =
@@ -255,6 +255,7 @@ siblingsHeuristic siblings =
                | null candidates -> return Nothing
                | otherwise -> do
                   graph <- getGraph
+                  redHint <- buildReductionFromPath path
                   let edge = getEdgeFromId graph edgeId
                   doWithoutEdge edgeId $ 
                      do 
@@ -273,7 +274,7 @@ siblingsHeuristic siblings =
                                           let   siblingsTextual = orList siblings'
                                                 hint = fixHint ("use " ++ siblingsTextual ++ " instead")
                                           in return $ Just
-                                                   (10, "Sibling(s) "++siblingsTextual++" instead of "++show name, constraint, edgeId, addProperty IsTypeError $ hint info, gm)
+                                                   (10, "Sibling(s) "++siblingsTextual++" instead of "++show name, constraint, edgeId, addProperty IsTypeError $ redHint $ hint info, gm)
                                           
                where
                   orList :: [String] -> String
@@ -314,8 +315,10 @@ instance MaybeLiteral ConstraintInfo where
             UHA_Pat  (Pattern_Literal    _ literal ) -> Just (literalType literal)
             x                                        -> Nothing
 
-siblingLiterals :: Fresh m => VotingHeuristic m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo
-siblingLiterals = 
+siblingLiterals :: (Fresh m, HasTypeGraph m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo)
+                => Path m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo
+                -> VotingHeuristic m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo
+siblingLiterals path = 
    SingleVoting "Sibling literals" f 
    where
       f pair@(constraint, eid, info, gm) =
@@ -324,6 +327,7 @@ siblingLiterals =
             Just literal -> case constraint of
                Constraint_Unify t1 t2 _ -> do
                   graph <- getGraph
+                  redHint <- buildReductionFromPath path
                   let edge = getEdgeFromId graph eid
                   doWithoutEdge eid $
                      do 
@@ -333,7 +337,7 @@ siblingLiterals =
                            ("Int", MonoType_Con "Float" _)
                                  -> let hint = fixHint "use a float literal instead"
                                     in return $ Just
-                                          (5, "Int literal should be a Float", constraint, eid, hint info, gm)
+                                          (5, "Int literal should be a Float", constraint, eid, redHint $ hint info, gm)
 
                            ("Float", MonoType_Con "Int" _)
                                  -> let 
@@ -342,20 +346,20 @@ siblingLiterals =
                                     in return $ if maybe False (\f -> fromIntegral (round f) /= f) literalFloat then
                                           Nothing
                                        else Just
-                                          (5, "Float literal should be an Int", constraint, eid, hint info, gm)
+                                          (5, "Float literal should be an Int", constraint, eid, redHint $ hint info, gm)
 
                            ("Char", MonoType_App (MonoType_Con "[]" _) (MonoType_Con "Char" _) _)
                                  -> let hint = fixHint "use a string literal instead"
                                     in return $ Just
-                                          (5, "Char literal should be a String", constraint, eid, hint info, gm)
+                                          (5, "Char literal should be a String", constraint, eid, redHint $ hint info, gm)
                            ("Char", MonoType_Fam "String" [] _)
                                  -> let hint = fixHint "use a string literal instead"
                                     in return $ Just
-                                          (5, "Char literal should be a String", constraint, eid, hint info, gm)
+                                          (5, "Char literal should be a String", constraint, eid, redHint $ hint info, gm)
                            ("String", MonoType_Con "Char" _)   
                                  -> let hint = fixHint "use a char literal instead"
                                     in return $ Just
-                                          (5, "String literal should be a Char", constraint, eid, hint info, gm)
+                                          (5, "String literal should be a Char", constraint, eid, redHint $ hint info, gm)
 
                            _ -> return Nothing 
                _ -> return Nothing
@@ -375,8 +379,10 @@ instance IsExprVariable ConstraintInfo where
          UHA_Expr (Expression_InfixApplication _ MaybeExpression_Nothing _ MaybeExpression_Nothing) -> True
          x  -> False
 
-variableFunction :: Fresh m => VotingHeuristic m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo
-variableFunction = SingleVoting "Variable function" f 
+variableFunction :: (Fresh m, HasTypeGraph m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo)
+                 => Path m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo
+                 -> VotingHeuristic m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo
+variableFunction path = SingleVoting "Variable function" f 
    where
       f pair@(constraint, eid, info, gm) =  
          case constraint of 
@@ -385,6 +391,7 @@ variableFunction = SingleVoting "Variable function" f
                      -> return Nothing
                | otherwise 
                      -> do graph <- getGraph
+                           redHint <- buildReductionFromPath path
                            doWithoutEdge eid $ 
                               do 
                                  let edge = getEdgeFromId graph eid
@@ -413,7 +420,7 @@ variableFunction = SingleVoting "Variable function" f
                                              else let hint = fixHint ("insert "++showNumber minArgumentsForContext++" argument"++
                                                                   if minArgumentsForContext <= 1 then "" else "s")
                                                    in return $ Just 
-                                                         (4, "insert arguments to function variable", constraint, eid, hint info, defaultRemoveModifier)
+                                                         (4, "insert arguments to function variable", constraint, eid, redHint $ hint info, defaultRemoveModifier)
                                     _ -> return Nothing
             _ -> return Nothing
 
@@ -427,9 +434,10 @@ instance IsTupleEdge ConstraintInfo where
          UHA_Pat  (Pattern_Tuple _ _)    -> True
          _                               -> False
 
-tupleHeuristic :: (MonadFail m, MonadIO m, Fresh m, HasTypeGraph m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo) => 
-                  VotingHeuristic m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo
-tupleHeuristic = SingleVoting "Tuple heuristics" f
+tupleHeuristic :: (Fresh m, HasTypeGraph m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo) 
+               => Path m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo
+               -> VotingHeuristic m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo
+tupleHeuristic path = SingleVoting "Tuple heuristics" f
       where      
          f pair@(constraint , eid, info, gm)    
             | not (isTupleEdge info) = return Nothing
@@ -438,6 +446,7 @@ tupleHeuristic = SingleVoting "Tuple heuristics" f
                  
                   Constraint_Unify t1 t2 _ -> do
                      graph <- getGraph
+                     redHint <- buildReductionFromPath path
                      let edge = getEdgeFromId graph eid
                      doWithoutEdge eid $ 
                   
@@ -465,7 +474,7 @@ tupleHeuristic = SingleVoting "Tuple heuristics" f
                                                 p:_ | notUnifiable -> -- a permutation is possible!
                                                       let hint = fixHint "re-order elements of tuple"
                                                       in return $ Just 
-                                                            (4, "tuple: permute with "++show p ++ show (mTupleTp, mExpectedTp), constraint, eid, addProperty IsTypeError $ hint info, gm)
+                                                            (4, "tuple: permute with "++show p ++ show (mTupleTp, mExpectedTp), constraint, eid, addProperty IsTypeError $ redHint $ hint info, gm)
                                                 _ -> return Nothing
                                                          
                                        compareVal -> do 
@@ -477,20 +486,22 @@ tupleHeuristic = SingleVoting "Tuple heuristics" f
                                                             -> case compareVal of
                                                                   LT -> let hint = fixHint ("insert a "++prettyAndList (map (ordinal True. (+1)) is)++" element to the tuple")
                                                                         in return $ Just 
-                                                                              (4, "tuple:insert "++show is, constraint, eid, hint info, gm)
+                                                                              (4, "tuple:insert "++show is, constraint, eid, redHint $ hint info, gm)
                                                                   GT -> let hint = fixHint ("remove "++prettyAndList (map (ordinal True . (+1)) is)++" element of tuple")
                                                                         in return $ Just 
-                                                                              (4, "tuple:remove "++show is, constraint, eid, hint info, gm)
+                                                                              (4, "tuple:remove "++show is, constraint, eid, redHint $ hint info, gm)
                                                                   EQ -> error "this cannot occur"            
                                                       _    -> let hint = becauseHint ("a "++show (length tupleTps)++"-tuple does not match a "++show (length expectedTps)++"-tuple")
                                                                in return $ Just 
-                                                                     (2, "different sizes of tuple", constraint, eid, hint info, gm)
+                                                                     (2, "different sizes of tuple", constraint, eid, redHint $ hint info, gm)
                               _ -> return Nothing  
                   _ -> return Nothing
 
 
-fbHasTooManyArguments :: Fresh m => VotingHeuristic m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo
-fbHasTooManyArguments = SingleVoting "Function binding heuristics" f
+fbHasTooManyArguments :: (Fresh m, HasTypeGraph m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo)
+                      => Path m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo
+                      -> VotingHeuristic m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo
+fbHasTooManyArguments path = SingleVoting "Function binding heuristics" f
    where
       f (constraint, eid, info, _)   
          | not (isExplicitlyTyped info) = return Nothing
@@ -498,6 +509,7 @@ fbHasTooManyArguments = SingleVoting "Function binding heuristics" f
             case constraint of
                Constraint_Inst t1 t2 _ -> do 
                   graph <- getGraph
+                  redHint <- buildReductionFromPath path
                   let edge = getEdgeFromId graph eid
                   doWithoutEdge eid $ 
                      do 
@@ -518,7 +530,7 @@ fbHasTooManyArguments = SingleVoting "Function binding heuristics" f
                                     prettyArg x = "allows at most "++show x
                                     hint = becauseHint msg
                               in return $ Just 
-                                    (8, "function binding has too many arguments", constraint, eid, addProperty TooManyFBArgs $ hint info, gm')
+                                    (8, "function binding has too many arguments", constraint, eid, addProperty TooManyFBArgs $ redHint $ hint info, gm')
                            _ -> return Nothing
                _ -> return Nothing
       gm' (eid, constraint, ci) g = do

@@ -58,12 +58,12 @@ listOfTypeHeuristics sibblings path = [
         phaseFilter,
         Voting [
            
-            siblingsHeuristic sibblings,
-            siblingLiterals, 
+            siblingsHeuristic sibblings path,
+            siblingLiterals path, 
             applicationHeuristic path,
-            variableFunction,
-            tupleHeuristic,
-            fbHasTooManyArguments,
+            variableFunction path,
+            tupleHeuristic path,
+            fbHasTooManyArguments path,
             constraintFromUser path,
             unreachablePatternHeuristic path,
             typeErrorThroughReduction path,

@@ -86,7 +86,7 @@ typeErrorThroughReduction path = SingleVoting "Type error through type family re
                   let hint = maybe id (addHint "possible fix") mhint
                   let Just firstType = getFirstTypeInTrace theTrace
                   if typeIsInType lastType pmt
-                    then return $ Just (7, "Type family reduction type error", constraint, eid, addProperty (TypeFamilyReduction (Just theTrace) inferredTStr lastType firstType True) $ hint ci, gm)
+                    then return $ Just (4, "Type family reduction type error", constraint, eid, addProperty (TypeFamilyReduction (Just theTrace) inferredTStr lastType firstType True) $ hint ci, gm)
                     else return Nothing
             _ -> return Nothing
         _                     -> return Nothing
