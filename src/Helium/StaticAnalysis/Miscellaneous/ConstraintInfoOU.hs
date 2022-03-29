@@ -147,7 +147,8 @@ data Property
     | TooManyFBArgs 
     | PatternTypeSignature (PolyType ConstraintInfo)
     | LiteralFloat Float
-    | TypeFamilyReduction (Maybe ReductionTrace) MonoType {-Inferred-} MonoType {-From signature-} MonoType {-Reduced-} Bool {-Wether fully reduced-}
+    | TypeFamilyReduction (Maybe ReductionTrace) MonoType {-Inferred-} MonoType {-From signature-} MonoType {-Reduced-} Bool {-Whether fully reduced-}
+    | WithReduction ReductionTrace
     deriving (Generic)
 
 instance Show Property where
@@ -190,6 +191,7 @@ instance Show Property where
     show (PatternTypeSignature ps) = "PatternTypeSignature" ++ show ps
     show (LiteralFloat f) = "LiteralFloat " ++ show f
     show (TypeFamilyReduction _ m1 m2 m3 p) = "TypeFamilyReduction " ++ show m1 ++ ", " ++ show m2 ++ ", " ++ show m3 ++ ", " ++ show p
+    show (WithReduction red) = "WithReduction " ++ show red
     show _ = "No show"
 
 --deriving instance Show TypeError

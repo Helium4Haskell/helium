@@ -205,10 +205,11 @@ getTraceFromTwoTypes cedge m1 m2 = do
     Just (_, trc) -> return $ Just trc 
     Nothing -> return Nothing
 
-buildSimpleTraceHint :: ReductionTrace -> (ConstraintInfo -> ConstraintInfo)
-buildSimpleTraceHint [] = id
+buildSimpleTraceHint :: ReductionTrace -> (String, MessageBlock)
 buildSimpleTraceHint xs = let
   Just firstType = getFirstTypeInTrace xs
   Just lastType = getLastTypeInTrace xs
-  in addHint "reduction" ((show . show) lastType ++ " reduced to " ++ (show . show) firstType)
-  
+  in ("reduction", MessageString ((show . show) lastType ++ " reduced to " ++ (show . show) firstType))
+
+buildFullTraceHint :: ReductionTrace -> (String, MessageBlock)
+buildFullTraceHint xs = ("full reduction", traceToMessageBlock xs)

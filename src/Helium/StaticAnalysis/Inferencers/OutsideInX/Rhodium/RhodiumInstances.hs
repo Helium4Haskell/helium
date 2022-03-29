@@ -193,7 +193,7 @@ instance (HasGraph m touchable types constraint ci, HasAxioms m (Axiom Constrain
                 return $ Applied [c1, Constraint_Class n (substs [(v1, m1)] ms2) Nothing]
     interact _ c1@(Constraint_Unify fm1@(MonoType_Fam f1 vs1 _) m1 _) c2@(Constraint_Unify fm2@(MonoType_Fam f2 vs2 _) m2 _)
         | f1 == f2, vs1 == vs2, isFamilyFree m1, isFamilyFree m2
-            = return $ Applied [c1, Constraint_Unify m1 m2 Nothing]
+            = return $ Applied [Constraint_Unify m1 m2 Nothing]
         | f1 == f2, m1 == m2 = do
             (axs :: [Axiom ConstraintInfo]) <- getAxioms
             if isInjective axs f1
@@ -576,25 +576,25 @@ instance IsEquality (Axiom ConstraintInfo) (RType ConstraintInfo) (Constraint Co
     -- Interesting case for a constraint (G a ~ x) with G injective in argument a and x touchable. Could later be solved in a certain usage
     -- so we allow it in the substitution.
     -- This is subject to change.
-    allowInSubstitution axs thcs (Constraint_Unify (MonoType_Fam f mts _) (MonoType_Var _ v _) _)
-        -- G is injective
-        | (Just injArgs) <- injectiveArgs axs f
-        -- x is touchable
-        , v `elem` (thcs :: [TyVar]) 
-        = let
-            -- all argument vars
-            allVars = filter isVar mts
-            -- all injective vars
-            injVars = [x | (n, x@(MonoType_Var _ v1 _)) <- zip [0..] mts, n `elem` injArgs, v1 `notElem` thcs]
-            -- allVars and injVars must be equal, this says: all remaining vars are injective and may be determined when we know x.
-            in allVars == injVars
-        -- This does not work! GHC does some weird "Type families are equal stuff!"
-        -- | (not . any isVar) mts
-        -- , v `elem` thcs
-        -- = True
-        where
-            isVar MonoType_Var{} = True
-            isVar _              = False
+    -- allowInSubstitution axs thcs (Constraint_Unify (MonoType_Fam f mts _) (MonoType_Var _ v _) _)
+    --     -- G is injective
+    --     | (Just injArgs) <- injectiveArgs axs f
+    --     -- x is touchable
+    --     , v `elem` (thcs :: [TyVar]) 
+    --     = let
+    --         -- all argument vars
+    --         allVars = filter isVar mts
+    --         -- all injective vars
+    --         injVars = [x | (n, x@(MonoType_Var _ v1 _)) <- zip [0..] mts, n `elem` injArgs, v1 `notElem` thcs]
+    --         -- allVars and injVars must be equal, this says: all remaining vars are injective and may be determined when we know x.
+    --         in allVars == injVars
+    --     -- This does not work! GHC does some weird "Type families are equal stuff!"
+    --     -- | (not . any isVar) mts
+    --     -- , v `elem` thcs
+    --     -- = True
+    --     where
+    --         isVar MonoType_Var{} = True
+    --         isVar _              = False
     allowInSubstitution _ _ (Constraint_Unify (MonoType_Fam f1 m1 _) (MonoType_Fam f2 m2 _) _) = f1 == f2 && m1 == m2
     allowInSubstitution _ _ (Constraint_Unify m1 m2 _) = isFamilyFree m1 && isFamilyFree m2
     allowInSubstitution _ _ _ = False

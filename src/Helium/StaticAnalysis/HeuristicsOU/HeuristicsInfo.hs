@@ -34,10 +34,14 @@ import Debug.Trace
 
 class WithHints a where
    addHint          :: String -> String -> a -> a
+   addReduction     :: Maybe ReductionTrace -> a -> a
    typeErrorForTerm :: (Bool,Bool) -> Int -> OneLineTree -> MonoType -> (MonoType,MonoType) -> Range -> a -> a
    
 instance WithHints ConstraintInfo where
    addHint descr str = addProperty (WithHint (descr, MessageString str))
+   addReduction trc ci = case trc of
+      Just xs -> addProperty (WithReduction xs) ci
+      Nothing -> ci
    typeErrorForTerm (isInfixApplication,isPatternApplication) argumentNumber termOneLiner functionType (t1, t2) range cinfo =
          let 
             [MType functionType', MType t1', MType t2'] = freshenRepresentation [MType functionType :: RType ConstraintInfo, MType t1, MType t2]

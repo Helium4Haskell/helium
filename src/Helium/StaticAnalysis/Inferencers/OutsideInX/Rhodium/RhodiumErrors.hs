@@ -65,7 +65,7 @@ instance (MonadFail m, CompareTypes m (RType ConstraintInfo), Fresh m, HasTypeGr
                         }
                 | li == labelIncorrectConstructors || li == labelInfiniteType || isTypeError ci || isTooManyFBArgs ci =
                     do
-                        te <- makeUnificationTypeError edge constraint ci
+                        te <- makeUnificationTypeError (showTrace opts) edge constraint ci
                         return ci{
                             errorMessage = Just te
                         }
@@ -142,7 +142,7 @@ instance (MonadFail m, CompareTypes m (RType ConstraintInfo), Fresh m, HasTypeGr
                             errorMessage = Just err
                         }
                 | li == labelResidual && isJust (maybeTypeFamilyReduction ci) = do
-                    te <- makeTFReductionTypeError (showTrace opts)edge constraint ci
+                    te <- makeTFReductionTypeError (showTrace opts) edge constraint ci
                     return ci {
                         errorMessage = Just te
                     }
@@ -240,8 +240,8 @@ makeNotGeneralEnoughTypeError isAnnotation range source tpscheme1 tpscheme2 info
     in TypeError [range] [oneliner] table hints
 
 
-makeUnificationTypeError :: (CompareTypes m (RType ConstraintInfo), Fresh m, HasTypeGraph m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo) => TGEdge (Constraint ConstraintInfo) -> Constraint ConstraintInfo -> ConstraintInfo -> m TypeError
-makeUnificationTypeError edge constraint info =
+makeUnificationTypeError :: (CompareTypes m (RType ConstraintInfo), Fresh m, HasTypeGraph m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo) => Bool -> TGEdge (Constraint ConstraintInfo) -> Constraint ConstraintInfo -> ConstraintInfo -> m TypeError
+makeUnificationTypeError fullTrace edge constraint info =
     do
     let (source, term) = sources info
         range    = maybe (rangeOfSource source) rangeOfSource term
@@ -270,7 +270,8 @@ makeUnificationTypeError edge constraint info =
                         MType m -> MessageMonoType m
                         PType p -> MessagePolyType p                    
                 ]
-        hints      = [ hint | WithHint hint <- properties info ]            
+        hints      = [ hint | WithHint hint <- properties info ]
+                     ++ [ if fullTrace then buildFullTraceHint trc else buildSimpleTraceHint trc | WithReduction trc <- properties info]           
     return $ TypeError [range] [oneliner] table hints
 
 makeReductionError :: UHA_Source -> Maybe UHA_Source -> (MonoType, Maybe (PolyType ConstraintInfo)) -> [Axiom ConstraintInfo] -> (String, MonoType) -> TypeError

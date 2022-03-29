@@ -56,7 +56,8 @@ import qualified Data.Map as M
 import Control.Monad
 import Rhodium.TypeGraphs.TGState
 import Control.Monad.IO.Class (MonadIO )
-import Helium.StaticAnalysis.Miscellaneous.ReductionTraceUtils (getTraceFromTwoTypes, buildSimpleTraceHint)
+import Helium.StaticAnalysis.Miscellaneous.ReductionTraceUtils (getTraceFromTwoTypes)
+import Helium.StaticAnalysis.HeuristicsOU.HeuristicsInfo (WithHints(addReduction))
 -----------------------------------------------------------------------------
 
 fixHint, becauseHint, possibleHint :: WithHints a => String -> a -> a
@@ -102,9 +103,9 @@ applicationHeuristic path = SingleVoting "Application heuristic" f
                let cedge = getEdgeFromId graph ceid
                let Constraint_Unify pt1 pt2 _ = getConstraintFromEdge cedge
                trc <- getTraceFromTwoTypes cedge pt1 pt2
-               let redHint = maybe id buildSimpleTraceHint trc
+               let redHint = addReduction trc
                let edge = getEdgeFromId graph eid
-               doWithoutEdge eid $ 
+               doWithoutEdge eid $
                   do
                      let Constraint_Unify t1 t2 _ = constraint
                      maybeExpectedType <- getSubstTypeFull (getGroupFromEdge edge) $ MType t1
