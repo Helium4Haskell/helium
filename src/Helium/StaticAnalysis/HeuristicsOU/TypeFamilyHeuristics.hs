@@ -1,9 +1,9 @@
 {-# LANGUAGE FlexibleContexts #-}
 {-# OPTIONS_GHC -Wno-simplifiable-class-constraints #-}
 module Helium.StaticAnalysis.HeuristicsOU.TypeFamilyHeuristics where
-import Unbound.Generics.LocallyNameless ( Fresh, unbind, Subst (substs) )
+import Unbound.Generics.LocallyNameless ( Fresh, unbind, Subst (substs), contFreshM, bind )
 import Rhodium.Blamer.Path
-import Helium.StaticAnalysis.Inferencers.OutsideInX.Rhodium.RhodiumTypes (Axiom (Axiom_ClosedGroup, Axiom_Unify), TyVar, RType (MType), Constraint (Constraint_Inst, Constraint_Unify), MonoType (MonoType_Fam, MonoType_App, MonoType_Con, MonoType_Var), PolyType (PolyType_Mono), fvToList)
+import Helium.StaticAnalysis.Inferencers.OutsideInX.Rhodium.RhodiumTypes (Axiom (Axiom_ClosedGroup, Axiom_Unify), TyVar, RType (MType), Constraint (Constraint_Inst, Constraint_Unify), MonoType (MonoType_Fam, MonoType_App, MonoType_Con, MonoType_Var), PolyType (PolyType_Mono, PolyType_Bind), fvToList)
 import Helium.StaticAnalysis.Miscellaneous.ConstraintInfoOU
 import Rhodium.Blamer.Heuristics (VotingHeuristic (SingleVoting))
 import Rhodium.TypeGraphs.Graph
@@ -17,10 +17,12 @@ import Debug.Trace (trace)
 import Data.List (permutations, nub, intercalate)
 import Helium.StaticAnalysis.HeuristicsOU.HeuristicsInfo
 import Helium.StaticAnalysis.Messages.HeliumMessages (freshenRepresentation)
-import Helium.StaticAnalysis.Inferencers.OutsideInX.Rhodium.RhodiumInstances (reactClosedTypeFam, convertSubstitution)
+import Helium.StaticAnalysis.Inferencers.OutsideInX.Rhodium.RhodiumInstances (reactClosedTypeFam, convertSubstitution, integer2Name)
 import Helium.Utils.Utils (internalError)
 import Rhodium.Core (unifyTypes, runTG)
 import Control.Monad (filterM)
+import Helium.StaticAnalysis.Inferencers.OutsideInX.TopConversion (polytypeToMonoType)
+import Helium.StaticAnalysis.Miscellaneous.TypeConversion (Freshen(freshenWithMapping))
 
 typeErrorThroughReduction :: (Fresh m, HasTypeGraph m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo)
                           => Path m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo -> VotingHeuristic m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo
@@ -30,8 +32,11 @@ typeErrorThroughReduction path = SingleVoting "Type error through type family re
       graph <- getGraph
       let edge = getEdgeFromId graph eid
       case constraint of
-        Constraint_Inst _ (PolyType_Mono _ pmt) _ -> do
+        Constraint_Inst _ pt _ -> do
           -- Getting edge of erroneous constraint (pconstraint)
+          let pmt = case pt of
+                pb@(PolyType_Bind _ _) -> (fst . fst . snd) $ polytypeToMonoType [] 0 pb
+                PolyType_Mono _ mt -> mt
           let ceid = edgeIdFromPath path
           let cedge = getEdgeFromId graph ceid
           let pconstraint = getConstraintFromEdge cedge
@@ -57,7 +62,9 @@ typeErrorThroughReduction path = SingleVoting "Type error through type family re
                       in causeHint . fixHint
               case theTrace of
                 -- No trace but still reduction error
-                [] -> return $ Just (4, "Type family could not be reduced, no trace", constraint, eid, addProperty (TypeFamilyReduction Nothing t freshOg freshOg False) $ theHint ci, gm)
+                [] -> if typeIsInType mf pmt
+                        then return $ Just (4, "Type family could not be reduced, no trace", constraint, eid, addProperty (TypeFamilyReduction Nothing t freshOg freshOg False) $ theHint ci, gm)
+                        else return Nothing
                 -- Now with trace, checking if the trace belongs to the type signature
                 trc -> do
                   let Just lastType = getLastTypeInTrace trc
@@ -136,11 +143,12 @@ typeErrorThroughReduction path = SingleVoting "Type error through type family re
               -- We perform the reaction again, with different arguments to obtain the possibly non apart axiom.
               Just caxs -> snd <$> reactClosedTypeFam False False (Constraint_Unify mt (MonoType_Con "Char" Nothing) Nothing) caxs
             -- Build hint accordingly.
+            let [MType mt'] = freshenRepresentation [MType mt :: RType ConstraintInfo]
             case mApartErr of
               Just (amt, r) -> do
-                let hint = "type " ++ (show . show) mt ++ " is not apart from instance " ++ (show . show) amt ++ " at " ++ show r
+                let hint = "type " ++ (show . show) mt' ++ " is not apart from instance " ++ (show . show) amt ++ " at " ++ show r
                 return $ Just hint
-              Nothing -> return $ Just $ (show . show) mt ++ " is not reducable. No matching instance was found"
+              Nothing -> return $ Just $ (show . show) mt' ++ " is not reducable. No matching instance was found"
           buildApartnessHint _ = return Nothing
 
           -- Builds hints in a nested way, considers arguments of the non-reducable type family too.
@@ -228,10 +236,19 @@ typeErrorThroughReduction path = SingleVoting "Type error through type family re
           getMaybeClosedAxs [] _     = Nothing
 
 typeIsInType :: MonoType -> MonoType -> Bool
-typeIsInType t1 mf@(MonoType_Fam _ mts _) = mf == t1 || any (typeIsInType t1) mts
-typeIsInType t1 ma@(MonoType_App m1 m2 _) = ma == t1 || typeIsInType t1 m1 || typeIsInType t1 m2
+typeIsInType t1 mf@(MonoType_Fam _ mts _) = let
+  (_, (mf', _)) = freshenWithMapping [] (0 :: Integer) mf
+  (_, (t1', _)) = freshenWithMapping [] (0 :: Integer) t1
+  in mf' == t1' || any (typeIsInType t1) mts
+typeIsInType t1 ma@(MonoType_App m1 m2 _) = let
+  (_, (ma', _)) = freshenWithMapping [] (0 :: Integer) ma
+  (_, (t1', _)) = freshenWithMapping [] (0 :: Integer) t1
+  in ma' == t1' || typeIsInType t1 m1 || typeIsInType t1 m2
 typeIsInType t1 mc@(MonoType_Con _ _)     = t1 == mc
-typeIsInType t1 mv@MonoType_Var{}         = t1 == mv
+typeIsInType t1 mv@MonoType_Var{}         = let 
+  (_, (mv', _)) = freshenWithMapping [] (0 :: Integer) mv
+  (_, (t1', _)) = freshenWithMapping [] (0 :: Integer) t1
+  in t1' == mv'
 
 replaceIfEqual :: MonoType -> MonoType -> MonoType -> MonoType
 replaceIfEqual t1 t2 mf@(MonoType_Fam f mts rt) = if t2 == mf then t1 else MonoType_Fam f (map (replaceIfEqual t1 t2) mts) rt

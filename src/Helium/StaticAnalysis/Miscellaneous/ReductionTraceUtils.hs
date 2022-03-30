@@ -15,7 +15,7 @@ import Debug.Trace (trace)
 import Helium.StaticAnalysis.StaticChecks.TypeFamilyInfos
 import Helium.Syntax.UHA_Range (showRange)
 import Data.Maybe (fromMaybe)
-import Helium.StaticAnalysis.HeuristicsOU.HeuristicsInfo (WithHints(addHint, addReduction))
+import Helium.StaticAnalysis.HeuristicsOU.HeuristicsInfo (WithHints(addReduction))
 import Rhodium.Blamer.Path (Path, edgeIdFromPath)
 
 
@@ -188,7 +188,7 @@ traceToMessageBlock rts = MessageCompose $ mapToBlock (1 :: Int) rts
         timesToString t = show t ++ " time" ++ if t == 1 then "" else "s"
 
         showMaybeRange tfi = case tfi of
-            Nothing -> "unkown position"
+            Nothing -> "unknown position"
             Just t -> showRange $ tfiRange t
         
         showReason rt = case rt of

@@ -95,19 +95,19 @@ data Tree a = Node a (Tree a) (Tree a) | Leaf
 -- f2 :: Int
 -- f2 = f 3
 
-type family FloatInt a b where
-    FloatInt a a = Float
-    FloatInt a b = Int
+-- type family FloatInt a b where
+--     FloatInt a a = Float
+--     FloatInt a b = Int
 
-type family IfFloat a where
-    IfFloat Float = Int -> Int
-    IfFloat Int   = String
+-- type family IfFloat a where
+--     IfFloat Float = Int -> Int
+--     IfFloat Int   = String
 
-bad :: d -> IfFloat (FloatInt Float [d])
-bad _ = "Hi"
+-- bad :: d -> IfFloat (FloatInt Float [d])
+-- bad _ = "Hi"
 
-fault :: Int
-fault = bad (0.2 :: Float) (5 :: Int)
+-- fault :: Int
+-- fault = bad (0.2 :: Float) (5 :: Int)
 
 -- l :: J String -> J String
 -- l x = x
@@ -180,7 +180,7 @@ type family J a where
 -- g :: [a] -> [a] -> a
 -- g xs ys = sum (xs ++ ys)
 
--- type family B a -- = r | r -> a
+-- type family B a = r | r -> a
 -- type instance B Int = Float
 -- type instance B Float = Int
 
@@ -195,3 +195,27 @@ type family J a where
 
 -- right :: a -> b -> Right a b
 -- right x y = x
+
+-- type family Foo a
+-- type instance Foo Char = Bool
+-- type instance Foo Int = Float
+-- type instance Foo Float = Int
+
+-- class Bar t where
+--   clsF :: Foo t
+-- instance Bar Char where
+--   clsF = True
+
+-- main :: Bool
+-- main = clsF :: Bool
+
+type family Foo a 
+type instance Foo Char = Bool
+type instance Foo Int = Float
+type instance Foo Float = Int
+
+clsf :: Foo t
+clsf = True
+
+main :: Bool
+main = clsf
