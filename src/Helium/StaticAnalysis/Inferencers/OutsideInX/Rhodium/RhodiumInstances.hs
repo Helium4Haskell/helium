@@ -123,7 +123,7 @@ instance (CompareTypes m (RType ConstraintInfo), IsTouchable m TyVar, HasAxioms 
                             | f1 == f2, 
                               (Just injIdx) <- injectiveArgs axs f1, 
                               length ts1 == length ts2 
-                                -> return $ Applied ([], [], map (\i -> Constraint_Unify (insertReductionStep (ts1 !! i) (Step (ts1 !! i) mf1 (Just $ removeCI ogc) CanonReduction)) (insertReductionStep (ts2 !! i) (Step (ts1 !! i) mf2 (Just $ removeCI ogc) CanonReduction)) Nothing) injIdx)
+                                -> return $ Applied ([], [], map (\i -> Constraint_Unify (insertReductionStep (ts1 !! i) (Step (ts1 !! i) mf1 (Just $ removeCI ogc) (CanonReduction (ts2 !! i, mf2)))) (insertReductionStep (ts2 !! i) (Step (ts2 !! i) mf2 (Just $ removeCI ogc) (CanonReduction (ts1 !! i, mf1)))) Nothing) injIdx)
                             | f1 == f2, isInjective axs f1, length ts1 /= length ts2 -> return $ Error $ ErrorLabel $ "Different Number of arguments for " ++ show ts1 ++ " and " ++ show ts2
                             | f1 == f2, null ts1 && null ts2 -> return $ Applied ([], [], [])
                             | f1 == f2, length ts1 == length ts2 -> return NotApplicable
@@ -354,7 +354,7 @@ improveTopLevelFun given c@(Constraint_Unify fam@(MonoType_Fam f ms _) t _) (Axi
                             Unifiable _ -> do
                                 let substLhs' = applyOverInjArgs psubst injIdx lhs
                                 let (_, (specLhs, specRhs)) = contFreshM (unbind b) 1000000000000000 -- Must be large
-                                let newLhs = insertReductionStep substLhs' (Step substLhs fam (Just $ removeCI c) (TopLevelImprovement (specLhs, specRhs) tfi))
+                                let newLhs = insertReductionStep substLhs' (Step substLhs t (Just $ removeCI c) (TopLevelImprovement (specLhs, specRhs) (fam, t) tfi))
                                 return $ Applied ([], [Constraint_Unify newLhs fam Nothing]) -- Here we deviate from the paper and follow Cobalt (just substitute arguments with what we obtained)
             _ -> return NotApplicable 
 improveTopLevelFun given c (Axiom_ClosedGroup _ axs) = loopAxioms (improveTopLevelFun given c) axs

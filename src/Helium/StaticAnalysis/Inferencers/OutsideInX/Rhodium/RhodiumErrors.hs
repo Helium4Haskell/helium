@@ -146,6 +146,11 @@ instance (MonadFail m, CompareTypes m (RType ConstraintInfo), Fresh m, HasTypeGr
                     return ci {
                         errorMessage = Just te
                     }
+                | li == labelResidual && isJust (maybeInjectUntouchable ci) = do
+                    te <- makeInjectUntouchableError (showTrace opts) edge constraint ci
+                    return ci {
+                        errorMessage = Just te
+                    }
                 | li == labelResidual =
                         case constraint of
                             Constraint_Inst m1 m2 _ -> do
@@ -417,4 +422,43 @@ makeTFReductionTypeError mustShowTrace edge constraint info =
                 ]
         hints      = [ hint | WithHint hint <- properties info ]
                    ++ [("full reduction", traceToMessageBlock (squashTrace trc)) | let Just trc = theTrace, (not . null) theTrace && mustShowTrace]              
+    return $ TypeError [range] [oneliner] table hints
+
+makeInjectUntouchableError :: (CompareTypes m (RType ConstraintInfo), Fresh m, HasTypeGraph m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo) 
+                         => Bool -> TGEdge (Constraint ConstraintInfo) -> Constraint ConstraintInfo -> ConstraintInfo -> m TypeError
+makeInjectUntouchableError mustShowTrace edge constraint info =
+    do
+    let (Just (theTrace, (cl, cr))) = maybeInjectUntouchable info
+    let (source, term) = sources info
+        range    = maybe (rangeOfSource source) rangeOfSource term
+        oneliner = MessageOneLiner (MessageString ("Could not reduce a type family in a " ++ location info ++ " further"))
+        (t1, t2) = case constraint of
+            Constraint_Unify t1 t2 _-> (MType t1, MType t2)
+            Constraint_Inst t1 t2 _ -> (MType t1, PType t2)
+    --let    Constraint_Unify t1 t2 _ = constraint
+    let t1' = maybe t1 PType (maybeApplicationTypeSignature info)
+    msgtp1   <- getSubstTypeFull (getGroupFromEdge edge) t1'
+    msgtp2   <- getSubstTypeFull  (getGroupFromEdge edge) t2
+    let [msgtp2', msgtp1'] = freshenRepresentation [msgtp2, msgtp1]
+    let [MType cl', MType cr'] = freshenRepresentation [MType cl :: RType ConstraintInfo, MType cr]
+    let (reason1, reason2) = ("declared type", "inferred type")
+    let (treason1, treason2) = ("type", "with")
+        table = ["could not match " <:> MessageString ""]
+                ++
+                [treason1 >:> MessageMonoType cl']
+                ++
+                [treason2 >:> MessageMonoType cr']
+                ++
+                [ "in " ++ s <:> MessageOneLineTree (oneLinerSource source') | (s, source') <- convertSources (sources info)]
+                ++
+                [
+                    reason1 >:> case msgtp2' of
+                        MType m -> MessageMonoType m
+                        PType p -> MessagePolyType p
+                ,   reason2 >:> case msgtp1' of
+                        MType m -> MessageMonoType m
+                        PType p -> MessagePolyType p                    
+                ]
+        hints      = [ hint | WithHint hint <- properties info ]
+                   ++ [("full reduction", traceToMessageBlock (squashTrace theTrace)) | (not . null) theTrace && mustShowTrace]              
     return $ TypeError [range] [oneliner] table hints

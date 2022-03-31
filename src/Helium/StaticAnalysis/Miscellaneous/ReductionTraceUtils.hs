@@ -161,23 +161,27 @@ traceToMessageBlock rts = MessageCompose $ mapToBlock (1 :: Int) rts
                 , MessageString "\n"
                 ]
                 : mapToBlock (idx + 1) rts'
-        mapToBlock idx ((Step after before constr rt@CanonReduction, times):rts')
+        mapToBlock idx ((Step after before (Just constr) rt@(CanonReduction (oa, ob)), times):rts')
             = MessageCompose 
                 [
-                  MessageString (show idx ++ ". " ++ "Step\t: " ++ show after ++ " <- " ++ show before)
-                , MessageString ("\n   Constraint\t: " ++ show constr)
+                  MessageString (show idx ++ ". " ++ "Old\t: " ++ show constr)
+                , MessageString ("\n   Step 1\t: " ++ show after ++ " <- " ++ show before)
+                , MessageString ("\n   Step 2\t: " ++ show oa ++ " <- " ++ show ob)
+                , MessageString ("\n   New\t: " ++ show oa ++ " ~ " ++ show after)
                 , MessageString ("\n   Reason\t: " ++ showReason rt)
                 , MessageString ("\n   Amount\t: " ++ timesToString times)
                 , MessageString "\n"
                 ]
                 : mapToBlock (idx + 1) rts'
-        mapToBlock idx ((Step after before _ rt@(TopLevelImprovement (lhs, rhs) tfi), times):rts')
+        mapToBlock idx ((Step after before _ rt@(TopLevelImprovement (lhs, rhs) (cl, cr) tfi), times):rts')
             = --MessageString (show idx ++ ". " ++ showMaybeRange tfi ++ "\t: " ++ show after ++ " <- " ++ show before ++ "\n   Reason\t: injective top-level improvement" ++ timesToString times ++ "\n.")
               MessageCompose 
                 [
                   MessageString (show idx ++ ". " ++ "Applied\t: " ++ show lhs ++ " = " ++ show rhs)
                 , MessageString ("\n   From\t: " ++ showMaybeRange tfi)
+                , MessageString ("\n   On\t: " ++ show cl ++ " ~ " ++ show cr)
                 , MessageString ("\n   Step\t: " ++ show after ++ " <- " ++ show before)
+                , MessageString ("\n   New\t: " ++ show cl ++ " ~ " ++ show after)
                 , MessageString ("\n   Reason\t: " ++ showReason rt)
                 , MessageString ("\n   Amount\t: " ++ timesToString times)
                 , MessageString "\n"
@@ -193,8 +197,8 @@ traceToMessageBlock rts = MessageCompose $ mapToBlock (1 :: Int) rts
         
         showReason rt = case rt of
             LeftToRight _ _ -> "left to right application"
-            CanonReduction -> "canon reduction"
-            TopLevelImprovement _ _ -> "injective top-level improvement"
+            CanonReduction _ -> "canon reduction"
+            TopLevelImprovement{} -> "injective top-level improvement"
 
 getTraceFromTwoTypes :: (CompareTypes m (RType ConstraintInfo), Fresh m, HasTypeGraph m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo)
                      => TGEdge (Constraint ConstraintInfo) -> MonoType -> MonoType -> m (Maybe ReductionTrace)

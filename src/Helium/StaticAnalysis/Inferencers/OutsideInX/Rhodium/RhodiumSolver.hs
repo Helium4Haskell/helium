@@ -28,7 +28,7 @@ import Data.Maybe
 import Data.List
 
 import Debug.Trace
-import Helium.StaticAnalysis.HeuristicsOU.TypeFamilyHeuristics (typeErrorThroughReduction)
+import Helium.StaticAnalysis.HeuristicsOU.TypeFamilyHeuristics (typeErrorThroughReduction, injectUntouchableHeuristic)
 import Helium.Main.Args (Option (ShowTFTrace))
 
 rhodiumSolve :: [Axiom ConstraintInfo] -> [Constraint ConstraintInfo] -> [Constraint ConstraintInfo] -> [TyVar] -> SolveResult TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo
@@ -66,6 +66,7 @@ listOfTypeHeuristics sibblings path = [
             fbHasTooManyArguments path,
             constraintFromUser path,
             unreachablePatternHeuristic path,
+            injectUntouchableHeuristic path,
             typeErrorThroughReduction path,
             typeSignatureTooGeneral path,
             missingPredicate path,

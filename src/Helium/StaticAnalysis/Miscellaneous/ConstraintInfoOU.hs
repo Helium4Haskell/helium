@@ -149,6 +149,7 @@ data Property
     | LiteralFloat Float
     | TypeFamilyReduction (Maybe ReductionTrace) MonoType {-Inferred-} MonoType {-From signature-} MonoType {-Reduced-} Bool {-Whether fully reduced-}
     | WithReduction ReductionTrace
+    | InjectUntouchable ReductionTrace (MonoType, MonoType) {-Before toplevel improvement-}
     deriving (Generic)
 
 instance Show Property where
@@ -349,6 +350,9 @@ maybeLiteralFloat a = maybeHead [ f | LiteralFloat f <- getProperties a]
 
 maybeTypeFamilyReduction :: HasProperties a => a -> Maybe (Maybe ReductionTrace, MonoType, MonoType, MonoType, Bool)
 maybeTypeFamilyReduction a = maybeHead [ (rt, m1, m2, m3, p) | TypeFamilyReduction rt m1 m2 m3 p <- getProperties a]
+
+maybeInjectUntouchable :: HasProperties a => a -> Maybe (ReductionTrace, (MonoType, MonoType))
+maybeInjectUntouchable a = maybeHead [ (rt, mtt) | InjectUntouchable rt mtt <- getProperties a]
 -----------------------------------------------------------------
 -- Smart constructors
 

@@ -209,7 +209,7 @@ type family J a where
 -- main :: Bool
 -- main = clsF :: Bool
 
-type family Foo a 
+type family Foo a = r | r -> a
 type instance Foo Char = Bool
 type instance Foo Int = Float
 type instance Foo Float = Int
@@ -217,5 +217,5 @@ type instance Foo Float = Int
 clsf :: Foo t
 clsf = True
 
-main :: Bool
-main = clsf
+-- main :: Bool
+-- main = clsf

@@ -3,7 +3,7 @@
 module Helium.StaticAnalysis.HeuristicsOU.TypeFamilyHeuristics where
 import Unbound.Generics.LocallyNameless ( Fresh, unbind, Subst (substs), contFreshM, bind )
 import Rhodium.Blamer.Path
-import Helium.StaticAnalysis.Inferencers.OutsideInX.Rhodium.RhodiumTypes (Axiom (Axiom_ClosedGroup, Axiom_Unify), TyVar, RType (MType), Constraint (Constraint_Inst, Constraint_Unify), MonoType (MonoType_Fam, MonoType_App, MonoType_Con, MonoType_Var), PolyType (PolyType_Mono, PolyType_Bind), fvToList)
+import Helium.StaticAnalysis.Inferencers.OutsideInX.Rhodium.RhodiumTypes (Axiom (Axiom_ClosedGroup, Axiom_Unify), TyVar, RType (MType), Constraint (Constraint_Inst, Constraint_Unify), MonoType (MonoType_Fam, MonoType_App, MonoType_Con, MonoType_Var), PolyType (PolyType_Mono, PolyType_Bind), fvToList, ReductionType (TopLevelImprovement, CanonReduction), ReductionStep (Step), ReductionTrace)
 import Helium.StaticAnalysis.Miscellaneous.ConstraintInfoOU
 import Rhodium.Blamer.Heuristics (VotingHeuristic (SingleVoting))
 import Rhodium.TypeGraphs.Graph
@@ -63,7 +63,7 @@ typeErrorThroughReduction path = SingleVoting "Type error through type family re
               case theTrace of
                 -- No trace but still reduction error
                 [] -> if typeIsInType mf pmt
-                        then return $ Just (4, "Type family could not be reduced, no trace", constraint, eid, addProperty (TypeFamilyReduction Nothing t freshOg freshOg False) $ theHint ci, gm)
+                        then return $ Just (5, "Type family could not be reduced, no trace", constraint, eid, addProperty (TypeFamilyReduction Nothing t freshOg freshOg False) $ theHint ci, gm)
                         else return Nothing
                 -- Now with trace, checking if the trace belongs to the type signature
                 trc -> do
@@ -237,18 +237,21 @@ typeErrorThroughReduction path = SingleVoting "Type error through type family re
 
 typeIsInType :: MonoType -> MonoType -> Bool
 typeIsInType t1 mf@(MonoType_Fam _ mts _) = let
-  (_, (mf', _)) = freshenWithMapping [] (0 :: Integer) mf
-  (_, (t1', _)) = freshenWithMapping [] (0 :: Integer) t1
+  (mf', t1') = freshenTypes t1 mf
   in mf' == t1' || any (typeIsInType t1) mts
 typeIsInType t1 ma@(MonoType_App m1 m2 _) = let
-  (_, (ma', _)) = freshenWithMapping [] (0 :: Integer) ma
-  (_, (t1', _)) = freshenWithMapping [] (0 :: Integer) t1
+  (ma', t1') = freshenTypes t1 ma
   in ma' == t1' || typeIsInType t1 m1 || typeIsInType t1 m2
 typeIsInType t1 mc@(MonoType_Con _ _)     = t1 == mc
 typeIsInType t1 mv@MonoType_Var{}         = let 
-  (_, (mv', _)) = freshenWithMapping [] (0 :: Integer) mv
-  (_, (t1', _)) = freshenWithMapping [] (0 :: Integer) t1
+  (mv', t1') = freshenTypes t1 mv
   in t1' == mv'
+
+freshenTypes :: MonoType -> MonoType -> (MonoType, MonoType)
+freshenTypes m1 m2 = let
+  (_, (m1', _)) = freshenWithMapping [] (0 :: Integer) m1
+  (_, (m2', _)) = freshenWithMapping [] (0 :: Integer) m2
+  in (m1', m2')
 
 replaceIfEqual :: MonoType -> MonoType -> MonoType -> MonoType
 replaceIfEqual t1 t2 mf@(MonoType_Fam f mts rt) = if t2 == mf then t1 else MonoType_Fam f (map (replaceIfEqual t1 t2) mts) rt
@@ -261,3 +264,42 @@ makeCharString (MonoType_App (MonoType_Con "[]" _) (MonoType_Con "Char" _) rt) =
 makeCharString (MonoType_App m1 m2 rt) = MonoType_App (makeCharString m1) (makeCharString m2) rt
 makeCharString (MonoType_Fam f mts rt) = MonoType_Fam f (map makeCharString mts) rt
 makeCharString mt = mt
+
+injectUntouchableHeuristic :: (Fresh m, HasTypeGraph m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo)
+                           => Path m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo -> VotingHeuristic m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo
+injectUntouchableHeuristic path = SingleVoting "Type error through injection of untouchable variable" f
+  where 
+    f (constraint, eid, ci, gm) = do
+      graph <- getGraph
+      case constraint of
+        Constraint_Inst _ pt _ -> do
+          let pmt = case pt of
+                pb@(PolyType_Bind _ _) -> (fst . fst . snd) $ polytypeToMonoType [] 0 pb
+                PolyType_Mono _ mt -> mt
+          let ceid = edgeIdFromPath path
+          let cedge = getEdgeFromId graph ceid
+          let pconstraint = getConstraintFromEdge cedge
+          case (pconstraint, labelFromPath path) of 
+            (Constraint_Unify mv@MonoType_Var{} mt _, ErrorLabel "Residual constraint") -> do
+              trace_var <- buildReductionTrace cedge mv
+              trace_mt <- buildReductionTrace cedge mt
+              case obtainTraceInfo trace_var trace_mt of
+                Nothing -> return Nothing
+                Just (cl, cr) -> if typeIsInType cl pmt
+                  then let
+                    because_hint = addHint "because" ("could not inject " ++ (show . show) mt ++ " into " ++ (show . show) mv)
+                    hint_hint = addHint "hint" ("we cannot assign a type to " ++ (show . show) mv ++ " because it is qualified under a forall")
+                    hint = because_hint . hint_hint
+                    in return $ Just (5, "Tried to inject untouchable", constraint, eid, addProperty (InjectUntouchable trace_mt (cl, cr)) $ hint ci, gm)
+                  else return Nothing
+            _ -> undefined
+        _ -> return Nothing
+
+        where
+
+          obtainTraceInfo :: ReductionTrace -> ReductionTrace -> Maybe (MonoType, MonoType)
+          obtainTraceInfo ((Step _ _ _ (CanonReduction _), _):_) ((Step _ _ _ (CanonReduction _), _):t2) =
+            case t2 of
+              ((Step _ _ _ (TopLevelImprovement _ c _), _):_) -> Just c
+              _ -> Nothing
+          obtainTraceInfo _ _ = Nothing
