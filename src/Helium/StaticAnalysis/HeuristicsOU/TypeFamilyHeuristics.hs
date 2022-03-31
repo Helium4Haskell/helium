@@ -292,7 +292,7 @@ injectUntouchableHeuristic path = SingleVoting "Type error through injection of 
                     hint = because_hint . hint_hint
                     in return $ Just (5, "Tried to inject untouchable", constraint, eid, addProperty (InjectUntouchable trace_mt (cl, cr)) $ hint ci, gm)
                   else return Nothing
-            _ -> undefined
+            _ -> return Nothing
         _ -> return Nothing
 
         where
