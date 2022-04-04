@@ -145,7 +145,7 @@ SEM Declaration
     | FunctionBindings
         lhs . betaUnique        = @bindings.betaUnique
         lhs . bindingGroups     = [@bindingGroup]
-        loc . bindingGroup      = (@environment, @assumptions, @constraints, @lhs.typeSignatureConstraints ++ @instanceCons ++ @bindings.givenConstraints, @bindings.gadtConstraints)
+        loc . bindingGroup      = (@environment, @assumptions, @constraints, @lhs.typeSignatureConstraints ++ @bindings.givenConstraints ++ @instConstraints, @bindings.gadtConstraints)
         lhs . tlEnvironment     = @environment
         loc . environment       = if isJust @lhs.className then M.empty else M.singleton @bindings.name @beta 
         loc . assumptions       = @bindings.assumptions 
@@ -156,19 +156,19 @@ SEM Declaration
         loc . beta              = UL.makeName (show @bindings.name) @lhs.betaUnique
         loc . parameterCons     = [Constraint_Unify (var @beta) (foldr ((:-->:) . var) (var @br) @bls) (Just @cinfo)]
         loc . tyFams = typeSynonymsToTypeFamilies (typeSynonyms @lhs.importEnvironment) ++ obtainTyFams (M.elems $ typeFamDeclEnvironment @lhs.importEnvironment)
-        loc . (instanceType, bu) = case @lhs.className of
-                                        Nothing -> (Nothing, (@lhs.betaUnique + 2 + @bindings.numberOfPatterns))
-                                        Just cn -> let 
-                                                (classTypeVariables, classFunctions) = fromMaybe (internalError "TypeInferenceRules" "n/a" "class not found") $
-                                                    M.lookup cn (classMemberEnvironment @lhs.importEnvironment)
-                                                (_, functionTpScheme, _, _) = fromMaybe (internalError "TypeInferenceRules" "n/a" "class function not found")
-                                                    (find (\(n, _, _, _) -> n == @bindings.name) classFunctions) 
-                                                (polyType, mapping) = tpSchemeToPolyType' @tyFams (map show classTypeVariables) functionTpScheme
-                                            
-                                                (fMapping, (freshend, bu)) = freshenWithMapping [] (@lhs.betaUnique + 2 + @bindings.numberOfPatterns) polyType
-                                                replacedFreshened = UL.substs (combineSubsitutions @lhs.typeVariableReplace mapping fMapping) freshend
-                                            in (Just replacedFreshened, bu)
-        loc . instanceCons      = maybe [] (\it -> [Constraint_Inst (var @beta) (foldr addConstraint it @lhs.typeSignatureConstraints) (Just @cinfo)])  @instanceType    
+        loc . (instConstraints, instanceType, bu) = case @lhs.className of
+                                                        Nothing -> ([], Nothing, (@lhs.betaUnique + 2 + @bindings.numberOfPatterns))
+                                                        Just cn -> let 
+                                                                (classTypeVariables, classFunctions) = fromMaybe (internalError "TypeInferenceRules" "n/a" "class not found") $
+                                                                    M.lookup cn (classMemberEnvironment @lhs.importEnvironment)
+                                                                (_, functionTpScheme, _, _) = fromMaybe (internalError "TypeInferenceRules" "n/a" "class function not found")
+                                                                    (find (\(n, _, _, _) -> n == @bindings.name) classFunctions) 
+                                                                (tconstraints, mapping, monoType) = tpSchemeToMonoType @tyFams functionTpScheme
+                                                                replacedMonoType = UL.substs (combineSubsitutions @lhs.typeVariableReplace mapping) monoType
+                                                                replacedConstraints = map (UL.substs (combineSubsitutions @lhs.typeVariableReplace mapping)) tconstraints
+                                                                (_, ((mtFreshened, constrFreshened), bu)) = freshenWithMapping [] (@lhs.betaUnique + 2 + @bindings.numberOfPatterns) (replacedMonoType, replacedConstraints)
+                                                                in (constrFreshened, Just mtFreshened, bu)
+        loc . instanceCons      = maybe [] (\it -> [Constraint_Inst (var @beta) (PolyType_Mono [] it){-(foldr addConstraint it @lhs.typeSignatureConstraints)-} (Just @cinfo)]) @instanceType    
         loc . err               = internalError "TypeInferenceRules.ag" "FunctionBindings" ("No substitution found for " ++ show @bindings.name)
         bindings . betasLeft    = @bls 
         bindings . betaRight    = @br 
@@ -219,6 +219,7 @@ SEM Declaration
         where . betaUnique = @bu
         where . className = Just @name.self
         where . typeSignatureConstraints = 
+                    Constraint_Class (show @name.self) (map (thrd . typeToMonoType @tyFams) @types.self) Nothing :
                     concatMap (
                         \(ContextItem_ContextItem _ cn ts) -> expandClassPredicate (classEnvironment @lhs.importEnvironment) $ Constraint_Class (show cn)
                             [maybe (error "Unknown type variable") var $ lookup (show (makeTpSchemeFromType $ head ts)) @mapping] Nothing
@@ -233,15 +234,13 @@ SEM Declaration
 
 {
 
-combineSubsitutions :: [(String, MonoType)] -> [(String, TyVar)] -> [(Integer, Integer)] -> [(TyVar, MonoType)]
-combineSubsitutions [] _ _ = []
-combineSubsitutions ((s,tv):rst) mapping fmapping = (combineSubsitutions rst mapping fmapping) ++ 
+combineSubsitutions :: [(String, MonoType)] -> [(String, TyVar)] -> [(TyVar, MonoType)]
+combineSubsitutions [] _ = []
+combineSubsitutions ((s,tv):rst) mapping = (combineSubsitutions rst mapping) ++ 
     fromMaybe [] (
         do
             parsedTV <- lookup s mapping
-            let parsedInt = UL.name2Integer parsedTV
-            replacedTV <- lookup parsedInt fmapping
-            return $ [(integer2Name replacedTV, tv)] 
+            return $ [(parsedTV, tv)] 
     )
 
 

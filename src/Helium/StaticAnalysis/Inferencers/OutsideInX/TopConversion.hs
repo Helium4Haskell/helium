@@ -205,7 +205,7 @@ getConstraintFromPoly (PolyType_Mono cs _) = cs
 
 polytypeToMonoType :: [(Integer, Integer)] -> Integer -> PolyType ConstraintInfo -> ([(Integer, Integer)], ((MonoType, [Constraint ConstraintInfo]), Integer))
 polytypeToMonoType mapping bu (PolyType_Bind s b) = let
-    ((_, x), bu') = contFreshMRes (unbind b) bu
+    ((_, x), bu') = contFreshMRes (unbind b) (trace ("S: " ++ show s) bu)
     in polytypeToMonoType mapping bu' x
 polytypeToMonoType mapping bu (PolyType_Mono cs m) = freshenWithMapping mapping bu (m, cs)
     
