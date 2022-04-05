@@ -197,7 +197,7 @@ traceToMessageBlock rts = MessageCompose $ mapToBlock (1 :: Int) rts
         
         showReason rt = case rt of
             LeftToRight _ _ -> "left to right application"
-            CanonReduction _ -> "canon reduction"
+            CanonReduction _ -> "injectivity"
             TopLevelImprovement{} -> "injective top-level improvement"
 
 getTraceFromTwoTypes :: (CompareTypes m (RType ConstraintInfo), Fresh m, HasTypeGraph m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo)
