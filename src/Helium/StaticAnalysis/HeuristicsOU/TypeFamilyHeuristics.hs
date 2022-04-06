@@ -3,7 +3,7 @@
 module Helium.StaticAnalysis.HeuristicsOU.TypeFamilyHeuristics where
 import Unbound.Generics.LocallyNameless ( Fresh, unbind, Subst (substs), contFreshM, bind )
 import Rhodium.Blamer.Path
-import Helium.StaticAnalysis.Inferencers.OutsideInX.Rhodium.RhodiumTypes (Axiom (Axiom_ClosedGroup, Axiom_Unify), TyVar, RType (MType), Constraint (Constraint_Inst, Constraint_Unify), MonoType (MonoType_Fam, MonoType_App, MonoType_Con, MonoType_Var), PolyType (PolyType_Mono, PolyType_Bind), fvToList, ReductionType (TopLevelImprovement, CanonReduction), ReductionStep (Step), ReductionTrace)
+import Helium.StaticAnalysis.Inferencers.OutsideInX.Rhodium.RhodiumTypes (Axiom (Axiom_ClosedGroup, Axiom_Unify, Axiom_Injective), TyVar, RType (MType), Constraint (Constraint_Inst, Constraint_Unify), MonoType (MonoType_Fam, MonoType_App, MonoType_Con, MonoType_Var), PolyType (PolyType_Mono, PolyType_Bind), fvToList, ReductionType (TopLevelImprovement, CanonReduction), ReductionStep (Step), ReductionTrace, MonoTypes)
 import Helium.StaticAnalysis.Miscellaneous.ConstraintInfoOU
 import Rhodium.Blamer.Heuristics (VotingHeuristic (SingleVoting))
 import Rhodium.TypeGraphs.Graph
@@ -17,7 +17,7 @@ import Debug.Trace (trace)
 import Data.List (permutations, nub, intercalate)
 import Helium.StaticAnalysis.HeuristicsOU.HeuristicsInfo
 import Helium.StaticAnalysis.Messages.HeliumMessages (freshenRepresentation)
-import Helium.StaticAnalysis.Inferencers.OutsideInX.Rhodium.RhodiumInstances (reactClosedTypeFam, convertSubstitution, integer2Name)
+import Helium.StaticAnalysis.Inferencers.OutsideInX.Rhodium.RhodiumInstances (reactClosedTypeFam, convertSubstitution, integer2Name, loopAxioms)
 import Helium.Utils.Utils (internalError)
 import Rhodium.Core (unifyTypes, runTG)
 import Control.Monad (filterM)
@@ -304,3 +304,81 @@ injectUntouchableHeuristic path = SingleVoting "Type error through injection of 
               ((Step _ _ _ (TopLevelImprovement _ c _), _):_) -> Just c
               _ -> Nothing
           obtainTraceInfo _ _ = Nothing
+
+wronglyInjectiveHeuristic :: (Fresh m, HasTypeGraph m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo)
+                          => Path m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo -> VotingHeuristic m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo
+wronglyInjectiveHeuristic path = SingleVoting "Not injective enough" f
+  where
+    f (constraint, eid, ci, gm) = do
+      graph <- getGraph
+      case constraint of
+        Constraint_Inst _ pt _ -> do
+          let pmt = case pt of
+                pb@(PolyType_Bind _ _) -> (fst . fst . snd) $ polytypeToMonoType [] 0 pb
+                PolyType_Mono _ mt -> mt
+          let ceid = edgeIdFromPath path
+          let cedge = getEdgeFromId graph ceid
+          let pconstraint = getConstraintFromEdge cedge
+          case (pconstraint, labelFromPath path) of 
+            (Constraint_Unify mf@MonoType_Fam{} mt _, ErrorLabel "Residual constraint") -> do
+              axs <- getAxioms
+              (MType mf'@(MonoType_Fam fn mts _)) <- getSubstTypeFull (getGroupFromEdge cedge) (MType mf)
+              (MType mt') <- getSubstTypeFull (getGroupFromEdge cedge) (MType mt)
+              tchsMts <- getTchMtsFromArgs mts
+              rhsUnifiable <- isRhsUnifiable fn mt axs
+              case (tchsMts, rhsUnifiable) of
+                (_, False) -> return Nothing
+                (tchs, True) -> do
+                  let (injLocs, mAx) = obtainInjInfoFromAxs fn axs
+                  let errTchs = filter (`elem` injLocs) (map fst tchs)
+                  undefined
+            _ -> return Nothing
+        _ -> return Nothing
+
+        where
+          getTchMtsFromArgs :: (IsTouchable m TyVar, Fresh m) => MonoTypes -> m [(Int, MonoType)]
+          getTchMtsFromArgs mts = do
+            let vars = [(i, x) | (i, x) <- zip [0..] mts, isVar x]
+            filterM (\(_, MonoType_Var _ v _) -> isJust <$> isVertexTouchable v) vars
+
+            where
+              isVar MonoType_Var{} = True
+              isVar _              = False
+          
+          isRhsUnifiable :: (Fresh m, HasTypeGraph m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo)
+                         => String -> MonoType -> [Axiom ConstraintInfo] -> m Bool
+          isRhsUnifiable fn mt (Axiom_Unify b _:axs) = do
+            (_, (lhs@(MonoType_Fam fn' _ _), rhs)) <- unbind b
+            if fn == fn'
+              then do
+                allAxs <- getAxioms
+                tchs <- filterM (fmap isJust . isVertexTouchable) (nub $ fvToList rhs ++ fvToList mt :: [TyVar])
+                res <- runTG $ unifyTypes allAxs [] [Constraint_Unify mt rhs Nothing] tchs
+                case res of
+                  Nothing -> return False
+                  Just _ -> return True
+              else isRhsUnifiable fn mt axs
+          isRhsUnifiable fn mt (Axiom_ClosedGroup fn' axs': axs) = if fn == fn'
+            then isRhsUnifiable fn mt axs'
+            else isRhsUnifiable fn mt axs
+          isRhsUnifiable fn mt (_:axs) = isRhsUnifiable fn mt axs
+          isRhsUnifiable _ _ [] = return False
+
+          obtainInjInfoFromAxs :: String -> [Axiom ConstraintInfo] -> ([Int], Maybe (Axiom ConstraintInfo))
+          obtainInjInfoFromAxs fn (ax@(Axiom_Injective afn idx):axs) = if fn == afn then (idx, Just ax) else obtainInjInfoFromAxs fn axs
+          obtainInjInfoFromAxs fn (_:axs) = obtainInjInfoFromAxs fn axs
+          obtainInjInfoFromAxs _  [] = ([], Nothing)
+
+          -- Needs to be revisited (tomorrow).
+          tryNewInjectiveSituation :: String -> Int -> Maybe (Axiom ConstraintInfo) -> [Axiom ConstraintInfo] -> Constraint ConstraintInfo -> Maybe Int
+          tryNewInjectiveSituation fn iarg mAx axs c = let
+            newInjAx = case mAx of
+              Nothing -> Axiom_Injective fn [iarg]
+              Just ax -> ax
+
+            newAxs = newInjAx : filter (isInjectiveWithName fn) axs
+            in undefined
+          
+          isInjectiveWithName :: String -> Axiom ConstraintInfo -> Bool
+          isInjectiveWithName fn (Axiom_Injective fn' _) = fn == fn'
+          isInjectiveWithName _  _ = False           
