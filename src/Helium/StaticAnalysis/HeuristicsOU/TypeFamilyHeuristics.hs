@@ -287,10 +287,11 @@ injectUntouchableHeuristic path = SingleVoting "Type error through injection of 
                 Nothing -> return Nothing
                 Just (cl, cr) -> if typeIsInType cl pmt
                   then let
-                    because_hint = addHint "because" ("could not assign " ++ (show . show) mt ++ " to " ++ (show . show) mv)
-                    hint_hint = addHint "hint" ("we cannot assign any type to " ++ (show . show) mv ++ " because it is qualified under a forall")
-                    hint = because_hint . hint_hint
-                    in return $ Just (5, "Tried to inject untouchable", constraint, eid, addProperty (InjectUntouchable trace_mt (cl, cr)) $ hint ci, gm)
+                    because_hint = addHint "because" ("could not assign " ++ (show . show) mt ++ " to " ++ (show . show) mv ++ ". " ++ 
+                                                     (show . show) mv ++ " is quantified with a (implicit) forall and cannot be assigned any type")
+                    --hint_hint = addHint "hint" ("we cannot assign any type to " ++ (show . show) mv ++ " because it is qualified under a forall")
+                    -- hint = because_hint . hint_hint
+                    in return $ Just (5, "Tried to inject untouchable", constraint, eid, addProperty (InjectUntouchable trace_mt (cl, cr)) $ because_hint ci, gm)
                   else return Nothing
             _ -> return Nothing
         _ -> return Nothing
