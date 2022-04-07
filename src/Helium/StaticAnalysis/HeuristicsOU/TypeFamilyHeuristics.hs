@@ -3,7 +3,7 @@
 module Helium.StaticAnalysis.HeuristicsOU.TypeFamilyHeuristics where
 import Unbound.Generics.LocallyNameless ( Fresh, unbind, Subst (substs), contFreshM, bind )
 import Rhodium.Blamer.Path
-import Helium.StaticAnalysis.Inferencers.OutsideInX.Rhodium.RhodiumTypes (Axiom (Axiom_ClosedGroup, Axiom_Unify, Axiom_Injective), TyVar, RType (MType), Constraint (Constraint_Inst, Constraint_Unify), MonoType (MonoType_Fam, MonoType_App, MonoType_Con, MonoType_Var), PolyType (PolyType_Mono, PolyType_Bind), fvToList, ReductionType (TopLevelImprovement, CanonReduction), ReductionStep (Step), ReductionTrace, MonoTypes)
+import Helium.StaticAnalysis.Inferencers.OutsideInX.Rhodium.RhodiumTypes (Axiom (Axiom_ClosedGroup, Axiom_Unify, Axiom_Injective), TyVar, RType (MType), Constraint (Constraint_Inst, Constraint_Unify), MonoType (MonoType_Fam, MonoType_App, MonoType_Con, MonoType_Var), PolyType (PolyType_Mono, PolyType_Bind), fvToList, ReductionType (TopLevelImprovement, CanonReduction), ReductionStep (Step), ReductionTrace, MonoTypes, isFamilyFree)
 import Helium.StaticAnalysis.Miscellaneous.ConstraintInfoOU
 import Rhodium.Blamer.Heuristics (VotingHeuristic (SingleVoting))
 import Rhodium.TypeGraphs.Graph
@@ -12,17 +12,19 @@ import Rhodium.TypeGraphs.GraphUtils
 import Rhodium.Solver.Rules (ErrorLabel (ErrorLabel))
 
 import Helium.StaticAnalysis.Miscellaneous.ReductionTraceUtils (buildReductionTrace, getFullTrace, getLastTypeInTrace, getFirstTypeInTrace, squashTrace)
-import Data.Maybe (isJust, catMaybes, fromMaybe)
+import Data.Maybe (isJust, catMaybes, fromMaybe, mapMaybe)
 import Debug.Trace (trace)
 import Data.List (permutations, nub, intercalate)
 import Helium.StaticAnalysis.HeuristicsOU.HeuristicsInfo
 import Helium.StaticAnalysis.Messages.HeliumMessages (freshenRepresentation)
-import Helium.StaticAnalysis.Inferencers.OutsideInX.Rhodium.RhodiumInstances (reactClosedTypeFam, convertSubstitution, integer2Name, loopAxioms)
+import Helium.StaticAnalysis.Inferencers.OutsideInX.Rhodium.RhodiumInstances (reactClosedTypeFam, convertSubstitution, integer2Name, loopAxioms, axsToInjectiveEnv)
 import Helium.Utils.Utils (internalError)
 import Rhodium.Core (unifyTypes, runTG)
 import Control.Monad (filterM)
 import Helium.StaticAnalysis.Inferencers.OutsideInX.TopConversion (polytypeToMonoType)
 import Helium.StaticAnalysis.Miscellaneous.TypeConversion (Freshen(freshenWithMapping))
+import Helium.StaticAnalysis.StaticChecks.TypeFamilyInfos (TFInstanceInfo(tfiName), tails)
+import Helium.StaticAnalysis.StaticChecks.TypeFamilies (performPairwiseInjCheck, performWronglyUsedVarInInjCheck)
 
 typeErrorThroughReduction :: (Fresh m, HasTypeGraph m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo)
                           => Path m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo -> VotingHeuristic m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo
@@ -195,40 +197,6 @@ typeErrorThroughReduction path = SingleVoting "Type error through type family re
                   Just p -> Just ([],[p])
                   Nothing -> Nothing
 
-          -- Filter function for axioms.
-          filterOnAxsRHS :: (Fresh m, HasTypeGraph m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo, CompareTypes m (RType ConstraintInfo))
-                         => String -> [Axiom ConstraintInfo] -> [Axiom ConstraintInfo] -> MonoType -> m (Maybe [MonoType])
-          filterOnAxsRHS fn axs axs' mt = do
-            filterRes <- catMaybes <$> mapM (filterAxOnRHS axs' fn mt) axs
-            case filterRes of
-              [] -> return $ Just []
-              [x] -> return $ Just x
-              _ : _ -> return Nothing
-
-          -- Checks one axiom at a time.
-          filterAxOnRHS :: (Fresh m, HasTypeGraph m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo, CompareTypes m (RType ConstraintInfo)) 
-                        => [Axiom ConstraintInfo] -> String -> MonoType -> Axiom ConstraintInfo -> m (Maybe [MonoType])
-          filterAxOnRHS axs fn mt (Axiom_Unify b _) = do
-            (aes, (lhs@(MonoType_Fam fn' _ _), rhs)) <- unbind b
-            if fn /= fn'
-              then return Nothing
-              else do
-                tchs <- filterM (fmap isJust . isVertexTouchable) (fvToList mt :: [TyVar])
-                -- We check if the right hand side unifies with the type from the constraint.
-                res <- runTG $ unifyTypes axs [] [Constraint_Unify rhs mt Nothing] (nub $ tchs ++ aes)
-                case res of
-                  -- If so, apply the substitution and return the argument types.
-                  Just s -> do
-                    let (MonoType_Fam _ mts _) = substs (convertSubstitution s) lhs
-                    return $ Just mts
-                  Nothing -> return Nothing
-          -- If closed group, loop over the group.
-          filterAxOnRHS axs' fn mt (Axiom_ClosedGroup fn' axs) =
-            if fn == fn'
-              then filterOnAxsRHS fn axs axs' mt
-              else return Nothing
-          filterAxOnRHS _ _ _ _ = return Nothing
-
           getMaybeClosedAxs :: [Axiom ConstraintInfo] -> String -> Maybe [Axiom ConstraintInfo]
           getMaybeClosedAxs (Axiom_ClosedGroup fn1 cgaxs: _) fn2
             | fn1 == fn2 = Just cgaxs
@@ -321,21 +289,84 @@ wronglyInjectiveHeuristic path = SingleVoting "Not injective enough" f
           let pconstraint = getConstraintFromEdge cedge
           case (pconstraint, labelFromPath path) of 
             (Constraint_Unify mf@MonoType_Fam{} mt _, ErrorLabel "Residual constraint") -> do
-              axs <- getAxioms
-              (MType mf'@(MonoType_Fam fn mts _)) <- getSubstTypeFull (getGroupFromEdge cedge) (MType mf)
-              (MType mt') <- getSubstTypeFull (getGroupFromEdge cedge) (MType mt)
-              tchsMts <- getTchMtsFromArgs mts
-              rhsUnifiable <- isRhsUnifiable fn mt axs
-              case (tchsMts, rhsUnifiable) of
-                (_, False) -> return Nothing
-                (tchs, True) -> do
-                  let (injLocs, mAx) = obtainInjInfoFromAxs fn axs
-                  let errTchs = filter (`elem` injLocs) (map fst tchs)
-                  undefined
+              injHint <- buildNestedInjHint cedge mf mt
+              return $ Just (7, "Was not injective enough error", constraint, eid, injHint ci, gm)
             _ -> return Nothing
         _ -> return Nothing
 
         where
+
+          buildNestedInjHint :: (Fresh m, HasTypeGraph m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo)
+                             => TGEdge (Constraint ConstraintInfo) -> MonoType -> MonoType -> m (ConstraintInfo -> ConstraintInfo)
+          buildNestedInjHint cedge mf@(MonoType_Fam fn mts _) mt = do
+            axs <- getAxioms
+            (MType mf'@(MonoType_Fam fn mts _)) <- getSubstTypeFull (getGroupFromEdge cedge) (MType mf)
+            (MType mt') <- getSubstTypeFull (getGroupFromEdge cedge) (MType mt)
+            tchsMts <- getTchMtsFromArgs mts
+            rhsUnifiable <- isRhsUnifiable fn mt' axs
+            case (tchsMts, trace ("RHS UNIFIABLE: " ++ show rhsUnifiable ++ ", " ++ show mt') rhsUnifiable) of
+              (_, False) -> return id
+              (tchs, True) -> do
+                wantedArgs <- filterOnAxsRHS fn axs axs (trace ("TCHS: " ++ show tchs) mt')
+                case wantedArgs of
+                  Nothing -> return id
+                  Just wargs -> do
+                    -- Recurse with wanted args
+                    let considerables = zip mts wargs
+                    nestedRes <- foldl1 (.) <$> mapM (uncurry (buildNestedInjHint cedge)) considerables
+                    
+                    -- Build hint on this level
+                    hint <- buildInjHint (map fst tchs) mf' mt'
+                    return $ nestedRes . hint
+          buildNestedInjHint _ _ _ = return id
+
+          buildInjHint :: (Fresh m, HasTypeGraph m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo)
+                       => [Int] -> MonoType -> MonoType -> m (ConstraintInfo -> ConstraintInfo)
+          buildInjHint tchs mf@(MonoType_Fam fn mts _) mt = if all isFamilyFree mts
+            then do
+              axs <- getAxioms
+              let injLocs = obtainInjInfoFromAxs fn axs
+              let errTchs = filter (`notElem` injLocs) tchs
+              let pSet = powerset (trace ("INJLOCS, ERRTCHS: " ++ show injLocs ++ ", " ++ show errTchs) errTchs)
+              possibleInjCombs <- catMaybes <$> mapM (checkNewInjectivity fn axs mf mt) pSet
+              return $ addHint "possible fix" ("Substitute inj annotation with following indices: " ++ show possibleInjCombs)
+            else return id
+          buildInjHint _ _ _ = return id
+
+          checkNewInjectivity :: (Fresh m, HasTypeGraph m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo)
+                              => String -> [Axiom ConstraintInfo] -> MonoType -> MonoType -> [Int] -> m (Maybe [Int])
+          checkNewInjectivity fn axs fam mt  newTchs = do
+            let (axs', is) = swapInjAxiom fn newTchs axs
+            let unifyAxs = filterAxiomsOnName fn axs' -- only unify axioms of type fam 'fn'
+            ienv <- axsToInjectiveEnv axs'
+            let unifyCombs = [(x, y) | (x:ys) <- tails unifyAxs, y <- ys]
+            -- pairwise injectivity check and wrongly used vars check from static checks
+            let pairwiseRes = mapMaybe (uncurry (performPairwiseInjCheck ienv)) unifyCombs
+            let wronlyUsedVarRes = mapMaybe (performWronglyUsedVarInInjCheck ienv) unifyAxs
+            -- if there are errors, we cannot use the new injetivity notation
+            case pairwiseRes ++ wronlyUsedVarRes of
+              [] -> do
+                -- Check if the constraint is solved
+                tchs <- filterM (fmap isJust . isVertexTouchable) (nub $ fvToList fam ++ fvToList mt :: [TyVar])
+                res <- runTG $ unifyTypes axs' [] [Constraint_Unify fam mt Nothing] tchs
+                case res of
+                  Nothing -> return Nothing
+                  Just _ -> return $ Just is
+              _  -> return Nothing
+
+          swapInjAxiom :: String -> [Int] -> [Axiom ConstraintInfo] -> ([Axiom ConstraintInfo], [Int])
+          swapInjAxiom fn is axs = let
+
+            isInjective (Axiom_Injective fn' _) = fn == fn'
+            isInjective _ = False
+
+            oldInj = maybeHead $ filter isInjective axs
+            remainingAxs = filter (not . isInjective) axs
+            in case oldInj of
+              Nothing -> (Axiom_Injective fn is : axs, is)
+              Just ax@(Axiom_Injective _ is') -> (Axiom_Injective fn (nub $ is ++ is') : remainingAxs, is ++ is')
+              _ -> error "Should not happen!"
+          
           getTchMtsFromArgs :: (IsTouchable m TyVar, Fresh m) => MonoTypes -> m [(Int, MonoType)]
           getTchMtsFromArgs mts = do
             let vars = [(i, x) | (i, x) <- zip [0..] mts, isVar x]
@@ -364,21 +395,51 @@ wronglyInjectiveHeuristic path = SingleVoting "Not injective enough" f
           isRhsUnifiable fn mt (_:axs) = isRhsUnifiable fn mt axs
           isRhsUnifiable _ _ [] = return False
 
-          obtainInjInfoFromAxs :: String -> [Axiom ConstraintInfo] -> ([Int], Maybe (Axiom ConstraintInfo))
-          obtainInjInfoFromAxs fn (ax@(Axiom_Injective afn idx):axs) = if fn == afn then (idx, Just ax) else obtainInjInfoFromAxs fn axs
+          obtainInjInfoFromAxs :: String -> [Axiom ConstraintInfo] -> [Int]
+          obtainInjInfoFromAxs fn (ax@(Axiom_Injective afn idx):axs) = if fn == afn then idx else obtainInjInfoFromAxs fn axs
           obtainInjInfoFromAxs fn (_:axs) = obtainInjInfoFromAxs fn axs
-          obtainInjInfoFromAxs _  [] = ([], Nothing)
+          obtainInjInfoFromAxs _  [] = []
 
-          -- Needs to be revisited (tomorrow).
-          tryNewInjectiveSituation :: String -> Int -> Maybe (Axiom ConstraintInfo) -> [Axiom ConstraintInfo] -> Constraint ConstraintInfo -> Maybe Int
-          tryNewInjectiveSituation fn iarg mAx axs c = let
-            newInjAx = case mAx of
-              Nothing -> Axiom_Injective fn [iarg]
-              Just ax -> ax
+-- Filter function for axioms.
+filterOnAxsRHS :: (Fresh m, HasTypeGraph m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo, CompareTypes m (RType ConstraintInfo))
+                => String -> [Axiom ConstraintInfo] -> [Axiom ConstraintInfo] -> MonoType -> m (Maybe [MonoType])
+filterOnAxsRHS fn axs axs' mt = do
+  filterRes <- catMaybes <$> mapM (filterAxOnRHS axs' fn mt) axs
+  case filterRes of
+    [] -> return $ Just []
+    [x] -> return $ Just x
+    _ : _ -> return Nothing
 
-            newAxs = newInjAx : filter (isInjectiveWithName fn) axs
-            in undefined
-          
-          isInjectiveWithName :: String -> Axiom ConstraintInfo -> Bool
-          isInjectiveWithName fn (Axiom_Injective fn' _) = fn == fn'
-          isInjectiveWithName _  _ = False           
+-- Checks one axiom at a time.
+filterAxOnRHS :: (Fresh m, HasTypeGraph m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo, CompareTypes m (RType ConstraintInfo)) 
+              => [Axiom ConstraintInfo] -> String -> MonoType -> Axiom ConstraintInfo -> m (Maybe [MonoType])
+filterAxOnRHS axs fn mt (Axiom_Unify b _) = do
+  (aes, (lhs@(MonoType_Fam fn' _ _), rhs)) <- unbind b
+  if fn /= fn'
+    then return Nothing
+    else do
+      tchs <- filterM (fmap isJust . isVertexTouchable) (fvToList mt :: [TyVar])
+      -- We check if the right hand side unifies with the type from the constraint.
+      res <- runTG $ unifyTypes axs [] [Constraint_Unify rhs mt Nothing] (nub $ tchs ++ aes)
+      case res of
+        -- If so, apply the substitution and return the argument types.
+        Just s -> do
+          let (MonoType_Fam _ mts _) = substs (convertSubstitution s) lhs
+          return $ Just mts
+        Nothing -> return Nothing
+-- If closed group, loop over the group.
+filterAxOnRHS axs' fn mt (Axiom_ClosedGroup fn' axs) =
+  if fn == fn'
+    then filterOnAxsRHS fn axs axs' mt
+    else return Nothing
+filterAxOnRHS _ _ _ _ = return Nothing
+
+powerset :: [a] -> [[a]]
+powerset [] = [[]]
+powerset (x:xs) = [r | ps <- powerset xs, r <- [x:ps,ps]]
+
+filterAxiomsOnName :: String -> [Axiom ConstraintInfo] -> [Axiom ConstraintInfo]
+filterAxiomsOnName fn (ax@(Axiom_Unify _ (Just tfi)):axs) = if show (tfiName tfi) == fn then ax : filterAxiomsOnName fn axs else filterAxiomsOnName fn axs
+filterAxiomsOnName fn (Axiom_ClosedGroup fn' axs:axs') = if fn == fn' then axs else filterAxiomsOnName fn axs'
+filterAxiomsOnName fn (_:axs) = filterAxiomsOnName fn axs
+filterAxiomsOnName _ _ = []

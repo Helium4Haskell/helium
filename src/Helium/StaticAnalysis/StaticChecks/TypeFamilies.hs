@@ -24,6 +24,7 @@ import Helium.StaticAnalysis.StaticChecks.TypeFamilyInfos
 import Helium.StaticAnalysis.Miscellaneous.ConstraintInfoOU
 import Unbound.Generics.LocallyNameless.Operations (unbind)
 import Unbound.Generics.LocallyNameless.Fresh (FreshM)
+import Helium.Utils.Utils (internalError)
 
 -- Checks if a MonoType is as a whole a type family application
 isTFApplication :: MonoType -> Bool 
@@ -379,7 +380,14 @@ pairwiseInjCheck fams ienv (inst1, inst2) = let
   axiom1 = tfInstanceInfoToAxiom fams inst1
   axiom2 = tfInstanceInfoToAxiom fams inst2
   
-  ((clhs1@(MonoType_Fam _ lhs1 _), rhs1), (clhs2@(MonoType_Fam _ lhs2 _), rhs2)) = runFreshM $ unbindAx axiom1 axiom2
+  in performPairwiseInjCheck ienv axiom1 axiom2
+
+performPairwiseInjCheck :: InjectiveEnv -> Axiom ConstraintInfo -> Axiom ConstraintInfo -> Maybe Error 
+performPairwiseInjCheck ienv ax1 ax2 = let
+  
+  ((clhs1@(MonoType_Fam _ lhs1 _), rhs1), (clhs2@(MonoType_Fam _ lhs2 _), rhs2)) = runFreshM $ unbindAx ax1 ax2
+  inst1 = getTFIfromAx ax1
+  inst2 = getTFIfromAx ax2
 
   in case preUnify ienv rhs1 rhs2 of
             -- RHSs surely apart, No error, no clashing.
@@ -387,7 +395,7 @@ pairwiseInjCheck fams ienv (inst1, inst2) = let
             -- RHSs may unify (under preunification).
             Unifiable subst
               -- If all injective arguments agree with each other, there is no problem.
-              | all (\i -> checkInjArg subst (lhs1 !! i) (lhs2 !! i)) injIndices
+              | all (\i -> checkInjArg subst (lhs1 !! i) (lhs2 !! i)) $ injIndices inst1
                   -> Nothing 
               -- In case of a closed type family, we are good when the lhs's are not equal after applying the substitution.
               | tfiType inst1 == Closed && applySubst subst clhs1 /= applySubst subst clhs2
@@ -396,7 +404,7 @@ pairwiseInjCheck fams ienv (inst1, inst2) = let
               | otherwise
                   -> Just $ InjPreUnifyFailed (tfiName inst1) (tfiName inst2) clhs1 clhs2 rhs1 rhs2  -- ERROR!
   where
-    injIndices = ienv M.! show (tfiName inst1)
+    injIndices inst = ienv M.! show (tfiName inst)
 
     checkInjArg :: SubstitutionEnv -> MonoType -> MonoType -> Bool
     checkInjArg subst mt1 mt2 = applySubst subst mt1 == applySubst subst mt2
@@ -408,12 +416,21 @@ unbindAx (Axiom_Unify b1 _) (Axiom_Unify b2 _) = do
   (_, (lhs2, rhs2)) <- unbind b2
   return ((lhs1, rhs1), (lhs2, rhs2))
 
+getTFIfromAx :: Axiom ConstraintInfo -> TFInstanceInfo
+getTFIfromAx (Axiom_Unify _ (Just tfi)) = tfi
+getTFIfromAx _ = internalError "TypeFamilies.hs" "performPairwiseInjCheck" "Axiom should contain TFInstanceInfo"
+
 -- Performs whether type vars in injective arguments are used injectively in the definition.
 wronglyUsedVarInInjCheck :: TypeFamilies -> InjectiveEnv -> TFInstanceInfo -> Maybe Error
 wronglyUsedVarInInjCheck fams ienv inst = let
 
-  (Axiom_Unify b _) = tfInstanceInfoToAxiom fams inst
+  ax = tfInstanceInfoToAxiom fams inst
+  in performWronglyUsedVarInInjCheck ienv ax
+
+performWronglyUsedVarInInjCheck :: InjectiveEnv -> Axiom ConstraintInfo -> Maybe Error
+performWronglyUsedVarInInjCheck ienv ax@(Axiom_Unify b _) = let
   (_, (lhs@(MonoType_Fam f mts _), rhs)) = runFreshM $ unbind b
+  inst = getTFIfromAx ax
   
   injMts = map (mts !!) $ ienv M.! f
   -- gets the vars in the injective arguments of the LHS
@@ -426,6 +443,7 @@ wronglyUsedVarInInjCheck fams ienv inst = let
   in if S.null badVars
       then Nothing
       else  Just $ InjWronglyUsedVars (tfiName inst) lhs rhs (map fst $ S.toList badVars)
+
 
 -- TyVar forgets the name of the variable and we therefore return a tuple containing the name
 -- in the form of a string.
