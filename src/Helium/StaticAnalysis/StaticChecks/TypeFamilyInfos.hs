@@ -7,6 +7,9 @@ import Data.Maybe (isJust, fromJust)
 import qualified Data.Map as M
 import Data.List (elemIndex)
 import Unbound.Generics.LocallyNameless hiding (Name)
+import Data.Map (Map)
+import qualified Data.Map as M
+import Helium.Syntax.UHA_Range (noRange)
 
 
 deriving instance Show Type
@@ -22,6 +25,7 @@ data TFType
   = Open -- open type family
   | Closed -- closed type family
   | ATS -- associated type synonym
+  | TypeSyn
   deriving (Show, Eq, Ord)
 
 data TFDeclInfo = TDI {
@@ -47,6 +51,7 @@ data TFInstanceInfo = TII {
   , preCompat :: [Int] -- contains indices of other instances with which the closed instance is compatible, empty for open tfs and ATSs.
   , tfiRange :: Range
   , closedDeclName :: Maybe Name
+  , varNameMap :: Maybe (Map Int Name)
   } deriving (Show, Eq, Ord)
 
 instance Alpha TFInstanceInfo where
@@ -112,6 +117,7 @@ createATSInst n ts t ct cn range = TII {
   , preCompat = []
   , tfiRange = range
   , closedDeclName = Nothing
+  , varNameMap = Nothing
 }
 
 createOpenTFInst :: Name -> Types -> Type -> Range -> TFInstanceInfo
@@ -126,6 +132,7 @@ createOpenTFInst n ts t range = TII {
   , preCompat = [] 
   , tfiRange = range
   , closedDeclName = Nothing
+  , varNameMap = Nothing
 }
 
 createClosedTFInst :: Name -> Types -> Type -> Int -> Range -> Maybe Name -> TFInstanceInfo
@@ -139,8 +146,27 @@ createClosedTFInst n ts t prio range declName = TII {
   , classIName = Nothing
   , preCompat = [] 
   , tfiRange = range
-  , closedDeclName = declName 
+  , closedDeclName = declName
+  , varNameMap = Nothing
 }
+
+createTypeSynTFInst :: Name -> Types -> Type -> TFInstanceInfo
+createTypeSynTFInst n ts t = TII {
+    tfiName = n
+  , argTypes = ts
+  , defType = t
+  , tfiType = TypeSyn
+  , priority = Nothing
+  , classTypes = Nothing
+  , classIName = Nothing
+  , preCompat = []
+  , tfiRange = noRange
+  , closedDeclName = Nothing
+  , varNameMap = Nothing
+}
+
+insertVarNameMap :: Map Int Name -> TFInstanceInfo -> TFInstanceInfo
+insertVarNameMap m ti = ti { varNameMap = Just m }
 
 insertPreCompat :: [Int] -> TFInstanceInfo -> TFInstanceInfo
 insertPreCompat pcs ti = ti { preCompat = pcs }

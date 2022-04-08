@@ -140,13 +140,13 @@ type family J a where
 -- g :: Loop [[[[[[[String]]]]]]]
 -- g = "Hi"
 
--- type family Loop a where
---     Loop [a] = Loop a
---     Loop a = a
---     --Loop Int = Bool
+type family Loop a where
+    Loop [a] = Loop a
+    Loop a = a
+    --Loop Int = Bool
 
--- g :: Loop [[[[[[[a]]]]]]]
--- g = True
+g :: Loop [[[[[[[a]]]]]]]
+g = True
 
 --h = g + g
 -- Int -> Int > h_
@@ -196,18 +196,18 @@ type family J a where
 -- right :: a -> b -> Right a b
 -- right x y = x
 
-type family Foo a
-type instance Foo Char = Bool
-type instance Foo Int = Float
-type instance Foo Float = Int
+-- type family Foo a = r | r -> a
+-- type instance Foo Char = Bool
+-- type instance Foo Int = Float
+-- type instance Foo Float = Int
 
-class Bar t where
-  clsF :: Foo t
-instance Bar Char where
-  clsF = True
+-- class Bar t where
+--   clsF :: Foo t
+-- instance Bar Char where
+--   clsF = True
 
-main :: Bool
-main = clsF :: Bool
+-- main :: Bool
+-- main = clsF :: Bool
 
 -- type family Foo a = r | r -> a
 -- type instance Foo Char = Bool

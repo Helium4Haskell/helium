@@ -330,8 +330,8 @@ preComputeCompat fams tis = let
 compat :: TypeFamilies -> (TFInstanceInfo, TFInstanceInfo) -> Maybe Error
 compat tfams (inst1, inst2) = let
 
-  axiom1 = tfInstanceInfoToAxiom tfams inst1
-  axiom2 = tfInstanceInfoToAxiom tfams inst2
+  axiom1 = tfInstanceInfoToAxiom tfams Nothing inst1
+  axiom2 = tfInstanceInfoToAxiom tfams Nothing inst2
 
   ((lhs1, rhs1), (lhs2, rhs2)) = runFreshM $ unbindAx axiom1 axiom2
 
@@ -346,8 +346,8 @@ compat tfams (inst1, inst2) = let
 compatWarn :: TypeFamilies -> (TFInstanceInfo, TFInstanceInfo) -> Maybe Warning
 compatWarn tfams (inst1, inst2) = let
   
-  axiom1 = tfInstanceInfoToAxiom tfams inst1
-  axiom2 = tfInstanceInfoToAxiom tfams inst2
+  axiom1 = tfInstanceInfoToAxiom tfams Nothing inst1
+  axiom2 = tfInstanceInfoToAxiom tfams Nothing inst2
 
   ((lhs1, _), (lhs2, rhs2)) = runFreshM $ unbindAx axiom1 axiom2
   in case matchTy lhs1 lhs2 of
@@ -377,8 +377,8 @@ pairwiseInjCheck :: TypeFamilies -- Type fams to build axioms
                  -> Maybe Error -- Result is a maybe error
 pairwiseInjCheck fams ienv (inst1, inst2) = let
 
-  axiom1 = tfInstanceInfoToAxiom fams inst1
-  axiom2 = tfInstanceInfoToAxiom fams inst2
+  axiom1 = tfInstanceInfoToAxiom fams Nothing inst1
+  axiom2 = tfInstanceInfoToAxiom fams Nothing inst2
   
   in performPairwiseInjCheck ienv axiom1 axiom2
 
@@ -424,7 +424,7 @@ getTFIfromAx _ = internalError "TypeFamilies.hs" "performPairwiseInjCheck" "Axio
 wronglyUsedVarInInjCheck :: TypeFamilies -> InjectiveEnv -> TFInstanceInfo -> Maybe Error
 wronglyUsedVarInInjCheck fams ienv inst = let
 
-  ax = tfInstanceInfoToAxiom fams inst
+  ax = tfInstanceInfoToAxiom fams Nothing inst
   in performWronglyUsedVarInInjCheck ienv ax
 
 performWronglyUsedVarInInjCheck :: InjectiveEnv -> Axiom ConstraintInfo -> Maybe Error

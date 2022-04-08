@@ -62,7 +62,7 @@ import Data.Functor.Identity
 import Unbound.Generics.LocallyNameless.Fresh
 import Unbound.Generics.LocallyNameless.Operations hiding (freshen)
 import Rhodium.TypeGraphs.GraphInstances()
-import Helium.StaticAnalysis.StaticChecks.TypeFamilyInfos (TFInstanceInfo (tfiName, argTypes, defType, tfiType, preCompat), splitBy, TFType (Closed), TFInstanceInfos, ordPrio, buildInjectiveEnv)
+import Helium.StaticAnalysis.StaticChecks.TypeFamilyInfos (TFInstanceInfo (tfiName, argTypes, defType, tfiType, preCompat), splitBy, TFType (Closed), TFInstanceInfos, ordPrio, buildInjectiveEnv, TFDeclInfo (argNames), insertVarNameMap)
 
 type TypeFamilies = [(String, Int)]
 
@@ -237,27 +237,29 @@ typeSynonymsToAxioms env = concatMap tsToAxioms $ M.toList env
                     in [Axiom_Injective (show name) vars, unifyAxiom]
 
 -- For use during static checks
-tfInstanceInfoToAxiom :: TypeFamilies -> TFInstanceInfo -> Axiom ConstraintInfo
-tfInstanceInfoToAxiom fams iInfo = let
+tfInstanceInfoToAxiom :: TypeFamilies -> Maybe TFDeclInfo -> TFInstanceInfo -> Axiom ConstraintInfo
+tfInstanceInfoToAxiom fams dInfo iInfo = let
     famType = buildUHATf (tfiName iInfo) (argTypes iInfo)
     (_, lhsenv, lhsMonoType) = typeToMonoType fams famType
     (_, _, rhsMonoType) = typeToMonoType fams $ defType iInfo
     rhsMonoType' = updateRhs lhsenv rhsMonoType
 
     axVars = fvToList lhsMonoType
+    iInfo' = insertVarNameMap (M.fromList $ zip [0..] (maybe [] argNames dInfo)) iInfo
 
-    in Axiom_Unify (bind axVars (lhsMonoType, rhsMonoType')) $ Just iInfo
+    in Axiom_Unify (bind axVars (lhsMonoType, rhsMonoType')) $ Just iInfo'
 
-closedTFInstanceInfoToAxiom :: TypeFamilies -> TFInstanceInfo -> Axiom ConstraintInfo
-closedTFInstanceInfoToAxiom fams iInfo = let
+closedTFInstanceInfoToAxiom :: TypeFamilies -> Maybe TFDeclInfo ->  TFInstanceInfo -> Axiom ConstraintInfo
+closedTFInstanceInfoToAxiom fams dInfo iInfo = let
     famType = buildUHATf (tfiName iInfo) (argTypes iInfo)
     (_, lhsenv, lhsMonoType) = typeToMonoType fams famType
     (_, _, rhsMonoType) = typeToMonoType fams $ defType iInfo
     rhsMonoType' = updateRhs lhsenv rhsMonoType
 
     axVars = fvToList lhsMonoType
+    iInfo' = insertVarNameMap (M.fromList $ zip [0..] (maybe [] argNames dInfo)) iInfo
 
-    in Axiom_Unify (bind axVars (lhsMonoType, rhsMonoType')) $ Just iInfo
+    in Axiom_Unify (bind axVars (lhsMonoType, rhsMonoType')) $ Just iInfo'
 
 
 -- For use during static checks
@@ -274,17 +276,18 @@ tfInstanceInfoToMonoTypes fams iInfo = let
 typeFamiliesToAxioms :: TypeFamilies -> ImportEnvironment -> [Axiom ConstraintInfo]
 typeFamiliesToAxioms fams env = let
     injEnv = buildInjectiveEnv $ M.elems $ typeFamDeclEnvironment env
+    declEnv = typeFamDeclEnvironment env
     tfInstances = M.assocs $ typeFamInstanceEnvironment env
     (closed, other) = splitBy (\(_,i:_) -> tfiType i == Closed) tfInstances
 
-    closedAxs = map createClosedGroup closed
+    closedAxs = map (createClosedGroup declEnv) closed
     injAxioms = map (uncurry Axiom_Injective) $ filter (\(_, idx) -> not (null idx)) $ M.assocs injEnv
-    openAxs = concatMap (map (tfInstanceInfoToAxiom fams) . snd) other
+    openAxs = concatMap (\(n, insts) -> map (tfInstanceInfoToAxiom fams (Just $ declEnv M.! n)) insts) other
     in closedAxs ++ injAxioms ++ openAxs
     where
-        createClosedGroup :: (Name, TFInstanceInfos) -> Axiom ConstraintInfo
-        createClosedGroup (n, infos) = let
-            axs = map (closedTFInstanceInfoToAxiom fams) (sortBy ordPrio infos)
+        createClosedGroup :: TypeFamDeclEnvironment -> (Name, TFInstanceInfos) -> Axiom ConstraintInfo
+        createClosedGroup declEnv (n, infos) = let
+            axs = map (closedTFInstanceInfoToAxiom fams (Just $ declEnv M.! n)) (sortBy ordPrio infos)
             in Axiom_ClosedGroup (show n) axs
 
 -- Ensures that the right hand side vars are updated to coincide with the vars in the left hand side
