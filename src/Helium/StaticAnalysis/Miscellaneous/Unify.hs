@@ -187,5 +187,5 @@ applySubst env (MonoType_App mt1 mt2 ri)  = MonoType_App (applySubst env mt1) (a
 
 -- Only over LHSs of type family axioms.
 applyOverInjArgs :: SubstitutionEnv -> [Int] -> MonoType -> MonoType
-applyOverInjArgs env injIdx (MonoType_Fam f mts ri) = MonoType_Fam f [applySubst env t | (i,t) <- zip [0..] mts, i `elem` injIdx] ri
+applyOverInjArgs env injIdx (MonoType_Fam f mts ri) = MonoType_Fam f [if i `elem` injIdx then applySubst env t else t | (i,t) <- zip [0..] mts] ri
 applyOverInjArgs _   _    mt                   = mt

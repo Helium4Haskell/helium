@@ -276,7 +276,7 @@ tfInstanceInfoToMonoTypes fams iInfo = let
 typeFamiliesToAxioms :: TypeFamilies -> ImportEnvironment -> [Axiom ConstraintInfo]
 typeFamiliesToAxioms fams env = let
     injEnv = buildInjectiveEnv $ M.elems $ typeFamDeclEnvironment env
-    declEnv = typeFamDeclEnvironment env
+    declEnv = typeFamDeclEnvironment (trace ("INJENV: " ++ show injEnv) env)
     tfInstances = M.assocs $ typeFamInstanceEnvironment env
     (closed, other) = splitBy (\(_,i:_) -> tfiType i == Closed) tfInstances
 

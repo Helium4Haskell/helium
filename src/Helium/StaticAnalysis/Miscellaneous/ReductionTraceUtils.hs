@@ -216,9 +216,12 @@ buildReductionFromPath path = do
   graph <- getGraph
   let ceid = edgeIdFromPath path
   let cedge = getEdgeFromId graph ceid
-  let Constraint_Unify pt1 pt2 _ = getConstraintFromEdge cedge
-  trc <- getTraceFromTwoTypes cedge pt1 pt2
-  return $ addReduction trc
+  --let Constraint_Unify pt1 pt2 _ = getConstraintFromEdge cedge
+  case getConstraintFromEdge cedge of
+    Constraint_Unify pt1 pt2 _ -> do
+      trc <- getTraceFromTwoTypes cedge pt1 pt2
+      return $ addReduction trc
+    _ -> return id
 
 buildSimpleTraceHint :: ReductionTrace -> (String, MessageBlock)
 buildSimpleTraceHint xs = let

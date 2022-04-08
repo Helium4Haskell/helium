@@ -3,13 +3,14 @@
 module Helium.StaticAnalysis.StaticChecks.TypeFamilyInfos where
 import Helium.Syntax.UHA_Syntax ( Name, Names, Type(..), Types, ContextItem(..), Range )
 import Helium.Syntax.UHA_Utils ()
-import Data.Maybe (isJust, fromJust)
+import Data.Maybe (isJust, fromJust, mapMaybe)
 import qualified Data.Map as M
 import Data.List (elemIndex)
 import Unbound.Generics.LocallyNameless hiding (Name)
 import Data.Map (Map)
 import qualified Data.Map as M
 import Helium.Syntax.UHA_Range (noRange)
+import Debug.Trace (trace)
 
 
 deriving instance Show Type
@@ -218,10 +219,10 @@ buildInjectiveEnv :: TFDeclInfos -> M.Map String [Int]
 buildInjectiveEnv
   = foldr (\ d
           -> M.insert
-                (show $ tfdName d) (getInjIndices (argNames d) (injNames d))
+                (show $ tfdName d) (trace ("GETINJINDICES: " ++ show (getInjIndices (argNames d) (injNames d))) getInjIndices (argNames d) (injNames d))
           )
           M.empty
 
 getInjIndices :: Names -> Maybe Names -> [Int]
 getInjIndices _  Nothing = []
-getInjIndices ns (Just ins) = map (fromJust . flip elemIndex ins) ns
+getInjIndices ns (Just ins) = mapMaybe (`elemIndex` ns) ins

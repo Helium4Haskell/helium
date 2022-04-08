@@ -291,6 +291,7 @@ wronglyInjectiveHeuristic path = SingleVoting "Not injective enough" f
           let pconstraint = getConstraintFromEdge cedge
           case (pconstraint, labelFromPath path) of 
             (Constraint_Unify mf@MonoType_Fam{} mt _, ErrorLabel "Residual constraint") -> do
+              -- Get hint about possible injectivity annotations
               injHint <- buildNestedInjHint cedge mf mt
               (MType mf') <- getSubstTypeFull (getGroupFromEdge cedge) (MType mf)
               case injHint of
