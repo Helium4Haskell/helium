@@ -206,8 +206,8 @@ class Bar t where
 instance Bar Char where
   clsF = True
 
--- main :: Bool
--- main = clsF :: Bool
+main :: Bool
+main = clsF :: Bool
 
 -- type family Foo a = r | r -> a
 -- type instance Foo Char = Bool

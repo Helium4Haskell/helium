@@ -275,9 +275,10 @@ injectUntouchableHeuristic path = SingleVoting "Type error through injection of 
               _ -> Nothing
           obtainTraceInfo _ _ = Nothing
 
-wronglyInjectiveHeuristic :: (Fresh m, HasTypeGraph m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo)
+-- Works on typefamilies where a right to left improvement should have been performed but isn't because it was not specified to be injective.
+shouldBeInjectiveHeuristic :: (Fresh m, HasTypeGraph m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo)
                           => Path m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo -> VotingHeuristic m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo
-wronglyInjectiveHeuristic path = SingleVoting "Not injective enough" f
+shouldBeInjectiveHeuristic path = SingleVoting "Not injective enough" f
   where
     f (constraint, eid, ci, gm) = do
       graph <- getGraph
@@ -299,11 +300,15 @@ wronglyInjectiveHeuristic path = SingleVoting "Not injective enough" f
                 Just iHint -> do 
                   trace <- buildReductionTrace cedge mf
                   case trace of 
-                    [] -> return $ Just (7, "Was not injective enough error", constraint, eid, addProperty (TypeFamilyReduction Nothing mt mf' mf' False) $ iHint ci, gm)
+                    [] -> if typeIsInType mf' pmt
+                      then return $ Just (7, "Should be injective, with trace", constraint, eid, addProperty (TypeFamilyReduction Nothing mt mf' mf' False) $ iHint ci, gm)
+                      else return Nothing
                     trc -> do
                       let Just last = getLastTypeInTrace trc
                       let Just first = getFirstTypeInTrace trc
-                      return $ Just (7, "Was not injective enough error", constraint, eid, addProperty (TypeFamilyReduction (Just trc) mt last first False) $ iHint ci, gm)
+                      if typeIsInType last pmt
+                        then return $ Just (7, "Should be injective, without trace", constraint, eid, addProperty (TypeFamilyReduction (Just trc) mt last first False) $ iHint ci, gm)
+                        else return Nothing
             _ -> return Nothing
         _ -> return Nothing
 
@@ -419,7 +424,7 @@ wronglyInjectiveHeuristic path = SingleVoting "Not injective enough" f
           isRhsUnifiable _ _ [] = return False
 
           obtainInjInfoFromAxs :: String -> [Axiom ConstraintInfo] -> [Int]
-          obtainInjInfoFromAxs fn (ax@(Axiom_Injective afn idx):axs) = if fn == afn then idx else obtainInjInfoFromAxs fn axs
+          obtainInjInfoFromAxs fn (Axiom_Injective afn idx:axs) = if fn == afn then idx else obtainInjInfoFromAxs fn axs
           obtainInjInfoFromAxs fn (_:axs) = obtainInjInfoFromAxs fn axs
           obtainInjInfoFromAxs _  [] = []
 
@@ -429,7 +434,7 @@ wronglyInjectiveHeuristic path = SingleVoting "Not injective enough" f
               (\ (i, (is, varMap))
                   -> let names = map (varMap M.!) is
                     in show i ++ ": r -> " ++ unwords (map show names)))
-            [1..] posIdx
+            [(1 :: Integer)..] posIdx
 
 -- Filter function for axioms.
 filterOnAxsRHS :: (Fresh m, HasTypeGraph m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo, CompareTypes m (RType ConstraintInfo))
