@@ -219,7 +219,7 @@ buildInjectiveEnv :: TFDeclInfos -> M.Map String [Int]
 buildInjectiveEnv
   = foldr (\ d
           -> M.insert
-                (show $ tfdName d) (trace ("GETINJINDICES: " ++ show (getInjIndices (argNames d) (injNames d))) getInjIndices (argNames d) (injNames d))
+                (show $ tfdName d) (getInjIndices (argNames d) (injNames d))
           )
           M.empty
 

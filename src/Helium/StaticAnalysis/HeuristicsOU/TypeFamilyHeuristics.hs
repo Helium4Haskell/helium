@@ -241,13 +241,13 @@ injectUntouchableHeuristic path = SingleVoting "Type error through injection of 
   where 
     f (constraint, eid, ci, gm) = do
       graph <- getGraph
-      case constraint of
+      case trace ("Constraint: " ++ show constraint) constraint of
         Constraint_Inst _ pt _ -> do
           let pmt = case pt of
                 pb@(PolyType_Bind _ _) -> (fst . fst . snd) $ polytypeToMonoType [] 0 pb
                 PolyType_Mono _ mt -> mt
           let ceid = edgeIdFromPath path
-          let cedge = getEdgeFromId graph ceid
+          let cedge = getEdgeFromId graph ceid 
           let pconstraint = getConstraintFromEdge cedge
           case (pconstraint, labelFromPath path) of 
             (Constraint_Unify mv@MonoType_Var{} mt _, ErrorLabel "Residual constraint") -> do
@@ -313,11 +313,11 @@ wronglyInjectiveHeuristic path = SingleVoting "Not injective enough" f
                              => TGEdge (Constraint ConstraintInfo) -> MonoType -> MonoType -> m (Maybe (ConstraintInfo -> ConstraintInfo))
           buildNestedInjHint cedge mf@(MonoType_Fam fn mts _) mt = do
             axs <- getAxioms
-            (MType mf'@(MonoType_Fam fn mts _)) <- getSubstTypeFull (getGroupFromEdge cedge) (MType mf)
+            (MType mf'@(MonoType_Fam fn' mts' _)) <- getSubstTypeFull (getGroupFromEdge cedge) (MType mf)
             (MType mt') <- getSubstTypeFull (getGroupFromEdge cedge) (MType mt)
-            tchsMts <- getTchMtsFromArgs mts
-            rhsUnifiable <- isRhsUnifiable fn mt' axs
-            case (tchsMts, trace ("RHS UNIFIABLE: " ++ show rhsUnifiable ++ ", " ++ show mt') rhsUnifiable) of
+            tchsMts <- getTchMtsFromArgs mts'
+            rhsUnifiable <- isRhsUnifiable fn' mt' axs
+            case (tchsMts, rhsUnifiable) of
               (_, False) -> return Nothing
               (tchs, True) -> do
                 wantedArgs <- filterOnAxsRHS fn axs axs (trace ("TCHS: " ++ show tchs) mt')
@@ -346,7 +346,7 @@ wronglyInjectiveHeuristic path = SingleVoting "Not injective enough" f
               if null errTchs
                 then return Nothing
                 else do
-                  let pSet = powerset (trace ("INJLOCS, ERRTCHS: " ++ show injLocs ++ ", " ++ show errTchs) errTchs)
+                  let pSet = powerset errTchs
                   possibleInjCombs <- catMaybes <$> mapM (checkNewInjectivity fn axs mf mt) pSet
                   case possibleInjCombs of
                     [] -> return $ Just $ addHint "probable cause" ("type family " ++ show fn ++ " is used injectively but its definition can never be injective") 

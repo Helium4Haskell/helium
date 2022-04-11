@@ -202,12 +202,25 @@ type instance Foo Char Char = Bool
 type instance Foo Float Bool = Int
 
 class Bar t where
-  clsF :: Foo t Char
+  clsF :: Foo t v
 instance Bar Char where
   clsF = True
 
-main :: Bool
-main = clsF :: Bool
+-- main :: Bool
+-- main = clsF :: Bool
+
+-- type family Foo a = r | r -> a
+-- type instance Foo Char = Bool
+-- type instance Foo Char = Bool
+-- type instance Foo Float = Int
+
+-- class Bar t where
+--   clsF :: Foo t
+-- instance Bar Char where
+--   clsF = True
+
+-- main :: Bool
+-- main = clsF :: Bool
 
 -- type family Foo a = r | r -> a
 -- type instance Foo Char = Bool
@@ -221,6 +234,6 @@ main = clsF :: Bool
 -- main = clsf
 
 -- class Bar t where
---     clsF :: t
+--     clsF :: Foo t
 -- instance Bar Char where
 --     clsF = True

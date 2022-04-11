@@ -446,6 +446,15 @@ isHighlyTrusted :: ConstraintInfo -> Bool
 isHighlyTrusted info = 
    product [ i | HasTrustFactor i <- properties info ] >= highlyTrustedFactor
 
+isHighlyTrustedProp :: Property -> Bool
+isHighlyTrustedProp (HasTrustFactor 10000.0) = True
+isHighlyTrustedProp _ = False
+
+makeLessTrusted :: ConstraintInfo -> ConstraintInfo
+makeLessTrusted info = if isHighlyTrusted info
+   then addProperty (HasTrustFactor 9999.0) $ info {properties = filter (not . isHighlyTrustedProp) (properties info) } 
+   else undefined
+
 setTypePair :: (MonoType, MonoType) -> ConstraintInfo -> ConstraintInfo
 setTypePair pair = addProperty (TypePair pair)
 

@@ -156,19 +156,20 @@ SEM Declaration
         loc . beta              = UL.makeName (show @bindings.name) @lhs.betaUnique
         loc . parameterCons     = [Constraint_Unify (var @beta) (foldr ((:-->:) . var) (var @br) @bls) (Just @cinfo)]
         loc . tyFams = typeSynonymsToTypeFamilies (typeSynonyms @lhs.importEnvironment) ++ obtainTyFams (M.elems $ typeFamDeclEnvironment @lhs.importEnvironment)
-        loc . (instConstraints, instanceType, bu) = case @lhs.className of
-                                                        Nothing -> ([], Nothing, (@lhs.betaUnique + 2 + @bindings.numberOfPatterns))
-                                                        Just cn -> let 
-                                                                (classTypeVariables, classFunctions) = fromMaybe (internalError "TypeInferenceRules" "n/a" "class not found") $
-                                                                    M.lookup cn (classMemberEnvironment @lhs.importEnvironment)
-                                                                (_, functionTpScheme, _, _) = fromMaybe (internalError "TypeInferenceRules" "n/a" "class function not found")
-                                                                    (find (\(n, _, _, _) -> n == @bindings.name) classFunctions) 
-                                                                (tconstraints, mapping, monoType) = tpSchemeToMonoType @tyFams functionTpScheme
-                                                                replacedMonoType = UL.substs (combineSubsitutions @lhs.typeVariableReplace mapping) monoType
-                                                                replacedConstraints = map (UL.substs (combineSubsitutions @lhs.typeVariableReplace mapping)) tconstraints
-                                                                (_, ((mtFreshened, constrFreshened), bu)) = freshenWithMapping [] (@lhs.betaUnique + 2 + @bindings.numberOfPatterns) (replacedMonoType, replacedConstraints)
-                                                                in (constrFreshened, Just mtFreshened, bu)
-        loc . instanceCons      = maybe [] (\it -> [Constraint_Inst (var @beta) (PolyType_Mono [] it){-(foldr addConstraint it @lhs.typeSignatureConstraints)-} (Just @cinfo)]) @instanceType    
+        loc . (instConstraints, instanceType, bu, hasFam) = case @lhs.className of
+                                                                Nothing -> ([], Nothing, (@lhs.betaUnique + 2 + @bindings.numberOfPatterns), False)
+                                                                Just cn -> let 
+                                                                        (classTypeVariables, classFunctions) = fromMaybe (internalError "TypeInferenceRules" "n/a" "class not found") $
+                                                                            M.lookup cn (classMemberEnvironment @lhs.importEnvironment)
+                                                                        (_, functionTpScheme, _, _) = fromMaybe (internalError "TypeInferenceRules" "n/a" "class function not found")
+                                                                            (find (\(n, _, _, _) -> n == @bindings.name) classFunctions) 
+                                                                        (tconstraints, mapping, monoType) = tpSchemeToMonoType @tyFams functionTpScheme
+                                                                        replacedMonoType = UL.substs (combineSubsitutions @lhs.typeVariableReplace mapping) monoType
+                                                                        hasFam = not $ isFamilyFree monoType
+                                                                        replacedConstraints = map (UL.substs (combineSubsitutions @lhs.typeVariableReplace mapping)) tconstraints
+                                                                        (_, ((mtFreshened, constrFreshened), bu)) = freshenWithMapping [] (@lhs.betaUnique + 2 + @bindings.numberOfPatterns) (replacedMonoType, replacedConstraints)
+                                                                        in (constrFreshened, Just mtFreshened, bu, hasFam)
+        loc . instanceCons      = maybe [] (\it -> [Constraint_Inst (var @beta) (PolyType_Mono [] it) (Just (if @hasFam then makeLessTrusted @cinfo else @cinfo))]) @instanceType    
         loc . err               = internalError "TypeInferenceRules.ag" "FunctionBindings" ("No substitution found for " ++ show @bindings.name)
         bindings . betasLeft    = @bls 
         bindings . betaRight    = @br 

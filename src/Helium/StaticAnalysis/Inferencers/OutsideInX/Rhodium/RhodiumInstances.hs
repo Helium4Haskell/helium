@@ -352,7 +352,7 @@ improveTopLevelFun given c@(Constraint_Unify fam@(MonoType_Fam f ms _) t _) (Axi
                             SurelyApart -> return NotApplicable
                             -- Deviate from paper, follow Cobalt, only focus on injective arguments.
                             Unifiable _ -> do
-                                let substLhs' = applyOverInjArgs psubst injIdx (trace ("INJIDX PSUBST: " ++ show injIdx ++ ", " ++ show psubst) lhs)
+                                let substLhs' = applyOverInjArgs psubst injIdx lhs
                                 let (_, (specLhs, specRhs)) = contFreshM (unbind b) 1000000000000000 -- Must be large
                                 let newLhs = insertReductionStep substLhs' (Step substLhs t (Just $ removeCI c) (TopLevelImprovement (specLhs, specRhs) (fam, t) tfi))
                                 return $ Applied ([], [Constraint_Unify newLhs fam Nothing]) -- Here we deviate from the paper and follow Cobalt (just substitute arguments with what we obtained)
