@@ -21,7 +21,7 @@ SEM Body | Body loc . cinfo =
 
 SEM Declaration 
   | FunctionBindings loc . cinfo =
-  resultConstraint "function bindings (INTERNAL ERROR)" @parentTree $
+  resultConstraint "function binding" @parentTree $
      [ FolkloreConstraint, highlyTrusted, FuntionBindingEdge $ fromInteger @bindings.numberOfPatterns ]
 
      
