@@ -196,9 +196,9 @@ type family J a where
 -- right :: a -> b -> Right a b
 -- right x y = x
 
-type family Foo a b c = r | r -> b
+type family Foo a b c
 type instance Foo Char Char Char = Bool
-type instance Foo Char Char Char = Bool
+type instance Foo Char Char Int = Bool
 type instance Foo Float Bool Int = Int
 
 class Bar t where

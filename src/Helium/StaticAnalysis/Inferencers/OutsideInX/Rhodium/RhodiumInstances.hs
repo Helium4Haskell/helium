@@ -374,8 +374,8 @@ axsToInjectiveEnv = foldM f M.empty
             case M.lookup g m of
               Nothing -> return $ M.insert g [] m
               Just _ -> return m
-        f _ (Axiom_ClosedGroup _ axs)   = foldM f M.empty axs
-        f _ _ = return M.empty
+        f m (Axiom_ClosedGroup _ axs)   = foldM f m axs
+        f m _ = return m
 
 -- Handles the reaction of a closed type family application.
 -- All instances are checked from top to bottom:

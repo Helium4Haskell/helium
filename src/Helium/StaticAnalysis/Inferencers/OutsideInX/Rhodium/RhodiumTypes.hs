@@ -288,7 +288,7 @@ showAxiom (Axiom_Class b) = do  (xs, (ctx,c,ms)) <- unbind b
                                 let ps = map (doParens . show) ms
                                 return $ "∀" ++ show xs ++ " " ++ show ctx ++
                                         " => $" ++ c ++ " " ++ unwords ps
-showAxiom (Axiom_Injective f _) = return $ "injective ^" ++ f
+showAxiom (Axiom_Injective f idx) = return $ "injective ^" ++ f ++ " " ++ show idx
 showAxiom (Axiom_Defer f) = return $ "defer ^" ++ f
 showAxiom (Axiom_ClosedGroup _ axs) = do 
                                         xs <- mapM showAxiom axs
