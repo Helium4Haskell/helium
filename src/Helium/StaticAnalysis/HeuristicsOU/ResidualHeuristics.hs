@@ -84,7 +84,7 @@ classSubst edge (c@(Constraint_Class n [m] ci)) = do
     MType m' <- getSubstTypeFull (getGroupFromEdge edge) $ MType m
     return (Constraint_Class n [m'] ci)
 
-missingPredicate :: Fresh m => Path m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo -> VotingHeuristic m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo Diagnostic          
+missingPredicate :: (Fresh m, HasDiagnostics m Diagnostic) => Path m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo -> VotingHeuristic m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo Diagnostic          
 missingPredicate path = SingleVoting "Missing predicate" f
     where
         f (constraint, eid, ci, gm) = 
@@ -115,10 +115,11 @@ missingPredicate path = SingleVoting "Missing predicate" f
                                         let releventEdges = filter ((cType `elem`) . map (MType . var) . getFreeVariables . fst) substReleventEdges
                                         if null releventEdges then  do 
                                             let fconstraints = runFreshM $ getConstraintsFromPolyType p2
-                                            return $ if cname `elem` map getNameFromConstraint fconstraints then
-                                                Just (1, "Ambigious type: " ++ show cc, constraint, eid, addProperty (AmbigiousClass cc) ci, gm)
+                                            if cname `elem` map getNameFromConstraint fconstraints then do
+                                                diag <- getDiagnostics
+                                                return $ Just (1, "Ambigious type: " ++ show (trace ("DIAG: " ++ show diag) cc), constraint, eid, addProperty (AmbigiousClass cc) ci, gm)
                                             else
-                                                Nothing
+                                                return Nothing
                                         else do 
                                             let tscons = snd $ head releventEdges
                                             let ts = getConstraintFromEdge tscons

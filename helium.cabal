@@ -90,6 +90,7 @@ library
       Helium.StaticAnalysis.Heuristics.UnifierHeuristics
       Helium.StaticAnalysis.HeuristicsOU.FilterHeuristics
       Helium.StaticAnalysis.HeuristicsOU.GADTHeuristics
+      Helium.StaticAnalysis.HeuristicsOU.GlobalInjHint
       Helium.StaticAnalysis.HeuristicsOU.HeuristicsInfo
       Helium.StaticAnalysis.HeuristicsOU.OnlyResultHeuristics
       Helium.StaticAnalysis.HeuristicsOU.RepairHeuristics

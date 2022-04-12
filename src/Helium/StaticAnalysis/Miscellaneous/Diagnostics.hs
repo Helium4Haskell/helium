@@ -6,11 +6,14 @@ import Helium.StaticAnalysis.Miscellaneous.ConstraintInfo (maybeHead)
 type Diagnostics = [Diagnostic]
 
 data Diagnostic
-  = TyVarInTypeFamily TyVar MonoType
+  = TyVarInTypeFamily TyVar Int MonoType
+  deriving Show
 
-maybeTyVarInTypeFamily :: TyVar -> Diagnostics -> Maybe Diagnostic
-maybeTyVarInTypeFamily tv ds = maybeHead [diag | diag@(TyVarInTypeFamily tv' _) <- ds, tv == tv']
+maybeTyVarInTypeFamily :: TyVar -> Diagnostics -> Maybe Diagnostics
+maybeTyVarInTypeFamily tv ds = case [diag | diag@(TyVarInTypeFamily tv' _ _) <- ds, tv == tv'] of
+  [] -> Nothing
+  xs -> Just xs
 
-addTyVarInTypeFamilyList :: [TyVar] -> MonoType -> Diagnostics
+addTyVarInTypeFamilyList :: [(TyVar, Int)] -> MonoType -> Diagnostics
 addTyVarInTypeFamilyList []       _  = []
-addTyVarInTypeFamilyList (tv:tvs) mt = TyVarInTypeFamily tv mt : addTyVarInTypeFamilyList tvs mt
+addTyVarInTypeFamilyList ((tv, i):tvs) mt = TyVarInTypeFamily tv i mt : addTyVarInTypeFamilyList tvs mt

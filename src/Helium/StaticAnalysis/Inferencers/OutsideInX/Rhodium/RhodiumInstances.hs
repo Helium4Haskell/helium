@@ -354,7 +354,7 @@ improveTopLevelFun given c@(Constraint_Unify fam@(MonoType_Fam f ms _) t _) (Axi
                             -- Deviate from paper, follow Cobalt, only focus on injective arguments.
                             Unifiable _ -> do
                                 -- Puts the non injective vars as vars in typefamilies in the diagnostics of the state
-                                let nonInjVars = [tv | (i, MonoType_Var _ tv _) <- zip [(0 :: Int)..] ms, i `notElem` injIdx]
+                                let nonInjVars = nub [(tv, i) | (i, MonoType_Var _ tv _) <- zip [(0 :: Int)..] ms, i `notElem` injIdx]
                                 putDiagnostics $ addTyVarInTypeFamilyList nonInjVars fam
                                 let substLhs' = applyOverInjArgs psubst injIdx lhs
                                 let (_, (specLhs, specRhs)) = contFreshM (unbind b) 1000000000000000 -- Must be large
