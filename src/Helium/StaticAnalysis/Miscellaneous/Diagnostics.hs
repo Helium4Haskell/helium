@@ -10,3 +10,7 @@ data Diagnostic
 
 maybeTyVarInTypeFamily :: TyVar -> Diagnostics -> Maybe Diagnostic
 maybeTyVarInTypeFamily tv ds = maybeHead [diag | diag@(TyVarInTypeFamily tv' _) <- ds, tv == tv']
+
+addTyVarInTypeFamilyList :: [TyVar] -> MonoType -> Diagnostics
+addTyVarInTypeFamilyList []       _  = []
+addTyVarInTypeFamilyList (tv:tvs) mt = TyVarInTypeFamily tv mt : addTyVarInTypeFamilyList tvs mt

@@ -180,12 +180,12 @@ type family J a where
 -- g :: [a] -> [a] -> a
 -- g xs ys = sum (xs ++ ys)
 
--- type family B a = r | r -> a
--- type instance B Int = Float
--- type instance B Float = Int
+type family B a = r | r -> a
+type instance B Int = Float
+type instance B Float = Int
 
--- f :: B a -> Int
--- f x = x
+f :: B a -> Int
+f x = x
 
 -- g :: Int -> B a
 -- g x = x
@@ -209,18 +209,18 @@ type family J a where
 -- main :: Bool
 -- main = clsF :: Bool
 
-type family Foo a 
-type instance Foo Char = Bool
-type instance Foo Char = Bool
-type instance Foo Float = Int
+-- type family Foo a 
+-- type instance Foo Char = Bool
+-- type instance Foo Char = Bool
+-- type instance Foo Float = Int
 
-class Bar t where
-  clsF :: Foo t
-instance Bar Char where
-  clsF = True
+-- class Bar t where
+--   clsF :: Foo t
+-- instance Bar Char where
+--   clsF = True
 
-main :: Bool
-main = clsF :: Bool
+-- main :: Bool
+-- main = clsF :: Bool
 
 -- type family Foo a = r | r -> a
 -- type instance Foo Char = Bool

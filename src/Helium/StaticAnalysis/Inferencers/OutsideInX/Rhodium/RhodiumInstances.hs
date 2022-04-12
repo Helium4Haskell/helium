@@ -50,7 +50,7 @@ import Helium.StaticAnalysis.Miscellaneous.Unify (preMatch, InjectiveEnv, UnifyR
 import Helium.Utils.Utils (internalError)
 import Helium.StaticAnalysis.StaticChecks.TypeFamilyInfos (TFInstanceInfo(preCompat, tfiRange))
 import Helium.Syntax.UHA_Syntax (Range)
-import Helium.StaticAnalysis.Miscellaneous.Diagnostics (Diagnostic)
+import Helium.StaticAnalysis.Miscellaneous.Diagnostics (Diagnostic, addTyVarInTypeFamilyList)
 
 integer2Name :: Integer -> Name a
 integer2Name = makeName ""
@@ -331,7 +331,7 @@ instance (
     topLevelReact _ _ = return NotApplicable
 
 -- Improves top level constraints when the type family is injective
-improveTopLevelFun :: (Fresh m, HasAxioms m (Axiom ConstraintInfo), MonadFail m) 
+improveTopLevelFun :: (Fresh m, HasDiagnostics m Diagnostic, HasAxioms m (Axiom ConstraintInfo), MonadFail m) 
                    => Bool -> Constraint ConstraintInfo -> Axiom ConstraintInfo -> m (RuleResult ([TyVar], [Constraint ConstraintInfo]))
 improveTopLevelFun given c@(Constraint_Unify fam@(MonoType_Fam f ms _) t _) (Axiom_Unify b tfi) | all isFamilyFree ms, isFamilyFree t =
     do
@@ -353,6 +353,9 @@ improveTopLevelFun given c@(Constraint_Unify fam@(MonoType_Fam f ms _) t _) (Axi
                             SurelyApart -> return NotApplicable
                             -- Deviate from paper, follow Cobalt, only focus on injective arguments.
                             Unifiable _ -> do
+                                -- Puts the non injective vars as vars in typefamilies in the diagnostics of the state
+                                let nonInjVars = [tv | (i, MonoType_Var _ tv _) <- zip [(0 :: Int)..] ms, i `notElem` injIdx]
+                                putDiagnostics $ addTyVarInTypeFamilyList nonInjVars fam
                                 let substLhs' = applyOverInjArgs psubst injIdx lhs
                                 let (_, (specLhs, specRhs)) = contFreshM (unbind b) 1000000000000000 -- Must be large
                                 let newLhs = insertReductionStep substLhs' (Step substLhs t (Just $ removeCI c) (TopLevelImprovement (specLhs, specRhs) (fam, t) tfi))
