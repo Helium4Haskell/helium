@@ -326,7 +326,7 @@ shouldBeInjectiveHeuristic path = SingleVoting "Not injective enough" f
               (tchs, True) -> do
                 wantedArgs <- filterOnAxsRHS fn axs axs (trace ("TCHS: " ++ show tchs) mt')
                 case wantedArgs of
-                  Nothing -> return Nothing
+                  Nothing -> buildInjHint (map fst tchs) mf' mt'
                   Just wargs -> do
                     -- Recurse with wanted args
                     let considerables = zip mts wargs
@@ -350,7 +350,7 @@ shouldBeInjectiveHeuristic path = SingleVoting "Not injective enough" f
               if null errTchs
                 then return Nothing
                 else do
-                  let pSet = powerset errTchs
+                  let pSet = filter (not . null) $ powerset errTchs
                   possibleInjCombs <- catMaybes <$> mapM (checkNewInjectivity fn axs mf mt) pSet
                   case possibleInjCombs of
                     [] -> return $ Just $ addHint "probable cause" ("type family " ++ show fn ++ " is used injectively but its definition can never be injective") 
