@@ -34,6 +34,7 @@ import Data.List
 
 import Debug.Trace
 import Data.Graph (Edge)
+import Helium.StaticAnalysis.Miscellaneous.Diagnostics (Diagnostic)
 
 
 instance HasConstraintInfo (Constraint ConstraintInfo) ConstraintInfo where
@@ -45,7 +46,7 @@ instance HasConstraintInfo (Constraint ConstraintInfo) ConstraintInfo where
     setConstraintInfo ci (Constraint_Unify m1 m2 _) = Constraint_Unify m1 m2 (Just ci)
 
 
-instance (MonadFail m, CompareTypes m (RType ConstraintInfo), Fresh m, HasTypeGraph m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo) => TypeErrorInfo m (Constraint ConstraintInfo) ConstraintInfo where
+instance (MonadFail m, CompareTypes m (RType ConstraintInfo), Fresh m, HasTypeGraph m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo Diagnostic) => TypeErrorInfo m (Constraint ConstraintInfo) ConstraintInfo where
     createTypeError opts edge li constraint ci = maybe nError (return . const ci) (errorMessage ci)
         where
             nError
@@ -245,7 +246,7 @@ makeNotGeneralEnoughTypeError isAnnotation range source tpscheme1 tpscheme2 info
     in TypeError [range] [oneliner] table hints
 
 
-makeUnificationTypeError :: (CompareTypes m (RType ConstraintInfo), Fresh m, HasTypeGraph m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo) => Bool -> TGEdge (Constraint ConstraintInfo) -> Constraint ConstraintInfo -> ConstraintInfo -> m TypeError
+makeUnificationTypeError :: (CompareTypes m (RType ConstraintInfo), Fresh m, HasTypeGraph m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo Diagnostic) => Bool -> TGEdge (Constraint ConstraintInfo) -> Constraint ConstraintInfo -> ConstraintInfo -> m TypeError
 makeUnificationTypeError fullTrace edge constraint info =
     do
     let (source, term) = sources info
@@ -381,7 +382,7 @@ makeMissingTypeSignature source branchSources mTs = let
         hints = [("hint", MessageString $ "add a valid type signature" ++ maybe "" (\pt -> ", e.g. " ++ show pt) mTs')]
     in TypeError (map rangeOfSource branchSources) message table hints
 
-makeTFReductionTypeError :: (CompareTypes m (RType ConstraintInfo), Fresh m, HasTypeGraph m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo) 
+makeTFReductionTypeError :: (CompareTypes m (RType ConstraintInfo), Fresh m, HasTypeGraph m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo Diagnostic) 
                          => Bool -> TGEdge (Constraint ConstraintInfo) -> Constraint ConstraintInfo -> ConstraintInfo -> m TypeError
 makeTFReductionTypeError mustShowTrace edge constraint info =
     do
@@ -424,7 +425,7 @@ makeTFReductionTypeError mustShowTrace edge constraint info =
                    ++ [("full reduction", traceToMessageBlock (squashTrace trc)) | let Just trc = theTrace, (not . null) theTrace && mustShowTrace]              
     return $ TypeError [range] [oneliner] table hints
 
-makeInjectUntouchableError :: (CompareTypes m (RType ConstraintInfo), Fresh m, HasTypeGraph m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo) 
+makeInjectUntouchableError :: (CompareTypes m (RType ConstraintInfo), Fresh m, HasTypeGraph m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo Diagnostic) 
                          => Bool -> TGEdge (Constraint ConstraintInfo) -> Constraint ConstraintInfo -> ConstraintInfo -> m TypeError
 makeInjectUntouchableError mustShowTrace edge constraint info =
     do

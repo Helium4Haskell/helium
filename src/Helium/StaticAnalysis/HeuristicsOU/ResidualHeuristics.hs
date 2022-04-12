@@ -34,10 +34,11 @@ import Control.Monad
 
 import Debug.Trace
 import Helium.StaticAnalysis.Miscellaneous.ReductionTraceUtils (buildReductionFromPath)
+import Helium.StaticAnalysis.Miscellaneous.Diagnostics (Diagnostic)
 
-typeSignatureTooGeneral :: (Fresh m, HasTypeGraph m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo) 
+typeSignatureTooGeneral :: (Fresh m, HasTypeGraph m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo Diagnostic) 
                         => Path m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo 
-                        -> VotingHeuristic m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo
+                        -> VotingHeuristic m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo Diagnostic
 typeSignatureTooGeneral path = SingleVoting "Type signature too general" f
     where
         f (constraint, eid, ci, ogm) 
@@ -78,12 +79,12 @@ isTypeAnnotation cinfo =
       _ -> False
 
 
-classSubst :: (HasTypeGraph m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo, Fresh m) => TGEdge (Constraint ConstraintInfo) -> Constraint ConstraintInfo -> m (Constraint ConstraintInfo)
+classSubst :: (HasTypeGraph m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo Diagnostic, Fresh m) => TGEdge (Constraint ConstraintInfo) -> Constraint ConstraintInfo -> m (Constraint ConstraintInfo)
 classSubst edge (c@(Constraint_Class n [m] ci)) = do
     MType m' <- getSubstTypeFull (getGroupFromEdge edge) $ MType m
     return (Constraint_Class n [m'] ci)
 
-missingPredicate :: Fresh m => Path m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo -> VotingHeuristic m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo            
+missingPredicate :: Fresh m => Path m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo -> VotingHeuristic m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo Diagnostic          
 missingPredicate path = SingleVoting "Missing predicate" f
     where
         f (constraint, eid, ci, gm) = 
@@ -167,7 +168,7 @@ getNameFromConstraint :: Constraint ConstraintInfo -> String
 getNameFromConstraint (Constraint_Class cname _ _) = cname
 getNameFromConstraint _ = error "Only class constraints have a name"
 
-addConstraintModifier :: HasTypeGraph m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo => Bool -> Groups -> Priority -> Constraint ConstraintInfo -> GraphModifier m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo
+addConstraintModifier :: HasTypeGraph m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo Diagnostic => Bool -> Groups -> Priority -> Constraint ConstraintInfo -> GraphModifier m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo
 addConstraintModifier isGiven group prior constraint (_, _, ci) graph = do
     let g' = resetAll graph
     cC <- convertConstraint [] True isGiven group prior constraint

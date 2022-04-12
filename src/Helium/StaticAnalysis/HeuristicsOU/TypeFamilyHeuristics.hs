@@ -27,9 +27,10 @@ import Helium.StaticAnalysis.Miscellaneous.TypeConversion (Freshen(freshenWithMa
 import Helium.StaticAnalysis.StaticChecks.TypeFamilyInfos (TFInstanceInfo(tfiName, varNameMap), tails)
 import Helium.StaticAnalysis.StaticChecks.TypeFamilies (performPairwiseInjCheck, performWronglyUsedVarInInjCheck)
 import Helium.Syntax.UHA_Syntax (Name)
+import Helium.StaticAnalysis.Miscellaneous.Diagnostics (Diagnostic)
 
-typeErrorThroughReduction :: (Fresh m, HasTypeGraph m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo)
-                          => Path m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo -> VotingHeuristic m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo
+typeErrorThroughReduction :: (Fresh m, HasTypeGraph m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo Diagnostic)
+                          => Path m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo -> VotingHeuristic m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo Diagnostic
 typeErrorThroughReduction path = SingleVoting "Type error through type family reduction" f
   where
     f (constraint, eid, ci, gm) = do
@@ -103,7 +104,7 @@ typeErrorThroughReduction path = SingleVoting "Type error through type family re
         _                     -> return Nothing
         where
           -- Builds permutation hint.
-          buildPermutationHint :: (Fresh m, HasTypeGraph m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo, CompareTypes m (RType ConstraintInfo)) 
+          buildPermutationHint :: (Fresh m, HasTypeGraph m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo Diagnostic, CompareTypes m (RType ConstraintInfo)) 
                                 => MonoType -> MonoType -> m (Maybe String)
           buildPermutationHint ogmf@(MonoType_Fam fn mts _) infMt = do
             -- Build permutations of the arguments of the type family.
@@ -133,7 +134,7 @@ typeErrorThroughReduction path = SingleVoting "Type error through type family re
           buildPermutationHint _ _ = return Nothing
 
           -- Builds a hint that shows when a type was not apart during closed type family matching.
-          buildApartnessHint :: (Fresh m, HasTypeGraph m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo, CompareTypes m (RType ConstraintInfo)) 
+          buildApartnessHint :: (Fresh m, HasTypeGraph m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo Diagnostic, CompareTypes m (RType ConstraintInfo)) 
                              => MonoType -> m (Maybe String)
           buildApartnessHint mt@(MonoType_Fam fn _ _) = do
             axs <- getAxioms
@@ -156,7 +157,7 @@ typeErrorThroughReduction path = SingleVoting "Type error through type family re
           buildApartnessHint _ = return Nothing
 
           -- Builds hints in a nested way, considers arguments of the non-reducable type family too.
-          buildNestedHints :: (Fresh m, HasTypeGraph m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo, CompareTypes m (RType ConstraintInfo)) 
+          buildNestedHints :: (Fresh m, HasTypeGraph m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo Diagnostic, CompareTypes m (RType ConstraintInfo)) 
                            => TGEdge (Constraint ConstraintInfo) ->  MonoType -> MonoType -> m (Maybe ([String], [String]))
           buildNestedHints cedge mf@(MonoType_Fam fn _ _) t = do
             axs <- getAxioms
@@ -235,8 +236,8 @@ makeCharString (MonoType_App m1 m2 rt) = MonoType_App (makeCharString m1) (makeC
 makeCharString (MonoType_Fam f mts rt) = MonoType_Fam f (map makeCharString mts) rt
 makeCharString mt = mt
 
-injectUntouchableHeuristic :: (Fresh m, HasTypeGraph m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo)
-                           => Path m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo -> VotingHeuristic m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo
+injectUntouchableHeuristic :: (Fresh m, HasTypeGraph m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo Diagnostic)
+                           => Path m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo -> VotingHeuristic m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo Diagnostic
 injectUntouchableHeuristic path = SingleVoting "Type error through injection of untouchable variable" f
   where 
     f (constraint, eid, ci, gm) = do
@@ -259,8 +260,6 @@ injectUntouchableHeuristic path = SingleVoting "Type error through injection of 
                   then let
                     because_hint = addHint "because" ("could not assign " ++ (show . show) mt ++ " to " ++ (show . show) mv ++ ". " ++ 
                                                      (show . show) mv ++ " is quantified with a (implicit) forall and cannot be assigned any type")
-                    --hint_hint = addHint "hint" ("we cannot assign any type to " ++ (show . show) mv ++ " because it is qualified under a forall")
-                    -- hint = because_hint . hint_hint
                     in return $ Just (5, "Tried to inject untouchable", constraint, eid, addProperty (InjectUntouchable trace_mt (cl, cr)) $ because_hint ci, gm)
                   else return Nothing
             _ -> return Nothing
@@ -276,8 +275,8 @@ injectUntouchableHeuristic path = SingleVoting "Type error through injection of 
           obtainTraceInfo _ _ = Nothing
 
 -- Works on typefamilies where a right to left improvement should have been performed but isn't because it was not specified to be injective.
-shouldBeInjectiveHeuristic :: (Fresh m, HasTypeGraph m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo)
-                          => Path m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo -> VotingHeuristic m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo
+shouldBeInjectiveHeuristic :: (Fresh m, HasTypeGraph m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo Diagnostic)
+                          => Path m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo -> VotingHeuristic m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo Diagnostic
 shouldBeInjectiveHeuristic path = SingleVoting "Not injective enough" f
   where
     f (constraint, eid, ci, gm) = do
@@ -314,7 +313,7 @@ shouldBeInjectiveHeuristic path = SingleVoting "Not injective enough" f
 
         where
 
-          buildNestedInjHint :: (Fresh m, HasTypeGraph m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo)
+          buildNestedInjHint :: (Fresh m, HasTypeGraph m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo Diagnostic)
                              => TGEdge (Constraint ConstraintInfo) -> MonoType -> MonoType -> m (Maybe (ConstraintInfo -> ConstraintInfo))
           buildNestedInjHint cedge mf@(MonoType_Fam fn mts _) mt = do
             axs <- getAxioms
@@ -341,7 +340,7 @@ shouldBeInjectiveHeuristic path = SingleVoting "Not injective enough" f
                       (xs, _) -> return $ Just $ foldl1 (.) xs
           buildNestedInjHint _ _ _ = return Nothing
 
-          buildInjHint :: (Fresh m, HasTypeGraph m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo)
+          buildInjHint :: (Fresh m, HasTypeGraph m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo Diagnostic)
                        => [Int] -> MonoType -> MonoType -> m (Maybe (ConstraintInfo -> ConstraintInfo))
           buildInjHint tchs mf@(MonoType_Fam fn mts _) mt = if all isFamilyFree mts
             then do
@@ -360,7 +359,7 @@ shouldBeInjectiveHeuristic path = SingleVoting "Not injective enough" f
             else return Nothing
           buildInjHint _ _ _ = return Nothing
 
-          checkNewInjectivity :: (Fresh m, HasTypeGraph m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo)
+          checkNewInjectivity :: (Fresh m, HasTypeGraph m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo Diagnostic)
                               => String -> [Axiom ConstraintInfo] -> MonoType -> MonoType -> [Int] -> m (Maybe ([Int], M.Map Int Name))
           checkNewInjectivity fn axs fam mt  newTchs = do
             let (axs', is) = swapInjAxiom fn newTchs axs
@@ -404,7 +403,7 @@ shouldBeInjectiveHeuristic path = SingleVoting "Not injective enough" f
               isVar MonoType_Var{} = True
               isVar _              = False
           
-          isRhsUnifiable :: (Fresh m, HasTypeGraph m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo)
+          isRhsUnifiable :: (Fresh m, HasTypeGraph m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo Diagnostic)
                          => String -> MonoType -> [Axiom ConstraintInfo] -> m Bool
           isRhsUnifiable fn mt (Axiom_Unify b _:axs) = do
             (_, (lhs@(MonoType_Fam fn' _ _), rhs)) <- unbind b
@@ -437,7 +436,7 @@ shouldBeInjectiveHeuristic path = SingleVoting "Not injective enough" f
             [(1 :: Integer)..] posIdx
 
 -- Filter function for axioms.
-filterOnAxsRHS :: (Fresh m, HasTypeGraph m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo, CompareTypes m (RType ConstraintInfo))
+filterOnAxsRHS :: (Fresh m, HasTypeGraph m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo Diagnostic, CompareTypes m (RType ConstraintInfo))
                 => String -> [Axiom ConstraintInfo] -> [Axiom ConstraintInfo] -> MonoType -> m (Maybe [MonoType])
 filterOnAxsRHS fn axs axs' mt = do
   filterRes <- catMaybes <$> mapM (filterAxOnRHS axs' fn mt) axs
@@ -447,7 +446,7 @@ filterOnAxsRHS fn axs axs' mt = do
     _ : _ -> return Nothing
 
 -- Checks one axiom at a time.
-filterAxOnRHS :: (Fresh m, HasTypeGraph m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo, CompareTypes m (RType ConstraintInfo)) 
+filterAxOnRHS :: (Fresh m, HasTypeGraph m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo Diagnostic, CompareTypes m (RType ConstraintInfo)) 
               => [Axiom ConstraintInfo] -> String -> MonoType -> Axiom ConstraintInfo -> m (Maybe [MonoType])
 filterAxOnRHS axs fn mt (Axiom_Unify b _) = do
   (aes, (lhs@(MonoType_Fam fn' _ _), rhs)) <- unbind b

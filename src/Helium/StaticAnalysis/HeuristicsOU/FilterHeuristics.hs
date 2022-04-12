@@ -35,17 +35,18 @@ import Control.Monad.IO.Class (MonadIO)
 import Control.Monad
 
 import Debug.Trace
+import Helium.StaticAnalysis.Miscellaneous.Diagnostics (Diagnostic)
 
 isFolklore :: ConstraintInfo -> Bool 
 isFolklore cinfo = or [ True | FolkloreConstraint <- properties cinfo ]
 
-avoidFolkloreHeuristic :: Monad m => Heuristic m axiom touchable types constraint ConstraintInfo
+avoidFolkloreHeuristic :: Monad m => Heuristic m axiom touchable types constraint ConstraintInfo Diagnostic
 avoidFolkloreHeuristic = edgeFilter "Avoid folklore constraint" f
     where
         f (_, _, ci, _) = return (not (isFolklore ci))
 
 
-removeEdgeAndTsModifier :: (Fresh m, HasTypeGraph m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo) => GraphModifier m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo
+removeEdgeAndTsModifier :: (Fresh m, HasTypeGraph m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo Diagnostic) => GraphModifier m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo
 removeEdgeAndTsModifier (eid, constraint, ci) graph = do
     let cedge = getEdgeFromId graph eid 
     case getConstraintFromEdge cedge of
@@ -58,7 +59,7 @@ removeEdgeAndTsModifier (eid, constraint, ci) graph = do
            
 
 
-avoidForbiddenConstraints :: (Fresh m, Monad m) => Heuristic m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo
+avoidForbiddenConstraints :: (Fresh m, Monad m) => Heuristic m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo Diagnostic
 avoidForbiddenConstraints = 
     Filter "Avoid forbidden constraints" (return . mapMaybe f)
         where 
@@ -66,14 +67,14 @@ avoidForbiddenConstraints =
                                  | otherwise = Just (eid, c, info, removeEdgeAndTsModifier) 
 
 
-phaseFilter :: Monad m => Heuristic m axiom touchable types (Constraint ConstraintInfo) ConstraintInfo
+phaseFilter :: Monad m => Heuristic m axiom touchable types (Constraint ConstraintInfo) ConstraintInfo Diagnostic
 phaseFilter =  let f (_, _, info, gm) = return (phaseOfConstraint info)
                in maximalEdgeFilter "Highest phase number" f
 
 trustFactor :: ConstraintInfo -> Float
 trustFactor info = fromMaybe 0 (maybeHead [f | (HasTrustFactor f) <- properties info])
 
-avoidTrustedConstraints :: Monad m => Heuristic m axiom touchable types (Constraint ConstraintInfo) ConstraintInfo
+avoidTrustedConstraints :: Monad m => Heuristic m axiom touchable types (Constraint ConstraintInfo) ConstraintInfo Diagnostic
 avoidTrustedConstraints = 
         let f (_, _, info, gm) = return (trustFactor info)
         in minimalEdgeFilter "Trust factor of edge" f
@@ -99,8 +100,8 @@ instance MaybeApplication ConstraintInfo where
 
 
 avoidApplicationConstraints :: 
-    (Fresh m, HasTypeGraph m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo) 
-    => Heuristic m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo
+    (Fresh m, HasTypeGraph m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo Diagnostic)
+    => Heuristic m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo Diagnostic
 avoidApplicationConstraints = 
     edgeFilter "Avoid application constraints" f
     where
@@ -140,7 +141,7 @@ instance MaybeNegation ConstraintInfo where
             _                                     -> Nothing
      
 
-avoidNegationConstraints :: (Fresh m, HasTypeGraph m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo) => Heuristic m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo
+avoidNegationConstraints :: (Fresh m, HasTypeGraph m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo Diagnostic) => Heuristic m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo Diagnostic
 avoidNegationConstraints = 
     edgeFilter "Avoid negation constraints" f
     where
@@ -161,7 +162,7 @@ avoidNegationConstraints =
                                 return (isNothing unif)
                     _ -> return True
 
-resultsEdgeFilter :: (Eq a, Monad m) => ([a] -> a) -> String -> ((constraint, EdgeId, info, GraphModifier m axiom touchable types constraint info) -> m a) -> Heuristic m axiom touchable types constraint info
+resultsEdgeFilter :: (Eq a, Monad m) => ([a] -> a) -> String -> ((constraint, EdgeId, info, GraphModifier m axiom touchable types constraint info) -> m a) -> Heuristic m axiom touchable types constraint info Diagnostic
 resultsEdgeFilter selector description function =
     Filter description $ \es -> 
             do 
@@ -174,13 +175,13 @@ resultsEdgeFilter selector description function =
                         | otherwise       = selector (map fst tupledList)
                 return (map snd (filter ((maximumResult ==) . fst) tupledList))
 
-maximalEdgeFilter :: (Ord a, Monad m) => String -> ((constraint, EdgeId, info, GraphModifier m axiom touchable types constraint info) -> m a) -> Heuristic m axiom touchable types constraint info
+maximalEdgeFilter :: (Ord a, Monad m) => String -> ((constraint, EdgeId, info, GraphModifier m axiom touchable types constraint info) -> m a) -> Heuristic m axiom touchable types constraint info Diagnostic
 maximalEdgeFilter = resultsEdgeFilter maximum
 
-minimalEdgeFilter :: (Ord a, Monad m) => String -> ((constraint, EdgeId, info, GraphModifier m axiom touchable types constraint info) -> m a) -> Heuristic m axiom touchable types constraint info
+minimalEdgeFilter :: (Ord a, Monad m) => String -> ((constraint, EdgeId, info, GraphModifier m axiom touchable types constraint info) -> m a) -> Heuristic m axiom touchable types constraint info Diagnostic
 minimalEdgeFilter = resultsEdgeFilter minimum
                         
-edgeFilter :: (Monad m) => String -> ((constraint, EdgeId, info, GraphModifier m axiom touchable types constraint info) -> m Bool) -> Heuristic m axiom touchable types constraint info
+edgeFilter :: (Monad m) => String -> ((constraint, EdgeId, info, GraphModifier m axiom touchable types constraint info) -> m Bool) -> Heuristic m axiom touchable types constraint info Diagnostic
 edgeFilter description function = 
     Filter description g
         where 

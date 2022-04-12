@@ -50,6 +50,7 @@ import Helium.StaticAnalysis.Miscellaneous.Unify (preMatch, InjectiveEnv, UnifyR
 import Helium.Utils.Utils (internalError)
 import Helium.StaticAnalysis.StaticChecks.TypeFamilyInfos (TFInstanceInfo(preCompat, tfiRange))
 import Helium.Syntax.UHA_Syntax (Range)
+import Helium.StaticAnalysis.Miscellaneous.Diagnostics (Diagnostic)
 
 integer2Name :: Integer -> Name a
 integer2Name = makeName ""
@@ -281,7 +282,7 @@ injectiveArgs (_:axs) s = injectiveArgs axs s
 
 
 instance (
-            HasTypeGraph m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo,
+            HasTypeGraph m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo Diagnostic,
             HasAxioms m (Axiom ConstraintInfo), 
             Fresh m
         ) 
@@ -381,7 +382,7 @@ axsToInjectiveEnv = foldM f M.empty
 -- The only difference wrt open type families, is that we match in an order and perform the compatApartness check.
 reactClosedTypeFam :: (
                         Fresh m,
-                        HasTypeGraph m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo,
+                        HasTypeGraph m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo Diagnostic,
                         HasAxioms m (Axiom ConstraintInfo)
                       )
                    => Bool
@@ -424,7 +425,7 @@ reactClosedTypeFam given improve = reactClosedTypeFam' Nothing []
 -- These instances need not to be checked for apartness so are removed.
 checkCompatApartness :: (
                             Fresh m,
-                            HasTypeGraph m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo,
+                            HasTypeGraph m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo Diagnostic,
                             HasAxioms m (Axiom ConstraintInfo)
                         )
                      =>  [Axiom ConstraintInfo] -> Axiom ConstraintInfo -> Constraint ConstraintInfo -> m (Maybe (MonoType, Range))
@@ -444,7 +445,7 @@ checkCompatApartness seen (Axiom_Unify _ (Just tfi)) c = do
 -- apart(fam, lhs) = not(unify(lhs, flattened(fam))).
 apartnessCheck :: (
                     Fresh m,
-                    HasTypeGraph m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo,
+                    HasTypeGraph m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo Diagnostic,
                     HasAxioms m (Axiom ConstraintInfo)
                   )
                 => Constraint ConstraintInfo -> Axiom ConstraintInfo -> m (Maybe (MonoType, Range))
@@ -696,7 +697,7 @@ functionSpineP :: Fresh m => PolyType ConstraintInfo -> m ([MonoType], MonoType)
 functionSpineP (PolyType_Bind _ b) = unbind b >>= functionSpineP . snd
 functionSpineP (PolyType_Mono _ m) = return (functionSpine m)
 
-arityOfPolyType :: Fresh m => (PolyType ConstraintInfo) -> m Int
+arityOfPolyType :: Fresh m => PolyType ConstraintInfo -> m Int
 arityOfPolyType x = length . fst <$> functionSpineP x
 
 

@@ -59,6 +59,7 @@ import Rhodium.TypeGraphs.TGState
 import Control.Monad.IO.Class (MonadIO )
 import Helium.StaticAnalysis.Miscellaneous.ReductionTraceUtils (getTraceFromTwoTypes, buildReductionFromPath)
 import Helium.StaticAnalysis.HeuristicsOU.HeuristicsInfo (WithHints(addReduction))
+import Helium.StaticAnalysis.Miscellaneous.Diagnostics (Diagnostic)
 -----------------------------------------------------------------------------
 
 fixHint, becauseHint, possibleHint :: WithHints a => String -> a -> a
@@ -87,8 +88,8 @@ deleteIndex i (a:as) = a : deleteIndex (i-1) as
 permute :: Permutation -> [a] -> [a]
 permute is as = map (as !!) is
 
-applicationHeuristic :: (Fresh m, HasTypeGraph m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo) 
-                     => Path m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo -> VotingHeuristic m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo
+applicationHeuristic :: (Fresh m, HasTypeGraph m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo Diagnostic) 
+                     => Path m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo -> VotingHeuristic m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo Diagnostic
 applicationHeuristic path = SingleVoting "Application heuristic" f
    where
       f e@(constraint, eid, ci, gm) = 
@@ -183,7 +184,7 @@ applicationHeuristic path = SingleVoting "Application heuristic" f
                               where
                                  unifiableTypeLists :: [MonoType] -> [MonoType] -> Maybe [(TyVar, RType ConstraintInfo)]
                                  unifiableTypeLists s1 s2 = runFreshM (runTG (unifiableTypeLists' s1 s2))
-                                 unifiableTypeLists' :: (Fresh m, MonadIO m, MonadFail m) => [MonoType] -> [MonoType] -> TGStateM m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo (Maybe [(TyVar, RType ConstraintInfo)])
+                                 unifiableTypeLists' :: (Fresh m, MonadIO m, MonadFail m) => [MonoType] -> [MonoType] -> TGStateM m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo Diagnostic (Maybe [(TyVar, RType ConstraintInfo)])
                                  unifiableTypeLists' s1 s2 = unifyTypes axioms [] [Constraint_Unify (monotypeTuple s1) (monotypeTuple s2) Nothing] (nub (fvToList functionType ++ fvToList expectedType))
                                  numberOfArguments = length tuplesForArguments     
                                  argumentPermutations = 
@@ -241,10 +242,10 @@ maybeImportedName cinfo =
          []  -> Nothing
          n:_ -> Just (show n)
 
-siblingsHeuristic :: (Fresh m, HasTypeGraph m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo) 
+siblingsHeuristic :: (Fresh m, HasTypeGraph m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo Diagnostic) 
                   => Sibblings 
                   -> Path m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo 
-                  -> VotingHeuristic m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo
+                  -> VotingHeuristic m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo Diagnostic
 siblingsHeuristic siblings path = 
    SingleVoting "Sibling functions" f
    where
@@ -315,9 +316,9 @@ instance MaybeLiteral ConstraintInfo where
             UHA_Pat  (Pattern_Literal    _ literal ) -> Just (literalType literal)
             x                                        -> Nothing
 
-siblingLiterals :: (Fresh m, HasTypeGraph m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo)
+siblingLiterals :: (Fresh m, HasTypeGraph m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo Diagnostic)
                 => Path m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo
-                -> VotingHeuristic m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo
+                -> VotingHeuristic m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo Diagnostic
 siblingLiterals path = 
    SingleVoting "Sibling literals" f 
    where
@@ -379,9 +380,9 @@ instance IsExprVariable ConstraintInfo where
          UHA_Expr (Expression_InfixApplication _ MaybeExpression_Nothing _ MaybeExpression_Nothing) -> True
          x  -> False
 
-variableFunction :: (Fresh m, HasTypeGraph m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo)
+variableFunction :: (Fresh m, HasTypeGraph m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo Diagnostic)
                  => Path m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo
-                 -> VotingHeuristic m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo
+                 -> VotingHeuristic m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo Diagnostic
 variableFunction path = SingleVoting "Variable function" f 
    where
       f pair@(constraint, eid, info, gm) =  
@@ -434,9 +435,9 @@ instance IsTupleEdge ConstraintInfo where
          UHA_Pat  (Pattern_Tuple _ _)    -> True
          _                               -> False
 
-tupleHeuristic :: (Fresh m, HasTypeGraph m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo) 
+tupleHeuristic :: (Fresh m, HasTypeGraph m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo Diagnostic) 
                => Path m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo
-               -> VotingHeuristic m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo
+               -> VotingHeuristic m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo Diagnostic
 tupleHeuristic path = SingleVoting "Tuple heuristics" f
       where      
          f pair@(constraint , eid, info, gm)    
@@ -464,7 +465,7 @@ tupleHeuristic path = SingleVoting "Tuple heuristics" f
                                              let   perms = take heuristicsMAX (permutationsForLength (length tupleTps))
                                              notUnifiable <- isNothing <$> unifyTypes axioms [] [Constraint_Unify (monotypeTuple tupleTps) (monotypeTuple expectedTps) Nothing] []
                                              let
-                                                test :: (Fresh m, MonadFail m, MonadIO m) => [Int] -> TGStateM m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo Bool
+                                                test :: (Fresh m, MonadFail m, MonadIO m) => [Int] -> TGStateM m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo Diagnostic Bool
                                                 test perm = 
                                                       let   t1 = monotypeTuple tupleTps
                                                             t2 = monotypeTuple (permute perm expectedTps)
@@ -498,9 +499,9 @@ tupleHeuristic path = SingleVoting "Tuple heuristics" f
                   _ -> return Nothing
 
 
-fbHasTooManyArguments :: (Fresh m, HasTypeGraph m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo)
+fbHasTooManyArguments :: (Fresh m, HasTypeGraph m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo Diagnostic)
                       => Path m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo
-                      -> VotingHeuristic m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo
+                      -> VotingHeuristic m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo Diagnostic
 fbHasTooManyArguments path = SingleVoting "Function binding heuristics" f
    where
       f (constraint, eid, info, _)   
@@ -544,7 +545,7 @@ fbHasTooManyArguments path = SingleVoting "Function binding heuristics" f
          return (g'', ci)
 
 
-constraintFromUser :: Fresh m => Path m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo -> VotingHeuristic m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo
+constraintFromUser :: Fresh m => Path m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo -> VotingHeuristic m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo Diagnostic
 constraintFromUser (Path _ path) = MultiVoting "Constraints from .type file" (helper path)
    where
       helper path' edges = 
@@ -575,7 +576,7 @@ constraintFromUser (Path _ path) = MultiVoting "Constraints from .type file" (he
                         (8, "constraints from .type file", [], edgeID:otherEdges, info, gm)
 
 
-removeEdgeAndTsModifier :: (Fresh m, HasTypeGraph m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo) => GraphModifier m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo
+removeEdgeAndTsModifier :: (Fresh m, HasTypeGraph m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo Diagnostic) => GraphModifier m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo
 removeEdgeAndTsModifier (eid, constraint, ci) graph = do
    let cedge = getEdgeFromId graph eid 
    case getConstraintFromEdge cedge of

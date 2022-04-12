@@ -117,6 +117,7 @@ library
       Helium.StaticAnalysis.Messages.Warnings
       Helium.StaticAnalysis.Miscellaneous.ConstraintInfo
       Helium.StaticAnalysis.Miscellaneous.ConstraintInfoOU
+      Helium.StaticAnalysis.Miscellaneous.Diagnostics
       Helium.StaticAnalysis.Miscellaneous.DoublyLinkedTree
       Helium.StaticAnalysis.Miscellaneous.ReductionTraceUtils
       Helium.StaticAnalysis.Miscellaneous.TypeConstraints

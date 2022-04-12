@@ -17,9 +17,10 @@ import Helium.Syntax.UHA_Range (showRange)
 import Data.Maybe (fromMaybe)
 import Helium.StaticAnalysis.HeuristicsOU.HeuristicsInfo (WithHints(addReduction))
 import Rhodium.Blamer.Path (Path, edgeIdFromPath)
+import Helium.StaticAnalysis.Miscellaneous.Diagnostics (Diagnostic)
 
 
-buildReductionTrace :: (CompareTypes m (RType ConstraintInfo), Fresh m, HasTypeGraph m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo)
+buildReductionTrace :: (CompareTypes m (RType ConstraintInfo), Fresh m, HasTypeGraph m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo Diagnostic)
                     => TGEdge (Constraint ConstraintInfo) -> MonoType -> m ReductionTrace
 buildReductionTrace e mt = case getMaybeReductionStep mt of
       -- If no own reductions, check args of type family for reductions
@@ -33,7 +34,7 @@ buildReductionTrace e mt = case getMaybeReductionStep mt of
           ih <- buildReductionTrace e before'
           return $ (Step after' before' mconstr rt, 1) : ih
 
-buildNestedSteps :: (CompareTypes m (RType ConstraintInfo), Fresh m, HasTypeGraph m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo)
+buildNestedSteps :: (CompareTypes m (RType ConstraintInfo), Fresh m, HasTypeGraph m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo Diagnostic)
                    => TGEdge (Constraint ConstraintInfo) -> MonoType -> m ReductionTrace
 buildNestedSteps = buildNestedSteps' []
     where
@@ -108,7 +109,7 @@ buildNestedSteps = buildNestedSteps' []
 
 
 -- Gets one step.
-getOneStep :: (CompareTypes m (RType ConstraintInfo), Fresh m, HasTypeGraph m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo)
+getOneStep :: (CompareTypes m (RType ConstraintInfo), Fresh m, HasTypeGraph m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo Diagnostic)
                   => TGEdge (Constraint ConstraintInfo) -> MonoType -> m (Maybe ReductionStep)
 getOneStep e mt = case getMaybeReductionStep mt of
     Nothing -> return Nothing
@@ -200,7 +201,7 @@ traceToMessageBlock rts = MessageCompose $ mapToBlock (1 :: Int) rts
             CanonReduction _ -> "injectivity"
             TopLevelImprovement{} -> "right to left injection"
 
-getTraceFromTwoTypes :: (CompareTypes m (RType ConstraintInfo), Fresh m, HasTypeGraph m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo)
+getTraceFromTwoTypes :: (CompareTypes m (RType ConstraintInfo), Fresh m, HasTypeGraph m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo Diagnostic)
                      => TGEdge (Constraint ConstraintInfo) -> MonoType -> MonoType -> m (Maybe ReductionTrace)
 getTraceFromTwoTypes cedge m1 m2 = do
   trc1 <- buildReductionTrace cedge m1
@@ -210,7 +211,7 @@ getTraceFromTwoTypes cedge m1 m2 = do
     Just (_, trc) -> return $ Just trc 
     Nothing -> return Nothing
 
-buildReductionFromPath :: (CompareTypes m (RType ConstraintInfo), Fresh m, HasTypeGraph m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo)
+buildReductionFromPath :: (CompareTypes m (RType ConstraintInfo), Fresh m, HasTypeGraph m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo Diagnostic)
                    => Path m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo -> m (ConstraintInfo -> ConstraintInfo)
 buildReductionFromPath path = do
   graph <- getGraph

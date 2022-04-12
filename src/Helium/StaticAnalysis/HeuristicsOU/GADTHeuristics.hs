@@ -41,6 +41,7 @@ import Control.Monad.Trans.State
 import Debug.Trace
 import Helium.StaticAnalysis.Inferencers.OutsideInX.Rhodium.RhodiumTypes ()
 import Control.Monad.IO.Class (MonadIO)
+import Helium.StaticAnalysis.Miscellaneous.Diagnostics (Diagnostic)
 
 
 selectPriorityPatterns :: TGGraph TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo -> Priority -> [TGEdge (Constraint ConstraintInfo)]
@@ -56,7 +57,7 @@ combineGroups :: Int -> [Groups] -> [TGEdge (Constraint ConstraintInfo)] -> [(Gr
 combineGroups size (g:gs) constraints = (g, take size constraints) : combineGroups size gs (drop size constraints) 
 combineGroups _ [] [] = []
 
-modifyTopLevelTS    :: (HasTypeGraph m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo, Fresh m) 
+modifyTopLevelTS    :: (HasTypeGraph m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo Diagnostic, Fresh m) 
                     => MonoType 
                     -> PolyType ConstraintInfo 
                     -> TGGraph TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo 
@@ -82,7 +83,7 @@ modifyTopLevelTS _ _ _ _ _ _ = return False
     
     
 
-runModGraph :: (Fresh m, HasTypeGraph m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo) 
+runModGraph :: (Fresh m, HasTypeGraph m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo Diagnostic) 
             => [TyVar] 
             -> [Axiom ConstraintInfo] 
             -> TGGraph TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo 
@@ -140,7 +141,7 @@ constructMGU graph cedge spp = do
     return (fbType, mgu, patternBranches)
 
 
-unreachablePatternHeuristic :: Fresh m => Path m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo -> VotingHeuristic m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo
+unreachablePatternHeuristic :: Fresh m => Path m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo -> VotingHeuristic m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo Diagnostic
 unreachablePatternHeuristic path = SingleVoting "Unreachable GADT pattern" f
     where 
         f (constraint, eid, ci, gm) = 
@@ -183,7 +184,7 @@ removePriorGM groups (_, _, ci) graph =
             nextUnresolvedConstraints = []
         }, ci)
 
-missingGADTSignature :: Fresh m => Path m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo -> VotingHeuristic m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo
+missingGADTSignature :: Fresh m => Path m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo -> VotingHeuristic m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo Diagnostic
 missingGADTSignature path = SingleVoting "Missing GADT Signature" f
     where
         f (constraint, eid, ci, gm) =
@@ -228,7 +229,7 @@ missingGADTSignature path = SingleVoting "Missing GADT Signature" f
         
 
 
-escapingGADTVariableHeuristic ::  Fresh m => Path m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo -> VotingHeuristic m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo
+escapingGADTVariableHeuristic ::  Fresh m => Path m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo -> VotingHeuristic m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo Diagnostic
 escapingGADTVariableHeuristic path = SingleVoting "Escaping GADT variable" f
     where
         f (constraint, eid, ci, gm) =
@@ -288,7 +289,7 @@ getResultFromType :: MonoType -> MonoType
 getResultFromType (f :-->: a) = getResultFromType a
 getResultFromType m = m
 
-addTypeSignatureModifier    :: HasTypeGraph m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo 
+addTypeSignatureModifier    :: HasTypeGraph m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo Diagnostic
                             => Constraint ConstraintInfo 
                             -> MonoType 
                             -> PolyType ConstraintInfo 
@@ -305,7 +306,7 @@ addTypeSignatureModifier fbc@(Constraint_Unify fbm@(MonoType_Var _ fbv _) _ _) m
     let gComplete = markEdgesUnresolved [0] $ mergeGraphs g'' [cG, cW]
     return (gComplete, ci)
 
-addConstraintModifier :: HasTypeGraph m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo => Bool -> Groups -> Priority -> Constraint ConstraintInfo -> GraphModifier m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo
+addConstraintModifier :: HasTypeGraph m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo Diagnostic => Bool -> Groups -> Priority -> Constraint ConstraintInfo -> GraphModifier m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo
 addConstraintModifier isGiven group prior constraint (_, _, ci) graph = do
     let g' = resetAll graph
     cC <- convertConstraint [] True isGiven group prior constraint
