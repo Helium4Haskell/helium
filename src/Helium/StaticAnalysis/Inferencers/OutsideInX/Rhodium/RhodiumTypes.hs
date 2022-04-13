@@ -67,13 +67,14 @@ data ReductionStep = Step MonoType MonoType (Maybe (Constraint ())) ReductionTyp
     deriving (Ord, Eq)
 
 instance Show ReductionStep where
-    show (Step after before constr _) 
-        = "Reduction: " ++ show after ++ " reduced from: " ++ show before ++ " in constraint: " ++ show constr
+    show (Step after before constr tp) 
+        = "Reduction: " ++ show after ++ " reduced from: " ++ show before ++ " in constraint: " ++ show constr ++ " in type " ++ show tp
 
 data ReductionType
   = LeftToRight (MonoType, MonoType) (Maybe TFInstanceInfo)
   | TopLevelImprovement (MonoType, MonoType) (MonoType, MonoType) (Maybe TFInstanceInfo)
   | CanonReduction (MonoType, MonoType)
+  | ArgInjection (MonoType, MonoType)
   deriving (Generic, Ord, Eq, Show)
 
 instance UB.Subst MonoType ReductionStep where

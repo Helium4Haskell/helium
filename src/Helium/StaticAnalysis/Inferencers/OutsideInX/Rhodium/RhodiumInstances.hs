@@ -171,9 +171,12 @@ instance (HasGraph m touchable types constraint ci, HasAxioms m (Axiom Constrain
     --interact :: Bool -> constraint -> constraint -> m (RuleResult [constraint])
     interact _ c1 c2
         | c1 == c2 = return $ Applied [c1]
-    interact _ c1@(Constraint_Unify (MonoType_Var _ v1 _) m1 _) c2@(Constraint_Unify t2@(MonoType_Fam f vs2 _) m2 _)
-        | isFamilyFree m1, all isFamilyFree vs2, v1 `elem` (fvToList t2 :: [TyVar]) || v1 `elem` (fvToList m2 :: [TyVar]), isFamilyFree m2 =
-                return $ Applied [c1, Constraint_Unify (subst v1 m1 t2) (subst v1 m1 m2) Nothing]
+    interact _ c1@(Constraint_Unify mv@(MonoType_Var _ v1 _) m1 _) c2@(Constraint_Unify t2@(MonoType_Fam f vs2 _) m2 _)
+        | isFamilyFree m1, all isFamilyFree vs2, v1 `elem` (fvToList t2 :: [TyVar]) || v1 `elem` (fvToList m2 :: [TyVar]), isFamilyFree m2 = do
+                let lhs = if v1 `elem` (fvToList t2 :: [TyVar])
+                            then insertReductionStep (subst v1 m1 t2) (Step (subst v1 m1 t2) t2 (Just $ removeCI c2) (ArgInjection (mv, m1)))
+                            else subst v1 m1 t2
+                return $ Applied [c1, Constraint_Unify lhs (subst v1 m1 m2) Nothing]
     interact _ c1@(Constraint_Unify mv1@(MonoType_Var _ v1 _) m1 _) c2@(Constraint_Unify mv2@(MonoType_Var _ v2 _) m2 _) 
         | v1 == v2, isFamilyFree m1, isFamilyFree m2 = do
             ig <- greaterType (MType mv1) (MType m1 :: RType ConstraintInfo)
@@ -333,13 +336,13 @@ instance (
 -- Improves top level constraints when the type family is injective
 improveTopLevelFun :: (Fresh m, HasDiagnostics m Diagnostic, HasAxioms m (Axiom ConstraintInfo), MonadFail m) 
                    => Bool -> Constraint ConstraintInfo -> Axiom ConstraintInfo -> m (RuleResult ([TyVar], [Constraint ConstraintInfo]))
-improveTopLevelFun given c@(Constraint_Unify fam@(MonoType_Fam f ms _) t _) (Axiom_Unify b tfi) | all isFamilyFree ms, isFamilyFree t =
+improveTopLevelFun given c@(Constraint_Unify fam@(MonoType_Fam f ms _) t ci) (Axiom_Unify b tfi) | all isFamilyFree ms, isFamilyFree t =
     do
         (_, (lhs, rhs)) <- unbind b
         axs <- getAxioms
         case lhs of
             -- Only act when type family is injective and the names match.
-            MonoType_Fam lF _ _ | f == lF, isInjective axs lF -> do
+            MonoType_Fam lF _ _ | f == lF, isInjective axs lF, not (maybe False hasTopLevelReacted ci) -> do
                 -- Builds the injective env needed for preMatch and matchTy 
                 ienv <- axsToInjectiveEnv axs
                 let injIdx = ienv M.! f
@@ -359,7 +362,8 @@ improveTopLevelFun given c@(Constraint_Unify fam@(MonoType_Fam f ms _) t _) (Axi
                                 let substLhs' = applyOverInjArgs psubst injIdx lhs
                                 let (_, (specLhs, specRhs)) = contFreshM (unbind b) 1000000000000000 -- Must be large
                                 let newLhs = insertReductionStep substLhs' (Step substLhs t (Just $ removeCI c) (TopLevelImprovement (specLhs, specRhs) (fam, t) tfi))
-                                return $ Applied ([], [Constraint_Unify newLhs fam Nothing]) -- Here we deviate from the paper and follow Cobalt (just substitute arguments with what we obtained)
+                                let ci = addProperty HasTopLevelReacted emptyConstraintInfo
+                                return $ Applied ([], [insertCIInConstraint c ci, Constraint_Unify newLhs fam Nothing]) -- Here we deviate from the paper and follow Cobalt (just substitute arguments with what we obtained)
             _ -> return NotApplicable 
 improveTopLevelFun given c (Axiom_ClosedGroup _ axs) = loopAxioms (improveTopLevelFun given c) axs
 improveTopLevelFun _ _ _ = return NotApplicable

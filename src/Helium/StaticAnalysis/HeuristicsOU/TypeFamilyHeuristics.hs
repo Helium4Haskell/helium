@@ -50,7 +50,7 @@ typeErrorThroughReduction path = SingleVoting "Type error through type family re
             (Constraint_Unify mf@MonoType_Fam{} t _, ErrorLabel "Residual constraint") -> do
               [MType freshOg] <- freshenRepresentation . (:[]) <$> getSubstTypeFull (getGroupFromEdge cedge) (MType mf)
               -- Get potential trace.
-              theTrace <- squashTrace <$> buildReductionTrace cedge freshOg
+              theTrace <- squashTrace <$> buildReductionTrace True cedge freshOg
               -- Builds hint in nested sense, when type family contains other families that were not reducable (or wronly reduced, perhaps)
               mTheHint <- buildNestedHints cedge mf t
               -- Unpack hint
@@ -83,8 +83,8 @@ typeErrorThroughReduction path = SingleVoting "Type error through type family re
               (MType t1') <- getSubstTypeFull (getGroupFromEdge edge) (MType t1)
               (MType t2') <- getSubstTypeFull (getGroupFromEdge edge) (MType t2)
               -- Generate traces
-              t1Trace <- squashTrace <$> buildReductionTrace edge t1'
-              t2Trace <- squashTrace <$> buildReductionTrace edge t2'
+              t1Trace <- squashTrace <$> buildReductionTrace True edge t1'
+              t2Trace <- squashTrace <$> buildReductionTrace True edge t2'
               -- Get the type reduced from a type family (only one side is).
               case getFullTrace t1Trace t2Trace of
                 Nothing -> return Nothing
@@ -190,7 +190,7 @@ typeErrorThroughReduction path = SingleVoting "Type error through type family re
                   (_, _, _) -> Nothing)
           -- In case a type with trace is found, we check if we can build a hint with the last type in it.         
           buildNestedHints cedge mt t = do
-            theTrace <- buildReductionTrace cedge mt
+            theTrace <- buildReductionTrace True cedge mt
             case theTrace of
               [] -> return Nothing
               xs -> do
@@ -242,7 +242,7 @@ injectUntouchableHeuristic path = SingleVoting "Type error through injection of 
   where 
     f (constraint, eid, ci, gm) = do
       graph <- getGraph
-      case trace ("Constraint: " ++ show constraint) constraint of
+      case constraint of
         Constraint_Inst _ pt _ -> do
           let pmt = case pt of
                 pb@(PolyType_Bind _ _) -> (fst . fst . snd) $ polytypeToMonoType [] 0 pb
@@ -252,8 +252,8 @@ injectUntouchableHeuristic path = SingleVoting "Type error through injection of 
           let pconstraint = getConstraintFromEdge cedge
           case (pconstraint, labelFromPath path) of 
             (Constraint_Unify mv@MonoType_Var{} mt _, ErrorLabel "Residual constraint") -> do
-              trace_var <- buildReductionTrace cedge mv
-              trace_mt <- buildReductionTrace cedge mt
+              trace_var <- buildReductionTrace True cedge mv
+              trace_mt <- buildReductionTrace True cedge mt
               case obtainTraceInfo trace_var trace_mt of
                 Nothing -> return Nothing
                 Just (cl, cr) -> if typeIsInType cl pmt
@@ -290,16 +290,16 @@ shouldBeInjectiveHeuristic path = SingleVoting "Not injective enough" f
           let cedge = getEdgeFromId graph ceid
           let pconstraint = getConstraintFromEdge cedge
           case (pconstraint, labelFromPath path) of 
-            (Constraint_Unify mf@MonoType_Fam{} mt _, ErrorLabel "Residual constraint") -> do
+            (Constraint_Unify mf@(MonoType_Fam fn _ _) mt _, ErrorLabel "Residual constraint") -> do
               -- Get hint about possible injectivity annotations
               injHint <- buildNestedInjHint cedge mf mt
               (MType mf') <- getSubstTypeFull (getGroupFromEdge cedge) (MType mf)
               case injHint of
                 Nothing -> return Nothing
                 Just iHint -> do 
-                  trace <- buildReductionTrace cedge mf
-                  case trace of 
-                    [] -> if typeIsInType mf' pmt
+                  theTrace <- buildReductionTrace False cedge mf
+                  case theTrace of 
+                    [] -> if typeFamInType fn pmt
                       then return $ Just (7, "Should be injective, with trace", constraint, eid, addProperty (TypeFamilyReduction Nothing mt mf' mf' False) $ iHint ci, gm)
                       else return Nothing
                     trc -> do
@@ -324,7 +324,7 @@ shouldBeInjectiveHeuristic path = SingleVoting "Not injective enough" f
             case (tchsMts, rhsUnifiable) of
               (_, False) -> return Nothing
               (tchs, True) -> do
-                wantedArgs <- filterOnAxsRHS fn axs axs (trace ("TCHS: " ++ show tchs) mt')
+                wantedArgs <- filterOnAxsRHS fn axs axs mt'
                 case wantedArgs of
                   Nothing -> buildInjHint (map fst tchs) mf' mt'
                   Just wargs -> do
@@ -369,9 +369,9 @@ shouldBeInjectiveHeuristic path = SingleVoting "Not injective enough" f
             let unifyCombs = [(x, y) | (x:ys) <- tails unifyAxs, y <- ys]
             -- pairwise injectivity check and wrongly used vars check from static checks
             let pairwiseRes = mapMaybe (uncurry (performPairwiseInjCheck ienv)) unifyCombs
-            let wronlyUsedVarRes = mapMaybe (performWronglyUsedVarInInjCheck ienv) unifyAxs
+            let wronglyUsedVarRes = mapMaybe (performWronglyUsedVarInInjCheck ienv) unifyAxs
             -- if there are errors, we cannot use the new injetivity notation
-            case pairwiseRes ++ wronlyUsedVarRes of
+            case pairwiseRes ++ wronglyUsedVarRes of
               [] -> do
                 -- Check if the constraint is solved
                 tchs <- filterM (fmap isJust . isVertexTouchable) (nub $ fvToList fam ++ fvToList mt :: [TyVar])
@@ -478,3 +478,11 @@ filterAxiomsOnName fn (ax@(Axiom_Unify _ (Just tfi)):axs) = if show (tfiName tfi
 filterAxiomsOnName fn (Axiom_ClosedGroup fn' axs:axs') = if fn == fn' then axs else filterAxiomsOnName fn axs'
 filterAxiomsOnName fn (_:axs) = filterAxiomsOnName fn axs
 filterAxiomsOnName _ _ = []
+
+typeFamInType :: String -> MonoType -> Bool
+typeFamInType s (MonoType_Fam fn mts _) = let
+  --mf' = freshenWithMapping [] (0 :: Integer) mf
+  in fn == s || any (typeFamInType s) mts
+typeFamInType s (MonoType_App m1 m2 _) = typeFamInType s m1 || typeFamInType s m2
+typeFamInType _ (MonoType_Con _ _)     = False
+typeFamInType _ MonoType_Var{}         = False

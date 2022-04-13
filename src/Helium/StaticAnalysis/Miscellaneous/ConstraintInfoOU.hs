@@ -150,6 +150,7 @@ data Property
     | TypeFamilyReduction (Maybe ReductionTrace) MonoType {-Inferred-} MonoType {-From signature-} MonoType {-Reduced-} Bool {-Whether fully reduced-}
     | WithReduction ReductionTrace
     | InjectUntouchable ReductionTrace (MonoType, MonoType) {-Before toplevel improvement-}
+    | HasTopLevelReacted
     deriving (Generic)
 
 instance Show Property where
@@ -193,6 +194,8 @@ instance Show Property where
     show (LiteralFloat f) = "LiteralFloat " ++ show f
     show (TypeFamilyReduction _ m1 m2 m3 p) = "TypeFamilyReduction " ++ show m1 ++ ", " ++ show m2 ++ ", " ++ show m3 ++ ", " ++ show p
     show (WithReduction red) = "WithReduction " ++ show red
+    show (InjectUntouchable _ mtTup) = "InjectUntouchable " ++ show mtTup
+    show HasTopLevelReacted = "HasTopLevelReacted"
     show _ = "No show"
 
 --deriving instance Show TypeError
@@ -353,6 +356,9 @@ maybeTypeFamilyReduction a = maybeHead [ (rt, m1, m2, m3, p) | TypeFamilyReducti
 
 maybeInjectUntouchable :: HasProperties a => a -> Maybe (ReductionTrace, (MonoType, MonoType))
 maybeInjectUntouchable a = maybeHead [ (rt, mtt) | InjectUntouchable rt mtt <- getProperties a]
+
+hasTopLevelReacted :: HasProperties a => a -> Bool
+hasTopLevelReacted a = isJust $ maybeHead [ "TLR" | HasTopLevelReacted <- getProperties a]
 -----------------------------------------------------------------
 -- Smart constructors
 
@@ -539,7 +545,11 @@ isTupleConstructor ('(':[]) = False
 isTupleConstructor ('(':cs) = all (','==) (init cs) && last cs == ')'
 isTupleConstructor _        = False
 
-
+insertCIInConstraint :: Constraint ConstraintInfo -> ConstraintInfo -> Constraint ConstraintInfo
+insertCIInConstraint (Constraint_Unify mt1 mt2 _) ci = Constraint_Unify mt1 mt2 (Just ci)
+insertCIInConstraint (Constraint_Class cn mts _) ci = Constraint_Class cn mts (Just ci)
+insertCIInConstraint (Constraint_Inst mt pt _) ci = Constraint_Inst mt pt (Just ci)
+insertCIInConstraint (Constraint_Exists b _) ci = Constraint_Exists b (Just ci)
 
 leftSpine :: MonoType -> (MonoType,[MonoType])
 leftSpine = rec' [] 

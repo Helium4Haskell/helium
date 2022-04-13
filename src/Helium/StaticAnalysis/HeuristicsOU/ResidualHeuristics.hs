@@ -116,8 +116,8 @@ missingPredicate path = SingleVoting "Missing predicate" f
                                         if null releventEdges then  do 
                                             let fconstraints = runFreshM $ getConstraintsFromPolyType p2
                                             if cname `elem` map getNameFromConstraint fconstraints then do
-                                                diag <- getDiagnostics
-                                                return $ Just (1, "Ambigious type: " ++ show (trace ("DIAG: " ++ show diag) cc), constraint, eid, addProperty (AmbigiousClass cc) ci, gm)
+                                                --diag <- getDiagnostics
+                                                return $ Just (1, "Ambigious type: " ++ show cc, constraint, eid, addProperty (AmbigiousClass cc) ci, gm)
                                             else
                                                 return Nothing
                                         else do 

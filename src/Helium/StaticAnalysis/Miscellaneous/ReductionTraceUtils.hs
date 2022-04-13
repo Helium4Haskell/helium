@@ -4,7 +4,7 @@
 module Helium.StaticAnalysis.Miscellaneous.ReductionTraceUtils where
 
 import Rhodium.TypeGraphs.GraphProperties (CompareTypes, HasTypeGraph, HasGraph (getGraph))
-import Helium.StaticAnalysis.Inferencers.OutsideInX.Rhodium.RhodiumTypes (RType (MType), Axiom, TyVar, Constraint (Constraint_Unify), MonoType (MonoType_Fam, MonoType_App, MonoType_Con, MonoType_Var), ReductionTrace, ReductionStep (Step), ReductionType (LeftToRight, CanonReduction, TopLevelImprovement), getMaybeReductionStep)
+import Helium.StaticAnalysis.Inferencers.OutsideInX.Rhodium.RhodiumTypes (RType (MType), Axiom, TyVar, Constraint (Constraint_Unify), MonoType (MonoType_Fam, MonoType_App, MonoType_Con, MonoType_Var), ReductionTrace, ReductionStep (Step), ReductionType (LeftToRight, CanonReduction, TopLevelImprovement, ArgInjection), getMaybeReductionStep)
 import Helium.StaticAnalysis.Miscellaneous.ConstraintInfoOU (ConstraintInfo)
 import Unbound.Generics.LocallyNameless (Fresh)
 import Rhodium.TypeGraphs.Graph (TGEdge, getGroupFromEdge, getEdgeFromId)
@@ -21,17 +21,17 @@ import Helium.StaticAnalysis.Miscellaneous.Diagnostics (Diagnostic)
 
 
 buildReductionTrace :: (CompareTypes m (RType ConstraintInfo), Fresh m, HasTypeGraph m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo Diagnostic)
-                    => TGEdge (Constraint ConstraintInfo) -> MonoType -> m ReductionTrace
-buildReductionTrace e mt = case getMaybeReductionStep mt of
+                    => Bool -> TGEdge (Constraint ConstraintInfo) -> MonoType -> m ReductionTrace
+buildReductionTrace doSubst e mt = case getMaybeReductionStep mt of
       -- If no own reductions, check args of type family for reductions
       Nothing -> case mt of
           MonoType_Fam{} -> buildNestedSteps e mt
           _                    -> return []
       -- else, we build substituted step components from the step we obtain.
       Just (Step after before mconstr rt) -> do
-          (MType after') <- getSubstTypeFull (getGroupFromEdge e) (MType after)
-          (MType before') <- getSubstTypeFull (getGroupFromEdge e) (MType before)       
-          ih <- buildReductionTrace e before'
+          (MType after') <- if doSubst then getSubstTypeFull (getGroupFromEdge e) (MType after) else return (MType after)
+          (MType before') <- if doSubst then  getSubstTypeFull (getGroupFromEdge e) (MType before) else return (MType before)     
+          ih <- buildReductionTrace doSubst e before'
           return $ (Step after' before' mconstr rt, 1) : ih
 
 buildNestedSteps :: (CompareTypes m (RType ConstraintInfo), Fresh m, HasTypeGraph m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo Diagnostic)
@@ -51,9 +51,11 @@ buildNestedSteps = buildNestedSteps' []
                         next <- buildNestedSteps' (resArg:seen) e' (MonoType_Fam f mts Nothing)
                         -- setInsideFam takes the recurses in diveDeeper and deposits them back in the original type family.
                         return $ setInsideFam seen mf diveDeeper ++ next
-                    Just (Step after before mconstr rt) -> do
+                    Just (Step after before mconstr rt)
+                      | not (isCanonReduction rt) -> do
                           ih <- buildNestedSteps' seen e' (MonoType_Fam f (before:mts) Nothing)
                           return ((Step (MonoType_Fam f (seen++(after:mts)) Nothing) (MonoType_Fam f (seen++(before:mts)) Nothing) mconstr rt, 1) : ih)
+                      | otherwise -> buildNestedSteps' (m:seen) e' (MonoType_Fam f mts Nothing)
                 -- Case for application type
                 ma@(MonoType_App mt1 mt2 _) -> do
                   step <- getOneStep e' ma
@@ -61,7 +63,9 @@ buildNestedSteps = buildNestedSteps' []
                     -- No step of its own means we dive into the arguments
                     Nothing -> setInsideApp ma <$> buildNestedSteps' [] e' mt1 <*> buildNestedSteps' [] e' mt2
                     -- With a step we continue toplevel
-                    Just st@(Step _ before _ _) -> ((st, 1) :) <$> buildNestedSteps' [] e' before
+                    Just st@(Step _ before _ rt)
+                      | not (isCanonReduction rt) -> ((st, 1) :) <$> buildNestedSteps' [] e' before
+                      | otherwise -> setInsideApp ma <$> buildNestedSteps' [] e' mt1 <*> buildNestedSteps' [] e' mt2
                 -- Case for constant types
                 mc@(MonoType_Con _ _) -> do
                   step <- getOneStep e' mc
@@ -69,7 +73,9 @@ buildNestedSteps = buildNestedSteps' []
                     -- No step means we are done (no recursion options)
                     Nothing -> return []
                     -- Otherwise we continue top level
-                    Just st@(Step _ before _ _) -> ((st, 1) :) <$> buildNestedSteps' [] e' before
+                    Just st@(Step _ before _ rt) 
+                      | not (isCanonReduction rt) -> ((st, 1) :) <$> buildNestedSteps' [] e' before
+                      | otherwise -> return []
                 mv@MonoType_Var{} -> do
                   step <- getOneStep e' mv
                   case step of
@@ -80,7 +86,9 @@ buildNestedSteps = buildNestedSteps' []
                         then return []
                         else buildNestedSteps' [] e' mv'
                     -- Otherwise, we continue toplevel
-                    Just st@(Step _ before _ _) -> ((st, 1) :) <$> buildNestedSteps' [] e' before
+                    Just st@(Step _ before _ rt) 
+                      | not (isCanonReduction rt) -> ((st, 1) :) <$> buildNestedSteps' [] e' before
+                      | otherwise -> return []
                 _ -> return []
 
         -- Sets an obtained trace of a type fam argument back in the original type fam trace
@@ -106,7 +114,9 @@ buildNestedSteps = buildNestedSteps' []
           in (appStep, 1) : setInsideApp beforeApp [] ss1
         setInsideApp _ [] [] = []
         
-
+isCanonReduction :: ReductionType -> Bool
+isCanonReduction (CanonReduction _) = True
+isCanonReduction _                  = False
 
 -- Gets one step.
 getOneStep :: (CompareTypes m (RType ConstraintInfo), Fresh m, HasTypeGraph m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo Diagnostic)
@@ -188,6 +198,16 @@ traceToMessageBlock rts = MessageCompose $ mapToBlock (1 :: Int) rts
                 , MessageString "\n"
                 ]
                 : mapToBlock (idx + 1) rts'
+        mapToBlock idx ((Step after before (Just constr) rt@(ArgInjection (apBef, apAft)), times):rts')
+          = MessageCompose
+              [
+                MessageString (show idx ++ ". " ++ "Applied\t: " ++ show apBef ++ " ~ " ++ show apAft)
+              , MessageString ("\n   On\t: " ++ show constr)
+              , MessageString ("\n   Step:\t: " ++ show after ++ " <- " ++ show before)
+              , MessageString ("\n   Reason\t: " ++ showReason rt)
+              , MessageString ("\n   Amount\t: " ++ timesToString times)
+              ]
+              : mapToBlock (idx + 1) rts'
         mapToBlock _ [] = []
 
         timesToString t = show t ++ " time" ++ if t == 1 then "" else "s"
@@ -200,12 +220,13 @@ traceToMessageBlock rts = MessageCompose $ mapToBlock (1 :: Int) rts
             LeftToRight _ _ -> "left to right application"
             CanonReduction _ -> "injectivity"
             TopLevelImprovement{} -> "right to left injection"
+            ArgInjection _ -> "argument injection"
 
 getTraceFromTwoTypes :: (CompareTypes m (RType ConstraintInfo), Fresh m, HasTypeGraph m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo Diagnostic)
                      => TGEdge (Constraint ConstraintInfo) -> MonoType -> MonoType -> m (Maybe ReductionTrace)
 getTraceFromTwoTypes cedge m1 m2 = do
-  trc1 <- buildReductionTrace cedge m1
-  trc2 <- buildReductionTrace cedge m2
+  trc1 <- buildReductionTrace True cedge m1
+  trc2 <- buildReductionTrace True cedge m2
   
   case getFullTrace trc1 trc2 of
     Just (_, trc) -> return $ Just trc 
