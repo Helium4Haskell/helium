@@ -320,16 +320,23 @@ shouldBeInjectiveHeuristic path = SingleVoting "Not injective enough" f
                              => TGEdge (Constraint ConstraintInfo) -> MonoType -> MonoType -> m (Maybe (ConstraintInfo -> ConstraintInfo))
           buildNestedInjHint cedge mf@(MonoType_Fam fn mts _) mt = do
             axs <- getAxioms
+            -- Make sure that both types are substituted
             (MType mf'@(MonoType_Fam fn' mts' _)) <- getSubstTypeFull (getGroupFromEdge cedge) (MType mf)
             (MType mt') <- getSubstTypeFull (getGroupFromEdge cedge) (MType mt)
+            -- get the touchables from the family arguments
             tchsMts <- getTchMtsFromArgs mts'
+            -- Check if the rhs is unifiable with an axs it belongs to.
             rhsUnifiable <- isRhsUnifiable fn' mt' axs
             case (tchsMts, rhsUnifiable) of
+              -- If not unifiable, we are not able to do anything
               (_, False) -> return Nothing
               (tchs, True) -> do
+                -- For nesting we need to know what the wanted args are.
                 wantedArgs <- filterOnAxsRHS fn axs axs mt'
                 case wantedArgs of
+                  -- Only toplevel
                   Nothing -> buildInjHint (map fst tchs) mf' mt'
+                  -- Recurse as well
                   Just wargs -> do
                     -- Recurse with wanted args
                     let considerables = zip mts wargs
@@ -348,22 +355,33 @@ shouldBeInjectiveHeuristic path = SingleVoting "Not injective enough" f
           buildInjHint tchs mf@(MonoType_Fam fn mts _) mt = if all isFamilyFree mts
             then do
               axs <- getAxioms
+              -- Obtain currently injective arguments
               let injLocs = obtainInjInfoFromAxs fn axs
+              -- the touchables not in injLocs are 'erroneous'
               let errTchs = filter (`notElem` injLocs) tchs
               if null errTchs
+                -- No erroneous touchables -> we have nothing to do.
                 then return Nothing
                 else do
+                  -- pSet contains all possible inj variables that we may add to the axiom
                   let pSet = filter (not . null) $ powerset errTchs
+                  -- vNM maps the injIndices to their names
                   let vNM = buildVarNameMap fn axs
+                  -- Computes for every combination of vars if it is possible to add.
                   possibleInjCombs <- mapM (checkNewInjectivity fn axs mf mt) (trace ("PSET: " ++ show pSet) pSet)
+                  --Split Lefts and Rights of the result
                   let splittedRes = bimap (map $ fromLeft []) (map $ fromRight []) $ splitBy isLeft possibleInjCombs
                   case splittedRes of
-                    (xs, []) -> let 
+                    (xs, []) -> let
+                      -- Check what indices are the culprit (the ones present in all) 
                       wrongIndices = filter (\et -> all (et `elem`) xs) errTchs
+                      -- build string of errTchs
                       nonInjString = buildNonInjString errTchs vNM
+                      -- build string of wrongIndices
                       wrongInjString = buildNonInjString wrongIndices vNM
                       in return $ Just $ addHint "probable cause" ("usage of type family " ++ show fn ++ " requires argument " ++ if length nonInjString > 1 then "s" else "" ++ "\"" ++ nonInjString
-                                                                  ++ "\" to be injective, but \"" ++ wrongInjString ++ "\" can never be") 
+                                                                  ++ "\" to be injective, but \"" ++ wrongInjString ++ "\" can never be")
+                    -- We have some possible annotations, we provide them as hint. 
                     (_, ys) -> return $ Just $ addHint "possible fix" ("Add one of the following injectivity annotations to the declaration of " ++ show fn ++ ":\n"
                                                                       ++ buildInjSuggestionsString (zip ys (repeat vNM)))
             else return Nothing
@@ -372,6 +390,7 @@ shouldBeInjectiveHeuristic path = SingleVoting "Not injective enough" f
           checkNewInjectivity :: (Fresh m, HasTypeGraph m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo Diagnostic)
                               => String -> [Axiom ConstraintInfo] -> MonoType -> MonoType -> [Int] -> m (Either [Int] [Int])
           checkNewInjectivity fn axs fam mt newTchs = do
+            -- Update the injective axiom with new injective annotation (based on newTchs)
             let (axs', is) = swapInjAxiom fn newTchs axs
             let unifyAxs = filterAxiomsOnName fn axs' -- only unify axioms of type fam 'fn'
             ienv <- axsToInjectiveEnv axs'
@@ -386,7 +405,9 @@ shouldBeInjectiveHeuristic path = SingleVoting "Not injective enough" f
                 tchs <- filterM (fmap isJust . isVertexTouchable) (nub $ fvToList fam ++ fvToList mt :: [TyVar])
                 res <- runTG $ unifyTypes axs' [] [Constraint_Unify fam mt Nothing] tchs
                 case res of
+                  -- if not: we return "Left newTchs" which means these are erroneous
                   Nothing -> return $ Left newTchs
+                  -- Else, we return the new complete annotation (in is)
                   Just _ -> return $ Right is
               _  -> return $ Left newTchs
 
