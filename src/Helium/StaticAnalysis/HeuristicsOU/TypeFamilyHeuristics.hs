@@ -14,7 +14,7 @@ import Rhodium.Solver.Rules (ErrorLabel (ErrorLabel))
 import Helium.StaticAnalysis.Miscellaneous.ReductionTraceUtils (buildReductionTrace, getFullTrace, getLastTypeInTrace, getFirstTypeInTrace, squashTrace)
 import Data.Maybe (isJust, catMaybes, fromMaybe, mapMaybe)
 import Debug.Trace (trace)
-import Data.List (permutations, nub, intercalate)
+import Data.List (permutations, nub, intercalate, sort)
 import qualified Data.Map as M
 import Helium.StaticAnalysis.HeuristicsOU.HeuristicsInfo
 import Helium.StaticAnalysis.Messages.HeliumMessages (freshenRepresentation)
@@ -24,10 +24,13 @@ import Rhodium.Core (unifyTypes, runTG)
 import Control.Monad (filterM)
 import Helium.StaticAnalysis.Inferencers.OutsideInX.TopConversion (polytypeToMonoType)
 import Helium.StaticAnalysis.Miscellaneous.TypeConversion (Freshen(freshenWithMapping))
-import Helium.StaticAnalysis.StaticChecks.TypeFamilyInfos (TFInstanceInfo(tfiName, varNameMap), tails)
+import Helium.StaticAnalysis.StaticChecks.TypeFamilyInfos (TFInstanceInfo(tfiName, varNameMap), tails, splitBy)
 import Helium.StaticAnalysis.StaticChecks.TypeFamilies (performPairwiseInjCheck, performWronglyUsedVarInInjCheck)
 import Helium.Syntax.UHA_Syntax (Name)
 import Helium.StaticAnalysis.Miscellaneous.Diagnostics (Diagnostic)
+import Data.Either (isLeft, fromLeft, fromRight)
+import Data.Bifunctor (second, bimap)
+import Control.Arrow (first)
 
 typeErrorThroughReduction :: (Fresh m, HasTypeGraph m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo Diagnostic)
                           => Path m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo -> VotingHeuristic m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo Diagnostic
@@ -259,7 +262,7 @@ injectUntouchableHeuristic path = SingleVoting "Type error through injection of 
                 Just (cl, cr) -> if typeIsInType cl pmt
                   then let
                     because_hint = addHint "because" ("could not assign " ++ (show . show) mt ++ " to " ++ (show . show) mv ++ ". " ++ 
-                                                     (show . show) mv ++ " is quantified with a (implicit) forall and cannot be assigned any type")
+                                                     (show . show) mv ++ " is quantified with a (implicit) forall and cannot be assigned any specific type")
                     in return $ Just (5, "Tried to inject untouchable", constraint, eid, addProperty (InjectUntouchable trace_mt (cl, cr)) $ because_hint ci, gm)
                   else return Nothing
             _ -> return Nothing
@@ -351,20 +354,26 @@ shouldBeInjectiveHeuristic path = SingleVoting "Not injective enough" f
                 then return Nothing
                 else do
                   let pSet = filter (not . null) $ powerset errTchs
-                  possibleInjCombs <- catMaybes <$> mapM (checkNewInjectivity fn axs mf mt) pSet
-                  case possibleInjCombs of
-                    [] -> return $ Just $ addHint "probable cause" ("type family " ++ show fn ++ " is used injectively but its definition can never be injective") 
-                    _ -> return $ Just $ addHint "possible fix" ("Add one of the following injectivity annotations to the declaration of " ++ show fn ++ ":\n"
-                                                                ++ buildInjSuggestionsString possibleInjCombs)
+                  let vNM = buildVarNameMap fn axs
+                  possibleInjCombs <- mapM (checkNewInjectivity fn axs mf mt) (trace ("PSET: " ++ show pSet) pSet)
+                  let splittedRes = bimap (map $ fromLeft []) (map $ fromRight []) $ splitBy isLeft possibleInjCombs
+                  case splittedRes of
+                    (xs, []) -> let 
+                      wrongIndices = filter (\et -> all (et `elem`) xs) errTchs
+                      nonInjString = buildNonInjString errTchs vNM
+                      wrongInjString = buildNonInjString wrongIndices vNM
+                      in return $ Just $ addHint "probable cause" ("usage of type family " ++ show fn ++ " requires argument " ++ if length nonInjString > 1 then "s" else "" ++ "\"" ++ nonInjString
+                                                                  ++ "\" to be injective, but \"" ++ wrongInjString ++ "\" can never be") 
+                    (_, ys) -> return $ Just $ addHint "possible fix" ("Add one of the following injectivity annotations to the declaration of " ++ show fn ++ ":\n"
+                                                                      ++ buildInjSuggestionsString (zip ys (repeat vNM)))
             else return Nothing
           buildInjHint _ _ _ = return Nothing
 
           checkNewInjectivity :: (Fresh m, HasTypeGraph m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo Diagnostic)
-                              => String -> [Axiom ConstraintInfo] -> MonoType -> MonoType -> [Int] -> m (Maybe ([Int], M.Map Int Name))
-          checkNewInjectivity fn axs fam mt  newTchs = do
+                              => String -> [Axiom ConstraintInfo] -> MonoType -> MonoType -> [Int] -> m (Either [Int] [Int])
+          checkNewInjectivity fn axs fam mt newTchs = do
             let (axs', is) = swapInjAxiom fn newTchs axs
             let unifyAxs = filterAxiomsOnName fn axs' -- only unify axioms of type fam 'fn'
-            let vNM = fromMaybe M.empty (varNameMap (let (Axiom_Unify _ (Just tfi)) = head unifyAxs in tfi))
             ienv <- axsToInjectiveEnv axs'
             let unifyCombs = [(x, y) | (x:ys) <- tails unifyAxs, y <- ys]
             -- pairwise injectivity check and wrongly used vars check from static checks
@@ -377,9 +386,9 @@ shouldBeInjectiveHeuristic path = SingleVoting "Not injective enough" f
                 tchs <- filterM (fmap isJust . isVertexTouchable) (nub $ fvToList fam ++ fvToList mt :: [TyVar])
                 res <- runTG $ unifyTypes axs' [] [Constraint_Unify fam mt Nothing] tchs
                 case res of
-                  Nothing -> return Nothing
-                  Just _ -> return $ Just (is, vNM)
-              _  -> return Nothing
+                  Nothing -> return $ Left newTchs
+                  Just _ -> return $ Right is
+              _  -> return $ Left newTchs
 
           swapInjAxiom :: String -> [Int] -> [Axiom ConstraintInfo] -> ([Axiom ConstraintInfo], [Int])
           swapInjAxiom fn is axs = let
@@ -427,13 +436,23 @@ shouldBeInjectiveHeuristic path = SingleVoting "Not injective enough" f
           obtainInjInfoFromAxs fn (_:axs) = obtainInjInfoFromAxs fn axs
           obtainInjInfoFromAxs _  [] = []
 
+          buildVarNameMap :: String -> [Axiom ConstraintInfo] -> M.Map Int Name
+          buildVarNameMap fn axs = let
+            fnAxs = filterAxiomsOnName fn axs
+            in fromMaybe M.empty (varNameMap (let (Axiom_Unify _ (Just tfi)) = head fnAxs in tfi))
+
           buildInjSuggestionsString :: [([Int], M.Map Int Name)] -> String
           buildInjSuggestionsString posIdx = intercalate "\n" $ zipWith
             (curry
               (\ (i, (is, varMap))
-                  -> let names = map (varMap M.!) is
+                  -> let names = map (varMap M.!) (sort is)
                     in show i ++ ": r -> " ++ unwords (map show names)))
             [(1 :: Integer)..] posIdx
+
+          buildNonInjString :: [Int] -> M.Map Int Name -> String
+          buildNonInjString idx vNM = let 
+            names = map (vNM M.!) (sort idx)
+            in intercalate ", " (map show names)
 
 -- Filter function for axioms.
 filterOnAxsRHS :: (Fresh m, HasTypeGraph m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo Diagnostic, CompareTypes m (RType ConstraintInfo))
