@@ -196,13 +196,14 @@ type family J a where
 -- right :: a -> b -> Right a b
 -- right x y = x
 
+-- BUG SITUATION!!!!!!
 type family Foo a b c = r | r -> c
-type instance Foo Char Char Char = Bool
+type instance Foo Char Bool Char = Bool
 type instance Foo Char Int Char = Bool
 type instance Foo Float Bool Int = Int
 
 class Bar t where
-  clsF :: Foo t v t
+  clsF :: Foo t t t
 instance Bar Char where
   clsF = True
 

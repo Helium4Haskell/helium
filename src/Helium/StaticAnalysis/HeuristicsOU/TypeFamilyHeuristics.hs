@@ -53,7 +53,7 @@ typeErrorThroughReduction path = SingleVoting "Type error through type family re
             (Constraint_Unify mf@MonoType_Fam{} t _, ErrorLabel "Residual constraint") -> do
               [MType freshOg] <- freshenRepresentation . (:[]) <$> getSubstTypeFull (getGroupFromEdge cedge) (MType mf)
               -- Get potential trace.
-              theTrace <- squashTrace <$> buildReductionTrace True cedge freshOg
+              theTrace <- squashTrace <$> buildReductionTrace False cedge freshOg
               -- Builds hint in nested sense, when type family contains other families that were not reducable (or wronly reduced, perhaps)
               mTheHint <- buildNestedHints cedge mf t
               -- Unpack hint
@@ -382,7 +382,7 @@ shouldBeInjectiveHeuristic path = SingleVoting "Not injective enough" f
                       in return $ Just $ addHint "probable cause" ("usage of type family " ++ show fn ++ " requires argument " ++ if length nonInjString > 1 then "s" else "" ++ "\"" ++ nonInjString
                                                                   ++ "\" to be injective, but \"" ++ wrongInjString ++ "\" can never be")
                     -- We have some possible annotations, we provide them as hint. 
-                    (_, ys) -> return $ Just $ addHint "possible fix" ("Add one of the following injectivity annotations to the declaration of " ++ show fn ++ ":\n"
+                    (_, ys) -> return $ Just $ addHint "possible fix" ("Replace the injectivity annotation of " ++ show fn ++ " with one of the following:\n"
                                                                       ++ buildInjSuggestionsString (zip ys (repeat vNM)))
             else return Nothing
           buildInjHint _ _ _ = return Nothing
