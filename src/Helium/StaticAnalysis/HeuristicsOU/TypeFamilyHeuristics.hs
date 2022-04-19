@@ -254,10 +254,10 @@ injectUntouchableHeuristic path = SingleVoting "Type error through injection of 
           let cedge = getEdgeFromId graph ceid 
           let pconstraint = getConstraintFromEdge cedge
           case (pconstraint, labelFromPath path) of 
-            (Constraint_Unify mv@MonoType_Var{} mt _, ErrorLabel "Residual constraint") -> do
+            (Constraint_Unify mv@MonoType_Var{} mt (Just cinfo), ErrorLabel "Residual constraint") -> do
               trace_var <- buildReductionTrace True cedge mv
               trace_mt <- buildReductionTrace True cedge mt
-              case obtainTraceInfo trace_var trace_mt of
+              case isResultOfInjectivity cinfo of
                 Nothing -> return Nothing
                 Just (cl, cr) -> if typeIsInType cl pmt
                   then let
@@ -380,7 +380,7 @@ shouldBeInjectiveHeuristic path = SingleVoting "Not injective enough" f
                       -- build string of wrongIndices
                       wrongInjString = buildNonInjString wrongIndices vNM
                       in return $ Just $ addHint "probable cause" ("usage of type family " ++ show fn ++ " requires argument " ++ if length nonInjString > 1 then "s" else "" ++ "\"" ++ nonInjString
-                                                                  ++ "\" to be injective, but \"" ++ wrongInjString ++ "\" can never be")
+                                                                  ++ "\" to be injective, but \"" ++ wrongInjString ++ "\" currently can't be")
                     -- We have some possible annotations, we provide them as hint. 
                     (_, ys) -> return $ Just $ addHint "possible fix" ("Replace the injectivity annotation of " ++ show fn ++ " with one of the following:\n"
                                                                       ++ buildInjSuggestionsString (zip ys (repeat vNM)))

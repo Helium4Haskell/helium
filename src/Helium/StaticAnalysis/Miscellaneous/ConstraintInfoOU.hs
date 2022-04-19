@@ -151,6 +151,7 @@ data Property
     | WithReduction ReductionTrace
     | InjectUntouchable ReductionTrace (MonoType, MonoType) {-Before toplevel improvement-}
     | HasTopLevelReacted
+    | ResultOfInjectivity MonoType MonoType
     deriving (Generic)
 
 instance Show Property where
@@ -196,6 +197,7 @@ instance Show Property where
     show (WithReduction red) = "WithReduction " ++ show red
     show (InjectUntouchable _ mtTup) = "InjectUntouchable " ++ show mtTup
     show HasTopLevelReacted = "HasTopLevelReacted"
+    show (ResultOfInjectivity mt1 mt2) = "ResultOfInjectivity" ++ show mt1 ++ ", " ++ show mt2
     show _ = "No show"
 
 --deriving instance Show TypeError
@@ -359,6 +361,9 @@ maybeInjectUntouchable a = maybeHead [ (rt, mtt) | InjectUntouchable rt mtt <- g
 
 hasTopLevelReacted :: HasProperties a => a -> Bool
 hasTopLevelReacted a = isJust $ maybeHead [ "TLR" | HasTopLevelReacted <- getProperties a]
+
+isResultOfInjectivity :: HasProperties a => a -> Maybe (MonoType, MonoType)
+isResultOfInjectivity a = maybeHead [ (cl, cr) | ResultOfInjectivity cl cr <- getProperties a]
 -----------------------------------------------------------------
 -- Smart constructors
 

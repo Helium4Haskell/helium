@@ -363,11 +363,11 @@ improveTopLevelFun given c@(Constraint_Unify fam@(MonoType_Fam f ms _) t ci) (Ax
                                 -- Puts the non injective vars as vars in typefamilies in the diagnostics of the state
                                 let nonInjVars = nub [(tv, i) | (i, MonoType_Var _ tv _) <- zip [(0 :: Int)..] ms, i `notElem` injIdx]
                                 putDiagnostics $ addTyVarInTypeFamilyList nonInjVars fam
-                                let substLhs' = applyOverInjArgs psubst injIdx lhs
-                                let (_, (specLhs, specRhs)) = contFreshM (unbind b) 1000000000000000 -- Must be large
-                                let newLhs = insertReductionStep substLhs' (Step substLhs t (Just $ removeCI c) (TopLevelImprovement (specLhs, specRhs) (fam, t) tfi))
-                                let ci = addProperty HasTopLevelReacted emptyConstraintInfo
-                                return $ Applied ([], [insertCIInConstraint c ci, Constraint_Unify newLhs fam Nothing]) -- Here we deviate from the paper and follow Cobalt (just substitute arguments with what we obtained)
+                                let (MonoType_Fam _ slhsMs _) = applyOverInjArgs psubst injIdx lhs
+                                let newConstrInfo = addProperty (ResultOfInjectivity fam t) emptyConstraintInfo
+                                let newConstrs = [insertCIInConstraint (Constraint_Unify m sm Nothing) newConstrInfo | (m, sm, i) <- zip3 ms slhsMs [(0 :: Int)..], i `elem` injIdx]
+                                let constrInfo = addProperty HasTopLevelReacted emptyConstraintInfo
+                                return $ Applied ([], insertCIInConstraint c constrInfo : newConstrs)
             _ -> return NotApplicable 
 improveTopLevelFun given c (Axiom_ClosedGroup _ axs) = loopAxioms (improveTopLevelFun given c) axs
 improveTopLevelFun _ _ _ = return NotApplicable
