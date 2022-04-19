@@ -196,8 +196,8 @@ ordPrio i1 i2
   | otherwise = EQ 
 
 -- Obtains the type family declaration info as needed for `typeToMonoType`
-obtainTyFams :: TFDeclInfos -> [(String, Int)]
-obtainTyFams = map (\d -> (show $ tfdName d, length $ argNames d))
+obtainTyFams :: TFDeclInfos -> [(String, Int, Bool)]
+obtainTyFams = map (\d -> (show $ tfdName d, length $ argNames d, True))
 
 -- Obtains the type family declaration info as needed for KindChecking.ag
 obtainTyFams1 :: TFDeclInfos -> [(Name, Int)]

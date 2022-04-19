@@ -64,7 +64,7 @@ import Unbound.Generics.LocallyNameless.Operations hiding (freshen)
 import Rhodium.TypeGraphs.GraphInstances()
 import Helium.StaticAnalysis.StaticChecks.TypeFamilyInfos (TFInstanceInfo (tfiName, argTypes, defType, tfiType, preCompat), splitBy, TFType (Closed), TFInstanceInfos, ordPrio, buildInjectiveEnv, TFDeclInfo (argNames), insertVarNameMap)
 
-type TypeFamilies = [(String, Int)]
+type TypeFamilies = [(String, Int, Bool)]
 
 bindVariables :: [(String, TyVar)] -> PolyType ConstraintInfo -> PolyType ConstraintInfo
 bindVariables = flip (foldr (\(s, t) p -> PolyType_Bind s (bind t p)))
@@ -96,10 +96,10 @@ polyTypeToTypeScheme p = let
             return ([], concatMap constraintToPredicate cs, monoTypeToTp m)
 
 typeSynonymsToTypeFamilies :: TypeSynonymEnvironment -> TypeFamilies
-typeSynonymsToTypeFamilies = map (\(n, (i, _)) -> (show n, i)) . M.assocs
+typeSynonymsToTypeFamilies = map (\(n, (i, _)) -> (show n, i, False)) . M.assocs
 
 importEnvironmentToTypeFamilies :: ImportEnvironment -> TypeFamilies
-importEnvironmentToTypeFamilies = map (\(n, (i, _)) -> (show n, i)) . M.assocs . typeSynonyms
+importEnvironmentToTypeFamilies = map (\(n, (i, _)) -> (show n, i, False)) . M.assocs . typeSynonyms
 
 tpSchemeListDifference :: M.Map Name TpScheme -> M.Map Name TpScheme -> M.Map Name  ((Tp, String), (Tp, String))
 tpSchemeListDifference m1 m2 = M.map fromJust $ M.filter isJust $ M.intersectionWith eqTpScheme m1 m2
@@ -177,9 +177,9 @@ tpCons (TApp f _) = tpCons f
 isTypeFamily :: TypeFamilies -> Tp -> Bool
 isTypeFamily fams tp = let
     depth = tpDepth tp
-    fFams = filter (\x -> snd x == depth) fams
+    fFams = filter (\(_, x, _) -> x == depth) fams
     cons = tpCons tp
-    in any (\(x, _) -> Just x == cons) fFams
+    in any (\(x, _, _) -> Just x == cons) fFams
 
 getTypeVariablesFromPolyType :: PolyType ConstraintInfo -> [TyVar]
 getTypeVariablesFromPolyType (PolyType_Bind _ (B p t)) = p : getTypeVariablesFromPolyType t
@@ -226,7 +226,7 @@ typeSynonymsToAxioms :: TypeSynonymEnvironment -> [Axiom ConstraintInfo]
 typeSynonymsToAxioms env = concatMap tsToAxioms $ M.toList env
             where
                 tsToAxioms (name, (size, f)) = let
-                        fams = map (\(n, (i, _)) -> (show n, i)) $ M.assocs env
+                        fams = map (\(n, (i, _)) -> (show n, i, False)) $ M.assocs env
                         vars = take size [0..]
                         tpVars = map TVar vars
                         tp = f tpVars

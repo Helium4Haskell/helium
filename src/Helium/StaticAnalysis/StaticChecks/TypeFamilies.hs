@@ -181,16 +181,24 @@ instSaturationCheck ds is = let
 
   in [WronglySaturatedTypeFamily n dl tl | (n, dl, tl) <- violations]
 
--- Checks if all arguments are type family free.
+-- Checks if all arguments are type family free (but not type synonyms)
 instNoTFInArgument :: TypeFamilies -> TFInstanceInfos -> Errors
 instNoTFInArgument fams tis = let
 
-  violations = [ (tfiName inst, arg, thrd $ typeToMonoType fams arg) |
+  violations = [ (tfiName inst, arg, mt) |
                  inst <- tis
                , arg <- argTypes inst
-               , not $ isFamilyFree $ thrd $ typeToMonoType fams arg
+               , let mt = thrd $ typeToMonoType fams arg
+               , not (isFamilyFree mt) && not (isTypeSyn mt fams)
                ]
   in [TFInArgument n t mt | (n, t, mt) <- violations] 
+  where
+    isTypeSyn :: MonoType -> TypeFamilies -> Bool
+    isTypeSyn (MonoType_Fam fn _ _) = any (\(n, _, p) -> fn == n && not p)
+    isTypeSyn _ = const False
+
+    isFam (MonoType_Fam _ _ _) = True
+    isFam _ = False
 
 -- Checks if all vars in RHS are in scope wrt the LHS.
 instVarOccursCheck :: TFInstanceInfos -> Errors
