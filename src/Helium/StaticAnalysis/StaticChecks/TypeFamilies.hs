@@ -197,9 +197,6 @@ instNoTFInArgument fams tis = let
     isTypeSyn (MonoType_Fam fn _ _) = any (\(n, _, p) -> fn == n && not p)
     isTypeSyn _ = const False
 
-    isFam (MonoType_Fam _ _ _) = True
-    isFam _ = False
-
 -- Checks if all vars in RHS are in scope wrt the LHS.
 instVarOccursCheck :: TFInstanceInfos -> Errors
 instVarOccursCheck tis = let

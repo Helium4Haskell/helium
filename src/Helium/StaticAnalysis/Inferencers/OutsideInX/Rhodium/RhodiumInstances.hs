@@ -358,7 +358,6 @@ improveTopLevelFun given c@(Constraint_Unify fam@(MonoType_Fam f ms _) t ci) (Ax
                         let substLhs = applySubst psubst lhs
                         case matchTy lhs substLhs of
                             SurelyApart -> return NotApplicable
-                            -- Deviate from paper, follow Cobalt, only focus on injective arguments.
                             Unifiable _ -> do
                                 -- Puts the non injective vars as vars in typefamilies in the diagnostics of the state
                                 let nonInjVars = nub [(tv, i) | (i, MonoType_Var _ tv _) <- zip [(0 :: Int)..] ms, i `notElem` injIdx]
