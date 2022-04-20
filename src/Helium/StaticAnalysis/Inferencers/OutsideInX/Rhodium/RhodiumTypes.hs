@@ -72,7 +72,6 @@ instance Show ReductionStep where
 
 data ReductionType
   = LeftToRight (MonoType, MonoType) (Maybe TFInstanceInfo)
-  | TopLevelImprovement (MonoType, MonoType) (MonoType, MonoType) (Maybe TFInstanceInfo)
   | CanonReduction (MonoType, MonoType)
   | ArgInjection (MonoType, MonoType)
   deriving (Generic, Ord, Eq, Show)

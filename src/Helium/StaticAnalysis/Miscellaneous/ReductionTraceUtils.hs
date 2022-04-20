@@ -4,7 +4,7 @@
 module Helium.StaticAnalysis.Miscellaneous.ReductionTraceUtils where
 
 import Rhodium.TypeGraphs.GraphProperties (CompareTypes, HasTypeGraph, HasGraph (getGraph))
-import Helium.StaticAnalysis.Inferencers.OutsideInX.Rhodium.RhodiumTypes (RType (MType), Axiom, TyVar, Constraint (Constraint_Unify), MonoType (MonoType_Fam, MonoType_App, MonoType_Con, MonoType_Var), ReductionTrace, ReductionStep (Step), ReductionType (LeftToRight, CanonReduction, TopLevelImprovement, ArgInjection), getMaybeReductionStep)
+import Helium.StaticAnalysis.Inferencers.OutsideInX.Rhodium.RhodiumTypes (RType (MType), Axiom, TyVar, Constraint (Constraint_Unify), MonoType (MonoType_Fam, MonoType_App, MonoType_Con, MonoType_Var), ReductionTrace, ReductionStep (Step), ReductionType (LeftToRight, CanonReduction, ArgInjection), getMaybeReductionStep)
 import Helium.StaticAnalysis.Miscellaneous.ConstraintInfoOU (ConstraintInfo)
 import Unbound.Generics.LocallyNameless (Fresh)
 import Rhodium.TypeGraphs.Graph (TGEdge, getGroupFromEdge, getEdgeFromId)
@@ -184,20 +184,6 @@ traceToMessageBlock rts = MessageCompose $ mapToBlock (1 :: Int) rts
                 , MessageString "\n"
                 ]
                 : mapToBlock (idx + 1) rts'
-        mapToBlock idx ((Step after before _ rt@(TopLevelImprovement (lhs, rhs) (cl, cr) tfi), times):rts')
-            = --MessageString (show idx ++ ". " ++ showMaybeRange tfi ++ "\t: " ++ show after ++ " <- " ++ show before ++ "\n   Reason\t: injective top-level improvement" ++ timesToString times ++ "\n.")
-              MessageCompose 
-                [
-                  MessageString (show idx ++ ". " ++ "Applied\t: " ++ show lhs ++ " = " ++ show rhs)
-                , MessageString ("\n   From\t: " ++ showMaybeRange tfi)
-                , MessageString ("\n   On\t: " ++ show cl ++ " ~ " ++ show cr)
-                , MessageString ("\n   Step\t: " ++ show after ++ " <- " ++ show before)
-                , MessageString ("\n   New\t: " ++ show cl ++ " ~ " ++ show after)
-                , MessageString ("\n   Reason\t: " ++ showReason rt)
-                , MessageString ("\n   Amount\t: " ++ timesToString times)
-                , MessageString "\n"
-                ]
-                : mapToBlock (idx + 1) rts'
         mapToBlock idx ((Step after before (Just constr) rt@(ArgInjection (apBef, apAft)), times):rts')
           = MessageCompose
               [
@@ -219,7 +205,6 @@ traceToMessageBlock rts = MessageCompose $ mapToBlock (1 :: Int) rts
         showReason rt = case rt of
             LeftToRight _ _ -> "left to right application"
             CanonReduction _ -> "injectivity"
-            TopLevelImprovement{} -> "right to left injection"
             ArgInjection _ -> "argument injection"
 
 getTraceFromTwoTypes :: (CompareTypes m (RType ConstraintInfo), Fresh m, HasTypeGraph m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo Diagnostic)

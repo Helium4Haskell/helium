@@ -149,7 +149,7 @@ data Property
     | LiteralFloat Float
     | TypeFamilyReduction (Maybe ReductionTrace) MonoType {-Inferred-} MonoType {-From signature-} MonoType {-Reduced-} Bool {-Whether fully reduced-}
     | WithReduction ReductionTrace
-    | InjectUntouchable ReductionTrace (MonoType, MonoType) {-Before toplevel improvement-}
+    | InjectUntouchable (MonoType, MonoType) {-Before toplevel improvement-}
     | HasTopLevelReacted
     | ResultOfInjectivity MonoType MonoType (Constraint ConstraintInfo)
     deriving (Generic)
@@ -195,7 +195,7 @@ instance Show Property where
     show (LiteralFloat f) = "LiteralFloat " ++ show f
     show (TypeFamilyReduction _ m1 m2 m3 p) = "TypeFamilyReduction " ++ show m1 ++ ", " ++ show m2 ++ ", " ++ show m3 ++ ", " ++ show p
     show (WithReduction red) = "WithReduction " ++ show red
-    show (InjectUntouchable _ mtTup) = "InjectUntouchable " ++ show mtTup
+    show (InjectUntouchable mtTup) = "InjectUntouchable " ++ show mtTup
     show HasTopLevelReacted = "HasTopLevelReacted"
     show (ResultOfInjectivity mt1 mt2 c) = "ResultOfInjectivity" ++ show mt1 ++ ", " ++ show mt2 ++ ", " ++ show c
     show _ = "No show"
@@ -356,8 +356,8 @@ maybeLiteralFloat a = maybeHead [ f | LiteralFloat f <- getProperties a]
 maybeTypeFamilyReduction :: HasProperties a => a -> Maybe (Maybe ReductionTrace, MonoType, MonoType, MonoType, Bool)
 maybeTypeFamilyReduction a = maybeHead [ (rt, m1, m2, m3, p) | TypeFamilyReduction rt m1 m2 m3 p <- getProperties a]
 
-maybeInjectUntouchable :: HasProperties a => a -> Maybe (ReductionTrace, (MonoType, MonoType))
-maybeInjectUntouchable a = maybeHead [ (rt, mtt) | InjectUntouchable rt mtt <- getProperties a]
+maybeInjectUntouchable :: HasProperties a => a -> Maybe (MonoType, MonoType)
+maybeInjectUntouchable a = maybeHead [ mtt | InjectUntouchable mtt <- getProperties a]
 
 hasTopLevelReacted :: HasProperties a => a -> Bool
 hasTopLevelReacted a = isJust $ maybeHead [ "TLR" | HasTopLevelReacted <- getProperties a]

@@ -1,9 +1,9 @@
 {-# LANGUAGE FlexibleContexts #-}
 {-# OPTIONS_GHC -Wno-simplifiable-class-constraints #-}
 module Helium.StaticAnalysis.HeuristicsOU.TypeFamilyHeuristics where
-import Unbound.Generics.LocallyNameless ( Fresh, unbind, Subst (substs), contFreshM, bind )
+import Unbound.Generics.LocallyNameless ( Fresh, unbind, Subst (substs))
 import Rhodium.Blamer.Path
-import Helium.StaticAnalysis.Inferencers.OutsideInX.Rhodium.RhodiumTypes (Axiom (Axiom_ClosedGroup, Axiom_Unify, Axiom_Injective), TyVar, RType (MType), Constraint (Constraint_Inst, Constraint_Unify), MonoType (MonoType_Fam, MonoType_App, MonoType_Con, MonoType_Var), PolyType (PolyType_Mono, PolyType_Bind), fvToList, ReductionType (TopLevelImprovement, CanonReduction), ReductionStep (Step), ReductionTrace, MonoTypes, isFamilyFree)
+import Helium.StaticAnalysis.Inferencers.OutsideInX.Rhodium.RhodiumTypes (Axiom (Axiom_ClosedGroup, Axiom_Unify, Axiom_Injective), TyVar, RType (MType), Constraint (Constraint_Inst, Constraint_Unify), MonoType (MonoType_Fam, MonoType_App, MonoType_Con, MonoType_Var), PolyType (PolyType_Mono, PolyType_Bind), fvToList, MonoTypes, isFamilyFree)
 import Helium.StaticAnalysis.Miscellaneous.ConstraintInfoOU
 import Rhodium.Blamer.Heuristics (VotingHeuristic (SingleVoting))
 import Rhodium.TypeGraphs.Graph
@@ -18,8 +18,7 @@ import Data.List (permutations, nub, intercalate, sort)
 import qualified Data.Map as M
 import Helium.StaticAnalysis.HeuristicsOU.HeuristicsInfo
 import Helium.StaticAnalysis.Messages.HeliumMessages (freshenRepresentation)
-import Helium.StaticAnalysis.Inferencers.OutsideInX.Rhodium.RhodiumInstances (reactClosedTypeFam, convertSubstitution, integer2Name, loopAxioms, axsToInjectiveEnv)
-import Helium.Utils.Utils (internalError)
+import Helium.StaticAnalysis.Inferencers.OutsideInX.Rhodium.RhodiumInstances (reactClosedTypeFam, convertSubstitution, axsToInjectiveEnv)
 import Rhodium.Core (unifyTypes, runTG)
 import Control.Monad (filterM)
 import Helium.StaticAnalysis.Inferencers.OutsideInX.TopConversion (polytypeToMonoType)
@@ -29,17 +28,16 @@ import Helium.StaticAnalysis.StaticChecks.TypeFamilies (performPairwiseInjCheck,
 import Helium.Syntax.UHA_Syntax (Name)
 import Helium.StaticAnalysis.Miscellaneous.Diagnostics (Diagnostic)
 import Data.Either (isLeft, fromLeft, fromRight)
-import Data.Bifunctor (second, bimap)
-import Control.Arrow (first)
+import Data.Bifunctor (bimap)
 
 typeErrorThroughReduction :: (Fresh m, HasTypeGraph m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo Diagnostic)
                           => Path m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo -> VotingHeuristic m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo Diagnostic
 typeErrorThroughReduction path = SingleVoting "Type error through type family reduction" f
   where
-    f (constraint, eid, ci, gm) = do
+    f (constr, eid, ci, gm) = do
       graph <- getGraph
       let edge = getEdgeFromId graph eid
-      case constraint of
+      case constr of
         Constraint_Inst _ pt _ -> do
           -- Getting edge of erroneous constraint (pconstraint)
           let pmt = case pt of
@@ -71,14 +69,14 @@ typeErrorThroughReduction path = SingleVoting "Type error through type family re
               case theTrace of
                 -- No trace but still reduction error
                 [] -> if typeIsInType mf pmt
-                        then return $ Just (5, "Type family could not be reduced, no trace", constraint, eid, addProperty (TypeFamilyReduction Nothing t freshOg freshOg False) $ theHint ci, gm)
+                        then return $ Just (5, "Type family could not be reduced, no trace", constr, eid, addProperty (TypeFamilyReduction Nothing t freshOg freshOg False) $ theHint ci, gm)
                         else return Nothing
                 -- Now with trace, checking if the trace belongs to the type signature
                 trc -> do
                   let Just lastType = getLastTypeInTrace trc
                   let Just firstType = getFirstTypeInTrace trc
                   if typeIsInType lastType pmt
-                    then return $ Just (5, "Type family could not be reduced further, trace", constraint, eid, addProperty (TypeFamilyReduction (Just theTrace) t lastType firstType False) $ theHint ci, gm)
+                    then return $ Just (5, "Type family could not be reduced further, trace", constr, eid, addProperty (TypeFamilyReduction (Just theTrace) t lastType firstType False) $ theHint ci, gm)
                     else return Nothing
             -- Reduced to simple type but resulted in type error
             (Constraint_Unify t1 t2 _, _) -> do
@@ -101,7 +99,7 @@ typeErrorThroughReduction path = SingleVoting "Type error through type family re
                   let hint = maybe id (addHint "possible fix") mhint
                   let Just firstType = getFirstTypeInTrace theTrace
                   if typeIsInType lastType pmt
-                    then return $ Just (4, "Type family reduction type error", constraint, eid, addProperty (TypeFamilyReduction (Just theTrace) inferredTStr lastType firstType True) $ hint ci, gm)
+                    then return $ Just (4, "Type family reduction type error", constr, eid, addProperty (TypeFamilyReduction (Just theTrace) inferredTStr lastType firstType True) $ hint ci, gm)
                     else return Nothing
             _ -> return Nothing
         _                     -> return Nothing
@@ -243,9 +241,9 @@ injectUntouchableHeuristic :: (Fresh m, HasTypeGraph m (Axiom ConstraintInfo) Ty
                            => Path m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo -> VotingHeuristic m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo Diagnostic
 injectUntouchableHeuristic path = SingleVoting "Type error through injection of untouchable variable" f
   where 
-    f (constraint, eid, ci, gm) = do
+    f (constr, eid, ci, gm) = do
       graph <- getGraph
-      case constraint of
+      case constr of
         Constraint_Inst _ pt _ -> do
           let pmt = case pt of
                 pb@(PolyType_Bind _ _) -> (fst . fst . snd) $ polytypeToMonoType [] 0 pb
@@ -254,9 +252,7 @@ injectUntouchableHeuristic path = SingleVoting "Type error through injection of 
           let cedge = getEdgeFromId graph ceid 
           let pconstraint = getConstraintFromEdge cedge
           case (pconstraint, labelFromPath path) of 
-            (cn@(Constraint_Unify mv@MonoType_Var{} mt (Just cinfo)), ErrorLabel "Residual constraint") -> do
-              trace_var <- buildReductionTrace True cedge mv
-              trace_mt <- buildReductionTrace True cedge mt
+            (cn@(Constraint_Unify mv@MonoType_Var{} mt (Just cinfo)), ErrorLabel "Residual constraint") ->
               case isResultOfInjectivity cinfo of
                 Nothing -> return Nothing
                 Just (cl, cr, c) -> if typeIsInType cl pmt
@@ -269,28 +265,19 @@ injectUntouchableHeuristic path = SingleVoting "Type error through injection of 
                       "\n   Reason\t: injectivity" ++
                       "\n   Amount\t: 1 time" 
                       )
-                    in return $ Just (5, "Tried to inject untouchable", constraint, eid, addProperty (InjectUntouchable trace_mt (cl, cr)) $ because_hint $ reductionHint ci, gm)
+                    in return $ Just (5, "Tried to inject untouchable", constr, eid, addProperty (InjectUntouchable (cl, cr)) $ because_hint $ reductionHint ci, gm)
                   else return Nothing
             _ -> return Nothing
         _ -> return Nothing
-
-        where
-
-          obtainTraceInfo :: ReductionTrace -> ReductionTrace -> Maybe (MonoType, MonoType)
-          obtainTraceInfo ((Step _ _ _ (CanonReduction _), _):_) ((Step _ _ _ (CanonReduction _), _):t2) =
-            case t2 of
-              ((Step _ _ _ (TopLevelImprovement _ c _), _):_) -> Just c
-              _ -> Nothing
-          obtainTraceInfo _ _ = Nothing
 
 -- Works on typefamilies where a right to left improvement should have been performed but isn't because it was not specified to be injective.
 shouldBeInjectiveHeuristic :: (Fresh m, HasTypeGraph m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo Diagnostic)
                           => Path m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo -> VotingHeuristic m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo Diagnostic
 shouldBeInjectiveHeuristic path = SingleVoting "Not injective enough" f
   where
-    f (constraint, eid, ci, gm) = do
+    f (constr, eid, ci, gm) = do
       graph <- getGraph
-      case constraint of
+      case constr of
         Constraint_Inst _ pt _ -> do
           let pmt = case pt of
                 pb@(PolyType_Bind _ _) -> (fst . fst . snd) $ polytypeToMonoType [] 0 pb
@@ -309,13 +296,13 @@ shouldBeInjectiveHeuristic path = SingleVoting "Not injective enough" f
                   theTrace <- buildReductionTrace False cedge mf
                   case theTrace of 
                     [] -> if typeFamInType fn pmt
-                      then return $ Just (7, "Should be injective, with trace", constraint, eid, addProperty (TypeFamilyReduction Nothing mt mf' mf' False) $ iHint ci, gm)
+                      then return $ Just (7, "Should be injective, with trace", constr, eid, addProperty (TypeFamilyReduction Nothing mt mf' mf' False) $ iHint ci, gm)
                       else return Nothing
                     trc -> do
-                      let Just last = getLastTypeInTrace trc
-                      let Just first = getFirstTypeInTrace trc
-                      if typeIsInType last pmt
-                        then return $ Just (7, "Should be injective, without trace", constraint, eid, addProperty (TypeFamilyReduction (Just trc) mt last first False) $ iHint ci, gm)
+                      let Just lastT = getLastTypeInTrace trc
+                      let Just firstT = getFirstTypeInTrace trc
+                      if typeIsInType lastT pmt
+                        then return $ Just (7, "Should be injective, without trace", constr, eid, addProperty (TypeFamilyReduction (Just trc) mt lastT firstT False) $ iHint ci, gm)
                         else return Nothing
             _ -> return Nothing
         _ -> return Nothing
@@ -442,7 +429,7 @@ shouldBeInjectiveHeuristic path = SingleVoting "Not injective enough" f
           isRhsUnifiable :: (Fresh m, HasTypeGraph m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo Diagnostic)
                          => String -> MonoType -> [Axiom ConstraintInfo] -> m Bool
           isRhsUnifiable fn mt (Axiom_Unify b _:axs) = do
-            (_, (lhs@(MonoType_Fam fn' _ _), rhs)) <- unbind b
+            (_, (MonoType_Fam fn' _ _, rhs)) <- unbind b
             if fn == fn'
               then do
                 allAxs <- getAxioms

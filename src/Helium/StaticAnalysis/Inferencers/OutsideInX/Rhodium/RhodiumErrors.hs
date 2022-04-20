@@ -429,7 +429,7 @@ makeInjectUntouchableError :: (CompareTypes m (RType ConstraintInfo), Fresh m, H
                          => Bool -> TGEdge (Constraint ConstraintInfo) -> Constraint ConstraintInfo -> ConstraintInfo -> m TypeError
 makeInjectUntouchableError mustShowTrace edge constraint info =
     do
-    let (Just (theTrace, (cl, cr))) = maybeInjectUntouchable info
+    let (Just (cl, cr)) = maybeInjectUntouchable info
     let (source, term) = sources info
         range    = maybe (rangeOfSource source) rangeOfSource term
         oneliner = MessageOneLiner (MessageString ("Could not reduce a type family in a " ++ location info ++ " further"))
@@ -460,6 +460,5 @@ makeInjectUntouchableError mustShowTrace edge constraint info =
                         MType m -> MessageMonoType m
                         PType p -> MessagePolyType p                    
                 ]
-        hints      = [ hint | WithHint hint <- properties info ]
-                   ++ [("full reduction", traceToMessageBlock (squashTrace theTrace)) | (not . null) theTrace && mustShowTrace]              
+        hints      = [ hint | WithHint hint <- properties info, (fst hint == "full reduction" && mustShowTrace) || fst hint /= "full reduction" ]             
     return $ TypeError [range] [oneliner] table hints
