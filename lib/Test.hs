@@ -180,15 +180,15 @@ type family J a where
 -- g :: [a] -> [a] -> a
 -- g xs ys = sum (xs ++ ys)
 
-type family B a = r | r -> a
-type instance B Int = Float
-type instance B Float = Int
+-- type family B a = r | r -> a
+-- type instance B Int = Float
+-- type instance B Float = Int
 
-f :: B a -> Int
-f x = x
+-- f :: B a -> Int
+-- f x = x
 
-g :: Int -> B a
-g x = x
+-- g :: Int -> B a
+-- g x = x
 
 -- type family Right a b
 -- type instance Right a b = b
@@ -196,18 +196,18 @@ g x = x
 -- right :: a -> b -> Right a b
 -- right x y = x
 
--- type family Foo a b c = r | r -> c
--- type instance Foo Char Char Char = Bool
--- type instance Foo Char Int Char = Bool
--- type instance Foo Float Bool Int = Int
+type family Foo a b c = r | r -> c
+type instance Foo Char Char Char = Bool
+type instance Foo Char Char Char = Bool
+type instance Foo Float Bool Int = Int
 
--- class Bar t where
---   clsF :: Foo t v t
--- instance Bar Char where
---   clsF = True
+class Bar t where
+  clsF :: Foo t v t
+instance Bar Char where
+  clsF = True
 
--- main :: Bool
--- main = clsF :: Bool
+main :: Bool
+main = clsF :: Bool
 
 -- type family Foo a 
 -- type instance Foo Char = Bool
@@ -222,16 +222,16 @@ g x = x
 -- main :: Bool
 -- main = clsF :: Bool
 
--- type family Foo a = r | r -> a
+-- type family Foo a 
 -- type instance Foo Char = Bool
 -- type instance Foo Int = Float
 -- type instance Foo Float = Int
 
--- clsf :: Foo t
--- clsf = True
+-- -- clsf :: Foo t
+-- -- clsf = True
 
 -- main :: Bool
--- main = clsf
+-- main = clsF
 
 -- class Bar t where
 --     clsF :: Foo t

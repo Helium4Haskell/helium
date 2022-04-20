@@ -375,7 +375,9 @@ shouldBeInjectiveHeuristic path = SingleVoting "Not injective enough" f
                       in return $ Just $ addHint "probable cause" ("usage of type family " ++ show fn ++ " requires argument " ++ if length nonInjString > 1 then "s" else "" ++ "\"" ++ nonInjString
                                                                   ++ "\" to be injective, but \"" ++ wrongInjString ++ "\" currently can't be")
                     -- We have some possible annotations, we provide them as hint. 
-                    (_, ys) -> return $ Just $ addHint "possible fix" ("Replace the injectivity annotation of " ++ show fn ++ " with one of the following:\n"
+                    (_, ys) -> return $ Just $ addHint "possible fix" ((if null injLocs 
+                                                                          then "Add one of the following injectivity annotations to " ++ show fn ++ ":\n"
+                                                                          else "Replace the injectivity annotation of " ++ show fn ++ " with one of the following:\n")
                                                                       ++ buildInjSuggestionsString (zip ys (repeat vNM)))
             else return Nothing
           buildInjHint _ _ _ = return Nothing
