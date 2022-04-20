@@ -254,16 +254,22 @@ injectUntouchableHeuristic path = SingleVoting "Type error through injection of 
           let cedge = getEdgeFromId graph ceid 
           let pconstraint = getConstraintFromEdge cedge
           case (pconstraint, labelFromPath path) of 
-            (Constraint_Unify mv@MonoType_Var{} mt (Just cinfo), ErrorLabel "Residual constraint") -> do
+            (cn@(Constraint_Unify mv@MonoType_Var{} mt (Just cinfo)), ErrorLabel "Residual constraint") -> do
               trace_var <- buildReductionTrace True cedge mv
               trace_mt <- buildReductionTrace True cedge mt
               case isResultOfInjectivity cinfo of
                 Nothing -> return Nothing
-                Just (cl, cr) -> if typeIsInType cl pmt
+                Just (cl, cr, c) -> if typeIsInType cl pmt
                   then let
                     because_hint = addHint "because" ("could not assign " ++ (show . show) mt ++ " to " ++ (show . show) mv ++ ". " ++ 
                                                      (show . show) mv ++ " is quantified with a (implicit) forall and cannot be assigned any specific type")
-                    in return $ Just (5, "Tried to inject untouchable", constraint, eid, addProperty (InjectUntouchable trace_mt (cl, cr)) $ because_hint ci, gm)
+                    reductionHint = addHint "full reduction" (
+                      "1. From\t: " ++ show c ++
+                      "\n   Got\t: " ++ show cn ++
+                      "\n   Reason\t: injectivity" ++
+                      "\n   Amount\t: 1 time" 
+                      )
+                    in return $ Just (5, "Tried to inject untouchable", constraint, eid, addProperty (InjectUntouchable trace_mt (cl, cr)) $ because_hint $ reductionHint ci, gm)
                   else return Nothing
             _ -> return Nothing
         _ -> return Nothing

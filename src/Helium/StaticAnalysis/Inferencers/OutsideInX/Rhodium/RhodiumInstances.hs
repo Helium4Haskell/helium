@@ -363,7 +363,7 @@ improveTopLevelFun given c@(Constraint_Unify fam@(MonoType_Fam f ms _) t ci) (Ax
                                 let nonInjVars = nub [(tv, i) | (i, MonoType_Var _ tv _) <- zip [(0 :: Int)..] ms, i `notElem` injIdx]
                                 putDiagnostics $ addTyVarInTypeFamilyList nonInjVars fam
                                 let (MonoType_Fam _ slhsMs _) = applyOverInjArgs psubst injIdx lhs
-                                let newConstrInfo = addProperty (ResultOfInjectivity fam t) emptyConstraintInfo
+                                let newConstrInfo = addProperty (ResultOfInjectivity fam t c) emptyConstraintInfo
                                 let newConstrs = [insertCIInConstraint (Constraint_Unify m sm Nothing) newConstrInfo | (m, sm, i) <- zip3 ms slhsMs [(0 :: Int)..], i `elem` injIdx]
                                 let constrInfo = addProperty HasTopLevelReacted emptyConstraintInfo
                                 return $ Applied ([], insertCIInConstraint c constrInfo : newConstrs)
