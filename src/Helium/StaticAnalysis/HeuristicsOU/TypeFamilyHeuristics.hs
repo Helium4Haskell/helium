@@ -296,13 +296,13 @@ shouldBeInjectiveHeuristic path = SingleVoting "Not injective enough" f
                   theTrace <- buildReductionTrace False cedge mf
                   case theTrace of 
                     [] -> if typeFamInType fn pmt
-                      then return $ Just (7, "Should be injective, with trace", constr, eid, addProperty (TypeFamilyReduction Nothing mt mf' mf' False) $ iHint ci, gm)
+                      then return $ Just (7, "Should be injective, without trace", constr, eid, addProperty (TypeFamilyReduction Nothing mt mf' mf' False) $ iHint ci, gm)
                       else return Nothing
                     trc -> do
                       let Just lastT = getLastTypeInTrace trc
                       let Just firstT = getFirstTypeInTrace trc
                       if typeIsInType lastT pmt
-                        then return $ Just (7, "Should be injective, without trace", constr, eid, addProperty (TypeFamilyReduction (Just trc) mt lastT firstT False) $ iHint ci, gm)
+                        then return $ Just (7, "Should be injective, with trace", constr, eid, addProperty (TypeFamilyReduction (Just trc) mt lastT firstT False) $ iHint ci, gm)
                         else return Nothing
             _ -> return Nothing
         _ -> return Nothing
