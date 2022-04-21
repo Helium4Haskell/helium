@@ -13,15 +13,13 @@ import Unbound.Generics.LocallyNameless as UB
 -- import Unbound.Generics.LocallyNameless.Subst as UB
 
 import qualified Data.Map as M
-
-import Data.Maybe
  
 addConstraint :: Constraint ConstraintInfo -> PolyType ConstraintInfo -> PolyType ConstraintInfo
 addConstraint c p = runFreshM $ addConstraint' c p
 
 addConstraint' :: Constraint ConstraintInfo -> PolyType ConstraintInfo -> UB.FreshM (PolyType ConstraintInfo)
 addConstraint' c (PolyType_Mono cs mt) = return $ PolyType_Mono (c:cs) mt
-addConstraint' c p@(PolyType_Bind s b) = do
+addConstraint' c (PolyType_Bind s b) = do
     (t, p) <- unbind b
     p' <- addConstraint' c p
     return $ PolyType_Bind s (bind t p')

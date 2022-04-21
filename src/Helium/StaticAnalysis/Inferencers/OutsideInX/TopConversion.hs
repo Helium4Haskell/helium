@@ -1,5 +1,3 @@
-{-# LANGUAGE BangPatterns #-}
-{-# LANGUAGE StandaloneDeriving #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# OPTIONS_GHC -Wno-orphans #-}
@@ -49,20 +47,15 @@ import Helium.Utils.Utils
 import Helium.StaticAnalysis.Miscellaneous.TypeConversion
 import Helium.StaticAnalysis.Miscellaneous.ConstraintInfoOU
 import Helium.StaticAnalysis.Inferencers.OutsideInX.Rhodium.RhodiumTypes
-import Helium.StaticAnalysis.Inferencers.OutsideInX.Rhodium.RhodiumGenerics
 import Helium.ModuleSystem.ImportEnvironment
 import qualified Data.Map as M
 import Control.Monad.State
 import Control.Arrow
 import Data.Maybe 
 import Data.List
-import Debug.Trace
 import Data.Functor.Identity
-
-import Unbound.Generics.LocallyNameless.Fresh
-import Unbound.Generics.LocallyNameless.Operations hiding (freshen)
 import Rhodium.TypeGraphs.GraphInstances()
-import Helium.StaticAnalysis.StaticChecks.TypeFamilyInfos (TFInstanceInfo (tfiName, argTypes, defType, tfiType, preCompat), splitBy, TFType (Closed), TFInstanceInfos, ordPrio, buildInjectiveEnv, TFDeclInfo (argNames), insertVarNameMap)
+import Helium.StaticAnalysis.StaticChecks.TypeFamilyInfos (TFInstanceInfo (tfiName, argTypes, defType, tfiType), splitBy, TFType (Closed), TFInstanceInfos, ordPrio, buildInjectiveEnv, TFDeclInfo (argNames), insertVarNameMap)
 
 type TypeFamilies = [(String, Int, Bool)]
 
@@ -86,14 +79,14 @@ polyTypeToTypeScheme p = let
         in bindTypeVariables quant qualifiedType
     where
         constraintToPredicate :: Constraint ConstraintInfo -> [Predicate]
-        constraintToPredicate (Constraint_Class c mts _) = map (\m -> Predicate c $ monoTypeToTp m) mts
+        constraintToPredicate (Constraint_Class c mts _) = map (Predicate c . monoTypeToTp) mts
+        constraintToPredicate _ = error "Should not happen"
         ptHelper :: PolyType ConstraintInfo -> FreshM ([Int], [Predicate], Tp)
-        ptHelper (PolyType_Bind s b) = do
-            (t, p) <- unbind b
-            (qs, ps, tp) <- ptHelper p
+        ptHelper (PolyType_Bind _ b) = do
+            (t, p') <- unbind b
+            (qs, ps, tp) <- ptHelper p'
             return (fromInteger (name2Integer t) : qs, ps, tp)
-        ptHelper (PolyType_Mono cs m) = do
-            return ([], concatMap constraintToPredicate cs, monoTypeToTp m)
+        ptHelper (PolyType_Mono cs m) = return ([], concatMap constraintToPredicate cs, monoTypeToTp m)
 
 typeSynonymsToTypeFamilies :: TypeSynonymEnvironment -> TypeFamilies
 typeSynonymsToTypeFamilies = map (\(n, (i, _)) -> (show n, i, False)) . M.assocs
@@ -105,7 +98,7 @@ tpSchemeListDifference :: M.Map Name TpScheme -> M.Map Name TpScheme -> M.Map Na
 tpSchemeListDifference m1 m2 = M.map fromJust $ M.filter isJust $ M.intersectionWith eqTpScheme m1 m2
 
 eqTpScheme :: TpScheme -> TpScheme -> Maybe ((Tp, String), (Tp, String))
-eqTpScheme t1@(Quantification (is1, qmap1, tp1)) t2@(Quantification (is2, qmap2, tp2)) = let
+eqTpScheme (Quantification (is1, _, tp1)) (Quantification (is2, _, tp2)) = let
     subs = M.fromList $ zipWith (\orig rep -> (orig, TVar rep)) is2 is1
     tp2r = subs |-> unqualify tp2
     tp1r = unqualify tp1
@@ -113,7 +106,7 @@ eqTpScheme t1@(Quantification (is1, qmap1, tp1)) t2@(Quantification (is2, qmap2,
 
 typeToPolytype :: TypeFamilies -> Integer -> Type -> (PolyType ConstraintInfo, Integer, [(String, TyVar)])
 typeToPolytype fams bu t = let
-    (cs, tv, mt) = typeToMonoType fams t
+    (cs, _, mt) = typeToMonoType fams t
     (mapping, (mt', bu')) = freshenWithMapping [] bu mt
     mappingSub :: [(TyVar, MonoType)]
     mappingSub = map (\(i, v) -> (integer2Name i, var (integer2Name v))) mapping
@@ -121,7 +114,6 @@ typeToPolytype fams bu t = let
     qmap = getQuantorMap (makeTpSchemeFromType t)
     mapping' :: [(String, TyVar)]
     mapping' =  map (\(o, s) -> (fromMaybe (internalError "TopConversion.hs" "typeToPolytype" "Type variable not found") $ lookup (fromInteger o) qmap, integer2Name s)) mapping
-    vars = getTypeVariablesFromMonoType mt'
     in (foldr (\(s, b) p -> PolyType_Bind s (bind b p)) (PolyType_Mono cs' mt') mapping', bu', mapping')
 
 typeToMonoType :: TypeFamilies -> Type -> ([Constraint ConstraintInfo], [(String, TyVar)], MonoType)
@@ -131,7 +123,7 @@ tpSchemeToPolyType :: TypeFamilies -> TpScheme -> PolyType ConstraintInfo
 tpSchemeToPolyType fams = fst . tpSchemeToPolyType' fams []
 
 tpSchemeToPolyType' :: TypeFamilies -> [String] -> TpScheme -> (PolyType ConstraintInfo, [(String, TyVar)])
-tpSchemeToPolyType' fams restricted tps = let 
+tpSchemeToPolyType' fams _ tps = let 
         (cs, tv, mt) = tpSchemeToMonoType fams tps
         pt' = PolyType_Mono cs mt
         pt = bindVariables tv pt'
@@ -152,11 +144,11 @@ tpSchemeToMonoType fams tps =
         in (map convertPred qs , qmap, monoType)
 
 tpToMonoType :: TypeFamilies -> [(Int, String)] -> Tp -> MonoType
-tpToMonoType fams qm (TVar v) = case lookup v qm of 
+tpToMonoType _ qm (TVar v) = case lookup v qm of 
                                     Just s -> MonoType_Var (Just s) (integer2Name $ toInteger v) Nothing
                                     Nothing -> var (integer2Name $ toInteger v)
-tpToMonoType fams qm (TCon n) | isTypeFamily fams (TCon n) = MonoType_Fam n [] Nothing
-                              | otherwise = MonoType_Con n Nothing
+tpToMonoType fams _ (TCon n) | isTypeFamily fams (TCon n) = MonoType_Fam n [] Nothing
+                             | otherwise = MonoType_Con n Nothing
 tpToMonoType fams qm ta@(TApp f a)  | isTypeFamily fams ta = let 
                                                 m1 = tpToMonoType fams qm f
                                                 m2 = tpToMonoType fams qm a
@@ -198,13 +190,14 @@ getTypeVariablesFromMonoType (MonoType_App f a _) = nub $ getTypeVariablesFromMo
 getTypeVariablesFromConstraints :: Constraint ConstraintInfo -> [TyVar]
 getTypeVariablesFromConstraints (Constraint_Unify v1 v2 _) = nub $ getTypeVariablesFromMonoType v1 ++ getTypeVariablesFromMonoType v2
 getTypeVariablesFromConstraints (Constraint_Class _ vs _) = nub $ concatMap getTypeVariablesFromMonoType vs
+getTypeVariablesFromConstraints _ = error "Should not happen"
 
 getConstraintFromPoly :: PolyType ConstraintInfo -> [Constraint ConstraintInfo]
 getConstraintFromPoly (PolyType_Bind _ (B _ t)) = getConstraintFromPoly t
 getConstraintFromPoly (PolyType_Mono cs _) = cs
 
 polytypeToMonoType :: [(Integer, Integer)] -> Integer -> PolyType ConstraintInfo -> ([(Integer, Integer)], ((MonoType, [Constraint ConstraintInfo]), Integer))
-polytypeToMonoType mapping bu (PolyType_Bind s b) = let
+polytypeToMonoType mapping bu (PolyType_Bind _ b) = let
     ((_, x), bu') = contFreshMRes (unbind b) bu
     in polytypeToMonoType mapping bu' x
 polytypeToMonoType mapping bu (PolyType_Mono cs m) = freshenWithMapping mapping bu (m, cs)
@@ -213,11 +206,11 @@ classEnvironmentToAxioms :: TypeFamilies -> ClassEnvironment -> [Axiom Constrain
 classEnvironmentToAxioms fams env = concatMap (uncurry classToAxioms) (M.toList env)
     where
         classToAxioms :: String -> Class -> [Axiom ConstraintInfo]
-        classToAxioms s (superclasses, instances) = map instanceToAxiom instances
+        classToAxioms _ (_, instances') = map instanceToAxiom instances'
         instanceToAxiom :: Instance -> Axiom ConstraintInfo
         instanceToAxiom (Predicate cn v, supers) = let
-                vars = map (integer2Name  . toInteger) (ftv v ++ concatMap (\(Predicate _ v) -> ftv v) supers)
-                superCons = map (\(Predicate c v) -> Constraint_Class c [tpToMonoType fams [] v] Nothing) supers
+                vars = map (integer2Name  . toInteger) (ftv v ++ concatMap (\(Predicate _ v') -> ftv v') supers)
+                superCons = map (\(Predicate c v') -> Constraint_Class c [tpToMonoType fams [] v'] Nothing) supers
             in Axiom_Class (bind vars (superCons, cn, [tpToMonoType fams [] v]))
 
            -- type TypeSynonymEnvironment      = M.Map Name (Int, Tps -> Tp)
@@ -347,14 +340,14 @@ instance Freshen (PolyType ConstraintInfo) Integer where
             freshenHelper :: PolyType ConstraintInfo -> State (Integer, [(TyVar, TyVar)]) (PolyType ConstraintInfo)
             freshenHelper (PolyType_Mono cs m) = do
                 m' <- freshenHelperMT m
-                (uniq, mapping) <- get
-                let cs' = map (substs (map (\(t, v) -> (t, var v)) mapping)) cs
+                (_, mapping') <- get
+                let cs' = map (substs (map (\(t, v) -> (t, var v)) mapping')) cs
                 return (PolyType_Mono cs' m')
             freshenHelper (PolyType_Bind s b) = do
-                (uniq, mapping) <- get
+                (uniq, mapping') <- get
                 let ((p, t), uniq') = contFreshMRes (unbind b) uniq
                 let p' = integer2Name $ uniq' + 1
-                put (uniq' + 2, (p, p') : mapping)
+                put (uniq' + 2, (p, p') : mapping')
                 t' <- freshenHelper t
                 return (PolyType_Bind s (bind p' t'))
 
@@ -379,7 +372,7 @@ instance (Freshen a d, Freshen b d, Freshen c d) => Freshen (a, b, c) d where
         (mapping', (x', b)) = freshenWithMapping mapping n x
         (mapping'', (y', b')) = freshenWithMapping mapping' b y
         (mapping''', (z', b'')) = freshenWithMapping mapping'' b' z
-        in (mapping'', ((x', y', z'), b''))         
+        in (mapping''', ((x', y', z'), b''))         
 
 
 instance Freshen (Constraint ConstraintInfo) Integer where
@@ -390,6 +383,7 @@ instance Freshen (Constraint ConstraintInfo) Integer where
         (mapping', (v1', n')) = freshenWithMapping mapping n v1
         (mapping'', (v2', n'')) = freshenWithMapping mapping' n' v2
         in (mapping'', (Constraint_Unify v1' v2' ci, n''))
+    freshenWithMapping _ _ _ = error "Should not happen"
 
 
 contFreshMRes :: FreshM a -> Integer -> (a, Integer)
@@ -427,3 +421,4 @@ assureRepresentation t s (MonoType_Fam f ms rs) = MonoType_Fam f (map (assureRep
 
 assureRepresentationC :: TyVar -> String -> Constraint ci -> Constraint ci
 assureRepresentationC t s (Constraint_Class cn ms ci) = Constraint_Class cn (map (assureRepresentation t s) ms) ci
+assureRepresentationC _ _ _ = error "Should not happen"

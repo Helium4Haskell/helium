@@ -2,6 +2,8 @@
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE MonoLocalBinds #-}
+{-# OPTIONS_GHC -Wno-name-shadowing #-}
+{-# LANGUAGE TupleSections #-}
 module Helium.StaticAnalysis.HeuristicsOU.FilterHeuristics where
 
 
@@ -10,7 +12,7 @@ import Helium.StaticAnalysis.Miscellaneous.UHA_Source
 import Helium.StaticAnalysis.Inferencers.OutsideInX.ConstraintHelper 
 
 import Helium.StaticAnalysis.Inferencers.OutsideInX.Rhodium.RhodiumTypes
-import Helium.StaticAnalysis.Inferencers.OutsideInX.Rhodium.RhodiumInstances
+import Helium.StaticAnalysis.Inferencers.OutsideInX.Rhodium.RhodiumInstances ()
 
 import Rhodium.Blamer.Heuristics
 import Rhodium.Blamer.Path
@@ -22,19 +24,14 @@ import Rhodium.TypeGraphs.GraphUtils
 import Rhodium.TypeGraphs.GraphReset 
 import Helium.Syntax.UHA_Syntax
 import Helium.StaticAnalysis.Miscellaneous.DoublyLinkedTree
-
-import Data.List
 import Data.Maybe
 import qualified Data.Map as M
 
 
 import Unbound.Generics.LocallyNameless
-import Unbound.Generics.LocallyNameless.Fresh
-import Control.Monad.IO.Class (MonadIO)
 
 import Control.Monad
 
-import Debug.Trace
 import Helium.StaticAnalysis.Miscellaneous.Diagnostics (Diagnostic)
 
 isFolklore :: ConstraintInfo -> Bool 
@@ -47,15 +44,15 @@ avoidFolkloreHeuristic = edgeFilter "Avoid folklore constraint" f
 
 
 removeEdgeAndTsModifier :: (Fresh m, HasTypeGraph m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo Diagnostic) => GraphModifier m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo
-removeEdgeAndTsModifier (eid, constraint, ci) graph = do
+removeEdgeAndTsModifier (eid, _, ci) graph = do
     let cedge = getEdgeFromId graph eid 
     case getConstraintFromEdge cedge of
         Constraint_Unify mv _ _ -> do
             let es' = filter (\e -> isConstraintEdge e && isInstConstraint (getConstraintFromEdge e)  && firstConstraintElement (getConstraintFromEdge e) == mv ) $ M.elems (edges graph) --
-            (\g -> (g, foldr (\e ci -> let 
+            (,foldr (\e ci -> let 
                     Constraint_Inst _ ts _ = getConstraintFromEdge e
-                in addProperty (ApplicationTypeSignature ts) ci ) ci es')) <$> foldM (flip removeEdge) graph (eid : map edgeId es')
-        _ -> (\g -> (g, ci)) <$> removeEdge eid graph
+                in addProperty (ApplicationTypeSignature ts) ci ) ci es') <$> foldM (flip removeEdge) graph (eid : map edgeId es')
+        _ -> (, ci) <$> removeEdge eid graph
            
 
 
@@ -63,12 +60,12 @@ avoidForbiddenConstraints :: (Fresh m, Monad m) => Heuristic m (Axiom Constraint
 avoidForbiddenConstraints = 
     Filter "Avoid forbidden constraints" (return . mapMaybe f)
         where 
-            f (eid, c, info, gm) | isHighlyTrusted info = Nothing
+            f (eid, c, info, _) | isHighlyTrusted info = Nothing
                                  | otherwise = Just (eid, c, info, removeEdgeAndTsModifier) 
 
 
 phaseFilter :: Monad m => Heuristic m axiom touchable types (Constraint ConstraintInfo) ConstraintInfo Diagnostic
-phaseFilter =  let f (_, _, info, gm) = return (phaseOfConstraint info)
+phaseFilter =  let f (_, _, info, _) = return (phaseOfConstraint info)
                in maximalEdgeFilter "Highest phase number" f
 
 trustFactor :: ConstraintInfo -> Float
@@ -76,7 +73,7 @@ trustFactor info = fromMaybe 0 (maybeHead [f | (HasTrustFactor f) <- properties 
 
 avoidTrustedConstraints :: Monad m => Heuristic m axiom touchable types (Constraint ConstraintInfo) ConstraintInfo Diagnostic
 avoidTrustedConstraints = 
-        let f (_, _, info, gm) = return (trustFactor info)
+        let f (_, _, info, _) = return (trustFactor info)
         in minimalEdgeFilter "Trust factor of edge" f
 
 
@@ -105,7 +102,7 @@ avoidApplicationConstraints ::
 avoidApplicationConstraints = 
     edgeFilter "Avoid application constraints" f
     where
-        f pair@(constraint, edgeId, info, gm) = 
+        f (constraint, edgeId, info, _) = 
             case constraint of
                 Constraint_Inst{} -> return True
                 Constraint_Unify t1 t2 _ ->
@@ -127,7 +124,8 @@ avoidApplicationConstraints =
                                             where 
                                                 xs         = fst (functionSpineOfLength nrArgs functionType)
                                                 ys         = fst (functionSpineOfLength nrArgs expectedType)  
-                                        _ -> return True    
+                                        _ -> return True
+                _ -> return True   
 
 
 class MaybeNegation a where
@@ -145,11 +143,11 @@ avoidNegationConstraints :: (Fresh m, HasTypeGraph m (Axiom ConstraintInfo) TyVa
 avoidNegationConstraints = 
     edgeFilter "Avoid negation constraints" f
     where
-        f pair@(constraint, eid, info, gm) =
+        f (constraint, eid, info, _) =
             case maybeNegation info of
                 Nothing -> return True
                 Just isIntNegation -> case constraint of
-                    Constraint_Inst t1 t2 _ -> do
+                    Constraint_Inst _ t2 _ -> do
                         graph <- getGraph
                         let edge = getEdgeFromId graph eid
                         doWithoutEdge eid $  

@@ -22,15 +22,8 @@ import Helium.StaticAnalysis.Messages.Messages
 import Helium.StaticAnalysis.Messages.HeliumMessages (freshenRepresentation)
 import Helium.StaticAnalysis.Messages.TypeErrors
 import Helium.Utils.Utils (internalError)
-import Rhodium.Blamer.HeuristicProperties
-import Data.Maybe
 import Data.Char
 import Helium.StaticAnalysis.Inferencers.OutsideInX.Rhodium.RhodiumTypes
-import Helium.StaticAnalysis.Inferencers.OutsideInX.Rhodium.RhodiumGenerics
-
-import qualified Data.Map as M
-
-import Debug.Trace
 
 class WithHints a where
    addHint          :: String -> String -> a -> a
@@ -91,8 +84,8 @@ findVariableInPat name tree =
                   child:_ -> findVariableInPat name child
 
 hasVariable :: Name -> Pattern -> Bool
-hasVariable name pattern =
-   case pattern of
+hasVariable name pattern' =
+   case pattern' of
       Pattern_Variable _ n -> name == n
       Pattern_As _ n pat   -> name == n || hasVariable name pat
       Pattern_Parenthesized _ pat -> hasVariable name pat

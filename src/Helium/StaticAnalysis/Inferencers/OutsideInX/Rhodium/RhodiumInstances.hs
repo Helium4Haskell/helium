@@ -9,11 +9,11 @@
 {-# LANGUAGE MonoLocalBinds #-}
 {-# OPTIONS_GHC -Wno-orphans #-}
 {-# OPTIONS_GHC -Wno-incomplete-patterns #-}
+{-# OPTIONS_GHC -Wno-name-shadowing #-}
+{-# LANGUAGE TupleSections #-}
 module Helium.StaticAnalysis.Inferencers.OutsideInX.Rhodium.RhodiumInstances where
 
-import Control.Monad.Trans.State
 import Control.Monad
-import Control.Monad.IO.Class(MonadIO)
 
 import Data.List
 import Data.Maybe
@@ -26,27 +26,16 @@ import Rhodium.TypeGraphs.GraphInstances()
 import Rhodium.TypeGraphs.Graph
 import Rhodium.TypeGraphs.GraphUtils
 import Rhodium.Solver.Rules
-import Rhodium.TypeGraphs.TGState
 
 import Rhodium.TypeGraphs.Touchables 
 
-import Unbound.Generics.LocallyNameless hiding (to, from)
-import Unbound.Generics.LocallyNameless.Fresh
-import Unbound.Generics.LocallyNameless.Name
-import qualified Unbound.Generics.LocallyNameless as UB
-import qualified Unbound.Generics.LocallyNameless.Fresh as UB
-import qualified Unbound.Generics.LocallyNameless.Alpha as UB
---import qualified Unbound.Generics.LocallyNameless.Types as UB
-import qualified Unbound.Generics.LocallyNameless.Subst as UB
+import Unbound.Generics.LocallyNameless
 
 import Helium.StaticAnalysis.Miscellaneous.ConstraintInfoOU
 
 import Helium.StaticAnalysis.Inferencers.OutsideInX.Rhodium.RhodiumTypes
-import Helium.StaticAnalysis.Inferencers.OutsideInX.Rhodium.RhodiumErrors
-import Helium.StaticAnalysis.Inferencers.OutsideInX.ConstraintHelper
-import Helium.StaticAnalysis.Inferencers.OutsideInX.Rhodium.RhodiumGenerics
-import Debug.Trace (trace)
-import Helium.StaticAnalysis.Miscellaneous.Unify (preMatch, InjectiveEnv, UnifyResultM (SurelyApart, Unifiable), applySubst, matchTy, SubstitutionEnv, unifyTy, applyOverInjArgs)
+import Helium.StaticAnalysis.Inferencers.OutsideInX.Rhodium.RhodiumErrors ()
+import Helium.StaticAnalysis.Miscellaneous.Unify (preMatch, InjectiveEnv, UnifyResultM (SurelyApart, Unifiable), applySubst, matchTy, unifyTy, applyOverInjArgs)
 import Helium.Utils.Utils (internalError)
 import Helium.StaticAnalysis.StaticChecks.TypeFamilyInfos (TFInstanceInfo(preCompat, tfiRange))
 import Helium.Syntax.UHA_Syntax (Range)
@@ -68,7 +57,7 @@ instance (Fresh m, Monad m) => FreshVariable m TyVar where
 
 instance (CompareTypes m (RType ConstraintInfo), IsTouchable m TyVar, HasAxioms m (Axiom ConstraintInfo), IsTouchable m TyVar, Fresh m, Monad m) => CanCanon m TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) where 
     -- canon :: Bool -> constraint -> m (Maybe ([touchable], [(touchable, types)], constraint))
-    canon isGiven c = do 
+    canon isG c = do 
         axs <- getAxioms
         canon' axs c 
             where
@@ -109,11 +98,11 @@ instance (CompareTypes m (RType ConstraintInfo), IsTouchable m TyVar, HasAxioms 
                             | isFamilyFree m2 -> return NotApplicable
                             | otherwise -> case m2 of
                                 MonoType_Con _ _   -> return NotApplicable
-                                MonoType_App c a ars -> 
+                                MonoType_App c' a ars -> 
                                     do (a2, con1, vars1) <- unfamily a
-                                       (c2, con2, vars2) <- unfamily c
+                                       (c2, con2, vars2) <- unfamily c'
                                                         
-                                       return $ Applied (if isGiven then [] else vars1 ++ vars2, [], Constraint_Unify (insertReductionStepMaybe (var v) rs) (MonoType_App c2 a2 ars) Nothing : con1 ++ con2)
+                                       return $ Applied (if isG then [] else vars1 ++ vars2, [], Constraint_Unify (insertReductionStepMaybe (var v) rs) (MonoType_App c2 a2 ars) Nothing : con1 ++ con2)
                                 _ -> {-do 
                                     gt <- MType m1 `greaterType` MType m2
                                     if gt then 
@@ -134,7 +123,7 @@ instance (CompareTypes m (RType ConstraintInfo), IsTouchable m TyVar, HasAxioms 
                             | (not . all isFamilyFree) ts -> 
                                 do
                                     (ts2, cons, vars) <- unfamilys ts
-                                    return (Applied (if isGiven then [] else vars, [], Constraint_Unify (MonoType_Fam f ts2 ri) m2 Nothing : cons))
+                                    return (Applied (if isG then [] else vars, [], Constraint_Unify (MonoType_Fam f ts2 ri) m2 Nothing : cons))
                         (_, _)
                             | m1 == m2, isFamilyFree m1, isFamilyFree m2 -> return $ Applied ([], [], [])
                             | otherwise -> return NotApplicable
@@ -172,13 +161,13 @@ instance (HasGraph m touchable types constraint ci, HasAxioms m (Axiom Constrain
     --interact :: Bool -> constraint -> constraint -> m (RuleResult [constraint])
     interact _ c1 c2
         | c1 == c2 = return $ Applied [c1]
-    interact _ c1@(Constraint_Unify mv@(MonoType_Var _ v1 _) m1 _) c2@(Constraint_Unify t2@(MonoType_Fam f vs2 _) m2 _)
+    interact _ c1@(Constraint_Unify mv@(MonoType_Var _ v1 _) m1 _) c2@(Constraint_Unify t2@(MonoType_Fam _ vs2 _) m2 _)
         | isFamilyFree m1, all isFamilyFree vs2, v1 `elem` (fvToList t2 :: [TyVar]) || v1 `elem` (fvToList m2 :: [TyVar]), isFamilyFree m2 = do
                 let lhs = if v1 `elem` (fvToList t2 :: [TyVar])
                             then insertReductionStep (subst v1 m1 t2) (Step (subst v1 m1 t2) t2 (Just $ removeCI c2) (ArgInjection (mv, m1)))
                             else subst v1 m1 t2
                 return $ Applied [c1, Constraint_Unify lhs (subst v1 m1 m2) Nothing]
-    interact _ c1@(Constraint_Unify mv1@(MonoType_Var _ v1 _) m1 _) c2@(Constraint_Unify mv2@(MonoType_Var _ v2 _) m2 _) 
+    interact _ c1@(Constraint_Unify mv1@(MonoType_Var _ v1 _) m1 _) (Constraint_Unify mv2@(MonoType_Var _ v2 _) m2 _) 
         | v1 == v2, isFamilyFree m1, isFamilyFree m2 = do
             ig <- greaterType (MType mv1) (MType m1 :: RType ConstraintInfo)
             if ig then 
@@ -194,14 +183,14 @@ instance (HasGraph m touchable types constraint ci, HasAxioms m (Axiom Constrain
     interact _ c1@(Constraint_Unify (MonoType_Var _ v1 _) s1 _) (Constraint_Inst t2 s2 _)
         | v1 `elem` (fvToList t2 :: [TyVar]) || v1 `elem` (fvToList s2 :: [TyVar]), isFamilyFree s1
             = return $ Applied [c1, Constraint_Inst (subst v1 s1 t2) (subst v1 s1 s2) Nothing]
-    interact _ c1@(Constraint_Unify mv1@(MonoType_Var _ v1 _) m1 _) c2@(Constraint_Class n ms2 _)
+    interact _ c1@(Constraint_Unify mv1@(MonoType_Var _ v1 _) m1 _) (Constraint_Class n ms2 _)
         | v1 `elem` (fvToList ms2 :: [TyVar]), all isFamilyFree ms2 = do 
             ig <- greaterType (MType mv1) (MType m1 :: RType ConstraintInfo)
             if ig then 
                 return NotApplicable
             else
                 return $ Applied [c1, Constraint_Class n (substs [(v1, m1)] ms2) Nothing]
-    interact _ c1@(Constraint_Unify fm1@(MonoType_Fam f1 vs1 _) m1 _) c2@(Constraint_Unify fm2@(MonoType_Fam f2 vs2 _) m2 _)
+    interact _ (Constraint_Unify fm1@(MonoType_Fam f1 vs1 _) m1 _) (Constraint_Unify fm2@(MonoType_Fam f2 vs2 _) m2 _)
         | f1 == f2, vs1 == vs2, isFamilyFree m1, isFamilyFree m2
             = return $ Applied [Constraint_Unify m1 m2 Nothing]
         | f1 == f2, m1 == m2 = do
@@ -214,7 +203,7 @@ instance (HasGraph m touchable types constraint ci, HasAxioms m (Axiom Constrain
     interact _ _ _ = return NotApplicable
 
 instance (CompareTypes m (RType ConstraintInfo), HasAxioms m (Axiom ConstraintInfo), Fresh m) => CanSimplify m TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo where
-    simplify c1@(Constraint_Unify mv1@(MonoType_Var _ v1 _) m1 _) c2@(Constraint_Unify mv2@(MonoType_Var _ v2 _) m2 _) 
+    simplify (Constraint_Unify mv1@(MonoType_Var _ v1 _) m1 _) (Constraint_Unify mv2@(MonoType_Var _ v2 _) m2 _) 
         | mv1 == m1 || mv2 == m2 || not (isFamilyFree m1) || not (isFamilyFree m2) = return NotApplicable
         | v1 == v2 = do 
             gt <- greaterType (MType mv1) (MType m1 :: RType ConstraintInfo)
@@ -222,7 +211,7 @@ instance (CompareTypes m (RType ConstraintInfo), HasAxioms m (Axiom ConstraintIn
                 return NotApplicable
             else 
                 return $ Applied [Constraint_Unify m1 m2 Nothing]
-    simplify c1@(Constraint_Unify m1 mv1@(MonoType_Var _ v1 _) _) c2@(Constraint_Unify mv2@(MonoType_Var _ v2 _) m2 _) 
+    simplify (Constraint_Unify m1 mv1@(MonoType_Var _ v1 _) _) (Constraint_Unify mv2@(MonoType_Var _ v2 _) m2 _) 
         | mv1 == m1 || mv2 == m2 = return NotApplicable
         | v1 == v2 = do 
             gt <- greaterType (MType mv1) (MType m1 :: RType ConstraintInfo)
@@ -230,7 +219,7 @@ instance (CompareTypes m (RType ConstraintInfo), HasAxioms m (Axiom ConstraintIn
                 return NotApplicable
             else 
                 return $ Applied [Constraint_Unify m1 m2 Nothing]
-    simplify c1@(Constraint_Class _ _ _) c2@(Constraint_Class _ _ _) 
+    simplify c1@Constraint_Class{} c2@Constraint_Class{} 
         | c1 == c2 = return $ Applied []
     simplify (Constraint_Unify (MonoType_Var _ v1 _) s1 _) (Constraint_Inst t2 s2 _)
         | v1 `elem` (fvToList t2 :: [TyVar]) || v1 `elem` (fvToList s2 :: [TyVar]), isFamilyFree s1
@@ -243,7 +232,7 @@ instance (CompareTypes m (RType ConstraintInfo), HasAxioms m (Axiom ConstraintIn
                 return NotApplicable
             else
                 return $ Applied [subst v1 m1 c2]
-    simplify c1@(Constraint_Unify mv1@(MonoType_Var _ v1 _) m1 _) c2@(Constraint_Unify mv2@(MonoType_Var _ v2 _) m2 _) 
+    simplify (Constraint_Unify mv1@(MonoType_Var _ v1 _) m1 _) c2@(Constraint_Unify MonoType_Var{} m2 _) 
         | mv1 == m1 = return NotApplicable
         | v1 `elem` (fvToList m2 :: [TyVar]), isFamilyFree m1, isFamilyFree m2 = do
             gt <- greaterType (MType mv1) (MType m1 :: RType ConstraintInfo)
@@ -251,7 +240,7 @@ instance (CompareTypes m (RType ConstraintInfo), HasAxioms m (Axiom ConstraintIn
                 return NotApplicable
             else
                 return $ Applied [subst v1 m1 c2]
-    simplify c1@(Constraint_Unify mv@(MonoType_Var _ v _) m1 _) c2@(Constraint_Unify mf@(MonoType_Fam _ vs _) m2 _)
+    simplify (Constraint_Unify mv@(MonoType_Var _ v _) m1 _) c2@(Constraint_Unify mf@(MonoType_Fam _ vs _) m2 _)
         | isFamilyFree m1, isFamilyFree m2, all isFamilyFree vs, v `elem` (fvToList mf :: [TyVar]) || v `elem` (fvToList m2 :: [TyVar])
             = do
                 let lhs = if v `elem` (fvToList mf :: [TyVar])
@@ -341,7 +330,7 @@ instance (
 -- Improves top level constraints when the type family is injective
 improveTopLevelFun :: (Fresh m, HasDiagnostics m Diagnostic, HasAxioms m (Axiom ConstraintInfo), MonadFail m) 
                    => Bool -> Constraint ConstraintInfo -> Axiom ConstraintInfo -> m (RuleResult ([TyVar], [Constraint ConstraintInfo]))
-improveTopLevelFun given c@(Constraint_Unify fam@(MonoType_Fam f ms _) t ci) (Axiom_Unify b tfi) | all isFamilyFree ms, isFamilyFree t =
+improveTopLevelFun _ c@(Constraint_Unify fam@(MonoType_Fam f ms _) t ci) (Axiom_Unify b _) | all isFamilyFree ms, isFamilyFree t =
     do
         (_, (lhs, rhs)) <- unbind b
         axs <- getAxioms
@@ -473,7 +462,7 @@ convertSubstitution :: [(TyVar, RType ConstraintInfo)] -> [(TyVar, MonoType)]
 convertSubstitution = map (\(t, MType m) -> (t, m))
 
 instance (IsTouchable m TyVar, Monad m, UniqueEdge m, UniqueVertex m, UniqueGroup m, Fresh m, HasGraph m TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo) => CanConvertType m TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo where
-    convertType isOriginal groups priority (MType m) = do 
+    convertType isOriginal grps prio (MType m) = do 
             mv <- getVertexFromGraph (MType m)
             --g <- getGraph
             if isJust mv then
@@ -488,32 +477,31 @@ instance (IsTouchable m TyVar, Monad m, UniqueEdge m, UniqueVertex m, UniqueGrou
                 }, v)
             convertTypeM (MonoType_Var s mv _) = do
                 v <- uniqueVertex
-                graph <- getGraph
                 isTch <- isVertexTouchable mv
                 return  (singletonGraph v TGVariable{
                     variable = mv,
-                    representation = maybe [] (:[]) s,
+                    representation = maybeToList s,
                     isTouchable = isTch
                 }, v)
-            convertTypeM m@(MonoType_App f a _) = do
+            convertTypeM ma@(MonoType_App f a _) = do
                 v <- uniqueVertex
-                (fg, fv) <- convertType isOriginal groups priority (MType f)
-                (ag, av) <- convertType isOriginal groups priority (MType a)
+                (fg, freev) <- convertType isOriginal grps prio (MType f)
+                (ag, av) <- convertType isOriginal grps prio (MType a)
                 let vg = singletonGraph v TGApplication{
-                        typeRep = MType m
+                        typeRep = MType ma
                     }
                 ei1 <- uniqueEdge
-                let te1 = typeEdge ei1 0 isOriginal v fv
+                let te1 = typeEdge ei1 0 isOriginal v freev
                 ei2 <- uniqueEdge
                 let te2 = typeEdge ei2 1 isOriginal v av
                 let g1 = mergeGraphsWithEdges False [te1] vg fg 
                 let g2 = mergeGraphsWithEdges False [te2] ag fg
                 return (mergeGraph g1 g2, v)
-            convertTypeM m@(MonoType_Fam s ms _) = do
+            convertTypeM mf@(MonoType_Fam s ms _) = do
                 v <- uniqueVertex 
-                ms' <- mapM (convertType isOriginal groups priority . MType) ms
+                ms' <- mapM (convertType isOriginal grps prio . MType) ms
                 let vg = singletonGraph v TGApplication{
-                    typeRep = MType m
+                    typeRep = MType mf
                 }
                 constId <- uniqueVertex
                 let cg = (singletonGraph constId TGConstant{
@@ -525,18 +513,18 @@ instance (IsTouchable m TyVar, Monad m, UniqueEdge m, UniqueVertex m, UniqueGrou
                 return (foldr (\((ng, _), te) og -> 
                     mergeGraphsWithEdges False [te] og ng
                     ) vg (zip (cg : ms') typeEdges), v)
-    convertType isOriginal groups priority (PType pt) = convertTypeP' pt
+    convertType isOriginal grps prio (PType pt) = convertTypeP' pt
         where
             convertTypeP' (PolyType_Mono cs m) = do
-                (m', v) <- convertType isOriginal groups priority (MType m)
-                cs' <- mapM (convertConstraint [] isOriginal False groups priority) cs
+                (m', v) <- convertType isOriginal grps prio (MType m)
+                cs' <- mapM (convertConstraint [] isOriginal False grps prio) cs
                 if null cs' then 
                     return (m',v)
                 else 
                     let 
                         mg = insertGraphs m' cs'
                     in return (mg, fromMaybe v (M.lookup (MType m) (typeMapping mg)))
-            convertTypeP' pb@(PolyType_Bind s b) = do
+            convertTypeP' pb@(PolyType_Bind _ _) = do
                 v <- uniqueVertex
                 f <- fresh (integer2Name 0)
                 let vg = singletonGraph v TGScopedVariable{
@@ -549,12 +537,12 @@ instance (IsTouchable m TyVar, Monad m, UniqueEdge m, UniqueVertex m, UniqueGrou
 instance (IsTouchable m TyVar, HasGraph m TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo, Fresh m, Monad m, UniqueVertex m, UniqueGroup m, UniqueEdge m) => CanConvertConstraint m TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo where
     -- convertConstraint :: constraint -> m (TGGraph touchable constraint types)
     convertConstraint basedOn isOriginal isGiven groups priority c@(Constraint_Unify m1 m2 _) = do
-        t1@(v1Node, v1) <- convertType isOriginal groups priority (MType m1)
-        t2@(v2Node, v2) <- convertType isOriginal groups priority (MType m2)
+        (v1Node, v1) <- convertType isOriginal groups priority (MType m1)
+        (v2Node, v2) <- convertType isOriginal groups priority (MType m2)
         edgeIndex <- uniqueEdge
         let edge = constraintEdge edgeIndex basedOn c isOriginal isGiven groups priority v1 v2
         return (mergeGraphsWithEdges False [edge] v1Node v2Node)
-    convertConstraint basedOn isOriginal isGiven groups priority c@(Constraint_Class s ms _) = do
+    convertConstraint basedOn isOriginal isGiven groups priority c@(Constraint_Class _ ms _) = do
         ms' <- mapM (convertType isOriginal groups priority . MType) ms
         vDead <- uniqueVertex
         let deadNode = singletonGraph vDead TGDeadNode
@@ -576,18 +564,18 @@ instance (IsTouchable m TyVar, HasGraph m TyVar (RType ConstraintInfo) (Constrai
         edgeIndex <- uniqueEdge
         let edge = constraintEdge edgeIndex basedOn c isOriginal isGiven groups priority v1 v2
         return (mergeGraphsWithEdges False [edge] m' p')
-    convertConstraint basedOn isOriginal False groups priority c@(Constraint_Exists b _) = do
+    convertConstraint basedOn isOriginal False groups priority (Constraint_Exists b _) = do
         (vars, (given, wanted)) <- unbind b
         ug <- uniqueGroup
         given' <- mapM (convertConstraint basedOn isOriginal True (ug : groups) (priority + 1)) given
         setGivenTouchables (concatMap getFreeVariables given)
         wanted' <- mapM (convertConstraint basedOn isOriginal False (ug : groups) (priority + 2)) wanted
-        return $ markTouchables (map (\v -> (v, priority + 2)) vars) (insertGraphs emptyTGGraph (given' ++ wanted'))
+        return $ markTouchables (map (,priority + 2) vars) (insertGraphs emptyTGGraph (given' ++ wanted'))
         --error $ show (vars, given, wanted)
 
 instance IsEquality (Axiom ConstraintInfo) (RType ConstraintInfo) (Constraint ConstraintInfo) TyVar where
     -- isEquality :: constraint -> Bool
-    isEquality (Constraint_Unify _ _ _) = True
+    isEquality Constraint_Unify{} = True
     isEquality _    = False
     -- splitEquality :: constraint -> (types, types)
     splitEquality (Constraint_Unify m1 m2 _) = (MType m1, MType m2)
@@ -628,9 +616,9 @@ instance CanCompareTouchable TyVar (RType ConstraintInfo) where
     extractTouchable _ = Nothing
 
 instance ConstraintSymbol (Constraint ConstraintInfo) where
-    showConstraintSymbol (Constraint_Unify _ _ _) = "~"
+    showConstraintSymbol Constraint_Unify{} = "~"
     showConstraintSymbol (Constraint_Class s _ _) = "$" ++ s
-    showConstraintSymbol (Constraint_Inst _ _ _) = ">"
+    showConstraintSymbol Constraint_Inst{} = ">"
 
 instance ConvertConstructor (RType ConstraintInfo) where
     convertConstructor s = MType (MonoType_Con s Nothing)
@@ -666,7 +654,7 @@ mostGeneralUnifier ms = (\(sub, m) -> substs (mapMaybe convSub sub) m) <$> (empt
             (mapping', fr) <- mgu (mapping, f1) f2
             (mapping'', ar) <- mgu (mapping', a1) a2
             return (mapping'', MonoType_App fr ar Nothing)
-        mgu (mapping, mt) mv@(MonoType_Var _ v _) = case lookup mv mapping of
+        mgu (mapping, mt) mv@MonoType_Var{} = case lookup mv mapping of
             Nothing | mt == mv -> return ((mv, mv) : mapping, mv)
                     | otherwise -> fresh (integer2Name 0) >>= (\v' -> return ((mv, var v') : mapping, var v'))
         mgu mapping v = error $ show (mapping, v)
@@ -682,7 +670,7 @@ instance FreeVariables (Constraint ConstraintInfo) TyVar where
     getFreeVariables = fvToList
     getFreeTopLevelVariables (Constraint_Unify m1 m2 _) = getTLVariableFromMonoType m1 ++ getTLVariableFromMonoType m2
     getFreeTopLevelVariables (Constraint_Inst m1 _ _) = getTLVariableFromMonoType m1
-    getFreeTopLevelVariables (Constraint_Class _ _ _) = []
+    getFreeTopLevelVariables Constraint_Class{} = []
     getFreeTopLevelVariables c = error (show c)
 
 instance FreeVariables (RType ConstraintInfo) TyVar where

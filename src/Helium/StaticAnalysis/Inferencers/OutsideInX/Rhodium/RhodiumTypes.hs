@@ -1,4 +1,3 @@
-{-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE PatternSynonyms #-}
 {-# LANGUAGE StandaloneDeriving #-}
 {-# LANGUAGE FlexibleContexts #-}
@@ -7,23 +6,14 @@
 {-# LANGUAGE FlexibleInstances #-}
 {-# lANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE DeriveGeneric #-}
+{-# OPTIONS_GHC -Wno-incomplete-patterns #-}
 module Helium.StaticAnalysis.Inferencers.OutsideInX.Rhodium.RhodiumTypes where
-
-import Control.Monad.Trans.State
 
 import Data.List
 import Data.Maybe
 
-import Rhodium.Core
-import Rhodium.TypeGraphs.Graph
-import Rhodium.TypeGraphs.GraphProperties
-
 import qualified Unbound.Generics.LocallyNameless as UB
-import qualified Unbound.Generics.LocallyNameless.Fresh as UB
-import qualified Unbound.Generics.LocallyNameless.Alpha as UB
 import qualified Unbound.Generics.LocallyNameless.Bind as UB
---import qualified Unbound.Generics.LocallyNameless.Types as UB
-import qualified Unbound.Generics.LocallyNameless.Subst as UB
 import Unbound.Generics.LocallyNameless.Internal.Fold (toListOf)
 import Unbound.Generics.LocallyNameless hiding (Name)
 import GHC.Generics
@@ -33,7 +23,6 @@ import Helium.Syntax.UHA_Range ()
 import Helium.StaticAnalysis.Miscellaneous.UHA_Source
 import Helium.StaticAnalysis.Miscellaneous.DoublyLinkedTree
 
-import Debug.Trace
 import Data.Typeable (Typeable)
 import Helium.Utils.Utils (internalError)
 import Helium.StaticAnalysis.StaticChecks.TypeFamilyInfos (TFInstanceInfo)
@@ -44,6 +33,7 @@ data RType ci = PType (PolyType ci) | MType MonoType
 
 fromMType :: RType ci -> MonoType
 fromMType (MType m) = m
+fromMType _ = error "Should not happen"
 
 deriving instance (Subst MonoType ci, Alpha ci) => Eq (RType ci)
 deriving instance (Subst MonoType ci, Alpha ci) => Ord (RType ci)
@@ -131,13 +121,18 @@ instance Eq MonoType where
     _ == _ = False
 
 isFamilyFree :: MonoType -> Bool
-isFamilyFree (MonoType_Con _ _)       = True
-isFamilyFree (MonoType_Fam _ _ _)     = False
-isFamilyFree (MonoType_Var _ _ _)     = True
-isFamilyFree (MonoType_App a1 a2 _)   = isFamilyFree a1 && isFamilyFree a2
+isFamilyFree (MonoType_Con _ _)     = True
+isFamilyFree MonoType_Fam{}         = False
+isFamilyFree MonoType_Var{}         = True
+isFamilyFree (MonoType_App a1 a2 _) = isFamilyFree a1 && isFamilyFree a2
 
+pattern (:-->:) :: MonoType -> MonoType -> MonoType
 pattern s :-->: r        = MonoType_App (MonoType_App (MonoType_Con "->" Nothing) s Nothing) r Nothing
+
+pattern MonoType_List :: MonoType -> Maybe ReductionStep -> MonoType
 pattern MonoType_List t ri  = MonoType_App (MonoType_Con   "List" Nothing) t ri
+
+pattern MonoType_Tuple :: MonoType -> MonoType -> Maybe ReductionStep -> MonoType
 pattern MonoType_Tuple a b ri = MonoType_App (MonoType_App (MonoType_Con "Tuple2" Nothing) a Nothing) b ri
 
 instance Show MonoType where
@@ -146,7 +141,7 @@ showMT :: [(TyVar, String)] -> MonoType -> String
 showMT mp (MonoType_List t _)      = "[" ++ showMT mp t ++ "]"
 showMT mp (MonoType_App (MonoType_Con "[]" _) t _) = "[" ++ showMT mp t ++ "]"
 showMT mp (MonoType_Tuple t1 t2 _) = "(" ++ showMT mp t1 ++ "," ++ showMT mp t2 ++ ")"
-showMT mp (MonoType_Con c _)       = c 
+showMT _ (MonoType_Con c _)       = c 
 showMT mp (MonoType_Fam c a _)     = c ++ concatMap (\x -> " " ++ doParens (showMT mp x)) a
 showMT mp (s :-->: t)            = doParens (showMT mp s) ++ " -> " ++ showMT mp t
 showMT mp (MonoType_Var s v _)     = let r = fromMaybe (fromMaybe (show v) s) (lookup v mp) in if r == "" then show v else r
@@ -191,7 +186,7 @@ instance (Alpha ci, Subst MonoType ci) => Show (Constraint ci) where
     show = runFreshM . showConstraint
 
 showConstraint :: (UB.Fresh m, Functor m, Alpha ci, Subst MonoType ci) => Constraint ci -> m String
-showConstraint (Constraint_Unify t p s) = return $ show t ++ " ~ " ++ show p
+showConstraint (Constraint_Unify t p _) = return $ show t ++ " ~ " ++ show p
 showConstraint (Constraint_Inst  t p _) = do    p' <- showPolyType' [] p
                                                 return $ show t ++ " > " ++ p'
 showConstraint (Constraint_Class c t _) = do    let ps = map (doParens . show) t
@@ -207,7 +202,7 @@ data PolyType ci
     deriving (Generic)
 
 instance (Alpha ci, Subst MonoType ci) => Eq (PolyType ci) where
-    PolyType_Bind s1 b1   == PolyType_Bind s2 b2 = UB.runFreshM $ do
+    PolyType_Bind _ b1   == PolyType_Bind _ b2 = UB.runFreshM $ do
         s <- UB.unbind2 b1 b2
         case s of
             Just (_,p1,_,p2) -> return $ p1 == p2
@@ -221,17 +216,17 @@ instance (Alpha ci, Subst MonoType ci) => Ord (PolyType ci) where
         se :: UB.Fresh m => PolyType ci -> PolyType ci -> m Bool
         se (PolyType_Mono cs1 m1) (PolyType_Mono cs2 m2) = return $ cs1 <= cs2 && m1 <= m2
         se (PolyType_Mono _ _) _ = return True
-        se (PolyType_Bind s1 b1) (PolyType_Bind s2 b2) = do
+        se (PolyType_Bind _ b1) (PolyType_Bind _ b2) = do
             s <- UB.unbind2 b1 b2
             case s of
-                Just (_, p1, _, p2) -> se p1 p2
+                Just (_, p1', _, p2') -> se p1' p2'
         se (PolyType_Bind _ _) _ = return True
 
 instance (Alpha ci, Subst MonoType ci) => Show (PolyType ci) where
     show = UB.runFreshM . showPolyType' []
           
 showPolyType' :: (Alpha ci, Subst MonoType ci, UB.Fresh m) => [(TyVar, String)] -> PolyType ci -> m String
-showPolyType' mp (PolyType_Bind s b@(UB.B t p)) = do
+showPolyType' mp (PolyType_Bind s b@(UB.B _ _)) = do
     (x, r) <- UB.unbind b
     showR <- showPolyType' ((x, s) : mp) r
     return $ "{" ++ show x ++ "}" ++ showR
@@ -240,8 +235,8 @@ showPolyType' mp (PolyType_Mono cs m) = return $ showConstraintList (filter hasC
 
 
 hasConstraintInformation :: Constraint ci -> Bool
-hasConstraintInformation (Constraint_Class c ms Nothing) = False
-hasConstraintInformation (Constraint_Class _ _ _) = True
+hasConstraintInformation (Constraint_Class _ _ Nothing) = False
+hasConstraintInformation Constraint_Class{} = True
 
 showConstraintList :: (Alpha ci, Subst MonoType ci) => [Constraint ci] -> String
 showConstraintList = UB.runFreshM . showConstraintList'
@@ -252,11 +247,11 @@ showConstraintList' l  = intercalate " ∧ " <$> mapM showConstraint l
 
 instance (Alpha ci, Subst MonoType ci) => Ord (Constraint ci) where
     Constraint_Unify m1 m2 _ <= Constraint_Unify n1 n2 _ = m1 <= n1 && m2 <= n2
-    Constraint_Unify _ _ _ <= _ = True
+    Constraint_Unify{} <= _ = True
     Constraint_Inst  m1 m2 _ <= Constraint_Inst  n1 n2 _ = m1 <= n1 && m2 <= n2
-    Constraint_Inst _ _ _ <= _ = True
+    Constraint_Inst{} <= _ = True
     Constraint_Class c1 a1 _ <= Constraint_Class c2 a2 _ = c1 <= c2 && a1 <= a2
-    Constraint_Class _ _ _ <= _ = True
+    Constraint_Class{} <= _ = True
     Constraint_Exists b1 _   <= Constraint_Exists b2 _   = UB.runFreshM $ do
         s <- UB.unbind2 b1 b2
         case s of
@@ -323,7 +318,7 @@ separateMt :: MonoType -> (MonoType, [MonoType])
 separateMt (MonoType_App m1 m2 _) = let
     (c, ms) = separateMt m1 in (c, ms ++ [m2])
 separateMt c@(MonoType_Con _ _)   = (c, [])
-separateMt v@(MonoType_Var _ _ _) = (v, [])
+separateMt v@MonoType_Var{} = (v, [])
 separateMt (MonoType_Fam f mts ri)   = (MonoType_Con f ri, mts)
 
 -- conList :: MonoType -> (MonoType, [MonoType])
@@ -352,7 +347,7 @@ isInstConstraint _ = False
 firstConstraintElement :: Constraint a -> MonoType
 firstConstraintElement (Constraint_Unify m1 _ _ ) = m1
 firstConstraintElement (Constraint_Inst m1 _ _) = m1
-firstConstraintElement c = error "No first constraint element"
+firstConstraintElement _ = error "No first constraint element"
 
 fvToList :: (Alpha a, Typeable b) => a -> [UB.Name b]
 fvToList = toListOf fv

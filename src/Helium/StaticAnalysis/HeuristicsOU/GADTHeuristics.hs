@@ -1,13 +1,13 @@
 {-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGAUGE MonoLocalBinds #-}
 {-# LANGUAGE DoAndIfThenElse #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# OPTIONS_GHC -Wno-simplifiable-class-constraints #-}
+{-# OPTIONS_GHC -Wno-incomplete-patterns #-}
+{-# OPTIONS_GHC -Wno-name-shadowing #-}
 module Helium.StaticAnalysis.HeuristicsOU.GADTHeuristics where
 
 import Rhodium.Core
 import Rhodium.Blamer.Heuristics
-import Rhodium.Blamer.ResidualHeuristics
 import Rhodium.Blamer.HeuristicsUtils
 import Rhodium.Blamer.Path
 import Rhodium.TypeGraphs.GraphProperties
@@ -21,31 +21,24 @@ import Rhodium.Solver.Rules
 
 import Helium.StaticAnalysis.Inferencers.OutsideInX.Rhodium.RhodiumTypes
 import Helium.StaticAnalysis.Inferencers.OutsideInX.Rhodium.RhodiumInstances
-import Helium.StaticAnalysis.Miscellaneous.UHA_Source
 import Helium.StaticAnalysis.Miscellaneous.ConstraintInfoOU
 import Helium.StaticAnalysis.HeuristicsOU.OnlyResultHeuristics
-import Helium.StaticAnalysis.HeuristicsOU.RepairHeuristics
 import Helium.StaticAnalysis.Miscellaneous.DoublyLinkedTree
 
 import Unbound.Generics.LocallyNameless.Fresh
-import Unbound.Generics.LocallyNameless
 
 import Data.Maybe
 import Data.List
 import qualified Data.Map as M
 
 import Control.Monad
-import Control.Arrow
-import Control.Monad.Trans.State
 
-import Debug.Trace
-import Helium.StaticAnalysis.Inferencers.OutsideInX.Rhodium.RhodiumTypes ()
 import Control.Monad.IO.Class (MonadIO)
 import Helium.StaticAnalysis.Miscellaneous.Diagnostics (Diagnostic)
 
 
 selectPriorityPatterns :: TGGraph TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo -> Priority -> [TGEdge (Constraint ConstraintInfo)]
-selectPriorityPatterns graph p = filter isCorEdge $ M.elems $ edges graph
+selectPriorityPatterns graph' p = filter isCorEdge $ M.elems $ edges graph'
         where
             isCorEdge :: TGEdge (Constraint ConstraintInfo) -> Bool
             isCorEdge e | not (isConstraintEdge e) = False
@@ -65,8 +58,8 @@ modifyTopLevelTS    :: (HasTypeGraph m (Axiom ConstraintInfo) TyVar (RType Const
                     -> Constraint ConstraintInfo 
                     -> ErrorLabel 
                     -> m Bool
-modifyTopLevelTS m pm graph fbc@(Constraint_Unify fbm@(MonoType_Var _ fbv _) _ _) origE origL = do
-    let g' = resetAll graph
+modifyTopLevelTS m pm graph' fbc@(Constraint_Unify fbm@(MonoType_Var _ fbv _) _ _) origE origL = do
+    let g' = resetAll graph'
     let g'' = g'{
             edges = M.filter (\e -> not (isConstraintEdge e && fbc /= getConstraintFromEdge e && fbv `elem` getFreeTopLevelVariables (getConstraintFromEdge e))) (edges g'),
             unresolvedConstraints = [],
@@ -77,8 +70,8 @@ modifyTopLevelTS m pm graph fbc@(Constraint_Unify fbm@(MonoType_Var _ fbv _) _ _
     cW <- convertConstraint [] True False [0] 1 (Constraint_Unify fbm m Nothing) 
     let gComplete = markEdgesUnresolved [0] $ mergeGraphs g'' [cG, cW]
     axioms <- getAxioms
-    (res, resG) <- runModGraph (fvToList pm) axioms gComplete
-    return ((origE, origL) `notElem` map (\(ci, cons, l) -> (cons, l)) (errors res))
+    (res, _) <- runModGraph (fvToList pm) axioms gComplete
+    return ((origE, origL) `notElem` map (\(_, cons, l) -> (cons, l)) (errors res))
 modifyTopLevelTS _ _ _ _ _ _ = return False 
     
     
@@ -88,7 +81,7 @@ runModGraph :: (Fresh m, HasTypeGraph m (Axiom ConstraintInfo) TyVar (RType Cons
             -> [Axiom ConstraintInfo] 
             -> TGGraph TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo 
             -> m (SolveResult TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo, TGGraph TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo)
-runModGraph vars axioms graph = do 
+runModGraph vars _ graph' = do 
     axioms <- getAxioms
     ui <- uniqueEdge
     vi <- uniqueVertex
@@ -98,9 +91,9 @@ runModGraph vars axioms graph = do
             setGivenTouchables (vars ++ oldVars)
             setUniqueEdge ui
             setUniqueVertex vi
-            setGraph graph
+            setGraph graph'
             initializeAxioms axioms
-            g' <- simplifyGraph False graph
+            g' <- simplifyGraph False graph'
             
             return (graphToSolveResult axioms False [] g', g')
         )
@@ -112,10 +105,10 @@ constructMGU :: (HasAxioms m (Axiom ConstraintInfo), Fresh m, MonadFail m, Monad
                 -> [TGEdge (Constraint ConstraintInfo)]
                 -> m (Maybe (Constraint ConstraintInfo), MonoType,
                    [[Constraint ConstraintInfo]])
-constructMGU graph cedge spp = do
+constructMGU graph' cedge spp = do
     axioms <- getAxioms
-    let groups = filter ((tail (getGroupFromEdge cedge) ==) . tail) $ nub $ map getGroupFromEdge $ filter isConstraintEdge $ M.elems $ edges graph
-    let patternBranches = map (map getConstraintFromEdge . snd) $ combineGroups (length spp `div` length groups) groups spp
+    let groups' = filter ((tail (getGroupFromEdge cedge) ==) . tail) $ nub $ map getGroupFromEdge $ filter isConstraintEdge $ M.elems $ edges graph'
+    let patternBranches = map (map getConstraintFromEdge . snd) $ combineGroups (length spp `div` length groups') groups' spp
 
     let constraintToPatternMatchConstraint :: Constraint ConstraintInfo -> Constraint ConstraintInfo
         constraintToPatternMatchConstraint c = let
@@ -124,7 +117,7 @@ constructMGU graph cedge spp = do
             in gc
     let patternCI = map ((\cs -> (snd $ chead cs, map fst cs)) . map (\c -> (fst $ splitEquality c, constraintToPatternMatchConstraint c))) patternBranches
     patternSub <- mapM (\(gc, vs) -> (\sub -> (map (\(v, MType mt) -> (v, mt)) <$> sub, vs)) <$> runTG (unifyTypes' (ignoreTouchables emptySolveOptions) axioms [] [gc] [])) patternCI
-    let fbType = getConstraintFromEdge <$> maybeHead (filter (\e -> isConstraintEdge e && isJust (getConstraintInfo (getConstraintFromEdge e) >>= maybeFunctionBinding)) $ M.elems $ edges graph)
+    let fbType = getConstraintFromEdge <$> maybeHead (filter (\e -> isConstraintEdge e && isJust (getConstraintInfo (getConstraintFromEdge e) >>= maybeFunctionBinding)) $ M.elems $ edges graph')
     let subApply :: Maybe [(TyVar, MonoType)] -> [RType ConstraintInfo] -> Maybe ([(TyVar, MonoType)], [MonoType])
         subApply Nothing _ = Nothing
         subApply (Just sub) vs = Just (sub, map (\(MType mv@(MonoType_Var _ v _)) -> fromMaybe mv (lookup v sub)) vs)
@@ -134,17 +127,17 @@ constructMGU graph cedge spp = do
                     let (_, MonoType_Var _ res _) = functionSpine ft
                     resType <- lookup res sub
                     return (foldr (:-->:) resType params)
-            subToFunction v1 v2 = Nothing
+            subToFunction _ _ = Nothing
     let ftype = mapMaybe (subToFunction fbType) subTypes
     
-    mgu <- mostGeneralUnifier ftype
-    return (fbType, mgu, patternBranches)
+    mgu' <- mostGeneralUnifier ftype
+    return (fbType, mgu', patternBranches)
 
 
 unreachablePatternHeuristic :: Fresh m => Path m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo -> VotingHeuristic m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo Diagnostic
 unreachablePatternHeuristic path = SingleVoting "Unreachable GADT pattern" f
     where 
-        f (constraint, eid, ci, gm) = 
+        f (constraint, eid, ci, _) = 
             if not (isFromGadt ci) then
                 return Nothing
             else do 
@@ -187,7 +180,7 @@ removePriorGM groups (_, _, ci) graph =
 missingGADTSignature :: Fresh m => Path m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo -> VotingHeuristic m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo Diagnostic
 missingGADTSignature path = SingleVoting "Missing GADT Signature" f
     where
-        f (constraint, eid, ci, gm) =
+        f (constraint, eid, ci, _) =
             if not (isFromGadt ci) then
                 return Nothing
             else do
@@ -196,7 +189,7 @@ missingGADTSignature path = SingleVoting "Missing GADT Signature" f
                 let eedge = getEdgeFromId graph (edgeIdFromPath path)
                 case constraintFromPath path of
                     Constraint_Unify MonoType_Var{} MonoType_Var{} _ -> return Nothing
-                    cu@(Constraint_Unify m1@MonoType_Var{} m2 _) | getPriorityFromEdge cedge == getPriorityFromEdge eedge -> 
+                    (Constraint_Unify MonoType_Var{} _ _) | getPriorityFromEdge cedge == getPriorityFromEdge eedge -> 
                         case constraint of
                             Constraint_Unify (MonoType_Var _ cv1 _) (MonoType_Var _ cv2 _) _ -> do
                                 let fbEdges = filter (\e -> isConstraintEdge e && isJust (getConstraintInfo (getConstraintFromEdge e) >>= maybeFunctionBinding)) $ M.elems (edges graph)
@@ -205,14 +198,14 @@ missingGADTSignature path = SingleVoting "Missing GADT Signature" f
                                     return Nothing
                                 else do
                                     let fbEdge = head relevantFbEdges
-                                    let Constraint_Unify mv@(MonoType_Var _ v _) _ _ = getConstraintFromEdge fbEdge
+                                    let Constraint_Unify mv@MonoType_Var{} _ _ = getConstraintFromEdge fbEdge
                                     let tsEdges = filter (\e -> isConstraintEdge e && original e && isInstConstraint (getConstraintFromEdge e) && firstConstraintElement (getConstraintFromEdge e) == mv) $ M.elems $ edges graph
                                     if null tsEdges then do
                                         let spp = selectPriorityPatterns graph (getPriorityFromEdge eedge)
                                         if null spp then 
                                             return Nothing
                                         else do
-                                            (fbType, mgu, patternBranches) <- constructMGU graph eedge spp
+                                            (_, mgu, patternBranches) <- constructMGU graph eedge spp
                                             let func = fromMaybe (error "No parent") $ parent $ localInfo $ fromMaybe (error "No constraint info") $ getConstraintInfo $ chead $ concat patternBranches
                                             let branches = map (self . attribute) $ children func-- (mapMaybe (\x -> (self . attribute) <$> (parent $ localInfo x))) $ mapMaybe getConstraintInfo $ concat patternBranches --(map (\x -> (self . attribute) <$> (parent $ localInfo x))) $ mapMaybe getConstraintInfo $ concat patternBranches)
                                             let pt = PolyType_Mono [] mgu
@@ -244,8 +237,7 @@ escapingGADTVariableHeuristic path = SingleVoting "Escaping GADT variable" f
                         if isEdgeGiven cedge || isPattern ci then
                             return Nothing
                         else case constraintFromPath path of
-                            Constraint_Unify mv@(MonoType_Var _ v _) m2 _ -> do
-                                let pathConstraints = map getConstraintFromEdge $ filter isEdgeGiven $ map (getEdgeFromId graph) $ idsFromPath path
+                            Constraint_Unify mv@(MonoType_Var _ v _) _ _ -> do
                                 let scopedGivenCons = map getConstraintFromEdge $ filter (\e -> isConstraintEdge e && Just True == (isPattern <$> getConstraintInfo (getConstraintFromEdge e))) $ M.elems $ edges graph
                                 MType mv' <- getSubstTypeFull (getGroupFromEdge cedge) (MType mv)
                                 let fbEdges = map getConstraintFromEdge $ filter (\e -> isConstraintEdge e && isJust (getConstraintInfo (getConstraintFromEdge e) >>= maybeFunctionBinding)) $ M.elems $ edges graph 
@@ -265,7 +257,7 @@ escapingGADTVariableHeuristic path = SingleVoting "Escaping GADT variable" f
                                         if null spp then
                                             return Nothing
                                         else do
-                                            (fbType, mgu, patternBranches) <- constructMGU graph eedge spp
+                                            (_, mgu, patternBranches) <- constructMGU graph eedge spp
                                             let func = fromMaybe (error "No parent") $ parent $ localInfo $ fromMaybe (error "No constraint info") $ getConstraintInfo $ chead $ concat patternBranches
                                             let branches = map (self . attribute) $ children func
                                             let pt = PolyType_Mono [] mgu
@@ -283,10 +275,10 @@ escapingGADTVariableHeuristic path = SingleVoting "Escaping GADT variable" f
 
 getResultTypeFromPatternConstraint :: Constraint ConstraintInfo -> Maybe MonoType
 getResultTypeFromPatternConstraint (Constraint_Unify _ r _) = Just $ getResultFromType r
-getResultTypeFromPatternConstraint c = Nothing
+getResultTypeFromPatternConstraint _ = Nothing
 
 getResultFromType :: MonoType -> MonoType
-getResultFromType (f :-->: a) = getResultFromType a
+getResultFromType (_ :-->: a) = getResultFromType a
 getResultFromType m = m
 
 addTypeSignatureModifier    :: HasTypeGraph m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo Diagnostic
@@ -312,5 +304,6 @@ addConstraintModifier isGiven group prior constraint (_, _, ci) graph = do
     cC <- convertConstraint [] True isGiven group prior constraint
     return (markEdgesUnresolved [0] $ mergeGraphs g' [cC], ci)
     
+chead :: [p] -> p
 chead [] = error "unsafe chead"
 chead (x:_) = x

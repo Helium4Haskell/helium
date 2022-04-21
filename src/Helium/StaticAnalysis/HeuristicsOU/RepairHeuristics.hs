@@ -2,6 +2,10 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# OPTIONS_GHC -Wno-incomplete-patterns #-}
 {-# OPTIONS_GHC -Wno-simplifiable-class-constraints #-}
+{-# LANGUAGE TupleSections #-}
+{-# OPTIONS_GHC -Wno-name-shadowing #-}
+{-# OPTIONS_GHC -Wno-type-defaults #-}
+{-# OPTIONS_GHC -Wno-unused-local-binds #-}
 --{-# LANGUAGE MonoLocalBinds #-}
 --{-# OPTIONS_GHC -freduction-depth=400 #-}
 {-| Module      :  RepairHeuristics
@@ -21,19 +25,15 @@ import Helium.StaticAnalysis.HeuristicsOU.OnlyResultHeuristics
 
 import Rhodium.Core
 import Rhodium.TypeGraphs.GraphProperties
-import Rhodium.TypeGraphs.GraphInstances
 import Rhodium.TypeGraphs.Graph
 import Rhodium.Blamer.Heuristics
-import Rhodium.Blamer.HeuristicProperties
 import Rhodium.Blamer.HeuristicsUtils
 import Rhodium.TypeGraphs.GraphUtils
 import Rhodium.TypeGraphs.GraphReset
-import Rhodium.TypeGraphs.Touchables
 import Rhodium.Blamer.Path
 
 import Helium.Syntax.UHA_Syntax
 import Helium.StaticAnalysis.Miscellaneous.UHA_Source
-import Helium.StaticAnalysis.Messages.HeliumMessages
 import Helium.StaticAnalysis.Miscellaneous.ConstraintInfoOU
 import Helium.StaticAnalysis.HeuristicsOU.HeuristicsInfo
 import Helium.StaticAnalysis.Miscellaneous.DoublyLinkedTree
@@ -41,12 +41,10 @@ import Helium.StaticAnalysis.Inferencers.OutsideInX.ConstraintHelper
 import Helium.StaticAnalysis.Inferencers.OutsideInX.Rhodium.RhodiumTypes
 import Helium.StaticAnalysis.Inferencers.OutsideInX.Rhodium.RhodiumInstances
 import Helium.StaticAnalysis.Inferencers.OutsideInX.TopConversion
-import Helium.Utils.OneLiner
-import Helium.StaticAnalysis.Messages.TypeErrors
 import Helium.StaticAnalysis.Messages.Messages (showNumber, ordinal, prettyAndList)
 
 import Unbound.Generics.LocallyNameless.Fresh
-import Unbound.Generics.LocallyNameless hiding (GT, Name, from, to)
+import Unbound.Generics.LocallyNameless hiding (Name)
 
 import Debug.Trace
    
@@ -57,8 +55,7 @@ import qualified Data.Map as M
 import Control.Monad
 import Rhodium.TypeGraphs.TGState
 import Control.Monad.IO.Class (MonadIO )
-import Helium.StaticAnalysis.Miscellaneous.ReductionTraceUtils (getTraceFromTwoTypes, buildReductionFromPath)
-import Helium.StaticAnalysis.HeuristicsOU.HeuristicsInfo (WithHints(addReduction))
+import Helium.StaticAnalysis.Miscellaneous.ReductionTraceUtils (buildReductionFromPath)
 import Helium.StaticAnalysis.Miscellaneous.Diagnostics (Diagnostic)
 -----------------------------------------------------------------------------
 
@@ -92,7 +89,7 @@ applicationHeuristic :: (Fresh m, HasTypeGraph m (Axiom ConstraintInfo) TyVar (R
                      => Path m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo -> VotingHeuristic m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo Diagnostic
 applicationHeuristic path = SingleVoting "Application heuristic" f
    where
-      f e@(constraint, eid, ci, gm) = 
+      f (constraint, eid, ci, gm) = 
          case maybeApplicationEdge ci of
             Nothing -> return Nothing
             Just (isBinary, tuplesForArguments) -> 
@@ -249,7 +246,7 @@ siblingsHeuristic :: (Fresh m, HasTypeGraph m (Axiom ConstraintInfo) TyVar (RTyp
 siblingsHeuristic siblings path = 
    SingleVoting "Sibling functions" f
    where
-      f pair@(constraint, edgeId, info, gm) =
+      f (constraint, edgeId, info, gm) =
          case maybeImportedName info of 
             Nothing   ->  return Nothing
             Just name
@@ -261,7 +258,7 @@ siblingsHeuristic siblings path =
                   doWithoutEdge edgeId $ 
                      do 
                         let mtp = case constraint of
-                              Constraint_Unify t1 t2 _ -> Nothing
+                              Constraint_Unify{} -> Nothing
                               Constraint_Inst t1 t2 _ -> Just (t1, t2)
                               _ -> Nothing
                         case mtp of
@@ -314,7 +311,7 @@ instance MaybeLiteral ConstraintInfo where
       in case (self . attribute . localInfo) cinfo of
             UHA_Expr (Expression_Literal _ literal ) -> Just (literalType literal)
             UHA_Pat  (Pattern_Literal    _ literal ) -> Just (literalType literal)
-            x                                        -> Nothing
+            _                                        -> Nothing
 
 siblingLiterals :: (Fresh m, HasTypeGraph m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo Diagnostic)
                 => Path m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo
@@ -322,11 +319,11 @@ siblingLiterals :: (Fresh m, HasTypeGraph m (Axiom ConstraintInfo) TyVar (RType 
 siblingLiterals path = 
    SingleVoting "Sibling literals" f 
    where
-      f pair@(constraint, eid, info, gm) =
+      f (constraint, eid, info, gm) =
          case maybeLiteral info of 
             Nothing      -> return Nothing
             Just literal -> case constraint of
-               Constraint_Unify t1 t2 _ -> do
+               Constraint_Unify t1 _ _ -> do
                   graph <- getGraph
                   redHint <- buildReductionFromPath path
                   let edge = getEdgeFromId graph eid
@@ -378,14 +375,14 @@ instance IsExprVariable ConstraintInfo where
    isEmptyInfixApplication cinfo =
       case (self . attribute . localInfo) cinfo of
          UHA_Expr (Expression_InfixApplication _ MaybeExpression_Nothing _ MaybeExpression_Nothing) -> True
-         x  -> False
+         _  -> False
 
 variableFunction :: (Fresh m, HasTypeGraph m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo Diagnostic)
                  => Path m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo
                  -> VotingHeuristic m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo Diagnostic
 variableFunction path = SingleVoting "Variable function" f 
    where
-      f pair@(constraint, eid, info, gm) =  
+      f (constraint, eid, info, _) =  
          case constraint of 
             Constraint_Inst m1 p2 _ 
                | not (isExprVariable info)
@@ -440,7 +437,7 @@ tupleHeuristic :: (Fresh m, HasTypeGraph m (Axiom ConstraintInfo) TyVar (RType C
                -> VotingHeuristic m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo Diagnostic
 tupleHeuristic path = SingleVoting "Tuple heuristics" f
       where      
-         f pair@(constraint , eid, info, gm)    
+         f (constraint , eid, info, gm)    
             | not (isTupleEdge info) = return Nothing
             | otherwise              =
                case constraint of
@@ -514,7 +511,7 @@ fbHasTooManyArguments path = SingleVoting "Function binding heuristics" f
                   let edge = getEdgeFromId graph eid
                   doWithoutEdge eid $ 
                      do 
-                        MType m1 <- getSubstTypeFull (getGroupFromEdge edge) $ MType t1
+                        MType _  <- getSubstTypeFull (getGroupFromEdge edge) $ MType t1
                         PType p2 <- getSubstTypeFull (getGroupFromEdge edge) $ PType t2
                         maximumExplicit <- arityOfPolyType p2
                         edgeList <- getNeighbours (from edge) 
@@ -534,7 +531,7 @@ fbHasTooManyArguments path = SingleVoting "Function binding heuristics" f
                                     (8, "function binding has too many arguments", constraint, eid, addProperty TooManyFBArgs $ redHint $ hint info, gm')
                            _ -> return Nothing
                _ -> return Nothing
-      gm' (eid, constraint, ci) g = do
+      gm' (eid, _, ci) g = do
          let g' = resetAll g
          let cedge = getEdgeFromId g eid
          let g'' = g'{
@@ -554,7 +551,7 @@ constraintFromUser (Path _ path) = MultiVoting "Constraints from .type file" (he
             edgeNrs  = [ i | (_, i, _, _) <- edges ]
             
             selectBestEdge :: [(Constraint ConstraintInfo, EdgeId, ConstraintInfo, GraphModifier m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo)] -> [EdgeId]
-            selectBestEdge path' = [eid | (constraint, eid, ci, gm) <- path', isJust (maybeUserConstraint ci), eid `elem` edgeNrs]
+            selectBestEdge path' = [eid | (_, eid, ci, _) <- path', isJust (maybeUserConstraint ci), eid `elem` edgeNrs]
 
             f :: (a -> a -> a) -> Maybe a -> Maybe a -> Maybe a            
             f g ma mb = 
@@ -565,23 +562,23 @@ constraintFromUser (Path _ path) = MultiVoting "Constraints from .type file" (he
          in 
             case [ tuple | tuple@(_, cNR, _, _) <- edges, Just cNR == bestEdge ] of
                [] -> return Nothing
-               (constraint, edgeID, info, gm):_ -> 
+               (_, edgeID, info, gm):_ -> 
                   let   (groupID, number) = fromMaybe (0, 0) (maybeUserConstraint info)
                         otherEdges = let p info' =
                                           case maybeUserConstraint info' of
                                              Just (a, b) -> a == groupID && b > number
                                              Nothing     -> False
-                                    in [ e | (c, e, i, gm) <- edges, p i ] -- perhaps over all edges!
+                                    in [ e | (_, e, i, _) <- edges, p i ] -- perhaps over all edges!
                   in return . Just $
                         (8, "constraints from .type file", [], edgeID:otherEdges, info, gm)
 
 
 removeEdgeAndTsModifier :: (Fresh m, HasTypeGraph m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo Diagnostic) => GraphModifier m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo
-removeEdgeAndTsModifier (eid, constraint, ci) graph = do
-   let cedge = getEdgeFromId graph eid 
+removeEdgeAndTsModifier (eid, _, ci) graph' = do
+   let cedge = getEdgeFromId graph' eid 
    case getConstraintFromEdge cedge of
       Constraint_Unify mv _ _ -> do
-         let es' = filter (\e -> isConstraintEdge e && isInstConstraint (getConstraintFromEdge e)  && firstConstraintElement (getConstraintFromEdge e) == mv ) $ M.elems (edges graph) --
-         (\g -> (g, ci)) <$> foldM (flip removeEdge) graph (eid : map edgeId es')
-      _ -> (\g -> (g, ci)) <$> removeEdge eid graph
+         let es' = filter (\e -> isConstraintEdge e && isInstConstraint (getConstraintFromEdge e)  && firstConstraintElement (getConstraintFromEdge e) == mv ) $ M.elems (edges graph') --
+         (, ci) <$> foldM (flip removeEdge) graph' (eid : map edgeId es')
+      _ -> (, ci) <$> removeEdge eid graph'
    

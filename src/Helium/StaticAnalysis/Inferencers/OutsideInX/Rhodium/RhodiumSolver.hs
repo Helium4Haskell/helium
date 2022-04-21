@@ -1,30 +1,25 @@
 {-# LANGUAGE FlexibleContexts #-}
+{-# OPTIONS_GHC -Wno-missing-fields #-}
+{-# OPTIONS_GHC -Wno-missing-signatures #-}
+{-# OPTIONS_GHC -Wno-name-shadowing #-}
 module Helium.StaticAnalysis.Inferencers.OutsideInX.Rhodium.RhodiumSolver(rhodiumSolve, solveOU) where
 
 import Rhodium.Core
 import Rhodium.TypeGraphs.GraphProperties
-import Rhodium.TypeGraphs.TGState hiding (graph)
-import Rhodium.TypeGraphs.Graph
-import Rhodium.Solver.Rules
 import Rhodium.Solver.SolveResult
 import Rhodium.Blamer.Heuristics
-import Rhodium.Blamer.ResidualHeuristics 
 
 import Unbound.Generics.LocallyNameless.Fresh
-import Unbound.Generics.LocallyNameless.Name
 
 import Helium.StaticAnalysis.Miscellaneous.ConstraintInfoOU
-import Helium.StaticAnalysis.Messages.HeliumMessages
-import Helium.StaticAnalysis.Messages.TypeErrors
 import Helium.StaticAnalysis.Inferencers.OutsideInX.Rhodium.RhodiumTypes
 --import Helium.StaticAnalysis.Inferencers.OutsideInX.Rhodium.RhodiumInstances()
 
 import Helium.StaticAnalysis.HeuristicsOU.FilterHeuristics
 import Helium.StaticAnalysis.HeuristicsOU.RepairHeuristics
 import Helium.StaticAnalysis.HeuristicsOU.ResidualHeuristics
-import Helium.StaticAnalysis.HeuristicsOU.GADTHeuristics 
+import Helium.StaticAnalysis.HeuristicsOU.GADTHeuristics
 
-import Data.Maybe
 import Data.List
 
 import Debug.Trace
