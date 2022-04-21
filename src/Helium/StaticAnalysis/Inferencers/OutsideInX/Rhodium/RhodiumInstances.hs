@@ -102,6 +102,7 @@ instance (CompareTypes m (RType ConstraintInfo), IsTouchable m TyVar, HasAxioms 
                                         if isGreater then 
                                             return $ Applied ([], [], [Constraint_Unify m2 m1 Nothing]) 
                                             else return NotApplicable
+                                    (False, False) -> return (Error labelResidual)
                                     _ -> return NotApplicable
                         (MonoType_Var _ v rs, _)
                             | v `elem` (fvToList m2 :: [TyVar]), isFamilyFree m2 -> return (Error labelInfiniteType)

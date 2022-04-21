@@ -190,24 +190,27 @@ type family J a where
 -- g :: Int -> B a
 -- g x = x
 
--- type family Right a b
--- type instance Right a b = b
+type family Right a b
+type instance Right a b = b
 
--- right :: a -> b -> Right a b
--- right x y = x
+type family Id a
+type instance Id a = a
 
-type family Foo a b c = r | r -> c
-type instance Foo Char Char Char = Bool
-type instance Foo Char Char Char = Bool
-type instance Foo Float Bool Int = Int
+right :: a -> b -> Right (Id a) (Id b)
+right x y = x
 
-class Bar t where
-  clsF :: Foo t v t
-instance Bar Char where
-  clsF = True
+-- type family Foo a b c = r | r -> c
+-- type instance Foo Char Char Char = Bool
+-- type instance Foo Char Char Char = Bool
+-- type instance Foo Float Bool Int = Int
 
-main :: Bool
-main = clsF :: Bool
+-- class Bar t where
+--   clsF :: Foo t v t
+-- instance Bar Char where
+--   clsF = True
+
+-- main :: Bool
+-- main = clsF :: Bool
 
 -- type family Foo a 
 -- type instance Foo Char = Bool
