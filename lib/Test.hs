@@ -196,7 +196,7 @@ type instance Right a b = b
 type family Id a
 type instance Id a = a
 
-right :: a -> b -> Right (Id a) (Id b)
+right :: a -> b -> Right (Id a) b
 right x y = x
 
 -- type family Foo a b c = r | r -> c

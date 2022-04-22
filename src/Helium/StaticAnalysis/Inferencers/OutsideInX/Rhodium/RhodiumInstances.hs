@@ -41,6 +41,7 @@ import Helium.StaticAnalysis.StaticChecks.TypeFamilyInfos (TFInstanceInfo(preCom
 import Helium.Syntax.UHA_Syntax (Range)
 import Helium.StaticAnalysis.Miscellaneous.Diagnostics (Diagnostic, addTyVarInTypeFamilyList)
 import Debug.Trace (trace)
+import Helium.StaticAnalysis.Miscellaneous.ReductionTraceUtils (substTraceInMt, hasTrace)
 
 integer2Name :: Integer -> Name a
 integer2Name = makeName ""
@@ -98,7 +99,7 @@ instance (CompareTypes m (RType ConstraintInfo), IsTouchable m TyVar, HasAxioms 
                                         let findVar vToSearch (Constraint_Inst  (MonoType_Var _ v _) _ _) | v == vToSearch = True
                                             findVar vToSearch (Constraint_Unify (MonoType_Var _ v _) _ _) | v == vToSearch = True
                                             findVar _ _ = False
-                                            possible1 = filter (findVar v1) (trace ("GIVENS: " ++ show givens) givens)
+                                            possible1 = filter (findVar v1) givens
                                             possible2 = filter (findVar v2) givens
                                         case (possible1, possible2) of
                                             (_,[]) -> return (Error labelResidual)
@@ -185,13 +186,16 @@ instance (HasGraph m touchable types constraint ci, HasAxioms m (Axiom Constrain
                             then insertReductionStep (subst v1 m1 t2) (Step (subst v1 m1 t2) t2 (Just $ removeCI c2) (ArgInjection (mv, m1)))
                             else subst v1 m1 t2
                 return $ Applied [c1, Constraint_Unify lhs (subst v1 m1 m2) Nothing]
-    interact _ c1@(Constraint_Unify mv1@(MonoType_Var _ v1 _) m1 _) (Constraint_Unify mv2@(MonoType_Var _ v2 _) m2 _) 
+    interact _ c1@(Constraint_Unify mv1@(MonoType_Var _ v1 trc1) m1 _) (Constraint_Unify mv2@(MonoType_Var _ v2 trc2) m2 _) 
         | v1 == v2, isFamilyFree m1, isFamilyFree m2 = do
             ig <- greaterType (MType mv1) (MType m1 :: RType ConstraintInfo)
             if ig then 
                 return NotApplicable
-            else
-                return $ Applied [c1, Constraint_Unify m1 m2 Nothing]
+            else do
+                let trc = maybeHead $ catMaybes [trc1, trc2]
+                    m1' = if hasTrace m1 then insertReductionStepMaybe m1 $ substTraceInMt (v1, m1) trc else m1
+                    m2' = if hasTrace m2 then insertReductionStepMaybe m2 $ substTraceInMt (v2, m2) trc else m2
+                return $ Applied [c1, Constraint_Unify m1' m2' Nothing]
         | v1 `elem` (fvToList m2 :: [TyVar]), isFamilyFree m1, isFamilyFree m2 = do 
             ig <- greaterType (MType mv1) (MType m1 :: RType ConstraintInfo)
             if ig then 

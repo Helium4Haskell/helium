@@ -4,9 +4,9 @@
 module Helium.StaticAnalysis.Miscellaneous.ReductionTraceUtils where
 
 import Rhodium.TypeGraphs.GraphProperties (CompareTypes, HasTypeGraph, HasGraph (getGraph))
-import Helium.StaticAnalysis.Inferencers.OutsideInX.Rhodium.RhodiumTypes (RType (MType), Axiom, TyVar, Constraint (Constraint_Unify), MonoType (MonoType_Fam, MonoType_App, MonoType_Con, MonoType_Var), ReductionTrace, ReductionStep (Step), ReductionType (LeftToRight, CanonReduction, ArgInjection), getMaybeReductionStep)
+import Helium.StaticAnalysis.Inferencers.OutsideInX.Rhodium.RhodiumTypes (RType (MType), Axiom, TyVar, Constraint (Constraint_Unify), MonoType (MonoType_Fam, MonoType_App, MonoType_Con, MonoType_Var), ReductionTrace, ReductionStep (Step), ReductionType (LeftToRight, CanonReduction, ArgInjection), getMaybeReductionStep, insertReductionStep, insertReductionStepMaybe)
 import Helium.StaticAnalysis.Miscellaneous.ConstraintInfoOU (ConstraintInfo)
-import Unbound.Generics.LocallyNameless (Fresh)
+import Unbound.Generics.LocallyNameless (Fresh, Subst (subst))
 import Rhodium.TypeGraphs.Graph (TGEdge, getGroupFromEdge, getEdgeFromId)
 import Helium.StaticAnalysis.Messages.Messages (MessageBlock (MessageString, MessageCompose))
 import Rhodium.TypeGraphs.GraphUtils (getSubstTypeFull, getConstraintFromEdge)
@@ -146,7 +146,28 @@ getLastTypeInTrace rt = case rt of
 -- Gets first type in the trace
 getFirstTypeInTrace :: ReductionTrace -> Maybe MonoType
 getFirstTypeInTrace [] = Nothing
-getFirstTypeInTrace ((Step after _ _ _, _):_) = Just after 
+getFirstTypeInTrace ((Step after _ _ _, _):_) = Just after
+
+getMaybeStepFromType :: MonoType -> Maybe ReductionStep
+getMaybeStepFromType (MonoType_Var _ _ trc) = trc
+getMaybeStepFromType (MonoType_App _ _ trc) = trc
+getMaybeStepFromType (MonoType_Fam _ _ trc) = trc
+getMaybeStepFromType (MonoType_Con _ trc) = trc
+
+substTraceInMt :: (TyVar, MonoType) -> Maybe ReductionStep -> Maybe ReductionStep 
+substTraceInMt (tv, mt) (Just s) = let
+  (Step after before c rt) = s
+  recStep = getMaybeStepFromType before
+  before' = subst tv mt before
+  before'' = insertReductionStepMaybe before' $ substTraceInMt (tv, mt) recStep
+  after' = subst tv mt after
+  in Just (Step after' before'' c rt)
+substTraceInMt _ Nothing = Nothing
+
+hasTrace :: MonoType -> Bool
+hasTrace mt = case getMaybeStepFromType mt of
+  Nothing -> False
+  Just _ -> True
 
 -- Name not entirely fitting, gets the "full" trace among two traces.
 getFullTrace :: ReductionTrace -> ReductionTrace -> Maybe (Int, ReductionTrace)
