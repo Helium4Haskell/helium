@@ -40,6 +40,7 @@ import Helium.Utils.Utils (internalError)
 import Helium.StaticAnalysis.StaticChecks.TypeFamilyInfos (TFInstanceInfo(preCompat, tfiRange))
 import Helium.Syntax.UHA_Syntax (Range)
 import Helium.StaticAnalysis.Miscellaneous.Diagnostics (Diagnostic, addTyVarInTypeFamilyList)
+import Debug.Trace (trace)
 
 integer2Name :: Integer -> Name a
 integer2Name = makeName ""
@@ -56,13 +57,13 @@ instance (Fresh m, Monad m) => FreshVariable m TyVar where
     freshVariable = error "try not using fresh" -- fresh (string2Name "a")
 
 instance (CompareTypes m (RType ConstraintInfo), IsTouchable m TyVar, HasAxioms m (Axiom ConstraintInfo), IsTouchable m TyVar, Fresh m, Monad m) => CanCanon m TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) where 
-    -- canon :: Bool -> constraint -> m (Maybe ([touchable], [(touchable, types)], constraint))
-    canon isG c = do 
+    -- canon :: Bool -> constraint -> [constraint] -> m (Maybe ([touchable], [(touchable, types)], constraint))
+    canon isG c g = do 
         axs <- getAxioms
-        canon' axs c 
+        canon' axs c g
             where
-                canon' :: [Axiom ConstraintInfo] -> Constraint ConstraintInfo -> m (RuleResult ([TyVar], [(TyVar, RType ConstraintInfo)], [Constraint ConstraintInfo]))
-                canon' axs ogc@(Constraint_Unify m1 m2 _) = do
+                canon' :: [Axiom ConstraintInfo] -> Constraint ConstraintInfo -> [Constraint ConstraintInfo] -> m (RuleResult ([TyVar], [(TyVar, RType ConstraintInfo)], [Constraint ConstraintInfo]))
+                canon' axs ogc@(Constraint_Unify m1 m2 _) givens = do
                   ig <- greaterType (MType m1) (MType m2 :: RType ConstraintInfo)
                   if ig then 
                         return $ Applied ([], [], [Constraint_Unify m2 m1 Nothing])
@@ -91,7 +92,24 @@ instance (CompareTypes m (RType ConstraintInfo), IsTouchable m TyVar, HasAxioms 
                                         if isGreater then 
                                             return $ Applied ([], [], [Constraint_Unify m2 m1 Nothing]) 
                                             else return NotApplicable
-                                    (False, False) -> return (Error labelResidual)
+                                    -- Only when a given constraint is able to make the untouchable vars more concrete,
+                                    -- may the constraint be able to be resolved.
+                                    (False, False) -> do
+                                        let findVar vToSearch (Constraint_Inst  (MonoType_Var _ v _) _ _) | v == vToSearch = True
+                                            findVar vToSearch (Constraint_Unify (MonoType_Var _ v _) _ _) | v == vToSearch = True
+                                            findVar _ _ = False
+                                            possible1 = filter (findVar v1) (trace ("GIVENS: " ++ show givens) givens)
+                                            possible2 = filter (findVar v2) givens
+                                        case (possible1, possible2) of
+                                            (_,[]) -> return (Error labelResidual)
+                                            ([],_) -> return (Error labelResidual)
+                                            ([Constraint_Inst  MonoType_Var{} p1 _],[Constraint_Inst  MonoType_Var{} p2 _])
+                                                | p1 == p2 -> return NotApplicable
+                                                | otherwise -> return (Error labelResidual)
+                                            ([Constraint_Unify MonoType_Var{} p1 _],[Constraint_Unify MonoType_Var{} p2 _])
+                                                | p1 == p2 -> return NotApplicable
+                                                | otherwise -> return (Error labelResidual)
+                                            _ -> return NotApplicable
                                     _ -> return NotApplicable
                         (MonoType_Var _ v rs, _)
                             | v `elem` (fvToList m2 :: [TyVar]), isFamilyFree m2 -> return (Error labelInfiniteType)
@@ -127,12 +145,12 @@ instance (CompareTypes m (RType ConstraintInfo), IsTouchable m TyVar, HasAxioms 
                         (_, _)
                             | m1 == m2, isFamilyFree m1, isFamilyFree m2 -> return $ Applied ([], [], [])
                             | otherwise -> return NotApplicable
-                canon' _ (Constraint_Inst m (PolyType_Mono cs pm) _) = return $ Applied ([], [], Constraint_Unify m pm Nothing : cs)
-                canon' _ (Constraint_Inst m p ci) = do 
+                canon' _ (Constraint_Inst m (PolyType_Mono cs pm) _) _ = return $ Applied ([], [], Constraint_Unify m pm Nothing : cs)
+                canon' _ (Constraint_Inst m p ci) _ = do 
                     (vs, cci ,t) <- instantiate p True
                     return $ Applied (vs, [], Constraint_Unify m t ci : cci)
-                canon' _ Constraint_Class{} = return NotApplicable
-                canon' _ cci = error $ "Unknown canon constraint: " ++ show cci
+                canon' _ Constraint_Class{} _ = return NotApplicable
+                canon' _ cci _ = error $ "Unknown canon constraint: " ++ show cci
 
 isNotList :: MonoType -> Bool
 isNotList (MonoType_Con "[]" _) = False
