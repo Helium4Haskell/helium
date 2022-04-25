@@ -89,7 +89,7 @@ instance (CompareTypes m (RType ConstraintInfo), IsTouchable m TyVar, HasAxioms 
                                 tch2 <- isVertexTouchable v2
                                 case (isJust tch1, isJust tch2) of
                                     (True, True) -> do 
-                                        isGreater <- greaterTouchable v1 v2
+                                        isGreater <- greaterType (MType m1) (MType m2 :: RType ConstraintInfo)
                                         if isGreater then 
                                             return $ Applied ([], [], [Constraint_Unify m2 m1 Nothing]) 
                                             else return NotApplicable
@@ -180,14 +180,14 @@ instance (HasGraph m touchable types constraint ci, HasAxioms m (Axiom Constrain
     --interact :: Bool -> constraint -> constraint -> m (RuleResult [constraint])
     interact _ c1 c2
         | c1 == c2 = return $ Applied [c1]
-    interact _ c1@(Constraint_Unify mv@(MonoType_Var _ v1 _) m1 _) c2@(Constraint_Unify t2@(MonoType_Fam _ vs2 _) m2 _)
+    interact _ c1@(Constraint_Unify mv@(MonoType_Var _ v1 _) m1 _) c2@(Constraint_Unify t2@(MonoType_Fam _ vs2 trc) m2 _)
         | isFamilyFree m1, all isFamilyFree vs2, v1 `elem` (fvToList t2 :: [TyVar]) || v1 `elem` (fvToList m2 :: [TyVar]), isFamilyFree m2 = do
-                let subM = subst v1 m1 t2
-                    -- If the varname is "beta" we just undo a flattening, hence we do not insert a reduction.
-                    lhs = if v1 `elem` (fvToList t2 :: [TyVar]) && name2String v1 /= "beta"
-                            then insertReductionStep subM (Step subM t2 (Just $ removeCI c2) (ArgInjection (mv, m1)))
-                            else subM
-                return $ Applied [c1, Constraint_Unify lhs (subst v1 m1 m2) Nothing]
+            let subM = subst v1 m1 t2
+                -- If the varname is "beta" we just undo a flattening, hence we do not insert a reduction.
+                lhs = if v1 `elem` (fvToList t2 :: [TyVar]) && name2String v1 /= "beta"
+                        then insertReductionStep subM (Step subM t2 (Just $ removeCI c2) (ArgInjection (mv, m1)))
+                        else insertReductionStepMaybe subM $ substTraceInMt (v1, m1) trc
+            return $ Applied [c1, Constraint_Unify lhs (subst v1 m1 m2) Nothing]
     interact _ c1@(Constraint_Unify mv1@(MonoType_Var _ v1 trc1) m1 _) (Constraint_Unify mv2@(MonoType_Var _ v2 trc2) m2 _) 
         | v1 == v2, isFamilyFree m1, isFamilyFree m2 = do
             ig <- greaterType (MType mv1) (MType m1 :: RType ConstraintInfo)
@@ -218,7 +218,6 @@ instance (HasGraph m touchable types constraint ci, HasAxioms m (Axiom Constrain
     interact _ c1@(Constraint_Unify fm1@(MonoType_Fam f1 vs1 _) m1 _) (Constraint_Unify fm2@(MonoType_Fam f2 vs2 _) m2 _)
         | f1 == f2, vs1 == vs2, isFamilyFree m1, isFamilyFree m2
             = return $ Applied [c1, Constraint_Unify m1 m2 Nothing]
-        -- wrong!
         | f1 == f2, m1 == m2 = do
             (axs :: [Axiom ConstraintInfo]) <- getAxioms
             if isInjective axs f1
@@ -338,11 +337,11 @@ instance (
                             res <- runTG ustate :: m (Maybe [(TyVar, RType ConstraintInfo)])
                             case res of
                                 Just s -> do
-                                    let substRhs = substs (convertSubstitution s) rhs
+                                    let substRhs = substs (convertSubstitution s) (trace ("S: " ++ show s) rhs)
                                     -- Makes sure that the lhs and rhs in LeftToRight is standardized on a certain uniqueness
-                                    let (_, (specLhs, specRhs)) = contFreshM (unbind b) 1000000000000000 -- Must be large 
+                                    let (_, (specLhs, specRhs)) = contFreshM (unbind b) $ trace ("SUBSTRHS: " ++ show substRhs) 1000000000000000 -- Must be large 
                                     let newRhs = insertReductionStep substRhs (Step substRhs mf (Just $ removeCI c) (LeftToRight (specLhs, specRhs) tfi))
-                                    return $ Applied (if given then [] else fvToList t, [Constraint_Unify newRhs t Nothing])
+                                    return $ Applied (if given then [] else fvToList t, [Constraint_Unify (trace ("NEWRHS: " ++ show newRhs) newRhs) t Nothing])
                                 -- Try injectivity top level improvement when normal reaction fails
                                 _ -> improveTopLevelFun given c ax
                         _ -> return NotApplicable
@@ -628,6 +627,7 @@ instance IsEquality (Axiom ConstraintInfo) (RType ConstraintInfo) (Constraint Co
     --         isVar MonoType_Var{} = True
     --         isVar _              = False
     allowInSubstitution _ _ (Constraint_Unify (MonoType_Fam f1 m1 _) (MonoType_Fam f2 m2 _) _) = f1 == f2 && m1 == m2
+    --allowInSubstitution _ _ (Constraint_Unify MonoType_Var{} (MonoType_Var _ v _) _) = name2String v /= "beta"
     allowInSubstitution _ _ (Constraint_Unify m1 m2 _) = isFamilyFree m1 && isFamilyFree m2
     allowInSubstitution _ _ _ = False
 

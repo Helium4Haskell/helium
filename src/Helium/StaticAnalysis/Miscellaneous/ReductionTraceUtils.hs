@@ -165,8 +165,14 @@ substTraceInMt (tv, mt) (Just s) = let
   before' = subst tv mt before
   before'' = insertReductionStepMaybe before' $ substTraceInMt (tv, mt) recStep
   after' = subst tv mt after
-  in Just (Step after' before'' c rt)
+  rt' = substRTInTrace (tv, mt) rt
+  c' = subst tv mt c
+  in Just (Step after' before'' c' rt')
 substTraceInMt _ Nothing = Nothing
+
+substRTInTrace :: (TyVar, MonoType) -> ReductionType -> ReductionType
+substRTInTrace (tv, mt) (ArgInjection (t1, t2)) = ArgInjection (subst tv mt t1, subst tv mt t2)
+substRTInTrace _ rt = rt
 
 hasTrace :: MonoType -> Bool
 hasTrace mt = case getMaybeStepFromType mt of

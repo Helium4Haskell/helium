@@ -13,7 +13,6 @@ import Rhodium.Solver.Rules (ErrorLabel (ErrorLabel))
 
 import Helium.StaticAnalysis.Miscellaneous.ReductionTraceUtils (buildReductionTrace, getFullTrace, getLastTypeInTrace, getFirstTypeInTrace, squashTrace)
 import Data.Maybe (isJust, catMaybes, fromMaybe, mapMaybe)
-import Debug.Trace (trace)
 import Data.List (permutations, nub, intercalate, sort)
 import qualified Data.Map as M
 import Helium.StaticAnalysis.HeuristicsOU.HeuristicsInfo
@@ -29,6 +28,7 @@ import Helium.Syntax.UHA_Syntax (Name)
 import Helium.StaticAnalysis.Miscellaneous.Diagnostics (Diagnostic)
 import Data.Either (isLeft, fromLeft, fromRight)
 import Data.Bifunctor (bimap)
+import Debug.Trace (trace)
 
 typeErrorThroughReduction :: (Fresh m, HasTypeGraph m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo Diagnostic)
                           => Path m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo -> VotingHeuristic m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo Diagnostic
@@ -290,11 +290,11 @@ shouldBeInjectiveHeuristic path = SingleVoting "Not injective enough" f
               -- Get hint about possible injectivity annotations
               injHint <- buildNestedInjHint cedge mf mt
               (MType mf') <- getSubstTypeFull (getGroupFromEdge cedge) (MType mf)
-              case injHint of
+              case trace ("MF, MF': " ++ show mf ++ ", " ++ show mf') injHint of
                 Nothing -> return Nothing
                 Just iHint -> do 
-                  theTrace <- buildReductionTrace cedge mf
-                  case theTrace of 
+                  theTrace <- buildReductionTrace cedge mf'
+                  case trace ("TRACE: " ++ show theTrace) theTrace of 
                     [] -> if typeFamInType fn pmt
                       then return $ Just (7, "Should be injective, without trace", constr, eid, addProperty (TypeFamilyReduction Nothing mt mf' mf' False) $ iHint ci, gm)
                       else return Nothing
@@ -361,7 +361,7 @@ shouldBeInjectiveHeuristic path = SingleVoting "Not injective enough" f
                   -- vNM maps the injIndices to their names
                   let vNM = buildVarNameMap fn axs
                   -- Computes for every combination of vars if it is possible to add.
-                  possibleInjCombs <- mapM (checkNewInjectivity fn axs mf mt) (trace ("PSET: " ++ show pSet) pSet)
+                  possibleInjCombs <- mapM (checkNewInjectivity fn axs mf mt) pSet
                   --Split Lefts and Rights of the result
                   let splittedRes = bimap (map $ fromLeft []) (map $ fromRight []) $ splitBy isLeft possibleInjCombs
                   case splittedRes of
