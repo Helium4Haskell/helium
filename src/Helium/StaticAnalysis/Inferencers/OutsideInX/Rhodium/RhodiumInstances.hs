@@ -182,9 +182,11 @@ instance (HasGraph m touchable types constraint ci, HasAxioms m (Axiom Constrain
         | c1 == c2 = return $ Applied [c1]
     interact _ c1@(Constraint_Unify mv@(MonoType_Var _ v1 _) m1 _) c2@(Constraint_Unify t2@(MonoType_Fam _ vs2 _) m2 _)
         | isFamilyFree m1, all isFamilyFree vs2, v1 `elem` (fvToList t2 :: [TyVar]) || v1 `elem` (fvToList m2 :: [TyVar]), isFamilyFree m2 = do
-                let lhs = if v1 `elem` (fvToList t2 :: [TyVar])
-                            then insertReductionStep (subst v1 m1 t2) (Step (subst v1 m1 t2) t2 (Just $ removeCI c2) (ArgInjection (mv, m1)))
-                            else subst v1 m1 t2
+                let subM = subst v1 m1 t2
+                    -- If the varname is "beta" we just undo a flattening, hence we do not insert a reduction.
+                    lhs = if v1 `elem` (fvToList t2 :: [TyVar]) && name2String v1 /= "beta"
+                            then insertReductionStep subM (Step subM t2 (Just $ removeCI c2) (ArgInjection (mv, m1)))
+                            else subM
                 return $ Applied [c1, Constraint_Unify lhs (subst v1 m1 m2) Nothing]
     interact _ c1@(Constraint_Unify mv1@(MonoType_Var _ v1 trc1) m1 _) (Constraint_Unify mv2@(MonoType_Var _ v2 trc2) m2 _) 
         | v1 == v2, isFamilyFree m1, isFamilyFree m2 = do
@@ -192,7 +194,8 @@ instance (HasGraph m touchable types constraint ci, HasAxioms m (Axiom Constrain
             if ig then 
                 return NotApplicable
             else do
-                let trc = maybeHead $ catMaybes [trc1, trc2]
+                -- delicate case which may occur after tyfam reduction containing only vars
+                let trc = maybeHead $ catMaybes [trc1, trc2] -- Take one of the traces of between v1 and v2
                     m1' = if hasTrace m1 then insertReductionStepMaybe m1 $ substTraceInMt (v1, m1) trc else m1
                     m2' = if hasTrace m2 then insertReductionStepMaybe m2 $ substTraceInMt (v2, m2) trc else m2
                 return $ Applied [c1, Constraint_Unify m1' m2' Nothing]
@@ -212,13 +215,14 @@ instance (HasGraph m touchable types constraint ci, HasAxioms m (Axiom Constrain
                 return NotApplicable
             else
                 return $ Applied [c1, Constraint_Class n (substs [(v1, m1)] ms2) Nothing]
-    interact _ (Constraint_Unify fm1@(MonoType_Fam f1 vs1 _) m1 _) (Constraint_Unify fm2@(MonoType_Fam f2 vs2 _) m2 _)
+    interact _ c1@(Constraint_Unify fm1@(MonoType_Fam f1 vs1 _) m1 _) (Constraint_Unify fm2@(MonoType_Fam f2 vs2 _) m2 _)
         | f1 == f2, vs1 == vs2, isFamilyFree m1, isFamilyFree m2
-            = return $ Applied [Constraint_Unify m1 m2 Nothing]
+            = return $ Applied [c1, Constraint_Unify m1 m2 Nothing]
+        -- wrong!
         | f1 == f2, m1 == m2 = do
             (axs :: [Axiom ConstraintInfo]) <- getAxioms
             if isInjective axs f1
-                then return $ Applied [Constraint_Unify fm1 fm2 Nothing]
+                then return $ Applied [c1, Constraint_Unify fm1 fm2 Nothing]
                 else return NotApplicable 
     interact _ c1@Constraint_Class {} c2@Constraint_Class{}
         | c1 == c2 = return $ Applied [c1]

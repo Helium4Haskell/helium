@@ -21,17 +21,17 @@ import Helium.StaticAnalysis.Miscellaneous.Diagnostics (Diagnostic)
 
 
 buildReductionTrace :: (CompareTypes m (RType ConstraintInfo), Fresh m, HasTypeGraph m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo Diagnostic)
-                    => Bool -> TGEdge (Constraint ConstraintInfo) -> MonoType -> m ReductionTrace
-buildReductionTrace doSubst e mt = case getMaybeReductionStep mt of
+                    => TGEdge (Constraint ConstraintInfo) -> MonoType -> m ReductionTrace
+buildReductionTrace e mt = case getMaybeReductionStep mt of
       -- If no own reductions, check args of type family for reductions
       Nothing -> case mt of
           MonoType_Fam{} -> buildNestedSteps e mt
           _                    -> return []
       -- else, we build substituted step components from the step we obtain.
       Just (Step after before mconstr rt) -> do
-          (MType after') <- if doSubst then getSubstTypeFull (getGroupFromEdge e) (MType after) else return (MType after)
-          (MType before') <- if doSubst then  getSubstTypeFull (getGroupFromEdge e) (MType before) else return (MType before)     
-          ih <- buildReductionTrace doSubst e before'
+          (MType after') <- if not (isArgInjection rt) then getSubstTypeFull (getGroupFromEdge e) (MType after) else return (MType after)
+          (MType before') <- if not (isArgInjection rt) then  getSubstTypeFull (getGroupFromEdge e) (MType before) else return (MType before)     
+          ih <- buildReductionTrace e before'
           return $ (Step after' before' mconstr rt, 1) : ih
 
 buildNestedSteps :: (CompareTypes m (RType ConstraintInfo), Fresh m, HasTypeGraph m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo Diagnostic)
@@ -117,6 +117,10 @@ buildNestedSteps = buildNestedSteps' []
 isCanonReduction :: ReductionType -> Bool
 isCanonReduction (CanonReduction _) = True
 isCanonReduction _                  = False
+
+isArgInjection :: ReductionType -> Bool
+isArgInjection (ArgInjection _) = True
+isArgInjection _                = False
 
 -- Gets one step.
 getOneStep :: (CompareTypes m (RType ConstraintInfo), Fresh m, HasTypeGraph m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo Diagnostic)
@@ -213,6 +217,7 @@ traceToMessageBlock rts = MessageCompose $ mapToBlock (1 :: Int) rts
               , MessageString ("\n   Step:\t: " ++ show after ++ " <- " ++ show before)
               , MessageString ("\n   Reason\t: " ++ showReason rt)
               , MessageString ("\n   Amount\t: " ++ timesToString times)
+              , MessageString "\n"
               ]
               : mapToBlock (idx + 1) rts'
         mapToBlock _ [] = []
@@ -231,8 +236,8 @@ traceToMessageBlock rts = MessageCompose $ mapToBlock (1 :: Int) rts
 getTraceFromTwoTypes :: (CompareTypes m (RType ConstraintInfo), Fresh m, HasTypeGraph m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo Diagnostic)
                      => TGEdge (Constraint ConstraintInfo) -> MonoType -> MonoType -> m (Maybe ReductionTrace)
 getTraceFromTwoTypes cedge m1 m2 = do
-  trc1 <- buildReductionTrace True cedge m1
-  trc2 <- buildReductionTrace True cedge m2
+  trc1 <- buildReductionTrace cedge m1
+  trc2 <- buildReductionTrace cedge m2
   
   case getFullTrace trc1 trc2 of
     Just (_, trc) -> return $ Just trc 

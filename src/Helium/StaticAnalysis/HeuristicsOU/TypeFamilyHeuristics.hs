@@ -51,7 +51,7 @@ typeErrorThroughReduction path = SingleVoting "Type error through type family re
             (Constraint_Unify mf@MonoType_Fam{} t _, ErrorLabel "Residual constraint") -> do
               [MType freshOg] <- freshenRepresentation . (:[]) <$> getSubstTypeFull (getGroupFromEdge cedge) (MType mf)
               -- Get potential trace.
-              theTrace <- squashTrace <$> buildReductionTrace False cedge freshOg
+              theTrace <- squashTrace <$> buildReductionTrace cedge freshOg
               -- Builds hint in nested sense, when type family contains other families that were not reducable (or wronly reduced, perhaps)
               mTheHint <- buildNestedHints cedge mf t
               -- Unpack hint
@@ -66,7 +66,7 @@ typeErrorThroughReduction path = SingleVoting "Type error through type family re
                         then id
                         else addHint ("possible fix" ++ if length fixes > 1 then "es" else "") (intercalate "\n" fixes)
                       in causeHint . fixHint
-              case theTrace of
+              case trace ("TRACE: " ++ show theTrace) theTrace of
                 -- No trace but still reduction error
                 [] -> if typeIsInType mf pmt
                         then return $ Just (5, "Type family could not be reduced, no trace", constr, eid, addProperty (TypeFamilyReduction Nothing t freshOg freshOg False) $ theHint ci, gm)
@@ -84,8 +84,8 @@ typeErrorThroughReduction path = SingleVoting "Type error through type family re
               (MType t1') <- getSubstTypeFull (getGroupFromEdge edge) (MType t1)
               (MType t2') <- getSubstTypeFull (getGroupFromEdge edge) (MType t2)
               -- Generate traces
-              t1Trace <- squashTrace <$> buildReductionTrace True edge t1'
-              t2Trace <- squashTrace <$> buildReductionTrace True edge t2'
+              t1Trace <- squashTrace <$> buildReductionTrace edge t1'
+              t2Trace <- squashTrace <$> buildReductionTrace edge t2'
               -- Get the type reduced from a type family (only one side is).
               case getFullTrace t1Trace t2Trace of
                 Nothing -> return Nothing
@@ -191,7 +191,7 @@ typeErrorThroughReduction path = SingleVoting "Type error through type family re
                   (_, _, _) -> Nothing)
           -- In case a type with trace is found, we check if we can build a hint with the last type in it.         
           buildNestedHints cedge mt t = do
-            theTrace <- buildReductionTrace True cedge mt
+            theTrace <- buildReductionTrace cedge mt
             case theTrace of
               [] -> return Nothing
               xs -> do
@@ -293,7 +293,7 @@ shouldBeInjectiveHeuristic path = SingleVoting "Not injective enough" f
               case injHint of
                 Nothing -> return Nothing
                 Just iHint -> do 
-                  theTrace <- buildReductionTrace False cedge mf
+                  theTrace <- buildReductionTrace cedge mf
                   case theTrace of 
                     [] -> if typeFamInType fn pmt
                       then return $ Just (7, "Should be injective, without trace", constr, eid, addProperty (TypeFamilyReduction Nothing mt mf' mf' False) $ iHint ci, gm)
