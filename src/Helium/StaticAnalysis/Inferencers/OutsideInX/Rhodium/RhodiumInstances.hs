@@ -189,9 +189,6 @@ instance (HasGraph m touchable types constraint ci, HasAxioms m (Axiom Constrain
                         then insertReductionStep subM (Step subM t2 (Just $ removeCI c2) (ArgInjection (mv, m1)))
                         else insertReductionStepMaybe subM $ substTraceInMt (v1, m1) trc
             return $ Applied [c1, Constraint_Unify lhs (subst v1 m1 m2) Nothing]
-        -- | (MonoType_Var _ v2 _) <- m1, isFamilyFree m1, all isFamilyFree vs2, isFamilyFree m2, name2String v2 == "beta",
-        --   v2 `elem` (fvToList t2 :: [TyVar]) || v2 `elem` (fvToList m2 :: [TyVar]) = 
-        --       return $ Applied [c1, Constraint_Unify (subst v2 mv t2) (subst v2 mv m2) Nothing]
     interact _ c1@(Constraint_Unify mv1@(MonoType_Var _ v1 trc1) m1 _) (Constraint_Unify mv2@(MonoType_Var _ v2 trc2) m2 _) 
         | v1 == v2, isFamilyFree m1, isFamilyFree m2 = do
             ig <- greaterType (MType mv1) (MType m1 :: RType ConstraintInfo)
@@ -345,7 +342,8 @@ instance (
                                     -- Makes sure that the lhs and rhs in LeftToRight is standardized on a certain uniqueness
                                     let (_, (specLhs, specRhs)) = contFreshM (unbind b) $ trace ("SUBSTRHS: " ++ show substRhs) 1000000000000000 -- Must be large 
                                     let newRhs = insertReductionStep substRhs (Step substRhs mf (Just $ removeCI c) (LeftToRight (specLhs, specRhs) tfi))
-                                    return $ Applied (if given then [] else fvToList t, [Constraint_Unify (trace ("NEWRHS: " ++ show newRhs) newRhs) t Nothing])
+                                    tchs <- filterM (fmap isJust . isVertexTouchable) (nub $ fvToList t :: [TyVar])
+                                    return $ Applied (trace ("VAR, CONSTR: " ++ show t ++ ", " ++ show c) $ if given then [] else tchs, [Constraint_Unify (trace ("NEWRHS: " ++ show newRhs) newRhs) t Nothing])
                                 -- Try injectivity top level improvement when normal reaction fails
                                 _ -> improveTopLevelFun given c ax
                         _ -> return NotApplicable
@@ -445,7 +443,8 @@ reactClosedTypeFam given improve = reactClosedTypeFam' Nothing []
                                     let substRhs = substs (convertSubstitution s) rhs
                                     let (_, (specLhs, specRhs)) = contFreshM (unbind b) 1000000000000000
                                     let newRhs = insertReductionStep substRhs (Step substRhs mf (Just $ removeCI c) (LeftToRight (specLhs,specRhs) tfi))
-                                    return (Applied (if given then [] else fvToList t, [Constraint_Unify newRhs t Nothing]), Nothing)
+                                    tchs <- filterM (fmap isJust . isVertexTouchable) (nub $ fvToList t :: [TyVar])
+                                    return (Applied (if given then [] else tchs, [Constraint_Unify newRhs t Nothing]), Nothing)
                                 else reactClosedTypeFam' compatApartRes (seen ++ [ax]) c axs 
                   _ -> return (NotApplicable, Nothing)
         reactClosedTypeFam' posApartErr _ _ _ = return (NotApplicable, posApartErr)
