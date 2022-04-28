@@ -280,7 +280,8 @@ shouldBeInjectiveHeuristic path = SingleVoting "Not injective enough" f
   where
     f (constr, eid, ci, gm) = do
       graph <- getGraph
-      case constr of
+      let constr' = fromMaybe constr (maybeHasOriginalTypeSignature ci)
+      case constr' of
         Constraint_Inst _ pt _ -> do
           let pmt = case pt of
                 pb@(PolyType_Bind _ _) -> (fst . fst . snd) $ polytypeToMonoType [] 0 pb
@@ -299,13 +300,13 @@ shouldBeInjectiveHeuristic path = SingleVoting "Not injective enough" f
                   theTrace <- buildReductionTrace cedge mf'
                   case theTrace of 
                     [] -> if typeFamInType fn pmt
-                      then return $ Just (7, "Should be injective, without trace", constr, eid, addProperty (TypeFamilyReduction Nothing mt mf' mf' False) $ iHint ci, gm)
+                      then return $ Just (7, "Should be injective, without trace", constr', eid, addProperty (TypeFamilyReduction Nothing mt mf' mf' False) $ iHint ci, replaceTypeFamModifier mf mt constr')
                       else return Nothing
                     trc -> do
                       let Just lastT = getLastTypeInTrace trc
                       let Just firstT = getFirstTypeInTrace trc
                       if typeIsInType lastT pmt
-                        then return $ Just (7, "Should be injective, with trace", constr, eid, addProperty (TypeFamilyReduction (Just trc) mt lastT firstT False) $ iHint ci, gm)
+                        then return $ Just (7, "Should be injective, with trace", constr', eid, addProperty (TypeFamilyReduction (Just trc) mt lastT firstT False) $ iHint ci, replaceTypeFamModifier lastT mt constr')
                         else return Nothing
             _ -> return Nothing
         _ -> return Nothing
