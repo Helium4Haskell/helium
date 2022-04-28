@@ -1,7 +1,8 @@
 {-# LANGUAGE FlexibleContexts #-}
 {-# OPTIONS_GHC -Wno-simplifiable-class-constraints #-}
+{-# LANGUAGE TupleSections #-}
 module Helium.StaticAnalysis.HeuristicsOU.TypeFamilyHeuristics where
-import Unbound.Generics.LocallyNameless ( Fresh, unbind, Subst (substs))
+import Unbound.Generics.LocallyNameless ( Fresh, unbind, Subst (substs), bind)
 import Rhodium.Blamer.Path
 import Helium.StaticAnalysis.Inferencers.OutsideInX.Rhodium.RhodiumTypes (Axiom (Axiom_ClosedGroup, Axiom_Unify, Axiom_Injective), TyVar, RType (MType), Constraint (Constraint_Inst, Constraint_Unify), MonoType (MonoType_Fam, MonoType_App, MonoType_Con, MonoType_Var), PolyType (PolyType_Mono, PolyType_Bind), fvToList, MonoTypes, isFamilyFree)
 import Helium.StaticAnalysis.Miscellaneous.ConstraintInfoOU
@@ -20,7 +21,7 @@ import Helium.StaticAnalysis.Messages.HeliumMessages (freshenRepresentation)
 import Helium.StaticAnalysis.Inferencers.OutsideInX.Rhodium.RhodiumInstances (reactClosedTypeFam, convertSubstitution, axsToInjectiveEnv)
 import Rhodium.Core (unifyTypes, runTG)
 import Control.Monad (filterM)
-import Helium.StaticAnalysis.Inferencers.OutsideInX.TopConversion (polytypeToMonoType)
+import Helium.StaticAnalysis.Inferencers.OutsideInX.TopConversion (polytypeToMonoType, contFreshMRes)
 import Helium.StaticAnalysis.Miscellaneous.TypeConversion (Freshen(freshenWithMapping))
 import Helium.StaticAnalysis.StaticChecks.TypeFamilyInfos (TFInstanceInfo(tfiName, varNameMap), tails, splitBy)
 import Helium.StaticAnalysis.StaticChecks.TypeFamilies (performPairwiseInjCheck, performWronglyUsedVarInInjCheck)
@@ -29,15 +30,17 @@ import Helium.StaticAnalysis.Miscellaneous.Diagnostics (Diagnostic)
 import Data.Either (isLeft, fromLeft, fromRight)
 import Data.Bifunctor (bimap)
 import Debug.Trace (trace)
+import Rhodium.TypeGraphs.GraphReset (removeEdge)
 
 typeErrorThroughReduction :: (Fresh m, HasTypeGraph m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo Diagnostic)
                           => Path m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo -> VotingHeuristic m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo Diagnostic
 typeErrorThroughReduction path = SingleVoting "Type error through type family reduction" f
   where
     f (constr, eid, ci, gm) = do
-      graph <- getGraph
+      graph <- trace ("PROPERTIES CI: " ++ show (properties ci)) getGraph
       let edge = getEdgeFromId graph eid
-      case constr of
+          constr' = fromMaybe constr (maybeHasOriginalTypeSignature ci)
+      case constr' of
         Constraint_Inst _ pt _ -> do
           -- Getting edge of erroneous constraint (pconstraint)
           let pmt = case pt of
@@ -66,17 +69,17 @@ typeErrorThroughReduction path = SingleVoting "Type error through type family re
                         then id
                         else addHint ("possible fix" ++ if length fixes > 1 then "es" else "") (intercalate "\n" fixes)
                       in causeHint . fixHint
-              case trace ("TRACE: " ++ show theTrace) theTrace of
+              case theTrace of
                 -- No trace but still reduction error
                 [] -> if typeIsInType mf pmt
-                        then return $ Just (5, "Type family could not be reduced, no trace", constr, eid, addProperty (TypeFamilyReduction Nothing t freshOg freshOg False) $ theHint ci, gm)
+                        then return $ Just (5, "Type family could not be reduced, no trace", constr', eid, addProperties [TypeFamilyReduction Nothing t freshOg freshOg False, HasOriginalTypeSignature constr'] $ theHint ci, replaceTypeFamModifier mf t constr')
                         else return Nothing
                 -- Now with trace, checking if the trace belongs to the type signature
                 trc -> do
                   let Just lastType = getLastTypeInTrace trc
                   let Just firstType = getFirstTypeInTrace trc
                   if typeIsInType lastType pmt
-                    then return $ Just (5, "Type family could not be reduced further, trace", constr, eid, addProperty (TypeFamilyReduction (Just theTrace) t lastType firstType False) $ theHint ci, gm)
+                    then return $ Just (5, "Type family could not be reduced further, trace", constr', eid, addProperties [TypeFamilyReduction (Just theTrace) t lastType firstType False, HasOriginalTypeSignature constr'] $ theHint ci, replaceTypeFamModifier lastType t constr')
                     else return Nothing
             -- Reduced to simple type but resulted in type error
             (Constraint_Unify t1 t2 _, _) -> do
@@ -99,7 +102,7 @@ typeErrorThroughReduction path = SingleVoting "Type error through type family re
                   let hint = maybe id (addHint "possible fix") mhint
                   let Just firstType = getFirstTypeInTrace theTrace
                   if typeIsInType lastType pmt
-                    then return $ Just (4, "Type family reduction type error", constr, eid, addProperty (TypeFamilyReduction (Just theTrace) inferredTStr lastType firstType True) $ hint ci, gm)
+                    then return $ Just (4, "Type family reduction type error", constr' , eid, addProperties [TypeFamilyReduction (Just theTrace) inferredTStr lastType firstType True] $ hint ci, replaceTypeFamModifier lastType inferredT constr')
                     else return Nothing
             _ -> return Nothing
         _                     -> return Nothing
@@ -290,11 +293,11 @@ shouldBeInjectiveHeuristic path = SingleVoting "Not injective enough" f
               -- Get hint about possible injectivity annotations
               injHint <- buildNestedInjHint cedge mf mt
               (MType mf') <- getSubstTypeFull (getGroupFromEdge cedge) (MType mf)
-              case trace ("MF, MF': " ++ show mf ++ ", " ++ show mf') injHint of
+              case injHint of
                 Nothing -> return Nothing
                 Just iHint -> do 
                   theTrace <- buildReductionTrace cedge mf'
-                  case trace ("TRACE: " ++ show theTrace) theTrace of 
+                  case theTrace of 
                     [] -> if typeFamInType fn pmt
                       then return $ Just (7, "Should be injective, without trace", constr, eid, addProperty (TypeFamilyReduction Nothing mt mf' mf' False) $ iHint ci, gm)
                       else return Nothing
@@ -521,3 +524,45 @@ typeFamInType s (MonoType_Fam fn mts _) = let
 typeFamInType s (MonoType_App m1 m2 _) = typeFamInType s m1 || typeFamInType s m2
 typeFamInType _ (MonoType_Con _ _)     = False
 typeFamInType _ MonoType_Var{}         = False
+
+repTypeInMonoType :: MonoType -> MonoType -> MonoType -> MonoType
+repTypeInMonoType lmt rmt mt@(MonoType_App ma1 ma2 rs) = let
+  (lmt', mt') = freshenTypes lmt mt
+  in if lmt' == mt'
+    then (fst . snd) $ freshenWithMapping [] (0 :: Integer) rmt
+    else MonoType_App (repTypeInMonoType lmt rmt ma1) (repTypeInMonoType lmt rmt ma2) rs
+repTypeInMonoType lmt rmt mt@MonoType_Fam{} = let
+  (lmt', mt') = freshenTypes lmt mt
+  in if lmt' == mt'
+    then (fst . snd) $ freshenWithMapping [] (0 :: Integer) rmt
+    else mt
+repTypeInMonoType lmt rmt mt@MonoType_Var{} = let
+  (lmt', mt') = freshenTypes lmt mt
+  in if lmt' == mt'
+    then (fst . snd) $ freshenWithMapping [] (0 :: Integer) rmt
+    else mt
+repTypeInMonoType lmt rmt mt@MonoType_Con{} = if lmt == mt
+  then (fst . snd) $ freshenWithMapping [] (0 :: Integer) rmt
+  else mt
+
+repTypeInPolyType :: MonoType -> MonoType -> PolyType ConstraintInfo -> PolyType ConstraintInfo
+repTypeInPolyType lmt rmt (PolyType_Bind s b) = let
+  ((tv, pt), _) = contFreshMRes (unbind b) 0
+  in PolyType_Bind s $ bind tv (repTypeInPolyType lmt rmt pt)
+repTypeInPolyType lmt rmt (PolyType_Mono cs mt) = PolyType_Mono cs (repTypeInMonoType lmt rmt mt)
+
+replaceTypeFamModifier :: (Fresh m, HasTypeGraph m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo Diagnostic)
+                       => MonoType -> MonoType -> Constraint ConstraintInfo -> GraphModifier m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo
+replaceTypeFamModifier lmt rmt oldConstr (eid, _, ci) graph' = do
+  let cedge = getEdgeFromId graph' eid
+      constr = getConstraintFromEdge cedge
+  case constr of
+    Constraint_Inst imt pt rs -> do
+        let newPmt = repTypeInPolyType lmt rmt pt
+            newConstr = Constraint_Inst imt newPmt (Just $ addProperty (HasOriginalTypeSignature oldConstr) (fromMaybe emptyConstraintInfo rs))
+            isG = isEdgeGiven cedge
+            isOriginal = isEdgeOriginal cedge 
+        gNewConstr <- convertConstraint [] isOriginal isG (getGroupFromEdge cedge) (getPriorityFromEdge cedge) newConstr
+        remGraph <- removeEdge eid  graph'
+        return $ (, ci) $ mergeGraphs remGraph [gNewConstr]
+    _ -> return (graph', ci)

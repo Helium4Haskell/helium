@@ -29,6 +29,7 @@ module Helium.StaticAnalysis.Inferencers.OutsideInX.TopConversion(
     ,   typeSynonymsToTypeFamilies
     ,   typeFamiliesToAxioms
     ,   unbindPolyTypeSep
+    ,   contFreshMRes
 ) where
 
 import Unbound.Generics.LocallyNameless hiding (Name, freshen)

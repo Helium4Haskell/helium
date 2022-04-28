@@ -69,7 +69,7 @@ instance (CompareTypes m (RType ConstraintInfo), IsTouchable m TyVar, HasAxioms 
                   if ig then 
                         return $ Applied ([], [], [Constraint_Unify m2 m1 Nothing])
                   else
-                    case (trace ("M1 and M2: " ++ show m1 ++ ", " ++ show m2) m1, m2) of 
+                    case (m1, m2) of 
                         --_ | m1 > m2 -> return $ Applied ([], [], [Constraint_Unify m2 m1])
                         (MonoType_Con "[]" _, MonoType_Con "[]" _) -> return (Applied ([], [], []))
                         --(MonoType_Con "[]", MonoType_App _ _) -> error (show m2)
@@ -87,7 +87,7 @@ instance (CompareTypes m (RType ConstraintInfo), IsTouchable m TyVar, HasAxioms 
                             | otherwise -> do
                                 tch1 <- isVertexTouchable v1
                                 tch2 <- isVertexTouchable v2
-                                case (isJust tch1, trace ("ISRIGID: " ++ show v1 ++ ": " ++ show (isJust tch1) ++ ", " ++ show v2 ++ ": " ++ show (isJust tch2)) isJust tch2) of
+                                case (isJust tch1, isJust tch2) of
                                     (True, True) -> do 
                                         isGreater <- greaterType (MType m1) (MType m2 :: RType ConstraintInfo)
                                         if isGreater then 
@@ -122,7 +122,7 @@ instance (CompareTypes m (RType ConstraintInfo), IsTouchable m TyVar, HasAxioms 
                                     do (a2, con1, vars1) <- unfamily a
                                        (c2, con2, vars2) <- unfamily c'
                                                         
-                                       return $ Applied (trace ("VARS IN FLAT APP: " ++ show vars1 ++ ", " ++ show vars2) $ if isG then [] else vars1 ++ vars2, [], Constraint_Unify (insertReductionStepMaybe (var v) rs) (MonoType_App c2 a2 ars) Nothing : con1 ++ con2)
+                                       return $ Applied (if isG then [] else vars1 ++ vars2, [], Constraint_Unify (insertReductionStepMaybe (var v) rs) (MonoType_App c2 a2 ars) Nothing : con1 ++ con2)
                                 _ -> {-do 
                                     gt <- MType m1 `greaterType` MType m2
                                     if gt then 
@@ -143,7 +143,7 @@ instance (CompareTypes m (RType ConstraintInfo), IsTouchable m TyVar, HasAxioms 
                             | (not . all isFamilyFree) ts -> 
                                 do
                                     (ts2, cons, vars) <- unfamilys ts
-                                    return (Applied (trace ("VARS IN FLATTENING: " ++ show vars) $ if isG then [] else vars, [], Constraint_Unify (MonoType_Fam f ts2 ri) m2 Nothing : cons))
+                                    return (Applied (if isG then [] else vars, [], Constraint_Unify (MonoType_Fam f ts2 ri) m2 Nothing : cons))
                         (_, _)
                             | m1 == m2, isFamilyFree m1, isFamilyFree m2 -> return $ Applied ([], [], [])
                             | otherwise -> return NotApplicable
@@ -338,12 +338,12 @@ instance (
                             res <- runTG ustate :: m (Maybe [(TyVar, RType ConstraintInfo)])
                             case res of
                                 Just s -> do
-                                    let substRhs = substs (convertSubstitution s) (trace ("S: " ++ show s) rhs)
+                                    let substRhs = substs (convertSubstitution s) rhs
                                     -- Makes sure that the lhs and rhs in LeftToRight is standardized on a certain uniqueness
-                                    let (_, (specLhs, specRhs)) = contFreshM (unbind b) $ trace ("SUBSTRHS: " ++ show substRhs) 1000000000000000 -- Must be large 
+                                    let (_, (specLhs, specRhs)) = contFreshM (unbind b) 1000000000000000 -- Must be large 
                                     let newRhs = insertReductionStep substRhs (Step substRhs mf (Just $ removeCI c) (LeftToRight (specLhs, specRhs) tfi))
                                     tchs <- filterM (fmap isJust . isVertexTouchable) (nub $ fvToList t :: [TyVar])
-                                    return $ Applied (trace ("VAR, CONSTR: " ++ show t ++ ", " ++ show c) $ if given then [] else tchs, [Constraint_Unify (trace ("NEWRHS: " ++ show newRhs) newRhs) t Nothing])
+                                    return $ Applied (if given then [] else tchs, [Constraint_Unify newRhs t Nothing])
                                 -- Try injectivity top level improvement when normal reaction fails
                                 _ -> improveTopLevelFun given c ax
                         _ -> return NotApplicable

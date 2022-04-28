@@ -262,9 +262,6 @@ runFreshMRes = runIdentity . runFreshMTRes
 runFreshMTRes :: Monad m => FreshMT m a -> m (a, Integer)
 runFreshMTRes m = contFreshMTRes m 0
 
-contFreshMRes :: FreshM a -> Integer -> (a, Integer)
-contFreshMRes i = runIdentity . contFreshMTRes i
-
 contFreshMTRes :: Monad m => FreshMT m a -> Integer -> m (a, Integer)
 contFreshMTRes (FreshMT m) = runStateT m
 

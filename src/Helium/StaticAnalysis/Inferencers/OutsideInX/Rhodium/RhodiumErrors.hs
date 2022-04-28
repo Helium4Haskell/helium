@@ -382,9 +382,11 @@ makeTFReductionTypeError mustShowTrace edge constraint info =
         oneliner = if not isReduced 
                     then MessageOneLiner (MessageString ("Type family in " ++ location info ++ " was not fully reducable"))
                     else MessageOneLiner (MessageString ("Type error with type family reduction in " ++ location info))
-        (t1, t2) = case constraint of
-            Constraint_Unify t1 t2 _-> (MType t1, MType t2)
-            Constraint_Inst t1 t2 _ -> (MType t1, PType t2)
+        (t1, t2) = case maybeHasOriginalTypeSignature info of
+                        Just (Constraint_Inst t1 t2 _) -> (MType t1, PType t2)
+                        Nothing -> case constraint of
+                            Constraint_Unify t1 t2 _-> (MType t1, MType t2)
+                            Constraint_Inst t1 t2 _ -> (MType t1, PType t2)
     --let    Constraint_Unify t1 t2 _ = constraint
     let t1' = maybe t1 PType (maybeApplicationTypeSignature info)
     msgtp1   <- getSubstTypeFull (getGroupFromEdge edge) t1'

@@ -152,6 +152,7 @@ data Property
     | InjectUntouchable (MonoType, MonoType) {-Before toplevel improvement-}
     | HasTopLevelReacted
     | ResultOfInjectivity MonoType MonoType (Constraint ConstraintInfo)
+    | HasOriginalTypeSignature (Constraint ConstraintInfo)
     deriving (Generic)
 
 instance Show Property where
@@ -197,7 +198,8 @@ instance Show Property where
     show (WithReduction red) = "WithReduction " ++ show red
     show (InjectUntouchable mtTup) = "InjectUntouchable " ++ show mtTup
     show HasTopLevelReacted = "HasTopLevelReacted"
-    show (ResultOfInjectivity mt1 mt2 c) = "ResultOfInjectivity" ++ show mt1 ++ ", " ++ show mt2 ++ ", " ++ show c
+    show (ResultOfInjectivity mt1 mt2 c) = "ResultOfInjectivity " ++ show mt1 ++ ", " ++ show mt2 ++ ", " ++ show c
+    show (HasOriginalTypeSignature ts) = "HasOriginalTypeSignature " ++ show ts
     show _ = "No show"
 
 --deriving instance Show TypeError
@@ -364,6 +366,9 @@ hasTopLevelReacted a = isJust $ maybeHead [ "TLR" | HasTopLevelReacted <- getPro
 
 isResultOfInjectivity :: HasProperties a => a -> Maybe (MonoType, MonoType, Constraint ConstraintInfo)
 isResultOfInjectivity a = maybeHead [ (cl, cr, c) | ResultOfInjectivity cl cr c <- getProperties a]
+
+maybeHasOriginalTypeSignature :: HasProperties a => a -> Maybe (Constraint ConstraintInfo)
+maybeHasOriginalTypeSignature a = maybeHead [ c | HasOriginalTypeSignature c <- getProperties a]
 -----------------------------------------------------------------
 -- Smart constructors
 
