@@ -40,7 +40,6 @@ import Helium.Utils.Utils (internalError)
 import Helium.StaticAnalysis.StaticChecks.TypeFamilyInfos (TFInstanceInfo(preCompat, tfiRange))
 import Helium.Syntax.UHA_Syntax (Range)
 import Helium.StaticAnalysis.Miscellaneous.Diagnostics (Diagnostic, addTyVarInTypeFamilyList)
-import Debug.Trace (trace)
 import Helium.StaticAnalysis.Miscellaneous.ReductionTraceUtils (substTraceInMt, hasTrace)
 
 integer2Name :: Integer -> Name a
@@ -95,23 +94,22 @@ instance (CompareTypes m (RType ConstraintInfo), IsTouchable m TyVar, HasAxioms 
                                             else return NotApplicable
                                     -- Only when a given constraint is able to make the untouchable vars more concrete,
                                     -- may the constraint be able to be resolved.
-                                    (False, False) -> return (Error labelResidual)
-                                        -- do
-                                        -- let findVar vToSearch (Constraint_Inst  (MonoType_Var _ v _) _ _) | v == vToSearch = True
-                                        --     findVar vToSearch (Constraint_Unify (MonoType_Var _ v _) _ _) | v == vToSearch = True
-                                        --     findVar _ _ = False
-                                        --     possible1 = filter (findVar v1) givens
-                                        --     possible2 = filter (findVar v2) givens
-                                        -- case (possible1, possible2) of
-                                        --     (_,[]) -> return (Error labelResidual)
-                                        --     ([],_) -> return (Error labelResidual)
-                                        --     ([Constraint_Inst  MonoType_Var{} p1 _],[Constraint_Inst  MonoType_Var{} p2 _])
-                                        --         | p1 == p2 -> return NotApplicable
-                                        --         | otherwise -> return (Error labelResidual)
-                                        --     ([Constraint_Unify MonoType_Var{} p1 _],[Constraint_Unify MonoType_Var{} p2 _])
-                                        --         | p1 == p2 -> return NotApplicable
-                                        --         | otherwise -> return (Error labelResidual)
-                                        --     _ -> return NotApplicable
+                                    (False, False) -> do
+                                        let findVar vToSearch (Constraint_Inst  (MonoType_Var _ v _) _ _) | v == vToSearch = True
+                                            findVar vToSearch (Constraint_Unify (MonoType_Var _ v _) _ _) | v == vToSearch = True
+                                            findVar _ _ = False
+                                            possible1 = filter (findVar v1) givens
+                                            possible2 = filter (findVar v2) givens
+                                        case (possible1, possible2) of
+                                            (_,[]) -> return (Error labelResidual)
+                                            ([],_) -> return (Error labelResidual)
+                                            ([Constraint_Inst  MonoType_Var{} p1 _],[Constraint_Inst  MonoType_Var{} p2 _])
+                                                | p1 == p2 -> return NotApplicable
+                                                | otherwise -> return (Error labelResidual)
+                                            ([Constraint_Unify MonoType_Var{} p1 _],[Constraint_Unify MonoType_Var{} p2 _])
+                                                | p1 == p2 -> return NotApplicable
+                                                | otherwise -> return (Error labelResidual)
+                                            _ -> return NotApplicable
                                     _ -> return NotApplicable
                         (MonoType_Var _ v rs, _)
                             | v `elem` (fvToList m2 :: [TyVar]), isFamilyFree m2 -> return (Error labelInfiniteType)

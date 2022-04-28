@@ -29,15 +29,14 @@ import Helium.Syntax.UHA_Syntax (Name)
 import Helium.StaticAnalysis.Miscellaneous.Diagnostics (Diagnostic)
 import Data.Either (isLeft, fromLeft, fromRight)
 import Data.Bifunctor (bimap)
-import Debug.Trace (trace)
 import Rhodium.TypeGraphs.GraphReset (removeEdge)
 
 typeErrorThroughReduction :: (Fresh m, HasTypeGraph m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo Diagnostic)
                           => Path m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo -> VotingHeuristic m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo Diagnostic
 typeErrorThroughReduction path = SingleVoting "Type error through type family reduction" f
   where
-    f (constr, eid, ci, gm) = do
-      graph <- trace ("PROPERTIES CI: " ++ show (properties ci)) getGraph
+    f (constr, eid, ci, _) = do
+      graph <- getGraph
       let edge = getEdgeFromId graph eid
           constr' = fromMaybe constr (maybeHasOriginalTypeSignature ci)
       case constr' of
@@ -278,7 +277,7 @@ shouldBeInjectiveHeuristic :: (Fresh m, HasTypeGraph m (Axiom ConstraintInfo) Ty
                           => Path m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo -> VotingHeuristic m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo Diagnostic
 shouldBeInjectiveHeuristic path = SingleVoting "Not injective enough" f
   where
-    f (constr, eid, ci, gm) = do
+    f (constr, eid, ci, _) = do
       graph <- getGraph
       let constr' = fromMaybe constr (maybeHasOriginalTypeSignature ci)
       case constr' of
