@@ -114,7 +114,7 @@ data Tree a = Node a (Tree a) (Tree a) | Leaf
 
 type family H a b where
     H Float Int = Int
-    H Int Float = String
+    H Int Float = Float
     --H Float Int = Float
 
 type family J a where
@@ -131,8 +131,8 @@ type family J a where
 -- h3 :: H (H Int Float) (H Int Int)
 -- h3 = "Hi"
 
--- h2 :: H Int Int -> H Float Int
--- h2 x = "Hi" ++ x
+-- h2 :: H Int Int -> H Int Float
+-- h2 x = 3 + x
 -- h1 :: I Float Int Float
 -- h1 = "Hi"
 
@@ -193,30 +193,30 @@ type family J a where
 -- g :: Int -> B a
 -- g x = x
 
--- type family Right w z
--- type instance Right w z = z
+type family Right w z
+type instance Right w z = z
 
--- type family Id d
--- type instance Id d = d
+type family Id d
+type instance Id d = d
 
--- -- right :: a -> b -> Right a (Id b)
--- -- right x y = x
+-- right :: a -> b -> Right a (Id b)
+-- right x y = x
 
--- id2 :: a -> b -> Right a (Id b)
--- id2 x y = x
+id2 :: a -> b -> Right a (Id b)
+id2 x y = x
 
-type family Foo a b c = r | r -> c
-type instance Foo Char Char Char = Bool
-type instance Foo Char Char Char = Bool
-type instance Foo Float Bool Int = Int
+-- type family Foo a b c = r | r -> c
+-- type instance Foo Char Char Char = Bool
+-- type instance Foo Char Char Char = Bool
+-- type instance Foo Float Bool Int = Int
 
-class Bar t where
-  clsF :: Foo t v t
-instance Bar Char where
-  clsF = True
+-- class Bar t where
+--   clsF :: Foo t (Id v) t
+-- instance Bar Char where
+--   clsF = True
 
-main :: Bool
-main = clsF :: Bool
+-- main :: Bool
+-- main = clsF :: Bool
 
 -- type family Foo a 
 -- type instance Foo Char = Bool

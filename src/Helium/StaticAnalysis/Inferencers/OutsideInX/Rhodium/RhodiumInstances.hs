@@ -651,7 +651,22 @@ instance ConvertConstructor (RType ConstraintInfo) where
     convertConstructor s = MType (MonoType_Con s Nothing)
 
 instance (Fresh m, IsTouchable m TyVar) => CompareTypes m (RType ConstraintInfo) where
-    greaterType (MType (MonoType_Var _ v1 _)) (MType (MonoType_Var  _ v2 _)) = greaterTouchable v1 v2
+    greaterType (MType (MonoType_Var s1 v1 _)) (MType (MonoType_Var s2 v2 _)) = 
+        case (name2String v1, name2String v2) of
+            ("beta", "beta") -> greaterTouchable v1 v2
+            (_, "beta")      | isJust s1 -> do
+                                    isTch <- isJust <$> isVertexTouchable v2
+                                    if isTch
+                                        then return True
+                                        else greaterTouchable v1 v2
+                             | otherwise -> greaterTouchable v1 v2
+            ("beta", _)      | isJust s2 -> do
+                                    isTch <- isJust <$> isVertexTouchable v1
+                                    if isTch
+                                        then return False
+                                        else greaterTouchable v1 v2
+                             | otherwise -> greaterTouchable v1 v2
+            (_, _ )          -> greaterTouchable v1 v2
     greaterType m1 m2 = return $ m1 > m2
     mgu ms = MType <$> mostGeneralUnifier (map (\(MType m) -> m) ms)
 

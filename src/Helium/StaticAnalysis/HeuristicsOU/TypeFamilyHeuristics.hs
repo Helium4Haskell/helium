@@ -529,20 +529,20 @@ repTypeInMonoType :: MonoType -> MonoType -> MonoType -> MonoType
 repTypeInMonoType lmt rmt mt@(MonoType_App ma1 ma2 rs) = let
   (lmt', mt') = freshenTypes lmt mt
   in if lmt' == mt'
-    then (fst . snd) $ freshenWithMapping [] (0 :: Integer) rmt
+    then rmt
     else MonoType_App (repTypeInMonoType lmt rmt ma1) (repTypeInMonoType lmt rmt ma2) rs
 repTypeInMonoType lmt rmt mt@MonoType_Fam{} = let
   (lmt', mt') = freshenTypes lmt mt
   in if lmt' == mt'
-    then (fst . snd) $ freshenWithMapping [] (0 :: Integer) rmt
+    then rmt
     else mt
 repTypeInMonoType lmt rmt mt@MonoType_Var{} = let
   (lmt', mt') = freshenTypes lmt mt
   in if lmt' == mt'
-    then (fst . snd) $ freshenWithMapping [] (0 :: Integer) rmt
+    then rmt
     else mt
 repTypeInMonoType lmt rmt mt@MonoType_Con{} = if lmt == mt
-  then (fst . snd) $ freshenWithMapping [] (0 :: Integer) rmt
+  then rmt
   else mt
 
 repTypeInPolyType :: MonoType -> MonoType -> PolyType ConstraintInfo -> PolyType ConstraintInfo
