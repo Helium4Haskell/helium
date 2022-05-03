@@ -71,14 +71,14 @@ typeErrorThroughReduction path = SingleVoting "Type error through type family re
               case theTrace of
                 -- No trace but still reduction error
                 [] -> if typeIsInType mf pmt
-                        then return $ Just (5, "Type family could not be reduced, no trace", constr', eid, addProperties [TypeFamilyReduction Nothing t freshOg freshOg False, HasOriginalTypeSignature constr'] $ theHint ci, replaceTypeFamModifier mf t constr')
+                        then return $ Just (5, "Type family could not be reduced, no trace", constr', eid, addProperties [TypeFamilyReduction Nothing t freshOg freshOg False, HasOriginalTypeSignature constr'] $ theHint ci, replaceTypeFamModifier mf t constr)
                         else return Nothing
                 -- Now with trace, checking if the trace belongs to the type signature
                 trc -> do
                   let Just lastType = getLastTypeInTrace trc
                   let Just firstType = getFirstTypeInTrace trc
                   if typeIsInType lastType pmt
-                    then return $ Just (5, "Type family could not be reduced further, trace", constr', eid, addProperties [TypeFamilyReduction (Just theTrace) t lastType firstType False, HasOriginalTypeSignature constr'] $ theHint ci, replaceTypeFamModifier lastType t constr')
+                    then return $ Just (5, "Type family could not be reduced further, trace", constr', eid, addProperties [TypeFamilyReduction (Just theTrace) t lastType firstType False, HasOriginalTypeSignature constr'] $ theHint ci, replaceTypeFamModifier lastType t constr)
                     else return Nothing
             -- Reduced to simple type but resulted in type error
             (Constraint_Unify t1 t2 _, _) -> do
@@ -101,7 +101,7 @@ typeErrorThroughReduction path = SingleVoting "Type error through type family re
                   let hint = maybe id (addHint "possible fix") mhint
                   let Just firstType = getFirstTypeInTrace theTrace
                   if typeIsInType lastType pmt
-                    then return $ Just (4, "Type family reduction type error", constr' , eid, addProperties [TypeFamilyReduction (Just theTrace) inferredTStr lastType firstType True] $ hint ci, replaceTypeFamModifier lastType inferredT constr')
+                    then return $ Just (4, "Type family reduction type error", constr' , eid, addProperties [TypeFamilyReduction (Just theTrace) inferredTStr lastType firstType True] $ hint ci, replaceTypeFamModifier lastType inferredT constr)
                     else return Nothing
             _ -> return Nothing
         _                     -> return Nothing
@@ -531,11 +531,11 @@ repTypeInMonoType lmt rmt mt@(MonoType_App ma1 ma2 rs) = let
   in if lmt' == mt'
     then rmt
     else MonoType_App (repTypeInMonoType lmt rmt ma1) (repTypeInMonoType lmt rmt ma2) rs
-repTypeInMonoType lmt rmt mt@MonoType_Fam{} = let
+repTypeInMonoType lmt rmt mt@(MonoType_Fam f mts rs) = let
   (lmt', mt') = freshenTypes lmt mt
   in if lmt' == mt'
     then rmt
-    else mt
+    else MonoType_Fam f (map (repTypeInMonoType lmt rmt) mts) rs
 repTypeInMonoType lmt rmt mt@MonoType_Var{} = let
   (lmt', mt') = freshenTypes lmt mt
   in if lmt' == mt'

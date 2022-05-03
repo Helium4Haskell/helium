@@ -202,7 +202,7 @@ type instance Id d = d
 -- right :: a -> b -> Right a (Id b)
 -- right x y = x
 
-id2 :: a -> b -> Right a (Id b)
+id2 :: Id a -> b -> Right (Id a) (Id (Id b))
 id2 x y = x
 
 -- type family Foo a b c = r | r -> c
