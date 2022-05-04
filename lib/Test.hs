@@ -103,7 +103,7 @@ data Tree a = Node a (Tree a) (Tree a) | Leaf
 --     IfFloat Float = Int -> Int
 --     IfFloat Int   = String
 
--- bad :: d -> IfFloat (FloatInt Float [d])
+-- bad :: d -> IfFloat (FloatInt Float d)
 -- bad _ = "Hi"
 
 -- fault :: Int

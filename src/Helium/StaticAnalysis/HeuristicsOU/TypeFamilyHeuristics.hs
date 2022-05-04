@@ -52,7 +52,8 @@ typeErrorThroughReduction path = SingleVoting "Type error through type family re
             -- PConstraint could not be reduced further
             (Constraint_Unify mf@MonoType_Fam{} t _, ErrorLabel "Residual constraint") -> do
               -- Make sure that we only substitute beta variables (others are okay)
-              [MType freshOg] <- freshenRepresentation . (:[]) <$> if isBetaFree mf then return (MType mf) else getSubstTypeFull (getGroupFromEdge cedge) (MType mf)
+              (MType mf') <- if isBetaFree mf then return (MType mf) else getSubstTypeFull (getGroupFromEdge cedge) (MType mf)
+              let [MType freshOg] = freshenRepresentation . (:[]) $ (MType mf' :: RType ConstraintInfo)
               -- Get potential trace.
               theTrace <- squashTrace <$> buildReductionTrace cedge freshOg
               -- Builds hint in nested sense, when type family contains other families that were not reducable (or wronly reduced, perhaps)
@@ -71,8 +72,8 @@ typeErrorThroughReduction path = SingleVoting "Type error through type family re
                       in causeHint . fixHint
               case theTrace of
                 -- No trace but still reduction error
-                [] -> if typeIsInType mf pmt
-                        then return $ Just (5, "Type family could not be reduced, no trace", constr', eid, addProperties [TypeFamilyReduction Nothing t freshOg freshOg False, HasOriginalTypeSignature constr'] $ theHint ci, replaceTypeFamModifier mf t constr)
+                [] -> if typeIsInType mf' pmt
+                        then return $ Just (5, "Type family could not be reduced, no trace", constr', eid, addProperties [TypeFamilyReduction Nothing t freshOg freshOg False, HasOriginalTypeSignature constr'] $ theHint ci, replaceTypeFamModifier mf' t constr)
                         else return Nothing
                 -- Now with trace, checking if the trace belongs to the type signature
                 trc -> do
