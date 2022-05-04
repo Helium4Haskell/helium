@@ -21,17 +21,15 @@ import Helium.Parser.Parser(type_, contextAndType)
 import Helium.Parser.OperatorTable
 import Helium.ModuleSystem.ImportEnvironment
 import Helium.Syntax.UHA_Utils
-import Helium.Syntax.UHA_Range(makeImportRange, setNameRange, noRange)
+import Helium.Syntax.UHA_Range(makeImportRange, setNameRange)
 import Helium.Syntax.UHA_Syntax
 
 import Top.Types
 
 import Control.Arrow
 import Data.List
-import Data.Char
 import Data.Maybe
 import qualified Data.Map as M
-import Debug.Trace
 import Text.Parsec.Error (errorMessages, messageString)
 
 constructorTypeFromCustoms :: [Custom] -> ConstructorType

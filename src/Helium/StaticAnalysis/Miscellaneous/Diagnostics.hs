@@ -1,7 +1,6 @@
 module Helium.StaticAnalysis.Miscellaneous.Diagnostics where
 
 import Helium.StaticAnalysis.Inferencers.OutsideInX.Rhodium.RhodiumTypes
-import Helium.StaticAnalysis.Miscellaneous.ConstraintInfo (maybeHead)
 
 type Diagnostics = [Diagnostic]
 

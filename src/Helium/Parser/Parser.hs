@@ -47,7 +47,6 @@ import Helium.Syntax.UHA_Range
 
 import qualified Helium.Parser.CollectFunctionBindings as CollectFunctionBindings
 import Helium.Utils.Utils
-import Debug.Trace
 
 parseOnlyImports :: String -> IO [String]
 parseOnlyImports fullName = do

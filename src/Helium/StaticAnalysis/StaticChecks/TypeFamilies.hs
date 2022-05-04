@@ -9,7 +9,6 @@ import Helium.StaticAnalysis.Messages.Messages
 import Helium.StaticAnalysis.Miscellaneous.Unify
 import Helium.StaticAnalysis.Inferencers.OutsideInX.TopConversion
     ( typeToMonoType, TypeFamilies, tfInstanceInfoToAxiom, typeSynonymsToTypeFamilies )
-import Debug.Trace
 import Helium.StaticAnalysis.Inferencers.OutsideInX.Rhodium.RhodiumTypes
     ( isFamilyFree, MonoType (MonoType_Fam, MonoType_Var, MonoType_Con, MonoType_App), MonoTypes, Axiom (Axiom_Unify), TyVar )
 import Helium.StaticAnalysis.Miscellaneous.TypeConversion
@@ -359,7 +358,7 @@ compatWarn tfams (inst1, inst2) = let
             SurelyApart -> Nothing
             Unifiable subst -> 
               if applySubst subst lhs1 == applySubst subst lhs2
-                then Just $ OverlappedClosedTypeFamilyInstance (tfiName inst2) lhs2 (trace (show subst) rhs2)
+                then Just $ OverlappedClosedTypeFamilyInstance (tfiName inst2) lhs2 rhs2
                 else Nothing
 
 -- Performs pairwise injectivity check

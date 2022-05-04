@@ -44,7 +44,6 @@ import Data.Functor.Identity
 import Control.Monad.State
 import Control.Arrow hiding (left, right)
 
-import Debug.Trace
 import Helium.Main.Args (Option)
 
 
@@ -177,7 +176,7 @@ bindingGroupAnalysis (options, importenv, isTopLevel, axioms, typeSignatures, to
                                  sBu = sbu4
                                  sGiven = gCon1 ++ gc2
                                  -- con1 = body constraints, c2 is typesignature constraint
-                                 sWanted = (if isTopLevel && not (null gadtConstraints) then map (appendGADTInfo resGADTConstraints) else id) (trace (show c1) c1 ++ wc2 ++ con1 ++ c3 ++ c4 ++ c5 ++ gadtConstraints)
+                                 sWanted = (if isTopLevel && not (null gadtConstraints) then map (appendGADTInfo resGADTConstraints) else id) (c1 ++ wc2 ++ con1 ++ c3 ++ c4 ++ c5 ++ gadtConstraints)
                                  sTouchables = touchs
                                  sibblings = map (map (second (tpSchemeToPolyType (importEnvironmentToTypeFamilies importenv)))) $ getSiblings importenv
                                  (solverResult, bu1)     | isTopLevel = contFreshMRes (solveOU options sibblings axioms sGiven sWanted sTouchables) sBu

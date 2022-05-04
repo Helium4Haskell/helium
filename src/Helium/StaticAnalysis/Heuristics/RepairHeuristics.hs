@@ -28,9 +28,6 @@ import Data.List
 import Helium.StaticAnalysis.Miscellaneous.UHA_Source
 import Helium.Utils.OneLiner
 
-
-import Debug.Trace
-
 -----------------------------------------------------------------------------
 
 type Siblings = [[(String, TpScheme)]]

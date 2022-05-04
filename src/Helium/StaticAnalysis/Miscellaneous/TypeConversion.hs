@@ -16,7 +16,6 @@ module Helium.StaticAnalysis.Miscellaneous.TypeConversion where
 import Helium.Syntax.UHA_Utils (getNameName, nameFromString)
 import Helium.Syntax.UHA_Range (noRange)
 import Helium.Utils.Utils (internalError)
-import Data.List (union, (\\))
 import Data.Maybe
 import qualified Data.Map as M
 import Helium.Syntax.UHA_Syntax
@@ -25,8 +24,6 @@ import Control.Arrow
 import Top.Types
 import Data.List
 import Control.Monad.State
-
-import Debug.Trace
 
 
 ----------------------------------------------------------------------

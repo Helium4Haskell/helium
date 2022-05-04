@@ -16,12 +16,8 @@ import Text.PrettyPrint.Leijen
 import qualified Text.PrettyPrint.Leijen as PPrint
 
 import Helium.StaticAnalysis.Inferencers.OutsideInX.Rhodium.RhodiumTypes
-import Rhodium.TypeGraphs.GraphProperties
 
 import Unbound.Generics.LocallyNameless
-import Unbound.Generics.LocallyNameless.Alpha
-
-import Debug.Trace
 
 qualifiedPolyTypesToAlignedDocs :: [PolyType ci] -> [PPrint.Doc]
 qualifiedPolyTypesToAlignedDocs pts = let

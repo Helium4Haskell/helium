@@ -12,7 +12,6 @@ import Data.Map (Map)
 import qualified Data.Map as M
 import Data.Maybe (fromMaybe)
 import Control.Monad (ap)
-import Debug.Trace
 
 
 type InjectiveEnv = Map String [Int]

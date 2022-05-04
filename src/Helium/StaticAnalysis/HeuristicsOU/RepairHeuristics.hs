@@ -45,8 +45,6 @@ import Helium.StaticAnalysis.Messages.Messages (showNumber, ordinal, prettyAndLi
 
 import Unbound.Generics.LocallyNameless.Fresh
 import Unbound.Generics.LocallyNameless hiding (Name)
-
-import Debug.Trace
    
 import Data.List
 import Data.Maybe
@@ -167,7 +165,7 @@ applicationHeuristic path = SingleVoting "Application heuristic" f
                            | minimumForContext > numberOfArguments && not isPatternApplication && contextIsUnifiable ->
                               case typesZippedWithHoles of
          
-                                 [is] | not (trace (show is ++ ", " ++ show isBinary) isBinary) 
+                                 [is] | not isBinary
                                        -> let hint = fixHint ("insert a "++prettyAndList (map (ordinal True . (+1)) is)++" argument")
                                           in return $ Just
                                                 (5, "not enough arguments are given"++show is, constraint, eid,  addProperties (IsTypeError : map ApplicationTypeSignature providedTs) $ hint $ redHint ci, removeEdgeAndTsModifier)

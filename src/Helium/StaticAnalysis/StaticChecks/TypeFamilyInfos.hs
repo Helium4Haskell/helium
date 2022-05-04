@@ -3,14 +3,12 @@
 module Helium.StaticAnalysis.StaticChecks.TypeFamilyInfos where
 import Helium.Syntax.UHA_Syntax ( Name, Names, Type(..), Types, ContextItem(..), Range )
 import Helium.Syntax.UHA_Utils ()
-import Data.Maybe (isJust, fromJust, mapMaybe)
+import Data.Maybe (isJust, mapMaybe)
 import qualified Data.Map as M
 import Data.List (elemIndex)
 import Unbound.Generics.LocallyNameless hiding (Name)
 import Data.Map (Map)
-import qualified Data.Map as M
 import Helium.Syntax.UHA_Range (noRange)
-import Debug.Trace (trace)
 
 
 deriving instance Show Type
@@ -26,7 +24,7 @@ data TFType
   = Open -- open type family
   | Closed -- closed type family
   | ATS -- associated type synonym
-  | TypeSyn
+  | TypeSyn -- type synonym
   deriving (Show, Eq, Ord)
 
 data TFDeclInfo = TDI {
@@ -55,6 +53,7 @@ data TFInstanceInfo = TII {
   , varNameMap :: Maybe (Map Int Name)
   } deriving (Show, Eq, Ord)
 
+-- Needed to be able to add TFInstanceInfo to inference process (see RhodiumTypes)
 instance Alpha TFInstanceInfo where
    fvAny' _ _ = pure 
    swaps' = error "swaps'"

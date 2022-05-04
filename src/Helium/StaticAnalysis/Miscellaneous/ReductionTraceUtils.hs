@@ -4,14 +4,13 @@
 module Helium.StaticAnalysis.Miscellaneous.ReductionTraceUtils where
 
 import Rhodium.TypeGraphs.GraphProperties (CompareTypes, HasTypeGraph, HasGraph (getGraph))
-import Helium.StaticAnalysis.Inferencers.OutsideInX.Rhodium.RhodiumTypes (RType (MType), Axiom, TyVar, Constraint (Constraint_Unify), MonoType (MonoType_Fam, MonoType_App, MonoType_Con, MonoType_Var), ReductionTrace, ReductionStep (Step), ReductionType (LeftToRight, CanonReduction, ArgInjection), getMaybeReductionStep, insertReductionStep, insertReductionStepMaybe)
+import Helium.StaticAnalysis.Inferencers.OutsideInX.Rhodium.RhodiumTypes (RType (MType), Axiom, TyVar, Constraint (Constraint_Unify), MonoType (MonoType_Fam, MonoType_App, MonoType_Con, MonoType_Var), ReductionTrace, ReductionStep (Step), ReductionType (LeftToRight, CanonReduction, ArgInjection), getMaybeReductionStep, insertReductionStepMaybe)
 import Helium.StaticAnalysis.Miscellaneous.ConstraintInfoOU (ConstraintInfo)
 import Unbound.Generics.LocallyNameless (Fresh, Subst (subst))
 import Rhodium.TypeGraphs.Graph (TGEdge, getGroupFromEdge, getEdgeFromId)
 import Helium.StaticAnalysis.Messages.Messages (MessageBlock (MessageString, MessageCompose))
 import Rhodium.TypeGraphs.GraphUtils (getSubstTypeFull, getConstraintFromEdge)
 import Data.List (groupBy)
-import Debug.Trace (trace)
 import Helium.StaticAnalysis.StaticChecks.TypeFamilyInfos
 import Helium.Syntax.UHA_Range (showRange)
 import Data.Maybe (fromMaybe)
@@ -125,7 +124,7 @@ isArgInjection _                = False
 -- Gets one step.
 getOneStep :: (CompareTypes m (RType ConstraintInfo), Fresh m, HasTypeGraph m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo Diagnostic)
                   => TGEdge (Constraint ConstraintInfo) -> MonoType -> m (Maybe ReductionStep)
-getOneStep e mt = case getMaybeReductionStep mt of
+getOneStep _ mt = case getMaybeReductionStep mt of
     Nothing -> return Nothing
     Just (Step after before mconstr rt) -> return $ Just $ Step after before mconstr rt
 

@@ -27,11 +27,7 @@ import Helium.StaticAnalysis.Inferencers.OutsideInX.Rhodium.RhodiumTypes
 
 import Unbound.Generics.LocallyNameless
 
-import Control.Monad
-import Control.Arrow
 import Control.Monad.Trans.State.Lazy
-
-import Debug.Trace
 
 ----------------------------------------------------------
 -- message parameters

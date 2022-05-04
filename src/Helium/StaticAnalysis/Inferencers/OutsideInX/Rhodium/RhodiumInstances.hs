@@ -328,6 +328,8 @@ instance (
                 else
                     return NotApplicable
             topLevelReact' _ = return NotApplicable
+            -- Added isBetaFree here to only allow reduction when all results from flattenings are reseated.
+            -- Forces a certain ordering in the type inference process that allows for reduction traces to be built.
     topLevelReact given c@(Constraint_Unify mf@(MonoType_Fam f ms _) t _) | isBetaFree mf = getAxioms >>= loopAxioms topLevelReact'  
         where
             topLevelReact' :: Axiom ConstraintInfo  -> m (RuleResult ([TyVar], [Constraint ConstraintInfo]))
@@ -383,8 +385,10 @@ improveTopLevelFun _ c@(Constraint_Unify fam@(MonoType_Fam f ms _) t ci) (Axiom_
                                 let nonInjVars = nub [(tv, i) | (i, MonoType_Var _ tv _) <- zip [(0 :: Int)..] ms, i `notElem` injIdx]
                                 putDiagnostics $ addTyVarInTypeFamilyList nonInjVars fam
                                 let (MonoType_Fam _ slhsMs _) = applyOverInjArgs psubst injIdx lhs
+                                -- Added to find injection of untouchable variable in the heuristic situated in TypeFamilyHeuristics.hs
                                 let newConstrInfo = addProperty (ResultOfInjectivity fam t c) emptyConstraintInfo
                                 let newConstrs = [insertCIInConstraint (Constraint_Unify m sm Nothing) newConstrInfo | (m, sm, i) <- zip3 ms slhsMs [(0 :: Int)..], i `elem` injIdx]
+                                -- Add HasTopLevelReacted property to ensure that the constraint is not considered again (unless variables are injected later on).
                                 let constrInfo = addProperty HasTopLevelReacted emptyConstraintInfo
                                 return $ Applied ([], insertCIInConstraint c constrInfo : newConstrs)
             _ -> return NotApplicable 
@@ -410,6 +414,8 @@ axsToInjectiveEnv = foldM f M.empty
 -- - If match succeeds, we check whether for all preceeding instances, the instance is compatible or apart.
 -- - If that succeeds, we return the applied new constraint
 -- The only difference wrt open type families, is that we match in an order and perform the compatApartness check.
+-- Next to a RuleResult, we also return a possible MonoType and a Range. This because we may want to provide a apartness hint in the heuristics.
+-- This hint shows that LHS that was not apart icw its range.
 reactClosedTypeFam :: (
                         Fresh m,
                         HasTypeGraph m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo Diagnostic,

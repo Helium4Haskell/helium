@@ -21,7 +21,6 @@ import System.FilePath.Posix
 import Data.Maybe
 import qualified Data.Map.Strict as M
 import Helium.Utils.Utils
-import Debug.Trace
 
 phaseTypeInferencer :: 
     String -> String -> Module -> ImportEnvironment -> ImportEnvironment -> [Option] -> 

@@ -30,7 +30,6 @@ import Helium.StaticAnalysis.Miscellaneous.Diagnostics (Diagnostic)
 import Data.Either (isLeft, fromLeft, fromRight)
 import Data.Bifunctor (bimap)
 import Rhodium.TypeGraphs.GraphReset (removeEdge)
-import Debug.Trace (trace)
 
 typeErrorThroughReduction :: (Fresh m, HasTypeGraph m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo Diagnostic)
                           => Path m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo -> VotingHeuristic m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo Diagnostic
@@ -52,6 +51,7 @@ typeErrorThroughReduction path = SingleVoting "Type error through type family re
           case (pconstraint, labelFromPath path) of
             -- PConstraint could not be reduced further
             (Constraint_Unify mf@MonoType_Fam{} t _, ErrorLabel "Residual constraint") -> do
+              -- Make sure that we only substitute beta variables (others are okay)
               [MType freshOg] <- freshenRepresentation . (:[]) <$> if isBetaFree mf then return (MType mf) else getSubstTypeFull (getGroupFromEdge cedge) (MType mf)
               -- Get potential trace.
               theTrace <- squashTrace <$> buildReductionTrace cedge freshOg
@@ -173,7 +173,7 @@ typeErrorThroughReduction path = SingleVoting "Type error through type family re
               -- Else, we nest again and build hints for this level.
               Just args -> do
                 -- Substitute the family to get complete type.
-                (MType mf'@(MonoType_Fam _ mts' _)) <- getSubstTypeFull (getGroupFromEdge cedge) (MType mf)
+                (MType mf'@(MonoType_Fam _ mts' _)) <- if isBetaFree mf then return (MType mf) else getSubstTypeFull (getGroupFromEdge cedge) (MType mf)
                 -- Considerables are the family arguments and the wanted family arguments zipped.
                 let considerables = zip mts' args
                 -- Recurse
@@ -293,7 +293,7 @@ shouldBeInjectiveHeuristic path = SingleVoting "Not injective enough" f
             (Constraint_Unify mf@(MonoType_Fam fn _ _) mt _, ErrorLabel "Residual constraint") -> do
               -- Get hint about possible injectivity annotations
               injHint <- buildNestedInjHint cedge mf mt
-              (MType mf') <- getSubstTypeFull (getGroupFromEdge cedge) (MType mf)
+              (MType mf') <- if isBetaFree mf then return (MType mf) else getSubstTypeFull (getGroupFromEdge cedge) (MType mf)
               case injHint of
                 Nothing -> return Nothing
                 Just iHint -> do 
@@ -319,7 +319,7 @@ shouldBeInjectiveHeuristic path = SingleVoting "Not injective enough" f
             axs <- getAxioms
             -- Make sure that both types are substituted
             (MType mf'@(MonoType_Fam fn' mts' _)) <- if all isBetaFree mts then return (MType mf) else getSubstTypeFull (getGroupFromEdge cedge) (MType mf)
-            (MType mt') <- getSubstTypeFull (getGroupFromEdge cedge) $ trace ("MF, MF': " ++ show mf ++ ", " ++ show mf') (MType mt)
+            (MType mt') <- getSubstTypeFull (getGroupFromEdge cedge) (MType mt)
             -- get the touchables from the family arguments
             tchsMts <- getTchMtsFromArgs mts'
             -- Check if the rhs is unifiable with an axs it belongs to.
@@ -402,7 +402,7 @@ shouldBeInjectiveHeuristic path = SingleVoting "Not injective enough" f
               [] -> do
                 -- Check if the constraint is solved
                 tchs <- filterM (fmap isJust . isVertexTouchable) (nub $ fvToList fam ++ fvToList mt :: [TyVar])
-                res <- runTG $ unifyTypes axs' [] [Constraint_Unify fam mt Nothing] $ trace ("FAM MT: " ++ show fam ++ ", " ++ show mt) tchs
+                res <- runTG $ unifyTypes axs' [] [Constraint_Unify fam mt Nothing] tchs
                 case res of
                   -- if not: we return "Left newTchs" which means these are erroneous
                   Nothing -> return $ Left newTchs
@@ -410,6 +410,7 @@ shouldBeInjectiveHeuristic path = SingleVoting "Not injective enough" f
                   Just _ -> return $ Right is
               _  -> return $ Left newTchs
 
+          -- Updates the axiom to adapt its injectivity (so we can check if the new injectivity fixes stuff)
           swapInjAxiom :: String -> [Int] -> [Axiom ConstraintInfo] -> ([Axiom ConstraintInfo], [Int])
           swapInjAxiom fn is axs = let
 
@@ -423,6 +424,7 @@ shouldBeInjectiveHeuristic path = SingleVoting "Not injective enough" f
               Just (Axiom_Injective _ is') -> (Axiom_Injective fn (nub $ is ++ is') : remainingAxs, is ++ is')
               _ -> error "Should not happen!"
           
+          -- Gets the touchable variables and their index from the argument monotypes of (for example) a type family
           getTchMtsFromArgs :: (IsTouchable m TyVar, Fresh m) => MonoTypes -> m [(Int, MonoType)]
           getTchMtsFromArgs mts = do
             let vars = [(i, x) | (i, x) <- zip [0..] mts, isVar x]
@@ -432,6 +434,7 @@ shouldBeInjectiveHeuristic path = SingleVoting "Not injective enough" f
               isVar MonoType_Var{} = True
               isVar _              = False
           
+          -- Checks if the right hand side of the constraint, is unifiable with an axiom. If so, an injectivity fix may be presented.
           isRhsUnifiable :: (Fresh m, HasTypeGraph m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo Diagnostic)
                          => String -> MonoType -> [Axiom ConstraintInfo] -> m Bool
           isRhsUnifiable fn mt (Axiom_Unify b _:axs) = do
@@ -451,11 +454,14 @@ shouldBeInjectiveHeuristic path = SingleVoting "Not injective enough" f
           isRhsUnifiable fn mt (_:axs) = isRhsUnifiable fn mt axs
           isRhsUnifiable _ _ [] = return False
 
+          -- Gets injectivity info for the family (the String) from the axioms we have.
+          -- Returns the injective indices (if any).
           obtainInjInfoFromAxs :: String -> [Axiom ConstraintInfo] -> [Int]
           obtainInjInfoFromAxs fn (Axiom_Injective afn idx:axs) = if fn == afn then idx else obtainInjInfoFromAxs fn axs
           obtainInjInfoFromAxs fn (_:axs) = obtainInjInfoFromAxs fn axs
           obtainInjInfoFromAxs _  [] = []
 
+          -- Builds a map from index to Name (the original Name in the code)
           buildVarNameMap :: String -> [Axiom ConstraintInfo] -> M.Map Int Name
           buildVarNameMap fn axs = let
             fnAxs = filterAxiomsOnName fn axs
@@ -518,14 +524,15 @@ filterAxiomsOnName fn (Axiom_ClosedGroup fn' axs:axs') = if fn == fn' then axs e
 filterAxiomsOnName fn (_:axs) = filterAxiomsOnName fn axs
 filterAxiomsOnName _ _ = []
 
+-- Check if type fam occurs in type
 typeFamInType :: String -> MonoType -> Bool
 typeFamInType s (MonoType_Fam fn mts _) = let
-  --mf' = freshenWithMapping [] (0 :: Integer) mf
   in fn == s || any (typeFamInType s) mts
 typeFamInType s (MonoType_App m1 m2 _) = typeFamInType s m1 || typeFamInType s m2
 typeFamInType _ (MonoType_Con _ _)     = False
 typeFamInType _ MonoType_Var{}         = False
 
+-- Replace a MonoType (1) with a MonoType (2) in a MonoType (3) and return the new MonoType (4)
 repTypeInMonoType :: MonoType -> MonoType -> MonoType -> MonoType
 repTypeInMonoType lmt rmt mt@(MonoType_App ma1 ma2 rs) = let
   (lmt', mt') = freshenTypes lmt mt
@@ -546,23 +553,30 @@ repTypeInMonoType lmt rmt mt@MonoType_Con{} = if lmt == mt
   then rmt
   else mt
 
+-- Replace a MonoType (1) with a MonoType (2) in a PolyType (3) and return the new PolyType (4)
 repTypeInPolyType :: MonoType -> MonoType -> PolyType ConstraintInfo -> PolyType ConstraintInfo
 repTypeInPolyType lmt rmt (PolyType_Bind s b) = let
   ((tv, pt), _) = contFreshMRes (unbind b) 0
   in PolyType_Bind s $ bind tv (repTypeInPolyType lmt rmt pt)
 repTypeInPolyType lmt rmt (PolyType_Mono cs mt) = PolyType_Mono cs (repTypeInMonoType lmt rmt mt)
 
+-- GraphModifier that substitutes the Family in it (MonoType 1, lmt) with what the type inference expected (MonoType 2, rmt)
+-- in the constraint that was considered in the heuristic.
 replaceTypeFamModifier :: (Fresh m, HasTypeGraph m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo Diagnostic)
                        => MonoType -> MonoType -> Constraint ConstraintInfo -> GraphModifier m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo
 replaceTypeFamModifier lmt rmt oldConstr (eid, _, ci) graph' = do
+  -- Get constraint
   let cedge = getEdgeFromId graph' eid
       constr = getConstraintFromEdge cedge
   case constr of
+    -- Get the instantiation constraint (the one that was considered in the heuristic)
     Constraint_Inst imt pt rs -> do
+        -- replace lmt with rmt in the polytype
         let newPmt = repTypeInPolyType lmt rmt pt
             newConstr = Constraint_Inst imt newPmt (Just $ addProperty (HasOriginalTypeSignature oldConstr) (fromMaybe emptyConstraintInfo rs))
             isG = isEdgeGiven cedge
-            isOriginal = isEdgeOriginal cedge 
+            isOriginal = isEdgeOriginal cedge
+        -- Update the graph with the new constraint.
         gNewConstr <- convertConstraint [] isOriginal isG (getGroupFromEdge cedge) (getPriorityFromEdge cedge) newConstr
         remGraph <- removeEdge eid  graph'
         return $ (, ci) $ mergeGraphs remGraph [gNewConstr]

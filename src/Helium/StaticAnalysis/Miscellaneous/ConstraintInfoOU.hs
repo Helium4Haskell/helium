@@ -1,7 +1,5 @@
 {-# LANGUAGE TypeSynonymInstances, FlexibleInstances, MultiParamTypeClasses #-}
 {-# LANGUAGE DeriveGeneric #-}
-{-# LANGUAGE StandaloneDeriving #-}
-{-# LANGUAGE DeriveAnyClass #-}
 
 {-| Module      :  ConstraintInfo
     License     :  GPL
@@ -16,49 +14,32 @@
 
 module Helium.StaticAnalysis.Miscellaneous.ConstraintInfoOU where
 
-import Helium.Main.Args (Option(..))
-
 import Helium.Syntax.UHA_Syntax
+    ( Expression(Expression_Typed), Name, Names, Range )
 import Helium.StaticAnalysis.Miscellaneous.UHA_Source
-import Helium.Syntax.UHA_Range
-import Helium.StaticAnalysis.Messages.TypeErrors
-import Helium.StaticAnalysis.Messages.Messages
-import Helium.StaticAnalysis.Messages.HeliumMessages
+    ( descriptionOfSource,
+      nameToUHA_Def,
+      nameToUHA_Expr,
+      UHA_Source(UHA_Decls, UHA_Expr) )
+import Helium.Syntax.UHA_Range ( getNameRange )
+import Helium.StaticAnalysis.Messages.TypeErrors ( TypeError )
+import Helium.StaticAnalysis.Messages.Messages ( MessageBlock )
 import Helium.StaticAnalysis.Miscellaneous.DoublyLinkedTree
-import Helium.StaticAnalysis.Miscellaneous.TypeConstraints
-import Helium.Utils.Utils (internalError)
-import Helium.Utils.OneLiner
-import Helium.ModuleSystem.ImportEnvironment 
+    ( root, selectChild, DoublyLinkedTree(attribute) )
+import Helium.ModuleSystem.ImportEnvironment
+    ( ImportEnvironment(valueConstructors, typeEnvironment) ) 
 
-import Rhodium.Core
-import Rhodium.Solver.Rules
-import Rhodium.TypeGraphs.Graph
-import Rhodium.Blamer.HeuristicProperties
+import Rhodium.TypeGraphs.Graph ( EdgeId, Groups, Priority )
 import Helium.StaticAnalysis.Inferencers.OutsideInX.Rhodium.RhodiumTypes
 
 import qualified Unbound.Generics.LocallyNameless as UB
---import qualified Unbound.Generics.LocallyNameless.Fresh as UB
---import qualified Unbound.Generics.LocallyNameless.Alpha as UB
 import qualified Unbound.Generics.LocallyNameless.Bind as UB
---import qualified Unbound.Generics.LocallyNameless.Types as UB
---import qualified Unbound.Generics.LocallyNameless.Subst as UB
-
-import Data.Typeable
-import Data.Data
 import Data.Maybe
-import Data.Function
-import Data.List
 import qualified Data.Map as M
 
-import Control.Applicative
-
 import Unbound.Generics.LocallyNameless hiding (Name)
-import Unbound.Generics.LocallyNameless.Fresh
 
-import Debug.Trace
 import GHC.Generics (Generic)
-import Data.Typeable
-import Unbound.Generics.LocallyNameless.Internal.Fold (toListOf, foldMapOf)
  
 data ConstraintInfo =
    CInfo_ { location      :: String
@@ -165,7 +146,7 @@ instance Show Property where
     show (IsUserConstraint _ _) = "IsUserConstraint"
     show (WithHint (s, _) ) = "WithHint: " ++ s
     show (ReductionErrorInfo _) = "ReductionErrorInfo"
-    show (FromBindingGroup) = "FromBindingGroup"
+    show FromBindingGroup = "FromBindingGroup"
     show (IsImported _) = "IsImported"
     show (ApplicationEdge _ lc) = "ApplicationEdge" ++ show (map assignedType lc)
     show ExplicitTypedBinding = "ExplicitTypedBinding"
@@ -180,15 +161,15 @@ instance Show Property where
     show (RelevantFunctionBinding fb) = "RelevantFunctionBinding: " ++ show fb
     show (ClassUsages cis) = "ClassUsages " ++ show cis
     show (AmbigiousClass c) = "AmbigiousClass " ++ show c
-    show (FromGADT) = "FromGADT"
+    show FromGADT = "FromGADT"
     show (UnreachablePattern m1 m2) = "UnreachablePattern(" ++ show m1 ++ ", " ++ show m2 ++ ")"
     show GADTPatternApplication = "GADTPatternApplication"
     show (PatternMatch v i mc) = "PatternMatch(" ++ show v ++ ", " ++ show i ++ "," ++ show mc ++ ")"
     show (PossibleTypeSignature ps) = "PossibleTypeSignature " ++ show ps
-    show (GADTTypeSignature) = "GADTTypeSignature"
+    show GADTTypeSignature = "GADTTypeSignature"
     show (MissingGADTTypeSignature mpt f bs) = "MissingGADTTypeSignature " ++ show mpt ++ ", " ++ show bs
     show (EscapingExistentital mt c) = "EscapingExistentital " ++ show mt ++ ", " ++ show c
-    show (IsTypeError) = "IsTypeError"
+    show IsTypeError = "IsTypeError"
     show (EdgeGroupPriority p g) = "EdgeGroupPriority " ++ show p ++ show g
     show (ApplicationTypeSignature ps) = "ApplicationTypeSignature " ++ show ps
     show TooManyFBArgs = "TooManyFBArgs"
@@ -244,7 +225,7 @@ isFolkloreConstraint a =
 -- |Returns only type schemes with at least one quantifier
 maybeInstantiatedTypeScheme :: HasProperties a => a -> Maybe (PolyType ConstraintInfo)
 maybeInstantiatedTypeScheme a =
-   maybeHead [ s | InstantiatedTypeScheme s <- getProperties a, undefined ] -- not (withoutQuantors s) ]
+   maybeHead [ s | InstantiatedTypeScheme s <- getProperties a ] -- not (withoutQuantors s) ]
    
 maybeSkolemizedTypeScheme :: HasProperties a => a -> Maybe ([MonoType], PolyType ConstraintInfo)
 maybeSkolemizedTypeScheme info =
@@ -317,7 +298,7 @@ maybePatternMatch a =
    maybeHead [ (v, i, mc) | PatternMatch v i mc <- getProperties a]
 
 isPatternMatch :: Property -> Bool
-isPatternMatch (PatternMatch _ _ _) = True
+isPatternMatch PatternMatch{} = True
 isPatternMatch _ = False
 
 isGADTTypeSignature :: HasProperties a => a -> Bool
@@ -480,7 +461,7 @@ typepair info = fromJust (maybeHead [ pair | TypePair pair <- getProperties info
 isExprTyped :: ConstraintInfo -> Bool
 isExprTyped info = 
    case fst (sources info) of
-      UHA_Expr (Expression_Typed _ _ _) -> True
+      UHA_Expr Expression_Typed{} -> True
       _                                 -> False     
   
 -------------------------------------
@@ -551,7 +532,7 @@ modCi f (Constraint_Exists (UB.B t (c1, c2)) mci) = Constraint_Exists (UB.B t (m
 
    
 isTupleConstructor :: String -> Bool
-isTupleConstructor ('(':[]) = False
+isTupleConstructor ['('] = False
 isTupleConstructor ('(':cs) = all (','==) (init cs) && last cs == ')'
 isTupleConstructor _        = False
 

@@ -38,11 +38,6 @@ import Data.Function
 import Data.List
 import Control.Applicative
 
-import Helium.Utils.OneLiner
-
- 
-import Debug.Trace
-
 data ConstraintInfo =
    CInfo_ { location      :: String
           , sources       :: (UHA_Source, Maybe UHA_Source{- term -})
