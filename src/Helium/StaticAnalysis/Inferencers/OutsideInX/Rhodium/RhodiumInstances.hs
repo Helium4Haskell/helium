@@ -301,6 +301,11 @@ injectiveArgs (Axiom_Injective as idx:axs) s
         else injectiveArgs axs s
 injectiveArgs (_:axs) s = injectiveArgs axs s
 
+isBetaFree :: MonoType -> Bool
+isBetaFree (MonoType_Fam _ mts _) = all isBetaFree mts
+isBetaFree (MonoType_Var _ v _) = name2String v /= "beta"
+isBetaFree (MonoType_App mt1 mt2 _) = isBetaFree mt1 && isBetaFree mt2
+isBetaFree _ = True
 
 instance (
             HasTypeGraph m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo Diagnostic,
@@ -323,7 +328,7 @@ instance (
                 else
                     return NotApplicable
             topLevelReact' _ = return NotApplicable
-    topLevelReact given c@(Constraint_Unify mf@(MonoType_Fam f ms _) t _) = getAxioms >>= loopAxioms topLevelReact'  
+    topLevelReact given c@(Constraint_Unify mf@(MonoType_Fam f ms _) t _) | isBetaFree mf = getAxioms >>= loopAxioms topLevelReact'  
         where
             topLevelReact' :: Axiom ConstraintInfo  -> m (RuleResult ([TyVar], [Constraint ConstraintInfo]))
             topLevelReact' ax@(Axiom_Unify b tfi) | all isFamilyFree ms, isFamilyFree t =

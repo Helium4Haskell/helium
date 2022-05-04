@@ -18,7 +18,7 @@ import Data.List (permutations, nub, intercalate, sort)
 import qualified Data.Map as M
 import Helium.StaticAnalysis.HeuristicsOU.HeuristicsInfo
 import Helium.StaticAnalysis.Messages.HeliumMessages (freshenRepresentation)
-import Helium.StaticAnalysis.Inferencers.OutsideInX.Rhodium.RhodiumInstances (reactClosedTypeFam, convertSubstitution, axsToInjectiveEnv)
+import Helium.StaticAnalysis.Inferencers.OutsideInX.Rhodium.RhodiumInstances (reactClosedTypeFam, convertSubstitution, axsToInjectiveEnv, isBetaFree)
 import Rhodium.Core (unifyTypes, runTG)
 import Control.Monad (filterM)
 import Helium.StaticAnalysis.Inferencers.OutsideInX.TopConversion (polytypeToMonoType, contFreshMRes)
@@ -30,6 +30,7 @@ import Helium.StaticAnalysis.Miscellaneous.Diagnostics (Diagnostic)
 import Data.Either (isLeft, fromLeft, fromRight)
 import Data.Bifunctor (bimap)
 import Rhodium.TypeGraphs.GraphReset (removeEdge)
+import Debug.Trace (trace)
 
 typeErrorThroughReduction :: (Fresh m, HasTypeGraph m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo Diagnostic)
                           => Path m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo -> VotingHeuristic m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo Diagnostic
@@ -51,7 +52,7 @@ typeErrorThroughReduction path = SingleVoting "Type error through type family re
           case (pconstraint, labelFromPath path) of
             -- PConstraint could not be reduced further
             (Constraint_Unify mf@MonoType_Fam{} t _, ErrorLabel "Residual constraint") -> do
-              [MType freshOg] <- freshenRepresentation . (:[]) <$> getSubstTypeFull (getGroupFromEdge cedge) (MType mf)
+              [MType freshOg] <- freshenRepresentation . (:[]) <$> if isBetaFree mf then return (MType mf) else getSubstTypeFull (getGroupFromEdge cedge) (MType mf)
               -- Get potential trace.
               theTrace <- squashTrace <$> buildReductionTrace cedge freshOg
               -- Builds hint in nested sense, when type family contains other families that were not reducable (or wronly reduced, perhaps)
@@ -317,8 +318,8 @@ shouldBeInjectiveHeuristic path = SingleVoting "Not injective enough" f
           buildNestedInjHint cedge mf@(MonoType_Fam fn mts _) mt = do
             axs <- getAxioms
             -- Make sure that both types are substituted
-            (MType mf'@(MonoType_Fam fn' mts' _)) <- getSubstTypeFull (getGroupFromEdge cedge) (MType mf)
-            (MType mt') <- getSubstTypeFull (getGroupFromEdge cedge) (MType mt)
+            (MType mf'@(MonoType_Fam fn' mts' _)) <- if all isBetaFree mts then return (MType mf) else getSubstTypeFull (getGroupFromEdge cedge) (MType mf)
+            (MType mt') <- getSubstTypeFull (getGroupFromEdge cedge) $ trace ("MF, MF': " ++ show mf ++ ", " ++ show mf') (MType mt)
             -- get the touchables from the family arguments
             tchsMts <- getTchMtsFromArgs mts'
             -- Check if the rhs is unifiable with an axs it belongs to.
@@ -401,7 +402,7 @@ shouldBeInjectiveHeuristic path = SingleVoting "Not injective enough" f
               [] -> do
                 -- Check if the constraint is solved
                 tchs <- filterM (fmap isJust . isVertexTouchable) (nub $ fvToList fam ++ fvToList mt :: [TyVar])
-                res <- runTG $ unifyTypes axs' [] [Constraint_Unify fam mt Nothing] tchs
+                res <- runTG $ unifyTypes axs' [] [Constraint_Unify fam mt Nothing] $ trace ("FAM MT: " ++ show fam ++ ", " ++ show mt) tchs
                 case res of
                   -- if not: we return "Left newTchs" which means these are erroneous
                   Nothing -> return $ Left newTchs
