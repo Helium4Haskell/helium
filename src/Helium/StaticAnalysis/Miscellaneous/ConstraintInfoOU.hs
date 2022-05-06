@@ -128,7 +128,7 @@ data Property
     | TooManyFBArgs 
     | PatternTypeSignature (PolyType ConstraintInfo)
     | LiteralFloat Float
-    | TypeFamilyReduction (Maybe ReductionTrace) MonoType {-Inferred-} MonoType {-From signature-} MonoType {-Reduced-} Bool {-Whether fully reduced-}
+    | TypeFamilyReduction (Maybe MonoType) {-Possible from signature-} MonoType {-Reduced 1-} (Maybe MonoType) {-Possible from signature-} MonoType {-Reduced 2-} Bool {-Whether fully reduced-}
     | WithReduction ReductionTrace
     | InjectUntouchable (MonoType, MonoType) {-Before toplevel improvement-}
     | HasTopLevelReacted
@@ -336,8 +336,8 @@ maybePatternTypeSignature a = maybeHead [ ps | PatternTypeSignature ps <- getPro
 maybeLiteralFloat :: HasProperties a => a -> Maybe Float
 maybeLiteralFloat a = maybeHead [ f | LiteralFloat f <- getProperties a]
 
-maybeTypeFamilyReduction :: HasProperties a => a -> Maybe (Maybe ReductionTrace, MonoType, MonoType, MonoType, Bool)
-maybeTypeFamilyReduction a = maybeHead [ (rt, m1, m2, m3, p) | TypeFamilyReduction rt m1 m2 m3 p <- getProperties a]
+maybeTypeFamilyReduction :: HasProperties a => a -> Maybe (Maybe MonoType, MonoType, Maybe MonoType, MonoType, Bool)
+maybeTypeFamilyReduction a = maybeHead [ (ft1, lt1, ft2, lt2, p) | TypeFamilyReduction ft1 lt1 ft2 lt2 p <- getProperties a]
 
 maybeInjectUntouchable :: HasProperties a => a -> Maybe (MonoType, MonoType)
 maybeInjectUntouchable a = maybeHead [ mtt | InjectUntouchable mtt <- getProperties a]

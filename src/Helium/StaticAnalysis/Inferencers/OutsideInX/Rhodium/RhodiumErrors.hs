@@ -267,7 +267,7 @@ makeUnificationTypeError fullTrace edge constr info =
                         PType p -> MessagePolyType p                    
                 ]
         hints      = [ hint | WithHint hint <- properties info ]
-                     ++ [ if fullTrace then buildFullTraceHint trc else buildSimpleTraceHint trc | WithReduction trc <- properties info]           
+                  ++ [ if fullTrace then buildFullTraceHint trc else buildSimpleTraceHint trc | WithReduction trc <- properties info]           
     return $ TypeError [range] [oneliner] table hints
 
 makeReductionError :: UHA_Source -> Maybe UHA_Source -> (MonoType, Maybe (PolyType ConstraintInfo)) -> [Axiom ConstraintInfo] -> (String, MonoType) -> TypeError
@@ -376,7 +376,7 @@ makeTFReductionTypeError :: (CompareTypes m (RType ConstraintInfo), Fresh m, Has
                          => Bool -> TGEdge (Constraint ConstraintInfo) -> Constraint ConstraintInfo -> ConstraintInfo -> m TypeError
 makeTFReductionTypeError mustShowTrace edge constraint info =
     do
-    let (Just (theTrace, inf, og, red, isReduced)) = maybeTypeFamilyReduction info
+    let (Just (firstT1, lastT1, firstT2, lastT2, isReduced)) = maybeTypeFamilyReduction info
     let (source, term) = sources info
         range    = maybe (rangeOfSource source) rangeOfSource term
         oneliner = if not isReduced 
@@ -392,16 +392,18 @@ makeTFReductionTypeError mustShowTrace edge constraint info =
     msgtp1   <- getSubstTypeFull (getGroupFromEdge edge) t1'
     msgtp2   <- getSubstTypeFull  (getGroupFromEdge edge) t2
     let [msgtp2', msgtp1'] = freshenRepresentation [msgtp2, msgtp1]
-    let [MType inf', MType og', MType red'] = freshenRepresentation [MType inf :: RType ConstraintInfo, MType og, MType red]
+    --let [MType inf', MType og', MType red'] = freshenRepresentation [MType inf :: RType ConstraintInfo, MType og, MType red]
     let (reason1, reason2) = ("declared type", "inferred type")
     let (treason1, treason2, treason3) = ("type", "  reduced from", "with")
         table = ["could not match " <:> MessageString ""]
                 ++
-                [treason1 >:> MessageMonoType red']
+                [treason1 >:> MessageMonoType lastT1]
                 ++
-                [treason2 >:> MessageMonoType og' | og /= red]
+                [treason2 >:> MessageMonoType og1 | isJust firstT1, let (Just og1) = firstT1]
                 ++ 
-                [treason3 >:> MessageMonoType inf']
+                [treason3 >:> MessageMonoType lastT2]
+                ++
+                [treason2 >:> MessageMonoType og2 | isJust firstT2, let (Just og2) = firstT2]
                 ++
                 [ "in " ++ s <:> MessageOneLineTree (oneLinerSource source') | (s, source') <- convertSources (sources info)]
                 ++
@@ -414,7 +416,7 @@ makeTFReductionTypeError mustShowTrace edge constraint info =
                         PType p -> MessagePolyType p                    
                 ]
         hints      = [ hint | WithHint hint <- properties info ]
-                   ++ [("full reduction", traceToMessageBlock (squashTrace trc)) | let Just trc = theTrace, (not . null) theTrace && mustShowTrace]              
+                  ++ [ buildFullTraceHint trc | mustShowTrace, WithReduction trc <- properties info]               
     return $ TypeError [range] [oneliner] table hints
 
 makeInjectUntouchableError :: (CompareTypes m (RType ConstraintInfo), Fresh m, HasTypeGraph m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo Diagnostic) 

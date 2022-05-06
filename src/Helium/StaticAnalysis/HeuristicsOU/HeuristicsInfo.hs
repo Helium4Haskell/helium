@@ -35,6 +35,7 @@ class WithHints a where
 instance WithHints ConstraintInfo where
    addHint descr str = addProperty (WithHint (descr, MessageString str))
    addReduction trc ci = case trc of
+      Just [] -> ci
       Just xs -> addProperty (WithReduction xs) ci
       Nothing -> ci
    typeErrorForTerm (isInfixApplication,isPatternApplication) argumentNumber termOneLiner functionType (t1, t2) range cinfo =
