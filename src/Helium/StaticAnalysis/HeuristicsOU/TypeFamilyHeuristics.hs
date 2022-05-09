@@ -30,6 +30,7 @@ import Helium.StaticAnalysis.Miscellaneous.Diagnostics (Diagnostic)
 import Data.Either (isLeft, fromLeft, fromRight)
 import Data.Bifunctor (bimap)
 import Rhodium.TypeGraphs.GraphReset (removeEdge)
+import Debug.Trace (trace)
 
 typeErrorThroughReduction :: (Fresh m, HasTypeGraph m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo Diagnostic)
                           => Path m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo -> VotingHeuristic m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo Diagnostic
@@ -49,6 +50,26 @@ typeErrorThroughReduction path = SingleVoting "Type error through type family re
           let cedge = getEdgeFromId graph ceid
           let pconstraint = getConstraintFromEdge cedge
           case (pconstraint, labelFromPath path) of
+            (Constraint_Unify mf1@MonoType_Fam{} mf2@MonoType_Fam{} _, ErrorLabel "Residual constraint") -> do
+              (MType mf1') <- if isBetaFree mf1 then return (MType mf1) else getSubstTypeFull (getGroupFromEdge cedge) (MType mf1)
+              (MType mf2') <- if isBetaFree mf2 then return (MType mf2) else getSubstTypeFull (getGroupFromEdge cedge) (MType mf2)
+
+              mf1Trace <- squashTrace <$> buildReductionTrace cedge mf1'
+              mf2Trace <- squashTrace <$> buildReductionTrace cedge mf2'
+
+              let redHint = addReduction (Just mf1Trace) . addReduction (Just mf2Trace)
+              
+              mf1Hints <- buildNestedApartnessHint mf1
+              mf2Hints <- buildNestedApartnessHint mf2
+              let hints  = case catMaybes (mf1Hints ++ mf2Hints) of
+                            [] -> id
+                            causes -> addHint ("probable cause" ++ if length causes > 1 then "s" else "") (intercalate "\n" causes)
+              let lastMf1 = getLastTypeInTrace mf1Trace
+                  lastMf2 = getLastTypeInTrace mf2Trace
+
+              if maybe (mf1' `typeIsInType` pmt) (`typeIsInType` pmt) lastMf1 || maybe (mf2' `typeIsInType` pmt) (`typeIsInType` pmt) lastMf2
+                then return $ Just (5, "Type families could not be reduced, potential trace", constr', eid, addProperties [TypeFamilyReduction lastMf1 mf1' lastMf2 mf2' False, HasOriginalTypeSignature constr'] $ redHint $ hints ci, replaceTypeFamModifiers [(lastMf1, mf1'), (lastMf2, mf2')] constr)
+                else return Nothing              
             -- PConstraint could not be reduced further
             (Constraint_Unify mf@MonoType_Fam{} t _, ErrorLabel "Residual constraint") -> do
               -- Make sure that we only substitute beta variables (others are okay)
@@ -157,6 +178,18 @@ typeErrorThroughReduction path = SingleVoting "Type error through type family re
               Nothing -> return $ Just $ (show . show) mt' ++ " is not reducable. No matching instance was found"
           buildApartnessHint _ = return Nothing
 
+          buildNestedApartnessHint :: (Fresh m, HasTypeGraph m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo Diagnostic, CompareTypes m (RType ConstraintInfo))
+                                   => MonoType -> m [Maybe String]
+          buildNestedApartnessHint mt@(MonoType_Fam _ mts _) = do
+            nestedHints <- mapM buildNestedApartnessHint mts
+            
+            curHint <- buildApartnessHint mt
+            
+            case curHint of
+              Just _ -> return [curHint]
+              Nothing -> return $ concat nestedHints
+          buildNestedApartnessHint _ = return [Nothing]
+
           -- Builds hints in a nested way, considers arguments of the non-reducable type family too.
           buildNestedHints :: (Fresh m, HasTypeGraph m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo Diagnostic, CompareTypes m (RType ConstraintInfo)) 
                            => TGEdge (Constraint ConstraintInfo) ->  MonoType -> MonoType -> m (Maybe ([String], [String]))
@@ -170,24 +203,26 @@ typeErrorThroughReduction path = SingleVoting "Type error through type family re
               -- Else, we nest again and build hints for this level.
               Just args -> do
                 -- Substitute the family to get complete type.
-                (MType mf'@(MonoType_Fam _ mts' _)) <- if isBetaFree mf then return (MType mf) else getSubstTypeFull (getGroupFromEdge cedge) (MType mf)
+                (MType mf'@(MonoType_Fam _ mts' _)) <- if trace ("MF: " ++ show mf) isBetaFree mf then return (MType mf) else getSubstTypeFull (getGroupFromEdge cedge) (MType mf)
                 -- Considerables are the family arguments and the wanted family arguments zipped.
-                let considerables = zip mts' args
+                let considerables = trace ("MF': " ++ show mf') zip mts' args
                 -- Recurse
                 nestedRes <- foldl (\(pcs,pfs) (pcs', pfs') -> (pcs++pcs', pfs++pfs')) ([],[]) . catMaybes <$> mapM (uncurry (buildNestedHints cedge)) considerables
                 
                 -- Build hints for this level.
-                apartHint <- buildApartnessHint mf'
+                apartHint <- trace ("NESTEDRES: " ++ show nestedRes ++ "\n MTS' ARGS: " ++ show mts' ++ ", " ++ show args) buildApartnessHint mf'
                 permHint <- buildPermutationHint mf' t
+
+                let basicHints = foldl (\c m -> if isFam m then ((show . show) m ++ " is not reducable. No matching instance was found") : c else c) [] mts' 
                 -- If deeper levels have hints, we return those, else we use this level's hints.
                 -- Not the prettiest of pattern matches
                 return (case (nestedRes, apartHint, permHint) of
                   (r@(_:_, _:_), _, _) -> Just r
                   (r@(_:_, []), _, _) -> Just r
                   (r@([], _:_), _, _) -> Just r
-                  (_, Just a, Just p) -> Just ([a], [p])
-                  (_, Just a, Nothing) -> Just ([a], [])
-                  (_, Nothing, Just p) -> Just ([], [p])
+                  (_, Just a, Just p) -> Just (if null basicHints then [a] else basicHints, [p])
+                  (_, Just a, Nothing) -> Just (if null basicHints then [a] else basicHints, [])
+                  (_, Nothing, Just p) -> Just (basicHints, [p])
                   (_, _, _) -> Nothing)
           -- In case a type with trace is found, we check if we can build a hint with the last type in it.         
           buildNestedHints cedge mt t = do
@@ -514,6 +549,10 @@ filterAxOnRHS _ _ _ _ = return Nothing
 powerset :: [a] -> [[a]]
 powerset [] = [[]]
 powerset (x:xs) = [r | ps <- powerset xs, r <- [x:ps,ps]]
+
+isFam :: MonoType -> Bool
+isFam MonoType_Fam{} = True
+isFam _              = False
 
 filterAxiomsOnName :: String -> [Axiom ConstraintInfo] -> [Axiom ConstraintInfo]
 filterAxiomsOnName fn (ax@(Axiom_Unify _ (Just tfi)):axs) = if show (tfiName tfi) == fn then ax : filterAxiomsOnName fn axs else filterAxiomsOnName fn axs
