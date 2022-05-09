@@ -206,7 +206,7 @@ type instance Id d = d
 -- id2 :: Id a -> b -> Right (Id a) (Id (Id b))
 -- id2 x y = x
 
-type family Foo a b c = r | r -> c
+type family Foo a b c = r | r -> b c
 type instance Foo Char Char Char = Bool
 type instance Foo Char Char Char = Bool
 type instance Foo Float Bool Int = Int
