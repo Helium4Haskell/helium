@@ -423,7 +423,7 @@ makeInjectUntouchableError :: (CompareTypes m (RType ConstraintInfo), Fresh m, H
                          => Bool -> TGEdge (Constraint ConstraintInfo) -> Constraint ConstraintInfo -> ConstraintInfo -> m TypeError
 makeInjectUntouchableError mustShowTrace edge constraint info =
     do
-    let (Just (cl, cr)) = maybeInjectUntouchable info
+    let (Just (ol, nl, rc)) = maybeInjectUntouchable info
     let (source, term) = sources info
         range    = maybe (rangeOfSource source) rangeOfSource term
         oneliner = MessageOneLiner (MessageString ("Could not reduce a type family in a " ++ location info ++ " further"))
@@ -435,14 +435,16 @@ makeInjectUntouchableError mustShowTrace edge constraint info =
     msgtp1   <- getSubstTypeFull (getGroupFromEdge edge) t1'
     msgtp2   <- getSubstTypeFull  (getGroupFromEdge edge) t2
     let [msgtp2', msgtp1'] = freshenRepresentation [msgtp2, msgtp1]
-    let [MType cl', MType cr'] = freshenRepresentation [MType cl :: RType ConstraintInfo, MType cr]
+    let [MType nl', MType rc'] = freshenRepresentation [MType nl :: RType ConstraintInfo, MType rc]
     let (reason1, reason2) = ("declared type", "inferred type")
-    let (treason1, treason2) = ("type", "with")
+    let (treason1, treason2, treason3) = ("type", "  reduced from", "with")
         table = ["could not match " <:> MessageString ""]
                 ++
-                [treason1 >:> MessageMonoType cl']
+                [treason1 >:> MessageMonoType nl']
                 ++
-                [treason2 >:> MessageMonoType cr']
+                [treason2 >:> MessageMonoType ol' | isJust ol, let Just ol' = ol]
+                ++
+                [treason3 >:> MessageMonoType rc']
                 ++
                 [ "in " ++ s <:> MessageOneLineTree (oneLinerSource source') | (s, source') <- convertSources (sources info)]
                 ++
@@ -454,5 +456,6 @@ makeInjectUntouchableError mustShowTrace edge constraint info =
                         MType m -> MessageMonoType m
                         PType p -> MessagePolyType p                    
                 ]
-        hints      = [ hint | WithHint hint <- properties info, (fst hint == "full reduction" && mustShowTrace) || fst hint /= "full reduction" ]             
+        hints      = [ hint | WithHint hint <- properties info, (fst hint == "full reduction" && mustShowTrace) || fst hint /= "full reduction" ]
+                  ++ [ buildFullTraceHint trc | mustShowTrace, WithReduction trc <- properties info]           
     return $ TypeError [range] [oneliner] table hints

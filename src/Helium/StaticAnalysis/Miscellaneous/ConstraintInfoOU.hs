@@ -130,7 +130,7 @@ data Property
     | LiteralFloat Float
     | TypeFamilyReduction (Maybe MonoType) {-Possible from signature-} MonoType {-Reduced 1-} (Maybe MonoType) {-Possible from signature-} MonoType {-Reduced 2-} Bool {-Whether fully reduced-}
     | WithReduction ReductionTrace
-    | InjectUntouchable (MonoType, MonoType) {-Before toplevel improvement-}
+    | InjectUntouchable (Maybe MonoType, MonoType) MonoType {-Before toplevel improvement-}
     | HasTopLevelReacted
     | ResultOfInjectivity MonoType MonoType (Constraint ConstraintInfo)
     | HasOriginalTypeSignature (Constraint ConstraintInfo)
@@ -177,7 +177,7 @@ instance Show Property where
     show (LiteralFloat f) = "LiteralFloat " ++ show f
     show (TypeFamilyReduction _ m1 m2 m3 p) = "TypeFamilyReduction " ++ show m1 ++ ", " ++ show m2 ++ ", " ++ show m3 ++ ", " ++ show p
     show (WithReduction red) = "WithReduction " ++ show red
-    show (InjectUntouchable mtTup) = "InjectUntouchable " ++ show mtTup
+    show (InjectUntouchable mtTup mt) = "InjectUntouchable " ++ show mtTup ++ ", " ++ show mt
     show HasTopLevelReacted = "HasTopLevelReacted"
     show (ResultOfInjectivity mt1 mt2 c) = "ResultOfInjectivity " ++ show mt1 ++ ", " ++ show mt2 ++ ", " ++ show c
     show (HasOriginalTypeSignature ts) = "HasOriginalTypeSignature " ++ show ts
@@ -339,8 +339,8 @@ maybeLiteralFloat a = maybeHead [ f | LiteralFloat f <- getProperties a]
 maybeTypeFamilyReduction :: HasProperties a => a -> Maybe (Maybe MonoType, MonoType, Maybe MonoType, MonoType, Bool)
 maybeTypeFamilyReduction a = maybeHead [ (ft1, lt1, ft2, lt2, p) | TypeFamilyReduction ft1 lt1 ft2 lt2 p <- getProperties a]
 
-maybeInjectUntouchable :: HasProperties a => a -> Maybe (MonoType, MonoType)
-maybeInjectUntouchable a = maybeHead [ mtt | InjectUntouchable mtt <- getProperties a]
+maybeInjectUntouchable :: HasProperties a => a -> Maybe (Maybe MonoType, MonoType, MonoType) 
+maybeInjectUntouchable a = maybeHead [ (lt, t, mt) | InjectUntouchable (lt, t) mt <- getProperties a]
 
 hasTopLevelReacted :: HasProperties a => a -> Bool
 hasTopLevelReacted a = isJust $ maybeHead [ "TLR" | HasTopLevelReacted <- getProperties a]

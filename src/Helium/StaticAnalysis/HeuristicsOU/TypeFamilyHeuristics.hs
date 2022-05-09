@@ -291,18 +291,17 @@ injectUntouchableHeuristic path = SingleVoting "Type error through injection of 
                 Nothing -> return Nothing
                 Just (cl, cr, c) -> do
                   trc <- squashTrace <$> buildReductionTrace cedge cl
+                  let redHint = addReduction (Just trc)
                   let lastT = getLastTypeInTrace trc
                   if typeIsInType (fromMaybe cl lastT) pmt
                     then let
                       because_hint = addHint "because" ("could not assign " ++ (show . show) mt ++ " to " ++ (show . show) mv ++ ". " ++ 
                                                       (show . show) mv ++ " is quantified with a (implicit) forall and cannot be assigned any specific type")
-                      reductionHint = addHint "full reduction" (
-                        "1. From\t: " ++ show c ++
-                        "\n   Got\t: " ++ show cn ++
-                        "\n   Reason\t: injectivity" ++
-                        "\n   Amount\t: 1 time" 
+                      reductionHint = addHint "injectivity info" (
+                        "From\t: " ++ show c ++
+                        "\nGot\t: " ++ show cn 
                         )
-                      in return $ Just (5, "Tried to inject untouchable", constr, eid, addProperty (InjectUntouchable (cl, cr)) $ because_hint $ reductionHint ci, gm)
+                      in return $ Just (5, "Tried to inject untouchable", constr, eid, addProperty (InjectUntouchable (lastT, cl) cr) $ because_hint $ reductionHint $ redHint ci, gm)
                     else return Nothing
             _ -> return Nothing
         _ -> return Nothing
