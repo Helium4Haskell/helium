@@ -30,7 +30,6 @@ import Helium.StaticAnalysis.Miscellaneous.Diagnostics (Diagnostic)
 import Data.Either (isLeft, fromLeft, fromRight)
 import Data.Bifunctor (bimap)
 import Rhodium.TypeGraphs.GraphReset (removeEdge)
-import Debug.Trace (trace)
 
 typeErrorThroughReduction :: (Fresh m, HasTypeGraph m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo Diagnostic)
                           => Path m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo -> VotingHeuristic m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo Diagnostic
@@ -203,14 +202,14 @@ typeErrorThroughReduction path = SingleVoting "Type error through type family re
               -- Else, we nest again and build hints for this level.
               Just args -> do
                 -- Substitute the family to get complete type.
-                (MType mf'@(MonoType_Fam _ mts' _)) <- if trace ("MF: " ++ show mf) isBetaFree mf then return (MType mf) else getSubstTypeFull (getGroupFromEdge cedge) (MType mf)
+                (MType mf'@(MonoType_Fam _ mts' _)) <- if isBetaFree mf then return (MType mf) else getSubstTypeFull (getGroupFromEdge cedge) (MType mf)
                 -- Considerables are the family arguments and the wanted family arguments zipped.
-                let considerables = trace ("MF': " ++ show mf') zip mts' args
+                let considerables = zip mts' args
                 -- Recurse
                 nestedRes <- foldl (\(pcs,pfs) (pcs', pfs') -> (pcs++pcs', pfs++pfs')) ([],[]) . catMaybes <$> mapM (uncurry (buildNestedHints cedge)) considerables
                 
                 -- Build hints for this level.
-                apartHint <- trace ("NESTEDRES: " ++ show nestedRes ++ "\n MTS' ARGS: " ++ show mts' ++ ", " ++ show args) buildApartnessHint mf'
+                apartHint <- buildApartnessHint mf'
                 permHint <- buildPermutationHint mf' t
 
                 let basicHints = foldl (\c m -> if isFam m then ((show . show) m ++ " is not reducable. No matching instance was found") : c else c) [] mts' 
