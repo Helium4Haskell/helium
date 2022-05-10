@@ -30,6 +30,7 @@ import Helium.StaticAnalysis.Miscellaneous.Diagnostics (Diagnostic)
 import Data.Either (isLeft, fromLeft, fromRight)
 import Data.Bifunctor (bimap)
 import Rhodium.TypeGraphs.GraphReset (removeEdge)
+import Debug.Trace (trace)
 
 typeErrorThroughReduction :: (Fresh m, HasTypeGraph m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo Diagnostic)
                           => Path m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo -> VotingHeuristic m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo Diagnostic
@@ -334,13 +335,13 @@ shouldBeInjectiveHeuristic path = SingleVoting "Not injective enough" f
                   let redHint = addReduction (Just theTrace)
                   case theTrace of 
                     [] -> if typeFamInType fn pmt
-                      then return $ Just (7, "Should be injective, without trace", constr', eid, addProperty (TypeFamilyReduction Nothing mf' Nothing mt False) $ iHint ci, replaceTypeFamModifiers [(Just mf, mt)] constr')
+                      then return $ Just (7, "Should be injective, without trace", constr', eid, addProperty (TypeFamilyReduction Nothing mf' Nothing mt False) $ iHint ci, replaceTypeFamModifiers [(Just mf', mt)] constr)
                       else return Nothing
                     trc -> do
                       let Just lastT = getLastTypeInTrace trc
                       let Just firstT = getFirstTypeInTrace trc
-                      if typeIsInType lastT pmt
-                        then return $ Just (7, "Should be injective, with trace", constr', eid, addProperty (TypeFamilyReduction (Just lastT) firstT Nothing mt False) $ redHint $ iHint ci, replaceTypeFamModifiers [(Just lastT, mt)] constr')
+                      if trace ("LASTT MT: " ++ show lastT ++ ", " ++ show mt) typeIsInType lastT pmt
+                        then return $ Just (7, "Should be injective, with trace", constr', eid, addProperty (TypeFamilyReduction (Just lastT) firstT Nothing mt False) $ redHint $ iHint ci, replaceTypeFamModifiers [(Just lastT, mt)] constr)
                         else return Nothing
             _ -> return Nothing
         _ -> return Nothing
@@ -579,7 +580,7 @@ repTypeInMonoType lmt rmt mt@(MonoType_App ma1 ma2 rs) = let
     else MonoType_App (repTypeInMonoType lmt rmt ma1) (repTypeInMonoType lmt rmt ma2) rs
 repTypeInMonoType lmt rmt mt@(MonoType_Fam f mts rs) = let
   (lmt', mt') = freshenTypes lmt mt
-  in if lmt' == mt'
+  in if trace ("FAMCASE: " ++ show lmt' ++ ", " ++ show mt' ++ "\nRES: " ++ show (lmt' == mt')) lmt' == mt'
     then rmt
     else MonoType_Fam f (map (repTypeInMonoType lmt rmt) mts) rs
 repTypeInMonoType lmt rmt mt@MonoType_Var{} = let
@@ -593,10 +594,13 @@ repTypeInMonoType lmt rmt mt@MonoType_Con{} = if lmt == mt
 
 -- Replace a MonoType (1) with a MonoType (2) in a PolyType (3) and return the new PolyType (4)
 repTypeInPolyType :: MonoType -> MonoType -> PolyType ConstraintInfo -> PolyType ConstraintInfo
-repTypeInPolyType lmt rmt (PolyType_Bind s b) = let
-  ((tv, pt), _) = contFreshMRes (unbind b) 0
-  in PolyType_Bind s $ bind tv (repTypeInPolyType lmt rmt pt)
-repTypeInPolyType lmt rmt (PolyType_Mono cs mt) = PolyType_Mono cs (repTypeInMonoType lmt rmt mt)
+repTypeInPolyType = repTypeInPolyType' 0
+  where
+    repTypeInPolyType' :: Integer -> MonoType -> MonoType -> PolyType ConstraintInfo -> PolyType ConstraintInfo
+    repTypeInPolyType' bu lmt rmt (PolyType_Bind s b) = let
+      ((tv, pt), bu') = contFreshMRes (unbind b) bu
+      in PolyType_Bind s $ bind tv (repTypeInPolyType' bu' lmt rmt pt)
+    repTypeInPolyType' _ lmt rmt (PolyType_Mono cs mt) = PolyType_Mono cs (repTypeInMonoType lmt rmt mt)
 
 -- GraphModifier that substitutes the Family in it (MonoType 1, lmt) with what the type inference expected (MonoType 2, rmt)
 -- in the constraint that was considered in the heuristic.
@@ -605,7 +609,7 @@ replaceTypeFamModifiers :: (Fresh m, HasTypeGraph m (Axiom ConstraintInfo) TyVar
 replaceTypeFamModifiers mts oldConstr (eid, _, ci) graph' = do
   let cedge = getEdgeFromId graph' eid
       constr = getConstraintFromEdge cedge
-  case constr of
+  case trace ("OLDCONSTR: " ++ show oldConstr ++ "\n MTS: " ++ show mts) constr of
     -- Get the instantiation constraint (the one that was considered in the heuristic)
     Constraint_Inst imt pt rs -> do
       let newPmt = foldl (\ pt' (lmt, rmt) -> maybe pt' (\lmt' -> repTypeInPolyType lmt' rmt pt') lmt) pt mts
@@ -614,6 +618,6 @@ replaceTypeFamModifiers mts oldConstr (eid, _, ci) graph' = do
           isOriginal = isEdgeOriginal cedge
         -- Update the graph with the new constraint.
       gNewConstr <- convertConstraint [] isOriginal isG (getGroupFromEdge cedge) (getPriorityFromEdge cedge) newConstr
-      remGraph <- removeEdge eid  graph'
+      remGraph <- trace ("NEWCONSTR: " ++ show newConstr) removeEdge eid  graph'
       return $ (, ci) $ mergeGraphs remGraph [gNewConstr]
     _ -> return (graph', ci)
