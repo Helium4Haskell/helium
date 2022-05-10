@@ -340,7 +340,7 @@ shouldBeInjectiveHeuristic path = SingleVoting "Not injective enough" f
                       let Just lastT = getLastTypeInTrace trc
                       let Just firstT = getFirstTypeInTrace trc
                       if typeIsInType lastT pmt
-                        then return $ Just (7, "Should be injective, with trace", constr', eid, addProperty (TypeFamilyReduction (Just firstT) lastT Nothing mt False) $ redHint $ iHint ci, replaceTypeFamModifiers [(Just lastT, mt)] constr')
+                        then return $ Just (7, "Should be injective, with trace", constr', eid, addProperty (TypeFamilyReduction (Just lastT) firstT Nothing mt False) $ redHint $ iHint ci, replaceTypeFamModifiers [(Just lastT, mt)] constr')
                         else return Nothing
             _ -> return Nothing
         _ -> return Nothing
