@@ -126,8 +126,8 @@ type family J a where
 --     I Float Float Int = String
 --     I Float Int Float = Float
 
--- h :: String -> String -> H (J (J Int)) Int
--- h s1 s2 = s1 ++ s2 ++ "hi"
+h :: String -> String -> H (J (J Int)) Int
+h s1 s2 = s1 ++ s2 ++ "hi"
 
 -- h3 :: H (H Int (J (J Float))) (H (J Int) (J Int))
 -- h3 = "Hi"
@@ -194,17 +194,17 @@ type family J a where
 -- g :: Int -> B a
 -- g x = x
 
-type family Right w z
-type instance Right w z = z
+-- type family Right w z
+-- type instance Right w z = z
 
-type family Id d
-type instance Id d = d
+-- type family Id d
+-- type instance Id d = d
 
-type family IdInt i
-type instance IdInt Int = Int
+-- type family IdInt i
+-- type instance IdInt Int = Int
 
-intId :: a -> b -> Right (IdInt a) b
-intId x y = x
+-- intId :: a -> b -> Right (IdInt a) b
+-- intId x y = x
 
 -- -- right :: a -> b -> Right a (Id b)
 -- -- right x y = x

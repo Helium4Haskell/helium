@@ -214,13 +214,13 @@ instance (HasGraph m touchable types constraint ci, HasAxioms m (Axiom Constrain
                 return NotApplicable
             else
                 return $ Applied [c1, Constraint_Class n (substs [(v1, m1)] ms2) Nothing]
-    interact _ c1@(Constraint_Unify fm1@(MonoType_Fam f1 vs1 _) m1 _) (Constraint_Unify fm2@(MonoType_Fam f2 vs2 _) m2 _)
+    interact _ c1@(Constraint_Unify fm1@(MonoType_Fam f1 vs1 _) m1 _) c2@(Constraint_Unify fm2@(MonoType_Fam f2 vs2 _) m2 _)
         | f1 == f2, vs1 == vs2, isFamilyFree m1, isFamilyFree m2
             = return $ Applied [c1, Constraint_Unify m1 m2 Nothing]
         | f1 == f2, m1 == m2 = do
             (axs :: [Axiom ConstraintInfo]) <- getAxioms
             if isInjective axs f1
-                then return $ Applied [c1, Constraint_Unify fm1 fm2 Nothing]
+                then return $ Applied [c1, c2, Constraint_Unify fm1 fm2 Nothing]
                 else return NotApplicable 
     interact _ c1@Constraint_Class {} c2@Constraint_Class{}
         | c1 == c2 = return $ Applied [c1]
