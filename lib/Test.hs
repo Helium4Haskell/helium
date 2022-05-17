@@ -118,7 +118,7 @@ type family H a b where
     --H Float Int = Float
 
 type family J a where
-    J a = a
+    --J a = a
     J Float = Float
     J Int   = Int
 
@@ -200,19 +200,25 @@ type instance Right w z = z
 type family Id d
 type instance Id d = d
 
+type family IdInt i
+type instance IdInt Int = Int
+
+intId :: a -> b -> Right (IdInt a) b
+intId x y = x
+
 -- -- right :: a -> b -> Right a (Id b)
 -- -- right x y = x
 
-id2 :: Id a -> b -> Right (Id a) (Id (Id b))
-id2 x y = x
+-- id2 :: Id a -> b -> Right (Id a) (Id (Id b))
+-- id2 x y = x
 
--- type family Foo a b c
+-- type family Foo a b c = r | r -> b
 -- type instance Foo Char Char Char = Bool
 -- type instance Foo Char Char Char = Bool
 -- type instance Foo Float Bool Int = Int
 
 -- class Bar t where
---   clsF :: Foo t (Id v) t
+--   clsF :: Foo t v t
 -- instance Bar Char where
 --   clsF = True
 
