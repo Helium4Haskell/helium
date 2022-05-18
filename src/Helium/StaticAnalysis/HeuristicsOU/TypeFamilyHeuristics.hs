@@ -31,7 +31,6 @@ import Data.Either (isLeft, fromLeft, fromRight)
 import Data.Bifunctor (bimap)
 import Rhodium.TypeGraphs.GraphReset (removeEdge)
 import Helium.StaticAnalysis.HeuristicsOU.RepairHeuristics (removeEdgeAndTsModifier)
-import Debug.Trace (trace)
 
 typeErrorThroughReduction :: (Fresh m, HasTypeGraph m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo Diagnostic)
                           => Path m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo -> VotingHeuristic m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo Diagnostic
@@ -78,7 +77,7 @@ typeErrorThroughReduction path = SingleVoting "Type error through type family re
               let [MType freshOg] = freshenRepresentation . (:[]) $ (MType mf' :: RType ConstraintInfo)
               -- Get potential trace.
               theTrace <- squashTrace <$> buildReductionTrace cedge mf'
-              let redHint = trace ("MF MF':" ++ show mf ++ ", " ++ show mf') addReduction (Just theTrace)
+              let redHint = addReduction (Just theTrace)
               -- Builds hint in nested sense, when type family contains other families that were not reducable (or wronly reduced, perhaps)
               mTheHint <- buildNestedHints cedge mf t
               -- Unpack hint
@@ -169,14 +168,14 @@ typeErrorThroughReduction path = SingleVoting "Type error through type family re
             -- get the closed axioms belonging to the family (or not)
             let mClosedAxs = getMaybeClosedAxs axs fn         
 
-            mApartErr <- case trace ("APARTNESS MT, MCLOSEDAXS: " ++ show mt ++ ", " ++ show mClosedAxs) mClosedAxs of
+            mApartErr <- case mClosedAxs of
               -- No closed family, no hint.
               Nothing -> return Nothing
               -- We perform the reaction again, with different arguments to obtain the possibly non apart axiom.
               Just caxs -> snd <$> reactClosedTypeFam False False (Constraint_Unify mt (MonoType_Con "Char" Nothing) Nothing) caxs
             -- Build hint accordingly.
             let [MType mt'] = freshenRepresentation [MType mt :: RType ConstraintInfo]
-            case trace ("MAPARTERR: " ++ show mApartErr) mApartErr of
+            case mApartErr of
               Just (amt, r) -> do
                 let hint = "type " ++ (show . show) mt' ++ " is not apart from instance " ++ (show . show) amt ++ " at " ++ show r
                 return $ Just hint
@@ -527,7 +526,7 @@ shouldBeInjectiveHeuristic path = SingleVoting "Not injective enough" f
 filterOnAxsRHS :: (Fresh m, HasTypeGraph m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo Diagnostic, CompareTypes m (RType ConstraintInfo))
                 => String -> [Axiom ConstraintInfo] -> [Axiom ConstraintInfo] -> MonoType -> m (Maybe [MonoType])
 filterOnAxsRHS fn axs axs' mt = do
-  filterRes <- catMaybes <$> mapM (filterAxOnRHS axs' fn mt) axs
+  filterRes <- nub . catMaybes <$> mapM (filterAxOnRHS axs' fn mt) axs
   case filterRes of
     [] -> return $ Just []
     [x] -> return $ Just x

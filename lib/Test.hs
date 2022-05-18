@@ -194,11 +194,11 @@ type family Loop a where
 -- g :: Int -> B a
 -- g x = x
 
--- type family Right w z
--- type instance Right w z = z
+type family Right w z
+type instance Right w z = z
 
--- type family Id d
--- type instance Id d = d
+type family Id d
+type instance Id d = d
 
 -- type family IdInt i
 -- type instance IdInt Int = Int
@@ -209,7 +209,7 @@ type family Loop a where
 -- -- right :: a -> b -> Right a (Id b)
 -- -- right x y = x
 
--- id2 :: Id a -> b -> Right (Id a) (Id (Id b))
+-- id2 :: Id a -> b -> Right (Loop [[[a]]])
 -- id2 x y = x
 
 type family Foo a b c = r | r -> b

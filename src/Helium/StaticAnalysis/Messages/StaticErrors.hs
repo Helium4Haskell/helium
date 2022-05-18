@@ -506,7 +506,7 @@ showError anError = case anError of
    InjWronglyUsedVars n lhs rhs tvs ->
       ( MessageCompose 
          [
-            MessageString ("The following instance of injective type family " ++ show (show n) ++ " violates the injectivity property:\n")
+            MessageString ("Type Family instance for " ++ show (show n) ++ " violates the injectivity property:\n")
          ,  MessageString ("\t\t" ++ show lhs ++ " = " ++ show rhs ++ "\n")
          ,  MessageString ("Type variable " ++ if length tvs > 1 then "s" else "" ++ intercalate ", " (map show tvs) ++ " cannot be inferred from the right hand side") 
          ]
