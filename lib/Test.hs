@@ -126,8 +126,8 @@ type family J a where
 --     I Float Float Int = String
 --     I Float Int Float = Float
 
-h :: String -> String -> H (J (J Int)) Int
-h s1 s2 = s1 ++ s2 ++ "hi"
+-- h :: String -> String -> H (J (J Int)) Int
+-- h s1 s2 = s1 ++ s2 ++ "hi"
 
 -- h3 :: H (H Int (J (J Float))) (H (J Int) (J Int))
 -- h3 = "Hi"
@@ -144,9 +144,9 @@ h s1 s2 = s1 ++ s2 ++ "hi"
 -- g :: Loop [[[[[[[String]]]]]]]
 -- g = "Hi"
 
--- type family Loop a where
---     Loop [a] = Loop a
---     Loop a = a
+type family Loop a where
+    Loop [a] = Loop a
+    Loop a = a
 --     --Loop Int = Bool
 
 -- g :: Loop [[[[[[[a]]]]]]]
@@ -212,18 +212,18 @@ h s1 s2 = s1 ++ s2 ++ "hi"
 -- id2 :: Id a -> b -> Right (Id a) (Id (Id b))
 -- id2 x y = x
 
--- type family Foo a b c = r | r -> b
--- type instance Foo Char Char Char = Bool
--- type instance Foo Char Char Char = Bool
--- type instance Foo Float Bool Int = Int
+type family Foo a b c = r | r -> b
+type instance Foo Char Char Char = Bool
+type instance Foo Char Char Char = Bool
+type instance Foo Float Bool Int = Int
 
--- class Bar t where
---   clsF :: Foo t v t
--- instance Bar Char where
---   clsF = True
+class Bar t where
+  clsF :: Foo t (Loop [v]) t
+instance Bar Char where
+  clsF = True
 
--- main :: Bool
--- main = clsF :: Bool
+main :: Bool
+main = clsF :: Bool
 
 -- type family Foo a 
 -- type instance Foo Char = Bool

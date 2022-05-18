@@ -2,7 +2,7 @@
 {-# OPTIONS_GHC -Wno-simplifiable-class-constraints #-}
 {-# LANGUAGE TupleSections #-}
 module Helium.StaticAnalysis.HeuristicsOU.TypeFamilyHeuristics where
-import Unbound.Generics.LocallyNameless ( Fresh, unbind, Subst (substs), bind)
+import Unbound.Generics.LocallyNameless ( Fresh, unbind, Subst (substs), bind, name2String)
 import Rhodium.Blamer.Path
 import Helium.StaticAnalysis.Inferencers.OutsideInX.Rhodium.RhodiumTypes (Axiom (Axiom_ClosedGroup, Axiom_Unify, Axiom_Injective), TyVar, RType (MType), Constraint (Constraint_Inst, Constraint_Unify), MonoType (MonoType_Fam, MonoType_App, MonoType_Con, MonoType_Var), PolyType (PolyType_Mono, PolyType_Bind), fvToList, MonoTypes, isFamilyFree)
 import Helium.StaticAnalysis.Miscellaneous.ConstraintInfoOU
@@ -13,12 +13,12 @@ import Rhodium.TypeGraphs.GraphUtils
 import Rhodium.Solver.Rules (ErrorLabel (ErrorLabel))
 
 import Helium.StaticAnalysis.Miscellaneous.ReductionTraceUtils (buildReductionTrace, getLastTypeInTrace, getFirstTypeInTrace, squashTrace)
-import Data.Maybe (isJust, catMaybes, fromMaybe, mapMaybe)
+import Data.Maybe (isJust, catMaybes, fromMaybe, mapMaybe, fromJust)
 import Data.List (permutations, nub, intercalate, sort)
 import qualified Data.Map as M
 import Helium.StaticAnalysis.HeuristicsOU.HeuristicsInfo
 import Helium.StaticAnalysis.Messages.HeliumMessages (freshenRepresentation)
-import Helium.StaticAnalysis.Inferencers.OutsideInX.Rhodium.RhodiumInstances (reactClosedTypeFam, convertSubstitution, axsToInjectiveEnv, isBetaFree)
+import Helium.StaticAnalysis.Inferencers.OutsideInX.Rhodium.RhodiumInstances (reactClosedTypeFam, convertSubstitution, axsToInjectiveEnv)
 import Rhodium.Core (unifyTypes, runTG)
 import Control.Monad (filterM)
 import Helium.StaticAnalysis.Inferencers.OutsideInX.TopConversion (polytypeToMonoType, contFreshMRes)
@@ -31,6 +31,7 @@ import Data.Either (isLeft, fromLeft, fromRight)
 import Data.Bifunctor (bimap)
 import Rhodium.TypeGraphs.GraphReset (removeEdge)
 import Helium.StaticAnalysis.HeuristicsOU.RepairHeuristics (removeEdgeAndTsModifier)
+import Debug.Trace (trace)
 
 typeErrorThroughReduction :: (Fresh m, HasTypeGraph m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo Diagnostic)
                           => Path m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo -> VotingHeuristic m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo Diagnostic
@@ -51,8 +52,8 @@ typeErrorThroughReduction path = SingleVoting "Type error through type family re
           let pconstraint = getConstraintFromEdge cedge
           case (pconstraint, labelFromPath path) of
             (Constraint_Unify mf1@MonoType_Fam{} mf2@MonoType_Fam{} _, ErrorLabel "Residual constraint") -> do
-              (MType mf1') <- if isBetaFree mf1 then return (MType mf1) else getSubstTypeFull (getGroupFromEdge cedge) (MType mf1)
-              (MType mf2') <- if isBetaFree mf2 then return (MType mf2) else getSubstTypeFull (getGroupFromEdge cedge) (MType mf2)
+              mf1' <- substIfBeta (getGroupFromEdge cedge) mf1
+              mf2' <- substIfBeta (getGroupFromEdge cedge) mf2
 
               mf1Trace <- squashTrace <$> buildReductionTrace cedge mf1'
               mf2Trace <- squashTrace <$> buildReductionTrace cedge mf2'
@@ -73,11 +74,11 @@ typeErrorThroughReduction path = SingleVoting "Type error through type family re
             -- PConstraint could not be reduced further
             (Constraint_Unify mf@MonoType_Fam{} t _, ErrorLabel "Residual constraint") -> do
               -- Make sure that we only substitute beta variables (others are okay)
-              (MType mf') <- if isBetaFree mf then return (MType mf) else getSubstTypeFull (getGroupFromEdge cedge) (MType mf)
+              mf' <- substIfBeta (getGroupFromEdge cedge) mf
               let [MType freshOg] = freshenRepresentation . (:[]) $ (MType mf' :: RType ConstraintInfo)
               -- Get potential trace.
               theTrace <- squashTrace <$> buildReductionTrace cedge mf'
-              let redHint = addReduction (Just theTrace)
+              let redHint = trace ("MF MF':" ++ show mf ++ ", " ++ show mf') addReduction (Just theTrace)
               -- Builds hint in nested sense, when type family contains other families that were not reducable (or wronly reduced, perhaps)
               mTheHint <- buildNestedHints cedge mf t
               -- Unpack hint
@@ -168,14 +169,14 @@ typeErrorThroughReduction path = SingleVoting "Type error through type family re
             -- get the closed axioms belonging to the family (or not)
             let mClosedAxs = getMaybeClosedAxs axs fn         
 
-            mApartErr <- case mClosedAxs of
+            mApartErr <- case trace ("APARTNESS MT, MCLOSEDAXS: " ++ show mt ++ ", " ++ show mClosedAxs) mClosedAxs of
               -- No closed family, no hint.
               Nothing -> return Nothing
               -- We perform the reaction again, with different arguments to obtain the possibly non apart axiom.
               Just caxs -> snd <$> reactClosedTypeFam False False (Constraint_Unify mt (MonoType_Con "Char" Nothing) Nothing) caxs
             -- Build hint accordingly.
             let [MType mt'] = freshenRepresentation [MType mt :: RType ConstraintInfo]
-            case mApartErr of
+            case trace ("MAPARTERR: " ++ show mApartErr) mApartErr of
               Just (amt, r) -> do
                 let hint = "type " ++ (show . show) mt' ++ " is not apart from instance " ++ (show . show) amt ++ " at " ++ show r
                 return $ Just hint
@@ -189,9 +190,9 @@ typeErrorThroughReduction path = SingleVoting "Type error through type family re
             
             curHint <- buildApartnessHint mt
             
-            case curHint of
-              Just _ -> return [curHint]
-              Nothing -> return $ concat nestedHints
+            case catMaybes (concat nestedHints) of
+              [] -> return [curHint]
+              xs -> return $ map Just xs
           buildNestedApartnessHint _ = return [Nothing]
 
           -- Builds hints in a nested way, considers arguments of the non-reducable type family too.
@@ -201,13 +202,16 @@ typeErrorThroughReduction path = SingleVoting "Type error through type family re
             axs <- getAxioms
             -- We need to know what arguments are expected to be (based on inferred body type "t")
             wantedArgs <- filterOnAxsRHS fn axs axs t
+            -- Substitute the family to get complete type.
+            mf'@(MonoType_Fam _ mts' _) <- substIfBeta (getGroupFromEdge cedge) mf
             case wantedArgs of
               -- Nothing is returned when no wanted args could be obtained (injective problems, multiple possibilities...)
-              Nothing -> return Nothing
+              Nothing -> do
+                apartRes <- buildNestedApartnessHint mf'                
+                permRes <- buildPermutationHint mf' t
+                return $ Just $ foldl (\(xs, e) x -> (x:xs, e)) ([],[fromJust permRes | isJust permRes]) $ catMaybes apartRes                
               -- Else, we nest again and build hints for this level.
               Just args -> do
-                -- Substitute the family to get complete type.
-                (MType mf'@(MonoType_Fam _ mts' _)) <- if isBetaFree mf then return (MType mf) else getSubstTypeFull (getGroupFromEdge cedge) (MType mf)
                 -- Considerables are the family arguments and the wanted family arguments zipped.
                 let considerables = zip mts' args
                 -- Recurse
@@ -331,7 +335,7 @@ shouldBeInjectiveHeuristic path = SingleVoting "Not injective enough" f
             (Constraint_Unify mf@(MonoType_Fam fn _ _) mt _, ErrorLabel "Residual constraint") -> do
               -- Get hint about possible injectivity annotations
               injHint <- buildNestedInjHint cedge mf mt
-              (MType mf') <- if isBetaFree mf then return (MType mf) else getSubstTypeFull (getGroupFromEdge cedge) (MType mf)
+              mf' <- substIfBeta (getGroupFromEdge cedge) mf
               case injHint of
                 Nothing -> return Nothing
                 Just iHint -> do 
@@ -357,7 +361,7 @@ shouldBeInjectiveHeuristic path = SingleVoting "Not injective enough" f
           buildNestedInjHint cedge mf@(MonoType_Fam fn mts _) mt = do
             axs <- getAxioms
             -- Make sure that both types are substituted
-            (MType mf'@(MonoType_Fam fn' mts' _)) <- if all isBetaFree mts then return (MType mf) else getSubstTypeFull (getGroupFromEdge cedge) (MType mf)
+            mf'@(MonoType_Fam fn' mts' _) <- substIfBeta (getGroupFromEdge cedge) mf
             (MType mt') <- getSubstTypeFull (getGroupFromEdge cedge) (MType mt)
             -- get the touchables from the family arguments
             tchsMts <- getTchMtsFromArgs mts'
@@ -626,3 +630,12 @@ replaceTypeFamModifiers mts oldConstr (eid, _, ci) graph' = do
       remGraph <- removeEdge eid  graph'
       return $ (, ci) $ mergeGraphs remGraph [gNewConstr]
     _ -> return (graph', ci)
+
+substIfBeta :: (Fresh m, HasTypeGraph m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo Diagnostic)
+            => Groups -> MonoType -> m MonoType
+substIfBeta g (MonoType_Fam f mts rs) = (\mts' -> MonoType_Fam f mts' rs) <$> mapM (substIfBeta g) mts
+substIfBeta g (MonoType_App mt1 mt2 rs) = MonoType_App <$> substIfBeta g mt1 <*> substIfBeta g mt2 <*> return rs
+substIfBeta g v@(MonoType_Var _ nv _) = if name2String nv == "beta"
+  then getSubstTypeFull g (MType v) >>= \(MType v') -> return v'
+  else return v
+substIfBeta _ mt = return mt
