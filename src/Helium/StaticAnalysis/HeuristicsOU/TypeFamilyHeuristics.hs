@@ -63,11 +63,7 @@ typeErrorThroughReduction path = SingleVoting "Type error through type family re
               
               mf1Hints <- buildNestedApartnessHint mf1
               mf2Hints <- buildNestedApartnessHint mf2
-              let hints  = case (mf1Hints, mf2Hints) of
-                    (Just h1, Just h2) -> h1 . h2
-                    (Nothing, Just h2) -> h2
-                    (Just h1, _)       -> h1
-                    (_, _)             -> id
+              let hints  = mf1Hints .? mf2Hints
               let lastMf1 = getLastTypeInTrace mf1Trace
                   lastMf2 = getLastTypeInTrace mf2Trace
 
@@ -202,11 +198,7 @@ typeErrorThroughReduction path = SingleVoting "Type error through type family re
               Nothing -> do
                 apartRes <- buildNestedApartnessHint mf'                
                 permRes <- buildPermutationHint mf' t
-                return $ case (apartRes, permRes) of
-                  (Just ar, Just pr) -> Just $ ar . pr
-                  (Nothing, Just pr) -> Just pr
-                  (Just ar, _)       -> Just ar  
-                  (_, _)             -> Nothing         
+                return $ Just $ apartRes .? permRes        
               -- Else, we nest again and build hints for this level.
               Just args -> do
                 -- Considerables are the family arguments and the wanted family arguments zipped.
@@ -226,10 +218,8 @@ typeErrorThroughReduction path = SingleVoting "Type error through type family re
                 -- Not the prettiest of pattern matches
                 return (case (nestedRes, apartHint, permHint) of
                   (Just r, _, _) -> Just r
-                  (_, Just a, Just p) -> Just $ a . p
-                  (_, Just a, Nothing) -> Just a
-                  (_, Nothing, Just p) -> Just p
-                  (_, _, _) -> Just basicHint)
+                  (Nothing, Nothing, Nothing) -> Just basicHint
+                  (_, a, p) -> Just $ a .? p)
           -- In case a type with trace is found, we check if we can build a hint with the last type in it.         
           buildNestedHints cedge mt t = do
             theTrace <- buildReductionTrace cedge mt
@@ -635,3 +625,10 @@ substIfBeta g v@(MonoType_Var _ nv _) = if name2String nv == "beta"
   then getSubstTypeFull g (MType v) >>= \(MType v') -> return v'
   else return v
 substIfBeta _ mt = return mt
+
+(.?) :: Maybe (a -> a) -> Maybe (a -> a) -> a -> a
+(.?) f g x = case (f, g) of
+  (Just f', Just g') ->  f' (g' x)
+  (Just f', Nothing) -> f' x
+  (Nothing, Just g') -> g' x
+  (_, _)             -> x
