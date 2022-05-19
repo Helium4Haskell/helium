@@ -32,6 +32,8 @@ import Data.Bifunctor (bimap)
 import Rhodium.TypeGraphs.GraphReset (removeEdge)
 import Helium.StaticAnalysis.HeuristicsOU.RepairHeuristics (removeEdgeAndTsModifier)
 
+type Hint = ConstraintInfo -> ConstraintInfo
+
 typeErrorThroughReduction :: (Fresh m, HasTypeGraph m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo Diagnostic)
                           => Path m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo -> VotingHeuristic m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo Diagnostic
 typeErrorThroughReduction path = SingleVoting "Type error through type family reduction" f
@@ -61,9 +63,11 @@ typeErrorThroughReduction path = SingleVoting "Type error through type family re
               
               mf1Hints <- buildNestedApartnessHint mf1
               mf2Hints <- buildNestedApartnessHint mf2
-              let hints  = case catMaybes (mf1Hints ++ mf2Hints) of
-                            [] -> id
-                            causes -> addHint ("probable cause" ++ if length causes > 1 then "s" else "") (intercalate "\n" causes)
+              let hints  = case (mf1Hints, mf2Hints) of
+                    (Just h1, Just h2) -> h1 . h2
+                    (Nothing, Just h2) -> h2
+                    (Just h1, _)       -> h1
+                    (_, _)             -> id
               let lastMf1 = getLastTypeInTrace mf1Trace
                   lastMf2 = getLastTypeInTrace mf2Trace
 
@@ -81,17 +85,7 @@ typeErrorThroughReduction path = SingleVoting "Type error through type family re
               -- Builds hint in nested sense, when type family contains other families that were not reducable (or wronly reduced, perhaps)
               mTheHint <- buildNestedHints cedge mf t
               -- Unpack hint
-              let theHint = case mTheHint of
-                    Nothing -> id
-                    Just ([],[]) -> id
-                    Just (causes, fixes) -> let
-                      causeHint = if null causes
-                        then id
-                        else addHint ("probable cause" ++ if length causes > 1 then "s" else "") (intercalate "\n" causes)
-                      fixHint = if null fixes
-                        then id
-                        else addHint ("possible fix" ++ if length fixes > 1 then "es" else "") (intercalate "\n" fixes)
-                      in causeHint . fixHint
+              let theHint = fromMaybe id mTheHint
               case theTrace of
                 -- No trace but still reduction error
                 [] -> if typeIsInType mf' pmt
@@ -121,7 +115,7 @@ typeErrorThroughReduction path = SingleVoting "Type error through type family re
               -- Building the hints for permutation when a last type is present
               mhint1 <- maybe (return Nothing) (`buildPermutationHint` t2) lastType1
               mhint2 <- maybe (return Nothing) (`buildPermutationHint` t1) lastType2
-              let hint = maybe id (addHint "possible fix") mhint1 . maybe id (addHint "possible fix") mhint2
+              let hint = fromMaybe id mhint1 . fromMaybe id mhint2
               -- If type is part of the type signature...
               if maybe False (`typeIsInType` pmt) lastType1 || maybe False (`typeIsInType` pmt) lastType2
                 then return $ Just (4, "Type family reduction type error", constr , eid, addProperties [TypeFamilyReduction lastType1 t1 lastType2 t2 True] $ t1RedHint $ t2RedHint $ hint ci, replaceTypeFamModifiers [(lastType1, t1), (lastType2, t2)] constr)
@@ -131,7 +125,7 @@ typeErrorThroughReduction path = SingleVoting "Type error through type family re
         where
           -- Builds permutation hint.
           buildPermutationHint :: (Fresh m, HasTypeGraph m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo Diagnostic, CompareTypes m (RType ConstraintInfo)) 
-                                => MonoType -> MonoType -> m (Maybe String)
+                                => MonoType -> MonoType -> m (Maybe Hint)
           buildPermutationHint ogmf@(MonoType_Fam fn mts _) infMt = do
             -- Build permutations of the arguments of the type family.
             let permsMt = filter (mts /=) $ permutations mts
@@ -153,7 +147,7 @@ typeErrorThroughReduction path = SingleVoting "Type error through type family re
                   Nothing -> loopPerms perms
                   -- There is a substitution and thus we may provide a possible fix.
                   Just _ -> do
-                    let hint = Just ("Changing " 
+                    let hint = Just $ addHint "possible fix" ("Changing " 
                                   ++ (show . show) ogmf ++ " to " ++ (show . show) nft ++ " helps to remove this type error")
                     return hint 
               loopPerms [] = return Nothing
@@ -161,7 +155,7 @@ typeErrorThroughReduction path = SingleVoting "Type error through type family re
 
           -- Builds a hint that shows when a type was not apart during closed type family matching.
           buildApartnessHint :: (Fresh m, HasTypeGraph m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo Diagnostic, CompareTypes m (RType ConstraintInfo)) 
-                             => MonoType -> m (Maybe String)
+                             => MonoType -> m (Maybe Hint)
           buildApartnessHint mt@(MonoType_Fam fn _ _) = do
             axs <- getAxioms
             
@@ -178,25 +172,25 @@ typeErrorThroughReduction path = SingleVoting "Type error through type family re
             case mApartErr of
               Just (amt, r) -> do
                 let hint = "type " ++ (show . show) mt' ++ " is not apart from instance " ++ (show . show) amt ++ " at " ++ show r
-                return $ Just hint
-              Nothing -> return $ Just $ (show . show) mt' ++ " is not reducable. No matching instance was found"
+                return $ Just $ addHint "probable cause" hint
+              Nothing -> return Nothing
           buildApartnessHint _ = return Nothing
 
           buildNestedApartnessHint :: (Fresh m, HasTypeGraph m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo Diagnostic, CompareTypes m (RType ConstraintInfo))
-                                   => MonoType -> m [Maybe String]
+                                   => MonoType -> m (Maybe Hint)
           buildNestedApartnessHint mt@(MonoType_Fam _ mts _) = do
             nestedHints <- mapM buildNestedApartnessHint mts
             
             curHint <- buildApartnessHint mt
             
-            case catMaybes (concat nestedHints) of
-              [] -> return [curHint]
-              xs -> return $ map Just xs
-          buildNestedApartnessHint _ = return [Nothing]
+            case catMaybes nestedHints of
+              [] -> return curHint
+              xs -> return $ Just $ foldl1 (.) xs
+          buildNestedApartnessHint _ = return Nothing
 
           -- Builds hints in a nested way, considers arguments of the non-reducable type family too.
           buildNestedHints :: (Fresh m, HasTypeGraph m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo Diagnostic, CompareTypes m (RType ConstraintInfo)) 
-                           => TGEdge (Constraint ConstraintInfo) ->  MonoType -> MonoType -> m (Maybe ([String], [String]))
+                           => TGEdge (Constraint ConstraintInfo) ->  MonoType -> MonoType -> m (Maybe Hint)
           buildNestedHints cedge mf@(MonoType_Fam fn _ _) t = do
             axs <- getAxioms
             -- We need to know what arguments are expected to be (based on inferred body type "t")
@@ -204,33 +198,38 @@ typeErrorThroughReduction path = SingleVoting "Type error through type family re
             -- Substitute the family to get complete type.
             mf'@(MonoType_Fam _ mts' _) <- substIfBeta (getGroupFromEdge cedge) mf
             case wantedArgs of
-              -- Nothing is returned when no wanted args could be obtained (injective problems, multiple possibilities...)
+              -- We can't go deeper with permutations if we can't obtain wanted args (injective problems, multiple possibilities...)
               Nothing -> do
                 apartRes <- buildNestedApartnessHint mf'                
                 permRes <- buildPermutationHint mf' t
-                return $ Just $ foldl (\(xs, e) x -> (x:xs, e)) ([],[fromJust permRes | isJust permRes]) $ catMaybes apartRes                
+                return $ case (apartRes, permRes) of
+                  (Just ar, Just pr) -> Just $ ar . pr
+                  (Nothing, Just pr) -> Just pr
+                  (Just ar, _)       -> Just ar  
+                  (_, _)             -> Nothing         
               -- Else, we nest again and build hints for this level.
               Just args -> do
                 -- Considerables are the family arguments and the wanted family arguments zipped.
                 let considerables = zip mts' args
                 -- Recurse
-                nestedRes <- foldl (\(pcs,pfs) (pcs', pfs') -> (pcs++pcs', pfs++pfs')) ([],[]) . catMaybes <$> mapM (uncurry (buildNestedHints cedge)) considerables
+                nestedHints <- catMaybes <$> mapM (uncurry (buildNestedHints cedge)) considerables
+                let nestedRes = case nestedHints of
+                      [] -> Nothing
+                      xs -> Just $ foldl1 (.) xs
                 
                 -- Build hints for this level.
                 apartHint <- buildApartnessHint mf'
                 permHint <- buildPermutationHint mf' t
-
-                let basicHints = foldl (\c m -> if isFam m then ((show . show) m ++ " is not reducable. No matching instance was found") : c else c) [] mts' 
+                let basicHint = addHint "probable cause" ((show . show) mf' ++ " is not reducable. No matching instance was found")
+                --let basicHints = foldl (\c m -> if isFam m then addHint "probable cause" ((show . show) m ++ " is not reducable. No matching instance was found") : c else c) [] mts' 
                 -- If deeper levels have hints, we return those, else we use this level's hints.
                 -- Not the prettiest of pattern matches
                 return (case (nestedRes, apartHint, permHint) of
-                  (r@(_:_, _:_), _, _) -> Just r
-                  (r@(_:_, []), _, _) -> Just r
-                  (r@([], _:_), _, _) -> Just r
-                  (_, Just a, Just p) -> Just (if null basicHints then [a] else basicHints, [p])
-                  (_, Just a, Nothing) -> Just (if null basicHints then [a] else basicHints, [])
-                  (_, Nothing, Just p) -> Just (basicHints, [p])
-                  (_, _, _) -> Nothing)
+                  (Just r, _, _) -> Just r
+                  (_, Just a, Just p) -> Just $ a . p
+                  (_, Just a, Nothing) -> Just a
+                  (_, Nothing, Just p) -> Just p
+                  (_, _, _) -> Just basicHint)
           -- In case a type with trace is found, we check if we can build a hint with the last type in it.         
           buildNestedHints cedge mt t = do
             theTrace <- buildReductionTrace cedge mt
@@ -239,9 +238,7 @@ typeErrorThroughReduction path = SingleVoting "Type error through type family re
               xs -> do
                 let Just lastType = getLastTypeInTrace xs
                 permHint <- buildPermutationHint lastType t
-                return $ case permHint of
-                  Just p -> Just ([],[p])
-                  Nothing -> Nothing
+                return $ Just =<< permHint
 
           getMaybeClosedAxs :: [Axiom ConstraintInfo] -> String -> Maybe [Axiom ConstraintInfo]
           getMaybeClosedAxs (Axiom_ClosedGroup fn1 cgaxs: _) fn2

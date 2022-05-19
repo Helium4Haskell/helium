@@ -415,7 +415,7 @@ makeTFReductionTypeError mustShowTrace edge constraint info =
                         MType m -> MessageMonoType m
                         PType p -> MessagePolyType p                    
                 ]
-        hints      = [ hint | WithHint hint <- properties info ]
+        hints      = groupHints [ hint | WithHint hint <- properties info ]
                   ++ [ buildFullTraceHint trc | mustShowTrace, WithReduction trc <- properties info]               
     return $ TypeError [range] [oneliner] table hints
 
@@ -459,3 +459,14 @@ makeInjectUntouchableError mustShowTrace edge constraint info =
         hints      = [ hint | WithHint hint <- properties info, (fst hint == "full reduction" && mustShowTrace) || fst hint /= "full reduction" ]
                   ++ [ buildFullTraceHint trc | mustShowTrace, WithReduction trc <- properties info]           
     return $ TypeError [range] [oneliner] table hints
+
+groupHints :: [(String, MessageBlock)] -> [(String, MessageBlock)]
+groupHints hints = let
+    groups = groupBy (\(t,_) (t',_) -> t == t') hints
+    unzipped = map unzip groups
+    newTitles = map (\(xs, _) -> if length xs > 1 then multiple $ head xs else head xs) unzipped
+    newBlocks = map (\(_, bls) -> MessageCompose $ intersperse (MessageString "\n") bls) unzipped
+    in zip newTitles newBlocks
+    where
+        multiple "probable cause" = "probable causes"
+        multiple "possible fix" = "possible fixes"
