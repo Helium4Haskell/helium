@@ -51,20 +51,19 @@ listOfTypeHeuristics sibblings path = [
         avoidForbiddenConstraints,
         highParticipation 0.95 path,
         phaseFilter,
-        Voting [
-           
+        Voting [           
             siblingsHeuristic sibblings path,
             siblingLiterals path, 
             applicationHeuristic path,
             variableFunction path,
             tupleHeuristic path,
-            fbHasTooManyArguments path,
+            --fbHasTooManyArguments path, --ONE CULPRIT FOR LOOPING SUBSTITUTION ALGORITHM
             constraintFromUser path,
             unreachablePatternHeuristic path,
             shouldBeInjectiveHeuristic path,
             injectUntouchableHeuristic path,
             typeErrorThroughReduction path,
-            typeSignatureTooGeneral path,
+            typeSignatureTooGeneral path, --SECOND CULPRIT FOR LOOPING SUBSTITUTION ALGORITHM
             missingPredicate path,
             missingGADTSignature path,
             escapingGADTVariableHeuristic path

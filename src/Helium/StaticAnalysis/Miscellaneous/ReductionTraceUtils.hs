@@ -17,6 +17,7 @@ import Data.Maybe (fromMaybe)
 import Helium.StaticAnalysis.HeuristicsOU.HeuristicsInfo (WithHints(addReduction))
 import Rhodium.Blamer.Path (Path, edgeIdFromPath)
 import Helium.StaticAnalysis.Miscellaneous.Diagnostics (Diagnostic)
+import Data.Bifunctor (second)
 
 
 buildReductionTrace :: (CompareTypes m (RType ConstraintInfo), Fresh m, HasTypeGraph m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo Diagnostic)
@@ -29,52 +30,56 @@ buildReductionTrace e mt = case getMaybeReductionStep mt of
       -- else, we build substituted step components from the step we obtain.
       Just (Step after before mconstr rt) -> do
           (MType after') <- if not (isArgInjection rt) then getSubstTypeFull (getGroupFromEdge e) (MType after) else return (MType after)
-          (MType before') <- if not (isArgInjection rt) then  getSubstTypeFull (getGroupFromEdge e) (MType before) else return (MType before)     
+          (MType before') <- if not (isArgInjection rt) then  getSubstTypeFull (getGroupFromEdge e) (MType before) else return (MType before)
           ih <- buildReductionTrace e before'
           return $ (Step after' before' mconstr rt, 1) : ih
 
 buildNestedSteps :: (CompareTypes m (RType ConstraintInfo), Fresh m, HasTypeGraph m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo Diagnostic)
                    => TGEdge (Constraint ConstraintInfo) -> MonoType -> m ReductionTrace
-buildNestedSteps = buildNestedSteps' []
+buildNestedSteps e mt  = snd <$> buildNestedSteps' 0 [] e mt
     where
-        buildNestedSteps' seen e' mt' =
+        buildNestedSteps' :: (CompareTypes m (RType ConstraintInfo), Fresh m, HasTypeGraph m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo Diagnostic)
+                          => Int -> [MonoType] -> TGEdge (Constraint ConstraintInfo) -> MonoType -> m (Int, ReductionTrace)
+        buildNestedSteps' i seen e' mt'
+          | i > 50 = return (i, [])
+          | otherwise =
             case mt' of
                 mf@(MonoType_Fam f (m:mts) _) -> do
                   step <- getOneStep e' m
                   case step of
                     Nothing -> do
                         -- diveDeeper dives into the type itself (and recurses)
-                        diveDeeper <- buildNestedSteps e' m
+                        (i', diveDeeper) <- buildNestedSteps' (i+1) [] e' m
                         let resArg = fromMaybe m (getLastTypeInTrace diveDeeper)
                         -- next obtains the next argument of the original type family
-                        next <- buildNestedSteps' (resArg:seen) e' (MonoType_Fam f mts Nothing)
+                        (i'', next) <- buildNestedSteps' (i'+1) (resArg:seen) e' (MonoType_Fam f mts Nothing)
                         -- setInsideFam takes the recurses in diveDeeper and deposits them back in the original type family.
-                        return $ setInsideFam seen mf diveDeeper ++ next
+                        returnLoopSafe i'' $ setInsideFam seen mf diveDeeper ++ next
                     Just (Step after before mconstr rt)
                       | not (isCanonReduction rt) -> do
-                          ih <- buildNestedSteps' seen e' (MonoType_Fam f (before:mts) Nothing)
-                          return ((Step (MonoType_Fam f (seen++(after:mts)) Nothing) (MonoType_Fam f (seen++(before:mts)) Nothing) mconstr rt, 1) : ih)
-                      | otherwise -> buildNestedSteps' (m:seen) e' (MonoType_Fam f mts Nothing)
+                          (i', ih) <- buildNestedSteps' (i+1) seen e' (MonoType_Fam f (before:mts) Nothing)
+                          returnLoopSafe i' ((Step (MonoType_Fam f (seen++(after:mts)) Nothing) (MonoType_Fam f (seen++(before:mts)) Nothing) mconstr rt, 1) : ih)
+                      | otherwise -> buildNestedSteps' (i+1) (m:seen) e' (MonoType_Fam f mts Nothing)
                 -- Case for application type
                 ma@(MonoType_App mt1 mt2 _) -> do
                   step <- getOneStep e' ma
                   case step of
                     -- No step of its own means we dive into the arguments
-                    Nothing -> setInsideApp ma <$> buildNestedSteps' [] e' mt1 <*> buildNestedSteps' [] e' mt2
+                    Nothing -> (\(i', r1) (i'', r2) -> (max i' i'', setInsideApp ma r1 r2)) <$> buildNestedSteps' (i+1) [] e' mt1 <*> buildNestedSteps' (i+1) [] e' mt2
                     -- With a step we continue toplevel
                     Just st@(Step _ before _ rt)
-                      | not (isCanonReduction rt) -> ((st, 1) :) <$> buildNestedSteps' [] e' before
-                      | otherwise -> setInsideApp ma <$> buildNestedSteps' [] e' mt1 <*> buildNestedSteps' [] e' mt2
+                      | not (isCanonReduction rt) -> second ((st, 1) : ) <$> buildNestedSteps' (i+1) [] e' before
+                      | otherwise -> (\(i', r1) (i'', r2) -> (max i' i'', setInsideApp ma r1 r2)) <$> buildNestedSteps' (i+1) [] e' mt1 <*> buildNestedSteps' (i+1) [] e' mt2
                 -- Case for constant types
                 mc@(MonoType_Con _ _) -> do
                   step <- getOneStep e' mc
                   case step of
                     -- No step means we are done (no recursion options)
-                    Nothing -> return []
+                    Nothing -> returnLoopSafe i []
                     -- Otherwise we continue top level
-                    Just st@(Step _ before _ rt) 
-                      | not (isCanonReduction rt) -> ((st, 1) :) <$> buildNestedSteps' [] e' before
-                      | otherwise -> return []
+                    Just st@(Step _ before _ rt)
+                      | not (isCanonReduction rt) -> second ((st, 1) : ) <$> buildNestedSteps' (i+1) [] e' before
+                      | otherwise -> returnLoopSafe i []
                 mv@MonoType_Var{} -> do
                   step <- getOneStep e' mv
                   case step of
@@ -82,13 +87,13 @@ buildNestedSteps = buildNestedSteps' []
                       (MType mv') <- getSubstTypeFull (getGroupFromEdge e') (MType mv)
                       -- If there is no step and we dive deeper, we only do so if the substitution results in a new type.
                       if mv' == mv
-                        then return []
-                        else buildNestedSteps' [] e' mv'
+                        then returnLoopSafe i []
+                        else buildNestedSteps' (i + 1) [] e' mv'
                     -- Otherwise, we continue toplevel
-                    Just st@(Step _ before _ rt) 
-                      | not (isCanonReduction rt) -> ((st, 1) :) <$> buildNestedSteps' [] e' before
-                      | otherwise -> return []
-                _ -> return []
+                    Just st@(Step _ before _ rt)
+                      | not (isCanonReduction rt) -> second ((st, 1) : ) <$> buildNestedSteps' (i+1) [] e' before
+                      | otherwise -> returnLoopSafe i []
+                _ -> returnLoopSafe i []
 
         -- Sets an obtained trace of a type fam argument back in the original type fam trace
         setInsideFam :: [MonoType] -> MonoType -> ReductionTrace -> ReductionTrace
@@ -112,7 +117,14 @@ buildNestedSteps = buildNestedSteps' []
           appStep = Step afterApp beforeApp constr rt
           in (appStep, 1) : setInsideApp beforeApp [] ss1
         setInsideApp _ [] [] = []
-        
+
+        returnLoopSafe :: (Fresh m, CompareTypes m (RType ConstraintInfo)) => Int -> ReductionTrace ->  m (Int, ReductionTrace)
+        returnLoopSafe i rt = if i > 50
+          then return (i, [])
+          else return (i, rt)
+
+
+
 isCanonReduction :: ReductionType -> Bool
 isCanonReduction (CanonReduction _) = True
 isCanonReduction _                  = False
@@ -129,15 +141,15 @@ getOneStep _ mt = case getMaybeReductionStep mt of
     Just (Step after before mconstr rt) -> return $ Just $ Step after before mconstr rt
 
 -- Squashes the trace when similar reduction steps are found.
-squashTrace :: ReductionTrace -> ReductionTrace 
+squashTrace :: ReductionTrace -> ReductionTrace
 squashTrace rts = let
-    
+
     groupedRts = groupBy (\(Step _ _ _ rt1, _) (Step _ _ _ rt2, _) -> rt1 == rt2) rts
     in map buildNewStep groupedRts
     where
-        buildNewStep [s] = s 
+        buildNewStep [s] = s
         buildNewStep (s@(Step after _ c rt, _):groupedRt) = let
-            (Step _ before _ _, _) = last groupedRt 
+            (Step _ before _ _, _) = last groupedRt
             in (Step after before c rt, length (s:groupedRt))
 
 -- Gets last type in the trace
@@ -157,7 +169,7 @@ getMaybeStepFromType (MonoType_App _ _ trc) = trc
 getMaybeStepFromType (MonoType_Fam _ _ trc) = trc
 getMaybeStepFromType (MonoType_Con _ trc) = trc
 
-substTraceInMt :: (TyVar, MonoType) -> Maybe ReductionStep -> Maybe ReductionStep 
+substTraceInMt :: (TyVar, MonoType) -> Maybe ReductionStep -> Maybe ReductionStep
 substTraceInMt (tv, mt) (Just s) = let
   (Step after before c rt) = s
   recStep = getMaybeStepFromType before
@@ -192,7 +204,7 @@ traceToMessageBlock :: ReductionTrace -> MessageBlock
 traceToMessageBlock rts = MessageCompose $ mapToBlock (1 :: Int) rts
     where
         mapToBlock idx ((Step after before _ rt@(LeftToRight (lhs, rhs) tfi), times):rts')
-            = MessageCompose 
+            = MessageCompose
                 [
                   MessageString (show idx ++ ". " ++ "Applied\t: " ++ show lhs ++ " = " ++ show rhs)
                 , MessageString ("\n   From\t: " ++ showMaybeRange tfi)
@@ -203,7 +215,7 @@ traceToMessageBlock rts = MessageCompose $ mapToBlock (1 :: Int) rts
                 ]
                 : mapToBlock (idx + 1) rts'
         mapToBlock idx ((Step after before (Just constr) rt@(CanonReduction (oa, ob)), times):rts')
-            = MessageCompose 
+            = MessageCompose
                 [
                   MessageString (show idx ++ ". " ++ "Old\t: " ++ show constr)
                 , MessageString ("\n   Step 1\t: " ++ show oa ++ " <- " ++ show ob)
@@ -232,7 +244,7 @@ traceToMessageBlock rts = MessageCompose $ mapToBlock (1 :: Int) rts
         showMaybeRange tfi = case tfi of
             Nothing -> "unknown position"
             Just t -> showRange $ tfiRange t
-        
+
         showReason rt = case rt of
             LeftToRight _ _ -> "left to right application"
             CanonReduction _ -> "injectivity"
@@ -243,9 +255,9 @@ getTraceFromTwoTypes :: (CompareTypes m (RType ConstraintInfo), Fresh m, HasType
 getTraceFromTwoTypes cedge m1 m2 = do
   trc1 <- buildReductionTrace cedge m1
   trc2 <- buildReductionTrace cedge m2
-  
+
   case getFullTrace trc1 trc2 of
-    Just (_, trc) -> return $ Just trc 
+    Just (_, trc) -> return $ Just trc
     Nothing -> return Nothing
 
 buildReductionFromPath :: (CompareTypes m (RType ConstraintInfo), Fresh m, HasTypeGraph m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo Diagnostic)
@@ -256,7 +268,7 @@ buildReductionFromPath path = do
   let cedge = getEdgeFromId graph ceid
   --let Constraint_Unify pt1 pt2 _ = getConstraintFromEdge cedge
   case getConstraintFromEdge cedge of
-    Constraint_Unify pt1 pt2 _ -> do
+    c@(Constraint_Unify pt1 pt2 _) -> do
       trc <- getTraceFromTwoTypes cedge pt1 pt2
       return $ addReduction trc
     _ -> return id

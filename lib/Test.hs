@@ -129,8 +129,8 @@ type family J a where
 -- h :: String -> String -> H (J (J Int)) Int
 -- h s1 s2 = s1 ++ s2 ++ "hi"
 
-h3 :: H (H Float Float) (H (J Int) (J Int))
-h3 = 0.5
+-- h3 :: H (H Float Float) (H (J Int) (J Int))
+-- h3 = 0.5
 
 -- h2 :: H Int Int -> H Int Float
 -- h2 x = 3 + x
@@ -200,8 +200,8 @@ type instance Right w z = z
 type family Id d
 type instance Id d = d
 
--- type family IdInt i
--- type instance IdInt Int = Int
+type family IdInt i
+type instance IdInt Int = Int
 
 -- intId :: a -> b -> Right (IdInt a) b
 -- intId x y = x
@@ -209,8 +209,8 @@ type instance Id d = d
 -- -- right :: a -> b -> Right a (Id b)
 -- -- right x y = x
 
--- id2 :: Id a -> b -> Right (Loop [[[a]]])
--- id2 x y = x
+id2 :: IdInt a -> b -> Right (IdInt a) b
+id2 x y = x
 
 -- type family Foo a b c = r | r -> b
 -- type instance Foo Char Char Char = Bool

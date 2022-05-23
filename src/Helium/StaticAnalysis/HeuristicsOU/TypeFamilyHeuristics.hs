@@ -40,8 +40,6 @@ typeErrorThroughReduction path = SingleVoting "Type error through type family re
   where
     f (constr, eid, ci, _) = do
       graph <- getGraph
-      let edge = getEdgeFromId graph eid
-      --     constr' = fromMaybe constr (maybeHasOriginalTypeSignature ci)
       case constr of
         Constraint_Inst _ pt _ -> do
           -- Getting edge of erroneous constraint (pconstraint)
@@ -77,7 +75,10 @@ typeErrorThroughReduction path = SingleVoting "Type error through type family re
               let [MType freshOg] = freshenRepresentation . (:[]) $ (MType mf' :: RType ConstraintInfo)
               -- Get potential trace.
               theTrace <- squashTrace <$> buildReductionTrace cedge mf'
+              tTrace <- squashTrace <$> buildReductionTrace cedge t
+              let tLast = getLastTypeInTrace tTrace
               let redHint = addReduction (Just theTrace)
+              let tRedHint = addReduction (Just tTrace)
               -- Builds hint in nested sense, when type family contains other families that were not reducable (or wronly reduced, perhaps)
               mTheHint <- buildNestedHints cedge mf t
               -- Unpack hint
@@ -85,23 +86,23 @@ typeErrorThroughReduction path = SingleVoting "Type error through type family re
               case theTrace of
                 -- No trace but still reduction error
                 [] -> if typeIsInType mf' pmt
-                        then return $ Just (5, "Type family could not be reduced, no trace", constr, eid, addProperty (TypeFamilyReduction Nothing freshOg Nothing t False) $ redHint $ theHint ci, removeEdgeAndTsModifier{-replaceTypeFamModifiers [(Just mf', t)] constr-})
+                        then return $ Just (5, "Type family could not be reduced, no trace", constr, eid, addProperty (TypeFamilyReduction Nothing freshOg tLast t False) $ tRedHint $ redHint $ theHint ci, removeEdgeAndTsModifier{-replaceTypeFamModifiers [(Just mf', t)] constr-})
                         else return Nothing
                 -- Now with trace, checking if the trace belongs to the type signature
                 trc -> do
                   let Just lastType = getLastTypeInTrace trc
                   let Just firstType = getFirstTypeInTrace trc
                   if typeIsInType lastType pmt
-                    then return $ Just (5, "Type family could not be reduced further, trace", constr, eid, addProperty (TypeFamilyReduction (Just lastType) firstType Nothing t False) $ redHint $ theHint ci, removeEdgeAndTsModifier{-replaceTypeFamModifiers [(Just lastType, t)] constr-})
+                    then return $ Just (5, "Type family could not be reduced further, trace", constr, eid, addProperty (TypeFamilyReduction (Just lastType) firstType tLast t False) $ tRedHint $ redHint $ theHint ci, removeEdgeAndTsModifier{-replaceTypeFamModifiers [(Just lastType, t)] constr-})
                     else return Nothing
             -- Reduced to simple type but resulted in type error
             (Constraint_Unify t1 t2 _, _) -> do
               -- Substitute both types
-              (MType t1') <- getSubstTypeFull (getGroupFromEdge edge) (MType t1)
-              (MType t2') <- getSubstTypeFull (getGroupFromEdge edge) (MType t2)
+              (MType t1') <- getSubstTypeFull (getGroupFromEdge cedge) (MType t1)
+              (MType t2') <- getSubstTypeFull (getGroupFromEdge cedge) (MType t2)
               -- Generate traces
-              t1Trace <- squashTrace <$> buildReductionTrace edge t1'
-              t2Trace <- squashTrace <$> buildReductionTrace edge t2'
+              t1Trace <- squashTrace <$> buildReductionTrace cedge t1'
+              t2Trace <- squashTrace <$> buildReductionTrace cedge t2'
               -- build reduction hints
               let t1RedHint = addReduction (Just t1Trace)
               let t2RedHint = addReduction (Just t2Trace)
@@ -114,7 +115,7 @@ typeErrorThroughReduction path = SingleVoting "Type error through type family re
               let hint = fromMaybe id mhint1 . fromMaybe id mhint2
               -- If type is part of the type signature...
               if maybe False (`typeIsInType` pmt) lastType1 || maybe False (`typeIsInType` pmt) lastType2
-                then return $ Just (4, "Type family reduction type error", constr , eid, addProperties [TypeFamilyReduction lastType1 t1 lastType2 t2 True] $ t1RedHint $ t2RedHint $ hint ci, replaceTypeFamModifiers [(lastType1, t1), (lastType2, t2)] constr)
+                then return $ Just (4, "Type family reduction type error", constr , eid, addProperties [TypeFamilyReduction lastType1 t1 lastType2 t2 True] $ t1RedHint $ t2RedHint $ hint ci, removeEdgeAndTsModifier{-replaceTypeFamModifiers [(lastType1, t1), (lastType2, t2)] constr-})
                 else return Nothing
             _ -> return Nothing
         _ -> return Nothing

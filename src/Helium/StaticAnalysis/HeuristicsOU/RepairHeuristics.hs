@@ -55,6 +55,7 @@ import Rhodium.TypeGraphs.TGState
 import Control.Monad.IO.Class (MonadIO )
 import Helium.StaticAnalysis.Miscellaneous.ReductionTraceUtils (buildReductionFromPath)
 import Helium.StaticAnalysis.Miscellaneous.Diagnostics (Diagnostic)
+import Debug.Trace (trace)
 -----------------------------------------------------------------------------
 
 fixHint, becauseHint, possibleHint :: WithHints a => String -> a -> a
