@@ -209,7 +209,7 @@ type instance IdInt Int = Int
 -- -- right :: a -> b -> Right a (Id b)
 -- -- right x y = x
 
-id2 :: IdInt a -> b -> Right (IdInt a) b
+id2 :: a -> b -> Right a b
 id2 x y = x
 
 -- type family Foo a b c = r | r -> b

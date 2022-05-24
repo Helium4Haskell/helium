@@ -19,24 +19,27 @@ import Rhodium.Blamer.Path (Path, edgeIdFromPath)
 import Helium.StaticAnalysis.Miscellaneous.Diagnostics (Diagnostic)
 import Data.Bifunctor (second)
 
-
 buildReductionTrace :: (CompareTypes m (RType ConstraintInfo), Fresh m, HasTypeGraph m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo Diagnostic)
                     => TGEdge (Constraint ConstraintInfo) -> MonoType -> m ReductionTrace
-buildReductionTrace e mt = case getMaybeReductionStep mt of
+buildReductionTrace e mt = snd <$> buildReductionTrace' 0 e mt
+
+buildReductionTrace' :: (CompareTypes m (RType ConstraintInfo), Fresh m, HasTypeGraph m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo Diagnostic)
+                    => Int -> TGEdge (Constraint ConstraintInfo) -> MonoType -> m (Int, ReductionTrace)
+buildReductionTrace' i e mt = case getMaybeReductionStep mt of
       -- If no own reductions, check args of type family for reductions
       Nothing -> case mt of
-          MonoType_Fam{} -> buildNestedSteps e mt
-          _                    -> return []
+          MonoType_Fam{} -> buildNestedSteps (i + 1) e mt
+          _              -> returnLoopSafe i []
       -- else, we build substituted step components from the step we obtain.
       Just (Step after before mconstr rt) -> do
           (MType after') <- if not (isArgInjection rt) then getSubstTypeFull (getGroupFromEdge e) (MType after) else return (MType after)
           (MType before') <- if not (isArgInjection rt) then  getSubstTypeFull (getGroupFromEdge e) (MType before) else return (MType before)
-          ih <- buildReductionTrace e before'
-          return $ (Step after' before' mconstr rt, 1) : ih
+          (i', ih) <- buildReductionTrace' (i+1) e before'
+          returnLoopSafe i' $ (Step after' before' mconstr rt, 1) : ih
 
 buildNestedSteps :: (CompareTypes m (RType ConstraintInfo), Fresh m, HasTypeGraph m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo Diagnostic)
-                   => TGEdge (Constraint ConstraintInfo) -> MonoType -> m ReductionTrace
-buildNestedSteps e mt  = snd <$> buildNestedSteps' 0 [] e mt
+                   => Int -> TGEdge (Constraint ConstraintInfo) -> MonoType -> m (Int, ReductionTrace)
+buildNestedSteps i = buildNestedSteps' i []
     where
         buildNestedSteps' :: (CompareTypes m (RType ConstraintInfo), Fresh m, HasTypeGraph m (Axiom ConstraintInfo) TyVar (RType ConstraintInfo) (Constraint ConstraintInfo) ConstraintInfo Diagnostic)
                           => Int -> [MonoType] -> TGEdge (Constraint ConstraintInfo) -> MonoType -> m (Int, ReductionTrace)
@@ -118,12 +121,10 @@ buildNestedSteps e mt  = snd <$> buildNestedSteps' 0 [] e mt
           in (appStep, 1) : setInsideApp beforeApp [] ss1
         setInsideApp _ [] [] = []
 
-        returnLoopSafe :: (Fresh m, CompareTypes m (RType ConstraintInfo)) => Int -> ReductionTrace ->  m (Int, ReductionTrace)
-        returnLoopSafe i rt = if i > 50
-          then return (i, [])
-          else return (i, rt)
-
-
+returnLoopSafe :: (Fresh m, CompareTypes m (RType ConstraintInfo)) => Int -> ReductionTrace ->  m (Int, ReductionTrace)
+returnLoopSafe i rt = if i > 50
+  then return (i, [])
+  else return (i, rt)
 
 isCanonReduction :: ReductionType -> Bool
 isCanonReduction (CanonReduction _) = True
