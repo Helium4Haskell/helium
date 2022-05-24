@@ -85,14 +85,14 @@ typeErrorThroughReduction path = SingleVoting "Type error through type family re
               let theHint = fromMaybe id mTheHint
               case theTrace of
                 -- No trace but still reduction error
-                [] -> if typeIsInType mf' pmt
+                [] -> if typeIsInType mf' pmt || maybe False (`typeIsInType` pmt) tLast
                         then return $ Just (5, "Type family could not be reduced, no trace", constr, eid, addProperty (TypeFamilyReduction Nothing freshOg tLast t False) $ tRedHint $ redHint $ theHint ci, removeEdgeAndTsModifier{-replaceTypeFamModifiers [(Just mf', t)] constr-})
                         else return Nothing
                 -- Now with trace, checking if the trace belongs to the type signature
                 trc -> do
                   let Just lastType = getLastTypeInTrace trc
                   let Just firstType = getFirstTypeInTrace trc
-                  if typeIsInType lastType pmt
+                  if typeIsInType lastType pmt || maybe False (`typeIsInType` pmt) tLast
                     then return $ Just (5, "Type family could not be reduced further, trace", constr, eid, addProperty (TypeFamilyReduction (Just lastType) firstType tLast t False) $ tRedHint $ redHint $ theHint ci, removeEdgeAndTsModifier{-replaceTypeFamModifiers [(Just lastType, t)] constr-})
                     else return Nothing
             -- Reduced to simple type but resulted in type error
@@ -112,7 +112,7 @@ typeErrorThroughReduction path = SingleVoting "Type error through type family re
               -- Building the hints for permutation when a last type is present
               mhint1 <- maybe (return Nothing) (`buildPermutationHint` t2) lastType1
               mhint2 <- maybe (return Nothing) (`buildPermutationHint` t1) lastType2
-              let hint = fromMaybe id mhint1 . fromMaybe id mhint2
+              let hint = mhint1 .? mhint2
               -- If type is part of the type signature...
               if maybe False (`typeIsInType` pmt) lastType1 || maybe False (`typeIsInType` pmt) lastType2
                 then return $ Just (4, "Type family reduction type error", constr , eid, addProperties [TypeFamilyReduction lastType1 t1 lastType2 t2 True] $ t1RedHint $ t2RedHint $ hint ci, removeEdgeAndTsModifier{-replaceTypeFamModifiers [(lastType1, t1), (lastType2, t2)] constr-})
