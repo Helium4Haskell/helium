@@ -29,6 +29,7 @@ buildReductionTrace' i e mt = case getMaybeReductionStep mt of
       -- If no own reductions, check args of type family for reductions
       Nothing -> case mt of
           MonoType_Fam{} -> buildNestedSteps (i + 1) e mt
+          MonoType_App{} -> buildNestedSteps (i + 1) e mt
           _              -> returnLoopSafe i []
       -- else, we build substituted step components from the step we obtain.
       Just (Step after before mconstr rt) -> do

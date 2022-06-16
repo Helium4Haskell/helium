@@ -31,6 +31,7 @@ import Data.Either (isLeft, fromLeft, fromRight)
 import Data.Bifunctor (bimap)
 import Rhodium.TypeGraphs.GraphReset (removeEdge)
 import Helium.StaticAnalysis.HeuristicsOU.RepairHeuristics (removeEdgeAndTsModifier)
+import Debug.Trace (trace)
 
 type Hint = ConstraintInfo -> ConstraintInfo
 
@@ -401,12 +402,12 @@ shouldBeInjectiveHeuristic path = SingleVoting "Not injective enough" f
                   case splittedRes of
                     (xs, []) -> let
                       -- Check what indices are the culprit (the ones present in all) 
-                      wrongIndices = filter (\et -> all (et `elem`) xs) errTchs
+                      wrongIndices = filter (\et -> all (et `elem`) (filter (not . null) xs)) errTchs
                       -- build string of errTchs
                       nonInjString = buildNonInjString errTchs vNM
                       -- build string of wrongIndices
                       wrongInjString = buildNonInjString wrongIndices vNM
-                      in return $ Just $ addHint "probable cause" ("usage of type family " ++ show fn ++ " requires argument " ++ if length nonInjString > 1 then "s" else "" ++ "\"" ++ nonInjString
+                      in return $ Just $ addHint "probable cause" ("usage of type family " ++ show fn ++ " requires argument" ++ (if length nonInjString > 1 then "s " else " ") ++ "\"" ++ nonInjString
                                                                   ++ "\" to be injective, but \"" ++ wrongInjString ++ "\" currently can't be")
                     -- We have some possible annotations, we provide them as hint. 
                     (_, ys) -> return $ Just $ addHint "possible fix" ((if null injLocs 
@@ -434,8 +435,8 @@ shouldBeInjectiveHeuristic path = SingleVoting "Not injective enough" f
                 tchs <- filterM (fmap isJust . isVertexTouchable) (nub $ fvToList fam ++ fvToList mt :: [TyVar])
                 res <- runTG $ unifyTypes axs' [] [Constraint_Unify fam mt Nothing] tchs
                 case res of
-                  -- if not: we return "Left newTchs" which means these are erroneous
-                  Nothing -> return $ Left newTchs
+                  -- if not: we return "Left empty" which means these are erroneous
+                  Nothing -> return $ Left []
                   -- Else, we return the new complete annotation (in is)
                   Just _ -> return $ Right is
               _  -> return $ Left newTchs

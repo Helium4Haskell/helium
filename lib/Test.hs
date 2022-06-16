@@ -144,13 +144,15 @@ type family J a where
 -- g :: Loop [[[[[[[String]]]]]]]
 -- g = "Hi"
 
-type family Loop a where
-    Loop [a] = Loop a
-    Loop a = a
---     --Loop Int = Bool
+-- type family Loop a where
+--     Loop [a] = Loop a
+--     Loop a = a
 
--- g :: Loop [[[[[[[a]]]]]]]
+-- g :: Loop [c]
 -- g = True
+
+-- g2 :: Loop [Int]
+-- g2 = True
 
 --h = g + g
 -- Int -> Int > h_
@@ -184,9 +186,9 @@ type family Loop a where
 -- g :: [a] -> [a] -> a
 -- g xs ys = sum (xs ++ ys)
 
--- type family B a = r | r -> a
--- type instance B Int = Float
--- type instance B Float = Int
+type family B a = r | r -> a
+type instance B Int = Float
+type instance B Float = Int
 
 -- f :: B a -> Int
 -- f x = x
@@ -203,30 +205,29 @@ type instance Id d = d
 type family IdInt i
 type instance IdInt Int = Int
 
--- intId :: a -> b -> Right (IdInt a) b
+-- intId :: (IdInt a) -> b -> Right (IdInt a) b
 -- intId x y = x
 
 -- -- right :: a -> b -> Right a (Id b)
 -- -- right x y = x
 
-id2 :: a -> b -> Right a b
-id2 x y = x
+-- id2 :: a -> b -> Right a b
+-- id2 x y = x
 
--- type family Foo a b c = r | r -> b
+-- type family Foo a b c = r | r -> c
 -- type instance Foo Char Char Char = Bool
 -- type instance Foo Char Char Char = Bool
 -- type instance Foo Float Bool Int = Int
 
 -- class Bar t where
---   clsF :: Foo t (Loop [v]) t
+--   clsF :: Foo t v t
 -- instance Bar Char where
 --   clsF = True
 
 -- main :: Bool
 -- main = clsF :: Bool
 
--- type family Foo a 
--- type instance Foo Char = Bool
+-- type family Foo a = r | r -> a
 -- type instance Foo Char = Bool
 -- type instance Foo Float = Int
 
@@ -243,13 +244,52 @@ id2 x y = x
 -- type instance Foo Int = Float
 -- type instance Foo Float = Int
 
--- -- clsf :: Foo t
--- -- clsf = True
-
--- main :: Bool
--- main = clsF
+-- inj :: Bool
+-- inj = clsF
 
 -- class Bar t where
 --     clsF :: Foo t
 -- instance Bar Char where
 --     clsF = True
+
+-- type family Swap a b
+-- type instance Swap Int Float = Float
+
+-- f :: Swap Float Int
+-- f = 4
+
+-- type family Perm a b
+-- type instance Perm Float Int = Int
+-- type instance Perm Int Float = Char
+
+-- ex :: Perm Int Float
+-- ex = 6
+
+-- returnN :: Perm (Perm Int Int) (Perm Float Float)
+-- returnN = 'N'
+
+-- type family Foo a
+-- type instance Foo Int = Float
+
+-- wut :: Foo Float
+-- wut = 4
+
+-- type family Loop a where
+--     Loop [a] = Loop a
+--     Loop a = a
+
+-- loop :: Loop [[a]]
+-- loop = 'X'
+
+type family Inj a b
+type instance Inj Int Float = Int
+type instance Inj Float Float = Int
+
+class InjC a where
+    inj :: Inj a b
+
+instance InjC Int where
+    inj = 'I'
+
+x :: Int
+x = inj
