@@ -1,3 +1,4 @@
+cabal-version:          2.0
 name:                   helium
 version:                1.9
 synopsis:               The Helium Compiler.
@@ -59,7 +60,6 @@ extra-source-files:
   src/Helium/Syntax/UHA_Pretty.ag
   src/Helium/Syntax/UHA_Syntax.ag
 build-type:             Simple
-cabal-version:          >= 2
 tested-with:        GHC == 8.2.2, GHC == 8.4.4, GHC == 8.6.5, GHC == 8.8.1
 data-files:
   lib/Char.hs
