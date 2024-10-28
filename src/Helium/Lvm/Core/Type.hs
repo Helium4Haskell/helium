@@ -18,8 +18,8 @@ import Helium.Lvm.Common.Id
 import Text.PrettyPrint.Leijen hiding ((<$>), (<*>))
 
 import Data.Functor.Identity
-import qualified Data.Set as S
-import qualified Data.Map as M
+
+
 
 ----------------------------------------------------------------
 -- Types

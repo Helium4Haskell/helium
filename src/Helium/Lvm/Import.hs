@@ -19,7 +19,7 @@ module Helium.Lvm.Import
   )
 where
 
-import           Control.Monad
+
 import           Data.List
 import           Data.Maybe
 import           Helium.Lvm.Common.Id
@@ -27,11 +27,11 @@ import           Helium.Lvm.Common.IdSet
 import           Helium.Lvm.Common.IdMap
 import           Helium.Lvm.Data
 import           Helium.Lvm.Constants
-import           Helium.Lvm.Core.Module
+
 import           Helium.Lvm.Core.Type
 import           Helium.Lvm.Core.Expr
 
-import           Text.PrettyPrint.Leijen
+
 
 -- | Adds abstract declarations for all exported definitions of the imported
 -- modules

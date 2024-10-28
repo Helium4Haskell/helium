@@ -49,7 +49,7 @@ import           Helium.Lvm.Core.PrettyId
 import           Helium.Lvm.Core.Type
 import           Helium.Lvm.Instr.Data
 import           Data.List               ( intercalate )
-import           Data.Maybe              ( fromMaybe )
+
 import           Text.PrettyPrint.Leijen
 
 {---------------------------------------------------------------

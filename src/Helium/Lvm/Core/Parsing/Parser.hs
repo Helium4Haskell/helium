@@ -17,7 +17,7 @@ import           Data.List
 import           Data.Functor
 import           Helium.Lvm.Common.Byte
 import           Helium.Lvm.Common.Id
-import           Helium.Lvm.Common.IdSet
+
 import           Helium.Lvm.Core.Expr
 import           Helium.Lvm.Core.Parsing.Token         ( Token
                                                 , Lexeme(..)
