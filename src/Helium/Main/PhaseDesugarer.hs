@@ -17,17 +17,17 @@ import Helium.StaticAnalysis.Miscellaneous.ConstraintInfo (ConstraintInfo)
 import Helium.Lvm.Core.Expr(CoreModule, CoreDecl)
 import Helium.CodeGeneration.Core.RemoveDead( coreRemoveDead ) -- remove dead (import) declarations
 import Helium.CodeGeneration.CoreUtils(TypeInferenceOutput(..))
-import Helium.Syntax.UHA_Syntax(Name(..), MaybeName(..))
+--import Helium.Syntax.UHA_Syntax(Name(..), MaybeName(..))
 import Helium.Syntax.UHA_Utils(NameWithRange)
-import Helium.Syntax.UHA_Range(noRange)
-import Helium.Lvm.Core.Module(moduleDecls, declName, shallowKindFromDecl, declCustoms, accessPublic, declAccess, moduleImports, declModule)
+--import Helium.Syntax.UHA_Range(noRange)
+import Helium.Lvm.Core.Module(moduleDecls, declName, shallowKindFromDecl, accessPublic, declAccess, moduleImports, declModule) --declCustoms, 
 import Helium.ModuleSystem.ImportEnvironment()
 import Helium.ModuleSystem.DictionaryEnvironment (DictionaryEnvironment)
 import qualified Helium.CodeGeneration.CodeGeneration as CodeGeneration
-import Data.List(nubBy, sort, nub)
+import Data.List(nubBy, nub) --sort, 
 import Data.Maybe(mapMaybe)
-import Helium.Lvm.Common.Id
-import Helium.Lvm.Common.IdMap
+--import Helium.Lvm.Common.Id
+--import Helium.Lvm.Common.IdMap
 import Helium.Lvm.Import
 
 

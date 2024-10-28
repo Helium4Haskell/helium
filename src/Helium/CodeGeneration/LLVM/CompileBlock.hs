@@ -8,8 +8,8 @@
 
 module Helium.CodeGeneration.LLVM.CompileBlock (compileBlock) where
 
-import Data.String(fromString)
-import Data.Word(Word32)
+--import Data.String(fromString)
+--import Data.Word(Word32)
 import Data.Either
 
 import Helium.CodeGeneration.LLVM.Env
@@ -31,11 +31,11 @@ import qualified Helium.CodeGeneration.Iridium.Data as Iridium
 import qualified Helium.CodeGeneration.Iridium.Type as Iridium
 import qualified Helium.CodeGeneration.Iridium.Primitive as Iridium
 import LLVM.AST as AST
-import LLVM.AST.Visibility
+--import LLVM.AST.Visibility
 import LLVM.AST.CallingConvention
-import LLVM.AST.Linkage
-import LLVM.AST.Constant (Constant(Int, Float, Array, Undef, GlobalReference))
-import qualified LLVM.AST.IntegerPredicate as IntegerPredicate
+--import LLVM.AST.Linkage
+import LLVM.AST.Constant (Constant(Int, Float, Array, Undef)) --, GlobalReference
+--import qualified LLVM.AST.IntegerPredicate as IntegerPredicate
 import qualified LLVM.AST.Float as Float
 
 import Data.List (maximumBy, group, sort, partition)

@@ -23,9 +23,9 @@
 module Helium.CodeGeneration.Core.Normalize (coreNormalize) where
 
 import Helium.Lvm.Common.Id
-import Helium.Lvm.Common.IdSet
+--import Helium.Lvm.Common.IdSet
 import Helium.Lvm.Core.Expr
-import Helium.Lvm.Core.Type
+--import Helium.Lvm.Core.Type
 import Helium.Lvm.Core.Utils
 import Helium.CodeGeneration.Core.TypeEnvironment
 

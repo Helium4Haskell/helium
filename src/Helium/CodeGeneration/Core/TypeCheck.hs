@@ -19,7 +19,7 @@ import Helium.Lvm.Common.Id
 import Helium.Lvm.Common.IdMap
 
 import System.Exit
-import Data.List
+--import Data.List
 import Text.PrettyPrint.Leijen (pretty)
 
 type Location = [String]

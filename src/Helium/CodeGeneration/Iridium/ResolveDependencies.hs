@@ -10,13 +10,13 @@
 
 module Helium.CodeGeneration.Iridium.ResolveDependencies (resolveDependencies, IridiumFile(..)) where
 
-import System.Exit
+--import System.Exit
 import Helium.Lvm.Path
 import Helium.Lvm.Common.Id
 import Helium.Lvm.Common.IdSet
 import Helium.CodeGeneration.Iridium.Data
 import Helium.CodeGeneration.Iridium.FileCache
-import Helium.CodeGeneration.Iridium.Parse.Module(parseModuleIO)
+--import Helium.CodeGeneration.Iridium.Parse.Module(parseModuleIO)
 import System.Directory(doesFileExist, getModificationTime)
 
 data IridiumFile = IridiumFile

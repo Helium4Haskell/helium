@@ -23,7 +23,7 @@ import Helium.Utils.Utils
 import Helium.StaticAnalysis.Miscellaneous.TypeConversion
 import Helium.Parser.ParseLibrary
 import Helium.Parser.Lexer(lexer)
-import Helium.Parser.Parser(type_, contextAndType)
+import Helium.Parser.Parser(type_) --, contextAndType
 import Helium.Parser.OperatorTable
 import Helium.ModuleSystem.ImportEnvironment
 import Helium.Syntax.UHA_Utils
@@ -33,11 +33,11 @@ import Helium.Syntax.UHA_Syntax
 import Helium.Top.Top.Types
 
 import Control.Arrow
-import Control.Applicative
+--import Control.Applicative
 import Data.List
 import Data.Maybe
 import qualified Data.Map as M
-import Text.PrettyPrint.Leijen (pretty)
+--import Text.PrettyPrint.Leijen (pretty)
 
 
 nameFromCustoms :: String -> Id -> String -> [Custom] -> Name

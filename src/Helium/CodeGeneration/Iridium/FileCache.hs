@@ -10,7 +10,7 @@
 
 module Helium.CodeGeneration.Iridium.FileCache(FileCache, newFileCache, readIridium, readIridiumFile, writeIridium, parseIridium) where
 
-import Helium.Lvm.Common.Id (Id, stringFromId)
+import Helium.Lvm.Common.Id (stringFromId) --Id, 
 import Helium.Lvm.Common.IdMap
 import Data.IORef
 import Helium.CodeGeneration.Iridium.Data

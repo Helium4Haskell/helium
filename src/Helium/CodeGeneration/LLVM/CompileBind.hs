@@ -1,13 +1,13 @@
 module Helium.CodeGeneration.LLVM.CompileBind (compileBinds, toStruct) where
 
-import Data.Bits(shiftL, (.|.), (.&.))
-import Data.Word(Word32)
+--import Data.Bits(shiftL, (.|.), (.&.))
+--import Data.Word(Word32)
 import Data.Either
 import qualified Data.Graph as Graph
 
 import Helium.Lvm.Common.Id(idFromString, Id, NameSupply, mapWithSupply, mapWithSupply', splitNameSupply)
 import Helium.Lvm.Common.IdMap(findMap)
-import qualified Helium.Lvm.Core.Type as Core
+--import qualified Helium.Lvm.Core.Type as Core
 import Helium.CodeGeneration.LLVM.Env (Env(..))
 import Helium.CodeGeneration.LLVM.CompileType
 import Helium.CodeGeneration.LLVM.ConstructorLayout
@@ -15,13 +15,13 @@ import Helium.CodeGeneration.LLVM.Struct
 import Helium.CodeGeneration.LLVM.CompileStruct
 import Helium.CodeGeneration.LLVM.Target
 import Helium.CodeGeneration.LLVM.Utils
-import qualified Helium.CodeGeneration.LLVM.Builtins as Builtins
+--import qualified Helium.CodeGeneration.LLVM.Builtins as Builtins
 import qualified Helium.CodeGeneration.Iridium.Data as Iridium
 import qualified Helium.CodeGeneration.Iridium.Type as Iridium
 import LLVM.AST as AST
-import LLVM.AST.CallingConvention
-import LLVM.AST.Type as Type
-import LLVM.AST.AddrSpace
+--import LLVM.AST.CallingConvention
+--import LLVM.AST.Type as Type
+--import LLVM.AST.AddrSpace
 import LLVM.AST.Operand
 import qualified LLVM.AST.Constant as Constant 
 import qualified LLVM.AST.IntegerPredicate as IntegerPredicate

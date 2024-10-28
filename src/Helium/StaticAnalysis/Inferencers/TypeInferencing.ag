@@ -111,8 +111,8 @@ import Helium.Syntax.UHA_Range
 -- other
 
 import Helium.Utils.Utils
-import Helium.CodeGeneration.CoreUtils (getTVar)
-import Helium.Utils.Utils (internalError, hole)
+--import Helium.CodeGeneration.CoreUtils (getTVar)
+--import Helium.Utils.Utils (internalError, hole)
 import Helium.Utils.QualifiedTypes
 import Helium.Utils.QualifiedTypes.Constants
 import Helium.ModuleSystem.ImportEnvironment  hiding (setTypeSynonyms)
@@ -122,7 +122,7 @@ import Helium.Main.Args
 -- standard
 import qualified Data.Map as M
 import Data.Maybe 
-import Control.Monad (when)
+--import Control.Monad (when)
 
 }
 

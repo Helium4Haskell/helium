@@ -18,15 +18,15 @@ import Helium.CodeGeneration.LLVM.Utils
 import Data.String(fromString)
 
 import qualified Helium.CodeGeneration.Iridium.Data as Iridium
-import qualified Helium.CodeGeneration.Iridium.Type as Iridium
+--import qualified Helium.CodeGeneration.Iridium.Type as Iridium
 
-import Helium.Lvm.Common.Id(Id, NameSupply, freshId, splitNameSupply, mapWithSupply, stringFromId)
+import Helium.Lvm.Common.Id(NameSupply, splitNameSupply, mapWithSupply, stringFromId) --Id, freshId, 
 import Helium.Lvm.Common.IdMap
 
 import LLVM.AST
-import LLVM.AST.Visibility
-import LLVM.AST.CallingConvention
-import LLVM.AST.Linkage
+--import LLVM.AST.Visibility
+--import LLVM.AST.CallingConvention
+--import LLVM.AST.Linkage
 
 compileModule :: Env -> NameSupply -> Iridium.Module -> Module
 compileModule env supply iridium@(Iridium.Module name _ _ datas _ abstracts methods) = Module

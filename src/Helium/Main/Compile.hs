@@ -12,11 +12,11 @@ import Helium.Lvm.Core.Expr(CoreModule)
 import qualified Helium.Lvm.Core.Parsing.Parser as Lvm
 import qualified Helium.Lvm.Core.Parsing.Lexer as Lvm
 import qualified Helium.Lvm.Core.Parsing.Layout as Lvm
-import qualified Helium.Lvm.Core.Module as Lvm
+--import qualified Helium.Lvm.Core.Module as Lvm
 import qualified Helium.Lvm.Core.Expr as Lvm
 import qualified Helium.Lvm.Import as Lvm
-import Helium.Lvm.Path (searchPath, searchPathMaybe)
-import Helium.Lvm.Common.Id (Id, stringFromId, newNameSupply, splitNameSupply)
+--import Helium.Lvm.Path (searchPath, searchPathMaybe)
+import Helium.Lvm.Common.Id (Id, newNameSupply, splitNameSupply) --stringFromId, 
 import Helium.Main.PhaseLexer
 import Helium.Main.PhaseParser
 import Helium.Main.PhaseImport
@@ -34,18 +34,18 @@ import qualified Helium.CodeGeneration.Iridium.Parse.Module as Iridium
 import qualified Helium.CodeGeneration.Iridium.ResolveDependencies as Iridium
 import qualified Helium.CodeGeneration.Iridium.FileCache as Iridium
 import Helium.CodeGeneration.Iridium.ImportAbstract (toAbstractModule)
-import Helium.Main.Args (overloadingFromOptions)
+--import Helium.Main.Args (overloadingFromOptions)
 import Helium.Utils.Utils
 import Data.IORef
 import Helium.StaticAnalysis.Messages.StaticErrors(errorsLogCode)
 import System.FilePath(joinPath)
-import System.Exit
+--import System.Exit
 
 -- Temp fix to add types to imported declarations
-import Helium.CodeGeneration.CoreUtils
-import Helium.Syntax.UHA_Utils
-import qualified Data.Map as M
-import Data.Maybe
+--import Helium.CodeGeneration.CoreUtils
+--import Helium.Syntax.UHA_Utils
+--import qualified Data.Map as M
+--import Data.Maybe
 
 import Text.PrettyPrint.Leijen (pretty)
 

@@ -16,8 +16,8 @@ import qualified Helium.Syntax.UHA_Syntax      as UHA
 import           Helium.Syntax.UHA_Utils
 import           Helium.CodeGeneration.CoreUtils
 import           Helium.ModuleSystem.ImportEnvironment
-import           Helium.Utils.Utils
-import           Helium.Utils.QualifiedTypes
+--import           Helium.Utils.Utils
+--import           Helium.Utils.QualifiedTypes
 import           Helium.Lvm.Core.Expr
 import qualified Helium.Lvm.Core.Type                 as Core
 import           Helium.Lvm.Core.Utils

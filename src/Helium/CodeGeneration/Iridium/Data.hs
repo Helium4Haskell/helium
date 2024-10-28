@@ -18,7 +18,7 @@ import Helium.Lvm.Common.Id(Id, stringFromId, idFromString)
 import Helium.Lvm.Common.IdMap(mapFromList, emptyMap)
 import Helium.Lvm.Core.Module(Custom(..), DeclKind, Arity, Field)
 import Helium.Lvm.Core.Type
-import Data.List(intercalate)
+--import Data.List(intercalate)
 import Data.Either (isLeft, isRight)
 
 import Helium.CodeGeneration.Iridium.Type

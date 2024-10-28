@@ -3,13 +3,13 @@ module Helium.CodeGeneration.LLVM.Builtins (builtinDefinitions, eval, alloc, unp
 import Helium.CodeGeneration.Iridium.Data as Iridium
 import Helium.CodeGeneration.LLVM.Utils
 import LLVM.AST
-import LLVM.AST.Type
+--import LLVM.AST.Type
 import LLVM.AST.Constant
 import qualified LLVM.AST.Global as Global
 import LLVM.AST.Visibility
 import LLVM.AST.CallingConvention
 import LLVM.AST.Linkage
-import Helium.Lvm.Common.Id(Id, stringFromId, idFromString)
+import Helium.Lvm.Common.Id(Id, idFromString) --stringFromId, 
 
 data Builtin = Builtin Id [Type] Type
 

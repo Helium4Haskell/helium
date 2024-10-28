@@ -8,7 +8,7 @@ import Data.Either (lefts)
 import Helium.CodeGeneration.Iridium.Data
 import Helium.CodeGeneration.Iridium.Type
 import Helium.CodeGeneration.Iridium.Utils
-import Helium.Lvm.Common.Id (Id, NameSupply, freshId, freshIdFromId, mapWithSupply, splitNameSupply)
+import Helium.Lvm.Common.Id (Id, NameSupply, freshId, freshIdFromId, mapWithSupply) --, splitNameSupply
 import Helium.Lvm.Core.Type
 
 passTailRecursion :: NameSupply -> Module -> Module

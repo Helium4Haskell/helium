@@ -19,7 +19,7 @@ import Helium.Lvm.Core.Type
 import Helium.Lvm.Core.FreeVar
 import Helium.Lvm.Core.Utils
 import Data.Maybe
-import Control.Arrow (second)
+--import Control.Arrow (second)
 
 ----------------------------------------------------------------
 -- coreLetSort

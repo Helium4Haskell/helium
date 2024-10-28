@@ -1,8 +1,8 @@
 module Helium.CodeGeneration.Iridium.TypeEnvironment where
 
-import Helium.Lvm.Common.Id(Id, idFromString)
+--import Helium.Lvm.Common.Id(Id, idFromString)
 import Helium.Lvm.Common.IdMap
-import Helium.Lvm.Common.IdSet
+--import Helium.Lvm.Common.IdSet
 import qualified Helium.Lvm.Core.Expr as Core
 import Helium.Lvm.Core.Type
 import qualified Helium.CodeGeneration.Core.TypeEnvironment as Core
@@ -10,7 +10,7 @@ import Helium.CodeGeneration.Iridium.Data
 import Helium.CodeGeneration.Iridium.Type
 import Helium.CodeGeneration.Iridium.Show
 import Data.Maybe(catMaybes, fromMaybe)
-import Data.Either(isRight)
+--import Data.Either(isRight)
 
 data TypeEnv = TypeEnv
   { teModuleName :: !Id

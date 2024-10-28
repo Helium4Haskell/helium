@@ -11,15 +11,15 @@
 module Helium.CodeGeneration.Core.FunctionType (functionsMap) where
 
 import Data.Maybe (mapMaybe)
-import Helium.Lvm.Common.Id(Id, idFromString)
+import Helium.Lvm.Common.Id(Id) --, idFromString
 import Helium.Lvm.Common.IdMap(IdMap, mapFromList)
-import Helium.Lvm.Common.Byte(stringFromBytes)
+--import Helium.Lvm.Common.Byte(stringFromBytes)
 import Helium.Lvm.Core.Expr
 import Helium.Lvm.Core.Module
 import Helium.Lvm.Core.Type
 
 import Helium.CodeGeneration.Core.TypeEnvironment
-import Helium.CodeGeneration.Iridium.Type
+--import Helium.CodeGeneration.Iridium.Type
 
 functionsList :: TypeEnvironment -> CoreModule -> [(Id, (Type, FunctionType))]
 functionsList env (Module _ _ _ _ decls) = mapMaybe (functionInDecl env) decls

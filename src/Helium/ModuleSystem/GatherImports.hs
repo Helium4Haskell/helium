@@ -17,7 +17,7 @@ import Helium.Syntax.UHA_Syntax
 import Helium.Syntax.UHA_Utils
 import Helium.Syntax.UHA_Range(noRange)
 import Helium.Utils.Utils (internalError)
-import Helium.Lvm.Path(searchPath)
+--import Helium.Lvm.Path(searchPath)
 import Helium.Lvm.Import(lvmImportDecls)
 import qualified Helium.ModuleSystem.ExtractImportDecls as EID
 import Data.List(isPrefixOf, intercalate)

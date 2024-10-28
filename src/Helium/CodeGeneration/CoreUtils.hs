@@ -29,7 +29,7 @@ module Helium.CodeGeneration.CoreUtils
 import Helium.Top.Top.Types as Top
 import Helium.Top.Top.Solver(SolveResult(..))
 import Helium.StaticAnalysis.Miscellaneous.ConstraintInfo(ConstraintInfo)
-import Helium.Top.Top.Types.Substitution(FixpointSubstitution, lookupInt)
+--import Helium.Top.Top.Types.Substitution(FixpointSubstitution, lookupInt)
 import Helium.Lvm.Core.Expr
 import Helium.Lvm.Core.Type as Core
 import Helium.Lvm.Common.Id
@@ -42,13 +42,13 @@ import Helium.Lvm.Common.Byte(bytesFromString)
 import qualified Helium.Lvm.Core.Expr as Core
 import qualified Data.Map as M
 import Helium.Utils.QualifiedTypes (convertClassNameToQualified, convertTpToQualified)
-import Data.List(isPrefixOf)
+--import Data.List(isPrefixOf)
 import Helium.ModuleSystem.ImportEnvironment
 import Helium.Syntax.UHA_Utils
 import Helium.Syntax.UHA_Range
 import Helium.Syntax.UHA_Syntax hiding (Module(..))
 import Helium.Utils.Utils
-import Helium.Syntax.UHA_Syntax ( Name )
+--import Helium.Syntax.UHA_Syntax ( Name )
 
 lookupBeta :: Int -> TypeInferenceOutput -> Top.Tp
 lookupBeta beta typeOutput = lookupInt beta $ substitutionFromResult $ solveResult typeOutput

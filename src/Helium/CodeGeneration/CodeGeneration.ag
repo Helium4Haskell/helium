@@ -50,13 +50,13 @@ import Helium.Syntax.UHA_Utils
 import Helium.Syntax.UHA_Range 
 import Helium.ModuleSystem.ImportEnvironment
 import Helium.ModuleSystem.DictionaryEnvironment
-import Helium.CodeGeneration.Iridium.Show
+--import Helium.CodeGeneration.Iridium.Show
 import qualified Data.Map as M
 import Helium.StaticAnalysis.Miscellaneous.TypeConversion
 import Helium.Utils.QualifiedTypes
 import Data.Char (ord)
 import Data.Maybe
-import Data.List(isSuffixOf, find, sortOn, intercalate)
+import Data.List(isSuffixOf, find, sortOn) --, intercalate
 
 import Helium.CodeGeneration.InstanceDictionary
 
@@ -65,14 +65,14 @@ import Helium.Lvm.Common.IdSet
 import Helium.Utils.Utils(internalError, fst4)
 
 import Helium.Top.Top.Types
-import Helium.Top.Top.Solver (SolveResult)
-import Helium.StaticAnalysis.Miscellaneous.ConstraintInfo (ConstraintInfo)
+--import Helium.Top.Top.Solver (SolveResult)
+--import Helium.StaticAnalysis.Miscellaneous.ConstraintInfo (ConstraintInfo)
 
 import Helium.CodeGeneration.PatternMatch
 import qualified Helium.CodeGeneration.DerivingShow as DerivingShow
 import qualified Helium.CodeGeneration.DerivingUtils as DerivingUtils
 import qualified Helium.CodeGeneration.DerivingEq as DerivingEq
-import qualified Data.Map as M
+--import qualified Data.Map as M
 
 -- Semi-Daan
 import Helium.CodeGeneration.CoreUtils
@@ -82,7 +82,7 @@ import qualified Helium.Lvm.Core.Expr as Core
 import qualified Helium.Lvm.Core.Type as Core
 import qualified Helium.Lvm.Core.Module as Core
 import qualified Helium.Lvm.Core.Module as Module
-import qualified Helium.Lvm.Common.Byte as Byte
+--import qualified Helium.Lvm.Common.Byte as Byte
 
 }
 

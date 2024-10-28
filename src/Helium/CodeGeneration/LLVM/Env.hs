@@ -1,7 +1,7 @@
 module Helium.CodeGeneration.LLVM.Env (Env(..), envForModule, EnvMethodInfo(..)) where
 
 import qualified Helium.CodeGeneration.Iridium.Data as Iridium
-import qualified Helium.CodeGeneration.Iridium.Type as Iridium
+--import qualified Helium.CodeGeneration.Iridium.Type as Iridium
 import qualified Helium.Lvm.Core.Type as Core
 import qualified Helium.CodeGeneration.Core.TypeEnvironment as Core
 import Helium.CodeGeneration.LLVM.Target(Target(..))

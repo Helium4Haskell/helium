@@ -5,7 +5,7 @@ import Helium.CodeGeneration.Iridium.Data
 import Helium.CodeGeneration.Iridium.Type
 import Helium.Lvm.Common.Id (Id, idFromString, stringFromId)
 import qualified Helium.Lvm.Core.Module as Core
-import qualified Helium.Lvm.Core.Type as Core
+--import qualified Helium.Lvm.Core.Type as Core
 
 toAbstractModule :: Module -> Core.Module v
 toAbstractModule (Module name imports customs datas synonyms abstracts methods) = Core.Module name 0 0 imports decls

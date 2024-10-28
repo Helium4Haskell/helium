@@ -18,7 +18,7 @@ import Helium.CodeGeneration.LLVM.Target(Target(..))
 import Helium.CodeGeneration.LLVM.Utils
 
 import qualified LLVM.AST as LLVM
-import qualified LLVM.AST.Instruction as LLVM
+--import qualified LLVM.AST.Instruction as LLVM
 import qualified LLVM.AST.IntegerPredicate as IntegerPredicate
 import qualified LLVM.AST.FloatingPointPredicate as FloatingPointPredicate
 import qualified LLVM.AST.AddrSpace as LLVM

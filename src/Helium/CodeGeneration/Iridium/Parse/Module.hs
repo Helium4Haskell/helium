@@ -7,10 +7,10 @@ import Helium.Lvm.Core.Module(Field(..))
 import Helium.CodeGeneration.Iridium.Parse.Parser
 import Helium.CodeGeneration.Iridium.Parse.Type
 import Helium.CodeGeneration.Iridium.Parse.Custom
-import Helium.CodeGeneration.Iridium.Parse.Instruction
+--import Helium.CodeGeneration.Iridium.Parse.Instruction
 import Helium.CodeGeneration.Iridium.Parse.Method
 import Helium.CodeGeneration.Iridium.Data
-import Helium.CodeGeneration.Iridium.Type
+--import Helium.CodeGeneration.Iridium.Type
 import System.Exit
 
 pCustomDeclaration :: Parser CustomDeclaration

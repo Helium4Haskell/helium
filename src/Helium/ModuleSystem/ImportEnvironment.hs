@@ -22,7 +22,7 @@ import Helium.StaticAnalysis.Miscellaneous.TypeConversion()
 import Helium.StaticAnalysis.Miscellaneous.ConstraintInfo
 import Helium.StaticAnalysis.Messages.Messages()
 import Helium.Top.Top.Types
-import Helium.Lvm.Core.Module 
+--import Helium.Lvm.Core.Module 
 
 
 import Data.List

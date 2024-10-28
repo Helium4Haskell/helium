@@ -4,10 +4,10 @@ import Helium.Main.Compile(compile)
 import Helium.Parser.Parser(parseOnlyImports)
 import qualified Helium.CodeGeneration.Iridium.FileCache as Iridium
 import Control.Monad
-import System.FilePath(joinPath)
-import Data.List(nub, elemIndex, isSuffixOf, isPrefixOf, intercalate)
-import Data.Maybe(fromJust, mapMaybe, catMaybes)
-import Helium.Lvm.Path(explodePath,getLvmPath)
+--import System.FilePath(joinPath)
+import Data.List(nub, elemIndex, isSuffixOf) --, isPrefixOf, intercalate
+import Data.Maybe(fromJust) --, mapMaybe, catMaybes
+--import Helium.Lvm.Path(explodePath,getLvmPath)
 import System.Directory(doesFileExist, getModificationTime,
                         getPermissions, Permissions(writable))
 import Helium.Main.Args
@@ -17,8 +17,8 @@ import Helium.StaticAnalysis.Messages.StaticErrors
 import Helium.Syntax.UHA_Utils
 import Helium.Syntax.UHA_Syntax
 import Data.IORef
-import qualified Helium.Lvm.Core.Module as Lvm
-import Helium.Lvm.Common.Id (Id, stringFromId, idFromString)
+--import qualified Helium.Lvm.Core.Module as Lvm
+import Helium.Lvm.Common.Id (stringFromId) --Id,  idFromString,
 import qualified Helium.Lvm.Core.Parsing.Parser as Lvm
 import qualified Helium.Lvm.Core.Parsing.Lexer as Lvm
 import qualified Helium.Lvm.Core.Parsing.Layout as Lvm

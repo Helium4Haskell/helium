@@ -13,7 +13,7 @@
 
 module Helium.CodeGeneration.Iridium.Show where
 
-import Helium.Lvm.Common.Id(Id, stringFromId, idFromString)
+import Helium.Lvm.Common.Id(Id, stringFromId) --, idFromString
 import Helium.Lvm.Core.Module(Custom(..), DeclKind(..), Field(..))
 import Helium.Lvm.Core.Type
 import Helium.Lvm.Common.Byte(stringFromBytes)
@@ -21,7 +21,7 @@ import Data.List(intercalate)
 import Data.Either(isRight)
 import Helium.CodeGeneration.Iridium.Data
 import Helium.CodeGeneration.Iridium.Type
-import qualified Text.PrettyPrint.Leijen as Pretty
+--import qualified Text.PrettyPrint.Leijen as Pretty
 
 class ShowDeclaration a where
   showDeclaration :: a -> (String, String)

@@ -1,19 +1,19 @@
 module Helium.CodeGeneration.LLVM.CompileType (compileType, typeSize, toOperand, globalFunctionToOperand, taggedThunkPointer, splitValueFlag, cast, copy, compileCallingConvention) where
 
-import Helium.Lvm.Common.Id(Id, freshId, stringFromId, idFromString, NameSupply)
+import Helium.Lvm.Common.Id(idFromString, NameSupply) --Id, freshId, stringFromId, 
 import qualified Helium.Lvm.Core.Type as Core
 import Helium.CodeGeneration.LLVM.Env (Env(..))
-import Helium.CodeGeneration.LLVM.ConstructorLayout
+--import Helium.CodeGeneration.LLVM.ConstructorLayout
 import Helium.CodeGeneration.LLVM.Target
 import Helium.CodeGeneration.LLVM.Utils
 import qualified Helium.CodeGeneration.Iridium.Data as Iridium
 import qualified Helium.CodeGeneration.Iridium.Type as Iridium
-import qualified Helium.CodeGeneration.Iridium.TypeEnvironment as Iridium
+--import qualified Helium.CodeGeneration.Iridium.TypeEnvironment as Iridium
 import LLVM.AST as AST
 import LLVM.AST.Constant as Constant
-import LLVM.AST.Type as Type
-import LLVM.AST.AddrSpace
-import LLVM.AST.Operand
+--import LLVM.AST.Type as Type
+--import LLVM.AST.AddrSpace
+--import LLVM.AST.Operand
 import qualified LLVM.AST.CallingConvention as CallingConvention
 
 compileType :: Env -> Core.Type -> Type

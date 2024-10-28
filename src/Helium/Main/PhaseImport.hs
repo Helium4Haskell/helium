@@ -14,7 +14,7 @@ import Helium.ModuleSystem.CoreToImportEnv(getImportEnvironment)
 import Helium.Syntax.UHA_Syntax
 import Helium.Lvm.Common.Id
 import qualified Helium.Lvm.Core.Expr as Core
-import Text.PrettyPrint.Leijen (pretty)
+--import Text.PrettyPrint.Leijen (pretty)
 
 phaseImport :: String -> Module -> (Id -> IO Core.CoreModule) -> [Option] -> 
                     IO ([Core.CoreDecl], [(Name, ImportEnvironment, ModuleDecls)])

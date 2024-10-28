@@ -3,9 +3,9 @@ module Helium.CodeGeneration.LLVM.CompileStruct where
 import Data.Bits (shiftL)
 import Data.Maybe (isJust)
 import Data.List (zipWith4)
-import Helium.Lvm.Common.Id(idFromString, Id, NameSupply, mapWithSupply, splitNameSupply, splitNameSupplies)
-import qualified Helium.CodeGeneration.Iridium.Data as Iridium
-import qualified Helium.CodeGeneration.Iridium.Type as Iridium
+import Helium.Lvm.Common.Id(idFromString, NameSupply, mapWithSupply, splitNameSupply, splitNameSupplies) --Id, 
+--import qualified Helium.CodeGeneration.Iridium.Data as Iridium
+--import qualified Helium.CodeGeneration.Iridium.Type as Iridium
 import Helium.CodeGeneration.LLVM.Env
 import Helium.CodeGeneration.LLVM.Struct
 import Helium.CodeGeneration.LLVM.Target
@@ -14,11 +14,11 @@ import Helium.CodeGeneration.LLVM.Utils
 import qualified Helium.CodeGeneration.LLVM.Builtins as Builtins
 import LLVM.AST as AST hiding (Struct)
 import LLVM.AST.CallingConvention
-import LLVM.AST.Type as Type
+--import LLVM.AST.Type as Type
 import LLVM.AST.AddrSpace
-import LLVM.AST.Operand
+--import LLVM.AST.Operand
 import qualified LLVM.AST.Constant as Constant
-import qualified LLVM.AST.IntegerPredicate as IntegerPredicate
+--import qualified LLVM.AST.IntegerPredicate as IntegerPredicate
 
 idHeaderPtr = idFromString "$headerPtr"
 idHeaderValue = idFromString "$headerValue"

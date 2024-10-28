@@ -1,26 +1,26 @@
 module Helium.CodeGeneration.LLVM.CompileConstructor (dataTypeType, constructorType, compileExtractFields) where
 
-import qualified Data.Bits as Bits
-import Data.Word(Word32)
+--import qualified Data.Bits as Bits
+--import Data.Word(Word32)
 
-import Helium.Lvm.Common.Id(Id, NameSupply, mapWithSupply, splitNameSupply)
-import Helium.Lvm.Common.IdMap(findMap)
+import Helium.Lvm.Common.Id(Id, NameSupply, mapWithSupply) --, splitNameSupply
+--import Helium.Lvm.Common.IdMap(findMap)
 import Helium.CodeGeneration.LLVM.Env (Env(..))
 import Helium.CodeGeneration.LLVM.ConstructorLayout
 import Helium.CodeGeneration.LLVM.Struct
 import Helium.CodeGeneration.LLVM.CompileStruct
-import Helium.CodeGeneration.LLVM.CompileType
-import Helium.CodeGeneration.LLVM.Target
+--import Helium.CodeGeneration.LLVM.CompileType
+--import Helium.CodeGeneration.LLVM.Target
 import Helium.CodeGeneration.LLVM.Utils
-import qualified Helium.CodeGeneration.LLVM.Builtins as Builtins
+--import qualified Helium.CodeGeneration.LLVM.Builtins as Builtins
 import qualified Helium.CodeGeneration.Iridium.Data as Iridium
-import qualified Helium.CodeGeneration.Iridium.Type as Iridium
+--import qualified Helium.CodeGeneration.Iridium.Type as Iridium
 import LLVM.AST as AST
-import LLVM.AST.CallingConvention
-import LLVM.AST.Type as Type
-import LLVM.AST.AddrSpace
-import LLVM.AST.Operand
-import qualified LLVM.AST.Constant as Constant
+--import LLVM.AST.CallingConvention
+--import LLVM.AST.Type as Type
+--import LLVM.AST.AddrSpace
+--import LLVM.AST.Operand
+--import qualified LLVM.AST.Constant as Constant
 
 dataTypeType :: Env -> Iridium.Declaration Iridium.DataType -> [(Id, ConstructorLayout)] -> Type
 dataTypeType env (Iridium.Declaration dataName _ _ _ _) layouts = case pointerLayouts of

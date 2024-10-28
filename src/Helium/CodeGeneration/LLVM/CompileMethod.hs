@@ -8,17 +8,17 @@
 
 module Helium.CodeGeneration.LLVM.CompileMethod (compileMethod, compileAbstractMethod) where
 
-import Data.String(fromString)
-import Data.Either
+--import Data.String(fromString)
+--import Data.Either
 
 import Helium.CodeGeneration.LLVM.Env
 import Helium.CodeGeneration.LLVM.Utils
-import Helium.CodeGeneration.LLVM.CompileType(compileType, compileCallingConvention, toOperand)
+import Helium.CodeGeneration.LLVM.CompileType(compileType, compileCallingConvention) --, toOperand
 import Helium.CodeGeneration.LLVM.CompileBlock(compileBlock)
-import Helium.CodeGeneration.LLVM.Struct(Struct(..), StructField(..))
-import Helium.CodeGeneration.LLVM.CompileStruct(structType, extractField)
+--import Helium.CodeGeneration.LLVM.Struct(Struct(..), StructField(..))
+--import Helium.CodeGeneration.LLVM.CompileStruct(structType, extractField)
 
-import Helium.Lvm.Common.Id(Id, NameSupply, freshId, freshIdFromId, splitNameSupply, mapWithSupply, idFromString, stringFromId)
+import Helium.Lvm.Common.Id(Id, NameSupply, splitNameSupply, mapWithSupply, idFromString, stringFromId) --freshId, freshIdFromId, 
 import qualified Helium.Lvm.Core.Type as Core
 
 import qualified Helium.CodeGeneration.Iridium.Data as Iridium
@@ -26,7 +26,7 @@ import qualified Helium.CodeGeneration.Iridium.Type as Iridium
 import LLVM.AST
 import qualified LLVM.AST.Global as Global
 import LLVM.AST.Visibility
-import LLVM.AST.CallingConvention
+--import LLVM.AST.CallingConvention
 import LLVM.AST.Linkage
 import LLVM.AST.AddrSpace
 import qualified LLVM.AST.Constant as Constant

@@ -24,7 +24,7 @@
 module Helium.CodeGeneration.Core.Lift (coreLift) where
 
 import Helium.Lvm.Common.Id
-import Helium.Lvm.Common.IdSet
+--import Helium.Lvm.Common.IdSet
 import Helium.Lvm.Common.IdMap
 import Helium.Lvm.Core.Expr
 import Helium.Lvm.Core.Type

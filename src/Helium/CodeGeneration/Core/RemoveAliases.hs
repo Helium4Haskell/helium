@@ -35,8 +35,8 @@ import Helium.Lvm.Common.IdMap
 import Data.Maybe(fromMaybe)
 import Helium.Lvm.Core.Expr
 import Helium.Lvm.Core.Type
-import Helium.Lvm.Core.Module
-import Helium.Lvm.Core.Utils(mapAlts, mapBinds)
+--import Helium.Lvm.Core.Module
+import Helium.Lvm.Core.Utils(mapBinds) --mapAlts, 
 
 coreRemoveAliases :: CoreModule -> CoreModule
 coreRemoveAliases = fmap (renameExpr emptyEnv)

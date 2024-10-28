@@ -6,7 +6,7 @@ import Helium.CodeGeneration.Iridium.Parse.Instruction
 import Helium.CodeGeneration.Iridium.Parse.Expression
 import Helium.CodeGeneration.Iridium.Data
 import Helium.CodeGeneration.Iridium.Type
-import Helium.Lvm.Common.Id(Id, idFromString)
+import Helium.Lvm.Common.Id(idFromString) --Id, 
 import Helium.Lvm.Core.Type
 import Data.Maybe
 

@@ -11,24 +11,24 @@
 module Helium.CodeGeneration.Iridium.FromCore where
 
 import Helium.CodeGeneration.Core.FunctionType(functionsMap)
-import Helium.Lvm.Common.Id(Id, NameSupply, freshId, splitNameSupply, mapWithSupply, idFromString, stringFromId, freshIdFromId)
+import Helium.Lvm.Common.Id(NameSupply, freshId, splitNameSupply, mapWithSupply, idFromString, freshIdFromId) --Id, stringFromId, 
 import Helium.Lvm.Common.IdMap
-import Helium.Lvm.Common.IdSet
+--import Helium.Lvm.Common.IdSet
 import Helium.Lvm.Common.Byte(stringFromBytes)
 import qualified Helium.Lvm.Core.Expr as Core
 import qualified Helium.Lvm.Core.Type as Core
 import qualified Helium.CodeGeneration.Core.TypeEnvironment as Core
 import qualified Helium.Lvm.Core.Module as Core
-import Data.List(find, replicate, group, sort, sortOn, partition)
+import Data.List(find, partition) --replicate, group, sort, sortOn, 
 import Data.Maybe(fromMaybe, mapMaybe)
-import Data.Either(partitionEithers, isLeft, isRight, fromLeft, rights)
+import Data.Either(partitionEithers, isLeft, isRight, fromLeft) --, rights
 
 import Text.PrettyPrint.Leijen (pretty)
 
 import Helium.CodeGeneration.Iridium.Data
 import Helium.CodeGeneration.Iridium.Type
 import Helium.CodeGeneration.Iridium.TypeEnvironment
-import Helium.CodeGeneration.Iridium.Parse.Parser (ParseError)
+--import Helium.CodeGeneration.Iridium.Parse.Parser (ParseError)
 import Helium.CodeGeneration.Iridium.FileCache
 import Helium.CodeGeneration.Iridium.FromCoreImports
 import Helium.CodeGeneration.Iridium.Utils
