@@ -13,9 +13,9 @@
 
 module Helium.StaticAnalysis.Heuristics.TieBreakerHeuristics where
 
-import Top.Types
-import Top.Interface.TypeInference (getTypeSynonyms)
-import Top.Implementation.TypeGraph.Heuristic
+import Helium.Top.Top.Types
+import Helium.Top.Top.Interface.TypeInference (getTypeSynonyms)
+import Helium.Top.Top.Implementation.TypeGraph.Heuristic
 
 -----------------------------------------------------------------------------
 

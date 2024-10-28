@@ -1,6 +1,6 @@
 module Helium.StaticAnalysis.Messages.Information where
 
-import Top.Types
+import Helium.Top.Top.Types
 import Helium.Main.CompileUtils
 import Helium.Parser.OperatorTable
 import Helium.StaticAnalysis.Messages.Messages hiding (Constructor)

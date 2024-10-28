@@ -5,9 +5,9 @@ import Data.Word(Word32)
 import Data.Either
 import qualified Data.Graph as Graph
 
-import Lvm.Common.Id(idFromString, Id, NameSupply, mapWithSupply, mapWithSupply', splitNameSupply)
-import Lvm.Common.IdMap(findMap)
-import qualified Lvm.Core.Type as Core
+import Helium.Lvm.Common.Id(idFromString, Id, NameSupply, mapWithSupply, mapWithSupply', splitNameSupply)
+import Helium.Lvm.Common.IdMap(findMap)
+import qualified Helium.Lvm.Core.Type as Core
 import Helium.CodeGeneration.LLVM.Env (Env(..))
 import Helium.CodeGeneration.LLVM.CompileType
 import Helium.CodeGeneration.LLVM.ConstructorLayout

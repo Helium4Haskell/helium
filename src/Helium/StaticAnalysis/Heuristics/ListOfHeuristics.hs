@@ -14,19 +14,19 @@ module Helium.StaticAnalysis.Heuristics.ListOfHeuristics (listOfHeuristics) wher
 import Helium.Main.Args (Option(..))
 import Helium.StaticAnalysis.Miscellaneous.ConstraintInfo
 import Helium.StaticAnalysis.Heuristics.HeuristicsInfo () -- instances
-import Top.Implementation.TypeGraph.Heuristic
-import Top.Implementation.TypeGraph.DefaultHeuristics
+import Helium.Top.Top.Implementation.TypeGraph.Heuristic
+import Helium.Top.Top.Implementation.TypeGraph.DefaultHeuristics
 --import Helium.StaticAnalysis.Heuristics.RepairSystem (repairSystem)
-import Top.Implementation.TypeGraph.ClassMonadic
+import Helium.Top.Top.Implementation.TypeGraph.ClassMonadic
 import Helium.StaticAnalysis.Heuristics.RepairHeuristics
 import Helium.StaticAnalysis.Heuristics.UnifierHeuristics
 import Helium.StaticAnalysis.Heuristics.OnlyResultHeuristics
 import Helium.StaticAnalysis.Heuristics.TieBreakerHeuristics
 
 -- temporary
-import Top.Implementation.TypeGraph.Path
+import Helium.Top.Top.Implementation.TypeGraph.Path
 import Data.Maybe
-import Top.Implementation.TypeGraph.Basics
+import Helium.Top.Top.Implementation.TypeGraph.Basics
 
 listOfHeuristics :: [Option] -> Siblings -> Path (EdgeId, ConstraintInfo) -> [Heuristic ConstraintInfo]
 listOfHeuristics options siblings path =

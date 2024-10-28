@@ -27,7 +27,7 @@ import Helium.Utils.Logger
 import Helium.ModuleSystem.ImportEnvironment
 import Helium.Syntax.UHA_Syntax(Module(..))
 import Data.Maybe
-import Lvm.Path(searchPathMaybe)
+import Helium.Lvm.Path(searchPathMaybe)
 import System.FilePath (joinPath)
 import System.Process(system)
 

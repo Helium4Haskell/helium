@@ -13,11 +13,11 @@ module Helium.CodeGeneration.Core.LetSort (coreLetSort) where
 
 import Data.Graph hiding (topSort)
 import Data.Tree
-import Lvm.Common.IdSet
-import Lvm.Core.Expr
-import Lvm.Core.Type
-import Lvm.Core.FreeVar
-import Lvm.Core.Utils
+import Helium.Lvm.Common.IdSet
+import Helium.Lvm.Core.Expr
+import Helium.Lvm.Core.Type
+import Helium.Lvm.Core.FreeVar
+import Helium.Lvm.Core.Utils
 import Data.Maybe
 import Control.Arrow (second)
 

@@ -11,9 +11,9 @@
 module Helium.CodeGeneration.Iridium.ResolveDependencies (resolveDependencies, IridiumFile(..)) where
 
 import System.Exit
-import Lvm.Path
-import Lvm.Common.Id
-import Lvm.Common.IdSet
+import Helium.Lvm.Path
+import Helium.Lvm.Common.Id
+import Helium.Lvm.Common.IdSet
 import Helium.CodeGeneration.Iridium.Data
 import Helium.CodeGeneration.Iridium.FileCache
 import Helium.CodeGeneration.Iridium.Parse.Module(parseModuleIO)

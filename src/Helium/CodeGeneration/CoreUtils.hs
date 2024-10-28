@@ -26,20 +26,20 @@ module Helium.CodeGeneration.CoreUtils
     ,   setExportsPublic
     ) where
 
-import Top.Types as Top
-import Top.Solver(SolveResult(..))
+import Helium.Top.Top.Types as Top
+import Helium.Top.Top.Solver(SolveResult(..))
 import Helium.StaticAnalysis.Miscellaneous.ConstraintInfo(ConstraintInfo)
-import Top.Types.Substitution(FixpointSubstitution, lookupInt)
-import Lvm.Core.Expr
-import Lvm.Core.Type as Core
-import Lvm.Common.Id
-import Lvm.Common.IdSet
-import Lvm.Core.Utils
+import Helium.Top.Top.Types.Substitution(FixpointSubstitution, lookupInt)
+import Helium.Lvm.Core.Expr
+import Helium.Lvm.Core.Type as Core
+import Helium.Lvm.Common.Id
+import Helium.Lvm.Common.IdSet
+import Helium.Lvm.Core.Utils
 import Data.Char
 import Data.Maybe
 import Data.List
-import Lvm.Common.Byte(bytesFromString)
-import qualified Lvm.Core.Expr as Core
+import Helium.Lvm.Common.Byte(bytesFromString)
+import qualified Helium.Lvm.Core.Expr as Core
 import qualified Data.Map as M
 import Helium.Utils.QualifiedTypes (convertClassNameToQualified, convertTpToQualified)
 import Data.List(isPrefixOf)

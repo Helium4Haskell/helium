@@ -1,10 +1,10 @@
 module Helium.CodeGeneration.Iridium.TypeEnvironment where
 
-import Lvm.Common.Id(Id, idFromString)
-import Lvm.Common.IdMap
-import Lvm.Common.IdSet
-import qualified Lvm.Core.Expr as Core
-import Lvm.Core.Type
+import Helium.Lvm.Common.Id(Id, idFromString)
+import Helium.Lvm.Common.IdMap
+import Helium.Lvm.Common.IdSet
+import qualified Helium.Lvm.Core.Expr as Core
+import Helium.Lvm.Core.Type
 import qualified Helium.CodeGeneration.Core.TypeEnvironment as Core
 import Helium.CodeGeneration.Iridium.Data
 import Helium.CodeGeneration.Iridium.Type

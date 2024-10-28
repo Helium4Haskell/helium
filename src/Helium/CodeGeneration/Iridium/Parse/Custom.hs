@@ -1,8 +1,8 @@
 module Helium.CodeGeneration.Iridium.Parse.Custom where
 
 import Helium.CodeGeneration.Iridium.Parse.Parser
-import Lvm.Core.Module
-import Lvm.Common.Byte(bytesFromString)
+import Helium.Lvm.Core.Module
+import Helium.Lvm.Common.Byte(bytesFromString)
 
 pCustoms :: Parser [Custom]
 pCustoms = do

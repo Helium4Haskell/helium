@@ -19,10 +19,10 @@ module Helium.CodeGeneration.Iridium.Type
   , typeRealWorld, typeUnsafePtr, typeTrampoline, typeInt, typeInt16, typeChar, typeFloat
   ) where
 
-import Lvm.Common.Id(Id, stringFromId, idFromString)
+import Helium.Lvm.Common.Id(Id, stringFromId, idFromString)
 import Data.List(intercalate)
 import Data.Either(isRight)
-import Lvm.Core.Type
+import Helium.Lvm.Core.Type
 import Helium.CodeGeneration.Core.TypeEnvironment as Core
 
 typeRealWorld, typeUnsafePtr, typeTrampoline, typeInt, typeInt16, typeChar, typeFloat :: Type

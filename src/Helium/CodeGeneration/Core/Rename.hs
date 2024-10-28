@@ -12,11 +12,11 @@
 module Helium.CodeGeneration.Core.Rename (coreRename) where
 
 import Data.Maybe
-import Lvm.Common.Id
-import Lvm.Common.IdMap
-import Lvm.Common.IdSet 
-import Lvm.Core.Expr
-import Lvm.Core.Utils
+import Helium.Lvm.Common.Id
+import Helium.Lvm.Common.IdMap
+import Helium.Lvm.Common.IdSet 
+import Helium.Lvm.Core.Expr
+import Helium.Lvm.Core.Utils
 
 ----------------------------------------------------------------
 -- Environment: name supply, id's in scope & renamed identifiers

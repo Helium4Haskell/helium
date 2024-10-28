@@ -17,8 +17,8 @@ import qualified Data.Tree as G
 import Helium.Syntax.UHA_Syntax
 import Helium.StaticAnalysis.Miscellaneous.TypeConstraints
 import Helium.StaticAnalysis.Miscellaneous.ConstraintInfo
-import Top.Types
-import Top.Ordering.Tree
+import Helium.Top.Top.Types
+import Helium.Top.Top.Ordering.Tree
 import qualified Data.Map as M
 
 type Assumptions        = M.Map Name [(Name,Tp)]

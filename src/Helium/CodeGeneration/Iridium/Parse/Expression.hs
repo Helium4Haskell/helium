@@ -4,7 +4,7 @@ import Helium.CodeGeneration.Iridium.Parse.Parser
 import Helium.CodeGeneration.Iridium.Parse.Type
 import Helium.CodeGeneration.Iridium.Data
 import Helium.CodeGeneration.Iridium.Type
-import Lvm.Core.Type
+import Helium.Lvm.Core.Type
 
 pLiteral :: Parser Literal
 pLiteral = do

@@ -11,12 +11,12 @@
 module Helium.CodeGeneration.Core.TypeCheck (checkModule, checkModuleIO) where
 
 import Helium.CodeGeneration.Core.TypeEnvironment
-import Lvm.Core.Module
-import Lvm.Core.Expr
-import Lvm.Core.Type
-import Lvm.Core.Utils
-import Lvm.Common.Id
-import Lvm.Common.IdMap
+import Helium.Lvm.Core.Module
+import Helium.Lvm.Core.Expr
+import Helium.Lvm.Core.Type
+import Helium.Lvm.Core.Utils
+import Helium.Lvm.Common.Id
+import Helium.Lvm.Common.IdMap
 
 import System.Exit
 import Data.List

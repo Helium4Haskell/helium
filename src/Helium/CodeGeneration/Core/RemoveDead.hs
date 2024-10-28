@@ -9,11 +9,11 @@ module Helium.CodeGeneration.Core.RemoveDead (coreRemoveDead) where
 
 import qualified Data.Set as Set
 import Data.Set (Set)
-import Lvm.Common.Id
-import Lvm.Common.IdSet
-import Lvm.Core.Expr
-import Lvm.Core.FreeVar
-import Lvm.Core.Utils
+import Helium.Lvm.Common.Id
+import Helium.Lvm.Common.IdSet
+import Helium.Lvm.Core.Expr
+import Helium.Lvm.Core.FreeVar
+import Helium.Lvm.Core.Utils
 import Data.List
 
 ----------------------------------------------------------------

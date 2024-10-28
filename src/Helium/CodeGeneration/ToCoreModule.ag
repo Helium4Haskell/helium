@@ -3,7 +3,7 @@
 -- ------------------------------------------------------------------------
 
 imports{
-import Lvm.Common.Byte(bytesFromString)
+import Helium.Lvm.Common.Byte(bytesFromString)
 }
 
 {

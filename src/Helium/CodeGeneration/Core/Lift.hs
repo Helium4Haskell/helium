@@ -23,12 +23,12 @@
 
 module Helium.CodeGeneration.Core.Lift (coreLift) where
 
-import Lvm.Common.Id
-import Lvm.Common.IdSet
-import Lvm.Common.IdMap
-import Lvm.Core.Expr
-import Lvm.Core.Type
-import Lvm.Core.Utils
+import Helium.Lvm.Common.Id
+import Helium.Lvm.Common.IdSet
+import Helium.Lvm.Common.IdMap
+import Helium.Lvm.Core.Expr
+import Helium.Lvm.Core.Type
+import Helium.Lvm.Core.Utils
 import Helium.CodeGeneration.Core.TypeEnvironment
 import Helium.CodeGeneration.Core.ReduceThunks (isCheap)
 

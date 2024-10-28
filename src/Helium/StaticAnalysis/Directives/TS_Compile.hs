@@ -25,7 +25,7 @@ import Control.Monad          (unless, when)
 import qualified Helium.Main.Args as Args
 import Helium.Parser.ParseMessage ()
 import Helium.CodeGeneration.CoreUtils
-import Lvm.Core.Expr
+import Helium.Lvm.Core.Expr
 
 readTypingStrategiesFromFile :: [Args.Option] -> String -> ImportEnvironment -> 
     IO (Core_TypingStrategies, [CoreDecl])

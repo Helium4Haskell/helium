@@ -12,7 +12,7 @@ import Helium.Main.CompileUtils
 import Helium.StaticAnalysis.Inferencers.KindInferencing as KI
 -- import ImportEnvironment
 import qualified Data.Map as M
-import Top.Types
+import Helium.Top.Top.Types
 import Helium.StaticAnalysis.Messages.KindErrors
 
 phaseKindInferencer :: ImportEnvironment -> Module -> [Option] -> Phase KindError ()

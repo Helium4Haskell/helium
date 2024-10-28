@@ -5,12 +5,12 @@ module Helium.CodeGeneration.Iridium.FromCoreImports (fromCoreImports, visibilit
 import Data.List (find)
 import Data.Maybe (catMaybes, fromMaybe)
 import Data.Either (isRight, partitionEithers)
-import Lvm.Common.Id
+import Helium.Lvm.Common.Id
 import Helium.CodeGeneration.Iridium.Data
 import Helium.CodeGeneration.Iridium.Type
 import Helium.CodeGeneration.Iridium.FileCache
-import qualified Lvm.Core.Expr as Core
-import qualified Lvm.Core.Module as Core
+import qualified Helium.Lvm.Core.Expr as Core
+import qualified Helium.Lvm.Core.Module as Core
 import System.Exit
 
 fromCoreImports :: FileCache -> [Core.CoreDecl] -> IO ([(Id, Declaration CustomDeclaration)], [(Id, Declaration DataType)], [(Id, Declaration TypeSynonym)], [(Id, Declaration AbstractMethod)])

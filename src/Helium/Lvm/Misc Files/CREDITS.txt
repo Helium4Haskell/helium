@@ -1,0 +1,19 @@
+AUTHORS
+
+Daan Leijen, Bastiaan Heeren, Jurriaan Hage
+
+CREDITS
+
+The first version of the Lazy Virtual Machine was developed by Daan Leijen
+and released as part of the Helium compiler. This version has been adapted 
+for the release of the lvmlib cabal package and because of changes in 
+the Haskell infrastructure. 
+
+The following people have contributed to the development and testing of the
+Helium compiler and its components:
+
+Arjan van IJzendoorn, Daan Leijen, Rijk-Jan van Haaften, Arie Middelkoop,
+Arjan Oosting, Jurri‘n Stutterheim, Jeroen Fokker, Andres Loeh,
+Arthur Baars, Remco Burema, Atze Dijkstra, Maarten van Gompel,
+Doaitse Swierstra, Martijn Lammerts, Martijn Schrage and
+Stefan Holdermans.

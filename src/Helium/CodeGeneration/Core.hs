@@ -8,8 +8,8 @@
 
 module Helium.CodeGeneration.Core (desugarCore) where
 
-import Lvm.Common.Id
-import Lvm.Core.Expr
+import Helium.Lvm.Common.Id
+import Helium.Lvm.Core.Expr
 import Helium.CodeGeneration.Core.TypeCheck
 
 import Helium.CodeGeneration.Core.LetInline(coreLetInline)

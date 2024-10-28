@@ -16,3 +16,5 @@ Develop/
 develop/
 .cabal-sandbox/
 .stack-work/
+*.DS_Store
+*dist-newstyle*

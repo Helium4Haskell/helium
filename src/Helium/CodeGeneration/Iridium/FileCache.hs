@@ -10,14 +10,14 @@
 
 module Helium.CodeGeneration.Iridium.FileCache(FileCache, newFileCache, readIridium, readIridiumFile, writeIridium, parseIridium) where
 
-import Lvm.Common.Id (Id, stringFromId)
-import Lvm.Common.IdMap
+import Helium.Lvm.Common.Id (Id, stringFromId)
+import Helium.Lvm.Common.IdMap
 import Data.IORef
 import Helium.CodeGeneration.Iridium.Data
 import Helium.CodeGeneration.Iridium.Show
 import Helium.CodeGeneration.Iridium.Parse.Module (parseModuleIO)
 import Helium.Utils.Utils (readSourceFile)
-import Lvm.Path (searchPath)
+import Helium.Lvm.Path (searchPath)
 
 data CachedFile = CachedFile !FilePath !Module
 

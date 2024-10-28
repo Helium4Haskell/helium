@@ -15,7 +15,7 @@ module Helium.StaticAnalysis.Messages.Messages where
 import Helium.Syntax.UHA_Syntax
 import Helium.Syntax.UHA_Range
 import Helium.Syntax.UHA_Utils ()
-import Top.Types 
+import Helium.Top.Top.Types 
 
 import Helium.Utils.OneLiner
 import Helium.Utils.Similarity (similar)

@@ -19,7 +19,7 @@ import qualified Data.Map as M
 import Helium.Syntax.UHA_Syntax
 import Control.Arrow
 
-import Top.Types
+import Helium.Top.Top.Types
 import Data.List
 import Control.Monad.State
 

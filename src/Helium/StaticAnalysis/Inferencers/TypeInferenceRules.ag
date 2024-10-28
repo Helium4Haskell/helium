@@ -476,7 +476,7 @@ ATTR Expression                             [ | | beta:Tp constraints:Constraint
 ATTR            Expressions                 [ | | betas:Tps constraintslist:ConstraintSets ]
 ATTR                        MaybeExpression [ | | beta:Tp constraints:ConstraintSet section:Bool ]
 imports{
-import Top.Constraint.Qualifier
+import Helium.Top.Top.Constraint.Qualifier
 }
 
 SEM Expression

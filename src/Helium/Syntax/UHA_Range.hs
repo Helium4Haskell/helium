@@ -10,7 +10,7 @@
 module Helium.Syntax.UHA_Range where
 
 import Helium.Syntax.UHA_Syntax
-import Lvm.Common.Id(Id, stringFromId)
+import Helium.Lvm.Common.Id(Id, stringFromId)
 import Helium.Utils.Utils(internalError)
 import Data.Maybe(isJust)
 import Data.List(sort, partition)

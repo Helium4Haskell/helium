@@ -11,7 +11,7 @@
 -----------------------------------------------------------------------------
 
 imports {
-import Top.Types
+import Helium.Top.Top.Types
 }
 
 DERIVING Core_TypingStrategy Core_Judgement Core_UserStatement Core_TypeRule : Show, Read

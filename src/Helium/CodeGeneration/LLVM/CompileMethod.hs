@@ -18,8 +18,8 @@ import Helium.CodeGeneration.LLVM.CompileBlock(compileBlock)
 import Helium.CodeGeneration.LLVM.Struct(Struct(..), StructField(..))
 import Helium.CodeGeneration.LLVM.CompileStruct(structType, extractField)
 
-import Lvm.Common.Id(Id, NameSupply, freshId, freshIdFromId, splitNameSupply, mapWithSupply, idFromString, stringFromId)
-import qualified Lvm.Core.Type as Core
+import Helium.Lvm.Common.Id(Id, NameSupply, freshId, freshIdFromId, splitNameSupply, mapWithSupply, idFromString, stringFromId)
+import qualified Helium.Lvm.Core.Type as Core
 
 import qualified Helium.CodeGeneration.Iridium.Data as Iridium
 import qualified Helium.CodeGeneration.Iridium.Type as Iridium

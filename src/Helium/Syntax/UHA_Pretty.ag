@@ -8,7 +8,7 @@ import Prelude hiding ((<$>))
 import Text.PrettyPrint.Leijen hiding (list)
 import qualified Text.PrettyPrint.Leijen as PPrint
 import Data.Char
-import Top.Types (isTupleConstructor)
+import Helium.Top.Top.Types (isTupleConstructor)
 
 import Helium.Syntax.UHA_Syntax
 import Helium.Utils.Utils (internalError, hole)

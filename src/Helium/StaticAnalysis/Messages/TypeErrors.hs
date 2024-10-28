@@ -11,7 +11,7 @@
 module Helium.StaticAnalysis.Messages.TypeErrors where
 
 import Helium.StaticAnalysis.Messages.Messages
-import Top.Types
+import Helium.Top.Top.Types
 
 import Helium.Syntax.UHA_Syntax (Range, Name)
 import Helium.Syntax.UHA_Range  (getNameRange)

@@ -18,10 +18,10 @@ import           Helium.CodeGeneration.CoreUtils
 import           Helium.ModuleSystem.ImportEnvironment
 import           Helium.Utils.Utils
 import           Helium.Utils.QualifiedTypes
-import           Lvm.Core.Expr
-import qualified Lvm.Core.Type                 as Core
-import           Lvm.Core.Utils
-import           Lvm.Common.Id
+import           Helium.Lvm.Core.Expr
+import qualified Helium.Lvm.Core.Type                 as Core
+import           Helium.Lvm.Core.Utils
+import           Helium.Lvm.Common.Id
 import           Helium.CodeGeneration.DerivingUtils
 
 typeDictEq :: Core.Type

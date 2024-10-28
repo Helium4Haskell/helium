@@ -17,7 +17,7 @@ import Helium.StaticAnalysis.Messages.Messages
 import Helium.StaticAnalysis.Messages.TypeErrors
 import Helium.StaticAnalysis.Miscellaneous.ConstraintInfo
 import Helium.StaticAnalysis.Messages.HeliumMessages () -- instance Show MessageLines
-import Top.Types
+import Helium.Top.Top.Types
 import Helium.Utils.Utils (commaList)
 import Helium.Syntax.UHA_Syntax
 

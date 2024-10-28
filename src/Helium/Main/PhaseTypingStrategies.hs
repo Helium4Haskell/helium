@@ -9,11 +9,11 @@
 module Helium.Main.PhaseTypingStrategies(phaseTypingStrategies) where
 
 import Helium.Main.CompileUtils
-import Lvm.Core.Expr (CoreDecl)
+import Helium.Lvm.Core.Expr (CoreDecl)
 import Helium.StaticAnalysis.Directives.TS_Compile (readTypingStrategiesFromFile)
 import qualified Data.Map as M
 import Helium.Syntax.UHA_Syntax (Name)
-import Top.Types (TpScheme)
+import Helium.Top.Top.Types (TpScheme)
 
 phaseTypingStrategies :: String -> ImportEnvironment -> [(Name, TpScheme)] -> [Option] ->
                             IO (ImportEnvironment, [CoreDecl])

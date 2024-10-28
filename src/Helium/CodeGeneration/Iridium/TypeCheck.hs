@@ -3,9 +3,9 @@ module Helium.CodeGeneration.Iridium.TypeCheck where
 import Helium.CodeGeneration.Iridium.Data
 import Helium.CodeGeneration.Iridium.Type
 import Helium.CodeGeneration.Iridium.Show
-import Lvm.Common.Id
-import Lvm.Common.IdMap
-import Lvm.Core.Type
+import Helium.Lvm.Common.Id
+import Helium.Lvm.Common.IdMap
+import Helium.Lvm.Core.Type
 import Data.Maybe
 import Data.List
 import System.Exit

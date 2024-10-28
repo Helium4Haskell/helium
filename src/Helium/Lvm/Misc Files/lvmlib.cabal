@@ -1,0 +1,67 @@
+name:           lvmlib
+version:        1.9.1
+synopsis:           The Lazy Virtual Machine (LVM).
+homepage:           https://github.com/Helium4Haskell/lvm
+description:
+
+   The Lazy Virtual Machine (LVM) defines a portable instruction set and file
+   format. It is specifically designed to execute languages with non-strict (or
+   lazy) semantics. This cabal package defines the core assembler (coreasm) for 
+   compiling core programs into LVM instructions and a library. The LVM is used 
+   as a backend for the Helium compiler. At the moment, one LVM runtime 
+   implementation is available (written in C). More information about LVM can be 
+   found in Chapter 6 of Daan Leijen's PhD Thesis, The Lambda Abroad. Test
+
+category:           Compilers/Interpreters
+copyright:          (c) 2012-2019
+license:        BSD3
+license-file:       LICENSE.txt
+author:         Daan Leijen, Bastiaan Heeren, Jurriaan Hage
+maintainer:         helium4haskell@gmail.com
+stability:          provisional
+extra-source-files:     CREDITS.txt
+build-type:         Simple
+cabal-version:      >=2.0
+tested-with:        GHC == 8.4.4
+
+source-repository head
+  type:     git
+  location: https://github.com/Helium4Haskell/lvm.git
+
+--------------------------------------------------------------------------------
+
+Library
+  Build-Depends:     base >= 3 && < 5, array, containers, directory, filepath, parsec, wl-pprint
+  if !impl(ghc >= 8.0)
+    Build-Depends: semigroups == 0.18.*
+  ghc-options:       -Wall
+  default-language:  Haskell98
+  hs-source-dirs:    .
+  Exposed-modules:
+    Lvm.Asm.Data
+    Lvm.Asm.Inline
+    Lvm.Asm.Occur
+    Lvm.Common.Byte
+    Lvm.Common.Id
+    Lvm.Common.IdMap
+    Lvm.Common.IdSet
+    Lvm.Core.Expr
+    Lvm.Core.FreeVar
+    Lvm.Core.Module
+    Lvm.Core.Parsing.Layout
+    Lvm.Core.Parsing.Lexer
+    Lvm.Core.Parsing.Parser
+    Lvm.Core.Parsing.Token
+    Lvm.Core.PrettyId
+    Lvm.Core.Type
+    Lvm.Core.Utils
+    Lvm.Data
+    Lvm.Constants
+    Lvm.Import
+    Lvm.Instr.Data
+    Lvm.Instr.Resolve
+    Lvm.Instr.Rewrite
+    Lvm.Path
+
+
+--------------------------------------------------------------------------------

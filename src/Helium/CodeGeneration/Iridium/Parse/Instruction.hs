@@ -4,8 +4,8 @@ import Helium.CodeGeneration.Iridium.Parse.Parser
 import Helium.CodeGeneration.Iridium.Parse.Type
 import Helium.CodeGeneration.Iridium.Parse.Expression
 import Helium.CodeGeneration.Iridium.Data
-import Lvm.Common.Id(Id)
-import Lvm.Core.Type
+import Helium.Lvm.Common.Id(Id)
+import Helium.Lvm.Core.Type
 
 pInstruction :: QuantorNames -> Parser Instruction
 pInstruction quantors = do

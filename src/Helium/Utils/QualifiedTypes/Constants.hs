@@ -1,8 +1,8 @@
 module Helium.Utils.QualifiedTypes.Constants where
 
-import Top.Types
-import Lvm.Constants
-
+import Helium.Top.Top.Types
+--import Lvm.Constants
+-- not sure where this file is lvm.constants
 ---------------------------------------------------------
 -- Qualified base types which are defined in LvmLang.core
      

@@ -10,8 +10,8 @@
 
 module Helium.StaticAnalysis.Messages.KindErrors where
 
-import Top.Types
-import Top.Constraint.Information(TypeConstraintInfo(..),PolyTypeConstraintInfo(..))
+import Helium.Top.Top.Types
+import Helium.Top.Top.Constraint.Information(TypeConstraintInfo(..),PolyTypeConstraintInfo(..))
 
 import Helium.Syntax.UHA_Syntax (Range, Type)
 import Text.PrettyPrint.Leijen (Doc)

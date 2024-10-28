@@ -14,7 +14,7 @@ module Helium.StaticAnalysis.Messages.HeliumMessages (sortMessages,sortAndShowMe
 
 
 import Helium.StaticAnalysis.Messages.Messages 
-import Top.Types
+import Helium.Top.Top.Types
 import qualified Text.PrettyPrint.Leijen as PPrint
 import qualified Helium.Utils.OneLiner as OneLiner
 import Data.List

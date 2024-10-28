@@ -23,7 +23,7 @@ import Helium.Parser.ParseLibrary hiding (satisfy)
 import Helium.Parser.Parser (exp0, type_, atype)
 import qualified Helium.Parser.ResolveOperators as ResolveOperators
 import Text.ParserCombinators.Parsec
-import Top.Types.Classes()
+import Helium.Top.Top.Types.Classes()
 import Data.List (intersperse, intercalate)
 import Helium.Parser.OperatorTable
 import Helium.Utils.Utils (internalError)

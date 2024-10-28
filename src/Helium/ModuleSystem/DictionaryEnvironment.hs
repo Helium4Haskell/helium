@@ -22,7 +22,7 @@ import Helium.Syntax.UHA_Syntax (Name)
 import Helium.Syntax.UHA_Utils
 import Helium.Utils.Utils
 
-import Top.Types
+import Helium.Top.Top.Types
 
 data DictionaryEnvironment = 
      DEnv { declMap :: M.Map NameWithRange Predicates

@@ -7,11 +7,11 @@
 -- the definition on all (eg, no) usages.
 
 module Helium.CodeGeneration.Core.LetInline (coreLetInline) where
-import Lvm.Common.Id (Id)
-import Lvm.Common.IdMap
-import Lvm.Common.IdSet
-import Lvm.Core.Module
-import Lvm.Core.Expr
+import Helium.Lvm.Common.Id (Id)
+import Helium.Lvm.Common.IdMap
+import Helium.Lvm.Common.IdSet
+import Helium.Lvm.Core.Module
+import Helium.Lvm.Core.Expr
 import Data.Maybe (fromMaybe, mapMaybe)
 
 coreLetInline :: CoreModule -> CoreModule

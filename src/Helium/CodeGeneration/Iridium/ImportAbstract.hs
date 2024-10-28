@@ -3,9 +3,9 @@ module Helium.CodeGeneration.Iridium.ImportAbstract (toAbstractModule) where
 import Data.Maybe(mapMaybe, catMaybes, isNothing)
 import Helium.CodeGeneration.Iridium.Data
 import Helium.CodeGeneration.Iridium.Type
-import Lvm.Common.Id (Id, idFromString, stringFromId)
-import qualified Lvm.Core.Module as Core
-import qualified Lvm.Core.Type as Core
+import Helium.Lvm.Common.Id (Id, idFromString, stringFromId)
+import qualified Helium.Lvm.Core.Module as Core
+import qualified Helium.Lvm.Core.Type as Core
 
 toAbstractModule :: Module -> Core.Module v
 toAbstractModule (Module name imports customs datas synonyms abstracts methods) = Core.Module name 0 0 imports decls

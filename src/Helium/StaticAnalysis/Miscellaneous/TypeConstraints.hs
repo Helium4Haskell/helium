@@ -13,16 +13,16 @@
 
 module Helium.StaticAnalysis.Miscellaneous.TypeConstraints where
 
-import Top.Constraint
-import Top.Constraint.Equality hiding ((.==.))
-import Top.Constraint.Qualifier
-import Top.Constraint.Polymorphism hiding ((.::.))
-import Top.Constraint.Information
-import Top.Interface.Basic
-import Top.Interface.Substitution
-import Top.Interface.TypeInference
-import Top.Interface.Qualification
-import Top.Types
+import Helium.Top.Top.Constraint
+import Helium.Top.Top.Constraint.Equality hiding ((.==.))
+import Helium.Top.Top.Constraint.Qualifier
+import Helium.Top.Top.Constraint.Polymorphism hiding ((.::.))
+import Helium.Top.Top.Constraint.Information
+import Helium.Top.Top.Interface.Basic
+import Helium.Top.Top.Interface.Substitution
+import Helium.Top.Top.Interface.TypeInference
+import Helium.Top.Top.Interface.Qualification
+import Helium.Top.Top.Types
 import qualified Data.Map as M
 
 type TypeConstraints info = [TypeConstraint info]

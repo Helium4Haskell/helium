@@ -1,4 +1,4 @@
-resolver: lts-16.20
+resolver: lts-21.25
 
 packages: 
 - .
@@ -6,20 +6,41 @@ packages:
 extra-deps:
   - wl-pprint-1.2.1@sha256:aea676cff4a062d7d912149d270e33f5bb0c01b68a9db46ff13b438141ff4b7c,734
   - network-2.6.3.6@sha256:1ca79d81af02d7acd6032d5e6c9bde4618a8fdcfbe19bd42b49d420183975df0,2666
-  - llvm-hs-pretty-0.9.0.0@sha256:b7a5de5f3dd97893d19d2b47af1e4dd8d075a5cf57062180a912d1f3ef1def60,1671
+  #- bytestring-0.10.12.1@sha256:82dba4c2de4fdd8b419ed28aec2c14cfe4a3f43d1d6e2263ab26962e7398048e,6254
+  - bytestring-0.12.1.0@sha256:98e79e1c97117143e4012983509ec95f7e5e4f6adff6914d07812a39f83404b9,9473
+  - parsec-3.1.17.0
+  - text-2.1.1
+  - directory-1.3.8.5
+  - process-1.6.24.0
+  - unix-2.8.5.1
+  - binary-0.8.9.2
+  - filepath-1.4.300.2
+  - array-0.5.4.0
+  - scientific-0.3.7.0
 
   # If local development on Top is required, this entry can be replaced with the relative path of the directory the Top
   # repository is located, such as `../Top`
-  - github: Helium4Haskell/Top
-    commit: f8a61d1f3f68066e23cce768abdba4c1ddf3e907
+  #- github: Helium4Haskell/Top
+  #  commit: 0a96929af082e53c1921a8613a352c08ae426fff
   #- ../Top
 
-  - github: Helium4Haskell/lvm
-    commit: 95d89f8498b9895d59f740d13018462325bd226e
-    subdirs: 
-      - src/lib
+  #- github: Helium4Haskell/lvm
+  #  commit: a871b0f39a140c798399b71a9b115db0a16f5526
+  #  subdirs: 
+  #    - src/lib
   #- ../lvm/src/lib
 
+  - github: matty293/llvm-hs-pure-9.0.1
+    commit: 7c8c00e44edff0727c714dd6a4dcb6b7fea45e13
 
-allow-newer: false
+  - github: matty293/llvm-hs-pretty-0.9.0.1
+    commit: 4c181dd24caf2b8e05bab49c5cd8a75526e5c084
+
+
+allow-newer: true
+
+allow-newer-deps: 
+  - bytestring
+  - llvm-hs-pure
+  - network
 

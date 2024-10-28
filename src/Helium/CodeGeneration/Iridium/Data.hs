@@ -14,10 +14,10 @@
 
 module Helium.CodeGeneration.Iridium.Data where
 
-import Lvm.Common.Id(Id, stringFromId, idFromString)
-import Lvm.Common.IdMap(mapFromList, emptyMap)
-import Lvm.Core.Module(Custom(..), DeclKind, Arity, Field)
-import Lvm.Core.Type
+import Helium.Lvm.Common.Id(Id, stringFromId, idFromString)
+import Helium.Lvm.Common.IdMap(mapFromList, emptyMap)
+import Helium.Lvm.Core.Module(Custom(..), DeclKind, Arity, Field)
+import Helium.Lvm.Core.Type
 import Data.List(intercalate)
 import Data.Either (isLeft, isRight)
 

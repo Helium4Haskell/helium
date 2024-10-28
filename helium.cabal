@@ -1,10 +1,8 @@
 cabal-version: 1.12
 
--- This file has been generated from package.yaml by hpack version 0.33.0.
+-- This file has been generated from package.yaml by hpack version 0.37.0.
 --
 -- see: https://github.com/sol/hpack
---
--- hash: a0cfe60d5264a904442d9020a89597d3b6762e60b82c5fc84e0543a4b7532486
 
 name:           helium
 version:        1.9
@@ -83,8 +81,6 @@ library
       Helium.CodeGeneration.Iridium.PassDeadCode
       Helium.CodeGeneration.Iridium.PassTailRecursion
       Helium.CodeGeneration.Iridium.Primitive
-      Helium.CodeGeneration.Iridium.Region.Sort
-      Helium.CodeGeneration.Iridium.Region.Utils
       Helium.CodeGeneration.Iridium.ResolveDependencies
       Helium.CodeGeneration.Iridium.Show
       Helium.CodeGeneration.Iridium.Type
@@ -105,6 +101,30 @@ library
       Helium.CodeGeneration.LLVM.Target
       Helium.CodeGeneration.LLVM.Utils
       Helium.CodeGeneration.PatternMatch
+      Helium.Lvm.Asm.Data
+      Helium.Lvm.Asm.Inline
+      Helium.Lvm.Asm.Occur
+      Helium.Lvm.Common.Byte
+      Helium.Lvm.Common.Id
+      Helium.Lvm.Common.IdMap
+      Helium.Lvm.Common.IdSet
+      Helium.Lvm.Constants
+      Helium.Lvm.Core.Expr
+      Helium.Lvm.Core.FreeVar
+      Helium.Lvm.Core.Module
+      Helium.Lvm.Core.Parsing.Layout
+      Helium.Lvm.Core.Parsing.Lexer
+      Helium.Lvm.Core.Parsing.Parser
+      Helium.Lvm.Core.Parsing.Token
+      Helium.Lvm.Core.PrettyId
+      Helium.Lvm.Core.Type
+      Helium.Lvm.Core.Utils
+      Helium.Lvm.Data
+      Helium.Lvm.Import
+      Helium.Lvm.Instr.Data
+      Helium.Lvm.Instr.Resolve
+      Helium.Lvm.Instr.Rewrite
+      Helium.Lvm.Path
       Helium.Main.Args
       Helium.Main.Compile
       Helium.Main.CompileUtils
@@ -165,6 +185,56 @@ library
       Helium.StaticAnalysis.Miscellaneous.UHA_Source
       Helium.Syntax.UHA_Range
       Helium.Syntax.UHA_Utils
+      Helium.Top.Top.Constraint
+      Helium.Top.Top.Constraint.Equality
+      Helium.Top.Top.Constraint.Information
+      Helium.Top.Top.Constraint.Polymorphism
+      Helium.Top.Top.Constraint.Qualifier
+      Helium.Top.Top.Implementation.Basic
+      Helium.Top.Top.Implementation.FastSubstitution
+      Helium.Top.Top.Implementation.General
+      Helium.Top.Top.Implementation.Overloading
+      Helium.Top.Top.Implementation.SimpleSubstitution
+      Helium.Top.Top.Implementation.TypeClassDirectives
+      Helium.Top.Top.Implementation.TypeGraph.ApplyHeuristics
+      Helium.Top.Top.Implementation.TypeGraph.Basics
+      Helium.Top.Top.Implementation.TypeGraph.Class
+      Helium.Top.Top.Implementation.TypeGraph.ClassMonadic
+      Helium.Top.Top.Implementation.TypeGraph.DefaultHeuristics
+      Helium.Top.Top.Implementation.TypeGraph.EquivalenceGroup
+      Helium.Top.Top.Implementation.TypeGraph.Heuristic
+      Helium.Top.Top.Implementation.TypeGraph.Path
+      Helium.Top.Top.Implementation.TypeGraph.Standard
+      Helium.Top.Top.Implementation.TypeGraphSubstitution
+      Helium.Top.Top.Implementation.TypeInference
+      Helium.Top.Top.Interface.Basic
+      Helium.Top.Top.Interface.Qualification
+      Helium.Top.Top.Interface.Substitution
+      Helium.Top.Top.Interface.TypeInference
+      Helium.Top.Top.Monad.Select
+      Helium.Top.Top.Monad.StateFix
+      Helium.Top.Top.Ordering.Tree
+      Helium.Top.Top.Ordering.TreeWalk
+      Helium.Top.Top.Solver
+      Helium.Top.Top.Solver.Greedy
+      Helium.Top.Top.Solver.PartitionCombinator
+      Helium.Top.Top.Solver.SwitchCombinator
+      Helium.Top.Top.Solver.TypeGraph
+      Helium.Top.Top.Types
+      Helium.Top.Top.Types.Classes
+      Helium.Top.Top.Types.Kinds
+      Helium.Top.Top.Types.Primitive
+      Helium.Top.Top.Types.Qualification
+      Helium.Top.Top.Types.Quantification
+      Helium.Top.Top.Types.Schemes
+      Helium.Top.Top.Types.Substitution
+      Helium.Top.Top.Types.Synonym
+      Helium.Top.Top.Types.Unification
+      Helium.Top.Top.Util.Embedding
+      Helium.Top.Top.Util.Empty
+      Helium.Top.Top.Util.Option
+      Helium.Top.TopSolver
+      Helium.Top.Utils
       Helium.Utils.Logger
       Helium.Utils.Network
       Helium.Utils.OneLiner
@@ -194,14 +264,12 @@ library
       dist/build/autogen/uuagc
   ghc-options: -Wall
   build-depends:
-      Top
-    , base
+      base
     , containers
     , directory
     , filepath
     , llvm-hs-pretty
     , llvm-hs-pure
-    , lvmlib
     , mtl
     , network
     , parsec
@@ -216,17 +284,16 @@ executable helium
       Paths_helium
   hs-source-dirs:
       src/commands/helium
-  default-extensions: FlexibleContexts
+  default-extensions:
+      FlexibleContexts
   build-depends:
-      Top
-    , base
+      base
     , containers
     , directory
     , filepath
     , helium
     , llvm-hs-pretty
     , llvm-hs-pure
-    , lvmlib
     , mtl
     , network
     , parsec
@@ -241,17 +308,16 @@ executable heliumpath
       Paths_helium
   hs-source-dirs:
       src/commands/heliumpath
-  default-extensions: FlexibleContexts
+  default-extensions:
+      FlexibleContexts
   build-depends:
-      Top
-    , base
+      base
     , containers
     , directory
     , filepath
     , helium
     , llvm-hs-pretty
     , llvm-hs-pure
-    , lvmlib
     , mtl
     , network
     , parsec
@@ -268,17 +334,16 @@ executable runhelium
   hs-source-dirs:
       src/commands/runhelium
       src/commands/texthint
-  default-extensions: FlexibleContexts
+  default-extensions:
+      FlexibleContexts
   build-depends:
-      Top
-    , base
+      base
     , containers
     , directory
     , filepath
     , helium
     , llvm-hs-pretty
     , llvm-hs-pure
-    , lvmlib
     , mtl
     , network
     , parsec
@@ -294,17 +359,16 @@ executable texthint
       TextHint.ConfigFile
   hs-source-dirs:
       src/commands/texthint
-  default-extensions: FlexibleContexts
+  default-extensions:
+      FlexibleContexts
   build-depends:
-      Top
-    , base
+      base
     , containers
     , directory
     , filepath
     , helium
     , llvm-hs-pretty
     , llvm-hs-pure
-    , lvmlib
     , mtl
     , network
     , parsec

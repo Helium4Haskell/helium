@@ -5,7 +5,7 @@ import Helium.Syntax.UHA_Utils
 import Data.Maybe()
 import Helium.ModuleSystem.ImportEnvironment
 
-import Top.Types
+import Helium.Top.Top.Types
 
 import qualified Data.Map as M
 ---------------------------------------------------------

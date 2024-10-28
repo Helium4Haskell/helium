@@ -2,8 +2,8 @@
 
 module Helium.CodeGeneration.Iridium.Parse.Module (parseModule, parseModuleIO, parseModuleIO') where
 
-import Lvm.Common.Id(Id)
-import Lvm.Core.Module(Field(..))
+import Helium.Lvm.Common.Id(Id)
+import Helium.Lvm.Core.Module(Field(..))
 import Helium.CodeGeneration.Iridium.Parse.Parser
 import Helium.CodeGeneration.Iridium.Parse.Type
 import Helium.CodeGeneration.Iridium.Parse.Custom

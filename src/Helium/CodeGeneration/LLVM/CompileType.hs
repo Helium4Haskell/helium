@@ -1,7 +1,7 @@
 module Helium.CodeGeneration.LLVM.CompileType (compileType, typeSize, toOperand, globalFunctionToOperand, taggedThunkPointer, splitValueFlag, cast, copy, compileCallingConvention) where
 
-import Lvm.Common.Id(Id, freshId, stringFromId, idFromString, NameSupply)
-import qualified Lvm.Core.Type as Core
+import Helium.Lvm.Common.Id(Id, freshId, stringFromId, idFromString, NameSupply)
+import qualified Helium.Lvm.Core.Type as Core
 import Helium.CodeGeneration.LLVM.Env (Env(..))
 import Helium.CodeGeneration.LLVM.ConstructorLayout
 import Helium.CodeGeneration.LLVM.Target

@@ -9,7 +9,7 @@ import qualified LLVM.AST.Global as Global
 import LLVM.AST.Visibility
 import LLVM.AST.CallingConvention
 import LLVM.AST.Linkage
-import Lvm.Common.Id(Id, stringFromId, idFromString)
+import Helium.Lvm.Common.Id(Id, stringFromId, idFromString)
 
 data Builtin = Builtin Id [Type] Type
 

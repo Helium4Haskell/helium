@@ -11,14 +11,14 @@
 module Helium.CodeGeneration.Iridium.FromCore where
 
 import Helium.CodeGeneration.Core.FunctionType(functionsMap)
-import Lvm.Common.Id(Id, NameSupply, freshId, splitNameSupply, mapWithSupply, idFromString, stringFromId, freshIdFromId)
-import Lvm.Common.IdMap
-import Lvm.Common.IdSet
-import Lvm.Common.Byte(stringFromBytes)
-import qualified Lvm.Core.Expr as Core
-import qualified Lvm.Core.Type as Core
+import Helium.Lvm.Common.Id(Id, NameSupply, freshId, splitNameSupply, mapWithSupply, idFromString, stringFromId, freshIdFromId)
+import Helium.Lvm.Common.IdMap
+import Helium.Lvm.Common.IdSet
+import Helium.Lvm.Common.Byte(stringFromBytes)
+import qualified Helium.Lvm.Core.Expr as Core
+import qualified Helium.Lvm.Core.Type as Core
 import qualified Helium.CodeGeneration.Core.TypeEnvironment as Core
-import qualified Lvm.Core.Module as Core
+import qualified Helium.Lvm.Core.Module as Core
 import Data.List(find, replicate, group, sort, sortOn, partition)
 import Data.Maybe(fromMaybe, mapMaybe)
 import Data.Either(partitionEithers, isLeft, isRight, fromLeft, rights)

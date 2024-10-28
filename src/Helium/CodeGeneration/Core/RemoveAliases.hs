@@ -29,14 +29,14 @@
 
 module Helium.CodeGeneration.Core.RemoveAliases (coreRemoveAliases) where
 
-import Lvm.Common.Id
-import Lvm.Common.IdSet
-import Lvm.Common.IdMap
+import Helium.Lvm.Common.Id
+import Helium.Lvm.Common.IdSet
+import Helium.Lvm.Common.IdMap
 import Data.Maybe(fromMaybe)
-import Lvm.Core.Expr
-import Lvm.Core.Type
-import Lvm.Core.Module
-import Lvm.Core.Utils(mapAlts, mapBinds)
+import Helium.Lvm.Core.Expr
+import Helium.Lvm.Core.Type
+import Helium.Lvm.Core.Module
+import Helium.Lvm.Core.Utils(mapAlts, mapBinds)
 
 coreRemoveAliases :: CoreModule -> CoreModule
 coreRemoveAliases = fmap (renameExpr emptyEnv)

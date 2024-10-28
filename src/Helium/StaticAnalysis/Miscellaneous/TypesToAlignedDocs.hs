@@ -11,7 +11,7 @@
 module Helium.StaticAnalysis.Miscellaneous.TypesToAlignedDocs (qualifiedTypesToAlignedDocs, typesToAlignedDocs) where
 
 import Data.List     ( transpose )
-import Top.Types
+import Helium.Top.Top.Types
 import Text.PrettyPrint.Leijen
 import qualified Text.PrettyPrint.Leijen as PPrint
 

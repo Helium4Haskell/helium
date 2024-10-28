@@ -1,6 +1,6 @@
 module Helium.CodeGeneration.Iridium.Parse.Parser where
 
-import Lvm.Common.Id(Id, idFromString)
+import Helium.Lvm.Common.Id(Id, idFromString)
 import Data.Maybe
 
 data ParseResult p = ResError !String !String | ResValue !p !String

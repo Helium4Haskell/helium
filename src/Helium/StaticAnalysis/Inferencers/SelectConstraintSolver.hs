@@ -18,17 +18,17 @@ import Helium.StaticAnalysis.Miscellaneous.TypeConstraints
 import Helium.ModuleSystem.ImportEnvironment (ImportEnvironment, getSiblings, 
   getNeverDirectives, getCloseDirectives, getDisjointDirectives, getDefaultDirectives)
 import Helium.StaticAnalysis.Heuristics.ListOfHeuristics (listOfHeuristics)
-import Top.Types
-import Top.Solver
-import Top.Ordering.TreeWalk
-import Top.Ordering.Tree
-import Top.Solver.Greedy
-import Top.Solver.TypeGraph
-import Top.Solver.PartitionCombinator
-import Top.Solver.SwitchCombinator
-import Top.Constraint.Information()
-import Top.Implementation.TypeClassDirectives
-import Top.Interface.Substitution (makeSubstConsistent)
+import Helium.Top.Top.Types
+import Helium.Top.Top.Solver
+import Helium.Top.Top.Ordering.TreeWalk
+import Helium.Top.Top.Ordering.Tree
+import Helium.Top.Top.Solver.Greedy
+import Helium.Top.Top.Solver.TypeGraph
+import Helium.Top.Top.Solver.PartitionCombinator
+import Helium.Top.Top.Solver.SwitchCombinator
+import Helium.Top.Top.Constraint.Information()
+import Helium.Top.Top.Implementation.TypeClassDirectives
+import Helium.Top.Top.Interface.Substitution (makeSubstConsistent)
 
 type TreeSolver = ClassEnvironment -> OrderedTypeSynonyms -> Int 
                        -> Tree (TypeConstraint ConstraintInfo) -> (SolveResult ConstraintInfo, LogEntries)

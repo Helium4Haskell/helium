@@ -21,8 +21,8 @@ import Helium.StaticAnalysis.Directives.TS_Syntax()
 import Helium.StaticAnalysis.Miscellaneous.TypeConversion()
 import Helium.StaticAnalysis.Miscellaneous.ConstraintInfo
 import Helium.StaticAnalysis.Messages.Messages()
-import Top.Types
-import Lvm.Core.Module (Field(..))
+import Helium.Top.Top.Types
+import Helium.Lvm.Core.Module 
 
 
 import Data.List
@@ -410,8 +410,8 @@ makeInstance className nrOfArgs tp isDict =
       , [ Predicate className x | x <- tps, isDict ]
       )
 
--- added for holmes
-holmesShowImpEnv :: Module -> ImportEnvironment -> String
+-- added for holmes -- check if right module
+holmesShowImpEnv :: Helium.Syntax.UHA_Syntax.Module -> ImportEnvironment -> String
 holmesShowImpEnv module_ (ImportEnvironment _ _ te _ _ _ _ _ _ _ _ _) =
       concat functions
     where

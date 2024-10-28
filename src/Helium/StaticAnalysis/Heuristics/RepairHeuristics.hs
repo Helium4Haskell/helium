@@ -13,15 +13,15 @@
 
 module Helium.StaticAnalysis.Heuristics.RepairHeuristics where
 
-import Top.Types
-import Top.Interface.TypeInference
-import Top.Interface.Qualification hiding (contextReduction)
+import Helium.Top.Top.Types
+import Helium.Top.Top.Interface.TypeInference
+import Helium.Top.Top.Interface.Qualification hiding (contextReduction)
 import Helium.Syntax.UHA_Syntax (Range)
 import Helium.Utils.OneLiner (OneLineTree)
 import Helium.Utils.QualifiedTypes.Constants
-import Top.Implementation.TypeGraph.Heuristic
-import Top.Implementation.TypeGraph.Basics
-import Top.Implementation.TypeGraph.ClassMonadic
+import Helium.Top.Top.Implementation.TypeGraph.Heuristic
+import Helium.Top.Top.Implementation.TypeGraph.Basics
+import Helium.Top.Top.Implementation.TypeGraph.ClassMonadic
 import Data.Maybe
 import Helium.StaticAnalysis.Messages.Messages (showNumber, ordinal, prettyAndList)
 import Helium.StaticAnalysis.Heuristics.OnlyResultHeuristics

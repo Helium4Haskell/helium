@@ -27,7 +27,7 @@ import Helium.StaticAnalysis.Directives.TS_Syntax
 import Helium.StaticAnalysis.Directives.TS_CoreSyntax
 import Helium.ModuleSystem.ImportEnvironment
 import Helium.StaticAnalysis.Messages.Messages
-import Top.Types
+import Helium.Top.Top.Types
 
 import Helium.StaticAnalysis.Miscellaneous.ConstraintInfo
 import Helium.Syntax.UHA_Utils (getNameName, nameFromString)

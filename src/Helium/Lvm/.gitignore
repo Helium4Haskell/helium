@@ -1,0 +1,10 @@
+*~
+*.o
+*.hi
+topsolver
+*.html
+*.css
+*.gif
+.stack-work
+src/lib/dist
+src/lib/dist-newstyle

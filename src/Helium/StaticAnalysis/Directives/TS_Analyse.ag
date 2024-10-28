@@ -28,9 +28,9 @@ INCLUDE "TS_Syntax.ag"
 INCLUDE "TS_Collect.ag"
 
 imports {
-import Top.Types
-import Top.Solver.Greedy
-import Top.Solver
+import Helium.Top.Top.Types
+import Helium.Top.Top.Solver.Greedy
+import Helium.Top.Top.Solver
 
 import Helium.StaticAnalysis.Miscellaneous.TypeConstraints
 import Helium.StaticAnalysis.Miscellaneous.ConstraintInfo
@@ -106,7 +106,7 @@ SEM TypingStrategy
            . solveErrors  = errorsFromResult @solveResult
            . solveResult =    
                 let options = solveOptions { uniqueCounter = length @uniqueTypevariables 
-                                           , Top.Solver.typeSynonyms = getOrderedTypeSynonyms @lhs.importEnvironment
+                                           , Helium.Top.Top.Solver.typeSynonyms = getOrderedTypeSynonyms @lhs.importEnvironment
                                            , classEnvironment = @classEnv
                                            } 
                 in fst (solve options (reverse @statements.userConstraints) greedyConstraintSolver)

@@ -22,11 +22,11 @@
 
 module Helium.CodeGeneration.Core.Normalize (coreNormalize) where
 
-import Lvm.Common.Id
-import Lvm.Common.IdSet
-import Lvm.Core.Expr
-import Lvm.Core.Type
-import Lvm.Core.Utils
+import Helium.Lvm.Common.Id
+import Helium.Lvm.Common.IdSet
+import Helium.Lvm.Core.Expr
+import Helium.Lvm.Core.Type
+import Helium.Lvm.Core.Utils
 import Helium.CodeGeneration.Core.TypeEnvironment
 
 -- A trivial expression is a variable

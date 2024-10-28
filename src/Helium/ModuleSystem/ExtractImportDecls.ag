@@ -6,11 +6,11 @@ INCLUDE "ToCoreName.ag"
 imports{
 import Helium.Syntax.UHA_Syntax
 import Helium.Syntax.UHA_Utils
-import Lvm.Common.Id
-import Lvm.Common.IdSet
-import qualified Lvm.Core.Expr as Core
-import qualified Lvm.Core.Type as Core
-import qualified Lvm.Core.Module as Core
+import Helium.Lvm.Common.Id
+import Helium.Lvm.Common.IdSet
+import qualified Helium.Lvm.Core.Expr as Core
+import qualified Helium.Lvm.Core.Type as Core
+import qualified Helium.Lvm.Core.Module as Core
 import Helium.Utils.Utils (internalError)
 import Data.Maybe(fromMaybe)
 }

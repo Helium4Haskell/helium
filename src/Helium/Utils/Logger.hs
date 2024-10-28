@@ -13,7 +13,6 @@ module Helium.Utils.Logger
 where
 
 import           Control.Concurrent
-
 import           Control.Monad
 import           System.Environment
 import           Data.Char
@@ -27,6 +26,7 @@ import qualified Control.Exception             as CE
                                                 , IOException
                                                 )
 import qualified Network.Socket                as N
+--import data.
 
 {-# NOINLINE logger #-}
 

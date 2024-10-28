@@ -11,24 +11,24 @@ module Helium.Main.PhaseDesugarer(phaseDesugarer) where
 import qualified Data.Map as M
 import Helium.Main.CompileUtils
 import Text.PrettyPrint.Leijen
-import Top.Solver(SolveResult)
-import qualified Top.Types as Top
+import Helium.Top.Top.Solver(SolveResult)
+import qualified Helium.Top.Top.Types as Top
 import Helium.StaticAnalysis.Miscellaneous.ConstraintInfo (ConstraintInfo)
-import Lvm.Core.Expr(CoreModule, CoreDecl)
+import Helium.Lvm.Core.Expr(CoreModule, CoreDecl)
 import Helium.CodeGeneration.Core.RemoveDead( coreRemoveDead ) -- remove dead (import) declarations
 import Helium.CodeGeneration.CoreUtils(TypeInferenceOutput(..))
 import Helium.Syntax.UHA_Syntax(Name(..), MaybeName(..))
 import Helium.Syntax.UHA_Utils(NameWithRange)
 import Helium.Syntax.UHA_Range(noRange)
-import Lvm.Core.Module(moduleDecls, declName, shallowKindFromDecl, declCustoms, accessPublic, declAccess, moduleImports, declModule)
+import Helium.Lvm.Core.Module(moduleDecls, declName, shallowKindFromDecl, declCustoms, accessPublic, declAccess, moduleImports, declModule)
 import Helium.ModuleSystem.ImportEnvironment()
 import Helium.ModuleSystem.DictionaryEnvironment (DictionaryEnvironment)
 import qualified Helium.CodeGeneration.CodeGeneration as CodeGeneration
 import Data.List(nubBy, sort, nub)
 import Data.Maybe(mapMaybe)
-import Lvm.Common.Id
-import Lvm.Common.IdMap
-import Lvm.Import
+import Helium.Lvm.Common.Id
+import Helium.Lvm.Common.IdMap
+import Helium.Lvm.Import
 
 
 phaseDesugarer :: DictionaryEnvironment -> 

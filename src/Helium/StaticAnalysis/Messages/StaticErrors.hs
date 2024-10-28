@@ -20,7 +20,7 @@ import Data.Maybe
 import Helium.Utils.Utils (commaList, internalError, maxInt)
 import Helium.Syntax.UHA_Utils (getNameOrigin, removeQualified, convertPredicate)
 
-import Top.Types
+import Helium.Top.Top.Types
 
 -------------------------------------------------------------
 -- (Static) Errors

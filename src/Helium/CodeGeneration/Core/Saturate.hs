@@ -15,11 +15,11 @@ module Helium.CodeGeneration.Core.Saturate (coreSaturate) where
 
 import Data.List
 import Data.Maybe
-import Lvm.Common.Id    
-import Lvm.Common.IdMap
-import Lvm.Core.Expr
-import Lvm.Core.Type
-import Lvm.Core.Utils
+import Helium.Lvm.Common.Id    
+import Helium.Lvm.Common.IdMap
+import Helium.Lvm.Core.Expr
+import Helium.Lvm.Core.Type
+import Helium.Lvm.Core.Utils
 import Helium.CodeGeneration.Core.TypeEnvironment
 
 ----------------------------------------------------------------

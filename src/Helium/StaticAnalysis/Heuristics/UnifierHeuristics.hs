@@ -14,11 +14,11 @@
 
 module Helium.StaticAnalysis.Heuristics.UnifierHeuristics where
 
-import Top.Types
-import Top.Interface.TypeInference
-import Top.Implementation.TypeGraph.Basics
-import Top.Implementation.TypeGraph.ClassMonadic
-import Top.Implementation.TypeGraph.Heuristic
+import Helium.Top.Top.Types
+import Helium.Top.Top.Interface.TypeInference
+import Helium.Top.Top.Implementation.TypeGraph.Basics
+import Helium.Top.Top.Implementation.TypeGraph.ClassMonadic
+import Helium.Top.Top.Implementation.TypeGraph.Heuristic
 import Helium.StaticAnalysis.Heuristics.RepairHeuristics
 import Helium.StaticAnalysis.Miscellaneous.ConstraintInfo
 import Data.Function

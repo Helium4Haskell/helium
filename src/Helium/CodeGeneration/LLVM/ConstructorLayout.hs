@@ -16,8 +16,8 @@
 module Helium.CodeGeneration.LLVM.ConstructorLayout(constructorLayout, ConstructorLayout(..)) where
 
 import Data.List(mapAccumL)
-import Lvm.Common.Id(Id, stringFromId)
-import qualified Lvm.Core.Type as Core
+import Helium.Lvm.Common.Id(Id, stringFromId)
+import qualified Helium.Lvm.Core.Type as Core
 import Helium.CodeGeneration.LLVM.Utils
 import Helium.CodeGeneration.LLVM.Target
 import Helium.CodeGeneration.LLVM.Struct

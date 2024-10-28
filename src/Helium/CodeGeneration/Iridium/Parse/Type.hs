@@ -4,8 +4,8 @@ import Helium.CodeGeneration.Iridium.Parse.Parser
 import Helium.CodeGeneration.Iridium.Data
 import Helium.CodeGeneration.Iridium.Type
 
-import Lvm.Common.Id
-import Lvm.Core.Type
+import Helium.Lvm.Common.Id
+import Helium.Lvm.Core.Type
 
 import Data.List
 import Data.Char

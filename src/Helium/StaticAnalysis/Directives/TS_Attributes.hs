@@ -15,7 +15,7 @@ module Helium.StaticAnalysis.Directives.TS_Attributes where
 import Helium.StaticAnalysis.Inferencers.BindingGroupAnalysis (Assumptions)
 import Helium.StaticAnalysis.Miscellaneous.ConstraintInfo (ConstraintSet, LocalInfo, assignedType, self)
 import Helium.StaticAnalysis.Messages.Messages             (MessageBlock(..))
-import Top.Types            (Tp, toTpScheme)
+import Helium.Top.Top.Types            (Tp, toTpScheme)
 import Helium.Utils.OneLiner       (OneLineTree)
 import Helium.Syntax.UHA_Syntax    (Range) 
 import Helium.StaticAnalysis.Miscellaneous.UHA_Source (rangeOfSource, oneLinerSource)

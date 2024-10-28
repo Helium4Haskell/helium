@@ -7,7 +7,7 @@ import Control.Monad
 import System.FilePath(joinPath)
 import Data.List(nub, elemIndex, isSuffixOf, isPrefixOf, intercalate)
 import Data.Maybe(fromJust, mapMaybe, catMaybes)
-import Lvm.Path(explodePath,getLvmPath)
+import Helium.Lvm.Path(explodePath,getLvmPath)
 import System.Directory(doesFileExist, getModificationTime,
                         getPermissions, Permissions(writable))
 import Helium.Main.Args
@@ -17,13 +17,13 @@ import Helium.StaticAnalysis.Messages.StaticErrors
 import Helium.Syntax.UHA_Utils
 import Helium.Syntax.UHA_Syntax
 import Data.IORef
-import qualified Lvm.Core.Module as Lvm
-import Lvm.Common.Id (Id, stringFromId, idFromString)
-import qualified Lvm.Core.Parsing.Parser as Lvm
-import qualified Lvm.Core.Parsing.Lexer as Lvm
-import qualified Lvm.Core.Parsing.Layout as Lvm
-import qualified Lvm.Core.Module as Lvm
-import qualified Lvm.Core.Expr as Lvm
+import qualified Helium.Lvm.Core.Module as Lvm
+import Helium.Lvm.Common.Id (Id, stringFromId, idFromString)
+import qualified Helium.Lvm.Core.Parsing.Parser as Lvm
+import qualified Helium.Lvm.Core.Parsing.Lexer as Lvm
+import qualified Helium.Lvm.Core.Parsing.Layout as Lvm
+import qualified Helium.Lvm.Core.Module as Lvm
+import qualified Helium.Lvm.Core.Expr as Lvm
 
 -- Prelude will be treated specially
 prelude :: String

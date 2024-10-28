@@ -1,19 +1,19 @@
 module Helium.CodeGeneration.InstanceDictionary where
 
-import Lvm.Core.Expr
-import qualified Lvm.Core.Type as Core
-import Lvm.Core.Module
-import Lvm.Core.Utils (createFunction)
+import Helium.Lvm.Core.Expr
+import qualified Helium.Lvm.Core.Type as Core
+import Helium.Lvm.Core.Module
+import Helium.Lvm.Core.Utils (createFunction)
 
-import Lvm.Common.Id
-import Lvm.Common.Byte
+import Helium.Lvm.Common.Id
+import Helium.Lvm.Common.Byte
 
 import Helium.CodeGeneration.CoreUtils
 import Helium.ModuleSystem.ImportEnvironment
 import Helium.Syntax.UHA_Syntax
 import Helium.Syntax.UHA_Utils
 import Helium.Utils.Utils
-import Top.Types
+import Helium.Top.Top.Types
 import Control.Arrow
 
 import qualified Data.Map as M

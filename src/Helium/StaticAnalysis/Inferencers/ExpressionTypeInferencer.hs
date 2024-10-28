@@ -14,7 +14,7 @@ import Helium.StaticAnalysis.Inferencers.TypeInferencing (sem_Module, wrap_Modul
 import Helium.ModuleSystem.ImportEnvironment
 import Helium.StaticAnalysis.Inferencers.BindingGroupAnalysis (Assumptions)
 import Helium.StaticAnalysis.Messages.TypeErrors
-import Top.Types
+import Helium.Top.Top.Types
 import qualified Data.Map as M
 import Helium.Syntax.UHA_Utils (nameFromString)
 import Helium.Syntax.UHA_Range (noRange)

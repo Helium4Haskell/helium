@@ -1,0 +1,411 @@
+\documentclass[a4paper,dvips]{article}
+\usepackage{a4,url}
+
+%----------------------------------------------------------
+%-- colors and hyper links, mainly for PDF output
+%----------------------------------------------------------
+\usepackage{color}
+
+\definecolor{purple}{rgb}{0.5,0,0.5}
+\definecolor{navy}{rgb}{0,0,0.5}
+\definecolor{maroon}{rgb}{0.5,0,0}
+\definecolor{darkmaroon}{rgb}{0.25,0,0}
+\definecolor{sand}{rgb}{1,0.98,0.80}
+
+\usepackage{hyperref}
+\hypersetup{%
+ breaklinks=true,
+ colorlinks=true,
+ anchorcolor=navy,
+ citecolor=navy,
+ urlcolor=purple,
+ filecolor=maroon,
+ menucolor=maroon,
+ pagecolor=maroon,
+ linkcolor=purple
+}
+
+
+%----------------------------------------------------------
+%-- handy commands
+%----------------------------------------------------------
+\newcommand{\email}[1]{\href{mailto:#1}{\texttt{#1}}}
+
+\parskip=\baselineskip
+\parindent=0pt
+
+%----------------------------------------------------------
+%-- syntax commands
+%----------------------------------------------------------
+\newcommand{\lvm}{\textsc{lvm}}
+\newenvironment{productions}%
+  {\begin{tabbing}\hspace{2cm}\=\hspace{6cm}\=\kill{}\\}%
+  {\end{tabbing}}
+
+\newcommand{\fixed}[1]{\makebox[3.5em]{#1}}
+\newcommand{\production}[3]{\nont{#1}\>\fixed{$\rightarrow$}\nont{#2}\>#3\\}
+\newcommand{\next}[2]{\strut{}\>\fixed{$|$}\nont{#1}\>#2\\}
+
+\newcommand{\nont}[1]{\textit{#1}}
+
+\newcommand{\opt}[1]{$[\,$#1$\,]$}
+\newcommand{\many}[1]{$\{$#1$\}^*$}
+\newcommand{\manyone}[1]{$\{$#1$\}^+$}
+\newcommand{\manyi}[2]{$\{$#2$\}^{#1}$}
+
+\newcommand{\sepby}[2]{{\rm (}\hspace{-0.5ex}$|\,$#1 #2$\,|$\hspace{-0.5ex}{\rm )}$^*$}
+%\newcommand{\sepby}[2]{\{\hspace{-0.6ex}$|$#1 #2$|$\hspace{-0.6ex}\}$^*$}
+%\newcommand{\sepby}[2]{\{\hspace{-0.8ex}\{#1 #2\}\hspace{-0.9ex}\}$^*$}
+%\newcommand{\sepby}[2]{$\lceil$#1 #2$\rceil{}^*$}
+
+\newcommand{\diff}[2]{#1$_{\langle\mbox{#2}\rangle}$}
+\newcommand{\term}[1]{{\tt #1}}
+\newcommand{\charcode}[1]{{\rm $_\textsf{x}$#1}}
+
+\newcommand{\por}{$|$}
+\newcommand{\pgroup}[1]{{\rm (}#1{\rm )}}
+\newcommand{\lex}[2]{\nont{#2}$_{[\nont{#1}]}$}
+
+%----------------------------------------------------------
+%-- code and source
+%----------------------------------------------------------
+\newcommand{\code}[1]{\texttt{#1}}
+
+%----------------------------------------------------------
+%-- document
+%----------------------------------------------------------
+\begin{document}
+
+\title{The LVM assembler library}
+\author{Daan Leijen\\
+\email{daan@cs.uu.nl}, \url{http://www.cs.uu.nl/~daan}}
+\maketitle
+
+\section{Library structure}
+
+The Core assembler library consists of:
+
+\begin{itemize}
+\item \code{common}. Common modules, for example for identifiers and binary files.
+\item\code{lvm}.    Low level modules for handling LVM files and instructions.
+\item\code{asm}.    Assembler language, a bit like STG language.
+\item\code{core}.   Core language, enriched lambda calculus.
+\item\code{parsec}. Parser combinator library.
+\end{itemize}
+
+You can plug into the library at the Lvm, Asm or Core level. For
+most applications, the Core level is the most suitable abstraction.
+
+\begin{itemize}
+\item Lvm.  The Lvm binary level. You need to generate an \code{Lvm.LvmModule}.
+        This contains items like declared constructors and (function) values.
+        \code{LvmWrite.lvmWriteFile} emits a binary Lvm file.
+        The values contain an instruction stream (\code{Instr}). Fortunately,
+        the libraries \code{InstrResolve} and \code{InstrRewrite} can resolve local
+        variables and perform peephole optimization.
+
+\item Asm.  The assembler level. An \code{Asm.AsmModule} contains Asm expressions,
+        a restricted form of lambda calculus. \code{AsmToLvm.asmToLvm} generates
+        Lvm instructions and converts to an \code{LvmModule}.
+
+\item Core.  The Core level. A \code{Core.CoreModule} contains Core expressions,
+        an enriched lambda calculus. \code{CoreToAsm.coreToAsm} rewrites this into
+        an \code{Asm.AsmModule}.
+\end{itemize}
+
+The module \code{core/Main} implements a simple compiler from Core expressions
+to Lvm modules and illustrates how to call the different modules.
+
+
+\section{The Module library}
+
+Central to all these modules is the \code{lvm/Module.Module} structure. Here
+is the definition:
+\begin{verbatim}
+data Module v   = Module{ moduleName     :: !Id
+                        , moduleMajorVer :: !Int
+                        , moduleMinorVer :: !Int
+                        , moduleDecls    :: [Decl v]
+                        }
+ \end{verbatim}
+
+A module contains the \emph{minimal} information necessary to generate
+a binary LVM file. Declarations are defined as:
+
+{\small
+\begin{verbatim}
+data Decl v     
+  = DeclValue     { declName :: Id, declAccess :: !Access
+                  , valueEnc :: Maybe Id, valueValue :: v
+                  , declCustoms :: ![Custom] }
+  | DeclAbstract  { declName :: Id, declAccess :: !Access
+                  , declArity :: !Arity, declCustoms :: ![Custom] }
+  | DeclCon       { declName :: Id, declAccess :: !Access
+                  , declArity :: !Arity, conTag :: !Tag
+                  , declCustoms :: [Custom] }
+  | DeclExtern    { declName :: Id, declAccess :: !Access
+                  , declArity :: !Arity
+                  , externType :: !String, externLink :: !LinkConv
+                  , externCall  :: !CallConv, externLib  :: !String
+                  , externName :: !ExternName, declCustoms :: ![Custom] } 
+  | DeclCustom    { declName :: Id, declAccess :: !Access
+                  , declKind :: !DeclKind, declCustoms :: ![Custom] }
+  | DeclImport    { declName :: Id, declAccess :: !Access
+                  , declCustoms :: ![Custom] }
+
+data Access
+  = Defined  { accessPublic :: !Bool }
+  | Imported { accessPublic :: !Bool
+             , importModule :: Id, importName :: Id
+             , importKind :: !DeclKind
+             , importMajorVer :: !Int, importMinorVer :: !Int }
+\end{verbatim}}
+
+Each declaration contains an \code{Access}. A declaration is either defined
+in this module but the
+access can also designate this declaration as \emph{imported}. This is useful for
+constructors and externals -- an implementation has all declarations available
+as if they are locally declared and doesn't need two kinds of declarations.
+Only when an lvm file is written, they are treated differently.
+For values the situation is
+handled differently since (non-inlined) imported values normally don't contain
+their definition. The \code{DeclAbstract} declaration is used for those.
+
+A value declaration is parameterized by the actual definition value \code{v}.
+This means that each pass of the compiler can use the \emph{same} module
+structure but each time with different definition values. Here are the type
+definitions for each major pass.
+{\small
+\begin{verbatim}
+type LvmModule  = Module [Instr]  -- List of instructions
+type AsmModule  = Module Top      -- Top  == top level Asm expressions
+type CoreModule = Module Expr     -- Expr == Core expressions
+
+coreToAsm   :: CoreModule -> AsmModule
+asmToLvm    :: AsmModule -> LvmModule
+lvmToBytes  :: LvmModule -> Bytes
+\end{verbatim}}
+
+\section{Identifiers}
+
+The biggest obstacle to useing these libraries from another front-end
+compiler is the representation of identifiers. The library expects
+two interfaces \code{common/Id} and \code{common/IdMap} to be implemented.
+The default implementations work well but may not be suitable the
+front-end compiler. The compiler needs to provide a wrapper that implements
+both modules in terms of its own representation of identifiers or it
+needs to translate compiler identifiers into library identifiers when
+translating into Core or Asm modules. The last approach is used by the
+Helium compiler.
+
+\section{Imports}
+
+The \verb@DeclImport@ declarations are unresolved import declarations.
+The \verb@DeclImport@ declarations can
+be resolved by a call to \verb@LvmResolve.lvmResolve@. Each import
+declaration is than replaced by a normal declaration with
+an \verb@Imported@ access, and imported value
+declarations are replaced by an abstract declaration. 
+
+If the \verb@DeclImport@ has an \verb@importKind@ of \verb@DeclKindModule@, the
+\verb@importName@ is ignored and all the items exported by that module are
+imported.
+
+\section{Custom values}
+
+Custom values are defined as:
+\begin{verbatim}
+data Custom
+  = CustomInt   !Int
+  | CustomBytes !Bytes
+  | CustomName  Id
+  | CustomLink  Id !DeclKind
+  | CustomDecl  !DeclKind ![Custom]
+  | CustomNothing
+
+data DeclKind 
+  = DeclKindName
+  | DeclKindKind
+  | DeclKindBytes
+  | DeclKindCode
+  | DeclKindValue
+  | DeclKindCon
+  | DeclKindImport
+  | DeclKindModule
+  | DeclKindExtern
+  | DeclKindExternType
+  | DeclKindCustom !Id
+  deriving Eq
+\end{verbatim}
+
+Basic custom values are a \verb@CustomNothing@, \verb@CustomInt@, 
+\verb@CustomBytes@ (or strings) 
+or a \verb@CustomName@ (for static link time identifiers). A \verb@CustomLink@
+establishes a link to another declaration. A \verb@CustomDecl@ is a local
+anonymous declaration. For example, a type signature can be attached to a 
+value declaration by adding the following custom value:
+\begin{verbatim}
+CustomDecl (DeclKindCustom (idFromString "type")) 
+           [CustomBytes (bytesFromString "...")]
+\end{verbatim}
+
+%----------------------------------------------------------
+%-- Syntax
+%----------------------------------------------------------
+
+\section{Core assembler syntax}
+
+\subsection{Notational conventions}
+
+These notational conventions are used for presenting syntax:
+\begin{productions}
+\production{production}{\opt{p}}{optional}
+\next{\many{p}}{zero or more repetitions}
+\next{\manyone{p}}{one or more repetitions}
+%\next{\manyi{i}{p}}{exactly $i$ repetitions}
+\next{\sepby{p}{q}}{zero or more \nont{p} seperated by \nont{q}}
+\next{p \por{} q}{choice}
+\next{\diff{p}{q}}{difference: \nont{p} except those in \nont{q}}
+\next{\term{terminal}}{terminals are in typewriter font}
+\next{\charcode{0D}}{hexadecimal character code}
+\\
+\production{\lex{lex}{production}}{}{lexemes are drawn recursively from \nont{lex}}
+\end{productions}
+
+\subsection{General products}
+
+The syntax for general products (or tuples) is:
+\begin{productions}
+\production{product}{\term{(} \term{@} tag \term{,} arity \term{)}}{}
+\production{arity}{\nont{int}}{}
+\production{tag}{\nont{varid} \por{} \nont{int}}{}
+\end{productions}
+
+Note that the \nont{tag} should either be an \emph{evaluated} variable or an integer.
+For example, a constructor with tag 0 and arity 2 can be build as:
+\begin{verbatim}
+tuple x y    = (@0,2) x y
+\end{verbatim}
+
+There is special syntax for tuples that always have a zero tag, and the above
+example is equivalent to:
+\begin{verbatim}
+tuple x y    = (x,y)
+\end{verbatim}
+
+The generated Core expressions for general products use the \verb@ConTag@ 
+to describe the constructor. For example, the tuple \verb@(x,y)@ is
+translated into:
+\begin{verbatim}
+Ap (Ap (Con (ConTag (Lit (LitInt 0)) 2)) (Var x)) (Var y)
+\end{verbatim}
+
+One can match on general products too but no variables are allowed for
+the tag yet.
+\begin{productions}
+\production{patproduct}{\term{(} \term{@} pattag \term{,} arity \term{)}}{}
+\production{pattag}{\nont{int}}{}
+\end{productions}
+
+For example:
+\begin{verbatim}
+first x = case x of (@0,2) a b -> a
+\end{verbatim}
+
+or equivalently:
+\begin{verbatim}
+first x = case x of (a,b) -> a
+\end{verbatim}
+
+A noteworthy feature of the above function is that it will return the
+first field of \emph{any} constructor with tag 0 and more than 1 field,
+allthough this behaviour might change with future versions of the \lvm{}.
+
+\subsection{Custom values in core assembly}
+
+The syntax for custom values in core assembler is:
+
+\begin{productions}
+\production{attributes}{\term{:} \opt{\term{private} \por{} \term{public}} \nont{customs}}{}
+\production{customs}{\term{[} \sepby{\nont{custom}}{\term{,}} \term{]}}{}
+\production{custom}{\nont{int}}{custom int}
+\next{\nont{string}}{custom bytes}
+\next{\term{nothing}}{custom nothing}
+\next{\term{custom} \nont{declkind} \nont{customid}}{custom link}
+\next{\term{custom} \nont{declkind} \nont{customs}}{anonymous declaration}
+\end{productions}
+\begin{productions}
+\production{customid}{\nont{id} \por{} \nont{string}}{}
+\production{declkind}{\nont{id}}{custom kind}
+\next{\nont{string}}{custom kind}
+\next{\nont{int}}{standard kind by number}
+\end{productions}
+
+\subsubsection{Toplevel values}
+Custom values for toplevel values can be given right after the
+function arguments:
+\begin{productions}
+\production{value}{\nont{variable} \many{\nont{varid}} \opt{\nont{attributes}} \term{=} \nont{expr}}{}
+\end{productions}
+
+Here is an example where the \term{id} function is given a type.
+\begin{verbatim}
+module Id where
+id x : public [custom type ["forall a. a -> a"]] = x
+\end{verbatim}
+
+There is special syntax for type signatures and the above example is equivalent to:
+\begin{verbatim}
+module Id where
+id :: a -> a
+id x : public = x
+\end{verbatim}
+
+Furthermore, values can be made public by specifying a Haskell style export list:
+\begin{verbatim}
+module Id( id ) where
+id :: a -> a
+id x = x
+\end{verbatim}
+
+\subsubsection{Custom declarations}
+A toplevel custom declaration starts with the \term{custom} keyword:
+\begin{productions}
+\production{customdecl}{\term{custom} \nont{declkind} \nont{customid} \opt{\nont{attributes}}}{}
+\end{productions}
+
+For example, here is a kind declaration for a data type and an infix declaration:
+\begin{verbatim}
+custom "data" List : [custom kind ["*->*"]]
+custom infix  "+"  : [left,5]
+\end{verbatim}
+
+The assembler automatically adds kind and type signatures for data
+declarations. 
+\begin{verbatim}
+data List a = Nil | Cons a (List a)
+\end{verbatim}
+
+The above example is equivalent with\footnote{except that \term{con} declarations
+are not supported (yet).}:
+\begin{verbatim}
+custom "data" List : [custom kind ["*->*]]
+con Nil  : [custom type ["forall a. List a"]
+           ,custom data List] = (@0,0)
+con Cons : [custom type ["forall a. a -> List a -> List a"]
+           ,custom data List] = (@1,2)
+\end{verbatim}
+
+The visibility of a data type can be specified with a Haskell style
+export list. For example:
+\begin{verbatim}
+module Data( List(Cons,Nil) ) where ...
+\end{verbatim}
+
+or even:
+\begin{verbatim}
+module Data( List(..) ) where ...
+\end{verbatim}
+
+
+\end{document}

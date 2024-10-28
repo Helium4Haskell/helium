@@ -16,10 +16,10 @@ import           Helium.CodeGeneration.CoreUtils
 import           Helium.ModuleSystem.ImportEnvironment
 import           Helium.StaticAnalysis.Miscellaneous.TypeConversion
 import           Helium.Utils.QualifiedTypes
-import           Lvm.Core.Expr
-import qualified Lvm.Core.Type                 as Core
-import           Lvm.Common.Id
-import           Top.Types
+import           Helium.Lvm.Core.Expr
+import qualified Helium.Lvm.Core.Type                 as Core
+import           Helium.Lvm.Common.Id
+import           Helium.Top.Top.Types
 import           Helium.Utils.Utils
 
 nameAndTypes

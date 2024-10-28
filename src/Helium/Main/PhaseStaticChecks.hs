@@ -13,7 +13,7 @@ import Helium.Utils.Utils (firstUpper)
 import Helium.StaticAnalysis.Messages.Warnings(Warning)
 import qualified Helium.StaticAnalysis.StaticChecks.StaticChecks as SC
 import Helium.Syntax.UHA_Syntax (Name)
-import Top.Types (TpScheme)
+import Helium.Top.Top.Types (TpScheme)
 import Helium.StaticAnalysis.Messages.StaticErrors
 import Helium.StaticAnalysis.Messages.Information (showInformation)
 

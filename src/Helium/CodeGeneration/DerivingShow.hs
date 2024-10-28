@@ -20,14 +20,14 @@ import           Helium.StaticAnalysis.Miscellaneous.TypeConversion
 import           Helium.Utils.QualifiedTypes
 import           Helium.Utils.Utils
 import           Helium.Utils.QualifiedTypes.Constants
-import           Lvm.Core.Expr
-import qualified Lvm.Core.Type                 as Core
-import           Lvm.Core.Utils
-import           Lvm.Common.Id
+import           Helium.Lvm.Core.Expr
+import qualified Helium.Lvm.Core.Type                 as Core
+import           Helium.Lvm.Core.Utils
+import           Helium.Lvm.Common.Id
 import qualified Data.Map                      as M
 import           Data.Maybe
 import           Data.List
-import           Top.Types
+import           Helium.Top.Top.Types
 
 
 typeDictShow :: Core.Type

@@ -14,8 +14,8 @@
 module Helium.StaticAnalysis.Miscellaneous.ConstraintInfo where
 
 import Helium.Main.Args (Option(..))
-import Top.Types
-import Top.Ordering.Tree
+import Helium.Top.Top.Types
+import Helium.Top.Top.Ordering.Tree
 import Helium.Syntax.UHA_Syntax
 import Helium.Syntax.UHA_Utils
 import Helium.StaticAnalysis.Miscellaneous.UHA_Source
@@ -25,11 +25,11 @@ import Helium.StaticAnalysis.Messages.Messages
 import Helium.StaticAnalysis.Miscellaneous.DoublyLinkedTree
 import Helium.StaticAnalysis.Miscellaneous.TypeConstraints
 
-import Top.Constraint.Information
-import Top.Implementation.Overloading
-import Top.Interface.Basic (ErrorLabel)
-import Top.Interface.Substitution (unificationErrorLabel)
-import Top.Interface.TypeInference
+import Helium.Top.Top.Constraint.Information
+import Helium.Top.Top.Implementation.Overloading
+import Helium.Top.Top.Interface.Basic (ErrorLabel)
+import Helium.Top.Top.Interface.Substitution (unificationErrorLabel)
+import Helium.Top.Top.Interface.TypeInference
 import Helium.Utils.Utils (internalError)
 import Data.Maybe
 import Data.Function

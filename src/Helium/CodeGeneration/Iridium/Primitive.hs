@@ -10,9 +10,9 @@
 
 module Helium.CodeGeneration.Iridium.Primitive(Primitive(..), primitives, findPrimitive) where
 
-import Lvm.Common.Id(Id, idFromString, NameSupply)
-import Lvm.Common.IdMap(IdMap, mapFromList, findMap)
-import Lvm.Core.Type
+import Helium.Lvm.Common.Id(Id, idFromString, NameSupply)
+import Helium.Lvm.Common.IdMap(IdMap, mapFromList, findMap)
+import Helium.Lvm.Core.Type
 import Helium.CodeGeneration.Iridium.Type
 import Helium.CodeGeneration.LLVM.Target(Target(..))
 import Helium.CodeGeneration.LLVM.Utils

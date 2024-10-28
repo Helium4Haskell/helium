@@ -18,8 +18,8 @@ import Helium.StaticAnalysis.Messages.TypeErrors
 import Helium.StaticAnalysis.Messages.Information (showInformation)
 import Helium.StaticAnalysis.Miscellaneous.ConstraintInfo (ConstraintInfo)
 import Helium.Syntax.UHA_Utils(NameWithRange)
-import Top.Solver (SolveResult)
-import Top.Types (TpScheme)
+import Helium.Top.Top.Solver (SolveResult)
+import Helium.Top.Top.Types (TpScheme)
 import System.FilePath.Posix
 
 phaseTypeInferencer :: 

@@ -13,9 +13,9 @@
 
 module Helium.StaticAnalysis.Heuristics.OnlyResultHeuristics where
 
-import Top.Implementation.TypeGraph.Heuristic
-import Top.Interface.TypeInference
-import Top.Types
+import Helium.Top.Top.Implementation.TypeGraph.Heuristic
+import Helium.Top.Top.Interface.TypeInference
+import Helium.Top.Top.Types
 import Helium.StaticAnalysis.Miscellaneous.UHA_Source
 import Helium.Utils.QualifiedTypes.Constants
       

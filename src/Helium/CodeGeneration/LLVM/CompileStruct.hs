@@ -3,7 +3,7 @@ module Helium.CodeGeneration.LLVM.CompileStruct where
 import Data.Bits (shiftL)
 import Data.Maybe (isJust)
 import Data.List (zipWith4)
-import Lvm.Common.Id(idFromString, Id, NameSupply, mapWithSupply, splitNameSupply, splitNameSupplies)
+import Helium.Lvm.Common.Id(idFromString, Id, NameSupply, mapWithSupply, splitNameSupply, splitNameSupplies)
 import qualified Helium.CodeGeneration.Iridium.Data as Iridium
 import qualified Helium.CodeGeneration.Iridium.Type as Iridium
 import Helium.CodeGeneration.LLVM.Env

@@ -45,9 +45,9 @@ MODULE {Helium.StaticAnalysis.Inferencers.KindInferencing}
 -- Imports
 
 {
-import Top.Types
-import Top.Solver.Greedy
-import Top.Solver
+import Helium.Top.Top.Types
+import Helium.Top.Top.Solver.Greedy
+import Helium.Top.Top.Solver
 import Helium.StaticAnalysis.Miscellaneous.TypeConstraints
 import Helium.Syntax.UHA_Syntax
 import Helium.Main.Args

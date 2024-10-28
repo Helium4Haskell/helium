@@ -14,11 +14,11 @@ import Data.Maybe
 import Data.Either (rights)
 
 import Helium.Utils.Utils
-import Lvm.Core.Module
-import Lvm.Core.Expr
-import Lvm.Core.Type
-import Lvm.Common.Id
-import Lvm.Common.IdMap
+import Helium.Lvm.Core.Module
+import Helium.Lvm.Core.Expr
+import Helium.Lvm.Core.Type
+import Helium.Lvm.Common.Id
+import Helium.Lvm.Common.IdMap
 
 import Text.PrettyPrint.Leijen
 

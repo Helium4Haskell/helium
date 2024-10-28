@@ -3,13 +3,13 @@ module Helium.CodeGeneration.Core.Strictness (coreStrictness) where
 import Data.List
 import Text.PrettyPrint.Leijen (pretty)
 
-import Lvm.Common.Id
-import Lvm.Common.IdMap
-import Lvm.Common.IdSet
-import Lvm.Core.Expr
-import Lvm.Core.Type
+import Helium.Lvm.Common.Id
+import Helium.Lvm.Common.IdMap
+import Helium.Lvm.Common.IdSet
+import Helium.Lvm.Core.Expr
+import Helium.Lvm.Core.Type
 import Helium.CodeGeneration.Core.TypeEnvironment
-import Lvm.Core.Module
+import Helium.Lvm.Core.Module
 
 coreStrictness :: NameSupply -> CoreModule -> CoreModule
 coreStrictness supply mod@(Module name major minor imports decls) = Module name major minor imports $ mapWithSupply (transformDeclaration env) supply decls

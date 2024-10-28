@@ -1,0 +1,456 @@
+%{-*-----------------------------------------------------------------------
+%  The Core Assembler.
+%
+%  Copyright 2001, Daan Leijen. All rights reserved. This file
+%  is distributed under the terms of the GHC license. For more
+%  information, see the file "license.txt", which is included in
+%  the distribution.
+%-----------------------------------------------------------------------*-}
+
+%-- $Id$
+
+\documentclass[a4paper,dvips]{article}
+\usepackage{a4,url}
+
+%----------------------------------------------------------
+%-- colors and hyper links, mainly for PDF output
+%----------------------------------------------------------
+\usepackage{color}
+
+\definecolor{purple}{rgb}{0.5,0,0.5}
+\definecolor{navy}{rgb}{0,0,0.5}
+\definecolor{maroon}{rgb}{0.5,0,0}
+\definecolor{darkmaroon}{rgb}{0.25,0,0}
+\definecolor{sand}{rgb}{1,0.98,0.80}
+
+\usepackage{hyperref}
+\hypersetup{%
+ breaklinks=true,
+ colorlinks=true,
+ anchorcolor=navy,
+ citecolor=navy,
+ urlcolor=purple,
+ filecolor=maroon,
+ menucolor=maroon,
+ pagecolor=maroon,
+ linkcolor=purple
+}
+
+
+%----------------------------------------------------------
+%-- handy commands
+%----------------------------------------------------------
+\newcommand{\email}[1]{\href{mailto:#1}{\texttt{#1}}}
+
+\parskip=\baselineskip
+\parindent=0pt
+
+%----------------------------------------------------------
+%-- Special characters
+%----------------------------------------------------------
+\newcommand{\ttquot}{"}	
+\newcommand{\tthash}{\#}	
+\newcommand{\ttdollar}{\$}	
+\newcommand{\ttperc}{\%}	
+\newcommand{\ttamp}{\&}	
+\newcommand{\ttapos}{'}	
+\newcommand{\ttlt}{<}	
+\newcommand{\ttgt}{>}	
+\newcommand{\ttat}{@}	
+\newcommand{\ttbackslash}{\char92}
+\newcommand{\ttcaret}{\char94}	
+\newcommand{\ttunderscore}{\char95}
+\newcommand{\ttlcurly}{\char123}	
+\newcommand{\ttbar}{\char124}  
+\newcommand{\ttrcurly}{\char125}	
+\newcommand{\ttsquig}{\char126}	
+\newcommand{\ttnbsp}{~}	
+
+
+%----------------------------------------------------------
+%-- syntax commands
+%----------------------------------------------------------
+\newcommand{\lvm}{\textsc{lvm}}
+\newenvironment{productions}%
+  {\begin{tabbing}\hspace{2cm}\=\hspace{6cm}\=\kill{}\\}%
+  {\end{tabbing}}
+
+\newcommand{\fixed}[1]{\makebox[3.5em]{#1}}
+\newcommand{\production}[3]{\nont{#1}\>\fixed{$\rightarrow$}\nont{#2}\>#3\\}
+\newcommand{\next}[2]{\strut{}\>\fixed{$|$}\nont{#1}\>#2\\}
+
+\newcommand{\nont}[1]{\textit{#1}}
+
+\newcommand{\pspace}{\hspace{0.25ex}}
+\newcommand{\opt}[1]{$[$#1$]$}
+\newcommand{\many}[1]{$\{$#1\pspace$\}^*$}
+\newcommand{\manyone}[1]{$\{$#1\pspace$\}^\textrm{\tt+}$}
+\newcommand{\manyi}[2]{$\{$#2\pspace$\}^{#1}$}
+
+\newcommand{\bananas}[2]{{\rm (}\hspace{-0.5ex}$|\,$#1\pspace$\,|$\hspace{-0.5ex}{\rm )}$^{#2}$}
+\newcommand{\sepby}[2]{\bananas{#1 #2}{*}}
+\newcommand{\sepbyone}[2]{\bananas{#1 #2}{+}}
+\newcommand{\sepbytwo}[2]{#1 \manyone{#2 #1}}
+
+\newcommand{\septermby}[2]{\sepby{#1}{#2} \opt{#2}}
+\newcommand{\septermbyone}[2]{\sepbyone{#1}{#2} \opt{#2}}
+
+\newcommand{\termby}[2]{\many{#1 #2}}
+
+
+%\newcommand{\sepby}[2]{\{\hspace{-0.6ex}$|$#1 #2$|$\hspace{-0.6ex}\}$^*$}
+%\newcommand{\sepby}[2]{\{\hspace{-0.8ex}\{#1 #2\}\hspace{-0.9ex}\}$^*$}
+%\newcommand{\sepby}[2]{$\lceil$#1 #2$\rceil{}^*$}
+
+%\newcommand{\septermby}[2]{\{\hspace{-0.9ex}\{#1 #2\}\hspace{-0.9ex}\}$^*$}
+%\newcommand{\septermby}[2]{\sepby{#1}{#2} \opt{#2}}
+%\newcommand{\septermbyone}[2]{\sepbyone{#1}{#2} \opt{#2}}
+
+\newcommand{\diff}[2]{#1$_{\langle\mbox{#2}\rangle}$}
+\newcommand{\term}[1]{{\tt #1}}
+\newcommand{\charcode}[1]{{\rm $_\textsf{x}$#1}}
+
+\newcommand{\por}{$|$}
+\newcommand{\pgroup}[1]{{\rm(}#1{\rm{})}}
+\newcommand{\lex}[2]{\nont{#2}$_{[\nont{#1}]}$}
+
+
+
+%----------------------------------------------------------
+%-- code and source
+%----------------------------------------------------------
+\newcommand{\code}[1]{\texttt{#1}}
+
+%----------------------------------------------------------
+%-- document
+%----------------------------------------------------------
+\begin{document}
+
+\title{Core syntax}
+\author{Daan Leijen\\
+\email{daan@cs.uu.nl}, \url{http://www.cs.uu.nl/~daan}}
+\maketitle
+
+\section{Notational conventions}
+
+These notational conventions are used for presenting syntax:
+\begin{productions}
+\production{production}{\opt{p}}{optional}
+\next{\many{p}}{zero or more repetitions}
+\next{\manyone{p}}{one or more repetitions}
+%\next{\manyi{i}{p}}{exactly $i$ repetitions}
+\next{\sepby{p}{q}}{zero or more \nont{p}, seperated by \nont{q}}
+\next{\sepbyone{p}{q}}{one or more \nont{p}, seperated by \nont{q}}
+\next{p \por{} q}{choice: \nont{p} or \nont{q}}
+\next{\diff{p}{q}}{difference: \nont{p} except those in \nont{q}}
+\next{\term{terminal}}{terminals are in typewriter font}
+\next{\charcode{0D}}{hexadecimal character code}
+\\
+\production{\lex{lex}{production}}{}{lexemes are drawn recursively from \nont{lex}}
+\end{productions}
+
+
+%----------------------------------------------------------
+%-- Context free syntax
+%----------------------------------------------------------
+\section{Context-free syntax}
+
+\subsection{Module}
+
+\begin{productions}
+\production{\lex{lex}{program}}{header topdecls}{}
+\\
+\production{header}{\term{module} modid \term{where}}{}
+\\
+\production{topdecls}{\termby{topdecl}{\term{;}} }{}
+\next{\term{\ttlcurly} \termby{topdecl}{\term{;}} \term{\ttrcurly} }{}
+\\
+\production{topdecl}{abstractdecl \por{} condecl}{toplevel declaration}
+\next{externdecl \por{} customdecl}{}
+\next{importdecl \por{} valuedecl}{}
+\\
+\production{importdecl}{\term{import} \opt{declkind} id \opt{noimp-attrs} \term{=} qid}{}
+\production{abstractdecl}{\term{abstract} varid \opt{noimp-attrs} \term{=} qvarid integer}{}
+\production{condecl}{\term{con} conid \opt{attrs} \term{=} acon}{}
+\production{customdecl}{\term{custom} \nont{declkind} \nont{id} \opt{\nont{attrs}}}{}
+\production{externdecl}{\term{extern} varid \opt{attrs} \term{=} externdef}{}
+\production{valuedecl}{\opt{\term{val}} lhs \opt{attrs} \term{=} expr}{toplevel function declaration}
+\\
+\production{externdef}{\opt{linkconv} \opt{callconv} externname \term{::} externtype}{}
+\production{externlink}{\term{static} \por{} \term{dynamic} \por{} \term{runtime}}{}
+\production{externcall}{\term{stdcall} \por{} \term{ccall} \por{} \term{instruction}}{}
+\production{externname}{\opt{\term{decorate}} \pgroup{qvarid \por{} modid \por{} varid}}{}
+\production{externtype}{string}{}
+\end{productions}
+
+
+
+%----------------------------------------------------------
+%-- Custom values
+%----------------------------------------------------------
+\section{Attributes}
+
+\begin{productions}
+\production{attrs}{\term{:} \opt{access} \opt{import} \opt{customs}}{}
+\production{noimp-attrs}{\term{:} \opt{access} \opt{customs}}{}
+\\
+\production{access}{\term{private} \por{} \term{public}}{}
+\production{import}{\term{import} \opt{declkind} qid}{}
+\\
+\production{customs}{\term{[} \sepby{custom}{\term{,}} \term{]}}{custom values seperated by a comma}
+\production{custom}{\nont{integer}}{custom integer}
+\next{\nont{string}}{custom bytes}
+\next{\term{nothing}}{no value}
+\next{\term{custom} \nont{declkind} \nont{id}}{custom link}
+\next{\term{custom} \nont{declkind} \nont{customs}}{anonymous declaration}
+\end{productions}
+
+\begin{productions}
+\production{declkind}{\nont{varid}}{custom declaration kind}
+\next{\nont{integer}}{standard kinds can be identified by ordinal}
+% \next{\term{val} \por{} \term{con} \por{} \term{import} \por{} \term{extern}}{standard kinds}
+\end{productions}
+
+
+%----------------------------------------------------------
+%-- Expressions
+%----------------------------------------------------------
+\subsection{Declarations}
+
+\begin{productions}
+\production{decls}{\septermbyone{decl}{\term{;}} }{seperated or terminated by semicolons}
+\next{\term{\ttlcurly} \septermbyone{decl}{\term{;}} \term{\ttrcurly} }{}
+\\
+\production{decl}{lhs \term{=} \opt{freevar} expr}{local function declaration}
+\production{lhs}{varid}{left-hand side}
+\\
+\production{freevar}{\term{\ttlcurly} \many{varid} \term{\ttrcurly}}{}
+\end{productions}
+
+\subsection{Expressions}
+\begin{productions}
+\production{expr}{\term{\ttbackslash} \manyone{bindid} \term{->} expr}{lambda expression}
+\next{\term{let} \opt{\term{rec} \por{} \term{!}} decls \term{in} expr}{let expression}
+\next{\term{match} var \term{with} alts}{match expression}
+\next{fexpr}
+\\
+\production{fexpr}{\opt{fexpr} aexpr}{function application}
+\\
+\production{aexpr}{var \por{} con}{}
+\next{integer \por{} float \por{} string}{}
+\next{\term{(} expr \term{)}}{}
+\end{productions}
+
+\subsection{Alternatives}
+\begin{productions}
+\production{alts}{\manyone{alt}}{alternatives}
+\production{alt}{\term{\ttbar} pat \term{->} expr}{}
+\\
+\production{pat}{con \many{bindid}}{}
+\next{literal}{}
+\next{bindid}{named wildcard}
+\next{\term{\ttunderscore}}{anonymous wildcard}
+\end{productions}
+
+\subsection{Variables and constructors}
+
+\begin{productions}
+\production{var}{varid}{}
+\production{con}{conid \por{} acon}{}
+\production{acon}{\term{\tthash} \term{(} expr \term{,} integer \term{)}}{anonymous constructor with tag and arity}
+\\
+\production{id}{conid \por{} varid}{general identifier}
+\production{modid}{conid}{module identifier}
+\production{bindid}{varid}{can contain strictness annotation?}
+\\
+\production{qid}{modid \term{.} id}{qualified identifier}
+\production{qvarid}{modid \term{.} varid}{qualified variable}
+\end{productions}
+
+
+%----------------------------------------------------------
+%-- Syntactic sugar
+%----------------------------------------------------------
+\section{Syntactic sugar}
+
+\subsection{Exports}
+
+\begin{productions}
+\production{module}{\term{module} modid \opt{exports} \term{where}}{}
+\production{exports}{\term{(} \sepby{export}{\term{,}} \term{)}}{}
+\production{export}{\opt{declkind} id \opt{conexport}}{}
+\production{conexport}{\term{(} \term{..} \term{)}}{}
+\next{\term{(} \sepby{conid}{\term{,}} \term{)}}{}
+\end{productions}
+
+
+\subsection{Imports}
+
+\begin{productions}
+\production{importdecl}{\term{import} \term{module} modid \opt{noimp-attrs} \opt{imports}}{}
+\production{imports}{\term{(} \sepby{import}{\term{,}}  \term{)}}{}
+\production{import}{\opt{declkind} id}{}
+\end{productions}
+
+
+\subsection{Type declarations}
+
+\begin{productions}
+\production{valuedecl}{\opt{\term{val}} \opt{typespec} lhs \opt{attrs} \term{=} expr}{}
+\production{typespec}{varid \term{::} type \term{;}}{}
+\\
+\production{externtype}{type}{}
+\\
+\production{datadecl}{\term{data} typeid \many{typevarid} \opt{attrs} \opt{condefs}}{}
+\production{condefs}{\term{=} \sepbyone{condef}{\term{\ttbar}} }{}
+\production{condef}{conid \many{stype}}{}
+\\
+\production{typedecl}{\term{type} typeid \many{typevarid} \opt{attrs} \term{=} qtype}{}
+%\\
+%\production{declkind}{\term{type} \por{} \term{kind} \por{} \term{data} \por{} \term{typedecl}}{}
+\end{productions}
+
+\subsection{Types}
+
+\begin{productions}
+\production{type}{qtype}{structured type}
+\next{string}{unstructured type}
+\\
+\production{qtype}{\term{forall} \manyone{typevarid} \term{.} qtype}{}
+\next{\term{exist} \manyone{typevarid} \term{.} qtype}{}
+\next{ftype}{}
+\\
+\production{ftype}{btype \opt{\term{->} ftype}}{functional type}
+\production{btype}{\opt{btype} stype}{type application}
+\production{stype}{atype \opt{\term{!}}}{strict type}
+\\
+\production{atype}{typeid}{constructor type}
+\next{typevarid}{type variable}
+\next{\term{(} type \term{)}}{grouping}
+\next{\term{(} \term{)}}{unit type}
+\next{\term{(} \sepbytwo{type}{\term{,}} \term{)}}{tuple type}
+\\
+\production{typeid}{conid}{}
+\production{typevarid}{varid}{}
+\end{productions}
+
+
+\subsection{Expressions}
+
+\begin{productions}
+\production{lhs}{varid \many{bindid}}{declaration with arguments}
+\\
+\production{expr}{\term{case} expr \term{of} alts}{case expression}
+\next{\term{if} expr \term{then} expr \term{else} expr}{conditional}
+\\
+\production{aexpr}{\term{(} expr \manyone{\term{,} expr} \term{)}}{tuple}
+\next{\term{(} \term{)}}{unit element}
+\\
+\production{pat}{\term{(} \sepbytwo{bindid}{\term{,}} \term{)}}{tuple pattern}
+\next{\term{(} \term{)}}{unit pattern}
+\end{productions}
+
+
+%----------------------------------------------------------
+%-- Lexical syntax
+%----------------------------------------------------------
+\section{Lexical syntax}
+
+\subsection{Lexemes}
+\begin{productions}
+\production{lex}{\many{whitespace \por{} lexeme}}{}
+\production{lexeme}{varid \por{} conid}{}
+\next{reserved \por{} special}{}
+\next{integer \por{} float \por{} string}{}
+\end{productions}
+
+\subsection{Identifiers}
+\begin{productions}
+\production{conid}{upperid \por{} \term{\ttat} extid}{constructor identifier}
+\production{varid}{\diff{lowerid}{reserved} \por{} \term{\ttdollar} extid}{variable identifier}
+\\
+\production{extid}{\many{extchar}}{}
+\production{extchar}{\diff{graphic}{\term{\ttbackslash} \por{} \term{.}} \por{} escape}{}
+\\
+\production{lowerid}{lower \many{idchar}}{}
+\production{upperid}{upper \many{idchar}}{}
+\production{idchar}{alphanum \por{} \term{\ttunderscore} \por{} \term{'}}{}
+\\
+\production{special}{\term{(} \por{} \term{)} \por{} \term{\ttlcurly} \por{} \term{\ttrcurly} 
+        \por{} \term{|} \por{} \term{::} \por{} \term{;} 
+        \por{} \term{,} \por{} \term{.} \por{} \term{->} \por{} \term{!} \por{} \term{\tthash}}{}
+\\
+\production{reserved}{\term{module} \por{} \term{where}}{}
+\next{\term{import} \por{} \term{abstract} \por{} \term{extern}}{}
+\next{\term{custom} \por{} \term{val} \por{} \term{con}}{} 
+\next{\term{match} \por{} \term{with}}{}
+\next{\term{let} \por{} \term{rec} \por{} \term{in}}{}
+\\
+\next{\term{static} \por{} \term{dynamic} \por{} \term{runtime}}{}
+\next{\term{stdcall} \por{} \term{ccall} \por{} \term{instruction}}{}
+\next{\term{decorate}}{}
+\\
+\next{\term{private} \por{} \term{public} \por{} \term{nothing}}{}
+\\
+\next{\term{type} \por{} \term{data} \por{} \term{forall} \por{} \term{exist}}{}
+\next{\term{case} \por{} \term{of}}{}
+\next{\term{if} \por{} \term{then} \por{} \term{else}}{}
+\end{productions}
+
+\subsection{Literals}
+\begin{productions}
+\production{string}{\term{"} \many{\diff{graphic}{\term{"} \por{} \term{\ttbackslash}} \por{} space \por{} escape \por{} gap} \term{"}}{}
+\\
+\production{escape}{\term{\ttbackslash} \pgroup{charesc \por{} decimal \por{} \term{x} hexadecimal}}{}
+\production{charesc}{\term{a} \por{} \term{b} \por{} \term{f} \por{} \term{n} 
+                     \por{} \term{r} \por{} \term{s} \por{} \term{t} 
+                     \por{} \term{v} \por{} \term{\ttbackslash} \por{} \term{"} 
+                     \por{} \term{'} \por{} \term{.} \por{} \term{\ttamp}}{}
+\production{gap}{\term{\ttbackslash} whitespace \term{\ttbackslash}}{}
+\\
+\production{float}{decimal \term{.} decimal \opt{exponent}}{}
+\production{exponent}{\pgroup{\term{e} \por{} \term{E}} \opt{\term{-} \por{} \term{+}} decimal}
+\\
+\production{integer}{decimal \por{} \term{0} \pgroup{\term{x} \por{} \term{X}} hexadecimal}{}
+\production{decimal}{\manyone{digit}}{}
+\production{hexadecimal}{\manyone{hexdigit}}{}
+\end{productions}
+
+\subsection{White space}
+\newcommand{\bcomstart}{\term{\ttlcurly-}}
+\newcommand{\bcomend}{\term{-\ttrcurly}}
+\newcommand{\lcomstart}{\term{--}}
+
+\begin{productions}
+\production{whitespace}{\manyone{white \por{} linecomment \por{} blockcomment}}{}
+\\
+\production{linecomment}{\lcomstart{} \many{linechar}}{}
+\production{linechar}{graphic \por{} space \por{} tab}{}
+\\
+\production{blockcomment}{\bcomstart{} blockchars \many{blockcomment blockchars} \bcomend}{}
+\production{blockchars}{\diff{many}{many \pgroup{\bcomstart{} \por{} \bcomend{}} many}}{}
+\\
+\production{many}{\many{any}}{}
+\end{productions}
+
+\subsection{Character classes}
+
+\begin{productions}
+\production{alphanum}{alpha \por{} digit}{}
+\production{alpha}{upper \por{} lower}{}
+\production{lower}{\term{a}\ldots\term{z}}{}
+\production{upper}{\term{A}\ldots\term{Z}}{}
+\production{digit}{\term{0}\ldots\term{9}}{}
+\production{hexdigit}{digit \por{} \term{a}\ldots\term{f} \por{} \term{A}\ldots\term{F}}{}
+\\
+\production{any}{graphic \por{} white}{}
+\production{white}{return \por{} linefeed \por{} tab \por{} space}{}
+\production{return}{\charcode{0D}}{a carriage return}
+\production{linefeed}{\charcode{0A}}{a line feed}
+\production{tab}{\charcode{09}}{a horizontal tab}
+\production{space}{\charcode{20}}{a space}
+\production{graphic}{\charcode{21}\ldots\charcode{D7FF}}{}
+\next{\charcode{E000}\ldots\charcode{FFFD}}{}
+\end{productions}
+
+\end{document}

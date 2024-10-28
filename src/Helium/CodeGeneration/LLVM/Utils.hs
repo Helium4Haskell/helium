@@ -11,7 +11,7 @@ module Helium.CodeGeneration.LLVM.Utils where
 import LLVM.AST as AST
 import LLVM.AST.Constant
 import LLVM.AST.AddrSpace
-import Lvm.Common.Id(Id, idFromString, stringFromId, freshId, NameSupply, freshIdFromId)
+import Helium.Lvm.Common.Id(Id, idFromString, stringFromId, freshId, NameSupply, freshIdFromId)
 
 toName :: Id -> Name
 toName = mkName . stringFromId

@@ -18,12 +18,10 @@ maintainer:             helium4haskell@gmail.com
 stability:              provisional
 
 dependencies:
-  - Top
   - base
   - containers
   - directory
   - filepath
-  - lvmlib
   - mtl
   - network
   - parsec

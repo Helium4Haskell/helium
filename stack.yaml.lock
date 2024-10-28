@@ -7,51 +7,112 @@ packages:
 - completed:
     hackage: wl-pprint-1.2.1@sha256:aea676cff4a062d7d912149d270e33f5bb0c01b68a9db46ff13b438141ff4b7c,734
     pantry-tree:
-      size: 221
       sha256: 750b375c6fc33400551f9e32e26e41844c372270a9bc3571e912fa36df7c6d4f
+      size: 221
   original:
     hackage: wl-pprint-1.2.1@sha256:aea676cff4a062d7d912149d270e33f5bb0c01b68a9db46ff13b438141ff4b7c,734
 - completed:
     hackage: network-2.6.3.6@sha256:1ca79d81af02d7acd6032d5e6c9bde4618a8fdcfbe19bd42b49d420183975df0,2666
     pantry-tree:
-      size: 2254
       sha256: 56285baa11d679521837e1f41311a1aeafa522e7637d408d3decd99c083edba1
+      size: 2254
   original:
     hackage: network-2.6.3.6@sha256:1ca79d81af02d7acd6032d5e6c9bde4618a8fdcfbe19bd42b49d420183975df0,2666
 - completed:
-    hackage: llvm-hs-pretty-0.9.0.0@sha256:b7a5de5f3dd97893d19d2b47af1e4dd8d075a5cf57062180a912d1f3ef1def60,1671
+    hackage: bytestring-0.12.1.0@sha256:98e79e1c97117143e4012983509ec95f7e5e4f6adff6914d07812a39f83404b9,9473
     pantry-tree:
+      sha256: 89aac3892a1f67b0b18fec87ac3eaf417b8698e5f231a25b571ac91d085943d3
+      size: 4650
+  original:
+    hackage: bytestring-0.12.1.0@sha256:98e79e1c97117143e4012983509ec95f7e5e4f6adff6914d07812a39f83404b9,9473
+- completed:
+    hackage: parsec-3.1.17.0@sha256:8407cbd428d7f640a0fff8891bd2f7aca13cebe70a5e654856f8abec9a648b56,5149
+    pantry-tree:
+      sha256: 0922d72bd7115bbb590757bd92a827021dfe745ed6c0cd22856f767bee83d91f
+      size: 2810
+  original:
+    hackage: parsec-3.1.17.0
+- completed:
+    hackage: text-2.1.1@sha256:78c3fb91055d0607a80453327f087b9dc82168d41d0dca3ff410d21033b5e87d,10653
+    pantry-tree:
+      sha256: 8251d517ceafa2680250ddb939f4a2b89bf231314cf6a218134af900e154d7cd
+      size: 8413
+  original:
+    hackage: text-2.1.1
+- completed:
+    hackage: directory-1.3.8.5@sha256:fbeec9ec346e5272167f63dcb86af513b457a7b9fc36dc818e4c7b81608d612b,3166
+    pantry-tree:
+      sha256: d11130a0ca9e7c8720ed1ceef4e2f0d9be4b446e67e7d15d634763a5c952877e
+      size: 3519
+  original:
+    hackage: directory-1.3.8.5
+- completed:
+    hackage: process-1.6.24.0@sha256:50cf024a35f396a3a16cc46d0074a055e1b0a40bacaf36b3abba70fbe6b69c0b,2644
+    pantry-tree:
+      sha256: 557c072d94c81944c2da7934c06506edb6fa45574f1ac1add3b51e47b7336f37
+      size: 1790
+  original:
+    hackage: process-1.6.24.0
+- completed:
+    hackage: unix-2.8.5.1@sha256:3f702a252a313a7bcb56e3908a14e7f9f1b40e41b7bdc8ae8a9605a1a8686f06,9808
+    pantry-tree:
+      sha256: b961320db69795a16c4ef4eebb0a3e7ddbbbe506fa1e22dde95ee8d8501bfbe5
+      size: 5821
+  original:
+    hackage: unix-2.8.5.1
+- completed:
+    hackage: binary-0.8.9.2@sha256:03381e511429c44d13990c6d76281c4fc2468371cede4fe684b0c98d9b7d5f5a,6611
+    pantry-tree:
+      sha256: 7fac13c81b45416bd082c34e31cc3ac19226dd15354f379156922ad4cfbe6285
+      size: 1976
+  original:
+    hackage: binary-0.8.9.2
+- completed:
+    hackage: filepath-1.4.300.2@sha256:345cbb1afe414a09e47737e4d14cbd51891a734e67c0ef3d77a1439518bb81e8,5900
+    pantry-tree:
+      sha256: 2420f7addc917bf41970a8980f52abe431b1a0fb711b00795effbb289c8ea76c
+      size: 3998
+  original:
+    hackage: filepath-1.4.300.2
+- completed:
+    hackage: array-0.5.4.0@sha256:4ab91ef6388db19e62fea4ed7bf3bb39bae5c3e3d2ac73a7feb278d05c35db78,1660
+    pantry-tree:
+      sha256: 25fb3fcc19c38f11e8d94ce9f6305bba0227c78915458d684ff471321f63294a
+      size: 1135
+  original:
+    hackage: array-0.5.4.0
+- completed:
+    hackage: scientific-0.3.7.0@sha256:909755ab19b453169ff85281323da1488407776b2360bd9f7afdd219fd306ef2,4869
+    pantry-tree:
+      sha256: 00e74ee83063c8c5cf5c726d9ed079a7f67051f3ddd9e2ecbbe3c6ea06271061
+      size: 657
+  original:
+    hackage: scientific-0.3.7.0
+- completed:
+    name: llvm-hs-pure
+    pantry-tree:
+      sha256: f06514eda279070c45e53204fe426b262ad117f17c22cfa68b65ba2a9cddffcb
+      size: 2600
+    sha256: f95c3680961aa8da28497779df048549372a81e9490602db852e27936be7fc45
+    size: 32636
+    url: https://github.com/matty293/llvm-hs-pure-9.0.1/archive/7c8c00e44edff0727c714dd6a4dcb6b7fea45e13.tar.gz
+    version: 9.0.1
+  original:
+    url: https://github.com/matty293/llvm-hs-pure-9.0.1/archive/7c8c00e44edff0727c714dd6a4dcb6b7fea45e13.tar.gz
+- completed:
+    name: llvm-hs-pretty
+    pantry-tree:
+      sha256: 1a1eca4f32532d2583ebd9a590f71dd60817dd25880222ee61f82d13d153ae56
       size: 4685
-      sha256: 8cf6d628bb4f962575ad0993bb1010e9989cea00b325b8a45ac35ac201061386
+    sha256: 9622fb79c4d542151da4d188a55d7fa1732dee1e186e315d761916b56e834ba0
+    size: 40999
+    url: https://github.com/matty293/llvm-hs-pretty-0.9.0.1/archive/4c181dd24caf2b8e05bab49c5cd8a75526e5c084.tar.gz
+    version: 0.9.0.1
   original:
-    hackage: llvm-hs-pretty-0.9.0.0@sha256:b7a5de5f3dd97893d19d2b47af1e4dd8d075a5cf57062180a912d1f3ef1def60,1671
-- completed:
-    size: 73989
-    url: https://github.com/Helium4Haskell/Top/archive/f8a61d1f3f68066e23cce768abdba4c1ddf3e907.tar.gz
-    name: Top
-    version: '1.9'
-    sha256: 71c3472f95c24ad93fc1145651b6838e029d45a7c9dfd0e3fce47b944837f0ce
-    pantry-tree:
-      size: 4631
-      sha256: 7bb3f686a20da4ca91e64da7535bda8d62356b88289f04989eb3507263d8aa51
-  original:
-    url: https://github.com/Helium4Haskell/Top/archive/f8a61d1f3f68066e23cce768abdba4c1ddf3e907.tar.gz
-- completed:
-    size: 274183
-    subdir: src/lib
-    url: https://github.com/Helium4Haskell/lvm/archive/b36d193c694012ded6f575fa38475d3ab4fa80c8.tar.gz
-    name: lvmlib
-    version: '1.9'
-    sha256: 35187227cd56aeecaa7a1db0c7df0cfbce5097077cebaefed27f04ae05fa6ef8
-    pantry-tree:
-      size: 1785
-      sha256: e0689f195b7b8147d2a1b6e666edd412d058400b5f3485bb3853eeb0b9dde7a0
-  original:
-    subdir: src/lib
-    url: https://github.com/Helium4Haskell/lvm/archive/b36d193c694012ded6f575fa38475d3ab4fa80c8.tar.gz
+    url: https://github.com/matty293/llvm-hs-pretty-0.9.0.1/archive/4c181dd24caf2b8e05bab49c5cd8a75526e5c084.tar.gz
 snapshots:
 - completed:
-    size: 532177
-    url: https://raw.githubusercontent.com/commercialhaskell/stackage-snapshots/master/lts/16/20.yaml
-    sha256: 0e14ba5603f01e8496e8984fd84b545a012ca723f51a098c6c9d3694e404dc6d
-  original: lts-16.20
+    sha256: a81fb3877c4f9031e1325eb3935122e608d80715dc16b586eb11ddbff8671ecd
+    size: 640086
+    url: https://raw.githubusercontent.com/commercialhaskell/stackage-snapshots/master/lts/21/25.yaml
+  original: lts-21.25

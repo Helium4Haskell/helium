@@ -1,0 +1,535 @@
+1. No instance for (Solvable
+                     (EqualityConstraint TopInfo)
+                     (Helium.Top.Top.Monad.StateFix.StateFixT
+                        (TGS TopInfo ()) (Writer LogEntries)))
+    arising from a use of ‘g’
+• In the first argument of ‘map’, namely ‘g’
+  In the expression: map g xs
+  In the first argument of ‘return’, namely ‘(map g xs, S.size vars)’typecheck(-Wdeferred-type-errors)
+
+2.
+Could not deduce (Solvable (EqualityConstraint info) m)
+    arising from a use of ‘f’
+  from the context: (HasSubst m info, HasBasic m info, HasTI m info,
+                     TypeConstraintInfo info)
+    bound by the type signature for:
+               ambiguous :: forall (m :: * -> *) info.
+                            (HasSubst m info, HasBasic m info, HasTI m info,
+                             TypeConstraintInfo info) =>
+                            OrderedTypeSynonyms
+                            -> [TypeClassDirective info]
+                            -> ClassEnvironment
+                            -> [(Predicate, info)]
+                            -> m ()
+    at /Users/matthewporter/helium-1/src/Helium/Top/Top/Implementation/Overloading.hs:(188,1)-(189,119)
+• In the first argument of ‘mapM_’, namely ‘f’
+  In a stmt of a 'do' block: mapM_ f listStart
+  In the expression:
+    do skolems <- getSkolems
+       let tryToDefault (i, ts) = ...
+       let skolemPairs = ...
+           reportAmbiguous (p, info)
+             = addLabeledError ambiguousLabel (ambiguousPredicate p info)
+           ....
+       mapM_ f listStarttypecheck(-Wdeferred-type-errors)
+
+3. Could not load module ‘Data.Array’
+* It is a member of the hidden package ‘array-0.5.4.0’.
+* You can run ‘:set -package array’ to expose it.
+* (Note: this unloads all the modules in the current scope.)
+
+4.No instance for (Show Id) arising from a use of ‘show’
+* • In the second argument of ‘(++)’, namely ‘show x’
+*   In the expression:
+*     "InstrResolve.find: unknown identifier " ++ show x
+*   In an equation for ‘msg’:
+*       msg = "InstrResolve.find: unknown identifier " ++ show xtypecheck(-Wdeferred-type-errors)
+
+5.
+No instance for (Show Id)
+    arising from the first field of ‘Global’ (type ‘Id’)
+  Possible fix:
+    use a standalone 'deriving instance' declaration,
+      so you can specify the instance context yourself
+• When deriving the instance for (Show Global)typecheck(-Wdeferred-type-errors)
+• No instance for (Show Id) arising from a use of ‘showsPrec’
+• In the first argument of ‘(.)’, namely ‘(showsPrec 0 b1)’
+  In the second argument of ‘(.)’, namely
+    ‘((.)
+        (showsPrec 0 b1)
+        ((.)
+           GHC.Show.showCommaSpace
+           ((.)
+              (showString "indexFromGlobal = ")
+              ((.)
+                 (showsPrec 0 b2)
+                 ((.)
+                    GHC.Show.showCommaSpace
+                    ((.)
+                       (showString "arityFromGlobal = ")
+                       ((.) (showsPrec 0 b3) (showString "}"))))))))’
+  In the second argument of ‘(.)’, namely
+    ‘((.)
+        (showString "idFromGlobal = ")
+        ((.)
+           (showsPrec 0 b1)
+           ((.)
+              GHC.Show.showCommaSpace
+              ((.)
+                 (showString "indexFromGlobal = ")
+                 ((.)
+                    (showsPrec 0 b2)
+                    ((.)
+                       GHC.Show.showCommaSpace
+                       ((.)
+                          (showString "arityFromGlobal = ")
+                          ((.) (showsPrec 0 b3) (showString "}")))))))))’
+  When typechecking the code for ‘showsPrec’
+    in a derived instance for ‘Show Global’:
+    To see the code I am typechecking, use -ddump-derivtypecheck(-Wdeferred-type-errors)
+
+6.
+No instance for (Eq Id) arising from a use of ‘==’
+• In the expression: a == idFromString "[]"
+  In a stmt of a pattern guard for
+                 a case alternative:
+    a == idFromString "[]"
+  In a case alternative:
+      TAp (TCon a) t2
+        | a == idFromString "[]" -> text "[" <> pretty t2 <> text "]"typecheck(-Wdeferred-type-errors)
+
+7.
+No instance for (Pretty Id) arising from a use of ‘pretty’
+• In the first argument of ‘(<>)’, namely ‘pretty a’
+  In the second argument of ‘(<+>)’, namely
+    ‘pretty a <> text "." <+> ppEq t’
+  In the expression:
+    text "forall" <+> pretty a <> text "." <+> ppEq ttypecheck(-Wdeferred-type-errors)
+
+8.
+No instance for (Eq Id)
+    arising from the first field of ‘DeclKindCustom’ (type ‘Id’)
+  Possible fix:
+    use a standalone 'deriving instance' declaration,
+      so you can specify the instance context yourself
+• When deriving the instance for (Eq DeclKind)typecheck(-Wdeferred-type-errors)
+
+9.
+Not in scope: data constructor ‘DeclTypeSynonym’typecheck
+
+10.
+No instance for (Enum LinkConv) arising from a use of ‘fromEnum’
+• In the first argument of ‘encodeInt’, namely
+    ‘(fromEnum linkconv)’
+  In the expression: encodeInt (fromEnum linkconv)
+  In the first argument of ‘block’, namely
+    ‘[encodeIdx idxId, encodeInt (flags access), encodeInt arity,
+      encodeIdx idxType, ....]’typecheck(-Wdeferred-type-errors)
+
+11.
+No instance for (Monoid Bytes) arising from a use of ‘mconcat’
+• In the expression: mconcat recs
+  In an equation for ‘brecs’: brecs = mconcat recs
+  In the expression:
+    let
+      (idxInfo, recs) = bytesFromModule m
+      headerlen = 24
+      header = block [...]
+      ....
+    in seq totallen totaltypecheck(-Wdeferred-type-errors)
+
+12.
+/Users/matthewporter/helium-1/src/Helium/Syntax/UHA_Range.hs:12:1: error:
+    Could not find module ‘Helium.Syntax.UHA_Syntax’
+    Use -v (or `:set -v` in ghci) to see a list of the files searched for.
+   |
+12 | import Helium.Syntax.UHA_Syntax
+
+/Users/matthewporter/helium-1/src/Helium/CodeGeneration/Core/Rename.hs:71:19: error:
+    Not in scope: data constructor ‘Variable’
+   |
+71 |       Lam strict (Variable x t) e -> renameBinder env x $ \env2 x2 ->
+   |                   ^^^^^^^^
+
+/Users/matthewporter/helium-1/src/Helium/CodeGeneration/Core/Rename.hs:76:7: error:
+    Not in scope: data constructor ‘Forall’
+   |
+76 |       Forall x k e      -> Forall x k $ nsExpr env e
+   |       ^^^^^^
+
+/Users/matthewporter/helium-1/src/Helium/CodeGeneration/Core/Rename.hs:77:7: error:
+    Not in scope: data constructor ‘ApType’
+   |
+77 |       ApType e t        -> ApType (nsExpr env e) t
+   |       ^^^^^^
+
+/Users/matthewporter/helium-1/src/Helium/CodeGeneration/Core/Rename.hs:87:18: error:
+    Not in scope: data constructor ‘Variable’
+   |
+87 |     nonrec make (Variable x1 t1) rhs
+   |                  ^^^^^^^^
+
+/Users/matthewporter/helium-1/src/Helium/CodeGeneration/Core/Rename.hs:92:51: error:
+    Not in scope: data constructor ‘Variable’
+   |
+92 |       = let (binds',env') = mapAccumBinds (\env1 (Variable x1 t1) rhs -> renameBinder env1 x1 $ \env2 x2 -> (Bind (Variable x2 t1) rhs,env2))
+   |                                                   ^^^^^^^^
+
+/Users/matthewporter/helium-1/src/Helium/CodeGeneration/Core/Rename.hs:94:44: error:
+    Not in scope: data constructor ‘Variable’
+   |
+94 |         in cont env' (zipBindsWith (\env1 (Variable x1 t1) rhs -> Bind (Variable x1 t1) (nsExpr env1 rhs)) (splitEnvs env') binds')
+   |                                            ^^^^^^^^
+
+/Users/matthewporter/helium-1/src/Helium/CodeGeneration/Core/Rename.hs:132:24: error:
+    Not in scope: data constructor ‘Variable’
+    |
+132 | duplicateNames (Lam _ (Variable x _) expr) = dupInsert x $ duplicateNames expr
+    |                        ^^^^^^^^
+
+/Users/matthewporter/helium-1/src/Helium/CodeGeneration/Core/Rename.hs:133:17: error:
+    Not in scope: data constructor ‘Forall’
+    |
+133 | duplicateNames (Forall _ _ expr) = duplicateNames expr
+    |                 ^^^^^^
+
+/Users/matthewporter/helium-1/src/Helium/CodeGeneration/Core/Rename.hs:134:17: error:
+    Not in scope: data constructor ‘ApType’
+    |
+134 | duplicateNames (ApType expr _) = duplicateNames expr
+    |                 ^^^^^^
+
+/Users/matthewporter/helium-1/src/Helium/CodeGeneration/Core/Rename.hs:158:19: error:
+    Not in scope: data constructor ‘Variable’
+    |
+158 | varsInBind (Bind (Variable x _) expr) = dupInsert x $ duplicateNames expr
+    |                   ^^^^^^^^
+
+/Users/matthewporter/helium-1/src/Helium/CodeGeneration/Core/RemoveDead.hs:60:10: error:
+    Not in scope: data constructor ‘DeclTypeSynonym’
+   |
+60 | isUsed _ DeclTypeSynonym{} = True
+   |          ^^^^^^^^^^^^^^^
+
+/Users/matthewporter/helium-1/src/Helium/CodeGeneration/Core/RemoveDead.hs:103:14: error:
+    Not in scope: data constructor ‘Variable’
+    |
+103 |       Lam _ (Variable x _) e -> usageExpr (insertSet x locals) used e
+    |              ^^^^^^^^
+
+/Users/matthewporter/helium-1/src/Helium/CodeGeneration/Core/RemoveDead.hs:109:7: error:
+    Not in scope: data constructor ‘Forall’
+    |
+109 |       Forall _ _ e    -> usageExpr locals used e
+    |       ^^^^^^
+
+/Users/matthewporter/helium-1/src/Helium/CodeGeneration/Core/RemoveDead.hs:110:7: error:
+    Not in scope: data constructor ‘ApType’
+    |
+110 |       ApType e _      -> usageExpr locals used e
+    |       ^^^^^^
+
+/Users/matthewporter/helium-1/src/Helium/CodeGeneration/Core/RemoveDead.hs:121:7: error:
+    Not in scope: data constructor ‘ConTuple’
+    |
+121 |       ConTuple _ -> used
+    |       ^^^^^^^^
+
+/Users/matthewporter/helium-1/src/Helium/CodeGeneration/Core/RemoveDead.hs:128:69: error:
+    Not in scope: data constructor ‘Variable’
+    |
+128 |       Rec bs               -> let (ids,rhss) = unzip $ map (\(Bind (Variable x _) rhs) -> (x, rhs)) bs
+    |                                                                     ^^^^^^^^
+
+/Users/matthewporter/helium-1/src/Helium/CodeGeneration/Core/RemoveDead.hs:148:7: error:
+    Not in scope: data constructor ‘ConTuple’
+    |
+148 |       ConTuple _ -> used
+    |       ^^^^^^^^
+
+/Users/matthewporter/helium-1/src/Helium/CodeGeneration/Core/LetSort.hs:47:7: error:
+    Not in scope: data constructor ‘Forall’
+    Suggested fix:
+      Perhaps use ‘TForall’ (imported from Helium.Lvm.Core.Type)
+   |
+47 |       Forall x k e
+   |       ^^^^^^
+
+/Users/matthewporter/helium-1/src/Helium/CodeGeneration/Core/LetSort.hs:49:7: error:
+    Not in scope: data constructor ‘ApType’
+   |
+49 |       ApType e t
+   |       ^^^^^^
+
+/Users/matthewporter/helium-1/src/Helium/CodeGeneration/Core/LetSort.hs:62:31: error:
+    Not in scope: data constructor ‘Variable’
+   |
+62 |   = let binds  = map (\(Bind (Variable x t) rhs) -> (x,(t, rhs))) bindsrec
+                                    ^^^^^^
+/Users/matthewporter/helium-1/src/Helium/CodeGeneration/Core/RemoveAliases.hs:62:36: error:
+    Not in scope: data constructor ‘Variable’
+   |
+62 | renameExpr env (Let (NonRec (Bind (Variable x _) (Var y))) expr) = renameExpr (insertId x (lookupId env y) env) expr
+   |                                    ^^^^^^^^
+
+/Users/matthewporter/helium-1/src/Helium/CodeGeneration/Core/RemoveAliases.hs:63:40: error:
+    Not in scope: data constructor ‘Variable’
+   |
+63 | renameExpr env (Let (Strict (Bind var@(Variable x _) bindExpr)) expr) = bind $ renameExpr (insertStrict x env') expr
+   |                                        ^^^^^^^^
+
+/Users/matthewporter/helium-1/src/Helium/CodeGeneration/Core/RemoveAliases.hs:76:33: error:
+    Not in scope: data constructor ‘Variable’
+   |
+76 | renameExpr env (Lam strict var@(Variable x tp) expr) = Lam strict var $ renameExpr env' expr
+   |                                 ^^^^^^^^
+
+/Users/matthewporter/helium-1/src/Helium/CodeGeneration/Core/RemoveAliases.hs:84:17: error:
+    Not in scope: data constructor ‘Forall’
+    Suggested fix:
+      Perhaps use ‘TForall’ (imported from Helium.Lvm.Core.Type)
+   |
+84 | renameExpr env (Forall x k expr) = Forall x k $ renameExpr env expr
+   |                 ^^^^^^
+
+/Users/matthewporter/helium-1/src/Helium/CodeGeneration/Core/RemoveAliases.hs:85:17: error:
+    Not in scope: data constructor ‘ApType’
+   |
+85 | renameExpr env (ApType expr t) = ApType (renameExpr env expr) t
+   |                 ^^^^^^
+[ 20 of 174] Compiling Helium.CodeGeneration.Core.ReduceThunks ( /Users/matthewporter/helium-1/src/Helium/CodeGeneration/Core/ReduceThunks.hs, interpreted )
+
+/Users/matthewporter/helium-1/src/Helium/CodeGeneration/Core/ReduceThunks.hs:33:21: error:
+    Not in scope: data constructor ‘Forall’
+   |
+33 | reduceThunksInExpr (Forall x k expr) = Forall x k $ reduceThunksInExpr expr
+   |                     ^^^^^^
+
+/Users/matthewporter/helium-1/src/Helium/CodeGeneration/Core/ReduceThunks.hs:34:21: error:
+    Not in scope: data constructor ‘ApType’
+   |
+34 | reduceThunksInExpr (ApType e t) = ApType (reduceThunksInExpr e) t
+   |                     ^^^^^^
+
+/Users/matthewporter/helium-1/src/Helium/CodeGeneration/Core/ReduceThunks.hs:54:10: error:
+    Not in scope: data constructor ‘Forall’
+   |
+54 | isCheap (Forall _ _ e) = isCheap e
+   |          ^^^^^^
+
+/Users/matthewporter/helium-1/src/Helium/CodeGeneration/Core/ReduceThunks.hs:55:10: error:
+    Not in scope: data constructor ‘ApType’
+   |
+55 | isCheap (ApType e _) = isCheap e
+   |          ^^^^^^
+[ 21 of 174] Compiling Helium.CodeGeneration.Core.LetInline ( /Users/matthewporter/helium-1/src/Helium/CodeGeneration/Core/LetInline.hs, interpreted )
+
+/Users/matthewporter/helium-1/src/Helium/CodeGeneration/Core/LetInline.hs:48:20: error:
+    Not in scope: data constructor ‘Variable’
+   |
+48 | analyseBind (Bind (Variable name _) expr) = AIgnore name $ analyse expr
+   |                    ^^^^^^^^
+
+/Users/matthewporter/helium-1/src/Helium/CodeGeneration/Core/LetInline.hs:57:28: error:
+    Not in scope: data constructor ‘Variable’
+   |
+57 |     aexpr = foldr (\(Bind (Variable name _) _) -> AIgnore name) (analyse expr) binds
+   |                            ^^^^^^^^
+
+/Users/matthewporter/helium-1/src/Helium/CodeGeneration/Core/LetInline.hs:58:29: error:
+    Not in scope: data constructor ‘Variable’
+   |
+58 | analyse (Let (NonRec (Bind (Variable name _) e1)) e2) = ASequence (analyse e1) $ ABind name $ analyse e2
+   |                             ^^^^^^^^
+
+/Users/matthewporter/helium-1/src/Helium/CodeGeneration/Core/LetInline.hs:59:29: error:
+    Not in scope: data constructor ‘Variable’
+   |
+59 | analyse (Let (Strict (Bind (Variable name _) e1)) e2) = ASequence (analyse e1) $ AIgnore name $ analyse e2
+   |                             ^^^^^^^^
+
+/Users/matthewporter/helium-1/src/Helium/CodeGeneration/Core/LetInline.hs:63:17: error:
+    Not in scope: data constructor ‘Variable’
+   |
+63 | analyse (Lam _ (Variable name _) e) = ALambda $ AIgnore name $ analyse e
+   |                 ^^^^^^^^
+
+/Users/matthewporter/helium-1/src/Helium/CodeGeneration/Core/LetInline.hs:64:10: error:
+    Not in scope: data constructor ‘Forall’
+   |
+64 | analyse (Forall _ _ e) = analyse e
+   |          ^^^^^^
+
+/Users/matthewporter/helium-1/src/Helium/CodeGeneration/Core/LetInline.hs:65:10: error:
+    Not in scope: data constructor ‘ApType’
+   |
+65 | analyse (ApType e1 _) = analyse e1
+   |          ^^^^^^
+
+/Users/matthewporter/helium-1/src/Helium/CodeGeneration/Core/LetInline.hs:132:18: error:
+    Not in scope: data constructor ‘Forall’
+    |
+132 | isShort allowAp (Forall _ _ e) = isShort allowAp e
+    |                  ^^^^^^
+
+/Users/matthewporter/helium-1/src/Helium/CodeGeneration/Core/LetInline.hs:141:28: error:
+    Not in scope: data constructor ‘ApType’
+    |
+141 | isUnsaturatedCall arities (ApType e _) consumed = isUnsaturatedCall arities e consumed
+    |                            ^^^^^^
+
+/Users/matthewporter/helium-1/src/Helium/CodeGeneration/Core/LetInline.hs:142:28: error:
+    Not in scope: data constructor ‘Forall’
+    |
+142 | isUnsaturatedCall arities (Forall _ _ e) consumed = isUnsaturatedCall arities e consumed
+    |                            ^^^^^^
+
+/Users/matthewporter/helium-1/src/Helium/CodeGeneration/Core/LetInline.hs:161:19: error:
+    Not in scope: data constructor ‘Forall’
+    |
+161 | inlineInExpr env (Forall x k e) = Forall x k $ inlineInExpr env e
+    |                   ^^^^^^
+
+/Users/matthewporter/helium-1/src/Helium/CodeGeneration/Core/LetInline.hs:162:19: error:
+    Not in scope: data constructor ‘ApType’
+    |
+162 | inlineInExpr env (ApType e t) = ApType (inlineInExpr env e) t
+    |                   ^^^^^^
+
+/Users/matthewporter/helium-1/src/Helium/CodeGeneration/Core/LetInline.hs:166:42: error:
+    Not in scope: data constructor ‘Variable’
+    |
+166 | inlineInExpr env (Let (NonRec (Bind var@(Variable name _) value)) expr)
+    |                                          ^^^^^^^^
+
+/Users/matthewporter/helium-1/src/Helium/Lvmlib/Lvm/Read.hs:11:1: error:
+    Could not load module ‘Data.Array’
+    It is a member of the hidden package ‘array-0.5.4.0’.
+    You can run ‘:set -package array’ to expose it.
+    (Note: this unloads all the modules in the current scope.)
+    Use -v (or `:set -v` in ghci) to see a list of the files searched for.
+   |
+11 | import Data.Array
+   | ^^^^^^^^^^^^^^^^^
+
+/Users/matthewporter/helium-1/src/Helium/Syntax/UHA_Range.hs:12:1: error:
+    Could not find module ‘Helium.Syntax.UHA_Syntax’
+    Use -v (or `:set -v` in ghci) to see a list of the files searched for.
+   |
+12 | import Helium.Syntax.UHA_Syntax
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/Users/matthewporter/helium-1/src/Helium/CodeGeneration/Core/TypeEnvironment.hs:34:31: error:
+    Not in scope: data constructor ‘DeclTypeSynonym’
+   |
+34 |     synonyms = [ (name, tp) | DeclTypeSynonym name _ _ _ tp _ <- decls ]
+   |                               ^^^^^^^^^^^^^^^
+
+/Users/matthewporter/helium-1/src/Helium/CodeGeneration/Core/TypeEnvironment.hs:52:23: error:
+    Not in scope: type constructor or class ‘Variable’
+   |
+52 | typeEnvAddVariable :: Variable -> TypeEnvironment -> TypeEnvironment
+   |                       ^^^^^^^^
+
+/Users/matthewporter/helium-1/src/Helium/CodeGeneration/Core/TypeEnvironment.hs:53:21: error:
+    Not in scope: data constructor ‘Variable’
+   |
+53 | typeEnvAddVariable (Variable name tp) env = env{ typeEnvLocalValues = updateMap name (typeNotStrict tp) $ typeEnvLocalValues env }
+   |                     ^^^^^^^^
+
+/Users/matthewporter/helium-1/src/Helium/CodeGeneration/Core/TypeEnvironment.hs:55:25: error:
+    Not in scope: type constructor or class ‘Variable’
+   |
+55 | typeEnvAddVariables :: [Variable] -> TypeEnvironment -> TypeEnvironment
+   |                         ^^^^^^^^
+
+/Users/matthewporter/helium-1/src/Helium/CodeGeneration/Core/TypeEnvironment.hs:70:48: error:
+    Not in scope: type constructor or class ‘Variable’
+   |
+70 | patternVariables :: TypeEnvironment -> Pat -> [Variable]
+   |                                                ^^^^^^^^
+
+/Users/matthewporter/helium-1/src/Helium/CodeGeneration/Core/TypeEnvironment.hs:71:29: error:
+    Not in scope: data constructor ‘ConTuple’
+   |
+71 | patternVariables _ (PatCon (ConTuple _) tps ids)
+   |                             ^^^^^^^^
+
+/Users/matthewporter/helium-1/src/Helium/CodeGeneration/Core/TypeEnvironment.hs:77:34: error:
+    Not in scope: type constructor or class ‘Variable’
+   |
+77 |     findVars :: [Id] -> Type -> [Variable]
+   |                                  ^^^^^^^^
+
+/Users/matthewporter/helium-1/src/Helium/CodeGeneration/Core/TypeEnvironment.hs:78:37: error:
+    Not in scope: data constructor ‘TConFun’
+   |
+78 |     findVars (x:xs) (TAp (TAp (TCon TConFun) tArg) tReturn)
+   |                                     ^^^^^^^
+
+/Users/matthewporter/helium-1/src/Helium/CodeGeneration/Core/TypeEnvironment.hs:97:32: error:
+    Not in scope: data constructor ‘TConDataType’
+   |
+97 |     normalize strict t1@(TCon (TConDataType name)) = case lookupMap name $ typeEnvSynonyms env of
+   |                                ^^^^^^^^^^^^
+
+/Users/matthewporter/helium-1/src/Helium/CodeGeneration/Core/TypeEnvironment.hs:126:18: error:
+    Not in scope: data constructor ‘TConFun’
+    |
+126 |   TAp (TAp (TCon TConFun) _) tReturn -> tReturn
+    |                  ^^^^^^^
+
+/Users/matthewporter/helium-1/src/Helium/CodeGeneration/Core/TypeEnvironment.hs:131:27: error:
+    Not in scope: data constructor ‘ApType’
+    |
+131 | typeOfCoreExpression env (ApType e1 tp1) = case typeNormalizeHead env $ typeOfCoreExpression env e1 of
+    |                           ^^^^^^
+
+/Users/matthewporter/helium-1/src/Helium/CodeGeneration/Core/TypeEnvironment.hs:137:38: error:
+    Not in scope: data constructor ‘Variable’
+    |
+137 | typeOfCoreExpression env (Lam _ var@(Variable _ tp) expr) =
+    |                                      ^^^^^^^^
+
+/Users/matthewporter/helium-1/src/Helium/CodeGeneration/Core/TypeEnvironment.hs:144:27: error:
+    Not in scope: data constructor ‘Forall’
+    Suggested fix:
+      Perhaps use ‘TForall’ (imported from Helium.Lvm.Core.Type)
+    |
+144 | typeOfCoreExpression env (Forall x kind expr) =
+    |                           ^^^^^^
+
+/Users/matthewporter/helium-1/src/Helium/CodeGeneration/Core/TypeEnvironment.hs:149:32: error:
+    Not in scope: data constructor ‘ConTuple’
+    |
+149 | typeOfCoreExpression env (Con (ConTuple arity)) = typeTuple arity
+    |                                ^^^^^^^^
+
+/Users/matthewporter/helium-1/src/Helium/CodeGeneration/Core/TypeEnvironment.hs:202:66: error:
+    Not in scope: type constructor or class ‘Quantor’
+    |
+202 | data FunctionType = FunctionType { functionArguments :: ![Either Quantor Type], functionReturnType :: !Type }
+    |                                                                  ^^^^^^^
+
+/Users/matthewporter/helium-1/src/Helium/CodeGeneration/Core/TypeEnvironment.hs:218:47: error:
+    Not in scope: data constructor ‘TConFun’
+    |
+218 | extractFunctionTypeNoSynonyms (TAp (TAp (TCon TConFun) tArg) tReturn) = FunctionType (Right tArg : args) ret
+    |                                               ^^^^^^^
+
+/Users/matthewporter/helium-1/src/Helium/CodeGeneration/Core/TypeEnvironment.hs:228:62: error:
+    Not in scope: data constructor ‘TConFun’
+    |
+228 | extractFunctionTypeWithArityNoSynonyms arity (TAp (TAp (TCon TConFun) tArg) tReturn) = do
+    |                                                              ^^^^^^^
+
+/Users/matthewporter/helium-1/src/Helium/CodeGeneration/Core/TypeEnvironment.hs:240:18: error:
+    Not in scope: data constructor ‘TConFun’
+    |
+240 |   TAp (TAp (TCon TConFun) tArg) tReturn ->
+    |                  ^^^^^^^
+
+/Users/matthewporter/helium-1/src/Helium/CodeGeneration/Core/TypeEnvironment.hs:250:18: error:
+    Not in scope: data constructor ‘TConFun’
+    |
+250 |   TAp (TAp (TCon TConFun) tArg) tReturn ->
+    |                  ^^^^^^^

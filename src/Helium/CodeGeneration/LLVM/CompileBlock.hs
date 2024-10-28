@@ -23,9 +23,9 @@ import Helium.CodeGeneration.LLVM.Struct(tagValue, tupleStruct)
 import Helium.CodeGeneration.LLVM.CompileStruct
 import qualified Helium.CodeGeneration.LLVM.Builtins as Builtins
 
-import Lvm.Common.Id(Id, NameSupply, splitNameSupply, splitNameSupplies, mapWithSupply, freshId, idFromString)
-import Lvm.Common.IdMap(findMap)
-import qualified Lvm.Core.Type as Core
+import Helium.Lvm.Common.Id(Id, NameSupply, splitNameSupply, splitNameSupplies, mapWithSupply, freshId, idFromString)
+import Helium.Lvm.Common.IdMap(findMap)
+import qualified Helium.Lvm.Core.Type as Core
 
 import qualified Helium.CodeGeneration.Iridium.Data as Iridium
 import qualified Helium.CodeGeneration.Iridium.Type as Iridium

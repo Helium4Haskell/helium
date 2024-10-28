@@ -12,7 +12,7 @@
 
 imports {
 import Helium.Syntax.UHA_Syntax
-import Top.Types.Classes()
+import Helium.Top.Top.Types.Classes()
 }
 
 TYPE TypingStrategies = [TypingStrategy] 

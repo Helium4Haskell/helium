@@ -1,7 +1,7 @@
 module Helium.CodeGeneration.Iridium.Utils where
 
 import Helium.CodeGeneration.Iridium.Data
-import Lvm.Common.Id (NameSupply, mapWithSupply, splitNameSupply, idFromString)
+import Helium.Lvm.Common.Id (NameSupply, mapWithSupply, splitNameSupply, idFromString)
 
 mapMethodsWithSupply :: (NameSupply -> Declaration Method -> Declaration Method) -> NameSupply -> Module -> Module
 mapMethodsWithSupply fn supply (Module name dependencies customs datas types abstracts methods) = Module name dependencies customs datas types abstracts methods'

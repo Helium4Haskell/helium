@@ -60,12 +60,12 @@ import Data.List(isSuffixOf, find, sortOn, intercalate)
 
 import Helium.CodeGeneration.InstanceDictionary
 
-import Lvm.Common.Id
-import Lvm.Common.IdSet 
+import Helium.Lvm.Common.Id
+import Helium.Lvm.Common.IdSet 
 import Helium.Utils.Utils(internalError, fst4)
 
-import Top.Types
-import Top.Solver (SolveResult)
+import Helium.Top.Top.Types
+import Helium.Top.Top.Solver (SolveResult)
 import Helium.StaticAnalysis.Miscellaneous.ConstraintInfo (ConstraintInfo)
 
 import Helium.CodeGeneration.PatternMatch
@@ -78,11 +78,11 @@ import qualified Data.Map as M
 import Helium.CodeGeneration.CoreUtils
 
 -- Daan
-import qualified Lvm.Core.Expr as Core
-import qualified Lvm.Core.Type as Core
-import qualified Lvm.Core.Module as Core
-import qualified Lvm.Core.Module as Module
-import qualified Lvm.Common.Byte as Byte
+import qualified Helium.Lvm.Core.Expr as Core
+import qualified Helium.Lvm.Core.Type as Core
+import qualified Helium.Lvm.Core.Module as Core
+import qualified Helium.Lvm.Core.Module as Module
+import qualified Helium.Lvm.Common.Byte as Byte
 
 }
 

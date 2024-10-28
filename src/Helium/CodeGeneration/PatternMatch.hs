@@ -8,13 +8,13 @@
 
 module Helium.CodeGeneration.PatternMatch(patternToCore, patternsToCore, nextClauseId, freshIds) where
 
-import qualified Lvm.Core.Expr as Core
-import qualified Lvm.Core.Type as Core
-import qualified Top.Types as Top
+import qualified Helium.Lvm.Core.Expr as Core
+import qualified Helium.Lvm.Core.Type as Core
+import qualified Helium.Top.Top.Types as Top
 import Helium.Syntax.UHA_Syntax
 import Helium.Syntax.UHA_Utils
 import Helium.Syntax.UHA_Range
-import Lvm.Common.Id
+import Helium.Lvm.Common.Id
 import Data.Char
 import Data.List
 import Helium.Utils.Utils

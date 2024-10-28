@@ -12,9 +12,9 @@
 
 module Helium.CodeGeneration.Core.ReduceThunks (coreReduceThunks, isCheap) where
 
-import Lvm.Common.Id
-import Lvm.Core.Expr
-import Lvm.Core.Module
+import Helium.Lvm.Common.Id
+import Helium.Lvm.Core.Expr
+import Helium.Lvm.Core.Module
 
 coreReduceThunks :: CoreModule -> CoreModule
 coreReduceThunks = fmap reduceThunksInExpr

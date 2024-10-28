@@ -20,8 +20,8 @@ import Data.String(fromString)
 import qualified Helium.CodeGeneration.Iridium.Data as Iridium
 import qualified Helium.CodeGeneration.Iridium.Type as Iridium
 
-import Lvm.Common.Id(Id, NameSupply, freshId, splitNameSupply, mapWithSupply, stringFromId)
-import Lvm.Common.IdMap
+import Helium.Lvm.Common.Id(Id, NameSupply, freshId, splitNameSupply, mapWithSupply, stringFromId)
+import Helium.Lvm.Common.IdMap
 
 import LLVM.AST
 import LLVM.AST.Visibility

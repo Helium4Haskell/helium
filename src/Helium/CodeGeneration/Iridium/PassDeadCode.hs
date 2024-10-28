@@ -22,10 +22,10 @@ import Helium.CodeGeneration.Iridium.Type
 import Helium.CodeGeneration.Iridium.Data
 import Data.Maybe (catMaybes, fromMaybe, isNothing)
 import Data.Either (rights, isRight)
-import Lvm.Common.Id
-import Lvm.Common.IdMap
-import Lvm.Common.IdSet
-import Lvm.Core.Type
+import Helium.Lvm.Common.Id
+import Helium.Lvm.Common.IdMap
+import Helium.Lvm.Common.IdSet
+import Helium.Lvm.Core.Type
 
 passDeadCode :: NameSupply -> Module -> Module
 passDeadCode supply mod = mod{ moduleMethods = methods, moduleAbstractMethods = abstracts }

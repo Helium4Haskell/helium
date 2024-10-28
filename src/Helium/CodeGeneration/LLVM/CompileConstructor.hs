@@ -3,8 +3,8 @@ module Helium.CodeGeneration.LLVM.CompileConstructor (dataTypeType, constructorT
 import qualified Data.Bits as Bits
 import Data.Word(Word32)
 
-import Lvm.Common.Id(Id, NameSupply, mapWithSupply, splitNameSupply)
-import Lvm.Common.IdMap(findMap)
+import Helium.Lvm.Common.Id(Id, NameSupply, mapWithSupply, splitNameSupply)
+import Helium.Lvm.Common.IdMap(findMap)
 import Helium.CodeGeneration.LLVM.Env (Env(..))
 import Helium.CodeGeneration.LLVM.ConstructorLayout
 import Helium.CodeGeneration.LLVM.Struct

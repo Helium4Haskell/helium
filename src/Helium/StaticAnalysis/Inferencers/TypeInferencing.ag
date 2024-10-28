@@ -81,7 +81,7 @@ SEM Module
 imports {
 
 -- types
-import Top.Types
+import Helium.Top.Top.Types
 import Helium.StaticAnalysis.Miscellaneous.TypeConversion
 
 -- error messages and warnings
@@ -94,12 +94,12 @@ import Helium.StaticAnalysis.Miscellaneous.UHA_Source
 
 -- constraints and constraint trees
 import Helium.StaticAnalysis.Miscellaneous.TypeConstraints
-import Top.Ordering.Tree
+import Helium.Top.Top.Ordering.Tree
 
 -- constraint solving
 
 import Helium.StaticAnalysis.Inferencers.SelectConstraintSolver (selectConstraintSolver)
-import Top.Solver (SolveResult(..), LogEntries)
+import Helium.Top.Top.Solver (SolveResult(..), LogEntries)
 import Helium.StaticAnalysis.Heuristics.HeuristicsInfo (makeUnifier, skip_UHA_FB_RHS)
 import Helium.StaticAnalysis.Inferencers.BindingGroupAnalysis
 import Helium.StaticAnalysis.Miscellaneous.TypeConstraints()

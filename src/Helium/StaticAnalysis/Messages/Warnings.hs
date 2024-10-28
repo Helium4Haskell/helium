@@ -14,7 +14,7 @@ module Helium.StaticAnalysis.Messages.Warnings where
 import Helium.Syntax.UHA_Range    (getNameRange, showRange, sortRanges)
 import Helium.Syntax.UHA_Syntax
 import Helium.Syntax.UHA_Utils
-import Top.Types
+import Helium.Top.Top.Types
 import Helium.StaticAnalysis.Messages.Messages
 import Data.List    (intercalate)
 import qualified Helium.Syntax.UHA_Pretty as PP (sem_Pattern, wrap_Pattern, Inh_Pattern (..), Syn_Pattern (..), sem_LeftHandSide, wrap_LeftHandSide, Inh_LeftHandSide (..), Syn_LeftHandSide (..), sem_Expression, wrap_Expression, Inh_Expression (..), Syn_Expression (..))

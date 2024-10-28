@@ -26,8 +26,8 @@ import Helium.StaticAnalysis.Messages.Messages
 import Helium.StaticAnalysis.Messages.HeliumMessages ()
 import Helium.StaticAnalysis.Messages.TypeErrors
 import Helium.Utils.Utils (internalError)
-import Top.Types
-import Top.Implementation.TypeGraph.Heuristic
+import Helium.Top.Top.Types
+import Helium.Top.Top.Implementation.TypeGraph.Heuristic
 import Data.Maybe
 import Data.Char
 import qualified Data.Map as M

@@ -37,7 +37,7 @@ import qualified Helium.Parser.ResolveOperators as ResolveOperators
 import qualified Data.Map as M
 import Helium.StaticAnalysis.Directives.TS_Attributes
 import Helium.StaticAnalysis.Directives.TS_CoreSyntax
-import Top.Ordering.Tree
+import Helium.Top.Top.Ordering.Tree
 }
 
 {

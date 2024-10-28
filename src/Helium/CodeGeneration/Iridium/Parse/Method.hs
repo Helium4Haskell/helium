@@ -6,8 +6,8 @@ import Helium.CodeGeneration.Iridium.Parse.Instruction
 import Helium.CodeGeneration.Iridium.Parse.Expression
 import Helium.CodeGeneration.Iridium.Data
 import Helium.CodeGeneration.Iridium.Type
-import Lvm.Common.Id(Id, idFromString)
-import Lvm.Core.Type
+import Helium.Lvm.Common.Id(Id, idFromString)
+import Helium.Lvm.Core.Type
 import Data.Maybe
 
 pMethod :: Parser Method
