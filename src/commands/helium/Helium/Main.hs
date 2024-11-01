@@ -13,7 +13,7 @@ import qualified Helium.CodeGeneration.Iridium.FileCache as Iridium
 import Control.Monad
 import System.FilePath(joinPath)
 import Data.List(nub)
-import Lvm.Path(explodePath,getLvmPath)
+import Helium.Lvm.Path(explodePath,getLvmPath)
 import System.Directory(doesFileExist)
 import Helium.Main.Args
 import Helium.Main.Make
