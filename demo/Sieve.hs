@@ -6,7 +6,7 @@ sieve (x:xs)
    = x 
    : sieve (filter (nietVeelvoud x) xs)
 
-nietVeelvoud x y = y `mod` x /= 0
+nietVeelvoud x y = (y `mod` x) /= 0
     
 {-
 [/cygdrive/c/docs/helium/helium/demo] time heliumc Sieve.hs
