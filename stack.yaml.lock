@@ -89,6 +89,20 @@ packages:
   original:
     hackage: scientific-0.3.7.0
 - completed:
+    hackage: Win32-2.14.0.0@sha256:e34af84fec733b5c0c8f052ec39499785e719e2fbbe308983adf26c82ea3704d,5942
+    pantry-tree:
+      sha256: 3de8c6a631c3f215e944c13e3ad219951f1784006fabeb8f969b0390ac2192fb
+      size: 8300
+  original:
+    hackage: Win32-2.14.0.0
+- completed:
+    hackage: time-1.14@sha256:918455e07f347049c2169a43169aca77de7a2c97e33aca0b476aabcd8a79798d,6989
+    pantry-tree:
+      sha256: 99f4567d90615077ca3d59b1eb19e748874ed99ade15b62449e4f02536c05308
+      size: 7336
+  original:
+    hackage: time-1.14
+- completed:
     name: llvm-hs-pure
     pantry-tree:
       sha256: f06514eda279070c45e53204fe426b262ad117f17c22cfa68b65ba2a9cddffcb

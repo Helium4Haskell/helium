@@ -17,6 +17,8 @@ extra-deps:
   - filepath-1.4.300.2
   - array-0.5.4.0
   - scientific-0.3.7.0
+  - Win32-2.14.0.0
+  - time-1.14
 
   # If local development on Top is required, this entry can be replaced with the relative path of the directory the Top
   # repository is located, such as `../Top`
