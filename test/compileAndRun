@@ -1,2 +1,3 @@
-../dist/build/helium/helium -b --disable-logging --overloading --basepath=../lib/ $1 && lvmrun -P../lib/ -P${1%/*} -h7m $1
-rm -f ${1%/*}/*.lvm
+stack run -- --basepath=../lib/ --disable-logging --overloading "$1"
+find "${1%/*}" \( -name "*.desugared.core" -o -name "*.iridium" -o -name "*.ll" -o -name "*.test.core" \) -type f -delete
+
