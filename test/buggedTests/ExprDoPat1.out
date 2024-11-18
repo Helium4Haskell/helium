@@ -1,0 +1,29 @@
+LvmLang is up to date
+LvmException is up to date
+HeliumLang is up to date
+PreludePrim is up to date
+Prelude is up to date
+Compiling C:\Users\matth\Documents\New folder\helium\test\correct\ExprDoPat1.hs
+(6,9): Warning: Missing pattern in generator: 
+  [] <- ...
+
+
+Type errors in Core file after pass "Rename"
+
+''ExprDoPat1.main''  :: Int : export main
+  = let ''nextClause$'' :  Int =  ''HeliumLang.$primPatternFailPacked''  { Int } "pattern binding ranging from (4,1) to (8,6) in module C:\\Users\\matth\\Documents\\New folder\\helium\\test\\correct\\ExprDoPat1.hs";
+    in unsafePerformIO { Int } (let ''$monadDict'' :  (@dictionary Prelude.Monad ) IO =  ''$dictPrelude.Monad$IO'' ;
+                                in ''Prelude.>>=''  { IO } { [Int] } { Int } ''$monadDict''  (''Prelude.return''  { [Int] } { IO } ''$dictPrelude.Monad$IO''  (''::''  { Int } (@Int 1) (''::''  { Int } (@Int 2) (''::''  { Int } (@Int 3) ('':[]''  { Int }))))) (\''parameter$.0'' : [Int] ->
+                                  let! ''parameter$.1'' :  [Int] =  ''parameter$.0'' ;
+                                  in match ''parameter$.1''  with {
+                                       ''::''  { Int } x ''_''  ->
+                                           ''Prelude.return''  { Int } { IO } ''$dictPrelude.Monad$IO''  x;
+                                       _ -> ''nextClause$'' ; }))
+
+Type error
+in function "ExprDoPat1.main"
+in the argument of an application
+  Types `(@dictionary Prelude.Monad ) IO' and `(@dictionary Prelude.Monad ) Int' do not match
+
+
+1 errors after pass "Rename"

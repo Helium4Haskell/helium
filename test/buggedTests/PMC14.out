@@ -1,0 +1,59 @@
+LvmLang is up to date
+LvmException is up to date
+HeliumLang is up to date
+PreludePrim is up to date
+Prelude is up to date
+Compiling C:\Users\matth\Documents\New folder\helium\test\correct\PMC14.hs
+(7,1): Warning: Missing patterns in function bindings: 
+  a (_ : _) = ...
+  a [] = ...
+
+
+Type errors in Core file after pass "Rename"
+
+''PMC14.a''  :: String -> Int : export a
+  = \''u$0.1'' : String ->
+    let ''nextClause$.2'' :  Int =  ''HeliumLang.$primPatternFailPacked''  { Int } "function bindings ranging from (7,1) to (7,12) in module C:\\Users\\matth\\Documents\\New folder\\helium\\test\\correct\\PMC14.hs";
+    in let! ''u$0.3'' :  String =  ''u$0.1'' ;
+       in match ''u$0.3''  with {
+            ''::''  { Char } ''l$0.4''  ''l$1.5''  ->
+                let! ''l$0.6'' :  Char =  ''l$0.4'' ;
+                in match ''l$0.6''  with {
+                     (@Int 97) ->
+                         let! ''l$1.7'' :  [Char] =  ''l$1.5'' ;
+                         in match ''l$1.7''  with {
+                              ''::''  { Char } ''l$2.8''  ''l$3.9''  ->
+                                  let! ''l$2.10'' :  Char =  ''l$2.8'' ;
+                                  in match ''l$2.10''  with {
+                                       (@Int 98) ->
+                                           let! ''l$3.11'' :  [Char] =  ''l$3.9'' ;
+                                           in match ''l$3.11''  with {
+                                                ''::''  { Char } ''l$4.12''  ''l$5.13''  ->
+                                                    let! ''l$4.14'' :  Char =  ''l$4.12'' ;
+                                                    in match ''l$4.14''  with {
+                                                         (@Int 99) ->
+                                                             let! ''l$5.15'' :  [Char] =  ''l$5.13'' ;
+                                                             in match ''l$5.15''  with {
+                                                                  '':[]''  { Char } ->
+                                                                      (@Int 4);
+                                                                  _ ->
+                                                                      ''nextClause$.2'' ; };
+                                                         _ ->
+                                                             ''nextClause$.2'' ; };
+                                                _ -> ''nextClause$.2'' ; };
+                                       _ -> ''nextClause$.2'' ; };
+                              _ -> ''nextClause$.2'' ; };
+                     _ -> ''nextClause$.2'' ; };
+            _ -> ''nextClause$.2'' ; }
+
+Type error
+in function "PMC14.a"
+in lambda with argument "u$0.1"
+in match on variable "u$0.3"
+in alt with pattern ''::''  { Char } ''l$0.4''  ''l$1.5''
+in match on variable "l$0.6"
+in pattern (@Int 97)
+  Types `Char' and `Int' do not match
+
+
+1 errors after pass "Rename"

@@ -1,0 +1,36 @@
+LvmLang is up to date
+LvmException is up to date
+HeliumLang is up to date
+PreludePrim is up to date
+Prelude is up to date
+Compiling C:\Users\matth\Documents\New folder\helium\test\correct\FloatUnaryMinus3.hs
+
+
+Type errors in Core file after pass "Rename"
+
+''FloatUnaryMinus3.main''  :: Int : export main
+  = let ''nextClause$.0'' :  Int =  ''HeliumLang.$primPatternFailPacked''  { Int } "pattern binding ranging from (4,1) to (4,17) in module C:\\Users\\matth\\Documents\\New folder\\helium\\test\\correct\\FloatUnaryMinus3.hs";  
+    in ''FloatUnaryMinus3.f''  (''$primNegFloat''  (''$primStringToFloat''  "2.0"))
+
+Type error
+in function "FloatUnaryMinus3.main"
+  Variable not found: "$primNegFloat"
+
+
+
+''FloatUnaryMinus3.f''  :: Float -> Int : export f
+  = \''u$0'' : Float ->
+    let ''nextClause$.1'' :  Int =  (@Int 4);
+    in let! ''guard$'' :  Bool =  ''$primEqFloat''  (''$primStringToFloat''  "-2.0") ''u$0'' ;
+       in match ''guard$''  with {
+            True -> (@Int 3);
+            _ -> ''nextClause$.1'' ; }
+
+Type error
+in function "FloatUnaryMinus3.f"
+in lambda with argument "u$0"
+in bind for variable "guard$"
+  Variable not found: "$primEqFloat"
+
+
+2 errors after pass "Rename"

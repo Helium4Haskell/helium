@@ -1,0 +1,38 @@
+LvmLang is up to date
+LvmException is up to date 
+HeliumLang is up to date   
+PreludePrim is up to date  
+Prelude is up to date      
+Compiling correct/Andres.hs
+(3,16): Warning: Variable "+" shadows the one at Prelude
+(7,16): Warning: Variable "x" is not used
+(3,1): Warning: Missing type signature: test1 :: Int
+(7,1): Warning: Missing type signature: test3 :: Int
+(9,1): Warning: Missing type signature: test4 :: Monad a => a ()
+  Hint: Because test4 has an overloaded type, computations may be repeated.   
+        Insert the missing type signature if this is indeed your intention.   
+(9,16): Warning: Missing type signature: f :: Monad a => a ()
+  Hint: Because f has an overloaded type, computations may be repeated. Insert
+        the missing type signature if this is indeed your intention.
+(11,1): Warning: Missing type signature: main :: (Int, Int)
+
+
+Type errors in Core file after pass "Rename"
+
+''Andres.test1''  :: Int : export test1
+  = let ''nextClause$.0'' :  Int =  ''HeliumLang.$primPatternFailPacked''  { Int } "pattern binding ranging from (3,1) to (3,35) in module correct/Andres.hs";
+    in let ''f.1'' :  (Int -> Int -> Int) -> Int =  \''u$0.2'' : Int -> Int -> Int ->
+               let ''+'' :  Int -> Int -> Int =  ''u$0.2'' ;
+               in ''+''  { Int } (@Int 3) (@Int 5);
+       in ''f.1''  (''Prelude.-''  { Int } ''$dictPrelude.Num$Int'' )
+
+Type error
+in function "Andres.test1"
+in bind for variable "f.1"
+in lambda with argument "u$0.2"
+  Expected forall type, got `Int -> Int -> Int' instead  as the type of expression:
+
+''+''
+
+
+1 errors after pass "Rename"

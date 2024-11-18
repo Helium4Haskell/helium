@@ -1,0 +1,10 @@
+LvmLang is up to date
+LvmException is up to date
+HeliumLang is up to date
+PreludePrim is up to date
+Prelude is up to date
+Compiling C:\Users\matth\Documents\New folder\helium\test\correct\File2.hs
+(5,13): Undefined variable "readFile"
+(6,8): Undefined variable "hPutString"
+(6,19): Undefined variable "stdout"
+Compilation failed with 3 errors

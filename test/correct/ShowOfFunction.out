@@ -1,5 +1,0 @@
-Prelude is up to date
-Compiling correct/ShowOfFunction.hs
-(2,12): Cannot derive instance for class "Show"
-  Hint: There is no Show instance for Int -> Int
-Compilation failed with 1 error

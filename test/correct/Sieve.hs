@@ -9,4 +9,4 @@ sieve (x:xs)
    : sieve (filter (nietVeelvoud x) xs)
    
 nietVeelvoud :: Int -> Int -> Bool
-nietVeelvoud x y = y `mod` x /= 0
+nietVeelvoud x y = (y `mod` x) /= 0

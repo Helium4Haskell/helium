@@ -1,0 +1,31 @@
+LvmLang is up to date
+LvmException is up to date
+HeliumLang is up to date
+PreludePrim is up to date
+Prelude is up to date
+Compiling C:\Users\matth\Documents\New folder\helium\test\correct\MoreFloatOperations.hs
+(5,15): Undefined variable "**."
+  Hint: Did you mean "*." ?
+(6,11): Undefined variable "sqrt"
+(7,11): Undefined variable "exp"
+(8,11): Undefined variable "log"
+(9,11): Undefined variable "sin"
+  Hint: Did you mean "min" ?
+(10,11): Undefined variable "cos"
+(11,11): Undefined variable "tan"
+(12,11): Undefined variable "intToFloat"
+(14,11): Undefined variable "ceiling"
+(15,11): Undefined variable "ceiling"
+(16,11): Undefined variable "floor"
+(17,11): Undefined variable "floor"
+(18,11): Undefined variable "round"
+(19,11): Undefined variable "round"
+(20,11): Undefined variable "truncate"
+(21,11): Undefined variable "truncate"
+(22,11): Undefined variable "ceiling"
+(23,11): Undefined variable "ceiling"
+(24,11): Undefined variable "floor"
+(25,11): Undefined variable "floor"
+(...)
+
+Compilation failed with 28 errors

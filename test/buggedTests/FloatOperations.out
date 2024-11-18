@@ -3,6 +3,6 @@ LvmException is up to date
 HeliumLang is up to date
 PreludePrim is up to date
 Prelude is up to date
-Compiling correct/InfixCon1.hs
-Compilation successful
-3
+Compiling correct/FloatOperations.hs
+(4,47): Undefined variable "/"
+Compilation failed with 1 error

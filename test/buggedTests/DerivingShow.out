@@ -1,0 +1,8 @@
+LvmLang is up to date
+LvmException is up to date
+HeliumLang is up to date
+PreludePrim is up to date
+Prelude is up to date
+Compiling C:\Users\matth\Documents\New folder\helium\test\correct\DerivingShow.hs
+(14,22): Undefined variable "putStr"
+Compilation failed with 1 error

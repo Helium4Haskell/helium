@@ -1,0 +1,20 @@
+LvmLang is up to date
+LvmException is up to date
+HeliumLang is up to date
+PreludePrim is up to date
+Prelude is up to date
+Compiling C:\Users\matth\Documents\New folder\helium\test\correct\PatternBindingGuardBug.hs
+(2,2): Warning: Missing type signature: main :: String
+
+
+Type errors in Core file after pass "Rename"
+
+main :: Int
+  = ''HeliumLang.$primUnsafePerformIOZero''  { () } (''HeliumLang.$primPutStrLn''  (''Prelude.show''  { String } (''$dictPrelude.Show$[]''  { Char } ''$dictPrelude.Show$Char'' ) ''PatternBindingGuardBug.main'' ))
+
+Type error
+in function "main"
+  Variable not found: "PatternBindingGuardBug.main"
+
+
+1 errors after pass "Rename"

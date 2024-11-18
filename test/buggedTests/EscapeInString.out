@@ -1,0 +1,101 @@
+LvmLang is up to date
+LvmException is up to date
+HeliumLang is up to date
+PreludePrim is up to date
+Prelude is up to date
+Compiling C:\Users\matth\Documents\New folder\helium\test\correct\EscapeInString.hs
+(1,1): Warning: Missing type signature: main :: Int
+(3,1): Warning: Missing type signature: f :: String -> Int
+(3,1): Warning: Missing patterns in function bindings:
+  f (_ : _) = ...
+  f [] = ...
+
+
+Type errors in Core file after pass "Rename"
+
+''EscapeInString.f''  :: String -> Int : export f
+  = \''u$0.1'' : String ->
+    let ''nextClause$.2'' :  Int =  ''HeliumLang.$primPatternFailPacked''  { Int } "function bindings ranging from (3,1) to (3,17) in module C:\\Users\\matth\\Documents\\New folder\\helium\\test\\correct\\EscapeInString.hs";  
+    in let! ''u$0.3'' :  String =  ''u$0.1'' ;
+       in match ''u$0.3''  with {
+            ''::''  { Char } ''l$0.4''  ''l$1.5''  ->
+                let! ''l$0.6'' :  Char =  ''l$0.4'' ;
+                in match ''l$0.6''  with {
+                     (@Int 97) ->
+                         let! ''l$1.7'' :  [Char] =  ''l$1.5'' ;
+                         in match ''l$1.7''  with {
+                              ''::''  { Char } ''l$2.8''  ''l$3.9''  ->
+                                  let! ''l$2.10'' :  Char =  ''l$2.8'' ;
+                                  in match ''l$2.10''  with {
+                                       (@Int 98) ->
+                                           let! ''l$3.11'' :  [Char] =  ''l$3.9'' ;
+                                           in match ''l$3.11''  with {
+                                                ''::''  { Char } ''l$4.12''  ''l$5.13''  ->
+                                                    let! ''l$4.14'' :  Char =  ''l$4.12'' ;
+                                                    in match ''l$4.14''  with {
+                                                         (@Int 99) ->
+                                                             let! ''l$5.15'' :  [Char] =  ''l$5.13'' ;
+                                                             in match ''l$5.15''  with {
+                                                                  ''::''  { Char } ''l$6.16''  ''l$7.17''  ->
+                                                                      let! ''l$6.18'' :  Char =  ''l$6.16'' ;
+                                                                      in match ''l$6.18''  with {
+                                                                           (@Int 10) ->
+                                                                               let! ''l$7.19'' :  [Char] =  ''l$7.17'' ;
+                                                                               in match ''l$7.19''  with {
+                                                                                    ''::''  { Char } ''l$8.20''  ''l$9.21''  ->
+                                                                                        let! ''l$8.22'' :  Char =  ''l$8.20'' ;
+                                                                                        in match ''l$8.22''  with {
+                                                                                             (@Int 100) ->
+                                                                                                 let! ''l$9.23'' :  [Char] =  ''l$9.21'' ;
+                                                                                                 in match ''l$9.23''  with {
+                                                                                                      ''::''  { Char } ''l$10.24''  ''l$11.25''  ->
+                                                                                                          let! ''l$10.26'' :  Char =  ''l$10.24'' ;
+                                                                                                          in match ''l$10.26''  with {
+                                                                                                               (@Int 101) ->
+                                                                                                                   let! ''l$11.27'' :  [Char] =  ''l$11.25'' ;
+                                                                                                                   in match ''l$11.27''  with {
+                                                                                                                        ''::''  { Char } ''l$12.28''  ''l$13.29''  ->
+                                                                                                                            let! ''l$12.30'' :  Char =  ''l$12.28'' ;
+                                                                                                                            in match ''l$12.30''  with {
+                                                                                                                                 (@Int 102) ->
+                                                                                                                                     let! ''l$13.31'' :  [Char] =  ''l$13.29'' ;
+                                                                                                                                     in match ''l$13.31''  with {
+                                                                                                                                          '':[]''  { Char } ->
+                                                                                                                                              (@Int 3);
+                                                                                                                                          _ ->
+                                                                                                                                              ''nextClause$.2'' ; };
+                                                                                                                                 _ ->
+                                                                                                                                     ''nextClause$.2'' ; };
+                                                                                                                        _ ->
+                                                                                                                            ''nextClause$.2'' ; };
+                                                                                                               _ ->
+                                                                                                                   ''nextClause$.2'' ; };
+                                                                                                      _ ->
+                                                                                                          ''nextClause$.2'' ; };
+                                                                                             _ ->
+                                                                                                 ''nextClause$.2'' ; };
+                                                                                    _ ->
+                                                                                        ''nextClause$.2'' ; };
+                                                                           _ ->
+                                                                               ''nextClause$.2'' ; };
+                                                                  _ ->
+                                                                      ''nextClause$.2'' ; };
+                                                         _ ->
+                                                             ''nextClause$.2'' ; };
+                                                _ -> ''nextClause$.2'' ; };
+                                       _ -> ''nextClause$.2'' ; };
+                              _ -> ''nextClause$.2'' ; };
+                     _ -> ''nextClause$.2'' ; };
+            _ -> ''nextClause$.2'' ; }
+
+Type error
+in function "EscapeInString.f"
+in lambda with argument "u$0.1"
+in match on variable "u$0.3"
+in alt with pattern ''::''  { Char } ''l$0.4''  ''l$1.5''
+in match on variable "l$0.6"
+in pattern (@Int 97)
+  Types `Char' and `Int' do not match
+
+
+1 errors after pass "Rename"

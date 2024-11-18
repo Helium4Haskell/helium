@@ -1,0 +1,15 @@
+LvmLang is up to date
+LvmException is up to date
+HeliumLang is up to date
+PreludePrim is up to date
+Prelude is up to date
+Compiling C:\Users\matth\Documents\New folder\helium\test\correct\ImportDict2.hs
+(5,1): Warning: Missing type signature: y :: Int
+(6,1): Warning: Missing type signature: x :: Int
+helium.EXE: 
+INTERNAL ERROR - variable "DictPrelude.Show" not found in type environment
+** Module   : Core.TypeEnvironment
+** Function : typeOfId
+
+CallStack (from HasCallStack):
+  error, called at src\Helium\Utils\Utils.hs:136:13 in helium-1.9-f41142NPYFJMRx3mW64JA:Helium.Utils.Utils

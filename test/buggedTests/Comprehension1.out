@@ -1,0 +1,44 @@
+Prelude is up to date
+Compiling correct/Comprehension1.hs
+Compilation successful
+["axa","aya","bxb","byb"]
+
+LvmLang is up to date
+LvmException is up to date
+HeliumLang is up to date
+PreludePrim is up to date
+Prelude is up to date
+Compiling correct/Comprehension1.hs
+
+
+Type errors in Core file after pass "Rename"
+
+''Comprehension1.main''  :: [[Char]] : export main
+  = let ''nextClause$.0'' :  [[Char]] =  ''HeliumLang.$primPatternFailPacked''  { [[Char]] } "pattern binding ranging from (4,1) to (4,75) in module correct/Comprehension1.hs";
+    in let ''nextClause$.1'' :  [[Char]] =  '':[]''  { [Char] };
+       in let ''ok$.2'' :  Char -> [[Char]] =  \''parameter$.3'' : Char ->
+                  let x:  Char =  ''parameter$.3'' ;
+                  in let! ''guard$'' :  Bool =  ''Comprehension1.isA''  x;
+                     in match ''guard$''  with {
+                          True ->
+                              let z:  Char =  let ''nextClause$.4'' :  Char =  ''HeliumLang.$primPatternFailPacked''  { Char } "pattern binding ranging from (4,47) to (4,60) in module correct/Comprehension1.hs";
+                                              in x;
+                              in let ''nextClause$.5'' :  [[Char]] =  '':[]''  { [Char] };
+                                 in let ''ok$.6'' :  Char -> [[Char]] =  \''parameter$.7'' : Char ->
+                                            let y:  Char =  ''parameter$.7'' ;
+                                            in ''::''  { [Char] } (''::''  { Char } x (''::''  { Char } y (''::''  { Char } z ('':[]''  { Char })))) ('':[]''  { [Char] });
+                                    in ''HeliumLang.$primConcatMap''  { Char } { [Char] } ''ok$.6''  (''HeliumLang.$primPackedToString''  "xy");
+                          _ -> '':[]''  { [Char] }; };
+          in ''HeliumLang.$primConcatMap''  { Char } { [Char] } ''ok$.2''  (''HeliumLang.$primPackedToString''  "abc")
+
+Type error
+in function "Comprehension1.main"
+in bind for variable "ok$.2"
+in lambda with argument "parameter$.3"
+in match on variable "guard$"
+in alt with pattern True
+in the argument of an application
+  Types `Char -> [[Char]]' and `[Char] -> [Char]' do not match
+
+
+1 errors after pass "Rename"

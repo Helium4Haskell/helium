@@ -1,5 +1,0 @@
-Prelude is up to date
-Compiling correct/EnumChar.hs
-(1,1): Warning: Missing type signature: main :: ([Char], [Char], [Char], [Char])
-Compilation successful with 1 warning
-("abcdefghij","ACEGIKMOQS","ZYXWVUTSRQPONMLKJIHGFEDCBA","ABCDEFGHIJKLMNOPQRSTUVWXYZ")

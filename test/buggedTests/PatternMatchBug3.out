@@ -1,0 +1,47 @@
+LvmLang is up to date
+LvmException is up to date
+HeliumLang is up to date
+PreludePrim is up to date
+Prelude is up to date
+Compiling C:\Users\matth\Documents\New folder\helium\test\correct\PatternMatchBug3.hs
+(3,1): Warning: Missing type signature: main :: String
+(5,1): Warning: Missing type signature: f :: String -> a -> a
+(5,1): Warning: Missing patterns in function bindings:
+  f (_ : _) _ = ...
+  f [] _ = ...
+
+
+Type errors in Core file after pass "Rename"
+
+''PatternMatchBug3.f''  :: forall v$0. String -> v$0 -> v$0 : export f
+  = forall v$0: *.
+    \''u$0.1'' : String ->
+      \''u$1'' : v$0 ->
+        let ''nextClause$.2'' :  v$0 =  ''HeliumLang.$primPatternFailPacked''  { v$0 } "function bindings ranging from (5,1) to (5,12) in module C:\\Users\\matth\\Documents\\New folder\\helium\\test\\correct\\PatternMatchBug3.hs";
+        in let! ''u$0.3'' :  String =  ''u$0.1'' ;
+           in match ''u$0.3''  with {
+                ''::''  { Char } ''l$0.4''  ''l$1.5''  ->
+                    let! ''l$0.6'' :  Char =  ''l$0.4'' ;
+                    in match ''l$0.6''  with {
+                         (@Int 97) ->
+                             let! ''l$1.7'' :  [Char] =  ''l$1.5'' ;
+                             in match ''l$1.7''  with {
+                                  '':[]''  { Char } ->
+                                      let x:  v$0 =  ''u$1'' ;
+                                      in x;
+                                  _ -> ''nextClause$.2'' ; };
+                         _ -> ''nextClause$.2'' ; };
+                _ -> ''nextClause$.2'' ; }
+
+Type error
+in function "PatternMatchBug3.f"
+in lambda with argument "u$0.1"
+in lambda with argument "u$1"
+in match on variable "u$0.3"
+in alt with pattern ''::''  { Char } ''l$0.4''  ''l$1.5''
+in match on variable "l$0.6"
+in pattern (@Int 97)
+  Types `Char' and `Int' do not match
+
+
+1 errors after pass "Rename"

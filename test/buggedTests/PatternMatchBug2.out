@@ -1,0 +1,59 @@
+LvmLang is up to date
+LvmException is up to date
+HeliumLang is up to date
+PreludePrim is up to date
+Prelude is up to date
+Compiling C:\Users\matth\Documents\New folder\helium\test\correct\PatternMatchBug2.hs
+(5,5): Warning: Missing patterns in case expression: 
+  (_ : _) : _ -> ...
+  [] : _ -> ...
+  [] -> ...
+
+
+Type errors in Core file after pass "Rename"
+
+''PatternMatchBug2.main''  :: String : export main
+  = let ''nextClause$.0'' :  String =  ''HeliumLang.$primPatternFailPacked''  { String } "pattern binding ranging from (4,1) to (6,22) in module C:\\Users\\matth\\Documents\\New folder\\helium\\test\\correct\\PatternMatchBug2.hs";
+    in let ''caseExpr$.1'' :  [String] =  ''::''  { String } (''::''  { Char } (@Char 97) ('':[]''  { Char })) (''::''  { String } (''::''  { Char } (@Char 97) ('':[]''  { Char })) ('':[]''  { String }));
+       in let ''nextClause$.2'' :  String =  ''HeliumLang.$primPatternFailPacked''  { String } "case expression ranging from (5,5) to (6,22) in module C:\\Users\\matth\\Documents\\New folder\\helium\\test\\correct\\PatternMatchBug2.hs";
+          in let! ''caseExpr$.3'' :  [String] =  ''caseExpr$.1'' ;
+             in match ''caseExpr$.3''  with {
+                  ''::''  { String } ''l$0.4''  ''l$1.5''  ->
+                      let! ''l$0.6'' :  String =  ''l$0.4'' ;
+                      in match ''l$0.6''  with {
+                           ''::''  { Char } ''l$4.7''  ''l$5.8''  ->
+                               let! ''l$4.9'' :  Char =  ''l$4.7'' ;
+                               in match ''l$4.9''  with {
+                                    (@Int 97) ->
+                                        let! ''l$5.10'' :  [Char] =  ''l$5.8'' ;
+                                        in match ''l$5.10''  with {
+                                             '':[]''  { Char } ->
+                                                 let! ''l$1.11'' :  [String] =  ''l$1.5'' ;
+                                                 in match ''l$1.11''  with {
+                                                      ''::''  { String } ''l$2''  ''l$3.12''  ->
+                                                          let x:  String =  ''l$2'' ;
+                                                          in let! ''l$3.13'' :  [String] =  ''l$3.12'' ;
+                                                             in match ''l$3.13''  with {
+                                                                  '':[]''  { String } ->
+                                                                      x;
+                                                                  _ ->
+                                                                      ''nextClause$.2'' ; };
+                                                      _ ->
+                                                          ''nextClause$.2'' ; };
+                                             _ -> ''nextClause$.2'' ; };
+                                    _ -> ''nextClause$.2'' ; };
+                           _ -> ''nextClause$.2'' ; };
+                  _ -> ''nextClause$.2'' ; }
+
+Type error
+in function "PatternMatchBug2.main"
+in match on variable "caseExpr$.3"
+in alt with pattern ''::''  { String } ''l$0.4''  ''l$1.5''
+in match on variable "l$0.6"
+in alt with pattern ''::''  { Char } ''l$4.7''  ''l$5.8''
+in match on variable "l$4.9"
+in pattern (@Int 97)
+  Types `Char' and `Int' do not match
+
+
+1 errors after pass "Rename"

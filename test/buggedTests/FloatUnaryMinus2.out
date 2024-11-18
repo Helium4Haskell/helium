@@ -1,0 +1,37 @@
+LvmLang is up to date
+LvmException is up to date
+HeliumLang is up to date
+PreludePrim is up to date
+Prelude is up to date
+Compiling C:\Users\matth\Documents\New folder\helium\test\correct\FloatUnaryMinus2.hs
+
+
+Type errors in Core file after pass "Rename"
+
+''FloatUnaryMinus2.main''  :: Int : export main
+  = let ''nextClause$.0'' :  Int =  ''HeliumLang.$primPatternFailPacked''  { Int } "pattern binding ranging from (4,1) to (8,17) in module C:\\Users\\matth\\Documents\\New folder\\helium\\test\\correct\\FloatUnaryMinus2.hs";  
+    in let ''caseExpr$'' :  Float =  ''$primNegFloat''  (''$primStringToFloat''  "2.0");
+       in let ''nextClause$.1'' :  Int =  let ''nextClause$.2'' :  Int =  let ''nextClause$.3'' :  Int =  let ''nextClause$.4'' :  Int =  ''HeliumLang.$primPatternFailPacked''  { Int } "case expression ranging from (4,8) to (8,17) in module C:\\Users\\matth\\Documents\\New folder\\helium\\test\\correct\\FloatUnaryMinus2.hs";
+                                                                                                          in (@Int 3);
+                                                                          in let! ''guard$.5'' :  Bool =  ''$primEqFloat''  (''$primStringToFloat''  "1.0") ''caseExpr$'' ;
+                                                                             in match ''guard$.5''  with {
+                                                                                  True ->
+                                                                                      (@Int 2);
+                                                                                  _ ->
+                                                                                      ''nextClause$.3'' ; };
+                                          in let! ''guard$.6'' :  Bool =  ''$primEqFloat''  (''$primStringToFloat''  "2.0") ''caseExpr$'' ;
+                                             in match ''guard$.6''  with {
+                                                  True -> (@Int 1);
+                                                  _ -> ''nextClause$.2'' ; };
+          in let! ''guard$.7'' :  Bool =  ''$primEqFloat''  (''$primStringToFloat''  "3.0") ''caseExpr$'' ;
+             in match ''guard$.7''  with {
+                  True -> (@Int 0);
+                  _ -> ''nextClause$.1'' ; }
+
+Type error
+in function "FloatUnaryMinus2.main"
+in bind for variable "caseExpr$"
+  Variable not found: "$primNegFloat"
+
+
+1 errors after pass "Rename"

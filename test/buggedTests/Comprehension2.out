@@ -1,0 +1,41 @@
+LvmLang is up to date
+LvmException is up to date
+HeliumLang is up to date
+PreludePrim is up to date
+Prelude is up to date
+Compiling C:\Users\matth\Documents\New folder\helium\test\correct\Comprehension2.hs
+(4,20): Warning: Missing pattern in generator: 
+  _ <- ...
+
+
+Type errors in Core file after pass "Rename"
+
+''Comprehension2.main''  :: [[Char]] : export main
+  = let ''nextClause$.0'' :  [[Char]] =  ''HeliumLang.$primPatternFailPacked''  { [[Char]] } "pattern binding ranging from (4,1) to (4,73) in module C:\\Users\\matth\\Documents\\New folder\\helium\\test\\correct\\Comprehension2.hs";
+    in let ''nextClause$.1'' :  [[Char]] =  '':[]''  { [Char] };
+       in let ''ok$.2'' :  Char -> [[Char]] =  \''parameter$.3'' : Char ->
+                  let x:  Char =  ''parameter$.3'' ;
+                  in let! ''parameter$.4'' :  Char =  ''parameter$.3'' ;
+                     in match ''parameter$.4''  with {
+                          (@Char 97) ->
+                              let z:  Char =  let ''nextClause$.5'' :  Char =  ''HeliumLang.$primPatternFailPacked''  { Char } "pattern binding ranging from (4,53) to (4,58) in module C:\\Users\\matth\\Documents\\New folder\\helium\\test\\correct\\Comprehension2.hs";
+                                              in x;
+                              in let ''nextClause$.6'' :  [[Char]] =  '':[]''  { [Char] };
+                                 in let ''ok$.7'' :  Char -> [[Char]] =  \''parameter$.8'' : Char ->
+                                            let y:  Char =  ''parameter$.8'' ;
+                                            in ''::''  { [Char] } (''::''  { Char } x (''::''  { Char } y (''::''  { Char } z ('':[]''  { Char })))) ('':[]''  { [Char] });
+                                    in ''HeliumLang.$primConcatMap''  { Char } { [Char] } ''ok$.7''  (''HeliumLang.$primPackedToString''  "xy");
+                          _ -> ''nextClause$.1'' ; };
+          in ''HeliumLang.$primConcatMap''  { Char } { [Char] } ''ok$.2''  (''HeliumLang.$primPackedToString''  "abc")
+
+Type error
+in function "Comprehension2.main"
+in bind for variable "ok$.2"
+in lambda with argument "parameter$.3"
+in match on variable "parameter$.4"
+in alt with pattern (@Char 97)
+in the argument of an application
+  Types `Char -> [[Char]]' and `[Char] -> [Char]' do not match
+
+
+1 errors after pass "Rename"

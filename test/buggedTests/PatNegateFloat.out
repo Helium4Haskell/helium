@@ -1,0 +1,27 @@
+LvmLang is up to date
+LvmException is up to date
+HeliumLang is up to date
+PreludePrim is up to date
+Prelude is up to date
+Compiling C:\Users\matth\Documents\New folder\helium\test\correct\PatNegateFloat.hs
+
+
+Type errors in Core file after pass "Rename"
+
+''PatNegateFloat.main''  :: Int : export main
+  = let ''nextClause$.0'' :  Int =  ''HeliumLang.$primPatternFailPacked''  { Int } "pattern binding ranging from (4,1) to (6,13) in module C:\\Users\\matth\\Documents\\New folder\\helium\\test\\correct\\PatNegateFloat.hs";    
+    in let ''caseExpr$'' :  Float =  ''$primNegFloat''  (''$primStringToFloat''  "3.3");
+       in let ''nextClause$.1'' :  Int =  let ''nextClause$.2'' :  Int =  ''HeliumLang.$primPatternFailPacked''  { Int } "case expression ranging from (4,8) to (6,13) in module C:\\Users\\matth\\Documents\\New folder\\helium\\test\\correct\\PatNegateFloat.hs";
+                                          in ''Prelude.negate''  { Int } ''$dictPrelude.Num$Int''  (@Int 1);
+          in let! ''guard$'' :  Bool =  ''$primEqFloat''  (''$primStringToFloat''  "-3.3") ''caseExpr$'' ;
+             in match ''guard$''  with {
+                  True -> (@Int 42);
+                  _ -> ''nextClause$.1'' ; }
+
+Type error
+in function "PatNegateFloat.main"
+in bind for variable "caseExpr$"
+  Variable not found: "$primNegFloat"
+
+
+1 errors after pass "Rename"

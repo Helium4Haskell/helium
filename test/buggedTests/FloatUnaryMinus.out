@@ -1,0 +1,29 @@
+LvmLang is up to date
+LvmException is up to date
+HeliumLang is up to date
+PreludePrim is up to date
+Prelude is up to date
+Compiling C:\Users\matth\Documents\New folder\helium\test\correct\FloatUnaryMinus.hs
+
+
+Type errors in Core file after pass "Rename"
+
+main :: Int
+  = ''HeliumLang.$primUnsafePerformIOZero''  { () } (''HeliumLang.$primPutStrLn''  (''Prelude.show''  { Float } ''$dictPrelude.Show$Float''  ''FloatUnaryMinus.main'' ))
+
+Type error
+in function "main"
+  Variable not found: "$dictPrelude.Show$Float"
+
+
+
+''FloatUnaryMinus.main''  :: Float : export main
+  = let ''nextClause$'' :  Float =  ''HeliumLang.$primPatternFailPacked''  { Float } "pattern binding ranging from (4,1) to (4,13) in module C:\\Users\\matth\\Documents\\New folder\\helium\\test\\correct\\FloatUnaryMinus.hs"; 
+    in ''$primNegFloat''  (''$primStringToFloat''  "2.5")
+
+Type error
+in function "FloatUnaryMinus.main"
+  Variable not found: "$primNegFloat"
+
+
+2 errors after pass "Rename"
